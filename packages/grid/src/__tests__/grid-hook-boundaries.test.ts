@@ -64,6 +64,7 @@ describe('grid hook boundary helpers', () => {
     const headerHookSource = readFileSync(fileURLToPath(new URL('../useWorkbookHeaderPanes.ts', import.meta.url)), 'utf8')
     const paneHookSource = readFileSync(fileURLToPath(new URL('../useWorkbookGridRenderPanes.ts', import.meta.url)), 'utf8')
     const tilePaneHookSource = readFileSync(fileURLToPath(new URL('../useWorkbookRenderTilePanes.ts', import.meta.url)), 'utf8')
+    const viewportRuntimeHookSource = readFileSync(fileURLToPath(new URL('../useWorkbookGridViewportRuntime.ts', import.meta.url)), 'utf8')
     const viewportResidencyHookSource = readFileSync(
       fileURLToPath(new URL('../useWorkbookViewportResidencyState.ts', import.meta.url)),
       'utf8',
@@ -88,9 +89,13 @@ describe('grid hook boundary helpers', () => {
     expect(hookSource).not.toContain('useWorkbookHeaderPanes')
     expect(hookSource).not.toContain('useWorkbookRenderTilePanes')
     expect(hookSource).not.toContain('useWorkbookHeaderCellBounds')
+    expect(hookSource).not.toContain('useWorkbookViewportResidencyState')
+    expect(hookSource).not.toContain('useWorkbookViewportScrollRuntime')
     expect(paneHookSource).toContain('useWorkbookHeaderPanes')
     expect(paneHookSource).toContain('useWorkbookRenderTilePanes')
     expect(paneHookSource).toContain('useWorkbookHeaderCellBounds')
+    expect(viewportRuntimeHookSource).toContain('useWorkbookViewportResidencyState')
+    expect(viewportRuntimeHookSource).toContain('useWorkbookViewportScrollRuntime')
     expect(headerHookSource).toContain("from './runtime/gridRuntimeHost.js'")
     expect(headerHookSource).not.toContain("from './runtime/gridHeaderPaneRuntime.js'")
     expect(headerHookSource).not.toContain('useRef<')
