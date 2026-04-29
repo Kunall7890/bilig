@@ -458,6 +458,9 @@ Completed in the resident-scene deletion tranche:
   preserving bounded partial rect/text upload metadata without `toSorted()` churn.
 - `TextRunCacheV3` now uses an intrusive LRU list for touch and byte-budget eviction instead of scanning all cached runs for each eviction, and
   updating an existing cached run refreshes its glyph dependency list without changing its stable run ID.
+- Column/row resize previews no longer merge preview sizes into the committed axis size maps. The V3 overlay receives preview guide dimensions
+  directly, so active resize drag can move the guide without rebuilding header panes, local render tiles, workbook deltas, or TypeGPU data-tile
+  buffers before commit.
 
 Remaining work from this design:
 

@@ -99,46 +99,65 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
   const displaySelectionRange = displayGridSelection.current?.range ?? null
   const renderHostElement = renderState.hostElement
   const getLiveGeometrySnapshot = renderState.getLiveGeometrySnapshot
+  const activeHeaderDrag = renderState.activeHeaderDrag
+  const activeResizeColumn = renderState.activeResizeColumn
+  const activeResizeRow = renderState.activeResizeRow
+  const fillPreviewRange = renderState.fillPreviewRange
+  const getPreviewColumnWidth = renderState.getPreviewColumnWidth
+  const getPreviewRowHeight = renderState.getPreviewRowHeight
+  const hoverCell = renderState.hoverState.cell
+  const hoverCursor = renderState.hoverState.cursor
+  const hoverHeader = renderState.hoverState.header
+  const isRangeMoveDragging = renderState.isRangeMoveDragging
+  const selectedCellCol = renderState.selectedCell.col
+  const selectedCellRow = renderState.selectedCell.row
   const v2Geometry = useMemo(() => (renderHostElement ? getLiveGeometrySnapshot() : null), [getLiveGeometrySnapshot, renderHostElement])
   const dynamicOverlayBuilder = useCallback(
-    (geometry: NonNullable<typeof v2Geometry>) =>
-      buildDynamicGridOverlayBatchV3({
+    (geometry: NonNullable<typeof v2Geometry>) => {
+      const resizeGuideColumn = resolveResizeGuideColumn({
+        activeResizeColumn,
+        cursor: hoverCursor,
+        header: hoverHeader,
+      })
+      const resizeGuideRow = resolveResizeGuideRow({
+        activeResizeRow,
+        cursor: hoverCursor,
+        header: hoverHeader,
+      })
+      return buildDynamicGridOverlayBatchV3({
         geometry,
-        activeHeaderDrag: renderState.activeHeaderDrag,
+        activeHeaderDrag,
         gridSelection: displayGridSelection,
-        hoveredCell: renderState.hoverState.cell,
-        selectedCell: [renderState.selectedCell.col, renderState.selectedCell.row],
+        hoveredCell: hoverCell,
+        selectedCell: [selectedCellCol, selectedCellRow],
         selectionRange: displaySelectionRange,
         showFillHandle:
           displaySelectionRange !== null &&
           displayGridSelection.columns.length === 0 &&
           displayGridSelection.rows.length === 0 &&
-          renderState.fillPreviewRange === null &&
-          !renderState.isRangeMoveDragging,
-        resizeGuideColumn: resolveResizeGuideColumn({
-          activeResizeColumn: renderState.activeResizeColumn,
-          cursor: renderState.hoverState.cursor,
-          header: renderState.hoverState.header,
-        }),
-        resizeGuideRow: resolveResizeGuideRow({
-          activeResizeRow: renderState.activeResizeRow,
-          cursor: renderState.hoverState.cursor,
-          header: renderState.hoverState.header,
-        }),
-      }),
+          fillPreviewRange === null &&
+          !isRangeMoveDragging,
+        resizeGuideColumn,
+        resizeGuideColumnWidth: resizeGuideColumn === null ? null : getPreviewColumnWidth(resizeGuideColumn),
+        resizeGuideRow,
+        resizeGuideRowHeight: resizeGuideRow === null ? null : getPreviewRowHeight(resizeGuideRow),
+      })
+    },
     [
-      renderState.activeResizeColumn,
-      renderState.activeResizeRow,
-      renderState.activeHeaderDrag,
-      renderState.hoverState.cell,
-      renderState.hoverState.cursor,
-      renderState.hoverState.header,
-      renderState.fillPreviewRange,
+      activeHeaderDrag,
+      activeResizeColumn,
+      activeResizeRow,
       displayGridSelection,
       displaySelectionRange,
-      renderState.isRangeMoveDragging,
-      renderState.selectedCell.col,
-      renderState.selectedCell.row,
+      fillPreviewRange,
+      getPreviewColumnWidth,
+      getPreviewRowHeight,
+      hoverCell,
+      hoverCursor,
+      hoverHeader,
+      isRangeMoveDragging,
+      selectedCellCol,
+      selectedCellRow,
     ],
   )
   const previewRects = useMemo(() => {

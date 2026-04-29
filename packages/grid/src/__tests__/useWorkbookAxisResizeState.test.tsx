@@ -31,8 +31,8 @@ describe('useWorkbookAxisResizeState', () => {
 
     expect(latestState?.hasColumnResizePreview).toBe(true)
     expect(latestState?.hasRowResizePreview).toBe(true)
-    expect(latestState?.columnWidths[2]).toBe(MAX_COLUMN_WIDTH)
-    expect(latestState?.rowHeights[3]).toBe(MAX_ROW_HEIGHT)
+    expect(latestState?.columnWidths[2]).toBeUndefined()
+    expect(latestState?.rowHeights[3]).toBeUndefined()
     expect(latestState?.getPreviewColumnWidth(2)).toBe(MAX_COLUMN_WIDTH)
     expect(latestState?.getPreviewRowHeight(3)).toBe(MAX_ROW_HEIGHT)
 

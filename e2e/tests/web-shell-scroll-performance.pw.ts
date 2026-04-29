@@ -3,10 +3,13 @@ import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 import {
   clickProductCell,
+  getProductColumnLeft,
+  getProductColumnWidth,
   gotoWorkbookShell,
   performDiagonalGridBrowse,
   performHorizontalGridBrowse,
   performVerticalGridBrowse,
+  PRODUCT_HEADER_HEIGHT,
   remoteSyncEnabled,
   resetGridScroll,
   settleWorkbookScrollPerf,
@@ -108,6 +111,20 @@ function expectNoTypeGpuTextPayloadChurn(report: ScrollPerfReport) {
   expect(readCounter(report.counters, 'typeGpuTextRunPayloadReuses')).toBe(0)
   expect(readCounter(report.counters, 'typeGpuTextGlyphDependencies')).toBe(0)
   expect(readCounter(report.counters, 'typeGpuTextPageDependencies')).toBe(0)
+}
+
+function expectNoRendererMutationChurn(report: ScrollPerfReport) {
+  expect(report.counters.fullPatches).toBe(0)
+  expect(report.counters.damagePatches).toBe(0)
+  expect(readCounter(report.counters, 'rendererDeltaBatches')).toBe(0)
+  expect(readCounter(report.counters, 'dirtyTilesMarked')).toBe(0)
+  expect(readCounter(report.counters, 'rendererVisibleDirtyTiles')).toBe(0)
+}
+
+function expectNoTypeGpuDataTileUpload(report: ScrollPerfReport) {
+  const totalVertexUploadBytes = readCounter(report.counters, 'typeGpuVertexUploadBytes')
+  const overlayUploadBytes = readCounter(report.counters, 'typeGpuOverlayUploadBytes')
+  expect(Math.max(0, totalVertexUploadBytes - overlayUploadBytes)).toBe(0)
 }
 
 test.describe('@browser-perf web app scroll performance', () => {
@@ -322,6 +339,55 @@ test.describe('@browser-perf web app scroll performance', () => {
     expectNoTypeGpuTextAtlasGeometryChurn(report)
     if ('typeGpuSubmits' in report.counters) {
       expect(readCounter(report.counters, 'typeGpuSubmits')).toBeGreaterThan(0)
+    }
+  })
+
+  test('keeps column resize preview overlay-only with no renderer mutation or data-tile upload', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 920, height: 680 })
+    await gotoWorkbookShell(page, '/?benchmarkCorpus=wide-mixed-250k')
+    await waitForWorkbookReady(page)
+    const benchmarkState = await waitForBenchmarkCorpus(page)
+
+    expect(benchmarkState.fixture?.id).toBe('wide-mixed-250k')
+
+    const gridLocator = page.getByTestId('sheet-grid')
+    await expect(gridLocator).toBeVisible()
+    const grid = await gridLocator.boundingBox()
+    if (!grid) {
+      throw new Error('sheet grid is not visible')
+    }
+
+    const columnLeft = await getProductColumnLeft(page, 1)
+    const columnWidth = await getProductColumnWidth(page, 1)
+    const edgeX = grid.x + columnLeft + columnWidth - 1
+    const edgeY = grid.y + Math.floor(PRODUCT_HEADER_HEIGHT / 2)
+
+    await settleWorkbookScrollPerf(page, 40)
+    await warmStartWorkbookScrollPerf(page, 'wide-250k-column-resize-preview')
+    try {
+      await page.mouse.move(edgeX, edgeY)
+      await page.mouse.down()
+      await page.mouse.move(edgeX + 56, edgeY, { steps: 24 })
+      await settleWorkbookScrollPerf(page, 16)
+      const report = await stopWorkbookScrollPerf(page)
+
+      if (!report) {
+        throw new Error('scroll performance report was not available')
+      }
+
+      await writeFile(testInfo.outputPath('scroll-perf-wide-250k-column-resize-preview.json'), JSON.stringify(report, null, 2), 'utf8')
+
+      expect(report.fixture?.id).toBe('wide-mixed-250k')
+      expect(report.summary.frameMs.p95).toBeLessThan(20)
+      expect(report.summary.longTasksMs.max).toBeLessThan(50)
+      expect(report.counters.viewportSubscriptions).toBe(0)
+      expectNoRendererMutationChurn(report)
+      expectNoTypeGpuDataTileUpload(report)
+      expect(readCounter(report.counters, 'typeGpuBufferAllocations')).toBe(0)
+      expect(readCounter(report.counters, 'rendererTileMisses')).toBe(0)
+      expectQuietShell(report)
+    } finally {
+      await page.mouse.up().catch(() => undefined)
     }
   })
 

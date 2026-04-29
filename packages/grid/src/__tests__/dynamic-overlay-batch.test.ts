@@ -105,6 +105,43 @@ describe('dynamic overlay batch v3', () => {
     )
   })
 
+  test('draws resize preview guides from overlay dimensions without mutating axis geometry', () => {
+    const metrics = getGridMetrics()
+    const geometry = createGridGeometrySnapshotFromAxes({
+      columns: createGridAxisWorldIndex({ axisLength: 20, defaultSize: 100 }),
+      dpr: 2,
+      freezeCols: 1,
+      freezeRows: 1,
+      gridMetrics: metrics,
+      hostHeight: 220,
+      hostWidth: 520,
+      rows: createGridAxisWorldIndex({ axisLength: 20, defaultSize: 20 }),
+      scrollLeft: 50,
+      scrollTop: 10,
+      sheetName: 'Sheet1',
+      updatedAt: 100,
+    })
+
+    const overlay = buildDynamicGridOverlayBatchV3({
+      geometry,
+      resizeGuideColumn: 2,
+      resizeGuideColumnWidth: 140,
+      resizeGuideRow: 2,
+      resizeGuideRowHeight: 35,
+      selectionRange: null,
+      showFillHandle: false,
+    })
+
+    expect(geometry.columns.sizeOf(2)).toBe(100)
+    expect(geometry.rows.sizeOf(2)).toBe(20)
+    expect(readOverlayRects(overlay)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ x: 335, y: 0, width: 1, height: 220 }),
+        expect.objectContaining({ x: 0, y: 88, width: 520, height: 1 }),
+      ]),
+    )
+  })
+
   test('builds visible header indexes without array sorting', () => {
     const metrics = getGridMetrics()
     const geometry = createGridGeometrySnapshotFromAxes({

@@ -35,7 +35,9 @@ export function buildDynamicGridOverlayBatchV3(input: {
   readonly showFillHandle: boolean
   readonly activeHeaderDrag?: HeaderSelection | null | undefined
   readonly resizeGuideColumn?: number | null | undefined
+  readonly resizeGuideColumnWidth?: number | null | undefined
   readonly resizeGuideRow?: number | null | undefined
+  readonly resizeGuideRowHeight?: number | null | undefined
 }): DynamicGridOverlayBatchV3 {
   const fillRects: GridGpuRect[] = []
   const borderRects: GridGpuRect[] = []
@@ -65,7 +67,9 @@ export function buildDynamicGridOverlayBatchV3(input: {
     borderRects,
     geometry: input.geometry,
     resizeGuideColumn: input.resizeGuideColumn ?? null,
+    resizeGuideColumnWidth: input.resizeGuideColumnWidth ?? null,
     resizeGuideRow: input.resizeGuideRow ?? null,
+    resizeGuideRowHeight: input.resizeGuideRowHeight ?? null,
   })
   appendHeaderDragGuides({
     activeHeaderDrag: input.activeHeaderDrag ?? null,
@@ -256,13 +260,15 @@ function appendSelectedRowHeaderFills(input: {
 function appendResizeGuides(input: {
   readonly geometry: GridGeometrySnapshot
   readonly resizeGuideColumn: number | null
+  readonly resizeGuideColumnWidth: number | null
   readonly resizeGuideRow: number | null
+  readonly resizeGuideRowHeight: number | null
   readonly borderRects: GridGpuRect[]
 }): void {
   const color = parseGpuColor('rgba(33, 86, 58, 0.72)')
   const glowColor = parseGpuColor('rgba(191, 213, 196, 0.28)')
   if (input.resizeGuideColumn !== null) {
-    const rect = input.geometry.resizeGuideScreenRect({ kind: 'column', index: input.resizeGuideColumn })
+    const rect = resolveColumnResizeGuideRect(input.geometry, input.resizeGuideColumn, input.resizeGuideColumnWidth)
     if (rect) {
       input.borderRects.push({
         x: rect.x - 1,
@@ -278,7 +284,7 @@ function appendResizeGuides(input: {
     }
   }
   if (input.resizeGuideRow !== null) {
-    const rect = input.geometry.resizeGuideScreenRect({ kind: 'row', index: input.resizeGuideRow })
+    const rect = resolveRowResizeGuideRect(input.geometry, input.resizeGuideRow, input.resizeGuideRowHeight)
     if (rect) {
       input.borderRects.push({
         x: rect.x,
@@ -292,6 +298,42 @@ function appendResizeGuides(input: {
         color,
       })
     }
+  }
+}
+
+function resolveColumnResizeGuideRect(geometry: GridGeometrySnapshot, columnIndex: number, previewWidth: number | null): Rectangle | null {
+  if (previewWidth === null) {
+    return geometry.resizeGuideScreenRect({ kind: 'column', index: columnIndex })
+  }
+  const defaultRect = geometry.resizeGuideScreenRect({ kind: 'column', index: columnIndex })
+  const headerRect = geometry.columnHeaderScreenRect(columnIndex)
+  if (!defaultRect || !headerRect) {
+    return null
+  }
+  const surfaceSize = resolveOverlaySurfaceSize(geometry)
+  return {
+    height: surfaceSize.height,
+    width: defaultRect.width,
+    x: headerRect.x + Math.max(0, previewWidth) - 1,
+    y: defaultRect.y,
+  }
+}
+
+function resolveRowResizeGuideRect(geometry: GridGeometrySnapshot, rowIndex: number, previewHeight: number | null): Rectangle | null {
+  if (previewHeight === null) {
+    return geometry.resizeGuideScreenRect({ kind: 'row', index: rowIndex })
+  }
+  const defaultRect = geometry.resizeGuideScreenRect({ kind: 'row', index: rowIndex })
+  const headerRect = geometry.rowHeaderScreenRect(rowIndex)
+  if (!defaultRect || !headerRect) {
+    return null
+  }
+  const surfaceSize = resolveOverlaySurfaceSize(geometry)
+  return {
+    height: defaultRect.height,
+    width: surfaceSize.width,
+    x: defaultRect.x,
+    y: headerRect.y + Math.max(0, previewHeight) - 1,
   }
 }
 

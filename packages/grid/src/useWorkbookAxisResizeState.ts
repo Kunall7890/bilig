@@ -79,35 +79,11 @@ export function useWorkbookAxisResizeState(input: {
 
   const baseColumnWidths = controlledColumnWidths ?? columnWidthsBySheet[sheetName] ?? EMPTY_COLUMN_WIDTHS
   const baseRowHeights = controlledRowHeights ?? rowHeightsBySheet[sheetName] ?? EMPTY_ROW_HEIGHTS
-  const sizedColumnWidths = useMemo(() => {
-    if (!columnResizePreview || columnResizePreview.sheetName !== sheetName) {
-      return baseColumnWidths
-    }
-    if (baseColumnWidths[columnResizePreview.columnIndex] === columnResizePreview.width) {
-      return baseColumnWidths
-    }
-    return {
-      ...baseColumnWidths,
-      [columnResizePreview.columnIndex]: columnResizePreview.width,
-    }
-  }, [baseColumnWidths, columnResizePreview, sheetName])
-  const sizedRowHeights = useMemo(() => {
-    if (!rowResizePreview || rowResizePreview.sheetName !== sheetName) {
-      return baseRowHeights
-    }
-    if (baseRowHeights[rowResizePreview.rowIndex] === rowResizePreview.height) {
-      return baseRowHeights
-    }
-    return {
-      ...baseRowHeights,
-      [rowResizePreview.rowIndex]: rowResizePreview.height,
-    }
-  }, [baseRowHeights, rowResizePreview, sheetName])
   const columnWidths = useMemo(
-    () => applyHiddenAxisSizes(sizedColumnWidths, controlledHiddenColumns),
-    [controlledHiddenColumns, sizedColumnWidths],
+    () => applyHiddenAxisSizes(baseColumnWidths, controlledHiddenColumns),
+    [baseColumnWidths, controlledHiddenColumns],
   )
-  const rowHeights = useMemo(() => applyHiddenAxisSizes(sizedRowHeights, controlledHiddenRows), [controlledHiddenRows, sizedRowHeights])
+  const rowHeights = useMemo(() => applyHiddenAxisSizes(baseRowHeights, controlledHiddenRows), [baseRowHeights, controlledHiddenRows])
 
   useEffect(() => {
     const preview = columnResizePreviewRef.current
