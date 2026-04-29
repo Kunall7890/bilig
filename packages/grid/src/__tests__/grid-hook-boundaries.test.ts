@@ -61,8 +61,13 @@ describe('grid hook boundary helpers', () => {
     const hookSource = readFileSync(fileURLToPath(new URL('../useWorkbookGridRenderState.ts', import.meta.url)), 'utf8')
     const editorHookSource = readFileSync(fileURLToPath(new URL('../useWorkbookEditorOverlayAnchor.ts', import.meta.url)), 'utf8')
     const editorRuntimeHookSource = readFileSync(fileURLToPath(new URL('../useWorkbookGridEditorRuntime.ts', import.meta.url)), 'utf8')
+    const axisRuntimeHookSource = readFileSync(fileURLToPath(new URL('../useWorkbookGridAxisRuntime.ts', import.meta.url)), 'utf8')
     const geometryRuntimeSource = readFileSync(fileURLToPath(new URL('../useWorkbookGridGeometryRuntime.ts', import.meta.url)), 'utf8')
     const headerHookSource = readFileSync(fileURLToPath(new URL('../useWorkbookHeaderPanes.ts', import.meta.url)), 'utf8')
+    const interactionRuntimeHookSource = readFileSync(
+      fileURLToPath(new URL('../useWorkbookGridInteractionRuntime.ts', import.meta.url)),
+      'utf8',
+    )
     const paneHookSource = readFileSync(fileURLToPath(new URL('../useWorkbookGridRenderPanes.ts', import.meta.url)), 'utf8')
     const tilePaneHookSource = readFileSync(fileURLToPath(new URL('../useWorkbookRenderTilePanes.ts', import.meta.url)), 'utf8')
     const viewportRuntimeHookSource = readFileSync(fileURLToPath(new URL('../useWorkbookGridViewportRuntime.ts', import.meta.url)), 'utf8')
@@ -94,6 +99,8 @@ describe('grid hook boundary helpers', () => {
     expect(hookSource).not.toContain('useWorkbookViewportScrollRuntime')
     expect(hookSource).not.toContain('useWorkbookEditorOverlayAnchor')
     expect(hookSource).not.toContain('useWorkbookColumnAutofit')
+    expect(hookSource).not.toContain('useWorkbookAxisResizeState')
+    expect(hookSource).not.toContain('useWorkbookInteractionOverlayState')
     expect(paneHookSource).toContain('useWorkbookHeaderPanes')
     expect(paneHookSource).toContain('useWorkbookRenderTilePanes')
     expect(paneHookSource).toContain('useWorkbookHeaderCellBounds')
@@ -125,6 +132,8 @@ describe('grid hook boundary helpers', () => {
     expect(editorHookSource).not.toContain('snapshotToRenderCell')
     expect(editorRuntimeHookSource).toContain('useWorkbookEditorOverlayAnchor')
     expect(editorRuntimeHookSource).toContain('useWorkbookColumnAutofit')
+    expect(axisRuntimeHookSource).toContain('useWorkbookAxisResizeState')
+    expect(interactionRuntimeHookSource).toContain('useWorkbookInteractionOverlayState')
     expect(surfaceSource).not.toContain('createGridGeometrySnapshot')
   })
 })

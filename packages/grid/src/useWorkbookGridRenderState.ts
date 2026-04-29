@@ -9,10 +9,10 @@ import type { GridEngineLike } from './grid-engine.js'
 import type { SheetGridViewportSubscription } from './workbookGridSurfaceTypes.js'
 import type { GridRenderTileSource } from './renderer-v3/render-tile-source.js'
 import { useGridElementSize } from './useGridElementSize.js'
-import { useWorkbookAxisResizeState } from './useWorkbookAxisResizeState.js'
-import { useWorkbookInteractionOverlayState } from './useWorkbookInteractionOverlayState.js'
+import { useWorkbookGridAxisRuntime } from './useWorkbookGridAxisRuntime.js'
 import { useWorkbookGridEditorRuntime } from './useWorkbookGridEditorRuntime.js'
 import { useWorkbookGridGeometryRuntime } from './useWorkbookGridGeometryRuntime.js'
+import { useWorkbookGridInteractionRuntime } from './useWorkbookGridInteractionRuntime.js'
 import { useWorkbookGridRenderPanes } from './useWorkbookGridRenderPanes.js'
 import { useWorkbookGridViewportRuntime } from './useWorkbookGridViewportRuntime.js'
 
@@ -88,6 +88,7 @@ export function useWorkbookGridRenderState(input: {
   const hostElementSize = useGridElementSize(hostElement)
   const hostClientWidth = hostElementSize.width
   const hostClientHeight = hostElementSize.height
+  const getVisibleRegion = useCallback(() => liveVisibleRegionRef.current, [])
   const {
     activeResizeColumn,
     activeResizeRow,
@@ -105,7 +106,7 @@ export function useWorkbookGridRenderState(input: {
     rowHeights,
     setActiveResizeColumn,
     setActiveResizeRow,
-  } = useWorkbookAxisResizeState({
+  } = useWorkbookGridAxisRuntime({
     controlledColumnWidths,
     controlledHiddenColumns,
     controlledHiddenRows,
@@ -165,7 +166,7 @@ export function useWorkbookGridRenderState(input: {
     setHoverState,
     setIsFillHandleDragging,
     setIsRangeMoveDragging,
-  } = useWorkbookInteractionOverlayState({
+  } = useWorkbookGridInteractionRuntime({
     activeResizeColumn,
     activeResizeRow,
     getCellLocalBounds,
@@ -230,7 +231,6 @@ export function useWorkbookGridRenderState(input: {
     hostRef.current = node
     setHostElement(node)
   }, [])
-  const getVisibleRegion = useCallback(() => liveVisibleRegionRef.current, [])
   const { computeAutofitColumnWidth, editorPresentation, editorTextAlign, focusGrid, overlayStyle } = useWorkbookGridEditorRuntime({
     editorFontSize: gridTheme.editorFontSize,
     editorValue,
