@@ -9,11 +9,10 @@ import type { SheetGridViewportSubscription } from './workbookGridSurfaceTypes.j
 import type { GridRenderTileSource } from './renderer-v3/render-tile-source.js'
 import { useWorkbookGridAxisRuntime } from './useWorkbookGridAxisRuntime.js'
 import { useWorkbookGridEditorRuntime } from './useWorkbookGridEditorRuntime.js'
+import { useWorkbookGridDrawRuntime } from './useWorkbookGridDrawRuntime.js'
 import { useWorkbookGridGeometryRuntime } from './useWorkbookGridGeometryRuntime.js'
 import { useWorkbookGridHostRuntime } from './useWorkbookGridHostRuntime.js'
 import { useWorkbookGridInteractionRuntime } from './useWorkbookGridInteractionRuntime.js'
-import { useWorkbookGridRenderPanes } from './useWorkbookGridRenderPanes.js'
-import { useWorkbookGridViewportRuntime } from './useWorkbookGridViewportRuntime.js'
 
 export function useWorkbookGridRenderState(input: {
   engine: GridEngineLike
@@ -174,33 +173,8 @@ export function useWorkbookGridRenderState(input: {
     visibleRange: visibleRegion.range,
   })
 
-  const viewportResidency = useWorkbookGridViewportRuntime({
+  const { headerPanes, preloadDataPanes, renderTilePanes, residentDataPanes } = useWorkbookGridDrawRuntime({
     columnAxis,
-    engine,
-    freezeCols,
-    freezeRows,
-    gridCameraStore,
-    gridRuntimeHost,
-    gridMetrics,
-    hostElement,
-    liveVisibleRegionRef,
-    onVisibleViewportChange,
-    requiresLiveViewportState,
-    rowAxis,
-    scrollTransformRef,
-    scrollTransformStore,
-    scrollViewportRef,
-    selectedCell: selectedItem,
-    setVisibleRegion,
-    sheetName,
-    shouldUseRemoteRenderTileSource,
-    sortedColumnWidthOverrides,
-    sortedRowHeightOverrides,
-    syncRuntimeAxes,
-    visibleRegion,
-    restoreViewportTarget,
-  })
-  const { headerPanes, preloadDataPanes, renderTilePanes, residentDataPanes } = useWorkbookGridRenderPanes({
     columnWidths,
     dprBucket,
     engine,
@@ -208,19 +182,32 @@ export function useWorkbookGridRenderState(input: {
     freezeRows,
     frozenColumnWidth,
     frozenRowHeight,
+    gridCameraStore,
     gridMetrics,
     gridRuntimeHost,
     hostClientHeight,
     hostClientWidth,
     hostElement,
+    liveVisibleRegionRef,
+    onVisibleViewportChange,
     renderTileSource,
+    requiresLiveViewportState,
+    rowAxis,
     rowHeights,
+    scrollTransformRef,
+    scrollTransformStore,
+    scrollViewportRef,
+    selectedCell: selectedItem,
+    setVisibleRegion,
     sheetId,
     sheetName,
+    shouldUseRemoteRenderTileSource,
     sortedColumnWidthOverrides,
     sortedRowHeightOverrides,
     subscribeViewport,
-    viewportResidency,
+    syncRuntimeAxes,
+    visibleRegion,
+    restoreViewportTarget,
   })
 
   const { computeAutofitColumnWidth, editorPresentation, editorTextAlign, focusGrid, overlayStyle } = useWorkbookGridEditorRuntime({

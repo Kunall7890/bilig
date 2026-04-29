@@ -69,6 +69,7 @@ describe('grid hook boundary helpers', () => {
       fileURLToPath(new URL('../useWorkbookGridInteractionRuntime.ts', import.meta.url)),
       'utf8',
     )
+    const drawRuntimeHookSource = readFileSync(fileURLToPath(new URL('../useWorkbookGridDrawRuntime.ts', import.meta.url)), 'utf8')
     const paneHookSource = readFileSync(fileURLToPath(new URL('../useWorkbookGridRenderPanes.ts', import.meta.url)), 'utf8')
     const tilePaneHookSource = readFileSync(fileURLToPath(new URL('../useWorkbookRenderTilePanes.ts', import.meta.url)), 'utf8')
     const viewportRuntimeHookSource = readFileSync(fileURLToPath(new URL('../useWorkbookGridViewportRuntime.ts', import.meta.url)), 'utf8')
@@ -105,6 +106,10 @@ describe('grid hook boundary helpers', () => {
     expect(hookSource).not.toContain('useGridElementSize')
     expect(hookSource).not.toContain('useRef<HTMLDivElement')
     expect(hookSource).not.toContain('useState<VisibleRegionState>')
+    expect(hookSource).not.toContain('useWorkbookGridViewportRuntime')
+    expect(hookSource).not.toContain('useWorkbookGridRenderPanes')
+    expect(drawRuntimeHookSource).toContain('useWorkbookGridViewportRuntime')
+    expect(drawRuntimeHookSource).toContain('useWorkbookGridRenderPanes')
     expect(paneHookSource).toContain('useWorkbookHeaderPanes')
     expect(paneHookSource).toContain('useWorkbookRenderTilePanes')
     expect(paneHookSource).toContain('useWorkbookHeaderCellBounds')
