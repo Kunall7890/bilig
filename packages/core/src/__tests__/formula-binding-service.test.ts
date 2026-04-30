@@ -244,6 +244,7 @@ describe('EngineFormulaBindingService', () => {
       rowStart: 0,
       rowEnd: 4,
       col: 2,
+      colEnd: 2,
       length: 5,
     } satisfies DirectAggregateTestDescriptor
     expect(formulaBindingServiceTestHooks.directAggregateStructureEqual(directAggregate, { ...directAggregate })).toBe(true)
