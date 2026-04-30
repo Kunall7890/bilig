@@ -1,10 +1,10 @@
 import { Effect } from 'effect'
 import { describe, expect, it, vi } from 'vitest'
 import { ErrorCode, ValueTag } from '@bilig/protocol'
-import { indexToColumn } from '@bilig/formula'
+import { compileCriteriaMatcher, indexToColumn } from '@bilig/formula'
 import { createBatch } from '../replica-state.js'
 import { SpreadsheetEngine } from '../engine.js'
-import type { EngineOperationService } from '../engine/services/operation-service.js'
+import { operationServiceTestHooks, type EngineOperationService } from '../engine/services/operation-service.js'
 import { cellMutationRefToEngineOp, type EngineCellMutationRef } from '../cell-mutations-at.js'
 
 function isEngineOperationService(value: unknown): value is EngineOperationService {
@@ -54,6 +54,10 @@ function expectBatch<Batch>(batch: Batch | undefined): Batch {
   return batch
 }
 
+function lookupTestString(id: number): string {
+  return id === 7 ? 'needle' : 'fallback'
+}
+
 function getReplicaState(engine: SpreadsheetEngine) {
   const replicaState = Reflect.get(engine, 'replicaState')
   if (typeof replicaState !== 'object' || replicaState === null) {
@@ -63,6 +67,103 @@ function getReplicaState(engine: SpreadsheetEngine) {
 }
 
 describe('EngineOperationService', () => {
+  it('covers operation helper branches used by direct formulas and lookup tracking', () => {
+    expect(operationServiceTestHooks.directAggregateNumericContribution({ tag: ValueTag.Number, value: 4 })).toBe(4)
+    expect(operationServiceTestHooks.directAggregateNumericContribution({ tag: ValueTag.Boolean, value: true })).toBe(1)
+    expect(operationServiceTestHooks.directAggregateNumericContribution({ tag: ValueTag.Boolean, value: false })).toBe(0)
+    expect(operationServiceTestHooks.directAggregateNumericContribution({ tag: ValueTag.Empty })).toBe(0)
+    expect(operationServiceTestHooks.directAggregateNumericContribution({ tag: ValueTag.String, value: 'x' })).toBe(0)
+    expect(operationServiceTestHooks.directAggregateNumericContribution({ tag: ValueTag.Error, code: ErrorCode.VALUE })).toBeUndefined()
+
+    expect(operationServiceTestHooks.normalizeExactLookupKey({ tag: ValueTag.Empty }, lookupTestString)).toBe('e:')
+    expect(operationServiceTestHooks.normalizeExactLookupKey({ tag: ValueTag.Number, value: -0 }, lookupTestString)).toBe('n:0')
+    expect(operationServiceTestHooks.normalizeExactLookupKey({ tag: ValueTag.Boolean, value: true }, lookupTestString)).toBe('b:1')
+    expect(operationServiceTestHooks.normalizeExactLookupKey({ tag: ValueTag.String, value: 'local' }, lookupTestString, 7)).toBe(
+      's:NEEDLE',
+    )
+    expect(operationServiceTestHooks.normalizeExactLookupKey({ tag: ValueTag.Error, code: ErrorCode.NA }, lookupTestString)).toBeUndefined()
+
+    expect(operationServiceTestHooks.normalizeApproximateNumericValue({ tag: ValueTag.Empty })).toBe(0)
+    expect(operationServiceTestHooks.normalizeApproximateNumericValue({ tag: ValueTag.Number, value: -0 })).toBe(0)
+    expect(operationServiceTestHooks.normalizeApproximateNumericValue({ tag: ValueTag.Boolean, value: false })).toBe(0)
+    expect(operationServiceTestHooks.normalizeApproximateNumericValue({ tag: ValueTag.String, value: 'x' })).toBeUndefined()
+    expect(operationServiceTestHooks.normalizeApproximateTextValue({ tag: ValueTag.String, value: 'local' }, lookupTestString, 7)).toBe(
+      'NEEDLE',
+    )
+    expect(operationServiceTestHooks.normalizeApproximateTextValue({ tag: ValueTag.Empty }, lookupTestString)).toBe('')
+    expect(operationServiceTestHooks.normalizeApproximateTextValue({ tag: ValueTag.Number, value: 1 }, lookupTestString)).toBeUndefined()
+
+    const exactLookup: Parameters<typeof operationServiceTestHooks.exactUniformLookupNumericResult>[0] = {
+      columnVersion: 1,
+      kind: 'exact-uniform-numeric',
+      length: 4,
+      resultKind: 'row-number',
+      rowEnd: 3,
+      rowStart: 0,
+      start: 10,
+      step: 2,
+      structureVersion: 1,
+    }
+    expect(operationServiceTestHooks.exactUniformLookupNumericResult(exactLookup, 14)).toBe(3)
+    expect(operationServiceTestHooks.exactUniformLookupNumericResult(exactLookup, 15)).toBeUndefined()
+    expect(operationServiceTestHooks.exactUniformLookupCurrentResult(exactLookup, 15)).toEqual({ kind: 'error', code: ErrorCode.NA })
+    expect(
+      operationServiceTestHooks.exactUniformLookupNumericResult(
+        {
+          ...exactLookup,
+          tailPatch: { columnVersion: 2, newNumeric: 99, oldNumeric: 10, row: 0 },
+        },
+        99,
+      ),
+    ).toBe(1)
+
+    const approximateLookup: Parameters<typeof operationServiceTestHooks.approximateUniformLookupNumericResult>[0] = {
+      columnVersion: 1,
+      kind: 'approximate-uniform-numeric',
+      length: 4,
+      matchMode: 1,
+      resultKind: 'row-number',
+      rowEnd: 3,
+      rowStart: 0,
+      start: 10,
+      step: 2,
+      structureVersion: 1,
+    }
+    expect(operationServiceTestHooks.approximateUniformLookupNumericResult(approximateLookup, 13)).toBe(2)
+    expect(operationServiceTestHooks.approximateUniformLookupNumericResult(approximateLookup, 9)).toBeUndefined()
+    expect(operationServiceTestHooks.approximateUniformLookupCurrentResult(approximateLookup, 9)).toEqual({
+      kind: 'error',
+      code: ErrorCode.NA,
+    })
+
+    const directCriteria: Parameters<typeof operationServiceTestHooks.directCriteriaTouchesPoint>[0] = {
+      aggregateKind: 'sum',
+      aggregateRange: { sheetName: 'Sheet1', rowStart: 0, rowEnd: 4, col: 1, length: 5, regionId: 10 },
+      criteriaPairs: [
+        {
+          range: { sheetName: 'Sheet1', rowStart: 0, rowEnd: 4, col: 2, length: 5, regionId: 11 },
+          criterion: { kind: 'literal', matcher: compileCriteriaMatcher('x') },
+        },
+        {
+          range: { sheetName: 'Sheet1', rowStart: 0, rowEnd: 4, col: 3, length: 5, regionId: 12 },
+          criterion: { cellIndex: 42, kind: 'cell' },
+        },
+      ],
+    }
+    expect(operationServiceTestHooks.directCriteriaTouchesPoint(directCriteria, { sheetName: 'Sheet1', row: 3, col: 1 })).toBe(true)
+    expect(operationServiceTestHooks.directCriteriaTouchesPoint(directCriteria, { sheetName: 'Sheet1', row: 3, col: 3 })).toBe(true)
+    expect(
+      operationServiceTestHooks.directCriteriaTouchesPoint(directCriteria, { sheetName: 'Other', row: 3, col: 3, inputCellIndex: 42 }),
+    ).toBe(true)
+    expect(operationServiceTestHooks.directCriteriaTouchesPoint(directCriteria, { sheetName: 'Other', row: 3, col: 3 })).toBe(false)
+
+    expect(Array.from(operationServiceTestHooks.mergeChangedCellIndices([], [3, 4]))).toEqual([3, 4])
+    expect(Array.from(operationServiceTestHooks.mergeChangedCellIndices([3], [3]))).toEqual([3])
+    expect(Array.from(operationServiceTestHooks.mergeChangedCellIndices([3], [4]))).toEqual([3, 4])
+    expect(Array.from(operationServiceTestHooks.mergeChangedCellIndices([3, 4], [4, 5]))).toEqual([3, 4, 5])
+    expect(Array.from(operationServiceTestHooks.composeSingleDisjointExplicitEventChanges(2, Uint32Array.of(5, 6)))).toEqual([2, 5, 6])
+  })
+
   it('applies remote rename batches through the service and keeps the selection on the renamed sheet', async () => {
     const primary = new SpreadsheetEngine({ workbookName: 'operation-rename', replicaId: 'a' })
     const replica = new SpreadsheetEngine({ workbookName: 'operation-rename', replicaId: 'b' })
