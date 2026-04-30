@@ -16,7 +16,7 @@ import { createRectangleSelectionFromRange, rectangleToAddresses, selectionToSna
 import { resolveGridSelectionPendingSync } from './gridSelectionPendingSync.js'
 import { resolveFillHandlePreviewRange, resolveFillHandleSelectionRange } from './gridFillHandle.js'
 import { resolveSelectionMoveAnchorCell } from './gridRangeMove.js'
-import type { HeaderSelection, PointerGeometry, VisibleRegionState } from './gridPointer.js'
+import type { HeaderSelection } from './gridPointer.js'
 import { sameGridHoverState } from './gridHover.js'
 import type { InternalClipboardRange } from './gridInternalClipboard.js'
 import {
@@ -170,8 +170,6 @@ export function useWorkbookGridInteractions(
   const dragAnchorCellRef = useRef<Item | null>(null)
   const dragPointerCellRef = useRef<Item | null>(null)
   const dragHeaderSelectionRef = useRef<HeaderSelection | null>(null)
-  const dragViewportRef = useRef<VisibleRegionState | null>(null)
-  const dragGeometryRef = useRef<PointerGeometry | null>(null)
   const dragDidMoveRef = useRef(false)
   const postDragSelectionExpiryRef = useRef<number>(0)
   const columnResizeActiveRef = useRef(false)
@@ -197,8 +195,6 @@ export function useWorkbookGridInteractions(
       dragAnchorCellRef,
       dragPointerCellRef,
       dragHeaderSelectionRef,
-      dragViewportRef,
-      dragGeometryRef,
       dragDidMoveRef,
       postDragSelectionExpiryRef,
       columnResizeActiveRef,
@@ -214,13 +210,8 @@ export function useWorkbookGridInteractions(
     resolvePointerGeometry,
   } = useWorkbookGridPointerResolvers({
     hostRef,
-    getVisibleRegion,
-    columnWidths,
-    rowHeights,
-    gridMetrics,
     selectedCell: { col: activeSelectionCell[0], row: activeSelectionCell[1] },
     gridSelection,
-    getCellScreenBounds,
     getGeometrySnapshot: renderState.getLiveGeometrySnapshot,
   })
   useEffect(() => {
@@ -254,7 +245,6 @@ export function useWorkbookGridInteractions(
         return current
       }
       clearGridPendingPointerActivation(interactionState)
-      dragGeometryRef.current = null
       return snapshotToSelection(selectionSnapshot)
     })
   }, [interactionState, selectionSnapshot, setGridSelection, sheetName])
@@ -854,6 +844,7 @@ export function useWorkbookGridInteractions(
         onAutofitColumn,
         onCommitEdit: commitActiveEdit,
         onSelectionChange: emitSelectionChange,
+        resolveColumnResizeTargetAtPointer,
         resolvePointerCell,
         resolvePointerGeometry,
         selectedCell: activeSelectionCell,
@@ -1037,10 +1028,8 @@ export function useWorkbookGridInteractions(
       const visibleRegion = getVisibleRegion()
       handleGridPointerMove({
         dragAnchorCell: dragAnchorCellRef.current,
-        dragGeometry: dragGeometryRef.current,
         dragHeaderSelection: dragHeaderSelectionRef.current,
         dragPointerCell: dragPointerCellRef.current,
-        dragViewport: dragViewportRef.current,
         event,
         interactionState,
         isEditingCell,
@@ -1082,10 +1071,8 @@ export function useWorkbookGridInteractions(
       handleGridPointerUp({
         dragAnchorCell: dragAnchorCellRef.current,
         dragDidMove: dragDidMoveRef.current,
-        dragGeometry: dragGeometryRef.current,
         dragHeaderSelection: dragHeaderSelectionRef.current,
         dragPointerCell: dragPointerCellRef.current,
-        dragViewport: dragViewportRef.current,
         event,
         interactionState,
         isEditingCell,

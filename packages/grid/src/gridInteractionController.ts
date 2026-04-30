@@ -1,8 +1,9 @@
 import { formatAddress } from '@bilig/formula'
+import type { GridGeometrySnapshot } from './gridGeometry.js'
 import { createColumnSliceSelection, createGridSelection, createRowSliceSelection } from './gridSelection.js'
 import { resolveBodyDragSelection, resolveBodyPointerUpResult, resolveHeaderDragSelection } from './gridDragSelection.js'
 import { resolveBodyDoubleClickIntent } from './gridEventPolicy.js'
-import { resolveColumnResizeTarget, type HeaderSelection, type PointerGeometry, type VisibleRegionState } from './gridPointer.js'
+import type { HeaderSelection, VisibleRegionState } from './gridPointer.js'
 import {
   beginGridBodyPointerInteraction,
   beginGridHeaderDrag,
@@ -52,13 +53,22 @@ interface HandleGridBodyDoubleClickOptions extends GridInteractionCommonOptions 
   applyColumnWidth(this: void, columnIndex: number, width: number): void
   computeAutofitColumnWidth(this: void, columnIndex: number): number
   beginEditAt(this: void, address: string, seed?: string): void
-  resolvePointerGeometry(this: void, region?: VisibleRegionState): PointerGeometry | null
+  resolvePointerGeometry(this: void, region?: VisibleRegionState): GridGeometrySnapshot | null
+  resolveColumnResizeTargetAtPointer(
+    this: void,
+    clientX: number,
+    clientY: number,
+    region?: VisibleRegionState,
+    geometry?: GridGeometrySnapshot | null,
+    columnWidths?: Readonly<Record<number, number>>,
+    defaultWidth?: number,
+  ): number | null
   resolvePointerCell(
     this: void,
     clientX: number,
     clientY: number,
     region?: VisibleRegionState,
-    geometry?: PointerGeometry | null,
+    geometry?: GridGeometrySnapshot | null,
   ): Item | null
 }
 
@@ -67,14 +77,12 @@ interface HandleGridPointerMoveOptions extends GridInteractionCommonOptions {
   dragAnchorCell: Item | null
   dragHeaderSelection: HeaderSelection | null
   dragPointerCell: Item | null
-  dragViewport: VisibleRegionState | null
-  dragGeometry: PointerGeometry | null
   resolvePointerCell(
     this: void,
     clientX: number,
     clientY: number,
     region?: VisibleRegionState,
-    geometry?: PointerGeometry | null,
+    geometry?: GridGeometrySnapshot | null,
   ): Item | null
   resolveHeaderSelectionForPointerDrag(
     this: void,
@@ -82,7 +90,7 @@ interface HandleGridPointerMoveOptions extends GridInteractionCommonOptions {
     clientX: number,
     clientY: number,
     region?: VisibleRegionState,
-    geometry?: PointerGeometry | null,
+    geometry?: GridGeometrySnapshot | null,
   ): HeaderSelection | null
 }
 
@@ -91,29 +99,29 @@ interface HandleGridPointerDownOptions extends GridInteractionCommonOptions {
   columnWidths: Readonly<Record<number, number>>
   defaultColumnWidth: number
   focusGrid(this: void): void
-  resolvePointerGeometry(this: void, region?: VisibleRegionState): PointerGeometry | null
+  resolvePointerGeometry(this: void, region?: VisibleRegionState): GridGeometrySnapshot | null
   resolveColumnResizeTargetAtPointer(
     this: void,
     clientX: number,
     clientY: number,
-    region: VisibleRegionState,
-    geometry: PointerGeometry,
-    columnWidths: Readonly<Record<number, number>>,
-    defaultWidth: number,
+    region?: VisibleRegionState,
+    geometry?: GridGeometrySnapshot | null,
+    columnWidths?: Readonly<Record<number, number>>,
+    defaultWidth?: number,
   ): number | null
   resolveHeaderSelectionAtPointer(
     this: void,
     clientX: number,
     clientY: number,
     region?: VisibleRegionState,
-    geometry?: PointerGeometry | null,
+    geometry?: GridGeometrySnapshot | null,
   ): HeaderSelection | null
   resolvePointerCell(
     this: void,
     clientX: number,
     clientY: number,
     region?: VisibleRegionState,
-    geometry?: PointerGeometry | null,
+    geometry?: GridGeometrySnapshot | null,
   ): Item | null
 }
 
@@ -123,8 +131,6 @@ interface HandleGridPointerUpOptions extends GridInteractionCommonOptions {
   dragDidMove: boolean
   dragHeaderSelection: HeaderSelection | null
   dragPointerCell: Item | null
-  dragViewport: VisibleRegionState | null
-  dragGeometry: PointerGeometry | null
   lastBodyClickCellRef: { current: Item | null }
   postDragSelectionExpiryRef: { current: number }
   resolvePointerCell(
@@ -132,7 +138,7 @@ interface HandleGridPointerUpOptions extends GridInteractionCommonOptions {
     clientX: number,
     clientY: number,
     region?: VisibleRegionState,
-    geometry?: PointerGeometry | null,
+    geometry?: GridGeometrySnapshot | null,
   ): Item | null
   resolveHeaderSelectionForPointerDrag(
     this: void,
@@ -140,7 +146,7 @@ interface HandleGridPointerUpOptions extends GridInteractionCommonOptions {
     clientX: number,
     clientY: number,
     region?: VisibleRegionState,
-    geometry?: PointerGeometry | null,
+    geometry?: GridGeometrySnapshot | null,
   ): HeaderSelection | null
 }
 
@@ -157,6 +163,7 @@ export function handleGridBodyDoubleClick({
   beginEditAt,
   onSelectionChange,
   resolvePointerGeometry,
+  resolveColumnResizeTargetAtPointer,
   resolvePointerCell,
   selectedCell,
   setGridSelection,
@@ -167,7 +174,14 @@ export function handleGridBodyDoubleClick({
     return
   }
   const doubleClickIntent = resolveBodyDoubleClickIntent({
-    resizeTarget: resolveColumnResizeTarget(event.clientX, event.clientY, visibleRegion, activeGeometry, columnWidths, defaultColumnWidth),
+    resizeTarget: resolveColumnResizeTargetAtPointer(
+      event.clientX,
+      event.clientY,
+      visibleRegion,
+      activeGeometry,
+      columnWidths,
+      defaultColumnWidth,
+    ),
     bodyCell: resolvePointerCell(event.clientX, event.clientY, visibleRegion, activeGeometry),
     lastBodyClickCell,
   })
@@ -200,8 +214,6 @@ export function handleGridPointerMove({
   dragAnchorCell,
   dragHeaderSelection,
   dragPointerCell,
-  dragViewport,
-  dragGeometry,
   interactionState,
   onSelectionChange,
   resolvePointerCell,
@@ -217,13 +229,7 @@ export function handleGridPointerMove({
     return
   }
   if (dragHeaderSelection) {
-    const nextHeader = resolveHeaderSelectionForPointerDrag(
-      dragHeaderSelection.kind,
-      event.clientX,
-      event.clientY,
-      dragViewport ?? visibleRegion,
-      dragGeometry,
-    )
+    const nextHeader = resolveHeaderSelectionForPointerDrag(dragHeaderSelection.kind, event.clientX, event.clientY, visibleRegion)
     if (!nextHeader || nextHeader.index === dragHeaderSelection.index) {
       return
     }
@@ -237,7 +243,7 @@ export function handleGridPointerMove({
   if (dragAnchorCell === null) {
     return
   }
-  const pointerCell = resolvePointerCell(event.clientX, event.clientY, dragViewport ?? visibleRegion, dragGeometry)
+  const pointerCell = resolvePointerCell(event.clientX, event.clientY, visibleRegion)
   if (!pointerCell) {
     return
   }
@@ -288,7 +294,7 @@ export function handleGridPointerDown({
     if (isEditingCell) {
       onCommitEdit()
     }
-    beginGridHeaderDrag(interactionState, headerSelection, activeGeometry, visibleRegion)
+    beginGridHeaderDrag(interactionState, headerSelection)
     if (headerSelection.kind === 'row') {
       interactionState.ignoreNextPointerSelectionRef.current = true
       const nextSelection = createRowSliceSelection(selectedCell[0], headerSelection.index, headerSelection.index)
@@ -305,7 +311,7 @@ export function handleGridPointerDown({
     return
   }
   const pointerCell = resolvePointerCell(event.clientX, event.clientY)
-  beginGridBodyPointerInteraction(interactionState, pointerCell, activeGeometry, visibleRegion)
+  beginGridBodyPointerInteraction(interactionState, pointerCell)
   if (pointerCell) {
     const anchorCell: Item = event.shiftKey ? selectedCell : pointerCell
     interactionState.dragAnchorCellRef.current = anchorCell
@@ -332,8 +338,6 @@ export function handleGridPointerUp({
   dragDidMove,
   dragHeaderSelection,
   dragPointerCell,
-  dragViewport,
-  dragGeometry,
   interactionState,
   lastBodyClickCellRef,
   onSelectionChange,
@@ -349,13 +353,7 @@ export function handleGridPointerUp({
   }
   if (dragHeaderSelection) {
     const finalHeader =
-      resolveHeaderSelectionForPointerDrag(
-        dragHeaderSelection.kind,
-        event.clientX,
-        event.clientY,
-        dragViewport ?? visibleRegion,
-        dragGeometry,
-      ) ?? dragHeaderSelection
+      resolveHeaderSelectionForPointerDrag(dragHeaderSelection.kind, event.clientX, event.clientY, visibleRegion) ?? dragHeaderSelection
     const resolvedHeaderDrag = resolveHeaderDragSelection(dragHeaderSelection, finalHeader.index, selectedCell)
     setGridSelection(resolvedHeaderDrag.selection)
     onSelectionChange(resolvedHeaderDrag.selection)
@@ -368,8 +366,7 @@ export function handleGridPointerUp({
     return
   }
   if (dragDidMove) {
-    const pointerCell =
-      resolvePointerCell(event.clientX, event.clientY, dragViewport ?? visibleRegion, dragGeometry) ?? dragPointerCell ?? dragAnchorCell
+    const pointerCell = resolvePointerCell(event.clientX, event.clientY, visibleRegion) ?? dragPointerCell ?? dragAnchorCell
     const pointerUpResult = resolveBodyPointerUpResult(dragAnchorCell, pointerCell, true)
     postDragSelectionExpiryRef.current = pointerUpResult.shouldSetDragExpiry ? window.performance.now() + 200 : 0
     if (pointerUpResult.selection) {

@@ -1,81 +1,56 @@
 import { useCallback, type MutableRefObject } from 'react'
-import {
-  createPointerGeometry,
-  resolveColumnResizeTarget as resolveLegacyColumnResizeTarget,
-  resolveRowResizeTarget as resolveLegacyRowResizeTarget,
-  resolveHeaderSelection as resolveHeaderSelectionFromGeometry,
-  resolveHeaderSelectionForDrag as resolveHeaderSelectionForDragFromGeometry,
-  resolvePointerCell as resolvePointerCellFromGeometry,
-  type HeaderSelection,
-  type PointerGeometry,
-  type VisibleRegionState,
-} from './gridPointer.js'
-import type { Rectangle, GridSelection, Item } from './gridTypes.js'
-import type { getGridMetrics } from './gridMetrics.js'
 import type { GridGeometrySnapshot } from './gridGeometry.js'
+import type { HeaderSelection, VisibleRegionState } from './gridPointer.js'
+import type { GridSelection, Item } from './gridTypes.js'
 
 export function useWorkbookGridPointerResolvers(input: {
   hostRef: MutableRefObject<HTMLDivElement | null>
-  getVisibleRegion: () => VisibleRegionState
-  columnWidths: Readonly<Record<number, number>>
-  rowHeights: Readonly<Record<number, number>>
-  gridMetrics: ReturnType<typeof getGridMetrics>
   selectedCell: { col: number; row: number }
   gridSelection: GridSelection
-  getCellScreenBounds: (col: number, row: number) => Rectangle | undefined
   getGeometrySnapshot?: (() => GridGeometrySnapshot | null) | undefined
 }) {
-  const {
-    hostRef,
-    getVisibleRegion,
-    columnWidths,
-    rowHeights,
-    gridMetrics,
-    selectedCell,
-    gridSelection,
-    getCellScreenBounds,
-    getGeometrySnapshot,
-  } = input
+  const { hostRef, selectedCell, gridSelection, getGeometrySnapshot } = input
 
   const resolvePointerGeometry = useCallback(
-    (region: VisibleRegionState = getVisibleRegion()): PointerGeometry | null => {
+    (_region?: VisibleRegionState): GridGeometrySnapshot | null => getGeometrySnapshot?.() ?? null,
+    [getGeometrySnapshot],
+  )
+
+  const resolveLocalPoint = useCallback(
+    (clientX: number, clientY: number): { readonly x: number; readonly y: number } | null => {
       const hostBounds = hostRef.current?.getBoundingClientRect()
-      if (!hostBounds) {
-        return null
-      }
-      return createPointerGeometry(
-        {
-          left: hostBounds.left,
-          top: hostBounds.top,
-          right: hostBounds.right,
-          bottom: hostBounds.bottom,
-        },
-        region,
-        columnWidths,
-        rowHeights,
-        gridMetrics,
-      )
+      return hostBounds ? { x: clientX - hostBounds.left, y: clientY - hostBounds.top } : null
     },
-    [columnWidths, getVisibleRegion, gridMetrics, hostRef, rowHeights],
+    [hostRef],
+  )
+
+  const resolveSelectedCellBounds = useCallback(
+    (
+      geometry: GridGeometrySnapshot,
+    ): { readonly x: number; readonly y: number; readonly width: number; readonly height: number } | null => {
+      const hostBounds = hostRef.current?.getBoundingClientRect()
+      const rect = geometry.cellScreenRect(selectedCell.col, selectedCell.row)
+      return hostBounds && rect
+        ? {
+            x: hostBounds.left + rect.x,
+            y: hostBounds.top + rect.y,
+            width: rect.width,
+            height: rect.height,
+          }
+        : null
+    },
+    [hostRef, selectedCell.col, selectedCell.row],
   )
 
   const resolvePointerCell = useCallback(
-    (clientX: number, clientY: number, region: VisibleRegionState = getVisibleRegion(), geometry?: PointerGeometry | null): Item | null => {
-      const geometrySnapshot = getGeometrySnapshot?.()
-      const hostBounds = hostRef.current?.getBoundingClientRect()
-      const geometrySelectedCellBounds =
-        geometrySnapshot && hostBounds ? geometrySnapshot.cellScreenRect(selectedCell.col, selectedCell.row) : null
-      const selectedCellBounds =
-        geometrySelectedCellBounds && hostBounds
-          ? {
-              x: hostBounds.left + geometrySelectedCellBounds.x,
-              y: hostBounds.top + geometrySelectedCellBounds.y,
-              width: geometrySelectedCellBounds.width,
-              height: geometrySelectedCellBounds.height,
-            }
-          : geometrySnapshot
-            ? null
-            : (getCellScreenBounds(selectedCell.col, selectedCell.row) ?? null)
+    (clientX: number, clientY: number, region?: VisibleRegionState, geometry?: GridGeometrySnapshot | null): Item | null => {
+      const activeGeometry = geometry ?? resolvePointerGeometry(region)
+      const localPoint = resolveLocalPoint(clientX, clientY)
+      if (!activeGeometry || !localPoint) {
+        return null
+      }
+
+      const selectedCellBounds = resolveSelectedCellBounds(activeGeometry)
       const selectionRange = gridSelection.current?.range ?? null
       if (
         selectedCellBounds &&
@@ -90,44 +65,19 @@ export function useWorkbookGridPointerResolvers(input: {
       ) {
         return [selectedCell.col, selectedCell.row]
       }
-      if (geometrySnapshot && hostBounds) {
-        const hit = geometrySnapshot.hitTestScreenPoint({
-          x: clientX - hostBounds.left,
-          y: clientY - hostBounds.top,
-        })
-        return hit ? [hit.col, hit.row] : null
-      }
-      const activeGeometry = geometry ?? resolvePointerGeometry(region)
-      if (!activeGeometry) {
-        return null
-      }
-      return resolvePointerCellFromGeometry({
-        clientX,
-        clientY,
-        region,
-        geometry: activeGeometry,
-        columnWidths,
-        rowHeights,
-        gridMetrics,
-        selectedCell: [selectedCell.col, selectedCell.row],
-        selectedCellBounds,
-        selectionRange,
-        hasColumnSelection: gridSelection.columns.length > 0,
-        hasRowSelection: gridSelection.rows.length > 0,
-      })
+
+      const hit = activeGeometry.hitTestScreenPoint(localPoint)
+      return hit ? [hit.col, hit.row] : null
     },
     [
-      columnWidths,
-      getCellScreenBounds,
-      getGeometrySnapshot,
-      gridMetrics,
-      gridSelection,
-      hostRef,
-      rowHeights,
+      gridSelection.columns.length,
+      gridSelection.current?.range,
+      gridSelection.rows.length,
+      resolveLocalPoint,
       resolvePointerGeometry,
+      resolveSelectedCellBounds,
       selectedCell.col,
       selectedCell.row,
-      getVisibleRegion,
     ],
   )
 
@@ -135,74 +85,49 @@ export function useWorkbookGridPointerResolvers(input: {
     (
       clientX: number,
       clientY: number,
-      region: VisibleRegionState = getVisibleRegion(),
-      geometry?: PointerGeometry | null,
-      inputColumnWidths: Readonly<Record<number, number>> = columnWidths,
-      defaultWidth: number = gridMetrics.columnWidth,
+      region?: VisibleRegionState,
+      geometry?: GridGeometrySnapshot | null,
+      _inputColumnWidths?: Readonly<Record<number, number>>,
+      _defaultWidth?: number,
     ): number | null => {
-      const geometrySnapshot = getGeometrySnapshot?.()
-      const hostBounds = hostRef.current?.getBoundingClientRect()
-      if (geometrySnapshot && hostBounds) {
-        const hit = geometrySnapshot.hitTestResizeHandleScreenPoint({
-          x: clientX - hostBounds.left,
-          y: clientY - hostBounds.top,
-        })
-        return hit?.kind === 'column' ? hit.index : null
-      }
       const activeGeometry = geometry ?? resolvePointerGeometry(region)
-      return activeGeometry
-        ? resolveLegacyColumnResizeTarget(clientX, clientY, region, activeGeometry, inputColumnWidths, defaultWidth)
-        : null
+      const localPoint = resolveLocalPoint(clientX, clientY)
+      if (!activeGeometry || !localPoint) {
+        return null
+      }
+      const hit = activeGeometry.hitTestResizeHandleScreenPoint(localPoint)
+      return hit?.kind === 'column' ? hit.index : null
     },
-    [columnWidths, getGeometrySnapshot, getVisibleRegion, gridMetrics.columnWidth, hostRef, resolvePointerGeometry],
+    [resolveLocalPoint, resolvePointerGeometry],
   )
 
   const resolveRowResizeTarget = useCallback(
     (
       clientX: number,
       clientY: number,
-      region: VisibleRegionState = getVisibleRegion(),
-      geometry?: PointerGeometry | null,
-      inputRowHeights: Readonly<Record<number, number>> = rowHeights,
-      defaultHeight: number = gridMetrics.rowHeight,
+      region?: VisibleRegionState,
+      geometry?: GridGeometrySnapshot | null,
+      _inputRowHeights?: Readonly<Record<number, number>>,
+      _defaultHeight?: number,
     ): number | null => {
-      const geometrySnapshot = getGeometrySnapshot?.()
-      const hostBounds = hostRef.current?.getBoundingClientRect()
-      if (geometrySnapshot && hostBounds) {
-        const hit = geometrySnapshot.hitTestResizeHandleScreenPoint({
-          x: clientX - hostBounds.left,
-          y: clientY - hostBounds.top,
-        })
-        return hit?.kind === 'row' ? hit.index : null
-      }
       const activeGeometry = geometry ?? resolvePointerGeometry(region)
-      return activeGeometry ? resolveLegacyRowResizeTarget(clientX, clientY, region, activeGeometry, inputRowHeights, defaultHeight) : null
+      const localPoint = resolveLocalPoint(clientX, clientY)
+      if (!activeGeometry || !localPoint) {
+        return null
+      }
+      const hit = activeGeometry.hitTestResizeHandleScreenPoint(localPoint)
+      return hit?.kind === 'row' ? hit.index : null
     },
-    [getGeometrySnapshot, getVisibleRegion, gridMetrics.rowHeight, hostRef, resolvePointerGeometry, rowHeights],
+    [resolveLocalPoint, resolvePointerGeometry],
   )
 
   const resolveHeaderSelectionAtPointer = useCallback(
-    (
-      clientX: number,
-      clientY: number,
-      region: VisibleRegionState = getVisibleRegion(),
-      geometry?: PointerGeometry | null,
-    ): HeaderSelection | null => {
-      const geometrySnapshot = getGeometrySnapshot?.()
-      const hostBounds = hostRef.current?.getBoundingClientRect()
-      if (geometrySnapshot && hostBounds) {
-        return geometrySnapshot.hitTestHeaderScreenPoint({
-          x: clientX - hostBounds.left,
-          y: clientY - hostBounds.top,
-        })
-      }
+    (clientX: number, clientY: number, region?: VisibleRegionState, geometry?: GridGeometrySnapshot | null): HeaderSelection | null => {
       const activeGeometry = geometry ?? resolvePointerGeometry(region)
-      if (!activeGeometry) {
-        return null
-      }
-      return resolveHeaderSelectionFromGeometry(clientX, clientY, region, activeGeometry, columnWidths, rowHeights, gridMetrics)
+      const localPoint = resolveLocalPoint(clientX, clientY)
+      return activeGeometry && localPoint ? activeGeometry.hitTestHeaderScreenPoint(localPoint) : null
     },
-    [columnWidths, getGeometrySnapshot, getVisibleRegion, gridMetrics, hostRef, resolvePointerGeometry, rowHeights],
+    [resolveLocalPoint, resolvePointerGeometry],
   )
 
   const resolveHeaderSelectionForPointerDrag = useCallback(
@@ -210,33 +135,14 @@ export function useWorkbookGridPointerResolvers(input: {
       kind: HeaderSelection['kind'],
       clientX: number,
       clientY: number,
-      region: VisibleRegionState = getVisibleRegion(),
-      geometry?: PointerGeometry | null,
+      region?: VisibleRegionState,
+      geometry?: GridGeometrySnapshot | null,
     ): HeaderSelection | null => {
-      const geometrySnapshot = getGeometrySnapshot?.()
-      const hostBounds = hostRef.current?.getBoundingClientRect()
-      if (geometrySnapshot && hostBounds) {
-        return geometrySnapshot.hitTestHeaderDragScreenPoint(kind, {
-          x: clientX - hostBounds.left,
-          y: clientY - hostBounds.top,
-        })
-      }
       const activeGeometry = geometry ?? resolvePointerGeometry(region)
-      if (!activeGeometry) {
-        return null
-      }
-      return resolveHeaderSelectionForDragFromGeometry(
-        kind,
-        clientX,
-        clientY,
-        region,
-        activeGeometry,
-        columnWidths,
-        rowHeights,
-        gridMetrics,
-      )
+      const localPoint = resolveLocalPoint(clientX, clientY)
+      return activeGeometry && localPoint ? activeGeometry.hitTestHeaderDragScreenPoint(kind, localPoint) : null
     },
-    [columnWidths, getGeometrySnapshot, getVisibleRegion, gridMetrics, hostRef, resolvePointerGeometry, rowHeights],
+    [resolveLocalPoint, resolvePointerGeometry],
   )
 
   return {

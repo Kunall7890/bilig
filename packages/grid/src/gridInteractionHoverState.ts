@@ -1,13 +1,14 @@
+import type { GridGeometrySnapshot } from './gridGeometry.js'
 import type { GridMetrics } from './gridMetrics.js'
 import type { GridHoverState } from './gridHover.js'
-import type { HeaderSelection, PointerGeometry, VisibleRegionState } from './gridPointer.js'
+import type { HeaderSelection, VisibleRegionState } from './gridPointer.js'
 import type { Item } from './gridTypes.js'
 
 export function resolveGridInteractionHoverState(input: {
   readonly clientX: number
   readonly clientY: number
   readonly visibleRegion: VisibleRegionState
-  readonly geometry: PointerGeometry
+  readonly geometry: GridGeometrySnapshot
   readonly columnWidths: Readonly<Record<number, number>>
   readonly rowHeights: Readonly<Record<number, number>>
   readonly gridMetrics: GridMetrics
@@ -15,7 +16,7 @@ export function resolveGridInteractionHoverState(input: {
     clientX: number,
     clientY: number,
     region: VisibleRegionState,
-    geometry?: PointerGeometry | null,
+    geometry?: GridGeometrySnapshot | null,
     columnWidths?: Readonly<Record<number, number>>,
     defaultWidth?: number,
   ) => number | null
@@ -23,7 +24,7 @@ export function resolveGridInteractionHoverState(input: {
     clientX: number,
     clientY: number,
     region: VisibleRegionState,
-    geometry?: PointerGeometry | null,
+    geometry?: GridGeometrySnapshot | null,
     rowHeights?: Readonly<Record<number, number>>,
     defaultHeight?: number,
   ) => number | null
@@ -31,13 +32,13 @@ export function resolveGridInteractionHoverState(input: {
     clientX: number,
     clientY: number,
     region?: VisibleRegionState,
-    geometry?: PointerGeometry | null,
+    geometry?: GridGeometrySnapshot | null,
   ) => HeaderSelection | null
   readonly resolvePointerCell: (
     clientX: number,
     clientY: number,
     region?: VisibleRegionState,
-    geometry?: PointerGeometry | null,
+    geometry?: GridGeometrySnapshot | null,
   ) => Item | null
 }): GridHoverState {
   const resizeTarget = input.resolveColumnResizeTargetAtPointer(
