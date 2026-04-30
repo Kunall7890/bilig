@@ -111,6 +111,37 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
   const selectedCellCol = renderState.selectedCell.col
   const selectedCellRow = renderState.selectedCell.row
   const v2Geometry = useMemo(() => (renderHostElement ? getLiveGeometrySnapshot() : null), [getLiveGeometrySnapshot, renderHostElement])
+  const previewRects = useMemo(() => {
+    return (props.previewRanges ?? [])
+      .filter((range) => range.sheetName === props.sheetName)
+      .flatMap((range) => {
+        const start = parseCellAddress(range.startAddress, range.sheetName)
+        const end = parseCellAddress(range.endAddress, range.sheetName)
+        const colStart = Math.max(Math.min(start.col, end.col), visibleRange.x)
+        const colEnd = Math.min(Math.max(start.col, end.col), visibleRange.x + visibleRange.width - 1)
+        const rowStart = Math.max(Math.min(start.row, end.row), visibleRange.y)
+        const rowEnd = Math.min(Math.max(start.row, end.row), visibleRange.y + visibleRange.height - 1)
+        if (colStart > colEnd || rowStart > rowEnd) {
+          return []
+        }
+        const topLeft = getCellLocalBounds(colStart, rowStart)
+        const bottomRight = getCellLocalBounds(colEnd, rowEnd)
+        if (!topLeft || !bottomRight) {
+          return []
+        }
+        return [
+          {
+            role: range.role,
+            bounds: {
+              x: topLeft.x,
+              y: topLeft.y,
+              width: bottomRight.x + bottomRight.width - topLeft.x,
+              height: bottomRight.y + bottomRight.height - topLeft.y,
+            },
+          },
+        ]
+      })
+  }, [props.previewRanges, props.sheetName, getCellLocalBounds, visibleRange.height, visibleRange.width, visibleRange.x, visibleRange.y])
   const dynamicOverlayBuilder = useCallback(
     (geometry: NonNullable<typeof v2Geometry>) => {
       const resizeGuideColumn = resolveResizeGuideColumn({
@@ -126,8 +157,10 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
       return buildDynamicGridOverlayBatchV3({
         geometry,
         activeHeaderDrag,
+        fillPreviewRange,
         gridSelection: displayGridSelection,
         hoveredCell: hoverCell,
+        previewRects,
         selectedCell: [selectedCellCol, selectedCellRow],
         selectionRange: displaySelectionRange,
         showFillHandle:
@@ -155,42 +188,11 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
       hoverCursor,
       hoverHeader,
       isRangeMoveDragging,
+      previewRects,
       selectedCellCol,
       selectedCellRow,
     ],
   )
-  const previewRects = useMemo(() => {
-    return (props.previewRanges ?? [])
-      .filter((range) => range.sheetName === props.sheetName)
-      .flatMap((range) => {
-        const start = parseCellAddress(range.startAddress, range.sheetName)
-        const end = parseCellAddress(range.endAddress, range.sheetName)
-        const colStart = Math.max(Math.min(start.col, end.col), visibleRange.x)
-        const colEnd = Math.min(Math.max(start.col, end.col), visibleRange.x + visibleRange.width - 1)
-        const rowStart = Math.max(Math.min(start.row, end.row), visibleRange.y)
-        const rowEnd = Math.min(Math.max(start.row, end.row), visibleRange.y + visibleRange.height - 1)
-        if (colStart > colEnd || rowStart > rowEnd) {
-          return []
-        }
-        const topLeft = getCellLocalBounds(colStart, rowStart)
-        const bottomRight = getCellLocalBounds(colEnd, rowEnd)
-        if (!topLeft || !bottomRight) {
-          return []
-        }
-        return [
-          {
-            key: `${range.role}:${range.sheetName}:${range.startAddress}:${range.endAddress}`,
-            role: range.role,
-            bounds: {
-              x: topLeft.x,
-              y: topLeft.y,
-              width: bottomRight.x + bottomRight.width - topLeft.x,
-              height: bottomRight.y + bottomRight.height - topLeft.y,
-            },
-          },
-        ]
-      })
-  }, [props.previewRanges, props.sheetName, getCellLocalBounds, visibleRange.height, visibleRange.width, visibleRange.x, visibleRange.y])
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col bg-[var(--wb-surface)]">
@@ -285,35 +287,6 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
           scrollTransformStore={renderState.scrollTransformStore}
           selectionRange={displaySelectionRange}
         />
-        {renderState.fillPreviewBounds ? (
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute z-20 box-border border border-dashed"
-            data-grid-fill-preview="true"
-            style={{
-              borderColor: renderState.gridTheme.textMedium,
-              height: renderState.fillPreviewBounds.height,
-              left: renderState.fillPreviewBounds.x,
-              top: renderState.fillPreviewBounds.y,
-              width: renderState.fillPreviewBounds.width,
-            }}
-          />
-        ) : null}
-        {previewRects.map((previewRect) => (
-          <div
-            key={previewRect.key}
-            aria-hidden="true"
-            className="pointer-events-none absolute z-20 box-border border border-dashed"
-            style={{
-              backgroundColor: previewRect.role === 'target' ? 'rgba(56, 189, 248, 0.08)' : 'rgba(148, 163, 184, 0.06)',
-              borderColor: previewRect.role === 'target' ? 'rgba(14, 116, 144, 0.9)' : 'rgba(100, 116, 139, 0.9)',
-              height: previewRect.bounds.height,
-              left: previewRect.bounds.x,
-              top: previewRect.bounds.y,
-              width: previewRect.bounds.width,
-            }}
-          />
-        ))}
         <div className="pointer-events-none absolute inset-0 z-[1]" />
       </div>
       {interactions.contextMenu.contextMenuState ? (

@@ -26,9 +26,16 @@ export interface DynamicGridOverlayBatchV3 {
   readonly rectSignature: string
 }
 
+export interface DynamicGridPreviewRectV3 {
+  readonly role: 'target' | 'source'
+  readonly bounds: Rectangle
+}
+
 export function buildDynamicGridOverlayBatchV3(input: {
   readonly geometry: GridGeometrySnapshot
   readonly selectionRange: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'> | null
+  readonly fillPreviewRange?: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'> | null | undefined
+  readonly previewRects?: readonly DynamicGridPreviewRectV3[] | undefined
   readonly gridSelection?: GridSelection | null | undefined
   readonly selectedCell?: Item | null | undefined
   readonly hoveredCell?: readonly [number, number] | null | undefined
@@ -56,6 +63,16 @@ export function buildDynamicGridOverlayBatchV3(input: {
     gridSelection: input.gridSelection ?? null,
     selectionRange: input.selectionRange,
     showFillHandle: input.showFillHandle,
+  })
+  appendFillPreviewOverlay({
+    borderRects,
+    fillPreviewRange: input.fillPreviewRange ?? null,
+    geometry: input.geometry,
+  })
+  appendPreviewRects({
+    borderRects,
+    fillRects,
+    previewRects: input.previewRects ?? [],
   })
   appendHoverOverlay({
     fillRects,
@@ -89,6 +106,40 @@ export function buildDynamicGridOverlayBatchV3(input: {
     seq: input.geometry.camera.seq,
     sheetName: input.geometry.camera.sheetName,
     surfaceSize,
+  }
+}
+
+function appendFillPreviewOverlay(input: {
+  readonly geometry: GridGeometrySnapshot
+  readonly fillPreviewRange: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'> | null
+  readonly borderRects: GridGpuRect[]
+}): void {
+  if (!input.fillPreviewRange) {
+    return
+  }
+  const color = parseGpuColor(workbookThemeColors.textMuted)
+  for (const rect of input.geometry.rangeScreenRects(input.fillPreviewRange)) {
+    appendBorderRects(input.borderRects, rect, color, 1)
+  }
+}
+
+function appendPreviewRects(input: {
+  readonly previewRects: readonly DynamicGridPreviewRectV3[]
+  readonly fillRects: GridGpuRect[]
+  readonly borderRects: GridGpuRect[]
+}): void {
+  for (const preview of input.previewRects) {
+    const isTarget = preview.role === 'target'
+    input.fillRects.push({
+      ...preview.bounds,
+      color: parseGpuColor(isTarget ? 'rgba(56, 189, 248, 0.08)' : 'rgba(148, 163, 184, 0.06)'),
+    })
+    appendBorderRects(
+      input.borderRects,
+      preview.bounds,
+      parseGpuColor(isTarget ? 'rgba(14, 116, 144, 0.9)' : 'rgba(100, 116, 139, 0.9)'),
+      1,
+    )
   }
 }
 

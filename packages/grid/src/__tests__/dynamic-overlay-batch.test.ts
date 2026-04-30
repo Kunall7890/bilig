@@ -142,6 +142,45 @@ describe('dynamic overlay batch v3', () => {
     )
   })
 
+  test('draws fill and review preview ranges through the V3 overlay batch', () => {
+    const metrics = getGridMetrics()
+    const geometry = createGridGeometrySnapshotFromAxes({
+      columns: createGridAxisWorldIndex({ axisLength: 20, defaultSize: 100 }),
+      dpr: 2,
+      freezeCols: 0,
+      freezeRows: 0,
+      gridMetrics: metrics,
+      hostHeight: 220,
+      hostWidth: 520,
+      rows: createGridAxisWorldIndex({ axisLength: 20, defaultSize: 20 }),
+      scrollLeft: 0,
+      scrollTop: 0,
+      sheetName: 'Sheet1',
+      updatedAt: 100,
+    })
+
+    const overlay = buildDynamicGridOverlayBatchV3({
+      fillPreviewRange: { x: 2, y: 2, width: 2, height: 1 },
+      geometry,
+      previewRects: [
+        {
+          role: 'target',
+          bounds: { x: 146, y: 64, width: 200, height: 20 },
+        },
+      ],
+      selectionRange: null,
+      showFillHandle: false,
+    })
+
+    expect(readOverlayRects(overlay)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ x: 246, y: 64, width: 200, height: 1 }),
+        expect.objectContaining({ x: 146, y: 64, width: 200, height: 20 }),
+        expect.objectContaining({ x: 146, y: 64, width: 200, height: 1 }),
+      ]),
+    )
+  })
+
   test('builds visible header indexes without array sorting', () => {
     const metrics = getGridMetrics()
     const geometry = createGridGeometrySnapshotFromAxes({

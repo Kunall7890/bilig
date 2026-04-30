@@ -470,6 +470,8 @@ Completed in the resident-scene deletion tranche:
 - V3 text overflow dependency tracking now persists source spill ranges outside text-scene materialization. Worker render-tile delta generation
   dirties the source spill interval when a blocking cell changes, when a source cell changes, and when a resized column intersects an existing
   spill range, so visible dirty tile replacement no longer depends only on the directly edited cell.
+- Fill-handle preview ranges and workbook review preview rectangles now render through `DynamicGridOverlayBatchV3` instead of React DOM
+  overlays. The product surface keeps the V3 renderer canvas as the visual path while fill/drop behavior is still verified in browser tests.
 
 Remaining work from this design:
 

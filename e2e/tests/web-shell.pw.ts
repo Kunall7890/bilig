@@ -647,6 +647,7 @@ test('web app previews and fills rightward autofill like Sheets', async ({ page 
   const resolvedValue = page.getByTestId('formula-resolved-value')
   const selectionStatus = page.getByTestId('status-selection')
   const fillPreview = page.locator("[data-grid-fill-preview='true']")
+  const renderer = page.getByTestId('grid-pane-renderer')
 
   await nameBox.fill('F6')
   await nameBox.press('Enter')
@@ -658,8 +659,8 @@ test('web app previews and fills rightward autofill like Sheets', async ({ page 
   await page.mouse.down()
   await page.mouse.move(targetX, targetY, { steps: 10 })
 
-  await expect(fillPreview).toBeVisible()
-  await expect(fillPreview).toHaveCSS('border-top-style', 'dashed')
+  await expect(renderer).toBeVisible()
+  await expect(fillPreview).toHaveCount(0)
 
   await page.mouse.up()
 
