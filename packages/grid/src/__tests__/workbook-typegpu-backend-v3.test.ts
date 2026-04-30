@@ -18,7 +18,7 @@ import {
   resolveWorkbookTileContentBufferKeyV3,
   resolveWorkbookTilePlacementBufferKeyV3,
 } from '../renderer-v3/typegpu-tile-buffer-pool.js'
-import { resolveTypeGpuDrawTilePanesV3 } from '../renderer-v3/typegpu-workbook-backend-v3.js'
+import { resolveTypeGpuDrawTilePanesV3, syncRenderTileResidencyFromPanesV3 } from '../renderer-v3/typegpu-workbook-backend-v3.js'
 import { TileResidencyV3 } from '../renderer-v3/tile-residency.js'
 
 function createRenderTile(valueVersion: number, tileId = 101): GridRenderTile {
@@ -131,6 +131,38 @@ describe('workbook typegpu backend v3 tile path', () => {
 
     expect(resolveWorkbookTileContentBufferKeyV3(bodyPane)).toBe(resolveWorkbookTileContentBufferKeyV3(frozenPane))
     expect(resolveWorkbookTilePlacementBufferKeyV3(bodyPane)).not.toBe(resolveWorkbookTilePlacementBufferKeyV3(frozenPane))
+  })
+
+  test('keeps warm preload panes resident without marking them visible', () => {
+    const visibleTile = createRenderTile(2, 101)
+    const basePreloadTile = createRenderTile(2, 202)
+    const preloadTile = {
+      ...basePreloadTile,
+      coord: {
+        ...basePreloadTile.coord,
+        colTile: 1,
+      },
+    }
+    const visiblePane = createTilePane(visibleTile)
+    const preloadPane = {
+      ...createTilePane(preloadTile),
+      paneId: 'body:0:1',
+    }
+    const residency = new TileResidencyV3<GridRenderTile, null>()
+
+    syncRenderTileResidencyFromPanesV3({
+      panes: [visiblePane, preloadPane],
+      residency,
+      visiblePanes: [visiblePane],
+    })
+
+    const entries = [...residency.entries()]
+    const visibleEntry = entries.find((entry) => entry.key === visibleTile.tileId) ?? null
+    const preloadEntry = entries.find((entry) => entry.key === preloadTile.tileId) ?? null
+    expect(visibleEntry).not.toBeNull()
+    expect(preloadEntry).not.toBeNull()
+    expect(visibleEntry && residency.isVisible(visibleEntry)).toBe(true)
+    expect(preloadEntry && residency.isVisible(preloadEntry)).toBe(false)
   })
 
   test('prunes V3 tile content and placement resources independently', () => {

@@ -121,6 +121,11 @@ interface GridRenderTileResolution {
   readonly source: TileResolutionSource
 }
 
+interface GridRenderTilePreloadResolution {
+  readonly panes: readonly WorkbookRenderTilePaneState[]
+  readonly tiles: readonly GridRenderTile[]
+}
+
 export class GridRenderTilePaneRuntime {
   private retainedFixedRenderTileDataPanes: {
     readonly sheetId: number
@@ -135,7 +140,8 @@ export class GridRenderTilePaneRuntime {
       return EMPTY_TILE_PANE_RUNTIME_STATE
     }
     const resolution = this.resolveTiles(input)
-    const tileReadiness = this.resolveTileReadiness(input, resolution?.tiles ?? [])
+    const preloadResolution = this.resolvePreloadPanes(input, resolution?.tiles ?? [])
+    const tileReadiness = this.resolveTileReadiness(input, resolution?.tiles ?? [], preloadResolution.tiles)
     const fixedRenderTileDataPanes = resolution ? this.buildFixedRenderTileDataPanes(input, resolution) : null
     if (input.sheetId !== undefined && fixedRenderTileDataPanes?.source === 'remote') {
       this.retainedFixedRenderTileDataPanes = {
@@ -153,7 +159,7 @@ export class GridRenderTilePaneRuntime {
     const residentDataPanes = retainedFixedRenderTileDataPanes ?? []
     return {
       needsLocalCellInvalidation: !shouldUseRemoteRenderTileSource,
-      preloadDataPanes: EMPTY_TILE_PANE_RUNTIME_STATE.preloadDataPanes,
+      preloadDataPanes: preloadResolution.panes,
       renderTilePanes: residentDataPanes,
       residentBodyPane: residentDataPanes.find((pane) => pane.paneId === 'body') ?? null,
       residentDataPanes,
@@ -335,12 +341,19 @@ export class GridRenderTilePaneRuntime {
     return panes.length > 0 ? { panes, source: resolution.source } : null
   }
 
-  private resolveTileReadiness(input: GridRenderTilePaneRuntimeInput, tiles: readonly GridRenderTile[]): GridTileReadinessSnapshotV3 {
+  private resolveTileReadiness(
+    input: GridRenderTilePaneRuntimeInput,
+    tiles: readonly GridRenderTile[],
+    preloadTiles: readonly GridRenderTile[] = [],
+  ): GridTileReadinessSnapshotV3 {
     if (input.sheetId === undefined) {
       return EMPTY_TILE_PANE_RUNTIME_STATE.tileReadiness
     }
     const sheetId = input.sheetId
     for (const tile of tiles) {
+      this.upsertHostTile(input, tile)
+    }
+    for (const tile of preloadTiles) {
       this.upsertHostTile(input, tile)
     }
     const interest = this.buildViewportTileInterest({
@@ -399,6 +412,65 @@ export class GridRenderTilePaneRuntime {
       }
     }
     return warmTileKeys
+  }
+
+  private resolvePreloadPanes(
+    input: GridRenderTilePaneRuntimeInput,
+    visibleTiles: readonly GridRenderTile[],
+  ): GridRenderTilePreloadResolution {
+    if (!input.renderTileSource || input.sheetId === undefined) {
+      return { panes: EMPTY_TILE_PANE_RUNTIME_STATE.preloadDataPanes, tiles: [] }
+    }
+    const sheetOrdinal = resolveGridRenderTileInputSheetOrdinal(input)
+    const visibleTileIds = new Set(visibleTiles.map((tile) => tile.tileId))
+    const tiles: GridRenderTile[] = []
+    for (const tileKey of this.resolveWarmTileKeys({
+      dprBucket: input.dprBucket,
+      gridRuntimeHost: input.gridRuntimeHost,
+      renderTileViewport: input.renderTileViewport,
+      sheetId: input.sheetId,
+      sheetOrdinal,
+    })) {
+      if (visibleTileIds.has(tileKey)) {
+        continue
+      }
+      const tile = input.renderTileSource.peekRenderTile(tileKey)
+      if (!tile || tile.coord.sheetId !== input.sheetId || tile.coord.sheetOrdinal !== sheetOrdinal) {
+        continue
+      }
+      tiles.push(tile)
+    }
+    if (tiles.length === 0) {
+      return { panes: EMPTY_TILE_PANE_RUNTIME_STATE.preloadDataPanes, tiles }
+    }
+    return {
+      panes: this.buildPreloadPanes(input, tiles),
+      tiles,
+    }
+  }
+
+  private buildPreloadPanes(
+    input: GridRenderTilePaneRuntimeInput,
+    tiles: readonly GridRenderTile[],
+  ): readonly WorkbookRenderTilePaneState[] {
+    const preloadViewport = resolveRenderTileViewportUnion(tiles)
+    if (!preloadViewport) {
+      return EMPTY_TILE_PANE_RUNTIME_STATE.preloadDataPanes
+    }
+    return buildFixedRenderTilePaneStates({
+      freezeCols: input.freezeCols,
+      freezeRows: input.freezeRows,
+      frozenColumnWidth: input.frozenColumnWidth,
+      frozenRowHeight: input.frozenRowHeight,
+      gridMetrics: input.gridMetrics,
+      hostHeight: input.hostClientHeight,
+      hostWidth: input.hostClientWidth,
+      residentViewport: preloadViewport,
+      sortedColumnWidthOverrides: input.sortedColumnWidthOverrides,
+      sortedRowHeightOverrides: input.sortedRowHeightOverrides,
+      tiles,
+      visibleViewport: input.visibleViewport,
+    })
   }
 
   private upsertHostTile(input: GridRenderTilePaneRuntimeInput, tile: GridRenderTile): void {
@@ -506,6 +578,25 @@ function upsertRenderTileIntoHost(gridRuntimeHost: GridRuntimeHost, tile: GridRe
     textSeq: tile.version.text,
     valueSeq: tile.version.values,
   })
+}
+
+function resolveRenderTileViewportUnion(tiles: readonly GridRenderTile[]): Viewport | null {
+  const first = tiles[0]
+  if (!first) {
+    return null
+  }
+  let colStart = first.bounds.colStart
+  let colEnd = first.bounds.colEnd
+  let rowStart = first.bounds.rowStart
+  let rowEnd = first.bounds.rowEnd
+  for (let index = 1; index < tiles.length; index += 1) {
+    const tile = tiles[index]!
+    colStart = Math.min(colStart, tile.bounds.colStart)
+    colEnd = Math.max(colEnd, tile.bounds.colEnd)
+    rowStart = Math.min(rowStart, tile.bounds.rowStart)
+    rowEnd = Math.max(rowEnd, tile.bounds.rowEnd)
+  }
+  return { colEnd, colStart, rowEnd, rowStart }
 }
 
 function estimateTileCpuBytes(tile: GridRenderTile): number {

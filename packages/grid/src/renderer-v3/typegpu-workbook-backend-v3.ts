@@ -86,6 +86,7 @@ export function drawWorkbookTypeGpuTileFrameV3(input: {
   syncRenderTileResidencyFromPanesV3({
     panes: resourcePanes,
     residency: input.backend.tileResidency,
+    visiblePanes: input.tilePanes,
   })
   syncTypeGpuTilePaneResourcesV3({
     artifacts: input.backend.artifacts,
@@ -116,7 +117,6 @@ export function drawWorkbookTypeGpuTileFrameV3(input: {
     residency: input.backend.tileResidency,
     tileResources: input.backend.tileResources,
   })
-  input.backend.tileResidency.markVisible(drawPanes.map((pane) => pane.tile.tileId))
   drawTypeGpuTilePanesV3({
     artifacts: input.backend.artifacts,
     headerPanes,
@@ -129,9 +129,10 @@ export function drawWorkbookTypeGpuTileFrameV3(input: {
   })
 }
 
-function syncRenderTileResidencyFromPanesV3(input: {
+export function syncRenderTileResidencyFromPanesV3(input: {
   readonly residency: TileResidencyV3<GridRenderTile, null>
   readonly panes: readonly WorkbookRenderTilePaneState[]
+  readonly visiblePanes: readonly WorkbookRenderTilePaneState[]
 }): void {
   for (const pane of input.panes) {
     const tile = pane.tile
@@ -155,7 +156,7 @@ function syncRenderTileResidencyFromPanesV3(input: {
       valueSeq: tile.version.values,
     })
   }
-  input.residency.markVisible(input.panes.map((pane) => pane.tile.tileId))
+  input.residency.markVisible(input.visiblePanes.map((pane) => pane.tile.tileId))
   input.residency.evictToSize(256)
 }
 

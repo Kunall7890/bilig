@@ -23,7 +23,9 @@ Latest implementation note:
 - `packages/grid` now owns a grid-facing render-tile source contract and V3 tile-pane state. The old `render-tile-v2-adapter.ts` bridge was deleted, so fixed content tiles are no longer repacked into `GridScenePacketV2` before mounting.
 - `useWorkbookGridRenderState.ts` subscribes to projected render-tile deltas when a `renderTileSource` and `sheetId` are available, then prefers fixed content tiles once all required tiles for the resident viewport are ready.
 - With a fixed render-tile source present, the hook no longer mounts renderer-owned resident scene subscriptions or renderer-owned viewport patch subscriptions.
-- With that source present, the hook also bypasses V2 warm resident-viewport planning; tile prefetch needs to move to V3 tile interest batches next.
+- With that source present, the hook also bypasses V2 warm resident-viewport planning. Tile prefetch now moves through V3 tile interest
+  batches: available warm remote tiles are resolved into `preloadTilePanes`, upserted into host tile residency, and resource-synced by the
+  TypeGPU preload lane without being marked visible or drawn.
 - The grid product surface no longer accepts or forwards a renderer `subscribeViewport` prop. Remote render tiles refresh from render-tile delta subscriptions and V3 workbook delta damage only, so viewport patches are now outside the renderer mutation bridge.
 - `packages/worker-transport/src/viewport-patch.ts` no longer decodes or exports the legacy JSON viewport-patch codec; app-state viewport patches must use the binary transport while renderer data correctness uses V3 tile/delta contracts.
 - Transient fixed-tile misses retain the last fixed-tile pane set instead of immediately falling back to a full resident data-scene rebuild.
@@ -32,6 +34,8 @@ Latest implementation note:
   host-owned V3 tile coordinator, and exposes exact/stale/miss dirty-readiness diagnostics for the mounted tile-pane path.
 - Render-tile subscriptions now carry the host-built V3 tile-interest batch fields, including explicit visible/warm/pinned numeric tile keys,
   so the worker materializer no longer has to infer visible fixed tiles from the viewport window when the V3 runtime has already computed them.
+- `GridRenderTilePaneRuntime` now consumes available warm remote tiles from those interest batches into the renderer preload lane, while
+  `typegpu-workbook-backend-v3.ts` keeps warm panes resident without counting them as visible draw tiles.
 - `TileResidencyV3` refreshes revision tuples in place when a fixed content tile is updated, so stale-compatible lookup and future dirty-tile
   decisions use the current axis/value/style/text/freeze revisions without replacing the stable residency entry.
 - Scroll perf diagnostics no longer expose stale V2 scene-packet counters. The mounted tile-pane adapter reports renderer tile-interest batches,

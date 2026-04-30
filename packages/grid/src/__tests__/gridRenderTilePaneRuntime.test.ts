@@ -301,6 +301,46 @@ describe('GridRenderTilePaneRuntime', () => {
     })
   })
 
+  it('resolves available warm remote tiles into the V3 preload lane without drawing them', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const visibleTileId = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+    })[0]
+    const warmTileId = packTileKey53({
+      colTile: 1,
+      dprBucket: 1,
+      rowTile: 0,
+      sheetOrdinal: 7,
+    })
+    const baseWarmTile = createRenderTile(warmTileId)
+    const warmTile: GridRenderTile = {
+      ...baseWarmTile,
+      bounds: { colEnd: 255, colStart: 128, rowEnd: 31, rowStart: 0 },
+      coord: {
+        ...baseWarmTile.coord,
+        colTile: 1,
+        rowTile: 0,
+      },
+    }
+
+    const state = runtime.resolve(
+      createInput({
+        gridRuntimeHost: host,
+        renderTileSource: createRenderTileSource([createRenderTile(visibleTileId), warmTile]),
+      }),
+    )
+
+    expect(state.renderTilePanes.map((pane) => pane.tile.tileId)).toEqual([visibleTileId])
+    expect(state.preloadDataPanes.map((pane) => pane.tile.tileId)).toContain(warmTileId)
+    expect(state.preloadDataPanes.map((pane) => pane.tile.tileId)).not.toContain(visibleTileId)
+    expect(host.tiles.residency.getExact(warmTileId)?.packet).toMatchObject({
+      tileId: warmTileId,
+    })
+  })
+
   it('refreshes host-owned tile revisions when remote tile contents update', () => {
     const runtime = new GridRenderTilePaneRuntime()
     const host = createHost()
