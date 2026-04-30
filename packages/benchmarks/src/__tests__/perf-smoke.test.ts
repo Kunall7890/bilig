@@ -8,8 +8,10 @@ describe('perf smoke', () => {
     expect(result.downstreamCount).toBe(100)
     expect(result.elapsedMs).toBeGreaterThanOrEqual(0)
     expect(result.metrics.changedInputCount).toBe(1)
-    expect(result.metrics.dirtyFormulaCount).toBeGreaterThanOrEqual(0)
+    expect(Math.max(result.metrics.dirtyFormulaCount, result.performanceCounters.directScalarDeltaApplications)).toBeGreaterThanOrEqual(100)
     expect(result.metrics.wasmFormulaCount).toBeGreaterThanOrEqual(0)
+    expect(result.metrics.jsFormulaCount).toBe(0)
+    expect(result.verification.terminalValue).toBe(result.verification.expectedTerminalValue)
   }, 30_000)
 
   it('retries once after building wasm when the first pass falls back to js', async () => {
@@ -17,8 +19,18 @@ describe('perf smoke', () => {
       elapsedMs: 5,
       downstreamCount: 100,
       metrics: {
+        changedInputCount: 1,
         dirtyFormulaCount: 100,
         wasmFormulaCount: 0,
+        jsFormulaCount: 100,
+      },
+      performanceCounters: {
+        directScalarDeltaApplications: 0,
+      },
+      verification: {
+        terminalAddress: 'B100',
+        expectedTerminalValue: 298,
+        terminalValue: 298,
       },
     }
     const wasmReady: PerfSmokeBenchmarkResult = {
@@ -26,6 +38,7 @@ describe('perf smoke', () => {
       metrics: {
         ...jsOnly.metrics,
         wasmFormulaCount: 100,
+        jsFormulaCount: 0,
       },
     }
     const runBenchmark = vi.fn(async () => (runBenchmark.mock.calls.length === 1 ? jsOnly : wasmReady))
@@ -41,13 +54,55 @@ describe('perf smoke', () => {
     expect(buildWasm).toHaveBeenCalledTimes(1)
   })
 
+  it('accepts direct scalar propagation without forcing an unnecessary wasm build', async () => {
+    const directScalarReady: PerfSmokeBenchmarkResult = {
+      elapsedMs: 5,
+      downstreamCount: 100,
+      metrics: {
+        changedInputCount: 1,
+        dirtyFormulaCount: 0,
+        wasmFormulaCount: 0,
+        jsFormulaCount: 0,
+      },
+      performanceCounters: {
+        directScalarDeltaApplications: 100,
+      },
+      verification: {
+        terminalAddress: 'B100',
+        expectedTerminalValue: 298,
+        terminalValue: 298,
+      },
+    }
+    const runBenchmark = vi.fn(async () => directScalarReady)
+    const buildWasm = vi.fn(async () => {})
+
+    const result = await runPerfSmokeGate(100, {
+      runBenchmark,
+      buildWasm,
+    })
+
+    expect(result).toEqual(directScalarReady)
+    expect(runBenchmark).toHaveBeenCalledTimes(1)
+    expect(buildWasm).not.toHaveBeenCalled()
+  })
+
   it('does not build wasm when the first pass already uses the fast path', async () => {
     const wasmReady: PerfSmokeBenchmarkResult = {
       elapsedMs: 5,
       downstreamCount: 100,
       metrics: {
+        changedInputCount: 1,
         dirtyFormulaCount: 100,
         wasmFormulaCount: 100,
+        jsFormulaCount: 0,
+      },
+      performanceCounters: {
+        directScalarDeltaApplications: 0,
+      },
+      verification: {
+        terminalAddress: 'B100',
+        expectedTerminalValue: 298,
+        terminalValue: 298,
       },
     }
     const runBenchmark = vi.fn(async () => wasmReady)
