@@ -10,6 +10,140 @@ const protectedRange = {
 }
 
 describe('operation-service metadata operations', () => {
+  it('does not emit batches for idempotent metadata mutations', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'operation-metadata-noops' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+
+    const outbound: Parameters<SpreadsheetEngine['applyRemoteBatch']>[0][] = []
+    engine.subscribeBatches((batch) => outbound.push(batch))
+
+    const expectNoBatch = <T>(apply: () => T): T => {
+      const before = outbound.length
+      const result = apply()
+      expect(outbound).toHaveLength(before)
+      return result
+    }
+
+    const range = { sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'B2' }
+    const otherRange = { sheetName: 'Sheet1', startAddress: 'C1', endAddress: 'D2' }
+
+    expect(expectNoBatch(() => engine.clearFreezePane('Sheet1'))).toBe(false)
+    engine.setFreezePane('Sheet1', 1, 1)
+    expectNoBatch(() => engine.setFreezePane('Sheet1', 1, 1))
+    expect(engine.clearFreezePane('Sheet1')).toBe(true)
+    expect(expectNoBatch(() => engine.clearFreezePane('Sheet1'))).toBe(false)
+
+    expect(expectNoBatch(() => engine.clearSheetProtection('Sheet1'))).toBe(false)
+    engine.setSheetProtection({ sheetName: 'Sheet1', hideFormulas: true })
+    expectNoBatch(() => engine.setSheetProtection({ sheetName: 'Sheet1', hideFormulas: true }))
+    expect(engine.clearSheetProtection('Sheet1')).toBe(true)
+    expect(expectNoBatch(() => engine.clearSheetProtection('Sheet1'))).toBe(false)
+
+    engine.setFilter('Sheet1', range)
+    expectNoBatch(() => engine.setFilter('Sheet1', range))
+    expect(expectNoBatch(() => engine.clearFilter('Sheet1', otherRange))).toBe(false)
+    expect(engine.clearFilter('Sheet1', range)).toBe(true)
+    expect(expectNoBatch(() => engine.clearFilter('Sheet1', range))).toBe(false)
+
+    const sortKeys = [{ keyAddress: 'A1', direction: 'asc' as const }]
+    engine.setSort('Sheet1', range, sortKeys)
+    expectNoBatch(() => engine.setSort('Sheet1', range, sortKeys))
+    expect(expectNoBatch(() => engine.clearSort('Sheet1', otherRange))).toBe(false)
+    expect(engine.clearSort('Sheet1', range)).toBe(true)
+    expect(expectNoBatch(() => engine.clearSort('Sheet1', range))).toBe(false)
+
+    const validation = {
+      range,
+      rule: { kind: 'list' as const, values: ['Open', 'Closed'] },
+      allowBlank: true,
+    }
+    engine.setDataValidation(validation)
+    expectNoBatch(() => engine.setDataValidation(validation))
+    expect(expectNoBatch(() => engine.clearDataValidation('Sheet1', otherRange))).toBe(false)
+    expect(engine.clearDataValidation('Sheet1', range)).toBe(true)
+    expect(expectNoBatch(() => engine.clearDataValidation('Sheet1', range))).toBe(false)
+
+    const conditionalFormat = {
+      id: ' format-1 ',
+      range,
+      rule: { kind: 'cellIs' as const, operator: 'greaterThan' as const, values: [10] },
+      style: { bold: true },
+    }
+    engine.setConditionalFormat(conditionalFormat)
+    expectNoBatch(() => engine.setConditionalFormat(conditionalFormat))
+    expect(expectNoBatch(() => engine.deleteConditionalFormat('missing-format'))).toBe(false)
+    expect(engine.deleteConditionalFormat('format-1')).toBe(true)
+    expect(expectNoBatch(() => engine.deleteConditionalFormat('format-1'))).toBe(false)
+
+    const rangeProtection = { id: ' protect-1 ', range, hideFormulas: true }
+    engine.setRangeProtection(rangeProtection)
+    expectNoBatch(() => engine.setRangeProtection(rangeProtection))
+    expect(expectNoBatch(() => engine.deleteRangeProtection('missing-protection'))).toBe(false)
+    expect(engine.deleteRangeProtection('protect-1')).toBe(true)
+    expect(expectNoBatch(() => engine.deleteRangeProtection('protect-1'))).toBe(false)
+  })
+
+  it('keeps structural deletes when anchored workbook metadata must be rewritten', async () => {
+    const prepare = async (workbookName: string, setup: (engine: SpreadsheetEngine) => void) => {
+      const engine = new SpreadsheetEngine({ workbookName })
+      await engine.ready()
+      engine.createSheet('Sheet1')
+      setup(engine)
+      const outbound: Parameters<SpreadsheetEngine['applyRemoteBatch']>[0][] = []
+      engine.subscribeBatches((batch) => outbound.push(batch))
+      return { engine, outbound }
+    }
+
+    const expectStructuralBatch = (outbound: readonly unknown[], apply: () => void) => {
+      const before = outbound.length
+      apply()
+      expect(outbound.length).toBeGreaterThan(before)
+    }
+
+    const chartCase = await prepare('operation-chart-delete-impact', (engine) => {
+      engine.setChart({
+        id: 'chart-1',
+        sheetName: 'Sheet1',
+        address: 'B2',
+        source: { sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'B2' },
+        chartType: 'bar',
+        rows: 4,
+        cols: 4,
+      })
+    })
+    expectStructuralBatch(chartCase.outbound, () => chartCase.engine.deleteRows('Sheet1', 0, 1))
+
+    const imageCase = await prepare('operation-image-delete-impact', (engine) => {
+      engine.setImage({
+        id: 'image-1',
+        sheetName: 'Sheet1',
+        address: 'A2',
+        sourceUrl: 'https://example.com/image.png',
+        rows: 2,
+        cols: 2,
+      })
+    })
+    expectStructuralBatch(imageCase.outbound, () => imageCase.engine.deleteRows('Sheet1', 0, 1))
+
+    const shapeCase = await prepare('operation-shape-delete-impact', (engine) => {
+      engine.setShape({
+        id: 'shape-1',
+        sheetName: 'Sheet1',
+        address: 'A2',
+        shapeType: 'rectangle',
+        rows: 2,
+        cols: 2,
+      })
+    })
+    expectStructuralBatch(shapeCase.outbound, () => shapeCase.engine.deleteRows('Sheet1', 0, 1))
+
+    const definedNameCase = await prepare('operation-defined-name-delete-impact', (engine) => {
+      engine.setDefinedName('PinnedCell', { kind: 'cell-ref', sheetName: 'Sheet1', address: 'A2' })
+    })
+    expectStructuralBatch(definedNameCase.outbound, () => definedNameCase.engine.deleteRows('Sheet1', 0, 1))
+  })
+
   it('applies a mixed operation batch through the generic operation switch', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'operation-applyops-coverage' })
     await engine.ready()

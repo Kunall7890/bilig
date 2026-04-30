@@ -164,6 +164,62 @@ describe('EngineOperationService', () => {
     expect(Array.from(operationServiceTestHooks.composeSingleDisjointExplicitEventChanges(2, Uint32Array.of(5, 6)))).toEqual([2, 5, 6])
   })
 
+  it('covers direct formula index collection delta materialization branches', () => {
+    const collection = new operationServiceTestHooks.DirectFormulaIndexCollection()
+
+    collection.appendConstantDelta(Uint32Array.from([10, 11, 12]), 3, 'scalar')
+    expect(collection.size).toBe(3)
+    expect(collection.has(11)).toBe(true)
+    expect(collection.hasDelta(12)).toBe(true)
+    expect(collection.getDelta(10)).toBe(3)
+    expect(collection.getDeltaAt(2)).toBe(3)
+    expect(collection.getScalarDeltaAt(1)).toBe(3)
+    expect(collection.getConstantScalarDelta()).toBe(3)
+    expect(collection.hasCompleteDeltas()).toBe(true)
+    expect(collection.hasCompleteScalarDeltas()).toBe(true)
+    collection.markScalarDeltaCellsValidated()
+    expect(collection.hasValidatedScalarDeltaCells()).toBe(true)
+
+    collection.addScalarDelta(13, 3)
+    collection.addDelta(11, 2)
+    collection.addCurrentResult(12, { kind: 'number', value: 42 })
+    expect(collection.getDelta(11)).toBe(5)
+    expect(collection.getScalarDeltaAt(1)).toBeUndefined()
+    expect(collection.getCurrentResult(12)).toEqual({ kind: 'number', value: 42 })
+    expect(collection.getCurrentResultAt(2)).toEqual({ kind: 'number', value: 42 })
+    expect(collection.getConstantScalarDelta()).toBeUndefined()
+    expect(collection.hasCompleteScalarDeltas()).toBe(false)
+
+    collection.markDirectFormulaInputCovered(101)
+    collection.markDirectFormulaInputCovered(101)
+    collection.markDirectRangeInputCovered(202)
+    collection.markDirectRangeInputCovered(202)
+    expect(collection.hasCoveredDirectFormulaInput(101)).toBe(true)
+    expect(collection.hasCoveredDirectFormulaInput(102)).toBe(false)
+    expect(collection.hasCoveredDirectRangeInput(202)).toBe(true)
+    expect(collection.hasCoveredDirectRangeInput(203)).toBe(false)
+
+    const cells: number[] = []
+    const indexed: string[] = []
+    collection.forEach((cellIndex) => cells.push(cellIndex))
+    collection.forEachIndexed((cellIndex, index) => indexed.push(`${index}:${cellIndex}`))
+    expect(cells).toEqual([10, 11, 12, 13])
+    expect(indexed).toEqual(['0:10', '1:11', '2:12', '3:13'])
+
+    const largeCollection = new operationServiceTestHooks.DirectFormulaIndexCollection()
+    largeCollection.appendDeltas(
+      Uint32Array.from(Array.from({ length: 18 }, (_unused, index) => index + 1)),
+      Array.from({ length: 18 }, (_unused, index) => index + 10),
+      'scalar',
+    )
+    largeCollection.appendDeltas(Uint32Array.from([5, 30]), [4, 8])
+    expect(largeCollection.has(30)).toBe(true)
+    expect(largeCollection.getDelta(5)).toBe(18)
+    expect(largeCollection.getDelta(30)).toBe(8)
+    expect(largeCollection.getScalarDeltaAt(4)).toBeUndefined()
+    expect(largeCollection.hasCompleteDeltas()).toBe(true)
+  })
+
   it('applies remote rename batches through the service and keeps the selection on the renamed sheet', async () => {
     const primary = new SpreadsheetEngine({ workbookName: 'operation-rename', replicaId: 'a' })
     const replica = new SpreadsheetEngine({ workbookName: 'operation-rename', replicaId: 'b' })
