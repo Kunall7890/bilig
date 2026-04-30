@@ -104,6 +104,32 @@ describe('gridGeometry', () => {
     expect(geometry.hitTestResizeHandleScreenPoint({ x: 20, y: 93 })).toEqual({ kind: 'row', index: 4 })
   })
 
+  test('does not resolve scrolled body hits outside the mounted viewport', () => {
+    const metrics = getGridMetrics()
+    const columns = createGridAxisWorldIndex({ axisLength: 20, defaultSize: 100 })
+    const rows = createGridAxisWorldIndex({ axisLength: 20, defaultSize: 20 })
+    const geometry = createGridGeometrySnapshotFromAxes({
+      columns,
+      dpr: 1,
+      freezeCols: 1,
+      freezeRows: 1,
+      gridMetrics: metrics,
+      hostHeight: 220,
+      hostWidth: 520,
+      rows,
+      scrollLeft: 50,
+      scrollTop: 10,
+      sheetName: 'Sheet1',
+      updatedAt: 100,
+    })
+
+    expect(geometry.hitTestScreenPoint({ x: 205, y: 80 })).toEqual({ col: 2, row: 3 })
+    expect(geometry.hitTestScreenPoint({ x: 520, y: 80 })).toBeNull()
+    expect(geometry.hitTestScreenPoint({ x: 205, y: 220 })).toBeNull()
+    expect(geometry.hitTestHeaderScreenPoint({ x: 520, y: 12 })).toBeNull()
+    expect(geometry.hitTestHeaderDragScreenPoint('column', { x: 520, y: 120 })).toBeNull()
+  })
+
   test('resolves range and fill-handle geometry through frozen/body panes', () => {
     const metrics = getGridMetrics()
     const columns = createGridAxisWorldIndex({ axisLength: 20, defaultSize: 100 })

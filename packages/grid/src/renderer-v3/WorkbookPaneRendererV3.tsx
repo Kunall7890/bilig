@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef } from 'react'
+import { memo, useCallback, useEffect, useRef } from 'react'
 import type { GridGeometrySnapshot } from '../gridGeometry.js'
 import type { GridHeaderPaneState } from '../gridHeaderPanes.js'
 import type { GridCameraStore } from '../runtime/gridCameraStore.js'
@@ -47,13 +47,6 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     },
     [hostRuntime],
   )
-  const fallbackOverlay = useMemo(() => {
-    if (overlay) {
-      return overlay
-    }
-    return overlayBuilder && geometry ? (overlayBuilder(geometry) ?? null) : null
-  }, [geometry, overlay, overlayBuilder])
-
   useEffect(() => {
     hostRuntime.updateProps({
       active,
@@ -95,10 +88,12 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     <>
       <WorkbookPaneCanvasFallbackV3
         active={active}
+        cameraStore={cameraStore}
         geometry={geometry}
         headerPanes={headerPanes}
         host={host}
-        overlay={fallbackOverlay}
+        overlay={overlay ?? null}
+        overlayBuilder={overlayBuilder ?? null}
         scrollTransformStore={scrollTransformStore}
         tilePanes={tilePanes}
       />

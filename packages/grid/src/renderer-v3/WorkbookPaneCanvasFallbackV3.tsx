@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useRef } from 'react'
 import type { GridGeometrySnapshot } from '../gridGeometry.js'
 import type { GridHeaderPaneState } from '../gridHeaderPanes.js'
+import type { GridCameraStore } from '../runtime/gridCameraStore.js'
 import type { WorkbookGridScrollSnapshot, WorkbookGridScrollStore } from '../workbookGridScrollStore.js'
 import type { DynamicGridOverlayBatchV3 } from './dynamic-overlay-batch.js'
 import type { TextQuadRun } from './line-text-quad-buffer.js'
@@ -31,10 +32,12 @@ export interface CanvasTextRunContext {
 
 export interface WorkbookPaneCanvasFallbackV3Props {
   readonly active: boolean
+  readonly cameraStore?: GridCameraStore | null | undefined
   readonly geometry: GridGeometrySnapshot | null
   readonly headerPanes: readonly GridHeaderPaneState[]
   readonly host: HTMLDivElement | null
   readonly overlay: DynamicGridOverlayBatchV3 | null
+  readonly overlayBuilder?: ((geometry: GridGeometrySnapshot) => DynamicGridOverlayBatchV3 | null | undefined) | null | undefined
   readonly scrollTransformStore: WorkbookGridScrollStore | null
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
 }
@@ -148,12 +151,38 @@ function drawOverlay(context: CanvasRenderingContext2D, overlay: DynamicGridOver
   context.restore()
 }
 
+export function resolveWorkbookPaneCanvasFallbackFrame(input: {
+  readonly cameraStore?: GridCameraStore | null | undefined
+  readonly geometry: GridGeometrySnapshot | null
+  readonly overlay: DynamicGridOverlayBatchV3 | null
+  readonly overlayBuilder?: ((geometry: GridGeometrySnapshot) => DynamicGridOverlayBatchV3 | null | undefined) | null | undefined
+  readonly scrollTransformStore: WorkbookGridScrollStore | null
+  readonly tilePanes: readonly WorkbookRenderTilePaneState[]
+}): {
+  readonly geometry: GridGeometrySnapshot | null
+  readonly overlay: DynamicGridOverlayBatchV3 | null
+  readonly scrollSnapshot: WorkbookGridScrollSnapshot
+} {
+  const geometry = input.cameraStore?.getSnapshot() ?? input.geometry
+  return {
+    geometry,
+    overlay: input.overlayBuilder && geometry ? (input.overlayBuilder(geometry) ?? null) : input.overlay,
+    scrollSnapshot: resolveTypeGpuV3DrawScrollSnapshot({
+      fallback: input.scrollTransformStore?.getSnapshot() ?? { tx: 0, ty: 0 },
+      geometry,
+      panes: input.tilePanes,
+    }),
+  }
+}
+
 export const WorkbookPaneCanvasFallbackV3 = memo(function WorkbookPaneCanvasFallbackV3({
   active,
+  cameraStore,
   geometry,
   headerPanes,
   host,
   overlay,
+  overlayBuilder,
   scrollTransformStore,
   tilePanes,
 }: WorkbookPaneCanvasFallbackV3Props) {
@@ -184,15 +213,18 @@ export const WorkbookPaneCanvasFallbackV3 = memo(function WorkbookPaneCanvasFall
     }
     context.setTransform(dpr, 0, 0, dpr, 0, 0)
     context.clearRect(0, 0, width, height)
-    const scrollSnapshot = resolveTypeGpuV3DrawScrollSnapshot({
-      fallback: scrollTransformStore?.getSnapshot() ?? { tx: 0, ty: 0 },
+    const frame = resolveWorkbookPaneCanvasFallbackFrame({
+      cameraStore,
       geometry,
-      panes: tilePanes,
+      overlay,
+      overlayBuilder,
+      scrollTransformStore,
+      tilePanes,
     })
-    tilePanes.forEach((pane) => drawPane(context, pane, scrollSnapshot))
-    headerPanes.forEach((pane) => drawPane(context, pane, scrollSnapshot))
-    drawOverlay(context, overlay)
-  }, [active, geometry, headerPanes, host, overlay, scrollTransformStore, tilePanes])
+    tilePanes.forEach((pane) => drawPane(context, pane, frame.scrollSnapshot))
+    headerPanes.forEach((pane) => drawPane(context, pane, frame.scrollSnapshot))
+    drawOverlay(context, frame.overlay)
+  }, [active, cameraStore, geometry, headerPanes, host, overlay, overlayBuilder, scrollTransformStore, tilePanes])
 
   useEffect(() => {
     if (!active || !host) {
@@ -209,17 +241,19 @@ export const WorkbookPaneCanvasFallbackV3 = memo(function WorkbookPaneCanvasFall
       })
     }
     draw()
+    const unsubscribeCamera = cameraStore?.subscribe(scheduleDraw)
     const unsubscribeScroll = scrollTransformStore?.subscribe(scheduleDraw)
     const resizeObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(scheduleDraw)
     resizeObserver?.observe(host)
     return () => {
+      unsubscribeCamera?.()
       unsubscribeScroll?.()
       resizeObserver?.disconnect()
       if (frame !== 0) {
         window.cancelAnimationFrame(frame)
       }
     }
-  }, [active, draw, host, scrollTransformStore])
+  }, [active, cameraStore, draw, host, scrollTransformStore])
 
   if (!active || !host) {
     return null

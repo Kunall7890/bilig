@@ -1,5 +1,17 @@
 import { describe, expect, test, vi } from 'vitest'
-import { drawTextRuns, type CanvasTextRunContext } from '../renderer-v3/WorkbookPaneCanvasFallbackV3.js'
+import { createGridAxisWorldIndex } from '../gridAxisWorldIndex.js'
+import { createGridGeometrySnapshotFromAxes } from '../gridGeometry.js'
+import { getGridMetrics } from '../gridMetrics.js'
+import { GridCameraStore } from '../runtime/gridCameraStore.js'
+import {
+  drawTextRuns,
+  resolveWorkbookPaneCanvasFallbackFrame,
+  type CanvasTextRunContext,
+} from '../renderer-v3/WorkbookPaneCanvasFallbackV3.js'
+import type { DynamicGridOverlayBatchV3 } from '../renderer-v3/dynamic-overlay-batch.js'
+import type { GridRenderTile } from '../renderer-v3/render-tile-source.js'
+import type { WorkbookRenderTilePaneState } from '../renderer-v3/render-tile-pane-state.js'
+import { WorkbookGridScrollStore } from '../workbookGridScrollStore.js'
 
 function createCanvasContextMock(): {
   readonly context: CanvasTextRunContext
@@ -27,6 +39,61 @@ function createCanvasContextMock(): {
     textBaseline: 'middle' as CanvasTextBaseline,
   }
   return { context, fillText, lineTo }
+}
+
+function createOverlay(cameraSeq: number): DynamicGridOverlayBatchV3 {
+  return {
+    borderRectCount: 0,
+    cameraSeq,
+    fillRectCount: 0,
+    generatedAt: 0,
+    rectCount: 0,
+    rectInstances: new Float32Array(20),
+    rectSignature: `camera:${cameraSeq}`,
+    rects: new Float32Array(20),
+    seq: cameraSeq,
+    sheetName: 'Sheet1',
+    surfaceSize: { height: 240, width: 480 },
+  }
+}
+
+function createBodyPane(rowStart = 0): WorkbookRenderTilePaneState {
+  const tile: GridRenderTile = {
+    bounds: { colEnd: 31, colStart: 0, rowEnd: rowStart + 31, rowStart },
+    coord: {
+      colTile: 0,
+      dprBucket: 1,
+      paneKind: 'body',
+      rowTile: Math.floor(rowStart / 32),
+      sheetId: 1,
+    },
+    lastBatchId: 1,
+    lastCameraSeq: 1,
+    rectCount: 0,
+    rectInstances: new Float32Array(20),
+    textCount: 0,
+    textMetrics: new Float32Array(8),
+    textRuns: [],
+    tileId: 1,
+    version: {
+      axisX: 1,
+      axisY: 1,
+      freeze: 0,
+      styles: 1,
+      text: 1,
+      values: 1,
+    },
+  }
+  return {
+    contentOffset: { x: 0, y: 0 },
+    frame: { x: 46, y: 24, width: 434, height: 216 },
+    generation: 1,
+    paneId: 'body',
+    scrollAxes: { x: true, y: true },
+    surfaceSize: { height: 240, width: 480 },
+    tile,
+    viewport: tile.bounds,
+  }
 }
 
 describe('WorkbookPaneCanvasFallbackV3', () => {
@@ -81,5 +148,60 @@ describe('WorkbookPaneCanvasFallbackV3', () => {
     ])
 
     expect(lineTo).toHaveBeenCalledWith(96, 38)
+  })
+
+  test('builds fallback overlay and scroll offsets from the live camera store', () => {
+    const metrics = getGridMetrics()
+    const axes = {
+      columns: createGridAxisWorldIndex({ axisLength: 256, defaultSize: metrics.columnWidth }),
+      rows: createGridAxisWorldIndex({ axisLength: 256, defaultSize: metrics.rowHeight }),
+    }
+    const initialGeometry = createGridGeometrySnapshotFromAxes({
+      ...axes,
+      dpr: 1,
+      gridMetrics: metrics,
+      hostHeight: 240,
+      hostWidth: 480,
+      scrollLeft: 0,
+      scrollTop: 0,
+      sheetName: 'Sheet1',
+      updatedAt: 100,
+    })
+    const liveGeometry = createGridGeometrySnapshotFromAxes({
+      ...axes,
+      dpr: 1,
+      gridMetrics: metrics,
+      hostHeight: 240,
+      hostWidth: 480,
+      previousCamera: initialGeometry.camera,
+      scrollLeft: 0,
+      scrollTop: metrics.rowHeight * 32,
+      sheetName: 'Sheet1',
+      updatedAt: 200,
+    })
+    const cameraStore = new GridCameraStore()
+    cameraStore.setSnapshot(liveGeometry)
+    const scrollStore = new WorkbookGridScrollStore()
+    scrollStore.setSnapshot({
+      scrollLeft: 0,
+      scrollTop: metrics.rowHeight * 32,
+      tx: 0,
+      ty: 0,
+    })
+    const overlayBuilder = vi.fn((geometry: typeof liveGeometry) => createOverlay(geometry.camera.seq))
+
+    const frame = resolveWorkbookPaneCanvasFallbackFrame({
+      cameraStore,
+      geometry: initialGeometry,
+      overlay: null,
+      overlayBuilder,
+      scrollTransformStore: scrollStore,
+      tilePanes: [createBodyPane(32)],
+    })
+
+    expect(frame.geometry).toBe(liveGeometry)
+    expect(frame.overlay?.cameraSeq).toBe(liveGeometry.camera.seq)
+    expect(frame.scrollSnapshot.renderTy).toBe(0)
+    expect(overlayBuilder).toHaveBeenCalledWith(liveGeometry)
   })
 })

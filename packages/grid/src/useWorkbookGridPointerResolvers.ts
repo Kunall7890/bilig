@@ -147,9 +147,7 @@ export function useWorkbookGridPointerResolvers(input: {
           x: clientX - hostBounds.left,
           y: clientY - hostBounds.top,
         })
-        if (hit?.kind === 'column') {
-          return hit.index
-        }
+        return hit?.kind === 'column' ? hit.index : null
       }
       const activeGeometry = geometry ?? resolvePointerGeometry(region)
       return activeGeometry
@@ -175,9 +173,7 @@ export function useWorkbookGridPointerResolvers(input: {
           x: clientX - hostBounds.left,
           y: clientY - hostBounds.top,
         })
-        if (hit?.kind === 'row') {
-          return hit.index
-        }
+        return hit?.kind === 'row' ? hit.index : null
       }
       const activeGeometry = geometry ?? resolvePointerGeometry(region)
       return activeGeometry ? resolveLegacyRowResizeTarget(clientX, clientY, region, activeGeometry, inputRowHeights, defaultHeight) : null
@@ -195,13 +191,10 @@ export function useWorkbookGridPointerResolvers(input: {
       const geometrySnapshot = getGeometrySnapshot?.()
       const hostBounds = hostRef.current?.getBoundingClientRect()
       if (geometrySnapshot && hostBounds) {
-        const hit = geometrySnapshot.hitTestHeaderScreenPoint({
+        return geometrySnapshot.hitTestHeaderScreenPoint({
           x: clientX - hostBounds.left,
           y: clientY - hostBounds.top,
         })
-        if (hit) {
-          return hit
-        }
       }
       const activeGeometry = geometry ?? resolvePointerGeometry(region)
       if (!activeGeometry) {
@@ -223,13 +216,10 @@ export function useWorkbookGridPointerResolvers(input: {
       const geometrySnapshot = getGeometrySnapshot?.()
       const hostBounds = hostRef.current?.getBoundingClientRect()
       if (geometrySnapshot && hostBounds) {
-        const hit = geometrySnapshot.hitTestHeaderDragScreenPoint(kind, {
+        return geometrySnapshot.hitTestHeaderDragScreenPoint(kind, {
           x: clientX - hostBounds.left,
           y: clientY - hostBounds.top,
         })
-        if (hit) {
-          return hit
-        }
       }
       const activeGeometry = geometry ?? resolvePointerGeometry(region)
       if (!activeGeometry) {

@@ -555,10 +555,13 @@ function hitTestResizeHandleScreenPoint(input: {
 
 function resolveColumnAtScreenX(camera: GridCameraSnapshotV2, columns: GridAxisWorldIndex, x: number): number | null {
   const rowHeaderWidth = getBodyPaneX(camera) - camera.frozenWidth
+  if (x < rowHeaderWidth || x >= getHostWidth(camera)) {
+    return null
+  }
   if (x >= rowHeaderWidth && x < getBodyPaneX(camera)) {
     return columns.hitTest(x - rowHeaderWidth)
   }
-  if (x >= getBodyPaneX(camera) && x < getHostWidth(camera)) {
+  if (x >= getBodyPaneX(camera)) {
     return columns.hitTest(camera.bodyWorldX + x - getBodyPaneX(camera))
   }
   return null
@@ -566,10 +569,13 @@ function resolveColumnAtScreenX(camera: GridCameraSnapshotV2, columns: GridAxisW
 
 function resolveRowAtScreenY(camera: GridCameraSnapshotV2, rows: GridAxisWorldIndex, y: number): number | null {
   const columnHeaderHeight = getBodyPaneY(camera) - camera.frozenHeight
+  if (y < columnHeaderHeight || y >= getHostHeight(camera)) {
+    return null
+  }
   if (y >= columnHeaderHeight && y < getBodyPaneY(camera)) {
     return rows.hitTest(y - columnHeaderHeight)
   }
-  if (y >= getBodyPaneY(camera) && y < getHostHeight(camera)) {
+  if (y >= getBodyPaneY(camera)) {
     return rows.hitTest(camera.bodyWorldY + y - getBodyPaneY(camera))
   }
   return null
@@ -677,10 +683,18 @@ function hitTestScreenPoint(input: {
 }): { readonly col: number; readonly row: number } | null {
   const rowHeaderWidth = getBodyPaneX(input.camera) - input.camera.frozenWidth
   const columnHeaderHeight = getBodyPaneY(input.camera) - input.camera.frozenHeight
+  if (
+    input.point.x < rowHeaderWidth ||
+    input.point.x >= getHostWidth(input.camera) ||
+    input.point.y < columnHeaderHeight ||
+    input.point.y >= getHostHeight(input.camera)
+  ) {
+    return null
+  }
   const inFrozenColumns = input.point.x >= rowHeaderWidth && input.point.x < getBodyPaneX(input.camera)
-  const inBodyColumns = input.point.x >= getBodyPaneX(input.camera)
+  const inBodyColumns = input.point.x >= getBodyPaneX(input.camera) && input.point.x < getHostWidth(input.camera)
   const inFrozenRows = input.point.y >= columnHeaderHeight && input.point.y < getBodyPaneY(input.camera)
-  const inBodyRows = input.point.y >= getBodyPaneY(input.camera)
+  const inBodyRows = input.point.y >= getBodyPaneY(input.camera) && input.point.y < getHostHeight(input.camera)
   if ((!inFrozenColumns && !inBodyColumns) || (!inFrozenRows && !inBodyRows)) {
     return null
   }
