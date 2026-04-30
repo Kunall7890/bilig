@@ -99,22 +99,28 @@ function createRenderTileSource(tiles: readonly GridRenderTile[]): GridRenderTil
 function createCapturingRenderTileSource(): {
   readonly source: GridRenderTileSource
   readonly captured: () => GridRenderTileDeltaSubscription | null
+  readonly subscribeCount: () => number
   readonly unsubscribed: () => boolean
+  readonly unsubscribeCount: () => number
 } {
   let captured: GridRenderTileDeltaSubscription | null = null
-  let unsubscribed = false
+  let subscribeCount = 0
+  let unsubscribeCount = 0
   return {
     captured: () => captured,
     source: {
       peekRenderTile: () => null,
       subscribeRenderTileDeltas: (subscription) => {
         captured = subscription
+        subscribeCount += 1
         return () => {
-          unsubscribed = true
+          unsubscribeCount += 1
         }
       },
     },
-    unsubscribed: () => unsubscribed,
+    subscribeCount: () => subscribeCount,
+    unsubscribed: () => unsubscribeCount > 0,
+    unsubscribeCount: () => unsubscribeCount,
   }
 }
 
@@ -786,6 +792,81 @@ describe('GridRenderTilePaneRuntime', () => {
 
     unsubscribe?.()
     expect(renderTileSource.unsubscribed()).toBe(true)
+  })
+
+  it('reconciles render tile connection lifecycles without React-owned resubscribe churn', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const renderTileSource = createCapturingRenderTileSource()
+    let subscribedSheetName = ''
+    let subscribedAddresses: readonly string[] = []
+    let localUnsubscribeCount = 0
+    const engine: GridEngineLike = {
+      ...LOCAL_EMPTY_ENGINE,
+      subscribeCells: (sheetName, addresses) => {
+        subscribedSheetName = sheetName
+        subscribedAddresses = addresses
+        return () => {
+          localUnsubscribeCount += 1
+        }
+      },
+    }
+    const visibleAddresses = ['A1', 'B2']
+
+    runtime.syncConnections({
+      dprBucket: 1,
+      engine,
+      gridRuntimeHost: host,
+      needsLocalCellInvalidation: true,
+      renderTileSource: renderTileSource.source,
+      renderTileViewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+      sheetId: 7,
+      sheetName: 'Sheet1',
+      visibleAddresses,
+    })
+    const firstSubscription = renderTileSource.captured()
+
+    runtime.syncConnections({
+      dprBucket: 1,
+      engine,
+      gridRuntimeHost: host,
+      needsLocalCellInvalidation: true,
+      renderTileSource: renderTileSource.source,
+      renderTileViewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+      sheetId: 7,
+      sheetName: 'Sheet1',
+      visibleAddresses: [...visibleAddresses],
+    })
+
+    expect(renderTileSource.captured()).toBe(firstSubscription)
+    expect(renderTileSource.unsubscribed()).toBe(false)
+    expect(renderTileSource.subscribeCount()).toBe(1)
+    expect(subscribedSheetName).toBe('Sheet1')
+    expect(subscribedAddresses).toBe(visibleAddresses)
+    expect(localUnsubscribeCount).toBe(0)
+
+    runtime.syncConnections({
+      dprBucket: 1,
+      engine,
+      gridRuntimeHost: host,
+      needsLocalCellInvalidation: true,
+      renderTileSource: renderTileSource.source,
+      renderTileViewport: { colEnd: 255, colStart: 0, rowEnd: 31, rowStart: 0 },
+      sheetId: 7,
+      sheetName: 'Sheet1',
+      visibleAddresses,
+    })
+
+    expect(renderTileSource.unsubscribed()).toBe(true)
+    expect(renderTileSource.subscribeCount()).toBe(2)
+    expect(renderTileSource.unsubscribeCount()).toBe(1)
+    expect(renderTileSource.captured()).not.toBe(firstSubscription)
+    expect(localUnsubscribeCount).toBe(0)
+
+    runtime.disconnectConnections()
+
+    expect(renderTileSource.unsubscribeCount()).toBe(2)
+    expect(localUnsubscribeCount).toBe(1)
   })
 
   it('matches workbook delta damage by sheet ordinal when sheet id differs from order', () => {

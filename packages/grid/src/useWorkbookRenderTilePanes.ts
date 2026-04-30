@@ -76,24 +76,10 @@ export function useWorkbookRenderTilePanes(input: {
   )
 
   useEffect(() => {
-    return gridRuntimeHost.connectRenderTileDeltas({
-      dprBucket,
-      renderTileSource,
-      renderTileViewport,
-      sheetId,
-      sheetOrdinal,
-      sheetName,
-    })
-  }, [dprBucket, gridRuntimeHost, renderTileSource, renderTileViewport, sheetId, sheetName, sheetOrdinal])
-
-  useEffect(() => {
-    return gridRuntimeHost.connectWorkbookDeltaDamage({
-      dprBucket,
-      renderTileSource,
-      sheetId,
-      sheetOrdinal,
-    })
-  }, [dprBucket, gridRuntimeHost, renderTileSource, sheetId, sheetOrdinal])
+    return () => {
+      gridRuntimeHost.disconnectRenderTileConnections()
+    }
+  }, [gridRuntimeHost])
 
   const state = useMemo<WorkbookRenderTilePanesState & { readonly needsLocalCellInvalidation: boolean }>(() => {
     void renderTileBridgeState.renderTileRevision
@@ -155,13 +141,29 @@ export function useWorkbookRenderTilePanes(input: {
   }, [gridRuntimeHost, state.tileReadiness])
 
   useEffect(() => {
-    return gridRuntimeHost.connectLocalRenderTileCellInvalidation({
+    gridRuntimeHost.syncRenderTileConnections({
+      dprBucket,
       engine,
       needsLocalCellInvalidation: state.needsLocalCellInvalidation,
+      renderTileSource,
+      renderTileViewport,
+      sheetId,
+      sheetOrdinal,
       sheetName,
       visibleAddresses,
     })
-  }, [engine, gridRuntimeHost, sheetName, state.needsLocalCellInvalidation, visibleAddresses])
+  }, [
+    dprBucket,
+    engine,
+    gridRuntimeHost,
+    renderTileSource,
+    renderTileViewport,
+    sheetId,
+    sheetName,
+    sheetOrdinal,
+    state.needsLocalCellInvalidation,
+    visibleAddresses,
+  ])
 
   return state
 }

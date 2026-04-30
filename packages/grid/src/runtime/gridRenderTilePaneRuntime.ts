@@ -80,6 +80,19 @@ export interface GridRenderTileLocalInvalidationRuntimeInput {
   readonly visibleAddresses: readonly string[]
 }
 
+export interface GridRenderTileConnectionRuntimeInput {
+  readonly dprBucket: number
+  readonly engine: GridEngineLike
+  readonly gridRuntimeHost: GridRuntimeHost
+  readonly needsLocalCellInvalidation: boolean
+  readonly renderTileSource?: GridRenderTileSource | undefined
+  readonly renderTileViewport: Viewport
+  readonly sheetId?: number | undefined
+  readonly sheetOrdinal?: number | undefined
+  readonly sheetName: string
+  readonly visibleAddresses: readonly string[]
+}
+
 interface GridRenderTileInterestRuntimeInput {
   readonly dprBucket: number
   readonly gridRuntimeHost: GridRuntimeHost
@@ -126,6 +139,34 @@ interface GridRenderTilePreloadResolution {
   readonly tiles: readonly GridRenderTile[]
 }
 
+interface RuntimeConnection<Identity> {
+  readonly identity: Identity
+  readonly unsubscribe: (() => void) | undefined
+}
+
+interface RenderTileDeltaConnectionIdentity {
+  readonly dprBucket: number
+  readonly renderTileSource: GridRenderTileSource | undefined
+  readonly sheetId: number | undefined
+  readonly sheetOrdinal: number | undefined
+  readonly sheetName: string
+  readonly viewport: Viewport
+}
+
+interface WorkbookDeltaConnectionIdentity {
+  readonly dprBucket: number
+  readonly renderTileSource: GridRenderTileSource | undefined
+  readonly sheetId: number | undefined
+  readonly sheetOrdinal: number | undefined
+}
+
+interface LocalInvalidationConnectionIdentity {
+  readonly engine: GridEngineLike
+  readonly needsLocalCellInvalidation: boolean
+  readonly sheetName: string
+  readonly visibleAddresses: readonly string[]
+}
+
 export class GridRenderTilePaneRuntime {
   private retainedFixedRenderTileDataPanes: {
     readonly sheetId: number
@@ -134,6 +175,9 @@ export class GridRenderTilePaneRuntime {
   private bridgeState = INITIAL_RENDER_TILE_PANE_BRIDGE_STATE
   private readonly bridgeListeners = new Set<() => void>()
   private readonly lastWorkbookDeltaSeqBySheetOrdinal = new Map<number, number>()
+  private renderTileDeltaConnection: RuntimeConnection<RenderTileDeltaConnectionIdentity> | null = null
+  private workbookDeltaConnection: RuntimeConnection<WorkbookDeltaConnectionIdentity> | null = null
+  private localInvalidationConnection: RuntimeConnection<LocalInvalidationConnectionIdentity> | null = null
 
   resolve(input: GridRenderTilePaneRuntimeInput): GridRenderTilePaneRuntimeState {
     if (!input.hostReady) {
@@ -244,6 +288,21 @@ export class GridRenderTilePaneRuntime {
     })
   }
 
+  syncConnections(input: GridRenderTileConnectionRuntimeInput): void {
+    this.syncRenderTileDeltaConnection(input)
+    this.syncWorkbookDeltaConnection(input)
+    this.syncLocalInvalidationConnection(input)
+  }
+
+  disconnectConnections(): void {
+    this.renderTileDeltaConnection?.unsubscribe?.()
+    this.renderTileDeltaConnection = null
+    this.workbookDeltaConnection?.unsubscribe?.()
+    this.workbookDeltaConnection = null
+    this.localInvalidationConnection?.unsubscribe?.()
+    this.localInvalidationConnection = null
+  }
+
   connectWorkbookDeltaDamage(
     input: GridRenderTileDamageRuntimeInput,
     listener?: (batch: WorkbookDeltaBatchLikeV3) => void,
@@ -318,6 +377,78 @@ export class GridRenderTilePaneRuntime {
     }
     input.gridRuntimeHost.tiles.applyWorkbookDelta(batch, { dprBucket: input.dprBucket })
     return true
+  }
+
+  private syncRenderTileDeltaConnection(input: GridRenderTileConnectionRuntimeInput): void {
+    const identity: RenderTileDeltaConnectionIdentity = {
+      dprBucket: input.dprBucket,
+      renderTileSource: input.renderTileSource,
+      sheetId: input.sheetId,
+      sheetName: input.sheetName,
+      sheetOrdinal: input.sheetOrdinal,
+      viewport: input.renderTileViewport,
+    }
+    if (this.renderTileDeltaConnection && sameRenderTileDeltaConnectionIdentity(this.renderTileDeltaConnection.identity, identity)) {
+      return
+    }
+    this.renderTileDeltaConnection?.unsubscribe?.()
+    this.renderTileDeltaConnection = {
+      identity,
+      unsubscribe: this.connectRenderTileDeltas({
+        dprBucket: input.dprBucket,
+        gridRuntimeHost: input.gridRuntimeHost,
+        renderTileSource: input.renderTileSource,
+        renderTileViewport: input.renderTileViewport,
+        sheetId: input.sheetId,
+        sheetName: input.sheetName,
+        sheetOrdinal: input.sheetOrdinal,
+      }),
+    }
+  }
+
+  private syncWorkbookDeltaConnection(input: GridRenderTileConnectionRuntimeInput): void {
+    const identity: WorkbookDeltaConnectionIdentity = {
+      dprBucket: input.dprBucket,
+      renderTileSource: input.renderTileSource,
+      sheetId: input.sheetId,
+      sheetOrdinal: input.sheetOrdinal,
+    }
+    if (this.workbookDeltaConnection && sameWorkbookDeltaConnectionIdentity(this.workbookDeltaConnection.identity, identity)) {
+      return
+    }
+    this.workbookDeltaConnection?.unsubscribe?.()
+    this.workbookDeltaConnection = {
+      identity,
+      unsubscribe: this.connectWorkbookDeltaDamage({
+        dprBucket: input.dprBucket,
+        gridRuntimeHost: input.gridRuntimeHost,
+        renderTileSource: input.renderTileSource,
+        sheetId: input.sheetId,
+        sheetOrdinal: input.sheetOrdinal,
+      }),
+    }
+  }
+
+  private syncLocalInvalidationConnection(input: GridRenderTileConnectionRuntimeInput): void {
+    const identity: LocalInvalidationConnectionIdentity = {
+      engine: input.engine,
+      needsLocalCellInvalidation: input.needsLocalCellInvalidation,
+      sheetName: input.sheetName,
+      visibleAddresses: input.visibleAddresses,
+    }
+    if (this.localInvalidationConnection && sameLocalInvalidationConnectionIdentity(this.localInvalidationConnection.identity, identity)) {
+      return
+    }
+    this.localInvalidationConnection?.unsubscribe?.()
+    this.localInvalidationConnection = {
+      identity,
+      unsubscribe: this.connectLocalCellInvalidation({
+        engine: input.engine,
+        needsLocalCellInvalidation: input.needsLocalCellInvalidation,
+        sheetName: input.sheetName,
+        visibleAddresses: input.visibleAddresses,
+      }),
+    }
   }
 
   private buildFixedRenderTileDataPanes(
@@ -557,6 +688,59 @@ function resolveGridRenderTileInputSheetOrdinal(input: {
   readonly sheetOrdinal?: number | undefined
 }): number {
   return input.sheetOrdinal ?? input.sheetId ?? 0
+}
+
+function sameRenderTileDeltaConnectionIdentity(left: RenderTileDeltaConnectionIdentity, right: RenderTileDeltaConnectionIdentity): boolean {
+  return (
+    left.dprBucket === right.dprBucket &&
+    left.renderTileSource === right.renderTileSource &&
+    left.sheetId === right.sheetId &&
+    left.sheetName === right.sheetName &&
+    left.sheetOrdinal === right.sheetOrdinal &&
+    sameViewportIdentity(left.viewport, right.viewport)
+  )
+}
+
+function sameWorkbookDeltaConnectionIdentity(left: WorkbookDeltaConnectionIdentity, right: WorkbookDeltaConnectionIdentity): boolean {
+  return (
+    left.dprBucket === right.dprBucket &&
+    left.renderTileSource === right.renderTileSource &&
+    left.sheetId === right.sheetId &&
+    left.sheetOrdinal === right.sheetOrdinal
+  )
+}
+
+function sameLocalInvalidationConnectionIdentity(
+  left: LocalInvalidationConnectionIdentity,
+  right: LocalInvalidationConnectionIdentity,
+): boolean {
+  return (
+    left.engine === right.engine &&
+    left.needsLocalCellInvalidation === right.needsLocalCellInvalidation &&
+    left.sheetName === right.sheetName &&
+    sameStringListIdentity(left.visibleAddresses, right.visibleAddresses)
+  )
+}
+
+function sameStringListIdentity(left: readonly string[], right: readonly string[]): boolean {
+  if (left === right) {
+    return true
+  }
+  if (left.length !== right.length) {
+    return false
+  }
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) {
+      return false
+    }
+  }
+  return true
+}
+
+function sameViewportIdentity(left: Viewport, right: Viewport): boolean {
+  return (
+    left.colEnd === right.colEnd && left.colStart === right.colStart && left.rowEnd === right.rowEnd && left.rowStart === right.rowStart
+  )
 }
 
 function upsertRenderTileIntoHost(gridRuntimeHost: GridRuntimeHost, tile: GridRenderTile): void {

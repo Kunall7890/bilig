@@ -12,6 +12,7 @@ import { GridOverlayRuntime } from './gridOverlayRuntime.js'
 import {
   GridRenderTilePaneRuntime,
   type GridRenderTilePaneBridgeState,
+  type GridRenderTileConnectionRuntimeInput,
   type GridRenderTileDamageRuntimeInput,
   type GridRenderTileDeltaRuntimeInput,
   type GridRenderTileLocalInvalidationRuntimeInput,
@@ -283,6 +284,17 @@ export class GridRuntimeHost {
     listener?: Parameters<GridRenderTilePaneRuntime['connectLocalCellInvalidation']>[1],
   ): ReturnType<GridRenderTilePaneRuntime['connectLocalCellInvalidation']> {
     return this.renderTiles.connectLocalCellInvalidation(input, listener)
+  }
+
+  syncRenderTileConnections(input: Omit<GridRenderTileConnectionRuntimeInput, 'gridRuntimeHost'>): void {
+    this.renderTiles.syncConnections({
+      ...input,
+      gridRuntimeHost: this,
+    })
+  }
+
+  disconnectRenderTileConnections(): void {
+    this.renderTiles.disconnectConnections()
   }
 
   resolveScrollForCellIntoView(input: {
