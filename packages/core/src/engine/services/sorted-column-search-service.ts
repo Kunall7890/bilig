@@ -63,6 +63,9 @@ interface ApproximateColumnIndexEntry {
   comparableKind: 'numeric' | 'text' | undefined
   uniformStart: number | undefined
   uniformStep: number | undefined
+  repeatedUniformStart: number | undefined
+  repeatedUniformStep: number | undefined
+  repeatedUniformRunLength: number | undefined
   sortedAscending: boolean
   sortedDescending: boolean
   numericValues: Float64Array | undefined
@@ -157,6 +160,46 @@ function findUniformNumericApproximatePosition(args: {
   return { handled: false }
 }
 
+function findRepeatedUniformNumericApproximatePosition(args: {
+  lookupValue: number
+  length: number
+  matchMode: 1 | -1
+  repeatedUniformStart: number | undefined
+  repeatedUniformStep: number | undefined
+  repeatedUniformRunLength: number | undefined
+}): UniformNumericApproximateMatchResult {
+  if (args.repeatedUniformStart === undefined || args.repeatedUniformStep === undefined || args.repeatedUniformRunLength === undefined) {
+    return { handled: false }
+  }
+  if (args.length <= 0) {
+    return { handled: true, position: undefined }
+  }
+  const { lookupValue, length, matchMode, repeatedUniformStart, repeatedUniformStep, repeatedUniformRunLength } = args
+  const groupCount = Math.ceil(length / repeatedUniformRunLength)
+  const lastValue = repeatedUniformStart + repeatedUniformStep * (groupCount - 1)
+  if (matchMode === 1 && repeatedUniformStep > 0) {
+    if (lookupValue < repeatedUniformStart) {
+      return { handled: true, position: undefined }
+    }
+    if (lookupValue >= lastValue) {
+      return { handled: true, position: length }
+    }
+    const group = Math.floor((lookupValue - repeatedUniformStart) / repeatedUniformStep)
+    return { handled: true, position: Math.min(length, (group + 1) * repeatedUniformRunLength) }
+  }
+  if (matchMode === -1 && repeatedUniformStep < 0) {
+    if (lookupValue > repeatedUniformStart) {
+      return { handled: true, position: undefined }
+    }
+    if (lookupValue <= lastValue) {
+      return { handled: true, position: length }
+    }
+    const group = Math.floor((repeatedUniformStart - lookupValue) / -repeatedUniformStep)
+    return { handled: true, position: Math.min(length, (group + 1) * repeatedUniformRunLength) }
+  }
+  return { handled: false }
+}
+
 function supportsPreparedApproximateKind(prepared: PreparedApproximateVectorLookup, kind: 'numeric' | 'text', matchMode: 1 | -1): boolean {
   return prepared.comparableKind === kind && (matchMode === 1 ? prepared.sortedAscending : prepared.sortedDescending)
 }
@@ -176,6 +219,31 @@ function detectUniformNumericStep(values: Float64Array): { start: number; step: 
     }
   }
   return { start, step }
+}
+
+function detectRepeatedUniformNumericStep(values: Float64Array): { start: number; step: number; runLength: number } | undefined {
+  if (values.length < 4) {
+    return undefined
+  }
+  const start = values[0]!
+  let runLength = 1
+  while (runLength < values.length && values[runLength] === start) {
+    runLength += 1
+  }
+  if (runLength <= 1 || runLength >= values.length) {
+    return undefined
+  }
+  const step = values[runLength]! - start
+  if (!Number.isFinite(step) || step === 0) {
+    return undefined
+  }
+  for (let index = 0; index < values.length; index += 1) {
+    const group = Math.floor(index / runLength)
+    if (values[index]! !== start + step * group) {
+      return undefined
+    }
+  }
+  return { start, step, runLength }
 }
 
 function decodeValueTag(rawTag: number | undefined): ValueTag {
@@ -347,6 +415,9 @@ export function createSortedColumnSearchService(args: {
         comparableKind: undefined,
         uniformStart: undefined,
         uniformStep: undefined,
+        repeatedUniformStart: undefined,
+        repeatedUniformStep: undefined,
+        repeatedUniformRunLength: undefined,
         sortedAscending: false,
         sortedDescending: false,
         numericValues: undefined,
@@ -377,6 +448,9 @@ export function createSortedColumnSearchService(args: {
         comparableKind: 'text',
         uniformStart: undefined,
         uniformStep: undefined,
+        repeatedUniformStart: undefined,
+        repeatedUniformStep: undefined,
+        repeatedUniformRunLength: undefined,
         sortedAscending,
         sortedDescending,
         numericValues: undefined,
@@ -397,6 +471,7 @@ export function createSortedColumnSearchService(args: {
       }
     }
     const uniformNumericStep = detectUniformNumericStep(numericValues)
+    const repeatedUniformNumericStep = uniformNumericStep === undefined ? detectRepeatedUniformNumericStep(numericValues) : undefined
     return {
       sheetName,
       rowStart,
@@ -407,6 +482,9 @@ export function createSortedColumnSearchService(args: {
       comparableKind: 'numeric',
       uniformStart: uniformNumericStep?.start,
       uniformStep: uniformNumericStep?.step,
+      repeatedUniformStart: repeatedUniformNumericStep?.start,
+      repeatedUniformStep: repeatedUniformNumericStep?.step,
+      repeatedUniformRunLength: repeatedUniformNumericStep?.runLength,
       sortedAscending,
       sortedDescending,
       numericValues,
@@ -463,6 +541,9 @@ export function createSortedColumnSearchService(args: {
       entry.numericValues[offset] = nextNumeric
       entry.uniformStart = undefined
       entry.uniformStep = undefined
+      entry.repeatedUniformStart = undefined
+      entry.repeatedUniformStep = undefined
+      entry.repeatedUniformRunLength = undefined
       const previous = offset > 0 ? entry.numericValues[offset - 1]! : undefined
       const next = offset + 1 < entry.numericValues.length ? entry.numericValues[offset + 1]! : undefined
       if (
@@ -523,6 +604,9 @@ export function createSortedColumnSearchService(args: {
         comparableKind: summary?.comparableKind,
         uniformStart: summary?.uniformStart,
         uniformStep: summary?.uniformStep,
+        repeatedUniformStart: summary?.repeatedUniformStart,
+        repeatedUniformStep: summary?.repeatedUniformStep,
+        repeatedUniformRunLength: summary?.repeatedUniformRunLength,
         sortedAscending: summary?.sortedAscending ?? false,
         sortedDescending: summary?.sortedDescending ?? false,
         numericValues: undefined,
@@ -543,6 +627,9 @@ export function createSortedColumnSearchService(args: {
       comparableKind: entry.comparableKind,
       uniformStart: entry.uniformStart,
       uniformStep: entry.uniformStep,
+      repeatedUniformStart: entry.repeatedUniformStart,
+      repeatedUniformStep: entry.repeatedUniformStep,
+      repeatedUniformRunLength: entry.repeatedUniformRunLength,
       sortedAscending: entry.sortedAscending,
       sortedDescending: entry.sortedDescending,
       numericValues: entry.numericValues,
@@ -568,6 +655,9 @@ export function createSortedColumnSearchService(args: {
         prepared.comparableKind = summary?.comparableKind
         prepared.uniformStart = summary?.uniformStart
         prepared.uniformStep = summary?.uniformStep
+        prepared.repeatedUniformStart = summary?.repeatedUniformStart
+        prepared.repeatedUniformStep = summary?.repeatedUniformStep
+        prepared.repeatedUniformRunLength = summary?.repeatedUniformRunLength
         prepared.sortedAscending = summary?.sortedAscending ?? false
         prepared.sortedDescending = summary?.sortedDescending ?? false
         prepared.internalOwner = refreshedOwner
@@ -586,6 +676,9 @@ export function createSortedColumnSearchService(args: {
     prepared.comparableKind = refreshed.comparableKind
     prepared.uniformStart = refreshed.uniformStart
     prepared.uniformStep = refreshed.uniformStep
+    prepared.repeatedUniformStart = refreshed.repeatedUniformStart
+    prepared.repeatedUniformStep = refreshed.repeatedUniformStep
+    prepared.repeatedUniformRunLength = refreshed.repeatedUniformRunLength
     prepared.sortedAscending = refreshed.sortedAscending
     prepared.sortedDescending = refreshed.sortedDescending
     prepared.numericValues = refreshed.numericValues
@@ -617,6 +710,17 @@ export function createSortedColumnSearchService(args: {
           })
           if (uniformResult.handled) {
             return uniformResult
+          }
+          const repeatedUniformResult = findRepeatedUniformNumericApproximatePosition({
+            lookupValue: 0,
+            length: bounds.end - bounds.start + 1,
+            matchMode: request.matchMode,
+            repeatedUniformStart: prepared.repeatedUniformStart,
+            repeatedUniformStep: prepared.repeatedUniformStep,
+            repeatedUniformRunLength: prepared.repeatedUniformRunLength,
+          })
+          if (repeatedUniformResult.handled) {
+            return repeatedUniformResult
           }
           const exactNumericRow = findExactNumericApproximateMatchInRange(owner, 0, prepared.rowStart, prepared.rowEnd)
           if (exactNumericRow !== undefined) {
@@ -693,6 +797,17 @@ export function createSortedColumnSearchService(args: {
         })
         if (uniformResult.handled) {
           return uniformResult
+        }
+        const repeatedUniformResult = findRepeatedUniformNumericApproximatePosition({
+          lookupValue,
+          length: bounds.end - bounds.start + 1,
+          matchMode: request.matchMode,
+          repeatedUniformStart: prepared.repeatedUniformStart,
+          repeatedUniformStep: prepared.repeatedUniformStep,
+          repeatedUniformRunLength: prepared.repeatedUniformRunLength,
+        })
+        if (repeatedUniformResult.handled) {
+          return repeatedUniformResult
         }
         const exactNumericRow = findExactNumericApproximateMatchInRange(owner, lookupValue, prepared.rowStart, prepared.rowEnd)
         if (exactNumericRow !== undefined) {
@@ -788,6 +903,17 @@ export function createSortedColumnSearchService(args: {
       })
       if (uniformResult.handled) {
         return uniformResult
+      }
+      const repeatedUniformResult = findRepeatedUniformNumericApproximatePosition({
+        lookupValue,
+        length: values.length,
+        matchMode: request.matchMode,
+        repeatedUniformStart: prepared.repeatedUniformStart,
+        repeatedUniformStep: prepared.repeatedUniformStep,
+        repeatedUniformRunLength: prepared.repeatedUniformRunLength,
+      })
+      if (repeatedUniformResult.handled) {
+        return repeatedUniformResult
       }
       let low = 0
       let high = values.length - 1

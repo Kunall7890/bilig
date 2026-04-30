@@ -268,11 +268,16 @@ function canSkipDimensionUpdateAfterLiteralMutation(
   refs: readonly EngineCellMutationRef[],
   potentialNewCells: number | undefined,
 ): boolean {
-  if (potentialNewCells !== 0 || refs.length !== 1) {
+  if (potentialNewCells !== 0 || refs.length === 0) {
     return false
   }
-  const ref = refs[0]
-  return ref?.cellIndex !== undefined && ref.mutation.kind === 'setCellValue' && ref.mutation.value !== null
+  for (let index = 0; index < refs.length; index += 1) {
+    const ref = refs[index]
+    if (ref?.cellIndex === undefined || ref.mutation.kind !== 'setCellValue' || ref.mutation.value === null) {
+      return false
+    }
+  }
+  return true
 }
 
 function readTrackedRuntimeCellValue(
@@ -3651,7 +3656,9 @@ export class WorkPaper {
       returnUndoOps: false,
       reuseRefs: true,
     })
-    this.updateSheetDimensionsAfterCellMutationRefs(ops)
+    if (!canSkipDimensionUpdateAfterLiteralMutation(ops, potentialNewCells)) {
+      this.updateSheetDimensionsAfterCellMutationRefs(ops)
+    }
   }
 
   private applyCellMutationRefs(

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ValueTag } from '@bilig/protocol'
+import { ErrorCode, ValueTag } from '@bilig/protocol'
 import { SpreadsheetEngine } from '../engine.js'
 import type { EngineCellMutationRef } from '../cell-mutations-at.js'
 import type { FormulaFamilyStore } from '../formula/formula-family-store.js'
@@ -236,6 +236,45 @@ describe('SpreadsheetEngine formula initialization', () => {
     expect(engine.getPerformanceCounters().directAggregatePrefixEvaluations).toBe(0)
     expect(engine.getPerformanceCounters().directAggregateScanEvaluations).toBe(0)
     expect(engine.getPerformanceCounters().regionQueryIndexBuilds).toBe(0)
+  })
+
+  it('materializes initial aggregate variants and scalar fallback values in one pass', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-direct-variants' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 1)
+    engine.setCellValue('Sheet1', 'A2', true)
+    engine.setCellValue('Sheet1', 'A3', 3)
+    engine.setCellValue('Sheet1', 'A4', 'text')
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+
+    engine.initializeCellFormulasAt(
+      [
+        { sheetId, mutation: { kind: 'setCellFormula', row: 0, col: 1, formula: 'SUM(A1:A3)' } },
+        { sheetId, mutation: { kind: 'setCellFormula', row: 0, col: 2, formula: 'COUNT(A1:A3)' } },
+        { sheetId, mutation: { kind: 'setCellFormula', row: 0, col: 3, formula: 'AVERAGE(A1:A3)' } },
+        { sheetId, mutation: { kind: 'setCellFormula', row: 0, col: 4, formula: 'MIN(A1:A3)' } },
+        { sheetId, mutation: { kind: 'setCellFormula', row: 0, col: 5, formula: 'MAX(A1:A3)' } },
+        { sheetId, mutation: { kind: 'setCellFormula', row: 0, col: 6, formula: 'A4+1' } },
+        { sheetId, mutation: { kind: 'setCellFormula', row: 0, col: 7, formula: 'A1/0' } },
+        { sheetId, mutation: { kind: 'setCellFormula', row: 0, col: 8, formula: 'ABS(A4)' } },
+        { sheetId, mutation: { kind: 'setCellFormula', row: 0, col: 9, formula: 'A3-A1' } },
+        { sheetId, mutation: { kind: 'setCellFormula', row: 0, col: 10, formula: 'A1*A3' } },
+      ],
+      10,
+    )
+
+    expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 5 })
+    expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 3 })
+    expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Number, value: 5 / 3 })
+    expect(engine.getCellValue('Sheet1', 'E1')).toEqual({ tag: ValueTag.Number, value: 1 })
+    expect(engine.getCellValue('Sheet1', 'F1')).toEqual({ tag: ValueTag.Number, value: 3 })
+    expect(engine.getCellValue('Sheet1', 'G1')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(engine.getCellValue('Sheet1', 'H1')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Div0 })
+    expect(engine.getCellValue('Sheet1', 'I1')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(engine.getCellValue('Sheet1', 'J1')).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(engine.getCellValue('Sheet1', 'K1')).toEqual({ tag: ValueTag.Number, value: 3 })
+    expect(engine.getPerformanceCounters().directFormulaInitialEvaluations).toBe(10)
   })
 
   it('bulk-materializes parser-cache template sheets into column family runs', async () => {

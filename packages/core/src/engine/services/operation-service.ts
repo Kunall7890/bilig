@@ -45,6 +45,7 @@ import type {
 import { EngineMutationError } from '../errors.js'
 import type { EnginePatch } from '../../patches/patch-types.js'
 import { addEngineCounter } from '../../perf/engine-counters.js'
+import type { ExactColumnIndexService } from './exact-column-index-service.js'
 import type { SortedColumnSearchService } from './sorted-column-search-service.js'
 
 type MutationSource = 'local' | 'remote' | 'restore' | 'undo' | 'redo'
@@ -1069,6 +1070,45 @@ function approximateUniformLookupNumericResult(
   return undefined
 }
 
+function approximateRepeatedUniformLookupCurrentResult(
+  prepared: {
+    readonly length: number
+    readonly repeatedUniformStart: number | undefined
+    readonly repeatedUniformStep: number | undefined
+    readonly repeatedUniformRunLength: number | undefined
+  },
+  matchMode: 1 | -1,
+  lookupValue: number,
+): DirectScalarCurrentOperand | undefined {
+  const { repeatedUniformStart, repeatedUniformStep, repeatedUniformRunLength, length } = prepared
+  if (repeatedUniformStart === undefined || repeatedUniformStep === undefined || repeatedUniformRunLength === undefined || length <= 0) {
+    return undefined
+  }
+  const groupCount = Math.ceil(length / repeatedUniformRunLength)
+  const lastValue = repeatedUniformStart + repeatedUniformStep * (groupCount - 1)
+  if (matchMode === 1 && repeatedUniformStep > 0) {
+    if (lookupValue < repeatedUniformStart) {
+      return { kind: 'error', code: ErrorCode.NA }
+    }
+    if (lookupValue >= lastValue) {
+      return { kind: 'number', value: length }
+    }
+    const group = Math.floor((lookupValue - repeatedUniformStart) / repeatedUniformStep)
+    return { kind: 'number', value: Math.min(length, (group + 1) * repeatedUniformRunLength) }
+  }
+  if (matchMode === -1 && repeatedUniformStep < 0) {
+    if (lookupValue > repeatedUniformStart) {
+      return { kind: 'error', code: ErrorCode.NA }
+    }
+    if (lookupValue <= lastValue) {
+      return { kind: 'number', value: length }
+    }
+    const group = Math.floor((repeatedUniformStart - lookupValue) / -repeatedUniformStep)
+    return { kind: 'number', value: Math.min(length, (group + 1) * repeatedUniformRunLength) }
+  }
+  return undefined
+}
+
 function directScalarLiteralNumericValue(value: unknown): number | undefined {
   if (value === null) {
     return 0
@@ -1360,6 +1400,10 @@ function evaluateRowPairDirectScalarCode(code: number, leftValue: number, rightV
   }
 }
 
+function rowPairDirectScalarCodeNeedsZeroGuard(code: number): boolean {
+  return code === ROW_PAIR_LEFT_DIV_RIGHT || code === ROW_PAIR_RIGHT_DIV_LEFT
+}
+
 export const operationServiceTestHooks = {
   PendingNumericCellValues,
   DirectFormulaIndexCollection,
@@ -1508,6 +1552,7 @@ export function createEngineOperationService(args: {
   readonly recalculate: (changedRoots: readonly number[] | U32, kernelSyncRoots?: readonly number[] | U32) => U32
   readonly deferKernelSync: (cellIndices: readonly number[] | U32) => void
   readonly evaluateDirectFormula: (cellIndex: number) => readonly number[] | undefined
+  readonly exactLookup: Pick<ExactColumnIndexService, 'findPreparedVectorMatch'>
   readonly sortedLookup: Pick<SortedColumnSearchService, 'findPreparedVectorMatch'>
   readonly reconcilePivotOutputs: (baseChanged: U32, forceAllPivots?: boolean) => U32
   readonly prepareRegionQueryIndices: () => void
@@ -2905,10 +2950,90 @@ export function createEngineOperationService(args: {
     directLookup: Extract<RuntimeDirectLookupDescriptor, { kind: 'approximate' }>,
     lookupValue: number,
   ): DirectScalarCurrentOperand | undefined => {
+    const prepared = directLookup.prepared
+    const values = prepared.numericValues
+    if (
+      values !== undefined &&
+      prepared.comparableKind === 'numeric' &&
+      (directLookup.matchMode === 1 ? prepared.sortedAscending : prepared.sortedDescending)
+    ) {
+      let position: number | undefined
+      let handledUniform = false
+      if (prepared.uniformStart !== undefined && prepared.uniformStep !== undefined) {
+        const lastValue = prepared.uniformStart + prepared.uniformStep * (values.length - 1)
+        if (directLookup.matchMode === 1 && prepared.uniformStep > 0) {
+          handledUniform = true
+          if (lookupValue < prepared.uniformStart) {
+            position = undefined
+          } else if (lookupValue >= lastValue) {
+            position = values.length
+          } else {
+            position = Math.min(values.length, Math.max(1, Math.floor((lookupValue - prepared.uniformStart) / prepared.uniformStep) + 1))
+          }
+        } else if (directLookup.matchMode === -1 && prepared.uniformStep < 0) {
+          handledUniform = true
+          if (lookupValue > prepared.uniformStart) {
+            position = undefined
+          } else if (lookupValue <= lastValue) {
+            position = values.length
+          } else {
+            position = Math.min(values.length, Math.max(1, Math.floor((prepared.uniformStart - lookupValue) / -prepared.uniformStep) + 1))
+          }
+        }
+      }
+      if (!handledUniform) {
+        const repeatedUniformResult = approximateRepeatedUniformLookupCurrentResult(prepared, directLookup.matchMode, lookupValue)
+        if (repeatedUniformResult?.kind === 'number') {
+          position = repeatedUniformResult.value
+        } else if (repeatedUniformResult?.kind === 'error') {
+          position = undefined
+        } else {
+          let low = 0
+          let high = values.length - 1
+          let best = -1
+          while (low <= high) {
+            const mid = (low + high) >> 1
+            const midValue = values[mid]!
+            if (midValue === lookupValue) {
+              best = mid
+              low = mid + 1
+            } else if (directLookup.matchMode === 1 ? midValue < lookupValue : midValue > lookupValue) {
+              best = mid
+              low = mid + 1
+            } else {
+              high = mid - 1
+            }
+          }
+          position = best === -1 ? undefined : best + 1
+        }
+      }
+      return position === undefined ? { kind: 'error', code: ErrorCode.NA } : { kind: 'number', value: position }
+    }
+    if (prepared.comparableKind === 'numeric' && (directLookup.matchMode === 1 ? prepared.sortedAscending : prepared.sortedDescending)) {
+      const repeatedUniformResult = approximateRepeatedUniformLookupCurrentResult(prepared, directLookup.matchMode, lookupValue)
+      if (repeatedUniformResult !== undefined) {
+        return repeatedUniformResult
+      }
+    }
     const result = args.sortedLookup.findPreparedVectorMatch({
       lookupValue: { tag: ValueTag.Number, value: lookupValue },
       prepared: directLookup.prepared,
       matchMode: directLookup.matchMode,
+    })
+    if (!result.handled) {
+      return undefined
+    }
+    return result.position === undefined ? { kind: 'error', code: ErrorCode.NA } : { kind: 'number', value: result.position }
+  }
+
+  const tryDirectExactLookupCurrentResult = (
+    directLookup: Extract<RuntimeDirectLookupDescriptor, { kind: 'exact' }>,
+    lookupValue: CellValue,
+  ): DirectScalarCurrentOperand | undefined => {
+    const result = args.exactLookup.findPreparedVectorMatch({
+      lookupValue,
+      prepared: directLookup.prepared,
+      searchMode: directLookup.searchMode,
     })
     if (!result.handled) {
       return undefined
@@ -3031,6 +3156,16 @@ export function createEngineOperationService(args: {
         }
         return true
       }
+      const directLookup = args.state.formulas.get(singleDependent)?.directLookup
+      if (directLookup?.kind === 'exact' && directLookup.operandCellIndex === cellIndex) {
+        const exactResult = tryDirectExactLookupCurrentResult(directLookup, newValue)
+        if (exactResult !== undefined) {
+          if (!addDirectLookupCurrentResultIfChanged(singleDependent, exactResult, postRecalcDirectFormulaIndices)) {
+            postRecalcDirectFormulaIndices.markDirectFormulaInputCovered(cellIndex)
+          }
+          return true
+        }
+      }
       postRecalcDirectFormulaIndices.add(singleDependent)
       return true
     }
@@ -3101,6 +3236,14 @@ export function createEngineOperationService(args: {
       if (directLookupResult !== undefined) {
         addDirectLookupCurrentResultIfChanged(formulaCellIndex, directLookupResult, postRecalcDirectFormulaIndices)
         continue
+      }
+      const directLookup = args.state.formulas.get(formulaCellIndex)?.directLookup
+      if (directLookup?.kind === 'exact' && directLookup.operandCellIndex === cellIndex) {
+        const exactResult = tryDirectExactLookupCurrentResult(directLookup, newValue)
+        if (exactResult !== undefined) {
+          addDirectLookupCurrentResultIfChanged(formulaCellIndex, exactResult, postRecalcDirectFormulaIndices)
+          continue
+        }
       }
       postRecalcDirectFormulaIndices.add(formulaCellIndex)
     }
@@ -5809,7 +5952,6 @@ export function createEngineOperationService(args: {
 
     const formulaCellIndices = new Uint32Array(refs.length)
     const formulaCodes = new Uint8Array(refs.length)
-    const mutationValues = new Float64Array(refs.length)
     const cellStore = args.state.workbook.cellStore
     let formulaCount = 0
     let previousRow = firstMutation.row - 1
@@ -5847,8 +5989,6 @@ export function createEngineOperationService(args: {
       previousRow = leftMutation.row
       const leftValue = leftMutation.value
       const rightValue = rightMutation.value
-      mutationValues[refIndex] = leftValue
-      mutationValues[refIndex + 1] = rightValue
       const leftIndex = leftRef.cellIndex
       const rightIndex = rightRef.cellIndex
       if (!canFastPathLiteralOverwrite(leftIndex) || !canFastPathLiteralOverwrite(rightIndex)) {
@@ -5880,7 +6020,7 @@ export function createEngineOperationService(args: {
         const code = rowPairDirectScalarCode(formula.directScalar, leftIndex, rightIndex)
         if (
           code === 0 ||
-          evaluateRowPairDirectScalarCode(code, leftValue, rightValue) === undefined ||
+          (rowPairDirectScalarCodeNeedsZeroGuard(code) && evaluateRowPairDirectScalarCode(code, leftValue, rightValue) === undefined) ||
           formulaCount >= formulaCellIndices.length
         ) {
           return false
@@ -5931,7 +6071,11 @@ export function createEngineOperationService(args: {
       for (let index = 0; index < refs.length; index += 1) {
         const ref = refs[index]!
         const cellIndex = ref.cellIndex!
-        writeNumericLiteralToCellStore(cellIndex, mutationValues[index]!)
+        const mutation = ref.mutation
+        if (mutation.kind !== 'setCellValue' || typeof mutation.value !== 'number') {
+          throw new Error('Expected dense row-pair batch to contain only numeric literal writes')
+        }
+        writeNumericLiteralToCellStore(cellIndex, mutation.value)
         changedInputCount = args.markInputChanged(cellIndex, changedInputCount)
         if (requiresChangedSet) {
           explicitChangedCount = args.markExplicitChanged(cellIndex, explicitChangedCount)
@@ -5947,8 +6091,18 @@ export function createEngineOperationService(args: {
     const changedInputArray = args.getChangedInputBuffer().subarray(0, changedInputCount)
     args.deferKernelSync(changedInputArray)
     for (let refIndex = 0; refIndex < refs.length; refIndex += 2) {
-      const leftValue = mutationValues[refIndex]!
-      const rightValue = mutationValues[refIndex + 1]!
+      const leftMutation = refs[refIndex]!.mutation
+      const rightMutation = refs[refIndex + 1]!.mutation
+      if (
+        leftMutation.kind !== 'setCellValue' ||
+        rightMutation.kind !== 'setCellValue' ||
+        typeof leftMutation.value !== 'number' ||
+        typeof rightMutation.value !== 'number'
+      ) {
+        throw new Error('Expected dense row-pair batch to contain only numeric literal writes')
+      }
+      const leftValue = leftMutation.value
+      const rightValue = rightMutation.value
       for (let formulaIndex = refIndex; formulaIndex < refIndex + 2; formulaIndex += 1) {
         const result = evaluateRowPairDirectScalarCode(formulaCodes[formulaIndex]!, leftValue, rightValue)
         if (result === undefined) {
@@ -8484,6 +8638,20 @@ export function createEngineOperationService(args: {
     let didRunRecalc = false
     let didFastDeferKernelSyncOnly = false
     let canComposeDisjointEventChanges = false
+    const canFastDeferPrecomputedStructuralKernelSync =
+      hasActiveFormulas &&
+      changedInputCount === 0 &&
+      explicitChangedCount > 0 &&
+      formulaChangedCount === 0 &&
+      precomputedKernelSyncCellIndices.length > 0 &&
+      postRecalcDirectFormulaIndices.size === 0 &&
+      invalidatedRanges.length === 0 &&
+      (invalidatedRows.length > 0 || invalidatedColumns.length > 0) &&
+      !topologyChanged &&
+      !structuralInvalidation &&
+      !shouldRefreshPivots &&
+      !hasActivePivots &&
+      !hasVolatileFormulaWork
     if (
       hasActiveFormulas &&
       changedInputCount > 0 &&
@@ -8504,6 +8672,11 @@ export function createEngineOperationService(args: {
         args.deferKernelSync(changedInputArray)
         didFastDeferKernelSyncOnly = true
       }
+    }
+    if (!didFastDeferKernelSyncOnly && canFastDeferPrecomputedStructuralKernelSync) {
+      addEngineCounter(args.state.counters, 'kernelSyncOnlyRecalcSkips')
+      args.deferKernelSync(Uint32Array.from(precomputedKernelSyncCellIndices))
+      didFastDeferKernelSyncOnly = true
     }
     if (
       !didFastDeferKernelSyncOnly &&

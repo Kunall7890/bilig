@@ -695,6 +695,53 @@ describe('EngineOperationService', () => {
     })
   })
 
+  it('updates indexed exact text lookup operands without dirty traversal or index rebuilds', async () => {
+    const engine = new SpreadsheetEngine({
+      workbookName: 'operation-direct-indexed-exact-text-lookup-post-recalc',
+      useColumnIndex: true,
+    })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setRangeValues({ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A4' }, [['alpha'], ['bravo'], ['charlie'], ['delta']])
+    engine.setCellValue('Sheet1', 'D1', 'alpha')
+    engine.setCellFormula('Sheet1', 'E1', 'MATCH(D1,A1:A4,0)')
+    engine.resetPerformanceCounters()
+
+    engine.setCellValue('Sheet1', 'D1', 'delta')
+
+    expect(engine.getCellValue('Sheet1', 'E1')).toEqual({ tag: ValueTag.Number, value: 4 })
+    expect(engine.getLastMetrics()).toMatchObject({ dirtyFormulaCount: 0, wasmFormulaCount: 0, jsFormulaCount: 0 })
+    expect(engine.getPerformanceCounters()).toMatchObject({
+      directFormulaKernelSyncOnlyRecalcSkips: 1,
+      exactIndexBuilds: 0,
+      lookupOwnerBuilds: 0,
+      changedCellPayloadsBuilt: 0,
+    })
+  })
+
+  it('updates non-uniform approximate lookup operands through prepared numeric vectors', async () => {
+    const rowCount = 64
+    const engine = new SpreadsheetEngine({ workbookName: 'operation-direct-approximate-duplicate-lookup-post-recalc' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    for (let row = 1; row <= rowCount; row += 1) {
+      engine.setCellValue('Sheet1', `A${row}`, Math.ceil(row / 2))
+    }
+    engine.setCellValue('Sheet1', 'D1', 20)
+    engine.setCellFormula('Sheet1', 'E1', `MATCH(D1,A1:A${rowCount},1)`)
+    engine.resetPerformanceCounters()
+
+    engine.setCellValue('Sheet1', 'D1', 11)
+
+    expect(engine.getCellValue('Sheet1', 'E1')).toEqual({ tag: ValueTag.Number, value: 22 })
+    expect(engine.getLastMetrics()).toMatchObject({ dirtyFormulaCount: 0, wasmFormulaCount: 0, jsFormulaCount: 0 })
+    expect(engine.getPerformanceCounters()).toMatchObject({
+      directFormulaKernelSyncOnlyRecalcSkips: 1,
+      approxIndexBuilds: 0,
+      changedCellPayloadsBuilt: 0,
+    })
+  })
+
   it('skips dirty traversal for exact lookup column writes that cannot match the numeric operand', async () => {
     const rowCount = 64
     const engine = new SpreadsheetEngine({
@@ -944,6 +991,69 @@ describe('EngineOperationService', () => {
     expect(engine.getLastMetrics()).toMatchObject({ dirtyFormulaCount: 0, wasmFormulaCount: 0, jsFormulaCount: 0 })
     expect(engine.getPerformanceCounters().directAggregateDeltaApplications).toBe(rowCount)
     expect(engine.getPerformanceCounters().directAggregateDeltaOnlyRecalcSkips).toBe(1)
+  })
+
+  it('deletes direct aggregate rows without region-query rebuilds or dirty traversal', async () => {
+    const rowCount = 256
+    const deletedRowIndex = 127
+    const deletedValue = deletedRowIndex + 1
+    const engine = new SpreadsheetEngine({ workbookName: 'operation-structural-delete-aggregate-kernel-sync-only' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    for (let row = 1; row <= rowCount; row += 1) {
+      engine.setCellValue('Sheet1', `A${row}`, row)
+      engine.setCellFormula('Sheet1', `B${row}`, `SUM(A1:A${row})`)
+    }
+
+    engine.resetPerformanceCounters()
+    engine.deleteRows('Sheet1', deletedRowIndex, 1)
+
+    expect(engine.getCellValue('Sheet1', `B${rowCount - 1}`)).toEqual({
+      tag: ValueTag.Number,
+      value: (rowCount * (rowCount + 1)) / 2 - deletedValue,
+    })
+    expect(engine.getLastMetrics()).toMatchObject({ dirtyFormulaCount: 0, wasmFormulaCount: 0, jsFormulaCount: 0 })
+    expect(engine.getPerformanceCounters()).toMatchObject({
+      kernelSyncOnlyRecalcSkips: 1,
+      regionQueryIndexBuilds: 0,
+      topoRebuilds: 0,
+      wasmFullUploads: 0,
+      structuralFormulaImpactCandidates: 0,
+      structuralSurvivorCellsRemapped: 0,
+    })
+  })
+
+  it('uses structural invalidation patches instead of per-cell payloads for direct aggregate row deletes', async () => {
+    const rowCount = 256
+    const deletedRowIndex = 127
+    const engine = new SpreadsheetEngine({ workbookName: 'operation-structural-delete-aggregate-invalidation-patches' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    for (let row = 1; row <= rowCount; row += 1) {
+      engine.setCellValue('Sheet1', `A${row}`, row)
+      engine.setCellFormula('Sheet1', `B${row}`, `SUM(A1:A${row})`)
+    }
+    const tracked = vi.fn()
+    const unsubscribe = engine.events.subscribeTracked(tracked)
+
+    engine.resetPerformanceCounters()
+    engine.deleteRows('Sheet1', deletedRowIndex, 1)
+
+    expect(tracked).toHaveBeenCalledTimes(1)
+    const event = tracked.mock.calls[0]?.[0]
+    expect(event?.patches).toEqual([
+      {
+        kind: 'row-invalidation',
+        sheetName: 'Sheet1',
+        startIndex: deletedRowIndex,
+        endIndex: deletedRowIndex,
+      },
+    ])
+    expect(engine.getPerformanceCounters()).toMatchObject({
+      changedCellPayloadsBuilt: 0,
+      kernelSyncOnlyRecalcSkips: 1,
+    })
+    unsubscribe()
   })
 
   it('updates sliding aggregate windows without building a region query index', async () => {

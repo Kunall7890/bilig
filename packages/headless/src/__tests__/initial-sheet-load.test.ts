@@ -73,10 +73,12 @@ describe('initial mixed sheet load', () => {
       })
       const sheetId = workbook.getSheetId('Bench')!
       const refs = initSpy.mock.calls[0]?.[0] ?? []
+      const potentialNewCells = initSpy.mock.calls[0]?.[1]
 
       expect(refs).toHaveLength(4)
       expect(refs.every((ref) => typeof ref.cellIndex === 'number')).toBe(true)
       expect(refs.map((ref) => ref.source)).toEqual(['A1+B1', 'C1*2', 'A2+B2', 'C2*2'])
+      expect(potentialNewCells).toBe(0)
       expect(attachSpy).not.toHaveBeenCalled()
       expect(workbook.getCellValue({ sheet: sheetId, row: 1, col: 3 })).toEqual({
         tag: ValueTag.Number,

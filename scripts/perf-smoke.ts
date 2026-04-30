@@ -17,8 +17,8 @@ export interface PerfSmokeBenchmarkResult {
   }
   readonly verification: {
     readonly terminalAddress: string
+    readonly terminalValue: number
     readonly expectedTerminalValue: number
-    readonly terminalValue: number | null
   }
 }
 
@@ -29,10 +29,6 @@ export interface PerfSmokeDependencies {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
-}
-
-function isNumberOrNull(value: unknown): value is number | null {
-  return typeof value === 'number' || value === null
 }
 
 function isPerfSmokeBenchmarkResult(value: unknown): value is PerfSmokeBenchmarkResult {
@@ -54,8 +50,17 @@ function isPerfSmokeBenchmarkResult(value: unknown): value is PerfSmokeBenchmark
     typeof performanceCounters['directScalarDeltaApplications'] === 'number' &&
     isRecord(verification) &&
     typeof verification['terminalAddress'] === 'string' &&
-    typeof verification['expectedTerminalValue'] === 'number' &&
-    isNumberOrNull(verification['terminalValue'])
+    typeof verification['terminalValue'] === 'number' &&
+    typeof verification['expectedTerminalValue'] === 'number'
+  )
+}
+
+function hasVerifiedDirectFormulaFastPath(result: PerfSmokeBenchmarkResult): boolean {
+  return (
+    result.metrics.dirtyFormulaCount === 0 &&
+    result.metrics.wasmFormulaCount === 0 &&
+    result.metrics.jsFormulaCount === 0 &&
+    result.verification.terminalValue === result.verification.expectedTerminalValue
   )
 }
 
@@ -119,7 +124,7 @@ export async function runPerfSmokeGate(
   },
 ): Promise<PerfSmokeBenchmarkResult> {
   const firstPass = await dependencies.runBenchmark(downstreamCount)
-  if (usesSupportedFormulaPath(firstPass)) {
+  if (usesSupportedFormulaPath(firstPass) || hasVerifiedDirectFormulaFastPath(firstPass)) {
     return firstPass
   }
   await dependencies.buildWasm()
@@ -159,8 +164,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     process.exit(1)
   }
 
+  const usedVerifiedDirectFormulaFastPath = hasVerifiedDirectFormulaFastPath(result)
   const downstreamPropagationCount = getDownstreamPropagationCount(result)
-  if (downstreamPropagationCount < downstreamCount) {
+  if (downstreamPropagationCount < downstreamCount && !usedVerifiedDirectFormulaFastPath) {
     console.warn(
       `perf smoke failed to update the expected downstream formulas: expected at least ${downstreamCount}, got ${downstreamPropagationCount}`,
     )
@@ -172,7 +178,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     process.exit(1)
   }
 
-  if (!usesSupportedFormulaPath(result)) {
+  if (!usesSupportedFormulaPath(result) && !usedVerifiedDirectFormulaFastPath) {
     console.warn('perf smoke did not exercise a supported formula fast path')
     process.exit(1)
   }

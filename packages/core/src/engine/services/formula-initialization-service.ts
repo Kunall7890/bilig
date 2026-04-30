@@ -19,6 +19,7 @@ import { EngineMutationError } from '../errors.js'
 
 const INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT = 16_384
 const EMPTY_U32 = new Uint32Array(0)
+type InitialFormulaCellIndexList = readonly number[] | U32
 
 type InitialPrefixAggregateKind = 'sum' | 'count' | 'average' | 'min' | 'max'
 
@@ -230,9 +231,9 @@ interface InitialFormulaValueWriter {
   readonly flush: () => void
 }
 
-function createInitialWrittenColumnTracker(): InitialWrittenColumnTracker {
+function createInitialWrittenColumnTracker(initialCapacity = 8): InitialWrittenColumnTracker {
   return {
-    columns: new Uint8Array(8),
+    columns: new Uint8Array(initialCapacity),
     count: 0,
   }
 }
@@ -340,13 +341,30 @@ export function createEngineFormulaInitializationService(args: {
   }
 
   const createInitialFormulaValueWriter = (): InitialFormulaValueWriter => {
+    let singleSheetId: number | undefined
+    let singleSheetTracker: InitialWrittenColumnTracker | undefined
     let writtenColumnsBySheetId: Map<number, InitialWrittenColumnTracker> | undefined
+    const promoteSingleSheetTracker = (): Map<number, InitialWrittenColumnTracker> => {
+      writtenColumnsBySheetId = new Map()
+      if (singleSheetId !== undefined && singleSheetTracker !== undefined) {
+        writtenColumnsBySheetId.set(singleSheetId, singleSheetTracker)
+      }
+      singleSheetId = undefined
+      singleSheetTracker = undefined
+      return writtenColumnsBySheetId
+    }
     const markKnownColumn = (sheetId: number, col: number): void => {
-      writtenColumnsBySheetId ??= new Map()
-      let tracker = writtenColumnsBySheetId.get(sheetId)
+      if (!writtenColumnsBySheetId && (singleSheetId === undefined || singleSheetId === sheetId)) {
+        singleSheetId = sheetId
+        singleSheetTracker ??= createInitialWrittenColumnTracker()
+        markInitialWrittenColumn(singleSheetTracker, col)
+        return
+      }
+      const trackers = writtenColumnsBySheetId ?? promoteSingleSheetTracker()
+      let tracker = trackers.get(sheetId)
       if (!tracker) {
         tracker = createInitialWrittenColumnTracker()
-        writtenColumnsBySheetId.set(sheetId, tracker)
+        trackers.set(sheetId, tracker)
       }
       markInitialWrittenColumn(tracker, col)
     }
@@ -399,7 +417,13 @@ export function createEngineFormulaInitializationService(args: {
         markKnownColumn(sheetId, col)
       },
       flush() {
-        writtenColumnsBySheetId?.forEach((tracker, sheetId) => {
+        if (!writtenColumnsBySheetId) {
+          if (singleSheetId !== undefined && singleSheetTracker !== undefined && singleSheetTracker.count > 0) {
+            args.state.workbook.notifyColumnsWritten(singleSheetId, materializeInitialWrittenColumns(singleSheetTracker))
+          }
+          return
+        }
+        writtenColumnsBySheetId.forEach((tracker, sheetId) => {
           if (tracker.count > 0) {
             args.state.workbook.notifyColumnsWritten(sheetId, materializeInitialWrittenColumns(tracker))
           }
@@ -445,7 +469,7 @@ export function createEngineFormulaInitializationService(args: {
   }
 
   const evaluateInitialPrefixAggregateGroups = (
-    orderedCellIndices: readonly number[],
+    orderedCellIndices: InitialFormulaCellIndexList,
     pushChangedCellIndex: (cellIndex: number) => void,
     writeFormulaValue: (cellIndex: number, value: CellValue) => void,
   ): Set<number> | undefined => {
@@ -706,7 +730,7 @@ export function createEngineFormulaInitializationService(args: {
   }
 
   const evaluateInitialDirectFormulas = (
-    orderedCellIndices: readonly number[],
+    orderedCellIndices: InitialFormulaCellIndexList,
     options?: { readonly alreadyValidated?: boolean; readonly hasPrefixAggregateCandidates?: boolean },
   ): U32 | undefined => {
     if (
@@ -798,10 +822,10 @@ export function createEngineFormulaInitializationService(args: {
     let formulaChangedCount = 0
     let topologyChanged = false
     let compileMs = 0
-    const reservedNewCells = Math.max(potentialNewCells ?? refs.length, refs.length)
+    const reservedNewCells = potentialNewCells ?? refs.length
     const hadExistingFormulas = args.state.formulas.size > 0
     args.state.workbook.cellStore.ensureCapacity(args.state.workbook.cellStore.size + reservedNewCells)
-    args.ensureRecalcScratchCapacity(args.state.workbook.cellStore.capacity + 1)
+    args.ensureRecalcScratchCapacity(args.state.workbook.cellStore.size + reservedNewCells + 1)
     args.resetMaterializedCellScratch(reservedNewCells)
     const targetCellIndices = hadExistingFormulas ? EMPTY_U32 : new Uint32Array(refs.length)
     let maxTargetCellIndex = 0
@@ -822,22 +846,68 @@ export function createEngineFormulaInitializationService(args: {
     }
     let canAssignTopoInBatch = !hadExistingFormulas
     let nextTopoRank = 0
-    const orderedPreparedCellIndices: number[] = []
+    let orderedPreparedCellIndices: number[] | undefined = hadExistingFormulas ? [] : undefined
+    let orderedPreparedCellCount = 0
     let canUseInitialDirectEvaluation = false
     let allPreparedFormulasCanUseInitialDirectEvaluation = true
     let hasInitialPrefixAggregateCandidates = false
     let inlineInitialDirectScalarWriter: InitialFormulaValueWriter | undefined
-    let inlineInitialDirectScalarCellBuffer = new Uint32Array(Math.max(refs.length, 1))
+    let inlineInitialDirectScalarCellBuffer: Uint32Array | undefined = hadExistingFormulas
+      ? new Uint32Array(Math.max(refs.length, 1))
+      : undefined
     let inlineInitialDirectScalarCellCount = 0
     const deferredFormulaFamilyRuns = hadExistingFormulas ? undefined : new Map<string, DeferredInitialFormulaFamilyRun>()
 
-    const pushInlineInitialDirectScalarCell = (cellIndex: number): void => {
-      if (inlineInitialDirectScalarCellCount === inlineInitialDirectScalarCellBuffer.length) {
-        const next = new Uint32Array(inlineInitialDirectScalarCellBuffer.length * 2)
-        next.set(inlineInitialDirectScalarCellBuffer)
-        inlineInitialDirectScalarCellBuffer = next
+    const materializeOrderedPreparedCellIndices = (): number[] => {
+      if (orderedPreparedCellIndices) {
+        return orderedPreparedCellIndices
       }
-      inlineInitialDirectScalarCellBuffer[inlineInitialDirectScalarCellCount] = cellIndex
+      orderedPreparedCellIndices = []
+      for (let index = 0; index < orderedPreparedCellCount; index += 1) {
+        orderedPreparedCellIndices.push(targetCellIndices[index]!)
+      }
+      return orderedPreparedCellIndices
+    }
+    const pushOrderedPreparedCellIndex = (cellIndex: number): void => {
+      if (!hadExistingFormulas && orderedPreparedCellIndices === undefined) {
+        orderedPreparedCellCount += 1
+        return
+      }
+      materializeOrderedPreparedCellIndices().push(cellIndex)
+      orderedPreparedCellCount += 1
+    }
+    const noteSkippedOrderedPreparedCellIndex = (): void => {
+      if (!hadExistingFormulas && orderedPreparedCellIndices === undefined) {
+        materializeOrderedPreparedCellIndices()
+      }
+    }
+    const orderedPreparedCellList = (): InitialFormulaCellIndexList => orderedPreparedCellIndices ?? targetCellIndices
+
+    const materializeInlineInitialDirectScalarCellBuffer = (): Uint32Array => {
+      if (inlineInitialDirectScalarCellBuffer) {
+        return inlineInitialDirectScalarCellBuffer
+      }
+      inlineInitialDirectScalarCellBuffer = new Uint32Array(Math.max(refs.length, 1))
+      inlineInitialDirectScalarCellBuffer.set(targetCellIndices.subarray(0, inlineInitialDirectScalarCellCount))
+      return inlineInitialDirectScalarCellBuffer
+    }
+    const pushInlineInitialDirectScalarCell = (cellIndex: number): void => {
+      if (
+        !hadExistingFormulas &&
+        inlineInitialDirectScalarCellBuffer === undefined &&
+        cellIndex === targetCellIndices[inlineInitialDirectScalarCellCount]
+      ) {
+        inlineInitialDirectScalarCellCount += 1
+        return
+      }
+      let buffer = materializeInlineInitialDirectScalarCellBuffer()
+      if (inlineInitialDirectScalarCellCount === buffer.length) {
+        const next = new Uint32Array(buffer.length * 2)
+        next.set(buffer)
+        inlineInitialDirectScalarCellBuffer = next
+        buffer = next
+      }
+      buffer[inlineInitialDirectScalarCellCount] = cellIndex
       inlineInitialDirectScalarCellCount += 1
     }
 
@@ -921,7 +991,7 @@ export function createEngineFormulaInitializationService(args: {
               deferFormulaFamilyRegistration(prepared)
               formulaChangedCount = args.markFormulaChanged(prepared.cellIndex, formulaChangedCount)
               topologyChanged = true
-              orderedPreparedCellIndices.push(prepared.cellIndex)
+              pushOrderedPreparedCellIndex(prepared.cellIndex)
               if (canAssignTopoInBatch && pendingFormulaCells) {
                 const runtimeFormula = args.state.formulas.get(prepared.cellIndex)
                 if (!canEvaluateInitialDirectRuntimeFormula(runtimeFormula)) {
@@ -939,6 +1009,7 @@ export function createEngineFormulaInitializationService(args: {
                 }
               }
             } catch {
+              noteSkippedOrderedPreparedCellIndex()
               topologyChanged = args.removeFormula(cellIndex) || topologyChanged
               args.setInvalidFormulaValue(cellIndex)
               changedInputCount = args.markInputChanged(cellIndex, changedInputCount)
@@ -964,8 +1035,8 @@ export function createEngineFormulaInitializationService(args: {
         !hadExistingFormulas &&
         changedInputCount === 0 &&
         allPreparedFormulasCanUseInitialDirectEvaluation &&
-        orderedPreparedCellIndices.length <= INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT &&
-        orderedPreparedCellIndices.length === refs.length
+        orderedPreparedCellCount <= INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT &&
+        orderedPreparedCellCount === refs.length
       compileMs += performance.now() - compileStarted
     } finally {
       args.setBatchMutationDepth(args.getBatchMutationDepth() - 1)
@@ -989,20 +1060,22 @@ export function createEngineFormulaInitializationService(args: {
     if (args.hasVolatileFormulas?.() !== false) {
       formulaChangedCount = args.markVolatileFormulasChanged(formulaChangedCount)
     }
-    const useInitialDirectEvaluation = canUseInitialDirectEvaluation && formulaChangedCount === orderedPreparedCellIndices.length
+    const useInitialDirectEvaluation = canUseInitialDirectEvaluation && formulaChangedCount === orderedPreparedCellCount
     if (!useInitialDirectEvaluation) {
       args.prepareRegionQueryIndices()
     }
     let recalculated: U32
     if (
       useInitialDirectEvaluation &&
-      inlineInitialDirectScalarCellCount === orderedPreparedCellIndices.length &&
+      inlineInitialDirectScalarCellCount === orderedPreparedCellCount &&
       !hasInitialPrefixAggregateCandidates
     ) {
-      recalculated = inlineInitialDirectScalarCellBuffer.subarray(0, inlineInitialDirectScalarCellCount)
+      recalculated = inlineInitialDirectScalarCellBuffer
+        ? inlineInitialDirectScalarCellBuffer.subarray(0, inlineInitialDirectScalarCellCount)
+        : targetCellIndices
       args.deferKernelSync(recalculated)
     } else if (useInitialDirectEvaluation) {
-      const direct = evaluateInitialDirectFormulas(orderedPreparedCellIndices, {
+      const direct = evaluateInitialDirectFormulas(orderedPreparedCellList(), {
         alreadyValidated: true,
         hasPrefixAggregateCandidates: hasInitialPrefixAggregateCandidates,
       })
@@ -1017,8 +1090,8 @@ export function createEngineFormulaInitializationService(args: {
       const changedInputArray = args.getChangedInputBuffer().subarray(0, changedInputCount)
       const changedRoots = args.composeMutationRoots(changedInputCount, formulaChangedCount)
       recalculated =
-        canAssignTopoInBatch && !hadExistingFormulas && orderedPreparedCellIndices.length > 0
-          ? args.recalculatePreordered(changedRoots, orderedPreparedCellIndices, orderedPreparedCellIndices.length, changedInputArray)
+        canAssignTopoInBatch && !hadExistingFormulas && orderedPreparedCellCount > 0
+          ? args.recalculatePreordered(changedRoots, orderedPreparedCellList(), orderedPreparedCellCount, changedInputArray)
           : args.recalculate(changedRoots, changedInputArray)
     }
     recalculated = args.reconcilePivotOutputs(recalculated, false)
@@ -1117,10 +1190,10 @@ export function createEngineFormulaInitializationService(args: {
     const hadCycleMembersBeforeNow = (): boolean => (hadCycleMembersBefore ??= hasCycleMembersNow())
     let topologyChanged = false
     let compileMs = 0
-    const reservedNewCells = Math.max(potentialNewCells ?? refs.length, refs.length)
+    const reservedNewCells = potentialNewCells ?? refs.length
     const hadExistingFormulas = args.state.formulas.size > 0
     args.state.workbook.cellStore.ensureCapacity(args.state.workbook.cellStore.size + reservedNewCells)
-    args.ensureRecalcScratchCapacity(args.state.workbook.cellStore.capacity + 1)
+    args.ensureRecalcScratchCapacity(args.state.workbook.cellStore.size + reservedNewCells + 1)
     args.resetMaterializedCellScratch(reservedNewCells)
     const targetCellIndices = hadExistingFormulas
       ? []

@@ -197,7 +197,7 @@ export function prepareInitialMixedSheetLoad(args: {
   }
   return {
     formulaRefs,
-    potentialNewCells: formulaRefs.length,
+    potentialNewCells: 0,
   }
 }
 

@@ -428,13 +428,76 @@ describe('createSortedColumnSearchService', () => {
     ).toEqual({ handled: true, position: 4 })
   })
 
+  it('falls back to owner binary search for empty approximate lookups when summaries cannot answer', () => {
+    const workbook = new WorkbookStore('sorted-index-owner-empty-fallback')
+    const strings = new StringPool()
+    workbook.createSheet('Sheet1')
+
+    ;[1, 3, 5].forEach((value, index) => {
+      setStoredNumber(workbook, strings, `A${index + 1}`, value)
+    })
+    ;[5, 3, 1].forEach((value, index) => {
+      setStoredNumber(workbook, strings, `B${index + 1}`, value)
+    })
+    ;['apple', 'pear', 'plum'].forEach((value, index) => {
+      setStoredString(workbook, strings, `C${index + 1}`, value)
+    })
+
+    const sorted = createSorted(workbook, strings)
+    const ascendingPrepared = sorted.prepareVectorLookup({
+      sheetName: 'Sheet1',
+      rowStart: 0,
+      rowEnd: 2,
+      col: 0,
+    })
+    ascendingPrepared.uniformStart = undefined
+    ascendingPrepared.uniformStep = undefined
+    expect(
+      sorted.findPreparedVectorMatch({
+        lookupValue: { tag: ValueTag.Empty, value: null },
+        prepared: ascendingPrepared,
+        matchMode: 1,
+      }),
+    ).toEqual({ handled: true, position: undefined })
+
+    const descendingPrepared = sorted.prepareVectorLookup({
+      sheetName: 'Sheet1',
+      rowStart: 0,
+      rowEnd: 2,
+      col: 1,
+    })
+    descendingPrepared.uniformStart = undefined
+    descendingPrepared.uniformStep = undefined
+    expect(
+      sorted.findPreparedVectorMatch({
+        lookupValue: { tag: ValueTag.Empty, value: null },
+        prepared: descendingPrepared,
+        matchMode: -1,
+      }),
+    ).toEqual({ handled: true, position: 3 })
+
+    const textPrepared = sorted.prepareVectorLookup({
+      sheetName: 'Sheet1',
+      rowStart: 0,
+      rowEnd: 2,
+      col: 2,
+    })
+    expect(
+      sorted.findPreparedVectorMatch({
+        lookupValue: { tag: ValueTag.Empty, value: null },
+        prepared: textPrepared,
+        matchMode: 1,
+      }),
+    ).toEqual({ handled: true, position: undefined })
+  })
+
   it('covers fallback approximate indices when owner coverage is unavailable and invalidates on type-changing writes', () => {
     const strings = new StringPool()
     const columnVersions = new Uint32Array([0, 0])
     let structureVersion = 1
     let sheetAvailable = true
-    const numericTags = [ValueTag.Number, ValueTag.Number, ValueTag.Number, ValueTag.Number]
-    const numericNumbers = [1, 3, 5, 7]
+    const numericTags = [ValueTag.Number, ValueTag.Number, ValueTag.Number, ValueTag.Number, ValueTag.Number, ValueTag.Number]
+    const numericNumbers = [1, 1, 2, 2, 3, 3]
     const textTags = [ValueTag.String, ValueTag.String, ValueTag.String, ValueTag.String]
     const textIds = ['apple', 'banana', 'pear', 'plum'].map((value) => strings.intern(value))
 
@@ -452,7 +515,7 @@ describe('createSortedColumnSearchService', () => {
         rowStart: 0,
         rowEnd: 3,
         col,
-        length: 4,
+        length: col === 0 ? 6 : 4,
         columnVersion: columnVersions[col] ?? 0,
         structureVersion: 1,
         sheetColumnVersions: columnVersions,
@@ -532,19 +595,39 @@ describe('createSortedColumnSearchService', () => {
     const numericPrepared = sorted.prepareVectorLookup({
       sheetName: 'Sheet1',
       rowStart: 0,
-      rowEnd: 3,
+      rowEnd: 5,
       col: 0,
     })
     expect(numericPrepared.internalOwner).toBeUndefined()
     expect(numericPrepared.comparableKind).toBe('numeric')
+    expect(numericPrepared.repeatedUniformStart).toBe(1)
+    expect(numericPrepared.repeatedUniformStep).toBe(1)
+    expect(numericPrepared.repeatedUniformRunLength).toBe(2)
     expect(
       sorted.findPreparedVectorMatch({
-        lookupValue: { tag: ValueTag.Number, value: 6 },
+        lookupValue: { tag: ValueTag.Number, value: 2.5 },
         prepared: numericPrepared,
         matchMode: 1,
       }),
-    ).toEqual({ handled: true, position: 3 })
+    ).toEqual({ handled: true, position: 4 })
     expect(counters.approxIndexBuilds).toBe(1)
+
+    columnVersions[0] += 1
+    numericNumbers[5] = 4
+    sorted.recordLiteralWrite({
+      sheetName: 'Sheet1',
+      row: 5,
+      col: 0,
+      oldValue: { tag: ValueTag.Number, value: 3 },
+      newValue: { tag: ValueTag.Number, value: 4 },
+    })
+    expect(
+      sorted.findPreparedVectorMatch({
+        lookupValue: { tag: ValueTag.Number, value: 3.5 },
+        prepared: numericPrepared,
+        matchMode: 1,
+      }),
+    ).toEqual({ handled: true, position: 5 })
 
     const textPrepared = sorted.prepareVectorLookup({
       sheetName: 'Sheet1',
@@ -564,17 +647,17 @@ describe('createSortedColumnSearchService', () => {
     expect(counters.approxIndexBuilds).toBe(2)
     expect(
       sorted.findVectorMatch({
-        lookupValue: { tag: ValueTag.Number, value: 6 },
+        lookupValue: { tag: ValueTag.Number, value: 2.5 },
         sheetName: 'Sheet1',
         start: 'A1',
-        end: 'A4',
+        end: 'A6',
         startRow: 0,
-        endRow: 3,
+        endRow: 5,
         startCol: 0,
         endCol: 0,
         matchMode: 1,
       }),
-    ).toEqual({ handled: true, position: 3 })
+    ).toEqual({ handled: true, position: 4 })
     expect(
       sorted.findVectorMatch({
         lookupValue: { tag: ValueTag.Empty, value: null },
@@ -610,6 +693,25 @@ describe('createSortedColumnSearchService', () => {
         matchMode: 1,
       }),
     ).toEqual({ handled: false })
+
+    columnVersions[1] += 1
+    textIds[1] = strings.intern('blueberry')
+    sorted.recordLiteralWrite({
+      sheetName: 'Sheet1',
+      row: 1,
+      col: 1,
+      oldValue: { tag: ValueTag.String, value: 'banana' },
+      newValue: { tag: ValueTag.String, value: 'blueberry' },
+      oldStringId: strings.intern('banana'),
+      newStringId: textIds[1],
+    })
+    expect(
+      sorted.findPreparedVectorMatch({
+        lookupValue: { tag: ValueTag.String, value: 'BLUEBERRY' },
+        prepared: textPrepared,
+        matchMode: 1,
+      }),
+    ).toEqual({ handled: true, position: 2 })
 
     columnVersions[1] += 1
     textTags[2] = ValueTag.Boolean
@@ -841,6 +943,9 @@ describe('createSortedColumnSearchService', () => {
       comparableKind: 'numeric',
       uniformStart: 1,
       uniformStep: 2,
+      repeatedUniformStart: undefined,
+      repeatedUniformStep: undefined,
+      repeatedUniformRunLength: undefined,
       sortedAscending: true,
       sortedDescending: false,
       numericValues: new Float64Array([1, 3, 5]),
@@ -881,6 +986,37 @@ describe('createSortedColumnSearchService', () => {
         matchMode: 1,
       }),
     ).toEqual({ handled: true, position: 2 })
+
+    const ascendingRepeatedUniformPrepared: PreparedApproximateVectorLookup = {
+      ...ascendingBinaryPrepared,
+      repeatedUniformStart: 1,
+      repeatedUniformStep: 1,
+      repeatedUniformRunLength: 2,
+      numericValues: new Float64Array([1, 1, 2, 2, 3, 3]),
+      length: 6,
+      rowEnd: 5,
+    }
+    expect(
+      sorted.findPreparedVectorMatch({
+        lookupValue: { tag: ValueTag.Number, value: 2.5 },
+        prepared: ascendingRepeatedUniformPrepared,
+        matchMode: 1,
+      }),
+    ).toEqual({ handled: true, position: 4 })
+    expect(
+      sorted.findPreparedVectorMatch({
+        lookupValue: { tag: ValueTag.Number, value: 0 },
+        prepared: ascendingRepeatedUniformPrepared,
+        matchMode: 1,
+      }),
+    ).toEqual({ handled: true, position: undefined })
+    expect(
+      sorted.findPreparedVectorMatch({
+        lookupValue: { tag: ValueTag.Number, value: 10 },
+        prepared: ascendingRepeatedUniformPrepared,
+        matchMode: 1,
+      }),
+    ).toEqual({ handled: true, position: 6 })
 
     const emptyUniformPrepared: PreparedApproximateVectorLookup = {
       ...ascendingNumericPrepared,
@@ -941,6 +1077,50 @@ describe('createSortedColumnSearchService', () => {
         matchMode: -1,
       }),
     ).toEqual({ handled: true, position: 1 })
+
+    const descendingRepeatedUniformPrepared: PreparedApproximateVectorLookup = {
+      ...descendingBinaryPrepared,
+      repeatedUniformStart: 3,
+      repeatedUniformStep: -1,
+      repeatedUniformRunLength: 2,
+      numericValues: new Float64Array([3, 3, 2, 2, 1, 1]),
+      length: 6,
+      rowEnd: 5,
+    }
+    expect(
+      sorted.findPreparedVectorMatch({
+        lookupValue: { tag: ValueTag.Number, value: 1.5 },
+        prepared: descendingRepeatedUniformPrepared,
+        matchMode: -1,
+      }),
+    ).toEqual({ handled: true, position: 4 })
+    expect(
+      sorted.findPreparedVectorMatch({
+        lookupValue: { tag: ValueTag.Number, value: 10 },
+        prepared: descendingRepeatedUniformPrepared,
+        matchMode: -1,
+      }),
+    ).toEqual({ handled: true, position: undefined })
+    expect(
+      sorted.findPreparedVectorMatch({
+        lookupValue: { tag: ValueTag.Number, value: 0 },
+        prepared: descendingRepeatedUniformPrepared,
+        matchMode: -1,
+      }),
+    ).toEqual({ handled: true, position: 6 })
+
+    const emptyRepeatedUniformPrepared: PreparedApproximateVectorLookup = {
+      ...ascendingRepeatedUniformPrepared,
+      length: 0,
+      numericValues: new Float64Array(),
+    }
+    expect(
+      sorted.findPreparedVectorMatch({
+        lookupValue: { tag: ValueTag.Number, value: 2 },
+        prepared: emptyRepeatedUniformPrepared,
+        matchMode: 1,
+      }),
+    ).toEqual({ handled: true, position: undefined })
 
     const mismatchedUniformDirectionPrepared: PreparedApproximateVectorLookup = {
       ...descendingBinaryPrepared,

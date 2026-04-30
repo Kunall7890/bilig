@@ -717,6 +717,7 @@ export function createEngineServiceRuntime(args: {
     recalculate: (changedRoots, kernelSyncRoots) => requireService(recalc, 'recalc').recalculateNowSync(changedRoots, kernelSyncRoots),
     deferKernelSync: deferKernelSyncNow,
     evaluateDirectFormula: (cellIndex: number) => evaluation.evaluateDirectLookupFormulaNow(cellIndex),
+    exactLookup,
     sortedLookup,
     reconcilePivotOutputs: (baseChanged, forceAllPivots) =>
       requireService(recalc, 'recalc').reconcilePivotOutputsNow(baseChanged, forceAllPivots),

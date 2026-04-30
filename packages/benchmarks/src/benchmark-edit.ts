@@ -12,8 +12,8 @@ export interface EditBenchmarkResult {
   performanceCounters: EngineCounters
   verification: {
     terminalAddress: string
+    terminalValue: number
     expectedTerminalValue: number
-    terminalValue: number | null
   }
   memory: MemoryMeasurement
 }
@@ -30,8 +30,11 @@ export async function runEditBenchmark(downstreamCount = 10_000): Promise<EditBe
   const elapsed = performance.now() - started
   const memoryAfter = sampleMemory()
   const terminalAddress = `B${downstreamCount}`
-  const terminalCellValue = engine.getCellValue('Sheet1', terminalAddress)
-  const terminalValue = terminalCellValue.tag === ValueTag.Number ? terminalCellValue.value : null
+  const terminal = engine.getCellValue('Sheet1', terminalAddress)
+  const expectedTerminalValue = 99 * 2 + downstreamCount
+  if (terminal.tag !== ValueTag.Number || terminal.value !== expectedTerminalValue) {
+    throw new Error(`single-edit benchmark produced ${JSON.stringify(terminal)} at ${terminalAddress}; expected ${expectedTerminalValue}`)
+  }
 
   return {
     scenario: 'single-edit',
@@ -41,8 +44,8 @@ export async function runEditBenchmark(downstreamCount = 10_000): Promise<EditBe
     performanceCounters: engine.getPerformanceCounters(),
     verification: {
       terminalAddress,
-      expectedTerminalValue: 99 * 2 + downstreamCount,
-      terminalValue,
+      terminalValue: terminal.value,
+      expectedTerminalValue,
     },
     memory: measureMemory(memoryBefore, memoryAfter),
   }

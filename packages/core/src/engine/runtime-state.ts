@@ -128,6 +128,9 @@ export interface PreparedApproximateVectorLookup {
   comparableKind: 'numeric' | 'text' | undefined
   uniformStart: number | undefined
   uniformStep: number | undefined
+  repeatedUniformStart: number | undefined
+  repeatedUniformStep: number | undefined
+  repeatedUniformRunLength: number | undefined
   sortedAscending: boolean
   sortedDescending: boolean
   numericValues: Float64Array | undefined

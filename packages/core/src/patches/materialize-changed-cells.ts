@@ -257,7 +257,7 @@ export function materializeEnginePatches(args: MaterializeChangedCellsArgs, requ
   if (rangePatches.length === 0 && rowPatches.length === 0 && columnPatches.length === 0) {
     return materializeChangedCellPatches(args, request.changedCellIndices)
   }
-  if (request.invalidation === 'full' || request.changedCellIndices.length > INVALIDATION_CELL_PATCH_LIMIT) {
+  if (request.invalidation === 'full' || rowPatches.length > 0 || request.changedCellIndices.length > INVALIDATION_CELL_PATCH_LIMIT) {
     return [...rangePatches, ...rowPatches, ...columnPatches]
   }
   const cellPatches = materializeChangedCellPatches(args, request.changedCellIndices)

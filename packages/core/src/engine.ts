@@ -55,6 +55,7 @@ import { definedNameValuesEqual } from './engine-metadata-utils.js'
 import { buildFormatClearOps, buildFormatPatchOps, buildStyleClearOps, buildStylePatchOps } from './engine-range-format-ops.js'
 import { EngineEventBus } from './events.js'
 import { FormulaTable } from './formula-table.js'
+import { cloneDefinedNameValue } from './workbook-metadata-records.js'
 import { RangeRegistry } from './range-registry.js'
 import { RecalcScheduler } from './scheduler.js'
 import { selectCellSnapshot, selectMetrics, selectSelectionState, selectViewportCells } from './selectors.js'
@@ -467,6 +468,9 @@ export class SpreadsheetEngine {
         sortedLookup: {
           findPreparedVectorMatch: () => ({ handled: false }),
         },
+        exactLookup: {
+          findPreparedVectorMatch: () => ({ handled: false }),
+        },
         deferKernelSync: () => {
           return
         },
@@ -805,9 +809,9 @@ export class SpreadsheetEngine {
     const inverseOp: EngineOp =
       existing === undefined
         ? { kind: 'deleteDefinedName', name: trimmedName }
-        : { kind: 'upsertDefinedName', name: existing.name, value: structuredClone(existing.value) }
+        : { kind: 'upsertDefinedName', name: existing.name, value: cloneDefinedNameValue(existing.value) }
     this.undoStack.push({
-      forward: { kind: 'single-op', op: { kind: 'upsertDefinedName', name: trimmedName, value: structuredClone(value) } },
+      forward: { kind: 'single-op', op: { kind: 'upsertDefinedName', name: trimmedName, value: cloneDefinedNameValue(value) } },
       inverse: { kind: 'single-op', op: inverseOp },
     })
     this.redoStack.length = 0

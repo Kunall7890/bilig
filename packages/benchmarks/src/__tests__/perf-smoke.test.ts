@@ -11,7 +11,11 @@ describe('perf smoke', () => {
     expect(Math.max(result.metrics.dirtyFormulaCount, result.performanceCounters.directScalarDeltaApplications)).toBeGreaterThanOrEqual(100)
     expect(result.metrics.wasmFormulaCount).toBeGreaterThanOrEqual(0)
     expect(result.metrics.jsFormulaCount).toBe(0)
-    expect(result.verification.terminalValue).toBe(result.verification.expectedTerminalValue)
+    expect(result.verification).toEqual({
+      terminalAddress: 'B100',
+      terminalValue: 298,
+      expectedTerminalValue: 298,
+    })
   }, 30_000)
 
   it('retries once after building wasm when the first pass falls back to js', async () => {
@@ -114,6 +118,38 @@ describe('perf smoke', () => {
     })
 
     expect(result).toEqual(wasmReady)
+    expect(runBenchmark).toHaveBeenCalledTimes(1)
+    expect(buildWasm).not.toHaveBeenCalled()
+  })
+
+  it('does not build wasm when the direct formula fast path is semantically verified', async () => {
+    const directReady: PerfSmokeBenchmarkResult = {
+      elapsedMs: 5,
+      downstreamCount: 100,
+      metrics: {
+        changedInputCount: 1,
+        dirtyFormulaCount: 0,
+        wasmFormulaCount: 0,
+        jsFormulaCount: 0,
+      },
+      performanceCounters: {
+        directScalarDeltaApplications: 0,
+      },
+      verification: {
+        terminalAddress: 'B100',
+        terminalValue: 298,
+        expectedTerminalValue: 298,
+      },
+    }
+    const runBenchmark = vi.fn(async () => directReady)
+    const buildWasm = vi.fn(async () => {})
+
+    const result = await runPerfSmokeGate(100, {
+      runBenchmark,
+      buildWasm,
+    })
+
+    expect(result).toEqual(directReady)
     expect(runBenchmark).toHaveBeenCalledTimes(1)
     expect(buildWasm).not.toHaveBeenCalled()
   })

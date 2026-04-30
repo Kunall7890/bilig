@@ -429,6 +429,56 @@ describe('WorkPaper', () => {
     }
   })
 
+  it('updates indexed exact text lookup operands without dirty traversal or index rebuilds', () => {
+    const workbook = WorkPaper.buildFromSheets(
+      {
+        Bench: [
+          ['Key', 'Value', '', 'alpha', '=MATCH(D1,A2:A5,0)'],
+          ['alpha', 10],
+          ['bravo', 20],
+          ['charlie', 30],
+          ['delta', 40],
+        ],
+      },
+      { useColumnIndex: true },
+    )
+    const sheetId = workbook.getSheetId('Bench')!
+    workbook.resetPerformanceCounters()
+
+    const changes = workbook.setCellContents(cell(sheetId, 0, 3), 'delta')
+
+    expect(changes.map((change) => (change.kind === 'cell' ? `${change.sheetName}!${change.a1}` : ''))).toEqual(['Bench!D1', 'Bench!E1'])
+    expect(workbook.getCellValue(cell(sheetId, 0, 4))).toEqual({ tag: ValueTag.Number, value: 4 })
+    expect(workbook.getStats().lastMetrics).toMatchObject({ dirtyFormulaCount: 0, wasmFormulaCount: 0, jsFormulaCount: 0 })
+    expect(workbook.getPerformanceCounters()).toMatchObject({
+      directFormulaKernelSyncOnlyRecalcSkips: 1,
+      exactIndexBuilds: 0,
+      lookupOwnerBuilds: 0,
+    })
+  })
+
+  it('updates non-uniform approximate lookup operands through prepared numeric vectors', () => {
+    const rowCount = 64
+    const workbook = WorkPaper.buildFromSheets({
+      Bench: [
+        ['Key', 'Value', '', 20, `=MATCH(D1,A2:A${rowCount + 1},1)`],
+        ...Array.from({ length: rowCount }, (_, row) => [Math.ceil((row + 1) / 2), (row + 1) * 10]),
+      ],
+    })
+    const sheetId = workbook.getSheetId('Bench')!
+    workbook.resetPerformanceCounters()
+
+    const changes = workbook.setCellContents(cell(sheetId, 0, 3), 11)
+
+    expect(changes.map((change) => (change.kind === 'cell' ? `${change.sheetName}!${change.a1}` : ''))).toEqual(['Bench!D1', 'Bench!E1'])
+    expect(workbook.getCellValue(cell(sheetId, 0, 4))).toEqual({ tag: ValueTag.Number, value: 22 })
+    expect(workbook.getStats().lastMetrics).toMatchObject({ dirtyFormulaCount: 0, wasmFormulaCount: 0, jsFormulaCount: 0 })
+    expect(workbook.getPerformanceCounters()).toMatchObject({
+      directFormulaKernelSyncOnlyRecalcSkips: 1,
+      approxIndexBuilds: 0,
+    })
+  })
+
   it('uses bulk tracked indices for large literal batches without core patch payloads', () => {
     const rowCount = 600
     const workbook = WorkPaper.buildFromSheets({
@@ -464,6 +514,7 @@ describe('WorkPaper', () => {
     const captureVisibilitySnapshot = vi.spyOn(workbook, 'captureVisibilitySnapshot').mockImplementation(() => {
       throw new Error('large no-listener physical batches should not rebuild visibility snapshots')
     })
+    const dimensionUpdates = trackPrivateMethod(workbook, 'updateSheetDimensionsAfterCellMutationRefs')
     const genericReader = rejectSingleTrackedCellReader(workbook)
 
     try {
@@ -485,8 +536,10 @@ describe('WorkPaper', () => {
         tag: ValueTag.Number,
         value: (rowCount - 1) * 3 * ((rowCount - 1) * 5),
       })
+      expect(dimensionUpdates.count).toBe(0)
     } finally {
       genericReader.restore()
+      dimensionUpdates.restore()
       captureVisibilitySnapshot.mockRestore()
     }
   })
@@ -1562,6 +1615,38 @@ describe('WorkPaper', () => {
     expect(workbook.getCellValue(cell(sheetId, 0, 1))).toEqual({ tag: ValueTag.Number, value: 1 })
     expect(workbook.getCellValue(cell(sheetId, 2, 1))).toEqual({ tag: ValueTag.Number, value: 3 })
     expect(workbook.getCellValue(cell(sheetId, 4, 1))).toEqual({ tag: ValueTag.Number, value: 10 })
+    captureVisibilitySnapshot.mockRestore()
+  })
+
+  it('deletes repeated direct aggregate rows without visibility snapshots or dirty traversal', () => {
+    const rowCount = 256
+    const deleteRow = 127
+    const workbook = WorkPaper.buildFromSheets({
+      Sheet1: Array.from({ length: rowCount }, (_, row) => [row + 1, `=SUM(A1:A${row + 1})`]),
+    })
+    const sheetId = workbook.getSheetId('Sheet1')!
+    expect(hasCaptureVisibilitySnapshot(workbook)).toBe(true)
+    if (!hasCaptureVisibilitySnapshot(workbook)) {
+      throw new Error('Expected work paper runtime to expose captureVisibilitySnapshot in tests')
+    }
+    const captureVisibilitySnapshot = vi.spyOn(workbook, 'captureVisibilitySnapshot')
+    workbook.resetPerformanceCounters()
+
+    const changes = workbook.removeRows(sheetId, [deleteRow, 1])
+
+    expect(changes).toEqual([])
+    expect(captureVisibilitySnapshot).not.toHaveBeenCalled()
+    expect(workbook.getSheetDimensions(sheetId)).toEqual({ width: 2, height: rowCount - 1 })
+    expect(workbook.getCellValue(cell(sheetId, rowCount - 2, 1))).toEqual({
+      tag: ValueTag.Number,
+      value: (rowCount * (rowCount + 1)) / 2 - (deleteRow + 1),
+    })
+    expect(workbook.getStats().lastMetrics).toMatchObject({ dirtyFormulaCount: 0, wasmFormulaCount: 0, jsFormulaCount: 0 })
+    expect(workbook.getPerformanceCounters()).toMatchObject({
+      changedCellPayloadsBuilt: 0,
+      kernelSyncOnlyRecalcSkips: 1,
+      regionQueryIndexBuilds: 0,
+    })
     captureVisibilitySnapshot.mockRestore()
   })
 

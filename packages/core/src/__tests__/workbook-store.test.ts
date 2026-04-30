@@ -769,4 +769,38 @@ describe('WorkbookStore', () => {
     expect(counters.cellsRemapped).toBe(0)
     expect(counters.structuralSurvivorCellsRemapped).toBe(0)
   })
+
+  it('leaves delete-row survivors on stable identities without physical remaps', () => {
+    const counters = createEngineCounters()
+    const workbook = new WorkbookStore('planned-delete-row-logical-survivors', counters)
+    workbook.createSheet('Sheet1')
+
+    const deletedCellIndex = workbook.ensureCell('Sheet1', 'B2')
+    const shiftedCellIndex = workbook.ensureCell('Sheet1', 'B3')
+
+    const transaction = hasPlannedStructuralAxisTransform(workbook)
+      ? workbook.planStructuralAxisTransform('Sheet1', {
+          axis: 'row',
+          kind: 'delete',
+          start: 1,
+          count: 1,
+        })
+      : undefined
+
+    expect(transaction?.removedCellIndices).toEqual([deletedCellIndex])
+    expect(transaction?.remappedCells).toHaveLength(1)
+
+    if (transaction && hasPlannedStructuralAxisTransform(workbook)) {
+      workbook.deleteRows('Sheet1', 1, 1)
+      workbook.applyPlannedStructuralTransaction(transaction)
+    }
+
+    expect(workbook.getCellIndex('Sheet1', 'B2')).toBe(shiftedCellIndex)
+    expect(workbook.getCellIndex('Sheet1', 'B3')).toBeUndefined()
+    expect(workbook.getCellPosition(shiftedCellIndex)).toEqual({ sheetId: 1, row: 1, col: 1 })
+    expect(workbook.getCellPosition(deletedCellIndex)).toBeUndefined()
+    expect(workbook.cellStore.rows[shiftedCellIndex]).toBe(2)
+    expect(counters.cellsRemapped).toBe(0)
+    expect(counters.structuralSurvivorCellsRemapped).toBe(0)
+  })
 })

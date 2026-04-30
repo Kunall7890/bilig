@@ -67,6 +67,9 @@ export interface ApproximateRangeSummary {
   readonly comparableKind: 'numeric' | 'text' | undefined
   readonly uniformStart: number | undefined
   readonly uniformStep: number | undefined
+  readonly repeatedUniformStart: number | undefined
+  readonly repeatedUniformStep: number | undefined
+  readonly repeatedUniformRunLength: number | undefined
   readonly sortedAscending: boolean
   readonly sortedDescending: boolean
 }
@@ -511,6 +514,36 @@ function detectUniformNumericStepInOwner(
   return { start: first, step }
 }
 
+function detectRepeatedUniformNumericStepInOwner(
+  owner: LookupColumnOwner,
+  start: number,
+  end: number,
+): { start: number; step: number; runLength: number } | undefined {
+  const length = end - start + 1
+  if (length < 4) {
+    return undefined
+  }
+  const first = owner.numericValues[start]!
+  let runLength = 1
+  while (start + runLength <= end && owner.numericValues[start + runLength] === first) {
+    runLength += 1
+  }
+  if (runLength <= 1 || runLength >= length) {
+    return undefined
+  }
+  const step = owner.numericValues[start + runLength]! - first
+  if (!Number.isFinite(step) || step === 0) {
+    return undefined
+  }
+  for (let offset = start; offset <= end; offset += 1) {
+    const group = Math.floor((offset - start) / runLength)
+    if (owner.numericValues[offset]! !== first + step * group) {
+      return undefined
+    }
+  }
+  return { start: first, step, runLength }
+}
+
 export function findExactMatchInRange(
   owner: LookupColumnOwner,
   key: string,
@@ -822,10 +855,14 @@ export function summarizeApproximateRange(owner: LookupColumnOwner, rowStart: nu
   const numericDescending = supportsNumericApproximateRange(owner, rowStart, rowEnd, -1)
   if (numericAscending || numericDescending) {
     const uniform = detectUniformNumericStepInOwner(owner, bounds.start, bounds.end)
+    const repeatedUniform = uniform === undefined ? detectRepeatedUniformNumericStepInOwner(owner, bounds.start, bounds.end) : undefined
     return {
       comparableKind: 'numeric',
       uniformStart: uniform?.start,
       uniformStep: uniform?.step,
+      repeatedUniformStart: repeatedUniform?.start,
+      repeatedUniformStep: repeatedUniform?.step,
+      repeatedUniformRunLength: repeatedUniform?.runLength,
       sortedAscending: numericAscending,
       sortedDescending: numericDescending,
     }
@@ -837,6 +874,9 @@ export function summarizeApproximateRange(owner: LookupColumnOwner, rowStart: nu
       comparableKind: 'text',
       uniformStart: undefined,
       uniformStep: undefined,
+      repeatedUniformStart: undefined,
+      repeatedUniformStep: undefined,
+      repeatedUniformRunLength: undefined,
       sortedAscending: textAscending,
       sortedDescending: textDescending,
     }
@@ -845,6 +885,9 @@ export function summarizeApproximateRange(owner: LookupColumnOwner, rowStart: nu
     comparableKind: undefined,
     uniformStart: undefined,
     uniformStep: undefined,
+    repeatedUniformStart: undefined,
+    repeatedUniformStep: undefined,
+    repeatedUniformRunLength: undefined,
     sortedAscending: false,
     sortedDescending: false,
   }

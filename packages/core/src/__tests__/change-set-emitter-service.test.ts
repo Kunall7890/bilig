@@ -282,7 +282,7 @@ describe('EngineChangeSetEmitterService', () => {
     expect(changes.map((change) => `${change.sheetName}!${change.a1}`)).toEqual(['Sheet1!A1', '!B1', 'Sheet1!A1'])
   })
 
-  it('captures typed invalidation patches alongside changed cell patches', () => {
+  it('captures range invalidation patches alongside changed cell patches', () => {
     const engine = new SpreadsheetEngine({ workbookName: 'change-set-emitter-invalidations' })
     engine.createSheet('Sheet1')
     engine.setCellValue('Sheet1', 'A1', 1)
@@ -300,8 +300,8 @@ describe('EngineChangeSetEmitterService', () => {
     const patches = emitter.captureChangedPatches([a1!], {
       invalidation: 'cells',
       invalidatedRanges: [{ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'B2' }],
-      invalidatedRows: [{ sheetName: 'Sheet1', startIndex: 4, endIndex: 6 }],
-      invalidatedColumns: [{ sheetName: 'Sheet1', startIndex: 2, endIndex: 3 }],
+      invalidatedRows: [],
+      invalidatedColumns: [],
     })
 
     expect(patches).toEqual([
@@ -317,17 +317,41 @@ describe('EngineChangeSetEmitterService', () => {
         kind: 'range-invalidation',
         range: { sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'B2' },
       },
+    ])
+  })
+
+  it('uses row invalidation patches instead of redundant changed cell patches', () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'change-set-emitter-structural-invalidations' })
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 1)
+
+    const emitter = createEngineChangeSetEmitterService({
+      state: {
+        workbook: engine.workbook,
+        strings: engine.strings,
+      },
+    })
+
+    const a1 = engine.workbook.getCellIndex('Sheet1', 'A1')
+    expect(a1).toBeDefined()
+
+    const patches = emitter.captureChangedPatches([a1!], {
+      invalidation: 'cells',
+      invalidatedRanges: [{ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'B2' }],
+      invalidatedRows: [{ sheetName: 'Sheet1', startIndex: 4, endIndex: 6 }],
+      invalidatedColumns: [],
+    })
+
+    expect(patches).toEqual([
+      {
+        kind: 'range-invalidation',
+        range: { sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'B2' },
+      },
       {
         kind: 'row-invalidation',
         sheetName: 'Sheet1',
         startIndex: 4,
         endIndex: 6,
-      },
-      {
-        kind: 'column-invalidation',
-        sheetName: 'Sheet1',
-        startIndex: 2,
-        endIndex: 3,
       },
     ])
   })
