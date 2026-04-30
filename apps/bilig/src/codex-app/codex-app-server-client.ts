@@ -136,6 +136,10 @@ function isRequestId(value: unknown): value is CodexRequestId {
   return isString(value) || isFiniteNumber(value)
 }
 
+function isCodexCommandExecutionStatus(value: unknown): value is 'inProgress' | 'completed' | 'failed' {
+  return value === 'inProgress' || value === 'completed' || value === 'failed'
+}
+
 function isJsonValue(value: unknown): value is ParsedJsonValue {
   if (value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
     return true
@@ -355,6 +359,37 @@ function parseThreadItem(value: unknown): ParsedThreadItem | null {
         status: value['status'],
         contentItems,
         success: success ?? null,
+        durationMs: durationMs ?? null,
+      }
+    }
+    case 'commandExecution': {
+      const processId = value['processId']
+      const aggregatedOutput = value['aggregatedOutput']
+      const exitCode = value['exitCode']
+      const durationMs = value['durationMs']
+      if (
+        !isString(value['command']) ||
+        !isString(value['cwd']) ||
+        (processId !== undefined && processId !== null && !isString(processId)) ||
+        !isCodexCommandExecutionStatus(value['status']) ||
+        !Array.isArray(value['commandActions']) ||
+        !value['commandActions'].every((entry) => isJsonValue(entry)) ||
+        (aggregatedOutput !== undefined && aggregatedOutput !== null && !isString(aggregatedOutput)) ||
+        (exitCode !== undefined && exitCode !== null && !isFiniteNumber(exitCode)) ||
+        (durationMs !== undefined && durationMs !== null && !isFiniteNumber(durationMs))
+      ) {
+        return null
+      }
+      return {
+        type,
+        id,
+        command: value['command'],
+        cwd: value['cwd'],
+        processId: processId ?? null,
+        status: value['status'],
+        commandActions: value['commandActions'],
+        aggregatedOutput: aggregatedOutput ?? null,
+        exitCode: exitCode ?? null,
         durationMs: durationMs ?? null,
       }
     }
@@ -590,6 +625,37 @@ function parseServerNotification(value: unknown): CodexServerNotification | null
             },
           }
         : null
+    case 'item/commandExecution/outputDelta':
+      return isString(params['threadId']) && isString(params['turnId']) && isString(params['itemId']) && isString(params['delta'])
+        ? {
+            method,
+            params: {
+              threadId: params['threadId'],
+              turnId: params['turnId'],
+              itemId: params['itemId'],
+              delta: params['delta'],
+            },
+          }
+        : null
+    case 'item/commandExecution/terminalInteraction': {
+      const processId = params['processId']
+      return isString(params['threadId']) &&
+        isString(params['turnId']) &&
+        isString(params['itemId']) &&
+        (processId === undefined || processId === null || isString(processId)) &&
+        isString(params['stdin'])
+        ? {
+            method,
+            params: {
+              threadId: params['threadId'],
+              turnId: params['turnId'],
+              itemId: params['itemId'],
+              processId: processId ?? null,
+              stdin: params['stdin'],
+            },
+          }
+        : null
+    }
     case 'error': {
       if (params['message'] !== undefined && !isString(params['message'])) {
         return null

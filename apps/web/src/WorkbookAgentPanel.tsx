@@ -229,6 +229,14 @@ function isAppliedExecutionSystemEntry(entry: WorkbookAgentTimelineEntry): boole
   )
 }
 
+function isLegacyGenericCommandExecutionSystemEntry(entry: WorkbookAgentTimelineEntry): boolean {
+  return entry.kind === 'system' && entry.text === 'Codex emitted commandExecution.'
+}
+
+function isHiddenTimelineEntry(entry: WorkbookAgentTimelineEntry): boolean {
+  return isAppliedExecutionSystemEntry(entry) || isLegacyGenericCommandExecutionSystemEntry(entry)
+}
+
 function TextDisclosureEntryRow(props: { readonly entry: WorkbookAgentTimelineEntry; readonly label: 'Thought' | 'Plan' }) {
   const bodyText = props.entry.kind === 'reasoning' || props.entry.kind === 'plan' ? props.entry.text : null
   if (!bodyText?.trim().length) {
@@ -302,6 +310,7 @@ function WorkbookAgentEntryRow(props: { readonly entry: WorkbookAgentTimelineEnt
     const displayName = renderToolDisplayName(entry.toolName)
     const summary = summarizeToolEntry(entry)
     const parsedOutput = safeParseToolOutput(entry.outputText)
+    const isCommandExecution = entry.toolName === 'command_execution'
     const hasDetails = (entry.argumentsText?.trim().length ?? 0) > 0 || (entry.outputText?.trim().length ?? 0) > 0
     if (!hasDetails) {
       return (
@@ -348,7 +357,7 @@ function WorkbookAgentEntryRow(props: { readonly entry: WorkbookAgentTimelineEnt
         {entry.outputText?.trim().length ? (
           <div className={entry.argumentsText?.trim().length ? 'mt-2' : undefined}>
             <div className={agentPanelEyebrowTextClass()}>Output</div>
-            {parsedOutput !== null ? (
+            {parsedOutput !== null && !isCommandExecution ? (
               <StructuredToolOutput toolName={entry.toolName} outputText={entry.outputText} />
             ) : (
               <pre
@@ -367,7 +376,7 @@ function WorkbookAgentEntryRow(props: { readonly entry: WorkbookAgentTimelineEnt
     )
   }
 
-  if (isAppliedExecutionSystemEntry(entry)) {
+  if (isHiddenTimelineEntry(entry)) {
     return null
   }
 
@@ -710,10 +719,10 @@ export function WorkbookAgentPanel(props: {
   }, [props.draft])
 
   const isRunning = props.snapshot?.status === 'inProgress'
-  const visibleEntries = [...optimisticEntries, ...(props.snapshot?.entries ?? [])]
+  const visibleEntries = [...optimisticEntries, ...(props.snapshot?.entries ?? [])].filter((entry) => !isHiddenTimelineEntry(entry))
   const progressAnchorIndex =
     props.showAssistantProgress && props.activeResponseTurnId
-      ? visibleEntries.findLastIndex((entry) => entry.turnId === props.activeResponseTurnId && !isAppliedExecutionSystemEntry(entry))
+      ? visibleEntries.findLastIndex((entry) => entry.turnId === props.activeResponseTurnId && !isHiddenTimelineEntry(entry))
       : -1
 
   return (

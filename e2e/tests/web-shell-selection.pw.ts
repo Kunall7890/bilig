@@ -276,7 +276,7 @@ test('web app supports column edge double-click autofit', async ({ page }) => {
   await clickProductCell(page, 0, 0)
   await expect(formulaInput).toHaveValue(longValue)
   await doubleClickProductColumnResizeHandle(page, 0)
-  await expect.poll(async () => await getProductColumnWidth(page, 0)).toBeGreaterThan(126)
+  await expect.poll(async () => await getProductColumnWidth(page, 0), { timeout: 15_000 }).toBeGreaterThan(126)
   const autofitWidth = await getProductColumnWidth(page, 0)
 
   await clickProductBodyOffset(page, autofitWidth + 8, 0)

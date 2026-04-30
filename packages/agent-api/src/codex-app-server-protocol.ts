@@ -30,6 +30,7 @@ export type CodexThreadStatus =
   | { type: 'active'; activeFlags: CodexThreadActiveFlag[] }
 export type CodexSessionSource = 'cli' | 'vscode' | 'exec' | 'appServer' | 'unknown' | { custom: string } | { subAgent: JsonValue }
 export type CodexDynamicToolCallStatus = 'inProgress' | 'completed' | 'failed'
+export type CodexCommandExecutionStatus = 'inProgress' | 'completed' | 'failed'
 
 export interface CodexClientInfo {
   name: string
@@ -205,6 +206,18 @@ export type CodexThreadItem =
       durationMs?: number | null
     }
   | {
+      type: 'commandExecution'
+      id: string
+      command: string
+      cwd: string
+      processId: string | null
+      status: CodexCommandExecutionStatus
+      commandActions: JsonValue[]
+      aggregatedOutput: string | null
+      exitCode: number | null
+      durationMs: number | null
+    }
+  | {
       type: 'webSearch'
       id: string
       query: string
@@ -318,6 +331,25 @@ export type CodexServerNotification =
         turnId: string
         itemId: string
         summaryIndex?: number
+      }
+    }
+  | {
+      method: 'item/commandExecution/outputDelta'
+      params: {
+        threadId: string
+        turnId: string
+        itemId: string
+        delta: string
+      }
+    }
+  | {
+      method: 'item/commandExecution/terminalInteraction'
+      params: {
+        threadId: string
+        turnId: string
+        itemId: string
+        processId: string | null
+        stdin: string
       }
     }
   | {

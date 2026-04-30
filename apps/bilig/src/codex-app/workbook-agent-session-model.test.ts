@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { CodexThreadItem } from '@bilig/agent-api'
-import { mapThreadItemToEntry } from './workbook-agent-session-model.js'
+import { appendCommandExecutionOutput, decodeCommandExecutionOutput, mapThreadItemToEntry } from './workbook-agent-session-model.js'
 
 describe('workbook-agent-session-model', () => {
   it('maps reasoning items with summary arrays into reasoning timeline entries', () => {
@@ -89,6 +89,67 @@ describe('workbook-agent-session-model', () => {
         kind: 'tool',
         toolName: 'read_workbook',
         toolStatus: 'completed',
+      }),
+    )
+  })
+
+  it('maps command execution items into command timeline entries with decoded output', () => {
+    const entry = mapThreadItemToEntry(
+      {
+        type: 'commandExecution',
+        id: 'cmd-1',
+        command: 'printf hi',
+        cwd: '/Users/gregkonush/github.com/bilig',
+        processId: null,
+        status: 'completed',
+        commandActions: [],
+        aggregatedOutput: 'aGkNCg==',
+        exitCode: 0,
+        durationMs: 12,
+      } satisfies CodexThreadItem,
+      'turn-1',
+    )
+
+    expect(entry).toEqual(
+      expect.objectContaining({
+        id: 'cmd-1',
+        kind: 'tool',
+        turnId: 'turn-1',
+        toolName: 'command_execution',
+        toolStatus: 'completed',
+        outputText: 'hi\r\n',
+        success: true,
+      }),
+    )
+    expect(entry.argumentsText).toContain('"command": "printf hi"')
+    expect(entry.text).toBeNull()
+  })
+
+  it('appends decoded command execution output deltas without losing tool identity', () => {
+    const firstDelta = decodeCommandExecutionOutput('Zmlyc3QK')
+    const entry = appendCommandExecutionOutput(
+      {
+        id: 'cmd-1',
+        kind: 'system',
+        turnId: 'turn-1',
+        text: 'Codex emitted commandExecution.',
+        phase: null,
+        toolName: null,
+        toolStatus: null,
+        argumentsText: null,
+        outputText: null,
+        success: null,
+        citations: [],
+      },
+      firstDelta,
+    )
+
+    expect(entry).toEqual(
+      expect.objectContaining({
+        kind: 'tool',
+        toolName: 'command_execution',
+        toolStatus: 'inProgress',
+        outputText: 'first\n',
       }),
     )
   })

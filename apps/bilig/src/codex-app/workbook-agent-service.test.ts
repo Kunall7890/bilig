@@ -578,6 +578,126 @@ describe('workbook agent service', () => {
     }
   })
 
+  it('streams command execution output into first-class command timeline entries', async () => {
+    const fakeCodex = new FakeCodexTransport()
+    const service = createWorkbookAgentService(createZeroSyncStub(), {
+      codexClientFactory: (_options: CodexAppServerClientOptions): CodexAppServerTransport => fakeCodex,
+      maxCodexClients: 1,
+    })
+
+    try {
+      const snapshot = await service.createSession({
+        documentId: 'doc-1',
+        session: {
+          userID: 'alex@example.com',
+          roles: ['editor'],
+        },
+        body: {},
+      })
+
+      const events: unknown[] = []
+      const unsubscribe = service.subscribe(snapshot.threadId, (event) => {
+        events.push(event)
+      })
+
+      await service.startTurn({
+        documentId: 'doc-1',
+        threadId: 'thr-test',
+        session: {
+          userID: 'alex@example.com',
+          roles: ['editor'],
+        },
+        body: {
+          prompt: 'Run a command',
+        },
+      })
+
+      fakeCodex.emit({
+        method: 'item/started',
+        params: {
+          threadId: 'thr-test',
+          turnId: 'turn-1',
+          item: {
+            type: 'commandExecution',
+            id: 'cmd-1',
+            command: 'printf hi',
+            cwd: '/Users/gregkonush/github.com/bilig',
+            processId: null,
+            status: 'inProgress',
+            commandActions: [],
+            aggregatedOutput: null,
+            exitCode: null,
+            durationMs: null,
+          },
+        },
+      })
+      fakeCodex.emit({
+        method: 'item/commandExecution/outputDelta',
+        params: {
+          threadId: 'thr-test',
+          turnId: 'turn-1',
+          itemId: 'cmd-1',
+          delta: 'aGkNCg==',
+        },
+      })
+      fakeCodex.emit({
+        method: 'item/completed',
+        params: {
+          threadId: 'thr-test',
+          turnId: 'turn-1',
+          item: {
+            type: 'commandExecution',
+            id: 'cmd-1',
+            command: 'printf hi',
+            cwd: '/Users/gregkonush/github.com/bilig',
+            processId: null,
+            status: 'completed',
+            commandActions: [],
+            aggregatedOutput: 'aGkNCg==',
+            exitCode: 0,
+            durationMs: 12,
+          },
+        },
+      })
+
+      await vi.waitFor(() => {
+        const finalSnapshot = service.getSnapshot({
+          documentId: 'doc-1',
+          threadId: 'thr-test',
+          session: {
+            userID: 'alex@example.com',
+            roles: ['editor'],
+          },
+        })
+        expect(finalSnapshot.entries).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              id: 'cmd-1',
+              kind: 'tool',
+              toolName: 'command_execution',
+              toolStatus: 'completed',
+              outputText: 'hi\r\n',
+              success: true,
+            }),
+          ]),
+        )
+        expect(finalSnapshot.entries.some((entry) => entry.text === 'Codex emitted commandExecution.')).toBe(false)
+      })
+      await vi.waitFor(() => {
+        expect(events).toContainEqual({
+          type: 'entryToolOutputDelta',
+          turnId: 'turn-1',
+          itemId: 'cmd-1',
+          delta: 'hi\r\n',
+        })
+      })
+
+      unsubscribe()
+    } finally {
+      await service.close()
+    }
+  })
+
   it('enforces per-user active turn quotas across sessions', async () => {
     const fakeCodex = new FakeCodexTransport()
     fakeCodex.uniqueThreadStart = true

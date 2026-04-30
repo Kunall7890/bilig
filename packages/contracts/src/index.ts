@@ -256,6 +256,12 @@ export const WorkbookAgentStreamEventSchema = Schema.Union(
     turnId: Schema.String,
     delta: Schema.String,
   }),
+  Schema.Struct({
+    type: Schema.Literal('entryToolOutputDelta'),
+    itemId: Schema.String,
+    turnId: Schema.String,
+    delta: Schema.String,
+  }),
 )
 export type WorkbookAgentStreamEvent = Schema.Schema.Type<typeof WorkbookAgentStreamEventSchema>
 

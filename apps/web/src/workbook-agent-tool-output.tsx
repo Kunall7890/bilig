@@ -104,6 +104,9 @@ export function renderToolDisplayName(toolName: string | null): string {
   if (!normalizedToolName) {
     return 'Tool call'
   }
+  if (normalizedToolName === 'command_execution') {
+    return 'Command'
+  }
   return normalizedToolName
     .split('_')
     .map((segment) => (segment.length === 0 ? segment : `${segment[0]!.toUpperCase()}${segment.slice(1)}`))
@@ -111,6 +114,20 @@ export function renderToolDisplayName(toolName: string | null): string {
 }
 
 export function summarizeToolEntry(entry: WorkbookAgentTimelineEntry): string | null {
+  if (entry.toolName === 'command_execution') {
+    const parsedArguments = safeParseToolOutput(entry.argumentsText)
+    const command = isRecord(parsedArguments) ? readString(parsedArguments['command']) : ''
+    const exitCode = isRecord(parsedArguments) ? parsedArguments['exitCode'] : null
+    const durationMs = isRecord(parsedArguments) ? parsedArguments['durationMs'] : null
+    const segments = [
+      command ? `$ ${command}` : null,
+      typeof exitCode === 'number' ? `exit ${String(exitCode)}` : null,
+      typeof durationMs === 'number' ? `${String(Math.round(durationMs))} ms` : null,
+    ].filter((segment) => segment !== null)
+    if (segments.length > 0) {
+      return summarizePlainText(segments.join(' · '), 96)
+    }
+  }
   const parsed = safeParseToolOutput(entry.outputText)
   if (isRecord(parsed)) {
     if (typeof parsed['summary'] === 'string') {

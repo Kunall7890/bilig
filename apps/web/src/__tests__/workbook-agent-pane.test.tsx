@@ -1663,6 +1663,93 @@ describe('workbook agent pane', () => {
     })
   })
 
+  it('streams command execution output deltas into command tool rows', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    window.sessionStorage.setItem(
+      'bilig:workbook-agent:doc-1',
+      JSON.stringify({
+        threadId: 'thr-1',
+      }),
+    )
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = requestUrl(input)
+        if (url.endsWith('/chat/threads/thr-1') && requestMethod(init) === 'GET') {
+          return new Response(
+            JSON.stringify(
+              createSnapshot({
+                entries: [
+                  {
+                    id: 'cmd-1',
+                    kind: 'system',
+                    turnId: 'turn-1',
+                    text: 'Codex emitted commandExecution.',
+                    phase: null,
+                    toolName: null,
+                    toolStatus: null,
+                    argumentsText: null,
+                    outputText: null,
+                    success: null,
+                  },
+                ],
+              }),
+            ),
+            {
+              status: 200,
+              headers: { 'content-type': 'application/json' },
+            },
+          )
+        }
+        return new Response(
+          JSON.stringify({
+            ok: true,
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        )
+      }),
+    )
+
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+
+    await act(async () => {
+      root.render(<AgentHarness />)
+    })
+
+    expect(host.querySelector("[data-testid='workbook-agent-panel']")?.textContent).not.toContain('Codex emitted commandExecution.')
+    expect(host.querySelector("[data-testid='workbook-agent-empty-state']")).not.toBeNull()
+
+    await act(async () => {
+      MockEventSource.latest?.emit({
+        type: 'entryToolOutputDelta',
+        itemId: 'cmd-1',
+        turnId: 'turn-1',
+        delta: 'hi\n',
+      })
+    })
+
+    expect(host.querySelector("[data-testid='workbook-agent-panel']")?.textContent).toContain('Command')
+    expect(host.querySelector("[data-testid='workbook-agent-panel']")?.textContent).not.toContain('Codex emitted commandExecution.')
+
+    const toggle = host.querySelector("[data-testid='workbook-agent-tool-toggle-cmd-1']")
+    expect(toggle instanceof HTMLButtonElement).toBe(true)
+
+    await act(async () => {
+      if (!(toggle instanceof HTMLButtonElement)) {
+        throw new Error('Command execution toggle not found')
+      }
+      toggle.click()
+    })
+
+    expect(host.querySelector("[data-testid='workbook-agent-panel']")?.textContent).toContain('hi')
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
   it('renders reasoning text immediately from streamed deltas without waiting for a snapshot refresh', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
     window.sessionStorage.setItem(

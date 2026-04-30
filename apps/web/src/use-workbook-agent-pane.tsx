@@ -124,7 +124,7 @@ function createTextEntryFromDelta(event: Extract<WorkbookAgentStreamEvent, { typ
   } satisfies WorkbookAgentTimelineEntry
 }
 
-function updateSnapshotFromDelta(
+function updateSnapshotFromTextDelta(
   snapshot: WorkbookAgentThreadSnapshot | null,
   event: Extract<WorkbookAgentStreamEvent, { type: 'entryTextDelta' }>,
 ): WorkbookAgentThreadSnapshot | null {
@@ -148,6 +148,52 @@ function updateSnapshotFromDelta(
         }
       })
       return matched ? nextEntries : [...nextEntries, createTextEntryFromDelta(event)]
+    })(),
+  }
+}
+
+function createToolEntryFromOutputDelta(event: Extract<WorkbookAgentStreamEvent, { type: 'entryToolOutputDelta' }>) {
+  return {
+    id: event.itemId,
+    kind: 'tool',
+    turnId: event.turnId,
+    text: null,
+    phase: null,
+    toolName: 'command_execution',
+    toolStatus: 'inProgress',
+    argumentsText: null,
+    outputText: event.delta,
+    success: null,
+    citations: [],
+  } satisfies WorkbookAgentTimelineEntry
+}
+
+function updateSnapshotFromToolOutputDelta(
+  snapshot: WorkbookAgentThreadSnapshot | null,
+  event: Extract<WorkbookAgentStreamEvent, { type: 'entryToolOutputDelta' }>,
+): WorkbookAgentThreadSnapshot | null {
+  if (!snapshot) {
+    return snapshot
+  }
+  let matched = false
+  return {
+    ...snapshot,
+    entries: (() => {
+      const nextEntries = snapshot.entries.map((entry) => {
+        if (entry.id !== event.itemId) {
+          return entry
+        }
+        matched = true
+        return {
+          ...entry,
+          kind: 'tool',
+          turnId: event.turnId,
+          toolName: entry.toolName ?? 'command_execution',
+          toolStatus: entry.toolStatus ?? 'inProgress',
+          outputText: `${entry.outputText ?? ''}${event.delta}`,
+        } satisfies WorkbookAgentTimelineEntry
+      })
+      return matched ? nextEntries : [...nextEntries, createToolEntryFromOutputDelta(event)]
     })(),
   }
 }
@@ -453,7 +499,11 @@ export function useWorkbookAgentPane(input: {
             setError(null)
             return
           }
-          setSnapshot((current: WorkbookAgentThreadSnapshot | null) => updateSnapshotFromDelta(current, event))
+          setSnapshot((current: WorkbookAgentThreadSnapshot | null) =>
+            event.type === 'entryTextDelta'
+              ? updateSnapshotFromTextDelta(current, event)
+              : updateSnapshotFromToolOutputDelta(current, event),
+          )
           if (event.type === 'entryTextDelta' && event.entryKind === 'assistant') {
             perfSession.markFirstAssistantDeltaVisible?.()
           }

@@ -1,6 +1,13 @@
 import type { CodexServerNotification } from '@bilig/agent-api'
 import type { WorkbookAgentStreamEvent, WorkbookAgentTextEntryKind } from '@bilig/contracts'
-import { createSystemEntry, createTextTimelineEntry, mapThreadItemToEntry } from './workbook-agent-session-model.js'
+import {
+  appendCommandExecutionOutput,
+  createCommandExecutionOutputEntry,
+  createSystemEntry,
+  createTextTimelineEntry,
+  decodeCommandExecutionOutput,
+  mapThreadItemToEntry,
+} from './workbook-agent-session-model.js'
 import {
   type WorkbookAgentThreadState,
   normalizeCodexNotificationErrorMessage,
@@ -51,61 +58,71 @@ export async function routeWorkbookAgentCodexNotification(input: {
     })
   }
 
-  switch (input.notification.method) {
+  const notification = input.notification
+
+  switch (notification.method) {
     case 'thread/started':
       return
     case 'turn/started': {
-      const sessionState = input.tryGetSessionByThreadId(input.notification.params.threadId)
+      const sessionState = input.tryGetSessionByThreadId(notification.params.threadId)
       if (!sessionState) {
         return
       }
-      sessionState.live.activeTurnId = input.notification.params.turn.id
+      sessionState.live.activeTurnId = notification.params.turn.id
       sessionState.live.status = 'inProgress'
       sessionState.live.lastError = null
       input.emitSnapshot(sessionState.threadId)
       return
     }
     case 'turn/completed': {
-      const sessionState = input.tryGetSessionByThreadId(input.notification.params.threadId)
+      const sessionState = input.tryGetSessionByThreadId(notification.params.threadId)
       if (!sessionState) {
         return
       }
       sessionState.live.activeTurnId = null
-      sessionState.live.status = input.notification.params.turn.status === 'failed' || sessionState.live.lastError ? 'failed' : 'idle'
-      if (input.notification.params.turn.error?.message) {
-        sessionState.live.lastError = input.notification.params.turn.error.message
+      sessionState.live.status = notification.params.turn.status === 'failed' || sessionState.live.lastError ? 'failed' : 'idle'
+      if (notification.params.turn.error?.message) {
+        sessionState.live.lastError = notification.params.turn.error.message
       }
       await input.finalizeCompletedTurn?.(
         sessionState,
-        input.notification.params.turn.id,
-        input.notification.params.turn.status === 'failed' ? 'failed' : 'completed',
+        notification.params.turn.id,
+        notification.params.turn.status === 'failed' ? 'failed' : 'completed',
       )
-      sessionState.live.status = input.notification.params.turn.status === 'failed' || sessionState.live.lastError ? 'failed' : 'idle'
-      if (input.notification.params.turn.error?.message) {
-        sessionState.live.lastError = input.notification.params.turn.error.message
+      sessionState.live.status = notification.params.turn.status === 'failed' || sessionState.live.lastError ? 'failed' : 'idle'
+      if (notification.params.turn.error?.message) {
+        sessionState.live.lastError = notification.params.turn.error.message
       }
-      sessionState.live.promptByTurn.delete(input.notification.params.turn.id)
-      sessionState.live.turnActorUserIdByTurn.delete(input.notification.params.turn.id)
-      sessionState.live.turnContextByTurn.delete(input.notification.params.turn.id)
-      sessionState.live.stagedPrivateBundleByTurn.delete(input.notification.params.turn.id)
+      sessionState.live.promptByTurn.delete(notification.params.turn.id)
+      sessionState.live.turnActorUserIdByTurn.delete(notification.params.turn.id)
+      sessionState.live.turnContextByTurn.delete(notification.params.turn.id)
+      sessionState.live.stagedPrivateBundleByTurn.delete(notification.params.turn.id)
       await input.persistSessionState(sessionState)
       input.emitSnapshot(sessionState.threadId)
       return
     }
     case 'item/started':
     case 'item/completed': {
-      const sessionState = input.tryGetSessionByThreadId(input.notification.params.threadId)
+      const params = notification.params
+      const sessionState = input.tryGetSessionByThreadId(params.threadId)
       if (!sessionState) {
         return
       }
-      const optimisticUserEntryId = sessionState.live.optimisticUserEntryIdByTurn.get(input.notification.params.turnId)
-      if (input.notification.params.item.type === 'userMessage' && optimisticUserEntryId) {
+      const optimisticUserEntryId = sessionState.live.optimisticUserEntryIdByTurn.get(params.turnId)
+      if (params.item.type === 'userMessage' && optimisticUserEntryId) {
         sessionState.durable.entries = removeEntry(sessionState.durable.entries, optimisticUserEntryId)
-        sessionState.live.optimisticUserEntryIdByTurn.delete(input.notification.params.turnId)
+        sessionState.live.optimisticUserEntryIdByTurn.delete(params.turnId)
       }
+      const existingEntry = sessionState.durable.entries.find((entry) => entry.id === params.item.id)
+      const mappedEntry = mapThreadItemToEntry(params.item, params.turnId)
       sessionState.durable.entries = upsertEntry(
         sessionState.durable.entries,
-        mapThreadItemToEntry(input.notification.params.item, input.notification.params.turnId),
+        params.item.type === 'commandExecution' && mappedEntry.outputText === null && existingEntry?.outputText
+          ? {
+              ...mappedEntry,
+              outputText: existingEntry.outputText,
+            }
+          : mappedEntry,
       )
       await input.persistSessionState(sessionState)
       input.emitSnapshot(sessionState.threadId)
@@ -113,14 +130,14 @@ export async function routeWorkbookAgentCodexNotification(input: {
     }
     case 'item/agentMessage/delta': {
       await appendTextDelta({
-        ...input.notification.params,
+        ...notification.params,
         entryKind: 'assistant',
       })
       return
     }
     case 'item/plan/delta': {
       await appendTextDelta({
-        ...input.notification.params,
+        ...notification.params,
         entryKind: 'plan',
       })
       return
@@ -129,12 +146,41 @@ export async function routeWorkbookAgentCodexNotification(input: {
     case 'item/reasoning/textDelta':
     case 'item/reasoning/summaryTextDelta': {
       await appendTextDelta({
-        ...input.notification.params,
+        ...notification.params,
         entryKind: 'reasoning',
       })
       return
     }
     case 'item/reasoning/summaryPartAdded':
+      return
+    case 'item/commandExecution/outputDelta': {
+      const params = notification.params
+      const sessionState = input.tryGetSessionByThreadId(params.threadId)
+      if (!sessionState) {
+        return
+      }
+      const delta = decodeCommandExecutionOutput(params.delta)
+      const existing = sessionState.durable.entries.find((entry) => entry.id === params.itemId)
+      sessionState.durable.entries = upsertEntry(
+        sessionState.durable.entries,
+        existing
+          ? appendCommandExecutionOutput(existing, delta)
+          : createCommandExecutionOutputEntry({
+              id: params.itemId,
+              turnId: params.turnId,
+              outputText: delta,
+            }),
+      )
+      await input.persistSessionState(sessionState)
+      input.emit(sessionState.threadId, {
+        type: 'entryToolOutputDelta',
+        itemId: params.itemId,
+        turnId: params.turnId,
+        delta,
+      })
+      return
+    }
+    case 'item/commandExecution/terminalInteraction':
       return
     case 'error': {
       const message = normalizeCodexNotificationErrorMessage(input.notification)

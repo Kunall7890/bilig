@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer'
 import { normalizeWorkbookAgentToolName, type CodexThread, type CodexThreadItem } from '@bilig/agent-api'
 import type {
   WorkbookAgentTextEntryKind,
@@ -6,6 +7,8 @@ import type {
   WorkbookAgentUiContext,
 } from '@bilig/contracts'
 import { z } from 'zod'
+
+export const COMMAND_EXECUTION_TOOL_NAME = 'command_execution'
 
 const workbookAgentRenderedRangeSchema = z.object({
   range: z.object({
@@ -326,6 +329,253 @@ function isDynamicToolCallItem(item: CodexThreadItem): item is Extract<CodexThre
   )
 }
 
+function isCommandExecutionItem(item: CodexThreadItem): item is Extract<CodexThreadItem, { type: 'commandExecution' }> {
+  return (
+    item.type === 'commandExecution' &&
+    typeof item.command === 'string' &&
+    typeof item.cwd === 'string' &&
+    (item.status === 'inProgress' || item.status === 'completed' || item.status === 'failed') &&
+    (item.processId === null || typeof item.processId === 'string') &&
+    (item.aggregatedOutput === null || typeof item.aggregatedOutput === 'string') &&
+    (item.exitCode === null || typeof item.exitCode === 'number') &&
+    (item.durationMs === null || typeof item.durationMs === 'number')
+  )
+}
+
+function looksMostlyPrintable(value: string): boolean {
+  if (value.length === 0 || value.includes('\uFFFD')) {
+    return false
+  }
+  let printable = 0
+  let nonWhitespace = 0
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index)
+    if (code === 9 || code === 10 || code === 13) {
+      printable += 1
+      continue
+    }
+    if (code >= 32 && code !== 127) {
+      printable += 1
+      if (code !== 32) {
+        nonWhitespace += 1
+      }
+    }
+  }
+  return nonWhitespace > 0 && printable / value.length >= 0.9
+}
+
+function stripAnsiControlSequences(input: string): string {
+  const output: string[] = []
+  let index = 0
+  while (index < input.length) {
+    const char = input.charAt(index)
+    if (char !== '\u001b') {
+      output.push(char)
+      index += 1
+      continue
+    }
+    const next = input[index + 1]
+    if (next === '[') {
+      index += 2
+      while (index < input.length) {
+        const code = input.charCodeAt(index)
+        index += 1
+        if (code >= 0x40 && code <= 0x7e) {
+          break
+        }
+      }
+      continue
+    }
+    if (next === ']') {
+      index += 2
+      while (index < input.length) {
+        if (input[index] === '\u0007') {
+          index += 1
+          break
+        }
+        if (input[index] === '\u001b' && input[index + 1] === '\\') {
+          index += 2
+          break
+        }
+        index += 1
+      }
+      continue
+    }
+    if (next === '(' || next === ')') {
+      index += 3
+      continue
+    }
+    index += 1
+  }
+  return output.join('')
+}
+
+function sanitizeTerminalOutput(input: string): string {
+  const stripped = stripAnsiControlSequences(input)
+  const filtered: string[] = []
+  let sawNonWhitespace = false
+  let sawNonSpinner = false
+  for (let index = 0; index < stripped.length; index += 1) {
+    const code = stripped.charCodeAt(index)
+    const char = stripped[index]!
+    if (code === 9 || code === 10 || code === 13) {
+      filtered.push(char)
+      continue
+    }
+    if (code < 32 || code === 127) {
+      continue
+    }
+    filtered.push(char)
+    if (char.trim().length === 0) {
+      continue
+    }
+    sawNonWhitespace = true
+    if (code < 0x2800 || code > 0x28ff) {
+      sawNonSpinner = true
+    }
+  }
+  if (!sawNonWhitespace || !sawNonSpinner) {
+    return ''
+  }
+  return filtered.join('')
+}
+
+function stripBase64Padding(value: string): string {
+  return value.replace(/=+$/g, '')
+}
+
+function decodeBase64Token(token: string, options?: { allowShort?: boolean }): string | null {
+  const allowShort = options?.allowShort ?? false
+  if (!allowShort && token.length < 8) {
+    return null
+  }
+  if (token.length < 2 || token.length % 4 === 1 || !/^[A-Za-z0-9+/]+={0,2}$/.test(token)) {
+    return null
+  }
+  try {
+    const padded = token.length % 4 === 0 ? token : `${token}${'='.repeat(4 - (token.length % 4))}`
+    const buffer = Buffer.from(padded, 'base64')
+    if (stripBase64Padding(buffer.toString('base64')) !== stripBase64Padding(token)) {
+      return null
+    }
+    const decoded = buffer.toString('utf8')
+    if (looksMostlyPrintable(decoded)) {
+      return decoded
+    }
+    return sanitizeTerminalOutput(decoded)
+  } catch {
+    return null
+  }
+}
+
+function decodeBase64TokenIfPrintable(token: string): string | null {
+  const decoded = decodeBase64Token(token, { allowShort: true })
+  return decoded !== null && looksMostlyPrintable(decoded) ? decoded : null
+}
+
+export function decodeCommandExecutionOutput(raw: string): string {
+  if (raw.length < 4 || raw.length % 4 === 1) {
+    return raw
+  }
+  const decodedSingle = decodeBase64Token(raw)
+  if (decodedSingle !== null) {
+    return decodedSingle
+  }
+  if (!raw.includes('=')) {
+    return raw
+  }
+
+  const firstNonBase64Char = raw.search(/[^A-Za-z0-9+/=]/)
+  const base64Prefix = firstNonBase64Char === -1 ? raw : raw.slice(0, firstNonBase64Char)
+  const suffix = firstNonBase64Char === -1 ? '' : raw.slice(firstNonBase64Char)
+  if (!base64Prefix.includes('=')) {
+    return raw
+  }
+
+  const tokens: string[] = []
+  let cursor = 0
+  for (let index = 0; index < base64Prefix.length; index += 1) {
+    if (base64Prefix[index] !== '=') {
+      continue
+    }
+    let tokenEnd = index
+    while (tokenEnd < base64Prefix.length && base64Prefix[tokenEnd] === '=') {
+      tokenEnd += 1
+    }
+    const token = base64Prefix.slice(cursor, tokenEnd)
+    if (token.length > 0) {
+      tokens.push(token)
+    }
+    cursor = tokenEnd
+    index = tokenEnd - 1
+  }
+
+  if (tokens.length === 0) {
+    return raw
+  }
+
+  const decodedPieces: string[] = []
+  for (const token of tokens) {
+    const decoded = decodeBase64Token(token, { allowShort: true })
+    if (decoded === null) {
+      return raw
+    }
+    decodedPieces.push(decoded)
+  }
+
+  const remainder = cursor < base64Prefix.length ? base64Prefix.slice(cursor) : ''
+  const decodedRemainder = remainder ? decodeBase64TokenIfPrintable(remainder) : null
+  return `${decodedPieces.join('')}${decodedRemainder ?? remainder}${suffix}`
+}
+
+function commandExecutionArgumentsText(item: Extract<CodexThreadItem, { type: 'commandExecution' }>): string {
+  return stringifyJson({
+    command: item.command,
+    cwd: item.cwd,
+    status: item.status,
+    processId: item.processId,
+    exitCode: item.exitCode,
+    durationMs: item.durationMs,
+  })
+}
+
+function commandExecutionToolStatus(
+  status: Extract<CodexThreadItem, { type: 'commandExecution' }>['status'],
+): WorkbookAgentTimelineEntry['toolStatus'] {
+  return status === 'completed' ? 'completed' : status === 'failed' ? 'failed' : 'inProgress'
+}
+
+export function createCommandExecutionOutputEntry(input: {
+  id: string
+  turnId: string | null
+  outputText: string
+}): WorkbookAgentTimelineEntry {
+  return {
+    id: input.id,
+    kind: 'tool',
+    turnId: input.turnId,
+    text: null,
+    phase: null,
+    toolName: COMMAND_EXECUTION_TOOL_NAME,
+    toolStatus: 'inProgress',
+    argumentsText: null,
+    outputText: input.outputText,
+    success: null,
+    citations: [],
+  }
+}
+
+export function appendCommandExecutionOutput(entry: WorkbookAgentTimelineEntry, outputText: string): WorkbookAgentTimelineEntry {
+  return {
+    ...entry,
+    kind: 'tool',
+    text: null,
+    toolName: entry.toolName ?? COMMAND_EXECUTION_TOOL_NAME,
+    toolStatus: entry.toolStatus ?? 'inProgress',
+    outputText: `${entry.outputText ?? ''}${outputText}`,
+  }
+}
+
 export function createSystemEntry(
   id: string,
   turnId: string | null,
@@ -427,6 +677,22 @@ export function mapThreadItemToEntry(item: CodexThreadItem, turnId: string | nul
       argumentsText: stringifyJson(item.arguments),
       outputText: formatToolContentItems(item.contentItems),
       success: item.success ?? null,
+      citations: [],
+    }
+  }
+
+  if (isCommandExecutionItem(item)) {
+    return {
+      id: item.id,
+      kind: 'tool',
+      turnId,
+      text: null,
+      phase: null,
+      toolName: COMMAND_EXECUTION_TOOL_NAME,
+      toolStatus: commandExecutionToolStatus(item.status),
+      argumentsText: commandExecutionArgumentsText(item),
+      outputText: item.aggregatedOutput === null ? null : decodeCommandExecutionOutput(item.aggregatedOutput),
+      success: item.exitCode === null ? null : item.exitCode === 0,
       citations: [],
     }
   }

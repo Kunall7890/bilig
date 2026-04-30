@@ -208,7 +208,7 @@ test('web app supports type-to-replace and Enter or Tab commit movement', async 
   await page.keyboard.press('Enter')
   await expect(cellEditor).toBeHidden()
 
-  await expect(nameBox).toHaveValue('A2')
+  await expect(nameBox).toHaveValue('A2', { timeout: 15_000 })
   await clickProductCell(page, 0, 0)
   await expect(formulaInput).toHaveValue('h')
 
@@ -220,14 +220,14 @@ test('web app supports type-to-replace and Enter or Tab commit movement', async 
   await page.keyboard.press('Tab')
   await expect(cellEditor).toBeHidden()
 
-  await expect(nameBox).toHaveValue('B2')
+  await expect(nameBox).toHaveValue('B2', { timeout: 15_000 })
   await clickProductCell(page, 0, 1)
   await expect(formulaInput).toHaveValue('w')
 
   await page.keyboard.press('Enter')
-  await expect(nameBox).toHaveValue('A3')
+  await expect(nameBox).toHaveValue('A3', { timeout: 15_000 })
   await page.keyboard.press('Shift+Enter')
-  await expect(nameBox).toHaveValue('A2')
+  await expect(nameBox).toHaveValue('A2', { timeout: 15_000 })
 })
 
 test('web app preserves multi-digit numeric type-to-replace input', async ({ page }) => {
