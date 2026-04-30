@@ -29,6 +29,13 @@ describe('gridRangeMoveInteractions', () => {
       setHoverState,
     })
     listenerTarget.dispatch('pointermove', { clientX: 40, clientY: 50 })
+    expect(onSelectionChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        current: expect.objectContaining({
+          range: { x: 4, y: 4, width: 2, height: 2 },
+        }),
+      }),
+    )
     listenerTarget.dispatch('pointerup', { clientX: 41, clientY: 51 })
 
     // Assert
@@ -51,7 +58,7 @@ describe('gridRangeMoveInteractions', () => {
         }),
       }),
     )
-    expect(onSelectionChange).toHaveBeenCalledWith(
+    expect(onSelectionChange).toHaveBeenLastCalledWith(
       expect.objectContaining({
         current: expect.objectContaining({
           range: { x: 4, y: 4, width: 2, height: 2 },

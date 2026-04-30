@@ -81,7 +81,9 @@ export function beginWorkbookGridRangeMove(input: {
       return
     }
     previewRange = nextRange
-    setGridSelection(createRectangleSelectionFromRange(nextRange))
+    const nextSelection = createRectangleSelectionFromRange(nextRange)
+    setGridSelection(nextSelection)
+    onSelectionChange(nextSelection)
   }
 
   const cancelAutoScroll = () => {
