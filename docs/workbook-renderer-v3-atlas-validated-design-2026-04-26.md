@@ -467,6 +467,9 @@ Completed in the resident-scene deletion tranche:
 - Column/row resize previews no longer merge preview sizes into the committed axis size maps. The V3 overlay receives preview guide dimensions
   directly, so active resize drag can move the guide without rebuilding header panes, local render tiles, workbook deltas, or TypeGPU data-tile
   buffers before commit.
+- V3 text overflow dependency tracking now persists source spill ranges outside text-scene materialization. Worker render-tile delta generation
+  dirties the source spill interval when a blocking cell changes, when a source cell changes, and when a resized column intersects an existing
+  spill range, so visible dirty tile replacement no longer depends only on the directly edited cell.
 
 Remaining work from this design:
 

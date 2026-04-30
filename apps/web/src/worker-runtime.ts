@@ -35,6 +35,7 @@ import {
   type ViewportPatch,
   type ViewportPatchSubscription,
 } from '@bilig/worker-transport'
+import { TextOverflowIndexV3 } from '../../../packages/grid/src/renderer-v3/text-overflow-index.js'
 import type { PendingWorkbookMutation, PendingWorkbookMutationInput } from './workbook-sync.js'
 import { WorkerRuntimeMutationJournal } from './worker-runtime-mutation-journal.js'
 import {
@@ -150,6 +151,7 @@ export class WorkbookWorkerRuntime {
   private projectionOverlayScope: ProjectionOverlayScope | null = null
   private localPersistenceMode: 'persistent' | 'ephemeral' | 'follower' = 'ephemeral'
   private nextRenderTileDeltaGeneration = 0
+  private readonly textOverflowIndex = new TextOverflowIndexV3()
   private readonly workbookDeltaPublisher = new WorkerRuntimeDeltaPublisher()
   private readonly snapshotCaches = new WorkerRuntimeSnapshotCaches()
   private readonly viewportTileStore = new WorkerViewportTileStore()
@@ -680,6 +682,7 @@ export class WorkbookWorkerRuntime {
           event,
           generation: ++this.nextRenderTileDeltaGeneration,
           subscription,
+          textOverflowIndex: this.textOverflowIndex,
         })
         if (event && batch.mutations.length === 0) {
           return
@@ -733,6 +736,7 @@ export class WorkbookWorkerRuntime {
     this.runtimeStateCache = null
     this.snapshotCaches.reset()
     this.nextRenderTileDeltaGeneration = 0
+    this.textOverflowIndex.clear()
     this.workbookDeltaPublisher.reset()
     this.authoritativeStateSource = 'none'
     this.authoritativeRevision = 0

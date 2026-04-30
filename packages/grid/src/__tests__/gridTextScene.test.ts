@@ -593,6 +593,7 @@ describe('gridTextScene', () => {
       clipInsetBottom: 48,
       clipInsetLeft: 0,
       col: 1,
+      spillColEnd: 3,
       text: 'spill text',
       align: 'left',
       wrap: false,

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { ValueTag, type CellSnapshot, type EngineEvent, type RecalcMetrics } from '@bilig/protocol'
+import { TextOverflowIndexV3 } from '../../../../packages/grid/src/renderer-v3/text-overflow-index.js'
+import { DirtyMaskV3 } from '../../../../packages/grid/src/renderer-v3/tile-damage-index.js'
 import { packTileKey53, unpackTileKey53 } from '../../../../packages/grid/src/renderer-v3/tile-key.js'
 import { buildWorkerRenderTileDeltaBatch } from '../worker-runtime-render-tile-delta.js'
 
@@ -63,6 +65,23 @@ function createColumnInvalidationEvent(startIndex: number, endIndex = startIndex
     invalidatedRows: [],
     invalidatedColumns: [{ sheetName: 'Sheet1', startIndex, endIndex }],
     metrics,
+  }
+}
+
+function createStringCell(address: string, value: string): CellSnapshot {
+  return {
+    sheetName: 'Sheet1',
+    address,
+    value: { tag: ValueTag.String, value, stringId: 1 },
+    flags: 0,
+    version: 1,
+  }
+}
+
+function createEngineWithCells(cells: Map<string, CellSnapshot>) {
+  return {
+    ...engine,
+    getCell: (_sheetName: string, address: string) => cells.get(address) ?? { ...emptyCell, address },
   }
 }
 
@@ -346,5 +365,80 @@ describe('worker-runtime-render-tile-delta', () => {
     })
     expect(batch.mutations[0]?.kind === 'tileReplace' ? batch.mutations[0].dirtyLocalRows : null).toEqual(new Uint32Array([0, 31]))
     expect(batch.mutations[0]?.kind === 'tileReplace' ? batch.mutations[0].dirtyLocalCols : null).toEqual(new Uint32Array([2, 2]))
+  })
+
+  it('dirties source spill spans when a blocking cell changes', () => {
+    const cells = new Map<string, CellSnapshot>([['A1', createStringCell('A1', 'spill text')]])
+    const textOverflowIndex = new TextOverflowIndexV3()
+    const subscription = {
+      sheetId: 7,
+      sheetName: 'Sheet1',
+      rowStart: 0,
+      rowEnd: 31,
+      colStart: 0,
+      colEnd: 127,
+      dprBucket: 1,
+      cameraSeq: 24,
+    }
+
+    buildWorkerRenderTileDeltaBatch({
+      engine: createEngineWithCells(cells),
+      generation: 15,
+      subscription,
+      textOverflowIndex,
+    })
+    cells.set('B1', createStringCell('B1', 'blocker'))
+    const batch = buildWorkerRenderTileDeltaBatch({
+      engine: createEngineWithCells(cells),
+      event: createRangeInvalidationEvent('B1'),
+      generation: 16,
+      subscription,
+      textOverflowIndex,
+    })
+
+    const replacement = batch.mutations[0]
+    expect(replacement).toMatchObject({
+      kind: 'tileReplace',
+      bounds: { rowStart: 0, rowEnd: 31, colStart: 0, colEnd: 127 },
+    })
+    expect(replacement?.kind === 'tileReplace' ? replacement.dirtyLocalRows : null).toEqual(new Uint32Array([0, 0, 0, 0]))
+    expect(replacement?.kind === 'tileReplace' ? replacement.dirtyLocalCols : null).toEqual(new Uint32Array([1, 1, 0, 127]))
+    expect(replacement?.kind === 'tileReplace' ? replacement.dirtyMasks : null).toEqual(new Uint32Array([31, DirtyMaskV3.Text]))
+  })
+
+  it('dirties spill sources crossing resized columns', () => {
+    const cells = new Map<string, CellSnapshot>([['A1', createStringCell('A1', 'spill text')]])
+    const textOverflowIndex = new TextOverflowIndexV3()
+    const subscription = {
+      sheetId: 7,
+      sheetName: 'Sheet1',
+      rowStart: 0,
+      rowEnd: 31,
+      colStart: 0,
+      colEnd: 127,
+      dprBucket: 1,
+      cameraSeq: 25,
+    }
+
+    buildWorkerRenderTileDeltaBatch({
+      engine: createEngineWithCells(cells),
+      generation: 17,
+      subscription,
+      textOverflowIndex,
+    })
+    const batch = buildWorkerRenderTileDeltaBatch({
+      engine: createEngineWithCells(cells),
+      event: createColumnInvalidationEvent(2),
+      generation: 18,
+      subscription,
+      textOverflowIndex,
+    })
+
+    const replacement = batch.mutations[0]
+    expect(replacement?.kind === 'tileReplace' ? replacement.dirtyLocalRows : null).toEqual(new Uint32Array([0, 31, 0, 0]))
+    expect(replacement?.kind === 'tileReplace' ? replacement.dirtyLocalCols : null).toEqual(new Uint32Array([2, 2, 0, 127]))
+    expect(replacement?.kind === 'tileReplace' ? replacement.dirtyMasks : null).toEqual(
+      new Uint32Array([DirtyMaskV3.AxisX | DirtyMaskV3.Text | DirtyMaskV3.Rect, DirtyMaskV3.Text]),
+    )
   })
 })

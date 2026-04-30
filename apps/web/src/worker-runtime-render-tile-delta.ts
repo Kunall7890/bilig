@@ -17,6 +17,7 @@ import { resolveGridRenderTileDirtySpansV3 } from '../../../packages/grid/src/re
 import type { GridRenderTile } from '../../../packages/grid/src/renderer-v3/render-tile-source.js'
 import { DirtyMaskV3 } from '../../../packages/grid/src/renderer-v3/tile-damage-index.js'
 import { packTileKey53, tileKeysForViewport, unpackTileKey53, type TileKey53 } from '../../../packages/grid/src/renderer-v3/tile-key.js'
+import type { TextOverflowIndexV3, TextOverflowSourceV3 } from '../../../packages/grid/src/renderer-v3/text-overflow-index.js'
 import { buildFreezeVersion, buildRenderedAxisState } from './worker-runtime-render-axis.js'
 import { listViewportTileBounds } from './worker-viewport-tile-store.js'
 
@@ -61,6 +62,7 @@ export function buildWorkerRenderTileDeltaBatch(input: {
   subscription: RenderTileDeltaSubscription
   generation: number
   event?: EngineEvent | undefined
+  textOverflowIndex?: TextOverflowIndexV3 | undefined
 }): RenderTileDeltaBatch {
   const { engine, event, subscription, generation } = input
   const metrics = engine.getLastMetrics()
@@ -74,6 +76,43 @@ export function buildWorkerRenderTileDeltaBatch(input: {
     engine,
     event,
     subscription,
+    textOverflowIndex: input.textOverflowIndex,
+  })
+  const materializedTiles = materializedViewports.map((viewport) =>
+    materializeGridRenderTileV3({
+      axisSeqX: columnAxis.version,
+      axisSeqY: rowAxis.version,
+      cameraSeq: subscription.cameraSeq ?? batchId,
+      columnWidths: columnAxis.sizes,
+      dprBucket: subscription.dprBucket ?? 1,
+      engine,
+      dirtyLocalCols: viewport.dirtyLocalCols,
+      dirtyLocalRows: viewport.dirtyLocalRows,
+      dirtyMasks: viewport.dirtyMasks,
+      freezeSeq: freezeVersion,
+      glyphAtlasSeq: 0,
+      gridMetrics,
+      materializedAtSeq: generation,
+      packetSeq: batchId,
+      rectSeq: batchId,
+      rowHeights: rowAxis.sizes,
+      sheetId: subscription.sheetId,
+      sheetOrdinal: resolveSubscriptionSheetOrdinal(subscription),
+      sheetName: subscription.sheetName,
+      sortedColumnWidthOverrides: columnAxis.sortedOverrides,
+      sortedRowHeightOverrides: rowAxis.sortedOverrides,
+      styleSeq: batchId,
+      textSeq: batchId,
+      valueSeq: batchId,
+      viewport: viewport.viewport,
+    }),
+  )
+  materializedTiles.forEach((tile) => {
+    input.textOverflowIndex?.replaceTileRuns({
+      sheetOrdinal: tile.coord.sheetOrdinal,
+      textRuns: tile.textRuns,
+      viewport: tile.bounds,
+    })
   })
 
   return {
@@ -83,37 +122,7 @@ export function buildWorkerRenderTileDeltaBatch(input: {
     sheetOrdinal: resolveSubscriptionSheetOrdinal(subscription),
     batchId,
     cameraSeq: subscription.cameraSeq ?? 0,
-    mutations: materializedViewports.map((viewport) =>
-      buildRenderTileReplaceMutation(
-        materializeGridRenderTileV3({
-          axisSeqX: columnAxis.version,
-          axisSeqY: rowAxis.version,
-          cameraSeq: subscription.cameraSeq ?? batchId,
-          columnWidths: columnAxis.sizes,
-          dprBucket: subscription.dprBucket ?? 1,
-          engine,
-          dirtyLocalCols: viewport.dirtyLocalCols,
-          dirtyLocalRows: viewport.dirtyLocalRows,
-          dirtyMasks: viewport.dirtyMasks,
-          freezeSeq: freezeVersion,
-          glyphAtlasSeq: 0,
-          gridMetrics,
-          materializedAtSeq: generation,
-          packetSeq: batchId,
-          rectSeq: batchId,
-          rowHeights: rowAxis.sizes,
-          sheetId: subscription.sheetId,
-          sheetOrdinal: resolveSubscriptionSheetOrdinal(subscription),
-          sheetName: subscription.sheetName,
-          sortedColumnWidthOverrides: columnAxis.sortedOverrides,
-          sortedRowHeightOverrides: rowAxis.sortedOverrides,
-          styleSeq: batchId,
-          textSeq: batchId,
-          valueSeq: batchId,
-          viewport: viewport.viewport,
-        }),
-      ),
-    ),
+    mutations: materializedTiles.map(buildRenderTileReplaceMutation),
   }
 }
 
@@ -122,6 +131,7 @@ function resolveMaterializedTileViewports(input: {
   readonly subscription: RenderTileDeltaSubscription
   readonly event: EngineEvent | undefined
   readonly batchId: number
+  readonly textOverflowIndex?: TextOverflowIndexV3 | undefined
 }): readonly MaterializedTileViewport[] {
   const { engine, event, subscription } = input
   if (!event || event.invalidation === 'full') {
@@ -136,6 +146,7 @@ function resolveMaterializedTileViewports(input: {
     dprBucket,
     sheetOrdinal: resolveSubscriptionSheetOrdinal(subscription),
     sheetName: subscription.sheetName,
+    textOverflowIndex: input.textOverflowIndex,
   })
 
   if (dirtySpansByTile.size === 0) {
@@ -253,8 +264,9 @@ function collectEventDirtyTileSpans(input: {
   readonly sheetName: string
   readonly sheetOrdinal: number
   readonly dprBucket: number
+  readonly textOverflowIndex?: TextOverflowIndexV3 | undefined
 }): Map<TileKey53, DirtyLocalSpan[]> {
-  const { dprBucket, engine, event, sheetName, sheetOrdinal, subscription } = input
+  const { dprBucket, engine, event, sheetName, sheetOrdinal, subscription, textOverflowIndex } = input
   const spansByTile = new Map<TileKey53, DirtyLocalSpan[]>()
   const cellStore = engine.workbook.cellStore
   const getSheetNameById = engine.workbook.getSheetNameById
@@ -276,6 +288,11 @@ function collectEventDirtyTileSpans(input: {
         rowStart: row,
         sheetOrdinal,
       })
+      markTextOverflowDependencySpans(spansByTile, {
+        dprBucket,
+        sheetOrdinal,
+        sourceCallback: (callback) => textOverflowIndex?.markDependenciesForCell({ col, row, sheetOrdinal }, callback),
+      })
     }
   }
 
@@ -285,14 +302,24 @@ function collectEventDirtyTileSpans(input: {
     }
     const start = parseCellAddress(range.startAddress, range.sheetName)
     const end = parseCellAddress(range.endAddress, range.sheetName)
+    const colStart = Math.min(start.col, end.col)
+    const colEnd = Math.max(start.col, end.col)
+    const rowStart = Math.min(start.row, end.row)
+    const rowEnd = Math.max(start.row, end.row)
     markDirtyRangeSpans(spansByTile, {
-      colEnd: Math.max(start.col, end.col),
-      colStart: Math.min(start.col, end.col),
+      colEnd,
+      colStart,
       dprBucket,
       mask: INVALIDATED_RANGE_DIRTY_MASK,
-      rowEnd: Math.max(start.row, end.row),
-      rowStart: Math.min(start.row, end.row),
+      rowEnd,
+      rowStart,
       sheetOrdinal,
+    })
+    markTextOverflowDependencySpans(spansByTile, {
+      dprBucket,
+      sheetOrdinal,
+      sourceCallback: (callback) =>
+        textOverflowIndex?.markDependenciesForCellRange({ colEnd, colStart, rowEnd, rowStart, sheetOrdinal }, callback),
     })
   })
 
@@ -307,6 +334,12 @@ function collectEventDirtyTileSpans(input: {
       mask: AXIS_X_DIRTY_MASK,
       sheetOrdinal,
       subscription,
+    })
+    markTextOverflowDependencySpans(spansByTile, {
+      dprBucket,
+      sheetOrdinal,
+      sourceCallback: (callback) =>
+        textOverflowIndex?.markDependenciesForAxisX({ colEnd: column.endIndex, colStart: column.startIndex, sheetOrdinal }, callback),
     })
   })
 
@@ -324,6 +357,27 @@ function collectEventDirtyTileSpans(input: {
     })
   })
   return spansByTile
+}
+
+function markTextOverflowDependencySpans(
+  spansByTile: Map<TileKey53, DirtyLocalSpan[]>,
+  input: {
+    readonly sheetOrdinal: number
+    readonly dprBucket: number
+    readonly sourceCallback: (callback: (source: TextOverflowSourceV3) => void) => void
+  },
+): void {
+  input.sourceCallback((source) => {
+    markDirtyRangeSpans(spansByTile, {
+      colEnd: source.spillColEnd,
+      colStart: source.col,
+      dprBucket: input.dprBucket,
+      mask: DirtyMaskV3.Text,
+      rowEnd: source.row,
+      rowStart: source.row,
+      sheetOrdinal: input.sheetOrdinal,
+    })
+  })
 }
 
 function markDirtyAxisXSpans(
@@ -478,6 +532,7 @@ export function buildRenderTileReplaceMutation(tile: GridRenderTile): RenderTile
       height: run.height,
       row: run.row,
       strike: run.strike,
+      spillColEnd: run.spillColEnd,
       text: run.text,
       underline: run.underline,
       width: run.width,

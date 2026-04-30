@@ -11,6 +11,7 @@ import { workbookThemeColors } from './workbookTheme.js'
 export interface GridTextItem {
   readonly col?: number | undefined
   readonly row?: number | undefined
+  readonly spillColEnd?: number | undefined
   readonly x: number
   readonly y: number
   readonly width: number
@@ -207,7 +208,7 @@ function buildCellTextItem({
     return null
   }
 
-  const renderBounds = resolveTextRenderBounds({
+  const textRenderBounds = resolveTextRenderBounds({
     engine,
     sheetName,
     row,
@@ -219,15 +220,16 @@ function buildCellTextItem({
   })
 
   const localBounds = {
-    x: renderBounds.x - hostBounds.left,
-    y: renderBounds.y - hostBounds.top,
-    width: renderBounds.width,
-    height: renderBounds.height,
+    x: textRenderBounds.bounds.x - hostBounds.left,
+    y: textRenderBounds.bounds.y - hostBounds.top,
+    width: textRenderBounds.bounds.width,
+    height: textRenderBounds.bounds.height,
   }
 
   return {
     col,
     row,
+    spillColEnd: textRenderBounds.spillColEnd === col ? undefined : textRenderBounds.spillColEnd,
     ...localBounds,
     ...resolveClipInsets({ bounds: localBounds, clipRect }),
     text: renderCell.displayText,
@@ -294,14 +296,15 @@ function resolveTextRenderBounds(options: {
   visibleColumnEnd: number
   getCellBounds: (col: number, row: number) => Rectangle | undefined
   renderCell: ReturnType<typeof snapshotToRenderCell>
-}): Rectangle {
+}): { readonly bounds: Rectangle; readonly spillColEnd: number } {
   const { engine, sheetName, row, col, bounds, visibleColumnEnd, getCellBounds, renderCell } = options
 
   if (renderCell.wrap || renderCell.align !== 'left' || (renderCell.kind !== 'string' && renderCell.kind !== 'error')) {
-    return bounds
+    return { bounds, spillColEnd: col }
   }
 
   let spillWidth = bounds.width
+  let spillColEnd = col
   for (let spillCol = col + 1; spillCol <= visibleColumnEnd; spillCol += 1) {
     const spillBounds = getCellBounds(spillCol, row)
     if (!spillBounds) {
@@ -313,15 +316,19 @@ function resolveTextRenderBounds(options: {
       break
     }
     spillWidth = spillBounds.x + spillBounds.width - bounds.x
+    spillColEnd = spillCol
   }
 
   if (spillWidth === bounds.width) {
-    return bounds
+    return { bounds, spillColEnd: col }
   }
 
   return {
-    ...bounds,
-    width: spillWidth,
+    bounds: {
+      ...bounds,
+      width: spillWidth,
+    },
+    spillColEnd,
   }
 }
 

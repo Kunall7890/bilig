@@ -49,6 +49,7 @@ export function mapTextRunV3(item: GridTextItem): GridRenderTileTextRun {
     fontSize: item.fontSize,
     height: item.height,
     row: item.row,
+    spillColEnd: item.spillColEnd,
     strike: item.strike,
     text: item.text,
     underline: item.underline,

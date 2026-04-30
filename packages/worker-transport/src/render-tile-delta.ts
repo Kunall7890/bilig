@@ -58,6 +58,7 @@ export interface RenderTileDirtySpans {
 export interface RenderTileTextRun {
   readonly col?: number | undefined
   readonly row?: number | undefined
+  readonly spillColEnd?: number | undefined
   readonly text: string
   readonly x: number
   readonly y: number
