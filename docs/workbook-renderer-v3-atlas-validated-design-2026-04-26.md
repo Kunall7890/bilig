@@ -461,6 +461,8 @@ Completed in the resident-scene deletion tranche:
 - Fill-handle drag preview/commit lifecycle now lives in `gridFillHandleInteractions.ts`, and hover-state resolution moved into
   `gridInteractionHoverState.ts`. `useWorkbookGridInteractions.ts` is back under the 1000-line refactor threshold and no longer inlines those
   interaction state machines.
+- Browser perf now has a dedicated fill-handle preview gate that asserts no renderer mutation churn and no data-tile upload while the preview is
+  dragged. The same shared fill-handle drag-point helper is used by functional and perf tests.
 - Browser scroll perf reports now include `mutationToVisibleMs`, sampled from a dirty renderer-delta apply to the next V3 draw frame. The
   collaborator-patch perf gate asserts that visible renderer mutations produce at least one measured visible frame under the remote-edit SLA.
 - V3 dirty-span merging no longer allocates a sorted copy on the dirty tile upload path. Unsorted overlapping spans are merged incrementally,

@@ -9,6 +9,7 @@ import {
   clickGridRightEdge,
   dragProductBodySelection,
   dragProductColumnResize,
+  getProductFillHandleDragPoints,
   getProductColumnLeft,
   getProductColumnWidth,
   gotoWorkbookShell,
@@ -37,35 +38,6 @@ async function dragProductFillHandle(
     steps: 10,
   })
   await page.mouse.up()
-}
-
-async function getProductFillHandleDragPoints(
-  page: Parameters<typeof test>[0]['page'],
-  sourceCol: number,
-  sourceRow: number,
-  targetCol: number,
-  targetRow: number,
-) {
-  const gridLocator = page.getByTestId('sheet-grid')
-  await expect(gridLocator).toBeVisible()
-  const grid = await gridLocator.boundingBox()
-  if (!grid) {
-    throw new Error('sheet grid is not visible')
-  }
-
-  const sourceLeft = grid.x + (await getProductColumnLeft(page, sourceCol))
-  const sourceTop = grid.y + PRODUCT_HEADER_HEIGHT + sourceRow * PRODUCT_ROW_HEIGHT
-  const targetLeft = grid.x + (await getProductColumnLeft(page, targetCol))
-  const targetTop = grid.y + PRODUCT_HEADER_HEIGHT + targetRow * PRODUCT_ROW_HEIGHT
-  const sourceWidth = await getProductColumnWidth(page, sourceCol)
-  const targetWidth = await getProductColumnWidth(page, targetCol)
-
-  return {
-    sourceX: sourceLeft + sourceWidth - 3,
-    sourceY: sourceTop + PRODUCT_ROW_HEIGHT - 3,
-    targetX: targetLeft + targetWidth - 3,
-    targetY: targetTop + PRODUCT_ROW_HEIGHT - 3,
-  }
 }
 
 async function clickSelectionFuzzCell(page: Parameters<typeof test>[0]['page'], columnIndex: number, rowIndex: number, shift = false) {

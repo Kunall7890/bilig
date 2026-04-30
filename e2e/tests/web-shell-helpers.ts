@@ -122,6 +122,40 @@ export async function dragProductColumnResize(page: Page, columnIndex: number, d
   await page.mouse.up()
 }
 
+export async function getProductFillHandleDragPoints(
+  page: Page,
+  sourceCol: number,
+  sourceRow: number,
+  targetCol: number,
+  targetRow: number,
+): Promise<{
+  readonly sourceX: number
+  readonly sourceY: number
+  readonly targetX: number
+  readonly targetY: number
+}> {
+  const gridLocator = page.getByTestId('sheet-grid')
+  await expect(gridLocator).toBeVisible()
+  const grid = await gridLocator.boundingBox()
+  if (!grid) {
+    throw new Error('sheet grid is not visible')
+  }
+
+  const sourceLeft = grid.x + (await getProductColumnLeft(page, sourceCol))
+  const sourceTop = grid.y + PRODUCT_HEADER_HEIGHT + sourceRow * PRODUCT_ROW_HEIGHT
+  const targetLeft = grid.x + (await getProductColumnLeft(page, targetCol))
+  const targetTop = grid.y + PRODUCT_HEADER_HEIGHT + targetRow * PRODUCT_ROW_HEIGHT
+  const sourceWidth = await getProductColumnWidth(page, sourceCol)
+  const targetWidth = await getProductColumnWidth(page, targetCol)
+
+  return {
+    sourceX: sourceLeft + sourceWidth - 3,
+    sourceY: sourceTop + PRODUCT_ROW_HEIGHT - 3,
+    targetX: targetLeft + targetWidth - 3,
+    targetY: targetTop + PRODUCT_ROW_HEIGHT - 3,
+  }
+}
+
 export async function doubleClickProductColumnResizeHandle(page: Page, columnIndex: number) {
   const gridLocator = page.getByTestId('sheet-grid')
   await expect(gridLocator).toBeVisible()

@@ -5,6 +5,7 @@ import {
   clickProductCell,
   getProductColumnLeft,
   getProductColumnWidth,
+  getProductFillHandleDragPoints,
   gotoWorkbookShell,
   performDiagonalGridBrowse,
   performHorizontalGridBrowse,
@@ -386,6 +387,52 @@ test.describe('@browser-perf web app scroll performance', () => {
       expect(readCounter(report.counters, 'typeGpuBufferAllocations')).toBe(0)
       expect(readCounter(report.counters, 'rendererTileMisses')).toBe(0)
       expectQuietShell(report)
+    } finally {
+      await page.mouse.up().catch(() => undefined)
+    }
+  })
+
+  test('keeps fill-handle preview overlay-only with no renderer mutation or data-tile upload', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 920, height: 680 })
+    await gotoWorkbookShell(page, '/?benchmarkCorpus=wide-mixed-250k')
+    await waitForWorkbookReady(page)
+    const benchmarkState = await waitForBenchmarkCorpus(page)
+
+    expect(benchmarkState.fixture?.id).toBe('wide-mixed-250k')
+
+    const nameBox = page.getByTestId('name-box')
+    const formulaInput = page.getByTestId('formula-input')
+    await nameBox.fill('F6')
+    await nameBox.press('Enter')
+    await formulaInput.fill('7')
+    await formulaInput.press('Enter')
+    await expect(page.getByTestId('status-selection')).toContainText('!F6')
+
+    const { sourceX, sourceY, targetX, targetY } = await getProductFillHandleDragPoints(page, 5, 5, 8, 5)
+
+    await settleWorkbookScrollPerf(page, 40)
+    await warmStartWorkbookScrollPerf(page, 'wide-250k-fill-preview')
+    try {
+      await page.mouse.move(sourceX, sourceY)
+      await page.mouse.down()
+      await page.mouse.move(targetX, targetY, { steps: 24 })
+      await settleWorkbookScrollPerf(page, 16)
+      const report = await stopWorkbookScrollPerf(page)
+
+      if (!report) {
+        throw new Error('scroll performance report was not available')
+      }
+
+      await writeFile(testInfo.outputPath('scroll-perf-wide-250k-fill-preview.json'), JSON.stringify(report, null, 2), 'utf8')
+
+      expect(report.fixture?.id).toBe('wide-mixed-250k')
+      expect(report.summary.frameMs.p95).toBeLessThan(20)
+      expect(report.summary.longTasksMs.max).toBeLessThan(50)
+      expect(report.counters.viewportSubscriptions).toBe(0)
+      expectNoRendererMutationChurn(report)
+      expectNoTypeGpuDataTileUpload(report)
+      expect(readCounter(report.counters, 'typeGpuBufferAllocations')).toBe(0)
+      expect(readCounter(report.counters, 'rendererTileMisses')).toBe(0)
     } finally {
       await page.mouse.up().catch(() => undefined)
     }
