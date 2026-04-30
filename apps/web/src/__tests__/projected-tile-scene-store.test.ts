@@ -5,6 +5,7 @@ import {
   type RenderTileDeltaBatch,
   type RenderTileReplaceMutation,
 } from '@bilig/worker-transport'
+import { ValueTag } from '@bilig/protocol'
 import { ProjectedTileSceneStore } from '../projected-tile-scene-store.js'
 import { ProjectedViewportStore } from '../projected-viewport-store.js'
 
@@ -166,6 +167,49 @@ describe('ProjectedTileSceneStore', () => {
 })
 
 describe('ProjectedViewportStore render delta source bridge', () => {
+  it('publishes local optimistic workbook deltas for projected cell snapshots', () => {
+    const store = new ProjectedViewportStore({
+      subscribeRenderTileDeltas: () => () => undefined,
+      subscribeViewportPatches: () => () => undefined,
+      subscribeWorkbookDeltas: () => () => undefined,
+    })
+    const listener = vi.fn()
+
+    store.subscribeRenderTileDeltas(
+      {
+        sheetId: 7,
+        sheetName: 'Sheet1',
+        sheetOrdinal: 3,
+        rowStart: 0,
+        rowEnd: 31,
+        colStart: 0,
+        colEnd: 63,
+      },
+      () => undefined,
+    )
+    const unsubscribe = store.subscribeWorkbookDeltas(listener)
+    store.setCellSnapshot({
+      address: 'B2',
+      flags: 0,
+      sheetName: 'Sheet1',
+      value: { tag: ValueTag.Number, value: 17 },
+      version: 12,
+    })
+
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dirty: expect.objectContaining({ cellRanges: new Uint32Array([1, 1, 1, 1, 15]) }),
+        seq: 1,
+        sheetId: 7,
+        sheetOrdinal: 3,
+        source: 'localOptimistic',
+        valueSeq: 12,
+      }),
+    )
+
+    unsubscribe()
+  })
+
   it('decodes workbook deltas for the grid runtime dirty-tile coordinator', () => {
     let emit: ((bytes: Uint8Array) => void) | null = null
     const unsubscribeWorker = vi.fn()

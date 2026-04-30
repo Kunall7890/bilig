@@ -1,4 +1,5 @@
 import type { GridEngineLike } from '@bilig/grid'
+import { parseCellAddress } from '@bilig/formula'
 import type { CellSnapshot, CellStyleRecord, Viewport, WorkbookAxisEntrySnapshot } from '@bilig/protocol'
 import {
   decodeWorkbookDeltaBatchV3,
@@ -11,10 +12,13 @@ import { ProjectedViewportAxisStore } from './projected-viewport-axis-store.js'
 import { ProjectedViewportCellCache } from './projected-viewport-cell-cache.js'
 import { ProjectedViewportPatchCoordinator, type ProjectedViewportPatchApplied } from './projected-viewport-patch-coordinator.js'
 import type { ProjectedRenderTile, ProjectedTileSceneChange, ProjectedTileSceneStore } from './projected-tile-scene-store.js'
+import { getWorkbookScrollPerfCollector } from './perf/workbook-scroll-perf.js'
+import { DirtyMaskV3 } from '../../../packages/grid/src/renderer-v3/tile-damage-index.js'
 
 const MAX_CACHED_CELLS_PER_SHEET = 6000
 type CellItem = readonly [number, number]
 type SheetViewportChannel = 'columnWidths' | 'rowHeights' | 'hiddenColumns' | 'hiddenRows' | 'freeze'
+type SheetIdentity = { readonly sheetId: number; readonly sheetOrdinal: number }
 export class ProjectedViewportStore implements GridEngineLike {
   private readonly cellCache = new ProjectedViewportCellCache({
     maxCachedCellsPerSheet: MAX_CACHED_CELLS_PER_SHEET,
@@ -22,9 +26,12 @@ export class ProjectedViewportStore implements GridEngineLike {
   private readonly axisStore: ProjectedViewportAxisStore
   private readonly patchCoordinator: ProjectedViewportPatchCoordinator
   private tileSceneStore: ProjectedTileSceneStore | null = null
+  private readonly localWorkbookDeltaListeners = new Set<(batch: WorkbookDeltaBatchV3) => void>()
+  private readonly sheetIdentitiesByName = new Map<string, SheetIdentity>()
   private readonly sheetChannelListeners = new Map<string, Map<SheetViewportChannel, Set<() => void>>>()
   private lastBatchId = 0
   private lastAuthoritativeRevision: number | null = null
+  private localWorkbookDeltaSeq = 0
 
   readonly workbook = {
     getSheet: (sheetName: string) => this.cellCache.getSheet(sheetName),
@@ -129,7 +136,9 @@ export class ProjectedViewportStore implements GridEngineLike {
   }
 
   setCellSnapshot(snapshot: CellSnapshot): void {
-    this.cellCache.setCellSnapshot(snapshot)
+    if (this.cellCache.setCellSnapshot(snapshot)) {
+      this.emitLocalCellSnapshotDelta(snapshot)
+    }
   }
 
   setColumnWidth(sheetName: string, columnIndex: number, width: number): void {
@@ -219,6 +228,10 @@ export class ProjectedViewportStore implements GridEngineLike {
   }
 
   subscribeRenderTileDeltas(subscription: RenderTileDeltaSubscription, listener: (change: ProjectedTileSceneChange) => void): () => void {
+    this.sheetIdentitiesByName.set(subscription.sheetName, {
+      sheetId: subscription.sheetId,
+      sheetOrdinal: subscription.sheetOrdinal ?? subscription.tileInterest?.sheetOrdinal ?? subscription.sheetId,
+    })
     let disposed = false
     let unsubscribe: (() => void) | null = null
     void (async () => {
@@ -239,9 +252,14 @@ export class ProjectedViewportStore implements GridEngineLike {
     if (!this.client) {
       throw new Error('Workbook delta subscriptions require a worker engine client')
     }
-    return this.client.subscribeWorkbookDeltas((bytes) => {
+    this.localWorkbookDeltaListeners.add(listener)
+    const unsubscribeClient = this.client.subscribeWorkbookDeltas((bytes) => {
       listener(decodeWorkbookDeltaBatchV3(bytes))
     })
+    return () => {
+      this.localWorkbookDeltaListeners.delete(listener)
+      unsubscribeClient()
+    }
   }
 
   peekRenderTile(tileId: number): ProjectedRenderTile | null {
@@ -307,6 +325,57 @@ export class ProjectedViewportStore implements GridEngineLike {
       }
     }
   }
+
+  private emitLocalCellSnapshotDelta(snapshot: CellSnapshot): void {
+    if (this.localWorkbookDeltaListeners.size === 0) {
+      return
+    }
+    const startedAt = nowMs()
+    const identity = this.resolveSheetIdentity(snapshot.sheetName)
+    const parsed = parseCellAddress(snapshot.address, snapshot.sheetName)
+    const valueSeq = Math.max(0, snapshot.version)
+    const batch: WorkbookDeltaBatchV3 = {
+      axisSeqX: 0,
+      axisSeqY: 0,
+      calcSeq: valueSeq,
+      dirty: {
+        axisX: new Uint32Array(),
+        axisY: new Uint32Array(),
+        cellRanges: new Uint32Array([
+          parsed.row,
+          parsed.row,
+          parsed.col,
+          parsed.col,
+          DirtyMaskV3.Value | DirtyMaskV3.Style | DirtyMaskV3.Text | DirtyMaskV3.Rect,
+        ]),
+      },
+      freezeSeq: 0,
+      magic: 'bilig.workbook.delta.v3',
+      seq: ++this.localWorkbookDeltaSeq,
+      sheetId: identity.sheetId,
+      sheetOrdinal: identity.sheetOrdinal,
+      source: 'localOptimistic',
+      styleSeq: valueSeq,
+      valueSeq,
+      version: 1,
+    }
+    this.localWorkbookDeltaListeners.forEach((listener) => {
+      listener(batch)
+    })
+    getWorkbookScrollPerfCollector()?.noteRendererDeltaApply({
+      dirtyTileCount: 1,
+      durationMs: Math.max(0, nowMs() - startedAt),
+      mutationCount: 1,
+    })
+  }
+
+  private resolveSheetIdentity(sheetName: string): SheetIdentity {
+    return this.sheetIdentitiesByName.get(sheetName) ?? { sheetId: 0, sheetOrdinal: 0 }
+  }
+}
+
+function nowMs(): number {
+  return typeof performance === 'undefined' ? Date.now() : performance.now()
 }
 
 function buildAxisEntries(

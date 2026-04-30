@@ -128,6 +128,37 @@ function expectNoTypeGpuDataTileUpload(report: ScrollPerfReport) {
   expect(Math.max(0, totalVertexUploadBytes - overlayUploadBytes)).toBe(0)
 }
 
+function expectBoundedVisibleMutation(
+  report: ScrollPerfReport,
+  options: {
+    readonly minDamagePatches?: number
+    readonly maxDamagePatches?: number
+    readonly maxRendererDeltaBatches?: number
+    readonly mutationToVisibleP95Max?: number
+    readonly frameP95Max?: number
+    readonly frameP99Max?: number
+    readonly longTaskMax?: number
+  } = {},
+) {
+  expect(report.summary.frameMs.p95).toBeLessThan(options.frameP95Max ?? 20)
+  expect(report.summary.frameMs.p99).toBeLessThan(options.frameP99Max ?? 30)
+  expect(report.summary.longTasksMs.max).toBeLessThan(options.longTaskMax ?? 50)
+  expect(report.counters.viewportSubscriptions).toBe(0)
+  expect(report.counters.fullPatches).toBe(0)
+  expect(sumRecordCounters(report.counters.fullPatchBroadcasts)).toBe(0)
+  expect(report.counters.damagePatches).toBeGreaterThanOrEqual(options.minDamagePatches ?? 0)
+  expect(report.counters.damagePatches).toBeLessThanOrEqual(options.maxDamagePatches ?? 4)
+  expect(readCounter(report.counters, 'rendererDeltaBatches')).toBeGreaterThan(0)
+  expect(readCounter(report.counters, 'rendererDeltaBatches')).toBeLessThanOrEqual(options.maxRendererDeltaBatches ?? 4)
+  expect(readCounter(report.counters, 'dirtyTilesMarked')).toBeGreaterThan(0)
+  expect(readCounter(report.counters, 'rendererVisibleDirtyTiles')).toBeGreaterThan(0)
+  expect(report.samples.mutationToVisibleMs.length).toBeGreaterThan(0)
+  expect(report.summary.mutationToVisibleMs.p95).toBeLessThan(options.mutationToVisibleP95Max ?? 100)
+  expect(readCounter(report.counters, 'rendererTileMisses')).toBeLessThanOrEqual(readCounter(report.counters, 'rendererVisibleDirtyTiles'))
+  expect(readCounter(report.counters, 'typeGpuTileCacheSorts')).toBe(0)
+  expectNoTypeGpuTextAtlasGeometryChurn(report)
+}
+
 test.describe('@browser-perf web app scroll performance', () => {
   test.setTimeout(120_000)
 
@@ -438,6 +469,48 @@ test.describe('@browser-perf web app scroll performance', () => {
     }
   })
 
+  test('keeps visible edit commits bounded to dirty V3 tiles', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 920, height: 680 })
+    await gotoWorkbookShell(page, '/?benchmarkCorpus=wide-mixed-250k')
+    await waitForWorkbookReady(page)
+    const benchmarkState = await waitForBenchmarkCorpus(page)
+
+    expect(benchmarkState.fixture?.id).toBe('wide-mixed-250k')
+
+    const nameBox = page.getByTestId('name-box')
+    const formulaInput = page.getByTestId('formula-input')
+    await nameBox.fill('F6')
+    await nameBox.press('Enter')
+    await expect(page.getByTestId('status-selection')).toContainText('!F6')
+    await page.getByTestId('sheet-grid').focus()
+    await settleWorkbookScrollPerf(page, 40)
+    await warmStartWorkbookScrollPerf(page, 'wide-250k-visible-edit-commit')
+    await settleWorkbookScrollPerf(page, 16)
+    await formulaInput.fill('7777777')
+    await formulaInput.press('Enter')
+    await settleWorkbookScrollPerf(page, 24)
+    const report = await stopWorkbookScrollPerf(page)
+
+    if (!report) {
+      throw new Error('scroll performance report was not available')
+    }
+
+    await writeFile(testInfo.outputPath('scroll-perf-wide-250k-visible-edit.json'), JSON.stringify(report, null, 2), 'utf8')
+
+    expect(report.fixture?.id).toBe('wide-mixed-250k')
+    expectBoundedVisibleMutation(report, {
+      maxDamagePatches: 2,
+      maxRendererDeltaBatches: 2,
+      mutationToVisibleP95Max: 50,
+    })
+    expect(readCounter(report.counters, 'rendererWarmDirtyTiles')).toBeLessThanOrEqual(readCounter(report.counters, 'dirtyTilesMarked'))
+    expect(readCounter(report.counters, 'typeGpuBufferAllocations')).toBe(0)
+    expectQuietShell(report, { maxSurfaceCommits: 4 })
+    await nameBox.fill('F6')
+    await nameBox.press('Enter')
+    await expect(formulaInput).toHaveValue('7777777')
+  })
+
   test('keeps shell surfaces quiet and coalesces visible collaborator patch churn while browsing', async ({ page }, testInfo) => {
     test.skip(!remoteSyncEnabled, 'requires Zero-backed browser sync')
     const documentId = `playwright-zero-scroll-patches-${Date.now()}`
@@ -497,18 +570,7 @@ test.describe('@browser-perf web app scroll performance', () => {
         report.counters.damagePatches === 0 && report.counters.rendererDeltaBatches === 0,
         'remote edits did not arrive during the sampling window',
       )
-      expect(report.summary.frameMs.p95).toBeLessThan(20)
-      expect(report.summary.frameMs.p99).toBeLessThan(30)
-      expect(report.summary.longTasksMs.max).toBeLessThan(50)
-      expect(report.counters.viewportSubscriptions).toBe(0)
-      expect(report.counters.fullPatches).toBe(0)
-      expect(report.counters.damagePatches).toBeGreaterThan(0)
-      expect(report.counters.damagePatches).toBeLessThanOrEqual(6)
-      expect(report.counters.rendererDeltaBatches).toBeGreaterThan(0)
-      expect(report.counters.rendererDeltaBatches).toBeLessThanOrEqual(6)
-      expect(report.counters.dirtyTilesMarked).toBeGreaterThan(0)
-      expect(report.samples.mutationToVisibleMs.length).toBeGreaterThan(0)
-      expect(report.summary.mutationToVisibleMs.p95).toBeLessThan(100)
+      expectBoundedVisibleMutation(report, { maxDamagePatches: 6, maxRendererDeltaBatches: 6, minDamagePatches: 1 })
       expect(report.counters.canvasPaints['text:body'] ?? 0).toBeLessThanOrEqual(6)
       expect(report.counters.canvasPaints['gpu:body'] ?? 0).toBeLessThanOrEqual(6)
       expectQuietShell(report)
