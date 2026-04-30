@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { SheetGrid } from '../sheet-grid.js'
+import { SheetGrid, type SheetGridLogicalLookup } from '../sheet-grid.js'
 
 describe('SheetGrid', () => {
   it('stores, retrieves, and clears sparse cells across blocks', () => {
@@ -190,5 +190,46 @@ describe('SheetGrid', () => {
     expect(grid.get(40, 33)).toBe(2)
     expect(grid.get(41, 34)).toBe(3)
     expect(grid.get(90, 65)).toBe(4)
+  })
+
+  it('scans physical row scopes without visiting unrelated blocks', () => {
+    const grid = new SheetGrid()
+    grid.set(10, 1, 1)
+    grid.set(130, 5, 2)
+    grid.set(260, 7, 3)
+
+    const visited: number[] = []
+    const found = grid.someCellInAxisScope('row', { start: 128, end: 256 }, (cellIndex) => {
+      visited.push(cellIndex)
+      return cellIndex === 2
+    })
+
+    expect(found).toBe(true)
+    expect(visited).toEqual([2])
+    expect(grid.someCellInAxisScope('row', { start: 400, end: 410 }, () => true)).toBe(false)
+  })
+
+  it('uses logical lookup callbacks for resident-sheet scans', () => {
+    const entries = [
+      { cellIndex: 11, row: 2, col: 3 },
+      { cellIndex: 12, row: 4, col: 8 },
+    ] as const
+    const logicalLookup: SheetGridLogicalLookup = {
+      get: (row, col) => entries.find((entry) => entry.row === row && entry.col === col)?.cellIndex,
+      forEachCellEntry: (fn) => {
+        entries.forEach((entry) => fn(entry.cellIndex, entry.row, entry.col))
+      },
+    }
+    const grid = new SheetGrid(undefined, logicalLookup)
+
+    expect(grid.get(2, 3)).toBe(11)
+    expect(grid.get(1, 1)).toBe(-1)
+
+    const inRange: number[] = []
+    grid.forEachInRange(0, 0, 3, 4, (cellIndex) => inRange.push(cellIndex))
+    expect(inRange).toEqual([11])
+
+    expect(grid.someCellInAxisScope('row', { start: 2, end: 3 }, (cellIndex) => cellIndex === 11)).toBe(true)
+    expect(grid.someCellInAxisScope('column', { start: 9 }, () => true)).toBe(false)
   })
 })
