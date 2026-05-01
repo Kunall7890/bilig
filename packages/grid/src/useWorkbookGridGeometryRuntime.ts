@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { MAX_COLS, MAX_ROWS } from '@bilig/protocol'
 import type { GridAxisWorldIndex } from './gridAxisWorldIndex.js'
 import { createGridGeometrySnapshotFromAxes, type GridGeometrySnapshot } from './gridGeometry.js'
@@ -90,6 +90,14 @@ export function useWorkbookGridGeometryRuntime(input: {
     gridRuntimeHostRef.current = host
     return host
   }, [freezeCols, freezeRows, gridMetrics, hostClientHeight, hostClientWidth])
+  useEffect(() => {
+    return () => {
+      gridRuntimeHost.dispose()
+      if (gridRuntimeHostRef.current === gridRuntimeHost) {
+        gridRuntimeHostRef.current = null
+      }
+    }
+  }, [gridRuntimeHost])
   const axisState = useMemo(
     () =>
       resolveGridRuntimeGeometryAxes({

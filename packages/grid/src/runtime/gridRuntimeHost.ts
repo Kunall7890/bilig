@@ -378,6 +378,12 @@ export class GridRuntimeHost {
     })
   }
 
+  dispose(): void {
+    this.input.disconnect()
+    this.disconnectRenderTileConnections()
+    this.disconnectViewportResidencyInvalidation()
+  }
+
   private updateFreeze(freezeRows: number | undefined, freezeCols: number | undefined): void {
     const nextRows = Math.max(0, freezeRows ?? this.freezeRows)
     const nextCols = Math.max(0, freezeCols ?? this.freezeCols)

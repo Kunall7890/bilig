@@ -206,11 +206,6 @@ export function useWorkbookGridInteractions(
   useEffect(() => {
     inputController.syncFillPreviewRange(fillPreviewRange)
   }, [fillPreviewRange, inputController])
-  useEffect(() => {
-    return () => {
-      inputController.disconnect()
-    }
-  }, [inputController])
   useLayoutEffect(() => {
     setGridSelection((current) => {
       const nextSelection = inputController.syncExternalSelection({

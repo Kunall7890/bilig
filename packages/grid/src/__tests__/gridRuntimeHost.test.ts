@@ -180,6 +180,42 @@ describe('GridRuntimeHost', () => {
     expect(host.input.fillPreviewRangeRef.current).toEqual({ height: 1, width: 2, x: 3, y: 4 })
   })
 
+  it('disposes host-owned input and renderer subscriptions together', () => {
+    const host = new GridRuntimeHost({
+      columnCount: 1000,
+      defaultColumnWidth: 100,
+      defaultRowHeight: 10,
+      gridMetrics,
+      rowCount: 1000,
+      viewportHeight: 60,
+      viewportWidth: 250,
+    })
+    const fillCleanup = vi.fn()
+    const renderDisconnect = vi.fn()
+
+    host.input.fillHandleCleanupRef.current = fillCleanup
+    host.syncRenderTileConnections({
+      dprBucket: 1,
+      engine: LOCAL_EMPTY_ENGINE,
+      needsLocalCellInvalidation: false,
+      renderTileSource: {
+        peekRenderTile: () => null,
+        subscribeRenderTileDeltas: () => renderDisconnect,
+      },
+      renderTileViewport: { rowStart: 0, rowEnd: 31, colStart: 0, colEnd: 127 },
+      sheetId: 1,
+      sheetName: 'Sheet1',
+      sheetOrdinal: 0,
+      visibleAddresses: [],
+    })
+
+    host.dispose()
+    host.dispose()
+
+    expect(fillCleanup).toHaveBeenCalledTimes(1)
+    expect(renderDisconnect).toHaveBeenCalledTimes(1)
+  })
+
   it('keeps freeze state in the runtime transaction when update input omits it', () => {
     const host = new GridRuntimeHost({
       columnCount: 1000,
