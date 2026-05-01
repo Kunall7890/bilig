@@ -32,7 +32,13 @@ export function useWorkbookViewportResidencyState(input: {
   const { visibleAddresses } = state
 
   useEffect(() => {
-    return gridRuntimeHost.connectViewportResidencyInvalidation({
+    return () => {
+      gridRuntimeHost.disconnectViewportResidencyInvalidation()
+    }
+  }, [gridRuntimeHost])
+
+  useEffect(() => {
+    gridRuntimeHost.syncViewportResidencyInvalidation({
       engine,
       sheetName,
       shouldUseRemoteRenderTileSource,

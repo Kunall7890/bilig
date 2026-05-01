@@ -159,6 +159,8 @@ describe('grid hook boundary helpers', () => {
     expect(viewportResidencyHookSource).not.toContain("from './runtime/gridViewportResidencyRuntime.js'")
     expect(viewportResidencyHookSource).toContain('useSyncExternalStore')
     expect(viewportResidencyHookSource).not.toContain('useState')
+    expect(viewportResidencyHookSource).not.toContain('gridRuntimeHost.connectViewportResidencyInvalidation')
+    expect(viewportResidencyHookSource).toContain('syncViewportResidencyInvalidation')
     expect(viewportResidencyHookSource).not.toContain('.subscribeCells(')
     expect(viewportResidencyHookSource).not.toContain('setSceneRevision')
     expect(editorHookSource).toContain("from './runtime/gridEditorAnchorRuntime.js'")

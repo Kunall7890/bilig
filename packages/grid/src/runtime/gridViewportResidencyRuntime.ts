@@ -40,6 +40,18 @@ export interface GridViewportResidencyInvalidationInput {
   readonly visibleAddresses: readonly string[]
 }
 
+interface RuntimeConnection<Identity> {
+  readonly identity: Identity
+  readonly unsubscribe: (() => void) | undefined
+}
+
+interface LocalSceneInvalidationConnectionIdentity {
+  readonly engine: GridEngineLike
+  readonly sheetName: string
+  readonly shouldUseRemoteRenderTileSource: boolean
+  readonly visibleAddresses: readonly string[]
+}
+
 interface GridViewportResidentCache {
   readonly freezeCols: number
   readonly freezeRows: number
@@ -54,6 +66,7 @@ interface GridViewportResidentCache {
 export class GridViewportResidencyRuntime {
   private residentCache: GridViewportResidentCache | null = null
   private residentViewport: Viewport | null = null
+  private localSceneInvalidationConnection: RuntimeConnection<LocalSceneInvalidationConnectionIdentity> | null = null
   private readonly sceneRevisionListeners = new Set<() => void>()
   private sceneRevision = 0
 
@@ -105,6 +118,31 @@ export class GridViewportResidencyRuntime {
     })
   }
 
+  syncLocalSceneInvalidation(input: GridViewportResidencyInvalidationInput): void {
+    const identity: LocalSceneInvalidationConnectionIdentity = {
+      engine: input.engine,
+      sheetName: input.sheetName,
+      shouldUseRemoteRenderTileSource: input.shouldUseRemoteRenderTileSource,
+      visibleAddresses: input.visibleAddresses,
+    }
+    if (
+      this.localSceneInvalidationConnection &&
+      sameLocalSceneInvalidationConnectionIdentity(this.localSceneInvalidationConnection.identity, identity)
+    ) {
+      return
+    }
+    this.localSceneInvalidationConnection?.unsubscribe?.()
+    this.localSceneInvalidationConnection = {
+      identity,
+      unsubscribe: this.connectLocalSceneInvalidation(input),
+    }
+  }
+
+  disconnectLocalSceneInvalidation(): void {
+    this.localSceneInvalidationConnection?.unsubscribe?.()
+    this.localSceneInvalidationConnection = null
+  }
+
   private resolveResidentCache(input: GridViewportResidencyRuntimeInput, residentViewport: Viewport): GridViewportResidentCache {
     const current = this.residentCache
     if (
@@ -154,4 +192,31 @@ export class GridViewportResidencyRuntime {
       listener()
     })
   }
+}
+
+function sameLocalSceneInvalidationConnectionIdentity(
+  left: LocalSceneInvalidationConnectionIdentity,
+  right: LocalSceneInvalidationConnectionIdentity,
+): boolean {
+  return (
+    left.engine === right.engine &&
+    left.sheetName === right.sheetName &&
+    left.shouldUseRemoteRenderTileSource === right.shouldUseRemoteRenderTileSource &&
+    sameStringListIdentity(left.visibleAddresses, right.visibleAddresses)
+  )
+}
+
+function sameStringListIdentity(left: readonly string[], right: readonly string[]): boolean {
+  if (left === right) {
+    return true
+  }
+  if (left.length !== right.length) {
+    return false
+  }
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) {
+      return false
+    }
+  }
+  return true
 }

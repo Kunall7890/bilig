@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { ValueTag, type CellSnapshot } from '@bilig/protocol'
 import type { GridEngineLike } from '../grid-engine.js'
 import type { Rectangle } from '../gridTypes.js'
@@ -324,6 +324,61 @@ describe('GridRuntimeHost', () => {
 
     expect(snapshots).toEqual([1, 2])
     expect(host.snapshotViewportResidencySceneRevision()).toBe(3)
+  })
+
+  it('reconciles viewport residency invalidation subscriptions through the host', () => {
+    const host = new GridRuntimeHost({
+      columnCount: 1000,
+      defaultColumnWidth: 100,
+      defaultRowHeight: 10,
+      freezeCols: 2,
+      freezeRows: 1,
+      gridMetrics,
+      rowCount: 1000,
+      viewportHeight: 80,
+      viewportWidth: 300,
+    })
+    let invalidateScene: (() => void) | null = null
+    const unsubscribe = vi.fn()
+    const subscribeCells = vi.fn((_sheetName: string, _addresses: readonly string[], listener: () => void) => {
+      invalidateScene = listener
+      return unsubscribe
+    })
+    const engine: GridEngineLike = {
+      ...LOCAL_EMPTY_ENGINE,
+      subscribeCells,
+    }
+
+    host.syncViewportResidencyInvalidation({
+      engine,
+      sheetName: 'Sheet1',
+      shouldUseRemoteRenderTileSource: false,
+      visibleAddresses: ['A1', 'B2'],
+    })
+    host.syncViewportResidencyInvalidation({
+      engine,
+      sheetName: 'Sheet1',
+      shouldUseRemoteRenderTileSource: false,
+      visibleAddresses: ['A1', 'B2'],
+    })
+
+    expect(subscribeCells).toHaveBeenCalledTimes(1)
+    expect(unsubscribe).not.toHaveBeenCalled()
+
+    invalidateScene?.()
+
+    expect(host.snapshotViewportResidencySceneRevision()).toBe(1)
+
+    host.syncViewportResidencyInvalidation({
+      engine,
+      sheetName: 'Sheet1',
+      shouldUseRemoteRenderTileSource: true,
+      visibleAddresses: ['A1', 'B2'],
+    })
+
+    expect(unsubscribe).toHaveBeenCalledTimes(1)
+    host.disconnectViewportResidencyInvalidation()
+    expect(unsubscribe).toHaveBeenCalledTimes(1)
   })
 
   it('owns V3 header pane runtime state instead of letting the React hook allocate it', () => {

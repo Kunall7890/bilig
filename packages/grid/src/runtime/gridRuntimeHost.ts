@@ -211,11 +211,12 @@ export class GridRuntimeHost {
     return this.viewportResidency.subscribeSceneRevision(listener)
   }
 
-  connectViewportResidencyInvalidation(
-    input: GridViewportResidencyInvalidationInput,
-    listener?: Parameters<GridViewportResidencyRuntime['connectLocalSceneInvalidation']>[1],
-  ): ReturnType<GridViewportResidencyRuntime['connectLocalSceneInvalidation']> {
-    return this.viewportResidency.connectLocalSceneInvalidation(input, listener)
+  syncViewportResidencyInvalidation(input: GridViewportResidencyInvalidationInput): void {
+    this.viewportResidency.syncLocalSceneInvalidation(input)
+  }
+
+  disconnectViewportResidencyInvalidation(): void {
+    this.viewportResidency.disconnectLocalSceneInvalidation()
   }
 
   resolveHeaderPanes(input: GridHeaderPaneRuntimeInput): ReturnType<GridHeaderPaneRuntime['resolve']> {

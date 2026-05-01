@@ -265,6 +265,53 @@ describe('GridViewportResidencyRuntime', () => {
     expect(unsubscribe).toHaveBeenCalledTimes(1)
   })
 
+  it('reconciles local scene invalidation lifecycles without React-owned resubscribe churn', () => {
+    const runtime = new GridViewportResidencyRuntime()
+    let invalidateScene: (() => void) | null = null
+    const unsubscribe = vi.fn()
+    const subscribeCells = vi.fn((_sheetName: string, _addresses: readonly string[], listener: () => void) => {
+      invalidateScene = listener
+      return unsubscribe
+    })
+    const engine = createEngine(subscribeCells)
+    const visibleAddresses = ['A1', 'B2']
+
+    runtime.syncLocalSceneInvalidation({
+      engine,
+      sheetName: 'Sheet1',
+      shouldUseRemoteRenderTileSource: false,
+      visibleAddresses,
+    })
+    runtime.syncLocalSceneInvalidation({
+      engine,
+      sheetName: 'Sheet1',
+      shouldUseRemoteRenderTileSource: false,
+      visibleAddresses: [...visibleAddresses],
+    })
+
+    expect(subscribeCells).toHaveBeenCalledTimes(1)
+    expect(subscribeCells.mock.calls[0]?.[1]).toBe(visibleAddresses)
+    expect(unsubscribe).not.toHaveBeenCalled()
+
+    runtime.syncLocalSceneInvalidation({
+      engine,
+      sheetName: 'Sheet1',
+      shouldUseRemoteRenderTileSource: false,
+      visibleAddresses: ['A1', 'B2', 'C3'],
+    })
+
+    expect(subscribeCells).toHaveBeenCalledTimes(2)
+    expect(unsubscribe).toHaveBeenCalledTimes(1)
+
+    invalidateScene?.()
+
+    expect(runtime.resolve({ freezeCols: 0, freezeRows: 0, visibleRegion }).sceneRevision).toBe(1)
+
+    runtime.disconnectLocalSceneInvalidation()
+
+    expect(unsubscribe).toHaveBeenCalledTimes(2)
+  })
+
   it('publishes scene revision changes through the runtime external store', () => {
     const runtime = new GridViewportResidencyRuntime()
     const snapshots: number[] = []
