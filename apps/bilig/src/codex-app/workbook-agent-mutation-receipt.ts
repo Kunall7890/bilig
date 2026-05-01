@@ -5,8 +5,10 @@ import type {
   WorkbookAgentExecutionRecord,
   WorkbookAgentPreviewCellDiff,
   WorkbookAgentPreviewRange,
+  WorkbookAgentWriteCellInput,
 } from '@bilig/agent-api'
-import type { CellRangeRef } from '@bilig/protocol'
+import { formatAddress, parseCellAddress } from '@bilig/formula'
+import type { CellRangeRef, LiteralInput } from '@bilig/protocol'
 import type { WorkbookAgentUiContext } from '@bilig/contracts'
 import type { SessionIdentity } from '../http/session.js'
 import type { ZeroSyncService } from '../zero/service.js'
@@ -171,6 +173,67 @@ function valuesEqual(left: unknown, right: unknown): boolean {
   return JSON.stringify(left) === JSON.stringify(right)
 }
 
+function isFormulaWriteCellInput(value: WorkbookAgentWriteCellInput): value is { readonly formula: string } {
+  return typeof value === 'object' && value !== null && 'formula' in value && typeof value.formula === 'string'
+}
+
+function literalWriteCellInput(value: WorkbookAgentWriteCellInput): LiteralInput | null {
+  if (isFormulaWriteCellInput(value)) {
+    return null
+  }
+  if (typeof value === 'object' && value !== null && 'value' in value) {
+    return value.value
+  }
+  return value
+}
+
+function deriveWriteRangePreviewDiffs(bundle: WorkbookAgentCommandBundle): readonly WorkbookAgentPreviewCellDiff[] {
+  const diffs: WorkbookAgentPreviewCellDiff[] = []
+  bundle.commands.forEach((command) => {
+    if (command.kind === 'writeRange') {
+      const start = parseCellAddress(command.startAddress, command.sheetName)
+      command.values.forEach((rowValues, rowIndex) => {
+        rowValues.forEach((cellInput, columnIndex) => {
+          if (diffs.length >= MAX_RECEIPT_READBACK_CELLS) {
+            return
+          }
+          const address = formatAddress(start.row + rowIndex, start.col + columnIndex)
+          diffs.push({
+            sheetName: command.sheetName,
+            address,
+            beforeInput: null,
+            beforeFormula: null,
+            afterInput: literalWriteCellInput(cellInput),
+            afterFormula: isFormulaWriteCellInput(cellInput) ? cellInput.formula : null,
+            changeKinds: isFormulaWriteCellInput(cellInput) ? ['formula'] : ['input'],
+          })
+        })
+      })
+      return
+    }
+    if (command.kind === 'setRangeFormulas') {
+      const start = parseCellAddress(command.range.startAddress, command.range.sheetName)
+      command.formulas.forEach((rowFormulas, rowIndex) => {
+        rowFormulas.forEach((formula, columnIndex) => {
+          if (diffs.length >= MAX_RECEIPT_READBACK_CELLS) {
+            return
+          }
+          diffs.push({
+            sheetName: command.range.sheetName,
+            address: formatAddress(start.row + rowIndex, start.col + columnIndex),
+            beforeInput: null,
+            beforeFormula: null,
+            afterInput: null,
+            afterFormula: formula.startsWith('=') ? formula : `=${formula}`,
+            changeKinds: ['formula'],
+          })
+        })
+      })
+    }
+  })
+  return diffs
+}
+
 function authoritativeRowsByAddress(readbacks: readonly unknown[]): Map<string, Record<string, unknown>> {
   const cells = new Map<string, Record<string, unknown>>()
   readbacks.forEach((readback) => {
@@ -316,7 +379,10 @@ async function buildAuthoritativeReadback(input: {
     input.ranges.map((range) => inspectWorkbookRange(runtime, range)),
   )
   const comparison = collectComparablePreviewMismatches({
-    previewDiffs: input.executionRecord?.preview?.cellDiffs ?? [],
+    previewDiffs:
+      input.executionRecord?.preview?.cellDiffs.length === 0
+        ? deriveWriteRangePreviewDiffs(input.bundle)
+        : (input.executionRecord?.preview?.cellDiffs ?? []),
     readbacks,
   })
   return {
@@ -513,6 +579,7 @@ export async function stageWorkbookAgentCommandResult(
         applied: mutationReceipt.status === 'applied' || mutationReceipt.status === 'verification_incomplete',
         staged: false,
         reviewQueued: false,
+        queuedForTurnApply: false,
         status: mutationReceipt.status,
         bundleId: bundle.id,
         summary: `Applied workbook change set at revision r${String(normalized.executionRecord.appliedRevision)}: ${normalized.executionRecord.summary}`,
@@ -549,6 +616,7 @@ export async function stageWorkbookAgentCommandResult(
       applied: false,
       staged: true,
       reviewQueued: true,
+      queuedForTurnApply: false,
       status: 'staged',
       bundleId: bundle.id,
       summary: `Prepared workbook review item; the workbook is unchanged until this is applied: ${bundle.summary}`,

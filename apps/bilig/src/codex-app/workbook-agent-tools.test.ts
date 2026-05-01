@@ -2674,7 +2674,11 @@ describe('workbook agent tools', () => {
     const payload = z
       .object({
         undone: z.literal(true),
-        status: z.literal('applied'),
+        applied: z.literal(true),
+        staged: z.literal(false),
+        queuedForTurnApply: z.literal(false),
+        status: z.literal('verification_incomplete'),
+        verificationComplete: z.literal(false),
         revision: z.object({
           before: z.literal(2),
           after: z.literal(3),

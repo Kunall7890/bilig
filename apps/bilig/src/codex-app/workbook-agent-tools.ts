@@ -79,6 +79,7 @@ import {
 import { buildWorkbookAgentVerificationReport, stageWorkbookAgentCommandResult } from './workbook-agent-mutation-receipt.js'
 import { selectWorkbookRenderedReadback } from './workbook-agent-rendered-readback.js'
 import { createWorkbookAgentRangeChunkPlan } from './workbook-agent-range-chunks.js'
+import { summarizeWorkbookAgentVerificationStatus } from './workbook-agent-verification-status.js'
 
 const MAX_MUTATION_RANGE_CELLS = 400
 const MAX_READ_RANGE_CELLS = 4000
@@ -1170,6 +1171,12 @@ export async function handleWorkbookAgentToolCall(
               sheetName: nextContext?.selection.sheetName ?? null,
               address: nextContext?.selection.address ?? null,
             },
+            selectionConfidence: {
+              level: 'model_only',
+              browserConfirmed: false,
+              reason:
+                'The active sheet was updated in the workbook assistant model, but browser-rendered confirmation is not available synchronously from this tool call.',
+            },
             browserConfirmation: {
               status: 'not_proven',
               reason:
@@ -1222,6 +1229,12 @@ export async function handleWorkbookAgentToolCall(
               sheetName: nextContext?.selection.sheetName ?? null,
               address: nextContext?.selection.address ?? null,
               range: nextContext?.selection.range ?? null,
+            },
+            selectionConfidence: {
+              level: 'model_only',
+              browserConfirmed: false,
+              reason:
+                'The selection was updated in the workbook assistant model, but browser-rendered confirmation is not available synchronously from this tool call.',
             },
             browserConfirmation: {
               status: 'not_proven',
@@ -1277,6 +1290,8 @@ export async function handleWorkbookAgentToolCall(
       }
       case WORKBOOK_AGENT_TOOL_NAMES.applyAndVerify: {
         const args = applyAndVerifyToolArgsSchema.parse(request.arguments)
+        const revision = await context.zeroSyncService.getWorkbookHeadRevision(context.documentId)
+        await context.awaitRenderedRevision?.(revision)
         const ranges = await context.zeroSyncService.inspectWorkbook(context.documentId, (runtime) => {
           if (args.range) {
             return [normalizeRange(args.range)]
@@ -1286,12 +1301,23 @@ export async function handleWorkbookAgentToolCall(
         })
         const report = await buildVerificationReport({
           context,
-          revision: null,
+          revision,
           ranges,
           ...(args.includeFormulaIssues !== undefined ? { includeFormulaIssues: args.includeFormulaIssues } : {}),
           ...(args.includeInvariants !== undefined ? { includeInvariants: args.includeInvariants } : {}),
         })
-        return textToolResult(stringifyJson(report))
+        const { verificationComplete } = summarizeWorkbookAgentVerificationStatus({
+          renderedReadback: report.renderedReadback,
+          formulaIssues: report.formulaIssues,
+          invariants: report.invariants,
+        })
+        return textToolResult(
+          stringifyJson({
+            status: verificationComplete ? 'verified' : 'verification_incomplete',
+            verificationComplete,
+            ...report,
+          }),
+        )
       }
       case WORKBOOK_AGENT_TOOL_NAMES.undoWorkbookMutation: {
         const args = undoWorkbookMutationToolArgsSchema.parse(request.arguments)
@@ -1341,10 +1367,21 @@ export async function handleWorkbookAgentToolCall(
           revision: afterRevision,
           ranges: verificationRange,
         })
+        const { verificationComplete } = summarizeWorkbookAgentVerificationStatus({
+          renderedReadback: verification.renderedReadback,
+          formulaIssues: verification.formulaIssues,
+          invariants: verification.invariants,
+          requireTargetRange: true,
+          targetRangeCount: verificationRange.length,
+        })
         return textToolResult(
           stringifyJson({
             undone: true,
-            status: 'applied',
+            applied: true,
+            staged: false,
+            queuedForTurnApply: false,
+            status: verificationComplete ? 'applied' : 'verification_incomplete',
+            verificationComplete,
             revision: {
               before: beforeRevision,
               after: afterRevision,

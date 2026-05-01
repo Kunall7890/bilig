@@ -13,7 +13,8 @@ import type { ZeroSyncService } from '../zero/service.js'
 import { handleWorkbookAgentToolCall, type WorkbookAgentStartWorkflowRequest } from './workbook-agent-tools.js'
 import { createWorkbookAgentServiceError } from '../workbook-agent-errors.js'
 import { cloneUiContext, type WorkbookAgentThreadState, toContextRef } from './workbook-agent-service-shared.js'
-import { normalizeWorkbookAgentUiContext } from './workbook-agent-inspection.js'
+import { inspectWorkbookRange, normalizeWorkbookAgentUiContext } from './workbook-agent-inspection.js'
+import { selectWorkbookRenderedReadback } from './workbook-agent-rendered-readback.js'
 
 const RENDERED_CONTEXT_WAIT_TIMEOUT_MS = 20_000
 const RENDERED_CONTEXT_POLL_INTERVAL_MS = 50
@@ -52,6 +53,17 @@ function shouldWaitForRenderedTool(toolName: string): boolean {
     normalizedTool === WORKBOOK_AGENT_TOOL_NAMES.readRenderedRange ||
     normalizedTool === WORKBOOK_AGENT_TOOL_NAMES.applyAndVerify
   )
+}
+
+function firstRenderedVerificationRange(bundle: ReturnType<typeof appendWorkbookAgentCommandToBundle>) {
+  const targetRange = bundle.affectedRanges.find((range) => range.role === 'target') ?? null
+  return targetRange
+    ? {
+        sheetName: targetRange.sheetName,
+        startAddress: targetRange.startAddress,
+        endAddress: targetRange.endAddress,
+      }
+    : null
 }
 
 export function createWorkbookAgentDynamicToolHandler(input: {
@@ -105,9 +117,12 @@ export function createWorkbookAgentDynamicToolHandler(input: {
       return normalizedContext
     }
 
-    const waitForRenderedContext = async (minRevision: number | null): Promise<WorkbookAgentThreadState['durable']['context']> => {
+    const waitForRenderedContext = async (
+      minRevision: number | null,
+      isReady?: (context: WorkbookAgentThreadState['durable']['context']) => Promise<boolean>,
+    ): Promise<WorkbookAgentThreadState['durable']['context']> => {
       let latestContext = await refreshRequestContext()
-      if (hasRenderedContextAtRevision(latestContext, minRevision)) {
+      if (hasRenderedContextAtRevision(latestContext, minRevision) && (!isReady || (await isReady(latestContext)))) {
         return latestContext
       }
       if (!hasRenderedContext(latestContext)) {
@@ -120,12 +135,35 @@ export function createWorkbookAgentDynamicToolHandler(input: {
         }
         await delay(RENDERED_CONTEXT_POLL_INTERVAL_MS)
         latestContext = await refreshRequestContext()
-        if (hasRenderedContextAtRevision(latestContext, minRevision)) {
+        if (hasRenderedContextAtRevision(latestContext, minRevision) && (!isReady || (await isReady(latestContext)))) {
           return latestContext
         }
         return pollRenderedContext()
       }
       return pollRenderedContext()
+    }
+
+    const renderedVerificationRangeMatches = async (
+      latestContext: WorkbookAgentThreadState['durable']['context'],
+      bundle: ReturnType<typeof appendWorkbookAgentCommandToBundle>,
+      minRevision: number,
+    ): Promise<boolean> => {
+      const targetRange = firstRenderedVerificationRange(bundle)
+      if (!targetRange) {
+        return true
+      }
+      return await input.zeroSyncService.inspectWorkbook(sessionState.documentId, (runtime) => {
+        const normalizedContext = normalizeWorkbookAgentUiContext(runtime, latestContext)
+        const authoritativeReadback = inspectWorkbookRange(runtime, targetRange)
+        const authoritativeRows = authoritativeReadback.rows.filter(Array.isArray) as readonly (readonly unknown[])[]
+        const renderedReadback = selectWorkbookRenderedReadback({
+          renderedContext: normalizedContext?.rendered,
+          requestedRange: targetRange,
+          authoritativeRows,
+          minBatchId: minRevision,
+        })
+        return renderedReadback.matched === true
+      })
     }
 
     requestContext = await refreshRequestContext()
@@ -178,7 +216,10 @@ export function createWorkbookAgentDynamicToolHandler(input: {
               bundle,
             })
             if (executionRecord && hasRenderedContext(requestContext)) {
-              requestContext = await waitForRenderedContext(executionRecord.appliedRevision)
+              requestContext = await waitForRenderedContext(
+                executionRecord.appliedRevision,
+                async (latestContext) => await renderedVerificationRangeMatches(latestContext, bundle, executionRecord.appliedRevision),
+              )
             }
             return {
               bundle,

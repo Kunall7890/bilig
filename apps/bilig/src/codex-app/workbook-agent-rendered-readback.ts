@@ -29,6 +29,7 @@ export interface WorkbookRenderedReadbackProof {
   readonly capturedRevision: number | null
   readonly capturedBatchId: number | null
   readonly truncated: boolean
+  readonly sourceTruncated: boolean
   readonly missingCells: readonly string[]
   readonly mismatches: readonly WorkbookVerificationMismatch[]
   readonly incompleteReason: string | null
@@ -197,7 +198,7 @@ function buildExtractedRenderedRange(input: {
             rowCount,
             columnCount,
             cellCount: rowCount * columnCount,
-            truncated: input.renderedRange.truncated,
+            truncated: false,
             rows,
           },
     missingCells,
@@ -344,12 +345,14 @@ export function selectWorkbookRenderedReadback(input: {
           renderedRange: extracted.range,
         })
       : []
+  const proofTruncated = input.nextChunk != null || extracted.range?.truncated === true
+  const sourceTruncated = selectedRange?.truncated === true
   const incompleteReason = buildIncompleteReason({
     hasRenderedContext: renderedContext !== null,
     selectedRange,
     stale,
     missingCells: extracted.missingCells,
-    truncated: selectedRange?.truncated === true || extracted.range?.truncated === true,
+    truncated: proofTruncated,
     mismatches,
   })
   const matched = incompleteReason === null ? mismatches.length === 0 : mismatches.length > 0 ? false : null
@@ -364,7 +367,8 @@ export function selectWorkbookRenderedReadback(input: {
     capturedAtUnixMs: renderedContext?.capturedAtUnixMs ?? null,
     capturedRevision,
     capturedBatchId,
-    truncated: selectedRange?.truncated === true || extracted.range?.truncated === true,
+    truncated: proofTruncated,
+    sourceTruncated,
     missingCells: extracted.missingCells,
     mismatches,
     incompleteReason,
@@ -390,6 +394,7 @@ export function emptyWorkbookRenderedReadbackProof(input: {
     capturedRevision: null,
     capturedBatchId: null,
     truncated: false,
+    sourceTruncated: false,
     missingCells: input.requestedRange
       ? enumerateWorkbookAgentRangeAddresses(input.requestedRange, 50).map((address) => `${input.requestedRange!.sheetName}!${address}`)
       : [],

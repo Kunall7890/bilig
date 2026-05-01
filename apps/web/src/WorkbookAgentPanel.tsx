@@ -50,6 +50,7 @@ import {
 } from './workbook-agent-panel-primitives.js'
 import { renderToolDisplayName, safeParseToolOutput, StructuredToolOutput, summarizeToolEntry } from './workbook-agent-tool-output.js'
 import { WorkbookAgentMarkdown } from './workbook-agent-markdown.js'
+import { MessageCopyButton } from './workbook-agent-message-copy-button.js'
 import { formatWorkbookCollaboratorLabel } from './workbook-presence-model.js'
 import { AssistantProgressRow, PreviewRangeList, WorkflowRunRow } from './workbook-agent-panel-history.js'
 
@@ -268,16 +269,23 @@ function TextDisclosureEntryRow(props: { readonly entry: WorkbookAgentTimelineEn
 function WorkbookAgentEntryRow(props: { readonly entry: WorkbookAgentTimelineEntry }) {
   const { entry } = props
   if (entry.kind === 'user') {
+    const text = entry.text ?? ''
     return (
-      <div className="flex min-w-0 max-w-full justify-end px-3 py-3">
+      <div className="flex min-w-0 max-w-full flex-col items-end px-3 py-3">
         <div
           className={cn(
             agentPanelBodyTextClass(),
             'min-w-0 max-w-[82%] overflow-hidden break-words rounded-[var(--wb-radius-control)] border border-[var(--wb-border)] bg-[var(--wb-surface-muted)] px-3 py-2 shadow-[0_1px_2px_rgba(15,23,42,0.04)]',
           )}
+          data-testid={`workbook-agent-user-message-card-${entry.id}`}
         >
-          <WorkbookAgentMarkdown markdown={entry.text ?? ''} />
-          <TimelineCitationList citations={entry.citations} />
+          <div className="min-w-0 max-w-full overflow-hidden">
+            <WorkbookAgentMarkdown markdown={text} />
+            <TimelineCitationList citations={entry.citations} />
+          </div>
+        </div>
+        <div className="mt-1 flex max-w-[82%] justify-end" data-testid={`workbook-agent-user-message-actions-${entry.id}`}>
+          <MessageCopyButton entryId={entry.id} messageKind="user" text={text} />
         </div>
       </div>
     )
@@ -292,8 +300,13 @@ function WorkbookAgentEntryRow(props: { readonly entry: WorkbookAgentTimelineEnt
     }
     return (
       <div className={cn(agentPanelBodyTextClass(), 'min-w-0 w-full max-w-full overflow-hidden px-3 py-3')}>
-        <WorkbookAgentMarkdown markdown={entry.text} />
-        <TimelineCitationList citations={entry.citations} />
+        <div className="min-w-0 max-w-full overflow-hidden" data-testid={`workbook-agent-assistant-message-body-${entry.id}`}>
+          <WorkbookAgentMarkdown markdown={entry.text} />
+          <TimelineCitationList citations={entry.citations} />
+        </div>
+        <div className="mt-1 flex justify-end" data-testid={`workbook-agent-assistant-message-actions-${entry.id}`}>
+          <MessageCopyButton entryId={entry.id} messageKind="assistant" text={entry.text} />
+        </div>
       </div>
     )
   }

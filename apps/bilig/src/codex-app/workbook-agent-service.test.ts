@@ -2859,8 +2859,8 @@ describe('workbook agent service', () => {
       expect(text).toContain('"applied": true')
       expect(text).toContain('"staged": false')
       expect(text).toContain('"reviewQueued": false')
+      expect(text).toContain('"queuedForTurnApply": false')
       expect(text).toContain('"revision": 7')
-      expect(text).not.toContain('queuedForTurnApply')
 
       const snapshot = service.getSnapshot({
         documentId: 'doc-1',
