@@ -9,7 +9,7 @@ afterEach(() => {
 })
 
 describe('WorkbookHeaderStatusChip', () => {
-  it('renders the saved state as a readable compact indicator', async () => {
+  it('renders the saved state as an icon-only indicator', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
     const host = document.createElement('div')
@@ -25,8 +25,11 @@ describe('WorkbookHeaderStatusChip', () => {
     expect(status?.getAttribute('class')).not.toContain('border')
     expect(status?.getAttribute('class')).not.toContain('bg-[')
     expect(status?.getAttribute('class')).not.toContain('rounded-')
-    expect(status?.getAttribute('class')).toContain('max-[420px]:gap-0')
-    expect(host.querySelector("[data-testid='status-label']")?.textContent).toBe('Saved')
+    expect(status?.getAttribute('class')).toContain('gap-0')
+    expect(status?.getAttribute('aria-label')).toBe('Workbook status: Live, Saved')
+    expect(status?.getAttribute('title')).toBe('Live • Saved')
+    expect(status?.textContent).toBe('')
+    expect(host.querySelector("[data-testid='status-label']")).toBeNull()
     const sync = host.querySelector<HTMLElement>("[data-testid='status-sync']")
     expect(sync?.textContent).toBe('Saved')
     expect(sync?.hidden).toBe(true)
@@ -37,7 +40,7 @@ describe('WorkbookHeaderStatusChip', () => {
     })
   })
 
-  it('keeps status text available while collapsing its visual width on tiny screens', async () => {
+  it('keeps status text available as metadata without visible toolbar text', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
     const host = document.createElement('div')
@@ -48,12 +51,12 @@ describe('WorkbookHeaderStatusChip', () => {
       root.render(<WorkbookHeaderStatusChip modeLabel="Live" syncLabel="Saving…" tone="progress" />)
     })
 
-    const status = host.querySelector("[data-testid='status-mode']")
-    const label = host.querySelector("[data-testid='status-label']")
+    const status = host.querySelector<HTMLElement>("[data-testid='status-mode']")
 
-    expect(status?.getAttribute('class')).toContain('max-[420px]:gap-0')
-    expect(label?.textContent).toBe('Saving…')
-    expect(label?.getAttribute('class')).toContain('max-[420px]:sr-only')
+    expect(status?.textContent).toBe('')
+    expect(status?.getAttribute('aria-label')).toBe('Workbook status: Live, Saving…')
+    expect(status?.getAttribute('title')).toBe('Live • Saving…')
+    expect(host.querySelector("[data-testid='status-label']")).toBeNull()
     const sync = host.querySelector<HTMLElement>("[data-testid='status-sync']")
     expect(sync?.textContent).toBe('Saving…')
     expect(sync?.hidden).toBe(true)

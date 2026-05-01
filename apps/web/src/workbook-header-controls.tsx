@@ -89,15 +89,12 @@ export function WorkbookHeaderStatusChip({ modeLabel, syncLabel, tone = 'neutral
     <>
       <span
         aria-label={`Workbook status: ${modeLabel}, ${syncLabel}`}
-        className={`inline-flex h-8 items-center gap-2 px-0 text-[12px] font-medium max-[420px]:gap-0 ${surfaceClass}`}
+        className={`inline-flex h-8 items-center justify-center gap-0 px-0 text-[12px] font-medium ${surfaceClass}`}
         data-testid="status-mode"
         role="status"
         title={`${modeLabel} • ${syncLabel}`}
       >
         <span aria-hidden="true" className={cn('size-2 rounded-full', toneClass)} />
-        <span className="max-[420px]:sr-only" data-testid="status-label">
-          {syncLabel}
-        </span>
       </span>
       <span aria-hidden="true" data-testid="status-sync" hidden>
         {syncLabel}
