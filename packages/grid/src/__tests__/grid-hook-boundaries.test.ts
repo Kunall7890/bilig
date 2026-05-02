@@ -77,6 +77,11 @@ describe('grid hook boundary helpers', () => {
       fileURLToPath(new URL('../useWorkbookGridInteractionRuntime.ts', import.meta.url)),
       'utf8',
     )
+    const renderPipelineRuntimeHookSource = readFileSync(
+      fileURLToPath(new URL('../useWorkbookGridRenderPipelineRuntime.ts', import.meta.url)),
+      'utf8',
+    )
+    const paneRuntimeHookSource = readFileSync(fileURLToPath(new URL('../useWorkbookGridPaneRenderRuntime.ts', import.meta.url)), 'utf8')
     const interactionsHookSource = readFileSync(fileURLToPath(new URL('../useWorkbookGridInteractions.ts', import.meta.url)), 'utf8')
     const interactionOverlayHookSource = readFileSync(
       fileURLToPath(new URL('../useWorkbookInteractionOverlayState.ts', import.meta.url)),
@@ -125,9 +130,17 @@ describe('grid hook boundary helpers', () => {
     expect(hookSource).not.toContain('useRef<HTMLDivElement')
     expect(hookSource).not.toContain('useState<VisibleRegionState>')
     expect(hookSource).not.toContain('useWorkbookGridViewportRuntime')
+    expect(hookSource).toContain('useWorkbookGridRenderPipelineRuntime')
+    expect(hookSource).not.toContain('useWorkbookGridInteractionRuntime')
+    expect(hookSource).not.toContain('useWorkbookGridPaneRenderRuntime')
     expect(hookSource).not.toContain('useWorkbookGridRenderPanes')
     expect(hookSource).not.toContain('devicePixelRatio')
     expect(hookSource).not.toContain('shouldUseRemoteRenderTileSource')
+    expect(renderPipelineRuntimeHookSource).toContain('useWorkbookGridInteractionRuntime')
+    expect(renderPipelineRuntimeHookSource).toContain('useWorkbookGridPaneRenderRuntime')
+    expect(renderPipelineRuntimeHookSource).toContain('...interactionState')
+    expect(renderPipelineRuntimeHookSource).toContain('...paneState')
+    expect(paneRuntimeHookSource).toContain('useWorkbookGridDrawRuntime')
     expect(drawRuntimeHookSource).toContain('useWorkbookGridViewportRuntime')
     expect(drawRuntimeHookSource).not.toContain('useWorkbookGridRenderPanes')
     expect(drawRuntimeHookSource).toContain('devicePixelRatio')

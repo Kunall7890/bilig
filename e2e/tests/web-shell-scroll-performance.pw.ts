@@ -3,6 +3,8 @@ import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 import {
   clickProductCell,
+  dragProductColumnResize,
+  dragProductRowResize,
   getProductColumnLeft,
   getProductColumnWidth,
   getProductFillHandleDragPoints,
@@ -134,6 +136,9 @@ function expectBoundedVisibleMutation(
     readonly minDamagePatches?: number
     readonly maxDamagePatches?: number
     readonly maxRendererDeltaBatches?: number
+    readonly maxRendererDeltaMutations?: number
+    readonly maxRendererVisibleDirtyTiles?: number
+    readonly maxRendererWarmDirtyTiles?: number
     readonly mutationToVisibleP95Max?: number
     readonly frameP95Max?: number
     readonly frameP99Max?: number
@@ -150,8 +155,18 @@ function expectBoundedVisibleMutation(
   expect(report.counters.damagePatches).toBeLessThanOrEqual(options.maxDamagePatches ?? 4)
   expect(readCounter(report.counters, 'rendererDeltaBatches')).toBeGreaterThan(0)
   expect(readCounter(report.counters, 'rendererDeltaBatches')).toBeLessThanOrEqual(options.maxRendererDeltaBatches ?? 4)
+  expect(readCounter(report.counters, 'rendererDeltaMutations')).toBeGreaterThan(0)
+  expect(readCounter(report.counters, 'rendererDeltaMutations')).toBeLessThanOrEqual(
+    options.maxRendererDeltaMutations ?? Number.MAX_SAFE_INTEGER,
+  )
   expect(readCounter(report.counters, 'dirtyTilesMarked')).toBeGreaterThan(0)
   expect(readCounter(report.counters, 'rendererVisibleDirtyTiles')).toBeGreaterThan(0)
+  expect(readCounter(report.counters, 'rendererVisibleDirtyTiles')).toBeLessThanOrEqual(
+    options.maxRendererVisibleDirtyTiles ?? Number.MAX_SAFE_INTEGER,
+  )
+  expect(readCounter(report.counters, 'rendererWarmDirtyTiles')).toBeLessThanOrEqual(
+    options.maxRendererWarmDirtyTiles ?? Number.MAX_SAFE_INTEGER,
+  )
   expect(report.samples.mutationToVisibleMs.length).toBeGreaterThan(0)
   expect(report.summary.mutationToVisibleMs.p95).toBeLessThan(options.mutationToVisibleP95Max ?? 100)
   expect(readCounter(report.counters, 'rendererTileMisses')).toBeLessThanOrEqual(readCounter(report.counters, 'rendererVisibleDirtyTiles'))
@@ -374,6 +389,74 @@ test.describe('@browser-perf web app scroll performance', () => {
     }
   })
 
+  test('keeps committed column resize bounded with controlled V3 dirty-tile writes', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 920, height: 680 })
+    await gotoWorkbookShell(page, '/?benchmarkCorpus=wide-mixed-250k')
+    await waitForWorkbookReady(page)
+    const benchmarkState = await waitForBenchmarkCorpus(page)
+
+    expect(benchmarkState.fixture?.id).toBe('wide-mixed-250k')
+
+    await settleWorkbookScrollPerf(page, 40)
+    await warmStartWorkbookScrollPerf(page, 'wide-250k-commit-column-resize')
+    await dragProductColumnResize(page, 1, 64)
+    await settleWorkbookScrollPerf(page, 24)
+    const report = await stopWorkbookScrollPerf(page)
+
+    if (!report) {
+      throw new Error('scroll performance report was not available')
+    }
+
+    await writeFile(testInfo.outputPath('scroll-perf-wide-250k-column-resize-commit.json'), JSON.stringify(report, null, 2), 'utf8')
+
+    expect(report.fixture?.id).toBe('wide-mixed-250k')
+    expectBoundedVisibleMutation(report, {
+      maxDamagePatches: 16,
+      maxRendererDeltaBatches: 6,
+      maxRendererDeltaMutations: 80,
+      maxRendererVisibleDirtyTiles: 64,
+      maxRendererWarmDirtyTiles: 24,
+      mutationToVisibleP95Max: 80,
+      frameP95Max: 30,
+      longTaskMax: 70,
+    })
+    expectQuietShell(report, { maxSurfaceCommits: 4 })
+  })
+
+  test('keeps committed row resize bounded with controlled V3 dirty-tile writes', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 920, height: 680 })
+    await gotoWorkbookShell(page, '/?benchmarkCorpus=wide-mixed-250k')
+    await waitForWorkbookReady(page)
+    const benchmarkState = await waitForBenchmarkCorpus(page)
+
+    expect(benchmarkState.fixture?.id).toBe('wide-mixed-250k')
+
+    await settleWorkbookScrollPerf(page, 40)
+    await warmStartWorkbookScrollPerf(page, 'wide-250k-commit-row-resize')
+    await dragProductRowResize(page, 1, 64)
+    await settleWorkbookScrollPerf(page, 24)
+    const report = await stopWorkbookScrollPerf(page)
+
+    if (!report) {
+      throw new Error('scroll performance report was not available')
+    }
+
+    await writeFile(testInfo.outputPath('scroll-perf-wide-250k-row-resize-commit.json'), JSON.stringify(report, null, 2), 'utf8')
+
+    expect(report.fixture?.id).toBe('wide-mixed-250k')
+    expectBoundedVisibleMutation(report, {
+      maxDamagePatches: 16,
+      maxRendererDeltaBatches: 6,
+      maxRendererDeltaMutations: 80,
+      maxRendererVisibleDirtyTiles: 64,
+      maxRendererWarmDirtyTiles: 24,
+      mutationToVisibleP95Max: 80,
+      frameP95Max: 30,
+      longTaskMax: 70,
+    })
+    expectQuietShell(report, { maxSurfaceCommits: 4 })
+  })
+
   test('keeps column resize preview overlay-only with no renderer mutation or data-tile upload', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 920, height: 680 })
     await gotoWorkbookShell(page, '/?benchmarkCorpus=wide-mixed-250k')
@@ -501,6 +584,9 @@ test.describe('@browser-perf web app scroll performance', () => {
     expectBoundedVisibleMutation(report, {
       maxDamagePatches: 2,
       maxRendererDeltaBatches: 2,
+      maxRendererDeltaMutations: 10,
+      maxRendererVisibleDirtyTiles: 10,
+      maxRendererWarmDirtyTiles: 4,
       mutationToVisibleP95Max: 50,
     })
     expect(readCounter(report.counters, 'rendererWarmDirtyTiles')).toBeLessThanOrEqual(readCounter(report.counters, 'dirtyTilesMarked'))
@@ -570,7 +656,14 @@ test.describe('@browser-perf web app scroll performance', () => {
         report.counters.damagePatches === 0 && report.counters.rendererDeltaBatches === 0,
         'remote edits did not arrive during the sampling window',
       )
-      expectBoundedVisibleMutation(report, { maxDamagePatches: 6, maxRendererDeltaBatches: 6, minDamagePatches: 1 })
+      expectBoundedVisibleMutation(report, {
+        maxDamagePatches: 6,
+        maxRendererDeltaBatches: 6,
+        maxRendererDeltaMutations: 40,
+        maxRendererVisibleDirtyTiles: 24,
+        maxRendererWarmDirtyTiles: 12,
+        minDamagePatches: 1,
+      })
       expect(report.counters.canvasPaints['text:body'] ?? 0).toBeLessThanOrEqual(6)
       expect(report.counters.canvasPaints['gpu:body'] ?? 0).toBeLessThanOrEqual(6)
       expectQuietShell(report)

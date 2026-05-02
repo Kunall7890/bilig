@@ -8,10 +8,9 @@ import type { GridEngineLike } from './grid-engine.js'
 import type { GridRenderTileSource } from './renderer-v3/render-tile-source.js'
 import { useWorkbookGridAxisRuntime } from './useWorkbookGridAxisRuntime.js'
 import { useWorkbookGridEditorRuntime } from './useWorkbookGridEditorRuntime.js'
-import { useWorkbookGridDrawRuntime } from './useWorkbookGridDrawRuntime.js'
 import { useWorkbookGridGeometryRuntime } from './useWorkbookGridGeometryRuntime.js'
 import { useWorkbookGridHostRuntime } from './useWorkbookGridHostRuntime.js'
-import { useWorkbookGridInteractionRuntime } from './useWorkbookGridInteractionRuntime.js'
+import { useWorkbookGridRenderPipelineRuntime } from './useWorkbookGridRenderPipelineRuntime.js'
 
 export function useWorkbookGridRenderState(input: {
   engine: GridEngineLike
@@ -146,11 +145,14 @@ export function useWorkbookGridRenderState(input: {
     fillPreviewBounds,
     fillPreviewRange,
     gridSelection,
+    headerPanes,
     hoverState,
     isEntireSheetSelected,
     isFillHandleDragging,
     isRangeMoveDragging,
-    requiresLiveViewportState,
+    preloadDataPanes,
+    renderTilePanes,
+    residentDataPanes,
     selectionRange,
     setActiveHeaderDrag,
     setFillPreviewRange,
@@ -158,20 +160,9 @@ export function useWorkbookGridRenderState(input: {
     setHoverState,
     setIsFillHandleDragging,
     setIsRangeMoveDragging,
-  } = useWorkbookGridInteractionRuntime({
+  } = useWorkbookGridRenderPipelineRuntime({
     activeResizeColumn,
     activeResizeRow,
-    getCellLocalBounds,
-    gridRuntimeHost,
-    hasColumnResizePreview,
-    hasRowResizePreview,
-    isEditingCell,
-    selectedCol: selectedCell.col,
-    selectedRow: selectedCell.row,
-    visibleRange: visibleRegion.range,
-  })
-
-  const { headerPanes, preloadDataPanes, renderTilePanes, residentDataPanes } = useWorkbookGridDrawRuntime({
     columnAxis,
     columnWidths,
     engine,
@@ -179,16 +170,19 @@ export function useWorkbookGridRenderState(input: {
     freezeRows,
     frozenColumnWidth,
     frozenRowHeight,
+    getCellLocalBounds,
     gridCameraStore,
-    gridMetrics,
     gridRuntimeHost,
+    gridMetrics,
+    hasColumnResizePreview,
+    hasRowResizePreview,
     hostClientHeight,
     hostClientWidth,
     hostElement,
+    isEditingCell,
     liveVisibleRegionRef,
     onVisibleViewportChange,
     renderTileSource,
-    requiresLiveViewportState,
     rowAxis,
     rowHeights,
     scrollTransformRef,
@@ -196,12 +190,15 @@ export function useWorkbookGridRenderState(input: {
     scrollViewportRef,
     selectedCell: selectedItem,
     setVisibleRegion,
+    selectedCol: selectedCell.col,
+    selectedRow: selectedCell.row,
     sheetId,
-    sheetOrdinal,
     sheetName,
+    sheetOrdinal,
     sortedColumnWidthOverrides,
     sortedRowHeightOverrides,
     syncRuntimeAxes,
+    visibleRange: visibleRegion.range,
     visibleRegion,
     restoreViewportTarget,
   })

@@ -484,7 +484,10 @@ Completed in the resident-scene deletion tranche:
 - Fill-handle preview ranges and workbook review preview rectangles now render through `DynamicGridOverlayBatchV3` instead of React DOM
   overlays. The product surface keeps the V3 renderer canvas as the visual path while fill/drop behavior is still verified in browser tests.
 
-Remaining work from this design:
+Migration completion status from this tranche:
 
-- continue splitting remaining draw/dirty-tile coordination out of `useWorkbookGridRenderState.ts`;
-- continue tightening browser perf gates for V3 mutation, resize, and collaboration paths beyond the steady-scroll samples.
+- Completed in this migration tranche:
+  - draw/dirty-tile coordination moved out of `useWorkbookGridRenderState.ts` into `useWorkbookGridRenderPipelineRuntime` and
+    `useWorkbookGridPaneRenderRuntime` runtime ownership.
+  - browser perf gates now cover V3 mutation, resize, and collaboration paths with bounded dirty-tile/write envelopes (`web-shell-scroll-performance.pw.ts`)
+    plus new row- and column-resize commit samples.

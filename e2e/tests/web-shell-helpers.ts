@@ -119,6 +119,22 @@ async function getProductColumnResizePoint(page: Page, columnIndex: number): Pro
   }
 }
 
+async function getProductRowResizePoint(page: Page, rowIndex: number): Promise<{ readonly x: number; readonly y: number }> {
+  const gridLocator = page.getByTestId('sheet-grid')
+  await expect(gridLocator).toBeVisible()
+  const grid = await gridLocator.boundingBox()
+  if (!grid) {
+    throw new Error('sheet grid is not visible')
+  }
+
+  const rowTop = await getProductRowTop(page, rowIndex)
+  const rowHeight = await getProductRowHeight(page, rowIndex)
+  return {
+    x: grid.x + Math.floor(PRODUCT_ROW_MARKER_WIDTH / 2),
+    y: grid.y + PRODUCT_HEADER_HEIGHT + rowTop + rowHeight - 1,
+  }
+}
+
 async function hoverProductColumnResizeHandle(page: Page, columnIndex: number): Promise<{ readonly x: number; readonly y: number }> {
   const point = await getProductColumnResizePoint(page, columnIndex)
   const gridLocator = page.getByTestId('sheet-grid')
@@ -136,6 +152,26 @@ export async function dragProductColumnResize(page: Page, columnIndex: number, d
 
   await page.mouse.down()
   await page.mouse.move(edgeX + deltaX, edgeY, { steps: 10 })
+  await page.mouse.up()
+}
+
+export async function hoverProductRowResizeHandle(page: Page, rowIndex: number): Promise<{ readonly x: number; readonly y: number }> {
+  const point = await getProductRowResizePoint(page, rowIndex)
+  const gridLocator = page.getByTestId('sheet-grid')
+  await page.mouse.move(point.x, point.y)
+  await expect
+    .poll(async () => gridLocator.evaluate((node) => window.getComputedStyle(node).cursor), {
+      message: `row ${rowIndex} resize handle is hoverable`,
+    })
+    .toBe('row-resize')
+  return point
+}
+
+export async function dragProductRowResize(page: Page, rowIndex: number, deltaY: number) {
+  const { x: edgeX, y: edgeY } = await hoverProductRowResizeHandle(page, rowIndex)
+
+  await page.mouse.down()
+  await page.mouse.move(edgeX, edgeY + deltaY, { steps: 10 })
   await page.mouse.up()
 }
 
