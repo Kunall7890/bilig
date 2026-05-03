@@ -1,5 +1,5 @@
 import { Effect } from 'effect'
-import { compileCriteriaMatcher, formatAddress, matchesCompiledCriteria, parseCellAddress, parseFormula } from '@bilig/formula'
+import { compileCriteriaMatcher, formatAddress, matchesCompiledCriteria, parseCellAddress } from '@bilig/formula'
 import type { EngineOp, EngineOpBatch } from '@bilig/workbook-domain'
 import {
   ErrorCode,
@@ -11,7 +11,6 @@ import {
   type EngineEvent,
   type LiteralInput,
   type SelectionState,
-  type WorkbookDefinedNameValueSnapshot,
 } from '@bilig/protocol'
 import type { EdgeSlice } from '../../edge-arena.js'
 import type {
@@ -101,9 +100,11 @@ import {
   mergeChangedCellIndices,
   mutationErrorMessage,
   rangesIntersect,
+  reverseUint32Array,
   tagTrustedPhysicalTrackedChanges,
   throwProtectionBlocked,
 } from './operation-change-helpers.js'
+import { isScalarOnlyDefinedNameValue } from './defined-name-value-helpers.js'
 import type { ExactColumnIndexService } from './exact-column-index-service.js'
 import type { SortedColumnSearchService } from './sorted-column-search-service.js'
 
@@ -162,43 +163,6 @@ interface ExactLookupImpactCache {
 }
 
 type ExactLookupImpactCaches = Map<string, ExactLookupImpactCache>
-
-function reverseUint32Array(values: Uint32Array): Uint32Array {
-  const reversed = new Uint32Array(values.length)
-  for (let index = 0; index < values.length; index += 1) {
-    reversed[index] = values[values.length - 1 - index]!
-  }
-  return reversed
-}
-
-function isScalarOnlyDefinedNameValue(value: WorkbookDefinedNameValueSnapshot): boolean {
-  if (typeof value === 'string' && value.startsWith('=')) {
-    try {
-      const ast = parseFormula(value)
-      return ast.kind === 'NumberLiteral' || ast.kind === 'BooleanLiteral' || ast.kind === 'StringLiteral' || ast.kind === 'ErrorLiteral'
-    } catch {
-      return false
-    }
-  }
-  if (value === null || typeof value !== 'object') {
-    return true
-  }
-  if (!('kind' in value)) {
-    return true
-  }
-  if (value.kind === 'scalar') {
-    return true
-  }
-  if (value.kind !== 'formula') {
-    return false
-  }
-  try {
-    const ast = parseFormula(value.formula)
-    return ast.kind === 'NumberLiteral' || ast.kind === 'BooleanLiteral' || ast.kind === 'StringLiteral' || ast.kind === 'ErrorLiteral'
-  } catch {
-    return false
-  }
-}
 
 export interface EngineOperationService {
   readonly __testHooks: Record<string, unknown>

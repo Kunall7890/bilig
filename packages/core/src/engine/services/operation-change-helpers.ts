@@ -6,6 +6,14 @@ import type { U32 } from '../runtime-state.js'
 const TRUSTED_TRACKED_PHYSICAL_SHEET_ID_PROPERTY = '__biligTrackedPhysicalSheetId'
 const TRUSTED_TRACKED_PHYSICAL_SORTED_SPLIT_PROPERTY = '__biligTrackedPhysicalSortedSliceSplit'
 
+export function reverseUint32Array(values: Uint32Array): Uint32Array {
+  const reversed = new Uint32Array(values.length)
+  for (let index = 0; index < values.length; index += 1) {
+    reversed[index] = values[values.length - 1 - index]!
+  }
+  return reversed
+}
+
 export function mutationErrorMessage(message: string, cause: unknown): string {
   return cause instanceof Error && cause.message.length > 0 ? cause.message : message
 }

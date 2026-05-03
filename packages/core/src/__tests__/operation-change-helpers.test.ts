@@ -8,6 +8,7 @@ import {
   mutationErrorMessage,
   normalizeRange,
   rangesIntersect,
+  reverseUint32Array,
   tagTrustedPhysicalTrackedChanges,
   throwProtectionBlocked,
 } from '../engine/services/operation-change-helpers.js'
@@ -44,6 +45,13 @@ describe('operation change helpers', () => {
     expect(Array.from(mergeChangedCellIndices([1], [1]))).toEqual([1])
     expect(Array.from(mergeChangedCellIndices([1], [2]))).toEqual([1, 2])
     expect(Array.from(mergeChangedCellIndices([1, 2], [2, 3]))).toEqual([1, 2, 3])
+  })
+
+  it('reverses changed cell index arrays without mutating the input', () => {
+    const values = Uint32Array.of(3, 4, 5)
+
+    expect(Array.from(reverseUint32Array(values))).toEqual([5, 4, 3])
+    expect(Array.from(values)).toEqual([3, 4, 5])
   })
 
   it('builds tracked physical mutation results', () => {
