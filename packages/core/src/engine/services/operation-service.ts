@@ -112,6 +112,12 @@ import {
   shouldApplyOp as shouldApplyReplicaOp,
   type VersionStore,
 } from './operation-replica-helpers.js'
+import {
+  assertProtectionAllowsOp as assertProtectionAllowsProtectedOp,
+  rangeIsProtected as protectedRangeIsProtected,
+  sheetHasProtection as protectedSheetHasProtection,
+  type OperationProtectionAccess,
+} from './operation-protection-helpers.js'
 import type { ExactColumnIndexService } from './exact-column-index-service.js'
 import type { SortedColumnSearchService } from './sorted-column-search-service.js'
 
@@ -469,217 +475,10 @@ export function createEngineOperationService(args: {
   const sheetDeleteBarrierForOp = (op: EngineOp): OpOrder | undefined => sheetDeleteBarrierForReplicaOp(op, sheetDeleteVersions)
   const shouldApplyOp = (op: EngineOp, order: OpOrder): boolean => shouldApplyReplicaOp(op, order, { entityVersions, sheetDeleteVersions })
 
-  const sheetHasProtection = (sheetName: string): boolean =>
-    args.state.workbook.getSheetProtection(sheetName) !== undefined || args.state.workbook.listRangeProtections(sheetName).length > 0
-
-  const rangeIsProtected = (range: CellRangeRef): boolean => {
-    if (args.state.workbook.getSheetProtection(range.sheetName)) {
-      return true
-    }
-    return args.state.workbook.listRangeProtections(range.sheetName).some((protection) => rangesIntersect(protection.range, range))
-  }
-
-  const assertProtectionAllowsOp = (op: EngineOp): void => {
-    switch (op.kind) {
-      case 'setSheetProtection':
-      case 'clearSheetProtection':
-      case 'upsertRangeProtection':
-      case 'deleteRangeProtection':
-      case 'upsertWorkbook':
-      case 'setWorkbookMetadata':
-      case 'setCalculationSettings':
-      case 'setVolatileContext':
-      case 'upsertDefinedName':
-      case 'deleteDefinedName':
-      case 'upsertCellStyle':
-      case 'upsertCellNumberFormat':
-        return
-      case 'upsertSheet':
-        return
-      case 'renameSheet':
-      case 'deleteSheet':
-        if (sheetHasProtection(op.kind === 'renameSheet' ? op.oldName : op.name)) {
-          throwProtectionBlocked(`sheet ${op.kind === 'renameSheet' ? op.oldName : op.name} is protected`)
-        }
-        return
-      case 'insertRows':
-      case 'deleteRows':
-      case 'moveRows':
-      case 'insertColumns':
-      case 'deleteColumns':
-      case 'moveColumns':
-      case 'updateRowMetadata':
-      case 'updateColumnMetadata':
-      case 'setFreezePane':
-      case 'clearFreezePane':
-        if (sheetHasProtection(op.sheetName)) {
-          throwProtectionBlocked(`sheet ${op.sheetName} is protected`)
-        }
-        return
-      case 'setFilter':
-      case 'clearFilter':
-      case 'setSort':
-      case 'clearSort':
-      case 'setStyleRange':
-      case 'setFormatRange':
-      case 'mergeCells':
-      case 'unmergeCells':
-        if (rangeIsProtected(op.range)) {
-          throwProtectionBlocked(`range ${op.range.sheetName}!${op.range.startAddress}:${op.range.endAddress} is protected`)
-        }
-        return
-      case 'setDataValidation':
-        if (rangeIsProtected(op.validation.range)) {
-          throwProtectionBlocked(
-            `range ${op.validation.range.sheetName}!${op.validation.range.startAddress}:${op.validation.range.endAddress} is protected`,
-          )
-        }
-        return
-      case 'clearDataValidation':
-        if (rangeIsProtected(op.range)) {
-          throwProtectionBlocked(`range ${op.range.sheetName}!${op.range.startAddress}:${op.range.endAddress} is protected`)
-        }
-        return
-      case 'upsertConditionalFormat':
-        if (rangeIsProtected(op.format.range)) {
-          throwProtectionBlocked(
-            `range ${op.format.range.sheetName}!${op.format.range.startAddress}:${op.format.range.endAddress} is protected`,
-          )
-        }
-        return
-      case 'deleteConditionalFormat': {
-        const existing = args.state.workbook.getConditionalFormat(op.id)
-        if (existing && rangeIsProtected(existing.range)) {
-          throwProtectionBlocked(`conditional format ${op.id} targets a protected range`)
-        }
-        return
-      }
-      case 'upsertCommentThread':
-        if (rangeIsProtected(cellRange(op.thread.sheetName, op.thread.address))) {
-          throwProtectionBlocked(`cell ${op.thread.sheetName}!${op.thread.address} is protected`)
-        }
-        return
-      case 'deleteCommentThread':
-        if (rangeIsProtected(cellRange(op.sheetName, op.address))) {
-          throwProtectionBlocked(`cell ${op.sheetName}!${op.address} is protected`)
-        }
-        return
-      case 'upsertNote':
-        if (rangeIsProtected(cellRange(op.note.sheetName, op.note.address))) {
-          throwProtectionBlocked(`cell ${op.note.sheetName}!${op.note.address} is protected`)
-        }
-        return
-      case 'deleteNote':
-        if (rangeIsProtected(cellRange(op.sheetName, op.address))) {
-          throwProtectionBlocked(`cell ${op.sheetName}!${op.address} is protected`)
-        }
-        return
-      case 'setCellValue':
-      case 'setCellFormula':
-      case 'setCellFormat':
-      case 'clearCell':
-        if (rangeIsProtected(cellRange(op.sheetName, op.address))) {
-          throwProtectionBlocked(`cell ${op.sheetName}!${op.address} is protected`)
-        }
-        return
-      case 'upsertTable':
-        if (
-          rangeIsProtected({
-            sheetName: op.table.sheetName,
-            startAddress: op.table.startAddress,
-            endAddress: op.table.endAddress,
-          })
-        ) {
-          throwProtectionBlocked(`table ${op.table.name} overlaps a protected range`)
-        }
-        return
-      case 'deleteTable': {
-        const existing = args.state.workbook.getTable(op.name)
-        if (
-          existing &&
-          rangeIsProtected({
-            sheetName: existing.sheetName,
-            startAddress: existing.startAddress,
-            endAddress: existing.endAddress,
-          })
-        ) {
-          throwProtectionBlocked(`table ${op.name} overlaps a protected range`)
-        }
-        return
-      }
-      case 'upsertSpillRange':
-      case 'deleteSpillRange':
-        if (rangeIsProtected(cellRange(op.sheetName, op.address))) {
-          throwProtectionBlocked(`cell ${op.sheetName}!${op.address} is protected`)
-        }
-        return
-      case 'upsertPivotTable':
-        if (sheetHasProtection(op.sheetName) || rangeIsProtected(op.source) || rangeIsProtected(cellRange(op.sheetName, op.address))) {
-          throwProtectionBlocked(`pivot ${op.name} touches protected workbook state`)
-        }
-        return
-      case 'deletePivotTable': {
-        const existing = args.state.workbook.getPivot(op.sheetName, op.address)
-        if (
-          existing &&
-          (sheetHasProtection(existing.sheetName) ||
-            rangeIsProtected(existing.source) ||
-            rangeIsProtected(cellRange(existing.sheetName, existing.address)))
-        ) {
-          throwProtectionBlocked(`pivot at ${op.sheetName}!${op.address} touches protected workbook state`)
-        }
-        return
-      }
-      case 'upsertChart':
-        if (
-          sheetHasProtection(op.chart.sheetName) ||
-          rangeIsProtected(op.chart.source) ||
-          rangeIsProtected(cellRange(op.chart.sheetName, op.chart.address))
-        ) {
-          throwProtectionBlocked(`chart ${op.chart.id} touches protected workbook state`)
-        }
-        return
-      case 'deleteChart': {
-        const existing = args.state.workbook.getChart(op.id)
-        if (
-          existing &&
-          (sheetHasProtection(existing.sheetName) ||
-            rangeIsProtected(existing.source) ||
-            rangeIsProtected(cellRange(existing.sheetName, existing.address)))
-        ) {
-          throwProtectionBlocked(`chart ${op.id} touches protected workbook state`)
-        }
-        return
-      }
-      case 'upsertImage':
-        if (sheetHasProtection(op.image.sheetName) || rangeIsProtected(cellRange(op.image.sheetName, op.image.address))) {
-          throwProtectionBlocked(`image ${op.image.id} touches protected workbook state`)
-        }
-        return
-      case 'deleteImage': {
-        const existing = args.state.workbook.getImage(op.id)
-        if (existing && (sheetHasProtection(existing.sheetName) || rangeIsProtected(cellRange(existing.sheetName, existing.address)))) {
-          throwProtectionBlocked(`image ${op.id} touches protected workbook state`)
-        }
-        return
-      }
-      case 'upsertShape':
-        if (sheetHasProtection(op.shape.sheetName) || rangeIsProtected(cellRange(op.shape.sheetName, op.shape.address))) {
-          throwProtectionBlocked(`shape ${op.shape.id} touches protected workbook state`)
-        }
-        return
-      case 'deleteShape': {
-        const existing = args.state.workbook.getShape(op.id)
-        if (existing && (sheetHasProtection(existing.sheetName) || rangeIsProtected(cellRange(existing.sheetName, existing.address)))) {
-          throwProtectionBlocked(`shape ${op.id} touches protected workbook state`)
-        }
-        return
-      }
-      default:
-        assertNever(op)
-        return
-    }
-  }
+  const protectionAccess: OperationProtectionAccess = args.state.workbook
+  const sheetHasProtection = (sheetName: string): boolean => protectedSheetHasProtection(protectionAccess, sheetName)
+  const rangeIsProtected = (range: CellRangeRef): boolean => protectedRangeIsProtected(protectionAccess, range)
+  const assertProtectionAllowsOp = (op: EngineOp): void => assertProtectionAllowsProtectedOp(protectionAccess, op)
 
   const readCellValueForLookup = (cellIndex: number | undefined): { value: CellValue; stringId: number | undefined } => {
     if (cellIndex === undefined) {

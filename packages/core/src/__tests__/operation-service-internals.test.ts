@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ErrorCode, ValueTag } from '@bilig/protocol'
+import { ErrorCode, ValueTag, type CellRangeRef } from '@bilig/protocol'
 import type { EngineOp } from '@bilig/workbook-domain'
 import { operationServiceTestHooks } from '../engine/services/operation-service.js'
 import type {
@@ -39,6 +39,12 @@ import {
   singleInputAffineDirectScalar,
 } from '../engine/services/direct-scalar-helpers.js'
 import { entityKeyForOp, sheetDeleteBarrierForOp, shouldApplyOp, type VersionStore } from '../engine/services/operation-replica-helpers.js'
+import {
+  assertProtectionAllowsOp as assertProtectionAllowsProtectedOp,
+  rangeIsProtected as protectedRangeIsProtected,
+  sheetHasProtection as protectedSheetHasProtection,
+  type OperationProtectionAccess,
+} from '../engine/services/operation-protection-helpers.js'
 
 const {
   aggregateColumnDependencyKey,
@@ -144,6 +150,21 @@ function makeVersionStore(entries: readonly [string, { counter: number; replicaI
       versions.set(key, value)
     },
   } satisfies VersionStore
+}
+
+function makeProtectionAccess(overrides: Partial<OperationProtectionAccess> = {}): OperationProtectionAccess {
+  const emptyRangeProtections: readonly { range: CellRangeRef }[] = []
+  return {
+    getSheetProtection: () => undefined,
+    listRangeProtections: () => emptyRangeProtections,
+    getConditionalFormat: () => undefined,
+    getTable: () => undefined,
+    getPivot: () => undefined,
+    getChart: () => undefined,
+    getImage: () => undefined,
+    getShape: () => undefined,
+    ...overrides,
+  }
 }
 
 describe('operation-service internals', () => {
@@ -789,6 +810,65 @@ describe('operation-service internals', () => {
     expect(sheetHasProtection('Sheet1')).toBe(true)
     expect(() => assertProtectionAllowsOp({ kind: 'deleteSheet', name: 'Sheet1' })).toThrow(/Workbook protection blocks this change/)
     expect(() => assertProtectionAllowsOp({ kind: 'setWorkbookMetadata', key: 'owner', value: 'ops' })).not.toThrow()
+  })
+
+  it('evaluates operation protection checks outside the operation service closure', () => {
+    const protectedRange = { sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'B2' } satisfies CellRangeRef
+    const access = makeProtectionAccess({
+      getSheetProtection: (sheetName) => (sheetName === 'Locked' ? { sheetName } : undefined),
+      listRangeProtections: (sheetName) => (sheetName === 'Sheet1' ? [{ range: protectedRange }] : []),
+      getConditionalFormat: (id) => (id === 'cf1' ? { range: protectedRange } : undefined),
+      getTable: (name) =>
+        name === 'ProtectedTable'
+          ? { sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'B3', columnNames: [], headerRow: true, totalsRow: false }
+          : undefined,
+      getPivot: (sheetName, address) =>
+        sheetName === 'Sheet1' && address === 'D1' ? { sheetName: 'Sheet1', address: 'D1', source: protectedRange } : undefined,
+      getChart: (id) => (id === 'chart1' ? { sheetName: 'Sheet1', address: 'F1', source: protectedRange } : undefined),
+      getImage: (id) => (id === 'image1' ? { sheetName: 'Locked', address: 'A1' } : undefined),
+      getShape: (id) => (id === 'shape1' ? { sheetName: 'Locked', address: 'A1' } : undefined),
+    })
+
+    expect(protectedSheetHasProtection(access, 'Locked')).toBe(true)
+    expect(protectedSheetHasProtection(access, 'Sheet1')).toBe(true)
+    expect(protectedSheetHasProtection(access, 'Open')).toBe(false)
+    expect(protectedRangeIsProtected(access, { sheetName: 'Sheet1', startAddress: 'B2', endAddress: 'C3' })).toBe(true)
+    expect(protectedRangeIsProtected(access, { sheetName: 'Open', startAddress: 'A1', endAddress: 'A1' })).toBe(false)
+
+    expect(() => assertProtectionAllowsProtectedOp(access, { kind: 'deleteSheet', name: 'Locked' })).toThrow(/sheet Locked/)
+    expect(() =>
+      assertProtectionAllowsProtectedOp(access, {
+        kind: 'setStyleRange',
+        range: { sheetName: 'Sheet1', startAddress: 'B2', endAddress: 'B2' },
+        styleId: 'style-1',
+      }),
+    ).toThrow(/range Sheet1!B2:B2/)
+    expect(() => assertProtectionAllowsProtectedOp(access, { kind: 'deleteConditionalFormat', id: 'cf1', sheetName: 'Sheet1' })).toThrow(
+      /conditional format cf1/,
+    )
+    expect(() => assertProtectionAllowsProtectedOp(access, { kind: 'deleteTable', name: 'ProtectedTable' })).toThrow(/table ProtectedTable/)
+    expect(() =>
+      assertProtectionAllowsProtectedOp(access, {
+        kind: 'upsertPivotTable',
+        name: 'Pivot',
+        sheetName: 'Open',
+        address: 'D1',
+        source: protectedRange,
+        groupBy: ['A'],
+        values: [{ sourceColumn: 'B', summarizeBy: 'sum', outputLabel: 'B' }],
+        rows: 3,
+        cols: 2,
+      }),
+    ).toThrow(/pivot Pivot/)
+    expect(() => assertProtectionAllowsProtectedOp(access, { kind: 'deleteChart', id: 'chart1' })).toThrow(/chart chart1/)
+    expect(() =>
+      assertProtectionAllowsProtectedOp(access, {
+        kind: 'upsertImage',
+        image: { id: 'image1', sheetName: 'Locked', address: 'A1', sourceUrl: 'https://example.com/i.png', rows: 1, cols: 1 },
+      }),
+    ).toThrow(/image image1/)
+    expect(() => assertProtectionAllowsProtectedOp(access, { kind: 'deleteShape', id: 'shape1' })).toThrow(/shape shape1/)
+    expect(() => assertProtectionAllowsProtectedOp(access, { kind: 'setWorkbookMetadata', key: 'owner', value: 'ops' })).not.toThrow()
   })
 
   it('maps operation entity keys and stale-order barriers for every operation family', async () => {
