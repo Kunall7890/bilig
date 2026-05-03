@@ -38,6 +38,7 @@ import {
   rowPairDirectScalarCode,
   singleInputAffineDirectScalar,
 } from '../engine/services/direct-scalar-helpers.js'
+import { entityKeyForOp, sheetDeleteBarrierForOp, shouldApplyOp, type VersionStore } from '../engine/services/operation-replica-helpers.js'
 
 const {
   aggregateColumnDependencyKey,
@@ -131,6 +132,18 @@ function hookFunction<Args extends readonly unknown[], Return>(hooks: object, na
     throw new TypeError(`Expected hook ${name}`)
   }
   return (...args: Args): Return => Reflect.apply(fn, hooks, args)
+}
+
+function makeVersionStore(entries: readonly [string, { counter: number; replicaId: string; batchId: string; opIndex: number }][] = []) {
+  const versions = new Map(entries)
+  return {
+    get(key: string) {
+      return versions.get(key)
+    },
+    set(key: string, value: { counter: number; replicaId: string; batchId: string; opIndex: number }) {
+      versions.set(key, value)
+    },
+  } satisfies VersionStore
 }
 
 describe('operation-service internals', () => {
@@ -779,16 +792,9 @@ describe('operation-service internals', () => {
   })
 
   it('maps operation entity keys and stale-order barriers for every operation family', async () => {
-    const engine = new SpreadsheetEngine({ workbookName: 'operation-order-hook-coverage' })
-    await engine.ready()
-    const hooks = runtimeHooks(engine)
-    const entityKeyForOp = hookFunction<[EngineOp], string>(hooks, 'entityKeyForOp')
-    const sheetDeleteBarrierForOp = hookFunction<[EngineOp], undefined>(hooks, 'sheetDeleteBarrierForOp')
-    const shouldApplyOp = hookFunction<[EngineOp, { counter: number; replicaId: string; batchId: string; opIndex: number }], boolean>(
-      hooks,
-      'shouldApplyOp',
-    )
     const range = { sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'B2' }
+    const entityVersions = makeVersionStore()
+    const sheetDeleteVersions = makeVersionStore()
     const opsWithKeys: Array<[EngineOp, string]> = [
       [{ kind: 'upsertWorkbook', name: 'Book' }, 'workbook'],
       [{ kind: 'setWorkbookMetadata', key: 'owner', value: 'ops' }, 'workbook-meta:owner'],
@@ -893,25 +899,29 @@ describe('operation-service internals', () => {
     ]
 
     expect(opsWithKeys.map(([op]) => entityKeyForOp(op))).toEqual(opsWithKeys.map(([, key]) => key))
-    expect(opsWithKeys.map(([op]) => sheetDeleteBarrierForOp(op))).toHaveLength(opsWithKeys.length)
+    expect(opsWithKeys.map(([op]) => sheetDeleteBarrierForOp(op, sheetDeleteVersions))).toHaveLength(opsWithKeys.length)
 
     const lowOrder = { counter: 0, replicaId: 'r', batchId: 'r:0', opIndex: 0 }
     const highOrder = { counter: 999, replicaId: 'r', batchId: 'r:999', opIndex: 0 }
-    expect(shouldApplyOp({ kind: 'upsertWorkbook', name: 'Book' }, lowOrder)).toBe(true)
-    engine.applyOps(
-      [
-        { kind: 'upsertWorkbook', name: 'Applied' },
-        { kind: 'upsertSheet', name: 'Deleted', order: 0 },
-        { kind: 'deleteSheet', name: 'Deleted' },
-      ],
-      {
-        source: 'local',
-      },
-    )
-    expect(shouldApplyOp({ kind: 'upsertWorkbook', name: 'Stale' }, lowOrder)).toBe(false)
-    expect(shouldApplyOp({ kind: 'upsertWorkbook', name: 'Fresh' }, highOrder)).toBe(true)
-    expect(sheetDeleteBarrierForOp({ kind: 'setCellValue', sheetName: 'Deleted', address: 'A1', value: 1 })).toBeDefined()
-    expect(shouldApplyOp({ kind: 'setCellValue', sheetName: 'Deleted', address: 'A1', value: 1 }, lowOrder)).toBe(false)
-    expect(shouldApplyOp({ kind: 'setCellValue', sheetName: 'Deleted', address: 'A1', value: 1 }, highOrder)).toBe(true)
+    expect(shouldApplyOp({ kind: 'upsertWorkbook', name: 'Book' }, lowOrder, { entityVersions, sheetDeleteVersions })).toBe(true)
+    entityVersions.set('workbook', { counter: 1, replicaId: 'r', batchId: 'r:1', opIndex: 0 })
+    sheetDeleteVersions.set('Deleted', { counter: 1, replicaId: 'r', batchId: 'r:1', opIndex: 1 })
+    expect(shouldApplyOp({ kind: 'upsertWorkbook', name: 'Stale' }, lowOrder, { entityVersions, sheetDeleteVersions })).toBe(false)
+    expect(shouldApplyOp({ kind: 'upsertWorkbook', name: 'Fresh' }, highOrder, { entityVersions, sheetDeleteVersions })).toBe(true)
+    expect(
+      sheetDeleteBarrierForOp({ kind: 'setCellValue', sheetName: 'Deleted', address: 'A1', value: 1 }, sheetDeleteVersions),
+    ).toBeDefined()
+    expect(
+      shouldApplyOp({ kind: 'setCellValue', sheetName: 'Deleted', address: 'A1', value: 1 }, lowOrder, {
+        entityVersions,
+        sheetDeleteVersions,
+      }),
+    ).toBe(false)
+    expect(
+      shouldApplyOp({ kind: 'setCellValue', sheetName: 'Deleted', address: 'A1', value: 1 }, highOrder, {
+        entityVersions,
+        sheetDeleteVersions,
+      }),
+    ).toBe(true)
   })
 })
