@@ -254,6 +254,8 @@ export function useWorkbookAgentPane(input: {
   const lastRequestedAuthoritativeRevisionRef = useRef(0)
   const lastDraftKeyRef = useRef<string | null>(null)
   const getContextRef = useRef(getContext)
+  const applyContextRef = useRef(applyContext)
+  const syncAuthoritativeRevisionRef = useRef(syncAuthoritativeRevision)
   const activeDraftKey = draftKey(snapshot?.threadId ?? null, threadScope)
   const perfSession = useMemo(
     () =>
@@ -284,6 +286,14 @@ export function useWorkbookAgentPane(input: {
   useEffect(() => {
     getContextRef.current = getContext
   }, [getContext])
+
+  useEffect(() => {
+    applyContextRef.current = applyContext
+  }, [applyContext])
+
+  useEffect(() => {
+    syncAuthoritativeRevisionRef.current = syncAuthoritativeRevision
+  }, [syncAuthoritativeRevision])
 
   useEffect(() => {
     if (lastDraftKeyRef.current === activeDraftKey) {
@@ -457,20 +467,22 @@ export function useWorkbookAgentPane(input: {
     (nextSnapshot: WorkbookAgentThreadSnapshot) => {
       setSnapshot(nextSnapshot)
       setThreadScope(nextSnapshot.scope)
-      if (nextSnapshot.context && applyContext) {
+      const nextApplyContext = applyContextRef.current
+      if (nextSnapshot.context && nextApplyContext) {
         const nextContextKey = JSON.stringify(nextSnapshot.context)
         if (lastAppliedSnapshotContextKeyRef.current !== nextContextKey) {
           lastAppliedSnapshotContextKeyRef.current = nextContextKey
-          applyContext(nextSnapshot.context)
+          nextApplyContext(nextSnapshot.context)
         }
       }
       const appliedRevision = nextSnapshot.executionRecords.reduce<number>((maxRevision, record) => {
         const revision = readAppliedRevision(record)
         return revision === null ? maxRevision : Math.max(maxRevision, revision)
       }, 0)
-      if (syncAuthoritativeRevision && appliedRevision > lastRequestedAuthoritativeRevisionRef.current) {
+      const nextSyncAuthoritativeRevision = syncAuthoritativeRevisionRef.current
+      if (nextSyncAuthoritativeRevision && appliedRevision > lastRequestedAuthoritativeRevisionRef.current) {
         lastRequestedAuthoritativeRevisionRef.current = appliedRevision
-        void syncAuthoritativeRevision(appliedRevision)
+        void nextSyncAuthoritativeRevision(appliedRevision)
       }
       persistStoredSession(documentId, {
         threadId: nextSnapshot.threadId,
@@ -479,7 +491,7 @@ export function useWorkbookAgentPane(input: {
         threadId: nextSnapshot.threadId,
       }
     },
-    [applyContext, documentId, syncAuthoritativeRevision],
+    [documentId],
   )
 
   const connectStream = useCallback(

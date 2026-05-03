@@ -279,6 +279,26 @@ function AgentHarness(props: {
   )
 }
 
+function UnstableLiveThreadSummaryHarness(props: { readonly zero: Parameters<typeof useWorkbookAgentPane>[0]['zero'] }) {
+  const getContext = useCallback(() => createDefaultWorkflowContext(), [])
+  const previewCommandBundle = useCallback(async () => createPreviewSummary(), [])
+
+  const { agentPanel } = useWorkbookAgentPane({
+    currentUserId: 'alex@example.com',
+    documentId: 'doc-1',
+    enabled: true,
+    getContext,
+    activeContextLabel: 'Sheet1!A1',
+    applyContext: () => undefined,
+    previewCommandBundle,
+    syncAuthoritativeRevision: () => undefined,
+    zero: props.zero,
+    zeroEnabled: true,
+  })
+
+  return <div>{agentPanel}</div>
+}
+
 function LaggyContextHarness() {
   const [selection, setSelection] = useState({
     sheetName: 'Sheet1',
@@ -1974,6 +1994,53 @@ describe('workbook agent pane', () => {
     expect(
       fetchSpy.mock.calls.filter(([input, init]) => requestUrl(input).endsWith('/chat/threads') && requestMethod(init) === 'GET'),
     ).toHaveLength(1)
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it('does not restart live thread bootstrap when callback props churn across internal rerenders', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    window.sessionStorage.setItem(
+      'bilig:workbook-agent:doc-1',
+      JSON.stringify({
+        threadId: 'thr-1',
+      }),
+    )
+    const zero = createMockZeroAgentHarness({
+      initialThreadSummaries: [],
+      initialWorkflowRuns: [],
+    })
+    const fetchSpy = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = requestUrl(input)
+      if (url.endsWith('/chat/threads/thr-1') && requestMethod(init) === 'GET') {
+        return new Response(JSON.stringify(createSnapshot({ threadId: 'thr-1' })), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      }
+      throw new Error(`Unexpected fetch to ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchSpy)
+
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+
+    await act(async () => {
+      root.render(<UnstableLiveThreadSummaryHarness zero={zero.zero} />)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(
+      fetchSpy.mock.calls.filter(([input, init]) => requestUrl(input).endsWith('/chat/threads/thr-1') && requestMethod(init) === 'GET'),
+    ).toHaveLength(1)
+    expect(
+      fetchSpy.mock.calls.filter(([input, init]) => requestUrl(input).endsWith('/chat/threads') && requestMethod(init) === 'GET'),
+    ).toHaveLength(0)
+    expect(MockEventSource.latest?.url).toContain('/v2/documents/doc-1/chat/threads/thr-1/events')
 
     await act(async () => {
       root.unmount()

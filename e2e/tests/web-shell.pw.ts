@@ -785,7 +785,8 @@ test.describe('@clipboard-global web app clipboard flows', () => {
 })
 
 test('web app supports product-shell column resize', async ({ page }) => {
-  await page.goto('/')
+  const documentId = `playwright-product-shell-column-resize-${Date.now()}`
+  await page.goto(`/?document=${encodeURIComponent(documentId)}`)
   await waitForWorkbookReady(page)
 
   const baselineWidth = await getProductColumnWidth(page, 0)
