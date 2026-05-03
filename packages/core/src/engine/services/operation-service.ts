@@ -93,6 +93,17 @@ import {
   rowPairDirectScalarCodeNeedsZeroGuard,
   singleInputAffineDirectScalar,
 } from './direct-scalar-helpers.js'
+import {
+  assertNever,
+  cellRange,
+  makeCompactExistingNumericMutationResult,
+  makeExistingNumericMutationResult,
+  mergeChangedCellIndices,
+  mutationErrorMessage,
+  rangesIntersect,
+  tagTrustedPhysicalTrackedChanges,
+  throwProtectionBlocked,
+} from './operation-change-helpers.js'
 import type { ExactColumnIndexService } from './exact-column-index-service.js'
 import type { SortedColumnSearchService } from './sorted-column-search-service.js'
 
@@ -101,8 +112,6 @@ const GENERAL_CHANGED_CELL_PAYLOAD_LIMIT = 512
 const DIRECT_RANGE_POST_RECALC_LIMIT = 16_384
 const DIRECT_SCALAR_DELTA_CLOSURE_LIMIT = 4_096
 const EMPTY_CHANGED_CELLS = new Uint32Array(0)
-const TRUSTED_TRACKED_PHYSICAL_SHEET_ID_PROPERTY = '__biligTrackedPhysicalSheetId'
-const TRUSTED_TRACKED_PHYSICAL_SORTED_SPLIT_PROPERTY = '__biligTrackedPhysicalSortedSliceSplit'
 const ENGINE_OPERATION_TEST_HOOKS_ENABLED = readNodeEnv() === 'test'
 function readNodeEnv(): string | undefined {
   const maybeProcess = Reflect.get(globalThis, 'process')
@@ -233,107 +242,6 @@ const noopVersionStore: VersionStore = {
 
 const FAST_LITERAL_OVERWRITE_FLAGS =
   CellFlags.HasFormula | CellFlags.JsOnly | CellFlags.InCycle | CellFlags.SpillChild | CellFlags.PivotOutput
-
-function mutationErrorMessage(message: string, cause: unknown): string {
-  return cause instanceof Error && cause.message.length > 0 ? cause.message : message
-}
-
-function assertNever(value: never): never {
-  throw new Error(`Unexpected value: ${String(value)}`)
-}
-
-function normalizeRange(range: CellRangeRef): CellRangeRef & {
-  startRow: number
-  endRow: number
-  startCol: number
-  endCol: number
-} {
-  const start = parseCellAddress(range.startAddress, range.sheetName)
-  const end = parseCellAddress(range.endAddress, range.sheetName)
-  const startRow = Math.min(start.row, end.row)
-  const endRow = Math.max(start.row, end.row)
-  const startCol = Math.min(start.col, end.col)
-  const endCol = Math.max(start.col, end.col)
-  return {
-    ...range,
-    startAddress: formatAddress(startRow, startCol),
-    endAddress: formatAddress(endRow, endCol),
-    startRow,
-    endRow,
-    startCol,
-    endCol,
-  }
-}
-
-function rangesIntersect(left: CellRangeRef, right: CellRangeRef): boolean {
-  const a = normalizeRange(left)
-  const b = normalizeRange(right)
-  return !(a.sheetName !== b.sheetName || a.endRow < b.startRow || b.endRow < a.startRow || a.endCol < b.startCol || b.endCol < a.startCol)
-}
-
-function cellRange(sheetName: string, address: string): CellRangeRef {
-  return {
-    sheetName,
-    startAddress: address,
-    endAddress: address,
-  }
-}
-
-function throwProtectionBlocked(message: string): never {
-  throw new Error(`Workbook protection blocks this change: ${message}`)
-}
-
-function mergeChangedCellIndices(base: readonly number[] | U32, extras: readonly number[] | U32): U32 {
-  if (base.length === 0) {
-    return extras instanceof Uint32Array ? extras : Uint32Array.from(extras)
-  }
-  if (extras.length === 0) {
-    return base instanceof Uint32Array ? base : Uint32Array.from(base)
-  }
-  if (base.length === 1 && extras.length === 1) {
-    const baseCellIndex = base[0]!
-    const extraCellIndex = extras[0]!
-    return baseCellIndex === extraCellIndex ? Uint32Array.of(baseCellIndex) : Uint32Array.of(baseCellIndex, extraCellIndex)
-  }
-  const merged = new Set<number>()
-  for (let index = 0; index < base.length; index += 1) {
-    merged.add(base[index]!)
-  }
-  for (let index = 0; index < extras.length; index += 1) {
-    merged.add(extras[index]!)
-  }
-  return Uint32Array.from(merged)
-}
-
-function tagTrustedPhysicalTrackedChanges(changed: U32, sheetId: number, sortedSliceSplit: number): void {
-  Reflect.set(changed, TRUSTED_TRACKED_PHYSICAL_SHEET_ID_PROPERTY, sheetId)
-  Reflect.set(changed, TRUSTED_TRACKED_PHYSICAL_SORTED_SPLIT_PROPERTY, sortedSliceSplit)
-}
-
-function makeExistingNumericMutationResult(changedCellIndices: U32, explicitChangedCount: number): EngineExistingNumericCellMutationResult {
-  return { changedCellIndices, explicitChangedCount }
-}
-
-function makeCompactExistingNumericMutationResult(
-  firstChangedCellIndex: number,
-  secondChangedCellIndex: number | undefined,
-  explicitChangedCount: number,
-  secondChangedNumericValue?: number,
-  secondChangedPosition?: { readonly row: number; readonly col: number },
-): EngineExistingNumericCellMutationResult {
-  return secondChangedCellIndex === undefined
-    ? { firstChangedCellIndex, changedCellCount: 1, explicitChangedCount }
-    : {
-        firstChangedCellIndex,
-        secondChangedCellIndex,
-        changedCellCount: 2,
-        explicitChangedCount,
-        ...(secondChangedNumericValue === undefined ? {} : { secondChangedNumericValue }),
-        ...(secondChangedPosition === undefined
-          ? {}
-          : { secondChangedRow: secondChangedPosition.row, secondChangedCol: secondChangedPosition.col }),
-      }
-}
 
 export const operationServiceTestHooks = {
   aggregateColumnDependencyKey,
