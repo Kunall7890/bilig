@@ -53,6 +53,7 @@ import {
 import { renderToolDisplayName, safeParseToolOutput, StructuredToolOutput, summarizeToolEntry } from './workbook-agent-tool-output.js'
 import { WorkbookAgentMarkdown } from './workbook-agent-markdown.js'
 import { MessageCopyButton } from './workbook-agent-message-copy-button.js'
+import { formatWorkbookAgentThreadEntryCount, summarizeWorkbookAgentThreadActivity } from './workbook-agent-thread-summary.js'
 import { formatWorkbookCollaboratorLabel } from './workbook-presence-model.js'
 import { useAutoSizingTextarea } from './use-autosizing-textarea.js'
 import { AssistantProgressRow, PreviewRangeList, WorkflowRunRow } from './workbook-agent-panel-history.js'
@@ -88,21 +89,6 @@ const agentPanelThemeStyle: CSSProperties & Record<`--${string}`, string> = {
   '--wb-shadow-sm': '0 1px 2px rgba(15, 23, 42, 0.04)',
 }
 
-function formatThreadEntryCount(entryCount: number): string {
-  return `${entryCount} ${entryCount === 1 ? 'item' : 'items'}`
-}
-
-function summarizeThreadActivity(text: string | null): string | null {
-  if (!text) {
-    return null
-  }
-  const normalized = text.trim().replaceAll(/\s+/g, ' ')
-  if (normalized.length === 0) {
-    return null
-  }
-  return normalized.length <= 64 ? normalized : `${normalized.slice(0, 61)}...`
-}
-
 function ThreadSummaryStrip(props: {
   readonly activeThreadId: string | null
   readonly threadSummaries: readonly WorkbookAgentThreadSummary[]
@@ -116,7 +102,7 @@ function ThreadSummaryStrip(props: {
   return (
     <div className={agentPanelThreadListClass()}>
       {visibleThreadSummaries.map((threadSummary) => {
-        const latestActivity = summarizeThreadActivity(threadSummary.latestEntryText)
+        const latestActivity = summarizeWorkbookAgentThreadActivity(threadSummary.latestEntryText, 64)
         return (
           <Button
             key={threadSummary.threadId}
@@ -137,7 +123,7 @@ function ThreadSummaryStrip(props: {
                 <span className={agentPanelMetaTextClass()}>
                   {threadSummary.scope === 'shared' ? formatWorkbookCollaboratorLabel(threadSummary.ownerUserId) : 'Just you'}
                 </span>
-                <span className={agentPanelMetaTextClass()}>{formatThreadEntryCount(threadSummary.entryCount)}</span>
+                <span className={agentPanelMetaTextClass()}>{formatWorkbookAgentThreadEntryCount(threadSummary.entryCount)}</span>
               </div>
               {latestActivity ? <div className={cn(agentPanelMetaTextClass(), 'mt-0.5 truncate')}>{latestActivity}</div> : null}
             </div>

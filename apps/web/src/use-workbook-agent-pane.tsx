@@ -8,10 +8,7 @@ import {
   type WorkbookAgentReviewQueueItem,
 } from '@bilig/agent-api'
 import {
-  WorkbookAgentThreadSnapshotSchema,
   WorkbookAgentStreamEventSchema,
-  WorkbookAgentThreadScopeSchema,
-  WorkbookAgentThreadSummarySchema,
   decodeUnknownSync,
   type WorkbookAgentThreadSnapshot,
   type WorkbookAgentStreamEvent,
@@ -21,7 +18,6 @@ import {
   type WorkbookAgentUiContext,
   type WorkbookAgentWorkflowRun,
 } from '@bilig/contracts'
-import { Schema } from 'effect'
 import { createWorkbookPerfSession } from './perf/workbook-perf.js'
 import { WorkbookAgentPanel } from './WorkbookAgentPanel.js'
 import {
@@ -37,8 +33,8 @@ import {
   loadStoredSession,
   persistStoredDrafts,
   persistStoredSession,
-  type StoredWorkbookAgentThreadRef,
 } from './workbook-agent-pane-storage.js'
+import { createWorkbookAgentClient } from './workbook-agent-client.js'
 import {
   createWorkbookAgentPreviewRequestKey,
   loadWorkbookAgentPreview,
@@ -49,7 +45,6 @@ import {
   resolveWorkbookAgentReviewOwnerUserId,
   resolvePrimaryWorkbookAgentReviewItem,
 } from './workbook-agent-review-state.js'
-const WorkbookAgentThreadSummaryListSchema = Schema.Array(WorkbookAgentThreadSummarySchema)
 
 interface WorkbookAgentLiveSession {
   threadId: string
@@ -59,36 +54,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
-function resolvePayloadMessage(payload: unknown, fallback: string): string {
-  return isRecord(payload) && typeof payload['message'] === 'string' ? payload['message'] : fallback
-}
-
 function readMessageEventData(event: Event): string | null {
   return event instanceof MessageEvent && typeof event.data === 'string' ? event.data : null
-}
-
-function createSessionResumeBody(
-  storedSession: StoredWorkbookAgentThreadRef | null,
-  context: WorkbookAgentUiContext,
-  scope: WorkbookAgentThreadScope,
-): {
-  readonly threadId?: string
-  readonly context: WorkbookAgentUiContext
-  readonly scope?: WorkbookAgentThreadScope
-} {
-  return storedSession?.threadId
-    ? {
-        threadId: storedSession.threadId,
-        context,
-      }
-    : {
-        context,
-        scope: decodeUnknownSync(WorkbookAgentThreadScopeSchema, scope),
-      }
-}
-
-function threadSnapshotUrl(documentId: string, threadId: string): string {
-  return `/v2/documents/${encodeURIComponent(documentId)}/chat/threads/${encodeURIComponent(threadId)}`
 }
 
 function formatWorkbookAgentContextLabel(context: WorkbookAgentUiContext): string {
@@ -282,6 +249,7 @@ export function useWorkbookAgentPane(input: {
     [zero],
   )
   const usesLiveThreadSummaries = zeroEnabled && Boolean(zero)
+  const client = useMemo(() => createWorkbookAgentClient(documentId), [documentId])
 
   useEffect(() => {
     getContextRef.current = getContext
@@ -315,15 +283,6 @@ export function useWorkbookAgentPane(input: {
     }
     persistStoredDrafts(documentId, drafts)
   }, [activeDraftKey, documentId, draft])
-
-  const loadThreadSummaries = useCallback(async (): Promise<readonly WorkbookAgentThreadSummary[]> => {
-    const response = await fetch(`/v2/documents/${encodeURIComponent(documentId)}/chat/threads`)
-    const payload = (await response.json()) as unknown
-    if (!response.ok) {
-      throw new Error(resolvePayloadMessage(payload, `Workbook agent request failed with status ${response.status}`))
-    }
-    return decodeUnknownSync(WorkbookAgentThreadSummaryListSchema, payload)
-  }, [documentId])
 
   const activeThreadId = snapshot?.threadId ?? sessionRef.current?.threadId ?? null
   const zeroThreadSummaries = useWorkbookAgentThreadSummaries({
@@ -497,7 +456,7 @@ export function useWorkbookAgentPane(input: {
   const connectStream = useCallback(
     (threadId: string) => {
       closeStream()
-      const source = new EventSource(`/v2/documents/${encodeURIComponent(documentId)}/chat/threads/${encodeURIComponent(threadId)}/events`)
+      const source = new EventSource(client.threadEventsUrl(threadId))
       source.addEventListener('message', (message) => {
         try {
           const payloadText = readMessageEventData(message)
@@ -541,12 +500,7 @@ export function useWorkbookAgentPane(input: {
         void (async () => {
           try {
             setIsLoading(true)
-            const response = await fetch(threadSnapshotUrl(documentId, storedSession.threadId))
-            const payload = (await response.json()) as unknown
-            if (!response.ok) {
-              throw new Error(resolvePayloadMessage(payload, `Workbook agent request failed with status ${response.status}`))
-            }
-            const nextSnapshot = decodeUnknownSync(WorkbookAgentThreadSnapshotSchema, payload)
+            const nextSnapshot = await client.loadThreadSnapshot(storedSession.threadId)
             persistSessionSnapshot(nextSnapshot)
             connectStream(nextSnapshot.threadId)
           } catch (nextError) {
@@ -559,37 +513,7 @@ export function useWorkbookAgentPane(input: {
       })
       eventSourceRef.current = source
     },
-    [closeStream, documentId, perfSession, persistSessionSnapshot],
-  )
-
-  const createSession = useCallback(
-    async (context: WorkbookAgentUiContext, scope: WorkbookAgentThreadScope) => {
-      const response = await fetch(`/v2/documents/${encodeURIComponent(documentId)}/chat/threads`, {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify(createSessionResumeBody(null, context, scope)),
-      })
-      const payload = (await response.json()) as unknown
-      if (!response.ok) {
-        throw new Error(resolvePayloadMessage(payload, `Workbook agent request failed with status ${response.status}`))
-      }
-      return decodeUnknownSync(WorkbookAgentThreadSnapshotSchema, payload)
-    },
-    [documentId],
-  )
-
-  const loadThreadSnapshot = useCallback(
-    async (threadId: string) => {
-      const response = await fetch(threadSnapshotUrl(documentId, threadId))
-      const payload = (await response.json()) as unknown
-      if (!response.ok) {
-        throw new Error(resolvePayloadMessage(payload, `Workbook agent request failed with status ${response.status}`))
-      }
-      return decodeUnknownSync(WorkbookAgentThreadSnapshotSchema, payload)
-    },
-    [documentId],
+    [client, closeStream, perfSession, persistSessionSnapshot],
   )
 
   const ensureSession = useCallback(async (): Promise<WorkbookAgentLiveSession> => {
@@ -602,7 +526,7 @@ export function useWorkbookAgentPane(input: {
     }
     setIsLoading(true)
     try {
-      const nextSnapshot = await createSession(getContextRef.current(), threadScope)
+      const nextSnapshot = await client.createSession(getContextRef.current(), threadScope)
       persistSessionSnapshot(nextSnapshot)
       connectStream(nextSnapshot.threadId)
       setError(null)
@@ -614,7 +538,7 @@ export function useWorkbookAgentPane(input: {
     } finally {
       setIsLoading(false)
     }
-  }, [apiEnabled, connectStream, createSession, persistSessionSnapshot, threadScope])
+  }, [apiEnabled, client, connectStream, persistSessionSnapshot, threadScope])
 
   useEffect(() => {
     setSelectedCommandIndexes((current) => (current === null ? current : null))
@@ -681,25 +605,12 @@ export function useWorkbookAgentPane(input: {
       }
       try {
         setIsApplyingReviewItem(true)
-        const response = await fetch(
-          `/v2/documents/${encodeURIComponent(documentId)}/chat/threads/${encodeURIComponent(activeSession.threadId)}/review-items/${encodeURIComponent(activeReviewBundle.id)}/apply`,
-          {
-            method: 'POST',
-            headers: {
-              'content-type': 'application/json',
-            },
-            body: JSON.stringify({
-              appliedBy,
-              commandIndexes: normalizedCommandIndexes,
-              preview,
-            }),
-          },
-        )
-        const payload = (await response.json()) as unknown
-        if (!response.ok) {
-          throw new Error(resolvePayloadMessage(payload, `Workbook agent request failed with status ${response.status}`))
-        }
-        persistSessionSnapshot(decodeUnknownSync(WorkbookAgentThreadSnapshotSchema, payload))
+        const nextSnapshot = await client.applyReviewItem(activeSession.threadId, activeReviewBundle.id, {
+          appliedBy,
+          commandIndexes: normalizedCommandIndexes,
+          preview,
+        })
+        persistSessionSnapshot(nextSnapshot)
         perfSession.markFirstAgentApplyVisible?.()
         setError(null)
       } catch (nextError) {
@@ -709,7 +620,7 @@ export function useWorkbookAgentPane(input: {
       }
     },
     [
-      documentId,
+      client,
       normalizedCommandIndexes,
       activeReviewBundle,
       perfSession,
@@ -760,7 +671,7 @@ export function useWorkbookAgentPane(input: {
 
     const bootstrapThreadSummaries = async () => {
       try {
-        const nextThreadSummaries = await loadThreadSummaries()
+        const nextThreadSummaries = await client.loadThreadSummaries()
         if (!cancelled) {
           setFetchedThreadSummaries(nextThreadSummaries)
         }
@@ -787,7 +698,7 @@ export function useWorkbookAgentPane(input: {
     const bootstrapStoredSession = async () => {
       try {
         setIsLoading(true)
-        const nextSnapshot = await loadThreadSnapshot(storedSession.threadId)
+        const nextSnapshot = await client.loadThreadSnapshot(storedSession.threadId)
         if (cancelled) {
           return
         }
@@ -809,17 +720,7 @@ export function useWorkbookAgentPane(input: {
       cancelled = true
       closeStream()
     }
-  }, [
-    closeStream,
-    connectStream,
-    documentId,
-    enabled,
-    loadThreadSnapshot,
-    loadThreadSummaries,
-    persistSessionSnapshot,
-    apiEnabled,
-    usesLiveThreadSummaries,
-  ])
+  }, [closeStream, connectStream, client, documentId, enabled, persistSessionSnapshot, apiEnabled, usesLiveThreadSummaries])
 
   const selectThread = useCallback(
     async (threadId: string) => {
@@ -829,7 +730,7 @@ export function useWorkbookAgentPane(input: {
       try {
         setIsLoading(true)
         setError(null)
-        const nextSnapshot = await loadThreadSnapshot(threadId)
+        const nextSnapshot = await client.loadThreadSnapshot(threadId)
         persistSessionSnapshot(nextSnapshot)
         connectStream(nextSnapshot.threadId)
       } catch (nextError) {
@@ -838,7 +739,7 @@ export function useWorkbookAgentPane(input: {
         setIsLoading(false)
       }
     },
-    [connectStream, loadThreadSnapshot, persistSessionSnapshot],
+    [client, connectStream, persistSessionSnapshot],
   )
 
   const startNewThread = useCallback(() => {
@@ -884,18 +785,7 @@ export function useWorkbookAgentPane(input: {
       lastContextKeyRef.current = nextContextKey
       void (async () => {
         try {
-          await fetch(
-            `/v2/documents/${encodeURIComponent(documentId)}/chat/threads/${encodeURIComponent(activeSession.threadId)}/context`,
-            {
-              method: 'POST',
-              headers: {
-                'content-type': 'application/json',
-              },
-              body: JSON.stringify({
-                context: nextContext,
-              }),
-            },
-          )
+          await client.syncThreadContext(activeSession.threadId, nextContext)
         } catch {}
       })()
     }, 150)
@@ -915,31 +805,15 @@ export function useWorkbookAgentPane(input: {
       clearStoredDraft(documentId, activeDraftKey)
       setDraft('')
       const activeSession = await ensureSession()
-      const response = await fetch(
-        `/v2/documents/${encodeURIComponent(documentId)}/chat/threads/${encodeURIComponent(activeSession.threadId)}/turns`,
-        {
-          method: 'POST',
-          headers: {
-            'content-type': 'application/json',
-          },
-          body: JSON.stringify({
-            prompt,
-            context: getContextRef.current(),
-          }),
-        },
-      )
-      const payload = (await response.json()) as unknown
-      if (!response.ok) {
-        throw new Error(resolvePayloadMessage(payload, `Workbook agent request failed with status ${response.status}`))
-      }
-      persistSessionSnapshot(decodeUnknownSync(WorkbookAgentThreadSnapshotSchema, payload))
+      const nextSnapshot = await client.sendPrompt(activeSession.threadId, prompt, getContextRef.current())
+      persistSessionSnapshot(nextSnapshot)
       setPendingUserPrompt(null)
     } catch (nextError) {
       setPendingUserPrompt(null)
       setDraft(prompt)
       setError(nextError instanceof Error ? nextError.message : String(nextError))
     }
-  }, [activeDraftKey, documentId, draft, ensureSession, persistSessionSnapshot])
+  }, [activeDraftKey, client, documentId, draft, ensureSession, persistSessionSnapshot])
 
   const interrupt = useCallback(async () => {
     const activeSession = sessionRef.current
@@ -947,21 +821,12 @@ export function useWorkbookAgentPane(input: {
       return
     }
     try {
-      const response = await fetch(
-        `/v2/documents/${encodeURIComponent(documentId)}/chat/threads/${encodeURIComponent(activeSession.threadId)}/interrupt`,
-        {
-          method: 'POST',
-        },
-      )
-      const payload = (await response.json()) as unknown
-      if (!response.ok) {
-        throw new Error(resolvePayloadMessage(payload, `Workbook agent request failed with status ${response.status}`))
-      }
-      setSnapshot(decodeUnknownSync(WorkbookAgentThreadSnapshotSchema, payload))
+      const nextSnapshot = await client.interruptThread(activeSession.threadId)
+      setSnapshot(nextSnapshot)
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : String(nextError))
     }
-  }, [documentId])
+  }, [client])
 
   const dismissReviewItem = useCallback(async () => {
     const activeSession = sessionRef.current
@@ -969,26 +834,13 @@ export function useWorkbookAgentPane(input: {
       return
     }
     try {
-      const response = await fetch(
-        `/v2/documents/${encodeURIComponent(documentId)}/chat/threads/${encodeURIComponent(activeSession.threadId)}/review-items/${encodeURIComponent(activeReviewBundle.id)}/dismiss`,
-        {
-          method: 'POST',
-          headers: {
-            'content-type': 'application/json',
-          },
-          body: '{}',
-        },
-      )
-      const payload = (await response.json()) as unknown
-      if (!response.ok) {
-        throw new Error(resolvePayloadMessage(payload, `Workbook agent request failed with status ${response.status}`))
-      }
-      persistSessionSnapshot(decodeUnknownSync(WorkbookAgentThreadSnapshotSchema, payload))
+      const nextSnapshot = await client.dismissReviewItem(activeSession.threadId, activeReviewBundle.id)
+      persistSessionSnapshot(nextSnapshot)
       setError(null)
     } catch (nextError) {
       setError(nextError instanceof Error ? nextError.message : String(nextError))
     }
-  }, [documentId, activeReviewBundle, persistSessionSnapshot])
+  }, [client, activeReviewBundle, persistSessionSnapshot])
 
   const reviewReviewItem = useCallback(
     async (decision: 'approved' | 'rejected') => {
@@ -997,27 +849,14 @@ export function useWorkbookAgentPane(input: {
         return
       }
       try {
-        const response = await fetch(
-          `/v2/documents/${encodeURIComponent(documentId)}/chat/threads/${encodeURIComponent(activeSession.threadId)}/review-items/${encodeURIComponent(activeReviewBundle.id)}/review`,
-          {
-            method: 'POST',
-            headers: {
-              'content-type': 'application/json',
-            },
-            body: JSON.stringify({ decision }),
-          },
-        )
-        const payload = (await response.json()) as unknown
-        if (!response.ok) {
-          throw new Error(resolvePayloadMessage(payload, `Workbook agent request failed with status ${response.status}`))
-        }
-        persistSessionSnapshot(decodeUnknownSync(WorkbookAgentThreadSnapshotSchema, payload))
+        const nextSnapshot = await client.reviewReviewItem(activeSession.threadId, activeReviewBundle.id, decision)
+        persistSessionSnapshot(nextSnapshot)
         setError(null)
       } catch (nextError) {
         setError(nextError instanceof Error ? nextError.message : String(nextError))
       }
     },
-    [documentId, activeReviewBundle, persistSessionSnapshot],
+    [client, activeReviewBundle, persistSessionSnapshot],
   )
 
   const cancelWorkflowRun = useCallback(
@@ -1029,24 +868,15 @@ export function useWorkbookAgentPane(input: {
       try {
         setError(null)
         setCancellingWorkflowRunId(runId)
-        const response = await fetch(
-          `/v2/documents/${encodeURIComponent(documentId)}/chat/threads/${encodeURIComponent(activeSession.threadId)}/workflows/${encodeURIComponent(runId)}/cancel`,
-          {
-            method: 'POST',
-          },
-        )
-        const payload = (await response.json()) as unknown
-        if (!response.ok) {
-          throw new Error(resolvePayloadMessage(payload, `Workbook agent request failed with status ${response.status}`))
-        }
-        persistSessionSnapshot(decodeUnknownSync(WorkbookAgentThreadSnapshotSchema, payload))
+        const nextSnapshot = await client.cancelWorkflowRun(activeSession.threadId, runId)
+        persistSessionSnapshot(nextSnapshot)
       } catch (nextError) {
         setError(nextError instanceof Error ? nextError.message : String(nextError))
       } finally {
         setCancellingWorkflowRunId((currentRunId) => (currentRunId === runId ? null : currentRunId))
       }
     },
-    [documentId, persistSessionSnapshot],
+    [client, persistSessionSnapshot],
   )
 
   const clearAgentError = useCallback(() => {

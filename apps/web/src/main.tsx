@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { Suspense, lazy } from 'react'
 import ReactDOM from 'react-dom/client'
 import { useActorRef, useSelector } from '@xstate/react'
 import { ZeroProvider } from '@rocicorp/zero/react'
@@ -6,13 +6,19 @@ import { createBootstrapMachine } from '@bilig/actors'
 import { loadRuntimeConfig, mutators, schema } from '@bilig/zero-sync'
 import type { RuntimeSession } from '@bilig/contracts'
 import { App } from './App.js'
-import { IsolatedWorkbookPaneRendererRoute } from './IsolatedWorkbookPaneRendererRoute.js'
 import { normalizeRuntimeConfigUserId, resolveRuntimeConfig, type RuntimeConfig } from './runtime-config'
 import { resolveWebEntryRoute } from './root-route.js'
 import { loadRuntimeSession } from './session'
 import { resolveZeroCacheUrl, ZERO_CONNECT_MAX_HEADER_LENGTH } from './zero-connection'
 import type { ZeroConnectionState } from './worker-workbook-app-model.js'
 import type { BiligRuntimeConfig } from '@bilig/zero-sync'
+
+const IsolatedWorkbookPaneRendererRoute = lazy(async () => {
+  const module = await import('./IsolatedWorkbookPaneRendererRoute.js')
+  return {
+    default: module.IsolatedWorkbookPaneRendererRoute,
+  }
+})
 
 const root = ReactDOM.createRoot(document.getElementById('root')!)
 const entryRoute = resolveWebEntryRoute(window.location.pathname)
@@ -158,6 +164,12 @@ function BootstrapRoot() {
 
 root.render(
   <React.StrictMode>
-    {entryRoute === 'isolated-workbook-pane-renderer' ? <IsolatedWorkbookPaneRendererRoute /> : <BootstrapRoot />}
+    {entryRoute === 'isolated-workbook-pane-renderer' ? (
+      <Suspense fallback={<BootstrapShell />}>
+        <IsolatedWorkbookPaneRendererRoute />
+      </Suspense>
+    ) : (
+      <BootstrapRoot />
+    )}
   </React.StrictMode>,
 )

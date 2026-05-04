@@ -21,6 +21,7 @@ import {
 import { cn } from './cn.js'
 import { useWorkbookAgentPane } from './use-workbook-agent-pane.js'
 import { useWorkbookPresence } from './use-workbook-presence.js'
+import { formatWorkbookAgentThreadEntryCount, summarizeWorkbookAgentThreadActivity } from './workbook-agent-thread-summary.js'
 import { formatWorkbookCollaboratorLabel } from './workbook-presence-model.js'
 import { useWorkbookShellLayout } from './use-workbook-shell-layout.js'
 
@@ -30,21 +31,6 @@ type WorkbookAgentContextGetter = Parameters<typeof useWorkbookAgentPane>[0]['ge
 type WorkbookAgentPreviewCommandBundle = (
   bundle: WorkbookAgentCommandBundle,
 ) => ReturnType<Parameters<typeof useWorkbookAgentPane>[0]['previewCommandBundle']>
-
-function summarizeThreadActivity(text: string | null): string | null {
-  if (!text) {
-    return null
-  }
-  const normalized = text.trim().replaceAll(/\s+/g, ' ')
-  if (normalized.length === 0) {
-    return null
-  }
-  return normalized.length <= 72 ? normalized : `${normalized.slice(0, 69)}...`
-}
-
-function formatThreadEntryCount(entryCount: number): string {
-  return `${entryCount} ${entryCount === 1 ? 'item' : 'items'}`
-}
 
 function formatWorkbookSelectionLabel(selection: WorkerRuntimeSelection): string {
   return `${selection.sheetName}!${selection.address}`
@@ -86,7 +72,7 @@ function WorkbookAgentHistoryMenu(props: {
             </div>
             <div className="mt-1 flex max-h-[320px] flex-col gap-1 overflow-y-auto">
               {previousThreadSummaries.map((threadSummary) => {
-                const latestActivity = summarizeThreadActivity(threadSummary.latestEntryText)
+                const latestActivity = summarizeWorkbookAgentThreadActivity(threadSummary.latestEntryText)
                 return (
                   <Button
                     key={threadSummary.threadId}
@@ -107,7 +93,7 @@ function WorkbookAgentHistoryMenu(props: {
                           {threadSummary.scope === 'shared' ? formatWorkbookCollaboratorLabel(threadSummary.ownerUserId) : 'Just you'}
                         </span>
                         <span className="text-[11px] text-[var(--color-mauve-500)]">
-                          {formatThreadEntryCount(threadSummary.entryCount)}
+                          {formatWorkbookAgentThreadEntryCount(threadSummary.entryCount)}
                         </span>
                       </div>
                       {latestActivity ? (

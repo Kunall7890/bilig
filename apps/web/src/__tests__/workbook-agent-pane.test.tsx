@@ -1068,6 +1068,89 @@ describe('workbook agent pane', () => {
     })
   })
 
+  it('restores the draft and shows the server message when a turn request fails', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    window.sessionStorage.setItem(
+      'bilig:workbook-agent:doc-1',
+      JSON.stringify({
+        threadId: 'thr-1',
+      }),
+    )
+    const fetchSpy = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = requestUrl(input)
+      if (url.endsWith('/chat/threads') && requestMethod(init) === 'GET') {
+        return new Response(JSON.stringify([createThreadSummary()]), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      }
+      if (url.endsWith('/chat/threads/thr-1') && requestMethod(init) === 'GET') {
+        return new Response(JSON.stringify(createSnapshot({ threadId: 'thr-1' })), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      }
+      if (url.endsWith('/chat/threads/thr-1/turns')) {
+        return new Response(
+          JSON.stringify({
+            message: 'Prompt rejected by server',
+          }),
+          {
+            status: 422,
+            headers: { 'content-type': 'application/json' },
+          },
+        )
+      }
+      throw new Error(`Unexpected fetch to ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchSpy)
+
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+
+    await act(async () => {
+      root.render(<AgentHarness />)
+    })
+
+    const input = host.querySelector("[data-testid='workbook-agent-input']")
+    expect(input instanceof HTMLTextAreaElement).toBe(true)
+
+    await act(async () => {
+      if (!(input instanceof HTMLTextAreaElement)) {
+        throw new Error('Agent input not found')
+      }
+      const valueDescriptor = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')
+      const valueSetter = valueDescriptor ? Reflect.get(valueDescriptor, 'set') : null
+      if (typeof valueSetter !== 'function') {
+        throw new Error('Textarea value setter not found')
+      }
+      Reflect.apply(valueSetter, input, ['Continue working'])
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      input.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          bubbles: true,
+          key: 'Enter',
+        }),
+      )
+    })
+    await flushToasts()
+
+    const turnCall = fetchSpy.mock.calls.find(([requestInput]) => requestUrl(requestInput).endsWith('/chat/threads/thr-1/turns'))
+    expect(requestBody(turnCall?.[1])).toEqual({
+      prompt: 'Continue working',
+      context: createDefaultWorkflowContext(),
+    })
+    expect(host.textContent).toContain('Prompt rejected by server')
+    expect(host.textContent).not.toContain('Workbook agent request failed with status 422')
+    const restoredInput = host.querySelector("[data-testid='workbook-agent-input']")
+    expect(restoredInput instanceof HTMLTextAreaElement ? restoredInput.value : null).toBe('Continue working')
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
   it('does not inject a synthetic progress row before the turn request resolves', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
     window.sessionStorage.setItem(

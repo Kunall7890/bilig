@@ -1,0 +1,150 @@
+import type { WorkbookAgentPreviewSummary } from '@bilig/agent-api'
+import {
+  WorkbookAgentThreadSnapshotSchema,
+  WorkbookAgentThreadScopeSchema,
+  WorkbookAgentThreadSummarySchema,
+  decodeUnknownSync,
+  type WorkbookAgentThreadSnapshot,
+  type WorkbookAgentThreadScope,
+  type WorkbookAgentThreadSummary,
+  type WorkbookAgentUiContext,
+} from '@bilig/contracts'
+import { Schema } from 'effect'
+
+const WorkbookAgentThreadSummaryListSchema = Schema.Array(WorkbookAgentThreadSummarySchema)
+const JSON_HEADERS = {
+  'content-type': 'application/json',
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function resolvePayloadMessage(payload: unknown, fallback: string): string {
+  return isRecord(payload) && typeof payload['message'] === 'string' ? payload['message'] : fallback
+}
+
+async function fetchJson(input: RequestInfo | URL, init?: RequestInit): Promise<unknown> {
+  const response = init ? await fetch(input, init) : await fetch(input)
+  const payload = (await response.json()) as unknown
+  if (!response.ok) {
+    throw new Error(resolvePayloadMessage(payload, `Workbook agent request failed with status ${response.status}`))
+  }
+  return payload
+}
+
+function threadListUrl(documentId: string): string {
+  return `/v2/documents/${encodeURIComponent(documentId)}/chat/threads`
+}
+
+function threadUrl(documentId: string, threadId: string): string {
+  return `${threadListUrl(documentId)}/${encodeURIComponent(threadId)}`
+}
+
+function decodeThreadSnapshot(payload: unknown): WorkbookAgentThreadSnapshot {
+  return decodeUnknownSync(WorkbookAgentThreadSnapshotSchema, payload)
+}
+
+function createSessionBody(context: WorkbookAgentUiContext, scope: WorkbookAgentThreadScope) {
+  return {
+    context,
+    scope: decodeUnknownSync(WorkbookAgentThreadScopeSchema, scope),
+  }
+}
+
+export function createWorkbookAgentClient(documentId: string) {
+  return {
+    threadEventsUrl(threadId: string): string {
+      return `${threadUrl(documentId, threadId)}/events`
+    },
+    async loadThreadSummaries(): Promise<readonly WorkbookAgentThreadSummary[]> {
+      return decodeUnknownSync(WorkbookAgentThreadSummaryListSchema, await fetchJson(threadListUrl(documentId)))
+    },
+    async createSession(context: WorkbookAgentUiContext, scope: WorkbookAgentThreadScope): Promise<WorkbookAgentThreadSnapshot> {
+      return decodeThreadSnapshot(
+        await fetchJson(threadListUrl(documentId), {
+          method: 'POST',
+          headers: JSON_HEADERS,
+          body: JSON.stringify(createSessionBody(context, scope)),
+        }),
+      )
+    },
+    async loadThreadSnapshot(threadId: string): Promise<WorkbookAgentThreadSnapshot> {
+      return decodeThreadSnapshot(await fetchJson(threadUrl(documentId, threadId)))
+    },
+    async syncThreadContext(threadId: string, context: WorkbookAgentUiContext): Promise<void> {
+      await fetch(`${threadUrl(documentId, threadId)}/context`, {
+        method: 'POST',
+        headers: JSON_HEADERS,
+        body: JSON.stringify({
+          context,
+        }),
+      })
+    },
+    async sendPrompt(threadId: string, prompt: string, context: WorkbookAgentUiContext): Promise<WorkbookAgentThreadSnapshot> {
+      return decodeThreadSnapshot(
+        await fetchJson(`${threadUrl(documentId, threadId)}/turns`, {
+          method: 'POST',
+          headers: JSON_HEADERS,
+          body: JSON.stringify({
+            prompt,
+            context,
+          }),
+        }),
+      )
+    },
+    async interruptThread(threadId: string): Promise<WorkbookAgentThreadSnapshot> {
+      return decodeThreadSnapshot(
+        await fetchJson(`${threadUrl(documentId, threadId)}/interrupt`, {
+          method: 'POST',
+        }),
+      )
+    },
+    async applyReviewItem(
+      threadId: string,
+      reviewItemId: string,
+      input: {
+        readonly appliedBy: 'user' | 'auto'
+        readonly commandIndexes: readonly number[]
+        readonly preview: WorkbookAgentPreviewSummary
+      },
+    ): Promise<WorkbookAgentThreadSnapshot> {
+      return decodeThreadSnapshot(
+        await fetchJson(`${threadUrl(documentId, threadId)}/review-items/${encodeURIComponent(reviewItemId)}/apply`, {
+          method: 'POST',
+          headers: JSON_HEADERS,
+          body: JSON.stringify(input),
+        }),
+      )
+    },
+    async dismissReviewItem(threadId: string, reviewItemId: string): Promise<WorkbookAgentThreadSnapshot> {
+      return decodeThreadSnapshot(
+        await fetchJson(`${threadUrl(documentId, threadId)}/review-items/${encodeURIComponent(reviewItemId)}/dismiss`, {
+          method: 'POST',
+          headers: JSON_HEADERS,
+          body: '{}',
+        }),
+      )
+    },
+    async reviewReviewItem(
+      threadId: string,
+      reviewItemId: string,
+      decision: 'approved' | 'rejected',
+    ): Promise<WorkbookAgentThreadSnapshot> {
+      return decodeThreadSnapshot(
+        await fetchJson(`${threadUrl(documentId, threadId)}/review-items/${encodeURIComponent(reviewItemId)}/review`, {
+          method: 'POST',
+          headers: JSON_HEADERS,
+          body: JSON.stringify({ decision }),
+        }),
+      )
+    },
+    async cancelWorkflowRun(threadId: string, runId: string): Promise<WorkbookAgentThreadSnapshot> {
+      return decodeThreadSnapshot(
+        await fetchJson(`${threadUrl(documentId, threadId)}/workflows/${encodeURIComponent(runId)}/cancel`, {
+          method: 'POST',
+        }),
+      )
+    },
+  }
+}
