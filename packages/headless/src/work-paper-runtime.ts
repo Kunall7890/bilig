@@ -2767,6 +2767,36 @@ export class WorkPaper {
     if (this.trackedEngineEvents.length > 0) {
       this.trackedEngineEvents = []
     }
+    if (
+      result.changedCellIndices === undefined &&
+      result.changedCellCount === 2 &&
+      result.firstChangedCellIndex === args.cellIndex &&
+      result.secondChangedCellIndex !== undefined &&
+      result.secondChangedNumericValue !== undefined &&
+      result.secondChangedRow !== undefined &&
+      result.secondChangedCol !== undefined
+    ) {
+      const changes: WorkPaperCellChange[] = [
+        {
+          kind: 'cell',
+          address: { sheet: args.address.sheet, row: args.address.row, col: args.address.col },
+          sheetName: args.sheet.name,
+          a1: this.trackedA1(args.address.row, args.address.col),
+          newValue: { tag: ValueTag.Number, value: args.value },
+        },
+        {
+          kind: 'cell',
+          address: { sheet: args.address.sheet, row: result.secondChangedRow, col: result.secondChangedCol },
+          sheetName: args.sheet.name,
+          a1: this.trackedA1(result.secondChangedRow, result.secondChangedCol),
+          newValue: { tag: ValueTag.Number, value: result.secondChangedNumericValue },
+        },
+      ]
+      if (this.emitter.hasListeners('valuesUpdated')) {
+        this.emitter.emitDetailed({ eventName: 'valuesUpdated', payload: { changes } })
+      }
+      return changes
+    }
     let changes: WorkPaperChange[] | null = this.tryBuildDirectExistingNumericTrackedChanges(
       result,
       args.address,

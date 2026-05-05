@@ -957,6 +957,7 @@ export function createEngineFormulaInitializationService(args: {
       : undefined
     let inlineInitialDirectScalarCellCount = 0
     const deferredFormulaFamilyRuns = hadExistingFormulas ? undefined : new Map<string, DeferredInitialFormulaFamilyRun>()
+    let freshFormulaChangedBufferMaterialized = hadExistingFormulas
 
     const materializeOrderedPreparedCellIndices = (): number[] => {
       if (orderedPreparedCellIndices) {
@@ -982,6 +983,19 @@ export function createEngineFormulaInitializationService(args: {
       }
     }
     const orderedPreparedCellList = (): InitialFormulaCellIndexList => orderedPreparedCellIndices ?? targetCellIndices
+    const materializeFreshFormulaChangedBuffer = (): number => {
+      if (hadExistingFormulas || freshFormulaChangedBufferMaterialized) {
+        return formulaChangedCount
+      }
+      const orderedPreparedCells = orderedPreparedCellList()
+      for (let index = 0; index < orderedPreparedCellCount; index += 1) {
+        formulaChangedCount = args.markFormulaChanged(orderedPreparedCells[index]!, formulaChangedCount)
+      }
+      freshFormulaChangedBufferMaterialized = true
+      return formulaChangedCount
+    }
+    const logicalFormulaChangedCount = (): number =>
+      !hadExistingFormulas && !freshFormulaChangedBufferMaterialized ? orderedPreparedCellCount : formulaChangedCount
 
     const materializeInlineInitialDirectScalarCellBuffer = (): Uint32Array => {
       if (inlineInitialDirectScalarCellBuffer) {
@@ -1061,7 +1075,9 @@ export function createEngineFormulaInitializationService(args: {
                 },
               )
               noteDeferredFormulaFamilyRunMember(deferredFormulaFamilyRuns, prepared)
-              formulaChangedCount = args.markFormulaChanged(prepared.cellIndex, formulaChangedCount)
+              if (hadExistingFormulas) {
+                formulaChangedCount = args.markFormulaChanged(prepared.cellIndex, formulaChangedCount)
+              }
               topologyChanged = true
               pushOrderedPreparedCellIndex(prepared.cellIndex)
               if (canAssignTopoInBatch && pendingFormulaCells) {
@@ -1113,6 +1129,7 @@ export function createEngineFormulaInitializationService(args: {
     }
 
     if (topologyChanged && !(canAssignTopoInBatch && !hadExistingFormulas)) {
+      materializeFreshFormulaChangedBuffer()
       const repaired =
         !hadCycleMembersBeforeNow() &&
         formulaChangedCount > 0 &&
@@ -1128,10 +1145,12 @@ export function createEngineFormulaInitializationService(args: {
       }
     }
     if (args.hasVolatileFormulas?.() !== false) {
+      materializeFreshFormulaChangedBuffer()
       formulaChangedCount = args.markVolatileFormulasChanged(formulaChangedCount)
     }
-    const useInitialDirectEvaluation = canUseInitialDirectEvaluation && formulaChangedCount === orderedPreparedCellCount
+    const useInitialDirectEvaluation = canUseInitialDirectEvaluation && logicalFormulaChangedCount() === orderedPreparedCellCount
     if (!useInitialDirectEvaluation) {
+      materializeFreshFormulaChangedBuffer()
       args.prepareRegionQueryIndices()
     }
     let recalculated: U32
@@ -1170,7 +1189,7 @@ export function createEngineFormulaInitializationService(args: {
     args.state.setLastMetrics({
       ...lastMetrics,
       batchId: lastMetrics.batchId + 1,
-      changedInputCount: changedInputCount + formulaChangedCount,
+      changedInputCount: changedInputCount + logicalFormulaChangedCount(),
       compileMs,
     })
   }

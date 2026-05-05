@@ -243,10 +243,10 @@ export const WorkbookPaneCanvasFallbackV3 = memo(function WorkbookPaneCanvasFall
         draw()
       })
     }
-    draw()
     const unsubscribeCamera = cameraStore?.subscribe(scheduleDraw)
     const unsubscribeScroll = scrollTransformStore?.subscribe(scheduleDraw)
     const resizeObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(scheduleDraw)
+    scheduleDraw()
     resizeObserver?.observe(host)
     return () => {
       unsubscribeCamera?.()

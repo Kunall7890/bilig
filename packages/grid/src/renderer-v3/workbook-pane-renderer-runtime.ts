@@ -152,6 +152,10 @@ export class WorkbookPaneRendererRuntimeV3 {
     this.scheduler.requestDraw(() => this.drawNow())
   }
 
+  noteInputSignal(): void {
+    this.scheduler.noteInputSignal()
+  }
+
   noteInputSignalAndRequestDraw(): void {
     this.scheduler.noteInputSignal()
     this.requestDraw()

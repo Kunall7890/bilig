@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { WorkbookPaneRendererHostRuntimeV3 } from '../renderer-v3/workbook-pane-renderer-host-runtime.js'
 import { WorkbookPaneRendererRuntimeV3, type WorkbookPaneFrameDrawerV3 } from '../renderer-v3/workbook-pane-renderer-runtime.js'
 import { WorkbookPaneSurfaceRuntimeV3 } from '../renderer-v3/workbook-pane-surface-runtime.js'
@@ -11,8 +11,42 @@ function createHost(width: number, height: number): HTMLDivElement {
   return host
 }
 
+function installManualAnimationFrames(): { flushNextFrame: () => void; restore: () => void } {
+  const callbacks = new Map<number, FrameRequestCallback>()
+  let nextHandle = 1
+  const requestFrame = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+    const handle = nextHandle
+    nextHandle += 1
+    callbacks.set(handle, callback)
+    return handle
+  })
+  const cancelFrame = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((handle) => {
+    callbacks.delete(handle)
+  })
+  return {
+    flushNextFrame: () => {
+      const next = callbacks.entries().next()
+      if (next.done) {
+        throw new Error('no animation frame is scheduled')
+      }
+      const [handle, callback] = next.value
+      callbacks.delete(handle)
+      callback(performance.now())
+    },
+    restore: () => {
+      requestFrame.mockRestore()
+      cancelFrame.mockRestore()
+    },
+  }
+}
+
 describe('WorkbookPaneRendererHostRuntimeV3', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   test('owns the surface-to-renderer handoff outside React state', async () => {
+    const animationFrames = installManualAnimationFrames()
     const backend = {}
     const createBackend = vi.fn(async () => backend)
     const destroyBackend = vi.fn()
@@ -45,6 +79,7 @@ describe('WorkbookPaneRendererHostRuntimeV3', () => {
     })
     runtime.setCanvas(canvas)
     await Promise.resolve()
+    animationFrames.flushNextFrame()
 
     expect(createBackend).toHaveBeenCalledWith(canvas)
     expect(syncSurface).toHaveBeenCalledWith({
@@ -72,6 +107,7 @@ describe('WorkbookPaneRendererHostRuntimeV3', () => {
     })
 
     runtime.dispose()
+    animationFrames.restore()
 
     expect(destroyBackend).toHaveBeenCalledWith(backend)
     expect(canvas.width).toBe(0)

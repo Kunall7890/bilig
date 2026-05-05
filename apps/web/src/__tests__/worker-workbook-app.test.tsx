@@ -559,6 +559,8 @@ describe('WorkerWorkbookApp', () => {
     const deleteColumnsTask = Promise.resolve()
     const invokeDeleteRowsMutation = vi.fn(() => deleteRowsTask)
     const invokeDeleteColumnsMutation = vi.fn(() => deleteColumnsTask)
+    const invokeColumnWidthMutation = vi.fn(() => Promise.resolve())
+    const invokeRowHeightMutation = vi.fn(() => Promise.resolve())
 
     useWorkerWorkbookAppState.mockReturnValue({
       agentError: null,
@@ -597,12 +599,12 @@ describe('WorkerWorkbookApp', () => {
       importPanel: null,
       importToggle: null,
       invokeColumnVisibilityMutation: vi.fn(),
-      invokeColumnWidthMutation: vi.fn(),
+      invokeColumnWidthMutation,
       invokeDeleteColumnsMutation,
       invokeDeleteRowsMutation,
       invokeInsertColumnsMutation: vi.fn(),
       invokeInsertRowsMutation: vi.fn(),
-      invokeRowHeightMutation: vi.fn(),
+      invokeRowHeightMutation,
       invokeRowVisibilityMutation: vi.fn(),
       invokeSetFreezePaneMutation: vi.fn(),
       isEditing: false,
@@ -679,17 +681,34 @@ describe('WorkerWorkbookApp', () => {
 
     const onDeleteRows = latestWorkbookViewProps.current?.['onDeleteRows']
     const onDeleteColumns = latestWorkbookViewProps.current?.['onDeleteColumns']
+    const onColumnWidthChange = latestWorkbookViewProps.current?.['onColumnWidthChange']
+    const onRowHeightChange = latestWorkbookViewProps.current?.['onRowHeightChange']
     expect(typeof onDeleteRows).toBe('function')
     expect(typeof onDeleteColumns).toBe('function')
-    if (typeof onDeleteRows !== 'function' || typeof onDeleteColumns !== 'function') {
-      throw new Error('WorkbookView did not receive delete handlers')
+    expect(typeof onColumnWidthChange).toBe('function')
+    expect(typeof onRowHeightChange).toBe('function')
+    if (
+      typeof onDeleteRows !== 'function' ||
+      typeof onDeleteColumns !== 'function' ||
+      typeof onColumnWidthChange !== 'function' ||
+      typeof onRowHeightChange !== 'function'
+    ) {
+      throw new Error('WorkbookView did not receive mutation handlers')
     }
 
     const returnedDeleteRowsTask = onDeleteRows(1, 2)
     const returnedDeleteColumnsTask = onDeleteColumns(3, 1)
+    onColumnWidthChange(0, 152)
+    onRowHeightChange(0, 48)
 
     expect(invokeDeleteRowsMutation).toHaveBeenCalledWith('Sheet1', 1, 2)
     expect(invokeDeleteColumnsMutation).toHaveBeenCalledWith('Sheet1', 3, 1)
+    expect(invokeColumnWidthMutation).toHaveBeenCalledWith('Sheet1', 0, 152, {
+      deferPersistence: true,
+    })
+    expect(invokeRowHeightMutation).toHaveBeenCalledWith('Sheet1', 0, 48, {
+      deferPersistence: true,
+    })
     expect(returnedDeleteRowsTask).toBe(deleteRowsTask)
     expect(returnedDeleteColumnsTask).toBe(deleteColumnsTask)
 

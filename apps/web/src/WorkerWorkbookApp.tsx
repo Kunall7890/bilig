@@ -259,10 +259,18 @@ function WorkerWorkbookAppInner({
                 onCancelEdit={app.cancelEditor}
                 onClearCell={app.clearSelectedCell}
                 onColumnWidthChange={(columnIndex: number, newSize: number) => {
-                  reportAsyncError(app.invokeColumnWidthMutation(app.selection.sheetName, columnIndex, newSize))
+                  reportAsyncError(
+                    app.invokeColumnWidthMutation(app.selection.sheetName, columnIndex, newSize, {
+                      deferPersistence: true,
+                    }),
+                  )
                 }}
                 onRowHeightChange={(rowIndex: number, newSize: number) => {
-                  reportAsyncError(app.invokeRowHeightMutation(app.selection.sheetName, rowIndex, newSize))
+                  reportAsyncError(
+                    app.invokeRowHeightMutation(app.selection.sheetName, rowIndex, newSize, {
+                      deferPersistence: true,
+                    }),
+                  )
                 }}
                 onSetColumnHidden={(columnIndex: number, hidden: boolean) => {
                   reportAsyncError(app.invokeColumnVisibilityMutation(app.selection.sheetName, columnIndex, hidden))

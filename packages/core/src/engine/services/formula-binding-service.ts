@@ -3155,12 +3155,6 @@ export function createEngineFormulaBindingService(args: {
     let compiled = normalizeLookupCompileMode(compiledInput)
     const hasLookupInstruction = hasLookupPlanInstruction(compiled.jsPlan)
     const directLookupBinding = hasLookupInstruction ? resolveRuntimeDirectLookupBinding(compiled.jsPlan, ownerSheetName) : undefined
-    const directAggregateCandidate = buildDirectAggregateDescriptor({
-      compiled,
-      ownerSheetName,
-      regionGraph: args.regionGraph,
-    })
-    const directAggregate = directAggregateContainsOwnerCell(directAggregateCandidate, cellIndex) ? undefined : directAggregateCandidate
     const directScalar = buildDirectScalarDescriptor({
       compiled,
       ownerSheetName,
@@ -3169,13 +3163,25 @@ export function createEngineFormulaBindingService(args: {
       ensureCellTracked: args.ensureCellTracked,
       ensureCellTrackedByCoords: args.ensureCellTrackedByCoords,
     })
-    const directCriteria = buildDirectCriteriaDescriptor({
-      compiled,
-      ownerSheetName,
-      workbook: args.state.workbook,
-      ensureCellTracked: args.ensureCellTracked,
-      regionGraph: args.regionGraph,
-    })
+    const directAggregateCandidate =
+      directScalar === undefined
+        ? buildDirectAggregateDescriptor({
+            compiled,
+            ownerSheetName,
+            regionGraph: args.regionGraph,
+          })
+        : undefined
+    const directAggregate = directAggregateContainsOwnerCell(directAggregateCandidate, cellIndex) ? undefined : directAggregateCandidate
+    const directCriteria =
+      directScalar === undefined
+        ? buildDirectCriteriaDescriptor({
+            compiled,
+            ownerSheetName,
+            workbook: args.state.workbook,
+            ensureCellTracked: args.ensureCellTracked,
+            regionGraph: args.regionGraph,
+          })
+        : undefined
     const indexedExactLookupCandidates =
       hasLookupInstruction && args.state.getUseColumnIndex() ? collectIndexedExactLookupCandidates(compiled.optimizedAst) : []
     const directApproximateLookupCandidates = hasLookupInstruction ? collectDirectApproximateLookupCandidates(compiled.optimizedAst) : []
