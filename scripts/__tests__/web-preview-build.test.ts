@@ -40,6 +40,15 @@ describe('web preview build gate', () => {
     expect(source).toContain('buildAppRuntimeDependencies()')
   })
 
+  it('allows CI to reuse prebuilt app runtime dependencies for browser smoke', () => {
+    const devSource = readFileSync(resolve(repoRoot, 'scripts/run-dev-web-local.ts'), 'utf8')
+    const ciSource = readFileSync(resolve(repoRoot, 'scripts/run-ci.ts'), 'utf8')
+
+    expect(devSource).toContain("process.env['BILIG_DEV_APP_RUNTIME_BUILD'] === '0'")
+    expect(ciSource).toContain("pnpm('app runtime dependency build', '--filter', '@bilig/app^...', 'run', 'build')")
+    expect(ciSource).toContain("BILIG_DEV_APP_RUNTIME_BUILD: '0'")
+  })
+
   it('bounds lsof probes so local browser stack startup cannot hang indefinitely', () => {
     const source = readFileSync(resolve(repoRoot, 'scripts/run-dev-web-local.ts'), 'utf8')
 
@@ -49,9 +58,10 @@ describe('web preview build gate', () => {
     expect(source).toContain('timeout: localProcessProbeTimeoutMs')
   })
 
-  it('does not force CI browser tests to reuse a stale preview bundle', () => {
+  it('reuses the fresh CI-built preview bundle during browser tests', () => {
     const source = readFileSync(resolve(repoRoot, 'scripts/run-ci.ts'), 'utf8')
 
-    expect(source).not.toContain("BILIG_DEV_WEB_PREVIEW_BUILD: '0'")
+    expect(source).toContain("pnpm('browser web bundle build', '--filter', '@bilig/web', 'build:bundle')")
+    expect(source).toContain("BILIG_DEV_WEB_PREVIEW_BUILD: '0'")
   })
 })

@@ -368,7 +368,7 @@ test('@browser-serial web app supports F2 edit in the product shell', async ({ p
   await expect(formulaInput).toHaveValue('seed!')
 })
 
-test('web app offers formula autocomplete and inserts a function with Tab', async ({ page }) => {
+test('@browser-ci web app offers formula autocomplete and inserts a function with Tab', async ({ page }) => {
   await page.goto('/')
   await waitForWorkbookReady(page)
 
@@ -498,7 +498,7 @@ test('web app keeps selected text cells visible when clicked', async ({ page }) 
   }
 })
 
-test('web app supports fill-handle propagation', async ({ page }) => {
+test('@browser-ci web app supports fill-handle propagation', async ({ page }) => {
   await gotoWorkbookShell(page, `/?document=${encodeURIComponent(createTestDocumentId('fill-handle-propagation'))}`)
   await waitForWorkbookReady(page)
 

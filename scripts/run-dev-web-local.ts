@@ -22,6 +22,7 @@ const configuredZeroProxyUpstream = process.env['BILIG_ZERO_PROXY_UPSTREAM']
 const disableCompose = process.env['BILIG_DEV_DISABLE_COMPOSE'] === '1'
 const webServerMode = process.env['BILIG_DEV_WEB_SERVER_MODE'] === 'preview' ? 'preview' : 'dev'
 const appServerMode = process.env['BILIG_DEV_APP_SERVER_MODE'] === 'run' ? 'run' : 'watch'
+const skipAppRuntimeBuild = process.env['BILIG_DEV_APP_RUNTIME_BUILD'] === '0'
 const skipPreviewBuild = process.env['BILIG_DEV_WEB_PREVIEW_BUILD'] === '0'
 const preferredZeroPort = resolvePreferredZeroPort(process.env['BILIG_DEV_ZERO_PORT'], configuredZeroProxyUpstream, 4848)
 const composePublishedHost = resolveComposePublishedHost()
@@ -646,7 +647,9 @@ process.on('SIGINT', () => forwardSignal('SIGINT'))
 process.on('SIGTERM', () => forwardSignal('SIGTERM'))
 
 try {
-  if (appServerMode === 'run') {
+  if (appServerMode === 'run' && skipAppRuntimeBuild) {
+    console.log('Reusing existing local app runtime dependency builds...')
+  } else if (appServerMode === 'run') {
     console.log('Building local app runtime dependencies for clean startup...')
     buildAppRuntimeDependencies()
   }

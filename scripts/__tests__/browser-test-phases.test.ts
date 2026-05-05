@@ -92,6 +92,23 @@ describe('browser test phases', () => {
     ])
   })
 
+  it('keeps CI browser smoke explicit and small', () => {
+    const phases = resolveBrowserTestPhases({
+      playwrightArgs: [],
+      env: {
+        BILIG_BROWSER_CI_SMOKE: '1',
+        BILIG_BROWSER_PARALLEL_WORKERS: '3',
+      },
+    })
+
+    expect(phases).toEqual([
+      {
+        label: 'browser ci smoke tests',
+        args: ['--workers=3', '--grep', '@browser-ci', '--grep-invert', '@browser-perf|@browser-deep|@fuzz-browser|@browser-webgpu'],
+      },
+    ])
+  })
+
   it('passes explicit Playwright arguments through unchanged', () => {
     expect(resolveBrowserTestPhases({ playwrightArgs: ['--grep', 'typegpu'], env: {} })).toEqual([
       {

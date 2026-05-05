@@ -1,4 +1,5 @@
 export const CLIPBOARD_GLOBAL_GREP = '@clipboard-global'
+export const BROWSER_CI_GREP = '@browser-ci'
 export const BROWSER_PERF_GREP = '@browser-perf'
 export const BROWSER_DEEP_GREP = '@browser-deep'
 export const BROWSER_SERIAL_GREP = '@browser-serial'
@@ -16,6 +17,7 @@ export interface BrowserTestPhase {
 }
 
 export interface BrowserTestPhaseEnv {
+  readonly BILIG_BROWSER_CI_SMOKE?: string | undefined
   readonly BILIG_BROWSER_INCLUDE_PERF?: string | undefined
   readonly BILIG_BROWSER_INCLUDE_DEEP?: string | undefined
   readonly BILIG_BROWSER_INCLUDE_FUZZ?: string | undefined
@@ -52,6 +54,22 @@ export function resolveBrowserTestPhases(input: {
   const includePerf = envFlagEnabled(input.env.BILIG_BROWSER_INCLUDE_PERF)
   const includeDeep = envFlagEnabled(input.env.BILIG_BROWSER_INCLUDE_DEEP)
   const includeFuzz = envFlagEnabled(input.env.BILIG_BROWSER_INCLUDE_FUZZ)
+  const ciSmoke = envFlagEnabled(input.env.BILIG_BROWSER_CI_SMOKE)
+  if (ciSmoke) {
+    return [
+      {
+        label: 'browser ci smoke tests',
+        args: [
+          '--workers=' + String(resolveParallelBrowserWorkers(input.env.BILIG_BROWSER_PARALLEL_WORKERS)),
+          '--grep',
+          BROWSER_CI_GREP,
+          '--grep-invert',
+          [BROWSER_PERF_GREP, BROWSER_DEEP_GREP, BROWSER_FUZZ_GREP, BROWSER_WEBGPU_GREP].join('|'),
+        ],
+      },
+    ]
+  }
+
   const defaultExcludedGreps = [
     CLIPBOARD_GLOBAL_GREP,
     BROWSER_SERIAL_GREP,

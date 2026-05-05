@@ -746,7 +746,33 @@ export async function expectMatchingGridRangeScreenshots(
   )
 }
 
+async function retryRuntimeConfigLoadIfVisible(page: Page): Promise<boolean> {
+  const retryButton = page.getByRole('button', { name: 'Retry' })
+  if (!(await retryButton.isVisible({ timeout: 250 }).catch(() => false))) {
+    return false
+  }
+  const runtimeConfigError = page.getByText(/^Failed to load runtime config \(\d+\)$/)
+  if (!(await runtimeConfigError.isVisible({ timeout: 250 }).catch(() => false))) {
+    return false
+  }
+  await retryButton.click()
+  return true
+}
+
 export async function waitForWorkbookReady(page: Page) {
+  await retryRuntimeConfigLoadIfVisible(page)
+  try {
+    await waitForWorkbookReadyOnce(page)
+    return
+  } catch (error) {
+    if (!(await retryRuntimeConfigLoadIfVisible(page))) {
+      throw error
+    }
+  }
+  await waitForWorkbookReadyOnce(page)
+}
+
+async function waitForWorkbookReadyOnce(page: Page): Promise<void> {
   await expect(page.getByTestId('formula-bar')).toBeVisible({ timeout: 15_000 })
   await expect(page.getByTestId('sheet-grid')).toBeVisible({ timeout: 15_000 })
   await expect(page.getByTestId('status-sync')).toHaveText(

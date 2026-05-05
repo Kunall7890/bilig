@@ -21,7 +21,7 @@ async function expectSelectedCellValue(page: Page, address: string, value: strin
   await expect(formulaInput).toHaveValue(value)
 }
 
-test('web app renders the minimal product shell without legacy demo chrome', async ({ page }) => {
+test('@browser-ci web app renders the minimal product shell without legacy demo chrome', async ({ page }) => {
   await page.goto('/')
   await waitForWorkbookReady(page)
 

@@ -1,5 +1,4 @@
-import { createHash } from 'node:crypto'
-import { expect, test, type Locator, type Page } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import {
   PRODUCT_COLUMN_WIDTH,
   PRODUCT_HEADER_HEIGHT,
@@ -22,10 +21,8 @@ import {
   stopWorkbookScrollPerf,
   waitForWorkbookReady,
 } from './web-shell-helpers.js'
-const debugExactDeleteReproEnabled = process.env['BILIG_DEBUG_EXACT_DELETE_REPRO'] === '1'
-const debugExactDeleteReproTest = debugExactDeleteReproEnabled ? test : test.skip.bind(test)
 
-test('web app keeps sheet tabs and status bar visible in a short viewport', async ({ page }) => {
+test('@browser-ci web app keeps sheet tabs and status bar visible in a short viewport', async ({ page }) => {
   await page.setViewportSize({ width: 2048, height: 220 })
   await page.goto('/')
   await waitForWorkbookReady(page)
@@ -552,118 +549,3 @@ async function readFormulaValue(page: Page): Promise<string> {
   const formulaInput = page.getByTestId('formula-input')
   return await formulaInput.inputValue()
 }
-
-async function screenshotHash(locator: Locator): Promise<string> {
-  return createHash('sha256')
-    .update(await locator.screenshot({ animations: 'disabled' }))
-    .digest('hex')
-}
-
-async function screenshotCellHash(page: Page, sheetAddress: string): Promise<string> {
-  const parsed = parseCellAddress(sheetAddress, 'Sheet1')
-  const grid = page.getByTestId('sheet-grid')
-  const gridBox = await grid.boundingBox()
-  if (!gridBox) {
-    throw new Error('sheet grid is not visible')
-  }
-  const cellLeft = await getProductColumnLeft(page, parsed.col)
-  const cellWidth = await getProductColumnWidth(page, parsed.col)
-  const rowTop = await getProductRowTop(page, parsed.row)
-  const rowHeight = await getProductRowHeight(page, parsed.row)
-  const scrollViewport = page.getByTestId('grid-scroll-viewport')
-  const scroll = await scrollViewport.evaluate((node) => ({ scrollLeft: node.scrollLeft, scrollTop: node.scrollTop }))
-  const clip = {
-    x: Math.round(gridBox.x + cellLeft - scroll.scrollLeft),
-    y: Math.round(gridBox.y + PRODUCT_HEADER_HEIGHT + rowTop - scroll.scrollTop),
-    width: Math.max(1, Math.round(cellWidth)),
-    height: Math.max(1, Math.round(rowHeight)),
-  }
-  return createHash('sha256')
-    .update(await page.screenshot({ animations: 'disabled', clip }))
-    .digest('hex')
-}
-
-debugExactDeleteReproTest('debug exact prepaid-template delete repro', async ({ page }) => {
-  const consoleMessages: string[] = []
-  page.on('console', (message) => {
-    consoleMessages.push(`${message.type()}: ${message.text()}`)
-  })
-  page.on('pageerror', (error) => {
-    consoleMessages.push(`pageerror: ${error.stack ?? error.message}`)
-  })
-
-  await page.goto('/?sheet=Prepaid+Template&cell=F39')
-  await waitForWorkbookReady(page)
-
-  await expect(page.getByTestId('name-box')).toHaveValue('F39')
-  await expect(page.getByTestId('status-selection')).toContainText('!F39')
-
-  const readDebugState = async () => {
-    return await page.evaluate(() => {
-      const active = document.activeElement
-      const scrollViewport = document.querySelector<HTMLElement>('[data-testid="grid-scroll-viewport"]')
-      const activeElement =
-        active instanceof HTMLElement
-          ? {
-              testId: active.dataset['testid'] ?? null,
-              tag: active.tagName,
-              ariaLabel: active.getAttribute('aria-label'),
-            }
-          : null
-      return {
-        status: document.querySelector<HTMLElement>('[data-testid="status-selection"]')?.textContent ?? null,
-        nameBox: document.querySelector<HTMLInputElement>('[data-testid="name-box"]')?.value ?? null,
-        formula: document.querySelector<HTMLInputElement>('[data-testid="formula-input"]')?.value ?? null,
-        runtimeError:
-          document.querySelector<HTMLElement>('[data-testid="workbook-toast-region"]')?.textContent ??
-          document.body.textContent?.includes('sqlite3_step() rc= 787 SQLITE_CONSTRAINT_FOREIGNKEY') ??
-          null,
-        scrollViewport:
-          scrollViewport instanceof HTMLElement
-            ? {
-                scrollLeft: scrollViewport.scrollLeft,
-                scrollTop: scrollViewport.scrollTop,
-                clientWidth: scrollViewport.clientWidth,
-                clientHeight: scrollViewport.clientHeight,
-              }
-            : null,
-        activeElement,
-      }
-    })
-  }
-
-  const readGridHashes = async () => {
-    const grid = page.getByTestId('sheet-grid')
-    return {
-      grid: await screenshotHash(grid),
-      paneRenderer: await screenshotHash(page.getByTestId('grid-pane-renderer')),
-      paneRendererFallback: await screenshotHash(page.getByTestId('grid-pane-renderer-fallback')),
-      cellF39: await screenshotCellHash(page, 'F39'),
-    }
-  }
-
-  console.log('debug-before', await readDebugState())
-  console.log('debug-before-grid-hash', await readGridHashes())
-
-  if ((await page.getByTestId('formula-input').inputValue()) === '') {
-    await page.getByTestId('formula-input').fill('debug-delete-seed')
-    await page.getByTestId('formula-input').press('Enter')
-    await page.waitForTimeout(500)
-    console.log('debug-after-seed', await readDebugState())
-    console.log('debug-after-seed-grid-hash', await readGridHashes())
-    await page.getByTestId('sheet-grid').focus()
-    await page.waitForTimeout(100)
-    console.log('debug-after-grid-refocus', await readDebugState())
-    console.log('debug-after-grid-refocus-grid-hash', await readGridHashes())
-  }
-
-  await page.keyboard.press('Delete')
-  await page.waitForTimeout(500)
-  console.log('debug-after-delete', await readDebugState())
-  console.log('debug-after-delete-grid-hash', await readGridHashes())
-  await page.keyboard.press('Backspace')
-  await page.waitForTimeout(500)
-  console.log('debug-after-backspace', await readDebugState())
-  console.log('debug-after-backspace-grid-hash', await readGridHashes())
-  console.log('debug-console', consoleMessages)
-})

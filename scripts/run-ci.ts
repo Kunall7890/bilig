@@ -18,8 +18,9 @@ interface CompletedTask {
 }
 
 const startedAt = performance.now()
-const ciProfile = process.env['BILIG_CI_PROFILE'] === 'full' ? 'full' : 'default'
-const runDeepGates = ciProfile === 'full'
+const ciProfile = process.env['BILIG_CI_PROFILE'] === 'full' ? 'full' : 'fast'
+const runFullGates = ciProfile === 'full'
+const runDeepGates = runFullGates
 const skipBrowserGates = process.env['BILIG_CI_SKIP_BROWSER'] === '1'
 const coverageReportsDirectory = process.env['BILIG_COVERAGE_DIR'] ?? `coverage/ci-${process.pid}`
 
@@ -166,25 +167,35 @@ const vitestFuzzLane = withEnv(pnpm(runDeepGates ? 'vitest fuzz main' : 'vitest 
 const browserWebBundleBuild = withEnv(pnpm('browser web bundle build', '--filter', '@bilig/web', 'build:bundle'), {
   VITE_BILIG_REMOTE_SYNC: '0',
 })
+const appRuntimeDependencyBuild = pnpm('app runtime dependency build', '--filter', '@bilig/app^...', 'run', 'build')
 const browserLane: CiTask = {
-  label: runDeepGates ? 'browser tests + perf + fuzz' : 'browser tests',
+  label: runFullGates ? 'browser tests + perf + fuzz' : 'browser ci smoke tests',
   steps: [
     withEnv(pnpm('browser tests', 'test:browser'), {
+      BILIG_BROWSER_CI_SMOKE: runFullGates ? '0' : '1',
       BILIG_BROWSER_INCLUDE_PERF: runDeepGates ? '1' : '0',
       BILIG_BROWSER_INCLUDE_DEEP: runDeepGates ? '1' : '0',
       BILIG_BROWSER_INCLUDE_FUZZ: runDeepGates ? '1' : '0',
+      BILIG_DEV_APP_RUNTIME_BUILD: '0',
+      BILIG_DEV_WEB_PREVIEW_BUILD: '0',
       BILIG_FUZZ_PROFILE: 'main',
       BILIG_FUZZ_CAPTURE: '1',
     }),
   ],
 }
+const focusedCorrectnessLanes: readonly CiTask[] = [
+  pnpm('correctness core', 'test:correctness:core'),
+  pnpm('correctness formula', 'test:correctness:formula'),
+  pnpm('correctness server', 'test:correctness:server'),
+  pnpm('correctness browser runtime', 'test:correctness:browser'),
+]
 
 try {
   const allCompleted: CompletedTask[] = []
   log(`profile ${ciProfile}`)
-  if (!runDeepGates) {
+  if (!runFullGates) {
     log(
-      'default profile uses the fast fuzz budget and skips browser perf, browser fuzz, and statistical benchmark contracts; run pnpm run ci:full for the deep gate',
+      'fast profile runs generated checks, static checks, focused correctness tests, browser smoke, release budgets, perf smoke, and clean-diff checks; run pnpm run ci:full for coverage, fuzz, full browser, and deep benchmark gates',
     )
   }
   if (skipBrowserGates) {
@@ -204,21 +215,28 @@ try {
   allCompleted.push(
     ...(await runStage('static prerequisites', [
       pnpm('lint', 'lint'),
-      pnpm('wasm build', 'wasm:build'),
+      skipBrowserGates ? pnpm('wasm build', 'wasm:build') : appRuntimeDependencyBuild,
       pnpm('typecheck', 'typecheck'),
       ...(skipBrowserGates ? [] : [pnpm('playwright chromium install', 'exec', 'playwright', 'install', 'chromium')]),
     ])),
   )
 
-  allCompleted.push(
-    ...(await runStage('functional heavy checks', [
-      {
-        label: 'vitest heavy checks',
-        steps: [coverageLane, vitestFuzzLane],
-      },
-      ...(skipBrowserGates ? [] : [browserWebBundleBuild]),
-    ])),
-  )
+  if (runFullGates) {
+    allCompleted.push(
+      ...(await runStage('functional heavy checks', [
+        {
+          label: 'vitest heavy checks',
+          steps: [coverageLane, vitestFuzzLane],
+        },
+        ...(skipBrowserGates ? [] : [browserWebBundleBuild]),
+      ])),
+    )
+  } else {
+    allCompleted.push(...(await runStage('focused correctness checks', focusedCorrectnessLanes)))
+    if (!skipBrowserGates) {
+      allCompleted.push(...(await runStage('browser smoke setup', [browserWebBundleBuild])))
+    }
+  }
 
   if (!skipBrowserGates) {
     allCompleted.push(...(await runSequential('browser gates', [browserLane])))
