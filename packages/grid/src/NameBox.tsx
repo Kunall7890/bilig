@@ -81,8 +81,8 @@ export const NameBox = forwardRef<HTMLInputElement, NameBoxProps>(function NameB
               setErrorMessage('Unknown range or name')
             } else {
               setErrorMessage(null)
-              onCommitSuccess?.()
               event.currentTarget.blur()
+              onCommitSuccess?.()
             }
           }
           if (event.key === 'Escape') {

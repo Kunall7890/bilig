@@ -690,11 +690,16 @@ test.describe('@clipboard-global web app clipboard flows', () => {
 
     const writeFormulaBarCell = async (address: string, value: string) => {
       await nameBox.fill(address)
+      await expect(nameBox).toHaveValue(address)
       await nameBox.press('Enter')
+      await expect(page.getByTestId('status-selection')).toHaveText(`Sheet1!${address}`)
       await formulaInput.fill(value)
+      await expect(formulaInput).toHaveValue(value)
       await formulaInput.press('Enter')
       await nameBox.fill(address)
+      await expect(nameBox).toHaveValue(address)
       await nameBox.press('Enter')
+      await expect(page.getByTestId('status-selection')).toHaveText(`Sheet1!${address}`)
       await expect(formulaInput).toHaveValue(value)
       await expect(resolvedValue).toHaveText(value)
     }

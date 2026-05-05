@@ -323,10 +323,14 @@ export function WorkbookView({
             onBeginEdit={onBeginFormulaEdit}
             onAddressCommit={onAddressCommit}
             onAddressCommitSuccess={() => {
+              const focusGrid = gridFocusApiRef.current
+              if (focusGrid) {
+                focusGrid()
+                return
+              }
               flushSync(() => {
                 setGridFocusRequestToken((current) => current + 1)
               })
-              gridFocusApiRef.current?.()
             }}
             onCancel={onCancelEdit}
             onChange={onEditorChange}
