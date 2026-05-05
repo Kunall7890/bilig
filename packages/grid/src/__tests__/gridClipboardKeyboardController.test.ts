@@ -165,6 +165,42 @@ describe('gridClipboardKeyboardController', () => {
     expect(internalClipboardRef.current).toEqual(clipboard)
   })
 
+  test('captures optimistic editor seeds before the engine snapshot catches up', () => {
+    const internalClipboardRef = { current: null }
+
+    const clipboard = captureGridClipboardSelection({
+      engine: createEngine({
+        A1: 'alpha',
+        B1: '',
+        A2: '',
+        B2: 'delta',
+      }),
+      getCellEditorSeed: (_sheetName, address) => {
+        switch (address) {
+          case 'B1':
+            return 'beta'
+          case 'A2':
+            return 'gamma'
+          default:
+            return undefined
+        }
+      },
+      gridSelection: {
+        ...createGridSelection(0, 0),
+        current: {
+          cell: [0, 0],
+          range: { x: 0, y: 0, width: 2, height: 2 },
+          rangeStack: [],
+        },
+      },
+      internalClipboardRef,
+      sheetName: 'Sheet1',
+    })
+
+    expect(clipboard?.plainText).toBe('alpha\tbeta\ngamma\tdelta')
+    expect(internalClipboardRef.current).toEqual(clipboard)
+  })
+
   test('pastes the in-memory internal clipboard immediately while the system clipboard write is still pending', () => {
     const applyClipboardValues = vi.fn()
     const internalClipboardRef = {

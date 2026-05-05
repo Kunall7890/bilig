@@ -6,7 +6,7 @@ import { createWorkerRuntimeMachine, getWorkerRuntimeController, getWorkerRuntim
 import type { resolveRuntimeConfig } from './runtime-config.js'
 import type { ZeroClient } from './runtime-session.js'
 import { loadPersistedSelection } from './selection-persistence.js'
-import { type ZeroConnectionState, canAttemptRemoteSync, emptyCellSnapshot, toResolvedValue } from './worker-workbook-app-model.js'
+import { type ZeroConnectionState, canAttemptRemoteSync, emptyCellSnapshot } from './worker-workbook-app-model.js'
 import { useWorkbookSync } from './use-workbook-sync.js'
 import { useWorkbookToolbar } from './use-workbook-toolbar.js'
 import { useZeroHealthReady } from './use-zero-health-ready.js'
@@ -180,10 +180,10 @@ export function useWorkerWorkbookAppState(input: {
     freezeRows,
     freezeCols,
     selectedCell,
-    invokeInsertRowsMutation,
-    invokeDeleteRowsMutation,
-    invokeInsertColumnsMutation,
-    invokeDeleteColumnsMutation,
+    invokeInsertRowsMutation: invokeInsertRowsMutationBase,
+    invokeDeleteRowsMutation: invokeDeleteRowsMutationBase,
+    invokeInsertColumnsMutation: invokeInsertColumnsMutationBase,
+    invokeDeleteColumnsMutation: invokeDeleteColumnsMutationBase,
     invokeSetFreezePaneMutation,
   } = useWorkerWorkbookGridState({
     workerHandle,
@@ -220,8 +220,10 @@ export function useWorkerWorkbookAppState(input: {
     selectionSnapshot,
     selectionSnapshotRef,
     selectSelectionSnapshot,
+    supersedeOptimisticCellSeedsForSheet,
     toggleBooleanCell,
     visibleEditorValue,
+    visibleResolvedValue,
   } = useWorkerWorkbookInteractionState({
     documentId,
     selection,
@@ -234,7 +236,42 @@ export function useWorkerWorkbookAppState(input: {
     reportRuntimeError,
     sendSelectionChanged,
   })
-  const resolvedValue = toResolvedValue(selectedCell)
+  const invokeSheetStructuralMutation = useCallback(
+    (taskFactory: () => Promise<void>, sheetName: string): Promise<void> => {
+      const rollbackOptimisticSeeds = supersedeOptimisticCellSeedsForSheet(sheetName)
+      const task = taskFactory()
+      void (async () => {
+        try {
+          await task
+        } catch {
+          rollbackOptimisticSeeds?.()
+        }
+      })()
+      return task
+    },
+    [supersedeOptimisticCellSeedsForSheet],
+  )
+  const invokeInsertRowsMutation = useCallback(
+    (sheetName: string, startRow: number, count: number): Promise<void> =>
+      invokeSheetStructuralMutation(() => invokeInsertRowsMutationBase(sheetName, startRow, count), sheetName),
+    [invokeInsertRowsMutationBase, invokeSheetStructuralMutation],
+  )
+  const invokeDeleteRowsMutation = useCallback(
+    (sheetName: string, startRow: number, count: number): Promise<void> =>
+      invokeSheetStructuralMutation(() => invokeDeleteRowsMutationBase(sheetName, startRow, count), sheetName),
+    [invokeDeleteRowsMutationBase, invokeSheetStructuralMutation],
+  )
+  const invokeInsertColumnsMutation = useCallback(
+    (sheetName: string, startCol: number, count: number): Promise<void> =>
+      invokeSheetStructuralMutation(() => invokeInsertColumnsMutationBase(sheetName, startCol, count), sheetName),
+    [invokeInsertColumnsMutationBase, invokeSheetStructuralMutation],
+  )
+  const invokeDeleteColumnsMutation = useCallback(
+    (sheetName: string, startCol: number, count: number): Promise<void> =>
+      invokeSheetStructuralMutation(() => invokeDeleteColumnsMutationBase(sheetName, startCol, count), sheetName),
+    [invokeDeleteColumnsMutationBase, invokeSheetStructuralMutation],
+  )
+  const resolvedValue = visibleResolvedValue
   const { getAgentContext, handleVisibleViewportChange, resetVisibleViewportForSheet } = useWorkerWorkbookAgentContext({
     selection,
     selectionRangeRef,

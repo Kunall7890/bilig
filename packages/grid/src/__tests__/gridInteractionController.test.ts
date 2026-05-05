@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
-import { handleGridPointerDown, handleGridPointerMove } from '../gridInteractionController.js'
+import { getGridMetrics } from '../gridMetrics.js'
+import { createGridGeometrySnapshot } from '../gridGeometry.js'
+import { handleGridBodyDoubleClick, handleGridPointerDown, handleGridPointerMove } from '../gridInteractionController.js'
 
 function createInteractionState() {
   return {
@@ -95,5 +97,49 @@ describe('gridInteractionController', () => {
         }),
       }),
     )
+  })
+
+  it('begins double-click editing from the clicked cell instead of a stale surface editor value', () => {
+    const beginEditAt = vi.fn()
+    const geometry = createGridGeometrySnapshot({
+      sheetName: 'Sheet1',
+      scrollLeft: 0,
+      scrollTop: 0,
+      hostWidth: 800,
+      hostHeight: 600,
+      dpr: 1,
+      gridMetrics: getGridMetrics(),
+    })
+
+    handleGridBodyDoubleClick({
+      event: {
+        clientX: 20,
+        clientY: 30,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      },
+      applyColumnWidth: vi.fn(),
+      beginEditAt,
+      columnWidths: {},
+      computeAutofitColumnWidth: vi.fn(() => 120),
+      defaultColumnWidth: 120,
+      interactionState: createInteractionState(),
+      isEditingCell: false,
+      lastBodyClickCell: [2, 4],
+      onCommitEdit: vi.fn(),
+      onSelectionChange: vi.fn(),
+      resolveColumnResizeTargetAtPointer: vi.fn(() => null),
+      resolvePointerCell: vi.fn(() => [2, 4] as const),
+      resolvePointerGeometry: vi.fn(() => geometry),
+      selectedCell: [0, 0],
+      setGridSelection: vi.fn(),
+      visibleRegion: {
+        range: { x: 0, y: 0, width: 10, height: 20 },
+        tx: 0,
+        ty: 0,
+      },
+    })
+
+    expect(beginEditAt.mock.calls).toEqual([['C5']])
   })
 })

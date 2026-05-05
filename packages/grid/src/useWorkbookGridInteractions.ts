@@ -254,11 +254,12 @@ export function useWorkbookGridInteractions(
   const captureInternalClipboardSelection = useCallback(() => {
     return captureGridClipboardSelection({
       engine,
+      getCellEditorSeed,
       gridSelection: getCurrentGridSelection(),
       internalClipboardRef,
       sheetName,
     })
-  }, [engine, getCurrentGridSelection, internalClipboardRef, sheetName])
+  }, [engine, getCellEditorSeed, getCurrentGridSelection, internalClipboardRef, sheetName])
   const { handleGridKey } = useWorkbookGridKeyboardHandler({
     applyClipboardValues,
     beginSelectedEdit,
@@ -339,7 +340,6 @@ export function useWorkbookGridInteractions(
     applyAutofitWidth,
     beginEditAt,
     commitActiveEdit,
-    editorValue,
     emitSelectionChange,
     inputController,
     isEditingCell,

@@ -47,7 +47,6 @@ interface HandleGridBodyDoubleClickOptions extends GridInteractionCommonOptions 
   event: PointerEventLike
   columnWidths: Readonly<Record<number, number>>
   defaultColumnWidth: number
-  editorValue: string
   lastBodyClickCell: Item | null
   onAutofitColumn?: ((this: void, columnIndex: number, fallbackWidth: number) => void | Promise<void>) | undefined
   applyColumnWidth(this: void, columnIndex: number, width: number): void
@@ -154,7 +153,6 @@ export function handleGridBodyDoubleClick({
   event,
   columnWidths,
   defaultColumnWidth,
-  editorValue,
   interactionState,
   lastBodyClickCell,
   onAutofitColumn,
@@ -197,7 +195,7 @@ export function handleGridBodyDoubleClick({
       setGridSelection(nextSelection)
       onSelectionChange(nextSelection)
     }
-    beginEditAt(editAddress, editorValue)
+    beginEditAt(editAddress)
     return
   }
   interactionState.columnResizeActiveRef.current = false

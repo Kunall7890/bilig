@@ -225,6 +225,196 @@ describe('useWorkerWorkbookInteractionState', () => {
     })
   })
 
+  it('keeps optimistic formula results visible until selected-cell state catches up', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const selectedCell = stringCell('Sheet1', 'A2', '')
+    const workerHandle = {
+      viewportStore: createViewportStoreMapStub([stringCell('Sheet1', 'A1', 'HELLO'), selectedCell]),
+    }
+    const invokeMutation = vi.fn(async () => undefined)
+    const sendSelectionChanged = vi.fn()
+    const harness = mountHarness()
+    let captured: ReturnType<typeof useWorkerWorkbookInteractionState> | null = null
+
+    await harness.render({
+      documentId: 'doc-1',
+      selection: { sheetName: 'Sheet1', address: 'A2' },
+      selectedCell,
+      workerHandle,
+      invokeMutation,
+      sendSelectionChanged,
+      capture: (value) => {
+        captured = value
+      },
+    })
+    if (!captured) {
+      throw new Error('Expected interaction state capture')
+    }
+
+    await act(async () => {
+      captured?.commitEditor(undefined, '=A1="HELLO"')
+      await Promise.resolve()
+    })
+
+    expect(workerHandle.viewportStore.getCell('Sheet1', 'A2').value).toEqual({ tag: ValueTag.Boolean, value: true })
+    expect(captured?.visibleResolvedValue).toBe('TRUE')
+    expect(invokeMutation).toHaveBeenCalledWith('setCellFormula', 'Sheet1', 'A2', 'A1="HELLO"')
+
+    await act(async () => {
+      harness.root.unmount()
+    })
+  })
+
+  it('keeps detached optimistic value readback visible before the viewport store is ready', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const selectedCell = stringCell('Sheet1', 'A1', '')
+    const invokeMutation = vi.fn(async () => undefined)
+    const sendSelectionChanged = vi.fn()
+    const harness = mountHarness()
+    let captured: ReturnType<typeof useWorkerWorkbookInteractionState> | null = null
+
+    await harness.render({
+      documentId: 'doc-1',
+      selection: { sheetName: 'Sheet1', address: 'A1' },
+      selectedCell,
+      workerHandle: null,
+      invokeMutation,
+      sendSelectionChanged,
+      capture: (value) => {
+        captured = value
+      },
+    })
+    if (!captured) {
+      throw new Error('Expected interaction state capture')
+    }
+
+    await act(async () => {
+      captured?.commitEditor(undefined, '12')
+      await Promise.resolve()
+    })
+
+    expect(captured?.visibleEditorValue).toBe('12')
+    expect(captured?.visibleResolvedValue).toBe('12')
+    expect(invokeMutation).toHaveBeenCalledWith('setCellValue', 'Sheet1', 'A1', 12)
+
+    await act(async () => {
+      harness.root.unmount()
+    })
+  })
+
+  it('keeps local editor seeds available for grid operations after readback catches up', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const initialCell = stringCell('Sheet1', 'A1', '')
+    const authoritativeCell = stringCell('Sheet1', 'A1', '12')
+    let viewportCell = initialCell
+    const workerHandle = {
+      viewportStore: {
+        getCell: () => viewportCell,
+        setCellSnapshot: vi.fn(),
+      },
+    }
+    const invokeMutation = vi.fn(async () => undefined)
+    const sendSelectionChanged = vi.fn()
+    const harness = mountHarness()
+    let captured: ReturnType<typeof useWorkerWorkbookInteractionState> | null = null
+    const baseProps = {
+      documentId: 'doc-1',
+      selection: { sheetName: 'Sheet1', address: 'A1' },
+      workerHandle,
+      invokeMutation,
+      sendSelectionChanged,
+      capture: (value: ReturnType<typeof useWorkerWorkbookInteractionState>) => {
+        captured = value
+      },
+    }
+
+    await harness.render({
+      ...baseProps,
+      selectedCell: initialCell,
+    })
+    if (!captured) {
+      throw new Error('Expected interaction state capture')
+    }
+
+    await act(async () => {
+      captured?.commitEditor(undefined, '12')
+      await Promise.resolve()
+    })
+
+    await harness.render({
+      ...baseProps,
+      selectedCell: authoritativeCell,
+    })
+
+    expect(captured?.getCellEditorSeed('Sheet1', 'A1')).toBe('12')
+
+    viewportCell = authoritativeCell
+    await harness.render({
+      ...baseProps,
+      selectedCell: authoritativeCell,
+    })
+
+    expect(captured?.getCellEditorSeed('Sheet1', 'A1')).toBe('12')
+    expect(captured?.visibleResolvedValue).toBe('12')
+
+    await act(async () => {
+      harness.root.unmount()
+    })
+  })
+
+  it('can supersede and restore sheet-wide optimistic seeds around structural edits', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const selectedCell = stringCell('Sheet1', 'A1', '')
+    const workerHandle = { viewportStore: createViewportStoreStub('Sheet1', 'A1', selectedCell) }
+    const invokeMutation = vi.fn(async () => undefined)
+    const sendSelectionChanged = vi.fn()
+    const harness = mountHarness()
+    let captured: ReturnType<typeof useWorkerWorkbookInteractionState> | null = null
+
+    await harness.render({
+      documentId: 'doc-1',
+      selection: { sheetName: 'Sheet1', address: 'A1' },
+      selectedCell,
+      workerHandle,
+      invokeMutation,
+      sendSelectionChanged,
+      capture: (value) => {
+        captured = value
+      },
+    })
+    if (!captured) {
+      throw new Error('Expected interaction state capture')
+    }
+
+    await act(async () => {
+      captured?.commitEditor(undefined, '12')
+      await Promise.resolve()
+    })
+
+    expect(captured?.getCellEditorSeed('Sheet1', 'A1')).toBe('12')
+
+    let rollback: (() => void) | null | undefined
+    await act(async () => {
+      rollback = captured?.supersedeOptimisticCellSeedsForSheet('Sheet1')
+    })
+
+    expect(captured?.getCellEditorSeed('Sheet1', 'A1')).toBeUndefined()
+
+    await act(async () => {
+      rollback?.()
+    })
+
+    expect(captured?.getCellEditorSeed('Sheet1', 'A1')).toBe('12')
+
+    await act(async () => {
+      harness.root.unmount()
+    })
+  })
+
   it('accepts user selection after the grid acknowledges an external selection', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -282,6 +472,18 @@ function createViewportStoreStub(sheetName: string, address: string, cell: CellS
       if (snapshot.sheetName === sheetName && snapshot.address === address) {
         activeCell = snapshot
       }
+    }),
+  }
+}
+
+function createViewportStoreMapStub(cells: readonly CellSnapshot[]) {
+  const cellMap = new Map(cells.map((cell) => [`${cell.sheetName}!${cell.address}`, cell] as const))
+  return {
+    getCell(targetSheetName: string, targetAddress: string) {
+      return cellMap.get(`${targetSheetName}!${targetAddress}`) ?? stringCell(targetSheetName, targetAddress, '')
+    },
+    setCellSnapshot: vi.fn((snapshot: CellSnapshot) => {
+      cellMap.set(`${snapshot.sheetName}!${snapshot.address}`, snapshot)
     }),
   }
 }

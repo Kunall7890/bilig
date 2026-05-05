@@ -43,7 +43,6 @@ export function useWorkbookGridHostPointerHandlers(input: {
   readonly applyAutofitWidth: (columnIndex: number, width: number) => void
   readonly beginEditAt: (addr: string, seed?: string) => void
   readonly commitActiveEdit: () => void
-  readonly editorValue: string
   readonly emitSelectionChange: (nextSelection: GridSelection) => void
   readonly inputController: GridInputController
   readonly isEditingCell: boolean
@@ -60,7 +59,6 @@ export function useWorkbookGridHostPointerHandlers(input: {
     applyAutofitWidth,
     beginEditAt,
     commitActiveEdit,
-    editorValue,
     emitSelectionChange,
     inputController,
     isEditingCell,
@@ -420,7 +418,6 @@ export function useWorkbookGridHostPointerHandlers(input: {
         columnWidths,
         computeAutofitColumnWidth,
         defaultColumnWidth: gridMetrics.columnWidth,
-        editorValue,
         interactionState,
         isEditingCell,
         lastBodyClickCell: lastBodyClickCellRef.current,

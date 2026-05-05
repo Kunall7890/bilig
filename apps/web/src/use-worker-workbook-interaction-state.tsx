@@ -24,6 +24,7 @@ import {
   parsedEditorInputMatchesSnapshot,
   sameCellContent,
   toEditorValue,
+  toResolvedValue,
   type EditingMode,
   type ParsedEditorInput,
   type WorkbookEditorConflict,
@@ -58,6 +59,25 @@ function readMountedCellEditorValue(): string | null {
   }
   const editor = document.querySelector<HTMLTextAreaElement>('[data-testid="cell-editor-input"]')
   return editor?.value ?? null
+}
+
+function resolveDetachedOptimisticValue(
+  targetSelection: EditTargetSelection,
+  selectedCell: CellSnapshot,
+  parsed: ParsedEditorInput,
+): string {
+  const current =
+    selectedCell.sheetName === targetSelection.sheetName && selectedCell.address === targetSelection.address
+      ? selectedCell
+      : emptyCellSnapshot(targetSelection.sheetName, targetSelection.address)
+  return toResolvedValue(
+    createOptimisticCellSnapshot({
+      sheetName: targetSelection.sheetName,
+      address: targetSelection.address,
+      current,
+      parsed,
+    }),
+  )
 }
 
 export function useWorkerWorkbookInteractionState(input: {
@@ -103,6 +123,7 @@ export function useWorkerWorkbookInteractionState(input: {
   const selectionRangeRef = useRef<CellRangeRef>(selectionSnapshotToRangeRef(selectionSnapshotRef.current))
   const pendingExternalSelectionRef = useRef<GridSelectionSnapshot | null>(null)
   const optimisticCellSeedsRef = useRef<Map<string, string>>(new Map())
+  const optimisticCellResolvedValuesRef = useRef<Map<string, string>>(new Map())
   const editSessionRef = useRef(0)
   const pendingEditCommitSessionRef = useRef<number | null>(null)
   const pendingEditCommitMovementAppliedRef = useRef(false)
@@ -161,6 +182,7 @@ export function useWorkerWorkbookInteractionState(input: {
     const key = optimisticCellKey(sheetName, address)
     if (optimisticCellSeedsRef.current.get(key) === seed) {
       optimisticCellSeedsRef.current.delete(key)
+      optimisticCellResolvedValuesRef.current.delete(key)
       bumpOptimisticSeedRevision((revision) => revision + 1)
     }
   }, [])
@@ -171,7 +193,7 @@ export function useWorkerWorkbookInteractionState(input: {
     const endRow = Math.max(start.row, end.row)
     const startCol = Math.min(start.col, end.col)
     const endCol = Math.max(start.col, end.col)
-    const removedSeeds: Array<readonly [string, string]> = []
+    const removedSeeds: Array<readonly [string, string, string | undefined]> = []
 
     for (let row = startRow; row <= endRow; row += 1) {
       for (let col = startCol; col <= endCol; col += 1) {
@@ -181,8 +203,9 @@ export function useWorkerWorkbookInteractionState(input: {
         if (seed === undefined) {
           continue
         }
-        removedSeeds.push([key, seed])
+        removedSeeds.push([key, seed, optimisticCellResolvedValuesRef.current.get(key)])
         optimisticCellSeedsRef.current.delete(key)
+        optimisticCellResolvedValuesRef.current.delete(key)
       }
     }
 
@@ -192,9 +215,44 @@ export function useWorkerWorkbookInteractionState(input: {
 
     bumpOptimisticSeedRevision((revision) => revision + 1)
     return () => {
-      for (const [key, seed] of removedSeeds) {
+      for (const [key, seed, resolvedValue] of removedSeeds) {
         if (!optimisticCellSeedsRef.current.has(key)) {
           optimisticCellSeedsRef.current.set(key, seed)
+        }
+        if (resolvedValue !== undefined && !optimisticCellResolvedValuesRef.current.has(key)) {
+          optimisticCellResolvedValuesRef.current.set(key, resolvedValue)
+        }
+      }
+      bumpOptimisticSeedRevision((revision) => revision + 1)
+    }
+  }, [])
+  const supersedeOptimisticCellSeedsForSheet = useCallback((sheetName: string): (() => void) | null => {
+    const prefix = `${sheetName}:`
+    const removedSeeds: Array<readonly [string, string, string | undefined]> = []
+
+    for (const [key, seed] of optimisticCellSeedsRef.current) {
+      if (key.startsWith(prefix)) {
+        removedSeeds.push([key, seed, optimisticCellResolvedValuesRef.current.get(key)])
+      }
+    }
+
+    if (removedSeeds.length === 0) {
+      return null
+    }
+
+    for (const [key] of removedSeeds) {
+      optimisticCellSeedsRef.current.delete(key)
+      optimisticCellResolvedValuesRef.current.delete(key)
+    }
+
+    bumpOptimisticSeedRevision((revision) => revision + 1)
+    return () => {
+      for (const [key, seed, resolvedValue] of removedSeeds) {
+        if (!optimisticCellSeedsRef.current.has(key)) {
+          optimisticCellSeedsRef.current.set(key, seed)
+        }
+        if (resolvedValue !== undefined && !optimisticCellResolvedValuesRef.current.has(key)) {
+          optimisticCellResolvedValuesRef.current.set(key, resolvedValue)
         }
       }
       bumpOptimisticSeedRevision((revision) => revision + 1)
@@ -240,6 +298,7 @@ export function useWorkerWorkbookInteractionState(input: {
       viewportStore.setCellSnapshot(optimistic)
       return {
         editorSeed: toEditorValue(optimistic),
+        resolvedValue: toResolvedValue(optimistic),
         rollback: (snapshot = previous) => {
           viewportStore.setCellSnapshot(createSupersedingCellSnapshot(snapshot, optimistic.version + 1))
         },
@@ -413,14 +472,16 @@ export function useWorkerWorkbookInteractionState(input: {
       pendingEditCommitMovementAppliedRef.current = Boolean(movement)
       const optimisticResult = applyOptimisticParsedInput(targetSelection, parsed)
       const optimisticEditorSeed = optimisticResult?.editorSeed ?? nextValue
-      optimisticCellSeedsRef.current.set(optimisticCellKey(targetSelection.sheetName, targetSelection.address), optimisticEditorSeed)
+      const optimisticKey = optimisticCellKey(targetSelection.sheetName, targetSelection.address)
+      optimisticCellSeedsRef.current.set(optimisticKey, optimisticEditorSeed)
+      optimisticCellResolvedValuesRef.current.set(
+        optimisticKey,
+        optimisticResult?.resolvedValue ?? resolveDetachedOptimisticValue(targetSelection, selectedCell, parsed),
+      )
       finishEditingAtSelection(nextSelection)
       void (async () => {
         try {
           await applyParsedInput(targetSelection.sheetName, targetSelection.address, parsed)
-          if (!optimisticResult) {
-            clearOptimisticCellSeed(targetSelection.sheetName, targetSelection.address, optimisticEditorSeed)
-          }
           if (editSessionRef.current !== commitSessionId) {
             return
           }
@@ -450,6 +511,7 @@ export function useWorkerWorkbookInteractionState(input: {
       finishEditingWithAuthoritative,
       getLiveSelectedCell,
       reportRuntimeError,
+      selectedCell,
       writesAllowed,
     ],
   )
@@ -590,21 +652,24 @@ export function useWorkerWorkbookInteractionState(input: {
 
   const isEditing = editingMode !== 'idle'
   const isEditingCell = editingMode === 'cell'
+  const visibleCellKey = optimisticCellKey(selection.sheetName, selection.address)
+  const liveVisibleCell = getLiveSelectedCell(selection)
   const visibleEditorValue = isEditing
     ? editorValue
-    : (getCellEditorSeed(selection.sheetName, selection.address) ?? toEditorValue(selectedCell))
+    : (getCellEditorSeed(selection.sheetName, selection.address) ?? toEditorValue(liveVisibleCell))
+  const visibleResolvedValue = optimisticCellResolvedValuesRef.current.get(visibleCellKey) ?? toResolvedValue(liveVisibleCell)
 
   useEffect(() => {
-    const key = optimisticCellKey(selection.sheetName, selection.address)
-    const optimisticSeed = optimisticCellSeedsRef.current.get(key)
+    const optimisticSeed = optimisticCellSeedsRef.current.get(visibleCellKey)
     if (optimisticSeed === undefined) {
       return
     }
-    if (optimisticSeed !== '' && optimisticSeed === toEditorValue(selectedCell)) {
-      optimisticCellSeedsRef.current.delete(key)
-      bumpOptimisticSeedRevision((revision) => revision + 1)
+    if (optimisticSeed !== '' && optimisticSeed === toEditorValue(liveVisibleCell)) {
+      if (optimisticCellResolvedValuesRef.current.delete(visibleCellKey)) {
+        bumpOptimisticSeedRevision((revision) => revision + 1)
+      }
     }
-  }, [selectedCell, selection.address, selection.sheetName])
+  }, [liveVisibleCell, visibleCellKey])
 
   const editorConflictBanner = useWorkbookEditorConflict({
     editingMode,
@@ -651,7 +716,9 @@ export function useWorkerWorkbookInteractionState(input: {
     selectionSnapshot,
     selectionSnapshotRef,
     selectSelectionSnapshot,
+    supersedeOptimisticCellSeedsForSheet,
     toggleBooleanCell,
     visibleEditorValue,
+    visibleResolvedValue,
   }
 }

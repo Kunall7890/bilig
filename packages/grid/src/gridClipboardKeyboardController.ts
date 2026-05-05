@@ -54,6 +54,7 @@ interface ApplyGridClipboardValuesOptions {
 
 interface CaptureGridClipboardSelectionOptions {
   engine: GridEngineLike
+  getCellEditorSeed?: ((sheetName: string, address: string) => string | undefined) | undefined
   gridSelection: GridSelection
   internalClipboardRef: MutableRefObject<InternalClipboardRange | null>
   sheetName: string
@@ -162,6 +163,7 @@ export function applyGridClipboardValues({
 
 export function captureGridClipboardSelection({
   engine,
+  getCellEditorSeed,
   gridSelection,
   internalClipboardRef,
   sheetName,
@@ -173,9 +175,10 @@ export function captureGridClipboardSelection({
   }
 
   const values = Array.from({ length: range.height }, (_rowEntry, rowOffset) =>
-    Array.from({ length: range.width }, (_colEntry, colOffset) =>
-      cellToEditorSeed(engine.getCell(sheetName, formatAddress(range.y + rowOffset, range.x + colOffset))),
-    ),
+    Array.from({ length: range.width }, (_colEntry, colOffset) => {
+      const address = formatAddress(range.y + rowOffset, range.x + colOffset)
+      return getCellEditorSeed?.(sheetName, address) ?? cellToEditorSeed(engine.getCell(sheetName, address))
+    }),
   )
 
   internalClipboardRef.current = buildInternalClipboardRange(range, values)
