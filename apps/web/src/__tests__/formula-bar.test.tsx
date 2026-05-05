@@ -48,14 +48,18 @@ function FormulaBarHarness(props: {
 
 function dispatchInputValue(input: HTMLInputElement, value: string) {
   flushSync(() => {
-    input.value = value
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, value)
     input.dispatchEvent(new Event('input', { bubbles: true }))
   })
 }
 
 function dispatchTextControlValue(input: HTMLInputElement | HTMLTextAreaElement, value: string) {
   flushSync(() => {
-    input.value = value
+    if (input instanceof HTMLTextAreaElement) {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set?.call(input, value)
+    } else {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, value)
+    }
     input.dispatchEvent(new Event('input', { bubbles: true }))
   })
 }
@@ -284,6 +288,45 @@ describe('FormulaBar', () => {
     expect(onAddressCommitSuccess).toHaveBeenCalledTimes(1)
     expect(nameBox.getAttribute('aria-invalid')).toBeNull()
     expect(document.activeElement).not.toBe(nameBox)
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it('keeps a focused name-box draft when selection display props refresh', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+
+    await act(async () => {
+      root.render(<FormulaBarHarness initialEditing={false} initialValue="" selectionLabel="B2" />)
+    })
+
+    const nameBox = host.querySelector<HTMLInputElement>("[data-testid='name-box']")
+    expect(nameBox).not.toBeNull()
+    if (!nameBox) {
+      throw new Error('Expected name box input')
+    }
+
+    nameBox.focus()
+    dispatchInputValue(nameBox, 'C2')
+
+    await act(async () => {
+      root.render(<FormulaBarHarness initialEditing={false} initialValue="" selectionLabel="D4" />)
+    })
+
+    expect(nameBox.value).toBe('C2')
+
+    nameBox.blur()
+
+    await act(async () => {
+      root.render(<FormulaBarHarness initialEditing={false} initialValue="" selectionLabel="D4" />)
+    })
+
+    expect(nameBox.value).toBe('D4')
 
     await act(async () => {
       root.unmount()

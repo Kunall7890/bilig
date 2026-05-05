@@ -527,6 +527,7 @@ async function writeCellValue(page: Page, address: string, value: string): Promi
 async function selectAddress(page: Page, address: string): Promise<void> {
   const nameBox = page.getByTestId('name-box')
   await nameBox.fill(address)
+  await expect(nameBox).toHaveValue(address)
   await nameBox.press('Enter')
   await expect(page.getByTestId('status-selection')).toHaveText(`Sheet1!${address}`)
 }

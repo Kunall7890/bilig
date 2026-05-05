@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useId, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { WorkbookDefinedNameSnapshot } from '@bilig/protocol'
 import { resolveNameBoxDisplayValue } from './formulaAssist.js'
 import { formulaInlineMessageClass, formulaStandaloneInputClass } from './formula-bar-theme.js'
@@ -22,11 +22,27 @@ export const NameBox = forwardRef<HTMLInputElement, NameBoxProps>(function NameB
     ...(selectionLabel !== undefined ? { selectionLabel } : {}),
     ...(definedNames ? { definedNames } : {}),
   })
+  const inputRef = useRef<HTMLInputElement | null>(null)
   const [inputValue, setInputValue] = useState(displayValue)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const errorId = useId()
+  const setInputRef = useCallback(
+    (node: HTMLInputElement | null) => {
+      inputRef.current = node
+      if (typeof ref === 'function') {
+        ref(node)
+      } else if (ref) {
+        ref.current = node
+      }
+    },
+    [ref],
+  )
 
   useEffect(() => {
+    const input = inputRef.current
+    if (input?.ownerDocument.activeElement === input) {
+      return
+    }
     setInputValue(displayValue)
     setErrorMessage(null)
   }, [displayValue, sheetName])
@@ -43,7 +59,7 @@ export const NameBox = forwardRef<HTMLInputElement, NameBoxProps>(function NameB
         className={formulaStandaloneInputClass({ invalid: Boolean(errorMessage) })}
         data-testid="name-box"
         id="name-box-input"
-        ref={ref}
+        ref={setInputRef}
         value={inputValue}
         onBlur={() => {
           if (!errorMessage) {
