@@ -20,6 +20,7 @@ type ViewportStoreLike = {
   getRowHeights(sheetName: string): Readonly<Record<number, number>>
   getHiddenColumns(sheetName: string): Readonly<Record<number, true>>
   getHiddenRows(sheetName: string): Readonly<Record<number, true>>
+  clearOptimisticCellFlagsForSheet?(sheetName: string): void
 }
 
 type WorkerHandleLike = {
@@ -103,24 +104,36 @@ export function useWorkerWorkbookGridState(input: {
     () => emptySelectedCell,
   )
 
+  const invokeStructuralMutation = useCallback(
+    (method: Exclude<StructuralMutationMethod, 'setFreezePane'>, sheetName: string, start: number, count: number): Promise<void> => {
+      workerHandle?.viewportStore.clearOptimisticCellFlagsForSheet?.(sheetName)
+      return invokeMutation(method, sheetName, start, count)
+    },
+    [invokeMutation, workerHandle],
+  )
+
   const invokeInsertRowsMutation = useCallback(
-    (sheetName: string, startRow: number, count: number): Promise<void> => invokeMutation('insertRows', sheetName, startRow, count),
-    [invokeMutation],
+    (sheetName: string, startRow: number, count: number): Promise<void> =>
+      invokeStructuralMutation('insertRows', sheetName, startRow, count),
+    [invokeStructuralMutation],
   )
 
   const invokeDeleteRowsMutation = useCallback(
-    (sheetName: string, startRow: number, count: number): Promise<void> => invokeMutation('deleteRows', sheetName, startRow, count),
-    [invokeMutation],
+    (sheetName: string, startRow: number, count: number): Promise<void> =>
+      invokeStructuralMutation('deleteRows', sheetName, startRow, count),
+    [invokeStructuralMutation],
   )
 
   const invokeInsertColumnsMutation = useCallback(
-    (sheetName: string, startCol: number, count: number): Promise<void> => invokeMutation('insertColumns', sheetName, startCol, count),
-    [invokeMutation],
+    (sheetName: string, startCol: number, count: number): Promise<void> =>
+      invokeStructuralMutation('insertColumns', sheetName, startCol, count),
+    [invokeStructuralMutation],
   )
 
   const invokeDeleteColumnsMutation = useCallback(
-    (sheetName: string, startCol: number, count: number): Promise<void> => invokeMutation('deleteColumns', sheetName, startCol, count),
-    [invokeMutation],
+    (sheetName: string, startCol: number, count: number): Promise<void> =>
+      invokeStructuralMutation('deleteColumns', sheetName, startCol, count),
+    [invokeStructuralMutation],
   )
 
   const invokeSetFreezePaneMutation = useCallback(

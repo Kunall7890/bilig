@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useEffect, useId, useRef, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useId, useRef, useState, type ForwardedRef } from 'react'
 import type { WorkbookDefinedNameSnapshot } from '@bilig/protocol'
 import { resolveNameBoxDisplayValue } from './formulaAssist.js'
 import { formulaInlineMessageClass, formulaStandaloneInputClass } from './formula-bar-theme.js'
@@ -26,21 +26,17 @@ export const NameBox = forwardRef<HTMLInputElement, NameBoxProps>(function NameB
   const [inputValue, setInputValue] = useState(displayValue)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const errorId = useId()
+  const isDirtyRef = useRef(false)
   const setInputRef = useCallback(
     (node: HTMLInputElement | null) => {
       inputRef.current = node
-      if (typeof ref === 'function') {
-        ref(node)
-      } else if (ref) {
-        ref.current = node
-      }
+      assignForwardedRef(ref, node)
     },
     [ref],
   )
 
   useEffect(() => {
-    const input = inputRef.current
-    if (input?.ownerDocument.activeElement === input) {
+    if (isDirtyRef.current) {
       return
     }
     setInputValue(displayValue)
@@ -62,11 +58,13 @@ export const NameBox = forwardRef<HTMLInputElement, NameBoxProps>(function NameB
         ref={setInputRef}
         value={inputValue}
         onBlur={() => {
+          isDirtyRef.current = false
           if (!errorMessage) {
             setInputValue(displayValue)
           }
         }}
         onChange={(event) => {
+          isDirtyRef.current = true
           setInputValue(event.target.value)
           if (errorMessage) {
             setErrorMessage(null)
@@ -80,6 +78,7 @@ export const NameBox = forwardRef<HTMLInputElement, NameBoxProps>(function NameB
             if (!didCommit) {
               setErrorMessage('Unknown range or name')
             } else {
+              isDirtyRef.current = false
               setErrorMessage(null)
               event.currentTarget.blur()
               onCommitSuccess?.()
@@ -87,6 +86,7 @@ export const NameBox = forwardRef<HTMLInputElement, NameBoxProps>(function NameB
           }
           if (event.key === 'Escape') {
             event.preventDefault()
+            isDirtyRef.current = false
             setErrorMessage(null)
             setInputValue(displayValue)
           }
@@ -100,3 +100,13 @@ export const NameBox = forwardRef<HTMLInputElement, NameBoxProps>(function NameB
     </div>
   )
 })
+
+function assignForwardedRef(ref: ForwardedRef<HTMLInputElement>, node: HTMLInputElement | null): void {
+  if (typeof ref === 'function') {
+    ref(node)
+    return
+  }
+  if (ref) {
+    ref.current = node
+  }
+}

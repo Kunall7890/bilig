@@ -120,7 +120,7 @@ function resolveGridRenderTileTextDirtySpansV3(
     }
   }
 
-  return spans.length > 0 ? mergeDirtySpans(spans) : [{ offset: 0, length: tile.textCount }]
+  return spans.length > 0 ? mergeDirtySpans(spans) : []
 }
 
 function isTextRunDirty(

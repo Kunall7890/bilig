@@ -19,6 +19,7 @@ export function buildLocalFixedRenderTiles(input: {
   readonly dprBucket: number
   readonly generation: number
   readonly cameraSeq: number
+  readonly freezeSeq?: number | undefined
 }): readonly GridRenderTile[] {
   const axisVersionX = hashAxisOverrides(input.sortedColumnWidthOverrides)
   const axisVersionY = hashAxisOverrides(input.sortedRowHeightOverrides)
@@ -33,7 +34,7 @@ export function buildLocalFixedRenderTiles(input: {
       ...input,
       axisSeqX: axisVersionX,
       axisSeqY: axisVersionY,
-      freezeSeq: 0,
+      freezeSeq: input.freezeSeq ?? 0,
       glyphAtlasSeq: 0,
       materializedAtSeq: input.generation,
       packetSeq: input.generation,

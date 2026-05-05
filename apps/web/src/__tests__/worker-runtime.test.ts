@@ -452,6 +452,46 @@ describe('WorkbookWorkerRuntime', () => {
     expect(received[1]?.cells[0]?.editorText).toBe('#VALUE!')
   })
 
+  it('keeps invalid pending formulas visible after local projection persistence', async () => {
+    const runtime = new WorkbookWorkerRuntime({
+      localStoreFactory: createMemoryLocalStoreFactory(),
+    })
+    await runtime.bootstrap({
+      documentId: 'invalid-pending-formula-doc',
+      replicaId: 'browser:test',
+      persistState: true,
+    })
+
+    const received = new Array<ReturnType<typeof decodeViewportPatch>>()
+    runtime.subscribeViewportPatches(
+      {
+        sheetName: 'Sheet1',
+        rowStart: 0,
+        rowEnd: 0,
+        colStart: 0,
+        colEnd: 0,
+      },
+      (bytes) => {
+        received.push(decodeViewportPatch(bytes))
+      },
+    )
+
+    await runtime.enqueuePendingMutation({
+      method: 'setCellFormula',
+      args: ['Sheet1', 'A1', '1+'],
+    })
+    runtime.broadcastViewportPatches(null, runtime.getCurrentMetrics())
+
+    const invalidFormulaPatch = received.find((patch) => patch.cells.some((cell) => cell.snapshot.address === 'A1'))
+    const invalidFormulaCell = invalidFormulaPatch?.cells.find((cell) => cell.snapshot.address === 'A1')
+    expect(invalidFormulaCell?.displayText).toBe('#VALUE!')
+    expect(invalidFormulaCell?.editorText).toBe('#VALUE!')
+    expect(runtime.getCell('Sheet1', 'A1').value).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Value,
+    })
+  })
+
   it('emits merge and unmerge metadata through incremental viewport patches', async () => {
     const runtime = new WorkbookWorkerRuntime({
       localStoreFactory: createMemoryLocalStoreFactory(),
@@ -630,6 +670,46 @@ describe('WorkbookWorkerRuntime', () => {
     const styledTile = findRenderTileReplace(batches[1], 0, 0)
     expect(styledTile.version.styles).toBeGreaterThan(initialTile.version.styles)
     expect(styledTile.rectCount).toBeGreaterThan(initialTile.rectCount)
+  })
+
+  it('records render tile publish failures instead of silently swallowing them', async () => {
+    const runtime = new WorkbookWorkerRuntime({
+      localStoreFactory: createMemoryLocalStoreFactory(),
+    })
+    await runtime.bootstrap({
+      documentId: 'render-tile-diagnostics-doc',
+      replicaId: 'browser:test',
+      persistState: false,
+    })
+
+    const unsubscribe = runtime.subscribeRenderTileDeltas(
+      {
+        sheetId: 1,
+        sheetName: 'Sheet1',
+        rowStart: 0,
+        rowEnd: 31,
+        colStart: 0,
+        colEnd: 127,
+        dprBucket: 1,
+        initialDelta: 'full',
+      },
+      () => {
+        throw new Error('listener failed')
+      },
+    )
+
+    await vi.waitFor(() => {
+      expect(runtime.getRenderTileDiagnostics()).toMatchObject({
+        errorCount: 1,
+        lastError: {
+          message: 'listener failed',
+          phase: 'publish',
+          sheetId: 1,
+          sheetName: 'Sheet1',
+        },
+      })
+    })
+    unsubscribe()
   })
 
   it('publishes sheet-level workbook deltas for renderer damage consumers', async () => {

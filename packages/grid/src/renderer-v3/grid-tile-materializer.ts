@@ -1,8 +1,10 @@
-import { VIEWPORT_TILE_COLUMN_COUNT, VIEWPORT_TILE_ROW_COUNT, type Viewport } from '@bilig/protocol'
+import { VIEWPORT_TILE_COLUMN_COUNT, VIEWPORT_TILE_ROW_COUNT, ValueTag, type Viewport } from '@bilig/protocol'
+import { indexToColumn } from '@bilig/formula'
 import { buildGridGpuScene } from '../gridGpuScene.js'
 import { getResolvedColumnWidth, getResolvedRowHeight, resolveRowOffset, type GridMetrics } from '../gridMetrics.js'
 import { buildGridTextScene } from '../gridTextScene.js'
 import type { GridEngineLike } from '../grid-engine.js'
+import { snapshotToRenderCell } from '../gridCells.js'
 import { CompactSelection, type GridSelection, type Item, type Rectangle } from '../gridTypes.js'
 import { collectViewportItems } from '../gridViewportItems.js'
 import { resolveColumnOffset } from '../workbookGridViewport.js'
@@ -61,6 +63,7 @@ export function materializeGridRenderTileV3(input: MaterializeGridRenderTileInpu
   })
   const surfaceSize = resolveTileSurfaceSizeV3(input.viewport, input)
   const visibleItems = collectViewportItems(input.viewport)
+  const inboundTextSourceItems = collectInboundTextSpillSourceItemsV3(input)
   const visibleRegion = {
     range: {
       x: input.viewport.colStart,
@@ -74,6 +77,10 @@ export function materializeGridRenderTileV3(input: MaterializeGridRenderTileInpu
     freezeCols: 0,
   }
   const getCellBounds = createTileCellBoundsResolverV3(input)
+  const getTextCellBounds = createTileCellBoundsResolverV3({
+    ...input,
+    minCol: inboundTextSourceItems.reduce((min, [col]) => Math.min(min, col), input.viewport.colStart),
+  })
   const gpuScene = buildGridGpuScene({
     activeHeaderDrag: null,
     columnWidths: input.columnWidths,
@@ -100,7 +107,7 @@ export function materializeGridRenderTileV3(input: MaterializeGridRenderTileInpu
     contentMode: 'data',
     editingCell: null,
     engine: input.engine,
-    getCellBounds,
+    getCellBounds: getTextCellBounds,
     gridMetrics: input.gridMetrics,
     hostBounds: {
       height: surfaceSize.height,
@@ -115,7 +122,7 @@ export function materializeGridRenderTileV3(input: MaterializeGridRenderTileInpu
     selectedCellSnapshot: null,
     selectionRange: null,
     sheetName: input.sheetName,
-    visibleItems,
+    visibleItems: inboundTextSourceItems.length > 0 ? [...visibleItems, ...inboundTextSourceItems] : visibleItems,
     visibleRegion,
   })
   const rectBuffer = packGridRectBufferV3(gpuScene, surfaceSize)
@@ -181,12 +188,22 @@ export function materializeGridRenderTileV3(input: MaterializeGridRenderTileInpu
 }
 
 export function createTileCellBoundsResolverV3(
-  input: GridTileMaterializerAxisInputV3 & { readonly viewport: Viewport },
+  input: GridTileMaterializerAxisInputV3 & {
+    readonly viewport: Viewport
+    readonly minCol?: number | undefined
+    readonly maxCol?: number | undefined
+    readonly minRow?: number | undefined
+    readonly maxRow?: number | undefined
+  },
 ): (col: number, row: number) => Rectangle | undefined {
   const baseX = resolveColumnOffset(input.viewport.colStart, input.sortedColumnWidthOverrides, input.gridMetrics.columnWidth)
   const baseY = resolveRowOffset(input.viewport.rowStart, input.sortedRowHeightOverrides, input.gridMetrics.rowHeight)
+  const minCol = input.minCol ?? input.viewport.colStart
+  const maxCol = input.maxCol ?? input.viewport.colEnd
+  const minRow = input.minRow ?? input.viewport.rowStart
+  const maxRow = input.maxRow ?? input.viewport.rowEnd
   return (col, row) => {
-    if (col < input.viewport.colStart || col > input.viewport.colEnd || row < input.viewport.rowStart || row > input.viewport.rowEnd) {
+    if (col < minCol || col > maxCol || row < minRow || row > maxRow) {
       return undefined
     }
     return {
@@ -196,6 +213,37 @@ export function createTileCellBoundsResolverV3(
       y: resolveRowOffset(row, input.sortedRowHeightOverrides, input.gridMetrics.rowHeight) - baseY,
     }
   }
+}
+
+function collectInboundTextSpillSourceItemsV3(input: MaterializeGridRenderTileInputV3): readonly Item[] {
+  if (input.viewport.colStart <= 0) {
+    return []
+  }
+  const items: Item[] = []
+  const minSourceCol = Math.max(0, input.viewport.colStart - VIEWPORT_TILE_COLUMN_COUNT)
+  for (let row = input.viewport.rowStart; row <= input.viewport.rowEnd; row += 1) {
+    const firstTargetSnapshot = input.engine.getCell(input.sheetName, `${indexToColumn(input.viewport.colStart)}${row + 1}`)
+    if (firstTargetSnapshot.value.tag !== ValueTag.Empty) {
+      continue
+    }
+    for (let col = input.viewport.colStart - 1; col >= minSourceCol; col -= 1) {
+      const snapshot = input.engine.getCell(input.sheetName, `${indexToColumn(col)}${row + 1}`)
+      if (snapshot.value.tag === ValueTag.Empty) {
+        continue
+      }
+      const renderCell = snapshotToRenderCell(snapshot, input.engine.getCellStyle(snapshot.styleId))
+      if (
+        renderCell.displayText.length > 0 &&
+        !renderCell.wrap &&
+        renderCell.align === 'left' &&
+        (renderCell.kind === 'string' || renderCell.kind === 'error')
+      ) {
+        items.push([col, row])
+      }
+      break
+    }
+  }
+  return items
 }
 
 export function resolveTileSurfaceSizeV3(

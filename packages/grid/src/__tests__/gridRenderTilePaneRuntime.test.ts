@@ -285,19 +285,19 @@ describe('GridRenderTilePaneRuntime', () => {
         renderTileRevision: 1,
       },
       {
-        forceLocalTiles: true,
-        localFallbackRevision: 1,
+        forceLocalTiles: false,
+        localFallbackRevision: 0,
         renderTileRevision: 2,
       },
       {
         forceLocalTiles: true,
-        localFallbackRevision: 2,
+        localFallbackRevision: 1,
         renderTileRevision: 2,
       },
     ])
     expect(runtime.snapshotBridgeState()).toEqual({
       forceLocalTiles: false,
-      localFallbackRevision: 2,
+      localFallbackRevision: 1,
       renderTileRevision: 3,
     })
   })
@@ -445,7 +445,7 @@ describe('GridRenderTilePaneRuntime', () => {
     expect(missing.needsLocalCellInvalidation).toBe(false)
   })
 
-  it('falls back to local fixed tiles when remote tiles are unavailable before same-sheet retention exists', () => {
+  it('does not build local fixed tiles when remote tiles are unavailable before same-sheet retention exists', () => {
     const runtime = new GridRenderTilePaneRuntime()
     const state = runtime.resolve(
       createInput({
@@ -454,9 +454,65 @@ describe('GridRenderTilePaneRuntime', () => {
       }),
     )
 
-    expect(state.residentBodyPane?.tile.coord.sheetId).toBe(7)
+    expect(state.residentBodyPane).toBeNull()
     expect(state.needsLocalCellInvalidation).toBe(false)
-    expect(state.residentDataPanes).toHaveLength(1)
+    expect(state.residentDataPanes).toHaveLength(0)
+  })
+
+  it('uses available remote tiles without discarding the viewport when another remote tile is missing', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const tileIds = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 255, colStart: 0, rowEnd: 31, rowStart: 0 },
+    })
+    const state = runtime.resolve(
+      createInput({
+        gridRuntimeHost: host,
+        renderTileSource: createRenderTileSource([createRenderTile(tileIds[0])]),
+        renderTileViewport: { colEnd: 255, colStart: 0, rowEnd: 31, rowStart: 0 },
+        residentViewport: { colEnd: 255, colStart: 0, rowEnd: 31, rowStart: 0 },
+        visibleViewport: { colEnd: 255, colStart: 0, rowEnd: 31, rowStart: 0 },
+      }),
+    )
+
+    expect(state.needsLocalCellInvalidation).toBe(false)
+    expect(state.renderTilePanes.map((pane) => pane.tile.tileId)).toEqual([tileIds[0]])
+    expect(state.tileReadiness).toMatchObject({
+      exactHits: [tileIds[0]],
+      misses: [tileIds[1]],
+    })
+  })
+
+  it('requires coherent sheet id and ordinal for remote tiles when both are known', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const tileId = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+    })[0]
+
+    const sameOrdinalWrongSheetId = runtime.resolve(
+      createInput({
+        gridRuntimeHost: host,
+        renderTileSource: createRenderTileSource([createRenderTile(tileId, 99, 7)]),
+        sheetId: 7,
+        sheetOrdinal: 7,
+      }),
+    )
+    const sameSheetIdWrongOrdinal = runtime.resolve(
+      createInput({
+        gridRuntimeHost: host,
+        renderTileSource: createRenderTileSource([createRenderTile(tileId, 7, 2)]),
+        sheetId: 7,
+        sheetOrdinal: 7,
+      }),
+    )
+
+    expect(sameOrdinalWrongSheetId.residentDataPanes).toHaveLength(0)
+    expect(sameSheetIdWrongOrdinal.residentDataPanes).toHaveLength(0)
   })
 
   it('does not retain local fallback panes as authoritative remote panes', () => {
@@ -464,6 +520,7 @@ describe('GridRenderTilePaneRuntime', () => {
     const first = runtime.resolve(
       createInput({
         engine: LOCAL_EMPTY_ENGINE,
+        forceLocalTiles: true,
         renderTileSource: createRenderTileSource([]),
         sceneRevision: 1,
       }),
@@ -471,6 +528,7 @@ describe('GridRenderTilePaneRuntime', () => {
     const second = runtime.resolve(
       createInput({
         engine: LOCAL_EMPTY_ENGINE,
+        forceLocalTiles: true,
         renderTileSource: createRenderTileSource([]),
         sceneRevision: 2,
       }),
@@ -667,6 +725,39 @@ describe('GridRenderTilePaneRuntime', () => {
     expect(renderTileSource.unsubscribed()).toBe(true)
   })
 
+  it('builds frozen-pane tile interest from disjoint body and frozen strips instead of the origin-to-body rectangle', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const gridRuntimeHost = createHost()
+    const renderTileSource = createCapturingRenderTileSource()
+    const sheetOrdinal = 7
+    const dprBucket = 1
+
+    runtime.connectRenderTileDeltas(
+      {
+        dprBucket,
+        freezeCols: 1,
+        freezeRows: 1,
+        gridRuntimeHost,
+        renderTileSource: renderTileSource.source,
+        renderTileViewport: { colEnd: 767, colStart: 0, rowEnd: 50079, rowStart: 0 },
+        residentViewport: { colEnd: 767, colStart: 512, rowEnd: 50079, rowStart: 49984 },
+        sheetId: 7,
+        sheetName: 'Sheet1',
+      },
+      () => {},
+    )
+
+    const visibleTileKeys = renderTileSource.captured()?.tileInterest?.visibleTileKeys ?? []
+
+    expect(visibleTileKeys).toHaveLength(12)
+    expect(visibleTileKeys).toContain(packTileKey53({ colTile: 4, dprBucket, rowTile: 1562, sheetOrdinal }))
+    expect(visibleTileKeys).toContain(packTileKey53({ colTile: 4, dprBucket, rowTile: 0, sheetOrdinal }))
+    expect(visibleTileKeys).toContain(packTileKey53({ colTile: 0, dprBucket, rowTile: 1562, sheetOrdinal }))
+    expect(visibleTileKeys).toContain(packTileKey53({ colTile: 0, dprBucket, rowTile: 0, sheetOrdinal }))
+    expect(visibleTileKeys).not.toContain(packTileKey53({ colTile: 4, dprBucket, rowTile: 100, sheetOrdinal }))
+    expect(visibleTileKeys).not.toContain(packTileKey53({ colTile: 0, dprBucket, rowTile: 100, sheetOrdinal }))
+  })
+
   it('applies render tile delta changes to the host-owned coordinator before React recomputes panes', () => {
     const runtime = new GridRenderTilePaneRuntime()
     const host = createHost()
@@ -809,8 +900,8 @@ describe('GridRenderTilePaneRuntime', () => {
 
     expect(listenerBatches.map((batch) => batch.seq)).toEqual([1])
     expect(runtime.snapshotBridgeState()).toEqual({
-      forceLocalTiles: true,
-      localFallbackRevision: 1,
+      forceLocalTiles: false,
+      localFallbackRevision: 0,
       renderTileRevision: 1,
     })
     expect(
@@ -936,8 +1027,8 @@ describe('GridRenderTilePaneRuntime', () => {
 
     expect(listenerBatches.map((batch) => batch.seq)).toEqual([1])
     expect(runtime.snapshotBridgeState()).toEqual({
-      forceLocalTiles: true,
-      localFallbackRevision: 1,
+      forceLocalTiles: false,
+      localFallbackRevision: 0,
       renderTileRevision: 1,
     })
     expect(
@@ -959,7 +1050,7 @@ describe('GridRenderTilePaneRuntime', () => {
     unsubscribe?.()
   })
 
-  it('falls back to local tiles after workbook delta damage until fresh remote tiles arrive', () => {
+  it('keeps remote mode after workbook delta damage until fresh remote tiles arrive', () => {
     const runtime = new GridRenderTilePaneRuntime()
     const host = createHost()
     const tileId = host.viewportTileKeys({
@@ -1034,11 +1125,11 @@ describe('GridRenderTilePaneRuntime', () => {
       }),
     )
     expect(runtime.snapshotBridgeState()).toEqual({
-      forceLocalTiles: true,
-      localFallbackRevision: 1,
+      forceLocalTiles: false,
+      localFallbackRevision: 0,
       renderTileRevision: 1,
     })
-    expect(fallback.residentBodyPane?.tile.textRuns.some((run) => run.text === 'stale remote text')).toBe(false)
+    expect(fallback.residentBodyPane?.tile.textRuns.some((run) => run.text === 'stale remote text')).toBe(true)
 
     const freshRemoteTile: GridRenderTile = {
       ...remoteTile,
@@ -1065,7 +1156,7 @@ describe('GridRenderTilePaneRuntime', () => {
     )
     expect(runtime.snapshotBridgeState()).toEqual({
       forceLocalTiles: false,
-      localFallbackRevision: 1,
+      localFallbackRevision: 0,
       renderTileRevision: 2,
     })
     expect(refreshed.residentBodyPane?.tile.textRuns).toEqual([])
@@ -1092,8 +1183,8 @@ describe('GridRenderTilePaneRuntime', () => {
     })
 
     expect(runtime.snapshotBridgeState()).toEqual({
-      forceLocalTiles: true,
-      localFallbackRevision: 1,
+      forceLocalTiles: false,
+      localFallbackRevision: 0,
       renderTileRevision: 1,
     })
 
@@ -1103,8 +1194,8 @@ describe('GridRenderTilePaneRuntime', () => {
     })
 
     expect(runtime.snapshotBridgeState()).toEqual({
-      forceLocalTiles: true,
-      localFallbackRevision: 2,
+      forceLocalTiles: false,
+      localFallbackRevision: 0,
       renderTileRevision: 2,
     })
   })
@@ -1134,7 +1225,7 @@ describe('GridRenderTilePaneRuntime', () => {
     )
 
     expect(switched.residentDataPanes).not.toBe(ready.residentDataPanes)
-    expect(switched.residentBodyPane?.tile.coord.sheetId).toBe(8)
+    expect(switched.residentDataPanes).toEqual([])
     expect(
       runtime.resolve(
         createInput({

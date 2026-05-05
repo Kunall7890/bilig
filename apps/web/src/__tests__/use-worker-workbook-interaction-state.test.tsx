@@ -293,6 +293,7 @@ describe('useWorkerWorkbookInteractionState', () => {
     await act(async () => {
       captured?.commitEditor(undefined, '12')
       await Promise.resolve()
+      await Promise.resolve()
     })
 
     expect(captured?.visibleEditorValue).toBe('12')
@@ -304,7 +305,7 @@ describe('useWorkerWorkbookInteractionState', () => {
     })
   })
 
-  it('keeps local editor seeds available for grid operations after readback catches up', async () => {
+  it('keeps local editor seeds until live viewport readback catches up', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
     const initialCell = stringCell('Sheet1', 'A1', '')
@@ -357,7 +358,7 @@ describe('useWorkerWorkbookInteractionState', () => {
       selectedCell: authoritativeCell,
     })
 
-    expect(captured?.getCellEditorSeed('Sheet1', 'A1')).toBe('12')
+    expect(captured?.getCellEditorSeed('Sheet1', 'A1')).toBeUndefined()
     expect(captured?.visibleResolvedValue).toBe('12')
 
     await act(async () => {
@@ -369,7 +370,7 @@ describe('useWorkerWorkbookInteractionState', () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
     const selectedCell = stringCell('Sheet1', 'A1', '')
-    const workerHandle = { viewportStore: createViewportStoreStub('Sheet1', 'A1', selectedCell) }
+    const workerHandle = null
     const invokeMutation = vi.fn(async () => undefined)
     const sendSelectionChanged = vi.fn()
     const harness = mountHarness()
@@ -392,6 +393,7 @@ describe('useWorkerWorkbookInteractionState', () => {
 
     await act(async () => {
       captured?.commitEditor(undefined, '12')
+      await Promise.resolve()
       await Promise.resolve()
     })
 

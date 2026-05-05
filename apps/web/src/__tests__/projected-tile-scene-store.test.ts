@@ -82,6 +82,16 @@ describe('ProjectedTileSceneStore', () => {
     expect(store.peekTile(101)?.version.values).toBe(2)
   })
 
+  it('ignores older camera sequences for the current batch id', () => {
+    const store = new ProjectedTileSceneStore()
+    store.applyDelta({ ...createBatch(2, [createTileReplace(101, 2)]), cameraSeq: 20 })
+
+    const staleCameraChange = store.applyDelta({ ...createBatch(2, [createTileReplace(101, 99)]), cameraSeq: 19 })
+
+    expect(staleCameraChange.changedTileIds).toEqual([])
+    expect(store.peekTile(101)?.version.values).toBe(2)
+  })
+
   it('clears stale sheet tiles for structural batches before applying replacements', () => {
     const store = new ProjectedTileSceneStore()
     store.applyDelta(createBatch(2, [createTileReplace(101, 2)]))
@@ -95,6 +105,60 @@ describe('ProjectedTileSceneStore', () => {
     expect(change.changedTileIds).toEqual([202])
     expect(store.peekTile(101)).toBeNull()
     expect(store.peekTile(202)).toMatchObject({ tileId: 202, lastBatchId: 3 })
+  })
+
+  it('does not invalidate tiles from a different sheet that reuses an ordinal', () => {
+    const store = new ProjectedTileSceneStore()
+    store.applyDelta({
+      ...createBatch(2, [createTileReplace(101, 2, 7, 7)]),
+      sheetId: 7,
+      sheetOrdinal: 7,
+    })
+
+    const change = store.applyDelta({
+      ...createBatch(3, [{ kind: 'axis', axis: 'col', changedStart: 0, changedEnd: 3, axisVersion: 4 }]),
+      sheetId: 99,
+      sheetOrdinal: 7,
+    })
+
+    expect(change.invalidatedTileIds).toEqual([])
+    expect(store.peekTile(101)).toMatchObject({ tileId: 101, coord: expect.objectContaining({ sheetId: 7, sheetOrdinal: 7 }) })
+  })
+
+  it('rejects partial cell-run mutations by invalidating the tile instead of keeping stale visuals', () => {
+    const store = new ProjectedTileSceneStore()
+    store.applyDelta(createBatch(2, [createTileReplace(101, 2)]))
+
+    const change = store.applyDelta(
+      createBatch(3, [
+        {
+          kind: 'cellRuns',
+          runs: [
+            {
+              colEnd: 1,
+              colStart: 1,
+              glyphSpan: { length: 0, offset: 0 },
+              rectSpan: { length: 1, offset: 0 },
+              row: 1,
+              textSpan: { length: 0, offset: 0 },
+            },
+          ],
+          tileId: 101,
+          version: {
+            axisX: 1,
+            axisY: 1,
+            freeze: 1,
+            styles: 3,
+            text: 3,
+            values: 3,
+          },
+        },
+      ]),
+    )
+
+    expect(change.changedTileIds).toEqual([])
+    expect(change.invalidatedTileIds).toEqual([101])
+    expect(store.peekTile(101)).toBeNull()
   })
 
   it('subscribes to worker render tile deltas and decodes incoming batches', () => {
@@ -164,6 +228,54 @@ describe('ProjectedTileSceneStore', () => {
     store.dropSheets(['Sheet1'])
     expect(store.peekTile(202)).toBeNull()
   })
+
+  it('drops only tiles whose sheet id and ordinal both match the subscribed sheet identity', () => {
+    const store = new ProjectedTileSceneStore({
+      subscribeRenderTileDeltas(_subscription, listener) {
+        listener(
+          encodeRenderTileDeltaBatch({
+            magic: 'bilig.render.tile.delta',
+            version: 3,
+            sheetId: 99,
+            sheetOrdinal: 2,
+            batchId: 4,
+            cameraSeq: 5,
+            mutations: [createTileReplace(202, 4, 2, 99)],
+          }),
+        )
+        listener(
+          encodeRenderTileDeltaBatch({
+            magic: 'bilig.render.tile.delta',
+            version: 3,
+            sheetId: 7,
+            sheetOrdinal: 2,
+            batchId: 5,
+            cameraSeq: 6,
+            mutations: [createTileReplace(303, 5, 2, 7)],
+          }),
+        )
+        return () => undefined
+      },
+    })
+
+    store.subscribe(
+      {
+        sheetId: 99,
+        sheetOrdinal: 2,
+        sheetName: 'Sheet1',
+        rowStart: 0,
+        rowEnd: 31,
+        colStart: 0,
+        colEnd: 127,
+      },
+      () => undefined,
+    )
+
+    store.dropSheets(['Sheet1'])
+
+    expect(store.peekTile(202)).toBeNull()
+    expect(store.peekTile(303)).toMatchObject({ tileId: 303, coord: expect.objectContaining({ sheetId: 7, sheetOrdinal: 2 }) })
+  })
 })
 
 describe('ProjectedViewportStore render delta source bridge', () => {
@@ -207,6 +319,27 @@ describe('ProjectedViewportStore render delta source bridge', () => {
       }),
     )
 
+    unsubscribe()
+  })
+
+  it('does not publish optimistic workbook deltas before render tile sheet identity is known', () => {
+    const store = new ProjectedViewportStore({
+      subscribeRenderTileDeltas: () => () => undefined,
+      subscribeViewportPatches: () => () => undefined,
+      subscribeWorkbookDeltas: () => () => undefined,
+    })
+    const listener = vi.fn()
+
+    const unsubscribe = store.subscribeWorkbookDeltas(listener)
+    store.setCellSnapshot({
+      address: 'B2',
+      flags: 0,
+      sheetName: 'Sheet1',
+      value: { tag: ValueTag.Number, value: 17 },
+      version: 12,
+    })
+
+    expect(listener).not.toHaveBeenCalled()
     unsubscribe()
   })
 

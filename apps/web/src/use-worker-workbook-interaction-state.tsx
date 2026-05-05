@@ -664,10 +664,10 @@ export function useWorkerWorkbookInteractionState(input: {
     if (optimisticSeed === undefined) {
       return
     }
-    if (optimisticSeed !== '' && optimisticSeed === toEditorValue(liveVisibleCell)) {
-      if (optimisticCellResolvedValuesRef.current.delete(visibleCellKey)) {
-        bumpOptimisticSeedRevision((revision) => revision + 1)
-      }
+    if (optimisticSeed === toEditorValue(liveVisibleCell)) {
+      optimisticCellSeedsRef.current.delete(visibleCellKey)
+      optimisticCellResolvedValuesRef.current.delete(visibleCellKey)
+      bumpOptimisticSeedRevision((revision) => revision + 1)
     }
   }, [liveVisibleCell, visibleCellKey])
 

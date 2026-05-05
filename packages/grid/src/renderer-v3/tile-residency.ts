@@ -291,7 +291,15 @@ export class TileResidencyV3<Packet = unknown, Resources = unknown> {
 
   private resolveCompatibilityKey(input: TileKeyFields & Pick<TileRevisionTupleV3, 'axisSeqX' | 'axisSeqY' | 'freezeSeq'>): number {
     let node = this.compatibilityRoot
-    for (const value of [input.sheetOrdinal, input.dprBucket, input.axisSeqX, input.axisSeqY, input.freezeSeq]) {
+    for (const value of [
+      input.sheetOrdinal,
+      input.rowTile,
+      input.colTile,
+      input.dprBucket,
+      input.axisSeqX,
+      input.axisSeqY,
+      input.freezeSeq,
+    ]) {
       let child = node.children.get(value)
       if (!child) {
         child = { key: this.nextCompatibilityKey++, children: new Map() }

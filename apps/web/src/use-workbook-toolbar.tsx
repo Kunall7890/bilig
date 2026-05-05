@@ -13,6 +13,7 @@ import {
 import { WorkbookToolbar, type BorderPreset } from './workbook-toolbar.js'
 import { isPresetColor, mergeRecentCustomColors, normalizeHexColor } from './workbook-colors.js'
 import { WorkbookHeaderStatusChip } from './workbook-header-controls.js'
+import { buildPrepaidAmortizationTemplateMutations } from './workbook-prepaid-template.js'
 import type { WorkbookMutationMethod } from './workbook-sync.js'
 import {
   createRangeRef,
@@ -257,6 +258,7 @@ export function useWorkbookToolbar(input: {
   onUnhideCurrentRow: () => void
   onUnhideCurrentColumn: () => void
   invokeMutation: (method: WorkbookMutationMethod, ...args: unknown[]) => Promise<void>
+  onApplyPrepaidAmortizationTemplate?: (() => void) | undefined
   selectionRangeRef: MutableRefObject<CellRangeRef>
   selectedCell: CellSnapshot
   selectedStyle: CellStyleRecord | undefined
@@ -285,6 +287,7 @@ export function useWorkbookToolbar(input: {
     onUnhideCurrentRow,
     onUnhideCurrentColumn,
     invokeMutation,
+    onApplyPrepaidAmortizationTemplate,
     selectionRangeRef,
     selectedCell,
     selectedStyle,
@@ -524,6 +527,22 @@ export function useWorkbookToolbar(input: {
     await invokeMutation('unmergeCells', selectionRangeRef.current)
   }, [invokeMutation, selectionRangeRef])
 
+  const applyPrepaidAmortizationTemplate = useCallback(async () => {
+    const sheetName = selectionRangeRef.current.sheetName
+    await buildPrepaidAmortizationTemplateMutations(sheetName).reduce<Promise<void>>(
+      (previous, mutation) => previous.then(() => invokeMutation(mutation.method, ...mutation.args)),
+      Promise.resolve(),
+    )
+  }, [invokeMutation, selectionRangeRef])
+
+  const runPrepaidAmortizationTemplate = useCallback(() => {
+    if (onApplyPrepaidAmortizationTemplate) {
+      onApplyPrepaidAmortizationTemplate()
+      return
+    }
+    void applyPrepaidAmortizationTemplate()
+  }, [applyPrepaidAmortizationTemplate, onApplyPrepaidAmortizationTemplate])
+
   const shortcutStateRef = useRef({
     applyBorderPreset,
     applyRangeStyle,
@@ -653,6 +672,7 @@ export function useWorkbookToolbar(input: {
         isUnderlineActive={isUnderlineActive}
         isWrapActive={isWrapActive}
         onApplyBorderPreset={applyBorderPreset}
+        onApplyPrepaidAmortizationTemplate={runPrepaidAmortizationTemplate}
         onClearStyle={() => {
           void clearRangeStyleFields()
         }}
@@ -753,6 +773,7 @@ export function useWorkbookToolbar(input: {
       onUnhideCurrentRow,
       resetFillColor,
       resetTextColor,
+      runPrepaidAmortizationTemplate,
       selectedFontSize,
       setNumberFormatPreset,
       statusPresentation.modeLabel,

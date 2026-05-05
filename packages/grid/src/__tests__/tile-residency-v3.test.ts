@@ -23,17 +23,19 @@ function entry(rowTile: number, colTile: number, overrides: Partial<Parameters<T
 }
 
 describe('TileResidencyV3', () => {
-  it('uses exact numeric lookup and compatibility buckets for stale reuse', () => {
+  it('uses exact numeric lookup and coordinate-scoped compatibility buckets for stale reuse', () => {
     const residency = new TileResidencyV3()
     const first = residency.upsert(entry(0, 0, { valueSeq: 1 }))
     const second = residency.upsert(entry(0, 1, { valueSeq: 2 }))
 
     expect(residency.getExact(first.key)).toBe(first)
-    expect(residency.findStaleCompatible({ ...entry(0, 2), excludeKey: second.key })).toBe(first)
-    expect(residency.getLastStaleScanCount()).toBe(2)
+    expect(residency.findStaleCompatible({ ...entry(0, 2), excludeKey: second.key })).toBeNull()
+    expect(residency.getLastStaleScanCount()).toBe(0)
+    expect(residency.findStaleCompatible({ ...entry(0, 0), excludeKey: second.key })).toBe(first)
+    expect(residency.getLastStaleScanCount()).toBe(1)
 
     residency.upsert(entry(1, 0, { axisSeqX: 2 }))
-    expect(residency.findStaleCompatible({ ...entry(0, 3), axisSeqX: 1 })).not.toMatchObject({ axisSeqX: 2 })
+    expect(residency.findStaleCompatible({ ...entry(1, 0), axisSeqX: 1 })).not.toMatchObject({ axisSeqX: 2 })
   })
 
   it('marks only provided visible tiles for the current generation', () => {
@@ -94,7 +96,7 @@ describe('TileResidencyV3', () => {
       textSeq: 8,
       rectSeq: 1,
     })
-    expect(residency.findStaleCompatible({ ...entry(0, 1), axisSeqX: 1 })).toBeNull()
-    expect(residency.findStaleCompatible({ ...entry(0, 1), axisSeqX: 3 })).toBe(refreshed)
+    expect(residency.findStaleCompatible({ ...entry(0, 0), axisSeqX: 1 })).toBeNull()
+    expect(residency.findStaleCompatible({ ...entry(0, 0), axisSeqX: 3 })).toBe(refreshed)
   })
 })

@@ -2,6 +2,7 @@ import { formatAddress, parseCellAddress } from '@bilig/formula'
 import { ValueTag, type CellSnapshot, type CellStyleRecord, type Viewport, type WorkbookMergeRangeSnapshot } from '@bilig/protocol'
 import type { ViewportPatch } from '@bilig/worker-transport'
 import { applyProjectedViewportAxisPatches } from './projected-viewport-axis-patches.js'
+import { OPTIMISTIC_CELL_SNAPSHOT_FLAG } from './workbook-optimistic-cell-flags.js'
 import { mergeRangeIntersectsViewport, mergeRangeSignature, normalizeWorkbookMergeRange } from './worker-runtime-support.js'
 
 export type ProjectedViewportCellItem = readonly [number, number]
@@ -83,6 +84,13 @@ export function shouldKeepCurrentSnapshot(
   incoming: CellSnapshot,
   options: { readonly allowResetEmptyOverride?: boolean } = {},
 ): boolean {
+  if (isOptimisticCellSnapshot(current)) {
+    if (incomingConfirmsOptimisticSnapshot(current, incoming)) {
+      return false
+    }
+    return isResetEmptySnapshot(incoming) && current.version > incoming.version
+  }
+
   const incomingIsResetEmptySnapshot = isResetEmptySnapshot(incoming)
   const allowResetEmptyOverride = options.allowResetEmptyOverride ?? true
   if (
@@ -117,6 +125,39 @@ export function shouldKeepCurrentSnapshot(
     current.formula !== undefined &&
     incoming.formula === undefined
   )
+}
+
+function isOptimisticCellSnapshot(snapshot: CellSnapshot): boolean {
+  return (snapshot.flags & OPTIMISTIC_CELL_SNAPSHOT_FLAG) !== 0
+}
+
+function incomingConfirmsOptimisticSnapshot(current: CellSnapshot, incoming: CellSnapshot): boolean {
+  if (isOptimisticCellSnapshot(incoming)) {
+    return true
+  }
+  if (current.formula !== undefined) {
+    return incoming.formula === current.formula
+  }
+  if (current.input !== undefined) {
+    return incoming.input === current.input
+  }
+  if (current.value.tag === ValueTag.Empty) {
+    return incoming.formula === undefined && incoming.input === undefined && incoming.value.tag === ValueTag.Empty
+  }
+  if (current.value.tag === ValueTag.Error && incoming.value.tag === ValueTag.Error) {
+    return incoming.formula === undefined && incoming.input === undefined && incoming.value.code === current.value.code
+  }
+  return false
+}
+
+export function prepareIncomingSnapshot(current: CellSnapshot, incoming: CellSnapshot): CellSnapshot {
+  if (!isOptimisticCellSnapshot(current) || !incomingConfirmsOptimisticSnapshot(current, incoming)) {
+    return incoming
+  }
+  return {
+    ...incoming,
+    flags: incoming.flags | OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+  }
 }
 
 function cellStyleSignature(style: CellStyleRecord): string {
@@ -260,6 +301,9 @@ export function applyProjectedViewportPatch(input: {
         if (!snapshot || !isCellInsideViewport(snapshot, patch.viewport)) {
           continue
         }
+        if (isOptimisticCellSnapshot(snapshot)) {
+          continue
+        }
         state.cellSnapshots.delete(key)
         sheetCellKeys.delete(key)
         changedKeys.add(key)
@@ -275,8 +319,8 @@ export function applyProjectedViewportPatch(input: {
   for (const cell of patch.cells) {
     const key = `${patch.viewport.sheetName}!${cell.snapshot.address}`
     const current = state.cellSnapshots.get(key)
+    const incoming = current ? prepareIncomingSnapshot(current, cell.snapshot) : cell.snapshot
     if (current) {
-      const incoming = cell.snapshot
       const allowResetEmptyOverride =
         !patch.full &&
         (patch.authoritativeRevision !== undefined ||
@@ -293,7 +337,7 @@ export function applyProjectedViewportPatch(input: {
       }
     }
 
-    state.cellSnapshots.set(key, cell.snapshot)
+    state.cellSnapshots.set(key, incoming)
     touchCellKey?.(key)
     getSheetCellKeys(state, patch.viewport.sheetName).add(key)
     changedKeys.add(key)

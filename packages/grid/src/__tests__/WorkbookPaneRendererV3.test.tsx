@@ -109,8 +109,7 @@ describe('WorkbookPaneRendererV3', () => {
     const canvas = host.querySelector('[data-testid="grid-pane-renderer"]')
     const fallbackCanvas = host.querySelector('[data-testid="grid-pane-renderer-fallback"]')
     expect(canvas).toBeInstanceOf(HTMLCanvasElement)
-    expect(fallbackCanvas).toBeInstanceOf(HTMLCanvasElement)
-    expect(fallbackCanvas?.getAttribute('data-renderer-mode')).toBe('canvas2d-v3-fallback')
+    expect(fallbackCanvas).toBeNull()
     expect(canvas?.getAttribute('data-pane-renderer')).toBe('workbook-pane-renderer-v3')
     expect(canvas?.getAttribute('data-renderer-mode')).toBe('typegpu-v3')
     expect(canvas?.getAttribute('data-v3-tile-pane-count')).toBe('1')
@@ -121,6 +120,30 @@ describe('WorkbookPaneRendererV3', () => {
     expect(canvas.style.width).toBe('100%')
     expect(canvas.style.height).toBe('100%')
     expect(canvas.style.contain).toBe('strict')
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  test('mounts the Canvas2D fallback only when explicitly enabled', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    const host = document.createElement('div')
+    Object.defineProperty(host, 'clientWidth', { configurable: true, value: 640 })
+    Object.defineProperty(host, 'clientHeight', { configurable: true, value: 360 })
+    const root = createRoot(host)
+    const rendererHost = document.createElement('div')
+    Object.defineProperty(rendererHost, 'clientWidth', { configurable: true, value: 640 })
+    Object.defineProperty(rendererHost, 'clientHeight', { configurable: true, value: 360 })
+    host.appendChild(rendererHost)
+
+    await act(async () => {
+      root.render(<WorkbookPaneRendererV3 active enableCanvasFallback host={rendererHost} geometry={null} tilePanes={[createTilePane()]} />)
+    })
+
+    const fallbackCanvas = host.querySelector('[data-testid="grid-pane-renderer-fallback"]')
+    expect(fallbackCanvas).toBeInstanceOf(HTMLCanvasElement)
+    expect(fallbackCanvas?.getAttribute('data-renderer-mode')).toBe('canvas2d-v3-fallback')
 
     await act(async () => {
       root.unmount()

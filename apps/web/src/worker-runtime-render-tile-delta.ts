@@ -8,6 +8,7 @@ import {
   type RecalcMetrics,
   type Viewport,
   type WorkbookAxisEntrySnapshot,
+  type WorkbookFreezePaneSnapshot,
 } from '@bilig/protocol'
 import { parseCellAddress } from '@bilig/formula'
 import type { RenderTileDeltaBatch, RenderTileDeltaSubscription, RenderTileReplaceMutation } from '@bilig/worker-transport'
@@ -34,6 +35,7 @@ interface RenderTileDeltaEngineLike extends GridEngineLike {
   }
   getColumnAxisEntries(sheetName: string): readonly WorkbookAxisEntrySnapshot[]
   getRowAxisEntries(sheetName: string): readonly WorkbookAxisEntrySnapshot[]
+  getFreezePane?(sheetName: string): WorkbookFreezePaneSnapshot | undefined
   getLastMetrics(): Pick<RecalcMetrics, 'batchId'>
 }
 
@@ -70,7 +72,8 @@ export function buildWorkerRenderTileDeltaBatch(input: {
   const gridMetrics = getGridMetrics()
   const columnAxis = buildRenderedAxisState(engine.getColumnAxisEntries(subscription.sheetName), gridMetrics.columnWidth)
   const rowAxis = buildRenderedAxisState(engine.getRowAxisEntries(subscription.sheetName), gridMetrics.rowHeight)
-  const freezeVersion = buildFreezeVersion(0, 0)
+  const freezePane = engine.getFreezePane?.(subscription.sheetName)
+  const freezeVersion = buildFreezeVersion(freezePane?.rows ?? 0, freezePane?.cols ?? 0)
   const materializedViewports = resolveMaterializedTileViewports({
     batchId,
     engine,

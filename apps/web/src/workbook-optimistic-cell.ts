@@ -1,5 +1,6 @@
 import { evaluateAst, formatAddress, parseFormula, parseRangeAddress, type EvaluationContext } from '@bilig/formula'
 import { ErrorCode, MAX_COLS, MAX_ROWS, ValueTag, type CellSnapshot } from '@bilig/protocol'
+import { OPTIMISTIC_CELL_SNAPSHOT_FLAG } from './workbook-optimistic-cell-flags.js'
 import type { ParsedEditorInput } from './worker-workbook-app-model.js'
 
 const MAX_OPTIMISTIC_FORMULA_RANGE_CELLS = 10_000
@@ -22,6 +23,7 @@ export function createOptimisticCellSnapshot(input: {
 }): CellSnapshot {
   const version = nextOptimisticVersion(input.current.version)
   const { formula: _formula, input: _input, ...base } = input.current
+  const flags = base.flags | OPTIMISTIC_CELL_SNAPSHOT_FLAG
   switch (input.parsed.kind) {
     case 'clear':
       return {
@@ -29,6 +31,7 @@ export function createOptimisticCellSnapshot(input: {
         sheetName: input.sheetName,
         address: input.address,
         value: { tag: ValueTag.Empty },
+        flags,
         version,
       }
     case 'formula':
@@ -45,6 +48,7 @@ export function createOptimisticCellSnapshot(input: {
           address: input.address,
           input: `=${input.parsed.formula}`,
           value: evaluation.value,
+          flags,
           version,
         }
       }
@@ -61,6 +65,7 @@ export function createOptimisticCellSnapshot(input: {
                 value: `=${input.parsed.formula}`,
                 stringId: 0,
               },
+        flags,
         version,
       }
     case 'value':
@@ -70,18 +75,23 @@ export function createOptimisticCellSnapshot(input: {
         address: input.address,
         input: input.parsed.value,
         value: valueFromLiteral(input.parsed.value),
+        flags,
         version,
       }
   }
 }
 
-function formulaParses(formula: string): boolean {
+export function formulaHasSyntaxError(formula: string): boolean {
   try {
     parseFormula(formula)
-    return true
-  } catch {
     return false
+  } catch {
+    return true
   }
+}
+
+function formulaParses(formula: string): boolean {
+  return !formulaHasSyntaxError(formula)
 }
 
 export function evaluateOptimisticFormula(input: {

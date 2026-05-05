@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { ValueTag, VIEWPORT_TILE_COLUMN_COUNT, VIEWPORT_TILE_ROW_COUNT, type CellSnapshot, type CellStyleRecord } from '@bilig/protocol'
+import { indexToColumn } from '@bilig/formula'
 import { getGridMetrics } from '../gridMetrics.js'
 import type { GridEngineLike } from '../grid-engine.js'
 import { buildLocalFixedRenderTiles } from '../renderer-v3/local-render-tile-materializer.js'
@@ -130,6 +131,33 @@ describe('renderer-v3 grid tile materializer', () => {
     ])
   })
 
+  test('local fixed tile generation preserves runtime freeze sequence', () => {
+    const tiles = buildLocalFixedRenderTiles({
+      cameraSeq: 4,
+      columnWidths: {},
+      dprBucket: 1,
+      engine: makeEngine({}),
+      freezeSeq: 37,
+      generation: 21,
+      gridMetrics: getGridMetrics(),
+      rowHeights: {},
+      sheetId: 2,
+      sheetOrdinal: 0,
+      sheetName: 'Sheet1',
+      sortedColumnWidthOverrides: [],
+      sortedRowHeightOverrides: [],
+      viewport: {
+        colEnd: VIEWPORT_TILE_COLUMN_COUNT - 1,
+        colStart: 0,
+        rowEnd: VIEWPORT_TILE_ROW_COUNT - 1,
+        rowStart: 0,
+      },
+    })
+
+    expect(tiles).toHaveLength(1)
+    expect(tiles[0]?.version.freeze).toBe(37)
+  })
+
   test('materializes visible text for merged cells whose anchor is blank', () => {
     const tile = materializeGridRenderTileV3({
       axisSeqX: 5,
@@ -174,5 +202,68 @@ describe('renderer-v3 grid tile materializer', () => {
     expect(tile.textRuns).toContainEqual(expect.objectContaining({ col: 0, row: 0, text: 'merged value' }))
     expect(tile.textRuns).not.toContainEqual(expect.objectContaining({ col: 1, row: 0, text: 'merged value' }))
     expect(tile.textRuns.find((run) => run.text === 'merged value')?.width).toBeGreaterThan(getGridMetrics().columnWidth)
+  })
+
+  test('materializes inbound left-aligned text spill runs across fixed tile boundaries', () => {
+    const sourceCol = VIEWPORT_TILE_COLUMN_COUNT - 1
+    const targetCol = VIEWPORT_TILE_COLUMN_COUNT
+    const sourceAddress = `${indexToColumn(sourceCol)}1`
+    const blockerAddress = `${indexToColumn(targetCol)}1`
+    const baseInput = {
+      axisSeqX: 5,
+      axisSeqY: 6,
+      cameraSeq: 7,
+      columnWidths: {},
+      dprBucket: 1,
+      freezeSeq: 8,
+      glyphAtlasSeq: 9,
+      gridMetrics: getGridMetrics(),
+      materializedAtSeq: 10,
+      packetSeq: 11,
+      rectSeq: 12,
+      rowHeights: {},
+      sheetId: 3,
+      sheetOrdinal: 1,
+      sheetName: 'Sheet1',
+      sortedColumnWidthOverrides: [],
+      sortedRowHeightOverrides: [],
+      styleSeq: 13,
+      textSeq: 14,
+      valueSeq: 15,
+      viewport: {
+        colEnd: VIEWPORT_TILE_COLUMN_COUNT * 2 - 1,
+        colStart: VIEWPORT_TILE_COLUMN_COUNT,
+        rowEnd: VIEWPORT_TILE_ROW_COUNT - 1,
+        rowStart: 0,
+      },
+    }
+    const spillText = 'spills into next tile with enough width to cross boundary'
+
+    const tile = materializeGridRenderTileV3({
+      ...baseInput,
+      engine: makeEngine({
+        [sourceAddress]: createCellSnapshot(sourceAddress, { tag: ValueTag.String, value: spillText }),
+      }),
+    })
+    const inboundRun = tile.textRuns.find((run) => run.col === sourceCol && run.row === 0)
+
+    expect(inboundRun).toMatchObject({
+      clipX: 0,
+      row: 0,
+      text: spillText,
+    })
+    expect(inboundRun?.clipWidth).toBeGreaterThan(0)
+    expect(inboundRun?.x).toBeLessThan(0)
+    expect(inboundRun?.spillColEnd).toBeGreaterThanOrEqual(targetCol)
+
+    const blockedTile = materializeGridRenderTileV3({
+      ...baseInput,
+      engine: makeEngine({
+        [blockerAddress]: createCellSnapshot(blockerAddress, { tag: ValueTag.Number, value: 1 }),
+        [sourceAddress]: createCellSnapshot(sourceAddress, { tag: ValueTag.String, value: spillText }),
+      }),
+    })
+
+    expect(blockedTile.textRuns.find((run) => run.col === sourceCol && run.row === 0)).toBeUndefined()
   })
 })

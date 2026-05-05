@@ -27,6 +27,9 @@ import {
 } from './typegpu-tile-buffer-pool.js'
 import { drawTypeGpuTilePanesV3, type TypeGpuTileDrawSurface } from './typegpu-tile-render-pass.js'
 
+export const TYPEGPU_ACTIVE_SHEET_CPU_TILE_BUDGET_BYTES_V3 = 128 * 1024 * 1024
+export const TYPEGPU_ACTIVE_SHEET_GPU_TILE_BUDGET_BYTES_V3 = 128 * 1024 * 1024
+
 export interface WorkbookTypeGpuBackendV3 {
   readonly artifacts: TypeGpuRendererArtifacts
   readonly atlas: ReturnType<typeof createGlyphAtlas>
@@ -133,6 +136,8 @@ export function syncRenderTileResidencyFromPanesV3(input: {
   readonly residency: TileResidencyV3<GridRenderTile, null>
   readonly panes: readonly WorkbookRenderTilePaneState[]
   readonly visiblePanes: readonly WorkbookRenderTilePaneState[]
+  readonly maxCpuBytes?: number | undefined
+  readonly maxGpuBytes?: number | undefined
 }): void {
   for (const pane of input.panes) {
     const tile = pane.tile
@@ -157,7 +162,10 @@ export function syncRenderTileResidencyFromPanesV3(input: {
     })
   }
   input.residency.markVisible(input.visiblePanes.map((pane) => pane.tile.tileId))
-  input.residency.evictToSize(256)
+  input.residency.evictToBudgets({
+    maxCpuBytes: input.maxCpuBytes ?? TYPEGPU_ACTIVE_SHEET_CPU_TILE_BUDGET_BYTES_V3,
+    maxGpuBytes: input.maxGpuBytes ?? TYPEGPU_ACTIVE_SHEET_GPU_TILE_BUDGET_BYTES_V3,
+  })
 }
 
 export function resolveTypeGpuDrawTilePanesV3(input: {

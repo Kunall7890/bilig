@@ -5,6 +5,7 @@ import type { EditSelectionBehavior, GridSelectionSnapshot } from '@bilig/grid'
 import { ValueTag, type CellRangeRef, type CellSnapshot } from '@bilig/protocol'
 import type { WorkerRuntimeSelection } from './runtime-session.js'
 import type { WorkbookMutationMethod } from './workbook-sync.js'
+import { OPTIMISTIC_CELL_SNAPSHOT_FLAG } from './workbook-optimistic-cell-flags.js'
 import { parseEditorInput, parsedEditorInputFromSnapshot, type EditingMode, type ParsedEditorInput } from './worker-workbook-app-model.js'
 import { createOptimisticCellSnapshot, createSupersedingCellSnapshot, evaluateOptimisticFormula } from './workbook-optimistic-cell.js'
 
@@ -394,7 +395,7 @@ function createEmptyOptimisticSnapshot(sheetName: string, address: string, versi
     sheetName,
     address,
     value: { tag: ValueTag.Empty },
-    flags: 0,
+    flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
     version,
   }
 }

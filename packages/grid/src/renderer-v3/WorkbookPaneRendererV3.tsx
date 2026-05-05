@@ -15,6 +15,7 @@ export interface WorkbookPaneRendererV3Props {
   readonly host: HTMLDivElement | null
   readonly geometry: GridGeometrySnapshot | null
   readonly cameraStore?: GridCameraStore | null
+  readonly enableCanvasFallback?: boolean | undefined
   readonly headerPanes?: readonly GridHeaderPaneState[] | undefined
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
   readonly preloadTilePanes?: readonly WorkbookRenderTilePaneState[] | undefined
@@ -26,6 +27,7 @@ export interface WorkbookPaneRendererV3Props {
 export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
   active,
   cameraStore = null,
+  enableCanvasFallback = false,
   geometry,
   headerPanes = [],
   host,
@@ -86,17 +88,19 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
 
   return (
     <>
-      <WorkbookPaneCanvasFallbackV3
-        active={active}
-        cameraStore={cameraStore}
-        geometry={geometry}
-        headerPanes={headerPanes}
-        host={host}
-        overlay={overlay ?? null}
-        overlayBuilder={overlayBuilder ?? null}
-        scrollTransformStore={scrollTransformStore}
-        tilePanes={tilePanes}
-      />
+      {enableCanvasFallback ? (
+        <WorkbookPaneCanvasFallbackV3
+          active={active}
+          cameraStore={cameraStore}
+          geometry={geometry}
+          headerPanes={headerPanes}
+          host={host}
+          overlay={overlay ?? null}
+          overlayBuilder={overlayBuilder ?? null}
+          scrollTransformStore={scrollTransformStore}
+          tilePanes={tilePanes}
+        />
+      ) : null}
       <canvas
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 z-10"

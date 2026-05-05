@@ -66,7 +66,7 @@ export class ProjectedTileSceneStore {
 
   applyDelta(batch: RenderTileDeltaBatch): ProjectedTileSceneChange {
     const startedAt = nowMs()
-    if (batch.batchId < this.lastBatchId) {
+    if (batch.batchId < this.lastBatchId || (batch.batchId === this.lastBatchId && batch.cameraSeq < this.lastCameraSeq)) {
       const staleChange = {
         batchId: batch.batchId,
         cameraSeq: batch.cameraSeq,
@@ -84,7 +84,7 @@ export class ProjectedTileSceneStore {
     if (structural) {
       for (const entry of this.residency.entries()) {
         const tile = entry.packet
-        if (tile?.coord.sheetId === batch.sheetId || tile?.coord.sheetOrdinal === batch.sheetOrdinal) {
+        if (tile && matchesProjectedSheetIdentity(tile.coord, batch)) {
           this.residency.delete(entry.key)
           invalidatedTileIds.add(entry.key)
         }
@@ -119,19 +119,10 @@ export class ProjectedTileSceneStore {
           break
         }
         case 'cellRuns': {
-          const current = this.residency.getExact(mutation.tileId)?.packet
-          if (!current) {
-            break
-          }
-          this.upsertTile({
-            ...current,
-            version: mutation.version,
-            lastCellRuns: mutation.runs,
-            lastBatchId: batch.batchId,
-            lastCameraSeq: batch.cameraSeq,
-          })
+          this.residency.delete(mutation.tileId)
           this.dirtyTiles.markTile(mutation.tileId, DirtyMaskV3.Value | DirtyMaskV3.Text | DirtyMaskV3.Rect)
-          changedTileIds.add(mutation.tileId)
+          changedTileIds.delete(mutation.tileId)
+          invalidatedTileIds.add(mutation.tileId)
           break
         }
         case 'invalidate':
@@ -173,11 +164,13 @@ export class ProjectedTileSceneStore {
   dropSheets(sheetNames: readonly string[]): void {
     const sheetIds = new Set<number>()
     const sheetOrdinals = new Set<number>()
+    const sheetIdentities = new Set<string>()
     sheetNames.forEach((sheetName) => {
       const identity = this.sheetIdentityByName.get(sheetName)
       if (identity) {
         sheetIds.add(identity.sheetId)
         sheetOrdinals.add(identity.sheetOrdinal)
+        sheetIdentities.add(projectedSheetIdentityKey(identity))
       }
       this.sheetIdentityByName.delete(sheetName)
     })
@@ -186,7 +179,12 @@ export class ProjectedTileSceneStore {
     }
     for (const entry of this.residency.entries()) {
       const tile = entry.packet
-      if (tile && (sheetIds.has(tile.coord.sheetId) || sheetOrdinals.has(tile.coord.sheetOrdinal))) {
+      if (
+        tile &&
+        (sheetIdentities.has(projectedSheetIdentityKey(tile.coord)) ||
+          (sheetIds.has(tile.coord.sheetId) && sheetOrdinals.size === 0) ||
+          (sheetIds.size === 0 && sheetOrdinals.has(tile.coord.sheetOrdinal)))
+      ) {
         this.residency.delete(entry.key)
       }
     }
@@ -246,4 +244,24 @@ function estimateTileBytes(tile: ProjectedRenderTile): number {
     stringBytes += run.color.length * 2
   }
   return tile.rectInstances.byteLength + tile.textMetrics.byteLength + tile.glyphRefs.byteLength + stringBytes
+}
+
+function matchesProjectedSheetIdentity(
+  tile: { readonly sheetId?: number | undefined; readonly sheetOrdinal?: number | undefined },
+  expected: { readonly sheetId?: number | undefined; readonly sheetOrdinal?: number | undefined },
+): boolean {
+  if (expected.sheetId !== undefined && expected.sheetOrdinal !== undefined) {
+    return tile.sheetId === expected.sheetId && tile.sheetOrdinal === expected.sheetOrdinal
+  }
+  if (expected.sheetId !== undefined) {
+    return tile.sheetId === expected.sheetId
+  }
+  if (expected.sheetOrdinal !== undefined) {
+    return tile.sheetOrdinal === expected.sheetOrdinal
+  }
+  return false
+}
+
+function projectedSheetIdentityKey(identity: { readonly sheetId: number; readonly sheetOrdinal: number }): string {
+  return `${identity.sheetId}:${identity.sheetOrdinal}`
 }

@@ -57,9 +57,12 @@ export interface GridRenderTilePaneRuntimeInput {
 
 export interface GridRenderTileDeltaRuntimeInput {
   readonly dprBucket: number
+  readonly freezeCols?: number | undefined
+  readonly freezeRows?: number | undefined
   readonly gridRuntimeHost: GridRuntimeHost
   readonly renderTileSource?: GridRenderTileSource | undefined
   readonly renderTileViewport: Viewport
+  readonly residentViewport?: Viewport | undefined
   readonly sheetId?: number | undefined
   readonly sheetOrdinal?: number | undefined
   readonly sheetName: string
@@ -83,10 +86,13 @@ export interface GridRenderTileLocalInvalidationRuntimeInput {
 export interface GridRenderTileConnectionRuntimeInput {
   readonly dprBucket: number
   readonly engine: GridEngineLike
+  readonly freezeCols?: number | undefined
+  readonly freezeRows?: number | undefined
   readonly gridRuntimeHost: GridRuntimeHost
   readonly needsLocalCellInvalidation: boolean
   readonly renderTileSource?: GridRenderTileSource | undefined
   readonly renderTileViewport: Viewport
+  readonly residentViewport?: Viewport | undefined
   readonly sheetId?: number | undefined
   readonly sheetOrdinal?: number | undefined
   readonly sheetName: string
@@ -95,8 +101,11 @@ export interface GridRenderTileConnectionRuntimeInput {
 
 interface GridRenderTileInterestRuntimeInput {
   readonly dprBucket: number
+  readonly freezeCols?: number | undefined
+  readonly freezeRows?: number | undefined
   readonly gridRuntimeHost: GridRuntimeHost
   readonly renderTileViewport: Viewport
+  readonly residentViewport?: Viewport | undefined
   readonly sheetId?: number | undefined
   readonly sheetOrdinal?: number | undefined
 }
@@ -144,9 +153,17 @@ interface RuntimeConnection<Identity> {
   readonly unsubscribe: (() => void) | undefined
 }
 
+interface RenderTileSheetIdentity {
+  readonly sheetId?: number | undefined
+  readonly sheetOrdinal?: number | undefined
+}
+
 interface RenderTileDeltaConnectionIdentity {
   readonly dprBucket: number
+  readonly freezeCols: number
+  readonly freezeRows: number
   readonly renderTileSource: GridRenderTileSource | undefined
+  readonly residentViewport: Viewport | undefined
   readonly sheetId: number | undefined
   readonly sheetOrdinal: number | undefined
   readonly sheetName: string
@@ -169,7 +186,7 @@ interface LocalInvalidationConnectionIdentity {
 
 export class GridRenderTilePaneRuntime {
   private retainedFixedRenderTileDataPanes: {
-    readonly sheetId: number
+    readonly compatibility: RetainedFixedRenderTileDataPanesCompatibility
     readonly panes: readonly WorkbookRenderTilePaneState[]
   } | null = null
   private bridgeState = INITIAL_RENDER_TILE_PANE_BRIDGE_STATE
@@ -189,15 +206,20 @@ export class GridRenderTilePaneRuntime {
     const fixedRenderTileDataPanes = resolution ? this.buildFixedRenderTileDataPanes(input, resolution) : null
     if (input.sheetId !== undefined && fixedRenderTileDataPanes?.source === 'remote') {
       this.retainedFixedRenderTileDataPanes = {
+        compatibility: buildRetainedFixedRenderTileDataPanesCompatibility(input),
         panes: fixedRenderTileDataPanes.panes,
-        sheetId: input.sheetId,
       }
     }
 
     const shouldUseRemoteRenderTileSource = input.renderTileSource !== undefined && input.sheetId !== undefined
     const retainedFixedRenderTileDataPanes =
       fixedRenderTileDataPanes?.panes ??
-      (shouldUseRemoteRenderTileSource && input.sheetId !== undefined && this.retainedFixedRenderTileDataPanes?.sheetId === input.sheetId
+      (shouldUseRemoteRenderTileSource &&
+      this.retainedFixedRenderTileDataPanes &&
+      sameRetainedFixedRenderTileDataPanesCompatibility(
+        this.retainedFixedRenderTileDataPanes.compatibility,
+        buildRetainedFixedRenderTileDataPanesCompatibility(input),
+      )
         ? this.retainedFixedRenderTileDataPanes.panes
         : null)
     const residentDataPanes = retainedFixedRenderTileDataPanes ?? []
@@ -240,8 +262,8 @@ export class GridRenderTilePaneRuntime {
   noteWorkbookDeltaDamage(): GridRenderTilePaneBridgeState {
     const previous = this.bridgeState
     this.bridgeState = {
-      forceLocalTiles: true,
-      localFallbackRevision: previous.localFallbackRevision + 1,
+      forceLocalTiles: false,
+      localFallbackRevision: previous.localFallbackRevision,
       renderTileRevision: previous.renderTileRevision + 1,
     }
     this.emitBridgeState()
@@ -322,7 +344,7 @@ export class GridRenderTilePaneRuntime {
     }
     const sheetOrdinal = resolveGridRenderTileInputSheetOrdinal(input)
     return renderTileSource.subscribeWorkbookDeltas((batch) => {
-      if (batch.sheetId !== input.sheetId && batch.sheetOrdinal !== sheetOrdinal) {
+      if (!matchesRenderTileSheetIdentity(batch, { sheetId: input.sheetId, sheetOrdinal })) {
         return
       }
       if (!this.applyWorkbookDeltaDamage(input, batch)) {
@@ -379,7 +401,7 @@ export class GridRenderTilePaneRuntime {
   private applyWorkbookDeltaDamage(input: GridRenderTileDamageRuntimeInput, batch: WorkbookDeltaBatchLikeV3): boolean {
     if (batch.seq !== undefined) {
       const source = 'source' in batch && typeof batch.source === 'string' ? batch.source : 'unknown'
-      const sequenceKey = `${batch.sheetOrdinal}:${source}`
+      const sequenceKey = `${batch.sheetId ?? 'x'}:${batch.sheetOrdinal ?? 'x'}:${source}`
       const lastSeq = this.lastWorkbookDeltaSeqBySheetAndSource.get(sequenceKey) ?? -1
       if (batch.seq <= lastSeq) {
         return false
@@ -393,7 +415,10 @@ export class GridRenderTilePaneRuntime {
   private syncRenderTileDeltaConnection(input: GridRenderTileConnectionRuntimeInput): void {
     const identity: RenderTileDeltaConnectionIdentity = {
       dprBucket: input.dprBucket,
+      freezeCols: input.freezeCols ?? 0,
+      freezeRows: input.freezeRows ?? 0,
       renderTileSource: input.renderTileSource,
+      residentViewport: input.residentViewport,
       sheetId: input.sheetId,
       sheetName: input.sheetName,
       sheetOrdinal: input.sheetOrdinal,
@@ -408,8 +433,11 @@ export class GridRenderTilePaneRuntime {
       unsubscribe: this.connectRenderTileDeltas({
         dprBucket: input.dprBucket,
         gridRuntimeHost: input.gridRuntimeHost,
+        freezeCols: input.freezeCols,
+        freezeRows: input.freezeRows,
         renderTileSource: input.renderTileSource,
         renderTileViewport: input.renderTileViewport,
+        residentViewport: input.residentViewport,
         sheetId: input.sheetId,
         sheetName: input.sheetName,
         sheetOrdinal: input.sheetOrdinal,
@@ -507,49 +535,60 @@ export class GridRenderTilePaneRuntime {
 
   private buildViewportTileInterest(input: GridRenderTileInterestRuntimeInput & { readonly sheetId: number }): GridTileInterestBatchV3 {
     const sheetOrdinal = resolveGridRenderTileInputSheetOrdinal(input)
-    return input.gridRuntimeHost.buildViewportTileInterest({
-      dprBucket: input.dprBucket,
+    const snapshot = input.gridRuntimeHost.snapshot()
+    const visibleTileKeys = resolveRenderTileInterestTileKeys(input)
+    return input.gridRuntimeHost.tiles.buildInterest({
+      axisSeqX: snapshot.axisSeqX,
+      axisSeqY: snapshot.axisSeqY,
+      cameraSeq: snapshot.camera.seq,
+      freezeSeq: snapshot.freezeSeq,
+      pinnedTileKeys: [],
       reason: 'scroll',
       sheetId: input.sheetId,
       sheetOrdinal,
-      viewport: input.renderTileViewport,
-      warmTileKeys: this.resolveWarmTileKeys(input),
+      visibleTileKeys,
+      warmTileKeys: this.resolveWarmTileKeys(input, visibleTileKeys),
     })
   }
 
-  private resolveWarmTileKeys(input: GridRenderTileInterestRuntimeInput & { readonly sheetId: number }): readonly TileKey53[] {
+  private resolveWarmTileKeys(
+    input: GridRenderTileInterestRuntimeInput & { readonly sheetId: number },
+    visibleTileKeys = resolveRenderTileInterestTileKeys(input),
+  ): readonly TileKey53[] {
     const sheetOrdinal = resolveGridRenderTileInputSheetOrdinal(input)
-    const visibleTileKeys = input.gridRuntimeHost.viewportTileKeys({
-      dprBucket: input.dprBucket,
-      sheetOrdinal,
-      viewport: input.renderTileViewport,
-    })
     if (visibleTileKeys.length === 0) {
       return []
     }
     const visibleSet = new Set(visibleTileKeys)
-    let minRowTile = Number.POSITIVE_INFINITY
-    let maxRowTile = Number.NEGATIVE_INFINITY
-    let minColTile = Number.POSITIVE_INFINITY
-    let maxColTile = Number.NEGATIVE_INFINITY
-    for (const key of visibleTileKeys) {
-      const fields = unpackTileKey53(key)
-      minRowTile = Math.min(minRowTile, fields.rowTile)
-      maxRowTile = Math.max(maxRowTile, fields.rowTile)
-      minColTile = Math.min(minColTile, fields.colTile)
-      maxColTile = Math.max(maxColTile, fields.colTile)
-    }
+    const warmSet = new Set<number>()
     const warmTileKeys: number[] = []
-    for (let rowTile = Math.max(0, minRowTile - 1); rowTile <= Math.min(MAX_TILE_ROW_INDEX, maxRowTile + 1); rowTile += 1) {
-      for (let colTile = Math.max(0, minColTile - 1); colTile <= Math.min(MAX_TILE_COLUMN_INDEX, maxColTile + 1); colTile += 1) {
-        const key = packTileKey53({
-          colTile,
-          dprBucket: input.dprBucket,
-          rowTile,
-          sheetOrdinal,
-        })
-        if (!visibleSet.has(key)) {
-          warmTileKeys.push(key)
+    for (const viewport of resolveRenderTileInterestViewports(input)) {
+      let minRowTile = Number.POSITIVE_INFINITY
+      let maxRowTile = Number.NEGATIVE_INFINITY
+      let minColTile = Number.POSITIVE_INFINITY
+      let maxColTile = Number.NEGATIVE_INFINITY
+      for (const key of input.gridRuntimeHost.viewportTileKeys({ dprBucket: input.dprBucket, sheetOrdinal, viewport })) {
+        const fields = unpackTileKey53(key)
+        minRowTile = Math.min(minRowTile, fields.rowTile)
+        maxRowTile = Math.max(maxRowTile, fields.rowTile)
+        minColTile = Math.min(minColTile, fields.colTile)
+        maxColTile = Math.max(maxColTile, fields.colTile)
+      }
+      if (!Number.isFinite(minRowTile)) {
+        continue
+      }
+      for (let rowTile = Math.max(0, minRowTile - 1); rowTile <= Math.min(MAX_TILE_ROW_INDEX, maxRowTile + 1); rowTile += 1) {
+        for (let colTile = Math.max(0, minColTile - 1); colTile <= Math.min(MAX_TILE_COLUMN_INDEX, maxColTile + 1); colTile += 1) {
+          const key = packTileKey53({
+            colTile,
+            dprBucket: input.dprBucket,
+            rowTile,
+            sheetOrdinal,
+          })
+          if (!visibleSet.has(key) && !warmSet.has(key)) {
+            warmSet.add(key)
+            warmTileKeys.push(key)
+          }
         }
       }
     }
@@ -577,7 +616,7 @@ export class GridRenderTilePaneRuntime {
         continue
       }
       const tile = input.renderTileSource.peekRenderTile(tileKey)
-      if (!tile || tile.coord.sheetId !== input.sheetId || tile.coord.sheetOrdinal !== sheetOrdinal) {
+      if (!tile || !matchesRenderTileSheetIdentity(tile.coord, { sheetId: input.sheetId, sheetOrdinal })) {
         continue
       }
       tiles.push(tile)
@@ -629,7 +668,13 @@ export class GridRenderTilePaneRuntime {
     }
     change.changedTileIds.forEach((tileId) => {
       const tile = renderTileSource.peekRenderTile(tileId)
-      if (!tile || tile.coord.sheetId !== input.sheetId || tile.coord.sheetOrdinal !== resolveGridRenderTileInputSheetOrdinal(input)) {
+      if (
+        !tile ||
+        !matchesRenderTileSheetIdentity(tile.coord, {
+          sheetId: input.sheetId,
+          sheetOrdinal: resolveGridRenderTileInputSheetOrdinal(input),
+        })
+      ) {
         return
       }
       upsertRenderTileIntoHost(input.gridRuntimeHost, tile)
@@ -651,8 +696,8 @@ export class GridRenderTilePaneRuntime {
       })
       for (const tileKey of tileKeys) {
         const tile = input.renderTileSource.peekRenderTile(tileKey)
-        if (!tile || tile.coord.sheetId !== input.sheetId || tile.coord.sheetOrdinal !== sheetOrdinal) {
-          return this.retainedFixedRenderTileDataPanes?.sheetId === input.sheetId ? null : this.buildLocalTiles(input)
+        if (!tile || !matchesRenderTileSheetIdentity(tile.coord, { sheetId: input.sheetId, sheetOrdinal })) {
+          continue
         }
         tiles.push(tile)
       }
@@ -670,6 +715,7 @@ export class GridRenderTilePaneRuntime {
         columnWidths: input.columnWidths,
         dprBucket: input.dprBucket,
         engine: input.engine,
+        freezeSeq: input.gridRuntimeHost.snapshot().freezeSeq,
         generation: input.sceneRevision,
         gridMetrics: input.gridMetrics,
         rowHeights: input.rowHeights,
@@ -690,6 +736,22 @@ export class GridRenderTilePaneRuntime {
   }
 }
 
+interface RetainedFixedRenderTileDataPanesCompatibility {
+  readonly dprBucket: number
+  readonly freezeCols: number
+  readonly freezeRows: number
+  readonly frozenColumnWidth: number
+  readonly frozenRowHeight: number
+  readonly hostClientHeight: number
+  readonly hostClientWidth: number
+  readonly renderTileViewport: Viewport
+  readonly residentViewport: Viewport
+  readonly sceneRevision: number
+  readonly sheetId?: number | undefined
+  readonly sheetOrdinal?: number | undefined
+  readonly visibleViewport: Viewport
+}
+
 export function getGridRenderTilePaneRuntime(current: unknown): GridRenderTilePaneRuntime {
   return current instanceof GridRenderTilePaneRuntime ? current : new GridRenderTilePaneRuntime()
 }
@@ -701,13 +763,72 @@ function resolveGridRenderTileInputSheetOrdinal(input: {
   return input.sheetOrdinal ?? input.sheetId ?? 0
 }
 
+function resolveRenderTileInterestTileKeys(input: GridRenderTileInterestRuntimeInput): readonly TileKey53[] {
+  const sheetOrdinal = resolveGridRenderTileInputSheetOrdinal(input)
+  const keys = new Set<number>()
+  const result: number[] = []
+  for (const viewport of resolveRenderTileInterestViewports(input)) {
+    for (const key of input.gridRuntimeHost.viewportTileKeys({ dprBucket: input.dprBucket, sheetOrdinal, viewport })) {
+      if (keys.has(key)) {
+        continue
+      }
+      keys.add(key)
+      result.push(key)
+    }
+  }
+  return result
+}
+
+function resolveRenderTileInterestViewports(input: GridRenderTileInterestRuntimeInput): readonly Viewport[] {
+  const bodyViewport = input.residentViewport ?? input.renderTileViewport
+  const freezeRows = Math.max(0, input.freezeRows ?? 0)
+  const freezeCols = Math.max(0, input.freezeCols ?? 0)
+  const viewports: Viewport[] = []
+  addRenderTileInterestViewport(viewports, bodyViewport)
+  if (freezeRows > 0) {
+    addRenderTileInterestViewport(viewports, {
+      colEnd: bodyViewport.colEnd,
+      colStart: bodyViewport.colStart,
+      rowEnd: freezeRows - 1,
+      rowStart: 0,
+    })
+  }
+  if (freezeCols > 0) {
+    addRenderTileInterestViewport(viewports, {
+      colEnd: freezeCols - 1,
+      colStart: 0,
+      rowEnd: bodyViewport.rowEnd,
+      rowStart: bodyViewport.rowStart,
+    })
+  }
+  if (freezeRows > 0 && freezeCols > 0) {
+    addRenderTileInterestViewport(viewports, {
+      colEnd: freezeCols - 1,
+      colStart: 0,
+      rowEnd: freezeRows - 1,
+      rowStart: 0,
+    })
+  }
+  return viewports
+}
+
+function addRenderTileInterestViewport(viewports: Viewport[], viewport: Viewport): void {
+  if (viewport.rowEnd < viewport.rowStart || viewport.colEnd < viewport.colStart) {
+    return
+  }
+  viewports.push(viewport)
+}
+
 function sameRenderTileDeltaConnectionIdentity(left: RenderTileDeltaConnectionIdentity, right: RenderTileDeltaConnectionIdentity): boolean {
   return (
     left.dprBucket === right.dprBucket &&
+    left.freezeCols === right.freezeCols &&
+    left.freezeRows === right.freezeRows &&
     left.renderTileSource === right.renderTileSource &&
     left.sheetId === right.sheetId &&
     left.sheetName === right.sheetName &&
     left.sheetOrdinal === right.sheetOrdinal &&
+    sameOptionalViewportIdentity(left.residentViewport, right.residentViewport) &&
     sameViewportIdentity(left.viewport, right.viewport)
   )
 }
@@ -751,6 +872,67 @@ function sameStringListIdentity(left: readonly string[], right: readonly string[
 function sameViewportIdentity(left: Viewport, right: Viewport): boolean {
   return (
     left.colEnd === right.colEnd && left.colStart === right.colStart && left.rowEnd === right.rowEnd && left.rowStart === right.rowStart
+  )
+}
+
+function sameOptionalViewportIdentity(left: Viewport | undefined, right: Viewport | undefined): boolean {
+  if (left === undefined || right === undefined) {
+    return left === right
+  }
+  return sameViewportIdentity(left, right)
+}
+
+function matchesRenderTileSheetIdentity(tile: RenderTileSheetIdentity, expected: RenderTileSheetIdentity): boolean {
+  if (expected.sheetId !== undefined && expected.sheetOrdinal !== undefined) {
+    return tile.sheetId === expected.sheetId && tile.sheetOrdinal === expected.sheetOrdinal
+  }
+  if (expected.sheetId !== undefined) {
+    return tile.sheetId === expected.sheetId
+  }
+  if (expected.sheetOrdinal !== undefined) {
+    return tile.sheetOrdinal === expected.sheetOrdinal
+  }
+  return false
+}
+
+function buildRetainedFixedRenderTileDataPanesCompatibility(
+  input: GridRenderTilePaneRuntimeInput,
+): RetainedFixedRenderTileDataPanesCompatibility {
+  return {
+    dprBucket: input.dprBucket,
+    freezeCols: input.freezeCols,
+    freezeRows: input.freezeRows,
+    frozenColumnWidth: input.frozenColumnWidth,
+    frozenRowHeight: input.frozenRowHeight,
+    hostClientHeight: input.hostClientHeight,
+    hostClientWidth: input.hostClientWidth,
+    renderTileViewport: input.renderTileViewport,
+    residentViewport: input.residentViewport,
+    sceneRevision: input.sceneRevision,
+    sheetId: input.sheetId,
+    sheetOrdinal: input.sheetOrdinal,
+    visibleViewport: input.visibleViewport,
+  }
+}
+
+function sameRetainedFixedRenderTileDataPanesCompatibility(
+  left: RetainedFixedRenderTileDataPanesCompatibility,
+  right: RetainedFixedRenderTileDataPanesCompatibility,
+): boolean {
+  return (
+    left.dprBucket === right.dprBucket &&
+    left.freezeCols === right.freezeCols &&
+    left.freezeRows === right.freezeRows &&
+    left.frozenColumnWidth === right.frozenColumnWidth &&
+    left.frozenRowHeight === right.frozenRowHeight &&
+    left.hostClientHeight === right.hostClientHeight &&
+    left.hostClientWidth === right.hostClientWidth &&
+    left.sceneRevision === right.sceneRevision &&
+    left.sheetId === right.sheetId &&
+    left.sheetOrdinal === right.sheetOrdinal &&
+    sameViewportIdentity(left.renderTileViewport, right.renderTileViewport) &&
+    sameViewportIdentity(left.residentViewport, right.residentViewport) &&
+    sameViewportIdentity(left.visibleViewport, right.visibleViewport)
   )
 }
 

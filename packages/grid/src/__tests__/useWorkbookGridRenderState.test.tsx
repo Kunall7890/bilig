@@ -291,23 +291,20 @@ describe('useWorkbookGridRenderState viewport residency', () => {
       }),
       expect.any(Function),
     )
-    expect(latestRenderState?.renderTilePanes.some((pane) => pane.paneId === 'body')).toBe(true)
-    expect(latestRenderState?.renderTilePanes.find((pane) => pane.paneId === 'body')?.tile.coord.sheetId).toBe(7)
-    expect(scrollPerf.noteRendererTileReadiness).toHaveBeenCalledWith(
-      expect.objectContaining({
-        exactHits: expect.any(Number),
-        misses: 0,
-        staleHits: 0,
-      }),
-    )
-    expect(scrollPerf.noteRendererTileReadiness.mock.calls.at(-1)?.[0].exactHits).toBeGreaterThan(0)
+    expect(latestRenderState?.renderTilePanes.some((pane) => pane.paneId === 'body')).toBe(false)
+    const readiness = scrollPerf.noteRendererTileReadiness.mock.calls.at(-1)?.[0]
+    expect(readiness).toMatchObject({
+      exactHits: 0,
+      staleHits: 0,
+    })
+    expect(readiness?.misses).toBeGreaterThan(0)
 
     await act(async () => {
       root.unmount()
     })
   })
 
-  it('keeps local fallback render tiles fresh from V3 workbook deltas while remote tiles are unavailable', async () => {
+  it('keeps remote mode after V3 workbook deltas while remote tiles are unavailable', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
     let cellText = ''
@@ -411,7 +408,7 @@ describe('useWorkbookGridRenderState viewport residency', () => {
       await new Promise((resolve) => window.setTimeout(resolve, 0))
     })
 
-    expect(latestRenderState?.renderTilePanes.some((pane) => pane.tile.textRuns.some((run) => run.text === cellText))).toBe(true)
+    expect(latestRenderState?.renderTilePanes.some((pane) => pane.tile.textRuns.some((run) => run.text === cellText))).toBe(false)
 
     await act(async () => {
       root.unmount()

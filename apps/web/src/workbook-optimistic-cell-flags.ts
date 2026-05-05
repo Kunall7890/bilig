@@ -1,0 +1,1 @@
+export const OPTIMISTIC_CELL_SNAPSHOT_FLAG = 1 << 30

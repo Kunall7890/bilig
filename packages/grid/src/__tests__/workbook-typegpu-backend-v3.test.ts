@@ -165,6 +165,34 @@ describe('workbook typegpu backend v3 tile path', () => {
     expect(preloadEntry && residency.isVisible(preloadEntry)).toBe(false)
   })
 
+  test('evicts non-visible V3 tiles by byte budget instead of fixed entry count', () => {
+    const visibleTile = createRenderTile(2, 101)
+    const preloadTileA = {
+      ...createRenderTile(2, 202),
+      coord: { ...visibleTile.coord, colTile: 1 },
+    }
+    const preloadTileB = {
+      ...createRenderTile(2, 303),
+      coord: { ...visibleTile.coord, colTile: 2 },
+    }
+    const visiblePane = createTilePane(visibleTile)
+    const preloadPaneA = { ...createTilePane(preloadTileA), paneId: 'body:0:1' }
+    const preloadPaneB = { ...createTilePane(preloadTileB), paneId: 'body:0:2' }
+    const residency = new TileResidencyV3<GridRenderTile, null>()
+
+    syncRenderTileResidencyFromPanesV3({
+      maxCpuBytes: 1,
+      maxGpuBytes: 1,
+      panes: [visiblePane, preloadPaneA, preloadPaneB],
+      residency,
+      visiblePanes: [visiblePane],
+    })
+
+    expect(residency.getExact(visibleTile.tileId)).not.toBeNull()
+    expect(residency.getExact(preloadTileA.tileId)).toBeNull()
+    expect(residency.getExact(preloadTileB.tileId)).toBeNull()
+  })
+
   test('prunes V3 tile content and placement resources independently', () => {
     const cache = new TypeGpuTileResourceCacheV3()
     const tile = createRenderTile(2)

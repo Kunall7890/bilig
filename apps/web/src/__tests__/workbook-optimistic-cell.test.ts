@@ -50,7 +50,7 @@ describe('workbook optimistic cell snapshots', () => {
       address: 'A2',
       current,
       parsed: { kind: 'formula', formula: 'SUM(1:1)' },
-      evaluateFormula: () => null,
+      evaluateFormula: () => ({ kind: 'deferred' }),
     })
 
     expect(optimistic).toMatchObject({
@@ -70,7 +70,13 @@ describe('workbook optimistic cell snapshots', () => {
       address: 'A2',
       current,
       parsed: { kind: 'formula', formula: '1+' },
-      evaluateFormula: () => null,
+      evaluateFormula: (formula) =>
+        evaluateOptimisticFormula({
+          sheetName: 'Sheet1',
+          address: 'A2',
+          formula,
+          getCell: (_sheetName, address) => cell(address, { tag: ValueTag.Empty }, 0),
+        }),
     })
 
     expect(optimistic.formula).toBeUndefined()

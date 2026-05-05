@@ -183,6 +183,10 @@ export class ProjectedViewportStore implements GridEngineLike {
     }
   }
 
+  clearOptimisticCellFlagsForSheet(sheetName: string): void {
+    this.cellCache.clearOptimisticCellFlagsForSheet(sheetName)
+  }
+
   setColumnWidth(sheetName: string, columnIndex: number, width: number): void {
     this.axisStore.setColumnWidth(sheetName, columnIndex, width)
     this.notifySheetChannels(sheetName, ['columnWidths'])
@@ -380,6 +384,9 @@ export class ProjectedViewportStore implements GridEngineLike {
     }
     const startedAt = nowMs()
     const identity = this.resolveSheetIdentity(snapshot.sheetName)
+    if (!identity) {
+      return
+    }
     const parsed = parseCellAddress(snapshot.address, snapshot.sheetName)
     const valueSeq = Math.max(0, snapshot.version)
     const batch: WorkbookDeltaBatchV3 = {
@@ -417,8 +424,8 @@ export class ProjectedViewportStore implements GridEngineLike {
     })
   }
 
-  private resolveSheetIdentity(sheetName: string): SheetIdentity {
-    return this.sheetIdentitiesByName.get(sheetName) ?? { sheetId: 0, sheetOrdinal: 0 }
+  private resolveSheetIdentity(sheetName: string): SheetIdentity | null {
+    return this.sheetIdentitiesByName.get(sheetName) ?? null
   }
 }
 

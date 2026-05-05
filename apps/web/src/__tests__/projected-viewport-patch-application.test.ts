@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { ErrorCode, ValueTag, type RecalcMetrics } from '@bilig/protocol'
 import type { ViewportPatch } from '@bilig/worker-transport'
 import { applyProjectedViewportPatch, type ProjectedViewportPatchState } from '../projected-viewport-patch-application.js'
+import { OPTIMISTIC_CELL_SNAPSHOT_FLAG } from '../workbook-optimistic-cell-flags.js'
 
 const TEST_METRICS: RecalcMetrics = {
   batchId: 0,
@@ -382,14 +383,73 @@ describe('applyProjectedViewportPatch', () => {
     })
   })
 
-  it('keeps optimistic invalid-formula errors when stale reset empty patches arrive', () => {
+  it('keeps optimistic value snapshots when lagging reset-empty patches arrive', () => {
+    const state = createPatchState()
+    state.cellSnapshots.set('Sheet1!B2', {
+      sheetName: 'Sheet1',
+      address: 'B2',
+      input: '12',
+      value: { tag: ValueTag.String, value: '12', stringId: 1 },
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+      version: 1,
+    })
+    state.cellKeysBySheet.set('Sheet1', new Set(['Sheet1!B2']))
+
+    applyProjectedViewportPatch({
+      state,
+      patch: {
+        version: 2,
+        full: false,
+        freezeRows: 0,
+        freezeCols: 0,
+        viewport: {
+          sheetName: 'Sheet1',
+          rowStart: 1,
+          rowEnd: 1,
+          colStart: 1,
+          colEnd: 1,
+        },
+        metrics: TEST_METRICS,
+        styles: [],
+        cells: [
+          {
+            row: 1,
+            col: 1,
+            snapshot: {
+              sheetName: 'Sheet1',
+              address: 'B2',
+              value: { tag: ValueTag.Empty },
+              flags: 0,
+              version: 0,
+            },
+            displayText: '',
+            copyText: '',
+            editorText: '',
+            formatId: 0,
+            styleId: 'style-0',
+          },
+        ],
+        columns: [],
+        rows: [],
+      },
+    })
+
+    expect(state.cellSnapshots.get('Sheet1!B2')).toMatchObject({
+      input: '12',
+      value: { tag: ValueTag.String, value: '12', stringId: 1 },
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+      version: 1,
+    })
+  })
+
+  it('keeps optimistic invalid-formula errors when lagging reset-empty patches arrive', () => {
     const state = createPatchState()
     state.cellSnapshots.set('Sheet1!B2', {
       sheetName: 'Sheet1',
       address: 'B2',
       input: '=1+',
       value: { tag: ValueTag.Error, code: ErrorCode.Value },
-      flags: 0,
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
       version: 1,
     })
     state.cellKeysBySheet.set('Sheet1', new Set(['Sheet1!B2']))
@@ -436,7 +496,172 @@ describe('applyProjectedViewportPatch', () => {
     expect(state.cellSnapshots.get('Sheet1!B2')).toMatchObject({
       input: '=1+',
       value: { tag: ValueTag.Error, code: ErrorCode.Value },
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
       version: 1,
+    })
+  })
+
+  it('keeps optimistic value snapshots when full lagging patches omit the cell', () => {
+    const state = createPatchState()
+    state.cellSnapshots.set('Sheet1!B2', {
+      sheetName: 'Sheet1',
+      address: 'B2',
+      input: '12',
+      value: { tag: ValueTag.String, value: '12', stringId: 1 },
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+      version: 1,
+    })
+    state.cellKeysBySheet.set('Sheet1', new Set(['Sheet1!B2']))
+
+    applyProjectedViewportPatch({
+      state,
+      patch: {
+        version: 2,
+        full: true,
+        freezeRows: 0,
+        freezeCols: 0,
+        viewport: {
+          sheetName: 'Sheet1',
+          rowStart: 1,
+          rowEnd: 1,
+          colStart: 1,
+          colEnd: 1,
+        },
+        metrics: TEST_METRICS,
+        styles: [],
+        cells: [],
+        columns: [],
+        rows: [],
+      },
+    })
+
+    expect(state.cellSnapshots.get('Sheet1!B2')).toMatchObject({
+      input: '12',
+      value: { tag: ValueTag.String, value: '12', stringId: 1 },
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+      version: 1,
+    })
+  })
+
+  it('accepts matching value patches while preserving optimistic protection', () => {
+    const state = createPatchState()
+    state.cellSnapshots.set('Sheet1!B2', {
+      sheetName: 'Sheet1',
+      address: 'B2',
+      input: '12',
+      value: { tag: ValueTag.String, value: '12', stringId: 1 },
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+      version: 1,
+    })
+    state.cellKeysBySheet.set('Sheet1', new Set(['Sheet1!B2']))
+
+    applyProjectedViewportPatch({
+      state,
+      patch: {
+        version: 2,
+        full: false,
+        freezeRows: 0,
+        freezeCols: 0,
+        viewport: {
+          sheetName: 'Sheet1',
+          rowStart: 1,
+          rowEnd: 1,
+          colStart: 1,
+          colEnd: 1,
+        },
+        metrics: TEST_METRICS,
+        styles: [],
+        cells: [
+          {
+            row: 1,
+            col: 1,
+            snapshot: {
+              sheetName: 'Sheet1',
+              address: 'B2',
+              input: '12',
+              value: { tag: ValueTag.String, value: '12', stringId: 2 },
+              flags: 0,
+              version: 5,
+            },
+            displayText: '12',
+            copyText: '12',
+            editorText: '12',
+            formatId: 0,
+            styleId: 'style-0',
+          },
+        ],
+        columns: [],
+        rows: [],
+      },
+    })
+
+    expect(state.cellSnapshots.get('Sheet1!B2')).toEqual({
+      sheetName: 'Sheet1',
+      address: 'B2',
+      input: '12',
+      value: { tag: ValueTag.String, value: '12', stringId: 2 },
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+      version: 5,
+    })
+  })
+
+  it('accepts newer empty patches over optimistic snapshots for structural clears', () => {
+    const state = createPatchState()
+    state.cellSnapshots.set('Sheet1!B2', {
+      sheetName: 'Sheet1',
+      address: 'B2',
+      input: 'row-2',
+      value: { tag: ValueTag.String, value: 'row-2', stringId: 1 },
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+      version: 1,
+    })
+    state.cellKeysBySheet.set('Sheet1', new Set(['Sheet1!B2']))
+
+    applyProjectedViewportPatch({
+      state,
+      patch: {
+        version: 2,
+        full: false,
+        freezeRows: 0,
+        freezeCols: 0,
+        viewport: {
+          sheetName: 'Sheet1',
+          rowStart: 1,
+          rowEnd: 1,
+          colStart: 1,
+          colEnd: 1,
+        },
+        metrics: TEST_METRICS,
+        styles: [],
+        cells: [
+          {
+            row: 1,
+            col: 1,
+            snapshot: {
+              sheetName: 'Sheet1',
+              address: 'B2',
+              value: { tag: ValueTag.Empty },
+              flags: 0,
+              version: 3,
+            },
+            displayText: '',
+            copyText: '',
+            editorText: '',
+            formatId: 0,
+            styleId: 'style-0',
+          },
+        ],
+        columns: [],
+        rows: [],
+      },
+    })
+
+    expect(state.cellSnapshots.get('Sheet1!B2')).toEqual({
+      sheetName: 'Sheet1',
+      address: 'B2',
+      value: { tag: ValueTag.Empty },
+      flags: 0,
+      version: 3,
     })
   })
 

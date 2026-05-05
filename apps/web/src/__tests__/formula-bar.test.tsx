@@ -8,6 +8,7 @@ import { FormulaBar } from '../../../../packages/grid/src/FormulaBar.js'
 
 function FormulaBarHarness(props: {
   initialValue: string
+  address?: string
   initialEditing?: boolean
   definedNames?: readonly WorkbookDefinedNameSnapshot[]
   selectionLabel?: string
@@ -18,7 +19,7 @@ function FormulaBarHarness(props: {
   const [isEditing, setIsEditing] = useState(props.initialEditing ?? true)
   return (
     <FormulaBar
-      address="B2"
+      address={props.address ?? 'B2'}
       definedNames={props.definedNames}
       isEditing={isEditing}
       onAddressCommit={(next) => props.onAddressCommitResult?.(next) ?? true}
@@ -48,20 +49,27 @@ function FormulaBarHarness(props: {
 
 function dispatchInputValue(input: HTMLInputElement, value: string) {
   flushSync(() => {
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, value)
+    setNativeTextControlValue(input, value)
     input.dispatchEvent(new Event('input', { bubbles: true }))
   })
 }
 
 function dispatchTextControlValue(input: HTMLInputElement | HTMLTextAreaElement, value: string) {
   flushSync(() => {
-    if (input instanceof HTMLTextAreaElement) {
-      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set?.call(input, value)
-    } else {
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, value)
-    }
+    setNativeTextControlValue(input, value)
     input.dispatchEvent(new Event('input', { bubbles: true }))
   })
+}
+
+function setNativeTextControlValue(input: HTMLInputElement | HTMLTextAreaElement, value: string): void {
+  const prototype = input instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype
+  const descriptor = Object.getOwnPropertyDescriptor(prototype, 'value')
+  if (typeof descriptor?.set !== 'function') {
+    input.value = value
+    return
+  }
+  // oxlint-disable-next-line typescript-eslint/unbound-method -- React input tests need the native setter with an explicit receiver.
+  Reflect.apply(descriptor.set, input, [value])
 }
 
 afterEach(() => {
@@ -294,15 +302,27 @@ describe('FormulaBar', () => {
     })
   })
 
-  it('keeps a focused name-box draft when selection display props refresh', async () => {
+  it('preserves dirty name-box input during late selection refreshes', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
     const host = document.createElement('div')
     document.body.appendChild(host)
     const root = createRoot(host)
+    const commits: string[] = []
 
     await act(async () => {
-      root.render(<FormulaBarHarness initialEditing={false} initialValue="" selectionLabel="B2" />)
+      root.render(
+        <FormulaBarHarness
+          address="C2"
+          initialEditing={false}
+          initialValue=""
+          onAddressCommitResult={(next) => {
+            commits.push(next)
+            return true
+          }}
+          selectionLabel="C2"
+        />,
+      )
     })
 
     const nameBox = host.querySelector<HTMLInputElement>("[data-testid='name-box']")
@@ -312,21 +332,30 @@ describe('FormulaBar', () => {
     }
 
     nameBox.focus()
-    dispatchInputValue(nameBox, 'C2')
+    dispatchInputValue(nameBox, 'D4')
 
     await act(async () => {
-      root.render(<FormulaBarHarness initialEditing={false} initialValue="" selectionLabel="D4" />)
-    })
-
-    expect(nameBox.value).toBe('C2')
-
-    nameBox.blur()
-
-    await act(async () => {
-      root.render(<FormulaBarHarness initialEditing={false} initialValue="" selectionLabel="D4" />)
+      root.render(
+        <FormulaBarHarness
+          address="B2"
+          initialEditing={false}
+          initialValue=""
+          onAddressCommitResult={(next) => {
+            commits.push(next)
+            return true
+          }}
+          selectionLabel="B2"
+        />,
+      )
     })
 
     expect(nameBox.value).toBe('D4')
+
+    await act(async () => {
+      nameBox.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    })
+
+    expect(commits).toEqual(['D4'])
 
     await act(async () => {
       root.unmount()

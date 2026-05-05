@@ -4,6 +4,7 @@ import { TextOverflowIndexV3 } from '../../../../packages/grid/src/renderer-v3/t
 import { DirtyMaskV3 } from '../../../../packages/grid/src/renderer-v3/tile-damage-index.js'
 import { packTileKey53, unpackTileKey53 } from '../../../../packages/grid/src/renderer-v3/tile-key.js'
 import { buildWorkerRenderTileDeltaBatch } from '../worker-runtime-render-tile-delta.js'
+import { buildFreezeVersion } from '../worker-runtime-render-axis.js'
 
 const emptyCell: CellSnapshot = {
   sheetName: 'Sheet1',
@@ -318,6 +319,29 @@ describe('worker-runtime-render-tile-delta', () => {
       tileId: visibleTileKey,
     })
     expect(replacement?.kind === 'tileReplace' ? unpackTileKey53(replacement.tileId).sheetOrdinal : null).toBe(2)
+  })
+
+  it('versions worker-materialized tiles with the current freeze pane', () => {
+    const batch = buildWorkerRenderTileDeltaBatch({
+      engine: {
+        ...engine,
+        getFreezePane: () => ({ cols: 3, rows: 2 }),
+      },
+      generation: 15,
+      subscription: {
+        sheetId: 7,
+        sheetName: 'Sheet1',
+        rowStart: 0,
+        rowEnd: 31,
+        colStart: 0,
+        colEnd: 127,
+        dprBucket: 1,
+        cameraSeq: 24,
+      },
+    })
+
+    const replacement = batch.mutations.find((mutation) => mutation.kind === 'tileReplace')
+    expect(replacement?.kind === 'tileReplace' ? replacement.version.freeze : null).toBe(buildFreezeVersion(2, 3))
   })
 
   it('skips event-driven tile materialization when dirty ranges miss the subscription', () => {

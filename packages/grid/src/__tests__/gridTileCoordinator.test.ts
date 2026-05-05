@@ -60,7 +60,7 @@ describe('GridTileCoordinator', () => {
     })
   })
 
-  it('classifies exact, stale-compatible, and missing visible tiles', () => {
+  it('classifies exact, dirty exact, and missing visible tiles without cross-coordinate stale hits', () => {
     const coordinator = new GridTileCoordinator()
     const exact = coordinator.upsertTile(tile(0, 0))
     coordinator.upsertTile(tile(0, 3, { key: key(0, 3), valueSeq: 1 }))
@@ -92,8 +92,8 @@ describe('GridTileCoordinator', () => {
 
     expect(coordinator.reconcileInterest(interest)).toEqual({
       exactHits: [exact.key],
-      staleHits: [dirty.key, missing],
-      misses: [],
+      staleHits: [],
+      misses: [dirty.key, missing],
       visibleDirtyTileKeys: [dirty.key],
       warmDirtyTileKeys: [],
     })

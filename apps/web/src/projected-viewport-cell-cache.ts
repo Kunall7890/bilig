@@ -3,9 +3,11 @@ import { ValueTag, type CellSnapshot, type CellStyleRecord, type Viewport } from
 import { selectProjectedViewportKeysToEvict } from './projected-viewport-cache-pruning.js'
 import {
   cellSnapshotSignature,
+  prepareIncomingSnapshot,
   shouldKeepCurrentSnapshot,
   type ProjectedViewportPatchApplicationResult,
 } from './projected-viewport-patch-application.js'
+import { OPTIMISTIC_CELL_SNAPSHOT_FLAG } from './workbook-optimistic-cell-flags.js'
 
 const DEFAULT_STYLE_ID = 'style-0'
 export const DEFAULT_MAX_CACHED_CELLS_PER_SHEET = 6000
@@ -138,23 +140,50 @@ export class ProjectedViewportCellCache {
   setCellSnapshot(snapshot: CellSnapshot, options: { force?: boolean } = {}): boolean {
     const key = `${snapshot.sheetName}!${snapshot.address}`
     const current = this.cellSnapshots.get(key)
+    const incoming = current ? prepareIncomingSnapshot(current, snapshot) : snapshot
     if (!current && isResetEmptySnapshot(snapshot)) {
       this.knownSheets.add(snapshot.sheetName)
       return false
     }
     if (current) {
-      if (!options.force && shouldKeepCurrentSnapshot(current, snapshot, { allowResetEmptyOverride: false })) {
+      const shouldProtectCurrent = options.force !== true || (current.flags & OPTIMISTIC_CELL_SNAPSHOT_FLAG) !== 0
+      if (shouldProtectCurrent && shouldKeepCurrentSnapshot(current, incoming, { allowResetEmptyOverride: false })) {
         return false
       }
-      if (cellSnapshotSignature(current) === cellSnapshotSignature(snapshot)) {
+      if (cellSnapshotSignature(current) === cellSnapshotSignature(incoming)) {
         return false
       }
     }
     this.knownSheets.add(snapshot.sheetName)
-    this.cellSnapshots.set(key, snapshot)
+    this.cellSnapshots.set(key, incoming)
     this.touchCellKey(key)
     this.sheetCellKeys(snapshot.sheetName).add(key)
     this.notifyCellSubscriptions(new Set([key]))
+    this.emitChange()
+    return true
+  }
+
+  clearOptimisticCellFlagsForSheet(sheetName: string): boolean {
+    const sheetCellKeys = this.cellKeysBySheet.get(sheetName)
+    if (!sheetCellKeys) {
+      return false
+    }
+    const changedKeys = new Set<string>()
+    sheetCellKeys.forEach((key) => {
+      const snapshot = this.cellSnapshots.get(key)
+      if (!snapshot || (snapshot.flags & OPTIMISTIC_CELL_SNAPSHOT_FLAG) === 0) {
+        return
+      }
+      this.cellSnapshots.set(key, {
+        ...snapshot,
+        flags: snapshot.flags & ~OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+      })
+      changedKeys.add(key)
+    })
+    if (changedKeys.size === 0) {
+      return false
+    }
+    this.notifyCellSubscriptions(changedKeys)
     this.emitChange()
     return true
   }

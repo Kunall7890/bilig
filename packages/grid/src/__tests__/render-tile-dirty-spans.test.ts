@@ -66,6 +66,21 @@ describe('render tile dirty spans v3', () => {
     expect(spans.textSpans).toEqual([{ offset: 1, length: 1 }])
   })
 
+  test('does not rewrite all text when dirty cells have no text run', () => {
+    const spans = resolveGridRenderTileDirtySpansV3(
+      createTile({
+        dirtyLocalCols: new Uint32Array([3, 3]),
+        dirtyLocalRows: new Uint32Array([3, 3]),
+        dirtyMasks: new Uint32Array([DirtyMaskV3.Value | DirtyMaskV3.Text]),
+        textCount: 2,
+        textRuns: [createTextRun({ col: 0, row: 0 }), createTextRun({ col: 1, row: 0 })],
+      }),
+    )
+
+    expect(spans.rectSpans).toEqual([])
+    expect(spans.textSpans).toEqual([])
+  })
+
   test('maps exact cell-local rect damage to row-major rect instance spans', () => {
     const spans = resolveGridRenderTileDirtySpansV3(
       createTile({

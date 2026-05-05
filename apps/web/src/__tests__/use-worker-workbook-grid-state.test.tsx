@@ -191,11 +191,19 @@ describe('useWorkerWorkbookGridState', () => {
     expect(capturedState.freezeRows).toBe(5)
     expect(capturedState.freezeCols).toBe(2)
     expect(capturedState.selectedCell).toBe(nextCell)
+    expect(viewportStore.clearOptimisticCellFlagsForSheet).toHaveBeenCalledTimes(4)
+    expect(viewportStore.clearOptimisticCellFlagsForSheet).toHaveBeenNthCalledWith(1, 'Sheet1')
+    expect(viewportStore.clearOptimisticCellFlagsForSheet).toHaveBeenNthCalledWith(2, 'Sheet1')
+    expect(viewportStore.clearOptimisticCellFlagsForSheet).toHaveBeenNthCalledWith(3, 'Sheet1')
+    expect(viewportStore.clearOptimisticCellFlagsForSheet).toHaveBeenNthCalledWith(4, 'Sheet1')
     expect(invokeMutation).toHaveBeenNthCalledWith(1, 'insertRows', 'Sheet1', 2, 3)
     expect(invokeMutation).toHaveBeenNthCalledWith(2, 'deleteRows', 'Sheet1', 4, 1)
     expect(invokeMutation).toHaveBeenNthCalledWith(3, 'insertColumns', 'Sheet1', 5, 2)
     expect(invokeMutation).toHaveBeenNthCalledWith(4, 'deleteColumns', 'Sheet1', 7, 1)
     expect(invokeMutation).toHaveBeenNthCalledWith(5, 'setFreezePane', 'Sheet1', 6, 4)
+    viewportStore.clearOptimisticCellFlagsForSheet.mock.invocationCallOrder.forEach((clearCallOrder, index) => {
+      expect(clearCallOrder).toBeLessThan(invokeMutation.mock.invocationCallOrder[index] ?? 0)
+    })
     expect(returnedInsertRowsTask).toBe(insertRowsTask)
     expect(returnedDeleteRowsTask).toBe(deleteRowsTask)
     expect(returnedInsertColumnsTask).toBe(insertColumnsTask)
@@ -225,6 +233,7 @@ class TestViewportStore {
   private readonly freezeRowsBySheet = new Map<string, number>()
   private readonly freezeColsBySheet = new Map<string, number>()
   private readonly cells = new Map<string, CellSnapshot>()
+  readonly clearOptimisticCellFlagsForSheet = vi.fn()
 
   subscribeSheetChannel(sheetName: string, channel: string, listener: () => void): () => void {
     const channels = this.channelListeners.get(sheetName) ?? new Map<string, Set<() => void>>()

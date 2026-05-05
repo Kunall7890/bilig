@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ValueTag, type CellSnapshot } from '@bilig/protocol'
 import { DEFAULT_MAX_CACHED_CELLS_PER_SHEET, ProjectedViewportCellCache } from '../projected-viewport-cell-cache.js'
+import { OPTIMISTIC_CELL_SNAPSHOT_FLAG } from '../workbook-optimistic-cell-flags.js'
 
 function countSheetCells(cache: ProjectedViewportCellCache, sheetName: string): number {
   let count = 0
@@ -112,6 +113,42 @@ describe('ProjectedViewportCellCache', () => {
     expect(cache.setCellSnapshot(resetEmptySnapshot('C1'), { force: true })).toBe(true)
 
     expect(cache.getCell('Sheet1', 'C1').value).toEqual({ tag: ValueTag.Empty })
+  })
+
+  it('clears optimistic protection flags for one sheet before structural mutations', () => {
+    const cache = new ProjectedViewportCellCache()
+    const sheet1Listener = vi.fn()
+    const sheet2Listener = vi.fn()
+    const globalListener = vi.fn()
+    cache.subscribeCells('Sheet1', ['B2'], sheet1Listener)
+    cache.subscribeCells('Sheet2', ['B2'], sheet2Listener)
+    cache.subscribe(globalListener)
+    cache.setCellSnapshot({
+      ...snapshot('B2', 'pending'),
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+    })
+    cache.setCellSnapshot({
+      ...snapshot('C2', 'stable'),
+      flags: 0,
+    })
+    cache.setCellSnapshot({
+      ...snapshot('B2', 'other-sheet'),
+      sheetName: 'Sheet2',
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+    })
+    sheet1Listener.mockClear()
+    sheet2Listener.mockClear()
+    globalListener.mockClear()
+
+    expect(cache.clearOptimisticCellFlagsForSheet('Sheet1')).toBe(true)
+
+    expect(cache.getCell('Sheet1', 'B2').flags).toBe(0)
+    expect(cache.getCell('Sheet1', 'C2').flags).toBe(0)
+    expect(cache.getCell('Sheet2', 'B2').flags).toBe(OPTIMISTIC_CELL_SNAPSHOT_FLAG)
+    expect(sheet1Listener).toHaveBeenCalledTimes(1)
+    expect(sheet2Listener).not.toHaveBeenCalled()
+    expect(globalListener).toHaveBeenCalledTimes(1)
+    expect(cache.clearOptimisticCellFlagsForSheet('Sheet1')).toBe(false)
   })
 
   it('tracks cell subscriptions and exposes sheet grid entries', () => {

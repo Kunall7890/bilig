@@ -200,7 +200,8 @@ async function dragProductSelectedContentLane(
 }
 
 test('web app accepts string values and string comparison formulas', async ({ page }) => {
-  await page.goto('/')
+  const documentId = createTestDocumentId('playwright-string-comparison')
+  await page.goto(`/?document=${encodeURIComponent(documentId)}`)
   await waitForWorkbookReady(page)
 
   const nameBox = page.getByTestId('name-box')
@@ -1026,7 +1027,8 @@ for (const key of ['Delete', 'Backspace'] as const) {
 }
 
 test('web app clears the selected cell with Delete after name-box navigation', async ({ page }) => {
-  await page.goto('/')
+  const documentId = createTestDocumentId('playwright-delete-after-name-box')
+  await page.goto(`/?document=${encodeURIComponent(documentId)}`)
   await waitForWorkbookReady(page)
 
   const formulaInput = page.getByTestId('formula-input')
