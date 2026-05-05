@@ -1,0 +1,43 @@
+name: Feature request
+description: Propose a scoped engine, formula, grid, sync, agent, or runtime feature.
+title: "[feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user or runtime problem should this solve?
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - core engine
+        - formula semantics
+        - WorkPaper performance
+        - grid UI
+        - renderer / React workbook DSL
+        - sync / replication
+        - agent API
+        - WASM kernel
+        - docs / examples
+        - other
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: Describe the smallest useful version.
+    validations:
+      required: true
+  - type: textarea
+    id: proof
+    attributes:
+      label: Acceptance proof
+      description: Tests, benchmark cases, fixtures, screenshots, or docs that should prove it works.
+    validations:
+      required: true

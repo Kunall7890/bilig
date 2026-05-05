@@ -1,0 +1,59 @@
+name: Bug report
+description: Report a reproducible bilig bug.
+title: "[bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a focused report. Reproducible workbook, formula, sync, and grid bugs are the most useful.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What went wrong?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: List exact commands, app steps, workbook state, or formula inputs.
+      placeholder: |
+        1. Run `pnpm dev:web-local`
+        2. Open ...
+        3. Enter ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Node, Bun, pnpm, OS, browser, and relevant package/app.
+      placeholder: |
+        Node:
+        Bun:
+        pnpm:
+        OS:
+        Browser:
+        Package/app:
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or artifacts
+      description: Paste focused logs, benchmark output, screenshots, or failing test names.
+      render: text
