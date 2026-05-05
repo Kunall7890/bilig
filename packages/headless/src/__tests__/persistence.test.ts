@@ -9,6 +9,7 @@ import {
   serializeWorkPaperDocument,
   WORK_PAPER_DOCUMENT_FORMAT,
   WorkPaper,
+  WorkPaperPersistenceError,
 } from '../index.js'
 
 describe('WorkPaper persistence helpers', () => {
@@ -82,12 +83,59 @@ describe('WorkPaper persistence helpers', () => {
 
   it('rejects invalid persisted WorkPaper documents', () => {
     expect(isPersistedWorkPaperDocument({})).toBe(false)
-    expect(() => parseWorkPaperDocument('{}')).toThrow('Invalid persisted WorkPaper document')
+    expect(() => parseWorkPaperDocument('{}')).toThrow(WorkPaperPersistenceError)
+    expect(() => parseWorkPaperDocument('{')).toThrow(WorkPaperPersistenceError)
     expect(
       isPersistedWorkPaperDocument({
         format: WORK_PAPER_DOCUMENT_FORMAT,
         sheets: [{ name: 'Sheet1', content: [[1]] }],
         namedExpressions: [{ name: 'Rate', expression: '=1', scopeSheetName: 1 }],
+      }),
+    ).toBe(false)
+  })
+
+  it('rejects non-json and structurally unsafe persisted document values', () => {
+    const sparseRow: unknown[] = [null]
+    Reflect.deleteProperty(sparseRow, '0')
+    const sparseSheets = [{ name: 'Sheet1', content: [sparseRow] }]
+
+    expect(
+      isPersistedWorkPaperDocument({
+        format: WORK_PAPER_DOCUMENT_FORMAT,
+        sheets: [{ name: 'Sheet1', content: [[Number.NaN]] }],
+        namedExpressions: [],
+      }),
+    ).toBe(false)
+    expect(
+      isPersistedWorkPaperDocument({
+        format: WORK_PAPER_DOCUMENT_FORMAT,
+        sheets: sparseSheets,
+        namedExpressions: [],
+      }),
+    ).toBe(false)
+    expect(
+      isPersistedWorkPaperDocument({
+        format: WORK_PAPER_DOCUMENT_FORMAT,
+        sheets: [
+          { name: 'Sheet1', content: [[1]] },
+          { name: 'Sheet1', content: [[2]] },
+        ],
+        namedExpressions: [],
+      }),
+    ).toBe(false)
+    expect(
+      isPersistedWorkPaperDocument({
+        format: WORK_PAPER_DOCUMENT_FORMAT,
+        sheets: [{ name: 'Sheet1', content: [[1]] }],
+        namedExpressions: [{ name: 'Scoped', expression: '=1', scopeSheetName: 'Missing' }],
+      }),
+    ).toBe(false)
+    expect(
+      isPersistedWorkPaperDocument({
+        format: WORK_PAPER_DOCUMENT_FORMAT,
+        sheets: [{ name: 'Sheet1', content: [[1]] }],
+        namedExpressions: [],
+        config: { maxRows: 0 },
       }),
     ).toBe(false)
   })

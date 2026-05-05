@@ -32,6 +32,38 @@ export interface TypeGpuTileDrawSurface {
   readonly dpr: number
 }
 
+export function hasCompleteTypeGpuBodyTileContentV3(input: {
+  readonly tilePanes: readonly WorkbookRenderTilePaneState[]
+  readonly tileResources: Pick<TypeGpuTileResourceCacheV3, 'peekContent'>
+}): boolean {
+  if (input.tilePanes.length === 0) {
+    return false
+  }
+  for (const pane of input.tilePanes) {
+    if (pane.paneId !== 'body' && !pane.paneId.startsWith('body:')) {
+      continue
+    }
+    const content = input.tileResources.peekContent(resolveWorkbookTileContentBufferKeyV3(pane))
+    if (!content) {
+      return false
+    }
+    if (content.rectCount === 0 && content.textCount === 0) {
+      return false
+    }
+    if (
+      (pane.tile.rectCount > 0 && (!content.rectHandle || content.rectCount < pane.tile.rectCount)) ||
+      (pane.tile.textCount > 0 && (!content.textHandle || content.textCount === 0))
+    ) {
+      return false
+    }
+  }
+  return true
+}
+
+function isPaneDrawVisible(pane: WorkbookRenderTilePaneState | GridHeaderPaneState): boolean {
+  return pane.drawVisible !== false
+}
+
 export function drawTypeGpuTilePanesV3(input: {
   readonly artifacts: TypeGpuRendererArtifacts
   readonly layerResources: TypeGpuLayerResourceCacheV3
@@ -42,6 +74,10 @@ export function drawTypeGpuTilePanesV3(input: {
   readonly surface: TypeGpuTileDrawSurface
   readonly scrollSnapshot: WorkbookGridScrollSnapshot
 }): void {
+  if (!hasCompleteTypeGpuBodyTileContentV3(input) || !hasDrawableTypeGpuBodyPaneFramesV3(input)) {
+    return
+  }
+
   const commandEncoder = input.artifacts.device.createCommandEncoder()
   const pass = commandEncoder.beginRenderPass({
     colorAttachments: [
@@ -55,16 +91,22 @@ export function drawTypeGpuTilePanesV3(input: {
   })
 
   input.tilePanes.forEach((pane) => {
+    if (!isPaneDrawVisible(pane)) {
+      return
+    }
+    const scissorRect = resolveClampedScissorRect(pane.frame, input.surface)
+    if (!scissorRect) {
+      return
+    }
+    const paneRenderOffset = resolvePaneRenderOffset(pane, input.scrollSnapshot)
     const content = input.tileResources.peekContent(resolveWorkbookTileContentBufferKeyV3(pane))
     const placement = input.tileResources.getPlacement(resolveWorkbookTilePlacementBufferKeyV3(pane))
-    const scissorRect = resolveClampedScissorRect(pane.frame, input.surface)
-    if (!content || !scissorRect) {
+    if (!content) {
       return
     }
 
     pass.setScissorRect(scissorRect.x, scissorRect.y, scissorRect.width, scissorRect.height)
     const paneOrigin = resolvePaneOrigin(pane)
-    const paneRenderOffset = resolvePaneRenderOffset(pane, input.scrollSnapshot)
 
     if (content.rectCount > 0 || content.textCount > 0) {
       ensureTilePlacementSurfaceBindingsV3(input.artifacts, placement)
@@ -114,6 +156,26 @@ export function drawTypeGpuTilePanesV3(input: {
   noteGridDrawFrame(performance.now())
 }
 
+function hasDrawableTypeGpuBodyPaneFramesV3(input: {
+  readonly tilePanes: readonly WorkbookRenderTilePaneState[]
+  readonly surface: TypeGpuTileDrawSurface
+}): boolean {
+  let hasBodyPane = false
+  for (const pane of input.tilePanes) {
+    if (pane.paneId !== 'body' && !pane.paneId.startsWith('body:')) {
+      continue
+    }
+    if (!isPaneDrawVisible(pane)) {
+      continue
+    }
+    hasBodyPane = true
+    if (!resolveClampedScissorRect(pane.frame, input.surface)) {
+      return false
+    }
+  }
+  return hasBodyPane
+}
+
 function drawTypeGpuOverlay(input: {
   readonly artifacts: TypeGpuRendererArtifacts
   readonly layerResources: TypeGpuLayerResourceCacheV3
@@ -153,18 +215,21 @@ function drawTypeGpuHeaderPanes(input: {
   readonly surface: TypeGpuTileDrawSurface
 }): void {
   input.headerPanes.forEach((pane) => {
-    const paneCache = input.layerResources.peek(resolveWorkbookHeaderLayerKeyV3(pane))
-    if (!paneCache) {
+    if (!isPaneDrawVisible(pane)) {
       return
     }
     const scissorRect = resolveClampedScissorRect(pane.frame, input.surface)
     if (!scissorRect) {
       return
     }
+    const paneRenderOffset = resolvePaneRenderOffset(pane, input.scrollSnapshot)
+    const paneCache = input.layerResources.peek(resolveWorkbookHeaderLayerKeyV3(pane))
+    if (!paneCache) {
+      return
+    }
 
     input.pass.setScissorRect(scissorRect.x, scissorRect.y, scissorRect.width, scissorRect.height)
     const paneOrigin = resolvePaneOrigin(pane)
-    const paneRenderOffset = resolvePaneRenderOffset(pane, input.scrollSnapshot)
 
     if (paneCache.rectCount > 0 || paneCache.textCount > 0) {
       ensureLayerSurfaceBindingsV3(input.artifacts, paneCache)

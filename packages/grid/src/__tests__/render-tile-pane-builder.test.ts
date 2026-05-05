@@ -76,6 +76,44 @@ describe('render tile pane builder', () => {
     expect(pane.tile.version.values).toBe(16)
   })
 
+  it('keeps resident body panes mounted while marking only visible body tiles drawable', () => {
+    const gridMetrics = getGridMetrics()
+    const tiles = [
+      createTile({ tileId: 101, rowTile: 0, colTile: 0, rowStart: 0, rowEnd: 31, colStart: 0, colEnd: 127 }),
+      createTile({ tileId: 102, rowTile: 0, colTile: 1, rowStart: 0, rowEnd: 31, colStart: 128, colEnd: 255 }),
+      createTile({ tileId: 103, rowTile: 1, colTile: 0, rowStart: 32, rowEnd: 63, colStart: 0, colEnd: 127 }),
+      createTile({ tileId: 104, rowTile: 1, colTile: 1, rowStart: 32, rowEnd: 63, colStart: 128, colEnd: 255 }),
+      createTile({ tileId: 105, rowTile: 2, colTile: 0, rowStart: 64, rowEnd: 95, colStart: 0, colEnd: 127 }),
+      createTile({ tileId: 106, rowTile: 2, colTile: 1, rowStart: 64, rowEnd: 95, colStart: 128, colEnd: 255 }),
+    ]
+    const panes = buildFixedRenderTilePaneStates({
+      freezeCols: 0,
+      freezeRows: 0,
+      frozenColumnWidth: 0,
+      frozenRowHeight: 0,
+      gridMetrics,
+      hostHeight: 400,
+      hostWidth: 600,
+      residentViewport: { rowStart: 0, rowEnd: 95, colStart: 0, colEnd: 255 },
+      sortedColumnWidthOverrides: [],
+      sortedRowHeightOverrides: [],
+      tiles,
+      visibleViewport: { rowStart: 64, rowEnd: 88, colStart: 128, colEnd: 160 },
+    })
+
+    expect(panes).toHaveLength(6)
+    expect(panes.find((pane) => pane.paneId === 'body')?.drawVisible).toBe(false)
+    expect(panes.filter((pane) => pane.drawVisible !== false).map((pane) => pane.paneId)).toEqual(['body:2:1'])
+    expect(panes.find((pane) => pane.paneId === 'body')?.surfaceSize).toEqual({
+      height: gridMetrics.rowHeight * 96,
+      width: gridMetrics.columnWidth * 256,
+    })
+    expect(panes.find((pane) => pane.paneId === 'body:2:1')?.contentOffset).toEqual({
+      x: gridMetrics.columnWidth * 128,
+      y: gridMetrics.rowHeight * 64,
+    })
+  })
+
   it('reuses the same content tile for frozen placements', () => {
     const gridMetrics = getGridMetrics()
     const tile = createTile({ tileId: 101, rowTile: 0, colTile: 0, rowStart: 0, rowEnd: 31, colStart: 0, colEnd: 127 })

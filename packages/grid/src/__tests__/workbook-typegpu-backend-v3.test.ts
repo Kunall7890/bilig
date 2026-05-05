@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, test, vi } from 'vitest'
+import type { GpuBufferHandleV3 } from '../renderer-v3/gpu-buffer-arena.js'
 import type { GridRenderTile } from '../renderer-v3/render-tile-source.js'
 import type { WorkbookRenderTilePaneState } from '../renderer-v3/render-tile-pane-state.js'
 import type { GridHeaderPaneState } from '../gridHeaderPanes.js'
@@ -17,8 +18,13 @@ import {
   resolveGridTextTileRevisionKeyV3,
   resolveWorkbookTileContentBufferKeyV3,
   resolveWorkbookTilePlacementBufferKeyV3,
+  type TypeGpuTileContentResourceEntryV3,
 } from '../renderer-v3/typegpu-tile-buffer-pool.js'
-import { resolveTypeGpuDrawTilePanesV3, syncRenderTileResidencyFromPanesV3 } from '../renderer-v3/typegpu-workbook-backend-v3.js'
+import {
+  hasTransientEmptyTypeGpuBodyFrameV3,
+  resolveTypeGpuDrawTilePanesV3,
+  syncRenderTileResidencyFromPanesV3,
+} from '../renderer-v3/typegpu-workbook-backend-v3.js'
 import { TileResidencyV3 } from '../renderer-v3/tile-residency.js'
 
 function createRenderTile(valueVersion: number, tileId = 101): GridRenderTile {
@@ -83,6 +89,16 @@ function createHeaderPane(paneId: GridHeaderPaneState['paneId']): GridHeaderPane
   }
 }
 
+function createHandle(layout: GpuBufferHandleV3['layout']): GpuBufferHandleV3 {
+  return {
+    buffer: {},
+    capacityBytes: 256,
+    classId: 8,
+    layout,
+    usedBytes: 64,
+  }
+}
+
 function upsertRenderTile(residency: TileResidencyV3<GridRenderTile, null>, tile: GridRenderTile): void {
   residency.upsert({
     axisSeqX: tile.version.axisX,
@@ -103,6 +119,19 @@ function upsertRenderTile(residency: TileResidencyV3<GridRenderTile, null>, tile
     textSeq: tile.version.text,
     valueSeq: tile.version.values,
   })
+}
+
+function markContentReady(content: TypeGpuTileContentResourceEntryV3, tile: GridRenderTile): void {
+  content.rectCount = tile.rectCount
+  content.textCount = tile.textCount
+  content.rectRevisionKey = resolveGridRectTileRevisionKeyV3({ tile })
+  content.textRevisionKey = resolveGridTextTileRevisionKeyV3(tile)
+  if (tile.rectCount > 0) {
+    content.rectHandle = createHandle('rectInstances')
+  }
+  if (tile.textCount > 0) {
+    content.textHandle = createHandle('textRuns')
+  }
 }
 
 describe('workbook typegpu backend v3 tile path', () => {
@@ -253,6 +282,121 @@ describe('workbook typegpu backend v3 tile path', () => {
       })[0]?.tile,
     ).toBe(tile)
     expect(onTileMiss).toHaveBeenCalledWith(tile.tileId)
+  })
+
+  test('blocks transient empty body frames from replacing populated tile content', () => {
+    const tile = createRenderTile(2)
+    const pane = createTilePane(tile)
+    const tileResources = new TypeGpuTileResourceCacheV3()
+    const content = tileResources.getContent(resolveWorkbookTileContentBufferKeyV3(pane))
+    content.rectCount = 2
+    content.textCount = 1
+    const emptyPane = createTilePane({
+      ...tile,
+      rectCount: 0,
+      textCount: 0,
+      textRuns: [],
+    })
+
+    expect(hasTransientEmptyTypeGpuBodyFrameV3({ tilePanes: [emptyPane], tileResources })).toBe(true)
+  })
+
+  test('draws resident body tile content during transient empty frames', () => {
+    const residentTile = {
+      ...createRenderTile(2),
+      rectCount: 1,
+      rectInstances: new Float32Array(GRID_RECT_INSTANCE_FLOAT_COUNT_V3),
+    }
+    const residentPane = createTilePane(residentTile)
+    const emptyPane = createTilePane({
+      ...residentTile,
+      rectCount: 0,
+      textCount: 0,
+      textRuns: [],
+    })
+    const tileResources = new TypeGpuTileResourceCacheV3()
+    const residency = new TileResidencyV3<GridRenderTile, null>()
+    upsertRenderTile(residency, residentTile)
+    markContentReady(tileResources.getContent(resolveWorkbookTileContentBufferKeyV3(residentPane)), residentTile)
+
+    const drawPanes = resolveTypeGpuDrawTilePanesV3({
+      panes: [emptyPane],
+      residency,
+      tileResources,
+    })
+
+    expect(hasTransientEmptyTypeGpuBodyFrameV3({ tilePanes: [emptyPane], tileResources })).toBe(true)
+    expect(drawPanes[0]?.tile).toBe(residentTile)
+  })
+
+  test('draws stale-compatible resident body content while the exact tile is not ready', () => {
+    const residentTile = {
+      ...createRenderTile(2, 101),
+      textCount: 1,
+      textMetrics: new Float32Array(GRID_TEXT_METRIC_FLOAT_COUNT_V3),
+      textRuns: [
+        {
+          clipHeight: 16,
+          clipWidth: 80,
+          clipX: 0,
+          clipY: 0,
+          color: '#111111',
+          font: '11px sans-serif',
+          fontSize: 11,
+          height: 16,
+          strike: false,
+          text: 'ready',
+          underline: false,
+          width: 80,
+          x: 0,
+          y: 0,
+        },
+      ],
+    }
+    const pendingTile = {
+      ...residentTile,
+      lastBatchId: 3,
+      tileId: 202,
+      version: {
+        ...residentTile.version,
+        text: 3,
+        values: 3,
+      },
+    }
+    const pendingPane = createTilePane(pendingTile)
+    const tileResources = new TypeGpuTileResourceCacheV3()
+    const residency = new TileResidencyV3<GridRenderTile, null>()
+    const onTileMiss = vi.fn()
+    upsertRenderTile(residency, residentTile)
+    upsertRenderTile(residency, pendingTile)
+    markContentReady(tileResources.getContent(resolveWorkbookTileContentBufferKeyV3(createTilePane(residentTile))), residentTile)
+
+    const drawPanes = resolveTypeGpuDrawTilePanesV3({
+      onTileMiss,
+      panes: [pendingPane],
+      residency,
+      tileResources,
+    })
+
+    expect(drawPanes[0]?.tile).toBe(residentTile)
+    expect(onTileMiss).not.toHaveBeenCalled()
+  })
+
+  test('allows dirty empty body frames so real clears can render', () => {
+    const tile = createRenderTile(2)
+    const pane = createTilePane(tile)
+    const tileResources = new TypeGpuTileResourceCacheV3()
+    const content = tileResources.getContent(resolveWorkbookTileContentBufferKeyV3(pane))
+    content.textCount = 1
+    const dirtyEmptyPane = createTilePane({
+      ...tile,
+      dirtyMasks: new Uint32Array([1]),
+      rectCount: 0,
+      textCount: 0,
+      textRuns: [],
+    })
+
+    expect(hasTransientEmptyTypeGpuBodyFrameV3({ tilePanes: [dirtyEmptyPane], tileResources })).toBe(false)
   })
 
   test('uploads V3 atlas dirty pages without rewriting the whole atlas texture', () => {

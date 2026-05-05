@@ -64,6 +64,7 @@ describe('browser test phases', () => {
       '@browser-deep',
       '--grep-invert',
       '@browser-webgpu',
+      '--pass-with-no-tests',
     ])
     expect(phases.find((phase) => phase.label === 'browser webgpu deep tests')).toEqual({
       label: 'browser webgpu deep tests',

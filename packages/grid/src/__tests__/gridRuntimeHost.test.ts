@@ -634,4 +634,44 @@ describe('GridRuntimeHost', () => {
       scrollTop: 50,
     })
   })
+
+  it('does not autoscroll when the selected cell is already partially visible', () => {
+    const host = new GridRuntimeHost({
+      columnCount: 1000,
+      defaultColumnWidth: 100,
+      defaultRowHeight: 10,
+      gridMetrics,
+      rowCount: 1000,
+      viewportHeight: 116,
+      viewportWidth: 300,
+    })
+
+    expect(
+      host.resolveScrollForCellIntoView({
+        cell: [2, 9],
+        gridMetrics,
+        scrollLeft: 0,
+        scrollTop: 0,
+        viewportHeight: 116,
+        viewportWidth: 300,
+      }),
+    ).toEqual({
+      scrollLeft: 0,
+      scrollTop: 0,
+    })
+
+    expect(
+      host.resolveScrollForCellIntoView({
+        cell: [3, 10],
+        gridMetrics,
+        scrollLeft: 0,
+        scrollTop: 0,
+        viewportHeight: 116,
+        viewportWidth: 300,
+      }),
+    ).toEqual({
+      scrollLeft: 150,
+      scrollTop: 14,
+    })
+  })
 })

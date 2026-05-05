@@ -16,13 +16,19 @@ export function packGridRectBufferV3(
   scene: GridGpuScene,
   surfaceSize: { readonly width: number; readonly height: number },
 ): PackedGridRectBufferV3 {
+  const fillRects = coalesceGridRectsV3(scene.fillRects)
+  const borderRects = coalesceGridRectsV3(scene.borderRects)
+  const coalescedScene = {
+    borderRects,
+    fillRects,
+  }
   return {
-    borderRectCount: scene.borderRects.length,
-    fillRectCount: scene.fillRects.length,
-    rectCount: scene.fillRects.length + scene.borderRects.length,
-    rectInstances: packGridRectInstancesV3(scene, surfaceSize),
-    rects: packGridRectsV3(scene),
-    rectSignature: resolveGridRectSignatureV3(scene, surfaceSize),
+    borderRectCount: borderRects.length,
+    fillRectCount: fillRects.length,
+    rectCount: fillRects.length + borderRects.length,
+    rectInstances: packGridRectInstancesV3(coalescedScene, surfaceSize),
+    rects: packGridRectsV3(coalescedScene),
+    rectSignature: resolveGridRectSignatureV3(coalescedScene, surfaceSize),
   }
 }
 
@@ -72,6 +78,132 @@ export function resolveGridRectSignatureV3(scene: GridGpuScene, surfaceSize: { r
     hash = mixRect(hash, rect)
   }
   return hash.toString(36)
+}
+
+export function coalesceGridRectsV3(rects: readonly GridGpuRect[]): readonly GridGpuRect[] {
+  if (rects.length <= 1) {
+    return rects
+  }
+  const coalesced: GridGpuRect[] = []
+  const horizontalRuns = new Map<string, Map<string, number>>()
+  const verticalRuns = new Map<string, Map<string, number>>()
+
+  for (const rect of rects) {
+    if (rect.width <= 0 || rect.height <= 0) {
+      continue
+    }
+    const horizontalKey = createHorizontalRunKey(rect)
+    const horizontalEndKey = coordinateKey(rect.x)
+    const horizontalIndex = horizontalRuns.get(horizontalKey)?.get(horizontalEndKey)
+    if (horizontalIndex !== undefined && mergeHorizontalRect(coalesced, horizontalRuns, horizontalKey, horizontalIndex, rect)) {
+      continue
+    }
+
+    const verticalKey = createVerticalRunKey(rect)
+    const verticalEndKey = coordinateKey(rect.y)
+    const verticalIndex = verticalRuns.get(verticalKey)?.get(verticalEndKey)
+    if (verticalIndex !== undefined && mergeVerticalRect(coalesced, verticalRuns, verticalKey, verticalIndex, rect)) {
+      continue
+    }
+
+    const index = coalesced.length
+    coalesced.push(rect)
+    setRunIndex(horizontalRuns, horizontalKey, coordinateKey(rect.x + rect.width), index)
+    setRunIndex(verticalRuns, verticalKey, coordinateKey(rect.y + rect.height), index)
+  }
+
+  return coalesced
+}
+
+function mergeHorizontalRect(
+  rects: GridGpuRect[],
+  runs: Map<string, Map<string, number>>,
+  runKey: string,
+  index: number,
+  rect: GridGpuRect,
+): boolean {
+  const previous = rects[index]
+  if (
+    !previous ||
+    !sameGridRectColor(previous.color, rect.color) ||
+    !sameNumber(previous.y, rect.y) ||
+    !sameNumber(previous.height, rect.height)
+  ) {
+    return false
+  }
+  const previousEnd = previous.x + previous.width
+  if (!sameNumber(previousEnd, rect.x)) {
+    return false
+  }
+  runs.get(runKey)?.delete(coordinateKey(previousEnd))
+  rects[index] = {
+    ...previous,
+    width: rect.x + rect.width - previous.x,
+  }
+  setRunIndex(runs, runKey, coordinateKey(rect.x + rect.width), index)
+  return true
+}
+
+function mergeVerticalRect(
+  rects: GridGpuRect[],
+  runs: Map<string, Map<string, number>>,
+  runKey: string,
+  index: number,
+  rect: GridGpuRect,
+): boolean {
+  const previous = rects[index]
+  if (
+    !previous ||
+    !sameGridRectColor(previous.color, rect.color) ||
+    !sameNumber(previous.x, rect.x) ||
+    !sameNumber(previous.width, rect.width)
+  ) {
+    return false
+  }
+  const previousEnd = previous.y + previous.height
+  if (!sameNumber(previousEnd, rect.y)) {
+    return false
+  }
+  runs.get(runKey)?.delete(coordinateKey(previousEnd))
+  rects[index] = {
+    ...previous,
+    height: rect.y + rect.height - previous.y,
+  }
+  setRunIndex(runs, runKey, coordinateKey(rect.y + rect.height), index)
+  return true
+}
+
+function setRunIndex(runs: Map<string, Map<string, number>>, runKey: string, endKey: string, index: number): void {
+  let entries = runs.get(runKey)
+  if (!entries) {
+    entries = new Map()
+    runs.set(runKey, entries)
+  }
+  entries.set(endKey, index)
+}
+
+function createHorizontalRunKey(rect: GridGpuRect): string {
+  return ['h', coordinateKey(rect.y), coordinateKey(rect.height), colorKey(rect.color)].join('|')
+}
+
+function createVerticalRunKey(rect: GridGpuRect): string {
+  return ['v', coordinateKey(rect.x), coordinateKey(rect.width), colorKey(rect.color)].join('|')
+}
+
+function colorKey(color: GridGpuColor): string {
+  return [coordinateKey(color.r), coordinateKey(color.g), coordinateKey(color.b), coordinateKey(color.a)].join(',')
+}
+
+function coordinateKey(value: number): string {
+  return String(Math.round(value * 1000))
+}
+
+function sameNumber(left: number, right: number): boolean {
+  return coordinateKey(left) === coordinateKey(right)
+}
+
+function sameGridRectColor(left: GridGpuColor, right: GridGpuColor): boolean {
+  return sameNumber(left.r, right.r) && sameNumber(left.g, right.g) && sameNumber(left.b, right.b) && sameNumber(left.a, right.a)
 }
 
 function writeFillRectInstance(

@@ -50,6 +50,7 @@ export function buildFixedRenderTilePaneStates(input: {
   bodyTiles.forEach((tile, index) => {
     panes.push(
       buildPlacementPane({
+        drawVisible: intersects(tile.bounds, input.visibleViewport),
         frame: bodyFrame,
         id: index === 0 ? 'body' : `body:${tile.coord.rowTile}:${tile.coord.colTile}`,
         reference: bodyReference.bounds,
@@ -65,8 +66,8 @@ export function buildFixedRenderTilePaneStates(input: {
     const topViewport = {
       rowStart: 0,
       rowEnd: Math.max(0, input.freezeRows - 1),
-      colStart: input.residentViewport.colStart,
-      colEnd: input.residentViewport.colEnd,
+      colStart: input.visibleViewport.colStart,
+      colEnd: input.visibleViewport.colEnd,
     }
     const frame = getPaneFrame(layout, 'top')
     input.tiles
@@ -74,6 +75,7 @@ export function buildFixedRenderTilePaneStates(input: {
       .forEach((tile) => {
         panes.push(
           buildPlacementPane({
+            drawVisible: true,
             frame,
             id: `top:${tile.coord.rowTile}:${tile.coord.colTile}`,
             reference: bodyReference.bounds,
@@ -87,8 +89,8 @@ export function buildFixedRenderTilePaneStates(input: {
 
   if (input.freezeCols > 0 && input.frozenColumnWidth > 0) {
     const leftViewport = {
-      rowStart: input.residentViewport.rowStart,
-      rowEnd: input.residentViewport.rowEnd,
+      rowStart: input.visibleViewport.rowStart,
+      rowEnd: input.visibleViewport.rowEnd,
       colStart: 0,
       colEnd: Math.max(0, input.freezeCols - 1),
     }
@@ -98,6 +100,7 @@ export function buildFixedRenderTilePaneStates(input: {
       .forEach((tile) => {
         panes.push(
           buildPlacementPane({
+            drawVisible: true,
             frame,
             id: `left:${tile.coord.rowTile}:${tile.coord.colTile}`,
             reference: bodyReference.bounds,
@@ -122,6 +125,7 @@ export function buildFixedRenderTilePaneStates(input: {
       .forEach((tile) => {
         panes.push(
           buildPlacementPane({
+            drawVisible: true,
             frame,
             id: `corner:${tile.coord.rowTile}:${tile.coord.colTile}`,
             reference: bodyReference.bounds,
@@ -139,6 +143,7 @@ export function buildFixedRenderTilePaneStates(input: {
 function buildPlacementPane(
   input: AxisPlacementInput & {
     readonly frame: WorkbookRenderTilePaneState['frame']
+    readonly drawVisible?: boolean | undefined
     readonly id: string
     readonly reference: Viewport
     readonly scrollAxes: WorkbookTilePaneScrollAxes
@@ -155,6 +160,7 @@ function buildPlacementPane(
       x: input.scrollAxes.x ? tileX - referenceX : tileX,
       y: input.scrollAxes.y ? tileY - referenceY : tileY,
     },
+    drawVisible: input.drawVisible,
     frame: input.frame,
     generation: input.tile.lastBatchId,
     paneId: input.id,

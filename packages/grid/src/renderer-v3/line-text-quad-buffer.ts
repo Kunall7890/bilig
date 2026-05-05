@@ -66,12 +66,21 @@ export interface TextQuadRunSpan {
 
 export interface TextQuadRunPayloadV3 {
   readonly signature: string
+  readonly contentSignature: string
   readonly atlasGeometryVersion: number
   readonly atlasVersion: number
   readonly floats: Float32Array
   readonly glyphIds: readonly number[]
   readonly pageIds: readonly number[]
   readonly quadCount: number
+  readonly x: number
+  readonly y: number
+  readonly width?: number | undefined
+  readonly height?: number | undefined
+  readonly clipX?: number | undefined
+  readonly clipY?: number | undefined
+  readonly clipWidth?: number | undefined
+  readonly clipHeight?: number | undefined
 }
 
 export interface BuildTextQuadsFromRunsWithSpansOptionsV3 {
@@ -268,17 +277,37 @@ function buildTextQuadsFromRunsWithSpansInternal(
       quadCount += previousPayload.quadCount
       continue
     }
+    const translatedPayload =
+      previousPayload && previousPayload.atlasGeometryVersion === initialAtlasVersion
+        ? translatePreviousRunPayloadIfPossible(run, previousPayload, signature)
+        : null
+    if (translatedPayload) {
+      runPayloads.push(translatedPayload)
+      reusedPreviousPayload = true
+      reusedRunPayloads += 1
+      quadCount += translatedPayload.quadCount
+      continue
+    }
     const runQuads = buildTextQuads([run], atlas)
     const packed = packTextQuads(runQuads)
     const atlasGeometryVersion = resolveAtlasPayloadVersion(atlas)
     const payload: TextQuadRunPayloadV3 = {
       atlasGeometryVersion,
       atlasVersion: atlasGeometryVersion,
+      contentSignature: resolveTextQuadRunContentSignatureV3(run),
       floats: packed.floats,
       glyphIds: packed.glyphIds,
       pageIds: packed.pageIds,
       quadCount: packed.quadCount,
       signature,
+      x: run.x,
+      y: run.y,
+      ...(run.width === undefined ? {} : { width: run.width }),
+      ...(run.height === undefined ? {} : { height: run.height }),
+      ...(run.clipX === undefined ? {} : { clipX: run.clipX }),
+      ...(run.clipY === undefined ? {} : { clipY: run.clipY }),
+      ...(run.clipWidth === undefined ? {} : { clipWidth: run.clipWidth }),
+      ...(run.clipHeight === undefined ? {} : { clipHeight: run.clipHeight }),
     }
     runPayloads.push(payload)
     rebuiltRunPayloads += 1
@@ -364,6 +393,75 @@ export function resolveTextQuadRunSignatureV3(run: TextQuadRun): string {
     run.underline === true ? 1 : 0,
     run.strike === true ? 1 : 0,
   ].join('\u0001')
+}
+
+function resolveTextQuadRunContentSignatureV3(run: TextQuadRun): string {
+  return [
+    'text-run-content-v3',
+    run.text,
+    run.width ?? '',
+    run.height ?? '',
+    run.clipWidth ?? '',
+    run.clipHeight ?? '',
+    run.align ?? '',
+    run.wrap === true ? 1 : 0,
+    run.font ?? '',
+    run.fontSize ?? '',
+    run.color ?? '',
+    run.underline === true ? 1 : 0,
+    run.strike === true ? 1 : 0,
+  ].join('\u0001')
+}
+
+function translatePreviousRunPayloadIfPossible(
+  run: TextQuadRun,
+  previousPayload: TextQuadRunPayloadV3,
+  signature: string,
+): TextQuadRunPayloadV3 | null {
+  if (previousPayload.contentSignature !== resolveTextQuadRunContentSignatureV3(run)) {
+    return null
+  }
+  if (previousPayload.quadCount <= 0) {
+    return {
+      ...previousPayload,
+      signature,
+      x: run.x,
+      y: run.y,
+      clipX: run.clipX,
+      clipY: run.clipY,
+    }
+  }
+  const dx = run.x - previousPayload.x
+  const dy = run.y - previousPayload.y
+  const dClipX = (run.clipX ?? previousPayload.clipX ?? run.x) - (previousPayload.clipX ?? previousPayload.x)
+  const dClipY = (run.clipY ?? previousPayload.clipY ?? run.y) - (previousPayload.clipY ?? previousPayload.y)
+  if (dx === 0 && dy === 0 && dClipX === 0 && dClipY === 0) {
+    return {
+      ...previousPayload,
+      signature,
+      x: run.x,
+      y: run.y,
+    }
+  }
+  const floats = previousPayload.floats.slice()
+  const floatCount = previousPayload.quadCount * TEXT_INSTANCE_FLOAT_COUNT
+  for (let offset = 0; offset < floatCount; offset += TEXT_INSTANCE_FLOAT_COUNT) {
+    floats[offset + 0] = (floats[offset + 0] ?? 0) + dx
+    floats[offset + 1] = (floats[offset + 1] ?? 0) + dy
+    floats[offset + 12] = (floats[offset + 12] ?? 0) + dClipX
+    floats[offset + 13] = (floats[offset + 13] ?? 0) + dClipY
+    floats[offset + 14] = (floats[offset + 14] ?? 0) + dClipX
+    floats[offset + 15] = (floats[offset + 15] ?? 0) + dClipY
+  }
+  return {
+    ...previousPayload,
+    floats,
+    signature,
+    x: run.x,
+    y: run.y,
+    clipX: run.clipX,
+    clipY: run.clipY,
+  }
 }
 
 function isTextRunDirty(index: number, dirtyRunSpans: readonly TextQuadRunSpan[] | undefined): boolean {

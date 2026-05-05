@@ -23,6 +23,13 @@ interface RecalcMetrics {
   readonly jsFormulaCount: number
 }
 
+interface RangeAggregateFastPathCounters {
+  readonly directAggregateDeltaApplications: number
+  readonly directAggregateDeltaOnlyRecalcSkips: number
+  readonly directAggregateScanEvaluations: number
+  readonly directAggregateScanCells: number
+}
+
 interface LoadBenchmarkResult {
   readonly materializedCells: number
   readonly elapsedMs: number
@@ -38,6 +45,7 @@ interface EditBenchmarkResult {
 interface RangeAggregateBenchmarkResult {
   readonly elapsedMs: number
   readonly metrics: RecalcMetrics
+  readonly performanceCounters: RangeAggregateFastPathCounters
   readonly memory: MemoryMeasurement
 }
 
@@ -119,15 +127,26 @@ function assertBudget(label, actual, threshold, formatter = formatMs) {
   }
 }
 
-function assertAllRunsUseWasmFastPath(label, runs, expectedWasmFormulaCount) {
+export function assertRangeAggregateRunsUseFastPath(
+  label: string,
+  runs: readonly RangeAggregateBenchmarkResult[],
+  expectedAggregateCount: number,
+): void {
   const degradedRun = runs.find((run) => {
-    return run.metrics.wasmFormulaCount < expectedWasmFormulaCount || run.metrics.jsFormulaCount !== 0
+    const counters = run.performanceCounters
+    const usedWasmFastPath = run.metrics.wasmFormulaCount >= expectedAggregateCount
+    const usedDirectAggregateDeltaPath =
+      counters.directAggregateDeltaApplications >= expectedAggregateCount &&
+      counters.directAggregateDeltaOnlyRecalcSkips > 0 &&
+      counters.directAggregateScanEvaluations === 0 &&
+      counters.directAggregateScanCells === 0
+    return run.metrics.jsFormulaCount !== 0 || (!usedWasmFastPath && !usedDirectAggregateDeltaPath)
   })
   if (!degradedRun) {
     return
   }
   throw new Error(
-    `${label} did not stay on the wasm fast path: wasm=${degradedRun.metrics.wasmFormulaCount}, js=${degradedRun.metrics.jsFormulaCount}`,
+    `${label} did not stay on a supported aggregate fast path: wasm=${degradedRun.metrics.wasmFormulaCount}, js=${degradedRun.metrics.jsFormulaCount}, directAggregateDelta=${degradedRun.performanceCounters.directAggregateDeltaApplications}, directAggregateScans=${degradedRun.performanceCounters.directAggregateScanEvaluations}, directAggregateScanCells=${degradedRun.performanceCounters.directAggregateScanCells}`,
   )
 }
 
@@ -362,7 +381,7 @@ export async function runBenchContracts(): Promise<void> {
   const workerReconnectSubmitDrainElapsed = summarizeNumbers(workerReconnectCatchUpRuns.map((run) => run.submitDrainMs))
   const workerReconnectAckElapsed = summarizeNumbers(workerReconnectCatchUpRuns.map((run) => run.ackMs))
 
-  assertAllRunsUseWasmFastPath('10k range aggregate benchmark', rangeRuns, 10_000)
+  assertRangeAggregateRunsUseFastPath('10k range aggregate benchmark', rangeRuns, 10_000)
 
   assertBudget('100k snapshot load p95', loadElapsed.p95, budgets.load100kP95Ms)
   assertBudget('250k snapshot load p95', load250kElapsed.p95, budgets.load250kP95Ms)

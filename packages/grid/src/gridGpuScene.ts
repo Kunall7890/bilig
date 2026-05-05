@@ -1,4 +1,4 @@
-import { formatAddress } from '@bilig/formula'
+import { formatAddress, parseCellAddress } from '@bilig/formula'
 import { ValueTag, type CellStyleRecord } from '@bilig/protocol'
 import type { GridEngineLike } from './grid-engine.js'
 import { getVisibleColumnBounds, getVisibleRowBounds, type GridMetrics } from './gridMetrics.js'
@@ -171,6 +171,27 @@ export function buildGridGpuScene({
     gridSelection.columns.length > 0 || gridSelection.rows.length > 0
       ? { x: selectedCell[0], y: selectedCell[1], width: 1, height: 1 }
       : selectionRange
+  const useAxisGridLineRects =
+    contentMode === 'data' &&
+    !hasMergedRangeIntersection({
+      engine,
+      sheetName,
+      colEnd: visibleMaxCol,
+      colStart: visibleMinCol,
+      rowEnd: visibleMaxRow,
+      rowStart: visibleMinRow,
+    })
+  if (useAxisGridLineRects) {
+    pushAxisGridLineRects({
+      borderRects,
+      getCellBounds,
+      hostBounds,
+      visibleMaxCol,
+      visibleMaxRow,
+      visibleMinCol,
+      visibleMinRow,
+    })
+  }
 
   for (const [col, row] of visibleItems) {
     const bounds = getCellBounds(col, row)
@@ -202,7 +223,9 @@ export function buildGridGpuScene({
       })
     }
 
-    pushGridLineRects(borderRects, rect, row, col, visibleMinRow, visibleMinCol)
+    if (!useAxisGridLineRects) {
+      pushGridLineRects(borderRects, rect, row, col, visibleMinRow, visibleMinCol)
+    }
 
     if (snapshot.value.tag === ValueTag.Boolean) {
       pushBooleanCellRects(fillRects, borderRects, rect, snapshot.value.value)
@@ -315,6 +338,100 @@ export function buildGridGpuScene({
   return {
     fillRects,
     borderRects,
+  }
+}
+
+function hasMergedRangeIntersection(input: {
+  readonly engine: GridEngineLike
+  readonly sheetName: string
+  readonly rowStart: number
+  readonly rowEnd: number
+  readonly colStart: number
+  readonly colEnd: number
+}): boolean {
+  const ranges = input.engine.listMergeRanges?.(input.sheetName)
+  if (!ranges) {
+    return true
+  }
+  for (const range of ranges) {
+    const start = parseCellAddress(range.startAddress, range.sheetName)
+    const end = parseCellAddress(range.endAddress, range.sheetName)
+    const rowStart = Math.min(start.row, end.row)
+    const rowEnd = Math.max(start.row, end.row)
+    const colStart = Math.min(start.col, end.col)
+    const colEnd = Math.max(start.col, end.col)
+    if (rowStart <= input.rowEnd && rowEnd >= input.rowStart && colStart <= input.colEnd && colEnd >= input.colStart) {
+      return true
+    }
+  }
+  return false
+}
+
+function pushAxisGridLineRects(options: {
+  readonly borderRects: GridGpuRect[]
+  readonly getCellBounds: (col: number, row: number) => Rectangle | undefined
+  readonly hostBounds: Pick<DOMRect, 'left' | 'top'>
+  readonly visibleMaxCol: number
+  readonly visibleMaxRow: number
+  readonly visibleMinCol: number
+  readonly visibleMinRow: number
+}): void {
+  const { borderRects, getCellBounds, hostBounds, visibleMaxCol, visibleMaxRow, visibleMinCol, visibleMinRow } = options
+  const topLeft = getCellBounds(visibleMinCol, visibleMinRow)
+  const bottomRight = getCellBounds(visibleMaxCol, visibleMaxRow)
+  if (!topLeft || !bottomRight) {
+    return
+  }
+  const left = topLeft.x - hostBounds.left
+  const top = topLeft.y - hostBounds.top
+  const right = bottomRight.x + bottomRight.width - hostBounds.left
+  const bottom = bottomRight.y + bottomRight.height - hostBounds.top
+  const width = Math.max(0, right - left)
+  const height = Math.max(0, bottom - top)
+  if (width <= 0 || height <= 0) {
+    return
+  }
+
+  borderRects.push({
+    color: GRID_LINE_COLOR,
+    height: 1,
+    width,
+    x: left,
+    y: top,
+  })
+  for (let row = visibleMinRow; row <= visibleMaxRow; row += 1) {
+    const bounds = getCellBounds(visibleMinCol, row)
+    if (!bounds) {
+      continue
+    }
+    borderRects.push({
+      color: GRID_LINE_COLOR,
+      height: 1,
+      width,
+      x: left,
+      y: bounds.y + bounds.height - 1 - hostBounds.top,
+    })
+  }
+
+  borderRects.push({
+    color: GRID_LINE_COLOR,
+    height,
+    width: 1,
+    x: left,
+    y: top,
+  })
+  for (let col = visibleMinCol; col <= visibleMaxCol; col += 1) {
+    const bounds = getCellBounds(col, visibleMinRow)
+    if (!bounds) {
+      continue
+    }
+    borderRects.push({
+      color: GRID_LINE_COLOR,
+      height,
+      width: 1,
+      x: bounds.x + bounds.width - 1 - hostBounds.left,
+      y: top,
+    })
   }
 }
 

@@ -7,10 +7,10 @@ server-side spreadsheet automation.
 
 ## Production Status
 
-Use this package in production when your application uses the documented
-WorkPaper/headless API directly and validates its own workbook corpus. Do not
-treat it as a finished Excel clone or a drop-in executor for arbitrary uploaded
-Excel files.
+Use this package in production for documented WorkPaper/headless API workflows:
+programmatic workbook creation, formula evaluation, structural edits,
+persistence round trips, service-side spreadsheet automation, and agent-driven
+workbook operations.
 
 Current release posture:
 
@@ -20,20 +20,23 @@ Current release posture:
 - The checked-in competitive artifact generated on `2026-05-05T06:16:59.870Z`
   shows `46/46` comparable WorkPaper mean wins against HyperFormula-style
   workloads: `38/38` public and `8/8` holdout.
-- Recently fixed P1 risks are covered by regression tests:
+- Recently fixed and hardened P1 risks are covered by regression tests:
   - `updateConfig()` now applies `useColumnIndex` correctly when a rebuild-only
     config key changes in the same update.
   - `moveCells()` now respects `maxRows` and `maxColumns` and rejects target
     ranges outside configured bounds.
+  - persisted WorkPaper documents reject sparse arrays, duplicate sheet names,
+    non-JSON numeric values, invalid scoped named expressions, and invalid
+    persisted config before restore.
 
-Production limits:
+Supported scope:
 
-- Full Excel formula parity is still in progress.
-- Tables, structured references, broad dynamic-array behavior, and arbitrary
-  Excel workbook compatibility require caller-side validation.
-- Custom function plugins and callback hooks are runtime registrations; persist
-  the workbook data, then register custom behavior in application code before
-  restore.
+- The contract is the WorkPaper/headless API exported by this package.
+- Excel-file ingestion belongs to import/export pipelines before data reaches
+  `WorkPaper`; this package executes the validated WorkPaper workbook model.
+- Custom function plugins and callback hooks are runtime registrations. Persist
+  workbook data with the helpers below, then register custom behavior in
+  application code before restore.
 
 ## Requirements
 
@@ -66,13 +69,13 @@ import {
   parseWorkPaperDocument,
   serializeWorkPaperDocument,
   type WorkPaperCellAddress,
-} from "@bilig/headless";
+} from '@bilig/headless'
 
 const workbook = WorkPaper.buildFromSheets(
   {
     Sheet1: [
-      [10, 20, "=A1+B1"],
-      [7, "=A2*3", null],
+      [10, 20, '=A1+B1'],
+      [7, '=A2*3', null],
     ],
   },
   {
@@ -80,34 +83,34 @@ const workbook = WorkPaper.buildFromSheets(
     maxColumns: 100,
     useColumnIndex: true,
   },
-);
+)
 
-const sheet = workbook.getSheetId("Sheet1");
+const sheet = workbook.getSheetId('Sheet1')
 if (sheet === undefined) {
-  throw new Error("Sheet1 was not created");
+  throw new Error('Sheet1 was not created')
 }
 
 const at = (row: number, col: number): WorkPaperCellAddress => ({
   sheet,
   row,
   col,
-});
+})
 
-console.log(workbook.getCellValue(at(0, 2))); // CellValue for 30
+console.log(workbook.getCellValue(at(0, 2))) // CellValue for 30
 
-workbook.setCellContents(at(1, 2), "=A2+B2");
-console.log(workbook.getCellFormula(at(1, 2))); // "=A2+B2"
-console.log(workbook.getCellSerialized(at(1, 2))); // "=A2+B2"
+workbook.setCellContents(at(1, 2), '=A2+B2')
+console.log(workbook.getCellFormula(at(1, 2))) // "=A2+B2"
+console.log(workbook.getCellSerialized(at(1, 2))) // "=A2+B2"
 
-const document = exportWorkPaperDocument(workbook);
-const json = serializeWorkPaperDocument(document);
-const restored = createWorkPaperFromDocument(parseWorkPaperDocument(json));
-const restoredSheet = restored.getSheetId("Sheet1");
+const document = exportWorkPaperDocument(workbook)
+const json = serializeWorkPaperDocument(document)
+const restored = createWorkPaperFromDocument(parseWorkPaperDocument(json))
+const restoredSheet = restored.getSheetId('Sheet1')
 if (restoredSheet === undefined) {
-  throw new Error("Sheet1 was not restored");
+  throw new Error('Sheet1 was not restored')
 }
 
-console.log(restored.getCellValue({ sheet: restoredSheet, row: 1, col: 2 }));
+console.log(restored.getCellValue({ sheet: restoredSheet, row: 1, col: 2 }))
 ```
 
 ## Core Concepts
@@ -133,45 +136,45 @@ Create an empty workbook:
 const workbook = WorkPaper.buildEmpty({
   maxRows: 10_000,
   maxColumns: 256,
-});
+})
 ```
 
 Set values, formulas, and blanks:
 
 ```ts
-workbook.setCellContents(at(0, 0), 42);
-workbook.setCellContents(at(0, 1), "label");
-workbook.setCellContents(at(0, 2), "=A1*2");
-workbook.setCellContents(at(0, 3), null);
+workbook.setCellContents(at(0, 0), 42)
+workbook.setCellContents(at(0, 1), 'label')
+workbook.setCellContents(at(0, 2), '=A1*2')
+workbook.setCellContents(at(0, 3), null)
 ```
 
 Read ranges and whole sheets:
 
 ```ts
-const range = { start: at(0, 0), end: at(9, 4) };
+const range = { start: at(0, 0), end: at(9, 4) }
 
-workbook.getRangeValues(range);
-workbook.getRangeFormulas(range);
-workbook.getRangeSerialized(range);
-workbook.getSheetValues(sheet);
-workbook.getSheetSerialized(sheet);
+workbook.getRangeValues(range)
+workbook.getRangeFormulas(range)
+workbook.getRangeSerialized(range)
+workbook.getSheetValues(sheet)
+workbook.getSheetSerialized(sheet)
 ```
 
 Batch related edits:
 
 ```ts
 const changes = workbook.batch(() => {
-  workbook.setCellContents(at(0, 0), 10);
-  workbook.setCellContents(at(0, 1), "=A1*5");
-});
+  workbook.setCellContents(at(0, 0), 10)
+  workbook.setCellContents(at(0, 1), '=A1*5')
+})
 ```
 
 Move cells inside configured bounds:
 
 ```ts
-const source = { start: at(0, 0), end: at(0, 1) };
+const source = { start: at(0, 0), end: at(0, 1) }
 
-workbook.moveCells(source, at(2, 0));
+workbook.moveCells(source, at(2, 0))
 ```
 
 `moveCells()` throws when the source or target falls outside `maxRows` or
@@ -183,7 +186,7 @@ Update runtime config:
 workbook.updateConfig({
   useColumnIndex: false,
   maxRows: 2_000,
-});
+})
 ```
 
 `updateConfig()` preserves workbook state. Some config keys can trigger an
@@ -194,11 +197,9 @@ configuration.
 Persist and restore:
 
 ```ts
-const saved = serializeWorkPaperDocument(
-  exportWorkPaperDocument(workbook, { includeConfig: true }),
-);
+const saved = serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { includeConfig: true }))
 
-const restored = createWorkPaperFromDocument(parseWorkPaperDocument(saved));
+const restored = createWorkPaperFromDocument(parseWorkPaperDocument(saved))
 ```
 
 ## Persistence Contract
@@ -298,6 +299,7 @@ The package root exports:
 
 ## Versioning
 
-The package is still pre-1.0. Treat documented public exports as the supported
-surface, keep integration tests around your own workbook corpus, and rerun the
-validation gates before upgrading in production.
+`@bilig/headless` ships as part of the aligned bilig runtime package set. Treat
+documented public exports as the supported surface, keep integration tests around
+your own workbook corpus, and rerun the validation gates before upgrading in
+production.

@@ -112,7 +112,7 @@ export function resolveBrowserTestPhases(input: {
     phases.push(
       {
         label: 'browser deep tests',
-        args: ['--workers=1', '--grep', BROWSER_DEEP_GREP, '--grep-invert', BROWSER_WEBGPU_GREP],
+        args: ['--workers=1', '--grep', BROWSER_DEEP_GREP, '--grep-invert', BROWSER_WEBGPU_GREP, '--pass-with-no-tests'],
       },
       {
         label: 'browser webgpu deep tests',

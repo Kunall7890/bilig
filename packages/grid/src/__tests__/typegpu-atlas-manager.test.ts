@@ -70,6 +70,8 @@ describe('glyph-atlas', () => {
       dirtyPageCount: stats.dirtyPageCount,
       glyphCount: 1,
     })
+    expect(stats.dirtyUploadBytes).toBeLessThanOrEqual(2 * 32 * 32 * 4)
+    expect(stats.dirtyUploadBytes).toBeLessThan(64 * 64 * 4)
     expect(atlas.resolveGlyphRecord(entry.glyphId)).toMatchObject({
       glyphId: entry.glyphId,
       pageId: entry.pageId,

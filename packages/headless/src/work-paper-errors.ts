@@ -229,6 +229,15 @@ export class WorkPaperParseError extends BaseWorkPaperError {
   }
 }
 
+export class WorkPaperPersistenceError extends BaseWorkPaperError {
+  override readonly cause?: unknown
+
+  constructor(message: string, cause?: unknown) {
+    super('WorkPaperPersistenceError', message)
+    this.cause = cause
+  }
+}
+
 export class WorkPaperOperationError extends BaseWorkPaperError {
   constructor(message: string) {
     super('WorkPaperOperationError', message)

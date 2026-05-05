@@ -98,7 +98,7 @@ async function expectTypeGpuSteadyScroll(page: Page, report: ScrollPerfReport) {
     readCounter(report.counters, 'rendererVisibleDirtyTiles') > 0
   if (!hasTileChurn) {
     expect(readCounter(report.counters, 'typeGpuBufferAllocations')).toBe(0)
-    expect(readCounter(report.counters, 'typeGpuVertexUploadBytes')).toBe(0)
+    expectNoTypeGpuDataTileUpload(report)
     expectNoTypeGpuTextPayloadChurn(report)
   }
   if ('typeGpuSubmits' in report.counters) {

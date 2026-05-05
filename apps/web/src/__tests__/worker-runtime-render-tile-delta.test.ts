@@ -154,7 +154,7 @@ describe('worker-runtime-render-tile-delta', () => {
     })
     expect(replacements[0]?.dirtyLocalRows).toEqual(new Uint32Array([1, 1]))
     expect(replacements[0]?.dirtyLocalCols).toEqual(new Uint32Array([1, 1]))
-    expect(replacements[0]?.dirtyMasks).toEqual(new Uint32Array([31]))
+    expect(replacements[0]?.dirtyMasks).toEqual(new Uint32Array([DirtyMaskV3.Value | DirtyMaskV3.Text]))
   })
 
   it('materializes warm tile interest on initial and dirty event-driven batches', () => {
@@ -388,7 +388,7 @@ describe('worker-runtime-render-tile-delta', () => {
       coord: { rowTile: 0, colTile: 1 },
     })
     expect(batch.mutations[0]?.kind === 'tileReplace' ? batch.mutations[0].dirtyLocalRows : null).toEqual(new Uint32Array([0, 31]))
-    expect(batch.mutations[0]?.kind === 'tileReplace' ? batch.mutations[0].dirtyLocalCols : null).toEqual(new Uint32Array([2, 2]))
+    expect(batch.mutations[0]?.kind === 'tileReplace' ? batch.mutations[0].dirtyLocalCols : null).toEqual(new Uint32Array([2, 127]))
   })
 
   it('dirties source spill spans when a blocking cell changes', () => {
@@ -427,7 +427,9 @@ describe('worker-runtime-render-tile-delta', () => {
     })
     expect(replacement?.kind === 'tileReplace' ? replacement.dirtyLocalRows : null).toEqual(new Uint32Array([0, 0, 0, 0]))
     expect(replacement?.kind === 'tileReplace' ? replacement.dirtyLocalCols : null).toEqual(new Uint32Array([1, 1, 0, 127]))
-    expect(replacement?.kind === 'tileReplace' ? replacement.dirtyMasks : null).toEqual(new Uint32Array([31, DirtyMaskV3.Text]))
+    expect(replacement?.kind === 'tileReplace' ? replacement.dirtyMasks : null).toEqual(
+      new Uint32Array([DirtyMaskV3.Value | DirtyMaskV3.Text, DirtyMaskV3.Text]),
+    )
   })
 
   it('dirties spill sources crossing resized columns', () => {
@@ -460,7 +462,7 @@ describe('worker-runtime-render-tile-delta', () => {
 
     const replacement = batch.mutations[0]
     expect(replacement?.kind === 'tileReplace' ? replacement.dirtyLocalRows : null).toEqual(new Uint32Array([0, 31, 0, 0]))
-    expect(replacement?.kind === 'tileReplace' ? replacement.dirtyLocalCols : null).toEqual(new Uint32Array([2, 2, 0, 127]))
+    expect(replacement?.kind === 'tileReplace' ? replacement.dirtyLocalCols : null).toEqual(new Uint32Array([2, 127, 0, 127]))
     expect(replacement?.kind === 'tileReplace' ? replacement.dirtyMasks : null).toEqual(
       new Uint32Array([DirtyMaskV3.AxisX | DirtyMaskV3.Text | DirtyMaskV3.Rect, DirtyMaskV3.Text]),
     )

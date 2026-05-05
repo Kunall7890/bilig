@@ -14,6 +14,7 @@ export interface WorkbookTilePaneScrollAxes {
 
 export interface WorkbookRenderTilePaneState {
   readonly paneId: string
+  readonly drawVisible?: boolean | undefined
   readonly generation: number
   readonly viewport: Viewport
   readonly tile: GridRenderTile

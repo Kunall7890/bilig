@@ -259,11 +259,11 @@ export class GridRenderTilePaneRuntime {
     return this.bridgeState
   }
 
-  noteWorkbookDeltaDamage(): GridRenderTilePaneBridgeState {
+  noteWorkbookDeltaDamage(input: { readonly forceLocalTiles?: boolean | undefined } = {}): GridRenderTilePaneBridgeState {
     const previous = this.bridgeState
     this.bridgeState = {
-      forceLocalTiles: false,
-      localFallbackRevision: previous.localFallbackRevision,
+      forceLocalTiles: input.forceLocalTiles ?? true,
+      localFallbackRevision: previous.localFallbackRevision + 1,
       renderTileRevision: previous.renderTileRevision + 1,
     }
     this.emitBridgeState()
@@ -350,7 +350,9 @@ export class GridRenderTilePaneRuntime {
       if (!this.applyWorkbookDeltaDamage(input, batch)) {
         return
       }
-      this.noteWorkbookDeltaDamage()
+      this.noteWorkbookDeltaDamage({
+        forceLocalTiles: shouldForceLocalTilesForWorkbookDelta(batch),
+      })
       listener?.(batch)
     })
   }
@@ -683,7 +685,7 @@ export class GridRenderTilePaneRuntime {
 
   private resolveTiles(input: GridRenderTilePaneRuntimeInput): GridRenderTileResolution | null {
     if (input.forceLocalTiles) {
-      return this.buildLocalTiles(input)
+      return this.buildLocalTiles(input, { mergeCleanRemoteTiles: true })
     }
 
     if (input.renderTileSource && input.sheetId !== undefined) {
@@ -707,12 +709,22 @@ export class GridRenderTilePaneRuntime {
     return this.buildLocalTiles(input)
   }
 
-  private buildLocalTiles(input: GridRenderTilePaneRuntimeInput): GridRenderTileResolution {
+  private buildLocalTiles(
+    input: GridRenderTilePaneRuntimeInput,
+    options: { readonly mergeCleanRemoteTiles?: boolean } = {},
+  ): GridRenderTileResolution {
+    if (options.mergeCleanRemoteTiles && input.renderTileSource && input.sheetId !== undefined) {
+      const hybrid = this.buildHybridLocalDirtyTiles(input, input.renderTileSource, input.sheetId)
+      if (hybrid) {
+        return hybrid
+      }
+    }
     return {
       source: 'local',
       tiles: buildLocalFixedRenderTiles({
         cameraSeq: input.gridRuntimeHost.snapshot().camera.seq,
         columnWidths: input.columnWidths,
+        dirtySpansForTile: (tileId) => input.gridRuntimeHost.tiles.dirtyTiles.getSpans(tileId),
         dprBucket: input.dprBucket,
         engine: input.engine,
         freezeSeq: input.gridRuntimeHost.snapshot().freezeSeq,
@@ -727,6 +739,92 @@ export class GridRenderTilePaneRuntime {
         viewport: input.renderTileViewport,
       }),
     }
+  }
+
+  private buildHybridLocalDirtyTiles(
+    input: GridRenderTilePaneRuntimeInput,
+    renderTileSource: GridRenderTileSource,
+    sheetId: number,
+  ): GridRenderTileResolution | null {
+    const sheetOrdinal = resolveGridRenderTileInputSheetOrdinal(input)
+    const tileKeys = input.gridRuntimeHost.viewportTileKeys({
+      dprBucket: input.dprBucket,
+      sheetOrdinal,
+      viewport: input.renderTileViewport,
+    })
+    if (tileKeys.length === 0) {
+      return { source: 'local', tiles: [] }
+    }
+
+    const remoteTiles = new Map<number, GridRenderTile>()
+    const dirtyBaseTiles = new Map<number, GridRenderTile>()
+    const dirtyTileKeys: number[] = []
+    for (const tileKey of tileKeys) {
+      const sourceTile = renderTileSource.peekRenderTile(tileKey)
+      const tile =
+        sourceTile && sourceTile.coord.sheetId === sheetId && sourceTile.coord.sheetOrdinal === sheetOrdinal
+          ? sourceTile
+          : this.resolveResidentRenderTile(input, tileKey, sheetId, sheetOrdinal)
+      const isDirty = input.gridRuntimeHost.tiles.dirtyTiles.getUnconsumedMask(tileKey) !== 0
+      if (isDirty || !tile) {
+        if (isDirty && tile) {
+          dirtyBaseTiles.set(tileKey, tile)
+        }
+        dirtyTileKeys.push(tileKey)
+        continue
+      }
+      remoteTiles.set(tileKey, tile)
+    }
+
+    if (dirtyTileKeys.length === 0 && remoteTiles.size === tileKeys.length) {
+      return { source: 'remote', tiles: tileKeys.map((tileKey) => remoteTiles.get(tileKey)!) }
+    }
+
+    const localTiles = new Map(
+      buildLocalFixedRenderTiles({
+        cameraSeq: input.gridRuntimeHost.snapshot().camera.seq,
+        columnWidths: input.columnWidths,
+        dirtySpansForTile: (tileId) => input.gridRuntimeHost.tiles.dirtyTiles.getSpans(tileId),
+        dprBucket: input.dprBucket,
+        engine: input.engine,
+        generation: input.sceneRevision,
+        gridMetrics: input.gridMetrics,
+        rowHeights: input.rowHeights,
+        sheetId,
+        sheetOrdinal,
+        sheetName: input.sheetName,
+        sortedColumnWidthOverrides: input.sortedColumnWidthOverrides,
+        sortedRowHeightOverrides: input.sortedRowHeightOverrides,
+        tileKeys: dirtyTileKeys,
+        reuseStaticGridRectsByTileId: dirtyBaseTiles,
+        viewport: input.renderTileViewport,
+      }).map((tile) => [tile.tileId, tile] as const),
+    )
+
+    return {
+      source: 'local',
+      tiles: tileKeys.flatMap((tileKey) => {
+        const localTile = localTiles.get(tileKey)
+        if (localTile) {
+          return [localTile]
+        }
+        const remoteTile = remoteTiles.get(tileKey)
+        return remoteTile ? [remoteTile] : []
+      }),
+    }
+  }
+
+  private resolveResidentRenderTile(
+    input: GridRenderTilePaneRuntimeInput,
+    tileKey: number,
+    sheetId: number,
+    sheetOrdinal: number,
+  ): GridRenderTile | null {
+    const packet = input.gridRuntimeHost.tiles.residency.getExact(tileKey)?.packet
+    if (!isResidentGridRenderTile(packet)) {
+      return null
+    }
+    return packet.coord.sheetId === sheetId && packet.coord.sheetOrdinal === sheetOrdinal ? packet : null
   }
 
   private emitBridgeState(): void {
@@ -754,6 +852,23 @@ interface RetainedFixedRenderTileDataPanesCompatibility {
 
 export function getGridRenderTilePaneRuntime(current: unknown): GridRenderTilePaneRuntime {
   return current instanceof GridRenderTilePaneRuntime ? current : new GridRenderTilePaneRuntime()
+}
+
+function isResidentGridRenderTile(value: unknown): value is GridRenderTile {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+  const candidate = value as Partial<GridRenderTile>
+  return (
+    typeof candidate.tileId === 'number' &&
+    candidate.coord !== undefined &&
+    typeof candidate.coord.sheetId === 'number' &&
+    typeof candidate.coord.sheetOrdinal === 'number' &&
+    candidate.bounds !== undefined &&
+    candidate.rectInstances instanceof Float32Array &&
+    candidate.textMetrics instanceof Float32Array &&
+    Array.isArray(candidate.textRuns)
+  )
 }
 
 function resolveGridRenderTileInputSheetOrdinal(input: {
@@ -867,6 +982,20 @@ function sameStringListIdentity(left: readonly string[], right: readonly string[
     }
   }
   return true
+}
+
+function shouldForceLocalTilesForWorkbookDelta(batch: WorkbookDeltaBatchLikeV3): boolean {
+  if (batch.source === 'workerAuthoritative') {
+    return false
+  }
+  if (batch.source !== 'localOptimistic') {
+    return true
+  }
+  return !hasAxisOnlyWorkbookDeltaDamage(batch)
+}
+
+function hasAxisOnlyWorkbookDeltaDamage(batch: WorkbookDeltaBatchLikeV3): boolean {
+  return (batch.dirty.axisX.length > 0 || batch.dirty.axisY.length > 0) && batch.dirty.cellRanges.length === 0
 }
 
 function sameViewportIdentity(left: Viewport, right: Viewport): boolean {

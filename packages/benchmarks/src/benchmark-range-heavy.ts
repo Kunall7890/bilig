@@ -1,5 +1,5 @@
 import { performance } from 'node:perf_hooks'
-import { SpreadsheetEngine } from '@bilig/core'
+import { SpreadsheetEngine, type EngineCounters } from '@bilig/core'
 import type { RecalcMetrics } from '@bilig/protocol'
 import { seedRangeAggregateWorkbook } from './generate-workbook.js'
 import { measureMemory, sampleMemory, type MemoryMeasurement } from './metrics.js'
@@ -10,6 +10,7 @@ export interface RangeAggregateBenchmarkResult {
   aggregateCount: number
   elapsedMs: number
   metrics: RecalcMetrics
+  performanceCounters: EngineCounters
   memory: MemoryMeasurement
 }
 
@@ -18,6 +19,7 @@ export async function runRangeAggregateBenchmark(sourceCount = 1_024, aggregateC
   await engine.ready()
   seedRangeAggregateWorkbook(engine, sourceCount, aggregateCount)
 
+  engine.resetPerformanceCounters()
   const memoryBefore = sampleMemory()
   const started = performance.now()
   engine.setCellValue('Sheet1', 'A1', 99)
@@ -30,6 +32,7 @@ export async function runRangeAggregateBenchmark(sourceCount = 1_024, aggregateC
     aggregateCount,
     elapsedMs: elapsed,
     metrics: engine.getLastMetrics(),
+    performanceCounters: engine.getPerformanceCounters(),
     memory: measureMemory(memoryBefore, memoryAfter),
   }
 }

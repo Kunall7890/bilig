@@ -10,9 +10,11 @@ import { collectViewportItems } from '../gridViewportItems.js'
 import { resolveColumnOffset } from '../workbookGridViewport.js'
 import { packGridRectBufferV3 } from './rect-instance-buffer.js'
 import type { GridRenderTile } from './render-tile-source.js'
+import { resolveGridRenderTileDirtySpansV3 } from './render-tile-dirty-spans.js'
 import { createGridTilePacketV3 } from './tile-packet-v3.js'
 import { packTileKey53 } from './tile-key.js'
 import { packGridTextBufferV3 } from './text-run-buffer.js'
+import { DirtyMaskV3 } from './tile-damage-index.js'
 
 export interface GridTileMaterializerAxisInputV3 {
   readonly columnWidths: Readonly<Record<number, number>>
@@ -43,6 +45,7 @@ export interface MaterializeGridRenderTileInputV3 extends GridTileMaterializerAx
   readonly dirtyLocalRows?: Uint32Array | undefined
   readonly dirtyLocalCols?: Uint32Array | undefined
   readonly dirtyMasks?: Uint32Array | undefined
+  readonly reuseStaticGridRectsFrom?: GridRenderTile | undefined
 }
 
 const STATIC_TILE_SELECTED_CELL: Item = Object.freeze([-1, -1] as const)
@@ -81,26 +84,35 @@ export function materializeGridRenderTileV3(input: MaterializeGridRenderTileInpu
     ...input,
     minCol: inboundTextSourceItems.reduce((min, [col]) => Math.min(min, col), input.viewport.colStart),
   })
-  const gpuScene = buildGridGpuScene({
-    activeHeaderDrag: null,
-    columnWidths: input.columnWidths,
-    contentMode: 'data',
-    engine: input.engine,
-    getCellBounds,
-    gridMetrics: input.gridMetrics,
-    gridSelection: STATIC_TILE_GRID_SELECTION,
-    hostBounds: { left: 0, top: 0 },
-    hoveredCell: null,
-    hoveredHeader: null,
-    resizeGuideColumn: null,
-    resizeGuideRow: null,
-    rowHeights: input.rowHeights,
-    selectedCell: STATIC_TILE_SELECTED_CELL,
-    selectionRange: null,
-    sheetName: input.sheetName,
-    visibleItems,
-    visibleRegion,
-  })
+  const reuseRectTile = canReuseStaticGridRectsForTile(input, tileId) ? input.reuseStaticGridRectsFrom : undefined
+  const rectBuffer = reuseRectTile
+    ? {
+        rectCount: reuseRectTile.rectCount,
+        rectInstances: reuseRectTile.rectInstances,
+      }
+    : packGridRectBufferV3(
+        buildGridGpuScene({
+          activeHeaderDrag: null,
+          columnWidths: input.columnWidths,
+          contentMode: 'data',
+          engine: input.engine,
+          getCellBounds,
+          gridMetrics: input.gridMetrics,
+          gridSelection: STATIC_TILE_GRID_SELECTION,
+          hostBounds: { left: 0, top: 0 },
+          hoveredCell: null,
+          hoveredHeader: null,
+          resizeGuideColumn: null,
+          resizeGuideRow: null,
+          rowHeights: input.rowHeights,
+          selectedCell: STATIC_TILE_SELECTED_CELL,
+          selectionRange: null,
+          sheetName: input.sheetName,
+          visibleItems,
+          visibleRegion,
+        }),
+        surfaceSize,
+      )
   const textScene = buildGridTextScene({
     activeHeaderDrag: null,
     columnWidths: input.columnWidths,
@@ -125,7 +137,6 @@ export function materializeGridRenderTileV3(input: MaterializeGridRenderTileInpu
     visibleItems: inboundTextSourceItems.length > 0 ? [...visibleItems, ...inboundTextSourceItems] : visibleItems,
     visibleRegion,
   })
-  const rectBuffer = packGridRectBufferV3(gpuScene, surfaceSize)
   const textBuffer = packGridTextBufferV3(textScene)
   const packet = createGridTilePacketV3({
     axisSeqX: input.axisSeqX,
@@ -149,7 +160,7 @@ export function materializeGridRenderTileV3(input: MaterializeGridRenderTileInpu
     tileKey: tileId,
     valueSeq: input.valueSeq,
   })
-  return {
+  const tile: GridRenderTile = {
     bounds: {
       colEnd: packet.colEnd,
       colStart: packet.colStart,
@@ -172,6 +183,11 @@ export function materializeGridRenderTileV3(input: MaterializeGridRenderTileInpu
     textCount: textBuffer.textCount,
     textMetrics: textBuffer.textMetrics,
     textRuns: textBuffer.textRuns,
+    dirty: {
+      glyphSpans: [],
+      rectSpans: [],
+      textSpans: [],
+    },
     dirtyLocalCols: packet.dirtyLocalCols,
     dirtyLocalRows: packet.dirtyLocalRows,
     dirtyMasks: packet.dirtyMasks,
@@ -185,6 +201,37 @@ export function materializeGridRenderTileV3(input: MaterializeGridRenderTileInpu
       values: packet.valueSeq,
     },
   }
+  return {
+    ...tile,
+    dirty: resolveGridRenderTileDirtySpansV3(tile),
+  }
+}
+
+function canReuseStaticGridRectsForTile(input: MaterializeGridRenderTileInputV3, tileId: number): boolean {
+  const baseTile = input.reuseStaticGridRectsFrom
+  if (!baseTile || baseTile.tileId !== tileId) {
+    return false
+  }
+  if (
+    baseTile.bounds.rowStart !== input.viewport.rowStart ||
+    baseTile.bounds.rowEnd !== input.viewport.rowEnd ||
+    baseTile.bounds.colStart !== input.viewport.colStart ||
+    baseTile.bounds.colEnd !== input.viewport.colEnd
+  ) {
+    return false
+  }
+  const dirtyMasks = input.dirtyMasks
+  if (!dirtyMasks || dirtyMasks.length === 0) {
+    return false
+  }
+  const rectDirtyMask =
+    DirtyMaskV3.Style | DirtyMaskV3.Rect | DirtyMaskV3.Border | DirtyMaskV3.AxisX | DirtyMaskV3.AxisY | DirtyMaskV3.Freeze
+  for (const mask of dirtyMasks) {
+    if ((mask & rectDirtyMask) !== 0) {
+      return false
+    }
+  }
+  return true
 }
 
 export function createTileCellBoundsResolverV3(

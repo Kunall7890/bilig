@@ -6,6 +6,7 @@ import {
   type RenderTileReplaceMutation,
 } from '@bilig/worker-transport'
 import { ValueTag } from '@bilig/protocol'
+import { DirtyMaskV3 } from '../../../../packages/grid/src/renderer-v3/tile-damage-index.js'
 import { ProjectedTileSceneStore } from '../projected-tile-scene-store.js'
 import { ProjectedViewportStore } from '../projected-viewport-store.js'
 
@@ -310,7 +311,7 @@ describe('ProjectedViewportStore render delta source bridge', () => {
 
     expect(listener).toHaveBeenCalledWith(
       expect.objectContaining({
-        dirty: expect.objectContaining({ cellRanges: new Uint32Array([1, 1, 1, 1, 15]) }),
+        dirty: expect.objectContaining({ cellRanges: new Uint32Array([1, 1, 1, 1, 5]) }),
         seq: 1,
         sheetId: 7,
         sheetOrdinal: 3,
@@ -340,6 +341,99 @@ describe('ProjectedViewportStore render delta source bridge', () => {
     })
 
     expect(listener).not.toHaveBeenCalled()
+
+    unsubscribe()
+  })
+
+  it('publishes style-aware local optimistic workbook deltas for styled projected cell snapshots', () => {
+    const store = new ProjectedViewportStore({
+      subscribeRenderTileDeltas: () => () => undefined,
+      subscribeViewportPatches: () => () => undefined,
+      subscribeWorkbookDeltas: () => () => undefined,
+    })
+    const listener = vi.fn()
+
+    store.subscribeRenderTileDeltas(
+      {
+        sheetId: 7,
+        sheetName: 'Sheet1',
+        sheetOrdinal: 3,
+        rowStart: 0,
+        rowEnd: 31,
+        colStart: 0,
+        colEnd: 63,
+      },
+      () => undefined,
+    )
+    const unsubscribe = store.subscribeWorkbookDeltas(listener)
+    store.setCellSnapshot({
+      address: 'B2',
+      flags: 0,
+      sheetName: 'Sheet1',
+      styleId: 'bold',
+      value: { tag: ValueTag.Number, value: 17 },
+      version: 12,
+    })
+
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dirty: expect.objectContaining({ cellRanges: new Uint32Array([1, 1, 1, 1, 15]) }),
+      }),
+    )
+
+    unsubscribe()
+  })
+
+  it('publishes local optimistic workbook deltas for projected axis size updates', () => {
+    const store = new ProjectedViewportStore({
+      subscribeRenderTileDeltas: () => () => undefined,
+      subscribeViewportPatches: () => () => undefined,
+      subscribeWorkbookDeltas: () => () => undefined,
+    })
+    const listener = vi.fn()
+
+    store.subscribeRenderTileDeltas(
+      {
+        sheetId: 7,
+        sheetName: 'Sheet1',
+        sheetOrdinal: 3,
+        rowStart: 0,
+        rowEnd: 31,
+        colStart: 0,
+        colEnd: 63,
+      },
+      () => undefined,
+    )
+    const unsubscribe = store.subscribeWorkbookDeltas(listener)
+
+    store.setColumnWidth('Sheet1', 2, 144)
+    store.setRowHeight('Sheet1', 4, 40)
+
+    expect(listener).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        axisSeqX: 1,
+        dirty: expect.objectContaining({
+          axisX: new Uint32Array([2, 2, DirtyMaskV3.AxisX | DirtyMaskV3.Text | DirtyMaskV3.Rect]),
+          axisY: new Uint32Array(),
+        }),
+        seq: 1,
+        source: 'localOptimistic',
+      }),
+    )
+    expect(listener).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        axisSeqY: 2,
+        dirty: expect.objectContaining({
+          axisX: new Uint32Array(),
+          axisY: new Uint32Array([4, 4, DirtyMaskV3.AxisY | DirtyMaskV3.Text | DirtyMaskV3.Rect]),
+        }),
+        seq: 2,
+        source: 'localOptimistic',
+      }),
+    )
+
     unsubscribe()
   })
 

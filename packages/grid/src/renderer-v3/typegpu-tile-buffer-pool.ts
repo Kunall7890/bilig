@@ -53,8 +53,10 @@ const RECT_INSTANCE_FLOAT_COUNT = GRID_RECT_INSTANCE_FLOAT_COUNT_V3
 const TEXT_INSTANCE_FLOAT_COUNT = 16
 const RECT_INSTANCE_BYTE_COUNT = RECT_INSTANCE_FLOAT_COUNT * Float32Array.BYTES_PER_ELEMENT
 const TEXT_INSTANCE_BYTE_COUNT = TEXT_INSTANCE_FLOAT_COUNT * Float32Array.BYTES_PER_ELEMENT
+const MIN_TILE_TEXT_INSTANCE_COUNT = 32
 
 export interface TypeGpuTileContentResourceEntryV3 {
+  rectBaseCount: number
   rectHandle: GpuBufferHandleV3<RectInstanceVertexBuffer> | null
   rectCount: number
   rectRevisionKey: TypeGpuTileRectRevisionKeyV3 | null
@@ -70,6 +72,7 @@ export interface TypeGpuTileContentResourceEntryV3 {
   textRunQuadSpans: readonly TextQuadRunSpan[] | null
   textRevisionKey: TypeGpuTileTextRevisionKeyV3 | null
   decorationRects: readonly TextDecorationRect[] | null
+  decorationCellKeys: ReadonlySet<string> | null
 }
 
 export interface TypeGpuTilePlacementResourceEntryV3 {
@@ -82,6 +85,8 @@ export interface TypeGpuTilePlacementResourceEntryV3 {
 function createEmptyContentEntry(): TypeGpuTileContentResourceEntryV3 {
   return {
     decorationRects: null,
+    decorationCellKeys: null,
+    rectBaseCount: 0,
     rectCount: 0,
     rectHandle: null,
     rectRevisionKey: null,
@@ -183,7 +188,7 @@ export class TypeGpuTileResourceCacheV3 {
   }
 
   acquireTextHandle(requiredCount: number): GpuBufferHandleV3<TextInstanceVertexBuffer> {
-    return this.textArena.acquire('textRuns', Math.max(1, requiredCount) * TEXT_INSTANCE_BYTE_COUNT)
+    return this.textArena.acquire('textRuns', Math.max(MIN_TILE_TEXT_INSTANCE_COUNT, requiredCount) * TEXT_INSTANCE_BYTE_COUNT)
   }
 
   releaseTextHandle(handle: GpuBufferHandleV3<TextInstanceVertexBuffer>): void {
@@ -218,6 +223,7 @@ export class TypeGpuTileResourceCacheV3 {
       entry.textHandle = null
     }
     entry.rectCount = 0
+    entry.rectBaseCount = 0
     entry.rectRevisionKey = null
     entry.textCount = 0
     entry.textAtlasDependencyVersion = -1
@@ -230,6 +236,7 @@ export class TypeGpuTileResourceCacheV3 {
     entry.textRunQuadSpans = null
     entry.textRevisionKey = null
     entry.decorationRects = null
+    entry.decorationCellKeys = null
   }
 
   private destroyContent(entry: TypeGpuTileContentResourceEntryV3): void {
@@ -237,6 +244,7 @@ export class TypeGpuTileResourceCacheV3 {
     entry.textHandle?.buffer.destroy()
     entry.rectHandle = null
     entry.textHandle = null
+    entry.rectBaseCount = 0
     entry.rectCount = 0
     entry.textCount = 0
     entry.textAtlasDependencyVersion = -1
@@ -247,6 +255,7 @@ export class TypeGpuTileResourceCacheV3 {
     entry.textRunGlyphIds = null
     entry.textRunPayloads = null
     entry.textRunQuadSpans = null
+    entry.decorationCellKeys = null
   }
 
   private destroyPlacement(entry: TypeGpuTilePlacementResourceEntryV3): void {
@@ -377,6 +386,7 @@ function syncTileTextResource(input: {
   readonly textRevisionKey: TypeGpuTileTextRevisionKeyV3
 }): void {
   input.content.decorationRects = buildTextDecorationRectsFromRuns(input.pane.tile.textRuns, input.atlas)
+  input.content.decorationCellKeys = buildDecorationCellKeys(input.pane.tile.textRuns)
   const dirtyTextRunSpans = mergeTextRunDirtySpans(input.pane.tile.dirty?.textSpans, input.missingGlyphRunSpans)
   const textPayload = buildTextQuadsFromRunsWithSpans(input.pane.tile.textRuns, input.atlas, undefined, {
     dirtyRunSpans: dirtyTextRunSpans,
@@ -391,7 +401,9 @@ function syncTileTextResource(input: {
     reusedRunPayloads: textPayload.diagnostics.reusedRunPayloads,
   })
   if (textPayload.quadCount === 0) {
-    releaseTextBuffer(input.tileResources, input.content)
+    const handle = prepareTextBuffer(input.tileResources, input.content, 0)
+    handle.usedBytes = 0
+    input.content.textHandle = handle
     input.content.textCount = 0
     input.content.textAtlasDependencyVersion = input.atlasDependencyVersion
     input.content.textAtlasGeometryVersion = input.atlas.getGlyphGeometryVersion()
@@ -531,23 +543,26 @@ function syncTileRectResource(input: {
   })
   if (rectPayload.count === 0) {
     releaseRectBuffer(input.tileResources, input.content)
+    input.content.rectBaseCount = 0
     input.content.rectCount = 0
     input.content.rectRevisionKey = input.rectRevisionKey
     return
   }
   const canWritePartialPayload =
-    input.content.rectRevisionKey !== null && input.content.rectHandle !== null && input.content.rectCount === rectPayload.count
+    input.content.rectRevisionKey !== null && input.content.rectHandle !== null && input.content.rectBaseCount === input.pane.tile.rectCount
+  const previousHandle = input.content.rectHandle
   const handle = prepareRectBuffer(input.tileResources, input.content, rectPayload.count)
   input.content.rectHandle = handle
   input.content.rectCount = rectPayload.count
   writeTileRectPayload({
-    canWritePartialPayload,
+    canWritePartialPayload: canWritePartialPayload && handle === previousHandle,
     content: input.content,
     handle,
     label: `tile-rect:${resolveWorkbookTileContentBufferKeyV3(input.pane)}`,
     rectPayload,
     tile: input.pane.tile,
   })
+  input.content.rectBaseCount = input.pane.tile.rectCount
   input.content.rectRevisionKey = input.rectRevisionKey
 }
 
@@ -562,23 +577,37 @@ function writeTileRectPayload(input: {
   const dirtySpans = input.tile.dirty?.rectSpans ?? []
   if (
     !input.canWritePartialPayload ||
-    dirtySpans.length === 0 ||
     input.content.rectCount !== input.rectPayload.count ||
-    (input.content.decorationRects?.length ?? 0) > 0 ||
     dirtySpans.some((span) => isFullGridRenderTileDirtySpanV3(span, input.rectPayload.count))
   ) {
     writeTypeGpuVertexBuffer(input.handle.buffer, input.rectPayload.floats, input.label)
     return
   }
+  const baseRectCount = input.tile.rectCount
   dirtySpans.forEach((span) => {
+    const offset = Math.max(0, Math.min(baseRectCount, span.offset))
+    const end = Math.max(offset, Math.min(baseRectCount, span.offset + span.length))
+    if (end <= offset) {
+      return
+    }
     writeTypeGpuVertexBufferSubrange({
       buffer: input.handle.buffer,
-      floatCount: span.length * RECT_INSTANCE_FLOAT_COUNT,
+      floatCount: (end - offset) * RECT_INSTANCE_FLOAT_COUNT,
       floats: input.rectPayload.floats,
       label: `${input.label}:span`,
-      startFloat: span.offset * RECT_INSTANCE_FLOAT_COUNT,
+      startFloat: offset * RECT_INSTANCE_FLOAT_COUNT,
     })
   })
+  const decorationRectCount = input.rectPayload.count - baseRectCount
+  if (decorationRectCount > 0) {
+    writeTypeGpuVertexBufferSubrange({
+      buffer: input.handle.buffer,
+      floatCount: decorationRectCount * RECT_INSTANCE_FLOAT_COUNT,
+      floats: input.rectPayload.floats,
+      label: `${input.label}:decorations`,
+      startFloat: baseRectCount * RECT_INSTANCE_FLOAT_COUNT,
+    })
+  }
 }
 
 function prepareRectBuffer(
@@ -707,4 +736,22 @@ function writeDecorationRect(
   floats[offset + 18] = clipX1
   floats[offset + 19] = clipY1
   return offset + RECT_INSTANCE_FLOAT_COUNT
+}
+
+function buildDecorationCellKeys(textRuns: readonly GridRenderTile['textRuns'][number][]): ReadonlySet<string> {
+  const keys = new Set<string>()
+  for (const run of textRuns) {
+    if (!run.underline && !run.strike) {
+      continue
+    }
+    if (run.row === undefined || run.col === undefined) {
+      return new Set(['*'])
+    }
+    keys.add(formatDecorationCellKey(run.row, run.col))
+  }
+  return keys
+}
+
+export function formatDecorationCellKey(row: number, col: number): string {
+  return `${row}:${col}`
 }

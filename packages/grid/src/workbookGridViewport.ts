@@ -177,9 +177,9 @@ export function scrollCellIntoView(options: {
   const bodyWidth = Math.max(0, scrollViewport.clientWidth - gridMetrics.rowMarkerWidth - frozenWidth)
   if (cell[0] >= freezeCols) {
     const scrollCellLeft = cellLeft - frozenWidth
-    if (scrollCellLeft < scrollViewport.scrollLeft) {
+    if (scrollCellLeft + cellWidth <= scrollViewport.scrollLeft) {
       scrollViewport.scrollLeft = scrollCellLeft
-    } else if (scrollCellLeft + cellWidth > scrollViewport.scrollLeft + bodyWidth) {
+    } else if (scrollCellLeft >= scrollViewport.scrollLeft + bodyWidth) {
       scrollViewport.scrollLeft = scrollCellLeft + cellWidth - bodyWidth
     }
   }
@@ -189,9 +189,9 @@ export function scrollCellIntoView(options: {
   const bodyHeight = Math.max(0, scrollViewport.clientHeight - gridMetrics.headerHeight - frozenHeight)
   if (cell[1] >= freezeRows) {
     const scrollCellTop = cellTop - frozenHeight
-    if (scrollCellTop < scrollViewport.scrollTop) {
+    if (scrollCellTop + cellHeight <= scrollViewport.scrollTop) {
       scrollViewport.scrollTop = scrollCellTop
-    } else if (scrollCellTop + cellHeight > scrollViewport.scrollTop + bodyHeight) {
+    } else if (scrollCellTop >= scrollViewport.scrollTop + bodyHeight) {
       scrollViewport.scrollTop = scrollCellTop + cellHeight - bodyHeight
     }
   }

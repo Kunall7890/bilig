@@ -105,9 +105,11 @@ jobs:
         run: |
           set -euo pipefail
           pnpm exec vitest run \
-            packages/headless/src/__tests__/headless-workbook.test.ts \
-            packages/headless/src/__tests__/headless-workbook-parity.test.ts \
             packages/headless/src/__tests__/work-paper.test.ts \
+            packages/headless/src/__tests__/work-paper-runtime.test.ts \
+            packages/headless/src/__tests__/work-paper-parity.test.ts \
+            packages/headless/src/__tests__/persistence.test.ts \
+            packages/headless/src/__tests__/persistence.fuzz.test.ts \
             packages/headless/src/__tests__/hyperformula-surface-parity.test.ts
 
       - name: Build runtime package chain

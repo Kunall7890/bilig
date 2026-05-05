@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import { ValueTag } from '@bilig/protocol'
 
-import { WorkPaper, type WorkPaperCellAddress, type WorkPaperCellRange, type WorkPaperConfig } from '../index.js'
+import {
+  createWorkPaperFromDocument,
+  exportWorkPaperDocument,
+  parseWorkPaperDocument,
+  serializeWorkPaperDocument,
+  WorkPaper,
+  type WorkPaperCellAddress,
+  type WorkPaperCellRange,
+  type WorkPaperConfig,
+} from '../index.js'
 
 function cell(sheet: number, row: number, col: number): WorkPaperCellAddress {
   return { sheet, row, col }
@@ -9,16 +18,55 @@ function cell(sheet: number, row: number, col: number): WorkPaperCellAddress {
 
 describe('WorkPaper', () => {
   it('matches the published README usage example', () => {
-    const workbook = WorkPaper.buildFromSheets({
-      Sheet1: [[1, '=A1*2']],
+    const workbook = WorkPaper.buildFromSheets(
+      {
+        Sheet1: [
+          [10, 20, '=A1+B1'],
+          [7, '=A2*3', null],
+        ],
+      },
+      {
+        maxRows: 1_000,
+        maxColumns: 100,
+        useColumnIndex: true,
+      },
+    )
+
+    const sheet = workbook.getSheetId('Sheet1')
+    if (sheet === undefined) {
+      throw new Error('Sheet1 was not created')
+    }
+
+    const at = (row: number, col: number): WorkPaperCellAddress => ({
+      sheet,
+      row,
+      col,
     })
 
-    const sheetId = workbook.getSheetId('Sheet1')!
-    const value = workbook.getCellValue({ sheet: sheetId, row: 0, col: 1 })
-
-    expect(value).toEqual({
+    expect(workbook.getCellValue(at(0, 2))).toEqual({
       tag: ValueTag.Number,
-      value: 2,
+      value: 30,
+    })
+
+    workbook.setCellContents(at(1, 2), '=A2+B2')
+    expect(workbook.getCellFormula(at(1, 2))).toBe('=A2+B2')
+    expect(workbook.getCellSerialized(at(1, 2))).toBe('=A2+B2')
+    expect(workbook.getCellValue(at(1, 2))).toEqual({
+      tag: ValueTag.Number,
+      value: 28,
+    })
+
+    const document = exportWorkPaperDocument(workbook)
+    const json = serializeWorkPaperDocument(document)
+    const restored = createWorkPaperFromDocument(parseWorkPaperDocument(json))
+    const restoredSheet = restored.getSheetId('Sheet1')
+    if (restoredSheet === undefined) {
+      throw new Error('Sheet1 was not restored')
+    }
+
+    expect(restored.getCellValue({ sheet: restoredSheet, row: 1, col: 2 })).toEqual({
+      tag: ValueTag.Number,
+      value: 28,
     })
   })
 

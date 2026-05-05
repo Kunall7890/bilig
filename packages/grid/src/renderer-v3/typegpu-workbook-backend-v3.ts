@@ -86,18 +86,26 @@ export function drawWorkbookTypeGpuTileFrameV3(input: {
   const retainPanes = input.preloadTilePanes?.length ? [...input.preloadTilePanes, ...input.tilePanes] : input.tilePanes
   const resourcePanes = input.syncPreloadPanes === false ? input.tilePanes : retainPanes
   const headerPanes = input.headerPanes ?? []
-  syncRenderTileResidencyFromPanesV3({
-    panes: resourcePanes,
-    residency: input.backend.tileResidency,
-    visiblePanes: input.tilePanes,
-  })
-  syncTypeGpuTilePaneResourcesV3({
-    artifacts: input.backend.artifacts,
-    atlas: input.backend.atlas,
-    panes: resourcePanes,
-    retainPanes,
+  const preserveResidentBodyTiles = hasTransientEmptyTypeGpuBodyFrameV3({
+    tilePanes: input.tilePanes,
     tileResources: input.backend.tileResources,
   })
+  if (preserveResidentBodyTiles) {
+    input.backend.tileResidency.markVisible(input.tilePanes.map((pane) => pane.tile.tileId))
+  } else {
+    syncRenderTileResidencyFromPanesV3({
+      panes: resourcePanes,
+      residency: input.backend.tileResidency,
+      visiblePanes: input.tilePanes,
+    })
+    syncTypeGpuTilePaneResourcesV3({
+      artifacts: input.backend.artifacts,
+      atlas: input.backend.atlas,
+      panes: resourcePanes,
+      retainPanes,
+      tileResources: input.backend.tileResources,
+    })
+  }
   pruneTypeGpuLayerResourcesV3({
     headerPanes,
     layerResources: input.backend.layerResources,
@@ -130,6 +138,28 @@ export function drawWorkbookTypeGpuTileFrameV3(input: {
     tileResources: input.backend.tileResources,
     tilePanes: drawPanes,
   })
+}
+
+export function hasTransientEmptyTypeGpuBodyFrameV3(input: {
+  readonly tilePanes: readonly WorkbookRenderTilePaneState[]
+  readonly tileResources: Pick<TypeGpuTileResourceCacheV3, 'peekContent'>
+}): boolean {
+  for (const pane of input.tilePanes) {
+    if (pane.paneId !== 'body' && !pane.paneId.startsWith('body:')) {
+      continue
+    }
+    if (pane.tile.dirtyMasks && pane.tile.dirtyMasks.length > 0) {
+      continue
+    }
+    const content = input.tileResources.peekContent(resolveWorkbookTileContentBufferKeyV3(pane))
+    if (!content) {
+      continue
+    }
+    if ((content.rectCount > 0 && pane.tile.rectCount === 0) || (content.textCount > 0 && pane.tile.textCount === 0)) {
+      return true
+    }
+  }
+  return false
 }
 
 export function syncRenderTileResidencyFromPanesV3(input: {
@@ -176,10 +206,32 @@ export function resolveTypeGpuDrawTilePanesV3(input: {
 }): readonly WorkbookRenderTilePaneState[] {
   return input.panes.map((pane) => {
     const entry = input.residency.getExact(pane.tile.tileId)
-    const exact = input.tileResources.peekContent(resolveWorkbookTileContentBufferKeyV3(pane))
-    if (entry?.packet && exact && isTileContentDrawReady(exact, pane)) {
-      return { ...pane, tile: entry.packet }
+    if (entry?.packet) {
+      const exactPane = { ...pane, tile: entry.packet }
+      const exact = input.tileResources.peekContent(resolveWorkbookTileContentBufferKeyV3(exactPane))
+      if (exact && isTileContentDrawReady(exact, exactPane)) {
+        return exactPane
+      }
     }
+
+    const stale = input.residency.findStaleCompatible({
+      axisSeqX: pane.tile.version.axisX,
+      axisSeqY: pane.tile.version.axisY,
+      colTile: pane.tile.coord.colTile,
+      dprBucket: pane.tile.coord.dprBucket,
+      excludeKey: pane.tile.tileId,
+      freezeSeq: pane.tile.version.freeze,
+      rowTile: pane.tile.coord.rowTile,
+      sheetOrdinal: pane.tile.coord.sheetOrdinal,
+    })
+    if (stale?.packet) {
+      const stalePane = { ...pane, tile: stale.packet }
+      const staleContent = input.tileResources.peekContent(resolveWorkbookTileContentBufferKeyV3(stalePane))
+      if (staleContent && isTileContentDrawReady(staleContent, stalePane)) {
+        return stalePane
+      }
+    }
+
     input.onTileMiss?.(pane.tile.tileId)
     return pane
   })

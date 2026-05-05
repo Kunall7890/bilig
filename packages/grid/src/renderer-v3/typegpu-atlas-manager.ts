@@ -59,7 +59,7 @@ type AtlasCanvasLike = HTMLCanvasElement | OffscreenCanvas
 type AtlasContextLike = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
 
 const ATLAS_SCALE = 3
-const ATLAS_DIRTY_PAGE_SIZE = 512
+const ATLAS_DIRTY_PAGE_SIZE = 32
 const ATLAS_PAGE_ID_STRIDE = 65536
 
 function configureTextContext(context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D): void {

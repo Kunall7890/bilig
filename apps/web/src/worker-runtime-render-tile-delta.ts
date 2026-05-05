@@ -40,7 +40,7 @@ interface RenderTileDeltaEngineLike extends GridEngineLike {
 }
 
 const CHANGED_CELL_DIRTY_MASK = DirtyMaskV3.Value | DirtyMaskV3.Text
-const INVALIDATED_RANGE_DIRTY_MASK = DirtyMaskV3.Value | DirtyMaskV3.Style | DirtyMaskV3.Text | DirtyMaskV3.Rect | DirtyMaskV3.Border
+const INVALIDATED_RANGE_DIRTY_MASK = DirtyMaskV3.Value | DirtyMaskV3.Text
 const AXIS_X_DIRTY_MASK = DirtyMaskV3.AxisX | DirtyMaskV3.Text | DirtyMaskV3.Rect
 const AXIS_Y_DIRTY_MASK = DirtyMaskV3.AxisY | DirtyMaskV3.Text | DirtyMaskV3.Rect
 
@@ -403,10 +403,11 @@ function markDirtyAxisXSpans(
     if (tileColEnd < colStart || tileColStart > colEnd) {
       return
     }
+    const localColStart = Math.max(colStart, tileColStart) - tileColStart
     const spans = spansByTile.get(tileKey) ?? []
     spans.push({
-      colEnd: Math.min(colEnd, tileColEnd) - tileColStart,
-      colStart: Math.max(colStart, tileColStart) - tileColStart,
+      colEnd: tileColEnd - tileColStart,
+      colStart: localColStart,
       mask: input.mask,
       rowEnd: VIEWPORT_TILE_ROW_COUNT - 1,
       rowStart: 0,
@@ -435,13 +436,14 @@ function markDirtyAxisYSpans(
     if (tileRowEnd < rowStart || tileRowStart > rowEnd) {
       return
     }
+    const localRowStart = Math.max(rowStart, tileRowStart) - tileRowStart
     const spans = spansByTile.get(tileKey) ?? []
     spans.push({
       colEnd: VIEWPORT_TILE_COLUMN_COUNT - 1,
       colStart: 0,
       mask: input.mask,
-      rowEnd: Math.min(rowEnd, tileRowEnd) - tileRowStart,
-      rowStart: Math.max(rowStart, tileRowStart) - tileRowStart,
+      rowEnd: tileRowEnd - tileRowStart,
+      rowStart: localRowStart,
     })
     spansByTile.set(tileKey, spans)
   })

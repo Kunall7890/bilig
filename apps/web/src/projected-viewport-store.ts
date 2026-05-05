@@ -189,6 +189,7 @@ export class ProjectedViewportStore implements GridEngineLike {
 
   setColumnWidth(sheetName: string, columnIndex: number, width: number): void {
     this.axisStore.setColumnWidth(sheetName, columnIndex, width)
+    this.emitLocalAxisDelta(sheetName, 'column', columnIndex)
     this.notifySheetChannels(sheetName, ['columnWidths'])
   }
 
@@ -214,6 +215,7 @@ export class ProjectedViewportStore implements GridEngineLike {
 
   setRowHeight(sheetName: string, rowIndex: number, height: number): void {
     this.axisStore.setRowHeight(sheetName, rowIndex, height)
+    this.emitLocalAxisDelta(sheetName, 'row', rowIndex)
     this.notifySheetChannels(sheetName, ['rowHeights'])
   }
 
@@ -396,13 +398,7 @@ export class ProjectedViewportStore implements GridEngineLike {
       dirty: {
         axisX: new Uint32Array(),
         axisY: new Uint32Array(),
-        cellRanges: new Uint32Array([
-          parsed.row,
-          parsed.row,
-          parsed.col,
-          parsed.col,
-          DirtyMaskV3.Value | DirtyMaskV3.Style | DirtyMaskV3.Text | DirtyMaskV3.Rect,
-        ]),
+        cellRanges: new Uint32Array([parsed.row, parsed.row, parsed.col, parsed.col, resolveCellSnapshotDirtyMask(snapshot)]),
       },
       freezeSeq: 0,
       magic: 'bilig.workbook.delta.v3',
@@ -427,10 +423,59 @@ export class ProjectedViewportStore implements GridEngineLike {
   private resolveSheetIdentity(sheetName: string): SheetIdentity | null {
     return this.sheetIdentitiesByName.get(sheetName) ?? null
   }
+
+  private emitLocalAxisDelta(sheetName: string, axis: 'column' | 'row', index: number): void {
+    if (this.localWorkbookDeltaListeners.size === 0) {
+      return
+    }
+    const startedAt = nowMs()
+    const identity = this.resolveSheetIdentity(sheetName)
+    if (!identity) {
+      return
+    }
+    const seq = ++this.localWorkbookDeltaSeq
+    const axisMask =
+      axis === 'column' ? DirtyMaskV3.AxisX | DirtyMaskV3.Text | DirtyMaskV3.Rect : DirtyMaskV3.AxisY | DirtyMaskV3.Text | DirtyMaskV3.Rect
+    const batch: WorkbookDeltaBatchV3 = {
+      axisSeqX: axis === 'column' ? seq : 0,
+      axisSeqY: axis === 'row' ? seq : 0,
+      calcSeq: seq,
+      dirty: {
+        axisX: axis === 'column' ? new Uint32Array([index, index, axisMask]) : new Uint32Array(),
+        axisY: axis === 'row' ? new Uint32Array([index, index, axisMask]) : new Uint32Array(),
+        cellRanges: new Uint32Array(),
+      },
+      freezeSeq: 0,
+      magic: 'bilig.workbook.delta.v3',
+      seq,
+      sheetId: identity.sheetId,
+      sheetOrdinal: identity.sheetOrdinal,
+      source: 'localOptimistic',
+      styleSeq: seq,
+      valueSeq: seq,
+      version: 1,
+    }
+    this.localWorkbookDeltaListeners.forEach((listener) => {
+      listener(batch)
+    })
+    getWorkbookScrollPerfCollector()?.noteRendererDeltaApply({
+      dirtyTileCount: 1,
+      durationMs: Math.max(0, nowMs() - startedAt),
+      mutationCount: 1,
+    })
+  }
 }
 
 function nowMs(): number {
   return typeof performance === 'undefined' ? Date.now() : performance.now()
+}
+
+function resolveCellSnapshotDirtyMask(snapshot: CellSnapshot): number {
+  const styleDirty =
+    snapshot.styleId !== undefined || snapshot.format !== undefined || snapshot.numberFormatId !== undefined
+      ? DirtyMaskV3.Style | DirtyMaskV3.Rect
+      : 0
+  return DirtyMaskV3.Value | DirtyMaskV3.Text | styleDirty
 }
 
 function buildAxisEntries(

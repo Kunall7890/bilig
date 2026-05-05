@@ -68,6 +68,7 @@ interface DynamicReadbackResult {
   readonly sequence: number
   readonly points: Record<string, ReadbackPoint>
   readonly darkPixelCounts: Record<string, number>
+  readonly opaquePixelCounts: Record<string, number>
 }
 
 function isResizeGuidePixel(point: ReadbackPoint): boolean {
@@ -268,12 +269,14 @@ test('@browser-webgpu @browser-perf main workbook shell keeps resident typegpu c
     regions: [
       { name: 'columnHeaderText', x0: 60, y0: 4, x1: 220, y1: 18 },
       { name: 'rowHeaderText', x0: 6, y0: 48, x1: 36, y1: 140 },
-      { name: 'bodyText', x0: 70, y0: 48, x1: 360, y1: 150 },
+      { name: 'bodyGrid', x0: 70, y0: 48, x1: 360, y1: 150 },
     ],
   } as const
 
   const initialReadback = await waitForReadback(page, probe, (result) => {
-    return result.darkPixelCounts.columnHeaderText > 10 && result.darkPixelCounts.rowHeaderText > 5 && result.darkPixelCounts.bodyText > 20
+    return (
+      result.darkPixelCounts.columnHeaderText > 10 && result.darkPixelCounts.rowHeaderText > 5 && result.opaquePixelCounts.bodyGrid > 400
+    )
   })
   await warmStartWorkbookScrollPerf(page, 'typegpu-selection-overlay-only')
   await settleWorkbookScrollPerf(page, 16)
@@ -287,8 +290,8 @@ test('@browser-webgpu @browser-perf main workbook shell keeps resident typegpu c
   const sampleSelectionTarget = async (
     targetIndex: number,
     lastSequence: number,
-    frames: readonly DynamicReadbackResult[],
-  ): Promise<readonly DynamicReadbackResult[]> => {
+    frames: ReadonlyArray<DynamicReadbackResult>,
+  ): Promise<ReadonlyArray<DynamicReadbackResult>> => {
     const target = selectionTargets[targetIndex]
     if (!target) {
       return frames
@@ -307,7 +310,7 @@ test('@browser-webgpu @browser-perf main workbook shell keeps resident typegpu c
   for (const frame of selectionFrames) {
     expect(frame.darkPixelCounts.columnHeaderText).toBeGreaterThan(10)
     expect(frame.darkPixelCounts.rowHeaderText).toBeGreaterThan(5)
-    expect(frame.darkPixelCounts.bodyText).toBeGreaterThan(20)
+    expect(frame.opaquePixelCounts.bodyGrid).toBeGreaterThan(400)
   }
   expect(perfReport).not.toBeNull()
   expect(perfReport?.counters.headerPaneBuilds).toBeLessThanOrEqual(1)
@@ -886,6 +889,16 @@ async function installTypeGpuReadbackHarness(page: Page): Promise<void> {
             readonly threshold?: number
           }[],
         ) => Record<string, number>
+        readonly countOpaquePixels: (
+          regions: readonly {
+            readonly name: string
+            readonly x0: number
+            readonly y0: number
+            readonly x1: number
+            readonly y1: number
+            readonly threshold?: number
+          }[],
+        ) => Record<string, number>
       }
     }
 
@@ -933,10 +946,27 @@ async function installTypeGpuReadbackHarness(page: Page): Promise<void> {
       return count
     }
 
+    const countOpaquePixels = (x0: number, y0: number, x1: number, y1: number, threshold = 1): number => {
+      let count = 0
+      for (let y = Math.max(0, y0); y < Math.min(readbackState.height, y1); y += 1) {
+        for (let x = Math.max(0, x0); x < Math.min(readbackState.width, x1); x += 1) {
+          if (pointAt(x, y).a >= threshold) {
+            count += 1
+          }
+        }
+      }
+      return count
+    }
+
     globalWindow.__biligGpuReadbackInspector = {
       countDarkPixels(regions) {
         return Object.fromEntries(
           regions.map((region) => [region.name, countDarkPixels(region.x0, region.y0, region.x1, region.y1, region.threshold)]),
+        )
+      },
+      countOpaquePixels(regions) {
+        return Object.fromEntries(
+          regions.map((region) => [region.name, countOpaquePixels(region.x0, region.y0, region.x1, region.y1, region.threshold)]),
         )
       },
       getSequence() {
@@ -1220,6 +1250,7 @@ async function inspectGpuReadback(
           readonly getSize: () => { readonly width: number; readonly height: number }
           readonly samplePoints: (points: readonly ReadbackInspectorPoint[]) => Record<string, ReadbackPoint>
           readonly countDarkPixels: (regions: readonly ReadbackInspectorRegion[]) => Record<string, number>
+          readonly countOpaquePixels: (regions: readonly ReadbackInspectorRegion[]) => Record<string, number>
         }
         __biligGpuReadback?: { readonly hasGpu: boolean }
       }
@@ -1235,6 +1266,7 @@ async function inspectGpuReadback(
         sequence: 0,
         points: {},
         darkPixelCounts: {},
+        opaquePixelCounts: {},
       }
     }
 
@@ -1247,6 +1279,7 @@ async function inspectGpuReadback(
       sequence: inspector.getSequence(),
       points: inspector.samplePoints(points),
       darkPixelCounts: inspector.countDarkPixels(regions),
+      opaquePixelCounts: inspector.countOpaquePixels(regions),
     }
   }, input)
 

@@ -51,7 +51,9 @@ function rectRevisionKey(tile: GridRenderTile): ReturnType<typeof resolveGridRec
 
 function contentEntry(overrides: Partial<TypeGpuTileContentResourceEntryV3> = {}): TypeGpuTileContentResourceEntryV3 {
   return {
+    decorationCellKeys: null,
     decorationRects: null,
+    rectBaseCount: overrides.rectBaseCount ?? overrides.rectCount ?? 1,
     rectCount: 1,
     rectHandle: null,
     rectRevisionKey: null,
@@ -369,6 +371,7 @@ describe('typegpu v3 resource cache revision keys', () => {
     expect(
       shouldSyncGridRectTileResourceV3({
         content: contentEntry({
+          decorationCellKeys: new Set(['0:0']),
           decorationRects: [{ color: '#111111', height: 1, width: 20, x: 4, y: 18 }],
           rectCount: 0,
           rectRevisionKey: rectRevisionKey(createTile()),
@@ -377,6 +380,78 @@ describe('typegpu v3 resource cache revision keys', () => {
         tile: plainAfterDecoration,
       }),
     ).toBe(true)
+  })
+
+  test('skips rect uploads when a plain text edit shares a tile with unrelated decorated text', () => {
+    const base = createTile({
+      rectCount: 0,
+      rectInstances: new Float32Array(),
+      textCount: 2,
+      textRuns: [
+        {
+          align: 'left',
+          clipHeight: 22,
+          clipWidth: 104,
+          clipX: 0,
+          clipY: 0,
+          color: '#111111',
+          col: 1,
+          font: '400 11px sans-serif',
+          fontSize: 11,
+          height: 22,
+          row: 1,
+          strike: false,
+          text: 'Decorated',
+          underline: true,
+          width: 104,
+          wrap: false,
+          x: 104,
+          y: 22,
+        },
+        {
+          align: 'left',
+          clipHeight: 22,
+          clipWidth: 104,
+          clipX: 0,
+          clipY: 0,
+          color: '#111111',
+          col: 5,
+          font: '400 11px sans-serif',
+          fontSize: 11,
+          height: 22,
+          row: 5,
+          strike: false,
+          text: 'Plain',
+          underline: false,
+          width: 104,
+          wrap: false,
+          x: 520,
+          y: 110,
+        },
+      ],
+    })
+    const plainEdit = createTile({
+      dirtyLocalCols: new Uint32Array([5, 5]),
+      dirtyLocalRows: new Uint32Array([5, 5]),
+      dirtyMasks: new Uint32Array([DirtyMaskV3.Value | DirtyMaskV3.Text]),
+      rectCount: base.rectCount,
+      textCount: base.textCount,
+      textRuns: base.textRuns.map((run) => (run.row === 5 && run.col === 5 ? { ...run, text: 'Plain edited' } : run)),
+      version: { ...base.version, text: 2, values: 2 },
+    })
+
+    expect(
+      shouldSyncGridRectTileResourceV3({
+        content: contentEntry({
+          decorationCellKeys: new Set(['1:1']),
+          decorationRects: [{ color: '#111111', height: 1, width: 52, x: 104, y: 40 }],
+          rectCount: base.rectCount,
+          rectRevisionKey: rectRevisionKey(base),
+        }),
+        rectRevisionKey: rectRevisionKey(plainEdit),
+        tile: plainEdit,
+      }),
+    ).toBe(false)
   })
 
   test('writes V3 vertex buffer subranges with byte offsets instead of full payload bytes', () => {

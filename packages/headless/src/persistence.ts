@@ -1,5 +1,6 @@
 import type { LiteralInput } from '@bilig/protocol'
 import { WorkPaper } from './work-paper.js'
+import { WorkPaperPersistenceError } from './work-paper-errors.js'
 import type {
   RawCellContent,
   SerializedWorkPaperNamedExpression,
@@ -75,8 +76,40 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
+function isDenseArray(value: unknown): value is unknown[] {
+  if (!Array.isArray(value)) {
+    return false
+  }
+  for (let index = 0; index < value.length; index += 1) {
+    if (!Object.hasOwn(value, index)) {
+      return false
+    }
+  }
+  return true
+}
+
+function isJsonNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value)
+}
+
+function isJsonInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value)
+}
+
+function isPositiveJsonInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value > 0
+}
+
+function isNonNegativeJsonInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0
+}
+
 function isLiteralInput(value: unknown): value is LiteralInput {
-  return value === null || typeof value === 'boolean' || typeof value === 'number' || typeof value === 'string'
+  return value === null || typeof value === 'boolean' || isJsonNumber(value) || typeof value === 'string'
 }
 
 function isRawCellContent(value: unknown): value is RawCellContent {
@@ -84,13 +117,12 @@ function isRawCellContent(value: unknown): value is RawCellContent {
 }
 
 function isWorkPaperSheet(value: unknown): value is WorkPaperSheet {
-  return Array.isArray(value) && value.every((row) => Array.isArray(row) && row.every((cell) => isRawCellContent(cell)))
+  return isDenseArray(value) && value.every((row) => isDenseArray(row) && row.every((cell) => isRawCellContent(cell)))
 }
 
 function isNamedExpressionOptions(value: unknown): value is Record<string, string | number | boolean> {
   return (
-    isRecord(value) &&
-    Object.values(value).every((entry) => typeof entry === 'string' || typeof entry === 'number' || typeof entry === 'boolean')
+    isRecord(value) && Object.values(value).every((entry) => typeof entry === 'string' || isJsonNumber(entry) || typeof entry === 'boolean')
   )
 }
 
@@ -98,9 +130,9 @@ function isWorkPaperContextValue(value: unknown): value is WorkPaperContextValue
   return (
     value === null ||
     typeof value === 'string' ||
-    typeof value === 'number' ||
+    isJsonNumber(value) ||
     typeof value === 'boolean' ||
-    (Array.isArray(value) && value.every((entry) => isWorkPaperContextValue(entry))) ||
+    (isDenseArray(value) && value.every((entry) => isWorkPaperContextValue(entry))) ||
     (isRecord(value) && Object.values(value).every((entry) => isWorkPaperContextValue(entry)))
   )
 }
@@ -109,62 +141,164 @@ function isChooseAddressMappingPolicy(value: unknown): value is WorkPaperChooseA
   return isRecord(value) && (value['mode'] === 'dense' || value['mode'] === 'sparse')
 }
 
+function isStringArray(value: unknown): value is string[] {
+  return isDenseArray(value) && value.every((item) => typeof item === 'string')
+}
+
+function isSimpleDate(value: unknown): value is { year: number; month: number; day: number } {
+  return (
+    isRecord(value) &&
+    isJsonInteger(value['year']) &&
+    isJsonInteger(value['month']) &&
+    value['month'] >= 1 &&
+    value['month'] <= 12 &&
+    isJsonInteger(value['day']) &&
+    value['day'] >= 1 &&
+    value['day'] <= 31
+  )
+}
+
+function isPersistableConfigEntry(key: string, entry: unknown): boolean {
+  switch (key) {
+    case 'accentSensitive':
+    case 'caseSensitive':
+    case 'evaluateNullToZero':
+    case 'ignorePunctuation':
+    case 'leapYear1900':
+    case 'matchWholeCell':
+    case 'smartRounding':
+    case 'useArrayArithmetic':
+    case 'useColumnIndex':
+    case 'useStats':
+    case 'useRegularExpressions':
+    case 'useWildcards':
+      return typeof entry === 'boolean'
+    case 'caseFirst':
+      return entry === 'upper' || entry === 'lower' || entry === 'false'
+    case 'chooseAddressMappingPolicy':
+      return isChooseAddressMappingPolicy(entry)
+    case 'context':
+      return isWorkPaperContextValue(entry)
+    case 'currencySymbol':
+    case 'dateFormats':
+    case 'timeFormats':
+      return isStringArray(entry)
+    case 'decimalSeparator':
+      return entry === '.' || entry === ','
+    case 'functionArgSeparator':
+    case 'language':
+    case 'licenseKey':
+    case 'localeLang':
+      return typeof entry === 'string'
+    case 'ignoreWhiteSpace':
+      return entry === 'standard' || entry === 'any'
+    case 'arrayColumnSeparator':
+      return entry === ',' || entry === ';'
+    case 'arrayRowSeparator':
+      return entry === ';' || entry === '|'
+    case 'maxRows':
+    case 'maxColumns':
+      return isPositiveJsonInteger(entry)
+    case 'nullDate':
+      return isSimpleDate(entry)
+    case 'nullYear':
+    case 'precisionRounding':
+      return isJsonInteger(entry)
+    case 'precisionEpsilon':
+      return isJsonNumber(entry)
+    case 'thousandSeparator':
+      return entry === '' || entry === ',' || entry === '.'
+    case 'undoLimit':
+      return isNonNegativeJsonInteger(entry)
+    default:
+      return false
+  }
+}
+
 function isPersistableWorkPaperConfig(value: unknown): value is PersistableWorkPaperConfig {
   if (!isRecord(value)) {
     return false
   }
   return Object.entries(value).every(([key, entry]) => {
-    if (!(PERSISTABLE_WORK_PAPER_CONFIG_KEYS as readonly string[]).includes(key)) {
-      return false
-    }
-    if (key === 'chooseAddressMappingPolicy') {
-      return isChooseAddressMappingPolicy(entry)
-    }
-    if (key === 'currencySymbol' || key === 'dateFormats' || key === 'timeFormats') {
-      return Array.isArray(entry) && entry.every((item) => typeof item === 'string')
-    }
-    if (key === 'nullDate') {
-      return isRecord(entry) && typeof entry['year'] === 'number' && typeof entry['month'] === 'number' && typeof entry['day'] === 'number'
-    }
-    if (key === 'context') {
-      return isWorkPaperContextValue(entry)
-    }
-    return typeof entry === 'string' || typeof entry === 'number' || typeof entry === 'boolean'
+    return (PERSISTABLE_WORK_PAPER_CONFIG_KEYS as readonly string[]).includes(key) && isPersistableConfigEntry(key, entry)
   })
 }
 
 function isPersistedWorkPaperNamedExpression(value: unknown): value is PersistedWorkPaperNamedExpression {
   return (
     isRecord(value) &&
-    typeof value['name'] === 'string' &&
+    isNonEmptyString(value['name']) &&
     isRawCellContent(value['expression']) &&
-    (value['scopeSheetName'] === undefined || typeof value['scopeSheetName'] === 'string') &&
+    (value['scopeSheetName'] === undefined || isNonEmptyString(value['scopeSheetName'])) &&
     (value['options'] === undefined || isNamedExpressionOptions(value['options']))
   )
 }
 
 function isPersistedWorkPaperSheet(value: unknown): value is PersistedWorkPaperSheet {
-  return isRecord(value) && typeof value['name'] === 'string' && isWorkPaperSheet(value['content'])
+  return isRecord(value) && isNonEmptyString(value['name']) && isWorkPaperSheet(value['content'])
+}
+
+function hasUniqueSheetNames(sheets: readonly PersistedWorkPaperSheet[]): boolean {
+  const names = new Set<string>()
+  for (const sheet of sheets) {
+    if (names.has(sheet.name)) {
+      return false
+    }
+    names.add(sheet.name)
+  }
+  return true
+}
+
+function namedExpressionKey(expression: PersistedWorkPaperNamedExpression): string {
+  return `${expression.scopeSheetName ?? '<global>'}\u0000${expression.name}`
+}
+
+function hasValidNamedExpressionScopes(
+  expressions: readonly PersistedWorkPaperNamedExpression[],
+  sheetNames: ReadonlySet<string>,
+): boolean {
+  const namesByScope = new Set<string>()
+  for (const expression of expressions) {
+    if (expression.scopeSheetName !== undefined && !sheetNames.has(expression.scopeSheetName)) {
+      return false
+    }
+    const key = namedExpressionKey(expression)
+    if (namesByScope.has(key)) {
+      return false
+    }
+    namesByScope.add(key)
+  }
+  return true
 }
 
 /**
  * Checks whether a value matches the persisted WorkPaper document format.
  */
 export function isPersistedWorkPaperDocument(value: unknown): value is PersistedWorkPaperDocument {
-  return (
-    isRecord(value) &&
-    value['format'] === WORK_PAPER_DOCUMENT_FORMAT &&
-    Array.isArray(value['sheets']) &&
-    value['sheets'].every((sheet) => isPersistedWorkPaperSheet(sheet)) &&
-    Array.isArray(value['namedExpressions']) &&
-    value['namedExpressions'].every((expression) => isPersistedWorkPaperNamedExpression(expression)) &&
-    (value['config'] === undefined || isPersistableWorkPaperConfig(value['config']))
-  )
+  if (
+    !isRecord(value) ||
+    value['format'] !== WORK_PAPER_DOCUMENT_FORMAT ||
+    !isDenseArray(value['sheets']) ||
+    !value['sheets'].every((sheet) => isPersistedWorkPaperSheet(sheet)) ||
+    !isDenseArray(value['namedExpressions']) ||
+    !value['namedExpressions'].every((expression) => isPersistedWorkPaperNamedExpression(expression)) ||
+    (value['config'] !== undefined && !isPersistableWorkPaperConfig(value['config']))
+  ) {
+    return false
+  }
+
+  const sheets = value['sheets']
+  const namedExpressions = value['namedExpressions']
+  if (!hasUniqueSheetNames(sheets)) {
+    return false
+  }
+
+  return hasValidNamedExpressionScopes(namedExpressions, new Set(sheets.map((sheet) => sheet.name)))
 }
 
 function assertPersistedWorkPaperDocument(value: unknown): asserts value is PersistedWorkPaperDocument {
   if (!isPersistedWorkPaperDocument(value)) {
-    throw new Error('Invalid persisted WorkPaper document')
+    throw new WorkPaperPersistenceError('Invalid persisted WorkPaper document')
   }
 }
 
@@ -198,7 +332,7 @@ export function exportWorkPaperDocument(workbook: WorkPaper, options: { includeC
   const sheets = workbook.getSheetNames().map((name) => {
     const sheetId = workbook.getSheetId(name)
     if (sheetId === undefined) {
-      throw new Error(`Missing sheet id for ${name}`)
+      throw new WorkPaperPersistenceError(`Missing sheet id for ${name}`)
     }
     return {
       name,
@@ -229,14 +363,14 @@ export function createWorkPaperFromDocument(document: PersistedWorkPaperDocument
   document.namedExpressions.forEach((expression) => {
     const scope = expression.scopeSheetName ? workbook.getSheetId(expression.scopeSheetName) : undefined
     if (expression.scopeSheetName && scope === undefined) {
-      throw new Error(`Missing scoped sheet ${expression.scopeSheetName}`)
+      throw new WorkPaperPersistenceError(`Missing scoped sheet ${expression.scopeSheetName}`)
     }
     workbook.addNamedExpression(expression.name, expression.expression, scope, expression.options)
   })
   document.sheets.forEach((sheet) => {
     const sheetId = workbook.getSheetId(sheet.name)
     if (sheetId === undefined) {
-      throw new Error(`Missing restored sheet ${sheet.name}`)
+      throw new WorkPaperPersistenceError(`Missing restored sheet ${sheet.name}`)
     }
     workbook.setSheetContent(sheetId, sheet.content)
   })
@@ -257,7 +391,12 @@ export function serializeWorkPaperDocument(document: PersistedWorkPaperDocument)
  * Parses and validates a WorkPaper document from JSON.
  */
 export function parseWorkPaperDocument(json: string): PersistedWorkPaperDocument {
-  const parsed = JSON.parse(json) as unknown
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(json) as unknown
+  } catch (error) {
+    throw new WorkPaperPersistenceError('Invalid WorkPaper document JSON', error)
+  }
   assertPersistedWorkPaperDocument(parsed)
   return parsed
 }
@@ -272,7 +411,7 @@ function serializeNamedExpression(workbook: WorkPaper, expression: SerializedWor
   }
   const scopeSheetName = workbook.getSheetName(expression.scope)
   if (!scopeSheetName) {
-    throw new Error(`Missing scope sheet for named expression ${expression.name}`)
+    throw new WorkPaperPersistenceError(`Missing scope sheet for named expression ${expression.name}`)
   }
   return {
     name: expression.name,

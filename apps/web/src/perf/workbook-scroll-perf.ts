@@ -27,6 +27,7 @@ interface WorkbookScrollPerfCounters {
   domSurfaceMounts: number
   canvasPaints: Record<string, number>
   surfaceCommits: Record<string, number>
+  typeGpuBufferWriteBytesByKind: Record<string, number>
   typeGpuConfigures: number
   typeGpuSubmits: number
   typeGpuDrawCalls: number
@@ -110,6 +111,7 @@ class WorkbookScrollPerfCollector {
     domSurfaceMounts: 0,
     canvasPaints: {},
     surfaceCommits: {},
+    typeGpuBufferWriteBytesByKind: {},
     typeGpuAtlasUploadBytes: 0,
     typeGpuAtlasDirtyPages: 0,
     typeGpuAtlasDirtyPageUploadBytes: 0,
@@ -259,8 +261,10 @@ class WorkbookScrollPerfCollector {
     this.totalCounters.typeGpuUniformWriteBytes += bytes
   }
 
-  noteTypeGpuBufferWrite(bytes: number): void {
+  noteTypeGpuBufferWrite(bytes: number, label: string): void {
     this.totalCounters.typeGpuVertexUploadBytes += bytes
+    const kind = classifyTypeGpuBufferWrite(label)
+    this.totalCounters.typeGpuBufferWriteBytesByKind[kind] = (this.totalCounters.typeGpuBufferWriteBytesByKind[kind] ?? 0) + bytes
   }
 
   noteTypeGpuOverlayWrite(bytes: number): void {
@@ -454,6 +458,7 @@ function cloneCounters(counters: WorkbookScrollPerfCounters): WorkbookScrollPerf
     canvasPaints: { ...counters.canvasPaints },
     fullPatchBroadcasts: { ...counters.fullPatchBroadcasts },
     surfaceCommits: { ...counters.surfaceCommits },
+    typeGpuBufferWriteBytesByKind: { ...counters.typeGpuBufferWriteBytesByKind },
   }
 }
 
@@ -481,6 +486,7 @@ function subtractCounters(counters: WorkbookScrollPerfCounters, baseline: Workbo
     domSurfaceMounts: counters.domSurfaceMounts - baseline.domSurfaceMounts,
     canvasPaints: subtractRecordCounters(counters.canvasPaints, baseline.canvasPaints),
     surfaceCommits: subtractRecordCounters(counters.surfaceCommits, baseline.surfaceCommits),
+    typeGpuBufferWriteBytesByKind: subtractRecordCounters(counters.typeGpuBufferWriteBytesByKind, baseline.typeGpuBufferWriteBytesByKind),
     typeGpuAtlasUploadBytes: counters.typeGpuAtlasUploadBytes - baseline.typeGpuAtlasUploadBytes,
     typeGpuAtlasDirtyPages: counters.typeGpuAtlasDirtyPages - baseline.typeGpuAtlasDirtyPages,
     typeGpuAtlasDirtyPageUploadBytes: counters.typeGpuAtlasDirtyPageUploadBytes - baseline.typeGpuAtlasDirtyPageUploadBytes,
@@ -520,6 +526,31 @@ function subtractRecordCounters(
     next[key] = (counters[key] ?? 0) - (baseline[key] ?? 0)
   }
   return next
+}
+
+function classifyTypeGpuBufferWrite(label: string): string {
+  if (label.startsWith('tile-text:')) {
+    return label.endsWith(':span') ? 'tileTextSpan' : 'tileTextFull'
+  }
+  if (label.startsWith('tile-rect:')) {
+    if (label.endsWith(':span')) {
+      return 'tileRectSpan'
+    }
+    if (label.endsWith(':decorations')) {
+      return 'tileRectDecorations'
+    }
+    return 'tileRectFull'
+  }
+  if (label.startsWith('header-text:')) {
+    return 'headerText'
+  }
+  if (label.startsWith('header-rect:')) {
+    return 'headerRect'
+  }
+  if (label.startsWith('overlay:')) {
+    return 'overlay'
+  }
+  return label || 'other'
 }
 
 function summarizeNumbers(values: readonly number[]): WorkbookScrollPerfSummary {

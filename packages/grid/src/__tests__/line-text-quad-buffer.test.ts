@@ -260,6 +260,42 @@ describe('text-quad-buffer', () => {
     expect(internedGlyphs).toEqual([])
   })
 
+  it('translates clean text-run payloads when only run position changes', () => {
+    const internedGlyphs: string[] = []
+    const recordingAtlas = {
+      getGlyphGeometryVersion: () => 0,
+      getVersion: () => 1,
+      intern(font: string, glyph: string) {
+        internedGlyphs.push(glyph)
+        return atlas.intern(font, glyph)
+      },
+    }
+    const first = buildTextQuadsFromRunsWithSpans(
+      [{ text: 'AB', x: 0, y: 0, clipX: 0, clipY: 0, font: '400 10px Geist', fontSize: 10 }],
+      recordingAtlas,
+    )
+
+    internedGlyphs.length = 0
+    const second = buildTextQuadsFromRunsWithSpans(
+      [{ text: 'AB', x: 10, y: 5, clipX: 10, clipY: 5, font: '400 10px Geist', fontSize: 10 }],
+      recordingAtlas,
+      undefined,
+      { previousRunPayloads: first.runPayloads },
+    )
+
+    expect(second.runPayloads[0]).not.toBe(first.runPayloads[0])
+    expect(second.diagnostics).toEqual({
+      atlasGeometryRetries: 0,
+      rebuiltRunPayloads: 0,
+      reusedRunPayloads: 1,
+    })
+    expect(second.floats[0]).toBe((first.floats[0] ?? 0) + 10)
+    expect(second.floats[1]).toBe((first.floats[1] ?? 0) + 5)
+    expect(second.floats[12]).toBe((first.floats[12] ?? 0) + 10)
+    expect(second.floats[13]).toBe((first.floats[13] ?? 0) + 5)
+    expect(internedGlyphs).toEqual([])
+  })
+
   it('reports atlas geometry retries when glyph allocation changes UV geometry during build', () => {
     let atlasGeometryVersion = 0
     let firstIntern = true

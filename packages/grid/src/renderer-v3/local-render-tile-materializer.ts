@@ -4,6 +4,7 @@ import type { GridEngineLike } from '../grid-engine.js'
 import { materializeGridRenderTileV3 } from './grid-tile-materializer.js'
 import { unpackTileKey53, tileKeysForViewport } from './tile-key.js'
 import type { GridRenderTile } from './render-tile-source.js'
+import type { DirtyTileLocalSpanV3 } from './tile-damage-index.js'
 
 export function buildLocalFixedRenderTiles(input: {
   readonly engine: GridEngineLike
@@ -20,16 +21,24 @@ export function buildLocalFixedRenderTiles(input: {
   readonly generation: number
   readonly cameraSeq: number
   readonly freezeSeq?: number | undefined
+  readonly tileKeys?: readonly number[] | undefined
+  readonly dirtySpansForTile?: ((tileId: number) => readonly DirtyTileLocalSpanV3[]) | undefined
+  readonly reuseStaticGridRectsByTileId?: ReadonlyMap<number, GridRenderTile> | undefined
 }): readonly GridRenderTile[] {
   const axisVersionX = hashAxisOverrides(input.sortedColumnWidthOverrides)
   const axisVersionY = hashAxisOverrides(input.sortedRowHeightOverrides)
-  return tileKeysForViewport({
-    dprBucket: input.dprBucket,
-    sheetOrdinal: input.sheetOrdinal,
-    viewport: input.viewport,
-  }).map((tileId) => {
+  const tileKeys =
+    input.tileKeys ??
+    tileKeysForViewport({
+      dprBucket: input.dprBucket,
+      sheetOrdinal: input.sheetOrdinal,
+      viewport: input.viewport,
+    })
+  return tileKeys.map((tileId) => {
     const key = unpackTileKey53(tileId)
     const tileViewport = viewportFromTileKey(key.rowTile, key.colTile)
+    const dirtySpans = input.dirtySpansForTile?.(tileId) ?? []
+    const dirty = packDirtyLocalSpans(dirtySpans)
     return materializeGridRenderTileV3({
       ...input,
       axisSeqX: axisVersionX,
@@ -39,15 +48,17 @@ export function buildLocalFixedRenderTiles(input: {
       materializedAtSeq: input.generation,
       packetSeq: input.generation,
       rectSeq: input.generation,
+      reuseStaticGridRectsFrom: input.reuseStaticGridRectsByTileId?.get(tileId),
       styleSeq: input.generation,
       textSeq: input.generation,
       viewport: tileViewport,
       valueSeq: input.generation,
+      ...dirty,
     })
   })
 }
 
-function viewportFromTileKey(rowTile: number, colTile: number): Viewport {
+export function viewportFromTileKey(rowTile: number, colTile: number): Viewport {
   const rowStart = rowTile * VIEWPORT_TILE_ROW_COUNT
   const colStart = colTile * VIEWPORT_TILE_COLUMN_COUNT
   return {
@@ -56,6 +67,28 @@ function viewportFromTileKey(rowTile: number, colTile: number): Viewport {
     rowEnd: Math.min(MAX_ROWS - 1, rowStart + VIEWPORT_TILE_ROW_COUNT - 1),
     rowStart,
   }
+}
+
+function packDirtyLocalSpans(spans: readonly DirtyTileLocalSpanV3[]): {
+  readonly dirtyLocalRows?: Uint32Array | undefined
+  readonly dirtyLocalCols?: Uint32Array | undefined
+  readonly dirtyMasks?: Uint32Array | undefined
+} {
+  if (spans.length === 0) {
+    return {}
+  }
+  const dirtyLocalRows = new Uint32Array(spans.length * 2)
+  const dirtyLocalCols = new Uint32Array(spans.length * 2)
+  const dirtyMasks = new Uint32Array(spans.length)
+  spans.forEach((span, index) => {
+    const offset = index * 2
+    dirtyLocalRows[offset] = span.rowStart
+    dirtyLocalRows[offset + 1] = span.rowEnd
+    dirtyLocalCols[offset] = span.colStart
+    dirtyLocalCols[offset + 1] = span.colEnd
+    dirtyMasks[index] = span.mask
+  })
+  return { dirtyLocalCols, dirtyLocalRows, dirtyMasks }
 }
 
 function hashAxisOverrides(entries: readonly (readonly [number, number])[]): number {

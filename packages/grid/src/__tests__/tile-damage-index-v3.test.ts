@@ -24,7 +24,17 @@ describe('DirtyTileIndexV3', () => {
 
     expect([...index.peekWarm(keys)]).toEqual(keys)
     expect(index.getMask(keys[0])).toBe(DirtyMaskV3.Value | DirtyMaskV3.Text)
+    expect(index.getSpans(keys[0])).toEqual([
+      {
+        colEnd: 127,
+        colStart: 127,
+        mask: DirtyMaskV3.Value | DirtyMaskV3.Text,
+        rowEnd: 31,
+        rowStart: 31,
+      },
+    ])
     expect([...index.consumeVisible(keys)]).toEqual(keys)
+    expect(index.getSpans(keys[0])).toEqual([])
     expect([...index.peekWarm(keys)]).toEqual([])
   })
 
@@ -50,7 +60,23 @@ describe('DirtyTileIndexV3', () => {
     expect(index.getMask(origin) & DirtyMaskV3.Value).toBe(DirtyMaskV3.Value)
     expect(index.getMask(axisX) & DirtyMaskV3.AxisX).toBe(DirtyMaskV3.AxisX)
     expect(index.getMask(axisY) & DirtyMaskV3.AxisY).toBe(DirtyMaskV3.AxisY)
+    expect(index.getSpans(axisX)).toContainEqual({
+      colEnd: 127,
+      colStart: 0,
+      mask: DirtyMaskV3.Rect | DirtyMaskV3.AxisX,
+      rowEnd: 31,
+      rowStart: 0,
+    })
+    expect(index.getSpans(axisY)).toContainEqual({
+      colEnd: 127,
+      colStart: 0,
+      mask: DirtyMaskV3.Text | DirtyMaskV3.AxisY,
+      rowEnd: 31,
+      rowStart: 0,
+    })
     expect(index.consumeVisible([axisX, axisY])).toEqual([axisX, axisY])
     expect(index.consumeVisible([axisX, axisY])).toEqual([])
+    expect(index.getSpans(axisX)).toEqual([])
+    expect(index.getSpans(axisY)).toEqual([])
   })
 })

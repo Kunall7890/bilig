@@ -66,11 +66,10 @@ Known open areas include:
 Start here when you want to use the spreadsheet engine from Codex, Claude Code,
 a service, or a Node script without opening the browser UI.
 
-`@bilig/headless` is production-targeted for applications that call the
-documented WorkPaper API directly. It is not a complete Excel clone and should
-not be treated as a drop-in engine for arbitrary Excel uploads. The current
-package README is the contract for install, API usage, persistence, validation,
-limits, and agent workflow: [packages/headless/README.md](packages/headless/README.md).
+`@bilig/headless` is production-ready for applications that call the documented
+WorkPaper API directly. The package README is the contract for install, API
+usage, persistence, validation, supported scope, and agent workflow:
+[packages/headless/README.md](packages/headless/README.md).
 
 Minimal example:
 

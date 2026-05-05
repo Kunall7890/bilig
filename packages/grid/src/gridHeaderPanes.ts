@@ -7,6 +7,7 @@ import { packGridRectBufferV3 } from './renderer-v3/rect-instance-buffer.js'
 
 export interface GridHeaderPaneState {
   readonly paneId: 'corner-header' | 'top-frozen' | 'top-body' | 'left-frozen' | 'left-body'
+  readonly drawVisible?: boolean | undefined
   readonly frame: ClipRect
   readonly surfaceSize: {
     readonly width: number

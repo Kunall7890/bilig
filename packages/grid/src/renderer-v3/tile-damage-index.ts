@@ -27,10 +27,21 @@ export interface WorkbookDeltaBatchLikeV3 {
   readonly dirty: WorkbookDeltaDirtyRangesLikeV3
 }
 
+export interface DirtyTileLocalSpanV3 {
+  readonly rowStart: number
+  readonly rowEnd: number
+  readonly colStart: number
+  readonly colEnd: number
+  readonly mask: number
+}
+
 export class DirtyTileIndexV3 {
   private readonly masks = new Map<TileKey53, number>()
+  private readonly spans = new Map<TileKey53, DirtyTileLocalSpanV3[]>()
   private readonly axisXMasks = new Map<TileKey53, number>()
+  private readonly axisXSpans = new Map<TileKey53, DirtyTileLocalSpanV3[]>()
   private readonly axisYMasks = new Map<TileKey53, number>()
+  private readonly axisYSpans = new Map<TileKey53, DirtyTileLocalSpanV3[]>()
   private readonly consumedAxisMasks = new Map<TileKey53, number>()
 
   markCellRange(input: {
@@ -52,15 +63,24 @@ export class DirtyTileIndexV3 {
     const colTileEnd = Math.floor(colEnd / VIEWPORT_TILE_COLUMN_COUNT)
     for (let rowTile = rowTileStart; rowTile <= rowTileEnd; rowTile += 1) {
       for (let colTile = colTileStart; colTile <= colTileEnd; colTile += 1) {
-        this.markTile(
-          packTileKey53({
-            sheetOrdinal: input.sheetOrdinal,
-            rowTile,
-            colTile,
-            dprBucket: input.dprBucket,
-          }),
-          input.mask,
-        )
+        const tileRowStart = rowTile * VIEWPORT_TILE_ROW_COUNT
+        const tileRowEnd = Math.min(MAX_ROWS - 1, tileRowStart + VIEWPORT_TILE_ROW_COUNT - 1)
+        const tileColStart = colTile * VIEWPORT_TILE_COLUMN_COUNT
+        const tileColEnd = Math.min(MAX_COLS - 1, tileColStart + VIEWPORT_TILE_COLUMN_COUNT - 1)
+        const key = packTileKey53({
+          sheetOrdinal: input.sheetOrdinal,
+          rowTile,
+          colTile,
+          dprBucket: input.dprBucket,
+        })
+        this.markTile(key, input.mask)
+        this.appendSpan(key, {
+          colEnd: Math.min(colEnd, tileColEnd) - tileColStart,
+          colStart: Math.max(colStart, tileColStart) - tileColStart,
+          mask: input.mask,
+          rowEnd: Math.min(rowEnd, tileRowEnd) - tileRowStart,
+          rowStart: Math.max(rowStart, tileRowStart) - tileRowStart,
+        })
       }
     }
   }
@@ -84,7 +104,22 @@ export class DirtyTileIndexV3 {
         rowTile: 0,
         sheetOrdinal: input.sheetOrdinal,
       })
-      this.axisXMasks.set(key, (this.axisXMasks.get(key) ?? 0) | input.mask | DirtyMaskV3.AxisX)
+      const mask = input.mask | DirtyMaskV3.AxisX
+      const tileColStart = colTile * VIEWPORT_TILE_COLUMN_COUNT
+      const tileColEnd = Math.min(MAX_COLS - 1, tileColStart + VIEWPORT_TILE_COLUMN_COUNT - 1)
+      this.axisXMasks.set(key, (this.axisXMasks.get(key) ?? 0) | mask)
+      const localColStart = Math.max(colStart, tileColStart) - tileColStart
+      this.appendSpan(
+        key,
+        {
+          colEnd: tileColEnd - tileColStart,
+          colStart: localColStart,
+          mask,
+          rowEnd: VIEWPORT_TILE_ROW_COUNT - 1,
+          rowStart: 0,
+        },
+        this.axisXSpans,
+      )
     }
   }
 
@@ -107,7 +142,22 @@ export class DirtyTileIndexV3 {
         rowTile,
         sheetOrdinal: input.sheetOrdinal,
       })
-      this.axisYMasks.set(key, (this.axisYMasks.get(key) ?? 0) | input.mask | DirtyMaskV3.AxisY)
+      const mask = input.mask | DirtyMaskV3.AxisY
+      const tileRowStart = rowTile * VIEWPORT_TILE_ROW_COUNT
+      const tileRowEnd = Math.min(MAX_ROWS - 1, tileRowStart + VIEWPORT_TILE_ROW_COUNT - 1)
+      this.axisYMasks.set(key, (this.axisYMasks.get(key) ?? 0) | mask)
+      const localRowStart = Math.max(rowStart, tileRowStart) - tileRowStart
+      this.appendSpan(
+        key,
+        {
+          colEnd: VIEWPORT_TILE_COLUMN_COUNT - 1,
+          colStart: 0,
+          mask,
+          rowEnd: tileRowEnd - tileRowStart,
+          rowStart: localRowStart,
+        },
+        this.axisYSpans,
+      )
     }
   }
 
@@ -120,6 +170,14 @@ export class DirtyTileIndexV3 {
   }
 
   getMask(key: TileKey53): number {
+    return this.resolveMask(key, false)
+  }
+
+  getUnconsumedMask(key: TileKey53): number {
+    return this.resolveMask(key, true)
+  }
+
+  getSpans(key: TileKey53): readonly DirtyTileLocalSpanV3[] {
     const fields = unpackTileKey53(key)
     const axisXKey = packTileKey53({
       colTile: fields.colTile,
@@ -133,7 +191,35 @@ export class DirtyTileIndexV3 {
       rowTile: fields.rowTile,
       sheetOrdinal: fields.sheetOrdinal,
     })
-    return (this.masks.get(key) ?? 0) | (this.axisXMasks.get(axisXKey) ?? 0) | (this.axisYMasks.get(axisYKey) ?? 0)
+    const consumedAxisMask = this.consumedAxisMasks.get(key) ?? 0
+    return [
+      ...(this.spans.get(key) ?? []),
+      ...this.filterUnconsumedAxisSpans(this.axisXSpans.get(axisXKey), consumedAxisMask),
+      ...this.filterUnconsumedAxisSpans(this.axisYSpans.get(axisYKey), consumedAxisMask),
+    ]
+  }
+
+  private resolveMask(key: TileKey53, unconsumedOnly: boolean): number {
+    const fields = unpackTileKey53(key)
+    const axisXKey = packTileKey53({
+      colTile: fields.colTile,
+      dprBucket: fields.dprBucket,
+      rowTile: 0,
+      sheetOrdinal: fields.sheetOrdinal,
+    })
+    const axisYKey = packTileKey53({
+      colTile: 0,
+      dprBucket: fields.dprBucket,
+      rowTile: fields.rowTile,
+      sheetOrdinal: fields.sheetOrdinal,
+    })
+    const mask = (this.masks.get(key) ?? 0) | (this.axisXMasks.get(axisXKey) ?? 0) | (this.axisYMasks.get(axisYKey) ?? 0)
+    if (!unconsumedOnly) {
+      return mask
+    }
+    const consumedAxisMask = this.consumedAxisMasks.get(key) ?? 0
+    const exactMask = this.masks.get(key) ?? 0
+    return exactMask | (mask & ~consumedAxisMask)
   }
 
   consumeVisible(visibleKeys: Iterable<TileKey53>): TileKey53[] {
@@ -148,6 +234,7 @@ export class DirtyTileIndexV3 {
       }
       dirty.push(key)
       this.masks.delete(key)
+      this.spans.delete(key)
       this.consumedAxisMasks.set(
         key,
         consumedAxisMask | (mask & (DirtyMaskV3.AxisX | DirtyMaskV3.AxisY | DirtyMaskV3.Rect | DirtyMaskV3.Text)),
@@ -159,7 +246,7 @@ export class DirtyTileIndexV3 {
   peekWarm(warmKeys: Iterable<TileKey53>): TileKey53[] {
     const dirty: number[] = []
     for (const key of warmKeys) {
-      if (this.getMask(key) !== 0) {
+      if (this.getUnconsumedMask(key) !== 0) {
         dirty.push(key)
       }
     }
@@ -168,9 +255,28 @@ export class DirtyTileIndexV3 {
 
   clear(): void {
     this.masks.clear()
+    this.spans.clear()
     this.axisXMasks.clear()
+    this.axisXSpans.clear()
     this.axisYMasks.clear()
+    this.axisYSpans.clear()
     this.consumedAxisMasks.clear()
+  }
+
+  private appendSpan(key: TileKey53, span: DirtyTileLocalSpanV3, spansByTile: Map<TileKey53, DirtyTileLocalSpanV3[]> = this.spans): void {
+    const spans = spansByTile.get(key) ?? []
+    spans.push(span)
+    spansByTile.set(key, spans)
+  }
+
+  private filterUnconsumedAxisSpans(
+    spans: readonly DirtyTileLocalSpanV3[] | undefined,
+    consumedAxisMask: number,
+  ): readonly DirtyTileLocalSpanV3[] {
+    if (!spans || spans.length === 0) {
+      return []
+    }
+    return spans.filter((span) => (span.mask & ~consumedAxisMask) !== 0)
   }
 }
 

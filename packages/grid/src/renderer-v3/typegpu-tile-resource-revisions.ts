@@ -208,6 +208,7 @@ export function resolveMissingTextGlyphRunSpansV3(input: {
 
 export function shouldSyncGridRectTileResourceV3(input: {
   readonly content: {
+    readonly decorationCellKeys: ReadonlySet<string> | null
     readonly decorationRects: readonly TextDecorationRect[] | null
     readonly rectCount: number
     readonly rectHandle: GpuBufferHandleV3 | null
@@ -238,5 +239,106 @@ export function shouldSyncGridRectTileResourceV3(input: {
   if ((dirtyMask & TEXT_DECORATION_DIRTY_MASK_V3) === 0) {
     return false
   }
-  return input.tile.textRuns.some((run) => run.underline || run.strike) || (input.content.decorationRects?.length ?? 0) > 0
+  return hasDirtyTextDecorationResourceV3({
+    previousDecorationCellKeys: input.content.decorationCellKeys,
+    tile: input.tile,
+  })
+}
+
+function hasDirtyTextDecorationResourceV3(input: {
+  readonly previousDecorationCellKeys: ReadonlySet<string> | null
+  readonly tile: GridRenderTile
+}): boolean {
+  const dirtyMasks = input.tile.dirtyMasks
+  const dirtyLocalRows = input.tile.dirtyLocalRows
+  const dirtyLocalCols = input.tile.dirtyLocalCols
+  if (!dirtyMasks || !dirtyLocalRows || !dirtyLocalCols || dirtyMasks.length === 0) {
+    return input.tile.textRuns.some((run) => run.underline || run.strike) || (input.previousDecorationCellKeys?.size ?? 0) > 0
+  }
+
+  for (const run of input.tile.textRuns) {
+    if (!run.underline && !run.strike) {
+      continue
+    }
+    if (run.row === undefined || run.col === undefined) {
+      return true
+    }
+    if (
+      isCellInDirtyTextDecorationRange(
+        run.row,
+        run.col,
+        dirtyMasks,
+        dirtyLocalRows,
+        dirtyLocalCols,
+        input.tile.bounds.rowStart,
+        input.tile.bounds.colStart,
+      )
+    ) {
+      return true
+    }
+  }
+
+  const previousDecorationCellKeys = input.previousDecorationCellKeys
+  if (!previousDecorationCellKeys || previousDecorationCellKeys.size === 0) {
+    return false
+  }
+  if (previousDecorationCellKeys.has('*')) {
+    return true
+  }
+  for (const key of previousDecorationCellKeys) {
+    const cell = parseDecorationCellKey(key)
+    if (
+      cell &&
+      isCellInDirtyTextDecorationRange(
+        cell.row,
+        cell.col,
+        dirtyMasks,
+        dirtyLocalRows,
+        dirtyLocalCols,
+        input.tile.bounds.rowStart,
+        input.tile.bounds.colStart,
+      )
+    ) {
+      return true
+    }
+  }
+  return false
+}
+
+function isCellInDirtyTextDecorationRange(
+  row: number,
+  col: number,
+  dirtyMasks: Uint32Array,
+  dirtyLocalRows: Uint32Array,
+  dirtyLocalCols: Uint32Array,
+  tileRowStart: number,
+  tileColStart: number,
+): boolean {
+  const localRow = row - tileRowStart
+  const localCol = col - tileColStart
+  for (let index = 0; index < dirtyMasks.length; index += 1) {
+    const mask = dirtyMasks[index] ?? 0
+    if ((mask & TEXT_DECORATION_DIRTY_MASK_V3) === 0) {
+      continue
+    }
+    const offset = index * 2
+    const rowStart = dirtyLocalRows[offset] ?? 0
+    const rowEnd = dirtyLocalRows[offset + 1] ?? rowStart
+    const colStart = dirtyLocalCols[offset] ?? 0
+    const colEnd = dirtyLocalCols[offset + 1] ?? colStart
+    if (localRow >= rowStart && localRow <= rowEnd && localCol >= colStart && localCol <= colEnd) {
+      return true
+    }
+  }
+  return false
+}
+
+function parseDecorationCellKey(key: string): { readonly row: number; readonly col: number } | null {
+  const separator = key.indexOf(':')
+  if (separator <= 0 || separator === key.length - 1) {
+    return null
+  }
+  const row = Number(key.slice(0, separator))
+  const col = Number(key.slice(separator + 1))
+  return Number.isInteger(row) && row >= 0 && Number.isInteger(col) && col >= 0 ? { col, row } : null
 }

@@ -326,9 +326,9 @@ export class GridRuntimeHost {
     if (col >= this.freezeCols) {
       const scrollCellLeft = this.columns.offsetOf(col) - frozenWidth
       const cellWidth = this.columns.sizeAt(col)
-      if (scrollCellLeft < scrollLeft) {
+      if (scrollCellLeft + cellWidth <= scrollLeft) {
         scrollLeft = scrollCellLeft
-      } else if (scrollCellLeft + cellWidth > scrollLeft + bodyWidth) {
+      } else if (scrollCellLeft >= scrollLeft + bodyWidth) {
         scrollLeft = scrollCellLeft + cellWidth - bodyWidth
       }
     }
@@ -336,9 +336,9 @@ export class GridRuntimeHost {
     if (row >= this.freezeRows) {
       const scrollCellTop = this.rows.offsetOf(row) - frozenHeight
       const cellHeight = this.rows.sizeAt(row)
-      if (scrollCellTop < scrollTop) {
+      if (scrollCellTop + cellHeight <= scrollTop) {
         scrollTop = scrollCellTop
-      } else if (scrollCellTop + cellHeight > scrollTop + bodyHeight) {
+      } else if (scrollCellTop >= scrollTop + bodyHeight) {
         scrollTop = scrollCellTop + cellHeight - bodyHeight
       }
     }

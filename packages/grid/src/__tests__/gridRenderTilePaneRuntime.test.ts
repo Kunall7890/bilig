@@ -1050,7 +1050,7 @@ describe('GridRenderTilePaneRuntime', () => {
     unsubscribe?.()
   })
 
-  it('keeps remote mode after workbook delta damage until fresh remote tiles arrive', () => {
+  it('keeps remote tiles resident for worker-authoritative damage until fresh render tiles arrive', () => {
     const runtime = new GridRenderTilePaneRuntime()
     const host = createHost()
     const tileId = host.viewportTileKeys({
@@ -1126,7 +1126,7 @@ describe('GridRenderTilePaneRuntime', () => {
     )
     expect(runtime.snapshotBridgeState()).toEqual({
       forceLocalTiles: false,
-      localFallbackRevision: 0,
+      localFallbackRevision: 1,
       renderTileRevision: 1,
     })
     expect(fallback.residentBodyPane?.tile.textRuns.some((run) => run.text === 'stale remote text')).toBe(true)
@@ -1162,6 +1162,206 @@ describe('GridRenderTilePaneRuntime', () => {
     expect(refreshed.residentBodyPane?.tile.textRuns).toEqual([])
   })
 
+  it('keeps clean remote tiles resident when local fallback only needs dirty tiles', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const [dirtyTileId, cleanTileId] = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 255, colStart: 0, rowEnd: 31, rowStart: 0 },
+    })
+    if (dirtyTileId === undefined || cleanTileId === undefined) {
+      throw new Error('Expected two render tile keys for the test viewport')
+    }
+    const cleanRemoteTile: GridRenderTile = {
+      ...createRenderTile(cleanTileId),
+      bounds: { colEnd: 255, colStart: 128, rowEnd: 31, rowStart: 0 },
+      coord: {
+        colTile: 1,
+        dprBucket: 1,
+        paneKind: 'body',
+        rowTile: 0,
+        sheetId: 7,
+        sheetOrdinal: 7,
+      },
+      textCount: 1,
+      textRuns: [
+        {
+          align: 'left',
+          clipHeight: 20,
+          clipWidth: 80,
+          clipX: 0,
+          clipY: 0,
+          color: '#000000',
+          col: 128,
+          font: '12px sans-serif',
+          fontSize: 12,
+          height: 20,
+          row: 0,
+          strike: false,
+          text: 'clean remote text',
+          underline: false,
+          width: 80,
+          wrap: false,
+          x: 0,
+          y: 0,
+        },
+      ],
+    }
+    const renderTileSource = createRenderTileSource([createRenderTile(dirtyTileId), cleanRemoteTile])
+
+    host.tiles.applyWorkbookDelta(createWorkbookDeltaBatch(), { dprBucket: 1 })
+    const fallback = runtime.resolve(
+      createInput({
+        engine: LOCAL_EMPTY_ENGINE,
+        forceLocalTiles: true,
+        gridRuntimeHost: host,
+        renderTileSource,
+        renderTileViewport: { colEnd: 255, colStart: 0, rowEnd: 31, rowStart: 0 },
+        residentViewport: { colEnd: 255, colStart: 0, rowEnd: 31, rowStart: 0 },
+        visibleViewport: { colEnd: 255, colStart: 0, rowEnd: 31, rowStart: 0 },
+      }),
+    )
+
+    expect(fallback.renderTilePanes.map((pane) => pane.tile.tileId)).toEqual([dirtyTileId, cleanTileId])
+    expect(fallback.renderTilePanes[0]?.tile.textRuns).toEqual([])
+    expect(fallback.renderTilePanes[0]?.tile.dirtyLocalRows).toEqual(new Uint32Array([0, 0]))
+    expect(fallback.renderTilePanes[0]?.tile.dirtyLocalCols).toEqual(new Uint32Array([0, 0]))
+    expect(fallback.renderTilePanes[1]?.tile.textRuns[0]?.text).toBe('clean remote text')
+  })
+
+  it('preserves dirty spans when local fallback has no remote render tile source', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const tileId = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+    })[0]
+    if (tileId === undefined) {
+      throw new Error('Expected a visible render tile key for the test viewport')
+    }
+
+    host.tiles.applyWorkbookDelta(
+      createWorkbookDeltaBatch({
+        dirty: {
+          axisX: new Uint32Array(),
+          axisY: new Uint32Array(),
+          cellRanges: new Uint32Array([6, 6, 5, 5, DirtyMaskV3.Value | DirtyMaskV3.Text]),
+        },
+      }),
+      { dprBucket: 1 },
+    )
+    const fallback = runtime.resolve(
+      createInput({
+        engine: LOCAL_EMPTY_ENGINE,
+        forceLocalTiles: true,
+        gridRuntimeHost: host,
+        renderTileSource: undefined,
+      }),
+    )
+
+    expect(fallback.renderTilePanes[0]?.tile.tileId).toBe(tileId)
+    expect(fallback.renderTilePanes[0]?.tile.dirtyLocalRows).toEqual(new Uint32Array([6, 6]))
+    expect(fallback.renderTilePanes[0]?.tile.dirtyLocalCols).toEqual(new Uint32Array([5, 5]))
+    expect(fallback.renderTilePanes[0]?.tile.dirtyMasks).toEqual(new Uint32Array([DirtyMaskV3.Value | DirtyMaskV3.Text]))
+  })
+
+  it('reuses remote static rect buffers for text-only local dirty tiles', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const tileId = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+    })[0]
+    if (tileId === undefined) {
+      throw new Error('Expected a visible render tile key for the test viewport')
+    }
+    const rectInstances = new Float32Array(GRID_RECT_INSTANCE_FLOAT_COUNT_V3 * 2)
+    rectInstances[0] = 42
+    const remoteTile: GridRenderTile = {
+      ...createRenderTile(tileId),
+      rectCount: 2,
+      rectInstances,
+    }
+
+    host.tiles.applyWorkbookDelta(
+      createWorkbookDeltaBatch({
+        dirty: {
+          axisX: new Uint32Array(),
+          axisY: new Uint32Array(),
+          cellRanges: new Uint32Array([6, 6, 5, 5, DirtyMaskV3.Value | DirtyMaskV3.Text]),
+        },
+      }),
+      { dprBucket: 1 },
+    )
+    const fallback = runtime.resolve(
+      createInput({
+        engine: LOCAL_EMPTY_ENGINE,
+        forceLocalTiles: true,
+        gridRuntimeHost: host,
+        renderTileSource: createRenderTileSource([remoteTile]),
+      }),
+    )
+
+    expect(fallback.renderTilePanes[0]?.tile.tileId).toBe(tileId)
+    expect(fallback.renderTilePanes[0]?.tile.rectCount).toBe(2)
+    expect(fallback.renderTilePanes[0]?.tile.rectInstances).toBe(rectInstances)
+    expect(fallback.renderTilePanes[0]?.tile.dirty?.rectSpans).toEqual([])
+    expect(fallback.renderTilePanes[0]?.tile.dirty?.textSpans).toEqual([])
+  })
+
+  it('reuses resident static rect buffers for text-only local dirty tiles when source misses', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const tileId = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+    })[0]
+    if (tileId === undefined) {
+      throw new Error('Expected a visible render tile key for the test viewport')
+    }
+    const rectInstances = new Float32Array(GRID_RECT_INSTANCE_FLOAT_COUNT_V3 * 2)
+    rectInstances[0] = 77
+    const residentTile: GridRenderTile = {
+      ...createRenderTile(tileId),
+      rectCount: 2,
+      rectInstances,
+    }
+
+    runtime.resolve(
+      createInput({
+        gridRuntimeHost: host,
+        renderTileSource: createRenderTileSource([residentTile]),
+      }),
+    )
+    host.tiles.applyWorkbookDelta(
+      createWorkbookDeltaBatch({
+        dirty: {
+          axisX: new Uint32Array(),
+          axisY: new Uint32Array(),
+          cellRanges: new Uint32Array([6, 6, 5, 5, DirtyMaskV3.Value | DirtyMaskV3.Text]),
+        },
+      }),
+      { dprBucket: 1 },
+    )
+    const fallback = runtime.resolve(
+      createInput({
+        engine: LOCAL_EMPTY_ENGINE,
+        forceLocalTiles: true,
+        gridRuntimeHost: host,
+        renderTileSource: createRenderTileSource([]),
+      }),
+    )
+
+    expect(fallback.renderTilePanes[0]?.tile.tileId).toBe(tileId)
+    expect(fallback.renderTilePanes[0]?.tile.rectCount).toBe(2)
+    expect(fallback.renderTilePanes[0]?.tile.rectInstances).toBe(rectInstances)
+    expect(fallback.renderTilePanes[0]?.tile.dirty?.rectSpans).toEqual([])
+  })
+
   it('applies local optimistic workbook deltas after higher authoritative seqs on the same sheet', () => {
     const runtime = new GridRenderTilePaneRuntime()
     const host = createHost()
@@ -1184,7 +1384,7 @@ describe('GridRenderTilePaneRuntime', () => {
 
     expect(runtime.snapshotBridgeState()).toEqual({
       forceLocalTiles: false,
-      localFallbackRevision: 0,
+      localFallbackRevision: 1,
       renderTileRevision: 1,
     })
 
@@ -1197,6 +1397,40 @@ describe('GridRenderTilePaneRuntime', () => {
       forceLocalTiles: false,
       localFallbackRevision: 0,
       renderTileRevision: 2,
+    })
+  })
+
+  it('keeps local optimistic axis damage remote-backed while waiting for worker render tiles', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const renderTileSource = createWorkbookDeltaSource()
+
+    runtime.connectWorkbookDeltaDamage(
+      {
+        dprBucket: 1,
+        gridRuntimeHost: host,
+        renderTileSource: renderTileSource.source,
+        sheetId: 7,
+      },
+      () => undefined,
+    )
+
+    renderTileSource.emit({
+      dirty: {
+        axisX: new Uint32Array([1, 1, DirtyMaskV3.AxisX | DirtyMaskV3.Text | DirtyMaskV3.Rect]),
+        axisY: new Uint32Array(),
+        cellRanges: new Uint32Array(),
+      },
+      seq: 1,
+      sheetId: 7,
+      sheetOrdinal: 7,
+      source: 'localOptimistic',
+    })
+
+    expect(runtime.snapshotBridgeState()).toEqual({
+      forceLocalTiles: false,
+      localFallbackRevision: 1,
+      renderTileRevision: 1,
     })
   })
 
