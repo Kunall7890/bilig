@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 
+import { spawnSync as nodeSpawnSync } from 'node:child_process'
 import { existsSync, readFileSync, readlinkSync, writeFileSync } from 'node:fs'
 import net from 'node:net'
 import { dirname, resolve } from 'node:path'
@@ -26,6 +27,7 @@ const preferredZeroPort = resolvePreferredZeroPort(process.env['BILIG_DEV_ZERO_P
 const composePublishedHost = resolveComposePublishedHost()
 const cleanupCompose = process.env['BILIG_DEV_CLEANUP_COMPOSE'] === 'true'
 const readyFile = process.env['BILIG_DEV_READY_FILE']
+const localProcessProbeTimeoutMs = 1_000
 let resolvedAppPort = String(preferredAppPort)
 let resolvedPostgresPort = String(preferredPostgresPort)
 let resolvedZeroPort = String(preferredZeroPort)
@@ -289,16 +291,15 @@ async function ensureComposeRuntime(): Promise<void> {
 
 function listListeningPids(port: number): string[] {
   if (commandExists('lsof')) {
-    const result = Bun.spawnSync(['lsof', '-nP', '-tiTCP:' + String(port), '-sTCP:LISTEN'], {
+    const result = nodeSpawnSync('lsof', ['-nP', '-tiTCP:' + String(port), '-sTCP:LISTEN'], {
       stdin: 'ignore',
-      stdout: 'pipe',
-      stderr: 'ignore',
+      encoding: 'utf8',
+      timeout: localProcessProbeTimeoutMs,
     })
-    if (result.exitCode !== 0) {
+    if (result.status !== 0 || result.error) {
       return []
     }
-    return new TextDecoder()
-      .decode(result.stdout)
+    return result.stdout
       .split('\n')
       .map((value) => value.trim())
       .filter((value) => value.length > 0)
@@ -340,17 +341,16 @@ function commandForPid(pid: string): string {
 
 function cwdForPid(pid: string): string {
   if (commandExists('lsof')) {
-    const result = Bun.spawnSync(['lsof', '-a', '-p', pid, '-d', 'cwd', '-Fn'], {
+    const result = nodeSpawnSync('lsof', ['-nP', '-a', '-p', pid, '-d', 'cwd', '-Fn'], {
       stdin: 'ignore',
-      stdout: 'pipe',
-      stderr: 'ignore',
+      encoding: 'utf8',
+      timeout: localProcessProbeTimeoutMs,
     })
-    if (result.exitCode !== 0) {
+    if (result.status !== 0 || result.error) {
       return ''
     }
     return (
-      new TextDecoder()
-        .decode(result.stdout)
+      result.stdout
         .split('\n')
         .find((line) => line.startsWith('n'))
         ?.slice(1)

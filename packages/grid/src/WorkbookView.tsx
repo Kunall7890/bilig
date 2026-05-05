@@ -330,7 +330,7 @@ export function WorkbookView({
             }}
             onCancel={onCancelEdit}
             onChange={onEditorChange}
-            onCommit={() => onCommitEdit()}
+            onCommit={(valueOverride) => onCommitEdit(undefined, valueOverride)}
             resolvedValue={resolvedValue}
             selectionLabel={selectionLabel}
             sheetName={sheetName}

@@ -18,7 +18,7 @@ interface FormulaBarProps {
   onAddressCommit(this: void, next: string): boolean
   onAddressCommitSuccess?: (() => void) | undefined
   onChange(this: void, next: string): void
-  onCommit(this: void): void
+  onCommit(this: void, valueOverride?: string): void
   onCancel(this: void): void
 }
 
@@ -118,7 +118,7 @@ export function FormulaBar({
       return
     }
     commitRequestedRef.current = true
-    onCommit()
+    onCommit(inputRef.current?.value ?? value)
   }
 
   const commitSuggestion = (suggestion: FormulaSuggestion) => {

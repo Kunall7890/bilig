@@ -361,11 +361,57 @@ describe('FormulaBar', () => {
     })
 
     expect(onCommit).toHaveBeenCalledTimes(1)
+    expect(onCommit).toHaveBeenCalledWith('draft')
 
     await act(async () => {
       root.unmount()
     })
     outsideButton.remove()
+  })
+
+  it('commits the live input value even when the controlled prop has not caught up', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+    const onCommit = vi.fn()
+
+    await act(async () => {
+      root.render(
+        <FormulaBar
+          address="B2"
+          isEditing={true}
+          onAddressCommit={() => true}
+          onBeginEdit={() => {}}
+          onCancel={() => {}}
+          onChange={() => {}}
+          onCommit={onCommit}
+          resolvedValue=""
+          sheetName="Sheet1"
+          value=""
+        />,
+      )
+    })
+
+    const input = host.querySelector<HTMLInputElement>("[data-testid='formula-input']")
+    expect(input).not.toBeNull()
+    if (!input) {
+      throw new Error('Expected formula input')
+    }
+
+    await act(async () => {
+      input.focus()
+      input.value = '=A1="HELLO"'
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    })
+
+    expect(onCommit).toHaveBeenCalledTimes(1)
+    expect(onCommit).toHaveBeenCalledWith('=A1="HELLO"')
+
+    await act(async () => {
+      root.unmount()
+    })
   })
 
   it('keeps the name box and formula frame flat without raised shadow chrome', async () => {

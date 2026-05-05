@@ -39,4 +39,13 @@ describe('web preview build gate', () => {
     expect(source).toContain("if (appServerMode === 'run')")
     expect(source).toContain('buildAppRuntimeDependencies()')
   })
+
+  it('bounds lsof probes so local browser stack startup cannot hang indefinitely', () => {
+    const source = readFileSync(resolve(repoRoot, 'scripts/run-dev-web-local.ts'), 'utf8')
+
+    expect(source).toContain("import { spawnSync as nodeSpawnSync } from 'node:child_process'")
+    expect(source).toContain("nodeSpawnSync('lsof'")
+    expect(source).toContain('const localProcessProbeTimeoutMs = 1_000')
+    expect(source).toContain('timeout: localProcessProbeTimeoutMs')
+  })
 })

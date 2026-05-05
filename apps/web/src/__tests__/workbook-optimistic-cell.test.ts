@@ -62,7 +62,7 @@ describe('workbook optimistic cell snapshots', () => {
     })
   })
 
-  it('mirrors engine editor text for syntax-invalid formulas before worker readback arrives', () => {
+  it('projects invalid formula syntax as the engine error value instead of stale formula source', () => {
     const current = cell('A2', { tag: ValueTag.Empty })
 
     const optimistic = createOptimisticCellSnapshot({
@@ -74,12 +74,10 @@ describe('workbook optimistic cell snapshots', () => {
     })
 
     expect(optimistic.formula).toBeUndefined()
-    expect(optimistic).toMatchObject({
-      value: {
-        tag: ValueTag.Error,
-        code: ErrorCode.Value,
-      },
-      version: 2,
+    expect(optimistic.value).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Value,
     })
+    expect(optimistic.version).toBe(2)
   })
 })

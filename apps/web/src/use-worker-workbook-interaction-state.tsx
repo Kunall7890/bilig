@@ -358,9 +358,10 @@ export function useWorkerWorkbookInteractionState(input: {
       const targetSelection =
         targetSelectionOverride ?? (editingModeRef.current === 'idle' ? selectionRef.current : editorTargetRef.current)
       const nextValue =
-        editingModeRef.current === 'idle'
+        valueOverride ??
+        (editingModeRef.current === 'idle'
           ? toEditorValue(getLiveSelectedCell(targetSelection))
-          : (valueOverride ?? readMountedCellEditorValue() ?? editorValueRef.current)
+          : (readMountedCellEditorValue() ?? editorValueRef.current))
       const commitSessionId = editSessionRef.current
       if (pendingEditCommitSessionRef.current === commitSessionId) {
         if (movement && !pendingEditCommitMovementAppliedRef.current) {
@@ -372,12 +373,11 @@ export function useWorkerWorkbookInteractionState(input: {
       pendingEditCommitSessionRef.current = commitSessionId
       pendingEditCommitMovementAppliedRef.current = false
       const parsed = parseEditorInput(nextValue)
+      const isFreshValueOverride = valueOverride !== undefined && editingModeRef.current === 'idle'
       const baseSnapshot = editorBaseSnapshotRef.current
       const liveSnapshot = cloneLiveSelectedCell(targetSelection)
-      const targetBaseSnapshot =
-        baseSnapshot.sheetName === targetSelection.sheetName && baseSnapshot.address === targetSelection.address
-          ? baseSnapshot
-          : liveSnapshot
+      const baseMatchesTarget = baseSnapshot.sheetName === targetSelection.sheetName && baseSnapshot.address === targetSelection.address
+      const targetBaseSnapshot = isFreshValueOverride ? liveSnapshot : baseMatchesTarget ? baseSnapshot : liveSnapshot
       const draftMatchesLiveSnapshot = parsedEditorInputMatchesSnapshot(parsed, liveSnapshot)
       const draftMatchesBase = parsedEditorInputEquals(parsed, parsedEditorInputFromSnapshot(targetBaseSnapshot))
 

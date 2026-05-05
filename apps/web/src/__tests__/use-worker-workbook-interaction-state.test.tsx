@@ -144,6 +144,43 @@ describe('useWorkerWorkbookInteractionState', () => {
     })
   })
 
+  it('commits a formula bar value override even before editing state catches up', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const selectedCell = stringCell('Sheet1', 'A1', '')
+    const workerHandle = { viewportStore: createViewportStoreStub('Sheet1', 'A1', selectedCell) }
+    const invokeMutation = vi.fn(async () => undefined)
+    const sendSelectionChanged = vi.fn()
+    const harness = mountHarness()
+    let captured: ReturnType<typeof useWorkerWorkbookInteractionState> | null = null
+
+    await harness.render({
+      documentId: 'doc-1',
+      selection: { sheetName: 'Sheet1', address: 'A1' },
+      selectedCell,
+      workerHandle,
+      invokeMutation,
+      sendSelectionChanged,
+      capture: (value) => {
+        captured = value
+      },
+    })
+    if (!captured) {
+      throw new Error('Expected interaction state capture')
+    }
+
+    await act(async () => {
+      captured?.commitEditor(undefined, '=A1="HELLO"')
+      await Promise.resolve()
+    })
+
+    expect(invokeMutation).toHaveBeenCalledWith('setCellFormula', 'Sheet1', 'A1', 'A1="HELLO"')
+
+    await act(async () => {
+      harness.root.unmount()
+    })
+  })
+
   it('accepts user selection after the grid acknowledges an external selection', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 

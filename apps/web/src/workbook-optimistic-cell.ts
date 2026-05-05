@@ -4,6 +4,11 @@ import type { ParsedEditorInput } from './worker-workbook-app-model.js'
 
 const MAX_OPTIMISTIC_FORMULA_RANGE_CELLS = 10_000
 
+export type OptimisticFormulaEvaluation =
+  | { readonly kind: 'value'; readonly value: CellSnapshot['value'] }
+  | { readonly kind: 'invalid'; readonly value: CellSnapshot['value'] }
+  | { readonly kind: 'deferred' }
+
 export function optimisticCellKey(sheetName: string, address: string): string {
   return `${sheetName}:${address}`
 }
@@ -13,7 +18,7 @@ export function createOptimisticCellSnapshot(input: {
   readonly address: string
   readonly current: CellSnapshot
   readonly parsed: ParsedEditorInput
-  readonly evaluateFormula?: (formula: string) => CellSnapshot['value'] | null
+  readonly evaluateFormula?: (formula: string) => OptimisticFormulaEvaluation
 }): CellSnapshot {
   const version = nextOptimisticVersion(input.current.version)
   const { formula: _formula, input: _input, ...base } = input.current
@@ -27,12 +32,18 @@ export function createOptimisticCellSnapshot(input: {
         version,
       }
     case 'formula':
-      if (!formulaParses(input.parsed.formula)) {
+      const evaluation = formulaParses(input.parsed.formula)
+        ? input.evaluateFormula?.(input.parsed.formula)
+        : {
+            kind: 'invalid',
+            value: { tag: ValueTag.Error, code: ErrorCode.Value },
+          }
+      if (evaluation?.kind === 'invalid') {
         return {
           ...base,
           sheetName: input.sheetName,
           address: input.address,
-          value: { tag: ValueTag.Error, code: ErrorCode.Value },
+          value: evaluation.value,
           version,
         }
       }
@@ -41,11 +52,14 @@ export function createOptimisticCellSnapshot(input: {
         sheetName: input.sheetName,
         address: input.address,
         formula: input.parsed.formula,
-        value: input.evaluateFormula?.(input.parsed.formula) ?? {
-          tag: ValueTag.String,
-          value: `=${input.parsed.formula}`,
-          stringId: 0,
-        },
+        value:
+          evaluation?.kind === 'value'
+            ? evaluation.value
+            : {
+                tag: ValueTag.String,
+                value: `=${input.parsed.formula}`,
+                stringId: 0,
+              },
         version,
       }
     case 'value':
@@ -75,7 +89,17 @@ export function evaluateOptimisticFormula(input: {
   readonly formula: string
   readonly getCell: (sheetName: string, address: string) => CellSnapshot
   readonly listSheetNames?: () => string[]
-}): CellSnapshot['value'] | null {
+}): OptimisticFormulaEvaluation {
+  let ast
+  try {
+    ast = parseFormula(input.formula)
+  } catch {
+    return {
+      kind: 'invalid',
+      value: { tag: ValueTag.Error, code: ErrorCode.Value },
+    }
+  }
+
   try {
     const context: EvaluationContext = {
       sheetName: input.sheetName,
@@ -85,9 +109,9 @@ export function evaluateOptimisticFormula(input: {
       resolveFormula: (sheetName, address) => input.getCell(sheetName, address).formula,
       ...(input.listSheetNames ? { listSheetNames: input.listSheetNames } : {}),
     }
-    return evaluateAst(parseFormula(input.formula), context)
+    return { kind: 'value', value: evaluateAst(ast, context) }
   } catch {
-    return null
+    return { kind: 'deferred' }
   }
 }
 
