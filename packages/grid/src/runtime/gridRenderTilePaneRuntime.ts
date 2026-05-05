@@ -66,6 +66,7 @@ export interface GridRenderTileDeltaRuntimeInput {
   readonly sheetId?: number | undefined
   readonly sheetOrdinal?: number | undefined
   readonly sheetName: string
+  readonly visibleViewport?: Viewport | undefined
 }
 
 export interface GridRenderTileDamageRuntimeInput {
@@ -97,6 +98,7 @@ export interface GridRenderTileConnectionRuntimeInput {
   readonly sheetOrdinal?: number | undefined
   readonly sheetName: string
   readonly visibleAddresses: readonly string[]
+  readonly visibleViewport?: Viewport | undefined
 }
 
 interface GridRenderTileInterestRuntimeInput {
@@ -106,6 +108,7 @@ interface GridRenderTileInterestRuntimeInput {
   readonly gridRuntimeHost: GridRuntimeHost
   readonly renderTileViewport: Viewport
   readonly residentViewport?: Viewport | undefined
+  readonly visibleViewport: Viewport
   readonly sheetId?: number | undefined
   readonly sheetOrdinal?: number | undefined
 }
@@ -261,9 +264,10 @@ export class GridRenderTilePaneRuntime {
 
   noteWorkbookDeltaDamage(input: { readonly forceLocalTiles?: boolean | undefined } = {}): GridRenderTilePaneBridgeState {
     const previous = this.bridgeState
+    const forceLocalTiles = input.forceLocalTiles ?? false
     this.bridgeState = {
-      forceLocalTiles: input.forceLocalTiles ?? true,
-      localFallbackRevision: previous.localFallbackRevision + 1,
+      forceLocalTiles,
+      localFallbackRevision: forceLocalTiles ? previous.localFallbackRevision + 1 : previous.localFallbackRevision,
       renderTileRevision: previous.renderTileRevision + 1,
     }
     this.emitBridgeState()
@@ -367,6 +371,7 @@ export class GridRenderTilePaneRuntime {
     const tileInterest = this.buildViewportTileInterest({
       ...input,
       sheetId: input.sheetId,
+      visibleViewport: input.visibleViewport ?? input.residentViewport ?? input.renderTileViewport,
     })
     return input.renderTileSource.subscribeRenderTileDeltas(
       {
@@ -443,6 +448,7 @@ export class GridRenderTilePaneRuntime {
         sheetId: input.sheetId,
         sheetName: input.sheetName,
         sheetOrdinal: input.sheetOrdinal,
+        visibleViewport: input.visibleViewport,
       }),
     }
   }
@@ -611,6 +617,7 @@ export class GridRenderTilePaneRuntime {
       dprBucket: input.dprBucket,
       gridRuntimeHost: input.gridRuntimeHost,
       renderTileViewport: input.renderTileViewport,
+      visibleViewport: input.visibleViewport,
       sheetId: input.sheetId,
       sheetOrdinal,
     })) {
@@ -759,13 +766,20 @@ export class GridRenderTilePaneRuntime {
     const remoteTiles = new Map<number, GridRenderTile>()
     const dirtyBaseTiles = new Map<number, GridRenderTile>()
     const dirtyTileKeys: number[] = []
+    const visibleTileKeys = new Set(
+      input.gridRuntimeHost.viewportTileKeys({
+        dprBucket: input.dprBucket,
+        sheetOrdinal,
+        viewport: input.visibleViewport,
+      }),
+    )
     for (const tileKey of tileKeys) {
       const sourceTile = renderTileSource.peekRenderTile(tileKey)
       const tile =
         sourceTile && sourceTile.coord.sheetId === sheetId && sourceTile.coord.sheetOrdinal === sheetOrdinal
           ? sourceTile
           : this.resolveResidentRenderTile(input, tileKey, sheetId, sheetOrdinal)
-      const isDirty = input.gridRuntimeHost.tiles.dirtyTiles.getUnconsumedMask(tileKey) !== 0
+      const isDirty = visibleTileKeys.has(tileKey) && input.gridRuntimeHost.tiles.dirtyTiles.getUnconsumedMask(tileKey) !== 0
       if (isDirty || !tile) {
         if (isDirty && tile) {
           dirtyBaseTiles.set(tileKey, tile)
@@ -895,7 +909,7 @@ function resolveRenderTileInterestTileKeys(input: GridRenderTileInterestRuntimeI
 }
 
 function resolveRenderTileInterestViewports(input: GridRenderTileInterestRuntimeInput): readonly Viewport[] {
-  const bodyViewport = input.residentViewport ?? input.renderTileViewport
+  const bodyViewport = input.visibleViewport
   const freezeRows = Math.max(0, input.freezeRows ?? 0)
   const freezeCols = Math.max(0, input.freezeCols ?? 0)
   const viewports: Viewport[] = []
@@ -985,17 +999,7 @@ function sameStringListIdentity(left: readonly string[], right: readonly string[
 }
 
 function shouldForceLocalTilesForWorkbookDelta(batch: WorkbookDeltaBatchLikeV3): boolean {
-  if (batch.source === 'workerAuthoritative') {
-    return false
-  }
-  if (batch.source !== 'localOptimistic') {
-    return true
-  }
-  return !hasAxisOnlyWorkbookDeltaDamage(batch)
-}
-
-function hasAxisOnlyWorkbookDeltaDamage(batch: WorkbookDeltaBatchLikeV3): boolean {
-  return (batch.dirty.axisX.length > 0 || batch.dirty.axisY.length > 0) && batch.dirty.cellRanges.length === 0
+  return batch.source === 'localOptimistic'
 }
 
 function sameViewportIdentity(left: Viewport, right: Viewport): boolean {

@@ -647,6 +647,9 @@ export async function createWorkerRuntimeSessionController(
         if (method === 'installAuthoritativeSnapshot' && !isInstallAuthoritativeSnapshotInput(args[0])) {
           throw new Error('installAuthoritativeSnapshot requires a valid authoritative snapshot input')
         }
+        if (method === 'installAuthoritativeSnapshot') {
+          viewportStore.resetProjectionState()
+        }
         const result = await client.invoke(method, ...args)
         if (method === 'enqueuePendingMutation') {
           queueRuntimeStateRefresh()

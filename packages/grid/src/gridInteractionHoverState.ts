@@ -9,7 +9,7 @@ const DEFAULT_HOVER_STATE: GridHoverState = { cell: null, header: null, cursor: 
 const RANGE_MOVE_HOVER_STATE: GridHoverState = { cell: null, header: null, cursor: 'grab' }
 const RANGE_MOVE_DRAG_HOVER_STATE: GridHoverState = { cell: null, header: null, cursor: 'grabbing' }
 
-export function resolveGridInteractionHoverState(input: {
+type GridInteractionHoverInput = {
   readonly clientX: number
   readonly clientY: number
   readonly visibleRegion: VisibleRegionState
@@ -45,7 +45,9 @@ export function resolveGridInteractionHoverState(input: {
     region?: VisibleRegionState,
     geometry?: GridGeometrySnapshot | null,
   ) => Item | null
-}): GridHoverState {
+}
+
+function resolveResizeHoverState(input: GridInteractionHoverInput): GridHoverState | null {
   const resizeTarget = input.resolveColumnResizeTargetAtPointer(
     input.clientX,
     input.clientY,
@@ -69,7 +71,10 @@ export function resolveGridInteractionHoverState(input: {
   if (rowResizeTarget !== null) {
     return { cell: null, header: { kind: 'row', index: rowResizeTarget }, cursor: 'row-resize' }
   }
+  return null
+}
 
+function resolveHeaderOrCellHoverState(input: GridInteractionHoverInput): GridHoverState {
   const header = input.resolveHeaderSelectionAtPointer(input.clientX, input.clientY, input.visibleRegion, input.geometry)
   if (header) {
     return { cell: null, header, cursor: 'pointer' }
@@ -77,6 +82,10 @@ export function resolveGridInteractionHoverState(input: {
 
   const cell = input.resolvePointerCell(input.clientX, input.clientY, input.visibleRegion, input.geometry)
   return cell ? { cell, header: null, cursor: 'cell' } : DEFAULT_HOVER_STATE
+}
+
+export function resolveGridInteractionHoverState(input: GridInteractionHoverInput): GridHoverState {
+  return resolveResizeHoverState(input) ?? resolveHeaderOrCellHoverState(input)
 }
 
 export function resolveWorkbookGridHoverState(input: {
@@ -139,6 +148,23 @@ export function resolveWorkbookGridHoverState(input: {
     return DEFAULT_HOVER_STATE
   }
 
+  const resizeHoverState = resolveResizeHoverState({
+    clientX: input.clientX,
+    clientY: input.clientY,
+    columnWidths: input.columnWidths,
+    geometry,
+    gridMetrics: input.gridMetrics,
+    resolveColumnResizeTargetAtPointer: input.resolveColumnResizeTargetAtPointer,
+    resolveHeaderSelectionAtPointer: input.resolveHeaderSelectionAtPointer,
+    resolvePointerCell: input.resolvePointerCell,
+    resolveRowResizeTargetAtPointer: input.resolveRowResizeTargetAtPointer,
+    rowHeights: input.rowHeights,
+    visibleRegion,
+  })
+  if (resizeHoverState) {
+    return resizeHoverState
+  }
+
   const rangeMoveAnchorCell =
     input.allowsRangeMove && input.selectionRange
       ? resolveSelectionMoveAnchorCell(input.clientX, input.clientY, input.selectionRange, input.getCellScreenBounds)
@@ -154,7 +180,7 @@ export function resolveWorkbookGridHoverState(input: {
     return RANGE_MOVE_HOVER_STATE
   }
 
-  return resolveGridInteractionHoverState({
+  return resolveHeaderOrCellHoverState({
     clientX: input.clientX,
     clientY: input.clientY,
     columnWidths: input.columnWidths,

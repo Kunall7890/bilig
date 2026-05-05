@@ -437,16 +437,21 @@ export function writeTypeGpuVertexBufferSubrange<TData extends WgslArray>(input:
   readonly floats: Float32Array
   readonly startFloat: number
   readonly floatCount: number
+  readonly sourceStartFloat?: number | undefined
   readonly label?: string | undefined
 }): void {
   const startFloat = Math.max(0, Math.floor(input.startFloat))
-  const endFloat = Math.max(startFloat, Math.min(input.floats.length, startFloat + Math.max(0, Math.floor(input.floatCount))))
-  if (endFloat <= startFloat) {
+  const sourceStartFloat = Math.max(0, Math.floor(input.sourceStartFloat ?? input.startFloat))
+  const sourceEndFloat = Math.max(
+    sourceStartFloat,
+    Math.min(input.floats.length, sourceStartFloat + Math.max(0, Math.floor(input.floatCount))),
+  )
+  if (sourceEndFloat <= sourceStartFloat) {
     return
   }
-  const source = input.floats.subarray(startFloat, endFloat).slice().buffer
+  const source = input.floats.subarray(sourceStartFloat, sourceEndFloat).slice().buffer
   const startOffset = startFloat * Float32Array.BYTES_PER_ELEMENT
-  const endOffset = endFloat * Float32Array.BYTES_PER_ELEMENT
+  const endOffset = startOffset + source.byteLength
   input.buffer.write(source, {
     endOffset,
     startOffset,

@@ -19,7 +19,6 @@ describe('gridResizeInteractions', () => {
     const finishResize = vi.fn()
     const setActiveResizeColumn = vi.fn()
     const previewColumnWidth = vi.fn()
-    const getPreviewColumnWidth = vi.fn(() => 140)
     const clearColumnResizePreview = vi.fn()
     const commitColumnWidth = vi.fn()
     const refreshHoverState = vi.fn()
@@ -33,7 +32,6 @@ describe('gridResizeInteractions', () => {
       refreshHoverState,
       setActiveResizeColumn,
       previewColumnWidth,
-      getPreviewColumnWidth,
       clearColumnResizePreview,
       commitColumnWidth,
       columnIndex: 3,
@@ -46,9 +44,8 @@ describe('gridResizeInteractions', () => {
 
     // Assert
     expect(startResize).toHaveBeenCalledTimes(1)
-    expect(previewColumnWidth).toHaveBeenCalledWith(3, 150)
-    expect(commitColumnWidth).toHaveBeenCalledWith(3, 140)
-    expect(clearColumnResizePreview).not.toHaveBeenCalled()
+    expect(commitColumnWidth).toHaveBeenCalledWith(3, 150)
+    expect(clearColumnResizePreview).toHaveBeenCalledWith(3)
     expect(setActiveResizeColumn).toHaveBeenNthCalledWith(1, 3)
     expect(setActiveResizeColumn).toHaveBeenNthCalledWith(2, null)
     expect(finishResize).toHaveBeenCalledTimes(1)
@@ -66,7 +63,6 @@ describe('gridResizeInteractions', () => {
     const finishResize = vi.fn()
     const setActiveResizeRow = vi.fn()
     const previewRowHeight = vi.fn()
-    const getPreviewRowHeight = vi.fn(() => 32)
     const clearRowResizePreview = vi.fn()
     const commitRowHeight = vi.fn()
     const refreshHoverState = vi.fn()
@@ -80,7 +76,6 @@ describe('gridResizeInteractions', () => {
       refreshHoverState,
       setActiveResizeRow,
       previewRowHeight,
-      getPreviewRowHeight,
       clearRowResizePreview,
       commitRowHeight,
       rowIndex: 5,
@@ -88,18 +83,18 @@ describe('gridResizeInteractions', () => {
       rowHeights: { 5: 32 },
       defaultRowHeight: 24,
     })
-    listenerTarget.dispatch('pointermove', { clientX: 20, clientY: 110 })
-    listenerTarget.dispatch('pointerup', { clientX: 21, clientY: 111 })
+    listenerTarget.dispatch('pointermove', { clientX: 20, clientY: 100 })
+    listenerTarget.dispatch('pointerup', { clientX: 21, clientY: 100 })
 
     // Assert
     expect(startResize).toHaveBeenCalledTimes(1)
-    expect(previewRowHeight).toHaveBeenCalledWith(5, 42)
+    expect(previewRowHeight).toHaveBeenCalledWith(5, 32)
     expect(clearRowResizePreview).toHaveBeenCalledWith(5)
     expect(commitRowHeight).not.toHaveBeenCalled()
     expect(setActiveResizeRow).toHaveBeenNthCalledWith(1, 5)
     expect(setActiveResizeRow).toHaveBeenNthCalledWith(2, null)
     expect(finishResize).toHaveBeenCalledTimes(1)
-    expect(refreshHoverState).toHaveBeenCalledWith(21, 111, 0)
+    expect(refreshHoverState).toHaveBeenCalledWith(21, 100, 0)
     expect(cleanupRef.current).toBeNull()
   })
 
@@ -120,7 +115,6 @@ describe('gridResizeInteractions', () => {
       refreshHoverState: vi.fn(),
       setActiveResizeColumn: vi.fn(),
       previewColumnWidth: vi.fn(),
-      getPreviewColumnWidth: vi.fn(() => 96),
       clearColumnResizePreview: vi.fn(),
       commitColumnWidth: vi.fn(),
       columnIndex: 1,
@@ -132,6 +126,45 @@ describe('gridResizeInteractions', () => {
     // Assert
     expect(previousCleanup).toHaveBeenCalledTimes(1)
     expect(typeof cleanupRef.current).toBe('function')
+  })
+
+  it('should clear preview and skip commit when a resize is cancelled', () => {
+    const listenerTarget = createPointerListenerTarget()
+    const cleanupRef = {
+      current: null as ((event?: { clientX: number; clientY: number }) => void) | null,
+    }
+    const finishResize = vi.fn()
+    const setActiveResizeColumn = vi.fn()
+    const clearColumnResizePreview = vi.fn()
+    const commitColumnWidth = vi.fn()
+    const refreshHoverState = vi.fn()
+
+    beginWorkbookGridColumnResize({
+      cleanupRef,
+      listenerTarget,
+      startResize: vi.fn(),
+      finishResize,
+      refreshHoverState,
+      setActiveResizeColumn,
+      previewColumnWidth: vi.fn(),
+      clearColumnResizePreview,
+      commitColumnWidth,
+      columnIndex: 3,
+      startClientX: 200,
+      columnWidths: { 3: 120 },
+      defaultColumnWidth: 96,
+    })
+
+    listenerTarget.dispatch('pointermove', { clientX: 230, clientY: 40 })
+    listenerTarget.dispatch('pointercancel', { clientX: 229, clientY: 41 })
+
+    expect(commitColumnWidth).not.toHaveBeenCalled()
+    expect(clearColumnResizePreview).toHaveBeenCalledWith(3)
+    expect(setActiveResizeColumn).toHaveBeenNthCalledWith(1, 3)
+    expect(setActiveResizeColumn).toHaveBeenNthCalledWith(2, null)
+    expect(finishResize).toHaveBeenCalledTimes(1)
+    expect(refreshHoverState).toHaveBeenCalledWith(229, 41, 0)
+    expect(cleanupRef.current).toBeNull()
   })
 
   it('should apply column autofit from a resize handle hit', () => {

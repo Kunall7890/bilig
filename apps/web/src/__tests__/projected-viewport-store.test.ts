@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ValueTag, type RecalcMetrics } from '@bilig/protocol'
-import { encodeViewportPatch, type ViewportPatch } from '@bilig/worker-transport'
+import { encodeViewportPatch, type ViewportPatch, type WorkerEngineClient } from '@bilig/worker-transport'
 import { DEFAULT_MAX_CACHED_CELLS_PER_SHEET } from '../projected-viewport-cell-cache.js'
 import { ProjectedViewportStore } from '../projected-viewport-store.js'
 
@@ -125,6 +125,19 @@ function countSheetCells(cache: ProjectedViewportStore, sheetName: string): numb
     count += 1
   })
   return count
+}
+
+function createNoopWorkerEngineClient(): WorkerEngineClient {
+  return {
+    dispose: vi.fn(),
+    invoke: vi.fn(async () => undefined),
+    ready: vi.fn(async () => undefined),
+    subscribe: vi.fn(() => () => undefined),
+    subscribeBatches: vi.fn(() => () => undefined),
+    subscribeRenderTileDeltas: vi.fn(() => () => undefined),
+    subscribeViewportPatches: vi.fn(() => () => undefined),
+    subscribeWorkbookDeltas: vi.fn(() => () => undefined),
+  }
 }
 
 describe('ProjectedViewportStore', () => {
@@ -508,6 +521,85 @@ describe('ProjectedViewportStore', () => {
     expect(cache.peekCell('Sheet1', 'D5')).toBeUndefined()
   })
 
+  it('resets same-sheet projected state before installing a replacement authoritative snapshot', () => {
+    const cache = new ProjectedViewportStore()
+
+    cache.applyViewportPatch(createPatch('style-red'))
+    cache.setColumnWidth('Sheet1', 0, 68)
+    cache.setRowHeight('Sheet1', 0, 240)
+
+    cache.resetProjectionState()
+
+    expect(cache.peekCell('Sheet1', 'D5')).toBeUndefined()
+    expect(cache.workbook.getSheet('Sheet1')).toBeDefined()
+    expect(cache.getColumnWidths('Sheet1')[0]).toBeUndefined()
+    expect(cache.getRowHeights('Sheet1')[0]).toBeUndefined()
+  })
+
+  it('publishes sparse local column axis deltas without materializing default axis sizes', () => {
+    const cache = new ProjectedViewportStore(createNoopWorkerEngineClient())
+    const events: string[] = []
+    const unsubscribeRenderTiles = cache.subscribeRenderTileDeltas(
+      {
+        sheetId: 7,
+        sheetName: 'Sheet1',
+        sheetOrdinal: 3,
+        rowStart: 0,
+        rowEnd: 31,
+        colStart: 0,
+        colEnd: 63,
+      },
+      () => undefined,
+    )
+    const unsubscribeAxis = cache.subscribeSheetChannel('Sheet1', 'columnWidths', () => {
+      events.push(`axis:${cache.getColumnWidths('Sheet1')[2]}`)
+    })
+    const unsubscribeDeltas = cache.subscribeWorkbookDeltas((batch) => {
+      events.push(`delta:${cache.getColumnWidths('Sheet1')[2]}:${[...batch.dirty.axisX].join(':')}:${batch.dirty.axisY.length}`)
+    })
+
+    cache.setColumnWidth('Sheet1', 2, 144)
+
+    expect(events).toEqual(['axis:144', 'delta:144:2:2:44:0'])
+    expect(cache.getColumnWidths('Sheet1')).toEqual({ 2: 144 })
+
+    unsubscribeAxis()
+    unsubscribeDeltas()
+    unsubscribeRenderTiles()
+  })
+
+  it('publishes sparse local row axis deltas without materializing default axis sizes', () => {
+    const cache = new ProjectedViewportStore(createNoopWorkerEngineClient())
+    const events: string[] = []
+    const unsubscribeRenderTiles = cache.subscribeRenderTileDeltas(
+      {
+        sheetId: 7,
+        sheetName: 'Sheet1',
+        sheetOrdinal: 3,
+        rowStart: 0,
+        rowEnd: 31,
+        colStart: 0,
+        colEnd: 63,
+      },
+      () => undefined,
+    )
+    const unsubscribeAxis = cache.subscribeSheetChannel('Sheet1', 'rowHeights', () => {
+      events.push(`axis:${cache.getRowHeights('Sheet1')[3]}`)
+    })
+    const unsubscribeDeltas = cache.subscribeWorkbookDeltas((batch) => {
+      events.push(`delta:${cache.getRowHeights('Sheet1')[3]}:${batch.dirty.axisX.length}:${[...batch.dirty.axisY].join(':')}`)
+    })
+
+    cache.setRowHeight('Sheet1', 3, 48)
+
+    expect(events).toEqual(['axis:48', 'delta:48:0:3:3:76'])
+    expect(cache.getRowHeights('Sheet1')).toEqual({ 3: 48 })
+
+    unsubscribeAxis()
+    unsubscribeDeltas()
+    unsubscribeRenderTiles()
+  })
+
   it('clears a pending local column width once the authoritative patch matches it', () => {
     const cache = new ProjectedViewportStore()
 
@@ -518,6 +610,38 @@ describe('ProjectedViewportStore', () => {
     expect(cache.getColumnWidths('Sheet1')[0]).toBe(93)
   })
 
+  it('keeps pending local column width visible across older authoritative patches', () => {
+    const cache = new ProjectedViewportStore()
+
+    cache.setColumnWidth('Sheet1', 0, 68)
+    cache.applyViewportPatch(createColumnPatch(93))
+
+    expect(cache.getColumnWidths('Sheet1')[0]).toBe(68)
+    expect(cache.getColumnSizes('Sheet1')[0]).toBe(93)
+
+    cache.applyViewportPatch(createColumnPatch(68))
+    cache.applyViewportPatch(createColumnPatch(104))
+
+    expect(cache.getColumnWidths('Sheet1')[0] ?? 104).toBe(104)
+    expect(cache.getColumnSizes('Sheet1')[0] ?? 104).toBe(104)
+  })
+
+  it('keeps default authoritative axis sizes sparse after a local resize', () => {
+    const cache = new ProjectedViewportStore()
+
+    cache.applyViewportPatch({
+      ...createPatch(),
+      cells: [],
+      columns: Array.from({ length: 8 }, (_, index) => ({ index, size: 104, hidden: false })),
+      rows: Array.from({ length: 8 }, (_, index) => ({ index, size: 22, hidden: false })),
+    })
+    cache.setColumnWidth('Sheet1', 2, 144)
+    cache.setRowHeight('Sheet1', 3, 48)
+
+    expect(cache.getColumnWidths('Sheet1')).toEqual({ 2: 144 })
+    expect(cache.getRowHeights('Sheet1')).toEqual({ 3: 48 })
+  })
+
   it('rolls back a failed local column width mutation without leaving a pending width behind', () => {
     const cache = new ProjectedViewportStore()
 
@@ -525,7 +649,7 @@ describe('ProjectedViewportStore', () => {
     cache.rollbackColumnWidth('Sheet1', 0, undefined)
     cache.applyViewportPatch(createColumnPatch(104))
 
-    expect(cache.getColumnWidths('Sheet1')[0]).toBe(104)
+    expect(cache.getColumnWidths('Sheet1')[0]).toBeUndefined()
   })
 
   it('clears a pending local row height once the authoritative patch matches it', () => {
@@ -538,6 +662,22 @@ describe('ProjectedViewportStore', () => {
     expect(cache.getRowHeights('Sheet1')[0]).toBe(44)
   })
 
+  it('keeps pending local row height visible across older authoritative patches', () => {
+    const cache = new ProjectedViewportStore()
+
+    cache.setRowHeight('Sheet1', 0, 30)
+    cache.applyViewportPatch(createRowPatch(22))
+
+    expect(cache.getRowHeights('Sheet1')[0]).toBe(30)
+    expect(cache.getRowSizes('Sheet1')[0] ?? 22).toBe(22)
+
+    cache.applyViewportPatch(createRowPatch(30))
+    cache.applyViewportPatch(createRowPatch(44))
+
+    expect(cache.getRowHeights('Sheet1')[0]).toBe(44)
+    expect(cache.getRowSizes('Sheet1')[0]).toBe(44)
+  })
+
   it('rolls back a failed local row height mutation without leaving a pending height behind', () => {
     const cache = new ProjectedViewportStore()
 
@@ -545,7 +685,7 @@ describe('ProjectedViewportStore', () => {
     cache.rollbackRowHeight('Sheet1', 0, undefined)
     cache.applyViewportPatch(createRowPatch(22))
 
-    expect(cache.getRowHeights('Sheet1')[0]).toBe(22)
+    expect(cache.getRowHeights('Sheet1')[0]).toBeUndefined()
   })
 
   it('preserves hidden column metadata and collapses hidden columns from the visible axis map', () => {

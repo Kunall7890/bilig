@@ -52,6 +52,12 @@ export interface GridGpuCounters {
   readonly textAtlasGeometryRetries: number
   readonly textGlyphDependencies: number
   readonly textPageDependencies: number
+  readonly textAxisOnlySyncAccepts: number
+  readonly textAxisOnlySyncRejects: number
+  readonly textAxisOnlySyncMissingGlyphRejects: number
+  readonly textAxisOnlySyncSignatureRejects: number
+  readonly textAxisOnlySyncFallbackRebuilds: number
+  readonly textAxisOnlySyncAuthoritativeFullTile: number
   readonly textRunPayloadRebuilds: number
   readonly textRunPayloadReuses: number
 }

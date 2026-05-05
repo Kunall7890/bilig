@@ -26,6 +26,7 @@ import { GpuBufferArenaV3, type GpuBufferHandleV3 } from './gpu-buffer-arena.js'
 import { GRID_RECT_INSTANCE_FLOAT_COUNT_V3 } from './rect-instance-buffer.js'
 import type { GridRenderTile } from './render-tile-source.js'
 import { isFullGridRenderTileDirtySpanV3 } from './render-tile-dirty-spans.js'
+import { shouldAttemptAxisOnlyTileTextGeometryResourceSync, syncAxisOnlyTileTextGeometryResource } from './typegpu-axis-text-sync.js'
 import type { WorkbookRenderTilePaneState } from './render-tile-pane-state.js'
 import {
   areGridTextTileRevisionKeysEqualV3,
@@ -37,6 +38,7 @@ import {
   type TypeGpuTileRectRevisionKeyV3,
   type TypeGpuTileTextRevisionKeyV3,
 } from './typegpu-tile-resource-revisions.js'
+export { shouldAttemptAxisOnlyTileTextGeometryResourceSync, syncAxisOnlyTileTextGeometryResource } from './typegpu-axis-text-sync.js'
 export {
   areGridRectTileRevisionKeysEqualV3,
   areGridTextTileRevisionKeysEqualV3,
@@ -388,8 +390,40 @@ function syncTileTextResource(input: {
   input.content.decorationRects = buildTextDecorationRectsFromRuns(input.pane.tile.textRuns, input.atlas)
   input.content.decorationCellKeys = buildDecorationCellKeys(input.pane.tile.textRuns)
   const dirtyTextRunSpans = mergeTextRunDirtySpans(input.pane.tile.dirty?.textSpans, input.missingGlyphRunSpans)
+  const attemptedAxisOnlyTextSync = shouldAttemptAxisOnlyTileTextGeometryResourceSync({
+    contentRevisionKey: input.content.textRevisionKey,
+    dirtyTextRunSpans,
+    textRevisionKey: input.textRevisionKey,
+    tile: input.pane.tile,
+  })
+  if (
+    attemptedAxisOnlyTextSync &&
+    !input.content.textHandle &&
+    input.content.textCount > 0 &&
+    input.content.textRunCount === input.pane.tile.textCount &&
+    input.content.textRunPayloads !== null &&
+    input.content.textRunQuadSpans !== null
+  ) {
+    input.content.textHandle = prepareTextBuffer(input.tileResources, input.content, input.content.textCount)
+  }
+  if (
+    syncAxisOnlyTileTextGeometryResource({
+      content: input.content,
+      dirtyTextRunSpans,
+      hasMissingGlyphDependencies: input.missingGlyphRunSpans.length > 0,
+      handle: input.content.textHandle,
+      label: `tile-text:${resolveWorkbookTileContentBufferKeyV3(input.pane)}`,
+      textRevisionKey: input.textRevisionKey,
+      tile: input.pane.tile,
+    })
+  ) {
+    input.content.textAtlasDependencyVersion = input.atlasDependencyVersion
+    input.content.textAtlasGeometryVersion = input.atlas.getGlyphGeometryVersion()
+    return
+  }
   const textPayload = buildTextQuadsFromRunsWithSpans(input.pane.tile.textRuns, input.atlas, undefined, {
     dirtyRunSpans: dirtyTextRunSpans,
+    forceRebuildDirtyRunSpans: input.missingGlyphRunSpans.length > 0,
     previousRunPayloads: input.content.textRunPayloads,
   })
   noteTypeGpuTextPayload({
@@ -399,6 +433,7 @@ function syncTileTextResource(input: {
     pageDependencies: textPayload.pageIds.length,
     rebuiltRunPayloads: textPayload.diagnostics.rebuiltRunPayloads,
     reusedRunPayloads: textPayload.diagnostics.reusedRunPayloads,
+    axisOnlySyncFallbackRebuilds: attemptedAxisOnlyTextSync ? 1 : 0,
   })
   if (textPayload.quadCount === 0) {
     const handle = prepareTextBuffer(input.tileResources, input.content, 0)

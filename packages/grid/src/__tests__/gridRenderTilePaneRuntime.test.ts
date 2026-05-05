@@ -649,6 +649,7 @@ describe('GridRenderTilePaneRuntime', () => {
         renderTileViewport: { colEnd: 255, colStart: 0, rowEnd: 63, rowStart: 0 },
         sheetId: 7,
         sheetName: 'Sheet1',
+        visibleViewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
       },
       () => {},
     )
@@ -678,28 +679,10 @@ describe('GridRenderTilePaneRuntime', () => {
         rowTile: 0,
         sheetOrdinal: 7,
       }),
-      packTileKey53({
-        colTile: 1,
-        dprBucket: 2,
-        rowTile: 0,
-        sheetOrdinal: 7,
-      }),
-      packTileKey53({
-        colTile: 0,
-        dprBucket: 2,
-        rowTile: 1,
-        sheetOrdinal: 7,
-      }),
-      packTileKey53({
-        colTile: 1,
-        dprBucket: 2,
-        rowTile: 1,
-        sheetOrdinal: 7,
-      }),
     ])
     expect(renderTileSource.captured()?.warmTileKeys).toContain(
       packTileKey53({
-        colTile: 2,
+        colTile: 1,
         dprBucket: 2,
         rowTile: 0,
         sheetOrdinal: 7,
@@ -707,7 +690,7 @@ describe('GridRenderTilePaneRuntime', () => {
     )
     expect(renderTileSource.captured()?.tileInterest?.warmTileKeys).toContain(
       packTileKey53({
-        colTile: 2,
+        colTile: 1,
         dprBucket: 2,
         rowTile: 0,
         sheetOrdinal: 7,
@@ -1126,7 +1109,7 @@ describe('GridRenderTilePaneRuntime', () => {
     )
     expect(runtime.snapshotBridgeState()).toEqual({
       forceLocalTiles: false,
-      localFallbackRevision: 1,
+      localFallbackRevision: 0,
       renderTileRevision: 1,
     })
     expect(fallback.residentBodyPane?.tile.textRuns.some((run) => run.text === 'stale remote text')).toBe(true)
@@ -1228,6 +1211,99 @@ describe('GridRenderTilePaneRuntime', () => {
     expect(fallback.renderTilePanes[0]?.tile.dirtyLocalRows).toEqual(new Uint32Array([0, 0]))
     expect(fallback.renderTilePanes[0]?.tile.dirtyLocalCols).toEqual(new Uint32Array([0, 0]))
     expect(fallback.renderTilePanes[1]?.tile.textRuns[0]?.text).toBe('clean remote text')
+  })
+
+  it('promotes an offscreen dirty warm tile to local geometry before it first becomes visible', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const [visibleTileId, warmTileId] = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 255, colStart: 0, rowEnd: 31, rowStart: 0 },
+    })
+    if (visibleTileId === undefined || warmTileId === undefined) {
+      throw new Error('Expected visible and warm render tile keys for the test viewport')
+    }
+    const staleWarmTile: GridRenderTile = {
+      ...createRenderTile(warmTileId),
+      bounds: { colEnd: 255, colStart: 128, rowEnd: 31, rowStart: 0 },
+      coord: {
+        colTile: 1,
+        dprBucket: 1,
+        paneKind: 'body',
+        rowTile: 0,
+        sheetId: 7,
+        sheetOrdinal: 7,
+      },
+      textCount: 1,
+      textRuns: [
+        {
+          align: 'left',
+          clipHeight: 20,
+          clipWidth: 80,
+          clipX: 0,
+          clipY: 0,
+          color: '#000000',
+          col: 128,
+          font: '12px sans-serif',
+          fontSize: 12,
+          height: 20,
+          row: 0,
+          strike: false,
+          text: 'stale warm remote text',
+          underline: false,
+          width: 80,
+          wrap: false,
+          x: 0,
+          y: 0,
+        },
+      ],
+    }
+    const renderTileSource = createRenderTileSource([createRenderTile(visibleTileId), staleWarmTile])
+    host.tiles.applyWorkbookDelta(
+      createWorkbookDeltaBatch({
+        dirty: {
+          axisX: new Uint32Array([128, 128, DirtyMaskV3.AxisX | DirtyMaskV3.Text | DirtyMaskV3.Rect]),
+          axisY: new Uint32Array(),
+          cellRanges: new Uint32Array(),
+        },
+      }),
+      { dprBucket: 1 },
+    )
+
+    const offscreen = runtime.resolve(
+      createInput({
+        engine: LOCAL_EMPTY_ENGINE,
+        forceLocalTiles: true,
+        gridRuntimeHost: host,
+        renderTileSource,
+        renderTileViewport: { colEnd: 255, colStart: 0, rowEnd: 31, rowStart: 0 },
+        residentViewport: { colEnd: 255, colStart: 0, rowEnd: 31, rowStart: 0 },
+        visibleViewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+      }),
+    )
+
+    const offscreenWarmPane = offscreen.renderTilePanes.find((pane) => pane.tile.tileId === warmTileId)
+    expect(offscreenWarmPane?.tile.textRuns[0]?.text).toBe('stale warm remote text')
+    expect(host.tiles.dirtyTiles.getUnconsumedMask(warmTileId)).not.toBe(0)
+
+    const visible = runtime.resolve(
+      createInput({
+        engine: LOCAL_EMPTY_ENGINE,
+        forceLocalTiles: true,
+        gridRuntimeHost: host,
+        renderTileSource,
+        renderTileViewport: { colEnd: 255, colStart: 0, rowEnd: 31, rowStart: 0 },
+        residentViewport: { colEnd: 255, colStart: 0, rowEnd: 31, rowStart: 0 },
+        visibleViewport: { colEnd: 255, colStart: 128, rowEnd: 31, rowStart: 0 },
+      }),
+    )
+
+    const visibleWarmPane = visible.renderTilePanes.find((pane) => pane.tile.tileId === warmTileId)
+    expect(visibleWarmPane?.tile.textRuns).toEqual([])
+    expect(visibleWarmPane?.tile.dirtyLocalCols).toEqual(new Uint32Array([0, 127]))
+    expect(visible.tileReadiness.visibleDirtyTileKeys).toContain(warmTileId)
+    expect(host.tiles.dirtyTiles.getUnconsumedMask(warmTileId)).toBe(0)
   })
 
   it('preserves dirty spans when local fallback has no remote render tile source', () => {
@@ -1384,7 +1460,7 @@ describe('GridRenderTilePaneRuntime', () => {
 
     expect(runtime.snapshotBridgeState()).toEqual({
       forceLocalTiles: false,
-      localFallbackRevision: 1,
+      localFallbackRevision: 0,
       renderTileRevision: 1,
     })
 
@@ -1394,13 +1470,13 @@ describe('GridRenderTilePaneRuntime', () => {
     })
 
     expect(runtime.snapshotBridgeState()).toEqual({
-      forceLocalTiles: false,
-      localFallbackRevision: 0,
+      forceLocalTiles: true,
+      localFallbackRevision: 1,
       renderTileRevision: 2,
     })
   })
 
-  it('keeps local optimistic axis damage remote-backed while waiting for worker render tiles', () => {
+  it('uses local fallback for local optimistic axis damage while waiting for worker render tiles', () => {
     const runtime = new GridRenderTilePaneRuntime()
     const host = createHost()
     const renderTileSource = createWorkbookDeltaSource()
@@ -1428,7 +1504,7 @@ describe('GridRenderTilePaneRuntime', () => {
     })
 
     expect(runtime.snapshotBridgeState()).toEqual({
-      forceLocalTiles: false,
+      forceLocalTiles: true,
       localFallbackRevision: 1,
       renderTileRevision: 1,
     })

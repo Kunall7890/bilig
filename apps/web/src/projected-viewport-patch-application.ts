@@ -1,4 +1,5 @@
 import { formatAddress, parseCellAddress } from '@bilig/formula'
+import { PRODUCT_COLUMN_WIDTH, PRODUCT_ROW_HEIGHT } from '@bilig/grid'
 import { ValueTag, type CellSnapshot, type CellStyleRecord, type Viewport, type WorkbookMergeRangeSnapshot } from '@bilig/protocol'
 import type { ViewportPatch } from '@bilig/worker-transport'
 import { applyProjectedViewportAxisPatches } from './projected-viewport-axis-patches.js'
@@ -357,6 +358,7 @@ export function applyProjectedViewportPatch(input: {
       pendingSizes: state.pendingColumnWidthsBySheet.get(patch.viewport.sheetName) ?? {},
       pendingHiddenAxes: state.pendingHiddenColumnsBySheet.get(patch.viewport.sheetName) ?? {},
       hiddenAxes: state.hiddenColumnsBySheet.get(patch.viewport.sheetName) ?? {},
+      defaultSize: PRODUCT_COLUMN_WIDTH,
     })
     state.columnSizesBySheet.set(patch.viewport.sheetName, nextColumns.sizes)
     state.columnWidthsBySheet.set(patch.viewport.sheetName, nextColumns.renderedSizes)
@@ -384,6 +386,7 @@ export function applyProjectedViewportPatch(input: {
       pendingSizes: state.pendingRowHeightsBySheet.get(patch.viewport.sheetName) ?? {},
       pendingHiddenAxes: state.pendingHiddenRowsBySheet.get(patch.viewport.sheetName) ?? {},
       hiddenAxes: state.hiddenRowsBySheet.get(patch.viewport.sheetName) ?? {},
+      defaultSize: PRODUCT_ROW_HEIGHT,
     })
     state.rowSizesBySheet.set(patch.viewport.sheetName, nextRows.sizes)
     state.rowHeightsBySheet.set(patch.viewport.sheetName, nextRows.renderedSizes)

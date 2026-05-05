@@ -1,6 +1,14 @@
 import type { GridEngineLike } from '@bilig/grid'
 import { parseCellAddress } from '@bilig/formula'
-import type { CellSnapshot, CellStyleRecord, Viewport, WorkbookAxisEntrySnapshot, WorkbookMergeRangeSnapshot } from '@bilig/protocol'
+import {
+  MAX_COLS,
+  MAX_ROWS,
+  type CellSnapshot,
+  type CellStyleRecord,
+  type Viewport,
+  type WorkbookAxisEntrySnapshot,
+  type WorkbookMergeRangeSnapshot,
+} from '@bilig/protocol'
 import {
   decodeWorkbookDeltaBatchV3,
   type RenderTileDeltaSubscription,
@@ -22,6 +30,8 @@ export interface ProjectedViewportStoreOptions {
 type CellItem = readonly [number, number]
 type SheetViewportChannel = 'columnWidths' | 'rowHeights' | 'hiddenColumns' | 'hiddenRows' | 'freeze' | 'merges'
 type SheetIdentity = { readonly sheetId: number; readonly sheetOrdinal: number }
+const LOCAL_AXIS_X_DIRTY_MASK = DirtyMaskV3.AxisX | DirtyMaskV3.Text | DirtyMaskV3.Rect
+const LOCAL_AXIS_Y_DIRTY_MASK = DirtyMaskV3.AxisY | DirtyMaskV3.Text | DirtyMaskV3.Rect
 export class ProjectedViewportStore implements GridEngineLike {
   private readonly options: ProjectedViewportStoreOptions
   private readonly cellCache: ProjectedViewportCellCache
@@ -188,9 +198,12 @@ export class ProjectedViewportStore implements GridEngineLike {
   }
 
   setColumnWidth(sheetName: string, columnIndex: number, width: number): void {
+    const previousWidth = this.axisStore.getColumnWidths(sheetName)[columnIndex]
     this.axisStore.setColumnWidth(sheetName, columnIndex, width)
-    this.emitLocalAxisDelta(sheetName, 'column', columnIndex)
     this.notifySheetChannels(sheetName, ['columnWidths'])
+    if (this.axisStore.getColumnWidths(sheetName)[columnIndex] !== previousWidth) {
+      this.emitLocalAxisDelta(sheetName, 'column', columnIndex)
+    }
   }
 
   ackColumnWidth(sheetName: string, columnIndex: number, width: number): void {
@@ -199,24 +212,39 @@ export class ProjectedViewportStore implements GridEngineLike {
   }
 
   rollbackColumnWidth(sheetName: string, columnIndex: number, width: number | undefined): void {
+    const previousWidth = this.axisStore.getColumnWidths(sheetName)[columnIndex]
     this.axisStore.rollbackColumnWidth(sheetName, columnIndex, width)
     this.notifySheetChannels(sheetName, ['columnWidths'])
+    if (this.axisStore.getColumnWidths(sheetName)[columnIndex] !== previousWidth) {
+      this.emitLocalAxisDelta(sheetName, 'column', columnIndex)
+    }
   }
 
   setColumnHidden(sheetName: string, columnIndex: number, hidden: boolean, size: number): void {
+    const previousWidth = this.axisStore.getColumnWidths(sheetName)[columnIndex]
     this.axisStore.setColumnHidden(sheetName, columnIndex, hidden, size)
     this.notifySheetChannels(sheetName, ['columnWidths', 'hiddenColumns'])
+    if (this.axisStore.getColumnWidths(sheetName)[columnIndex] !== previousWidth) {
+      this.emitLocalAxisDelta(sheetName, 'column', columnIndex)
+    }
   }
 
   rollbackColumnHidden(sheetName: string, columnIndex: number, previous: { hidden: boolean; size: number | undefined }): void {
+    const previousWidth = this.axisStore.getColumnWidths(sheetName)[columnIndex]
     this.axisStore.rollbackColumnHidden(sheetName, columnIndex, previous)
     this.notifySheetChannels(sheetName, ['columnWidths', 'hiddenColumns'])
+    if (this.axisStore.getColumnWidths(sheetName)[columnIndex] !== previousWidth) {
+      this.emitLocalAxisDelta(sheetName, 'column', columnIndex)
+    }
   }
 
   setRowHeight(sheetName: string, rowIndex: number, height: number): void {
+    const previousHeight = this.axisStore.getRowHeights(sheetName)[rowIndex]
     this.axisStore.setRowHeight(sheetName, rowIndex, height)
-    this.emitLocalAxisDelta(sheetName, 'row', rowIndex)
     this.notifySheetChannels(sheetName, ['rowHeights'])
+    if (this.axisStore.getRowHeights(sheetName)[rowIndex] !== previousHeight) {
+      this.emitLocalAxisDelta(sheetName, 'row', rowIndex)
+    }
   }
 
   ackRowHeight(sheetName: string, rowIndex: number, height: number): void {
@@ -225,18 +253,30 @@ export class ProjectedViewportStore implements GridEngineLike {
   }
 
   rollbackRowHeight(sheetName: string, rowIndex: number, height: number | undefined): void {
+    const previousHeight = this.axisStore.getRowHeights(sheetName)[rowIndex]
     this.axisStore.rollbackRowHeight(sheetName, rowIndex, height)
     this.notifySheetChannels(sheetName, ['rowHeights'])
+    if (this.axisStore.getRowHeights(sheetName)[rowIndex] !== previousHeight) {
+      this.emitLocalAxisDelta(sheetName, 'row', rowIndex)
+    }
   }
 
   setRowHidden(sheetName: string, rowIndex: number, hidden: boolean, size: number): void {
+    const previousHeight = this.axisStore.getRowHeights(sheetName)[rowIndex]
     this.axisStore.setRowHidden(sheetName, rowIndex, hidden, size)
     this.notifySheetChannels(sheetName, ['rowHeights', 'hiddenRows'])
+    if (this.axisStore.getRowHeights(sheetName)[rowIndex] !== previousHeight) {
+      this.emitLocalAxisDelta(sheetName, 'row', rowIndex)
+    }
   }
 
   rollbackRowHidden(sheetName: string, rowIndex: number, previous: { hidden: boolean; size: number | undefined }): void {
+    const previousHeight = this.axisStore.getRowHeights(sheetName)[rowIndex]
     this.axisStore.rollbackRowHidden(sheetName, rowIndex, previous)
     this.notifySheetChannels(sheetName, ['rowHeights', 'hiddenRows'])
+    if (this.axisStore.getRowHeights(sheetName)[rowIndex] !== previousHeight) {
+      this.emitLocalAxisDelta(sheetName, 'row', rowIndex)
+    }
   }
 
   setKnownSheets(sheetNames: readonly string[]): void {
@@ -246,6 +286,16 @@ export class ProjectedViewportStore implements GridEngineLike {
     removedSheets.forEach((sheetName) => {
       this.mergeRangesBySheet.delete(sheetName)
       this.sheetChannelListeners.delete(sheetName)
+    })
+  }
+
+  resetProjectionState(sheetNames: readonly string[] = this.cellCache.getKnownSheetNames()): void {
+    this.cellCache.resetSheets(sheetNames)
+    this.axisStore.dropSheets(sheetNames)
+    this.tileSceneStore?.dropSheets(sheetNames)
+    sheetNames.forEach((sheetName) => {
+      this.mergeRangesBySheet.delete(sheetName)
+      this.notifySheetChannels(sheetName, ['columnWidths', 'rowHeights', 'hiddenColumns', 'hiddenRows', 'freeze', 'merges'])
     })
   }
 
@@ -428,21 +478,20 @@ export class ProjectedViewportStore implements GridEngineLike {
     if (this.localWorkbookDeltaListeners.size === 0) {
       return
     }
+    const axisIndex = axis === 'column' ? clampAxisIndex(index, MAX_COLS) : clampAxisIndex(index, MAX_ROWS)
     const startedAt = nowMs()
     const identity = this.resolveSheetIdentity(sheetName)
     if (!identity) {
       return
     }
     const seq = ++this.localWorkbookDeltaSeq
-    const axisMask =
-      axis === 'column' ? DirtyMaskV3.AxisX | DirtyMaskV3.Text | DirtyMaskV3.Rect : DirtyMaskV3.AxisY | DirtyMaskV3.Text | DirtyMaskV3.Rect
     const batch: WorkbookDeltaBatchV3 = {
       axisSeqX: axis === 'column' ? seq : 0,
       axisSeqY: axis === 'row' ? seq : 0,
       calcSeq: seq,
       dirty: {
-        axisX: axis === 'column' ? new Uint32Array([index, index, axisMask]) : new Uint32Array(),
-        axisY: axis === 'row' ? new Uint32Array([index, index, axisMask]) : new Uint32Array(),
+        axisX: axis === 'column' ? new Uint32Array([axisIndex, axisIndex, LOCAL_AXIS_X_DIRTY_MASK]) : new Uint32Array(),
+        axisY: axis === 'row' ? new Uint32Array([axisIndex, axisIndex, LOCAL_AXIS_Y_DIRTY_MASK]) : new Uint32Array(),
         cellRanges: new Uint32Array(),
       },
       freezeSeq: 0,
@@ -468,6 +517,13 @@ export class ProjectedViewportStore implements GridEngineLike {
 
 function nowMs(): number {
   return typeof performance === 'undefined' ? Date.now() : performance.now()
+}
+
+function clampAxisIndex(index: number, axisLength: number): number {
+  if (!Number.isFinite(index)) {
+    return 0
+  }
+  return Math.max(0, Math.min(axisLength - 1, Math.trunc(index)))
 }
 
 function resolveCellSnapshotDirtyMask(snapshot: CellSnapshot): number {

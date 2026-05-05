@@ -154,6 +154,7 @@ export function useWorkbookRenderTilePanes(input: {
       sheetOrdinal,
       sheetName,
       visibleAddresses,
+      visibleViewport,
     })
   }, [
     dprBucket,
@@ -169,6 +170,7 @@ export function useWorkbookRenderTilePanes(input: {
     sheetOrdinal,
     state.needsLocalCellInvalidation,
     visibleAddresses,
+    visibleViewport,
   ])
 
   return state

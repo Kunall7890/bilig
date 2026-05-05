@@ -261,6 +261,7 @@ function WorkerWorkbookAppInner({
                 onColumnWidthChange={(columnIndex: number, newSize: number) => {
                   reportAsyncError(
                     app.invokeColumnWidthMutation(app.selection.sheetName, columnIndex, newSize, {
+                      deferLocalApplication: true,
                       deferPersistence: true,
                     }),
                   )
@@ -268,6 +269,7 @@ function WorkerWorkbookAppInner({
                 onRowHeightChange={(rowIndex: number, newSize: number) => {
                   reportAsyncError(
                     app.invokeRowHeightMutation(app.selection.sheetName, rowIndex, newSize, {
+                      deferLocalApplication: true,
                       deferPersistence: true,
                     }),
                   )

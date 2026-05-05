@@ -204,6 +204,21 @@ export class ProjectedViewportCellCache {
     return removedSheets
   }
 
+  getKnownSheetNames(): string[] {
+    return [...this.knownSheets]
+  }
+
+  resetSheets(sheetNames: readonly string[]): void {
+    sheetNames.forEach((sheetName) => {
+      this.cellKeysBySheet.get(sheetName)?.forEach((key) => {
+        this.cellSnapshots.delete(key)
+        this.cellAccessTicks.delete(key)
+      })
+      this.cellKeysBySheet.delete(sheetName)
+    })
+    this.emitChange()
+  }
+
   subscribeCells(sheetName: string, addresses: readonly string[], listener: () => void): () => void {
     const subscription: CellSubscription = {
       sheetName,

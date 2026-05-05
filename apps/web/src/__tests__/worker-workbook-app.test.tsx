@@ -704,9 +704,11 @@ describe('WorkerWorkbookApp', () => {
     expect(invokeDeleteRowsMutation).toHaveBeenCalledWith('Sheet1', 1, 2)
     expect(invokeDeleteColumnsMutation).toHaveBeenCalledWith('Sheet1', 3, 1)
     expect(invokeColumnWidthMutation).toHaveBeenCalledWith('Sheet1', 0, 152, {
+      deferLocalApplication: true,
       deferPersistence: true,
     })
     expect(invokeRowHeightMutation).toHaveBeenCalledWith('Sheet1', 0, 48, {
+      deferLocalApplication: true,
       deferPersistence: true,
     })
     expect(returnedDeleteRowsTask).toBe(deleteRowsTask)

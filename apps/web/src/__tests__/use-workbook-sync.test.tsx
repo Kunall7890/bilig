@@ -2,6 +2,8 @@
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { ProjectedViewportStore } from '../projected-viewport-store.js'
+import type { WorkerHandle } from '../runtime-session.js'
 import { useWorkbookSync } from '../use-workbook-sync.js'
 import type { PendingWorkbookMutation } from '../workbook-sync.js'
 
@@ -28,6 +30,7 @@ describe('useWorkbookSync', () => {
   afterEach(() => {
     vi.useRealTimers()
     document.body.innerHTML = ''
+    vi.restoreAllMocks()
   })
 
   it('marks non-retryable mutation failures without escalating them as runtime errors', async () => {
@@ -199,4 +202,161 @@ describe('useWorkbookSync', () => {
       root.unmount()
     })
   })
+
+  it('persists deferred axis resizes once while avoiding stale viewport store writes', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    const frames = installAnimationFrameQueue()
+    const initialStore = new ProjectedViewportStore()
+    const replacementStore = new ProjectedViewportStore()
+    const initialSetColumnWidth = vi.spyOn(initialStore, 'setColumnWidth')
+    const replacementSetColumnWidth = vi.spyOn(replacementStore, 'setColumnWidth')
+    const replacementSetRowHeight = vi.spyOn(replacementStore, 'setRowHeight')
+    const workerHandleRef: { current: WorkerHandle | null } = {
+      current: {
+        viewportStore: initialStore,
+      },
+    }
+    let sync: ReturnType<typeof useWorkbookSync> | null = null
+    const runtimeController = {
+      invoke: vi.fn(async (method: string, input?: unknown) => {
+        if (method !== 'enqueuePendingMutation') {
+          throw new Error(`Unexpected runtime invoke: ${method}`)
+        }
+        if (!isPendingMutationInput(input)) {
+          throw new Error('Expected pending mutation input')
+        }
+        return {
+          ...createPendingMutation(),
+          method: input.method,
+          args: input.args,
+        }
+      }),
+    }
+
+    function Harness() {
+      sync = useWorkbookSync({
+        documentId: 'doc-1',
+        connectionStateName: 'disconnected',
+        connectionStateRef: { current: 'disconnected' },
+        runtimeController,
+        workerHandleRef,
+        zeroRef: {
+          current: {
+            mutate() {
+              throw new Error('Deferred resize test should not attempt remote sync while disconnected')
+            },
+          },
+        },
+        reportRuntimeError: vi.fn(),
+      })
+      return null
+    }
+
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+    await act(async () => {
+      root.render(<Harness />)
+    })
+    if (!sync) {
+      throw new Error('Expected useWorkbookSync harness to initialize')
+    }
+
+    const staleStorePromise = sync.invokeColumnWidthMutation('SheetA', 4, 152, {
+      deferLocalApplication: true,
+      deferPersistence: true,
+    })
+    workerHandleRef.current = {
+      viewportStore: replacementStore,
+    }
+
+    await act(async () => {
+      frames.flushNext()
+      await Promise.resolve()
+    })
+    expect(initialSetColumnWidth).not.toHaveBeenCalled()
+    expect(replacementSetColumnWidth).not.toHaveBeenCalled()
+
+    await act(async () => {
+      frames.flushNext()
+      await staleStorePromise
+    })
+    expect(runtimeController.invoke).toHaveBeenCalledWith('enqueuePendingMutation', {
+      method: 'updateColumnMetadata',
+      args: ['SheetA', 4, 1, 152, null],
+    })
+
+    const stableStorePromise = sync.invokeRowHeightMutation('SheetB', 6, 44, {
+      deferLocalApplication: true,
+      deferPersistence: true,
+    })
+    await act(async () => {
+      frames.flushNext()
+      await Promise.resolve()
+    })
+    expect(replacementSetRowHeight).toHaveBeenCalledTimes(1)
+    expect(replacementSetRowHeight).toHaveBeenCalledWith('SheetB', 6, 44)
+    await act(async () => {
+      frames.flushNext()
+      await stableStorePromise
+    })
+    expect(runtimeController.invoke).toHaveBeenCalledWith('enqueuePendingMutation', {
+      method: 'updateRowMetadata',
+      args: ['SheetB', 6, 1, 44, null],
+    })
+
+    await act(async () => {
+      root.unmount()
+    })
+    frames.restore()
+  })
 })
+
+function isPendingMutationInput(
+  value: unknown,
+): value is { method: PendingWorkbookMutation['method']; args: PendingWorkbookMutation['args'] } {
+  return typeof value === 'object' && value !== null && 'method' in value && 'args' in value && Array.isArray(value.args)
+}
+
+function installAnimationFrameQueue(): {
+  readonly flushNext: () => void
+  readonly restore: () => void
+} {
+  const callbacks: FrameRequestCallback[] = []
+  const originalRequestAnimationFrame = window.requestAnimationFrame
+  const originalCancelAnimationFrame = window.cancelAnimationFrame
+  Object.defineProperty(window, 'requestAnimationFrame', {
+    configurable: true,
+    writable: true,
+    value: vi.fn((callback: FrameRequestCallback) => {
+      callbacks.push(callback)
+      return callbacks.length
+    }),
+  })
+  Object.defineProperty(window, 'cancelAnimationFrame', {
+    configurable: true,
+    writable: true,
+    value: vi.fn(),
+  })
+  return {
+    flushNext: () => {
+      const callback = callbacks.shift()
+      if (!callback) {
+        throw new Error('Expected a queued animation frame')
+      }
+      callback(performance.now())
+    },
+    restore: () => {
+      Object.defineProperty(window, 'requestAnimationFrame', {
+        configurable: true,
+        writable: true,
+        value: originalRequestAnimationFrame,
+      })
+      Object.defineProperty(window, 'cancelAnimationFrame', {
+        configurable: true,
+        writable: true,
+        value: originalCancelAnimationFrame,
+      })
+    },
+  }
+}

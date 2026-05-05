@@ -15,6 +15,12 @@ export interface TypeGpuTextPayloadCounterInput {
   readonly atlasGeometryResyncs?: number | undefined
   readonly glyphDependencies: number
   readonly pageDependencies: number
+  readonly axisOnlySyncAccepts?: number | undefined
+  readonly axisOnlySyncRejects?: number | undefined
+  readonly axisOnlySyncMissingGlyphRejects?: number | undefined
+  readonly axisOnlySyncSignatureRejects?: number | undefined
+  readonly axisOnlySyncFallbackRebuilds?: number | undefined
+  readonly axisOnlySyncAuthoritativeFullTile?: number | undefined
 }
 
 type ScrollPerfCounterSink = Partial<{
@@ -60,6 +66,12 @@ export const EMPTY_GRID_GPU_COUNTERS: GridGpuCounters = Object.freeze({
   textAtlasGeometryRetries: 0,
   textGlyphDependencies: 0,
   textPageDependencies: 0,
+  textAxisOnlySyncAccepts: 0,
+  textAxisOnlySyncAuthoritativeFullTile: 0,
+  textAxisOnlySyncFallbackRebuilds: 0,
+  textAxisOnlySyncMissingGlyphRejects: 0,
+  textAxisOnlySyncRejects: 0,
+  textAxisOnlySyncSignatureRejects: 0,
   textRunPayloadRebuilds: 0,
   textRunPayloadReuses: 0,
   uniformWriteBytes: 0,

@@ -52,6 +52,12 @@ interface WorkbookScrollPerfCounters {
   typeGpuTextAtlasGeometryRetries: number
   typeGpuTextGlyphDependencies: number
   typeGpuTextPageDependencies: number
+  typeGpuTextAxisOnlySyncAccepts: number
+  typeGpuTextAxisOnlySyncRejects: number
+  typeGpuTextAxisOnlySyncMissingGlyphRejects: number
+  typeGpuTextAxisOnlySyncSignatureRejects: number
+  typeGpuTextAxisOnlySyncFallbackRebuilds: number
+  typeGpuTextAxisOnlySyncAuthoritativeFullTile: number
   typeGpuTextRunPayloadRebuilds: number
   typeGpuTextRunPayloadReuses: number
 }
@@ -133,6 +139,12 @@ class WorkbookScrollPerfCollector {
     typeGpuTextAtlasGeometryRetries: 0,
     typeGpuTextGlyphDependencies: 0,
     typeGpuTextPageDependencies: 0,
+    typeGpuTextAxisOnlySyncAccepts: 0,
+    typeGpuTextAxisOnlySyncAuthoritativeFullTile: 0,
+    typeGpuTextAxisOnlySyncFallbackRebuilds: 0,
+    typeGpuTextAxisOnlySyncMissingGlyphRejects: 0,
+    typeGpuTextAxisOnlySyncRejects: 0,
+    typeGpuTextAxisOnlySyncSignatureRejects: 0,
     typeGpuTextRunPayloadRebuilds: 0,
     typeGpuTextRunPayloadReuses: 0,
     typeGpuUniformWriteBytes: 0,
@@ -320,6 +332,12 @@ class WorkbookScrollPerfCollector {
     readonly atlasGeometryResyncs?: number | undefined
     readonly glyphDependencies: number
     readonly pageDependencies: number
+    readonly axisOnlySyncAccepts?: number | undefined
+    readonly axisOnlySyncRejects?: number | undefined
+    readonly axisOnlySyncMissingGlyphRejects?: number | undefined
+    readonly axisOnlySyncSignatureRejects?: number | undefined
+    readonly axisOnlySyncFallbackRebuilds?: number | undefined
+    readonly axisOnlySyncAuthoritativeFullTile?: number | undefined
   }): void {
     this.totalCounters.typeGpuTextRunPayloadReuses += input.reusedRunPayloads
     this.totalCounters.typeGpuTextRunPayloadRebuilds += input.rebuiltRunPayloads
@@ -327,6 +345,12 @@ class WorkbookScrollPerfCollector {
     this.totalCounters.typeGpuTextAtlasGeometryResyncs += input.atlasGeometryResyncs ?? 0
     this.totalCounters.typeGpuTextGlyphDependencies += input.glyphDependencies
     this.totalCounters.typeGpuTextPageDependencies += input.pageDependencies
+    this.totalCounters.typeGpuTextAxisOnlySyncAccepts += input.axisOnlySyncAccepts ?? 0
+    this.totalCounters.typeGpuTextAxisOnlySyncRejects += input.axisOnlySyncRejects ?? 0
+    this.totalCounters.typeGpuTextAxisOnlySyncMissingGlyphRejects += input.axisOnlySyncMissingGlyphRejects ?? 0
+    this.totalCounters.typeGpuTextAxisOnlySyncSignatureRejects += input.axisOnlySyncSignatureRejects ?? 0
+    this.totalCounters.typeGpuTextAxisOnlySyncFallbackRebuilds += input.axisOnlySyncFallbackRebuilds ?? 0
+    this.totalCounters.typeGpuTextAxisOnlySyncAuthoritativeFullTile += input.axisOnlySyncAuthoritativeFullTile ?? 0
   }
 
   noteGridScrollInput(timestamp: number): void {
@@ -508,6 +532,16 @@ function subtractCounters(counters: WorkbookScrollPerfCounters, baseline: Workbo
     typeGpuTextAtlasGeometryRetries: counters.typeGpuTextAtlasGeometryRetries - baseline.typeGpuTextAtlasGeometryRetries,
     typeGpuTextGlyphDependencies: counters.typeGpuTextGlyphDependencies - baseline.typeGpuTextGlyphDependencies,
     typeGpuTextPageDependencies: counters.typeGpuTextPageDependencies - baseline.typeGpuTextPageDependencies,
+    typeGpuTextAxisOnlySyncAccepts: counters.typeGpuTextAxisOnlySyncAccepts - baseline.typeGpuTextAxisOnlySyncAccepts,
+    typeGpuTextAxisOnlySyncRejects: counters.typeGpuTextAxisOnlySyncRejects - baseline.typeGpuTextAxisOnlySyncRejects,
+    typeGpuTextAxisOnlySyncMissingGlyphRejects:
+      counters.typeGpuTextAxisOnlySyncMissingGlyphRejects - baseline.typeGpuTextAxisOnlySyncMissingGlyphRejects,
+    typeGpuTextAxisOnlySyncSignatureRejects:
+      counters.typeGpuTextAxisOnlySyncSignatureRejects - baseline.typeGpuTextAxisOnlySyncSignatureRejects,
+    typeGpuTextAxisOnlySyncFallbackRebuilds:
+      counters.typeGpuTextAxisOnlySyncFallbackRebuilds - baseline.typeGpuTextAxisOnlySyncFallbackRebuilds,
+    typeGpuTextAxisOnlySyncAuthoritativeFullTile:
+      counters.typeGpuTextAxisOnlySyncAuthoritativeFullTile - baseline.typeGpuTextAxisOnlySyncAuthoritativeFullTile,
     typeGpuTextRunPayloadRebuilds: counters.typeGpuTextRunPayloadRebuilds - baseline.typeGpuTextRunPayloadRebuilds,
     typeGpuTextRunPayloadReuses: counters.typeGpuTextRunPayloadReuses - baseline.typeGpuTextRunPayloadReuses,
     typeGpuUniformWriteBytes: counters.typeGpuUniformWriteBytes - baseline.typeGpuUniformWriteBytes,

@@ -86,6 +86,7 @@ export interface TextQuadRunPayloadV3 {
 export interface BuildTextQuadsFromRunsWithSpansOptionsV3 {
   readonly previousRunPayloads?: readonly TextQuadRunPayloadV3[] | null | undefined
   readonly dirtyRunSpans?: readonly TextQuadRunSpan[] | undefined
+  readonly forceRebuildDirtyRunSpans?: boolean | undefined
 }
 
 export interface TextQuadBuildDiagnosticsV3 {
@@ -265,11 +266,13 @@ function buildTextQuadsFromRunsWithSpansInternal(
     const run = runs[index]!
     const signature = resolveTextQuadRunSignatureV3(run)
     const previousPayload = previousRunPayloads[index]
+    const runIsDirty = isTextRunDirty(index, options.dirtyRunSpans)
+    const forceDirtyRunRebuild = runIsDirty && options.forceRebuildDirtyRunSpans === true
     if (
       previousPayload &&
       previousPayload.signature === signature &&
       previousPayload.atlasGeometryVersion === initialAtlasVersion &&
-      !isTextRunDirty(index, options.dirtyRunSpans)
+      !runIsDirty
     ) {
       runPayloads.push(previousPayload)
       reusedPreviousPayload = true
@@ -278,7 +281,7 @@ function buildTextQuadsFromRunsWithSpansInternal(
       continue
     }
     const translatedPayload =
-      previousPayload && previousPayload.atlasGeometryVersion === initialAtlasVersion
+      previousPayload && previousPayload.atlasGeometryVersion === initialAtlasVersion && !forceDirtyRunRebuild
         ? translatePreviousRunPayloadIfPossible(run, previousPayload, signature)
         : null
     if (translatedPayload) {
@@ -322,6 +325,7 @@ function buildTextQuadsFromRunsWithSpansInternal(
       targetBuffer,
       {
         dirtyRunSpans: options.dirtyRunSpans,
+        forceRebuildDirtyRunSpans: options.forceRebuildDirtyRunSpans,
         previousRunPayloads: reusedPreviousPayload ? [] : runPayloads,
       },
       false,
@@ -395,7 +399,7 @@ export function resolveTextQuadRunSignatureV3(run: TextQuadRun): string {
   ].join('\u0001')
 }
 
-function resolveTextQuadRunContentSignatureV3(run: TextQuadRun): string {
+export function resolveTextQuadRunContentSignatureV3(run: TextQuadRun): string {
   return [
     'text-run-content-v3',
     run.text,

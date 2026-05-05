@@ -81,10 +81,9 @@ export function useWorkbookGridHostPointerHandlers(input: {
     focusGrid,
     getCellScreenBounds,
     getVisibleRegion,
-    getPreviewColumnWidth,
-    getPreviewRowHeight,
     gridMetrics,
     gridSelection,
+    hostElement,
     isFillHandleDragging,
     isRangeMoveDragging,
     previewColumnWidth,
@@ -191,6 +190,20 @@ export function useWorkbookGridHostPointerHandlers(input: {
         resolveRowResizeTargetAtPointer,
         rowHeights,
       })
+      const isResizeCursorOnlyHover =
+        next.cell === null && (next.header?.kind === 'column' || next.header?.kind === 'row') && next.cursor !== 'default'
+      if (isResizeCursorOnlyHover) {
+        if (hostElement) {
+          hostElement.style.cursor = next.cursor
+        }
+        setHoverState((current) =>
+          current.cell === null && current.header === null && current.cursor === 'default' ? current : DEFAULT_GRID_HOVER_STATE,
+        )
+        return
+      }
+      if (hostElement) {
+        hostElement.style.cursor = next.cursor
+      }
       setHoverState((current) => (sameGridHoverState(current, next) ? current : next))
     },
     [
@@ -200,6 +213,7 @@ export function useWorkbookGridHostPointerHandlers(input: {
       getCellScreenBounds,
       getVisibleRegion,
       gridMetrics,
+      hostElement,
       isFillHandleDragging,
       isRangeMoveDragging,
       resolveColumnResizeTargetAtPointer,
@@ -305,7 +319,6 @@ export function useWorkbookGridHostPointerHandlers(input: {
         refreshHoverState,
         setActiveResizeColumn,
         previewColumnWidth,
-        getPreviewColumnWidth,
         clearColumnResizePreview,
         commitColumnWidth,
         columnIndex,
@@ -318,7 +331,6 @@ export function useWorkbookGridHostPointerHandlers(input: {
       clearColumnResizePreview,
       columnWidths,
       commitColumnWidth,
-      getPreviewColumnWidth,
       gridMetrics.columnWidth,
       interactionState,
       previewColumnWidth,
@@ -338,7 +350,6 @@ export function useWorkbookGridHostPointerHandlers(input: {
         refreshHoverState,
         setActiveResizeRow,
         previewRowHeight,
-        getPreviewRowHeight,
         clearRowResizePreview,
         commitRowHeight,
         rowIndex,
@@ -350,7 +361,6 @@ export function useWorkbookGridHostPointerHandlers(input: {
     [
       clearRowResizePreview,
       commitRowHeight,
-      getPreviewRowHeight,
       gridMetrics.rowHeight,
       interactionState,
       previewRowHeight,
@@ -527,12 +537,24 @@ export function useWorkbookGridHostPointerHandlers(input: {
       })
     },
     handleHostPointerLeave: () => {
-      if (activeResizeColumn !== null || activeResizeRow !== null || isFillHandleDragging || isRangeMoveDragging) {
+      if (
+        resizeCleanupRef.current !== null ||
+        activeResizeColumn !== null ||
+        activeResizeRow !== null ||
+        isFillHandleDragging ||
+        isRangeMoveDragging
+      ) {
         return
+      }
+      if (hostElement) {
+        hostElement.style.cursor = 'default'
       }
       setHoverState(resetGridHoverState)
     },
     handleHostPointerMoveCapture: (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (resizeCleanupRef.current !== null || activeResizeColumn !== null || activeResizeRow !== null) {
+        return
+      }
       if (isFillHandleDragging || isFillHandleTarget(event.target)) {
         return
       }
@@ -559,6 +581,9 @@ export function useWorkbookGridHostPointerHandlers(input: {
     },
     handleHostPointerUpCapture: (event: ReactPointerEvent<HTMLDivElement>) => {
       clearInteriorRangeMoveCandidate()
+      if (resizeCleanupRef.current !== null || activeResizeColumn !== null || activeResizeRow !== null) {
+        return
+      }
       if (isRangeMoveDragging) {
         return
       }

@@ -8,6 +8,18 @@ function hasOwnValue<T extends object>(record: T, index: number): boolean {
   return Object.prototype.hasOwnProperty.call(record, index)
 }
 
+function setSparseAxisSize(record: Record<number, number>, index: number, size: number, defaultSize: number | undefined): void {
+  if (defaultSize !== undefined && size === defaultSize) {
+    delete record[index]
+    return
+  }
+  record[index] = size
+}
+
+function resolveRenderedSize(record: Record<number, number>, index: number, defaultSize: number | undefined): number | undefined {
+  return hasOwnValue(record, index) ? record[index] : defaultSize
+}
+
 export function applyProjectedViewportAxisPatches(args: {
   patches: readonly ProjectedViewportAxisPatch[]
   sizes: Record<number, number>
@@ -15,6 +27,7 @@ export function applyProjectedViewportAxisPatches(args: {
   pendingSizes: Record<number, number>
   pendingHiddenAxes: Record<number, boolean>
   hiddenAxes: Record<number, true>
+  defaultSize?: number | undefined
 }): {
   sizes: Record<number, number>
   renderedSizes: Record<number, number>
@@ -41,8 +54,8 @@ export function applyProjectedViewportAxisPatches(args: {
 
     const wasHidden = hiddenAxes[patch.index] === true
     const previousSize = sizes[patch.index]
-    const previousRenderedSize = renderedSizes[patch.index]
-    sizes[patch.index] = patch.size
+    const previousRenderedSize = resolveRenderedSize(renderedSizes, patch.index, args.defaultSize)
+    setSparseAxisSize(sizes, patch.index, patch.size, args.defaultSize)
     const pending = pendingSizes[patch.index]
     if (patch.hidden) {
       hiddenAxes[patch.index] = true
@@ -60,7 +73,7 @@ export function applyProjectedViewportAxisPatches(args: {
     if (pending === patch.size) {
       delete pendingSizes[patch.index]
     }
-    renderedSizes[patch.index] = patch.size
+    setSparseAxisSize(renderedSizes, patch.index, patch.size, args.defaultSize)
     if (wasHidden || previousRenderedSize !== patch.size) {
       axisChanged = true
     }

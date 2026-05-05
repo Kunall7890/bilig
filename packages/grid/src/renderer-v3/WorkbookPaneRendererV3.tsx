@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import type { GridGeometrySnapshot } from '../gridGeometry.js'
 import type { GridHeaderPaneState } from '../gridHeaderPanes.js'
 import type { GridCameraStore } from '../runtime/gridCameraStore.js'
@@ -49,7 +49,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     },
     [hostRuntime],
   )
-  useEffect(() => {
+  useLayoutEffect(() => {
     hostRuntime.updateProps({
       active,
       cameraStore,

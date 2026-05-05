@@ -57,7 +57,7 @@ export class WorkbookPaneRendererHostRuntimeV3 {
     this.unsubscribeSurface = this.surfaceRuntime.subscribe((snapshot) => {
       this.surfaceSnapshot = snapshot
       this.applyRendererState()
-      this.scheduleInputResponsiveDraw()
+      this.requestRenderDraw()
     })
   }
 
@@ -70,7 +70,7 @@ export class WorkbookPaneRendererHostRuntimeV3 {
     this.surfaceRuntime.setActive(props.active)
     this.syncCanvasTarget()
     this.applyRendererState()
-    this.scheduleInputResponsiveDraw()
+    this.requestRenderDraw()
   }
 
   setCanvas(canvas: HTMLCanvasElement | null): void {
@@ -114,8 +114,7 @@ export class WorkbookPaneRendererHostRuntimeV3 {
     })
   }
 
-  private scheduleInputResponsiveDraw(): void {
-    this.rendererRuntime.noteInputSignal()
+  private requestRenderDraw(): void {
     this.rendererRuntime.requestDraw()
   }
 

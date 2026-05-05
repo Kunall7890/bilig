@@ -1,8 +1,10 @@
 import type { GridGeometrySnapshot } from './gridGeometry.js'
 import type { GridHoverState } from './gridHover.js'
+import { MAX_COLUMN_WIDTH, MAX_ROW_HEIGHT, MIN_COLUMN_WIDTH, MIN_ROW_HEIGHT } from './gridMetrics.js'
 import type { HeaderSelection, VisibleRegionState } from './gridPointer.js'
 
 export const RESIZE_HANDLE_DOUBLE_CLICK_MS = 700
+export const RESIZE_PREVIEW_THROTTLE_MS = 96
 
 interface PointerEventLike {
   clientX: number
@@ -16,13 +18,29 @@ interface ResizePointerEventLike extends PointerEventLike {
 }
 
 interface PointerListenerTarget {
-  addEventListener(type: 'pointermove' | 'pointerup', listener: (event: PointerEventLike) => void, useCapture: boolean): void
-  removeEventListener(type: 'pointermove' | 'pointerup', listener: (event: PointerEventLike) => void, useCapture: boolean): void
+  addEventListener(
+    type: 'pointermove' | 'pointerup' | 'pointercancel',
+    listener: (event: PointerEventLike) => void,
+    useCapture: boolean,
+  ): void
+  removeEventListener(
+    type: 'pointermove' | 'pointerup' | 'pointercancel',
+    listener: (event: PointerEventLike) => void,
+    useCapture: boolean,
+  ): void
 }
 
 type ResizeCleanup = ((event?: PointerEventLike) => void) | null
 
 type SetGridHoverState = (updater: (current: GridHoverState) => GridHoverState) => void
+
+function clampColumnResizeWidth(size: number): number {
+  return Math.max(MIN_COLUMN_WIDTH, Math.min(MAX_COLUMN_WIDTH, Math.round(size)))
+}
+
+function clampRowResizeHeight(size: number): number {
+  return Math.max(MIN_ROW_HEIGHT, Math.min(MAX_ROW_HEIGHT, Math.round(size)))
+}
 
 function setResizeHoverState(input: { setHoverState: SetGridHoverState; kind: 'column' | 'row'; index: number }): void {
   const { index, kind, setHoverState } = input
@@ -269,22 +287,85 @@ function installGridResizeLifecycle(input: {
   refreshHoverState: (clientX: number, clientY: number, buttons: number) => void
   activate: () => void
   deactivate: () => void
+  clearPreview: () => void
   preview: (event: PointerEventLike) => void
-  commitOrClear: () => void
+  commitOrClear: (event: PointerEventLike) => void
 }): void {
-  const { activate, cleanupRef, commitOrClear, deactivate, finishResize, listenerTarget, preview, refreshHoverState, startResize } = input
+  const {
+    activate,
+    cleanupRef,
+    clearPreview,
+    commitOrClear,
+    deactivate,
+    finishResize,
+    listenerTarget,
+    preview,
+    refreshHoverState,
+    startResize,
+  } = input
   cleanupRef.current?.()
   startResize()
   activate()
+  let pendingPreview: PointerEventLike | null = null
+  let latestPreview: PointerEventLike | null = null
+  let previewFrame: number | null = null
+  let previewTimer: number | null = null
 
-  const handlePointerMove = (nativeEvent: PointerEventLike) => {
-    preview(nativeEvent)
+  const flushPreview = () => {
+    previewFrame = null
+    previewTimer = null
+    const nextPreview = pendingPreview
+    pendingPreview = null
+    if (nextPreview) {
+      preview(nextPreview)
+    }
   }
 
-  const cleanup = (nativeEvent?: PointerEventLike) => {
+  const schedulePreview = () => {
+    if (previewFrame !== null || previewTimer !== null) {
+      return
+    }
+    if (typeof window === 'undefined') {
+      flushPreview()
+      return
+    }
+    previewTimer = window.setTimeout(() => {
+      previewTimer = null
+      if (typeof window.requestAnimationFrame !== 'function') {
+        flushPreview()
+        return
+      }
+      previewFrame = window.requestAnimationFrame(flushPreview)
+    }, RESIZE_PREVIEW_THROTTLE_MS)
+  }
+
+  const handlePointerMove = (nativeEvent: PointerEventLike) => {
+    latestPreview = {
+      clientX: nativeEvent.clientX,
+      clientY: nativeEvent.clientY,
+    }
+    pendingPreview = latestPreview
+    schedulePreview()
+  }
+
+  const cleanup = (nativeEvent?: PointerEventLike, options: { clearPreview?: boolean } = {}) => {
+    if (previewTimer !== null && typeof window !== 'undefined') {
+      window.clearTimeout(previewTimer)
+    }
+    if (previewFrame !== null && typeof window !== 'undefined' && typeof window.cancelAnimationFrame === 'function') {
+      window.cancelAnimationFrame(previewFrame)
+    }
+    previewTimer = null
+    previewFrame = null
+    pendingPreview = null
+    latestPreview = null
     listenerTarget.removeEventListener('pointermove', handlePointerMove, true)
     listenerTarget.removeEventListener('pointerup', handlePointerUp, true)
+    listenerTarget.removeEventListener('pointercancel', handlePointerCancel, true)
     cleanupRef.current = null
+    if (options.clearPreview ?? true) {
+      clearPreview()
+    }
     deactivate()
     finishResize()
     if (nativeEvent) {
@@ -293,13 +374,18 @@ function installGridResizeLifecycle(input: {
   }
 
   const handlePointerUp = (nativeEvent: PointerEventLike) => {
-    commitOrClear()
+    commitOrClear(latestPreview ?? nativeEvent)
+    cleanup(nativeEvent, { clearPreview: false })
+  }
+
+  const handlePointerCancel = (nativeEvent: PointerEventLike) => {
     cleanup(nativeEvent)
   }
 
   cleanupRef.current = cleanup
   listenerTarget.addEventListener('pointermove', handlePointerMove, true)
   listenerTarget.addEventListener('pointerup', handlePointerUp, true)
+  listenerTarget.addEventListener('pointercancel', handlePointerCancel, true)
 }
 
 export function beginWorkbookGridColumnResize(input: {
@@ -310,7 +396,6 @@ export function beginWorkbookGridColumnResize(input: {
   refreshHoverState: (clientX: number, clientY: number, buttons: number) => void
   setActiveResizeColumn: (columnIndex: number | null) => void
   previewColumnWidth: (columnIndex: number, width: number) => void
-  getPreviewColumnWidth: (columnIndex: number) => number | null | undefined
   clearColumnResizePreview: (columnIndex: number) => void
   commitColumnWidth: (columnIndex: number, width: number) => void
   columnIndex: number
@@ -326,7 +411,6 @@ export function beginWorkbookGridColumnResize(input: {
     commitColumnWidth,
     defaultColumnWidth,
     finishResize,
-    getPreviewColumnWidth,
     listenerTarget,
     previewColumnWidth,
     refreshHoverState,
@@ -344,16 +428,17 @@ export function beginWorkbookGridColumnResize(input: {
     refreshHoverState,
     activate: () => setActiveResizeColumn(columnIndex),
     deactivate: () => setActiveResizeColumn(null),
+    clearPreview: () => clearColumnResizePreview(columnIndex),
     preview: (nativeEvent) => {
       previewColumnWidth(columnIndex, startWidth + (nativeEvent.clientX - startClientX))
     },
-    commitOrClear: () => {
-      const finalWidth = getPreviewColumnWidth(columnIndex) ?? startWidth
+    commitOrClear: (nativeEvent) => {
+      const finalWidth = clampColumnResizeWidth(startWidth + (nativeEvent.clientX - startClientX))
+      clearColumnResizePreview(columnIndex)
       if (finalWidth === startWidth) {
-        clearColumnResizePreview(columnIndex)
-      } else {
-        commitColumnWidth(columnIndex, finalWidth)
+        return
       }
+      commitColumnWidth(columnIndex, finalWidth)
     },
   })
 }
@@ -366,7 +451,6 @@ export function beginWorkbookGridRowResize(input: {
   refreshHoverState: (clientX: number, clientY: number, buttons: number) => void
   setActiveResizeRow: (rowIndex: number | null) => void
   previewRowHeight: (rowIndex: number, height: number) => void
-  getPreviewRowHeight: (rowIndex: number) => number | null | undefined
   clearRowResizePreview: (rowIndex: number) => void
   commitRowHeight: (rowIndex: number, height: number) => void
   rowIndex: number
@@ -380,7 +464,6 @@ export function beginWorkbookGridRowResize(input: {
     commitRowHeight,
     defaultRowHeight,
     finishResize,
-    getPreviewRowHeight,
     listenerTarget,
     previewRowHeight,
     refreshHoverState,
@@ -400,16 +483,17 @@ export function beginWorkbookGridRowResize(input: {
     refreshHoverState,
     activate: () => setActiveResizeRow(rowIndex),
     deactivate: () => setActiveResizeRow(null),
+    clearPreview: () => clearRowResizePreview(rowIndex),
     preview: (nativeEvent) => {
       previewRowHeight(rowIndex, startHeight + (nativeEvent.clientY - startClientY))
     },
-    commitOrClear: () => {
-      const finalHeight = getPreviewRowHeight(rowIndex) ?? startHeight
+    commitOrClear: (nativeEvent) => {
+      const finalHeight = clampRowResizeHeight(startHeight + (nativeEvent.clientY - startClientY))
+      clearRowResizePreview(rowIndex)
       if (finalHeight === startHeight) {
-        clearRowResizePreview(rowIndex)
-      } else {
-        commitRowHeight(rowIndex, finalHeight)
+        return
       }
+      commitRowHeight(rowIndex, finalHeight)
     },
   })
 }

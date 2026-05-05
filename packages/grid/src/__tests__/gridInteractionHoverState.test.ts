@@ -73,6 +73,25 @@ describe('resolveWorkbookGridHoverState', () => {
     expect(state).toEqual({ cell: null, header: null, cursor: 'grab' })
   })
 
+  it('resolves resize handles before range-move hit testing', () => {
+    const getCellScreenBounds = vi.fn(() => ({
+      x: 90,
+      y: 40,
+      width: 20,
+      height: 20,
+    }))
+    const state = resolveWorkbookGridHoverState({
+      ...baseInput(),
+      allowsRangeMove: true,
+      selectionRange: { x: 1, y: 1, width: 2, height: 2 },
+      getCellScreenBounds,
+      resolveColumnResizeTargetAtPointer: vi.fn(() => 3),
+    })
+
+    expect(state).toEqual({ cell: null, header: { kind: 'column', index: 3 }, cursor: 'col-resize' })
+    expect(getCellScreenBounds).not.toHaveBeenCalled()
+  })
+
   it('returns range-move grab when hovering the content lane inside an already-selected range', () => {
     const state = resolveWorkbookGridHoverState({
       ...baseInput(),

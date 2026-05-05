@@ -141,9 +141,14 @@ export class WorkbookPaneRendererRuntimeV3 {
   ) {}
 
   updateState(state: Partial<WorkbookPaneRendererRuntimeStateV3>): void {
+    const previousTilePanes = this.state.tilePanes
+    const nextTilePanes = state.tilePanes ?? previousTilePanes
     this.state = {
       ...this.state,
       ...state,
+    }
+    if (state.tilePanes && state.tilePanes !== previousTilePanes && hasDirtyTilePaneResources(nextTilePanes)) {
+      this.scheduler.noteInputSignal()
     }
     this.syncStoreSubscriptions()
   }
@@ -236,4 +241,8 @@ export class WorkbookPaneRendererRuntimeV3 {
     this.subscribedCameraStore = null
     this.subscribedScrollStore = null
   }
+}
+
+function hasDirtyTilePaneResources(panes: readonly WorkbookRenderTilePaneState[]): boolean {
+  return panes.some((pane) => (pane.tile.dirtyMasks?.length ?? 0) > 0)
 }

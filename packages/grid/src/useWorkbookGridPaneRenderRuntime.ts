@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from 'react'
+import { useMemo, type Dispatch, type SetStateAction } from 'react'
 import type { Viewport } from '@bilig/protocol'
 import type { GridAxisWorldIndex } from './gridAxisWorldIndex.js'
 import type { GridEngineLike } from './grid-engine.js'
@@ -7,6 +7,7 @@ import type { VisibleRegionState } from './gridPointer.js'
 import type { Item } from './gridTypes.js'
 import type { GridCameraStore } from './runtime/gridCameraStore.js'
 import type { GridRuntimeHost } from './runtime/gridRuntimeHost.js'
+import { collectViewportItems } from './gridViewportItems.js'
 import type { WorkbookGridScrollSnapshot, WorkbookGridScrollStore } from './workbookGridScrollStore.js'
 import type { GridRenderTileSource } from './renderer-v3/render-tile-source.js'
 import { useWorkbookGridViewportRuntime } from './useWorkbookGridViewportRuntime.js'
@@ -148,6 +149,18 @@ export function useWorkbookGridPaneRenderRuntime(input: {
     sortedColumnWidthOverrides,
     sortedRowHeightOverrides,
   })
+  const getVisibleHeaderCellLocalBounds = useWorkbookHeaderCellBounds({
+    columnWidths,
+    freezeCols,
+    freezeRows,
+    frozenColumnWidth,
+    frozenRowHeight,
+    gridMetrics,
+    residentViewport: viewport,
+    rowHeights,
+    sortedColumnWidthOverrides,
+    sortedRowHeightOverrides,
+  })
   const renderTileState = useWorkbookRenderTilePanes({
     columnWidths,
     dprBucket,
@@ -174,22 +187,56 @@ export function useWorkbookGridPaneRenderRuntime(input: {
     visibleAddresses,
     visibleViewport: viewport,
   })
+  const useVisibleHeaderPaneWindow = renderTileState.tileReadiness.visibleDirtyTileKeys.length > 0
+  const visibleHeaderItems = useMemo(
+    () =>
+      collectViewportItems(viewport, {
+        freezeCols,
+        freezeRows,
+      }),
+    [freezeCols, freezeRows, viewport],
+  )
+  const visibleHeaderRegion = useMemo(
+    () => ({
+      range: {
+        x: viewport.colStart,
+        y: viewport.rowStart,
+        width: viewport.colEnd - viewport.colStart + 1,
+        height: viewport.rowEnd - viewport.rowStart + 1,
+      },
+      tx: 0,
+      ty: 0,
+      freezeRows,
+      freezeCols,
+    }),
+    [freezeCols, freezeRows, viewport],
+  )
+  const visibleHeaderBodyPane = useMemo(
+    () => ({
+      contentOffset: { x: 0, y: 0 },
+      surfaceSize: {
+        width: Math.max(0, hostClientWidth - gridMetrics.rowMarkerWidth - frozenColumnWidth),
+        height: Math.max(0, hostClientHeight - gridMetrics.headerHeight - frozenRowHeight),
+      },
+    }),
+    [frozenColumnWidth, frozenRowHeight, gridMetrics.headerHeight, gridMetrics.rowMarkerWidth, hostClientHeight, hostClientWidth],
+  )
   const headerPanes = useWorkbookHeaderPanes({
     columnWidths,
     freezeCols,
     freezeRows,
     frozenColumnWidth,
     frozenRowHeight,
-    getHeaderCellLocalBounds,
+    getHeaderCellLocalBounds: useVisibleHeaderPaneWindow ? getVisibleHeaderCellLocalBounds : getHeaderCellLocalBounds,
     gridMetrics,
     gridRuntimeHost,
     hostClientHeight,
     hostClientWidth,
     hostElement,
-    residentBodyPane: renderTileState.residentBodyPane,
-    residentHeaderItems,
-    residentHeaderRegion,
-    residentViewport,
+    residentBodyPane: useVisibleHeaderPaneWindow ? visibleHeaderBodyPane : renderTileState.residentBodyPane,
+    residentHeaderItems: useVisibleHeaderPaneWindow ? visibleHeaderItems : residentHeaderItems,
+    residentHeaderRegion: useVisibleHeaderPaneWindow ? visibleHeaderRegion : residentHeaderRegion,
+    residentViewport: useVisibleHeaderPaneWindow ? viewport : residentViewport,
     rowHeights,
     sheetName,
   })

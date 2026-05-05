@@ -3,8 +3,18 @@ import type { Viewport } from '@bilig/protocol'
 import type { GridHeaderPaneState } from './gridHeaderPanes.js'
 import type { GridMetrics } from './gridMetrics.js'
 import type { Item, Rectangle } from './gridTypes.js'
-import type { WorkbookRenderTilePaneState } from './renderer-v3/render-tile-pane-state.js'
 import type { GridRuntimeHost } from './runtime/gridRuntimeHost.js'
+
+type HeaderBodyPanePlacement = {
+  readonly contentOffset: {
+    readonly x: number
+    readonly y: number
+  }
+  readonly surfaceSize: {
+    readonly width: number
+    readonly height: number
+  }
+}
 
 export function useWorkbookHeaderPanes(input: {
   readonly columnWidths: Readonly<Record<number, number>>
@@ -18,7 +28,7 @@ export function useWorkbookHeaderPanes(input: {
   readonly hostClientHeight: number
   readonly hostClientWidth: number
   readonly hostElement: HTMLDivElement | null
-  readonly residentBodyPane: WorkbookRenderTilePaneState | null
+  readonly residentBodyPane: HeaderBodyPanePlacement | null
   readonly residentHeaderItems: readonly Item[]
   readonly residentHeaderRegion: {
     readonly range: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>
