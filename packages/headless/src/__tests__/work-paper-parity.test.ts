@@ -457,6 +457,30 @@ describe('WorkPaper parity surface', () => {
     workbook.setRowOrder(sheetId, [0, 1, 2])
     workbook.setColumnOrder(sheetId, [0, 1, 2])
 
+    const boundedWorkbook = WorkPaper.buildFromArray([[1]], { maxRows: 2, maxColumns: 2 })
+    const boundedSheetId = boundedWorkbook.getSheetId('Sheet1')!
+    const boundedSource = {
+      start: cell(boundedSheetId, 0, 0),
+      end: cell(boundedSheetId, 0, 0),
+    }
+    expect(boundedWorkbook.isItPossibleToMoveCells(boundedSource, cell(boundedSheetId, 1, 1))).toBe(true)
+    expect(boundedWorkbook.isItPossibleToMoveCells(boundedSource, cell(boundedSheetId, 2, 0))).toBe(false)
+    expect(boundedWorkbook.isItPossibleToMoveCells(boundedSource, cell(boundedSheetId, 0, 2))).toBe(false)
+    expect(() => boundedWorkbook.moveCells(boundedSource, cell(boundedSheetId, 2, 0))).toThrow('Cells cannot be moved')
+    expect(boundedWorkbook.isItPossibleToRemoveRows(boundedSheetId, 2, 1)).toBe(false)
+    expect(boundedWorkbook.isItPossibleToRemoveColumns(boundedSheetId, 2, 1)).toBe(false)
+    expect(boundedWorkbook.isItPossibleToMoveRows(boundedSheetId, 0, 1, 2)).toBe(false)
+    expect(boundedWorkbook.isItPossibleToMoveColumns(boundedSheetId, 0, 1, 2)).toBe(false)
+    expect(boundedWorkbook.isItPossibleToSwapRowIndexes(boundedSheetId, 0, 2)).toBe(false)
+    expect(boundedWorkbook.isItPossibleToSwapColumnIndexes(boundedSheetId, 0, 2)).toBe(false)
+    expect(boundedWorkbook.isItPossibleToSetRowOrder(boundedSheetId, [2])).toBe(false)
+    expect(boundedWorkbook.isItPossibleToSetColumnOrder(boundedSheetId, [2])).toBe(false)
+    expect(() => boundedWorkbook.removeRows(boundedSheetId, 2, 1)).toThrow('Rows cannot be removed')
+    expect(() => boundedWorkbook.removeColumns(boundedSheetId, 2, 1)).toThrow('Columns cannot be removed')
+    expect(() => boundedWorkbook.moveRows(boundedSheetId, 0, 1, 2)).toThrow('Rows cannot be moved')
+    expect(() => boundedWorkbook.moveColumns(boundedSheetId, 0, 1, 2)).toThrow('Columns cannot be moved')
+    expect(boundedWorkbook.getSheetDimensions(boundedSheetId)).toEqual({ width: 1, height: 1 })
+
     const fillWorkbook = WorkPaper.buildFromArray([[1, 2, '=A1+B1']])
     const fillSheetId = fillWorkbook.getSheetId('Sheet1')!
     const copied = fillWorkbook.copy({

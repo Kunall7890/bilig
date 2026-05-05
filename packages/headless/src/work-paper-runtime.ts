@@ -3335,7 +3335,7 @@ export class WorkPaper {
     return mappings.every(([rowA, mappedRowB]) => {
       assertRowAndColumn(rowA, 'rowA')
       assertRowAndColumn(mappedRowB, 'rowB')
-      return true
+      return rowA < (this.config.maxRows ?? MAX_ROWS) && mappedRowB < (this.config.maxRows ?? MAX_ROWS)
     })
   }
 
@@ -3344,7 +3344,7 @@ export class WorkPaper {
     if (new Set(rowOrder).size !== rowOrder.length || rowOrder.some((value) => !Number.isInteger(value) || value < 0)) {
       return false
     }
-    return true
+    return rowOrder.every((value) => value < (this.config.maxRows ?? MAX_ROWS))
   }
 
   isItPossibleToSwapColumnIndexes(sheetId: number, columnA: number, columnB: number): boolean
@@ -3359,7 +3359,7 @@ export class WorkPaper {
     return mappings.every(([columnA, mappedColumnB]) => {
       assertRowAndColumn(columnA, 'columnA')
       assertRowAndColumn(mappedColumnB, 'columnB')
-      return true
+      return columnA < (this.config.maxColumns ?? MAX_COLS) && mappedColumnB < (this.config.maxColumns ?? MAX_COLS)
     })
   }
 
@@ -3368,7 +3368,7 @@ export class WorkPaper {
     if (new Set(columnOrder).size !== columnOrder.length || columnOrder.some((value) => !Number.isInteger(value) || value < 0)) {
       return false
     }
-    return true
+    return columnOrder.every((value) => value < (this.config.maxColumns ?? MAX_COLS))
   }
 
   isItPossibleToAddRows(sheetId: number, start: number, count?: number): boolean
@@ -3399,7 +3399,7 @@ export class WorkPaper {
     return this.normalizeAxisIntervals(startOrInterval, countOrInterval, restIntervals).every(([start, count]) => {
       assertRowAndColumn(start, 'start')
       assertRowAndColumn(count, 'count')
-      return count > 0
+      return count > 0 && start + count <= (this.config.maxRows ?? MAX_ROWS)
     })
   }
 
@@ -3431,7 +3431,7 @@ export class WorkPaper {
     return this.normalizeAxisIntervals(startOrInterval, countOrInterval, restIntervals).every(([start, count]) => {
       assertRowAndColumn(start, 'start')
       assertRowAndColumn(count, 'count')
-      return count > 0
+      return count > 0 && start + count <= (this.config.maxColumns ?? MAX_COLS)
     })
   }
 
@@ -3440,7 +3440,12 @@ export class WorkPaper {
     assertRowAndColumn(target.sheet, 'target.sheet')
     assertRowAndColumn(target.row, 'target.row')
     assertRowAndColumn(target.col, 'target.col')
-    return source.start.sheet === target.sheet
+    if (source.start.sheet !== target.sheet) {
+      return false
+    }
+    const height = source.end.row - source.start.row + 1
+    const width = source.end.col - source.start.col + 1
+    return target.row + height <= (this.config.maxRows ?? MAX_ROWS) && target.col + width <= (this.config.maxColumns ?? MAX_COLS)
   }
 
   isItPossibleToMoveRows(sheetId: number, start: number, count: number, target: number): boolean {
@@ -3448,7 +3453,7 @@ export class WorkPaper {
     assertRowAndColumn(start, 'start')
     assertRowAndColumn(count, 'count')
     assertRowAndColumn(target, 'target')
-    return count > 0
+    return count > 0 && start + count <= (this.config.maxRows ?? MAX_ROWS) && target + count <= (this.config.maxRows ?? MAX_ROWS)
   }
 
   isItPossibleToMoveColumns(sheetId: number, start: number, count: number, target: number): boolean {
@@ -3456,7 +3461,7 @@ export class WorkPaper {
     assertRowAndColumn(start, 'start')
     assertRowAndColumn(count, 'count')
     assertRowAndColumn(target, 'target')
-    return count > 0
+    return count > 0 && start + count <= (this.config.maxColumns ?? MAX_COLS) && target + count <= (this.config.maxColumns ?? MAX_COLS)
   }
 
   isItPossibleToAddSheet(sheetName: string): boolean {
@@ -5442,7 +5447,7 @@ export class WorkPaper {
     }
     this.engine = new SpreadsheetEngine({
       workbookName: 'Workbook',
-      useColumnIndex: this.config.useColumnIndex,
+      useColumnIndex: nextConfig.useColumnIndex,
       trackReplicaVersions: false,
     })
     this.attachEngineEventTracking()

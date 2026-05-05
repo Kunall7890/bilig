@@ -35,6 +35,14 @@ function trackPrivateMethod(workbook: WorkPaper, methodName: string): { readonly
   }
 }
 
+function readEngineUseColumnIndexEnabled(workbook: WorkPaper): boolean {
+  const engine = Reflect.get(workbook, 'engine')
+  if (typeof engine !== 'object' || engine === null) {
+    throw new Error('Expected WorkPaper to expose an engine object in tests')
+  }
+  return Reflect.get(engine, 'useColumnIndexEnabled') === true
+}
+
 function expectOnlyCellChanges(changes: WorkPaperChange[]): asserts changes is WorkPaperCellChange[] {
   expect(changes.every((change) => change.kind === 'cell')).toBe(true)
 }
@@ -1415,6 +1423,26 @@ describe('WorkPaper', () => {
       value: 1,
     })
     expect(workbook.getCellValue(cell(sheetId, 0, 1))).toEqual({
+      tag: ValueTag.Number,
+      value: 3,
+    })
+  })
+
+  it('applies useColumnIndex to rebuilt engines when mixed with rebuild-only config updates', () => {
+    const workbook = WorkPaper.buildFromSheets(
+      {
+        Bench: [[1, '=MATCH(3,A1:A3,0)'], [2], [3]],
+      },
+      { useColumnIndex: false, language: 'enGB' },
+    )
+
+    expect(readEngineUseColumnIndexEnabled(workbook)).toBe(false)
+
+    workbook.updateConfig({ useColumnIndex: true, language: 'rebuilt-language' })
+
+    expect(workbook.getConfig()).toMatchObject({ useColumnIndex: true, language: 'rebuilt-language' })
+    expect(readEngineUseColumnIndexEnabled(workbook)).toBe(true)
+    expect(workbook.getCellValue(cell(workbook.getSheetId('Bench')!, 0, 1))).toEqual({
       tag: ValueTag.Number,
       value: 3,
     })
