@@ -39,6 +39,16 @@ describe('worker workbook app model', () => {
       kind: 'value',
       value: '#DIV/0!',
     })
+
+    expect(
+      parsedEditorInputFromSnapshot({
+        ...errorCell,
+        input: '=1+',
+      }),
+    ).toEqual({
+      kind: 'value',
+      value: '#DIV/0!',
+    })
   })
 
   it('matches parsed editor input against authoritative snapshots', () => {

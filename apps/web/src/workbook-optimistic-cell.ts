@@ -43,6 +43,7 @@ export function createOptimisticCellSnapshot(input: {
           ...base,
           sheetName: input.sheetName,
           address: input.address,
+          input: `=${input.parsed.formula}`,
           value: evaluation.value,
           version,
         }

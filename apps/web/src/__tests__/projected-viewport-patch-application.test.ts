@@ -382,6 +382,64 @@ describe('applyProjectedViewportPatch', () => {
     })
   })
 
+  it('keeps optimistic invalid-formula errors when stale reset empty patches arrive', () => {
+    const state = createPatchState()
+    state.cellSnapshots.set('Sheet1!B2', {
+      sheetName: 'Sheet1',
+      address: 'B2',
+      input: '=1+',
+      value: { tag: ValueTag.Error, code: ErrorCode.Value },
+      flags: 0,
+      version: 1,
+    })
+    state.cellKeysBySheet.set('Sheet1', new Set(['Sheet1!B2']))
+
+    applyProjectedViewportPatch({
+      state,
+      patch: {
+        version: 2,
+        full: false,
+        freezeRows: 0,
+        freezeCols: 0,
+        viewport: {
+          sheetName: 'Sheet1',
+          rowStart: 1,
+          rowEnd: 1,
+          colStart: 1,
+          colEnd: 1,
+        },
+        metrics: TEST_METRICS,
+        styles: [],
+        cells: [
+          {
+            row: 1,
+            col: 1,
+            snapshot: {
+              sheetName: 'Sheet1',
+              address: 'B2',
+              value: { tag: ValueTag.Empty },
+              flags: 0,
+              version: 0,
+            },
+            displayText: '',
+            copyText: '',
+            editorText: '',
+            formatId: 0,
+            styleId: 'style-0',
+          },
+        ],
+        columns: [],
+        rows: [],
+      },
+    })
+
+    expect(state.cellSnapshots.get('Sheet1!B2')).toMatchObject({
+      input: '=1+',
+      value: { tag: ValueTag.Error, code: ErrorCode.Value },
+      version: 1,
+    })
+  })
+
   it('accepts formula error snapshots over optimistic formula text', () => {
     const state = createPatchState()
     state.cellSnapshots.set('Sheet1!B2', {

@@ -238,8 +238,11 @@ export function useWorkerWorkbookInteractionState(input: {
           }),
       })
       viewportStore.setCellSnapshot(optimistic)
-      return (snapshot = previous) => {
-        viewportStore.setCellSnapshot(createSupersedingCellSnapshot(snapshot, optimistic.version + 1))
+      return {
+        editorSeed: toEditorValue(optimistic),
+        rollback: (snapshot = previous) => {
+          viewportStore.setCellSnapshot(createSupersedingCellSnapshot(snapshot, optimistic.version + 1))
+        },
       }
     },
     [workerHandleRef],
@@ -408,21 +411,22 @@ export function useWorkerWorkbookInteractionState(input: {
 
       const nextSelection = completeSelectionNavigation(targetSelection, movement)
       pendingEditCommitMovementAppliedRef.current = Boolean(movement)
-      const rollbackOptimisticCell = applyOptimisticParsedInput(targetSelection, parsed)
-      const optimisticSnapshot = rollbackOptimisticCell ? getLiveSelectedCell(targetSelection) : null
-      const optimisticEditorValue = optimisticSnapshot ? toEditorValue(optimisticSnapshot) : nextValue
-      optimisticCellSeedsRef.current.set(optimisticCellKey(targetSelection.sheetName, targetSelection.address), optimisticEditorValue)
+      const optimisticResult = applyOptimisticParsedInput(targetSelection, parsed)
+      const optimisticEditorSeed = optimisticResult?.editorSeed ?? nextValue
+      optimisticCellSeedsRef.current.set(optimisticCellKey(targetSelection.sheetName, targetSelection.address), optimisticEditorSeed)
       finishEditingAtSelection(nextSelection)
       void (async () => {
         try {
           await applyParsedInput(targetSelection.sheetName, targetSelection.address, parsed)
-          clearOptimisticCellSeed(targetSelection.sheetName, targetSelection.address, optimisticEditorValue)
+          if (!optimisticResult) {
+            clearOptimisticCellSeed(targetSelection.sheetName, targetSelection.address, optimisticEditorSeed)
+          }
           if (editSessionRef.current !== commitSessionId) {
             return
           }
         } catch (error) {
-          clearOptimisticCellSeed(targetSelection.sheetName, targetSelection.address, optimisticEditorValue)
-          rollbackOptimisticCell?.()
+          clearOptimisticCellSeed(targetSelection.sheetName, targetSelection.address, optimisticEditorSeed)
+          optimisticResult?.rollback()
           if (editSessionRef.current !== commitSessionId) {
             return
           }

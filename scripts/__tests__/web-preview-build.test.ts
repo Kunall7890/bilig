@@ -48,4 +48,10 @@ describe('web preview build gate', () => {
     expect(source).toContain('const localProcessProbeTimeoutMs = 1_000')
     expect(source).toContain('timeout: localProcessProbeTimeoutMs')
   })
+
+  it('does not force CI browser tests to reuse a stale preview bundle', () => {
+    const source = readFileSync(resolve(repoRoot, 'scripts/run-ci.ts'), 'utf8')
+
+    expect(source).not.toContain("BILIG_DEV_WEB_PREVIEW_BUILD: '0'")
+  })
 })

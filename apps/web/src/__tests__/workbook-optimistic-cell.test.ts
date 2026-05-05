@@ -74,6 +74,7 @@ describe('workbook optimistic cell snapshots', () => {
     })
 
     expect(optimistic.formula).toBeUndefined()
+    expect(optimistic.input).toBe('=1+')
     expect(optimistic.value).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.Value,

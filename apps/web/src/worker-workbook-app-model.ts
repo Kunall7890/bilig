@@ -139,6 +139,9 @@ export function parsedEditorInputFromSnapshot(snapshot: CellSnapshot): ParsedEdi
   if (typeof snapshot.formula === 'string') {
     return { kind: 'formula', formula: snapshot.formula }
   }
+  if (snapshot.value.tag === ValueTag.Error) {
+    return { kind: 'value', value: formatErrorCode(snapshot.value.code) }
+  }
   if (snapshot.input !== undefined && snapshot.input !== null) {
     return { kind: 'value', value: snapshot.input }
   }
@@ -151,8 +154,6 @@ export function parsedEditorInputFromSnapshot(snapshot: CellSnapshot): ParsedEdi
       return { kind: 'value', value: snapshot.value.value }
     case ValueTag.String:
       return { kind: 'value', value: snapshot.value.value }
-    case ValueTag.Error:
-      return { kind: 'value', value: formatErrorCode(snapshot.value.code) }
   }
 }
 

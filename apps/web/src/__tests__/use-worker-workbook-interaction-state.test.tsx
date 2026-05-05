@@ -2,7 +2,7 @@
 import { act, createElement, useEffect } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ValueTag, type CellSnapshot } from '@bilig/protocol'
+import { ErrorCode, ValueTag, type CellSnapshot } from '@bilig/protocol'
 import type { GridSelectionSnapshot } from '@bilig/grid'
 import type { WorkerHandle, WorkerRuntimeSelection } from '../runtime-session.js'
 import { useWorkerWorkbookInteractionState } from '../use-worker-workbook-interaction-state.js'
@@ -181,6 +181,50 @@ describe('useWorkerWorkbookInteractionState', () => {
     })
   })
 
+  it('keeps invalid formula commits visible until selected-cell state catches up', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const selectedCell = stringCell('Sheet1', 'A1', '')
+    const workerHandle = { viewportStore: createViewportStoreStub('Sheet1', 'A1', selectedCell) }
+    const invokeMutation = vi.fn(async () => undefined)
+    const sendSelectionChanged = vi.fn()
+    const harness = mountHarness()
+    let captured: ReturnType<typeof useWorkerWorkbookInteractionState> | null = null
+
+    await harness.render({
+      documentId: 'doc-1',
+      selection: { sheetName: 'Sheet1', address: 'A1' },
+      selectedCell,
+      workerHandle,
+      invokeMutation,
+      sendSelectionChanged,
+      capture: (value) => {
+        captured = value
+      },
+    })
+    if (!captured) {
+      throw new Error('Expected interaction state capture')
+    }
+
+    await act(async () => {
+      captured?.commitEditor(undefined, '=1+')
+      await Promise.resolve()
+    })
+
+    expect(workerHandle.viewportStore.setCellSnapshot).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: '=1+',
+        value: { tag: ValueTag.Error, code: ErrorCode.Value },
+      }),
+    )
+    expect(captured?.visibleEditorValue).toBe('#VALUE!')
+    expect(invokeMutation).toHaveBeenCalledWith('setCellFormula', 'Sheet1', 'A1', '1+')
+
+    await act(async () => {
+      harness.root.unmount()
+    })
+  })
+
   it('accepts user selection after the grid acknowledges an external selection', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -226,14 +270,19 @@ describe('useWorkerWorkbookInteractionState', () => {
 })
 
 function createViewportStoreStub(sheetName: string, address: string, cell: CellSnapshot) {
+  let activeCell = cell
   return {
     getCell(targetSheetName: string, targetAddress: string) {
       if (targetSheetName === sheetName && targetAddress === address) {
-        return cell
+        return activeCell
       }
       return stringCell(targetSheetName, targetAddress, '')
     },
-    setCellSnapshot: vi.fn(),
+    setCellSnapshot: vi.fn((snapshot: CellSnapshot) => {
+      if (snapshot.sheetName === sheetName && snapshot.address === address) {
+        activeCell = snapshot
+      }
+    }),
   }
 }
 

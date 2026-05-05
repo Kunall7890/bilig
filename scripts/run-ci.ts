@@ -167,7 +167,6 @@ const browserLane: CiTask = {
   label: runDeepGates ? 'browser tests + perf + fuzz' : 'browser tests',
   steps: [
     withEnv(pnpm('browser tests', 'test:browser'), {
-      BILIG_DEV_WEB_PREVIEW_BUILD: '0',
       BILIG_BROWSER_INCLUDE_PERF: runDeepGates ? '1' : '0',
       BILIG_BROWSER_INCLUDE_DEEP: runDeepGates ? '1' : '0',
       BILIG_BROWSER_INCLUDE_FUZZ: runDeepGates ? '1' : '0',
