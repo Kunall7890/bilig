@@ -24,6 +24,7 @@ import { readImportedDefinedNames } from './xlsx-defined-names.js'
 import { readImportedWorkbookFilters } from './xlsx-filters.js'
 import { readImportedWorkbookFreezePanes } from './xlsx-freeze-panes.js'
 import { readImportedWorkbookPivots } from './xlsx-pivots.js'
+import { readImportedWorkbookSheetProtections } from './xlsx-sheet-protection.js'
 import { readImportedWorkbookFileStyles } from './xlsx-styles.js'
 import { readImportedWorkbookTables } from './xlsx-tables.js'
 import { readImportedWorkbookDataValidations } from './xlsx-validations.js'
@@ -481,6 +482,7 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
   const importedTables = readImportedWorkbookTables(data, workbook.SheetNames)
   const importedFiltersBySheet = readImportedWorkbookFilters(data, workbook.SheetNames)
   const importedFreezePanesBySheet = readImportedWorkbookFreezePanes(data, workbook.SheetNames)
+  const importedSheetProtectionsBySheet = readImportedWorkbookSheetProtections(data, workbook.SheetNames)
   const importedValidationsBySheet = readImportedWorkbookDataValidations(data, workbook.SheetNames)
 
   let ignoredCommentsSeen = false
@@ -574,6 +576,7 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
     const columns = buildColumnEntries(sheet['!cols'])
     const importedFreezePane = importedFreezePanesBySheet.get(sheetName)
     const merges = buildMergeEntries(sheetName, sheet['!merges'])
+    const importedSheetProtection = importedSheetProtectionsBySheet.get(sheetName)
     const importedFilters = importedFiltersBySheet.get(sheetName)
     const importedValidations = importedValidationsBySheet.get(sheetName)
     const metadata =
@@ -582,6 +585,7 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
       styleRanges.length > 0 ||
       importedFreezePane ||
       merges ||
+      importedSheetProtection ||
       importedFilters ||
       importedValidations ||
       importedComments.commentThreads
@@ -591,6 +595,7 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
             ...(styleRanges.length > 0 ? { styleRanges } : {}),
             ...(importedFreezePane ? { freezePane: importedFreezePane } : {}),
             ...(merges ? { merges } : {}),
+            ...(importedSheetProtection ? { sheetProtection: importedSheetProtection } : {}),
             ...(importedFilters ? { filters: importedFilters } : {}),
             ...(importedValidations ? { validations: importedValidations } : {}),
             ...(importedComments.commentThreads ? { commentThreads: importedComments.commentThreads } : {}),

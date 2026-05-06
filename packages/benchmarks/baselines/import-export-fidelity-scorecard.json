@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "suite": "import-export-fidelity",
-  "generatedAt": "2026-05-06T11:27:23.950Z",
+  "generatedAt": "2026-05-06T11:30:57.223Z",
   "source": {
     "artifactGenerator": "scripts/gen-import-export-fidelity-scorecard.ts",
     "implementationPackage": "packages/excel-import",
@@ -31,6 +31,7 @@
       "xlsx.merges",
       "xlsx.freezePanes.roundtrip",
       "xlsx.filters.roundtrip",
+      "xlsx.sheetProtection.roundtrip",
       "xlsx.dataValidations.roundtrip",
       "xlsx.tables.roundtrip",
       "xlsx.charts.roundtrip",
@@ -122,6 +123,16 @@
       "coveredFeatures": ["xlsx.filters.roundtrip"],
       "missingFeatures": [],
       "evidence": "WorkbookSnapshot exported to XLSX imports back with equivalent sheet filter ranges backed by native XLSX autoFilter nodes."
+    },
+    {
+      "id": "xlsx-snapshot-roundtrip-sheet-protection",
+      "format": "xlsx",
+      "direction": "export-import",
+      "required": true,
+      "passed": true,
+      "coveredFeatures": ["xlsx.sheetProtection.roundtrip"],
+      "missingFeatures": [],
+      "evidence": "WorkbookSnapshot exported to XLSX imports back with equivalent sheet protection metadata backed by native XLSX sheetProtection nodes."
     },
     {
       "id": "xlsx-snapshot-roundtrip-data-validations",
