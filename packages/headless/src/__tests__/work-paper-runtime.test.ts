@@ -777,6 +777,7 @@ describe('WorkPaper', () => {
   it('passes known zero potential-new-cell count for existing-cell suspended flushes', () => {
     const workbook = WorkPaper.buildFromArray([[1], [2]])
     const sheetId = workbook.getSheetId('Sheet1')!
+    const dimensionUpdates = trackPrivateMethod(workbook, 'updateSheetDimensionsAfterCellMutationRefs')
 
     workbook.suspendEvaluation()
     const applyCellMutationsAt = vi.spyOn(engineApplyCellMutationsTarget(workbook), 'applyCellMutationsAtWithOptions')
@@ -795,8 +796,10 @@ describe('WorkPaper', () => {
         reuseRefs: true,
         source: 'local',
       })
+      expect(dimensionUpdates.count).toBe(0)
     } finally {
       applyCellMutationsAt.mockRestore()
+      dimensionUpdates.restore()
     }
   })
 

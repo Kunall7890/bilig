@@ -3810,7 +3810,9 @@ export class WorkPaper {
       returnUndoOps: false,
       reuseRefs: true,
     })
-    this.updateSheetDimensionsAfterCellMutationRefs(refs)
+    if (!canSkipDimensionUpdateAfterLiteralMutation(refs, potentialNewCells)) {
+      this.updateSheetDimensionsAfterCellMutationRefs(refs)
+    }
   }
 
   private enqueueSuspendedLiteralMutation(

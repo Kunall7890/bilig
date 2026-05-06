@@ -34,7 +34,7 @@ describe('bilig dominance scorecard', () => {
     expect(scorecard.summary.microsoftExcelLiveCalculationEvidence).toBe('live-local-microsoft-excel-automation')
     expect(scorecard.summary.microsoftExcelLiveRecalculationPassed).toBe(true)
     expect(scorecard.summary.microsoftExcelLiveRecalculationCaseCount).toBe(4)
-    expect(scorecard.summary.microsoftExcelLiveRecalculationTenXMeanAndP95CaseCount).toBe(2)
+    expect(scorecard.summary.microsoftExcelLiveRecalculationTenXMeanAndP95CaseCount).toBe(3)
     expect(scorecard.summary.microsoftExcelLiveRecalculationEvidence).toBe('live-local-microsoft-excel-automation')
     expect(scorecard.summary.microsoftExcelLiveLargeWorkbookPassed).toBe(true)
     expect(scorecard.summary.microsoftExcelLiveLargeWorkbookCaseCount).toBe(2)
@@ -481,6 +481,7 @@ function buildFixtureInput(): BuildScorecardInput {
       },
       benchmark: {
         sampleCount: 5,
+        warmupCount: 1,
         screenUpdating: false,
         calculationMode: 'manual-during-measurement',
       },
@@ -491,7 +492,7 @@ function buildFixtureInput(): BuildScorecardInput {
       summary: {
         allRequiredCasesPassed: true,
         requiredCaseCount: 4,
-        tenXMeanAndP95CaseCount: 2,
+        tenXMeanAndP95CaseCount: 3,
         workpaperWins: 4,
         coveredWorkloads: [
           'dirty-fanout-edit',

@@ -25,6 +25,7 @@ describe('Microsoft Excel live recalculation scorecard', () => {
       },
       benchmark: {
         sampleCount: 5,
+        warmupCount: 1,
         screenUpdating: false,
         calculationMode: 'manual-during-measurement',
       },
@@ -35,7 +36,7 @@ describe('Microsoft Excel live recalculation scorecard', () => {
         googleSheetsEvidence: 'not-covered-by-this-artifact',
       },
     })
-    expect(scorecard.summary.tenXMeanAndP95CaseCount).toBe(2)
+    expect(scorecard.summary.tenXMeanAndP95CaseCount).toBe(3)
     expect(scorecard.summary.coveredWorkloads).toEqual([
       'dirty-fanout-edit',
       'suspended-batch-single-column-edit',

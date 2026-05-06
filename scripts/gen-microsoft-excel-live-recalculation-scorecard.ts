@@ -73,6 +73,7 @@ export interface MicrosoftExcelLiveRecalculationScorecard {
   }
   readonly benchmark: {
     readonly sampleCount: number
+    readonly warmupCount: number
     readonly screenUpdating: false
     readonly calculationMode: 'manual-during-measurement'
   }
@@ -117,6 +118,7 @@ const outputPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'microso
 const excelAppPath = '/Applications/Microsoft Excel.app' as const
 const worksheetName = 'Bench'
 const sampleCount = 5
+const warmupCount = 1
 const TEN_X_RATIO = 0.1
 const fanoutCount = 1_000
 const singleColumnRowCount = 1_000
@@ -206,6 +208,7 @@ export function buildMicrosoftExcelLiveRecalculationScorecard(generatedAt: strin
     },
     benchmark: {
       sampleCount,
+      warmupCount,
       screenUpdating: false,
       calculationMode: 'manual-during-measurement',
     },
@@ -247,6 +250,7 @@ export function parseMicrosoftExcelLiveRecalculationScorecard(value: Record<stri
     },
     benchmark: {
       sampleCount: numberField(benchmark, 'sampleCount'),
+      warmupCount: numberField(benchmark, 'warmupCount'),
       screenUpdating: literalField(benchmark, 'screenUpdating', false),
       calculationMode: literalField(benchmark, 'calculationMode', 'manual-during-measurement'),
     },
@@ -272,7 +276,7 @@ export function validateMicrosoftExcelLiveRecalculationScorecard(scorecard: Micr
   if (scorecard.microsoftExcel.version.trim().length === 0) {
     throw new Error('Microsoft Excel live recalculation scorecard must record an Excel version')
   }
-  if (scorecard.benchmark.sampleCount !== sampleCount) {
+  if (scorecard.benchmark.sampleCount !== sampleCount || scorecard.benchmark.warmupCount !== warmupCount) {
     throw new Error('Microsoft Excel live recalculation scorecard benchmark settings are stale')
   }
   if (
@@ -319,6 +323,11 @@ function runRecalculationCase(caseSpec: RecalculationCaseSpec): RecalculationCas
   const workpaperVerifications: Array<Record<string, boolean | number | string | null>> = []
   const excelVerifications: Array<Record<string, boolean | number | string | null>> = []
   const excelVersions = new Set<string>()
+
+  for (let index = 0; index < warmupCount; index += 1) {
+    runWorkPaperSample(caseSpec.workload)
+    excelVersions.add(runExcelSample(caseSpec.workload).excelVersion)
+  }
 
   for (let index = 0; index < sampleCount; index += 1) {
     const workpaperSample = runWorkPaperSample(caseSpec.workload)
