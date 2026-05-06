@@ -889,6 +889,16 @@ export function buildFixtureInput(): BuildScorecardInput {
           'public-office-web-viewer',
         ),
       ],
+      sameCorpusProof: {
+        captured: false,
+        evidenceKind: 'not-captured',
+        requiredProductCount: 3,
+        requiredCaseCount: 0,
+        tenXMeanAndP95CaseCount: 0,
+        coveredCorpusCaseIds: [],
+        limitations: ['Same-corpus live browser timing against Bilig, Google Sheets, and Microsoft Excel Web has not been captured yet.'],
+        cases: [],
+      },
     },
     competitiveArtifact: {
       generatedAt: '2026-05-05T19:00:09.455Z',

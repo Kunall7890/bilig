@@ -193,6 +193,14 @@ export function buildBiligDominanceCompletionAudit(input: BuildScorecardInput, s
 }
 
 export function hasUiResponsivenessSameCorpusTenXGap(scorecard: UiResponsivenessLiveBrowserScorecard): boolean {
+  if (
+    !scorecard.sameCorpusProof.captured ||
+    scorecard.sameCorpusProof.requiredCaseCount === 0 ||
+    scorecard.sameCorpusProof.tenXMeanAndP95CaseCount !== scorecard.sameCorpusProof.requiredCaseCount ||
+    scorecard.sameCorpusProof.cases.some((entry) => !entry.passed)
+  ) {
+    return true
+  }
   const limitations = [...scorecard.summary.limitations, ...scorecard.cases.flatMap((entry) => entry.limitations)].map((entry) =>
     entry.toLowerCase(),
   )

@@ -19,6 +19,8 @@ import {
 } from './json-scorecard-helpers.ts'
 
 export type UiResponsivenessLiveBrowserVendor = 'google-sheets' | 'microsoft-excel-web'
+export type UiResponsivenessSameCorpusProduct = 'bilig' | 'google-sheets' | 'microsoft-excel-web'
+export type UiResponsivenessSameCorpusWorkload = 'visible-scroll-response' | 'visible-edit-commit'
 
 export interface UiResponsivenessLiveBrowserCase {
   readonly id: string
@@ -35,6 +37,43 @@ export interface UiResponsivenessLiveBrowserCase {
   readonly postScrollFrameMs: NumericSummary
   readonly passed: boolean
   readonly limitations: string[]
+}
+
+export interface UiResponsivenessSameCorpusMeasurement {
+  readonly product: UiResponsivenessSameCorpusProduct
+  readonly source: string
+  readonly operationResponseMs: NumericSummary
+  readonly postOperationFrameMs: NumericSummary
+  readonly limitations: string[]
+}
+
+export interface UiResponsivenessSameCorpusCase {
+  readonly id: string
+  readonly corpusCaseId: string
+  readonly materializedCells: number
+  readonly workload: UiResponsivenessSameCorpusWorkload
+  readonly sampleCount: number
+  readonly bilig: UiResponsivenessSameCorpusMeasurement
+  readonly googleSheets: UiResponsivenessSameCorpusMeasurement
+  readonly microsoftExcelWeb: UiResponsivenessSameCorpusMeasurement
+  readonly biligToGoogleSheetsMeanRatio: number
+  readonly biligToGoogleSheetsP95Ratio: number
+  readonly biligToMicrosoftExcelWebMeanRatio: number
+  readonly biligToMicrosoftExcelWebP95Ratio: number
+  readonly tenXMeanAndP95AgainstGoogleSheets: boolean
+  readonly tenXMeanAndP95AgainstMicrosoftExcelWeb: boolean
+  readonly passed: boolean
+}
+
+export interface UiResponsivenessSameCorpusProof {
+  readonly captured: boolean
+  readonly evidenceKind: 'same-corpus-browser-capture' | 'not-captured'
+  readonly requiredProductCount: number
+  readonly requiredCaseCount: number
+  readonly tenXMeanAndP95CaseCount: number
+  readonly coveredCorpusCaseIds: string[]
+  readonly limitations: string[]
+  readonly cases: UiResponsivenessSameCorpusCase[]
 }
 
 export interface UiResponsivenessLiveBrowserScorecard {
@@ -67,6 +106,7 @@ export interface UiResponsivenessLiveBrowserScorecard {
     readonly limitations: string[]
   }
   readonly cases: UiResponsivenessLiveBrowserCase[]
+  readonly sameCorpusProof: UiResponsivenessSameCorpusProof
 }
 
 interface BrowserCaseSpec {
@@ -84,6 +124,32 @@ interface BrowserCaseSample {
   readonly loadToReadyMs: number
   readonly scrollResponseMs: number
   readonly postScrollFrameMs: number
+}
+
+export interface SameCorpusCapture {
+  readonly schemaVersion: 1
+  readonly suite: 'ui-responsiveness-same-corpus-capture'
+  readonly sampleCount: number
+  readonly limitations: string[]
+  readonly cases: SameCorpusCaptureCase[]
+}
+
+export interface SameCorpusCaptureCase {
+  readonly id: string
+  readonly corpusCaseId: string
+  readonly materializedCells: number
+  readonly workload: UiResponsivenessSameCorpusWorkload
+  readonly bilig: SameCorpusCaptureMeasurement
+  readonly googleSheets: SameCorpusCaptureMeasurement
+  readonly microsoftExcelWeb: SameCorpusCaptureMeasurement
+}
+
+export interface SameCorpusCaptureMeasurement {
+  readonly product: UiResponsivenessSameCorpusProduct
+  readonly source: string
+  readonly operationResponseMsSamples: number[]
+  readonly postOperationFrameMsSamples: number[]
+  readonly limitations: string[]
 }
 
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
@@ -111,6 +177,7 @@ const caseSpecs = [
 
 async function main(): Promise<void> {
   const isCheckMode = process.argv.includes('--check')
+  const capturePath = argumentValue('--capture')
   if (isCheckMode) {
     if (!existsSync(outputPath)) {
       throw new Error(
@@ -123,14 +190,20 @@ async function main(): Promise<void> {
     return
   }
 
-  const scorecard = await buildUiResponsivenessLiveBrowserScorecard(new Date().toISOString())
+  const sameCorpusProof = capturePath
+    ? buildSameCorpusProof(parseSameCorpusCapture(readJsonObject(resolve(capturePath))))
+    : buildMissingSameCorpusProof()
+  const scorecard = await buildUiResponsivenessLiveBrowserScorecard(new Date().toISOString(), sameCorpusProof)
   validateUiResponsivenessLiveBrowserScorecard(scorecard)
   mkdirSync(dirname(outputPath), { recursive: true })
   writeFileSync(outputPath, formatJsonForRepo(`${JSON.stringify(scorecard, null, 2)}\n`))
   logResult('write', scorecard)
 }
 
-export async function buildUiResponsivenessLiveBrowserScorecard(generatedAt: string): Promise<UiResponsivenessLiveBrowserScorecard> {
+export async function buildUiResponsivenessLiveBrowserScorecard(
+  generatedAt: string,
+  sameCorpusProof = buildMissingSameCorpusProof(),
+): Promise<UiResponsivenessLiveBrowserScorecard> {
   const browser = await chromium.launch({ headless: true })
   try {
     const cases = await measureBrowserCases(browser)
@@ -166,6 +239,7 @@ export async function buildUiResponsivenessLiveBrowserScorecard(generatedAt: str
         ],
       },
       cases,
+      sameCorpusProof,
     }
   } finally {
     await browser.close()
@@ -239,6 +313,7 @@ export function parseUiResponsivenessLiveBrowserScorecard(value: Record<string, 
       limitations: stringArrayField(summary, 'limitations'),
     },
     cases: arrayField(value, 'cases').map(parseBrowserCase),
+    sameCorpusProof: parseSameCorpusProof(objectField(value, 'sameCorpusProof')),
   }
 }
 
@@ -277,6 +352,56 @@ export function validateUiResponsivenessLiveBrowserScorecard(scorecard: UiRespon
   }
   if (scorecard.summary.limitations.length === 0 || !scorecard.cases.every((entry) => entry.limitations.length > 0)) {
     throw new Error('UI responsiveness live browser scorecard must disclose benchmark limitations')
+  }
+  validateSameCorpusProof(scorecard.sameCorpusProof)
+}
+
+export function buildMissingSameCorpusProof(): UiResponsivenessSameCorpusProof {
+  return {
+    captured: false,
+    evidenceKind: 'not-captured',
+    requiredProductCount: 3,
+    requiredCaseCount: 0,
+    tenXMeanAndP95CaseCount: 0,
+    coveredCorpusCaseIds: [],
+    limitations: ['Same-corpus live browser timing against Bilig, Google Sheets, and Microsoft Excel Web has not been captured yet.'],
+    cases: [],
+  }
+}
+
+export function buildSameCorpusProof(capture: SameCorpusCapture): UiResponsivenessSameCorpusProof {
+  validateSameCorpusCapture(capture)
+  const cases = capture.cases.map(buildSameCorpusCase)
+  return {
+    captured: true,
+    evidenceKind: 'same-corpus-browser-capture',
+    requiredProductCount: 3,
+    requiredCaseCount: capture.cases.length,
+    tenXMeanAndP95CaseCount: cases.filter(
+      (entry) => entry.tenXMeanAndP95AgainstGoogleSheets && entry.tenXMeanAndP95AgainstMicrosoftExcelWeb,
+    ).length,
+    coveredCorpusCaseIds: [...new Set(cases.map((entry) => entry.corpusCaseId))].toSorted(),
+    limitations: [...capture.limitations],
+    cases,
+  }
+}
+
+function validateSameCorpusCapture(capture: SameCorpusCapture): void {
+  if (capture.sampleCount < sampleCountForSameCorpus()) {
+    throw new Error('UI responsiveness same-corpus capture must contain at least 3 samples per product')
+  }
+  if (capture.cases.length === 0) {
+    throw new Error('UI responsiveness same-corpus capture must include at least one case')
+  }
+  for (const entry of capture.cases) {
+    for (const measurement of [entry.bilig, entry.googleSheets, entry.microsoftExcelWeb]) {
+      if (
+        measurement.operationResponseMsSamples.length < capture.sampleCount ||
+        measurement.postOperationFrameMsSamples.length < capture.sampleCount
+      ) {
+        throw new Error(`UI responsiveness same-corpus capture has too few samples for ${entry.id}`)
+      }
+    }
   }
 }
 
@@ -380,6 +505,56 @@ function buildBrowserCase(spec: BrowserCaseSpec, samples: readonly BrowserCaseSa
   }
 }
 
+function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivenessSameCorpusCase {
+  const bilig = buildSameCorpusMeasurement(captureCase.bilig)
+  const googleSheets = buildSameCorpusMeasurement(captureCase.googleSheets)
+  const microsoftExcelWeb = buildSameCorpusMeasurement(captureCase.microsoftExcelWeb)
+  const biligToGoogleSheetsMeanRatio = ratio(bilig.operationResponseMs.mean, googleSheets.operationResponseMs.mean)
+  const biligToGoogleSheetsP95Ratio = ratio(bilig.operationResponseMs.p95, googleSheets.operationResponseMs.p95)
+  const biligToMicrosoftExcelWebMeanRatio = ratio(bilig.operationResponseMs.mean, microsoftExcelWeb.operationResponseMs.mean)
+  const biligToMicrosoftExcelWebP95Ratio = ratio(bilig.operationResponseMs.p95, microsoftExcelWeb.operationResponseMs.p95)
+  const tenXMeanAndP95AgainstGoogleSheets = biligToGoogleSheetsMeanRatio <= 0.1 && biligToGoogleSheetsP95Ratio <= 0.1
+  const tenXMeanAndP95AgainstMicrosoftExcelWeb = biligToMicrosoftExcelWebMeanRatio <= 0.1 && biligToMicrosoftExcelWebP95Ratio <= 0.1
+  return {
+    id: captureCase.id,
+    corpusCaseId: captureCase.corpusCaseId,
+    materializedCells: captureCase.materializedCells,
+    workload: captureCase.workload,
+    sampleCount: Math.min(
+      bilig.operationResponseMs.samples.length,
+      googleSheets.operationResponseMs.samples.length,
+      microsoftExcelWeb.operationResponseMs.samples.length,
+    ),
+    bilig,
+    googleSheets,
+    microsoftExcelWeb,
+    biligToGoogleSheetsMeanRatio,
+    biligToGoogleSheetsP95Ratio,
+    biligToMicrosoftExcelWebMeanRatio,
+    biligToMicrosoftExcelWebP95Ratio,
+    tenXMeanAndP95AgainstGoogleSheets,
+    tenXMeanAndP95AgainstMicrosoftExcelWeb,
+    passed: tenXMeanAndP95AgainstGoogleSheets && tenXMeanAndP95AgainstMicrosoftExcelWeb,
+  }
+}
+
+function buildSameCorpusMeasurement(capture: SameCorpusCaptureMeasurement): UiResponsivenessSameCorpusMeasurement {
+  return {
+    product: capture.product,
+    source: capture.source,
+    operationResponseMs: summarizeNumbers(capture.operationResponseMsSamples),
+    postOperationFrameMs: summarizeNumbers(capture.postOperationFrameMsSamples),
+    limitations: [...capture.limitations],
+  }
+}
+
+function ratio(numerator: number, denominator: number): number {
+  if (denominator <= 0) {
+    return Number.POSITIVE_INFINITY
+  }
+  return numerator / denominator
+}
+
 function parseBrowserCase(value: unknown): UiResponsivenessLiveBrowserCase {
   const record = asObject(value, 'UI responsiveness live browser case')
   return {
@@ -400,6 +575,90 @@ function parseBrowserCase(value: unknown): UiResponsivenessLiveBrowserCase {
   }
 }
 
+function parseSameCorpusProof(value: Record<string, unknown>): UiResponsivenessSameCorpusProof {
+  return {
+    captured: booleanField(value, 'captured'),
+    evidenceKind: parseSameCorpusEvidenceKind(stringField(value, 'evidenceKind')),
+    requiredProductCount: numberField(value, 'requiredProductCount'),
+    requiredCaseCount: numberField(value, 'requiredCaseCount'),
+    tenXMeanAndP95CaseCount: numberField(value, 'tenXMeanAndP95CaseCount'),
+    coveredCorpusCaseIds: stringArrayField(value, 'coveredCorpusCaseIds'),
+    limitations: stringArrayField(value, 'limitations'),
+    cases: arrayField(value, 'cases').map(parseSameCorpusCase),
+  }
+}
+
+function parseSameCorpusCase(value: unknown): UiResponsivenessSameCorpusCase {
+  const record = asObject(value, 'UI responsiveness same-corpus case')
+  return {
+    id: stringField(record, 'id'),
+    corpusCaseId: stringField(record, 'corpusCaseId'),
+    materializedCells: numberField(record, 'materializedCells'),
+    workload: parseSameCorpusWorkload(stringField(record, 'workload')),
+    sampleCount: numberField(record, 'sampleCount'),
+    bilig: parseSameCorpusMeasurement(objectField(record, 'bilig')),
+    googleSheets: parseSameCorpusMeasurement(objectField(record, 'googleSheets')),
+    microsoftExcelWeb: parseSameCorpusMeasurement(objectField(record, 'microsoftExcelWeb')),
+    biligToGoogleSheetsMeanRatio: numberField(record, 'biligToGoogleSheetsMeanRatio'),
+    biligToGoogleSheetsP95Ratio: numberField(record, 'biligToGoogleSheetsP95Ratio'),
+    biligToMicrosoftExcelWebMeanRatio: numberField(record, 'biligToMicrosoftExcelWebMeanRatio'),
+    biligToMicrosoftExcelWebP95Ratio: numberField(record, 'biligToMicrosoftExcelWebP95Ratio'),
+    tenXMeanAndP95AgainstGoogleSheets: booleanField(record, 'tenXMeanAndP95AgainstGoogleSheets'),
+    tenXMeanAndP95AgainstMicrosoftExcelWeb: booleanField(record, 'tenXMeanAndP95AgainstMicrosoftExcelWeb'),
+    passed: booleanField(record, 'passed'),
+  }
+}
+
+function parseSameCorpusMeasurement(value: Record<string, unknown>): UiResponsivenessSameCorpusMeasurement {
+  return {
+    product: parseSameCorpusProduct(stringField(value, 'product')),
+    source: stringField(value, 'source'),
+    operationResponseMs: parseNumericSummary(objectField(value, 'operationResponseMs')),
+    postOperationFrameMs: parseNumericSummary(objectField(value, 'postOperationFrameMs')),
+    limitations: stringArrayField(value, 'limitations'),
+  }
+}
+
+function parseSameCorpusCapture(value: Record<string, unknown>): SameCorpusCapture {
+  return {
+    schemaVersion: literalField(value, 'schemaVersion', 1),
+    suite: literalField(value, 'suite', 'ui-responsiveness-same-corpus-capture'),
+    sampleCount: numberField(value, 'sampleCount'),
+    limitations: stringArrayField(value, 'limitations'),
+    cases: arrayField(value, 'cases').map(parseSameCorpusCaptureCase),
+  }
+}
+
+function parseSameCorpusCaptureCase(value: unknown): SameCorpusCaptureCase {
+  const record = asObject(value, 'UI responsiveness same-corpus capture case')
+  return {
+    id: stringField(record, 'id'),
+    corpusCaseId: stringField(record, 'corpusCaseId'),
+    materializedCells: numberField(record, 'materializedCells'),
+    workload: parseSameCorpusWorkload(stringField(record, 'workload')),
+    bilig: parseSameCorpusCaptureMeasurement(objectField(record, 'bilig'), 'bilig'),
+    googleSheets: parseSameCorpusCaptureMeasurement(objectField(record, 'googleSheets'), 'google-sheets'),
+    microsoftExcelWeb: parseSameCorpusCaptureMeasurement(objectField(record, 'microsoftExcelWeb'), 'microsoft-excel-web'),
+  }
+}
+
+function parseSameCorpusCaptureMeasurement(
+  value: Record<string, unknown>,
+  product: UiResponsivenessSameCorpusProduct,
+): SameCorpusCaptureMeasurement {
+  const parsedProduct = parseSameCorpusProduct(stringField(value, 'product'))
+  if (parsedProduct !== product) {
+    throw new Error(`UI responsiveness same-corpus capture product mismatch: expected ${product}, got ${parsedProduct}`)
+  }
+  return {
+    product: parsedProduct,
+    source: stringField(value, 'source'),
+    operationResponseMsSamples: numericArrayField(value, 'operationResponseMsSamples'),
+    postOperationFrameMsSamples: numericArrayField(value, 'postOperationFrameMsSamples'),
+    limitations: stringArrayField(value, 'limitations'),
+  }
+}
+
 function parseNumericSummary(value: Record<string, unknown>): NumericSummary {
   return {
     samples: arrayField(value, 'samples').map((entry) => {
@@ -416,6 +675,15 @@ function parseNumericSummary(value: Record<string, unknown>): NumericSummary {
   }
 }
 
+function numericArrayField(value: Record<string, unknown>, key: string): number[] {
+  return arrayField(value, key).map((entry) => {
+    if (typeof entry !== 'number' || !Number.isFinite(entry) || entry < 0) {
+      throw new Error(`Expected ${key} to contain finite non-negative numbers`)
+    }
+    return entry
+  })
+}
+
 function parseVendor(value: string): UiResponsivenessLiveBrowserVendor {
   if (value === 'google-sheets' || value === 'microsoft-excel-web') {
     return value
@@ -423,11 +691,123 @@ function parseVendor(value: string): UiResponsivenessLiveBrowserVendor {
   throw new Error(`Unexpected UI responsiveness live browser vendor: ${value}`)
 }
 
+function parseSameCorpusEvidenceKind(value: string): UiResponsivenessSameCorpusProof['evidenceKind'] {
+  if (value === 'same-corpus-browser-capture' || value === 'not-captured') {
+    return value
+  }
+  throw new Error(`Unexpected UI responsiveness same-corpus evidence kind: ${value}`)
+}
+
+function parseSameCorpusProduct(value: string): UiResponsivenessSameCorpusProduct {
+  if (value === 'bilig' || value === 'google-sheets' || value === 'microsoft-excel-web') {
+    return value
+  }
+  throw new Error(`Unexpected UI responsiveness same-corpus product: ${value}`)
+}
+
+function parseSameCorpusWorkload(value: string): UiResponsivenessSameCorpusWorkload {
+  if (value === 'visible-scroll-response' || value === 'visible-edit-commit') {
+    return value
+  }
+  throw new Error(`Unexpected UI responsiveness same-corpus workload: ${value}`)
+}
+
 function parseAccessMode(value: string): UiResponsivenessLiveBrowserCase['accessMode'] {
   if (value === 'public-comment-only' || value === 'public-view-only' || value === 'public-office-web-viewer') {
     return value
   }
   throw new Error(`Unexpected UI responsiveness live browser access mode: ${value}`)
+}
+
+function validateSameCorpusProof(proof: UiResponsivenessSameCorpusProof): void {
+  if (proof.requiredProductCount !== 3) {
+    throw new Error('UI responsiveness same-corpus proof must compare Bilig, Google Sheets, and Microsoft Excel Web')
+  }
+  if (!proof.captured) {
+    if (proof.evidenceKind !== 'not-captured' || proof.cases.length !== 0 || proof.requiredCaseCount !== 0) {
+      throw new Error('UI responsiveness same-corpus proof has stale not-captured metadata')
+    }
+    if (proof.limitations.length === 0) {
+      throw new Error('UI responsiveness same-corpus proof must disclose that capture is missing')
+    }
+    return
+  }
+  if (proof.evidenceKind !== 'same-corpus-browser-capture') {
+    throw new Error('UI responsiveness same-corpus proof has stale capture metadata')
+  }
+  if (proof.requiredCaseCount === 0 || proof.cases.length !== proof.requiredCaseCount) {
+    throw new Error('UI responsiveness same-corpus proof must include every required captured case')
+  }
+  const tenXCaseCount = proof.cases.filter(
+    (entry) => entry.tenXMeanAndP95AgainstGoogleSheets && entry.tenXMeanAndP95AgainstMicrosoftExcelWeb,
+  ).length
+  if (proof.tenXMeanAndP95CaseCount !== tenXCaseCount) {
+    throw new Error('UI responsiveness same-corpus proof 10x case count is stale')
+  }
+  const coveredCorpusCaseIds = [...new Set(proof.cases.map((entry) => entry.corpusCaseId))].toSorted()
+  if (JSON.stringify(proof.coveredCorpusCaseIds) !== JSON.stringify(coveredCorpusCaseIds)) {
+    throw new Error('UI responsiveness same-corpus proof covered corpus IDs are stale')
+  }
+  for (const entry of proof.cases) {
+    validateSameCorpusCase(entry)
+  }
+}
+
+function validateSameCorpusCase(entry: UiResponsivenessSameCorpusCase): void {
+  if (entry.materializedCells <= 0 || !Number.isInteger(entry.materializedCells)) {
+    throw new Error(`UI responsiveness same-corpus case has invalid materialized cell count: ${entry.id}`)
+  }
+  validateSameCorpusMeasurement(entry.bilig, 'bilig', entry.id)
+  validateSameCorpusMeasurement(entry.googleSheets, 'google-sheets', entry.id)
+  validateSameCorpusMeasurement(entry.microsoftExcelWeb, 'microsoft-excel-web', entry.id)
+  const comparableSampleCount = Math.min(
+    entry.bilig.operationResponseMs.samples.length,
+    entry.googleSheets.operationResponseMs.samples.length,
+    entry.microsoftExcelWeb.operationResponseMs.samples.length,
+  )
+  if (entry.sampleCount !== comparableSampleCount || comparableSampleCount < sampleCountForSameCorpus()) {
+    throw new Error(`UI responsiveness same-corpus case has too few comparable samples: ${entry.id}`)
+  }
+  const googleSheetsMeanRatio = ratio(entry.bilig.operationResponseMs.mean, entry.googleSheets.operationResponseMs.mean)
+  const googleSheetsP95Ratio = ratio(entry.bilig.operationResponseMs.p95, entry.googleSheets.operationResponseMs.p95)
+  const microsoftExcelWebMeanRatio = ratio(entry.bilig.operationResponseMs.mean, entry.microsoftExcelWeb.operationResponseMs.mean)
+  const microsoftExcelWebP95Ratio = ratio(entry.bilig.operationResponseMs.p95, entry.microsoftExcelWeb.operationResponseMs.p95)
+  if (
+    entry.biligToGoogleSheetsMeanRatio !== googleSheetsMeanRatio ||
+    entry.biligToGoogleSheetsP95Ratio !== googleSheetsP95Ratio ||
+    entry.biligToMicrosoftExcelWebMeanRatio !== microsoftExcelWebMeanRatio ||
+    entry.biligToMicrosoftExcelWebP95Ratio !== microsoftExcelWebP95Ratio
+  ) {
+    throw new Error(`UI responsiveness same-corpus ratio is stale: ${entry.id}`)
+  }
+  const tenXAgainstGoogleSheets = googleSheetsMeanRatio <= 0.1 && googleSheetsP95Ratio <= 0.1
+  const tenXAgainstMicrosoftExcelWeb = microsoftExcelWebMeanRatio <= 0.1 && microsoftExcelWebP95Ratio <= 0.1
+  if (
+    entry.tenXMeanAndP95AgainstGoogleSheets !== tenXAgainstGoogleSheets ||
+    entry.tenXMeanAndP95AgainstMicrosoftExcelWeb !== tenXAgainstMicrosoftExcelWeb ||
+    entry.passed !== (tenXAgainstGoogleSheets && tenXAgainstMicrosoftExcelWeb)
+  ) {
+    throw new Error(`UI responsiveness same-corpus pass flag is stale: ${entry.id}`)
+  }
+}
+
+function validateSameCorpusMeasurement(
+  measurement: UiResponsivenessSameCorpusMeasurement,
+  product: UiResponsivenessSameCorpusProduct,
+  caseId: string,
+): void {
+  if (measurement.product !== product) {
+    throw new Error(`UI responsiveness same-corpus product mismatch for ${caseId}`)
+  }
+  if (measurement.source.length === 0) {
+    throw new Error(`UI responsiveness same-corpus source is missing for ${caseId}`)
+  }
+  validateSummary(measurement.operationResponseMs, `${caseId} ${product} operationResponseMs`)
+  validateSummary(measurement.postOperationFrameMs, `${caseId} ${product} postOperationFrameMs`)
+}
+
+function sampleCountForSameCorpus(): number {
+  return 3
 }
 
 function validateSummary(summary: NumericSummary, label: string): void {
@@ -441,6 +821,18 @@ function validateSummary(summary: NumericSummary, label: string): void {
   }
 }
 
+function argumentValue(name: string): string | null {
+  const index = process.argv.indexOf(name)
+  if (index === -1) {
+    return null
+  }
+  const value = process.argv[index + 1]
+  if (!value) {
+    throw new Error(`Missing value after ${name}`)
+  }
+  return value
+}
+
 function logResult(mode: 'check' | 'write', scorecard: UiResponsivenessLiveBrowserScorecard): void {
   console.log(
     JSON.stringify(
@@ -450,6 +842,8 @@ function logResult(mode: 'check' | 'write', scorecard: UiResponsivenessLiveBrows
         allRequiredCasesPassed: scorecard.summary.allRequiredCasesPassed,
         capturedVendors: scorecard.summary.capturedVendors,
         caseCount: scorecard.cases.length,
+        sameCorpusProofCaptured: scorecard.sameCorpusProof.captured,
+        sameCorpusTenXMeanAndP95CaseCount: scorecard.sameCorpusProof.tenXMeanAndP95CaseCount,
       },
       null,
       2,
