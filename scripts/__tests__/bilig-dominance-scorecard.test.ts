@@ -48,7 +48,14 @@ describe('bilig dominance scorecard', () => {
     })
     expect(scorecard.categories.find((category) => category.id === 'large-workbook-scale')).toMatchObject({
       status: 'partial-repo-evidence',
-      evidenceArtifacts: expect.arrayContaining(['packages/benchmarks/baselines/large-workbook-slo-scorecard.json']),
+      evidenceArtifacts: expect.arrayContaining([
+        'packages/benchmarks/baselines/large-workbook-slo-scorecard.json',
+        'e2e/tests/web-shell-scroll-performance.pw.ts',
+      ]),
+      blockers: ['no direct Sheets or Excel large-workbook scale artifact exists in the repo'],
+    })
+    expect(scorecard.categories.find((category) => category.id === 'ui-responsiveness')).toMatchObject({
+      blockers: ['no direct Sheets or Excel browser responsiveness comparison artifact exists in the repo'],
     })
     expect(scorecard.categories.find((category) => category.id === 'collaboration')).toMatchObject({
       status: 'partial-repo-evidence',
@@ -399,7 +406,8 @@ function buildFixtureInput(): BuildScorecardInput {
         coveredLargeWorkbookRows: [100_000, 250_000],
         allSloBudgetsPassed: true,
         allGateBudgetsPassed: true,
-        headedBrowserFrameP95Evidence: 'not-captured',
+        headedBrowserFrameP95Evidence: 'playwright-contracts',
+        headedBrowserFrameP95ContractsPassed: true,
         externalGoogleSheetsEvidence: 'not-captured',
         externalMicrosoftExcelEvidence: 'not-captured',
       },
@@ -410,6 +418,18 @@ function buildFixtureInput(): BuildScorecardInput {
         sloMeasurement('workerWarmStart250k', 'large-workbook-scale', 250_000, 17, 700),
         sloMeasurement('workerVisibleEdit10k', 'ui-responsiveness', 10_000, 4, 16),
         sloMeasurement('workerReconnectCatchUp100Pending', 'collaboration', 10_000, 270, 2000),
+      ],
+      headedBrowserFrameP95Contracts: [
+        headedBrowserContract('headedDense100kDiagonalBrowse', 'large-workbook-scale', 100_000, 'dense-mixed-100k', 'frameMs.p95', 20),
+        headedBrowserContract('headedWide250kMainBodyBrowse', 'large-workbook-scale', 250_000, 'wide-mixed-250k', 'frameMs.p95', 20),
+        headedBrowserContract(
+          'headedWide250kVisibleEditCommit',
+          'ui-responsiveness',
+          250_000,
+          'wide-mixed-250k',
+          'mutationToVisibleMs.p95',
+          50,
+        ),
       ],
     },
     competitiveArtifact: {
@@ -483,6 +503,31 @@ function sloMeasurement(
     sampleCount: 3,
     passed: true,
     gatePassed: true,
+  }
+}
+
+function headedBrowserContract(
+  id: string,
+  category: BuildScorecardInput['largeWorkbookSloScorecard']['headedBrowserFrameP95Contracts'][number]['category'],
+  materializedCells: number,
+  corpusCaseId: string,
+  metric: BuildScorecardInput['largeWorkbookSloScorecard']['headedBrowserFrameP95Contracts'][number]['metric'],
+  budgetP95: number,
+): BuildScorecardInput['largeWorkbookSloScorecard']['headedBrowserFrameP95Contracts'][number] {
+  return {
+    id,
+    category,
+    label: id,
+    materializedCells,
+    corpusCaseId,
+    metric,
+    budgetP95,
+    minSampleCount: metric === 'frameMs.p95' ? 120 : 1,
+    playwrightTestFile: 'e2e/tests/web-shell-scroll-performance.pw.ts',
+    playwrightArtifactFile: `${id}.json`,
+    command: 'pnpm test:browser:full',
+    passed: true,
+    findings: [],
   }
 }
 

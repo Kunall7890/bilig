@@ -9,6 +9,12 @@ import { parseAuditabilityScorecard, type AuditabilityScorecard } from './gen-au
 import { parseAutomationScorecard, type AutomationScorecard } from './gen-automation-scorecard.ts'
 import { parseCollaborationScorecard, type CollaborationScorecard } from './gen-collaboration-scorecard.ts'
 import { parseImportExportFidelityScorecard, type ImportExportFidelityScorecard } from './gen-import-export-fidelity-scorecard.ts'
+import {
+  parseLargeWorkbookSloScorecard,
+  type HeadedBrowserFrameP95Contract,
+  type LargeWorkbookSloMeasurement,
+  type LargeWorkbookSloScorecard,
+} from './gen-large-workbook-slo-scorecard.ts'
 import { parseReliabilityScorecard, type ReliabilityScorecard } from './gen-reliability-scorecard.ts'
 import { parseSecurityPostureScorecard, type SecurityPostureScorecard } from './gen-security-posture-scorecard.ts'
 import {
@@ -17,7 +23,6 @@ import {
   booleanField,
   isFiniteNumber,
   literalField,
-  numberArrayField,
   numberField,
   objectField,
   optionalNumberField,
@@ -46,35 +51,6 @@ export interface FormulaDominanceSnapshot {
     summary: RatioSummary
     nonProductionRows: unknown[]
   }
-}
-
-export interface LargeWorkbookSloMeasurement {
-  id: string
-  category: 'large-workbook-scale' | 'ui-responsiveness' | 'collaboration'
-  label: string
-  materializedCells: number
-  corpusCaseId: string | null
-  metric: string
-  actualP95: number
-  budgetP95: number
-  gateBudgetP95: number
-  sampleCount: number
-  passed: boolean
-  gatePassed: boolean
-}
-
-export interface LargeWorkbookSloScorecard {
-  schemaVersion: 1
-  suite: 'large-workbook-slo'
-  summary: {
-    coveredLargeWorkbookRows: number[]
-    allSloBudgetsPassed: boolean
-    allGateBudgetsPassed: boolean
-    headedBrowserFrameP95Evidence: 'not-captured'
-    externalGoogleSheetsEvidence: 'not-captured'
-    externalMicrosoftExcelEvidence: 'not-captured'
-  }
-  measurements: LargeWorkbookSloMeasurement[]
 }
 
 export interface HyperFormulaSurfaceSnapshot {
@@ -336,6 +312,12 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
   const workerWarmStart250k = requiredSloMeasurement(input.largeWorkbookSloScorecard, 'workerWarmStart250k')
   const workerVisibleEdit10k = requiredSloMeasurement(input.largeWorkbookSloScorecard, 'workerVisibleEdit10k')
   const workerReconnectCatchUp100Pending = requiredSloMeasurement(input.largeWorkbookSloScorecard, 'workerReconnectCatchUp100Pending')
+  const headedBrowserScaleContracts = input.largeWorkbookSloScorecard.headedBrowserFrameP95Contracts.filter(
+    (contract) => contract.category === 'large-workbook-scale',
+  )
+  const headedBrowserUiContracts = input.largeWorkbookSloScorecard.headedBrowserFrameP95Contracts.filter(
+    (contract) => contract.category === 'ui-responsiveness',
+  )
   const totalSurfaceMembers =
     input.surfaceSnapshot.classSurface.staticMembers.length +
     input.surfaceSnapshot.classSurface.staticMethods.length +
@@ -479,13 +461,19 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
           sloSummary(load250k),
           sloSummary(workerWarmStart100k),
           sloSummary(workerWarmStart250k),
+          `headed browser frame p95 contracts pass: ${String(
+            input.largeWorkbookSloScorecard.summary.headedBrowserFrameP95ContractsPassed,
+          )}`,
+          ...headedBrowserScaleContracts.map(headedBrowserContractSummary),
         ],
-        evidenceArtifacts: [input.competitiveArtifactPath, input.largeWorkbookSloScorecardPath, 'docs/05-06-next-phase.md'],
+        evidenceArtifacts: [
+          input.competitiveArtifactPath,
+          input.largeWorkbookSloScorecardPath,
+          'e2e/tests/web-shell-scroll-performance.pw.ts',
+          'docs/05-06-next-phase.md',
+        ],
         checkCommands: ['pnpm large-workbook:slo:check', 'CI=1 pnpm bench:contracts', 'pnpm test:browser:full', 'pnpm bench:smoke'],
-        blockers: [
-          'the generated SLO artifact covers core load and browser-worker runtime, but not headed browser frame/render p95 for 100k and 250k sessions',
-          'no direct Sheets or Excel large-workbook scale artifact exists in the repo',
-        ],
+        blockers: ['no direct Sheets or Excel large-workbook scale artifact exists in the repo'],
       },
       {
         id: 'ui-responsiveness',
@@ -497,18 +485,17 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
           'worker-first local runtime, projected viewport patches, and tile cache architecture are implemented and documented',
           'browser correctness and performance smoke commands exist',
           sloSummary(workerVisibleEdit10k),
+          ...headedBrowserUiContracts.map(headedBrowserContractSummary),
         ],
         evidenceArtifacts: [
           input.largeWorkbookSloScorecardPath,
+          'e2e/tests/web-shell-scroll-performance.pw.ts',
           'docs/05-06-next-phase.md',
           'apps/web/src/perf/workbook-perf.ts',
           'apps/web/src/perf/workbook-scroll-perf.ts',
         ],
         checkCommands: ['pnpm large-workbook:slo:check', 'CI=1 pnpm bench:contracts', 'pnpm test:browser:full', 'pnpm bench:smoke'],
-        blockers: [
-          'worker visible-patch p95 is checked, but no headed browser frame/paint p95 artifact proves the stated UI latency targets',
-          'no direct Sheets or Excel browser responsiveness comparison artifact exists in the repo',
-        ],
+        blockers: ['no direct Sheets or Excel browser responsiveness comparison artifact exists in the repo'],
       },
       {
         id: 'collaboration',
@@ -751,6 +738,10 @@ function sloSummary(measurement: LargeWorkbookSloMeasurement): string {
   return `${measurement.id}: ${measurement.metric} ${measurement.actualP95}ms against ${measurement.budgetP95}ms SLO (${measurement.sampleCount} samples)`
 }
 
+function headedBrowserContractSummary(contract: HeadedBrowserFrameP95Contract): string {
+  return `${contract.id}: ${contract.metric} budget ${contract.budgetP95}ms on ${contract.materializedCells} materialized cells via ${contract.command}`
+}
+
 function formatRatio(summary: RatioSummary): string {
   return `${summary.production}/${summary.total} (${summary.percent}%)`
 }
@@ -785,48 +776,6 @@ function parseFormulaDominanceSnapshot(value: Record<string, unknown>): FormulaD
       nonProductionRows: arrayField(canonical, 'nonProductionRows'),
     },
   }
-}
-
-function parseLargeWorkbookSloScorecard(value: Record<string, unknown>): LargeWorkbookSloScorecard {
-  const summary = objectField(value, 'summary')
-  return {
-    schemaVersion: literalField(value, 'schemaVersion', 1),
-    suite: literalField(value, 'suite', 'large-workbook-slo'),
-    summary: {
-      coveredLargeWorkbookRows: numberArrayField(summary, 'coveredLargeWorkbookRows'),
-      allSloBudgetsPassed: booleanField(summary, 'allSloBudgetsPassed'),
-      allGateBudgetsPassed: booleanField(summary, 'allGateBudgetsPassed'),
-      headedBrowserFrameP95Evidence: literalField(summary, 'headedBrowserFrameP95Evidence', 'not-captured'),
-      externalGoogleSheetsEvidence: literalField(summary, 'externalGoogleSheetsEvidence', 'not-captured'),
-      externalMicrosoftExcelEvidence: literalField(summary, 'externalMicrosoftExcelEvidence', 'not-captured'),
-    },
-    measurements: arrayField(value, 'measurements').map(parseLargeWorkbookSloMeasurement),
-  }
-}
-
-function parseLargeWorkbookSloMeasurement(value: unknown): LargeWorkbookSloMeasurement {
-  const measurement = asObject(value, 'large workbook SLO measurement')
-  return {
-    id: stringField(measurement, 'id'),
-    category: parseSloMeasurementCategory(stringField(measurement, 'category')),
-    label: stringField(measurement, 'label'),
-    materializedCells: numberField(measurement, 'materializedCells'),
-    corpusCaseId: optionalStringField(measurement, 'corpusCaseId'),
-    metric: stringField(measurement, 'metric'),
-    actualP95: numberField(measurement, 'actualP95'),
-    budgetP95: numberField(measurement, 'budgetP95'),
-    gateBudgetP95: numberField(measurement, 'gateBudgetP95'),
-    sampleCount: numberField(measurement, 'sampleCount'),
-    passed: booleanField(measurement, 'passed'),
-    gatePassed: booleanField(measurement, 'gatePassed'),
-  }
-}
-
-function parseSloMeasurementCategory(value: string): LargeWorkbookSloMeasurement['category'] {
-  if (value === 'large-workbook-scale' || value === 'ui-responsiveness' || value === 'collaboration') {
-    return value
-  }
-  throw new Error(`Unexpected large workbook SLO measurement category: ${value}`)
 }
 
 function parseSurfaceSnapshot(value: Record<string, unknown>): HyperFormulaSurfaceSnapshot {

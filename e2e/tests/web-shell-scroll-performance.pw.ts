@@ -179,6 +179,30 @@ function expectBoundedVisibleMutation(
 test.describe('@browser-perf web app scroll performance', () => {
   test.setTimeout(120_000)
 
+  test('keeps dense 100k browse inside headed frame budgets', async ({ page }, testInfo) => {
+    await gotoWorkbookShell(page, '/?benchmarkCorpus=dense-mixed-100k')
+    await waitForWorkbookReady(page)
+    const benchmarkState = await waitForBenchmarkCorpus(page)
+
+    expect(benchmarkState.fixture?.id).toBe('dense-mixed-100k')
+
+    await settleWorkbookScrollPerf(page, 80)
+    await warmStartWorkbookScrollPerf(page, 'dense-100k-diagonal-main-body')
+    await performDiagonalGridBrowse(page, { deltaX: 2_048, deltaY: 440, steps: 160 })
+    const report = await stopWorkbookScrollPerf(page)
+
+    if (!report) {
+      throw new Error('scroll performance report was not available')
+    }
+
+    await writeFile(testInfo.outputPath('scroll-perf-dense-100k-diagonal.json'), JSON.stringify(report, null, 2), 'utf8')
+
+    expect(report.fixture?.id).toBe('dense-mixed-100k')
+    expectSmoothBrowse(report, { longTaskMax: 60 })
+    expectQuietShell(report, { maxSurfaceCommits: 1 })
+    expect(report.counters.damagePatches).toBe(0)
+  })
+
   test('keeps horizontal browse inside one resident window smooth and free of data-canvas redraw churn', async ({ page }, testInfo) => {
     await gotoWorkbookShell(page, '/?benchmarkCorpus=wide-mixed-250k')
     await waitForWorkbookReady(page)

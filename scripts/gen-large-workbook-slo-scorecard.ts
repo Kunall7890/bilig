@@ -19,6 +19,7 @@ interface BenchContractsReport {
   readonly toleranceMultiplier: number
   readonly sampleCounts: Record<string, number>
   readonly results: Record<string, unknown>
+  readonly headedBrowserTestSource?: string
 }
 
 export interface LargeWorkbookSloMeasurement {
@@ -36,6 +37,22 @@ export interface LargeWorkbookSloMeasurement {
   readonly gatePassed: boolean
 }
 
+export interface HeadedBrowserFrameP95Contract {
+  readonly id: string
+  readonly category: 'large-workbook-scale' | 'ui-responsiveness'
+  readonly label: string
+  readonly materializedCells: number
+  readonly corpusCaseId: string
+  readonly metric: 'frameMs.p95' | 'mutationToVisibleMs.p95'
+  readonly budgetP95: number
+  readonly minSampleCount: number
+  readonly playwrightTestFile: 'e2e/tests/web-shell-scroll-performance.pw.ts'
+  readonly playwrightArtifactFile: string
+  readonly command: 'pnpm test:browser:full'
+  readonly passed: boolean
+  readonly findings: string[]
+}
+
 export interface LargeWorkbookSloScorecard {
   readonly schemaVersion: 1
   readonly suite: 'large-workbook-slo'
@@ -43,17 +60,21 @@ export interface LargeWorkbookSloScorecard {
   readonly source: {
     readonly benchmarkCommand: 'CI=1 pnpm bench:contracts'
     readonly benchmarkScript: 'scripts/bench-contracts.ts'
+    readonly headedBrowserCommand: 'pnpm test:browser:full'
+    readonly headedBrowserTestFile: 'e2e/tests/web-shell-scroll-performance.pw.ts'
     readonly artifactGenerator: 'scripts/gen-large-workbook-slo-scorecard.ts'
   }
   readonly summary: {
     readonly coveredLargeWorkbookRows: number[]
     readonly allSloBudgetsPassed: boolean
     readonly allGateBudgetsPassed: boolean
-    readonly headedBrowserFrameP95Evidence: 'not-captured'
+    readonly headedBrowserFrameP95Evidence: 'playwright-contracts'
+    readonly headedBrowserFrameP95ContractsPassed: boolean
     readonly externalGoogleSheetsEvidence: 'not-captured'
     readonly externalMicrosoftExcelEvidence: 'not-captured'
   }
   readonly measurements: LargeWorkbookSloMeasurement[]
+  readonly headedBrowserFrameP95Contracts: HeadedBrowserFrameP95Contract[]
 }
 
 interface MeasurementSpec {
@@ -63,6 +84,21 @@ interface MeasurementSpec {
   readonly resultKey: string
   readonly metricKey: string
   readonly budgetKey: string
+}
+
+interface HeadedBrowserFrameP95ContractSpec {
+  readonly id: string
+  readonly category: HeadedBrowserFrameP95Contract['category']
+  readonly label: string
+  readonly testTitle: string
+  readonly materializedCells: number
+  readonly corpusCaseId: string
+  readonly workload: string
+  readonly metric: HeadedBrowserFrameP95Contract['metric']
+  readonly budgetP95: number
+  readonly minSampleCount: number
+  readonly playwrightArtifactFile: string
+  readonly verification: 'smooth-browse' | 'bounded-visible-mutation'
 }
 
 const measurementSpecs = [
@@ -116,6 +152,52 @@ const measurementSpecs = [
   },
 ] as const satisfies readonly MeasurementSpec[]
 
+const headedBrowserTestFile = 'e2e/tests/web-shell-scroll-performance.pw.ts'
+const headedBrowserFrameP95ContractSpecs = [
+  {
+    id: 'headedDense100kDiagonalBrowse',
+    category: 'large-workbook-scale',
+    label: '100k dense headed diagonal browse frame pacing',
+    testTitle: 'keeps dense 100k browse inside headed frame budgets',
+    materializedCells: 100_000,
+    corpusCaseId: 'dense-mixed-100k',
+    workload: 'dense-100k-diagonal-main-body',
+    metric: 'frameMs.p95',
+    budgetP95: 20,
+    minSampleCount: 120,
+    playwrightArtifactFile: 'scroll-perf-dense-100k-diagonal.json',
+    verification: 'smooth-browse',
+  },
+  {
+    id: 'headedWide250kMainBodyBrowse',
+    category: 'large-workbook-scale',
+    label: '250k wide headed main-body browse frame pacing',
+    testTitle: 'keeps horizontal browse inside one resident window smooth and free of data-canvas redraw churn',
+    materializedCells: 250_000,
+    corpusCaseId: 'wide-mixed-250k',
+    workload: 'wide-250k-main-body',
+    metric: 'frameMs.p95',
+    budgetP95: 20,
+    minSampleCount: 120,
+    playwrightArtifactFile: 'scroll-perf-wide-250k-main-body.json',
+    verification: 'smooth-browse',
+  },
+  {
+    id: 'headedWide250kVisibleEditCommit',
+    category: 'ui-responsiveness',
+    label: '250k wide headed visible edit commit response',
+    testTitle: 'keeps visible edit commits bounded to dirty V3 tiles',
+    materializedCells: 250_000,
+    corpusCaseId: 'wide-mixed-250k',
+    workload: 'wide-250k-visible-edit-commit',
+    metric: 'mutationToVisibleMs.p95',
+    budgetP95: 50,
+    minSampleCount: 1,
+    playwrightArtifactFile: 'scroll-perf-wide-250k-visible-edit.json',
+    verification: 'bounded-visible-mutation',
+  },
+] as const satisfies readonly HeadedBrowserFrameP95ContractSpec[]
+
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
 const outputPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'large-workbook-slo-scorecard.json')
 const isCheckMode = process.argv.includes('--check')
@@ -140,6 +222,9 @@ function main(): void {
 export function buildLargeWorkbookSloScorecard(reportInput: unknown, generatedAt = new Date().toISOString()): LargeWorkbookSloScorecard {
   const report = parseBenchContractsReport(reportInput)
   const measurements = measurementSpecs.map((spec) => buildMeasurement(report, spec))
+  const headedBrowserFrameP95Contracts = buildHeadedBrowserFrameP95Contracts(
+    report.headedBrowserTestSource ?? readFileSync(join(rootDir, headedBrowserTestFile), 'utf8'),
+  )
 
   return {
     schemaVersion: 1,
@@ -148,6 +233,8 @@ export function buildLargeWorkbookSloScorecard(reportInput: unknown, generatedAt
     source: {
       benchmarkCommand: 'CI=1 pnpm bench:contracts',
       benchmarkScript: 'scripts/bench-contracts.ts',
+      headedBrowserCommand: 'pnpm test:browser:full',
+      headedBrowserTestFile,
       artifactGenerator: 'scripts/gen-large-workbook-slo-scorecard.ts',
     },
     summary: {
@@ -160,11 +247,13 @@ export function buildLargeWorkbookSloScorecard(reportInput: unknown, generatedAt
       ].toSorted((left, right) => left - right),
       allSloBudgetsPassed: measurements.every((measurement) => measurement.passed),
       allGateBudgetsPassed: measurements.every((measurement) => measurement.gatePassed),
-      headedBrowserFrameP95Evidence: 'not-captured',
+      headedBrowserFrameP95Evidence: 'playwright-contracts',
+      headedBrowserFrameP95ContractsPassed: headedBrowserFrameP95Contracts.every((contract) => contract.passed),
       externalGoogleSheetsEvidence: 'not-captured',
       externalMicrosoftExcelEvidence: 'not-captured',
     },
     measurements,
+    headedBrowserFrameP95Contracts,
   }
 }
 
@@ -191,6 +280,84 @@ function buildMeasurement(report: BenchContractsReport, spec: MeasurementSpec): 
     sampleCount: numberField(report.sampleCounts, spec.resultKey, `large workbook SLO sample count: ${spec.resultKey}`),
     passed: summary.p95 <= budgetP95,
     gatePassed: summary.p95 <= gateBudgetP95,
+  }
+}
+
+function buildHeadedBrowserFrameP95Contracts(source: string): HeadedBrowserFrameP95Contract[] {
+  return headedBrowserFrameP95ContractSpecs.map((spec) => {
+    const findings: string[] = []
+    const testBlock = extractPlaywrightTestBlock(source, spec.testTitle)
+    if (!testBlock) {
+      findings.push(`missing Playwright test: ${spec.testTitle}`)
+    } else {
+      findings.push(...validateHeadedBrowserFrameP95TestBlock(source, testBlock, spec))
+    }
+    return {
+      id: spec.id,
+      category: spec.category,
+      label: spec.label,
+      materializedCells: spec.materializedCells,
+      corpusCaseId: spec.corpusCaseId,
+      metric: spec.metric,
+      budgetP95: spec.budgetP95,
+      minSampleCount: spec.minSampleCount,
+      playwrightTestFile: headedBrowserTestFile,
+      playwrightArtifactFile: spec.playwrightArtifactFile,
+      command: 'pnpm test:browser:full',
+      passed: findings.length === 0,
+      findings,
+    }
+  })
+}
+
+function extractPlaywrightTestBlock(source: string, testTitle: string): string | null {
+  const marker = `test('${testTitle}'`
+  const start = source.indexOf(marker)
+  if (start < 0) {
+    return null
+  }
+  const endCandidates = ['\n  test(', '\n  remoteSyncTest(']
+    .map((nextMarker) => source.indexOf(nextMarker, start + marker.length))
+    .filter((index) => index >= 0)
+  const end = endCandidates.length > 0 ? Math.min(...endCandidates) : source.length
+  return source.slice(start, end)
+}
+
+function validateHeadedBrowserFrameP95TestBlock(source: string, testBlock: string, spec: HeadedBrowserFrameP95ContractSpec): string[] {
+  const findings: string[] = []
+  requireSnippet(testBlock, `benchmarkCorpus=${spec.corpusCaseId}`, 'loads the expected benchmark corpus', findings)
+  requireSnippet(
+    testBlock,
+    `expect(benchmarkState.fixture?.id).toBe('${spec.corpusCaseId}')`,
+    'asserts installed corpus identity',
+    findings,
+  )
+  requireSnippet(testBlock, `expect(report.fixture?.id).toBe('${spec.corpusCaseId}')`, 'asserts sampled report corpus identity', findings)
+  requireSnippet(testBlock, `warmStartWorkbookScrollPerf(page, '${spec.workload}'`, 'warms the renderer before sampling', findings)
+  requireSnippet(testBlock, 'stopWorkbookScrollPerf(page)', 'stops and captures the headed browser perf report', findings)
+  requireSnippet(testBlock, `testInfo.outputPath('${spec.playwrightArtifactFile}')`, 'writes the headed browser perf artifact', findings)
+
+  if (spec.verification === 'smooth-browse') {
+    requireSnippet(testBlock, 'expectSmoothBrowse(report', 'asserts smooth headed browsing', findings)
+    requireSnippet(source, 'expect(frameSummary.p95).toBeLessThan(20)', 'keeps frame p95 under 20ms', findings)
+    requireSnippet(source, 'expect(report.samples.frameMs.length).toBeGreaterThan(120)', 'captures at least 120 frame samples', findings)
+  } else {
+    requireSnippet(testBlock, 'expectBoundedVisibleMutation(report', 'asserts bounded visible mutation response', findings)
+    requireSnippet(testBlock, 'mutationToVisibleP95Max: 50', 'keeps mutation-to-visible p95 under 50ms', findings)
+    requireSnippet(
+      source,
+      'expect(report.samples.mutationToVisibleMs.length).toBeGreaterThan(0)',
+      'captures mutation-to-visible samples',
+      findings,
+    )
+  }
+
+  return findings
+}
+
+function requireSnippet(source: string, snippet: string, label: string, findings: string[]): void {
+  if (!source.includes(snippet)) {
+    findings.push(`missing ${label}`)
   }
 }
 
@@ -222,10 +389,11 @@ function parseBenchContractsReport(value: unknown): BenchContractsReport {
     toleranceMultiplier: numberField(record, 'toleranceMultiplier', 'bench contracts tolerance multiplier'),
     sampleCounts: numberRecordField(record, 'sampleCounts'),
     results: recordField(record, 'results', 'bench contracts results'),
+    headedBrowserTestSource: optionalStringField(record, 'headedBrowserTestSource') ?? undefined,
   }
 }
 
-function parseLargeWorkbookSloScorecard(value: unknown): LargeWorkbookSloScorecard {
+export function parseLargeWorkbookSloScorecard(value: unknown): LargeWorkbookSloScorecard {
   const record = toRecord(value, 'large workbook SLO scorecard')
   if (record['schemaVersion'] !== 1 || record['suite'] !== 'large-workbook-slo') {
     throw new Error('Unexpected large workbook SLO scorecard header')
@@ -260,17 +428,29 @@ function parseLargeWorkbookSloScorecard(value: unknown): LargeWorkbookSloScoreca
     source: {
       benchmarkCommand: 'CI=1 pnpm bench:contracts',
       benchmarkScript: 'scripts/bench-contracts.ts',
+      headedBrowserCommand: 'pnpm test:browser:full',
+      headedBrowserTestFile,
       artifactGenerator: 'scripts/gen-large-workbook-slo-scorecard.ts',
     },
     summary: {
       coveredLargeWorkbookRows: numberArrayField(summary, 'coveredLargeWorkbookRows'),
       allSloBudgetsPassed: booleanField(summary, 'allSloBudgetsPassed', 'large workbook SLO allSloBudgetsPassed'),
       allGateBudgetsPassed: booleanField(summary, 'allGateBudgetsPassed', 'large workbook SLO allGateBudgetsPassed'),
-      headedBrowserFrameP95Evidence: literalField(summary, 'headedBrowserFrameP95Evidence', 'not-captured'),
+      headedBrowserFrameP95Evidence: literalField(summary, 'headedBrowserFrameP95Evidence', 'playwright-contracts'),
+      headedBrowserFrameP95ContractsPassed: booleanField(
+        summary,
+        'headedBrowserFrameP95ContractsPassed',
+        'large workbook headed browser frame contracts passed',
+      ),
       externalGoogleSheetsEvidence: literalField(summary, 'externalGoogleSheetsEvidence', 'not-captured'),
       externalMicrosoftExcelEvidence: literalField(summary, 'externalMicrosoftExcelEvidence', 'not-captured'),
     },
     measurements,
+    headedBrowserFrameP95Contracts: arrayField(
+      record,
+      'headedBrowserFrameP95Contracts',
+      'large workbook headed browser frame contracts',
+    ).map(parseHeadedBrowserFrameP95Contract),
   }
 }
 
@@ -285,9 +465,20 @@ function validateLargeWorkbookSloScorecard(scorecard: LargeWorkbookSloScorecard)
   if (JSON.stringify(scorecard.summary.coveredLargeWorkbookRows) !== JSON.stringify([100_000, 250_000])) {
     throw new Error('Large workbook SLO scorecard must cover 100k and 250k materialized-cell sessions')
   }
+  const actualHeadedBrowserIds = scorecard.headedBrowserFrameP95Contracts.map((contract) => contract.id)
+  const expectedHeadedBrowserIds = headedBrowserFrameP95ContractSpecs.map((spec) => spec.id)
+  if (JSON.stringify(actualHeadedBrowserIds) !== JSON.stringify(expectedHeadedBrowserIds)) {
+    throw new Error(
+      `Large workbook SLO scorecard headed browser coverage is stale. Expected ${expectedHeadedBrowserIds.join(', ')}, got ${actualHeadedBrowserIds.join(', ')}`,
+    )
+  }
   const failed = scorecard.measurements.find((measurement) => !measurement.passed || !measurement.gatePassed)
   if (failed) {
     throw new Error(`Large workbook SLO scorecard contains a failed measurement: ${failed.id}`)
+  }
+  const failedContract = scorecard.headedBrowserFrameP95Contracts.find((contract) => !contract.passed)
+  if (failedContract) {
+    throw new Error(`Large workbook SLO scorecard contains a failed headed browser contract: ${failedContract.id}`)
   }
 }
 
@@ -300,11 +491,43 @@ function logResult(mode: 'check' | 'write', scorecard: LargeWorkbookSloScorecard
         coveredLargeWorkbookRows: scorecard.summary.coveredLargeWorkbookRows,
         allSloBudgetsPassed: scorecard.summary.allSloBudgetsPassed,
         allGateBudgetsPassed: scorecard.summary.allGateBudgetsPassed,
+        headedBrowserFrameP95ContractsPassed: scorecard.summary.headedBrowserFrameP95ContractsPassed,
       },
       null,
       2,
     ),
   )
+}
+
+function parseHeadedBrowserFrameP95Contract(entry: unknown, index: number): HeadedBrowserFrameP95Contract {
+  const contract = toRecord(entry, `large workbook headed browser frame contract ${String(index)}`)
+  return {
+    id: stringField(contract, 'id', `large workbook headed browser frame contract ${String(index)} id`),
+    category: parseHeadedBrowserFrameP95Category(
+      stringField(contract, 'category', `large workbook headed browser frame contract ${String(index)} category`),
+    ),
+    label: stringField(contract, 'label', `large workbook headed browser frame contract ${String(index)} label`),
+    materializedCells: numberField(
+      contract,
+      'materializedCells',
+      `large workbook headed browser frame contract ${String(index)} materializedCells`,
+    ),
+    corpusCaseId: stringField(contract, 'corpusCaseId', `large workbook headed browser frame contract ${String(index)} corpusCaseId`),
+    metric: parseHeadedBrowserFrameP95Metric(
+      stringField(contract, 'metric', `large workbook headed browser frame contract ${String(index)} metric`),
+    ),
+    budgetP95: numberField(contract, 'budgetP95', `large workbook headed browser frame contract ${String(index)} budgetP95`),
+    minSampleCount: numberField(contract, 'minSampleCount', `large workbook headed browser frame contract ${String(index)} minSampleCount`),
+    playwrightTestFile: literalField(contract, 'playwrightTestFile', headedBrowserTestFile),
+    playwrightArtifactFile: stringField(
+      contract,
+      'playwrightArtifactFile',
+      `large workbook headed browser frame contract ${String(index)} playwrightArtifactFile`,
+    ),
+    command: literalField(contract, 'command', 'pnpm test:browser:full'),
+    passed: booleanField(contract, 'passed', `large workbook headed browser frame contract ${String(index)} passed`),
+    findings: stringArrayField(contract, 'findings', `large workbook headed browser frame contract ${String(index)} findings`),
+  }
 }
 
 function numericSummaryField(record: Record<string, unknown>, key: string, context: string): NumericSummary {
@@ -387,6 +610,20 @@ function parseCategory(value: string): LargeWorkbookSloMeasurement['category'] {
   throw new Error(`Unexpected large workbook SLO category: ${value}`)
 }
 
+function parseHeadedBrowserFrameP95Category(value: string): HeadedBrowserFrameP95Contract['category'] {
+  if (value === 'large-workbook-scale' || value === 'ui-responsiveness') {
+    return value
+  }
+  throw new Error(`Unexpected large workbook headed browser category: ${value}`)
+}
+
+function parseHeadedBrowserFrameP95Metric(value: string): HeadedBrowserFrameP95Contract['metric'] {
+  if (value === 'frameMs.p95' || value === 'mutationToVisibleMs.p95') {
+    return value
+  }
+  throw new Error(`Unexpected large workbook headed browser metric: ${value}`)
+}
+
 function expectNumber(value: unknown, context: string): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     throw new Error(`Expected ${context} to be a finite number`)
@@ -403,6 +640,15 @@ function toRecord(value: unknown, context: string): Record<string, unknown> {
     record[key] = Reflect.get(value, key)
   }
   return record
+}
+
+function stringArrayField(record: Record<string, unknown>, key: string, context: string): string[] {
+  return arrayField(record, key, context).map((value, index) => {
+    if (typeof value !== 'string') {
+      throw new Error(`Expected ${context}.${String(index)} to be a string`)
+    }
+    return value
+  })
 }
 
 function formatJsonForRepo(serializedJson: string): string {
