@@ -23,6 +23,7 @@ import { readImportedSheetComments } from './xlsx-comments.js'
 import { readImportedDefinedNames } from './xlsx-defined-names.js'
 import { readImportedWorkbookPivots } from './xlsx-pivots.js'
 import { readImportedWorkbookFileStyles } from './xlsx-styles.js'
+import { readImportedWorkbookTables } from './xlsx-tables.js'
 
 export { exportXlsx } from './xlsx-export.js'
 
@@ -474,6 +475,7 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
   const importedWorkbookStyles = readImportedWorkbookFileStyles(workbook, workbook.SheetNames)
   const importedCharts = readImportedWorkbookCharts(data, workbook.SheetNames)
   const importedPivots = readImportedWorkbookPivots(data, workbook.SheetNames)
+  const importedTables = readImportedWorkbookTables(data, workbook.SheetNames)
 
   let ignoredCommentsSeen = false
   const styleCatalog = new Map<string, CellStyleRecord>()
@@ -588,6 +590,7 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
   const workbookMetadata: WorkbookMetadataSnapshot = {
     ...(styleCatalog.size > 0 ? { styles: [...styleCatalog.values()] } : {}),
     ...(importedDefinedNames.definedNames ? { definedNames: importedDefinedNames.definedNames } : {}),
+    ...(importedTables ? { tables: importedTables } : {}),
     ...(importedPivots ? { pivots: importedPivots } : {}),
     ...(importedCharts ? { charts: importedCharts } : {}),
   }

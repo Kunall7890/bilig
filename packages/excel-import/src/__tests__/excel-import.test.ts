@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest'
 import { strFromU8, unzipSync } from 'fflate'
 import * as XLSX from 'xlsx'
 
-import type { WorkbookChartSnapshot, WorkbookPivotSnapshot, WorkbookPivotValueSnapshot, WorkbookSnapshot } from '@bilig/protocol'
+import type {
+  WorkbookChartSnapshot,
+  WorkbookPivotSnapshot,
+  WorkbookPivotValueSnapshot,
+  WorkbookSnapshot,
+  WorkbookTableSnapshot,
+} from '@bilig/protocol'
 import { exportXlsx, importCsv, importWorkbookFile, importXlsx, readImportedXlsxCellStyle } from '../index.js'
 import { CSV_CONTENT_TYPE } from '@bilig/agent-api'
 
@@ -365,6 +371,17 @@ describe('excel import', () => {
               borders: { bottom: { style: 'solid', weight: 'thin', color: '#000000' } },
             },
           ],
+          tables: [
+            {
+              name: 'InputTable',
+              sheetName: 'Inputs',
+              startAddress: 'A1',
+              endAddress: 'D4',
+              columnNames: ['Region', 'Product', 'Sales', 'Notes'],
+              headerRow: true,
+              totalsRow: false,
+            },
+          ],
           charts: [
             {
               id: 'summary-trend',
@@ -470,6 +487,7 @@ describe('excel import', () => {
         'xl/pivotTables/pivotTable1.xml',
         'xl/pivotCache/pivotCacheDefinition1.xml',
         'xl/pivotCache/pivotCacheRecords1.xml',
+        'xl/tables/table1.xml',
       ]),
     )
     expect(strFromU8(zip['xl/charts/chart1.xml'] ?? new Uint8Array())).toContain('<c:lineChart>')
@@ -480,6 +498,8 @@ describe('excel import', () => {
     expect(strFromU8(zip['xl/pivotCache/pivotCacheDefinition1.xml'] ?? new Uint8Array())).toContain(
       '<worksheetSource ref="A1:D4" sheet="Inputs"/>',
     )
+    expect(strFromU8(zip['xl/tables/table1.xml'] ?? new Uint8Array())).toContain('<table ')
+    expect(strFromU8(zip['xl/tables/table1.xml'] ?? new Uint8Array())).toContain('<tableColumn id="3" name="Sales"/>')
     expect(projectSupportedSnapshotSemantics(imported.snapshot)).toEqual(projectSupportedSnapshotSemantics(snapshot))
   })
 })
@@ -551,6 +571,18 @@ function projectPivotSemantics(pivot: WorkbookPivotSnapshot): WorkbookPivotSnaps
   }
 }
 
+function projectTableSemantics(table: WorkbookTableSnapshot): WorkbookTableSnapshot {
+  return {
+    name: table.name,
+    sheetName: table.sheetName,
+    startAddress: table.startAddress,
+    endAddress: table.endAddress,
+    columnNames: [...table.columnNames],
+    headerRow: table.headerRow,
+    totalsRow: table.totalsRow,
+  }
+}
+
 function projectSupportedSnapshotSemantics(snapshot: WorkbookSnapshot) {
   const stylesById = new Map((snapshot.workbook.metadata?.styles ?? []).map((style) => [style.id, style]))
   const portableStyle = (styleId: string) => {
@@ -568,6 +600,9 @@ function projectSupportedSnapshotSemantics(snapshot: WorkbookSnapshot) {
   return {
     definedNames: (snapshot.workbook.metadata?.definedNames ?? [])
       .map((definedName) => ({ name: definedName.name, value: definedName.value }))
+      .toSorted((left, right) => left.name.localeCompare(right.name)),
+    tables: (snapshot.workbook.metadata?.tables ?? [])
+      .map(projectTableSemantics)
       .toSorted((left, right) => left.name.localeCompare(right.name)),
     charts: (snapshot.workbook.metadata?.charts ?? [])
       .map(projectChartSemantics)

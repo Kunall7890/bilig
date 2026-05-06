@@ -12,6 +12,7 @@ import type {
   WorkbookPivotSnapshot,
   WorkbookPivotValueSnapshot,
   WorkbookSnapshot,
+  WorkbookTableSnapshot,
 } from '../packages/protocol/src/types.js'
 
 export interface ImportExportFidelityCase {
@@ -55,6 +56,7 @@ const requiredCaseIds = [
   'xlsx-import-preview',
   'xlsx-snapshot-roundtrip-values-formulas-formats',
   'xlsx-snapshot-roundtrip-dimensions-merges',
+  'xlsx-snapshot-roundtrip-tables',
   'xlsx-snapshot-roundtrip-charts',
   'xlsx-snapshot-roundtrip-pivots',
   'xlsx-unsupported-features-warning',
@@ -76,6 +78,7 @@ const coveredFeatureOrder = [
   'xlsx.styles',
   'xlsx.rowColumnDimensions',
   'xlsx.merges',
+  'xlsx.tables.roundtrip',
   'xlsx.charts.roundtrip',
   'xlsx.pivots.roundtrip',
   'xlsx.multiSheet',
@@ -108,6 +111,7 @@ export async function buildImportExportFidelityScorecard(generatedAt = new Date(
     runXlsxImportPreviewCase(),
     runXlsxSnapshotRoundTripValuesCase(),
     runXlsxSnapshotRoundTripDimensionsCase(),
+    runXlsxSnapshotRoundTripTablesCase(),
     runXlsxSnapshotRoundTripChartsCase(),
     runXlsxSnapshotRoundTripPivotsCase(),
     runXlsxUnsupportedFeaturesWarningCase(),
@@ -246,6 +250,20 @@ function runXlsxSnapshotRoundTripDimensionsCase(): ImportExportFidelityCase {
   })
 }
 
+function runXlsxSnapshotRoundTripTablesCase(): ImportExportFidelityCase {
+  const expected = projectSupportedSnapshotSemantics(createFidelitySnapshot())
+  const actual = projectSupportedSnapshotSemantics(importXlsx(exportXlsx(createFidelitySnapshot()), 'fidelity.xlsx').snapshot)
+  const passed = JSON.stringify(actual.tables) === JSON.stringify(expected.tables)
+  return fidelityCase({
+    id: 'xlsx-snapshot-roundtrip-tables',
+    format: 'xlsx',
+    direction: 'export-import',
+    passed,
+    coveredFeatures: ['xlsx.tables.roundtrip'],
+    evidence: 'WorkbookSnapshot exported to XLSX imports back with equivalent Bilig table metadata backed by real XLSX table parts.',
+  })
+}
+
 function runXlsxSnapshotRoundTripChartsCase(): ImportExportFidelityCase {
   const expected = projectSupportedSnapshotSemantics(createFidelitySnapshot())
   const actual = projectSupportedSnapshotSemantics(importXlsx(exportXlsx(createFidelitySnapshot()), 'fidelity.xlsx').snapshot)
@@ -329,6 +347,17 @@ function createFidelitySnapshot(): WorkbookSnapshot {
             font: { family: 'Aptos', size: 12, bold: true, color: '#ffffff' },
             alignment: { horizontal: 'center', vertical: 'middle', wrap: true },
             borders: { bottom: { style: 'solid', weight: 'thin', color: '#000000' } },
+          },
+        ],
+        tables: [
+          {
+            name: 'InputTable',
+            sheetName: 'Inputs',
+            startAddress: 'A1',
+            endAddress: 'D4',
+            columnNames: ['Region', 'Product', 'Sales', 'Notes'],
+            headerRow: true,
+            totalsRow: false,
           },
         ],
         charts: [
@@ -493,6 +522,18 @@ function projectPivotSemantics(pivot: WorkbookPivotSnapshot): WorkbookPivotSnaps
   }
 }
 
+function projectTableSemantics(table: WorkbookTableSnapshot): WorkbookTableSnapshot {
+  return {
+    name: table.name,
+    sheetName: table.sheetName,
+    startAddress: table.startAddress,
+    endAddress: table.endAddress,
+    columnNames: [...table.columnNames],
+    headerRow: table.headerRow,
+    totalsRow: table.totalsRow,
+  }
+}
+
 function projectSupportedSnapshotSemantics(snapshot: WorkbookSnapshot) {
   const stylesById = new Map((snapshot.workbook.metadata?.styles ?? []).map((style) => [style.id, style]))
   const portableStyle = (styleId: string) => {
@@ -533,6 +574,9 @@ function projectSupportedSnapshotSemantics(snapshot: WorkbookSnapshot) {
           `${right.range.sheetName}:${right.range.startAddress}:${right.range.endAddress}`,
         ),
       ),
+    tables: (snapshot.workbook.metadata?.tables ?? [])
+      .map(projectTableSemantics)
+      .toSorted((left, right) => left.name.localeCompare(right.name)),
     charts: (snapshot.workbook.metadata?.charts ?? [])
       .map(projectChartSemantics)
       .toSorted((left, right) => left.id.localeCompare(right.id)),
