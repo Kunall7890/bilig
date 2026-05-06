@@ -201,9 +201,14 @@ export function hasUiResponsivenessSameCorpusTenXGap(scorecard: UiResponsiveness
   ) {
     return true
   }
-  const limitations = [...scorecard.summary.limitations, ...scorecard.cases.flatMap((entry) => entry.limitations)].map((entry) =>
-    entry.toLowerCase(),
-  )
+  const limitations = [
+    ...scorecard.sameCorpusProof.limitations,
+    ...scorecard.sameCorpusProof.cases.flatMap((entry) => [
+      ...entry.bilig.limitations,
+      ...entry.googleSheets.limitations,
+      ...entry.microsoftExcelWeb.limitations,
+    ]),
+  ].map((entry) => entry.toLowerCase())
   return limitations.some(
     (entry) =>
       entry.includes('not a same-corpus 10x proof') ||

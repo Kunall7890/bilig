@@ -2,6 +2,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
+import { hasUiResponsivenessSameCorpusTenXGap } from '../bilig-dominance-completion-audit.ts'
 import {
   buildSameCorpusProof,
   parseUiResponsivenessLiveBrowserScorecard,
@@ -73,6 +74,19 @@ describe('UI responsiveness live browser scorecard', () => {
       biligToMicrosoftExcelWebP95Ratio: 0.06666666666666667,
       passed: true,
     })
+  })
+
+  it('allows same-corpus proof to clear the public-browser limitation blocker', () => {
+    const scorecard = parseUiResponsivenessLiveBrowserScorecard(
+      readJsonObject(resolve(repoRoot, 'packages/benchmarks/baselines/ui-responsiveness-live-browser-scorecard.json')),
+    )
+
+    expect(
+      hasUiResponsivenessSameCorpusTenXGap({
+        ...scorecard,
+        sameCorpusProof: buildSameCorpusProof(buildSameCorpusCapture()),
+      }),
+    ).toBe(false)
   })
 
   it('rejects stale same-corpus pass flags and ratios', () => {

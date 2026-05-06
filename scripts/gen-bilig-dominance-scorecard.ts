@@ -542,6 +542,7 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
           'apps/web/src/perf/workbook-scroll-perf.ts',
         ],
         checkCommands: [
+          'pnpm ui:same-corpus:capture -- --output <capture.json> --google-sheets-url <url> --microsoft-excel-web-url <url>',
           'pnpm large-workbook:slo:check',
           'pnpm ui:browser-live:check',
           'CI=1 pnpm bench:contracts',
