@@ -188,13 +188,15 @@ describe('same-corpus UI responsiveness capture CLI', () => {
       'google-sheets',
       '--google-sheets-url',
       'https://docs.google.com/spreadsheets/d/sheet-id/edit',
+      '--corpus',
+      'wide-mixed-variable-250k',
       '--ready-timeout-ms',
       '180000',
     ])
 
     expect(args).toMatchObject({
       authUrl: 'https://docs.google.com/spreadsheets/d/sheet-id/edit',
-      corpusId: 'wide-mixed-250k',
+      corpusId: 'wide-mixed-variable-250k',
       headless: false,
       product: 'google-sheets',
       readyTimeoutMs: 180000,

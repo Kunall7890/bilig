@@ -234,12 +234,14 @@ function authUrlFromProductArgs(argv: readonly string[], product: UiResponsivene
 }
 
 async function saveStorageState(args: SaveStorageStateArgs): Promise<void> {
+  const corpus = buildWorkbookBenchmarkCorpus(args.corpusId)
   const browser = await chromium.launch({ headless: args.headless })
   const context = await browser.newContext({ viewport: defaultViewport })
   const page = await context.newPage()
   try {
     await page.goto(args.authUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 })
     await waitForProductReady(page, args.product, captureArgsForStorageState(args))
+    const corpusVerification = await verifyProductCorpus(page, args.product, args.authUrl, corpus)
     mkdirSync(dirname(args.targetPath), { recursive: true })
     await context.storageState({ path: args.targetPath })
     console.log(
@@ -247,9 +249,11 @@ async function saveStorageState(args: SaveStorageStateArgs): Promise<void> {
         {
           mode: 'save-storage-state',
           product: args.product,
+          corpusCaseId: corpus.id,
           targetPath: args.targetPath,
           finalUrl: page.url(),
           title: await page.title(),
+          corpusVerification,
         },
         null,
         2,
@@ -311,7 +315,7 @@ export function emitSameCorpusXlsx(args: EmitXlsxArgs): void {
         publicForgejoRawUrl: `https://code.proompteng.ai/kalmyk/bilig/raw/branch/main/packages/benchmarks/baselines/ui-same-corpus/${corpus.id}.xlsx`,
         microsoftExcelWebUrl: `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(publicGithubRawUrl)}`,
         googleSheetsAuthStateCommand:
-          'pnpm ui:same-corpus:capture -- --save-storage-state <state.json> --auth-product google-sheets --google-sheets-url <url>',
+          'pnpm ui:same-corpus:capture -- --save-storage-state <state.json> --auth-product google-sheets --google-sheets-url <url> [--corpus wide-mixed-250k]',
         preflightCommand:
           'pnpm ui:same-corpus:capture -- --preflight --google-sheets-url <url> --microsoft-excel-web-url <url> [--google-sheets-storage-state <state.json>]',
         captureCommand:
