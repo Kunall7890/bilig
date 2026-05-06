@@ -16,6 +16,22 @@ interface MockZeroChangeHarness {
   emit(value: unknown): void
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return (typeof value === 'object' || typeof value === 'function') && value !== null
+}
+
+function getMutationName(mutation: unknown): string | null {
+  if (!isRecord(mutation)) {
+    return null
+  }
+  const mutator = mutation['mutator']
+  if (!isRecord(mutator)) {
+    return null
+  }
+  const mutatorName = mutator['mutatorName']
+  return typeof mutatorName === 'string' ? mutatorName : null
+}
+
 function createMockZeroChangeHarness(initialValue: unknown): MockZeroChangeHarness {
   let currentValue = initialValue
   const listeners = new Set<(value: unknown) => void>()
@@ -222,7 +238,7 @@ describe('workbook changes', () => {
     })
   })
 
-  it('does not render per-row revert controls in the revision feed', async () => {
+  it('renders per-row revert controls for revertible authoritative changes', async () => {
     const changes = createMockZeroChangeHarness([
       {
         revision: 21,
@@ -246,6 +262,7 @@ describe('workbook changes', () => {
     const host = document.createElement('div')
     document.body.appendChild(host)
     const root = createRoot(host)
+    const onJump = vi.fn()
 
     await act(async () => {
       root.render(
@@ -253,16 +270,32 @@ describe('workbook changes', () => {
           currentUserId="alex@example.com"
           documentId="doc-1"
           enabled
-          onJump={() => {}}
+          onJump={onJump}
           sheetNames={['Sheet1']}
           zero={changes.zero}
         />,
       )
     })
 
-    expect(host.querySelector("[data-testid='workbook-change-revert']")).toBeNull()
-    expect(host.textContent).not.toContain('Revert')
+    const revertButton = host.querySelector<HTMLButtonElement>("[data-testid='workbook-change-revert']")
+    expect(revertButton).not.toBeNull()
+    expect(revertButton?.getAttribute('aria-label')).toBe('Revert Updated Sheet1!A1')
     expect(changes.mutations).toHaveLength(0)
+
+    await act(async () => {
+      revertButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    expect(onJump).not.toHaveBeenCalled()
+    expect(changes.mutations).toHaveLength(1)
+    expect(changes.mutations[0]).toMatchObject({
+      '~': 'MutateRequest',
+      args: {
+        documentId: 'doc-1',
+        revision: 21,
+      },
+    })
+    expect(getMutationName(changes.mutations[0])).toBe('workbook.revertChange')
 
     await act(async () => {
       root.unmount()

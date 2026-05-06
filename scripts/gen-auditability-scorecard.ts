@@ -18,7 +18,7 @@ import { deriveWorkbookActorHistoryState } from '../packages/zero-sync/src/workb
 
 export interface AuditabilityControl {
   readonly id: string
-  readonly category: 'preview-apply' | 'undo-revert' | 'authoritative-apply' | 'history-state'
+  readonly category: 'preview-apply' | 'undo-revert' | 'authoritative-apply' | 'history-state' | 'headed-browser'
   readonly required: boolean
   readonly passed: boolean
   readonly coveredControls: string[]
@@ -36,6 +36,7 @@ export interface AuditabilityScorecard {
     readonly applyImplementation: 'apps/bilig/src/zero/workbook-agent-apply.ts'
     readonly authoritativeApplyImplementation: 'apps/bilig/src/zero/service.ts'
     readonly historyImplementation: 'packages/zero-sync/src/workbook-history-state.ts'
+    readonly headedBrowserAuditabilityTestFile: 'e2e/tests/web-shell-remote-sync.pw.ts'
   }
   readonly summary: {
     readonly allRequiredControlsPassed: boolean
@@ -43,6 +44,7 @@ export interface AuditabilityScorecard {
     readonly applyUndoRoundTripPassed: boolean
     readonly authoritativeApplyGuardPassed: boolean
     readonly historyRevertRedoPassed: boolean
+    readonly headedBrowserRevertFlowPassed: boolean
     readonly coveredControls: string[]
     readonly uncoveredControls: string[]
     readonly externalGoogleSheetsEvidence: 'not-captured'
@@ -67,6 +69,7 @@ const requiredControlIds = [
   'agent-apply-undo-roundtrip',
   'authoritative-agent-apply-fails-closed',
   'workbook-history-revert-redo-state',
+  'headed-browser-change-review-revert-flow',
 ] as const
 const coveredControlOrder = [
   'agent.previewDiffParity',
@@ -76,8 +79,10 @@ const coveredControlOrder = [
   'agent.undoBundleRestoresSnapshot',
   'history.revertRedoStack',
   'history.revertLinkage',
+  'headedBrowser.previewApplyRevertFlow',
 ] as const
-const uncoveredControls = ['headedBrowser.previewApplyRevertFlow', 'externalSheetsExcelAuditabilityComparison'] as const
+const uncoveredControls = ['externalSheetsExcelAuditabilityComparison'] as const
+const headedBrowserAuditabilityTestFile = 'e2e/tests/web-shell-remote-sync.pw.ts'
 
 async function main(): Promise<void> {
   const isCheckMode = process.argv.includes('--check')
@@ -104,6 +109,7 @@ export async function buildAuditabilityScorecard(generatedAt = new Date().toISOS
     buildAgentApplyUndoRoundTripControl(agentScenario),
     buildAuthoritativeAgentApplyGuardControl(),
     buildWorkbookHistoryRevertRedoControl(),
+    buildHeadedBrowserChangeReviewRevertFlowControl(),
   ]
   const coveredControlSet = new Set(controls.flatMap((control) => control.coveredControls))
   const coveredControls = coveredControlOrder.filter((control) => coveredControlSet.has(control))
@@ -118,6 +124,7 @@ export async function buildAuditabilityScorecard(generatedAt = new Date().toISOS
       applyImplementation: 'apps/bilig/src/zero/workbook-agent-apply.ts',
       authoritativeApplyImplementation: 'apps/bilig/src/zero/service.ts',
       historyImplementation: 'packages/zero-sync/src/workbook-history-state.ts',
+      headedBrowserAuditabilityTestFile,
     },
     summary: {
       allRequiredControlsPassed: controls.filter((control) => control.required).every((control) => control.passed),
@@ -125,6 +132,7 @@ export async function buildAuditabilityScorecard(generatedAt = new Date().toISOS
       applyUndoRoundTripPassed: requiredControl(controls, 'agent-apply-undo-roundtrip').passed,
       authoritativeApplyGuardPassed: requiredControl(controls, 'authoritative-agent-apply-fails-closed').passed,
       historyRevertRedoPassed: requiredControl(controls, 'workbook-history-revert-redo-state').passed,
+      headedBrowserRevertFlowPassed: requiredControl(controls, 'headed-browser-change-review-revert-flow').passed,
       coveredControls,
       uncoveredControls: [...uncoveredControls],
       externalGoogleSheetsEvidence: 'not-captured',
@@ -244,6 +252,73 @@ function buildWorkbookHistoryRevertRedoControl(): AuditabilityControl {
       ...(redoStackPassed ? [] : [`unexpected redo state: ${JSON.stringify(redoneState)}`]),
     ],
   })
+}
+
+function buildHeadedBrowserChangeReviewRevertFlowControl(): AuditabilityControl {
+  const source = readFileSync(join(rootDir, headedBrowserAuditabilityTestFile), 'utf8')
+  const testTitle = 'web app reverts an authoritative change from the changes pane'
+  const testBlock = extractBrowserTestBlock(source, 'remoteSyncTest', testTitle)
+  const findings: string[] = []
+  if (!testBlock) {
+    findings.push(`missing remote-sync Playwright test: ${testTitle}`)
+  } else {
+    requireSnippet(testBlock, "createTestDocumentId('playwright-zero-change-revert')", 'uses an isolated remote-sync document', findings)
+    requireSnippet(testBlock, 'await openZeroWorkbookPage(page, documentId)', 'opens the headed workbook shell through Zero sync', findings)
+    requireSnippet(testBlock, "await formulaInput.fill('seed')", 'applies a visible workbook change', findings)
+    requireSnippet(testBlock, "await expect(changesTab).toContainText('1')", 'shows the applied change count', findings)
+    requireSnippet(testBlock, 'await changesTab.click()', 'opens the changes pane', findings)
+    requireSnippet(testBlock, 'await expect(changesPanel).toBeVisible()', 'confirms the changes pane is active', findings)
+    requireSnippet(
+      testBlock,
+      "await expect(changeRows.first()).toContainText('Updated Sheet1!A1')",
+      'previews the applied change row',
+      findings,
+    )
+    requireSnippet(testBlock, "await page.getByTestId('workbook-change-revert').click()", 'executes the headed revert action', findings)
+    requireSnippet(testBlock, "await expect(formulaInput).toHaveValue('')", 'verifies the reverted workbook value', findings)
+    requireSnippet(testBlock, "await expect(changesTab).toContainText('2')", 'records the revert as a second auditable change', findings)
+    requireSnippet(
+      testBlock,
+      "await expect(changeRows.first()).toContainText('Reverted r1: Updated Sheet1!A1')",
+      'shows the revert row linkage',
+      findings,
+    )
+    requireSnippet(
+      testBlock,
+      "await expect(changeRows.nth(1)).toContainText('reverted by r2')",
+      'marks the original row as reverted',
+      findings,
+    )
+  }
+
+  return auditabilityControl({
+    id: 'headed-browser-change-review-revert-flow',
+    category: 'headed-browser',
+    passed: findings.length === 0,
+    coveredControls: ['headedBrowser.previewApplyRevertFlow'],
+    evidence:
+      'Validated the headed Playwright change-review contract that applies a workbook edit, previews it in the changes pane, reverts it, and verifies both workbook state and revision linkage.',
+    findings,
+  })
+}
+
+function extractBrowserTestBlock(source: string, testFunctionName: 'test' | 'remoteSyncTest', testTitle: string): string | null {
+  const marker = `${testFunctionName}('${testTitle}'`
+  const start = source.indexOf(marker)
+  if (start < 0) {
+    return null
+  }
+  const endCandidates = ['\nremoteSyncTest(', '\ntest(']
+    .map((nextMarker) => source.indexOf(nextMarker, start + marker.length))
+    .filter((index) => index >= 0)
+  const end = endCandidates.length > 0 ? Math.min(...endCandidates) : source.length
+  return source.slice(start, end)
+}
+
+function requireSnippet(source: string, snippet: string, label: string, findings: string[]): void {
+  if (!source.includes(snippet)) {
+    findings.push(`missing ${label}`)
+  }
 }
 
 async function runAgentAuditabilityScenario(): Promise<AgentAuditabilityScenario> {
@@ -447,6 +522,7 @@ export function parseAuditabilityScorecard(value: unknown): AuditabilityScorecar
       applyImplementation: literalField(source, 'applyImplementation', 'apps/bilig/src/zero/workbook-agent-apply.ts'),
       authoritativeApplyImplementation: literalField(source, 'authoritativeApplyImplementation', 'apps/bilig/src/zero/service.ts'),
       historyImplementation: literalField(source, 'historyImplementation', 'packages/zero-sync/src/workbook-history-state.ts'),
+      headedBrowserAuditabilityTestFile: literalField(source, 'headedBrowserAuditabilityTestFile', headedBrowserAuditabilityTestFile),
     },
     summary: {
       allRequiredControlsPassed: booleanField(summary, 'allRequiredControlsPassed', 'auditability allRequiredControlsPassed'),
@@ -454,6 +530,7 @@ export function parseAuditabilityScorecard(value: unknown): AuditabilityScorecar
       applyUndoRoundTripPassed: booleanField(summary, 'applyUndoRoundTripPassed', 'auditability applyUndoRoundTripPassed'),
       authoritativeApplyGuardPassed: booleanField(summary, 'authoritativeApplyGuardPassed', 'auditability authoritativeApplyGuardPassed'),
       historyRevertRedoPassed: booleanField(summary, 'historyRevertRedoPassed', 'auditability historyRevertRedoPassed'),
+      headedBrowserRevertFlowPassed: booleanField(summary, 'headedBrowserRevertFlowPassed', 'auditability headedBrowserRevertFlowPassed'),
       coveredControls: stringArrayField(summary, 'coveredControls', 'auditability coveredControls'),
       uncoveredControls: stringArrayField(summary, 'uncoveredControls', 'auditability uncoveredControls'),
       externalGoogleSheetsEvidence: literalField(summary, 'externalGoogleSheetsEvidence', 'not-captured'),
@@ -502,7 +579,13 @@ export function validateAuditabilityScorecard(scorecard: AuditabilityScorecard):
 }
 
 function parseAuditabilityCategory(value: string): AuditabilityControl['category'] {
-  if (value === 'preview-apply' || value === 'undo-revert' || value === 'authoritative-apply' || value === 'history-state') {
+  if (
+    value === 'preview-apply' ||
+    value === 'undo-revert' ||
+    value === 'authoritative-apply' ||
+    value === 'history-state' ||
+    value === 'headed-browser'
+  ) {
     return value
   }
   throw new Error(`Unexpected auditability category: ${value}`)

@@ -181,8 +181,8 @@ remoteSyncTest('web app reverts an authoritative change from the changes pane', 
   await openZeroWorkbookPage(page, documentId)
 
   const formulaInput = page.getByTestId('formula-input')
-  const changesToggle = page.getByTestId('workbook-side-panel-toggle-changes')
   const changesTab = page.getByTestId('workbook-side-panel-tab-changes')
+  const changesPanel = page.getByTestId('workbook-side-panel-panel-changes')
 
   await clickProductCell(page, 0, 0)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!A1')
@@ -190,9 +190,9 @@ remoteSyncTest('web app reverts an authoritative change from the changes pane', 
   await formulaInput.press('Enter')
   await expect(formulaInput).toHaveValue('seed')
 
-  await expect(changesToggle).toContainText('1')
-  await changesToggle.click()
-  await expect(changesTab).toBeVisible()
+  await expect(changesTab).toContainText('1')
+  await changesTab.click()
+  await expect(changesPanel).toBeVisible()
 
   const changeRows = page.getByTestId('workbook-change-row')
   await expect(changeRows).toHaveCount(1)
@@ -201,10 +201,10 @@ remoteSyncTest('web app reverts an authoritative change from the changes pane', 
   await page.getByTestId('workbook-change-revert').click()
 
   await expect(formulaInput).toHaveValue('')
-  await expect(changesToggle).toContainText('2')
+  await expect(changesTab).toContainText('2')
   await expect(changeRows).toHaveCount(2)
   await expect(changeRows.first()).toContainText('Reverted r1: Updated Sheet1!A1')
-  await expect(changeRows.nth(1)).toContainText('Reverted in r2')
+  await expect(changeRows.nth(1)).toContainText('reverted by r2')
 })
 
 remoteSyncTest('web app restores persisted workbook state after a full reload', async ({ page }) => {

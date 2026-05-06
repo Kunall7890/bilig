@@ -37,10 +37,9 @@ export function useWorkbookChangesPane(input: {
   })
   const [isUndoPending, setIsUndoPending] = useState(false)
   const [isRedoPending, setIsRedoPending] = useState(false)
+  const [pendingRevertRevision, setPendingRevertRevision] = useState<number | null>(null)
   const changeCount = changes.entries.length
   const historyState = useMemo(() => selectWorkbookHistoryState({ rows: changes.rows, currentUserId }), [changes.rows, currentUserId])
-
-  const changesPanel = useMemo(() => <WorkbookChangesPanel changes={changes.entries} onJump={onJump} />, [changes.entries, onJump])
 
   const undoLatestChange = useCallback(() => {
     if (!enabled || isUndoPending || historyState.undoRevision === null) {
@@ -83,6 +82,44 @@ export function useWorkbookChangesPane(input: {
       }
     })()
   }, [documentId, enabled, historyState.redoRevision, isRedoPending, zero])
+
+  const revertChangeRevision = useCallback(
+    (revision: number) => {
+      const targetChange = changes.entries.find((change) => change.revision === revision)
+      if (!enabled || pendingRevertRevision !== null || !targetChange?.canRevert) {
+        return
+      }
+      setPendingRevertRevision(revision)
+      const observer = observeZeroMutationResult(
+        zero.mutate(
+          mutators.workbook.revertChange({
+            documentId,
+            revision,
+          }),
+        ),
+      )
+      void (async () => {
+        try {
+          await (observer ?? Promise.resolve())
+        } finally {
+          setPendingRevertRevision(null)
+        }
+      })()
+    },
+    [changes.entries, documentId, enabled, pendingRevertRevision, zero],
+  )
+
+  const changesPanel = useMemo(
+    () => (
+      <WorkbookChangesPanel
+        changes={changes.entries}
+        pendingRevertRevision={pendingRevertRevision}
+        onJump={onJump}
+        onRevert={revertChangeRevision}
+      />
+    ),
+    [changes.entries, onJump, pendingRevertRevision, revertChangeRevision],
+  )
 
   return {
     canRedo: historyState.canRedo && !isRedoPending,

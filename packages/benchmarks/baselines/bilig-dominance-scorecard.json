@@ -52,10 +52,11 @@
       "agent.applyCapturesUndoBundle",
       "agent.undoBundleRestoresSnapshot",
       "history.revertRedoStack",
-      "history.revertLinkage"
+      "history.revertLinkage",
+      "headedBrowser.previewApplyRevertFlow"
     ],
     "auditabilityPosturePassed": true,
-    "auditabilityUncoveredControls": ["headedBrowser.previewApplyRevertFlow", "externalSheetsExcelAuditabilityComparison"],
+    "auditabilityUncoveredControls": ["externalSheetsExcelAuditabilityComparison"],
     "automationCoveredControls": [
       "agent.semanticBundleValidation",
       "agent.previewApplyExecution",
@@ -369,13 +370,14 @@
       "status": "partial-repo-evidence",
       "currentEvidence": [
         "generated auditability scorecard passes required controls: true",
-        "covered auditability controls: agent.previewDiffParity, agent.authoritativePreviewMismatchFailsClosed, agent.baseRevisionStaleApplyFailsClosed, agent.applyCapturesUndoBundle, agent.undoBundleRestoresSnapshot, history.revertRedoStack, history.revertLinkage",
-        "uncovered auditability controls are explicitly disclosed: headedBrowser.previewApplyRevertFlow, externalSheetsExcelAuditabilityComparison",
+        "covered auditability controls: agent.previewDiffParity, agent.authoritativePreviewMismatchFailsClosed, agent.baseRevisionStaleApplyFailsClosed, agent.applyCapturesUndoBundle, agent.undoBundleRestoresSnapshot, history.revertRedoStack, history.revertLinkage, headedBrowser.previewApplyRevertFlow",
+        "uncovered auditability controls are explicitly disclosed: externalSheetsExcelAuditabilityComparison",
         "change bundles, versions, revertable changes, and agent preview/apply rails are documented",
         "workbook changes and mutation journal tests exist"
       ],
       "evidenceArtifacts": [
         "packages/benchmarks/baselines/auditability-scorecard.json",
+        "e2e/tests/web-shell-remote-sync.pw.ts",
         "docs/05-06-next-phase.md",
         "apps/web/src/__tests__/workbook-changes.test.tsx",
         "apps/web/src/__tests__/worker-runtime-mutation-journal.test.ts"
@@ -383,13 +385,11 @@
       "checkCommands": [
         "pnpm auditability:check",
         "pnpm exec vitest run packages/agent-api/src/__tests__/workbook-agent-preview.test.ts apps/bilig/src/zero/__tests__/workbook-agent-apply.test.ts packages/zero-sync/src/__tests__/workbook-history-state.test.ts",
+        "pnpm test:browser e2e/tests/web-shell-remote-sync.pw.ts -g \"reverts an authoritative change\"",
         "pnpm test:correctness:browser",
         "pnpm test:correctness:server"
       ],
-      "blockers": [
-        "generated auditability evidence covers preview/apply parity, undo bundle capture, authoritative stale/mismatch guards, and history revert/redo state, but not headed browser preview/apply/revert flow",
-        "no direct incumbent auditability comparison artifact exists in the repo"
-      ]
+      "blockers": ["no direct incumbent auditability comparison artifact exists in the repo"]
     },
     {
       "id": "reliability",

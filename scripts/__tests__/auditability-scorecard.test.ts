@@ -16,6 +16,7 @@ describe('auditability scorecard', () => {
         applyUndoRoundTripPassed: true,
         authoritativeApplyGuardPassed: true,
         historyRevertRedoPassed: true,
+        headedBrowserRevertFlowPassed: true,
         externalGoogleSheetsEvidence: 'not-captured',
         externalMicrosoftExcelEvidence: 'not-captured',
       },
@@ -25,6 +26,7 @@ describe('auditability scorecard', () => {
       'agent-apply-undo-roundtrip',
       'authoritative-agent-apply-fails-closed',
       'workbook-history-revert-redo-state',
+      'headed-browser-change-review-revert-flow',
     ])
     expect(scorecard.controls.every((control) => control.required && control.passed)).toBe(true)
     expect(scorecard.summary.coveredControls).toEqual([
@@ -35,11 +37,9 @@ describe('auditability scorecard', () => {
       'agent.undoBundleRestoresSnapshot',
       'history.revertRedoStack',
       'history.revertLinkage',
-    ])
-    expect(scorecard.summary.uncoveredControls).toEqual([
       'headedBrowser.previewApplyRevertFlow',
-      'externalSheetsExcelAuditabilityComparison',
     ])
+    expect(scorecard.summary.uncoveredControls).toEqual(['externalSheetsExcelAuditabilityComparison'])
   })
 
   it('rejects stale artifacts missing required auditability controls', async () => {

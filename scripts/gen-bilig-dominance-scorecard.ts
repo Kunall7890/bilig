@@ -609,6 +609,7 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
         ],
         evidenceArtifacts: [
           input.auditabilityScorecardPath,
+          'e2e/tests/web-shell-remote-sync.pw.ts',
           'docs/05-06-next-phase.md',
           'apps/web/src/__tests__/workbook-changes.test.tsx',
           'apps/web/src/__tests__/worker-runtime-mutation-journal.test.ts',
@@ -616,13 +617,11 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
         checkCommands: [
           'pnpm auditability:check',
           'pnpm exec vitest run packages/agent-api/src/__tests__/workbook-agent-preview.test.ts apps/bilig/src/zero/__tests__/workbook-agent-apply.test.ts packages/zero-sync/src/__tests__/workbook-history-state.test.ts',
+          'pnpm test:browser e2e/tests/web-shell-remote-sync.pw.ts -g "reverts an authoritative change"',
           'pnpm test:correctness:browser',
           'pnpm test:correctness:server',
         ],
-        blockers: [
-          'generated auditability evidence covers preview/apply parity, undo bundle capture, authoritative stale/mismatch guards, and history revert/redo state, but not headed browser preview/apply/revert flow',
-          'no direct incumbent auditability comparison artifact exists in the repo',
-        ],
+        blockers: ['no direct incumbent auditability comparison artifact exists in the repo'],
       },
       {
         id: 'reliability',

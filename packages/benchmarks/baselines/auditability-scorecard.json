@@ -1,13 +1,14 @@
 {
   "schemaVersion": 1,
   "suite": "auditability-posture",
-  "generatedAt": "2026-05-06T08:28:01.364Z",
+  "generatedAt": "2026-05-06T09:38:15.874Z",
   "source": {
     "artifactGenerator": "scripts/gen-auditability-scorecard.ts",
     "previewImplementation": "packages/agent-api/src/workbook-agent-preview.ts",
     "applyImplementation": "apps/bilig/src/zero/workbook-agent-apply.ts",
     "authoritativeApplyImplementation": "apps/bilig/src/zero/service.ts",
-    "historyImplementation": "packages/zero-sync/src/workbook-history-state.ts"
+    "historyImplementation": "packages/zero-sync/src/workbook-history-state.ts",
+    "headedBrowserAuditabilityTestFile": "e2e/tests/web-shell-remote-sync.pw.ts"
   },
   "summary": {
     "allRequiredControlsPassed": true,
@@ -15,6 +16,7 @@
     "applyUndoRoundTripPassed": true,
     "authoritativeApplyGuardPassed": true,
     "historyRevertRedoPassed": true,
+    "headedBrowserRevertFlowPassed": true,
     "coveredControls": [
       "agent.previewDiffParity",
       "agent.authoritativePreviewMismatchFailsClosed",
@@ -22,9 +24,10 @@
       "agent.applyCapturesUndoBundle",
       "agent.undoBundleRestoresSnapshot",
       "history.revertRedoStack",
-      "history.revertLinkage"
+      "history.revertLinkage",
+      "headedBrowser.previewApplyRevertFlow"
     ],
-    "uncoveredControls": ["headedBrowser.previewApplyRevertFlow", "externalSheetsExcelAuditabilityComparison"],
+    "uncoveredControls": ["externalSheetsExcelAuditabilityComparison"],
     "externalGoogleSheetsEvidence": "not-captured",
     "externalMicrosoftExcelEvidence": "not-captured"
   },
@@ -67,6 +70,15 @@
       "passed": true,
       "coveredControls": ["history.revertRedoStack", "history.revertLinkage"],
       "evidence": "Executed actor history derivation across own changes, collaborator changes, revert linkage, and redo linkage to prove the UI can expose undo/redo targets deterministically.",
+      "findings": []
+    },
+    {
+      "id": "headed-browser-change-review-revert-flow",
+      "category": "headed-browser",
+      "required": true,
+      "passed": true,
+      "coveredControls": ["headedBrowser.previewApplyRevertFlow"],
+      "evidence": "Validated the headed Playwright change-review contract that applies a workbook edit, previews it in the changes pane, reverts it, and verifies both workbook state and revision linkage.",
       "findings": []
     }
   ]

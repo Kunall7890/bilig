@@ -66,7 +66,11 @@ describe('bilig dominance scorecard', () => {
     })
     expect(scorecard.categories.find((category) => category.id === 'auditability')).toMatchObject({
       status: 'partial-repo-evidence',
-      evidenceArtifacts: expect.arrayContaining(['packages/benchmarks/baselines/auditability-scorecard.json']),
+      evidenceArtifacts: expect.arrayContaining([
+        'packages/benchmarks/baselines/auditability-scorecard.json',
+        'e2e/tests/web-shell-remote-sync.pw.ts',
+      ]),
+      blockers: ['no direct incumbent auditability comparison artifact exists in the repo'],
     })
     expect(scorecard.categories.find((category) => category.id === 'automation-api-extensibility')).toMatchObject({
       status: 'partial-repo-evidence',
@@ -236,6 +240,7 @@ function buildFixtureInput(): BuildScorecardInput {
         applyImplementation: 'apps/bilig/src/zero/workbook-agent-apply.ts',
         authoritativeApplyImplementation: 'apps/bilig/src/zero/service.ts',
         historyImplementation: 'packages/zero-sync/src/workbook-history-state.ts',
+        headedBrowserAuditabilityTestFile: 'e2e/tests/web-shell-remote-sync.pw.ts',
       },
       summary: {
         allRequiredControlsPassed: true,
@@ -243,8 +248,9 @@ function buildFixtureInput(): BuildScorecardInput {
         applyUndoRoundTripPassed: true,
         authoritativeApplyGuardPassed: true,
         historyRevertRedoPassed: true,
-        coveredControls: ['agent.previewDiffParity', 'agent.applyCapturesUndoBundle'],
-        uncoveredControls: ['headedBrowser.previewApplyRevertFlow'],
+        headedBrowserRevertFlowPassed: true,
+        coveredControls: ['agent.previewDiffParity', 'agent.applyCapturesUndoBundle', 'headedBrowser.previewApplyRevertFlow'],
+        uncoveredControls: ['externalSheetsExcelAuditabilityComparison'],
         externalGoogleSheetsEvidence: 'not-captured',
         externalMicrosoftExcelEvidence: 'not-captured',
       },

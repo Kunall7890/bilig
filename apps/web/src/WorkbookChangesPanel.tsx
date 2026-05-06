@@ -1,5 +1,5 @@
 import { Button } from '@base-ui/react/button'
-import { ListChecks } from 'lucide-react'
+import { ListChecks, Undo2 } from 'lucide-react'
 import { cn } from './cn.js'
 import { agentPanelLabelTextClass, agentPanelMetaTextClass } from './workbook-agent-panel-primitives.js'
 import { formatWorkbookChangeDay, formatWorkbookChangeTime, type WorkbookChangeEntry } from './workbook-changes-model.js'
@@ -36,15 +36,21 @@ function renderChangeStatus(change: WorkbookChangeEntry): string | null {
   return null
 }
 
-function WorkbookChangeRow(props: { readonly change: WorkbookChangeEntry; readonly onJump: (sheetName: string, address: string) => void }) {
+function WorkbookChangeRow(props: {
+  readonly change: WorkbookChangeEntry
+  readonly isRevertPending: boolean
+  readonly onJump: (sheetName: string, address: string) => void
+  readonly onRevert?: (revision: number) => void
+}) {
   const { change } = props
   const statusLabel = renderChangeStatus(change)
+  const canRevert = change.canRevert && props.onRevert !== undefined
   const metadata = [change.actorLabel, formatWorkbookChangeTime(change.createdAt), statusLabel].filter(
     (value): value is string => typeof value === 'string' && value.length > 0,
   )
 
   const content = (
-    <div className="min-w-0 px-3 py-2.5">
+    <div className="min-w-0 flex-1 px-3 py-2.5">
       <div className="min-w-0 text-[12px] font-medium leading-5 text-[var(--wb-text)]">{change.summary}</div>
       <div
         className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] leading-4 text-[var(--wb-text-subtle)]"
@@ -63,23 +69,44 @@ function WorkbookChangeRow(props: { readonly change: WorkbookChangeEntry; readon
       </div>
     </div>
   )
+  const revertButton = canRevert ? (
+    <Button
+      aria-label={`Revert ${change.summary}`}
+      className="mr-2 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--wb-radius-control)] border border-transparent text-[var(--wb-text-muted)] transition-colors hover:bg-[var(--wb-hover)] hover:text-[var(--wb-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--wb-accent-ring)] disabled:cursor-not-allowed disabled:opacity-50"
+      data-testid="workbook-change-revert"
+      disabled={props.isRevertPending}
+      title={`Revert ${change.summary}`}
+      type="button"
+      onClick={() => {
+        props.onRevert?.(change.revision)
+      }}
+    >
+      <Undo2 aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={1.9} />
+    </Button>
+  ) : null
 
   return (
     <li className="border-b border-[var(--wb-border)] last:border-b-0" data-testid="workbook-change-row">
       {change.isJumpable ? (
-        <Button
-          className="block w-full text-left transition-colors hover:bg-[var(--wb-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--wb-accent-ring)] focus-visible:ring-inset"
-          type="button"
-          onClick={() => {
-            if (change.sheetName && change.address) {
-              props.onJump(change.sheetName, change.address)
-            }
-          }}
-        >
-          {content}
-        </Button>
+        <div className="flex min-w-0 items-center transition-colors hover:bg-[var(--wb-hover)]">
+          <Button
+            className="block min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--wb-accent-ring)] focus-visible:ring-inset"
+            type="button"
+            onClick={() => {
+              if (change.sheetName && change.address) {
+                props.onJump(change.sheetName, change.address)
+              }
+            }}
+          >
+            {content}
+          </Button>
+          {revertButton}
+        </div>
       ) : (
-        content
+        <div className="flex min-w-0 items-center">
+          {content}
+          {revertButton}
+        </div>
       )}
     </li>
   )
@@ -87,7 +114,9 @@ function WorkbookChangeRow(props: { readonly change: WorkbookChangeEntry; readon
 
 export function WorkbookChangesPanel(props: {
   readonly changes: readonly WorkbookChangeEntry[]
+  readonly pendingRevertRevision?: number | null
   readonly onJump: (sheetName: string, address: string) => void
+  readonly onRevert?: (revision: number) => void
 }) {
   const sections = groupChangesByDay(props.changes)
   const isEmpty = sections.length === 0
@@ -118,7 +147,13 @@ export function WorkbookChangesPanel(props: {
               </div>
               <ol className="m-0 list-none p-0">
                 {section.changes.map((change) => (
-                  <WorkbookChangeRow key={`${change.revision}:${change.summary}`} change={change} onJump={props.onJump} />
+                  <WorkbookChangeRow
+                    key={`${change.revision}:${change.summary}`}
+                    change={change}
+                    isRevertPending={props.pendingRevertRevision === change.revision}
+                    onJump={props.onJump}
+                    {...(props.onRevert ? { onRevert: props.onRevert } : {})}
+                  />
                 ))}
               </ol>
             </section>
