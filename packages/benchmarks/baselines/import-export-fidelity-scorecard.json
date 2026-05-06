@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "suite": "import-export-fidelity",
-  "generatedAt": "2026-05-06T11:45:20.182Z",
+  "generatedAt": "2026-05-06T11:49:50.457Z",
   "source": {
     "artifactGenerator": "scripts/gen-import-export-fidelity-scorecard.ts",
     "implementationPackage": "packages/excel-import",
@@ -24,6 +24,7 @@
       "xlsx.values",
       "xlsx.formulas",
       "xlsx.numberFormats",
+      "xlsx.calculationSettings",
       "xlsx.definedNames",
       "xlsx.comments",
       "xlsx.styles",
@@ -88,6 +89,7 @@
         "xlsx.values",
         "xlsx.formulas",
         "xlsx.numberFormats",
+        "xlsx.calculationSettings",
         "xlsx.definedNames",
         "xlsx.comments",
         "xlsx.styles",

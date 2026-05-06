@@ -49,6 +49,7 @@ describe('import/export fidelity scorecard', () => {
       'xlsx.values',
       'xlsx.formulas',
       'xlsx.numberFormats',
+      'xlsx.calculationSettings',
       'xlsx.definedNames',
       'xlsx.comments',
       'xlsx.styles',

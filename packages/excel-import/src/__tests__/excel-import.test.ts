@@ -360,6 +360,7 @@ describe('excel import', () => {
       workbook: {
         name: 'Roundtrip Workbook',
         metadata: {
+          calculationSettings: { mode: 'manual', compatibilityMode: 'excel-modern' },
           definedNames: [
             { name: 'SummaryTotal', value: { kind: 'cell-ref', sheetName: 'Summary', address: 'B1' } },
             { name: 'InputRegion', value: { kind: 'range-ref', sheetName: 'Inputs', startAddress: 'A1', endAddress: 'B1' } },
@@ -543,6 +544,7 @@ describe('excel import', () => {
     )
     expect(strFromU8(zip['xl/tables/table1.xml'] ?? new Uint8Array())).toContain('<table ')
     expect(strFromU8(zip['xl/tables/table1.xml'] ?? new Uint8Array())).toContain('<tableColumn id="3" name="Sales"/>')
+    expect(strFromU8(zip['xl/workbook.xml'] ?? new Uint8Array())).toContain('<calcPr calcMode="manual"/>')
     expect(strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())).toContain('<dataValidations count="1">')
     expect(strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())).toContain(
       '<dataValidation type="whole" operator="between" allowBlank="0" errorStyle="stop"',
@@ -671,6 +673,7 @@ function projectSupportedSnapshotSemantics(snapshot: WorkbookSnapshot) {
     }
   }
   return {
+    calculationSettings: snapshot.workbook.metadata?.calculationSettings,
     definedNames: (snapshot.workbook.metadata?.definedNames ?? [])
       .map((definedName) => ({ name: definedName.name, value: definedName.value }))
       .toSorted((left, right) => left.name.localeCompare(right.name)),

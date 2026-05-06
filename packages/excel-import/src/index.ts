@@ -18,6 +18,7 @@ import type {
   WorkbookMetadataSnapshot,
   WorkbookSnapshot,
 } from '@bilig/protocol'
+import { readImportedWorkbookCalculationSettings } from './xlsx-calculation-settings.js'
 import { readImportedWorkbookCharts } from './xlsx-charts.js'
 import { readImportedSheetComments } from './xlsx-comments.js'
 import { readImportedDefinedNames } from './xlsx-defined-names.js'
@@ -479,6 +480,7 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
   const importedDefinedNames = readImportedDefinedNames(workbook)
   addWorkbookWarnings(workbook, warnings, importedDefinedNames.ignoredCount)
   const importedWorkbookStyles = readImportedWorkbookFileStyles(workbook, workbook.SheetNames)
+  const importedCalculationSettings = readImportedWorkbookCalculationSettings(data)
   const importedCharts = readImportedWorkbookCharts(data, workbook.SheetNames)
   const importedPivots = readImportedWorkbookPivots(data, workbook.SheetNames)
   const importedTables = readImportedWorkbookTables(data, workbook.SheetNames)
@@ -622,6 +624,7 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
   })
 
   const workbookMetadata: WorkbookMetadataSnapshot = {
+    ...(importedCalculationSettings ? { calculationSettings: importedCalculationSettings } : {}),
     ...(styleCatalog.size > 0 ? { styles: [...styleCatalog.values()] } : {}),
     ...(importedDefinedNames.definedNames ? { definedNames: importedDefinedNames.definedNames } : {}),
     ...(importedTables ? { tables: importedTables } : {}),

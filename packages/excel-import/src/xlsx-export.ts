@@ -2,6 +2,7 @@ import * as XLSX from 'xlsx'
 import * as XLSXStyle from 'xlsx-js-style'
 
 import type { LiteralInput, WorkbookAxisEntrySnapshot, WorkbookMergeRangeSnapshot, WorkbookSnapshot } from '@bilig/protocol'
+import { addExportCalculationSettingsToXlsxBytes } from './xlsx-calculation-settings.js'
 import { addExportChartsToXlsxBytes } from './xlsx-charts.js'
 import { addExportCommentsToWorksheet } from './xlsx-comments.js'
 import { buildExportDefinedNames } from './xlsx-defined-names.js'
@@ -241,7 +242,10 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
           addExportSortsToXlsxBytes(
             addExportFiltersToXlsxBytes(
               addExportProtectedRangesToXlsxBytes(
-                addExportSheetProtectionsToXlsxBytes(addExportFreezePanesToXlsxBytes(bytes, snapshot), snapshot),
+                addExportSheetProtectionsToXlsxBytes(
+                  addExportFreezePanesToXlsxBytes(addExportCalculationSettingsToXlsxBytes(bytes, snapshot), snapshot),
+                  snapshot,
+                ),
                 snapshot,
               ),
               snapshot,
