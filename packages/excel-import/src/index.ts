@@ -31,6 +31,7 @@ import { readImportedWorkbookSorts } from './xlsx-sorts.js'
 import { readImportedWorkbookFileStyles } from './xlsx-styles.js'
 import { readImportedWorkbookTables } from './xlsx-tables.js'
 import { readImportedWorkbookDataValidations } from './xlsx-validations.js'
+import { readImportedWorkbookProperties } from './xlsx-workbook-properties.js'
 
 export { exportXlsx } from './xlsx-export.js'
 
@@ -480,6 +481,7 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
   const importedDefinedNames = readImportedDefinedNames(workbook)
   addWorkbookWarnings(workbook, warnings, importedDefinedNames.ignoredCount)
   const importedWorkbookStyles = readImportedWorkbookFileStyles(workbook, workbook.SheetNames)
+  const importedWorkbookProperties = readImportedWorkbookProperties(data)
   const importedCalculationSettings = readImportedWorkbookCalculationSettings(data)
   const importedCharts = readImportedWorkbookCharts(data, workbook.SheetNames)
   const importedPivots = readImportedWorkbookPivots(data, workbook.SheetNames)
@@ -624,6 +626,7 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
   })
 
   const workbookMetadata: WorkbookMetadataSnapshot = {
+    ...(importedWorkbookProperties ? { properties: importedWorkbookProperties } : {}),
     ...(importedCalculationSettings ? { calculationSettings: importedCalculationSettings } : {}),
     ...(styleCatalog.size > 0 ? { styles: [...styleCatalog.values()] } : {}),
     ...(importedDefinedNames.definedNames ? { definedNames: importedDefinedNames.definedNames } : {}),

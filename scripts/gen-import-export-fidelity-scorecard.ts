@@ -74,6 +74,7 @@ const coveredFeatureOrder = [
   'xlsx.values',
   'xlsx.formulas',
   'xlsx.numberFormats',
+  'xlsx.workbookProperties',
   'xlsx.calculationSettings',
   'xlsx.definedNames',
   'xlsx.comments',
@@ -235,6 +236,7 @@ function runXlsxSnapshotRoundTripValuesCase(): ImportExportFidelityCase {
   const expected = projectSupportedSnapshotSemantics(createFidelitySnapshot())
   const actual = projectSupportedSnapshotSemantics(importXlsx(exportXlsx(createFidelitySnapshot()), 'fidelity.xlsx').snapshot)
   const passed =
+    JSON.stringify(actual.properties) === JSON.stringify(expected.properties) &&
     JSON.stringify(actual.calculationSettings) === JSON.stringify(expected.calculationSettings) &&
     JSON.stringify(actual.valueFormulaFormatSheets) === JSON.stringify(expected.valueFormulaFormatSheets) &&
     JSON.stringify(actual.commentThreads) === JSON.stringify(expected.commentThreads) &&
@@ -250,6 +252,7 @@ function runXlsxSnapshotRoundTripValuesCase(): ImportExportFidelityCase {
       'xlsx.values',
       'xlsx.formulas',
       'xlsx.numberFormats',
+      'xlsx.workbookProperties',
       'xlsx.calculationSettings',
       'xlsx.definedNames',
       'xlsx.comments',
@@ -448,6 +451,11 @@ function createFidelitySnapshot(): WorkbookSnapshot {
       name: 'Import Export Fidelity',
       metadata: {
         calculationSettings: { mode: 'manual', compatibilityMode: 'excel-modern' },
+        properties: [
+          { key: 'locale', value: 'en-US' },
+          { key: 'reviewed', value: true },
+          { key: 'threshold', value: 0.085 },
+        ],
         definedNames: [
           { name: 'SummaryTotal', value: { kind: 'cell-ref', sheetName: 'Summary', address: 'B1' } },
           { name: 'InputRegion', value: { kind: 'range-ref', sheetName: 'Inputs', startAddress: 'A1', endAddress: 'B1' } },

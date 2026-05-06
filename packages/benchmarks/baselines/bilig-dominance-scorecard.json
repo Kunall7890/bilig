@@ -106,6 +106,7 @@
       "xlsx.values",
       "xlsx.formulas",
       "xlsx.numberFormats",
+      "xlsx.workbookProperties",
       "xlsx.calculationSettings",
       "xlsx.definedNames",
       "xlsx.comments",
@@ -350,7 +351,7 @@
       "status": "partial-repo-evidence",
       "currentEvidence": [
         "generated import/export fidelity scorecard passes required cases: true",
-        "covered import/export features: csv.import, csv.preview, csv.export, csv.roundtrip, xlsx.import, xlsx.preview, xlsx.export, xlsx.roundtrip, xlsx.values, xlsx.formulas, xlsx.numberFormats, xlsx.calculationSettings, xlsx.definedNames, xlsx.comments, xlsx.styles, xlsx.rowColumnDimensions, xlsx.merges, xlsx.freezePanes.roundtrip, xlsx.filters.roundtrip, xlsx.sorts.roundtrip, xlsx.sheetProtection.roundtrip, xlsx.protectedRanges.roundtrip, xlsx.dataValidations.roundtrip, xlsx.tables.roundtrip, xlsx.charts.roundtrip, xlsx.pivots.roundtrip, xlsx.multiSheet, xlsx.unsupportedFeatureWarnings",
+        "covered import/export features: csv.import, csv.preview, csv.export, csv.roundtrip, xlsx.import, xlsx.preview, xlsx.export, xlsx.roundtrip, xlsx.values, xlsx.formulas, xlsx.numberFormats, xlsx.workbookProperties, xlsx.calculationSettings, xlsx.definedNames, xlsx.comments, xlsx.styles, xlsx.rowColumnDimensions, xlsx.merges, xlsx.freezePanes.roundtrip, xlsx.filters.roundtrip, xlsx.sorts.roundtrip, xlsx.sheetProtection.roundtrip, xlsx.protectedRanges.roundtrip, xlsx.dataValidations.roundtrip, xlsx.tables.roundtrip, xlsx.charts.roundtrip, xlsx.pivots.roundtrip, xlsx.multiSheet, xlsx.unsupportedFeatureWarnings",
         "unsupported XLSX features are explicitly disclosed: xlsx.macros.execution"
       ],
       "evidenceArtifacts": [

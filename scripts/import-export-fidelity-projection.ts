@@ -115,6 +115,9 @@ export function projectSupportedSnapshotSemantics(snapshot: WorkbookSnapshot) {
     }
   }
   return {
+    properties: (snapshot.workbook.metadata?.properties ?? [])
+      .map((property) => ({ key: property.key, value: property.value }))
+      .toSorted((left, right) => left.key.localeCompare(right.key)),
     calculationSettings: snapshot.workbook.metadata?.calculationSettings,
     definedNames: (snapshot.workbook.metadata?.definedNames ?? [])
       .map((definedName) => ({ name: definedName.name, value: definedName.value }))

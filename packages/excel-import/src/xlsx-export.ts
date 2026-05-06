@@ -15,6 +15,7 @@ import { addExportSortsToXlsxBytes } from './xlsx-sorts.js'
 import { addExportStylesToWorksheet } from './xlsx-styles.js'
 import { addExportTablesToXlsxBytes } from './xlsx-tables.js'
 import { addExportDataValidationsToXlsxBytes } from './xlsx-validations.js'
+import { addExportWorkbookPropertiesToXlsxBytes } from './xlsx-workbook-properties.js'
 
 function buildExportColumns(columns: readonly WorkbookAxisEntrySnapshot[] | undefined): XLSX.ColInfo[] | undefined {
   if (!columns || columns.length === 0) {
@@ -243,7 +244,10 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
             addExportFiltersToXlsxBytes(
               addExportProtectedRangesToXlsxBytes(
                 addExportSheetProtectionsToXlsxBytes(
-                  addExportFreezePanesToXlsxBytes(addExportCalculationSettingsToXlsxBytes(bytes, snapshot), snapshot),
+                  addExportFreezePanesToXlsxBytes(
+                    addExportCalculationSettingsToXlsxBytes(addExportWorkbookPropertiesToXlsxBytes(bytes, snapshot), snapshot),
+                    snapshot,
+                  ),
                   snapshot,
                 ),
                 snapshot,
