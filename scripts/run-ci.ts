@@ -208,6 +208,7 @@ try {
       pnpm('formula inventory check', 'formula-inventory:check'),
       pnpm('formula dominance check', 'formula:dominance:check'),
       pnpm('Microsoft Excel live calculation scorecard check', 'calculation:excel-live:check'),
+      pnpm('Google Sheets live calculation scorecard check', 'calculation:google-sheets-live:check'),
       pnpm('Microsoft Excel live recalculation scorecard check', 'recalculation:excel-live:check'),
       pnpm('Microsoft Excel live structural scorecard check', 'structural:excel-live:check'),
       pnpm('Microsoft Excel live large workbook scorecard check', 'large-workbook:excel-live:check'),

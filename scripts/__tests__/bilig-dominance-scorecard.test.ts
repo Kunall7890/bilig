@@ -25,6 +25,10 @@ describe('bilig dominance scorecard', () => {
     expect(scorecard.summary.externalMicrosoftExcelEvidence).toBe('not-captured-in-repo')
     expect(scorecard.summary.formulaOfficeListedBreadthPercent).toBe(90.7)
     expect(scorecard.summary.formulaTrackedBreadthPercent).toBe(90.5)
+    expect(scorecard.summary.googleSheetsLiveCalculationPassed).toBe(true)
+    expect(scorecard.summary.googleSheetsLiveCalculationCaseCount).toBe(2)
+    expect(scorecard.summary.googleSheetsLiveCalculationEvidence).toBe('live-google-sheets-native-conversion-via-google-drive-connector')
+    expect(scorecard.summary.googleSheetsLiveCalculationSpreadsheetId).toBe('google-sheet-test-id')
     expect(scorecard.summary.microsoftExcelLiveCalculationPassed).toBe(true)
     expect(scorecard.summary.microsoftExcelLiveCalculationCaseCount).toBe(2)
     expect(scorecard.summary.microsoftExcelLiveCalculationEvidence).toBe('live-local-microsoft-excel-automation')
@@ -51,6 +55,9 @@ describe('bilig dominance scorecard', () => {
     expect(scorecard.sourceArtifacts.auditabilityScorecard).toBe('packages/benchmarks/baselines/auditability-scorecard.json')
     expect(scorecard.sourceArtifacts.automationScorecard).toBe('packages/benchmarks/baselines/automation-scorecard.json')
     expect(scorecard.sourceArtifacts.collaborationScorecard).toBe('packages/benchmarks/baselines/collaboration-scorecard.json')
+    expect(scorecard.sourceArtifacts.googleSheetsLiveCalculationScorecard).toBe(
+      'packages/benchmarks/baselines/google-sheets-live-calculation-scorecard.json',
+    )
     expect(scorecard.sourceArtifacts.microsoftExcelLiveCalculationScorecard).toBe(
       'packages/benchmarks/baselines/microsoft-excel-live-calculation-scorecard.json',
     )
@@ -73,12 +80,14 @@ describe('bilig dominance scorecard', () => {
       status: 'partial-repo-evidence',
       evidenceArtifacts: expect.arrayContaining([
         'packages/formula/src/__tests__/fixtures/formula-dominance-snapshot.json',
+        'packages/benchmarks/baselines/google-sheets-live-calculation-scorecard.json',
         'packages/benchmarks/baselines/microsoft-excel-live-calculation-scorecard.json',
       ]),
+      checkCommands: expect.arrayContaining(['pnpm calculation:google-sheets-live:check']),
       blockers: [
         '2 Office-listed functions are still missing from the runtime inventory',
-        'no generated scorecard currently compares committed semantics directly against live Google Sheets',
         'live Microsoft Excel calculation scorecard covers representative required cases, not all committed formula semantics',
+        'live Google Sheets calculation scorecard covers representative required cases, not all committed formula semantics',
       ],
     })
     expect(scorecard.categories.find((category) => category.id === 'import-export-compatibility')).toMatchObject({
@@ -209,11 +218,14 @@ describe('bilig dominance scorecard', () => {
     const calculation = artifact.categories.find((category) => category.id === 'calculation-correctness')
 
     expect(calculation?.blockers).not.toContain('0 Office-listed functions are still missing from the runtime inventory')
-    expect(calculation?.blockers).toContain(
+    expect(calculation?.blockers).not.toContain(
       'no generated scorecard currently compares committed semantics directly against live Google Sheets',
     )
     expect(calculation?.blockers).toContain(
       'live Microsoft Excel calculation scorecard covers representative required cases, not all committed formula semantics',
+    )
+    expect(calculation?.blockers).toContain(
+      'live Google Sheets calculation scorecard covers representative required cases, not all committed formula semantics',
     )
   })
 
@@ -238,6 +250,9 @@ describe('bilig dominance scorecard', () => {
     expect(packageJson).toContain('"dominance:check": "bun scripts/gen-bilig-dominance-scorecard.ts --check"')
     expect(packageJson).toContain('"calculation:excel-live:check": "bun scripts/gen-microsoft-excel-live-calculation-scorecard.ts --check"')
     expect(packageJson).toContain(
+      '"calculation:google-sheets-live:check": "bun scripts/gen-google-sheets-live-calculation-scorecard.ts --check"',
+    )
+    expect(packageJson).toContain(
       '"recalculation:excel-live:check": "bun scripts/gen-microsoft-excel-live-recalculation-scorecard.ts --check"',
     )
     expect(packageJson).toContain('"structural:excel-live:check": "bun scripts/gen-microsoft-excel-live-structural-scorecard.ts --check"')
@@ -257,6 +272,7 @@ describe('bilig dominance scorecard', () => {
     expect(packageJson).toContain('"security:posture:check": "bun scripts/gen-security-posture-scorecard.ts --check"')
     expect(runCi).toContain("pnpm('bilig dominance scorecard check', 'dominance:check')")
     expect(runCi).toContain("pnpm('Microsoft Excel live calculation scorecard check', 'calculation:excel-live:check')")
+    expect(runCi).toContain("pnpm('Google Sheets live calculation scorecard check', 'calculation:google-sheets-live:check')")
     expect(runCi).toContain("pnpm('Microsoft Excel live recalculation scorecard check', 'recalculation:excel-live:check')")
     expect(runCi).toContain("pnpm('Microsoft Excel live structural scorecard check', 'structural:excel-live:check')")
     expect(runCi).toContain("pnpm('Microsoft Excel live large workbook scorecard check', 'large-workbook:excel-live:check')")
@@ -304,6 +320,7 @@ function buildFixtureInput(): BuildScorecardInput {
   return {
     competitiveArtifactPath: 'packages/benchmarks/baselines/workpaper-vs-hyperformula.json',
     formulaSnapshotPath: 'packages/formula/src/__tests__/fixtures/formula-dominance-snapshot.json',
+    googleSheetsLiveCalculationScorecardPath: 'packages/benchmarks/baselines/google-sheets-live-calculation-scorecard.json',
     microsoftExcelLiveCalculationScorecardPath: 'packages/benchmarks/baselines/microsoft-excel-live-calculation-scorecard.json',
     microsoftExcelLiveRecalculationScorecardPath: 'packages/benchmarks/baselines/microsoft-excel-live-recalculation-scorecard.json',
     microsoftExcelLiveLargeWorkbookScorecardPath: 'packages/benchmarks/baselines/microsoft-excel-live-large-workbook-scorecard.json',
@@ -350,6 +367,39 @@ function buildFixtureInput(): BuildScorecardInput {
         instanceMethods: ['getCellValue', 'setCellContents'],
       },
       configKeys: ['licenseKey', 'useColumnIndex'],
+    },
+    googleSheetsLiveCalculationScorecard: {
+      schemaVersion: 1,
+      suite: 'google-sheets-live-calculation-correctness',
+      generatedAt: '2026-05-06T17:00:00.000Z',
+      host: {
+        arch: 'arm64',
+        platform: 'darwin',
+      },
+      source: {
+        artifactGenerator: 'scripts/gen-google-sheets-live-calculation-scorecard.ts',
+        implementationPackage: 'packages/headless',
+        evidenceKind: 'live-google-sheets-native-conversion-via-google-drive-connector',
+        captureTransport: 'google-drive-connector',
+      },
+      googleSheets: {
+        spreadsheetId: 'google-sheet-test-id',
+        spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/google-sheet-test-id',
+        title: 'bilig live calculation parity capture',
+        worksheetName: 'Cases',
+        valueRenderOption: 'UNFORMATTED_VALUE',
+      },
+      summary: {
+        allRequiredCasesPassed: true,
+        requiredCaseCount: 2,
+        matchingCaseCount: 2,
+        coveredFeatures: ['excelLive.arithmeticPrecedence', 'excelLive.aggregateSumRange'],
+        microsoftExcelEvidence: 'not-covered-by-this-artifact',
+      },
+      cases: [
+        googleSheetsCalculationCase('arithmetic-precedence', '=A2+B2*2', 'D2', 'excelLive.arithmeticPrecedence', 24),
+        googleSheetsCalculationCase('aggregate-sum-range', '=SUM(A3:C3)', 'D3', 'excelLive.aggregateSumRange', 6),
+      ],
     },
     microsoftExcelLiveCalculationScorecard: {
       schemaVersion: 1,
@@ -987,6 +1037,25 @@ function family(familyName: string, ratio: number): BuildScorecardInput['competi
     worstMeanRatioWorkload: `${familyName}-workload`,
     worstWorkpaperToHyperFormulaP95Ratio: ratio,
     worstP95RatioWorkload: `${familyName}-workload`,
+  }
+}
+
+function googleSheetsCalculationCase(
+  id: string,
+  formula: string,
+  formulaCell: string,
+  coveredFeature: string,
+  value: number,
+): BuildScorecardInput['googleSheetsLiveCalculationScorecard']['cases'][number] {
+  return {
+    id,
+    formula,
+    formulaCell,
+    coveredFeature,
+    biligValue: value,
+    googleSheetsRawValue: String(value),
+    googleSheetsValue: value,
+    passed: true,
   }
 }
 

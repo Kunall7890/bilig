@@ -89,6 +89,29 @@ describe('Microsoft Excel live calculation scorecard', () => {
       }),
     ).toThrow('Microsoft Excel live calculation scorecard required cases are stale')
   })
+
+  it('rejects forged pass flags that do not match captured Excel values', () => {
+    const biligValues = evaluateBiligCases()
+    const scorecard = buildMicrosoftExcelLiveCalculationScorecard('2026-05-06T09:00:00.000Z', {
+      excelVersion: '16.test',
+      rawValuesByCaseId: new Map([...biligValues].map(([caseId, value]) => [caseId, toExcelRawValue(value)])),
+    })
+
+    expect(() =>
+      validateMicrosoftExcelLiveCalculationScorecard({
+        ...scorecard,
+        cases: [
+          {
+            ...scorecard.cases[0],
+            microsoftExcelRawValue: '999',
+            microsoftExcelValue: 999,
+            passed: true,
+          },
+          ...scorecard.cases.slice(1),
+        ],
+      }),
+    ).toThrow('Microsoft Excel live calculation pass flag is stale')
+  })
 })
 
 function toExcelRawValue(value: CalculationScalarValue): string {

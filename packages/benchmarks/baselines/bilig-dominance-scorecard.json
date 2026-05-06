@@ -32,6 +32,7 @@
     "automationScorecard": "packages/benchmarks/baselines/automation-scorecard.json",
     "collaborationScorecard": "packages/benchmarks/baselines/collaboration-scorecard.json",
     "formulaDominanceSnapshot": "packages/formula/src/__tests__/fixtures/formula-dominance-snapshot.json",
+    "googleSheetsLiveCalculationScorecard": "packages/benchmarks/baselines/google-sheets-live-calculation-scorecard.json",
     "hyperFormulaSurfaceSnapshot": "packages/headless/src/__tests__/fixtures/hyperformula-surface.json",
     "microsoftExcelLiveCalculationScorecard": "packages/benchmarks/baselines/microsoft-excel-live-calculation-scorecard.json",
     "microsoftExcelLiveRecalculationScorecard": "packages/benchmarks/baselines/microsoft-excel-live-recalculation-scorecard.json",
@@ -104,6 +105,10 @@
     "externalGoogleSheetsEvidence": "not-captured-in-repo",
     "externalMicrosoftExcelEvidence": "not-captured-in-repo",
     "formulaCanonicalProductionPercent": 100,
+    "googleSheetsLiveCalculationEvidence": "live-google-sheets-native-conversion-via-google-drive-connector",
+    "googleSheetsLiveCalculationCaseCount": 16,
+    "googleSheetsLiveCalculationPassed": true,
+    "googleSheetsLiveCalculationSpreadsheetId": "1AtSNzwAo0jaMfRP2RaDhSk41siznQlLBBrtLMQ4J2po",
     "microsoftExcelLiveCalculationEvidence": "live-local-microsoft-excel-automation",
     "microsoftExcelLiveCalculationCaseCount": 16,
     "microsoftExcelLiveCalculationPassed": true,
@@ -222,18 +227,26 @@
         "tracked formula breadth is 525/525 (100%)",
         "strategic canonical rows are production-routed; open canonical rows: 0",
         "live Microsoft Excel calculation scorecard passes 16/16 required cases on Excel 16.108.2",
-        "live Microsoft Excel calculation features: excelLive.arithmeticPrecedence, excelLive.aggregateSumRange, excelLive.conditionalIfComparison, excelLive.numericRounding, excelLive.aggregateCountRange, excelLive.textConcat, excelLive.textJoinIgnoreEmptyRange, excelLive.lookupXlookupExact, excelLive.lookupMatchExact, excelLive.lookupIndexRange, excelLive.booleanAnd, excelLive.booleanOr, excelLive.dateSerial, excelLive.dateYearFromSerial, excelLive.conditionalSumifRange, excelLive.mathAbsSqrt"
+        "live Microsoft Excel calculation features: excelLive.arithmeticPrecedence, excelLive.aggregateSumRange, excelLive.conditionalIfComparison, excelLive.numericRounding, excelLive.aggregateCountRange, excelLive.textConcat, excelLive.textJoinIgnoreEmptyRange, excelLive.lookupXlookupExact, excelLive.lookupMatchExact, excelLive.lookupIndexRange, excelLive.booleanAnd, excelLive.booleanOr, excelLive.dateSerial, excelLive.dateYearFromSerial, excelLive.conditionalSumifRange, excelLive.mathAbsSqrt",
+        "live Google Sheets calculation scorecard passes 16/16 required cases via native Google Sheets conversion",
+        "live Google Sheets calculation features: excelLive.arithmeticPrecedence, excelLive.aggregateSumRange, excelLive.conditionalIfComparison, excelLive.numericRounding, excelLive.aggregateCountRange, excelLive.textConcat, excelLive.textJoinIgnoreEmptyRange, excelLive.lookupXlookupExact, excelLive.lookupMatchExact, excelLive.lookupIndexRange, excelLive.booleanAnd, excelLive.booleanOr, excelLive.dateSerial, excelLive.dateYearFromSerial, excelLive.conditionalSumifRange, excelLive.mathAbsSqrt"
       ],
       "evidenceArtifacts": [
         "packages/formula/src/__tests__/fixtures/formula-dominance-snapshot.json",
+        "packages/benchmarks/baselines/google-sheets-live-calculation-scorecard.json",
         "packages/benchmarks/baselines/microsoft-excel-live-calculation-scorecard.json",
         "docs/excel-parity-program.md",
         "docs/formula-oracle-capture.md"
       ],
-      "checkCommands": ["pnpm formula:dominance:check", "pnpm calculation:excel-live:check", "pnpm test:correctness:formula"],
+      "checkCommands": [
+        "pnpm formula:dominance:check",
+        "pnpm calculation:excel-live:check",
+        "pnpm calculation:google-sheets-live:check",
+        "pnpm test:correctness:formula"
+      ],
       "blockers": [
-        "no generated scorecard currently compares committed semantics directly against live Google Sheets",
-        "live Microsoft Excel calculation scorecard covers representative required cases, not all committed formula semantics"
+        "live Microsoft Excel calculation scorecard covers representative required cases, not all committed formula semantics",
+        "live Google Sheets calculation scorecard covers representative required cases, not all committed formula semantics"
       ]
     },
     {

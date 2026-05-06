@@ -10,6 +10,10 @@ import { parseAutomationScorecard, type AutomationScorecard } from './gen-automa
 import { parseCollaborationScorecard, type CollaborationScorecard } from './gen-collaboration-scorecard.ts'
 import { parseImportExportFidelityScorecard, type ImportExportFidelityScorecard } from './gen-import-export-fidelity-scorecard.ts'
 import {
+  parseGoogleSheetsLiveCalculationScorecard,
+  type GoogleSheetsLiveCalculationScorecard,
+} from './gen-google-sheets-live-calculation-scorecard.ts'
+import {
   parseMicrosoftExcelLiveCalculationScorecard,
   type MicrosoftExcelLiveCalculationScorecard,
 } from './gen-microsoft-excel-live-calculation-scorecard.ts'
@@ -146,6 +150,7 @@ export interface BiligDominanceScorecard {
     automationScorecard: string
     collaborationScorecard: string
     formulaDominanceSnapshot: string
+    googleSheetsLiveCalculationScorecard: string
     hyperFormulaSurfaceSnapshot: string
     microsoftExcelLiveCalculationScorecard: string
     microsoftExcelLiveRecalculationScorecard: string
@@ -177,6 +182,10 @@ export interface BiligDominanceScorecard {
     externalGoogleSheetsEvidence: 'not-captured-in-repo'
     externalMicrosoftExcelEvidence: 'not-captured-in-repo'
     formulaCanonicalProductionPercent: number
+    googleSheetsLiveCalculationEvidence: 'live-google-sheets-native-conversion-via-google-drive-connector'
+    googleSheetsLiveCalculationCaseCount: number
+    googleSheetsLiveCalculationPassed: boolean
+    googleSheetsLiveCalculationSpreadsheetId: string
     microsoftExcelLiveCalculationEvidence: 'live-local-microsoft-excel-automation'
     microsoftExcelLiveCalculationCaseCount: number
     microsoftExcelLiveCalculationPassed: boolean
@@ -242,6 +251,8 @@ export interface BuildScorecardInput {
   competitiveArtifactPath: string
   formulaSnapshot: FormulaDominanceSnapshot
   formulaSnapshotPath: string
+  googleSheetsLiveCalculationScorecard: GoogleSheetsLiveCalculationScorecard
+  googleSheetsLiveCalculationScorecardPath: string
   microsoftExcelLiveCalculationScorecard: MicrosoftExcelLiveCalculationScorecard
   microsoftExcelLiveCalculationScorecardPath: string
   microsoftExcelLiveRecalculationScorecard: MicrosoftExcelLiveRecalculationScorecard
@@ -270,6 +281,13 @@ const collaborationScorecardPath = join(rootDir, 'packages', 'benchmarks', 'base
 const outputPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'bilig-dominance-scorecard.json')
 const competitiveArtifactPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'workpaper-vs-hyperformula.json')
 const formulaSnapshotPath = join(rootDir, 'packages', 'formula', 'src', '__tests__', 'fixtures', 'formula-dominance-snapshot.json')
+const googleSheetsLiveCalculationScorecardPath = join(
+  rootDir,
+  'packages',
+  'benchmarks',
+  'baselines',
+  'google-sheets-live-calculation-scorecard.json',
+)
 const microsoftExcelLiveCalculationScorecardPath = join(
   rootDir,
   'packages',
@@ -317,6 +335,10 @@ function main(): void {
     competitiveArtifactPath: toRepoPath(competitiveArtifactPath),
     formulaSnapshot: parseFormulaDominanceSnapshot(readJsonObject(formulaSnapshotPath)),
     formulaSnapshotPath: toRepoPath(formulaSnapshotPath),
+    googleSheetsLiveCalculationScorecard: parseGoogleSheetsLiveCalculationScorecard(
+      readJsonObject(googleSheetsLiveCalculationScorecardPath),
+    ),
+    googleSheetsLiveCalculationScorecardPath: toRepoPath(googleSheetsLiveCalculationScorecardPath),
     microsoftExcelLiveCalculationScorecard: parseMicrosoftExcelLiveCalculationScorecard(
       readJsonObject(microsoftExcelLiveCalculationScorecardPath),
     ),
@@ -457,6 +479,7 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
       automationScorecard: input.automationScorecardPath,
       collaborationScorecard: input.collaborationScorecardPath,
       formulaDominanceSnapshot: input.formulaSnapshotPath,
+      googleSheetsLiveCalculationScorecard: input.googleSheetsLiveCalculationScorecardPath,
       hyperFormulaSurfaceSnapshot: input.surfaceSnapshotPath,
       microsoftExcelLiveCalculationScorecard: input.microsoftExcelLiveCalculationScorecardPath,
       microsoftExcelLiveRecalculationScorecard: input.microsoftExcelLiveRecalculationScorecardPath,
@@ -488,6 +511,10 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
       externalGoogleSheetsEvidence: 'not-captured-in-repo',
       externalMicrosoftExcelEvidence: 'not-captured-in-repo',
       formulaCanonicalProductionPercent: input.formulaSnapshot.canonical.summary.percent,
+      googleSheetsLiveCalculationEvidence: input.googleSheetsLiveCalculationScorecard.source.evidenceKind,
+      googleSheetsLiveCalculationCaseCount: input.googleSheetsLiveCalculationScorecard.summary.requiredCaseCount,
+      googleSheetsLiveCalculationPassed: input.googleSheetsLiveCalculationScorecard.summary.allRequiredCasesPassed,
+      googleSheetsLiveCalculationSpreadsheetId: input.googleSheetsLiveCalculationScorecard.googleSheets.spreadsheetId,
       microsoftExcelLiveCalculationEvidence: input.microsoftExcelLiveCalculationScorecard.source.evidenceKind,
       microsoftExcelLiveCalculationCaseCount: input.microsoftExcelLiveCalculationScorecard.summary.requiredCaseCount,
       microsoftExcelLiveCalculationPassed: input.microsoftExcelLiveCalculationScorecard.summary.allRequiredCasesPassed,
@@ -547,21 +574,34 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
             input.microsoftExcelLiveCalculationScorecard.microsoftExcel.version
           }`,
           `live Microsoft Excel calculation features: ${input.microsoftExcelLiveCalculationScorecard.summary.coveredFeatures.join(', ')}`,
+          `live Google Sheets calculation scorecard passes ${String(
+            input.googleSheetsLiveCalculationScorecard.summary.matchingCaseCount,
+          )}/${String(input.googleSheetsLiveCalculationScorecard.summary.requiredCaseCount)} required cases via native Google Sheets conversion`,
+          `live Google Sheets calculation features: ${input.googleSheetsLiveCalculationScorecard.summary.coveredFeatures.join(', ')}`,
         ],
         evidenceArtifacts: [
           input.formulaSnapshotPath,
+          input.googleSheetsLiveCalculationScorecardPath,
           input.microsoftExcelLiveCalculationScorecardPath,
           'docs/excel-parity-program.md',
           'docs/formula-oracle-capture.md',
         ],
-        checkCommands: ['pnpm formula:dominance:check', 'pnpm calculation:excel-live:check', 'pnpm test:correctness:formula'],
+        checkCommands: [
+          'pnpm formula:dominance:check',
+          'pnpm calculation:excel-live:check',
+          'pnpm calculation:google-sheets-live:check',
+          'pnpm test:correctness:formula',
+        ],
         blockers: [
           ...formulaMissingFunctionBlockers(input.formulaSnapshot.formulaBreadth.missingOfficeFunctions.length),
           ...(input.microsoftExcelLiveCalculationScorecard.summary.allRequiredCasesPassed
             ? []
             : ['live Microsoft Excel calculation scorecard has failing required cases']),
-          'no generated scorecard currently compares committed semantics directly against live Google Sheets',
+          ...(input.googleSheetsLiveCalculationScorecard.summary.allRequiredCasesPassed
+            ? []
+            : ['live Google Sheets calculation scorecard has failing required cases']),
           'live Microsoft Excel calculation scorecard covers representative required cases, not all committed formula semantics',
+          'live Google Sheets calculation scorecard covers representative required cases, not all committed formula semantics',
         ],
       },
       {

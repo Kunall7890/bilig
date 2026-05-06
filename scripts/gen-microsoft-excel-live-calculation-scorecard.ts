@@ -202,6 +202,11 @@ const sharedRows: ReadonlyMap<number, readonly (boolean | number | string | null
   [21, ['c', 30]],
 ])
 
+export const calculationLiveWorksheetName = worksheetName
+export const calculationLiveCaseSpecs = requiredCaseSpecs
+export const calculationLiveRequiredCaseIds = requiredCaseIds
+export const calculationLiveRequiredCoveredFeatures = requiredCoveredFeatures
+
 function main(): void {
   const isCheckMode = process.argv.includes('--check')
   if (isCheckMode) {
@@ -343,21 +348,53 @@ export function validateMicrosoftExcelLiveCalculationScorecard(scorecard: Micros
   if (scorecard.summary.matchingCaseCount !== scorecard.cases.filter((entry) => entry.passed).length) {
     throw new Error('Microsoft Excel live calculation scorecard matching case count is inconsistent')
   }
-  const failingCases = scorecard.cases.filter((entry) => !entry.passed)
+  const currentBiligValuesByCaseId = evaluateBiligCases()
+  const failingCases: MicrosoftExcelLiveCalculationCase[] = []
+  for (const [index, entry] of scorecard.cases.entries()) {
+    const caseSpec = requiredCaseSpecs[index]
+    if (caseSpec === undefined) {
+      throw new Error(`Microsoft Excel live calculation scorecard has an unexpected case: ${entry.id}`)
+    }
+    if (entry.id !== caseSpec.id) {
+      throw new Error(`Microsoft Excel live calculation case id is stale: ${entry.id}`)
+    }
+    if (entry.formula !== caseSpec.formula) {
+      throw new Error(`Microsoft Excel live calculation formula is stale: ${entry.id}`)
+    }
+    if (entry.formulaCell !== toA1Address(caseSpec.formulaRowIndex, formulaColumnIndex)) {
+      throw new Error(`Microsoft Excel live calculation formula cell is stale: ${entry.id}`)
+    }
+    if (entry.coveredFeature !== caseSpec.coveredFeature) {
+      throw new Error(`Microsoft Excel live calculation covered feature is stale: ${entry.id}`)
+    }
+    const currentBiligValue = requiredMapValue(currentBiligValuesByCaseId, entry.id, 'Current Bilig calculation value')
+    if (!valuesEquivalent(entry.biligValue, currentBiligValue)) {
+      throw new Error(
+        `Microsoft Excel live calculation Bilig value is stale for ${entry.id}: scorecard=${JSON.stringify(
+          entry.biligValue,
+        )} current=${JSON.stringify(currentBiligValue)}`,
+      )
+    }
+    const parsedExcelValue = parseExcelRawValue(entry.microsoftExcelRawValue, entry.biligValue)
+    if (!valuesEquivalent(entry.microsoftExcelValue, parsedExcelValue)) {
+      throw new Error(`Microsoft Excel live calculation parsed value is stale: ${entry.id}`)
+    }
+    if (entry.passed !== valuesEquivalent(entry.biligValue, entry.microsoftExcelValue)) {
+      throw new Error(`Microsoft Excel live calculation pass flag is stale: ${entry.id}`)
+    }
+    if (!entry.passed) {
+      failingCases.push(entry)
+    }
+    if (entry.formula.trim().length === 0 || !entry.formula.startsWith('=')) {
+      throw new Error(`Microsoft Excel live calculation case has an invalid formula: ${entry.id}`)
+    }
+  }
   if (failingCases.length > 0 || !scorecard.summary.allRequiredCasesPassed) {
     throw new Error(
       `Microsoft Excel live calculation scorecard has failing required cases: ${failingCases
         .map((entry) => `${entry.id} Bilig=${JSON.stringify(entry.biligValue)} Excel=${JSON.stringify(entry.microsoftExcelValue)}`)
         .join(', ')}`,
     )
-  }
-  for (const entry of scorecard.cases) {
-    if (!entry.passed) {
-      throw new Error(`Microsoft Excel live calculation case failed: ${entry.id}`)
-    }
-    if (entry.formula.trim().length === 0 || !entry.formula.startsWith('=')) {
-      throw new Error(`Microsoft Excel live calculation case has an invalid formula: ${entry.id}`)
-    }
   }
 }
 
@@ -383,6 +420,10 @@ function createExcelWorkbookBytes(): Uint8Array {
   const workbook = XLSX.utils.book_new()
   XLSX.utils.book_append_sheet(workbook, worksheet, worksheetName)
   return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' })
+}
+
+export function createCalculationCaseWorkbookBytes(): Uint8Array {
+  return createExcelWorkbookBytes()
 }
 
 function createReadCasesAppleScript(): string {
@@ -510,6 +551,10 @@ function parseExcelRawValue(rawValue: string, expectedBiligValue: CalculationSca
   return { error: rawValue }
 }
 
+export function parseCalculationRawValue(rawValue: string, expectedBiligValue: CalculationScalarValue): CalculationScalarValue {
+  return parseExcelRawValue(rawValue, expectedBiligValue)
+}
+
 function normalizeBiligValue(value: unknown): CalculationScalarValue {
   if (!isProtocolValueLike(value)) {
     return { error: 'UNKNOWN_BILIG_VALUE' }
@@ -553,6 +598,10 @@ function valuesEquivalent(left: CalculationScalarValue, right: CalculationScalar
   return JSON.stringify(left) === JSON.stringify(right)
 }
 
+export function calculationValuesEquivalent(left: CalculationScalarValue, right: CalculationScalarValue): boolean {
+  return valuesEquivalent(left, right)
+}
+
 function requiredMapValue<T>(map: ReadonlyMap<string, T>, key: string, label: string): T {
   const value = map.get(key)
   if (value === undefined) {
@@ -563,6 +612,10 @@ function requiredMapValue<T>(map: ReadonlyMap<string, T>, key: string, label: st
 
 function toA1Address(rowIndex: number, columnIndex: number): string {
   return `${columnName(columnIndex)}${String(rowIndex + 1)}`
+}
+
+export function calculationLiveFormulaCell(caseSpec: Pick<CalculationCaseSpec, 'formulaRowIndex'>): string {
+  return toA1Address(caseSpec.formulaRowIndex, formulaColumnIndex)
 }
 
 function columnName(columnIndex: number): string {

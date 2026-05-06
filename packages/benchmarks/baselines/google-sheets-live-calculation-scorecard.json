@@ -1,0 +1,208 @@
+{
+  "schemaVersion": 1,
+  "suite": "google-sheets-live-calculation-correctness",
+  "generatedAt": "2026-05-06T16:17:03.287Z",
+  "host": {
+    "arch": "arm64",
+    "platform": "darwin"
+  },
+  "source": {
+    "artifactGenerator": "scripts/gen-google-sheets-live-calculation-scorecard.ts",
+    "implementationPackage": "packages/headless",
+    "evidenceKind": "live-google-sheets-native-conversion-via-google-drive-connector",
+    "captureTransport": "google-drive-connector"
+  },
+  "googleSheets": {
+    "spreadsheetId": "1AtSNzwAo0jaMfRP2RaDhSk41siznQlLBBrtLMQ4J2po",
+    "spreadsheetUrl": "https://docs.google.com/spreadsheets/d/1AtSNzwAo0jaMfRP2RaDhSk41siznQlLBBrtLMQ4J2po",
+    "title": "bilig live calculation parity capture 2026-05-06 formulas",
+    "worksheetName": "Cases",
+    "valueRenderOption": "UNFORMATTED_VALUE"
+  },
+  "summary": {
+    "allRequiredCasesPassed": true,
+    "requiredCaseCount": 16,
+    "matchingCaseCount": 16,
+    "coveredFeatures": [
+      "excelLive.arithmeticPrecedence",
+      "excelLive.aggregateSumRange",
+      "excelLive.conditionalIfComparison",
+      "excelLive.numericRounding",
+      "excelLive.aggregateCountRange",
+      "excelLive.textConcat",
+      "excelLive.textJoinIgnoreEmptyRange",
+      "excelLive.lookupXlookupExact",
+      "excelLive.lookupMatchExact",
+      "excelLive.lookupIndexRange",
+      "excelLive.booleanAnd",
+      "excelLive.booleanOr",
+      "excelLive.dateSerial",
+      "excelLive.dateYearFromSerial",
+      "excelLive.conditionalSumifRange",
+      "excelLive.mathAbsSqrt"
+    ],
+    "microsoftExcelEvidence": "not-covered-by-this-artifact"
+  },
+  "cases": [
+    {
+      "id": "arithmetic-precedence",
+      "formula": "=A2+B2*2",
+      "formulaCell": "D2",
+      "coveredFeature": "excelLive.arithmeticPrecedence",
+      "biligValue": 24,
+      "googleSheetsRawValue": "24",
+      "googleSheetsValue": 24,
+      "passed": true
+    },
+    {
+      "id": "aggregate-sum-range",
+      "formula": "=SUM(A3:C3)",
+      "formulaCell": "D3",
+      "coveredFeature": "excelLive.aggregateSumRange",
+      "biligValue": 6,
+      "googleSheetsRawValue": "6",
+      "googleSheetsValue": 6,
+      "passed": true
+    },
+    {
+      "id": "conditional-if-comparison",
+      "formula": "=IF(A4>B4,\"over\",\"under\")",
+      "formulaCell": "D4",
+      "coveredFeature": "excelLive.conditionalIfComparison",
+      "biligValue": "over",
+      "googleSheetsRawValue": "over",
+      "googleSheetsValue": "over",
+      "passed": true
+    },
+    {
+      "id": "numeric-rounding",
+      "formula": "=ROUND(A5/B5,2)",
+      "formulaCell": "D5",
+      "coveredFeature": "excelLive.numericRounding",
+      "biligValue": 3.33,
+      "googleSheetsRawValue": "3.33",
+      "googleSheetsValue": 3.33,
+      "passed": true
+    },
+    {
+      "id": "aggregate-count-range",
+      "formula": "=COUNT(A6:C6)",
+      "formulaCell": "D6",
+      "coveredFeature": "excelLive.aggregateCountRange",
+      "biligValue": 2,
+      "googleSheetsRawValue": "2",
+      "googleSheetsValue": 2,
+      "passed": true
+    },
+    {
+      "id": "text-concat",
+      "formula": "=CONCAT(A7,B7)",
+      "formulaCell": "D7",
+      "coveredFeature": "excelLive.textConcat",
+      "biligValue": "Bilig",
+      "googleSheetsRawValue": "Bilig",
+      "googleSheetsValue": "Bilig",
+      "passed": true
+    },
+    {
+      "id": "textjoin-ignore-empty-range",
+      "formula": "=TEXTJOIN(\"-\",TRUE,A8:C8)",
+      "formulaCell": "D8",
+      "coveredFeature": "excelLive.textJoinIgnoreEmptyRange",
+      "biligValue": "a-c",
+      "googleSheetsRawValue": "a-c",
+      "googleSheetsValue": "a-c",
+      "passed": true
+    },
+    {
+      "id": "lookup-xlookup-exact",
+      "formula": "=XLOOKUP(\"b\",$A$20:$A$22,$B$20:$B$22)",
+      "formulaCell": "D9",
+      "coveredFeature": "excelLive.lookupXlookupExact",
+      "biligValue": 20,
+      "googleSheetsRawValue": "20",
+      "googleSheetsValue": 20,
+      "passed": true
+    },
+    {
+      "id": "lookup-match-exact",
+      "formula": "=MATCH(\"b\",$A$20:$A$22,0)",
+      "formulaCell": "D10",
+      "coveredFeature": "excelLive.lookupMatchExact",
+      "biligValue": 2,
+      "googleSheetsRawValue": "2",
+      "googleSheetsValue": 2,
+      "passed": true
+    },
+    {
+      "id": "lookup-index-range",
+      "formula": "=INDEX($B$20:$B$22,2,1)",
+      "formulaCell": "D11",
+      "coveredFeature": "excelLive.lookupIndexRange",
+      "biligValue": 20,
+      "googleSheetsRawValue": "20",
+      "googleSheetsValue": 20,
+      "passed": true
+    },
+    {
+      "id": "boolean-and",
+      "formula": "=AND(TRUE,A2>0)",
+      "formulaCell": "D12",
+      "coveredFeature": "excelLive.booleanAnd",
+      "biligValue": true,
+      "googleSheetsRawValue": "TRUE",
+      "googleSheetsValue": true,
+      "passed": true
+    },
+    {
+      "id": "boolean-or",
+      "formula": "=OR(FALSE,A2=10)",
+      "formulaCell": "D13",
+      "coveredFeature": "excelLive.booleanOr",
+      "biligValue": true,
+      "googleSheetsRawValue": "TRUE",
+      "googleSheetsValue": true,
+      "passed": true
+    },
+    {
+      "id": "date-serial",
+      "formula": "=N(DATE(2026,5,6))",
+      "formulaCell": "D14",
+      "coveredFeature": "excelLive.dateSerial",
+      "biligValue": 46148,
+      "googleSheetsRawValue": "46148",
+      "googleSheetsValue": 46148,
+      "passed": true
+    },
+    {
+      "id": "date-year-from-serial",
+      "formula": "=YEAR(D14)",
+      "formulaCell": "D15",
+      "coveredFeature": "excelLive.dateYearFromSerial",
+      "biligValue": 2026,
+      "googleSheetsRawValue": "2026",
+      "googleSheetsValue": 2026,
+      "passed": true
+    },
+    {
+      "id": "conditional-sumif-range",
+      "formula": "=SUMIF($A$20:$A$22,\"b\",$B$20:$B$22)",
+      "formulaCell": "D16",
+      "coveredFeature": "excelLive.conditionalSumifRange",
+      "biligValue": 20,
+      "googleSheetsRawValue": "20",
+      "googleSheetsValue": 20,
+      "passed": true
+    },
+    {
+      "id": "math-abs-sqrt",
+      "formula": "=ABS(A18)+SQRT(16)",
+      "formulaCell": "D18",
+      "coveredFeature": "excelLive.mathAbsSqrt",
+      "biligValue": 13,
+      "googleSheetsRawValue": "13",
+      "googleSheetsValue": 13,
+      "passed": true
+    }
+  ]
+}
