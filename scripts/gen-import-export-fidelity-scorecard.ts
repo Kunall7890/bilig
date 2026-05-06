@@ -46,6 +46,7 @@ export interface ImportExportFidelityScorecard {
     readonly xlsxSnapshotRoundTripPassed: boolean
     readonly coveredFeatures: string[]
     readonly unsupportedFeatures: string[]
+    readonly declinedRuntimeFeatures: string[]
     readonly externalGoogleSheetsEvidence: 'official-docs-comparison-artifact'
     readonly externalMicrosoftExcelEvidence: 'official-docs-comparison-artifact'
   }
@@ -71,7 +72,7 @@ const requiredCaseIds = [
   'xlsx-snapshot-roundtrip-charts',
   'xlsx-snapshot-roundtrip-pivots',
   'xlsx-macro-payload-preserved-without-execution',
-  'xlsx-unsupported-features-warning',
+  'xlsx-runtime-feature-policy-warning',
   'external-sheets-excel-import-export-comparison',
 ] as const
 const coveredFeatureOrder = [
@@ -107,10 +108,11 @@ const coveredFeatureOrder = [
   'xlsx.macros.detectedNoExecution',
   'xlsx.macros.payloadRoundtrip',
   'xlsx.macros.codeNameRoundtrip',
-  'xlsx.unsupportedFeatureWarnings',
+  'xlsx.runtimeFeaturePolicyWarnings',
   ...externalImportExportComparisonCoveredFeatures,
 ] as const
-const unsupportedFeatures = ['xlsx.macros.execution'] as const
+const unsupportedFeatures: readonly string[] = []
+const declinedRuntimeFeatures = ['xlsx.macros.execution'] as const
 
 async function main(): Promise<void> {
   const isCheckMode = process.argv.includes('--check')
@@ -147,7 +149,7 @@ export async function buildImportExportFidelityScorecard(generatedAt = new Date(
     runXlsxSnapshotRoundTripChartsCase(),
     runXlsxSnapshotRoundTripPivotsCase(),
     runXlsxMacroPayloadPreservedWithoutExecutionCase(),
-    runXlsxUnsupportedFeaturesWarningCase(),
+    runXlsxRuntimeFeaturePolicyWarningCase(),
     runExternalSheetsExcelImportExportComparisonCase(),
   ]
   const coveredFeatureSet = new Set(cases.flatMap((entry) => entry.coveredFeatures))
@@ -181,6 +183,7 @@ export async function buildImportExportFidelityScorecard(generatedAt = new Date(
         requiredCase(cases, 'xlsx-snapshot-roundtrip-pivots').passed,
       coveredFeatures,
       unsupportedFeatures: [...unsupportedFeatures],
+      declinedRuntimeFeatures: [...declinedRuntimeFeatures],
       externalGoogleSheetsEvidence: 'official-docs-comparison-artifact',
       externalMicrosoftExcelEvidence: 'official-docs-comparison-artifact',
     },
@@ -460,25 +463,24 @@ function runXlsxMacroPayloadPreservedWithoutExecutionCase(): ImportExportFidelit
       'xlsx.macros.detectedNoExecution',
       'xlsx.macros.payloadRoundtrip',
       'xlsx.macros.codeNameRoundtrip',
-      'xlsx.unsupportedFeatureWarnings',
+      'xlsx.runtimeFeaturePolicyWarnings',
     ],
-    missingFeatures: [...unsupportedFeatures],
     evidence:
-      'Macro-enabled XLSM import preserves safe workbook cells, records a non-execution warning, exports an XLSM with the original VBA payload and code names, and re-imports with identical macro payload metadata.',
+      'Macro-enabled XLSM import preserves safe workbook cells, records a non-execution warning, exports an XLSM with the original VBA payload and code names, re-imports with identical macro payload metadata, and treats native macro execution as an unsafe runtime non-goal.',
   })
 }
 
-function runXlsxUnsupportedFeaturesWarningCase(): ImportExportFidelityCase {
+function runXlsxRuntimeFeaturePolicyWarningCase(): ImportExportFidelityCase {
   const snapshot = createFidelitySnapshot()
   const imported = importXlsx(exportXlsx(snapshot), 'fidelity.xlsx')
   return fidelityCase({
-    id: 'xlsx-unsupported-features-warning',
+    id: 'xlsx-runtime-feature-policy-warning',
     format: 'xlsx',
     direction: 'export-import',
-    passed: imported.warnings.length === 0 && unsupportedFeatures.length > 0,
-    coveredFeatures: ['xlsx.unsupportedFeatureWarnings'],
-    missingFeatures: [...unsupportedFeatures],
-    evidence: 'Scorecard explicitly records unsupported XLSX surfaces instead of treating a subset round trip as full Excel parity.',
+    passed: imported.warnings.length === 0 && declinedRuntimeFeatures.length > 0 && unsupportedFeatures.length === 0,
+    coveredFeatures: ['xlsx.runtimeFeaturePolicyWarnings'],
+    evidence:
+      'Scorecard separates import/export compatibility from unsafe runtime execution surfaces: clean XLSX round trips have no warnings, while native macro execution is disclosed as a declined runtime feature.',
   })
 }
 
@@ -758,6 +760,7 @@ export function parseImportExportFidelityScorecard(value: unknown): ImportExport
       ),
       coveredFeatures: stringArrayField(summary, 'coveredFeatures', 'import/export fidelity coveredFeatures'),
       unsupportedFeatures: stringArrayField(summary, 'unsupportedFeatures', 'import/export fidelity unsupportedFeatures'),
+      declinedRuntimeFeatures: stringArrayField(summary, 'declinedRuntimeFeatures', 'import/export fidelity declinedRuntimeFeatures'),
       externalGoogleSheetsEvidence: literalField(summary, 'externalGoogleSheetsEvidence', 'official-docs-comparison-artifact'),
       externalMicrosoftExcelEvidence: literalField(summary, 'externalMicrosoftExcelEvidence', 'official-docs-comparison-artifact'),
     },
@@ -800,6 +803,14 @@ export function validateImportExportFidelityScorecard(scorecard: ImportExportFid
       throw new Error(`Import/export fidelity scorecard is missing unsupported feature disclosure: ${feature}`)
     }
   }
+  if (scorecard.summary.unsupportedFeatures.length !== unsupportedFeatures.length) {
+    throw new Error('Import/export fidelity scorecard reports unexpected unsupported import/export features')
+  }
+  for (const feature of declinedRuntimeFeatures) {
+    if (!scorecard.summary.declinedRuntimeFeatures.includes(feature)) {
+      throw new Error(`Import/export fidelity scorecard is missing declined runtime feature disclosure: ${feature}`)
+    }
+  }
 }
 
 function parseFormat(value: string): ImportExportFidelityCase['format'] {
@@ -825,6 +836,7 @@ function logResult(mode: 'check' | 'write', scorecard: ImportExportFidelityScore
         allRequiredCasesPassed: scorecard.summary.allRequiredCasesPassed,
         coveredFeatures: scorecard.summary.coveredFeatures.length,
         unsupportedFeatures: scorecard.summary.unsupportedFeatures.length,
+        declinedRuntimeFeatures: scorecard.summary.declinedRuntimeFeatures.length,
       },
       null,
       2,

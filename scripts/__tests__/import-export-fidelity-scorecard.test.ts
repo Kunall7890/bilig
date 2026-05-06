@@ -38,7 +38,7 @@ describe('import/export fidelity scorecard', () => {
       'xlsx-snapshot-roundtrip-charts',
       'xlsx-snapshot-roundtrip-pivots',
       'xlsx-macro-payload-preserved-without-execution',
-      'xlsx-unsupported-features-warning',
+      'xlsx-runtime-feature-policy-warning',
       'external-sheets-excel-import-export-comparison',
     ])
     expect(scorecard.cases.every((entry) => entry.required && entry.passed)).toBe(true)
@@ -49,9 +49,9 @@ describe('import/export fidelity scorecard', () => {
         'xlsx.macros.detectedNoExecution',
         'xlsx.macros.payloadRoundtrip',
         'xlsx.macros.codeNameRoundtrip',
-        'xlsx.unsupportedFeatureWarnings',
+        'xlsx.runtimeFeaturePolicyWarnings',
       ],
-      missingFeatures: ['xlsx.macros.execution'],
+      missingFeatures: [],
     })
     expect(scorecard.cases.find((entry) => entry.id === 'external-sheets-excel-import-export-comparison')).toMatchObject({
       format: 'external-docs',
@@ -95,12 +95,13 @@ describe('import/export fidelity scorecard', () => {
       'xlsx.macros.detectedNoExecution',
       'xlsx.macros.payloadRoundtrip',
       'xlsx.macros.codeNameRoundtrip',
-      'xlsx.unsupportedFeatureWarnings',
+      'xlsx.runtimeFeaturePolicyWarnings',
       'external.googleSheetsImportExportDocs',
       'external.microsoftExcelImportExportDocs',
       'external.sheetsExcelImportExportComparison',
     ])
-    expect(scorecard.summary.unsupportedFeatures).toEqual(['xlsx.macros.execution'])
+    expect(scorecard.summary.unsupportedFeatures).toEqual([])
+    expect(scorecard.summary.declinedRuntimeFeatures).toEqual(['xlsx.macros.execution'])
   })
 
   it('rejects stale artifacts missing required fidelity cases', async () => {

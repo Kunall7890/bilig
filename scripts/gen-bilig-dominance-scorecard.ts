@@ -269,6 +269,7 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
       formulaOfficeListedBreadthPercent: input.formulaSnapshot.formulaBreadth.officeListed.percent,
       formulaTrackedBreadthPercent: input.formulaSnapshot.formulaBreadth.tracked.percent,
       importExportCoveredFeatures: input.importExportFidelityScorecard.summary.coveredFeatures,
+      importExportDeclinedRuntimeFeatures: input.importExportFidelityScorecard.summary.declinedRuntimeFeatures,
       importExportFidelityPassed: input.importExportFidelityScorecard.summary.allRequiredCasesPassed,
       importExportUnsupportedFeatures: input.importExportFidelityScorecard.summary.unsupportedFeatures,
       largeWorkbookSloRowsCovered: input.largeWorkbookSloScorecard.summary.coveredLargeWorkbookRows,
@@ -653,7 +654,10 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
           `macro-enabled workbook code-name preservation covered: ${String(
             input.importExportFidelityScorecard.summary.coveredFeatures.includes('xlsx.macros.codeNameRoundtrip'),
           )}`,
-          `unsupported XLSX features are explicitly disclosed: ${input.importExportFidelityScorecard.summary.unsupportedFeatures.join(', ')}`,
+          `unsupported XLSX features are explicitly disclosed: ${
+            input.importExportFidelityScorecard.summary.unsupportedFeatures.join(', ') || 'none'
+          }`,
+          `declined unsafe runtime features: ${input.importExportFidelityScorecard.summary.declinedRuntimeFeatures.join(', ')}`,
           `external Google Sheets import/export evidence: ${input.importExportFidelityScorecard.summary.externalGoogleSheetsEvidence}`,
           `external Microsoft Excel import/export evidence: ${input.importExportFidelityScorecard.summary.externalMicrosoftExcelEvidence}`,
         ],
@@ -669,7 +673,9 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
           'pnpm exec vitest run packages/excel-import/src/__tests__/excel-import.test.ts packages/core/src/__tests__/engine-import-export.fuzz.test.ts',
         ],
         blockers: [
-          'generated XLSX/XLSM round-trip evidence preserves macro payloads and code names without execution, but full native Excel macro execution semantics remain intentionally unsupported',
+          ...(input.importExportFidelityScorecard.summary.unsupportedFeatures.length > 0
+            ? [`unsupported import/export features remain: ${input.importExportFidelityScorecard.summary.unsupportedFeatures.join(', ')}`]
+            : []),
           ...(input.importExportFidelityScorecard.summary.externalGoogleSheetsEvidence === 'official-docs-comparison-artifact'
             ? []
             : ['no direct Sheets import/export compatibility artifact exists in the repo']),

@@ -204,6 +204,7 @@ export interface BiligDominanceScorecard {
     formulaOfficeListedBreadthPercent: number
     formulaTrackedBreadthPercent: number
     importExportCoveredFeatures: string[]
+    importExportDeclinedRuntimeFeatures: string[]
     importExportFidelityPassed: boolean
     importExportUnsupportedFeatures: string[]
     largeWorkbookSloRowsCovered: number[]

@@ -19,7 +19,6 @@ describe('bilig dominance scorecard', () => {
         expect.stringContaining('calculation-correctness:'),
         expect.stringContaining('large-workbook-scale:'),
         'ui-responsiveness: live UI browser evidence is not a same-corpus 10x proof against incumbents',
-        'import-export-compatibility: unsupported import/export feature: xlsx.macros.execution',
         expect.stringContaining('security:'),
       ]),
     )
@@ -39,8 +38,9 @@ describe('bilig dominance scorecard', () => {
       'operator-developer-workflow',
     ])
     expect(scorecard.completionAudit.criteria.find((entry) => entry.id === 'import-export-compatibility')).toMatchObject({
-      passed: false,
-      gaps: ['unsupported import/export feature: xlsx.macros.execution'],
+      passed: true,
+      gaps: [],
+      evidence: expect.arrayContaining(['declined unsafe runtime features: xlsx.macros.execution']),
     })
     expect(scorecard.claimPolicy.workloadSpecificTenXWins).toEqual([
       {
@@ -94,6 +94,8 @@ describe('bilig dominance scorecard', () => {
     expect(scorecard.summary.microsoftExcelLiveStructuralTenXMeanAndP95CaseCount).toBe(6)
     expect(scorecard.summary.microsoftExcelLiveStructuralEvidence).toBe('live-local-microsoft-excel-automation')
     expect(scorecard.summary.importExportFidelityPassed).toBe(true)
+    expect(scorecard.summary.importExportUnsupportedFeatures).toEqual([])
+    expect(scorecard.summary.importExportDeclinedRuntimeFeatures).toEqual(['xlsx.macros.execution'])
     expect(scorecard.summary.largeWorkbookSloRowsCovered).toEqual([100_000, 250_000])
     expect(scorecard.summary.largeWorkbookSloPassed).toBe(true)
     expect(scorecard.summary.uiResponsivenessLiveBrowserPassed).toBe(true)
@@ -162,9 +164,7 @@ describe('bilig dominance scorecard', () => {
         'packages/benchmarks/baselines/import-export-fidelity-scorecard.json',
         'packages/benchmarks/baselines/import-export-external-sheets-excel-comparison.json',
       ]),
-      blockers: [
-        'generated XLSX/XLSM round-trip evidence preserves macro payloads and code names without execution, but full native Excel macro execution semantics remain intentionally unsupported',
-      ],
+      blockers: [],
     })
     expect(scorecard.categories.find((category) => category.id === 'large-workbook-scale')).toMatchObject({
       status: 'partial-repo-evidence',

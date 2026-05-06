@@ -115,7 +115,7 @@
     "limitations": [
       "This artifact captures current official public documentation, not a live round-trip execution run inside Google Sheets or Microsoft Excel.",
       "The comparison proves direct external import/export compatibility evidence exists; it does not claim bilig is 10x better across import/export or every objective category.",
-      "bilig still explicitly treats native Excel macro execution as unsupported."
+      "bilig preserves XLSM macro payloads and code names for round trip, but declines native macro execution as an unsafe runtime surface rather than import/export compatibility."
     ]
   },
   "dimensions": [
@@ -161,7 +161,7 @@
       ],
       "biligEvidence": [
         "The scorecard round trips values, formulas, number formats, workbook properties, calculation settings, defined names, comments, styles, conditional formats, row and column dimensions, merges, freeze panes, filters, sorts, sheet protection, protected ranges, data validations, tables, charts, pivots, and multi-sheet order through generated XLSX.",
-        "Unsupported Excel macro execution remains listed as an unsupported feature instead of being silently treated as supported."
+        "Native Excel macro execution is disclosed as an unsafe runtime non-goal while XLSM payloads and code names are preserved for round trip."
       ],
       "googleSheetsEvidence": [
         "Google documents saving Office-file edits back to the original Office format and converting Excel files to Sheets copies.",
@@ -173,7 +173,7 @@
       ],
       "comparisonResult": "bilig has repo-executable XLSX subset round-trip proof, while Excel remains the native format owner and Google Sheets supports Office-file editing and conversion with documented feature-mode distinctions.",
       "residualLimitations": [
-        "bilig still needs native Excel macro preservation or execution semantics before eliminating the macro limitation.",
+        "bilig does not run native Excel macros; it preserves macro payload metadata and treats execution as a separate unsafe automation/runtime surface.",
         "Round-trip proof is limited to the supported WorkbookSnapshot projection, not every XLSX construct accepted by Excel or Sheets."
       ]
     },

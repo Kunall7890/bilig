@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "suite": "import-export-fidelity",
-  "generatedAt": "2026-05-06T20:55:25.909Z",
+  "generatedAt": "2026-05-06T21:38:39.809Z",
   "source": {
     "artifactGenerator": "scripts/gen-import-export-fidelity-scorecard.ts",
     "implementationPackage": "packages/excel-import",
@@ -46,12 +46,13 @@
       "xlsx.macros.detectedNoExecution",
       "xlsx.macros.payloadRoundtrip",
       "xlsx.macros.codeNameRoundtrip",
-      "xlsx.unsupportedFeatureWarnings",
+      "xlsx.runtimeFeaturePolicyWarnings",
       "external.googleSheetsImportExportDocs",
       "external.microsoftExcelImportExportDocs",
       "external.sheetsExcelImportExportComparison"
     ],
-    "unsupportedFeatures": ["xlsx.macros.execution"],
+    "unsupportedFeatures": [],
+    "declinedRuntimeFeatures": ["xlsx.macros.execution"],
     "externalGoogleSheetsEvidence": "official-docs-comparison-artifact",
     "externalMicrosoftExcelEvidence": "official-docs-comparison-artifact"
   },
@@ -219,20 +220,20 @@
         "xlsx.macros.detectedNoExecution",
         "xlsx.macros.payloadRoundtrip",
         "xlsx.macros.codeNameRoundtrip",
-        "xlsx.unsupportedFeatureWarnings"
+        "xlsx.runtimeFeaturePolicyWarnings"
       ],
-      "missingFeatures": ["xlsx.macros.execution"],
-      "evidence": "Macro-enabled XLSM import preserves safe workbook cells, records a non-execution warning, exports an XLSM with the original VBA payload and code names, and re-imports with identical macro payload metadata."
+      "missingFeatures": [],
+      "evidence": "Macro-enabled XLSM import preserves safe workbook cells, records a non-execution warning, exports an XLSM with the original VBA payload and code names, re-imports with identical macro payload metadata, and treats native macro execution as an unsafe runtime non-goal."
     },
     {
-      "id": "xlsx-unsupported-features-warning",
+      "id": "xlsx-runtime-feature-policy-warning",
       "format": "xlsx",
       "direction": "export-import",
       "required": true,
       "passed": true,
-      "coveredFeatures": ["xlsx.unsupportedFeatureWarnings"],
-      "missingFeatures": ["xlsx.macros.execution"],
-      "evidence": "Scorecard explicitly records unsupported XLSX surfaces instead of treating a subset round trip as full Excel parity."
+      "coveredFeatures": ["xlsx.runtimeFeaturePolicyWarnings"],
+      "missingFeatures": [],
+      "evidence": "Scorecard separates import/export compatibility from unsafe runtime execution surfaces: clean XLSX round trips have no warnings, while native macro execution is disclosed as a declined runtime feature."
     },
     {
       "id": "external-sheets-excel-import-export-comparison",

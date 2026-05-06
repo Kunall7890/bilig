@@ -146,6 +146,7 @@ export function buildBiligDominanceCompletionAudit(input: BuildScorecardInput, s
       evidence: [
         `covered import/export features: ${input.importExportFidelityScorecard.summary.coveredFeatures.join(', ')}`,
         `unsupported import/export features: ${input.importExportFidelityScorecard.summary.unsupportedFeatures.join(', ') || 'none'}`,
+        `declined unsafe runtime features: ${input.importExportFidelityScorecard.summary.declinedRuntimeFeatures.join(', ') || 'none'}`,
       ],
       gaps: [
         ...(input.importExportFidelityScorecard.summary.allRequiredCasesPassed
