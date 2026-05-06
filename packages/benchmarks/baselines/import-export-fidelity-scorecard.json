@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "suite": "import-export-fidelity",
-  "generatedAt": "2026-05-06T10:22:13.671Z",
+  "generatedAt": "2026-05-06T10:31:34.481Z",
   "source": {
     "artifactGenerator": "scripts/gen-import-export-fidelity-scorecard.ts",
     "implementationPackage": "packages/excel-import",
@@ -26,12 +26,13 @@
       "xlsx.numberFormats",
       "xlsx.definedNames",
       "xlsx.comments",
+      "xlsx.styles",
       "xlsx.rowColumnDimensions",
       "xlsx.merges",
       "xlsx.multiSheet",
       "xlsx.unsupportedFeatureWarnings"
     ],
-    "unsupportedFeatures": ["xlsx.macros.execution", "xlsx.charts.roundtrip", "xlsx.pivots.roundtrip", "xlsx.styles.export"],
+    "unsupportedFeatures": ["xlsx.macros.execution", "xlsx.charts.roundtrip", "xlsx.pivots.roundtrip"],
     "externalGoogleSheetsEvidence": "not-captured",
     "externalMicrosoftExcelEvidence": "not-captured"
   },
@@ -80,10 +81,11 @@
         "xlsx.numberFormats",
         "xlsx.definedNames",
         "xlsx.comments",
+        "xlsx.styles",
         "xlsx.multiSheet"
       ],
       "missingFeatures": [],
-      "evidence": "WorkbookSnapshot exported to XLSX imports back with the same values, formulas, formats, defined names, comments, and sheet order."
+      "evidence": "WorkbookSnapshot exported to XLSX imports back with the same values, formulas, formats, defined names, comments, styles, and sheet order."
     },
     {
       "id": "xlsx-snapshot-roundtrip-dimensions-merges",
@@ -102,7 +104,7 @@
       "required": true,
       "passed": true,
       "coveredFeatures": ["xlsx.unsupportedFeatureWarnings"],
-      "missingFeatures": ["xlsx.macros.execution", "xlsx.charts.roundtrip", "xlsx.pivots.roundtrip", "xlsx.styles.export"],
+      "missingFeatures": ["xlsx.macros.execution", "xlsx.charts.roundtrip", "xlsx.pivots.roundtrip"],
       "evidence": "Scorecard explicitly records unsupported XLSX surfaces instead of treating a subset round trip as full Excel parity."
     }
   ]

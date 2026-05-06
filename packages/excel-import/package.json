@@ -45,7 +45,9 @@
     "@bilig/agent-api": "workspace:*",
     "@bilig/core": "workspace:*",
     "@bilig/protocol": "workspace:*",
-    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+    "fast-xml-parser": "5.7.3",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
+    "xlsx-js-style": "1.2.0"
   },
   "devDependencies": {
     "@bilig/formula": "workspace:*"

@@ -108,13 +108,14 @@
       "xlsx.numberFormats",
       "xlsx.definedNames",
       "xlsx.comments",
+      "xlsx.styles",
       "xlsx.rowColumnDimensions",
       "xlsx.merges",
       "xlsx.multiSheet",
       "xlsx.unsupportedFeatureWarnings"
     ],
     "importExportFidelityPassed": true,
-    "importExportUnsupportedFeatures": ["xlsx.macros.execution", "xlsx.charts.roundtrip", "xlsx.pivots.roundtrip", "xlsx.styles.export"],
+    "importExportUnsupportedFeatures": ["xlsx.macros.execution", "xlsx.charts.roundtrip", "xlsx.pivots.roundtrip"],
     "largeWorkbookSloRowsCovered": [100000, 250000],
     "largeWorkbookSloPassed": true,
     "reliabilityCoveredControls": [
@@ -338,8 +339,8 @@
       "status": "partial-repo-evidence",
       "currentEvidence": [
         "generated import/export fidelity scorecard passes required cases: true",
-        "covered import/export features: csv.import, csv.preview, csv.export, csv.roundtrip, xlsx.import, xlsx.preview, xlsx.export, xlsx.roundtrip, xlsx.values, xlsx.formulas, xlsx.numberFormats, xlsx.definedNames, xlsx.comments, xlsx.rowColumnDimensions, xlsx.merges, xlsx.multiSheet, xlsx.unsupportedFeatureWarnings",
-        "unsupported XLSX features are explicitly disclosed: xlsx.macros.execution, xlsx.charts.roundtrip, xlsx.pivots.roundtrip, xlsx.styles.export"
+        "covered import/export features: csv.import, csv.preview, csv.export, csv.roundtrip, xlsx.import, xlsx.preview, xlsx.export, xlsx.roundtrip, xlsx.values, xlsx.formulas, xlsx.numberFormats, xlsx.definedNames, xlsx.comments, xlsx.styles, xlsx.rowColumnDimensions, xlsx.merges, xlsx.multiSheet, xlsx.unsupportedFeatureWarnings",
+        "unsupported XLSX features are explicitly disclosed: xlsx.macros.execution, xlsx.charts.roundtrip, xlsx.pivots.roundtrip"
       ],
       "evidenceArtifacts": [
         "packages/benchmarks/baselines/import-export-fidelity-scorecard.json",

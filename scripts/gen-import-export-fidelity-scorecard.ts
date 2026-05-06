@@ -66,12 +66,13 @@ const coveredFeatureOrder = [
   'xlsx.numberFormats',
   'xlsx.definedNames',
   'xlsx.comments',
+  'xlsx.styles',
   'xlsx.rowColumnDimensions',
   'xlsx.merges',
   'xlsx.multiSheet',
   'xlsx.unsupportedFeatureWarnings',
 ] as const
-const unsupportedFeatures = ['xlsx.macros.execution', 'xlsx.charts.roundtrip', 'xlsx.pivots.roundtrip', 'xlsx.styles.export'] as const
+const unsupportedFeatures = ['xlsx.macros.execution', 'xlsx.charts.roundtrip', 'xlsx.pivots.roundtrip'] as const
 
 async function main(): Promise<void> {
   const isCheckMode = process.argv.includes('--check')
@@ -197,7 +198,8 @@ function runXlsxSnapshotRoundTripValuesCase(): ImportExportFidelityCase {
   const actual = projectSupportedSnapshotSemantics(importXlsx(exportXlsx(createFidelitySnapshot()), 'fidelity.xlsx').snapshot)
   const passed =
     JSON.stringify(actual.valueFormulaFormatSheets) === JSON.stringify(expected.valueFormulaFormatSheets) &&
-    JSON.stringify(actual.commentThreads) === JSON.stringify(expected.commentThreads)
+    JSON.stringify(actual.commentThreads) === JSON.stringify(expected.commentThreads) &&
+    JSON.stringify(actual.styleRanges) === JSON.stringify(expected.styleRanges)
   return fidelityCase({
     id: 'xlsx-snapshot-roundtrip-values-formulas-formats',
     format: 'xlsx',
@@ -211,10 +213,11 @@ function runXlsxSnapshotRoundTripValuesCase(): ImportExportFidelityCase {
       'xlsx.numberFormats',
       'xlsx.definedNames',
       'xlsx.comments',
+      'xlsx.styles',
       'xlsx.multiSheet',
     ],
     evidence:
-      'WorkbookSnapshot exported to XLSX imports back with the same values, formulas, formats, defined names, comments, and sheet order.',
+      'WorkbookSnapshot exported to XLSX imports back with the same values, formulas, formats, defined names, comments, styles, and sheet order.',
   })
 }
 
@@ -278,6 +281,15 @@ function createFidelitySnapshot(): WorkbookSnapshot {
           { name: 'InputRegion', value: { kind: 'range-ref', sheetName: 'Inputs', startAddress: 'A1', endAddress: 'B1' } },
           { name: 'TaxRate', value: { kind: 'scalar', value: 0.085 } },
         ],
+        styles: [
+          {
+            id: 'accent-total',
+            fill: { backgroundColor: '#1d3989' },
+            font: { family: 'Aptos', size: 12, bold: true, color: '#ffffff' },
+            alignment: { horizontal: 'center', vertical: 'middle', wrap: true },
+            borders: { bottom: { style: 'solid', weight: 'thin', color: '#000000' } },
+          },
+        ],
       },
     },
     sheets: [
@@ -286,6 +298,7 @@ function createFidelitySnapshot(): WorkbookSnapshot {
         name: 'Summary',
         order: 0,
         metadata: {
+          styleRanges: [{ range: { sheetName: 'Summary', startAddress: 'B1', endAddress: 'B1' }, styleId: 'accent-total' }],
           commentThreads: [
             {
               threadId: 'summary-total-comment',
@@ -328,6 +341,19 @@ function createFidelitySnapshot(): WorkbookSnapshot {
 }
 
 function projectSupportedSnapshotSemantics(snapshot: WorkbookSnapshot) {
+  const stylesById = new Map((snapshot.workbook.metadata?.styles ?? []).map((style) => [style.id, style]))
+  const portableStyle = (styleId: string) => {
+    const style = stylesById.get(styleId)
+    if (!style) {
+      return undefined
+    }
+    return {
+      ...(style.fill ? { fill: style.fill } : {}),
+      ...(style.font ? { font: style.font } : {}),
+      ...(style.alignment ? { alignment: style.alignment } : {}),
+      ...(style.borders ? { borders: style.borders } : {}),
+    }
+  }
   return {
     definedNames: (snapshot.workbook.metadata?.definedNames ?? [])
       .map((definedName) => ({ name: definedName.name, value: definedName.value }))
@@ -343,6 +369,17 @@ function projectSupportedSnapshotSemantics(snapshot: WorkbookSnapshot) {
         })),
       }))
       .toSorted((left, right) => `${left.sheetName}:${left.address}`.localeCompare(`${right.sheetName}:${right.address}`)),
+    styleRanges: snapshot.sheets
+      .flatMap((sheet) => sheet.metadata?.styleRanges ?? [])
+      .map((styleRange) => ({
+        range: styleRange.range,
+        style: portableStyle(styleRange.styleId),
+      }))
+      .toSorted((left, right) =>
+        `${left.range.sheetName}:${left.range.startAddress}:${left.range.endAddress}`.localeCompare(
+          `${right.range.sheetName}:${right.range.startAddress}:${right.range.endAddress}`,
+        ),
+      ),
     valueFormulaFormatSheets: snapshot.sheets
       .toSorted((left, right) => left.order - right.order)
       .map((sheet) => ({

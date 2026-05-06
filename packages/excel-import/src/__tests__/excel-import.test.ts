@@ -355,6 +355,15 @@ describe('excel import', () => {
             { name: 'InputRegion', value: { kind: 'range-ref', sheetName: 'Inputs', startAddress: 'A1', endAddress: 'B1' } },
             { name: 'TaxRate', value: { kind: 'scalar', value: 0.085 } },
           ],
+          styles: [
+            {
+              id: 'accent-total',
+              fill: { backgroundColor: '#1d3989' },
+              font: { family: 'Aptos', size: 12, bold: true, color: '#ffffff' },
+              alignment: { horizontal: 'center', vertical: 'middle', wrap: true },
+              borders: { bottom: { style: 'solid', weight: 'thin', color: '#000000' } },
+            },
+          ],
         },
       },
       sheets: [
@@ -363,6 +372,7 @@ describe('excel import', () => {
           name: 'Summary',
           order: 0,
           metadata: {
+            styleRanges: [{ range: { sheetName: 'Summary', startAddress: 'B1', endAddress: 'B1' }, styleId: 'accent-total' }],
             commentThreads: [
               {
                 threadId: 'summary-total-note',
@@ -412,6 +422,19 @@ describe('excel import', () => {
 })
 
 function projectSupportedSnapshotSemantics(snapshot: WorkbookSnapshot) {
+  const stylesById = new Map((snapshot.workbook.metadata?.styles ?? []).map((style) => [style.id, style]))
+  const portableStyle = (styleId: string) => {
+    const style = stylesById.get(styleId)
+    if (!style) {
+      return undefined
+    }
+    return {
+      ...(style.fill ? { fill: style.fill } : {}),
+      ...(style.font ? { font: style.font } : {}),
+      ...(style.alignment ? { alignment: style.alignment } : {}),
+      ...(style.borders ? { borders: style.borders } : {}),
+    }
+  }
   return {
     definedNames: (snapshot.workbook.metadata?.definedNames ?? [])
       .map((definedName) => ({ name: definedName.name, value: definedName.value }))
@@ -453,6 +476,16 @@ function projectSupportedSnapshotSemantics(snapshot: WorkbookSnapshot) {
               })),
             }))
             .toSorted((left, right) => `${left.sheetName}:${left.address}`.localeCompare(`${right.sheetName}:${right.address}`)),
+          styleRanges: (sheet.metadata?.styleRanges ?? [])
+            .map((styleRange) => ({
+              range: styleRange.range,
+              style: portableStyle(styleRange.styleId),
+            }))
+            .toSorted((left, right) =>
+              `${left.range.sheetName}:${left.range.startAddress}:${left.range.endAddress}`.localeCompare(
+                `${right.range.sheetName}:${right.range.startAddress}:${right.range.endAddress}`,
+              ),
+            ),
         },
       })),
   }
