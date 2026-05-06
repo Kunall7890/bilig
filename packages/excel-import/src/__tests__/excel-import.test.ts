@@ -207,12 +207,27 @@ describe('excel import', () => {
     )
   })
 
-  it('warns and ignores macro payloads from macro-enabled workbook bytes', () => {
+  it('preserves macro payloads without executing them across macro-enabled workbook import and export', () => {
     const imported = importXlsx(buildMacroEnabledWorkbook(), 'Macro Workbook.xlsm')
 
     expect(imported.workbookName).toBe('Macro Workbook')
-    expect(imported.warnings).toContain('Macros were ignored during XLSX import.')
+    expect(imported.warnings).toContain('Macros were preserved but not executed during XLSX import.')
+    expect(imported.snapshot.workbook.metadata?.macroPayloads).toEqual([
+      {
+        kind: 'vbaProject',
+        storage: 'base64',
+        dataBase64: 'AQIDBA==',
+        byteLength: 4,
+        preservedWithoutExecution: true,
+      },
+    ])
     expect(imported.snapshot.sheets[0]?.cells).toEqual([expect.objectContaining({ address: 'A1', value: 'safe value' })])
+
+    const exported = exportXlsx(imported.snapshot)
+    const roundTripped = XLSX.read(exported, { type: 'array', bookVBA: true })
+    expect(Array.from(roundTripped.vbaraw ?? [])).toEqual([1, 2, 3, 4])
+    expect(roundTripped.SheetNames).toEqual(['Sheet1'])
+    expect(roundTripped.Sheets['Sheet1']?.['A1']?.v).toBe('safe value')
   })
 
   it('maps imported xlsx styles into Bilig style records', () => {

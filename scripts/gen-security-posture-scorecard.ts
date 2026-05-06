@@ -102,6 +102,7 @@ const coveredControlOrder = [
   'formula.noFunctionConstructor',
   'formula.noNodeProcessExecution',
   'xlsx.macroWarning',
+  'xlsx.macroPayloadPreservation',
   'xlsx.noMacroPayloadExport',
   'agent.sharedMediumHighRiskOwnerReview',
   'runtime.publishManifest',
@@ -214,17 +215,20 @@ function buildXlsxImportSafetyControl(): SecurityPostureControl {
   const importedMacroWorkbook = importXlsx(toUint8Array(macroBytes), 'macro.xlsm')
   const exportedBytes = exportXlsx(createSafeExportSnapshot())
   const importedExportedWorkbook = importXlsx(exportedBytes, 'safe.xlsx')
-  const macroWarningPassed = importedMacroWorkbook.warnings.includes('Macros were ignored during XLSX import.')
-  const noMacroExportPassed = !importedExportedWorkbook.warnings.includes('Macros were ignored during XLSX import.')
+  const macroWarningPassed = importedMacroWorkbook.warnings.includes('Macros were preserved but not executed during XLSX import.')
+  const macroPayloadPreserved = importedMacroWorkbook.snapshot.workbook.metadata?.macroPayloads?.[0]?.dataBase64 === 'AQIDBA=='
+  const noMacroExportPassed = !importedExportedWorkbook.warnings.includes('Macros were preserved but not executed during XLSX import.')
 
   return securityControl({
     id: 'xlsx-import-macro-non-execution',
     category: 'import-safety',
-    passed: macroWarningPassed && noMacroExportPassed,
-    coveredControls: ['xlsx.macroWarning', 'xlsx.noMacroPayloadExport'],
-    evidence: 'Generated XLSM bytes with a VBA payload, verified import warns and supported XLSX export does not emit macro payloads.',
+    passed: macroWarningPassed && macroPayloadPreserved && noMacroExportPassed,
+    coveredControls: ['xlsx.macroWarning', 'xlsx.macroPayloadPreservation', 'xlsx.noMacroPayloadExport'],
+    evidence:
+      'Generated XLSM bytes with a VBA payload, verified import preserves the payload without executing it and supported XLSX export does not invent macro payloads.',
     findings: [
       ...(macroWarningPassed ? [] : ['macro-enabled workbook import did not emit the expected warning']),
+      ...(macroPayloadPreserved ? [] : ['macro-enabled workbook import did not preserve the VBA payload metadata']),
       ...(noMacroExportPassed ? [] : ['supported XLSX export emitted a macro warning on re-import']),
     ],
   })

@@ -17,6 +17,7 @@ import { addExportStylesToWorksheet } from './xlsx-styles.js'
 import { addExportTablesToXlsxBytes } from './xlsx-tables.js'
 import { addExportDataValidationsToXlsxBytes } from './xlsx-validations.js'
 import { addExportWorkbookPropertiesToXlsxBytes } from './xlsx-workbook-properties.js'
+import { decodePreservedVbaProjectPayload } from './xlsx-macros.js'
 
 function buildExportColumns(columns: readonly WorkbookAxisEntrySnapshot[] | undefined): XLSX.ColInfo[] | undefined {
   if (!columns || columns.length === 0) {
@@ -230,11 +231,18 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
     }
   }
 
+  const preservedVbaProject = decodePreservedVbaProjectPayload(snapshot.workbook.metadata?.macroPayloads?.[0])
+  if (preservedVbaProject) {
+    const macroWorkbook = workbook as { vbaraw?: Uint8Array }
+    macroWorkbook.vbaraw = preservedVbaProject
+  }
+
   const bytes = toUint8Array(
     XLSXStyle.write(workbook, {
-      bookType: 'xlsx',
+      bookType: preservedVbaProject ? 'xlsm' : 'xlsx',
       type: 'buffer',
       cellStyles: true,
+      bookVBA: Boolean(preservedVbaProject),
     }) as unknown,
   )
   return addExportChartsToXlsxBytes(

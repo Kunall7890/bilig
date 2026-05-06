@@ -9,6 +9,7 @@ import type {
   WorkbookDataValidationSnapshot,
   WorkbookDefinedNameValueSnapshot,
   WorkbookImageSnapshot,
+  WorkbookMacroPayloadSnapshot,
   WorkbookNoteSnapshot,
   WorkbookRangeProtectionSnapshot,
   WorkbookSheetProtectionSnapshot,
@@ -27,6 +28,7 @@ import {
   cloneDefinedNameValue,
   cloneFilterRecord,
   cloneImageRecord,
+  cloneMacroPayloadRecord,
   cloneMergeRangeRecord,
   cloneNoteRecord,
   clonePivotRecord,
@@ -55,11 +57,13 @@ import {
   createWorkbookMetadataRecord,
   chartKey,
   imageKey,
+  macroPayloadKey,
   type WorkbookChartRecord,
   type WorkbookCommentThreadRecord,
   type WorkbookConditionalFormatRecord,
   normalizeDefinedName,
   type WorkbookImageRecord,
+  type WorkbookMacroPayloadRecord,
   type WorkbookMergeRangeRecord,
   type WorkbookNoteRecord,
   type WorkbookRangeProtectionRecord,
@@ -131,6 +135,8 @@ export interface WorkbookMetadataService {
   ) => Effect.Effect<WorkbookPropertyRecord | undefined, WorkbookMetadataError>
   readonly getWorkbookProperty: (key: string) => Effect.Effect<WorkbookPropertyRecord | undefined, WorkbookMetadataError>
   readonly listWorkbookProperties: () => Effect.Effect<WorkbookPropertyRecord[], WorkbookMetadataError>
+  readonly setMacroPayload: (record: WorkbookMacroPayloadSnapshot) => Effect.Effect<WorkbookMacroPayloadRecord, WorkbookMetadataError>
+  readonly listMacroPayloads: () => Effect.Effect<WorkbookMacroPayloadRecord[], WorkbookMetadataError>
   readonly setCalculationSettings: (
     settings: WorkbookCalculationSettingsSnapshot,
   ) => Effect.Effect<WorkbookCalculationSettingsRecord, WorkbookMetadataError>
@@ -373,6 +379,7 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
   const resetNow = (): void => {
     const defaults = createWorkbookMetadataRecord()
     metadata.properties.clear()
+    metadata.macroPayloads.clear()
     metadata.definedNames.clear()
     metadata.tables.clear()
     metadata.spills.clear()
@@ -465,6 +472,42 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
         catch: (cause) =>
           new WorkbookMetadataError({
             message: metadataErrorMessage('Failed to list workbook properties', cause),
+            cause,
+          }),
+      })
+    },
+    setMacroPayload(record) {
+      return Effect.try({
+        try: () => {
+          if (
+            record.kind !== 'vbaProject' ||
+            record.storage !== 'base64' ||
+            typeof record.dataBase64 !== 'string' ||
+            record.dataBase64.length === 0 ||
+            !Number.isInteger(record.byteLength) ||
+            record.byteLength < 0 ||
+            !record.preservedWithoutExecution
+          ) {
+            throw new Error('Invalid workbook macro payload metadata')
+          }
+          const stored = cloneMacroPayloadRecord(record)
+          metadata.macroPayloads.set(macroPayloadKey(stored.kind), stored)
+          return cloneMacroPayloadRecord(stored)
+        },
+        catch: (cause) =>
+          new WorkbookMetadataError({
+            message: metadataErrorMessage('Failed to set macro payload metadata', cause),
+            cause,
+          }),
+      })
+    },
+    listMacroPayloads() {
+      return Effect.try({
+        try: () =>
+          [...metadata.macroPayloads.values()].toSorted((left, right) => left.kind.localeCompare(right.kind)).map(cloneMacroPayloadRecord),
+        catch: (cause) =>
+          new WorkbookMetadataError({
+            message: metadataErrorMessage('Failed to list macro payload metadata', cause),
             cause,
           }),
       })

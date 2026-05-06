@@ -16,6 +16,7 @@ import {
   type WorkbookDataValidationSnapshot,
   type WorkbookDefinedNameValueSnapshot,
   type WorkbookImageSnapshot,
+  type WorkbookMacroPayloadSnapshot,
   type WorkbookNoteSnapshot,
   type WorkbookRangeProtectionSnapshot,
   type WorkbookSheetProtectionSnapshot,
@@ -52,6 +53,7 @@ import {
   type WorkbookFormatRangeRecord,
   type WorkbookFreezePaneRecord,
   type WorkbookImageRecord,
+  type WorkbookMacroPayloadRecord,
   type WorkbookMergeRangeRecord,
   type WorkbookMetadataRecord,
   type WorkbookPivotRecord,
@@ -115,6 +117,7 @@ export type {
   WorkbookFormatRangeRecord,
   WorkbookFreezePaneRecord,
   WorkbookImageRecord,
+  WorkbookMacroPayloadRecord,
   WorkbookMergeRangeRecord,
   WorkbookMetadataRecord,
   WorkbookPivotRecord,
@@ -783,6 +786,14 @@ export class WorkbookStore {
 
   listWorkbookProperties(): WorkbookPropertyRecord[] {
     return runWorkbookMetadataEffect(this.metadataService.listWorkbookProperties())
+  }
+
+  setMacroPayload(record: WorkbookMacroPayloadSnapshot): WorkbookMacroPayloadRecord {
+    return runWorkbookMetadataEffect(this.metadataService.setMacroPayload(record))
+  }
+
+  listMacroPayloads(): WorkbookMacroPayloadRecord[] {
+    return runWorkbookMetadataEffect(this.metadataService.listMacroPayloads())
   }
 
   setCalculationSettings(settings: WorkbookCalculationSettingsSnapshot): WorkbookCalculationSettingsRecord {

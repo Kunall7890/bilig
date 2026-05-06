@@ -49,6 +49,7 @@ describe('security posture scorecard', () => {
       'formula.noFunctionConstructor',
       'formula.noNodeProcessExecution',
       'xlsx.macroWarning',
+      'xlsx.macroPayloadPreservation',
       'xlsx.noMacroPayloadExport',
       'agent.sharedMediumHighRiskOwnerReview',
       'runtime.publishManifest',

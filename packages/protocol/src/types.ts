@@ -296,6 +296,14 @@ export interface WorkbookVolatileContextSnapshot {
   recalcEpoch: number
 }
 
+export interface WorkbookMacroPayloadSnapshot {
+  kind: 'vbaProject'
+  storage: 'base64'
+  dataBase64: string
+  byteLength: number
+  preservedWithoutExecution: true
+}
+
 export interface WorkbookFreezePaneSnapshot {
   rows: number
   cols: number
@@ -614,6 +622,7 @@ export interface WorkbookMetadataSnapshot {
   shapes?: WorkbookShapeSnapshot[]
   styles?: CellStyleRecord[]
   formats?: CellNumberFormatRecord[]
+  macroPayloads?: WorkbookMacroPayloadSnapshot[]
   calculationSettings?: WorkbookCalculationSettingsSnapshot
   volatileContext?: WorkbookVolatileContextSnapshot
 }

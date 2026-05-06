@@ -1,6 +1,7 @@
 import type {
   WorkbookChartSnapshot,
   WorkbookImageSnapshot,
+  WorkbookMacroPayloadSnapshot,
   WorkbookMergeRangeSnapshot,
   WorkbookShapeSnapshot,
   CellNumberFormatRecord,
@@ -33,6 +34,8 @@ export interface WorkbookPropertyRecord {
   key: string
   value: LiteralInput
 }
+
+export interface WorkbookMacroPayloadRecord extends WorkbookMacroPayloadSnapshot {}
 
 export interface WorkbookSpillRecord {
   sheetName: string
@@ -121,6 +124,7 @@ export interface WorkbookNoteRecord extends WorkbookNoteSnapshot {}
 
 export interface WorkbookMetadataRecord {
   properties: Map<string, WorkbookPropertyRecord>
+  macroPayloads: Map<string, WorkbookMacroPayloadRecord>
   definedNames: Map<string, WorkbookDefinedNameRecord>
   tables: Map<string, WorkbookTableRecord>
   spills: Map<string, WorkbookSpillRecord>
@@ -147,6 +151,7 @@ export interface WorkbookMetadataRecord {
 export function createWorkbookMetadataRecord(): WorkbookMetadataRecord {
   return {
     properties: new Map(),
+    macroPayloads: new Map(),
     definedNames: new Map(),
     tables: new Map(),
     spills: new Map(),
@@ -181,6 +186,10 @@ export function normalizeWorkbookObjectName(name: string, label = 'Workbook obje
     throw new Error(`${label} must be non-empty`)
   }
   return normalized
+}
+
+export function macroPayloadKey(kind: WorkbookMacroPayloadSnapshot['kind']): string {
+  return normalizeWorkbookObjectName(kind, 'Macro payloads')
 }
 
 export function pivotKey(sheetName: string, address: string): string {

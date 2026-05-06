@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "suite": "security-posture",
-  "generatedAt": "2026-05-06T13:52:26.655Z",
+  "generatedAt": "2026-05-06T20:42:22.888Z",
   "source": {
     "artifactGenerator": "scripts/gen-security-posture-scorecard.ts",
     "formulaRuntimeScanRoots": ["packages/formula/src", "packages/core/src/formula", "packages/core/src/engine/services"],
@@ -26,6 +26,7 @@
       "formula.noFunctionConstructor",
       "formula.noNodeProcessExecution",
       "xlsx.macroWarning",
+      "xlsx.macroPayloadPreservation",
       "xlsx.noMacroPayloadExport",
       "agent.sharedMediumHighRiskOwnerReview",
       "runtime.publishManifest",
@@ -51,7 +52,7 @@
       "required": true,
       "passed": true,
       "coveredControls": ["formula.noEval", "formula.noFunctionConstructor", "formula.noNodeProcessExecution"],
-      "evidence": "Scanned 74 production formula/runtime TypeScript files for eval, Function constructors, process execution imports, and spawn calls.",
+      "evidence": "Scanned 75 production formula/runtime TypeScript files for eval, Function constructors, process execution imports, and spawn calls.",
       "findings": []
     },
     {
@@ -59,8 +60,8 @@
       "category": "import-safety",
       "required": true,
       "passed": true,
-      "coveredControls": ["xlsx.macroWarning", "xlsx.noMacroPayloadExport"],
-      "evidence": "Generated XLSM bytes with a VBA payload, verified import warns and supported XLSX export does not emit macro payloads.",
+      "coveredControls": ["xlsx.macroWarning", "xlsx.macroPayloadPreservation", "xlsx.noMacroPayloadExport"],
+      "evidence": "Generated XLSM bytes with a VBA payload, verified import preserves the payload without executing it and supported XLSX export does not invent macro payloads.",
       "findings": []
     },
     {

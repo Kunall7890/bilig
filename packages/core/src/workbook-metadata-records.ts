@@ -16,6 +16,7 @@ import {
   type WorkbookConditionalFormatRecord,
   type WorkbookDataValidationRecord,
   type WorkbookImageRecord,
+  type WorkbookMacroPayloadRecord,
   type WorkbookMergeRangeRecord,
   normalizeWorkbookObjectName,
   type WorkbookNoteRecord,
@@ -74,6 +75,16 @@ export function cloneDefinedNameValue(value: WorkbookDefinedNameValueSnapshot): 
 
 export function clonePropertyRecord(record: WorkbookPropertyRecord): WorkbookPropertyRecord {
   return { key: record.key, value: record.value }
+}
+
+export function cloneMacroPayloadRecord(record: WorkbookMacroPayloadRecord): WorkbookMacroPayloadRecord {
+  return {
+    kind: record.kind,
+    storage: record.storage,
+    dataBase64: record.dataBase64,
+    byteLength: record.byteLength,
+    preservedWithoutExecution: record.preservedWithoutExecution,
+  }
 }
 
 export function cloneTableRecord(record: WorkbookTableRecord): WorkbookTableRecord {

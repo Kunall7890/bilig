@@ -33,6 +33,7 @@ import { readImportedWorkbookFileStyles } from './xlsx-styles.js'
 import { readImportedWorkbookTables } from './xlsx-tables.js'
 import { readImportedWorkbookDataValidations } from './xlsx-validations.js'
 import { readImportedWorkbookProperties } from './xlsx-workbook-properties.js'
+import { createPreservedVbaProjectPayload } from './xlsx-macros.js'
 
 export { exportXlsx } from './xlsx-export.js'
 
@@ -456,9 +457,19 @@ function createCellRange(sheetName: string, address: string) {
   }
 }
 
+function toUint8Array(value: unknown): Uint8Array | null {
+  if (value instanceof Uint8Array) {
+    return new Uint8Array(value)
+  }
+  if (value instanceof ArrayBuffer) {
+    return new Uint8Array(value)
+  }
+  return null
+}
+
 function addWorkbookWarnings(workbook: XLSX.WorkBook, warnings: string[], ignoredDefinedNameCount: number): void {
   if (workbook.vbaraw) {
-    warnings.push('Macros were ignored during XLSX import.')
+    warnings.push('Macros were preserved but not executed during XLSX import.')
   }
   if (ignoredDefinedNameCount > 0) {
     warnings.push('Some defined names were ignored during XLSX import.')
@@ -484,6 +495,7 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
   const importedWorkbookStyles = readImportedWorkbookFileStyles(workbook, workbook.SheetNames)
   const importedWorkbookProperties = readImportedWorkbookProperties(data)
   const importedCalculationSettings = readImportedWorkbookCalculationSettings(data)
+  const importedMacroPayload = toUint8Array(workbook.vbaraw)
   const importedCharts = readImportedWorkbookCharts(data, workbook.SheetNames)
   const importedPivots = readImportedWorkbookPivots(data, workbook.SheetNames)
   const importedTables = readImportedWorkbookTables(data, workbook.SheetNames)
@@ -633,6 +645,7 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
   const workbookMetadata: WorkbookMetadataSnapshot = {
     ...(importedWorkbookProperties ? { properties: importedWorkbookProperties } : {}),
     ...(importedCalculationSettings ? { calculationSettings: importedCalculationSettings } : {}),
+    ...(importedMacroPayload ? { macroPayloads: [createPreservedVbaProjectPayload(importedMacroPayload)] } : {}),
     ...(styleCatalog.size > 0 ? { styles: [...styleCatalog.values()] } : {}),
     ...(importedDefinedNames.definedNames ? { definedNames: importedDefinedNames.definedNames } : {}),
     ...(importedTables ? { tables: importedTables } : {}),

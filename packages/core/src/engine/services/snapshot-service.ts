@@ -47,6 +47,7 @@ export function createEngineSnapshotService(args: {
             name: args.state.workbook.workbookName,
           }
           const properties = args.state.workbook.listWorkbookProperties().map(({ key, value }) => ({ key, value }))
+          const macroPayloads = args.state.workbook.listMacroPayloads().map((payload) => Object.assign({}, payload))
           const definedNames = args.state.workbook.listDefinedNames().map(({ name, value }) => ({ name, value }))
           const calculationSettings = args.state.workbook.getCalculationSettings()
           const volatileContext = args.state.workbook.getVolatileContext()
@@ -95,6 +96,7 @@ export function createEngineSnapshotService(args: {
           const shapes = args.state.workbook.listShapes().map((shape) => structuredClone(shape))
           if (
             properties.length > 0 ||
+            macroPayloads.length > 0 ||
             definedNames.length > 0 ||
             tables.length > 0 ||
             spills.length > 0 ||
@@ -111,6 +113,9 @@ export function createEngineSnapshotService(args: {
             workbook.metadata = {}
             if (properties.length > 0) {
               workbook.metadata.properties = properties
+            }
+            if (macroPayloads.length > 0) {
+              workbook.metadata.macroPayloads = macroPayloads
             }
             if (definedNames.length > 0) {
               workbook.metadata.definedNames = definedNames

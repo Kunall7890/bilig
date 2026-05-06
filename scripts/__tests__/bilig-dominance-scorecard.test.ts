@@ -134,7 +134,9 @@ describe('bilig dominance scorecard', () => {
         'packages/benchmarks/baselines/import-export-fidelity-scorecard.json',
         'packages/benchmarks/baselines/import-export-external-sheets-excel-comparison.json',
       ]),
-      blockers: ['generated XLSX round-trip evidence covers supported snapshot semantics, not full native Excel macro execution semantics'],
+      blockers: [
+        'generated XLSX/XLSM round-trip evidence preserves macro payloads without execution, but full native Excel macro execution semantics remain intentionally unsupported',
+      ],
     })
     expect(scorecard.categories.find((category) => category.id === 'large-workbook-scale')).toMatchObject({
       status: 'partial-repo-evidence',

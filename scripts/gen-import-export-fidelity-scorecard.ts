@@ -70,7 +70,7 @@ const requiredCaseIds = [
   'xlsx-snapshot-roundtrip-tables',
   'xlsx-snapshot-roundtrip-charts',
   'xlsx-snapshot-roundtrip-pivots',
-  'xlsx-macro-payload-detected-without-execution',
+  'xlsx-macro-payload-preserved-without-execution',
   'xlsx-unsupported-features-warning',
   'external-sheets-excel-import-export-comparison',
 ] as const
@@ -105,6 +105,7 @@ const coveredFeatureOrder = [
   'xlsx.pivots.roundtrip',
   'xlsx.multiSheet',
   'xlsx.macros.detectedNoExecution',
+  'xlsx.macros.payloadRoundtrip',
   'xlsx.unsupportedFeatureWarnings',
   ...externalImportExportComparisonCoveredFeatures,
 ] as const
@@ -144,7 +145,7 @@ export async function buildImportExportFidelityScorecard(generatedAt = new Date(
     runXlsxSnapshotRoundTripTablesCase(),
     runXlsxSnapshotRoundTripChartsCase(),
     runXlsxSnapshotRoundTripPivotsCase(),
-    runXlsxMacroPayloadDetectedWithoutExecutionCase(),
+    runXlsxMacroPayloadPreservedWithoutExecutionCase(),
     runXlsxUnsupportedFeaturesWarningCase(),
     runExternalSheetsExcelImportExportComparisonCase(),
   ]
@@ -429,22 +430,31 @@ function runXlsxSnapshotRoundTripPivotsCase(): ImportExportFidelityCase {
   })
 }
 
-function runXlsxMacroPayloadDetectedWithoutExecutionCase(): ImportExportFidelityCase {
+function runXlsxMacroPayloadPreservedWithoutExecutionCase(): ImportExportFidelityCase {
   const imported = importXlsx(createMacroEnabledWorkbookBytes(), 'macro-enabled.xlsm')
+  const exported = importXlsx(exportXlsx(imported.snapshot), 'macro-enabled-roundtrip.xlsm')
   const safeCell = imported.snapshot.sheets[0]?.cells.find((cell) => cell.address === 'A1')
+  const roundTripSafeCell = exported.snapshot.sheets[0]?.cells.find((cell) => cell.address === 'A1')
+  const macroPayload = imported.snapshot.workbook.metadata?.macroPayloads?.[0]
+  const roundTripMacroPayload = exported.snapshot.workbook.metadata?.macroPayloads?.[0]
   const passed =
     imported.workbookName === 'macro-enabled' &&
-    imported.warnings.includes('Macros were ignored during XLSX import.') &&
-    safeCell?.value === 'safe macro workbook value'
+    imported.warnings.includes('Macros were preserved but not executed during XLSX import.') &&
+    exported.warnings.includes('Macros were preserved but not executed during XLSX import.') &&
+    safeCell?.value === 'safe macro workbook value' &&
+    roundTripSafeCell?.value === 'safe macro workbook value' &&
+    macroPayload?.dataBase64 === 'AQIDBA==' &&
+    roundTripMacroPayload?.dataBase64 === macroPayload.dataBase64
 
   return fidelityCase({
-    id: 'xlsx-macro-payload-detected-without-execution',
+    id: 'xlsx-macro-payload-preserved-without-execution',
     format: 'xlsx',
-    direction: 'import',
+    direction: 'import-export-import',
     passed,
-    coveredFeatures: ['xlsx.macros.detectedNoExecution', 'xlsx.unsupportedFeatureWarnings'],
+    coveredFeatures: ['xlsx.macros.detectedNoExecution', 'xlsx.macros.payloadRoundtrip', 'xlsx.unsupportedFeatureWarnings'],
     missingFeatures: [...unsupportedFeatures],
-    evidence: 'Macro-enabled XLSM import preserves safe workbook cells and records a non-execution warning for the VBA payload.',
+    evidence:
+      'Macro-enabled XLSM import preserves safe workbook cells, records a non-execution warning, exports an XLSM with the original VBA payload, and re-imports with identical macro payload metadata.',
   })
 }
 

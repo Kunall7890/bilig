@@ -223,6 +223,7 @@
       "xlsx.pivots.roundtrip",
       "xlsx.multiSheet",
       "xlsx.macros.detectedNoExecution",
+      "xlsx.macros.payloadRoundtrip",
       "xlsx.unsupportedFeatureWarnings",
       "external.googleSheetsImportExportDocs",
       "external.microsoftExcelImportExportDocs",
@@ -255,6 +256,7 @@
       "formula.noFunctionConstructor",
       "formula.noNodeProcessExecution",
       "xlsx.macroWarning",
+      "xlsx.macroPayloadPreservation",
       "xlsx.noMacroPayloadExport",
       "agent.sharedMediumHighRiskOwnerReview",
       "runtime.publishManifest",
@@ -525,7 +527,8 @@
       "status": "partial-repo-evidence",
       "currentEvidence": [
         "generated import/export fidelity scorecard passes required cases: true",
-        "covered import/export features: csv.import, csv.preview, csv.export, csv.roundtrip, xlsx.import, xlsx.preview, xlsx.export, xlsx.roundtrip, xlsx.values, xlsx.formulas, xlsx.numberFormats, xlsx.workbookProperties, xlsx.calculationSettings, xlsx.definedNames, xlsx.comments, xlsx.styles, xlsx.conditionalFormats.roundtrip, xlsx.rowColumnDimensions, xlsx.merges, xlsx.freezePanes.roundtrip, xlsx.filters.roundtrip, xlsx.sorts.roundtrip, xlsx.sheetProtection.roundtrip, xlsx.protectedRanges.roundtrip, xlsx.dataValidations.roundtrip, xlsx.tables.roundtrip, xlsx.charts.roundtrip, xlsx.pivots.roundtrip, xlsx.multiSheet, xlsx.macros.detectedNoExecution, xlsx.unsupportedFeatureWarnings, external.googleSheetsImportExportDocs, external.microsoftExcelImportExportDocs, external.sheetsExcelImportExportComparison",
+        "covered import/export features: csv.import, csv.preview, csv.export, csv.roundtrip, xlsx.import, xlsx.preview, xlsx.export, xlsx.roundtrip, xlsx.values, xlsx.formulas, xlsx.numberFormats, xlsx.workbookProperties, xlsx.calculationSettings, xlsx.definedNames, xlsx.comments, xlsx.styles, xlsx.conditionalFormats.roundtrip, xlsx.rowColumnDimensions, xlsx.merges, xlsx.freezePanes.roundtrip, xlsx.filters.roundtrip, xlsx.sorts.roundtrip, xlsx.sheetProtection.roundtrip, xlsx.protectedRanges.roundtrip, xlsx.dataValidations.roundtrip, xlsx.tables.roundtrip, xlsx.charts.roundtrip, xlsx.pivots.roundtrip, xlsx.multiSheet, xlsx.macros.detectedNoExecution, xlsx.macros.payloadRoundtrip, xlsx.unsupportedFeatureWarnings, external.googleSheetsImportExportDocs, external.microsoftExcelImportExportDocs, external.sheetsExcelImportExportComparison",
+        "macro-enabled workbook payload preservation covered: true",
         "unsupported XLSX features are explicitly disclosed: xlsx.macros.execution",
         "external Google Sheets import/export evidence: official-docs-comparison-artifact",
         "external Microsoft Excel import/export evidence: official-docs-comparison-artifact"
@@ -542,7 +545,7 @@
         "pnpm exec vitest run packages/excel-import/src/__tests__/excel-import.test.ts packages/core/src/__tests__/engine-import-export.fuzz.test.ts"
       ],
       "blockers": [
-        "generated XLSX round-trip evidence covers supported snapshot semantics, not full native Excel macro execution semantics"
+        "generated XLSX/XLSM round-trip evidence preserves macro payloads without execution, but full native Excel macro execution semantics remain intentionally unsupported"
       ]
     },
     {
@@ -618,7 +621,7 @@
       "status": "partial-repo-evidence",
       "currentEvidence": [
         "generated security posture scorecard passes required controls: true",
-        "covered security controls: formula.noEval, formula.noFunctionConstructor, formula.noNodeProcessExecution, xlsx.macroWarning, xlsx.noMacroPayloadExport, agent.sharedMediumHighRiskOwnerReview, runtime.publishManifest, runtime.noSourceInTarballs, runtime.alignedPackageSet, browser.contentSecurityPolicy, browser.crossOriginIsolation, browser.workerWasmRuntimeAllowlist, deployment.runtimeNetworkPolicy, dependency.vulnerabilityAudit, external.googleSheetsSecurityDocs, external.microsoftExcelSecurityDocs, external.sheetsExcelSecurityComparison",
+        "covered security controls: formula.noEval, formula.noFunctionConstructor, formula.noNodeProcessExecution, xlsx.macroWarning, xlsx.macroPayloadPreservation, xlsx.noMacroPayloadExport, agent.sharedMediumHighRiskOwnerReview, runtime.publishManifest, runtime.noSourceInTarballs, runtime.alignedPackageSet, browser.contentSecurityPolicy, browser.crossOriginIsolation, browser.workerWasmRuntimeAllowlist, deployment.runtimeNetworkPolicy, dependency.vulnerabilityAudit, external.googleSheetsSecurityDocs, external.microsoftExcelSecurityDocs, external.sheetsExcelSecurityComparison",
         "uncovered security controls are explicitly disclosed: none",
         "external Google Sheets security evidence: official-docs-comparison-artifact",
         "external Microsoft Excel security evidence: official-docs-comparison-artifact"

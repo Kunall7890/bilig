@@ -209,6 +209,35 @@ describe('EngineSnapshotService', () => {
     expect(restored.exportSnapshot()).toEqual(snapshot)
   })
 
+  it('preserves macro payload metadata through engine snapshot import and export', async () => {
+    const snapshot = {
+      version: 1 as const,
+      workbook: {
+        name: 'snapshot-macro-payload',
+        metadata: {
+          macroPayloads: [
+            {
+              kind: 'vbaProject' as const,
+              storage: 'base64' as const,
+              dataBase64: 'AQIDBA==',
+              byteLength: 4,
+              preservedWithoutExecution: true as const,
+            },
+          ],
+        },
+      },
+      sheets: [{ id: 1, name: 'Sheet1', order: 0, cells: [{ address: 'A1', value: 'safe value' }] }],
+    }
+    const restored = new SpreadsheetEngine({
+      workbookName: snapshot.workbook.name,
+      replicaId: 'snapshot-macro-payload-restore',
+    })
+    await restored.ready()
+    restored.importSnapshot(snapshot)
+
+    expect(restored.exportSnapshot()).toEqual(snapshot)
+  })
+
   it('restores structurally rewritten direct scalar refs as #REF errors', async () => {
     const source = new SpreadsheetEngine({
       workbookName: 'snapshot-direct-scalar-ref-rewrite-source',
