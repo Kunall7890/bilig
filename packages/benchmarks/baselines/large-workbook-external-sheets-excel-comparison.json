@@ -1,0 +1,212 @@
+{
+  "schemaVersion": 1,
+  "suite": "external-sheets-excel-large-workbook-comparison",
+  "generatedAt": "2026-05-06T16:22:00.000Z",
+  "sourceBasis": "official-public-docs-reviewed-2026-05-06",
+  "officialSources": [
+    {
+      "id": "google-drive-file-sizes",
+      "vendor": "google-sheets",
+      "title": "Files you can store in Google Drive",
+      "url": "https://support.google.com/drive/answer/37603?hl=en",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Google documents spreadsheet cell and column limits for Sheets-created, Sheets-converted, Excel-imported, and CSV-imported spreadsheets.",
+        "Google documents Connected Sheets row and cell limits separately from ordinary Sheets file limits."
+      ]
+    },
+    {
+      "id": "google-sheets-excel-best-practices",
+      "vendor": "google-sheets",
+      "title": "Use both Excel and Sheets: Best practices",
+      "url": "https://support.google.com/docs/answer/9331167?hl=en",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Google documents Sheets as appropriate for collaboration when datasets fit within the documented Sheets cell limit.",
+        "Google documents continuing in Excel when the dataset is greater than the documented Sheets cell limit or needs Excel-only capabilities."
+      ]
+    },
+    {
+      "id": "google-sheets-data-ingestion",
+      "vendor": "google-sheets",
+      "title": "Learn how to optimize your data ingestion",
+      "url": "https://support.google.com/docs/answer/12236443?hl=en",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Google documents copy/paste for small ingestion and import functions for smaller dynamic datasets.",
+        "Google documents Connected Sheets and BigQuery as the path for very large CSV ingestion when direct Sheets import is too large."
+      ]
+    },
+    {
+      "id": "google-sheets-performance",
+      "vendor": "google-sheets",
+      "title": "Learn how to improve Sheets performance",
+      "url": "https://support.google.com/docs/answer/11468464?hl=en",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Google documents that edits can trigger background calculations and visible progress while users continue editing.",
+        "Google documents performance guidance around repeated expressions, volatile functions, and conditional formatting at scale."
+      ]
+    },
+    {
+      "id": "google-sheets-data-reference-performance",
+      "vendor": "google-sheets",
+      "title": "Optimize your data references to improve Sheets performance",
+      "url": "https://support.google.com/docs/answer/12159115?hl=en",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Google documents using same-spreadsheet references and closed ranges to improve performance on large datasets.",
+        "Google documents that open ranges can force Sheets to inspect many rows even when the used subset is small."
+      ]
+    },
+    {
+      "id": "microsoft-excel-specifications-limits",
+      "vendor": "microsoft-excel",
+      "title": "Excel specifications and limits",
+      "url": "https://support.microsoft.com/en-us/office/excel-specifications-and-limits-1672b34d-7043-467e-8e27-269d656771c3",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Microsoft documents Excel worksheet dimensions, workbook resource limits, calculation limits, and PivotTable limits.",
+        "Microsoft documents workbook and Data Model scale as memory and system-resource bounded in supported 64-bit environments."
+      ]
+    },
+    {
+      "id": "microsoft-excel-performance-tips",
+      "vendor": "microsoft-excel",
+      "title": "Tips for improving Excel's performance",
+      "url": "https://support.microsoft.com/en-us/office/tips-for-improving-excel-s-performance-a8294ac5-652d-47f2-8e89-1c3ce2c09439",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Microsoft documents performance work across calculation, lookup, memory allocation, copy/paste, undo, scrolling, filtering, file open, and programmability.",
+        "Microsoft documents user-facing guidance for improving performance on heavy workbooks."
+      ]
+    }
+  ],
+  "summary": {
+    "comparisonCaptured": true,
+    "requiredDimensionsPassed": true,
+    "coveredFeatures": [
+      "external.googleSheetsLargeWorkbookDocs",
+      "external.microsoftExcelLargeWorkbookDocs",
+      "external.sheetsExcelLargeWorkbookScaleComparison"
+    ],
+    "limitations": [
+      "This artifact captures current official public documentation and published scale guidance, not a live timing run inside Google Sheets or Microsoft Excel.",
+      "The comparison proves direct external large-workbook scale evidence exists; it does not claim bilig is 10x faster than Google Sheets or Microsoft Excel.",
+      "bilig's checked large-workbook SLO currently covers 100k and 250k materialized-cell sessions, not every incumbent maximum-limit scenario."
+    ]
+  },
+  "dimensions": [
+    {
+      "id": "published-grid-and-workbook-limits",
+      "title": "Published Grid And Workbook Limits",
+      "required": true,
+      "passed": true,
+      "sourceIds": ["google-drive-file-sizes", "google-sheets-excel-best-practices", "microsoft-excel-specifications-limits"],
+      "biligEvidence": [
+        "The large-workbook SLO scorecard runs committed 100k and 250k materialized-cell load and warm-start contracts.",
+        "The dominance scorecard keeps large-workbook scale partial until max-limit and live incumbent timing artifacts exist."
+      ],
+      "googleSheetsEvidence": [
+        "Google publishes hard Sheets cell and column limits for created, converted, Excel-imported, and CSV-imported spreadsheets.",
+        "Google's Excel-and-Sheets guidance treats datasets beyond the Sheets cell limit as a reason to remain in Excel."
+      ],
+      "microsoftExcelEvidence": [
+        "Microsoft publishes Excel worksheet dimensions and memory/resource-bounded workbook limits.",
+        "Microsoft publishes calculation, PivotTable, selection, and Data Model limits relevant to large workbook behavior."
+      ],
+      "comparisonResult": "bilig now records official incumbent scale limits beside its executable 100k and 250k SLO evidence, while keeping the max-scale dominance claim open.",
+      "residualLimitations": [
+        "bilig has not yet published a committed product maximum that exceeds the incumbent limits by 10x.",
+        "The published incumbent limits are not timing measurements."
+      ]
+    },
+    {
+      "id": "large-data-ingestion-and-load-guidance",
+      "title": "Large Data Ingestion And Load Guidance",
+      "required": true,
+      "passed": true,
+      "sourceIds": [
+        "google-sheets-data-ingestion",
+        "google-drive-file-sizes",
+        "microsoft-excel-specifications-limits",
+        "microsoft-excel-performance-tips"
+      ],
+      "biligEvidence": [
+        "The SLO scorecard checks cold core snapshot load and browser worker warm start for the committed large-workbook corpuses.",
+        "The import/export fidelity scorecard separately covers supported CSV/XLSX semantics so file compatibility is not used as a proxy for large-workbook load speed."
+      ],
+      "googleSheetsEvidence": [
+        "Google documents different ingestion paths for small copy/paste, import functions, and very large CSV ingestion through Connected Sheets and BigQuery.",
+        "Google publishes Sheets and Connected Sheets limits that constrain how much data can be loaded directly into Sheets experiences."
+      ],
+      "microsoftExcelEvidence": [
+        "Microsoft documents workbook and Data Model scale limits that depend on available memory and system resources.",
+        "Microsoft documents performance improvements and guidance covering file open, filtering, scrolling, and workbook-heavy workflows."
+      ],
+      "comparisonResult": "bilig has executable local SLO load evidence and explicit separation from import/export fidelity, while Google and Microsoft publish mature large-data paths and resource boundaries.",
+      "residualLimitations": [
+        "bilig still needs native Google Sheets and Microsoft Excel load/import timing artifacts for the same corpuses.",
+        "The external docs do not provide controlled p95 timings for comparable hardware or tenants."
+      ]
+    },
+    {
+      "id": "large-workbook-performance-behavior",
+      "title": "Large Workbook Performance Behavior",
+      "required": true,
+      "passed": true,
+      "sourceIds": [
+        "google-sheets-performance",
+        "google-sheets-data-reference-performance",
+        "microsoft-excel-performance-tips",
+        "microsoft-excel-specifications-limits"
+      ],
+      "biligEvidence": [
+        "The SLO scorecard enforces p95 budgets for 100k and 250k materialized-cell load, worker warm start, visible edit patching, and headed browser frame pacing.",
+        "The headed Playwright contracts verify smooth browse and bounded visible mutation behavior against the large workbook corpuses."
+      ],
+      "googleSheetsEvidence": [
+        "Google documents background recalculation and performance risks from volatile functions, repeated expressions, conditional formats, import functions, and open ranges.",
+        "Google documents practical modeling guidance to reduce CPU use, improve stability, and speed up large-dataset work."
+      ],
+      "microsoftExcelEvidence": [
+        "Microsoft documents performance work and tips across calculation, lookup, memory, copy/paste, undo, scrolling, filtering, file open, and programmability.",
+        "Microsoft documents many calculation and workbook limits as bounded by memory or worksheet dimensions."
+      ],
+      "comparisonResult": "bilig has machine-checked local p95 budgets for its current large-workbook corpuses; incumbent docs show scale and tuning behavior but do not substitute for direct timing evidence.",
+      "residualLimitations": [
+        "The comparison remains documentation-backed rather than a live browser/desktop p95 benchmark against Sheets and Excel.",
+        "bilig needs larger corpus tiers and hosted collaboration scale so the SLO evidence spans more of the objective."
+      ]
+    },
+    {
+      "id": "live-incumbent-timing-gap",
+      "title": "Live Incumbent Timing Gap",
+      "required": true,
+      "passed": true,
+      "sourceIds": [
+        "google-drive-file-sizes",
+        "google-sheets-performance",
+        "microsoft-excel-specifications-limits",
+        "microsoft-excel-performance-tips"
+      ],
+      "biligEvidence": [
+        "The dominance scorecard still blocks a blanket 10x claim unless direct Google Sheets and Microsoft Excel evidence exists for every objective category.",
+        "The large-workbook SLO scorecard records official-docs comparison evidence but keeps direct incumbent live timing as an explicit remaining gap."
+      ],
+      "googleSheetsEvidence": [
+        "Google's official docs provide product limits and performance guidance but not a controlled benchmark trace for bilig's checked corpuses.",
+        "Google Sheets performance guidance is workload-modeling advice rather than a downloadable timing baseline."
+      ],
+      "microsoftExcelEvidence": [
+        "Microsoft's official docs provide product limits and performance guidance but not a controlled benchmark trace for bilig's checked corpuses.",
+        "Excel performance guidance describes optimized areas and user practices rather than a comparable p95 benchmark artifact."
+      ],
+      "comparisonResult": "The external large-workbook evidence gap is narrowed from missing docs to missing live incumbent timing, which keeps the category honest and actionable.",
+      "residualLimitations": [
+        "A future live timing artifact must run the same corpus families in Google Sheets and Microsoft Excel under documented hardware, browser, tenant, and workbook settings.",
+        "Until then, this category remains partial evidence rather than a 10x product win."
+      ]
+    }
+  ]
+}

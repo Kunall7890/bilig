@@ -4,6 +4,13 @@ import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 
+import {
+  externalLargeWorkbookComparisonArtifactRepoPath,
+  externalLargeWorkbookComparisonCoveredFeatures,
+  parseExternalLargeWorkbookComparisonArtifact,
+  validateExternalLargeWorkbookComparisonArtifact,
+} from './large-workbook-external-sheets-excel-comparison.ts'
+
 interface NumericSummary {
   readonly samples: number[]
   readonly min: number
@@ -53,6 +60,17 @@ export interface HeadedBrowserFrameP95Contract {
   readonly findings: string[]
 }
 
+export interface LargeWorkbookExternalComparisonEvidence {
+  readonly artifact: 'packages/benchmarks/baselines/large-workbook-external-sheets-excel-comparison.json'
+  readonly sourceBasis: string
+  readonly officialGoogleSheetsSourceCount: number
+  readonly officialMicrosoftExcelSourceCount: number
+  readonly requiredDimensionsPassed: boolean
+  readonly coveredFeatures: string[]
+  readonly limitations: string[]
+  readonly findings: string[]
+}
+
 export interface LargeWorkbookSloScorecard {
   readonly schemaVersion: 1
   readonly suite: 'large-workbook-slo'
@@ -63,6 +81,7 @@ export interface LargeWorkbookSloScorecard {
     readonly headedBrowserCommand: 'pnpm test:browser:full'
     readonly headedBrowserTestFile: 'e2e/tests/web-shell-scroll-performance.pw.ts'
     readonly artifactGenerator: 'scripts/gen-large-workbook-slo-scorecard.ts'
+    readonly externalLargeWorkbookComparisonArtifact: 'packages/benchmarks/baselines/large-workbook-external-sheets-excel-comparison.json'
   }
   readonly summary: {
     readonly coveredLargeWorkbookRows: number[]
@@ -70,11 +89,12 @@ export interface LargeWorkbookSloScorecard {
     readonly allGateBudgetsPassed: boolean
     readonly headedBrowserFrameP95Evidence: 'playwright-contracts'
     readonly headedBrowserFrameP95ContractsPassed: boolean
-    readonly externalGoogleSheetsEvidence: 'not-captured'
-    readonly externalMicrosoftExcelEvidence: 'not-captured'
+    readonly externalGoogleSheetsEvidence: 'official-docs-comparison-artifact'
+    readonly externalMicrosoftExcelEvidence: 'official-docs-comparison-artifact'
   }
   readonly measurements: LargeWorkbookSloMeasurement[]
   readonly headedBrowserFrameP95Contracts: HeadedBrowserFrameP95Contract[]
+  readonly externalSheetsExcelComparison: LargeWorkbookExternalComparisonEvidence
 }
 
 interface MeasurementSpec {
@@ -200,6 +220,7 @@ const headedBrowserFrameP95ContractSpecs = [
 
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
 const outputPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'large-workbook-slo-scorecard.json')
+const externalLargeWorkbookComparisonArtifactPath = join(rootDir, externalLargeWorkbookComparisonArtifactRepoPath)
 const isCheckMode = process.argv.includes('--check')
 
 function main(): void {
@@ -219,8 +240,13 @@ function main(): void {
   logResult('write', scorecard)
 }
 
-export function buildLargeWorkbookSloScorecard(reportInput: unknown, generatedAt = new Date().toISOString()): LargeWorkbookSloScorecard {
+export function buildLargeWorkbookSloScorecard(
+  reportInput: unknown,
+  generatedAt = new Date().toISOString(),
+  externalComparisonInput: unknown = readExternalLargeWorkbookComparisonArtifact(),
+): LargeWorkbookSloScorecard {
   const report = parseBenchContractsReport(reportInput)
+  const externalSheetsExcelComparison = buildExternalComparisonEvidence(externalComparisonInput)
   const measurements = measurementSpecs.map((spec) => buildMeasurement(report, spec))
   const headedBrowserFrameP95Contracts = buildHeadedBrowserFrameP95Contracts(
     report.headedBrowserTestSource ?? readFileSync(join(rootDir, headedBrowserTestFile), 'utf8'),
@@ -236,6 +262,7 @@ export function buildLargeWorkbookSloScorecard(reportInput: unknown, generatedAt
       headedBrowserCommand: 'pnpm test:browser:full',
       headedBrowserTestFile,
       artifactGenerator: 'scripts/gen-large-workbook-slo-scorecard.ts',
+      externalLargeWorkbookComparisonArtifact: externalLargeWorkbookComparisonArtifactRepoPath,
     },
     summary: {
       coveredLargeWorkbookRows: [
@@ -249,11 +276,31 @@ export function buildLargeWorkbookSloScorecard(reportInput: unknown, generatedAt
       allGateBudgetsPassed: measurements.every((measurement) => measurement.gatePassed),
       headedBrowserFrameP95Evidence: 'playwright-contracts',
       headedBrowserFrameP95ContractsPassed: headedBrowserFrameP95Contracts.every((contract) => contract.passed),
-      externalGoogleSheetsEvidence: 'not-captured',
-      externalMicrosoftExcelEvidence: 'not-captured',
+      externalGoogleSheetsEvidence: 'official-docs-comparison-artifact',
+      externalMicrosoftExcelEvidence: 'official-docs-comparison-artifact',
     },
     measurements,
     headedBrowserFrameP95Contracts,
+    externalSheetsExcelComparison,
+  }
+}
+
+function readExternalLargeWorkbookComparisonArtifact(): unknown {
+  return JSON.parse(readFileSync(externalLargeWorkbookComparisonArtifactPath, 'utf8')) as unknown
+}
+
+function buildExternalComparisonEvidence(value: unknown): LargeWorkbookExternalComparisonEvidence {
+  const artifact = parseExternalLargeWorkbookComparisonArtifact(value)
+  const findings = validateExternalLargeWorkbookComparisonArtifact(artifact)
+  return {
+    artifact: externalLargeWorkbookComparisonArtifactRepoPath,
+    sourceBasis: artifact.sourceBasis,
+    officialGoogleSheetsSourceCount: artifact.officialSources.filter((source) => source.vendor === 'google-sheets').length,
+    officialMicrosoftExcelSourceCount: artifact.officialSources.filter((source) => source.vendor === 'microsoft-excel').length,
+    requiredDimensionsPassed: artifact.summary.requiredDimensionsPassed && findings.length === 0,
+    coveredFeatures: artifact.summary.coveredFeatures,
+    limitations: artifact.summary.limitations,
+    findings,
   }
 }
 
@@ -398,6 +445,7 @@ export function parseLargeWorkbookSloScorecard(value: unknown): LargeWorkbookSlo
   if (record['schemaVersion'] !== 1 || record['suite'] !== 'large-workbook-slo') {
     throw new Error('Unexpected large workbook SLO scorecard header')
   }
+  const source = recordField(record, 'source', 'large workbook SLO scorecard source')
   const summary = recordField(record, 'summary', 'large workbook SLO scorecard summary')
   const measurements = arrayField(record, 'measurements', 'large workbook SLO scorecard measurements').map((entry, index) => {
     const measurement = toRecord(entry, `large workbook SLO scorecard measurement ${String(index)}`)
@@ -426,11 +474,16 @@ export function parseLargeWorkbookSloScorecard(value: unknown): LargeWorkbookSlo
     suite: 'large-workbook-slo',
     generatedAt: stringField(record, 'generatedAt', 'large workbook SLO scorecard generatedAt'),
     source: {
-      benchmarkCommand: 'CI=1 pnpm bench:contracts',
-      benchmarkScript: 'scripts/bench-contracts.ts',
-      headedBrowserCommand: 'pnpm test:browser:full',
-      headedBrowserTestFile,
-      artifactGenerator: 'scripts/gen-large-workbook-slo-scorecard.ts',
+      benchmarkCommand: literalField(source, 'benchmarkCommand', 'CI=1 pnpm bench:contracts'),
+      benchmarkScript: literalField(source, 'benchmarkScript', 'scripts/bench-contracts.ts'),
+      headedBrowserCommand: literalField(source, 'headedBrowserCommand', 'pnpm test:browser:full'),
+      headedBrowserTestFile: literalField(source, 'headedBrowserTestFile', headedBrowserTestFile),
+      artifactGenerator: literalField(source, 'artifactGenerator', 'scripts/gen-large-workbook-slo-scorecard.ts'),
+      externalLargeWorkbookComparisonArtifact: literalField(
+        source,
+        'externalLargeWorkbookComparisonArtifact',
+        externalLargeWorkbookComparisonArtifactRepoPath,
+      ),
     },
     summary: {
       coveredLargeWorkbookRows: numberArrayField(summary, 'coveredLargeWorkbookRows'),
@@ -442,8 +495,8 @@ export function parseLargeWorkbookSloScorecard(value: unknown): LargeWorkbookSlo
         'headedBrowserFrameP95ContractsPassed',
         'large workbook headed browser frame contracts passed',
       ),
-      externalGoogleSheetsEvidence: literalField(summary, 'externalGoogleSheetsEvidence', 'not-captured'),
-      externalMicrosoftExcelEvidence: literalField(summary, 'externalMicrosoftExcelEvidence', 'not-captured'),
+      externalGoogleSheetsEvidence: literalField(summary, 'externalGoogleSheetsEvidence', 'official-docs-comparison-artifact'),
+      externalMicrosoftExcelEvidence: literalField(summary, 'externalMicrosoftExcelEvidence', 'official-docs-comparison-artifact'),
     },
     measurements,
     headedBrowserFrameP95Contracts: arrayField(
@@ -451,6 +504,9 @@ export function parseLargeWorkbookSloScorecard(value: unknown): LargeWorkbookSlo
       'headedBrowserFrameP95Contracts',
       'large workbook headed browser frame contracts',
     ).map(parseHeadedBrowserFrameP95Contract),
+    externalSheetsExcelComparison: parseExternalComparisonEvidence(
+      recordField(record, 'externalSheetsExcelComparison', 'large workbook external Sheets/Excel comparison'),
+    ),
   }
 }
 
@@ -480,6 +536,16 @@ function validateLargeWorkbookSloScorecard(scorecard: LargeWorkbookSloScorecard)
   if (failedContract) {
     throw new Error(`Large workbook SLO scorecard contains a failed headed browser contract: ${failedContract.id}`)
   }
+  if (!scorecard.externalSheetsExcelComparison.requiredDimensionsPassed || scorecard.externalSheetsExcelComparison.findings.length > 0) {
+    throw new Error(
+      `Large workbook SLO scorecard contains stale external Sheets/Excel comparison evidence: ${scorecard.externalSheetsExcelComparison.findings.join(
+        ', ',
+      )}`,
+    )
+  }
+  if (!arrayEquals(scorecard.externalSheetsExcelComparison.coveredFeatures, externalLargeWorkbookComparisonCoveredFeatures)) {
+    throw new Error('Large workbook SLO scorecard external comparison feature coverage is stale')
+  }
 }
 
 function logResult(mode: 'check' | 'write', scorecard: LargeWorkbookSloScorecard): void {
@@ -492,11 +558,38 @@ function logResult(mode: 'check' | 'write', scorecard: LargeWorkbookSloScorecard
         allSloBudgetsPassed: scorecard.summary.allSloBudgetsPassed,
         allGateBudgetsPassed: scorecard.summary.allGateBudgetsPassed,
         headedBrowserFrameP95ContractsPassed: scorecard.summary.headedBrowserFrameP95ContractsPassed,
+        externalGoogleSheetsEvidence: scorecard.summary.externalGoogleSheetsEvidence,
+        externalMicrosoftExcelEvidence: scorecard.summary.externalMicrosoftExcelEvidence,
       },
       null,
       2,
     ),
   )
+}
+
+function parseExternalComparisonEvidence(record: Record<string, unknown>): LargeWorkbookExternalComparisonEvidence {
+  return {
+    artifact: literalField(record, 'artifact', externalLargeWorkbookComparisonArtifactRepoPath),
+    sourceBasis: stringField(record, 'sourceBasis', 'large workbook external comparison sourceBasis'),
+    officialGoogleSheetsSourceCount: numberField(
+      record,
+      'officialGoogleSheetsSourceCount',
+      'large workbook external comparison officialGoogleSheetsSourceCount',
+    ),
+    officialMicrosoftExcelSourceCount: numberField(
+      record,
+      'officialMicrosoftExcelSourceCount',
+      'large workbook external comparison officialMicrosoftExcelSourceCount',
+    ),
+    requiredDimensionsPassed: booleanField(
+      record,
+      'requiredDimensionsPassed',
+      'large workbook external comparison requiredDimensionsPassed',
+    ),
+    coveredFeatures: stringArrayField(record, 'coveredFeatures', 'large workbook external comparison coveredFeatures'),
+    limitations: stringArrayField(record, 'limitations', 'large workbook external comparison limitations'),
+    findings: stringArrayField(record, 'findings', 'large workbook external comparison findings'),
+  }
 }
 
 function parseHeadedBrowserFrameP95Contract(entry: unknown, index: number): HeadedBrowserFrameP95Contract {
@@ -671,6 +764,10 @@ function formatJsonForRepo(serializedJson: string): string {
   const formattedJson = readFileSync(tempFilePath, 'utf8')
   rmSync(tempDir, { recursive: true, force: true })
   return formattedJson
+}
+
+function arrayEquals(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index])
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

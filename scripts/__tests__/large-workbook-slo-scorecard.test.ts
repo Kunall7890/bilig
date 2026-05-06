@@ -10,6 +10,11 @@ describe('large workbook SLO scorecard', () => {
     expect(scorecard.summary.allSloBudgetsPassed).toBe(true)
     expect(scorecard.summary.headedBrowserFrameP95Evidence).toBe('playwright-contracts')
     expect(scorecard.summary.headedBrowserFrameP95ContractsPassed).toBe(true)
+    expect(scorecard.summary.externalGoogleSheetsEvidence).toBe('official-docs-comparison-artifact')
+    expect(scorecard.summary.externalMicrosoftExcelEvidence).toBe('official-docs-comparison-artifact')
+    expect(scorecard.source.externalLargeWorkbookComparisonArtifact).toBe(
+      'packages/benchmarks/baselines/large-workbook-external-sheets-excel-comparison.json',
+    )
     expect(scorecard.measurements.map((measurement) => measurement.id)).toEqual([
       'load100k',
       'load250k',
@@ -37,6 +42,19 @@ describe('large workbook SLO scorecard', () => {
       metric: 'frameMs.p95',
       budgetP95: 20,
     })
+    expect(scorecard.externalSheetsExcelComparison).toMatchObject({
+      artifact: 'packages/benchmarks/baselines/large-workbook-external-sheets-excel-comparison.json',
+      sourceBasis: 'official-public-docs-reviewed-2026-05-06',
+      officialGoogleSheetsSourceCount: 5,
+      officialMicrosoftExcelSourceCount: 2,
+      requiredDimensionsPassed: true,
+      findings: [],
+    })
+    expect(scorecard.externalSheetsExcelComparison.coveredFeatures).toEqual([
+      'external.googleSheetsLargeWorkbookDocs',
+      'external.microsoftExcelLargeWorkbookDocs',
+      'external.sheetsExcelLargeWorkbookScaleComparison',
+    ])
   })
 
   it('rejects reports that do not cover both 100k and 250k workbook sessions', () => {

@@ -54,9 +54,10 @@ describe('bilig dominance scorecard', () => {
       status: 'partial-repo-evidence',
       evidenceArtifacts: expect.arrayContaining([
         'packages/benchmarks/baselines/large-workbook-slo-scorecard.json',
+        'packages/benchmarks/baselines/large-workbook-external-sheets-excel-comparison.json',
         'e2e/tests/web-shell-scroll-performance.pw.ts',
       ]),
-      blockers: ['no direct Sheets or Excel large-workbook scale artifact exists in the repo'],
+      blockers: ['no direct Sheets or Excel large-workbook live timing artifact exists in the repo'],
     })
     expect(scorecard.categories.find((category) => category.id === 'ui-responsiveness')).toMatchObject({
       blockers: ['no direct Sheets or Excel browser responsiveness comparison artifact exists in the repo'],
@@ -530,14 +531,23 @@ function buildFixtureInput(): BuildScorecardInput {
     largeWorkbookSloScorecard: {
       schemaVersion: 1,
       suite: 'large-workbook-slo',
+      generatedAt: '2026-05-06T16:00:00.000Z',
+      source: {
+        benchmarkCommand: 'CI=1 pnpm bench:contracts',
+        benchmarkScript: 'scripts/bench-contracts.ts',
+        headedBrowserCommand: 'pnpm test:browser:full',
+        headedBrowserTestFile: 'e2e/tests/web-shell-scroll-performance.pw.ts',
+        artifactGenerator: 'scripts/gen-large-workbook-slo-scorecard.ts',
+        externalLargeWorkbookComparisonArtifact: 'packages/benchmarks/baselines/large-workbook-external-sheets-excel-comparison.json',
+      },
       summary: {
         coveredLargeWorkbookRows: [100_000, 250_000],
         allSloBudgetsPassed: true,
         allGateBudgetsPassed: true,
         headedBrowserFrameP95Evidence: 'playwright-contracts',
         headedBrowserFrameP95ContractsPassed: true,
-        externalGoogleSheetsEvidence: 'not-captured',
-        externalMicrosoftExcelEvidence: 'not-captured',
+        externalGoogleSheetsEvidence: 'official-docs-comparison-artifact',
+        externalMicrosoftExcelEvidence: 'official-docs-comparison-artifact',
       },
       measurements: [
         sloMeasurement('load100k', 'large-workbook-scale', 100_000, 230, 1500),
@@ -559,6 +569,20 @@ function buildFixtureInput(): BuildScorecardInput {
           50,
         ),
       ],
+      externalSheetsExcelComparison: {
+        artifact: 'packages/benchmarks/baselines/large-workbook-external-sheets-excel-comparison.json',
+        sourceBasis: 'official-public-docs-reviewed-2026-05-06',
+        officialGoogleSheetsSourceCount: 5,
+        officialMicrosoftExcelSourceCount: 2,
+        requiredDimensionsPassed: true,
+        coveredFeatures: [
+          'external.googleSheetsLargeWorkbookDocs',
+          'external.microsoftExcelLargeWorkbookDocs',
+          'external.sheetsExcelLargeWorkbookScaleComparison',
+        ],
+        limitations: ['Official-docs comparison, not live timing.'],
+        findings: [],
+      },
     },
     competitiveArtifact: {
       generatedAt: '2026-05-05T19:00:09.455Z',

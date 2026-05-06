@@ -255,10 +255,13 @@
         "range-read and build families have HyperFormula comparison evidence",
         "range-read: WorkPaper 2/2, HyperFormula 0/2; worst mean ratio 0.25234528852366667 on range-read; worst p95 ratio 0.2715931629086945 on range-read",
         "large-workbook SLO artifact covers 100000, 250000 materialized-cell sessions",
-        "load100k: elapsedMs.p95 207.45379199999996ms against 1500ms SLO (5 samples)",
-        "load250k: elapsedMs.p95 557.227917ms against 1500ms SLO (3 samples)",
-        "workerWarmStart100k: elapsedMs.p95 11.341750000000047ms against 500ms SLO (3 samples)",
-        "workerWarmStart250k: elapsedMs.p95 15.84008300000005ms against 700ms SLO (3 samples)",
+        "load100k: elapsedMs.p95 216.81379200000003ms against 1500ms SLO (5 samples)",
+        "load250k: elapsedMs.p95 585.349042ms against 1500ms SLO (3 samples)",
+        "workerWarmStart100k: elapsedMs.p95 10.832124999999905ms against 500ms SLO (3 samples)",
+        "workerWarmStart250k: elapsedMs.p95 15.554415999999947ms against 700ms SLO (3 samples)",
+        "external Google Sheets large-workbook evidence: official-docs-comparison-artifact",
+        "external Microsoft Excel large-workbook evidence: official-docs-comparison-artifact",
+        "external large-workbook comparison dimensions pass: true",
         "headed browser frame p95 contracts pass: true",
         "headedDense100kDiagonalBrowse: frameMs.p95 budget 20ms on 100000 materialized cells via pnpm test:browser:full",
         "headedWide250kMainBodyBrowse: frameMs.p95 budget 20ms on 250000 materialized cells via pnpm test:browser:full"
@@ -266,11 +269,12 @@
       "evidenceArtifacts": [
         "packages/benchmarks/baselines/workpaper-vs-hyperformula.json",
         "packages/benchmarks/baselines/large-workbook-slo-scorecard.json",
+        "packages/benchmarks/baselines/large-workbook-external-sheets-excel-comparison.json",
         "e2e/tests/web-shell-scroll-performance.pw.ts",
         "docs/05-06-next-phase.md"
       ],
       "checkCommands": ["pnpm large-workbook:slo:check", "CI=1 pnpm bench:contracts", "pnpm test:browser:full", "pnpm bench:smoke"],
-      "blockers": ["no direct Sheets or Excel large-workbook scale artifact exists in the repo"]
+      "blockers": ["no direct Sheets or Excel large-workbook live timing artifact exists in the repo"]
     },
     {
       "id": "ui-responsiveness",
@@ -281,7 +285,7 @@
       "currentEvidence": [
         "worker-first local runtime, projected viewport patches, and tile cache architecture are implemented and documented",
         "browser correctness and performance smoke commands exist",
-        "workerVisibleEdit10k: visiblePatchMs.p95 3.7194170000000213ms against 16ms SLO (5 samples)",
+        "workerVisibleEdit10k: visiblePatchMs.p95 3.830500000000029ms against 16ms SLO (5 samples)",
         "headedWide250kVisibleEditCommit: mutationToVisibleMs.p95 budget 50ms on 250000 materialized cells via pnpm test:browser:full"
       ],
       "evidenceArtifacts": [
@@ -308,7 +312,7 @@
         "uncovered collaboration controls are explicitly disclosed: none",
         "external Google Sheets collaboration evidence: official-docs-comparison-artifact",
         "external Microsoft Excel collaboration evidence: official-docs-comparison-artifact",
-        "workerReconnectCatchUp100Pending: catchUpMs.p95 260.9891669999997ms against 2000ms SLO (3 samples)"
+        "workerReconnectCatchUp100Pending: catchUpMs.p95 261.5354590000006ms against 2000ms SLO (3 samples)"
       ],
       "evidenceArtifacts": [
         "packages/benchmarks/baselines/collaboration-scorecard.json",

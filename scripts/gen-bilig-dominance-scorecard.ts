@@ -462,6 +462,11 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
           sloSummary(load250k),
           sloSummary(workerWarmStart100k),
           sloSummary(workerWarmStart250k),
+          `external Google Sheets large-workbook evidence: ${input.largeWorkbookSloScorecard.summary.externalGoogleSheetsEvidence}`,
+          `external Microsoft Excel large-workbook evidence: ${input.largeWorkbookSloScorecard.summary.externalMicrosoftExcelEvidence}`,
+          `external large-workbook comparison dimensions pass: ${String(
+            input.largeWorkbookSloScorecard.externalSheetsExcelComparison.requiredDimensionsPassed,
+          )}`,
           `headed browser frame p95 contracts pass: ${String(
             input.largeWorkbookSloScorecard.summary.headedBrowserFrameP95ContractsPassed,
           )}`,
@@ -470,11 +475,12 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
         evidenceArtifacts: [
           input.competitiveArtifactPath,
           input.largeWorkbookSloScorecardPath,
+          input.largeWorkbookSloScorecard.source.externalLargeWorkbookComparisonArtifact,
           'e2e/tests/web-shell-scroll-performance.pw.ts',
           'docs/05-06-next-phase.md',
         ],
         checkCommands: ['pnpm large-workbook:slo:check', 'CI=1 pnpm bench:contracts', 'pnpm test:browser:full', 'pnpm bench:smoke'],
-        blockers: ['no direct Sheets or Excel large-workbook scale artifact exists in the repo'],
+        blockers: ['no direct Sheets or Excel large-workbook live timing artifact exists in the repo'],
       },
       {
         id: 'ui-responsiveness',

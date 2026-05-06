@@ -1,13 +1,14 @@
 {
   "schemaVersion": 1,
   "suite": "large-workbook-slo",
-  "generatedAt": "2026-05-06T09:17:50.334Z",
+  "generatedAt": "2026-05-06T15:06:35.528Z",
   "source": {
     "benchmarkCommand": "CI=1 pnpm bench:contracts",
     "benchmarkScript": "scripts/bench-contracts.ts",
     "headedBrowserCommand": "pnpm test:browser:full",
     "headedBrowserTestFile": "e2e/tests/web-shell-scroll-performance.pw.ts",
-    "artifactGenerator": "scripts/gen-large-workbook-slo-scorecard.ts"
+    "artifactGenerator": "scripts/gen-large-workbook-slo-scorecard.ts",
+    "externalLargeWorkbookComparisonArtifact": "packages/benchmarks/baselines/large-workbook-external-sheets-excel-comparison.json"
   },
   "summary": {
     "coveredLargeWorkbookRows": [100000, 250000],
@@ -15,8 +16,8 @@
     "allGateBudgetsPassed": true,
     "headedBrowserFrameP95Evidence": "playwright-contracts",
     "headedBrowserFrameP95ContractsPassed": true,
-    "externalGoogleSheetsEvidence": "not-captured",
-    "externalMicrosoftExcelEvidence": "not-captured"
+    "externalGoogleSheetsEvidence": "official-docs-comparison-artifact",
+    "externalMicrosoftExcelEvidence": "official-docs-comparison-artifact"
   },
   "measurements": [
     {
@@ -26,7 +27,7 @@
       "materializedCells": 100000,
       "corpusCaseId": "dense-mixed-100k",
       "metric": "elapsedMs.p95",
-      "actualP95": 207.45379199999996,
+      "actualP95": 216.81379200000003,
       "budgetP95": 1500,
       "gateBudgetP95": 2250,
       "sampleCount": 5,
@@ -40,7 +41,7 @@
       "materializedCells": 250000,
       "corpusCaseId": "dense-mixed-250k",
       "metric": "elapsedMs.p95",
-      "actualP95": 557.227917,
+      "actualP95": 585.349042,
       "budgetP95": 1500,
       "gateBudgetP95": 2250,
       "sampleCount": 3,
@@ -54,7 +55,7 @@
       "materializedCells": 100000,
       "corpusCaseId": "dense-mixed-100k",
       "metric": "elapsedMs.p95",
-      "actualP95": 11.341750000000047,
+      "actualP95": 10.832124999999905,
       "budgetP95": 500,
       "gateBudgetP95": 750,
       "sampleCount": 3,
@@ -68,7 +69,7 @@
       "materializedCells": 250000,
       "corpusCaseId": "dense-mixed-250k",
       "metric": "elapsedMs.p95",
-      "actualP95": 15.84008300000005,
+      "actualP95": 15.554415999999947,
       "budgetP95": 700,
       "gateBudgetP95": 1050,
       "sampleCount": 3,
@@ -82,7 +83,7 @@
       "materializedCells": 10000,
       "corpusCaseId": null,
       "metric": "visiblePatchMs.p95",
-      "actualP95": 3.7194170000000213,
+      "actualP95": 3.830500000000029,
       "budgetP95": 16,
       "gateBudgetP95": 24,
       "sampleCount": 5,
@@ -96,7 +97,7 @@
       "materializedCells": 10000,
       "corpusCaseId": null,
       "metric": "catchUpMs.p95",
-      "actualP95": 260.9891669999997,
+      "actualP95": 261.5354590000006,
       "budgetP95": 2000,
       "gateBudgetP95": 3000,
       "sampleCount": 3,
@@ -150,5 +151,23 @@
       "passed": true,
       "findings": []
     }
-  ]
+  ],
+  "externalSheetsExcelComparison": {
+    "artifact": "packages/benchmarks/baselines/large-workbook-external-sheets-excel-comparison.json",
+    "sourceBasis": "official-public-docs-reviewed-2026-05-06",
+    "officialGoogleSheetsSourceCount": 5,
+    "officialMicrosoftExcelSourceCount": 2,
+    "requiredDimensionsPassed": true,
+    "coveredFeatures": [
+      "external.googleSheetsLargeWorkbookDocs",
+      "external.microsoftExcelLargeWorkbookDocs",
+      "external.sheetsExcelLargeWorkbookScaleComparison"
+    ],
+    "limitations": [
+      "This artifact captures current official public documentation and published scale guidance, not a live timing run inside Google Sheets or Microsoft Excel.",
+      "The comparison proves direct external large-workbook scale evidence exists; it does not claim bilig is 10x faster than Google Sheets or Microsoft Excel.",
+      "bilig's checked large-workbook SLO currently covers 100k and 250k materialized-cell sessions, not every incumbent maximum-limit scenario."
+    ],
+    "findings": []
+  }
 }
