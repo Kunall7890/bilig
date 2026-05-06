@@ -3,13 +3,19 @@ export interface AxisResidentCellIdentity {
   readonly colId: string
 }
 
+export type AxisResidentCellIndexRebuildSource = (callback: (cellIndex: number, identity: AxisResidentCellIdentity) => void) => void
+
 export class AxisResidentCellIndex {
   private readonly byCell = new Map<number, AxisResidentCellIdentity>()
   private readonly byRow = new Map<string, Set<number>>()
   private readonly byColumn = new Map<string, Set<number>>()
+  private primaryIndexDirty = false
   private secondaryIndexesDirty = false
 
+  constructor(private readonly rebuildSource?: AxisResidentCellIndexRebuildSource) {}
+
   set(cellIndex: number, identity: AxisResidentCellIdentity): void {
+    this.ensurePrimaryIndex()
     const existing = this.byCell.get(cellIndex)
     if (existing && !this.secondaryIndexesDirty) {
       deleteFromSetMap(this.byRow, existing.rowId, cellIndex)
@@ -23,6 +29,7 @@ export class AxisResidentCellIndex {
   }
 
   add(cellIndex: number, identity: AxisResidentCellIdentity): void {
+    this.ensurePrimaryIndex()
     const existing = this.byCell.get(cellIndex)
     if (existing && !this.secondaryIndexesDirty) {
       deleteFromSetMap(this.byRow, existing.rowId, cellIndex)
@@ -36,15 +43,26 @@ export class AxisResidentCellIndex {
   }
 
   addDeferred(cellIndex: number, identity: AxisResidentCellIdentity): void {
+    this.ensurePrimaryIndex()
     this.byCell.set(cellIndex, identity)
     this.secondaryIndexesDirty = true
   }
 
+  deferRebuild(): void {
+    this.byCell.clear()
+    this.byRow.clear()
+    this.byColumn.clear()
+    this.primaryIndexDirty = true
+    this.secondaryIndexesDirty = false
+  }
+
   get(cellIndex: number): AxisResidentCellIdentity | undefined {
+    this.ensurePrimaryIndex()
     return this.byCell.get(cellIndex)
   }
 
   delete(cellIndex: number): boolean {
+    this.ensurePrimaryIndex()
     const existing = this.byCell.get(cellIndex)
     if (!existing) {
       return false
@@ -62,6 +80,7 @@ export class AxisResidentCellIndex {
     this.byCell.clear()
     this.byRow.clear()
     this.byColumn.clear()
+    this.primaryIndexDirty = false
     this.secondaryIndexesDirty = false
   }
 
@@ -103,7 +122,20 @@ export class AxisResidentCellIndex {
     return uniqueCells(colIds.flatMap((colId) => [...(this.byColumn.get(colId) ?? [])]))
   }
 
+  private ensurePrimaryIndex(): void {
+    if (!this.primaryIndexDirty) {
+      return
+    }
+    this.byCell.clear()
+    this.rebuildSource?.((cellIndex, identity) => {
+      this.byCell.set(cellIndex, identity)
+    })
+    this.primaryIndexDirty = false
+    this.secondaryIndexesDirty = true
+  }
+
   private ensureSecondaryIndexes(): void {
+    this.ensurePrimaryIndex()
     if (!this.secondaryIndexesDirty) {
       return
     }

@@ -193,6 +193,7 @@ interface FreshRuntimeCellIdentityInternals {
 
 interface FreshRuntimeResidentCellInternals {
   readonly addDeferred?: (cellIndex: number, identity: { readonly rowId: string; readonly colId: string }) => void
+  readonly deferRebuild?: () => void
 }
 
 interface FreshRuntimeLogicalSheetInternals {
@@ -250,13 +251,15 @@ function createFreshRuntimeCellAttacher(workbook: WorkbookStore, sheet: SheetRec
   const deferCellPageRebuild = logical?.cellPages?.deferRebuild?.bind(logical.cellPages)
   const identities = logical?.cellIdentities?.identities
   const addDeferredResidentCell = logical?.residentCells?.addDeferred?.bind(logical.residentCells)
-  if ((!deferCellPageRebuild && !setDeferredCellPage) || !identities || !addDeferredResidentCell) {
+  const deferResidentCellRebuild = logical?.residentCells?.deferRebuild?.bind(logical.residentCells)
+  if ((!deferCellPageRebuild && !setDeferredCellPage) || !identities || (!deferResidentCellRebuild && !addDeferredResidentCell)) {
     return (row, col, cellIndex, rowId, colId) => {
       workbook.attachAllocatedCellWithLogicalAxisIds(sheet.id, row, col, cellIndex, rowId, colId)
     }
   }
   const sheetId = sheet.id
   let pageRebuildDeferred = false
+  let residentRebuildDeferred = false
 
   return (row, col, cellIndex, rowId, colId) => {
     if (!pageRebuildDeferred) {
@@ -269,7 +272,14 @@ function createFreshRuntimeCellAttacher(workbook: WorkbookStore, sheet: SheetRec
     }
     const identity = { sheetId, rowId, colId }
     identities.set(cellIndex, identity)
-    addDeferredResidentCell(cellIndex, identity)
+    if (deferResidentCellRebuild) {
+      if (!residentRebuildDeferred) {
+        residentRebuildDeferred = true
+        deferResidentCellRebuild()
+      }
+    } else {
+      addDeferredResidentCell!(cellIndex, identity)
+    }
     sheet.grid.set(row, col, cellIndex)
   }
 }

@@ -234,7 +234,11 @@ export class WorkbookStore {
     const axisMap = new SheetAxisMap()
     const logicalAxisMap = new SheetAxisMap()
     const cellIdentities = new CellAxisIdentityStore()
-    const residentCells = new AxisResidentCellIndex()
+    const residentCells = new AxisResidentCellIndex((callback) => {
+      cellIdentities.forEach((identity, cellIndex) => {
+        callback(cellIndex, identity)
+      })
+    })
     const sheetId = id ?? this.nextSheetId++
     const logical = new LogicalSheetStore(
       sheetId,
