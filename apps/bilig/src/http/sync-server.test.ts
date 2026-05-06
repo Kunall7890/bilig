@@ -341,7 +341,7 @@ describe('sync-server zero keepalive', () => {
 })
 
 describe('sync-server cross-origin isolation', () => {
-  it('serves runtime responses with the headers required for SharedArrayBuffer-backed OPFS', async () => {
+  it('serves runtime responses with isolation and CSP headers required for the workbook browser runtime', async () => {
     const { app } = createSyncServer({ logger: false })
 
     try {
@@ -354,6 +354,11 @@ describe('sync-server cross-origin isolation', () => {
       expect(response.headers['cross-origin-opener-policy']).toBe('same-origin')
       expect(response.headers['cross-origin-embedder-policy']).toBe('require-corp')
       expect(response.headers['origin-agent-cluster']).toBe('?1')
+      expect(response.headers['content-security-policy']).toEqual(
+        expect.stringContaining("default-src 'self'; object-src 'none'; base-uri 'none'"),
+      )
+      expect(response.headers['content-security-policy']).toEqual(expect.stringContaining("script-src 'self' 'wasm-unsafe-eval'"))
+      expect(response.headers['content-security-policy']).toEqual(expect.stringContaining("worker-src 'self' blob:"))
     } finally {
       await app.close()
     }

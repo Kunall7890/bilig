@@ -13,10 +13,11 @@ import {
   resolveWorkbookAgentReviewDisposition,
 } from '../packages/agent-api/src/workbook-agent-execution-policy.js'
 import type { WorkbookSnapshot } from '../packages/protocol/src/types.js'
+import { buildSyncServerContentSecurityPolicy } from '../apps/bilig/src/http/sync-server-security-headers.js'
 
 export interface SecurityPostureControl {
   readonly id: string
-  readonly category: 'formula-sandbox' | 'import-safety' | 'agent-permissions' | 'runtime-hardening'
+  readonly category: 'formula-sandbox' | 'import-safety' | 'agent-permissions' | 'runtime-hardening' | 'browser-runtime'
   readonly required: boolean
   readonly passed: boolean
   readonly coveredControls: string[]
@@ -33,6 +34,7 @@ export interface SecurityPostureScorecard {
     readonly formulaRuntimeScanRoots: string[]
     readonly importImplementation: 'packages/excel-import/src/index.ts'
     readonly agentPolicyImplementation: 'packages/agent-api/src/workbook-agent-execution-policy.ts'
+    readonly browserSecurityHeadersImplementation: 'apps/bilig/src/http/sync-server-security-headers.ts'
     readonly runtimePackageGate: 'pnpm publish:runtime:check'
   }
   readonly summary: {
@@ -41,6 +43,7 @@ export interface SecurityPostureScorecard {
     readonly importSafetyPassed: boolean
     readonly agentPermissionPolicyPassed: boolean
     readonly runtimePackageHardeningPassed: boolean
+    readonly browserCspPassed: boolean
     readonly coveredControls: string[]
     readonly uncoveredControls: string[]
     readonly externalGoogleSheetsEvidence: 'not-captured'
@@ -63,6 +66,7 @@ const requiredControlIds = [
   'xlsx-import-macro-non-execution',
   'shared-agent-owner-review',
   'runtime-publish-package-hardening',
+  'browser-content-security-policy',
 ] as const
 const coveredControlOrder = [
   'formula.noEval',
@@ -74,9 +78,11 @@ const coveredControlOrder = [
   'runtime.publishManifest',
   'runtime.noSourceInTarballs',
   'runtime.alignedPackageSet',
+  'browser.contentSecurityPolicy',
+  'browser.crossOriginIsolation',
+  'browser.workerWasmRuntimeAllowlist',
 ] as const
 const uncoveredControls = [
-  'browser.contentSecurityPolicy',
   'dependency.vulnerabilityAudit',
   'deployment.runtimeNetworkPolicy',
   'externalSheetsExcelSecurityComparison',
@@ -119,6 +125,7 @@ export function buildSecurityPostureScorecard(generatedAt = new Date().toISOStri
     buildXlsxImportSafetyControl(),
     buildAgentPermissionPolicyControl(),
     buildRuntimePackageHardeningControl(),
+    buildBrowserContentSecurityPolicyControl(),
   ]
   const coveredControlSet = new Set(controls.flatMap((control) => control.coveredControls))
   const coveredControls = coveredControlOrder.filter((control) => coveredControlSet.has(control))
@@ -132,6 +139,7 @@ export function buildSecurityPostureScorecard(generatedAt = new Date().toISOStri
       formulaRuntimeScanRoots: [...formulaRuntimeScanRoots],
       importImplementation: 'packages/excel-import/src/index.ts',
       agentPolicyImplementation: 'packages/agent-api/src/workbook-agent-execution-policy.ts',
+      browserSecurityHeadersImplementation: 'apps/bilig/src/http/sync-server-security-headers.ts',
       runtimePackageGate: 'pnpm publish:runtime:check',
     },
     summary: {
@@ -140,6 +148,7 @@ export function buildSecurityPostureScorecard(generatedAt = new Date().toISOStri
       importSafetyPassed: requiredControl(controls, 'xlsx-import-macro-non-execution').passed,
       agentPermissionPolicyPassed: requiredControl(controls, 'shared-agent-owner-review').passed,
       runtimePackageHardeningPassed: requiredControl(controls, 'runtime-publish-package-hardening').passed,
+      browserCspPassed: requiredControl(controls, 'browser-content-security-policy').passed,
       coveredControls,
       uncoveredControls: [...uncoveredControls],
       externalGoogleSheetsEvidence: 'not-captured',
@@ -245,6 +254,36 @@ function buildRuntimePackageHardeningControl(): SecurityPostureControl {
       ...(rejectsSource ? [] : ['check-package-publish.ts does not reject source files or workspace ranges']),
       ...(alignedRuntimePackages ? [] : ['runtime-package-set.ts does not enforce aligned runtime package versions']),
     ],
+  })
+}
+
+function buildBrowserContentSecurityPolicyControl(): SecurityPostureControl {
+  const policy = buildSyncServerContentSecurityPolicy({
+    BILIG_PUBLIC_SERVER_URL: 'https://bilig.example.com',
+    BILIG_WEB_APP_BASE_URL: 'https://workbooks.example.com',
+    BILIG_ZERO_CACHE_URL: 'https://zero.example.com/zero',
+  })
+  const requiredDirectives = [
+    "default-src 'self'",
+    "object-src 'none'",
+    "base-uri 'none'",
+    "frame-ancestors 'self'",
+    "script-src 'self' 'wasm-unsafe-eval'",
+    "worker-src 'self' blob:",
+    "connect-src 'self' https://bilig.example.com https://workbooks.example.com https://zero.example.com",
+  ]
+  const findings = requiredDirectives
+    .filter((directive) => !policy.includes(directive))
+    .map((directive) => `missing directive: ${directive}`)
+
+  return securityControl({
+    id: 'browser-content-security-policy',
+    category: 'browser-runtime',
+    passed: findings.length === 0,
+    coveredControls: ['browser.contentSecurityPolicy', 'browser.crossOriginIsolation', 'browser.workerWasmRuntimeAllowlist'],
+    evidence:
+      'Built the production workbook browser CSP and verified default-deny, framing/object restrictions, cross-origin connection allowlisting, and worker/WASM allowances required by the runtime.',
+    findings,
   })
 }
 
@@ -413,6 +452,11 @@ export function parseSecurityPostureScorecard(value: unknown): SecurityPostureSc
         'agentPolicyImplementation',
         'packages/agent-api/src/workbook-agent-execution-policy.ts',
       ),
+      browserSecurityHeadersImplementation: literalField(
+        source,
+        'browserSecurityHeadersImplementation',
+        'apps/bilig/src/http/sync-server-security-headers.ts',
+      ),
       runtimePackageGate: literalField(source, 'runtimePackageGate', 'pnpm publish:runtime:check'),
     },
     summary: {
@@ -425,6 +469,7 @@ export function parseSecurityPostureScorecard(value: unknown): SecurityPostureSc
         'runtimePackageHardeningPassed',
         'security posture runtimePackageHardeningPassed',
       ),
+      browserCspPassed: booleanField(summary, 'browserCspPassed', 'security posture browserCspPassed'),
       coveredControls: stringArrayField(summary, 'coveredControls', 'security posture coveredControls'),
       uncoveredControls: stringArrayField(summary, 'uncoveredControls', 'security posture uncoveredControls'),
       externalGoogleSheetsEvidence: literalField(summary, 'externalGoogleSheetsEvidence', 'not-captured'),
@@ -473,7 +518,13 @@ export function validateSecurityPostureScorecard(scorecard: SecurityPostureScore
 }
 
 function parseSecurityPostureCategory(value: string): SecurityPostureControl['category'] {
-  if (value === 'formula-sandbox' || value === 'import-safety' || value === 'agent-permissions' || value === 'runtime-hardening') {
+  if (
+    value === 'formula-sandbox' ||
+    value === 'import-safety' ||
+    value === 'agent-permissions' ||
+    value === 'runtime-hardening' ||
+    value === 'browser-runtime'
+  ) {
     return value
   }
   throw new Error(`Unexpected security posture category: ${value}`)

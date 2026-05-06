@@ -16,6 +16,7 @@ describe('security posture scorecard', () => {
         importSafetyPassed: true,
         agentPermissionPolicyPassed: true,
         runtimePackageHardeningPassed: true,
+        browserCspPassed: true,
         externalGoogleSheetsEvidence: 'not-captured',
         externalMicrosoftExcelEvidence: 'not-captured',
       },
@@ -25,6 +26,7 @@ describe('security posture scorecard', () => {
       'xlsx-import-macro-non-execution',
       'shared-agent-owner-review',
       'runtime-publish-package-hardening',
+      'browser-content-security-policy',
     ])
     expect(scorecard.controls.every((control) => control.required && control.passed)).toBe(true)
     expect(scorecard.summary.coveredControls).toEqual([
@@ -37,9 +39,11 @@ describe('security posture scorecard', () => {
       'runtime.publishManifest',
       'runtime.noSourceInTarballs',
       'runtime.alignedPackageSet',
+      'browser.contentSecurityPolicy',
+      'browser.crossOriginIsolation',
+      'browser.workerWasmRuntimeAllowlist',
     ])
     expect(scorecard.summary.uncoveredControls).toEqual([
-      'browser.contentSecurityPolicy',
       'dependency.vulnerabilityAudit',
       'deployment.runtimeNetworkPolicy',
       'externalSheetsExcelSecurityComparison',

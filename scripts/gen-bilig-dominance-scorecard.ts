@@ -681,17 +681,19 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
         ],
         evidenceArtifacts: [
           input.securityPostureScorecardPath,
+          'apps/bilig/src/http/sync-server-security-headers.ts',
+          'apps/bilig/src/http/sync-server-security-headers.test.ts',
           'packages/excel-import/src/__tests__/excel-import.test.ts',
           'packages/agent-api/src/__tests__/workbook-agent-execution-policy.test.ts',
           'scripts/check-package-publish.ts',
         ],
         checkCommands: [
           'pnpm security:posture:check',
-          'pnpm exec vitest run packages/excel-import/src/__tests__/excel-import.test.ts packages/agent-api/src/__tests__/workbook-agent-execution-policy.test.ts',
+          'pnpm exec vitest run apps/bilig/src/http/sync-server-security-headers.test.ts apps/bilig/src/http/sync-server.test.ts packages/excel-import/src/__tests__/excel-import.test.ts packages/agent-api/src/__tests__/workbook-agent-execution-policy.test.ts',
           'pnpm publish:runtime:check',
         ],
         blockers: [
-          'generated security posture evidence covers formula dynamic-code scanning, XLSX macro warning, shared-agent owner review, and runtime package hardening, but not browser CSP, dependency vulnerability audit, or deployment network policy',
+          'generated security posture evidence covers formula dynamic-code scanning, XLSX macro warning, shared-agent owner review, runtime package hardening, and browser CSP, but not dependency vulnerability audit or deployment network policy',
           'no direct Sheets or Excel security comparison artifact exists in the repo',
         ],
       },

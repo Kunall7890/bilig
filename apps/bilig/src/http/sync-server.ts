@@ -7,6 +7,7 @@ import { SyncDocumentSupervisor } from '../workbook-runtime/sync-document-superv
 import { registerSyncServerDocumentRoutes } from './sync-server-document-routes.js'
 import { registerWorkbookAgentRoutes } from './workbook-agent-routes.js'
 import { registerSyncServerRuntimeRoutes } from './sync-server-runtime-routes.js'
+import { applySyncServerSecurityHeaders } from './sync-server-security-headers.js'
 import { resolveSyncServerWebDistRoot, registerSyncServerSpaRoutes } from './sync-server-spa.js'
 import { registerSyncServerZeroProxyRoutes } from './sync-server-zero-proxy.js'
 import type { WorksheetExecutor } from '../workbook-runtime/worksheet-executor.js'
@@ -33,9 +34,7 @@ export function createSyncServer(options: SyncServerOptions = {}) {
   const app = Fastify({ logger: options.logger ?? true })
 
   app.addHook('onSend', async (_request, reply, payload) => {
-    reply.header('Cross-Origin-Opener-Policy', 'same-origin')
-    reply.header('Cross-Origin-Embedder-Policy', 'require-corp')
-    reply.header('Origin-Agent-Cluster', '?1')
+    applySyncServerSecurityHeaders(reply)
     return payload
   })
 
