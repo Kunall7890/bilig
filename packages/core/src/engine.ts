@@ -1078,6 +1078,12 @@ export class SpreadsheetEngine {
     return runEngineEffect(this.runtime.recalc.recalculateNow())
   }
 
+  forEachFormulaCell(callback: (cellIndex: number, producesSpill: boolean) => void): void {
+    this.formulas.forEach((formula, cellIndex) => {
+      callback(cellIndex, formula.compiled.producesSpill)
+    })
+  }
+
   recalculateDifferential(): { js: CellSnapshot[]; wasm: CellSnapshot[]; drift: string[] } {
     return runEngineEffect(this.runtime.recalc.recalculateDifferential())
   }

@@ -116,7 +116,7 @@
     "microsoftExcelLiveRecalculationEvidence": "live-local-microsoft-excel-automation",
     "microsoftExcelLiveRecalculationCaseCount": 4,
     "microsoftExcelLiveRecalculationPassed": true,
-    "microsoftExcelLiveRecalculationTenXMeanAndP95CaseCount": 3,
+    "microsoftExcelLiveRecalculationTenXMeanAndP95CaseCount": 4,
     "microsoftExcelLiveRecalculationVersion": "16.108.2",
     "microsoftExcelLiveLargeWorkbookEvidence": "live-local-microsoft-excel-automation",
     "microsoftExcelLiveLargeWorkbookCaseCount": 2,
@@ -261,7 +261,7 @@
         "rebuild: WorkPaper 1/1, HyperFormula 0/1; worst mean ratio 0.21732837385103268 on rebuild-and-recalculate; worst p95 ratio 0.23468319661108736 on rebuild-and-recalculate",
         "overall HyperFormula comparable scorecard is 46/46",
         "live Microsoft Excel recalculation scorecard passes 4/4 required cases on Excel 16.108.2",
-        "live Microsoft Excel recalculation workloads with 10x mean+p95 wins: 3/4"
+        "live Microsoft Excel recalculation workloads with 10x mean+p95 wins: 4/4"
       ],
       "evidenceArtifacts": [
         "packages/benchmarks/baselines/workpaper-vs-hyperformula.json",
@@ -269,7 +269,6 @@
       ],
       "checkCommands": ["pnpm workpaper:bench:competitive:check", "pnpm recalculation:excel-live:check", "pnpm bench:contracts"],
       "blockers": [
-        "live Microsoft Excel recalculation timing scorecard does not prove 10x mean+p95 for all recalculation cases",
         "no direct Google Sheets recalculation timing artifact exists in the repo",
         "only 2 comparable HyperFormula workloads are 10x wins on both mean and p95"
       ]

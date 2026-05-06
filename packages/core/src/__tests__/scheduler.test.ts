@@ -96,4 +96,19 @@ describe('RecalcScheduler', () => {
 
     expect(Array.from(result.orderedFormulaCellIndices.subarray(0, result.orderedFormulaCount))).toEqual([2])
   })
+
+  it('rebuilds the full calc chain when active formula identities change without a formula-count change', () => {
+    const store = new CellStore()
+    for (let index = 0; index < 3; index += 1) {
+      store.allocate(1, 0, index)
+      store.topoRanks[index] = index
+    }
+
+    const scheduler = new RecalcScheduler()
+    scheduler.rebuildChain([1], store)
+
+    const result = scheduler.collectAll([2], 1, store)
+
+    expect(Array.from(result.orderedFormulaCellIndices.subarray(0, result.orderedFormulaCount))).toEqual([2])
+  })
 })

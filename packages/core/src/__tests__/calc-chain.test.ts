@@ -79,6 +79,8 @@ describe('CalcChain', () => {
 
     const allDirty = chain.orderDirty(Uint32Array.of(2, 1, 0), 3)
     expect(Array.from(allDirty.orderedFormulaCellIndices.subarray(0, allDirty.orderedFormulaCount))).toEqual([0, 1, 2])
+    const allOrdered = chain.orderAll()
+    expect(Array.from(allOrdered.orderedFormulaCellIndices.subarray(0, allOrdered.orderedFormulaCount))).toEqual([0, 1, 2])
   })
 
   it('uses full-chain scans for dense dirty sets and grows internal buffers', () => {

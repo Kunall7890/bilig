@@ -620,14 +620,28 @@ export function createEngineRecalcService(args: {
           })
           let formulaChangedCount = 0
           let explicitChangedCount = 0
-          args.state.formulas.forEach((_formula, cellIndex) => {
+          let canUseFullFormulaOrder = true
+          args.state.formulas.forEach((formula, cellIndex) => {
             formulaChangedCount = args.markFormulaChanged(cellIndex, formulaChangedCount)
             explicitChangedCount = args.markExplicitChanged(cellIndex, explicitChangedCount)
+            if (formula.compiled.producesSpill || formula.directLookup !== undefined || formula.directCriteria !== undefined) {
+              canUseFullFormulaOrder = false
+            }
           })
-          const recalculated = reconcilePivotOutputs(
-            recalculate(args.composeMutationRoots(0, formulaChangedCount), args.emptyChangedSet()),
-            true,
-          )
+          const mutationRoots = args.composeMutationRoots(0, formulaChangedCount)
+          let recalculatedBase: U32
+          if (canUseFullFormulaOrder) {
+            const fullFormulaOrder = args.dirtyScheduler.collectAll()
+            recalculatedBase = recalculatePreordered(
+              mutationRoots,
+              fullFormulaOrder.orderedFormulaCellIndices,
+              fullFormulaOrder.orderedFormulaCount,
+              args.emptyChangedSet(),
+            )
+          } else {
+            recalculatedBase = recalculate(mutationRoots, args.emptyChangedSet())
+          }
+          const recalculated = reconcilePivotOutputs(recalculatedBase, true)
           const changed = args.composeEventChanges(recalculated, explicitChangedCount)
           const lastMetrics = { ...args.state.getLastMetrics() }
           lastMetrics.batchId += 1

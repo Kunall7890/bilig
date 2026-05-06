@@ -47,4 +47,17 @@ export class RecalcScheduler {
       rangeNodeVisits: dirty.rangeNodeVisits,
     }
   }
+
+  collectAll(formulaCellIndices: Iterable<number> | readonly number[] | U32, formulaCount: number, cellStore: CellStore): SchedulerResult {
+    const formulaIndexArray = formulaCellIndices instanceof Uint32Array ? formulaCellIndices : Uint32Array.from(formulaCellIndices)
+    if (!this.calcChain.hasChainFor(formulaCount) || !this.calcChain.coversDirty(formulaIndexArray, formulaCount)) {
+      this.calcChain.rebuild(formulaIndexArray, cellStore)
+    }
+    const ordered = this.calcChain.orderAll()
+    return {
+      orderedFormulaCellIndices: ordered.orderedFormulaCellIndices,
+      orderedFormulaCount: ordered.orderedFormulaCount,
+      rangeNodeVisits: 0,
+    }
+  }
 }

@@ -3,6 +3,7 @@ import type { EngineRuntimeState, U32 } from '../runtime-state.js'
 
 export interface EngineDirtyFrontierSchedulerService {
   readonly collectDirty: (changedRoots: readonly number[] | U32) => SchedulerResult
+  readonly collectAll: () => SchedulerResult
 }
 
 export function createEngineDirtyFrontierSchedulerService(args: {
@@ -20,6 +21,9 @@ export function createEngineDirtyFrontierSchedulerService(args: {
         (cellIndex) => args.state.formulas.has(cellIndex),
         args.state.ranges.size,
       )
+    },
+    collectAll() {
+      return args.state.scheduler.collectAll(args.state.formulas.keys(), args.state.formulas.size, args.state.workbook.cellStore)
     },
   }
 }

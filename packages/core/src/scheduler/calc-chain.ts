@@ -155,6 +155,13 @@ export class CalcChain {
     }
   }
 
+  orderAll(): CalcChainResult {
+    return {
+      orderedFormulaCellIndices: this.orderedChain,
+      orderedFormulaCount: this.chainFormulaCount,
+    }
+  }
+
   private ensureRankCapacity(rankCountSize: number, chainSize: number): void {
     if (rankCountSize > this.rankCounts.length) {
       let capacity = this.rankCounts.length

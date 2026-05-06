@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "suite": "microsoft-excel-live-recalculation-performance",
-  "generatedAt": "2026-05-06T16:59:32.937Z",
+  "generatedAt": "2026-05-06T17:08:46.274Z",
   "host": {
     "arch": "arm64",
     "platform": "darwin"
@@ -25,7 +25,7 @@
   "summary": {
     "allRequiredCasesPassed": true,
     "requiredCaseCount": 4,
-    "tenXMeanAndP95CaseCount": 3,
+    "tenXMeanAndP95CaseCount": 4,
     "workpaperWins": 4,
     "coveredWorkloads": [
       "dirty-fanout-edit",
@@ -46,37 +46,37 @@
       },
       "sampleCount": 5,
       "workpaperElapsedMs": {
-        "samples": [0.4647920000002159, 0.5143750000002001, 0.5599999999999454, 0.7551249999996799, 0.8527079999998932],
-        "min": 0.4647920000002159,
-        "median": 0.5599999999999454,
-        "p95": 0.8527079999998932,
-        "max": 0.8527079999998932,
-        "mean": 0.6293999999999869,
-        "standardDeviation": 0.14887319622938325,
-        "relativeStandardDeviation": 0.23653192918555188,
-        "standardError": 0.06657811735931327,
+        "samples": [0.3668330000000424, 0.4569999999994252, 0.5022089999997661, 0.6832500000000437, 0.8651250000000346],
+        "min": 0.3668330000000424,
+        "median": 0.5022089999997661,
+        "p95": 0.8651250000000346,
+        "max": 0.8651250000000346,
+        "mean": 0.5748833999998624,
+        "standardDeviation": 0.1780149093291803,
+        "relativeStandardDeviation": 0.30965393909308025,
+        "standardError": 0.07961068765370172,
         "confidence95": {
-          "low": 0.49890688997573285,
-          "high": 0.7598931100242409
+          "low": 0.41884645219860706,
+          "high": 0.7309203478011177
         }
       },
       "microsoftExcelElapsedMs": {
-        "samples": [17.293930053711, 33.257007598877, 37.935018539429, 52.519917488098, 72.568893432617],
-        "min": 17.293930053711,
-        "median": 37.935018539429,
-        "p95": 72.568893432617,
-        "max": 72.568893432617,
-        "mean": 42.7149534225464,
-        "standardDeviation": 18.686487097690865,
-        "relativeStandardDeviation": 0.4374694480604889,
-        "standardError": 8.356851082221905,
+        "samples": [19.659996032715, 52.958011627197, 57.421088218689, 63.056945800781, 70.60694694519],
+        "min": 19.659996032715,
+        "median": 57.421088218689,
+        "p95": 70.60694694519,
+        "max": 70.60694694519,
+        "mean": 52.740597724914394,
+        "standardDeviation": 17.560831076395246,
+        "relativeStandardDeviation": 0.3329660988673171,
+        "standardError": 7.853442405642114,
         "confidence95": {
-          "low": 26.335525301391467,
-          "high": 59.09438154370133
+          "low": 37.347850609855854,
+          "high": 68.13334483997293
         }
       },
-      "workpaperToMicrosoftExcelMeanRatio": 0.014734886721608087,
-      "workpaperToMicrosoftExcelP95Ratio": 0.011750323860066369,
+      "workpaperToMicrosoftExcelMeanRatio": 0.010900206383673394,
+      "workpaperToMicrosoftExcelP95Ratio": 0.012252689535940485,
       "tenXMeanAndP95": true,
       "verification": {
         "workpaper": {
@@ -101,37 +101,37 @@
       },
       "sampleCount": 5,
       "workpaperElapsedMs": {
-        "samples": [0.7122909999998228, 0.9931660000002012, 1.0488750000004075, 1.1437499999992724, 1.41150000000016],
-        "min": 0.7122909999998228,
-        "median": 1.0488750000004075,
-        "p95": 1.41150000000016,
-        "max": 1.41150000000016,
-        "mean": 1.0619163999999728,
-        "standardDeviation": 0.22629186791278139,
-        "relativeStandardDeviation": 0.21309762982546196,
-        "standardError": 0.10120079988167652,
+        "samples": [0.7727079999986017, 0.982625000000553, 1.4874999999992724, 1.9357090000003154, 3.4946670000008453],
+        "min": 0.7727079999986017,
+        "median": 1.4874999999992724,
+        "p95": 3.4946670000008453,
+        "max": 3.4946670000008453,
+        "mean": 1.7346417999999175,
+        "standardDeviation": 0.9685083062037332,
+        "relativeStandardDeviation": 0.5583333148110343,
+        "standardError": 0.4331300818889457,
         "confidence95": {
-          "low": 0.8635628322318868,
-          "high": 1.2602699677680587
+          "low": 0.885706839497584,
+          "high": 2.5835767605022513
         }
       },
       "microsoftExcelElapsedMs": {
-        "samples": [16.252040863037, 33.481955528259, 44.608950614929, 44.751048088074, 47.55699634552],
-        "min": 16.252040863037,
-        "median": 44.608950614929,
-        "p95": 47.55699634552,
-        "max": 47.55699634552,
-        "mean": 37.330198287963796,
-        "standardDeviation": 11.590809622030287,
-        "relativeStandardDeviation": 0.31049418844816207,
-        "standardError": 5.183567645823673,
+        "samples": [8.944988250732, 23.390054702759, 32.52899646759, 57.85596370697, 68.449020385742],
+        "min": 8.944988250732,
+        "median": 32.52899646759,
+        "p95": 68.449020385742,
+        "max": 68.449020385742,
+        "mean": 38.233804702758604,
+        "standardDeviation": 21.94859860209212,
+        "relativeStandardDeviation": 0.5740626331260333,
+        "standardError": 9.815711697026966,
         "confidence95": {
-          "low": 27.170405702149395,
-          "high": 47.4899908737782
+          "low": 18.99500977658575,
+          "high": 57.47259962893146
         }
       },
-      "workpaperToMicrosoftExcelMeanRatio": 0.02844657807087946,
-      "workpaperToMicrosoftExcelP95Ratio": 0.029680175546518243,
+      "workpaperToMicrosoftExcelMeanRatio": 0.045369322082527704,
+      "workpaperToMicrosoftExcelP95Ratio": 0.0510550330787318,
       "tenXMeanAndP95": true,
       "verification": {
         "workpaper": {
@@ -156,37 +156,37 @@
       },
       "sampleCount": 5,
       "workpaperElapsedMs": {
-        "samples": [0.4660829999993439, 0.7257909999989351, 1.1227919999982987, 1.6540829999994457, 2.1158749999995052],
-        "min": 0.4660829999993439,
-        "median": 1.1227919999982987,
-        "p95": 2.1158749999995052,
-        "max": 2.1158749999995052,
-        "mean": 1.2169247999991057,
-        "standardDeviation": 0.6021719947114408,
-        "relativeStandardDeviation": 0.4948309005715746,
-        "standardError": 0.26929950286428506,
+        "samples": [0.764500000001135, 0.7664580000000569, 0.9243750000005093, 1.1010419999984151, 1.201999999999316],
+        "min": 0.764500000001135,
+        "median": 0.9243750000005093,
+        "p95": 1.201999999999316,
+        "max": 1.201999999999316,
+        "mean": 0.9516749999998865,
+        "standardDeviation": 0.17610122885812599,
+        "relativeStandardDeviation": 0.1850434537611548,
+        "standardError": 0.07875486372960347,
         "confidence95": {
-          "low": 0.689097774385107,
-          "high": 1.7447518256131045
+          "low": 0.7973154670898637,
+          "high": 1.1060345329099093
         }
       },
       "microsoftExcelElapsedMs": {
-        "samples": [44.42298412323, 44.553995132446, 54.242014884949, 63.902974128723, 70.900917053223],
-        "min": 44.42298412323,
-        "median": 54.242014884949,
-        "p95": 70.900917053223,
-        "max": 70.900917053223,
-        "mean": 55.6045770645142,
-        "standardDeviation": 10.505630569561747,
-        "relativeStandardDeviation": 0.18893463675432293,
-        "standardError": 4.69826082000798,
+        "samples": [21.867036819458, 22.634029388428, 23.426055908203, 25.647044181824, 110.027074813843],
+        "min": 21.867036819458,
+        "median": 23.426055908203,
+        "p95": 110.027074813843,
+        "max": 110.027074813843,
+        "mean": 40.7202482223512,
+        "standardDeviation": 34.67645215975811,
+        "relativeStandardDeviation": 0.8515776222779586,
+        "standardError": 15.507780849547704,
         "confidence95": {
-          "low": 46.39598585729856,
-          "high": 64.81316827172984
+          "low": 10.324997757237703,
+          "high": 71.11549868746471
         }
       },
-      "workpaperToMicrosoftExcelMeanRatio": 0.02188533506130603,
-      "workpaperToMicrosoftExcelP95Ratio": 0.02984270285828866,
+      "workpaperToMicrosoftExcelMeanRatio": 0.02337105105065434,
+      "workpaperToMicrosoftExcelP95Ratio": 0.010924583808421734,
       "tenXMeanAndP95": true,
       "verification": {
         "workpaper": {
@@ -211,38 +211,38 @@
       },
       "sampleCount": 5,
       "workpaperElapsedMs": {
-        "samples": [5.0153339999997115, 5.640708000002633, 5.693500000001222, 5.80266599999959, 8.461290999999619],
-        "min": 5.0153339999997115,
-        "median": 5.693500000001222,
-        "p95": 8.461290999999619,
-        "max": 8.461290999999619,
-        "mean": 6.1226998000005555,
-        "standardDeviation": 1.2011842500176508,
-        "relativeStandardDeviation": 0.19618539031058518,
-        "standardError": 0.537185927308314,
+        "samples": [3.4597079999985, 3.5804170000010345, 3.6612500000010186, 3.9219999999986612, 5.367833000000246],
+        "min": 3.4597079999985,
+        "median": 3.6612500000010186,
+        "p95": 5.367833000000246,
+        "max": 5.367833000000246,
+        "mean": 3.998241599999892,
+        "standardDeviation": 0.7013918388019842,
+        "relativeStandardDeviation": 0.17542507656415837,
+        "standardError": 0.31367196608496223,
         "confidence95": {
-          "low": 5.06981538247626,
-          "high": 7.175584217524851
+          "low": 3.383444546473366,
+          "high": 4.613038653526418
         }
       },
       "microsoftExcelElapsedMs": {
-        "samples": [17.724990844727, 19.878029823303, 22.840023040771, 41.432976722717, 91.385006904602],
-        "min": 17.724990844727,
-        "median": 22.840023040771,
-        "p95": 91.385006904602,
-        "max": 91.385006904602,
-        "mean": 38.65220546722399,
-        "standardDeviation": 27.672817465020028,
-        "relativeStandardDeviation": 0.7159440743552348,
-        "standardError": 12.375660196145638,
+        "samples": [28.286099433899, 28.872966766357, 43.297052383423, 74.100017547607, 115.978956222534],
+        "min": 28.286099433899,
+        "median": 43.297052383423,
+        "p95": 115.978956222534,
+        "max": 115.978956222534,
+        "mean": 58.107018470764004,
+        "standardDeviation": 33.37121299978181,
+        "relativeStandardDeviation": 0.5743060628136035,
+        "standardError": 14.92406015182736,
         "confidence95": {
-          "low": 14.395911482778544,
-          "high": 62.90849945166944
+          "low": 28.85586057318238,
+          "high": 87.35817636834562
         }
       },
-      "workpaperToMicrosoftExcelMeanRatio": 0.15840492737710496,
-      "workpaperToMicrosoftExcelP95Ratio": 0.09258948799809658,
-      "tenXMeanAndP95": false,
+      "workpaperToMicrosoftExcelMeanRatio": 0.06880823875022204,
+      "workpaperToMicrosoftExcelP95Ratio": 0.04628281866669627,
+      "tenXMeanAndP95": true,
       "verification": {
         "workpaper": {
           "terminalAggregateValue": 500500,

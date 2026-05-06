@@ -1877,6 +1877,17 @@ export class WorkPaper {
       }
       return []
     }
+    try {
+      const fastPathChanges = this.tryRebuildAndRecalculateFromFormulaValues()
+      if (fastPathChanges !== null) {
+        if (fastPathChanges.length > 0 && this.emitter.hasListeners('valuesUpdated')) {
+          this.emitter.emitDetailed({ eventName: 'valuesUpdated', payload: { changes: fastPathChanges } })
+        }
+        return fastPathChanges
+      }
+    } catch (error) {
+      throw new WorkPaperOperationError(this.messageOf(error, 'Recalculation failed'))
+    }
     const beforeVisibility = this.ensureVisibilityCache()
     const beforeNames = this.namedExpressions.size > 0 ? this.ensureNamedExpressionValueCache() : EMPTY_NAMED_EXPRESSION_VALUES
     this.drainTrackedEngineEvents()
@@ -1898,6 +1909,51 @@ export class WorkPaper {
       this.emitter.emitDetailed({ eventName: 'valuesUpdated', payload: { changes } })
     }
     return changes
+  }
+
+  private tryRebuildAndRecalculateFromFormulaValues(): WorkPaperChange[] | null {
+    if (this.visibilityCache !== null || this.namedExpressions.size !== 0 || this.engine.workbook.hasPivots()) {
+      return null
+    }
+    const beforeValues: Array<{ cellIndex: number; value: CellValue }> = []
+    let canUseFormulaValueFastPath = true
+    this.engine.forEachFormulaCell((cellIndex, producesSpill) => {
+      if (!canUseFormulaValueFastPath) {
+        return
+      }
+      if (producesSpill) {
+        canUseFormulaValueFastPath = false
+        return
+      }
+      beforeValues.push({
+        cellIndex,
+        value: cloneCellValue(readTrackedRuntimeCellValue(this.engine.workbook.cellStore, cellIndex, this.engine.strings)),
+      })
+    })
+    if (!canUseFormulaValueFastPath) {
+      return null
+    }
+
+    this.drainTrackedEngineEvents()
+    const recalculated = this.engine.recalculateNow()
+    this.invalidateAllSheetDimensions()
+    if (recalculated.length === 0 || beforeValues.length === 0) {
+      return []
+    }
+
+    const changes: WorkPaperCellChange[] = []
+    for (let index = 0; index < beforeValues.length; index += 1) {
+      const before = beforeValues[index]!
+      const after = readTrackedRuntimeCellValue(this.engine.workbook.cellStore, before.cellIndex, this.engine.strings)
+      if (valuesEqual(before.value, after)) {
+        continue
+      }
+      const change = this.readSingleTrackedCellChange(before.cellIndex)
+      if (change !== undefined) {
+        changes.push(change)
+      }
+    }
+    return changes.length > 1 ? orderWorkPaperCellChanges(changes, this.listSheetRecords(), recalculated.length) : changes
   }
 
   batch(batchOperations: () => void): WorkPaperChange[] {

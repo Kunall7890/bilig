@@ -34,7 +34,7 @@ describe('bilig dominance scorecard', () => {
     expect(scorecard.summary.microsoftExcelLiveCalculationEvidence).toBe('live-local-microsoft-excel-automation')
     expect(scorecard.summary.microsoftExcelLiveRecalculationPassed).toBe(true)
     expect(scorecard.summary.microsoftExcelLiveRecalculationCaseCount).toBe(4)
-    expect(scorecard.summary.microsoftExcelLiveRecalculationTenXMeanAndP95CaseCount).toBe(3)
+    expect(scorecard.summary.microsoftExcelLiveRecalculationTenXMeanAndP95CaseCount).toBe(4)
     expect(scorecard.summary.microsoftExcelLiveRecalculationEvidence).toBe('live-local-microsoft-excel-automation')
     expect(scorecard.summary.microsoftExcelLiveLargeWorkbookPassed).toBe(true)
     expect(scorecard.summary.microsoftExcelLiveLargeWorkbookCaseCount).toBe(2)
@@ -120,7 +120,6 @@ describe('bilig dominance scorecard', () => {
       ]),
       checkCommands: expect.arrayContaining(['pnpm recalculation:excel-live:check']),
       blockers: [
-        'live Microsoft Excel recalculation timing scorecard does not prove 10x mean+p95 for all recalculation cases',
         'no direct Google Sheets recalculation timing artifact exists in the repo',
         'only 1 comparable HyperFormula workloads are 10x wins on both mean and p95',
       ],
@@ -492,7 +491,7 @@ function buildFixtureInput(): BuildScorecardInput {
       summary: {
         allRequiredCasesPassed: true,
         requiredCaseCount: 4,
-        tenXMeanAndP95CaseCount: 3,
+        tenXMeanAndP95CaseCount: 4,
         workpaperWins: 4,
         coveredWorkloads: [
           'dirty-fanout-edit',
@@ -506,7 +505,7 @@ function buildFixtureInput(): BuildScorecardInput {
         recalculationCase('excel-live-recalculation-dirty-fanout-edit', 'dirty-fanout-edit', true),
         recalculationCase('excel-live-recalculation-suspended-batch-single-column-edit', 'suspended-batch-single-column-edit', false),
         recalculationCase('excel-live-recalculation-conditional-aggregation-criteria-edit', 'conditional-aggregation-criteria-edit', true),
-        recalculationCase('excel-live-recalculation-full-rebuild-recalculate', 'full-rebuild-recalculate', false),
+        recalculationCase('excel-live-recalculation-full-rebuild-recalculate', 'full-rebuild-recalculate', true),
       ],
     },
     microsoftExcelLiveLargeWorkbookScorecard: {
