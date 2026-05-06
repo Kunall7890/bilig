@@ -35,6 +35,7 @@
     "hyperFormulaSurfaceSnapshot": "packages/headless/src/__tests__/fixtures/hyperformula-surface.json",
     "microsoftExcelLiveCalculationScorecard": "packages/benchmarks/baselines/microsoft-excel-live-calculation-scorecard.json",
     "microsoftExcelLiveRecalculationScorecard": "packages/benchmarks/baselines/microsoft-excel-live-recalculation-scorecard.json",
+    "microsoftExcelLiveLargeWorkbookScorecard": "packages/benchmarks/baselines/microsoft-excel-live-large-workbook-scorecard.json",
     "microsoftExcelLiveStructuralScorecard": "packages/benchmarks/baselines/microsoft-excel-live-structural-scorecard.json",
     "importExportFidelityScorecard": "packages/benchmarks/baselines/import-export-fidelity-scorecard.json",
     "largeWorkbookSloScorecard": "packages/benchmarks/baselines/large-workbook-slo-scorecard.json",
@@ -112,6 +113,11 @@
     "microsoftExcelLiveRecalculationPassed": true,
     "microsoftExcelLiveRecalculationTenXMeanAndP95CaseCount": 2,
     "microsoftExcelLiveRecalculationVersion": "16.108.2",
+    "microsoftExcelLiveLargeWorkbookEvidence": "live-local-microsoft-excel-automation",
+    "microsoftExcelLiveLargeWorkbookCaseCount": 2,
+    "microsoftExcelLiveLargeWorkbookPassed": true,
+    "microsoftExcelLiveLargeWorkbookTenXMeanAndP95CaseCount": 0,
+    "microsoftExcelLiveLargeWorkbookVersion": "16.108.2",
     "microsoftExcelLiveStructuralEvidence": "live-local-microsoft-excel-automation",
     "microsoftExcelLiveStructuralCaseCount": 6,
     "microsoftExcelLiveStructuralPassed": true,
@@ -294,6 +300,8 @@
         "workerWarmStart250k: elapsedMs.p95 15.387249999999767ms against 700ms SLO (3 samples)",
         "external Google Sheets large-workbook evidence: official-docs-comparison-artifact",
         "external Microsoft Excel large-workbook evidence: official-docs-comparison-artifact",
+        "live Microsoft Excel large-workbook scorecard passes 2/2 required cases on Excel 16.108.2",
+        "live Microsoft Excel large-workbook cases with 10x mean+p95 wins: 0/2",
         "external large-workbook comparison dimensions pass: true",
         "headed browser frame p95 contracts pass: true",
         "headedDense100kDiagonalBrowse: frameMs.p95 budget 20ms on 100000 materialized cells via pnpm test:browser:full",
@@ -302,12 +310,22 @@
       "evidenceArtifacts": [
         "packages/benchmarks/baselines/workpaper-vs-hyperformula.json",
         "packages/benchmarks/baselines/large-workbook-slo-scorecard.json",
+        "packages/benchmarks/baselines/microsoft-excel-live-large-workbook-scorecard.json",
         "packages/benchmarks/baselines/large-workbook-external-sheets-excel-comparison.json",
         "e2e/tests/web-shell-scroll-performance.pw.ts",
         "docs/05-06-next-phase.md"
       ],
-      "checkCommands": ["pnpm large-workbook:slo:check", "CI=1 pnpm bench:contracts", "pnpm test:browser:full", "pnpm bench:smoke"],
-      "blockers": ["no direct Sheets or Excel large-workbook live timing artifact exists in the repo"]
+      "checkCommands": [
+        "pnpm large-workbook:slo:check",
+        "pnpm large-workbook:excel-live:check",
+        "CI=1 pnpm bench:contracts",
+        "pnpm test:browser:full",
+        "pnpm bench:smoke"
+      ],
+      "blockers": [
+        "live Microsoft Excel large-workbook timing scorecard does not prove 10x mean+p95 for all large-workbook cases",
+        "no direct Google Sheets large-workbook live timing artifact exists in the repo"
+      ]
     },
     {
       "id": "ui-responsiveness",

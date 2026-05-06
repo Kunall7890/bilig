@@ -18,6 +18,10 @@ import {
   type MicrosoftExcelLiveRecalculationScorecard,
 } from './gen-microsoft-excel-live-recalculation-scorecard.ts'
 import {
+  parseMicrosoftExcelLiveLargeWorkbookScorecard,
+  type MicrosoftExcelLiveLargeWorkbookScorecard,
+} from './gen-microsoft-excel-live-large-workbook-scorecard.ts'
+import {
   parseMicrosoftExcelLiveStructuralScorecard,
   type MicrosoftExcelLiveStructuralScorecard,
 } from './gen-microsoft-excel-live-structural-scorecard.ts'
@@ -145,6 +149,7 @@ export interface BiligDominanceScorecard {
     hyperFormulaSurfaceSnapshot: string
     microsoftExcelLiveCalculationScorecard: string
     microsoftExcelLiveRecalculationScorecard: string
+    microsoftExcelLiveLargeWorkbookScorecard: string
     microsoftExcelLiveStructuralScorecard: string
     importExportFidelityScorecard: string
     largeWorkbookSloScorecard: string
@@ -181,6 +186,11 @@ export interface BiligDominanceScorecard {
     microsoftExcelLiveRecalculationPassed: boolean
     microsoftExcelLiveRecalculationTenXMeanAndP95CaseCount: number
     microsoftExcelLiveRecalculationVersion: string
+    microsoftExcelLiveLargeWorkbookEvidence: 'live-local-microsoft-excel-automation'
+    microsoftExcelLiveLargeWorkbookCaseCount: number
+    microsoftExcelLiveLargeWorkbookPassed: boolean
+    microsoftExcelLiveLargeWorkbookTenXMeanAndP95CaseCount: number
+    microsoftExcelLiveLargeWorkbookVersion: string
     microsoftExcelLiveStructuralEvidence: 'live-local-microsoft-excel-automation'
     microsoftExcelLiveStructuralCaseCount: number
     microsoftExcelLiveStructuralPassed: boolean
@@ -236,6 +246,8 @@ export interface BuildScorecardInput {
   microsoftExcelLiveCalculationScorecardPath: string
   microsoftExcelLiveRecalculationScorecard: MicrosoftExcelLiveRecalculationScorecard
   microsoftExcelLiveRecalculationScorecardPath: string
+  microsoftExcelLiveLargeWorkbookScorecard: MicrosoftExcelLiveLargeWorkbookScorecard
+  microsoftExcelLiveLargeWorkbookScorecardPath: string
   microsoftExcelLiveStructuralScorecard: MicrosoftExcelLiveStructuralScorecard
   microsoftExcelLiveStructuralScorecardPath: string
   importExportFidelityScorecard: ImportExportFidelityScorecard
@@ -272,6 +284,13 @@ const microsoftExcelLiveRecalculationScorecardPath = join(
   'baselines',
   'microsoft-excel-live-recalculation-scorecard.json',
 )
+const microsoftExcelLiveLargeWorkbookScorecardPath = join(
+  rootDir,
+  'packages',
+  'benchmarks',
+  'baselines',
+  'microsoft-excel-live-large-workbook-scorecard.json',
+)
 const microsoftExcelLiveStructuralScorecardPath = join(
   rootDir,
   'packages',
@@ -306,6 +325,10 @@ function main(): void {
       readJsonObject(microsoftExcelLiveRecalculationScorecardPath),
     ),
     microsoftExcelLiveRecalculationScorecardPath: toRepoPath(microsoftExcelLiveRecalculationScorecardPath),
+    microsoftExcelLiveLargeWorkbookScorecard: parseMicrosoftExcelLiveLargeWorkbookScorecard(
+      readJsonObject(microsoftExcelLiveLargeWorkbookScorecardPath),
+    ),
+    microsoftExcelLiveLargeWorkbookScorecardPath: toRepoPath(microsoftExcelLiveLargeWorkbookScorecardPath),
     microsoftExcelLiveStructuralScorecard: parseMicrosoftExcelLiveStructuralScorecard(
       readJsonObject(microsoftExcelLiveStructuralScorecardPath),
     ),
@@ -393,6 +416,13 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
   const microsoftExcelRecalculationPassedCaseCount = input.microsoftExcelLiveRecalculationScorecard.cases.filter(
     (entry) => entry.passed,
   ).length
+  const microsoftExcelLargeWorkbookTenXPassed =
+    input.microsoftExcelLiveLargeWorkbookScorecard.summary.allRequiredCasesPassed &&
+    input.microsoftExcelLiveLargeWorkbookScorecard.summary.tenXMeanAndP95CaseCount ===
+      input.microsoftExcelLiveLargeWorkbookScorecard.summary.requiredCaseCount
+  const microsoftExcelLargeWorkbookPassedCaseCount = input.microsoftExcelLiveLargeWorkbookScorecard.cases.filter(
+    (entry) => entry.passed,
+  ).length
   const microsoftExcelStructuralTenXPassed =
     input.microsoftExcelLiveStructuralScorecard.summary.allRequiredCasesPassed &&
     input.microsoftExcelLiveStructuralScorecard.summary.tenXMeanAndP95CaseCount ===
@@ -430,6 +460,7 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
       hyperFormulaSurfaceSnapshot: input.surfaceSnapshotPath,
       microsoftExcelLiveCalculationScorecard: input.microsoftExcelLiveCalculationScorecardPath,
       microsoftExcelLiveRecalculationScorecard: input.microsoftExcelLiveRecalculationScorecardPath,
+      microsoftExcelLiveLargeWorkbookScorecard: input.microsoftExcelLiveLargeWorkbookScorecardPath,
       microsoftExcelLiveStructuralScorecard: input.microsoftExcelLiveStructuralScorecardPath,
       importExportFidelityScorecard: input.importExportFidelityScorecardPath,
       largeWorkbookSloScorecard: input.largeWorkbookSloScorecardPath,
@@ -467,6 +498,12 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
       microsoftExcelLiveRecalculationTenXMeanAndP95CaseCount:
         input.microsoftExcelLiveRecalculationScorecard.summary.tenXMeanAndP95CaseCount,
       microsoftExcelLiveRecalculationVersion: input.microsoftExcelLiveRecalculationScorecard.microsoftExcel.version,
+      microsoftExcelLiveLargeWorkbookEvidence: input.microsoftExcelLiveLargeWorkbookScorecard.source.evidenceKind,
+      microsoftExcelLiveLargeWorkbookCaseCount: input.microsoftExcelLiveLargeWorkbookScorecard.summary.requiredCaseCount,
+      microsoftExcelLiveLargeWorkbookPassed: input.microsoftExcelLiveLargeWorkbookScorecard.summary.allRequiredCasesPassed,
+      microsoftExcelLiveLargeWorkbookTenXMeanAndP95CaseCount:
+        input.microsoftExcelLiveLargeWorkbookScorecard.summary.tenXMeanAndP95CaseCount,
+      microsoftExcelLiveLargeWorkbookVersion: input.microsoftExcelLiveLargeWorkbookScorecard.microsoftExcel.version,
       microsoftExcelLiveStructuralEvidence: input.microsoftExcelLiveStructuralScorecard.source.evidenceKind,
       microsoftExcelLiveStructuralCaseCount: input.microsoftExcelLiveStructuralScorecard.summary.requiredCaseCount,
       microsoftExcelLiveStructuralPassed: input.microsoftExcelLiveStructuralScorecard.summary.allRequiredCasesPassed,
@@ -602,6 +639,14 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
           sloSummary(workerWarmStart250k),
           `external Google Sheets large-workbook evidence: ${input.largeWorkbookSloScorecard.summary.externalGoogleSheetsEvidence}`,
           `external Microsoft Excel large-workbook evidence: ${input.largeWorkbookSloScorecard.summary.externalMicrosoftExcelEvidence}`,
+          `live Microsoft Excel large-workbook scorecard passes ${String(
+            microsoftExcelLargeWorkbookPassedCaseCount,
+          )}/${String(input.microsoftExcelLiveLargeWorkbookScorecard.summary.requiredCaseCount)} required cases on Excel ${
+            input.microsoftExcelLiveLargeWorkbookScorecard.microsoftExcel.version
+          }`,
+          `live Microsoft Excel large-workbook cases with 10x mean+p95 wins: ${String(
+            input.microsoftExcelLiveLargeWorkbookScorecard.summary.tenXMeanAndP95CaseCount,
+          )}/${String(input.microsoftExcelLiveLargeWorkbookScorecard.summary.requiredCaseCount)}`,
           `external large-workbook comparison dimensions pass: ${String(
             input.largeWorkbookSloScorecard.externalSheetsExcelComparison.requiredDimensionsPassed,
           )}`,
@@ -613,12 +658,24 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
         evidenceArtifacts: [
           input.competitiveArtifactPath,
           input.largeWorkbookSloScorecardPath,
+          input.microsoftExcelLiveLargeWorkbookScorecardPath,
           input.largeWorkbookSloScorecard.source.externalLargeWorkbookComparisonArtifact,
           'e2e/tests/web-shell-scroll-performance.pw.ts',
           'docs/05-06-next-phase.md',
         ],
-        checkCommands: ['pnpm large-workbook:slo:check', 'CI=1 pnpm bench:contracts', 'pnpm test:browser:full', 'pnpm bench:smoke'],
-        blockers: ['no direct Sheets or Excel large-workbook live timing artifact exists in the repo'],
+        checkCommands: [
+          'pnpm large-workbook:slo:check',
+          'pnpm large-workbook:excel-live:check',
+          'CI=1 pnpm bench:contracts',
+          'pnpm test:browser:full',
+          'pnpm bench:smoke',
+        ],
+        blockers: [
+          ...(microsoftExcelLargeWorkbookTenXPassed
+            ? []
+            : ['live Microsoft Excel large-workbook timing scorecard does not prove 10x mean+p95 for all large-workbook cases']),
+          'no direct Google Sheets large-workbook live timing artifact exists in the repo',
+        ],
       },
       {
         id: 'ui-responsiveness',

@@ -29,6 +29,8 @@
     "recalculation:excel-live:check": "bun scripts/gen-microsoft-excel-live-recalculation-scorecard.ts --check",
     "structural:excel-live:generate": "bun scripts/gen-microsoft-excel-live-structural-scorecard.ts",
     "structural:excel-live:check": "bun scripts/gen-microsoft-excel-live-structural-scorecard.ts --check",
+    "large-workbook:excel-live:generate": "bun scripts/gen-microsoft-excel-live-large-workbook-scorecard.ts",
+    "large-workbook:excel-live:check": "bun scripts/gen-microsoft-excel-live-large-workbook-scorecard.ts --check",
     "auditability:generate": "bun scripts/gen-auditability-scorecard.ts",
     "auditability:check": "bun scripts/gen-auditability-scorecard.ts --check",
     "reliability:generate": "bun scripts/gen-reliability-scorecard.ts",
