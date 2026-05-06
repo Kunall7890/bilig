@@ -441,6 +441,7 @@ describe('excel import', () => {
             ],
             freezePane: { rows: 1, cols: 2 },
             merges: [{ sheetName: 'Summary', startAddress: 'A5', endAddress: 'B5' }],
+            filters: [{ sheetName: 'Summary', startAddress: 'A1', endAddress: 'B3' }],
             validations: [
               {
                 range: { sheetName: 'Summary', startAddress: 'C2', endAddress: 'C4' },
@@ -537,6 +538,7 @@ describe('excel import', () => {
     expect(strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())).toContain(
       '<pane xSplit="2" ySplit="1" topLeftCell="C2" activePane="bottomRight" state="frozen"/>',
     )
+    expect(strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())).toContain('<autoFilter ref="A1:B3"/>')
     expect(projectSupportedSnapshotSemantics(imported.snapshot)).toEqual(projectSupportedSnapshotSemantics(snapshot))
   })
 })
@@ -675,6 +677,13 @@ function projectSupportedSnapshotSemantics(snapshot: WorkbookSnapshot) {
             .toSorted((left, right) => left.index - right.index),
           freezePane: sheet.metadata?.freezePane,
           merges: (sheet.metadata?.merges ?? [])
+            .map(({ sheetName, startAddress, endAddress }) => ({ sheetName, startAddress, endAddress }))
+            .toSorted((left, right) =>
+              `${left.sheetName}:${left.startAddress}:${left.endAddress}`.localeCompare(
+                `${right.sheetName}:${right.startAddress}:${right.endAddress}`,
+              ),
+            ),
+          filters: (sheet.metadata?.filters ?? [])
             .map(({ sheetName, startAddress, endAddress }) => ({ sheetName, startAddress, endAddress }))
             .toSorted((left, right) =>
               `${left.sheetName}:${left.startAddress}:${left.endAddress}`.localeCompare(
