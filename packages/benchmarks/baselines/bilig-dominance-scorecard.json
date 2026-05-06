@@ -42,6 +42,7 @@
     "externalMicrosoftExcelEvidence": "not-captured-in-repo",
     "formulaCanonicalProductionPercent": 100,
     "formulaOfficeListedBreadthPercent": 100,
+    "formulaTrackedBreadthPercent": 100,
     "hyperFormulaComparableWorkloads": 46,
     "hyperFormulaMeanGeomeanRatio": 0.5126605383809896,
     "hyperFormulaP95GeomeanRatio": 0.5080601177268398,
@@ -59,6 +60,7 @@
       "currentEvidence": [
         "canonical formula closure is 300/300 (100%)",
         "Office-listed formula breadth is 508/508 (100%)",
+        "tracked formula breadth is 525/525 (100%)",
         "strategic canonical rows are production-routed; open canonical rows: 0"
       ],
       "evidenceArtifacts": [

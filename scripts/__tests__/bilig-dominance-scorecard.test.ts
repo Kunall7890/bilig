@@ -23,6 +23,8 @@ describe('bilig dominance scorecard', () => {
     ])
     expect(scorecard.summary.externalGoogleSheetsEvidence).toBe('not-captured-in-repo')
     expect(scorecard.summary.externalMicrosoftExcelEvidence).toBe('not-captured-in-repo')
+    expect(scorecard.summary.formulaOfficeListedBreadthPercent).toBe(90.7)
+    expect(scorecard.summary.formulaTrackedBreadthPercent).toBe(90.5)
   })
 
   it('maps every explicit objective category into the checked-in generated artifact', () => {

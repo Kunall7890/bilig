@@ -217,6 +217,20 @@ function extractObjectKeys(expression: ts.Expression | undefined): string[] {
   })
 }
 
+function getBlockVariableInitializer(block: ts.Block, variableName: string): ts.Expression | undefined {
+  for (const statement of block.statements) {
+    if (!ts.isVariableStatement(statement)) {
+      continue
+    }
+    for (const declaration of statement.declarationList.declarations) {
+      if (ts.isIdentifier(declaration.name) && declaration.name.text === variableName) {
+        return declaration.initializer
+      }
+    }
+  }
+  return undefined
+}
+
 function extractReturnedObjectKeys(sourceFile: ts.SourceFile, functionName: string): string[] {
   let found: string[] = []
   const visit = (node: ts.Node): void => {
@@ -225,7 +239,11 @@ function extractReturnedObjectKeys(sourceFile: ts.SourceFile, functionName: stri
     }
     if (ts.isFunctionDeclaration(node) && node.name?.text === functionName && node.body) {
       const returnStatement = node.body.statements.find((statement): statement is ts.ReturnStatement => ts.isReturnStatement(statement))
-      found = extractObjectKeys(returnStatement?.expression)
+      const expression = returnStatement?.expression
+      found = extractObjectKeys(expression)
+      if (found.length === 0 && expression && ts.isIdentifier(expression)) {
+        found = extractObjectKeys(getBlockVariableInitializer(node.body, expression.text))
+      }
       return
     }
     ts.forEachChild(node, visit)

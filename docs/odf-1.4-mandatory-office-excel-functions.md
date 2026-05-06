@@ -19,8 +19,8 @@
 - Office-only (not in ODF 1.4 mandatory): **450**
 
 ## Current code coverage snapshot
-- Registered in codebase: **522**
-- Not yet registered in codebase: **3**
+- Registered in codebase: **525**
+- Not yet registered in codebase: **0**
 - Placeholder-backed registrations: **0**
 - The "Implemented in codebase" column reflects runtime registration, including blocked placeholder registrations.
 
@@ -305,8 +305,8 @@
 | LEGACY.CHITEST | Legacy not implemented | No | Yes |
 | LEGACY.FDIST | Legacy not implemented | No | Yes |
 | LEGACY.FINV | Legacy not implemented | No | Yes |
-| LEGACY.NORMSDIST | Legacy not implemented | No | No |
-| LEGACY.NORMSINV | Legacy not implemented | No | No |
+| LEGACY.NORMSDIST | Legacy not implemented | No | Yes |
+| LEGACY.NORMSINV | Legacy not implemented | No | Yes |
 | LEN | Not in ODF 1.4 mandatory | Yes | Yes |
 | LENB | Missing | Yes | Yes |
 | LET | Not in ODF 1.4 mandatory | Yes | Yes |
@@ -452,7 +452,7 @@
 | SINH | Implemented | Yes | Yes |
 | SKEW | Placeholder (blocked) | Yes | Yes |
 | SKEW.P | Not in ODF 1.4 mandatory | Yes | Yes |
-| SKEWP | Missing | No | No |
+| SKEWP | Missing | No | Yes |
 | SLN | Not in ODF 1.4 mandatory | Yes | Yes |
 | SLOPE | Placeholder (blocked) | Yes | Yes |
 | SMALL | Placeholder (blocked) | Yes | Yes |

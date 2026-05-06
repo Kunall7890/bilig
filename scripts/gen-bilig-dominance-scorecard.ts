@@ -113,6 +113,7 @@ export interface BiligDominanceScorecard {
     externalMicrosoftExcelEvidence: 'not-captured-in-repo'
     formulaCanonicalProductionPercent: number
     formulaOfficeListedBreadthPercent: number
+    formulaTrackedBreadthPercent: number
     hyperFormulaComparableWorkloads: number
     hyperFormulaP95GeomeanRatio: number
     hyperFormulaMeanGeomeanRatio: number
@@ -252,6 +253,7 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
       externalMicrosoftExcelEvidence: 'not-captured-in-repo',
       formulaCanonicalProductionPercent: input.formulaSnapshot.canonical.summary.percent,
       formulaOfficeListedBreadthPercent: input.formulaSnapshot.formulaBreadth.officeListed.percent,
+      formulaTrackedBreadthPercent: input.formulaSnapshot.formulaBreadth.tracked.percent,
       hyperFormulaComparableWorkloads: input.competitiveArtifact.scorecard.comparableCount,
       hyperFormulaMeanGeomeanRatio: input.competitiveArtifact.scorecard.directionalMeanRatioGeomean,
       hyperFormulaP95GeomeanRatio: input.competitiveArtifact.scorecard.directionalP95RatioGeomean,
@@ -269,6 +271,7 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
         currentEvidence: [
           `canonical formula closure is ${formatRatio(input.formulaSnapshot.canonical.summary)}`,
           `Office-listed formula breadth is ${formatRatio(input.formulaSnapshot.formulaBreadth.officeListed)}`,
+          `tracked formula breadth is ${formatRatio(input.formulaSnapshot.formulaBreadth.tracked)}`,
           `strategic canonical rows are production-routed; open canonical rows: ${input.formulaSnapshot.canonical.nonProductionRows.length}`,
         ],
         evidenceArtifacts: [input.formulaSnapshotPath, 'docs/excel-parity-program.md', 'docs/formula-oracle-capture.md'],

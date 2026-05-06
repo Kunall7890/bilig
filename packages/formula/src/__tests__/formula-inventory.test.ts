@@ -60,6 +60,8 @@ describe('formula inventory', () => {
       'COMPLEX',
       'CONCATENATE',
       'IMABS',
+      'LEGACY.NORMSDIST',
+      'LEGACY.NORMSINV',
       'MDETERM',
       'MMULT',
       'MULTINOMIAL',
@@ -67,6 +69,7 @@ describe('formula inventory', () => {
       'PROPER',
       'REGEXTEST',
       'ROMAN',
+      'SKEWP',
     ]
 
     for (const name of factoryRegisteredFunctions) {
