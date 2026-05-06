@@ -29,6 +29,7 @@
   },
   "sourceArtifacts": {
     "auditabilityScorecard": "packages/benchmarks/baselines/auditability-scorecard.json",
+    "automationScorecard": "packages/benchmarks/baselines/automation-scorecard.json",
     "formulaDominanceSnapshot": "packages/formula/src/__tests__/fixtures/formula-dominance-snapshot.json",
     "hyperFormulaSurfaceSnapshot": "packages/headless/src/__tests__/fixtures/hyperformula-surface.json",
     "importExportFidelityScorecard": "packages/benchmarks/baselines/import-export-fidelity-scorecard.json",
@@ -54,6 +55,21 @@
     ],
     "auditabilityPosturePassed": true,
     "auditabilityUncoveredControls": ["headedBrowser.previewApplyRevertFlow", "externalSheetsExcelAuditabilityComparison"],
+    "automationCoveredControls": [
+      "agent.semanticBundleValidation",
+      "agent.previewApplyExecution",
+      "agent.partialCommandProjection",
+      "headless.serviceWorkflow",
+      "headless.persistenceRoundTrip",
+      "headless.undoRedoAutomation",
+      "worker.runtimePreview",
+      "tools.semanticWorkbookRegistry",
+      "tools.legacyNameNormalization"
+    ],
+    "automationPosturePassed": true,
+    "automationRegisteredToolCount": 98,
+    "automationSemanticCommandKindCount": 6,
+    "automationUncoveredControls": ["googleAppsScriptDirectComparison", "officeScriptsDirectComparison", "tenXWorkflowAutomationBenchmark"],
     "externalGoogleSheetsEvidence": "not-captured-in-repo",
     "externalMicrosoftExcelEvidence": "not-captured-in-repo",
     "formulaCanonicalProductionPercent": 100,
@@ -271,17 +287,29 @@
       "target": "Typed semantic workbook operations and agent tools that replace brittle DOM automation.",
       "status": "partial-repo-evidence",
       "currentEvidence": [
+        "generated automation scorecard passes required controls: true",
+        "covered automation controls: agent.semanticBundleValidation, agent.previewApplyExecution, agent.partialCommandProjection, headless.serviceWorkflow, headless.persistenceRoundTrip, headless.undoRedoAutomation, worker.runtimePreview, tools.semanticWorkbookRegistry, tools.legacyNameNormalization",
+        "registered workbook-agent tool count: 98",
+        "semantic command kinds exercised by scorecard: 6",
         "143 HyperFormula surface members are snapshotted for parity tracking",
         "38 HyperFormula config keys are snapshotted for parity tracking",
         "WorkPaper exposes additional detailed events and performance counters"
       ],
       "evidenceArtifacts": [
+        "packages/benchmarks/baselines/automation-scorecard.json",
         "packages/headless/src/__tests__/fixtures/hyperformula-surface.json",
-        "packages/headless/src/__tests__/hyperformula-surface-parity.test.ts"
+        "packages/headless/src/__tests__/hyperformula-surface-parity.test.ts",
+        "packages/agent-api/src/__tests__/workbook-agent-bundles.test.ts"
       ],
-      "checkCommands": ["pnpm workpaper:parity:check", "pnpm workpaper:smoke:external"],
+      "checkCommands": [
+        "pnpm automation:check",
+        "pnpm workpaper:parity:check",
+        "pnpm workpaper:smoke:external",
+        "pnpm exec vitest run scripts/__tests__/automation-scorecard.test.ts packages/agent-api/src/__tests__/workbook-agent-bundles.test.ts packages/headless/src/__tests__/work-paper.test.ts apps/web/src/__tests__/worker-runtime.test.ts"
+      ],
       "blockers": [
-        "no generated Google Apps Script or Office Scripts capability comparison exists",
+        "generated automation evidence still leaves uncovered controls: googleAppsScriptDirectComparison, officeScriptsDirectComparison, tenXWorkflowAutomationBenchmark",
+        "no direct generated Google Apps Script or Office Scripts execution comparison exists",
         "no 10x workflow automation benchmark exists for semantic operations versus incumbent scripting"
       ]
     },

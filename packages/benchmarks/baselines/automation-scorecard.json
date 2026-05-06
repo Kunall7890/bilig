@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "suite": "automation-api-extensibility",
+  "generatedAt": "2026-05-06T08:43:44.235Z",
+  "source": {
+    "artifactGenerator": "scripts/gen-automation-scorecard.ts",
+    "commandBundleImplementation": "packages/agent-api/src/workbook-agent-bundles.ts",
+    "previewImplementation": "packages/agent-api/src/workbook-agent-preview.ts",
+    "headlessImplementation": "packages/headless/src/work-paper-runtime.ts",
+    "workerRuntimeImplementation": "apps/web/src/worker-runtime.ts",
+    "toolRegistryImplementation": "packages/agent-api/src/workbook-agent-tool-names.ts"
+  },
+  "summary": {
+    "allRequiredControlsPassed": true,
+    "semanticCommandWorkflowPassed": true,
+    "headlessServiceWorkflowPassed": true,
+    "workerPreviewWorkflowPassed": true,
+    "toolRegistryPassed": true,
+    "registeredToolCount": 98,
+    "semanticCommandKindCount": 6,
+    "coveredControls": [
+      "agent.semanticBundleValidation",
+      "agent.previewApplyExecution",
+      "agent.partialCommandProjection",
+      "headless.serviceWorkflow",
+      "headless.persistenceRoundTrip",
+      "headless.undoRedoAutomation",
+      "worker.runtimePreview",
+      "tools.semanticWorkbookRegistry",
+      "tools.legacyNameNormalization"
+    ],
+    "uncoveredControls": ["googleAppsScriptDirectComparison", "officeScriptsDirectComparison", "tenXWorkflowAutomationBenchmark"],
+    "externalGoogleSheetsEvidence": "not-captured",
+    "externalMicrosoftExcelEvidence": "not-captured"
+  },
+  "controls": [
+    {
+      "id": "semantic-command-bundle-preview-apply",
+      "category": "semantic-command-api",
+      "required": true,
+      "passed": true,
+      "coveredControls": ["agent.semanticBundleValidation", "agent.previewApplyExecution", "agent.partialCommandProjection"],
+      "evidence": "Created a typed workbook-agent bundle with 6 semantic commands, validated it, projected a two-command subset, previewed it from a snapshot, applied it to a real SpreadsheetEngine, and verified formula output C2=32 plus freeze-pane and column metadata effects.",
+      "findings": []
+    },
+    {
+      "id": "headless-service-automation-workflow",
+      "category": "headless-service-api",
+      "required": true,
+      "passed": true,
+      "coveredControls": ["headless.serviceWorkflow", "headless.persistenceRoundTrip", "headless.undoRedoAutomation"],
+      "evidence": "Executed the production WorkPaper headless API through copy, paste, batch formula write, persistence round trip, undo, and redo without browser DOM automation.",
+      "findings": []
+    },
+    {
+      "id": "worker-runtime-agent-preview",
+      "category": "worker-runtime-api",
+      "required": true,
+      "passed": true,
+      "coveredControls": ["worker.runtimePreview"],
+      "evidence": "Bootstrapped the browser worker runtime against an in-memory local store and previewed a workbook-agent bundle through the worker API.",
+      "findings": []
+    },
+    {
+      "id": "agent-tool-registry-semantic-coverage",
+      "category": "tool-registry",
+      "required": true,
+      "passed": true,
+      "coveredControls": ["tools.semanticWorkbookRegistry", "tools.legacyNameNormalization"],
+      "evidence": "Checked 98 canonical workbook-agent tool names, including semantic mutation, inspection, audit, object, protection, and media tools.",
+      "findings": []
+    }
+  ]
+}

@@ -29,9 +29,11 @@ describe('bilig dominance scorecard', () => {
     expect(scorecard.summary.largeWorkbookSloRowsCovered).toEqual([100_000, 250_000])
     expect(scorecard.summary.largeWorkbookSloPassed).toBe(true)
     expect(scorecard.summary.auditabilityPosturePassed).toBe(true)
+    expect(scorecard.summary.automationPosturePassed).toBe(true)
     expect(scorecard.summary.reliabilityPosturePassed).toBe(true)
     expect(scorecard.summary.securityPosturePassed).toBe(true)
     expect(scorecard.sourceArtifacts.auditabilityScorecard).toBe('packages/benchmarks/baselines/auditability-scorecard.json')
+    expect(scorecard.sourceArtifacts.automationScorecard).toBe('packages/benchmarks/baselines/automation-scorecard.json')
     expect(scorecard.sourceArtifacts.reliabilityScorecard).toBe('packages/benchmarks/baselines/reliability-scorecard.json')
     expect(scorecard.sourceArtifacts.importExportFidelityScorecard).toBe(
       'packages/benchmarks/baselines/import-export-fidelity-scorecard.json',
@@ -49,6 +51,10 @@ describe('bilig dominance scorecard', () => {
     expect(scorecard.categories.find((category) => category.id === 'auditability')).toMatchObject({
       status: 'partial-repo-evidence',
       evidenceArtifacts: expect.arrayContaining(['packages/benchmarks/baselines/auditability-scorecard.json']),
+    })
+    expect(scorecard.categories.find((category) => category.id === 'automation-api-extensibility')).toMatchObject({
+      status: 'partial-repo-evidence',
+      evidenceArtifacts: expect.arrayContaining(['packages/benchmarks/baselines/automation-scorecard.json']),
     })
     expect(scorecard.categories.find((category) => category.id === 'reliability')).toMatchObject({
       status: 'partial-repo-evidence',
@@ -91,12 +97,15 @@ describe('bilig dominance scorecard', () => {
     expect(packageJson).toContain('"auditability:check": "bun scripts/gen-auditability-scorecard.ts --check"')
     expect(packageJson).toContain('"reliability:generate": "bun scripts/gen-reliability-scorecard.ts"')
     expect(packageJson).toContain('"reliability:check": "bun scripts/gen-reliability-scorecard.ts --check"')
+    expect(packageJson).toContain('"automation:generate": "bun scripts/gen-automation-scorecard.ts"')
+    expect(packageJson).toContain('"automation:check": "bun scripts/gen-automation-scorecard.ts --check"')
     expect(packageJson).toContain('"import-export:fidelity:check": "bun scripts/gen-import-export-fidelity-scorecard.ts --check"')
     expect(packageJson).toContain('"large-workbook:slo:check": "bun scripts/gen-large-workbook-slo-scorecard.ts --check"')
     expect(packageJson).toContain('"security:posture:check": "bun scripts/gen-security-posture-scorecard.ts --check"')
     expect(runCi).toContain("pnpm('bilig dominance scorecard check', 'dominance:check')")
     expect(runCi).toContain("pnpm('auditability scorecard check', 'auditability:check')")
     expect(runCi).toContain("pnpm('reliability scorecard check', 'reliability:check')")
+    expect(runCi).toContain("pnpm('automation scorecard check', 'automation:check')")
     expect(runCi).toContain("pnpm('import/export fidelity scorecard check', 'import-export:fidelity:check')")
     expect(runCi).toContain("pnpm('large workbook SLO scorecard check', 'large-workbook:slo:check')")
     expect(runCi).toContain("pnpm('security posture scorecard check', 'security:posture:check')")
@@ -130,6 +139,7 @@ function buildFixtureInput(): BuildScorecardInput {
     competitiveArtifactPath: 'packages/benchmarks/baselines/workpaper-vs-hyperformula.json',
     formulaSnapshotPath: 'packages/formula/src/__tests__/fixtures/formula-dominance-snapshot.json',
     auditabilityScorecardPath: 'packages/benchmarks/baselines/auditability-scorecard.json',
+    automationScorecardPath: 'packages/benchmarks/baselines/automation-scorecard.json',
     importExportFidelityScorecardPath: 'packages/benchmarks/baselines/import-export-fidelity-scorecard.json',
     largeWorkbookSloScorecardPath: 'packages/benchmarks/baselines/large-workbook-slo-scorecard.json',
     reliabilityScorecardPath: 'packages/benchmarks/baselines/reliability-scorecard.json',
@@ -226,6 +236,43 @@ function buildFixtureInput(): BuildScorecardInput {
           passed: true,
           coveredControls: ['agent.previewDiffParity'],
           evidence: 'fixture preview matched apply',
+          findings: [],
+        },
+      ],
+    },
+    automationScorecard: {
+      schemaVersion: 1,
+      suite: 'automation-api-extensibility',
+      generatedAt: '2026-05-06T12:00:00.000Z',
+      source: {
+        artifactGenerator: 'scripts/gen-automation-scorecard.ts',
+        commandBundleImplementation: 'packages/agent-api/src/workbook-agent-bundles.ts',
+        previewImplementation: 'packages/agent-api/src/workbook-agent-preview.ts',
+        headlessImplementation: 'packages/headless/src/work-paper-runtime.ts',
+        workerRuntimeImplementation: 'apps/web/src/worker-runtime.ts',
+        toolRegistryImplementation: 'packages/agent-api/src/workbook-agent-tool-names.ts',
+      },
+      summary: {
+        allRequiredControlsPassed: true,
+        semanticCommandWorkflowPassed: true,
+        headlessServiceWorkflowPassed: true,
+        workerPreviewWorkflowPassed: true,
+        toolRegistryPassed: true,
+        registeredToolCount: 98,
+        semanticCommandKindCount: 6,
+        coveredControls: ['agent.semanticBundleValidation', 'headless.serviceWorkflow'],
+        uncoveredControls: ['googleAppsScriptDirectComparison'],
+        externalGoogleSheetsEvidence: 'not-captured',
+        externalMicrosoftExcelEvidence: 'not-captured',
+      },
+      controls: [
+        {
+          id: 'semantic-command-bundle-preview-apply',
+          category: 'semantic-command-api',
+          required: true,
+          passed: true,
+          coveredControls: ['agent.semanticBundleValidation'],
+          evidence: 'fixture bundle previewed and applied',
           findings: [],
         },
       ],

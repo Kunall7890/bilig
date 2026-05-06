@@ -6,6 +6,7 @@ import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 import { parseAuditabilityScorecard, type AuditabilityScorecard } from './gen-auditability-scorecard.ts'
+import { parseAutomationScorecard, type AutomationScorecard } from './gen-automation-scorecard.ts'
 import { parseImportExportFidelityScorecard, type ImportExportFidelityScorecard } from './gen-import-export-fidelity-scorecard.ts'
 import { parseReliabilityScorecard, type ReliabilityScorecard } from './gen-reliability-scorecard.ts'
 import { parseSecurityPostureScorecard, type SecurityPostureScorecard } from './gen-security-posture-scorecard.ts'
@@ -149,6 +150,7 @@ export interface BiligDominanceScorecard {
   }
   sourceArtifacts: {
     auditabilityScorecard: string
+    automationScorecard: string
     formulaDominanceSnapshot: string
     hyperFormulaSurfaceSnapshot: string
     importExportFidelityScorecard: string
@@ -166,6 +168,11 @@ export interface BiligDominanceScorecard {
     auditabilityCoveredControls: string[]
     auditabilityPosturePassed: boolean
     auditabilityUncoveredControls: string[]
+    automationCoveredControls: string[]
+    automationPosturePassed: boolean
+    automationRegisteredToolCount: number
+    automationSemanticCommandKindCount: number
+    automationUncoveredControls: string[]
     externalGoogleSheetsEvidence: 'not-captured-in-repo'
     externalMicrosoftExcelEvidence: 'not-captured-in-repo'
     formulaCanonicalProductionPercent: number
@@ -207,6 +214,8 @@ export interface DominanceCategory {
 export interface BuildScorecardInput {
   auditabilityScorecard: AuditabilityScorecard
   auditabilityScorecardPath: string
+  automationScorecard: AutomationScorecard
+  automationScorecardPath: string
   competitiveArtifact: CompetitiveArtifact
   competitiveArtifactPath: string
   formulaSnapshot: FormulaDominanceSnapshot
@@ -226,6 +235,7 @@ export interface BuildScorecardInput {
 const TEN_X_RATIO = 0.1
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
 const auditabilityScorecardPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'auditability-scorecard.json')
+const automationScorecardPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'automation-scorecard.json')
 const outputPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'bilig-dominance-scorecard.json')
 const competitiveArtifactPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'workpaper-vs-hyperformula.json')
 const formulaSnapshotPath = join(rootDir, 'packages', 'formula', 'src', '__tests__', 'fixtures', 'formula-dominance-snapshot.json')
@@ -240,6 +250,8 @@ function main(): void {
   const scorecard = buildBiligDominanceScorecard({
     auditabilityScorecard: parseAuditabilityScorecard(readJsonObject(auditabilityScorecardPath)),
     auditabilityScorecardPath: toRepoPath(auditabilityScorecardPath),
+    automationScorecard: parseAutomationScorecard(readJsonObject(automationScorecardPath)),
+    automationScorecardPath: toRepoPath(automationScorecardPath),
     competitiveArtifact: parseCompetitiveArtifact(readJsonObject(competitiveArtifactPath)),
     competitiveArtifactPath: toRepoPath(competitiveArtifactPath),
     formulaSnapshot: parseFormulaDominanceSnapshot(readJsonObject(formulaSnapshotPath)),
@@ -339,6 +351,7 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
     },
     sourceArtifacts: {
       auditabilityScorecard: input.auditabilityScorecardPath,
+      automationScorecard: input.automationScorecardPath,
       formulaDominanceSnapshot: input.formulaSnapshotPath,
       hyperFormulaSurfaceSnapshot: input.surfaceSnapshotPath,
       importExportFidelityScorecard: input.importExportFidelityScorecardPath,
@@ -356,6 +369,11 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
       auditabilityCoveredControls: input.auditabilityScorecard.summary.coveredControls,
       auditabilityPosturePassed: input.auditabilityScorecard.summary.allRequiredControlsPassed,
       auditabilityUncoveredControls: input.auditabilityScorecard.summary.uncoveredControls,
+      automationCoveredControls: input.automationScorecard.summary.coveredControls,
+      automationPosturePassed: input.automationScorecard.summary.allRequiredControlsPassed,
+      automationRegisteredToolCount: input.automationScorecard.summary.registeredToolCount,
+      automationSemanticCommandKindCount: input.automationScorecard.summary.semanticCommandKindCount,
+      automationUncoveredControls: input.automationScorecard.summary.uncoveredControls,
       externalGoogleSheetsEvidence: 'not-captured-in-repo',
       externalMicrosoftExcelEvidence: 'not-captured-in-repo',
       formulaCanonicalProductionPercent: input.formulaSnapshot.canonical.summary.percent,
@@ -513,14 +531,29 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
         target: 'Typed semantic workbook operations and agent tools that replace brittle DOM automation.',
         status: 'partial-repo-evidence',
         currentEvidence: [
+          `generated automation scorecard passes required controls: ${String(input.automationScorecard.summary.allRequiredControlsPassed)}`,
+          `covered automation controls: ${input.automationScorecard.summary.coveredControls.join(', ')}`,
+          `registered workbook-agent tool count: ${String(input.automationScorecard.summary.registeredToolCount)}`,
+          `semantic command kinds exercised by scorecard: ${String(input.automationScorecard.summary.semanticCommandKindCount)}`,
           `${totalSurfaceMembers} HyperFormula surface members are snapshotted for parity tracking`,
           `${input.surfaceSnapshot.configKeys.length} HyperFormula config keys are snapshotted for parity tracking`,
           'WorkPaper exposes additional detailed events and performance counters',
         ],
-        evidenceArtifacts: [input.surfaceSnapshotPath, 'packages/headless/src/__tests__/hyperformula-surface-parity.test.ts'],
-        checkCommands: ['pnpm workpaper:parity:check', 'pnpm workpaper:smoke:external'],
+        evidenceArtifacts: [
+          input.automationScorecardPath,
+          input.surfaceSnapshotPath,
+          'packages/headless/src/__tests__/hyperformula-surface-parity.test.ts',
+          'packages/agent-api/src/__tests__/workbook-agent-bundles.test.ts',
+        ],
+        checkCommands: [
+          'pnpm automation:check',
+          'pnpm workpaper:parity:check',
+          'pnpm workpaper:smoke:external',
+          'pnpm exec vitest run scripts/__tests__/automation-scorecard.test.ts packages/agent-api/src/__tests__/workbook-agent-bundles.test.ts packages/headless/src/__tests__/work-paper.test.ts apps/web/src/__tests__/worker-runtime.test.ts',
+        ],
         blockers: [
-          'no generated Google Apps Script or Office Scripts capability comparison exists',
+          `generated automation evidence still leaves uncovered controls: ${input.automationScorecard.summary.uncoveredControls.join(', ')}`,
+          'no direct generated Google Apps Script or Office Scripts execution comparison exists',
           'no 10x workflow automation benchmark exists for semantic operations versus incumbent scripting',
         ],
       },
