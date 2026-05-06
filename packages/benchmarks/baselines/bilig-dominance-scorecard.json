@@ -128,10 +128,11 @@
       "pending.authoritativeRebasePreservesLocal",
       "pending.failedRetrySurvival",
       "localStore.journalActiveView",
-      "headedBrowser.reloadPersistence"
+      "headedBrowser.reloadPersistence",
+      "offline.networkPartitionRecoverySoak"
     ],
     "reliabilityPosturePassed": true,
-    "reliabilityUncoveredControls": ["headedBrowser.crashSoak", "offlineNetworkPartitionSoak", "externalSheetsExcelReliabilityComparison"],
+    "reliabilityUncoveredControls": ["headedBrowser.crashSoak", "externalSheetsExcelReliabilityComparison"],
     "securityCoveredControls": [
       "formula.noEval",
       "formula.noFunctionConstructor",
@@ -398,8 +399,8 @@
       "status": "partial-repo-evidence",
       "currentEvidence": [
         "generated reliability scorecard passes required controls: true",
-        "covered reliability controls: pending.localReloadSurvival, pending.submittedReloadSurvival, pending.authoritativeAckAbsorption, pending.authoritativeRebasePreservesLocal, pending.failedRetrySurvival, localStore.journalActiveView, headedBrowser.reloadPersistence",
-        "uncovered reliability controls are explicitly disclosed: headedBrowser.crashSoak, offlineNetworkPartitionSoak, externalSheetsExcelReliabilityComparison",
+        "covered reliability controls: pending.localReloadSurvival, pending.submittedReloadSurvival, pending.authoritativeAckAbsorption, pending.authoritativeRebasePreservesLocal, pending.failedRetrySurvival, localStore.journalActiveView, headedBrowser.reloadPersistence, offline.networkPartitionRecoverySoak",
+        "uncovered reliability controls are explicitly disclosed: headedBrowser.crashSoak, externalSheetsExcelReliabilityComparison",
         "local pending-op journal and reconnect/rebase architecture are documented",
         "runtime sync replay, fuzz, reconnect, and local persistence tests exist"
       ],
@@ -419,7 +420,7 @@
         "pnpm test:correctness:server"
       ],
       "blockers": [
-        "generated reliability evidence covers worker-runtime durability and headed browser reload persistence, but not headed browser crash soak or offline network-partition soak",
+        "generated reliability evidence covers worker-runtime durability, headed browser reload persistence, and offline network-partition recovery, but not headed browser crash soak",
         "no direct Sheets or Excel reliability comparison artifact exists in the repo"
       ]
     },

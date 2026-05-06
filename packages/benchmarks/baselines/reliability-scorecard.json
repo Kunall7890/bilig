@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "suite": "reliability-posture",
-  "generatedAt": "2026-05-06T09:44:08.565Z",
+  "generatedAt": "2026-05-06T09:54:10.992Z",
   "source": {
     "artifactGenerator": "scripts/gen-reliability-scorecard.ts",
     "workerRuntimeImplementation": "apps/web/src/worker-runtime.ts",
@@ -16,6 +16,7 @@
     "authoritativeRebasePassed": true,
     "failedRetryPassed": true,
     "headedBrowserReloadPassed": true,
+    "offlineNetworkPartitionPassed": true,
     "coveredControls": [
       "pending.localReloadSurvival",
       "pending.submittedReloadSurvival",
@@ -23,9 +24,10 @@
       "pending.authoritativeRebasePreservesLocal",
       "pending.failedRetrySurvival",
       "localStore.journalActiveView",
-      "headedBrowser.reloadPersistence"
+      "headedBrowser.reloadPersistence",
+      "offline.networkPartitionRecoverySoak"
     ],
-    "uncoveredControls": ["headedBrowser.crashSoak", "offlineNetworkPartitionSoak", "externalSheetsExcelReliabilityComparison"],
+    "uncoveredControls": ["headedBrowser.crashSoak", "externalSheetsExcelReliabilityComparison"],
     "externalGoogleSheetsEvidence": "not-captured",
     "externalMicrosoftExcelEvidence": "not-captured"
   },
@@ -73,6 +75,21 @@
       "passed": true,
       "coveredControls": ["headedBrowser.reloadPersistence"],
       "evidence": "Validated the headed Playwright reload contract that writes a workbook value through the UI, reloads the browser page, and verifies both formula input and resolved value survive.",
+      "findings": []
+    },
+    {
+      "id": "offline-network-partition-recovery-soak",
+      "category": "offline-recovery",
+      "required": true,
+      "passed": true,
+      "coveredControls": [
+        "pending.localReloadSurvival",
+        "pending.authoritativeRebasePreservesLocal",
+        "pending.authoritativeAckAbsorption",
+        "localStore.journalActiveView",
+        "offline.networkPartitionRecoverySoak"
+      ],
+      "evidence": "Simulated 32 offline local edits across a worker reload, replayed 32 collaborator authoritative edits on reconnect, acked every local mutation, and reopened the runtime to verify both local and remote cells persisted with an empty pending queue.",
       "findings": []
     }
   ]

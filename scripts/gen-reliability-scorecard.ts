@@ -6,12 +6,13 @@ import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { ValueTag } from '@bilig/protocol'
 import { createMemoryWorkbookLocalStoreFactory, type WorkbookLocalStoreFactory } from '@bilig/storage-browser'
+import type { AuthoritativeWorkbookEventRecord } from '@bilig/zero-sync'
 import { WorkbookWorkerRuntime } from '../apps/web/src/worker-runtime.js'
 import type { PendingWorkbookMutation } from '../apps/web/src/workbook-sync.js'
 
 export interface ReliabilityControl {
   readonly id: string
-  readonly category: 'pending-durability' | 'authoritative-reconcile' | 'failure-recovery' | 'headed-browser'
+  readonly category: 'pending-durability' | 'authoritative-reconcile' | 'failure-recovery' | 'headed-browser' | 'offline-recovery'
   readonly required: boolean
   readonly passed: boolean
   readonly coveredControls: string[]
@@ -37,6 +38,7 @@ export interface ReliabilityScorecard {
     readonly authoritativeRebasePassed: boolean
     readonly failedRetryPassed: boolean
     readonly headedBrowserReloadPassed: boolean
+    readonly offlineNetworkPartitionPassed: boolean
     readonly coveredControls: string[]
     readonly uncoveredControls: string[]
     readonly externalGoogleSheetsEvidence: 'not-captured'
@@ -53,6 +55,7 @@ const requiredControlIds = [
   'authoritative-rebase-preserves-unsent-mutations',
   'failed-mutations-survive-reload-and-retry',
   'headed-browser-reload-persistence-flow',
+  'offline-network-partition-recovery-soak',
 ] as const
 const coveredControlOrder = [
   'pending.localReloadSurvival',
@@ -62,8 +65,9 @@ const coveredControlOrder = [
   'pending.failedRetrySurvival',
   'localStore.journalActiveView',
   'headedBrowser.reloadPersistence',
+  'offline.networkPartitionRecoverySoak',
 ] as const
-const uncoveredControls = ['headedBrowser.crashSoak', 'offlineNetworkPartitionSoak', 'externalSheetsExcelReliabilityComparison'] as const
+const uncoveredControls = ['headedBrowser.crashSoak', 'externalSheetsExcelReliabilityComparison'] as const
 const headedBrowserReliabilityTestFile = 'e2e/tests/web-shell-remote-sync.pw.ts'
 
 async function main(): Promise<void> {
@@ -91,6 +95,7 @@ export async function buildReliabilityScorecard(generatedAt = new Date().toISOSt
     await buildAuthoritativeRebaseControl(),
     await buildFailedRetryControl(),
     buildHeadedBrowserReloadPersistenceControl(),
+    await buildOfflineNetworkPartitionRecoveryControl(),
   ]
   const coveredControlSet = new Set(controls.flatMap((control) => control.coveredControls))
   const coveredControls = coveredControlOrder.filter((control) => coveredControlSet.has(control))
@@ -113,6 +118,7 @@ export async function buildReliabilityScorecard(generatedAt = new Date().toISOSt
       authoritativeRebasePassed: requiredControl(controls, 'authoritative-rebase-preserves-unsent-mutations').passed,
       failedRetryPassed: requiredControl(controls, 'failed-mutations-survive-reload-and-retry').passed,
       headedBrowserReloadPassed: requiredControl(controls, 'headed-browser-reload-persistence-flow').passed,
+      offlineNetworkPartitionPassed: requiredControl(controls, 'offline-network-partition-recovery-soak').passed,
       coveredControls,
       uncoveredControls: [...uncoveredControls],
       externalGoogleSheetsEvidence: 'not-captured',
@@ -319,6 +325,86 @@ function buildHeadedBrowserReloadPersistenceControl(): ReliabilityControl {
   })
 }
 
+async function buildOfflineNetworkPartitionRecoveryControl(): Promise<ReliabilityControl> {
+  const localWriteCount = 32
+  const remoteWriteCount = 32
+  const documentId = 'offline-partition-doc'
+  const factory = createMemoryWorkbookLocalStoreFactory()
+  const runtime = await createRuntime(factory, documentId, 'browser:offline-partition')
+  const pendingMutations = await enqueueSequentialCellValues(runtime, {
+    column: 'A',
+    count: localWriteCount,
+    valueOffset: 1000,
+  })
+  const offlineReloaded = await createRuntime(factory, documentId, 'browser:offline-partition-reloaded')
+  const pendingAfterReload = offlineReloaded.listPendingMutations()
+  const pendingSurvivedReload =
+    pendingAfterReload.length === localWriteCount &&
+    pendingMutations.every((mutation) => findPendingMutation(pendingAfterReload, mutation.id)?.status === 'local') &&
+    cellsMatchSequentialValues(offlineReloaded, 'A', localWriteCount, 1000)
+
+  await offlineReloaded.applyAuthoritativeEvents(
+    buildSequentialCellValueEvents({
+      column: 'B',
+      count: remoteWriteCount,
+      valueOffset: 2000,
+      revisionOffset: 0,
+      clientMutationIds: null,
+    }),
+    remoteWriteCount,
+  )
+  const pendingAfterReconnect = offlineReloaded.listPendingMutations()
+  const rebasedOverReconnect =
+    pendingAfterReconnect.length === localWriteCount &&
+    pendingMutations.every((mutation) => findPendingMutation(pendingAfterReconnect, mutation.id)?.status === 'rebased') &&
+    cellsMatchSequentialValues(offlineReloaded, 'A', localWriteCount, 1000) &&
+    cellsMatchSequentialValues(offlineReloaded, 'B', remoteWriteCount, 2000)
+
+  await markMutationsSubmitted(offlineReloaded, pendingMutations)
+  await offlineReloaded.applyAuthoritativeEvents(
+    buildSequentialCellValueEvents({
+      column: 'A',
+      count: localWriteCount,
+      valueOffset: 1000,
+      revisionOffset: remoteWriteCount,
+      clientMutationIds: pendingMutations.map((mutation) => mutation.id),
+    }),
+    remoteWriteCount + localWriteCount,
+  )
+  const ackedJournal = offlineReloaded.listMutationJournalEntries()
+  const afterAckReloaded = await createRuntime(factory, documentId, 'browser:offline-partition-after-ack')
+  const authoritativeValuesPersisted =
+    offlineReloaded.listPendingMutations().length === 0 &&
+    afterAckReloaded.listPendingMutations().length === 0 &&
+    pendingMutations.every((mutation) => ackedJournal.some((entry) => entry.id === mutation.id && entry.status === 'acked')) &&
+    cellsMatchSequentialValues(afterAckReloaded, 'A', localWriteCount, 1000) &&
+    cellsMatchSequentialValues(afterAckReloaded, 'B', remoteWriteCount, 2000)
+  const maximumPendingQueueDepth = Math.max(pendingAfterReload.length, pendingAfterReconnect.length)
+  const boundedPendingQueue = maximumPendingQueueDepth === localWriteCount
+  const passed = pendingSurvivedReload && rebasedOverReconnect && authoritativeValuesPersisted && boundedPendingQueue
+
+  return reliabilityControl({
+    id: 'offline-network-partition-recovery-soak',
+    category: 'offline-recovery',
+    passed,
+    coveredControls: [
+      'pending.localReloadSurvival',
+      'pending.authoritativeRebasePreservesLocal',
+      'pending.authoritativeAckAbsorption',
+      'localStore.journalActiveView',
+      'offline.networkPartitionRecoverySoak',
+    ],
+    evidence:
+      'Simulated 32 offline local edits across a worker reload, replayed 32 collaborator authoritative edits on reconnect, acked every local mutation, and reopened the runtime to verify both local and remote cells persisted with an empty pending queue.',
+    findings: [
+      ...(pendingSurvivedReload ? [] : ['offline local pending mutations or projected values did not survive worker reload']),
+      ...(rebasedOverReconnect ? [] : ['pending offline mutations did not rebase cleanly over reconnect authoritative events']),
+      ...(authoritativeValuesPersisted ? [] : ['acked offline mutations did not persist as authoritative values after final reload']),
+      ...(boundedPendingQueue ? [] : [`expected maximum pending queue depth ${localWriteCount}, observed ${maximumPendingQueueDepth}`]),
+    ],
+  })
+}
+
 async function createRuntime(
   localStoreFactory: WorkbookLocalStoreFactory,
   documentId: string,
@@ -340,6 +426,60 @@ function findPendingMutation(mutations: readonly PendingWorkbookMutation[], id: 
 function cellNumber(runtime: WorkbookWorkerRuntime, address: string): number | null {
   const value = runtime.getCell('Sheet1', address).value
   return value.tag === ValueTag.Number ? value.value : null
+}
+
+async function enqueueSequentialCellValues(
+  runtime: WorkbookWorkerRuntime,
+  input: {
+    readonly column: string
+    readonly count: number
+    readonly valueOffset: number
+  },
+): Promise<PendingWorkbookMutation[]> {
+  return await Array.from({ length: input.count }).reduce<Promise<PendingWorkbookMutation[]>>(async (previousPromise, _, index) => {
+    const previous = await previousPromise
+    const row = index + 1
+    const mutation = await runtime.enqueuePendingMutation({
+      method: 'setCellValue',
+      args: ['Sheet1', `${input.column}${row}`, input.valueOffset + row],
+    })
+    return [...previous, mutation]
+  }, Promise.resolve([]))
+}
+
+function buildSequentialCellValueEvents(input: {
+  readonly column: string
+  readonly count: number
+  readonly valueOffset: number
+  readonly revisionOffset: number
+  readonly clientMutationIds: readonly string[] | null
+}): AuthoritativeWorkbookEventRecord[] {
+  return Array.from({ length: input.count }, (_, index) => {
+    const row = index + 1
+    return {
+      revision: input.revisionOffset + row,
+      clientMutationId: input.clientMutationIds?.[index] ?? null,
+      payload: {
+        kind: 'setCellValue',
+        sheetName: 'Sheet1',
+        address: `${input.column}${row}`,
+        value: input.valueOffset + row,
+      },
+    }
+  })
+}
+
+async function markMutationsSubmitted(runtime: WorkbookWorkerRuntime, mutations: readonly PendingWorkbookMutation[]): Promise<void> {
+  await mutations.reduce<Promise<void>>(async (previousPromise, mutation) => {
+    await previousPromise
+    await runtime.markPendingMutationSubmitted(mutation.id)
+  }, Promise.resolve())
+}
+
+function cellsMatchSequentialValues(runtime: WorkbookWorkerRuntime, column: string, count: number, valueOffset: number): boolean {
+  return Array.from({ length: count }, (_, index) => index + 1).every((row) => {
+    return cellNumber(runtime, `${column}${row}`) === valueOffset + row
+  })
 }
 
 function reliabilityControl(input: {
@@ -398,6 +538,7 @@ export function parseReliabilityScorecard(value: unknown): ReliabilityScorecard 
       authoritativeRebasePassed: booleanField(summary, 'authoritativeRebasePassed', 'reliability authoritativeRebasePassed'),
       failedRetryPassed: booleanField(summary, 'failedRetryPassed', 'reliability failedRetryPassed'),
       headedBrowserReloadPassed: booleanField(summary, 'headedBrowserReloadPassed', 'reliability headedBrowserReloadPassed'),
+      offlineNetworkPartitionPassed: booleanField(summary, 'offlineNetworkPartitionPassed', 'reliability offlineNetworkPartitionPassed'),
       coveredControls: stringArrayField(summary, 'coveredControls', 'reliability coveredControls'),
       uncoveredControls: stringArrayField(summary, 'uncoveredControls', 'reliability uncoveredControls'),
       externalGoogleSheetsEvidence: literalField(summary, 'externalGoogleSheetsEvidence', 'not-captured'),
@@ -446,7 +587,13 @@ export function validateReliabilityScorecard(scorecard: ReliabilityScorecard): v
 }
 
 function parseReliabilityCategory(value: string): ReliabilityControl['category'] {
-  if (value === 'pending-durability' || value === 'authoritative-reconcile' || value === 'failure-recovery' || value === 'headed-browser') {
+  if (
+    value === 'pending-durability' ||
+    value === 'authoritative-reconcile' ||
+    value === 'failure-recovery' ||
+    value === 'headed-browser' ||
+    value === 'offline-recovery'
+  ) {
     return value
   }
   throw new Error(`Unexpected reliability category: ${value}`)

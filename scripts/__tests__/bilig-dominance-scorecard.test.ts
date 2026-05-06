@@ -87,7 +87,7 @@ describe('bilig dominance scorecard', () => {
         'e2e/tests/web-shell-remote-sync.pw.ts',
       ]),
       blockers: [
-        'generated reliability evidence covers worker-runtime durability and headed browser reload persistence, but not headed browser crash soak or offline network-partition soak',
+        'generated reliability evidence covers worker-runtime durability, headed browser reload persistence, and offline network-partition recovery, but not headed browser crash soak',
         'no direct Sheets or Excel reliability comparison artifact exists in the repo',
       ],
     })
@@ -374,8 +374,14 @@ function buildFixtureInput(): BuildScorecardInput {
         authoritativeRebasePassed: true,
         failedRetryPassed: true,
         headedBrowserReloadPassed: true,
-        coveredControls: ['pending.localReloadSurvival', 'headedBrowser.reloadPersistence'],
-        uncoveredControls: ['headedBrowser.crashSoak', 'offlineNetworkPartitionSoak', 'externalSheetsExcelReliabilityComparison'],
+        offlineNetworkPartitionPassed: true,
+        coveredControls: [
+          'pending.localReloadSurvival',
+          'localStore.journalActiveView',
+          'headedBrowser.reloadPersistence',
+          'offline.networkPartitionRecoverySoak',
+        ],
+        uncoveredControls: ['headedBrowser.crashSoak', 'externalSheetsExcelReliabilityComparison'],
         externalGoogleSheetsEvidence: 'not-captured',
         externalMicrosoftExcelEvidence: 'not-captured',
       },
