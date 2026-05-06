@@ -42,4 +42,23 @@ describe('CellAxisIdentityStore', () => {
     expect(index.delete(2)).toBe(true)
     expect(index.cellsInColumn('column-b')).toEqual([])
   })
+
+  it('builds resident row and column indexes lazily after deferred bulk attachment', () => {
+    const index = new AxisResidentCellIndex()
+
+    index.addDeferred(3, { rowId: 'row-a', colId: 'column-a' })
+    index.addDeferred(1, { rowId: 'row-a', colId: 'column-b' })
+    index.addDeferred(2, { rowId: 'row-b', colId: 'column-b' })
+    index.delete(2)
+    index.set(1, { rowId: 'row-c', colId: 'column-c' })
+
+    expect(index.get(3)).toEqual({ rowId: 'row-a', colId: 'column-a' })
+    expect(index.cellsInRow('row-a')).toEqual([3])
+    expect(index.cellsInColumn('column-b')).toEqual([])
+    expect(index.cellsInRows(['row-c', 'row-a'])).toEqual([1, 3])
+    expect(index.cellsInRowsUnordered(['row-c', 'row-a'])).toEqual([1, 3])
+    const rowCells: number[] = []
+    index.forEachCellInRow('row-c', (cellIndex) => rowCells.push(cellIndex))
+    expect(rowCells).toEqual([1])
+  })
 })

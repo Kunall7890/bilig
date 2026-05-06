@@ -239,7 +239,15 @@ export class WorkbookStore {
     const logical = new LogicalSheetStore(
       sheetId,
       logicalAxisMap,
-      new CellPageStore(new Map<string, number>(), (location) => makeLogicalCellKey(location.sheetId, location.rowId, location.colId)),
+      new CellPageStore(
+        new Map<string, number>(),
+        (location) => makeLogicalCellKey(location.sheetId, location.rowId, location.colId),
+        (callback) => {
+          cellIdentities.forEach((identity, cellIndex) => {
+            callback(identity, cellIndex)
+          })
+        },
+      ),
       cellIdentities,
       residentCells,
     )
@@ -540,11 +548,27 @@ export class WorkbookStore {
     const sheet = this.getSheet(sheetName)
     if (!sheet) return undefined
     const parsed = parseCellAddress(address, sheetName)
+    if (sheet.structureVersion === 1) {
+      const physicalCellIndex = sheet.grid.getPhysical(parsed.row, parsed.col)
+      if (physicalCellIndex !== -1) {
+        return physicalCellIndex
+      }
+    }
     return sheet.logical.getVisibleCell(parsed.row, parsed.col)
   }
 
   getCellIndexAt(sheetId: number, row: number, col: number): number | undefined {
-    return this.getSheetById(sheetId)?.logical.getVisibleCell(row, col)
+    const sheet = this.getSheetById(sheetId)
+    if (!sheet) {
+      return undefined
+    }
+    if (sheet.structureVersion === 1) {
+      const physicalCellIndex = sheet.grid.getPhysical(row, col)
+      if (physicalCellIndex !== -1) {
+        return physicalCellIndex
+      }
+    }
+    return sheet.logical.getVisibleCell(row, col)
   }
 
   getSheetNameById(id: number): string {

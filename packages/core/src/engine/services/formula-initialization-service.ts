@@ -21,7 +21,7 @@ import type {
 } from '../runtime-state.js'
 import { EngineMutationError } from '../errors.js'
 
-const INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT = 16_384
+const INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT = 262_144
 const EMPTY_U32 = new Uint32Array(0)
 type InitialFormulaCellIndexList = readonly number[] | U32
 

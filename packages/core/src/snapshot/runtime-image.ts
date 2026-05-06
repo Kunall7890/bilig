@@ -17,8 +17,9 @@ import { CellFlags } from '../cell-store.js'
 import { writeLiteralToCellStore } from '../engine-value-utils.js'
 import type { FormulaInstanceSnapshot } from '../formula/formula-instance-table.js'
 import type { FormulaTemplateResolution, FormulaTemplateSnapshot } from '../formula/template-bank.js'
+import type { LogicalCellLocation } from '../storage/cell-page-store.js'
 import type { StringPool } from '../string-pool.js'
-import { makeCellKey, makeLogicalCellKey, type SheetRecord, type WorkbookStore } from '../workbook-store.js'
+import type { SheetRecord, WorkbookStore } from '../workbook-store.js'
 
 type WorkbookSnapshotCell = WorkbookSnapshot['sheets'][number]['cells'][number]
 
@@ -182,7 +183,7 @@ interface WrittenColumnTracker {
 }
 
 interface FreshRuntimeCellPageInternals {
-  readonly cells?: Map<string, number>
+  readonly setDeferred?: (location: LogicalCellLocation, cellIndex: number) => void
 }
 
 interface FreshRuntimeCellIdentityInternals {
@@ -190,9 +191,7 @@ interface FreshRuntimeCellIdentityInternals {
 }
 
 interface FreshRuntimeResidentCellInternals {
-  readonly byCell?: Map<number, { readonly rowId: string; readonly colId: string }>
-  readonly byRow?: Map<string, Set<number>>
-  readonly byColumn?: Map<string, Set<number>>
+  readonly addDeferred?: (cellIndex: number, identity: { readonly rowId: string; readonly colId: string }) => void
 }
 
 interface FreshRuntimeLogicalSheetInternals {
@@ -205,20 +204,6 @@ type FreshRuntimeCellAttacher = (row: number, col: number, cellIndex: number, ro
 
 function isFreshRuntimeLogicalSheetInternals(value: unknown): value is FreshRuntimeLogicalSheetInternals {
   return typeof value === 'object' && value !== null
-}
-
-function ensureFreshRuntimeResidentSet(sets: Map<string, Set<number>>, storedSets: Map<string, Set<number>>, id: string): Set<number> {
-  const cached = sets.get(id)
-  if (cached) {
-    return cached
-  }
-  let stored = storedSets.get(id)
-  if (!stored) {
-    stored = new Set<number>()
-    storedSets.set(id, stored)
-  }
-  sets.set(id, stored)
-  return stored
 }
 
 function createWrittenColumnTracker(): WrittenColumnTracker {
@@ -260,27 +245,19 @@ function materializeWrittenColumns(tracker: WrittenColumnTracker): Uint32Array {
 function createFreshRuntimeCellAttacher(workbook: WorkbookStore, sheet: SheetRecord): FreshRuntimeCellAttacher {
   const logicalCandidate: unknown = sheet.logical
   const logical = isFreshRuntimeLogicalSheetInternals(logicalCandidate) ? logicalCandidate : undefined
-  const cells = logical?.cellPages?.cells
+  const setDeferredCellPage = logical?.cellPages?.setDeferred?.bind(logical.cellPages)
   const identities = logical?.cellIdentities?.identities
-  const residentByCell = logical?.residentCells?.byCell
-  const residentByRow = logical?.residentCells?.byRow
-  const residentByColumn = logical?.residentCells?.byColumn
-  if (!cells || !identities || !residentByCell || !residentByRow || !residentByColumn) {
+  const addDeferredResidentCell = logical?.residentCells?.addDeferred?.bind(logical.residentCells)
+  if (!setDeferredCellPage || !identities || !addDeferredResidentCell) {
     return (row, col, cellIndex, rowId, colId) => {
       workbook.attachAllocatedCellWithLogicalAxisIds(sheet.id, row, col, cellIndex, rowId, colId)
     }
   }
 
-  const rowSets = new Map<string, Set<number>>()
-  const columnSets = new Map<string, Set<number>>()
-
   return (row, col, cellIndex, rowId, colId) => {
-    cells.set(makeLogicalCellKey(sheet.id, rowId, colId), cellIndex)
+    setDeferredCellPage({ sheetId: sheet.id, rowId, colId }, cellIndex)
     identities.set(cellIndex, { sheetId: sheet.id, rowId, colId })
-    residentByCell.set(cellIndex, { rowId, colId })
-    ensureFreshRuntimeResidentSet(rowSets, residentByRow, rowId).add(cellIndex)
-    ensureFreshRuntimeResidentSet(columnSets, residentByColumn, colId).add(cellIndex)
-    workbook.cellKeyToIndex.set(makeCellKey(sheet.id, row, col), cellIndex)
+    addDeferredResidentCell(cellIndex, { rowId, colId })
     sheet.grid.set(row, col, cellIndex)
   }
 }

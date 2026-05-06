@@ -7,16 +7,37 @@ export class AxisResidentCellIndex {
   private readonly byCell = new Map<number, AxisResidentCellIdentity>()
   private readonly byRow = new Map<string, Set<number>>()
   private readonly byColumn = new Map<string, Set<number>>()
+  private secondaryIndexesDirty = false
 
   set(cellIndex: number, identity: AxisResidentCellIdentity): void {
-    this.delete(cellIndex)
-    this.add(cellIndex, identity)
+    const existing = this.byCell.get(cellIndex)
+    if (existing && !this.secondaryIndexesDirty) {
+      deleteFromSetMap(this.byRow, existing.rowId, cellIndex)
+      deleteFromSetMap(this.byColumn, existing.colId, cellIndex)
+    }
+    this.byCell.set(cellIndex, identity)
+    if (!this.secondaryIndexesDirty) {
+      addToSetMap(this.byRow, identity.rowId, cellIndex)
+      addToSetMap(this.byColumn, identity.colId, cellIndex)
+    }
   }
 
   add(cellIndex: number, identity: AxisResidentCellIdentity): void {
+    const existing = this.byCell.get(cellIndex)
+    if (existing && !this.secondaryIndexesDirty) {
+      deleteFromSetMap(this.byRow, existing.rowId, cellIndex)
+      deleteFromSetMap(this.byColumn, existing.colId, cellIndex)
+    }
     this.byCell.set(cellIndex, identity)
-    addToSetMap(this.byRow, identity.rowId, cellIndex)
-    addToSetMap(this.byColumn, identity.colId, cellIndex)
+    if (!this.secondaryIndexesDirty) {
+      addToSetMap(this.byRow, identity.rowId, cellIndex)
+      addToSetMap(this.byColumn, identity.colId, cellIndex)
+    }
+  }
+
+  addDeferred(cellIndex: number, identity: AxisResidentCellIdentity): void {
+    this.byCell.set(cellIndex, identity)
+    this.secondaryIndexesDirty = true
   }
 
   get(cellIndex: number): AxisResidentCellIdentity | undefined {
@@ -29,6 +50,9 @@ export class AxisResidentCellIndex {
       return false
     }
     this.byCell.delete(cellIndex)
+    if (this.secondaryIndexesDirty) {
+      return true
+    }
     deleteFromSetMap(this.byRow, existing.rowId, cellIndex)
     deleteFromSetMap(this.byColumn, existing.colId, cellIndex)
     return true
@@ -38,21 +62,26 @@ export class AxisResidentCellIndex {
     this.byCell.clear()
     this.byRow.clear()
     this.byColumn.clear()
+    this.secondaryIndexesDirty = false
   }
 
   cellsInRow(rowId: string): number[] {
+    this.ensureSecondaryIndexes()
     return sortedCells(this.byRow.get(rowId))
   }
 
   cellsInColumn(colId: string): number[] {
+    this.ensureSecondaryIndexes()
     return sortedCells(this.byColumn.get(colId))
   }
 
   forEachCellInRow(rowId: string, callback: (cellIndex: number) => void): void {
+    this.ensureSecondaryIndexes()
     this.byRow.get(rowId)?.forEach(callback)
   }
 
   forEachCellInColumn(colId: string, callback: (cellIndex: number) => void): void {
+    this.ensureSecondaryIndexes()
     this.byColumn.get(colId)?.forEach(callback)
   }
 
@@ -65,11 +94,26 @@ export class AxisResidentCellIndex {
   }
 
   cellsInRowsUnordered(rowIds: readonly string[]): number[] {
+    this.ensureSecondaryIndexes()
     return uniqueCells(rowIds.flatMap((rowId) => [...(this.byRow.get(rowId) ?? [])]))
   }
 
   cellsInColumnsUnordered(colIds: readonly string[]): number[] {
+    this.ensureSecondaryIndexes()
     return uniqueCells(colIds.flatMap((colId) => [...(this.byColumn.get(colId) ?? [])]))
+  }
+
+  private ensureSecondaryIndexes(): void {
+    if (!this.secondaryIndexesDirty) {
+      return
+    }
+    this.byRow.clear()
+    this.byColumn.clear()
+    this.byCell.forEach((identity, cellIndex) => {
+      addToSetMap(this.byRow, identity.rowId, cellIndex)
+      addToSetMap(this.byColumn, identity.colId, cellIndex)
+    })
+    this.secondaryIndexesDirty = false
   }
 }
 

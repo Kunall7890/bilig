@@ -8,11 +8,18 @@ import { SheetAxisMap } from '../storage/sheet-axis-map.js'
 
 describe('LogicalSheetStore', () => {
   it('resolves stable visible row and column ids and keeps cell pages attached to those ids', () => {
-    const cellPages = new CellPageStore(new Map<string, number>(), (location) =>
-      makeLogicalCellKey(location.sheetId, location.rowId, location.colId),
+    const cellIdentities = new CellAxisIdentityStore()
+    const cellPages = new CellPageStore(
+      new Map<string, number>(),
+      (location) => makeLogicalCellKey(location.sheetId, location.rowId, location.colId),
+      (callback) => {
+        cellIdentities.forEach((identity, cellIndex) => {
+          callback(identity, cellIndex)
+        })
+      },
     )
     const axisMap = new SheetAxisMap()
-    const logical = new LogicalSheetStore(7, axisMap, cellPages, new CellAxisIdentityStore(), new AxisResidentCellIndex())
+    const logical = new LogicalSheetStore(7, axisMap, cellPages, cellIdentities, new AxisResidentCellIndex())
 
     logical.setVisibleCell(1, 1, 42, {
       createRowId: () => 'row-b',
@@ -51,5 +58,29 @@ describe('LogicalSheetStore', () => {
 
     logical.setSheetId(9)
     expect(logical.resolveVisibleCell(0, 0).sheetId).toBe(9)
+  })
+
+  it('materializes deferred cell pages from cell identities on first logical lookup', () => {
+    const cellIdentities = new CellAxisIdentityStore()
+    const cellPages = new CellPageStore(
+      new Map<string, number>(),
+      (location) => makeLogicalCellKey(location.sheetId, location.rowId, location.colId),
+      (callback) => {
+        cellIdentities.forEach((identity, cellIndex) => {
+          callback(identity, cellIndex)
+        })
+      },
+    )
+    const axisMap = new SheetAxisMap()
+    const logical = new LogicalSheetStore(7, axisMap, cellPages, cellIdentities, new AxisResidentCellIndex())
+
+    axisMap.ensureId('row', 2, () => 'row-c')
+    axisMap.ensureId('column', 3, () => 'column-d')
+    cellIdentities.set(42, { sheetId: 7, rowId: 'row-c', colId: 'column-d' })
+    cellPages.setDeferred({ sheetId: 7, rowId: 'row-c', colId: 'column-d' }, 42)
+
+    expect(logical.getVisibleCell(2, 3)).toBe(42)
+    expect(logical.deleteVisibleCellByIds('row-c', 'column-d')).toBe(true)
+    expect(logical.getVisibleCell(2, 3)).toBeUndefined()
   })
 })

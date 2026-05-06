@@ -1,10 +1,11 @@
 import { ErrorCode, ValueTag, type LiteralInput } from '@bilig/protocol'
 import type { StringPool } from './string-pool.js'
-import { makeLogicalCellKey, type SheetRecord, type WorkbookStore } from './workbook-store.js'
+import type { LogicalCellLocation } from './storage/cell-page-store.js'
+import type { SheetRecord, WorkbookStore } from './workbook-store.js'
 import { CellFlags } from './cell-store.js'
 
 interface FreshLiteralCellPageInternals {
-  readonly cells?: Map<string, number>
+  readonly setDeferred?: (location: LogicalCellLocation, cellIndex: number) => void
 }
 
 interface FreshLiteralCellIdentityInternals {
@@ -12,9 +13,7 @@ interface FreshLiteralCellIdentityInternals {
 }
 
 interface FreshLiteralResidentCellInternals {
-  readonly byCell?: Map<number, { readonly rowId: string; readonly colId: string }>
-  readonly byRow?: Map<string, Set<number>>
-  readonly byColumn?: Map<string, Set<number>>
+  readonly addDeferred?: (cellIndex: number, identity: { readonly rowId: string; readonly colId: string }) => void
 }
 
 interface FreshLiteralLogicalSheetInternals {
@@ -27,20 +26,6 @@ type FreshLiteralCellAttacher = (row: number, col: number, cellIndex: number, ro
 
 function isFreshLiteralLogicalSheetInternals(value: unknown): value is FreshLiteralLogicalSheetInternals {
   return typeof value === 'object' && value !== null
-}
-
-function ensureFreshLiteralResidentSet(sets: Map<string, Set<number>>, storedSets: Map<string, Set<number>>, id: string): Set<number> {
-  const cached = sets.get(id)
-  if (cached) {
-    return cached
-  }
-  let stored = storedSets.get(id)
-  if (!stored) {
-    stored = new Set<number>()
-    storedSets.set(id, stored)
-  }
-  sets.set(id, stored)
-  return stored
 }
 
 export interface LiteralSheetLoadInspection {
@@ -191,41 +176,21 @@ export function loadDenseLiteralSheetIntoEmptySheet(
 function createFreshLiteralCellAttacher(workbook: WorkbookStore, sheet: SheetRecord): FreshLiteralCellAttacher {
   const logicalCandidate: unknown = sheet.logical
   const logical = isFreshLiteralLogicalSheetInternals(logicalCandidate) ? logicalCandidate : undefined
-  const cells = logical?.cellPages?.cells
+  const setDeferredCellPage = logical?.cellPages?.setDeferred?.bind(logical.cellPages)
   const identities = logical?.cellIdentities?.identities
-  const residentByCell = logical?.residentCells?.byCell
-  const residentByRow = logical?.residentCells?.byRow
-  const residentByColumn = logical?.residentCells?.byColumn
-  if (!cells || !identities || !residentByCell || !residentByRow || !residentByColumn) {
+  const addDeferredResidentCell = logical?.residentCells?.addDeferred?.bind(logical.residentCells)
+  if (!setDeferredCellPage || !identities || !addDeferredResidentCell) {
     return (row, col, cellIndex, rowId, colId) => {
       workbook.attachAllocatedCellWithLogicalAxisIds(sheet.id, row, col, cellIndex, rowId, colId)
     }
   }
 
-  const columnSets = new Map<string, Set<number>>()
   const setGridCell = sheet.grid.createRowMajorSetter()
-  let lastRowId: string | undefined
-  let lastRowSet: Set<number> | undefined
-  const ensureResidentRowSet = (id: string): Set<number> => {
-    if (lastRowId === id && lastRowSet) {
-      return lastRowSet
-    }
-    let stored = residentByRow.get(id)
-    if (!stored) {
-      stored = new Set<number>()
-      residentByRow.set(id, stored)
-    }
-    lastRowId = id
-    lastRowSet = stored
-    return stored
-  }
 
   return (row, col, cellIndex, rowId, colId) => {
-    cells.set(makeLogicalCellKey(sheet.id, rowId, colId), cellIndex)
+    setDeferredCellPage({ sheetId: sheet.id, rowId, colId }, cellIndex)
     identities.set(cellIndex, { sheetId: sheet.id, rowId, colId })
-    residentByCell.set(cellIndex, { rowId, colId })
-    ensureResidentRowSet(rowId).add(cellIndex)
-    ensureFreshLiteralResidentSet(columnSets, residentByColumn, colId).add(cellIndex)
+    addDeferredResidentCell(cellIndex, { rowId, colId })
     setGridCell(row, col, cellIndex)
   }
 }

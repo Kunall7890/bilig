@@ -2938,6 +2938,123 @@ export function createEngineFormulaBindingService(args: {
     return topologyChanged
   }
 
+  const tryPrepareFreshDirectScalarBindingNow = (
+    ownerSheetName: string,
+    cellIndex: number,
+    compiled: ParsedCompiledFormula,
+  ):
+    | {
+        readonly directScalar: RuntimeDirectScalarDescriptor
+        readonly dependencies: MaterializedDependencies
+      }
+    | undefined => {
+    if (
+      compiled.volatile ||
+      compiled.producesSpill ||
+      compiled.symbolicRanges.length !== 0 ||
+      compiled.symbolicNames.length !== 0 ||
+      compiled.symbolicTables.length !== 0 ||
+      compiled.symbolicSpills.length !== 0 ||
+      compiled.parsedSymbolicRefs?.some((ref) => ref.sheetName !== undefined || ref.explicitSheet === true) === true
+    ) {
+      return undefined
+    }
+    const ownerSheetId = args.state.workbook.cellStore.sheetIds[cellIndex] ?? args.state.workbook.getSheet(ownerSheetName)?.id
+    const directScalar = buildDirectScalarDescriptor({
+      compiled,
+      ownerSheetName,
+      ownerSheetId,
+      workbook: args.state.workbook,
+      ensureCellTracked: args.ensureCellTracked,
+      ensureCellTrackedByCoords: args.ensureCellTrackedByCoords,
+    })
+    const dependencies = materializeDirectScalarDependencies(compiled, directScalar)
+    if (!directScalar || !dependencies || dependencies.dependencyEntities.length !== compiled.symbolicRefs.length) {
+      return undefined
+    }
+    return {
+      directScalar,
+      dependencies,
+    }
+  }
+
+  const installFreshDirectScalarFormulaNow = (
+    cellIndex: number,
+    ownerSheetName: string,
+    source: string,
+    compiled: ParsedCompiledFormula,
+    templateId: number | undefined,
+    directScalar: RuntimeDirectScalarDescriptor,
+    dependencies: MaterializedDependencies,
+    options: BindPreparedFormulaOptions,
+  ): void => {
+    const cellStore = args.state.workbook.cellStore
+    const sheetId = cellStore.sheetIds[cellIndex]
+    const sheet = sheetId === undefined ? undefined : args.state.workbook.getSheetById(sheetId)
+    const physicalOwnerPosition =
+      sheet && sheet.structureVersion === 1
+        ? {
+            sheetName: ownerSheetName,
+            row: cellStore.rows[cellIndex] ?? 0,
+            col: cellStore.cols[cellIndex] ?? 0,
+          }
+        : undefined
+    const dependencyEntities = args.edgeArena.replace(args.edgeArena.empty(), dependencies.dependencyEntities)
+    const plan = makeUnmanagedCompiledPlan(source, compiled, templateId)
+    const runtimeFormula: RuntimeFormula = {
+      cellIndex,
+      formulaSlotId: 0,
+      planId: plan.id,
+      templateId,
+      source,
+      compiled: plan.compiled,
+      plan,
+      dependencyIndices: dependencies.dependencyIndices,
+      dependencyEntities,
+      rangeDependencies: EMPTY_DEPENDENCY_BUFFER,
+      runtimeProgram: EMPTY_RUNTIME_PROGRAM,
+      constants: compiled.constants,
+      structuralSourceTransform: undefined,
+      programOffset: 0,
+      programLength: 0,
+      constNumberOffset: 0,
+      constNumberLength: compiled.constants.length,
+      rangeListOffset: 0,
+      rangeListLength: 0,
+      directLookup: undefined,
+      directAggregate: undefined,
+      directScalar,
+      directCriteria: undefined,
+    }
+    const formulaSlotId = args.state.formulas.set(cellIndex, runtimeFormula)
+    runtimeFormula.formulaSlotId = formulaSlotId
+    updateVolatileFormulaIndex(cellIndex, runtimeFormula)
+    const col = physicalOwnerPosition?.col ?? args.state.workbook.getCellPosition(cellIndex)?.col
+    if (sheetId !== undefined) {
+      formulaSheetCounts.set(sheetId, (formulaSheetCounts.get(sheetId) ?? 0) + 1)
+      if (col !== undefined) {
+        const columnKey = formulaColumnCountKey(sheetId, col)
+        formulaColumnCounts.set(columnKey, (formulaColumnCounts.get(columnKey) ?? 0) + 1)
+      }
+    }
+    cellStore.flags[cellIndex] =
+      ((cellStore.flags[cellIndex] ?? 0) & ~(CellFlags.SpillChild | CellFlags.PivotOutput)) | CellFlags.HasFormula
+    if (compiled.mode === FormulaMode.JsOnly) {
+      cellStore.flags[cellIndex] = (cellStore.flags[cellIndex] ?? 0) | CellFlags.JsOnly
+    } else {
+      cellStore.flags[cellIndex] = (cellStore.flags[cellIndex] ?? 0) & ~CellFlags.JsOnly
+    }
+    recordFormulaInstanceNow(cellIndex, source, templateId, physicalOwnerPosition)
+    if (options.deferFamilyRegistration !== true) {
+      registerFormulaFamilyNow(cellIndex, runtimeFormula, physicalOwnerPosition)
+    }
+    const formulaEntity = makeCellEntity(cellIndex)
+    for (let index = 0; index < dependencies.dependencyEntities.length; index += 1) {
+      appendReverseEdge(dependencies.dependencyEntities[index]!, formulaEntity)
+    }
+    trackFormulaSheetIndexes(cellIndex, ownerSheetName, compiled)
+  }
+
   const bindFormulaNow = (cellIndex: number, ownerSheetName: string, source: string): boolean => {
     if (args.state.counters) {
       addEngineCounter(args.state.counters, 'formulasBound')
@@ -2952,14 +3069,31 @@ export function createEngineFormulaBindingService(args: {
     compiled: CompiledFormula,
     templateId?: number,
     options: BindPreparedFormulaOptions = {},
-  ): boolean =>
-    bindPreparedFormulaPreparedNow(
+  ): boolean => {
+    if (options.assumeFreshFormula === true) {
+      const fastBinding = tryPrepareFreshDirectScalarBindingNow(ownerSheetName, cellIndex, compiled as ParsedCompiledFormula)
+      if (fastBinding) {
+        installFreshDirectScalarFormulaNow(
+          cellIndex,
+          ownerSheetName,
+          source,
+          compiled as ParsedCompiledFormula,
+          templateId,
+          fastBinding.directScalar,
+          fastBinding.dependencies,
+          options,
+        )
+        return true
+      }
+    }
+    return bindPreparedFormulaPreparedNow(
       cellIndex,
       ownerSheetName,
       source,
       prepareFormulaBindingFromCompiledNow(cellIndex, ownerSheetName, source, compiled as ParsedCompiledFormula, templateId),
       options,
     )
+  }
 
   const bindInitialFormulaNow = (cellIndex: number, ownerSheetName: string, source: string): void => {
     if (args.state.counters) {
