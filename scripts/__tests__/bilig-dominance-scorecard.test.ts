@@ -63,6 +63,10 @@ describe('bilig dominance scorecard', () => {
         'packages/benchmarks/baselines/collaboration-scorecard.json',
         'e2e/tests/web-shell-scroll-performance.pw.ts',
       ]),
+      blockers: [
+        'generated collaboration evidence still leaves uncovered controls: externalSheetsCollaborationComparison',
+        'no direct Sheets collaboration comparison artifact exists in the repo',
+      ],
     })
     expect(scorecard.categories.find((category) => category.id === 'auditability')).toMatchObject({
       status: 'partial-repo-evidence',
@@ -329,8 +333,14 @@ function buildFixtureInput(): BuildScorecardInput {
         presenceSelectionPassed: true,
         conflictViewportPassed: true,
         headedBrowserViewportPassed: true,
-        coveredControls: ['sync.pendingRebase', 'presence.sessionLifecycle', 'headedBrowser.multiUserViewportSoak'],
-        uncoveredControls: ['conflictRateLongRunningCollaboration'],
+        longRunningConflictRatePassed: true,
+        coveredControls: [
+          'sync.pendingRebase',
+          'presence.sessionLifecycle',
+          'headedBrowser.multiUserViewportSoak',
+          'conflict.longRunningZeroUnexpectedConflicts',
+        ],
+        uncoveredControls: ['externalSheetsCollaborationComparison'],
         externalGoogleSheetsEvidence: 'not-captured',
         externalMicrosoftExcelEvidence: 'not-captured',
       },

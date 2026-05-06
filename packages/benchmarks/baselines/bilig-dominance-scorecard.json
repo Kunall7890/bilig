@@ -82,10 +82,12 @@
       "conflict.authoritativeDriftDetection",
       "viewport.optimisticAxisProtection",
       "viewport.authoritativeCatchupClearsPending",
-      "headedBrowser.multiUserViewportSoak"
+      "headedBrowser.multiUserViewportSoak",
+      "conflict.longRunningZeroUnexpectedConflicts",
+      "sync.longRunningAcceptedOpConvergence"
     ],
     "collaborationPosturePassed": true,
-    "collaborationUncoveredControls": ["conflictRateLongRunningCollaboration", "externalSheetsCollaborationComparison"],
+    "collaborationUncoveredControls": ["externalSheetsCollaborationComparison"],
     "externalGoogleSheetsEvidence": "not-captured-in-repo",
     "externalMicrosoftExcelEvidence": "not-captured-in-repo",
     "formulaCanonicalProductionPercent": 100,
@@ -274,8 +276,8 @@
         "worker runtime, pending-op journal, authoritative delta ingest, presence, and changes-pane tests exist",
         "collaboration product targets are documented",
         "generated collaboration scorecard passes required controls: true",
-        "covered collaboration controls: sync.pendingRebase, sync.authoritativeAck, sync.noAcceptedOpLoss, presence.sessionLifecycle, presence.selectionSchema, presence.collaboratorFiltering, conflict.authoritativeDriftDetection, viewport.optimisticAxisProtection, viewport.authoritativeCatchupClearsPending, headedBrowser.multiUserViewportSoak",
-        "uncovered collaboration controls are explicitly disclosed: conflictRateLongRunningCollaboration, externalSheetsCollaborationComparison",
+        "covered collaboration controls: sync.pendingRebase, sync.authoritativeAck, sync.noAcceptedOpLoss, presence.sessionLifecycle, presence.selectionSchema, presence.collaboratorFiltering, conflict.authoritativeDriftDetection, viewport.optimisticAxisProtection, viewport.authoritativeCatchupClearsPending, headedBrowser.multiUserViewportSoak, conflict.longRunningZeroUnexpectedConflicts, sync.longRunningAcceptedOpConvergence",
+        "uncovered collaboration controls are explicitly disclosed: externalSheetsCollaborationComparison",
         "workerReconnectCatchUp100Pending: catchUpMs.p95 260.9891669999997ms against 2000ms SLO (3 samples)"
       ],
       "evidenceArtifacts": [
@@ -295,7 +297,7 @@
         "pnpm test:correctness:server"
       ],
       "blockers": [
-        "generated collaboration evidence still leaves uncovered controls: conflictRateLongRunningCollaboration, externalSheetsCollaborationComparison",
+        "generated collaboration evidence still leaves uncovered controls: externalSheetsCollaborationComparison",
         "no direct Sheets collaboration comparison artifact exists in the repo"
       ]
     },

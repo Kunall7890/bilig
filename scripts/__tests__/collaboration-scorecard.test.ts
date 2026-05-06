@@ -16,6 +16,7 @@ describe('collaboration scorecard', () => {
         presenceSelectionPassed: true,
         conflictViewportPassed: true,
         headedBrowserViewportPassed: true,
+        longRunningConflictRatePassed: true,
         externalGoogleSheetsEvidence: 'not-captured',
         externalMicrosoftExcelEvidence: 'not-captured',
       },
@@ -25,6 +26,7 @@ describe('collaboration scorecard', () => {
       'presence-session-selection-filtering',
       'editor-conflict-and-viewport-protection',
       'headed-browser-multi-user-viewport-soak',
+      'long-running-collaboration-conflict-rate',
     ])
     expect(scorecard.controls.every((control) => control.required && control.passed)).toBe(true)
     expect(scorecard.summary.coveredControls).toEqual([
@@ -38,8 +40,10 @@ describe('collaboration scorecard', () => {
       'viewport.optimisticAxisProtection',
       'viewport.authoritativeCatchupClearsPending',
       'headedBrowser.multiUserViewportSoak',
+      'conflict.longRunningZeroUnexpectedConflicts',
+      'sync.longRunningAcceptedOpConvergence',
     ])
-    expect(scorecard.summary.uncoveredControls).toEqual(['conflictRateLongRunningCollaboration', 'externalSheetsCollaborationComparison'])
+    expect(scorecard.summary.uncoveredControls).toEqual(['externalSheetsCollaborationComparison'])
 
     validateCollaborationScorecard(scorecard)
   })

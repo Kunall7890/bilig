@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "suite": "collaboration-posture",
-  "generatedAt": "2026-05-06T09:24:16.993Z",
+  "generatedAt": "2026-05-06T09:49:18.454Z",
   "source": {
     "artifactGenerator": "scripts/gen-collaboration-scorecard.ts",
     "workerRuntimeImplementation": "apps/web/src/worker-runtime.ts",
@@ -17,6 +17,7 @@
     "presenceSelectionPassed": true,
     "conflictViewportPassed": true,
     "headedBrowserViewportPassed": true,
+    "longRunningConflictRatePassed": true,
     "coveredControls": [
       "sync.pendingRebase",
       "sync.authoritativeAck",
@@ -27,9 +28,11 @@
       "conflict.authoritativeDriftDetection",
       "viewport.optimisticAxisProtection",
       "viewport.authoritativeCatchupClearsPending",
-      "headedBrowser.multiUserViewportSoak"
+      "headedBrowser.multiUserViewportSoak",
+      "conflict.longRunningZeroUnexpectedConflicts",
+      "sync.longRunningAcceptedOpConvergence"
     ],
-    "uncoveredControls": ["conflictRateLongRunningCollaboration", "externalSheetsCollaborationComparison"],
+    "uncoveredControls": ["externalSheetsCollaborationComparison"],
     "externalGoogleSheetsEvidence": "not-captured",
     "externalMicrosoftExcelEvidence": "not-captured"
   },
@@ -72,6 +75,15 @@
       "passed": true,
       "coveredControls": ["headedBrowser.multiUserViewportSoak"],
       "evidence": "Validated the headed Playwright remote-sync performance contract for two tabs browsing a 250k workbook while collaborator edits create visible viewport patches.",
+      "findings": []
+    },
+    {
+      "id": "long-running-collaboration-conflict-rate",
+      "category": "local-first-sync",
+      "required": true,
+      "passed": true,
+      "coveredControls": ["conflict.longRunningZeroUnexpectedConflicts", "sync.longRunningAcceptedOpConvergence"],
+      "evidence": "Executed 64 local writes interleaved with 64 collaborator authoritative writes, rebased pending operations across each collaborator edit, acknowledged every local mutation in batches, and verified zero unexpected failed mutations plus final convergence.",
       "findings": []
     }
   ]

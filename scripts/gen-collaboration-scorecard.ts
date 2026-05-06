@@ -51,6 +51,7 @@ export interface CollaborationScorecard {
     readonly presenceSelectionPassed: boolean
     readonly conflictViewportPassed: boolean
     readonly headedBrowserViewportPassed: boolean
+    readonly longRunningConflictRatePassed: boolean
     readonly coveredControls: string[]
     readonly uncoveredControls: string[]
     readonly externalGoogleSheetsEvidence: 'not-captured'
@@ -66,6 +67,7 @@ const requiredControlIds = [
   'presence-session-selection-filtering',
   'editor-conflict-and-viewport-protection',
   'headed-browser-multi-user-viewport-soak',
+  'long-running-collaboration-conflict-rate',
 ] as const
 const coveredControlOrder = [
   'sync.pendingRebase',
@@ -78,8 +80,10 @@ const coveredControlOrder = [
   'viewport.optimisticAxisProtection',
   'viewport.authoritativeCatchupClearsPending',
   'headedBrowser.multiUserViewportSoak',
+  'conflict.longRunningZeroUnexpectedConflicts',
+  'sync.longRunningAcceptedOpConvergence',
 ] as const
-const uncoveredControls = ['conflictRateLongRunningCollaboration', 'externalSheetsCollaborationComparison'] as const
+const uncoveredControls = ['externalSheetsCollaborationComparison'] as const
 const headedBrowserViewportTestFile = 'e2e/tests/web-shell-scroll-performance.pw.ts'
 
 async function main(): Promise<void> {
@@ -106,6 +110,7 @@ export async function buildCollaborationScorecard(generatedAt = new Date().toISO
     await buildPresenceSelectionControl(),
     buildConflictViewportControl(),
     buildHeadedBrowserMultiUserViewportSoakControl(),
+    await buildLongRunningCollaborationConflictRateControl(),
   ]
   const coveredControlSet = new Set(controls.flatMap((control) => control.coveredControls))
   const coveredControls = coveredControlOrder.filter((control) => coveredControlSet.has(control))
@@ -129,6 +134,7 @@ export async function buildCollaborationScorecard(generatedAt = new Date().toISO
       presenceSelectionPassed: requiredControl(controls, 'presence-session-selection-filtering').passed,
       conflictViewportPassed: requiredControl(controls, 'editor-conflict-and-viewport-protection').passed,
       headedBrowserViewportPassed: requiredControl(controls, 'headed-browser-multi-user-viewport-soak').passed,
+      longRunningConflictRatePassed: requiredControl(controls, 'long-running-collaboration-conflict-rate').passed,
       coveredControls,
       uncoveredControls: [...uncoveredControls],
       externalGoogleSheetsEvidence: 'not-captured',
@@ -453,6 +459,115 @@ function buildHeadedBrowserMultiUserViewportSoakControl(): CollaborationControl 
   })
 }
 
+async function buildLongRunningCollaborationConflictRateControl(): Promise<CollaborationControl> {
+  const runtime = new WorkbookWorkerRuntime({
+    localStoreFactory: createMemoryWorkbookLocalStoreFactory(),
+  })
+  await runtime.bootstrap({
+    documentId: 'collaboration-long-running-doc',
+    replicaId: 'browser:self',
+    persistState: true,
+  })
+
+  const localWrites: Array<{ id: string; address: string; value: number }> = []
+  const remoteWrites: Array<{ address: string; value: number }> = []
+  const failedMutationIds = new Set<string>()
+  let revision = 0
+  let maxPending = 0
+
+  const captureFailedPending = () => {
+    const pending = runtime.listPendingMutations()
+    maxPending = Math.max(maxPending, pending.length)
+    for (const mutation of pending) {
+      if (mutation.status === 'failed') {
+        failedMutationIds.add(mutation.id)
+      }
+    }
+  }
+
+  const acknowledgeAllPending = async () => {
+    const pending = runtime.listPendingMutations()
+    await Promise.all(pending.map((mutation) => runtime.markPendingMutationSubmitted(mutation.id)))
+    const ackEvents = pending.map((mutation) => {
+      const write = localWrites.find((candidate) => candidate.id === mutation.id)
+      if (!write) {
+        throw new Error(`Missing local write for pending mutation ${mutation.id}`)
+      }
+      revision += 1
+      return buildSetCellValueEvent({
+        revision,
+        address: write.address,
+        value: write.value,
+        clientMutationId: mutation.id,
+      })
+    })
+    await runtime.applyAuthoritativeEvents(ackEvents, revision)
+    captureFailedPending()
+  }
+
+  try {
+    const rounds = 64
+    const ackEvery = 8
+    await Array.from({ length: rounds }, (_, index) => index).reduce<Promise<void>>(async (previous, index) => {
+      await previous
+      const localAddress = `A${String(index + 1)}`
+      const localValue = 10_000 + index
+      const mutation = await runtime.enqueuePendingMutation({
+        method: 'setCellValue',
+        args: ['Sheet1', localAddress, localValue],
+      })
+      localWrites.push({ id: mutation.id, address: localAddress, value: localValue })
+
+      revision += 1
+      const remoteAddress = `B${String(index + 1)}`
+      const remoteValue = 20_000 + index
+      remoteWrites.push({ address: remoteAddress, value: remoteValue })
+      await runtime.applyAuthoritativeEvents([buildSetCellValueEvent({ revision, address: remoteAddress, value: remoteValue })], revision)
+      captureFailedPending()
+
+      if ((index + 1) % ackEvery === 0) {
+        await acknowledgeAllPending()
+      }
+    }, Promise.resolve())
+    await acknowledgeAllPending()
+
+    const pending = runtime.listPendingMutations()
+    const journal = runtime.listMutationJournalEntries()
+    const allLocalWritesAcked = localWrites.every((write) =>
+      journal.some((entry) => entry.id === write.id && entry.status === 'acked' && cellNumber(runtime, write.address) === write.value),
+    )
+    const allRemoteWritesVisible = remoteWrites.every((write) => cellNumber(runtime, write.address) === write.value)
+    const operationCount = localWrites.length + remoteWrites.length
+    const unexpectedConflictRate = operationCount === 0 ? 0 : failedMutationIds.size / operationCount
+    const convergencePassed =
+      pending.length === 0 &&
+      localWrites.length === 64 &&
+      remoteWrites.length === 64 &&
+      maxPending === 8 &&
+      allLocalWritesAcked &&
+      allRemoteWritesVisible
+    const conflictRatePassed = unexpectedConflictRate === 0
+
+    return collaborationControl({
+      id: 'long-running-collaboration-conflict-rate',
+      category: 'local-first-sync',
+      passed: convergencePassed && conflictRatePassed,
+      coveredControls: ['conflict.longRunningZeroUnexpectedConflicts', 'sync.longRunningAcceptedOpConvergence'],
+      evidence:
+        'Executed 64 local writes interleaved with 64 collaborator authoritative writes, rebased pending operations across each collaborator edit, acknowledged every local mutation in batches, and verified zero unexpected failed mutations plus final convergence.',
+      findings: [
+        ...(conflictRatePassed ? [] : [`unexpected conflict rate was ${String(unexpectedConflictRate)}`]),
+        ...(pending.length === 0 ? [] : [`pending mutations remained after long-running acknowledgement: ${pending.length}`]),
+        ...(allLocalWritesAcked ? [] : ['not all local accepted operations were acknowledged and visible']),
+        ...(allRemoteWritesVisible ? [] : ['not all collaborator authoritative operations were visible after convergence']),
+        ...(maxPending === 8 ? [] : [`expected max pending batch size 8, received ${String(maxPending)}`]),
+      ],
+    })
+  } finally {
+    runtime.dispose()
+  }
+}
+
 function extractBrowserTestBlock(source: string, testFunctionName: 'test' | 'remoteSyncTest', testTitle: string): string | null {
   const marker = `${testFunctionName}('${testTitle}'`
   const start = source.indexOf(marker)
@@ -638,6 +753,7 @@ export function parseCollaborationScorecard(value: unknown): CollaborationScorec
       presenceSelectionPassed: booleanField(summary, 'presenceSelectionPassed'),
       conflictViewportPassed: booleanField(summary, 'conflictViewportPassed'),
       headedBrowserViewportPassed: booleanField(summary, 'headedBrowserViewportPassed'),
+      longRunningConflictRatePassed: booleanField(summary, 'longRunningConflictRatePassed'),
       coveredControls: stringArrayField(summary, 'coveredControls'),
       uncoveredControls: stringArrayField(summary, 'uncoveredControls'),
       externalGoogleSheetsEvidence: literalField(summary, 'externalGoogleSheetsEvidence', 'not-captured'),
