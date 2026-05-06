@@ -60,7 +60,11 @@ describe('bilig dominance scorecard', () => {
       blockers: ['no direct Sheets or Excel large-workbook live timing artifact exists in the repo'],
     })
     expect(scorecard.categories.find((category) => category.id === 'ui-responsiveness')).toMatchObject({
-      blockers: ['no direct Sheets or Excel browser responsiveness comparison artifact exists in the repo'],
+      evidenceArtifacts: expect.arrayContaining([
+        'packages/benchmarks/baselines/large-workbook-slo-scorecard.json',
+        'packages/benchmarks/baselines/ui-responsiveness-external-sheets-excel-comparison.json',
+      ]),
+      blockers: ['no direct Sheets or Excel browser responsiveness live timing artifact exists in the repo'],
     })
     expect(scorecard.categories.find((category) => category.id === 'collaboration')).toMatchObject({
       status: 'partial-repo-evidence',
@@ -539,6 +543,7 @@ function buildFixtureInput(): BuildScorecardInput {
         headedBrowserTestFile: 'e2e/tests/web-shell-scroll-performance.pw.ts',
         artifactGenerator: 'scripts/gen-large-workbook-slo-scorecard.ts',
         externalLargeWorkbookComparisonArtifact: 'packages/benchmarks/baselines/large-workbook-external-sheets-excel-comparison.json',
+        externalUiResponsivenessComparisonArtifact: 'packages/benchmarks/baselines/ui-responsiveness-external-sheets-excel-comparison.json',
       },
       summary: {
         coveredLargeWorkbookRows: [100_000, 250_000],
@@ -548,6 +553,8 @@ function buildFixtureInput(): BuildScorecardInput {
         headedBrowserFrameP95ContractsPassed: true,
         externalGoogleSheetsEvidence: 'official-docs-comparison-artifact',
         externalMicrosoftExcelEvidence: 'official-docs-comparison-artifact',
+        externalUiResponsivenessGoogleSheetsEvidence: 'official-docs-comparison-artifact',
+        externalUiResponsivenessMicrosoftExcelEvidence: 'official-docs-comparison-artifact',
       },
       measurements: [
         sloMeasurement('load100k', 'large-workbook-scale', 100_000, 230, 1500),
@@ -579,6 +586,20 @@ function buildFixtureInput(): BuildScorecardInput {
           'external.googleSheetsLargeWorkbookDocs',
           'external.microsoftExcelLargeWorkbookDocs',
           'external.sheetsExcelLargeWorkbookScaleComparison',
+        ],
+        limitations: ['Official-docs comparison, not live timing.'],
+        findings: [],
+      },
+      uiResponsivenessExternalSheetsExcelComparison: {
+        artifact: 'packages/benchmarks/baselines/ui-responsiveness-external-sheets-excel-comparison.json',
+        sourceBasis: 'official-public-docs-reviewed-2026-05-06',
+        officialGoogleSheetsSourceCount: 3,
+        officialMicrosoftExcelSourceCount: 4,
+        requiredDimensionsPassed: true,
+        coveredFeatures: [
+          'external.googleSheetsUiResponsivenessDocs',
+          'external.microsoftExcelUiResponsivenessDocs',
+          'external.sheetsExcelUiResponsivenessComparison',
         ],
         limitations: ['Official-docs comparison, not live timing.'],
         findings: [],

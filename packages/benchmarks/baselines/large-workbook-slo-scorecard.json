@@ -1,14 +1,15 @@
 {
   "schemaVersion": 1,
   "suite": "large-workbook-slo",
-  "generatedAt": "2026-05-06T15:06:35.528Z",
+  "generatedAt": "2026-05-06T15:15:14.688Z",
   "source": {
     "benchmarkCommand": "CI=1 pnpm bench:contracts",
     "benchmarkScript": "scripts/bench-contracts.ts",
     "headedBrowserCommand": "pnpm test:browser:full",
     "headedBrowserTestFile": "e2e/tests/web-shell-scroll-performance.pw.ts",
     "artifactGenerator": "scripts/gen-large-workbook-slo-scorecard.ts",
-    "externalLargeWorkbookComparisonArtifact": "packages/benchmarks/baselines/large-workbook-external-sheets-excel-comparison.json"
+    "externalLargeWorkbookComparisonArtifact": "packages/benchmarks/baselines/large-workbook-external-sheets-excel-comparison.json",
+    "externalUiResponsivenessComparisonArtifact": "packages/benchmarks/baselines/ui-responsiveness-external-sheets-excel-comparison.json"
   },
   "summary": {
     "coveredLargeWorkbookRows": [100000, 250000],
@@ -17,7 +18,9 @@
     "headedBrowserFrameP95Evidence": "playwright-contracts",
     "headedBrowserFrameP95ContractsPassed": true,
     "externalGoogleSheetsEvidence": "official-docs-comparison-artifact",
-    "externalMicrosoftExcelEvidence": "official-docs-comparison-artifact"
+    "externalMicrosoftExcelEvidence": "official-docs-comparison-artifact",
+    "externalUiResponsivenessGoogleSheetsEvidence": "official-docs-comparison-artifact",
+    "externalUiResponsivenessMicrosoftExcelEvidence": "official-docs-comparison-artifact"
   },
   "measurements": [
     {
@@ -27,7 +30,7 @@
       "materializedCells": 100000,
       "corpusCaseId": "dense-mixed-100k",
       "metric": "elapsedMs.p95",
-      "actualP95": 216.81379200000003,
+      "actualP95": 279.31154100000003,
       "budgetP95": 1500,
       "gateBudgetP95": 2250,
       "sampleCount": 5,
@@ -41,7 +44,7 @@
       "materializedCells": 250000,
       "corpusCaseId": "dense-mixed-250k",
       "metric": "elapsedMs.p95",
-      "actualP95": 585.349042,
+      "actualP95": 732.916875,
       "budgetP95": 1500,
       "gateBudgetP95": 2250,
       "sampleCount": 3,
@@ -55,7 +58,7 @@
       "materializedCells": 100000,
       "corpusCaseId": "dense-mixed-100k",
       "metric": "elapsedMs.p95",
-      "actualP95": 10.832124999999905,
+      "actualP95": 13.600541000000248,
       "budgetP95": 500,
       "gateBudgetP95": 750,
       "sampleCount": 3,
@@ -69,7 +72,7 @@
       "materializedCells": 250000,
       "corpusCaseId": "dense-mixed-250k",
       "metric": "elapsedMs.p95",
-      "actualP95": 15.554415999999947,
+      "actualP95": 15.387249999999767,
       "budgetP95": 700,
       "gateBudgetP95": 1050,
       "sampleCount": 3,
@@ -83,7 +86,7 @@
       "materializedCells": 10000,
       "corpusCaseId": null,
       "metric": "visiblePatchMs.p95",
-      "actualP95": 3.830500000000029,
+      "actualP95": 4.226084000000014,
       "budgetP95": 16,
       "gateBudgetP95": 24,
       "sampleCount": 5,
@@ -97,7 +100,7 @@
       "materializedCells": 10000,
       "corpusCaseId": null,
       "metric": "catchUpMs.p95",
-      "actualP95": 261.5354590000006,
+      "actualP95": 301.72820800000045,
       "budgetP95": 2000,
       "gateBudgetP95": 3000,
       "sampleCount": 3,
@@ -167,6 +170,24 @@
       "This artifact captures current official public documentation and published scale guidance, not a live timing run inside Google Sheets or Microsoft Excel.",
       "The comparison proves direct external large-workbook scale evidence exists; it does not claim bilig is 10x faster than Google Sheets or Microsoft Excel.",
       "bilig's checked large-workbook SLO currently covers 100k and 250k materialized-cell sessions, not every incumbent maximum-limit scenario."
+    ],
+    "findings": []
+  },
+  "uiResponsivenessExternalSheetsExcelComparison": {
+    "artifact": "packages/benchmarks/baselines/ui-responsiveness-external-sheets-excel-comparison.json",
+    "sourceBasis": "official-public-docs-reviewed-2026-05-06",
+    "officialGoogleSheetsSourceCount": 3,
+    "officialMicrosoftExcelSourceCount": 4,
+    "requiredDimensionsPassed": true,
+    "coveredFeatures": [
+      "external.googleSheetsUiResponsivenessDocs",
+      "external.microsoftExcelUiResponsivenessDocs",
+      "external.sheetsExcelUiResponsivenessComparison"
+    ],
+    "limitations": [
+      "This artifact captures official public documentation and published responsiveness guidance, not a live browser or desktop timing run inside Google Sheets or Microsoft Excel.",
+      "The comparison proves direct external UI-responsiveness evidence exists; it does not claim bilig is 10x more responsive than Google Sheets or Microsoft Excel.",
+      "bilig still needs incumbent p95 frame, edit, selection, paste, filter, and scroll timing artifacts on equivalent corpuses before claiming UI-responsiveness dominance."
     ],
     "findings": []
   }

@@ -12,8 +12,13 @@ describe('large workbook SLO scorecard', () => {
     expect(scorecard.summary.headedBrowserFrameP95ContractsPassed).toBe(true)
     expect(scorecard.summary.externalGoogleSheetsEvidence).toBe('official-docs-comparison-artifact')
     expect(scorecard.summary.externalMicrosoftExcelEvidence).toBe('official-docs-comparison-artifact')
+    expect(scorecard.summary.externalUiResponsivenessGoogleSheetsEvidence).toBe('official-docs-comparison-artifact')
+    expect(scorecard.summary.externalUiResponsivenessMicrosoftExcelEvidence).toBe('official-docs-comparison-artifact')
     expect(scorecard.source.externalLargeWorkbookComparisonArtifact).toBe(
       'packages/benchmarks/baselines/large-workbook-external-sheets-excel-comparison.json',
+    )
+    expect(scorecard.source.externalUiResponsivenessComparisonArtifact).toBe(
+      'packages/benchmarks/baselines/ui-responsiveness-external-sheets-excel-comparison.json',
     )
     expect(scorecard.measurements.map((measurement) => measurement.id)).toEqual([
       'load100k',
@@ -54,6 +59,19 @@ describe('large workbook SLO scorecard', () => {
       'external.googleSheetsLargeWorkbookDocs',
       'external.microsoftExcelLargeWorkbookDocs',
       'external.sheetsExcelLargeWorkbookScaleComparison',
+    ])
+    expect(scorecard.uiResponsivenessExternalSheetsExcelComparison).toMatchObject({
+      artifact: 'packages/benchmarks/baselines/ui-responsiveness-external-sheets-excel-comparison.json',
+      sourceBasis: 'official-public-docs-reviewed-2026-05-06',
+      officialGoogleSheetsSourceCount: 3,
+      officialMicrosoftExcelSourceCount: 4,
+      requiredDimensionsPassed: true,
+      findings: [],
+    })
+    expect(scorecard.uiResponsivenessExternalSheetsExcelComparison.coveredFeatures).toEqual([
+      'external.googleSheetsUiResponsivenessDocs',
+      'external.microsoftExcelUiResponsivenessDocs',
+      'external.sheetsExcelUiResponsivenessComparison',
     ])
   })
 

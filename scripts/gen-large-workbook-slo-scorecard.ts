@@ -10,6 +10,12 @@ import {
   parseExternalLargeWorkbookComparisonArtifact,
   validateExternalLargeWorkbookComparisonArtifact,
 } from './large-workbook-external-sheets-excel-comparison.ts'
+import {
+  externalUiResponsivenessComparisonArtifactRepoPath,
+  externalUiResponsivenessComparisonCoveredFeatures,
+  parseExternalUiResponsivenessComparisonArtifact,
+  validateExternalUiResponsivenessComparisonArtifact,
+} from './ui-responsiveness-external-sheets-excel-comparison.ts'
 
 interface NumericSummary {
   readonly samples: number[]
@@ -71,6 +77,17 @@ export interface LargeWorkbookExternalComparisonEvidence {
   readonly findings: string[]
 }
 
+export interface UiResponsivenessExternalComparisonEvidence {
+  readonly artifact: 'packages/benchmarks/baselines/ui-responsiveness-external-sheets-excel-comparison.json'
+  readonly sourceBasis: string
+  readonly officialGoogleSheetsSourceCount: number
+  readonly officialMicrosoftExcelSourceCount: number
+  readonly requiredDimensionsPassed: boolean
+  readonly coveredFeatures: string[]
+  readonly limitations: string[]
+  readonly findings: string[]
+}
+
 export interface LargeWorkbookSloScorecard {
   readonly schemaVersion: 1
   readonly suite: 'large-workbook-slo'
@@ -82,6 +99,7 @@ export interface LargeWorkbookSloScorecard {
     readonly headedBrowserTestFile: 'e2e/tests/web-shell-scroll-performance.pw.ts'
     readonly artifactGenerator: 'scripts/gen-large-workbook-slo-scorecard.ts'
     readonly externalLargeWorkbookComparisonArtifact: 'packages/benchmarks/baselines/large-workbook-external-sheets-excel-comparison.json'
+    readonly externalUiResponsivenessComparisonArtifact: 'packages/benchmarks/baselines/ui-responsiveness-external-sheets-excel-comparison.json'
   }
   readonly summary: {
     readonly coveredLargeWorkbookRows: number[]
@@ -91,10 +109,13 @@ export interface LargeWorkbookSloScorecard {
     readonly headedBrowserFrameP95ContractsPassed: boolean
     readonly externalGoogleSheetsEvidence: 'official-docs-comparison-artifact'
     readonly externalMicrosoftExcelEvidence: 'official-docs-comparison-artifact'
+    readonly externalUiResponsivenessGoogleSheetsEvidence: 'official-docs-comparison-artifact'
+    readonly externalUiResponsivenessMicrosoftExcelEvidence: 'official-docs-comparison-artifact'
   }
   readonly measurements: LargeWorkbookSloMeasurement[]
   readonly headedBrowserFrameP95Contracts: HeadedBrowserFrameP95Contract[]
   readonly externalSheetsExcelComparison: LargeWorkbookExternalComparisonEvidence
+  readonly uiResponsivenessExternalSheetsExcelComparison: UiResponsivenessExternalComparisonEvidence
 }
 
 interface MeasurementSpec {
@@ -221,6 +242,7 @@ const headedBrowserFrameP95ContractSpecs = [
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
 const outputPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'large-workbook-slo-scorecard.json')
 const externalLargeWorkbookComparisonArtifactPath = join(rootDir, externalLargeWorkbookComparisonArtifactRepoPath)
+const externalUiResponsivenessComparisonArtifactPath = join(rootDir, externalUiResponsivenessComparisonArtifactRepoPath)
 const isCheckMode = process.argv.includes('--check')
 
 function main(): void {
@@ -244,9 +266,13 @@ export function buildLargeWorkbookSloScorecard(
   reportInput: unknown,
   generatedAt = new Date().toISOString(),
   externalComparisonInput: unknown = readExternalLargeWorkbookComparisonArtifact(),
+  externalUiResponsivenessComparisonInput: unknown = readExternalUiResponsivenessComparisonArtifact(),
 ): LargeWorkbookSloScorecard {
   const report = parseBenchContractsReport(reportInput)
   const externalSheetsExcelComparison = buildExternalComparisonEvidence(externalComparisonInput)
+  const uiResponsivenessExternalSheetsExcelComparison = buildUiResponsivenessExternalComparisonEvidence(
+    externalUiResponsivenessComparisonInput,
+  )
   const measurements = measurementSpecs.map((spec) => buildMeasurement(report, spec))
   const headedBrowserFrameP95Contracts = buildHeadedBrowserFrameP95Contracts(
     report.headedBrowserTestSource ?? readFileSync(join(rootDir, headedBrowserTestFile), 'utf8'),
@@ -263,6 +289,7 @@ export function buildLargeWorkbookSloScorecard(
       headedBrowserTestFile,
       artifactGenerator: 'scripts/gen-large-workbook-slo-scorecard.ts',
       externalLargeWorkbookComparisonArtifact: externalLargeWorkbookComparisonArtifactRepoPath,
+      externalUiResponsivenessComparisonArtifact: externalUiResponsivenessComparisonArtifactRepoPath,
     },
     summary: {
       coveredLargeWorkbookRows: [
@@ -278,10 +305,13 @@ export function buildLargeWorkbookSloScorecard(
       headedBrowserFrameP95ContractsPassed: headedBrowserFrameP95Contracts.every((contract) => contract.passed),
       externalGoogleSheetsEvidence: 'official-docs-comparison-artifact',
       externalMicrosoftExcelEvidence: 'official-docs-comparison-artifact',
+      externalUiResponsivenessGoogleSheetsEvidence: 'official-docs-comparison-artifact',
+      externalUiResponsivenessMicrosoftExcelEvidence: 'official-docs-comparison-artifact',
     },
     measurements,
     headedBrowserFrameP95Contracts,
     externalSheetsExcelComparison,
+    uiResponsivenessExternalSheetsExcelComparison,
   }
 }
 
@@ -289,11 +319,30 @@ function readExternalLargeWorkbookComparisonArtifact(): unknown {
   return JSON.parse(readFileSync(externalLargeWorkbookComparisonArtifactPath, 'utf8')) as unknown
 }
 
+function readExternalUiResponsivenessComparisonArtifact(): unknown {
+  return JSON.parse(readFileSync(externalUiResponsivenessComparisonArtifactPath, 'utf8')) as unknown
+}
+
 function buildExternalComparisonEvidence(value: unknown): LargeWorkbookExternalComparisonEvidence {
   const artifact = parseExternalLargeWorkbookComparisonArtifact(value)
   const findings = validateExternalLargeWorkbookComparisonArtifact(artifact)
   return {
     artifact: externalLargeWorkbookComparisonArtifactRepoPath,
+    sourceBasis: artifact.sourceBasis,
+    officialGoogleSheetsSourceCount: artifact.officialSources.filter((source) => source.vendor === 'google-sheets').length,
+    officialMicrosoftExcelSourceCount: artifact.officialSources.filter((source) => source.vendor === 'microsoft-excel').length,
+    requiredDimensionsPassed: artifact.summary.requiredDimensionsPassed && findings.length === 0,
+    coveredFeatures: artifact.summary.coveredFeatures,
+    limitations: artifact.summary.limitations,
+    findings,
+  }
+}
+
+function buildUiResponsivenessExternalComparisonEvidence(value: unknown): UiResponsivenessExternalComparisonEvidence {
+  const artifact = parseExternalUiResponsivenessComparisonArtifact(value)
+  const findings = validateExternalUiResponsivenessComparisonArtifact(artifact)
+  return {
+    artifact: externalUiResponsivenessComparisonArtifactRepoPath,
     sourceBasis: artifact.sourceBasis,
     officialGoogleSheetsSourceCount: artifact.officialSources.filter((source) => source.vendor === 'google-sheets').length,
     officialMicrosoftExcelSourceCount: artifact.officialSources.filter((source) => source.vendor === 'microsoft-excel').length,
@@ -484,6 +533,11 @@ export function parseLargeWorkbookSloScorecard(value: unknown): LargeWorkbookSlo
         'externalLargeWorkbookComparisonArtifact',
         externalLargeWorkbookComparisonArtifactRepoPath,
       ),
+      externalUiResponsivenessComparisonArtifact: literalField(
+        source,
+        'externalUiResponsivenessComparisonArtifact',
+        externalUiResponsivenessComparisonArtifactRepoPath,
+      ),
     },
     summary: {
       coveredLargeWorkbookRows: numberArrayField(summary, 'coveredLargeWorkbookRows'),
@@ -497,6 +551,16 @@ export function parseLargeWorkbookSloScorecard(value: unknown): LargeWorkbookSlo
       ),
       externalGoogleSheetsEvidence: literalField(summary, 'externalGoogleSheetsEvidence', 'official-docs-comparison-artifact'),
       externalMicrosoftExcelEvidence: literalField(summary, 'externalMicrosoftExcelEvidence', 'official-docs-comparison-artifact'),
+      externalUiResponsivenessGoogleSheetsEvidence: literalField(
+        summary,
+        'externalUiResponsivenessGoogleSheetsEvidence',
+        'official-docs-comparison-artifact',
+      ),
+      externalUiResponsivenessMicrosoftExcelEvidence: literalField(
+        summary,
+        'externalUiResponsivenessMicrosoftExcelEvidence',
+        'official-docs-comparison-artifact',
+      ),
     },
     measurements,
     headedBrowserFrameP95Contracts: arrayField(
@@ -506,6 +570,9 @@ export function parseLargeWorkbookSloScorecard(value: unknown): LargeWorkbookSlo
     ).map(parseHeadedBrowserFrameP95Contract),
     externalSheetsExcelComparison: parseExternalComparisonEvidence(
       recordField(record, 'externalSheetsExcelComparison', 'large workbook external Sheets/Excel comparison'),
+    ),
+    uiResponsivenessExternalSheetsExcelComparison: parseUiResponsivenessExternalComparisonEvidence(
+      recordField(record, 'uiResponsivenessExternalSheetsExcelComparison', 'UI responsiveness external Sheets/Excel comparison'),
     ),
   }
 }
@@ -546,6 +613,21 @@ function validateLargeWorkbookSloScorecard(scorecard: LargeWorkbookSloScorecard)
   if (!arrayEquals(scorecard.externalSheetsExcelComparison.coveredFeatures, externalLargeWorkbookComparisonCoveredFeatures)) {
     throw new Error('Large workbook SLO scorecard external comparison feature coverage is stale')
   }
+  if (
+    !scorecard.uiResponsivenessExternalSheetsExcelComparison.requiredDimensionsPassed ||
+    scorecard.uiResponsivenessExternalSheetsExcelComparison.findings.length > 0
+  ) {
+    throw new Error(
+      `Large workbook SLO scorecard contains stale UI responsiveness external comparison evidence: ${scorecard.uiResponsivenessExternalSheetsExcelComparison.findings.join(
+        ', ',
+      )}`,
+    )
+  }
+  if (
+    !arrayEquals(scorecard.uiResponsivenessExternalSheetsExcelComparison.coveredFeatures, externalUiResponsivenessComparisonCoveredFeatures)
+  ) {
+    throw new Error('Large workbook SLO scorecard UI responsiveness external comparison feature coverage is stale')
+  }
 }
 
 function logResult(mode: 'check' | 'write', scorecard: LargeWorkbookSloScorecard): void {
@@ -560,6 +642,8 @@ function logResult(mode: 'check' | 'write', scorecard: LargeWorkbookSloScorecard
         headedBrowserFrameP95ContractsPassed: scorecard.summary.headedBrowserFrameP95ContractsPassed,
         externalGoogleSheetsEvidence: scorecard.summary.externalGoogleSheetsEvidence,
         externalMicrosoftExcelEvidence: scorecard.summary.externalMicrosoftExcelEvidence,
+        externalUiResponsivenessGoogleSheetsEvidence: scorecard.summary.externalUiResponsivenessGoogleSheetsEvidence,
+        externalUiResponsivenessMicrosoftExcelEvidence: scorecard.summary.externalUiResponsivenessMicrosoftExcelEvidence,
       },
       null,
       2,
@@ -620,6 +704,31 @@ function parseHeadedBrowserFrameP95Contract(entry: unknown, index: number): Head
     command: literalField(contract, 'command', 'pnpm test:browser:full'),
     passed: booleanField(contract, 'passed', `large workbook headed browser frame contract ${String(index)} passed`),
     findings: stringArrayField(contract, 'findings', `large workbook headed browser frame contract ${String(index)} findings`),
+  }
+}
+
+function parseUiResponsivenessExternalComparisonEvidence(record: Record<string, unknown>): UiResponsivenessExternalComparisonEvidence {
+  return {
+    artifact: literalField(record, 'artifact', externalUiResponsivenessComparisonArtifactRepoPath),
+    sourceBasis: stringField(record, 'sourceBasis', 'UI responsiveness external comparison sourceBasis'),
+    officialGoogleSheetsSourceCount: numberField(
+      record,
+      'officialGoogleSheetsSourceCount',
+      'UI responsiveness external comparison officialGoogleSheetsSourceCount',
+    ),
+    officialMicrosoftExcelSourceCount: numberField(
+      record,
+      'officialMicrosoftExcelSourceCount',
+      'UI responsiveness external comparison officialMicrosoftExcelSourceCount',
+    ),
+    requiredDimensionsPassed: booleanField(
+      record,
+      'requiredDimensionsPassed',
+      'UI responsiveness external comparison requiredDimensionsPassed',
+    ),
+    coveredFeatures: stringArrayField(record, 'coveredFeatures', 'UI responsiveness external comparison coveredFeatures'),
+    limitations: stringArrayField(record, 'limitations', 'UI responsiveness external comparison limitations'),
+    findings: stringArrayField(record, 'findings', 'UI responsiveness external comparison findings'),
   }
 }
 

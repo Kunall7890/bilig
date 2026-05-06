@@ -1,0 +1,218 @@
+{
+  "schemaVersion": 1,
+  "suite": "external-sheets-excel-ui-responsiveness-comparison",
+  "generatedAt": "2026-05-06T16:48:00.000Z",
+  "sourceBasis": "official-public-docs-reviewed-2026-05-06",
+  "officialSources": [
+    {
+      "id": "google-sheets-performance",
+      "vendor": "google-sheets",
+      "title": "Learn how to improve Sheets performance",
+      "url": "https://support.google.com/docs/answer/11468464?hl=en",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Google documents background calculations, visible progress while work continues, and edit-triggered recalculation behavior in Sheets.",
+        "Google documents performance guidance for repeated expressions, volatile functions, lookup helpers, and conditional formatting."
+      ]
+    },
+    {
+      "id": "google-sheets-data-reference-performance",
+      "vendor": "google-sheets",
+      "title": "Optimize your data references to improve Sheets performance",
+      "url": "https://support.google.com/docs/answer/12159115?hl=en",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Google documents data-reference choices that affect computation speed, stability, CPU usage, and load speed on large datasets.",
+        "Google documents closed ranges, avoiding long dependency chains, and reducing cross-spreadsheet import round trips as performance guidance."
+      ]
+    },
+    {
+      "id": "google-sheets-data-ingestion",
+      "vendor": "google-sheets",
+      "title": "Learn how to optimize your data ingestion",
+      "url": "https://support.google.com/docs/answer/12236443?hl=en",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Google documents different ingestion paths for small copy/paste, import functions, and very large CSV ingestion.",
+        "Google documents Connected Sheets and BigQuery as a path when direct Sheets import is too large."
+      ]
+    },
+    {
+      "id": "microsoft-excel-performance-tips",
+      "vendor": "microsoft-excel",
+      "title": "Tips for improving Excel's performance",
+      "url": "https://support.microsoft.com/en-us/office/tips-for-improving-excel-s-performance-a8294ac5-652d-47f2-8e89-1c3ce2c09439",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Microsoft documents Excel performance work and guidance across calculation, lookup, memory allocation, copy/paste, undo, scrolling, filtering, file open, and programmability.",
+        "Microsoft documents circumstances that affect grid editing, window movement, graphics acceleration, cell editing, monitors, launching, and data preview performance."
+      ]
+    },
+    {
+      "id": "microsoft-excel-web-differences",
+      "vendor": "microsoft-excel",
+      "title": "Differences between using a workbook in the browser and in Excel",
+      "url": "https://support.microsoft.com/en-us/office/differences-between-using-a-workbook-in-the-browser-and-in-excel-f0dc28ed-b85d-4e1d-be6d-5878005db3b6",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Microsoft documents that Excel for the web has browser-specific workbook behavior and feature differences from desktop Excel.",
+        "Microsoft documents workbook interactivity, navigation, file-format, and unsupported-feature differences that shape browser responsiveness expectations."
+      ]
+    },
+    {
+      "id": "microsoft-excel-sharepoint-file-size-limits",
+      "vendor": "microsoft-excel",
+      "title": "File size limits for workbooks in SharePoint",
+      "url": "https://support.microsoft.com/en-gb/office/file-size-limits-for-workbooks-in-sharepoint-9e5bc6f8-018f-415a-b890-5452687b325e",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Microsoft documents that large Excel for the web workbooks may not open, edit, or refresh in a browser window when service limits are exceeded.",
+        "Microsoft documents Microsoft 365 SharePoint workbook size limits to avoid excessive disk or memory use online."
+      ]
+    },
+    {
+      "id": "microsoft-excel-specifications-limits",
+      "vendor": "microsoft-excel",
+      "title": "Excel specifications and limits",
+      "url": "https://support.microsoft.com/en-us/office/excel-specifications-and-limits-1672b34d-7043-467e-8e27-269d656771c3",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Microsoft documents workbook, worksheet, calculation, PivotTable, selection, memory, and resource limits that bound large workbook interactions.",
+        "Microsoft documents workbook and Data Model scale as memory and system-resource bounded in supported environments."
+      ]
+    }
+  ],
+  "summary": {
+    "comparisonCaptured": true,
+    "requiredDimensionsPassed": true,
+    "coveredFeatures": [
+      "external.googleSheetsUiResponsivenessDocs",
+      "external.microsoftExcelUiResponsivenessDocs",
+      "external.sheetsExcelUiResponsivenessComparison"
+    ],
+    "limitations": [
+      "This artifact captures official public documentation and published responsiveness guidance, not a live browser or desktop timing run inside Google Sheets or Microsoft Excel.",
+      "The comparison proves direct external UI-responsiveness evidence exists; it does not claim bilig is 10x more responsive than Google Sheets or Microsoft Excel.",
+      "bilig still needs incumbent p95 frame, edit, selection, paste, filter, and scroll timing artifacts on equivalent corpuses before claiming UI-responsiveness dominance."
+    ]
+  },
+  "dimensions": [
+    {
+      "id": "visible-edit-and-calculation-responsiveness",
+      "title": "Visible Edit And Calculation Responsiveness",
+      "required": true,
+      "passed": true,
+      "sourceIds": [
+        "google-sheets-performance",
+        "google-sheets-data-reference-performance",
+        "microsoft-excel-performance-tips",
+        "microsoft-excel-specifications-limits"
+      ],
+      "biligEvidence": [
+        "The large-workbook SLO scorecard checks a 10k browser worker visible edit patch p95 budget.",
+        "The headed browser contracts check bounded mutation-to-visible response on the 250k wide workbook corpus."
+      ],
+      "googleSheetsEvidence": [
+        "Google documents background calculation behavior and edit-triggered recalculation guidance for Sheets.",
+        "Google documents data-reference patterns that affect computation speed, stability, CPU usage, and load speed."
+      ],
+      "microsoftExcelEvidence": [
+        "Microsoft documents performance guidance for grid editing, calculation, lookups, memory, and cell editing.",
+        "Microsoft documents calculation and memory limits that affect workbook interaction latency."
+      ],
+      "comparisonResult": "bilig has repo-executable visible-edit and mutation-to-visible p95 contracts, while Google and Microsoft publish responsiveness guidance but not matching p95 timing traces for bilig corpuses.",
+      "residualLimitations": [
+        "bilig still needs live Google Sheets and Microsoft Excel timing for the same visible-edit corpuses.",
+        "Official docs do not provide controlled p95 edit latency baselines."
+      ]
+    },
+    {
+      "id": "scroll-selection-filtering-responsiveness",
+      "title": "Scroll Selection Filtering Responsiveness",
+      "required": true,
+      "passed": true,
+      "sourceIds": [
+        "google-sheets-performance",
+        "google-sheets-data-reference-performance",
+        "microsoft-excel-performance-tips",
+        "microsoft-excel-web-differences"
+      ],
+      "biligEvidence": [
+        "The headed browser frame-pacing contracts check dense 100k diagonal browse and wide 250k horizontal browse frame p95 budgets.",
+        "The dominance scorecard separately requires browser UI responsiveness artifacts instead of treating engine speed as UI proof."
+      ],
+      "googleSheetsEvidence": [
+        "Google documents conditional formatting and open-range modeling choices that can affect large-sheet responsiveness.",
+        "Google documents cross-spreadsheet imports and long reference chains as sources of load and calculation delay."
+      ],
+      "microsoftExcelEvidence": [
+        "Microsoft documents performance work and tips for scrolling, filtering, copy/paste, undo, cell editing, graphics acceleration, and file open.",
+        "Microsoft documents browser-vs-desktop workbook differences that matter to Excel for the web interactions."
+      ],
+      "comparisonResult": "bilig has checked frame-pacing contracts for large workbook browsing; incumbent docs document the interaction areas but not a comparable browser-frame benchmark artifact.",
+      "residualLimitations": [
+        "bilig still needs direct Sheets and Excel scroll, selection, paste, filter, and sort timing traces on equivalent workbooks.",
+        "The current bilig headed checks do not yet cover every expected spreadsheet interaction mode."
+      ]
+    },
+    {
+      "id": "browser-workbook-resource-boundaries",
+      "title": "Browser Workbook Resource Boundaries",
+      "required": true,
+      "passed": true,
+      "sourceIds": [
+        "google-sheets-data-ingestion",
+        "google-sheets-data-reference-performance",
+        "microsoft-excel-sharepoint-file-size-limits",
+        "microsoft-excel-web-differences",
+        "microsoft-excel-specifications-limits"
+      ],
+      "biligEvidence": [
+        "The large-workbook SLO scorecard checks local load, worker warm start, visible patching, and headed frame contracts under committed 100k and 250k corpuses.",
+        "The large-workbook scale evidence separately captures official incumbent file and grid boundaries."
+      ],
+      "googleSheetsEvidence": [
+        "Google documents ingestion paths and performance guidance for large datasets and imports.",
+        "Google documents modeling choices that reduce CPU use and improve stability for large datasets."
+      ],
+      "microsoftExcelEvidence": [
+        "Microsoft documents online workbook size limits and cases where large workbooks may not open, edit, or refresh in a browser window.",
+        "Microsoft documents workbook and Data Model resource limits relevant to large browser workbook responsiveness."
+      ],
+      "comparisonResult": "bilig has local browser-worker SLO evidence for current corpuses, while Google and Microsoft publish resource-boundary docs that must shape live comparison runs.",
+      "residualLimitations": [
+        "bilig needs larger hosted-browser corpuses to span more of incumbent resource-boundary behavior.",
+        "Official limits do not prove incumbent p95 responsiveness under those limits."
+      ]
+    },
+    {
+      "id": "live-incumbent-ui-timing-gap",
+      "title": "Live Incumbent UI Timing Gap",
+      "required": true,
+      "passed": true,
+      "sourceIds": [
+        "google-sheets-performance",
+        "google-sheets-data-reference-performance",
+        "microsoft-excel-performance-tips",
+        "microsoft-excel-web-differences"
+      ],
+      "biligEvidence": [
+        "The generated dominance scorecard keeps UI responsiveness partial until direct Google Sheets and Microsoft Excel timing evidence exists.",
+        "The SLO scorecard records official-docs comparison evidence but does not allow it to satisfy the live incumbent timing requirement."
+      ],
+      "googleSheetsEvidence": [
+        "Google's official docs describe responsiveness-sensitive behavior and performance guidance, not a downloadable p95 UI benchmark.",
+        "Google Sheets performance docs are modeling guidance rather than a controlled trace against bilig's checked corpuses."
+      ],
+      "microsoftExcelEvidence": [
+        "Microsoft's official docs describe responsiveness-sensitive behavior, performance improvements, and browser differences, not a matching p95 UI benchmark.",
+        "Excel performance docs are guidance and product-limit references rather than a controlled trace against bilig's checked corpuses."
+      ],
+      "comparisonResult": "The UI-responsiveness evidence gap is narrowed from missing external evidence to missing live incumbent timing, preserving honest 10x claim gating.",
+      "residualLimitations": [
+        "A future live timing artifact must identify browser or desktop version, hardware, tenant/file location, workbook corpus, sample counts, and p95 measurement method.",
+        "Until then, this category remains partial evidence rather than a 10x product win."
+      ]
+    }
+  ]
+}
