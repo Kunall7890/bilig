@@ -1631,19 +1631,25 @@ describe('WorkPaper', () => {
       throw new Error('Expected work paper runtime to expose captureVisibilitySnapshot in tests')
     }
     const captureVisibilitySnapshot = vi.spyOn(workbook, 'captureVisibilitySnapshot')
+    const forEachCellEntry = vi.spyOn(sheetGridEntryTarget(workbook, sheetId), 'forEachCellEntry')
 
-    const changes = workbook.addRows(sheetId, [1, 1])
+    try {
+      const changes = workbook.addRows(sheetId, [1, 1])
 
-    expect(changes).toEqual([])
-    expect(captureVisibilitySnapshot).not.toHaveBeenCalled()
-    expect(workbook.getSheetDimensions(sheetId)).toEqual({ width: 2, height: 5 })
-    expect(workbook.getCellSerialized(cell(sheetId, 0, 1))).toBe('=SUM(A1:A1)')
-    expect(workbook.getCellSerialized(cell(sheetId, 2, 1))).toBe('=SUM(A1:A3)')
-    expect(workbook.getCellSerialized(cell(sheetId, 4, 1))).toBe('=SUM(A1:A5)')
-    expect(workbook.getCellValue(cell(sheetId, 0, 1))).toEqual({ tag: ValueTag.Number, value: 1 })
-    expect(workbook.getCellValue(cell(sheetId, 2, 1))).toEqual({ tag: ValueTag.Number, value: 3 })
-    expect(workbook.getCellValue(cell(sheetId, 4, 1))).toEqual({ tag: ValueTag.Number, value: 10 })
-    captureVisibilitySnapshot.mockRestore()
+      expect(changes).toEqual([])
+      expect(captureVisibilitySnapshot).not.toHaveBeenCalled()
+      expect(workbook.getSheetDimensions(sheetId)).toEqual({ width: 2, height: 5 })
+      expect(forEachCellEntry).not.toHaveBeenCalled()
+      expect(workbook.getCellSerialized(cell(sheetId, 0, 1))).toBe('=SUM(A1:A1)')
+      expect(workbook.getCellSerialized(cell(sheetId, 2, 1))).toBe('=SUM(A1:A3)')
+      expect(workbook.getCellSerialized(cell(sheetId, 4, 1))).toBe('=SUM(A1:A5)')
+      expect(workbook.getCellValue(cell(sheetId, 0, 1))).toEqual({ tag: ValueTag.Number, value: 1 })
+      expect(workbook.getCellValue(cell(sheetId, 2, 1))).toEqual({ tag: ValueTag.Number, value: 3 })
+      expect(workbook.getCellValue(cell(sheetId, 4, 1))).toEqual({ tag: ValueTag.Number, value: 10 })
+    } finally {
+      captureVisibilitySnapshot.mockRestore()
+      forEachCellEntry.mockRestore()
+    }
   })
 
   it('deletes repeated direct aggregate rows without visibility snapshots or dirty traversal', () => {
@@ -1688,20 +1694,26 @@ describe('WorkPaper', () => {
     })
     const sheetId = workbook.getSheetId('Sheet1')!
     const computeTrackedChanges = trackComputeCellChangesFromTrackedEvents(workbook)
+    const forEachCellEntry = vi.spyOn(sheetGridEntryTarget(workbook, sheetId), 'forEachCellEntry')
 
-    const changes = workbook.addColumns(sheetId, [1, 1])
+    try {
+      const changes = workbook.addColumns(sheetId, [1, 1])
 
-    expect(changes).toEqual([])
-    expect(computeTrackedChanges.count).toBe(0)
-    expect(workbook.getSheetDimensions(sheetId)).toEqual({ width: 5, height: 3 })
-    expect(workbook.getCellSerialized(cell(sheetId, 0, 3))).toBe('=A1+C1')
-    expect(workbook.getCellSerialized(cell(sheetId, 0, 4))).toBe('=D1*2')
-    expect(workbook.getCellSerialized(cell(sheetId, 2, 3))).toBe('=A3+C3')
-    expect(workbook.getCellSerialized(cell(sheetId, 2, 4))).toBe('=D3*2')
-    expect(workbook.getCellValue(cell(sheetId, 0, 3))).toEqual({ tag: ValueTag.Number, value: 3 })
-    expect(workbook.getCellValue(cell(sheetId, 0, 4))).toEqual({ tag: ValueTag.Number, value: 6 })
-    expect(workbook.getCellValue(cell(sheetId, 2, 3))).toEqual({ tag: ValueTag.Number, value: 9 })
-    expect(workbook.getCellValue(cell(sheetId, 2, 4))).toEqual({ tag: ValueTag.Number, value: 18 })
+      expect(changes).toEqual([])
+      expect(computeTrackedChanges.count).toBe(0)
+      expect(workbook.getSheetDimensions(sheetId)).toEqual({ width: 5, height: 3 })
+      expect(forEachCellEntry).not.toHaveBeenCalled()
+      expect(workbook.getCellSerialized(cell(sheetId, 0, 3))).toBe('=A1+C1')
+      expect(workbook.getCellSerialized(cell(sheetId, 0, 4))).toBe('=D1*2')
+      expect(workbook.getCellSerialized(cell(sheetId, 2, 3))).toBe('=A3+C3')
+      expect(workbook.getCellSerialized(cell(sheetId, 2, 4))).toBe('=D3*2')
+      expect(workbook.getCellValue(cell(sheetId, 0, 3))).toEqual({ tag: ValueTag.Number, value: 3 })
+      expect(workbook.getCellValue(cell(sheetId, 0, 4))).toEqual({ tag: ValueTag.Number, value: 6 })
+      expect(workbook.getCellValue(cell(sheetId, 2, 3))).toEqual({ tag: ValueTag.Number, value: 9 })
+      expect(workbook.getCellValue(cell(sheetId, 2, 4))).toEqual({ tag: ValueTag.Number, value: 18 })
+    } finally {
+      forEachCellEntry.mockRestore()
+    }
 
     const undoChanges = workbook.undo()
     expect(undoChanges).toHaveLength(6)

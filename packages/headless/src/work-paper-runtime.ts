@@ -122,6 +122,7 @@ import {
 } from './tracked-cell-index-changes.js'
 import { calculateWorkPaperFormulaInScratchWorkbook } from './work-paper-scratch-evaluator.js'
 import { replaceWorkPaperSheetContent } from './work-paper-sheet-replacement.js'
+import { applyCachedSheetDimensionInsertion } from './work-paper-sheet-dimensions.js'
 
 type ListenerMap = {
   [EventName in WorkPaperEventName]: Set<WorkPaperListener<EventName>>
@@ -1342,6 +1343,12 @@ export class WorkPaper {
 
   private invalidateSheetDimensions(sheetId: number): void {
     this.sheetDimensionsCache.delete(sheetId)
+  }
+
+  private applyCachedSheetDimensionInsertion(sheetId: number, axis: 'row' | 'column', start: number, count: number): void {
+    if (!applyCachedSheetDimensionInsertion({ axis, cache: this.sheetDimensionsCache, count, sheetId, start })) {
+      this.invalidateSheetDimensions(sheetId)
+    }
   }
 
   private invalidateAllSheetDimensions(): void {
@@ -3031,13 +3038,13 @@ export class WorkPaper {
       const [start, amount] = indexes[0]!
       return this.captureTrackedChangesWithoutVisibilityCache(() => {
         this.engine.insertRows(this.sheetName(sheetId), start, amount)
-        this.invalidateSheetDimensions(sheetId)
+        this.applyCachedSheetDimensionInsertion(sheetId, 'row', start, amount)
       })
     }
     return this.batchStructuralChanges(() => {
       indexes.forEach(([start, amount]) => {
         this.engine.insertRows(this.sheetName(sheetId), start, amount)
-        this.invalidateSheetDimensions(sheetId)
+        this.applyCachedSheetDimensionInsertion(sheetId, 'row', start, amount)
       })
     })
   }
@@ -3087,13 +3094,13 @@ export class WorkPaper {
       const [start, amount] = indexes[0]!
       return this.captureTrackedChangesWithoutVisibilityCache(() => {
         this.engine.insertColumns(this.sheetName(sheetId), start, amount)
-        this.invalidateSheetDimensions(sheetId)
+        this.applyCachedSheetDimensionInsertion(sheetId, 'column', start, amount)
       })
     }
     return this.batchStructuralChanges(() => {
       indexes.forEach(([start, amount]) => {
         this.engine.insertColumns(this.sheetName(sheetId), start, amount)
-        this.invalidateSheetDimensions(sheetId)
+        this.applyCachedSheetDimensionInsertion(sheetId, 'column', start, amount)
       })
     })
   }
