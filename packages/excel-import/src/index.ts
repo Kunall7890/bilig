@@ -2,7 +2,21 @@ import * as XLSX from 'xlsx'
 
 import { CSV_CONTENT_TYPE, XLSX_CONTENT_TYPE, type WorkbookImportContentType } from '@bilig/agent-api'
 import { parseCsv, parseCsvCellInput } from '@bilig/core'
-import type { WorkbookAxisEntrySnapshot, WorkbookSnapshot } from '@bilig/protocol'
+import type {
+  CellBorderSideSnapshot,
+  CellBorderStyle,
+  CellBorderWeight,
+  CellHorizontalAlignment,
+  CellStyleAlignmentSnapshot,
+  CellStyleBordersSnapshot,
+  CellStyleFontSnapshot,
+  CellStyleRecord,
+  CellVerticalAlignment,
+  SheetStyleRangeSnapshot,
+  WorkbookAxisEntrySnapshot,
+  WorkbookMergeRangeSnapshot,
+  WorkbookSnapshot,
+} from '@bilig/protocol'
 
 const PREVIEW_ROW_LIMIT = 8
 const PREVIEW_COLUMN_LIMIT = 6
@@ -198,6 +212,221 @@ function buildRowEntries(rows: unknown[] | undefined): WorkbookAxisEntrySnapshot
   }))
 }
 
+function normalizeRgbColor(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null
+  }
+  const normalized = value.trim().replace(/^#/, '')
+  if (/^[0-9a-fA-F]{6}$/.test(normalized)) {
+    return `#${normalized.toLowerCase()}`
+  }
+  if (/^[0-9a-fA-F]{8}$/.test(normalized)) {
+    return `#${normalized.slice(2).toLowerCase()}`
+  }
+  return null
+}
+
+function readRgbColor(value: unknown): string | null {
+  if (!isRecord(value)) {
+    return null
+  }
+  return normalizeRgbColor(value['rgb'])
+}
+
+function readFiniteNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+function readImportedFillStyle(style: Record<string, unknown>): CellStyleRecord['fill'] | undefined {
+  const fill = isRecord(style['fill']) ? style['fill'] : style
+  if (fill['patternType'] !== 'solid') {
+    return undefined
+  }
+  const backgroundColor = readRgbColor(fill['fgColor']) ?? readRgbColor(fill['bgColor'])
+  return backgroundColor ? { backgroundColor } : undefined
+}
+
+function readImportedFontStyle(style: Record<string, unknown>): CellStyleFontSnapshot | undefined {
+  const fontRecord = isRecord(style['font']) ? style['font'] : null
+  if (!fontRecord) {
+    return undefined
+  }
+  const font: CellStyleFontSnapshot = {}
+  const family = typeof fontRecord['name'] === 'string' ? fontRecord['name'].trim() : ''
+  if (family.length > 0) {
+    font.family = family
+  }
+  const size = readFiniteNumber(fontRecord['sz']) ?? readFiniteNumber(fontRecord['size'])
+  if (size !== null && size > 0) {
+    font.size = size
+  }
+  if (fontRecord['bold'] === true) {
+    font.bold = true
+  }
+  if (fontRecord['italic'] === true) {
+    font.italic = true
+  }
+  if (fontRecord['underline'] === true || typeof fontRecord['underline'] === 'string') {
+    font.underline = true
+  }
+  const color = readRgbColor(fontRecord['color'])
+  if (color) {
+    font.color = color
+  }
+  return Object.keys(font).length > 0 ? font : undefined
+}
+
+function readHorizontalAlignment(value: unknown): CellHorizontalAlignment | undefined {
+  switch (value) {
+    case 'general':
+    case 'left':
+    case 'center':
+    case 'right':
+      return value
+    default:
+      return undefined
+  }
+}
+
+function readVerticalAlignment(value: unknown): CellVerticalAlignment | undefined {
+  switch (value) {
+    case 'top':
+      return 'top'
+    case 'center':
+    case 'middle':
+      return 'middle'
+    case 'bottom':
+      return 'bottom'
+    default:
+      return undefined
+  }
+}
+
+function readImportedAlignmentStyle(style: Record<string, unknown>): CellStyleAlignmentSnapshot | undefined {
+  const alignmentRecord = isRecord(style['alignment']) ? style['alignment'] : null
+  if (!alignmentRecord) {
+    return undefined
+  }
+  const horizontal = readHorizontalAlignment(alignmentRecord['horizontal'])
+  const vertical = readVerticalAlignment(alignmentRecord['vertical'])
+  const indent = readFiniteNumber(alignmentRecord['indent'])
+  const alignment: CellStyleAlignmentSnapshot = {
+    ...(horizontal ? { horizontal } : {}),
+    ...(vertical ? { vertical } : {}),
+    ...(alignmentRecord['wrapText'] === true ? { wrap: true } : {}),
+    ...(indent !== null && indent >= 0 ? { indent } : {}),
+  }
+  return Object.keys(alignment).length > 0 ? alignment : undefined
+}
+
+function readBorderKind(value: unknown): { style: CellBorderStyle; weight: CellBorderWeight } | null {
+  switch (value) {
+    case 'hair':
+    case 'thin':
+      return { style: 'solid', weight: 'thin' }
+    case 'medium':
+      return { style: 'solid', weight: 'medium' }
+    case 'thick':
+      return { style: 'solid', weight: 'thick' }
+    case 'dashed':
+    case 'mediumDashed':
+    case 'dashDot':
+    case 'dashDotDot':
+    case 'slantDashDot':
+    case 'mediumDashDot':
+    case 'mediumDashDotDot':
+      return { style: 'dashed', weight: value === 'dashed' ? 'thin' : 'medium' }
+    case 'dotted':
+      return { style: 'dotted', weight: 'thin' }
+    case 'double':
+      return { style: 'double', weight: 'medium' }
+    default:
+      return null
+  }
+}
+
+function readImportedBorderSide(value: unknown): CellBorderSideSnapshot | undefined {
+  if (!isRecord(value)) {
+    return undefined
+  }
+  const borderKind = readBorderKind(value['style'])
+  if (!borderKind) {
+    return undefined
+  }
+  return {
+    ...borderKind,
+    color: readRgbColor(value['color']) ?? '#000000',
+  }
+}
+
+function readImportedBorderStyle(style: Record<string, unknown>): CellStyleBordersSnapshot | undefined {
+  const borderRecord = isRecord(style['border']) ? style['border'] : null
+  if (!borderRecord) {
+    return undefined
+  }
+  const top = readImportedBorderSide(borderRecord['top'])
+  const right = readImportedBorderSide(borderRecord['right'])
+  const bottom = readImportedBorderSide(borderRecord['bottom'])
+  const left = readImportedBorderSide(borderRecord['left'])
+  const borders: CellStyleBordersSnapshot = {
+    ...(top ? { top } : {}),
+    ...(right ? { right } : {}),
+    ...(bottom ? { bottom } : {}),
+    ...(left ? { left } : {}),
+  }
+  return Object.keys(borders).length > 0 ? borders : undefined
+}
+
+export function readImportedXlsxCellStyle(value: unknown): Omit<CellStyleRecord, 'id'> | null {
+  if (!isRecord(value)) {
+    return null
+  }
+  const fill = readImportedFillStyle(value)
+  const font = readImportedFontStyle(value)
+  const alignment = readImportedAlignmentStyle(value)
+  const borders = readImportedBorderStyle(value)
+  const style: Omit<CellStyleRecord, 'id'> = {
+    ...(fill ? { fill } : {}),
+    ...(font ? { font } : {}),
+    ...(alignment ? { alignment } : {}),
+    ...(borders ? { borders } : {}),
+  }
+  return Object.keys(style).length > 0 ? style : null
+}
+
+function internImportedStyle(style: Omit<CellStyleRecord, 'id'>, catalog: Map<string, CellStyleRecord>): string {
+  const key = JSON.stringify(style)
+  const existing = catalog.get(key)
+  if (existing) {
+    return existing.id
+  }
+  const record: CellStyleRecord = {
+    id: `xlsx-style-${catalog.size + 1}`,
+    ...style,
+  }
+  catalog.set(key, record)
+  return record.id
+}
+
+function buildMergeEntries(sheetName: string, merges: readonly XLSX.Range[] | undefined): WorkbookMergeRangeSnapshot[] | undefined {
+  if (!Array.isArray(merges) || merges.length === 0) {
+    return undefined
+  }
+  return merges.map((range) => ({
+    sheetName,
+    startAddress: XLSX.utils.encode_cell(range.s),
+    endAddress: XLSX.utils.encode_cell(range.e),
+  }))
+}
+
+function createCellRange(sheetName: string, address: string) {
+  return {
+    sheetName,
+    startAddress: address,
+    endAddress: address,
+  }
+}
+
 function addWorkbookWarnings(workbook: XLSX.WorkBook, warnings: string[]): void {
   if (workbook.vbaraw) {
     warnings.push('Macros were ignored during XLSX import.')
@@ -208,11 +437,7 @@ function addWorkbookWarnings(workbook: XLSX.WorkBook, warnings: string[]): void 
   }
 }
 
-function addSheetWarnings(sheetName: string, sheet: XLSX.WorkSheet, warnings: string[], ignoredComments: { seen: boolean }): void {
-  const merges = sheet['!merges']
-  if (Array.isArray(merges) && merges.length > 0) {
-    warnings.push(`Merged cells on ${sheetName} were ignored during XLSX import.`)
-  }
+function addSheetWarnings(sheet: XLSX.WorkSheet, warnings: string[], ignoredComments: { seen: boolean }): void {
   Object.values(sheet).forEach((value) => {
     if (!isRecord(value)) {
       return
@@ -239,6 +464,7 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
   addWorkbookWarnings(workbook, warnings)
 
   const ignoredComments = { seen: false }
+  const styleCatalog = new Map<string, CellStyleRecord>()
   const previewSheets: ImportedWorkbookSheetPreview[] = []
   const sheets = workbook.SheetNames.map((sheetName, order) => {
     const sheet = workbook.Sheets[sheetName]
@@ -260,9 +486,10 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
       }
     }
 
-    addSheetWarnings(sheetName, sheet, warnings, ignoredComments)
+    addSheetWarnings(sheet, warnings, ignoredComments)
     const range = sheet['!ref'] ? XLSX.utils.decode_range(sheet['!ref']) : null
     const cells: WorkbookSnapshot['sheets'][number]['cells'] = []
+    const styleRanges: SheetStyleRangeSnapshot[] = []
     const rowCount = range ? range.e.r + 1 : 0
     const columnCount = range ? range.e.c + 1 : 0
     if (range) {
@@ -284,6 +511,13 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
           }
           if (typeof cell.z === 'string' && cell.z.trim().length > 0) {
             nextCell.format = cell.z
+          }
+          const style = readImportedXlsxCellStyle(cell.s)
+          if (style) {
+            styleRanges.push({
+              range: createCellRange(sheetName, address),
+              styleId: internImportedStyle(style, styleCatalog),
+            })
           }
           if (nextCell.value !== undefined || nextCell.formula !== undefined || nextCell.format !== undefined) {
             cells.push(nextCell)
@@ -313,11 +547,14 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
 
     const rows = buildRowEntries(sheet['!rows'])
     const columns = buildColumnEntries(sheet['!cols'])
+    const merges = buildMergeEntries(sheetName, sheet['!merges'])
     const metadata =
-      rows || columns
+      rows || columns || styleRanges.length > 0 || merges
         ? {
             ...(rows ? { rows } : {}),
             ...(columns ? { columns } : {}),
+            ...(styleRanges.length > 0 ? { styleRanges } : {}),
+            ...(merges ? { merges } : {}),
           }
         : undefined
 
@@ -335,6 +572,7 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
       version: 1,
       workbook: {
         name: workbookName,
+        ...(styleCatalog.size > 0 ? { metadata: { styles: [...styleCatalog.values()] } } : {}),
       },
       sheets,
     },

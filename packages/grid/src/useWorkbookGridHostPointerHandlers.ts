@@ -33,6 +33,10 @@ function resetGridHoverState(current: GridHoverState): GridHoverState {
   return sameGridHoverState(current, DEFAULT_GRID_HOVER_STATE) ? current : DEFAULT_GRID_HOVER_STATE
 }
 
+function toGridResizeCursorHoverState(next: GridHoverState): GridHoverState {
+  return { cell: null, header: null, cursor: next.cursor }
+}
+
 function isFillHandleTarget(target: EventTarget | null): boolean {
   return target instanceof Element && target.closest("[data-grid-fill-handle='true']") !== null
 }
@@ -193,12 +197,11 @@ export function useWorkbookGridHostPointerHandlers(input: {
       const isResizeCursorOnlyHover =
         next.cell === null && (next.header?.kind === 'column' || next.header?.kind === 'row') && next.cursor !== 'default'
       if (isResizeCursorOnlyHover) {
+        const cursorOnlyHoverState = toGridResizeCursorHoverState(next)
         if (hostElement) {
-          hostElement.style.cursor = next.cursor
+          hostElement.style.cursor = cursorOnlyHoverState.cursor
         }
-        setHoverState((current) =>
-          current.cell === null && current.header === null && current.cursor === 'default' ? current : DEFAULT_GRID_HOVER_STATE,
-        )
+        setHoverState((current) => (sameGridHoverState(current, cursorOnlyHoverState) ? current : cursorOnlyHoverState))
         return
       }
       if (hostElement) {

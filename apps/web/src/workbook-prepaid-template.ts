@@ -13,7 +13,7 @@ export interface WorkbookTemplateMutation {
   readonly args: readonly unknown[]
 }
 
-interface PrepaidExample {
+export interface PrepaidAmortizationTemplateItem {
   readonly vendor: string
   readonly description: string
   readonly start: readonly [year: number, month: number, day: number]
@@ -22,16 +22,31 @@ interface PrepaidExample {
   readonly notes: string
 }
 
+export interface PrepaidAmortizationTemplateOptions {
+  readonly year?: number
+  readonly items?: readonly PrepaidAmortizationTemplateItem[]
+  readonly dataRowCount?: number
+}
+
+interface PrepaidAmortizationTemplateContext {
+  readonly year: number
+  readonly items: readonly PrepaidAmortizationTemplateItem[]
+  readonly firstDataRow: number
+  readonly lastDataRow: number
+  readonly rangeEnd: string
+  readonly headers: readonly string[]
+}
+
 const TEMPLATE_RANGE_START = 'A1'
-const TEMPLATE_RANGE_END = 'W40'
 const TEMPLATE_HEADER_ROW = 5
 const TEMPLATE_FIRST_DATA_ROW = 6
-const TEMPLATE_LAST_DATA_ROW = 10
-const TEMPLATE_YEAR = 2024
+const DEFAULT_TEMPLATE_YEAR = 2024
+const MIN_TEMPLATE_DATA_ROWS = 5
+const MIN_TEMPLATE_CLEAR_ROWS = 40
 const EXCEL_EPOCH_OFFSET = 25569
 const DAY_MS = 86_400_000
 
-const PREPAID_EXAMPLES: readonly PrepaidExample[] = [
+const DEFAULT_PREPAID_ITEMS: readonly PrepaidAmortizationTemplateItem[] = [
   {
     vendor: 'ABC Insurance',
     description: 'General Liability',
@@ -74,31 +89,7 @@ const PREPAID_EXAMPLES: readonly PrepaidExample[] = [
   },
 ] as const
 
-const HEADERS = [
-  'Vendor',
-  'Description',
-  'Start Date',
-  'End Date',
-  'Total Amount',
-  'Life Months',
-  'Monthly Average',
-  'Jan 2024',
-  'Feb 2024',
-  'Mar 2024',
-  'Apr 2024',
-  'May 2024',
-  'Jun 2024',
-  'Jul 2024',
-  'Aug 2024',
-  'Sep 2024',
-  'Oct 2024',
-  'Nov 2024',
-  'Dec 2024',
-  '2024 Amortized',
-  'Remaining Balance',
-  'Status',
-  'Notes',
-] as const
+const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const
 
 const COLUMN_WIDTHS = [184, 190, 104, 104, 118, 94, 118, 92, 92, 92, 92, 92, 92, 92, 92, 92, 92, 92, 92, 130, 134, 118, 180] as const
 
@@ -151,8 +142,52 @@ function excelDateSerial(year: number, month: number, day: number): number {
   return Date.UTC(year, month - 1, day) / DAY_MS + EXCEL_EPOCH_OFFSET
 }
 
-function monthFormula(row: number, month: number): string {
-  return `ROUND(IFERROR($E${row}*MAX(0,MIN($D${row},EOMONTH(DATE(${TEMPLATE_YEAR},${month},1),0))-MAX($C${row},DATE(${TEMPLATE_YEAR},${month},1))+1)/($D${row}-$C${row}+1),0),2)`
+function buildHeaders(year: number): readonly string[] {
+  return [
+    'Vendor',
+    'Description',
+    'Start Date',
+    'End Date',
+    'Total Amount',
+    'Life Months',
+    'Monthly Average',
+    ...MONTH_LABELS.map((label) => `${label} ${year}`),
+    `${year} Amortized`,
+    'Remaining Balance',
+    'Status',
+    'Notes',
+  ]
+}
+
+function normalizeTemplateYear(value: number | undefined): number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 1900 && value <= 9999 ? Math.trunc(value) : DEFAULT_TEMPLATE_YEAR
+}
+
+function normalizeDataRowCount(value: number | undefined): number {
+  return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0
+}
+
+function buildTemplateContext(options: PrepaidAmortizationTemplateOptions | undefined): PrepaidAmortizationTemplateContext {
+  const year = normalizeTemplateYear(options?.year)
+  const items = options?.items ?? DEFAULT_PREPAID_ITEMS
+  const dataRowCount = Math.max(MIN_TEMPLATE_DATA_ROWS, items.length, normalizeDataRowCount(options?.dataRowCount))
+  const lastDataRow = TEMPLATE_FIRST_DATA_ROW + dataRowCount - 1
+  return {
+    year,
+    items,
+    firstDataRow: TEMPLATE_FIRST_DATA_ROW,
+    lastDataRow,
+    rangeEnd: `W${Math.max(MIN_TEMPLATE_CLEAR_ROWS, lastDataRow + 5)}`,
+    headers: buildHeaders(year),
+  }
+}
+
+function monthFormula(row: number, year: number, month: number): string {
+  return `ROUND(IFERROR($E${row}*MAX(0,MIN($D${row},EOMONTH(DATE(${year},${month},1),0))-MAX($C${row},DATE(${year},${month},1))+1)/($D${row}-$C${row}+1),0),2)`
+}
+
+function statusFormula(row: number): string {
+  return `IF(COUNTA(A${row}:E${row})=0,"",IF(OR(C${row}="",D${row}=""),"Missing dates",IF(E${row}<=0,"Missing amount",IF(D${row}<C${row},"Check dates",IF(U${row}<0,"Over-amortized",IF(U${row}<=0,"Complete",IF(T${row}=0,"Not started","In progress")))))))`
 }
 
 function pushCell(ops: CommitOp[], sheetName: string, addr: string, value: LiteralInput, format?: string): void {
@@ -183,50 +218,58 @@ function pushNumberFormat(
   mutations.push({ method: 'setRangeNumberFormat', args: [range(sheetName, startAddress, endAddress), format] })
 }
 
-function buildPrepaidTemplateCells(sheetName: string): CommitOp[] {
+function buildPrepaidTemplateCells(sheetName: string, context: PrepaidAmortizationTemplateContext): CommitOp[] {
   const ops: CommitOp[] = []
   pushCell(ops, sheetName, 'A1', 'Prepaid Amortization Schedule')
-  pushCell(ops, sheetName, 'A2', 'Daily-prorated 2024 amortization with summary totals, status, and open balance tracking.')
+  pushCell(ops, sheetName, 'A2', `Daily-prorated ${context.year} amortization with summary totals, status, and open balance tracking.`)
   pushCell(ops, sheetName, 'A3', 'Prepaids')
-  pushFormula(ops, sheetName, 'B3', `ROUND(SUM(E${TEMPLATE_FIRST_DATA_ROW}:E${TEMPLATE_LAST_DATA_ROW}),2)`, CURRENCY_FORMAT_CODE)
+  pushFormula(ops, sheetName, 'B3', `ROUND(SUM(E${context.firstDataRow}:E${context.lastDataRow}),2)`, CURRENCY_FORMAT_CODE)
   pushCell(ops, sheetName, 'C3', 'Avg/mo')
-  pushFormula(ops, sheetName, 'D3', `ROUND(SUM(G${TEMPLATE_FIRST_DATA_ROW}:G${TEMPLATE_LAST_DATA_ROW}),2)`, CURRENCY_FORMAT_CODE)
+  pushFormula(ops, sheetName, 'D3', `ROUND(SUM(G${context.firstDataRow}:G${context.lastDataRow}),2)`, CURRENCY_FORMAT_CODE)
   pushCell(ops, sheetName, 'E3', 'Amortized')
-  pushFormula(ops, sheetName, 'F3', `ROUND(SUM(T${TEMPLATE_FIRST_DATA_ROW}:T${TEMPLATE_LAST_DATA_ROW}),2)`, CURRENCY_FORMAT_CODE)
+  pushFormula(ops, sheetName, 'F3', `ROUND(SUM(T${context.firstDataRow}:T${context.lastDataRow}),2)`, CURRENCY_FORMAT_CODE)
   pushCell(ops, sheetName, 'G3', 'Remaining')
-  pushFormula(ops, sheetName, 'H3', `ROUND(SUM(U${TEMPLATE_FIRST_DATA_ROW}:U${TEMPLATE_LAST_DATA_ROW}),2)`, CURRENCY_FORMAT_CODE)
+  pushFormula(ops, sheetName, 'H3', `ROUND(SUM(U${context.firstDataRow}:U${context.lastDataRow}),2)`, CURRENCY_FORMAT_CODE)
   pushCell(ops, sheetName, 'A4', 'Inputs A:E | Schedule H:S | Totals T:U | Status V')
 
-  HEADERS.forEach((header, columnIndex) => {
+  context.headers.forEach((header, columnIndex) => {
     pushCell(ops, sheetName, `${columnName(columnIndex)}${TEMPLATE_HEADER_ROW}`, header)
   })
 
-  PREPAID_EXAMPLES.forEach((example, exampleIndex) => {
-    const row = TEMPLATE_FIRST_DATA_ROW + exampleIndex
-    pushCell(ops, sheetName, `A${row}`, example.vendor)
-    pushCell(ops, sheetName, `B${row}`, example.description)
-    pushCell(ops, sheetName, `C${row}`, excelDateSerial(...example.start), ISO_DATE_FORMAT_CODE)
-    pushCell(ops, sheetName, `D${row}`, excelDateSerial(...example.end), ISO_DATE_FORMAT_CODE)
-    pushCell(ops, sheetName, `E${row}`, example.amount, CURRENCY_FORMAT_CODE)
+  for (let row = context.firstDataRow; row <= context.lastDataRow; row += 1) {
+    const example = context.items[row - context.firstDataRow]
+    if (example) {
+      pushCell(ops, sheetName, `A${row}`, example.vendor)
+      pushCell(ops, sheetName, `B${row}`, example.description)
+      pushCell(ops, sheetName, `C${row}`, excelDateSerial(...example.start), ISO_DATE_FORMAT_CODE)
+      pushCell(ops, sheetName, `D${row}`, excelDateSerial(...example.end), ISO_DATE_FORMAT_CODE)
+      pushCell(ops, sheetName, `E${row}`, example.amount, CURRENCY_FORMAT_CODE)
+    }
     pushFormula(ops, sheetName, `F${row}`, `IFERROR(DATEDIF(C${row},D${row}+1,"M"),0)`, INTEGER_FORMAT_CODE)
     pushFormula(ops, sheetName, `G${row}`, `ROUND(IFERROR(E${row}/F${row},0),2)`, CURRENCY_FORMAT_CODE)
     for (let month = 1; month <= 12; month += 1) {
-      pushFormula(ops, sheetName, `${columnName(6 + month)}${row}`, monthFormula(row, month), CURRENCY_FORMAT_CODE)
+      pushFormula(ops, sheetName, `${columnName(6 + month)}${row}`, monthFormula(row, context.year, month), CURRENCY_FORMAT_CODE)
     }
     pushFormula(ops, sheetName, `T${row}`, `ROUND(SUM(H${row}:S${row}),2)`, CURRENCY_FORMAT_CODE)
     pushFormula(ops, sheetName, `U${row}`, `ROUND(E${row}-T${row},2)`, CURRENCY_FORMAT_CODE)
-    pushFormula(ops, sheetName, `V${row}`, `IF(U${row}<=0,"Complete",IF(T${row}=0,"Not started","In progress"))`)
-    pushCell(ops, sheetName, `W${row}`, example.notes)
-  })
+    pushFormula(ops, sheetName, `V${row}`, statusFormula(row))
+    if (example) {
+      pushCell(ops, sheetName, `W${row}`, example.notes)
+    }
+  }
 
   return ops
 }
 
-export function buildPrepaidAmortizationTemplateMutations(sheetName: string): WorkbookTemplateMutation[] {
+export function buildPrepaidAmortizationTemplateMutations(
+  sheetName: string,
+  options?: PrepaidAmortizationTemplateOptions,
+): WorkbookTemplateMutation[] {
+  const context = buildTemplateContext(options)
   const mutations: WorkbookTemplateMutation[] = [
-    { method: 'unmergeCells', args: [range(sheetName, TEMPLATE_RANGE_START, TEMPLATE_RANGE_END)] },
-    { method: 'clearRange', args: [range(sheetName, TEMPLATE_RANGE_START, TEMPLATE_RANGE_END)] },
-    { method: 'renderCommit', args: [buildPrepaidTemplateCells(sheetName)] },
+    { method: 'unmergeCells', args: [range(sheetName, TEMPLATE_RANGE_START, context.rangeEnd)] },
+    { method: 'clearRange', args: [range(sheetName, TEMPLATE_RANGE_START, context.rangeEnd)] },
+    { method: 'renderCommit', args: [buildPrepaidTemplateCells(sheetName, context)] },
     { method: 'mergeCells', args: [range(sheetName, 'A1', 'W1')] },
     { method: 'mergeCells', args: [range(sheetName, 'A2', 'W2')] },
     { method: 'mergeCells', args: [range(sheetName, 'A4', 'W4')] },
@@ -260,19 +303,19 @@ export function buildPrepaidAmortizationTemplateMutations(sheetName: string): Wo
   pushStyle(mutations, sheetName, 'B3', 'H3', {
     font: { bold: true, color: '#1F2933', size: 12 },
   })
-  pushStyle(mutations, sheetName, 'A6', 'W10', {
+  pushStyle(mutations, sheetName, `A${context.firstDataRow}`, `W${context.lastDataRow}`, {
     font: { color: '#1F2933', size: 11 },
     alignment: { vertical: 'middle' },
     borders: { bottom: THIN_BORDER },
   })
-  pushStyle(mutations, sheetName, 'H6', 'S10', {
+  pushStyle(mutations, sheetName, `H${context.firstDataRow}`, `S${context.lastDataRow}`, {
     fill: { backgroundColor: '#F4F8F5' },
   })
-  pushStyle(mutations, sheetName, 'T6', 'U10', {
+  pushStyle(mutations, sheetName, `T${context.firstDataRow}`, `U${context.lastDataRow}`, {
     fill: { backgroundColor: '#FFF7E6' },
     font: { bold: true },
   })
-  pushStyle(mutations, sheetName, 'V6', 'V10', {
+  pushStyle(mutations, sheetName, `V${context.firstDataRow}`, `V${context.lastDataRow}`, {
     fill: { backgroundColor: '#F3F2EE' },
     alignment: { horizontal: 'center', vertical: 'middle' },
     font: { bold: true, color: '#52606D' },
@@ -282,10 +325,10 @@ export function buildPrepaidAmortizationTemplateMutations(sheetName: string): Wo
   pushNumberFormat(mutations, sheetName, 'D3', 'D3', CURRENCY_FORMAT)
   pushNumberFormat(mutations, sheetName, 'F3', 'F3', CURRENCY_FORMAT)
   pushNumberFormat(mutations, sheetName, 'H3', 'H3', CURRENCY_FORMAT)
-  pushNumberFormat(mutations, sheetName, 'C6', 'D10', ISO_DATE_FORMAT)
-  pushNumberFormat(mutations, sheetName, 'E6', 'E10', CURRENCY_FORMAT)
-  pushNumberFormat(mutations, sheetName, 'F6', 'F10', INTEGER_FORMAT)
-  pushNumberFormat(mutations, sheetName, 'G6', 'U10', CURRENCY_FORMAT)
+  pushNumberFormat(mutations, sheetName, `C${context.firstDataRow}`, `D${context.lastDataRow}`, ISO_DATE_FORMAT)
+  pushNumberFormat(mutations, sheetName, `E${context.firstDataRow}`, `E${context.lastDataRow}`, CURRENCY_FORMAT)
+  pushNumberFormat(mutations, sheetName, `F${context.firstDataRow}`, `F${context.lastDataRow}`, INTEGER_FORMAT)
+  pushNumberFormat(mutations, sheetName, `G${context.firstDataRow}`, `U${context.lastDataRow}`, CURRENCY_FORMAT)
 
   COLUMN_WIDTHS.forEach((width, columnIndex) => {
     mutations.push({ method: 'updateColumnMetadata', args: [sheetName, columnIndex, 1, width, null] })
