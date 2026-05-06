@@ -197,7 +197,9 @@ export function hasUiResponsivenessSameCorpusTenXGap(scorecard: UiResponsiveness
   if (
     !scorecard.sameCorpusProof.captured ||
     scorecard.sameCorpusProof.requiredCaseCount === 0 ||
+    scorecard.sameCorpusProof.cases.length !== scorecard.sameCorpusProof.requiredCaseCount ||
     scorecard.sameCorpusProof.tenXMeanAndP95CaseCount !== scorecard.sameCorpusProof.requiredCaseCount ||
+    !scorecard.sameCorpusProof.cases.some((entry) => entry.workload === 'visible-scroll-response') ||
     scorecard.sameCorpusProof.cases.some((entry) => !entry.passed)
   ) {
     return true

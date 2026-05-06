@@ -57,7 +57,7 @@ describe('UI responsiveness live browser scorecard', () => {
   })
 
   it('derives same-corpus 10x ratios from captured browser operation samples', () => {
-    const proof = buildSameCorpusProof(buildSameCorpusCapture())
+    const proof = buildSameCorpusProof(buildSameCorpusCapture({ workload: 'visible-scroll-response' }))
 
     expect(proof).toMatchObject({
       captured: true,
@@ -84,16 +84,40 @@ describe('UI responsiveness live browser scorecard', () => {
     expect(
       hasUiResponsivenessSameCorpusTenXGap({
         ...scorecard,
-        sameCorpusProof: buildSameCorpusProof(buildSameCorpusCapture()),
+        sameCorpusProof: buildSameCorpusProof(buildSameCorpusCapture({ workload: 'visible-scroll-response' })),
       }),
     ).toBe(false)
+  })
+
+  it('keeps the same-corpus blocker when required scroll evidence is missing', () => {
+    const scorecard = parseUiResponsivenessLiveBrowserScorecard(
+      readJsonObject(resolve(repoRoot, 'packages/benchmarks/baselines/ui-responsiveness-live-browser-scorecard.json')),
+    )
+
+    expect(() => buildSameCorpusProof(buildSameCorpusCapture({ workload: 'visible-edit-commit' }))).toThrow(
+      'UI responsiveness same-corpus proof is missing required workload: visible-scroll-response',
+    )
+    expect(
+      hasUiResponsivenessSameCorpusTenXGap({
+        ...scorecard,
+        sameCorpusProof: {
+          ...scorecard.sameCorpusProof,
+          captured: true,
+          evidenceKind: 'same-corpus-browser-capture',
+          requiredCaseCount: 1,
+          tenXMeanAndP95CaseCount: 1,
+          coveredCorpusCaseIds: ['wide-mixed-250k'],
+          cases: [],
+        },
+      }),
+    ).toBe(true)
   })
 
   it('rejects stale same-corpus pass flags and ratios', () => {
     const scorecard = parseUiResponsivenessLiveBrowserScorecard(
       readJsonObject(resolve(repoRoot, 'packages/benchmarks/baselines/ui-responsiveness-live-browser-scorecard.json')),
     )
-    const proof = buildSameCorpusProof(buildSameCorpusCapture())
+    const proof = buildSameCorpusProof(buildSameCorpusCapture({ workload: 'visible-scroll-response' }))
     const staleScorecard: UiResponsivenessLiveBrowserScorecard = {
       ...scorecard,
       sameCorpusProof: {
@@ -111,7 +135,7 @@ describe('UI responsiveness live browser scorecard', () => {
   })
 })
 
-function buildSameCorpusCapture(): SameCorpusCapture {
+function buildSameCorpusCapture(args: { readonly workload: 'visible-scroll-response' | 'visible-edit-commit' }): SameCorpusCapture {
   return {
     schemaVersion: 1,
     suite: 'ui-responsiveness-same-corpus-capture',
@@ -119,10 +143,10 @@ function buildSameCorpusCapture(): SameCorpusCapture {
     limitations: [],
     cases: [
       {
-        id: 'same-corpus-wide-mixed-250k-visible-edit',
+        id: `same-corpus-wide-mixed-250k-${args.workload}`,
         corpusCaseId: 'wide-mixed-250k',
         materializedCells: 250000,
-        workload: 'visible-edit-commit',
+        workload: args.workload,
         bilig: {
           product: 'bilig',
           source: 'e2e/tests/web-shell-scroll-performance.pw.ts',

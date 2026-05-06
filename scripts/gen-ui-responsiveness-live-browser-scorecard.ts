@@ -171,6 +171,7 @@ export interface SameCorpusCaptureCorpusVerification {
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
 const outputPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'ui-responsiveness-live-browser-scorecard.json')
 const sampleCount = 3
+const requiredSameCorpusWorkloads = ['visible-scroll-response'] as const satisfies readonly UiResponsivenessSameCorpusWorkload[]
 const viewport = { width: 1440, height: 900 } as const
 const microsoftExcelSourceWorkbook =
   'https://github.com/fileformat-blog-gists/SampleFiles/raw/main/Spreadsheet-File-Formats/XLSX/Pivot-Tables-and-Charts.xlsx'
@@ -388,7 +389,7 @@ export function buildMissingSameCorpusProof(): UiResponsivenessSameCorpusProof {
 export function buildSameCorpusProof(capture: SameCorpusCapture): UiResponsivenessSameCorpusProof {
   validateSameCorpusCapture(capture)
   const cases = capture.cases.map(buildSameCorpusCase)
-  return {
+  const proof: UiResponsivenessSameCorpusProof = {
     captured: true,
     evidenceKind: 'same-corpus-browser-capture',
     requiredProductCount: 3,
@@ -400,6 +401,8 @@ export function buildSameCorpusProof(capture: SameCorpusCapture): UiResponsivene
     limitations: [...capture.limitations],
     cases,
   }
+  validateSameCorpusProof(proof)
+  return proof
 }
 
 function validateSameCorpusCapture(capture: SameCorpusCapture): void {
@@ -783,6 +786,11 @@ function validateSameCorpusProof(proof: UiResponsivenessSameCorpusProof): void {
   }
   if (proof.requiredCaseCount === 0 || proof.cases.length !== proof.requiredCaseCount) {
     throw new Error('UI responsiveness same-corpus proof must include every required captured case')
+  }
+  for (const workload of requiredSameCorpusWorkloads) {
+    if (!proof.cases.some((entry) => entry.workload === workload)) {
+      throw new Error(`UI responsiveness same-corpus proof is missing required workload: ${workload}`)
+    }
   }
   const tenXCaseCount = proof.cases.filter(
     (entry) => entry.tenXMeanAndP95AgainstGoogleSheets && entry.tenXMeanAndP95AgainstMicrosoftExcelWeb,
