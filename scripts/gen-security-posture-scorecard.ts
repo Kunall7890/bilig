@@ -42,6 +42,7 @@ export interface SecurityPostureScorecard {
     readonly importImplementation: 'packages/excel-import/src/index.ts'
     readonly agentPolicyImplementation: 'packages/agent-api/src/workbook-agent-execution-policy.ts'
     readonly browserSecurityHeadersImplementation: 'apps/bilig/src/http/sync-server-security-headers.ts'
+    readonly deploymentRuntimeNetworkPolicyEvidence: 'packages/benchmarks/baselines/bilig-runtime-network-policy-evidence.json'
     readonly dependencyAuditCommand: 'pnpm audit --prod --json'
     readonly runtimePackageGate: 'pnpm publish:runtime:check'
   }
@@ -69,6 +70,13 @@ interface DynamicCodeFinding {
 
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
 const outputPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'security-posture-scorecard.json')
+const deploymentRuntimeNetworkPolicyEvidencePath = join(
+  rootDir,
+  'packages',
+  'benchmarks',
+  'baselines',
+  'bilig-runtime-network-policy-evidence.json',
+)
 const formulaRuntimeScanRoots = ['packages/formula/src', 'packages/core/src/formula', 'packages/core/src/engine/services'] as const
 const requiredControlIds = [
   'formula-runtime-no-dynamic-code-execution',
@@ -76,6 +84,7 @@ const requiredControlIds = [
   'shared-agent-owner-review',
   'runtime-publish-package-hardening',
   'browser-content-security-policy',
+  'deployment-runtime-network-policy',
   'production-dependency-vulnerability-audit',
 ] as const
 const coveredControlOrder = [
@@ -91,9 +100,10 @@ const coveredControlOrder = [
   'browser.contentSecurityPolicy',
   'browser.crossOriginIsolation',
   'browser.workerWasmRuntimeAllowlist',
+  'deployment.runtimeNetworkPolicy',
   'dependency.vulnerabilityAudit',
 ] as const
-const uncoveredControls = ['deployment.runtimeNetworkPolicy', 'externalSheetsExcelSecurityComparison'] as const
+const uncoveredControls = ['externalSheetsExcelSecurityComparison'] as const
 const disallowedImportModules = new Set(['node:child_process', 'child_process', 'node:vm', 'vm', 'bun:ffi'])
 const formulaRuntimeServiceFileNames = new Set([
   'direct-formula-index-collection.ts',
@@ -133,6 +143,7 @@ export function buildSecurityPostureScorecard(generatedAt = new Date().toISOStri
     buildAgentPermissionPolicyControl(),
     buildRuntimePackageHardeningControl(),
     buildBrowserContentSecurityPolicyControl(),
+    buildDeploymentRuntimeNetworkPolicyControl(),
     buildProductionDependencyAuditControl(),
   ]
   const coveredControlSet = new Set(controls.flatMap((control) => control.coveredControls))
@@ -148,6 +159,7 @@ export function buildSecurityPostureScorecard(generatedAt = new Date().toISOStri
       importImplementation: 'packages/excel-import/src/index.ts',
       agentPolicyImplementation: 'packages/agent-api/src/workbook-agent-execution-policy.ts',
       browserSecurityHeadersImplementation: 'apps/bilig/src/http/sync-server-security-headers.ts',
+      deploymentRuntimeNetworkPolicyEvidence: 'packages/benchmarks/baselines/bilig-runtime-network-policy-evidence.json',
       dependencyAuditCommand: 'pnpm audit --prod --json',
       runtimePackageGate: 'pnpm publish:runtime:check',
     },
@@ -293,6 +305,25 @@ function buildBrowserContentSecurityPolicyControl(): SecurityPostureControl {
     coveredControls: ['browser.contentSecurityPolicy', 'browser.crossOriginIsolation', 'browser.workerWasmRuntimeAllowlist'],
     evidence:
       'Built the production workbook browser CSP and verified default-deny, framing/object restrictions, cross-origin connection allowlisting, and worker/WASM allowances required by the runtime.',
+    findings,
+  })
+}
+
+function buildDeploymentRuntimeNetworkPolicyControl(): SecurityPostureControl {
+  const evidence = parseDeploymentRuntimeNetworkPolicyEvidence(
+    JSON.parse(readFileSync(deploymentRuntimeNetworkPolicyEvidencePath, 'utf8')) as unknown,
+  )
+  const findings = validateDeploymentRuntimeNetworkPolicyEvidence(evidence)
+
+  return securityControl({
+    id: 'deployment-runtime-network-policy',
+    category: 'runtime-hardening',
+    passed: findings.length === 0,
+    coveredControls: ['deployment.runtimeNetworkPolicy'],
+    evidence: `Validated the bilig GitOps NetworkPolicy evidence from ${evidence.sourceRepository}@${evidence.sourceCommit.slice(
+      0,
+      12,
+    )} (${evidence.sourcePath}, ${evidence.sourcePullRequest}) for app/Zero runtime ingress: it selects bilig-app and bilig-zero pods, restricts policy scope to Ingress, and allows only Traefik plus bilig app/Zero/Alloy peers on ports 4321 and 4848.`,
     findings,
   })
 }
@@ -514,6 +545,11 @@ export function parseSecurityPostureScorecard(value: unknown): SecurityPostureSc
         'browserSecurityHeadersImplementation',
         'apps/bilig/src/http/sync-server-security-headers.ts',
       ),
+      deploymentRuntimeNetworkPolicyEvidence: literalField(
+        source,
+        'deploymentRuntimeNetworkPolicyEvidence',
+        'packages/benchmarks/baselines/bilig-runtime-network-policy-evidence.json',
+      ),
       dependencyAuditCommand: literalField(source, 'dependencyAuditCommand', 'pnpm audit --prod --json'),
       runtimePackageGate: literalField(source, 'runtimePackageGate', 'pnpm publish:runtime:check'),
     },
@@ -588,6 +624,134 @@ function parseSecurityPostureCategory(value: string): SecurityPostureControl['ca
     return value
   }
   throw new Error(`Unexpected security posture category: ${value}`)
+}
+
+interface DeploymentRuntimeNetworkPolicyEvidence {
+  readonly schemaVersion: 1
+  readonly sourceRepository: 'github.com/proompteng/lab'
+  readonly sourceBranch: 'main'
+  readonly sourceCommit: string
+  readonly sourcePath: 'argocd/applications/bilig/runtime-network-policy.yaml'
+  readonly sourcePullRequest: 'https://github.com/proompteng/lab/pull/5669'
+  readonly policy: Record<string, unknown>
+}
+
+function parseDeploymentRuntimeNetworkPolicyEvidence(value: unknown): DeploymentRuntimeNetworkPolicyEvidence {
+  const record = toRecord(value, 'deployment runtime NetworkPolicy evidence')
+  return {
+    schemaVersion: record['schemaVersion'] === 1 ? 1 : unexpectedSchemaVersion(record['schemaVersion']),
+    sourceRepository: literalField(record, 'sourceRepository', 'github.com/proompteng/lab'),
+    sourceBranch: literalField(record, 'sourceBranch', 'main'),
+    sourceCommit: stringField(record, 'sourceCommit', 'deployment runtime NetworkPolicy evidence sourceCommit'),
+    sourcePath: literalField(record, 'sourcePath', 'argocd/applications/bilig/runtime-network-policy.yaml'),
+    sourcePullRequest: literalField(record, 'sourcePullRequest', 'https://github.com/proompteng/lab/pull/5669'),
+    policy: recordField(record, 'policy', 'deployment runtime NetworkPolicy manifest'),
+  }
+}
+
+function validateDeploymentRuntimeNetworkPolicyEvidence(evidence: DeploymentRuntimeNetworkPolicyEvidence): string[] {
+  const policy = evidence.policy
+  const metadata = recordField(policy, 'metadata', 'deployment runtime NetworkPolicy metadata')
+  const spec = recordField(policy, 'spec', 'deployment runtime NetworkPolicy spec')
+  const findings: string[] = []
+
+  if (policy['apiVersion'] !== 'networking.k8s.io/v1') {
+    findings.push('NetworkPolicy apiVersion is not networking.k8s.io/v1')
+  }
+  if (policy['kind'] !== 'NetworkPolicy') {
+    findings.push('manifest kind is not NetworkPolicy')
+  }
+  if (metadata['name'] !== 'bilig-runtime-ingress') {
+    findings.push('NetworkPolicy name is not bilig-runtime-ingress')
+  }
+  if (metadata['namespace'] !== 'bilig') {
+    findings.push('NetworkPolicy namespace is not bilig')
+  }
+  if (!/^[0-9a-f]{40}$/.test(evidence.sourceCommit)) {
+    findings.push('NetworkPolicy evidence sourceCommit must be a full Git SHA')
+  }
+
+  const policyTypes = stringArrayField(spec, 'policyTypes', 'deployment runtime NetworkPolicy policyTypes')
+  if (!arrayEquals(policyTypes, ['Ingress'])) {
+    findings.push('NetworkPolicy policyTypes must be exactly Ingress')
+  }
+
+  const podSelector = recordField(spec, 'podSelector', 'deployment runtime NetworkPolicy podSelector')
+  if (!hasMatchExpressionValues(podSelector, 'app', ['bilig-app', 'bilig-zero'])) {
+    findings.push('NetworkPolicy podSelector must select bilig-app and bilig-zero pods')
+  }
+
+  const ingressRules = arrayField(spec, 'ingress', 'deployment runtime NetworkPolicy ingress')
+  if (!ingressRules.some((rule) => allowsNamespaceIngress(rule, 'traefik', [4321, 4848]))) {
+    findings.push('NetworkPolicy must allow Traefik ingress to app and Zero runtime ports')
+  }
+  if (!ingressRules.some((rule) => allowsPodIngress(rule, ['bilig-alloy', 'bilig-app', 'bilig-zero'], [4321, 4848]))) {
+    findings.push('NetworkPolicy must allow bilig app, Zero, and Alloy peer ingress to runtime ports')
+  }
+
+  return findings
+}
+
+function allowsNamespaceIngress(rule: unknown, namespaceName: string, ports: readonly number[]): boolean {
+  const record = toRecord(rule, 'NetworkPolicy ingress rule')
+  return (
+    hasPorts(record, ports) &&
+    arrayField(record, 'from', 'NetworkPolicy ingress from').some((source) => {
+      const sourceRecord = toRecord(source, 'NetworkPolicy ingress source')
+      if (!Object.hasOwn(sourceRecord, 'namespaceSelector')) {
+        return false
+      }
+      const selector = recordField(sourceRecord, 'namespaceSelector', 'NetworkPolicy namespaceSelector')
+      const labels = recordField(selector, 'matchLabels', 'NetworkPolicy namespaceSelector matchLabels')
+      return labels['kubernetes.io/metadata.name'] === namespaceName
+    })
+  )
+}
+
+function allowsPodIngress(rule: unknown, apps: readonly string[], ports: readonly number[]): boolean {
+  const record = toRecord(rule, 'NetworkPolicy ingress rule')
+  return (
+    hasPorts(record, ports) &&
+    arrayField(record, 'from', 'NetworkPolicy ingress from').some((source) => {
+      const sourceRecord = toRecord(source, 'NetworkPolicy ingress source')
+      if (!Object.hasOwn(sourceRecord, 'podSelector')) {
+        return false
+      }
+      const selector = recordField(sourceRecord, 'podSelector', 'NetworkPolicy podSelector')
+      return hasMatchExpressionValues(selector, 'app', apps)
+    })
+  )
+}
+
+function hasPorts(rule: Record<string, unknown>, ports: readonly number[]): boolean {
+  const actualPorts = new Set(
+    arrayField(rule, 'ports', 'NetworkPolicy ingress ports').map((port) => {
+      const record = toRecord(port, 'NetworkPolicy ingress port')
+      return record['protocol'] === 'TCP' && typeof record['port'] === 'number' ? record['port'] : -1
+    }),
+  )
+  return ports.every((port) => actualPorts.has(port))
+}
+
+function hasMatchExpressionValues(selector: Record<string, unknown>, key: string, values: readonly string[]): boolean {
+  return arrayField(selector, 'matchExpressions', 'NetworkPolicy selector matchExpressions').some((expression) => {
+    const record = toRecord(expression, 'NetworkPolicy selector matchExpression')
+    return (
+      record['key'] === key &&
+      record['operator'] === 'In' &&
+      arrayEquals(stringArrayField(record, 'values', 'NetworkPolicy selector values'), values)
+    )
+  })
+}
+
+function arrayEquals(left: readonly string[], right: readonly string[]): boolean
+function arrayEquals(left: readonly number[], right: readonly number[]): boolean
+function arrayEquals(left: readonly (number | string)[], right: readonly (number | string)[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index])
+}
+
+function unexpectedSchemaVersion(value: unknown): never {
+  throw new Error(`Unexpected deployment runtime NetworkPolicy evidence schemaVersion: ${String(value)}`)
 }
 
 function logResult(mode: 'check' | 'write', scorecard: SecurityPostureScorecard): void {

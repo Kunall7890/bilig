@@ -28,6 +28,7 @@ describe('security posture scorecard', () => {
       'shared-agent-owner-review',
       'runtime-publish-package-hardening',
       'browser-content-security-policy',
+      'deployment-runtime-network-policy',
       'production-dependency-vulnerability-audit',
     ])
     expect(scorecard.controls.every((control) => control.required && control.passed)).toBe(true)
@@ -44,9 +45,11 @@ describe('security posture scorecard', () => {
       'browser.contentSecurityPolicy',
       'browser.crossOriginIsolation',
       'browser.workerWasmRuntimeAllowlist',
+      'deployment.runtimeNetworkPolicy',
       'dependency.vulnerabilityAudit',
     ])
-    expect(scorecard.summary.uncoveredControls).toEqual(['deployment.runtimeNetworkPolicy', 'externalSheetsExcelSecurityComparison'])
+    expect(scorecard.summary.uncoveredControls).toEqual(['externalSheetsExcelSecurityComparison'])
+    expect(scorecard.controls.map((control) => control.id)).toContain('deployment-runtime-network-policy')
   })
 
   it('rejects stale artifacts missing required security controls', () => {

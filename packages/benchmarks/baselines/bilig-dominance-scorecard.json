@@ -144,10 +144,11 @@
       "browser.contentSecurityPolicy",
       "browser.crossOriginIsolation",
       "browser.workerWasmRuntimeAllowlist",
+      "deployment.runtimeNetworkPolicy",
       "dependency.vulnerabilityAudit"
     ],
     "securityPosturePassed": true,
-    "securityUncoveredControls": ["deployment.runtimeNetworkPolicy", "externalSheetsExcelSecurityComparison"],
+    "securityUncoveredControls": ["externalSheetsExcelSecurityComparison"],
     "hyperFormulaComparableWorkloads": 46,
     "hyperFormulaMeanGeomeanRatio": 0.5126605383809896,
     "hyperFormulaP95GeomeanRatio": 0.5080601177268398,
@@ -425,8 +426,8 @@
       "status": "partial-repo-evidence",
       "currentEvidence": [
         "generated security posture scorecard passes required controls: true",
-        "covered security controls: formula.noEval, formula.noFunctionConstructor, formula.noNodeProcessExecution, xlsx.macroWarning, xlsx.noMacroPayloadExport, agent.sharedMediumHighRiskOwnerReview, runtime.publishManifest, runtime.noSourceInTarballs, runtime.alignedPackageSet, browser.contentSecurityPolicy, browser.crossOriginIsolation, browser.workerWasmRuntimeAllowlist, dependency.vulnerabilityAudit",
-        "uncovered security controls are explicitly disclosed: deployment.runtimeNetworkPolicy, externalSheetsExcelSecurityComparison"
+        "covered security controls: formula.noEval, formula.noFunctionConstructor, formula.noNodeProcessExecution, xlsx.macroWarning, xlsx.noMacroPayloadExport, agent.sharedMediumHighRiskOwnerReview, runtime.publishManifest, runtime.noSourceInTarballs, runtime.alignedPackageSet, browser.contentSecurityPolicy, browser.crossOriginIsolation, browser.workerWasmRuntimeAllowlist, deployment.runtimeNetworkPolicy, dependency.vulnerabilityAudit",
+        "uncovered security controls are explicitly disclosed: externalSheetsExcelSecurityComparison"
       ],
       "evidenceArtifacts": [
         "packages/benchmarks/baselines/security-posture-scorecard.json",
