@@ -439,6 +439,7 @@ describe('excel import', () => {
               { id: 'summary-row-0', index: 0, size: 30 },
               { id: 'summary-row-2', index: 2, size: 24 },
             ],
+            freezePane: { rows: 1, cols: 2 },
             merges: [{ sheetName: 'Summary', startAddress: 'A5', endAddress: 'B5' }],
             validations: [
               {
@@ -532,6 +533,9 @@ describe('excel import', () => {
     )
     expect(strFromU8(zip['xl/worksheets/sheet2.xml'] ?? new Uint8Array())).toContain(
       '<dataValidation type="list" allowBlank="1" showDropDown="0"',
+    )
+    expect(strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())).toContain(
+      '<pane xSplit="2" ySplit="1" topLeftCell="C2" activePane="bottomRight" state="frozen"/>',
     )
     expect(projectSupportedSnapshotSemantics(imported.snapshot)).toEqual(projectSupportedSnapshotSemantics(snapshot))
   })
@@ -669,6 +673,7 @@ function projectSupportedSnapshotSemantics(snapshot: WorkbookSnapshot) {
           rows: (sheet.metadata?.rows ?? [])
             .map(({ index, size }) => ({ index, size }))
             .toSorted((left, right) => left.index - right.index),
+          freezePane: sheet.metadata?.freezePane,
           merges: (sheet.metadata?.merges ?? [])
             .map(({ sheetName, startAddress, endAddress }) => ({ sheetName, startAddress, endAddress }))
             .toSorted((left, right) =>

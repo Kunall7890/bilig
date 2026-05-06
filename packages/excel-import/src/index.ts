@@ -21,6 +21,7 @@ import type {
 import { readImportedWorkbookCharts } from './xlsx-charts.js'
 import { readImportedSheetComments } from './xlsx-comments.js'
 import { readImportedDefinedNames } from './xlsx-defined-names.js'
+import { readImportedWorkbookFreezePanes } from './xlsx-freeze-panes.js'
 import { readImportedWorkbookPivots } from './xlsx-pivots.js'
 import { readImportedWorkbookFileStyles } from './xlsx-styles.js'
 import { readImportedWorkbookTables } from './xlsx-tables.js'
@@ -477,6 +478,7 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
   const importedCharts = readImportedWorkbookCharts(data, workbook.SheetNames)
   const importedPivots = readImportedWorkbookPivots(data, workbook.SheetNames)
   const importedTables = readImportedWorkbookTables(data, workbook.SheetNames)
+  const importedFreezePanesBySheet = readImportedWorkbookFreezePanes(data, workbook.SheetNames)
   const importedValidationsBySheet = readImportedWorkbookDataValidations(data, workbook.SheetNames)
 
   let ignoredCommentsSeen = false
@@ -568,14 +570,16 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
 
     const rows = buildRowEntries(sheet['!rows'])
     const columns = buildColumnEntries(sheet['!cols'])
+    const importedFreezePane = importedFreezePanesBySheet.get(sheetName)
     const merges = buildMergeEntries(sheetName, sheet['!merges'])
     const importedValidations = importedValidationsBySheet.get(sheetName)
     const metadata =
-      rows || columns || styleRanges.length > 0 || merges || importedValidations || importedComments.commentThreads
+      rows || columns || styleRanges.length > 0 || importedFreezePane || merges || importedValidations || importedComments.commentThreads
         ? {
             ...(rows ? { rows } : {}),
             ...(columns ? { columns } : {}),
             ...(styleRanges.length > 0 ? { styleRanges } : {}),
+            ...(importedFreezePane ? { freezePane: importedFreezePane } : {}),
             ...(merges ? { merges } : {}),
             ...(importedValidations ? { validations: importedValidations } : {}),
             ...(importedComments.commentThreads ? { commentThreads: importedComments.commentThreads } : {}),

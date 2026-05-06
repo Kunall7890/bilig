@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "suite": "import-export-fidelity",
-  "generatedAt": "2026-05-06T11:19:12.871Z",
+  "generatedAt": "2026-05-06T11:23:42.968Z",
   "source": {
     "artifactGenerator": "scripts/gen-import-export-fidelity-scorecard.ts",
     "implementationPackage": "packages/excel-import",
@@ -29,6 +29,7 @@
       "xlsx.styles",
       "xlsx.rowColumnDimensions",
       "xlsx.merges",
+      "xlsx.freezePanes.roundtrip",
       "xlsx.dataValidations.roundtrip",
       "xlsx.tables.roundtrip",
       "xlsx.charts.roundtrip",
@@ -100,6 +101,16 @@
       "coveredFeatures": ["xlsx.rowColumnDimensions", "xlsx.merges"],
       "missingFeatures": [],
       "evidence": "WorkbookSnapshot exported to XLSX imports back with equivalent row heights, column widths, and merged ranges."
+    },
+    {
+      "id": "xlsx-snapshot-roundtrip-freeze-panes",
+      "format": "xlsx",
+      "direction": "export-import",
+      "required": true,
+      "passed": true,
+      "coveredFeatures": ["xlsx.freezePanes.roundtrip"],
+      "missingFeatures": [],
+      "evidence": "WorkbookSnapshot exported to XLSX imports back with equivalent sheet freeze-pane metadata backed by native XLSX pane nodes."
     },
     {
       "id": "xlsx-snapshot-roundtrip-data-validations",

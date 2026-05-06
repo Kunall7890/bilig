@@ -57,6 +57,7 @@ const requiredCaseIds = [
   'xlsx-import-preview',
   'xlsx-snapshot-roundtrip-values-formulas-formats',
   'xlsx-snapshot-roundtrip-dimensions-merges',
+  'xlsx-snapshot-roundtrip-freeze-panes',
   'xlsx-snapshot-roundtrip-data-validations',
   'xlsx-snapshot-roundtrip-tables',
   'xlsx-snapshot-roundtrip-charts',
@@ -80,6 +81,7 @@ const coveredFeatureOrder = [
   'xlsx.styles',
   'xlsx.rowColumnDimensions',
   'xlsx.merges',
+  'xlsx.freezePanes.roundtrip',
   'xlsx.dataValidations.roundtrip',
   'xlsx.tables.roundtrip',
   'xlsx.charts.roundtrip',
@@ -114,6 +116,7 @@ export async function buildImportExportFidelityScorecard(generatedAt = new Date(
     runXlsxImportPreviewCase(),
     runXlsxSnapshotRoundTripValuesCase(),
     runXlsxSnapshotRoundTripDimensionsCase(),
+    runXlsxSnapshotRoundTripFreezePanesCase(),
     runXlsxSnapshotRoundTripDataValidationsCase(),
     runXlsxSnapshotRoundTripTablesCase(),
     runXlsxSnapshotRoundTripChartsCase(),
@@ -139,6 +142,7 @@ export async function buildImportExportFidelityScorecard(generatedAt = new Date(
       xlsxSnapshotRoundTripPassed:
         requiredCase(cases, 'xlsx-snapshot-roundtrip-values-formulas-formats').passed &&
         requiredCase(cases, 'xlsx-snapshot-roundtrip-dimensions-merges').passed &&
+        requiredCase(cases, 'xlsx-snapshot-roundtrip-freeze-panes').passed &&
         requiredCase(cases, 'xlsx-snapshot-roundtrip-data-validations').passed &&
         requiredCase(cases, 'xlsx-snapshot-roundtrip-tables').passed &&
         requiredCase(cases, 'xlsx-snapshot-roundtrip-charts').passed &&
@@ -255,6 +259,20 @@ function runXlsxSnapshotRoundTripDimensionsCase(): ImportExportFidelityCase {
     passed,
     coveredFeatures: ['xlsx.rowColumnDimensions', 'xlsx.merges'],
     evidence: 'WorkbookSnapshot exported to XLSX imports back with equivalent row heights, column widths, and merged ranges.',
+  })
+}
+
+function runXlsxSnapshotRoundTripFreezePanesCase(): ImportExportFidelityCase {
+  const expected = projectSupportedSnapshotSemantics(createFidelitySnapshot())
+  const actual = projectSupportedSnapshotSemantics(importXlsx(exportXlsx(createFidelitySnapshot()), 'fidelity.xlsx').snapshot)
+  const passed = JSON.stringify(actual.freezePanes) === JSON.stringify(expected.freezePanes)
+  return fidelityCase({
+    id: 'xlsx-snapshot-roundtrip-freeze-panes',
+    format: 'xlsx',
+    direction: 'export-import',
+    passed,
+    coveredFeatures: ['xlsx.freezePanes.roundtrip'],
+    evidence: 'WorkbookSnapshot exported to XLSX imports back with equivalent sheet freeze-pane metadata backed by native XLSX pane nodes.',
   })
 }
 
@@ -439,6 +457,7 @@ function createFidelitySnapshot(): WorkbookSnapshot {
             { id: 'summary-row-0', index: 0, size: 30 },
             { id: 'summary-row-2', index: 2, size: 24 },
           ],
+          freezePane: { rows: 1, cols: 2 },
           merges: [{ sheetName: 'Summary', startAddress: 'A5', endAddress: 'B5' }],
           validations: [
             {
@@ -645,6 +664,9 @@ function projectSupportedSnapshotSemantics(snapshot: WorkbookSnapshot) {
           `${right.range.sheetName}:${right.range.startAddress}:${right.range.endAddress}`,
         ),
       ),
+    freezePanes: snapshot.sheets
+      .flatMap((sheet) => (sheet.metadata?.freezePane ? [{ sheetName: sheet.name, freezePane: sheet.metadata.freezePane }] : []))
+      .toSorted((left, right) => left.sheetName.localeCompare(right.sheetName)),
     valueFormulaFormatSheets: snapshot.sheets
       .toSorted((left, right) => left.order - right.order)
       .map((sheet) => ({
