@@ -24,7 +24,7 @@ import { arrayField, asObject, booleanField, literalField, stringArrayField, str
 
 export interface CollaborationControl {
   readonly id: string
-  readonly category: 'local-first-sync' | 'presence' | 'conflict-viewport'
+  readonly category: 'local-first-sync' | 'presence' | 'conflict-viewport' | 'headed-browser'
   readonly required: boolean
   readonly passed: boolean
   readonly coveredControls: string[]
@@ -43,12 +43,14 @@ export interface CollaborationScorecard {
     readonly presenceSessionImplementation: 'apps/bilig/src/workbook-runtime/document-presence-session-store.ts'
     readonly viewportPatchImplementation: 'apps/web/src/projected-viewport-patch-application.ts'
     readonly editorConflictImplementation: 'apps/web/src/use-workbook-editor-conflict.tsx'
+    readonly headedBrowserViewportTestFile: 'e2e/tests/web-shell-scroll-performance.pw.ts'
   }
   readonly summary: {
     readonly allRequiredControlsPassed: boolean
     readonly syncRebaseAckPassed: boolean
     readonly presenceSelectionPassed: boolean
     readonly conflictViewportPassed: boolean
+    readonly headedBrowserViewportPassed: boolean
     readonly coveredControls: string[]
     readonly uncoveredControls: string[]
     readonly externalGoogleSheetsEvidence: 'not-captured'
@@ -63,6 +65,7 @@ const requiredControlIds = [
   'worker-sync-rebase-ack-roundtrip',
   'presence-session-selection-filtering',
   'editor-conflict-and-viewport-protection',
+  'headed-browser-multi-user-viewport-soak',
 ] as const
 const coveredControlOrder = [
   'sync.pendingRebase',
@@ -74,12 +77,10 @@ const coveredControlOrder = [
   'conflict.authoritativeDriftDetection',
   'viewport.optimisticAxisProtection',
   'viewport.authoritativeCatchupClearsPending',
-] as const
-const uncoveredControls = [
   'headedBrowser.multiUserViewportSoak',
-  'conflictRateLongRunningCollaboration',
-  'externalSheetsCollaborationComparison',
 ] as const
+const uncoveredControls = ['conflictRateLongRunningCollaboration', 'externalSheetsCollaborationComparison'] as const
+const headedBrowserViewportTestFile = 'e2e/tests/web-shell-scroll-performance.pw.ts'
 
 async function main(): Promise<void> {
   const isCheckMode = process.argv.includes('--check')
@@ -100,7 +101,12 @@ async function main(): Promise<void> {
 }
 
 export async function buildCollaborationScorecard(generatedAt = new Date().toISOString()): Promise<CollaborationScorecard> {
-  const controls = [await buildWorkerSyncRebaseAckControl(), await buildPresenceSelectionControl(), buildConflictViewportControl()]
+  const controls = [
+    await buildWorkerSyncRebaseAckControl(),
+    await buildPresenceSelectionControl(),
+    buildConflictViewportControl(),
+    buildHeadedBrowserMultiUserViewportSoakControl(),
+  ]
   const coveredControlSet = new Set(controls.flatMap((control) => control.coveredControls))
   const coveredControls = coveredControlOrder.filter((control) => coveredControlSet.has(control))
 
@@ -115,12 +121,14 @@ export async function buildCollaborationScorecard(generatedAt = new Date().toISO
       presenceSessionImplementation: 'apps/bilig/src/workbook-runtime/document-presence-session-store.ts',
       viewportPatchImplementation: 'apps/web/src/projected-viewport-patch-application.ts',
       editorConflictImplementation: 'apps/web/src/use-workbook-editor-conflict.tsx',
+      headedBrowserViewportTestFile,
     },
     summary: {
       allRequiredControlsPassed: controls.filter((control) => control.required).every((control) => control.passed),
       syncRebaseAckPassed: requiredControl(controls, 'worker-sync-rebase-ack-roundtrip').passed,
       presenceSelectionPassed: requiredControl(controls, 'presence-session-selection-filtering').passed,
       conflictViewportPassed: requiredControl(controls, 'editor-conflict-and-viewport-protection').passed,
+      headedBrowserViewportPassed: requiredControl(controls, 'headed-browser-multi-user-viewport-soak').passed,
       coveredControls,
       uncoveredControls: [...uncoveredControls],
       externalGoogleSheetsEvidence: 'not-captured',
@@ -387,6 +395,83 @@ function buildConflictViewportControl(): CollaborationControl {
   })
 }
 
+function buildHeadedBrowserMultiUserViewportSoakControl(): CollaborationControl {
+  const source = readFileSync(join(rootDir, headedBrowserViewportTestFile), 'utf8')
+  const testTitle = 'keeps shell surfaces quiet and coalesces visible collaborator patch churn while browsing'
+  const testBlock = extractBrowserTestBlock(source, 'remoteSyncTest', testTitle)
+  const findings: string[] = []
+  if (!testBlock) {
+    findings.push(`missing remote sync Playwright test: ${testTitle}`)
+  } else {
+    requireSnippet(testBlock, 'const mirrorPage = await page.context().newPage()', 'opens a second browser tab', findings)
+    requireSnippet(testBlock, 'benchmarkCorpus=wide-mixed-250k', 'loads the 250k benchmark corpus in both tabs', findings)
+    requireSnippet(
+      testBlock,
+      'await Promise.all([waitForWorkbookReady(page), waitForWorkbookReady(mirrorPage)])',
+      'waits for both workbooks',
+      findings,
+    )
+    requireSnippet(
+      testBlock,
+      'await Promise.all([waitForBenchmarkCorpus(page), waitForBenchmarkCorpus(mirrorPage)])',
+      'waits for both corpora',
+      findings,
+    )
+    requireSnippet(
+      testBlock,
+      "warmStartWorkbookScrollPerf(page, 'wide-250k-browse-with-visible-patches')",
+      'warms the sampled viewport',
+      findings,
+    )
+    requireSnippet(
+      testBlock,
+      'performHorizontalGridBrowse(page, { distancePx: 2_560, steps: 140 })',
+      'browses the viewport while sampling',
+      findings,
+    )
+    requireSnippet(testBlock, 'emitRemoteEdits()', 'applies collaborator edits during browse', findings)
+    requireSnippet(
+      testBlock,
+      "testInfo.outputPath('scroll-perf-wide-250k-visible-patches.json')",
+      'writes the headed collaboration perf artifact',
+      findings,
+    )
+    requireSnippet(testBlock, 'expectBoundedVisibleMutation(report', 'asserts bounded visible patch churn', findings)
+    requireSnippet(testBlock, 'minDamagePatches: 1', 'requires at least one visible collaborator patch', findings)
+    requireSnippet(testBlock, 'maxRendererVisibleDirtyTiles: 24', 'bounds dirty visible tiles', findings)
+    requireSnippet(testBlock, 'expectQuietShell(report)', 'keeps shell surfaces quiet', findings)
+  }
+
+  return collaborationControl({
+    id: 'headed-browser-multi-user-viewport-soak',
+    category: 'headed-browser',
+    passed: findings.length === 0,
+    coveredControls: ['headedBrowser.multiUserViewportSoak'],
+    evidence:
+      'Validated the headed Playwright remote-sync performance contract for two tabs browsing a 250k workbook while collaborator edits create visible viewport patches.',
+    findings,
+  })
+}
+
+function extractBrowserTestBlock(source: string, testFunctionName: 'test' | 'remoteSyncTest', testTitle: string): string | null {
+  const marker = `${testFunctionName}('${testTitle}'`
+  const start = source.indexOf(marker)
+  if (start < 0) {
+    return null
+  }
+  const endCandidates = ['\n  test(', '\n  remoteSyncTest(']
+    .map((nextMarker) => source.indexOf(nextMarker, start + marker.length))
+    .filter((index) => index >= 0)
+  const end = endCandidates.length > 0 ? Math.min(...endCandidates) : source.length
+  return source.slice(start, end)
+}
+
+function requireSnippet(source: string, snippet: string, label: string, findings: string[]): void {
+  if (!source.includes(snippet)) {
+    findings.push(`missing ${label}`)
+  }
+}
+
 function buildSetCellValueEvent(input: {
   readonly revision: number
   readonly address: string
@@ -545,12 +630,14 @@ export function parseCollaborationScorecard(value: unknown): CollaborationScorec
         'apps/web/src/projected-viewport-patch-application.ts',
       ),
       editorConflictImplementation: literalField(source, 'editorConflictImplementation', 'apps/web/src/use-workbook-editor-conflict.tsx'),
+      headedBrowserViewportTestFile: literalField(source, 'headedBrowserViewportTestFile', headedBrowserViewportTestFile),
     },
     summary: {
       allRequiredControlsPassed: booleanField(summary, 'allRequiredControlsPassed'),
       syncRebaseAckPassed: booleanField(summary, 'syncRebaseAckPassed'),
       presenceSelectionPassed: booleanField(summary, 'presenceSelectionPassed'),
       conflictViewportPassed: booleanField(summary, 'conflictViewportPassed'),
+      headedBrowserViewportPassed: booleanField(summary, 'headedBrowserViewportPassed'),
       coveredControls: stringArrayField(summary, 'coveredControls'),
       uncoveredControls: stringArrayField(summary, 'uncoveredControls'),
       externalGoogleSheetsEvidence: literalField(summary, 'externalGoogleSheetsEvidence', 'not-captured'),
@@ -599,7 +686,7 @@ export function validateCollaborationScorecard(scorecard: CollaborationScorecard
 }
 
 function parseCollaborationCategory(value: string): CollaborationControl['category'] {
-  if (value === 'local-first-sync' || value === 'presence' || value === 'conflict-viewport') {
+  if (value === 'local-first-sync' || value === 'presence' || value === 'conflict-viewport' || value === 'headed-browser') {
     return value
   }
   throw new Error(`Unexpected collaboration category: ${value}`)

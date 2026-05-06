@@ -15,6 +15,7 @@ describe('collaboration scorecard', () => {
         syncRebaseAckPassed: true,
         presenceSelectionPassed: true,
         conflictViewportPassed: true,
+        headedBrowserViewportPassed: true,
         externalGoogleSheetsEvidence: 'not-captured',
         externalMicrosoftExcelEvidence: 'not-captured',
       },
@@ -23,6 +24,7 @@ describe('collaboration scorecard', () => {
       'worker-sync-rebase-ack-roundtrip',
       'presence-session-selection-filtering',
       'editor-conflict-and-viewport-protection',
+      'headed-browser-multi-user-viewport-soak',
     ])
     expect(scorecard.controls.every((control) => control.required && control.passed)).toBe(true)
     expect(scorecard.summary.coveredControls).toEqual([
@@ -35,12 +37,9 @@ describe('collaboration scorecard', () => {
       'conflict.authoritativeDriftDetection',
       'viewport.optimisticAxisProtection',
       'viewport.authoritativeCatchupClearsPending',
-    ])
-    expect(scorecard.summary.uncoveredControls).toEqual([
       'headedBrowser.multiUserViewportSoak',
-      'conflictRateLongRunningCollaboration',
-      'externalSheetsCollaborationComparison',
     ])
+    expect(scorecard.summary.uncoveredControls).toEqual(['conflictRateLongRunningCollaboration', 'externalSheetsCollaborationComparison'])
 
     validateCollaborationScorecard(scorecard)
   })

@@ -59,7 +59,10 @@ describe('bilig dominance scorecard', () => {
     })
     expect(scorecard.categories.find((category) => category.id === 'collaboration')).toMatchObject({
       status: 'partial-repo-evidence',
-      evidenceArtifacts: expect.arrayContaining(['packages/benchmarks/baselines/collaboration-scorecard.json']),
+      evidenceArtifacts: expect.arrayContaining([
+        'packages/benchmarks/baselines/collaboration-scorecard.json',
+        'e2e/tests/web-shell-scroll-performance.pw.ts',
+      ]),
     })
     expect(scorecard.categories.find((category) => category.id === 'auditability')).toMatchObject({
       status: 'partial-repo-evidence',
@@ -305,14 +308,16 @@ function buildFixtureInput(): BuildScorecardInput {
         presenceSessionImplementation: 'apps/bilig/src/workbook-runtime/document-presence-session-store.ts',
         viewportPatchImplementation: 'apps/web/src/projected-viewport-patch-application.ts',
         editorConflictImplementation: 'apps/web/src/use-workbook-editor-conflict.tsx',
+        headedBrowserViewportTestFile: 'e2e/tests/web-shell-scroll-performance.pw.ts',
       },
       summary: {
         allRequiredControlsPassed: true,
         syncRebaseAckPassed: true,
         presenceSelectionPassed: true,
         conflictViewportPassed: true,
-        coveredControls: ['sync.pendingRebase', 'presence.sessionLifecycle'],
-        uncoveredControls: ['headedBrowser.multiUserViewportSoak'],
+        headedBrowserViewportPassed: true,
+        coveredControls: ['sync.pendingRebase', 'presence.sessionLifecycle', 'headedBrowser.multiUserViewportSoak'],
+        uncoveredControls: ['conflictRateLongRunningCollaboration'],
         externalGoogleSheetsEvidence: 'not-captured',
         externalMicrosoftExcelEvidence: 'not-captured',
       },

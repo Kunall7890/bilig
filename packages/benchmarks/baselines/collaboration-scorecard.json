@@ -1,20 +1,22 @@
 {
   "schemaVersion": 1,
   "suite": "collaboration-posture",
-  "generatedAt": "2026-05-06T08:53:41.985Z",
+  "generatedAt": "2026-05-06T09:24:16.993Z",
   "source": {
     "artifactGenerator": "scripts/gen-collaboration-scorecard.ts",
     "workerRuntimeImplementation": "apps/web/src/worker-runtime.ts",
     "presenceImplementation": "apps/web/src/workbook-presence-model.ts",
     "presenceSessionImplementation": "apps/bilig/src/workbook-runtime/document-presence-session-store.ts",
     "viewportPatchImplementation": "apps/web/src/projected-viewport-patch-application.ts",
-    "editorConflictImplementation": "apps/web/src/use-workbook-editor-conflict.tsx"
+    "editorConflictImplementation": "apps/web/src/use-workbook-editor-conflict.tsx",
+    "headedBrowserViewportTestFile": "e2e/tests/web-shell-scroll-performance.pw.ts"
   },
   "summary": {
     "allRequiredControlsPassed": true,
     "syncRebaseAckPassed": true,
     "presenceSelectionPassed": true,
     "conflictViewportPassed": true,
+    "headedBrowserViewportPassed": true,
     "coveredControls": [
       "sync.pendingRebase",
       "sync.authoritativeAck",
@@ -24,13 +26,10 @@
       "presence.collaboratorFiltering",
       "conflict.authoritativeDriftDetection",
       "viewport.optimisticAxisProtection",
-      "viewport.authoritativeCatchupClearsPending"
+      "viewport.authoritativeCatchupClearsPending",
+      "headedBrowser.multiUserViewportSoak"
     ],
-    "uncoveredControls": [
-      "headedBrowser.multiUserViewportSoak",
-      "conflictRateLongRunningCollaboration",
-      "externalSheetsCollaborationComparison"
-    ],
+    "uncoveredControls": ["conflictRateLongRunningCollaboration", "externalSheetsCollaborationComparison"],
     "externalGoogleSheetsEvidence": "not-captured",
     "externalMicrosoftExcelEvidence": "not-captured"
   },
@@ -64,6 +63,15 @@
         "viewport.authoritativeCatchupClearsPending"
       ],
       "evidence": "Exercised editor conflict model helpers against authoritative cell drift, then applied stale and confirming viewport patches to prove optimistic row state survives until authoritative catch-up.",
+      "findings": []
+    },
+    {
+      "id": "headed-browser-multi-user-viewport-soak",
+      "category": "headed-browser",
+      "required": true,
+      "passed": true,
+      "coveredControls": ["headedBrowser.multiUserViewportSoak"],
+      "evidence": "Validated the headed Playwright remote-sync performance contract for two tabs browsing a 250k workbook while collaborator edits create visible viewport patches.",
       "findings": []
     }
   ]

@@ -516,6 +516,7 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
         evidenceArtifacts: [
           input.collaborationScorecardPath,
           input.largeWorkbookSloScorecardPath,
+          'e2e/tests/web-shell-scroll-performance.pw.ts',
           'docs/05-06-next-phase.md',
           'apps/web/src/__tests__/workbook-sync.test.ts',
           'apps/web/src/__tests__/workbook-presence.test.tsx',
@@ -530,7 +531,6 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
         ],
         blockers: [
           `generated collaboration evidence still leaves uncovered controls: ${input.collaborationScorecard.summary.uncoveredControls.join(', ')}`,
-          'generated collaboration SLO evidence covers reconnect catch-up only; headed browser multi-user viewport behavior remains uncovered',
           'no direct Sheets collaboration comparison artifact exists in the repo',
         ],
       },

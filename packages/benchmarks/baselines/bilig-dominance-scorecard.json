@@ -80,14 +80,11 @@
       "presence.collaboratorFiltering",
       "conflict.authoritativeDriftDetection",
       "viewport.optimisticAxisProtection",
-      "viewport.authoritativeCatchupClearsPending"
+      "viewport.authoritativeCatchupClearsPending",
+      "headedBrowser.multiUserViewportSoak"
     ],
     "collaborationPosturePassed": true,
-    "collaborationUncoveredControls": [
-      "headedBrowser.multiUserViewportSoak",
-      "conflictRateLongRunningCollaboration",
-      "externalSheetsCollaborationComparison"
-    ],
+    "collaborationUncoveredControls": ["conflictRateLongRunningCollaboration", "externalSheetsCollaborationComparison"],
     "externalGoogleSheetsEvidence": "not-captured-in-repo",
     "externalMicrosoftExcelEvidence": "not-captured-in-repo",
     "formulaCanonicalProductionPercent": 100,
@@ -279,13 +276,14 @@
         "worker runtime, pending-op journal, authoritative delta ingest, presence, and changes-pane tests exist",
         "collaboration product targets are documented",
         "generated collaboration scorecard passes required controls: true",
-        "covered collaboration controls: sync.pendingRebase, sync.authoritativeAck, sync.noAcceptedOpLoss, presence.sessionLifecycle, presence.selectionSchema, presence.collaboratorFiltering, conflict.authoritativeDriftDetection, viewport.optimisticAxisProtection, viewport.authoritativeCatchupClearsPending",
-        "uncovered collaboration controls are explicitly disclosed: headedBrowser.multiUserViewportSoak, conflictRateLongRunningCollaboration, externalSheetsCollaborationComparison",
+        "covered collaboration controls: sync.pendingRebase, sync.authoritativeAck, sync.noAcceptedOpLoss, presence.sessionLifecycle, presence.selectionSchema, presence.collaboratorFiltering, conflict.authoritativeDriftDetection, viewport.optimisticAxisProtection, viewport.authoritativeCatchupClearsPending, headedBrowser.multiUserViewportSoak",
+        "uncovered collaboration controls are explicitly disclosed: conflictRateLongRunningCollaboration, externalSheetsCollaborationComparison",
         "workerReconnectCatchUp100Pending: catchUpMs.p95 260.9891669999997ms against 2000ms SLO (3 samples)"
       ],
       "evidenceArtifacts": [
         "packages/benchmarks/baselines/collaboration-scorecard.json",
         "packages/benchmarks/baselines/large-workbook-slo-scorecard.json",
+        "e2e/tests/web-shell-scroll-performance.pw.ts",
         "docs/05-06-next-phase.md",
         "apps/web/src/__tests__/workbook-sync.test.ts",
         "apps/web/src/__tests__/workbook-presence.test.tsx"
@@ -299,8 +297,7 @@
         "pnpm test:correctness:server"
       ],
       "blockers": [
-        "generated collaboration evidence still leaves uncovered controls: headedBrowser.multiUserViewportSoak, conflictRateLongRunningCollaboration, externalSheetsCollaborationComparison",
-        "generated collaboration SLO evidence covers reconnect catch-up only; headed browser multi-user viewport behavior remains uncovered",
+        "generated collaboration evidence still leaves uncovered controls: conflictRateLongRunningCollaboration, externalSheetsCollaborationComparison",
         "no direct Sheets collaboration comparison artifact exists in the repo"
       ]
     },
