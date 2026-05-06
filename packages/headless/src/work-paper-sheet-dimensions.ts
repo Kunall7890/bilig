@@ -25,3 +25,37 @@ export function applyCachedSheetDimensionInsertion(args: {
   }
   return true
 }
+
+export function applyCachedSheetDimensionDeletion(args: {
+  readonly axis: 'row' | 'column'
+  readonly cache: Map<number, WorkPaperSheetDimensions>
+  readonly count: number
+  readonly sheetId: number
+  readonly start: number
+}): boolean {
+  const cached = args.cache.get(args.sheetId)
+  if (!cached) {
+    return false
+  }
+  if (args.count <= 0) {
+    return true
+  }
+  if (args.axis === 'row') {
+    if (args.start >= cached.height) {
+      return true
+    }
+    if (args.start + args.count >= cached.height) {
+      return false
+    }
+    cached.height -= args.count
+    return true
+  }
+  if (args.start >= cached.width) {
+    return true
+  }
+  if (args.start + args.count >= cached.width) {
+    return false
+  }
+  cached.width -= args.count
+  return true
+}

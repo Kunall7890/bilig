@@ -122,7 +122,7 @@ import {
 } from './tracked-cell-index-changes.js'
 import { calculateWorkPaperFormulaInScratchWorkbook } from './work-paper-scratch-evaluator.js'
 import { replaceWorkPaperSheetContent } from './work-paper-sheet-replacement.js'
-import { applyCachedSheetDimensionInsertion } from './work-paper-sheet-dimensions.js'
+import { applyCachedSheetDimensionDeletion, applyCachedSheetDimensionInsertion } from './work-paper-sheet-dimensions.js'
 
 type ListenerMap = {
   [EventName in WorkPaperEventName]: Set<WorkPaperListener<EventName>>
@@ -1347,6 +1347,12 @@ export class WorkPaper {
 
   private applyCachedSheetDimensionInsertion(sheetId: number, axis: 'row' | 'column', start: number, count: number): void {
     if (!applyCachedSheetDimensionInsertion({ axis, cache: this.sheetDimensionsCache, count, sheetId, start })) {
+      this.invalidateSheetDimensions(sheetId)
+    }
+  }
+
+  private applyCachedSheetDimensionDeletion(sheetId: number, axis: 'row' | 'column', start: number, count: number): void {
+    if (!applyCachedSheetDimensionDeletion({ axis, cache: this.sheetDimensionsCache, count, sheetId, start })) {
       this.invalidateSheetDimensions(sheetId)
     }
   }
@@ -3065,7 +3071,7 @@ export class WorkPaper {
       const [start, amount] = indexes[0]!
       return this.captureTrackedChangesWithoutVisibilityCache(() => {
         this.engine.deleteRows(this.sheetName(sheetId), start, amount)
-        this.invalidateSheetDimensions(sheetId)
+        this.applyCachedSheetDimensionDeletion(sheetId, 'row', start, amount)
       })
     }
     return this.batchStructuralChanges(() => {
@@ -3073,7 +3079,7 @@ export class WorkPaper {
         .toSorted((left, right) => right[0] - left[0])
         .forEach(([start, amount]) => {
           this.engine.deleteRows(this.sheetName(sheetId), start, amount)
-          this.invalidateSheetDimensions(sheetId)
+          this.applyCachedSheetDimensionDeletion(sheetId, 'row', start, amount)
         })
     })
   }
@@ -3121,7 +3127,7 @@ export class WorkPaper {
       const [start, amount] = indexes[0]!
       return this.captureTrackedChangesWithoutVisibilityCache(() => {
         this.engine.deleteColumns(this.sheetName(sheetId), start, amount)
-        this.invalidateSheetDimensions(sheetId)
+        this.applyCachedSheetDimensionDeletion(sheetId, 'column', start, amount)
       })
     }
     return this.batchStructuralChanges(() => {
@@ -3129,7 +3135,7 @@ export class WorkPaper {
         .toSorted((left, right) => right[0] - left[0])
         .forEach(([start, amount]) => {
           this.engine.deleteColumns(this.sheetName(sheetId), start, amount)
-          this.invalidateSheetDimensions(sheetId)
+          this.applyCachedSheetDimensionDeletion(sheetId, 'column', start, amount)
         })
     })
   }

@@ -1664,24 +1664,32 @@ describe('WorkPaper', () => {
       throw new Error('Expected work paper runtime to expose captureVisibilitySnapshot in tests')
     }
     const captureVisibilitySnapshot = vi.spyOn(workbook, 'captureVisibilitySnapshot')
-    workbook.resetPerformanceCounters()
+    const forEachCellEntry = vi.spyOn(sheetGridEntryTarget(workbook, sheetId), 'forEachCellEntry')
 
-    const changes = workbook.removeRows(sheetId, [deleteRow, 1])
+    try {
+      workbook.resetPerformanceCounters()
 
-    expect(changes).toEqual([])
-    expect(captureVisibilitySnapshot).not.toHaveBeenCalled()
-    expect(workbook.getSheetDimensions(sheetId)).toEqual({ width: 2, height: rowCount - 1 })
-    expect(workbook.getCellValue(cell(sheetId, rowCount - 2, 1))).toEqual({
-      tag: ValueTag.Number,
-      value: (rowCount * (rowCount + 1)) / 2 - (deleteRow + 1),
-    })
-    expect(workbook.getStats().lastMetrics).toMatchObject({ dirtyFormulaCount: 0, wasmFormulaCount: 0, jsFormulaCount: 0 })
-    expect(workbook.getPerformanceCounters()).toMatchObject({
-      changedCellPayloadsBuilt: 0,
-      kernelSyncOnlyRecalcSkips: 1,
-      regionQueryIndexBuilds: 0,
-    })
-    captureVisibilitySnapshot.mockRestore()
+      const changes = workbook.removeRows(sheetId, [deleteRow, 1])
+
+      expect(changes).toEqual([])
+      expect(captureVisibilitySnapshot).not.toHaveBeenCalled()
+      forEachCellEntry.mockClear()
+      expect(workbook.getSheetDimensions(sheetId)).toEqual({ width: 2, height: rowCount - 1 })
+      expect(forEachCellEntry).not.toHaveBeenCalled()
+      expect(workbook.getCellValue(cell(sheetId, rowCount - 2, 1))).toEqual({
+        tag: ValueTag.Number,
+        value: (rowCount * (rowCount + 1)) / 2 - (deleteRow + 1),
+      })
+      expect(workbook.getStats().lastMetrics).toMatchObject({ dirtyFormulaCount: 0, wasmFormulaCount: 0, jsFormulaCount: 0 })
+      expect(workbook.getPerformanceCounters()).toMatchObject({
+        changedCellPayloadsBuilt: 0,
+        kernelSyncOnlyRecalcSkips: 1,
+        regionQueryIndexBuilds: 0,
+      })
+    } finally {
+      captureVisibilitySnapshot.mockRestore()
+      forEachCellEntry.mockRestore()
+    }
   })
 
   it('returns no value changes for structural column inserts when repeated simple families preserve values', () => {
@@ -1721,6 +1729,30 @@ describe('WorkPaper', () => {
     expect(workbook.getCellSerialized(cell(sheetId, 0, 2))).toBe('=A1+B1')
     expect(workbook.getCellSerialized(cell(sheetId, 0, 3))).toBe('=C1*2')
     computeTrackedChanges.restore()
+  })
+
+  it('updates cached dimensions for safe middle column deletes without scanning the grid', () => {
+    const workbook = WorkPaper.buildFromSheets({
+      Sheet1: [
+        [1, 2, 3, 4],
+        [5, 6, 7, 8],
+      ],
+    })
+    const sheetId = workbook.getSheetId('Sheet1')!
+    const forEachCellEntry = vi.spyOn(sheetGridEntryTarget(workbook, sheetId), 'forEachCellEntry')
+
+    try {
+      workbook.removeColumns(sheetId, [1, 1])
+
+      forEachCellEntry.mockClear()
+      expect(workbook.getSheetDimensions(sheetId)).toEqual({ width: 3, height: 2 })
+      expect(forEachCellEntry).not.toHaveBeenCalled()
+      expect(workbook.getCellValue(cell(sheetId, 0, 0))).toEqual({ tag: ValueTag.Number, value: 1 })
+      expect(workbook.getCellValue(cell(sheetId, 0, 1))).toEqual({ tag: ValueTag.Number, value: 3 })
+      expect(workbook.getCellValue(cell(sheetId, 1, 2))).toEqual({ tag: ValueTag.Number, value: 8 })
+    } finally {
+      forEachCellEntry.mockRestore()
+    }
   })
 
   it('applies function translations to registered languages and exposes license validity', () => {
