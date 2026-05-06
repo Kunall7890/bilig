@@ -486,7 +486,7 @@ describe('createWorkerRuntimeSessionController', () => {
       workbook: { name: 'phase0-doc' },
       sheets: [
         {
-          name: 'Prepaid Template',
+          name: 'Operations Template',
           order: 0,
           cells: [
             {
@@ -512,7 +512,7 @@ describe('createWorkerRuntimeSessionController', () => {
         documentId: 'phase0-doc',
         replicaId: 'browser:test',
         persistState: true,
-        initialSelection: { sheetName: 'Prepaid Template', address: 'C6' },
+        initialSelection: { sheetName: 'Operations Template', address: 'C6' },
         createWorker: () => createMockWorkerPort(runtime),
         fetchImpl,
       },
@@ -526,8 +526,8 @@ describe('createWorkerRuntimeSessionController', () => {
     )
 
     expect(fetchImpl).toHaveBeenCalledTimes(1)
-    expect(controller.runtimeState.sheetNames).toEqual(['Prepaid Template'])
-    expect(controller.handle.viewportStore.getCell('Prepaid Template', 'C6').value).toEqual({
+    expect(controller.runtimeState.sheetNames).toEqual(['Operations Template'])
+    expect(controller.handle.viewportStore.getCell('Operations Template', 'C6').value).toEqual({
       tag: ValueTag.Number,
       value: 88,
     })
@@ -559,7 +559,7 @@ describe('createWorkerRuntimeSessionController', () => {
       workbook: { name: 'phase0-doc' },
       sheets: [
         {
-          name: 'Prepaid Template',
+          name: 'Operations Template',
           order: 0,
           cells: [
             {
@@ -589,7 +589,7 @@ describe('createWorkerRuntimeSessionController', () => {
         documentId: 'phase0-doc',
         replicaId: 'browser:test',
         persistState: true,
-        initialSelection: { sheetName: 'Prepaid Template', address: 'C6' },
+        initialSelection: { sheetName: 'Operations Template', address: 'C6' },
         createWorker: () => createMockWorkerPort(runtime),
         zero: zero.zero,
         fetchImpl,
@@ -604,8 +604,8 @@ describe('createWorkerRuntimeSessionController', () => {
     )
 
     expect(fetchImpl).toHaveBeenCalledTimes(1)
-    expect(controller.runtimeState.sheetNames).toEqual(['Prepaid Template'])
-    expect(controller.handle.viewportStore.getCell('Prepaid Template', 'C6').value).toEqual({
+    expect(controller.runtimeState.sheetNames).toEqual(['Operations Template'])
+    expect(controller.handle.viewportStore.getCell('Operations Template', 'C6').value).toEqual({
       tag: ValueTag.Number,
       value: 88,
     })

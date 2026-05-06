@@ -1,3 +1,4 @@
+import { basename } from 'node:path'
 import { readFile, writeFile } from 'node:fs/promises'
 import { expect, type Page, test } from '@playwright/test'
 import * as XLSX from 'xlsx'
@@ -5,11 +6,12 @@ import { getProductColumnWidth, gotoWorkbookShell, waitForWorkbookReady } from '
 
 const XLSX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
-interface PrepaidImportExpectation {
+interface WorkbookImportExpectation {
   readonly workbookName: string
+  readonly uploadFileName?: string
   readonly sheetNames: readonly string[]
   readonly activeSheetName: string
-  readonly expectedColumnWidth: number
+  readonly expectedColumnWidth?: number
   readonly cells: readonly {
     readonly sheetName: string
     readonly address: string
@@ -28,109 +30,71 @@ function writeWorkbook(workbook: XLSX.WorkBook): Uint8Array {
   return bytes
 }
 
-function buildReferenceStylePrepaidWorkbook(): Uint8Array {
+function buildMultiSheetOperationsWorkbook(): Uint8Array {
   const workbook = XLSX.utils.book_new()
 
-  const summary = XLSX.utils.aoa_to_sheet([
-    ['PREPAID EXPENSE DASHBOARD', null, null, null],
+  const dashboard = XLSX.utils.aoa_to_sheet([
+    ['OPERATIONS DASHBOARD', null, null, null],
     [],
-    ['KEY METRICS'],
     ['Metric', 'Value'],
-    ['Total prepaids'],
-    ['Active balance'],
-    ['Average monthly amortization'],
+    ['Total budget'],
+    ['Open balance'],
+    ['Completion rate'],
   ])
-  summary.B5 = { t: 'n', f: "SUM('Prepaid Tracking'!F:F)" }
-  summary.B6 = { t: 'n', f: "SUMIF('Prepaid Tracking'!L:L,\"Active\",'Prepaid Tracking'!K:K)" }
-  summary.B7 = { t: 'n', f: 'IF(B5>0,B6/B5,0)' }
-  summary['!ref'] = 'A1:D7'
-  summary['!cols'] = [{ wpx: 180 }, { wpx: 118 }, { wpx: 96 }, { wpx: 96 }]
-  summary['!rows'] = [{ hpx: 30 }, {}, { hpx: 24 }]
-  summary['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }]
+  dashboard.B4 = { t: 'n', f: 'SUM(Ledger!F:F)' }
+  dashboard.B5 = { t: 'n', f: 'SUMIF(Ledger!H:H,"Open",Ledger!G:G)' }
+  dashboard.B6 = { t: 'n', f: 'IF(B4>0,1-B5/B4,0)' }
+  dashboard['!ref'] = 'A1:D6'
+  dashboard['!cols'] = [{ wpx: 180 }, { wpx: 118 }, { wpx: 96 }, { wpx: 96 }]
+  dashboard['!rows'] = [{ hpx: 30 }, {}, { hpx: 24 }]
+  dashboard['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }]
 
-  const tracking = XLSX.utils.aoa_to_sheet([
-    ['PREPAID EXPENSE TRACKING', null, null, null, null, null, null, null, null, null, null, null],
+  const ledger = XLSX.utils.aoa_to_sheet([
+    ['OPERATIONS LEDGER', null, null, null, null, null, null, null],
     [],
-    [
-      'ID',
-      'Date Paid',
-      'Vendor',
-      'Description',
-      'Category',
-      'Total Amount',
-      'Start Date',
-      'End Date',
-      'Life Months',
-      'Monthly Amount',
-      'Remaining Balance',
-      'Status',
-    ],
-    ['PE001', 45292, 'Acme Insurance', 'Annual insurance premium', 'Insurance', 12000, 45292, 45657, null, null, null, 'Active'],
-    ['PE002', 45323, 'Northstar SaaS', 'Platform subscription', 'Software Licenses', 18000, 45323, 45687, null, null, null, 'Active'],
+    ['ID', 'Date', 'Owner', 'Workstream', 'Category', 'Budget', 'Open Balance', 'Status'],
+    ['OP001', 45292, 'Facilities', 'Office refresh', 'Capital', 12000, null, 'Open'],
+    ['OP002', 45323, 'Engineering', 'Data migration', 'Platform', 18000, null, 'Open'],
   ])
-  tracking.I4 = { t: 'n', f: 'DATEDIF(G4,H4,"M")+1' }
-  tracking.J4 = { t: 'n', f: 'F4/I4' }
-  tracking.K4 = { t: 'n', f: "F4-SUMIF('Amortization Schedule'!$B:$B,A4,'Amortization Schedule'!$E:$E)" }
-  tracking.I5 = { t: 'n', f: 'DATEDIF(G5,H5,"M")+1' }
-  tracking.J5 = { t: 'n', f: 'F5/I5' }
-  tracking.K5 = { t: 'n', f: "F5-SUMIF('Amortization Schedule'!$B:$B,A5,'Amortization Schedule'!$E:$E)" }
-  tracking['!ref'] = 'A1:L5'
-  tracking['!cols'] = [
-    { wpx: 132 },
-    { wpx: 96 },
-    { wpx: 142 },
-    { wpx: 210 },
-    { wpx: 138 },
-    { wpx: 118 },
-    { wpx: 96 },
-    { wpx: 96 },
-    { wpx: 92 },
-    { wpx: 118 },
-    { wpx: 138 },
-    { wpx: 92 },
-  ]
-  tracking['!rows'] = [{ hpx: 30 }, {}, { hpx: 24 }]
-  tracking['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 11 } }]
+  ledger.G4 = { t: 'n', f: 'F4-SUMIF(Rollforward!$B:$B,A4,Rollforward!$E:$E)' }
+  ledger.G5 = { t: 'n', f: 'F5-SUMIF(Rollforward!$B:$B,A5,Rollforward!$E:$E)' }
+  ledger['!ref'] = 'A1:H5'
+  ledger['!cols'] = [{ wpx: 132 }, { wpx: 96 }, { wpx: 142 }, { wpx: 210 }, { wpx: 138 }, { wpx: 118 }, { wpx: 138 }, { wpx: 92 }]
+  ledger['!rows'] = [{ hpx: 30 }, {}, { hpx: 24 }]
+  ledger['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 7 } }]
 
-  const amortization = XLSX.utils.aoa_to_sheet([
-    ['AMORTIZATION SCHEDULE', null, null, null, null, null],
+  const rollforward = XLSX.utils.aoa_to_sheet([
+    ['ROLLFORWARD', null, null, null, null],
     [],
-    ['Month', 'Prepaid ID', 'Description', 'Monthly Amount', 'Cumulative Amortized', 'Remaining Balance'],
-    ['Jan 2024', 'PE001', 'Annual insurance premium'],
-    ['Feb 2024', 'PE001', 'Annual insurance premium'],
-    ['Mar 2024', 'PE002', 'Platform subscription'],
+    ['Period', 'Item ID', 'Description', 'Monthly Change', 'Cumulative Change'],
+    ['Jan 2024', 'OP001', 'Office refresh'],
+    ['Feb 2024', 'OP001', 'Office refresh'],
+    ['Mar 2024', 'OP002', 'Data migration'],
   ])
-  amortization.D4 = { t: 'n', f: "VLOOKUP(B4,'Prepaid Tracking'!A:J,10,FALSE())" }
-  amortization.E4 = { t: 'n', f: 'D4' }
-  amortization.F4 = { t: 'n', f: "VLOOKUP(B4,'Prepaid Tracking'!A:F,6,FALSE())-E4" }
-  amortization.D5 = { t: 'n', f: "VLOOKUP(B5,'Prepaid Tracking'!A:J,10,FALSE())" }
-  amortization.E5 = { t: 'n', f: 'IF(B5=B4,E4+D5,D5)' }
-  amortization.F5 = { t: 'n', f: "VLOOKUP(B5,'Prepaid Tracking'!A:F,6,FALSE())-E5" }
-  amortization.D6 = { t: 'n', f: "VLOOKUP(B6,'Prepaid Tracking'!A:J,10,FALSE())" }
-  amortization.E6 = { t: 'n', f: 'IF(B6=B5,E5+D6,D6)' }
-  amortization.F6 = { t: 'n', f: "VLOOKUP(B6,'Prepaid Tracking'!A:F,6,FALSE())-E6" }
-  amortization['!ref'] = 'A1:F6'
-  amortization['!cols'] = [{ wpx: 112 }, { wpx: 96 }, { wpx: 210 }, { wpx: 126 }, { wpx: 148 }, { wpx: 138 }]
-  amortization['!rows'] = [{ hpx: 30 }, {}, { hpx: 24 }]
-  amortization['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 5 } }]
+  rollforward.D4 = { t: 'n', f: 'VLOOKUP(B4,Ledger!A:F,6,FALSE())/12' }
+  rollforward.E4 = { t: 'n', f: 'D4' }
+  rollforward.D5 = { t: 'n', f: 'VLOOKUP(B5,Ledger!A:F,6,FALSE())/12' }
+  rollforward.E5 = { t: 'n', f: 'IF(B5=B4,E4+D5,D5)' }
+  rollforward.D6 = { t: 'n', f: 'VLOOKUP(B6,Ledger!A:F,6,FALSE())/12' }
+  rollforward.E6 = { t: 'n', f: 'IF(B6=B5,E5+D6,D6)' }
+  rollforward['!ref'] = 'A1:E6'
+  rollforward['!cols'] = [{ wpx: 112 }, { wpx: 96 }, { wpx: 210 }, { wpx: 126 }, { wpx: 148 }]
+  rollforward['!rows'] = [{ hpx: 30 }, {}, { hpx: 24 }]
+  rollforward['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 4 } }]
 
-  XLSX.utils.book_append_sheet(workbook, summary, 'Summary Dashboard')
-  XLSX.utils.book_append_sheet(workbook, tracking, 'Prepaid Tracking')
-  XLSX.utils.book_append_sheet(workbook, amortization, 'Amortization Schedule')
-  XLSX.utils.book_append_sheet(
-    workbook,
-    XLSX.utils.aoa_to_sheet([['Expense Categories'], ['Insurance'], ['Software Licenses']]),
-    'Categories',
-  )
+  XLSX.utils.book_append_sheet(workbook, dashboard, 'Dashboard')
+  XLSX.utils.book_append_sheet(workbook, ledger, 'Ledger')
+  XLSX.utils.book_append_sheet(workbook, rollforward, 'Rollforward')
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['Category'], ['Capital'], ['Platform']]), 'Lookups')
 
   return writeWorkbook(workbook)
 }
 
-function buildSingleSheetDailyPrepaidWorkbook(): Uint8Array {
+function buildSingleSheetPlanningWorkbook(): Uint8Array {
   const workbook = XLSX.utils.book_new()
   const sheet = XLSX.utils.aoa_to_sheet([
-    ['Daily Prepaid Schedule', null, null, null, null, null, null, null, null],
-    ['Vendor', 'Description', 'Start Date', 'End Date', 'Total Amount', 'Jan 2026', 'Feb 2026', '2026 Amortized', 'Remaining Balance'],
+    ['Monthly Planning Schedule', null, null, null, null, null, null, null, null],
+    ['Owner', 'Workstream', 'Start Date', 'End Date', 'Budget', 'Jan 2026', 'Feb 2026', 'Planned', 'Remaining'],
     ['TenantWorks', 'Facilities platform', 46054, 46234, 6600],
     ['Blue Harbor', 'Insurance binder', 46023, 46388, 12000],
   ])
@@ -156,7 +120,7 @@ function buildSingleSheetDailyPrepaidWorkbook(): Uint8Array {
   ]
   sheet['!rows'] = [{ hpx: 30 }, { hpx: 24 }]
   sheet['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }]
-  XLSX.utils.book_append_sheet(workbook, sheet, 'Daily Prepaids')
+  XLSX.utils.book_append_sheet(workbook, sheet, 'Monthly Plan')
   return writeWorkbook(workbook)
 }
 
@@ -166,10 +130,55 @@ async function writeFixture(testInfo: { outputPath: (pathSegment: string) => str
   return path
 }
 
-async function importWorkbookThroughUi(page: Page, path: string, expectation: PrepaidImportExpectation): Promise<void> {
+function normalizeWorkbookName(fileName: string): string {
+  return basename(fileName).replace(/\.(xlsx|csv)$/i, '') || 'Imported workbook'
+}
+
+function readExternalWorkbookExpectation(path: string): WorkbookImportExpectation {
+  const workbook = XLSX.readFile(path, {
+    cellFormula: true,
+    cellText: false,
+  })
+  const cells: WorkbookImportExpectation['cells'] = []
+  for (const sheetName of workbook.SheetNames) {
+    const sheet = workbook.Sheets[sheetName]
+    if (!sheet?.['!ref']) {
+      continue
+    }
+    const range = XLSX.utils.decode_range(sheet['!ref'])
+    for (let row = range.s.r; row <= range.e.r && cells.length < 6; row += 1) {
+      for (let col = range.s.c; col <= range.e.c && cells.length < 6; col += 1) {
+        const address = XLSX.utils.encode_cell({ r: row, c: col })
+        const cell = sheet[address]
+        if (!cell) {
+          continue
+        }
+        if (typeof cell.f === 'string' && cell.f.trim().length > 0) {
+          cells.push({ sheetName, address, value: `=${cell.f}` })
+          continue
+        }
+        if (typeof cell.v === 'string' && cell.v.trim().length > 0) {
+          cells.push({ sheetName, address, value: cell.v })
+        }
+      }
+    }
+  }
+  if (workbook.SheetNames.length === 0 || cells.length === 0) {
+    throw new Error('External workbook verifier needs at least one sheet and one string or formula cell')
+  }
+  return {
+    workbookName: normalizeWorkbookName(path),
+    uploadFileName: basename(path),
+    sheetNames: workbook.SheetNames,
+    activeSheetName: workbook.SheetNames[0] ?? 'Sheet1',
+    cells,
+  }
+}
+
+async function importWorkbookThroughUi(page: Page, path: string, expectation: WorkbookImportExpectation): Promise<void> {
   await page.getByTestId('workbook-import-toggle').click()
   await page.getByTestId('workbook-import-file').setInputFiles({
-    name: `${expectation.workbookName}.xlsx`,
+    name: expectation.uploadFileName ?? `${expectation.workbookName}.xlsx`,
     mimeType: XLSX_MIME_TYPE,
     buffer: await readFile(path),
   })
@@ -197,54 +206,50 @@ async function expectImportedCell(page: Page, sheetName: string, address: string
 const generatedFixtures: readonly {
   readonly name: string
   readonly bytes: () => Uint8Array
-  readonly expectation: PrepaidImportExpectation
+  readonly expectation: WorkbookImportExpectation
 }[] = [
   {
-    name: 'reference-style-prepaid',
-    bytes: buildReferenceStylePrepaidWorkbook,
+    name: 'multi-sheet-operations',
+    bytes: buildMultiSheetOperationsWorkbook,
     expectation: {
-      workbookName: 'reference-style-prepaid',
-      sheetNames: ['Summary Dashboard', 'Prepaid Tracking', 'Amortization Schedule', 'Categories'],
-      activeSheetName: 'Prepaid Tracking',
+      workbookName: 'multi-sheet-operations',
+      sheetNames: ['Dashboard', 'Ledger', 'Rollforward', 'Lookups'],
+      activeSheetName: 'Ledger',
       expectedColumnWidth: 132,
       cells: [
-        { sheetName: 'Summary Dashboard', address: 'A1', value: 'PREPAID EXPENSE DASHBOARD' },
-        { sheetName: 'Summary Dashboard', address: 'B5', value: "=SUM('Prepaid Tracking'!F:F)" },
-        { sheetName: 'Prepaid Tracking', address: 'A4', value: 'PE001' },
-        { sheetName: 'Prepaid Tracking', address: 'B4', value: '45292' },
-        {
-          sheetName: 'Prepaid Tracking',
-          address: 'K4',
-          value: "=F4-SUMIF('Amortization Schedule'!$B:$B,A4,'Amortization Schedule'!$E:$E)",
-        },
-        { sheetName: 'Amortization Schedule', address: 'E5', value: '=IF(B5=B4,E4+D5,D5)' },
+        { sheetName: 'Dashboard', address: 'A1', value: 'OPERATIONS DASHBOARD' },
+        { sheetName: 'Dashboard', address: 'B4', value: '=SUM(Ledger!F:F)' },
+        { sheetName: 'Ledger', address: 'A4', value: 'OP001' },
+        { sheetName: 'Ledger', address: 'B4', value: '45292' },
+        { sheetName: 'Ledger', address: 'G4', value: '=F4-SUMIF(Rollforward!$B:$B,A4,Rollforward!$E:$E)' },
+        { sheetName: 'Rollforward', address: 'E5', value: '=IF(B5=B4,E4+D5,D5)' },
       ],
     },
   },
   {
-    name: 'single-sheet-daily-prepaid',
-    bytes: buildSingleSheetDailyPrepaidWorkbook,
+    name: 'single-sheet-planning',
+    bytes: buildSingleSheetPlanningWorkbook,
     expectation: {
-      workbookName: 'single-sheet-daily-prepaid',
-      sheetNames: ['Daily Prepaids'],
-      activeSheetName: 'Daily Prepaids',
+      workbookName: 'single-sheet-planning',
+      sheetNames: ['Monthly Plan'],
+      activeSheetName: 'Monthly Plan',
       expectedColumnWidth: 168,
       cells: [
-        { sheetName: 'Daily Prepaids', address: 'A1', value: 'Daily Prepaid Schedule' },
-        { sheetName: 'Daily Prepaids', address: 'A3', value: 'TenantWorks' },
+        { sheetName: 'Monthly Plan', address: 'A1', value: 'Monthly Planning Schedule' },
+        { sheetName: 'Monthly Plan', address: 'A3', value: 'TenantWorks' },
         {
-          sheetName: 'Daily Prepaids',
+          sheetName: 'Monthly Plan',
           address: 'F3',
           value: '=ROUND(IFERROR($E3*MAX(0,MIN($D3,EOMONTH(DATE(2026,1,1),0))-MAX($C3,DATE(2026,1,1))+1)/($D3-$C3+1),0),2)',
         },
-        { sheetName: 'Daily Prepaids', address: 'I4', value: '=ROUND(E4-H4,2)' },
+        { sheetName: 'Monthly Plan', address: 'I4', value: '=ROUND(E4-H4,2)' },
       ],
     },
   },
 ]
 
 for (const fixture of generatedFixtures) {
-  test(`web app imports generated prepaid workbook fixture: ${fixture.name}`, async ({ page }, testInfo) => {
+  test(`web app imports generated workbook fixture: ${fixture.name}`, async ({ page }, testInfo) => {
     await gotoWorkbookShell(page)
     await waitForWorkbookReady(page)
 
@@ -260,28 +265,18 @@ for (const fixture of generatedFixtures) {
   })
 }
 
-test('web app imports the external referenced prepaid workbook when BILIG_REFERENCE_PREPAID_XLSX is set', async ({ page }) => {
-  const referencePath = process.env['BILIG_REFERENCE_PREPAID_XLSX']
-  test.skip(!referencePath, 'Set BILIG_REFERENCE_PREPAID_XLSX to verify the local referenced prepaid workbook.')
+test('web app imports an external workbook when BILIG_REFERENCE_WORKBOOK_XLSX is set', async ({ page }) => {
+  const referencePath = process.env['BILIG_REFERENCE_WORKBOOK_XLSX']
+  test.skip(!referencePath, 'Set BILIG_REFERENCE_WORKBOOK_XLSX to verify a local workbook through the normal import UI.')
 
   await gotoWorkbookShell(page)
   await waitForWorkbookReady(page)
 
-  await importWorkbookThroughUi(page, referencePath, {
-    workbookName: 'Prepaid Expense Template',
-    sheetNames: ['Summary Dashboard', 'Prepaid Tracking', 'Amortization Schedule', 'Categories'],
-    activeSheetName: 'Prepaid Tracking',
-    expectedColumnWidth: 11,
-    cells: [
-      { sheetName: 'Summary Dashboard', address: 'A1', value: 'PREPAID EXPENSE DASHBOARD' },
-      { sheetName: 'Summary Dashboard', address: 'B5', value: "=SUM('Prepaid Tracking'!F:F)" },
-      { sheetName: 'Prepaid Tracking', address: 'A4', value: 'PE001' },
-      { sheetName: 'Prepaid Tracking', address: 'B4', value: '01/01/2024' },
-      { sheetName: 'Prepaid Tracking', address: 'K4', value: "=F4-SUMIF('Amortization Schedule'!$B:$B,A4,'Amortization Schedule'!$E:$E)" },
-      { sheetName: 'Amortization Schedule', address: 'E5', value: '=IF(B5=B4,E4+D5,D5)' },
-    ],
-  })
+  const expectation = readExternalWorkbookExpectation(referencePath)
+  await importWorkbookThroughUi(page, referencePath, expectation)
 
-  await page.getByRole('tab', { name: 'Prepaid Tracking' }).click()
-  expect(await getProductColumnWidth(page, 0)).toBeGreaterThan(10)
+  for (const cell of expectation.cells.slice(0, 4)) {
+    // oxlint-disable-next-line eslint(no-await-in-loop)
+    await expectImportedCell(page, cell.sheetName, cell.address, cell.value)
+  }
 })

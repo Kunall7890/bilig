@@ -1,45 +1,12 @@
-import { expect, type Page, test } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import {
-  createTestDocumentId,
   expectToolbarColor,
   getBox,
-  getProductColumnWidth,
   getToolbarButton,
-  gotoWorkbookShell,
   pickToolbarPresetColor,
   remoteSyncEnabled,
   waitForWorkbookReady,
 } from './web-shell-helpers.js'
-
-async function expectSelectedCellValue(page: Page, address: string, value: string) {
-  const nameBox = page.getByTestId('name-box')
-  const formulaInput = page.getByTestId('formula-input')
-
-  await nameBox.fill(address)
-  await nameBox.press('Enter')
-  await expect(page.getByTestId('status-selection')).toHaveText(`Sheet1!${address}`)
-  await expect(formulaInput).toHaveValue(value)
-}
-
-async function setCellValue(page: Page, address: string, value: string) {
-  const nameBox = page.getByTestId('name-box')
-  const formulaInput = page.getByTestId('formula-input')
-
-  await nameBox.fill(address)
-  await nameBox.press('Enter')
-  await expect(nameBox).toHaveValue(address)
-  await formulaInput.fill(value)
-  await formulaInput.press('Enter')
-}
-
-function prepaidStatusFormula(row: number): string {
-  return `=IF(COUNTA(A${row}:E${row})=0,"",IF(OR(C${row}="",D${row}=""),"Missing dates",IF(E${row}<=0,"Missing amount",IF(D${row}<C${row},"Check dates",IF(U${row}<0,"Over-amortized",IF(U${row}<=0,"Complete",IF(T${row}=0,"Not started","In progress")))))))`
-}
-
-async function expectPrepaidStatus(page: Page, address: string, result: string) {
-  await expectSelectedCellValue(page, address, prepaidStatusFormula(Number(address.slice(1))))
-  await expect(page.getByTestId('formula-resolved-value')).toHaveText(result)
-}
 
 test('@browser-ci web app renders the minimal product shell without legacy demo chrome', async ({ page }) => {
   await page.goto('/')
@@ -56,6 +23,7 @@ test('@browser-ci web app renders the minimal product shell without legacy demo 
   await expect(page.getByTestId('replica-panel')).toHaveCount(0)
 
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!A1')
+  await expect(page.getByRole('button', { name: 'Templates' })).toHaveCount(0)
   await expect(page.getByTestId('status-sync')).toHaveText(
     remoteSyncEnabled
       ? /^(Saved|Saving…|Sync pending|Sync issue)$/
@@ -63,53 +31,6 @@ test('@browser-ci web app renders the minimal product shell without legacy demo 
     { timeout: 15_000 },
   )
   await expect(page.locator('.formula-result-shell')).toHaveCount(0)
-})
-
-test('web app applies the prepaid amortization template from the Templates menu', async ({ page }) => {
-  await gotoWorkbookShell(page, `/?document=${encodeURIComponent(createTestDocumentId('prepaid-template-toolbar'))}`)
-  await waitForWorkbookReady(page)
-
-  await page.getByRole('button', { name: 'Templates' }).click()
-  await page.getByRole('button', { name: 'Prepaid amortization template' }).click()
-
-  await expectSelectedCellValue(page, 'A1', 'Prepaid Amortization Schedule')
-  await expectSelectedCellValue(page, 'A5', 'Vendor')
-  await expectSelectedCellValue(page, 'A6', 'ABC Insurance')
-  await expectSelectedCellValue(page, 'A10', 'Cybersecurity Policy')
-  await expectSelectedCellValue(page, 'T5', '2024 Amortized')
-  await expectSelectedCellValue(page, 'W5', 'Notes')
-
-  const januaryFormula = '=ROUND(IFERROR($E6*MAX(0,MIN($D6,EOMONTH(DATE(2024,1,1),0))-MAX($C6,DATE(2024,1,1))+1)/($D6-$C6+1),0),2)'
-  await expectSelectedCellValue(page, 'H6', januaryFormula)
-  await expectSelectedCellValue(page, 'V6', prepaidStatusFormula(6))
-  expect(await getProductColumnWidth(page, 0)).toBe(184)
-})
-
-test('web app surfaces prepaid template row validation in formula results', async ({ page }) => {
-  await gotoWorkbookShell(page, `/?document=${encodeURIComponent(createTestDocumentId('prepaid-template-validation'))}`)
-  await waitForWorkbookReady(page)
-
-  await page.getByRole('button', { name: 'Templates' }).click()
-  await page.getByRole('button', { name: 'Prepaid amortization template' }).click()
-
-  const nameBox = page.getByTestId('name-box')
-  await nameBox.fill('C10')
-  await nameBox.press('Enter')
-  await page.keyboard.press('Delete')
-  await expectPrepaidStatus(page, 'V10', 'Missing dates')
-
-  await setCellValue(page, 'C10', '45600')
-  await setCellValue(page, 'D10', '45630')
-  await setCellValue(page, 'E10', '0')
-  await expectPrepaidStatus(page, 'V10', 'Missing amount')
-
-  await setCellValue(page, 'E10', '100')
-  await setCellValue(page, 'D10', '45500')
-  await expectPrepaidStatus(page, 'V10', 'Check dates')
-
-  await setCellValue(page, 'D10', '45630')
-  await setCellValue(page, 'U10', '-1')
-  await expectPrepaidStatus(page, 'V10', 'Over-amortized')
 })
 
 test('web app keeps toolbar controls aligned and consistently sized', async ({ page }) => {

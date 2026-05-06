@@ -266,15 +266,15 @@ describe('WorkbookToolbar', () => {
     })
   })
 
-  it('opens the templates menu and applies the prepaid amortization template to the active sheet', async () => {
+  it('does not render a domain-specific templates menu', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
     const invokeMutation = vi.fn(async () => {})
     const selectionRangeRef: MutableRefObject<CellRangeRef> = {
       current: {
-        sheetName: 'Prepaid Schedule',
-        startAddress: 'C8',
-        endAddress: 'D9',
+        sheetName: 'Sheet1',
+        startAddress: 'A1',
+        endAddress: 'A1',
       },
     }
     const host = document.createElement('div')
@@ -285,39 +285,7 @@ describe('WorkbookToolbar', () => {
       root.render(<ToolbarHookHarness invokeMutation={invokeMutation} selectionRangeRef={selectionRangeRef} />)
     })
 
-    const trigger = document.querySelector("[aria-label='Templates']")
-    expect(trigger).not.toBeNull()
-
-    await act(async () => {
-      trigger?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
-
-    const prepaidButton = document.querySelector("[aria-label='Prepaid amortization template']")
-    expect(prepaidButton).not.toBeNull()
-
-    await act(async () => {
-      prepaidButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
-
-    expect(invokeMutation).toHaveBeenCalledWith(
-      'renderCommit',
-      expect.arrayContaining([
-        expect.objectContaining({
-          addr: 'A1',
-          kind: 'upsertCell',
-          sheetName: 'Prepaid Schedule',
-          value: 'Prepaid Amortization Schedule',
-        }),
-        expect.objectContaining({
-          addr: 'H6',
-          formula: 'ROUND(IFERROR($E6*MAX(0,MIN($D6,EOMONTH(DATE(2024,1,1),0))-MAX($C6,DATE(2024,1,1))+1)/($D6-$C6+1),0),2)',
-          kind: 'upsertCell',
-          sheetName: 'Prepaid Schedule',
-        }),
-      ]),
-    )
-    expect(invokeMutation).toHaveBeenCalledWith('setFreezePane', 'Prepaid Schedule', 5, 0)
-    expect(invokeMutation).toHaveBeenCalledWith('updateColumnMetadata', 'Prepaid Schedule', 0, 1, 184, null)
+    expect(document.querySelector("[aria-label='Templates']")).toBeNull()
 
     await act(async () => {
       root.unmount()

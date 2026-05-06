@@ -32,64 +32,81 @@ function buildWorkbook(): Uint8Array {
   return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
 }
 
-function buildPrepaidWorkbookFixture(shape: 'tracking' | 'daily'): Uint8Array {
+function buildGenericWorkflowWorkbookFixture(shape: 'multi-sheet-operations' | 'single-sheet-planning'): Uint8Array {
   const workbook = XLSX.utils.book_new()
-  if (shape === 'tracking') {
-    const tracking = XLSX.utils.aoa_to_sheet([
-      ['PREPAID EXPENSE TRACKING', null, null, null, null, null, null, null, null, null, null, null],
+  if (shape === 'multi-sheet-operations') {
+    const dashboard = XLSX.utils.aoa_to_sheet([
+      ['OPERATIONS DASHBOARD', null, null, null],
       [],
-      [
-        'ID',
-        'Date Paid',
-        'Vendor',
-        'Description',
-        'Category',
-        'Total Amount',
-        'Start Date',
-        'End Date',
-        'Life Months',
-        'Monthly Amount',
-        'Remaining Balance',
-        'Status',
-      ],
-      ['PE001', 45292, 'Acme Insurance', 'Annual insurance premium', 'Insurance', 12000, 45292, 45657, null, null, null, 'Active'],
+      ['Metric', 'Value'],
+      ['Total budget'],
+      ['Open balance'],
+      ['Completion rate'],
     ])
-    tracking.I4 = { t: 'n', f: 'DATEDIF(G4,H4,"M")+1' }
-    tracking.J4 = { t: 'n', f: 'F4/I4' }
-    tracking.K4 = { t: 'n', f: "F4-SUMIF('Amortization Schedule'!$B:$B,A4,'Amortization Schedule'!$E:$E)" }
-    tracking['!ref'] = 'A1:L4'
-    tracking['!cols'] = [{ wpx: 132 }, { wpx: 96 }, { wpx: 142 }, { wpx: 210 }]
-    tracking['!rows'] = [{ hpx: 30 }, {}, { hpx: 24 }]
-    tracking['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 11 } }]
+    dashboard.B4 = { t: 'n', f: 'SUM(Ledger!F:F)' }
+    dashboard.B5 = { t: 'n', f: 'SUMIF(Ledger!H:H,"Open",Ledger!G:G)' }
+    dashboard.B6 = { t: 'n', f: 'IF(B4>0,1-B5/B4,0)' }
+    dashboard['!ref'] = 'A1:D6'
+    dashboard['!cols'] = [{ wpx: 180 }, { wpx: 118 }, { wpx: 96 }, { wpx: 96 }]
+    dashboard['!rows'] = [{ hpx: 30 }, {}, { hpx: 24 }]
+    dashboard['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }]
 
-    const amortization = XLSX.utils.aoa_to_sheet([
-      ['AMORTIZATION SCHEDULE', null, null, null, null, null],
+    const ledger = XLSX.utils.aoa_to_sheet([
+      ['OPERATIONS LEDGER', null, null, null, null, null, null, null],
       [],
-      ['Month', 'Prepaid ID', 'Description', 'Monthly Amount', 'Cumulative Amortized', 'Remaining Balance'],
-      ['Jan 2024', 'PE001', 'Annual insurance premium'],
+      ['ID', 'Date', 'Owner', 'Workstream', 'Category', 'Budget', 'Open Balance', 'Status'],
+      ['OP001', 45292, 'Facilities', 'Office refresh', 'Capital', 12000, null, 'Open'],
+      ['OP002', 45323, 'Engineering', 'Data migration', 'Platform', 18000, null, 'Open'],
     ])
-    amortization.D4 = { t: 'n', f: "VLOOKUP(B4,'Prepaid Tracking'!A:J,10,FALSE())" }
-    amortization.E4 = { t: 'n', f: 'D4' }
-    amortization.F4 = { t: 'n', f: "VLOOKUP(B4,'Prepaid Tracking'!A:F,6,FALSE())-E4" }
-    amortization['!ref'] = 'A1:F4'
-    amortization['!cols'] = [{ wpx: 112 }, { wpx: 96 }, { wpx: 210 }, { wpx: 126 }, { wpx: 148 }, { wpx: 138 }]
-    amortization['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 5 } }]
-    XLSX.utils.book_append_sheet(workbook, tracking, 'Prepaid Tracking')
-    XLSX.utils.book_append_sheet(workbook, amortization, 'Amortization Schedule')
+    ledger.G4 = { t: 'n', f: 'F4-SUMIF(Rollforward!$B:$B,A4,Rollforward!$E:$E)' }
+    ledger.G5 = { t: 'n', f: 'F5-SUMIF(Rollforward!$B:$B,A5,Rollforward!$E:$E)' }
+    ledger['!ref'] = 'A1:H5'
+    ledger['!cols'] = [{ wpx: 132 }, { wpx: 96 }, { wpx: 142 }, { wpx: 210 }, { wpx: 138 }, { wpx: 118 }, { wpx: 138 }, { wpx: 92 }]
+    ledger['!rows'] = [{ hpx: 30 }, {}, { hpx: 24 }]
+    ledger['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 7 } }]
+
+    const rollforward = XLSX.utils.aoa_to_sheet([
+      ['ROLLFORWARD', null, null, null, null],
+      [],
+      ['Period', 'Item ID', 'Description', 'Monthly Change', 'Cumulative Change'],
+      ['Jan 2024', 'OP001', 'Office refresh'],
+      ['Feb 2024', 'OP001', 'Office refresh'],
+      ['Mar 2024', 'OP002', 'Data migration'],
+    ])
+    rollforward.D4 = { t: 'n', f: 'VLOOKUP(B4,Ledger!A:F,6,FALSE())/12' }
+    rollforward.E4 = { t: 'n', f: 'D4' }
+    rollforward.D5 = { t: 'n', f: 'VLOOKUP(B5,Ledger!A:F,6,FALSE())/12' }
+    rollforward.E5 = { t: 'n', f: 'IF(B5=B4,E4+D5,D5)' }
+    rollforward.D6 = { t: 'n', f: 'VLOOKUP(B6,Ledger!A:F,6,FALSE())/12' }
+    rollforward.E6 = { t: 'n', f: 'IF(B6=B5,E5+D6,D6)' }
+    rollforward['!ref'] = 'A1:E6'
+    rollforward['!cols'] = [{ wpx: 112 }, { wpx: 96 }, { wpx: 210 }, { wpx: 126 }, { wpx: 148 }]
+    rollforward['!rows'] = [{ hpx: 30 }, {}, { hpx: 24 }]
+    rollforward['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 4 } }]
+
+    XLSX.utils.book_append_sheet(workbook, dashboard, 'Dashboard')
+    XLSX.utils.book_append_sheet(workbook, ledger, 'Ledger')
+    XLSX.utils.book_append_sheet(workbook, rollforward, 'Rollforward')
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['Category'], ['Capital'], ['Platform']]), 'Lookups')
     return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
   }
 
-  const daily = XLSX.utils.aoa_to_sheet([
-    ['Daily Prepaid Schedule', null, null, null, null, null, null, null, null],
-    ['Vendor', 'Description', 'Start Date', 'End Date', 'Total Amount', 'Jan 2026', 'Feb 2026', '2026 Amortized', 'Remaining Balance'],
+  const planning = XLSX.utils.aoa_to_sheet([
+    ['Monthly Planning Schedule', null, null, null, null, null, null, null, null],
+    ['Owner', 'Workstream', 'Start Date', 'End Date', 'Budget', 'Jan 2026', 'Feb 2026', 'Planned', 'Remaining'],
     ['TenantWorks', 'Facilities platform', 46054, 46234, 6600],
+    ['Blue Harbor', 'Insurance binder', 46023, 46388, 12000],
   ])
-  daily.F3 = { t: 'n', f: 'ROUND(IFERROR($E3*MAX(0,MIN($D3,EOMONTH(DATE(2026,1,1),0))-MAX($C3,DATE(2026,1,1))+1)/($D3-$C3+1),0),2)' }
-  daily.G3 = { t: 'n', f: 'ROUND(IFERROR($E3*MAX(0,MIN($D3,EOMONTH(DATE(2026,2,1),0))-MAX($C3,DATE(2026,2,1))+1)/($D3-$C3+1),0),2)' }
-  daily.H3 = { t: 'n', f: 'ROUND(SUM(F3:G3),2)' }
-  daily.I3 = { t: 'n', f: 'ROUND(E3-H3,2)' }
-  daily['!ref'] = 'A1:I3'
-  daily['!cols'] = [
+  planning.F3 = { t: 'n', f: 'ROUND(IFERROR($E3*MAX(0,MIN($D3,EOMONTH(DATE(2026,1,1),0))-MAX($C3,DATE(2026,1,1))+1)/($D3-$C3+1),0),2)' }
+  planning.G3 = { t: 'n', f: 'ROUND(IFERROR($E3*MAX(0,MIN($D3,EOMONTH(DATE(2026,2,1),0))-MAX($C3,DATE(2026,2,1))+1)/($D3-$C3+1),0),2)' }
+  planning.H3 = { t: 'n', f: 'ROUND(SUM(F3:G3),2)' }
+  planning.I3 = { t: 'n', f: 'ROUND(E3-H3,2)' }
+  planning.F4 = { t: 'n', f: 'ROUND(IFERROR($E4*MAX(0,MIN($D4,EOMONTH(DATE(2026,1,1),0))-MAX($C4,DATE(2026,1,1))+1)/($D4-$C4+1),0),2)' }
+  planning.G4 = { t: 'n', f: 'ROUND(IFERROR($E4*MAX(0,MIN($D4,EOMONTH(DATE(2026,2,1),0))-MAX($C4,DATE(2026,2,1))+1)/($D4-$C4+1),0),2)' }
+  planning.H4 = { t: 'n', f: 'ROUND(SUM(F4:G4),2)' }
+  planning.I4 = { t: 'n', f: 'ROUND(E4-H4,2)' }
+  planning['!ref'] = 'A1:I4'
+  planning['!cols'] = [
     { wpx: 168 },
     { wpx: 190 },
     { wpx: 104 },
@@ -100,9 +117,9 @@ function buildPrepaidWorkbookFixture(shape: 'tracking' | 'daily'): Uint8Array {
     { wpx: 134 },
     { wpx: 138 },
   ]
-  daily['!rows'] = [{ hpx: 30 }, { hpx: 24 }]
-  daily['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }]
-  XLSX.utils.book_append_sheet(workbook, daily, 'Daily Prepaids')
+  planning['!rows'] = [{ hpx: 30 }, { hpx: 24 }]
+  planning['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 8 } }]
+  XLSX.utils.book_append_sheet(workbook, planning, 'Monthly Plan')
   return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
 }
 
@@ -208,38 +225,42 @@ describe('excel import', () => {
     })
   })
 
-  it('imports multiple prepaid-amortization workbook shapes without file-specific dispatch', () => {
-    const tracking = importXlsx(buildPrepaidWorkbookFixture('tracking'), 'tracking-prepaids.xlsx')
-    expect(tracking.sheetNames).toEqual(['Prepaid Tracking', 'Amortization Schedule'])
-    expect(tracking.snapshot.sheets[0]).toMatchObject({
-      name: 'Prepaid Tracking',
+  it('imports multiple generic workbook shapes without file-specific dispatch', () => {
+    const operations = importXlsx(buildGenericWorkflowWorkbookFixture('multi-sheet-operations'), 'operations-workflow.xlsx')
+    expect(operations.sheetNames).toEqual(['Dashboard', 'Ledger', 'Rollforward', 'Lookups'])
+    const ledger = operations.snapshot.sheets.find((sheet) => sheet.name === 'Ledger')
+    expect(ledger).toMatchObject({
+      name: 'Ledger',
       metadata: {
         columns: expect.arrayContaining([{ id: 'col:0', index: 0, size: 132 }]),
         rows: expect.arrayContaining([{ id: 'row:0', index: 0, size: 30 }]),
-        merges: [{ sheetName: 'Prepaid Tracking', startAddress: 'A1', endAddress: 'L1' }],
+        merges: [{ sheetName: 'Ledger', startAddress: 'A1', endAddress: 'H1' }],
       },
     })
-    expect(tracking.snapshot.sheets[0]?.cells).toEqual(
+    expect(ledger?.cells).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ address: 'A4', value: 'PE001' }),
+        expect.objectContaining({ address: 'A4', value: 'OP001' }),
+        expect.objectContaining({ address: 'B4', value: 45292 }),
         expect.objectContaining({
-          address: 'K4',
-          formula: "F4-SUMIF('Amortization Schedule'!$B:$B,A4,'Amortization Schedule'!$E:$E)",
+          address: 'G4',
+          formula: 'F4-SUMIF(Rollforward!$B:$B,A4,Rollforward!$E:$E)',
         }),
       ]),
     )
+    const rollforward = operations.snapshot.sheets.find((sheet) => sheet.name === 'Rollforward')
+    expect(rollforward?.cells).toEqual(expect.arrayContaining([expect.objectContaining({ address: 'E5', formula: 'IF(B5=B4,E4+D5,D5)' })]))
 
-    const daily = importXlsx(buildPrepaidWorkbookFixture('daily'), 'daily-prepaids.xlsx')
-    expect(daily.sheetNames).toEqual(['Daily Prepaids'])
-    expect(daily.snapshot.sheets[0]).toMatchObject({
-      name: 'Daily Prepaids',
+    const planning = importXlsx(buildGenericWorkflowWorkbookFixture('single-sheet-planning'), 'monthly-plan.xlsx')
+    expect(planning.sheetNames).toEqual(['Monthly Plan'])
+    expect(planning.snapshot.sheets[0]).toMatchObject({
+      name: 'Monthly Plan',
       metadata: {
         columns: expect.arrayContaining([{ id: 'col:0', index: 0, size: 168 }]),
         rows: expect.arrayContaining([{ id: 'row:0', index: 0, size: 30 }]),
-        merges: [{ sheetName: 'Daily Prepaids', startAddress: 'A1', endAddress: 'I1' }],
+        merges: [{ sheetName: 'Monthly Plan', startAddress: 'A1', endAddress: 'I1' }],
       },
     })
-    expect(daily.snapshot.sheets[0]?.cells).toEqual(
+    expect(planning.snapshot.sheets[0]?.cells).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ address: 'A3', value: 'TenantWorks' }),
         expect.objectContaining({

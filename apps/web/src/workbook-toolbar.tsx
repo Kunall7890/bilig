@@ -10,7 +10,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Italic,
-  LayoutTemplate,
   PaintBucket,
   Redo2,
   RemoveFormatting,
@@ -85,14 +84,6 @@ const STRUCTURE_ACTIONS = [
   { key: 'unhide-row', label: 'Unhide row', template: 'unhideCurrentRow' },
   { key: 'hide-column', label: 'Hide column', template: 'hideCurrentColumn' },
   { key: 'unhide-column', label: 'Unhide column', template: 'unhideCurrentColumn' },
-] as const
-
-const TEMPLATE_ACTIONS = [
-  {
-    key: 'prepaid-amortization',
-    label: 'Prepaid amortization',
-    ariaLabel: 'Prepaid amortization template',
-  },
 ] as const
 
 interface ToolbarScrollCueState {
@@ -195,7 +186,6 @@ export interface WorkbookToolbarProps {
   onUnhideCurrentColumn(this: void): void
   onToggleWrap(this: void): void
   onClearStyle(this: void): void
-  onApplyPrepaidAmortizationTemplate?: (() => void) | undefined
   onUndo(this: void): void
   onRedo(this: void): void
   trailingContent?: ReactNode
@@ -240,7 +230,6 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
   onUnhideCurrentColumn,
   onToggleWrap,
   onClearStyle,
-  onApplyPrepaidAmortizationTemplate,
   onUndo,
   onRedo,
   trailingContent,
@@ -542,48 +531,6 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
             </Toolbar.Group>
 
             <Toolbar.Separator className={toolbarSeparatorClass()} />
-
-            {onApplyPrepaidAmortizationTemplate ? (
-              <>
-                <Toolbar.Group className={toolbarGroupClass()}>
-                  <Popover.Root modal={false}>
-                    <Popover.Trigger
-                      aria-label="Templates"
-                      aria-haspopup="menu"
-                      className={cn(toolbarButtonClass(), 'gap-1 px-1.5')}
-                      disabled={!writesAllowed}
-                      title="Templates"
-                      type="button"
-                    >
-                      <LayoutTemplate className={toolbarIconClass()} />
-                      <ChevronDown className="h-3 w-3 shrink-0 stroke-[1.75] text-[var(--wb-text-muted)]" />
-                    </Popover.Trigger>
-                    <Popover.Portal>
-                      <Popover.Positioner align="start" className="z-[1000]" side="bottom" sideOffset={8}>
-                        <Popover.Popup aria-label="Workbook templates" className={cn(toolbarPopupClass(), 'w-[204px] p-1')}>
-                          <div className="grid gap-1">
-                            {TEMPLATE_ACTIONS.map((action) => (
-                              <Popover.Close
-                                aria-label={action.ariaLabel}
-                                className="inline-flex h-8 items-center rounded-md border border-transparent px-2 text-left text-[11px] font-medium text-[var(--color-mauve-900)] outline-none transition-colors hover:bg-[var(--color-mauve-100)] focus-visible:border-[var(--color-mauve-400)] focus-visible:bg-[var(--color-mauve-100)]"
-                                key={action.key}
-                                type="button"
-                                onClick={onApplyPrepaidAmortizationTemplate}
-                              >
-                                <LayoutTemplate className={cn(toolbarIconClass(), 'mr-2 text-[var(--color-mauve-700)]')} />
-                                <span className="truncate">{action.label}</span>
-                              </Popover.Close>
-                            ))}
-                          </div>
-                        </Popover.Popup>
-                      </Popover.Positioner>
-                    </Popover.Portal>
-                  </Popover.Root>
-                </Toolbar.Group>
-
-                <Toolbar.Separator className={toolbarSeparatorClass()} />
-              </>
-            ) : null}
 
             <Toolbar.Group className={toolbarGroupClass()}>
               <Popover.Root modal={false}>

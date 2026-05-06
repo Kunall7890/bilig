@@ -759,7 +759,7 @@ describe('workbook agent pane', () => {
               threadId: 'thr-1',
               scope: 'private',
               entryCount: 64,
-              latestEntryText: 'Done — prepaid expenses now exists as a sheet.',
+              latestEntryText: 'Done - operating plan now exists as a sheet.',
             }),
           ]),
           {
@@ -1498,7 +1498,7 @@ describe('workbook agent pane', () => {
                       tableCount: 1,
                       tables: [
                         {
-                          name: 'PrepaidExpenses',
+                          name: 'OperatingPlan',
                           sheetName: 'sheet3',
                           startAddress: 'A6',
                           endAddress: 'K10',
@@ -1548,7 +1548,7 @@ describe('workbook agent pane', () => {
     expect(readPanelViewport instanceof HTMLDivElement).toBe(true)
     expect(readPanelViewport?.className).toContain('h-44')
     expect(host.textContent).toContain('1 table')
-    expect(host.textContent).toContain('PrepaidExpenses')
+    expect(host.textContent).toContain('OperatingPlan')
     expect(host.textContent).toContain('sheet3!A6:K10')
     expect(host.textContent).toContain('4 rows')
     expect(host.textContent).toContain('11 columns')
@@ -1968,7 +1968,7 @@ describe('workbook agent pane', () => {
                     id: 'optimistic-user:turn-1',
                     kind: 'user',
                     turnId: 'turn-1',
-                    text: 'Build the prepaid template',
+                    text: 'Build the operating plan',
                     phase: null,
                     toolName: null,
                     toolStatus: null,

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react'
-import { flushSync } from 'react-dom'
 import { useActorRef, useSelector } from '@xstate/react'
 import { isWorkbookAgentCommandBundle, isWorkbookAgentPreviewSummary, type WorkbookAgentCommandBundle } from '@bilig/agent-api'
 import { parseCellAddress } from '@bilig/formula'
@@ -19,7 +18,6 @@ import { getWorkbookScrollPerfCollector } from './perf/workbook-scroll-perf.js'
 import { registerRuntimeDisposalHandlers } from './runtime-disposal-handlers.js'
 import { useWorkbookLocalPersistenceHandoff } from './use-workbook-local-persistence-handoff.js'
 import { loadOrCreateWorkbookPresenceClientId } from './workbook-presence-client.js'
-import { buildPrepaidAmortizationTemplateMutations, type WorkbookTemplateMutation } from './workbook-prepaid-template.js'
 import { useWorkerWorkbookAgentContext } from './use-worker-workbook-agent-context.js'
 import { useWorkerWorkbookGridState } from './use-worker-workbook-grid-state.js'
 import { useWorkerWorkbookInteractionState } from './use-worker-workbook-interaction-state.js'
@@ -33,45 +31,6 @@ interface LocalOnlyZeroSource {
     destroy(): void
   }
   mutate(mutation: unknown): unknown
-}
-
-function readSingleColumnWidthMutation(
-  mutation: WorkbookTemplateMutation,
-): { readonly sheetName: string; readonly columnIndex: number; readonly width: number } | null {
-  if (mutation.method !== 'updateColumnMetadata') {
-    return null
-  }
-  const [sheetName, columnIndex, count, width, hidden] = mutation.args
-  if (typeof sheetName === 'string' && typeof columnIndex === 'number' && count === 1 && typeof width === 'number' && hidden === null) {
-    return { sheetName, columnIndex, width }
-  }
-  return null
-}
-
-function readSingleRowHeightMutation(
-  mutation: WorkbookTemplateMutation,
-): { readonly sheetName: string; readonly rowIndex: number; readonly height: number } | null {
-  if (mutation.method !== 'updateRowMetadata') {
-    return null
-  }
-  const [sheetName, rowIndex, count, height, hidden] = mutation.args
-  if (typeof sheetName === 'string' && typeof rowIndex === 'number' && count === 1 && typeof height === 'number' && hidden === null) {
-    return { sheetName, rowIndex, height }
-  }
-  return null
-}
-
-function readFreezePaneMutation(
-  mutation: WorkbookTemplateMutation,
-): { readonly sheetName: string; readonly rows: number; readonly cols: number } | null {
-  if (mutation.method !== 'setFreezePane') {
-    return null
-  }
-  const [sheetName, rows, cols] = mutation.args
-  if (typeof sheetName === 'string' && typeof rows === 'number' && typeof cols === 'number') {
-    return { sheetName, rows, cols }
-  }
-  return null
 }
 
 export function useWorkerWorkbookAppState(input: {
@@ -334,65 +293,6 @@ export function useWorkerWorkbookAppState(input: {
     },
     [invokeColumnWidthMutation, runtimeController],
   )
-  const applyPrepaidAmortizationTemplate = useCallback(() => {
-    void (async () => {
-      try {
-        const sheetName = selection.sheetName
-        const mutations = buildPrepaidAmortizationTemplateMutations(sheetName)
-        const viewportStore = workerHandleRef.current?.viewportStore
-        if (viewportStore) {
-          flushSync(() => {
-            mutations.forEach((mutation) => {
-              const columnWidth = readSingleColumnWidthMutation(mutation)
-              if (columnWidth) {
-                viewportStore.setColumnWidth(columnWidth.sheetName, columnWidth.columnIndex, columnWidth.width)
-                return
-              }
-              const rowHeight = readSingleRowHeightMutation(mutation)
-              if (rowHeight) {
-                viewportStore.setRowHeight(rowHeight.sheetName, rowHeight.rowIndex, rowHeight.height)
-              }
-            })
-          })
-        }
-        if (runtimeController) {
-          await mutations.reduce<Promise<unknown>>(
-            (previous, mutation) => previous.then(() => runtimeController.invoke(mutation.method, ...mutation.args)),
-            Promise.resolve(),
-          )
-        }
-        const persistTemplateMutation = (mutation: WorkbookTemplateMutation): Promise<void> => {
-          const columnWidth = readSingleColumnWidthMutation(mutation)
-          if (columnWidth) {
-            return invokeColumnWidthMutation(columnWidth.sheetName, columnWidth.columnIndex, columnWidth.width, { flush: true })
-          }
-          const rowHeight = readSingleRowHeightMutation(mutation)
-          if (rowHeight) {
-            return invokeRowHeightMutation(rowHeight.sheetName, rowHeight.rowIndex, rowHeight.height)
-          }
-          const freezePane = readFreezePaneMutation(mutation)
-          if (freezePane) {
-            return invokeSetFreezePaneMutation(freezePane.sheetName, freezePane.rows, freezePane.cols)
-          }
-          return invokeMutation(mutation.method, ...mutation.args)
-        }
-        await mutations.reduce<Promise<void>>(
-          (previous, mutation) => previous.then(() => persistTemplateMutation(mutation)),
-          Promise.resolve(),
-        )
-      } catch (error) {
-        reportRuntimeError(error)
-      }
-    })()
-  }, [
-    invokeColumnWidthMutation,
-    invokeMutation,
-    invokeRowHeightMutation,
-    invokeSetFreezePaneMutation,
-    reportRuntimeError,
-    runtimeController,
-    selection.sheetName,
-  ])
   const sheetNames = useMemo(
     () => [...(runtimeState?.sheetNames ?? [selection.sheetName])],
     [runtimeState?.sheetNames, selection.sheetName],
@@ -524,7 +424,6 @@ export function useWorkerWorkbookAppState(input: {
     canUnhideCurrentColumn: hiddenColumns[selectedPosition.col] === true,
     canUnhideCurrentRow: hiddenRows[selectedPosition.row] === true,
     invokeMutation,
-    onApplyPrepaidAmortizationTemplate: applyPrepaidAmortizationTemplate,
     onHideCurrentColumn: () => {
       void (async () => {
         try {
