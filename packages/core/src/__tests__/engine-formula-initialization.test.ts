@@ -200,7 +200,7 @@ describe('SpreadsheetEngine formula initialization', () => {
       rangeNodeVisits: 0,
     })
     expect(engine.getPerformanceCounters().wasmFullUploads).toBe(0)
-    expect(engine.getPerformanceCounters().directFormulaInitialEvaluations).toBe(0)
+    expect(engine.getPerformanceCounters().directFormulaInitialEvaluations).toBe(4)
   })
 
   it('materializes anchored prefix aggregate families during initial direct evaluation', async () => {
@@ -331,7 +331,7 @@ describe('SpreadsheetEngine formula initialization', () => {
     })
     expect(notifyCellValueWritten).not.toHaveBeenCalled()
     expect(notifyColumnsWritten).toHaveBeenCalledWith(sheetId, Uint32Array.from([2, 3]))
-    expect(engine.getPerformanceCounters().directFormulaInitialEvaluations).toBe(0)
+    expect(engine.getPerformanceCounters().directFormulaInitialEvaluations).toBe(refs.length)
     notifyCellValueWritten.mockRestore()
     notifyColumnsWritten.mockRestore()
   })

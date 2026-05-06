@@ -1163,6 +1163,7 @@ export function createEngineFormulaInitializationService(args: {
         ? inlineInitialDirectScalarCellBuffer.subarray(0, inlineInitialDirectScalarCellCount)
         : targetCellIndices
       args.deferKernelSync(recalculated)
+      addEngineCounter(args.state.counters, 'directFormulaInitialEvaluations', inlineInitialDirectScalarCellCount)
     } else if (useInitialDirectEvaluation) {
       const direct = evaluateInitialDirectFormulas(orderedPreparedCellList(), {
         alreadyValidated: true,

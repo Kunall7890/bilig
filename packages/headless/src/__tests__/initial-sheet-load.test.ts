@@ -53,6 +53,7 @@ describe('initial mixed sheet load', () => {
         value: 18,
       })
       expect(workbook.getPerformanceCounters().formulasParsed).toBe(2)
+      expect(workbook.getPerformanceCounters().directFormulaInitialEvaluations).toBe(6)
       expect(compileSpy).not.toHaveBeenCalled()
       expect(parseSpy).not.toHaveBeenCalled()
     } finally {
