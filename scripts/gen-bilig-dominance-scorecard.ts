@@ -7,7 +7,23 @@ import { pathToFileURL } from 'node:url'
 
 import { parseAuditabilityScorecard, type AuditabilityScorecard } from './gen-auditability-scorecard.ts'
 import { parseImportExportFidelityScorecard, type ImportExportFidelityScorecard } from './gen-import-export-fidelity-scorecard.ts'
+import { parseReliabilityScorecard, type ReliabilityScorecard } from './gen-reliability-scorecard.ts'
 import { parseSecurityPostureScorecard, type SecurityPostureScorecard } from './gen-security-posture-scorecard.ts'
+import {
+  arrayField,
+  asObject,
+  booleanField,
+  isFiniteNumber,
+  literalField,
+  numberArrayField,
+  numberField,
+  objectField,
+  optionalNumberField,
+  optionalStringField,
+  readJsonObject,
+  stringArrayField,
+  stringField,
+} from './json-scorecard-helpers.ts'
 
 export type DominanceStatus = 'repo-proved-lead' | 'partial-repo-evidence' | 'target-only'
 
@@ -137,6 +153,7 @@ export interface BiligDominanceScorecard {
     hyperFormulaSurfaceSnapshot: string
     importExportFidelityScorecard: string
     largeWorkbookSloScorecard: string
+    reliabilityScorecard: string
     securityPostureScorecard: string
     workpaperCompetitiveBenchmark: {
       generatedAt: string
@@ -159,6 +176,9 @@ export interface BiligDominanceScorecard {
     importExportUnsupportedFeatures: string[]
     largeWorkbookSloRowsCovered: number[]
     largeWorkbookSloPassed: boolean
+    reliabilityCoveredControls: string[]
+    reliabilityPosturePassed: boolean
+    reliabilityUncoveredControls: string[]
     securityCoveredControls: string[]
     securityPosturePassed: boolean
     securityUncoveredControls: string[]
@@ -195,6 +215,8 @@ export interface BuildScorecardInput {
   importExportFidelityScorecardPath: string
   largeWorkbookSloScorecard: LargeWorkbookSloScorecard
   largeWorkbookSloScorecardPath: string
+  reliabilityScorecard: ReliabilityScorecard
+  reliabilityScorecardPath: string
   securityPostureScorecard: SecurityPostureScorecard
   securityPostureScorecardPath: string
   surfaceSnapshot: HyperFormulaSurfaceSnapshot
@@ -209,6 +231,7 @@ const competitiveArtifactPath = join(rootDir, 'packages', 'benchmarks', 'baselin
 const formulaSnapshotPath = join(rootDir, 'packages', 'formula', 'src', '__tests__', 'fixtures', 'formula-dominance-snapshot.json')
 const importExportFidelityScorecardPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'import-export-fidelity-scorecard.json')
 const largeWorkbookSloScorecardPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'large-workbook-slo-scorecard.json')
+const reliabilityScorecardPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'reliability-scorecard.json')
 const securityPostureScorecardPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'security-posture-scorecard.json')
 const surfaceSnapshotPath = join(rootDir, 'packages', 'headless', 'src', '__tests__', 'fixtures', 'hyperformula-surface.json')
 
@@ -225,6 +248,8 @@ function main(): void {
     importExportFidelityScorecardPath: toRepoPath(importExportFidelityScorecardPath),
     largeWorkbookSloScorecard: parseLargeWorkbookSloScorecard(readJsonObject(largeWorkbookSloScorecardPath)),
     largeWorkbookSloScorecardPath: toRepoPath(largeWorkbookSloScorecardPath),
+    reliabilityScorecard: parseReliabilityScorecard(readJsonObject(reliabilityScorecardPath)),
+    reliabilityScorecardPath: toRepoPath(reliabilityScorecardPath),
     securityPostureScorecard: parseSecurityPostureScorecard(readJsonObject(securityPostureScorecardPath)),
     securityPostureScorecardPath: toRepoPath(securityPostureScorecardPath),
     surfaceSnapshot: parseSurfaceSnapshot(readJsonObject(surfaceSnapshotPath)),
@@ -318,6 +343,7 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
       hyperFormulaSurfaceSnapshot: input.surfaceSnapshotPath,
       importExportFidelityScorecard: input.importExportFidelityScorecardPath,
       largeWorkbookSloScorecard: input.largeWorkbookSloScorecardPath,
+      reliabilityScorecard: input.reliabilityScorecardPath,
       securityPostureScorecard: input.securityPostureScorecardPath,
       workpaperCompetitiveBenchmark: {
         path: input.competitiveArtifactPath,
@@ -340,6 +366,9 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
       importExportUnsupportedFeatures: input.importExportFidelityScorecard.summary.unsupportedFeatures,
       largeWorkbookSloRowsCovered: input.largeWorkbookSloScorecard.summary.coveredLargeWorkbookRows,
       largeWorkbookSloPassed: input.largeWorkbookSloScorecard.summary.allSloBudgetsPassed,
+      reliabilityCoveredControls: input.reliabilityScorecard.summary.coveredControls,
+      reliabilityPosturePassed: input.reliabilityScorecard.summary.allRequiredControlsPassed,
+      reliabilityUncoveredControls: input.reliabilityScorecard.summary.uncoveredControls,
       securityCoveredControls: input.securityPostureScorecard.summary.coveredControls,
       securityPosturePassed: input.securityPostureScorecard.summary.allRequiredControlsPassed,
       securityUncoveredControls: input.securityPostureScorecard.summary.uncoveredControls,
@@ -559,13 +588,27 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
         target: 'Crash-safe local durability, deterministic replay, durable sync, and no accepted-op loss.',
         status: 'partial-repo-evidence',
         currentEvidence: [
+          `generated reliability scorecard passes required controls: ${String(input.reliabilityScorecard.summary.allRequiredControlsPassed)}`,
+          `covered reliability controls: ${input.reliabilityScorecard.summary.coveredControls.join(', ')}`,
+          `uncovered reliability controls are explicitly disclosed: ${input.reliabilityScorecard.summary.uncoveredControls.join(', ')}`,
           'local pending-op journal and reconnect/rebase architecture are documented',
           'runtime sync replay, fuzz, reconnect, and local persistence tests exist',
         ],
-        evidenceArtifacts: ['docs/05-06-next-phase.md', 'apps/web/src/__tests__/runtime-sync.fuzz.test.ts'],
-        checkCommands: ['pnpm test:fuzz:main', 'pnpm test:correctness:browser', 'pnpm test:correctness:server'],
+        evidenceArtifacts: [
+          input.reliabilityScorecardPath,
+          'docs/05-06-next-phase.md',
+          'apps/web/src/__tests__/runtime-sync.fuzz.test.ts',
+          'apps/web/src/__tests__/worker-runtime.test.ts',
+        ],
+        checkCommands: [
+          'pnpm reliability:check',
+          'pnpm exec vitest run apps/web/src/__tests__/worker-runtime.test.ts apps/web/src/__tests__/worker-runtime-local-persistence.test.ts apps/web/src/__tests__/worker-runtime-bootstrap-persistence.test.ts apps/web/src/__tests__/workbook-mutation-journal.test.ts',
+          'pnpm test:fuzz:main',
+          'pnpm test:correctness:browser',
+          'pnpm test:correctness:server',
+        ],
         blockers: [
-          'no generated crash/reload/offline soak artifact proves zero pending-op loss',
+          'generated reliability evidence covers worker-runtime reload, submitted ack absorption, authoritative rebase, and failed retry durability, but not headed browser crash/reload or offline network-partition soak',
           'no direct Sheets or Excel reliability comparison artifact exists in the repo',
         ],
       },
@@ -803,10 +846,6 @@ function parseCompetitiveResult(value: unknown): CompetitiveResult {
   }
 }
 
-function readJsonObject(path: string): Record<string, unknown> {
-  return asObject(JSON.parse(readFileSync(path, 'utf8')) as unknown, path)
-}
-
 function ratioField(value: Record<string, unknown>, field: string): RatioSummary {
   const ratioValue = objectField(value, field)
   return {
@@ -814,102 +853,6 @@ function ratioField(value: Record<string, unknown>, field: string): RatioSummary
     production: numberField(ratioValue, 'production'),
     total: numberField(ratioValue, 'total'),
   }
-}
-
-function objectField(value: Record<string, unknown>, field: string): Record<string, unknown> {
-  return asObject(value[field], field)
-}
-
-function stringField(value: Record<string, unknown>, field: string): string {
-  const fieldValue = value[field]
-  if (typeof fieldValue !== 'string') {
-    throw new Error(`Expected ${field} to be a string`)
-  }
-  return fieldValue
-}
-
-function optionalStringField(value: Record<string, unknown>, field: string): string | null {
-  const fieldValue = value[field]
-  if (fieldValue === null) {
-    return null
-  }
-  if (typeof fieldValue !== 'string') {
-    throw new Error(`Expected ${field} to be a string or null`)
-  }
-  return fieldValue
-}
-
-function stringArrayField(value: Record<string, unknown>, field: string): string[] {
-  const fieldValue = arrayField(value, field)
-  if (!fieldValue.every((entry) => typeof entry === 'string')) {
-    throw new Error(`Expected ${field} to be a string array`)
-  }
-  return fieldValue
-}
-
-function numberArrayField(value: Record<string, unknown>, field: string): number[] {
-  const fieldValue = arrayField(value, field)
-  if (!fieldValue.every(isFiniteNumber)) {
-    throw new Error(`Expected ${field} to be a finite number array`)
-  }
-  return fieldValue
-}
-
-function arrayField(value: Record<string, unknown>, field: string): unknown[] {
-  const fieldValue = value[field]
-  if (!Array.isArray(fieldValue)) {
-    throw new Error(`Expected ${field} to be an array`)
-  }
-  return fieldValue
-}
-
-function numberField(value: Record<string, unknown>, field: string): number {
-  const fieldValue = value[field]
-  if (!isFiniteNumber(fieldValue)) {
-    throw new Error(`Expected ${field} to be a finite number`)
-  }
-  return fieldValue
-}
-
-function optionalNumberField(value: Record<string, unknown>, field: string): number | null {
-  const fieldValue = value[field]
-  if (fieldValue === null) {
-    return null
-  }
-  if (!isFiniteNumber(fieldValue)) {
-    throw new Error(`Expected ${field} to be a finite number or null`)
-  }
-  return fieldValue
-}
-
-function booleanField(value: Record<string, unknown>, field: string): boolean {
-  const fieldValue = value[field]
-  if (typeof fieldValue !== 'boolean') {
-    throw new Error(`Expected ${field} to be a boolean`)
-  }
-  return fieldValue
-}
-
-function literalField<const T extends string | number | boolean>(value: Record<string, unknown>, field: string, expected: T): T {
-  if (value[field] !== expected) {
-    throw new Error(`Expected ${field} to be ${String(expected)}`)
-  }
-  return expected
-}
-
-function asObject(value: unknown, name: string): Record<string, unknown> {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-    throw new Error(`Expected ${name} to be an object`)
-  }
-  const record: Record<string, unknown> = {}
-  for (const key of Object.keys(value)) {
-    record[key] = Reflect.get(value, key)
-  }
-  return record
-}
-
-function isFiniteNumber(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value)
 }
 
 function toRepoPath(path: string): string {

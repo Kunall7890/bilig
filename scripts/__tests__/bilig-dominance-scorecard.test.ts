@@ -29,8 +29,10 @@ describe('bilig dominance scorecard', () => {
     expect(scorecard.summary.largeWorkbookSloRowsCovered).toEqual([100_000, 250_000])
     expect(scorecard.summary.largeWorkbookSloPassed).toBe(true)
     expect(scorecard.summary.auditabilityPosturePassed).toBe(true)
+    expect(scorecard.summary.reliabilityPosturePassed).toBe(true)
     expect(scorecard.summary.securityPosturePassed).toBe(true)
     expect(scorecard.sourceArtifacts.auditabilityScorecard).toBe('packages/benchmarks/baselines/auditability-scorecard.json')
+    expect(scorecard.sourceArtifacts.reliabilityScorecard).toBe('packages/benchmarks/baselines/reliability-scorecard.json')
     expect(scorecard.sourceArtifacts.importExportFidelityScorecard).toBe(
       'packages/benchmarks/baselines/import-export-fidelity-scorecard.json',
     )
@@ -47,6 +49,10 @@ describe('bilig dominance scorecard', () => {
     expect(scorecard.categories.find((category) => category.id === 'auditability')).toMatchObject({
       status: 'partial-repo-evidence',
       evidenceArtifacts: expect.arrayContaining(['packages/benchmarks/baselines/auditability-scorecard.json']),
+    })
+    expect(scorecard.categories.find((category) => category.id === 'reliability')).toMatchObject({
+      status: 'partial-repo-evidence',
+      evidenceArtifacts: expect.arrayContaining(['packages/benchmarks/baselines/reliability-scorecard.json']),
     })
     expect(scorecard.categories.find((category) => category.id === 'security')).toMatchObject({
       status: 'partial-repo-evidence',
@@ -83,11 +89,14 @@ describe('bilig dominance scorecard', () => {
     expect(packageJson).toContain('"dominance:check": "bun scripts/gen-bilig-dominance-scorecard.ts --check"')
     expect(packageJson).toContain('"auditability:generate": "bun scripts/gen-auditability-scorecard.ts"')
     expect(packageJson).toContain('"auditability:check": "bun scripts/gen-auditability-scorecard.ts --check"')
+    expect(packageJson).toContain('"reliability:generate": "bun scripts/gen-reliability-scorecard.ts"')
+    expect(packageJson).toContain('"reliability:check": "bun scripts/gen-reliability-scorecard.ts --check"')
     expect(packageJson).toContain('"import-export:fidelity:check": "bun scripts/gen-import-export-fidelity-scorecard.ts --check"')
     expect(packageJson).toContain('"large-workbook:slo:check": "bun scripts/gen-large-workbook-slo-scorecard.ts --check"')
     expect(packageJson).toContain('"security:posture:check": "bun scripts/gen-security-posture-scorecard.ts --check"')
     expect(runCi).toContain("pnpm('bilig dominance scorecard check', 'dominance:check')")
     expect(runCi).toContain("pnpm('auditability scorecard check', 'auditability:check')")
+    expect(runCi).toContain("pnpm('reliability scorecard check', 'reliability:check')")
     expect(runCi).toContain("pnpm('import/export fidelity scorecard check', 'import-export:fidelity:check')")
     expect(runCi).toContain("pnpm('large workbook SLO scorecard check', 'large-workbook:slo:check')")
     expect(runCi).toContain("pnpm('security posture scorecard check', 'security:posture:check')")
@@ -123,6 +132,7 @@ function buildFixtureInput(): BuildScorecardInput {
     auditabilityScorecardPath: 'packages/benchmarks/baselines/auditability-scorecard.json',
     importExportFidelityScorecardPath: 'packages/benchmarks/baselines/import-export-fidelity-scorecard.json',
     largeWorkbookSloScorecardPath: 'packages/benchmarks/baselines/large-workbook-slo-scorecard.json',
+    reliabilityScorecardPath: 'packages/benchmarks/baselines/reliability-scorecard.json',
     securityPostureScorecardPath: 'packages/benchmarks/baselines/security-posture-scorecard.json',
     surfaceSnapshotPath: 'packages/headless/src/__tests__/fixtures/hyperformula-surface.json',
     formulaSnapshot: {
@@ -216,6 +226,39 @@ function buildFixtureInput(): BuildScorecardInput {
           passed: true,
           coveredControls: ['agent.previewDiffParity'],
           evidence: 'fixture preview matched apply',
+          findings: [],
+        },
+      ],
+    },
+    reliabilityScorecard: {
+      schemaVersion: 1,
+      suite: 'reliability-posture',
+      generatedAt: '2026-05-06T11:00:00.000Z',
+      source: {
+        artifactGenerator: 'scripts/gen-reliability-scorecard.ts',
+        workerRuntimeImplementation: 'apps/web/src/worker-runtime.ts',
+        mutationJournalImplementation: 'apps/web/src/worker-runtime-mutation-journal.ts',
+        localStoreImplementation: 'packages/storage-browser/src/index.ts',
+      },
+      summary: {
+        allRequiredControlsPassed: true,
+        pendingReloadPassed: true,
+        authoritativeAckPassed: true,
+        authoritativeRebasePassed: true,
+        failedRetryPassed: true,
+        coveredControls: ['pending.localReloadSurvival'],
+        uncoveredControls: ['headedBrowser.crashReloadSoak'],
+        externalGoogleSheetsEvidence: 'not-captured',
+        externalMicrosoftExcelEvidence: 'not-captured',
+      },
+      controls: [
+        {
+          id: 'pending-mutations-survive-reload',
+          category: 'pending-durability',
+          required: true,
+          passed: true,
+          coveredControls: ['pending.localReloadSurvival'],
+          evidence: 'fixture pending mutation survived reload',
           findings: [],
         },
       ],

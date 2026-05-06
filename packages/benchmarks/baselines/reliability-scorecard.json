@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "suite": "reliability-posture",
+  "generatedAt": "2026-05-06T08:32:44.254Z",
+  "source": {
+    "artifactGenerator": "scripts/gen-reliability-scorecard.ts",
+    "workerRuntimeImplementation": "apps/web/src/worker-runtime.ts",
+    "mutationJournalImplementation": "apps/web/src/worker-runtime-mutation-journal.ts",
+    "localStoreImplementation": "packages/storage-browser/src/index.ts"
+  },
+  "summary": {
+    "allRequiredControlsPassed": true,
+    "pendingReloadPassed": true,
+    "authoritativeAckPassed": true,
+    "authoritativeRebasePassed": true,
+    "failedRetryPassed": true,
+    "coveredControls": [
+      "pending.localReloadSurvival",
+      "pending.submittedReloadSurvival",
+      "pending.authoritativeAckAbsorption",
+      "pending.authoritativeRebasePreservesLocal",
+      "pending.failedRetrySurvival",
+      "localStore.journalActiveView"
+    ],
+    "uncoveredControls": ["headedBrowser.crashReloadSoak", "offlineNetworkPartitionSoak", "externalSheetsExcelReliabilityComparison"],
+    "externalGoogleSheetsEvidence": "not-captured",
+    "externalMicrosoftExcelEvidence": "not-captured"
+  },
+  "controls": [
+    {
+      "id": "pending-mutations-survive-reload",
+      "category": "pending-durability",
+      "required": true,
+      "passed": true,
+      "coveredControls": ["pending.localReloadSurvival", "localStore.journalActiveView"],
+      "evidence": "Enqueued a local pending mutation, reopened the worker runtime from the same local store, and verified the pending entry and projected cell survived.",
+      "findings": []
+    },
+    {
+      "id": "submitted-mutations-absorb-authoritative-ack",
+      "category": "authoritative-reconcile",
+      "required": true,
+      "passed": true,
+      "coveredControls": ["pending.submittedReloadSurvival", "pending.authoritativeAckAbsorption", "localStore.journalActiveView"],
+      "evidence": "Reopened a submitted mutation, absorbed an authoritative event with the same client mutation id, and verified pending state stayed empty after another reload.",
+      "findings": []
+    },
+    {
+      "id": "authoritative-rebase-preserves-unsent-mutations",
+      "category": "authoritative-reconcile",
+      "required": true,
+      "passed": true,
+      "coveredControls": ["pending.authoritativeRebasePreservesLocal", "localStore.journalActiveView"],
+      "evidence": "Applied an unrelated authoritative event over an unsent local mutation, reopened the runtime, and verified both the authoritative cell and rebased local cell survived.",
+      "findings": []
+    },
+    {
+      "id": "failed-mutations-survive-reload-and-retry",
+      "category": "failure-recovery",
+      "required": true,
+      "passed": true,
+      "coveredControls": ["pending.failedRetrySurvival", "localStore.journalActiveView"],
+      "evidence": "Marked a pending mutation failed, reopened the runtime, retried it, reopened again, and verified it returned to local pending state without losing the projected value.",
+      "findings": []
+    }
+  ]
+}
