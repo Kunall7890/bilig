@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { parseCaptureArgs } from '../capture-ui-responsiveness-same-corpus.ts'
+import { parseCaptureArgs, parseEmitXlsxArgs } from '../capture-ui-responsiveness-same-corpus.ts'
 
 describe('same-corpus UI responsiveness capture CLI', () => {
   it('builds a default Bilig benchmark URL from the selected corpus', () => {
@@ -58,6 +58,15 @@ describe('same-corpus UI responsiveness capture CLI', () => {
 
   it('rejects missing incumbent URLs because the generated proof must be comparable', () => {
     expect(() => parseCaptureArgs(['--output', 'tmp/ui-capture.json'])).toThrow('Missing required arguments.')
+  })
+
+  it('parses XLSX emission mode for same-corpus setup', () => {
+    const args = parseEmitXlsxArgs(['--emit-xlsx', 'tmp/ui-corpus', '--corpus', 'wide-mixed-variable-250k'])
+
+    expect(args).toMatchObject({
+      corpusId: 'wide-mixed-variable-250k',
+    })
+    expect(args?.targetDirectory.endsWith('/tmp/ui-corpus')).toBe(true)
   })
 
   it('rejects unknown corpus ids', () => {

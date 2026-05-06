@@ -1,12 +1,14 @@
 #!/usr/bin/env bun
 
 import { mkdirSync, writeFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { performance } from 'node:perf_hooks'
 import { pathToFileURL } from 'node:url'
 
 import { chromium, type Browser, type Page } from '@playwright/test'
+import { exportXlsx } from '../packages/excel-import/src/index.js'
 import {
+  buildWorkbookBenchmarkCorpus,
   getWorkbookBenchmarkCorpusDefinition,
   isWorkbookBenchmarkCorpusId,
   type WorkbookBenchmarkCorpusId,
@@ -30,6 +32,11 @@ interface CaptureArgs {
   readonly sampleCount: number
 }
 
+interface EmitXlsxArgs {
+  readonly corpusId: WorkbookBenchmarkCorpusId
+  readonly targetDirectory: string
+}
+
 interface ScrollSample {
   readonly operationResponseMs: number
   readonly postOperationFrameMs: number
@@ -40,6 +47,11 @@ const defaultCorpusId: WorkbookBenchmarkCorpusId = 'wide-mixed-250k'
 const defaultViewport = { width: 1440, height: 900 } as const
 
 async function main(): Promise<void> {
+  const emitXlsxArgs = parseEmitXlsxArgs(process.argv.slice(2))
+  if (emitXlsxArgs) {
+    emitSameCorpusXlsx(emitXlsxArgs)
+    return
+  }
   const args = parseCaptureArgs(process.argv.slice(2))
   const capture = await captureSameCorpusUiResponsiveness(args)
   mkdirSync(dirname(args.outputPath), { recursive: true })
@@ -65,6 +77,43 @@ async function main(): Promise<void> {
   )
 }
 
+export function parseEmitXlsxArgs(argv: readonly string[]): EmitXlsxArgs | null {
+  const emitIndex = argv.indexOf('--emit-xlsx')
+  if (emitIndex === -1) {
+    return null
+  }
+  const targetDirectory = argv[emitIndex + 1]
+  if (!targetDirectory) {
+    throw new Error('Missing directory after --emit-xlsx')
+  }
+  return {
+    corpusId: parseCorpusId(argumentValue(argv, '--corpus') ?? defaultCorpusId),
+    targetDirectory: resolve(targetDirectory),
+  }
+}
+
+export function emitSameCorpusXlsx(args: EmitXlsxArgs): void {
+  mkdirSync(args.targetDirectory, { recursive: true })
+  const corpus = buildWorkbookBenchmarkCorpus(args.corpusId)
+  const outputFile = join(args.targetDirectory, `${args.corpusId}.xlsx`)
+  writeFileSync(outputFile, exportXlsx(corpus.snapshot))
+  console.log(
+    JSON.stringify(
+      {
+        mode: 'emit-xlsx',
+        outputFile,
+        corpusCaseId: corpus.id,
+        materializedCells: corpus.materializedCellCount,
+        googleSheetsUploadMode: 'native_google_sheets',
+        microsoftExcelWebSource: 'upload-or-host-this-xlsx-for-excel-web',
+        captureCommand: 'pnpm ui:same-corpus:capture -- --output <capture.json> --google-sheets-url <url> --microsoft-excel-web-url <url>',
+      },
+      null,
+      2,
+    ),
+  )
+}
+
 export function parseCaptureArgs(argv: readonly string[]): CaptureArgs {
   const corpusId = parseCorpusId(argumentValue(argv, '--corpus') ?? defaultCorpusId)
   const outputPath = argumentValue(argv, '--output')
@@ -78,6 +127,7 @@ export function parseCaptureArgs(argv: readonly string[]): CaptureArgs {
         '  --output <capture.json>',
         '  --google-sheets-url <same-corpus-google-sheets-url>',
         '  --microsoft-excel-web-url <same-corpus-excel-web-url>',
+        '  or: --emit-xlsx <directory>',
         '  [--bilig-url <local-bilig-url>] [--corpus wide-mixed-250k] [--samples 3] [--delta-x 0] [--delta-y 720] [--headed]',
       ].join('\n'),
     )
