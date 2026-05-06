@@ -17,13 +17,18 @@ describe('same-corpus UI responsiveness capture CLI', () => {
 
     expect(args).toMatchObject({
       biligUrl: 'http://127.0.0.1:5173/?benchmarkCorpus=dense-mixed-250k',
+      biligStorageStatePath: null,
       corpusId: 'dense-mixed-250k',
       deltaX: 0,
       deltaY: 720,
       googleSheetsUrl: 'https://docs.google.com/spreadsheets/d/sheet-id/edit',
+      googleSheetsStorageStatePath: null,
       headless: true,
       microsoftExcelWebUrl: 'https://view.officeapps.live.com/op/view.aspx?src=example.xlsx',
+      microsoftExcelWebStorageStatePath: null,
+      readyTimeoutMs: 60000,
       sampleCount: 3,
+      storageStatePath: null,
     })
     expect(args.outputPath.endsWith('/tmp/ui-capture.json')).toBe(true)
   })
@@ -44,6 +49,16 @@ describe('same-corpus UI responsiveness capture CLI', () => {
       '1024',
       '--delta-y',
       '0',
+      '--ready-timeout-ms',
+      '120000',
+      '--storage-state',
+      'tmp/shared-state.json',
+      '--google-sheets-storage-state',
+      'tmp/google-state.json',
+      '--microsoft-excel-web-storage-state',
+      'tmp/microsoft-state.json',
+      '--bilig-storage-state',
+      'tmp/bilig-state.json',
       '--headed',
     ])
 
@@ -52,8 +67,13 @@ describe('same-corpus UI responsiveness capture CLI', () => {
       deltaX: 1024,
       deltaY: 0,
       headless: false,
+      readyTimeoutMs: 120000,
       sampleCount: 5,
     })
+    expect(args.storageStatePath?.endsWith('/tmp/shared-state.json')).toBe(true)
+    expect(args.googleSheetsStorageStatePath?.endsWith('/tmp/google-state.json')).toBe(true)
+    expect(args.microsoftExcelWebStorageStatePath?.endsWith('/tmp/microsoft-state.json')).toBe(true)
+    expect(args.biligStorageStatePath?.endsWith('/tmp/bilig-state.json')).toBe(true)
   })
 
   it('rejects missing incumbent URLs because the generated proof must be comparable', () => {

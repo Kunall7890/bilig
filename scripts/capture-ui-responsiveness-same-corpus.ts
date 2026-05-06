@@ -5,7 +5,7 @@ import { dirname, join, resolve } from 'node:path'
 import { performance } from 'node:perf_hooks'
 import { pathToFileURL } from 'node:url'
 
-import { chromium, type Browser, type Page } from '@playwright/test'
+import { chromium, type Browser, type BrowserContextOptions, type Page } from '@playwright/test'
 import { exportXlsx } from '../packages/excel-import/src/index.js'
 import {
   buildWorkbookBenchmarkCorpus,
@@ -22,14 +22,19 @@ import { formatJsonForRepo } from './scorecard-format.ts'
 
 interface CaptureArgs {
   readonly biligUrl: string
+  readonly biligStorageStatePath: string | null
   readonly corpusId: WorkbookBenchmarkCorpusId
   readonly deltaX: number
   readonly deltaY: number
   readonly googleSheetsUrl: string
+  readonly googleSheetsStorageStatePath: string | null
   readonly headless: boolean
   readonly microsoftExcelWebUrl: string
+  readonly microsoftExcelWebStorageStatePath: string | null
   readonly outputPath: string
+  readonly readyTimeoutMs: number
   readonly sampleCount: number
+  readonly storageStatePath: string | null
 }
 
 interface EmitXlsxArgs {
@@ -106,7 +111,8 @@ export function emitSameCorpusXlsx(args: EmitXlsxArgs): void {
         materializedCells: corpus.materializedCellCount,
         googleSheetsUploadMode: 'native_google_sheets',
         microsoftExcelWebSource: 'upload-or-host-this-xlsx-for-excel-web',
-        captureCommand: 'pnpm ui:same-corpus:capture -- --output <capture.json> --google-sheets-url <url> --microsoft-excel-web-url <url>',
+        captureCommand:
+          'pnpm ui:same-corpus:capture -- --output <capture.json> --google-sheets-url <url> --microsoft-excel-web-url <url> [--google-sheets-storage-state <state.json>]',
       },
       null,
       2,
@@ -129,20 +135,29 @@ export function parseCaptureArgs(argv: readonly string[]): CaptureArgs {
         '  --microsoft-excel-web-url <same-corpus-excel-web-url>',
         '  or: --emit-xlsx <directory>',
         '  [--bilig-url <local-bilig-url>] [--corpus wide-mixed-250k] [--samples 3] [--delta-x 0] [--delta-y 720] [--headed]',
+        '  [--storage-state <state.json>]',
+        '  [--google-sheets-storage-state <state.json>] [--microsoft-excel-web-storage-state <state.json>] [--bilig-storage-state <state.json>]',
+        '  [--ready-timeout-ms 60000]',
       ].join('\n'),
     )
   }
   const sampleCount = parsePositiveInteger(argumentValue(argv, '--samples') ?? '3', '--samples')
+  const readyTimeoutMs = parsePositiveInteger(argumentValue(argv, '--ready-timeout-ms') ?? '60000', '--ready-timeout-ms')
   return {
     biligUrl: argumentValue(argv, '--bilig-url') ?? `http://127.0.0.1:5173/?benchmarkCorpus=${encodeURIComponent(corpusId)}`,
+    biligStorageStatePath: resolveOptionalPath(argumentValue(argv, '--bilig-storage-state')),
     corpusId,
     deltaX: parseNonNegativeNumber(argumentValue(argv, '--delta-x') ?? '0', '--delta-x'),
     deltaY: parseNonNegativeNumber(argumentValue(argv, '--delta-y') ?? '720', '--delta-y'),
     googleSheetsUrl,
+    googleSheetsStorageStatePath: resolveOptionalPath(argumentValue(argv, '--google-sheets-storage-state')),
     headless: !argv.includes('--headed'),
     microsoftExcelWebUrl,
+    microsoftExcelWebStorageStatePath: resolveOptionalPath(argumentValue(argv, '--microsoft-excel-web-storage-state')),
     outputPath: resolve(outputPath),
+    readyTimeoutMs,
     sampleCount,
+    storageStatePath: resolveOptionalPath(argumentValue(argv, '--storage-state')),
   }
 }
 
@@ -193,7 +208,7 @@ async function measureProduct(
     source: url,
     operationResponseMsSamples: samples.map((entry) => entry.operationResponseMs),
     postOperationFrameMsSamples: samples.map((entry) => entry.postOperationFrameMs),
-    limitations: productLimitations(product),
+    limitations: productLimitations(product, storageStatePathForProduct(product, args)),
   }
 }
 
@@ -208,24 +223,41 @@ async function measureProductSamples(
   if (sampleIndex >= args.sampleCount) {
     return samples
   }
-  const page = await browser.newPage({ viewport: defaultViewport })
+  const context = await browser.newContext(browserContextOptionsForProduct(product, args))
+  const page = await context.newPage()
   try {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60_000 })
-    await waitForProductReady(page, product, args.corpusId)
+    await waitForProductReady(page, product, args)
     samples.push(await measureVisibleScrollResponse(page, args.deltaX, args.deltaY))
+  } catch (error: unknown) {
+    throw new Error(await productReadyFailureMessage(page, product, url, sampleIndex, error), { cause: error })
   } finally {
-    await page.close()
+    await context.close()
   }
   return measureProductSamples(browser, product, url, args, sampleIndex + 1, samples)
 }
 
-async function waitForProductReady(
-  page: Page,
-  product: UiResponsivenessSameCorpusProduct,
-  corpusId: WorkbookBenchmarkCorpusId,
-): Promise<void> {
+function browserContextOptionsForProduct(product: UiResponsivenessSameCorpusProduct, args: CaptureArgs): BrowserContextOptions {
+  const storageState = storageStatePathForProduct(product, args)
+  return {
+    viewport: defaultViewport,
+    ...(storageState ? { storageState } : {}),
+  }
+}
+
+function storageStatePathForProduct(product: UiResponsivenessSameCorpusProduct, args: CaptureArgs): string | null {
   if (product === 'bilig') {
-    await page.waitForSelector('[data-testid="sheet-grid"]', { state: 'visible', timeout: 30_000 })
+    return args.biligStorageStatePath ?? args.storageStatePath
+  }
+  if (product === 'google-sheets') {
+    return args.googleSheetsStorageStatePath ?? args.storageStatePath
+  }
+  return args.microsoftExcelWebStorageStatePath ?? args.storageStatePath
+}
+
+async function waitForProductReady(page: Page, product: UiResponsivenessSameCorpusProduct, args: CaptureArgs): Promise<void> {
+  if (product === 'bilig') {
+    await page.waitForSelector('[data-testid="sheet-grid"]', { state: 'visible', timeout: args.readyTimeoutMs })
     await page.waitForFunction(
       (expectedCorpusId) => {
         const collector = (
@@ -242,8 +274,8 @@ async function waitForProductReady(
         const state = collector?.getBenchmarkState?.()
         return state?.state === 'ready' && state.fixture?.id === expectedCorpusId
       },
-      corpusId,
-      { timeout: 60_000 },
+      args.corpusId,
+      { timeout: args.readyTimeoutMs },
     )
     await settleFrames(page, 12)
     return
@@ -255,7 +287,7 @@ async function waitForProductReady(
         !window.location.href.includes('accounts.google.com') &&
         document.title.includes('Google Sheets') &&
         !document.body.innerText.includes('Sign in\nto continue to Google Sheets'),
-      { timeout: 60_000 },
+      { timeout: args.readyTimeoutMs },
     )
     await settleFrames(page, 120)
     return
@@ -263,9 +295,50 @@ async function waitForProductReady(
 
   await page.waitForFunction(
     () => document.title.toLowerCase().includes('.xlsx') || document.body.innerText.toLowerCase().includes('excel'),
-    { timeout: 60_000 },
+    { timeout: args.readyTimeoutMs },
   )
   await settleFrames(page, 180)
+}
+
+async function productReadyFailureMessage(
+  page: Page,
+  product: UiResponsivenessSameCorpusProduct,
+  sourceUrl: string,
+  sampleIndex: number,
+  cause: unknown,
+): Promise<string> {
+  const diagnostic = await collectPageDiagnostic(page)
+  const causeMessage = cause instanceof Error ? cause.message : String(cause)
+  const productHint =
+    product === 'google-sheets' && diagnostic.finalUrl.includes('accounts.google.com')
+      ? 'Google Sheets redirected to sign-in; provide a public/shareable sheet URL or run with --google-sheets-storage-state from an authenticated Playwright session.'
+      : product === 'microsoft-excel-web' && sourceUrl.includes('view.officeapps.live.com')
+        ? 'Microsoft Excel Web did not become measurable; confirm the viewer URL wraps a Microsoft-accessible public HTTPS XLSX URL for the same emitted corpus.'
+        : 'The same-corpus page did not reach the expected measurable state.'
+  return [
+    `Failed to prepare ${product} for same-corpus UI capture on sample ${String(sampleIndex + 1)}.`,
+    productHint,
+    `sourceUrl: ${sourceUrl}`,
+    `finalUrl: ${diagnostic.finalUrl}`,
+    `title: ${diagnostic.title}`,
+    `body: ${diagnostic.bodySnippet}`,
+    `cause: ${causeMessage}`,
+  ].join('\n')
+}
+
+async function collectPageDiagnostic(page: Page): Promise<{ finalUrl: string; title: string; bodySnippet: string }> {
+  const [title, bodySnippet] = await Promise.all([
+    page.title().catch(() => ''),
+    page
+      .locator('body')
+      .innerText({ timeout: 2_000 })
+      .catch(() => ''),
+  ])
+  return {
+    finalUrl: page.url(),
+    title,
+    bodySnippet: bodySnippet.replace(/\s+/g, ' ').trim().slice(0, 500),
+  }
 }
 
 async function measureVisibleScrollResponse(page: Page, deltaX: number, deltaY: number): Promise<ScrollSample> {
@@ -305,14 +378,21 @@ async function settleFrames(page: Page, frames: number): Promise<void> {
   }, frames)
 }
 
-function productLimitations(product: UiResponsivenessSameCorpusProduct): string[] {
+function productLimitations(product: UiResponsivenessSameCorpusProduct, storageStatePath: string | null): string[] {
+  const authLimitations = storageStatePath ? ['Browser context used an explicit Playwright storage state for authenticated access.'] : []
   if (product === 'bilig') {
-    return ['Bilig timing is captured from the supplied local app URL and benchmarkCorpus route.']
+    return ['Bilig timing is captured from the supplied local app URL and benchmarkCorpus route.', ...authLimitations]
   }
   if (product === 'google-sheets') {
-    return ['Google Sheets timing requires the supplied URL to be browser-accessible and loaded with the same benchmark corpus.']
+    return [
+      'Google Sheets timing requires the supplied URL to be browser-accessible and loaded with the same benchmark corpus.',
+      ...authLimitations,
+    ]
   }
-  return ['Microsoft Excel Web timing requires the supplied URL to be browser-accessible and loaded with the same benchmark corpus.']
+  return [
+    'Microsoft Excel Web timing requires the supplied URL to be browser-accessible and loaded with the same benchmark corpus.',
+    ...authLimitations,
+  ]
 }
 
 function percentile(values: readonly number[], percentileValue: number): number {
@@ -345,6 +425,10 @@ function parseNonNegativeNumber(value: string, flag: string): number {
     throw new Error(`${flag} must be a non-negative number`)
   }
   return parsed
+}
+
+function resolveOptionalPath(value: string | null): string | null {
+  return value ? resolve(value) : null
 }
 
 function argumentValue(argv: readonly string[], name: string): string | null {
