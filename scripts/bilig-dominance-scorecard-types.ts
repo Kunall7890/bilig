@@ -1,5 +1,6 @@
 import type { AuditabilityScorecard } from './gen-auditability-scorecard.ts'
 import type { AutomationScorecard } from './gen-automation-scorecard.ts'
+import type { CalculationSemanticsScorecard } from './gen-calculation-semantics-scorecard.ts'
 import type { CollaborationScorecard } from './gen-collaboration-scorecard.ts'
 import type { GoogleSheetsLiveCalculationScorecard } from './gen-google-sheets-live-calculation-scorecard.ts'
 import type { GoogleSheetsLiveLargeWorkbookScorecard } from './gen-google-sheets-live-large-workbook-scorecard.ts'
@@ -117,6 +118,7 @@ export interface BiligDominanceScorecard {
     auditabilityScorecard: string
     automationScorecard: string
     collaborationScorecard: string
+    calculationSemanticsScorecard: string
     formulaDominanceSnapshot: string
     googleSheetsLiveCalculationScorecard: string
     googleSheetsLiveRecalculationScorecard: string
@@ -150,6 +152,9 @@ export interface BiligDominanceScorecard {
     collaborationCoveredControls: string[]
     collaborationPosturePassed: boolean
     collaborationUncoveredControls: string[]
+    calculationSemanticsCoveredCanonicalFixtureCount: number
+    calculationSemanticsCoveredWorkbookSemanticsFixtureCount: number
+    calculationSemanticsPassed: boolean
     externalGoogleSheetsEvidence: 'not-captured-in-repo'
     externalMicrosoftExcelEvidence: 'not-captured-in-repo'
     formulaCanonicalProductionPercent: number
@@ -233,6 +238,8 @@ export interface BuildScorecardInput {
   automationScorecardPath: string
   collaborationScorecard: CollaborationScorecard
   collaborationScorecardPath: string
+  calculationSemanticsScorecard: CalculationSemanticsScorecard
+  calculationSemanticsScorecardPath: string
   competitiveArtifact: CompetitiveArtifact
   competitiveArtifactPath: string
   formulaSnapshot: FormulaDominanceSnapshot

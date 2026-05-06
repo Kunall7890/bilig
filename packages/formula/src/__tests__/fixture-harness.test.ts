@@ -24,13 +24,7 @@ const executableStatuses = new Set(['implemented-js', 'implemented-js-and-wasm-s
 const executableFixtures = canonicalFormulaFixtures.filter((fixture) => {
   const entry = getCompatibilityEntry(fixture.id)
   const hasVolatileCall = /\b(TODAY|NOW)\s*\(/i.test(fixture.formula)
-  return (
-    entry !== undefined &&
-    executableStatuses.has(entry.status) &&
-    fixture.id !== 'lookup-reference:offset-basic' &&
-    fixture.family !== 'volatile' &&
-    !hasVolatileCall
-  )
+  return entry !== undefined && executableStatuses.has(entry.status) && fixture.family !== 'volatile' && !hasVolatileCall
 })
 
 const executableWorkbookSemanticsFixtures = canonicalWorkbookSemanticsFixtures.filter((fixture) => {

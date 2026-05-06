@@ -18,6 +18,7 @@ import {
 export function buildFixtureInput(): BuildScorecardInput {
   return {
     competitiveArtifactPath: 'packages/benchmarks/baselines/workpaper-vs-hyperformula.json',
+    calculationSemanticsScorecardPath: 'packages/benchmarks/baselines/calculation-semantics-scorecard.json',
     formulaSnapshotPath: 'packages/formula/src/__tests__/fixtures/formula-dominance-snapshot.json',
     googleSheetsLiveCalculationScorecardPath: 'packages/benchmarks/baselines/google-sheets-live-calculation-scorecard.json',
     googleSheetsLiveRecalculationScorecardPath: 'packages/benchmarks/baselines/google-sheets-live-recalculation-scorecard.json',
@@ -69,6 +70,40 @@ export function buildFixtureInput(): BuildScorecardInput {
         instanceMethods: ['getCellValue', 'setCellContents'],
       },
       configKeys: ['licenseKey', 'useColumnIndex'],
+    },
+    calculationSemanticsScorecard: {
+      schemaVersion: 1,
+      suite: 'calculation-semantics-coverage',
+      generatedAt: 'checked-in-generated-artifact',
+      source: {
+        artifactGenerator: 'scripts/gen-calculation-semantics-scorecard.ts',
+        fixturePackage: 'packages/excel-fixtures',
+        compatibilityRegistry: 'packages/formula/src/compatibility.ts',
+        fixtureHarnessTest: 'packages/formula/src/__tests__/fixture-harness.test.ts',
+        runtimeCorrectnessTest: 'packages/core/src/__tests__/formula-runtime-correctness.test.ts',
+        executionCommand: 'pnpm test:correctness:formula',
+      },
+      summary: {
+        allCommittedFormulaSemanticsCovered: true,
+        canonicalFormulaFixtureCount: 300,
+        workbookSemanticsFixtureCount: 10,
+        executableStableFormulaFixtureCount: 297,
+        deterministicVolatileFixtureCount: 3,
+        executableWorkbookSemanticsFixtureCount: 10,
+        dateTimeEdgeFixtureCount: 62,
+        coveredCanonicalFixtureCount: 300,
+        coveredWorkbookSemanticsFixtureCount: 10,
+        coveredFamilies: ['aggregation', 'arithmetic', 'comparison', 'date-time', 'dynamic-array', 'information', 'lambda', 'logical'],
+        missingCanonicalFixtureIds: [],
+        missingWorkbookSemanticsFixtureIds: [],
+        fixtureRegistryAligned: true,
+      },
+      coverage: {
+        stableFormulaFixtureIds: ['lookup-reference:offset-basic'],
+        deterministicVolatileFixtureIds: ['date-time:now-volatile', 'date-time:today-volatile', 'volatile:rand-basic'],
+        workbookSemanticsFixtureIds: ['arithmetic:cross-sheet-multiply'],
+        dateTimeEdgeFixtureIds: ['date-time:date-constructor'],
+      },
     },
     googleSheetsLiveCalculationScorecard: {
       schemaVersion: 1,

@@ -16,6 +16,7 @@ import type {
 import { parseCompetitiveArtifact, parseFormulaDominanceSnapshot, parseSurfaceSnapshot } from './bilig-dominance-scorecard-parsers.ts'
 import { parseAuditabilityScorecard } from './gen-auditability-scorecard.ts'
 import { parseAutomationScorecard } from './gen-automation-scorecard.ts'
+import { parseCalculationSemanticsScorecard } from './gen-calculation-semantics-scorecard.ts'
 import { parseCollaborationScorecard } from './gen-collaboration-scorecard.ts'
 import { parseGoogleSheetsLiveCalculationScorecard } from './gen-google-sheets-live-calculation-scorecard.ts'
 import { parseGoogleSheetsLiveLargeWorkbookScorecard } from './gen-google-sheets-live-large-workbook-scorecard.ts'
@@ -37,6 +38,7 @@ const TEN_X_RATIO = 0.1
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
 const auditabilityScorecardPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'auditability-scorecard.json')
 const automationScorecardPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'automation-scorecard.json')
+const calculationSemanticsScorecardPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'calculation-semantics-scorecard.json')
 const collaborationScorecardPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'collaboration-scorecard.json')
 const outputPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'bilig-dominance-scorecard.json')
 const competitiveArtifactPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'workpaper-vs-hyperformula.json')
@@ -110,6 +112,8 @@ function main(): void {
     auditabilityScorecardPath: toRepoPath(auditabilityScorecardPath),
     automationScorecard: parseAutomationScorecard(readJsonObject(automationScorecardPath)),
     automationScorecardPath: toRepoPath(automationScorecardPath),
+    calculationSemanticsScorecard: parseCalculationSemanticsScorecard(readJsonObject(calculationSemanticsScorecardPath)),
+    calculationSemanticsScorecardPath: toRepoPath(calculationSemanticsScorecardPath),
     collaborationScorecard: parseCollaborationScorecard(readJsonObject(collaborationScorecardPath)),
     collaborationScorecardPath: toRepoPath(collaborationScorecardPath),
     competitiveArtifact: parseCompetitiveArtifact(readJsonObject(competitiveArtifactPath)),
@@ -259,6 +263,7 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
   const recalculationDirectTargetsTenXPassed = microsoftExcelRecalculationTenXPassed && googleSheetsRecalculationTenXPassed
   const structuralDirectTargetsTenXPassed = microsoftExcelStructuralTenXPassed && googleSheetsStructuralTenXPassed
   const largeWorkbookDirectTargetsTenXPassed = microsoftExcelLargeWorkbookTenXPassed && googleSheetsLargeWorkbookTenXPassed
+  const calculationSemanticsPassed = input.calculationSemanticsScorecard.summary.allCommittedFormulaSemanticsCovered
   const totalSurfaceMembers =
     input.surfaceSnapshot.classSurface.staticMembers.length +
     input.surfaceSnapshot.classSurface.staticMethods.length +
@@ -286,6 +291,7 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
     sourceArtifacts: {
       auditabilityScorecard: input.auditabilityScorecardPath,
       automationScorecard: input.automationScorecardPath,
+      calculationSemanticsScorecard: input.calculationSemanticsScorecardPath,
       collaborationScorecard: input.collaborationScorecardPath,
       formulaDominanceSnapshot: input.formulaSnapshotPath,
       googleSheetsLiveCalculationScorecard: input.googleSheetsLiveCalculationScorecardPath,
@@ -320,6 +326,10 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
       collaborationCoveredControls: input.collaborationScorecard.summary.coveredControls,
       collaborationPosturePassed: input.collaborationScorecard.summary.allRequiredControlsPassed,
       collaborationUncoveredControls: input.collaborationScorecard.summary.uncoveredControls,
+      calculationSemanticsCoveredCanonicalFixtureCount: input.calculationSemanticsScorecard.summary.coveredCanonicalFixtureCount,
+      calculationSemanticsCoveredWorkbookSemanticsFixtureCount:
+        input.calculationSemanticsScorecard.summary.coveredWorkbookSemanticsFixtureCount,
+      calculationSemanticsPassed,
       externalGoogleSheetsEvidence: 'not-captured-in-repo',
       externalMicrosoftExcelEvidence: 'not-captured-in-repo',
       formulaCanonicalProductionPercent: input.formulaSnapshot.canonical.summary.percent,
@@ -395,12 +405,23 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
         title: 'Calculation Correctness',
         objectiveCategory: 'calculation correctness',
         target: 'Excel-compatible semantics on the supported workbook and formula surface, with oracle-backed production routing.',
-        status: 'partial-repo-evidence',
+        status:
+          calculationSemanticsPassed &&
+          input.formulaSnapshot.formulaBreadth.missingOfficeFunctions.length === 0 &&
+          input.microsoftExcelLiveCalculationScorecard.summary.allRequiredCasesPassed &&
+          input.googleSheetsLiveCalculationScorecard.summary.allRequiredCasesPassed
+            ? 'repo-proved-lead'
+            : 'partial-repo-evidence',
         currentEvidence: [
           `canonical formula closure is ${formatRatio(input.formulaSnapshot.canonical.summary)}`,
           `Office-listed formula breadth is ${formatRatio(input.formulaSnapshot.formulaBreadth.officeListed)}`,
           `tracked formula breadth is ${formatRatio(input.formulaSnapshot.formulaBreadth.tracked)}`,
           `strategic canonical rows are production-routed; open canonical rows: ${input.formulaSnapshot.canonical.nonProductionRows.length}`,
+          `committed calculation semantics scorecard covers ${String(
+            input.calculationSemanticsScorecard.summary.coveredCanonicalFixtureCount,
+          )}/${String(input.calculationSemanticsScorecard.summary.canonicalFormulaFixtureCount)} canonical fixtures and ${String(
+            input.calculationSemanticsScorecard.summary.coveredWorkbookSemanticsFixtureCount,
+          )}/${String(input.calculationSemanticsScorecard.summary.workbookSemanticsFixtureCount)} workbook-semantics fixtures`,
           `live Microsoft Excel calculation scorecard passes ${String(
             input.microsoftExcelLiveCalculationScorecard.summary.matchingCaseCount,
           )}/${String(input.microsoftExcelLiveCalculationScorecard.summary.requiredCaseCount)} required cases on Excel ${
@@ -413,6 +434,7 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
           `live Google Sheets calculation features: ${input.googleSheetsLiveCalculationScorecard.summary.coveredFeatures.join(', ')}`,
         ],
         evidenceArtifacts: [
+          input.calculationSemanticsScorecardPath,
           input.formulaSnapshotPath,
           input.googleSheetsLiveCalculationScorecardPath,
           input.microsoftExcelLiveCalculationScorecardPath,
@@ -420,6 +442,7 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
           'docs/formula-oracle-capture.md',
         ],
         checkCommands: [
+          'pnpm calculation:semantics:check',
           'pnpm formula:dominance:check',
           'pnpm calculation:excel-live:check',
           'pnpm calculation:google-sheets-live:check',
@@ -433,8 +456,7 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
           ...(input.googleSheetsLiveCalculationScorecard.summary.allRequiredCasesPassed
             ? []
             : ['live Google Sheets calculation scorecard has failing required cases']),
-          'live Microsoft Excel calculation scorecard covers representative required cases, not all committed formula semantics',
-          'live Google Sheets calculation scorecard covers representative required cases, not all committed formula semantics',
+          ...(calculationSemanticsPassed ? [] : ['committed formula semantics scorecard does not cover every canonical fixture']),
         ],
       },
       {

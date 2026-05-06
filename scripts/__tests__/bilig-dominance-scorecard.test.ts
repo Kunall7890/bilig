@@ -71,10 +71,16 @@ describe('bilig dominance scorecard', () => {
     expect(scorecard.summary.auditabilityPosturePassed).toBe(true)
     expect(scorecard.summary.automationPosturePassed).toBe(true)
     expect(scorecard.summary.collaborationPosturePassed).toBe(true)
+    expect(scorecard.summary.calculationSemanticsPassed).toBe(true)
+    expect(scorecard.summary.calculationSemanticsCoveredCanonicalFixtureCount).toBe(300)
+    expect(scorecard.summary.calculationSemanticsCoveredWorkbookSemanticsFixtureCount).toBe(10)
     expect(scorecard.summary.reliabilityPosturePassed).toBe(true)
     expect(scorecard.summary.securityPosturePassed).toBe(true)
     expect(scorecard.sourceArtifacts.auditabilityScorecard).toBe('packages/benchmarks/baselines/auditability-scorecard.json')
     expect(scorecard.sourceArtifacts.automationScorecard).toBe('packages/benchmarks/baselines/automation-scorecard.json')
+    expect(scorecard.sourceArtifacts.calculationSemanticsScorecard).toBe(
+      'packages/benchmarks/baselines/calculation-semantics-scorecard.json',
+    )
     expect(scorecard.sourceArtifacts.collaborationScorecard).toBe('packages/benchmarks/baselines/collaboration-scorecard.json')
     expect(scorecard.sourceArtifacts.googleSheetsLiveCalculationScorecard).toBe(
       'packages/benchmarks/baselines/google-sheets-live-calculation-scorecard.json',
@@ -109,16 +115,13 @@ describe('bilig dominance scorecard', () => {
     expect(scorecard.categories.find((category) => category.id === 'calculation-correctness')).toMatchObject({
       status: 'partial-repo-evidence',
       evidenceArtifacts: expect.arrayContaining([
+        'packages/benchmarks/baselines/calculation-semantics-scorecard.json',
         'packages/formula/src/__tests__/fixtures/formula-dominance-snapshot.json',
         'packages/benchmarks/baselines/google-sheets-live-calculation-scorecard.json',
         'packages/benchmarks/baselines/microsoft-excel-live-calculation-scorecard.json',
       ]),
-      checkCommands: expect.arrayContaining(['pnpm calculation:google-sheets-live:check']),
-      blockers: [
-        '2 Office-listed functions are still missing from the runtime inventory',
-        'live Microsoft Excel calculation scorecard covers representative required cases, not all committed formula semantics',
-        'live Google Sheets calculation scorecard covers representative required cases, not all committed formula semantics',
-      ],
+      checkCommands: expect.arrayContaining(['pnpm calculation:semantics:check', 'pnpm calculation:google-sheets-live:check']),
+      blockers: ['2 Office-listed functions are still missing from the runtime inventory'],
     })
     expect(scorecard.categories.find((category) => category.id === 'import-export-compatibility')).toMatchObject({
       status: 'partial-repo-evidence',
@@ -244,10 +247,10 @@ describe('bilig dominance scorecard', () => {
     expect(calculation?.blockers).not.toContain(
       'no generated scorecard currently compares committed semantics directly against live Google Sheets',
     )
-    expect(calculation?.blockers).toContain(
+    expect(calculation?.blockers).not.toContain(
       'live Microsoft Excel calculation scorecard covers representative required cases, not all committed formula semantics',
     )
-    expect(calculation?.blockers).toContain(
+    expect(calculation?.blockers).not.toContain(
       'live Google Sheets calculation scorecard covers representative required cases, not all committed formula semantics',
     )
   })
@@ -283,6 +286,7 @@ describe('bilig dominance scorecard', () => {
     const runCi = readFileSync(resolve(repoRoot, 'scripts/run-ci.ts'), 'utf8')
 
     expect(packageJson).toContain('"dominance:check": "bun scripts/gen-bilig-dominance-scorecard.ts --check"')
+    expect(packageJson).toContain('"calculation:semantics:check": "bun scripts/gen-calculation-semantics-scorecard.ts --check"')
     expect(packageJson).toContain('"calculation:excel-live:check": "bun scripts/gen-microsoft-excel-live-calculation-scorecard.ts --check"')
     expect(packageJson).toContain(
       '"calculation:google-sheets-live:check": "bun scripts/gen-google-sheets-live-calculation-scorecard.ts --check"',
@@ -315,6 +319,7 @@ describe('bilig dominance scorecard', () => {
     expect(packageJson).toContain('"large-workbook:slo:check": "bun scripts/gen-large-workbook-slo-scorecard.ts --check"')
     expect(packageJson).toContain('"security:posture:check": "bun scripts/gen-security-posture-scorecard.ts --check"')
     expect(runCi).toContain("pnpm('bilig dominance scorecard check', 'dominance:check')")
+    expect(runCi).toContain("pnpm('calculation semantics scorecard check', 'calculation:semantics:check')")
     expect(runCi).toContain("pnpm('Microsoft Excel live calculation scorecard check', 'calculation:excel-live:check')")
     expect(runCi).toContain("pnpm('Google Sheets live calculation scorecard check', 'calculation:google-sheets-live:check')")
     expect(runCi).toContain("pnpm('Microsoft Excel live recalculation scorecard check', 'recalculation:excel-live:check')")

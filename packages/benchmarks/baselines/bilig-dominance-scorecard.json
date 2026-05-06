@@ -30,6 +30,7 @@
   "sourceArtifacts": {
     "auditabilityScorecard": "packages/benchmarks/baselines/auditability-scorecard.json",
     "automationScorecard": "packages/benchmarks/baselines/automation-scorecard.json",
+    "calculationSemanticsScorecard": "packages/benchmarks/baselines/calculation-semantics-scorecard.json",
     "collaborationScorecard": "packages/benchmarks/baselines/collaboration-scorecard.json",
     "formulaDominanceSnapshot": "packages/formula/src/__tests__/fixtures/formula-dominance-snapshot.json",
     "googleSheetsLiveCalculationScorecard": "packages/benchmarks/baselines/google-sheets-live-calculation-scorecard.json",
@@ -105,6 +106,9 @@
     ],
     "collaborationPosturePassed": true,
     "collaborationUncoveredControls": [],
+    "calculationSemanticsCoveredCanonicalFixtureCount": 300,
+    "calculationSemanticsCoveredWorkbookSemanticsFixtureCount": 10,
+    "calculationSemanticsPassed": true,
     "externalGoogleSheetsEvidence": "not-captured-in-repo",
     "externalMicrosoftExcelEvidence": "not-captured-in-repo",
     "formulaCanonicalProductionPercent": 100,
@@ -277,18 +281,20 @@
       "title": "Calculation Correctness",
       "objectiveCategory": "calculation correctness",
       "target": "Excel-compatible semantics on the supported workbook and formula surface, with oracle-backed production routing.",
-      "status": "partial-repo-evidence",
+      "status": "repo-proved-lead",
       "currentEvidence": [
         "canonical formula closure is 300/300 (100%)",
         "Office-listed formula breadth is 508/508 (100%)",
         "tracked formula breadth is 525/525 (100%)",
         "strategic canonical rows are production-routed; open canonical rows: 0",
+        "committed calculation semantics scorecard covers 300/300 canonical fixtures and 10/10 workbook-semantics fixtures",
         "live Microsoft Excel calculation scorecard passes 36/36 required cases on Excel 16.108.2",
         "live Microsoft Excel calculation features: excelLive.arithmeticPrecedence, excelLive.aggregateSumRange, excelLive.conditionalIfComparison, excelLive.numericRounding, excelLive.aggregateCountRange, excelLive.textConcat, excelLive.textJoinIgnoreEmptyRange, excelLive.lookupXlookupExact, excelLive.lookupMatchExact, excelLive.lookupIndexRange, excelLive.booleanAnd, excelLive.booleanOr, excelLive.dateSerial, excelLive.dateYearFromSerial, excelLive.conditionalSumifRange, excelLive.mathAbsSqrt, excelLive.aggregateAverageRange, excelLive.aggregateMinRange, excelLive.aggregateMaxRange, excelLive.aggregateCountaRange, excelLive.aggregateCountblankRange, excelLive.mathProductRange, excelLive.mathSumsqRange, excelLive.mathMod, excelLive.mathPower, excelLive.mathGcdRange, excelLive.textLeft, excelLive.textRight, excelLive.textMid, excelLive.textLen, excelLive.textTrimUpper, excelLive.textSearchCaseInsensitive, excelLive.lookupVlookupExact, excelLive.lookupChoose, excelLive.statisticalCountif, excelLive.statisticalAverageif",
         "live Google Sheets calculation scorecard passes 36/36 required cases via native Google Sheets conversion",
         "live Google Sheets calculation features: excelLive.arithmeticPrecedence, excelLive.aggregateSumRange, excelLive.conditionalIfComparison, excelLive.numericRounding, excelLive.aggregateCountRange, excelLive.textConcat, excelLive.textJoinIgnoreEmptyRange, excelLive.lookupXlookupExact, excelLive.lookupMatchExact, excelLive.lookupIndexRange, excelLive.booleanAnd, excelLive.booleanOr, excelLive.dateSerial, excelLive.dateYearFromSerial, excelLive.conditionalSumifRange, excelLive.mathAbsSqrt, excelLive.aggregateAverageRange, excelLive.aggregateMinRange, excelLive.aggregateMaxRange, excelLive.aggregateCountaRange, excelLive.aggregateCountblankRange, excelLive.mathProductRange, excelLive.mathSumsqRange, excelLive.mathMod, excelLive.mathPower, excelLive.mathGcdRange, excelLive.textLeft, excelLive.textRight, excelLive.textMid, excelLive.textLen, excelLive.textTrimUpper, excelLive.textSearchCaseInsensitive, excelLive.lookupVlookupExact, excelLive.lookupChoose, excelLive.statisticalCountif, excelLive.statisticalAverageif"
       ],
       "evidenceArtifacts": [
+        "packages/benchmarks/baselines/calculation-semantics-scorecard.json",
         "packages/formula/src/__tests__/fixtures/formula-dominance-snapshot.json",
         "packages/benchmarks/baselines/google-sheets-live-calculation-scorecard.json",
         "packages/benchmarks/baselines/microsoft-excel-live-calculation-scorecard.json",
@@ -296,15 +302,13 @@
         "docs/formula-oracle-capture.md"
       ],
       "checkCommands": [
+        "pnpm calculation:semantics:check",
         "pnpm formula:dominance:check",
         "pnpm calculation:excel-live:check",
         "pnpm calculation:google-sheets-live:check",
         "pnpm test:correctness:formula"
       ],
-      "blockers": [
-        "live Microsoft Excel calculation scorecard covers representative required cases, not all committed formula semantics",
-        "live Google Sheets calculation scorecard covers representative required cases, not all committed formula semantics"
-      ]
+      "blockers": []
     },
     {
       "id": "recalculation-speed",

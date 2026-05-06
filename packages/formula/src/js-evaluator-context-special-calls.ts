@@ -1,4 +1,5 @@
 import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
+import { formatAddress, parseCellAddress } from './addressing.js'
 import type { EvaluationContext, ReferenceOperand, StackValue } from './js-evaluator.js'
 
 interface ContextSpecialCallDeps {
@@ -91,6 +92,46 @@ export function evaluateContextSpecialCall(
       }
       return deps.cloneStackValue(rawArgs[truncated]!)
     }
+    case 'OFFSET': {
+      if (rawArgs.length < 3 || rawArgs.length > 5) {
+        return deps.stackScalar(deps.error(ErrorCode.Value))
+      }
+      const reference = offsetReferenceBounds(argRefs[0], context, deps)
+      if (!reference) {
+        return deps.stackScalar(deps.error(ErrorCode.Ref))
+      }
+      const rowOffset = scalarIntegerArg(rawArgs[1], deps)
+      const colOffset = scalarIntegerArg(rawArgs[2], deps)
+      const height = rawArgs.length >= 4 ? scalarIntegerArg(rawArgs[3], deps) : reference.rows
+      const width = rawArgs.length >= 5 ? scalarIntegerArg(rawArgs[4], deps) : reference.cols
+      if (rowOffset === undefined || colOffset === undefined || height === undefined || width === undefined || height < 1 || width < 1) {
+        return deps.stackScalar(deps.error(ErrorCode.Value))
+      }
+
+      const rowStart = reference.row + rowOffset
+      const colStart = reference.col + colOffset
+      const rowEnd = rowStart + height - 1
+      const colEnd = colStart + width - 1
+      if (rowStart < 0 || colStart < 0 || rowEnd < rowStart || colEnd < colStart) {
+        return deps.stackScalar(deps.error(ErrorCode.Ref))
+      }
+
+      const start = formatAddress(rowStart, colStart)
+      if (height === 1 && width === 1) {
+        return deps.stackScalar(context.resolveCell(reference.sheetName, start))
+      }
+      const end = formatAddress(rowEnd, colEnd)
+      return {
+        kind: 'range',
+        values: context.resolveRange(reference.sheetName, start, end, 'cells'),
+        refKind: 'cells',
+        rows: height,
+        cols: width,
+        sheetName: reference.sheetName,
+        start,
+        end,
+      }
+    }
     case 'SHEET': {
       if (rawArgs.length > 1) {
         return deps.stackScalar(deps.error(ErrorCode.Value))
@@ -176,5 +217,44 @@ export function evaluateContextSpecialCall(
     }
     default:
       return undefined
+  }
+}
+
+function scalarIntegerArg(value: StackValue | undefined, deps: ContextSpecialCallDeps): number | undefined {
+  if (!value || value.kind !== 'scalar') {
+    return undefined
+  }
+  const numeric = deps.toNumber(value.value)
+  return numeric === undefined || !Number.isFinite(numeric) ? undefined : Math.trunc(numeric)
+}
+
+function offsetReferenceBounds(
+  ref: ReferenceOperand | undefined,
+  context: EvaluationContext,
+  deps: ContextSpecialCallDeps,
+): { readonly col: number; readonly cols: number; readonly row: number; readonly rows: number; readonly sheetName: string } | undefined {
+  const sheetName = deps.referenceSheetName(ref, context)
+  if (!ref || !sheetName) {
+    return undefined
+  }
+  if (ref.kind === 'cell') {
+    const address = deps.referenceTopLeftAddress(ref)
+    if (!address) {
+      return undefined
+    }
+    const parsed = parseCellAddress(address, sheetName)
+    return { row: parsed.row, col: parsed.col, rows: 1, cols: 1, sheetName }
+  }
+  if (ref.kind !== 'range' || ref.refKind !== 'cells' || !ref.start || !ref.end) {
+    return undefined
+  }
+  const start = parseCellAddress(ref.start, sheetName)
+  const end = parseCellAddress(ref.end, sheetName)
+  return {
+    row: Math.min(start.row, end.row),
+    col: Math.min(start.col, end.col),
+    rows: Math.abs(end.row - start.row) + 1,
+    cols: Math.abs(end.col - start.col) + 1,
+    sheetName,
   }
 }
