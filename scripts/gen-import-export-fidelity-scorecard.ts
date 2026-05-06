@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
+import * as XLSX from 'xlsx'
+
 import { SpreadsheetEngine } from '../packages/core/src/engine.js'
 import { exportXlsx, importCsv, importXlsx } from '../packages/excel-import/src/index.js'
 import type { WorkbookSnapshot } from '../packages/protocol/src/types.js'
@@ -68,6 +70,7 @@ const requiredCaseIds = [
   'xlsx-snapshot-roundtrip-tables',
   'xlsx-snapshot-roundtrip-charts',
   'xlsx-snapshot-roundtrip-pivots',
+  'xlsx-macro-payload-detected-without-execution',
   'xlsx-unsupported-features-warning',
   'external-sheets-excel-import-export-comparison',
 ] as const
@@ -101,6 +104,7 @@ const coveredFeatureOrder = [
   'xlsx.charts.roundtrip',
   'xlsx.pivots.roundtrip',
   'xlsx.multiSheet',
+  'xlsx.macros.detectedNoExecution',
   'xlsx.unsupportedFeatureWarnings',
   ...externalImportExportComparisonCoveredFeatures,
 ] as const
@@ -140,6 +144,7 @@ export async function buildImportExportFidelityScorecard(generatedAt = new Date(
     runXlsxSnapshotRoundTripTablesCase(),
     runXlsxSnapshotRoundTripChartsCase(),
     runXlsxSnapshotRoundTripPivotsCase(),
+    runXlsxMacroPayloadDetectedWithoutExecutionCase(),
     runXlsxUnsupportedFeaturesWarningCase(),
     runExternalSheetsExcelImportExportComparisonCase(),
   ]
@@ -424,6 +429,25 @@ function runXlsxSnapshotRoundTripPivotsCase(): ImportExportFidelityCase {
   })
 }
 
+function runXlsxMacroPayloadDetectedWithoutExecutionCase(): ImportExportFidelityCase {
+  const imported = importXlsx(createMacroEnabledWorkbookBytes(), 'macro-enabled.xlsm')
+  const safeCell = imported.snapshot.sheets[0]?.cells.find((cell) => cell.address === 'A1')
+  const passed =
+    imported.workbookName === 'macro-enabled' &&
+    imported.warnings.includes('Macros were ignored during XLSX import.') &&
+    safeCell?.value === 'safe macro workbook value'
+
+  return fidelityCase({
+    id: 'xlsx-macro-payload-detected-without-execution',
+    format: 'xlsx',
+    direction: 'import',
+    passed,
+    coveredFeatures: ['xlsx.macros.detectedNoExecution', 'xlsx.unsupportedFeatureWarnings'],
+    missingFeatures: [...unsupportedFeatures],
+    evidence: 'Macro-enabled XLSM import preserves safe workbook cells and records a non-execution warning for the VBA payload.',
+  })
+}
+
 function runXlsxUnsupportedFeaturesWarningCase(): ImportExportFidelityCase {
   const snapshot = createFidelitySnapshot()
   const imported = importXlsx(exportXlsx(snapshot), 'fidelity.xlsx')
@@ -436,6 +460,13 @@ function runXlsxUnsupportedFeaturesWarningCase(): ImportExportFidelityCase {
     missingFeatures: [...unsupportedFeatures],
     evidence: 'Scorecard explicitly records unsupported XLSX surfaces instead of treating a subset round trip as full Excel parity.',
   })
+}
+
+function createMacroEnabledWorkbookBytes(): Uint8Array {
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['safe macro workbook value']]), 'Sheet1')
+  workbook.vbaraw = new Uint8Array([1, 2, 3, 4])
+  return XLSX.write(workbook, { bookType: 'xlsm', type: 'buffer', bookVBA: true })
 }
 
 function runExternalSheetsExcelImportExportComparisonCase(): ImportExportFidelityCase {

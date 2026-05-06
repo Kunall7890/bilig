@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "suite": "import-export-fidelity",
-  "generatedAt": "2026-05-06T14:44:19.358Z",
+  "generatedAt": "2026-05-06T15:19:20.504Z",
   "source": {
     "artifactGenerator": "scripts/gen-import-export-fidelity-scorecard.ts",
     "implementationPackage": "packages/excel-import",
@@ -43,6 +43,7 @@
       "xlsx.charts.roundtrip",
       "xlsx.pivots.roundtrip",
       "xlsx.multiSheet",
+      "xlsx.macros.detectedNoExecution",
       "xlsx.unsupportedFeatureWarnings",
       "external.googleSheetsImportExportDocs",
       "external.microsoftExcelImportExportDocs",
@@ -205,6 +206,16 @@
       "coveredFeatures": ["xlsx.pivots.roundtrip"],
       "missingFeatures": [],
       "evidence": "WorkbookSnapshot exported to XLSX imports back with equivalent Bilig pivot metadata backed by real XLSX pivot table, cache definition, and cache records parts."
+    },
+    {
+      "id": "xlsx-macro-payload-detected-without-execution",
+      "format": "xlsx",
+      "direction": "import",
+      "required": true,
+      "passed": true,
+      "coveredFeatures": ["xlsx.macros.detectedNoExecution", "xlsx.unsupportedFeatureWarnings"],
+      "missingFeatures": ["xlsx.macros.execution"],
+      "evidence": "Macro-enabled XLSM import preserves safe workbook cells and records a non-execution warning for the VBA payload."
     },
     {
       "id": "xlsx-unsupported-features-warning",
