@@ -6,6 +6,7 @@ import {
   buildSameCorpusFingerprint,
   parseCaptureArgs,
   parseEmitXlsxArgs,
+  parsePreflightArgs,
   parseSaveStorageStateArgs,
   verifyXlsxCorpusFingerprint,
 } from '../capture-ui-responsiveness-same-corpus.ts'
@@ -86,6 +87,51 @@ describe('same-corpus UI responsiveness capture CLI', () => {
 
   it('rejects missing incumbent URLs because the generated proof must be comparable', () => {
     expect(() => parseCaptureArgs(['--output', 'tmp/ui-capture.json'])).toThrow('Missing required arguments.')
+  })
+
+  it('parses incumbent-only same-corpus preflight options', () => {
+    const args = parsePreflightArgs([
+      '--preflight',
+      '--output',
+      'tmp/preflight.json',
+      '--google-sheets-url',
+      'https://docs.google.com/spreadsheets/d/sheet-id/edit',
+      '--microsoft-excel-web-url',
+      'https://view.officeapps.live.com/op/view.aspx?src=example.xlsx',
+      '--google-sheets-storage-state',
+      'tmp/google-state.json',
+      '--ready-timeout-ms',
+      '90000',
+    ])
+
+    expect(args).toMatchObject({
+      corpusId: 'wide-mixed-250k',
+      googleSheetsUrl: 'https://docs.google.com/spreadsheets/d/sheet-id/edit',
+      headless: true,
+      microsoftExcelWebUrl: 'https://view.officeapps.live.com/op/view.aspx?src=example.xlsx',
+      readyTimeoutMs: 90000,
+    })
+    expect(args?.outputPath?.endsWith('/tmp/preflight.json')).toBe(true)
+    expect(args?.googleSheetsStorageStatePath?.endsWith('/tmp/google-state.json')).toBe(true)
+  })
+
+  it('allows same-corpus preflight for one incumbent while diagnosing access setup', () => {
+    const args = parsePreflightArgs([
+      '--preflight',
+      '--microsoft-excel-web-url',
+      'https://view.officeapps.live.com/op/view.aspx?src=example.xlsx',
+      '--headed',
+    ])
+
+    expect(args).toMatchObject({
+      googleSheetsUrl: null,
+      headless: false,
+      microsoftExcelWebUrl: 'https://view.officeapps.live.com/op/view.aspx?src=example.xlsx',
+    })
+  })
+
+  it('rejects same-corpus preflight with no incumbent URL', () => {
+    expect(() => parsePreflightArgs(['--preflight'])).toThrow('Same-corpus preflight requires')
   })
 
   it('parses XLSX emission mode for same-corpus setup', () => {

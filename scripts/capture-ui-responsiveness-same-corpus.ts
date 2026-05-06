@@ -54,6 +54,18 @@ interface SaveStorageStateArgs {
   readonly targetPath: string
 }
 
+interface PreflightArgs {
+  readonly corpusId: WorkbookBenchmarkCorpusId
+  readonly googleSheetsUrl: string | null
+  readonly googleSheetsStorageStatePath: string | null
+  readonly headless: boolean
+  readonly microsoftExcelWebUrl: string | null
+  readonly microsoftExcelWebStorageStatePath: string | null
+  readonly outputPath: string | null
+  readonly readyTimeoutMs: number
+  readonly storageStatePath: string | null
+}
+
 interface ScrollSample {
   readonly operationResponseMs: number
   readonly postOperationFrameMs: number
@@ -73,6 +85,24 @@ interface SameCorpusFingerprint {
   }[]
 }
 
+interface PreflightProductResult {
+  readonly product: Exclude<UiResponsivenessSameCorpusProduct, 'bilig'>
+  readonly source: string
+  readonly finalUrl: string
+  readonly title: string
+  readonly corpusVerification: SameCorpusCaptureCorpusVerification
+  readonly limitations: string[]
+}
+
+interface SameCorpusPreflight {
+  readonly mode: 'preflight'
+  readonly corpusCaseId: WorkbookBenchmarkCorpusId
+  readonly materializedCells: number
+  readonly requiredProductCount: 2
+  readonly checkedProductCount: number
+  readonly products: readonly PreflightProductResult[]
+}
+
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
 const defaultCorpusId: WorkbookBenchmarkCorpusId = 'wide-mixed-250k'
 const defaultViewport = { width: 1440, height: 900 } as const
@@ -86,6 +116,24 @@ async function main(): Promise<void> {
   const emitXlsxArgs = parseEmitXlsxArgs(process.argv.slice(2))
   if (emitXlsxArgs) {
     emitSameCorpusXlsx(emitXlsxArgs)
+    return
+  }
+  const preflightArgs = parsePreflightArgs(process.argv.slice(2))
+  if (preflightArgs) {
+    const preflight = await preflightSameCorpusIncumbentAccess(preflightArgs)
+    const serializedJson = `${JSON.stringify(preflight, null, 2)}\n`
+    if (preflightArgs.outputPath) {
+      mkdirSync(dirname(preflightArgs.outputPath), { recursive: true })
+      writeFileSync(
+        preflightArgs.outputPath,
+        formatJsonForRepo({
+          rootDir,
+          serializedJson,
+          tempPrefix: 'ui-responsiveness-same-corpus-preflight',
+        }),
+      )
+    }
+    console.log(serializedJson.trim())
     return
   }
   const args = parseCaptureArgs(process.argv.slice(2))
@@ -111,6 +159,28 @@ async function main(): Promise<void> {
       2,
     ),
   )
+}
+
+export function parsePreflightArgs(argv: readonly string[]): PreflightArgs | null {
+  if (!argv.includes('--preflight')) {
+    return null
+  }
+  const googleSheetsUrl = argumentValue(argv, '--google-sheets-url')
+  const microsoftExcelWebUrl = argumentValue(argv, '--microsoft-excel-web-url')
+  if (!googleSheetsUrl && !microsoftExcelWebUrl) {
+    throw new Error('Same-corpus preflight requires --google-sheets-url, --microsoft-excel-web-url, or both.')
+  }
+  return {
+    corpusId: parseCorpusId(argumentValue(argv, '--corpus') ?? defaultCorpusId),
+    googleSheetsUrl,
+    googleSheetsStorageStatePath: resolveOptionalPath(argumentValue(argv, '--google-sheets-storage-state')),
+    headless: !argv.includes('--headed'),
+    microsoftExcelWebUrl,
+    microsoftExcelWebStorageStatePath: resolveOptionalPath(argumentValue(argv, '--microsoft-excel-web-storage-state')),
+    outputPath: resolveOptionalPath(argumentValue(argv, '--output')),
+    readyTimeoutMs: parsePositiveInteger(argumentValue(argv, '--ready-timeout-ms') ?? '60000', '--ready-timeout-ms'),
+    storageStatePath: resolveOptionalPath(argumentValue(argv, '--storage-state')),
+  }
 }
 
 export function parseEmitXlsxArgs(argv: readonly string[]): EmitXlsxArgs | null {
@@ -242,6 +312,8 @@ export function emitSameCorpusXlsx(args: EmitXlsxArgs): void {
         microsoftExcelWebUrl: `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(publicGithubRawUrl)}`,
         googleSheetsAuthStateCommand:
           'pnpm ui:same-corpus:capture -- --save-storage-state <state.json> --auth-product google-sheets --google-sheets-url <url>',
+        preflightCommand:
+          'pnpm ui:same-corpus:capture -- --preflight --google-sheets-url <url> --microsoft-excel-web-url <url> [--google-sheets-storage-state <state.json>]',
         captureCommand:
           'pnpm ui:same-corpus:capture -- --output <capture.json> --google-sheets-url <url> --microsoft-excel-web-url <url> [--google-sheets-storage-state <state.json>]',
       },
@@ -323,6 +395,100 @@ export async function captureSameCorpusUiResponsiveness(args: CaptureArgs): Prom
     }
   } finally {
     await browser.close()
+  }
+}
+
+export async function preflightSameCorpusIncumbentAccess(args: PreflightArgs): Promise<SameCorpusPreflight> {
+  const corpus = buildWorkbookBenchmarkCorpus(args.corpusId)
+  const browser = await chromium.launch({ headless: args.headless })
+  try {
+    const productSpecs = [
+      ...(args.googleSheetsUrl ? [{ product: 'google-sheets' as const, url: args.googleSheetsUrl }] : []),
+      ...(args.microsoftExcelWebUrl ? [{ product: 'microsoft-excel-web' as const, url: args.microsoftExcelWebUrl }] : []),
+    ]
+    const products = await Promise.all(productSpecs.map((spec) => preflightIncumbentProduct(browser, spec.product, spec.url, corpus, args)))
+    return {
+      mode: 'preflight',
+      corpusCaseId: corpus.id,
+      materializedCells: corpus.materializedCellCount,
+      requiredProductCount: 2,
+      checkedProductCount: products.length,
+      products,
+    }
+  } finally {
+    await browser.close()
+  }
+}
+
+async function preflightIncumbentProduct(
+  browser: Browser,
+  product: Exclude<UiResponsivenessSameCorpusProduct, 'bilig'>,
+  url: string,
+  corpus: WorkbookBenchmarkCorpusCase,
+  args: PreflightArgs,
+): Promise<PreflightProductResult> {
+  const context = await browser.newContext(browserContextOptionsForPreflightProduct(product, args))
+  const page = await context.newPage()
+  try {
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60_000 })
+    await waitForProductReady(page, product, captureArgsForPreflight(args, product, url))
+    const corpusVerification = await verifyProductCorpus(page, product, url, corpus)
+    return {
+      product,
+      source: url,
+      finalUrl: page.url(),
+      title: await page.title(),
+      corpusVerification,
+      limitations: productLimitations(product, storageStatePathForPreflightProduct(product, args)),
+    }
+  } catch (error: unknown) {
+    throw new Error(await productReadyFailureMessage(page, product, url, 0, error), { cause: error })
+  } finally {
+    await context.close()
+  }
+}
+
+function browserContextOptionsForPreflightProduct(
+  product: Exclude<UiResponsivenessSameCorpusProduct, 'bilig'>,
+  args: PreflightArgs,
+): BrowserContextOptions {
+  const storageState = storageStatePathForPreflightProduct(product, args)
+  return {
+    viewport: defaultViewport,
+    ...(storageState ? { storageState } : {}),
+  }
+}
+
+function storageStatePathForPreflightProduct(
+  product: Exclude<UiResponsivenessSameCorpusProduct, 'bilig'>,
+  args: PreflightArgs,
+): string | null {
+  if (product === 'google-sheets') {
+    return args.googleSheetsStorageStatePath ?? args.storageStatePath
+  }
+  return args.microsoftExcelWebStorageStatePath ?? args.storageStatePath
+}
+
+function captureArgsForPreflight(
+  args: PreflightArgs,
+  product: Exclude<UiResponsivenessSameCorpusProduct, 'bilig'>,
+  url: string,
+): CaptureArgs {
+  return {
+    biligUrl: url,
+    biligStorageStatePath: null,
+    corpusId: args.corpusId,
+    deltaX: 0,
+    deltaY: 720,
+    googleSheetsUrl: product === 'google-sheets' ? url : '',
+    googleSheetsStorageStatePath: args.googleSheetsStorageStatePath,
+    headless: args.headless,
+    microsoftExcelWebUrl: product === 'microsoft-excel-web' ? url : '',
+    microsoftExcelWebStorageStatePath: args.microsoftExcelWebStorageStatePath,
+    outputPath: args.outputPath ?? '',
+    readyTimeoutMs: args.readyTimeoutMs,
+    sampleCount: 1,
+    storageStatePath: args.storageStatePath,
   }
 }
 
