@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
+import { parseImportExportFidelityScorecard, type ImportExportFidelityScorecard } from './gen-import-export-fidelity-scorecard.ts'
+
 export type DominanceStatus = 'repo-proved-lead' | 'partial-repo-evidence' | 'target-only'
 
 export interface RatioSummary {
@@ -130,6 +132,7 @@ export interface BiligDominanceScorecard {
   sourceArtifacts: {
     formulaDominanceSnapshot: string
     hyperFormulaSurfaceSnapshot: string
+    importExportFidelityScorecard: string
     largeWorkbookSloScorecard: string
     workpaperCompetitiveBenchmark: {
       generatedAt: string
@@ -144,6 +147,9 @@ export interface BiligDominanceScorecard {
     formulaCanonicalProductionPercent: number
     formulaOfficeListedBreadthPercent: number
     formulaTrackedBreadthPercent: number
+    importExportCoveredFeatures: string[]
+    importExportFidelityPassed: boolean
+    importExportUnsupportedFeatures: string[]
     largeWorkbookSloRowsCovered: number[]
     largeWorkbookSloPassed: boolean
     hyperFormulaComparableWorkloads: number
@@ -173,6 +179,8 @@ export interface BuildScorecardInput {
   competitiveArtifactPath: string
   formulaSnapshot: FormulaDominanceSnapshot
   formulaSnapshotPath: string
+  importExportFidelityScorecard: ImportExportFidelityScorecard
+  importExportFidelityScorecardPath: string
   largeWorkbookSloScorecard: LargeWorkbookSloScorecard
   largeWorkbookSloScorecardPath: string
   surfaceSnapshot: HyperFormulaSurfaceSnapshot
@@ -184,6 +192,7 @@ const rootDir = resolve(new URL('..', import.meta.url).pathname)
 const outputPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'bilig-dominance-scorecard.json')
 const competitiveArtifactPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'workpaper-vs-hyperformula.json')
 const formulaSnapshotPath = join(rootDir, 'packages', 'formula', 'src', '__tests__', 'fixtures', 'formula-dominance-snapshot.json')
+const importExportFidelityScorecardPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'import-export-fidelity-scorecard.json')
 const largeWorkbookSloScorecardPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'large-workbook-slo-scorecard.json')
 const surfaceSnapshotPath = join(rootDir, 'packages', 'headless', 'src', '__tests__', 'fixtures', 'hyperformula-surface.json')
 
@@ -194,6 +203,8 @@ function main(): void {
     competitiveArtifactPath: toRepoPath(competitiveArtifactPath),
     formulaSnapshot: parseFormulaDominanceSnapshot(readJsonObject(formulaSnapshotPath)),
     formulaSnapshotPath: toRepoPath(formulaSnapshotPath),
+    importExportFidelityScorecard: parseImportExportFidelityScorecard(readJsonObject(importExportFidelityScorecardPath)),
+    importExportFidelityScorecardPath: toRepoPath(importExportFidelityScorecardPath),
     largeWorkbookSloScorecard: parseLargeWorkbookSloScorecard(readJsonObject(largeWorkbookSloScorecardPath)),
     largeWorkbookSloScorecardPath: toRepoPath(largeWorkbookSloScorecardPath),
     surfaceSnapshot: parseSurfaceSnapshot(readJsonObject(surfaceSnapshotPath)),
@@ -284,6 +295,7 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
     sourceArtifacts: {
       formulaDominanceSnapshot: input.formulaSnapshotPath,
       hyperFormulaSurfaceSnapshot: input.surfaceSnapshotPath,
+      importExportFidelityScorecard: input.importExportFidelityScorecardPath,
       largeWorkbookSloScorecard: input.largeWorkbookSloScorecardPath,
       workpaperCompetitiveBenchmark: {
         path: input.competitiveArtifactPath,
@@ -298,6 +310,9 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
       formulaCanonicalProductionPercent: input.formulaSnapshot.canonical.summary.percent,
       formulaOfficeListedBreadthPercent: input.formulaSnapshot.formulaBreadth.officeListed.percent,
       formulaTrackedBreadthPercent: input.formulaSnapshot.formulaBreadth.tracked.percent,
+      importExportCoveredFeatures: input.importExportFidelityScorecard.summary.coveredFeatures,
+      importExportFidelityPassed: input.importExportFidelityScorecard.summary.allRequiredCasesPassed,
+      importExportUnsupportedFeatures: input.importExportFidelityScorecard.summary.unsupportedFeatures,
       largeWorkbookSloRowsCovered: input.largeWorkbookSloScorecard.summary.coveredLargeWorkbookRows,
       largeWorkbookSloPassed: input.largeWorkbookSloScorecard.summary.allSloBudgetsPassed,
       hyperFormulaComparableWorkloads: input.competitiveArtifact.scorecard.comparableCount,
@@ -457,13 +472,26 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
         title: 'Import And Export Compatibility',
         objectiveCategory: 'import/export compatibility',
         target: 'High-fidelity CSV/XLSX import, preview, authoritative finalization, and compatibility reporting.',
-        status: 'target-only',
-        currentEvidence: ['import/export architecture is documented', 'Excel fixture packages and formula oracle capture rules exist'],
-        evidenceArtifacts: ['docs/05-06-next-phase.md', 'docs/formula-oracle-capture.md'],
-        checkCommands: ['pnpm test', 'pnpm publish:runtime:check'],
+        status: 'partial-repo-evidence',
+        currentEvidence: [
+          `generated import/export fidelity scorecard passes required cases: ${String(input.importExportFidelityScorecard.summary.allRequiredCasesPassed)}`,
+          `covered import/export features: ${input.importExportFidelityScorecard.summary.coveredFeatures.join(', ')}`,
+          `unsupported XLSX features are explicitly disclosed: ${input.importExportFidelityScorecard.summary.unsupportedFeatures.join(', ')}`,
+        ],
+        evidenceArtifacts: [
+          input.importExportFidelityScorecardPath,
+          'packages/excel-import/src/__tests__/excel-import.test.ts',
+          'packages/core/src/__tests__/engine-import-export.fuzz.test.ts',
+          'docs/formula-oracle-capture.md',
+        ],
+        checkCommands: [
+          'pnpm import-export:fidelity:check',
+          'pnpm exec vitest run packages/excel-import/src/__tests__/excel-import.test.ts packages/core/src/__tests__/engine-import-export.fuzz.test.ts',
+        ],
         blockers: [
-          'no generated import/export fidelity matrix proves XLSX round-trip compatibility against Excel',
+          'generated XLSX round-trip evidence covers supported snapshot semantics, not full native Excel object-model round trips for styles, charts, pivots, macros, comments, and defined names',
           'no direct Sheets import/export compatibility artifact exists in the repo',
+          'no direct Microsoft Excel import/export compatibility artifact exists in the repo',
         ],
       },
       {

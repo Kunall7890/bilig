@@ -30,6 +30,7 @@
   "sourceArtifacts": {
     "formulaDominanceSnapshot": "packages/formula/src/__tests__/fixtures/formula-dominance-snapshot.json",
     "hyperFormulaSurfaceSnapshot": "packages/headless/src/__tests__/fixtures/hyperformula-surface.json",
+    "importExportFidelityScorecard": "packages/benchmarks/baselines/import-export-fidelity-scorecard.json",
     "largeWorkbookSloScorecard": "packages/benchmarks/baselines/large-workbook-slo-scorecard.json",
     "workpaperCompetitiveBenchmark": {
       "path": "packages/benchmarks/baselines/workpaper-vs-hyperformula.json",
@@ -44,6 +45,32 @@
     "formulaCanonicalProductionPercent": 100,
     "formulaOfficeListedBreadthPercent": 100,
     "formulaTrackedBreadthPercent": 100,
+    "importExportCoveredFeatures": [
+      "csv.import",
+      "csv.preview",
+      "csv.export",
+      "csv.roundtrip",
+      "xlsx.import",
+      "xlsx.preview",
+      "xlsx.export",
+      "xlsx.roundtrip",
+      "xlsx.values",
+      "xlsx.formulas",
+      "xlsx.numberFormats",
+      "xlsx.rowColumnDimensions",
+      "xlsx.merges",
+      "xlsx.multiSheet",
+      "xlsx.unsupportedFeatureWarnings"
+    ],
+    "importExportFidelityPassed": true,
+    "importExportUnsupportedFeatures": [
+      "xlsx.macros.execution",
+      "xlsx.comments.roundtrip",
+      "xlsx.definedNames.roundtrip",
+      "xlsx.charts.roundtrip",
+      "xlsx.pivots.roundtrip",
+      "xlsx.styles.export"
+    ],
     "largeWorkbookSloRowsCovered": [100000, 250000],
     "largeWorkbookSloPassed": true,
     "hyperFormulaComparableWorkloads": 46,
@@ -217,13 +244,26 @@
       "title": "Import And Export Compatibility",
       "objectiveCategory": "import/export compatibility",
       "target": "High-fidelity CSV/XLSX import, preview, authoritative finalization, and compatibility reporting.",
-      "status": "target-only",
-      "currentEvidence": ["import/export architecture is documented", "Excel fixture packages and formula oracle capture rules exist"],
-      "evidenceArtifacts": ["docs/05-06-next-phase.md", "docs/formula-oracle-capture.md"],
-      "checkCommands": ["pnpm test", "pnpm publish:runtime:check"],
+      "status": "partial-repo-evidence",
+      "currentEvidence": [
+        "generated import/export fidelity scorecard passes required cases: true",
+        "covered import/export features: csv.import, csv.preview, csv.export, csv.roundtrip, xlsx.import, xlsx.preview, xlsx.export, xlsx.roundtrip, xlsx.values, xlsx.formulas, xlsx.numberFormats, xlsx.rowColumnDimensions, xlsx.merges, xlsx.multiSheet, xlsx.unsupportedFeatureWarnings",
+        "unsupported XLSX features are explicitly disclosed: xlsx.macros.execution, xlsx.comments.roundtrip, xlsx.definedNames.roundtrip, xlsx.charts.roundtrip, xlsx.pivots.roundtrip, xlsx.styles.export"
+      ],
+      "evidenceArtifacts": [
+        "packages/benchmarks/baselines/import-export-fidelity-scorecard.json",
+        "packages/excel-import/src/__tests__/excel-import.test.ts",
+        "packages/core/src/__tests__/engine-import-export.fuzz.test.ts",
+        "docs/formula-oracle-capture.md"
+      ],
+      "checkCommands": [
+        "pnpm import-export:fidelity:check",
+        "pnpm exec vitest run packages/excel-import/src/__tests__/excel-import.test.ts packages/core/src/__tests__/engine-import-export.fuzz.test.ts"
+      ],
       "blockers": [
-        "no generated import/export fidelity matrix proves XLSX round-trip compatibility against Excel",
-        "no direct Sheets import/export compatibility artifact exists in the repo"
+        "generated XLSX round-trip evidence covers supported snapshot semantics, not full native Excel object-model round trips for styles, charts, pivots, macros, comments, and defined names",
+        "no direct Sheets import/export compatibility artifact exists in the repo",
+        "no direct Microsoft Excel import/export compatibility artifact exists in the repo"
       ]
     },
     {

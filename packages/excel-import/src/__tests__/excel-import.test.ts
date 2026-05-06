@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import * as XLSX from 'xlsx'
 
-import { importCsv, importWorkbookFile, importXlsx, readImportedXlsxCellStyle } from '../index.js'
+import type { WorkbookSnapshot } from '@bilig/protocol'
+import { exportXlsx, importCsv, importWorkbookFile, importXlsx, readImportedXlsxCellStyle } from '../index.js'
 import { CSV_CONTENT_TYPE } from '@bilig/agent-api'
 
 function buildWorkbook(): Uint8Array {
@@ -312,4 +313,89 @@ describe('excel import', () => {
     expect(imported.workbookName).toBe('dispatch')
     expect(imported.sheetNames).toEqual(['dispatch'])
   })
+
+  it('exports workbook snapshots to XLSX bytes that import back with supported workbook semantics', () => {
+    const snapshot: WorkbookSnapshot = {
+      version: 1,
+      workbook: {
+        name: 'Roundtrip Workbook',
+      },
+      sheets: [
+        {
+          id: 1,
+          name: 'Summary',
+          order: 0,
+          metadata: {
+            columns: [
+              { id: 'summary-col-0', index: 0, size: 132 },
+              { id: 'summary-col-1', index: 1, size: 96 },
+            ],
+            rows: [
+              { id: 'summary-row-0', index: 0, size: 30 },
+              { id: 'summary-row-2', index: 2, size: 24 },
+            ],
+            merges: [{ sheetName: 'Summary', startAddress: 'A5', endAddress: 'B5' }],
+          },
+          cells: [
+            { address: 'A1', value: 'Metric' },
+            { address: 'B1', formula: 'SUM(B2:B3)', format: '0.00' },
+            { address: 'C1', value: true },
+            { address: 'A2', value: 'Revenue' },
+            { address: 'B2', value: 1250.5, format: '$#,##0.00' },
+            { address: 'A3', value: 'Costs' },
+            { address: 'B3', value: 450.25, format: '$#,##0.00' },
+          ],
+        },
+        {
+          id: 2,
+          name: 'Inputs',
+          order: 1,
+          cells: [
+            { address: 'A1', value: 'Region' },
+            { address: 'B1', value: 'north' },
+          ],
+        },
+      ],
+    }
+
+    const bytes = exportXlsx(snapshot)
+    const imported = importXlsx(bytes, 'roundtrip.xlsx')
+
+    expect(bytes.byteLength).toBeGreaterThan(0)
+    expect(projectSupportedSnapshotSemantics(imported.snapshot)).toEqual(projectSupportedSnapshotSemantics(snapshot))
+  })
 })
+
+function projectSupportedSnapshotSemantics(snapshot: WorkbookSnapshot) {
+  return {
+    sheets: snapshot.sheets
+      .toSorted((left, right) => left.order - right.order)
+      .map((sheet) => ({
+        name: sheet.name,
+        order: sheet.order,
+        cells: sheet.cells
+          .map((cell) => ({
+            address: cell.address,
+            ...(cell.value !== undefined ? { value: cell.value } : {}),
+            ...(cell.formula !== undefined ? { formula: cell.formula } : {}),
+            ...(cell.format !== undefined ? { format: cell.format } : {}),
+          }))
+          .toSorted((left, right) => left.address.localeCompare(right.address)),
+        metadata: {
+          columns: (sheet.metadata?.columns ?? [])
+            .map(({ index, size }) => ({ index, size }))
+            .toSorted((left, right) => left.index - right.index),
+          rows: (sheet.metadata?.rows ?? [])
+            .map(({ index, size }) => ({ index, size }))
+            .toSorted((left, right) => left.index - right.index),
+          merges: (sheet.metadata?.merges ?? [])
+            .map(({ sheetName, startAddress, endAddress }) => ({ sheetName, startAddress, endAddress }))
+            .toSorted((left, right) =>
+              `${left.sheetName}:${left.startAddress}:${left.endAddress}`.localeCompare(
+                `${right.sheetName}:${right.startAddress}:${right.endAddress}`,
+              ),
+            ),
+        },
+      })),
+  }
+}

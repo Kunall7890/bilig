@@ -25,9 +25,17 @@ describe('bilig dominance scorecard', () => {
     expect(scorecard.summary.externalMicrosoftExcelEvidence).toBe('not-captured-in-repo')
     expect(scorecard.summary.formulaOfficeListedBreadthPercent).toBe(90.7)
     expect(scorecard.summary.formulaTrackedBreadthPercent).toBe(90.5)
+    expect(scorecard.summary.importExportFidelityPassed).toBe(true)
     expect(scorecard.summary.largeWorkbookSloRowsCovered).toEqual([100_000, 250_000])
     expect(scorecard.summary.largeWorkbookSloPassed).toBe(true)
+    expect(scorecard.sourceArtifacts.importExportFidelityScorecard).toBe(
+      'packages/benchmarks/baselines/import-export-fidelity-scorecard.json',
+    )
     expect(scorecard.sourceArtifacts.largeWorkbookSloScorecard).toBe('packages/benchmarks/baselines/large-workbook-slo-scorecard.json')
+    expect(scorecard.categories.find((category) => category.id === 'import-export-compatibility')).toMatchObject({
+      status: 'partial-repo-evidence',
+      evidenceArtifacts: expect.arrayContaining(['packages/benchmarks/baselines/import-export-fidelity-scorecard.json']),
+    })
     expect(scorecard.categories.find((category) => category.id === 'large-workbook-scale')).toMatchObject({
       status: 'partial-repo-evidence',
       evidenceArtifacts: expect.arrayContaining(['packages/benchmarks/baselines/large-workbook-slo-scorecard.json']),
@@ -61,8 +69,10 @@ describe('bilig dominance scorecard', () => {
     const runCi = readFileSync(resolve(repoRoot, 'scripts/run-ci.ts'), 'utf8')
 
     expect(packageJson).toContain('"dominance:check": "bun scripts/gen-bilig-dominance-scorecard.ts --check"')
+    expect(packageJson).toContain('"import-export:fidelity:check": "bun scripts/gen-import-export-fidelity-scorecard.ts --check"')
     expect(packageJson).toContain('"large-workbook:slo:check": "bun scripts/gen-large-workbook-slo-scorecard.ts --check"')
     expect(runCi).toContain("pnpm('bilig dominance scorecard check', 'dominance:check')")
+    expect(runCi).toContain("pnpm('import/export fidelity scorecard check', 'import-export:fidelity:check')")
     expect(runCi).toContain("pnpm('large workbook SLO scorecard check', 'large-workbook:slo:check')")
   })
 })
@@ -93,6 +103,7 @@ function buildFixtureInput(): BuildScorecardInput {
   return {
     competitiveArtifactPath: 'packages/benchmarks/baselines/workpaper-vs-hyperformula.json',
     formulaSnapshotPath: 'packages/formula/src/__tests__/fixtures/formula-dominance-snapshot.json',
+    importExportFidelityScorecardPath: 'packages/benchmarks/baselines/import-export-fidelity-scorecard.json',
     largeWorkbookSloScorecardPath: 'packages/benchmarks/baselines/large-workbook-slo-scorecard.json',
     surfaceSnapshotPath: 'packages/headless/src/__tests__/fixtures/hyperformula-surface.json',
     formulaSnapshot: {
@@ -129,6 +140,32 @@ function buildFixtureInput(): BuildScorecardInput {
         instanceMethods: ['getCellValue', 'setCellContents'],
       },
       configKeys: ['licenseKey', 'useColumnIndex'],
+    },
+    importExportFidelityScorecard: {
+      schemaVersion: 1,
+      suite: 'import-export-fidelity',
+      summary: {
+        allRequiredCasesPassed: true,
+        csvRoundTripPassed: true,
+        xlsxImportPassed: true,
+        xlsxSnapshotRoundTripPassed: true,
+        coveredFeatures: ['csv.import', 'xlsx.import', 'xlsx.export'],
+        unsupportedFeatures: ['xlsx.styles.export'],
+        externalGoogleSheetsEvidence: 'not-captured',
+        externalMicrosoftExcelEvidence: 'not-captured',
+      },
+      cases: [
+        {
+          id: 'xlsx-snapshot-roundtrip-values-formulas-formats',
+          format: 'xlsx',
+          direction: 'export-import',
+          required: true,
+          passed: true,
+          coveredFeatures: ['xlsx.values', 'xlsx.formulas', 'xlsx.numberFormats'],
+          missingFeatures: [],
+          evidence: 'fixture round-tripped',
+        },
+      ],
     },
     largeWorkbookSloScorecard: {
       schemaVersion: 1,

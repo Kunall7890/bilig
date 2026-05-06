@@ -1,3 +1,3 @@
 # @bilig/excel-import
 
-XLSX-to-`WorkbookSnapshot` import helpers for bilig.
+CSV/XLSX-to-`WorkbookSnapshot` import helpers and supported-subset XLSX export helpers for bilig.

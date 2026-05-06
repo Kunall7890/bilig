@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "suite": "import-export-fidelity",
+  "generatedAt": "2026-05-06T08:06:05.572Z",
+  "source": {
+    "artifactGenerator": "scripts/gen-import-export-fidelity-scorecard.ts",
+    "implementationPackage": "packages/excel-import",
+    "enginePackage": "packages/core"
+  },
+  "summary": {
+    "allRequiredCasesPassed": true,
+    "csvRoundTripPassed": true,
+    "xlsxImportPassed": true,
+    "xlsxSnapshotRoundTripPassed": true,
+    "coveredFeatures": [
+      "csv.import",
+      "csv.preview",
+      "csv.export",
+      "csv.roundtrip",
+      "xlsx.import",
+      "xlsx.preview",
+      "xlsx.export",
+      "xlsx.roundtrip",
+      "xlsx.values",
+      "xlsx.formulas",
+      "xlsx.numberFormats",
+      "xlsx.rowColumnDimensions",
+      "xlsx.merges",
+      "xlsx.multiSheet",
+      "xlsx.unsupportedFeatureWarnings"
+    ],
+    "unsupportedFeatures": [
+      "xlsx.macros.execution",
+      "xlsx.comments.roundtrip",
+      "xlsx.definedNames.roundtrip",
+      "xlsx.charts.roundtrip",
+      "xlsx.pivots.roundtrip",
+      "xlsx.styles.export"
+    ],
+    "externalGoogleSheetsEvidence": "not-captured",
+    "externalMicrosoftExcelEvidence": "not-captured"
+  },
+  "cases": [
+    {
+      "id": "csv-import-preview",
+      "format": "csv",
+      "direction": "import",
+      "required": true,
+      "passed": true,
+      "coveredFeatures": ["csv.import", "csv.preview"],
+      "missingFeatures": [],
+      "evidence": "CSV import preserves workbook name, preview rows, typed values, and formulas."
+    },
+    {
+      "id": "csv-engine-roundtrip",
+      "format": "csv",
+      "direction": "import-export-import",
+      "required": true,
+      "passed": true,
+      "coveredFeatures": ["csv.export", "csv.roundtrip"],
+      "missingFeatures": [],
+      "evidence": "Core CSV export/import reserializes to the same CSV after a restore import."
+    },
+    {
+      "id": "xlsx-import-preview",
+      "format": "xlsx",
+      "direction": "import",
+      "required": true,
+      "passed": true,
+      "coveredFeatures": ["xlsx.import", "xlsx.preview", "xlsx.multiSheet"],
+      "missingFeatures": [],
+      "evidence": "XLSX import preserves preview metadata, sheet order, formulas, and number formats from a generated workbook."
+    },
+    {
+      "id": "xlsx-snapshot-roundtrip-values-formulas-formats",
+      "format": "xlsx",
+      "direction": "export-import",
+      "required": true,
+      "passed": true,
+      "coveredFeatures": ["xlsx.export", "xlsx.roundtrip", "xlsx.values", "xlsx.formulas", "xlsx.numberFormats", "xlsx.multiSheet"],
+      "missingFeatures": [],
+      "evidence": "WorkbookSnapshot exported to XLSX imports back with the same values, formulas, formats, and sheet order."
+    },
+    {
+      "id": "xlsx-snapshot-roundtrip-dimensions-merges",
+      "format": "xlsx",
+      "direction": "export-import",
+      "required": true,
+      "passed": true,
+      "coveredFeatures": ["xlsx.rowColumnDimensions", "xlsx.merges"],
+      "missingFeatures": [],
+      "evidence": "WorkbookSnapshot exported to XLSX imports back with equivalent row heights, column widths, and merged ranges."
+    },
+    {
+      "id": "xlsx-unsupported-features-warning",
+      "format": "xlsx",
+      "direction": "export-import",
+      "required": true,
+      "passed": true,
+      "coveredFeatures": ["xlsx.unsupportedFeatureWarnings"],
+      "missingFeatures": [
+        "xlsx.macros.execution",
+        "xlsx.comments.roundtrip",
+        "xlsx.definedNames.roundtrip",
+        "xlsx.charts.roundtrip",
+        "xlsx.pivots.roundtrip",
+        "xlsx.styles.export"
+      ],
+      "evidence": "Scorecard explicitly records unsupported XLSX surfaces instead of treating a subset round trip as full Excel parity."
+    }
+  ]
+}

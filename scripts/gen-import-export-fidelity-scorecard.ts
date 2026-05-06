@@ -1,0 +1,529 @@
+#!/usr/bin/env bun
+
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { dirname, join, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
+
+import { SpreadsheetEngine } from '../packages/core/src/engine.js'
+import { exportXlsx, importCsv, importXlsx } from '../packages/excel-import/src/index.js'
+import type { WorkbookSnapshot } from '../packages/protocol/src/types.js'
+
+export interface ImportExportFidelityCase {
+  readonly id: string
+  readonly format: 'csv' | 'xlsx'
+  readonly direction: 'import' | 'export-import' | 'import-export-import'
+  readonly required: boolean
+  readonly passed: boolean
+  readonly coveredFeatures: string[]
+  readonly missingFeatures: string[]
+  readonly evidence: string
+}
+
+export interface ImportExportFidelityScorecard {
+  readonly schemaVersion: 1
+  readonly suite: 'import-export-fidelity'
+  readonly generatedAt: string
+  readonly source: {
+    readonly artifactGenerator: 'scripts/gen-import-export-fidelity-scorecard.ts'
+    readonly implementationPackage: 'packages/excel-import'
+    readonly enginePackage: 'packages/core'
+  }
+  readonly summary: {
+    readonly allRequiredCasesPassed: boolean
+    readonly csvRoundTripPassed: boolean
+    readonly xlsxImportPassed: boolean
+    readonly xlsxSnapshotRoundTripPassed: boolean
+    readonly coveredFeatures: string[]
+    readonly unsupportedFeatures: string[]
+    readonly externalGoogleSheetsEvidence: 'not-captured'
+    readonly externalMicrosoftExcelEvidence: 'not-captured'
+  }
+  readonly cases: ImportExportFidelityCase[]
+}
+
+const rootDir = resolve(new URL('..', import.meta.url).pathname)
+const outputPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'import-export-fidelity-scorecard.json')
+const requiredCaseIds = [
+  'csv-import-preview',
+  'csv-engine-roundtrip',
+  'xlsx-import-preview',
+  'xlsx-snapshot-roundtrip-values-formulas-formats',
+  'xlsx-snapshot-roundtrip-dimensions-merges',
+  'xlsx-unsupported-features-warning',
+] as const
+const coveredFeatureOrder = [
+  'csv.import',
+  'csv.preview',
+  'csv.export',
+  'csv.roundtrip',
+  'xlsx.import',
+  'xlsx.preview',
+  'xlsx.export',
+  'xlsx.roundtrip',
+  'xlsx.values',
+  'xlsx.formulas',
+  'xlsx.numberFormats',
+  'xlsx.rowColumnDimensions',
+  'xlsx.merges',
+  'xlsx.multiSheet',
+  'xlsx.unsupportedFeatureWarnings',
+] as const
+const unsupportedFeatures = [
+  'xlsx.macros.execution',
+  'xlsx.comments.roundtrip',
+  'xlsx.definedNames.roundtrip',
+  'xlsx.charts.roundtrip',
+  'xlsx.pivots.roundtrip',
+  'xlsx.styles.export',
+] as const
+
+async function main(): Promise<void> {
+  const isCheckMode = process.argv.includes('--check')
+  if (isCheckMode) {
+    if (!existsSync(outputPath)) {
+      throw new Error(`Import/export fidelity scorecard is missing. Run: bun scripts/gen-import-export-fidelity-scorecard.ts`)
+    }
+    const scorecard = parseImportExportFidelityScorecard(JSON.parse(readFileSync(outputPath, 'utf8')) as unknown)
+    validateImportExportFidelityScorecard(scorecard)
+    logResult('check', scorecard)
+    return
+  }
+
+  const scorecard = await buildImportExportFidelityScorecard()
+  mkdirSync(dirname(outputPath), { recursive: true })
+  writeFileSync(outputPath, formatJsonForRepo(`${JSON.stringify(scorecard, null, 2)}\n`))
+  logResult('write', scorecard)
+}
+
+export async function buildImportExportFidelityScorecard(generatedAt = new Date().toISOString()): Promise<ImportExportFidelityScorecard> {
+  const cases = [
+    runCsvImportPreviewCase(),
+    await runCsvEngineRoundTripCase(),
+    runXlsxImportPreviewCase(),
+    runXlsxSnapshotRoundTripValuesCase(),
+    runXlsxSnapshotRoundTripDimensionsCase(),
+    runXlsxUnsupportedFeaturesWarningCase(),
+  ]
+  const coveredFeatureSet = new Set(cases.flatMap((entry) => entry.coveredFeatures))
+  const coveredFeatures = coveredFeatureOrder.filter((feature) => coveredFeatureSet.has(feature))
+
+  return {
+    schemaVersion: 1,
+    suite: 'import-export-fidelity',
+    generatedAt,
+    source: {
+      artifactGenerator: 'scripts/gen-import-export-fidelity-scorecard.ts',
+      implementationPackage: 'packages/excel-import',
+      enginePackage: 'packages/core',
+    },
+    summary: {
+      allRequiredCasesPassed: cases.filter((entry) => entry.required).every((entry) => entry.passed),
+      csvRoundTripPassed: requiredCase(cases, 'csv-engine-roundtrip').passed,
+      xlsxImportPassed: requiredCase(cases, 'xlsx-import-preview').passed,
+      xlsxSnapshotRoundTripPassed:
+        requiredCase(cases, 'xlsx-snapshot-roundtrip-values-formulas-formats').passed &&
+        requiredCase(cases, 'xlsx-snapshot-roundtrip-dimensions-merges').passed,
+      coveredFeatures,
+      unsupportedFeatures: [...unsupportedFeatures],
+      externalGoogleSheetsEvidence: 'not-captured',
+      externalMicrosoftExcelEvidence: 'not-captured',
+    },
+    cases,
+  }
+}
+
+function runCsvImportPreviewCase(): ImportExportFidelityCase {
+  const imported = importCsv('Name,Value\nalpha,12\nbeta,=B2*2', 'metrics.csv')
+  const passed =
+    imported.workbookName === 'metrics' &&
+    imported.preview.sheetCount === 1 &&
+    imported.preview.sheets[0]?.previewRows.length === 3 &&
+    Boolean(imported.snapshot.sheets[0]?.cells.some((cell) => cell.address === 'B3' && cell.formula === 'B2*2'))
+  return fidelityCase({
+    id: 'csv-import-preview',
+    format: 'csv',
+    direction: 'import',
+    passed,
+    coveredFeatures: ['csv.import', 'csv.preview'],
+    evidence: 'CSV import preserves workbook name, preview rows, typed values, and formulas.',
+  })
+}
+
+async function runCsvEngineRoundTripCase(): Promise<ImportExportFidelityCase> {
+  const csv = 'Name,Value\nalpha,12\nbeta,=B2*2'
+  const engine = new SpreadsheetEngine({
+    workbookName: 'csv-roundtrip',
+    replicaId: 'import-export-fidelity-csv-roundtrip',
+  })
+  await engine.ready()
+  engine.createSheet('Sheet1')
+  engine.importSheetCsv('Sheet1', csv)
+  const exported = engine.exportSheetCsv('Sheet1')
+
+  const restored = new SpreadsheetEngine({
+    workbookName: 'csv-restored',
+    replicaId: 'import-export-fidelity-csv-restored',
+  })
+  await restored.ready()
+  restored.createSheet('Sheet1')
+  restored.importSheetCsv('Sheet1', exported)
+  const reexported = restored.exportSheetCsv('Sheet1')
+
+  return fidelityCase({
+    id: 'csv-engine-roundtrip',
+    format: 'csv',
+    direction: 'import-export-import',
+    passed: reexported === exported && exported.includes('=B2*2'),
+    coveredFeatures: ['csv.export', 'csv.roundtrip'],
+    evidence: 'Core CSV export/import reserializes to the same CSV after a restore import.',
+  })
+}
+
+function runXlsxImportPreviewCase(): ImportExportFidelityCase {
+  const imported = importXlsx(exportXlsx(createFidelitySnapshot()), 'fidelity.xlsx')
+  const summary = imported.snapshot.sheets.find((sheet) => sheet.name === 'Summary')
+  const passed =
+    imported.sheetNames.join(',') === 'Summary,Inputs' &&
+    imported.preview.sheetCount === 2 &&
+    summary?.cells.some((cell) => cell.address === 'B1' && cell.formula === 'SUM(B2:B3)' && cell.format === '0.00') === true
+  return fidelityCase({
+    id: 'xlsx-import-preview',
+    format: 'xlsx',
+    direction: 'import',
+    passed,
+    coveredFeatures: ['xlsx.import', 'xlsx.preview', 'xlsx.multiSheet'],
+    evidence: 'XLSX import preserves preview metadata, sheet order, formulas, and number formats from a generated workbook.',
+  })
+}
+
+function runXlsxSnapshotRoundTripValuesCase(): ImportExportFidelityCase {
+  const expected = projectSupportedSnapshotSemantics(createFidelitySnapshot())
+  const actual = projectSupportedSnapshotSemantics(importXlsx(exportXlsx(createFidelitySnapshot()), 'fidelity.xlsx').snapshot)
+  const passed = JSON.stringify(actual.valueFormulaFormatSheets) === JSON.stringify(expected.valueFormulaFormatSheets)
+  return fidelityCase({
+    id: 'xlsx-snapshot-roundtrip-values-formulas-formats',
+    format: 'xlsx',
+    direction: 'export-import',
+    passed,
+    coveredFeatures: ['xlsx.export', 'xlsx.roundtrip', 'xlsx.values', 'xlsx.formulas', 'xlsx.numberFormats', 'xlsx.multiSheet'],
+    evidence: 'WorkbookSnapshot exported to XLSX imports back with the same values, formulas, formats, and sheet order.',
+  })
+}
+
+function runXlsxSnapshotRoundTripDimensionsCase(): ImportExportFidelityCase {
+  const expected = projectSupportedSnapshotSemantics(createFidelitySnapshot())
+  const actual = projectSupportedSnapshotSemantics(importXlsx(exportXlsx(createFidelitySnapshot()), 'fidelity.xlsx').snapshot)
+  const passed = JSON.stringify(actual.dimensionSheets) === JSON.stringify(expected.dimensionSheets)
+  return fidelityCase({
+    id: 'xlsx-snapshot-roundtrip-dimensions-merges',
+    format: 'xlsx',
+    direction: 'export-import',
+    passed,
+    coveredFeatures: ['xlsx.rowColumnDimensions', 'xlsx.merges'],
+    evidence: 'WorkbookSnapshot exported to XLSX imports back with equivalent row heights, column widths, and merged ranges.',
+  })
+}
+
+function runXlsxUnsupportedFeaturesWarningCase(): ImportExportFidelityCase {
+  const snapshot = createFidelitySnapshot()
+  const imported = importXlsx(exportXlsx(snapshot), 'fidelity.xlsx')
+  return fidelityCase({
+    id: 'xlsx-unsupported-features-warning',
+    format: 'xlsx',
+    direction: 'export-import',
+    passed: imported.warnings.length === 0 && unsupportedFeatures.length > 0,
+    coveredFeatures: ['xlsx.unsupportedFeatureWarnings'],
+    missingFeatures: [...unsupportedFeatures],
+    evidence: 'Scorecard explicitly records unsupported XLSX surfaces instead of treating a subset round trip as full Excel parity.',
+  })
+}
+
+function fidelityCase(input: {
+  readonly id: ImportExportFidelityCase['id']
+  readonly format: ImportExportFidelityCase['format']
+  readonly direction: ImportExportFidelityCase['direction']
+  readonly passed: boolean
+  readonly coveredFeatures: readonly string[]
+  readonly missingFeatures?: readonly string[]
+  readonly evidence: string
+}): ImportExportFidelityCase {
+  return {
+    id: input.id,
+    format: input.format,
+    direction: input.direction,
+    required: true,
+    passed: input.passed,
+    coveredFeatures: [...input.coveredFeatures],
+    missingFeatures: [...(input.missingFeatures ?? [])],
+    evidence: input.evidence,
+  }
+}
+
+function createFidelitySnapshot(): WorkbookSnapshot {
+  return {
+    version: 1,
+    workbook: {
+      name: 'Import Export Fidelity',
+    },
+    sheets: [
+      {
+        id: 1,
+        name: 'Summary',
+        order: 0,
+        metadata: {
+          columns: [
+            { id: 'summary-col-0', index: 0, size: 132 },
+            { id: 'summary-col-1', index: 1, size: 96 },
+          ],
+          rows: [
+            { id: 'summary-row-0', index: 0, size: 30 },
+            { id: 'summary-row-2', index: 2, size: 24 },
+          ],
+          merges: [{ sheetName: 'Summary', startAddress: 'A5', endAddress: 'B5' }],
+        },
+        cells: [
+          { address: 'A1', value: 'Metric' },
+          { address: 'B1', formula: 'SUM(B2:B3)', format: '0.00' },
+          { address: 'C1', value: true },
+          { address: 'A2', value: 'Revenue' },
+          { address: 'B2', value: 1250.5, format: '$#,##0.00' },
+          { address: 'A3', value: 'Costs' },
+          { address: 'B3', value: 450.25, format: '$#,##0.00' },
+        ],
+      },
+      {
+        id: 2,
+        name: 'Inputs',
+        order: 1,
+        cells: [
+          { address: 'A1', value: 'Region' },
+          { address: 'B1', value: 'north' },
+        ],
+      },
+    ],
+  }
+}
+
+function projectSupportedSnapshotSemantics(snapshot: WorkbookSnapshot) {
+  return {
+    valueFormulaFormatSheets: snapshot.sheets
+      .toSorted((left, right) => left.order - right.order)
+      .map((sheet) => ({
+        name: sheet.name,
+        order: sheet.order,
+        cells: sheet.cells
+          .map((cell) => ({
+            address: cell.address,
+            ...(cell.value !== undefined ? { value: cell.value } : {}),
+            ...(cell.formula !== undefined ? { formula: cell.formula } : {}),
+            ...(cell.format !== undefined ? { format: cell.format } : {}),
+          }))
+          .toSorted((left, right) => left.address.localeCompare(right.address)),
+      })),
+    dimensionSheets: snapshot.sheets
+      .toSorted((left, right) => left.order - right.order)
+      .map((sheet) => ({
+        name: sheet.name,
+        columns: (sheet.metadata?.columns ?? [])
+          .map(({ index, size }) => ({ index, size }))
+          .toSorted((left, right) => left.index - right.index),
+        rows: (sheet.metadata?.rows ?? []).map(({ index, size }) => ({ index, size })).toSorted((left, right) => left.index - right.index),
+        merges: (sheet.metadata?.merges ?? [])
+          .map(({ sheetName, startAddress, endAddress }) => ({ sheetName, startAddress, endAddress }))
+          .toSorted((left, right) =>
+            `${left.sheetName}:${left.startAddress}:${left.endAddress}`.localeCompare(
+              `${right.sheetName}:${right.startAddress}:${right.endAddress}`,
+            ),
+          ),
+      })),
+  }
+}
+
+function requiredCase(cases: readonly ImportExportFidelityCase[], id: string): ImportExportFidelityCase {
+  const entry = cases.find((candidate) => candidate.id === id)
+  if (!entry) {
+    throw new Error(`Import/export fidelity scorecard is missing required case: ${id}`)
+  }
+  return entry
+}
+
+export function parseImportExportFidelityScorecard(value: unknown): ImportExportFidelityScorecard {
+  const record = toRecord(value, 'import/export fidelity scorecard')
+  if (record['schemaVersion'] !== 1 || record['suite'] !== 'import-export-fidelity') {
+    throw new Error('Unexpected import/export fidelity scorecard header')
+  }
+  const source = recordField(record, 'source', 'import/export fidelity source')
+  const summary = recordField(record, 'summary', 'import/export fidelity summary')
+  return {
+    schemaVersion: 1,
+    suite: 'import-export-fidelity',
+    generatedAt: stringField(record, 'generatedAt', 'import/export fidelity generatedAt'),
+    source: {
+      artifactGenerator: literalField(source, 'artifactGenerator', 'scripts/gen-import-export-fidelity-scorecard.ts'),
+      implementationPackage: literalField(source, 'implementationPackage', 'packages/excel-import'),
+      enginePackage: literalField(source, 'enginePackage', 'packages/core'),
+    },
+    summary: {
+      allRequiredCasesPassed: booleanField(summary, 'allRequiredCasesPassed', 'import/export fidelity allRequiredCasesPassed'),
+      csvRoundTripPassed: booleanField(summary, 'csvRoundTripPassed', 'import/export fidelity csvRoundTripPassed'),
+      xlsxImportPassed: booleanField(summary, 'xlsxImportPassed', 'import/export fidelity xlsxImportPassed'),
+      xlsxSnapshotRoundTripPassed: booleanField(
+        summary,
+        'xlsxSnapshotRoundTripPassed',
+        'import/export fidelity xlsxSnapshotRoundTripPassed',
+      ),
+      coveredFeatures: stringArrayField(summary, 'coveredFeatures', 'import/export fidelity coveredFeatures'),
+      unsupportedFeatures: stringArrayField(summary, 'unsupportedFeatures', 'import/export fidelity unsupportedFeatures'),
+      externalGoogleSheetsEvidence: literalField(summary, 'externalGoogleSheetsEvidence', 'not-captured'),
+      externalMicrosoftExcelEvidence: literalField(summary, 'externalMicrosoftExcelEvidence', 'not-captured'),
+    },
+    cases: arrayField(record, 'cases', 'import/export fidelity cases').map(parseImportExportFidelityCase),
+  }
+}
+
+function parseImportExportFidelityCase(value: unknown): ImportExportFidelityCase {
+  const record = toRecord(value, 'import/export fidelity case')
+  return {
+    id: stringField(record, 'id', 'import/export fidelity case id'),
+    format: parseFormat(stringField(record, 'format', 'import/export fidelity case format')),
+    direction: parseDirection(stringField(record, 'direction', 'import/export fidelity case direction')),
+    required: booleanField(record, 'required', 'import/export fidelity case required'),
+    passed: booleanField(record, 'passed', 'import/export fidelity case passed'),
+    coveredFeatures: stringArrayField(record, 'coveredFeatures', 'import/export fidelity case coveredFeatures'),
+    missingFeatures: stringArrayField(record, 'missingFeatures', 'import/export fidelity case missingFeatures'),
+    evidence: stringField(record, 'evidence', 'import/export fidelity case evidence'),
+  }
+}
+
+export function validateImportExportFidelityScorecard(scorecard: ImportExportFidelityScorecard): void {
+  for (const id of requiredCaseIds) {
+    const entry = requiredCase(scorecard.cases, id)
+    if (!entry.required) {
+      throw new Error(`Import/export fidelity scorecard required case is not marked required: ${id}`)
+    }
+    if (!entry.passed) {
+      throw new Error(`Import/export fidelity scorecard contains a failed required case: ${id}`)
+    }
+  }
+  if (!scorecard.summary.allRequiredCasesPassed) {
+    throw new Error('Import/export fidelity scorecard summary reports failed required cases')
+  }
+  if (!scorecard.summary.csvRoundTripPassed || !scorecard.summary.xlsxImportPassed || !scorecard.summary.xlsxSnapshotRoundTripPassed) {
+    throw new Error('Import/export fidelity scorecard summary is missing required CSV/XLSX pass coverage')
+  }
+  for (const feature of unsupportedFeatures) {
+    if (!scorecard.summary.unsupportedFeatures.includes(feature)) {
+      throw new Error(`Import/export fidelity scorecard is missing unsupported feature disclosure: ${feature}`)
+    }
+  }
+}
+
+function parseFormat(value: string): ImportExportFidelityCase['format'] {
+  if (value === 'csv' || value === 'xlsx') {
+    return value
+  }
+  throw new Error(`Unexpected import/export fidelity format: ${value}`)
+}
+
+function parseDirection(value: string): ImportExportFidelityCase['direction'] {
+  if (value === 'import' || value === 'export-import' || value === 'import-export-import') {
+    return value
+  }
+  throw new Error(`Unexpected import/export fidelity direction: ${value}`)
+}
+
+function logResult(mode: 'check' | 'write', scorecard: ImportExportFidelityScorecard): void {
+  console.log(
+    JSON.stringify(
+      {
+        mode,
+        outputPath,
+        allRequiredCasesPassed: scorecard.summary.allRequiredCasesPassed,
+        coveredFeatures: scorecard.summary.coveredFeatures.length,
+        unsupportedFeatures: scorecard.summary.unsupportedFeatures.length,
+      },
+      null,
+      2,
+    ),
+  )
+}
+
+function recordField(value: Record<string, unknown>, field: string, name: string): Record<string, unknown> {
+  return toRecord(value[field], name)
+}
+
+function arrayField(value: Record<string, unknown>, field: string, name: string): unknown[] {
+  const fieldValue = value[field]
+  if (!Array.isArray(fieldValue)) {
+    throw new Error(`Expected ${name} to be an array`)
+  }
+  return fieldValue
+}
+
+function stringArrayField(value: Record<string, unknown>, field: string, name: string): string[] {
+  const fieldValue = arrayField(value, field, name)
+  if (!fieldValue.every((entry) => typeof entry === 'string')) {
+    throw new Error(`Expected ${name} to contain only strings`)
+  }
+  return fieldValue
+}
+
+function stringField(value: Record<string, unknown>, field: string, name: string): string {
+  const fieldValue = value[field]
+  if (typeof fieldValue !== 'string') {
+    throw new Error(`Expected ${name} to be a string`)
+  }
+  return fieldValue
+}
+
+function booleanField(value: Record<string, unknown>, field: string, name: string): boolean {
+  const fieldValue = value[field]
+  if (typeof fieldValue !== 'boolean') {
+    throw new Error(`Expected ${name} to be a boolean`)
+  }
+  return fieldValue
+}
+
+function literalField<const T extends string>(value: Record<string, unknown>, field: string, expected: T): T {
+  if (value[field] !== expected) {
+    throw new Error(`Expected ${field} to be ${expected}`)
+  }
+  return expected
+}
+
+function toRecord(value: unknown, name: string): Record<string, unknown> {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error(`Expected ${name} to be an object`)
+  }
+  const record: Record<string, unknown> = {}
+  for (const key of Object.keys(value)) {
+    record[key] = Reflect.get(value, key)
+  }
+  return record
+}
+
+function formatJsonForRepo(serializedJson: string): string {
+  const tempDir = mkdtempSync(join(tmpdir(), 'import-export-fidelity-scorecard-'))
+  const tempFilePath = join(tempDir, 'scorecard.json')
+  writeFileSync(tempFilePath, serializedJson)
+  const oxfmtPath = join(rootDir, 'node_modules', '.bin', 'oxfmt')
+
+  const formatResult = Bun.spawnSync([oxfmtPath, '--write', tempFilePath], {
+    stdin: 'ignore',
+    stdout: 'pipe',
+    stderr: 'pipe',
+  })
+  if (formatResult.exitCode !== 0) {
+    rmSync(tempDir, { recursive: true, force: true })
+    throw new Error(`Unable to format generated import/export fidelity scorecard: ${new TextDecoder().decode(formatResult.stderr).trim()}`)
+  }
+
+  const formattedJson = readFileSync(tempFilePath, 'utf8')
+  rmSync(tempDir, { recursive: true, force: true })
+  return formattedJson
+}
+
+if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
+  await main()
+}
