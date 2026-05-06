@@ -1,0 +1,285 @@
+{
+  "schemaVersion": 1,
+  "suite": "external-sheets-excel-reliability-comparison",
+  "generatedAt": "2026-05-06T14:08:00.000Z",
+  "sourceBasis": "official-public-docs-reviewed-2026-05-06",
+  "officialSources": [
+    {
+      "id": "google-docs-save-file",
+      "vendor": "google-sheets",
+      "title": "Create, view or download a file",
+      "url": "https://support.google.com/docs/answer/49114?hl=en-to",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Google documents automatic online saving for Docs, Sheets, Slides and Forms.",
+        "Google documents offline access that saves changes to the device and saves them to Drive once reconnected."
+      ]
+    },
+    {
+      "id": "google-drive-files-offline",
+      "vendor": "google-sheets",
+      "title": "Use Google Drive files offline",
+      "url": "https://support.google.com/drive/answer/2375012?hl=en-GB",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Google documents offline access for Google Docs, Sheets and Slides.",
+        "Google documents browser, extension, sign-in, and device-space prerequisites for offline editing."
+      ]
+    },
+    {
+      "id": "google-docs-version-history",
+      "vendor": "google-sheets",
+      "title": "Find out what's changed in a file",
+      "url": "https://support.google.com/docs/answer/190843?hl=en-uk",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Google documents version history for Docs, Sheets, Slides and Vids.",
+        "Google documents that browsing earlier versions requires edit permission."
+      ]
+    },
+    {
+      "id": "google-sheets-cant-save-changes",
+      "vendor": "google-sheets",
+      "title": "Troubleshoot Google Sheets can't save your changes",
+      "url": "https://support.google.com/docs/answer/12111392?hl=en-en",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Google documents a Sheets-specific save failure where users must copy recent edits, reload, and paste.",
+        "Google documents offline mode as a mitigation that locally saves work and uploads changes when a stable connection returns."
+      ]
+    },
+    {
+      "id": "google-drive-common-issues",
+      "vendor": "google-sheets",
+      "title": "Fix common issues in Google Drive",
+      "url": "https://support.google.com/drive/answer/2456903?hl=en-en",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Google documents Drive connection, temporary error, browser, cache, file-size, and offline-access troubleshooting.",
+        "Google points users to the Google Workspace Status Dashboard when there is a known Drive or server outage."
+      ]
+    },
+    {
+      "id": "google-workspace-status-dashboard",
+      "vendor": "google-sheets",
+      "title": "Check the status of a Google Workspace service",
+      "url": "https://support.google.com/a/answer/139569?hl=en-GB",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Google documents a Workspace Status Dashboard for current and past core service status.",
+        "Google documents incident details, estimated resolution, final updates, and RSS or JSON subscriptions."
+      ]
+    },
+    {
+      "id": "microsoft-office-save-recover",
+      "vendor": "microsoft-excel",
+      "title": "Save, back up, and recover a file in Microsoft Office",
+      "url": "https://support.microsoft.com/en-us/office/save-back-up-and-recover-a-file-in-microsoft-office-a7f0a209-ad22-4212-bb53-6cd8e801a6fb",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Microsoft documents OneDrive or SharePoint storage as enabling AutoSave and Version History.",
+        "Microsoft documents those features as helping prevent data loss when a file closes unexpectedly."
+      ]
+    },
+    {
+      "id": "microsoft-office-autosave",
+      "vendor": "microsoft-excel",
+      "title": "What you should know about AutoSave",
+      "url": "https://support.microsoft.com/en-us/office/what-you-should-know-about-autosave-88e0f80f-e5ea-441b-9c5a-259f08490ae7",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Microsoft documents AutoSave for files stored in OneDrive, OneDrive for work or school, or SharePoint in Microsoft 365.",
+        "Microsoft documents Version History as the recovery path for accidental changes."
+      ]
+    },
+    {
+      "id": "microsoft-office-version-history",
+      "vendor": "microsoft-excel",
+      "title": "View previous versions of Office files",
+      "url": "https://support.microsoft.com/en-us/office/view-previous-versions-of-office-files-5c1e076f-a9c9-41b8-8ace-f77b9642e2c2",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Microsoft documents previous-version browsing for Office files stored in OneDrive or SharePoint.",
+        "Microsoft documents comparing versions and restoring the desired version."
+      ]
+    },
+    {
+      "id": "microsoft-excel-coauthoring",
+      "vendor": "microsoft-excel",
+      "title": "Collaborate on Excel workbooks at the same time with co-authoring",
+      "url": "https://support.microsoft.com/en-us/office/collaborate-on-excel-workbooks-at-the-same-time-with-co-authoring-7152aa8b-b791-414c-a3bb-3024e46fb104",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Microsoft documents Excel co-authoring requirements, supported versions, cloud storage requirements, and AutoSave dependency.",
+        "Microsoft documents that offline OneDrive changes are merged when the computer comes back online."
+      ]
+    },
+    {
+      "id": "microsoft-document-collaboration",
+      "vendor": "microsoft-excel",
+      "title": "Document collaboration and co-authoring",
+      "url": "https://support.microsoft.com/en-au/office/document-collaboration-and-co-authoring-ee1509b4-1f6e-401e-b04a-782d26f564a4",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Microsoft documents sync-folder behavior where files sync when users come back online.",
+        "Microsoft documents conflict alerts when offline edits conflict with cloud changes."
+      ]
+    },
+    {
+      "id": "microsoft-onedrive-sync-problems",
+      "vendor": "microsoft-excel",
+      "title": "Fix OneDrive sync problems",
+      "url": "https://support.microsoft.com/en-us/office/fix-onedrive-sync-problems-52a86836-1e7f-46fd-85c7-1e7a5e9b4273",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Microsoft documents OneDrive sync error states and troubleshooting for Windows, macOS, and file explorer integrations.",
+        "Microsoft documents that storage-limit problems can block uploading, editing, or syncing new files."
+      ]
+    },
+    {
+      "id": "microsoft-service-health",
+      "vendor": "microsoft-excel",
+      "title": "How to check Microsoft 365 service health",
+      "url": "https://learn.microsoft.com/microsoft-365/enterprise/view-service-health?view=o365-worldwide",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Microsoft documents the Microsoft 365 admin center Service health page for current Microsoft service health.",
+        "Microsoft documents that service health includes affected scenarios, impact, start time, and next update information."
+      ]
+    }
+  ],
+  "summary": {
+    "comparisonCaptured": true,
+    "requiredDimensionsPassed": true,
+    "coveredControls": [
+      "external.googleSheetsReliabilityDocs",
+      "external.microsoftExcelReliabilityDocs",
+      "external.sheetsExcelReliabilityComparison"
+    ],
+    "limitations": [
+      "This artifact captures current official public documentation, not a live tenant or desktop-client failure injection run against Google Sheets or Microsoft Excel.",
+      "The comparison proves direct external reliability evidence exists; it does not claim bilig is 10x better across reliability or every objective category."
+    ]
+  },
+  "dimensions": [
+    {
+      "id": "autosave-and-version-recovery",
+      "title": "Autosave And Version Recovery",
+      "required": true,
+      "passed": true,
+      "sourceIds": [
+        "google-docs-save-file",
+        "google-docs-version-history",
+        "microsoft-office-save-recover",
+        "microsoft-office-autosave",
+        "microsoft-office-version-history"
+      ],
+      "biligEvidence": [
+        "The reliability scorecard exercises pending mutation durability, submitted mutation acknowledgment, failed retry persistence, and local store active-view journal behavior.",
+        "The auditability scorecard separately proves preview/apply, undo, revert, and headed-browser change review flows."
+      ],
+      "googleSheetsEvidence": [
+        "Google documents automatic saving while online, offline device saving, and Drive save-on-reconnect behavior.",
+        "Google documents version history for Sheets and related editors."
+      ],
+      "microsoftExcelEvidence": [
+        "Microsoft documents AutoSave and Version History for Excel files stored in OneDrive or SharePoint.",
+        "Microsoft documents previous-version browse, compare, and restore flows for Office files."
+      ],
+      "comparisonResult": "bilig has executable local durability and replay controls; Google Sheets and Excel rely on documented cloud autosave, offline save, and version-history systems.",
+      "residualLimitations": [
+        "bilig still needs a production disaster-recovery and retention policy artifact before this dimension can become a broad reliability lead claim.",
+        "Google and Microsoft tenant settings, client versions, and storage location materially change incumbent recovery behavior."
+      ]
+    },
+    {
+      "id": "offline-local-edit-durability",
+      "title": "Offline Local Edit Durability",
+      "required": true,
+      "passed": true,
+      "sourceIds": [
+        "google-drive-files-offline",
+        "google-docs-save-file",
+        "google-sheets-cant-save-changes",
+        "microsoft-excel-coauthoring",
+        "microsoft-document-collaboration"
+      ],
+      "biligEvidence": [
+        "The offline-network-partition control simulates 32 offline edits across worker reload, remote authoritative edits on reconnect, local mutation acknowledgments, and final reload.",
+        "The headed-browser reload and crash-soak controls verify persisted workbook state survives full reload and crash/restart paths."
+      ],
+      "googleSheetsEvidence": [
+        "Google documents offline Docs, Sheets and Slides use with explicit browser, extension, sign-in, and available-space prerequisites.",
+        "Google documents a Sheets save-failure path where offline mode locally saves work and uploads after stable reconnection."
+      ],
+      "microsoftExcelEvidence": [
+        "Microsoft documents OneDrive-backed offline edits merging when the computer returns online.",
+        "Microsoft documents sync-folder files syncing on reconnect and surfacing alerts when conflicts occur."
+      ],
+      "comparisonResult": "bilig's checked reliability artifact directly exercises offline pending-operation replay; Sheets and Excel document offline availability with browser/client and cloud-sync prerequisites.",
+      "residualLimitations": [
+        "bilig still needs a headed browser offline soak against the production server path before claiming end-user dominance.",
+        "The external incumbent evidence is official documentation, not a live benchmark under identical network partitions."
+      ]
+    },
+    {
+      "id": "collaborative-sync-conflict-recovery",
+      "title": "Collaborative Sync Conflict Recovery",
+      "required": true,
+      "passed": true,
+      "sourceIds": [
+        "google-sheets-cant-save-changes",
+        "google-drive-common-issues",
+        "microsoft-excel-coauthoring",
+        "microsoft-document-collaboration",
+        "microsoft-onedrive-sync-problems"
+      ],
+      "biligEvidence": [
+        "The authoritative-rebase control applies an unrelated authoritative event over an unsent local mutation and verifies both authoritative and local cells survive reload.",
+        "The submitted-ack and failed-retry controls verify submitted mutations are absorbed on authoritative acknowledgment and failed mutations survive reload for retry."
+      ],
+      "googleSheetsEvidence": [
+        "Google documents a Sheets path where users copy edits, reload, and paste when the server takes too long to save changes.",
+        "Google documents Drive troubleshooting for connection, temporary server, browser, cache, file-size, and offline-access issues."
+      ],
+      "microsoftExcelEvidence": [
+        "Microsoft documents file-locked and visibility issues when versions or settings do not support Excel co-authoring.",
+        "Microsoft documents OneDrive sync errors, storage-limit failures, conflict alerts, and sync troubleshooting."
+      ],
+      "comparisonResult": "bilig's local-first model has executable rebase and retry controls; Google Sheets and Excel expose documented user-facing recovery workflows for save, sync, and co-authoring conflicts.",
+      "residualLimitations": [
+        "bilig still needs direct multi-actor user-facing conflict-resolution UX scoring against Sheets and Excel.",
+        "The official docs comparison does not measure real-world conflict frequency."
+      ]
+    },
+    {
+      "id": "service-health-and-error-recovery",
+      "title": "Service Health And Error Recovery",
+      "required": true,
+      "passed": true,
+      "sourceIds": [
+        "google-drive-common-issues",
+        "google-workspace-status-dashboard",
+        "microsoft-service-health",
+        "microsoft-onedrive-sync-problems"
+      ],
+      "biligEvidence": [
+        "The reliability scorecard verifies local reload, crash/restart, retry, rebase, and offline partition controls as executable repo gates.",
+        "The current bilig evidence does not yet include a public hosted service status dashboard or incident feed artifact."
+      ],
+      "googleSheetsEvidence": [
+        "Google documents Drive and server outage checks through the Google Workspace Status Dashboard.",
+        "Google documents Drive troubleshooting guidance for temporary errors and weak or unavailable connections."
+      ],
+      "microsoftExcelEvidence": [
+        "Microsoft documents the Microsoft 365 admin Service health page with incident details and next update information.",
+        "Microsoft documents OneDrive sync status and error troubleshooting for local sync clients."
+      ],
+      "comparisonResult": "bilig has stronger repo-executable local failure controls than before, but Google and Microsoft have broader documented service-health operations surfaces.",
+      "residualLimitations": [
+        "This dimension remains a product operations gap for overall reliability dominance.",
+        "Future work should add bilig service-health and incident-evidence artifacts or explicitly scope the product away from hosted service obligations."
+      ]
+    }
+  ]
+}

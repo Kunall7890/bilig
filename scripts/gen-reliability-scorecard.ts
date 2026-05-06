@@ -9,10 +9,22 @@ import { createMemoryWorkbookLocalStoreFactory, type WorkbookLocalStoreFactory }
 import type { AuthoritativeWorkbookEventRecord } from '@bilig/zero-sync'
 import { WorkbookWorkerRuntime } from '../apps/web/src/worker-runtime.js'
 import type { PendingWorkbookMutation } from '../apps/web/src/workbook-sync.js'
+import {
+  externalReliabilityComparisonArtifactRepoPath,
+  externalReliabilityComparisonCoveredControls,
+  parseExternalReliabilityComparisonArtifact,
+  validateExternalReliabilityComparisonArtifact,
+} from './reliability-external-sheets-excel-comparison.ts'
 
 export interface ReliabilityControl {
   readonly id: string
-  readonly category: 'pending-durability' | 'authoritative-reconcile' | 'failure-recovery' | 'headed-browser' | 'offline-recovery'
+  readonly category:
+    | 'pending-durability'
+    | 'authoritative-reconcile'
+    | 'failure-recovery'
+    | 'headed-browser'
+    | 'offline-recovery'
+    | 'external-comparison'
   readonly required: boolean
   readonly passed: boolean
   readonly coveredControls: string[]
@@ -30,6 +42,7 @@ export interface ReliabilityScorecard {
     readonly mutationJournalImplementation: 'apps/web/src/worker-runtime-mutation-journal.ts'
     readonly localStoreImplementation: 'packages/storage-browser/src/index.ts'
     readonly headedBrowserReliabilityTestFile: 'e2e/tests/web-shell-remote-sync.pw.ts'
+    readonly externalReliabilityComparisonArtifact: 'packages/benchmarks/baselines/reliability-external-sheets-excel-comparison.json'
   }
   readonly summary: {
     readonly allRequiredControlsPassed: boolean
@@ -42,14 +55,15 @@ export interface ReliabilityScorecard {
     readonly offlineNetworkPartitionPassed: boolean
     readonly coveredControls: string[]
     readonly uncoveredControls: string[]
-    readonly externalGoogleSheetsEvidence: 'not-captured'
-    readonly externalMicrosoftExcelEvidence: 'not-captured'
+    readonly externalGoogleSheetsEvidence: 'official-docs-comparison-artifact'
+    readonly externalMicrosoftExcelEvidence: 'official-docs-comparison-artifact'
   }
   readonly controls: ReliabilityControl[]
 }
 
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
 const outputPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'reliability-scorecard.json')
+const externalReliabilityComparisonArtifactPath = join(rootDir, externalReliabilityComparisonArtifactRepoPath)
 const requiredControlIds = [
   'pending-mutations-survive-reload',
   'submitted-mutations-absorb-authoritative-ack',
@@ -58,6 +72,7 @@ const requiredControlIds = [
   'headed-browser-reload-persistence-flow',
   'headed-browser-crash-restart-soak',
   'offline-network-partition-recovery-soak',
+  'external-sheets-excel-reliability-comparison',
 ] as const
 const coveredControlOrder = [
   'pending.localReloadSurvival',
@@ -69,8 +84,9 @@ const coveredControlOrder = [
   'headedBrowser.reloadPersistence',
   'headedBrowser.crashSoak',
   'offline.networkPartitionRecoverySoak',
+  ...externalReliabilityComparisonCoveredControls,
 ] as const
-const uncoveredControls = ['externalSheetsExcelReliabilityComparison'] as const
+const uncoveredControls: readonly string[] = []
 const headedBrowserReliabilityTestFile = 'e2e/tests/web-shell-remote-sync.pw.ts'
 
 async function main(): Promise<void> {
@@ -100,6 +116,7 @@ export async function buildReliabilityScorecard(generatedAt = new Date().toISOSt
     buildHeadedBrowserReloadPersistenceControl(),
     buildHeadedBrowserCrashRestartSoakControl(),
     await buildOfflineNetworkPartitionRecoveryControl(),
+    buildExternalSheetsExcelReliabilityComparisonControl(),
   ]
   const coveredControlSet = new Set(controls.flatMap((control) => control.coveredControls))
   const coveredControls = coveredControlOrder.filter((control) => coveredControlSet.has(control))
@@ -114,6 +131,7 @@ export async function buildReliabilityScorecard(generatedAt = new Date().toISOSt
       mutationJournalImplementation: 'apps/web/src/worker-runtime-mutation-journal.ts',
       localStoreImplementation: 'packages/storage-browser/src/index.ts',
       headedBrowserReliabilityTestFile,
+      externalReliabilityComparisonArtifact: externalReliabilityComparisonArtifactRepoPath,
     },
     summary: {
       allRequiredControlsPassed: controls.filter((control) => control.required).every((control) => control.passed),
@@ -126,8 +144,8 @@ export async function buildReliabilityScorecard(generatedAt = new Date().toISOSt
       offlineNetworkPartitionPassed: requiredControl(controls, 'offline-network-partition-recovery-soak').passed,
       coveredControls,
       uncoveredControls: [...uncoveredControls],
-      externalGoogleSheetsEvidence: 'not-captured',
-      externalMicrosoftExcelEvidence: 'not-captured',
+      externalGoogleSheetsEvidence: 'official-docs-comparison-artifact',
+      externalMicrosoftExcelEvidence: 'official-docs-comparison-artifact',
     },
     controls,
   }
@@ -477,6 +495,27 @@ async function buildOfflineNetworkPartitionRecoveryControl(): Promise<Reliabilit
   })
 }
 
+function buildExternalSheetsExcelReliabilityComparisonControl(): ReliabilityControl {
+  const artifact = parseExternalReliabilityComparisonArtifact(
+    JSON.parse(readFileSync(externalReliabilityComparisonArtifactPath, 'utf8')) as unknown,
+  )
+  const findings = validateExternalReliabilityComparisonArtifact(artifact)
+  const googleSourceCount = artifact.officialSources.filter((source) => source.vendor === 'google-sheets').length
+  const microsoftSourceCount = artifact.officialSources.filter((source) => source.vendor === 'microsoft-excel').length
+
+  return reliabilityControl({
+    id: 'external-sheets-excel-reliability-comparison',
+    category: 'external-comparison',
+    passed: findings.length === 0,
+    coveredControls: externalReliabilityComparisonCoveredControls,
+    evidence:
+      `Validated ${externalReliabilityComparisonArtifactRepoPath} from ${artifact.sourceBasis}: ` +
+      `${String(artifact.dimensions.length)} required comparison dimensions cite ${String(googleSourceCount)} official Google Sheets/Workspace sources ` +
+      `and ${String(microsoftSourceCount)} official Microsoft Excel/Microsoft 365 sources.`,
+    findings,
+  })
+}
+
 async function createRuntime(
   localStoreFactory: WorkbookLocalStoreFactory,
   documentId: string,
@@ -602,6 +641,11 @@ export function parseReliabilityScorecard(value: unknown): ReliabilityScorecard 
       ),
       localStoreImplementation: literalField(source, 'localStoreImplementation', 'packages/storage-browser/src/index.ts'),
       headedBrowserReliabilityTestFile: literalField(source, 'headedBrowserReliabilityTestFile', headedBrowserReliabilityTestFile),
+      externalReliabilityComparisonArtifact: literalField(
+        source,
+        'externalReliabilityComparisonArtifact',
+        'packages/benchmarks/baselines/reliability-external-sheets-excel-comparison.json',
+      ),
     },
     summary: {
       allRequiredControlsPassed: booleanField(summary, 'allRequiredControlsPassed', 'reliability allRequiredControlsPassed'),
@@ -614,8 +658,8 @@ export function parseReliabilityScorecard(value: unknown): ReliabilityScorecard 
       offlineNetworkPartitionPassed: booleanField(summary, 'offlineNetworkPartitionPassed', 'reliability offlineNetworkPartitionPassed'),
       coveredControls: stringArrayField(summary, 'coveredControls', 'reliability coveredControls'),
       uncoveredControls: stringArrayField(summary, 'uncoveredControls', 'reliability uncoveredControls'),
-      externalGoogleSheetsEvidence: literalField(summary, 'externalGoogleSheetsEvidence', 'not-captured'),
-      externalMicrosoftExcelEvidence: literalField(summary, 'externalMicrosoftExcelEvidence', 'not-captured'),
+      externalGoogleSheetsEvidence: literalField(summary, 'externalGoogleSheetsEvidence', 'official-docs-comparison-artifact'),
+      externalMicrosoftExcelEvidence: literalField(summary, 'externalMicrosoftExcelEvidence', 'official-docs-comparison-artifact'),
     },
     controls: arrayField(record, 'controls', 'reliability controls').map(parseReliabilityControl),
   }
@@ -665,7 +709,8 @@ function parseReliabilityCategory(value: string): ReliabilityControl['category']
     value === 'authoritative-reconcile' ||
     value === 'failure-recovery' ||
     value === 'headed-browser' ||
-    value === 'offline-recovery'
+    value === 'offline-recovery' ||
+    value === 'external-comparison'
   ) {
     return value
   }

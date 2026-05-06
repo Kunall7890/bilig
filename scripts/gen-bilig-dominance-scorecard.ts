@@ -632,12 +632,15 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
         currentEvidence: [
           `generated reliability scorecard passes required controls: ${String(input.reliabilityScorecard.summary.allRequiredControlsPassed)}`,
           `covered reliability controls: ${input.reliabilityScorecard.summary.coveredControls.join(', ')}`,
-          `uncovered reliability controls are explicitly disclosed: ${input.reliabilityScorecard.summary.uncoveredControls.join(', ')}`,
+          `uncovered reliability controls are explicitly disclosed: ${formatList(input.reliabilityScorecard.summary.uncoveredControls)}`,
+          `external Google Sheets reliability evidence: ${input.reliabilityScorecard.summary.externalGoogleSheetsEvidence}`,
+          `external Microsoft Excel reliability evidence: ${input.reliabilityScorecard.summary.externalMicrosoftExcelEvidence}`,
           'local pending-op journal and reconnect/rebase architecture are documented',
           'runtime sync replay, fuzz, reconnect, and local persistence tests exist',
         ],
         evidenceArtifacts: [
           input.reliabilityScorecardPath,
+          input.reliabilityScorecard.source.externalReliabilityComparisonArtifact,
           'e2e/tests/web-shell-remote-sync.pw.ts',
           'docs/05-06-next-phase.md',
           'apps/web/src/__tests__/runtime-sync.fuzz.test.ts',
@@ -651,7 +654,9 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
           'pnpm test:correctness:browser',
           'pnpm test:correctness:server',
         ],
-        blockers: ['no direct Sheets or Excel reliability comparison artifact exists in the repo'],
+        blockers: input.reliabilityScorecard.summary.uncoveredControls.includes('externalSheetsExcelReliabilityComparison')
+          ? ['no direct Sheets or Excel reliability comparison artifact exists in the repo']
+          : [],
       },
       {
         id: 'security',

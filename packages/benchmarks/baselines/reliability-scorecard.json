@@ -1,13 +1,14 @@
 {
   "schemaVersion": 1,
   "suite": "reliability-posture",
-  "generatedAt": "2026-05-06T09:58:10.204Z",
+  "generatedAt": "2026-05-06T14:08:49.847Z",
   "source": {
     "artifactGenerator": "scripts/gen-reliability-scorecard.ts",
     "workerRuntimeImplementation": "apps/web/src/worker-runtime.ts",
     "mutationJournalImplementation": "apps/web/src/worker-runtime-mutation-journal.ts",
     "localStoreImplementation": "packages/storage-browser/src/index.ts",
-    "headedBrowserReliabilityTestFile": "e2e/tests/web-shell-remote-sync.pw.ts"
+    "headedBrowserReliabilityTestFile": "e2e/tests/web-shell-remote-sync.pw.ts",
+    "externalReliabilityComparisonArtifact": "packages/benchmarks/baselines/reliability-external-sheets-excel-comparison.json"
   },
   "summary": {
     "allRequiredControlsPassed": true,
@@ -27,11 +28,14 @@
       "localStore.journalActiveView",
       "headedBrowser.reloadPersistence",
       "headedBrowser.crashSoak",
-      "offline.networkPartitionRecoverySoak"
+      "offline.networkPartitionRecoverySoak",
+      "external.googleSheetsReliabilityDocs",
+      "external.microsoftExcelReliabilityDocs",
+      "external.sheetsExcelReliabilityComparison"
     ],
-    "uncoveredControls": ["externalSheetsExcelReliabilityComparison"],
-    "externalGoogleSheetsEvidence": "not-captured",
-    "externalMicrosoftExcelEvidence": "not-captured"
+    "uncoveredControls": [],
+    "externalGoogleSheetsEvidence": "official-docs-comparison-artifact",
+    "externalMicrosoftExcelEvidence": "official-docs-comparison-artifact"
   },
   "controls": [
     {
@@ -101,6 +105,19 @@
         "offline.networkPartitionRecoverySoak"
       ],
       "evidence": "Simulated 32 offline local edits across a worker reload, replayed 32 collaborator authoritative edits on reconnect, acked every local mutation, and reopened the runtime to verify both local and remote cells persisted with an empty pending queue.",
+      "findings": []
+    },
+    {
+      "id": "external-sheets-excel-reliability-comparison",
+      "category": "external-comparison",
+      "required": true,
+      "passed": true,
+      "coveredControls": [
+        "external.googleSheetsReliabilityDocs",
+        "external.microsoftExcelReliabilityDocs",
+        "external.sheetsExcelReliabilityComparison"
+      ],
+      "evidence": "Validated packages/benchmarks/baselines/reliability-external-sheets-excel-comparison.json from official-public-docs-reviewed-2026-05-06: 4 required comparison dimensions cite 6 official Google Sheets/Workspace sources and 7 official Microsoft Excel/Microsoft 365 sources.",
       "findings": []
     }
   ]

@@ -139,10 +139,13 @@
       "localStore.journalActiveView",
       "headedBrowser.reloadPersistence",
       "headedBrowser.crashSoak",
-      "offline.networkPartitionRecoverySoak"
+      "offline.networkPartitionRecoverySoak",
+      "external.googleSheetsReliabilityDocs",
+      "external.microsoftExcelReliabilityDocs",
+      "external.sheetsExcelReliabilityComparison"
     ],
     "reliabilityPosturePassed": true,
-    "reliabilityUncoveredControls": ["externalSheetsExcelReliabilityComparison"],
+    "reliabilityUncoveredControls": [],
     "securityCoveredControls": [
       "formula.noEval",
       "formula.noFunctionConstructor",
@@ -411,13 +414,16 @@
       "status": "partial-repo-evidence",
       "currentEvidence": [
         "generated reliability scorecard passes required controls: true",
-        "covered reliability controls: pending.localReloadSurvival, pending.submittedReloadSurvival, pending.authoritativeAckAbsorption, pending.authoritativeRebasePreservesLocal, pending.failedRetrySurvival, localStore.journalActiveView, headedBrowser.reloadPersistence, headedBrowser.crashSoak, offline.networkPartitionRecoverySoak",
-        "uncovered reliability controls are explicitly disclosed: externalSheetsExcelReliabilityComparison",
+        "covered reliability controls: pending.localReloadSurvival, pending.submittedReloadSurvival, pending.authoritativeAckAbsorption, pending.authoritativeRebasePreservesLocal, pending.failedRetrySurvival, localStore.journalActiveView, headedBrowser.reloadPersistence, headedBrowser.crashSoak, offline.networkPartitionRecoverySoak, external.googleSheetsReliabilityDocs, external.microsoftExcelReliabilityDocs, external.sheetsExcelReliabilityComparison",
+        "uncovered reliability controls are explicitly disclosed: none",
+        "external Google Sheets reliability evidence: official-docs-comparison-artifact",
+        "external Microsoft Excel reliability evidence: official-docs-comparison-artifact",
         "local pending-op journal and reconnect/rebase architecture are documented",
         "runtime sync replay, fuzz, reconnect, and local persistence tests exist"
       ],
       "evidenceArtifacts": [
         "packages/benchmarks/baselines/reliability-scorecard.json",
+        "packages/benchmarks/baselines/reliability-external-sheets-excel-comparison.json",
         "e2e/tests/web-shell-remote-sync.pw.ts",
         "docs/05-06-next-phase.md",
         "apps/web/src/__tests__/runtime-sync.fuzz.test.ts",
@@ -431,7 +437,7 @@
         "pnpm test:correctness:browser",
         "pnpm test:correctness:server"
       ],
-      "blockers": ["no direct Sheets or Excel reliability comparison artifact exists in the repo"]
+      "blockers": []
     },
     {
       "id": "security",

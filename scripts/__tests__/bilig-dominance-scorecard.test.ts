@@ -88,9 +88,10 @@ describe('bilig dominance scorecard', () => {
       status: 'partial-repo-evidence',
       evidenceArtifacts: expect.arrayContaining([
         'packages/benchmarks/baselines/reliability-scorecard.json',
+        'packages/benchmarks/baselines/reliability-external-sheets-excel-comparison.json',
         'e2e/tests/web-shell-remote-sync.pw.ts',
       ]),
-      blockers: ['no direct Sheets or Excel reliability comparison artifact exists in the repo'],
+      blockers: [],
     })
     expect(scorecard.categories.find((category) => category.id === 'security')).toMatchObject({
       status: 'partial-repo-evidence',
@@ -406,6 +407,7 @@ function buildFixtureInput(): BuildScorecardInput {
         mutationJournalImplementation: 'apps/web/src/worker-runtime-mutation-journal.ts',
         localStoreImplementation: 'packages/storage-browser/src/index.ts',
         headedBrowserReliabilityTestFile: 'e2e/tests/web-shell-remote-sync.pw.ts',
+        externalReliabilityComparisonArtifact: 'packages/benchmarks/baselines/reliability-external-sheets-excel-comparison.json',
       },
       summary: {
         allRequiredControlsPassed: true,
@@ -422,10 +424,13 @@ function buildFixtureInput(): BuildScorecardInput {
           'headedBrowser.reloadPersistence',
           'headedBrowser.crashSoak',
           'offline.networkPartitionRecoverySoak',
+          'external.googleSheetsReliabilityDocs',
+          'external.microsoftExcelReliabilityDocs',
+          'external.sheetsExcelReliabilityComparison',
         ],
-        uncoveredControls: ['externalSheetsExcelReliabilityComparison'],
-        externalGoogleSheetsEvidence: 'not-captured',
-        externalMicrosoftExcelEvidence: 'not-captured',
+        uncoveredControls: [],
+        externalGoogleSheetsEvidence: 'official-docs-comparison-artifact',
+        externalMicrosoftExcelEvidence: 'official-docs-comparison-artifact',
       },
       controls: [
         {

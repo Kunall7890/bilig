@@ -19,10 +19,13 @@ describe('reliability scorecard', () => {
         headedBrowserReloadPassed: true,
         headedBrowserCrashSoakPassed: true,
         offlineNetworkPartitionPassed: true,
-        externalGoogleSheetsEvidence: 'not-captured',
-        externalMicrosoftExcelEvidence: 'not-captured',
+        externalGoogleSheetsEvidence: 'official-docs-comparison-artifact',
+        externalMicrosoftExcelEvidence: 'official-docs-comparison-artifact',
       },
     })
+    expect(scorecard.source.externalReliabilityComparisonArtifact).toBe(
+      'packages/benchmarks/baselines/reliability-external-sheets-excel-comparison.json',
+    )
     expect(scorecard.controls.map((control) => control.id)).toEqual([
       'pending-mutations-survive-reload',
       'submitted-mutations-absorb-authoritative-ack',
@@ -31,8 +34,17 @@ describe('reliability scorecard', () => {
       'headed-browser-reload-persistence-flow',
       'headed-browser-crash-restart-soak',
       'offline-network-partition-recovery-soak',
+      'external-sheets-excel-reliability-comparison',
     ])
     expect(scorecard.controls.every((control) => control.required && control.passed)).toBe(true)
+    expect(scorecard.controls.find((control) => control.id === 'external-sheets-excel-reliability-comparison')).toMatchObject({
+      category: 'external-comparison',
+      coveredControls: [
+        'external.googleSheetsReliabilityDocs',
+        'external.microsoftExcelReliabilityDocs',
+        'external.sheetsExcelReliabilityComparison',
+      ],
+    })
     expect(scorecard.summary.coveredControls).toEqual([
       'pending.localReloadSurvival',
       'pending.submittedReloadSurvival',
@@ -43,8 +55,11 @@ describe('reliability scorecard', () => {
       'headedBrowser.reloadPersistence',
       'headedBrowser.crashSoak',
       'offline.networkPartitionRecoverySoak',
+      'external.googleSheetsReliabilityDocs',
+      'external.microsoftExcelReliabilityDocs',
+      'external.sheetsExcelReliabilityComparison',
     ])
-    expect(scorecard.summary.uncoveredControls).toEqual(['externalSheetsExcelReliabilityComparison'])
+    expect(scorecard.summary.uncoveredControls).toEqual([])
   })
 
   it('rejects stale artifacts missing required reliability controls', async () => {
