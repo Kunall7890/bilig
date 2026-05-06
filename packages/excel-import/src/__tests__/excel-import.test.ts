@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx'
 
 import type {
   WorkbookChartSnapshot,
+  WorkbookConditionalFormatSnapshot,
   WorkbookDataValidationSnapshot,
   WorkbookPivotSnapshot,
   WorkbookPivotValueSnapshot,
@@ -473,6 +474,16 @@ describe('excel import', () => {
                 errorMessage: 'Enter a whole number from 0 to 100.',
               },
             ],
+            conditionalFormats: [
+              {
+                id: 'summary-high-total',
+                range: { sheetName: 'Summary', startAddress: 'B2', endAddress: 'B3' },
+                rule: { kind: 'cellIs', operator: 'greaterThan', values: [1000] },
+                style: { fill: { backgroundColor: '#f4cccc' }, font: { bold: true, color: '#990000' } },
+                stopIfTrue: true,
+                priority: 1,
+              },
+            ],
           },
           cells: [
             { address: 'A1', value: 'Metric' },
@@ -567,6 +578,13 @@ describe('excel import', () => {
     expect(strFromU8(zip['xl/worksheets/sheet2.xml'] ?? new Uint8Array())).toContain(
       '<dataValidation type="list" allowBlank="1" showDropDown="0"',
     )
+    expect(strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())).toContain('<conditionalFormatting sqref="B2:B3">')
+    expect(strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())).toContain(
+      '<cfRule type="cellIs" dxfId="0" priority="1" operator="greaterThan" stopIfTrue="1"><formula>1000</formula></cfRule>',
+    )
+    expect(strFromU8(zip['xl/styles.xml'] ?? new Uint8Array())).toContain('<dxfs count="1">')
+    expect(strFromU8(zip['xl/styles.xml'] ?? new Uint8Array())).toContain('<fgColor rgb="FFF4CCCC"/>')
+    expect(strFromU8(zip['xl/styles.xml'] ?? new Uint8Array())).toContain('<color rgb="FF990000"/>')
     expect(strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())).toContain(
       '<pane xSplit="2" ySplit="1" topLeftCell="C2" activePane="bottomRight" state="frozen"/>',
     )
@@ -673,6 +691,16 @@ function projectSortSemantics(sort: WorkbookSortSnapshot): WorkbookSortSnapshot 
   return structuredClone(sort)
 }
 
+function projectConditionalFormatSemantics(format: WorkbookConditionalFormatSnapshot) {
+  return {
+    range: format.range,
+    rule: structuredClone(format.rule),
+    style: structuredClone(format.style),
+    ...(format.stopIfTrue !== undefined ? { stopIfTrue: format.stopIfTrue } : {}),
+    ...(format.priority !== undefined ? { priority: format.priority } : {}),
+  }
+}
+
 function projectSupportedSnapshotSemantics(snapshot: WorkbookSnapshot) {
   const stylesById = new Map((snapshot.workbook.metadata?.styles ?? []).map((style) => [style.id, style]))
   const portableStyle = (styleId: string) => {
@@ -751,6 +779,13 @@ function projectSupportedSnapshotSemantics(snapshot: WorkbookSnapshot) {
             ),
           validations: (sheet.metadata?.validations ?? [])
             .map(projectValidationSemantics)
+            .toSorted((left, right) =>
+              `${left.range.sheetName}:${left.range.startAddress}:${left.range.endAddress}`.localeCompare(
+                `${right.range.sheetName}:${right.range.startAddress}:${right.range.endAddress}`,
+              ),
+            ),
+          conditionalFormats: (sheet.metadata?.conditionalFormats ?? [])
+            .map(projectConditionalFormatSemantics)
             .toSorted((left, right) =>
               `${left.range.sheetName}:${left.range.startAddress}:${left.range.endAddress}`.localeCompare(
                 `${right.range.sheetName}:${right.range.startAddress}:${right.range.endAddress}`,

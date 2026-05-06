@@ -5,6 +5,7 @@ import type { LiteralInput, WorkbookAxisEntrySnapshot, WorkbookMergeRangeSnapsho
 import { addExportCalculationSettingsToXlsxBytes } from './xlsx-calculation-settings.js'
 import { addExportChartsToXlsxBytes } from './xlsx-charts.js'
 import { addExportCommentsToWorksheet } from './xlsx-comments.js'
+import { addExportConditionalFormatsToXlsxBytes } from './xlsx-conditional-formats.js'
 import { buildExportDefinedNames } from './xlsx-defined-names.js'
 import { addExportFiltersToXlsxBytes } from './xlsx-filters.js'
 import { addExportFreezePanesToXlsxBytes } from './xlsx-freeze-panes.js'
@@ -240,12 +241,15 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
     addExportPivotsToXlsxBytes(
       addExportTablesToXlsxBytes(
         addExportDataValidationsToXlsxBytes(
-          addExportSortsToXlsxBytes(
-            addExportFiltersToXlsxBytes(
-              addExportProtectedRangesToXlsxBytes(
-                addExportSheetProtectionsToXlsxBytes(
-                  addExportFreezePanesToXlsxBytes(
-                    addExportCalculationSettingsToXlsxBytes(addExportWorkbookPropertiesToXlsxBytes(bytes, snapshot), snapshot),
+          addExportConditionalFormatsToXlsxBytes(
+            addExportSortsToXlsxBytes(
+              addExportFiltersToXlsxBytes(
+                addExportProtectedRangesToXlsxBytes(
+                  addExportSheetProtectionsToXlsxBytes(
+                    addExportFreezePanesToXlsxBytes(
+                      addExportCalculationSettingsToXlsxBytes(addExportWorkbookPropertiesToXlsxBytes(bytes, snapshot), snapshot),
+                      snapshot,
+                    ),
                     snapshot,
                   ),
                   snapshot,

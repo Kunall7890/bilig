@@ -79,6 +79,7 @@ const coveredFeatureOrder = [
   'xlsx.definedNames',
   'xlsx.comments',
   'xlsx.styles',
+  'xlsx.conditionalFormats.roundtrip',
   'xlsx.rowColumnDimensions',
   'xlsx.merges',
   'xlsx.freezePanes.roundtrip',
@@ -240,7 +241,8 @@ function runXlsxSnapshotRoundTripValuesCase(): ImportExportFidelityCase {
     JSON.stringify(actual.calculationSettings) === JSON.stringify(expected.calculationSettings) &&
     JSON.stringify(actual.valueFormulaFormatSheets) === JSON.stringify(expected.valueFormulaFormatSheets) &&
     JSON.stringify(actual.commentThreads) === JSON.stringify(expected.commentThreads) &&
-    JSON.stringify(actual.styleRanges) === JSON.stringify(expected.styleRanges)
+    JSON.stringify(actual.styleRanges) === JSON.stringify(expected.styleRanges) &&
+    JSON.stringify(actual.conditionalFormats) === JSON.stringify(expected.conditionalFormats)
   return fidelityCase({
     id: 'xlsx-snapshot-roundtrip-values-formulas-formats',
     format: 'xlsx',
@@ -257,6 +259,7 @@ function runXlsxSnapshotRoundTripValuesCase(): ImportExportFidelityCase {
       'xlsx.definedNames',
       'xlsx.comments',
       'xlsx.styles',
+      'xlsx.conditionalFormats.roundtrip',
       'xlsx.multiSheet',
     ],
     evidence:
@@ -561,6 +564,16 @@ function createFidelitySnapshot(): WorkbookSnapshot {
               errorStyle: 'stop',
               errorTitle: 'Percent required',
               errorMessage: 'Enter a whole number from 0 to 100.',
+            },
+          ],
+          conditionalFormats: [
+            {
+              id: 'summary-high-total',
+              range: { sheetName: 'Summary', startAddress: 'B2', endAddress: 'B3' },
+              rule: { kind: 'cellIs', operator: 'greaterThan', values: [1000] },
+              style: { fill: { backgroundColor: '#f4cccc' }, font: { bold: true, color: '#990000' } },
+              stopIfTrue: true,
+              priority: 1,
             },
           ],
         },

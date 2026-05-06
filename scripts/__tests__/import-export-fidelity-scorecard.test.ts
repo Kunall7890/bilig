@@ -54,6 +54,7 @@ describe('import/export fidelity scorecard', () => {
       'xlsx.definedNames',
       'xlsx.comments',
       'xlsx.styles',
+      'xlsx.conditionalFormats.roundtrip',
       'xlsx.rowColumnDimensions',
       'xlsx.merges',
       'xlsx.freezePanes.roundtrip',

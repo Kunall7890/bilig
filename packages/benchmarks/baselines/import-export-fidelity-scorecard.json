@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "suite": "import-export-fidelity",
-  "generatedAt": "2026-05-06T11:56:01.964Z",
+  "generatedAt": "2026-05-06T12:07:40.396Z",
   "source": {
     "artifactGenerator": "scripts/gen-import-export-fidelity-scorecard.ts",
     "implementationPackage": "packages/excel-import",
@@ -29,6 +29,7 @@
       "xlsx.definedNames",
       "xlsx.comments",
       "xlsx.styles",
+      "xlsx.conditionalFormats.roundtrip",
       "xlsx.rowColumnDimensions",
       "xlsx.merges",
       "xlsx.freezePanes.roundtrip",
@@ -95,6 +96,7 @@
         "xlsx.definedNames",
         "xlsx.comments",
         "xlsx.styles",
+        "xlsx.conditionalFormats.roundtrip",
         "xlsx.multiSheet"
       ],
       "missingFeatures": [],

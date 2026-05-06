@@ -21,6 +21,7 @@ import type {
 import { readImportedWorkbookCalculationSettings } from './xlsx-calculation-settings.js'
 import { readImportedWorkbookCharts } from './xlsx-charts.js'
 import { readImportedSheetComments } from './xlsx-comments.js'
+import { readImportedWorkbookConditionalFormats } from './xlsx-conditional-formats.js'
 import { readImportedDefinedNames } from './xlsx-defined-names.js'
 import { readImportedWorkbookFilters } from './xlsx-filters.js'
 import { readImportedWorkbookFreezePanes } from './xlsx-freeze-panes.js'
@@ -492,6 +493,7 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
   const importedProtectedRangesBySheet = readImportedWorkbookProtectedRanges(data, workbook.SheetNames)
   const importedSortsBySheet = readImportedWorkbookSorts(data, workbook.SheetNames)
   const importedValidationsBySheet = readImportedWorkbookDataValidations(data, workbook.SheetNames)
+  const importedConditionalFormatsBySheet = readImportedWorkbookConditionalFormats(data, workbook.SheetNames)
 
   let ignoredCommentsSeen = false
   const styleCatalog = new Map<string, CellStyleRecord>()
@@ -589,6 +591,7 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
     const importedSorts = importedSortsBySheet.get(sheetName)
     const importedFilters = importedFiltersBySheet.get(sheetName)
     const importedValidations = importedValidationsBySheet.get(sheetName)
+    const importedConditionalFormats = importedConditionalFormatsBySheet.get(sheetName)
     const metadata =
       rows ||
       columns ||
@@ -600,6 +603,7 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
       importedSorts ||
       importedFilters ||
       importedValidations ||
+      importedConditionalFormats ||
       importedComments.commentThreads
         ? {
             ...(rows ? { rows } : {}),
@@ -612,6 +616,7 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
             ...(importedSorts ? { sorts: importedSorts } : {}),
             ...(importedFilters ? { filters: importedFilters } : {}),
             ...(importedValidations ? { validations: importedValidations } : {}),
+            ...(importedConditionalFormats ? { conditionalFormats: importedConditionalFormats } : {}),
             ...(importedComments.commentThreads ? { commentThreads: importedComments.commentThreads } : {}),
           }
         : undefined

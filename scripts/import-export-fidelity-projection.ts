@@ -1,5 +1,6 @@
 import type {
   WorkbookChartSnapshot,
+  WorkbookConditionalFormatSnapshot,
   WorkbookDataValidationSnapshot,
   WorkbookPivotSnapshot,
   WorkbookPivotValueSnapshot,
@@ -100,6 +101,16 @@ function projectSortSemantics(sort: WorkbookSortSnapshot): WorkbookSortSnapshot 
   return structuredClone(sort)
 }
 
+function projectConditionalFormatSemantics(format: WorkbookConditionalFormatSnapshot) {
+  return {
+    range: format.range,
+    rule: structuredClone(format.rule),
+    style: structuredClone(format.style),
+    ...(format.stopIfTrue !== undefined ? { stopIfTrue: format.stopIfTrue } : {}),
+    ...(format.priority !== undefined ? { priority: format.priority } : {}),
+  }
+}
+
 export function projectSupportedSnapshotSemantics(snapshot: WorkbookSnapshot) {
   const stylesById = new Map((snapshot.workbook.metadata?.styles ?? []).map((style) => [style.id, style]))
   const portableStyle = (styleId: string) => {
@@ -158,6 +169,14 @@ export function projectSupportedSnapshotSemantics(snapshot: WorkbookSnapshot) {
     validations: snapshot.sheets
       .flatMap((sheet) => sheet.metadata?.validations ?? [])
       .map(projectValidationSemantics)
+      .toSorted((left, right) =>
+        `${left.range.sheetName}:${left.range.startAddress}:${left.range.endAddress}`.localeCompare(
+          `${right.range.sheetName}:${right.range.startAddress}:${right.range.endAddress}`,
+        ),
+      ),
+    conditionalFormats: snapshot.sheets
+      .flatMap((sheet) => sheet.metadata?.conditionalFormats ?? [])
+      .map(projectConditionalFormatSemantics)
       .toSorted((left, right) =>
         `${left.range.sheetName}:${left.range.startAddress}:${left.range.endAddress}`.localeCompare(
           `${right.range.sheetName}:${right.range.startAddress}:${right.range.endAddress}`,
