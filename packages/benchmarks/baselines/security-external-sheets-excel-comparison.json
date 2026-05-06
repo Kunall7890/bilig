@@ -1,0 +1,250 @@
+{
+  "schemaVersion": 1,
+  "suite": "external-sheets-excel-security-comparison",
+  "generatedAt": "2026-05-06T13:00:00.000Z",
+  "sourceBasis": "official-public-docs-reviewed-2026-05-06",
+  "officialSources": [
+    {
+      "id": "google-workspace-url-allowlist",
+      "vendor": "google-sheets",
+      "title": "Allow only certain external connections for Apps Script and Sheets",
+      "url": "https://support.google.com/a/answer/13686736?hl=en-EN",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Google Workspace admins can allowlist external domains for Apps Script and Sheets URL access.",
+        "The same help page says Apps Script scripts and Sheets functions can send or fetch data using any URL by default."
+      ]
+    },
+    {
+      "id": "google-workspace-app-access",
+      "vendor": "google-sheets",
+      "title": "Control which apps access Google Workspace data",
+      "url": "https://support.google.com/a/answer/7281227?hl=en&p=app_access_apps",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Google Workspace admins can mark OAuth apps as Trusted, Specific Google data, Limited, or Blocked.",
+        "The admin control surface is tenant policy, not a per-workbook artifact checked into this repository."
+      ]
+    },
+    {
+      "id": "google-sheets-api-scopes",
+      "vendor": "google-sheets",
+      "title": "Choose Google Sheets API scopes",
+      "url": "https://developers.google.com/workspace/sheets/api/scopes",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Google documents Sheets API scopes at spreadsheet-file scope and recommends choosing narrow scopes.",
+        "The same page says ProtectedRange is used to prevent editing of sheet cells or ranges."
+      ]
+    },
+    {
+      "id": "google-sheets-protection-boundaries",
+      "vendor": "google-sheets",
+      "title": "Protect, hide and edit sheets",
+      "url": "https://support.google.com/docs/answer/1218656?hl=en-PT&ref_topic=9055295",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Google documents protected ranges as an edit-control feature and warns not to treat it as a security measure.",
+        "Google documents that protected-sheet viewers or editors can still copy, print, import, or export data depending on their access."
+      ]
+    },
+    {
+      "id": "google-workspace-client-side-encryption",
+      "vendor": "google-sheets",
+      "title": "Get started with encrypted files in Drive, Docs, Sheets and Slides",
+      "url": "https://support.google.com/docs/answer/10519333?co=GENIE.Platform%3DDesktop&hl=en-to",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Google Workspace client-side encryption can cover Sheets files when enabled by an admin.",
+        "Google documents feature limits for encrypted Sheets, including static or removed features such as external data functions, protected ranges, Apps Script, and add-ons."
+      ]
+    },
+    {
+      "id": "microsoft-excel-macro-security",
+      "vendor": "microsoft-excel",
+      "title": "Change macro security settings in Excel",
+      "url": "https://support.microsoft.com/en-gb/office/change-macro-security-settings-in-excel-a97c09d2-c082-46b8-b19f-e8621e8fe373?ocmsassetid=hp010096919",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Microsoft documents Excel macro security settings in Trust Center.",
+        "Microsoft documents that organization policy can prevent users from changing macro security settings."
+      ]
+    },
+    {
+      "id": "microsoft-excel-xlm-macros",
+      "vendor": "microsoft-excel",
+      "title": "Working with Excel 4.0 macros",
+      "url": "https://support.microsoft.com/en-gb/office/working-with-excel-4-0-macros-ba8924d4-e157-4bb2-8d76-2c07ff02e0b8",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Microsoft documents that Excel still supports Excel 4.0 macros.",
+        "Microsoft recommends against enabling all macros and flags that potentially dangerous code can run."
+      ]
+    },
+    {
+      "id": "microsoft-excel-protected-view",
+      "vendor": "microsoft-excel",
+      "title": "What is Protected View?",
+      "url": "https://support.microsoft.com/en-us/office/what-is-protected-view-d6f09ac7-e6b9-4495-8e43-2bbcdbcb6653",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Microsoft documents Protected View for files from the internet, unsafe locations, Outlook attachments, file block, and validation failures.",
+        "Microsoft documents Excel-specific Protected View settings for untrusted text and database files."
+      ]
+    },
+    {
+      "id": "microsoft-excel-external-content",
+      "vendor": "microsoft-excel",
+      "title": "Block or unblock external content in Office documents",
+      "url": "https://support.microsoft.com/en-us/office/block-or-unblock-external-content-in-office-documents-10204ae0-0621-411f-b0d6-575b0847a795",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Microsoft documents Trust Center warnings and controls for Excel external data connections, workbook links, linked data types, DDE, and Microsoft Query files.",
+        "Microsoft documents that external data connections can access or change data with the user's credentials if enabled."
+      ]
+    },
+    {
+      "id": "microsoft-excel-protection-security",
+      "vendor": "microsoft-excel",
+      "title": "Protection and security in Excel",
+      "url": "https://support.microsoft.com/en-us/office/protection-and-security-in-excel-be0b34db-8cb6-44dd-a673-0b3e3475ac2d",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Microsoft documents file-level encryption, read-only access, IRM restrictions, and digital signatures for Excel files.",
+        "Microsoft documents that worksheet-level protection is not intended as a security feature."
+      ]
+    },
+    {
+      "id": "microsoft-purview-sensitivity-labels",
+      "vendor": "microsoft-excel",
+      "title": "Apply sensitivity labels to your files",
+      "url": "https://support.microsoft.com/en-us/office/apply-sensitivity-labels-to-your-files-2f96e7cd-d5a4-403b-8bd7-4cc636bae0f9",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Microsoft documents sensitivity labels for Excel and other Office files.",
+        "Microsoft documents that labels can apply encryption and user-defined permissions depending on organization configuration."
+      ]
+    }
+  ],
+  "summary": {
+    "comparisonCaptured": true,
+    "requiredDimensionsPassed": true,
+    "coveredControls": [
+      "external.googleSheetsSecurityDocs",
+      "external.microsoftExcelSecurityDocs",
+      "external.sheetsExcelSecurityComparison"
+    ],
+    "limitations": [
+      "This artifact captures current official public documentation, not a live tenant audit of Google Workspace or Microsoft 365 policy state.",
+      "The comparison proves direct external security evidence exists; it does not claim the whole product is 10x better across every category."
+    ]
+  },
+  "dimensions": [
+    {
+      "id": "workbook-code-execution",
+      "title": "Workbook Code Execution",
+      "required": true,
+      "passed": true,
+      "sourceIds": [
+        "google-workspace-url-allowlist",
+        "google-workspace-app-access",
+        "google-sheets-api-scopes",
+        "microsoft-excel-macro-security",
+        "microsoft-excel-xlm-macros"
+      ],
+      "biligEvidence": [
+        "The generated security posture scorecard scans formula/runtime TypeScript files for dynamic code execution and process-spawn imports.",
+        "The XLSX import control imports macro-enabled bytes with a VBA payload and verifies macros are ignored instead of executed or exported."
+      ],
+      "googleSheetsEvidence": [
+        "Google Sheets automation is governed through Apps Script, API scopes, app access controls, and optional URL allowlisting.",
+        "Google Sheets API scopes are spreadsheet-file scoped; protected ranges are separate edit controls."
+      ],
+      "microsoftExcelEvidence": [
+        "Excel supports VBA macros and Excel 4.0 macros under Trust Center macro settings.",
+        "Microsoft warns against enabling all macros and documents organization policy controls for macro settings."
+      ],
+      "comparisonResult": "bilig's checked workbook formula/import path is non-code-executing by construction; Sheets and Excel expose broader script or macro systems governed by tenant and Trust Center controls.",
+      "residualLimitations": [
+        "bilig still needs broader third-party security review before a blanket security leadership claim.",
+        "Google and Microsoft tenant policy hardening can materially change the incumbent posture."
+      ]
+    },
+    {
+      "id": "external-network-egress",
+      "title": "External Network Egress",
+      "required": true,
+      "passed": true,
+      "sourceIds": ["google-workspace-url-allowlist", "microsoft-excel-external-content", "microsoft-excel-protected-view"],
+      "biligEvidence": [
+        "The browser CSP control verifies explicit connect-src origins for the workbook runtime.",
+        "The deployment NetworkPolicy evidence restricts runtime ingress to documented app, Zero, Alloy, and Traefik peers."
+      ],
+      "googleSheetsEvidence": [
+        "Google documents an admin URL allowlist for Apps Script and Sheets external URL access.",
+        "Google documents that Apps Script and Sheets URL access is broad by default unless the admin allowlist is configured."
+      ],
+      "microsoftExcelEvidence": [
+        "Excel Trust Center can prompt or disable external data connections, workbook links, linked data types, DDE, and Microsoft Query files.",
+        "Excel Protected View covers files from internet, unsafe locations, Outlook attachments, and validation failures."
+      ],
+      "comparisonResult": "bilig has checked repo-level network allowlists for the shipped runtime; Sheets and Excel expose policy surfaces for external connections but require tenant or client configuration.",
+      "residualLimitations": [
+        "This comparison does not probe live Google or Microsoft tenant policies.",
+        "bilig outbound service-level egress policy beyond the browser/runtime evidence remains a future hardening lane."
+      ]
+    },
+    {
+      "id": "workbook-protection-boundaries",
+      "title": "Workbook Protection Boundaries",
+      "required": true,
+      "passed": true,
+      "sourceIds": ["google-sheets-protection-boundaries", "microsoft-excel-protection-security"],
+      "biligEvidence": [
+        "The generated security posture scorecard keeps workbook-agent shared medium and high-risk bundles behind owner review.",
+        "The auditability scorecard separately proves preview, authoritative apply, undo, and revert controls for sensitive workbook changes."
+      ],
+      "googleSheetsEvidence": [
+        "Google documents protected sheets and ranges as editing controls and warns they should not be used as a security measure.",
+        "Google documents that users with sufficient access can copy or export protected spreadsheet data."
+      ],
+      "microsoftExcelEvidence": [
+        "Microsoft documents worksheet protection as a cell-modification control, not a security feature.",
+        "Microsoft documents separate file-level encryption and rights-management options for stronger Excel file protection."
+      ],
+      "comparisonResult": "bilig distinguishes workflow approval/audit controls from file confidentiality; Google and Microsoft official docs make a similar distinction for sheet or worksheet protection.",
+      "residualLimitations": [
+        "bilig still needs full role-based permission matrix evidence before this dimension can become a product-wide lead claim.",
+        "The comparison is scoped to documented controls, not red-team attempts to bypass protection models."
+      ]
+    },
+    {
+      "id": "enterprise-data-protection",
+      "title": "Enterprise Data Protection",
+      "required": true,
+      "passed": true,
+      "sourceIds": [
+        "google-workspace-client-side-encryption",
+        "microsoft-excel-protection-security",
+        "microsoft-purview-sensitivity-labels"
+      ],
+      "biligEvidence": [
+        "bilig has checked dependency audit, runtime package hardening, CSP, and deployment NetworkPolicy controls in the security posture scorecard.",
+        "bilig does not yet claim parity with Google Workspace client-side encryption or Microsoft Purview sensitivity-label ecosystems."
+      ],
+      "googleSheetsEvidence": [
+        "Google Workspace client-side encryption can cover Sheets files when enabled by an admin.",
+        "Google documents meaningful feature limits for encrypted Sheets, including Apps Script/add-ons removal and static external data functions."
+      ],
+      "microsoftExcelEvidence": [
+        "Microsoft documents Excel file-level encryption, IRM restrictions, digital signatures, and sensitivity labels.",
+        "Microsoft documents that sensitivity labels can persist with files and apply encryption or permissions depending on tenant configuration."
+      ],
+      "comparisonResult": "bilig now has direct external comparison evidence and strong repo-local runtime controls, while incumbent enterprise encryption and labeling ecosystems remain broader than bilig's current checked evidence.",
+      "residualLimitations": [
+        "This dimension remains a security evidence gap for overall product dominance, despite the external comparison now being captured.",
+        "Future work should add bilig tenant/admin policy controls or document why the product intentionally has a different deployment security model."
+      ]
+    }
+  ]
+}

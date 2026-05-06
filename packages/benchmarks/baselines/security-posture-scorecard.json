@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "suite": "security-posture",
-  "generatedAt": "2026-05-06T10:47:52.387Z",
+  "generatedAt": "2026-05-06T13:52:26.655Z",
   "source": {
     "artifactGenerator": "scripts/gen-security-posture-scorecard.ts",
     "formulaRuntimeScanRoots": ["packages/formula/src", "packages/core/src/formula", "packages/core/src/engine/services"],
@@ -9,6 +9,7 @@
     "agentPolicyImplementation": "packages/agent-api/src/workbook-agent-execution-policy.ts",
     "browserSecurityHeadersImplementation": "apps/bilig/src/http/sync-server-security-headers.ts",
     "deploymentRuntimeNetworkPolicyEvidence": "packages/benchmarks/baselines/bilig-runtime-network-policy-evidence.json",
+    "externalSecurityComparisonArtifact": "packages/benchmarks/baselines/security-external-sheets-excel-comparison.json",
     "dependencyAuditCommand": "pnpm audit --prod --json",
     "runtimePackageGate": "pnpm publish:runtime:check"
   },
@@ -34,11 +35,14 @@
       "browser.crossOriginIsolation",
       "browser.workerWasmRuntimeAllowlist",
       "deployment.runtimeNetworkPolicy",
-      "dependency.vulnerabilityAudit"
+      "dependency.vulnerabilityAudit",
+      "external.googleSheetsSecurityDocs",
+      "external.microsoftExcelSecurityDocs",
+      "external.sheetsExcelSecurityComparison"
     ],
-    "uncoveredControls": ["externalSheetsExcelSecurityComparison"],
-    "externalGoogleSheetsEvidence": "not-captured",
-    "externalMicrosoftExcelEvidence": "not-captured"
+    "uncoveredControls": [],
+    "externalGoogleSheetsEvidence": "official-docs-comparison-artifact",
+    "externalMicrosoftExcelEvidence": "official-docs-comparison-artifact"
   },
   "controls": [
     {
@@ -102,6 +106,19 @@
       "passed": true,
       "coveredControls": ["dependency.vulnerabilityAudit"],
       "evidence": "Ran pnpm audit --prod --json against 504 production dependencies and found 0 vulnerabilities.",
+      "findings": []
+    },
+    {
+      "id": "external-sheets-excel-security-comparison",
+      "category": "external-comparison",
+      "required": true,
+      "passed": true,
+      "coveredControls": [
+        "external.googleSheetsSecurityDocs",
+        "external.microsoftExcelSecurityDocs",
+        "external.sheetsExcelSecurityComparison"
+      ],
+      "evidence": "Validated packages/benchmarks/baselines/security-external-sheets-excel-comparison.json from official-public-docs-reviewed-2026-05-06: 4 required comparison dimensions cite 5 official Google Sheets/Workspace sources and 6 official Microsoft Excel/Microsoft 365 sources.",
       "findings": []
     }
   ]

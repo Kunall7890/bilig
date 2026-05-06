@@ -18,10 +18,13 @@ describe('security posture scorecard', () => {
         runtimePackageHardeningPassed: true,
         browserCspPassed: true,
         dependencyAuditPassed: true,
-        externalGoogleSheetsEvidence: 'not-captured',
-        externalMicrosoftExcelEvidence: 'not-captured',
+        externalGoogleSheetsEvidence: 'official-docs-comparison-artifact',
+        externalMicrosoftExcelEvidence: 'official-docs-comparison-artifact',
       },
     })
+    expect(scorecard.source.externalSecurityComparisonArtifact).toBe(
+      'packages/benchmarks/baselines/security-external-sheets-excel-comparison.json',
+    )
     expect(scorecard.controls.map((control) => control.id)).toEqual([
       'formula-runtime-no-dynamic-code-execution',
       'xlsx-import-macro-non-execution',
@@ -30,8 +33,17 @@ describe('security posture scorecard', () => {
       'browser-content-security-policy',
       'deployment-runtime-network-policy',
       'production-dependency-vulnerability-audit',
+      'external-sheets-excel-security-comparison',
     ])
     expect(scorecard.controls.every((control) => control.required && control.passed)).toBe(true)
+    expect(scorecard.controls.find((control) => control.id === 'external-sheets-excel-security-comparison')).toMatchObject({
+      category: 'external-comparison',
+      coveredControls: [
+        'external.googleSheetsSecurityDocs',
+        'external.microsoftExcelSecurityDocs',
+        'external.sheetsExcelSecurityComparison',
+      ],
+    })
     expect(scorecard.summary.coveredControls).toEqual([
       'formula.noEval',
       'formula.noFunctionConstructor',
@@ -47,8 +59,11 @@ describe('security posture scorecard', () => {
       'browser.workerWasmRuntimeAllowlist',
       'deployment.runtimeNetworkPolicy',
       'dependency.vulnerabilityAudit',
+      'external.googleSheetsSecurityDocs',
+      'external.microsoftExcelSecurityDocs',
+      'external.sheetsExcelSecurityComparison',
     ])
-    expect(scorecard.summary.uncoveredControls).toEqual(['externalSheetsExcelSecurityComparison'])
+    expect(scorecard.summary.uncoveredControls).toEqual([])
     expect(scorecard.controls.map((control) => control.id)).toContain('deployment-runtime-network-policy')
   })
 

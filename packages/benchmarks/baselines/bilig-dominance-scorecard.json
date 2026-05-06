@@ -157,10 +157,13 @@
       "browser.crossOriginIsolation",
       "browser.workerWasmRuntimeAllowlist",
       "deployment.runtimeNetworkPolicy",
-      "dependency.vulnerabilityAudit"
+      "dependency.vulnerabilityAudit",
+      "external.googleSheetsSecurityDocs",
+      "external.microsoftExcelSecurityDocs",
+      "external.sheetsExcelSecurityComparison"
     ],
     "securityPosturePassed": true,
-    "securityUncoveredControls": ["externalSheetsExcelSecurityComparison"],
+    "securityUncoveredControls": [],
     "hyperFormulaComparableWorkloads": 46,
     "hyperFormulaMeanGeomeanRatio": 0.5210611087911634,
     "hyperFormulaP95GeomeanRatio": 0.5275785488654637,
@@ -438,11 +441,14 @@
       "status": "partial-repo-evidence",
       "currentEvidence": [
         "generated security posture scorecard passes required controls: true",
-        "covered security controls: formula.noEval, formula.noFunctionConstructor, formula.noNodeProcessExecution, xlsx.macroWarning, xlsx.noMacroPayloadExport, agent.sharedMediumHighRiskOwnerReview, runtime.publishManifest, runtime.noSourceInTarballs, runtime.alignedPackageSet, browser.contentSecurityPolicy, browser.crossOriginIsolation, browser.workerWasmRuntimeAllowlist, deployment.runtimeNetworkPolicy, dependency.vulnerabilityAudit",
-        "uncovered security controls are explicitly disclosed: externalSheetsExcelSecurityComparison"
+        "covered security controls: formula.noEval, formula.noFunctionConstructor, formula.noNodeProcessExecution, xlsx.macroWarning, xlsx.noMacroPayloadExport, agent.sharedMediumHighRiskOwnerReview, runtime.publishManifest, runtime.noSourceInTarballs, runtime.alignedPackageSet, browser.contentSecurityPolicy, browser.crossOriginIsolation, browser.workerWasmRuntimeAllowlist, deployment.runtimeNetworkPolicy, dependency.vulnerabilityAudit, external.googleSheetsSecurityDocs, external.microsoftExcelSecurityDocs, external.sheetsExcelSecurityComparison",
+        "uncovered security controls are explicitly disclosed: none",
+        "external Google Sheets security evidence: official-docs-comparison-artifact",
+        "external Microsoft Excel security evidence: official-docs-comparison-artifact"
       ],
       "evidenceArtifacts": [
         "packages/benchmarks/baselines/security-posture-scorecard.json",
+        "packages/benchmarks/baselines/security-external-sheets-excel-comparison.json",
         "pnpm-lock.yaml",
         "apps/bilig/src/http/sync-server-security-headers.ts",
         "apps/bilig/src/http/sync-server-security-headers.test.ts",
@@ -456,7 +462,7 @@
         "pnpm exec vitest run apps/bilig/src/http/sync-server-security-headers.test.ts apps/bilig/src/http/sync-server.test.ts packages/excel-import/src/__tests__/excel-import.test.ts packages/agent-api/src/__tests__/workbook-agent-execution-policy.test.ts",
         "pnpm publish:runtime:check"
       ],
-      "blockers": ["no direct Sheets or Excel security comparison artifact exists in the repo"]
+      "blockers": []
     },
     {
       "id": "operator-developer-workflow",

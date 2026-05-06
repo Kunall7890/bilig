@@ -662,10 +662,13 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
         currentEvidence: [
           `generated security posture scorecard passes required controls: ${String(input.securityPostureScorecard.summary.allRequiredControlsPassed)}`,
           `covered security controls: ${input.securityPostureScorecard.summary.coveredControls.join(', ')}`,
-          `uncovered security controls are explicitly disclosed: ${input.securityPostureScorecard.summary.uncoveredControls.join(', ')}`,
+          `uncovered security controls are explicitly disclosed: ${formatList(input.securityPostureScorecard.summary.uncoveredControls)}`,
+          `external Google Sheets security evidence: ${input.securityPostureScorecard.summary.externalGoogleSheetsEvidence}`,
+          `external Microsoft Excel security evidence: ${input.securityPostureScorecard.summary.externalMicrosoftExcelEvidence}`,
         ],
         evidenceArtifacts: [
           input.securityPostureScorecardPath,
+          input.securityPostureScorecard.source.externalSecurityComparisonArtifact,
           'pnpm-lock.yaml',
           'apps/bilig/src/http/sync-server-security-headers.ts',
           'apps/bilig/src/http/sync-server-security-headers.test.ts',
@@ -681,11 +684,11 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
         ],
         blockers: [
           ...(securityUncoveredControls.has('deployment.runtimeNetworkPolicy')
-            ? [
-                'generated security posture evidence covers formula dynamic-code scanning, XLSX macro warning, shared-agent owner review, runtime package hardening, browser CSP, and production dependency audit, but not deployment network policy',
-              ]
+            ? ['generated security posture evidence has not yet covered deployment runtime network policy']
             : []),
-          'no direct Sheets or Excel security comparison artifact exists in the repo',
+          ...(securityUncoveredControls.has('externalSheetsExcelSecurityComparison')
+            ? ['no direct Sheets or Excel security comparison artifact exists in the repo']
+            : []),
         ],
       },
       {
@@ -752,6 +755,10 @@ function headedBrowserContractSummary(contract: HeadedBrowserFrameP95Contract): 
 
 function formatRatio(summary: RatioSummary): string {
   return `${summary.production}/${summary.total} (${summary.percent}%)`
+}
+
+function formatList(values: readonly string[]): string {
+  return values.length === 0 ? 'none' : values.join(', ')
 }
 
 function isComparableWithComparison(result: CompetitiveResult): result is CompetitiveResult & {

@@ -94,7 +94,11 @@ describe('bilig dominance scorecard', () => {
     })
     expect(scorecard.categories.find((category) => category.id === 'security')).toMatchObject({
       status: 'partial-repo-evidence',
-      evidenceArtifacts: expect.arrayContaining(['packages/benchmarks/baselines/security-posture-scorecard.json']),
+      evidenceArtifacts: expect.arrayContaining([
+        'packages/benchmarks/baselines/security-posture-scorecard.json',
+        'packages/benchmarks/baselines/security-external-sheets-excel-comparison.json',
+      ]),
+      blockers: ['generated security posture evidence has not yet covered deployment runtime network policy'],
     })
   })
 
@@ -138,12 +142,12 @@ describe('bilig dominance scorecard', () => {
       ...input.securityPostureScorecard.summary.coveredControls,
       'deployment.runtimeNetworkPolicy',
     ]
-    input.securityPostureScorecard.summary.uncoveredControls = ['externalSheetsExcelSecurityComparison']
+    input.securityPostureScorecard.summary.uncoveredControls = []
 
     const scorecard = buildBiligDominanceScorecard(input)
     const security = scorecard.categories.find((category) => category.id === 'security')
 
-    expect(security?.blockers).toEqual(['no direct Sheets or Excel security comparison artifact exists in the repo'])
+    expect(security?.blockers).toEqual([])
   })
 
   it('wires the dominance check into fast CI generated checks', () => {
@@ -445,6 +449,7 @@ function buildFixtureInput(): BuildScorecardInput {
         importImplementation: 'packages/excel-import/src/index.ts',
         agentPolicyImplementation: 'packages/agent-api/src/workbook-agent-execution-policy.ts',
         browserSecurityHeadersImplementation: 'apps/bilig/src/http/sync-server-security-headers.ts',
+        externalSecurityComparisonArtifact: 'packages/benchmarks/baselines/security-external-sheets-excel-comparison.json',
         dependencyAuditCommand: 'pnpm audit --prod --json',
         runtimePackageGate: 'pnpm publish:runtime:check',
       },
@@ -456,10 +461,18 @@ function buildFixtureInput(): BuildScorecardInput {
         runtimePackageHardeningPassed: true,
         browserCspPassed: true,
         dependencyAuditPassed: true,
-        coveredControls: ['formula.noEval', 'xlsx.macroWarning', 'browser.contentSecurityPolicy', 'dependency.vulnerabilityAudit'],
+        coveredControls: [
+          'formula.noEval',
+          'xlsx.macroWarning',
+          'browser.contentSecurityPolicy',
+          'dependency.vulnerabilityAudit',
+          'external.googleSheetsSecurityDocs',
+          'external.microsoftExcelSecurityDocs',
+          'external.sheetsExcelSecurityComparison',
+        ],
         uncoveredControls: ['deployment.runtimeNetworkPolicy'],
-        externalGoogleSheetsEvidence: 'not-captured',
-        externalMicrosoftExcelEvidence: 'not-captured',
+        externalGoogleSheetsEvidence: 'official-docs-comparison-artifact',
+        externalMicrosoftExcelEvidence: 'official-docs-comparison-artifact',
       },
       controls: [
         {

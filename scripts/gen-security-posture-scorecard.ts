@@ -15,6 +15,12 @@ import {
 } from '../packages/agent-api/src/workbook-agent-execution-policy.js'
 import type { WorkbookSnapshot } from '../packages/protocol/src/types.js'
 import { buildSyncServerContentSecurityPolicy } from '../apps/bilig/src/http/sync-server-security-headers.js'
+import {
+  externalSecurityComparisonArtifactRepoPath,
+  externalSecurityComparisonCoveredControls,
+  parseExternalSecurityComparisonArtifact,
+  validateExternalSecurityComparisonArtifact,
+} from './security-external-sheets-excel-comparison.ts'
 
 export interface SecurityPostureControl {
   readonly id: string
@@ -25,6 +31,7 @@ export interface SecurityPostureControl {
     | 'runtime-hardening'
     | 'browser-runtime'
     | 'dependency-audit'
+    | 'external-comparison'
   readonly required: boolean
   readonly passed: boolean
   readonly coveredControls: string[]
@@ -43,6 +50,7 @@ export interface SecurityPostureScorecard {
     readonly agentPolicyImplementation: 'packages/agent-api/src/workbook-agent-execution-policy.ts'
     readonly browserSecurityHeadersImplementation: 'apps/bilig/src/http/sync-server-security-headers.ts'
     readonly deploymentRuntimeNetworkPolicyEvidence: 'packages/benchmarks/baselines/bilig-runtime-network-policy-evidence.json'
+    readonly externalSecurityComparisonArtifact: 'packages/benchmarks/baselines/security-external-sheets-excel-comparison.json'
     readonly dependencyAuditCommand: 'pnpm audit --prod --json'
     readonly runtimePackageGate: 'pnpm publish:runtime:check'
   }
@@ -56,8 +64,8 @@ export interface SecurityPostureScorecard {
     readonly dependencyAuditPassed: boolean
     readonly coveredControls: string[]
     readonly uncoveredControls: string[]
-    readonly externalGoogleSheetsEvidence: 'not-captured'
-    readonly externalMicrosoftExcelEvidence: 'not-captured'
+    readonly externalGoogleSheetsEvidence: 'official-docs-comparison-artifact'
+    readonly externalMicrosoftExcelEvidence: 'official-docs-comparison-artifact'
   }
   readonly controls: SecurityPostureControl[]
 }
@@ -77,6 +85,7 @@ const deploymentRuntimeNetworkPolicyEvidencePath = join(
   'baselines',
   'bilig-runtime-network-policy-evidence.json',
 )
+const externalSecurityComparisonArtifactPath = join(rootDir, externalSecurityComparisonArtifactRepoPath)
 const formulaRuntimeScanRoots = ['packages/formula/src', 'packages/core/src/formula', 'packages/core/src/engine/services'] as const
 const requiredControlIds = [
   'formula-runtime-no-dynamic-code-execution',
@@ -86,6 +95,7 @@ const requiredControlIds = [
   'browser-content-security-policy',
   'deployment-runtime-network-policy',
   'production-dependency-vulnerability-audit',
+  'external-sheets-excel-security-comparison',
 ] as const
 const coveredControlOrder = [
   'formula.noEval',
@@ -102,8 +112,9 @@ const coveredControlOrder = [
   'browser.workerWasmRuntimeAllowlist',
   'deployment.runtimeNetworkPolicy',
   'dependency.vulnerabilityAudit',
+  ...externalSecurityComparisonCoveredControls,
 ] as const
-const uncoveredControls = ['externalSheetsExcelSecurityComparison'] as const
+const uncoveredControls: readonly string[] = []
 const disallowedImportModules = new Set(['node:child_process', 'child_process', 'node:vm', 'vm', 'bun:ffi'])
 const formulaRuntimeServiceFileNames = new Set([
   'direct-formula-index-collection.ts',
@@ -145,6 +156,7 @@ export function buildSecurityPostureScorecard(generatedAt = new Date().toISOStri
     buildBrowserContentSecurityPolicyControl(),
     buildDeploymentRuntimeNetworkPolicyControl(),
     buildProductionDependencyAuditControl(),
+    buildExternalSheetsExcelSecurityComparisonControl(),
   ]
   const coveredControlSet = new Set(controls.flatMap((control) => control.coveredControls))
   const coveredControls = coveredControlOrder.filter((control) => coveredControlSet.has(control))
@@ -160,6 +172,7 @@ export function buildSecurityPostureScorecard(generatedAt = new Date().toISOStri
       agentPolicyImplementation: 'packages/agent-api/src/workbook-agent-execution-policy.ts',
       browserSecurityHeadersImplementation: 'apps/bilig/src/http/sync-server-security-headers.ts',
       deploymentRuntimeNetworkPolicyEvidence: 'packages/benchmarks/baselines/bilig-runtime-network-policy-evidence.json',
+      externalSecurityComparisonArtifact: externalSecurityComparisonArtifactRepoPath,
       dependencyAuditCommand: 'pnpm audit --prod --json',
       runtimePackageGate: 'pnpm publish:runtime:check',
     },
@@ -173,8 +186,8 @@ export function buildSecurityPostureScorecard(generatedAt = new Date().toISOStri
       dependencyAuditPassed: requiredControl(controls, 'production-dependency-vulnerability-audit').passed,
       coveredControls,
       uncoveredControls: [...uncoveredControls],
-      externalGoogleSheetsEvidence: 'not-captured',
-      externalMicrosoftExcelEvidence: 'not-captured',
+      externalGoogleSheetsEvidence: 'official-docs-comparison-artifact',
+      externalMicrosoftExcelEvidence: 'official-docs-comparison-artifact',
     },
     controls,
   }
@@ -375,6 +388,27 @@ function buildProductionDependencyAuditControl(): SecurityPostureControl {
   })
 }
 
+function buildExternalSheetsExcelSecurityComparisonControl(): SecurityPostureControl {
+  const artifact = parseExternalSecurityComparisonArtifact(
+    JSON.parse(readFileSync(externalSecurityComparisonArtifactPath, 'utf8')) as unknown,
+  )
+  const findings = validateExternalSecurityComparisonArtifact(artifact)
+  const googleSourceCount = artifact.officialSources.filter((source) => source.vendor === 'google-sheets').length
+  const microsoftSourceCount = artifact.officialSources.filter((source) => source.vendor === 'microsoft-excel').length
+
+  return securityControl({
+    id: 'external-sheets-excel-security-comparison',
+    category: 'external-comparison',
+    passed: findings.length === 0,
+    coveredControls: externalSecurityComparisonCoveredControls,
+    evidence:
+      `Validated ${externalSecurityComparisonArtifactRepoPath} from ${artifact.sourceBasis}: ` +
+      `${String(artifact.dimensions.length)} required comparison dimensions cite ${String(googleSourceCount)} official Google Sheets/Workspace sources ` +
+      `and ${String(microsoftSourceCount)} official Microsoft Excel/Microsoft 365 sources.`,
+    findings,
+  })
+}
+
 function securityControl(input: {
   readonly id: SecurityPostureControl['id']
   readonly category: SecurityPostureControl['category']
@@ -550,6 +584,11 @@ export function parseSecurityPostureScorecard(value: unknown): SecurityPostureSc
         'deploymentRuntimeNetworkPolicyEvidence',
         'packages/benchmarks/baselines/bilig-runtime-network-policy-evidence.json',
       ),
+      externalSecurityComparisonArtifact: literalField(
+        source,
+        'externalSecurityComparisonArtifact',
+        'packages/benchmarks/baselines/security-external-sheets-excel-comparison.json',
+      ),
       dependencyAuditCommand: literalField(source, 'dependencyAuditCommand', 'pnpm audit --prod --json'),
       runtimePackageGate: literalField(source, 'runtimePackageGate', 'pnpm publish:runtime:check'),
     },
@@ -567,8 +606,8 @@ export function parseSecurityPostureScorecard(value: unknown): SecurityPostureSc
       dependencyAuditPassed: booleanField(summary, 'dependencyAuditPassed', 'security posture dependencyAuditPassed'),
       coveredControls: stringArrayField(summary, 'coveredControls', 'security posture coveredControls'),
       uncoveredControls: stringArrayField(summary, 'uncoveredControls', 'security posture uncoveredControls'),
-      externalGoogleSheetsEvidence: literalField(summary, 'externalGoogleSheetsEvidence', 'not-captured'),
-      externalMicrosoftExcelEvidence: literalField(summary, 'externalMicrosoftExcelEvidence', 'not-captured'),
+      externalGoogleSheetsEvidence: literalField(summary, 'externalGoogleSheetsEvidence', 'official-docs-comparison-artifact'),
+      externalMicrosoftExcelEvidence: literalField(summary, 'externalMicrosoftExcelEvidence', 'official-docs-comparison-artifact'),
     },
     controls: arrayField(record, 'controls', 'security posture controls').map(parseSecurityPostureControl),
   }
@@ -619,7 +658,8 @@ function parseSecurityPostureCategory(value: string): SecurityPostureControl['ca
     value === 'agent-permissions' ||
     value === 'runtime-hardening' ||
     value === 'browser-runtime' ||
-    value === 'dependency-audit'
+    value === 'dependency-audit' ||
+    value === 'external-comparison'
   ) {
     return value
   }
