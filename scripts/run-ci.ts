@@ -189,6 +189,26 @@ const focusedCorrectnessLanes: readonly CiTask[] = [
   pnpm('correctness server', 'test:correctness:server'),
   pnpm('correctness browser runtime', 'test:correctness:browser'),
 ]
+const generatedSourceChecks: readonly CiTask[] = [
+  pnpm('protocol check', 'protocol:check'),
+  pnpm('formula inventory check', 'formula-inventory:check'),
+  pnpm('formula dominance check', 'formula:dominance:check'),
+  pnpm('Microsoft Excel live calculation scorecard check', 'calculation:excel-live:check'),
+  pnpm('Google Sheets live calculation scorecard check', 'calculation:google-sheets-live:check'),
+  pnpm('Microsoft Excel live recalculation scorecard check', 'recalculation:excel-live:check'),
+  pnpm('Microsoft Excel live structural scorecard check', 'structural:excel-live:check'),
+  pnpm('Microsoft Excel live large workbook scorecard check', 'large-workbook:excel-live:check'),
+  pnpm('auditability scorecard check', 'auditability:check'),
+  pnpm('reliability scorecard check', 'reliability:check'),
+  pnpm('collaboration scorecard check', 'collaboration:check'),
+  pnpm('automation scorecard check', 'automation:check'),
+  pnpm('import/export fidelity scorecard check', 'import-export:fidelity:check'),
+  pnpm('large workbook SLO scorecard check', 'large-workbook:slo:check'),
+  pnpm('security posture scorecard check', 'security:posture:check'),
+  pnpm('bilig dominance scorecard check', 'dominance:check'),
+  pnpm('workspace resolution check', 'workspace-resolution:check'),
+  pnpm('canonical naming check', 'naming:check'),
+]
 
 try {
   const allCompleted: CompletedTask[] = []
@@ -202,28 +222,8 @@ try {
     log('browser gates disabled by BILIG_CI_SKIP_BROWSER=1')
   }
 
-  allCompleted.push(
-    ...(await runStage('generated-source checks', [
-      pnpm('protocol check', 'protocol:check'),
-      pnpm('formula inventory check', 'formula-inventory:check'),
-      pnpm('formula dominance check', 'formula:dominance:check'),
-      pnpm('Microsoft Excel live calculation scorecard check', 'calculation:excel-live:check'),
-      pnpm('Google Sheets live calculation scorecard check', 'calculation:google-sheets-live:check'),
-      pnpm('Microsoft Excel live recalculation scorecard check', 'recalculation:excel-live:check'),
-      pnpm('Microsoft Excel live structural scorecard check', 'structural:excel-live:check'),
-      pnpm('Microsoft Excel live large workbook scorecard check', 'large-workbook:excel-live:check'),
-      pnpm('auditability scorecard check', 'auditability:check'),
-      pnpm('reliability scorecard check', 'reliability:check'),
-      pnpm('collaboration scorecard check', 'collaboration:check'),
-      pnpm('automation scorecard check', 'automation:check'),
-      pnpm('import/export fidelity scorecard check', 'import-export:fidelity:check'),
-      pnpm('large workbook SLO scorecard check', 'large-workbook:slo:check'),
-      pnpm('security posture scorecard check', 'security:posture:check'),
-      pnpm('bilig dominance scorecard check', 'dominance:check'),
-      pnpm('workspace resolution check', 'workspace-resolution:check'),
-      pnpm('canonical naming check', 'naming:check'),
-    ])),
-  )
+  // Keep pnpm generated-source checks serialized; parallel pnpm invocations can race on .pnpm-workspace-state-v1.json.
+  allCompleted.push(...(await runSequential('generated-source checks', generatedSourceChecks)))
 
   allCompleted.push(
     ...(await runStage('static prerequisites', [

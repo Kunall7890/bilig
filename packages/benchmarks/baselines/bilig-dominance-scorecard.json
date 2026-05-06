@@ -566,10 +566,12 @@
       "status": "repo-proved-lead",
       "currentEvidence": [
         "generated parity, formula inventory, formula dominance, workspace resolution, benchmark, publish, and smoke gates exist",
+        "generated-source CI checks are serialized to avoid pnpm workspace-state races in the evidence gate",
         "this generated scorecard prevents blanket 10x claims from outrunning evidence"
       ],
       "evidenceArtifacts": [
         "package.json",
+        "scripts/run-ci.ts",
         "packages/benchmarks/baselines/workpaper-vs-hyperformula.json",
         "packages/formula/src/__tests__/fixtures/formula-dominance-snapshot.json",
         "packages/headless/src/__tests__/fixtures/hyperformula-surface.json"

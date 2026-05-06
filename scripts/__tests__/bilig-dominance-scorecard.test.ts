@@ -229,6 +229,18 @@ describe('bilig dominance scorecard', () => {
     )
   })
 
+  it('tracks serialized generated-source CI checks as operator workflow evidence', () => {
+    const artifact = parseGeneratedScorecard(
+      readFileSync(resolve(repoRoot, 'packages/benchmarks/baselines/bilig-dominance-scorecard.json'), 'utf8'),
+    )
+    const workflow = artifact.categories.find((category) => category.id === 'operator-developer-workflow')
+
+    expect(workflow?.currentEvidence).toContain(
+      'generated-source CI checks are serialized to avoid pnpm workspace-state races in the evidence gate',
+    )
+    expect(workflow?.evidenceArtifacts).toContain('scripts/run-ci.ts')
+  })
+
   it('does not keep deployment network policy as a blocker after security evidence covers it', () => {
     const input = buildFixtureInput()
     input.securityPostureScorecard.summary.coveredControls = [
@@ -286,7 +298,9 @@ describe('bilig dominance scorecard', () => {
   })
 })
 
-function parseGeneratedScorecard(source: string): { categories: Array<{ id: unknown; blockers: string[] }> } {
+function parseGeneratedScorecard(source: string): {
+  categories: Array<{ id: unknown; blockers: string[]; currentEvidence: string[]; evidenceArtifacts: string[] }>
+} {
   const parsed: unknown = JSON.parse(source)
   if (!isRecord(parsed) || !Array.isArray(parsed['categories'])) {
     throw new Error('Generated scorecard must include a categories array')
@@ -300,6 +314,8 @@ function parseGeneratedScorecard(source: string): { categories: Array<{ id: unkn
       return {
         id: category['id'],
         blockers: stringList(category['blockers'], 'Generated scorecard category blockers'),
+        currentEvidence: stringList(category['currentEvidence'], 'Generated scorecard category evidence'),
+        evidenceArtifacts: stringList(category['evidenceArtifacts'], 'Generated scorecard category artifacts'),
       }
     }),
   }

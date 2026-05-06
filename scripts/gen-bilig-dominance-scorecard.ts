@@ -975,9 +975,16 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
         status: 'repo-proved-lead',
         currentEvidence: [
           'generated parity, formula inventory, formula dominance, workspace resolution, benchmark, publish, and smoke gates exist',
+          'generated-source CI checks are serialized to avoid pnpm workspace-state races in the evidence gate',
           'this generated scorecard prevents blanket 10x claims from outrunning evidence',
         ],
-        evidenceArtifacts: ['package.json', input.competitiveArtifactPath, input.formulaSnapshotPath, input.surfaceSnapshotPath],
+        evidenceArtifacts: [
+          'package.json',
+          'scripts/run-ci.ts',
+          input.competitiveArtifactPath,
+          input.formulaSnapshotPath,
+          input.surfaceSnapshotPath,
+        ],
         checkCommands: ['pnpm dominance:check', 'pnpm run ci'],
         blockers: [
           'developer workflow evidence is strong, but it does not prove the product is 10x better across every user-facing category',
