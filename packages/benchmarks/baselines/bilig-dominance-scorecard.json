@@ -41,7 +41,7 @@
     "externalGoogleSheetsEvidence": "not-captured-in-repo",
     "externalMicrosoftExcelEvidence": "not-captured-in-repo",
     "formulaCanonicalProductionPercent": 100,
-    "formulaOfficeListedBreadthPercent": 90.7,
+    "formulaOfficeListedBreadthPercent": 100,
     "hyperFormulaComparableWorkloads": 46,
     "hyperFormulaMeanGeomeanRatio": 0.5126605383809896,
     "hyperFormulaP95GeomeanRatio": 0.5080601177268398,
@@ -58,7 +58,7 @@
       "status": "partial-repo-evidence",
       "currentEvidence": [
         "canonical formula closure is 300/300 (100%)",
-        "Office-listed formula breadth is 461/508 (90.7%)",
+        "Office-listed formula breadth is 508/508 (100%)",
         "strategic canonical rows are production-routed; open canonical rows: 0"
       ],
       "evidenceArtifacts": [
@@ -68,7 +68,7 @@
       ],
       "checkCommands": ["pnpm formula:dominance:check", "pnpm test:correctness:formula"],
       "blockers": [
-        "47 Office-listed functions are still missing from the runtime inventory",
+        "0 Office-listed functions are still missing from the runtime inventory",
         "no generated scorecard currently compares all committed semantics directly against live Google Sheets and Microsoft Excel"
       ]
     },

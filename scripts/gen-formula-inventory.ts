@@ -28,11 +28,54 @@ const generatedDocPath = path.join(repoRoot, 'docs/odf-1.4-mandatory-office-exce
 const missingProtocolPath = path.join(repoRoot, 'docs/formula-inventory-missing-from-protocol.md')
 const builtinCapabilitiesPath = path.join(repoRoot, 'packages/formula/src/builtin-capabilities.ts')
 const builtinsPath = path.join(repoRoot, 'packages/formula/src/builtins.ts')
+const complexBuiltinsPath = path.join(repoRoot, 'packages/formula/src/builtins/complex.ts')
+const distributionBuiltinsPath = path.join(repoRoot, 'packages/formula/src/builtins/distribution-builtins.ts')
+const financialBuiltinsPath = path.join(repoRoot, 'packages/formula/src/builtins/financial-builtins.ts')
+const fixedIncomeBuiltinsPath = path.join(repoRoot, 'packages/formula/src/builtins/fixed-income-builtins.ts')
 const logicalBuiltinsPath = path.join(repoRoot, 'packages/formula/src/builtins/logical.ts')
+const lookupArrayShapeBuiltinsPath = path.join(repoRoot, 'packages/formula/src/builtins/lookup-array-shape-builtins.ts')
+const lookupCriteriaBuiltinsPath = path.join(repoRoot, 'packages/formula/src/builtins/lookup-criteria-builtins.ts')
+const lookupDatabaseBuiltinsPath = path.join(repoRoot, 'packages/formula/src/builtins/lookup-database-builtins.ts')
+const lookupFinancialBuiltinsPath = path.join(repoRoot, 'packages/formula/src/builtins/lookup-financial-builtins.ts')
+const lookupHypothesisBuiltinsPath = path.join(repoRoot, 'packages/formula/src/builtins/lookup-hypothesis-builtins.ts')
+const lookupMatrixBuiltinsPath = path.join(repoRoot, 'packages/formula/src/builtins/lookup-matrix-builtins.ts')
+const lookupOrderStatisticsBuiltinsPath = path.join(repoRoot, 'packages/formula/src/builtins/lookup-order-statistics-builtins.ts')
+const lookupReferenceBuiltinsPath = path.join(repoRoot, 'packages/formula/src/builtins/lookup-reference-builtins.ts')
+const lookupRegressionBuiltinsPath = path.join(repoRoot, 'packages/formula/src/builtins/lookup-regression-builtins.ts')
+const lookupSortFilterBuiltinsPath = path.join(repoRoot, 'packages/formula/src/builtins/lookup-sort-filter-builtins.ts')
 const textBuiltinsPath = path.join(repoRoot, 'packages/formula/src/builtins/text.ts')
+const textCoreBuiltinsPath = path.join(repoRoot, 'packages/formula/src/builtins/text-core-builtins.ts')
+const textFormatBuiltinsPath = path.join(repoRoot, 'packages/formula/src/builtins/text-format-builtins.ts')
+const textSearchBuiltinsPath = path.join(repoRoot, 'packages/formula/src/builtins/text-search-builtins.ts')
 const datetimeBuiltinsPath = path.join(repoRoot, 'packages/formula/src/builtins/datetime.ts')
 const lookupBuiltinsPath = path.join(repoRoot, 'packages/formula/src/builtins/lookup.ts')
+const mathBuiltinsPath = path.join(repoRoot, 'packages/formula/src/builtins/math-builtins.ts')
 const placeholderBuiltinsPath = path.join(repoRoot, 'packages/formula/src/builtins/placeholder.ts')
+const radixBuiltinsPath = path.join(repoRoot, 'packages/formula/src/builtins/radix.ts')
+const statisticalBuiltinsPath = path.join(repoRoot, 'packages/formula/src/builtins/statistical-builtins.ts')
+
+const factoryBuiltinSources = [
+  { filePath: complexBuiltinsPath, functionName: 'createComplexBuiltins' },
+  { filePath: distributionBuiltinsPath, functionName: 'createDistributionBuiltins' },
+  { filePath: financialBuiltinsPath, functionName: 'createFinancialBuiltins' },
+  { filePath: fixedIncomeBuiltinsPath, functionName: 'createFixedIncomeBuiltins' },
+  { filePath: lookupArrayShapeBuiltinsPath, functionName: 'createLookupArrayShapeBuiltins' },
+  { filePath: lookupCriteriaBuiltinsPath, functionName: 'createLookupCriteriaBuiltins' },
+  { filePath: lookupDatabaseBuiltinsPath, functionName: 'createLookupDatabaseBuiltins' },
+  { filePath: lookupFinancialBuiltinsPath, functionName: 'createLookupFinancialBuiltins' },
+  { filePath: lookupHypothesisBuiltinsPath, functionName: 'createLookupHypothesisBuiltins' },
+  { filePath: lookupMatrixBuiltinsPath, functionName: 'createLookupMatrixBuiltins' },
+  { filePath: lookupOrderStatisticsBuiltinsPath, functionName: 'createLookupOrderStatisticsBuiltins' },
+  { filePath: lookupReferenceBuiltinsPath, functionName: 'createLookupReferenceBuiltins' },
+  { filePath: lookupRegressionBuiltinsPath, functionName: 'createLookupRegressionBuiltins' },
+  { filePath: lookupSortFilterBuiltinsPath, functionName: 'createLookupSortFilterBuiltins' },
+  { filePath: mathBuiltinsPath, functionName: 'createMathBuiltins' },
+  { filePath: radixBuiltinsPath, functionName: 'createRadixBuiltins' },
+  { filePath: statisticalBuiltinsPath, functionName: 'createStatisticalBuiltins' },
+  { filePath: textCoreBuiltinsPath, functionName: 'createTextCoreBuiltins' },
+  { filePath: textFormatBuiltinsPath, functionName: 'createTextFormatBuiltins' },
+  { filePath: textSearchBuiltinsPath, functionName: 'createTextSearchBuiltins' },
+] as const
 
 const providerBackedNames = new Set([
   'CALL',
@@ -174,20 +217,40 @@ function extractObjectKeys(expression: ts.Expression | undefined): string[] {
   })
 }
 
+function extractReturnedObjectKeys(sourceFile: ts.SourceFile, functionName: string): string[] {
+  let found: string[] = []
+  const visit = (node: ts.Node): void => {
+    if (found.length > 0) {
+      return
+    }
+    if (ts.isFunctionDeclaration(node) && node.name?.text === functionName && node.body) {
+      const returnStatement = node.body.statements.find((statement): statement is ts.ReturnStatement => ts.isReturnStatement(statement))
+      found = extractObjectKeys(returnStatement?.expression)
+      return
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(sourceFile)
+  return found
+}
+
 async function readSourceDerivedRuntimeData(): Promise<SourceDerivedRuntimeData> {
-  const [capabilitySource, builtinsSource, logicalSource, textSource, datetimeSource, lookupSource, placeholderSource] = await Promise.all([
-    readTsSourceFile(builtinCapabilitiesPath),
-    readTsSourceFile(builtinsPath),
-    readTsSourceFile(logicalBuiltinsPath),
-    readTsSourceFile(textBuiltinsPath),
-    readTsSourceFile(datetimeBuiltinsPath),
-    readTsSourceFile(lookupBuiltinsPath),
-    readTsSourceFile(placeholderBuiltinsPath),
-  ])
+  const [capabilitySource, builtinsSource, logicalSource, textSource, datetimeSource, lookupSource, placeholderSource, ...factorySources] =
+    await Promise.all([
+      readTsSourceFile(builtinCapabilitiesPath),
+      readTsSourceFile(builtinsPath),
+      readTsSourceFile(logicalBuiltinsPath),
+      readTsSourceFile(textBuiltinsPath),
+      readTsSourceFile(datetimeBuiltinsPath),
+      readTsSourceFile(lookupBuiltinsPath),
+      readTsSourceFile(placeholderBuiltinsPath),
+      ...factoryBuiltinSources.map((source) => readTsSourceFile(source.filePath)),
+    ])
 
   const implementedBuiltinNames = new Set([
     ...BUILTINS.filter((builtin) => !builtin.name.startsWith('__')).map((builtin) => normalizeFormulaName(builtin.name)),
     ...extractObjectKeys(getVariableInitializer(builtinsSource, 'scalarBuiltins')),
+    ...factorySources.flatMap((source, index) => extractReturnedObjectKeys(source, factoryBuiltinSources[index].functionName)),
     ...extractStringArray(getVariableInitializer(builtinsSource, 'externalScalarBuiltinNames')),
     ...extractObjectKeys(getVariableInitializer(logicalSource, 'logicalBuiltins')),
     ...extractObjectKeys(getVariableInitializer(textSource, 'textBuiltins')),

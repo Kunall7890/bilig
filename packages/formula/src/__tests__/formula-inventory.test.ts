@@ -50,6 +50,34 @@ describe('formula inventory', () => {
       protocolId: undefined,
     })
   })
+
+  it('counts runtime builtins registered by source factories', () => {
+    const factoryRegisteredFunctions = [
+      'ACCRINT',
+      'AMORLINC',
+      'ARABIC',
+      'AVEDEV',
+      'COMPLEX',
+      'CONCATENATE',
+      'IMABS',
+      'MDETERM',
+      'MMULT',
+      'MULTINOMIAL',
+      'PERCENTOF',
+      'PROPER',
+      'REGEXTEST',
+      'ROMAN',
+    ]
+
+    for (const name of factoryRegisteredFunctions) {
+      expect(formulaInventory.find((entry) => entry.name === name)).toMatchObject({
+        name,
+        runtimeStatus: 'implemented',
+        registeredInCodebase: true,
+        placeholder: false,
+      })
+    }
+  })
 })
 
 function readFormulaInventorySource(): FormulaInventorySource {
