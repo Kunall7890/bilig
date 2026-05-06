@@ -65,18 +65,13 @@ const coveredFeatureOrder = [
   'xlsx.formulas',
   'xlsx.numberFormats',
   'xlsx.definedNames',
+  'xlsx.comments',
   'xlsx.rowColumnDimensions',
   'xlsx.merges',
   'xlsx.multiSheet',
   'xlsx.unsupportedFeatureWarnings',
 ] as const
-const unsupportedFeatures = [
-  'xlsx.macros.execution',
-  'xlsx.comments.roundtrip',
-  'xlsx.charts.roundtrip',
-  'xlsx.pivots.roundtrip',
-  'xlsx.styles.export',
-] as const
+const unsupportedFeatures = ['xlsx.macros.execution', 'xlsx.charts.roundtrip', 'xlsx.pivots.roundtrip', 'xlsx.styles.export'] as const
 
 async function main(): Promise<void> {
   const isCheckMode = process.argv.includes('--check')
@@ -200,7 +195,9 @@ function runXlsxImportPreviewCase(): ImportExportFidelityCase {
 function runXlsxSnapshotRoundTripValuesCase(): ImportExportFidelityCase {
   const expected = projectSupportedSnapshotSemantics(createFidelitySnapshot())
   const actual = projectSupportedSnapshotSemantics(importXlsx(exportXlsx(createFidelitySnapshot()), 'fidelity.xlsx').snapshot)
-  const passed = JSON.stringify(actual.valueFormulaFormatSheets) === JSON.stringify(expected.valueFormulaFormatSheets)
+  const passed =
+    JSON.stringify(actual.valueFormulaFormatSheets) === JSON.stringify(expected.valueFormulaFormatSheets) &&
+    JSON.stringify(actual.commentThreads) === JSON.stringify(expected.commentThreads)
   return fidelityCase({
     id: 'xlsx-snapshot-roundtrip-values-formulas-formats',
     format: 'xlsx',
@@ -213,9 +210,11 @@ function runXlsxSnapshotRoundTripValuesCase(): ImportExportFidelityCase {
       'xlsx.formulas',
       'xlsx.numberFormats',
       'xlsx.definedNames',
+      'xlsx.comments',
       'xlsx.multiSheet',
     ],
-    evidence: 'WorkbookSnapshot exported to XLSX imports back with the same values, formulas, formats, defined names, and sheet order.',
+    evidence:
+      'WorkbookSnapshot exported to XLSX imports back with the same values, formulas, formats, defined names, comments, and sheet order.',
   })
 }
 
@@ -287,6 +286,14 @@ function createFidelitySnapshot(): WorkbookSnapshot {
         name: 'Summary',
         order: 0,
         metadata: {
+          commentThreads: [
+            {
+              threadId: 'summary-total-comment',
+              sheetName: 'Summary',
+              address: 'B1',
+              comments: [{ id: 'summary-total-comment-1', body: 'Reviewed total', authorDisplayName: 'Finance' }],
+            },
+          ],
           columns: [
             { id: 'summary-col-0', index: 0, size: 132 },
             { id: 'summary-col-1', index: 1, size: 96 },
@@ -325,6 +332,17 @@ function projectSupportedSnapshotSemantics(snapshot: WorkbookSnapshot) {
     definedNames: (snapshot.workbook.metadata?.definedNames ?? [])
       .map((definedName) => ({ name: definedName.name, value: definedName.value }))
       .toSorted((left, right) => left.name.localeCompare(right.name)),
+    commentThreads: snapshot.sheets
+      .flatMap((sheet) => sheet.metadata?.commentThreads ?? [])
+      .map((thread) => ({
+        sheetName: thread.sheetName,
+        address: thread.address,
+        comments: thread.comments.map((comment) => ({
+          body: comment.body,
+          ...(comment.authorDisplayName !== undefined ? { authorDisplayName: comment.authorDisplayName } : {}),
+        })),
+      }))
+      .toSorted((left, right) => `${left.sheetName}:${left.address}`.localeCompare(`${right.sheetName}:${right.address}`)),
     valueFormulaFormatSheets: snapshot.sheets
       .toSorted((left, right) => left.order - right.order)
       .map((sheet) => ({

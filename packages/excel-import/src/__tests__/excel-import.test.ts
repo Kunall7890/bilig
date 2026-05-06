@@ -169,7 +169,15 @@ describe('excel import', () => {
       { name: 'InputBlock', value: { kind: 'range-ref', sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'B2' } },
       { name: 'InputValue', value: { kind: 'cell-ref', sheetName: 'Sheet1', address: 'A1' } },
     ])
-    expect(imported.warnings).toEqual(['Cell comments were ignored during XLSX import.'])
+    expect(imported.snapshot.sheets[1]?.metadata?.commentThreads).toEqual([
+      {
+        threadId: 'xlsx-comment:Sheet2:A1',
+        sheetName: 'Sheet2',
+        address: 'A1',
+        comments: [{ id: 'xlsx-comment:Sheet2:A1:1', body: 'comment', authorDisplayName: 'Greg' }],
+      },
+    ])
+    expect(imported.warnings).toEqual([])
     expect(imported.preview.workbookName).toBe('Quarterly Report')
     expect(imported.preview.sheetCount).toBe(2)
     expect(imported.preview.sheets).toEqual(
@@ -355,6 +363,14 @@ describe('excel import', () => {
           name: 'Summary',
           order: 0,
           metadata: {
+            commentThreads: [
+              {
+                threadId: 'summary-total-note',
+                sheetName: 'Summary',
+                address: 'B1',
+                comments: [{ id: 'summary-total-note-1', body: 'Reviewed total', authorDisplayName: 'Finance' }],
+              },
+            ],
             columns: [
               { id: 'summary-col-0', index: 0, size: 132 },
               { id: 'summary-col-1', index: 1, size: 96 },
@@ -427,6 +443,16 @@ function projectSupportedSnapshotSemantics(snapshot: WorkbookSnapshot) {
                 `${right.sheetName}:${right.startAddress}:${right.endAddress}`,
               ),
             ),
+          commentThreads: (sheet.metadata?.commentThreads ?? [])
+            .map((thread) => ({
+              sheetName: thread.sheetName,
+              address: thread.address,
+              comments: thread.comments.map((comment) => ({
+                body: comment.body,
+                ...(comment.authorDisplayName !== undefined ? { authorDisplayName: comment.authorDisplayName } : {}),
+              })),
+            }))
+            .toSorted((left, right) => `${left.sheetName}:${left.address}`.localeCompare(`${right.sheetName}:${right.address}`)),
         },
       })),
   }

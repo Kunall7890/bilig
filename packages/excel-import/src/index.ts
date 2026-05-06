@@ -19,6 +19,7 @@ import type {
   WorkbookMetadataSnapshot,
   WorkbookSnapshot,
 } from '@bilig/protocol'
+import { addExportCommentsToWorksheet, readImportedSheetComments } from './xlsx-comments.js'
 import { buildExportDefinedNames, readImportedDefinedNames } from './xlsx-defined-names.js'
 
 const PREVIEW_ROW_LIMIT = 8
@@ -522,6 +523,9 @@ function inferExportWorksheetRange(sheet: WorkbookSnapshot['sheets'][number]): s
     bounds = updateWorksheetBounds(bounds, merge.startAddress)
     bounds = updateWorksheetBounds(bounds, merge.endAddress)
   }
+  for (const thread of sheet.metadata?.commentThreads ?? []) {
+    bounds = updateWorksheetBounds(bounds, thread.address)
+  }
   for (const row of sheet.metadata?.rows ?? []) {
     bounds = updateWorksheetBoundsForAxis(bounds, 'row', row.index)
   }
@@ -622,6 +626,7 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
     if (merges) {
       worksheet['!merges'] = merges
     }
+    addExportCommentsToWorksheet(worksheet, sheet.metadata?.commentThreads)
 
     const exportSheetName = normalizeExportSheetName(sheet.name, sheet.order, usedNames)
     exportSheetNamesByOriginalName.set(sheet.name, exportSheetName)
@@ -662,18 +667,6 @@ function addWorkbookWarnings(workbook: XLSX.WorkBook, warnings: string[], ignore
   }
 }
 
-function addSheetWarnings(sheet: XLSX.WorkSheet, warnings: string[], ignoredComments: { seen: boolean }): void {
-  Object.values(sheet).forEach((value) => {
-    if (!isRecord(value)) {
-      return
-    }
-    if (!ignoredComments.seen && Array.isArray(value['c']) && value['c'].length > 0) {
-      ignoredComments.seen = true
-      warnings.push('Cell comments were ignored during XLSX import.')
-    }
-  })
-}
-
 export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): ImportedWorkbook {
   const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)
   const workbook = XLSX.read(data, {
@@ -690,7 +683,7 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
   const importedDefinedNames = readImportedDefinedNames(workbook)
   addWorkbookWarnings(workbook, warnings, importedDefinedNames.ignoredCount)
 
-  const ignoredComments = { seen: false }
+  let ignoredCommentsSeen = false
   const styleCatalog = new Map<string, CellStyleRecord>()
   const previewSheets: ImportedWorkbookSheetPreview[] = []
   const sheets = workbook.SheetNames.map((sheetName, order) => {
@@ -713,7 +706,11 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
       }
     }
 
-    addSheetWarnings(sheet, warnings, ignoredComments)
+    const importedComments = readImportedSheetComments(sheetName, sheet)
+    if (importedComments.ignoredCount > 0 && !ignoredCommentsSeen) {
+      ignoredCommentsSeen = true
+      warnings.push('Some cell comments were ignored during XLSX import.')
+    }
     const range = sheet['!ref'] ? XLSX.utils.decode_range(sheet['!ref']) : null
     const cells: WorkbookSnapshot['sheets'][number]['cells'] = []
     const styleRanges: SheetStyleRangeSnapshot[] = []
@@ -777,12 +774,13 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
     const columns = buildColumnEntries(sheet['!cols'])
     const merges = buildMergeEntries(sheetName, sheet['!merges'])
     const metadata =
-      rows || columns || styleRanges.length > 0 || merges
+      rows || columns || styleRanges.length > 0 || merges || importedComments.commentThreads
         ? {
             ...(rows ? { rows } : {}),
             ...(columns ? { columns } : {}),
             ...(styleRanges.length > 0 ? { styleRanges } : {}),
             ...(merges ? { merges } : {}),
+            ...(importedComments.commentThreads ? { commentThreads: importedComments.commentThreads } : {}),
           }
         : undefined
 

@@ -41,6 +41,7 @@ describe('import/export fidelity scorecard', () => {
       'xlsx.formulas',
       'xlsx.numberFormats',
       'xlsx.definedNames',
+      'xlsx.comments',
       'xlsx.rowColumnDimensions',
       'xlsx.merges',
       'xlsx.multiSheet',
@@ -48,7 +49,6 @@ describe('import/export fidelity scorecard', () => {
     ])
     expect(scorecard.summary.unsupportedFeatures).toEqual([
       'xlsx.macros.execution',
-      'xlsx.comments.roundtrip',
       'xlsx.charts.roundtrip',
       'xlsx.pivots.roundtrip',
       'xlsx.styles.export',
