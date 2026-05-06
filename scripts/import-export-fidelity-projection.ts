@@ -4,6 +4,7 @@ import type {
   WorkbookPivotSnapshot,
   WorkbookPivotValueSnapshot,
   WorkbookRangeProtectionSnapshot,
+  WorkbookSortSnapshot,
   WorkbookSnapshot,
   WorkbookTableSnapshot,
 } from '../packages/protocol/src/types.js'
@@ -95,6 +96,10 @@ function projectRangeProtectionSemantics(protection: WorkbookRangeProtectionSnap
   return structuredClone(protection)
 }
 
+function projectSortSemantics(sort: WorkbookSortSnapshot): WorkbookSortSnapshot {
+  return structuredClone(sort)
+}
+
 export function projectSupportedSnapshotSemantics(snapshot: WorkbookSnapshot) {
   const stylesById = new Map((snapshot.workbook.metadata?.styles ?? []).map((style) => [style.id, style]))
   const portableStyle = (styleId: string) => {
@@ -163,6 +168,14 @@ export function projectSupportedSnapshotSemantics(snapshot: WorkbookSnapshot) {
       .toSorted((left, right) =>
         `${left.sheetName}:${left.startAddress}:${left.endAddress}`.localeCompare(
           `${right.sheetName}:${right.startAddress}:${right.endAddress}`,
+        ),
+      ),
+    sorts: snapshot.sheets
+      .flatMap((sheet) => sheet.metadata?.sorts ?? [])
+      .map(projectSortSemantics)
+      .toSorted((left, right) =>
+        `${left.range.sheetName}:${left.range.startAddress}:${left.range.endAddress}`.localeCompare(
+          `${right.range.sheetName}:${right.range.startAddress}:${right.range.endAddress}`,
         ),
       ),
     sheetProtections: snapshot.sheets

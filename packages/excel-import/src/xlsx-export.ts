@@ -10,6 +10,7 @@ import { addExportFreezePanesToXlsxBytes } from './xlsx-freeze-panes.js'
 import { addExportPivotsToXlsxBytes } from './xlsx-pivots.js'
 import { addExportProtectedRangesToXlsxBytes } from './xlsx-protected-ranges.js'
 import { addExportSheetProtectionsToXlsxBytes } from './xlsx-sheet-protection.js'
+import { addExportSortsToXlsxBytes } from './xlsx-sorts.js'
 import { addExportStylesToWorksheet } from './xlsx-styles.js'
 import { addExportTablesToXlsxBytes } from './xlsx-tables.js'
 import { addExportDataValidationsToXlsxBytes } from './xlsx-validations.js'
@@ -237,9 +238,12 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
     addExportPivotsToXlsxBytes(
       addExportTablesToXlsxBytes(
         addExportDataValidationsToXlsxBytes(
-          addExportFiltersToXlsxBytes(
-            addExportProtectedRangesToXlsxBytes(
-              addExportSheetProtectionsToXlsxBytes(addExportFreezePanesToXlsxBytes(bytes, snapshot), snapshot),
+          addExportSortsToXlsxBytes(
+            addExportFiltersToXlsxBytes(
+              addExportProtectedRangesToXlsxBytes(
+                addExportSheetProtectionsToXlsxBytes(addExportFreezePanesToXlsxBytes(bytes, snapshot), snapshot),
+                snapshot,
+              ),
               snapshot,
             ),
             snapshot,

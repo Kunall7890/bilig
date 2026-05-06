@@ -8,6 +8,7 @@ import type {
   WorkbookPivotSnapshot,
   WorkbookPivotValueSnapshot,
   WorkbookRangeProtectionSnapshot,
+  WorkbookSortSnapshot,
   WorkbookSnapshot,
   WorkbookTableSnapshot,
 } from '@bilig/protocol'
@@ -450,6 +451,12 @@ describe('excel import', () => {
               },
             ],
             filters: [{ sheetName: 'Summary', startAddress: 'A1', endAddress: 'B3' }],
+            sorts: [
+              {
+                range: { sheetName: 'Summary', startAddress: 'A1', endAddress: 'B3' },
+                keys: [{ keyAddress: 'B1', direction: 'desc' }],
+              },
+            ],
             validations: [
               {
                 range: { sheetName: 'Summary', startAddress: 'C2', endAddress: 'C4' },
@@ -552,6 +559,8 @@ describe('excel import', () => {
       '<protectedRange name="protect-summary-inputs" sqref="A2:B3"/>',
     )
     expect(strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())).toContain('<autoFilter ref="A1:B3"/>')
+    expect(strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())).toContain('<sortState ref="A1:B3">')
+    expect(strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())).toContain('<sortCondition descending="1" ref="B1:B3"/>')
     expect(projectSupportedSnapshotSemantics(imported.snapshot)).toEqual(projectSupportedSnapshotSemantics(snapshot))
   })
 })
@@ -643,6 +652,10 @@ function projectRangeProtectionSemantics(protection: WorkbookRangeProtectionSnap
   return structuredClone(protection)
 }
 
+function projectSortSemantics(sort: WorkbookSortSnapshot): WorkbookSortSnapshot {
+  return structuredClone(sort)
+}
+
 function projectSupportedSnapshotSemantics(snapshot: WorkbookSnapshot) {
   const stylesById = new Map((snapshot.workbook.metadata?.styles ?? []).map((style) => [style.id, style]))
   const portableStyle = (styleId: string) => {
@@ -706,6 +719,13 @@ function projectSupportedSnapshotSemantics(snapshot: WorkbookSnapshot) {
             .toSorted((left, right) =>
               `${left.sheetName}:${left.startAddress}:${left.endAddress}`.localeCompare(
                 `${right.sheetName}:${right.startAddress}:${right.endAddress}`,
+              ),
+            ),
+          sorts: (sheet.metadata?.sorts ?? [])
+            .map(projectSortSemantics)
+            .toSorted((left, right) =>
+              `${left.range.sheetName}:${left.range.startAddress}:${left.range.endAddress}`.localeCompare(
+                `${right.range.sheetName}:${right.range.startAddress}:${right.range.endAddress}`,
               ),
             ),
           validations: (sheet.metadata?.validations ?? [])

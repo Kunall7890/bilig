@@ -53,6 +53,7 @@ const requiredCaseIds = [
   'xlsx-snapshot-roundtrip-dimensions-merges',
   'xlsx-snapshot-roundtrip-freeze-panes',
   'xlsx-snapshot-roundtrip-filters',
+  'xlsx-snapshot-roundtrip-sorts',
   'xlsx-snapshot-roundtrip-sheet-protection',
   'xlsx-snapshot-roundtrip-protected-ranges',
   'xlsx-snapshot-roundtrip-data-validations',
@@ -80,6 +81,7 @@ const coveredFeatureOrder = [
   'xlsx.merges',
   'xlsx.freezePanes.roundtrip',
   'xlsx.filters.roundtrip',
+  'xlsx.sorts.roundtrip',
   'xlsx.sheetProtection.roundtrip',
   'xlsx.protectedRanges.roundtrip',
   'xlsx.dataValidations.roundtrip',
@@ -118,6 +120,7 @@ export async function buildImportExportFidelityScorecard(generatedAt = new Date(
     runXlsxSnapshotRoundTripDimensionsCase(),
     runXlsxSnapshotRoundTripFreezePanesCase(),
     runXlsxSnapshotRoundTripFiltersCase(),
+    runXlsxSnapshotRoundTripSortsCase(),
     runXlsxSnapshotRoundTripSheetProtectionCase(),
     runXlsxSnapshotRoundTripProtectedRangesCase(),
     runXlsxSnapshotRoundTripDataValidationsCase(),
@@ -147,6 +150,7 @@ export async function buildImportExportFidelityScorecard(generatedAt = new Date(
         requiredCase(cases, 'xlsx-snapshot-roundtrip-dimensions-merges').passed &&
         requiredCase(cases, 'xlsx-snapshot-roundtrip-freeze-panes').passed &&
         requiredCase(cases, 'xlsx-snapshot-roundtrip-filters').passed &&
+        requiredCase(cases, 'xlsx-snapshot-roundtrip-sorts').passed &&
         requiredCase(cases, 'xlsx-snapshot-roundtrip-sheet-protection').passed &&
         requiredCase(cases, 'xlsx-snapshot-roundtrip-protected-ranges').passed &&
         requiredCase(cases, 'xlsx-snapshot-roundtrip-data-validations').passed &&
@@ -293,6 +297,20 @@ function runXlsxSnapshotRoundTripFiltersCase(): ImportExportFidelityCase {
     passed,
     coveredFeatures: ['xlsx.filters.roundtrip'],
     evidence: 'WorkbookSnapshot exported to XLSX imports back with equivalent sheet filter ranges backed by native XLSX autoFilter nodes.',
+  })
+}
+
+function runXlsxSnapshotRoundTripSortsCase(): ImportExportFidelityCase {
+  const expected = projectSupportedSnapshotSemantics(createFidelitySnapshot())
+  const actual = projectSupportedSnapshotSemantics(importXlsx(exportXlsx(createFidelitySnapshot()), 'fidelity.xlsx').snapshot)
+  const passed = JSON.stringify(actual.sorts) === JSON.stringify(expected.sorts)
+  return fidelityCase({
+    id: 'xlsx-snapshot-roundtrip-sorts',
+    format: 'xlsx',
+    direction: 'export-import',
+    passed,
+    coveredFeatures: ['xlsx.sorts.roundtrip'],
+    evidence: 'WorkbookSnapshot exported to XLSX imports back with equivalent sort metadata backed by native XLSX sortState nodes.',
   })
 }
 
@@ -517,6 +535,12 @@ function createFidelitySnapshot(): WorkbookSnapshot {
             },
           ],
           filters: [{ sheetName: 'Summary', startAddress: 'A1', endAddress: 'B3' }],
+          sorts: [
+            {
+              range: { sheetName: 'Summary', startAddress: 'A1', endAddress: 'B3' },
+              keys: [{ keyAddress: 'B1', direction: 'desc' }],
+            },
+          ],
           validations: [
             {
               range: { sheetName: 'Summary', startAddress: 'C2', endAddress: 'C4' },
