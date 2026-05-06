@@ -15,10 +15,16 @@ import { applyWorkbookAgentCommandBundleWithUndoCapture } from '../apps/bilig/sr
 import type { CellSnapshot, WorkbookSnapshot } from '../packages/protocol/src/types.js'
 import type { WorkbookChangeUndoBundle } from '../packages/zero-sync/src/workbook-events.js'
 import { deriveWorkbookActorHistoryState } from '../packages/zero-sync/src/workbook-history-state.js'
+import {
+  externalAuditabilityComparisonArtifactRepoPath,
+  externalAuditabilityComparisonCoveredControls,
+  parseExternalAuditabilityComparisonArtifact,
+  validateExternalAuditabilityComparisonArtifact,
+} from './auditability-external-sheets-excel-comparison.ts'
 
 export interface AuditabilityControl {
   readonly id: string
-  readonly category: 'preview-apply' | 'undo-revert' | 'authoritative-apply' | 'history-state' | 'headed-browser'
+  readonly category: 'preview-apply' | 'undo-revert' | 'authoritative-apply' | 'history-state' | 'headed-browser' | 'external-comparison'
   readonly required: boolean
   readonly passed: boolean
   readonly coveredControls: string[]
@@ -37,6 +43,7 @@ export interface AuditabilityScorecard {
     readonly authoritativeApplyImplementation: 'apps/bilig/src/zero/service.ts'
     readonly historyImplementation: 'packages/zero-sync/src/workbook-history-state.ts'
     readonly headedBrowserAuditabilityTestFile: 'e2e/tests/web-shell-remote-sync.pw.ts'
+    readonly externalAuditabilityComparisonArtifact: 'packages/benchmarks/baselines/auditability-external-sheets-excel-comparison.json'
   }
   readonly summary: {
     readonly allRequiredControlsPassed: boolean
@@ -47,8 +54,8 @@ export interface AuditabilityScorecard {
     readonly headedBrowserRevertFlowPassed: boolean
     readonly coveredControls: string[]
     readonly uncoveredControls: string[]
-    readonly externalGoogleSheetsEvidence: 'not-captured'
-    readonly externalMicrosoftExcelEvidence: 'not-captured'
+    readonly externalGoogleSheetsEvidence: 'official-docs-comparison-artifact'
+    readonly externalMicrosoftExcelEvidence: 'official-docs-comparison-artifact'
   }
   readonly controls: AuditabilityControl[]
 }
@@ -64,12 +71,14 @@ interface AgentAuditabilityScenario {
 
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
 const outputPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'auditability-scorecard.json')
+const externalAuditabilityComparisonArtifactPath = join(rootDir, externalAuditabilityComparisonArtifactRepoPath)
 const requiredControlIds = [
   'agent-preview-apply-parity',
   'agent-apply-undo-roundtrip',
   'authoritative-agent-apply-fails-closed',
   'workbook-history-revert-redo-state',
   'headed-browser-change-review-revert-flow',
+  'external-sheets-excel-auditability-comparison',
 ] as const
 const coveredControlOrder = [
   'agent.previewDiffParity',
@@ -80,8 +89,9 @@ const coveredControlOrder = [
   'history.revertRedoStack',
   'history.revertLinkage',
   'headedBrowser.previewApplyRevertFlow',
+  ...externalAuditabilityComparisonCoveredControls,
 ] as const
-const uncoveredControls = ['externalSheetsExcelAuditabilityComparison'] as const
+const uncoveredControls: readonly string[] = []
 const headedBrowserAuditabilityTestFile = 'e2e/tests/web-shell-remote-sync.pw.ts'
 
 async function main(): Promise<void> {
@@ -110,6 +120,7 @@ export async function buildAuditabilityScorecard(generatedAt = new Date().toISOS
     buildAuthoritativeAgentApplyGuardControl(),
     buildWorkbookHistoryRevertRedoControl(),
     buildHeadedBrowserChangeReviewRevertFlowControl(),
+    buildExternalSheetsExcelAuditabilityComparisonControl(),
   ]
   const coveredControlSet = new Set(controls.flatMap((control) => control.coveredControls))
   const coveredControls = coveredControlOrder.filter((control) => coveredControlSet.has(control))
@@ -125,6 +136,7 @@ export async function buildAuditabilityScorecard(generatedAt = new Date().toISOS
       authoritativeApplyImplementation: 'apps/bilig/src/zero/service.ts',
       historyImplementation: 'packages/zero-sync/src/workbook-history-state.ts',
       headedBrowserAuditabilityTestFile,
+      externalAuditabilityComparisonArtifact: externalAuditabilityComparisonArtifactRepoPath,
     },
     summary: {
       allRequiredControlsPassed: controls.filter((control) => control.required).every((control) => control.passed),
@@ -135,8 +147,8 @@ export async function buildAuditabilityScorecard(generatedAt = new Date().toISOS
       headedBrowserRevertFlowPassed: requiredControl(controls, 'headed-browser-change-review-revert-flow').passed,
       coveredControls,
       uncoveredControls: [...uncoveredControls],
-      externalGoogleSheetsEvidence: 'not-captured',
-      externalMicrosoftExcelEvidence: 'not-captured',
+      externalGoogleSheetsEvidence: 'official-docs-comparison-artifact',
+      externalMicrosoftExcelEvidence: 'official-docs-comparison-artifact',
     },
     controls,
   }
@@ -298,6 +310,27 @@ function buildHeadedBrowserChangeReviewRevertFlowControl(): AuditabilityControl 
     coveredControls: ['headedBrowser.previewApplyRevertFlow'],
     evidence:
       'Validated the headed Playwright change-review contract that applies a workbook edit, previews it in the changes pane, reverts it, and verifies both workbook state and revision linkage.',
+    findings,
+  })
+}
+
+function buildExternalSheetsExcelAuditabilityComparisonControl(): AuditabilityControl {
+  const artifact = parseExternalAuditabilityComparisonArtifact(
+    JSON.parse(readFileSync(externalAuditabilityComparisonArtifactPath, 'utf8')) as unknown,
+  )
+  const findings = validateExternalAuditabilityComparisonArtifact(artifact)
+  const googleSourceCount = artifact.officialSources.filter((source) => source.vendor === 'google-sheets').length
+  const microsoftSourceCount = artifact.officialSources.filter((source) => source.vendor === 'microsoft-excel').length
+
+  return auditabilityControl({
+    id: 'external-sheets-excel-auditability-comparison',
+    category: 'external-comparison',
+    passed: findings.length === 0,
+    coveredControls: externalAuditabilityComparisonCoveredControls,
+    evidence:
+      `Validated ${externalAuditabilityComparisonArtifactRepoPath} from ${artifact.sourceBasis}: ` +
+      `${String(artifact.dimensions.length)} required comparison dimensions cite ${String(googleSourceCount)} official Google Sheets/Workspace sources ` +
+      `and ${String(microsoftSourceCount)} official Microsoft Excel/Microsoft 365 sources.`,
     findings,
   })
 }
@@ -523,6 +556,11 @@ export function parseAuditabilityScorecard(value: unknown): AuditabilityScorecar
       authoritativeApplyImplementation: literalField(source, 'authoritativeApplyImplementation', 'apps/bilig/src/zero/service.ts'),
       historyImplementation: literalField(source, 'historyImplementation', 'packages/zero-sync/src/workbook-history-state.ts'),
       headedBrowserAuditabilityTestFile: literalField(source, 'headedBrowserAuditabilityTestFile', headedBrowserAuditabilityTestFile),
+      externalAuditabilityComparisonArtifact: literalField(
+        source,
+        'externalAuditabilityComparisonArtifact',
+        'packages/benchmarks/baselines/auditability-external-sheets-excel-comparison.json',
+      ),
     },
     summary: {
       allRequiredControlsPassed: booleanField(summary, 'allRequiredControlsPassed', 'auditability allRequiredControlsPassed'),
@@ -533,8 +571,8 @@ export function parseAuditabilityScorecard(value: unknown): AuditabilityScorecar
       headedBrowserRevertFlowPassed: booleanField(summary, 'headedBrowserRevertFlowPassed', 'auditability headedBrowserRevertFlowPassed'),
       coveredControls: stringArrayField(summary, 'coveredControls', 'auditability coveredControls'),
       uncoveredControls: stringArrayField(summary, 'uncoveredControls', 'auditability uncoveredControls'),
-      externalGoogleSheetsEvidence: literalField(summary, 'externalGoogleSheetsEvidence', 'not-captured'),
-      externalMicrosoftExcelEvidence: literalField(summary, 'externalMicrosoftExcelEvidence', 'not-captured'),
+      externalGoogleSheetsEvidence: literalField(summary, 'externalGoogleSheetsEvidence', 'official-docs-comparison-artifact'),
+      externalMicrosoftExcelEvidence: literalField(summary, 'externalMicrosoftExcelEvidence', 'official-docs-comparison-artifact'),
     },
     controls: arrayField(record, 'controls', 'auditability controls').map(parseAuditabilityControl),
   }
@@ -584,7 +622,8 @@ function parseAuditabilityCategory(value: string): AuditabilityControl['category
     value === 'undo-revert' ||
     value === 'authoritative-apply' ||
     value === 'history-state' ||
-    value === 'headed-browser'
+    value === 'headed-browser' ||
+    value === 'external-comparison'
   ) {
     return value
   }

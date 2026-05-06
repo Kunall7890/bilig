@@ -17,18 +17,30 @@ describe('auditability scorecard', () => {
         authoritativeApplyGuardPassed: true,
         historyRevertRedoPassed: true,
         headedBrowserRevertFlowPassed: true,
-        externalGoogleSheetsEvidence: 'not-captured',
-        externalMicrosoftExcelEvidence: 'not-captured',
+        externalGoogleSheetsEvidence: 'official-docs-comparison-artifact',
+        externalMicrosoftExcelEvidence: 'official-docs-comparison-artifact',
       },
     })
+    expect(scorecard.source.externalAuditabilityComparisonArtifact).toBe(
+      'packages/benchmarks/baselines/auditability-external-sheets-excel-comparison.json',
+    )
     expect(scorecard.controls.map((control) => control.id)).toEqual([
       'agent-preview-apply-parity',
       'agent-apply-undo-roundtrip',
       'authoritative-agent-apply-fails-closed',
       'workbook-history-revert-redo-state',
       'headed-browser-change-review-revert-flow',
+      'external-sheets-excel-auditability-comparison',
     ])
     expect(scorecard.controls.every((control) => control.required && control.passed)).toBe(true)
+    expect(scorecard.controls.find((control) => control.id === 'external-sheets-excel-auditability-comparison')).toMatchObject({
+      category: 'external-comparison',
+      coveredControls: [
+        'external.googleSheetsAuditabilityDocs',
+        'external.microsoftExcelAuditabilityDocs',
+        'external.sheetsExcelAuditabilityComparison',
+      ],
+    })
     expect(scorecard.summary.coveredControls).toEqual([
       'agent.previewDiffParity',
       'agent.authoritativePreviewMismatchFailsClosed',
@@ -38,8 +50,11 @@ describe('auditability scorecard', () => {
       'history.revertRedoStack',
       'history.revertLinkage',
       'headedBrowser.previewApplyRevertFlow',
+      'external.googleSheetsAuditabilityDocs',
+      'external.microsoftExcelAuditabilityDocs',
+      'external.sheetsExcelAuditabilityComparison',
     ])
-    expect(scorecard.summary.uncoveredControls).toEqual(['externalSheetsExcelAuditabilityComparison'])
+    expect(scorecard.summary.uncoveredControls).toEqual([])
   })
 
   it('rejects stale artifacts missing required auditability controls', async () => {

@@ -72,9 +72,10 @@ describe('bilig dominance scorecard', () => {
       status: 'partial-repo-evidence',
       evidenceArtifacts: expect.arrayContaining([
         'packages/benchmarks/baselines/auditability-scorecard.json',
+        'packages/benchmarks/baselines/auditability-external-sheets-excel-comparison.json',
         'e2e/tests/web-shell-remote-sync.pw.ts',
       ]),
-      blockers: ['no direct incumbent auditability comparison artifact exists in the repo'],
+      blockers: [],
     })
     expect(scorecard.categories.find((category) => category.id === 'automation-api-extensibility')).toMatchObject({
       status: 'partial-repo-evidence',
@@ -292,6 +293,7 @@ function buildFixtureInput(): BuildScorecardInput {
         authoritativeApplyImplementation: 'apps/bilig/src/zero/service.ts',
         historyImplementation: 'packages/zero-sync/src/workbook-history-state.ts',
         headedBrowserAuditabilityTestFile: 'e2e/tests/web-shell-remote-sync.pw.ts',
+        externalAuditabilityComparisonArtifact: 'packages/benchmarks/baselines/auditability-external-sheets-excel-comparison.json',
       },
       summary: {
         allRequiredControlsPassed: true,
@@ -300,10 +302,17 @@ function buildFixtureInput(): BuildScorecardInput {
         authoritativeApplyGuardPassed: true,
         historyRevertRedoPassed: true,
         headedBrowserRevertFlowPassed: true,
-        coveredControls: ['agent.previewDiffParity', 'agent.applyCapturesUndoBundle', 'headedBrowser.previewApplyRevertFlow'],
-        uncoveredControls: ['externalSheetsExcelAuditabilityComparison'],
-        externalGoogleSheetsEvidence: 'not-captured',
-        externalMicrosoftExcelEvidence: 'not-captured',
+        coveredControls: [
+          'agent.previewDiffParity',
+          'agent.applyCapturesUndoBundle',
+          'headedBrowser.previewApplyRevertFlow',
+          'external.googleSheetsAuditabilityDocs',
+          'external.microsoftExcelAuditabilityDocs',
+          'external.sheetsExcelAuditabilityComparison',
+        ],
+        uncoveredControls: [],
+        externalGoogleSheetsEvidence: 'official-docs-comparison-artifact',
+        externalMicrosoftExcelEvidence: 'official-docs-comparison-artifact',
       },
       controls: [
         {

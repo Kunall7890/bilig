@@ -53,10 +53,13 @@
       "agent.undoBundleRestoresSnapshot",
       "history.revertRedoStack",
       "history.revertLinkage",
-      "headedBrowser.previewApplyRevertFlow"
+      "headedBrowser.previewApplyRevertFlow",
+      "external.googleSheetsAuditabilityDocs",
+      "external.microsoftExcelAuditabilityDocs",
+      "external.sheetsExcelAuditabilityComparison"
     ],
     "auditabilityPosturePassed": true,
-    "auditabilityUncoveredControls": ["externalSheetsExcelAuditabilityComparison"],
+    "auditabilityUncoveredControls": [],
     "automationCoveredControls": [
       "agent.semanticBundleValidation",
       "agent.previewApplyExecution",
@@ -385,13 +388,16 @@
       "status": "partial-repo-evidence",
       "currentEvidence": [
         "generated auditability scorecard passes required controls: true",
-        "covered auditability controls: agent.previewDiffParity, agent.authoritativePreviewMismatchFailsClosed, agent.baseRevisionStaleApplyFailsClosed, agent.applyCapturesUndoBundle, agent.undoBundleRestoresSnapshot, history.revertRedoStack, history.revertLinkage, headedBrowser.previewApplyRevertFlow",
-        "uncovered auditability controls are explicitly disclosed: externalSheetsExcelAuditabilityComparison",
+        "covered auditability controls: agent.previewDiffParity, agent.authoritativePreviewMismatchFailsClosed, agent.baseRevisionStaleApplyFailsClosed, agent.applyCapturesUndoBundle, agent.undoBundleRestoresSnapshot, history.revertRedoStack, history.revertLinkage, headedBrowser.previewApplyRevertFlow, external.googleSheetsAuditabilityDocs, external.microsoftExcelAuditabilityDocs, external.sheetsExcelAuditabilityComparison",
+        "uncovered auditability controls are explicitly disclosed: none",
+        "external Google Sheets auditability evidence: official-docs-comparison-artifact",
+        "external Microsoft Excel auditability evidence: official-docs-comparison-artifact",
         "change bundles, versions, revertable changes, and agent preview/apply rails are documented",
         "workbook changes and mutation journal tests exist"
       ],
       "evidenceArtifacts": [
         "packages/benchmarks/baselines/auditability-scorecard.json",
+        "packages/benchmarks/baselines/auditability-external-sheets-excel-comparison.json",
         "e2e/tests/web-shell-remote-sync.pw.ts",
         "docs/05-06-next-phase.md",
         "apps/web/src/__tests__/workbook-changes.test.tsx",
@@ -404,7 +410,7 @@
         "pnpm test:correctness:browser",
         "pnpm test:correctness:server"
       ],
-      "blockers": ["no direct incumbent auditability comparison artifact exists in the repo"]
+      "blockers": []
     },
     {
       "id": "reliability",

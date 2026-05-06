@@ -1,0 +1,217 @@
+{
+  "schemaVersion": 1,
+  "suite": "external-sheets-excel-auditability-comparison",
+  "generatedAt": "2026-05-06T14:15:00.000Z",
+  "sourceBasis": "official-public-docs-reviewed-2026-05-06",
+  "officialSources": [
+    {
+      "id": "google-docs-version-history",
+      "vendor": "google-sheets",
+      "title": "Find out what's changed in a file",
+      "url": "https://support.google.com/docs/answer/190843?hl=en-uk",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Google documents version history for Docs, Sheets, Slides and Vids.",
+        "Google documents named versions, previous-version restoration, cell edit history, and current-editor color attribution."
+      ]
+    },
+    {
+      "id": "google-sheets-collaborate",
+      "vendor": "google-sheets",
+      "title": "Collaborate in Sheets",
+      "url": "https://support.google.com/docs/answer/9331169?hl=en",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Google documents viewing and restoring older versions in Sheets.",
+        "Google documents comments, task assignment, Activity dashboard access, and Sheets email notifications."
+      ]
+    },
+    {
+      "id": "google-sheets-manage-data",
+      "vendor": "google-sheets",
+      "title": "Manage data in Sheets",
+      "url": "https://support.google.com/docs/answer/9331279?hl=en",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Google documents version history access in Sheets from the Manage data help page.",
+        "Google documents the Activity stream as a way to see changes in Sheets."
+      ]
+    },
+    {
+      "id": "google-docs-activity-dashboard",
+      "vendor": "google-sheets",
+      "title": "View the activity on your Google Docs, Sheets and Slides",
+      "url": "https://support.google.com/docs/answer/7378739/view-the-activity-on-your-google-docs-sheets-and-slides-computer?co=GENIE.Platform%3DDesktop&hl=en-GB",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Google documents an Activity dashboard for Docs, Sheets and Slides.",
+        "Google documents viewer and activity-related controls that can be affected by account or admin settings."
+      ]
+    },
+    {
+      "id": "microsoft-excel-show-changes",
+      "vendor": "microsoft-excel",
+      "title": "Show changes that were made in a workbook",
+      "url": "https://support.microsoft.com/en-us/office/show-changes-that-were-made-in-a-workbook-978ceea7-bbf2-4336-bca7-22e7cc9892e8",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Microsoft documents Excel Show Changes for who changed what, where and when, with prior cell values.",
+        "Microsoft documents that Show Changes can filter by sheet, range, cell, and bulk edits."
+      ]
+    },
+    {
+      "id": "microsoft-office-version-history",
+      "vendor": "microsoft-excel",
+      "title": "View previous versions of Office files",
+      "url": "https://support.microsoft.com/en-us/office/view-previous-versions-of-office-files-5c1e076f-a9c9-41b8-8ace-f77b9642e2c2",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Microsoft documents previous-version browsing for Office files stored in OneDrive or SharePoint.",
+        "Microsoft documents version comparison and restoration."
+      ]
+    },
+    {
+      "id": "microsoft-excel-comments",
+      "vendor": "microsoft-excel",
+      "title": "Insert comments and notes in Excel",
+      "url": "https://support.microsoft.com/en-us/office/insert-comments-and-notes-in-excel-bdcc9f5d-38e2-45b3-9a03-67b86d3d04d7",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Microsoft documents threaded comments and notes in Excel.",
+        "Microsoft documents mentions in comments to send email notifications and assign tasks."
+      ]
+    },
+    {
+      "id": "microsoft-excel-legacy-track-changes",
+      "vendor": "microsoft-excel",
+      "title": "Track changes in a shared workbook",
+      "url": "https://support.microsoft.com/en-us/office/track-changes-in-a-shared-workbook-22aea671-cac7-4fa3-845d-eeb23725bd15",
+      "retrievedAt": "2026-05-06",
+      "evidence": [
+        "Microsoft documents legacy shared-workbook change tracking and change-history worksheets.",
+        "Microsoft documents that many Excel features are unsupported in shared workbooks."
+      ]
+    }
+  ],
+  "summary": {
+    "comparisonCaptured": true,
+    "requiredDimensionsPassed": true,
+    "coveredControls": [
+      "external.googleSheetsAuditabilityDocs",
+      "external.microsoftExcelAuditabilityDocs",
+      "external.sheetsExcelAuditabilityComparison"
+    ],
+    "limitations": [
+      "This artifact captures current official public documentation, not a live audit export from Google Sheets or Microsoft Excel tenants.",
+      "The comparison proves direct external auditability evidence exists; it does not claim bilig is 10x better across auditability or every objective category."
+    ]
+  },
+  "dimensions": [
+    {
+      "id": "version-and-cell-change-history",
+      "title": "Version And Cell Change History",
+      "required": true,
+      "passed": true,
+      "sourceIds": [
+        "google-docs-version-history",
+        "google-sheets-manage-data",
+        "microsoft-excel-show-changes",
+        "microsoft-office-version-history"
+      ],
+      "biligEvidence": [
+        "The auditability scorecard exercises deterministic workbook history derivation across own changes, collaborator changes, revert linkage, and redo linkage.",
+        "The reliability scorecard separately proves mutation-journal and authoritative replay behavior for pending, submitted, failed, and rebased operations."
+      ],
+      "googleSheetsEvidence": [
+        "Google documents version history, named versions, restoration, and cell edit history.",
+        "Google documents Activity stream access from the Sheets Manage data help surface."
+      ],
+      "microsoftExcelEvidence": [
+        "Microsoft documents Excel Show Changes with actor, location, time, and prior value details.",
+        "Microsoft documents previous Office file versions for OneDrive or SharePoint files."
+      ],
+      "comparisonResult": "bilig has executable history-state and mutation-journal controls; Sheets and Excel expose documented version and cell-change history surfaces for supported storage modes.",
+      "residualLimitations": [
+        "bilig still needs a user-facing exportable audit log artifact before claiming product-wide auditability dominance.",
+        "The external incumbent comparison is documentation-based and does not test retention under tenant-specific policy."
+      ]
+    },
+    {
+      "id": "review-apply-revert-workflows",
+      "title": "Review Apply Revert Workflows",
+      "required": true,
+      "passed": true,
+      "sourceIds": [
+        "google-docs-version-history",
+        "google-sheets-collaborate",
+        "microsoft-excel-show-changes",
+        "microsoft-office-version-history"
+      ],
+      "biligEvidence": [
+        "The auditability scorecard executes workbook-agent preview parity, authoritative preview mismatch fails-closed behavior, and captured undo bundles.",
+        "The headed-browser auditability control verifies a remote-sync change review and revert flow exists in the UI test suite."
+      ],
+      "googleSheetsEvidence": [
+        "Google documents previous-version restoration for Sheets.",
+        "Google documents named versions and collaboration surfaces including comments and notifications."
+      ],
+      "microsoftExcelEvidence": [
+        "Microsoft documents prior-version restore for Office files.",
+        "Microsoft documents Excel Show Changes as a review surface for changed workbook cells."
+      ],
+      "comparisonResult": "bilig's AI-agent workflow has executable preview/apply/revert gates; Sheets and Excel focus on version restoration and change review rather than agent-command preview parity.",
+      "residualLimitations": [
+        "bilig needs broader headed-browser evidence across more workbook commands before this becomes a blanket auditability win.",
+        "Google and Microsoft version restore can cover whole-file revisions that bilig's current scorecard does not fully compare."
+      ]
+    },
+    {
+      "id": "comment-task-accountability",
+      "title": "Comment Task Accountability",
+      "required": true,
+      "passed": true,
+      "sourceIds": ["google-sheets-collaborate", "google-docs-activity-dashboard", "microsoft-excel-comments"],
+      "biligEvidence": [
+        "bilig's checked auditability evidence covers workbook-agent command provenance and revertable mutation history.",
+        "bilig does not yet have a generated direct comparison for comment threads, task assignment, or viewer activity."
+      ],
+      "googleSheetsEvidence": [
+        "Google documents comments, task assignment, email notifications, and an Activity dashboard for Sheets.",
+        "Google documents that activity visibility can depend on account and admin settings."
+      ],
+      "microsoftExcelEvidence": [
+        "Microsoft documents threaded comments, notes, mentions, email notifications, and task assignment in Excel.",
+        "Microsoft documents comment surfaces separately from Show Changes and version history."
+      ],
+      "comparisonResult": "bilig has strong command-level audit rails, while Sheets and Excel have broader documented comment/task accountability surfaces.",
+      "residualLimitations": [
+        "This dimension remains a product gap for overall auditability dominance.",
+        "Future bilig work should add first-class comment/task audit evidence or explicitly scope auditability around workbook operations."
+      ]
+    },
+    {
+      "id": "history-retention-and-limitations",
+      "title": "History Retention And Limitations",
+      "required": true,
+      "passed": true,
+      "sourceIds": ["google-docs-version-history", "microsoft-excel-show-changes", "microsoft-excel-legacy-track-changes"],
+      "biligEvidence": [
+        "The auditability scorecard requires generated uncovered controls to be explicit instead of silently assuming parity.",
+        "The current bilig evidence is limited to executable preview, apply, undo, revert, and headed-browser change review checks."
+      ],
+      "googleSheetsEvidence": [
+        "Google documents that cell edit history does not show some changes, such as row or column changes, format changes, formulas, and hidden rows.",
+        "Google documents that version history may merge changes to save storage space."
+      ],
+      "microsoftExcelEvidence": [
+        "Microsoft documents that Show Changes displays changes for a limited recent history window.",
+        "Microsoft documents feature restrictions for legacy shared-workbook change tracking."
+      ],
+      "comparisonResult": "bilig's generated scorecard makes current evidence boundaries explicit; official Sheets and Excel docs also disclose history and feature limitations.",
+      "residualLimitations": [
+        "bilig still needs a retention policy and audit-log compaction strategy before claiming superior long-term auditability.",
+        "The official documentation comparison is not a forensic audit of all incumbent history edge cases."
+      ]
+    }
+  ]
+}

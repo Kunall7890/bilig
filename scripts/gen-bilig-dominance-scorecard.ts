@@ -603,12 +603,15 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
         currentEvidence: [
           `generated auditability scorecard passes required controls: ${String(input.auditabilityScorecard.summary.allRequiredControlsPassed)}`,
           `covered auditability controls: ${input.auditabilityScorecard.summary.coveredControls.join(', ')}`,
-          `uncovered auditability controls are explicitly disclosed: ${input.auditabilityScorecard.summary.uncoveredControls.join(', ')}`,
+          `uncovered auditability controls are explicitly disclosed: ${formatList(input.auditabilityScorecard.summary.uncoveredControls)}`,
+          `external Google Sheets auditability evidence: ${input.auditabilityScorecard.summary.externalGoogleSheetsEvidence}`,
+          `external Microsoft Excel auditability evidence: ${input.auditabilityScorecard.summary.externalMicrosoftExcelEvidence}`,
           'change bundles, versions, revertable changes, and agent preview/apply rails are documented',
           'workbook changes and mutation journal tests exist',
         ],
         evidenceArtifacts: [
           input.auditabilityScorecardPath,
+          input.auditabilityScorecard.source.externalAuditabilityComparisonArtifact,
           'e2e/tests/web-shell-remote-sync.pw.ts',
           'docs/05-06-next-phase.md',
           'apps/web/src/__tests__/workbook-changes.test.tsx',
@@ -621,7 +624,9 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
           'pnpm test:correctness:browser',
           'pnpm test:correctness:server',
         ],
-        blockers: ['no direct incumbent auditability comparison artifact exists in the repo'],
+        blockers: input.auditabilityScorecard.summary.uncoveredControls.includes('externalSheetsExcelAuditabilityComparison')
+          ? ['no direct incumbent auditability comparison artifact exists in the repo']
+          : [],
       },
       {
         id: 'reliability',

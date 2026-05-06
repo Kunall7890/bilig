@@ -1,14 +1,15 @@
 {
   "schemaVersion": 1,
   "suite": "auditability-posture",
-  "generatedAt": "2026-05-06T09:38:15.874Z",
+  "generatedAt": "2026-05-06T14:16:41.182Z",
   "source": {
     "artifactGenerator": "scripts/gen-auditability-scorecard.ts",
     "previewImplementation": "packages/agent-api/src/workbook-agent-preview.ts",
     "applyImplementation": "apps/bilig/src/zero/workbook-agent-apply.ts",
     "authoritativeApplyImplementation": "apps/bilig/src/zero/service.ts",
     "historyImplementation": "packages/zero-sync/src/workbook-history-state.ts",
-    "headedBrowserAuditabilityTestFile": "e2e/tests/web-shell-remote-sync.pw.ts"
+    "headedBrowserAuditabilityTestFile": "e2e/tests/web-shell-remote-sync.pw.ts",
+    "externalAuditabilityComparisonArtifact": "packages/benchmarks/baselines/auditability-external-sheets-excel-comparison.json"
   },
   "summary": {
     "allRequiredControlsPassed": true,
@@ -25,11 +26,14 @@
       "agent.undoBundleRestoresSnapshot",
       "history.revertRedoStack",
       "history.revertLinkage",
-      "headedBrowser.previewApplyRevertFlow"
+      "headedBrowser.previewApplyRevertFlow",
+      "external.googleSheetsAuditabilityDocs",
+      "external.microsoftExcelAuditabilityDocs",
+      "external.sheetsExcelAuditabilityComparison"
     ],
-    "uncoveredControls": ["externalSheetsExcelAuditabilityComparison"],
-    "externalGoogleSheetsEvidence": "not-captured",
-    "externalMicrosoftExcelEvidence": "not-captured"
+    "uncoveredControls": [],
+    "externalGoogleSheetsEvidence": "official-docs-comparison-artifact",
+    "externalMicrosoftExcelEvidence": "official-docs-comparison-artifact"
   },
   "controls": [
     {
@@ -79,6 +83,19 @@
       "passed": true,
       "coveredControls": ["headedBrowser.previewApplyRevertFlow"],
       "evidence": "Validated the headed Playwright change-review contract that applies a workbook edit, previews it in the changes pane, reverts it, and verifies both workbook state and revision linkage.",
+      "findings": []
+    },
+    {
+      "id": "external-sheets-excel-auditability-comparison",
+      "category": "external-comparison",
+      "required": true,
+      "passed": true,
+      "coveredControls": [
+        "external.googleSheetsAuditabilityDocs",
+        "external.microsoftExcelAuditabilityDocs",
+        "external.sheetsExcelAuditabilityComparison"
+      ],
+      "evidence": "Validated packages/benchmarks/baselines/auditability-external-sheets-excel-comparison.json from official-public-docs-reviewed-2026-05-06: 4 required comparison dimensions cite 4 official Google Sheets/Workspace sources and 4 official Microsoft Excel/Microsoft 365 sources.",
       "findings": []
     }
   ]
