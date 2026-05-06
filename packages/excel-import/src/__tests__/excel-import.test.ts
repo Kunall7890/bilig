@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx'
 
 import type {
   WorkbookChartSnapshot,
+  WorkbookDataValidationSnapshot,
   WorkbookPivotSnapshot,
   WorkbookPivotValueSnapshot,
   WorkbookSnapshot,
@@ -439,6 +440,16 @@ describe('excel import', () => {
               { id: 'summary-row-2', index: 2, size: 24 },
             ],
             merges: [{ sheetName: 'Summary', startAddress: 'A5', endAddress: 'B5' }],
+            validations: [
+              {
+                range: { sheetName: 'Summary', startAddress: 'C2', endAddress: 'C4' },
+                rule: { kind: 'whole', operator: 'between', values: [0, 100] },
+                allowBlank: false,
+                errorStyle: 'stop',
+                errorTitle: 'Percent required',
+                errorMessage: 'Enter a whole number from 0 to 100.',
+              },
+            ],
           },
           cells: [
             { address: 'A1', value: 'Metric' },
@@ -454,6 +465,21 @@ describe('excel import', () => {
           id: 2,
           name: 'Inputs',
           order: 1,
+          metadata: {
+            validations: [
+              {
+                range: { sheetName: 'Inputs', startAddress: 'D2', endAddress: 'D4' },
+                rule: { kind: 'list', values: ['Priority', 'Standard'] },
+                allowBlank: true,
+                showDropdown: true,
+                promptTitle: 'Status',
+                promptMessage: 'Pick a known priority.',
+                errorStyle: 'warning',
+                errorTitle: 'Unknown priority',
+                errorMessage: 'Use Priority or Standard.',
+              },
+            ],
+          },
           cells: [
             { address: 'A1', value: 'Region' },
             { address: 'B1', value: 'Product' },
@@ -500,6 +526,13 @@ describe('excel import', () => {
     )
     expect(strFromU8(zip['xl/tables/table1.xml'] ?? new Uint8Array())).toContain('<table ')
     expect(strFromU8(zip['xl/tables/table1.xml'] ?? new Uint8Array())).toContain('<tableColumn id="3" name="Sales"/>')
+    expect(strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())).toContain('<dataValidations count="1">')
+    expect(strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())).toContain(
+      '<dataValidation type="whole" operator="between" allowBlank="0" errorStyle="stop"',
+    )
+    expect(strFromU8(zip['xl/worksheets/sheet2.xml'] ?? new Uint8Array())).toContain(
+      '<dataValidation type="list" allowBlank="1" showDropDown="0"',
+    )
     expect(projectSupportedSnapshotSemantics(imported.snapshot)).toEqual(projectSupportedSnapshotSemantics(snapshot))
   })
 })
@@ -583,6 +616,10 @@ function projectTableSemantics(table: WorkbookTableSnapshot): WorkbookTableSnaps
   }
 }
 
+function projectValidationSemantics(validation: WorkbookDataValidationSnapshot): WorkbookDataValidationSnapshot {
+  return structuredClone(validation)
+}
+
 function projectSupportedSnapshotSemantics(snapshot: WorkbookSnapshot) {
   const stylesById = new Map((snapshot.workbook.metadata?.styles ?? []).map((style) => [style.id, style]))
   const portableStyle = (styleId: string) => {
@@ -637,6 +674,13 @@ function projectSupportedSnapshotSemantics(snapshot: WorkbookSnapshot) {
             .toSorted((left, right) =>
               `${left.sheetName}:${left.startAddress}:${left.endAddress}`.localeCompare(
                 `${right.sheetName}:${right.startAddress}:${right.endAddress}`,
+              ),
+            ),
+          validations: (sheet.metadata?.validations ?? [])
+            .map(projectValidationSemantics)
+            .toSorted((left, right) =>
+              `${left.range.sheetName}:${left.range.startAddress}:${left.range.endAddress}`.localeCompare(
+                `${right.range.sheetName}:${right.range.startAddress}:${right.range.endAddress}`,
               ),
             ),
           commentThreads: (sheet.metadata?.commentThreads ?? [])

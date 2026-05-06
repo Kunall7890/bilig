@@ -9,6 +9,7 @@ import { SpreadsheetEngine } from '../packages/core/src/engine.js'
 import { exportXlsx, importCsv, importXlsx } from '../packages/excel-import/src/index.js'
 import type {
   WorkbookChartSnapshot,
+  WorkbookDataValidationSnapshot,
   WorkbookPivotSnapshot,
   WorkbookPivotValueSnapshot,
   WorkbookSnapshot,
@@ -56,6 +57,7 @@ const requiredCaseIds = [
   'xlsx-import-preview',
   'xlsx-snapshot-roundtrip-values-formulas-formats',
   'xlsx-snapshot-roundtrip-dimensions-merges',
+  'xlsx-snapshot-roundtrip-data-validations',
   'xlsx-snapshot-roundtrip-tables',
   'xlsx-snapshot-roundtrip-charts',
   'xlsx-snapshot-roundtrip-pivots',
@@ -78,6 +80,7 @@ const coveredFeatureOrder = [
   'xlsx.styles',
   'xlsx.rowColumnDimensions',
   'xlsx.merges',
+  'xlsx.dataValidations.roundtrip',
   'xlsx.tables.roundtrip',
   'xlsx.charts.roundtrip',
   'xlsx.pivots.roundtrip',
@@ -111,6 +114,7 @@ export async function buildImportExportFidelityScorecard(generatedAt = new Date(
     runXlsxImportPreviewCase(),
     runXlsxSnapshotRoundTripValuesCase(),
     runXlsxSnapshotRoundTripDimensionsCase(),
+    runXlsxSnapshotRoundTripDataValidationsCase(),
     runXlsxSnapshotRoundTripTablesCase(),
     runXlsxSnapshotRoundTripChartsCase(),
     runXlsxSnapshotRoundTripPivotsCase(),
@@ -134,7 +138,11 @@ export async function buildImportExportFidelityScorecard(generatedAt = new Date(
       xlsxImportPassed: requiredCase(cases, 'xlsx-import-preview').passed,
       xlsxSnapshotRoundTripPassed:
         requiredCase(cases, 'xlsx-snapshot-roundtrip-values-formulas-formats').passed &&
-        requiredCase(cases, 'xlsx-snapshot-roundtrip-dimensions-merges').passed,
+        requiredCase(cases, 'xlsx-snapshot-roundtrip-dimensions-merges').passed &&
+        requiredCase(cases, 'xlsx-snapshot-roundtrip-data-validations').passed &&
+        requiredCase(cases, 'xlsx-snapshot-roundtrip-tables').passed &&
+        requiredCase(cases, 'xlsx-snapshot-roundtrip-charts').passed &&
+        requiredCase(cases, 'xlsx-snapshot-roundtrip-pivots').passed,
       coveredFeatures,
       unsupportedFeatures: [...unsupportedFeatures],
       externalGoogleSheetsEvidence: 'not-captured',
@@ -247,6 +255,21 @@ function runXlsxSnapshotRoundTripDimensionsCase(): ImportExportFidelityCase {
     passed,
     coveredFeatures: ['xlsx.rowColumnDimensions', 'xlsx.merges'],
     evidence: 'WorkbookSnapshot exported to XLSX imports back with equivalent row heights, column widths, and merged ranges.',
+  })
+}
+
+function runXlsxSnapshotRoundTripDataValidationsCase(): ImportExportFidelityCase {
+  const expected = projectSupportedSnapshotSemantics(createFidelitySnapshot())
+  const actual = projectSupportedSnapshotSemantics(importXlsx(exportXlsx(createFidelitySnapshot()), 'fidelity.xlsx').snapshot)
+  const passed = JSON.stringify(actual.validations) === JSON.stringify(expected.validations)
+  return fidelityCase({
+    id: 'xlsx-snapshot-roundtrip-data-validations',
+    format: 'xlsx',
+    direction: 'export-import',
+    passed,
+    coveredFeatures: ['xlsx.dataValidations.roundtrip'],
+    evidence:
+      'WorkbookSnapshot exported to XLSX imports back with equivalent sheet data-validation metadata backed by native XLSX dataValidation nodes.',
   })
 }
 
@@ -417,6 +440,16 @@ function createFidelitySnapshot(): WorkbookSnapshot {
             { id: 'summary-row-2', index: 2, size: 24 },
           ],
           merges: [{ sheetName: 'Summary', startAddress: 'A5', endAddress: 'B5' }],
+          validations: [
+            {
+              range: { sheetName: 'Summary', startAddress: 'C2', endAddress: 'C4' },
+              rule: { kind: 'whole', operator: 'between', values: [0, 100] },
+              allowBlank: false,
+              errorStyle: 'stop',
+              errorTitle: 'Percent required',
+              errorMessage: 'Enter a whole number from 0 to 100.',
+            },
+          ],
         },
         cells: [
           { address: 'A1', value: 'Metric' },
@@ -432,6 +465,21 @@ function createFidelitySnapshot(): WorkbookSnapshot {
         id: 2,
         name: 'Inputs',
         order: 1,
+        metadata: {
+          validations: [
+            {
+              range: { sheetName: 'Inputs', startAddress: 'D2', endAddress: 'D4' },
+              rule: { kind: 'list', values: ['Priority', 'Standard'] },
+              allowBlank: true,
+              showDropdown: true,
+              promptTitle: 'Status',
+              promptMessage: 'Pick a known priority.',
+              errorStyle: 'warning',
+              errorTitle: 'Unknown priority',
+              errorMessage: 'Use Priority or Standard.',
+            },
+          ],
+        },
         cells: [
           { address: 'A1', value: 'Region' },
           { address: 'B1', value: 'Product' },
@@ -534,6 +582,10 @@ function projectTableSemantics(table: WorkbookTableSnapshot): WorkbookTableSnaps
   }
 }
 
+function projectValidationSemantics(validation: WorkbookDataValidationSnapshot): WorkbookDataValidationSnapshot {
+  return structuredClone(validation)
+}
+
 function projectSupportedSnapshotSemantics(snapshot: WorkbookSnapshot) {
   const stylesById = new Map((snapshot.workbook.metadata?.styles ?? []).map((style) => [style.id, style]))
   const portableStyle = (styleId: string) => {
@@ -584,6 +636,14 @@ function projectSupportedSnapshotSemantics(snapshot: WorkbookSnapshot) {
       .map(projectPivotSemantics)
       .toSorted((left, right) =>
         `${left.sheetName}:${left.address}:${left.name}`.localeCompare(`${right.sheetName}:${right.address}:${right.name}`),
+      ),
+    validations: snapshot.sheets
+      .flatMap((sheet) => sheet.metadata?.validations ?? [])
+      .map(projectValidationSemantics)
+      .toSorted((left, right) =>
+        `${left.range.sheetName}:${left.range.startAddress}:${left.range.endAddress}`.localeCompare(
+          `${right.range.sheetName}:${right.range.startAddress}:${right.range.endAddress}`,
+        ),
       ),
     valueFormulaFormatSheets: snapshot.sheets
       .toSorted((left, right) => left.order - right.order)

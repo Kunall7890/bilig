@@ -8,6 +8,7 @@ import { buildExportDefinedNames } from './xlsx-defined-names.js'
 import { addExportPivotsToXlsxBytes } from './xlsx-pivots.js'
 import { addExportStylesToWorksheet } from './xlsx-styles.js'
 import { addExportTablesToXlsxBytes } from './xlsx-tables.js'
+import { addExportDataValidationsToXlsxBytes } from './xlsx-validations.js'
 
 function buildExportColumns(columns: readonly WorkbookAxisEntrySnapshot[] | undefined): XLSX.ColInfo[] | undefined {
   if (!columns || columns.length === 0) {
@@ -230,7 +231,11 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
   )
   return addExportChartsToXlsxBytes(
     addExportPivotsToXlsxBytes(
-      addExportTablesToXlsxBytes(bytes, snapshot, exportSheetNamesByOriginalName),
+      addExportTablesToXlsxBytes(
+        addExportDataValidationsToXlsxBytes(bytes, snapshot, exportSheetNamesByOriginalName),
+        snapshot,
+        exportSheetNamesByOriginalName,
+      ),
       snapshot,
       exportSheetNamesByOriginalName,
     ),

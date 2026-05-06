@@ -24,6 +24,7 @@ import { readImportedDefinedNames } from './xlsx-defined-names.js'
 import { readImportedWorkbookPivots } from './xlsx-pivots.js'
 import { readImportedWorkbookFileStyles } from './xlsx-styles.js'
 import { readImportedWorkbookTables } from './xlsx-tables.js'
+import { readImportedWorkbookDataValidations } from './xlsx-validations.js'
 
 export { exportXlsx } from './xlsx-export.js'
 
@@ -476,6 +477,7 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
   const importedCharts = readImportedWorkbookCharts(data, workbook.SheetNames)
   const importedPivots = readImportedWorkbookPivots(data, workbook.SheetNames)
   const importedTables = readImportedWorkbookTables(data, workbook.SheetNames)
+  const importedValidationsBySheet = readImportedWorkbookDataValidations(data, workbook.SheetNames)
 
   let ignoredCommentsSeen = false
   const styleCatalog = new Map<string, CellStyleRecord>()
@@ -567,13 +569,15 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
     const rows = buildRowEntries(sheet['!rows'])
     const columns = buildColumnEntries(sheet['!cols'])
     const merges = buildMergeEntries(sheetName, sheet['!merges'])
+    const importedValidations = importedValidationsBySheet.get(sheetName)
     const metadata =
-      rows || columns || styleRanges.length > 0 || merges || importedComments.commentThreads
+      rows || columns || styleRanges.length > 0 || merges || importedValidations || importedComments.commentThreads
         ? {
             ...(rows ? { rows } : {}),
             ...(columns ? { columns } : {}),
             ...(styleRanges.length > 0 ? { styleRanges } : {}),
             ...(merges ? { merges } : {}),
+            ...(importedValidations ? { validations: importedValidations } : {}),
             ...(importedComments.commentThreads ? { commentThreads: importedComments.commentThreads } : {}),
           }
         : undefined
