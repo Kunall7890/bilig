@@ -120,6 +120,18 @@ describe('bilig dominance scorecard', () => {
     ])
   })
 
+  it('does not report zero missing Office-listed formulas as a blocker', () => {
+    const artifact = parseGeneratedScorecard(
+      readFileSync(resolve(repoRoot, 'packages/benchmarks/baselines/bilig-dominance-scorecard.json'), 'utf8'),
+    )
+    const calculation = artifact.categories.find((category) => category.id === 'calculation-correctness')
+
+    expect(calculation?.blockers).not.toContain('0 Office-listed functions are still missing from the runtime inventory')
+    expect(calculation?.blockers).toContain(
+      'no generated scorecard currently compares all committed semantics directly against live Google Sheets and Microsoft Excel',
+    )
+  })
+
   it('wires the dominance check into fast CI generated checks', () => {
     const packageJson = readFileSync(resolve(repoRoot, 'package.json'), 'utf8')
     const runCi = readFileSync(resolve(repoRoot, 'scripts/run-ci.ts'), 'utf8')
@@ -147,7 +159,7 @@ describe('bilig dominance scorecard', () => {
   })
 })
 
-function parseGeneratedScorecard(source: string): { categories: Array<{ id: unknown }> } {
+function parseGeneratedScorecard(source: string): { categories: Array<{ id: unknown; blockers: string[] }> } {
   const parsed: unknown = JSON.parse(source)
   if (!isRecord(parsed) || !Array.isArray(parsed['categories'])) {
     throw new Error('Generated scorecard must include a categories array')
@@ -160,9 +172,17 @@ function parseGeneratedScorecard(source: string): { categories: Array<{ id: unkn
       }
       return {
         id: category['id'],
+        blockers: stringList(category['blockers'], 'Generated scorecard category blockers'),
       }
     }),
   }
+}
+
+function stringList(value: unknown, name: string): string[] {
+  if (!Array.isArray(value) || !value.every((entry) => typeof entry === 'string')) {
+    throw new Error(`${name} must be a string array`)
+  }
+  return value
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

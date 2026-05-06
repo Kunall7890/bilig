@@ -409,7 +409,7 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
         evidenceArtifacts: [input.formulaSnapshotPath, 'docs/excel-parity-program.md', 'docs/formula-oracle-capture.md'],
         checkCommands: ['pnpm formula:dominance:check', 'pnpm test:correctness:formula'],
         blockers: [
-          `${input.formulaSnapshot.formulaBreadth.missingOfficeFunctions.length} Office-listed functions are still missing from the runtime inventory`,
+          ...formulaMissingFunctionBlockers(input.formulaSnapshot.formulaBreadth.missingOfficeFunctions.length),
           'no generated scorecard currently compares all committed semantics directly against live Google Sheets and Microsoft Excel',
         ],
       },
@@ -729,6 +729,12 @@ function familyWinSummary(family: CompetitiveFamilySummary): string {
       ? 'no comparable p95 ratio'
       : `worst p95 ratio ${family.worstWorkpaperToHyperFormulaP95Ratio} on ${family.worstP95RatioWorkload}`
   return `${family.family}: WorkPaper ${family.workpaperWins}/${family.comparableCount}, HyperFormula ${family.hyperformulaWins}/${family.comparableCount}; ${worstMean}; ${worstP95}`
+}
+
+function formulaMissingFunctionBlockers(missingOfficeFunctionCount: number): string[] {
+  return missingOfficeFunctionCount > 0
+    ? [`${String(missingOfficeFunctionCount)} Office-listed functions are still missing from the runtime inventory`]
+    : []
 }
 
 function sloSummary(measurement: LargeWorkbookSloMeasurement): string {

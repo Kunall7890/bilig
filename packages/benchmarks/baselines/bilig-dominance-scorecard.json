@@ -179,7 +179,6 @@
       ],
       "checkCommands": ["pnpm formula:dominance:check", "pnpm test:correctness:formula"],
       "blockers": [
-        "0 Office-listed functions are still missing from the runtime inventory",
         "no generated scorecard currently compares all committed semantics directly against live Google Sheets and Microsoft Excel"
       ]
     },
