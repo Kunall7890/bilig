@@ -196,6 +196,8 @@ Follow-up artifact if anyone engages:
 - link `docs/why-agents-need-workbook-apis.md` for the conceptual argument
 - link `docs/node-service-workpaper-recipe.md` when someone asks how the
   WorkPaper API fits behind a backend or service route
+- link `docs/csv-shaped-workpaper-input-recipe.md` when someone asks how to
+  turn tabular service data into formula-backed workbook state
 - link `docs/agent-workpaper-tool-calling-recipe.md` when someone asks how an
   agent should safely read, write, verify, and persist a workbook
 - link `examples/headless-workpaper` for the runnable Node example

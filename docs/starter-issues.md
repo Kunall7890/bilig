@@ -6,7 +6,6 @@ search indexing.
 
 Current starter tickets as of May 7, 2026:
 
-- [`#20 docs(headless): add a CSV-shaped input recipe`](https://github.com/proompteng/bilig/issues/20)
 - [`#22 docs(benchmarks): add a local benchmark walkthrough`](https://github.com/proompteng/bilig/issues/22)
 - [`#23 docs(headless): add an unsupported-formula troubleshooting recipe`](https://github.com/proompteng/bilig/issues/23)
 - [`#29 workbook import dispatcher rejects MIME types with parameters or different case`](https://github.com/proompteng/bilig/issues/29)

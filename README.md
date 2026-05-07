@@ -145,6 +145,11 @@ For backend adoption, see
 It shows a minimal Node service boundary that reads computed summaries, applies
 one controlled edit, and persists the WorkPaper document.
 
+For tabular service payloads, see
+[`docs/csv-shaped-workpaper-input-recipe.md`](docs/csv-shaped-workpaper-input-recipe.md).
+It normalizes a small CSV-shaped fixture into a WorkPaper workbook and reads
+formula-backed summary values.
+
 That example also includes `npm run agent:verify`, a small agent writeback demo
 that records the exact assumption cells changed, verifies dependent formula
 readback, persists the workbook, restores it, and proves the formulas and values

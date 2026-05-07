@@ -38,6 +38,8 @@ Shorter version:
   [`examples/headless-workpaper`](../examples/headless-workpaper)
 - Node service recipe:
   [`docs/node-service-workpaper-recipe.md`](node-service-workpaper-recipe.md)
+- CSV-shaped input recipe:
+  [`docs/csv-shaped-workpaper-input-recipe.md`](csv-shaped-workpaper-input-recipe.md)
 - Benchmark evidence:
   [`docs/headless-workpaper-benchmark-evidence.md`](headless-workpaper-benchmark-evidence.md)
 - Benchmark explainer:
@@ -169,6 +171,11 @@ For backend evaluators, link the
 [`WorkPaper Node service recipe`](node-service-workpaper-recipe.md). It shows a
 minimal built-in HTTP service that reads a computed summary, applies a controlled
 edit, and persists the workbook document without adding a framework dependency.
+
+For service payloads that start as tabular data, link the
+[`CSV-shaped WorkPaper input recipe`](csv-shaped-workpaper-input-recipe.md). It
+keeps parsing deliberately small, normalizes rows into `WorkPaper.buildFromSheets()`,
+and reads formula-backed summary values.
 
 For a framework-neutral agent integration pattern, link the
 [`WorkPaper tool-calling recipe`](agent-workpaper-tool-calling-recipe.md). It

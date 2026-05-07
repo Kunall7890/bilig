@@ -101,6 +101,8 @@ Repository:
   [`examples/headless-workpaper`](../../examples/headless-workpaper)
 - Node service recipe:
   [`docs/node-service-workpaper-recipe.md`](../../docs/node-service-workpaper-recipe.md)
+- CSV-shaped input recipe:
+  [`docs/csv-shaped-workpaper-input-recipe.md`](../../docs/csv-shaped-workpaper-input-recipe.md)
 - agent tool-calling recipe:
   [`docs/agent-workpaper-tool-calling-recipe.md`](../../docs/agent-workpaper-tool-calling-recipe.md)
 - public adoption kit:
@@ -225,6 +227,11 @@ For a minimal service boundary with no framework dependency, see
 [`docs/node-service-workpaper-recipe.md`](../../docs/node-service-workpaper-recipe.md).
 It shows a built-in Node HTTP route that reads a computed summary, applies one
 controlled input edit, and persists the WorkPaper document.
+
+For simple tabular service payloads, see
+[`docs/csv-shaped-workpaper-input-recipe.md`](../../docs/csv-shaped-workpaper-input-recipe.md).
+It normalizes a small CSV-shaped fixture into the `WorkPaper.buildFromSheets()`
+array shape and reads formula-backed summaries.
 
 For a concise evaluator-facing summary with copy-paste npm commands, proof
 links, shareable copy, and overclaim guardrails, use the root
