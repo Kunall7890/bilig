@@ -37,6 +37,8 @@ Shorter version:
   [`examples/headless-workpaper`](../examples/headless-workpaper)
 - Benchmark evidence:
   [`docs/headless-workpaper-benchmark-evidence.md`](headless-workpaper-benchmark-evidence.md)
+- GitHub stars growth plan:
+  [`docs/github-stars-growth-plan.md`](github-stars-growth-plan.md)
 - Public API notes: [`docs/public-api.md`](public-api.md)
 - Contributing guide: [`CONTRIBUTING.md`](../CONTRIBUTING.md)
 

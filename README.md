@@ -128,6 +128,9 @@ For a concise public evaluation path, share
 positioning, npm-only evaluation commands, proof links, shareable copy, and
 guardrails for honest benchmark claims.
 
+For the researched public-growth plan toward `1000` legitimate GitHub stars,
+see [`docs/github-stars-growth-plan.md`](docs/github-stars-growth-plan.md).
+
 ## Quickstart
 
 Use Node `24+`, Bun, and `pnpm@10.32.1`.
