@@ -298,8 +298,8 @@ audience, or product friction.
 3. Respond to serious Hacker News and GitHub Discussion comments within the same
    day, then convert repeated feedback into docs or examples.
 4. Ship the next proof artifact: a compact formula-edge fixture article that
-   starts from one real formula family and shows the fixture, expected result,
-   and verifier command.
+   follows the XLOOKUP exact walkthrough pattern, starts from one real formula
+   family, and shows the fixture, expected result, and verifier command.
 5. Track GitHub stars, npm downloads, GitHub traffic referrers, and issue
    quality every week.
 6. Add a Star History chart only after there is enough organic movement for the

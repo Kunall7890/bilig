@@ -50,6 +50,8 @@ Shorter version:
   [`docs/where-bilig-is-not-excel-compatible-yet.md`](where-bilig-is-not-excel-compatible-yet.md)
 - XLSX corpus verifier walkthrough:
   [`docs/xlsx-corpus-verifier-walkthrough.md`](xlsx-corpus-verifier-walkthrough.md)
+- XLOOKUP exact fixture walkthrough:
+  [`docs/formula-edge-xlookup-exact-fixture.md`](formula-edge-xlookup-exact-fixture.md)
 - GitHub stars growth plan:
   [`docs/github-stars-growth-plan.md`](github-stars-growth-plan.md)
 - Launch post draft:

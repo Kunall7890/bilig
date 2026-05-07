@@ -165,6 +165,10 @@ the project as a complete Excel clone.
 For a short guide to interpreting XLSX cached-result corpus reports, see
 [`docs/xlsx-corpus-verifier-walkthrough.md`](docs/xlsx-corpus-verifier-walkthrough.md).
 
+For a formula-edge fixture walkthrough covering the exact-match `XLOOKUP` path,
+see
+[`docs/formula-edge-xlookup-exact-fixture.md`](docs/formula-edge-xlookup-exact-fixture.md).
+
 For the researched public-growth plan toward `1000` legitimate GitHub stars,
 see [`docs/github-stars-growth-plan.md`](docs/github-stars-growth-plan.md).
 
