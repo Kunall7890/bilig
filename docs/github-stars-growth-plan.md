@@ -68,6 +68,10 @@ Verified on 2026-05-07:
   <https://x.com/tulexaicom/status/2052288937717063977>.
 - Re-verified the GitHub mirror, public workflows, and star count after the
   demo commit. Stars remain `5`.
+- Refreshed the starter issue queue to `5` open `good first issue` tickets by
+  promoting scoped issues `#32` and `#49`, adding starter-scope comments, and
+  removing closed issue `#102` from
+  [`docs/starter-issues.md`](starter-issues.md).
 
 ## Research Findings
 
