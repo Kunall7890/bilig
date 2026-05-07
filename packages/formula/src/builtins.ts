@@ -51,6 +51,20 @@ function toNumber(value: CellValue): number | undefined {
   }
 }
 
+function toAverageNumber(value: CellValue): number | undefined {
+  switch (value.tag) {
+    case ValueTag.Number:
+      return value.value
+    case ValueTag.Boolean:
+      return value.value ? 1 : 0
+    case ValueTag.Empty:
+    case ValueTag.String:
+    case ValueTag.Error:
+    default:
+      return undefined
+  }
+}
+
 function toBitwiseUnsigned(value: CellValue | undefined): number | undefined {
   if (value === undefined) {
     return undefined
@@ -392,14 +406,14 @@ const scalarBuiltins: Record<string, Builtin> = {
   AVERAGE: (...args) => {
     const error = firstError(args)
     if (error) return error
-    const numbers = collectNumericArgs(args, toNumber)
+    const numbers = collectNumericArgs(args, toAverageNumber)
     if (numbers.length === 0) return numberResult(0)
     return numberResult(numbers.reduce((sum, value) => sum + value, 0) / numbers.length)
   },
   AVG: (...args) => {
     const error = firstError(args)
     if (error) return error
-    const numbers = collectNumericArgs(args, toNumber)
+    const numbers = collectNumericArgs(args, toAverageNumber)
     if (numbers.length === 0) return numberResult(0)
     return numberResult(numbers.reduce((sum, value) => sum + value, 0) / numbers.length)
   },

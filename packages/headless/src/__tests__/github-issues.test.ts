@@ -244,6 +244,28 @@ describe('GitHub issue reductions', () => {
     expectNumber(cellValue(workbook, 'Summary', 0, 0), 1.24)
   })
 
+  it('matches Excel cached results for rounded AVERAGE ranges with blanks and text', () => {
+    const rows = Array.from({ length: 316 }, () => Array.from<TestCell>({ length: 13 }).fill(null))
+    const numericValues = [12.5, 24, 18.75, 20.25, 19.04]
+    for (let index = 0; index < numericValues.length; index += 1) {
+      rows[1 + index][4] = numericValues[index]!
+    }
+    rows[6][4] = 'Department'
+    rows[7][4] = ''
+    rows[8][4] = null
+    rows[314][4] = null
+    rows[315][4] = '=ROUND(AVERAGE(E2:E315),2)'
+
+    const workbook = WorkPaper.buildFromSheets(
+      {
+        'Action on requests': rows,
+      },
+      { maxRows: 400, maxColumns: 20, useColumnIndex: true },
+    )
+
+    expectNumber(cellValue(workbook, 'Action on requests', 315, 4), 18.91)
+  })
+
   it('reports the published package version through WorkPaper.version', () => {
     expect(WorkPaper.version).toBe(readHeadlessPackageVersion())
   })

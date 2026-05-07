@@ -82,7 +82,7 @@ describe('formula builtins', () => {
 
     expect(
       avg?.({ tag: ValueTag.Number, value: 2 }, { tag: ValueTag.String, value: 'skip', stringId: 1 }, { tag: ValueTag.Empty }),
-    ).toEqual({ tag: ValueTag.Number, value: 1 })
+    ).toEqual({ tag: ValueTag.Number, value: 2 })
 
     expect(sum?.({ tag: ValueTag.Number, value: 2 }, { tag: ValueTag.Error, code: ErrorCode.Ref })).toEqual({
       tag: ValueTag.Error,

@@ -835,13 +835,13 @@ describe('EngineFormulaEvaluationService', () => {
     expect(engine.getCellValue('Sheet1', 'C2')).toEqual({ tag: ValueTag.Number, value: 3 })
     expect(engine.getCellValue('Sheet1', 'C3')).toEqual({ tag: ValueTag.Number, value: 3 })
     expect(engine.getCellValue('Sheet1', 'C4')).toEqual({ tag: ValueTag.Number, value: 1 })
-    expect(engine.getCellValue('Sheet1', 'C5')).toEqual({ tag: ValueTag.Number, value: 0.5 })
+    expect(engine.getCellValue('Sheet1', 'C5')).toEqual({ tag: ValueTag.Number, value: 1 })
 
     Effect.runSync(evaluation.evaluateDirectLookupFormula(b1Index!))
     Effect.runSync(evaluation.evaluateDirectLookupFormula(b2Index!))
     Effect.runSync(evaluation.evaluateDirectLookupFormula(b3Index!))
     expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 3 })
-    expect(engine.getCellValue('Sheet1', 'B2')).toEqual({ tag: ValueTag.Number, value: 1 })
+    expect(engine.getCellValue('Sheet1', 'B2')).toEqual({ tag: ValueTag.Number, value: 1.5 })
     expect(engine.getCellValue('Sheet1', 'B3')).toEqual({ tag: ValueTag.Number, value: 2 })
 
     engine.setCellFormula('Sheet1', 'A4', 'NA()')

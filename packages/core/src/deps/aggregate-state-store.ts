@@ -140,7 +140,7 @@ function countContribution(value: CellValue): number {
 }
 
 function averageCountContribution(value: CellValue): number {
-  return value.tag === ValueTag.Number || value.tag === ValueTag.Boolean || value.tag === ValueTag.Empty ? 1 : 0
+  return value.tag === ValueTag.Number || value.tag === ValueTag.Boolean ? 1 : 0
 }
 
 export function createAggregateStateStore(args: {

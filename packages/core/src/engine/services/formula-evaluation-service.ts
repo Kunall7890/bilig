@@ -391,7 +391,6 @@ export function createEngineFormulaEvaluationService(args: {
               break
             }
             case ValueTag.Empty:
-              averageCount += 1
               minimum = Math.min(minimum, 0)
               maximum = Math.max(maximum, 0)
               break

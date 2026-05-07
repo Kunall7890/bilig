@@ -17,9 +17,9 @@ describe('WorkPaper XLSX corpus verifier', () => {
       ok: 1,
       failedErrors: 0,
       failedTimeouts: 0,
-      formulaCells: 13,
-      comparableFormulaCells: 13,
-      matchingFormulaCells: 13,
+      formulaCells: 14,
+      comparableFormulaCells: 14,
+      matchingFormulaCells: 14,
       mismatchedFormulaCells: 0,
       skippedFormulaCells: 0,
       matchRate: 1,
@@ -27,7 +27,7 @@ describe('WorkPaper XLSX corpus verifier', () => {
     expect(result.files[0]).toMatchObject({
       fileName: 'issue-8-production-regressions.xlsx',
       status: 'ok',
-      formulaCells: 13,
+      formulaCells: 14,
     })
     expect(result.mismatches).toEqual([])
   })

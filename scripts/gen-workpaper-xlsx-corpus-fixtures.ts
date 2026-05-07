@@ -36,7 +36,7 @@ function buildIssue8ProductionRegressionWorkbook(): XLSX.WorkBook {
     ['Non-fee sum', null, null, null],
     ['Wrapped deposits', null, null, null],
     ['XLOOKUP bank date', null, null, null],
-    [],
+    ['Average ignores blanks', null, null, null],
     ['Bank lookup', null, 'txn-123', null],
   ])
   summary.B2 = {
@@ -67,6 +67,11 @@ function buildIssue8ProductionRegressionWorkbook(): XLSX.WorkBook {
     f: 'IFERROR(XLOOKUP(C14,Bank!$D$2:$D$31,Bank!$B$2:$B$31,"",0),"")',
     v: '2026-04-01',
   }
+  summary.B13 = {
+    t: 'n',
+    f: 'ROUND(AVERAGE(AverageInputs!$A$2:$A$20),2)',
+    v: 18.91,
+  }
   summary.D14 = {
     t: 's',
     f: 'IFERROR(INDEX(Bank!$B$2:$B$31,MATCH(C14,Bank!$D$2:$D$31,0)),"")',
@@ -87,9 +92,13 @@ function buildIssue8ProductionRegressionWorkbook(): XLSX.WorkBook {
   ])
   bank['!ref'] = 'A1:D31'
 
+  const averageInputs = XLSX.utils.aoa_to_sheet([['Value'], [12.5], [24], [18.75], [20.25], [19.04], ['Department'], ['']])
+  averageInputs['!ref'] = 'A1:A20'
+
   XLSX.utils.book_append_sheet(workbook, summary, 'Summary')
   XLSX.utils.book_append_sheet(workbook, activity, 'Activity')
   XLSX.utils.book_append_sheet(workbook, bank, 'Bank')
+  XLSX.utils.book_append_sheet(workbook, averageInputs, 'AverageInputs')
   return workbook
 }
 

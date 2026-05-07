@@ -373,7 +373,6 @@ export function createEngineFormulaInitializationService(args: {
               minimum = Math.min(minimum, numeric)
               maximum = Math.max(maximum, numeric)
             } else if (tag === ValueTag.Empty) {
-              averageCount += 1
               minimum = Math.min(minimum, 0)
               maximum = Math.max(maximum, 0)
             } else if (tag === ValueTag.Error) {
