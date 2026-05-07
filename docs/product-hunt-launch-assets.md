@@ -14,6 +14,11 @@ Do not schedule a launch until there is a clear support window for comments and
 one more concrete product proof item to point people at. Creating a draft is
 fine; launching blind is not.
 
+Before spending time in the composer, confirm the personal Product Hunt account
+can access the submit flow. Product Hunt's current access help says new personal
+accounts may need a one-week wait before they can post, and redirects to the
+access-help page mean the account cannot post yet.
+
 ## Generated assets
 
 Run:
@@ -89,6 +94,8 @@ proof article: https://dev.to/gregkonush/why-agents-need-workbook-apis-instead-o
 ## Launch checklist
 
 - Use a personal Product Hunt account, not a company account.
+- Confirm the account can open the submit flow before preparing the launch
+  session.
 - Create a draft first; do not pick a launch date until the support window is
   known.
 - Upload the generated thumbnail and at least two gallery images.
@@ -105,5 +112,7 @@ proof article: https://dev.to/gregkonush/why-agents-need-workbook-apis-instead-o
 
 - Product Hunt posting guide:
   <https://help.producthunt.com/en/articles/479557-how-to-post-a-product>
+- Product Hunt posting access:
+  <https://help.producthunt.com/en/articles/481909-how-can-i-get-access-to-post>
 - Product Hunt featuring guidelines:
   <https://help.producthunt.com/en/articles/9883485-product-hunt-featuring-guidelines>
