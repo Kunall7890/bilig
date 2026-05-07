@@ -16,6 +16,9 @@ repo as a bookmark: <https://github.com/proompteng/bilig/stargazers>
 If you want to try a small contribution first, start with the public
 [`starter issues`](docs/starter-issues.md) list.
 
+Contributor and security docs:
+[`CONTRIBUTING.md`](CONTRIBUTING.md) and [`SECURITY.md`](SECURITY.md).
+
 ## Try `@bilig/headless` in 90 seconds
 
 The fastest evaluation path uses the published npm package only. It builds a

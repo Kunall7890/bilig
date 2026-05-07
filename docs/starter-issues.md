@@ -10,11 +10,10 @@ Current starter tickets as of May 7, 2026:
 - [`#41 Excel import dispatcher rejects XLSB content type despite direct parser support`](https://github.com/proompteng/bilig/issues/41)
 - [`#46 CSV import leaves common accounting number formats as strings`](https://github.com/proompteng/bilig/issues/46)
 - [`#49 WORKDAY and NETWORKDAYS ignore holiday ranges without diagnostics`](https://github.com/proompteng/bilig/issues/49)
-- [`#67 XLSX import/export drops worksheet tab colors`](https://github.com/proompteng/bilig/issues/67)
 
-Step-up tickets with a small but production-facing implementation surface:
-
-- [`#63 XLSX import hangs on corrupt zip-backed workbook instead of rejecting`](https://github.com/proompteng/bilig/issues/63)
+The list intentionally excludes closed issues and broad corpus/parity epics. Add
+new starter tickets only when the expected patch can stay small, has a clear
+acceptance test, and does not require understanding the whole workbook runtime.
 
 Useful filters:
 

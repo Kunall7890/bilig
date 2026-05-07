@@ -1,8 +1,18 @@
 # Contributing to bilig
 
-Thanks for taking the repo seriously. bilig is an engine-heavy TypeScript
+Thanks for taking the repo seriously. `bilig` is an engine-heavy TypeScript
 monorepo, so the best contributions are small, tested, and explicit about which
 runtime behavior they change.
+
+## Start Here
+
+- For a first patch, pick a current scoped ticket from
+  [`docs/starter-issues.md`](docs/starter-issues.md).
+- If you are reporting a formula or workbook bug, include the exact formula,
+  workbook shape, expected result, actual result, and the smallest command or
+  fixture that reproduces it.
+- If you are changing public behavior, add or tighten a regression test before
+  changing implementation.
 
 ## Local Setup
 
@@ -21,6 +31,15 @@ For the app shell:
 pnpm dev:web-local
 ```
 
+For targeted changes, run the smallest useful gate first:
+
+- Formula or WorkPaper behavior: `pnpm test:correctness:core`
+- Formula package changes: `pnpm --filter @bilig/formula build`
+- Headless package changes: `pnpm --filter @bilig/headless build`
+- Import/export changes: `pnpm test:correctness:corpus`
+- Browser shell changes: `pnpm test:browser`
+- Docs discovery changes: `pnpm docs:discovery:check`
+
 ## Before You Open a PR
 
 Run the narrowest checks that cover your change, then run the full gate when the
@@ -33,6 +52,9 @@ pnpm test
 pnpm test:browser
 pnpm run ci
 ```
+
+If a narrower gate is enough for a docs-only or fixture-only patch, say why in
+the pull request.
 
 If you edit generated protocol, formula inventory, workspace-resolution, or
 benchmark-baseline sources, regenerate and commit the generated output.
@@ -101,6 +123,8 @@ inputs, cached workbook results, and runtime paths they actually cover.
   component when a hook, controller, or package boundary can own one concern.
 - Keep benchmark claims tied to commands, artifacts, counters, or checked-in
   fixtures.
+- Do not weaken parity, benchmark, generated-file, or clean-diff checks to make
+  a patch pass.
 
 ## PR Description
 
@@ -111,6 +135,14 @@ Include:
 - commands run
 - benchmark output or screenshots when behavior is visual or performance-related
 - known risk or follow-up work
+
+Small pull requests are easier to review and merge than broad refactors.
+
+## Security
+
+Do not post private workbook data, credentials, tokens, or vulnerability details
+in public issues. Follow [`SECURITY.md`](SECURITY.md) for private security
+reports.
 
 ## Source of Truth
 
