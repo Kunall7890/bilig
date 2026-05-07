@@ -67,6 +67,7 @@ describe('direct lookup helpers', () => {
   it('normalizes exact and approximate lookup operands', () => {
     expect(normalizeExactLookupKey({ tag: ValueTag.Empty }, lookupString)).toBe('e:')
     expect(normalizeExactLookupKey({ tag: ValueTag.Number, value: -0 }, lookupString)).toBe('n:0')
+    expect(normalizeExactLookupKey({ tag: ValueTag.Number, value: 2374.2799999999997 }, lookupString)).toBe('n:2374.28')
     expect(normalizeExactLookupKey({ tag: ValueTag.Boolean, value: true }, lookupString)).toBe('b:1')
     expect(normalizeExactLookupKey({ tag: ValueTag.Boolean, value: false }, lookupString)).toBe('b:0')
     expect(normalizeExactLookupKey({ tag: ValueTag.String, value: 'local' }, lookupString)).toBe('s:LOCAL')
@@ -74,8 +75,10 @@ describe('direct lookup helpers', () => {
     expect(normalizeExactLookupKey({ tag: ValueTag.Error, code: ErrorCode.NA }, lookupString)).toBeUndefined()
 
     expect(normalizeExactNumericValue({ tag: ValueTag.Number, value: -0 })).toBe(0)
+    expect(normalizeExactNumericValue({ tag: ValueTag.Number, value: 2374.2799999999997 })).toBe(2374.28)
     expect(normalizeExactNumericValue({ tag: ValueTag.Empty })).toBeUndefined()
     expect(sameExactNumericValue(-0, 0)).toBe(true)
+    expect(sameExactNumericValue(2374.2799999999997, 2374.28)).toBe(true)
     expect(exactLookupLiteralNumericValue(-0)).toBe(0)
     expect(exactLookupLiteralNumericValue('1')).toBeUndefined()
 
@@ -97,6 +100,7 @@ describe('direct lookup helpers', () => {
     expect(exactUniformLookupNumericResult(exactUniform({ step: -1, start: 5 }), 3)).toBe(3)
     expect(exactUniformLookupNumericResult(exactUniform({ step: 2, start: 2 }), 8)).toBe(4)
     expect(exactUniformLookupNumericResult(exactUniform({ step: 2, start: 2 }), 9)).toBeUndefined()
+    expect(exactUniformLookupNumericResult(exactUniform({ start: 2374.28, step: 0.01 }), 2374.2799999999997)).toBe(1)
     expect(
       exactUniformLookupNumericResult(exactUniform({ tailPatch: { row: 4, oldNumeric: 5, newNumeric: 9, columnVersion: 4 } }), 9),
     ).toBe(5)

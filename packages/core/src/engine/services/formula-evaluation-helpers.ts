@@ -1,4 +1,5 @@
 import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
+import { sameExactLookupNumber } from '@bilig/formula'
 import type { RuntimeFormula } from '../runtime-state.js'
 import type { RuntimeColumnSlice } from './runtime-column-store-service.js'
 
@@ -67,7 +68,7 @@ export function cellValuesEqual(left: CellValue, right: CellValue): boolean {
 }
 
 export function sameExactNumericValue(left: number, right: number): boolean {
-  return left === right || Object.is(left, right)
+  return sameExactLookupNumber(left, right)
 }
 
 export function directNumberResult(value: number): CellValue {

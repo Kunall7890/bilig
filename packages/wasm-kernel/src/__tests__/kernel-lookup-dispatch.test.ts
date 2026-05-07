@@ -83,7 +83,7 @@ describe('wasm kernel lookup dispatch slab', () => {
   it('keeps match-family lookup behavior stable across refactors', async () => {
     const kernel = await createKernel()
     const width = 12
-    kernel.init(120, 1, 5, 6, 32)
+    kernel.init(120, 1, 6, 8, 40)
 
     const cellTags = new Uint8Array(120)
     const cellNumbers = new Float64Array(120)
@@ -103,14 +103,18 @@ describe('wasm kernel lookup dispatch slab', () => {
       cellTags[30 + index] = ValueTag.Number
       cellNumbers[30 + index] = value
     })
+    cellTags[40] = ValueTag.Number
+    cellNumbers[40] = 2374.28
+    cellTags[50] = ValueTag.Number
+    cellNumbers[50] = 700
     kernel.writeCells(cellTags, cellNumbers, new Uint32Array(120), new Uint16Array(120))
 
     kernel.uploadRangeMembers(
-      Uint32Array.from([0, 1, 2, 3, 10, 11, 12, 13, 20, 21, 22, 30, 31, 32]),
-      Uint32Array.from([0, 4, 8, 11]),
-      Uint32Array.from([4, 4, 3, 3]),
+      Uint32Array.from([0, 1, 2, 3, 10, 11, 12, 13, 20, 21, 22, 30, 31, 32, 40, 50]),
+      Uint32Array.from([0, 4, 8, 11, 14, 15]),
+      Uint32Array.from([4, 4, 3, 3, 1, 1]),
     )
-    kernel.uploadRangeShapes(Uint32Array.from([4, 4, 3, 3]), Uint32Array.from([1, 1, 1, 1]))
+    kernel.uploadRangeShapes(Uint32Array.from([4, 4, 3, 3, 1, 1]), Uint32Array.from([1, 1, 1, 1, 1, 1]))
 
     const packed = packPrograms([
       [encodePushNumber(0), encodePushRange(0), encodePushNumber(1), encodeCall(BuiltinId.Match, 3), encodeRet()],
@@ -118,8 +122,9 @@ describe('wasm kernel lookup dispatch slab', () => {
       [encodePushNumber(0), encodePushRange(0), encodePushRange(1), encodeCall(BuiltinId.Xlookup, 3), encodeRet()],
       [encodePushNumber(0), encodePushRange(0), encodePushRange(1), encodePushNumber(1), encodeCall(BuiltinId.Xlookup, 4), encodeRet()],
       [encodePushNumber(0), encodePushRange(2), encodePushRange(3), encodeCall(BuiltinId.Lookup, 3), encodeRet()],
+      [encodePushNumber(0), encodePushRange(4), encodePushRange(5), encodeCall(BuiltinId.Xlookup, 3), encodeRet()],
     ])
-    const constants = packConstants([[20, 0], [20, 0, -1], [20], [25, 999], [25]])
+    const constants = packConstants([[20, 0], [20, 0, -1], [20], [25, 999], [25], [2374.2799999999997]])
     kernel.uploadPrograms(
       packed.programs,
       packed.offsets,
@@ -130,6 +135,7 @@ describe('wasm kernel lookup dispatch slab', () => {
         cellIndex(5, 2, width),
         cellIndex(5, 3, width),
         cellIndex(5, 4, width),
+        cellIndex(5, 5, width),
       ]),
     )
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
@@ -140,6 +146,7 @@ describe('wasm kernel lookup dispatch slab', () => {
         cellIndex(5, 2, width),
         cellIndex(5, 3, width),
         cellIndex(5, 4, width),
+        cellIndex(5, 5, width),
       ]),
     )
 
@@ -148,6 +155,7 @@ describe('wasm kernel lookup dispatch slab', () => {
     expectNumberCell(kernel, cellIndex(5, 2, width), 200)
     expectNumberCell(kernel, cellIndex(5, 3, width), 999)
     expectNumberCell(kernel, cellIndex(5, 4, width), 2)
+    expectNumberCell(kernel, cellIndex(5, 5, width), 700)
   })
 
   it('skips lookup-vector error sentinels for approximate LOOKUP', async () => {

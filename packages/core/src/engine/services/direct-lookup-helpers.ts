@@ -1,4 +1,5 @@
 import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
+import { exactLookupNumberKey, normalizeExactLookupNumber, sameExactLookupNumber as formulaSameExactLookupNumber } from '@bilig/formula'
 import type { RuntimeDirectLookupDescriptor } from '../runtime-state.js'
 import type { DirectScalarCurrentOperand } from './direct-formula-index-collection.js'
 
@@ -59,7 +60,7 @@ export function normalizeExactLookupKey(value: CellValue, lookupString: (id: num
     case ValueTag.Empty:
       return 'e:'
     case ValueTag.Number:
-      return `n:${Object.is(value.value, -0) ? 0 : value.value}`
+      return exactLookupNumberKey(value.value)
     case ValueTag.Boolean:
       return value.value ? 'b:1' : 'b:0'
     case ValueTag.String:
@@ -70,11 +71,11 @@ export function normalizeExactLookupKey(value: CellValue, lookupString: (id: num
 }
 
 export function normalizeExactNumericValue(value: CellValue): number | undefined {
-  return value.tag === ValueTag.Number ? (Object.is(value.value, -0) ? 0 : value.value) : undefined
+  return value.tag === ValueTag.Number ? normalizeExactLookupNumber(value.value) : undefined
 }
 
 export function sameExactNumericValue(left: number, right: number): boolean {
-  return left === right || Object.is(left, right)
+  return formulaSameExactLookupNumber(left, right)
 }
 
 export function normalizeApproximateNumericValue(value: CellValue): number | undefined {
@@ -105,7 +106,7 @@ export function normalizeApproximateTextValue(value: CellValue, lookupString: (i
 }
 
 export function exactLookupLiteralNumericValue(value: unknown): number | undefined {
-  return typeof value === 'number' ? (Object.is(value, -0) ? 0 : value) : undefined
+  return typeof value === 'number' ? normalizeExactLookupNumber(value) : undefined
 }
 
 export function canSkipUniformApproximateNumericTailWrite(
@@ -210,45 +211,51 @@ export function exactUniformLookupNumericResult(
   directLookup: Extract<RuntimeDirectLookupDescriptor, { kind: 'exact-uniform-numeric' }>,
   lookupValue: number,
 ): number | undefined {
+  const normalizedLookupValue = normalizeExactLookupNumber(lookupValue)
   const tailPatch = directLookup.tailPatch
   if (tailPatch === undefined && directLookup.step === 1) {
-    if (!Number.isInteger(lookupValue)) {
+    if (!Number.isInteger(normalizedLookupValue)) {
       return undefined
     }
-    const position = lookupValue - directLookup.start + 1
+    const position = normalizedLookupValue - normalizeExactLookupNumber(directLookup.start) + 1
     return position >= 1 && position <= directLookup.length ? position : undefined
   }
   if (tailPatch === undefined && directLookup.step === -1) {
-    if (!Number.isInteger(lookupValue)) {
+    if (!Number.isInteger(normalizedLookupValue)) {
       return undefined
     }
-    const position = directLookup.start - lookupValue + 1
+    const position = normalizeExactLookupNumber(directLookup.start) - normalizedLookupValue + 1
     return position >= 1 && position <= directLookup.length ? position : undefined
   }
   if (tailPatch !== undefined) {
-    if (sameExactNumericValue(lookupValue, tailPatch.newNumeric)) {
+    if (sameExactNumericValue(normalizedLookupValue, tailPatch.newNumeric)) {
       return tailPatch.row - directLookup.rowStart + 1
     }
-    if (sameExactNumericValue(lookupValue, tailPatch.oldNumeric)) {
+    if (sameExactNumericValue(normalizedLookupValue, tailPatch.oldNumeric)) {
       return undefined
     }
   }
   if (directLookup.step === 1) {
-    if (!Number.isInteger(lookupValue)) {
+    if (!Number.isInteger(normalizedLookupValue)) {
       return undefined
     }
-    const position = lookupValue - directLookup.start + 1
+    const position = normalizedLookupValue - normalizeExactLookupNumber(directLookup.start) + 1
     return position >= 1 && position <= directLookup.length ? position : undefined
   }
   if (directLookup.step === -1) {
-    if (!Number.isInteger(lookupValue)) {
+    if (!Number.isInteger(normalizedLookupValue)) {
       return undefined
     }
-    const position = directLookup.start - lookupValue + 1
+    const position = normalizeExactLookupNumber(directLookup.start) - normalizedLookupValue + 1
     return position >= 1 && position <= directLookup.length ? position : undefined
   }
-  const relative = (lookupValue - directLookup.start) / directLookup.step
-  return Number.isInteger(relative) && relative >= 0 && relative < directLookup.length ? relative + 1 : undefined
+  const relative = (normalizedLookupValue - normalizeExactLookupNumber(directLookup.start)) / normalizeExactLookupNumber(directLookup.step)
+  const nearestOffset = Math.round(relative)
+  if (nearestOffset < 0 || nearestOffset >= directLookup.length) {
+    return undefined
+  }
+  const candidate = directLookup.start + directLookup.step * nearestOffset
+  return sameExactNumericValue(candidate, normalizedLookupValue) ? nearestOffset + 1 : undefined
 }
 
 export function approximateUniformLookupCurrentResult(

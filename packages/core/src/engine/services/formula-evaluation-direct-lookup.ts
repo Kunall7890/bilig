@@ -2,7 +2,8 @@ import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 import type { EngineRuntimeState, PreparedApproximateVectorLookup, PreparedExactVectorLookup, RuntimeFormula } from '../runtime-state.js'
 import type { ExactColumnIndexService } from './exact-column-index-service.js'
 import type { SortedColumnSearchService } from './sorted-column-search-service.js'
-import { directErrorResult, directNumberResult, sameExactNumericValue } from './formula-evaluation-helpers.js'
+import { exactUniformLookupNumericResult } from './direct-lookup-helpers.js'
+import { directErrorResult, directNumberResult } from './formula-evaluation-helpers.js'
 
 interface DirectVectorLookupContext {
   readonly state: Pick<EngineRuntimeState, 'workbook'>
@@ -158,33 +159,8 @@ export function tryEvaluateDirectVectorLookup(context: DirectVectorLookupContext
     const numericValue = Object.is(cellStore.numbers[refreshed.operandCellIndex] ?? 0, -0)
       ? 0
       : (cellStore.numbers[refreshed.operandCellIndex] ?? 0)
-    const tailPatch = refreshed.tailPatch
-    if (tailPatch !== undefined) {
-      if (sameExactNumericValue(numericValue, tailPatch.newNumeric)) {
-        return directNumberResult(tailPatch.row - refreshed.rowStart + 1)
-      }
-      if (sameExactNumericValue(numericValue, tailPatch.oldNumeric)) {
-        return directErrorResult(ErrorCode.NA)
-      }
-    }
-    if (refreshed.step === 1) {
-      if (!Number.isInteger(numericValue)) {
-        return directErrorResult(ErrorCode.NA)
-      }
-      const position = numericValue - refreshed.start + 1
-      return position >= 1 && position <= refreshed.length ? directNumberResult(position) : directErrorResult(ErrorCode.NA)
-    }
-    if (refreshed.step === -1) {
-      if (!Number.isInteger(numericValue)) {
-        return directErrorResult(ErrorCode.NA)
-      }
-      const position = refreshed.start - numericValue + 1
-      return position >= 1 && position <= refreshed.length ? directNumberResult(position) : directErrorResult(ErrorCode.NA)
-    }
-    const relative = (numericValue - refreshed.start) / refreshed.step
-    return Number.isInteger(relative) && relative >= 0 && relative < refreshed.length
-      ? directNumberResult(relative + 1)
-      : directErrorResult(ErrorCode.NA)
+    const position = exactUniformLookupNumericResult(refreshed, numericValue)
+    return position === undefined ? directErrorResult(ErrorCode.NA) : directNumberResult(position)
   }
   if (directLookup.kind === 'exact') {
     const prepared = refreshDirectExactLookup(context, directLookup)

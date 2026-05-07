@@ -1,5 +1,5 @@
 import { ValueTag, type CellValue } from '@bilig/protocol'
-import { parseRangeAddress } from '@bilig/formula'
+import { exactLookupNumberKey, normalizeExactLookupNumber, parseRangeAddress, sameExactLookupNumber } from '@bilig/formula'
 import type { EngineRuntimeState, PreparedExactVectorLookup } from '../runtime-state.js'
 import type { EngineRuntimeColumnStoreService, RuntimeColumnView } from './runtime-column-store-service.js'
 import type { ColumnIndexStore } from '../../indexes/column-index-store.js'
@@ -89,7 +89,7 @@ function normalizeExactLookupKey(value: CellValue, lookupString: (id: number) =>
     case ValueTag.Empty:
       return 'e:'
     case ValueTag.Number:
-      return `n:${Object.is(value.value, -0) ? 0 : value.value}`
+      return exactLookupNumberKey(value.value)
     case ValueTag.Boolean:
       return value.value ? 'b:1' : 'b:0'
     case ValueTag.String:
@@ -147,6 +147,29 @@ function decodeValueTag(rawTag: number | undefined): ValueTag {
     default:
       return ValueTag.Empty
   }
+}
+
+function exactUniformPosition(start: number, step: number, length: number, lookupValue: number): number | undefined {
+  const normalizedLookupValue = normalizeExactLookupNumber(lookupValue)
+  const normalizedStart = normalizeExactLookupNumber(start)
+  const normalizedStep = normalizeExactLookupNumber(step)
+  if (!Number.isFinite(normalizedStep) || normalizedStep === 0) {
+    return undefined
+  }
+  if (normalizedStep === 1 || normalizedStep === -1) {
+    if (!Number.isInteger(normalizedLookupValue)) {
+      return undefined
+    }
+    const position = normalizedStep === 1 ? normalizedLookupValue - normalizedStart + 1 : normalizedStart - normalizedLookupValue + 1
+    return position >= 1 && position <= length ? position : undefined
+  }
+  const relative = (normalizedLookupValue - normalizedStart) / normalizedStep
+  const nearestOffset = Math.round(relative)
+  if (nearestOffset < 0 || nearestOffset >= length) {
+    return undefined
+  }
+  const candidate = start + step * nearestOffset
+  return sameExactLookupNumber(candidate, normalizedLookupValue) ? nearestOffset + 1 : undefined
 }
 
 function resolveExactColumnBounds(request: VectorLookupBoundsRequest): ExactColumnBounds | undefined {
@@ -276,7 +299,7 @@ export function createExactColumnIndexService(args: {
       case ValueTag.Empty:
         return 'e:'
       case ValueTag.Number:
-        return `n:${view.readNumberAt(offset)}`
+        return exactLookupNumberKey(view.readNumberAt(offset))
       case ValueTag.Boolean:
         return view.readNumberAt(offset) !== 0 ? 'b:1' : 'b:0'
       case ValueTag.String: {
@@ -546,12 +569,11 @@ export function createExactColumnIndexService(args: {
         prepared.uniformStep !== undefined &&
         request.lookupValue.tag === ValueTag.Number
       ) {
-        const numericValue = Object.is(request.lookupValue.value, -0) ? 0 : request.lookupValue.value
-        const relative = (numericValue - prepared.uniformStart) / prepared.uniformStep
-        const position = Number.isInteger(relative) ? relative + 1 : undefined
+        const numericValue = normalizeExactLookupNumber(request.lookupValue.value)
+        const position = exactUniformPosition(prepared.uniformStart, prepared.uniformStep, prepared.length, numericValue)
         return {
           handled: true,
-          position: position !== undefined && position >= 1 && position <= prepared.length ? position : undefined,
+          position,
         }
       }
       const normalizedLookupKey = normalizeExactLookupKey(
@@ -575,13 +597,12 @@ export function createExactColumnIndexService(args: {
       if (request.lookupValue.tag !== ValueTag.Number) {
         return { handled: true, position: undefined }
       }
-      const numericValue = Object.is(request.lookupValue.value, -0) ? 0 : request.lookupValue.value
+      const numericValue = normalizeExactLookupNumber(request.lookupValue.value)
       if (prepared.uniformStart !== undefined && prepared.uniformStep !== undefined) {
-        const relative = (numericValue - prepared.uniformStart) / prepared.uniformStep
-        const position = Number.isInteger(relative) ? relative + 1 : undefined
+        const position = exactUniformPosition(prepared.uniformStart, prepared.uniformStep, prepared.length, numericValue)
         return {
           handled: true,
-          position: position !== undefined && position >= 1 && position <= prepared.length ? position : undefined,
+          position,
         }
       }
       const numericMap = request.searchMode === -1 ? prepared.lastNumericPositions : prepared.firstNumericPositions

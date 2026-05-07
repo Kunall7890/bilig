@@ -1,5 +1,6 @@
 import { ErrorCode, ValueTag, formatErrorCode, formatGeneralNumberValue, type CellValue } from '@bilig/protocol'
 import type { RangeBuiltinArgument } from './builtins/lookup.js'
+import { normalizeExactLookupNumber } from './builtins/lookup-core-helpers.js'
 import type { MatrixValue } from './group-pivot-evaluator.js'
 import { emptyValue, error, numberValue } from './js-evaluator-cell-values.js'
 import type { JsPlanInstruction, StackValue } from './js-evaluator-types.js'
@@ -73,10 +74,12 @@ function compareScalars(left: CellValue, right: CellValue): number | undefined {
   if (leftNum === undefined || rightNum === undefined) {
     return undefined
   }
-  if (leftNum === rightNum) {
+  const normalizedLeft = normalizeExactLookupNumber(leftNum)
+  const normalizedRight = normalizeExactLookupNumber(rightNum)
+  if (normalizedLeft === normalizedRight) {
     return 0
   }
-  return leftNum < rightNum ? -1 : 1
+  return normalizedLeft < normalizedRight ? -1 : 1
 }
 
 function comparableNumber(value: CellValue): number | undefined {

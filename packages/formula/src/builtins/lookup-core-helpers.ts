@@ -18,6 +18,27 @@ export interface LookupBuiltinResolverOptions {
   resolveIndexedExactMatch?: (lookupValue: CellValue, range: RangeBuiltinArgument) => number | undefined
 }
 
+const exactLookupNumberSignificantDigits = 15
+
+export function normalizeExactLookupNumber(value: number): number {
+  if (Object.is(value, -0)) {
+    return 0
+  }
+  if (!Number.isFinite(value)) {
+    return value
+  }
+  const normalized = Number(value.toPrecision(exactLookupNumberSignificantDigits))
+  return Object.is(normalized, -0) ? 0 : normalized
+}
+
+export function exactLookupNumberKey(value: number): string {
+  return `n:${normalizeExactLookupNumber(value)}`
+}
+
+export function sameExactLookupNumber(left: number, right: number): boolean {
+  return normalizeExactLookupNumber(left) === normalizeExactLookupNumber(right)
+}
+
 export function errorValue(code: ErrorCode): CellValue {
   return { tag: ValueTag.Error, code }
 }
@@ -126,10 +147,12 @@ export function compareScalars(left: CellValue, right: CellValue): number | unde
   if (leftNum === undefined || rightNum === undefined) {
     return undefined
   }
-  if (leftNum === rightNum) {
+  const normalizedLeft = normalizeExactLookupNumber(leftNum)
+  const normalizedRight = normalizeExactLookupNumber(rightNum)
+  if (normalizedLeft === normalizedRight) {
     return 0
   }
-  return leftNum < rightNum ? -1 : 1
+  return normalizedLeft < normalizedRight ? -1 : 1
 }
 
 export function requireCellVector(arg: LookupBuiltinArgument): RangeBuiltinArgument | CellValue {

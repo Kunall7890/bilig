@@ -91,6 +91,23 @@ describe('lookup column owner helpers', () => {
     expect(supportsNumericApproximateRange(owner!, 0, 3, -1)).toBe(false)
   })
 
+  it('keys exact numeric lookups at spreadsheet precision', () => {
+    const workbook = new WorkbookStore('lookup-owner-decimal-exact')
+    const strings = new StringPool()
+    workbook.createSheet('Sheet1')
+    setStoredCellValue(workbook, strings, 'Sheet1', 'A1', { tag: ValueTag.Number, value: 2374.28 })
+
+    const runtimeColumnStore = createEngineRuntimeColumnStoreService({
+      state: { workbook, strings },
+    })
+    const owner = buildLookupColumnOwner({
+      owner: runtimeColumnStore.getColumnOwner({ sheetName: 'Sheet1', col: 0 }),
+      normalizeStringId: runtimeColumnStore.normalizeStringId,
+    })
+
+    expect(findExactMatchInRange(owner!, 'n:2374.28', 0, 0, 1)).toBe(0)
+  })
+
   it('keeps owner-backed exact and approximate lookup available past 65k rows', () => {
     const length = 70_000
     const owner = buildLookupColumnOwner({

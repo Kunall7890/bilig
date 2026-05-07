@@ -26,6 +26,19 @@ export function valueNumber(
   return text == null ? NaN : parseNumericText(text)
 }
 
+function sameExactNumericValue(left: f64, right: f64): bool {
+  if (left == right) {
+    return true
+  }
+  if (!isFinite(left) || !isFinite(right)) {
+    return false
+  }
+  const leftMagnitude = Math.abs(left)
+  const rightMagnitude = Math.abs(right)
+  const scale = Math.max(1, Math.max(leftMagnitude, rightMagnitude))
+  return Math.abs(left - right) <= scale * 5e-15
+}
+
 export function compareScalarValues(
   leftTag: u8,
   leftValue: f64,
@@ -102,7 +115,7 @@ export function compareScalarValues(
   if (isNaN(leftNumeric) || isNaN(rightNumeric)) {
     return i32.MIN_VALUE
   }
-  if (leftNumeric == rightNumeric) {
+  if (sameExactNumericValue(leftNumeric, rightNumeric)) {
     return 0
   }
   return leftNumeric < rightNumeric ? -1 : 1

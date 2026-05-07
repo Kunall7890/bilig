@@ -1,4 +1,5 @@
 import { ValueTag, type CellValue } from '@bilig/protocol'
+import { exactLookupNumberKey, normalizeExactLookupNumber } from '@bilig/formula'
 import type { RuntimeColumnOwner } from './runtime-column-store-service.js'
 
 const MAX_COLUMN_OWNER_SPAN = 1_048_576
@@ -150,7 +151,7 @@ function numericValueForValue(value: CellValue): number {
     case ValueTag.Empty:
       return 0
     case ValueTag.Number:
-      return Object.is(value.value, -0) ? 0 : value.value
+      return normalizeExactLookupNumber(value.value)
     case ValueTag.Boolean:
       return value.value ? 1 : 0
     case ValueTag.String:
@@ -171,7 +172,7 @@ function exactLookupKeyForValue(value: CellValue, normalizeStringId: (stringId: 
     case ValueTag.Empty:
       return 'e:'
     case ValueTag.Number:
-      return `n:${Object.is(value.value, -0) ? 0 : value.value}`
+      return exactLookupNumberKey(value.value)
     case ValueTag.Boolean:
       return value.value ? 'b:1' : 'b:0'
     case ValueTag.String:
@@ -186,7 +187,7 @@ function exactLookupKeyAt(owner: LookupColumnOwner, offset: number): string {
     case EMPTY_KIND:
       return 'e:'
     case NUMERIC_KIND:
-      return `n:${owner.numericValues[offset] ?? 0}`
+      return exactLookupNumberKey(owner.numericValues[offset] ?? 0)
     case BOOLEAN_KIND:
       return (owner.numericValues[offset] ?? 0) !== 0 ? 'b:1' : 'b:0'
     case TEXT_KIND:
@@ -580,8 +581,7 @@ export function findExactNumericApproximateMatchInRange(
   if (!bounds || hasOffsetInRange(owner.exactNumericIncompatibleOffsets, bounds.start, bounds.end)) {
     return undefined
   }
-  const normalizedValue = Object.is(lookupValue, -0) ? 0 : lookupValue
-  return findExactMatchInRange(owner, `n:${normalizedValue}`, rowStart, rowEnd, -1)
+  return findExactMatchInRange(owner, exactLookupNumberKey(lookupValue), rowStart, rowEnd, -1)
 }
 
 export function buildLookupColumnOwner(args: {
@@ -626,7 +626,7 @@ export function buildLookupColumnOwner(args: {
       switch (tag) {
         case ValueTag.Number:
           kindCodes[offset] = NUMERIC_KIND
-          numericValues[offset] = Object.is(page.numbers[localRow] ?? 0, -0) ? 0 : (page.numbers[localRow] ?? 0)
+          numericValues[offset] = normalizeExactLookupNumber(page.numbers[localRow] ?? 0)
           break
         case ValueTag.Boolean:
           kindCodes[offset] = BOOLEAN_KIND
