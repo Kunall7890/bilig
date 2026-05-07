@@ -194,7 +194,12 @@ Actions:
     `r/javascript`, `r/typescript`, `r/node`, `r/opensource`,
     `r/coolgithubprojects`, `r/SideProject`, and only `r/programming` when the
     post is deeply technical
-  - Product Hunt after the social preview, demo, and example are polished
+  - Product Hunt after the social preview, demo, and example are polished.
+    Product Hunt's current help docs say posting requires a personal account,
+    new accounts may need a one-week warmup before posting, and the launch flow
+    now supports drafts instead of an immediate "launch now" path. Build the
+    draft early, add the maintainer as a Maker, and do normal product comments
+    before launch day.
   - dev.to or a personal/company blog with the benchmark story
   - use `docs/community-launch-pack.md` for platform-specific drafts and
     anti-spam guardrails before posting outside HN
@@ -329,16 +334,19 @@ audience, or product friction.
    add a link only when it materially helps the thread. Use
    [`docs/x-reply-growth-playbook.md`](x-reply-growth-playbook.md) for the
    reply budget, tone, examples, and platform-rule boundaries.
-3. Respond to serious Hacker News and GitHub Discussion comments within the same
+3. Create a Product Hunt draft once the launch image and demo are final. Do not
+   schedule the launch until the personal account is eligible to post and the
+   first maker comment is ready.
+4. Respond to serious Hacker News and GitHub Discussion comments within the same
    day, then convert repeated feedback into docs or examples.
    For a concrete Hacker News launch checklist, use
    [`docs/show-hn-launch-pack.md`](show-hn-launch-pack.md).
-4. Ship the next proof artifact: a compact formula-edge fixture article that
+5. Ship the next proof artifact: a compact formula-edge fixture article that
    follows the XLOOKUP exact walkthrough pattern, starts from one real formula
    family, and shows the fixture, expected result, and verifier command.
-5. Track GitHub stars, npm downloads, GitHub traffic referrers, and issue
+6. Track GitHub stars, npm downloads, GitHub traffic referrers, and issue
    quality every week.
-6. Add a Star History chart only after there is enough organic movement for the
+7. Add a Star History chart only after there is enough organic movement for the
    graph to communicate momentum instead of early-stage emptiness.
 
 ## Sources
@@ -369,6 +377,16 @@ audience, or product friction.
   <https://help.x.com/en/rules-and-policies/x-automation>
 - X developer guidelines:
   <https://docs.x.com/developer-guidelines>
+- Product Hunt launch guide:
+  <https://www.producthunt.com/launch/>
+- Product Hunt getting started:
+  <https://help.producthunt.com/en/articles/2305333-getting-started>
+- Product Hunt posting access:
+  <https://help.producthunt.com/en/articles/481909-how-can-i-get-access-to-post>
+- Product Hunt launch drafts:
+  <https://help.producthunt.com/en/articles/9823193-where-did-launch-now-go>
+- Product Hunt hunter and maker roles:
+  <https://help.producthunt.com/en/articles/10082986-hunter-vs-makers-and-how-to-change-them>
 - Lago first-1000-stars case study:
   <https://getlago.com/blog/how-we-got-our-first-1000-github-stars>
 - Indie Hackers first-1000-stars writeup:

@@ -23,11 +23,11 @@ the link were removed.
 - Link only when the thread is already about spreadsheets, workbook automation,
   formula engines, agent tooling, or open-source implementation evidence.
 
-X's own rules say unsolicited automated replies based only on keyword searches
-are not permitted, its developer guidelines require official API use instead of
-scraping or browser automation, and its behavior guidance treats repeated
-duplicated unsolicited replies as spam. That makes the correct strategy simple:
-fewer replies, higher fit, and no automation.
+X's own rules, updated in April 2026, say unsolicited automated replies based
+only on keyword searches are not permitted. Its developer guidelines require
+official API use instead of scraping or browser automation, and its behavior
+guidance treats repeated duplicated unsolicited replies as spam. That makes the
+correct strategy simple: fewer replies, higher fit, and no automation.
 
 ## Daily Reply Budget
 
@@ -287,6 +287,107 @@ the other half i care about for spreadsheet agents is writeback verification:
 after the model changes a workbook, can you inspect formulas/ranges and prove
 what changed.
 ```
+
+## Atlas Search Pass - 2026-05-07
+
+Query used manually in Atlas:
+
+```text
+("excel add-in" OR "spreadsheet automation" OR "workbook automation") (agent OR chatgpt OR ai)
+```
+
+Do not work this like a lead list. Pick one high-fit thread, reply once, and
+then wait. If a thread is mostly a launch announcement for another product, use
+a no-link technical reply or skip it.
+
+### OpenCode Excel agent demo
+
+Target:
+<https://x.com/moalzq/status/2051147753993224594>
+
+Why it fits:
+
+- It is a concrete demo of an agent running inside Excel.
+- The post already frames the workflow as "select cells, give instruction, code
+  executes until done."
+- The useful `bilig` angle is not another UI demo; it is post-action workbook
+  verification, formulas, ranges, persistence, and readback.
+- This is a stronger reply target than generic AI spreadsheet launch posts
+  because it is about agent execution, not just chat over data.
+
+Draft reply:
+
+```text
+this is the right direction for spreadsheet agents.
+
+the part i keep wanting after "it writes code until done" is a boring
+verification layer: what ranges changed, what formulas recalculated, and can the
+workbook round-trip after the edit.
+```
+
+Only add a link if someone asks for implementation evidence. Then use:
+
+```text
+i have been building the headless version of that layer here:
+https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper
+
+the useful command is npm run agent:verify because it checks writeback instead
+of only showing a grid demo.
+```
+
+### PDF to spreadsheet automation failure thread
+
+Target:
+<https://x.com/Kcherupalli/status/2049149610187165716>
+
+Why it fits:
+
+- It is about a real PDF-to-spreadsheet automation that worked, then broke.
+- The thread is skeptical of agent hype, so a repo link would likely feel like
+  marketing unless someone asks.
+- The useful contribution is agreeing with the production constraint:
+  spreadsheet automations need repeatable fixtures, live diagnostics, and
+  explicit failure states.
+
+Draft reply:
+
+```text
+this is the part most demos skip.
+
+spreadsheet automation needs fixtures and failure states, not just a happy-path
+agent run. once it breaks, you need to know whether extraction, formulas,
+writeback, or export changed.
+```
+
+Do not include a link in the first reply. If the author asks about tooling,
+point to the XLSX verifier walkthrough or the headless WorkPaper example.
+
+### ChatGPT Excel add-in differentiation question
+
+Target:
+<https://x.com/joserod__/status/2047402008882085973>
+
+Why it fits:
+
+- The post explicitly asks how an Excel agent differs from the ChatGPT Excel
+  add-in.
+- This is a high-fit place to explain the infrastructure distinction without
+  attacking the add-in.
+- Keep the reply short and neutral; it should answer the question even if the
+  reader never clicks the profile.
+
+Draft reply:
+
+```text
+i would separate product surface from automation substrate.
+
+an add-in is where the user talks to the workbook. the substrate is the boring
+part underneath: typed workbook ops, recalc, writeback checks, persistence, and
+import/export fidelity.
+```
+
+No link first. If someone asks for a concrete open-source example, use
+`@bilig/headless` and link the runnable example, not the root repo.
 
 ## Reply Templates
 
