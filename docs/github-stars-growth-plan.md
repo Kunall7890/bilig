@@ -34,6 +34,7 @@ Verified on 2026-05-07 after the Show HN launch and topic refresh:
   - `docs/why-agents-need-workbook-apis.md`
   - `docs/persisting-formula-backed-workpaper-documents-in-node.md`
   - `docs/what-workpaper-benchmark-proves.md`
+  - `docs/headless-spreadsheet-engine-comparison.md`
   - `docs/building-a-revenue-model-with-headless-workpaper.md`
   - `docs/where-bilig-is-not-excel-compatible-yet.md`
   - `docs/xlsx-corpus-verifier-walkthrough.md`
@@ -99,6 +100,16 @@ Verified on 2026-05-07 after the Show HN launch and topic refresh:
   acknowledged IronCalc as a strong Rust/WASM project and positioned `bilig`
   narrowly around Node/service WorkPaper state, mutation receipts, formula
   readback, and persistence checks for agents.
+- Added
+  [`docs/headless-spreadsheet-engine-comparison.md`](headless-spreadsheet-engine-comparison.md)
+  and wired it into the README, public docs index, sitemap, `llms.txt`, and the
+  docs-discovery check. The guide compares `@bilig/headless` with HyperFormula,
+  IronCalc, ExcelJS, and Formula.js without claiming blanket replacement.
+- Posted one no-link reply to Tom Doerr's high-fit `hucre` spreadsheet-engine
+  thread:
+  <https://x.com/GregKonush/status/2052476569147564244>. The reply avoided a
+  repo link and focused on the service/agent need for formulas, structural
+  edits, mutation readback, and persisted proof.
 
 ## Research Findings
 
@@ -393,6 +404,8 @@ audience, or product friction.
    add a link only when it materially helps the thread. Use
    [`docs/x-reply-growth-playbook.md`](x-reply-growth-playbook.md) for the
    reply budget, tone, examples, and platform-rule boundaries.
+   The 2026-05-07 reply budget is already used unless someone asks a direct
+   follow-up.
 3. Create a Product Hunt draft once the launch image and demo are final. Do not
    schedule the launch until the personal account is eligible to post and the
    first maker comment is ready.

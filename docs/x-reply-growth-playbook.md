@@ -174,11 +174,38 @@ Why it fit:
   respect the project, name the boundary, and avoid dragging the thread into a
   repo pitch unless someone asks for implementation evidence.
 
+### Hucre spreadsheet-engine thread from Tom Doerr
+
+Target:
+<https://x.com/tom_doerr/status/2052311345865883968>
+
+Posted reply:
+<https://x.com/GregKonush/status/2052476569147564244>
+
+Text:
+
+```text
+nice. zero-dep xlsx is a strong wedge. the thing i keep wanting next is a headless calc/mutation layer: formulas + structural edits + persisted readback, so services and agents can prove what changed.
+```
+
+Why it fit:
+
+- It was a relevant TypeScript spreadsheet-engine thread with visible developer
+  attention.
+- It used no repo link, no star ask, and no direct comparison attack.
+- It described the `bilig` wedge as a missing layer rather than trying to turn
+  another project's launch into a pitch.
+- Stop after this reply unless Tom or another participant asks a specific
+  implementation question.
+
 ## Live Reply Queue - 2026-05-07
 
-These are hand-picked targets from the logged-in Atlas X session. Do not treat
-this as a scraping queue. Use it as a small manual queue and stop after the first
-reply unless a real follow-up appears.
+These are hand-picked targets from the logged-in desktop-browser X session. Do
+not treat this as a scraping queue. Use it as a small manual queue and stop
+after the first reply unless a real follow-up appears.
+
+2026-05-07 note: the daily reply budget is used after the IronCalc and Hucre
+manual replies. Do not add another cold reply today.
 
 ### ChatGPT spreadsheet add-on post
 
@@ -615,3 +642,5 @@ is good enough to link when the same question appears again.
   <https://github.blog/open-source/maintainers/four-steps-toward-building-an-open-source-community/>
 - IronCalc official site:
   <https://www.ironcalc.com/>
+- Hucre launch thread:
+  <https://x.com/tom_doerr/status/2052311345865883968>
