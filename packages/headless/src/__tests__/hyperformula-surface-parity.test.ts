@@ -14,6 +14,7 @@ const ALLOWED_BILIG_INSTANCE_METHODS = [
   'onceDetailed',
   'resetPerformanceCounters',
 ] as const
+const ALLOWED_BILIG_INSTANCE_ACCESSORS = ['internals'] as const
 
 describe('WorkPaper HyperFormula snapshot parity', () => {
   it('matches the checked-in HyperFormula class surface snapshot', () => {
@@ -22,7 +23,9 @@ describe('WorkPaper HyperFormula snapshot parity', () => {
 
     expect(currentSurface.staticMembers).toEqual(snapshot.classSurface.staticMembers)
     expect(currentSurface.staticMethods).toEqual(snapshot.classSurface.staticMethods)
-    expect(currentSurface.instanceAccessors).toEqual(snapshot.classSurface.instanceAccessors)
+    expect(currentSurface.instanceAccessors).toEqual(
+      [...new Set([...snapshot.classSurface.instanceAccessors, ...ALLOWED_BILIG_INSTANCE_ACCESSORS])].toSorted(),
+    )
     expect(currentSurface.instanceMethods).toEqual(
       [...new Set([...snapshot.classSurface.instanceMethods, ...ALLOWED_BILIG_INSTANCE_METHODS])].toSorted(),
     )
