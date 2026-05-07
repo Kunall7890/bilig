@@ -198,6 +198,31 @@ describe('GitHub issue reductions', () => {
     expectNumber(cellValue(workbook, 'Sheet1', 1, 4), 3)
   })
 
+  it('resolves INDEX zero row and column vector selections to scalar cells', () => {
+    const workbook = WorkPaper.buildFromSheets(
+      {
+        Sheet1: [
+          ['na', 'Non Participating Preferred', 'Shadow', 'Participating Preferred', 'na', 'Exit', 'Seed', 'Common'],
+          ['Seed', 'Series A', 'Series B', 'Series C', 'Series D', 'Exit', 'Series A', 'Non Participating Preferred'],
+          [100, 150, 200, 300, 400, 500, 'Series B', 'Shadow'],
+          [null, null, null, null, null, null, 'Series C', 'Participating Preferred'],
+          [null, null, null, null, null, null, 'Series D', 400],
+          [null, null, null, null, null, null, 'Exit', 500],
+          [
+            '=INDEX($A$1:$F$1,0,MATCH("Series C",$A$2:$F$2,0))',
+            '=INDEX($A$3:$F$3,0,MATCH("Series C",$A$2:$F$2,0))',
+            '=INDEX($H$1:$H$6,MATCH("Series C",$G$1:$G$6,0),0)',
+          ],
+        ],
+      },
+      { maxRows: 20, maxColumns: 10, useColumnIndex: true },
+    )
+
+    expectString(cellValue(workbook, 'Sheet1', 6, 0), 'Participating Preferred')
+    expectNumber(cellValue(workbook, 'Sheet1', 6, 1), 300)
+    expectString(cellValue(workbook, 'Sheet1', 6, 2), 'Participating Preferred')
+  })
+
   it('resolves row-offset INDEX and MATCH lookups during initial load', () => {
     const comparison = Array.from({ length: 14 }, () => [null, null, null, null, null] as TestCell[])
     comparison[13][2] = 'txn-123'
