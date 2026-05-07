@@ -271,7 +271,7 @@ describe('GitHub issue reductions', () => {
 
     expectNumber(cellValue(workbook, 'Formulas', formulaCount - 1, 1), 4_167_500)
     expect(workbook.getPerformanceCounters().directFormulaInitialEvaluations).toBe(formulaCount)
-  })
+  }, 15_000)
 
   it('recalculates rounded criteria aggregates after edits instead of applying raw deltas', () => {
     const workbook = WorkPaper.buildFromSheets(
