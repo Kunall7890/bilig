@@ -24,7 +24,7 @@ export function initializeWorkPaperFromSheets(args: {
   readonly resetChangeTrackingCaches: () => void
 }): void {
   const sheetEntries = Object.entries(args.sheets)
-  const runtimeSnapshot = args.namedExpressions.length === 0 ? readRuntimeSnapshot(args.sheets) : undefined
+  const runtimeSnapshot = args.namedExpressions.length === 0 && !args.hasFunctionAliases() ? readRuntimeSnapshot(args.sheets) : undefined
   const runtimeSnapshotMatchesSheets = runtimeSnapshot !== undefined && runtimeSnapshotMatchesSheetEntries(sheetEntries, runtimeSnapshot)
   const runtimeSnapshotSheetsByName = runtimeSnapshotMatchesSheets
     ? new Map(runtimeSnapshot.sheets.map((sheet) => [sheet.name, sheet] as const))
