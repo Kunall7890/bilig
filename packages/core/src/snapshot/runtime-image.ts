@@ -68,6 +68,7 @@ export interface RuntimeImageRestoreArgs {
   readonly workbook: WorkbookStore
   readonly strings: StringPool
   readonly resetWorkbook: (workbookName?: string) => void
+  readonly checkEvaluationBudget?: (stepCost?: number) => void
   readonly hydrateTemplateBank: (templates: readonly FormulaTemplateSnapshot[]) => void
   readonly resolveTemplateById?: (templateId: number, source: string, row: number, col: number) => FormulaTemplateResolution | undefined
   readonly initializeCellFormulasAt: (refs: readonly EngineCellMutationRef[], potentialNewCells?: number) => void
@@ -87,6 +88,7 @@ export interface WorkbookSnapshotRestoreArgs {
   readonly workbook: WorkbookStore
   readonly strings: StringPool
   readonly resetWorkbook: (workbookName?: string) => void
+  readonly checkEvaluationBudget?: (stepCost?: number) => void
   readonly initializeCellFormulasAt: (refs: readonly EngineCellMutationRef[], potentialNewCells?: number) => void
   readonly initializeFormulaSourcesAt?: (refs: EngineFormulaSourceRefs, potentialNewCells?: number) => void
 }
@@ -499,7 +501,9 @@ function restoreWorkbookStructure(args: {
   readonly snapshot: WorkbookSnapshot
   readonly workbook: WorkbookStore
   readonly resetWorkbook: (workbookName?: string) => void
+  readonly checkEvaluationBudget?: (stepCost?: number) => void
 }): readonly WorkbookSnapshot['sheets'][number][] {
+  args.checkEvaluationBudget?.()
   args.resetWorkbook(args.snapshot.workbook.name)
   restoreWorkbookMetadata({
     workbook: args.workbook,
@@ -508,11 +512,14 @@ function restoreWorkbookStructure(args: {
 
   const orderedSheets = [...args.snapshot.sheets].toSorted((left, right) => left.order - right.order)
   orderedSheets.forEach((sheet) => {
+    args.checkEvaluationBudget?.()
     args.workbook.createSheet(sheet.name, sheet.order, sheet.id)
   })
   orderedSheets.forEach((sheet) => {
+    args.checkEvaluationBudget?.()
     restoreSheetMetadata({ workbook: args.workbook, sheet })
   })
+  args.checkEvaluationBudget?.()
   restoreMetadataStructures({
     workbook: args.workbook,
     workbookMetadata: args.snapshot.workbook.metadata,
@@ -571,17 +578,20 @@ function restoreLiteralCell(
 
 export function restoreWorkbookFromSnapshot(args: WorkbookSnapshotRestoreArgs): WorkbookRestoreResult {
   const orderedSheets = restoreWorkbookStructure(args)
+  args.checkEvaluationBudget?.()
   const potentialNewCells = orderedSheets.reduce((count, sheet) => count + sheet.cells.length, 0)
   const formulaRefs: EngineCellMutationRef[] = []
   const formulaSourceRefs = args.initializeFormulaSourcesAt ? new RestoredFormulaSourceRefTable(potentialNewCells) : undefined
   const restoredStringIds = new Map<string, number>()
 
+  args.checkEvaluationBudget?.()
   args.workbook.cellStore.ensureCapacity(args.workbook.cellStore.size + potentialNewCells)
   const previousOnSetValue = args.workbook.cellStore.onSetValue
   args.workbook.cellStore.onSetValue = null
   args.workbook.withBatchedColumnVersionUpdates(() => {
     try {
       for (let sheetIndex = 0; sheetIndex < orderedSheets.length; sheetIndex += 1) {
+        args.checkEvaluationBudget?.()
         const sheet = orderedSheets[sheetIndex]!
         const sheetRecord = args.workbook.getSheet(sheet.name)
         if (!sheetRecord) {
@@ -595,6 +605,7 @@ export function restoreWorkbookFromSnapshot(args: WorkbookSnapshotRestoreArgs): 
         const attachFreshCell = createFreshRuntimeCellAttacher(args.workbook, sheetRecord)
         let literalColumns: WrittenColumnTracker | undefined
         for (let cellIndex = 0; cellIndex < sheet.cells.length; cellIndex += 1) {
+          args.checkEvaluationBudget?.()
           const cell = sheet.cells[cellIndex]!
           const coords = readRestoredCellCoordinates(sheet.name, cell)
           const restoredCellIndex = args.workbook.cellStore.allocateReserved(sheetId, coords.row, coords.col)
@@ -635,11 +646,14 @@ export function restoreWorkbookFromSnapshot(args: WorkbookSnapshotRestoreArgs): 
   })
 
   if (formulaSourceRefs && formulaSourceRefs.length > 0) {
+    args.checkEvaluationBudget?.()
     args.initializeFormulaSourcesAt!(formulaSourceRefs, potentialNewCells)
   } else if (formulaRefs.length > 0) {
+    args.checkEvaluationBudget?.()
     args.initializeCellFormulasAt(formulaRefs, potentialNewCells)
   }
 
+  args.checkEvaluationBudget?.()
   restoreVisualMetadata({
     workbook: args.workbook,
     workbookMetadata: args.snapshot.workbook.metadata,
@@ -650,21 +664,26 @@ export function restoreWorkbookFromSnapshot(args: WorkbookSnapshotRestoreArgs): 
 export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): WorkbookRestoreResult {
   const orderedSheets = restoreWorkbookStructure(args)
 
+  args.checkEvaluationBudget?.()
   args.hydrateTemplateBank(args.runtimeImage.templateBank)
 
+  args.checkEvaluationBudget?.()
   const formulaValueIndexAligned = formulaValuesAreAligned(args.runtimeImage.formulaInstances, args.runtimeImage.formulaValues)
   const formulaValuesByAddress = formulaValueIndexAligned ? undefined : new Map<string, Map<number, CellValue>>()
   if (formulaValuesByAddress) {
     args.runtimeImage.formulaValues.forEach((record) => {
+      args.checkEvaluationBudget?.()
       getOrCreateSheetFormulaMap(formulaValuesByAddress, record.sheetName).set(toFormulaInstanceKey(record.row, record.col), record.value)
     })
   }
+  args.checkEvaluationBudget?.()
   const formulaSpansBySheet = buildRuntimeFormulaSheetSpans(args.runtimeImage.formulaInstances)
   const sheetCellsByName = new Map<string, readonly RuntimeImageCellCoordinateSnapshot[]>(
     (args.runtimeImage.sheetCells ?? []).map((record) => [record.sheetName, record.coords]),
   )
   const totalCellCount = orderedSheets.reduce((sum, sheet) => sum + sheet.cells.length, 0)
   if (totalCellCount > 0) {
+    args.checkEvaluationBudget?.()
     args.workbook.cellStore.ensureCapacity(args.workbook.cellStore.size + totalCellCount)
   }
 
@@ -675,6 +694,7 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
   args.workbook.cellStore.onSetValue = null
   try {
     orderedSheets.forEach((sheet) => {
+      args.checkEvaluationBudget?.()
       const sheetRecord = args.workbook.getSheet(sheet.name)
       if (!sheetRecord) {
         throw new Error(`Missing sheet during runtime image restore: ${sheet.name}`)
@@ -691,12 +711,14 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
       const formulaInstanceEnd = formulaSpan?.end ?? formulaInstanceIndex
       let literalColumns: WrittenColumnTracker | undefined
       for (let index = 0; index < sheet.cells.length; index += 1) {
+        args.checkEvaluationBudget?.()
         const cell = sheet.cells[index]!
         const coords = sheetCoords?.[index] ?? readRestoredCellCoordinates(sheet.name, cell)
         while (
           formulaInstanceIndex < formulaInstanceEnd &&
           compareFormulaInstanceToCoordinate(args.runtimeImage.formulaInstances[formulaInstanceIndex]!, coords) < 0
         ) {
+          args.checkEvaluationBudget?.()
           formulaInstanceIndex += 1
         }
         const candidateFormula =
@@ -785,15 +807,19 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
   }
 
   if (hydratedPreparedFormulaRefs.length > 0 && args.initializeHydratedPreparedCellFormulasAt) {
+    args.checkEvaluationBudget?.()
     args.initializeHydratedPreparedCellFormulasAt(hydratedPreparedFormulaRefs, hydratedPreparedFormulaRefs.length)
   }
   if (preparedFormulaRefs.length > 0 && args.initializePreparedCellFormulasAt) {
+    args.checkEvaluationBudget?.()
     args.initializePreparedCellFormulasAt(preparedFormulaRefs, preparedFormulaRefs.length)
   }
   if (formulaRefs.length > 0) {
+    args.checkEvaluationBudget?.()
     args.initializeCellFormulasAt(formulaRefs, formulaRefs.length)
   }
 
+  args.checkEvaluationBudget?.()
   restoreVisualMetadata({
     workbook: args.workbook,
     workbookMetadata: args.snapshot.workbook.metadata,

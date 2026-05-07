@@ -797,7 +797,7 @@ export function createEngineFormulaInitializationService(args: {
     )
   }
 
-  const initializeHydratedPreparedCellFormulasAtNow = (
+  const initializeHydratedPreparedCellFormulasAtNowUnchecked = (
     refs: readonly HydratedPreparedFormulaInitializationRef[],
     potentialNewCells?: number,
   ): void => {
@@ -806,6 +806,7 @@ export function createEngineFormulaInitializationService(args: {
     }
 
     args.beginMutationCollection()
+    args.checkEvaluationBudget()
     let hadCycleMembersBefore: boolean | undefined
     const hadCycleMembersBeforeNow = (): boolean => (hadCycleMembersBefore ??= hasCycleMembersNow())
     let topologyChanged = false
@@ -817,15 +818,22 @@ export function createEngineFormulaInitializationService(args: {
     args.resetMaterializedCellScratch(reservedNewCells)
     const targetCellIndices = hadExistingFormulas
       ? []
-      : refs.map((ref) => ref.cellIndex ?? args.ensureCellTrackedByCoords(ref.sheetId, ref.row, ref.col))
+      : refs.map((ref) => {
+          args.checkEvaluationBudget()
+          return ref.cellIndex ?? args.ensureCellTrackedByCoords(ref.sheetId, ref.row, ref.col)
+        })
     const pendingInitialFormulaCellIndices = hadExistingFormulas
-      ? refs.map((ref) => ref.cellIndex ?? args.ensureCellTrackedByCoords(ref.sheetId, ref.row, ref.col))
+      ? refs.map((ref) => {
+          args.checkEvaluationBudget()
+          return ref.cellIndex ?? args.ensureCellTrackedByCoords(ref.sheetId, ref.row, ref.col)
+        })
       : targetCellIndices
     const pendingFormulaCells = hadExistingFormulas
       ? undefined
       : new Uint8Array(args.state.workbook.cellStore.capacity + reservedNewCells + 1)
     if (pendingFormulaCells) {
       for (let index = 0; index < targetCellIndices.length; index += 1) {
+        args.checkEvaluationBudget()
         pendingFormulaCells[targetCellIndices[index]!] = 1
       }
     }
@@ -843,6 +851,7 @@ export function createEngineFormulaInitializationService(args: {
       const bindFormulaEntries = (): void => {
         args.state.workbook.withBatchedColumnVersionUpdates(() => {
           for (let refIndex = 0; refIndex < refs.length; refIndex += 1) {
+            args.checkEvaluationBudget()
             const ref = refs[refIndex]!
             const cellIndex = hadExistingFormulas ? pendingInitialFormulaCellIndices[refIndex]! : targetCellIndices[refIndex]!
             const ownerSheetName = resolveSheetName(ref.sheetId)
@@ -878,11 +887,16 @@ export function createEngineFormulaInitializationService(args: {
           if (shouldDeferFormulaFamilyIndex) {
             args.deferFormulaFamilyIndexRebuild?.()
           } else {
-            deferredFormulaFamilyRuns?.forEach(registerDeferredFormulaFamilyRun)
+            deferredFormulaFamilyRuns?.forEach((run) => {
+              args.checkEvaluationBudget()
+              registerDeferredFormulaFamilyRun(run)
+            })
           }
+          args.checkEvaluationBudget()
           valueWriter.flush()
         })
       }
+      args.checkEvaluationBudget()
       args.withInitialFormulaCells(pendingInitialFormulaCellIndices, bindFormulaEntries)
       compileMs += performance.now() - compileStarted
     } finally {
@@ -890,6 +904,7 @@ export function createEngineFormulaInitializationService(args: {
     }
 
     if (topologyChanged && !(canAssignTopoInBatch && !hadExistingFormulas)) {
+      args.checkEvaluationBudget()
       const repaired =
         !hadCycleMembersBeforeNow() &&
         refs.length > 0 &&
@@ -901,10 +916,13 @@ export function createEngineFormulaInitializationService(args: {
           ),
         )
       if (!repaired) {
+        args.checkEvaluationBudget()
         args.rebuildTopoRanks()
+        args.checkEvaluationBudget()
         args.detectCycles()
       }
     }
+    args.checkEvaluationBudget()
     const lastMetrics = args.state.getLastMetrics()
     args.state.setLastMetrics({
       ...lastMetrics,
@@ -913,6 +931,22 @@ export function createEngineFormulaInitializationService(args: {
       compileMs,
       recalcMs: 0,
     })
+  }
+
+  const initializeHydratedPreparedCellFormulasAtNow = (
+    refs: readonly HydratedPreparedFormulaInitializationRef[],
+    potentialNewCells?: number,
+  ): void => {
+    if (refs.length === 0) {
+      return
+    }
+    args.beginEvaluationBudget(performance.now())
+    try {
+      args.checkEvaluationBudget()
+      initializeHydratedPreparedCellFormulasAtNowUnchecked(refs, potentialNewCells)
+    } finally {
+      args.endEvaluationBudget()
+    }
   }
 
   return {

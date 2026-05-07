@@ -29,6 +29,9 @@ export function createEngineSnapshotService(args: {
   readonly exportFormulaInstances?: () => readonly FormulaInstanceSnapshot[]
   readonly hydrateTemplateBank?: (templates: readonly FormulaTemplateSnapshot[]) => void
   readonly resolveTemplateById?: (templateId: number, source: string, row: number, col: number) => FormulaTemplateResolution | undefined
+  readonly beginEvaluationBudget?: (startedAtMs: number) => void
+  readonly endEvaluationBudget?: () => void
+  readonly checkEvaluationBudget?: (stepCost?: number) => void
   readonly initializeCellFormulasAt: (refs: readonly EngineCellMutationRef[], potentialNewCells?: number) => void
   readonly initializeFormulaSourcesAt?: (refs: EngineFormulaSourceRefs, potentialNewCells?: number) => void
   readonly initializePreparedCellFormulasAt?: (refs: readonly PreparedFormulaInitializationRef[], potentialNewCells?: number) => void
@@ -249,48 +252,62 @@ export function createEngineSnapshotService(args: {
     importWorkbook(snapshot) {
       return Effect.try({
         try: () => {
-          const materializeImportedPivots = (): void => {
-            if (!args.materializePivot) {
+          args.beginEvaluationBudget?.(performance.now())
+          try {
+            args.checkEvaluationBudget?.()
+            const materializeImportedPivots = (): void => {
+              if (!args.materializePivot) {
+                return
+              }
+              args.state.workbook.listPivots().forEach((pivot) => {
+                args.checkEvaluationBudget?.()
+                args.materializePivot!(pivot)
+              })
+              snapshot.workbook.metadata?.pivots?.forEach((pivot) => {
+                args.checkEvaluationBudget?.()
+                args.state.workbook.setPivot(pivot)
+              })
+            }
+
+            const runtimeImage = readRuntimeImage(snapshot)
+            if (runtimeImage && args.hydrateTemplateBank) {
+              const restoreResult = restoreWorkbookFromRuntimeImage({
+                snapshot,
+                runtimeImage,
+                workbook: args.state.workbook,
+                strings: args.state.strings,
+                resetWorkbook: args.resetWorkbook,
+                ...(args.checkEvaluationBudget ? { checkEvaluationBudget: args.checkEvaluationBudget } : {}),
+                hydrateTemplateBank: args.hydrateTemplateBank,
+                initializeCellFormulasAt: args.initializeCellFormulasAt,
+                ...(args.resolveTemplateById ? { resolveTemplateById: args.resolveTemplateById } : {}),
+                ...(args.initializePreparedCellFormulasAt
+                  ? { initializePreparedCellFormulasAt: args.initializePreparedCellFormulasAt }
+                  : {}),
+                ...(args.initializeHydratedPreparedCellFormulasAt
+                  ? { initializeHydratedPreparedCellFormulasAt: args.initializeHydratedPreparedCellFormulasAt }
+                  : {}),
+              })
+              args.checkEvaluationBudget?.()
+              materializeImportedPivots()
+              args.emitFullInvalidation?.({ incrementMetrics: restoreResult.formulaCount === 0 })
               return
             }
-            args.state.workbook.listPivots().forEach((pivot) => {
-              args.materializePivot!(pivot)
-            })
-            snapshot.workbook.metadata?.pivots?.forEach((pivot) => {
-              args.state.workbook.setPivot(pivot)
-            })
-          }
-
-          const runtimeImage = readRuntimeImage(snapshot)
-          if (runtimeImage && args.hydrateTemplateBank) {
-            const restoreResult = restoreWorkbookFromRuntimeImage({
+            const restoreResult = restoreWorkbookFromSnapshot({
               snapshot,
-              runtimeImage,
               workbook: args.state.workbook,
               strings: args.state.strings,
               resetWorkbook: args.resetWorkbook,
-              hydrateTemplateBank: args.hydrateTemplateBank,
+              ...(args.checkEvaluationBudget ? { checkEvaluationBudget: args.checkEvaluationBudget } : {}),
               initializeCellFormulasAt: args.initializeCellFormulasAt,
-              ...(args.resolveTemplateById ? { resolveTemplateById: args.resolveTemplateById } : {}),
-              ...(args.initializePreparedCellFormulasAt ? { initializePreparedCellFormulasAt: args.initializePreparedCellFormulasAt } : {}),
-              ...(args.initializeHydratedPreparedCellFormulasAt
-                ? { initializeHydratedPreparedCellFormulasAt: args.initializeHydratedPreparedCellFormulasAt }
-                : {}),
+              ...(args.initializeFormulaSourcesAt ? { initializeFormulaSourcesAt: args.initializeFormulaSourcesAt } : {}),
             })
+            args.checkEvaluationBudget?.()
             materializeImportedPivots()
             args.emitFullInvalidation?.({ incrementMetrics: restoreResult.formulaCount === 0 })
-            return
+          } finally {
+            args.endEvaluationBudget?.()
           }
-          const restoreResult = restoreWorkbookFromSnapshot({
-            snapshot,
-            workbook: args.state.workbook,
-            strings: args.state.strings,
-            resetWorkbook: args.resetWorkbook,
-            initializeCellFormulasAt: args.initializeCellFormulasAt,
-            ...(args.initializeFormulaSourcesAt ? { initializeFormulaSourcesAt: args.initializeFormulaSourcesAt } : {}),
-          })
-          materializeImportedPivots()
-          args.emitFullInvalidation?.({ incrementMetrics: restoreResult.formulaCount === 0 })
         },
         catch: (cause) =>
           new EngineSnapshotError({
