@@ -95,6 +95,8 @@ Repository:
   [`docs/xlsx-corpus-verifier-walkthrough.md`](../../docs/xlsx-corpus-verifier-walkthrough.md)
 - XLOOKUP exact fixture walkthrough:
   [`docs/formula-edge-xlookup-exact-fixture.md`](../../docs/formula-edge-xlookup-exact-fixture.md)
+- X reply growth playbook:
+  [`docs/x-reply-growth-playbook.md`](../../docs/x-reply-growth-playbook.md)
 
 Inside this monorepo:
 

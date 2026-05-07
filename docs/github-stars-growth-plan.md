@@ -294,7 +294,9 @@ audience, or product friction.
 1. Post one lower-case X update for the compatibility-boundaries article and
    XLSX verifier walkthrough.
 2. Manually reply to at most `2` high-fit X posts per day. Start with the idea;
-   add a link only when it materially helps the thread.
+   add a link only when it materially helps the thread. Use
+   [`docs/x-reply-growth-playbook.md`](x-reply-growth-playbook.md) for the
+   reply budget, tone, examples, and platform-rule boundaries.
 3. Respond to serious Hacker News and GitHub Discussion comments within the same
    day, then convert repeated feedback into docs or examples.
 4. Ship the next proof artifact: a compact formula-edge fixture article that

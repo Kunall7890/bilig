@@ -172,6 +172,9 @@ see
 For the researched public-growth plan toward `1000` legitimate GitHub stars,
 see [`docs/github-stars-growth-plan.md`](docs/github-stars-growth-plan.md).
 
+For the lower-case, manual X reply playbook, see
+[`docs/x-reply-growth-playbook.md`](docs/x-reply-growth-playbook.md).
+
 ## Quickstart
 
 Use Node `24+`, Bun, and `pnpm@10.32.1`.

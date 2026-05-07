@@ -54,6 +54,8 @@ Shorter version:
   [`docs/formula-edge-xlookup-exact-fixture.md`](formula-edge-xlookup-exact-fixture.md)
 - GitHub stars growth plan:
   [`docs/github-stars-growth-plan.md`](github-stars-growth-plan.md)
+- X reply growth playbook:
+  [`docs/x-reply-growth-playbook.md`](x-reply-growth-playbook.md)
 - Launch post draft:
   [`docs/launch-post-headless-workpaper.md`](launch-post-headless-workpaper.md)
 - Launch discussion: <https://github.com/proompteng/bilig/discussions/18>
