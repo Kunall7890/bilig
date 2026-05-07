@@ -140,6 +140,8 @@ describe('binder wasm rules', () => {
     expectArgs('TEXTJOIN(",",TRUE(),A1:A4)', true)
     expectArgs('REPLACE("abc",1,1,"d")', true)
     expectArgs('TAKE(A1:B4,2)', true)
+    expectArgs('OFFSET(B2:C2,4,0)', false)
+    expectArgs('SUM(OFFSET(B2:C2,4,0))', false)
     expectArgs('FILTER(A1:B4,C1:C4,"")', true)
     expectArgs('UNIQUE(A1:B4,FALSE(),TRUE())', true)
     expectArgs('TRIMRANGE(A1:B4,1,1)', true)

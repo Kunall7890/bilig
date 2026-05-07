@@ -159,7 +159,8 @@ describe('formula', () => {
   })
 
   it('routes dynamic-array family builtins to the wasm path for numeric-compatible inputs', () => {
-    expect(compileFormula('OFFSET(A1:B4,0,0,2,2)')).toMatchObject({ mode: 1, producesSpill: true })
+    expect(compileFormula('OFFSET(A1:B4,0,0,2,2)')).toMatchObject({ mode: 0, producesSpill: true })
+    expect(compileFormula('SUM(OFFSET(A1:B4,0,0,2,2))')).toMatchObject({ mode: 1, symbolicRanges: ['A1:B2'] })
     expect(compileFormula('TAKE(A1:B4,2)')).toMatchObject({ mode: 1, producesSpill: true })
     expect(compileFormula('DROP(A1:B4,1)')).toMatchObject({ mode: 1, producesSpill: true })
     expect(compileFormula('CHOOSECOLS(A1:B4,2)')).toMatchObject({ mode: 1, producesSpill: true })

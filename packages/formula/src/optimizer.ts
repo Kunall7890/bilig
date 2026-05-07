@@ -1,5 +1,6 @@
 import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 import type { CallExprNode, FormulaNode, InvokeExprNode } from './ast.js'
+import { formatAddress, parseCellAddress, parseRangeAddress } from './addressing.js'
 import { evaluateAstResult, type EvaluationContext } from './js-evaluator.js'
 import { isArrayValue } from './runtime-values.js'
 import { rewriteSpecialCall } from './special-call-rewrites.js'
@@ -93,6 +94,103 @@ function flattenConcatArgs(args: FormulaNode[]): FormulaNode[] {
 
 function normalizeName(name: string): string {
   return name.trim().toUpperCase()
+}
+
+function staticOffsetIntegerValue(node: FormulaNode | undefined): number | undefined {
+  if (!node) {
+    return undefined
+  }
+  if (node.kind === 'NumberLiteral' && Number.isFinite(node.value)) {
+    return Math.trunc(node.value)
+  }
+  if (
+    node.kind === 'UnaryExpr' &&
+    node.operator === '-' &&
+    node.argument.kind === 'NumberLiteral' &&
+    Number.isFinite(node.argument.value)
+  ) {
+    return Math.trunc(-node.argument.value)
+  }
+  return undefined
+}
+
+function staticOffsetReferenceBounds(
+  node: FormulaNode | undefined,
+):
+  | { readonly sheetName?: string; readonly rowStart: number; readonly rowEnd: number; readonly colStart: number; readonly colEnd: number }
+  | undefined {
+  if (!node) {
+    return undefined
+  }
+  if (node.kind === 'CellRef') {
+    const address = parseCellAddress(node.ref, node.sheetName)
+    return {
+      ...(address.sheetName === undefined ? {} : { sheetName: address.sheetName }),
+      rowStart: address.row,
+      rowEnd: address.row,
+      colStart: address.col,
+      colEnd: address.col,
+    }
+  }
+  if (node.kind !== 'RangeRef' || node.refKind !== 'cells') {
+    return undefined
+  }
+  const range = parseRangeAddress(node.sheetName ? `${node.sheetName}!${node.start}:${node.end}` : `${node.start}:${node.end}`)
+  if (range.kind !== 'cells') {
+    return undefined
+  }
+  return {
+    ...(range.sheetName === undefined ? {} : { sheetName: range.sheetName }),
+    rowStart: Math.min(range.start.row, range.end.row),
+    rowEnd: Math.max(range.start.row, range.end.row),
+    colStart: Math.min(range.start.col, range.end.col),
+    colEnd: Math.max(range.start.col, range.end.col),
+  }
+}
+
+function rewriteStaticOffsetReference(node: CallExprNode): FormulaNode | undefined {
+  if (node.args.length < 3 || node.args.length > 5) {
+    return undefined
+  }
+  const reference = staticOffsetReferenceBounds(node.args[0])
+  const rowOffset = staticOffsetIntegerValue(node.args[1])
+  const colOffset = staticOffsetIntegerValue(node.args[2])
+  if (!reference || rowOffset === undefined || colOffset === undefined) {
+    return undefined
+  }
+
+  const referenceRows = reference.rowEnd - reference.rowStart + 1
+  const referenceCols = reference.colEnd - reference.colStart + 1
+  const height = node.args.length >= 4 ? staticOffsetIntegerValue(node.args[3]) : referenceRows
+  const width = node.args.length >= 5 ? staticOffsetIntegerValue(node.args[4]) : referenceCols
+  if (height === undefined || width === undefined) {
+    return undefined
+  }
+  if (height < 1 || width < 1) {
+    return { kind: 'ErrorLiteral', code: ErrorCode.Value }
+  }
+
+  const rowStart = reference.rowStart + rowOffset
+  const colStart = reference.colStart + colOffset
+  const rowEnd = rowStart + height - 1
+  const colEnd = colStart + width - 1
+  if (rowStart < 0 || colStart < 0 || rowEnd < rowStart || colEnd < colStart) {
+    return { kind: 'ErrorLiteral', code: ErrorCode.Ref }
+  }
+  if (height === 1 && width === 1) {
+    return {
+      kind: 'CellRef',
+      ...(reference.sheetName === undefined ? {} : { sheetName: reference.sheetName }),
+      ref: formatAddress(rowStart, colStart),
+    }
+  }
+  return {
+    kind: 'RangeRef',
+    refKind: 'cells',
+    ...(reference.sheetName === undefined ? {} : { sheetName: reference.sheetName }),
+    start: formatAddress(rowStart, colStart),
+    end: formatAddress(rowEnd, colEnd),
+  }
 }
 
 function cloneFormulaNode(node: FormulaNode): FormulaNode {
@@ -293,6 +391,13 @@ function optimizeCall(node: CallExprNode): FormulaNode {
 
   if (callee === 'MAP') {
     const rewritten = rewriteMap({ kind: 'CallExpr', callee, args })
+    if (rewritten) {
+      return optimizeFormula(rewritten)
+    }
+  }
+
+  if (callee === 'OFFSET') {
+    const rewritten = rewriteStaticOffsetReference({ kind: 'CallExpr', callee, args })
     if (rewritten) {
       return optimizeFormula(rewritten)
     }

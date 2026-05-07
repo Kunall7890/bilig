@@ -548,6 +548,7 @@ export function isWasmSafeBuiltinArgs(callee: string, args: readonly FormulaNode
     case 'REPT':
       return args.every((arg) => isScalarArg(arg))
     case 'OFFSET':
+      return false
     case 'TAKE':
     case 'DROP':
     case 'CHOOSECOLS':

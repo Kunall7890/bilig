@@ -769,4 +769,41 @@ describe('GitHub issue reductions', () => {
     expectNumber(cellValue(workbook, 'Sheet1', 1, 5), 5)
     expectNumber(cellValue(workbook, 'Sheet1', 1, 6), 20)
   })
+
+  it('resolves issue #103 worksheet-reference OFFSET ranges', () => {
+    const rows = Array.from({ length: 20 }, () => Array.from<TestCell>({ length: 12 }).fill(null))
+
+    rows[1][1] = 100
+    rows[1][2] = 200
+    rows[5][1] = 155
+    rows[5][2] = 1030
+    rows[0][4] = '=SUM(OFFSET(B2:C2,4,0))'
+    rows[1][4] = '=OFFSET(B2:C2,4,0)'
+
+    rows[2][10] = 1
+    rows[10][3] = 2
+    rows[2][3] = '=CORREL(OFFSET($C$15:$C$18,0,$K3),OFFSET($C$15:$C$18,0,D$11))'
+    rows[2][5] = '=SUM(OFFSET($C$15:$C$18,0,$K3))'
+    ;[1, 2, 3, 4].forEach((value, index) => {
+      rows[index + 14][3] = value
+      rows[index + 14][4] = value * 2
+    })
+
+    const workbook = WorkPaper.buildFromSheets(
+      {
+        Sheet1: rows,
+      },
+      { maxRows: 40, maxColumns: 12, useColumnIndex: true },
+    )
+
+    expectNumber(cellValue(workbook, 'Sheet1', 0, 4), 1185)
+    expectNumber(cellValue(workbook, 'Sheet1', 1, 4), 155)
+    expectNumberClose(cellValue(workbook, 'Sheet1', 2, 3), 1)
+    expectNumber(cellValue(workbook, 'Sheet1', 2, 5), 10)
+
+    const sheetId = workbook.getSheetId('Sheet1')!
+    workbook.setCellContents({ sheet: sheetId, row: 14, col: 3 }, 10)
+
+    expectNumber(cellValue(workbook, 'Sheet1', 2, 5), 19)
+  })
 })

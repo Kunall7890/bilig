@@ -413,7 +413,8 @@ export const formulaCompatibilityRegistry: readonly FormulaCompatibilityEntry[] 
   entry('lookup-reference:xmatch-basic', 'lookup-reference', '=XMATCH("pear",A1:A3,0)', 'implemented-wasm-production'),
   entry('lookup-reference:hlookup-basic', 'lookup-reference', '=HLOOKUP("pear",A1:C2,2,FALSE)', 'implemented-wasm-production'),
   entry('lookup-reference:offset-basic', 'lookup-reference', '=OFFSET(A1,1,1)', 'implemented-wasm-production', {
-    notes: 'OFFSET now executes on the AssemblyScript path for numeric inputs, including simple in-bounds offset ranges.',
+    notes:
+      'Static worksheet OFFSET references are normalized to their target reference before execution; dynamic worksheet OFFSET stays on the context-aware path because Excel OFFSET is reference-returning and volatile.',
   }),
   entry('dynamic-array:take-basic', 'dynamic-array', '=TAKE(A1:A4,2)', 'implemented-wasm-production'),
   entry('dynamic-array:drop-basic', 'dynamic-array', '=DROP(A1:A4,2)', 'implemented-wasm-production'),
