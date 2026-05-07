@@ -23,8 +23,15 @@ import {
   fetchPublicWorkbookArtifacts,
   fingerprintWorkbookFileIsolated,
 } from './public-workbook-corpus-fetch.ts'
+import { inspectWorkbookFootprintIsolated, type PublicWorkbookCorpusWorkerOptions } from './public-workbook-corpus-footprint.ts'
 import { withPublicWorkbookCorpusCacheLock } from './public-workbook-corpus-lock.ts'
-import { formatByteSize, startChildRssWatchdog, terminateChildProcess } from './public-workbook-corpus-process.ts'
+import {
+  defaultSelfRssCheckIntervalMs,
+  formatByteSize,
+  startChildRssWatchdog,
+  startSelfRssGuard,
+  terminateChildProcess,
+} from './public-workbook-corpus-process.ts'
 import { roundTripSemanticsDigest } from './public-workbook-corpus-roundtrip.ts'
 import {
   buildPublicWorkbookCorpusScorecardFromCases,
@@ -61,6 +68,15 @@ import type {
   PublicWorkbookValidationSummary,
 } from './public-workbook-corpus-types.ts'
 import { formatJsonForRepo } from './scorecard-format.ts'
+import {
+  readDebugOnlyFlagArg,
+  readFlagArg,
+  readMegabytesArg,
+  readNumberArg,
+  readRepeatedStringArg,
+  readStringArg,
+  readVerifyConcurrencyArg,
+} from './public-workbook-corpus-cli.ts'
 
 declare const Bun:
   | {
@@ -97,10 +113,9 @@ const defaultManifestPath = join(defaultCacheDir, 'manifest.json')
 const defaultScorecardPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'public-workbook-corpus-scorecard.json')
 const defaultVerifyTimeoutMs = 180_000
 const defaultVerifyConcurrency = 1
-const defaultVerifyMaxRssBytes = 4096 * 1024 * 1024
-const maxVerifyMaxRssBytes = 4096 * 1024 * 1024
+const defaultVerifyMaxRssBytes = 1536 * 1024 * 1024
 const defaultVerifyMaxCellCount = 1_500_000
-const defaultSelfRssCheckIntervalMs = 500
+const isolatedFootprintByteThreshold = 1_000_000
 const noop = (): void => undefined
 
 export async function sha256Hex(bytes: Uint8Array): Promise<string> {
@@ -150,7 +165,11 @@ export async function buildPublicWorkbookCorpusScorecard(args: BuildScorecardArg
             maxCellCount: verifyMaxCellCount,
             rssCheckIntervalMs: verifyRssCheckIntervalMs,
           })
-        : verifyCachedWorkbookArtifact(artifact, args.cacheDir, runStructuralSmoke, verifyMaxCellCount)
+        : verifyCachedWorkbookArtifact(artifact, args.cacheDir, runStructuralSmoke, verifyMaxCellCount, {
+            timeoutMs: verifyTimeoutMs,
+            maxRssBytes: verifyMaxRssBytes,
+            rssCheckIntervalMs: verifyRssCheckIntervalMs,
+          })
     return verifiedCasePromise.then(reportVerifiedCase)
   })
   return buildPublicWorkbookCorpusScorecardFromCases({
@@ -282,6 +301,7 @@ async function verifyCachedWorkbookArtifact(
   cacheDir: string,
   runStructuralSmoke: boolean,
   maxCellCount: number,
+  workerOptions: PublicWorkbookCorpusWorkerOptions,
 ): Promise<PublicWorkbookCorpusCase> {
   const cachePath = join(cacheDir, artifact.cachePath)
   const baseEvidence = artifactBaseEvidence(artifact)
@@ -296,7 +316,21 @@ async function verifyCachedWorkbookArtifact(
         `Cached workbook hash mismatch: expected ${artifact.sha256}, received ${actualHash}`,
       ])
     }
-    const footprint = inspectWorkbookFootprint(bytes, artifact.fileName)
+    const footprint =
+      bytes.byteLength >= isolatedFootprintByteThreshold
+        ? await inspectWorkbookFootprintIsolated({
+            bytes,
+            fileName: artifact.fileName,
+            scriptPath: publicWorkbookCorpusScriptPath,
+            options: workerOptions,
+          })
+        : inspectWorkbookFootprint(bytes, artifact.fileName)
+    if (!footprint) {
+      return failedCase(artifact, 'error', baseEvidence, [
+        'Workbook footprint subprocess did not return a valid footprint.',
+        'The workbook was isolated in a subprocess so the corpus verification run could continue.',
+      ])
+    }
     if (footprint.featureCounts.cellCount > maxCellCount) {
       return unsupportedResourceLimitCase(artifact, baseEvidence, footprint, maxCellCount)
     }
@@ -600,77 +634,14 @@ function writeJson(path: string, value: unknown, tempPrefix: string): void {
   )
 }
 
-function readStringArg(name: string, fallback: string): string {
-  const index = process.argv.indexOf(name)
-  return index >= 0 ? (process.argv[index + 1] ?? fallback) : fallback
-}
-
-function readNumberArg(name: string, fallback: number): number {
-  const raw = readStringArg(name, String(fallback))
-  const parsed = Number(raw)
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    throw new Error(`Expected ${name} to be a positive number`)
-  }
-  return Math.trunc(parsed)
-}
-
-function readMegabytesArg(name: string, fallbackBytes: number): number {
-  const raw = readStringArg(name, String(Math.ceil(fallbackBytes / 1024 / 1024)))
-  const parsed = Number(raw)
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    throw new Error(`Expected ${name} to be a positive number of MiB`)
-  }
-  return Math.trunc(parsed * 1024 * 1024)
-}
-
 function capVerifyMaxRssBytes(value: number): number {
-  return Math.min(Math.max(1, Math.trunc(value)), maxVerifyMaxRssBytes)
-}
-
-function readFlagArg(name: string): boolean {
-  return process.argv.includes(name)
-}
-
-function readDebugOnlyFlagArg(name: string, envVar: string, reason: string): boolean {
-  const enabled = readFlagArg(name)
-  if (enabled && process.env[envVar] !== '1') {
-    throw new Error(`${name} is disabled for public corpus CLI runs because ${reason}. Set ${envVar}=1 only for focused debugging.`)
-  }
-  return enabled
-}
-
-function readVerifyConcurrencyArg(): number {
-  const verifyConcurrency = readNumberArg('--verify-concurrency', defaultVerifyConcurrency)
-  if (verifyConcurrency > 1 && process.env['BILIG_ALLOW_PARALLEL_PUBLIC_CORPUS_VERIFY'] !== '1') {
+  const normalizedValue = Math.max(1, Math.trunc(value))
+  if (normalizedValue > defaultVerifyMaxRssBytes) {
     throw new Error(
-      `--verify-concurrency greater than 1 is disabled for public corpus CLI runs because each worker can consume substantial memory. Set BILIG_ALLOW_PARALLEL_PUBLIC_CORPUS_VERIFY=1 only on a host sized for parallel verification.`,
+      `Public workbook corpus verification RSS limits above ${String(Math.ceil(defaultVerifyMaxRssBytes / 1024 / 1024))} MiB are disabled because workbook workers can hang interactive hosts.`,
     )
   }
-  return verifyConcurrency
-}
-
-function startSelfRssGuard(maxRssBytes: number, label: string): () => void {
-  const normalizedMaxRssBytes = Math.max(1, Math.trunc(maxRssBytes))
-  const timer = setInterval(() => {
-    const rssBytes = process.memoryUsage().rss
-    if (rssBytes <= normalizedMaxRssBytes) {
-      return
-    }
-    console.error(`${label} exceeded RSS limit: ${formatByteSize(rssBytes)} > ${formatByteSize(normalizedMaxRssBytes)}`)
-    process.exit(70)
-  }, defaultSelfRssCheckIntervalMs)
-  timer.unref()
-  return () => clearInterval(timer)
-}
-
-function readRepeatedStringArg(name: string): string[] {
-  const values: string[] = []
-  process.argv.forEach((arg, index) => {
-    if (arg === name && process.argv[index + 1]) {
-      values.push(process.argv[index + 1])
-    }
-  })
-  return values
+  return normalizedValue
 }
 
 function readOrCreateManifest(path: string, targetWorkbookCount = 10_000): PublicWorkbookManifest {
@@ -792,6 +763,21 @@ async function main(): Promise<void> {
     }
     return
   }
+  if (command === 'footprint-worker') {
+    const stopSelfRssGuard = startSelfRssGuard(
+      capVerifyMaxRssBytes(readMegabytesArg('--verify-max-rss-mb', defaultVerifyMaxRssBytes)),
+      'Workbook footprint worker',
+    )
+    try {
+      const bytes = readFileSync(0)
+      const fileName = readStringArg('--file-name', 'workbook.xlsx')
+      const footprint = inspectWorkbookFootprint(bytes, fileName)
+      process.stdout.write(`${JSON.stringify({ footprint })}\n`)
+    } finally {
+      stopSelfRssGuard()
+    }
+    return
+  }
   if (command === 'verify-artifact') {
     const artifactId = readStringArg('--artifact-id', '')
     if (!artifactId) {
@@ -835,6 +821,11 @@ async function main(): Promise<void> {
         cacheDir,
         readFlagArg('--structural-smoke'),
         readNumberArg('--verify-max-cells', defaultVerifyMaxCellCount),
+        {
+          timeoutMs: readNumberArg('--verify-timeout-ms', defaultVerifyTimeoutMs),
+          maxRssBytes: capVerifyMaxRssBytes(readMegabytesArg('--verify-max-rss-mb', defaultVerifyMaxRssBytes)),
+          rssCheckIntervalMs: defaultSelfRssCheckIntervalMs,
+        },
       )
       process.stdout.write(`${JSON.stringify(result)}\n`)
     } finally {
@@ -848,7 +839,8 @@ async function main(): Promise<void> {
       'BILIG_ALLOW_IN_PROCESS_PUBLIC_CORPUS_VERIFY',
       'it can retain workbook verification memory across large corpus runs',
     )
-    const verifyConcurrency = readVerifyConcurrencyArg()
+    const verifyConcurrency = readVerifyConcurrencyArg(defaultVerifyConcurrency)
+    const verifyMaxRssBytes = capVerifyMaxRssBytes(readMegabytesArg('--verify-max-rss-mb', defaultVerifyMaxRssBytes))
     const scorecard = await withPublicWorkbookCorpusCacheLock(cacheDir, 'verify', async () => {
       const manifest = readManifest(manifestPath)
       const checkpointInterval = readNumberArg('--verify-checkpoint-interval', 10)
@@ -876,7 +868,7 @@ async function main(): Promise<void> {
           structuralSmokeSampleLimit: readNumberArg('--structural-smoke-sample-limit', 50),
           verifyConcurrency,
           verifyTimeoutMs: readNumberArg('--verify-timeout-ms', defaultVerifyTimeoutMs),
-          verifyMaxRssBytes: capVerifyMaxRssBytes(readMegabytesArg('--verify-max-rss-mb', defaultVerifyMaxRssBytes)),
+          verifyMaxRssBytes,
           verifyMaxCellCount: readNumberArg('--verify-max-cells', defaultVerifyMaxCellCount),
           reusableCases,
           onCaseVerified: (progress) => {

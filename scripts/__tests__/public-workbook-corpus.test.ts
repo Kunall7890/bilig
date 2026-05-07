@@ -905,7 +905,7 @@ describe('public workbook corpus', () => {
     const scorecard = await scorecardPromise
 
     expect(spawnMock).toHaveBeenCalledTimes(1)
-    expect(spawnMock.mock.calls[0]?.[1]).toEqual(expect.arrayContaining(['verify-artifact-worker', '--verify-max-rss-mb', '4096']))
+    expect(spawnMock.mock.calls[0]?.[1]).toEqual(expect.arrayContaining(['verify-artifact-worker', '--verify-max-rss-mb', '1536']))
     expect(child.kill).toHaveBeenCalledWith('SIGTERM')
     expect(scorecard.cases[0]?.status).toBe('error')
     expect(scorecard.cases[0]?.evidence).toEqual(
@@ -953,29 +953,21 @@ describe('public workbook corpus', () => {
     )
   })
 
-  it('caps high isolated verification RSS overrides', async () => {
-    vi.useFakeTimers()
-
+  it('rejects high isolated verification RSS overrides unless explicitly enabled', async () => {
     const fixture = createIsolatedVerificationFixture()
-    const child = createMockChildProcess()
-    spawnMock.mockImplementationOnce(() => child)
-
-    const scorecardPromise = buildPublicWorkbookCorpusScorecard({
-      manifest: fixture.manifest,
-      cacheDir: fixture.cacheDir,
-      manifestPath: fixture.manifestPath,
-      generatedAt: '2026-05-07T01:00:00.000Z',
-      isolatedVerification: true,
-      verifyConcurrency: 1,
-      verifyTimeoutMs: 5,
-      verifyMaxRssBytes: 12 * 1024 * 1024 * 1024,
-    })
-
-    await vi.advanceTimersByTimeAsync(5)
-    await scorecardPromise
-
-    expect(spawnMock.mock.calls[0]?.[1]).toEqual(expect.arrayContaining(['verify-artifact-worker', '--verify-max-rss-mb', '4096']))
-    expect(child.kill).toHaveBeenCalledWith('SIGTERM')
+    await expect(
+      buildPublicWorkbookCorpusScorecard({
+        manifest: fixture.manifest,
+        cacheDir: fixture.cacheDir,
+        manifestPath: fixture.manifestPath,
+        generatedAt: '2026-05-07T01:00:00.000Z',
+        isolatedVerification: true,
+        verifyConcurrency: 1,
+        verifyTimeoutMs: 5,
+        verifyMaxRssBytes: 12 * 1024 * 1024 * 1024,
+      }),
+    ).rejects.toThrow('RSS limits above 1536 MiB are disabled because')
+    expect(spawnMock).not.toHaveBeenCalled()
   })
 })
 

@@ -1,0 +1,54 @@
+export function readStringArg(name: string, fallback: string): string {
+  const index = process.argv.indexOf(name)
+  return index >= 0 ? (process.argv[index + 1] ?? fallback) : fallback
+}
+
+export function readNumberArg(name: string, fallback: number): number {
+  const raw = readStringArg(name, String(fallback))
+  const parsed = Number(raw)
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new Error(`Expected ${name} to be a positive number`)
+  }
+  return Math.trunc(parsed)
+}
+
+export function readMegabytesArg(name: string, fallbackBytes: number): number {
+  const raw = readStringArg(name, String(Math.ceil(fallbackBytes / 1024 / 1024)))
+  const parsed = Number(raw)
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new Error(`Expected ${name} to be a positive number of MiB`)
+  }
+  return Math.trunc(parsed * 1024 * 1024)
+}
+
+export function readFlagArg(name: string): boolean {
+  return process.argv.includes(name)
+}
+
+export function readDebugOnlyFlagArg(name: string, envVar: string, reason: string): boolean {
+  const enabled = readFlagArg(name)
+  if (enabled && process.env[envVar] !== '1') {
+    throw new Error(`${name} is disabled for public corpus CLI runs because ${reason}. Set ${envVar}=1 only for focused debugging.`)
+  }
+  return enabled
+}
+
+export function readVerifyConcurrencyArg(defaultVerifyConcurrency: number): number {
+  const verifyConcurrency = readNumberArg('--verify-concurrency', defaultVerifyConcurrency)
+  if (verifyConcurrency > 1 && process.env['BILIG_ALLOW_PARALLEL_PUBLIC_CORPUS_VERIFY'] !== '1') {
+    throw new Error(
+      `--verify-concurrency greater than 1 is disabled for public corpus CLI runs because each worker can consume substantial memory. Set BILIG_ALLOW_PARALLEL_PUBLIC_CORPUS_VERIFY=1 only on a host sized for parallel verification.`,
+    )
+  }
+  return verifyConcurrency
+}
+
+export function readRepeatedStringArg(name: string): string[] {
+  const values: string[] = []
+  process.argv.forEach((arg, index) => {
+    if (arg === name && process.argv[index + 1]) {
+      values.push(process.argv[index + 1])
+    }
+  })
+  return values
+}

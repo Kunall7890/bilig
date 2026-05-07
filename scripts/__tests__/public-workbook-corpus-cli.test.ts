@@ -48,6 +48,31 @@ describe('public workbook corpus CLI resource guards', () => {
     expect(result.stderr).toContain('--verify-concurrency greater than 1 is disabled for public corpus CLI runs')
   })
 
+  it('refuses high-RSS verification on interactive corpus runs', () => {
+    const env = { ...process.env }
+    delete env.BILIG_ALLOW_HIGH_RSS_PUBLIC_CORPUS_VERIFY
+
+    const result = spawnSync('bun', [corpusScriptPath(), 'verify', '--verify-max-rss-mb', '4096'], {
+      encoding: 'utf8',
+      env,
+    })
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain('RSS limits above 1536 MiB are disabled because')
+  })
+
+  it('refuses inherited high-RSS environment for interactive corpus runs', () => {
+    const env = { ...process.env, BILIG_ALLOW_HIGH_RSS_PUBLIC_CORPUS_VERIFY: '1' }
+
+    const result = spawnSync('bun', [corpusScriptPath(), 'verify', '--verify-max-rss-mb', '4096'], {
+      encoding: 'utf8',
+      env,
+    })
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain('RSS limits above 1536 MiB are disabled because')
+  })
+
   it('fails check when the local manifest has cached artifacts missing from the scorecard', async () => {
     const artifactA = workbookArtifact('workbook-a')
     const artifactB = workbookArtifact('workbook-b')
