@@ -12,6 +12,7 @@ language: typescript
 ## best entry points
 
 - https://proompteng.github.io/bilig/
+- https://dev.to/gregkonush/why-agents-need-workbook-apis-instead-of-spreadsheet-screenshots-3d61
 - https://github.com/proompteng/bilig/tree/main/packages/headless#readme
 - https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper
 - https://github.com/proompteng/bilig/blob/main/docs/dev-to-workbook-apis-post.md

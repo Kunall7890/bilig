@@ -389,7 +389,9 @@ For the Hacker News launch checklist, see
 For Reddit, DEV, Lobsters, and Product Hunt launch drafts, see
 [`docs/community-launch-pack.md`](docs/community-launch-pack.md).
 
-For a DEV-ready article draft with front matter, see
+For the published DEV article, see
+<https://dev.to/gregkonush/why-agents-need-workbook-apis-instead-of-spreadsheet-screenshots-3d61>.
+The source mirror with front matter is
 [`docs/dev-to-workbook-apis-post.md`](docs/dev-to-workbook-apis-post.md).
 
 ## Quickstart

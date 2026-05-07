@@ -54,7 +54,9 @@ Shorter version:
   [`docs/why-agents-need-workbook-apis.md`](why-agents-need-workbook-apis.md)
 - Agent tool-calling recipe:
   [`docs/agent-workpaper-tool-calling-recipe.md`](agent-workpaper-tool-calling-recipe.md)
-- DEV-ready article:
+- published DEV article:
+  <https://dev.to/gregkonush/why-agents-need-workbook-apis-instead-of-spreadsheet-screenshots-3d61>
+- DEV article source:
   [`docs/dev-to-workbook-apis-post.md`](dev-to-workbook-apis-post.md)
 - Persistence article:
   [`docs/persisting-formula-backed-workpaper-documents-in-node.md`](persisting-formula-backed-workpaper-documents-in-node.md)

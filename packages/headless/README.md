@@ -133,7 +133,9 @@ Repository:
   [`docs/show-hn-launch-pack.md`](../../docs/show-hn-launch-pack.md)
 - Community launch pack:
   [`docs/community-launch-pack.md`](../../docs/community-launch-pack.md)
-- DEV-ready article:
+- published DEV article:
+  <https://dev.to/gregkonush/why-agents-need-workbook-apis-instead-of-spreadsheet-screenshots-3d61>
+- DEV article source:
   [`docs/dev-to-workbook-apis-post.md`](../../docs/dev-to-workbook-apis-post.md)
 
 Inside this monorepo:

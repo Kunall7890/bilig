@@ -91,7 +91,13 @@ DEV's terms say posts should be on-topic, high quality, and not primarily for
 promotion or backlink creation. A DEV post should therefore be a real technical
 article, not a thin link wrapper.
 
-Ready-to-adapt repo draft:
+Published post:
+
+```text
+https://dev.to/gregkonush/why-agents-need-workbook-apis-instead-of-spreadsheet-screenshots-3d61
+```
+
+Repo source mirror:
 
 ```text
 docs/dev-to-workbook-apis-post.md

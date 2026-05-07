@@ -1,9 +1,9 @@
 ---
 title: Why agents need workbook APIs instead of spreadsheet screenshots
-published: false
+published: true
 description: A practical case for treating spreadsheet state as an API boundary for Node services and coding agents.
 tags: typescript, node, opensource, ai
-canonical_url: https://github.com/proompteng/bilig/blob/main/docs/dev-to-workbook-apis-post.md
+canonical_url: https://proompteng.github.io/bilig/dev-to-workbook-apis-post.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
 ---
 
