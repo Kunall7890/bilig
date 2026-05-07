@@ -10,6 +10,9 @@ agent workflows, and collaborative sync.**
 
 Project site: <https://proompteng.github.io/bilig/>
 
+If the WorkPaper package is relevant to your agent or Node workflow, star the
+repo as a bookmark: <https://github.com/proompteng/bilig/stargazers>
+
 It is not a table widget. The repo contains a real workbook engine, formula
 parser/compiler, React workbook reconciler, reusable grid shell, binary sync
 protocol, agent API, browser/server persistence layers, and a conservative
