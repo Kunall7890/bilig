@@ -110,6 +110,10 @@ Verified on 2026-05-07 after the Show HN launch and topic refresh:
   <https://x.com/GregKonush/status/2052476569147564244>. The reply avoided a
   repo link and focused on the service/agent need for formulas, structural
   edits, mutation readback, and persisted proof.
+- Refined `@bilig/headless` package keywords with exact-fit discovery terms
+  already used in public positioning: `ai-spreadsheet`, `spreadsheet-api`,
+  `formula-evaluation`, `headless-workbook`, `node-spreadsheet`,
+  `spreadsheet-formulas`, `workbook-automation`, and `workbook-state`.
 
 ## Research Findings
 
@@ -442,6 +446,8 @@ audience, or product friction.
   <https://github.blog/open-source/maintainers/four-steps-toward-building-an-open-source-community/>
 - GitHub Blog, open source in 2026:
   <https://github.blog/open-source/maintainers/what-to-expect-for-open-source-in-2026/>
+- npm Docs, `package.json` description and keywords:
+  <https://docs.npmjs.com/cli/v11/configuring-npm/package-json>
 - Hacker News, Show HN guidelines:
   <https://news.ycombinator.com/showhn.html>
 - Hacker News, site guidelines:
