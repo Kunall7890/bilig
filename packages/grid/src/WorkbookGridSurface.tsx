@@ -227,6 +227,7 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
         data-default-row-height={renderState.gridMetrics.rowHeight}
         data-row-height-overrides={renderState.rowHeightOverridesAttr}
         data-testid="sheet-grid"
+        aria-label={`${props.sheetName} worksheet grid`}
         role="grid"
         style={{ cursor: renderState.hoverState.cursor }}
         onFocus={interactions.handleHostFocus}
@@ -242,16 +243,18 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
         onPointerDownCapture={interactions.handleHostPointerDownCapture}
         onPointerUpCapture={interactions.handleHostPointerUpCapture}
         ref={renderState.handleHostRef}
-        // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
-        tabIndex={0}
       >
-        <div
-          aria-label={`${props.sheetName} grid focus target`}
-          className="pointer-events-none absolute h-px w-px overflow-hidden opacity-0"
-          data-testid="sheet-grid-focus-target"
-          ref={renderState.focusTargetRef}
-          tabIndex={-1}
-        />
+        <div aria-rowindex={selectedCellRow + 1} className="pointer-events-none absolute h-px w-px overflow-hidden opacity-0" role="row">
+          <div
+            aria-colindex={selectedCellCol + 1}
+            aria-label={`${props.sheetName} ${props.selectedAddr}`}
+            aria-selected="true"
+            data-testid="sheet-grid-focus-target"
+            ref={renderState.focusTargetRef}
+            role="gridcell"
+            tabIndex={0}
+          />
+        </div>
         <div
           ref={renderState.scrollViewportRef}
           aria-hidden="true"

@@ -1,7 +1,6 @@
 {
   "extends": "../../tsconfig.workspace-paths.json",
   "compilerOptions": {
-    "exactOptionalPropertyTypes": false,
     "rootDir": "src",
     "outDir": "dist"
   },

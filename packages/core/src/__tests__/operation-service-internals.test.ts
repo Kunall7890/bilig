@@ -38,7 +38,13 @@ import {
   rowPairDirectScalarCode,
   singleInputAffineDirectScalar,
 } from '../engine/services/direct-scalar-helpers.js'
-import { entityKeyForOp, sheetDeleteBarrierForOp, shouldApplyOp, type VersionStore } from '../engine/services/operation-replica-helpers.js'
+import {
+  createOperationReplicaVersionWriter,
+  entityKeyForOp,
+  sheetDeleteBarrierForOp,
+  shouldApplyOp,
+  type VersionStore,
+} from '../engine/services/operation-replica-helpers.js'
 import {
   assertProtectionAllowsOp as assertProtectionAllowsProtectedOp,
   rangeIsProtected as protectedRangeIsProtected,
@@ -1000,5 +1006,36 @@ describe('operation-service internals', () => {
         sheetDeleteVersions,
       }),
     ).toBe(true)
+  })
+
+  it('writes replica versions only when replica tracking is enabled', () => {
+    const entityVersions = new Map<string, { counter: number; replicaId: 'r'; batchId: 'r:1'; opIndex: number }>()
+    const sheetDeleteVersions = new Map<string, { counter: number; replicaId: 'r'; batchId: 'r:1'; opIndex: number }>()
+    const order = { counter: 1, replicaId: 'r' as const, batchId: 'r:1' as const, opIndex: 0 }
+
+    const disabled = createOperationReplicaVersionWriter({
+      trackReplicaVersions: false,
+      entityVersions,
+      sheetDeleteVersions,
+    })
+    disabled.setEntityVersionForOp({ kind: 'upsertWorkbook', name: 'Ignored' }, order)
+    disabled.setCellEntityVersion('Sheet1', 'A1', order)
+    disabled.setSheetDeleteVersion('Sheet1', order)
+    expect(entityVersions.size).toBe(0)
+    expect(sheetDeleteVersions.size).toBe(0)
+    expect(disabled.stores.entityVersions.get('workbook')).toBeUndefined()
+
+    const enabled = createOperationReplicaVersionWriter({
+      trackReplicaVersions: true,
+      entityVersions,
+      sheetDeleteVersions,
+    })
+    enabled.setEntityVersionForOp({ kind: 'upsertWorkbook', name: 'Book' }, order)
+    enabled.setCellEntityVersion('Sheet1', 'A1', order)
+    enabled.setSheetDeleteVersion('Sheet1', order)
+
+    expect(entityVersions.get('workbook')).toBe(order)
+    expect(entityVersions.get('cell:Sheet1!A1')).toBe(order)
+    expect(sheetDeleteVersions.get('Sheet1')).toBe(order)
   })
 })

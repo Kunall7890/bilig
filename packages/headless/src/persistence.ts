@@ -402,21 +402,20 @@ export function parseWorkPaperDocument(json: string): PersistedWorkPaperDocument
 }
 
 function serializeNamedExpression(workbook: WorkPaper, expression: SerializedWorkPaperNamedExpression): PersistedWorkPaperNamedExpression {
+  const persisted: PersistedWorkPaperNamedExpression = {
+    name: expression.name,
+    expression: expression.expression,
+  }
+  if (expression.options !== undefined) {
+    persisted.options = structuredClone(expression.options)
+  }
   if (expression.scope === undefined) {
-    return {
-      name: expression.name,
-      expression: expression.expression,
-      options: expression.options ? structuredClone(expression.options) : undefined,
-    }
+    return persisted
   }
   const scopeSheetName = workbook.getSheetName(expression.scope)
   if (!scopeSheetName) {
     throw new WorkPaperPersistenceError(`Missing scope sheet for named expression ${expression.name}`)
   }
-  return {
-    name: expression.name,
-    expression: expression.expression,
-    scopeSheetName,
-    options: expression.options ? structuredClone(expression.options) : undefined,
-  }
+  persisted.scopeSheetName = scopeSheetName
+  return persisted
 }

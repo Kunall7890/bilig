@@ -756,7 +756,7 @@ export function applyLookupColumnOwnerLiteralWrite(args: {
   return true
 }
 
-export function ensureApproximateLookupSummaries(owner: LookupColumnOwner): void {
+function ensureApproximateLookupSummaries(owner: LookupColumnOwner): void {
   if (
     !owner.summariesDirty &&
     owner.incompatibleNumericOffsets &&
@@ -774,7 +774,7 @@ export function ensureApproximateLookupSummaries(owner: LookupColumnOwner): void
   initializeApproximateLookupSummaries(owner)
 }
 
-export function ensureExactLookupSummaries(owner: LookupColumnOwner): void {
+function ensureExactLookupSummaries(owner: LookupColumnOwner): void {
   if (owner.exactNumericIncompatibleOffsets && owner.exactTextIncompatibleOffsets && owner.numericUniformBreakOffsets) {
     return
   }

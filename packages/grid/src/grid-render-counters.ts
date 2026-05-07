@@ -1,5 +1,3 @@
-import type { GridGpuCounters } from './grid-render-contract.js'
-
 export interface RendererTileReadinessCounterInput {
   readonly exactHits: number
   readonly staleHits: number
@@ -8,19 +6,25 @@ export interface RendererTileReadinessCounterInput {
   readonly warmDirtyTiles: number
 }
 
+export interface TypeGpuTileCacheStaleLookupCounterInput {
+  readonly hits: number
+  readonly lookups: number
+  readonly scannedEntries: number
+}
+
 export interface TypeGpuTextPayloadCounterInput {
   readonly reusedRunPayloads: number
   readonly rebuiltRunPayloads: number
   readonly atlasGeometryRetries: number
   readonly atlasGeometryResyncs?: number | undefined
-  readonly glyphDependencies: number
-  readonly pageDependencies: number
   readonly axisOnlySyncAccepts?: number | undefined
   readonly axisOnlySyncRejects?: number | undefined
   readonly axisOnlySyncMissingGlyphRejects?: number | undefined
   readonly axisOnlySyncSignatureRejects?: number | undefined
   readonly axisOnlySyncFallbackRebuilds?: number | undefined
   readonly axisOnlySyncAuthoritativeFullTile?: number | undefined
+  readonly glyphDependencies: number
+  readonly pageDependencies: number
 }
 
 type ScrollPerfCounterSink = Partial<{
@@ -37,49 +41,13 @@ type ScrollPerfCounterSink = Partial<{
   noteTypeGpuSurfaceResize: (width: number, height: number, dpr: number) => void
   noteTypeGpuTileMiss: (tileKey: number | string) => void
   noteTypeGpuTileCacheEviction: (count: number) => void
-  noteTypeGpuTileCacheSort: (count: number) => void
-  noteTypeGpuTileCacheStaleLookup: (scannedEntries: number, hit: boolean) => void
+  noteTypeGpuTileCacheStaleLookups: (input: TypeGpuTileCacheStaleLookupCounterInput) => void
   noteTypeGpuTileCacheVisibleMark: (count: number) => void
   noteTypeGpuTextPayload: (input: TypeGpuTextPayloadCounterInput) => void
   noteRendererTileReadiness: (input: RendererTileReadinessCounterInput) => void
   noteGridScrollInput: (timestamp: number) => void
   noteGridDrawFrame: (timestamp: number) => void
 }>
-
-export const EMPTY_GRID_GPU_COUNTERS: GridGpuCounters = Object.freeze({
-  atlasUploadBytes: 0,
-  bufferAllocationBytes: 0,
-  bufferAllocations: 0,
-  configureCount: 0,
-  drawCalls: 0,
-  paneDraws: 0,
-  submitCount: 0,
-  surfaceResizes: 0,
-  tileMisses: 0,
-  tileCacheEvictions: 0,
-  tileCacheEntriesScanned: 0,
-  tileCacheSorts: 0,
-  tileCacheStaleHits: 0,
-  tileCacheStaleLookups: 0,
-  tileCacheVisibleMarks: 0,
-  textAtlasGeometryResyncs: 0,
-  textAtlasGeometryRetries: 0,
-  textGlyphDependencies: 0,
-  textPageDependencies: 0,
-  textAxisOnlySyncAccepts: 0,
-  textAxisOnlySyncAuthoritativeFullTile: 0,
-  textAxisOnlySyncFallbackRebuilds: 0,
-  textAxisOnlySyncMissingGlyphRejects: 0,
-  textAxisOnlySyncRejects: 0,
-  textAxisOnlySyncSignatureRejects: 0,
-  textRunPayloadRebuilds: 0,
-  textRunPayloadReuses: 0,
-  uniformWriteBytes: 0,
-  vertexUploadBytes: 0,
-  overlayUploadBytes: 0,
-  atlasDirtyPages: 0,
-  atlasDirtyPageUploadBytes: 0,
-})
 
 function getCounterSink(): ScrollPerfCounterSink | null {
   if (typeof window === 'undefined') {
@@ -139,12 +107,8 @@ export function noteTypeGpuTileCacheEviction(count = 1): void {
   getCounterSink()?.noteTypeGpuTileCacheEviction?.(count)
 }
 
-export function noteTypeGpuTileCacheSort(count = 1): void {
-  getCounterSink()?.noteTypeGpuTileCacheSort?.(count)
-}
-
-export function noteTypeGpuTileCacheStaleLookup(scannedEntries: number, hit: boolean): void {
-  getCounterSink()?.noteTypeGpuTileCacheStaleLookup?.(scannedEntries, hit)
+export function noteTypeGpuTileCacheStaleLookups(input: TypeGpuTileCacheStaleLookupCounterInput): void {
+  getCounterSink()?.noteTypeGpuTileCacheStaleLookups?.(input)
 }
 
 export function noteTypeGpuTileCacheVisibleMark(count: number): void {

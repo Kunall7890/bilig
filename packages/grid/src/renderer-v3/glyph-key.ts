@@ -39,6 +39,6 @@ export class GlyphKeyRegistryV3 {
   }
 }
 
-export function encodeGlyphKeyV3(key: GlyphKeyV3): string {
+function encodeGlyphKeyV3(key: GlyphKeyV3): string {
   return `${key.fontInternId}:${key.dprBucket}:${key.glyph}`
 }

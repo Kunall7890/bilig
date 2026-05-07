@@ -1,23 +1,6 @@
 import type { SpreadsheetEngine } from '@bilig/core'
 import { formatAddress, parseCellAddress } from '@bilig/formula'
-import type {
-  CellNumberFormatInput,
-  CellRangeRef,
-  CellStylePatch,
-  WorkbookChartSnapshot,
-  WorkbookCommentThreadSnapshot,
-  WorkbookConditionalFormatSnapshot,
-  WorkbookImageSnapshot,
-  LiteralInput,
-  WorkbookDataValidationSnapshot,
-  WorkbookDefinedNameValueSnapshot,
-  WorkbookNoteSnapshot,
-  WorkbookPivotSnapshot,
-  WorkbookRangeProtectionSnapshot,
-  WorkbookSheetProtectionSnapshot,
-  WorkbookShapeSnapshot,
-  WorkbookTableSnapshot,
-} from '@bilig/protocol'
+import type { CellRangeRef, LiteralInput } from '@bilig/protocol'
 import {
   applyWorkbookAgentAnnotationCommand,
   deriveWorkbookAgentAnnotationCommandPreviewRanges,
@@ -88,352 +71,57 @@ import {
   isWorkbookAgentValidationCommandValue,
   isWorkbookScopeValidationCommand,
 } from './workbook-agent-validation-commands.js'
+import type {
+  WorkbookAgentAcceptedScope,
+  WorkbookAgentAppliedBy,
+  WorkbookAgentBundleScope,
+  WorkbookAgentCommand,
+  WorkbookAgentCommandBundle,
+  WorkbookAgentContextRef,
+  WorkbookAgentExecutionRecord,
+  WorkbookAgentPreviewRange,
+  WorkbookAgentRiskClass,
+  WorkbookAgentSharedReviewRecommendation,
+  WorkbookAgentSharedReviewState,
+  WorkbookAgentSharedReviewStatus,
+  WorkbookAgentWriteCellInput,
+} from './workbook-agent-bundle-types.js'
+import {
+  isWorkbookAgentPreviewRange,
+  isWorkbookAgentPreviewSummary,
+  sameWorkbookAgentPreviewRange,
+} from './workbook-agent-preview-summary.js'
 
-export interface WorkbookAgentUiSelectionRef {
-  sheetName: string
-  address: string
-  range?: {
-    startAddress: string
-    endAddress: string
-  }
-}
-
-export interface WorkbookAgentViewportRef {
-  rowStart: number
-  rowEnd: number
-  colStart: number
-  colEnd: number
-}
-
-export interface WorkbookAgentContextRef {
-  selection: WorkbookAgentUiSelectionRef
-  viewport: WorkbookAgentViewportRef
-}
-
-export type WorkbookAgentWriteCellInput =
-  | LiteralInput
-  | {
-      value: LiteralInput
-    }
-  | {
-      formula: string
-    }
-
-export type WorkbookAgentCommand =
-  | {
-      kind: 'writeRange'
-      sheetName: string
-      startAddress: string
-      values: WorkbookAgentWriteCellInput[][]
-    }
-  | {
-      kind: 'setRangeFormulas'
-      range: CellRangeRef
-      formulas: string[][]
-    }
-  | {
-      kind: 'clearRange'
-      range: CellRangeRef
-    }
-  | {
-      kind: 'formatRange'
-      range: CellRangeRef
-      patch?: CellStylePatch
-      numberFormat?: CellNumberFormatInput
-    }
-  | {
-      kind: 'fillRange'
-      source: CellRangeRef
-      target: CellRangeRef
-    }
-  | {
-      kind: 'copyRange'
-      source: CellRangeRef
-      target: CellRangeRef
-    }
-  | {
-      kind: 'moveRange'
-      source: CellRangeRef
-      target: CellRangeRef
-    }
-  | {
-      kind: 'upsertDefinedName'
-      name: string
-      value: WorkbookDefinedNameValueSnapshot
-    }
-  | {
-      kind: 'deleteDefinedName'
-      name: string
-    }
-  | {
-      kind: 'upsertTable'
-      table: WorkbookTableSnapshot
-    }
-  | {
-      kind: 'deleteTable'
-      name: string
-    }
-  | {
-      kind: 'upsertPivotTable'
-      pivot: WorkbookPivotSnapshot
-    }
-  | {
-      kind: 'deletePivotTable'
-      sheetName: string
-      address: string
-    }
-  | {
-      kind: 'upsertChart'
-      chart: WorkbookChartSnapshot
-    }
-  | {
-      kind: 'deleteChart'
-      id: string
-    }
-  | {
-      kind: 'upsertImage'
-      image: WorkbookImageSnapshot
-    }
-  | {
-      kind: 'deleteImage'
-      id: string
-    }
-  | {
-      kind: 'upsertShape'
-      shape: WorkbookShapeSnapshot
-    }
-  | {
-      kind: 'deleteShape'
-      id: string
-    }
-  | {
-      kind: 'createSheet'
-      name: string
-    }
-  | {
-      kind: 'renameSheet'
-      currentName: string
-      nextName: string
-    }
-  | {
-      kind: 'deleteSheet'
-      name: string
-    }
-  | {
-      kind: 'insertRows'
-      sheetName: string
-      start: number
-      count: number
-    }
-  | {
-      kind: 'deleteRows'
-      sheetName: string
-      start: number
-      count: number
-    }
-  | {
-      kind: 'insertColumns'
-      sheetName: string
-      start: number
-      count: number
-    }
-  | {
-      kind: 'deleteColumns'
-      sheetName: string
-      start: number
-      count: number
-    }
-  | {
-      kind: 'setFreezePane'
-      sheetName: string
-      rows: number
-      cols: number
-    }
-  | {
-      kind: 'setFilter'
-      range: CellRangeRef
-    }
-  | {
-      kind: 'clearFilter'
-      range: CellRangeRef
-    }
-  | {
-      kind: 'setSort'
-      range: CellRangeRef
-      keys: {
-        keyAddress: string
-        direction: 'asc' | 'desc'
-      }[]
-    }
-  | {
-      kind: 'clearSort'
-      range: CellRangeRef
-    }
-  | {
-      kind: 'setDataValidation'
-      validation: WorkbookDataValidationSnapshot
-    }
-  | {
-      kind: 'clearDataValidation'
-      range: CellRangeRef
-    }
-  | {
-      kind: 'upsertConditionalFormat'
-      format: WorkbookConditionalFormatSnapshot
-    }
-  | {
-      kind: 'deleteConditionalFormat'
-      id: string
-      range: CellRangeRef
-    }
-  | {
-      kind: 'setSheetProtection'
-      protection: WorkbookSheetProtectionSnapshot
-    }
-  | {
-      kind: 'clearSheetProtection'
-      sheetName: string
-    }
-  | {
-      kind: 'upsertRangeProtection'
-      protection: WorkbookRangeProtectionSnapshot
-    }
-  | {
-      kind: 'deleteRangeProtection'
-      id: string
-      range: CellRangeRef
-    }
-  | {
-      kind: 'upsertCommentThread'
-      thread: WorkbookCommentThreadSnapshot
-    }
-  | {
-      kind: 'deleteCommentThread'
-      sheetName: string
-      address: string
-    }
-  | {
-      kind: 'upsertNote'
-      note: WorkbookNoteSnapshot
-    }
-  | {
-      kind: 'deleteNote'
-      sheetName: string
-      address: string
-    }
-  | {
-      kind: 'updateRowMetadata'
-      sheetName: string
-      startRow: number
-      count: number
-      height?: number | null
-      hidden?: boolean | null
-    }
-  | {
-      kind: 'updateColumnMetadata'
-      sheetName: string
-      startCol: number
-      count: number
-      width?: number | null
-      hidden?: boolean | null
-    }
-
-export type WorkbookAgentRiskClass = 'low' | 'medium' | 'high'
-export type WorkbookAgentBundleScope = 'selection' | 'sheet' | 'workbook'
-export type WorkbookAgentAppliedBy = 'user' | 'auto'
-export type WorkbookAgentAcceptedScope = 'full' | 'partial'
-export type WorkbookAgentSharedReviewStatus = 'pending' | 'approved' | 'rejected'
-export type WorkbookAgentPreviewRangeRole = 'target' | 'source'
-export type WorkbookAgentPreviewChangeKind = 'input' | 'formula' | 'style' | 'numberFormat'
-
-export interface WorkbookAgentPreviewRange {
-  sheetName: string
-  startAddress: string
-  endAddress: string
-  role: WorkbookAgentPreviewRangeRole
-}
-
-export interface WorkbookAgentPreviewCellDiff {
-  sheetName: string
-  address: string
-  beforeInput: LiteralInput | null
-  beforeFormula: string | null
-  afterInput: LiteralInput | null
-  afterFormula: string | null
-  changeKinds: WorkbookAgentPreviewChangeKind[]
-}
-
-export interface WorkbookAgentPreviewEffectSummary {
-  displayedCellDiffCount: number
-  truncatedCellDiffs: boolean
-  inputChangeCount: number
-  formulaChangeCount: number
-  styleChangeCount: number
-  numberFormatChangeCount: number
-  structuralChangeCount: number
-}
-
-export interface WorkbookAgentPreviewSummary {
-  ranges: WorkbookAgentPreviewRange[]
-  structuralChanges: string[]
-  cellDiffs: WorkbookAgentPreviewCellDiff[]
-  effectSummary: WorkbookAgentPreviewEffectSummary
-}
-
-export interface WorkbookAgentCommandBundle {
-  id: string
-  documentId: string
-  threadId: string
-  turnId: string
-  goalText: string
-  summary: string
-  scope: WorkbookAgentBundleScope
-  riskClass: WorkbookAgentRiskClass
-  baseRevision: number
-  createdAtUnixMs: number
-  context: WorkbookAgentContextRef | null
-  commands: WorkbookAgentCommand[]
-  affectedRanges: WorkbookAgentPreviewRange[]
-  estimatedAffectedCells: number | null
-  sharedReview?: WorkbookAgentSharedReviewState | null
-}
-
-export interface WorkbookAgentSharedReviewState {
-  ownerUserId: string
-  status: WorkbookAgentSharedReviewStatus
-  decidedByUserId: string | null
-  decidedAtUnixMs: number | null
-  recommendations: WorkbookAgentSharedReviewRecommendation[]
-}
-
-export interface WorkbookAgentSharedReviewRecommendation {
-  userId: string
-  decision: Extract<WorkbookAgentSharedReviewStatus, 'approved' | 'rejected'>
-  decidedAtUnixMs: number
-}
-
-export interface WorkbookAgentExecutionRecord {
-  id: string
-  bundleId: string
-  documentId: string
-  threadId: string
-  turnId: string
-  actorUserId: string
-  goalText: string
-  planText: string | null
-  summary: string
-  scope: WorkbookAgentBundleScope
-  riskClass: WorkbookAgentRiskClass
-  acceptedScope: WorkbookAgentAcceptedScope
-  appliedBy: WorkbookAgentAppliedBy
-  baseRevision: number
-  appliedRevision: number
-  createdAtUnixMs: number
-  appliedAtUnixMs: number
-  context: WorkbookAgentContextRef | null
-  commands: WorkbookAgentCommand[]
-  preview: WorkbookAgentPreviewSummary | null
-}
+export type {
+  WorkbookAgentAcceptedScope,
+  WorkbookAgentAppliedBy,
+  WorkbookAgentBundleScope,
+  WorkbookAgentCommand,
+  WorkbookAgentCommandBundle,
+  WorkbookAgentContextRef,
+  WorkbookAgentExecutionRecord,
+  WorkbookAgentPreviewCellDiff,
+  WorkbookAgentPreviewChangeKind,
+  WorkbookAgentPreviewEffectSummary,
+  WorkbookAgentPreviewRange,
+  WorkbookAgentPreviewRangeRole,
+  WorkbookAgentPreviewSummary,
+  WorkbookAgentRiskClass,
+  WorkbookAgentSharedReviewRecommendation,
+  WorkbookAgentSharedReviewState,
+  WorkbookAgentSharedReviewStatus,
+  WorkbookAgentUiSelectionRef,
+  WorkbookAgentViewportRef,
+  WorkbookAgentWriteCellInput,
+} from './workbook-agent-bundle-types.js'
+export {
+  areWorkbookAgentPreviewSummariesEqual,
+  decodeWorkbookAgentPreviewSummary,
+  isWorkbookAgentPreviewCellDiff,
+  isWorkbookAgentPreviewEffectSummary,
+  isWorkbookAgentPreviewRange,
+  isWorkbookAgentPreviewSummary,
+} from './workbook-agent-preview-summary.js'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
@@ -497,10 +185,6 @@ function isAcceptedScope(value: unknown): value is WorkbookAgentAcceptedScope {
   return value === 'full' || value === 'partial'
 }
 
-function isPreviewChangeKind(value: unknown): value is WorkbookAgentPreviewChangeKind {
-  return value === 'input' || value === 'formula' || value === 'style' || value === 'numberFormat'
-}
-
 export function isWorkbookAgentContextRef(value: unknown): value is WorkbookAgentContextRef {
   return (
     isRecord(value) &&
@@ -516,193 +200,6 @@ export function isWorkbookAgentContextRef(value: unknown): value is WorkbookAgen
     typeof value['viewport']['rowEnd'] === 'number' &&
     typeof value['viewport']['colStart'] === 'number' &&
     typeof value['viewport']['colEnd'] === 'number'
-  )
-}
-
-export function isWorkbookAgentPreviewRange(value: unknown): value is WorkbookAgentPreviewRange {
-  return (
-    isRecord(value) &&
-    typeof value['sheetName'] === 'string' &&
-    typeof value['startAddress'] === 'string' &&
-    typeof value['endAddress'] === 'string' &&
-    (value['role'] === 'target' || value['role'] === 'source')
-  )
-}
-
-export function isWorkbookAgentPreviewCellDiff(value: unknown): value is WorkbookAgentPreviewCellDiff {
-  return (
-    isRecord(value) &&
-    typeof value['sheetName'] === 'string' &&
-    typeof value['address'] === 'string' &&
-    (value['beforeInput'] === null || isLiteralInputValue(value['beforeInput'])) &&
-    (value['beforeFormula'] === null || typeof value['beforeFormula'] === 'string') &&
-    (value['afterInput'] === null || isLiteralInputValue(value['afterInput'])) &&
-    (value['afterFormula'] === null || typeof value['afterFormula'] === 'string') &&
-    Array.isArray(value['changeKinds']) &&
-    value['changeKinds'].every((entry) => isPreviewChangeKind(entry))
-  )
-}
-
-export function isWorkbookAgentPreviewEffectSummary(value: unknown): value is WorkbookAgentPreviewEffectSummary {
-  return (
-    isRecord(value) &&
-    typeof value['displayedCellDiffCount'] === 'number' &&
-    Number.isFinite(value['displayedCellDiffCount']) &&
-    typeof value['truncatedCellDiffs'] === 'boolean' &&
-    typeof value['inputChangeCount'] === 'number' &&
-    Number.isFinite(value['inputChangeCount']) &&
-    typeof value['formulaChangeCount'] === 'number' &&
-    Number.isFinite(value['formulaChangeCount']) &&
-    typeof value['styleChangeCount'] === 'number' &&
-    Number.isFinite(value['styleChangeCount']) &&
-    typeof value['numberFormatChangeCount'] === 'number' &&
-    Number.isFinite(value['numberFormatChangeCount']) &&
-    typeof value['structuralChangeCount'] === 'number' &&
-    Number.isFinite(value['structuralChangeCount'])
-  )
-}
-
-export function isWorkbookAgentPreviewSummary(value: unknown): value is WorkbookAgentPreviewSummary {
-  return (
-    isRecord(value) &&
-    Array.isArray(value['ranges']) &&
-    value['ranges'].every((entry) => isWorkbookAgentPreviewRange(entry)) &&
-    Array.isArray(value['structuralChanges']) &&
-    value['structuralChanges'].every((entry) => typeof entry === 'string') &&
-    Array.isArray(value['cellDiffs']) &&
-    value['cellDiffs'].every((entry) => isWorkbookAgentPreviewCellDiff(entry)) &&
-    isWorkbookAgentPreviewEffectSummary(value['effectSummary'])
-  )
-}
-
-function derivePreviewEffectSummary(input: {
-  cellDiffs: readonly WorkbookAgentPreviewCellDiff[]
-  structuralChanges: readonly string[]
-  truncatedCellDiffs: boolean
-}): WorkbookAgentPreviewEffectSummary {
-  return {
-    displayedCellDiffCount: input.cellDiffs.length,
-    truncatedCellDiffs: input.truncatedCellDiffs,
-    inputChangeCount: input.cellDiffs.filter((diff) => diff.changeKinds.includes('input')).length,
-    formulaChangeCount: input.cellDiffs.filter((diff) => diff.changeKinds.includes('formula')).length,
-    styleChangeCount: input.cellDiffs.filter((diff) => diff.changeKinds.includes('style')).length,
-    numberFormatChangeCount: input.cellDiffs.filter((diff) => diff.changeKinds.includes('numberFormat')).length,
-    structuralChangeCount: input.structuralChanges.length,
-  }
-}
-
-function decodeWorkbookAgentPreviewCellDiff(value: unknown): WorkbookAgentPreviewCellDiff | null {
-  if (!isRecord(value)) {
-    return null
-  }
-  if (
-    typeof value['sheetName'] !== 'string' ||
-    typeof value['address'] !== 'string' ||
-    (value['beforeInput'] !== null && !isLiteralInputValue(value['beforeInput'])) ||
-    (value['beforeFormula'] !== null && typeof value['beforeFormula'] !== 'string') ||
-    (value['afterInput'] !== null && !isLiteralInputValue(value['afterInput'])) ||
-    (value['afterFormula'] !== null && typeof value['afterFormula'] !== 'string')
-  ) {
-    return null
-  }
-  const explicitChangeKinds = Array.isArray(value['changeKinds'])
-    ? value['changeKinds'].flatMap((entry) => (isPreviewChangeKind(entry) ? [entry] : []))
-    : []
-  const derivedChangeKinds = explicitChangeKinds.length
-    ? explicitChangeKinds
-    : [
-        ...(value['beforeFormula'] !== value['afterFormula'] ? (['formula'] as const) : []),
-        ...(value['beforeInput'] !== value['afterInput'] ? (['input'] as const) : []),
-      ]
-  return {
-    sheetName: value['sheetName'],
-    address: value['address'],
-    beforeInput: (value['beforeInput'] as LiteralInput | null | undefined) ?? null,
-    beforeFormula: (value['beforeFormula'] as string | null | undefined) ?? null,
-    afterInput: (value['afterInput'] as LiteralInput | null | undefined) ?? null,
-    afterFormula: (value['afterFormula'] as string | null | undefined) ?? null,
-    changeKinds: [...new Set(derivedChangeKinds)],
-  }
-}
-
-export function decodeWorkbookAgentPreviewSummary(value: unknown): WorkbookAgentPreviewSummary | null {
-  if (!isRecord(value)) {
-    return null
-  }
-  if (
-    !Array.isArray(value['ranges']) ||
-    !value['ranges'].every((entry) => isWorkbookAgentPreviewRange(entry)) ||
-    !Array.isArray(value['structuralChanges']) ||
-    !value['structuralChanges'].every((entry) => typeof entry === 'string') ||
-    !Array.isArray(value['cellDiffs'])
-  ) {
-    return null
-  }
-  const cellDiffs = value['cellDiffs'].flatMap((entry) => {
-    const decoded = decodeWorkbookAgentPreviewCellDiff(entry)
-    return decoded ? [decoded] : []
-  })
-  if (cellDiffs.length !== value['cellDiffs'].length) {
-    return null
-  }
-  const truncatedCellDiffs = isWorkbookAgentPreviewEffectSummary(value['effectSummary']) ? value['effectSummary'].truncatedCellDiffs : false
-  return {
-    ranges: value['ranges'].map((range) => ({ ...range })),
-    structuralChanges: [...value['structuralChanges']],
-    cellDiffs,
-    effectSummary: isWorkbookAgentPreviewEffectSummary(value['effectSummary'])
-      ? { ...value['effectSummary'] }
-      : derivePreviewEffectSummary({
-          cellDiffs,
-          structuralChanges: value['structuralChanges'],
-          truncatedCellDiffs,
-        }),
-  }
-}
-
-function samePreviewRange(left: WorkbookAgentPreviewRange, right: WorkbookAgentPreviewRange): boolean {
-  return (
-    left.sheetName === right.sheetName &&
-    left.startAddress === right.startAddress &&
-    left.endAddress === right.endAddress &&
-    left.role === right.role
-  )
-}
-
-function samePreviewCellDiff(left: WorkbookAgentPreviewCellDiff, right: WorkbookAgentPreviewCellDiff): boolean {
-  return (
-    left.sheetName === right.sheetName &&
-    left.address === right.address &&
-    left.beforeInput === right.beforeInput &&
-    left.beforeFormula === right.beforeFormula &&
-    left.afterInput === right.afterInput &&
-    left.afterFormula === right.afterFormula &&
-    left.changeKinds.length === right.changeKinds.length &&
-    left.changeKinds.every((kind, index) => kind === right.changeKinds[index])
-  )
-}
-
-export function areWorkbookAgentPreviewSummariesEqual(left: WorkbookAgentPreviewSummary, right: WorkbookAgentPreviewSummary): boolean {
-  return (
-    left.ranges.length === right.ranges.length &&
-    left.ranges.every((range, index) => {
-      const other = right.ranges[index]
-      return other ? samePreviewRange(range, other) : false
-    }) &&
-    left.structuralChanges.length === right.structuralChanges.length &&
-    left.structuralChanges.every((change, index) => change === right.structuralChanges[index]) &&
-    left.cellDiffs.length === right.cellDiffs.length &&
-    left.cellDiffs.every((diff, index) => {
-      const other = right.cellDiffs[index]
-      return other ? samePreviewCellDiff(diff, other) : false
-    }) &&
-    left.effectSummary.displayedCellDiffCount === right.effectSummary.displayedCellDiffCount &&
-    left.effectSummary.truncatedCellDiffs === right.effectSummary.truncatedCellDiffs &&
-    left.effectSummary.inputChangeCount === right.effectSummary.inputChangeCount &&
-    left.effectSummary.formulaChangeCount === right.effectSummary.formulaChangeCount &&
-    left.effectSummary.styleChangeCount === right.effectSummary.styleChangeCount &&
-    left.effectSummary.numberFormatChangeCount === right.effectSummary.numberFormatChangeCount &&
-    left.effectSummary.structuralChangeCount === right.effectSummary.structuralChangeCount
   )
 }
 
@@ -761,7 +258,7 @@ export function describeWorkbookAgentCommand(command: WorkbookAgentCommand): str
 function dedupePreviewRanges(ranges: readonly WorkbookAgentPreviewRange[]): WorkbookAgentPreviewRange[] {
   const nextRanges: WorkbookAgentPreviewRange[] = []
   ranges.forEach((range) => {
-    if (!nextRanges.some((existing) => samePreviewRange(existing, range))) {
+    if (!nextRanges.some((existing) => sameWorkbookAgentPreviewRange(existing, range))) {
       nextRanges.push(range)
     }
   })

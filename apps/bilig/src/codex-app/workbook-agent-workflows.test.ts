@@ -114,6 +114,17 @@ describe('workbook agent workflows', () => {
     })
   })
 
+  it('describes formula fill-down through the import metadata path', () => {
+    expect(
+      describeWorkbookAgentWorkflowTemplate('fillCurrentSheetFormulasDown', {
+        sheetName: 'Imports',
+      }),
+    ).toEqual({
+      title: 'Fill Current Sheet Formulas Down',
+      runningSummary: 'Running formula fill-down workflow for Imports.',
+    })
+  })
+
   it('describes outlier highlighting through the formatting metadata path', () => {
     expect(
       describeWorkbookAgentWorkflowTemplate('highlightCurrentSheetOutliers', {

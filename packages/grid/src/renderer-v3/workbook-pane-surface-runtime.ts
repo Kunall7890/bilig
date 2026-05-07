@@ -27,7 +27,7 @@ export interface WorkbookPaneSurfaceRuntimeOptionsV3 {
   readonly createResizeObserver?: ((listener: ResizeObserverCallback) => WorkbookPaneSurfaceRuntimeResizeObserverV3 | null) | undefined
 }
 
-export const EMPTY_TYPEGPU_SURFACE_SIZE_V3: TypeGpuSurfaceSizeV3 = Object.freeze({
+const EMPTY_TYPEGPU_SURFACE_SIZE_V3: TypeGpuSurfaceSizeV3 = Object.freeze({
   dpr: 1,
   height: 0,
   pixelHeight: 0,

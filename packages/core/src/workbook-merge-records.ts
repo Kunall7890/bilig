@@ -67,10 +67,6 @@ export function rangeContainsAddress(range: CellRangeRef, sheetName: string, add
   )
 }
 
-export function normalizeMergeRangeBounds(range: CellRangeRef): NormalizedRange {
-  return normalizeRange(range)
-}
-
 function normalizeRange(range: CellRangeRef): NormalizedRange {
   const start = parseCellAddress(range.startAddress, range.sheetName)
   const end = parseCellAddress(range.endAddress, range.sheetName)

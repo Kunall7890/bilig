@@ -1,7 +1,7 @@
 import type { SpreadsheetEngine } from '@bilig/core'
 import { formatAddress, parseCellAddress } from '@bilig/formula'
 import type { WorkbookImageSnapshot, WorkbookShapeSnapshot } from '@bilig/protocol'
-import type { WorkbookAgentCommand, WorkbookAgentPreviewRange } from './workbook-agent-bundles.js'
+import type { WorkbookAgentCommand, WorkbookAgentPreviewRange } from './workbook-agent-bundle-types.js'
 
 export type WorkbookAgentMediaCommand = Extract<
   WorkbookAgentCommand,

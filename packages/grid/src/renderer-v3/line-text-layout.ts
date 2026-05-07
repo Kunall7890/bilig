@@ -47,10 +47,10 @@ export interface GlyphAtlasLike {
 export const DEFAULT_TEXT_FONT = '400 11px sans-serif'
 export const DEFAULT_TEXT_COLOR = '#1f2933'
 export const DEFAULT_TEXT_HEIGHT = 16
-export const DEFAULT_TEXT_WIDTH = Number.POSITIVE_INFINITY
-export const TEXT_HORIZONTAL_PADDING = 8
-export const TEXT_WRAP_TOP_PADDING = 4
-export const TEXT_WRAP_LINE_HEIGHT = 1.2
+const DEFAULT_TEXT_WIDTH = Number.POSITIVE_INFINITY
+const TEXT_HORIZONTAL_PADDING = 8
+const TEXT_WRAP_TOP_PADDING = 4
+const TEXT_WRAP_LINE_HEIGHT = 1.2
 
 export function parseTextFontSize(font: string): number {
   const match = font.match(/(\d+(?:\.\d+)?)px/)

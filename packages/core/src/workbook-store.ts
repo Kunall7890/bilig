@@ -1,45 +1,35 @@
-import {
-  ValueTag,
-  type CellNumberFormatRecord,
-  type CellStyleRecord,
-  MAX_COLS,
-  MAX_ROWS,
-  type CellRangeRef,
-  type LiteralInput,
-  type SheetFormatRangeSnapshot,
-  type SheetStyleRangeSnapshot,
-  type WorkbookAxisEntrySnapshot,
-  type WorkbookCalculationSettingsSnapshot,
-  type WorkbookCommentThreadSnapshot,
-  type WorkbookChartSnapshot,
-  type WorkbookConditionalFormatSnapshot,
-  type WorkbookDataValidationSnapshot,
-  type WorkbookDefinedNameValueSnapshot,
-  type WorkbookImageSnapshot,
-  type WorkbookMacroPayloadSnapshot,
-  type WorkbookNoteSnapshot,
-  type WorkbookRangeProtectionSnapshot,
-  type WorkbookSheetProtectionSnapshot,
-  type WorkbookPivotSnapshot,
-  type WorkbookShapeSnapshot,
-  type WorkbookTableSnapshot,
-  type WorkbookVolatileContextSnapshot,
+import type {
+  CellNumberFormatRecord,
+  CellStyleRecord,
+  CellRangeRef,
+  LiteralInput,
+  SheetFormatRangeSnapshot,
+  SheetStyleRangeSnapshot,
+  WorkbookAxisEntrySnapshot,
+  WorkbookCalculationSettingsSnapshot,
+  WorkbookCommentThreadSnapshot,
+  WorkbookChartSnapshot,
+  WorkbookConditionalFormatSnapshot,
+  WorkbookDataValidationSnapshot,
+  WorkbookDefinedNameValueSnapshot,
+  WorkbookImageSnapshot,
+  WorkbookMacroPayloadSnapshot,
+  WorkbookNoteSnapshot,
+  WorkbookRangeProtectionSnapshot,
+  WorkbookSheetProtectionSnapshot,
+  WorkbookPivotSnapshot,
+  WorkbookShapeSnapshot,
+  WorkbookTableSnapshot,
+  WorkbookVolatileContextSnapshot,
 } from '@bilig/protocol'
-import { formatAddress, parseCellAddress, type StructuralAxisTransform } from '@bilig/formula'
-import { SheetGrid, type SheetGridAxisRemapScope } from './sheet-grid.js'
-import { CellFlags, CellStore } from './cell-store.js'
-import { mapStructuralAxisIndex } from './engine-structural-utils.js'
-import { buildStructuralTransaction, structuralScopeForTransform, type StructuralTransaction } from './engine/structural-transaction.js'
-import { AxisResidentCellIndex } from './storage/axis-resident-cell-index.js'
-import { CellPageStore } from './storage/cell-page-store.js'
-import { CellAxisIdentityStore } from './storage/cell-axis-identity-store.js'
-import { LogicalSheetStore } from './storage/logical-sheet-store.js'
-import { SheetAxisMap } from './storage/sheet-axis-map.js'
-import { addEngineCounter, type EngineCounters } from './perf/engine-counters.js'
+import type { StructuralAxisTransform } from '@bilig/formula'
+import type { SheetGridAxisRemapScope } from './sheet-grid.js'
+import { CellStore } from './cell-store.js'
+import type { StructuralTransaction } from './engine/structural-transaction.js'
+import type { EngineCounters } from './perf/engine-counters.js'
 import { createWorkbookMetadataService, runWorkbookMetadataEffect } from './workbook-metadata-service.js'
 import {
   createWorkbookMetadataRecord,
-  type WorkbookAxisEntryRecord,
   type WorkbookAxisMetadataRecord,
   type WorkbookCalculationSettingsRecord,
   type WorkbookCommentThreadRecord,
@@ -70,17 +60,6 @@ import {
   type WorkbookNoteRecord,
 } from './workbook-metadata-types.js'
 import {
-  getAxisMetadataRecord,
-  listAxisEntries,
-  materializeAxisEntries,
-  materializeAxisEntryRecords,
-  moveAxisEntries,
-  snapshotAxisEntriesInRange,
-  spliceAxisEntries,
-  syncAxisMetadataBucket,
-} from './workbook-axis-records.js'
-import { cellStyleKey, axisMetadataKey } from './workbook-store-records.js'
-import {
   coalesceStyleRanges as coalesceWorkbookStyleRanges,
   getCellStyle as readCellStyle,
   getCellNumberFormat as readCellNumberFormat,
@@ -99,9 +78,20 @@ import {
   upsertCellNumberFormat as storeCellNumberFormat,
   upsertCellStyle as storeCellStyle,
 } from './workbook-style-format-store.js'
+import { WORKBOOK_DEFAULT_FORMAT_ID, WORKBOOK_DEFAULT_STYLE_ID, ensureWorkbookDefaultStyleFormat } from './workbook-default-style-format.js'
+import { createCellKeyIndexMap } from './workbook-cell-key-index.js'
+import { WorkbookCellRecordStore, type EnsuredCell } from './workbook-cell-record-store.js'
+import { WorkbookAxisEntryStore } from './workbook-axis-entry-store.js'
+import { WorkbookColumnVersionStore } from './workbook-column-version-store.js'
+import { WorkbookIdAllocator } from './workbook-id-allocator.js'
+import type { SheetRecord } from './workbook-sheet-record.js'
+import { WorkbookSheetRegistryStore } from './workbook-sheet-registry-store.js'
+import { WorkbookStructuralCellStore } from './workbook-structural-cell-store.js'
 
-const SHEET_STRIDE = MAX_ROWS * MAX_COLS
+export { makeCellKey, makeLogicalCellKey } from './workbook-cell-key-index.js'
 export { normalizeDefinedName, normalizeWorkbookObjectName, imageKey, pivotKey, shapeKey } from './workbook-metadata-types.js'
+export type { EnsuredCell } from './workbook-cell-record-store.js'
+export type { SheetRecord } from './workbook-sheet-record.js'
 export type {
   WorkbookAxisEntryRecord,
   WorkbookAxisMetadataRecord,
@@ -134,35 +124,10 @@ export type {
   WorkbookNoteRecord,
 } from './workbook-metadata-types.js'
 
-export interface SheetRecord {
-  id: number
-  name: string
-  order: number
-  grid: SheetGrid
-  axisMap: SheetAxisMap
-  logicalAxisMap: SheetAxisMap
-  logical: LogicalSheetStore
-  cellIdentities: CellAxisIdentityStore
-  residentCells: AxisResidentCellIndex
-  columnVersions: Uint32Array
-  structureVersion: number
-  rowAxis: Array<WorkbookAxisEntryRecord | undefined>
-  columnAxis: Array<WorkbookAxisEntryRecord | undefined>
-  styleRanges: WorkbookStyleRangeRecord[]
-  formatRanges: WorkbookFormatRangeRecord[]
-}
-
-const INITIAL_COLUMN_VERSION_CAPACITY = 16
-
-export interface EnsuredCell {
-  cellIndex: number
-  created: boolean
-}
-
 export class WorkbookStore {
-  static readonly defaultStyleId = 'style-0'
-  static readonly defaultFormatId = 'format-0'
-  readonly cellStore: CellStore
+  static readonly defaultStyleId = WORKBOOK_DEFAULT_STYLE_ID
+  static readonly defaultFormatId = WORKBOOK_DEFAULT_FORMAT_ID
+  readonly cellStore = new CellStore()
   readonly sheetsByName = new Map<string, SheetRecord>()
   readonly sheetsById = new Map<number, SheetRecord>()
   readonly cellKeyToIndex: Map<number, number>
@@ -172,197 +137,93 @@ export class WorkbookStore {
   readonly cellNumberFormats = new Map<string, WorkbookCellNumberFormatRecord>()
   readonly numberFormatKeys = new Map<string, string>()
   readonly metadata: WorkbookMetadataRecord = createWorkbookMetadataRecord()
+  private readonly idAllocator = new WorkbookIdAllocator()
   private readonly metadataService = createWorkbookMetadataService(this.metadata)
+  private readonly sheetRegistry: WorkbookSheetRegistryStore
+  private readonly cellRecordStore: WorkbookCellRecordStore
+  private readonly axisEntryStore: WorkbookAxisEntryStore
+  private readonly columnVersionStore: WorkbookColumnVersionStore
+  private readonly structuralCellStore: WorkbookStructuralCellStore
   workbookName: string
-  private batchedColumnVersionUpdates: Map<number, Set<number>> | null = null
-  private nextSheetId = 1
-  private nextRowAxisId = 1
-  private nextColumnAxisId = 1
-  private nextLogicalRowAxisId = 1
-  private nextLogicalColumnAxisId = 1
-  private nextStyleId = 1
-  private nextFormatId = 1
 
   constructor(
     workbookName = 'Workbook',
     private readonly counters?: EngineCounters,
-    initialCellCapacity = 64,
   ) {
     this.workbookName = workbookName
-    this.cellStore = new CellStore(Math.max(64, initialCellCapacity))
-    this.cellKeyToIndex = new LogicalCellKeyIndexMap((sheetId, row, col) => this.getCellIndexAt(sheetId, row, col))
+    this.cellKeyToIndex = createCellKeyIndexMap((sheetId, row, col) => this.getCellIndexAt(sheetId, row, col))
+    this.sheetRegistry = new WorkbookSheetRegistryStore({
+      sheetsByName: this.sheetsByName,
+      sheetsById: this.sheetsById,
+      metadata: this.metadata,
+      counters: this.counters,
+      cellKeyToIndex: this.cellKeyToIndex,
+      cellFormats: this.cellFormats,
+      getCellPosition: (cellIndex) => this.getCellPosition(cellIndex),
+      deleteSheetRecords: (sheetName) => {
+        runWorkbookMetadataEffect(this.metadataService.deleteSheetRecords(sheetName))
+      },
+      renameSheetRecords: (oldName, nextName) => {
+        runWorkbookMetadataEffect(this.metadataService.renameSheet(oldName, nextName))
+      },
+    })
+    this.cellRecordStore = new WorkbookCellRecordStore({
+      cellStore: this.cellStore,
+      cellKeyToIndex: this.cellKeyToIndex,
+      cellFormats: this.cellFormats,
+      getSheet: (sheetName) => this.getSheet(sheetName),
+      getOrCreateSheet: (sheetName) => this.getOrCreateSheet(sheetName),
+      getSheetById: (sheetId) => this.getSheetById(sheetId),
+      getSheetNameById: (sheetId) => this.getSheetNameById(sheetId),
+      createLogicalAxisId: (axis) => this.createLogicalAxisId(axis),
+    })
+    this.axisEntryStore = new WorkbookAxisEntryStore({
+      counters: this.counters,
+      createAxisEntry: (axis) => this.idAllocator.createAxisEntry(axis),
+    })
+    this.columnVersionStore = new WorkbookColumnVersionStore({
+      cellStore: this.cellStore,
+      getSheetById: (sheetId) => this.getSheetById(sheetId),
+    })
+    this.structuralCellStore = new WorkbookStructuralCellStore({
+      counters: this.counters,
+      cellStore: this.cellStore,
+      cellKeyToIndex: this.cellKeyToIndex,
+      getSheet: (sheetName) => this.getSheet(sheetName),
+      createLogicalAxisId: (axis) => this.createLogicalAxisId(axis),
+    })
     this.cellStore.onSetValue = (index) => {
       this.notifyCellValueWritten(index)
     }
-    this.ensureDefaultStyle()
-    this.ensureDefaultNumberFormat()
-  }
-
-  private hasSheetScopedMetadata(): boolean {
-    const metadata = this.metadata
-    return (
-      metadata.tables.size > 0 ||
-      metadata.spills.size > 0 ||
-      metadata.pivots.size > 0 ||
-      metadata.charts.size > 0 ||
-      metadata.images.size > 0 ||
-      metadata.shapes.size > 0 ||
-      metadata.rowMetadata.size > 0 ||
-      metadata.columnMetadata.size > 0 ||
-      metadata.freezePanes.size > 0 ||
-      metadata.sheetProtections.size > 0 ||
-      metadata.filters.size > 0 ||
-      metadata.sorts.size > 0 ||
-      metadata.dataValidations.size > 0 ||
-      metadata.conditionalFormats.size > 0 ||
-      metadata.rangeProtections.size > 0 ||
-      metadata.commentThreads.size > 0 ||
-      metadata.notes.size > 0
-    )
+    ensureWorkbookDefaultStyleFormat(this)
   }
 
   createSheet(name: string, order = this.sheetsByName.size, id?: number): SheetRecord {
-    const existing = this.sheetsByName.get(name)
-    if (existing) {
-      existing.order = order
-      if (id !== undefined && existing.id !== id) {
-        this.sheetsById.delete(existing.id)
-        existing.id = id
-        existing.logical.setSheetId(id)
-        this.sheetsById.set(existing.id, existing)
-        this.bumpSheetId(id)
-      }
-      return existing
-    }
-    const axisMap = new SheetAxisMap()
-    const logicalAxisMap = new SheetAxisMap()
-    const cellIdentities = new CellAxisIdentityStore()
-    const residentCells = new AxisResidentCellIndex((callback) => {
-      cellIdentities.forEach((identity, cellIndex) => {
-        callback(cellIndex, identity)
-      })
-    })
-    const sheetId = id ?? this.nextSheetId++
-    const logical = new LogicalSheetStore(
-      sheetId,
-      logicalAxisMap,
-      new CellPageStore(
-        new Map<string, number>(),
-        (location) => makeLogicalCellKey(location.sheetId, location.rowId, location.colId),
-        (callback) => {
-          cellIdentities.forEach((identity, cellIndex) => {
-            callback(identity, cellIndex)
-          })
-        },
-      ),
-      cellIdentities,
-      residentCells,
-    )
-    const sheet: SheetRecord = {
-      id: sheetId,
-      name,
-      order,
-      grid: new SheetGrid(this.counters, {
-        get: (row, col) => logical.getVisibleCell(row, col),
-        forEachCellEntry: (fn) => {
-          logical.forEachVisibleCellEntry(fn)
-        },
-        someCellInAxisScope: (axis, scope, predicate) => logical.someResidentCellInAxisScope(axis, scope, predicate),
-      }),
-      axisMap,
-      logicalAxisMap,
-      logical,
-      cellIdentities,
-      residentCells,
-      columnVersions: new Uint32Array(0),
-      structureVersion: 1,
-      rowAxis: [],
-      columnAxis: [],
-      styleRanges: [],
-      formatRanges: [],
-    }
-    if (id !== undefined) {
-      this.bumpSheetId(id)
-    }
-    this.sheetsByName.set(name, sheet)
-    this.sheetsById.set(sheet.id, sheet)
-    return sheet
+    return this.sheetRegistry.createSheet(name, order, id)
   }
 
   deleteSheet(name: string): void {
-    const sheet = this.sheetsByName.get(name)
-    if (!sheet) return
-    sheet.grid.forEachCell((cellIndex) => {
-      const position = this.getCellPosition(cellIndex)
-      if (position) {
-        this.cellKeyToIndex.delete(makeCellKey(sheet.id, position.row, position.col))
-      }
-      this.cellFormats.delete(cellIndex)
-      const identity = sheet.logical.getCellIdentity(cellIndex)
-      if (identity) {
-        sheet.logical.deleteVisibleCellByIds(identity.rowId, identity.colId)
-      }
-    })
-    runWorkbookMetadataEffect(this.metadataService.deleteSheetRecords(name))
-    sheet.rowAxis.length = 0
-    sheet.columnAxis.length = 0
-    sheet.styleRanges.length = 0
-    sheet.formatRanges.length = 0
-    this.sheetsByName.delete(name)
-    this.sheetsById.delete(sheet.id)
+    this.sheetRegistry.deleteSheet(name)
   }
 
   renameSheet(oldName: string, nextName: string): SheetRecord | undefined {
-    const trimmedName = nextName.trim()
-    if (trimmedName.length === 0) {
-      throw new Error('Sheet name must be non-empty')
-    }
-    const sheet = this.sheetsByName.get(oldName)
-    if (!sheet) {
-      return undefined
-    }
-    if (oldName === trimmedName) {
-      return sheet
-    }
-    if (this.sheetsByName.has(trimmedName)) {
-      return undefined
-    }
-
-    this.sheetsByName.delete(oldName)
-    sheet.name = trimmedName
-    this.sheetsByName.set(trimmedName, sheet)
-    if (this.hasSheetScopedMetadata()) {
-      runWorkbookMetadataEffect(this.metadataService.renameSheet(oldName, trimmedName))
-    }
-
-    if (sheet.styleRanges.length > 0) {
-      sheet.styleRanges = sheet.styleRanges.map((record) =>
-        record.range.sheetName === oldName ? { ...record, range: { ...record.range, sheetName: trimmedName } } : record,
-      )
-    }
-    if (sheet.formatRanges.length > 0) {
-      sheet.formatRanges = sheet.formatRanges.map((record) =>
-        record.range.sheetName === oldName ? { ...record, range: { ...record.range, sheetName: trimmedName } } : record,
-      )
-    }
-
-    return sheet
+    return this.sheetRegistry.renameSheet(oldName, nextName)
   }
 
   getSheet(name: string): SheetRecord | undefined {
-    return this.sheetsByName.get(name)
+    return this.sheetRegistry.getSheet(name)
   }
 
   getSheetColumnVersion(sheetName: string, col: number): number {
-    return this.sheetsByName.get(sheetName)?.columnVersions[col] ?? 0
+    return this.sheetRegistry.getSheetColumnVersion(sheetName, col)
   }
 
   getSheetStructureVersion(sheetName: string): number {
-    return this.sheetsByName.get(sheetName)?.structureVersion ?? 0
+    return this.sheetRegistry.getSheetStructureVersion(sheetName)
   }
 
   getSheetById(id: number): SheetRecord | undefined {
-    return this.sheetsById.get(id)
+    return this.sheetRegistry.getSheetById(id)
   }
 
   getOrCreateSheet(name: string): SheetRecord {
@@ -370,325 +231,79 @@ export class WorkbookStore {
   }
 
   ensureCell(sheetName: string, address: string): number {
-    return this.ensureCellRecord(sheetName, address).cellIndex
+    return this.cellRecordStore.ensureCell(sheetName, address)
   }
 
   ensureCellRecord(sheetName: string, address: string): EnsuredCell {
-    const sheet = this.getOrCreateSheet(sheetName)
-    const parsed = parseCellAddress(address, sheetName)
-    return this.ensureCellAt(sheet.id, parsed.row, parsed.col)
+    return this.cellRecordStore.ensureCellRecord(sheetName, address)
   }
 
   ensureCellAt(sheetId: number, row: number, col: number): EnsuredCell {
-    const sheet = this.getSheetById(sheetId)
-    if (!sheet) {
-      throw new Error(`Unknown sheet id: ${sheetId}`)
-    }
-    const physicalCellIndex = sheet.structureVersion === 1 ? sheet.grid.getPhysical(row, col) : -1
-    if (physicalCellIndex !== -1) {
-      const position = sheet.logical.getCellVisiblePosition(physicalCellIndex)
-      if (position?.row === row && position.col === col) {
-        return { cellIndex: physicalCellIndex, created: false }
-      }
-    }
-    const existing = sheet.logical.getVisibleCell(row, col)
-    if (existing !== undefined) {
-      return { cellIndex: existing, created: false }
-    }
-    const cellIndex = this.cellStore.allocate(sheet.id, row, col)
-    this.attachAllocatedCell(sheet.id, row, col, cellIndex)
-    return { cellIndex, created: true }
+    return this.cellRecordStore.ensureCellAt(sheetId, row, col)
   }
 
   attachAllocatedCell(sheetId: number, row: number, col: number, cellIndex: number): void {
-    const sheet = this.getSheetById(sheetId)
-    if (!sheet) {
-      throw new Error(`Unknown sheet id: ${sheetId}`)
-    }
-    sheet.logical.setNewVisibleCell(row, col, cellIndex, {
-      createRowId: () => this.createLogicalAxisId('row'),
-      createColumnId: () => this.createLogicalAxisId('column'),
-    })
-    this.cellKeyToIndex.set(makeCellKey(sheet.id, row, col), cellIndex)
-    sheet.grid.set(row, col, cellIndex)
+    this.cellRecordStore.attachAllocatedCell(sheetId, row, col, cellIndex)
   }
 
   ensureLogicalAxisId(sheetId: number, axis: 'row' | 'column', index: number): string {
-    const sheet = this.getSheetById(sheetId)
-    if (!sheet) {
-      throw new Error(`Unknown sheet id: ${sheetId}`)
-    }
-    return sheet.logicalAxisMap.ensureId(axis, index, () => this.createLogicalAxisId(axis))
+    return this.cellRecordStore.ensureLogicalAxisId(sheetId, axis, index)
   }
 
   createLogicalAxisIdEnsurer(sheetId: number, axis: 'row' | 'column'): (index: number) => string {
-    const sheet = this.getSheetById(sheetId)
-    if (!sheet) {
-      throw new Error(`Unknown sheet id: ${sheetId}`)
-    }
-    return (index) => sheet.logicalAxisMap.ensureId(axis, index, () => this.createLogicalAxisId(axis))
+    return this.cellRecordStore.createLogicalAxisIdEnsurer(sheetId, axis)
   }
 
   attachAllocatedCellWithLogicalAxisIds(sheetId: number, row: number, col: number, cellIndex: number, rowId: string, colId: string): void {
-    const sheet = this.getSheetById(sheetId)
-    if (!sheet) {
-      throw new Error(`Unknown sheet id: ${sheetId}`)
-    }
-    sheet.logical.setNewVisibleCellWithAxisIds(row, col, cellIndex, rowId, colId)
-    this.cellKeyToIndex.set(makeCellKey(sheet.id, row, col), cellIndex)
-    sheet.grid.set(row, col, cellIndex)
+    this.cellRecordStore.attachAllocatedCellWithLogicalAxisIds(sheetId, row, col, cellIndex, rowId, colId)
   }
 
   withBatchedColumnVersionUpdates<T>(execute: () => T): T {
-    if (this.batchedColumnVersionUpdates) {
-      return execute()
-    }
-    const pending = new Map<number, Set<number>>()
-    this.batchedColumnVersionUpdates = pending
-    try {
-      return execute()
-    } finally {
-      this.batchedColumnVersionUpdates = null
-      pending.forEach((columns, sheetId) => {
-        const sheet = this.getSheetById(sheetId)
-        if (!sheet) {
-          return
-        }
-        let maxCol = -1
-        columns.forEach((col) => {
-          if (col >= 0 && col < MAX_COLS && col > maxCol) {
-            maxCol = col
-          }
-        })
-        this.ensureSheetColumnVersionCapacity(sheet, maxCol)
-        columns.forEach((col) => {
-          if (col >= 0 && col < MAX_COLS) {
-            sheet.columnVersions[col] = (sheet.columnVersions[col] ?? 0) + 1
-          }
-        })
-      })
-    }
+    return this.columnVersionStore.withBatchedColumnVersionUpdates(execute)
   }
 
   notifyCellValueWritten(cellIndex: number): void {
-    this.bumpColumnVersionByCellIndex(cellIndex)
+    this.columnVersionStore.notifyCellValueWritten(cellIndex)
   }
 
   notifyColumnsWritten(sheetId: number, columns: readonly number[] | Uint32Array): void {
-    const pending = this.batchedColumnVersionUpdates
-    if (pending) {
-      let pendingColumns = pending.get(sheetId)
-      if (!pendingColumns) {
-        pendingColumns = new Set<number>()
-        pending.set(sheetId, pendingColumns)
-      }
-      for (let index = 0; index < columns.length; index += 1) {
-        pendingColumns.add(columns[index]!)
-      }
-      return
-    }
-    const sheet = this.getSheetById(sheetId)
-    if (!sheet) {
-      return
-    }
-    let maxCol = -1
-    for (let index = 0; index < columns.length; index += 1) {
-      const col = columns[index]!
-      if (col >= 0 && col < MAX_COLS && col > maxCol) {
-        maxCol = col
-      }
-    }
-    this.ensureSheetColumnVersionCapacity(sheet, maxCol)
-    for (let index = 0; index < columns.length; index += 1) {
-      const col = columns[index]!
-      if (col >= 0 && col < MAX_COLS) {
-        sheet.columnVersions[col] = (sheet.columnVersions[col] ?? 0) + 1
-      }
-    }
-  }
-
-  private bumpColumnVersionByCellIndex(cellIndex: number): void {
-    const sheetId = this.cellStore.sheetIds[cellIndex]!
-    const sheet = this.getSheetById(sheetId)
-    if (!sheet) {
-      return
-    }
-    const col =
-      sheet.structureVersion === 1
-        ? this.cellStore.cols[cellIndex]!
-        : (sheet.logical.getCellVisiblePosition(cellIndex)?.col ?? this.cellStore.cols[cellIndex]!)
-    const pending = this.batchedColumnVersionUpdates
-    if (pending) {
-      let columns = pending.get(sheetId)
-      if (!columns) {
-        columns = new Set<number>()
-        pending.set(sheetId, columns)
-      }
-      columns.add(col)
-      return
-    }
-    this.bumpSheetColumnVersion(sheet, col)
-  }
-
-  bumpSheetColumnVersion(sheet: SheetRecord, col: number): void {
-    if (col < 0 || col >= MAX_COLS) {
-      return
-    }
-    this.ensureSheetColumnVersionCapacity(sheet, col)
-    sheet.columnVersions[col] = (sheet.columnVersions[col] ?? 0) + 1
-  }
-
-  private ensureSheetColumnVersionCapacity(sheet: SheetRecord, col: number): void {
-    if (col < sheet.columnVersions.length || col < 0 || col >= MAX_COLS) {
-      return
-    }
-    const nextLength = Math.min(
-      MAX_COLS,
-      Math.max(col + 1, sheet.columnVersions.length === 0 ? INITIAL_COLUMN_VERSION_CAPACITY : sheet.columnVersions.length * 2),
-    )
-    const next = new Uint32Array(nextLength)
-    next.set(sheet.columnVersions)
-    sheet.columnVersions = next
+    this.columnVersionStore.notifyColumnsWritten(sheetId, columns)
   }
 
   getCellIndex(sheetName: string, address: string): number | undefined {
-    const sheet = this.getSheet(sheetName)
-    if (!sheet) return undefined
-    const parsed = parseCellAddress(address, sheetName)
-    if (sheet.structureVersion === 1) {
-      const physicalCellIndex = sheet.grid.getPhysical(parsed.row, parsed.col)
-      if (physicalCellIndex !== -1) {
-        return physicalCellIndex
-      }
-    }
-    return sheet.logical.getVisibleCell(parsed.row, parsed.col)
+    return this.cellRecordStore.getCellIndex(sheetName, address)
   }
 
   getCellIndexAt(sheetId: number, row: number, col: number): number | undefined {
-    const sheet = this.getSheetById(sheetId)
-    if (!sheet) {
-      return undefined
-    }
-    if (sheet.structureVersion === 1) {
-      const physicalCellIndex = sheet.grid.getPhysical(row, col)
-      if (physicalCellIndex !== -1) {
-        return physicalCellIndex
-      }
-    }
-    return sheet.logical.getVisibleCell(row, col)
+    return this.cellRecordStore.getCellIndexAt(sheetId, row, col)
   }
 
   getSheetNameById(id: number): string {
-    return this.sheetsById.get(id)?.name ?? ''
+    return this.sheetRegistry.getSheetNameById(id)
   }
 
   getAddress(index: number): string {
-    const position = this.getCellPosition(index)
-    return formatAddress(position?.row ?? this.cellStore.rows[index]!, position?.col ?? this.cellStore.cols[index]!)
+    return this.cellRecordStore.getAddress(index)
   }
 
   getQualifiedAddress(index: number): string {
-    return `${this.getSheetNameById(this.cellStore.sheetIds[index]!)}!${this.getAddress(index)}`
+    return this.cellRecordStore.getQualifiedAddress(index)
   }
 
   getCellPosition(index: number): { sheetId: number; row: number; col: number } | undefined {
-    const sheetId = this.cellStore.sheetIds[index]
-    if (sheetId === undefined || sheetId === 0) {
-      return undefined
-    }
-    const sheet = this.getSheetById(sheetId)
-    if (sheet?.structureVersion === 1) {
-      return { sheetId, row: this.cellStore.rows[index]!, col: this.cellStore.cols[index]! }
-    }
-    const logicalPosition = sheet?.logical.getCellVisiblePosition(index)
-    if (logicalPosition) {
-      return { sheetId, row: logicalPosition.row, col: logicalPosition.col }
-    }
-    if (sheet?.logical.getCellIdentity(index)) {
-      return undefined
-    }
-    const row = this.cellStore.rows[index]
-    const col = this.cellStore.cols[index]
-    if (row === undefined || col === undefined) {
-      return undefined
-    }
-    return { sheetId, row, col }
+    return this.cellRecordStore.getCellPosition(index)
   }
 
   getCellAxisIndex(index: number, axis: 'row' | 'column'): number | undefined {
-    const sheetId = this.cellStore.sheetIds[index]
-    if (sheetId === undefined || sheetId === 0) {
-      return undefined
-    }
-    const sheet = this.getSheetById(sheetId)
-    if (sheet?.structureVersion === 1) {
-      return axis === 'row' ? this.cellStore.rows[index] : this.cellStore.cols[index]
-    }
-    const logicalIndex = sheet?.logical.getCellVisibleAxisIndex(index, axis)
-    if (logicalIndex !== undefined) {
-      return logicalIndex
-    }
-    if (sheet?.logical.getCellIdentity(index)) {
-      return undefined
-    }
-    return axis === 'row' ? this.cellStore.rows[index] : this.cellStore.cols[index]
+    return this.cellRecordStore.getCellAxisIndex(index, axis)
   }
 
   detachCellIndex(index: number): boolean {
-    const sheetId = this.cellStore.sheetIds[index]
-    if (!sheetId) {
-      return false
-    }
-    const sheet = this.getSheetById(sheetId)
-    const position = this.getCellPosition(index)
-    const row = position?.row
-    const col = position?.col
-    if (sheet && row !== undefined && col !== undefined) {
-      if (sheet.logical.getVisibleCell(row, col) === index) {
-        sheet.logical.deleteVisibleCell(row, col)
-      }
-      const key = makeCellKey(sheet.id, row, col)
-      if (this.cellKeyToIndex.get(key) === index) {
-        this.cellKeyToIndex.delete(key)
-      }
-      if (sheet.grid.get(row, col) === index) {
-        sheet.grid.clear(row, col)
-      }
-    }
-    this.cellStore.flags[index] = (this.cellStore.flags[index] ?? 0) & ~CellFlags.Materialized
-    return true
+    return this.cellRecordStore.detachCellIndex(index)
   }
 
   pruneCellIfEmpty(index: number): boolean {
-    const sheetId = this.cellStore.sheetIds[index]
-    if (!sheetId) {
-      return false
-    }
-    const sheet = this.getSheetById(sheetId)
-    if (!sheet) {
-      return false
-    }
-    const position = this.getCellPosition(index)
-    const row = position?.row
-    const col = position?.col
-    if (row === undefined || col === undefined) {
-      return false
-    }
-    const value = this.cellStore.getValue(index, () => '')
-    const flags = this.cellStore.flags[index] ?? 0
-    if (
-      value.tag !== ValueTag.Empty ||
-      this.cellFormats.has(index) ||
-      (flags &
-        (CellFlags.HasFormula | CellFlags.AuthoredBlank | CellFlags.SpillChild | CellFlags.PivotOutput | CellFlags.PendingDelete)) !==
-        0
-    ) {
-      return false
-    }
-    if (sheet.grid.get(row, col) !== index) {
-      return false
-    }
-    return this.detachCellIndex(index)
+    return this.cellRecordStore.pruneCellIfEmpty(index)
   }
 
   setCellFormat(index: number, format: string | null | undefined): void {
@@ -705,7 +320,7 @@ export class WorkbookStore {
   }
 
   upsertCellStyle(style: CellStyleRecord): WorkbookCellStyleRecord {
-    return storeCellStyle(this, style, (id) => this.bumpStyleId(id))
+    return storeCellStyle(this, style, (id) => this.idAllocator.bumpStyleId(id))
   }
 
   internCellStyle(style: Omit<WorkbookCellStyleRecord, 'id'>): WorkbookCellStyleRecord {
@@ -721,7 +336,7 @@ export class WorkbookStore {
   }
 
   upsertCellNumberFormat(format: CellNumberFormatRecord): WorkbookCellNumberFormatRecord {
-    return storeCellNumberFormat(this, format, (id) => this.bumpFormatId(id))
+    return storeCellNumberFormat(this, format, (id) => this.idAllocator.bumpFormatId(id))
   }
 
   internCellNumberFormat(format: string | CellNumberFormatRecord): WorkbookCellNumberFormatRecord {
@@ -851,16 +466,25 @@ export class WorkbookStore {
     size: number | null,
     hidden: boolean | null,
   ): WorkbookAxisMetadataRecord | undefined {
-    return this.setAxisMetadata(this.getOrCreateSheet(sheetName), 'row', this.metadata.rowMetadata, sheetName, start, count, size, hidden)
+    return this.axisEntryStore.setAxisMetadata(
+      this.getOrCreateSheet(sheetName),
+      'row',
+      this.metadata.rowMetadata,
+      sheetName,
+      start,
+      count,
+      size,
+      hidden,
+    )
   }
 
   getRowMetadata(sheetName: string, start: number, count: number): WorkbookAxisMetadataRecord | undefined {
     const sheet = this.getSheet(sheetName)
-    return sheet ? this.getAxisMetadataRecord(sheet, 'row', sheetName, start, count) : undefined
+    return sheet ? this.axisEntryStore.getAxisMetadataRecord(sheet, 'row', sheetName, start, count) : undefined
   }
 
   listRowMetadata(sheetName: string): WorkbookAxisMetadataRecord[] {
-    return this.listAxisMetadata(this.getSheet(sheetName), this.metadata.rowMetadata, sheetName, 'row')
+    return this.axisEntryStore.listAxisMetadata(this.getSheet(sheetName), this.metadata.rowMetadata, sheetName, 'row')
   }
 
   setColumnMetadata(
@@ -870,7 +494,7 @@ export class WorkbookStore {
     size: number | null,
     hidden: boolean | null,
   ): WorkbookAxisMetadataRecord | undefined {
-    return this.setAxisMetadata(
+    return this.axisEntryStore.setAxisMetadata(
       this.getOrCreateSheet(sheetName),
       'column',
       this.metadata.columnMetadata,
@@ -884,72 +508,72 @@ export class WorkbookStore {
 
   getColumnMetadata(sheetName: string, start: number, count: number): WorkbookAxisMetadataRecord | undefined {
     const sheet = this.getSheet(sheetName)
-    return sheet ? this.getAxisMetadataRecord(sheet, 'column', sheetName, start, count) : undefined
+    return sheet ? this.axisEntryStore.getAxisMetadataRecord(sheet, 'column', sheetName, start, count) : undefined
   }
 
   listColumnMetadata(sheetName: string): WorkbookAxisMetadataRecord[] {
-    return this.listAxisMetadata(this.getSheet(sheetName), this.metadata.columnMetadata, sheetName, 'column')
+    return this.axisEntryStore.listAxisMetadata(this.getSheet(sheetName), this.metadata.columnMetadata, sheetName, 'column')
   }
 
   listRowAxisEntries(sheetName: string): WorkbookAxisEntrySnapshot[] {
-    return this.listAxisEntries(this.getSheet(sheetName), 'row')
+    return this.axisEntryStore.listAxisEntries(this.getSheet(sheetName), 'row')
   }
 
   listColumnAxisEntries(sheetName: string): WorkbookAxisEntrySnapshot[] {
-    return this.listAxisEntries(this.getSheet(sheetName), 'column')
+    return this.axisEntryStore.listAxisEntries(this.getSheet(sheetName), 'column')
   }
 
   snapshotRowAxisEntries(sheetName: string, start: number, count: number): WorkbookAxisEntrySnapshot[] {
-    return this.snapshotAxisEntriesInRange(this.getSheet(sheetName), 'row', start, count)
+    return this.axisEntryStore.snapshotAxisEntriesInRange(this.getSheet(sheetName), 'row', start, count)
   }
 
   snapshotColumnAxisEntries(sheetName: string, start: number, count: number): WorkbookAxisEntrySnapshot[] {
-    return this.snapshotAxisEntriesInRange(this.getSheet(sheetName), 'column', start, count)
+    return this.axisEntryStore.snapshotAxisEntriesInRange(this.getSheet(sheetName), 'column', start, count)
   }
 
   materializeRowAxisEntries(sheetName: string, start: number, count: number): WorkbookAxisEntrySnapshot[] {
-    return this.materializeAxisEntries(this.getOrCreateSheet(sheetName), 'row', start, count)
+    return this.axisEntryStore.materializeAxisEntries(this.getOrCreateSheet(sheetName), 'row', start, count)
   }
 
   materializeColumnAxisEntries(sheetName: string, start: number, count: number): WorkbookAxisEntrySnapshot[] {
-    return this.materializeAxisEntries(this.getOrCreateSheet(sheetName), 'column', start, count)
+    return this.axisEntryStore.materializeAxisEntries(this.getOrCreateSheet(sheetName), 'column', start, count)
   }
 
   insertRows(sheetName: string, start: number, count: number, entries?: readonly WorkbookAxisEntrySnapshot[]): void {
     const sheet = this.getOrCreateSheet(sheetName)
-    this.spliceAxisEntries(sheet, 'row', start, 0, count, entries)
+    this.axisEntryStore.spliceAxisEntries(sheet, 'row', start, 0, count, entries)
     this.bumpSheetStructureVersion(sheet)
   }
 
   deleteRows(sheetName: string, start: number, count: number): WorkbookAxisEntrySnapshot[] {
     const sheet = this.getOrCreateSheet(sheetName)
-    const deleted = this.spliceAxisEntries(sheet, 'row', start, count, 0)
+    const deleted = this.axisEntryStore.spliceAxisEntries(sheet, 'row', start, count, 0)
     this.bumpSheetStructureVersion(sheet)
     return deleted
   }
 
   moveRows(sheetName: string, start: number, count: number, target: number): void {
     const sheet = this.getOrCreateSheet(sheetName)
-    this.moveAxisEntries(sheet, 'row', start, count, target)
+    this.axisEntryStore.moveAxisEntries(sheet, 'row', start, count, target)
     this.bumpSheetStructureVersion(sheet)
   }
 
   insertColumns(sheetName: string, start: number, count: number, entries?: readonly WorkbookAxisEntrySnapshot[]): void {
     const sheet = this.getOrCreateSheet(sheetName)
-    this.spliceAxisEntries(sheet, 'column', start, 0, count, entries)
+    this.axisEntryStore.spliceAxisEntries(sheet, 'column', start, 0, count, entries)
     this.bumpSheetStructureVersion(sheet)
   }
 
   deleteColumns(sheetName: string, start: number, count: number): WorkbookAxisEntrySnapshot[] {
     const sheet = this.getOrCreateSheet(sheetName)
-    const deleted = this.spliceAxisEntries(sheet, 'column', start, count, 0)
+    const deleted = this.axisEntryStore.spliceAxisEntries(sheet, 'column', start, count, 0)
     this.bumpSheetStructureVersion(sheet)
     return deleted
   }
 
   moveColumns(sheetName: string, start: number, count: number, target: number): void {
     const sheet = this.getOrCreateSheet(sheetName)
-    this.moveAxisEntries(sheet, 'column', start, count, target)
+    this.axisEntryStore.moveAxisEntries(sheet, 'column', start, count, target)
     this.bumpSheetStructureVersion(sheet)
   }
 
@@ -1203,176 +827,24 @@ export class WorkbookStore {
     remapIndex: (index: number) => number | undefined,
     scope?: SheetGridAxisRemapScope,
   ): { changedCellIndices: number[]; removedCellIndices: number[] } {
-    const sheet = this.getSheet(sheetName)
-    if (!sheet) {
-      return { changedCellIndices: [], removedCellIndices: [] }
-    }
-    const changedEntries = sheet.grid.remapAxis(axis, remapIndex, scope)
-    if (this.counters && changedEntries.length > 0) {
-      addEngineCounter(this.counters, 'cellsRemapped', changedEntries.length)
-    }
-    changedEntries.forEach(({ row, col }) => {
-      sheet.logical.deleteVisibleCell(row, col)
-      this.cellKeyToIndex.delete(makeCellKey(sheet.id, row, col))
-    })
-
-    const changedCellIndices: number[] = []
-    const removedCellIndices: number[] = []
-    for (const { cellIndex, nextRow, nextCol } of changedEntries) {
-      if (nextRow === undefined || nextCol === undefined) {
-        removedCellIndices.push(cellIndex)
-        continue
-      }
-      this.cellStore.rows[cellIndex] = nextRow
-      this.cellStore.cols[cellIndex] = nextCol
-      this.cellKeyToIndex.set(makeCellKey(sheet.id, nextRow, nextCol), cellIndex)
-      sheet.logical.setVisibleCell(nextRow, nextCol, cellIndex, {
-        createRowId: () => this.createLogicalAxisId('row'),
-        createColumnId: () => this.createLogicalAxisId('column'),
-      })
-      changedCellIndices.push(cellIndex)
-    }
-
-    return { changedCellIndices, removedCellIndices }
+    return this.structuralCellStore.remapSheetCells(sheetName, axis, remapIndex, scope)
   }
 
   planStructuralAxisTransform(sheetName: string, transform: StructuralAxisTransform): StructuralTransaction | undefined {
-    const sheet = this.getSheet(sheetName)
-    if (!sheet) {
-      return undefined
-    }
-    if (this.counters) {
-      addEngineCounter(this.counters, 'structuralTransactions')
-    }
-    const remappedCells: Array<StructuralTransaction['remappedCells'][number]> = []
-    if (transform.kind === 'delete') {
-      const deletedAxisEntries = sheet.logicalAxisMap.snapshot(transform.axis, transform.start, transform.count)
-      sheet.logical.forEachResidentCellInAxisEntries(transform.axis, deletedAxisEntries, (cellIndex, identity, deletedAxisIndex) => {
-        const otherAxis = transform.axis === 'row' ? 'column' : 'row'
-        const otherAxisId = transform.axis === 'row' ? identity.colId : identity.rowId
-        const otherAxisIndex = sheet.logicalAxisMap.indexOf(otherAxis, otherAxisId)
-        if (otherAxisIndex < 0) {
-          return
-        }
-        const fromRow = transform.axis === 'row' ? deletedAxisIndex : otherAxisIndex
-        const fromCol = transform.axis === 'row' ? otherAxisIndex : deletedAxisIndex
-        remappedCells.push({
-          cellIndex,
-          fromRow,
-          fromCol,
-          fromRowId: identity.rowId,
-          fromColId: identity.colId,
-          toRow: undefined,
-          toCol: undefined,
-        })
-      })
-    }
-    if (this.counters && remappedCells.length > 0) {
-      addEngineCounter(this.counters, 'structuralPlannedCells', remappedCells.length)
-      addEngineCounter(this.counters, 'structuralRemovedCells', remappedCells.length)
-    }
-    return buildStructuralTransaction({
-      sheetName,
-      sheetId: sheet.id,
-      transform,
-      remappedCells,
-    })
+    return this.structuralCellStore.planStructuralAxisTransform(sheetName, transform)
   }
 
   applyPlannedStructuralTransaction(transaction: StructuralTransaction): StructuralTransaction | undefined {
-    const sheet = this.getSheet(transaction.sheetName)
-    if (!sheet) {
-      return undefined
-    }
-    let hasSurvivingRemap = false
-    let survivingRemapCount = 0
-    for (const entry of transaction.remappedCells) {
-      if (entry.toRow !== undefined && entry.toCol !== undefined) {
-        hasSurvivingRemap = true
-        survivingRemapCount += 1
-      }
-    }
-    if (this.counters && survivingRemapCount > 0) {
-      addEngineCounter(this.counters, 'cellsRemapped', survivingRemapCount)
-      addEngineCounter(this.counters, 'structuralSurvivorCellsRemapped', survivingRemapCount)
-    }
-    if (!hasSurvivingRemap) {
-      return transaction
-    }
-    for (const entry of transaction.remappedCells) {
-      this.cellKeyToIndex.delete(makeCellKey(sheet.id, entry.fromRow, entry.fromCol))
-      if (sheet.grid.get(entry.fromRow, entry.fromCol) === entry.cellIndex) {
-        sheet.grid.clear(entry.fromRow, entry.fromCol)
-      }
-      if (entry.toRow === undefined || entry.toCol === undefined) {
-        if (entry.fromRowId && entry.fromColId) {
-          sheet.logical.deleteVisibleCellByIds(entry.fromRowId, entry.fromColId)
-        } else {
-          sheet.logical.deleteVisibleCell(entry.fromRow, entry.fromCol)
-        }
-      } else {
-        hasSurvivingRemap = true
-      }
-    }
-    for (const entry of transaction.remappedCells) {
-      if (entry.toRow === undefined || entry.toCol === undefined) {
-        continue
-      }
-      this.cellStore.rows[entry.cellIndex] = entry.toRow
-      this.cellStore.cols[entry.cellIndex] = entry.toCol
-      this.cellKeyToIndex.set(makeCellKey(sheet.id, entry.toRow, entry.toCol), entry.cellIndex)
-      sheet.grid.set(entry.toRow, entry.toCol, entry.cellIndex)
-    }
-    return transaction
+    return this.structuralCellStore.applyPlannedStructuralTransaction(transaction)
   }
 
   applyStructuralAxisTransform(sheetName: string, transform: StructuralAxisTransform): StructuralTransaction | undefined {
-    const sheet = this.getSheet(sheetName)
-    if (!sheet) {
-      return undefined
-    }
-
-    const scope = structuralScopeForTransform(transform)
-    const remappedEntries = sheet.grid.remapAxis(transform.axis, (index) => mapStructuralAxisIndex(index, transform), scope)
-    if (this.counters && remappedEntries.length > 0) {
-      addEngineCounter(this.counters, 'cellsRemapped', remappedEntries.length)
-    }
-    remappedEntries.forEach(({ row, col }) => {
-      sheet.logical.deleteVisibleCell(row, col)
-      this.cellKeyToIndex.delete(makeCellKey(sheet.id, row, col))
-    })
-
-    const remappedCells = remappedEntries.map(({ cellIndex, row, col, nextRow, nextCol }) => {
-      if (nextRow !== undefined && nextCol !== undefined) {
-        this.cellStore.rows[cellIndex] = nextRow
-        this.cellStore.cols[cellIndex] = nextCol
-        this.cellKeyToIndex.set(makeCellKey(sheet.id, nextRow, nextCol), cellIndex)
-        sheet.logical.setVisibleCell(nextRow, nextCol, cellIndex, {
-          createRowId: () => this.createLogicalAxisId('row'),
-          createColumnId: () => this.createLogicalAxisId('column'),
-        })
-      }
-      return {
-        cellIndex,
-        fromRow: row,
-        fromCol: col,
-        toRow: nextRow,
-        toCol: nextCol,
-      }
-    })
-
-    return buildStructuralTransaction({
-      sheetName,
-      sheetId: sheet.id,
-      transform,
-      remappedCells,
-    })
+    return this.structuralCellStore.applyStructuralAxisTransform(sheetName, transform)
   }
 
   reset(workbookName = 'Workbook'): void {
     this.workbookName = workbookName
-    this.sheetsByName.clear()
-    this.sheetsById.clear()
+    this.sheetRegistry.reset()
     this.cellKeyToIndex.clear()
     this.cellFormats.clear()
     this.cellStyles.clear()
@@ -1380,271 +852,16 @@ export class WorkbookStore {
     this.cellNumberFormats.clear()
     this.numberFormatKeys.clear()
     runWorkbookMetadataEffect(this.metadataService.reset())
-    this.nextSheetId = 1
-    this.nextRowAxisId = 1
-    this.nextColumnAxisId = 1
-    this.nextLogicalRowAxisId = 1
-    this.nextLogicalColumnAxisId = 1
-    this.nextStyleId = 1
-    this.nextFormatId = 1
+    this.idAllocator.reset()
     this.cellStore.reset()
-    this.ensureDefaultStyle()
-    this.ensureDefaultNumberFormat()
-  }
-
-  private ensureDefaultStyle(): void {
-    const defaultStyle: WorkbookCellStyleRecord = { id: WorkbookStore.defaultStyleId }
-    this.cellStyles.set(defaultStyle.id, defaultStyle)
-    this.styleKeys.set(cellStyleKey(defaultStyle), defaultStyle.id)
-  }
-
-  private ensureDefaultNumberFormat(): void {
-    const defaultFormat: WorkbookCellNumberFormatRecord = {
-      id: WorkbookStore.defaultFormatId,
-      code: 'general',
-      kind: 'general',
-    }
-    this.cellNumberFormats.set(defaultFormat.id, defaultFormat)
-    this.numberFormatKeys.set(defaultFormat.code, defaultFormat.id)
-  }
-
-  private bumpStyleId(id: string): void {
-    const match = /^style-(\d+)$/.exec(id)
-    if (!match) {
-      return
-    }
-    const numericId = Number.parseInt(match[1]!, 10)
-    if (Number.isFinite(numericId)) {
-      this.nextStyleId = Math.max(this.nextStyleId, numericId + 1)
-    }
-  }
-
-  private bumpSheetId(id: number): void {
-    if (Number.isInteger(id) && id >= this.nextSheetId) {
-      this.nextSheetId = id + 1
-    }
+    ensureWorkbookDefaultStyleFormat(this)
   }
 
   private bumpSheetStructureVersion(sheet: SheetRecord): void {
     sheet.structureVersion += 1
   }
 
-  private bumpFormatId(id: string): void {
-    const match = /^format-(\d+)$/.exec(id)
-    if (!match) {
-      return
-    }
-    const numericId = Number.parseInt(match[1]!, 10)
-    if (Number.isFinite(numericId)) {
-      this.nextFormatId = Math.max(this.nextFormatId, numericId + 1)
-    }
-  }
-
-  private createAxisEntry(axis: 'row' | 'column'): WorkbookAxisEntryRecord {
-    return {
-      id: this.createAxisId(axis),
-      size: null,
-      hidden: null,
-    }
-  }
-
-  private createAxisId(axis: 'row' | 'column'): string {
-    return axis === 'row' ? `row-${this.nextRowAxisId++}` : `column-${this.nextColumnAxisId++}`
-  }
-
   private createLogicalAxisId(axis: 'row' | 'column'): string {
-    return axis === 'row' ? `lr${this.nextLogicalRowAxisId++}` : `lc${this.nextLogicalColumnAxisId++}`
-  }
-
-  private setAxisMetadata(
-    sheet: SheetRecord,
-    axis: 'row' | 'column',
-    bucket: Map<string, WorkbookAxisMetadataRecord>,
-    sheetName: string,
-    start: number,
-    count: number,
-    size: number | null,
-    hidden: boolean | null,
-  ): WorkbookAxisMetadataRecord | undefined {
-    const entries = this.materializeAxisEntryRecords(sheet, axis, start, count)
-    entries.forEach((entry) => {
-      entry.size = size
-      entry.hidden = hidden
-    })
-    this.syncAxisMetadataBucket(sheetName, sheet, axis, bucket)
-    const record = this.getAxisMetadataRecord(sheet, axis, sheetName, start, count)
-    if (!record) {
-      bucket.delete(axisMetadataKey(sheetName, start, count))
-    }
-    return record
-  }
-
-  private listAxisMetadata(
-    sheet: SheetRecord | undefined,
-    bucket: Map<string, WorkbookAxisMetadataRecord>,
-    sheetName: string,
-    axis: 'row' | 'column',
-  ): WorkbookAxisMetadataRecord[] {
-    if (!sheet) {
-      return []
-    }
-    this.syncAxisMetadataBucket(sheetName, sheet, axis, bucket)
-    return [...bucket.values()]
-      .filter((record) => record.sheetName === sheetName)
-      .toSorted((left, right) => left.start - right.start || left.count - right.count)
-  }
-
-  private listAxisEntries(sheet: SheetRecord | undefined, axis: 'row' | 'column'): WorkbookAxisEntrySnapshot[] {
-    if (!sheet) {
-      return []
-    }
-    return listAxisEntries(axis === 'row' ? sheet.rowAxis : sheet.columnAxis)
-  }
-
-  private materializeAxisEntries(sheet: SheetRecord, axis: 'row' | 'column', start: number, count: number): WorkbookAxisEntrySnapshot[] {
-    this.hydrateAxisEntriesFromMap(sheet, axis, start, count)
-    const entries = materializeAxisEntries(axis === 'row' ? sheet.rowAxis : sheet.columnAxis, start, count, () =>
-      this.createAxisEntry(axis),
-    )
-    sheet.axisMap.replaceRange(axis, start, entries)
-    return entries
-  }
-
-  private snapshotAxisEntriesInRange(
-    sheet: SheetRecord | undefined,
-    axis: 'row' | 'column',
-    start: number,
-    count: number,
-  ): WorkbookAxisEntrySnapshot[] {
-    if (!sheet) {
-      return []
-    }
-    return snapshotAxisEntriesInRange(axis === 'row' ? sheet.rowAxis : sheet.columnAxis, start, count)
-  }
-
-  private hydrateAxisEntriesFromMap(sheet: SheetRecord, axis: 'row' | 'column', start: number, count: number): void {
-    if (count <= 0) {
-      return
-    }
-    const entries = axis === 'row' ? sheet.rowAxis : sheet.columnAxis
-    const snapshots = sheet.axisMap.snapshot(axis, start, count)
-    for (let index = 0; index < snapshots.length; index += 1) {
-      const snapshot = snapshots[index]!
-      if (entries[snapshot.index]) {
-        continue
-      }
-      entries[snapshot.index] = {
-        id: snapshot.id,
-        size: null,
-        hidden: null,
-      }
-    }
-  }
-
-  private materializeAxisEntryRecords(sheet: SheetRecord, axis: 'row' | 'column', start: number, count: number): WorkbookAxisEntryRecord[] {
-    this.hydrateAxisEntriesFromMap(sheet, axis, start, count)
-    const entries = materializeAxisEntryRecords(axis === 'row' ? sheet.rowAxis : sheet.columnAxis, start, count, () =>
-      this.createAxisEntry(axis),
-    )
-    sheet.axisMap.replaceRange(axis, start, snapshotAxisEntriesInRange(axis === 'row' ? sheet.rowAxis : sheet.columnAxis, start, count))
-    return entries
-  }
-
-  private spliceAxisEntries(
-    sheet: SheetRecord,
-    axis: 'row' | 'column',
-    start: number,
-    deleteCount: number,
-    insertCount: number,
-    entries?: readonly WorkbookAxisEntrySnapshot[],
-  ): WorkbookAxisEntrySnapshot[] {
-    const removed = spliceAxisEntries(
-      axis === 'row' ? sheet.rowAxis : sheet.columnAxis,
-      start,
-      deleteCount,
-      insertCount,
-      () => this.createAxisEntry(axis),
-      entries,
-    )
-    sheet.axisMap.splice(
-      axis,
-      start,
-      deleteCount,
-      insertCount,
-      snapshotAxisEntriesInRange(axis === 'row' ? sheet.rowAxis : sheet.columnAxis, start, insertCount),
-    )
-    sheet.logicalAxisMap.splice(axis, start, deleteCount, insertCount, [])
-    if (this.counters) {
-      addEngineCounter(this.counters, 'axisMapSplices')
-    }
-    return removed
-  }
-
-  private moveAxisEntries(sheet: SheetRecord, axis: 'row' | 'column', start: number, count: number, target: number): void {
-    sheet.axisMap.move(axis, start, count, target)
-    sheet.logicalAxisMap.move(axis, start, count, target)
-    if (this.counters) {
-      addEngineCounter(this.counters, 'axisMapMoves')
-    }
-    moveAxisEntries(axis === 'row' ? sheet.rowAxis : sheet.columnAxis, start, count, target, () => this.createAxisEntry(axis))
-  }
-
-  private getAxisMetadataRecord(
-    sheet: SheetRecord,
-    axis: 'row' | 'column',
-    sheetName: string,
-    start: number,
-    count: number,
-  ): WorkbookAxisMetadataRecord | undefined {
-    return getAxisMetadataRecord(axis === 'row' ? sheet.rowAxis : sheet.columnAxis, sheetName, start, count)
-  }
-
-  private syncAxisMetadataBucket(
-    sheetName: string,
-    sheet: SheetRecord,
-    axis: 'row' | 'column',
-    bucket: Map<string, WorkbookAxisMetadataRecord>,
-  ): void {
-    syncAxisMetadataBucket(bucket, sheetName, axis === 'row' ? sheet.rowAxis : sheet.columnAxis)
-  }
-}
-
-export function makeCellKey(sheetId: number, row: number, col: number): number {
-  return sheetId * SHEET_STRIDE + row * MAX_COLS + col
-}
-
-export function makeLogicalCellKey(sheetId: number, rowId: string, colId: string): string {
-  return `${sheetId}\t${rowId}\t${colId}`
-}
-
-function decodeCellKey(key: number): { sheetId: number; row: number; col: number } | undefined {
-  if (!Number.isInteger(key) || key < 0) {
-    return undefined
-  }
-  const sheetId = Math.floor(key / SHEET_STRIDE)
-  const offset = key - sheetId * SHEET_STRIDE
-  const row = Math.floor(offset / MAX_COLS)
-  const col = offset - row * MAX_COLS
-  if (sheetId <= 0 || row < 0 || row >= MAX_ROWS || col < 0 || col >= MAX_COLS) {
-    return undefined
-  }
-  return { sheetId, row, col }
-}
-
-class LogicalCellKeyIndexMap extends Map<number, number> {
-  constructor(private readonly resolve: (sheetId: number, row: number, col: number) => number | undefined) {
-    super()
-  }
-
-  override get(key: number): number | undefined {
-    const decoded = decodeCellKey(key)
-    if (decoded) {
-      return this.resolve(decoded.sheetId, decoded.row, decoded.col)
-    }
-    return super.get(key)
-  }
-
-  override has(key: number): boolean {
-    return this.get(key) !== undefined
+    return this.idAllocator.createLogicalAxisId(axis)
   }
 }

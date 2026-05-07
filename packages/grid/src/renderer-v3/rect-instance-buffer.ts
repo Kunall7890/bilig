@@ -1,4 +1,4 @@
-import type { GridGpuColor, GridGpuRect, GridGpuScene } from '../gridGpuScene.js'
+import type { GridGpuColor, GridGpuRect, GridGpuScene } from '../gridGpuPrimitives.js'
 
 export const GRID_RECT_FLOAT_COUNT_V3 = 8
 export const GRID_RECT_INSTANCE_FLOAT_COUNT_V3 = 20
@@ -32,10 +32,7 @@ export function packGridRectBufferV3(
   }
 }
 
-export function packGridRectInstancesV3(
-  scene: GridGpuScene,
-  surfaceSize: { readonly width: number; readonly height: number },
-): Float32Array {
+function packGridRectInstancesV3(scene: GridGpuScene, surfaceSize: { readonly width: number; readonly height: number }): Float32Array {
   const rectCount = scene.fillRects.length + scene.borderRects.length
   const floats = new Float32Array(Math.max(1, rectCount) * GRID_RECT_INSTANCE_FLOAT_COUNT_V3)
   const clipX = 0
@@ -52,7 +49,7 @@ export function packGridRectInstancesV3(
   return floats
 }
 
-export function packGridRectsV3(scene: GridGpuScene): Float32Array {
+function packGridRectsV3(scene: GridGpuScene): Float32Array {
   const rectCount = scene.fillRects.length + scene.borderRects.length
   const floats = new Float32Array(Math.max(1, rectCount) * GRID_RECT_FLOAT_COUNT_V3)
   let offset = 0
@@ -65,7 +62,7 @@ export function packGridRectsV3(scene: GridGpuScene): Float32Array {
   return floats
 }
 
-export function resolveGridRectSignatureV3(scene: GridGpuScene, surfaceSize: { readonly width: number; readonly height: number }): string {
+function resolveGridRectSignatureV3(scene: GridGpuScene, surfaceSize: { readonly width: number; readonly height: number }): string {
   let hash = createHash()
   hash = mixNumber(hash, surfaceSize.width)
   hash = mixNumber(hash, surfaceSize.height)

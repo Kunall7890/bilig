@@ -1,5 +1,5 @@
 import type { Viewport } from '@bilig/protocol'
-import type { GridGpuRect, GridGpuScene } from './gridGpuScene.js'
+import type { GridGpuRect, GridGpuScene } from './gridGpuPrimitives.js'
 import type { GridTextItem, GridTextScene } from './gridTextScene.js'
 import type { GridMetrics } from './gridMetrics.js'
 import type { TextQuadRun } from './renderer-v3/line-text-quad-buffer.js'

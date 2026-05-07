@@ -1,6 +1,6 @@
 import type { TgpuBindGroup } from 'typegpu'
 import type { GridHeaderPaneState } from '../gridHeaderPanes.js'
-import { parseGpuColor } from '../gridGpuScene.js'
+import { parseGpuColor } from '../gridGpuPrimitives.js'
 import { noteTypeGpuBufferAllocation } from '../grid-render-counters.js'
 import { buildTextDecorationRectsFromRuns, buildTextQuadsFromRuns, type TextDecorationRect } from './line-text-quad-buffer.js'
 import type { createGlyphAtlas } from './typegpu-atlas-manager.js'

@@ -88,6 +88,16 @@ function cell(sheet: number, row: number, col: number): WorkPaperCellAddress {
   return { sheet, row, col }
 }
 
+function buildEmptyFromRuntimeConfigJson(configJson: string): WorkPaper {
+  return WorkPaper.buildEmpty(JSON.parse(configJson))
+}
+
+function buildEmptyWithInvalidRuntimeContext(): WorkPaper {
+  const config = JSON.parse('{"context":{"ok":"yes"}}')
+  config.context.bad = () => 'nope'
+  return WorkPaper.buildEmpty(config)
+}
+
 afterEach(() => {
   WorkPaper.unregisterAllFunctions()
   if (WorkPaper.getRegisteredLanguagesCodes().includes(TEST_LANGUAGE_CODE)) {
@@ -323,24 +333,11 @@ describe('WorkPaper parity surface', () => {
   })
 
   it('rejects invalid typed config hooks and policy values', () => {
-    expect(() =>
-      // @ts-expect-error intentional invalid runtime input
-      WorkPaper.buildEmpty({
-        chooseAddressMappingPolicy: { mode: 'invalid' },
-      }),
-    ).toThrow(WorkPaperExpectedOneOfValuesError)
-    expect(() =>
-      // @ts-expect-error intentional invalid runtime input
-      WorkPaper.buildEmpty({
-        parseDateTime: 123,
-      }),
-    ).toThrow(WorkPaperExpectedValueOfTypeError)
-    expect(() =>
-      // @ts-expect-error intentional invalid runtime input
-      WorkPaper.buildEmpty({
-        context: { ok: 'yes', bad: () => 'nope' },
-      }),
-    ).toThrow(WorkPaperExpectedValueOfTypeError)
+    expect(() => buildEmptyFromRuntimeConfigJson('{"chooseAddressMappingPolicy":{"mode":"invalid"}}')).toThrow(
+      WorkPaperExpectedOneOfValuesError,
+    )
+    expect(() => buildEmptyFromRuntimeConfigJson('{"parseDateTime":123}')).toThrow(WorkPaperExpectedValueOfTypeError)
+    expect(buildEmptyWithInvalidRuntimeContext).toThrow(WorkPaperExpectedValueOfTypeError)
   })
 
   it('covers the read surface, formula helpers, and dependency helpers', () => {

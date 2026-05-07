@@ -7,7 +7,7 @@ import type {
   WorkbookDataValidationSnapshot,
   WorkbookValidationListSourceSnapshot,
 } from '@bilig/protocol'
-import type { WorkbookAgentCommand, WorkbookAgentPreviewRange } from './workbook-agent-bundles.js'
+import type { WorkbookAgentCommand, WorkbookAgentPreviewRange } from './workbook-agent-bundle-types.js'
 
 export type WorkbookAgentValidationCommand = Extract<WorkbookAgentCommand, { kind: 'setDataValidation' } | { kind: 'clearDataValidation' }>
 

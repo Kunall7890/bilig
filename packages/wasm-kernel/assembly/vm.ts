@@ -2,6 +2,17 @@ import { applyBuiltin, registerTrackedArrayShape } from './builtins'
 import { ErrorCode, Opcode, ValueTag } from './protocol'
 import { STACK_KIND_ARRAY, STACK_KIND_RANGE, STACK_KIND_SCALAR } from './result-io'
 import { parseNumericText } from './text-special'
+import {
+  binaryNumeric,
+  compareText,
+  ensureF64,
+  ensureU8,
+  ensureU16,
+  ensureU32,
+  isComparisonOpcode,
+  isTextLike,
+  toNumeric,
+} from './vm-core-helpers'
 
 export let tags = new Uint8Array(64)
 export let numbers = new Float64Array(64)
@@ -206,13 +217,6 @@ const rangeIndexStack = new Uint32Array(256)
 let binaryResultTag: u8 = <u8>ValueTag.Empty
 let binaryResultValue: f64 = 0
 
-function toNumeric(kind: u8, tag: u8, value: f64): f64 {
-  if (kind == STACK_KIND_RANGE) return NaN
-  if (tag == ValueTag.Number || tag == ValueTag.Boolean) return value
-  if (tag == ValueTag.Empty) return 0
-  return NaN
-}
-
 function outputStringIndex(value: f64): i32 {
   if (value < OUTPUT_STRING_BASE) {
     return -1
@@ -237,10 +241,6 @@ function writeCellValue(cellIndex: i32, tag: u8, value: f64): void {
     numbers[cellIndex] = value
     errors[cellIndex] = ErrorCode.None
   }
-}
-
-function isTextLike(tag: u8): bool {
-  return tag == ValueTag.String || tag == ValueTag.Empty
 }
 
 function poolString(stringId: i32): string | null {
@@ -287,15 +287,6 @@ function scalarText(tag: u8, value: f64): string | null {
     return poolString(<i32>value)
   }
   return null
-}
-
-function compareText(left: string, right: string): i32 {
-  const normalizedLeft = left.toUpperCase()
-  const normalizedRight = right.toUpperCase()
-  if (normalizedLeft == normalizedRight) {
-    return 0
-  }
-  return normalizedLeft < normalizedRight ? -1 : 1
 }
 
 function compareScalars(leftTag: u8, leftValue: f64, rightTag: u8, rightValue: f64): i32 {
@@ -478,14 +469,7 @@ function computeBinaryScalarResult(opcode: i32, leftTag: u8, leftValue: f64, rig
     return
   }
 
-  if (
-    opcode == Opcode.Eq ||
-    opcode == Opcode.Neq ||
-    opcode == Opcode.Gt ||
-    opcode == Opcode.Gte ||
-    opcode == Opcode.Lt ||
-    opcode == Opcode.Lte
-  ) {
+  if (isComparisonOpcode(opcode)) {
     const comparison = compareScalars(leftTag, leftValue, rightTag, rightValue)
     if (comparison == i32.MIN_VALUE) {
       binaryResultTag = <u8>ValueTag.Error
@@ -536,42 +520,6 @@ function writeConcatenatedString(slot: i32, leftTag: u8, leftValue: f64, rightTa
     writeOutputStringData(outputIndex, offset++, <u16>rightText.charCodeAt(index))
   }
   writeScalar(slot, <u8>ValueTag.String, encodeOutputStringId(outputIndex))
-}
-
-function ensureU8(buffer: Uint8Array, size: i32): Uint8Array {
-  if (buffer.length >= size) return buffer
-  let nextLength = buffer.length
-  while (nextLength < size) nextLength *= 2
-  const next = new Uint8Array(nextLength)
-  next.set(buffer)
-  return next
-}
-
-function ensureU16(buffer: Uint16Array, size: i32): Uint16Array {
-  if (buffer.length >= size) return buffer
-  let nextLength = buffer.length
-  while (nextLength < size) nextLength *= 2
-  const next = new Uint16Array(nextLength)
-  next.set(buffer)
-  return next
-}
-
-function ensureU32(buffer: Uint32Array, size: i32): Uint32Array {
-  if (buffer.length >= size) return buffer
-  let nextLength = buffer.length
-  while (nextLength < size) nextLength *= 2
-  const next = new Uint32Array(nextLength)
-  next.set(buffer)
-  return next
-}
-
-function ensureF64(buffer: Float64Array, size: i32): Float64Array {
-  if (buffer.length >= size) return buffer
-  let nextLength = buffer.length
-  while (nextLength < size) nextLength *= 2
-  const next = new Float64Array(nextLength)
-  next.set(buffer)
-  return next
 }
 
 export function init(cellCapacity: i32, formulaCapacity: i32, constantCapacity: i32, rangeCapacity: i32, memberCapacity: i32): void {
@@ -718,21 +666,6 @@ export function writeCachedRangeSum(rangeIndex: u32, tag: u8, value: f64): void 
   }
   sumRangeCacheTags[rangeIndex] = tag
   sumRangeCacheValues[rangeIndex] = value
-}
-
-function binaryNumeric(op: i32, left: f64, right: f64): f64 {
-  if (op == Opcode.Add) return left + right
-  if (op == Opcode.Sub) return left - right
-  if (op == Opcode.Mul) return left * right
-  if (op == Opcode.Div) return right == 0 ? NaN : left / right
-  if (op == Opcode.Pow) return Math.pow(left, right)
-  if (op == Opcode.Eq) return left == right ? 1 : 0
-  if (op == Opcode.Neq) return left != right ? 1 : 0
-  if (op == Opcode.Gt) return left > right ? 1 : 0
-  if (op == Opcode.Gte) return left >= right ? 1 : 0
-  if (op == Opcode.Lt) return left < right ? 1 : 0
-  if (op == Opcode.Lte) return left <= right ? 1 : 0
-  return NaN
 }
 
 function writeScalar(slot: i32, tag: u8, value: f64): void {

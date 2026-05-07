@@ -515,10 +515,10 @@ function configuredPlaywrightPhases(): BrowserTestPhase[] {
 }
 
 async function runConfiguredPlaywrightSuites(): Promise<void> {
-  for (const phase of configuredPlaywrightPhases()) {
-    // oxlint-disable-next-line eslint(no-await-in-loop)
-    await runPlaywright(phase)
-  }
+  await configuredPlaywrightPhases().reduce<Promise<void>>(
+    (previous, phase) => previous.then(() => runPlaywright(phase)),
+    Promise.resolve(),
+  )
 }
 
 async function pollHttp(url: string, deadline: number, lastError = 'unknown error'): Promise<void> {
@@ -861,10 +861,10 @@ async function runLocalPlaywrightPhase(
 async function runLocalPlaywright(): Promise<void> {
   let child: BrowserStackProcess | null = null
   try {
-    for (const phase of configuredPlaywrightPhases()) {
-      // oxlint-disable-next-line eslint(no-await-in-loop)
-      child = await runLocalPlaywrightPhase(phase, child)
-    }
+    child = await configuredPlaywrightPhases().reduce<Promise<BrowserStackProcess | null>>(
+      (previous, phase) => previous.then((currentChild) => runLocalPlaywrightPhase(phase, currentChild)),
+      Promise.resolve(child),
+    )
   } finally {
     await stopAndReapLocalPlaywrightStack(child)
   }

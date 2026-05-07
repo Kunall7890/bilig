@@ -11,7 +11,7 @@ import {
   pairedSampleCount,
   pairedSumX,
   pairedSumY,
-} from './statistics-tests'
+} from './statistics-paired'
 
 export function tryApplyRegressionBuiltin(
   builtinId: i32,

@@ -1,24 +1,104 @@
-/* eslint-disable typescript-eslint/no-unsafe-type-assertion -- bucket-failure tests intentionally replace strongly typed maps with throwing doubles */
 import { Effect } from 'effect'
 import { describe, expect, it } from 'vitest'
 import { createWorkbookMetadataService, runWorkbookMetadataEffect, type WorkbookMetadataService } from '../workbook-metadata-service.js'
-import { createWorkbookMetadataRecord } from '../workbook-metadata-types.js'
+import { createWorkbookMetadataRecord, type WorkbookMetadataRecord } from '../workbook-metadata-types.js'
 
 function createService(): WorkbookMetadataService {
   return createWorkbookMetadataService(createWorkbookMetadataRecord())
 }
 
-function createThrowingBucket(message: string): Map<string, unknown> {
-  const fail = () => {
-    throw new Error(message)
+class ThrowingMap<K, V> extends Map<K, V> {
+  constructor(private readonly message: string) {
+    super()
   }
-  return {
-    set: fail,
-    get: fail,
-    delete: fail,
-    values: fail,
-    clear: fail,
-  } as unknown as Map<string, unknown>
+
+  private fail(): never {
+    throw new Error(this.message)
+  }
+
+  override set(_key: K, _value: V): this {
+    return this.fail()
+  }
+
+  override get(_key: K): V | undefined {
+    return this.fail()
+  }
+
+  override delete(_key: K): boolean {
+    return this.fail()
+  }
+
+  override values(): MapIterator<V> {
+    return this.fail()
+  }
+
+  override clear(): void {
+    this.fail()
+  }
+}
+
+function createThrowingBucket<K, V>(message: string): Map<K, V> {
+  return new ThrowingMap<K, V>(message)
+}
+
+const throwingBucketSetters = {
+  charts: (metadata, message) => {
+    metadata.charts = createThrowingBucket(message)
+  },
+  commentThreads: (metadata, message) => {
+    metadata.commentThreads = createThrowingBucket(message)
+  },
+  conditionalFormats: (metadata, message) => {
+    metadata.conditionalFormats = createThrowingBucket(message)
+  },
+  dataValidations: (metadata, message) => {
+    metadata.dataValidations = createThrowingBucket(message)
+  },
+  definedNames: (metadata, message) => {
+    metadata.definedNames = createThrowingBucket(message)
+  },
+  filters: (metadata, message) => {
+    metadata.filters = createThrowingBucket(message)
+  },
+  freezePanes: (metadata, message) => {
+    metadata.freezePanes = createThrowingBucket(message)
+  },
+  images: (metadata, message) => {
+    metadata.images = createThrowingBucket(message)
+  },
+  notes: (metadata, message) => {
+    metadata.notes = createThrowingBucket(message)
+  },
+  pivots: (metadata, message) => {
+    metadata.pivots = createThrowingBucket(message)
+  },
+  properties: (metadata, message) => {
+    metadata.properties = createThrowingBucket(message)
+  },
+  rangeProtections: (metadata, message) => {
+    metadata.rangeProtections = createThrowingBucket(message)
+  },
+  shapes: (metadata, message) => {
+    metadata.shapes = createThrowingBucket(message)
+  },
+  sheetProtections: (metadata, message) => {
+    metadata.sheetProtections = createThrowingBucket(message)
+  },
+  sorts: (metadata, message) => {
+    metadata.sorts = createThrowingBucket(message)
+  },
+  spills: (metadata, message) => {
+    metadata.spills = createThrowingBucket(message)
+  },
+  tables: (metadata, message) => {
+    metadata.tables = createThrowingBucket(message)
+  },
+} satisfies Record<string, (metadata: WorkbookMetadataRecord, message: string) => void>
+
+type ThrowingMetadataBucket = keyof typeof throwingBucketSetters
+
+function replaceWithThrowingBucket(metadata: WorkbookMetadataRecord, bucket: ThrowingMetadataBucket, message: string): void {
+  throwingBucketSetters[bucket](metadata, message)
 }
 
 describe('WorkbookMetadataService', () => {
@@ -1075,9 +1155,9 @@ describe('WorkbookMetadataService', () => {
     ] as const
 
     for (const testCase of cases) {
-      const metadata = createWorkbookMetadataRecord() as Record<string, unknown>
-      metadata[testCase.bucket] = createThrowingBucket(testCase.message)
-      const service = createWorkbookMetadataService(metadata as ReturnType<typeof createWorkbookMetadataRecord>)
+      const metadata = createWorkbookMetadataRecord()
+      replaceWithThrowingBucket(metadata, testCase.bucket, testCase.message)
+      const service = createWorkbookMetadataService(metadata)
       expect(() => runWorkbookMetadataEffect(testCase.run(service))).toThrow(testCase.message)
     }
   })

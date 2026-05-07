@@ -109,7 +109,7 @@ export function areGridRectTileRevisionKeysEqualV3(
   )
 }
 
-export function resolveGridTileDirtyContentMaskV3(tile: Pick<GridRenderTile, 'dirtyMasks'>): number | null {
+function resolveGridTileDirtyContentMaskV3(tile: Pick<GridRenderTile, 'dirtyMasks'>): number | null {
   const masks = tile.dirtyMasks
   if (!masks || masks.length === 0) {
     return null

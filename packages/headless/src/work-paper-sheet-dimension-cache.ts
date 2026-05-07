@@ -1,0 +1,136 @@
+import type { EngineCellMutationRef } from '@bilig/core'
+import type { WorkPaperSheetDimensions } from './work-paper-types.js'
+
+export interface WorkPaperSheetDimensionEngine {
+  readonly workbook: {
+    listSpills(): readonly { readonly sheetName: string }[]
+    getSheet(sheetName: string): { readonly id: number } | undefined
+  }
+}
+
+export interface WorkPaperSheetDimensionRecord {
+  readonly grid: {
+    forEachCellEntry(callback: (cellIndex: number, row: number, col: number) => void): void
+  }
+}
+
+export class WorkPaperSheetDimensionCache {
+  private readonly dimensions = new Map<number, WorkPaperSheetDimensions>()
+  private spillSheetIds: Set<number> | null = null
+
+  constructor(private readonly engine: WorkPaperSheetDimensionEngine) {}
+
+  get(sheetId: number): WorkPaperSheetDimensions | undefined {
+    return this.dimensions.get(sheetId)
+  }
+
+  cache(sheetId: number, dimensions: WorkPaperSheetDimensions): void {
+    this.dimensions.set(sheetId, { width: dimensions.width, height: dimensions.height })
+  }
+
+  cacheInitialized(sheetId: number, dimensions: WorkPaperSheetDimensions): void {
+    if (this.sheetHasSpills(sheetId)) {
+      this.invalidate(sheetId)
+      return
+    }
+    this.cache(sheetId, dimensions)
+  }
+
+  scan(sheet: WorkPaperSheetDimensionRecord): WorkPaperSheetDimensions {
+    let width = 0
+    let height = 0
+    sheet.grid.forEachCellEntry((_cellIndex: number, row: number, col: number) => {
+      height = Math.max(height, row + 1)
+      width = Math.max(width, col + 1)
+    })
+    return { width, height }
+  }
+
+  invalidate(sheetId: number): void {
+    this.dimensions.delete(sheetId)
+  }
+
+  invalidateAll(): void {
+    this.dimensions.clear()
+    this.spillSheetIds = null
+  }
+
+  updateAfterCellMutationRefs(refs: readonly EngineCellMutationRef[]): void {
+    if (this.dimensions.size === 0) {
+      return
+    }
+    if (refs.length === 1) {
+      const ref = refs[0]
+      const mutation = ref?.mutation
+      if (ref && mutation && mutation.kind !== 'setCellFormula') {
+        const cached = this.dimensions.get(ref.sheetId)
+        if (!cached) {
+          return
+        }
+        const noKnownSpills = this.spillSheetIds !== null && !this.spillSheetIds.has(ref.sheetId)
+        if (
+          noKnownSpills &&
+          (mutation.kind === 'setCellValue'
+            ? mutation.row + 1 <= cached.height && mutation.col + 1 <= cached.width
+            : mutation.row + 1 < cached.height && mutation.col + 1 < cached.width)
+        ) {
+          return
+        }
+      }
+    }
+    for (let index = 0; index < refs.length; index += 1) {
+      const ref = refs[index]
+      if (!ref) {
+        continue
+      }
+      const mutation = ref.mutation
+      if (mutation.kind === 'setCellFormula') {
+        this.spillSheetIds = null
+        this.invalidate(ref.sheetId)
+        continue
+      }
+      if (this.sheetHasSpills(ref.sheetId)) {
+        this.invalidate(ref.sheetId)
+        continue
+      }
+      if (mutation.kind === 'clearCell') {
+        this.invalidateIfEdge(ref.sheetId, mutation.row, mutation.col)
+        continue
+      }
+      this.expand(ref.sheetId, mutation.row, mutation.col)
+    }
+  }
+
+  private expand(sheetId: number, row: number, col: number): void {
+    const cached = this.dimensions.get(sheetId)
+    if (!cached) {
+      return
+    }
+    cached.height = Math.max(cached.height, row + 1)
+    cached.width = Math.max(cached.width, col + 1)
+  }
+
+  private invalidateIfEdge(sheetId: number, row: number, col: number): void {
+    const cached = this.dimensions.get(sheetId)
+    if (!cached) {
+      return
+    }
+    if (row + 1 >= cached.height || col + 1 >= cached.width) {
+      this.invalidate(sheetId)
+    }
+  }
+
+  private sheetHasSpills(sheetId: number): boolean {
+    if (this.spillSheetIds === null) {
+      const spillSheetIds = new Set<number>()
+      this.engine.workbook.listSpills().forEach((spill) => {
+        const spillSheet = this.engine.workbook.getSheet(spill.sheetName)
+        if (spillSheet) {
+          spillSheetIds.add(spillSheet.id)
+        }
+      })
+      this.spillSheetIds = spillSheetIds
+    }
+    return this.spillSheetIds.has(sheetId)
+  }
+}

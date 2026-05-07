@@ -1,9 +1,30 @@
-/* eslint-disable typescript-eslint/no-unsafe-type-assertion -- error-path tests intentionally inject partial collaborators */
 import { Effect } from 'effect'
 import { describe, expect, it } from 'vitest'
+import type { CompiledFormula } from '@bilig/formula'
 import type { EngineOp } from '@bilig/workbook-domain'
+import { EdgeArena } from '../edge-arena.js'
 import { SpreadsheetEngine } from '../engine.js'
+import { createInitialRecalcMetrics } from '../engine/runtime-state.js'
 import { createEngineMaintenanceService, type EngineMaintenanceService } from '../engine/services/maintenance-service.js'
+import { FormulaTable } from '../formula-table.js'
+import { RangeRegistry } from '../range-registry.js'
+import { WorkbookStore } from '../workbook-store.js'
+
+type MaintenanceServiceArgs = Parameters<typeof createEngineMaintenanceService>[0]
+type MaintenanceServiceArgsOverrides = Omit<Partial<MaintenanceServiceArgs>, 'state' | 'reverseState'> & {
+  readonly state?: Partial<MaintenanceServiceArgs['state']>
+  readonly reverseState?: Partial<MaintenanceServiceArgs['reverseState']>
+}
+
+class ThrowingMaintenanceWorkbook extends WorkbookStore {
+  override listDefinedNames() {
+    throw new Error('rename boom')
+  }
+
+  override reset(_workbookName = 'Workbook'): void {
+    throw new Error('reset boom')
+  }
+}
 
 function isEngineMaintenanceService(value: unknown): value is EngineMaintenanceService {
   if (typeof value !== 'object' || value === null) {
@@ -26,6 +47,55 @@ function getMaintenanceService(engine: SpreadsheetEngine): EngineMaintenanceServ
     throw new TypeError('Expected engine maintenance service')
   }
   return maintenance
+}
+
+function createMaintenanceServiceArgs(overrides: MaintenanceServiceArgsOverrides = {}): MaintenanceServiceArgs {
+  const workbook = overrides.state?.workbook ?? new WorkbookStore('maintenance-service-stub')
+  const state: MaintenanceServiceArgs['state'] = {
+    workbook,
+    formulas: new FormulaTable<CompiledFormula>(workbook.cellStore),
+    ranges: new RangeRegistry(),
+    entityVersions: new Map(),
+    sheetDeleteVersions: new Map(),
+    undoStack: [],
+    redoStack: [],
+    setSelection: () => undefined,
+    setSyncState: () => undefined,
+    getLastMetrics: () => ({ ...createInitialRecalcMetrics(), batchId: 'batch-1' }),
+    setLastMetrics: () => undefined,
+    ...overrides.state,
+  }
+  const reverseState: MaintenanceServiceArgs['reverseState'] = {
+    reverseCellEdges: [],
+    reverseRangeEdges: [],
+    reverseDefinedNameEdges: new Map(),
+    reverseTableEdges: new Map(),
+    reverseSpillEdges: new Map(),
+    reverseAggregateColumnEdges: new Map(),
+    reverseExactLookupColumnEdges: new Map(),
+    reverseSortedLookupColumnEdges: new Map(),
+    ...overrides.reverseState,
+  }
+  const defaults: MaintenanceServiceArgs = {
+    state,
+    edgeArena: new EdgeArena(),
+    reverseState,
+    pivotOutputOwners: new Map(),
+    captureSheetCellState: () => [],
+    captureRowRangeCellState: () => [],
+    captureColumnRangeCellState: () => [],
+    setWasmProgramSyncPending: () => undefined,
+    setMaterializedCellCount: () => undefined,
+    resetFormulaRuntimeCaches: () => undefined,
+    scheduleWasmProgramSync: () => undefined,
+    resetWasmState: () => undefined,
+  }
+  return {
+    ...defaults,
+    ...overrides,
+    state,
+    reverseState,
+  }
 }
 
 describe('EngineMaintenanceService', () => {
@@ -108,43 +178,19 @@ describe('EngineMaintenanceService', () => {
   })
 
   it('wraps capture callback failures with maintenance service errors', () => {
-    const service = createEngineMaintenanceService({
-      state: {
-        workbook: { listDefinedNames: () => [] },
-        formulas: new Map(),
-        ranges: { reset: () => undefined },
-        entityVersions: new Map(),
-        sheetDeleteVersions: new Map(),
-        undoStack: [],
-        redoStack: [],
-        setSelection: () => undefined,
-        setSyncState: () => undefined,
-        getLastMetrics: () => ({ batchId: 'batch-1' }),
-        setLastMetrics: () => undefined,
-      } as never,
-      edgeArena: { reset: () => undefined } as never,
-      reverseState: {
-        reverseCellEdges: [],
-        reverseRangeEdges: [],
-        reverseDefinedNameEdges: new Map(),
-        reverseTableEdges: new Map(),
-        reverseSpillEdges: new Map(),
-      },
-      pivotOutputOwners: new Map(),
-      captureSheetCellState: () => {
-        throw new Error('sheet capture boom')
-      },
-      captureRowRangeCellState: () => {
-        throw new Error('row capture boom')
-      },
-      captureColumnRangeCellState: () => {
-        throw new Error('column capture boom')
-      },
-      setWasmProgramSyncPending: () => undefined,
-      setMaterializedCellCount: () => undefined,
-      scheduleWasmProgramSync: () => undefined,
-      resetWasmState: () => undefined,
-    })
+    const service = createEngineMaintenanceService(
+      createMaintenanceServiceArgs({
+        captureSheetCellState: () => {
+          throw new Error('sheet capture boom')
+        },
+        captureRowRangeCellState: () => {
+          throw new Error('row capture boom')
+        },
+        captureColumnRangeCellState: () => {
+          throw new Error('column capture boom')
+        },
+      }),
+    )
 
     expect(() => Effect.runSync(service.captureSheetCellState('Sheet1'))).toThrow('sheet capture boom')
     expect(() => Effect.runSync(service.captureRowRangeCellState('Sheet1', 0, 1))).toThrow('row capture boom')
@@ -152,49 +198,21 @@ describe('EngineMaintenanceService', () => {
   })
 
   it('wraps rename, estimate, and reset failures with maintenance service errors', () => {
-    const service = createEngineMaintenanceService({
-      state: {
-        workbook: {
-          listDefinedNames: () => {
-            throw new Error('rename boom')
-          },
-          reset: () => {
-            throw new Error('reset boom')
-          },
+    const service = createEngineMaintenanceService(
+      createMaintenanceServiceArgs({
+        state: {
+          workbook: new ThrowingMaintenanceWorkbook('throwing-maintenance-workbook'),
         },
-        formulas: new Map(),
-        ranges: { reset: () => undefined },
-        entityVersions: new Map(),
-        sheetDeleteVersions: new Map(),
-        undoStack: [],
-        redoStack: [],
-        setSelection: () => undefined,
-        setSyncState: () => undefined,
-        getLastMetrics: () => ({ batchId: 'batch-1' }),
-        setLastMetrics: () => undefined,
-      } as never,
-      edgeArena: { reset: () => undefined } as never,
-      reverseState: {
-        reverseCellEdges: [],
-        reverseRangeEdges: [],
-        reverseDefinedNameEdges: new Map(),
-        reverseTableEdges: new Map(),
-        reverseSpillEdges: new Map(),
+      }),
+    )
+    const poisonedOps = new Proxy<EngineOp[]>([], {
+      get(target, property, receiver) {
+        if (property === 'length') {
+          throw new Error('estimate boom')
+        }
+        return Reflect.get(target, property, receiver)
       },
-      pivotOutputOwners: new Map(),
-      captureSheetCellState: () => [],
-      captureRowRangeCellState: () => [],
-      captureColumnRangeCellState: () => [],
-      setWasmProgramSyncPending: () => undefined,
-      setMaterializedCellCount: () => undefined,
-      scheduleWasmProgramSync: () => undefined,
-      resetWasmState: () => undefined,
     })
-    const poisonedOps = {
-      get length() {
-        throw new Error('estimate boom')
-      },
-    } as unknown as EngineOp[]
 
     expect(() => Effect.runSync(service.rewriteDefinedNamesForSheetRename('Sheet1', 'Renamed'))).toThrow('rename boom')
     expect(() => Effect.runSync(service.estimatePotentialNewCells(poisonedOps))).toThrow('estimate boom')

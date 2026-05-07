@@ -37,8 +37,6 @@ export const metadataSeedNames = [
   'pivot-analytics',
 ] as const satisfies readonly EngineSeedName[]
 
-export const metadataSeedNameArbitrary = fc.constantFrom<EngineSeedName>(...metadataSeedNames)
-
 const metadataRangeArbitrary = fc.oneof(
   rangeArbitrary,
   fc.constant({
@@ -224,7 +222,7 @@ export type MetadataAction =
 
 export type EngineSemanticAction = CoreAction | MetadataAction
 
-export const metadataActionArbitrary = fc.oneof<MetadataAction>(
+const metadataActionArbitrary = fc.oneof<MetadataAction>(
   freezePaneActionArbitrary,
   clearFreezePaneActionArbitrary,
   sheetProtectionActionArbitrary,
@@ -274,7 +272,7 @@ function isCoreAction(action: EngineSemanticAction): action is CoreAction {
   )
 }
 
-export function applyMetadataAction(engine: SpreadsheetEngine, action: MetadataAction): void {
+function applyMetadataAction(engine: SpreadsheetEngine, action: MetadataAction): void {
   switch (action.kind) {
     case 'setFreezePane':
       engine.setFreezePane(engineFuzzSheetName, action.rows, action.cols)
@@ -336,7 +334,7 @@ export function applyMetadataAction(engine: SpreadsheetEngine, action: MetadataA
   }
 }
 
-export function applyEngineSemanticAction(engine: SpreadsheetEngine, action: EngineSemanticAction): void {
+function applyEngineSemanticAction(engine: SpreadsheetEngine, action: EngineSemanticAction): void {
   if (isCoreAction(action)) {
     applyCoreAction(engine, action)
     return

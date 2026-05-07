@@ -7,7 +7,7 @@ import { CompactSelection, type GridSelection, type Item, type Rectangle } from 
 import type { GridTextItem, GridTextScene } from '../gridTextScene.js'
 import { collectVisibleColumnBounds, collectVisibleRowBounds } from '../visibleGridAxes.js'
 import { workbookThemeColors } from '../workbookTheme.js'
-import { parseGpuColor, type GridGpuScene } from '../gridGpuScene.js'
+import { parseGpuColor, type GridGpuScene } from '../gridGpuPrimitives.js'
 
 const STATIC_SELECTED_CELL: Item = Object.freeze([-1, -1] as const)
 const STATIC_GRID_SELECTION: GridSelection = Object.freeze({
@@ -65,7 +65,7 @@ export function buildWorkbookHeaderPaneStatesV3(input: WorkbookHeaderPaneInputV3
   })
 }
 
-export function buildWorkbookHeaderGpuSceneV3(input: WorkbookHeaderPaneInputV3): GridGpuScene {
+function buildWorkbookHeaderGpuSceneV3(input: WorkbookHeaderPaneInputV3): GridGpuScene {
   return buildGridGpuHeaderScene({
     palette: {
       gridLineColor: parseGpuColor(workbookThemeColors.gridBorder),

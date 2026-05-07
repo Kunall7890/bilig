@@ -12,6 +12,7 @@ import {
   directScalarDeltaFromValues,
   directScalarValueNumber,
   evaluateDirectScalarNumber,
+  evaluateDirectScalarWithReplacementNumbers,
   evaluateRowPairDirectScalarCode,
   rowPairDirectScalarCode,
   rowPairDirectScalarCodeNeedsZeroGuard,
@@ -181,6 +182,47 @@ describe('direct scalar helpers', () => {
         4,
         { value: false },
         readCellNumberForDirectScalarTests,
+      ),
+    ).toBeUndefined()
+  })
+
+  it('evaluates direct scalar formulas with one or two replacement cell numbers', () => {
+    expect(
+      evaluateDirectScalarWithReplacementNumbers(
+        { kind: 'binary', operator: '*', left: { kind: 'cell', cellIndex: 1 }, right: { kind: 'cell', cellIndex: 2 } },
+        1,
+        4,
+        readCellNumberForDirectScalarTests,
+      ),
+    ).toBe(40)
+    expect(
+      evaluateDirectScalarWithReplacementNumbers(
+        { kind: 'binary', operator: '+', left: { kind: 'cell', cellIndex: 1 }, right: { kind: 'cell', cellIndex: 2 } },
+        1,
+        4,
+        readCellNumberForDirectScalarTests,
+        2,
+        6,
+      ),
+    ).toBe(10)
+    expect(
+      evaluateDirectScalarWithReplacementNumbers(
+        { kind: 'abs', operand: { kind: 'cell', cellIndex: 2 } },
+        1,
+        4,
+        readCellNumberForDirectScalarTests,
+        2,
+        -6,
+      ),
+    ).toBe(6)
+    expect(
+      evaluateDirectScalarWithReplacementNumbers(
+        { kind: 'binary', operator: '/', left: { kind: 'cell', cellIndex: 1 }, right: { kind: 'cell', cellIndex: 2 } },
+        1,
+        4,
+        readCellNumberForDirectScalarTests,
+        2,
+        0,
       ),
     ).toBeUndefined()
   })

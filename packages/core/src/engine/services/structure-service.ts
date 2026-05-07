@@ -1,717 +1,57 @@
 import { Effect } from 'effect'
-import { ErrorCode, ValueTag, type SheetFormatRangeSnapshot, type SheetStyleRangeSnapshot } from '@bilig/protocol'
-import {
-  type CompiledFormula,
-  formatAddress,
-  parseCellAddress,
-  rewriteAddressForStructuralTransform,
-  rewriteCompiledFormulaForStructuralTransform,
-  rewriteFormulaForStructuralTransform,
-  rewriteRangeForStructuralTransform,
-  type StructuralAxisTransform,
-} from '@bilig/formula'
-import type { EngineOp } from '@bilig/workbook-domain'
+import { ErrorCode, ValueTag } from '@bilig/protocol'
+import type { StructuralAxisTransform } from '@bilig/formula'
 import { CellFlags } from '../../cell-store.js'
-import { emptyValue, errorValue } from '../../engine-value-utils.js'
-import {
-  mapStructuralAxisIndex,
-  mapStructuralAxisInterval,
-  mapStructuralBoundary,
-  structuralTransformForOp,
-} from '../../engine-structural-utils.js'
+import { errorValue } from '../../engine-value-utils.js'
+import { mapStructuralAxisIndex, mapStructuralAxisInterval, structuralTransformForOp } from '../../engine-structural-utils.js'
 import type { StructuralTransaction } from '../structural-transaction.js'
-import type { FormulaTable } from '../../formula-table.js'
-import {
-  rewriteTemplateForStructuralTransform,
-  retargetStructurallyRewrittenTemplateInstance,
-  type StructurallyRewrittenTemplate,
-} from '../../formula/structural-retargeting.js'
-import type { FormulaFamily } from '../../formula/formula-family-store.js'
 import type { RuntimeFormula } from '../runtime-state.js'
-import { getRuntimeFormulaSource, getRuntimeFormulaStructuralCompiled } from '../runtime-formula-source.js'
 import { EngineStructureError } from '../errors.js'
-import { normalizeDefinedName, type WorkbookPivotRecord, type WorkbookStore } from '../../workbook-store.js'
-import type { RangeRegistry } from '../../range-registry.js'
-import { addEngineCounter, type EngineCounters } from '../../perf/engine-counters.js'
+import { normalizeDefinedName } from '../../workbook-store.js'
+import { addEngineCounter } from '../../perf/engine-counters.js'
+import { captureAxisRangeCellState, captureSheetCellState, shouldCaptureStoredCell } from './structure-cell-state.js'
+import {
+  dependencyTouchesSheet,
+  rangeDependencyAxisAffected,
+  runtimeDirectRangeAxisAffected,
+  structuralDirectAggregateRewritePreservesValue,
+  structuralRewritePreservesBinding,
+  structuralRewritePreservesValue,
+} from './structure-formula-rewrite-guards.js'
+import {
+  rewriteFormulaFromTemplate,
+  rewriteFormulaSourceFallback,
+  rewriteStructuralFormulaCompiled,
+  structuralRewritePreservesDirectCellDependencies,
+  type StructuralFormulaRewriteCache,
+} from './structure-formula-rewrite.js'
+import { rewriteDefinedNamesForStructuralTransform, rewriteWorkbookMetadataForStructuralTransform } from './structure-metadata-rewrite.js'
+import {
+  clearPivotOutputsForSheet,
+  clearRemovedCellRuntimeState,
+  clearSpillMetadataForSheet,
+  collectStructuralRangeDependencies,
+  isCellIndexMapped,
+  structuralAxisIndexAffected,
+} from './structure-runtime-cleanup.js'
+import {
+  canDeferSimpleDeleteRefErrorFormulaSource,
+  canDeferSimpleDeleteStructuralFormulaSource,
+  canDeferSimpleStructuralFormulaSource,
+} from './structure-formula-source-deferral.js'
+import { materializeDeferredStructuralFormulaSources as materializeDeferredStructuralFormulaSourcesNow } from './structure-deferred-formula-sources.js'
+import type { CreateEngineStructureServiceArgs, EngineStructureService, StructuralFormulaRebindInput } from './structure-service-types.js'
 
-type StructuralAxisOp = Extract<
-  EngineOp,
-  {
-    kind: 'insertRows' | 'deleteRows' | 'moveRows' | 'insertColumns' | 'deleteColumns' | 'moveColumns'
-  }
->
+export type {
+  CreateEngineStructureServiceArgs,
+  EngineStructureService,
+  EngineStructureState,
+  StructuralAxisOp,
+  StructuralFormulaRebindInput,
+} from './structure-service-types.js'
 
-interface EngineStructureState {
-  readonly workbook: WorkbookStore
-  readonly formulas: FormulaTable<RuntimeFormula>
-  readonly ranges: RangeRegistry
-  readonly pivotOutputOwners: Map<number, string>
-  readonly counters?: EngineCounters
-}
-
-interface StructuralFormulaRebindInput {
-  readonly cellIndex: number
-  readonly ownerSheetName: string
-  readonly ownerRow: number
-  readonly ownerCol: number
-  readonly source: string
-  readonly compiled?: CompiledFormula
-  readonly templateId?: number
-  readonly preservesBinding?: boolean
-  readonly preservesValue?: boolean
-}
-
-interface StructuralFormulaRebindResolution {
-  readonly inputs: StructuralFormulaRebindInput[]
-  readonly preservedCellIndices: readonly number[]
-}
-
-function dependencyTouchesSheet(dependency: string, sheetName: string): boolean {
-  if (!dependency.includes('!')) {
-    return false
-  }
-  const [qualifiedSheetName] = dependency.split('!')
-  return qualifiedSheetName?.replace(/^'(.*)'$/, '$1') === sheetName
-}
-
-function rangeDependencyAxisAffected(
-  rangeDescriptor: { sheetId: number; row1: number; row2: number; col1: number; col2: number },
-  targetSheetId: number,
-  transform: StructuralAxisTransform,
-): boolean {
-  if (rangeDescriptor.sheetId !== targetSheetId) {
-    return false
-  }
-  const start = transform.axis === 'row' ? rangeDescriptor.row1 : rangeDescriptor.col1
-  const end = transform.axis === 'row' ? rangeDescriptor.row2 : rangeDescriptor.col2
-  return !(end < transform.start || start >= transform.start + transform.count)
-}
-
-function runtimeDirectRangeAxisAffected(
-  targetSheetId: number | undefined,
-  targetSheetName: string,
-  transform: StructuralAxisTransform,
-  range: { sheetName: string; rowStart: number; rowEnd: number; col: number } | undefined,
-): boolean {
-  if (!range || targetSheetId === undefined || range.sheetName !== targetSheetName) {
-    return false
-  }
-  const descriptor =
-    transform.axis === 'row'
-      ? {
-          sheetId: targetSheetId,
-          row1: range.rowStart,
-          row2: range.rowEnd,
-          col1: range.col,
-          col2: range.col,
-        }
-      : {
-          sheetId: targetSheetId,
-          row1: range.rowStart,
-          row2: range.rowEnd,
-          col1: range.col,
-          col2: range.col,
-        }
-  return rangeDependencyAxisAffected(descriptor, targetSheetId, transform)
-}
-
-function isStructurallyStableSimpleFormulaNode(node: CompiledFormula['optimizedAst']): boolean {
-  switch (node.kind) {
-    case 'NumberLiteral':
-    case 'BooleanLiteral':
-    case 'StringLiteral':
-    case 'ErrorLiteral':
-    case 'CellRef':
-      return true
-    case 'UnaryExpr':
-      return isStructurallyStableSimpleFormulaNode(node.argument)
-    case 'BinaryExpr':
-      return isStructurallyStableSimpleFormulaNode(node.left) && isStructurallyStableSimpleFormulaNode(node.right)
-    case 'NameRef':
-    case 'StructuredRef':
-    case 'SpillRef':
-    case 'RowRef':
-    case 'ColumnRef':
-    case 'RangeRef':
-    case 'CallExpr':
-    case 'InvokeExpr':
-      return false
-  }
-}
-
-function arrayValuesEqual(left: ArrayLike<number>, right: ArrayLike<number>): boolean {
-  if (left.length !== right.length) {
-    return false
-  }
-  for (let index = 0; index < left.length; index += 1) {
-    if (left[index] !== right[index]) {
-      return false
-    }
-  }
-  return true
-}
-
-function hasStableStructuralSymbolicRangeLayout(
-  current: Pick<CompiledFormula, 'symbolicRanges' | 'parsedSymbolicRanges'>,
-  next: Pick<CompiledFormula, 'symbolicRanges' | 'parsedSymbolicRanges'>,
-  rangeDependencyCount: number,
-): boolean {
-  if (current.symbolicRanges.length !== next.symbolicRanges.length) {
-    return false
-  }
-  if (rangeDependencyCount !== current.symbolicRanges.length) {
-    return false
-  }
-  if (current.parsedSymbolicRanges === undefined || next.parsedSymbolicRanges === undefined) {
-    return current.parsedSymbolicRanges === next.parsedSymbolicRanges
-  }
-  if (current.parsedSymbolicRanges.length !== next.parsedSymbolicRanges.length) {
-    return false
-  }
-  for (let index = 0; index < current.parsedSymbolicRanges.length; index += 1) {
-    if (current.parsedSymbolicRanges[index]?.refKind !== next.parsedSymbolicRanges[index]?.refKind) {
-      return false
-    }
-  }
-  return true
-}
-
-function structuralRewritePreservesValue(
-  formula: RuntimeFormula,
-  rewritten: { compiled: CompiledFormula; reusedProgram: boolean },
-  transform: StructuralAxisTransform,
-): boolean {
-  return (
-    transform.kind !== 'delete' &&
-    rewritten.reusedProgram &&
-    !rewritten.compiled.volatile &&
-    formula.compiled.symbolicNames.length === 0 &&
-    formula.compiled.symbolicTables.length === 0 &&
-    formula.compiled.symbolicSpills.length === 0 &&
-    formula.compiled.symbolicRanges.length === 0 &&
-    formula.compiled.deps.every((dependency) => !dependency.includes(':')) &&
-    formula.directLookup === undefined &&
-    formula.directAggregate === undefined &&
-    formula.directCriteria === undefined &&
-    (formula.directScalar === undefined || transform.kind === 'insert') &&
-    isStructurallyStableSimpleFormulaNode(rewritten.compiled.optimizedAst)
-  )
-}
-
-function structuralRewritePreservesBinding(
-  formula: RuntimeFormula,
-  rewritten: { compiled: CompiledFormula; reusedProgram: boolean },
-  allowsRangeReuse: boolean,
-): boolean {
-  return (
-    rewritten.reusedProgram &&
-    (formula.directAggregate !== undefined ||
-      formula.directScalar !== undefined ||
-      (allowsRangeReuse &&
-        hasStableStructuralSymbolicRangeLayout(formula.compiled, rewritten.compiled, formula.rangeDependencies.length))) &&
-    formula.compiled.symbolicNames.length === 0 &&
-    formula.compiled.symbolicTables.length === 0 &&
-    formula.compiled.symbolicSpills.length === 0 &&
-    rewritten.compiled.symbolicNames.length === 0 &&
-    rewritten.compiled.symbolicTables.length === 0 &&
-    rewritten.compiled.symbolicSpills.length === 0 &&
-    formula.directLookup === undefined &&
-    formula.directCriteria === undefined &&
-    arrayValuesEqual(formula.compiled.program, rewritten.compiled.program) &&
-    arrayValuesEqual(formula.compiled.constants, rewritten.compiled.constants) &&
-    formula.compiled.mode === rewritten.compiled.mode &&
-    (formula.directAggregate !== undefined || rewritten.compiled.symbolicRanges.length === formula.rangeDependencies.length)
-  )
-}
-
-function structuralDirectAggregateRewritePreservesValue(
-  formula: RuntimeFormula,
-  rewritten: { compiled: CompiledFormula; reusedProgram: boolean },
-  transform: StructuralAxisTransform,
-): boolean {
-  return (
-    (transform.kind === 'insert' || transform.kind === 'move') &&
-    formula.directAggregate !== undefined &&
-    rewritten.reusedProgram &&
-    !rewritten.compiled.volatile &&
-    formula.compiled.symbolicNames.length === 0 &&
-    formula.compiled.symbolicTables.length === 0 &&
-    formula.compiled.symbolicSpills.length === 0 &&
-    formula.directLookup === undefined &&
-    formula.directCriteria === undefined
-  )
-}
-
-export interface EngineStructureService {
-  readonly captureSheetCellState: (sheetName: string) => Effect.Effect<EngineOp[], EngineStructureError>
-  readonly captureRowRangeCellState: (sheetName: string, start: number, count: number) => Effect.Effect<EngineOp[], EngineStructureError>
-  readonly captureColumnRangeCellState: (sheetName: string, start: number, count: number) => Effect.Effect<EngineOp[], EngineStructureError>
-  readonly materializeDeferredStructuralFormulaSources: () => Effect.Effect<void, EngineStructureError>
-  readonly applyStructuralAxisOp: (op: StructuralAxisOp) => Effect.Effect<
-    {
-      transaction: StructuralTransaction
-      changedCellIndices: number[]
-      precomputedChangedInputCellIndices: number[]
-      formulaCellIndices: number[]
-      topologyChanged: boolean
-      graphRefreshRequired: boolean
-    },
-    EngineStructureError
-  >
-}
-
-export function createEngineStructureService(args: {
-  readonly state: EngineStructureState
-  readonly captureStoredCellOps: (
-    cellIndex: number,
-    sheetName: string,
-    address: string,
-    sourceSheetName?: string,
-    sourceAddress?: string,
-  ) => EngineOp[]
-  readonly removeFormula: (cellIndex: number) => boolean
-  readonly clearOwnedPivot: (pivot: WorkbookPivotRecord) => number[]
-  readonly refreshRangeDependencies: (rangeIndices: readonly number[]) => void
-  readonly retargetRangeDependencies: (transaction: StructuralTransaction, rangeIndices: readonly number[]) => void
-  readonly rebindFormulaCells: (inputs: readonly StructuralFormulaRebindInput[]) => void
-  readonly retargetDirectAggregateFormulaForStructuralTransform: (
-    input: StructuralFormulaRebindInput,
-    targetSheetName: string,
-    transform: StructuralAxisTransform,
-  ) => boolean
-  readonly rewriteFormulaCompiledPreservingBinding: (input: StructuralFormulaRebindInput) => boolean
-  readonly collectFormulaCellsOwnedBySheet: (sheetName: string) => readonly number[]
-  readonly forEachFormulaCellOwnedBySheet: (sheetName: string, fn: (cellIndex: number) => void) => void
-  readonly countFormulaSheetMembers: (sheetId: number) => number
-  readonly forEachFormulaFamily: (fn: (family: FormulaFamily) => void) => void
-  readonly setFormulaFamilyStructuralSourceTransform: (
-    familyId: number,
-    transform: NonNullable<RuntimeFormula['structuralSourceTransform']>,
-  ) => void
-  readonly consumeFormulaFamilyStructuralSourceTransforms: () => readonly {
-    readonly cellIndices: readonly number[]
-    readonly transform: NonNullable<RuntimeFormula['structuralSourceTransform']>
-  }[]
-  readonly collectFormulaCellsReferencingSheet: (sheetName: string) => readonly number[]
-  readonly collectFormulaCellsForDefinedNames: (names: readonly string[]) => readonly number[]
-  readonly collectFormulaCellsForTables: (tableNames: readonly string[]) => readonly number[]
-}): EngineStructureService {
+export function createEngineStructureService(args: CreateEngineStructureServiceArgs): EngineStructureService {
   let hasDeferredStructuralFormulaSources = false
-
-  const shouldCaptureStoredCell = (cellIndex: number): boolean => {
-    const value = args.state.workbook.cellStore.getValue(cellIndex, () => '')
-    const explicitFormat = args.state.workbook.getCellFormat(cellIndex)
-    const flags = args.state.workbook.cellStore.flags[cellIndex] ?? 0
-    const formula = args.state.formulas.get(cellIndex)
-    if ((flags & (CellFlags.SpillChild | CellFlags.PivotOutput)) !== 0) {
-      return false
-    }
-    return !(
-      formula === undefined &&
-      explicitFormat === undefined &&
-      (flags & CellFlags.AuthoredBlank) === 0 &&
-      (value.tag === ValueTag.Empty || value.tag === ValueTag.Error)
-    )
-  }
-
-  const captureStoredCellState = (
-    cellIndex: number,
-    sheetName: string,
-    address: string,
-    sourceSheetName?: string,
-    sourceAddress?: string,
-  ): EngineOp[] => args.captureStoredCellOps(cellIndex, sheetName, address, sourceSheetName, sourceAddress)
-
-  const captureStoredCellStateForUndo = (cellIndex: number, sheetName: string, address: string): EngineOp[] => {
-    const formula = args.state.formulas.get(cellIndex)
-    if (formula) {
-      return [{ kind: 'setCellFormula', sheetName, address, formula: getRuntimeFormulaSource(formula) }]
-    }
-    const tag: ValueTag = args.state.workbook.cellStore.tags[cellIndex] ?? ValueTag.Empty
-    const flags = args.state.workbook.cellStore.flags[cellIndex] ?? 0
-    const shouldRestoreExplicitBlank =
-      (args.state.workbook.cellStore.versions[cellIndex] ?? 0) !== 0 || (flags & CellFlags.AuthoredBlank) !== 0
-    const ops: EngineOp[] = []
-    switch (tag) {
-      case ValueTag.Number:
-        ops.push({ kind: 'setCellValue', sheetName, address, value: args.state.workbook.cellStore.numbers[cellIndex] ?? 0 })
-        break
-      case ValueTag.Boolean:
-        ops.push({ kind: 'setCellValue', sheetName, address, value: (args.state.workbook.cellStore.numbers[cellIndex] ?? 0) !== 0 })
-        break
-      case ValueTag.String:
-        return captureStoredCellState(cellIndex, sheetName, address)
-      case ValueTag.Empty:
-      case ValueTag.Error:
-        ops.push(
-          shouldRestoreExplicitBlank
-            ? { kind: 'setCellValue', sheetName, address, value: null }
-            : { kind: 'clearCell', sheetName, address },
-        )
-        break
-    }
-    const explicitFormat = args.state.workbook.getCellFormat(cellIndex)
-    if (explicitFormat !== undefined) {
-      ops.push({ kind: 'setCellFormat', sheetName, address, format: explicitFormat ?? null })
-    }
-    return ops
-  }
-
-  const isSimpleStructuralFormulaSourceDeferrable = (formula: RuntimeFormula): boolean =>
-    formula.rangeDependencies.length === 0 &&
-    formula.dependencyIndices.every((dependencyCellIndex) => shouldCaptureStoredCell(dependencyCellIndex)) &&
-    !formula.compiled.volatile &&
-    formula.compiled.symbolicNames.length === 0 &&
-    formula.compiled.symbolicTables.length === 0 &&
-    formula.compiled.symbolicSpills.length === 0 &&
-    formula.directLookup === undefined &&
-    formula.directAggregate === undefined &&
-    formula.directCriteria === undefined &&
-    isStructurallyStableSimpleFormulaNode(formula.compiled.ast)
-
-  const canDeferSimpleStructuralFormulaSource = (formula: RuntimeFormula, transform: StructuralAxisTransform): boolean =>
-    transform.kind !== 'delete' && transform.axis === 'column' && isSimpleStructuralFormulaSourceDeferrable(formula)
-
-  const canDeferSimpleDeleteStructuralFormulaSource = (
-    formula: RuntimeFormula,
-    targetSheetId: number | undefined,
-    transform: StructuralAxisTransform,
-  ): boolean => {
-    if (
-      transform.kind !== 'delete' ||
-      transform.axis !== 'column' ||
-      targetSheetId === undefined ||
-      !isSimpleStructuralFormulaSourceDeferrable(formula)
-    ) {
-      return false
-    }
-    return formula.dependencyIndices.every((dependencyCellIndex) => {
-      if (args.state.workbook.cellStore.sheetIds[dependencyCellIndex] !== targetSheetId) {
-        return true
-      }
-      const dependencyColumn = args.state.workbook.getCellAxisIndex(dependencyCellIndex, 'column')
-      return dependencyColumn !== undefined && mapStructuralAxisIndex(dependencyColumn, transform) !== undefined
-    })
-  }
-
-  const canDeferSimpleDeleteRefErrorFormulaSource = (
-    formula: RuntimeFormula,
-    targetSheetId: number | undefined,
-    transform: StructuralAxisTransform,
-  ): boolean => {
-    if (
-      transform.kind !== 'delete' ||
-      transform.axis !== 'column' ||
-      targetSheetId === undefined ||
-      !isSimpleStructuralFormulaSourceDeferrable(formula)
-    ) {
-      return false
-    }
-    return formula.dependencyIndices.some((dependencyCellIndex) => {
-      if (args.state.workbook.cellStore.sheetIds[dependencyCellIndex] !== targetSheetId) {
-        return false
-      }
-      const dependencyColumn = args.state.workbook.getCellAxisIndex(dependencyCellIndex, 'column')
-      return dependencyColumn !== undefined && mapStructuralAxisIndex(dependencyColumn, transform) === undefined
-    })
-  }
-
-  const captureAxisRangeCellState = (sheetName: string, axis: 'row' | 'column', start: number, count: number): EngineOp[] => {
-    const sheet = args.state.workbook.getSheet(sheetName)
-    if (!sheet) {
-      return []
-    }
-    const axisIds = sheet.logicalAxisMap.snapshot(axis, start, count).map((entry) => entry.id)
-    const captured: Array<{ cellIndex: number; row: number; col: number }> = []
-    sheet.logical.listResidentCellIndicesUnordered(axis, axisIds).forEach((cellIndex) => {
-      if (!shouldCaptureStoredCell(cellIndex)) {
-        return
-      }
-      const position = args.state.workbook.getCellPosition(cellIndex)
-      if (!position) {
-        return
-      }
-      const { row, col } = position
-      const index = axis === 'row' ? row : col
-      if (index >= start && index < start + count) {
-        captured.push({ cellIndex, row, col })
-      }
-    })
-    if (args.state.counters && captured.length > 0) {
-      addEngineCounter(args.state.counters, 'structuralUndoCapturedCells', captured.length)
-    }
-    return captured
-      .toSorted((left, right) => left.row - right.row || left.col - right.col)
-      .flatMap(({ cellIndex, row, col }) => captureStoredCellStateForUndo(cellIndex, sheetName, formatAddress(row, col)))
-  }
-
-  const captureSheetCellState = (sheetName: string): EngineOp[] => {
-    const sheet = args.state.workbook.getSheet(sheetName)
-    if (!sheet) {
-      return []
-    }
-    const captured: Array<{ cellIndex: number; row: number; col: number }> = []
-    sheet.grid.forEachCellEntry((cellIndex, row, col) => {
-      if (!shouldCaptureStoredCell(cellIndex)) {
-        return
-      }
-      captured.push({ cellIndex, row, col })
-    })
-    return captured
-      .toSorted((left, right) => left.row - right.row || left.col - right.col)
-      .flatMap(({ cellIndex }) => captureStoredCellState(cellIndex, sheetName, args.state.workbook.getAddress(cellIndex)))
-  }
-
-  const rewriteDefinedNamesForStructuralTransform = (sheetName: string, transform: StructuralAxisTransform): Set<string> => {
-    const changedNames = new Set<string>()
-    args.state.workbook.listDefinedNames().forEach((record) => {
-      if (typeof record.value === 'string' && record.value.startsWith('=')) {
-        const nextFormula = rewriteFormulaForStructuralTransform(record.value.slice(1), sheetName, sheetName, transform)
-        if (`=${nextFormula}` !== record.value) {
-          args.state.workbook.setDefinedName(record.name, `=${nextFormula}`)
-        }
-        return
-      }
-      if (typeof record.value !== 'object' || !record.value) {
-        return
-      }
-      switch (record.value.kind) {
-        case 'formula': {
-          const nextFormula = rewriteFormulaForStructuralTransform(
-            record.value.formula.startsWith('=') ? record.value.formula.slice(1) : record.value.formula,
-            sheetName,
-            sheetName,
-            transform,
-          )
-          const nextValue = {
-            ...record.value,
-            formula: record.value.formula.startsWith('=') ? `=${nextFormula}` : nextFormula,
-          }
-          if (nextValue.formula !== record.value.formula) {
-            args.state.workbook.setDefinedName(record.name, nextValue)
-            changedNames.add(normalizeDefinedName(record.name))
-          }
-          return
-        }
-        case 'cell-ref': {
-          if (record.value.sheetName !== sheetName) {
-            return
-          }
-          const nextAddress = rewriteAddressForStructuralTransform(record.value.address, transform)
-          if (!nextAddress) {
-            args.state.workbook.deleteDefinedName(record.name)
-            changedNames.add(normalizeDefinedName(record.name))
-            return
-          }
-          if (nextAddress !== record.value.address) {
-            args.state.workbook.setDefinedName(record.name, {
-              ...record.value,
-              address: nextAddress,
-            })
-            changedNames.add(normalizeDefinedName(record.name))
-          }
-          return
-        }
-        case 'range-ref': {
-          if (record.value.sheetName !== sheetName) {
-            return
-          }
-          const nextRange = rewriteRangeForStructuralTransform(record.value.startAddress, record.value.endAddress, transform)
-          if (!nextRange) {
-            args.state.workbook.deleteDefinedName(record.name)
-            changedNames.add(normalizeDefinedName(record.name))
-            return
-          }
-          if (nextRange.startAddress !== record.value.startAddress || nextRange.endAddress !== record.value.endAddress) {
-            args.state.workbook.setDefinedName(record.name, {
-              ...record.value,
-              startAddress: nextRange.startAddress,
-              endAddress: nextRange.endAddress,
-            })
-            changedNames.add(normalizeDefinedName(record.name))
-          }
-          return
-        }
-        case 'scalar':
-        case 'structured-ref':
-          return
-      }
-    })
-    return changedNames
-  }
-
-  const rewriteStructuralFormulaCompiled = (
-    formula: RuntimeFormula,
-    ownerSheetName: string,
-    sheetName: string,
-    transform: StructuralAxisTransform,
-  ): ReturnType<typeof rewriteCompiledFormulaForStructuralTransform> | undefined => {
-    if (formula.directAggregate) {
-      const directAggregateCandidate = formula.compiled.directAggregateCandidate
-      const rangeIndex = directAggregateCandidate?.symbolicRangeIndex
-      const parsedRange = rangeIndex === undefined ? undefined : formula.compiled.parsedSymbolicRanges?.[rangeIndex]
-      if (
-        directAggregateCandidate &&
-        rangeIndex !== undefined &&
-        parsedRange &&
-        parsedRange.refKind === 'cells' &&
-        (parsedRange.sheetName ?? ownerSheetName) === sheetName
-      ) {
-        const candidateRangeIndex = rangeIndex
-        const nextRange = rewriteRangeForStructuralTransform(parsedRange.startAddress, parsedRange.endAddress, transform)
-        if (nextRange) {
-          const rangePrefix = parsedRange.address.includes('!')
-            ? parsedRange.address.slice(0, parsedRange.address.lastIndexOf('!') + 1)
-            : ''
-          const nextAddress = `${rangePrefix}${nextRange.startAddress}:${nextRange.endAddress}`
-          const nextStart = parseCellAddress(nextRange.startAddress, parsedRange.sheetName ?? ownerSheetName)
-          const nextEnd = parseCellAddress(nextRange.endAddress, parsedRange.sheetName ?? ownerSheetName)
-          const nextParsedRange = {
-            ...parsedRange,
-            address: nextAddress,
-            startAddress: nextRange.startAddress,
-            endAddress: nextRange.endAddress,
-            startRow: nextStart.row,
-            endRow: nextEnd.row,
-            startCol: nextStart.col,
-            endCol: nextEnd.col,
-          }
-          const nextParsedSymbolicRanges = formula.compiled.parsedSymbolicRanges?.slice()
-          if (nextParsedSymbolicRanges) {
-            nextParsedSymbolicRanges[candidateRangeIndex] = nextParsedRange
-          }
-          const nextParsedDeps = formula.compiled.parsedDeps?.map((dependency) =>
-            dependency.kind === 'range' && dependency.address === parsedRange.address
-              ? {
-                  ...dependency,
-                  address: nextAddress,
-                  startAddress: nextRange.startAddress,
-                  endAddress: nextRange.endAddress,
-                  startRow: nextStart.row,
-                  endRow: nextEnd.row,
-                  startCol: nextStart.col,
-                  endCol: nextEnd.col,
-                }
-              : dependency,
-          )
-          return {
-            source: `${directAggregateCandidate.callee}(${nextAddress})`,
-            compiled: {
-              ...formula.compiled,
-              source: `${directAggregateCandidate.callee}(${nextAddress})`,
-              astMatchesSource: false,
-              deps: formula.compiled.deps.map((dependency) => (dependency === parsedRange.address ? nextAddress : dependency)),
-              symbolicRanges: formula.compiled.symbolicRanges.map((range, index) => (index === candidateRangeIndex ? nextAddress : range)),
-              ...(nextParsedDeps ? { parsedDeps: nextParsedDeps } : {}),
-              ...(nextParsedSymbolicRanges ? { parsedSymbolicRanges: nextParsedSymbolicRanges } : {}),
-            },
-            reusedProgram: true,
-          }
-        }
-      }
-    }
-    const rewritten = rewriteCompiledFormulaForStructuralTransform(formula.compiled, ownerSheetName, sheetName, transform)
-    if (rewritten.source === formula.source) {
-      return undefined
-    }
-    return rewritten
-  }
-
-  const rewriteFormulaSourceFallback = (
-    source: string,
-    ownerSheetName: string,
-    sheetName: string,
-    transform: StructuralAxisTransform,
-  ): string => rewriteFormulaForStructuralTransform(source, ownerSheetName, sheetName, transform)
-
-  const structuralRewritePreservesDirectCellDependencies = (
-    formula: RuntimeFormula,
-    rewritten: { compiled: CompiledFormula },
-    ownerSheetName: string,
-  ): boolean => {
-    if (
-      formula.directLookup !== undefined ||
-      formula.directAggregate !== undefined ||
-      formula.directCriteria !== undefined ||
-      formula.rangeDependencies.length !== 0 ||
-      formula.dependencyIndices.length === 0
-    ) {
-      return false
-    }
-    const parsedDeps = rewritten.compiled.parsedDeps
-    if (!parsedDeps || parsedDeps.length !== formula.dependencyIndices.length) {
-      return false
-    }
-    for (let index = 0; index < parsedDeps.length; index += 1) {
-      const dependency = parsedDeps[index]!
-      if (dependency.kind !== 'cell') {
-        return false
-      }
-      const dependencySheetName = dependency.sheetName ?? ownerSheetName
-      const dependencyCellIndex = args.state.workbook.getCellIndex(dependencySheetName, dependency.address)
-      if (dependencyCellIndex === undefined || dependencyCellIndex !== formula.dependencyIndices[index]) {
-        return false
-      }
-    }
-    return true
-  }
-
-  const rewriteFormulaFromTemplate = (
-    cache: Map<string, StructurallyRewrittenTemplate | null>,
-    formula: RuntimeFormula,
-    representative: {
-      readonly templateId: number
-      readonly ownerSheetName: string
-      readonly targetSheetName: string
-      readonly representativeRow: number
-      readonly representativeCol: number
-      readonly ownerRow: number
-      readonly ownerCol: number
-    },
-    targetSheetName: string,
-    transform: StructuralAxisTransform,
-  ): { source: string; compiled: CompiledFormula; reusedProgram: boolean } | undefined => {
-    if (formula.directAggregate !== undefined || formula.directCriteria !== undefined) {
-      return undefined
-    }
-    const cacheKey =
-      `${representative.templateId}:${representative.ownerSheetName}:${targetSheetName}:${transform.kind}:${transform.axis}:${transform.start}:${transform.count}:` +
-      `${transform.kind === 'move' ? transform.target : ''}`
-    let rewrittenTemplate = cache.get(cacheKey)
-    if (rewrittenTemplate === undefined) {
-      if (formula.compiled.astMatchesSource === false) {
-        return undefined
-      }
-      rewrittenTemplate =
-        rewriteTemplateForStructuralTransform({
-          template: {
-            id: representative.templateId,
-            templateKey: `runtime-template-${representative.templateId}`,
-            baseSource: formula.source,
-            baseRow: representative.representativeRow,
-            baseCol: representative.representativeCol,
-            compiled: formula.compiled,
-          },
-          ownerSheetName: representative.ownerSheetName,
-          targetSheetName,
-          transform,
-        }) ?? null
-      cache.set(cacheKey, rewrittenTemplate)
-    }
-    if (rewrittenTemplate === null) {
-      return undefined
-    }
-
-    try {
-      return retargetStructurallyRewrittenTemplateInstance({
-        rewrittenTemplate,
-        ownerRow: representative.ownerRow,
-        ownerCol: representative.ownerCol,
-      })
-    } catch {
-      return undefined
-    }
-  }
 
   const resolveStructuralFormulaRebindInputs = (argsForResolve: {
     readonly formulaCellIndices: readonly number[]
@@ -722,10 +62,10 @@ export function createEngineStructureService(args: {
     readonly changedTableNames: ReadonlySet<string>
     readonly ownerPositions: ReadonlyMap<number, { sheetName: string; row: number; col: number }>
     readonly precomputedDirectAggregateValueCellIndices: readonly number[]
-  }): StructuralFormulaRebindResolution => {
+  }) => {
     const inputs: StructuralFormulaRebindInput[] = []
     const preservedCellIndices: number[] = []
-    const templateRewriteCache = new Map<string, StructurallyRewrittenTemplate | null>()
+    const templateRewriteCache: StructuralFormulaRewriteCache = new Map()
     const remappedCellsByIndex = new Map(argsForResolve.transaction.remappedCells.map((entry) => [entry.cellIndex, entry] as const))
     const precomputedDirectAggregateValueCellIndices = new Set(argsForResolve.precomputedDirectAggregateValueCellIndices)
     argsForResolve.formulaCellIndices.forEach((cellIndex) => {
@@ -762,7 +102,7 @@ export function createEngineStructureService(args: {
       if (ownerRow === undefined || ownerCol === undefined) {
         return
       }
-      if (!touchesChangedName && !touchesChangedTable && canDeferSimpleStructuralFormulaSource(formula, argsForResolve.transform)) {
+      if (!touchesChangedName && !touchesChangedTable && canDeferSimpleStructuralFormulaSource(args, formula, argsForResolve.transform)) {
         formula.structuralSourceTransform = {
           ownerSheetName,
           targetSheetName: argsForResolve.sheetName,
@@ -840,7 +180,7 @@ export function createEngineStructureService(args: {
         })
         return
       }
-      const preservesDirectCellDependencies = structuralRewritePreservesDirectCellDependencies(formula, rewritten, ownerSheetName)
+      const preservesDirectCellDependencies = structuralRewritePreservesDirectCellDependencies(args, formula, rewritten, ownerSheetName)
       const preservesBinding =
         structuralRewritePreservesBinding(
           formula,
@@ -853,7 +193,7 @@ export function createEngineStructureService(args: {
         structuralDirectAggregateRewritePreservesValue(formula, rewritten, argsForResolve.transform)
       const hasOnlyPlaceholderDirectDependencies =
         formula.dependencyIndices.length > 0 &&
-        !formula.dependencyIndices.every((dependencyCellIndex) => shouldCaptureStoredCell(dependencyCellIndex))
+        !formula.dependencyIndices.every((dependencyCellIndex) => shouldCaptureStoredCell(args, dependencyCellIndex))
       const rewrittenDirectDependenciesChanged =
         formula.compiled.deps.length !== rewritten.compiled.deps.length ||
         formula.compiled.deps.some((dependency, index) => dependency !== rewritten.compiled.deps[index])
@@ -872,357 +212,6 @@ export function createEngineStructureService(args: {
       })
     })
     return { inputs, preservedCellIndices }
-  }
-
-  const collectStructuralRangeDependencies = (argsForCollect: { readonly formulaCellIndices: readonly number[] }): number[] => {
-    const rangeIndices = new Set<number>()
-    argsForCollect.formulaCellIndices.forEach((cellIndex) => {
-      const formula = args.state.formulas.get(cellIndex)
-      if (!formula) {
-        return
-      }
-      formula.rangeDependencies.forEach((rangeIndex) => {
-        rangeIndices.add(rangeIndex)
-      })
-    })
-    return [...rangeIndices]
-  }
-
-  const clearSpillMetadataForSheet = (sheetName: string): void => {
-    args.state.workbook.listSpills().forEach((spill) => {
-      if (spill.sheetName !== sheetName) {
-        return
-      }
-      args.state.workbook.deleteSpill(spill.sheetName, spill.address)
-    })
-  }
-
-  const clearPivotOutputsForSheet = (sheetName: string): void => {
-    args.state.workbook
-      .listPivots()
-      .filter((pivot) => pivot.sheetName === sheetName)
-      .forEach((pivot) => {
-        args.clearOwnedPivot(pivot)
-      })
-  }
-
-  const clearDerivedCellArtifacts = (cellIndex: number): void => {
-    args.state.pivotOutputOwners.delete(cellIndex)
-  }
-
-  const clearRemovedCellRuntimeState = (cellIndex: number): void => {
-    const flags = args.state.workbook.cellStore.flags[cellIndex] ?? 0
-    const hasDerivedState =
-      (flags & (CellFlags.HasFormula | CellFlags.JsOnly | CellFlags.InCycle | CellFlags.SpillChild | CellFlags.PivotOutput)) !== 0 ||
-      args.state.workbook.getCellFormat(cellIndex) !== undefined ||
-      args.state.pivotOutputOwners.has(cellIndex)
-    if (!hasDerivedState) {
-      args.state.workbook.cellStore.flags[cellIndex] = flags & ~CellFlags.Materialized
-      return
-    }
-    clearDerivedCellArtifacts(cellIndex)
-    args.removeFormula(cellIndex)
-    args.state.workbook.setCellFormat(cellIndex, null)
-    args.state.workbook.cellStore.setValue(cellIndex, emptyValue())
-    args.state.workbook.cellStore.flags[cellIndex] =
-      flags &
-      ~(CellFlags.Materialized | CellFlags.HasFormula | CellFlags.JsOnly | CellFlags.InCycle | CellFlags.SpillChild | CellFlags.PivotOutput)
-  }
-
-  const rewriteWorkbookMetadataForStructuralTransform = (
-    sheetName: string,
-    transform: StructuralAxisTransform,
-  ): { changedTableNames: Set<string> } => {
-    const changedTableNames = new Set<string>()
-    args.state.workbook
-      .listTables()
-      .filter((table) => table.sheetName === sheetName)
-      .forEach((table) => {
-        const range = rewriteRangeForStructuralTransform(table.startAddress, table.endAddress, transform)
-        if (!range) {
-          changedTableNames.add(table.name)
-          args.state.workbook.deleteTable(table.name)
-          return
-        }
-        changedTableNames.add(table.name)
-        args.state.workbook.setTable({
-          ...table,
-          startAddress: range.startAddress,
-          endAddress: range.endAddress,
-        })
-      })
-    args.state.workbook.listMergeRanges(sheetName).forEach((merge) => {
-      const range = rewriteRangeForStructuralTransform(merge.startAddress, merge.endAddress, transform)
-      args.state.workbook.clearMergeRanges(merge)
-      if (!range) {
-        return
-      }
-      args.state.workbook.setMergeRange({
-        ...merge,
-        startAddress: range.startAddress,
-        endAddress: range.endAddress,
-      })
-    })
-    args.state.workbook.listFilters(sheetName).forEach((filter) => {
-      const range = rewriteRangeForStructuralTransform(filter.range.startAddress, filter.range.endAddress, transform)
-      args.state.workbook.deleteFilter(sheetName, filter.range)
-      if (range) {
-        args.state.workbook.setFilter(sheetName, {
-          ...filter.range,
-          startAddress: range.startAddress,
-          endAddress: range.endAddress,
-        })
-      }
-    })
-    args.state.workbook.listSorts(sheetName).forEach((sort) => {
-      const range = rewriteRangeForStructuralTransform(sort.range.startAddress, sort.range.endAddress, transform)
-      args.state.workbook.deleteSort(sheetName, sort.range)
-      if (!range) {
-        return
-      }
-      args.state.workbook.setSort(
-        sheetName,
-        { ...sort.range, startAddress: range.startAddress, endAddress: range.endAddress },
-        sort.keys.map((key) => ({
-          ...key,
-          keyAddress: rewriteAddressForStructuralTransform(key.keyAddress, transform) ?? key.keyAddress,
-        })),
-      )
-    })
-    args.state.workbook.listDataValidations(sheetName).forEach((validation) => {
-      const range = rewriteRangeForStructuralTransform(validation.range.startAddress, validation.range.endAddress, transform)
-      args.state.workbook.deleteDataValidation(sheetName, validation.range)
-      if (!range) {
-        return
-      }
-      const nextValidation = structuredClone(validation)
-      nextValidation.range = {
-        ...validation.range,
-        startAddress: range.startAddress,
-        endAddress: range.endAddress,
-      }
-      if (nextValidation.rule.kind === 'list' && nextValidation.rule.source) {
-        switch (nextValidation.rule.source.kind) {
-          case 'cell-ref': {
-            if (nextValidation.rule.source.sheetName !== sheetName) {
-              break
-            }
-            const nextAddress = rewriteAddressForStructuralTransform(nextValidation.rule.source.address, transform)
-            if (!nextAddress) {
-              return
-            }
-            nextValidation.rule.source.address = nextAddress
-            break
-          }
-          case 'range-ref': {
-            if (nextValidation.rule.source.sheetName !== sheetName) {
-              break
-            }
-            const nextSourceRange = rewriteRangeForStructuralTransform(
-              nextValidation.rule.source.startAddress,
-              nextValidation.rule.source.endAddress,
-              transform,
-            )
-            if (!nextSourceRange) {
-              return
-            }
-            nextValidation.rule.source.startAddress = nextSourceRange.startAddress
-            nextValidation.rule.source.endAddress = nextSourceRange.endAddress
-            break
-          }
-          case 'named-range':
-          case 'structured-ref':
-            break
-        }
-      }
-      args.state.workbook.setDataValidation(nextValidation)
-    })
-    args.state.workbook.listConditionalFormats(sheetName).forEach((format) => {
-      const range = rewriteRangeForStructuralTransform(format.range.startAddress, format.range.endAddress, transform)
-      args.state.workbook.deleteConditionalFormat(format.id)
-      if (!range) {
-        return
-      }
-      args.state.workbook.setConditionalFormat({
-        ...format,
-        range: {
-          ...format.range,
-          startAddress: range.startAddress,
-          endAddress: range.endAddress,
-        },
-      })
-    })
-    args.state.workbook.listRangeProtections(sheetName).forEach((protection) => {
-      const range = rewriteRangeForStructuralTransform(protection.range.startAddress, protection.range.endAddress, transform)
-      args.state.workbook.deleteRangeProtection(protection.id)
-      if (!range) {
-        return
-      }
-      args.state.workbook.setRangeProtection({
-        ...protection,
-        range: {
-          ...protection.range,
-          startAddress: range.startAddress,
-          endAddress: range.endAddress,
-        },
-      })
-    })
-    args.state.workbook.listCommentThreads(sheetName).forEach((thread) => {
-      const nextAddress = rewriteAddressForStructuralTransform(thread.address, transform)
-      args.state.workbook.deleteCommentThread(sheetName, thread.address)
-      if (!nextAddress) {
-        return
-      }
-      args.state.workbook.setCommentThread({
-        ...thread,
-        address: nextAddress,
-      })
-    })
-    args.state.workbook.listNotes(sheetName).forEach((note) => {
-      const nextAddress = rewriteAddressForStructuralTransform(note.address, transform)
-      args.state.workbook.deleteNote(sheetName, note.address)
-      if (!nextAddress) {
-        return
-      }
-      args.state.workbook.setNote({
-        ...note,
-        address: nextAddress,
-      })
-    })
-    const rewrittenStyleRanges: SheetStyleRangeSnapshot[] = []
-    const rewrittenFormatRanges: SheetFormatRangeSnapshot[] = []
-    args.state.workbook.listStyleRanges(sheetName).forEach((record) => {
-      const range = rewriteRangeForStructuralTransform(record.range.startAddress, record.range.endAddress, transform)
-      if (!range) {
-        return
-      }
-      rewrittenStyleRanges.push({
-        range: {
-          ...record.range,
-          startAddress: range.startAddress,
-          endAddress: range.endAddress,
-        },
-        styleId: record.styleId,
-      })
-    })
-    args.state.workbook.setStyleRanges(sheetName, rewrittenStyleRanges)
-    args.state.workbook.listFormatRanges(sheetName).forEach((record) => {
-      const range = rewriteRangeForStructuralTransform(record.range.startAddress, record.range.endAddress, transform)
-      if (!range) {
-        return
-      }
-      rewrittenFormatRanges.push({
-        range: {
-          ...record.range,
-          startAddress: range.startAddress,
-          endAddress: range.endAddress,
-        },
-        formatId: record.formatId,
-      })
-    })
-    args.state.workbook.setFormatRanges(sheetName, rewrittenFormatRanges)
-    const freezePane = args.state.workbook.getFreezePane(sheetName)
-    if (freezePane) {
-      const nextRows = transform.axis === 'row' ? mapStructuralBoundary(freezePane.rows, transform) : freezePane.rows
-      const nextCols = transform.axis === 'column' ? mapStructuralBoundary(freezePane.cols, transform) : freezePane.cols
-      if (nextRows <= 0 && nextCols <= 0) {
-        args.state.workbook.clearFreezePane(sheetName)
-      } else {
-        args.state.workbook.setFreezePane(sheetName, nextRows, nextCols)
-      }
-    }
-    args.state.workbook.listPivots().forEach((pivot) => {
-      const nextAddress = pivot.sheetName === sheetName ? rewriteAddressForStructuralTransform(pivot.address, transform) : pivot.address
-      const nextSource =
-        pivot.source.sheetName === sheetName
-          ? rewriteRangeForStructuralTransform(pivot.source.startAddress, pivot.source.endAddress, transform)
-          : { startAddress: pivot.source.startAddress, endAddress: pivot.source.endAddress }
-      if (!nextAddress || !nextSource) {
-        args.clearOwnedPivot(pivot)
-        args.state.workbook.deletePivot(pivot.sheetName, pivot.address)
-        return
-      }
-      if (nextAddress !== pivot.address) {
-        args.clearOwnedPivot(pivot)
-        args.state.workbook.deletePivot(pivot.sheetName, pivot.address)
-      }
-      args.state.workbook.setPivot({
-        ...pivot,
-        address: nextAddress,
-        source: {
-          ...pivot.source,
-          startAddress: nextSource.startAddress,
-          endAddress: nextSource.endAddress,
-        },
-      })
-    })
-    args.state.workbook.listCharts().forEach((chart) => {
-      const nextAddress = chart.sheetName === sheetName ? rewriteAddressForStructuralTransform(chart.address, transform) : chart.address
-      const nextSource =
-        chart.source.sheetName === sheetName
-          ? rewriteRangeForStructuralTransform(chart.source.startAddress, chart.source.endAddress, transform)
-          : { startAddress: chart.source.startAddress, endAddress: chart.source.endAddress }
-      if (!nextAddress || !nextSource) {
-        args.state.workbook.deleteChart(chart.id)
-        return
-      }
-      args.state.workbook.setChart({
-        ...chart,
-        address: nextAddress,
-        source: {
-          ...chart.source,
-          startAddress: nextSource.startAddress,
-          endAddress: nextSource.endAddress,
-        },
-      })
-    })
-    args.state.workbook.listImages().forEach((image) => {
-      if (image.sheetName !== sheetName) {
-        return
-      }
-      const nextAddress = rewriteAddressForStructuralTransform(image.address, transform)
-      if (!nextAddress) {
-        args.state.workbook.deleteImage(image.id)
-        return
-      }
-      args.state.workbook.setImage({
-        ...image,
-        address: nextAddress,
-      })
-    })
-    args.state.workbook.listShapes().forEach((shape) => {
-      if (shape.sheetName !== sheetName) {
-        return
-      }
-      const nextAddress = rewriteAddressForStructuralTransform(shape.address, transform)
-      if (!nextAddress) {
-        args.state.workbook.deleteShape(shape.id)
-        return
-      }
-      args.state.workbook.setShape({
-        ...shape,
-        address: nextAddress,
-      })
-    })
-    return { changedTableNames }
-  }
-
-  const isCellIndexMapped = (cellIndex: number): boolean => {
-    const sheetId = args.state.workbook.cellStore.sheetIds[cellIndex]
-    const position = args.state.workbook.getCellPosition(cellIndex)
-    if (sheetId === undefined || !position || !Number.isFinite(position.row) || !Number.isFinite(position.col)) {
-      return false
-    }
-    const sheet = args.state.workbook.getSheetById(sheetId)
-    return (
-      (sheet?.structureVersion === 1 ? sheet.grid.getPhysical(position.row, position.col) : sheet?.grid.get(position.row, position.col)) ===
-      cellIndex
-    )
-  }
-
-  const structuralAxisIndexAffected = (axisIndex: number, transform: StructuralAxisTransform): boolean => {
-    const nextIndex = mapStructuralAxisIndex(axisIndex, transform)
-    return nextIndex === undefined || nextIndex !== axisIndex
   }
 
   const collectStructuralFormulaImpacts = (argsForImpact: {
@@ -1279,7 +268,7 @@ export function createEngineStructureService(args: {
         }
         const representativeCellIndex = family.runs.find((run) => run.cellIndices.length > 0)?.cellIndices[0]
         const representative = representativeCellIndex === undefined ? undefined : args.state.formulas.get(representativeCellIndex)
-        if (!representative || !canDeferSimpleStructuralFormulaSource(representative, argsForImpact.transform)) {
+        if (!representative || !canDeferSimpleStructuralFormulaSource(args, representative, argsForImpact.transform)) {
           canDeferFamilies = false
           return
         }
@@ -1433,7 +422,7 @@ export function createEngineStructureService(args: {
       if (!formula) {
         return false
       }
-      if (canDeferSimpleStructuralFormulaSource(formula, argsForImpact.transform)) {
+      if (canDeferSimpleStructuralFormulaSource(args, formula, argsForImpact.transform)) {
         formula.structuralSourceTransform = ownedPreservingSourceTransform()
         hasDeferredStructuralFormulaSources = true
         preservedCellIndices.add(cellIndex)
@@ -1443,11 +432,11 @@ export function createEngineStructureService(args: {
       if (ownerAxisIndex === undefined || mapStructuralAxisIndex(ownerAxisIndex, argsForImpact.transform) === undefined) {
         return false
       }
-      const preservesValue = canDeferSimpleStructuralFormulaSource(formula, argsForImpact.transform)
+      const preservesValue = canDeferSimpleStructuralFormulaSource(args, formula, argsForImpact.transform)
       const preservesBinding =
-        preservesValue || canDeferSimpleDeleteStructuralFormulaSource(formula, argsForImpact.targetSheetId, argsForImpact.transform)
+        preservesValue || canDeferSimpleDeleteStructuralFormulaSource(args, formula, argsForImpact.targetSheetId, argsForImpact.transform)
       const becomesRefError =
-        !preservesBinding && canDeferSimpleDeleteRefErrorFormulaSource(formula, argsForImpact.targetSheetId, argsForImpact.transform)
+        !preservesBinding && canDeferSimpleDeleteRefErrorFormulaSource(args, formula, argsForImpact.targetSheetId, argsForImpact.transform)
       const dependsOnPrecomputedRefError = formula.dependencyIndices.some((dependencyCellIndex) =>
         precomputedChangedInputCellIndices.has(dependencyCellIndex),
       )
@@ -1527,7 +516,7 @@ export function createEngineStructureService(args: {
       if (formula.structuralSourceTransform !== undefined) {
         return
       }
-      if (!isCellIndexMapped(cellIndex)) {
+      if (!isCellIndexMapped(args, cellIndex)) {
         return
       }
       const ownerSheetName = args.state.workbook.getSheetNameById(args.state.workbook.cellStore.sheetIds[cellIndex]!)
@@ -1554,7 +543,7 @@ export function createEngineStructureService(args: {
       const touchesChangedTable =
         argsForImpact.changedTableNames.size > 0 &&
         formula.compiled.symbolicTables.some((name) => argsForImpact.changedTableNames.has(name))
-      if (!touchesChangedName && !touchesChangedTable && canDeferSimpleStructuralFormulaSource(formula, argsForImpact.transform)) {
+      if (!touchesChangedName && !touchesChangedTable && canDeferSimpleStructuralFormulaSource(args, formula, argsForImpact.transform)) {
         formula.structuralSourceTransform =
           ownerSheetName === argsForImpact.sheetName
             ? ownedPreservingSourceTransform()
@@ -1644,81 +633,13 @@ export function createEngineStructureService(args: {
   }
 
   const materializeDeferredStructuralFormulaSources = (): void => {
-    if (!hasDeferredStructuralFormulaSources) {
-      return
-    }
-    const inputs: StructuralFormulaRebindInput[] = []
-    const enqueueMaterializedFormulaSource = (
-      formula: RuntimeFormula,
-      cellIndex: number,
-      structuralSourceTransform: NonNullable<RuntimeFormula['structuralSourceTransform']>,
-    ): void => {
-      if (
-        formula.directLookup !== undefined ||
-        formula.directCriteria !== undefined ||
-        (formula.directAggregate === undefined && formula.rangeDependencies.length !== 0) ||
-        !isCellIndexMapped(cellIndex)
-      ) {
-        return
-      }
-      const sheetId = args.state.workbook.cellStore.sheetIds[cellIndex]
-      const ownerPosition = args.state.workbook.getCellPosition(cellIndex)
-      if (sheetId === undefined || !ownerPosition) {
-        return
-      }
-      const ownerSheetName = args.state.workbook.getSheetNameById(sheetId)
-      if (!ownerSheetName) {
-        return
-      }
-      const source = getRuntimeFormulaSource(formula, structuralSourceTransform)
-      const compiled = getRuntimeFormulaStructuralCompiled(formula, structuralSourceTransform)
-      const preservesValue = structuralSourceTransform.preservesValue
-      inputs.push({
-        cellIndex,
-        ownerSheetName,
-        ownerRow: ownerPosition.row,
-        ownerCol: ownerPosition.col,
-        source,
-        ...(compiled
-          ? {
-              compiled,
-              preservesBinding: true,
-              preservesValue,
-            }
-          : {}),
-      })
-    }
-    args.consumeFormulaFamilyStructuralSourceTransforms().forEach((entry) => {
-      entry.cellIndices.forEach((cellIndex) => {
-        const formula = args.state.formulas.get(cellIndex)
-        if (!formula || formula.structuralSourceTransform !== undefined) {
-          return
-        }
-        enqueueMaterializedFormulaSource(formula, cellIndex, entry.transform)
-      })
-    })
-    args.state.formulas.forEach((formula, cellIndex) => {
-      if (formula.structuralSourceTransform === undefined) {
-        return
-      }
-      enqueueMaterializedFormulaSource(formula, cellIndex, formula.structuralSourceTransform)
-    })
-    if (inputs.length > 0) {
-      args.rebindFormulaCells(inputs)
-    }
-    inputs.forEach(({ cellIndex }) => {
-      const formula = args.state.formulas.get(cellIndex)
-      if (formula) {
-        formula.structuralSourceTransform = undefined
-      }
-    })
-    hasDeferredStructuralFormulaSources = false
+    hasDeferredStructuralFormulaSources = materializeDeferredStructuralFormulaSourcesNow(args, hasDeferredStructuralFormulaSources)
   }
 
   return {
     captureSheetCellState(sheetName) {
       return Effect.try({
-        try: () => captureSheetCellState(sheetName),
+        try: () => captureSheetCellState(args, sheetName),
         catch: (cause) =>
           new EngineStructureError({
             message: `Failed to capture sheet cell state for ${sheetName}`,
@@ -1728,7 +649,7 @@ export function createEngineStructureService(args: {
     },
     captureRowRangeCellState(sheetName, start, count) {
       return Effect.try({
-        try: () => captureAxisRangeCellState(sheetName, 'row', start, count),
+        try: () => captureAxisRangeCellState(args, sheetName, 'row', start, count),
         catch: (cause) =>
           new EngineStructureError({
             message: `Failed to capture row state for ${sheetName}`,
@@ -1738,7 +659,7 @@ export function createEngineStructureService(args: {
     },
     captureColumnRangeCellState(sheetName, start, count) {
       return Effect.try({
-        try: () => captureAxisRangeCellState(sheetName, 'column', start, count),
+        try: () => captureAxisRangeCellState(args, sheetName, 'column', start, count),
         catch: (cause) =>
           new EngineStructureError({
             message: `Failed to capture column state for ${sheetName}`,
@@ -1764,9 +685,9 @@ export function createEngineStructureService(args: {
           const sheetName = op.sheetName
           const targetSheetId = args.state.workbook.getSheet(sheetName)?.id
 
-          clearPivotOutputsForSheet(sheetName)
-          const changedDefinedNames = rewriteDefinedNamesForStructuralTransform(sheetName, transform)
-          const { changedTableNames } = rewriteWorkbookMetadataForStructuralTransform(sheetName, transform)
+          clearPivotOutputsForSheet(args, sheetName)
+          const changedDefinedNames = rewriteDefinedNamesForStructuralTransform(args, sheetName, transform)
+          const { changedTableNames } = rewriteWorkbookMetadataForStructuralTransform(args, sheetName, transform)
           const impactedFormulas = collectStructuralFormulaImpacts({
             targetSheetId,
             transform,
@@ -1804,9 +725,7 @@ export function createEngineStructureService(args: {
 
           args.state.workbook.applyPlannedStructuralTransaction(transaction)
 
-          const structuralRangeDependencies = collectStructuralRangeDependencies({
-            formulaCellIndices: impactedFormulas.formulaCellIndices,
-          })
+          const structuralRangeDependencies = collectStructuralRangeDependencies(args, impactedFormulas.formulaCellIndices)
 
           let hadCycleFormulas: boolean | undefined
           const hasCycleFormulas = (): boolean => {
@@ -1831,16 +750,16 @@ export function createEngineStructureService(args: {
             (cellIndex) => ((args.state.workbook.cellStore.flags[cellIndex] ?? 0) & CellFlags.InCycle) !== 0,
           ).length
           transaction.removedCellIndices.forEach((cellIndex) => {
-            clearRemovedCellRuntimeState(cellIndex)
+            clearRemovedCellRuntimeState(args, cellIndex)
           })
 
-          clearSpillMetadataForSheet(sheetName)
+          clearSpillMetadataForSheet(args, sheetName)
           args.retargetRangeDependencies(transaction, structuralRangeDependencies)
           const directRetargetedFormulaCellIndices: number[] = []
           const directRetargetedPreservedFormulaCellIndices: number[] = []
           const precomputedDirectAggregateValueCellIndices = new Set(impactedFormulas.precomputedDirectAggregateValueCellIndices)
           impactedFormulas.directAggregateRetargetCellIndices.forEach((cellIndex) => {
-            if (!isCellIndexMapped(cellIndex)) {
+            if (!isCellIndexMapped(args, cellIndex)) {
               return
             }
             const retargeted = args.retargetDirectAggregateFormulaForStructuralTransform(
@@ -1863,7 +782,7 @@ export function createEngineStructureService(args: {
             hasDeferredStructuralFormulaSources = true
           })
           const rebindResolution = resolveStructuralFormulaRebindInputs({
-            formulaCellIndices: impactedFormulas.rebindCellIndices.filter((cellIndex) => isCellIndexMapped(cellIndex)),
+            formulaCellIndices: impactedFormulas.rebindCellIndices.filter((cellIndex) => isCellIndexMapped(args, cellIndex)),
             sheetName,
             transform,
             transaction,
@@ -1901,7 +820,7 @@ export function createEngineStructureService(args: {
           if (args.state.counters && remainingRebindInputs.length > 0) {
             addEngineCounter(args.state.counters, 'structuralFormulaRebindInputs', remainingRebindInputs.length)
           }
-          const formulaCellIndices = impactedFormulas.formulaCellIndices.filter((cellIndex) => isCellIndexMapped(cellIndex))
+          const formulaCellIndices = impactedFormulas.formulaCellIndices.filter((cellIndex) => isCellIndexMapped(args, cellIndex))
           const onlyDirectAggregateFormulaCells =
             formulaCellIndices.length > 0 &&
             formulaCellIndices.every((cellIndex) => args.state.formulas.get(cellIndex)?.directAggregate !== undefined)
@@ -1918,7 +837,9 @@ export function createEngineStructureService(args: {
           ])
           const lostSurvivingFormulaCells = impactedFormulas.formulaCellIndices.some(
             (cellIndex) =>
-              !reboundFormulaCellIndices.has(cellIndex) && !isCellIndexMapped(cellIndex) && !removedFormulaCellIndexSet.has(cellIndex),
+              !reboundFormulaCellIndices.has(cellIndex) &&
+              !isCellIndexMapped(args, cellIndex) &&
+              !removedFormulaCellIndexSet.has(cellIndex),
           )
           const hasNonPreservedRebind = remainingRebindInputs.some((input) => input.preservesBinding !== true)
           const needsDeleteAcyclicRebindCheck =

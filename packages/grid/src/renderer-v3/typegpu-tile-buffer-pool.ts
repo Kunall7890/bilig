@@ -1,5 +1,5 @@
 import type { TgpuBindGroup } from 'typegpu'
-import { parseGpuColor } from '../gridGpuScene.js'
+import { parseGpuColor } from '../gridGpuPrimitives.js'
 import { noteTypeGpuBufferAllocation, noteTypeGpuTextPayload } from '../grid-render-counters.js'
 import {
   buildTextDecorationRectsFromRuns,
@@ -44,7 +44,6 @@ export {
   areGridTextTileRevisionKeysEqualV3,
   resolveGridRectTileRevisionKeyV3,
   resolveGridTextTileRevisionKeyV3,
-  resolveGridTileDirtyContentMaskV3,
   resolveMissingTextGlyphRunSpansV3,
   shouldSyncGridRectTileResourceV3,
   shouldSyncGridTextTileResourceV3,

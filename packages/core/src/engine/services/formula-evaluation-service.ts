@@ -17,119 +17,34 @@ import { CellFlags } from '../../cell-store.js'
 import { definedNameValueToCellValue } from '../../engine-metadata-utils.js'
 import { emptyValue, errorValue } from '../../engine-value-utils.js'
 import { addEngineCounter } from '../../perf/engine-counters.js'
-import type {
-  EngineRuntimeState,
-  PreparedApproximateVectorLookup,
-  PreparedExactVectorLookup,
-  RuntimeDirectCriteriaOperand,
-  RuntimeDirectScalarOperand,
-  RuntimeFormula,
-  SpillMaterialization,
-} from '../runtime-state.js'
+import type { EngineRuntimeState, RuntimeDirectCriteriaOperand, RuntimeFormula, SpillMaterialization } from '../runtime-state.js'
 import { EngineFormulaEvaluationError } from '../errors.js'
 import type { CriterionRangeCacheService } from './criterion-range-cache-service.js'
 import type { ExactColumnIndexService } from './exact-column-index-service.js'
-import type { EngineRuntimeColumnStoreService, RuntimeColumnSlice } from './runtime-column-store-service.js'
+import type { EngineRuntimeColumnStoreService } from './runtime-column-store-service.js'
 import type { RangeAggregateCacheService } from './range-aggregate-cache-service.js'
 import type { SortedColumnSearchService } from './sorted-column-search-service.js'
+import { tryEvaluateDirectVectorLookup } from './formula-evaluation-direct-lookup.js'
+import { tryEvaluateDirectScalar } from './formula-evaluation-direct-scalar.js'
+import {
+  cellValueCriteriaString,
+  cellValuesEqual,
+  decodeErrorCode,
+  directCriteriaCacheValueKey,
+  directErrorResult,
+  directNumberResult,
+  evaluationErrorMessage,
+  numericLikeValueAt,
+  offsetDirectAggregateResult,
+  referenceReplacementKey,
+  strictNumericAggregateCandidateAt,
+} from './formula-evaluation-helpers.js'
+import type { EngineFormulaEvaluationService } from './formula-evaluation-service-types.js'
 
-function decodeErrorCode(rawCode: number | undefined): ErrorCode {
-  return rawCode ?? ErrorCode.None
-}
+export type { EngineFormulaEvaluationService } from './formula-evaluation-service-types.js'
 
 const DIRECT_AGGREGATE_SCAN_MAX_LENGTH = 64
 const DIRECT_AGGREGATE_PREFIX_MIN_LENGTH = 16
-
-export interface EngineFormulaEvaluationService {
-  readonly evaluateDirectLookupFormula: (cellIndex: number) => Effect.Effect<number[] | undefined, EngineFormulaEvaluationError>
-  readonly evaluateDirectLookupFormulaNow: (cellIndex: number) => number[] | undefined
-  readonly evaluateUnsupportedFormula: (cellIndex: number) => Effect.Effect<number[], EngineFormulaEvaluationError>
-  readonly resolveStructuredReference: (
-    tableName: string,
-    columnName: string,
-  ) => Effect.Effect<FormulaNode | undefined, EngineFormulaEvaluationError>
-  readonly resolveSpillReference: (
-    currentSheetName: string,
-    sheetName: string | undefined,
-    address: string,
-  ) => Effect.Effect<FormulaNode | undefined, EngineFormulaEvaluationError>
-  readonly resolveMultipleOperations: (request: {
-    formulaSheetName: string
-    formulaAddress: string
-    rowCellSheetName: string
-    rowCellAddress: string
-    rowReplacementSheetName: string
-    rowReplacementAddress: string
-    columnCellSheetName?: string
-    columnCellAddress?: string
-    columnReplacementSheetName?: string
-    columnReplacementAddress?: string
-  }) => Effect.Effect<CellValue, EngineFormulaEvaluationError>
-}
-
-function evaluationErrorMessage(message: string, cause: unknown): string {
-  return cause instanceof Error && cause.message.length > 0 ? cause.message : message
-}
-
-function decodeRuntimeTag(rawTag: number | undefined): ValueTag {
-  if (rawTag === undefined) {
-    return ValueTag.Empty
-  }
-  switch (rawTag) {
-    case 1:
-      return ValueTag.Number
-    case 2:
-      return ValueTag.Boolean
-    case 3:
-      return ValueTag.String
-    case 4:
-      return ValueTag.Error
-    case 0:
-    default:
-      return ValueTag.Empty
-  }
-}
-
-function cellValueCriteriaString(value: CellValue): string {
-  switch (value.tag) {
-    case ValueTag.Empty:
-      return ''
-    case ValueTag.Number:
-      return String(Object.is(value.value, -0) ? 0 : value.value)
-    case ValueTag.Boolean:
-      return value.value ? 'TRUE' : 'FALSE'
-    case ValueTag.String:
-      return value.value
-    case ValueTag.Error:
-      return String(value.code)
-  }
-}
-
-function referenceReplacementKey(sheetName: string, address: string): string {
-  return `${sheetName.trim().toUpperCase()}!${address.trim().toUpperCase()}`
-}
-
-function cellValuesEqual(left: CellValue, right: CellValue): boolean {
-  if (left.tag !== right.tag) {
-    return false
-  }
-  switch (left.tag) {
-    case ValueTag.Empty:
-      return true
-    case ValueTag.Number:
-      return right.tag === ValueTag.Number && left.value === right.value
-    case ValueTag.Boolean:
-      return right.tag === ValueTag.Boolean && left.value === right.value
-    case ValueTag.String:
-      return right.tag === ValueTag.String && left.value === right.value
-    case ValueTag.Error:
-      return right.tag === ValueTag.Error && left.code === right.code
-  }
-}
-
-function sameExactNumericValue(left: number, right: number): boolean {
-  return left === right || Object.is(left, right)
-}
 
 export function createEngineFormulaEvaluationService(args: {
   readonly state: Pick<EngineRuntimeState, 'workbook' | 'strings' | 'formulas' | 'counters' | 'getUseColumnIndex'>
@@ -149,29 +64,6 @@ export function createEngineFormulaEvaluationService(args: {
 }): EngineFormulaEvaluationService {
   const emptyChangedCellIndices: number[] = []
   const directCriteriaAggregateCache = new Map<string, CellValue>()
-  const directNumberResult = (value: number): CellValue => ({ tag: ValueTag.Number, value })
-
-  const directErrorResult = (code: ErrorCode): CellValue => ({ tag: ValueTag.Error, code })
-
-  const offsetDirectAggregateResult = (directAggregate: RuntimeFormula['directAggregate'], value: CellValue): CellValue => {
-    const offset = directAggregate?.resultOffset
-    return offset !== undefined && value.tag === ValueTag.Number ? directNumberResult(value.value + offset) : value
-  }
-
-  const directCriteriaCacheValueKey = (value: CellValue): string => {
-    switch (value.tag) {
-      case ValueTag.Empty:
-        return 'e:'
-      case ValueTag.Number:
-        return `n:${Object.is(value.value, -0) ? 0 : value.value}`
-      case ValueTag.Boolean:
-        return value.value ? 'b:1' : 'b:0'
-      case ValueTag.String:
-        return `s:${value.value}`
-      case ValueTag.Error:
-        return `r:${value.code}`
-    }
-  }
 
   const directCriteriaRangeVersionKey = (range: { sheetName: string; rowStart: number; rowEnd: number; col: number }): string => {
     const sheet = args.state.workbook.getSheet(range.sheetName)
@@ -211,146 +103,11 @@ export function createEngineFormulaEvaluationService(args: {
     return sheet ? readCellValueByIndex(sheet.logical.getVisibleCell(row, col)) : errorValue(ErrorCode.Ref)
   }
 
-  const numericLikeValueAt = (slice: RuntimeColumnSlice, offset: number): number | undefined => {
-    const tag = decodeRuntimeTag(slice.tags[offset])
-    switch (tag) {
-      case ValueTag.Number:
-        return slice.numbers[offset] ?? 0
-      case ValueTag.Boolean:
-        return (slice.numbers[offset] ?? 0) !== 0 ? 1 : 0
-      case ValueTag.Empty:
-        return 0
-      case ValueTag.String:
-      case ValueTag.Error:
-      default:
-        return undefined
-    }
-  }
-
-  const strictNumericAggregateCandidateAt = (slice: RuntimeColumnSlice, offset: number): number | undefined => {
-    return slice.tags[offset] === ValueTag.Number ? (slice.numbers[offset] ?? 0) : undefined
-  }
-
-  const refreshDirectExactLookup = (
-    directLookup: Extract<NonNullable<RuntimeFormula['directLookup']>, { kind: 'exact' }>,
-  ): PreparedExactVectorLookup => {
-    const prepared = directLookup.prepared
-    const lookupSheet = args.state.workbook.getSheet(prepared.sheetName)
-    const currentColumnVersion = lookupSheet?.columnVersions[prepared.col] ?? 0
-    const currentStructureVersion = lookupSheet?.structureVersion ?? 0
-    if (currentColumnVersion === prepared.columnVersion && currentStructureVersion === prepared.structureVersion) {
-      return prepared
-    }
-    const refreshed = args.exactLookup.prepareVectorLookup({
-      sheetName: prepared.sheetName,
-      rowStart: prepared.rowStart,
-      rowEnd: prepared.rowEnd,
-      col: prepared.col,
-    })
-    directLookup.prepared = refreshed
-    return refreshed
-  }
-
-  const refreshDirectApproximateLookup = (
-    directLookup: Extract<NonNullable<RuntimeFormula['directLookup']>, { kind: 'approximate' }>,
-  ): PreparedApproximateVectorLookup => {
-    const prepared = directLookup.prepared
-    const lookupSheet = args.state.workbook.getSheet(prepared.sheetName)
-    const currentColumnVersion = lookupSheet?.columnVersions[prepared.col] ?? 0
-    const currentStructureVersion = lookupSheet?.structureVersion ?? 0
-    if (currentColumnVersion === prepared.columnVersion && currentStructureVersion === prepared.structureVersion) {
-      return prepared
-    }
-    const refreshed = args.sortedLookup.prepareVectorLookup({
-      sheetName: prepared.sheetName,
-      rowStart: prepared.rowStart,
-      rowEnd: prepared.rowEnd,
-      col: prepared.col,
-    })
-    directLookup.prepared = refreshed
-    return refreshed
-  }
-
-  const refreshDirectExactUniformLookup = (
-    formula: RuntimeFormula,
-    directLookup: Extract<NonNullable<RuntimeFormula['directLookup']>, { kind: 'exact-uniform-numeric' }>,
-  ):
-    | Extract<NonNullable<RuntimeFormula['directLookup']>, { kind: 'exact-uniform-numeric' }>
-    | Extract<NonNullable<RuntimeFormula['directLookup']>, { kind: 'exact' }> => {
-    const lookupSheet = args.state.workbook.getSheetById(directLookup.sheetId)
-    const currentColumnVersion = lookupSheet?.columnVersions[directLookup.col] ?? 0
-    const currentStructureVersion = lookupSheet?.structureVersion ?? 0
-    if (
-      currentStructureVersion === directLookup.structureVersion &&
-      (currentColumnVersion === directLookup.columnVersion || currentColumnVersion === directLookup.tailPatch?.columnVersion)
-    ) {
-      return directLookup
-    }
-    const refreshed = args.exactLookup.prepareVectorLookup({
-      sheetName: directLookup.sheetName,
-      rowStart: directLookup.rowStart,
-      rowEnd: directLookup.rowEnd,
-      col: directLookup.col,
-    })
-    if (refreshed.comparableKind === 'numeric' && refreshed.uniformStart !== undefined && refreshed.uniformStep !== undefined) {
-      directLookup.length = refreshed.length
-      directLookup.columnVersion = refreshed.columnVersion
-      directLookup.structureVersion = refreshed.structureVersion
-      directLookup.sheetColumnVersions = refreshed.sheetColumnVersions
-      directLookup.start = refreshed.uniformStart
-      directLookup.step = refreshed.uniformStep
-      delete directLookup.tailPatch
-      return directLookup
-    }
-    const fallback = {
-      kind: 'exact' as const,
-      operandCellIndex: directLookup.operandCellIndex,
-      prepared: refreshed,
-      searchMode: directLookup.searchMode,
-    }
-    formula.directLookup = fallback
-    return fallback
-  }
-
-  const refreshDirectApproximateUniformLookup = (
-    formula: RuntimeFormula,
-    directLookup: Extract<NonNullable<RuntimeFormula['directLookup']>, { kind: 'approximate-uniform-numeric' }>,
-  ):
-    | Extract<NonNullable<RuntimeFormula['directLookup']>, { kind: 'approximate-uniform-numeric' }>
-    | Extract<NonNullable<RuntimeFormula['directLookup']>, { kind: 'approximate' }> => {
-    const lookupSheet = args.state.workbook.getSheetById(directLookup.sheetId)
-    const currentColumnVersion = lookupSheet?.columnVersions[directLookup.col] ?? 0
-    const currentStructureVersion = lookupSheet?.structureVersion ?? 0
-    if (
-      currentStructureVersion === directLookup.structureVersion &&
-      (currentColumnVersion === directLookup.columnVersion || currentColumnVersion === directLookup.tailPatch?.columnVersion)
-    ) {
-      return directLookup
-    }
-    const refreshed = args.sortedLookup.prepareVectorLookup({
-      sheetName: directLookup.sheetName,
-      rowStart: directLookup.rowStart,
-      rowEnd: directLookup.rowEnd,
-      col: directLookup.col,
-    })
-    if (refreshed.comparableKind === 'numeric' && refreshed.uniformStart !== undefined && refreshed.uniformStep !== undefined) {
-      directLookup.length = refreshed.length
-      directLookup.columnVersion = refreshed.columnVersion
-      directLookup.structureVersion = refreshed.structureVersion
-      directLookup.sheetColumnVersions = refreshed.sheetColumnVersions
-      directLookup.start = refreshed.uniformStart
-      directLookup.step = refreshed.uniformStep
-      delete directLookup.tailPatch
-      return directLookup
-    }
-    const fallback = {
-      kind: 'approximate' as const,
-      operandCellIndex: directLookup.operandCellIndex,
-      prepared: refreshed,
-      matchMode: directLookup.matchMode,
-    }
-    formula.directLookup = fallback
-    return fallback
+  const directVectorLookupContext = {
+    state: args.state,
+    exactLookup: args.exactLookup,
+    sortedLookup: args.sortedLookup,
+    readCellValueByIndex,
   }
 
   const readRangeValues = (
@@ -442,145 +199,6 @@ export function createEngineFormulaEvaluationService(args: {
     },
   ) => {
     return args.sortedLookup.findVectorMatch(request)
-  }
-
-  const tryEvaluateDirectVectorLookup = (formula: RuntimeFormula): CellValue | undefined => {
-    const directLookup = formula.directLookup
-    if (!directLookup) {
-      return undefined
-    }
-    const cellStore = args.state.workbook.cellStore
-    if (directLookup.kind === 'exact-uniform-numeric') {
-      const refreshed = refreshDirectExactUniformLookup(formula, directLookup)
-      if (refreshed.kind !== 'exact-uniform-numeric') {
-        return tryEvaluateDirectVectorLookup(formula)
-      }
-      const tag = cellStore.tags[refreshed.operandCellIndex]
-      if (tag === ValueTag.Error) {
-        return undefined
-      }
-      if (tag !== ValueTag.Number) {
-        return directErrorResult(ErrorCode.NA)
-      }
-      const numericValue = Object.is(cellStore.numbers[refreshed.operandCellIndex] ?? 0, -0)
-        ? 0
-        : (cellStore.numbers[refreshed.operandCellIndex] ?? 0)
-      const tailPatch = refreshed.tailPatch
-      if (tailPatch !== undefined) {
-        if (sameExactNumericValue(numericValue, tailPatch.newNumeric)) {
-          return directNumberResult(tailPatch.row - refreshed.rowStart + 1)
-        }
-        if (sameExactNumericValue(numericValue, tailPatch.oldNumeric)) {
-          return directErrorResult(ErrorCode.NA)
-        }
-      }
-      if (refreshed.step === 1) {
-        if (!Number.isInteger(numericValue)) {
-          return directErrorResult(ErrorCode.NA)
-        }
-        const position = numericValue - refreshed.start + 1
-        return position >= 1 && position <= refreshed.length ? directNumberResult(position) : directErrorResult(ErrorCode.NA)
-      }
-      if (refreshed.step === -1) {
-        if (!Number.isInteger(numericValue)) {
-          return directErrorResult(ErrorCode.NA)
-        }
-        const position = refreshed.start - numericValue + 1
-        return position >= 1 && position <= refreshed.length ? directNumberResult(position) : directErrorResult(ErrorCode.NA)
-      }
-      const relative = (numericValue - refreshed.start) / refreshed.step
-      return Number.isInteger(relative) && relative >= 0 && relative < refreshed.length
-        ? directNumberResult(relative + 1)
-        : directErrorResult(ErrorCode.NA)
-    }
-    if (directLookup.kind === 'exact') {
-      const prepared = refreshDirectExactLookup(directLookup)
-      const cellIndex = directLookup.operandCellIndex
-      const result = args.exactLookup.findPreparedVectorMatch({
-        lookupValue: readCellValueByIndex(cellIndex),
-        prepared,
-        searchMode: directLookup.searchMode,
-      })
-      if (!result.handled) {
-        return undefined
-      }
-      return result.position === undefined ? directErrorResult(ErrorCode.NA) : directNumberResult(result.position)
-    }
-    if (directLookup.kind === 'approximate-uniform-numeric') {
-      const refreshed = refreshDirectApproximateUniformLookup(formula, directLookup)
-      if (refreshed.kind !== 'approximate-uniform-numeric') {
-        return tryEvaluateDirectVectorLookup(formula)
-      }
-      const tag = cellStore.tags[refreshed.operandCellIndex]
-      let lookupValue = 0
-      switch (tag) {
-        case undefined:
-        case ValueTag.Empty:
-          lookupValue = 0
-          break
-        case ValueTag.Number:
-          lookupValue = Object.is(cellStore.numbers[refreshed.operandCellIndex] ?? 0, -0)
-            ? 0
-            : (cellStore.numbers[refreshed.operandCellIndex] ?? 0)
-          break
-        case ValueTag.Boolean:
-          lookupValue = (cellStore.numbers[refreshed.operandCellIndex] ?? 0) !== 0 ? 1 : 0
-          break
-        case ValueTag.Error:
-        case ValueTag.String:
-          return undefined
-      }
-      const lastValue = refreshed.start + refreshed.step * (refreshed.length - 1)
-      const tailPatch = refreshed.tailPatch
-      if (refreshed.matchMode === 1 && refreshed.step > 0) {
-        if (lookupValue < refreshed.start) {
-          return directErrorResult(ErrorCode.NA)
-        }
-        if (tailPatch !== undefined && tailPatch.row === refreshed.rowEnd && tailPatch.newNumeric > tailPatch.oldNumeric) {
-          if (lookupValue >= tailPatch.newNumeric) {
-            return directNumberResult(refreshed.length)
-          }
-          if (lookupValue >= tailPatch.oldNumeric) {
-            return directNumberResult(refreshed.length - 1)
-          }
-        }
-        if (lookupValue >= lastValue) {
-          return directNumberResult(refreshed.length)
-        }
-        const position = Math.floor((lookupValue - refreshed.start) / refreshed.step) + 1
-        return directNumberResult(Math.min(refreshed.length, Math.max(1, position)))
-      }
-      if (refreshed.matchMode === -1 && refreshed.step < 0) {
-        if (lookupValue > refreshed.start) {
-          return directErrorResult(ErrorCode.NA)
-        }
-        if (tailPatch !== undefined && tailPatch.row === refreshed.rowEnd && tailPatch.newNumeric < tailPatch.oldNumeric) {
-          if (lookupValue <= tailPatch.newNumeric) {
-            return directNumberResult(refreshed.length)
-          }
-          if (lookupValue <= tailPatch.oldNumeric) {
-            return directNumberResult(refreshed.length - 1)
-          }
-        }
-        if (lookupValue <= lastValue) {
-          return directNumberResult(refreshed.length)
-        }
-        const position = Math.floor((refreshed.start - lookupValue) / -refreshed.step) + 1
-        return directNumberResult(Math.min(refreshed.length, Math.max(1, position)))
-      }
-      return undefined
-    }
-    const prepared = refreshDirectApproximateLookup(directLookup)
-    const cellIndex = directLookup.operandCellIndex
-    const result = args.sortedLookup.findPreparedVectorMatch({
-      lookupValue: readCellValueByIndex(cellIndex),
-      prepared,
-      matchMode: directLookup.matchMode,
-    })
-    if (!result.handled) {
-      return undefined
-    }
-    return result.position === undefined ? directErrorResult(ErrorCode.NA) : directNumberResult(result.position)
   }
 
   const readDirectCriteriaOperandValue = (operand: RuntimeDirectCriteriaOperand): CellValue => {
@@ -1044,93 +662,14 @@ export function createEngineFormulaEvaluationService(args: {
     return emptyChangedCellIndices
   }
 
-  const readDirectScalarOperand = (operand: RuntimeDirectScalarOperand): CellValue | undefined => {
-    if (operand.kind === 'literal-number') {
-      return { tag: ValueTag.Number, value: operand.value }
-    }
-    if (operand.kind === 'error') {
-      return errorValue(operand.code)
-    }
-    return readCellValueByIndex(operand.cellIndex)
-  }
-
-  const coerceDirectScalarNumeric = (
-    value: CellValue | undefined,
-  ): { kind: 'number'; value: number } | { kind: 'error'; code: ErrorCode } | undefined => {
-    if (!value) {
-      return undefined
-    }
-    switch (value.tag) {
-      case ValueTag.Number:
-        return { kind: 'number', value: value.value }
-      case ValueTag.Boolean:
-        return { kind: 'number', value: value.value ? 1 : 0 }
-      case ValueTag.Empty:
-        return { kind: 'number', value: 0 }
-      case ValueTag.Error:
-        return { kind: 'error', code: value.code }
-      case ValueTag.String:
-        return { kind: 'error', code: ErrorCode.Value }
-      default:
-        return undefined
-    }
-  }
-
-  const tryEvaluateDirectScalar = (formula: RuntimeFormula): CellValue | undefined => {
-    const directScalar = formula.directScalar
-    if (!directScalar) {
-      return undefined
-    }
-    if (directScalar.kind === 'abs') {
-      const operand = coerceDirectScalarNumeric(readDirectScalarOperand(directScalar.operand))
-      if (operand === undefined) {
-        return undefined
-      }
-      if (operand.kind === 'error') {
-        return directErrorResult(operand.code)
-      }
-      return directNumberResult(Math.abs(operand.value))
-    }
-    const left = coerceDirectScalarNumeric(readDirectScalarOperand(directScalar.left))
-    const right = coerceDirectScalarNumeric(readDirectScalarOperand(directScalar.right))
-    if (left === undefined || right === undefined) {
-      return undefined
-    }
-    if (left.kind === 'error') {
-      return directErrorResult(left.code)
-    }
-    if (right.kind === 'error') {
-      return directErrorResult(right.code)
-    }
-    let result: number
-    switch (directScalar.operator) {
-      case '+':
-        result = left.value + right.value
-        break
-      case '-':
-        result = left.value - right.value
-        break
-      case '*':
-        result = left.value * right.value
-        break
-      case '/':
-        if (right.value === 0) {
-          return directErrorResult(ErrorCode.Div0)
-        }
-        result = left.value / right.value
-        break
-    }
-    return directNumberResult(result + (directScalar.resultOffset ?? 0))
-  }
-
   const evaluateDirectLookupFormulaNow = (cellIndex: number): number[] | undefined => {
     const formula = args.state.formulas.get(cellIndex)
     if (!formula) {
       return undefined
     }
     const directResult =
-      tryEvaluateDirectVectorLookup(formula) ??
-      tryEvaluateDirectScalar(formula) ??
+      tryEvaluateDirectVectorLookup(directVectorLookupContext, formula) ??
+      tryEvaluateDirectScalar(formula, readCellValueByIndex) ??
       tryEvaluateDirectAggregate(formula) ??
       tryEvaluateDirectCriteriaAggregate(formula)
     return directResult === undefined
@@ -1148,8 +687,8 @@ export function createEngineFormulaEvaluationService(args: {
     }
 
     const directResult =
-      tryEvaluateDirectVectorLookup(formula) ??
-      tryEvaluateDirectScalar(formula) ??
+      tryEvaluateDirectVectorLookup(directVectorLookupContext, formula) ??
+      tryEvaluateDirectScalar(formula, readCellValueByIndex) ??
       tryEvaluateDirectAggregate(formula) ??
       tryEvaluateDirectCriteriaAggregate(formula)
     if (directResult !== undefined) {

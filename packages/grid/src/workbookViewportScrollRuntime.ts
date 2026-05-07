@@ -50,7 +50,7 @@ export interface WorkbookViewportScrollRuntimeInput {
   readonly viewport: Viewport
 }
 
-export function noteVisibleWindowChange(): void {
+function noteVisibleWindowChange(): void {
   if (typeof window === 'undefined') {
     return
   }
@@ -75,7 +75,7 @@ export function shouldCommitWorkbookVisibleRegion(input: {
   )
 }
 
-export function shouldNotifyWorkbookVisibleViewportChange(input: {
+function shouldNotifyWorkbookVisibleViewportChange(input: {
   readonly previous: Viewport | null
   readonly next: Viewport
   readonly requiresLiveViewportState: boolean

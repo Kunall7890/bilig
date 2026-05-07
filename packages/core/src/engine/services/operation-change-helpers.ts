@@ -90,6 +90,48 @@ export function tagTrustedPhysicalTrackedChanges(changed: U32, sheetId: number, 
   Reflect.set(changed, TRUSTED_TRACKED_PHYSICAL_SORTED_SPLIT_PROPERTY, sortedSliceSplit)
 }
 
+export function canTrustPhysicalTrackedChangeSplit(
+  changed: U32,
+  sheetId: number,
+  split: number,
+  workbook: {
+    readonly cellStore: {
+      readonly sheetIds: ArrayLike<number | undefined>
+      readonly rows: ArrayLike<number | undefined>
+      readonly cols: ArrayLike<number | undefined>
+    }
+    getSheetById(sheetId: number): { readonly structureVersion: number } | undefined
+  },
+): boolean {
+  if (split <= 0 || split >= changed.length) {
+    return false
+  }
+  const sheet = workbook.getSheetById(sheetId)
+  if (!sheet || sheet.structureVersion !== 1) {
+    return false
+  }
+  const cellStore = workbook.cellStore
+  const validateSlice = (start: number, end: number): boolean => {
+    let previousRow = -1
+    let previousCol = -1
+    for (let index = start; index < end; index += 1) {
+      const cellIndex = changed[index]!
+      if (cellStore.sheetIds[cellIndex] !== sheetId) {
+        return false
+      }
+      const row = cellStore.rows[cellIndex]
+      const col = cellStore.cols[cellIndex]
+      if (row === undefined || col === undefined || row < previousRow || (row === previousRow && col <= previousCol)) {
+        return false
+      }
+      previousRow = row
+      previousCol = col
+    }
+    return true
+  }
+  return validateSlice(0, split) && validateSlice(split, changed.length)
+}
+
 export function makeExistingNumericMutationResult(
   changedCellIndices: U32,
   explicitChangedCount: number,

@@ -1,10 +1,15 @@
-/* eslint-disable typescript-eslint/no-unsafe-type-assertion -- support-service error-path tests intentionally inject partial collaborators */
 import { Effect } from 'effect'
 import { describe, expect, it } from 'vitest'
-import { ErrorCode, ValueTag } from '@bilig/protocol'
+import { ErrorCode, ValueTag, type SelectionState } from '@bilig/protocol'
+import type { CompiledFormula } from '@bilig/formula'
 import { CellFlags } from '../cell-store.js'
+import { EdgeArena } from '../edge-arena.js'
 import { SpreadsheetEngine } from '../engine.js'
 import { createEngineMutationSupportService, type EngineMutationSupportService } from '../engine/services/mutation-support-service.js'
+import { FormulaTable } from '../formula-table.js'
+import { RangeRegistry } from '../range-registry.js'
+import { StringPool } from '../string-pool.js'
+import { WorkbookStore } from '../workbook-store.js'
 
 interface MutationSupportScratch {
   changedInputEpoch: number
@@ -31,9 +36,46 @@ type StubMutationSupportService = EngineMutationSupportService & {
   readonly __scratch: MutationSupportScratch
 }
 
-function createStubMutationSupportService(
-  overrides: Partial<Parameters<typeof createEngineMutationSupportService>[0]> = {},
-): StubMutationSupportService {
+type MutationSupportArgs = Parameters<typeof createEngineMutationSupportService>[0]
+type MutationSupportArgsOverrides = Omit<Partial<MutationSupportArgs>, 'state'> & {
+  readonly state?: Partial<MutationSupportArgs['state']>
+}
+
+class ThrowingMutationWorkbook extends WorkbookStore {
+  override ensureCellRecord(): never {
+    throw new Error('ensure by name boom')
+  }
+
+  override ensureCellAt(): never {
+    throw new Error('ensure coords boom')
+  }
+
+  override getSheetNameById(): never {
+    throw new Error('spill boom')
+  }
+
+  override getSheet(): never {
+    throw new Error('remove sheet boom')
+  }
+}
+
+class ThrowingFormulaTable extends FormulaTable<CompiledFormula> {
+  override forEach(): void {
+    throw new Error('volatile boom')
+  }
+}
+
+function createSelectionState(): SelectionState {
+  return {
+    sheetName: 'Sheet1',
+    address: 'A1',
+    anchorAddress: 'A1',
+    range: { startAddress: 'A1', endAddress: 'A1' },
+    editMode: 'idle',
+  }
+}
+
+function createStubMutationSupportService(overrides: MutationSupportArgsOverrides = {}): StubMutationSupportService {
   const scratch: MutationSupportScratch = {
     changedInputEpoch: 1,
     changedFormulaEpoch: 1,
@@ -54,51 +96,25 @@ function createStubMutationSupportService(
     impactedFormulaSeen: new Uint32Array(16),
     impactedFormulaBuffer: new Uint32Array(16),
   }
+  const workbook = overrides.state?.workbook ?? new WorkbookStore('mutation-support-stub')
+  const state: MutationSupportArgs['state'] = {
+    workbook,
+    strings: new StringPool(),
+    formulas: new FormulaTable<CompiledFormula>(workbook.cellStore),
+    ranges: new RangeRegistry(),
+    ...overrides.state,
+  }
 
-  const defaults: Parameters<typeof createEngineMutationSupportService>[0] = {
-    state: {
-      workbook: {
-        cellStore: {
-          size: 0,
-          sheetIds: [],
-          rows: [],
-          cols: [],
-          flags: [],
-          getValue: () => ({ tag: ValueTag.Empty }),
-          setValue: () => undefined,
-        },
-        ensureCellRecord: () => ({ created: false, cellIndex: 0 }),
-        ensureCellAt: () => ({ created: false, cellIndex: 0 }),
-        getSheetNameById: () => 'Sheet1',
-        getAddress: () => 'A1',
-        getSpill: () => undefined,
-        getSheet: () => undefined,
-        deleteSheet: () => undefined,
-        sheetsByName: new Map(),
-      },
-      strings: { get: () => '' },
-      formulas: new Map(),
-      ranges: { addDynamicMember: () => [] },
-    } as never,
-    edgeArena: {
-      empty: () => ({ ptr: -1, len: 0 }),
-      appendUnique: () => ({ ptr: -1, len: 0 }),
-      readView: () => new Uint32Array(),
-    } as never,
+  const defaults: MutationSupportArgs = {
+    state,
+    edgeArena: new EdgeArena(),
     reverseState: {
       reverseCellEdges: [],
       reverseRangeEdges: [],
     },
     removeFormula: () => false,
     rebindFormulasForSheet: () => 0,
-    getSelectionState: () =>
-      ({
-        sheetName: 'Sheet1',
-        address: 'A1',
-        anchorAddress: 'A1',
-        range: { startAddress: 'A1', endAddress: 'A1' },
-        editMode: 'idle',
-      }) as never,
+    getSelectionState: createSelectionState,
     setSelection: () => undefined,
     applyDerivedOp: () => [],
     scheduleWasmProgramSync: () => undefined,
@@ -178,7 +194,7 @@ function createStubMutationSupportService(
     },
   }
 
-  return Object.assign(createEngineMutationSupportService({ ...defaults, ...overrides }), {
+  return Object.assign(createEngineMutationSupportService({ ...defaults, ...overrides, state }), {
     __scratch: scratch,
   })
 }
@@ -454,11 +470,14 @@ describe('EngineMutationSupportService', () => {
   })
 
   it('wraps mutation support callback failures with engine mutation errors', () => {
-    const poisonedCellIndices = {
-      get length() {
-        throw new Error('roots boom')
+    const poisonedCellIndices = new Proxy<number[]>([], {
+      get(target, property, receiver) {
+        if (property === 'length') {
+          throw new Error('roots boom')
+        }
+        return Reflect.get(target, property, receiver)
       },
-    } as unknown as readonly number[]
+    })
 
     const unionErrorService = createStubMutationSupportService({
       getChangedUnionEpoch: () => {
@@ -471,43 +490,12 @@ describe('EngineMutationSupportService', () => {
       'union boom',
     )
 
+    const throwingWorkbook = new ThrowingMutationWorkbook('throwing-mutation-workbook')
     const workbookErrorService = createStubMutationSupportService({
       state: {
-        workbook: {
-          cellStore: {
-            size: 0,
-            sheetIds: [],
-            rows: [],
-            cols: [],
-            flags: [],
-            getValue: () => ({ tag: ValueTag.Empty }),
-            setValue: () => undefined,
-          },
-          ensureCellRecord: () => {
-            throw new Error('ensure by name boom')
-          },
-          ensureCellAt: () => {
-            throw new Error('ensure coords boom')
-          },
-          getSheetNameById: () => {
-            throw new Error('spill boom')
-          },
-          getAddress: () => 'A1',
-          getSpill: () => undefined,
-          getSheet: () => {
-            throw new Error('remove sheet boom')
-          },
-          deleteSheet: () => undefined,
-          sheetsByName: new Map(),
-        },
-        strings: { get: () => '' },
-        formulas: {
-          forEach: () => {
-            throw new Error('volatile boom')
-          },
-        },
-        ranges: { addDynamicMember: () => [] },
-      } as never,
+        workbook: throwingWorkbook,
+        formulas: new ThrowingFormulaTable(throwingWorkbook.cellStore),
+      },
       getChangedInputBuffer: () => {
         throw new Error('buffer boom')
       },

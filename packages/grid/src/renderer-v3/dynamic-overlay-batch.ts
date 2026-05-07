@@ -1,6 +1,6 @@
 import { MAX_COLS, MAX_ROWS } from '@bilig/protocol'
 import type { GridGeometrySnapshot, GridPaneKind } from '../gridGeometry.js'
-import { parseGpuColor, type GridGpuRect } from '../gridGpuScene.js'
+import { parseGpuColor, type GridGpuRect } from '../gridGpuPrimitives.js'
 import type { HeaderSelection } from '../gridPointer.js'
 import type { CompactSelectionState, GridSelection, Item, Rectangle } from '../gridTypes.js'
 import { workbookThemeColors } from '../workbookTheme.js'

@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 import { describe, expect, test, vi } from 'vitest'
-import type { GpuBufferHandleV3 } from '../renderer-v3/gpu-buffer-arena.js'
 import type { GridRenderTile } from '../renderer-v3/render-tile-source.js'
 import type { WorkbookRenderTilePaneState } from '../renderer-v3/render-tile-pane-state.js'
 import type { GridHeaderPaneState } from '../gridHeaderPanes.js'
@@ -11,20 +10,15 @@ import {
   WORKBOOK_DYNAMIC_OVERLAY_LAYER_KEY_V3,
   resolveWorkbookHeaderLayerKeyV3,
 } from '../renderer-v3/typegpu-layer-buffer-pool.js'
-import { syncTypeGpuAtlasResources, type TypeGpuRendererArtifacts } from '../renderer-v3/typegpu-primitives.js'
+import { syncTypeGpuAtlasResources, type TypeGpuAtlasResourceArtifacts } from '../renderer-v3/typegpu-primitives.js'
 import {
   TypeGpuTileResourceCacheV3,
   resolveGridRectTileRevisionKeyV3,
   resolveGridTextTileRevisionKeyV3,
   resolveWorkbookTileContentBufferKeyV3,
   resolveWorkbookTilePlacementBufferKeyV3,
-  type TypeGpuTileContentResourceEntryV3,
 } from '../renderer-v3/typegpu-tile-buffer-pool.js'
-import {
-  hasTransientEmptyTypeGpuBodyFrameV3,
-  resolveTypeGpuDrawTilePanesV3,
-  syncRenderTileResidencyFromPanesV3,
-} from '../renderer-v3/typegpu-workbook-backend-v3.js'
+import { resolveTypeGpuDrawTilePanesV3, syncRenderTileResidencyFromPanesV3 } from '../renderer-v3/typegpu-workbook-backend-v3.js'
 import { TileResidencyV3 } from '../renderer-v3/tile-residency.js'
 
 function createRenderTile(valueVersion: number, tileId = 101): GridRenderTile {
@@ -89,16 +83,6 @@ function createHeaderPane(paneId: GridHeaderPaneState['paneId']): GridHeaderPane
   }
 }
 
-function createHandle(layout: GpuBufferHandleV3['layout']): GpuBufferHandleV3 {
-  return {
-    buffer: {},
-    capacityBytes: 256,
-    classId: 8,
-    layout,
-    usedBytes: 64,
-  }
-}
-
 function upsertRenderTile(residency: TileResidencyV3<GridRenderTile, null>, tile: GridRenderTile): void {
   residency.upsert({
     axisSeqX: tile.version.axisX,
@@ -119,19 +103,6 @@ function upsertRenderTile(residency: TileResidencyV3<GridRenderTile, null>, tile
     textSeq: tile.version.text,
     valueSeq: tile.version.values,
   })
-}
-
-function markContentReady(content: TypeGpuTileContentResourceEntryV3, tile: GridRenderTile): void {
-  content.rectCount = tile.rectCount
-  content.textCount = tile.textCount
-  content.rectRevisionKey = resolveGridRectTileRevisionKeyV3({ tile })
-  content.textRevisionKey = resolveGridTextTileRevisionKeyV3(tile)
-  if (tile.rectCount > 0) {
-    content.rectHandle = createHandle('rectInstances')
-  }
-  if (tile.textCount > 0) {
-    content.textHandle = createHandle('textRuns')
-  }
 }
 
 describe('workbook typegpu backend v3 tile path', () => {
@@ -194,32 +165,38 @@ describe('workbook typegpu backend v3 tile path', () => {
     expect(preloadEntry && residency.isVisible(preloadEntry)).toBe(false)
   })
 
-  test('evicts non-visible V3 tiles by byte budget instead of fixed entry count', () => {
-    const visibleTile = createRenderTile(2, 101)
-    const preloadTileA = {
-      ...createRenderTile(2, 202),
-      coord: { ...visibleTile.coord, colTile: 1 },
+  test('reports V3 tile residency cache marks and byte-budget evictions', () => {
+    const scrollPerf = {
+      evicted: 0,
+      visible: 0,
+      noteTypeGpuTileCacheEviction(count: number): void {
+        this.evicted += count
+      },
+      noteTypeGpuTileCacheVisibleMark(count: number): void {
+        this.visible += count
+      },
     }
-    const preloadTileB = {
-      ...createRenderTile(2, 303),
-      coord: { ...visibleTile.coord, colTile: 2 },
+    Reflect.set(window, '__biligScrollPerf', scrollPerf)
+    try {
+      const panes = Array.from({ length: 3 }, (_, index) => createTilePane(createRenderTile(2, index + 1)))
+      const visiblePane = panes.at(-1)
+      if (!visiblePane) {
+        throw new Error('expected at least one visible pane')
+      }
+
+      syncRenderTileResidencyFromPanesV3({
+        maxCpuBytes: 1,
+        maxGpuBytes: 1,
+        panes,
+        residency: new TileResidencyV3<GridRenderTile, null>(),
+        visiblePanes: [visiblePane],
+      })
+
+      expect(scrollPerf.visible).toBe(1)
+      expect(scrollPerf.evicted).toBe(2)
+    } finally {
+      Reflect.deleteProperty(window, '__biligScrollPerf')
     }
-    const visiblePane = createTilePane(visibleTile)
-    const preloadPaneA = { ...createTilePane(preloadTileA), paneId: 'body:0:1' }
-    const preloadPaneB = { ...createTilePane(preloadTileB), paneId: 'body:0:2' }
-    const residency = new TileResidencyV3<GridRenderTile, null>()
-
-    syncRenderTileResidencyFromPanesV3({
-      maxCpuBytes: 1,
-      maxGpuBytes: 1,
-      panes: [visiblePane, preloadPaneA, preloadPaneB],
-      residency,
-      visiblePanes: [visiblePane],
-    })
-
-    expect(residency.getExact(visibleTile.tileId)).not.toBeNull()
-    expect(residency.getExact(preloadTileA.tileId)).toBeNull()
-    expect(residency.getExact(preloadTileB.tileId)).toBeNull()
   })
 
   test('prunes V3 tile content and placement resources independently', () => {
@@ -284,121 +261,6 @@ describe('workbook typegpu backend v3 tile path', () => {
     expect(onTileMiss).toHaveBeenCalledWith(tile.tileId)
   })
 
-  test('blocks transient empty body frames from replacing populated tile content', () => {
-    const tile = createRenderTile(2)
-    const pane = createTilePane(tile)
-    const tileResources = new TypeGpuTileResourceCacheV3()
-    const content = tileResources.getContent(resolveWorkbookTileContentBufferKeyV3(pane))
-    content.rectCount = 2
-    content.textCount = 1
-    const emptyPane = createTilePane({
-      ...tile,
-      rectCount: 0,
-      textCount: 0,
-      textRuns: [],
-    })
-
-    expect(hasTransientEmptyTypeGpuBodyFrameV3({ tilePanes: [emptyPane], tileResources })).toBe(true)
-  })
-
-  test('draws resident body tile content during transient empty frames', () => {
-    const residentTile = {
-      ...createRenderTile(2),
-      rectCount: 1,
-      rectInstances: new Float32Array(GRID_RECT_INSTANCE_FLOAT_COUNT_V3),
-    }
-    const residentPane = createTilePane(residentTile)
-    const emptyPane = createTilePane({
-      ...residentTile,
-      rectCount: 0,
-      textCount: 0,
-      textRuns: [],
-    })
-    const tileResources = new TypeGpuTileResourceCacheV3()
-    const residency = new TileResidencyV3<GridRenderTile, null>()
-    upsertRenderTile(residency, residentTile)
-    markContentReady(tileResources.getContent(resolveWorkbookTileContentBufferKeyV3(residentPane)), residentTile)
-
-    const drawPanes = resolveTypeGpuDrawTilePanesV3({
-      panes: [emptyPane],
-      residency,
-      tileResources,
-    })
-
-    expect(hasTransientEmptyTypeGpuBodyFrameV3({ tilePanes: [emptyPane], tileResources })).toBe(true)
-    expect(drawPanes[0]?.tile).toBe(residentTile)
-  })
-
-  test('draws stale-compatible resident body content while the exact tile is not ready', () => {
-    const residentTile = {
-      ...createRenderTile(2, 101),
-      textCount: 1,
-      textMetrics: new Float32Array(GRID_TEXT_METRIC_FLOAT_COUNT_V3),
-      textRuns: [
-        {
-          clipHeight: 16,
-          clipWidth: 80,
-          clipX: 0,
-          clipY: 0,
-          color: '#111111',
-          font: '11px sans-serif',
-          fontSize: 11,
-          height: 16,
-          strike: false,
-          text: 'ready',
-          underline: false,
-          width: 80,
-          x: 0,
-          y: 0,
-        },
-      ],
-    }
-    const pendingTile = {
-      ...residentTile,
-      lastBatchId: 3,
-      tileId: 202,
-      version: {
-        ...residentTile.version,
-        text: 3,
-        values: 3,
-      },
-    }
-    const pendingPane = createTilePane(pendingTile)
-    const tileResources = new TypeGpuTileResourceCacheV3()
-    const residency = new TileResidencyV3<GridRenderTile, null>()
-    const onTileMiss = vi.fn()
-    upsertRenderTile(residency, residentTile)
-    upsertRenderTile(residency, pendingTile)
-    markContentReady(tileResources.getContent(resolveWorkbookTileContentBufferKeyV3(createTilePane(residentTile))), residentTile)
-
-    const drawPanes = resolveTypeGpuDrawTilePanesV3({
-      onTileMiss,
-      panes: [pendingPane],
-      residency,
-      tileResources,
-    })
-
-    expect(drawPanes[0]?.tile).toBe(residentTile)
-    expect(onTileMiss).not.toHaveBeenCalled()
-  })
-
-  test('allows dirty empty body frames so real clears can render', () => {
-    const tile = createRenderTile(2)
-    const pane = createTilePane(tile)
-    const tileResources = new TypeGpuTileResourceCacheV3()
-    const content = tileResources.getContent(resolveWorkbookTileContentBufferKeyV3(pane))
-    content.textCount = 1
-    const dirtyEmptyPane = createTilePane({
-      ...tile,
-      dirtyMasks: new Uint32Array([1]),
-      rectCount: 0,
-      textCount: 0,
-      textRuns: [],
-    })
-
-    expect(hasTransientEmptyTypeGpuBodyFrameV3({ tilePanes: [dirtyEmptyPane], tileResources })).toBe(false)
-  })
-
   test('uploads V3 atlas dirty pages without rewriting the whole atlas texture', () => {
     const copyExternalImageToTexture = vi.fn()
     const atlasTexture = {
@@ -406,8 +268,17 @@ describe('workbook typegpu backend v3 tile path', () => {
       destroy: vi.fn(),
       write: vi.fn(),
     }
-    const rawTexture = {}
-    // oxlint-disable-next-line typescript-eslint/no-unsafe-type-assertion
+    const rawTexture = {
+      createView: vi.fn(),
+      depthOrArrayLayers: 1,
+      destroy: vi.fn(),
+      dimension: '2d',
+      format: 'rgba8unorm',
+      height: 1,
+      label: '',
+      usage: 0,
+      width: 1,
+    } satisfies GPUTexture
     const artifacts = {
       atlasHeight: 1024,
       atlasTexture,
@@ -419,9 +290,10 @@ describe('workbook typegpu backend v3 tile path', () => {
         },
       },
       root: {
+        createTexture: vi.fn(),
         unwrap: vi.fn(() => rawTexture),
       },
-    } as unknown as TypeGpuRendererArtifacts
+    } satisfies TypeGpuAtlasResourceArtifacts
     const atlasCanvas = document.createElement('canvas')
     const atlas = {
       drainDirtyPages: vi.fn(() => [

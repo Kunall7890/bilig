@@ -60,7 +60,7 @@ function assertNever(value: never): never {
   throw new Error(`Unexpected replay command: ${String(value)}`)
 }
 
-export function toRangeRef(targetSheetName: string, startRow: number, startCol: number, endRow: number, endCol: number): CellRangeRef {
+function toRangeRef(targetSheetName: string, startRow: number, startCol: number, endRow: number, endCol: number): CellRangeRef {
   return {
     sheetName: targetSheetName,
     startAddress: formatAddress(startRow, startCol),
@@ -798,14 +798,6 @@ export async function createEngineSeedSnapshot(seedName: EngineSeedName, workboo
   await engine.ready()
   await populateSeed(engine, seedName)
   return engine.exportSnapshot()
-}
-
-export async function createSeededEngine(seedName: EngineSeedName, workbookName: string, replicaId: string): Promise<SpreadsheetEngine> {
-  const snapshot = await createEngineSeedSnapshot(seedName, workbookName)
-  const engine = new SpreadsheetEngine({ workbookName, replicaId })
-  await engine.ready()
-  engine.importSnapshot(snapshot)
-  return engine
 }
 
 export function applyCoreAction(engine: SpreadsheetEngine, action: CoreAction): void {

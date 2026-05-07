@@ -1,10 +1,11 @@
 #!/usr/bin/env bun
 
 import path from 'node:path'
+import { runProtocolGenerator, type ProtocolBuiltinManifestEntry, type ProtocolEnumManifest } from './protocol-generator.js'
 
 const repoRoot = path.resolve(import.meta.dir, '..')
 
-const enumManifest = {
+const enumManifest: ProtocolEnumManifest = {
   ValueTag: [
     ['Empty', 0],
     ['Number', 1],
@@ -483,7 +484,7 @@ const enumManifest = {
   ],
 }
 
-const builtinManifest = [
+const builtinManifest: readonly ProtocolBuiltinManifestEntry[] = [
   { id: 'Sum', name: 'SUM', supportsWasm: true },
   { id: 'Avg', name: 'AVG', supportsWasm: true },
   { id: 'Min', name: 'MIN', supportsWasm: true },
@@ -913,102 +914,4 @@ const builtinManifest = [
   { id: 'Oddfyield', name: 'ODDFYIELD', supportsWasm: true },
 ]
 
-const generatedHeader = `// GENERATED FILE. DO NOT EDIT DIRECTLY.\n// Source: scripts/gen-protocol.ts\n\n`
-
-function renderEnum(name, entries) {
-  const lines = entries.map(([key, value]) => `  ${key} = ${value}`)
-  return `export enum ${name} {\n${lines.join(',\n')}\n}\n`
-}
-
-function renderProtocolEnums() {
-  return (
-    generatedHeader +
-    Object.entries(enumManifest)
-      .map(([name, entries]) => renderEnum(name, entries))
-      .join('\n')
-  )
-}
-
-function renderOpcodeNames() {
-  return enumManifest.Opcode.map(([name]) => `  [Opcode.${name}]: "${name}"`).join(',\n')
-}
-
-function renderBuiltins() {
-  return builtinManifest
-    .map(({ id, name, supportsWasm }) => `  { id: BuiltinId.${id}, name: "${name}", supportsWasm: ${supportsWasm} }`)
-    .join(',\n')
-}
-
-function renderOpcodesModule() {
-  return `${generatedHeader}import { BuiltinId, Opcode } from "./enums.js";
-
-export interface BuiltinDescriptor {
-  readonly id: BuiltinId;
-  readonly name: string;
-  readonly supportsWasm: boolean;
-}
-
-export const OPCODE_NAMES: Record<Opcode, string> = {
-${renderOpcodeNames()}
-};
-
-export const BUILTINS: BuiltinDescriptor[] = [
-${renderBuiltins()}
-];
-`
-}
-
-const generatedFiles = [
-  {
-    path: path.join(repoRoot, 'packages/protocol/src/enums.ts'),
-    contents: renderProtocolEnums(),
-  },
-  {
-    path: path.join(repoRoot, 'packages/protocol/src/opcodes.ts'),
-    contents: renderOpcodesModule(),
-  },
-  {
-    path: path.join(repoRoot, 'packages/wasm-kernel/assembly/protocol.ts'),
-    contents: renderProtocolEnums(),
-  },
-]
-
-async function main() {
-  const checkMode = Bun.argv.includes('--check')
-  const staleFiles = (
-    await Promise.all(
-      generatedFiles.map(async (file) => {
-        let existing = ''
-        try {
-          existing = await Bun.file(file.path).text()
-        } catch {
-          existing = ''
-        }
-
-        if (existing === file.contents) {
-          return null
-        }
-        if (!checkMode) {
-          await Bun.write(file.path, file.contents)
-        }
-        return path.relative(repoRoot, file.path)
-      }),
-    )
-  ).filter((entry) => entry !== null)
-
-  if (checkMode && staleFiles.length > 0) {
-    console.error(`Protocol artifacts are stale:\n${staleFiles.map((entry) => `- ${entry}`).join('\n')}`)
-    process.exitCode = 1
-    return
-  }
-
-  if (!checkMode) {
-    if (staleFiles.length === 0) {
-      console.log('Protocol artifacts are already up to date.')
-      return
-    }
-    console.log(`Updated protocol artifacts:\n${staleFiles.map((entry) => `- ${entry}`).join('\n')}`)
-  }
-}
-
-await main()
+await runProtocolGenerator({ repoRoot, enumManifest, builtinManifest })

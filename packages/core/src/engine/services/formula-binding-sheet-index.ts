@@ -1,0 +1,119 @@
+import type { CompiledFormula } from '@bilig/formula'
+import {
+  appendTrackedReverseEdge,
+  parseQualifiedDependencySheetName,
+  removeTrackedReverseEdge,
+} from './formula-binding-dependency-helpers.js'
+
+export interface FormulaBindingSheetIndex {
+  readonly clear: () => void
+  readonly trackFormula: (cellIndex: number, ownerSheetName: string, compiled: Pick<CompiledFormula, 'deps'>) => void
+  readonly untrackFormula: (
+    cellIndex: number,
+    ownerSheetName: string | undefined,
+    compiled: Pick<CompiledFormula, 'deps'> | undefined,
+  ) => void
+  readonly moveSheetName: (
+    oldSheetName: string,
+    newSheetName: string,
+  ) => {
+    readonly owners: Set<number>
+    readonly references: Set<number>
+  }
+  readonly getOwnedBySheetSet: (sheetName: string) => Set<number> | undefined
+  readonly getReferencingSheetSet: (sheetName: string) => Set<number> | undefined
+  readonly appendOwner: (sheetName: string, cellIndex: number) => void
+  readonly removeOwner: (sheetName: string, cellIndex: number) => void
+  readonly appendReference: (sheetName: string, cellIndex: number) => void
+  readonly removeReference: (sheetName: string, cellIndex: number) => void
+  readonly collectOwnedBySheet: (sheetName: string) => number[]
+  readonly collectReferencingSheet: (sheetName: string) => number[]
+}
+
+function referencedSheetsForCompiled(compiled: Pick<CompiledFormula, 'deps'>): string[] {
+  const sheets = new Set<string>()
+  compiled.deps.forEach((dependency) => {
+    const sheetName = parseQualifiedDependencySheetName(dependency)
+    if (sheetName) {
+      sheets.add(sheetName)
+    }
+  })
+  return [...sheets]
+}
+
+function moveSet<Key extends string>(registry: Map<Key, Set<number>>, oldKey: Key, newKey: Key): Set<number> {
+  const candidates = registry.get(oldKey)
+  if (!candidates || candidates.size === 0) {
+    return new Set()
+  }
+  const moved = new Set(candidates)
+  const existing = registry.get(newKey)
+  if (existing) {
+    candidates.forEach((cellIndex) => {
+      existing.add(cellIndex)
+    })
+  } else {
+    registry.set(newKey, candidates)
+  }
+  registry.delete(oldKey)
+  return moved
+}
+
+export function createFormulaBindingSheetIndex(): FormulaBindingSheetIndex {
+  const ownerSheetCells = new Map<string, Set<number>>()
+  const referencedSheetCells = new Map<string, Set<number>>()
+
+  return {
+    clear() {
+      ownerSheetCells.clear()
+      referencedSheetCells.clear()
+    },
+    trackFormula(cellIndex, ownerSheetName, compiled) {
+      appendTrackedReverseEdge(ownerSheetCells, ownerSheetName, cellIndex)
+      referencedSheetsForCompiled(compiled).forEach((sheetName) => {
+        appendTrackedReverseEdge(referencedSheetCells, sheetName, cellIndex)
+      })
+    },
+    untrackFormula(cellIndex, ownerSheetName, compiled) {
+      if (ownerSheetName) {
+        removeTrackedReverseEdge(ownerSheetCells, ownerSheetName, cellIndex)
+      }
+      if (!compiled) {
+        return
+      }
+      referencedSheetsForCompiled(compiled).forEach((sheetName) => {
+        removeTrackedReverseEdge(referencedSheetCells, sheetName, cellIndex)
+      })
+    },
+    moveSheetName(oldSheetName, newSheetName) {
+      return {
+        owners: moveSet(ownerSheetCells, oldSheetName, newSheetName),
+        references: moveSet(referencedSheetCells, oldSheetName, newSheetName),
+      }
+    },
+    getOwnedBySheetSet(sheetName) {
+      return ownerSheetCells.get(sheetName)
+    },
+    getReferencingSheetSet(sheetName) {
+      return referencedSheetCells.get(sheetName)
+    },
+    appendOwner(sheetName, cellIndex) {
+      appendTrackedReverseEdge(ownerSheetCells, sheetName, cellIndex)
+    },
+    removeOwner(sheetName, cellIndex) {
+      removeTrackedReverseEdge(ownerSheetCells, sheetName, cellIndex)
+    },
+    appendReference(sheetName, cellIndex) {
+      appendTrackedReverseEdge(referencedSheetCells, sheetName, cellIndex)
+    },
+    removeReference(sheetName, cellIndex) {
+      removeTrackedReverseEdge(referencedSheetCells, sheetName, cellIndex)
+    },
+    collectOwnedBySheet(sheetName) {
+      return [...(ownerSheetCells.get(sheetName) ?? [])]
+    },
+    collectReferencingSheet(sheetName) {
+      return [...(referencedSheetCells.get(sheetName) ?? [])]
+    },
+  }
+}

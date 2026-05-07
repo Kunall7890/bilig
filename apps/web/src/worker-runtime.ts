@@ -29,13 +29,11 @@ import {
   formatCellDisplayValue,
 } from '@bilig/protocol'
 import {
-  encodeRenderTileDeltaBatch,
   encodeWorkbookDeltaBatchV3,
   type RenderTileDeltaSubscription,
   type ViewportPatch,
   type ViewportPatchSubscription,
 } from '@bilig/worker-transport'
-import { TextOverflowIndexV3 } from '../../../packages/grid/src/renderer-v3/text-overflow-index.js'
 import type { PendingWorkbookMutation, PendingWorkbookMutationInput } from './workbook-sync.js'
 import { WorkerRuntimeMutationJournal } from './worker-runtime-mutation-journal.js'
 import {
@@ -61,8 +59,9 @@ import {
   type WorkbookRuntimeSheetSnapshot,
 } from './worker-runtime-state.js'
 import { WorkerRuntimeSnapshotCaches } from './worker-runtime-snapshot-caches.js'
-import { buildWorkerRenderTileDeltaBatch } from './worker-runtime-render-tile-delta.js'
 import { WorkerRuntimeDeltaPublisher } from './worker-runtime-delta-publisher.js'
+import { WorkerRuntimeRenderTileDeltaPublisher } from './worker-runtime-render-tile-subscription.js'
+import type { WorkerRuntimeRenderTileDiagnostics } from './worker-runtime-render-tile-subscription.js'
 import {
   collectSheetViewportImpacts,
   type SheetViewportImpact,
@@ -132,19 +131,6 @@ export interface InstallAuthoritativeSnapshotInput {
   readonly mode: 'bootstrap' | 'reconcile'
 }
 
-export interface WorkbookRenderTileDiagnosticErrorSnapshot {
-  readonly phase: 'publish' | 'subscribe'
-  readonly message: string
-  readonly sheetName: string
-  readonly sheetId?: number | undefined
-  readonly cameraSeq?: number | undefined
-}
-
-export interface WorkbookRenderTileDiagnosticsSnapshot {
-  readonly errorCount: number
-  readonly lastError: WorkbookRenderTileDiagnosticErrorSnapshot | null
-}
-
 const DEFERRED_PROJECTION_ENGINE_MIN_CELL_COUNT = 100_000
 
 export class WorkbookWorkerRuntime {
@@ -164,13 +150,8 @@ export class WorkbookWorkerRuntime {
   private projectionMatchesLocalStore = false
   private projectionOverlayScope: ProjectionOverlayScope | null = null
   private localPersistenceMode: 'persistent' | 'ephemeral' | 'follower' = 'ephemeral'
-  private nextRenderTileDeltaGeneration = 0
-  private renderTileDiagnostics: WorkbookRenderTileDiagnosticsSnapshot = {
-    errorCount: 0,
-    lastError: null,
-  }
-  private readonly textOverflowIndex = new TextOverflowIndexV3()
   private readonly workbookDeltaPublisher = new WorkerRuntimeDeltaPublisher()
+  private readonly renderTileDeltaPublisher = new WorkerRuntimeRenderTileDeltaPublisher()
   private readonly snapshotCaches = new WorkerRuntimeSnapshotCaches()
   private readonly viewportTileStore = new WorkerViewportTileStore()
   private readonly viewportPatchPublisher = new WorkerViewportPatchPublisher({
@@ -690,77 +671,15 @@ export class WorkbookWorkerRuntime {
   }
 
   subscribeRenderTileDeltas(subscription: RenderTileDeltaSubscription, listener: (delta: Uint8Array) => void): () => void {
-    let disposed = false
-    let unsubscribeEngine: (() => void) | null = null
-    let publishInFlight = false
-    let publishQueued = false
-    let queuedEvent: EngineEvent | undefined
-    const publish = (engine: SpreadsheetEngine & WorkerEngine, event?: EngineEvent): void => {
-      if (publishInFlight) {
-        publishQueued = true
-        queuedEvent = event
-        return
-      }
-      publishInFlight = true
-      try {
-        if (disposed) {
-          return
-        }
-        const batch = buildWorkerRenderTileDeltaBatch({
-          engine,
-          event,
-          generation: ++this.nextRenderTileDeltaGeneration,
-          subscription,
-          textOverflowIndex: this.textOverflowIndex,
-        })
-        if (event && batch.mutations.length === 0) {
-          return
-        }
-        listener(encodeRenderTileDeltaBatch(batch))
-      } catch (error) {
-        this.noteRenderTileError('publish', error, subscription)
-        return
-      } finally {
-        publishInFlight = false
-        if (publishQueued && !disposed) {
-          const nextEvent = queuedEvent
-          publishQueued = false
-          queuedEvent = undefined
-          publish(engine, nextEvent)
-        }
-      }
-    }
-
-    void (async () => {
-      try {
-        const engine = await this.getProjectionEngine()
-        if (disposed) {
-          return
-        }
-        if (subscription.initialDelta !== 'none') {
-          publish(engine)
-        }
-        unsubscribeEngine = engine.subscribe((event) => {
-          publish(engine, event)
-        })
-      } catch (error) {
-        this.noteRenderTileError('subscribe', error, subscription)
-        return
-      }
-    })()
-
-    return () => {
-      disposed = true
-      unsubscribeEngine?.()
-      unsubscribeEngine = null
-    }
+    return this.renderTileDeltaPublisher.subscribe({
+      getProjectionEngine: () => this.getProjectionEngine(),
+      listener,
+      subscription,
+    })
   }
 
-  getRenderTileDiagnostics(): WorkbookRenderTileDiagnosticsSnapshot {
-    return {
-      errorCount: this.renderTileDiagnostics.errorCount,
-      lastError: this.renderTileDiagnostics.lastError ? { ...this.renderTileDiagnostics.lastError } : null,
-    }
+  getRenderTileDiagnostics(): WorkerRuntimeRenderTileDiagnostics {
+    return this.renderTileDeltaPublisher.getDiagnostics()
   }
 
   private cleanup(): void {
@@ -773,9 +692,8 @@ export class WorkbookWorkerRuntime {
     this.viewportPatchPublisher.reset()
     this.runtimeStateCache = null
     this.snapshotCaches.reset()
-    this.nextRenderTileDeltaGeneration = 0
-    this.textOverflowIndex.clear()
     this.workbookDeltaPublisher.reset()
+    this.renderTileDeltaPublisher.reset()
     this.authoritativeStateSource = 'none'
     this.authoritativeRevision = 0
     this.projectionMatchesLocalStore = false
@@ -839,23 +757,6 @@ export class WorkbookWorkerRuntime {
       return cloneRuntimeMetrics(this.engine.getLastMetrics())
     }
     return cloneRuntimeMetrics(this.runtimeStateCache?.metrics ?? EMPTY_RUNTIME_METRICS)
-  }
-
-  private noteRenderTileError(
-    phase: WorkbookRenderTileDiagnosticErrorSnapshot['phase'],
-    error: unknown,
-    subscription: RenderTileDeltaSubscription,
-  ): void {
-    this.renderTileDiagnostics = {
-      errorCount: this.renderTileDiagnostics.errorCount + 1,
-      lastError: {
-        cameraSeq: subscription.cameraSeq,
-        message: error instanceof Error ? error.message : String(error),
-        phase,
-        sheetId: subscription.sheetId,
-        sheetName: subscription.sheetName,
-      },
-    }
   }
 
   private buildPendingMutationSummary(): WorkbookPendingMutationSummarySnapshot {

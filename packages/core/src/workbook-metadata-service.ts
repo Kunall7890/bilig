@@ -1,23 +1,4 @@
 import { Cause, Effect, Exit } from 'effect'
-import type {
-  WorkbookChartSnapshot,
-  CellRangeRef,
-  LiteralInput,
-  WorkbookCalculationSettingsSnapshot,
-  WorkbookCommentThreadSnapshot,
-  WorkbookConditionalFormatSnapshot,
-  WorkbookDataValidationSnapshot,
-  WorkbookDefinedNameValueSnapshot,
-  WorkbookImageSnapshot,
-  WorkbookMacroPayloadSnapshot,
-  WorkbookNoteSnapshot,
-  WorkbookRangeProtectionSnapshot,
-  WorkbookSheetProtectionSnapshot,
-  WorkbookPivotSnapshot,
-  WorkbookShapeSnapshot,
-  WorkbookTableSnapshot,
-  WorkbookVolatileContextSnapshot,
-} from '@bilig/protocol'
 import { canonicalWorkbookAddress, canonicalWorkbookRangeRef } from './workbook-range-records.js'
 import {
   cloneChartRecord,
@@ -70,7 +51,6 @@ import {
   type WorkbookSheetProtectionRecord,
   pivotKey,
   shapeKey,
-  type WorkbookCalculationSettingsRecord,
   type WorkbookDataValidationRecord,
   type WorkbookDefinedNameRecord,
   type WorkbookFilterRecord,
@@ -78,14 +58,15 @@ import {
   type WorkbookMetadataRecord,
   type WorkbookPivotRecord,
   type WorkbookPropertyRecord,
-  type WorkbookSortKeyRecord,
   type WorkbookSortRecord,
   type WorkbookShapeRecord,
   type WorkbookSpillRecord,
   type WorkbookTableRecord,
-  type WorkbookVolatileContextRecord,
 } from './workbook-metadata-types.js'
+import { WorkbookMetadataError, type WorkbookMetadataService } from './workbook-metadata-service-contract.js'
 import { canonicalMergeRangeRef, isSingleCellMergeRange, rangeContainsAddress, rangesIntersect } from './workbook-merge-records.js'
+
+export { WorkbookMetadataError, type WorkbookMetadataService } from './workbook-metadata-service-contract.js'
 
 function metadataErrorMessage(message: string, cause: unknown): string {
   return cause instanceof Error && cause.message.length > 0 ? cause.message : message
@@ -114,130 +95,15 @@ function renameDataValidationSourceSheet(
   return cloned
 }
 
-export class WorkbookMetadataError extends Error {
-  readonly _tag = 'WorkbookMetadataError'
-  override readonly cause: unknown
-
-  constructor(args: { message: string; cause: unknown }) {
-    super(args.message)
-    this.name = 'WorkbookMetadataError'
-    this.cause = args.cause
-  }
-}
-
-export interface WorkbookMetadataService {
-  readonly renameSheet: (oldSheetName: string, newSheetName: string) => Effect.Effect<void, WorkbookMetadataError>
-  readonly deleteSheetRecords: (sheetName: string) => Effect.Effect<void, WorkbookMetadataError>
-  readonly reset: () => Effect.Effect<void, WorkbookMetadataError>
-  readonly setWorkbookProperty: (
-    key: string,
-    value: LiteralInput,
-  ) => Effect.Effect<WorkbookPropertyRecord | undefined, WorkbookMetadataError>
-  readonly getWorkbookProperty: (key: string) => Effect.Effect<WorkbookPropertyRecord | undefined, WorkbookMetadataError>
-  readonly listWorkbookProperties: () => Effect.Effect<WorkbookPropertyRecord[], WorkbookMetadataError>
-  readonly setMacroPayload: (record: WorkbookMacroPayloadSnapshot) => Effect.Effect<WorkbookMacroPayloadRecord, WorkbookMetadataError>
-  readonly listMacroPayloads: () => Effect.Effect<WorkbookMacroPayloadRecord[], WorkbookMetadataError>
-  readonly setCalculationSettings: (
-    settings: WorkbookCalculationSettingsSnapshot,
-  ) => Effect.Effect<WorkbookCalculationSettingsRecord, WorkbookMetadataError>
-  readonly getCalculationSettings: () => Effect.Effect<WorkbookCalculationSettingsRecord, WorkbookMetadataError>
-  readonly setVolatileContext: (
-    context: WorkbookVolatileContextSnapshot,
-  ) => Effect.Effect<WorkbookVolatileContextRecord, WorkbookMetadataError>
-  readonly getVolatileContext: () => Effect.Effect<WorkbookVolatileContextRecord, WorkbookMetadataError>
-  readonly setDefinedName: (
-    name: string,
-    value: WorkbookDefinedNameValueSnapshot,
-  ) => Effect.Effect<WorkbookDefinedNameRecord, WorkbookMetadataError>
-  readonly getDefinedName: (name: string) => Effect.Effect<WorkbookDefinedNameRecord | undefined, WorkbookMetadataError>
-  readonly deleteDefinedName: (name: string) => Effect.Effect<boolean, WorkbookMetadataError>
-  readonly listDefinedNames: () => Effect.Effect<WorkbookDefinedNameRecord[], WorkbookMetadataError>
-  readonly setTable: (record: WorkbookTableSnapshot) => Effect.Effect<WorkbookTableRecord, WorkbookMetadataError>
-  readonly getTable: (name: string) => Effect.Effect<WorkbookTableRecord | undefined, WorkbookMetadataError>
-  readonly deleteTable: (name: string) => Effect.Effect<boolean, WorkbookMetadataError>
-  readonly listTables: () => Effect.Effect<WorkbookTableRecord[], WorkbookMetadataError>
-  readonly setFreezePane: (sheetName: string, rows: number, cols: number) => Effect.Effect<WorkbookFreezePaneRecord, WorkbookMetadataError>
-  readonly getFreezePane: (sheetName: string) => Effect.Effect<WorkbookFreezePaneRecord | undefined, WorkbookMetadataError>
-  readonly clearFreezePane: (sheetName: string) => Effect.Effect<boolean, WorkbookMetadataError>
-  readonly setMergeRange: (range: CellRangeRef) => Effect.Effect<WorkbookMergeRangeRecord, WorkbookMetadataError>
-  readonly getMergeRange: (sheetName: string, address: string) => Effect.Effect<WorkbookMergeRangeRecord | undefined, WorkbookMetadataError>
-  readonly getMergeRangeByRange: (range: CellRangeRef) => Effect.Effect<WorkbookMergeRangeRecord | undefined, WorkbookMetadataError>
-  readonly clearMergeRanges: (range: CellRangeRef) => Effect.Effect<WorkbookMergeRangeRecord[], WorkbookMetadataError>
-  readonly listMergeRanges: (sheetName: string) => Effect.Effect<WorkbookMergeRangeRecord[], WorkbookMetadataError>
-  readonly setSheetProtection: (
-    record: WorkbookSheetProtectionSnapshot,
-  ) => Effect.Effect<WorkbookSheetProtectionRecord, WorkbookMetadataError>
-  readonly getSheetProtection: (sheetName: string) => Effect.Effect<WorkbookSheetProtectionRecord | undefined, WorkbookMetadataError>
-  readonly clearSheetProtection: (sheetName: string) => Effect.Effect<boolean, WorkbookMetadataError>
-  readonly setFilter: (sheetName: string, range: CellRangeRef) => Effect.Effect<WorkbookFilterRecord, WorkbookMetadataError>
-  readonly getFilter: (sheetName: string, range: CellRangeRef) => Effect.Effect<WorkbookFilterRecord | undefined, WorkbookMetadataError>
-  readonly deleteFilter: (sheetName: string, range: CellRangeRef) => Effect.Effect<boolean, WorkbookMetadataError>
-  readonly listFilters: (sheetName: string) => Effect.Effect<WorkbookFilterRecord[], WorkbookMetadataError>
-  readonly setSort: (
-    sheetName: string,
-    range: CellRangeRef,
-    keys: readonly WorkbookSortKeyRecord[],
-  ) => Effect.Effect<WorkbookSortRecord, WorkbookMetadataError>
-  readonly getSort: (sheetName: string, range: CellRangeRef) => Effect.Effect<WorkbookSortRecord | undefined, WorkbookMetadataError>
-  readonly deleteSort: (sheetName: string, range: CellRangeRef) => Effect.Effect<boolean, WorkbookMetadataError>
-  readonly listSorts: (sheetName: string) => Effect.Effect<WorkbookSortRecord[], WorkbookMetadataError>
-  readonly setDataValidation: (record: WorkbookDataValidationSnapshot) => Effect.Effect<WorkbookDataValidationRecord, WorkbookMetadataError>
-  readonly getDataValidation: (
-    sheetName: string,
-    range: CellRangeRef,
-  ) => Effect.Effect<WorkbookDataValidationRecord | undefined, WorkbookMetadataError>
-  readonly deleteDataValidation: (sheetName: string, range: CellRangeRef) => Effect.Effect<boolean, WorkbookMetadataError>
-  readonly listDataValidations: (sheetName: string) => Effect.Effect<WorkbookDataValidationRecord[], WorkbookMetadataError>
-  readonly setConditionalFormat: (
-    record: WorkbookConditionalFormatSnapshot,
-  ) => Effect.Effect<WorkbookConditionalFormatRecord, WorkbookMetadataError>
-  readonly getConditionalFormat: (id: string) => Effect.Effect<WorkbookConditionalFormatRecord | undefined, WorkbookMetadataError>
-  readonly deleteConditionalFormat: (id: string) => Effect.Effect<boolean, WorkbookMetadataError>
-  readonly listConditionalFormats: (sheetName: string) => Effect.Effect<WorkbookConditionalFormatRecord[], WorkbookMetadataError>
-  readonly setRangeProtection: (
-    record: WorkbookRangeProtectionSnapshot,
-  ) => Effect.Effect<WorkbookRangeProtectionRecord, WorkbookMetadataError>
-  readonly getRangeProtection: (id: string) => Effect.Effect<WorkbookRangeProtectionRecord | undefined, WorkbookMetadataError>
-  readonly deleteRangeProtection: (id: string) => Effect.Effect<boolean, WorkbookMetadataError>
-  readonly listRangeProtections: (sheetName: string) => Effect.Effect<WorkbookRangeProtectionRecord[], WorkbookMetadataError>
-  readonly setCommentThread: (record: WorkbookCommentThreadSnapshot) => Effect.Effect<WorkbookCommentThreadRecord, WorkbookMetadataError>
-  readonly getCommentThread: (
-    sheetName: string,
-    address: string,
-  ) => Effect.Effect<WorkbookCommentThreadRecord | undefined, WorkbookMetadataError>
-  readonly deleteCommentThread: (sheetName: string, address: string) => Effect.Effect<boolean, WorkbookMetadataError>
-  readonly listCommentThreads: (sheetName: string) => Effect.Effect<WorkbookCommentThreadRecord[], WorkbookMetadataError>
-  readonly setNote: (record: WorkbookNoteSnapshot) => Effect.Effect<WorkbookNoteRecord, WorkbookMetadataError>
-  readonly getNote: (sheetName: string, address: string) => Effect.Effect<WorkbookNoteRecord | undefined, WorkbookMetadataError>
-  readonly deleteNote: (sheetName: string, address: string) => Effect.Effect<boolean, WorkbookMetadataError>
-  readonly listNotes: (sheetName: string) => Effect.Effect<WorkbookNoteRecord[], WorkbookMetadataError>
-  readonly setSpill: (
-    sheetName: string,
-    address: string,
-    rows: number,
-    cols: number,
-  ) => Effect.Effect<WorkbookSpillRecord, WorkbookMetadataError>
-  readonly getSpill: (sheetName: string, address: string) => Effect.Effect<WorkbookSpillRecord | undefined, WorkbookMetadataError>
-  readonly deleteSpill: (sheetName: string, address: string) => Effect.Effect<boolean, WorkbookMetadataError>
-  readonly listSpills: () => Effect.Effect<WorkbookSpillRecord[], WorkbookMetadataError>
-  readonly setPivot: (record: WorkbookPivotSnapshot) => Effect.Effect<WorkbookPivotRecord, WorkbookMetadataError>
-  readonly getPivot: (sheetName: string, address: string) => Effect.Effect<WorkbookPivotRecord | undefined, WorkbookMetadataError>
-  readonly getPivotByKey: (key: string) => Effect.Effect<WorkbookPivotRecord | undefined, WorkbookMetadataError>
-  readonly deletePivot: (sheetName: string, address: string) => Effect.Effect<boolean, WorkbookMetadataError>
-  readonly hasPivots: () => Effect.Effect<boolean, WorkbookMetadataError>
-  readonly listPivots: () => Effect.Effect<WorkbookPivotRecord[], WorkbookMetadataError>
-  readonly setChart: (record: WorkbookChartSnapshot) => Effect.Effect<WorkbookChartRecord, WorkbookMetadataError>
-  readonly getChart: (id: string) => Effect.Effect<WorkbookChartRecord | undefined, WorkbookMetadataError>
-  readonly deleteChart: (id: string) => Effect.Effect<boolean, WorkbookMetadataError>
-  readonly listCharts: () => Effect.Effect<WorkbookChartRecord[], WorkbookMetadataError>
-  readonly setImage: (record: WorkbookImageSnapshot) => Effect.Effect<WorkbookImageRecord, WorkbookMetadataError>
-  readonly getImage: (id: string) => Effect.Effect<WorkbookImageRecord | undefined, WorkbookMetadataError>
-  readonly deleteImage: (id: string) => Effect.Effect<boolean, WorkbookMetadataError>
-  readonly listImages: () => Effect.Effect<WorkbookImageRecord[], WorkbookMetadataError>
-  readonly setShape: (record: WorkbookShapeSnapshot) => Effect.Effect<WorkbookShapeRecord, WorkbookMetadataError>
-  readonly getShape: (id: string) => Effect.Effect<WorkbookShapeRecord | undefined, WorkbookMetadataError>
-  readonly deleteShape: (id: string) => Effect.Effect<boolean, WorkbookMetadataError>
-  readonly listShapes: () => Effect.Effect<WorkbookShapeRecord[], WorkbookMetadataError>
+function metadataEffect<Success>(message: string, run: () => Success): Effect.Effect<Success, WorkbookMetadataError> {
+  return Effect.try({
+    try: run,
+    catch: (cause) =>
+      new WorkbookMetadataError({
+        message: metadataErrorMessage(message, cause),
+        cause,
+      }),
+  })
 }
 
 export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord): WorkbookMetadataService {
@@ -405,1172 +271,620 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
 
   return {
     renameSheet(oldSheetName, newSheetName) {
-      return Effect.try({
-        try: () => renameSheetNow(oldSheetName, newSheetName),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to rename workbook sheet metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to rename workbook sheet metadata', () => renameSheetNow(oldSheetName, newSheetName))
     },
     deleteSheetRecords(sheetName) {
-      return Effect.try({
-        try: () => deleteSheetRecordsNow(sheetName),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to delete workbook sheet metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to delete workbook sheet metadata', () => deleteSheetRecordsNow(sheetName))
     },
     reset() {
-      return Effect.try({
-        try: resetNow,
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to reset workbook metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to reset workbook metadata', resetNow)
     },
     setWorkbookProperty(key, value) {
-      return Effect.try({
-        try: () => {
-          const trimmedKey = normalizeMetadataKey(key)
-          if (value === null) {
-            metadata.properties.delete(trimmedKey)
-            return undefined
-          }
-          const record: WorkbookPropertyRecord = { key: trimmedKey, value }
-          metadata.properties.set(trimmedKey, record)
-          return { ...record }
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to set workbook property', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to set workbook property', () => {
+        const trimmedKey = normalizeMetadataKey(key)
+        if (value === null) {
+          metadata.properties.delete(trimmedKey)
+          return undefined
+        }
+        const record: WorkbookPropertyRecord = { key: trimmedKey, value }
+        metadata.properties.set(trimmedKey, record)
+        return { ...record }
       })
     },
     getWorkbookProperty(key) {
-      return Effect.try({
-        try: () => {
-          const record = metadata.properties.get(normalizeMetadataKey(key))
-          return record ? { ...record } : undefined
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to get workbook property', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to get workbook property', () => {
+        const record = metadata.properties.get(normalizeMetadataKey(key))
+        return record ? { ...record } : undefined
       })
     },
     listWorkbookProperties() {
-      return Effect.try({
-        try: () => [...metadata.properties.values()].toSorted((left, right) => left.key.localeCompare(right.key)).map(clonePropertyRecord),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to list workbook properties', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to list workbook properties', () =>
+        [...metadata.properties.values()].toSorted((left, right) => left.key.localeCompare(right.key)).map(clonePropertyRecord),
+      )
     },
     setMacroPayload(record) {
-      return Effect.try({
-        try: () => {
-          if (
-            record.kind !== 'vbaProject' ||
-            record.storage !== 'base64' ||
-            typeof record.dataBase64 !== 'string' ||
-            record.dataBase64.length === 0 ||
-            !Number.isInteger(record.byteLength) ||
-            record.byteLength < 0 ||
-            !record.preservedWithoutExecution ||
-            (record.workbookCodeName !== undefined && record.workbookCodeName.trim().length === 0) ||
-            (record.sheetCodeNames !== undefined &&
-              !record.sheetCodeNames.every((entry) => entry.sheetName.trim().length > 0 && entry.codeName.trim().length > 0))
-          ) {
-            throw new Error('Invalid workbook macro payload metadata')
-          }
-          const stored = cloneMacroPayloadRecord(record)
-          metadata.macroPayloads.set(macroPayloadKey(stored.kind), stored)
-          return cloneMacroPayloadRecord(stored)
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to set macro payload metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to set macro payload metadata', () => {
+        const stored: WorkbookMacroPayloadRecord = cloneMacroPayloadRecord(record)
+        metadata.macroPayloads.set(macroPayloadKey(stored.kind), stored)
+        return cloneMacroPayloadRecord(stored)
       })
     },
     listMacroPayloads() {
-      return Effect.try({
-        try: () =>
-          [...metadata.macroPayloads.values()].toSorted((left, right) => left.kind.localeCompare(right.kind)).map(cloneMacroPayloadRecord),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to list macro payload metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to list macro payload metadata', () =>
+        [...metadata.macroPayloads.values()]
+          .toSorted((left, right) => macroPayloadKey(left.kind).localeCompare(macroPayloadKey(right.kind)))
+          .map(cloneMacroPayloadRecord),
+      )
     },
     setCalculationSettings(settings) {
-      return Effect.try({
-        try: () => {
-          metadata.calculationSettings = {
-            compatibilityMode: 'excel-modern',
-            ...settings,
-          }
-          return { ...metadata.calculationSettings }
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to set calculation settings', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to set calculation settings', () => {
+        metadata.calculationSettings = {
+          compatibilityMode: 'excel-modern',
+          ...settings,
+        }
+        return { ...metadata.calculationSettings }
       })
     },
     getCalculationSettings() {
-      return Effect.try({
-        try: () => ({ ...metadata.calculationSettings }),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to get calculation settings', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to get calculation settings', () => ({ ...metadata.calculationSettings }))
     },
     setVolatileContext(context) {
-      return Effect.try({
-        try: () => {
-          metadata.volatileContext = { ...context }
-          return { ...metadata.volatileContext }
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to set volatile context', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to set volatile context', () => {
+        metadata.volatileContext = { ...context }
+        return { ...metadata.volatileContext }
       })
     },
     getVolatileContext() {
-      return Effect.try({
-        try: () => ({ ...metadata.volatileContext }),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to get volatile context', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to get volatile context', () => ({ ...metadata.volatileContext }))
     },
     setDefinedName(name, value) {
-      return Effect.try({
-        try: () => {
-          const trimmedName = name.trim()
-          const record: WorkbookDefinedNameRecord = {
-            name: trimmedName,
-            value: cloneDefinedNameValue(value),
-          }
-          metadata.definedNames.set(normalizeDefinedName(trimmedName), record)
-          return cloneDefinedNameRecord(record)
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to set defined name', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to set defined name', () => {
+        const trimmedName = name.trim()
+        const record: WorkbookDefinedNameRecord = {
+          name: trimmedName,
+          value: cloneDefinedNameValue(value),
+        }
+        metadata.definedNames.set(normalizeDefinedName(trimmedName), record)
+        return cloneDefinedNameRecord(record)
       })
     },
     getDefinedName(name) {
-      return Effect.try({
-        try: () => {
-          const record = metadata.definedNames.get(normalizeDefinedName(name))
-          return record ? cloneDefinedNameRecord(record) : undefined
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to get defined name', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to get defined name', () => {
+        const record = metadata.definedNames.get(normalizeDefinedName(name))
+        return record ? cloneDefinedNameRecord(record) : undefined
       })
     },
     deleteDefinedName(name) {
-      return Effect.try({
-        try: () => metadata.definedNames.delete(normalizeDefinedName(name)),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to delete defined name', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to delete defined name', () => metadata.definedNames.delete(normalizeDefinedName(name)))
     },
     listDefinedNames() {
-      return Effect.try({
-        try: () =>
-          [...metadata.definedNames.values()]
-            .toSorted((left, right) => normalizeDefinedName(left.name).localeCompare(normalizeDefinedName(right.name)))
-            .map(cloneDefinedNameRecord),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to list defined names', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to list defined names', () =>
+        [...metadata.definedNames.values()]
+          .toSorted((left, right) => normalizeDefinedName(left.name).localeCompare(normalizeDefinedName(right.name)))
+          .map(cloneDefinedNameRecord),
+      )
     },
     setTable(record) {
-      return Effect.try({
-        try: () => {
-          const stored: WorkbookTableRecord = {
-            name: record.name.trim(),
-            sheetName: record.sheetName,
-            startAddress: record.startAddress,
-            endAddress: record.endAddress,
-            columnNames: [...record.columnNames],
-            headerRow: record.headerRow,
-            totalsRow: record.totalsRow,
-          }
-          metadata.tables.set(tableKey(stored.name), stored)
-          return cloneTableRecord(stored)
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to set table metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to set table metadata', () => {
+        const stored: WorkbookTableRecord = {
+          name: record.name.trim(),
+          sheetName: record.sheetName,
+          startAddress: record.startAddress,
+          endAddress: record.endAddress,
+          columnNames: [...record.columnNames],
+          headerRow: record.headerRow,
+          totalsRow: record.totalsRow,
+        }
+        metadata.tables.set(tableKey(stored.name), stored)
+        return cloneTableRecord(stored)
       })
     },
     getTable(name) {
-      return Effect.try({
-        try: () => {
-          const record = metadata.tables.get(tableKey(name))
-          return record ? cloneTableRecord(record) : undefined
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to get table metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to get table metadata', () => {
+        const record = metadata.tables.get(tableKey(name))
+        return record ? cloneTableRecord(record) : undefined
       })
     },
     deleteTable(name) {
-      return Effect.try({
-        try: () => metadata.tables.delete(tableKey(name)),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to delete table metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to delete table metadata', () => metadata.tables.delete(tableKey(name)))
     },
     listTables() {
-      return Effect.try({
-        try: () =>
-          [...metadata.tables.values()]
-            .toSorted((left, right) => tableKey(left.name).localeCompare(tableKey(right.name)))
-            .map(cloneTableRecord),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to list table metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to list table metadata', () =>
+        [...metadata.tables.values()]
+          .toSorted((left, right) => tableKey(left.name).localeCompare(tableKey(right.name)))
+          .map(cloneTableRecord),
+      )
     },
     setFreezePane(sheetName, rows, cols) {
-      return Effect.try({
-        try: () => {
-          const record: WorkbookFreezePaneRecord = { sheetName, rows, cols }
-          metadata.freezePanes.set(sheetName, record)
-          return { ...record }
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to set freeze pane metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to set freeze pane metadata', () => {
+        const record: WorkbookFreezePaneRecord = { sheetName, rows, cols }
+        metadata.freezePanes.set(sheetName, record)
+        return { ...record }
       })
     },
     getFreezePane(sheetName) {
-      return Effect.try({
-        try: () => {
-          const record = metadata.freezePanes.get(sheetName)
-          return record ? { ...record } : undefined
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to get freeze pane metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to get freeze pane metadata', () => {
+        const record = metadata.freezePanes.get(sheetName)
+        return record ? { ...record } : undefined
       })
     },
     clearFreezePane(sheetName) {
-      return Effect.try({
-        try: () => metadata.freezePanes.delete(sheetName),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to clear freeze pane metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to clear freeze pane metadata', () => metadata.freezePanes.delete(sheetName))
     },
     setMergeRange(range) {
-      return Effect.try({
-        try: () => {
-          const stored = canonicalMergeRangeRef(range)
-          if (isSingleCellMergeRange(stored)) {
-            throw new Error('Merged ranges must include at least two cells')
-          }
-          const overlapping = [...metadata.merges.values()].filter((record) => rangesIntersect(record, stored))
-          if (overlapping.some((record) => mergeRangeKey(record) !== mergeRangeKey(stored))) {
-            throw new Error('Merged ranges cannot overlap')
-          }
-          metadata.merges.set(mergeRangeKey(stored), stored)
-          return cloneMergeRangeRecord(stored)
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to set merged cell metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to set merged cell metadata', () => {
+        const stored = canonicalMergeRangeRef(range)
+        if (isSingleCellMergeRange(stored)) {
+          throw new Error('Merged ranges must include at least two cells')
+        }
+        const overlapping = [...metadata.merges.values()].filter((record) => rangesIntersect(record, stored))
+        if (overlapping.some((record) => mergeRangeKey(record) !== mergeRangeKey(stored))) {
+          throw new Error('Merged ranges cannot overlap')
+        }
+        metadata.merges.set(mergeRangeKey(stored), stored)
+        return cloneMergeRangeRecord(stored)
       })
     },
     getMergeRange(sheetName, address) {
-      return Effect.try({
-        try: () => {
-          const record = [...metadata.merges.values()].find((entry) => rangeContainsAddress(entry, sheetName, address))
-          return record ? cloneMergeRangeRecord(record) : undefined
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to get merged cell metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to get merged cell metadata', () => {
+        const record = [...metadata.merges.values()].find((entry) => rangeContainsAddress(entry, sheetName, address))
+        return record ? cloneMergeRangeRecord(record) : undefined
       })
     },
     getMergeRangeByRange(range) {
-      return Effect.try({
-        try: () => {
-          const record = metadata.merges.get(mergeRangeKey(range))
-          return record ? cloneMergeRangeRecord(record) : undefined
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to get merged range metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to get merged range metadata', () => {
+        const record = metadata.merges.get(mergeRangeKey(range))
+        return record ? cloneMergeRangeRecord(record) : undefined
       })
     },
     clearMergeRanges(range) {
-      return Effect.try({
-        try: () => {
-          const removed: WorkbookMergeRangeRecord[] = []
-          for (const [key, record] of metadata.merges.entries()) {
-            if (!rangesIntersect(record, range)) {
-              continue
-            }
-            metadata.merges.delete(key)
-            removed.push(cloneMergeRangeRecord(record))
+      return metadataEffect('Failed to clear merged cell metadata', () => {
+        const removed: WorkbookMergeRangeRecord[] = []
+        for (const [key, record] of metadata.merges.entries()) {
+          if (!rangesIntersect(record, range)) {
+            continue
           }
-          return removed.toSorted((left, right) => mergeRangeKey(left).localeCompare(mergeRangeKey(right)))
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to clear merged cell metadata', cause),
-            cause,
-          }),
+          metadata.merges.delete(key)
+          removed.push(cloneMergeRangeRecord(record))
+        }
+        return removed.toSorted((left, right) => mergeRangeKey(left).localeCompare(mergeRangeKey(right)))
       })
     },
     listMergeRanges(sheetName) {
-      return Effect.try({
-        try: () =>
-          [...metadata.merges.values()]
-            .filter((record) => record.sheetName === sheetName)
-            .toSorted((left, right) => mergeRangeKey(left).localeCompare(mergeRangeKey(right)))
-            .map(cloneMergeRangeRecord),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to list merged cell metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to list merged cell metadata', () =>
+        [...metadata.merges.values()]
+          .filter((record) => record.sheetName === sheetName)
+          .toSorted((left, right) => mergeRangeKey(left).localeCompare(mergeRangeKey(right)))
+          .map(cloneMergeRangeRecord),
+      )
     },
     setSheetProtection(record) {
-      return Effect.try({
-        try: () => {
-          const stored: WorkbookSheetProtectionRecord = cloneSheetProtectionRecord({
-            sheetName: record.sheetName,
-            ...(record.hideFormulas !== undefined ? { hideFormulas: record.hideFormulas } : {}),
-          })
-          metadata.sheetProtections.set(record.sheetName, stored)
-          return cloneSheetProtectionRecord(stored)
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to set sheet protection metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to set sheet protection metadata', () => {
+        const stored: WorkbookSheetProtectionRecord = cloneSheetProtectionRecord({
+          sheetName: record.sheetName,
+          ...(record.hideFormulas !== undefined ? { hideFormulas: record.hideFormulas } : {}),
+        })
+        metadata.sheetProtections.set(record.sheetName, stored)
+        return cloneSheetProtectionRecord(stored)
       })
     },
     getSheetProtection(sheetName) {
-      return Effect.try({
-        try: () => {
-          const record = metadata.sheetProtections.get(sheetName)
-          return record ? cloneSheetProtectionRecord(record) : undefined
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to get sheet protection metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to get sheet protection metadata', () => {
+        const record = metadata.sheetProtections.get(sheetName)
+        return record ? cloneSheetProtectionRecord(record) : undefined
       })
     },
     clearSheetProtection(sheetName) {
-      return Effect.try({
-        try: () => metadata.sheetProtections.delete(sheetName),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to clear sheet protection metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to clear sheet protection metadata', () => metadata.sheetProtections.delete(sheetName))
     },
     setFilter(sheetName, range) {
-      return Effect.try({
-        try: () => {
-          const storedRange = canonicalWorkbookRangeRef(range)
-          const record: WorkbookFilterRecord = { sheetName, range: storedRange }
-          metadata.filters.set(filterKey(sheetName, storedRange), record)
-          return cloneFilterRecord(record)
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to set filter metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to set filter metadata', () => {
+        const storedRange = canonicalWorkbookRangeRef(range)
+        const record: WorkbookFilterRecord = { sheetName, range: storedRange }
+        metadata.filters.set(filterKey(sheetName, storedRange), record)
+        return cloneFilterRecord(record)
       })
     },
     getFilter(sheetName, range) {
-      return Effect.try({
-        try: () => {
-          const record = metadata.filters.get(filterKey(sheetName, range))
-          return record ? cloneFilterRecord(record) : undefined
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to get filter metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to get filter metadata', () => {
+        const record = metadata.filters.get(filterKey(sheetName, range))
+        return record ? cloneFilterRecord(record) : undefined
       })
     },
     deleteFilter(sheetName, range) {
-      return Effect.try({
-        try: () => metadata.filters.delete(filterKey(sheetName, range)),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to delete filter metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to delete filter metadata', () => metadata.filters.delete(filterKey(sheetName, range)))
     },
     listFilters(sheetName) {
-      return Effect.try({
-        try: () =>
-          [...metadata.filters.values()]
-            .filter((record) => record.sheetName === sheetName)
-            .toSorted((left, right) => filterKey(left.sheetName, left.range).localeCompare(filterKey(right.sheetName, right.range)))
-            .map(cloneFilterRecord),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to list filter metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to list filter metadata', () =>
+        [...metadata.filters.values()]
+          .filter((record) => record.sheetName === sheetName)
+          .toSorted((left, right) => filterKey(left.sheetName, left.range).localeCompare(filterKey(right.sheetName, right.range)))
+          .map(cloneFilterRecord),
+      )
     },
     setSort(sheetName, range, keys) {
-      return Effect.try({
-        try: () => {
-          const storedRange = canonicalWorkbookRangeRef(range)
-          const record: WorkbookSortRecord = {
-            sheetName,
-            range: storedRange,
-            keys: keys.map(cloneSortKeyRecord),
-          }
-          metadata.sorts.set(sortKey(sheetName, storedRange), record)
-          return cloneSortRecord(record)
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to set sort metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to set sort metadata', () => {
+        const storedRange = canonicalWorkbookRangeRef(range)
+        const record: WorkbookSortRecord = {
+          sheetName,
+          range: storedRange,
+          keys: keys.map(cloneSortKeyRecord),
+        }
+        metadata.sorts.set(sortKey(sheetName, storedRange), record)
+        return cloneSortRecord(record)
       })
     },
     getSort(sheetName, range) {
-      return Effect.try({
-        try: () => {
-          const record = metadata.sorts.get(sortKey(sheetName, range))
-          return record ? cloneSortRecord(record) : undefined
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to get sort metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to get sort metadata', () => {
+        const record = metadata.sorts.get(sortKey(sheetName, range))
+        return record ? cloneSortRecord(record) : undefined
       })
     },
     deleteSort(sheetName, range) {
-      return Effect.try({
-        try: () => metadata.sorts.delete(sortKey(sheetName, range)),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to delete sort metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to delete sort metadata', () => metadata.sorts.delete(sortKey(sheetName, range)))
     },
     listSorts(sheetName) {
-      return Effect.try({
-        try: () =>
-          [...metadata.sorts.values()]
-            .filter((record) => record.sheetName === sheetName)
-            .toSorted((left, right) => sortKey(left.sheetName, left.range).localeCompare(sortKey(right.sheetName, right.range)))
-            .map(cloneSortRecord),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to list sort metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to list sort metadata', () =>
+        [...metadata.sorts.values()]
+          .filter((record) => record.sheetName === sheetName)
+          .toSorted((left, right) => sortKey(left.sheetName, left.range).localeCompare(sortKey(right.sheetName, right.range)))
+          .map(cloneSortRecord),
+      )
     },
     setDataValidation(record) {
-      return Effect.try({
-        try: () => {
-          const storedRange = canonicalWorkbookRangeRef(record.range)
-          const nextRecord: WorkbookDataValidationRecord = {
-            range: storedRange,
-            rule: record.rule,
-          }
-          if (record.allowBlank !== undefined) {
-            nextRecord.allowBlank = record.allowBlank
-          }
-          if (record.showDropdown !== undefined) {
-            nextRecord.showDropdown = record.showDropdown
-          }
-          if (record.promptTitle !== undefined) {
-            nextRecord.promptTitle = record.promptTitle
-          }
-          if (record.promptMessage !== undefined) {
-            nextRecord.promptMessage = record.promptMessage
-          }
-          if (record.errorStyle !== undefined) {
-            nextRecord.errorStyle = record.errorStyle
-          }
-          if (record.errorTitle !== undefined) {
-            nextRecord.errorTitle = record.errorTitle
-          }
-          if (record.errorMessage !== undefined) {
-            nextRecord.errorMessage = record.errorMessage
-          }
-          const stored: WorkbookDataValidationRecord = cloneDataValidationRecord(nextRecord)
-          metadata.dataValidations.set(dataValidationKey(storedRange.sheetName, storedRange), stored)
-          return cloneDataValidationRecord(stored)
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to set data validation metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to set data validation metadata', () => {
+        const storedRange = canonicalWorkbookRangeRef(record.range)
+        const nextRecord: WorkbookDataValidationRecord = {
+          range: storedRange,
+          rule: record.rule,
+        }
+        if (record.allowBlank !== undefined) {
+          nextRecord.allowBlank = record.allowBlank
+        }
+        if (record.showDropdown !== undefined) {
+          nextRecord.showDropdown = record.showDropdown
+        }
+        if (record.promptTitle !== undefined) {
+          nextRecord.promptTitle = record.promptTitle
+        }
+        if (record.promptMessage !== undefined) {
+          nextRecord.promptMessage = record.promptMessage
+        }
+        if (record.errorStyle !== undefined) {
+          nextRecord.errorStyle = record.errorStyle
+        }
+        if (record.errorTitle !== undefined) {
+          nextRecord.errorTitle = record.errorTitle
+        }
+        if (record.errorMessage !== undefined) {
+          nextRecord.errorMessage = record.errorMessage
+        }
+        const stored: WorkbookDataValidationRecord = cloneDataValidationRecord(nextRecord)
+        metadata.dataValidations.set(dataValidationKey(storedRange.sheetName, storedRange), stored)
+        return cloneDataValidationRecord(stored)
       })
     },
     getDataValidation(sheetName, range) {
-      return Effect.try({
-        try: () => {
-          const record = metadata.dataValidations.get(dataValidationKey(sheetName, range))
-          return record ? cloneDataValidationRecord(record) : undefined
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to get data validation metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to get data validation metadata', () => {
+        const record = metadata.dataValidations.get(dataValidationKey(sheetName, range))
+        return record ? cloneDataValidationRecord(record) : undefined
       })
     },
     deleteDataValidation(sheetName, range) {
-      return Effect.try({
-        try: () => metadata.dataValidations.delete(dataValidationKey(sheetName, range)),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to delete data validation metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to delete data validation metadata', () =>
+        metadata.dataValidations.delete(dataValidationKey(sheetName, range)),
+      )
     },
     listDataValidations(sheetName) {
-      return Effect.try({
-        try: () =>
-          [...metadata.dataValidations.values()]
-            .filter((record) => record.range.sheetName === sheetName)
-            .toSorted((left, right) =>
-              dataValidationKey(left.range.sheetName, left.range).localeCompare(dataValidationKey(right.range.sheetName, right.range)),
-            )
-            .map(cloneDataValidationRecord),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to list data validation metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to list data validation metadata', () =>
+        [...metadata.dataValidations.values()]
+          .filter((record) => record.range.sheetName === sheetName)
+          .toSorted((left, right) =>
+            dataValidationKey(left.range.sheetName, left.range).localeCompare(dataValidationKey(right.range.sheetName, right.range)),
+          )
+          .map(cloneDataValidationRecord),
+      )
     },
     setConditionalFormat(record) {
-      return Effect.try({
-        try: () => {
-          const id = conditionalFormatKey(record.id)
-          const nextRecord: WorkbookConditionalFormatRecord = {
-            id,
-            range: canonicalWorkbookRangeRef(record.range),
-            rule: structuredClone(record.rule),
-            style: structuredClone(record.style),
-          }
-          if (record.stopIfTrue !== undefined) {
-            nextRecord.stopIfTrue = record.stopIfTrue
-          }
-          if (record.priority !== undefined) {
-            nextRecord.priority = record.priority
-          }
-          const stored = cloneConditionalFormatRecord(nextRecord)
-          metadata.conditionalFormats.set(id, stored)
-          return cloneConditionalFormatRecord(stored)
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to set conditional format metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to set conditional format metadata', () => {
+        const id = conditionalFormatKey(record.id)
+        const nextRecord: WorkbookConditionalFormatRecord = {
+          id,
+          range: canonicalWorkbookRangeRef(record.range),
+          rule: structuredClone(record.rule),
+          style: structuredClone(record.style),
+        }
+        if (record.stopIfTrue !== undefined) {
+          nextRecord.stopIfTrue = record.stopIfTrue
+        }
+        if (record.priority !== undefined) {
+          nextRecord.priority = record.priority
+        }
+        const stored = cloneConditionalFormatRecord(nextRecord)
+        metadata.conditionalFormats.set(id, stored)
+        return cloneConditionalFormatRecord(stored)
       })
     },
     getConditionalFormat(id) {
-      return Effect.try({
-        try: () => {
-          const record = metadata.conditionalFormats.get(conditionalFormatKey(id))
-          return record ? cloneConditionalFormatRecord(record) : undefined
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to get conditional format metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to get conditional format metadata', () => {
+        const record = metadata.conditionalFormats.get(conditionalFormatKey(id))
+        return record ? cloneConditionalFormatRecord(record) : undefined
       })
     },
     deleteConditionalFormat(id) {
-      return Effect.try({
-        try: () => metadata.conditionalFormats.delete(conditionalFormatKey(id)),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to delete conditional format metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to delete conditional format metadata', () =>
+        metadata.conditionalFormats.delete(conditionalFormatKey(id)),
+      )
     },
     listConditionalFormats(sheetName) {
-      return Effect.try({
-        try: () =>
-          [...metadata.conditionalFormats.values()]
-            .filter((record) => record.range.sheetName === sheetName)
-            .toSorted((left, right) => {
-              const priorityCompare = (left.priority ?? Number.MAX_SAFE_INTEGER) - (right.priority ?? Number.MAX_SAFE_INTEGER)
-              if (priorityCompare !== 0) {
-                return priorityCompare
-              }
-              return left.id.localeCompare(right.id)
-            })
-            .map(cloneConditionalFormatRecord),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to list conditional format metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to list conditional format metadata', () =>
+        [...metadata.conditionalFormats.values()]
+          .filter((record) => record.range.sheetName === sheetName)
+          .toSorted((left, right) => {
+            const priorityCompare = (left.priority ?? Number.MAX_SAFE_INTEGER) - (right.priority ?? Number.MAX_SAFE_INTEGER)
+            if (priorityCompare !== 0) {
+              return priorityCompare
+            }
+            return left.id.localeCompare(right.id)
+          })
+          .map(cloneConditionalFormatRecord),
+      )
     },
     setRangeProtection(record) {
-      return Effect.try({
-        try: () => {
-          const id = rangeProtectionKey(record.id)
-          const stored: WorkbookRangeProtectionRecord = cloneRangeProtectionRecord({
-            id,
-            range: canonicalWorkbookRangeRef(record.range),
-            ...(record.hideFormulas !== undefined ? { hideFormulas: record.hideFormulas } : {}),
-          })
-          metadata.rangeProtections.set(id, stored)
-          return cloneRangeProtectionRecord(stored)
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to set range protection metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to set range protection metadata', () => {
+        const id = rangeProtectionKey(record.id)
+        const stored: WorkbookRangeProtectionRecord = cloneRangeProtectionRecord({
+          id,
+          range: canonicalWorkbookRangeRef(record.range),
+          ...(record.hideFormulas !== undefined ? { hideFormulas: record.hideFormulas } : {}),
+        })
+        metadata.rangeProtections.set(id, stored)
+        return cloneRangeProtectionRecord(stored)
       })
     },
     getRangeProtection(id) {
-      return Effect.try({
-        try: () => {
-          const record = metadata.rangeProtections.get(rangeProtectionKey(id))
-          return record ? cloneRangeProtectionRecord(record) : undefined
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to get range protection metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to get range protection metadata', () => {
+        const record = metadata.rangeProtections.get(rangeProtectionKey(id))
+        return record ? cloneRangeProtectionRecord(record) : undefined
       })
     },
     deleteRangeProtection(id) {
-      return Effect.try({
-        try: () => metadata.rangeProtections.delete(rangeProtectionKey(id)),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to delete range protection metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to delete range protection metadata', () => metadata.rangeProtections.delete(rangeProtectionKey(id)))
     },
     listRangeProtections(sheetName) {
-      return Effect.try({
-        try: () =>
-          [...metadata.rangeProtections.values()]
-            .filter((record) => record.range.sheetName === sheetName)
-            .toSorted((left, right) => left.id.localeCompare(right.id))
-            .map(cloneRangeProtectionRecord),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to list range protection metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to list range protection metadata', () =>
+        [...metadata.rangeProtections.values()]
+          .filter((record) => record.range.sheetName === sheetName)
+          .toSorted((left, right) => left.id.localeCompare(right.id))
+          .map(cloneRangeProtectionRecord),
+      )
     },
     setCommentThread(record) {
-      return Effect.try({
-        try: () => {
-          const normalizedAddress = canonicalWorkbookAddress(record.sheetName, record.address)
-          const stored: WorkbookCommentThreadRecord = cloneCommentThreadRecord({
-            ...record,
-            threadId: record.threadId.trim(),
-            address: normalizedAddress,
-            comments: record.comments.map((comment) => ({
-              id: comment.id.trim(),
-              body: comment.body.trim(),
-              ...(comment.authorUserId !== undefined ? { authorUserId: comment.authorUserId } : {}),
-              ...(comment.authorDisplayName !== undefined ? { authorDisplayName: comment.authorDisplayName } : {}),
-              ...(comment.createdAtUnixMs !== undefined ? { createdAtUnixMs: comment.createdAtUnixMs } : {}),
-            })),
-          })
-          metadata.commentThreads.set(commentThreadKey(record.sheetName, normalizedAddress), stored)
-          return cloneCommentThreadRecord(stored)
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to set comment thread metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to set comment thread metadata', () => {
+        const normalizedAddress = canonicalWorkbookAddress(record.sheetName, record.address)
+        const stored: WorkbookCommentThreadRecord = cloneCommentThreadRecord({
+          ...record,
+          threadId: record.threadId.trim(),
+          address: normalizedAddress,
+          comments: record.comments.map((comment) => ({
+            id: comment.id.trim(),
+            body: comment.body.trim(),
+            ...(comment.authorUserId !== undefined ? { authorUserId: comment.authorUserId } : {}),
+            ...(comment.authorDisplayName !== undefined ? { authorDisplayName: comment.authorDisplayName } : {}),
+            ...(comment.createdAtUnixMs !== undefined ? { createdAtUnixMs: comment.createdAtUnixMs } : {}),
+          })),
+        })
+        metadata.commentThreads.set(commentThreadKey(record.sheetName, normalizedAddress), stored)
+        return cloneCommentThreadRecord(stored)
       })
     },
     getCommentThread(sheetName, address) {
-      return Effect.try({
-        try: () => {
-          const record = metadata.commentThreads.get(commentThreadKey(sheetName, address))
-          return record ? cloneCommentThreadRecord(record) : undefined
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to get comment thread metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to get comment thread metadata', () => {
+        const record = metadata.commentThreads.get(commentThreadKey(sheetName, address))
+        return record ? cloneCommentThreadRecord(record) : undefined
       })
     },
     deleteCommentThread(sheetName, address) {
-      return Effect.try({
-        try: () => metadata.commentThreads.delete(commentThreadKey(sheetName, address)),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to delete comment thread metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to delete comment thread metadata', () =>
+        metadata.commentThreads.delete(commentThreadKey(sheetName, address)),
+      )
     },
     listCommentThreads(sheetName) {
-      return Effect.try({
-        try: () =>
-          [...metadata.commentThreads.values()]
-            .filter((record) => record.sheetName === sheetName)
-            .toSorted((left, right) =>
-              commentThreadKey(left.sheetName, left.address).localeCompare(commentThreadKey(right.sheetName, right.address)),
-            )
-            .map(cloneCommentThreadRecord),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to list comment thread metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to list comment thread metadata', () =>
+        [...metadata.commentThreads.values()]
+          .filter((record) => record.sheetName === sheetName)
+          .toSorted((left, right) =>
+            commentThreadKey(left.sheetName, left.address).localeCompare(commentThreadKey(right.sheetName, right.address)),
+          )
+          .map(cloneCommentThreadRecord),
+      )
     },
     setNote(record) {
-      return Effect.try({
-        try: () => {
-          const normalizedAddress = canonicalWorkbookAddress(record.sheetName, record.address)
-          const stored: WorkbookNoteRecord = cloneNoteRecord({
-            sheetName: record.sheetName,
-            address: normalizedAddress,
-            text: record.text.trim(),
-          })
-          metadata.notes.set(noteKey(record.sheetName, normalizedAddress), stored)
-          return cloneNoteRecord(stored)
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to set note metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to set note metadata', () => {
+        const normalizedAddress = canonicalWorkbookAddress(record.sheetName, record.address)
+        const stored: WorkbookNoteRecord = cloneNoteRecord({
+          sheetName: record.sheetName,
+          address: normalizedAddress,
+          text: record.text.trim(),
+        })
+        metadata.notes.set(noteKey(record.sheetName, normalizedAddress), stored)
+        return cloneNoteRecord(stored)
       })
     },
     getNote(sheetName, address) {
-      return Effect.try({
-        try: () => {
-          const record = metadata.notes.get(noteKey(sheetName, address))
-          return record ? cloneNoteRecord(record) : undefined
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to get note metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to get note metadata', () => {
+        const record = metadata.notes.get(noteKey(sheetName, address))
+        return record ? cloneNoteRecord(record) : undefined
       })
     },
     deleteNote(sheetName, address) {
-      return Effect.try({
-        try: () => metadata.notes.delete(noteKey(sheetName, address)),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to delete note metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to delete note metadata', () => metadata.notes.delete(noteKey(sheetName, address)))
     },
     listNotes(sheetName) {
-      return Effect.try({
-        try: () =>
-          [...metadata.notes.values()]
-            .filter((record) => record.sheetName === sheetName)
-            .toSorted((left, right) => noteKey(left.sheetName, left.address).localeCompare(noteKey(right.sheetName, right.address)))
-            .map(cloneNoteRecord),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to list note metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to list note metadata', () =>
+        [...metadata.notes.values()]
+          .filter((record) => record.sheetName === sheetName)
+          .toSorted((left, right) => noteKey(left.sheetName, left.address).localeCompare(noteKey(right.sheetName, right.address)))
+          .map(cloneNoteRecord),
+      )
     },
     setSpill(sheetName, address, rows, cols) {
-      return Effect.try({
-        try: () => {
-          const normalizedAddress = canonicalWorkbookAddress(sheetName, address)
-          const record: WorkbookSpillRecord = { sheetName, address: normalizedAddress, rows, cols }
-          metadata.spills.set(spillKey(sheetName, normalizedAddress), record)
-          return { ...record }
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to set spill metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to set spill metadata', () => {
+        const normalizedAddress = canonicalWorkbookAddress(sheetName, address)
+        const record: WorkbookSpillRecord = { sheetName, address: normalizedAddress, rows, cols }
+        metadata.spills.set(spillKey(sheetName, normalizedAddress), record)
+        return { ...record }
       })
     },
     getSpill(sheetName, address) {
-      return Effect.try({
-        try: () => {
-          const record = metadata.spills.get(spillKey(sheetName, address))
-          return record ? { ...record } : undefined
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to get spill metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to get spill metadata', () => {
+        const record = metadata.spills.get(spillKey(sheetName, address))
+        return record ? { ...record } : undefined
       })
     },
     deleteSpill(sheetName, address) {
-      return Effect.try({
-        try: () => metadata.spills.delete(spillKey(sheetName, address)),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to delete spill metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to delete spill metadata', () => metadata.spills.delete(spillKey(sheetName, address)))
     },
     listSpills() {
-      return Effect.try({
-        try: () =>
-          [...metadata.spills.values()]
-            .toSorted((left, right) => `${left.sheetName}!${left.address}`.localeCompare(`${right.sheetName}!${right.address}`))
-            .map(cloneSpillRecord),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to list spill metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to list spill metadata', () =>
+        [...metadata.spills.values()]
+          .toSorted((left, right) => `${left.sheetName}!${left.address}`.localeCompare(`${right.sheetName}!${right.address}`))
+          .map(cloneSpillRecord),
+      )
     },
     setPivot(record) {
-      return Effect.try({
-        try: () => {
-          const normalizedAddress = canonicalWorkbookAddress(record.sheetName, record.address)
-          const stored: WorkbookPivotRecord = {
-            ...record,
-            name: record.name.trim(),
-            address: normalizedAddress,
-            groupBy: [...record.groupBy],
-            values: record.values.map((value) => ({ ...value })),
-            source: canonicalWorkbookRangeRef(record.source),
-          }
-          metadata.pivots.set(pivotKey(record.sheetName, normalizedAddress), stored)
-          return clonePivotRecord(stored)
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to set pivot metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to set pivot metadata', () => {
+        const normalizedAddress = canonicalWorkbookAddress(record.sheetName, record.address)
+        const stored: WorkbookPivotRecord = {
+          ...record,
+          name: record.name.trim(),
+          address: normalizedAddress,
+          groupBy: [...record.groupBy],
+          values: record.values.map((value) => ({ ...value })),
+          source: canonicalWorkbookRangeRef(record.source),
+        }
+        metadata.pivots.set(pivotKey(record.sheetName, normalizedAddress), stored)
+        return clonePivotRecord(stored)
       })
     },
     getPivot(sheetName, address) {
-      return Effect.try({
-        try: () => {
-          const record = metadata.pivots.get(pivotKey(sheetName, address))
-          return record ? clonePivotRecord(record) : undefined
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to get pivot metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to get pivot metadata', () => {
+        const record = metadata.pivots.get(pivotKey(sheetName, address))
+        return record ? clonePivotRecord(record) : undefined
       })
     },
     getPivotByKey(key) {
-      return Effect.try({
-        try: () => {
-          const record = metadata.pivots.get(key)
-          return record ? clonePivotRecord(record) : undefined
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to get pivot metadata by key', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to get pivot metadata by key', () => {
+        const record = metadata.pivots.get(key)
+        return record ? clonePivotRecord(record) : undefined
       })
     },
     deletePivot(sheetName, address) {
-      return Effect.try({
-        try: () => metadata.pivots.delete(pivotKey(sheetName, address)),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to delete pivot metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to delete pivot metadata', () => metadata.pivots.delete(pivotKey(sheetName, address)))
     },
     hasPivots() {
-      return Effect.try({
-        try: () => metadata.pivots.size > 0,
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to read pivot metadata state', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to read pivot metadata state', () => metadata.pivots.size > 0)
     },
     listPivots() {
-      return Effect.try({
-        try: () =>
-          [...metadata.pivots.values()]
-            .toSorted((left, right) => `${left.sheetName}!${left.address}`.localeCompare(`${right.sheetName}!${right.address}`))
-            .map(clonePivotRecord),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to list pivot metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to list pivot metadata', () =>
+        [...metadata.pivots.values()]
+          .toSorted((left, right) => `${left.sheetName}!${left.address}`.localeCompare(`${right.sheetName}!${right.address}`))
+          .map(clonePivotRecord),
+      )
     },
     setChart(record) {
-      return Effect.try({
-        try: () => {
-          const stored: WorkbookChartRecord = {
-            id: record.id.trim(),
-            sheetName: record.sheetName,
-            address: canonicalWorkbookAddress(record.sheetName, record.address),
-            source: canonicalWorkbookRangeRef(record.source),
-            chartType: record.chartType,
-            rows: record.rows,
-            cols: record.cols,
-            ...(record.seriesOrientation !== undefined ? { seriesOrientation: record.seriesOrientation } : {}),
-            ...(record.firstRowAsHeaders !== undefined ? { firstRowAsHeaders: record.firstRowAsHeaders } : {}),
-            ...(record.firstColumnAsLabels !== undefined ? { firstColumnAsLabels: record.firstColumnAsLabels } : {}),
-            ...(record.title !== undefined ? { title: record.title } : {}),
-            ...(record.legendPosition !== undefined ? { legendPosition: record.legendPosition } : {}),
-          }
-          metadata.charts.set(chartKey(stored.id), stored)
-          return cloneChartRecord(stored)
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to set chart metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to set chart metadata', () => {
+        const stored: WorkbookChartRecord = {
+          id: record.id.trim(),
+          sheetName: record.sheetName,
+          address: canonicalWorkbookAddress(record.sheetName, record.address),
+          source: canonicalWorkbookRangeRef(record.source),
+          chartType: record.chartType,
+          rows: record.rows,
+          cols: record.cols,
+          ...(record.seriesOrientation !== undefined ? { seriesOrientation: record.seriesOrientation } : {}),
+          ...(record.firstRowAsHeaders !== undefined ? { firstRowAsHeaders: record.firstRowAsHeaders } : {}),
+          ...(record.firstColumnAsLabels !== undefined ? { firstColumnAsLabels: record.firstColumnAsLabels } : {}),
+          ...(record.title !== undefined ? { title: record.title } : {}),
+          ...(record.legendPosition !== undefined ? { legendPosition: record.legendPosition } : {}),
+        }
+        metadata.charts.set(chartKey(stored.id), stored)
+        return cloneChartRecord(stored)
       })
     },
     getChart(id) {
-      return Effect.try({
-        try: () => {
-          const record = metadata.charts.get(chartKey(id))
-          return record ? cloneChartRecord(record) : undefined
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to get chart metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to get chart metadata', () => {
+        const record = metadata.charts.get(chartKey(id))
+        return record ? cloneChartRecord(record) : undefined
       })
     },
     deleteChart(id) {
-      return Effect.try({
-        try: () => metadata.charts.delete(chartKey(id)),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to delete chart metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to delete chart metadata', () => metadata.charts.delete(chartKey(id)))
     },
     listCharts() {
-      return Effect.try({
-        try: () => [...metadata.charts.values()].toSorted((left, right) => left.id.localeCompare(right.id)).map(cloneChartRecord),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to list chart metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to list chart metadata', () =>
+        [...metadata.charts.values()].toSorted((left, right) => left.id.localeCompare(right.id)).map(cloneChartRecord),
+      )
     },
     setImage(record) {
-      return Effect.try({
-        try: () => {
-          const stored: WorkbookImageRecord = {
-            id: record.id.trim(),
-            sheetName: record.sheetName,
-            address: canonicalWorkbookAddress(record.sheetName, record.address),
-            sourceUrl: record.sourceUrl,
-            rows: record.rows,
-            cols: record.cols,
-            ...(record.altText !== undefined ? { altText: record.altText } : {}),
-          }
-          metadata.images.set(imageKey(stored.id), stored)
-          return cloneImageRecord(stored)
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to set image metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to set image metadata', () => {
+        const stored: WorkbookImageRecord = {
+          id: record.id.trim(),
+          sheetName: record.sheetName,
+          address: canonicalWorkbookAddress(record.sheetName, record.address),
+          sourceUrl: record.sourceUrl,
+          rows: record.rows,
+          cols: record.cols,
+          ...(record.altText !== undefined ? { altText: record.altText } : {}),
+        }
+        metadata.images.set(imageKey(stored.id), stored)
+        return cloneImageRecord(stored)
       })
     },
     getImage(id) {
-      return Effect.try({
-        try: () => {
-          const record = metadata.images.get(imageKey(id))
-          return record ? cloneImageRecord(record) : undefined
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to get image metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to get image metadata', () => {
+        const record = metadata.images.get(imageKey(id))
+        return record ? cloneImageRecord(record) : undefined
       })
     },
     deleteImage(id) {
-      return Effect.try({
-        try: () => metadata.images.delete(imageKey(id)),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to delete image metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to delete image metadata', () => metadata.images.delete(imageKey(id)))
     },
     listImages() {
-      return Effect.try({
-        try: () => [...metadata.images.values()].toSorted((left, right) => left.id.localeCompare(right.id)).map(cloneImageRecord),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to list image metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to list image metadata', () =>
+        [...metadata.images.values()].toSorted((left, right) => left.id.localeCompare(right.id)).map(cloneImageRecord),
+      )
     },
     setShape(record) {
-      return Effect.try({
-        try: () => {
-          const stored: WorkbookShapeRecord = {
-            id: record.id.trim(),
-            sheetName: record.sheetName,
-            address: canonicalWorkbookAddress(record.sheetName, record.address),
-            shapeType: record.shapeType,
-            rows: record.rows,
-            cols: record.cols,
-            ...(record.text !== undefined ? { text: record.text } : {}),
-            ...(record.fillColor !== undefined ? { fillColor: record.fillColor } : {}),
-            ...(record.strokeColor !== undefined ? { strokeColor: record.strokeColor } : {}),
-          }
-          metadata.shapes.set(shapeKey(stored.id), stored)
-          return cloneShapeRecord(stored)
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to set shape metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to set shape metadata', () => {
+        const stored: WorkbookShapeRecord = {
+          id: record.id.trim(),
+          sheetName: record.sheetName,
+          address: canonicalWorkbookAddress(record.sheetName, record.address),
+          shapeType: record.shapeType,
+          rows: record.rows,
+          cols: record.cols,
+          ...(record.text !== undefined ? { text: record.text } : {}),
+          ...(record.fillColor !== undefined ? { fillColor: record.fillColor } : {}),
+          ...(record.strokeColor !== undefined ? { strokeColor: record.strokeColor } : {}),
+        }
+        metadata.shapes.set(shapeKey(stored.id), stored)
+        return cloneShapeRecord(stored)
       })
     },
     getShape(id) {
-      return Effect.try({
-        try: () => {
-          const record = metadata.shapes.get(shapeKey(id))
-          return record ? cloneShapeRecord(record) : undefined
-        },
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to get shape metadata', cause),
-            cause,
-          }),
+      return metadataEffect('Failed to get shape metadata', () => {
+        const record = metadata.shapes.get(shapeKey(id))
+        return record ? cloneShapeRecord(record) : undefined
       })
     },
     deleteShape(id) {
-      return Effect.try({
-        try: () => metadata.shapes.delete(shapeKey(id)),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to delete shape metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to delete shape metadata', () => metadata.shapes.delete(shapeKey(id)))
     },
     listShapes() {
-      return Effect.try({
-        try: () => [...metadata.shapes.values()].toSorted((left, right) => left.id.localeCompare(right.id)).map(cloneShapeRecord),
-        catch: (cause) =>
-          new WorkbookMetadataError({
-            message: metadataErrorMessage('Failed to list shape metadata', cause),
-            cause,
-          }),
-      })
+      return metadataEffect('Failed to list shape metadata', () =>
+        [...metadata.shapes.values()].toSorted((left, right) => left.id.localeCompare(right.id)).map(cloneShapeRecord),
+      )
     },
   }
 }

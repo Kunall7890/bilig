@@ -17,6 +17,46 @@ export const noopVersionStore: VersionStore = {
   },
 }
 
+export interface OperationReplicaVersionWriter {
+  readonly stores: {
+    readonly entityVersions: VersionStore
+    readonly sheetDeleteVersions: VersionStore
+  }
+  readonly setEntityVersionForOp: (op: EngineOp, order: OpOrder) => void
+  readonly setCellEntityVersion: (sheetName: string, address: string, order: OpOrder) => void
+  readonly setSheetDeleteVersion: (sheetName: string, order: OpOrder) => void
+}
+
+export function createOperationReplicaVersionWriter(input: {
+  readonly trackReplicaVersions: boolean
+  readonly entityVersions: VersionStore
+  readonly sheetDeleteVersions: VersionStore
+}): OperationReplicaVersionWriter {
+  const entityVersions = input.trackReplicaVersions ? input.entityVersions : noopVersionStore
+  const sheetDeleteVersions = input.trackReplicaVersions ? input.sheetDeleteVersions : noopVersionStore
+  return {
+    stores: { entityVersions, sheetDeleteVersions },
+    setEntityVersionForOp(op, order) {
+      if (!input.trackReplicaVersions) {
+        return
+      }
+      entityVersions.set(entityKeyForOp(op), order)
+    },
+    setCellEntityVersion(sheetName, address, order) {
+      if (!input.trackReplicaVersions) {
+        return
+      }
+      entityVersions.set(`cell:${sheetName}!${address}`, order)
+    },
+    setSheetDeleteVersion(sheetName, order) {
+      if (!input.trackReplicaVersions) {
+        return
+      }
+      sheetDeleteVersions.set(sheetName, order)
+    },
+  }
+}
+
 export function entityKeyForOp(op: EngineOp): string {
   switch (op.kind) {
     case 'upsertWorkbook':

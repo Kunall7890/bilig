@@ -32,38 +32,18 @@ import type {
   WorkbookShapeSnapshot,
   WorkbookSnapshot,
 } from '@bilig/protocol'
-import { ErrorCode, ValueTag } from '@bilig/protocol'
-import {
-  Float64Arena,
-  Uint32Arena,
-  formatAddress,
-  parseCellAddress,
-  rewriteFormulaForStructuralTransform,
-  type FormulaNode,
-} from '@bilig/formula'
+import { formatAddress } from '@bilig/formula'
 import type { EngineOp, EngineOpBatch } from '@bilig/workbook-domain'
-import { CellFlags } from './cell-store.js'
 import type {
   EngineCellMutationRef,
   EngineExistingNumericCellMutationRef,
   EngineExistingNumericCellMutationResult,
-  EngineFormulaSourceRefs,
+  EngineFormulaSourceRef,
 } from './cell-mutations-at.js'
-import { batchOpOrder, compareOpOrder, createBatch, createReplicaState, type OpOrder, type ReplicaState } from './replica-state.js'
-import { CycleDetector } from './cycle-detection.js'
-import { EdgeArena, type EdgeSlice } from './edge-arena.js'
 import { definedNameValuesEqual } from './engine-metadata-utils.js'
 import { buildFormatClearOps, buildFormatPatchOps, buildStyleClearOps, buildStylePatchOps } from './engine-range-format-ops.js'
-import { EngineEventBus } from './events.js'
-import { FormulaTable } from './formula-table.js'
-import { cloneDefinedNameValue } from './workbook-metadata-records.js'
-import { RangeRegistry } from './range-registry.js'
-import { RecalcScheduler } from './scheduler.js'
 import { selectCellSnapshot, selectMetrics, selectSelectionState, selectViewportCells } from './selectors.js'
-import { StringPool } from './string-pool.js'
-import { WasmKernelFacade } from './wasm-facade.js'
 import {
-  WorkbookStore,
   normalizeDefinedName,
   type WorkbookAxisMetadataRecord,
   type WorkbookCalculationSettingsRecord,
@@ -82,26 +62,33 @@ import {
   type WorkbookVolatileContextRecord,
   type WorkbookNoteRecord,
 } from './workbook-store.js'
-import { cellToCsvValue, serializeCsv } from './csv.js'
-import { cloneEngineCounters, createEngineCounters, resetEngineCounters, type EngineCounters } from './perf/engine-counters.js'
+import { cloneEngineCounters, resetEngineCounters, type EngineCounters } from './perf/engine-counters.js'
 import { canonicalWorkbookRangeRef } from './workbook-range-records.js'
 import { rangesIntersect } from './workbook-merge-records.js'
+import type { CommitOp, EngineReplicaSnapshot, EngineSyncClient, PivotTableInput } from './engine/runtime-state.js'
+import { runEngineEffect, runEngineEffectPromise } from './engine/live.js'
+import { SpreadsheetEngineRuntimeBase } from './engine/engine-runtime-base.js'
+import { hasEngineStructuralDeleteImpact } from './engine/engine-structural-delete-impact.js'
+import { upsertNumericDefinedNameFast as upsertNumericDefinedNameFastPath } from './engine/engine-numeric-defined-name-fast-path.js'
 import {
-  createEngineRuntimeState,
-  createInitialRecalcMetrics,
-  createInitialSelectionState,
-  type CommitOp,
-  type EngineReplicaSnapshot,
-  type EngineRuntimeState,
-  type EngineSyncClient,
-  type EngineSyncClientConnection,
-  type PivotTableInput,
-  type RuntimeFormula,
-  type SpreadsheetEngineOptions,
-  type TransactionLogEntry,
-  type U32,
-} from './engine/runtime-state.js'
-import { createEngineServiceRuntime, runEngineEffect, runEngineEffectPromise, type EngineServiceRuntime } from './engine/live.js'
+  buildSetConditionalFormatOps,
+  buildSetDataValidationOps,
+  buildSetFilterOps,
+  buildSetPivotTableOps,
+  buildSetRangeProtectionOps,
+  buildSetSheetProtectionOps,
+  buildSetSortOps,
+} from './engine/engine-workbook-metadata-ops.js'
+import {
+  cloneEngineTableRecord,
+  normalizeEngineCommentThread,
+  normalizeEngineNote,
+  workbookChartsEqual,
+  workbookImagesEqual,
+  workbookObjectRecordEqual,
+  workbookShapesEqual,
+  workbookTablesEqual,
+} from './engine/engine-workbook-object-helpers.js'
 
 export type {
   CommitOp,
@@ -111,388 +98,7 @@ export type {
   SpreadsheetEngineOptions,
 } from './engine/runtime-state.js'
 
-function namedNumberOperand(node: FormulaNode, normalizedName: string, namedValue: number): number | undefined {
-  if (node.kind === 'NumberLiteral') {
-    return node.value
-  }
-  if (node.kind === 'NameRef' && normalizeDefinedName(node.name) === normalizedName) {
-    return namedValue
-  }
-  return undefined
-}
-
-function evaluateNumericDefinedNameFormula(node: FormulaNode, normalizedName: string, namedValue: number): CellValue | undefined {
-  if (node.kind === 'NameRef' && normalizeDefinedName(node.name) === normalizedName) {
-    return { tag: ValueTag.Number, value: namedValue }
-  }
-  if (node.kind !== 'BinaryExpr') {
-    return undefined
-  }
-  const left = namedNumberOperand(node.left, normalizedName, namedValue)
-  const right = namedNumberOperand(node.right, normalizedName, namedValue)
-  if (left === undefined || right === undefined) {
-    return undefined
-  }
-  if (node.operator === '+') {
-    return { tag: ValueTag.Number, value: left + right }
-  }
-  if (node.operator === '-') {
-    return { tag: ValueTag.Number, value: left - right }
-  }
-  if (node.operator === '*') {
-    return { tag: ValueTag.Number, value: left * right }
-  }
-  if (node.operator === '/') {
-    return right === 0 ? { tag: ValueTag.Error, code: ErrorCode.Div0 } : { tag: ValueTag.Number, value: left / right }
-  }
-  return undefined
-}
-
-export class SpreadsheetEngine {
-  private readonly performanceCounters = createEngineCounters()
-  readonly workbook: WorkbookStore
-  readonly strings = new StringPool()
-  readonly events = new EngineEventBus()
-  private readonly replicaState: ReplicaState
-  readonly ranges = new RangeRegistry(this.performanceCounters)
-  readonly scheduler = new RecalcScheduler(this.performanceCounters)
-  readonly wasm = new WasmKernelFacade()
-
-  private readonly formulas: FormulaTable<RuntimeFormula>
-  private readonly cycleDetector = new CycleDetector()
-  private readonly edgeArena = new EdgeArena()
-  private readonly programArena = new Uint32Arena()
-  private readonly constantArena = new Float64Arena()
-  private readonly rangeListArena = new Uint32Arena()
-  private reverseCellEdges: Array<EdgeSlice | undefined> = []
-  private reverseRangeEdges: Array<EdgeSlice | undefined> = []
-  private readonly reverseDefinedNameEdges = new Map<string, Set<number>>()
-  private readonly reverseTableEdges = new Map<string, Set<number>>()
-  private readonly reverseSpillEdges = new Map<string, Set<number>>()
-  private readonly reverseAggregateColumnEdges = new Map<number, Set<number>>()
-  private readonly reverseExactLookupColumnEdges = new Map<number, EdgeSlice>()
-  private readonly reverseSortedLookupColumnEdges = new Map<number, EdgeSlice>()
-  private readonly pivotOutputOwners = new Map<number, string>()
-  private readonly batchListeners = new Set<(batch: EngineOpBatch) => void>()
-  private readonly selectionListeners = new Set<() => void>()
-  private readonly entityVersions = new Map<string, OpOrder>()
-  private readonly sheetDeleteVersions = new Map<string, OpOrder>()
-  private selection: SelectionState = createInitialSelectionState()
-  private syncState: SyncState = 'local-only'
-  private syncClientConnection: EngineSyncClientConnection | null = null
-  private readonly undoStack: TransactionLogEntry[] = []
-  private readonly redoStack: TransactionLogEntry[] = []
-  private transactionReplayDepth = 0
-  private useColumnIndexEnabled: boolean
-  private dependencyBuildEpoch = 1
-  private dependencyBuildSeen: U32 = new Uint32Array(128)
-  private dependencyBuildCells: U32 = new Uint32Array(128)
-  private dependencyBuildEntities: U32 = new Uint32Array(128)
-  private dependencyBuildRanges: U32 = new Uint32Array(128)
-  private dependencyBuildNewRanges: U32 = new Uint32Array(128)
-  private symbolicRefBindings: U32 = new Uint32Array(128)
-  private symbolicRangeBindings: U32 = new Uint32Array(128)
-  private wasmProgramTargets: U32 = new Uint32Array(128)
-  private wasmProgramOffsets: U32 = new Uint32Array(128)
-  private wasmProgramLengths: U32 = new Uint32Array(128)
-  private wasmConstantOffsets: U32 = new Uint32Array(128)
-  private wasmConstantLengths: U32 = new Uint32Array(128)
-  private wasmRangeOffsets: U32 = new Uint32Array(128)
-  private wasmRangeLengths: U32 = new Uint32Array(128)
-  private wasmRangeRowCounts: U32 = new Uint32Array(128)
-  private wasmRangeColCounts: U32 = new Uint32Array(128)
-  private topoIndegree: U32 = new Uint32Array(128)
-  private topoQueue: U32 = new Uint32Array(128)
-  private batchMutationDepth = 0
-  private wasmProgramSyncPending = false
-  private lastMetrics: RecalcMetrics = createInitialRecalcMetrics()
-  private readonly state: EngineRuntimeState
-  private readonly runtime: EngineServiceRuntime
-
-  constructor(options: SpreadsheetEngineOptions = {}) {
-    this.workbook = new WorkbookStore(options.workbookName ?? 'Workbook', this.performanceCounters, options.initialCellCapacity)
-    this.formulas = new FormulaTable(this.workbook.cellStore)
-    this.replicaState = createReplicaState(options.replicaId ?? 'local')
-    this.useColumnIndexEnabled = options.useColumnIndex ?? false
-    this.state = createEngineRuntimeState({
-      workbook: this.workbook,
-      strings: this.strings,
-      events: this.events,
-      ranges: this.ranges,
-      scheduler: this.scheduler,
-      wasm: this.wasm,
-      formulas: this.formulas,
-      replicaState: this.replicaState,
-      entityVersions: this.entityVersions,
-      sheetDeleteVersions: this.sheetDeleteVersions,
-      batchListeners: this.batchListeners,
-      selectionListeners: this.selectionListeners,
-      undoStack: this.undoStack,
-      redoStack: this.redoStack,
-      counters: this.performanceCounters,
-      trackReplicaVersions: options.trackReplicaVersions ?? true,
-      getUseColumnIndex: () => this.useColumnIndexEnabled,
-      setUseColumnIndex: (enabled) => {
-        this.useColumnIndexEnabled = enabled
-      },
-      getSelection: () => this.selection,
-      setSelection: (selection) => {
-        this.selection = selection
-      },
-      getSyncState: () => this.syncState,
-      setSyncState: (state) => {
-        this.syncState = state
-      },
-      getSyncClientConnection: () => this.syncClientConnection,
-      setSyncClientConnection: (connection) => {
-        this.syncClientConnection = connection
-      },
-      getTransactionReplayDepth: () => this.transactionReplayDepth,
-      setTransactionReplayDepth: (depth) => {
-        this.transactionReplayDepth = depth
-      },
-      getLastMetrics: () => this.lastMetrics,
-      setLastMetrics: (metrics) => {
-        this.lastMetrics = metrics
-      },
-    })
-    this.runtime = createEngineServiceRuntime({
-      state: this.state,
-      getCellByIndex: (cellIndex) => this.getCellByIndex(cellIndex),
-      exportSnapshot: () => this.exportSnapshot(),
-      importSnapshot: (snapshot) => this.importSnapshot(snapshot),
-      maintenance: {
-        state: this.state,
-        edgeArena: this.edgeArena,
-        reverseState: {
-          reverseCellEdges: this.reverseCellEdges,
-          reverseRangeEdges: this.reverseRangeEdges,
-          reverseDefinedNameEdges: this.reverseDefinedNameEdges,
-          reverseTableEdges: this.reverseTableEdges,
-          reverseSpillEdges: this.reverseSpillEdges,
-          reverseAggregateColumnEdges: this.reverseAggregateColumnEdges,
-          reverseExactLookupColumnEdges: this.reverseExactLookupColumnEdges,
-          reverseSortedLookupColumnEdges: this.reverseSortedLookupColumnEdges,
-        },
-        pivotOutputOwners: this.pivotOutputOwners,
-        setWasmProgramSyncPending: (next) => {
-          this.wasmProgramSyncPending = next
-        },
-        resetWasmState: () => {
-          this.wasm.resetStoreState()
-        },
-      },
-      mutationSupport: {
-        state: this.state,
-        edgeArena: this.edgeArena,
-        reverseState: {
-          reverseCellEdges: this.reverseCellEdges,
-          reverseRangeEdges: this.reverseRangeEdges,
-        },
-        getSelectionState: () => this.getSelectionState(),
-        setSelection: (sheetName, address) => this.setSelection(sheetName, address),
-      },
-      formulaBinding: {
-        state: this.state,
-        edgeArena: this.edgeArena,
-        programArena: this.programArena,
-        constantArena: this.constantArena,
-        rangeListArena: this.rangeListArena,
-        reverseState: {
-          reverseCellEdges: this.reverseCellEdges,
-          reverseRangeEdges: this.reverseRangeEdges,
-          reverseDefinedNameEdges: this.reverseDefinedNameEdges,
-          reverseTableEdges: this.reverseTableEdges,
-          reverseSpillEdges: this.reverseSpillEdges,
-          reverseAggregateColumnEdges: this.reverseAggregateColumnEdges,
-          reverseExactLookupColumnEdges: this.reverseExactLookupColumnEdges,
-          reverseSortedLookupColumnEdges: this.reverseSortedLookupColumnEdges,
-        },
-        getDependencyBuildEpoch: () => this.dependencyBuildEpoch,
-        setDependencyBuildEpoch: (next) => {
-          this.dependencyBuildEpoch = next
-        },
-        getDependencyBuildSeen: () => this.dependencyBuildSeen,
-        setDependencyBuildSeen: (next) => {
-          this.dependencyBuildSeen = next
-        },
-        getDependencyBuildCells: () => this.dependencyBuildCells,
-        setDependencyBuildCells: (next) => {
-          this.dependencyBuildCells = next
-        },
-        getDependencyBuildEntities: () => this.dependencyBuildEntities,
-        setDependencyBuildEntities: (next) => {
-          this.dependencyBuildEntities = next
-        },
-        getDependencyBuildRanges: () => this.dependencyBuildRanges,
-        setDependencyBuildRanges: (next) => {
-          this.dependencyBuildRanges = next
-        },
-        getDependencyBuildNewRanges: () => this.dependencyBuildNewRanges,
-        setDependencyBuildNewRanges: (next) => {
-          this.dependencyBuildNewRanges = next
-        },
-        getSymbolicRefBindings: () => this.symbolicRefBindings,
-        setSymbolicRefBindings: (next) => {
-          this.symbolicRefBindings = next
-        },
-        getSymbolicRangeBindings: () => this.symbolicRangeBindings,
-        setSymbolicRangeBindings: (next) => {
-          this.symbolicRangeBindings = next
-        },
-      },
-      formulaGraph: {
-        state: this.state,
-        cycleDetector: this.cycleDetector,
-        programArena: this.programArena,
-        constantArena: this.constantArena,
-        rangeListArena: this.rangeListArena,
-        getTopoIndegree: () => this.topoIndegree,
-        setTopoIndegree: (next) => {
-          this.topoIndegree = next
-        },
-        getTopoQueue: () => this.topoQueue,
-        setTopoQueue: (next) => {
-          this.topoQueue = next
-        },
-        getWasmProgramTargets: () => this.wasmProgramTargets,
-        setWasmProgramTargets: (next) => {
-          this.wasmProgramTargets = next
-        },
-        getWasmProgramOffsets: () => this.wasmProgramOffsets,
-        setWasmProgramOffsets: (next) => {
-          this.wasmProgramOffsets = next
-        },
-        getWasmProgramLengths: () => this.wasmProgramLengths,
-        setWasmProgramLengths: (next) => {
-          this.wasmProgramLengths = next
-        },
-        getWasmConstantOffsets: () => this.wasmConstantOffsets,
-        setWasmConstantOffsets: (next) => {
-          this.wasmConstantOffsets = next
-        },
-        getWasmConstantLengths: () => this.wasmConstantLengths,
-        setWasmConstantLengths: (next) => {
-          this.wasmConstantLengths = next
-        },
-        getWasmRangeOffsets: () => this.wasmRangeOffsets,
-        setWasmRangeOffsets: (next) => {
-          this.wasmRangeOffsets = next
-        },
-        getWasmRangeLengths: () => this.wasmRangeLengths,
-        setWasmRangeLengths: (next) => {
-          this.wasmRangeLengths = next
-        },
-        getWasmRangeRowCounts: () => this.wasmRangeRowCounts,
-        setWasmRangeRowCounts: (next) => {
-          this.wasmRangeRowCounts = next
-        },
-        getWasmRangeColCounts: () => this.wasmRangeColCounts,
-        setWasmRangeColCounts: (next) => {
-          this.wasmRangeColCounts = next
-        },
-        getBatchMutationDepth: () => this.batchMutationDepth,
-        getWasmProgramSyncPending: () => this.wasmProgramSyncPending,
-        setWasmProgramSyncPending: (next) => {
-          this.wasmProgramSyncPending = next
-        },
-      },
-      traversal: {
-        state: this.state,
-        edgeArena: this.edgeArena,
-        reverseState: {
-          reverseCellEdges: this.reverseCellEdges,
-          reverseRangeEdges: this.reverseRangeEdges,
-          reverseExactLookupColumnEdges: this.reverseExactLookupColumnEdges,
-          reverseSortedLookupColumnEdges: this.reverseSortedLookupColumnEdges,
-        },
-      },
-      cellToCsvValue: (cell) => cellToCsvValue(cell),
-      serializeCsv: (rows) => serializeCsv(rows),
-      pivotState: {
-        pivotOutputOwners: this.pivotOutputOwners,
-      },
-      recalc: {
-        state: this.state,
-        getCellByIndex: (cellIndex) => this.getCellByIndex(cellIndex),
-        exportSnapshot: () => this.exportSnapshot(),
-        importSnapshot: (snapshot) => this.importSnapshot(snapshot),
-        now: () => new Date(),
-        random: () => Math.random(),
-        performanceNow: () => performance.now(),
-      },
-      pivot: {
-        state: {
-          workbook: this.state.workbook,
-          strings: this.state.strings,
-          formulas: this.state.formulas,
-          ranges: this.state.ranges,
-          wasm: this.state.wasm,
-          pivotOutputOwners: this.pivotOutputOwners,
-        },
-      },
-      applyRemoteSnapshot: (snapshot) => {
-        this.importSnapshot(snapshot)
-      },
-      operation: {
-        state: this.state,
-        reverseState: {
-          reverseCellEdges: this.reverseCellEdges,
-          reverseSpillEdges: this.reverseSpillEdges,
-          reverseAggregateColumnEdges: this.reverseAggregateColumnEdges,
-          reverseExactLookupColumnEdges: this.reverseExactLookupColumnEdges,
-          reverseSortedLookupColumnEdges: this.reverseSortedLookupColumnEdges,
-        },
-        getBatchMutationDepth: () => this.batchMutationDepth,
-        setBatchMutationDepth: (next) => {
-          this.batchMutationDepth = next
-        },
-        materializePivot: (pivotRecord) => this.runtime.pivot.materializePivotNow(pivotRecord),
-        refreshRangeDependencies: () => {
-          return
-        },
-        materializeDeferredStructuralFormulaSources: () => {
-          return
-        },
-        getChangedFormulaBuffer: () => new Uint32Array(),
-        repairTopoRanks: () => false,
-        getEntityDependents: () => new Uint32Array(),
-        getSingleEntityDependent: () => -1,
-        collectFormulaDependents: () => new Uint32Array(),
-        noteExactLookupLiteralWrite: () => {
-          return
-        },
-        noteAggregateLiteralWrite: () => {
-          return
-        },
-        noteSortedLookupLiteralWrite: () => {
-          return
-        },
-        sortedLookup: {
-          findPreparedVectorMatch: () => ({ handled: false }),
-        },
-        exactLookup: {
-          findPreparedVectorMatch: () => ({ handled: false }),
-        },
-        deferKernelSync: () => {
-          return
-        },
-        invalidateExactLookupColumn: () => {
-          return
-        },
-        invalidateAggregateColumn: () => {
-          return
-        },
-        invalidateSortedLookupColumn: () => {
-          return
-        },
-      },
-    })
-    if (!this.wasm.initSyncIfPossible()) {
-      void this.wasm.init()
-    }
-  }
-
+export class SpreadsheetEngine extends SpreadsheetEngineRuntimeBase {
   async ready(): Promise<void> {
     await this.wasm.init()
   }
@@ -583,52 +189,6 @@ export class SpreadsheetEngine {
     this.executeLocalTransaction([{ kind: 'renameSheet', oldName, newName: trimmedName }])
   }
 
-  renameSheetMetadataOnly(oldName: string, newName: string): boolean {
-    const trimmedName = newName.trim()
-    if (
-      trimmedName.length === 0 ||
-      oldName === trimmedName ||
-      !this.workbook.getSheet(oldName) ||
-      this.workbook.getSheet(trimmedName) ||
-      this.syncClientConnection !== null ||
-      this.batchListeners.size > 0 ||
-      this.batchMutationDepth !== 0 ||
-      this.transactionReplayDepth !== 0
-    ) {
-      return false
-    }
-
-    const renamedSheet = this.workbook.renameSheet(oldName, trimmedName)
-    if (!renamedSheet) {
-      return false
-    }
-    const op: EngineOp = { kind: 'renameSheet', oldName, newName: trimmedName }
-    if (this.state.trackReplicaVersions) {
-      const batch = createBatch(this.replicaState, [op])
-      const order = batchOpOrder(batch, 0)
-      this.entityVersions.set(`sheet:${oldName}`, order)
-      this.entityVersions.set(`sheet:${trimmedName}`, order)
-      this.sheetDeleteVersions.set(oldName, order)
-      const renamedTombstone = this.sheetDeleteVersions.get(trimmedName)
-      if (!renamedTombstone || compareOpOrder(order, renamedTombstone) > 0) {
-        this.sheetDeleteVersions.delete(trimmedName)
-      }
-    }
-    if (this.selection.sheetName === oldName) {
-      this.selection = { ...this.selection, sheetName: trimmedName }
-    }
-    if (this.workbook.metadata.definedNames.size > 0) {
-      runEngineEffect(this.runtime.maintenance.rewriteDefinedNamesForSheetRename(oldName, trimmedName))
-    }
-    this.runtime.binding.deferCellFormulasForSheetRenameNow(oldName, trimmedName)
-    this.undoStack.push({
-      forward: { kind: 'single-op', op },
-      inverse: { kind: 'single-op', op: { kind: 'renameSheet', oldName: trimmedName, newName: oldName } },
-    })
-    this.redoStack.length = 0
-    return true
-  }
-
   deleteSheet(name: string): void {
     this.executeLocalTransaction([{ kind: 'deleteSheet', name }])
   }
@@ -712,7 +272,7 @@ export class SpreadsheetEngine {
     this.runtime.formulaInitialization.initializeCellFormulasAtNow(refs, potentialNewCells)
   }
 
-  initializeFormulaSourcesAtNow(refs: EngineFormulaSourceRefs, potentialNewCells?: number): void {
+  initializeFormulaSourcesAtNow(refs: readonly EngineFormulaSourceRef[], potentialNewCells?: number): void {
     this.runtime.formulaInitialization.initializeFormulaSourcesAtNow(refs, potentialNewCells)
   }
 
@@ -759,66 +319,18 @@ export class SpreadsheetEngine {
   }
 
   upsertNumericDefinedNameFast(name: string, value: WorkbookDefinedNameValueSnapshot, numericValue: number): readonly number[] | null {
-    const trimmedName = name.trim()
-    const normalizedName = normalizeDefinedName(trimmedName)
-    const dependentCellIndices = this.runtime.binding.collectFormulaCellsForDefinedNamesNow([normalizedName])
-    const evaluated: Array<{ cellIndex: number; value: CellValue }> = []
-    for (let index = 0; index < dependentCellIndices.length; index += 1) {
-      const cellIndex = dependentCellIndices[index]!
-      const formula = this.formulas.get(cellIndex)
-      if (
-        formula === undefined ||
-        formula.compiled.symbolicNames.length !== 1 ||
-        normalizeDefinedName(formula.compiled.symbolicNames[0]!) !== normalizedName ||
-        formula.compiled.symbolicRanges.length !== 0 ||
-        formula.compiled.symbolicTables.length !== 0 ||
-        formula.compiled.symbolicSpills.length !== 0
-      ) {
-        return null
-      }
-      const nextValue = evaluateNumericDefinedNameFormula(formula.compiled.optimizedAst, normalizedName, numericValue)
-      if (nextValue === undefined) {
-        return null
-      }
-      evaluated.push({ cellIndex, value: nextValue })
-    }
-
-    const existing = this.workbook.getDefinedName(trimmedName)
-    const op: EngineOp = { kind: 'upsertDefinedName', name: trimmedName, value }
-    const batch = createBatch(this.replicaState, [op])
-    const order = batchOpOrder(batch, 0)
-    this.workbook.setDefinedName(trimmedName, value)
-    this.entityVersions.set(`defined-name:${normalizedName}`, order)
-
-    const changedCellIndices: number[] = []
-    const cellStore = this.workbook.cellStore
-    for (let index = 0; index < evaluated.length; index += 1) {
-      const { cellIndex, value: nextValue } = evaluated[index]!
-      const beforeTag = (cellStore.tags[cellIndex] as ValueTag | undefined) ?? ValueTag.Empty
-      const beforeNumber = cellStore.numbers[cellIndex] ?? 0
-      const beforeError = cellStore.errors[cellIndex] ?? ErrorCode.None
-      const changed =
-        beforeTag !== nextValue.tag ||
-        (nextValue.tag === ValueTag.Number && !Object.is(beforeNumber, nextValue.value)) ||
-        (nextValue.tag === ValueTag.Error && (beforeError as ErrorCode) !== nextValue.code)
-      cellStore.flags[cellIndex] = (cellStore.flags[cellIndex] ?? 0) & ~(CellFlags.SpillChild | CellFlags.PivotOutput)
-      cellStore.setValue(cellIndex, nextValue, 0)
-      if (changed) {
-        this.workbook.notifyCellValueWritten(cellIndex)
-        changedCellIndices.push(cellIndex)
-      }
-    }
-
-    const inverseOp: EngineOp =
-      existing === undefined
-        ? { kind: 'deleteDefinedName', name: trimmedName }
-        : { kind: 'upsertDefinedName', name: existing.name, value: cloneDefinedNameValue(existing.value) }
-    this.undoStack.push({
-      forward: { kind: 'single-op', op: { kind: 'upsertDefinedName', name: trimmedName, value: cloneDefinedNameValue(value) } },
-      inverse: { kind: 'single-op', op: inverseOp },
+    return upsertNumericDefinedNameFastPath({
+      workbook: this.workbook,
+      formulas: this.formulas,
+      replicaState: this.replicaState,
+      entityVersions: this.entityVersions,
+      undoStack: this.undoStack,
+      redoStack: this.redoStack,
+      collectDependentFormulaCells: (normalizedName) => this.runtime.binding.collectFormulaCellsForDefinedNamesNow([normalizedName]),
+      name,
+      value,
+      numericValue,
     })
-    this.redoStack.length = 0
-    return changedCellIndices
   }
 
   deleteDefinedName(name: string): boolean {
@@ -870,218 +382,19 @@ export class SpreadsheetEngine {
     return this.workbook.getVolatileContext()
   }
 
-  private formulaWouldRewriteForDelete(formula: string, sheetName: string, axis: 'row' | 'column', start: number, count: number): boolean {
-    return (
-      rewriteFormulaForStructuralTransform(formula, sheetName, sheetName, {
-        kind: 'delete',
-        axis,
-        start,
-        count,
-      }) !== formula
-    )
-  }
-
-  private cellHasSemanticDeleteImpact(cellIndex: number): boolean {
-    const snapshot = this.getCellByIndex(cellIndex)
-    if (snapshot.formula !== undefined) {
-      return true
-    }
-    if (this.workbook.getCellFormat(cellIndex) !== undefined) {
-      return true
-    }
-    return snapshot.value.tag === ValueTag.Number || snapshot.value.tag === ValueTag.Boolean || snapshot.value.tag === ValueTag.String
-  }
-
-  private hasFormulaReferenceAtOrAfter(sheetName: string, axis: 'row' | 'column', start: number, count: number): boolean {
-    let found = false
-    for (const sheet of this.workbook.sheetsByName.values()) {
-      if (found) {
-        break
-      }
-      sheet.grid.forEachCell((cellIndex) => {
-        if (found) {
-          return
-        }
-        const formulaId = this.workbook.cellStore.formulaIds[cellIndex] ?? 0
-        if (formulaId === 0) {
-          return
-        }
-        const snapshot = this.getCellByIndex(cellIndex)
-        if (snapshot.formula && this.formulaWouldRewriteForDelete(snapshot.formula, sheetName, axis, start, count)) {
-          found = true
-        }
-      })
-    }
-    return found
-  }
-
-  private definedNameTouchesAxisDelete(
-    value: WorkbookDefinedNameValueSnapshot,
-    sheetName: string,
-    axis: 'row' | 'column',
-    start: number,
-    count: number,
-  ): boolean {
-    if (typeof value === 'string') {
-      return this.formulaWouldRewriteForDelete(value, sheetName, axis, start, count)
-    }
-    if (value === null || typeof value !== 'object') {
-      return false
-    }
-    switch (value.kind) {
-      case 'scalar':
-      case 'structured-ref':
-        return false
-      case 'formula':
-        return this.formulaWouldRewriteForDelete(value.formula, sheetName, axis, start, count)
-      case 'cell-ref': {
-        if (value.sheetName !== sheetName) {
-          return false
-        }
-        const parsed = parseCellAddress(value.address, value.sheetName)
-        return axis === 'row' ? parsed.row >= start : parsed.col >= start
-      }
-      case 'range-ref': {
-        if (value.sheetName !== sheetName) {
-          return false
-        }
-        const end = parseCellAddress(value.endAddress, value.sheetName)
-        return axis === 'row' ? end.row >= start : end.col >= start
-      }
-    }
-  }
-
-  private rangeTouchesAxisDelete(range: CellRangeRef, axis: 'row' | 'column', start: number): boolean {
-    const end = parseCellAddress(range.endAddress, range.sheetName)
-    return axis === 'row' ? end.row >= start : end.col >= start
-  }
-
-  private addressTouchesAxisDelete(sheetName: string, address: string, axis: 'row' | 'column', start: number): boolean {
-    const parsed = parseCellAddress(address, sheetName)
-    return axis === 'row' ? parsed.row >= start : parsed.col >= start
-  }
-
   private hasStructuralDeleteImpact(sheetName: string, axis: 'row' | 'column', start: number, count: number): boolean {
-    const sheet = this.workbook.getSheet(sheetName)
-    if (!sheet) {
-      return false
-    }
-    if (sheet.grid.someCellInAxisScope(axis, { start }, (cellIndex) => this.cellHasSemanticDeleteImpact(cellIndex))) {
-      return true
-    }
-    const axisEntries = axis === 'row' ? this.workbook.listRowAxisEntries(sheetName) : this.workbook.listColumnAxisEntries(sheetName)
-    if (axisEntries.some((entry) => entry.index >= start)) {
-      return true
-    }
-    const axisMetadata = axis === 'row' ? this.workbook.listRowMetadata(sheetName) : this.workbook.listColumnMetadata(sheetName)
-    if (axisMetadata.some((record) => record.start + record.count - 1 >= start)) {
-      return true
-    }
-    if (this.workbook.listStyleRanges(sheetName).some((record) => this.rangeTouchesAxisDelete(record.range, axis, start))) {
-      return true
-    }
-    if (this.workbook.listFormatRanges(sheetName).some((record) => this.rangeTouchesAxisDelete(record.range, axis, start))) {
-      return true
-    }
-    const freezePane = this.workbook.getFreezePane(sheetName)
-    if (freezePane && (axis === 'row' ? freezePane.rows > start : freezePane.cols > start)) {
-      return true
-    }
-    if (this.workbook.listFilters(sheetName).some((record) => this.rangeTouchesAxisDelete(record.range, axis, start))) {
-      return true
-    }
-    if (this.workbook.listSorts(sheetName).some((record) => this.rangeTouchesAxisDelete(record.range, axis, start))) {
-      return true
-    }
-    if (this.workbook.listDataValidations(sheetName).some((record) => this.rangeTouchesAxisDelete(record.range, axis, start))) {
-      return true
-    }
-    if (this.workbook.listConditionalFormats(sheetName).some((record) => this.rangeTouchesAxisDelete(record.range, axis, start))) {
-      return true
-    }
-    if (this.workbook.listRangeProtections(sheetName).some((record) => this.rangeTouchesAxisDelete(record.range, axis, start))) {
-      return true
-    }
-    if (
-      this.workbook.listCommentThreads(sheetName).some((record) => this.addressTouchesAxisDelete(sheetName, record.address, axis, start))
-    ) {
-      return true
-    }
-    if (this.workbook.listNotes(sheetName).some((record) => this.addressTouchesAxisDelete(sheetName, record.address, axis, start))) {
-      return true
-    }
-    if (
-      this.workbook
-        .listTables()
-        .some(
-          (table) =>
-            table.sheetName === sheetName &&
-            this.rangeTouchesAxisDelete({ sheetName, startAddress: table.startAddress, endAddress: table.endAddress }, axis, start),
-        )
-    ) {
-      return true
-    }
-    if (
-      this.workbook
-        .listSpills()
-        .some((spill) => spill.sheetName === sheetName && this.addressTouchesAxisDelete(sheetName, spill.address, axis, start))
-    ) {
-      return true
-    }
-    if (
-      this.workbook
-        .listPivots()
-        .some(
-          (pivot) =>
-            (pivot.sheetName === sheetName && this.addressTouchesAxisDelete(sheetName, pivot.address, axis, start)) ||
-            (pivot.source.sheetName === sheetName && this.rangeTouchesAxisDelete(pivot.source, axis, start)),
-        )
-    ) {
-      return true
-    }
-    if (
-      this.workbook
-        .listCharts()
-        .some(
-          (chart) =>
-            (chart.sheetName === sheetName && this.addressTouchesAxisDelete(sheetName, chart.address, axis, start)) ||
-            (chart.source.sheetName === sheetName && this.rangeTouchesAxisDelete(chart.source, axis, start)),
-        )
-    ) {
-      return true
-    }
-    if (
-      this.workbook
-        .listImages()
-        .some((image) => image.sheetName === sheetName && this.addressTouchesAxisDelete(sheetName, image.address, axis, start))
-    ) {
-      return true
-    }
-    if (
-      this.workbook
-        .listShapes()
-        .some((shape) => shape.sheetName === sheetName && this.addressTouchesAxisDelete(sheetName, shape.address, axis, start))
-    ) {
-      return true
-    }
-    if (
-      this.workbook
-        .listDefinedNames()
-        .some((definedName) => this.definedNameTouchesAxisDelete(definedName.value, sheetName, axis, start, count))
-    ) {
-      return true
-    }
-    return this.hasFormulaReferenceAtOrAfter(sheetName, axis, start, count)
+    return hasEngineStructuralDeleteImpact({
+      workbook: this.workbook,
+      getCellByIndex: (cellIndex) => this.getCellByIndex(cellIndex),
+      sheetName,
+      axis,
+      start,
+      count,
+    })
   }
 
   recalculateNow(): number[] {
     return runEngineEffect(this.runtime.recalc.recalculateNow())
-  }
-
-  forEachFormulaCell(callback: (cellIndex: number, producesSpill: boolean) => void): void {
-    this.formulas.forEach((formula, cellIndex) => {
-      callback(cellIndex, formula.compiled.producesSpill)
-    })
   }
 
   recalculateDifferential(): { js: CellSnapshot[]; wasm: CellSnapshot[]; drift: string[] } {
@@ -1231,15 +544,7 @@ export class SpreadsheetEngine {
   }
 
   setSheetProtection(protection: WorkbookSheetProtectionSnapshot): void {
-    const existing = this.workbook.getSheetProtection(protection.sheetName)
-    const normalized: WorkbookSheetProtectionSnapshot = {
-      sheetName: protection.sheetName,
-      ...(protection.hideFormulas !== undefined ? { hideFormulas: protection.hideFormulas } : {}),
-    }
-    if (existing && JSON.stringify(existing) === JSON.stringify(normalized)) {
-      return
-    }
-    this.executeLocalTransaction([{ kind: 'setSheetProtection', protection: normalized }])
+    this.executeLocalTransaction(buildSetSheetProtectionOps(this.workbook, protection) ?? [])
   }
 
   clearSheetProtection(sheetName: string): boolean {
@@ -1255,11 +560,7 @@ export class SpreadsheetEngine {
   }
 
   setFilter(sheetName: string, range: CellRangeRef): void {
-    const existing = this.workbook.getFilter(sheetName, range)
-    if (existing) {
-      return
-    }
-    this.executeLocalTransaction([{ kind: 'setFilter', sheetName, range: { ...range } }])
+    this.executeLocalTransaction(buildSetFilterOps(this.workbook, sheetName, range) ?? [])
   }
 
   clearFilter(sheetName: string, range: CellRangeRef): boolean {
@@ -1275,18 +576,7 @@ export class SpreadsheetEngine {
   }
 
   setSort(sheetName: string, range: CellRangeRef, keys: WorkbookSortSnapshot['keys']): void {
-    const existing = this.workbook.getSort(sheetName, range)
-    const normalizedKeys = keys.map((key) => Object.assign({}, key))
-    if (
-      existing &&
-      existing.keys.length === normalizedKeys.length &&
-      existing.keys.every(
-        (key, index) => key.keyAddress === normalizedKeys[index]?.keyAddress && key.direction === normalizedKeys[index]?.direction,
-      )
-    ) {
-      return
-    }
-    this.executeLocalTransaction([{ kind: 'setSort', sheetName, range: { ...range }, keys: normalizedKeys }])
+    this.executeLocalTransaction(buildSetSortOps(this.workbook, sheetName, range, keys) ?? [])
   }
 
   clearSort(sheetName: string, range: CellRangeRef): boolean {
@@ -1302,15 +592,7 @@ export class SpreadsheetEngine {
   }
 
   setDataValidation(validation: WorkbookDataValidationSnapshot): void {
-    const existing = this.workbook.getDataValidation(validation.range.sheetName, validation.range)
-    const normalized: WorkbookDataValidationSnapshot = {
-      ...structuredClone(validation),
-      range: canonicalWorkbookRangeRef(validation.range),
-    }
-    if (existing && JSON.stringify(existing) === JSON.stringify(normalized)) {
-      return
-    }
-    this.executeLocalTransaction([{ kind: 'setDataValidation', validation: normalized }])
+    this.executeLocalTransaction(buildSetDataValidationOps(this.workbook, validation) ?? [])
   }
 
   clearDataValidation(sheetName: string, range: CellRangeRef): boolean {
@@ -1330,16 +612,7 @@ export class SpreadsheetEngine {
   }
 
   setConditionalFormat(format: WorkbookConditionalFormatSnapshot): void {
-    const normalized: WorkbookConditionalFormatSnapshot = {
-      ...structuredClone(format),
-      id: format.id.trim(),
-      range: canonicalWorkbookRangeRef(format.range),
-    }
-    const existing = this.workbook.getConditionalFormat(normalized.id)
-    if (existing && JSON.stringify(existing) === JSON.stringify(normalized)) {
-      return
-    }
-    this.executeLocalTransaction([{ kind: 'upsertConditionalFormat', format: normalized }])
+    this.executeLocalTransaction(buildSetConditionalFormatOps(this.workbook, format) ?? [])
   }
 
   deleteConditionalFormat(id: string): boolean {
@@ -1366,16 +639,7 @@ export class SpreadsheetEngine {
   }
 
   setRangeProtection(protection: WorkbookRangeProtectionSnapshot): void {
-    const normalized: WorkbookRangeProtectionSnapshot = {
-      id: protection.id.trim(),
-      range: canonicalWorkbookRangeRef(protection.range),
-      ...(protection.hideFormulas !== undefined ? { hideFormulas: protection.hideFormulas } : {}),
-    }
-    const existing = this.workbook.getRangeProtection(normalized.id)
-    if (existing && JSON.stringify(existing) === JSON.stringify(normalized)) {
-      return
-    }
-    this.executeLocalTransaction([{ kind: 'upsertRangeProtection', protection: normalized }])
+    this.executeLocalTransaction(buildSetRangeProtectionOps(this.workbook, protection) ?? [])
   }
 
   deleteRangeProtection(id: string): boolean {
@@ -1396,24 +660,9 @@ export class SpreadsheetEngine {
   }
 
   setCommentThread(thread: WorkbookCommentThreadSnapshot): void {
-    const parsed = parseCellAddress(thread.address, thread.sheetName)
-    const normalized: WorkbookCommentThreadSnapshot = {
-      threadId: thread.threadId.trim(),
-      sheetName: thread.sheetName,
-      address: formatAddress(parsed.row, parsed.col),
-      comments: thread.comments.map((comment) => ({
-        id: comment.id.trim(),
-        body: comment.body.trim(),
-        ...(comment.authorUserId !== undefined ? { authorUserId: comment.authorUserId } : {}),
-        ...(comment.authorDisplayName !== undefined ? { authorDisplayName: comment.authorDisplayName } : {}),
-        ...(comment.createdAtUnixMs !== undefined ? { createdAtUnixMs: comment.createdAtUnixMs } : {}),
-      })),
-      ...(thread.resolved !== undefined ? { resolved: thread.resolved } : {}),
-      ...(thread.resolvedByUserId !== undefined ? { resolvedByUserId: thread.resolvedByUserId } : {}),
-      ...(thread.resolvedAtUnixMs !== undefined ? { resolvedAtUnixMs: thread.resolvedAtUnixMs } : {}),
-    }
-    const existing = this.workbook.getCommentThread(thread.sheetName, thread.address)
-    if (existing && JSON.stringify(existing) === JSON.stringify(normalized)) {
+    const normalized = normalizeEngineCommentThread(thread)
+    const existing = this.workbook.getCommentThread(normalized.sheetName, normalized.address)
+    if (workbookObjectRecordEqual(existing, normalized)) {
       return
     }
     this.executeLocalTransaction([{ kind: 'upsertCommentThread', thread: normalized }])
@@ -1436,14 +685,9 @@ export class SpreadsheetEngine {
   }
 
   setNote(note: WorkbookNoteSnapshot): void {
-    const parsed = parseCellAddress(note.address, note.sheetName)
-    const normalized: WorkbookNoteSnapshot = {
-      sheetName: note.sheetName,
-      address: formatAddress(parsed.row, parsed.col),
-      text: note.text.trim(),
-    }
-    const existing = this.workbook.getNote(note.sheetName, note.address)
-    if (existing && JSON.stringify(existing) === JSON.stringify(normalized)) {
+    const normalized = normalizeEngineNote(note)
+    const existing = this.workbook.getNote(normalized.sheetName, normalized.address)
+    if (workbookObjectRecordEqual(existing, normalized)) {
       return
     }
     this.executeLocalTransaction([{ kind: 'upsertNote', note: normalized }])
@@ -1467,22 +711,13 @@ export class SpreadsheetEngine {
 
   setTable(table: WorkbookTableRecord): void {
     const existing = this.workbook.getTable(table.name)
-    if (
-      existing &&
-      existing.sheetName === table.sheetName &&
-      existing.startAddress === table.startAddress &&
-      existing.endAddress === table.endAddress &&
-      existing.headerRow === table.headerRow &&
-      existing.totalsRow === table.totalsRow &&
-      existing.columnNames.length === table.columnNames.length &&
-      existing.columnNames.every((name, index) => name === table.columnNames[index])
-    ) {
+    if (workbookTablesEqual(existing, table)) {
       return
     }
     this.executeLocalTransaction([
       {
         kind: 'upsertTable',
-        table: Object.assign({}, table, { columnNames: [...table.columnNames] }),
+        table: cloneEngineTableRecord(table),
       },
     ])
   }
@@ -1524,19 +759,7 @@ export class SpreadsheetEngine {
   }
 
   setPivotTable(sheetName: string, address: string, definition: PivotTableInput): void {
-    this.executeLocalTransaction([
-      {
-        kind: 'upsertPivotTable',
-        name: definition.name.trim(),
-        sheetName,
-        address,
-        source: { ...definition.source },
-        groupBy: [...definition.groupBy],
-        values: definition.values.map((v) => Object.assign({}, v)),
-        rows: 1,
-        cols: Math.max(definition.groupBy.length + definition.values.length, 1),
-      },
-    ])
+    this.executeLocalTransaction(buildSetPivotTableOps(sheetName, address, definition))
   }
 
   deletePivotTable(sheetName: string, address: string): boolean {
@@ -1557,22 +780,7 @@ export class SpreadsheetEngine {
 
   setChart(chart: WorkbookChartSnapshot): void {
     const existing = this.workbook.getChart(chart.id)
-    if (
-      existing &&
-      existing.sheetName === chart.sheetName &&
-      existing.address === chart.address &&
-      existing.chartType === chart.chartType &&
-      existing.source.sheetName === chart.source.sheetName &&
-      existing.source.startAddress === chart.source.startAddress &&
-      existing.source.endAddress === chart.source.endAddress &&
-      existing.rows === chart.rows &&
-      existing.cols === chart.cols &&
-      existing.seriesOrientation === chart.seriesOrientation &&
-      existing.firstRowAsHeaders === chart.firstRowAsHeaders &&
-      existing.firstColumnAsLabels === chart.firstColumnAsLabels &&
-      existing.title === chart.title &&
-      existing.legendPosition === chart.legendPosition
-    ) {
+    if (workbookChartsEqual(existing, chart)) {
       return
     }
     this.executeLocalTransaction([{ kind: 'upsertChart', chart: structuredClone(chart) }])
@@ -1596,15 +804,7 @@ export class SpreadsheetEngine {
 
   setImage(image: WorkbookImageSnapshot): void {
     const existing = this.workbook.getImage(image.id)
-    if (
-      existing &&
-      existing.sheetName === image.sheetName &&
-      existing.address === image.address &&
-      existing.sourceUrl === image.sourceUrl &&
-      existing.rows === image.rows &&
-      existing.cols === image.cols &&
-      existing.altText === image.altText
-    ) {
+    if (workbookImagesEqual(existing, image)) {
       return
     }
     this.executeLocalTransaction([{ kind: 'upsertImage', image: structuredClone(image) }])
@@ -1628,17 +828,7 @@ export class SpreadsheetEngine {
 
   setShape(shape: WorkbookShapeSnapshot): void {
     const existing = this.workbook.getShape(shape.id)
-    if (
-      existing &&
-      existing.sheetName === shape.sheetName &&
-      existing.address === shape.address &&
-      existing.shapeType === shape.shapeType &&
-      existing.rows === shape.rows &&
-      existing.cols === shape.cols &&
-      existing.text === shape.text &&
-      existing.fillColor === shape.fillColor &&
-      existing.strokeColor === shape.strokeColor
-    ) {
+    if (workbookShapesEqual(existing, shape)) {
       return
     }
     this.executeLocalTransaction([{ kind: 'upsertShape', shape: structuredClone(shape) }])
@@ -1783,13 +973,6 @@ export class SpreadsheetEngine {
     } = {},
   ): readonly EngineOp[] | null {
     return this.runtime.mutation.applyOpsNow(ops, options)
-  }
-
-  private executeLocalTransaction(ops: EngineOp[], potentialNewCells?: number): readonly EngineOp[] | null {
-    if (ops.length === 0) {
-      return null
-    }
-    return this.runtime.mutation.executeLocalNow(ops, potentialNewCells, { returnUndoOps: false })
   }
 }
 

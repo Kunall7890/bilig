@@ -145,8 +145,8 @@ export interface WorkPaperConfig {
   accentSensitive?: boolean
   caseSensitive?: boolean
   caseFirst?: 'upper' | 'lower' | 'false'
-  chooseAddressMappingPolicy?: WorkPaperChooseAddressMappingPolicy
-  context?: WorkPaperContextValue
+  chooseAddressMappingPolicy?: WorkPaperChooseAddressMappingPolicy | undefined
+  context?: WorkPaperContextValue | undefined
   currencySymbol?: string[]
   dateFormats?: string[]
   functionArgSeparator?: string
@@ -166,11 +166,11 @@ export interface WorkPaperConfig {
   maxColumns?: number
   nullDate?: { year: number; month: number; day: number }
   nullYear?: number
-  parseDateTime?: WorkPaperParseDateTime
+  parseDateTime?: WorkPaperParseDateTime | undefined
   precisionEpsilon?: number
   precisionRounding?: number
-  stringifyDateTime?: WorkPaperStringifyDateTime
-  stringifyDuration?: WorkPaperStringifyDuration
+  stringifyDateTime?: WorkPaperStringifyDateTime | undefined
+  stringifyDuration?: WorkPaperStringifyDuration | undefined
   smartRounding?: boolean
   thousandSeparator?: '' | ',' | '.'
   timeFormats?: string[]

@@ -2,7 +2,7 @@ import { getVisibleColumnBounds, getVisibleRowBounds, type GridMetrics } from '.
 import type { HeaderSelection } from './gridPointer.js'
 import type { GridSelection, Item, Rectangle } from './gridTypes.js'
 import { collectVisibleColumnBounds, collectVisibleRowBounds } from './visibleGridAxes.js'
-import type { GridGpuColor, GridGpuRect } from './gridGpuScene.js'
+import type { GridGpuColor, GridGpuRect } from './gridGpuPrimitives.js'
 
 export interface GridGpuHeaderPalette {
   readonly gridLineColor: GridGpuColor

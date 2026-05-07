@@ -202,6 +202,145 @@ describe('wasm kernel array dispatch slab', () => {
     ])
   })
 
+  it('keeps array window builtins stable on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 12
+    kernel.init(120, 5, 8, 8, 32)
+
+    const cellTags = new Uint8Array(120)
+    const cellNumbers = new Float64Array(120)
+    let value = 1
+    for (let row = 0; row < 3; row += 1) {
+      for (let col = 0; col < 4; col += 1) {
+        const index = cellIndex(row, col, width)
+        cellTags[index] = ValueTag.Number
+        cellNumbers[index] = value
+        value += 1
+      }
+    }
+
+    for (const [row, col, number] of [
+      [1, 6, 11],
+      [1, 7, 12],
+      [2, 6, 21],
+      [2, 7, 22],
+    ] as const) {
+      const index = cellIndex(row, col, width)
+      cellTags[index] = ValueTag.Number
+      cellNumbers[index] = number
+    }
+    kernel.writeCells(cellTags, cellNumbers, new Uint32Array(120), new Uint16Array(120))
+
+    const sourceMembers: number[] = []
+    for (let row = 0; row < 3; row += 1) {
+      for (let col = 0; col < 4; col += 1) {
+        sourceMembers.push(cellIndex(row, col, width))
+      }
+    }
+    const trimMembers: number[] = []
+    for (let row = 0; row < 4; row += 1) {
+      for (let col = 5; col < 9; col += 1) {
+        trimMembers.push(cellIndex(row, col, width))
+      }
+    }
+    kernel.uploadRangeMembers(
+      Uint32Array.from([...sourceMembers, ...trimMembers]),
+      Uint32Array.from([0, sourceMembers.length]),
+      Uint32Array.from([sourceMembers.length, trimMembers.length]),
+    )
+    kernel.uploadRangeShapes(Uint32Array.from([3, 4]), Uint32Array.from([4, 4]))
+
+    const outputCells = Uint32Array.from([
+      cellIndex(5, 0, width),
+      cellIndex(5, 1, width),
+      cellIndex(5, 2, width),
+      cellIndex(5, 3, width),
+      cellIndex(5, 4, width),
+    ])
+    const packed = packPrograms([
+      [
+        encodePushRange(0),
+        encodePushNumber(0),
+        encodePushNumber(1),
+        encodePushNumber(2),
+        encodePushNumber(3),
+        encodeCall(BuiltinId.Offset, 5),
+        encodeRet(),
+      ],
+      [encodePushRange(0), encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Take, 3), encodeRet()],
+      [encodePushRange(0), encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Drop, 3), encodeRet()],
+      [encodePushRange(0), encodePushNumber(0), encodePushNumber(1), encodePushNumber(2), encodeCall(BuiltinId.Expand, 4), encodeRet()],
+      [encodePushRange(1), encodeCall(BuiltinId.Trimrange, 1), encodeRet()],
+    ])
+    const constants = packConstants([[1, 1, 2, 2], [-2, 2], [1, -1], [4, 5, 0], []])
+    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, outputCells)
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(outputCells)
+
+    expect(kernel.readSpillRows()[outputCells[0]]).toBe(2)
+    expect(kernel.readSpillCols()[outputCells[0]]).toBe(2)
+    expect(readSpillValues(kernel, outputCells[0])).toEqual([
+      { tag: ValueTag.Number, value: 6 },
+      { tag: ValueTag.Number, value: 7 },
+      { tag: ValueTag.Number, value: 10 },
+      { tag: ValueTag.Number, value: 11 },
+    ])
+
+    expect(kernel.readSpillRows()[outputCells[1]]).toBe(2)
+    expect(kernel.readSpillCols()[outputCells[1]]).toBe(2)
+    expect(readSpillValues(kernel, outputCells[1])).toEqual([
+      { tag: ValueTag.Number, value: 5 },
+      { tag: ValueTag.Number, value: 6 },
+      { tag: ValueTag.Number, value: 9 },
+      { tag: ValueTag.Number, value: 10 },
+    ])
+
+    expect(kernel.readSpillRows()[outputCells[2]]).toBe(2)
+    expect(kernel.readSpillCols()[outputCells[2]]).toBe(3)
+    expect(readSpillValues(kernel, outputCells[2])).toEqual([
+      { tag: ValueTag.Number, value: 5 },
+      { tag: ValueTag.Number, value: 6 },
+      { tag: ValueTag.Number, value: 7 },
+      { tag: ValueTag.Number, value: 9 },
+      { tag: ValueTag.Number, value: 10 },
+      { tag: ValueTag.Number, value: 11 },
+    ])
+
+    expect(kernel.readSpillRows()[outputCells[3]]).toBe(4)
+    expect(kernel.readSpillCols()[outputCells[3]]).toBe(5)
+    expect(readSpillValues(kernel, outputCells[3])).toEqual([
+      { tag: ValueTag.Number, value: 1 },
+      { tag: ValueTag.Number, value: 2 },
+      { tag: ValueTag.Number, value: 3 },
+      { tag: ValueTag.Number, value: 4 },
+      { tag: ValueTag.Number, value: 0 },
+      { tag: ValueTag.Number, value: 5 },
+      { tag: ValueTag.Number, value: 6 },
+      { tag: ValueTag.Number, value: 7 },
+      { tag: ValueTag.Number, value: 8 },
+      { tag: ValueTag.Number, value: 0 },
+      { tag: ValueTag.Number, value: 9 },
+      { tag: ValueTag.Number, value: 10 },
+      { tag: ValueTag.Number, value: 11 },
+      { tag: ValueTag.Number, value: 12 },
+      { tag: ValueTag.Number, value: 0 },
+      { tag: ValueTag.Number, value: 0 },
+      { tag: ValueTag.Number, value: 0 },
+      { tag: ValueTag.Number, value: 0 },
+      { tag: ValueTag.Number, value: 0 },
+      { tag: ValueTag.Number, value: 0 },
+    ])
+
+    expect(kernel.readSpillRows()[outputCells[4]]).toBe(2)
+    expect(kernel.readSpillCols()[outputCells[4]]).toBe(2)
+    expect(readSpillValues(kernel, outputCells[4])).toEqual([
+      { tag: ValueTag.Number, value: 11 },
+      { tag: ValueTag.Number, value: 12 },
+      { tag: ValueTag.Number, value: 21 },
+      { tag: ValueTag.Number, value: 22 },
+    ])
+  })
+
   it('keeps canonical GROUPBY and PIVOTBY spills stable on the wasm path', async () => {
     const kernel = await createKernel()
     const width = 10

@@ -309,16 +309,10 @@ class WorkbookScrollPerfCollector {
     this.totalCounters.typeGpuTileCacheEvictions += count
   }
 
-  noteTypeGpuTileCacheSort(count: number): void {
-    this.totalCounters.typeGpuTileCacheSorts += count
-  }
-
-  noteTypeGpuTileCacheStaleLookup(scannedEntries: number, hit: boolean): void {
-    this.totalCounters.typeGpuTileCacheStaleLookups += 1
-    this.totalCounters.typeGpuTileCacheEntriesScanned += scannedEntries
-    if (hit) {
-      this.totalCounters.typeGpuTileCacheStaleHits += 1
-    }
+  noteTypeGpuTileCacheStaleLookups(input: { readonly hits: number; readonly lookups: number; readonly scannedEntries: number }): void {
+    this.totalCounters.typeGpuTileCacheStaleLookups += input.lookups
+    this.totalCounters.typeGpuTileCacheEntriesScanned += input.scannedEntries
+    this.totalCounters.typeGpuTileCacheStaleHits += input.hits
   }
 
   noteTypeGpuTileCacheVisibleMark(count: number): void {

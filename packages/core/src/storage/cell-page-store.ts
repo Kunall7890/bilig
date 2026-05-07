@@ -29,8 +29,8 @@ export class CellPageStore {
     this.cells.set(this.key(location), cellIndex)
   }
 
-  setDeferred(_location: LogicalCellLocation, _cellIndex: number): void {
-    this.pagesDirty = true
+  setDeferred(location: LogicalCellLocation, cellIndex: number): void {
+    this.cells.set(this.key(location), cellIndex)
   }
 
   deferRebuild(): void {

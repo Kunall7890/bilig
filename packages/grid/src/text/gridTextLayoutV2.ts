@@ -1,4 +1,4 @@
-import { parseGpuColor } from '../gridGpuScene.js'
+import { parseGpuColor } from '../gridGpuPrimitives.js'
 import type { Rectangle } from '../gridTypes.js'
 import { createFallbackTextMetricsProvider, type GridTextMetricsProvider } from './gridTextMetrics.js'
 import { segmentGraphemes, wrapTextByWidth } from './gridTextOverflow.js'

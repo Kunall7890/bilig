@@ -1,0 +1,57 @@
+import type { EngineCellMutationRef } from '@bilig/core'
+import { isDeferredBatchLiteralContent, isFormulaContent, stripLeadingEquals } from './work-paper-runtime-helpers.js'
+import type { RawCellContent } from './work-paper-types.js'
+
+export function buildWorkPaperRawCellMutation(args: {
+  readonly row: number
+  readonly col: number
+  readonly content: RawCellContent
+  readonly rewriteFormulaForStorage: (formula: string) => string
+}): EngineCellMutationRef['mutation'] {
+  if (args.content === null) {
+    return { kind: 'clearCell', row: args.row, col: args.col }
+  }
+  if (isFormulaContent(args.content)) {
+    return {
+      kind: 'setCellFormula',
+      row: args.row,
+      col: args.col,
+      formula: args.rewriteFormulaForStorage(stripLeadingEquals(args.content)),
+    }
+  }
+  return {
+    kind: 'setCellValue',
+    row: args.row,
+    col: args.col,
+    value: args.content,
+  }
+}
+
+export function tryEnqueueWorkPaperLiteralMutation(args: {
+  readonly enabled: boolean
+  readonly queue: EngineCellMutationRef[]
+  readonly sheetId: number
+  readonly row: number
+  readonly col: number
+  readonly content: RawCellContent
+  readonly cellIndex: number | undefined
+  readonly addPotentialNewCell: () => void
+}): boolean {
+  if (!args.enabled || !isDeferredBatchLiteralContent(args.content) || isFormulaContent(args.content)) {
+    return false
+  }
+  args.queue.push({
+    sheetId: args.sheetId,
+    mutation: buildWorkPaperRawCellMutation({
+      row: args.row,
+      col: args.col,
+      content: args.content,
+      rewriteFormulaForStorage: (formula) => formula,
+    }),
+    ...(args.cellIndex !== undefined ? { cellIndex: args.cellIndex } : {}),
+  })
+  if (args.content !== null && args.cellIndex === undefined) {
+    args.addPotentialNewCell()
+  }
+  return true
+}

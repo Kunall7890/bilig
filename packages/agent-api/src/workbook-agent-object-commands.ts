@@ -8,7 +8,7 @@ import type {
   WorkbookPivotValueSnapshot,
   WorkbookTableSnapshot,
 } from '@bilig/protocol'
-import type { WorkbookAgentCommand, WorkbookAgentPreviewRange } from './workbook-agent-bundles.js'
+import type { WorkbookAgentCommand, WorkbookAgentPreviewRange } from './workbook-agent-bundle-types.js'
 
 export type WorkbookAgentObjectCommand = Extract<
   WorkbookAgentCommand,

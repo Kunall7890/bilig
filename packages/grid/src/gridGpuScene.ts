@@ -1,6 +1,8 @@
-import { formatAddress, parseCellAddress } from '@bilig/formula'
-import { ValueTag, type CellStyleRecord } from '@bilig/protocol'
+import { formatAddress } from '@bilig/formula'
+import { ValueTag } from '@bilig/protocol'
 import type { GridEngineLike } from './grid-engine.js'
+import { createBorderRects } from './gridGpuBorders.js'
+import { parseGpuColor, type GridGpuColor, type GridGpuRect, type GridGpuScene } from './gridGpuPrimitives.js'
 import { getVisibleColumnBounds, getVisibleRowBounds, type GridMetrics } from './gridMetrics.js'
 import { buildGridGpuHeaderScene } from './gridGpuHeaderScene.js'
 import type { HeaderSelection } from './gridPointer.js'
@@ -8,26 +10,6 @@ import type { GridSelection, Item, Rectangle } from './gridTypes.js'
 import { resolveMergedCell, resolveMergedCellBounds } from './gridMergedRanges.js'
 import { collectVisibleColumnBounds, collectVisibleRowBounds } from './visibleGridAxes.js'
 import { workbookThemeColors } from './workbookTheme.js'
-
-export interface GridGpuColor {
-  readonly r: number
-  readonly g: number
-  readonly b: number
-  readonly a: number
-}
-
-export interface GridGpuRect {
-  readonly x: number
-  readonly y: number
-  readonly width: number
-  readonly height: number
-  readonly color: GridGpuColor
-}
-
-export interface GridGpuScene {
-  readonly fillRects: readonly GridGpuRect[]
-  readonly borderRects: readonly GridGpuRect[]
-}
 
 function appendRects(target: GridGpuRect[], rects: readonly GridGpuRect[]): void {
   for (const rect of rects) {
@@ -62,7 +44,6 @@ interface BuildGridGpuSceneOptions {
   readonly activeHeaderDrag?: HeaderSelection | null
 }
 
-const FALLBACK_COLOR: GridGpuColor = Object.freeze({ r: 0, g: 0, b: 0, a: 1 })
 const GRID_LINE_COLOR = parseGpuColor(workbookThemeColors.gridBorder)
 const HEADER_FILL_COLOR = parseGpuColor(workbookThemeColors.surfaceSubtle)
 const HEADER_SELECTED_FILL_COLOR = parseGpuColor(workbookThemeColors.accentSoft)
@@ -171,27 +152,6 @@ export function buildGridGpuScene({
     gridSelection.columns.length > 0 || gridSelection.rows.length > 0
       ? { x: selectedCell[0], y: selectedCell[1], width: 1, height: 1 }
       : selectionRange
-  const useAxisGridLineRects =
-    contentMode === 'data' &&
-    !hasMergedRangeIntersection({
-      engine,
-      sheetName,
-      colEnd: visibleMaxCol,
-      colStart: visibleMinCol,
-      rowEnd: visibleMaxRow,
-      rowStart: visibleMinRow,
-    })
-  if (useAxisGridLineRects) {
-    pushAxisGridLineRects({
-      borderRects,
-      getCellBounds,
-      hostBounds,
-      visibleMaxCol,
-      visibleMaxRow,
-      visibleMinCol,
-      visibleMinRow,
-    })
-  }
 
   for (const [col, row] of visibleItems) {
     const bounds = getCellBounds(col, row)
@@ -223,9 +183,7 @@ export function buildGridGpuScene({
       })
     }
 
-    if (!useAxisGridLineRects) {
-      pushGridLineRects(borderRects, rect, row, col, visibleMinRow, visibleMinCol)
-    }
+    pushGridLineRects(borderRects, rect, row, col, visibleMinRow, visibleMinCol)
 
     if (snapshot.value.tag === ValueTag.Boolean) {
       pushBooleanCellRects(fillRects, borderRects, rect, snapshot.value.value)
@@ -338,100 +296,6 @@ export function buildGridGpuScene({
   return {
     fillRects,
     borderRects,
-  }
-}
-
-function hasMergedRangeIntersection(input: {
-  readonly engine: GridEngineLike
-  readonly sheetName: string
-  readonly rowStart: number
-  readonly rowEnd: number
-  readonly colStart: number
-  readonly colEnd: number
-}): boolean {
-  const ranges = input.engine.listMergeRanges?.(input.sheetName)
-  if (!ranges) {
-    return true
-  }
-  for (const range of ranges) {
-    const start = parseCellAddress(range.startAddress, range.sheetName)
-    const end = parseCellAddress(range.endAddress, range.sheetName)
-    const rowStart = Math.min(start.row, end.row)
-    const rowEnd = Math.max(start.row, end.row)
-    const colStart = Math.min(start.col, end.col)
-    const colEnd = Math.max(start.col, end.col)
-    if (rowStart <= input.rowEnd && rowEnd >= input.rowStart && colStart <= input.colEnd && colEnd >= input.colStart) {
-      return true
-    }
-  }
-  return false
-}
-
-function pushAxisGridLineRects(options: {
-  readonly borderRects: GridGpuRect[]
-  readonly getCellBounds: (col: number, row: number) => Rectangle | undefined
-  readonly hostBounds: Pick<DOMRect, 'left' | 'top'>
-  readonly visibleMaxCol: number
-  readonly visibleMaxRow: number
-  readonly visibleMinCol: number
-  readonly visibleMinRow: number
-}): void {
-  const { borderRects, getCellBounds, hostBounds, visibleMaxCol, visibleMaxRow, visibleMinCol, visibleMinRow } = options
-  const topLeft = getCellBounds(visibleMinCol, visibleMinRow)
-  const bottomRight = getCellBounds(visibleMaxCol, visibleMaxRow)
-  if (!topLeft || !bottomRight) {
-    return
-  }
-  const left = topLeft.x - hostBounds.left
-  const top = topLeft.y - hostBounds.top
-  const right = bottomRight.x + bottomRight.width - hostBounds.left
-  const bottom = bottomRight.y + bottomRight.height - hostBounds.top
-  const width = Math.max(0, right - left)
-  const height = Math.max(0, bottom - top)
-  if (width <= 0 || height <= 0) {
-    return
-  }
-
-  borderRects.push({
-    color: GRID_LINE_COLOR,
-    height: 1,
-    width,
-    x: left,
-    y: top,
-  })
-  for (let row = visibleMinRow; row <= visibleMaxRow; row += 1) {
-    const bounds = getCellBounds(visibleMinCol, row)
-    if (!bounds) {
-      continue
-    }
-    borderRects.push({
-      color: GRID_LINE_COLOR,
-      height: 1,
-      width,
-      x: left,
-      y: bounds.y + bounds.height - 1 - hostBounds.top,
-    })
-  }
-
-  borderRects.push({
-    color: GRID_LINE_COLOR,
-    height,
-    width: 1,
-    x: left,
-    y: top,
-  })
-  for (let col = visibleMinCol; col <= visibleMaxCol; col += 1) {
-    const bounds = getCellBounds(col, visibleMinRow)
-    if (!bounds) {
-      continue
-    }
-    borderRects.push({
-      color: GRID_LINE_COLOR,
-      height,
-      width: 1,
-      x: bounds.x + bounds.width - 1 - hostBounds.left,
-      y: top,
-    })
   }
 }
 
@@ -895,190 +759,4 @@ function pushRowResizeGuideRectsTopLayer(options: {
     height: RESIZE_GUIDE_CORE_THICKNESS,
     color: resizeGuideColor,
   })
-}
-
-function createBorderRects(
-  rect: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>,
-  side: 'top' | 'right' | 'bottom' | 'left',
-  border: NonNullable<NonNullable<CellStyleRecord['borders']>['top']>,
-): GridGpuRect[] {
-  const thickness = border.weight === 'thick' ? 3 : border.weight === 'medium' ? 2 : 1
-  const isHorizontal = side === 'top' || side === 'bottom'
-  const edgeX = side === 'left' ? rect.x : side === 'right' ? rect.x + rect.width - 1 : rect.x
-  const edgeY = side === 'top' ? rect.y : side === 'bottom' ? rect.y + rect.height - 1 : rect.y
-  const length = isHorizontal ? rect.width : rect.height
-  const color = parseGpuColor(border.color)
-
-  if (length <= 0) {
-    return []
-  }
-
-  switch (border.style) {
-    case 'dashed':
-      return createPatternBorderRects(edgeX, edgeY, length, thickness, color, isHorizontal, 6, 4)
-    case 'dotted':
-      return createPatternBorderRects(edgeX, edgeY, length, thickness, color, isHorizontal, 1, 3)
-    case 'double':
-      return createDoubleBorderRects(edgeX, edgeY, length, thickness, color, isHorizontal)
-    case 'solid':
-    default:
-      return [
-        {
-          x: isHorizontal ? edgeX : edgeX - thickness / 2,
-          y: isHorizontal ? edgeY - thickness / 2 : edgeY,
-          width: isHorizontal ? length : thickness,
-          height: isHorizontal ? thickness : length,
-          color,
-        },
-      ]
-  }
-}
-
-function createPatternBorderRects(
-  edgeX: number,
-  edgeY: number,
-  length: number,
-  thickness: number,
-  color: GridGpuColor,
-  isHorizontal: boolean,
-  segmentLength: number,
-  gapLength: number,
-): GridGpuRect[] {
-  const rects: GridGpuRect[] = []
-  for (let cursor = 0; cursor < length; cursor += segmentLength + gapLength) {
-    const currentLength = Math.min(segmentLength, length - cursor)
-    rects.push({
-      x: isHorizontal ? edgeX + cursor : edgeX - thickness / 2,
-      y: isHorizontal ? edgeY - thickness / 2 : edgeY + cursor,
-      width: isHorizontal ? currentLength : thickness,
-      height: isHorizontal ? thickness : currentLength,
-      color,
-    })
-  }
-  return rects
-}
-
-function createDoubleBorderRects(
-  edgeX: number,
-  edgeY: number,
-  length: number,
-  thickness: number,
-  color: GridGpuColor,
-  isHorizontal: boolean,
-): GridGpuRect[] {
-  const span = Math.max(3, thickness + 2)
-  const offset = span / 2
-  if (isHorizontal) {
-    return [
-      {
-        x: edgeX,
-        y: edgeY - offset,
-        width: length,
-        height: 1,
-        color,
-      },
-      {
-        x: edgeX,
-        y: edgeY - offset + span - 1,
-        width: length,
-        height: 1,
-        color,
-      },
-    ]
-  }
-  return [
-    {
-      x: edgeX - offset,
-      y: edgeY,
-      width: 1,
-      height: length,
-      color,
-    },
-    {
-      x: edgeX - offset + span - 1,
-      y: edgeY,
-      width: 1,
-      height: length,
-      color,
-    },
-  ]
-}
-
-export function parseGpuColor(input: string | undefined): GridGpuColor {
-  if (!input) {
-    return FALLBACK_COLOR
-  }
-
-  const color = input.trim()
-  if (color === 'transparent') {
-    return { r: 0, g: 0, b: 0, a: 0 }
-  }
-
-  if (color.startsWith('#')) {
-    return parseHexGpuColor(color)
-  }
-
-  const rgbaMatch = color.match(/^rgba?\(([^)]+)\)$/i)
-  if (rgbaMatch) {
-    const parts = (rgbaMatch[1] ?? '')
-      .split(',')
-      .map((part) => part.trim())
-      .filter(Boolean)
-    const [r = '0', g = '0', b = '0', a = '1'] = parts
-    return {
-      r: clampColorChannel(Number.parseFloat(r) / 255),
-      g: clampColorChannel(Number.parseFloat(g) / 255),
-      b: clampColorChannel(Number.parseFloat(b) / 255),
-      a: clampColorChannel(Number.parseFloat(a)),
-    }
-  }
-
-  return FALLBACK_COLOR
-}
-
-function parseHexGpuColor(input: string): GridGpuColor {
-  const hex = input.slice(1)
-  switch (hex.length) {
-    case 3:
-      return {
-        r: hexPairToChannel((hex.slice(0, 1) || '0').repeat(2)),
-        g: hexPairToChannel((hex.slice(1, 2) || '0').repeat(2)),
-        b: hexPairToChannel((hex.slice(2, 3) || '0').repeat(2)),
-        a: 1,
-      }
-    case 4:
-      return {
-        r: hexPairToChannel((hex.slice(0, 1) || '0').repeat(2)),
-        g: hexPairToChannel((hex.slice(1, 2) || '0').repeat(2)),
-        b: hexPairToChannel((hex.slice(2, 3) || '0').repeat(2)),
-        a: hexPairToChannel((hex.slice(3, 4) || 'f').repeat(2)),
-      }
-    case 6:
-      return {
-        r: hexPairToChannel(hex.slice(0, 2)),
-        g: hexPairToChannel(hex.slice(2, 4)),
-        b: hexPairToChannel(hex.slice(4, 6)),
-        a: 1,
-      }
-    case 8:
-      return {
-        r: hexPairToChannel(hex.slice(0, 2)),
-        g: hexPairToChannel(hex.slice(2, 4)),
-        b: hexPairToChannel(hex.slice(4, 6)),
-        a: hexPairToChannel(hex.slice(6, 8)),
-      }
-    default:
-      return FALLBACK_COLOR
-  }
-}
-
-function hexPairToChannel(value: string): number {
-  return clampColorChannel(Number.parseInt(value, 16) / 255)
-}
-
-function clampColorChannel(value: number): number {
-  if (!Number.isFinite(value)) {
-    return 0
-  }
-  return Math.min(1, Math.max(0, value))
 }

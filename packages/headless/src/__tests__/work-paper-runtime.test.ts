@@ -35,6 +35,30 @@ function trackPrivateMethod(workbook: WorkPaper, methodName: string): { readonly
   }
 }
 
+interface TestSheetDimensionCache {
+  updateAfterCellMutationRefs(...args: unknown[]): unknown
+}
+
+function hasSheetDimensionCacheUpdater(value: unknown): value is TestSheetDimensionCache {
+  return typeof value === 'object' && value !== null && typeof Reflect.get(value, 'updateAfterCellMutationRefs') === 'function'
+}
+
+function trackSheetDimensionCacheUpdates(workbook: WorkPaper): { readonly count: number; restore: () => void } {
+  const cache: unknown = Reflect.get(workbook, 'sheetDimensionCache')
+  if (!hasSheetDimensionCacheUpdater(cache)) {
+    throw new Error('Expected WorkPaper to expose a sheet dimension cache in tests')
+  }
+  const spy = vi.spyOn(cache, 'updateAfterCellMutationRefs')
+  return {
+    get count() {
+      return spy.mock.calls.length
+    },
+    restore: () => {
+      spy.mockRestore()
+    },
+  }
+}
+
 function readEngineUseColumnIndexEnabled(workbook: WorkPaper): boolean {
   const engine = Reflect.get(workbook, 'engine')
   if (typeof engine !== 'object' || engine === null) {
@@ -522,7 +546,7 @@ describe('WorkPaper', () => {
     const captureVisibilitySnapshot = vi.spyOn(workbook, 'captureVisibilitySnapshot').mockImplementation(() => {
       throw new Error('large no-listener physical batches should not rebuild visibility snapshots')
     })
-    const dimensionUpdates = trackPrivateMethod(workbook, 'updateSheetDimensionsAfterCellMutationRefs')
+    const dimensionUpdates = trackSheetDimensionCacheUpdates(workbook)
     const genericReader = rejectSingleTrackedCellReader(workbook)
 
     try {

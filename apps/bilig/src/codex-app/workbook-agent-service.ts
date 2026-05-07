@@ -7,19 +7,14 @@ import type {
 import type {
   WorkbookAgentAppliedBy,
   WorkbookAgentCommandBundle,
-  WorkbookAgentCommand,
   WorkbookAgentExecutionRecord,
   WorkbookAgentPreviewSummary,
 } from '@bilig/agent-api'
 import {
-  buildWorkbookAgentPreview,
-  buildWorkbookAgentExecutionRecord,
   createWorkbookAgentCommandBundle,
   decodeWorkbookAgentPreviewSummary,
   isWorkbookAgentBundleAutoApplyEligible,
-  requiresWorkbookAgentOwnerReview,
   resolveWorkbookAgentBundleExecutionPolicyInput,
-  splitWorkbookAgentCommandBundle,
   toWorkbookAgentCommandBundle,
 } from '@bilig/agent-api'
 import type { SessionIdentity } from '../http/session.js'
@@ -27,6 +22,7 @@ import type { ZeroSyncService } from '../zero/service.js'
 import { createWorkbookAgentServiceError } from '../workbook-agent-errors.js'
 import type { CodexAppServerClientOptions, CodexAppServerTransport } from './codex-app-server-client.js'
 import { isCodexAppServerPoolBackpressureError } from './codex-app-server-pool.js'
+import { DisabledWorkbookAgentService } from './workbook-agent-disabled-service.js'
 import {
   getWorkbookAgentWorkflowFamily,
   isWorkbookAgentRolloutAllowed,
@@ -42,13 +38,7 @@ import {
   startTurnBodySchema,
   updateContextBodySchema,
 } from './workbook-agent-session-model.js'
-import {
-  appendRevisionCitation,
-  attachSharedReviewState,
-  createBundleRangeCitations,
-  createWorkflowTurnId,
-  normalizeSharedReviewState,
-} from './workbook-agent-bundle-state.js'
+import { attachSharedReviewState, createBundleRangeCitations, createWorkflowTurnId } from './workbook-agent-bundle-state.js'
 import {
   clearLegacyPrivateBootstrapReviewItem,
   createWorkbookAgentBootstrappedSessionState,
@@ -82,16 +72,20 @@ import {
   toContextRef,
   upsertEntry,
 } from './workbook-agent-service-shared.js'
-import { applyWorkbookAgentStructuralContextHints, updateWorkbookAgentDurableUiContextFromUser } from './workbook-agent-service-context.js'
+import { updateWorkbookAgentDurableUiContextFromUser } from './workbook-agent-service-context.js'
 import { assertWorkbookAgentTurnQuota } from './workbook-agent-service-session-policy.js'
 import { WorkbookAgentWorkflowRuntime } from './workbook-agent-workflow-runtime.js'
-import { normalizeWorkbookAgentUiContext } from './workbook-agent-inspection.js'
 import {
   WorkbookAgentSessionRegistry,
-  createDisabledWorkbookAgentObservabilitySnapshot,
   type WorkbookAgentObservabilityCounterName,
   type WorkbookAgentObservabilitySnapshot,
 } from './workbook-agent-session-registry.js'
+import {
+  applyWorkbookAgentCommandBundleForSessionState,
+  applyWorkbookAgentToolBundleAutomatically,
+  buildWorkbookAgentAuthoritativePreview,
+  finalizeWorkbookAgentPrivateTurnBundle,
+} from './workbook-agent-service-application.js'
 
 function parsePositiveIntegerEnv(value: string | undefined, fallback: number): number {
   if (!value) {
@@ -160,68 +154,6 @@ export interface WorkbookAgentService {
   getSnapshot(input: { documentId: string; threadId: string; session: SessionIdentity }): WorkbookAgentThreadSnapshot
   subscribe(threadId: string, listener: (event: WorkbookAgentStreamEvent) => void): () => void
   close(): Promise<void>
-}
-
-class DisabledWorkbookAgentService implements WorkbookAgentService {
-  readonly enabled = false
-
-  async createSession(): Promise<never> {
-    throw new Error('Workbook agent service is not configured')
-  }
-
-  async updateContext(): Promise<never> {
-    throw new Error('Workbook agent service is not configured')
-  }
-
-  async startTurn(): Promise<never> {
-    throw new Error('Workbook agent service is not configured')
-  }
-
-  async startWorkflow(): Promise<never> {
-    throw new Error('Workbook agent service is not configured')
-  }
-
-  async cancelWorkflow(): Promise<never> {
-    throw new Error('Workbook agent service is not configured')
-  }
-
-  async interruptTurn(): Promise<never> {
-    throw new Error('Workbook agent service is not configured')
-  }
-
-  async applyReviewItem(): Promise<never> {
-    throw new Error('Workbook agent service is not configured')
-  }
-
-  async reviewReviewItem(): Promise<never> {
-    throw new Error('Workbook agent service is not configured')
-  }
-
-  async dismissReviewItem(): Promise<never> {
-    throw new Error('Workbook agent service is not configured')
-  }
-
-  async replayExecutionRecord(): Promise<never> {
-    throw new Error('Workbook agent service is not configured')
-  }
-
-  async listThreads(): Promise<never> {
-    throw new Error('Workbook agent service is not configured')
-  }
-
-  getObservabilitySnapshot(): WorkbookAgentObservabilitySnapshot {
-    return createDisabledWorkbookAgentObservabilitySnapshot(Date.now())
-  }
-
-  getSnapshot(): never {
-    throw new Error('Workbook agent service is not configured')
-  }
-
-  subscribe(): () => void {
-    return () => {}
-  }
-
-  async close(): Promise<void> {}
 }
 
 export interface EnabledWorkbookAgentServiceOptions {
@@ -352,30 +284,22 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
     )
   }
 
-  private async buildAuthoritativePreview(documentId: string, bundle: WorkbookAgentCommandBundle) {
-    return this.zeroSyncService.inspectWorkbook(documentId, async (runtime) =>
-      buildWorkbookAgentPreview({
-        snapshot: runtime.engine.exportSnapshot(),
-        replicaId: `server:${runtime.documentId}:agent-preview`,
-        bundle,
-      }),
-    )
+  private createBundleApplicationContext() {
+    return {
+      zeroSyncService: this.zeroSyncService,
+      now: this.now,
+      autoApplyLowRiskEnabled: this.featureFlags.autoApplyLowRiskEnabled,
+      isRolloutAllowed: (documentId: string, userId: string) => this.isRolloutAllowed(documentId, userId),
+      touchSession: (sessionState: WorkbookAgentThreadState) => this.sessionRegistry.touch(sessionState),
+    }
   }
 
-  private async refreshAppliedWorkbookContext(input: {
-    sessionState: WorkbookAgentThreadState
-    turnId: string
-    commands: readonly WorkbookAgentCommand[]
-  }): Promise<void> {
-    const hintedContext = applyWorkbookAgentStructuralContextHints(
-      this.resolveTurnContext(input.sessionState, input.turnId),
-      input.commands,
-    )
-    const normalizedContext = await this.zeroSyncService.inspectWorkbook(input.sessionState.documentId, (runtime) =>
-      normalizeWorkbookAgentUiContext(runtime, hintedContext),
-    )
-    input.sessionState.durable.context = cloneUiContext(normalizedContext)
-    input.sessionState.live.turnContextByTurn.set(input.turnId, cloneUiContext(normalizedContext))
+  private async buildAuthoritativePreview(documentId: string, bundle: WorkbookAgentCommandBundle): Promise<WorkbookAgentPreviewSummary> {
+    return await buildWorkbookAgentAuthoritativePreview({
+      zeroSyncService: this.zeroSyncService,
+      documentId,
+      bundle,
+    })
   }
 
   private async applyCommandBundleForSessionState(input: {
@@ -386,150 +310,7 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
     commandIndexes?: readonly number[] | null | undefined
     preview: WorkbookAgentPreviewSummary
   }): Promise<WorkbookAgentExecutionRecord> {
-    const selection = splitWorkbookAgentCommandBundle({
-      bundle: input.commandBundle,
-      acceptedCommandIndexes: input.commandIndexes,
-    })
-    if (!selection.acceptedBundle || !selection.acceptedScope) {
-      throw createWorkbookAgentServiceError({
-        code: 'WORKBOOK_AGENT_COMMAND_SELECTION_REQUIRED',
-        message: 'Select at least one staged workbook change before apply',
-        statusCode: 400,
-        retryable: false,
-      })
-    }
-    if (input.appliedBy === 'auto' && selection.acceptedScope !== 'full') {
-      throw createWorkbookAgentServiceError({
-        code: 'WORKBOOK_AGENT_MANUAL_APPROVAL_REQUIRED',
-        message: 'Automatic apply runs one complete change set per turn.',
-        statusCode: 409,
-        retryable: false,
-      })
-    }
-    if (input.appliedBy === 'auto') {
-      if (
-        !isWorkbookAgentBundleAutoApplyEligible(
-          resolveWorkbookAgentBundleExecutionPolicyInput({
-            scope: input.sessionState.scope,
-            executionPolicy: input.sessionState.executionPolicy,
-            bundle: selection.acceptedBundle,
-          }),
-        )
-      ) {
-        throw createWorkbookAgentServiceError({
-          code: 'WORKBOOK_AGENT_MANUAL_APPROVAL_REQUIRED',
-          message: 'This session routes workbook edits through the review queue.',
-          statusCode: 409,
-          retryable: false,
-        })
-      }
-      if (input.sessionState.executionPolicy === 'autoApplySafe' && !this.featureFlags.autoApplyLowRiskEnabled) {
-        throw createWorkbookAgentServiceError({
-          code: 'WORKBOOK_AGENT_AUTO_APPLY_DISABLED',
-          message: 'Automatic safe-apply is paused for this environment.',
-          statusCode: 409,
-          retryable: false,
-        })
-      }
-      this.assertRolloutAllowed({
-        documentId: input.sessionState.documentId,
-        userId: input.actorUserId,
-        code: 'WORKBOOK_AGENT_AUTO_APPLY_ROLLOUT_BLOCKED',
-        message: 'Automatic apply is limited to the rollout allowlist for this environment.',
-      })
-    }
-    if (
-      requiresWorkbookAgentOwnerReview({
-        scope: input.sessionState.scope,
-        riskClass: input.commandBundle.riskClass,
-      }) &&
-      input.sessionState.storageActorUserId !== input.actorUserId
-    ) {
-      throw createWorkbookAgentServiceError({
-        code: 'WORKBOOK_AGENT_SHARED_APPROVAL_REQUIRED',
-        message: 'Shared medium/high-risk workbook bundles must be applied by the thread owner.',
-        statusCode: 409,
-        retryable: false,
-      })
-    }
-    const sharedReview = normalizeSharedReviewState(input.commandBundle, input.sessionState)
-    if (
-      requiresWorkbookAgentOwnerReview({
-        scope: input.sessionState.scope,
-        riskClass: input.commandBundle.riskClass,
-      }) &&
-      sharedReview?.status !== 'approved'
-    ) {
-      throw createWorkbookAgentServiceError({
-        code: 'WORKBOOK_AGENT_SHARED_REVIEW_REQUIRED',
-        message: 'Shared medium/high-risk workbook bundles must be approved by the thread owner before apply.',
-        statusCode: 409,
-        retryable: false,
-      })
-    }
-    const result = await this.zeroSyncService.applyAgentCommandBundle(
-      input.sessionState.documentId,
-      selection.acceptedBundle,
-      input.preview,
-      {
-        userID: input.actorUserId,
-        roles: ['editor'],
-      },
-    )
-    const executionRecord = buildWorkbookAgentExecutionRecord({
-      bundle: selection.acceptedBundle,
-      actorUserId: input.actorUserId,
-      planText: this.collectPlanTextForTurn(input.sessionState, input.commandBundle.turnId),
-      preview: result.preview,
-      appliedRevision: result.revision,
-      appliedBy: input.appliedBy,
-      acceptedScope: selection.acceptedScope,
-      now: this.now(),
-    })
-    await this.zeroSyncService.appendWorkbookAgentRun(executionRecord)
-    input.sessionState.durable.executionRecords = [
-      executionRecord,
-      ...input.sessionState.durable.executionRecords.filter((record) => record.id !== executionRecord.id),
-    ]
-    await this.refreshAppliedWorkbookContext({
-      sessionState: input.sessionState,
-      turnId: input.commandBundle.turnId,
-      commands: selection.acceptedBundle.commands,
-    })
-    replaceCurrentWorkbookAgentReviewItem(
-      input.sessionState,
-      selection.remainingBundle === null
-        ? null
-        : createWorkbookAgentReviewQueueItem({
-            sessionState: input.sessionState,
-            bundle: attachSharedReviewState(
-              createWorkbookAgentCommandBundle({
-                documentId: selection.remainingBundle.documentId,
-                threadId: selection.remainingBundle.threadId,
-                turnId: selection.remainingBundle.turnId,
-                goalText: selection.remainingBundle.goalText,
-                baseRevision: result.revision,
-                context: selection.remainingBundle.context,
-                commands: selection.remainingBundle.commands,
-                now: this.now(),
-              }),
-              input.sessionState,
-            ),
-          }),
-    )
-    input.sessionState.durable.entries = upsertEntry(
-      input.sessionState.durable.entries,
-      createSystemEntry(
-        `system-apply:${executionRecord.id}`,
-        input.commandBundle.turnId,
-        `${input.appliedBy === 'auto' ? 'Applied automatically' : 'Applied'} ${
-          selection.acceptedScope === 'partial' ? 'selected ' : ''
-        }workbook change set at revision r${String(result.revision)}: ${selection.acceptedBundle.summary}`,
-        appendRevisionCitation(createBundleRangeCitations(selection.acceptedBundle), result.revision),
-      ),
-    )
-    this.sessionRegistry.touch(input.sessionState)
-    return executionRecord
+    return await applyWorkbookAgentCommandBundleForSessionState(this.createBundleApplicationContext(), input)
   }
 
   private async applyToolBundleAutomatically(input: {
@@ -537,17 +318,14 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
     actorUserId: string
     bundle: WorkbookAgentCommandBundle
   }): Promise<WorkbookAgentExecutionRecord | null> {
-    const preview = await this.buildAuthoritativePreview(input.sessionState.documentId, input.bundle)
-    const executionRecord = await this.applyCommandBundleForSessionState({
-      sessionState: input.sessionState,
-      commandBundle: input.bundle,
-      actorUserId: input.actorUserId,
-      appliedBy: 'auto',
-      preview,
-    })
-    await this.persistSessionState(input.sessionState)
-    this.sessionRegistry.emitSnapshot(input.sessionState.threadId)
-    return executionRecord.bundleId === input.bundle.id ? executionRecord : null
+    return await applyWorkbookAgentToolBundleAutomatically(
+      {
+        ...this.createBundleApplicationContext(),
+        persistSessionState: async (sessionState) => await this.persistSessionState(sessionState),
+        emitSnapshot: (threadId) => this.sessionRegistry.emitSnapshot(threadId),
+      },
+      input,
+    )
   }
 
   private async finalizePrivateTurnBundle(input: {
@@ -555,38 +333,13 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
     turnId: string
     turnStatus: 'completed' | 'failed'
   }): Promise<void> {
-    const queuedBundle = input.sessionState.live.stagedPrivateBundleByTurn.get(input.turnId)
-    if (!queuedBundle) {
-      return
-    }
-    input.sessionState.live.stagedPrivateBundleByTurn.delete(input.turnId)
-    if (input.turnStatus !== 'completed') {
-      return
-    }
-    const actorUserId = this.resolveTurnActorUserId(input.sessionState, input.turnId)
-    try {
-      const preview = await this.buildAuthoritativePreview(input.sessionState.documentId, queuedBundle)
-      await this.applyCommandBundleForSessionState({
-        sessionState: input.sessionState,
-        commandBundle: queuedBundle,
-        actorUserId,
-        appliedBy: 'auto',
-        preview,
-      })
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      input.sessionState.live.lastError = message
-      input.sessionState.durable.entries = upsertEntry(
-        input.sessionState.durable.entries,
-        createSystemEntry(
-          `system-auto-apply-failed:${queuedBundle.id}:${this.now()}`,
-          input.turnId,
-          `Automatic workbook apply failed: ${queuedBundle.summary}. ${message}`,
-          createBundleRangeCitations(queuedBundle),
-        ),
-      )
-      input.sessionState.live.status = 'failed'
-    }
+    await finalizeWorkbookAgentPrivateTurnBundle(
+      {
+        ...this.createBundleApplicationContext(),
+        resolveTurnActorUserId: (sessionState, turnId) => this.resolveTurnActorUserId(sessionState, turnId),
+      },
+      input,
+    )
   }
 
   getObservabilitySnapshot(): WorkbookAgentObservabilitySnapshot {
@@ -1139,15 +892,6 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
 
   private resolveTurnContext(sessionState: WorkbookAgentThreadState, turnId: string) {
     return cloneUiContext(sessionState.live.turnContextByTurn.get(turnId) ?? sessionState.durable.context)
-  }
-
-  private collectPlanTextForTurn(sessionState: WorkbookAgentThreadState, turnId: string): string | null {
-    const planText = sessionState.durable.entries
-      .filter((entry) => entry.turnId === turnId && entry.kind === 'plan' && entry.text)
-      .map((entry) => entry.text?.trim() ?? '')
-      .filter((text) => text.length > 0)
-      .join('\n\n')
-    return planText.length > 0 ? planText : null
   }
 
   private getOwnedSession(documentId: string, threadId: string, userId: string): WorkbookAgentThreadState {

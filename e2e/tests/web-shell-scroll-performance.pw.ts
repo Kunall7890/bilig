@@ -591,7 +591,7 @@ test.describe('@browser-perf web app scroll performance', () => {
     await nameBox.fill('F6')
     await nameBox.press('Enter')
     await expect(page.getByTestId('status-selection')).toContainText('!F6')
-    await page.getByTestId('sheet-grid').focus()
+    await page.getByTestId('sheet-grid-focus-target').focus()
     await settleWorkbookScrollPerf(page, 40)
     await warmStartWorkbookScrollPerf(page, 'wide-250k-visible-edit-commit')
     await settleWorkbookScrollPerf(page, 16)

@@ -479,7 +479,7 @@ function resolveAtlasPayloadVersion(atlas: GlyphAtlasLike): number {
   return atlas.getGlyphGeometryVersion?.() ?? atlas.getVersion?.() ?? 0
 }
 
-export function buildTextDecorationRects(runs: readonly TextQuadRun[], atlas: GlyphAtlasLike): TextDecorationRect[] {
+function buildTextDecorationRects(runs: readonly TextQuadRun[], atlas: GlyphAtlasLike): TextDecorationRect[] {
   const rects: TextDecorationRect[] = []
   for (const run of runs) {
     if (!run.underline && !run.strike) {

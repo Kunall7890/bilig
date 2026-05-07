@@ -20,7 +20,7 @@ export function packGridTextBufferV3(scene: GridTextScene): PackedGridTextBuffer
   }
 }
 
-export function packTextMetricsV3(items: readonly GridTextItem[]): Float32Array {
+function packTextMetricsV3(items: readonly GridTextItem[]): Float32Array {
   const floats = new Float32Array(Math.max(1, items.length) * GRID_TEXT_METRIC_FLOAT_COUNT_V3)
   items.forEach((item, index) => {
     const offset = index * GRID_TEXT_METRIC_FLOAT_COUNT_V3
@@ -36,7 +36,7 @@ export function packTextMetricsV3(items: readonly GridTextItem[]): Float32Array 
   return floats
 }
 
-export function mapTextRunV3(item: GridTextItem): GridRenderTileTextRun {
+function mapTextRunV3(item: GridTextItem): GridRenderTileTextRun {
   return {
     align: item.align,
     col: item.col,
@@ -60,7 +60,7 @@ export function mapTextRunV3(item: GridTextItem): GridRenderTileTextRun {
   }
 }
 
-export function resolveGridTextSignatureV3(textRuns: readonly GridRenderTileTextRun[]): string {
+function resolveGridTextSignatureV3(textRuns: readonly GridRenderTileTextRun[]): string {
   let hash = createHash()
   hash = mixNumber(hash, textRuns.length)
   for (const run of textRuns) {

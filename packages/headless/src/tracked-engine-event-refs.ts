@@ -45,7 +45,7 @@ export interface TrackedColumnInvalidationPatch {
 
 export type TrackedPatch = TrackedCellPatch | TrackedRangeInvalidationPatch | TrackedRowInvalidationPatch | TrackedColumnInvalidationPatch
 
-interface CoreTrackedEngineEvent {
+export interface CoreTrackedEngineEvent {
   kind: EngineEvent['kind']
   invalidation: EngineEvent['invalidation']
   changedCellIndices: EngineEvent['changedCellIndices']
@@ -81,6 +81,27 @@ interface CapturedChangedCellIndices {
   readonly sortedDisjoint: boolean
   readonly firstChangedCellIndex?: number
   readonly lastChangedCellIndex?: number
+}
+
+function buildCapturedChangedCellIndices(
+  changedCellIndices: CoreTrackedEngineEvent['changedCellIndices'],
+  sortedDisjoint: boolean,
+  firstChangedCellIndex: number | undefined,
+  lastChangedCellIndex: number | undefined,
+): CapturedChangedCellIndices {
+  const captured: {
+    changedCellIndices: CoreTrackedEngineEvent['changedCellIndices']
+    sortedDisjoint: boolean
+    firstChangedCellIndex?: number
+    lastChangedCellIndex?: number
+  } = { changedCellIndices, sortedDisjoint }
+  if (firstChangedCellIndex !== undefined) {
+    captured.firstChangedCellIndex = firstChangedCellIndex
+  }
+  if (lastChangedCellIndex !== undefined) {
+    captured.lastChangedCellIndex = lastChangedCellIndex
+  }
+  return captured
 }
 
 function hasPatchKind(event: CoreTrackedEngineEvent, kind: TrackedPatch['kind']): boolean {
@@ -161,13 +182,13 @@ function captureChangedCellIndices(
     for (let index = 0; index < length; index += 1) {
       noteCellIndex(index, changedCellIndices[index]!)
     }
-    return { changedCellIndices, sortedDisjoint, firstChangedCellIndex, lastChangedCellIndex }
+    return buildCapturedChangedCellIndices(changedCellIndices, sortedDisjoint, firstChangedCellIndex, lastChangedCellIndex)
   }
   if (!cloneChangedCellIndices && borrowChangedCellIndexViews) {
     for (let index = 0; index < length; index += 1) {
       noteCellIndex(index, changedCellIndices[index]!)
     }
-    return { changedCellIndices, sortedDisjoint, firstChangedCellIndex, lastChangedCellIndex }
+    return buildCapturedChangedCellIndices(changedCellIndices, sortedDisjoint, firstChangedCellIndex, lastChangedCellIndex)
   }
   if (changedCellIndices instanceof Uint32Array) {
     const copied = new Uint32Array(length)
@@ -176,7 +197,7 @@ function captureChangedCellIndices(
       copied[index] = value
       noteCellIndex(index, value)
     }
-    return { changedCellIndices: copied, sortedDisjoint, firstChangedCellIndex, lastChangedCellIndex }
+    return buildCapturedChangedCellIndices(copied, sortedDisjoint, firstChangedCellIndex, lastChangedCellIndex)
   }
   const copied = Array.from({ length }, () => 0)
   for (let index = 0; index < length; index += 1) {
@@ -184,7 +205,7 @@ function captureChangedCellIndices(
     copied[index] = value
     noteCellIndex(index, value)
   }
-  return { changedCellIndices: copied, sortedDisjoint, firstChangedCellIndex, lastChangedCellIndex }
+  return buildCapturedChangedCellIndices(copied, sortedDisjoint, firstChangedCellIndex, lastChangedCellIndex)
 }
 
 export function canUseSortedDisjointTrackedEngineEventChanges(events: readonly TrackedEngineEvent[]): boolean {

@@ -1,0 +1,172 @@
+import { FormulaMode } from '@bilig/protocol'
+import { CellFlags } from '../../cell-store.js'
+import { makeCellEntity, makeExactLookupColumnEntity, makeRangeEntity, makeSortedLookupColumnEntity } from '../../entity-ids.js'
+import { spillDependencyKeyFromRef, tableDependencyKey } from '../../engine-metadata-utils.js'
+import type { RuntimeFormula } from '../runtime-state.js'
+import {
+  aggregateColumnDependencyKey,
+  appendTrackedReverseEdge,
+  directCriteriaAggregateColumn,
+  directLookupColumnInfo,
+  directRegionIdsForFormula,
+} from './formula-binding-dependency-helpers.js'
+import type { FormulaBindingMemberCounts } from './formula-binding-member-counts.js'
+import type { PreparedFormulaBinding } from './formula-binding-prepare.js'
+import type {
+  BindPreparedFormulaOptions,
+  CreateEngineFormulaBindingServiceArgs,
+  FormulaOwnerPosition,
+} from './formula-binding-service-types.js'
+
+export function installFreshFormulaBindingNow(args: {
+  readonly serviceArgs: CreateEngineFormulaBindingServiceArgs
+  readonly formulaMemberCounts: FormulaBindingMemberCounts
+  readonly appendReverseEdge: (entityId: number, dependentEntityId: number) => void
+  readonly appendDefinedNameReverseEdge: (name: string, dependentCellIndex: number) => void
+  readonly trackFormulaSheetIndexes: (cellIndex: number, ownerSheetName: string, compiled: RuntimeFormula['compiled']) => void
+  readonly updateVolatileFormulaIndex: (cellIndex: number, formula: RuntimeFormula | undefined) => void
+  readonly recordFormulaInstanceNow: (
+    cellIndex: number,
+    source: string,
+    templateId: number | undefined,
+    ownerPosition?: FormulaOwnerPosition,
+  ) => void
+  readonly registerFormulaFamilyNow: (cellIndex: number, formula: RuntimeFormula, ownerPosition?: FormulaOwnerPosition) => void
+  readonly primeLookupCandidatesNow: (
+    ownerSheetName: string,
+    directLookup: PreparedFormulaBinding['directLookup'],
+    indexedExactLookupCandidates: PreparedFormulaBinding['indexedExactLookupCandidates'],
+    directApproximateLookupCandidates: PreparedFormulaBinding['directApproximateLookupCandidates'],
+  ) => void
+  readonly cellIndex: number
+  readonly ownerSheetName: string
+  readonly source: string
+  readonly prepared: PreparedFormulaBinding
+  readonly options?: BindPreparedFormulaOptions
+}): void {
+  const serviceArgs = args.serviceArgs
+  const cellStore = serviceArgs.state.workbook.cellStore
+  const sheetId = cellStore.sheetIds[args.cellIndex]
+  const sheet = sheetId === undefined ? undefined : serviceArgs.state.workbook.getSheetById(sheetId)
+  const physicalOwnerPosition =
+    sheet && sheet.structureVersion === 1
+      ? {
+          sheetName: args.ownerSheetName,
+          row: cellStore.rows[args.cellIndex] ?? 0,
+          col: cellStore.cols[args.cellIndex] ?? 0,
+        }
+      : undefined
+  const dependencyEntities = serviceArgs.edgeArena.replace(serviceArgs.edgeArena.empty(), args.prepared.dependencies.dependencyEntities)
+  const runtimeFormula: RuntimeFormula = {
+    cellIndex: args.cellIndex,
+    formulaSlotId: 0,
+    planId: args.prepared.plan.id,
+    templateId: args.prepared.templateId,
+    source: args.source,
+    compiled: args.prepared.plan.compiled,
+    plan: args.prepared.plan,
+    dependencyIndices: args.prepared.dependencies.dependencyIndices,
+    dependencyEntities,
+    rangeDependencies: args.prepared.dependencies.rangeDependencies,
+    runtimeProgram: args.prepared.runtimeProgram,
+    constants: args.prepared.compiled.constants,
+    structuralSourceTransform: undefined,
+    programOffset: 0,
+    programLength: args.prepared.runtimeProgram.length,
+    constNumberOffset: 0,
+    constNumberLength: args.prepared.compiled.constants.length,
+    rangeListOffset: 0,
+    rangeListLength: args.prepared.dependencies.rangeDependencies.length,
+    directLookup: args.prepared.directLookup,
+    directAggregate: args.prepared.directAggregate,
+    directScalar: args.prepared.directScalar,
+    directCriteria: args.prepared.directCriteria,
+  }
+  const formulaSlotId = serviceArgs.state.formulas.set(args.cellIndex, runtimeFormula)
+  runtimeFormula.formulaSlotId = formulaSlotId
+  args.updateVolatileFormulaIndex(args.cellIndex, runtimeFormula)
+  const col = physicalOwnerPosition?.col ?? serviceArgs.state.workbook.getCellPosition(args.cellIndex)?.col
+  if (sheetId !== undefined) {
+    args.formulaMemberCounts.increment(sheetId, col)
+  }
+  serviceArgs.state.workbook.cellStore.flags[args.cellIndex] =
+    ((serviceArgs.state.workbook.cellStore.flags[args.cellIndex] ?? 0) & ~(CellFlags.SpillChild | CellFlags.PivotOutput)) |
+    CellFlags.HasFormula
+  if (runtimeFormula.compiled.mode === FormulaMode.JsOnly) {
+    serviceArgs.state.workbook.cellStore.flags[args.cellIndex] =
+      (serviceArgs.state.workbook.cellStore.flags[args.cellIndex] ?? 0) | CellFlags.JsOnly
+  } else {
+    serviceArgs.state.workbook.cellStore.flags[args.cellIndex] =
+      (serviceArgs.state.workbook.cellStore.flags[args.cellIndex] ?? 0) & ~CellFlags.JsOnly
+  }
+  if (args.options?.deferFormulaInstanceRegistration !== true) {
+    args.recordFormulaInstanceNow(args.cellIndex, args.source, args.prepared.templateId, physicalOwnerPosition)
+  }
+  if (args.options?.deferFamilyRegistration !== true) {
+    args.registerFormulaFamilyNow(args.cellIndex, runtimeFormula, physicalOwnerPosition)
+  }
+
+  for (let rangeCursor = 0; rangeCursor < args.prepared.dependencies.newRangeCount; rangeCursor += 1) {
+    const rangeIndex = args.prepared.dependencies.newRangeIndices[rangeCursor]!
+    const dependencySources = serviceArgs.state.ranges.getDependencySourceEntities(rangeIndex)
+    const rangeEntity = makeRangeEntity(rangeIndex)
+    for (let index = 0; index < dependencySources.length; index += 1) {
+      args.appendReverseEdge(dependencySources[index]!, rangeEntity)
+    }
+  }
+  const formulaEntity = makeCellEntity(args.cellIndex)
+  for (let index = 0; index < args.prepared.dependencies.dependencyEntities.length; index += 1) {
+    args.appendReverseEdge(args.prepared.dependencies.dependencyEntities[index]!, formulaEntity)
+  }
+  runtimeFormula.compiled.symbolicNames.forEach((name) => {
+    args.appendDefinedNameReverseEdge(name, args.cellIndex)
+  })
+  runtimeFormula.compiled.symbolicTables.forEach((name) => {
+    appendTrackedReverseEdge(serviceArgs.reverseState.reverseTableEdges, tableDependencyKey(name), args.cellIndex)
+  })
+  runtimeFormula.compiled.symbolicSpills.forEach((key) => {
+    appendTrackedReverseEdge(
+      serviceArgs.reverseState.reverseSpillEdges,
+      spillDependencyKeyFromRef(
+        key,
+        serviceArgs.state.workbook.getSheetNameById(serviceArgs.state.workbook.cellStore.sheetIds[args.cellIndex]!),
+      ),
+      args.cellIndex,
+    )
+  })
+  if (args.prepared.directLookup) {
+    const lookupInfo = directLookupColumnInfo(args.prepared.directLookup)
+    const lookupSheet = serviceArgs.state.workbook.getSheet(lookupInfo.sheetName)
+    if (lookupSheet) {
+      const lookupEntity = lookupInfo.isExact
+        ? makeExactLookupColumnEntity(lookupSheet.id, lookupInfo.col)
+        : makeSortedLookupColumnEntity(lookupSheet.id, lookupInfo.col)
+      args.appendReverseEdge(lookupEntity, formulaEntity)
+    }
+  }
+  const directCriteriaAggregate = directCriteriaAggregateColumn(args.prepared.directCriteria)
+  if (directCriteriaAggregate) {
+    const aggregateSheet = serviceArgs.state.workbook.getSheet(directCriteriaAggregate.sheetName)
+    if (aggregateSheet) {
+      appendTrackedReverseEdge(
+        serviceArgs.reverseState.reverseAggregateColumnEdges,
+        aggregateColumnDependencyKey(aggregateSheet.id, directCriteriaAggregate.col),
+        args.cellIndex,
+      )
+    }
+  }
+  args.trackFormulaSheetIndexes(args.cellIndex, args.ownerSheetName, runtimeFormula.compiled)
+  if (runtimeFormula.directAggregate !== undefined || runtimeFormula.directCriteria !== undefined) {
+    serviceArgs.regionGraph.replaceFormulaSubscriptions(args.cellIndex, directRegionIdsForFormula(runtimeFormula))
+  }
+  if (args.prepared.compiled.mode === FormulaMode.WasmFastPath && args.prepared.runtimeProgram.length > 0) {
+    serviceArgs.scheduleWasmProgramSync()
+  }
+
+  args.primeLookupCandidatesNow(
+    args.ownerSheetName,
+    args.prepared.directLookup,
+    args.prepared.indexedExactLookupCandidates,
+    args.prepared.directApproximateLookupCandidates,
+  )
+}

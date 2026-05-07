@@ -3,35 +3,59 @@ import type { CompiledFormula } from '@bilig/formula'
 import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 import type { EngineCellMutationRef, EngineFormulaSourceRefs } from '../../cell-mutations-at.js'
 import { CellFlags } from '../../cell-store.js'
-import { buildFormulaFamilyShapeKey } from '../../formula/formula-family-deps.js'
-import {
-  tryMatchInitialSimpleRowRelativeBinaryTemplate,
-  tryMatchInitialSimpleRowRelativeBinaryTemplateShape,
-  type InitialSimpleRowRelativeBinaryTemplateShape,
-} from '../../formula/initial-simple-direct-scalar-template.js'
 import type {
   FormulaFamilyFreshUniformRunRegistrationArgs,
   FormulaFamilyMember,
   FormulaFamilyRunUpsertArgs,
 } from '../../formula/formula-family-store.js'
 import type { FormulaTemplateResolution } from '../../formula/template-bank.js'
-import {
-  translateSimpleDirectScalarFormula,
-  translateSimpleDirectScalarFormulaWithParsedRefs,
-} from '../../formula/simple-direct-scalar-compile.js'
+import { translateSimpleDirectScalarFormula } from '../../formula/simple-direct-scalar-compile.js'
 import { addEngineCounter } from '../../perf/engine-counters.js'
-import type {
-  EngineRuntimeState,
-  RuntimeDirectScalarDescriptor,
-  RuntimeDirectScalarOperand,
-  RuntimeFormula,
-  U32,
-} from '../runtime-state.js'
+import type { EngineRuntimeState, RuntimeFormula, U32 } from '../runtime-state.js'
 import { EngineMutationError } from '../errors.js'
+import { evaluateInitialDirectScalar, evaluateInitialDirectScalarNumber } from './formula-initialization-direct-scalar.js'
+import {
+  initialFormulaFamilyShapeKey,
+  tryBuildInitialSimpleRowRelativeBinaryTemplateKey,
+  type InitialTemplateFormulaCacheEntry,
+} from './formula-initialization-template-keys.js'
+import { createInitialFormulaValueWriter, type InitialFormulaValueWriter } from './formula-initialization-value-writer.js'
+import {
+  canEvaluateInitialDirectRuntimeFormula,
+  hasPendingFormulaDependency,
+  mutationErrorMessage,
+} from './formula-initialization-predicates.js'
+import type {
+  EngineFormulaInitializationService,
+  HydratedPreparedFormulaInitializationRef,
+  PreparedFormulaInitializationRef,
+} from './formula-initialization-service-types.js'
 
-const INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT = 262_144
+export type {
+  EngineFormulaInitializationService,
+  HydratedPreparedFormulaInitializationRef,
+  PreparedFormulaInitializationRef,
+} from './formula-initialization-service-types.js'
+
+const INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT = 16_384
 const EMPTY_U32 = new Uint32Array(0)
 type InitialFormulaCellIndexList = readonly number[] | U32
+type InitialFormulaEntryRefSource<Entry> = readonly Entry[] | { readonly length: number; readonly at: (index: number) => Entry }
+
+interface InitialResolvedFormulaEntry {
+  cellIndex: number
+  sheetId: number
+  row: number
+  col: number
+  ownerSheetName: string
+  source: string
+  compiled: CompiledFormula
+  templateId?: number
+}
+
+function initialFormulaEntryRefAt<Entry>(refs: InitialFormulaEntryRefSource<Entry>, index: number): Entry {
+  return Array.isArray(refs) ? refs[index]! : refs.at(index)!
+}
 
 type InitialPrefixAggregateKind = 'sum' | 'count' | 'average' | 'min' | 'max'
 
@@ -45,24 +69,6 @@ interface InitialPrefixAggregateGroup {
   formulasAreOrdered: boolean
   readonly formulas: Array<{ cellIndex: number; rowEnd: number; resultOffset?: number }>
 }
-
-interface InitialResolvedFormulaEntry {
-  cellIndex: number
-  sheetId: number
-  row: number
-  col: number
-  ownerSheetName: string
-  source: string
-  compiled: CompiledFormula
-  templateId?: number
-}
-
-interface InitialIndexedFormulaEntryRefs<Entry> {
-  readonly length: number
-  readonly at: (index: number) => Entry
-}
-
-type InitialFormulaEntryRefSource<Entry> = readonly Entry[] | InitialIndexedFormulaEntryRefs<Entry>
 
 type DeferredInitialFormulaFamilyRun = Omit<FormulaFamilyRunUpsertArgs, 'members'> & {
   axis: 'row'
@@ -82,152 +88,6 @@ function materializeDeferredFormulaFamilyRunMembers(run: DeferredInitialFormulaF
     row: run.ordered ? run.start + step * index : run.rows![index]!,
     col: run.fixedIndex,
   }))
-}
-
-function initialFormulaEntryRefAt<Entry>(refs: InitialFormulaEntryRefSource<Entry>, index: number): Entry {
-  if (isInitialIndexedFormulaEntryRefs(refs)) {
-    return refs.at(index)
-  }
-  const ref = refs[index]
-  if (ref === undefined) {
-    throw new Error(`Missing initial formula entry at index ${String(index)}`)
-  }
-  return ref
-}
-
-function isInitialIndexedFormulaEntryRefs<Entry>(refs: InitialFormulaEntryRefSource<Entry>): refs is InitialIndexedFormulaEntryRefs<Entry> {
-  return !Array.isArray(refs)
-}
-
-interface InitialTemplateFormulaCacheEntry {
-  readonly resolution: FormulaTemplateResolution
-  readonly anchorRow: number
-  readonly anchorCol: number
-  readonly anchorCompiled: CompiledFormula
-  readonly simpleShape: InitialSimpleRowRelativeBinaryTemplateShape
-}
-
-function mutationErrorMessage(message: string, cause: unknown): string {
-  return cause instanceof Error && cause.message.length > 0 ? cause.message : message
-}
-
-function canEvaluateInitialDirectRuntimeFormula(formula: RuntimeFormula | undefined): boolean {
-  return (
-    formula !== undefined &&
-    !formula.compiled.volatile &&
-    !formula.compiled.producesSpill &&
-    (formula.directAggregate !== undefined ||
-      formula.directCriteria !== undefined ||
-      formula.directLookup !== undefined ||
-      formula.directScalar !== undefined)
-  )
-}
-
-function hasPendingFormulaDependency(formula: RuntimeFormula, pendingFormulaCells: Uint8Array): boolean {
-  const dependencies = formula.dependencyIndices
-  for (let index = 0; index < dependencies.length; index += 1) {
-    if ((pendingFormulaCells[dependencies[index]!] ?? 0) !== 0) {
-      return true
-    }
-  }
-  return false
-}
-
-function initialFormulaFamilyShapeKey(formula: RuntimeFormula): string {
-  return buildFormulaFamilyShapeKey({
-    compiled: formula.compiled,
-    dependencyCount: formula.dependencyIndices.length,
-    rangeDependencyCount: formula.rangeDependencies.length,
-    directAggregateKind: formula.directAggregate?.aggregateKind,
-    directLookupKind: formula.directLookup?.kind,
-    directScalarKind: formula.directScalar?.kind,
-    directCriteriaKind: formula.directCriteria?.aggregateKind,
-  })
-}
-
-export interface EngineFormulaInitializationService {
-  readonly initializeCellFormulasAt: (
-    refs: readonly EngineCellMutationRef[],
-    potentialNewCells?: number,
-  ) => Effect.Effect<void, EngineMutationError>
-  readonly initializeCellFormulasAtNow: (refs: readonly EngineCellMutationRef[], potentialNewCells?: number) => void
-  readonly initializeFormulaSourcesAtNow: (refs: EngineFormulaSourceRefs, potentialNewCells?: number) => void
-  readonly initializePreparedCellFormulasAt: (
-    refs: readonly PreparedFormulaInitializationRef[],
-    potentialNewCells?: number,
-  ) => Effect.Effect<void, EngineMutationError>
-  readonly initializePreparedCellFormulasAtNow: (refs: readonly PreparedFormulaInitializationRef[], potentialNewCells?: number) => void
-  readonly initializeHydratedPreparedCellFormulasAt: (
-    refs: readonly HydratedPreparedFormulaInitializationRef[],
-    potentialNewCells?: number,
-  ) => Effect.Effect<void, EngineMutationError>
-  readonly initializeHydratedPreparedCellFormulasAtNow: (
-    refs: readonly HydratedPreparedFormulaInitializationRef[],
-    potentialNewCells?: number,
-  ) => void
-}
-
-export interface PreparedFormulaInitializationRef {
-  readonly sheetId: number
-  readonly row: number
-  readonly col: number
-  readonly source: string
-  readonly compiled: CompiledFormula
-  readonly templateId?: number
-  readonly cellIndex?: number
-}
-
-export interface HydratedPreparedFormulaInitializationRef extends PreparedFormulaInitializationRef {
-  readonly value: CellValue
-}
-
-interface InitialWrittenColumnTracker {
-  columns: Uint8Array
-  count: number
-}
-
-interface InitialFormulaValueWriter {
-  readonly writeValue: (cellIndex: number, value: CellValue) => void
-  readonly writeValueAt: (cellIndex: number, sheetId: number, col: number, value: CellValue) => void
-  readonly writeNumber: (cellIndex: number, value: number) => void
-  readonly writeNumberAt: (cellIndex: number, sheetId: number, col: number, value: number) => void
-  readonly flush: () => void
-}
-
-function createInitialWrittenColumnTracker(initialCapacity = 8): InitialWrittenColumnTracker {
-  return {
-    columns: new Uint8Array(initialCapacity),
-    count: 0,
-  }
-}
-
-function markInitialWrittenColumn(tracker: InitialWrittenColumnTracker, col: number): void {
-  if (col >= tracker.columns.length) {
-    let nextLength = tracker.columns.length
-    while (nextLength <= col) {
-      nextLength *= 2
-    }
-    const nextColumns = new Uint8Array(nextLength)
-    nextColumns.set(tracker.columns)
-    tracker.columns = nextColumns
-  }
-  if (tracker.columns[col] !== 0) {
-    return
-  }
-  tracker.columns[col] = 1
-  tracker.count += 1
-}
-
-function materializeInitialWrittenColumns(tracker: InitialWrittenColumnTracker): Uint32Array {
-  const columns = new Uint32Array(tracker.count)
-  let writeIndex = 0
-  for (let col = 0; col < tracker.columns.length; col += 1) {
-    if (tracker.columns[col] !== 0) {
-      columns[writeIndex] = col
-      writeIndex += 1
-    }
-  }
-  return columns
 }
 
 export function createEngineFormulaInitializationService(args: {
@@ -389,145 +249,22 @@ export function createEngineFormulaInitializationService(args: {
     })
   }
 
-  const createInitialFormulaValueWriter = (): InitialFormulaValueWriter => {
-    let singleSheetId: number | undefined
-    let singleSheetTracker: InitialWrittenColumnTracker | undefined
-    let writtenColumnsBySheetId: Map<number, InitialWrittenColumnTracker> | undefined
-    const promoteSingleSheetTracker = (): Map<number, InitialWrittenColumnTracker> => {
-      writtenColumnsBySheetId = new Map()
-      if (singleSheetId !== undefined && singleSheetTracker !== undefined) {
-        writtenColumnsBySheetId.set(singleSheetId, singleSheetTracker)
-      }
-      singleSheetId = undefined
-      singleSheetTracker = undefined
-      return writtenColumnsBySheetId
-    }
-    const markKnownColumn = (sheetId: number, col: number): void => {
-      if (!writtenColumnsBySheetId && (singleSheetId === undefined || singleSheetId === sheetId)) {
-        singleSheetId = sheetId
-        singleSheetTracker ??= createInitialWrittenColumnTracker()
-        markInitialWrittenColumn(singleSheetTracker, col)
-        return
-      }
-      const trackers = writtenColumnsBySheetId ?? promoteSingleSheetTracker()
-      let tracker = trackers.get(sheetId)
-      if (!tracker) {
-        tracker = createInitialWrittenColumnTracker()
-        trackers.set(sheetId, tracker)
-      }
-      markInitialWrittenColumn(tracker, col)
-    }
-    const markCellColumn = (cellIndex: number): void => {
-      const sheetId = args.state.workbook.cellStore.sheetIds[cellIndex]
-      const col = args.state.workbook.cellStore.cols[cellIndex]
-      if (sheetId === undefined || col === undefined) {
-        return
-      }
-      markKnownColumn(sheetId, col)
-    }
-    const clearDerivedFlags = (cellIndex: number): void => {
-      args.state.workbook.cellStore.flags[cellIndex] =
-        (args.state.workbook.cellStore.flags[cellIndex] ?? 0) & ~(CellFlags.SpillChild | CellFlags.PivotOutput)
-    }
-    const writeNumberCore = (cellIndex: number, value: number): void => {
-      const cellStore = args.state.workbook.cellStore
-      clearDerivedFlags(cellIndex)
-      cellStore.tags[cellIndex] = ValueTag.Number
-      cellStore.errors[cellIndex] = ErrorCode.None
-      cellStore.stringIds[cellIndex] = 0
-      cellStore.numbers[cellIndex] = value
-      cellStore.versions[cellIndex] = (cellStore.versions[cellIndex] ?? 0) + 1
-    }
-    const writeValueCore = (cellIndex: number, value: CellValue): void => {
-      const cellStore = args.state.workbook.cellStore
-      clearDerivedFlags(cellIndex)
-      cellStore.tags[cellIndex] = value.tag
-      cellStore.errors[cellIndex] = value.tag === ValueTag.Error ? value.code : ErrorCode.None
-      cellStore.stringIds[cellIndex] = value.tag === ValueTag.String ? args.state.strings.intern(value.value) : 0
-      cellStore.numbers[cellIndex] =
-        value.tag === ValueTag.Number ? value.value : value.tag === ValueTag.Boolean ? (value.value ? 1 : 0) : 0
-      cellStore.versions[cellIndex] = (cellStore.versions[cellIndex] ?? 0) + 1
-    }
-    return {
-      writeValue(cellIndex, value) {
-        writeValueCore(cellIndex, value)
-        markCellColumn(cellIndex)
-      },
-      writeValueAt(cellIndex, sheetId, col, value) {
-        writeValueCore(cellIndex, value)
-        markKnownColumn(sheetId, col)
-      },
-      writeNumber(cellIndex, value) {
-        writeNumberCore(cellIndex, value)
-        markCellColumn(cellIndex)
-      },
-      writeNumberAt(cellIndex, sheetId, col, value) {
-        writeNumberCore(cellIndex, value)
-        markKnownColumn(sheetId, col)
-      },
-      flush() {
-        if (!writtenColumnsBySheetId) {
-          if (singleSheetId !== undefined && singleSheetTracker !== undefined && singleSheetTracker.count > 0) {
-            args.state.workbook.notifyColumnsWritten(singleSheetId, materializeInitialWrittenColumns(singleSheetTracker))
-          }
-          return
-        }
-        writtenColumnsBySheetId.forEach((tracker, sheetId) => {
-          if (tracker.count > 0) {
-            args.state.workbook.notifyColumnsWritten(sheetId, materializeInitialWrittenColumns(tracker))
-          }
-        })
-      },
-    }
-  }
-
   const canEvaluateInitialDirectFormula = (cellIndex: number): boolean => {
     return canEvaluateInitialDirectRuntimeFormula(args.state.formulas.get(cellIndex))
   }
 
   const createInitialTemplateFormulaResolver = (): ((source: string, row: number, col: number) => FormulaTemplateResolution) => {
     const simpleTemplateCache = new Map<string, InitialTemplateFormulaCacheEntry>()
-    const simpleTemplateCandidates: InitialTemplateFormulaCacheEntry[] = []
     return (source, row, col) => {
-      for (let index = 0; index < simpleTemplateCandidates.length; index += 1) {
-        const cached = simpleTemplateCandidates[index]!
-        const simpleTemplate = tryMatchInitialSimpleRowRelativeBinaryTemplateShape(source, row, col, cached.simpleShape)
-        if (!simpleTemplate) {
-          continue
-        }
-        const anchorRowDelta = row - cached.anchorRow
-        const anchorColDelta = col - cached.anchorCol
-        const compiled =
-          translateSimpleDirectScalarFormulaWithParsedRefs(cached.anchorCompiled, source, simpleTemplate) ??
-          translateSimpleDirectScalarFormula(cached.anchorCompiled, anchorRowDelta, anchorColDelta, source)
-        if (compiled) {
-          return {
-            templateId: cached.resolution.templateId,
-            templateKey: cached.resolution.templateKey,
-            baseSource: cached.resolution.baseSource,
-            compiled,
-            translated: cached.resolution.translated || anchorRowDelta !== 0 || anchorColDelta !== 0,
-            rowDelta: cached.resolution.rowDelta + anchorRowDelta,
-            colDelta: cached.resolution.colDelta + anchorColDelta,
-          }
-        }
-      }
-      const simpleTemplate = tryMatchInitialSimpleRowRelativeBinaryTemplate(source, row, col)
-      const templateKey = simpleTemplate?.templateKey
+      const templateKey = tryBuildInitialSimpleRowRelativeBinaryTemplateKey(source, row, col)
       const cached = templateKey === undefined ? undefined : simpleTemplateCache.get(templateKey)
       if (cached) {
         const anchorRowDelta = row - cached.anchorRow
         const anchorColDelta = col - cached.anchorCol
-        const compiled =
-          simpleTemplate === undefined
-            ? undefined
-            : (translateSimpleDirectScalarFormulaWithParsedRefs(cached.anchorCompiled, source, simpleTemplate) ??
-              translateSimpleDirectScalarFormula(cached.anchorCompiled, anchorRowDelta, anchorColDelta, source))
+        const compiled = translateSimpleDirectScalarFormula(cached.anchorCompiled, anchorRowDelta, anchorColDelta, source)
         if (compiled) {
           return {
-            templateId: cached.resolution.templateId,
-            templateKey: cached.resolution.templateKey,
-            baseSource: cached.resolution.baseSource,
+            ...cached.resolution,
             compiled,
             translated: cached.resolution.translated || anchorRowDelta !== 0 || anchorColDelta !== 0,
             rowDelta: cached.resolution.rowDelta + anchorRowDelta,
@@ -536,16 +273,13 @@ export function createEngineFormulaInitializationService(args: {
         }
       }
       const resolution = args.compileTemplateFormula(source, row, col)
-      if (simpleTemplate) {
-        const entry = {
+      if (templateKey !== undefined) {
+        simpleTemplateCache.set(templateKey, {
           resolution,
           anchorRow: row,
           anchorCol: col,
           anchorCompiled: resolution.compiled,
-          simpleShape: simpleTemplate,
-        }
-        simpleTemplateCache.set(simpleTemplate.templateKey, entry)
-        simpleTemplateCandidates.push(entry)
+        })
       }
       return resolution
     }
@@ -676,142 +410,6 @@ export function createEngineFormulaInitializationService(args: {
     return handled.size === 0 ? undefined : handled
   }
 
-  const coerceInitialDirectScalarCell = (
-    cellIndex: number,
-  ): { kind: 'number'; value: number } | { kind: 'error'; code: ErrorCode } | undefined => {
-    const cellStore = args.state.workbook.cellStore
-    const tag = (cellStore.tags[cellIndex] as ValueTag | undefined) ?? ValueTag.Empty
-    switch (tag) {
-      case ValueTag.Number:
-        return { kind: 'number', value: cellStore.numbers[cellIndex] ?? 0 }
-      case ValueTag.Boolean:
-        return { kind: 'number', value: (cellStore.numbers[cellIndex] ?? 0) !== 0 ? 1 : 0 }
-      case ValueTag.Empty:
-        return { kind: 'number', value: 0 }
-      case ValueTag.Error:
-        return { kind: 'error', code: (cellStore.errors[cellIndex] as ErrorCode | undefined) ?? ErrorCode.None }
-      case ValueTag.String:
-        return { kind: 'error', code: ErrorCode.Value }
-      default:
-        return undefined
-    }
-  }
-
-  const readInitialDirectScalarOperand = (
-    operand: RuntimeDirectScalarOperand,
-  ): { kind: 'number'; value: number } | { kind: 'error'; code: ErrorCode } | undefined => {
-    switch (operand.kind) {
-      case 'literal-number':
-        return { kind: 'number', value: operand.value }
-      case 'error':
-        return { kind: 'error', code: operand.code }
-      case 'cell':
-        return coerceInitialDirectScalarCell(operand.cellIndex)
-    }
-  }
-
-  const evaluateInitialDirectScalar = (directScalar: RuntimeDirectScalarDescriptor): CellValue | undefined => {
-    if (directScalar.kind === 'abs') {
-      const operand = readInitialDirectScalarOperand(directScalar.operand)
-      if (!operand) {
-        return undefined
-      }
-      return operand.kind === 'error'
-        ? { tag: ValueTag.Error, code: operand.code }
-        : { tag: ValueTag.Number, value: Math.abs(operand.value) }
-    }
-    const left = readInitialDirectScalarOperand(directScalar.left)
-    const right = readInitialDirectScalarOperand(directScalar.right)
-    if (!left || !right) {
-      return undefined
-    }
-    if (left.kind === 'error') {
-      return { tag: ValueTag.Error, code: left.code }
-    }
-    if (right.kind === 'error') {
-      return { tag: ValueTag.Error, code: right.code }
-    }
-    let result: number
-    switch (directScalar.operator) {
-      case '+':
-        result = left.value + right.value
-        break
-      case '-':
-        result = left.value - right.value
-        break
-      case '*':
-        result = left.value * right.value
-        break
-      case '/':
-        if (right.value === 0) {
-          return { tag: ValueTag.Error, code: ErrorCode.Div0 }
-        }
-        result = left.value / right.value
-        break
-    }
-    return { tag: ValueTag.Number, value: result + (directScalar.resultOffset ?? 0) }
-  }
-
-  const coerceInitialDirectScalarNumber = (cellIndex: number): number | undefined => {
-    const cellStore = args.state.workbook.cellStore
-    const tag = (cellStore.tags[cellIndex] as ValueTag | undefined) ?? ValueTag.Empty
-    switch (tag) {
-      case ValueTag.Number:
-        return cellStore.numbers[cellIndex] ?? 0
-      case ValueTag.Boolean:
-        return (cellStore.numbers[cellIndex] ?? 0) !== 0 ? 1 : 0
-      case ValueTag.Empty:
-        return 0
-      case ValueTag.String:
-      case ValueTag.Error:
-        return undefined
-      default:
-        return undefined
-    }
-  }
-
-  const readInitialDirectScalarNumberOperand = (operand: RuntimeDirectScalarOperand): number | undefined => {
-    switch (operand.kind) {
-      case 'literal-number':
-        return operand.value
-      case 'cell':
-        return coerceInitialDirectScalarNumber(operand.cellIndex)
-      case 'error':
-        return undefined
-    }
-  }
-
-  const evaluateInitialDirectScalarNumber = (directScalar: RuntimeDirectScalarDescriptor): number | undefined => {
-    if (directScalar.kind === 'abs') {
-      const operand = readInitialDirectScalarNumberOperand(directScalar.operand)
-      return operand === undefined ? undefined : Math.abs(operand)
-    }
-    const left = readInitialDirectScalarNumberOperand(directScalar.left)
-    const right = readInitialDirectScalarNumberOperand(directScalar.right)
-    if (left === undefined || right === undefined) {
-      return undefined
-    }
-    let result: number
-    switch (directScalar.operator) {
-      case '+':
-        result = left + right
-        break
-      case '-':
-        result = left - right
-        break
-      case '*':
-        result = left * right
-        break
-      case '/':
-        if (right === 0) {
-          return undefined
-        }
-        result = left / right
-        break
-    }
-    return result + (directScalar.resultOffset ?? 0)
-  }
-
   const evaluateInitialDirectFormulas = (
     orderedCellIndices: InitialFormulaCellIndexList,
     options?: { readonly alreadyValidated?: boolean; readonly hasPrefixAggregateCandidates?: boolean },
@@ -834,7 +432,7 @@ export function createEngineFormulaInitializationService(args: {
       changedCellBuffer[changedCellCount] = cellIndex
       changedCellCount += 1
     }
-    const valueWriter = createInitialFormulaValueWriter()
+    const valueWriter = createInitialFormulaValueWriter(args)
     args.state.workbook.withBatchedColumnVersionUpdates(() => {
       const prefixAggregateHandled =
         options?.hasPrefixAggregateCandidates === true
@@ -847,13 +445,13 @@ export function createEngineFormulaInitializationService(args: {
         }
         const formula = args.state.formulas.get(cellIndex)
         if (formula?.directScalar !== undefined) {
-          const numericValue = evaluateInitialDirectScalarNumber(formula.directScalar)
+          const numericValue = evaluateInitialDirectScalarNumber(args.state, formula.directScalar)
           if (numericValue !== undefined) {
             valueWriter.writeNumber(cellIndex, numericValue)
             pushChangedCellIndex(cellIndex)
             continue
           }
-          const fallbackValue = evaluateInitialDirectScalar(formula.directScalar)
+          const fallbackValue = evaluateInitialDirectScalar(args.state, formula.directScalar)
           if (fallbackValue !== undefined) {
             valueWriter.writeValue(cellIndex, fallbackValue)
             pushChangedCellIndex(cellIndex)
@@ -927,10 +525,7 @@ export function createEngineFormulaInitializationService(args: {
       ? new Uint32Array(Math.max(refs.length, 1))
       : undefined
     let inlineInitialDirectScalarCellCount = 0
-    const shouldDeferFormulaFamilyIndex = !hadExistingFormulas && args.deferFormulaFamilyIndexRebuild !== undefined
-    const shouldDeferFormulaInstanceTable = !hadExistingFormulas && args.deferFormulaInstanceTableRebuild !== undefined
-    const deferredFormulaFamilyRuns =
-      hadExistingFormulas || shouldDeferFormulaFamilyIndex ? undefined : new Map<string, DeferredInitialFormulaFamilyRun>()
+    const deferredFormulaFamilyRuns = hadExistingFormulas ? undefined : new Map<string, DeferredInitialFormulaFamilyRun>()
     let freshFormulaChangedBufferMaterialized = hadExistingFormulas
 
     const materializeOrderedPreparedCellIndices = (): number[] => {
@@ -1013,14 +608,14 @@ export function createEngineFormulaInitializationService(args: {
       ) {
         return
       }
-      const numericValue = evaluateInitialDirectScalarNumber(runtimeFormula.directScalar)
-      inlineInitialDirectScalarWriter ??= createInitialFormulaValueWriter()
+      const numericValue = evaluateInitialDirectScalarNumber(args.state, runtimeFormula.directScalar)
+      inlineInitialDirectScalarWriter ??= createInitialFormulaValueWriter(args)
       if (numericValue !== undefined) {
         inlineInitialDirectScalarWriter.writeNumberAt(prepared.cellIndex, prepared.sheetId, prepared.col, numericValue)
         pushInlineInitialDirectScalarCell(prepared.cellIndex)
         return
       }
-      const fallbackValue = evaluateInitialDirectScalar(runtimeFormula.directScalar)
+      const fallbackValue = evaluateInitialDirectScalar(args.state, runtimeFormula.directScalar)
       if (fallbackValue !== undefined) {
         inlineInitialDirectScalarWriter.writeValueAt(prepared.cellIndex, prepared.sheetId, prepared.col, fallbackValue)
         pushInlineInitialDirectScalarCell(prepared.cellIndex)
@@ -1045,9 +640,7 @@ export function createEngineFormulaInitializationService(args: {
                 prepared.compiled,
                 prepared.templateId,
                 {
-                  deferFamilyRegistration: shouldDeferFormulaFamilyIndex || deferredFormulaFamilyRuns !== undefined,
-                  deferFormulaInstanceRegistration: shouldDeferFormulaInstanceTable,
-                  assumeFreshFormula: !hadExistingFormulas,
+                  deferFamilyRegistration: deferredFormulaFamilyRuns !== undefined,
                 },
               )
               noteDeferredFormulaFamilyRunMember(deferredFormulaFamilyRuns, prepared)
@@ -1087,14 +680,7 @@ export function createEngineFormulaInitializationService(args: {
             formulaChangedCount = args.syncDynamicRanges(formulaChangedCount)
             topologyChanged = topologyChanged || formulaChangedCount !== reboundCount
           }
-          if (shouldDeferFormulaFamilyIndex) {
-            args.deferFormulaFamilyIndexRebuild?.()
-          } else {
-            deferredFormulaFamilyRuns?.forEach(registerDeferredFormulaFamilyRun)
-          }
-          if (shouldDeferFormulaInstanceTable) {
-            args.deferFormulaInstanceTableRebuild?.()
-          }
+          deferredFormulaFamilyRuns?.forEach(registerDeferredFormulaFamilyRun)
           inlineInitialDirectScalarWriter?.flush()
         })
       }
@@ -1146,7 +732,6 @@ export function createEngineFormulaInitializationService(args: {
         ? inlineInitialDirectScalarCellBuffer.subarray(0, inlineInitialDirectScalarCellCount)
         : targetCellIndices
       args.deferKernelSync(recalculated)
-      addEngineCounter(args.state.counters, 'directFormulaInitialEvaluations', inlineInitialDirectScalarCellCount)
     } else if (useInitialDirectEvaluation) {
       const direct = evaluateInitialDirectFormulas(orderedPreparedCellList(), {
         alreadyValidated: true,
@@ -1211,7 +796,6 @@ export function createEngineFormulaInitializationService(args: {
 
   const initializeFormulaSourcesAtNow = (refs: EngineFormulaSourceRefs, potentialNewCells?: number): void => {
     const resolveInitialTemplateFormula = createInitialTemplateFormulaResolver()
-    let preparedEntry: InitialResolvedFormulaEntry | undefined
     initializeFormulaEntriesNow(
       refs,
       potentialNewCells,
@@ -1219,28 +803,16 @@ export function createEngineFormulaInitializationService(args: {
       (ref, cellIndex) => {
         const ownerSheetName = resolveSheetName(ref.sheetId)
         const template = resolveInitialTemplateFormula(ref.source, ref.row, ref.col)
-        if (!preparedEntry) {
-          preparedEntry = {
-            cellIndex,
-            sheetId: ref.sheetId,
-            row: ref.row,
-            col: ref.col,
-            ownerSheetName,
-            source: ref.source,
-            compiled: template.compiled,
-            templateId: template.templateId,
-          }
-          return preparedEntry
+        return {
+          cellIndex,
+          sheetId: ref.sheetId,
+          row: ref.row,
+          col: ref.col,
+          ownerSheetName,
+          source: ref.source,
+          compiled: template.compiled,
+          templateId: template.templateId,
         }
-        preparedEntry.cellIndex = cellIndex
-        preparedEntry.sheetId = ref.sheetId
-        preparedEntry.row = ref.row
-        preparedEntry.col = ref.col
-        preparedEntry.ownerSheetName = ownerSheetName
-        preparedEntry.source = ref.source
-        preparedEntry.compiled = template.compiled
-        preparedEntry.templateId = template.templateId
-        return preparedEntry
       },
     )
   }
@@ -1281,8 +853,6 @@ export function createEngineFormulaInitializationService(args: {
     args.state.workbook.cellStore.ensureCapacity(args.state.workbook.cellStore.size + reservedNewCells)
     args.ensureRecalcScratchCapacity(args.state.workbook.cellStore.size + reservedNewCells + 1)
     args.resetMaterializedCellScratch(reservedNewCells)
-    const shouldDeferFormulaFamilyIndex = !hadExistingFormulas && args.deferFormulaFamilyIndexRebuild !== undefined
-    const shouldDeferFormulaInstanceTable = !hadExistingFormulas && args.deferFormulaInstanceTableRebuild !== undefined
     const targetCellIndices = hadExistingFormulas
       ? []
       : refs.map((ref) => ref.cellIndex ?? args.ensureCellTrackedByCoords(ref.sheetId, ref.row, ref.col))
@@ -1296,14 +866,13 @@ export function createEngineFormulaInitializationService(args: {
     }
     let canAssignTopoInBatch = !hadExistingFormulas
     let nextTopoRank = 0
-    const deferredFormulaFamilyRuns =
-      hadExistingFormulas || shouldDeferFormulaFamilyIndex ? undefined : new Map<string, DeferredInitialFormulaFamilyRun>()
+    const deferredFormulaFamilyRuns = hadExistingFormulas ? undefined : new Map<string, DeferredInitialFormulaFamilyRun>()
 
     args.setBatchMutationDepth(args.getBatchMutationDepth() + 1)
     try {
       args.clearTemplateFormulaCache()
       const compileStarted = performance.now()
-      const valueWriter = createInitialFormulaValueWriter()
+      const valueWriter = createInitialFormulaValueWriter(args)
       const bindFormulaEntries = (): void => {
         args.state.workbook.withBatchedColumnVersionUpdates(() => {
           for (let refIndex = 0; refIndex < refs.length; refIndex += 1) {
@@ -1314,9 +883,7 @@ export function createEngineFormulaInitializationService(args: {
             const ownerSheetName = resolveSheetName(ref.sheetId)
             topologyChanged =
               args.bindPreparedFormula(cellIndex, ownerSheetName, ref.source, ref.compiled, ref.templateId, {
-                deferFamilyRegistration: shouldDeferFormulaFamilyIndex || deferredFormulaFamilyRuns !== undefined,
-                deferFormulaInstanceRegistration: shouldDeferFormulaInstanceTable,
-                assumeFreshFormula: !hadExistingFormulas,
+                deferFamilyRegistration: deferredFormulaFamilyRuns !== undefined,
               }) || topologyChanged
             noteDeferredFormulaFamilyRunMember(deferredFormulaFamilyRuns, {
               cellIndex,
@@ -1338,14 +905,7 @@ export function createEngineFormulaInitializationService(args: {
               pendingFormulaCells[cellIndex] = 0
             }
           }
-          if (shouldDeferFormulaFamilyIndex) {
-            args.deferFormulaFamilyIndexRebuild?.()
-          } else {
-            deferredFormulaFamilyRuns?.forEach(registerDeferredFormulaFamilyRun)
-          }
-          if (shouldDeferFormulaInstanceTable) {
-            args.deferFormulaInstanceTableRebuild?.()
-          }
+          deferredFormulaFamilyRuns?.forEach(registerDeferredFormulaFamilyRun)
           valueWriter.flush()
         })
       }

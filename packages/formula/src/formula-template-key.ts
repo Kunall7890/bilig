@@ -1,4 +1,5 @@
 import { lexFormula, type Token } from './lexer.js'
+import type { FormulaNode } from './ast.js'
 
 const CELL_REF_RE = /^(\$?)([A-Z]+)(\$?)([1-9][0-9]*)$/
 const COLUMN_REF_RE = /^(\$?)([A-Z]+)$/
@@ -66,6 +67,41 @@ export function buildRelativeFormulaTemplateTokenKey(source: string, ownerRow: n
   }
 
   return keyParts.join('|')
+}
+
+export function buildRelativeFormulaTemplateAstKey(node: FormulaNode, ownerRow: number, ownerCol: number): string {
+  switch (node.kind) {
+    case 'NumberLiteral':
+      return `n:${node.value}`
+    case 'BooleanLiteral':
+      return `b:${node.value ? 1 : 0}`
+    case 'StringLiteral':
+      return `s:${JSON.stringify(node.value)}`
+    case 'ErrorLiteral':
+      return `e:${node.code}`
+    case 'NameRef':
+      return `name:${node.name}`
+    case 'StructuredRef':
+      return `table:${node.tableName}[${node.columnName}]`
+    case 'CellRef':
+      return `cell:${templateSheetKey(node.sheetName)}:${buildRelativeCellReferenceTextKey(node.ref, ownerRow, ownerCol)}`
+    case 'SpillRef':
+      return `spill:${templateSheetKey(node.sheetName)}:${buildRelativeCellReferenceTextKey(node.ref, ownerRow, ownerCol)}`
+    case 'ColumnRef':
+      return `col:${templateSheetKey(node.sheetName)}:${buildRelativeAxisReferenceTextKey(node.ref, ownerCol, 'column')}`
+    case 'RowRef':
+      return `row:${templateSheetKey(node.sheetName)}:${buildRelativeAxisReferenceTextKey(node.ref, ownerRow, 'row')}`
+    case 'RangeRef':
+      return `range:${node.refKind}:${templateSheetKey(node.sheetName)}:${buildRelativeRangeReferenceAstKey(node, ownerRow, ownerCol)}`
+    case 'UnaryExpr':
+      return `unary:${node.operator}:${buildRelativeFormulaTemplateAstKey(node.argument, ownerRow, ownerCol)}`
+    case 'BinaryExpr':
+      return `binary:${node.operator}:${buildRelativeFormulaTemplateAstKey(node.left, ownerRow, ownerCol)}:${buildRelativeFormulaTemplateAstKey(node.right, ownerRow, ownerCol)}`
+    case 'CallExpr':
+      return `call:${node.callee}:${node.args.map((arg) => buildRelativeFormulaTemplateAstKey(arg, ownerRow, ownerCol)).join('|')}`
+    case 'InvokeExpr':
+      return `invoke:${buildRelativeFormulaTemplateAstKey(node.callee, ownerRow, ownerCol)}:${node.args.map((arg) => buildRelativeFormulaTemplateAstKey(arg, ownerRow, ownerCol)).join('|')}`
+  }
 }
 
 function tryBuildFastRelativeFormulaTemplateTokenKey(source: string, ownerRow: number, ownerCol: number): string | undefined {
@@ -404,6 +440,33 @@ function buildRelativeCellReferenceKey(parsed: ParsedCellReference, ownerRow: nu
 
 function buildRelativeAxisReferenceKey(parsed: ParsedAxisReference, ownerIndex: number): string {
   return parsed.absolute ? `a${parsed.index}` : `r${parsed.index - ownerIndex}`
+}
+
+function buildRelativeCellReferenceTextKey(ref: string, ownerRow: number, ownerCol: number): string {
+  const parsed = parseCellReferenceParts(ref)
+  if (!parsed) {
+    return `invalid:${ref}`
+  }
+  return buildRelativeCellReferenceKey(parsed, ownerRow, ownerCol)
+}
+
+function buildRelativeAxisReferenceTextKey(ref: string, ownerIndex: number, kind: 'row' | 'column'): string {
+  const parsed = parseAxisReferenceParts(ref, kind)
+  if (!parsed) {
+    return `invalid:${ref}`
+  }
+  return buildRelativeAxisReferenceKey(parsed, ownerIndex)
+}
+
+function buildRelativeRangeReferenceAstKey(node: Extract<FormulaNode, { kind: 'RangeRef' }>, ownerRow: number, ownerCol: number): string {
+  switch (node.refKind) {
+    case 'cells':
+      return `${buildRelativeCellReferenceTextKey(node.start, ownerRow, ownerCol)}:${buildRelativeCellReferenceTextKey(node.end, ownerRow, ownerCol)}`
+    case 'rows':
+      return `${buildRelativeAxisReferenceTextKey(node.start, ownerRow, 'row')}:${buildRelativeAxisReferenceTextKey(node.end, ownerRow, 'row')}`
+    case 'cols':
+      return `${buildRelativeAxisReferenceTextKey(node.start, ownerCol, 'column')}:${buildRelativeAxisReferenceTextKey(node.end, ownerCol, 'column')}`
+  }
 }
 
 function parseCellReferenceParts(ref: string): ParsedCellReference | undefined {

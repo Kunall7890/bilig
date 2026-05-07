@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildRelativeFormulaTemplateTokenKey } from '../formula-template-key.js'
+import { buildRelativeFormulaTemplateAstKey, buildRelativeFormulaTemplateTokenKey } from '../formula-template-key.js'
 import { buildRelativeFormulaTemplateKey } from '../translation.js'
 
 describe('buildRelativeFormulaTemplateTokenKey', () => {
@@ -22,6 +22,22 @@ describe('buildRelativeFormulaTemplateTokenKey', () => {
     expect(buildRelativeFormulaTemplateKey("'My Sheet'!A3+SUM(B:B)", 2, 1)).toBe(
       buildRelativeFormulaTemplateKey("'My Sheet'!A4+SUM(B:B)", 3, 1),
     )
+  })
+
+  it('builds AST-derived template keys outside translation orchestration', () => {
+    expect(
+      buildRelativeFormulaTemplateAstKey(
+        {
+          kind: 'RangeRef',
+          refKind: 'cells',
+          sheetName: 'Data',
+          start: 'A3',
+          end: '$B$4',
+        },
+        2,
+        1,
+      ),
+    ).toBe('range:cells:"Data":rc-1:rr0:ac1:ar3')
   })
 
   it('keeps function-call tokens and row ranges in the token key', () => {

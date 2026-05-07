@@ -8,7 +8,7 @@ import type {
   WorkbookAgentSharedReviewRecommendation,
   WorkbookAgentSharedReviewState,
   WorkbookAgentSharedReviewStatus,
-} from './workbook-agent-bundles.js'
+} from './workbook-agent-bundle-types.js'
 
 export type WorkbookAgentReviewMode = 'manual' | 'ownerReview'
 

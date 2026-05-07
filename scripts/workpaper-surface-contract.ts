@@ -57,21 +57,29 @@ export function readInterfaceKeys(filePath: string, interfaceName: string): stri
 }
 
 export function extractClassSurface(sourceText: string, className: string): ClassSurfaceSnapshot {
+  return extractClassSurfaceInternal(sourceText, className, new Set())
+}
+
+function extractClassSurfaceInternal(sourceText: string, className: string, seenClassNames: Set<string>): ClassSurfaceSnapshot {
   const lines = sourceText.split('\n')
   let inClass = false
   let depth = 0
+  let baseClassName: string | undefined
   const staticMembers = new Set<string>()
   const staticMethods = new Set<string>()
   const instanceAccessors = new Set<string>()
   const instanceMethods = new Set<string>()
-  const classPattern = new RegExp(`\\bclass\\s+${escapeRegExp(className)}\\b`)
+  const classPattern = new RegExp(`\\bclass\\s+${escapeRegExp(className)}\\b(?:\\s+extends\\s+([A-Za-z_][A-Za-z0-9_]*))?`)
+  seenClassNames.add(className)
 
   for (const line of lines) {
     const trimmed = line.trim()
 
     if (!inClass) {
-      if (classPattern.test(trimmed)) {
+      const classMatch = trimmed.match(classPattern)
+      if (classMatch) {
         inClass = true
+        baseClassName = classMatch[1]
         depth += countBraces(line)
       }
       continue
@@ -111,6 +119,14 @@ export function extractClassSurface(sourceText: string, className: string): Clas
     if (depth <= 0) {
       break
     }
+  }
+
+  if (baseClassName !== undefined && !seenClassNames.has(baseClassName)) {
+    const baseSurface = extractClassSurfaceInternal(sourceText, baseClassName, seenClassNames)
+    baseSurface.staticMembers.forEach((member) => staticMembers.add(member))
+    baseSurface.staticMethods.forEach((method) => staticMethods.add(method))
+    baseSurface.instanceAccessors.forEach((accessor) => instanceAccessors.add(accessor))
+    baseSurface.instanceMethods.forEach((method) => instanceMethods.add(method))
   }
 
   return {

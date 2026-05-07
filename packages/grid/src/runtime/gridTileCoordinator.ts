@@ -24,6 +24,9 @@ export interface GridTileReadinessSnapshotV3 {
   readonly misses: readonly TileKey53[]
   readonly visibleDirtyTileKeys: readonly TileKey53[]
   readonly warmDirtyTileKeys: readonly TileKey53[]
+  readonly staleLookupCount: number
+  readonly staleLookupScannedEntries: number
+  readonly visibleMarkedTiles: number
 }
 
 export class GridTileCoordinator<Packet = unknown, Resources = unknown> {
@@ -71,7 +74,7 @@ export class GridTileCoordinator<Packet = unknown, Resources = unknown> {
   }
 
   reconcileInterest(input: GridTileInterestBatchV3): GridTileReadinessSnapshotV3 {
-    this.residency.markVisible(input.visibleTileKeys)
+    const visibleMarkedTiles = this.residency.markVisible(input.visibleTileKeys)
     input.pinnedTileKeys.forEach((key) => {
       this.residency.pin(key, 2)
     })
@@ -79,6 +82,8 @@ export class GridTileCoordinator<Packet = unknown, Resources = unknown> {
     const exactHits: number[] = []
     const staleHits: number[] = []
     const misses: number[] = []
+    let staleLookupCount = 0
+    let staleLookupScannedEntries = 0
     const visibleDirtyTileKeys = this.dirtyTiles.consumeVisible(input.visibleTileKeys)
     const visibleDirty = new Set(visibleDirtyTileKeys)
 
@@ -88,7 +93,10 @@ export class GridTileCoordinator<Packet = unknown, Resources = unknown> {
         exactHits.push(key)
         return
       }
-      if (this.findStaleCompatible(key, input)) {
+      const stale = this.findStaleCompatible(key, input)
+      staleLookupCount += 1
+      staleLookupScannedEntries += this.residency.getLastStaleScanCount()
+      if (stale) {
         staleHits.push(key)
         return
       }
@@ -98,6 +106,9 @@ export class GridTileCoordinator<Packet = unknown, Resources = unknown> {
     return {
       exactHits,
       staleHits,
+      staleLookupCount,
+      staleLookupScannedEntries,
+      visibleMarkedTiles,
       misses,
       visibleDirtyTileKeys,
       warmDirtyTileKeys: this.dirtyTiles.peekWarm(input.warmTileKeys),

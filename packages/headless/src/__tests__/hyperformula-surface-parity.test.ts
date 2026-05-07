@@ -19,7 +19,15 @@ const ALLOWED_BILIG_INSTANCE_ACCESSORS = ['internals'] as const
 describe('WorkPaper HyperFormula snapshot parity', () => {
   it('matches the checked-in HyperFormula class surface snapshot', () => {
     const snapshot = loadSnapshot()
-    const currentSurface = extractClassSurface(readFileSync(new URL('../work-paper-runtime.ts', import.meta.url), 'utf8'), 'WorkPaper')
+    const currentSurface = extractClassSurface(
+      [
+        readFileSync(new URL('../work-paper-runtime.ts', import.meta.url), 'utf8'),
+        readFileSync(new URL('../work-paper-runtime-surface.ts', import.meta.url), 'utf8'),
+        readFileSync(new URL('../work-paper-public-surface.ts', import.meta.url), 'utf8'),
+        readFileSync(new URL('../work-paper-capability-surface.ts', import.meta.url), 'utf8'),
+      ].join('\n'),
+      'WorkPaper',
+    )
 
     expect(currentSurface.staticMembers).toEqual(snapshot.classSurface.staticMembers)
     expect(currentSurface.staticMethods).toEqual(snapshot.classSurface.staticMethods)

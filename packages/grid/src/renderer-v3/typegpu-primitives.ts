@@ -23,9 +23,6 @@ import type { GlyphAtlasDirtyPageUpload } from './typegpu-atlas-manager.js'
 
 const UNIT_QUAD = new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1])
 const UNIT_QUAD_VERTEX_COUNT = 6
-const RECT_INSTANCE_FLOAT_COUNT = 20
-const TEXT_INSTANCE_FLOAT_COUNT = 16
-
 const surfaceUniformSchema = d.struct({
   origin: d.vec2f,
   viewportSize: d.vec2f,
@@ -217,6 +214,15 @@ export type SurfaceUniformBuffer = TgpuUniform<typeof surfaceUniformSchema>
 
 type AtlasTexture = TgpuTexture & SampledFlag
 
+export interface TypeGpuAtlasResourceArtifacts {
+  readonly root: Pick<TgpuRoot, 'createTexture' | 'unwrap'>
+  readonly device: Pick<GPUDevice, 'queue'>
+  atlasTexture: AtlasTexture | null
+  atlasVersion: number
+  atlasWidth: number
+  atlasHeight: number
+}
+
 export const MIN_TYPEGPU_RECT_VERTEX_CAPACITY = 2048
 export const MIN_TYPEGPU_TEXT_VERTEX_CAPACITY = 4096
 
@@ -348,57 +354,6 @@ export function destroyTypeGpuRenderer(artifacts: TypeGpuRendererArtifacts): voi
   artifacts.device.destroy()
 }
 
-export function ensureTypeGpuVertexBuffer(
-  root: TgpuRoot,
-  layout: typeof WORKBOOK_RECT_INSTANCE_LAYOUT,
-  current: RectInstanceVertexBuffer | null,
-  currentCapacity: number,
-  nextCount: number,
-): { buffer: RectInstanceVertexBuffer; capacity: number }
-export function ensureTypeGpuVertexBuffer(
-  root: TgpuRoot,
-  layout: typeof WORKBOOK_TEXT_INSTANCE_LAYOUT,
-  current: TextInstanceVertexBuffer | null,
-  currentCapacity: number,
-  nextCount: number,
-): { buffer: TextInstanceVertexBuffer; capacity: number }
-export function ensureTypeGpuVertexBuffer(
-  root: TgpuRoot,
-  layout: typeof WORKBOOK_RECT_INSTANCE_LAYOUT | typeof WORKBOOK_TEXT_INSTANCE_LAYOUT,
-  current: RectInstanceVertexBuffer | TextInstanceVertexBuffer | null,
-  currentCapacity: number,
-  nextCount: number,
-): { buffer: RectInstanceVertexBuffer | TextInstanceVertexBuffer; capacity: number } {
-  const minCapacity = Math.max(1, nextCount)
-  if (current && currentCapacity >= minCapacity) {
-    return {
-      buffer: current,
-      capacity: currentCapacity,
-    }
-  }
-
-  const nextCapacity = resolveTypeGpuVertexBufferCapacity({
-    currentCapacity,
-    minimumCapacity: layout === WORKBOOK_RECT_INSTANCE_LAYOUT ? MIN_TYPEGPU_RECT_VERTEX_CAPACITY : MIN_TYPEGPU_TEXT_VERTEX_CAPACITY,
-    nextCount,
-  })
-  current?.destroy()
-
-  if (layout === WORKBOOK_RECT_INSTANCE_LAYOUT) {
-    noteTypeGpuBufferAllocation(nextCapacity * RECT_INSTANCE_FLOAT_COUNT * Float32Array.BYTES_PER_ELEMENT, 'rect-instances')
-    return {
-      buffer: root.createBuffer(WORKBOOK_RECT_INSTANCE_LAYOUT.schemaForCount(nextCapacity)).$usage('vertex') as RectInstanceVertexBuffer,
-      capacity: nextCapacity,
-    }
-  }
-
-  noteTypeGpuBufferAllocation(nextCapacity * TEXT_INSTANCE_FLOAT_COUNT * Float32Array.BYTES_PER_ELEMENT, 'text-instances')
-  return {
-    buffer: root.createBuffer(WORKBOOK_TEXT_INSTANCE_LAYOUT.schemaForCount(nextCapacity)).$usage('vertex') as TextInstanceVertexBuffer,
-    capacity: nextCapacity,
-  }
-}
-
 export function resolveTypeGpuVertexBufferCapacity(input: {
   readonly currentCapacity: number
   readonly minimumCapacity: number
@@ -507,7 +462,7 @@ export function updateTypeGpuSurfaceUniform(
 }
 
 export function syncTypeGpuAtlasResources(
-  artifacts: TypeGpuRendererArtifacts,
+  artifacts: TypeGpuAtlasResourceArtifacts,
   atlas: {
     drainDirtyPages?: (() => readonly GlyphAtlasDirtyPageUpload[]) | undefined
     getCanvas(): HTMLCanvasElement | OffscreenCanvas | null
@@ -554,7 +509,7 @@ export function syncTypeGpuAtlasResources(
   artifacts.atlasVersion = nextVersion
 }
 
-function createAtlasTexture(root: TgpuRoot, width: number, height: number): AtlasTexture {
+function createAtlasTexture(root: TypeGpuAtlasResourceArtifacts['root'], width: number, height: number): AtlasTexture {
   return root
     .createTexture({
       format: 'rgba8unorm',
@@ -564,7 +519,7 @@ function createAtlasTexture(root: TgpuRoot, width: number, height: number): Atla
 }
 
 function uploadAtlasDirtyPages(
-  artifacts: TypeGpuRendererArtifacts,
+  artifacts: TypeGpuAtlasResourceArtifacts,
   atlasCanvas: HTMLCanvasElement | OffscreenCanvas,
   dirtyPages: readonly GlyphAtlasDirtyPageUpload[],
 ): void {

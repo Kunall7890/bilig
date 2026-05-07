@@ -1,7 +1,7 @@
 import { expect, test } from 'vitest'
 import { CompactSelection } from '../gridTypes.js'
 import { getGridMetrics } from '../gridMetrics.js'
-import { parseGpuColor } from '../gridGpuScene.js'
+import { parseGpuColor } from '../gridGpuPrimitives.js'
 import { buildGridGpuHeaderScene } from '../gridGpuHeaderScene.js'
 
 const palette = {

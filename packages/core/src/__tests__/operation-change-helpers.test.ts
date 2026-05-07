@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   assertNever,
   cellRange,
+  canTrustPhysicalTrackedChangeSplit,
   makeCompactExistingNumericMutationResult,
   makeExistingNumericMutationResult,
   mergeChangedCellIndices,
@@ -75,6 +76,27 @@ describe('operation change helpers', () => {
       secondChangedRow: 3,
       secondChangedCol: 4,
     })
+  })
+
+  it('validates trusted physical tracked-change split ordering', () => {
+    const workbook = {
+      cellStore: {
+        sheetIds: [7, 7, 7, 7],
+        rows: [0, 1, 0, 1],
+        cols: [0, 0, 1, 1],
+      },
+      getSheetById: (sheetId: number) => (sheetId === 7 ? { structureVersion: 1 } : undefined),
+    }
+
+    expect(canTrustPhysicalTrackedChangeSplit(Uint32Array.of(0, 1, 2, 3), 7, 2, workbook)).toBe(true)
+    expect(canTrustPhysicalTrackedChangeSplit(Uint32Array.of(1, 0, 2, 3), 7, 2, workbook)).toBe(false)
+    expect(canTrustPhysicalTrackedChangeSplit(Uint32Array.of(0, 1, 2, 3), 7, 0, workbook)).toBe(false)
+    expect(
+      canTrustPhysicalTrackedChangeSplit(Uint32Array.of(0, 1, 2, 3), 7, 2, {
+        ...workbook,
+        getSheetById: () => ({ structureVersion: 2 }),
+      }),
+    ).toBe(false)
   })
 
   it('formats operation errors consistently', () => {

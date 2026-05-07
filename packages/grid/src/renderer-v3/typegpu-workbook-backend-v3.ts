@@ -1,6 +1,6 @@
 import type { GridHeaderPaneState } from '../gridHeaderPanes.js'
 import type { WorkbookGridScrollSnapshot } from '../workbookGridScrollStore.js'
-import { noteTypeGpuTileMiss } from '../grid-render-counters.js'
+import { noteTypeGpuTileCacheEviction, noteTypeGpuTileCacheVisibleMark, noteTypeGpuTileMiss } from '../grid-render-counters.js'
 import { createGlyphAtlas } from './typegpu-atlas-manager.js'
 import {
   createTypeGpuRenderer,
@@ -191,11 +191,17 @@ export function syncRenderTileResidencyFromPanesV3(input: {
       valueSeq: tile.version.values,
     })
   }
-  input.residency.markVisible(input.visiblePanes.map((pane) => pane.tile.tileId))
-  input.residency.evictToBudgets({
+  const visibleMarkedTiles = input.residency.markVisible(input.visiblePanes.map((pane) => pane.tile.tileId))
+  if (visibleMarkedTiles > 0) {
+    noteTypeGpuTileCacheVisibleMark(visibleMarkedTiles)
+  }
+  const evictedTiles = input.residency.evictToBudgets({
     maxCpuBytes: input.maxCpuBytes ?? TYPEGPU_ACTIVE_SHEET_CPU_TILE_BUDGET_BYTES_V3,
     maxGpuBytes: input.maxGpuBytes ?? TYPEGPU_ACTIVE_SHEET_GPU_TILE_BUDGET_BYTES_V3,
   })
+  if (evictedTiles > 0) {
+    noteTypeGpuTileCacheEviction(evictedTiles)
+  }
 }
 
 export function resolveTypeGpuDrawTilePanesV3(input: {
@@ -206,32 +212,10 @@ export function resolveTypeGpuDrawTilePanesV3(input: {
 }): readonly WorkbookRenderTilePaneState[] {
   return input.panes.map((pane) => {
     const entry = input.residency.getExact(pane.tile.tileId)
-    if (entry?.packet) {
-      const exactPane = { ...pane, tile: entry.packet }
-      const exact = input.tileResources.peekContent(resolveWorkbookTileContentBufferKeyV3(exactPane))
-      if (exact && isTileContentDrawReady(exact, exactPane)) {
-        return exactPane
-      }
+    const exact = input.tileResources.peekContent(resolveWorkbookTileContentBufferKeyV3(pane))
+    if (entry?.packet && exact && isTileContentDrawReady(exact, pane)) {
+      return { ...pane, tile: entry.packet }
     }
-
-    const stale = input.residency.findStaleCompatible({
-      axisSeqX: pane.tile.version.axisX,
-      axisSeqY: pane.tile.version.axisY,
-      colTile: pane.tile.coord.colTile,
-      dprBucket: pane.tile.coord.dprBucket,
-      excludeKey: pane.tile.tileId,
-      freezeSeq: pane.tile.version.freeze,
-      rowTile: pane.tile.coord.rowTile,
-      sheetOrdinal: pane.tile.coord.sheetOrdinal,
-    })
-    if (stale?.packet) {
-      const stalePane = { ...pane, tile: stale.packet }
-      const staleContent = input.tileResources.peekContent(resolveWorkbookTileContentBufferKeyV3(stalePane))
-      if (staleContent && isTileContentDrawReady(staleContent, stalePane)) {
-        return stalePane
-      }
-    }
-
     input.onTileMiss?.(pane.tile.tileId)
     return pane
   })

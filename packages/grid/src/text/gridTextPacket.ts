@@ -1,5 +1,5 @@
 import type { Rectangle } from '../gridTypes.js'
-import type { GridGpuColor } from '../gridGpuScene.js'
+import type { GridGpuColor } from '../gridGpuPrimitives.js'
 
 export const CELL_TEXT_PADDING_X = 8
 export const CELL_TEXT_PADDING_Y = 3

@@ -1,517 +1,61 @@
 import { Effect } from 'effect'
-import {
-  formatAddress,
-  parseCellAddress,
-  parseRangeAddress,
-  rewriteAddressForStructuralTransform,
-  rewriteRangeForStructuralTransform,
-  translateFormulaReferences,
-} from '@bilig/formula'
 import type { EngineOp, EngineOpBatch } from '@bilig/workbook-domain'
-import { ValueTag, type CellRangeRef, type CellSnapshot, type LiteralInput } from '@bilig/protocol'
-import { CellFlags } from '../../cell-store.js'
-import { normalizeRange } from '../../engine-range-utils.js'
-import { cloneCellStyleRecord } from '../../engine-style-utils.js'
+import type { CellRangeRef, CellSnapshot } from '@bilig/protocol'
 import { structuralTransformForOp } from '../../engine-structural-utils.js'
-import { restoreFormatRangeOps, restoreStyleRangeOps } from '../../engine-range-format-ops.js'
 import { sheetMetadataToOps } from '../../engine-snapshot-utils.js'
-import { parseCsv, parseCsvCellInput } from '../../csv.js'
 import { createBatch } from '../../replica-state.js'
-import { WorkbookStore } from '../../workbook-store.js'
-import { addEngineCounter } from '../../perf/engine-counters.js'
+import type { WorkbookStore } from '../../workbook-store.js'
 import {
   cellMutationRefToEngineOp,
   cloneCellMutationRef,
   countPotentialNewCellsForMutationRefs,
-  type EngineCellMutationAt,
   type EngineCellMutationRef,
   type EngineExistingNumericCellMutationRef,
   type EngineExistingNumericCellMutationResult,
 } from '../../cell-mutations-at.js'
 import type {
-  CommitOp,
   EngineRuntimeState,
   PreparedCellAddress,
-  RuntimeFormula,
   RuntimeStructuralFormulaSourceTransform,
   TransactionRecord,
 } from '../runtime-state.js'
-import { getRuntimeFormulaSource } from '../runtime-formula-source.js'
 import { EngineMutationError } from '../errors.js'
 import { tryBuildFastMutationHistory, type FastMutationHistoryResult } from './mutation-history-fast-path.js'
-import { rangesIntersect } from '../../workbook-merge-records.js'
+import {
+  cloneTransactionRecordOps,
+  createLazyCellMutationTransactionRecord,
+  createLazySingleOpTransactionRecord,
+  createSingleExistingNumericCellMutationTransactionRecord,
+  singleExistingNumericCellMutationRecordToRef,
+  transactionRecordOps,
+} from './mutation-transaction-records.js'
+import { normalizeRenderCommitOps } from './mutation-render-commit-normalizer.js'
+import { inverseMutationStructuralInsertOp, isMutationStructuralInsertOp } from './mutation-cell-content-helpers.js'
+import { createMutationCellRestoreHistoryHelpers, tryMutationCellRefsFromOps } from './mutation-cell-restore-history.js'
+import { captureStructuralWorkbookMetadataOps, clearStructuralSheetMetadataOps } from './mutation-structural-metadata-ops.js'
+import { buildMutationMetadataInverseOps } from './mutation-inverse-metadata-ops.js'
+import { createMutationStructuralDeleteInverseHelpers } from './mutation-structural-delete-inverse.js'
+import type { EngineMutationService } from './mutation-service-types.js'
+import { tryExecuteMutationRenderCommitFastPath } from './mutation-render-commit-fast-path.js'
+import { createMutationRangeOperations } from './mutation-range-operations.js'
 
-function mutationErrorMessage(message: string, cause: unknown): string {
-  return cause instanceof Error && cause.message.length > 0 ? cause.message : message
-}
+export type { EngineMutationService } from './mutation-service-types.js'
 
-function getMatrixCell(matrix: readonly (readonly CellSnapshot[])[], rowIndex: number, colIndex: number): CellSnapshot {
-  const row = matrix[rowIndex]
-  if (row === undefined) {
-    throw new RangeError(`Missing source row at index ${rowIndex}`)
-  }
-  const cell = row[colIndex]
-  if (cell === undefined) {
-    throw new RangeError(`Missing source cell at row ${rowIndex}, column ${colIndex}`)
-  }
-  return cell
-}
+type MutationServiceCapturedInverseKind = 'deleteSheet' | 'deleteRows' | 'deleteColumns' | 'setCellValue' | 'setCellFormula' | 'clearCell'
 
-function createLazySingleOpTransactionRecord(op: EngineOp, potentialNewCells?: number): TransactionRecord {
-  return potentialNewCells === undefined ? { kind: 'single-op', op } : { kind: 'single-op', op, potentialNewCells }
-}
+type MutationServiceCapturedInverseOp = Extract<EngineOp, { kind: MutationServiceCapturedInverseKind }>
 
-function createLazyCellMutationTransactionRecord(refs: readonly EngineCellMutationRef[], potentialNewCells?: number): TransactionRecord {
-  return potentialNewCells === undefined ? { kind: 'cell-mutations', refs } : { kind: 'cell-mutations', refs, potentialNewCells }
-}
+const mutationServiceCapturedInverseKinds: ReadonlySet<EngineOp['kind']> = new Set([
+  'deleteSheet',
+  'deleteRows',
+  'deleteColumns',
+  'setCellValue',
+  'setCellFormula',
+  'clearCell',
+])
 
-function createSingleExistingNumericCellMutationTransactionRecord(
-  request: EngineExistingNumericCellMutationRef,
-  potentialNewCells: number,
-): TransactionRecord {
-  return {
-    kind: 'single-existing-numeric-cell-mutation',
-    sheetId: request.sheetId,
-    row: request.row,
-    col: request.col,
-    cellIndex: request.cellIndex,
-    value: request.value,
-    potentialNewCells,
-  }
-}
-
-function singleExistingNumericCellMutationRecordToRef(
-  record: Extract<TransactionRecord, { kind: 'single-existing-numeric-cell-mutation' }>,
-): EngineCellMutationRef {
-  return {
-    sheetId: record.sheetId,
-    cellIndex: record.cellIndex,
-    mutation: {
-      kind: 'setCellValue',
-      row: record.row,
-      col: record.col,
-      value: record.value,
-    },
-  }
-}
-
-function createLazyMaterializedCellMutationTransactionRecord(
-  materializeRefs: () => EngineCellMutationRef[],
-  potentialNewCells?: number,
-): TransactionRecord {
-  let cachedRefs: EngineCellMutationRef[] | undefined
-  const record: { kind: 'cell-mutations'; refs: readonly EngineCellMutationRef[]; potentialNewCells?: number } = {
-    kind: 'cell-mutations',
-    get refs() {
-      cachedRefs ??= materializeRefs()
-      return cachedRefs
-    },
-  }
-  if (potentialNewCells !== undefined) {
-    record.potentialNewCells = potentialNewCells
-  }
-  return record
-}
-
-function isStructuralInsertOp(op: EngineOp): op is Extract<EngineOp, { kind: 'insertRows' | 'insertColumns' }> {
-  return op.kind === 'insertRows' || op.kind === 'insertColumns'
-}
-
-function inverseStructuralInsertOp(
-  op: Extract<EngineOp, { kind: 'insertRows' | 'insertColumns' }>,
-): Extract<EngineOp, { kind: 'deleteRows' | 'deleteColumns' }> {
-  return op.kind === 'insertRows'
-    ? { kind: 'deleteRows', sheetName: op.sheetName, start: op.start, count: op.count }
-    : { kind: 'deleteColumns', sheetName: op.sheetName, start: op.start, count: op.count }
-}
-
-interface RenderCommitCellMutation {
-  readonly sheetName: string
-  readonly mutation: EngineCellMutationAt
-}
-
-const CapturedCellMutationKind = {
-  Clear: 0,
-  NumberValue: 1,
-  BooleanValue: 2,
-  LiteralValue: 3,
-  NullValue: 4,
-  Formula: 5,
-} as const
-
-interface CapturedCellMutationRestores {
-  readonly sheetIds: Uint32Array
-  readonly cellIndexPlusOnes: Uint32Array
-  readonly rows: Uint32Array
-  readonly cols: Uint32Array
-  readonly kinds: Uint8Array
-  readonly numbers: Float64Array
-  readonly values?: Array<LiteralInput | undefined>
-  readonly formulas?: Array<string | undefined>
-  readonly potentialNewCells: number
-}
-
-function materializeCapturedCellMutationRestores(captured: CapturedCellMutationRestores): EngineCellMutationRef[] {
-  const refs = Array<EngineCellMutationRef>(captured.sheetIds.length)
-  for (let index = 0; index < refs.length; index += 1) {
-    const sheetId = captured.sheetIds[index]!
-    const cellIndexPlusOne = captured.cellIndexPlusOnes[index]!
-    const cellIndex = cellIndexPlusOne === 0 ? undefined : cellIndexPlusOne - 1
-    const row = captured.rows[index]!
-    const col = captured.cols[index]!
-    switch (captured.kinds[index]!) {
-      case CapturedCellMutationKind.NumberValue:
-        refs[index] = {
-          sheetId,
-          ...(cellIndex === undefined ? {} : { cellIndex }),
-          mutation: { kind: 'setCellValue', row, col, value: captured.numbers[index] ?? 0 },
-        }
-        break
-      case CapturedCellMutationKind.BooleanValue:
-        refs[index] = {
-          sheetId,
-          ...(cellIndex === undefined ? {} : { cellIndex }),
-          mutation: { kind: 'setCellValue', row, col, value: (captured.numbers[index] ?? 0) !== 0 },
-        }
-        break
-      case CapturedCellMutationKind.NullValue:
-        refs[index] = {
-          sheetId,
-          ...(cellIndex === undefined ? {} : { cellIndex }),
-          mutation: { kind: 'setCellValue', row, col, value: null },
-        }
-        break
-      case CapturedCellMutationKind.LiteralValue:
-        refs[index] = {
-          sheetId,
-          ...(cellIndex === undefined ? {} : { cellIndex }),
-          mutation: { kind: 'setCellValue', row, col, value: captured.values?.[index] ?? null },
-        }
-        break
-      case CapturedCellMutationKind.Formula:
-        refs[index] = {
-          sheetId,
-          ...(cellIndex === undefined ? {} : { cellIndex }),
-          mutation: { kind: 'setCellFormula', row, col, formula: captured.formulas?.[index] ?? '' },
-        }
-        break
-      default:
-        refs[index] = {
-          sheetId,
-          ...(cellIndex === undefined ? {} : { cellIndex }),
-          mutation: { kind: 'clearCell', row, col },
-        }
-        break
-    }
-  }
-  return refs
-}
-
-function renderCommitCellMutationToEngineOp(entry: RenderCommitCellMutation): EngineOp {
-  const address = formatAddress(entry.mutation.row, entry.mutation.col)
-  switch (entry.mutation.kind) {
-    case 'setCellValue':
-      return {
-        kind: 'setCellValue',
-        sheetName: entry.sheetName,
-        address,
-        value: entry.mutation.value,
-      }
-    case 'setCellFormula':
-      return {
-        kind: 'setCellFormula',
-        sheetName: entry.sheetName,
-        address,
-        formula: entry.mutation.formula,
-      }
-    case 'clearCell':
-      return {
-        kind: 'clearCell',
-        sheetName: entry.sheetName,
-        address,
-      }
-  }
-}
-
-function createLazyRenderCommitTransactionRecord(
-  prefixOps: readonly EngineOp[],
-  cellMutations: readonly RenderCommitCellMutation[],
-  potentialNewCells?: number,
-): TransactionRecord {
-  const record: { kind: 'ops'; ops: EngineOp[]; potentialNewCells?: number } = {
-    kind: 'ops',
-    get ops() {
-      cachedOps ??= [
-        ...prefixOps.map((op) => structuredClone(op)),
-        ...cellMutations.map((entry) => renderCommitCellMutationToEngineOp(entry)),
-      ]
-      return cachedOps
-    },
-  }
-  let cachedOps: EngineOp[] | undefined
-  if (potentialNewCells !== undefined) {
-    record.potentialNewCells = potentialNewCells
-  }
-  return record
-}
-
-function collectLiveCreatedSheetNames(
-  existingSheetNames: Iterable<string>,
-  ops: ReadonlyArray<{
-    readonly kind: string
-    readonly name?: string
-    readonly oldName?: string
-    readonly newName?: string
-  }>,
-): ReadonlySet<string> {
-  const knownSheetNames = new Set(existingSheetNames)
-  const liveCreatedSheetNames = new Set<string>()
-
-  for (let index = 0; index < ops.length; index += 1) {
-    const op = ops[index]
-    if (!op) {
-      continue
-    }
-    if (op.kind === 'upsertSheet') {
-      const sheetName = op.name
-      if (typeof sheetName === 'string' && !knownSheetNames.has(sheetName)) {
-        liveCreatedSheetNames.add(sheetName)
-      }
-      if (typeof sheetName === 'string') {
-        knownSheetNames.add(sheetName)
-      }
-      continue
-    }
-    if (op.kind !== 'renameSheet') {
-      continue
-    }
-    const oldName = op.oldName
-    const newName = op.newName
-    if (typeof oldName === 'string' && typeof newName === 'string' && liveCreatedSheetNames.delete(oldName)) {
-      liveCreatedSheetNames.add(newName)
-    }
-    if (typeof oldName === 'string') {
-      knownSheetNames.delete(oldName)
-    }
-    if (typeof newName === 'string') {
-      knownSheetNames.add(newName)
-    }
-  }
-
-  return liveCreatedSheetNames
-}
-
-function transactionRecordOps(workbook: WorkbookStore, record: TransactionRecord): readonly EngineOp[] {
-  if (record.kind === 'single-op') {
-    return [record.op]
-  }
-  if (record.kind === 'single-existing-numeric-cell-mutation') {
-    return [cellMutationRefToEngineOp(workbook, singleExistingNumericCellMutationRecordToRef(record))]
-  }
-  if (record.kind === 'cell-mutations') {
-    return record.refs.map((ref) => cellMutationRefToEngineOp(workbook, ref))
-  }
-  return record.ops
-}
-
-function cloneTransactionRecordOps(workbook: WorkbookStore, record: TransactionRecord): EngineOp[] {
-  if (record.kind === 'single-op') {
-    return [structuredClone(record.op)]
-  }
-  if (record.kind === 'single-existing-numeric-cell-mutation') {
-    return [cellMutationRefToEngineOp(workbook, singleExistingNumericCellMutationRecordToRef(record))]
-  }
-  if (record.kind === 'cell-mutations') {
-    return record.refs.map((ref) => cellMutationRefToEngineOp(workbook, ref))
-  }
-  return structuredClone(record.ops)
-}
-
-interface ComparableCellState {
-  formula?: string
-  value: LiteralInput | null
-  format: string | null
-  authoredBlank?: boolean
-}
-
-interface StructuralFormulaUndoRecord {
-  readonly sheetName: string
-  readonly row: number
-  readonly col: number
-  readonly formula: string
-}
-
-type StructuralDeletedCellUndoRecord =
-  | {
-      readonly kind: 'formula'
-      readonly sheetName: string
-      readonly row: number
-      readonly col: number
-      readonly formula: string
-      readonly explicitFormat?: string
-    }
-  | {
-      readonly kind: 'value'
-      readonly sheetName: string
-      readonly row: number
-      readonly col: number
-      readonly value: number | boolean
-      readonly explicitFormat?: string
-    }
-  | {
-      readonly kind: 'snapshot'
-      readonly sheetName: string
-      readonly row: number
-      readonly col: number
-      readonly snapshot: CellSnapshot
-    }
-  | {
-      readonly kind: 'blank'
-      readonly sheetName: string
-      readonly row: number
-      readonly col: number
-      readonly restoreExplicitBlank: boolean
-      readonly explicitFormat?: string
-    }
-
-function translateFormulaForTarget(
-  formula: string,
-  sourceSheetName: string,
-  sourceAddress: string,
-  targetSheetName: string,
-  targetAddress: string,
-): string {
-  if (sourceSheetName !== targetSheetName) {
-    return formula
-  }
-  const source = parseCellAddress(sourceAddress, sourceSheetName)
-  const target = parseCellAddress(targetAddress, targetSheetName)
-  return translateFormulaReferences(formula, target.row - source.row, target.col - source.col)
-}
-
-function dependencyTouchesStructuralDeleteSpan(
-  dependency: string,
-  ownerSheetName: string,
-  targetSheetName: string,
-  axis: 'row' | 'column',
-  start: number,
-): boolean {
-  if (dependency.includes(':')) {
-    const parsed = parseRangeAddress(dependency, ownerSheetName)
-    const dependencySheetName = parsed.sheetName ?? ownerSheetName
-    if (dependencySheetName !== targetSheetName) {
-      return false
-    }
-    if (parsed.kind === 'cells') {
-      return (axis === 'row' ? parsed.end.row : parsed.end.col) >= start
-    }
-    if (parsed.kind === 'rows') {
-      return axis === 'row' && parsed.end.row >= start
-    }
-    return axis === 'column' && parsed.end.col >= start
-  }
-  const parsed = parseCellAddress(dependency, ownerSheetName)
-  const dependencySheetName = parsed.sheetName ?? ownerSheetName
-  if (dependencySheetName !== targetSheetName) {
-    return false
-  }
-  return (axis === 'row' ? parsed.row : parsed.col) >= start
-}
-
-function structuralFormulaUndoRecordToOp(record: StructuralFormulaUndoRecord): EngineOp {
-  return {
-    kind: 'setCellFormula',
-    sheetName: record.sheetName,
-    address: formatAddress(record.row, record.col),
-    formula: record.formula,
-  }
-}
-
-export interface EngineMutationService {
-  readonly executeTransactionNow: (record: TransactionRecord, source: 'local' | 'restore' | 'undo' | 'redo') => void
-  readonly executeTransaction: (
-    record: TransactionRecord,
-    source: 'local' | 'restore' | 'undo' | 'redo',
-  ) => Effect.Effect<void, EngineMutationError>
-  readonly executeLocalNow: (
-    ops: EngineOp[],
-    potentialNewCells?: number,
-    options?: { readonly returnUndoOps?: boolean },
-  ) => readonly EngineOp[] | null
-  readonly executeLocalCellMutationsAtNow: (
-    refs: readonly EngineCellMutationRef[],
-    potentialNewCells?: number,
-    options?: {
-      returnUndoOps?: boolean
-      reuseRefs?: boolean
-    },
-  ) => readonly EngineOp[] | null
-  readonly executeLocalExistingNumericCellMutationAtNow: (
-    request: EngineExistingNumericCellMutationRef,
-    options?: {
-      returnUndoOps?: boolean
-    },
-  ) => EngineExistingNumericCellMutationResult | null
-  readonly applyCellMutationsAtNow: (
-    refs: readonly EngineCellMutationRef[],
-    options?: {
-      captureUndo?: boolean
-      potentialNewCells?: number
-      source?: 'local' | 'restore'
-      returnUndoOps?: boolean
-      reuseRefs?: boolean
-    },
-  ) => readonly EngineOp[] | null
-  readonly applyCellMutationsAt: (
-    refs: readonly EngineCellMutationRef[],
-    options?: {
-      captureUndo?: boolean
-      potentialNewCells?: number
-      source?: 'local' | 'restore'
-      returnUndoOps?: boolean
-      reuseRefs?: boolean
-    },
-  ) => Effect.Effect<readonly EngineOp[] | null, EngineMutationError>
-  readonly executeLocal: (
-    ops: EngineOp[],
-    potentialNewCells?: number,
-    options?: { readonly returnUndoOps?: boolean },
-  ) => Effect.Effect<readonly EngineOp[] | null, EngineMutationError>
-  readonly applyOpsNow: (
-    ops: readonly EngineOp[],
-    options?: {
-      captureUndo?: boolean
-      potentialNewCells?: number
-      source?: 'local' | 'restore'
-      returnUndoOps?: boolean
-      trusted?: boolean
-    },
-  ) => readonly EngineOp[] | null
-  readonly applyOps: (
-    ops: readonly EngineOp[],
-    options?: {
-      captureUndo?: boolean
-      potentialNewCells?: number
-      source?: 'local' | 'restore'
-      returnUndoOps?: boolean
-      trusted?: boolean
-    },
-  ) => Effect.Effect<readonly EngineOp[] | null, EngineMutationError>
-  readonly captureUndoOps: <Result>(mutate: () => Result) => Effect.Effect<
-    {
-      result: Result
-      undoOps: readonly EngineOp[] | null
-    },
-    EngineMutationError
-  >
-  readonly setRangeValues: (range: CellRangeRef, values: readonly (readonly LiteralInput[])[]) => Effect.Effect<void, EngineMutationError>
-  readonly setRangeFormulas: (range: CellRangeRef, formulas: readonly (readonly string[])[]) => Effect.Effect<void, EngineMutationError>
-  readonly clearRange: (range: CellRangeRef) => Effect.Effect<void, EngineMutationError>
-  readonly fillRange: (source: CellRangeRef, target: CellRangeRef) => Effect.Effect<void, EngineMutationError>
-  readonly copyRange: (source: CellRangeRef, target: CellRangeRef) => Effect.Effect<void, EngineMutationError>
-  readonly moveRange: (source: CellRangeRef, target: CellRangeRef) => Effect.Effect<void, EngineMutationError>
-  readonly importSheetCsv: (sheetName: string, csv: string) => Effect.Effect<void, EngineMutationError>
-  readonly renderCommit: (ops: CommitOp[]) => Effect.Effect<void, EngineMutationError>
+function isMutationServiceCapturedInverseOp(op: EngineOp): op is MutationServiceCapturedInverseOp {
+  return mutationServiceCapturedInverseKinds.has(op.kind)
 }
 
 export function createEngineMutationService(args: {
@@ -570,119 +114,29 @@ export function createEngineMutationService(args: {
   const hasExternallyVisibleBatchRequirement = (): boolean =>
     args.hasExternallyVisibleLocalMutationObservers?.() ??
     ((args.state.batchListeners?.size ?? 0) > 0 || (args.state.getSyncClientConnection?.() ?? null) !== null)
-  const captureRuntimeFormulaSource = (cellIndex: number, formula: RuntimeFormula): string =>
-    getRuntimeFormulaSource(formula, args.getFormulaFamilyStructuralSourceTransform?.(cellIndex))
 
-  const restoreCellOpFromRef = (ref: EngineCellMutationRef): EngineOp => {
-    const sheet = args.state.workbook.getSheetById(ref.sheetId)
-    if (!sheet) {
-      throw new Error(`Unknown sheet id: ${ref.sheetId}`)
-    }
-    const address = formatAddress(ref.mutation.row, ref.mutation.col)
-    const existingCellIndex = sheet.grid.get(ref.mutation.row, ref.mutation.col)
-    const cellIndex = existingCellIndex === -1 ? undefined : existingCellIndex
-    if (cellIndex === undefined) {
-      return { kind: 'clearCell', sheetName: sheet.name, address }
-    }
-    const cellStore = args.state.workbook.cellStore
-    const formulaId = cellStore.formulaIds[cellIndex] ?? 0
-    if (formulaId === 0) {
-      const tag = cellStore.tags[cellIndex]
-      if (tag === ValueTag.Number) {
-        return {
-          kind: 'setCellValue',
-          sheetName: sheet.name,
-          address,
-          value: cellStore.numbers[cellIndex] ?? 0,
-        }
-      }
-      if (tag === ValueTag.Boolean) {
-        return {
-          kind: 'setCellValue',
-          sheetName: sheet.name,
-          address,
-          value: (cellStore.numbers[cellIndex] ?? 0) !== 0,
-        }
-      }
-      if (tag === ValueTag.Empty || tag === ValueTag.Error || tag === undefined) {
-        return { kind: 'clearCell', sheetName: sheet.name, address }
-      }
-    }
-    const runtimeFormula = args.state.formulas.get(cellIndex)
-    if (runtimeFormula?.source !== undefined) {
-      return {
-        kind: 'setCellFormula',
-        sheetName: sheet.name,
-        address,
-        formula: captureRuntimeFormulaSource(cellIndex, runtimeFormula),
-      }
-    }
-    const snapshot = args.getCellByIndex(cellIndex)
-    if (snapshot.formula !== undefined) {
-      return {
-        kind: 'setCellFormula',
-        sheetName: sheet.name,
-        address,
-        formula: snapshot.formula,
-      }
-    }
-    switch (snapshot.value.tag) {
-      case ValueTag.Empty:
-      case ValueTag.Error:
-        return (snapshot.flags & CellFlags.AuthoredBlank) !== 0
-          ? {
-              kind: 'setCellValue',
-              sheetName: sheet.name,
-              address,
-              value: null,
-            }
-          : { kind: 'clearCell', sheetName: sheet.name, address }
-      case ValueTag.Number:
-      case ValueTag.Boolean:
-      case ValueTag.String:
-        return {
-          kind: 'setCellValue',
-          sheetName: sheet.name,
-          address,
-          value: snapshot.value.value,
-        }
-    }
-  }
-
-  const tryRestoreSimpleCellOpFromStore = (
-    sheetName: string,
-    address: string,
-  ): Extract<EngineOp, { kind: 'setCellValue' | 'setCellFormula' | 'clearCell' }> | null => {
-    const cellIndex = args.state.workbook.getCellIndex(sheetName, address)
-    if (cellIndex === undefined) {
-      return { kind: 'clearCell', sheetName, address }
-    }
-    const cellStore = args.state.workbook.cellStore
-    const formulaId = cellStore.formulaIds[cellIndex] ?? 0
-    if (formulaId === 0) {
-      const tag = cellStore.tags[cellIndex]
-      if (tag === ValueTag.Number) {
-        return { kind: 'setCellValue', sheetName, address, value: cellStore.numbers[cellIndex] ?? 0 }
-      }
-      if (tag === ValueTag.Boolean) {
-        return { kind: 'setCellValue', sheetName, address, value: (cellStore.numbers[cellIndex] ?? 0) !== 0 }
-      }
-      if (tag === ValueTag.Empty || tag === ValueTag.Error || tag === undefined) {
-        return { kind: 'clearCell', sheetName, address }
-      }
-      return null
-    }
-    const runtimeFormula = args.state.formulas.get(cellIndex)
-    if (runtimeFormula?.source === undefined) {
-      return null
-    }
-    return {
-      kind: 'setCellFormula',
-      sheetName,
-      address,
-      formula: captureRuntimeFormulaSource(cellIndex, runtimeFormula),
-    }
-  }
+  const {
+    restoreCellOpFromRef,
+    tryRestoreSimpleCellOpFromStore,
+    createLazyInverseCellMutationRecord,
+    tryCreateSingleExistingNumericInverseCellMutationRecord,
+    buildFastMutationHistoryFromRefs,
+  } = createMutationCellRestoreHistoryHelpers({
+    workbook: args.state.workbook,
+    formulas: args.state.formulas,
+    getCellByIndex: args.getCellByIndex,
+    ...(args.getFormulaFamilyStructuralSourceTransform
+      ? { getFormulaFamilyStructuralSourceTransform: args.getFormulaFamilyStructuralSourceTransform }
+      : {}),
+  })
+  const { captureFormulaCellStateForStructuralUndo, buildStructuralDeleteInverseRecord } = createMutationStructuralDeleteInverseHelpers({
+    state: args.state,
+    getCellByIndex: args.getCellByIndex,
+    toCellStateOps: (sheetName, address, snapshot) => args.toCellStateOps(sheetName, address, snapshot),
+    ...(args.getFormulaFamilyStructuralSourceTransform
+      ? { getFormulaFamilyStructuralSourceTransform: args.getFormulaFamilyStructuralSourceTransform }
+      : {}),
+  })
 
   const tryBuildSingleCellOpHistoryWithoutSnapshot = (
     ops: readonly EngineOp[],
@@ -709,490 +163,19 @@ export function createEngineMutationService(args: {
     }
   }
 
-  const captureInverseCellMutationRestores = (refs: readonly EngineCellMutationRef[]): CapturedCellMutationRestores => {
-    const count = refs.length
-    const sheetIds = new Uint32Array(count)
-    const cellIndexPlusOnes = new Uint32Array(count)
-    const rows = new Uint32Array(count)
-    const cols = new Uint32Array(count)
-    const kinds = new Uint8Array(count)
-    const numbers = new Float64Array(count)
-    let values: Array<LiteralInput | undefined> | undefined
-    let formulas: Array<string | undefined> | undefined
-    const cellStore = args.state.workbook.cellStore
-    let potentialNewCells = 0
-    let cachedSheetId = -1
-    let cachedSheet: ReturnType<WorkbookStore['getSheetById']> | undefined
-
-    for (let index = 0; index < count; index += 1) {
-      const ref = refs[index]!
-      const targetIndex = count - 1 - index
-      const { sheetId, mutation } = ref
-      sheetIds[targetIndex] = sheetId
-      rows[targetIndex] = mutation.row
-      cols[targetIndex] = mutation.col
-      if (sheetId !== cachedSheetId) {
-        cachedSheet = args.state.workbook.getSheetById(sheetId)
-        cachedSheetId = sheetId
-      }
-      if (!cachedSheet) {
-        throw new Error(`Unknown sheet id: ${sheetId}`)
-      }
-      const candidate = ref.cellIndex
-      const existingCellIndex =
-        candidate !== undefined &&
-        cellStore.sheetIds[candidate] === sheetId &&
-        cellStore.rows[candidate] === mutation.row &&
-        cellStore.cols[candidate] === mutation.col
-          ? candidate
-          : cachedSheet.grid.get(mutation.row, mutation.col)
-      const cellIndex = existingCellIndex === -1 ? undefined : existingCellIndex
-      if (cellIndex === undefined) {
-        kinds[targetIndex] = CapturedCellMutationKind.Clear
-        continue
-      }
-      cellIndexPlusOnes[targetIndex] = cellIndex + 1
-      if ((cellStore.formulaIds[cellIndex] ?? 0) === 0) {
-        const tag = cellStore.tags[cellIndex]
-        if (tag === ValueTag.Number) {
-          kinds[targetIndex] = CapturedCellMutationKind.NumberValue
-          numbers[targetIndex] = cellStore.numbers[cellIndex] ?? 0
-          potentialNewCells += 1
-          continue
-        }
-        if (tag === ValueTag.Boolean) {
-          kinds[targetIndex] = CapturedCellMutationKind.BooleanValue
-          numbers[targetIndex] = cellStore.numbers[cellIndex] ?? 0
-          potentialNewCells += 1
-          continue
-        }
-        if (tag === ValueTag.String) {
-          const snapshot = args.getCellByIndex(cellIndex)
-          kinds[targetIndex] = CapturedCellMutationKind.LiteralValue
-          values ??= Array<LiteralInput | undefined>(count)
-          values[targetIndex] = snapshot.value.tag === ValueTag.String ? snapshot.value.value : null
-          potentialNewCells += 1
-          continue
-        }
-        kinds[targetIndex] = CapturedCellMutationKind.Clear
-        continue
-      }
-      const runtimeFormula = args.state.formulas?.get(cellIndex)
-      const formula =
-        runtimeFormula?.source !== undefined
-          ? captureRuntimeFormulaSource(cellIndex, runtimeFormula)
-          : args.getCellByIndex(cellIndex).formula
-      if (formula !== undefined) {
-        kinds[targetIndex] = CapturedCellMutationKind.Formula
-        formulas ??= Array<string | undefined>(count)
-        formulas[targetIndex] = formula
-        potentialNewCells += 1
-        continue
-      }
-      const snapshot = args.getCellByIndex(cellIndex)
-      if (
-        (snapshot.flags & CellFlags.AuthoredBlank) !== 0 &&
-        (snapshot.value.tag === ValueTag.Empty || snapshot.value.tag === ValueTag.Error)
-      ) {
-        kinds[targetIndex] = CapturedCellMutationKind.NullValue
-        potentialNewCells += 1
-        continue
-      }
-      kinds[targetIndex] = CapturedCellMutationKind.Clear
-    }
-
-    return {
-      sheetIds,
-      cellIndexPlusOnes,
-      rows,
-      cols,
-      kinds,
-      numbers,
-      ...(values === undefined ? {} : { values }),
-      ...(formulas === undefined ? {} : { formulas }),
-      potentialNewCells,
-    }
-  }
-
-  const createLazyInverseCellMutationRecord = (refs: readonly EngineCellMutationRef[]): TransactionRecord => {
-    const captured = captureInverseCellMutationRestores(refs)
-    return createLazyMaterializedCellMutationTransactionRecord(
-      () => materializeCapturedCellMutationRestores(captured),
-      captured.potentialNewCells,
-    )
-  }
-
-  const tryCreateSingleExistingNumericInverseCellMutationRecord = (refs: readonly EngineCellMutationRef[]): TransactionRecord | null => {
-    if (refs.length !== 1) {
-      return null
-    }
-    const ref = refs[0]!
-    const { mutation, sheetId } = ref
-    if (mutation.kind !== 'setCellValue' || typeof mutation.value !== 'number') {
-      return null
-    }
-
-    const cellStore = args.state.workbook.cellStore
-    const candidate = ref.cellIndex
-    let existingCellIndex: number | undefined
-    if (
-      candidate !== undefined &&
-      cellStore.sheetIds[candidate] === sheetId &&
-      cellStore.rows[candidate] === mutation.row &&
-      cellStore.cols[candidate] === mutation.col
-    ) {
-      existingCellIndex = candidate
-    } else {
-      const sheet = args.state.workbook.getSheetById(sheetId)
-      if (!sheet) {
-        return null
-      }
-      existingCellIndex = sheet.grid.get(mutation.row, mutation.col)
-    }
-    if (existingCellIndex === -1 || existingCellIndex === undefined) {
-      return null
-    }
-    if ((cellStore.formulaIds[existingCellIndex] ?? 0) !== 0 || cellStore.tags[existingCellIndex] !== ValueTag.Number) {
-      return null
-    }
-
-    return createLazyCellMutationTransactionRecord(
-      [
-        {
-          sheetId,
-          cellIndex: existingCellIndex,
-          mutation: {
-            kind: 'setCellValue',
-            row: mutation.row,
-            col: mutation.col,
-            value: cellStore.numbers[existingCellIndex] ?? 0,
-          },
-        },
-      ],
-      1,
-    )
-  }
-
-  const tryCellMutationRefsFromOps = (ops: readonly EngineOp[]): EngineCellMutationRef[] | null => {
-    if (ops.length === 0) {
-      return []
-    }
-    const refs = Array<EngineCellMutationRef>(ops.length)
-    for (let index = 0; index < ops.length; index += 1) {
-      const op = ops[index]!
-      if (op.kind !== 'setCellValue' && op.kind !== 'setCellFormula' && op.kind !== 'clearCell') {
-        return null
-      }
-      const sheet = args.state.workbook.getSheet(op.sheetName)
-      if (!sheet) {
-        return null
-      }
-      const parsed = parseCellAddress(op.address, op.sheetName)
-      const cellIndex = args.state.workbook.getCellIndex(op.sheetName, op.address)
-      refs[index] = {
-        sheetId: sheet.id,
-        ...(cellIndex === undefined ? {} : { cellIndex }),
-        mutation:
-          op.kind === 'setCellValue'
-            ? { kind: 'setCellValue', row: parsed.row, col: parsed.col, value: op.value }
-            : op.kind === 'setCellFormula'
-              ? { kind: 'setCellFormula', row: parsed.row, col: parsed.col, formula: op.formula }
-              : { kind: 'clearCell', row: parsed.row, col: parsed.col },
-      }
-    }
-    return refs
-  }
-
-  const readStoredCellState = (sheetName: string, address: string): ComparableCellState => {
-    const cellIndex = args.state.workbook.getCellIndex(sheetName, address)
-    if (cellIndex === undefined) {
-      return { value: null, format: null, authoredBlank: false }
-    }
-    const snapshot = args.getCellByIndex(cellIndex)
-    const format = args.state.workbook.getCellFormat(cellIndex) ?? null
-    if (snapshot.formula !== undefined) {
-      return { formula: snapshot.formula, value: null, format }
-    }
-    const authoredBlank = ((args.state.workbook.cellStore.flags[cellIndex] ?? 0) & CellFlags.AuthoredBlank) !== 0
-    switch (snapshot.value.tag) {
-      case ValueTag.Number:
-      case ValueTag.Boolean:
-      case ValueTag.String:
-        return { value: snapshot.value.value, format }
-      case ValueTag.Empty:
-      case ValueTag.Error:
-        return { value: null, format, authoredBlank }
-    }
-  }
-
-  const readDesiredCellState = (
-    targetSheetName: string,
-    targetAddress: string,
-    snapshot: CellSnapshot,
-    sourceSheetName?: string,
-    sourceAddress?: string,
-    formatOverride: string | null = snapshot.format ?? null,
-  ): ComparableCellState => {
-    if (snapshot.formula !== undefined) {
-      return {
-        formula:
-          sourceSheetName && sourceAddress
-            ? translateFormulaForTarget(snapshot.formula, sourceSheetName, sourceAddress, targetSheetName, targetAddress)
-            : snapshot.formula,
-        value: null,
-        format: formatOverride,
-      }
-    }
-    switch (snapshot.value.tag) {
-      case ValueTag.Number:
-      case ValueTag.Boolean:
-      case ValueTag.String:
-        return { value: snapshot.value.value, format: formatOverride }
-      case ValueTag.Empty:
-      case ValueTag.Error:
-        return {
-          value: null,
-          format: formatOverride,
-          authoredBlank: (snapshot.flags & CellFlags.AuthoredBlank) !== 0,
-        }
-    }
-  }
-
-  const hasStoredCellContent = (sheetName: string, address: string): boolean => {
-    const cellIndex = args.state.workbook.getCellIndex(sheetName, address)
-    if (cellIndex === undefined) {
-      return false
-    }
-    const snapshot = args.getCellByIndex(cellIndex)
-    if (snapshot.formula !== undefined) {
-      return true
-    }
-    return snapshot.value.tag !== ValueTag.Empty || (snapshot.flags & CellFlags.AuthoredBlank) !== 0
-  }
-
-  const hasStoredCellState = (sheetName: string, address: string): boolean => {
-    const cellIndex = args.state.workbook.getCellIndex(sheetName, address)
-    if (cellIndex === undefined) {
-      return false
-    }
-    const snapshot = args.getCellByIndex(cellIndex)
-    return (
-      snapshot.formula !== undefined ||
-      snapshot.value.tag !== ValueTag.Empty ||
-      args.state.workbook.getCellFormat(cellIndex) !== undefined ||
-      ((args.state.workbook.cellStore.flags[cellIndex] ?? 0) & CellFlags.AuthoredBlank) !== 0
-    )
-  }
-
-  const shouldApplyCellState = (
-    targetSheetName: string,
-    targetAddress: string,
-    snapshot: CellSnapshot,
-    sourceSheetName?: string,
-    sourceAddress?: string,
-  ): boolean => {
-    const current = readStoredCellState(targetSheetName, targetAddress)
-    const desired = readDesiredCellState(targetSheetName, targetAddress, snapshot, sourceSheetName, sourceAddress)
-    if (
-      desired.formula === undefined &&
-      desired.value === null &&
-      desired.format === null &&
-      desired.authoredBlank === true &&
-      current.formula === undefined &&
-      current.value === null &&
-      current.format === null &&
-      !(current.authoredBlank ?? false)
-    ) {
-      return false
-    }
-    return (
-      current.formula !== desired.formula ||
-      current.value !== desired.value ||
-      current.format !== desired.format ||
-      (current.authoredBlank ?? false) !== (desired.authoredBlank ?? false)
-    )
-  }
-
-  const buildFastMutationHistoryFromRefs = (
-    refs: readonly EngineCellMutationRef[],
-    potentialNewCells: number,
-    options: {
-      includeUndoOps?: boolean
-    } = {},
-  ): FastMutationHistoryResult => {
-    if (refs.length === 1) {
-      const ref = refs[0]!
-      const forwardOp = cellMutationRefToEngineOp(args.state.workbook, ref)
-      const inverseOp = restoreCellOpFromRef(ref)
-      return {
-        forward: createLazySingleOpTransactionRecord(forwardOp, potentialNewCells),
-        inverse: createLazySingleOpTransactionRecord(inverseOp, 1),
-        undoOps: options.includeUndoOps === false ? null : [structuredClone(inverseOp)],
-      }
-    }
-    const forwardOps: EngineOp[] = Array.from({ length: refs.length })
-    for (let index = 0; index < refs.length; index += 1) {
-      const ref = refs[index]!
-      forwardOps[index] = cellMutationRefToEngineOp(args.state.workbook, ref)
-    }
-
-    const inverseOps: EngineOp[] = []
-    for (let index = refs.length - 1; index >= 0; index -= 1) {
-      inverseOps.push(restoreCellOpFromRef(refs[index]!))
-    }
-
-    return {
-      forward: { kind: 'ops', ops: forwardOps, potentialNewCells },
-      inverse: { kind: 'ops', ops: inverseOps, potentialNewCells: refs.length },
-      undoOps: options.includeUndoOps === false ? null : structuredClone(inverseOps),
-    }
-  }
-
-  const captureStructuralWorkbookMetadataOps = (): EngineOp[] => {
-    const restoredOps: EngineOp[] = []
-    args.state.workbook.listDefinedNames().forEach(({ name, value }) => {
-      restoredOps.push({ kind: 'upsertDefinedName', name, value: structuredClone(value) })
-    })
-    args.state.workbook.listTables().forEach((table) => {
-      restoredOps.push({
-        kind: 'upsertTable',
-        table: {
-          name: table.name,
-          sheetName: table.sheetName,
-          startAddress: table.startAddress,
-          endAddress: table.endAddress,
-          columnNames: [...table.columnNames],
-          headerRow: table.headerRow,
-          totalsRow: table.totalsRow,
-        },
-      })
-    })
-    args.state.workbook.listSpills().forEach((spill) => {
-      restoredOps.push({ kind: 'upsertSpillRange', sheetName: spill.sheetName, address: spill.address, rows: spill.rows, cols: spill.cols })
-    })
-    args.state.workbook.listPivots().forEach((pivot) => {
-      restoredOps.push({
-        kind: 'upsertPivotTable',
-        name: pivot.name,
-        sheetName: pivot.sheetName,
-        address: pivot.address,
-        source: { ...pivot.source },
-        groupBy: [...pivot.groupBy],
-        values: pivot.values.map((value) => Object.assign({}, value)),
-        rows: pivot.rows,
-        cols: pivot.cols,
-      })
-    })
-    args.state.workbook.listCharts().forEach((chart) => {
-      restoredOps.push({ kind: 'upsertChart', chart: structuredClone(chart) })
-    })
-    args.state.workbook.listImages().forEach((image) => {
-      restoredOps.push({ kind: 'upsertImage', image: structuredClone(image) })
-    })
-    args.state.workbook.listShapes().forEach((shape) => {
-      restoredOps.push({ kind: 'upsertShape', shape: structuredClone(shape) })
-    })
-    return restoredOps
-  }
-
-  const clearStructuralSheetMetadataOps = (sheetName: string, transform: ReturnType<typeof structuralTransformForOp>): EngineOp[] => {
-    const clearedOps: EngineOp[] = []
-    args.state.workbook.listStyleRanges(sheetName).forEach((record) => {
-      const range = rewriteRangeForStructuralTransform(record.range.startAddress, record.range.endAddress, transform)
-      if (range) {
-        clearedOps.push({
-          kind: 'setStyleRange',
-          range: { ...record.range, startAddress: range.startAddress, endAddress: range.endAddress },
-          styleId: WorkbookStore.defaultStyleId,
-        })
-      }
-    })
-    args.state.workbook.listFormatRanges(sheetName).forEach((record) => {
-      const range = rewriteRangeForStructuralTransform(record.range.startAddress, record.range.endAddress, transform)
-      if (range) {
-        clearedOps.push({
-          kind: 'setFormatRange',
-          range: { ...record.range, startAddress: range.startAddress, endAddress: range.endAddress },
-          formatId: WorkbookStore.defaultFormatId,
-        })
-      }
-    })
-    args.state.workbook.listFilters(sheetName).forEach((filter) => {
-      const range = rewriteRangeForStructuralTransform(filter.range.startAddress, filter.range.endAddress, transform)
-      if (range) {
-        clearedOps.push({
-          kind: 'clearFilter',
-          sheetName,
-          range: { ...filter.range, startAddress: range.startAddress, endAddress: range.endAddress },
-        })
-      }
-    })
-    args.state.workbook.listSorts(sheetName).forEach((sort) => {
-      const range = rewriteRangeForStructuralTransform(sort.range.startAddress, sort.range.endAddress, transform)
-      if (range) {
-        clearedOps.push({
-          kind: 'clearSort',
-          sheetName,
-          range: { ...sort.range, startAddress: range.startAddress, endAddress: range.endAddress },
-        })
-      }
-    })
-    args.state.workbook.listDataValidations(sheetName).forEach((validation) => {
-      const range = rewriteRangeForStructuralTransform(validation.range.startAddress, validation.range.endAddress, transform)
-      if (range) {
-        clearedOps.push({
-          kind: 'clearDataValidation',
-          sheetName,
-          range: { ...validation.range, startAddress: range.startAddress, endAddress: range.endAddress },
-        })
-      }
-    })
-    args.state.workbook.listCommentThreads(sheetName).forEach((thread) => {
-      const address = rewriteAddressForStructuralTransform(thread.address, transform)
-      if (address) {
-        clearedOps.push({ kind: 'deleteCommentThread', sheetName, address })
-      }
-    })
-    args.state.workbook.listNotes(sheetName).forEach((note) => {
-      const address = rewriteAddressForStructuralTransform(note.address, transform)
-      if (address) {
-        clearedOps.push({ kind: 'deleteNote', sheetName, address })
-      }
-    })
-    return clearedOps
-  }
+  const tryCellMutationRefsFromOps = (ops: readonly EngineOp[]): EngineCellMutationRef[] | null =>
+    tryMutationCellRefsFromOps(args.state.workbook, ops)
 
   const inverseOpsFor = (op: EngineOp): EngineOp[] => {
+    const metadataInverseOps = buildMutationMetadataInverseOps(args.state.workbook, op)
+    if (metadataInverseOps !== undefined) {
+      return metadataInverseOps
+    }
+    if (!isMutationServiceCapturedInverseOp(op)) {
+      throw new Error(`Unhandled inverse operation: ${op.kind}`)
+    }
+
     switch (op.kind) {
-      case 'upsertWorkbook':
-        return [{ kind: 'upsertWorkbook', name: args.state.workbook.workbookName }]
-      case 'setWorkbookMetadata': {
-        const existing = args.state.workbook.getWorkbookProperty(op.key)
-        return [{ kind: 'setWorkbookMetadata', key: op.key, value: existing?.value ?? null }]
-      }
-      case 'setCalculationSettings':
-        return [
-          {
-            kind: 'setCalculationSettings',
-            settings: args.state.workbook.getCalculationSettings(),
-          },
-        ]
-      case 'setVolatileContext':
-        return [{ kind: 'setVolatileContext', context: args.state.workbook.getVolatileContext() }]
-      case 'upsertSheet': {
-        const existing = args.state.workbook.getSheet(op.name)
-        if (!existing) {
-          return [{ kind: 'deleteSheet', name: op.name }]
-        }
-        return [{ kind: 'upsertSheet', name: existing.name, order: existing.order }]
-      }
-      case 'renameSheet': {
-        const existing = args.state.workbook.getSheet(op.newName)
-        if (!existing) {
-          return []
-        }
-        return [{ kind: 'renameSheet', oldName: op.newName, newName: op.oldName }]
-      }
       case 'deleteSheet': {
         const sheet = args.state.workbook.getSheet(op.name)
         if (!sheet) {
@@ -1275,13 +258,11 @@ export function createEngineMutationService(args: {
         restoredOps.push(...args.captureSheetCellState(sheet.name))
         return restoredOps
       }
-      case 'insertRows':
-        return [{ kind: 'deleteRows', sheetName: op.sheetName, start: op.start, count: op.count }]
       case 'deleteRows': {
         const entries = args.state.workbook.snapshotRowAxisEntries(op.sheetName, op.start, op.count)
         const transform = structuralTransformForOp(op)
         return [
-          ...clearStructuralSheetMetadataOps(op.sheetName, transform),
+          ...clearStructuralSheetMetadataOps(args.state.workbook, op.sheetName, transform),
           {
             kind: 'insertRows',
             sheetName: op.sheetName,
@@ -1292,26 +273,14 @@ export function createEngineMutationService(args: {
           ...sheetMetadataToOps(args.state.workbook, op.sheetName, { includeAxisEntries: false }),
           ...args.captureRowRangeCellState(op.sheetName, op.start, op.count),
           ...captureFormulaCellStateForStructuralUndo(op.sheetName, 'row', op.start, op.count),
-          ...captureStructuralWorkbookMetadataOps(),
+          ...captureStructuralWorkbookMetadataOps(args.state.workbook),
         ]
       }
-      case 'moveRows':
-        return [
-          {
-            kind: 'moveRows',
-            sheetName: op.sheetName,
-            start: op.target,
-            count: op.count,
-            target: op.start,
-          },
-        ]
-      case 'insertColumns':
-        return [{ kind: 'deleteColumns', sheetName: op.sheetName, start: op.start, count: op.count }]
       case 'deleteColumns': {
         const entries = args.state.workbook.snapshotColumnAxisEntries(op.sheetName, op.start, op.count)
         const transform = structuralTransformForOp(op)
         return [
-          ...clearStructuralSheetMetadataOps(op.sheetName, transform),
+          ...clearStructuralSheetMetadataOps(args.state.workbook, op.sheetName, transform),
           {
             kind: 'insertColumns',
             sheetName: op.sheetName,
@@ -1322,445 +291,13 @@ export function createEngineMutationService(args: {
           ...sheetMetadataToOps(args.state.workbook, op.sheetName, { includeAxisEntries: false }),
           ...args.captureColumnRangeCellState(op.sheetName, op.start, op.count),
           ...captureFormulaCellStateForStructuralUndo(op.sheetName, 'column', op.start, op.count),
-          ...captureStructuralWorkbookMetadataOps(),
+          ...captureStructuralWorkbookMetadataOps(args.state.workbook),
         ]
-      }
-      case 'moveColumns':
-        return [
-          {
-            kind: 'moveColumns',
-            sheetName: op.sheetName,
-            start: op.target,
-            count: op.count,
-            target: op.start,
-          },
-        ]
-      case 'updateRowMetadata': {
-        const existing = args.state.workbook.getRowMetadata(op.sheetName, op.start, op.count)
-        return [
-          {
-            kind: 'updateRowMetadata',
-            sheetName: op.sheetName,
-            start: op.start,
-            count: op.count,
-            size: existing?.size ?? null,
-            hidden: existing?.hidden ?? null,
-          },
-        ]
-      }
-      case 'updateColumnMetadata': {
-        const existing = args.state.workbook.getColumnMetadata(op.sheetName, op.start, op.count)
-        return [
-          {
-            kind: 'updateColumnMetadata',
-            sheetName: op.sheetName,
-            start: op.start,
-            count: op.count,
-            size: existing?.size ?? null,
-            hidden: existing?.hidden ?? null,
-          },
-        ]
-      }
-      case 'setFreezePane': {
-        const existing = args.state.workbook.getFreezePane(op.sheetName)
-        if (!existing) {
-          return [{ kind: 'clearFreezePane', sheetName: op.sheetName }]
-        }
-        return [
-          {
-            kind: 'setFreezePane',
-            sheetName: op.sheetName,
-            rows: existing.rows,
-            cols: existing.cols,
-          },
-        ]
-      }
-      case 'clearFreezePane': {
-        const existing = args.state.workbook.getFreezePane(op.sheetName)
-        if (!existing) {
-          return []
-        }
-        return [
-          {
-            kind: 'setFreezePane',
-            sheetName: op.sheetName,
-            rows: existing.rows,
-            cols: existing.cols,
-          },
-        ]
-      }
-      case 'mergeCells': {
-        const existing = args.state.workbook.listMergeRanges(op.range.sheetName).filter((record) => rangesIntersect(record, op.range))
-        return [
-          { kind: 'unmergeCells', range: { ...op.range } },
-          ...existing.map((record) => ({
-            kind: 'mergeCells' as const,
-            range: { ...record },
-          })),
-        ]
-      }
-      case 'unmergeCells': {
-        return args.state.workbook
-          .listMergeRanges(op.range.sheetName)
-          .filter((record) => rangesIntersect(record, op.range))
-          .map((record) => ({
-            kind: 'mergeCells' as const,
-            range: { ...record },
-          }))
-      }
-      case 'setFilter': {
-        const existing = args.state.workbook.getFilter(op.sheetName, op.range)
-        if (!existing) {
-          return [{ kind: 'clearFilter', sheetName: op.sheetName, range: { ...op.range } }]
-        }
-        return [{ kind: 'setFilter', sheetName: op.sheetName, range: { ...existing.range } }]
-      }
-      case 'clearFilter': {
-        const existing = args.state.workbook.getFilter(op.sheetName, op.range)
-        if (!existing) {
-          return []
-        }
-        return [{ kind: 'setFilter', sheetName: op.sheetName, range: { ...existing.range } }]
-      }
-      case 'setSort': {
-        const existing = args.state.workbook.getSort(op.sheetName, op.range)
-        if (!existing) {
-          return [{ kind: 'clearSort', sheetName: op.sheetName, range: { ...op.range } }]
-        }
-        return [
-          {
-            kind: 'setSort',
-            sheetName: op.sheetName,
-            range: { ...existing.range },
-            keys: existing.keys.map((key) => Object.assign({}, key)),
-          },
-        ]
-      }
-      case 'clearSort': {
-        const existing = args.state.workbook.getSort(op.sheetName, op.range)
-        if (!existing) {
-          return []
-        }
-        return [
-          {
-            kind: 'setSort',
-            sheetName: op.sheetName,
-            range: { ...existing.range },
-            keys: existing.keys.map((key) => Object.assign({}, key)),
-          },
-        ]
-      }
-      case 'setDataValidation': {
-        const existing = args.state.workbook.getDataValidation(op.validation.range.sheetName, op.validation.range)
-        if (!existing) {
-          return [
-            {
-              kind: 'clearDataValidation',
-              sheetName: op.validation.range.sheetName,
-              range: { ...op.validation.range },
-            },
-          ]
-        }
-        return [{ kind: 'setDataValidation', validation: structuredClone(existing) }]
-      }
-      case 'clearDataValidation': {
-        const existing = args.state.workbook.getDataValidation(op.sheetName, op.range)
-        if (!existing) {
-          return []
-        }
-        return [{ kind: 'setDataValidation', validation: structuredClone(existing) }]
-      }
-      case 'setSheetProtection': {
-        const existing = args.state.workbook.getSheetProtection(op.protection.sheetName)
-        if (!existing) {
-          return [{ kind: 'clearSheetProtection', sheetName: op.protection.sheetName }]
-        }
-        return [{ kind: 'setSheetProtection', protection: structuredClone(existing) }]
-      }
-      case 'clearSheetProtection': {
-        const existing = args.state.workbook.getSheetProtection(op.sheetName)
-        if (!existing) {
-          return []
-        }
-        return [{ kind: 'setSheetProtection', protection: structuredClone(existing) }]
-      }
-      case 'upsertConditionalFormat': {
-        const existing = args.state.workbook.getConditionalFormat(op.format.id)
-        if (!existing) {
-          return [
-            {
-              kind: 'deleteConditionalFormat',
-              id: op.format.id,
-              sheetName: op.format.range.sheetName,
-            },
-          ]
-        }
-        return [{ kind: 'upsertConditionalFormat', format: structuredClone(existing) }]
-      }
-      case 'deleteConditionalFormat': {
-        const existing = args.state.workbook.getConditionalFormat(op.id)
-        if (!existing) {
-          return []
-        }
-        return [{ kind: 'upsertConditionalFormat', format: structuredClone(existing) }]
-      }
-      case 'upsertRangeProtection': {
-        const existing = args.state.workbook.getRangeProtection(op.protection.id)
-        if (!existing) {
-          return [
-            {
-              kind: 'deleteRangeProtection',
-              id: op.protection.id,
-              sheetName: op.protection.range.sheetName,
-            },
-          ]
-        }
-        return [{ kind: 'upsertRangeProtection', protection: structuredClone(existing) }]
-      }
-      case 'deleteRangeProtection': {
-        const existing = args.state.workbook.getRangeProtection(op.id)
-        if (!existing) {
-          return []
-        }
-        return [{ kind: 'upsertRangeProtection', protection: structuredClone(existing) }]
-      }
-      case 'upsertCommentThread': {
-        const existing = args.state.workbook.getCommentThread(op.thread.sheetName, op.thread.address)
-        if (!existing) {
-          return [
-            {
-              kind: 'deleteCommentThread',
-              sheetName: op.thread.sheetName,
-              address: op.thread.address,
-            },
-          ]
-        }
-        return [{ kind: 'upsertCommentThread', thread: structuredClone(existing) }]
-      }
-      case 'deleteCommentThread': {
-        const existing = args.state.workbook.getCommentThread(op.sheetName, op.address)
-        if (!existing) {
-          return []
-        }
-        return [{ kind: 'upsertCommentThread', thread: structuredClone(existing) }]
-      }
-      case 'upsertNote': {
-        const existing = args.state.workbook.getNote(op.note.sheetName, op.note.address)
-        if (!existing) {
-          return [
-            {
-              kind: 'deleteNote',
-              sheetName: op.note.sheetName,
-              address: op.note.address,
-            },
-          ]
-        }
-        return [{ kind: 'upsertNote', note: structuredClone(existing) }]
-      }
-      case 'deleteNote': {
-        const existing = args.state.workbook.getNote(op.sheetName, op.address)
-        if (!existing) {
-          return []
-        }
-        return [{ kind: 'upsertNote', note: structuredClone(existing) }]
       }
       case 'setCellValue':
       case 'setCellFormula':
       case 'clearCell':
         return args.restoreCellOps(op.sheetName, op.address)
-      case 'setCellFormat': {
-        const cellIndex = args.state.workbook.getCellIndex(op.sheetName, op.address)
-        return [
-          {
-            kind: 'setCellFormat',
-            sheetName: op.sheetName,
-            address: op.address,
-            format: cellIndex === undefined ? null : (args.state.workbook.getCellFormat(cellIndex) ?? null),
-          },
-        ]
-      }
-      case 'upsertCellStyle': {
-        const existing = args.state.workbook.getCellStyle(op.style.id)
-        if (!existing || existing.id !== op.style.id) {
-          return []
-        }
-        return [{ kind: 'upsertCellStyle', style: cloneCellStyleRecord(existing) }]
-      }
-      case 'upsertCellNumberFormat': {
-        const existing = args.state.workbook.getCellNumberFormat(op.format.id)
-        if (!existing || existing.id !== op.format.id) {
-          return []
-        }
-        return [{ kind: 'upsertCellNumberFormat', format: { ...existing } }]
-      }
-      case 'setStyleRange':
-        return restoreStyleRangeOps(args.state.workbook, op.range)
-      case 'setFormatRange':
-        return restoreFormatRangeOps(args.state.workbook, op.range)
-      case 'upsertDefinedName': {
-        const existing = args.state.workbook.getDefinedName(op.name)
-        if (!existing) {
-          return [{ kind: 'deleteDefinedName', name: op.name }]
-        }
-        return [{ kind: 'upsertDefinedName', name: existing.name, value: existing.value }]
-      }
-      case 'deleteDefinedName': {
-        const existing = args.state.workbook.getDefinedName(op.name)
-        if (!existing) {
-          return []
-        }
-        return [{ kind: 'upsertDefinedName', name: existing.name, value: existing.value }]
-      }
-      case 'upsertTable': {
-        const existing = args.state.workbook.getTable(op.table.name)
-        if (!existing) {
-          return [{ kind: 'deleteTable', name: op.table.name }]
-        }
-        return [
-          {
-            kind: 'upsertTable',
-            table: {
-              name: existing.name,
-              sheetName: existing.sheetName,
-              startAddress: existing.startAddress,
-              endAddress: existing.endAddress,
-              columnNames: [...existing.columnNames],
-              headerRow: existing.headerRow,
-              totalsRow: existing.totalsRow,
-            },
-          },
-        ]
-      }
-      case 'deleteTable': {
-        const existing = args.state.workbook.getTable(op.name)
-        if (!existing) {
-          return []
-        }
-        return [
-          {
-            kind: 'upsertTable',
-            table: {
-              name: existing.name,
-              sheetName: existing.sheetName,
-              startAddress: existing.startAddress,
-              endAddress: existing.endAddress,
-              columnNames: [...existing.columnNames],
-              headerRow: existing.headerRow,
-              totalsRow: existing.totalsRow,
-            },
-          },
-        ]
-      }
-      case 'upsertSpillRange': {
-        const existing = args.state.workbook.getSpill(op.sheetName, op.address)
-        if (!existing) {
-          return [{ kind: 'deleteSpillRange', sheetName: op.sheetName, address: op.address }]
-        }
-        return [
-          {
-            kind: 'upsertSpillRange',
-            sheetName: existing.sheetName,
-            address: existing.address,
-            rows: existing.rows,
-            cols: existing.cols,
-          },
-        ]
-      }
-      case 'deleteSpillRange': {
-        const existing = args.state.workbook.getSpill(op.sheetName, op.address)
-        if (!existing) {
-          return []
-        }
-        return [
-          {
-            kind: 'upsertSpillRange',
-            sheetName: existing.sheetName,
-            address: existing.address,
-            rows: existing.rows,
-            cols: existing.cols,
-          },
-        ]
-      }
-      case 'upsertPivotTable': {
-        const existing = args.state.workbook.getPivot(op.sheetName, op.address)
-        if (!existing) {
-          return [{ kind: 'deletePivotTable', sheetName: op.sheetName, address: op.address }]
-        }
-        return [
-          {
-            kind: 'upsertPivotTable',
-            name: existing.name,
-            sheetName: existing.sheetName,
-            address: existing.address,
-            source: { ...existing.source },
-            groupBy: [...existing.groupBy],
-            values: existing.values.map((v) => Object.assign({}, v)),
-            rows: existing.rows,
-            cols: existing.cols,
-          },
-        ]
-      }
-      case 'deletePivotTable': {
-        const existing = args.state.workbook.getPivot(op.sheetName, op.address)
-        if (!existing) {
-          return []
-        }
-        return [
-          {
-            kind: 'upsertPivotTable',
-            name: existing.name,
-            sheetName: existing.sheetName,
-            address: existing.address,
-            source: { ...existing.source },
-            groupBy: [...existing.groupBy],
-            values: existing.values.map((value) => Object.assign({}, value)),
-            rows: existing.rows,
-            cols: existing.cols,
-          },
-        ]
-      }
-      case 'upsertChart': {
-        const existing = args.state.workbook.getChart(op.chart.id)
-        if (!existing) {
-          return [{ kind: 'deleteChart', id: op.chart.id }]
-        }
-        return [{ kind: 'upsertChart', chart: structuredClone(existing) }]
-      }
-      case 'deleteChart': {
-        const existing = args.state.workbook.getChart(op.id)
-        if (!existing) {
-          return []
-        }
-        return [{ kind: 'upsertChart', chart: structuredClone(existing) }]
-      }
-      case 'upsertImage': {
-        const existing = args.state.workbook.getImage(op.image.id)
-        if (!existing) {
-          return [{ kind: 'deleteImage', id: op.image.id }]
-        }
-        return [{ kind: 'upsertImage', image: structuredClone(existing) }]
-      }
-      case 'deleteImage': {
-        const existing = args.state.workbook.getImage(op.id)
-        if (!existing) {
-          return []
-        }
-        return [{ kind: 'upsertImage', image: structuredClone(existing) }]
-      }
-      case 'upsertShape': {
-        const existing = args.state.workbook.getShape(op.shape.id)
-        if (!existing) {
-          return [{ kind: 'deleteShape', id: op.shape.id }]
-        }
-        return [{ kind: 'upsertShape', shape: structuredClone(existing) }]
-      }
-      case 'deleteShape': {
-        const existing = args.state.workbook.getShape(op.id)
-        if (!existing) {
-          return []
-        }
-        return [{ kind: 'upsertShape', shape: structuredClone(existing) }]
-      }
       default: {
         const exhaustive: never = op
         return exhaustive
@@ -1777,248 +314,6 @@ export function createEngineMutationService(args: {
       }
     }
     return inverseOps
-  }
-
-  const captureFormulaCellRecordsForStructuralUndo = (
-    sheetName: string,
-    axis: 'row' | 'column',
-    start: number,
-    count: number,
-  ): StructuralFormulaUndoRecord[] => {
-    const captured: StructuralFormulaUndoRecord[] = []
-    args.state.formulas.forEach((formula, cellIndex) => {
-      const ownerSheetId = args.state.workbook.cellStore.sheetIds[cellIndex]
-      if (ownerSheetId === undefined) {
-        return
-      }
-      const ownerSheetName = args.state.workbook.getSheetNameById(ownerSheetId)
-      if (!ownerSheetName) {
-        return
-      }
-      const ownerPosition = args.state.workbook.getCellPosition(cellIndex)
-      const axisIndex = axis === 'row' ? ownerPosition?.row : ownerPosition?.col
-      if (ownerSheetName === sheetName && axisIndex !== undefined && axisIndex >= start && axisIndex < start + count) {
-        return
-      }
-      const ownerPositionAffected = ownerSheetName === sheetName && axisIndex !== undefined && axisIndex >= start + count
-      const dependencyPositionAffected =
-        !ownerPositionAffected &&
-        formula.compiled.deps.some((dependency) =>
-          dependencyTouchesStructuralDeleteSpan(dependency, ownerSheetName, sheetName, axis, start),
-        )
-      const metadataSensitive =
-        formula.compiled.symbolicNames.length > 0 ||
-        formula.compiled.symbolicTables.length > 0 ||
-        formula.compiled.symbolicSpills.length > 0
-      if (!ownerPositionAffected && !dependencyPositionAffected && !metadataSensitive) {
-        return
-      }
-      captured.push({
-        sheetName: ownerSheetName,
-        row: ownerPosition?.row ?? 0,
-        col: ownerPosition?.col ?? 0,
-        formula: captureRuntimeFormulaSource(cellIndex, formula),
-      })
-    })
-    return captured
-  }
-
-  const captureFormulaCellStateForStructuralUndo = (sheetName: string, axis: 'row' | 'column', start: number, count: number): EngineOp[] =>
-    captureFormulaCellRecordsForStructuralUndo(sheetName, axis, start, count).map(structuralFormulaUndoRecordToOp)
-
-  const captureDeletedCellUndoRecord = (
-    cellIndex: number,
-    sheetName: string,
-    row: number,
-    col: number,
-  ): StructuralDeletedCellUndoRecord | undefined => {
-    const flags = args.state.workbook.cellStore.flags[cellIndex] ?? 0
-    if ((flags & (CellFlags.SpillChild | CellFlags.PivotOutput)) !== 0) {
-      return undefined
-    }
-    const explicitFormat = args.state.workbook.getCellFormat(cellIndex)
-    const formula = args.state.formulas.get(cellIndex)
-    if (formula) {
-      return {
-        kind: 'formula',
-        sheetName,
-        row,
-        col,
-        formula: captureRuntimeFormulaSource(cellIndex, formula),
-        ...(explicitFormat === undefined ? {} : { explicitFormat }),
-      }
-    }
-    const tag: ValueTag = (args.state.workbook.cellStore.tags[cellIndex] ?? ValueTag.Empty) as ValueTag
-    if (explicitFormat === undefined && (flags & CellFlags.AuthoredBlank) === 0 && (tag === ValueTag.Empty || tag === ValueTag.Error)) {
-      return undefined
-    }
-    switch (tag) {
-      case ValueTag.Number:
-        return {
-          kind: 'value',
-          sheetName,
-          row,
-          col,
-          value: args.state.workbook.cellStore.numbers[cellIndex] ?? 0,
-          ...(explicitFormat === undefined ? {} : { explicitFormat }),
-        }
-      case ValueTag.Boolean:
-        return {
-          kind: 'value',
-          sheetName,
-          row,
-          col,
-          value: (args.state.workbook.cellStore.numbers[cellIndex] ?? 0) !== 0,
-          ...(explicitFormat === undefined ? {} : { explicitFormat }),
-        }
-      case ValueTag.String: {
-        const snapshot = args.getCellByIndex(cellIndex)
-        if (explicitFormat === undefined) {
-          delete snapshot.format
-          delete snapshot.numberFormatId
-        } else {
-          snapshot.format = explicitFormat
-        }
-        return { kind: 'snapshot', sheetName, row, col, snapshot }
-      }
-      case ValueTag.Empty:
-      case ValueTag.Error:
-        return {
-          kind: 'blank',
-          sheetName,
-          row,
-          col,
-          restoreExplicitBlank: (args.state.workbook.cellStore.versions[cellIndex] ?? 0) !== 0 || (flags & CellFlags.AuthoredBlank) !== 0,
-          ...(explicitFormat === undefined ? {} : { explicitFormat }),
-        }
-    }
-    return undefined
-  }
-
-  const captureDeletedCellUndoRecordsForStructuralUndo = (
-    sheetName: string,
-    axis: 'row' | 'column',
-    start: number,
-    count: number,
-  ): StructuralDeletedCellUndoRecord[] => {
-    const sheet = args.state.workbook.getSheet(sheetName)
-    if (!sheet) {
-      return []
-    }
-    const axisIds = sheet.logicalAxisMap.snapshot(axis, start, count).map((entry) => entry.id)
-    const records: StructuralDeletedCellUndoRecord[] = []
-    sheet.logical.listResidentCellIndicesUnordered(axis, axisIds).forEach((cellIndex) => {
-      const position = args.state.workbook.getCellPosition(cellIndex)
-      if (!position) {
-        return
-      }
-      const axisIndex = axis === 'row' ? position.row : position.col
-      if (axisIndex < start || axisIndex >= start + count) {
-        return
-      }
-      const record = captureDeletedCellUndoRecord(cellIndex, sheetName, position.row, position.col)
-      if (record) {
-        records.push(record)
-      }
-    })
-    return records.toSorted((left, right) => left.row - right.row || left.col - right.col)
-  }
-
-  const structuralDeletedCellUndoRecordToOps = (record: StructuralDeletedCellUndoRecord): EngineOp[] => {
-    const address = formatAddress(record.row, record.col)
-    switch (record.kind) {
-      case 'formula':
-        return [
-          { kind: 'setCellFormula', sheetName: record.sheetName, address, formula: record.formula },
-          ...(record.explicitFormat === undefined
-            ? []
-            : [{ kind: 'setCellFormat' as const, sheetName: record.sheetName, address, format: record.explicitFormat }]),
-        ]
-      case 'value':
-        return [
-          { kind: 'setCellValue', sheetName: record.sheetName, address, value: record.value },
-          ...(record.explicitFormat === undefined
-            ? []
-            : [{ kind: 'setCellFormat' as const, sheetName: record.sheetName, address, format: record.explicitFormat }]),
-        ]
-      case 'snapshot':
-        return args.toCellStateOps(record.sheetName, address, record.snapshot)
-      case 'blank':
-        return [
-          record.restoreExplicitBlank
-            ? { kind: 'setCellValue', sheetName: record.sheetName, address, value: null }
-            : { kind: 'clearCell', sheetName: record.sheetName, address },
-          ...(record.explicitFormat === undefined
-            ? []
-            : [{ kind: 'setCellFormat' as const, sheetName: record.sheetName, address, format: record.explicitFormat }]),
-        ]
-    }
-  }
-
-  const createLazyStructuralDeleteInverseRecord = (
-    prefixOpsBeforeDeletedCells: readonly EngineOp[],
-    deletedCellRecords: readonly StructuralDeletedCellUndoRecord[],
-    prefixOpsAfterDeletedCells: readonly EngineOp[],
-    formulaRecords: readonly StructuralFormulaUndoRecord[],
-    potentialNewCells: number,
-  ): TransactionRecord => {
-    const record: { kind: 'ops'; ops: EngineOp[]; potentialNewCells?: number } = {
-      kind: 'ops',
-      get ops() {
-        if (cachedOps === undefined) {
-          if (deletedCellRecords.length > 0) {
-            addEngineCounter(args.state.counters, 'structuralUndoCapturedCells', deletedCellRecords.length)
-          }
-          cachedOps = [
-            ...prefixOpsBeforeDeletedCells,
-            ...deletedCellRecords.flatMap(structuralDeletedCellUndoRecordToOps),
-            ...prefixOpsAfterDeletedCells,
-            ...formulaRecords.map(structuralFormulaUndoRecordToOp),
-          ]
-        }
-        return cachedOps
-      },
-      potentialNewCells,
-    }
-    let cachedOps: EngineOp[] | undefined
-    return record
-  }
-
-  const buildStructuralDeleteInverseRecord = (op: Extract<EngineOp, { kind: 'deleteRows' | 'deleteColumns' }>): TransactionRecord => {
-    const axis = op.kind === 'deleteRows' ? 'row' : 'column'
-    const entries =
-      axis === 'row'
-        ? args.state.workbook.snapshotRowAxisEntries(op.sheetName, op.start, op.count)
-        : args.state.workbook.snapshotColumnAxisEntries(op.sheetName, op.start, op.count)
-    const transform = structuralTransformForOp(op)
-    const prefixOpsBeforeDeletedCells: EngineOp[] = [
-      ...clearStructuralSheetMetadataOps(op.sheetName, transform),
-      axis === 'row'
-        ? {
-            kind: 'insertRows',
-            sheetName: op.sheetName,
-            start: op.start,
-            count: op.count,
-            entries,
-          }
-        : {
-            kind: 'insertColumns',
-            sheetName: op.sheetName,
-            start: op.start,
-            count: op.count,
-            entries,
-          },
-      ...sheetMetadataToOps(args.state.workbook, op.sheetName, { includeAxisEntries: false }),
-    ]
-    const deletedCellRecords = captureDeletedCellUndoRecordsForStructuralUndo(op.sheetName, axis, op.start, op.count)
-    const prefixOpsAfterDeletedCells = captureStructuralWorkbookMetadataOps()
-    return createLazyStructuralDeleteInverseRecord(
-      prefixOpsBeforeDeletedCells,
-      deletedCellRecords,
-      prefixOpsAfterDeletedCells,
-      captureFormulaCellRecordsForStructuralUndo(op.sheetName, axis, op.start, op.count),
-      1,
-    )
   }
 
   const buildInverseRecord = (ops: readonly EngineOp[]): TransactionRecord => {
@@ -2110,14 +405,14 @@ export function createEngineMutationService(args: {
       options.returnUndoOps === false &&
       ops.length === 1 &&
       options.preparedCellAddressesByOpIndex === undefined &&
-      isStructuralInsertOp(ops[0]!)
+      isMutationStructuralInsertOp(ops[0]!)
     ) {
       const op = ops[0]
       applyForward(potentialNewCells === undefined ? { kind: 'single-op', op } : { kind: 'single-op', op, potentialNewCells })
       if (args.state.getTransactionReplayDepth() === 0) {
         args.state.undoStack.push({
           forward: createLazySingleOpTransactionRecord(canonicalizeStructuralInsertForwardOp(op), potentialNewCells),
-          inverse: createLazySingleOpTransactionRecord(inverseStructuralInsertOp(op)),
+          inverse: createLazySingleOpTransactionRecord(inverseMutationStructuralInsertOp(op)),
         })
         args.state.redoStack.length = 0
       }
@@ -2341,174 +636,6 @@ export function createEngineMutationService(args: {
     return result
   }
 
-  const tryExecuteRenderCommitCellMutationFastPath = (ops: readonly CommitOp[]): boolean => {
-    if (hasExternallyVisibleBatchRequirement()) {
-      return false
-    }
-
-    const createdSheetNames = collectLiveCreatedSheetNames(args.state.workbook.sheetsByName.keys(), ops)
-    const prefixOps: EngineOp[] = []
-    const cellMutations: RenderCommitCellMutation[] = []
-    let potentialNewCells = 0
-    let sawCellMutation = false
-
-    for (let index = 0; index < ops.length; index += 1) {
-      const op = ops[index]
-      if (!op) {
-        continue
-      }
-      switch (op.kind) {
-        case 'upsertWorkbook':
-          if (sawCellMutation) {
-            return false
-          }
-          if (op.name) {
-            prefixOps.push({ kind: 'upsertWorkbook', name: op.name })
-          }
-          break
-        case 'upsertSheet':
-          if (sawCellMutation) {
-            return false
-          }
-          if (op.name) {
-            prefixOps.push({ kind: 'upsertSheet', name: op.name, order: op.order ?? 0 })
-          }
-          break
-        case 'renameSheet':
-          if (sawCellMutation) {
-            return false
-          }
-          if (op.oldName && op.newName) {
-            prefixOps.push({
-              kind: 'renameSheet',
-              oldName: op.oldName,
-              newName: op.newName,
-            })
-          }
-          break
-        case 'deleteSheet':
-          if (sawCellMutation) {
-            return false
-          }
-          if (op.name) {
-            prefixOps.push({ kind: 'deleteSheet', name: op.name })
-          }
-          break
-        case 'upsertCell': {
-          if (!op.sheetName || !op.addr || op.format !== undefined) {
-            return false
-          }
-          const preparedCellAddress = parseCellAddress(op.addr, op.sheetName)
-          cellMutations.push({
-            sheetName: op.sheetName,
-            mutation:
-              op.formula !== undefined
-                ? { kind: 'setCellFormula', row: preparedCellAddress.row, col: preparedCellAddress.col, formula: op.formula }
-                : { kind: 'setCellValue', row: preparedCellAddress.row, col: preparedCellAddress.col, value: op.value ?? null },
-          })
-          potentialNewCells += 1
-          sawCellMutation = true
-          break
-        }
-        case 'deleteCell': {
-          if (!op.sheetName || !op.addr) {
-            return false
-          }
-          const preparedCellAddress = parseCellAddress(op.addr, op.sheetName)
-          cellMutations.push({
-            sheetName: op.sheetName,
-            mutation: { kind: 'clearCell', row: preparedCellAddress.row, col: preparedCellAddress.col },
-          })
-          sawCellMutation = true
-          break
-        }
-        default:
-          return false
-      }
-    }
-
-    if (cellMutations.length === 0) {
-      return false
-    }
-
-    const priorReplayDepth = args.state.getTransactionReplayDepth()
-    let prefixUndoOps: readonly EngineOp[] | null = null
-    let cellUndoOps: readonly EngineOp[] | null = null
-    args.state.setTransactionReplayDepth(priorReplayDepth + 1)
-    try {
-      if (prefixOps.length > 0) {
-        prefixUndoOps = executeLocalNowWithCustomApply(
-          prefixOps,
-          undefined,
-          (forward) => {
-            executeTransactionNow(forward, 'local')
-          },
-          { returnUndoOps: true, reuseForwardOps: true },
-        )
-      }
-
-      const refs: EngineCellMutationRef[] = Array.from({ length: cellMutations.length })
-      const sheetIdByName = new Map<string, number>()
-      const createdSheetMutationFlags = new Uint8Array(cellMutations.length)
-      let sawExistingSheetMutation = false
-      for (let index = 0; index < cellMutations.length; index += 1) {
-        const mutation = cellMutations[index]!
-        let sheetId = sheetIdByName.get(mutation.sheetName)
-        if (sheetId === undefined) {
-          const sheet = args.state.workbook.getSheet(mutation.sheetName)
-          if (!sheet) {
-            throw new Error(`Unknown sheet: ${mutation.sheetName}`)
-          }
-          sheetId = sheet.id
-          sheetIdByName.set(mutation.sheetName, sheetId)
-        }
-        const targetsCreatedSheet = createdSheetNames.has(mutation.sheetName)
-        createdSheetMutationFlags[index] = targetsCreatedSheet ? 1 : 0
-        sawExistingSheetMutation ||= !targetsCreatedSheet
-        refs[index] = {
-          sheetId,
-          mutation: mutation.mutation,
-        }
-      }
-
-      const inverseOps: EngineOp[] = []
-      if (sawExistingSheetMutation) {
-        for (let index = refs.length - 1; index >= 0; index -= 1) {
-          if (createdSheetMutationFlags[index] === 1) {
-            continue
-          }
-          inverseOps.push(restoreCellOpFromRef(refs[index]!))
-        }
-      }
-      cellUndoOps = inverseOps
-
-      applyCellMutationsAtNow(refs, {
-        captureUndo: false,
-        source: 'local',
-        potentialNewCells,
-        returnUndoOps: false,
-        reuseRefs: true,
-      })
-    } finally {
-      args.state.setTransactionReplayDepth(priorReplayDepth)
-    }
-
-    if (priorReplayDepth === 0) {
-      const inverseOps = [...(cellUndoOps ?? []), ...(prefixUndoOps ?? [])]
-      args.state.undoStack.push({
-        forward: createLazyRenderCommitTransactionRecord(prefixOps, cellMutations, potentialNewCells),
-        inverse: {
-          kind: 'ops',
-          ops: inverseOps,
-          potentialNewCells: inverseOps.length,
-        },
-      })
-      args.state.redoStack.length = 0
-    }
-
-    return true
-  }
-
   const applyCellMutationsAtNow = (
     refs: readonly EngineCellMutationRef[],
     options: {
@@ -2552,6 +679,52 @@ export function createEngineMutationService(args: {
     return null
   }
 
+  const executeLocalNowPublic = (
+    ops: EngineOp[],
+    potentialNewCells?: number,
+    options: { readonly returnUndoOps?: boolean } = {},
+  ): readonly EngineOp[] | null => {
+    if (!shouldCreateLocalBatch()) {
+      const refs = tryCellMutationRefsFromOps(ops)
+      if (refs !== null) {
+        return executeLocalCellMutationsAtNow(refs, potentialNewCells, {
+          returnUndoOps: options.returnUndoOps ?? true,
+          reuseRefs: true,
+        })
+      }
+    }
+    return executeLocalNowWithCustomApply(
+      ops,
+      potentialNewCells,
+      (forward) => {
+        executeTransactionNow(forward, 'local')
+      },
+      { returnUndoOps: options.returnUndoOps ?? true, reuseForwardOps: false },
+    )
+  }
+
+  const executeLocal = (
+    ops: EngineOp[],
+    potentialNewCells?: number,
+    options: { readonly returnUndoOps?: boolean } = {},
+  ): Effect.Effect<readonly EngineOp[] | null, EngineMutationError> =>
+    Effect.try({
+      try: () => executeLocalNowPublic(ops, potentialNewCells, options),
+      catch: (cause) =>
+        new EngineMutationError({
+          message: 'Failed to execute local transaction',
+          cause,
+        }),
+    })
+
+  const rangeOperations = createMutationRangeOperations({
+    workbook: args.state.workbook,
+    getCellByIndex: args.getCellByIndex,
+    readRangeCells: args.readRangeCells,
+    toCellStateOps: args.toCellStateOps,
+    executeLocal,
+  })
+
   return {
     executeTransactionNow: executeTransactionNow,
     executeTransaction(record, source) {
@@ -2566,25 +739,7 @@ export function createEngineMutationService(args: {
           }),
       })
     },
-    executeLocalNow(ops, potentialNewCells, options = {}) {
-      if (!shouldCreateLocalBatch()) {
-        const refs = tryCellMutationRefsFromOps(ops)
-        if (refs !== null) {
-          return executeLocalCellMutationsAtNow(refs, potentialNewCells, {
-            returnUndoOps: options.returnUndoOps ?? true,
-            reuseRefs: true,
-          })
-        }
-      }
-      return executeLocalNowWithCustomApply(
-        ops,
-        potentialNewCells,
-        (forward) => {
-          executeTransactionNow(forward, 'local')
-        },
-        { returnUndoOps: options.returnUndoOps ?? true, reuseForwardOps: false },
-      )
-    },
+    executeLocalNow: executeLocalNowPublic,
     executeLocalCellMutationsAtNow(refs, potentialNewCells) {
       return executeLocalCellMutationsAtNow(refs, potentialNewCells)
     },
@@ -2604,16 +759,7 @@ export function createEngineMutationService(args: {
           }),
       })
     },
-    executeLocal(ops, potentialNewCells, options = {}) {
-      return Effect.try({
-        try: () => this.executeLocalNow(ops, potentialNewCells, options),
-        catch: (cause) =>
-          new EngineMutationError({
-            message: 'Failed to execute local transaction',
-            cause,
-          }),
-      })
-    },
+    executeLocal,
     applyOpsNow(ops, options = {}) {
       const nextOps = options.trusted ? Array.from(ops) : structuredClone([...ops])
       if (nextOps.length === 0) {
@@ -2669,395 +815,31 @@ export function createEngineMutationService(args: {
           }),
       })
     },
-    setRangeValues(range, values) {
-      return Effect.try({
-        try: () => {
-          const bounds = normalizeRange(range)
-          const expectedHeight = bounds.endRow - bounds.startRow + 1
-          const expectedWidth = bounds.endCol - bounds.startCol + 1
-          if (values.length !== expectedHeight || values.some((row) => row.length !== expectedWidth)) {
-            throw new Error('setRangeValues requires a value matrix that exactly matches the target range')
-          }
-
-          const ops: EngineOp[] = []
-          for (let rowOffset = 0; rowOffset < expectedHeight; rowOffset += 1) {
-            for (let colOffset = 0; colOffset < expectedWidth; colOffset += 1) {
-              const address = formatAddress(bounds.startRow + rowOffset, bounds.startCol + colOffset)
-              const current = readStoredCellState(range.sheetName, address)
-              const nextValue = values[rowOffset]![colOffset] ?? null
-              if (current.formula === undefined && current.value === nextValue) {
-                continue
-              }
-              ops.push({
-                kind: 'setCellValue',
-                sheetName: range.sheetName,
-                address,
-                value: nextValue,
-              })
-            }
-          }
-          if (ops.length === 0) {
-            return
-          }
-          Effect.runSync(this.executeLocal(ops, ops.length))
-        },
-        catch: (cause) =>
-          new EngineMutationError({
-            message: mutationErrorMessage('Failed to set range values', cause),
-            cause,
-          }),
-      })
-    },
-    setRangeFormulas(range, formulas) {
-      return Effect.try({
-        try: () => {
-          const bounds = normalizeRange(range)
-          const expectedHeight = bounds.endRow - bounds.startRow + 1
-          const expectedWidth = bounds.endCol - bounds.startCol + 1
-          if (formulas.length !== expectedHeight || formulas.some((row) => row.length !== expectedWidth)) {
-            throw new Error('setRangeFormulas requires a formula matrix that exactly matches the target range')
-          }
-
-          const opCount = expectedHeight * expectedWidth
-          const ops = Array.from<EngineOp>({ length: opCount })
-          let opIndex = 0
-          for (let rowOffset = 0; rowOffset < expectedHeight; rowOffset += 1) {
-            for (let colOffset = 0; colOffset < expectedWidth; colOffset += 1) {
-              ops[opIndex] = {
-                kind: 'setCellFormula',
-                sheetName: range.sheetName,
-                address: formatAddress(bounds.startRow + rowOffset, bounds.startCol + colOffset),
-                formula: formulas[rowOffset]![colOffset] ?? '',
-              }
-              opIndex += 1
-            }
-          }
-          Effect.runSync(this.executeLocal(ops, opCount))
-        },
-        catch: (cause) =>
-          new EngineMutationError({
-            message: mutationErrorMessage('Failed to set range formulas', cause),
-            cause,
-          }),
-      })
-    },
-    clearRange(range) {
-      return Effect.try({
-        try: () => {
-          const bounds = normalizeRange(range)
-          const ops: EngineOp[] = []
-          for (let row = bounds.startRow; row <= bounds.endRow; row += 1) {
-            for (let col = bounds.startCol; col <= bounds.endCol; col += 1) {
-              const address = formatAddress(row, col)
-              if (!hasStoredCellContent(range.sheetName, address)) {
-                continue
-              }
-              ops.push({
-                kind: 'clearCell',
-                sheetName: range.sheetName,
-                address,
-              })
-            }
-          }
-          if (ops.length === 0) {
-            return
-          }
-          Effect.runSync(this.executeLocal(ops, ops.length))
-        },
-        catch: (cause) =>
-          new EngineMutationError({
-            message: mutationErrorMessage('Failed to clear range', cause),
-            cause,
-          }),
-      })
-    },
-    fillRange(source, target) {
-      return Effect.try({
-        try: () => {
-          const sourceMatrix = args.readRangeCells(source)
-          const targetBounds = normalizeRange(target)
-          const sourceBounds = normalizeRange(source)
-          const sourceHeight = sourceMatrix.length
-          const sourceWidth = sourceMatrix[0]?.length ?? 0
-          if (sourceHeight === 0 || sourceWidth === 0) {
-            return
-          }
-
-          const ops: EngineOp[] = []
-          for (let row = targetBounds.startRow; row <= targetBounds.endRow; row += 1) {
-            for (let col = targetBounds.startCol; col <= targetBounds.endCol; col += 1) {
-              const sourceRowOffset = (row - targetBounds.startRow) % sourceHeight
-              const sourceColOffset = (col - targetBounds.startCol) % sourceWidth
-              const sourceCell = getMatrixCell(sourceMatrix, sourceRowOffset, sourceColOffset)
-              const sourceAddress = formatAddress(sourceBounds.startRow + sourceRowOffset, sourceBounds.startCol + sourceColOffset)
-              const nextAddress = formatAddress(row, col)
-              if (!shouldApplyCellState(target.sheetName, nextAddress, sourceCell, source.sheetName, sourceAddress)) {
-                continue
-              }
-              ops.push(...args.toCellStateOps(target.sheetName, nextAddress, sourceCell, source.sheetName, sourceAddress))
-            }
-          }
-          if (ops.length === 0) {
-            return
-          }
-          Effect.runSync(this.executeLocal(ops, ops.length))
-        },
-        catch: (cause) =>
-          new EngineMutationError({
-            message: mutationErrorMessage('Failed to fill range', cause),
-            cause,
-          }),
-      })
-    },
-    copyRange(source, target) {
-      return Effect.try({
-        try: () => {
-          const sourceMatrix = args.readRangeCells(source)
-          const targetBounds = normalizeRange(target)
-          const sourceBounds = normalizeRange(source)
-          const sourceHeight = sourceBounds.endRow - sourceBounds.startRow + 1
-          const sourceWidth = sourceBounds.endCol - sourceBounds.startCol + 1
-          const targetHeight = targetBounds.endRow - targetBounds.startRow + 1
-          const targetWidth = targetBounds.endCol - targetBounds.startCol + 1
-          if (sourceHeight !== targetHeight || sourceWidth !== targetWidth) {
-            throw new Error('copyRange requires source and target dimensions to match exactly')
-          }
-
-          const ops: EngineOp[] = []
-          for (let rowOffset = 0; rowOffset < targetHeight; rowOffset += 1) {
-            for (let colOffset = 0; colOffset < targetWidth; colOffset += 1) {
-              const nextAddress = formatAddress(targetBounds.startRow + rowOffset, targetBounds.startCol + colOffset)
-              const sourceAddress = formatAddress(sourceBounds.startRow + rowOffset, sourceBounds.startCol + colOffset)
-              const sourceCell = getMatrixCell(sourceMatrix, rowOffset, colOffset)
-              if (!shouldApplyCellState(target.sheetName, nextAddress, sourceCell, source.sheetName, sourceAddress)) {
-                continue
-              }
-              ops.push(...args.toCellStateOps(target.sheetName, nextAddress, sourceCell, source.sheetName, sourceAddress))
-            }
-          }
-          if (ops.length === 0) {
-            return
-          }
-          Effect.runSync(this.executeLocal(ops, ops.length))
-        },
-        catch: (cause) =>
-          new EngineMutationError({
-            message: mutationErrorMessage('Failed to copy range', cause),
-            cause,
-          }),
-      })
-    },
-    moveRange(source, target) {
-      return Effect.try({
-        try: () => {
-          const sourceMatrix = args.readRangeCells(source)
-          const targetBounds = normalizeRange(target)
-          const sourceBounds = normalizeRange(source)
-          const sourceHeight = sourceBounds.endRow - sourceBounds.startRow + 1
-          const sourceWidth = sourceBounds.endCol - sourceBounds.startCol + 1
-          const targetHeight = targetBounds.endRow - targetBounds.startRow + 1
-          const targetWidth = targetBounds.endCol - targetBounds.startCol + 1
-          if (sourceHeight !== targetHeight || sourceWidth !== targetWidth) {
-            throw new Error('moveRange requires source and target dimensions to match exactly')
-          }
-          if (
-            source.sheetName === target.sheetName &&
-            sourceBounds.startRow === targetBounds.startRow &&
-            sourceBounds.endRow === targetBounds.endRow &&
-            sourceBounds.startCol === targetBounds.startCol &&
-            sourceBounds.endCol === targetBounds.endCol
-          ) {
-            return
-          }
-
-          const ops: EngineOp[] = []
-          for (let row = sourceBounds.startRow; row <= sourceBounds.endRow; row += 1) {
-            for (let col = sourceBounds.startCol; col <= sourceBounds.endCol; col += 1) {
-              const address = formatAddress(row, col)
-              if (!hasStoredCellState(source.sheetName, address)) {
-                continue
-              }
-              ops.push({
-                kind: 'clearCell',
-                sheetName: source.sheetName,
-                address,
-              })
-            }
-          }
-          for (let rowOffset = 0; rowOffset < targetHeight; rowOffset += 1) {
-            for (let colOffset = 0; colOffset < targetWidth; colOffset += 1) {
-              const nextAddress = formatAddress(targetBounds.startRow + rowOffset, targetBounds.startCol + colOffset)
-              const sourceAddress = formatAddress(sourceBounds.startRow + rowOffset, sourceBounds.startCol + colOffset)
-              const sourceCell = getMatrixCell(sourceMatrix, rowOffset, colOffset)
-              if (!shouldApplyCellState(target.sheetName, nextAddress, sourceCell, source.sheetName, sourceAddress)) {
-                continue
-              }
-              ops.push(...args.toCellStateOps(target.sheetName, nextAddress, sourceCell, source.sheetName, sourceAddress))
-            }
-          }
-          if (ops.length === 0) {
-            return
-          }
-          Effect.runSync(this.executeLocal(ops, ops.length))
-        },
-        catch: (cause) =>
-          new EngineMutationError({
-            message: mutationErrorMessage('Failed to move range', cause),
-            cause,
-          }),
-      })
-    },
-    importSheetCsv(sheetName, csv) {
-      return Effect.try({
-        try: () => {
-          const rows = parseCsv(csv)
-          const existingSheet = args.state.workbook.getSheet(sheetName)
-          const order = existingSheet?.order ?? args.state.workbook.sheetsByName.size
-          const ops: EngineOp[] = []
-          let potentialNewCells = 0
-
-          if (existingSheet) {
-            ops.push({ kind: 'deleteSheet', name: sheetName })
-          }
-          ops.push({ kind: 'upsertSheet', name: sheetName, order })
-
-          rows.forEach((row, rowIndex) => {
-            row.forEach((raw, colIndex) => {
-              const parsed = parseCsvCellInput(raw)
-              if (!parsed) {
-                return
-              }
-              const address = formatAddress(rowIndex, colIndex)
-              if (parsed.formula !== undefined) {
-                ops.push({ kind: 'setCellFormula', sheetName, address, formula: parsed.formula })
-                potentialNewCells += 1
-                return
-              }
-              ops.push({ kind: 'setCellValue', sheetName, address, value: parsed.value ?? null })
-              potentialNewCells += 1
-            })
-          })
-
-          Effect.runSync(this.executeLocal(ops, potentialNewCells))
-        },
-        catch: (cause) =>
-          new EngineMutationError({
-            message: mutationErrorMessage('Failed to import sheet CSV', cause),
-            cause,
-          }),
-      })
-    },
+    setRangeValues: rangeOperations.setRangeValues,
+    setRangeFormulas: rangeOperations.setRangeFormulas,
+    clearRange: rangeOperations.clearRange,
+    fillRange: rangeOperations.fillRange,
+    copyRange: rangeOperations.copyRange,
+    moveRange: rangeOperations.moveRange,
+    importSheetCsv: rangeOperations.importSheetCsv,
     renderCommit(ops) {
       return Effect.flatMap(
         Effect.try({
           try: () => {
-            if (tryExecuteRenderCommitCellMutationFastPath(ops)) {
+            if (
+              tryExecuteMutationRenderCommitFastPath({
+                state: args.state,
+                ops,
+                hasExternallyVisibleBatchRequirement,
+                restoreCellOpFromRef,
+                executeLocalNowWithCustomApply,
+                executeTransactionNow,
+                applyCellMutationsAtNow,
+              })
+            ) {
               return null
             }
-            const maxEngineOpCount = ops.length * 2
-            const engineOps: EngineOp[] = []
-            engineOps.length = maxEngineOpCount
-            const preparedCellAddressesByOpIndex: Array<PreparedCellAddress | null> = []
-            preparedCellAddressesByOpIndex.length = maxEngineOpCount
-            let engineOpCount = 0
-            let potentialNewCells = 0
-            const pushEngineOp = (engineOp: EngineOp, preparedCellAddress: PreparedCellAddress | null = null): void => {
-              engineOps[engineOpCount] = engineOp
-              preparedCellAddressesByOpIndex[engineOpCount] = preparedCellAddress
-              engineOpCount += 1
-            }
-            for (let index = 0; index < ops.length; index += 1) {
-              const op = ops[index]
-              if (!op) {
-                continue
-              }
-              switch (op.kind) {
-                case 'upsertWorkbook':
-                  if (op.name) {
-                    pushEngineOp({ kind: 'upsertWorkbook', name: op.name })
-                  }
-                  break
-                case 'upsertSheet':
-                  if (op.name) {
-                    pushEngineOp({ kind: 'upsertSheet', name: op.name, order: op.order ?? 0 })
-                  }
-                  break
-                case 'renameSheet':
-                  if (op.oldName && op.newName) {
-                    pushEngineOp({
-                      kind: 'renameSheet',
-                      oldName: op.oldName,
-                      newName: op.newName,
-                    })
-                  }
-                  break
-                case 'deleteSheet':
-                  if (op.name) {
-                    pushEngineOp({ kind: 'deleteSheet', name: op.name })
-                  }
-                  break
-                case 'upsertCell': {
-                  if (!op.sheetName || !op.addr) {
-                    break
-                  }
-                  const preparedCellAddress = parseCellAddress(op.addr, op.sheetName)
-                  if (op.formula !== undefined) {
-                    pushEngineOp(
-                      {
-                        kind: 'setCellFormula',
-                        sheetName: op.sheetName,
-                        address: op.addr,
-                        formula: op.formula,
-                      },
-                      { row: preparedCellAddress.row, col: preparedCellAddress.col },
-                    )
-                  } else {
-                    pushEngineOp(
-                      {
-                        kind: 'setCellValue',
-                        sheetName: op.sheetName,
-                        address: op.addr,
-                        value: op.value ?? null,
-                      },
-                      { row: preparedCellAddress.row, col: preparedCellAddress.col },
-                    )
-                  }
-                  potentialNewCells += 1
-                  if (op.format !== undefined) {
-                    pushEngineOp({
-                      kind: 'setCellFormat',
-                      sheetName: op.sheetName,
-                      address: op.addr,
-                      format: op.format,
-                    })
-                  }
-                  break
-                }
-                case 'deleteCell': {
-                  if (op.sheetName && op.addr) {
-                    const preparedCellAddress = parseCellAddress(op.addr, op.sheetName)
-                    pushEngineOp(
-                      {
-                        kind: 'clearCell',
-                        sheetName: op.sheetName,
-                        address: op.addr,
-                      },
-                      { row: preparedCellAddress.row, col: preparedCellAddress.col },
-                    )
-                    pushEngineOp({
-                      kind: 'setCellFormat',
-                      sheetName: op.sheetName,
-                      address: op.addr,
-                      format: null,
-                    })
-                  }
-                  break
-                }
-              }
-            }
-            engineOps.length = engineOpCount
-            preparedCellAddressesByOpIndex.length = engineOpCount
-            return { engineOps, potentialNewCells, preparedCellAddressesByOpIndex }
+            return normalizeRenderCommitOps(ops)
           },
           catch: (cause) =>
             new EngineMutationError({

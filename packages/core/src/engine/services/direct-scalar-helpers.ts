@@ -90,6 +90,30 @@ function readDirectScalarOperandNumber(
   }
 }
 
+function readDirectScalarOperandReplacementNumber(
+  operand: RuntimeDirectScalarOperand,
+  primaryCellIndex: number,
+  primaryNumber: number,
+  secondaryCellIndex: number | undefined,
+  secondaryNumber: number | undefined,
+  readCellNumber: DirectScalarNumberReader,
+): number | undefined {
+  switch (operand.kind) {
+    case 'literal-number':
+      return operand.value
+    case 'error':
+      return undefined
+    case 'cell':
+      if (operand.cellIndex === primaryCellIndex) {
+        return primaryNumber
+      }
+      if (secondaryCellIndex !== undefined && operand.cellIndex === secondaryCellIndex) {
+        return secondaryNumber
+      }
+      return readCellNumber(operand.cellIndex)
+  }
+}
+
 export function evaluateDirectScalarNumber(
   directScalar: RuntimeDirectScalarDescriptor,
   changedCellIndex: number,
@@ -103,6 +127,65 @@ export function evaluateDirectScalarNumber(
   }
   const left = readDirectScalarOperandNumber(directScalar.left, changedCellIndex, replacementNumber, touched, readCellNumber)
   const right = readDirectScalarOperandNumber(directScalar.right, changedCellIndex, replacementNumber, touched, readCellNumber)
+  if (left === undefined || right === undefined) {
+    return undefined
+  }
+  let result: number
+  switch (directScalar.operator) {
+    case '+':
+      result = left + right
+      break
+    case '-':
+      result = left - right
+      break
+    case '*':
+      result = left * right
+      break
+    case '/':
+      if (right === 0) {
+        return undefined
+      }
+      result = left / right
+      break
+  }
+  return result + (directScalar.resultOffset ?? 0)
+}
+
+export function evaluateDirectScalarWithReplacementNumbers(
+  directScalar: RuntimeDirectScalarDescriptor,
+  primaryCellIndex: number,
+  primaryNumber: number,
+  readCellNumber: DirectScalarNumberReader,
+  secondaryCellIndex?: number,
+  secondaryNumber?: number,
+): number | undefined {
+  if (directScalar.kind === 'abs') {
+    const operand = readDirectScalarOperandReplacementNumber(
+      directScalar.operand,
+      primaryCellIndex,
+      primaryNumber,
+      secondaryCellIndex,
+      secondaryNumber,
+      readCellNumber,
+    )
+    return operand === undefined ? undefined : Math.abs(operand)
+  }
+  const left = readDirectScalarOperandReplacementNumber(
+    directScalar.left,
+    primaryCellIndex,
+    primaryNumber,
+    secondaryCellIndex,
+    secondaryNumber,
+    readCellNumber,
+  )
+  const right = readDirectScalarOperandReplacementNumber(
+    directScalar.right,
+    primaryCellIndex,
+    primaryNumber,
+    secondaryCellIndex,
+    secondaryNumber,
+    readCellNumber,
+  )
   if (left === undefined || right === undefined) {
     return undefined
   }

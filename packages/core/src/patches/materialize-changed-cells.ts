@@ -64,7 +64,7 @@ function readChangedCell(args: MaterializeChangedCellsArgs, cellIndex: number, f
   }
 }
 
-export function materializeChangedCellPatches(
+function materializeChangedCellPatches(
   args: MaterializeChangedCellsArgs,
   changedCellIndices: readonly number[] | Uint32Array,
 ): readonly EngineCellPatch[] {
