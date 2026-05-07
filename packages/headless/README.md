@@ -94,6 +94,8 @@ Repository:
 - Website: <https://proompteng.github.io/bilig/>
 - GitHub: <https://github.com/proompteng/bilig>
 - Star or bookmark: <https://github.com/proompteng/bilig/stargazers>
+- Feedback discussion:
+  <https://github.com/proompteng/bilig/discussions/115>
 - Good first issues:
   <https://github.com/proompteng/bilig/blob/main/docs/starter-issues.md>
 - npm: <https://www.npmjs.com/package/@bilig/headless>

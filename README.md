@@ -536,8 +536,8 @@ contributions are usually:
 
 The shortest public on-ramp is the
 [`starter issues`](docs/starter-issues.md) queue. Current starter issues are
-scoped around WorkPaper recipes, benchmark
-walkthroughs, and agent/tooling docs.
+scoped around import/export fidelity, formula parity, and reduced workbook
+fixtures.
 
 Please keep changes small, tested, and tied to the package that owns the
 behavior.
