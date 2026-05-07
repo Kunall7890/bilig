@@ -48,6 +48,8 @@ Shorter version:
   [`docs/building-a-revenue-model-with-headless-workpaper.md`](building-a-revenue-model-with-headless-workpaper.md)
 - Compatibility boundaries:
   [`docs/where-bilig-is-not-excel-compatible-yet.md`](where-bilig-is-not-excel-compatible-yet.md)
+- XLSX corpus verifier walkthrough:
+  [`docs/xlsx-corpus-verifier-walkthrough.md`](xlsx-corpus-verifier-walkthrough.md)
 - GitHub stars growth plan:
   [`docs/github-stars-growth-plan.md`](github-stars-growth-plan.md)
 - Launch post draft:

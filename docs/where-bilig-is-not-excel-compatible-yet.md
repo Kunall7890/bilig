@@ -91,6 +91,9 @@ cells against cached workbook results where that comparison is meaningful.
 Missing cached results and volatile or environment-dependent formulas such as
 `NOW()` and `CELL()` are counted as skipped, not as proof of parity.
 
+For a concrete report walkthrough, see
+[`docs/xlsx-corpus-verifier-walkthrough.md`](xlsx-corpus-verifier-walkthrough.md).
+
 ### UI dominance claims
 
 The local browser grid and WorkPaper headless engine are different surfaces.

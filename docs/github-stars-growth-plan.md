@@ -35,6 +35,7 @@ Verified on 2026-05-07:
   - `docs/what-workpaper-benchmark-proves.md`
   - `docs/building-a-revenue-model-with-headless-workpaper.md`
   - `docs/where-bilig-is-not-excel-compatible-yet.md`
+  - `docs/xlsx-corpus-verifier-walkthrough.md`
   - `examples/headless-workpaper/revenue-scenarios.mjs`
   - `docs/starter-issues.md`
   - `docs/assets/github-social-preview.png`
@@ -290,13 +291,15 @@ audience, or product friction.
 
 ## Immediate Next Actions
 
-1. Post one lower-case X update for the compatibility-boundaries article.
+1. Post one lower-case X update for the compatibility-boundaries article and
+   XLSX verifier walkthrough.
 2. Manually reply to at most `2` high-fit X posts per day. Start with the idea;
    add a link only when it materially helps the thread.
 3. Respond to serious Hacker News and GitHub Discussion comments within the same
    day, then convert repeated feedback into docs or examples.
-4. Ship the next proof artifact: a small XLSX corpus walkthrough that shows how
-   skipped, matched, and mismatched cached formula results are reported.
+4. Ship the next proof artifact: a compact formula-edge fixture article that
+   starts from one real formula family and shows the fixture, expected result,
+   and verifier command.
 5. Track GitHub stars, npm downloads, GitHub traffic referrers, and issue
    quality every week.
 6. Add a Star History chart only after there is enough organic movement for the

@@ -162,6 +162,9 @@ For the current Excel-compatibility boundaries, see
 It names the macro, formula, XLSX corpus, and UI-claim gaps without treating
 the project as a complete Excel clone.
 
+For a short guide to interpreting XLSX cached-result corpus reports, see
+[`docs/xlsx-corpus-verifier-walkthrough.md`](docs/xlsx-corpus-verifier-walkthrough.md).
+
 For the researched public-growth plan toward `1000` legitimate GitHub stars,
 see [`docs/github-stars-growth-plan.md`](docs/github-stars-growth-plan.md).
 
