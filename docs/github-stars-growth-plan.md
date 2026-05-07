@@ -114,6 +114,11 @@ Verified on 2026-05-07 after the Show HN launch and topic refresh:
   already used in public positioning: `ai-spreadsheet`, `spreadsheet-api`,
   `formula-evaluation`, `headless-workbook`, `node-spreadsheet`,
   `spreadsheet-formulas`, `workbook-automation`, and `workbook-state`.
+- Posted one lower-case X update for the live XLSX verifier walkthrough:
+  <https://x.com/GregKonush/status/2052480928975651307>. The post linked the
+  GitHub Pages walkthrough and framed "Excel compatible" claims as
+  fixture-scoped evidence: workbook files, cached formula results, skips,
+  mismatches, and a rerunnable verifier command.
 
 ## Research Findings
 
