@@ -1,11 +1,10 @@
 import {
-  CSV_CONTENT_TYPE,
-  XLSX_CONTENT_TYPE,
   type AgentFrame,
   type AgentRequest,
   type AgentResponse,
   type LoadWorkbookFileRequest,
   type WorkbookLoadedResponse,
+  normalizeWorkbookImportContentType,
 } from '@bilig/agent-api'
 import { importWorkbookFile, type ImportedWorkbook } from '@bilig/excel-import'
 import { buildBrowserUrl, createImportedDocumentId, decodeWorkbookBase64, normalizeBaseUrl } from './session-shared.js'
@@ -64,7 +63,8 @@ export function prepareWorkbookLoad(
   context: AgentFrameContext,
   options: WorkbookLoadPreparationOptions = {},
 ): PreparedWorkbookLoad {
-  if (request.contentType !== XLSX_CONTENT_TYPE && request.contentType !== CSV_CONTENT_TYPE) {
+  const contentType = normalizeWorkbookImportContentType(request.contentType)
+  if (!contentType) {
     throw new Error('Unsupported workbook upload content type')
   }
   if (request.openMode === 'replace' && !request.documentId) {
@@ -77,8 +77,8 @@ export function prepareWorkbookLoad(
     throw new Error(`Workbook upload exceeds ${maxImportBytes} bytes`)
   }
 
-  const imported = importWorkbookFile(bytes, request.fileName, request.contentType)
-  const documentId = request.documentId ?? createImportedDocumentId(request.contentType)
+  const imported = importWorkbookFile(bytes, request.fileName, contentType)
+  const documentId = request.documentId ?? createImportedDocumentId(contentType)
   const sessionId = normalizeSessionId(documentId, request.replicaId)
   const serverUrl = normalizeBaseUrl(context.serverUrl ?? options.publicServerUrl ?? options.defaultServerUrl ?? 'http://127.0.0.1:4321')
   const browserUrl = buildBrowserUrl(context.browserAppBaseUrl ?? options.browserAppBaseUrl, serverUrl, documentId)

@@ -43,6 +43,14 @@ export const CSV_CONTENT_TYPE = 'text/csv'
 export const WORKBOOK_IMPORT_CONTENT_TYPES = [XLSX_CONTENT_TYPE, CSV_CONTENT_TYPE] as const
 export type WorkbookImportContentType = (typeof WORKBOOK_IMPORT_CONTENT_TYPES)[number]
 
+export function normalizeWorkbookImportContentType(contentType: string): WorkbookImportContentType | null {
+  const mediaType = contentType.split(';', 1)[0]?.trim().toLowerCase() ?? ''
+  if (mediaType === XLSX_CONTENT_TYPE || mediaType === CSV_CONTENT_TYPE) {
+    return mediaType
+  }
+  return null
+}
+
 const PREVIEW_ROW_LIMIT = 8
 const PREVIEW_COLUMN_LIMIT = 6
 const largeWorkbookXmlStyleCellMapThreshold = 100_000
@@ -969,15 +977,12 @@ export function importCsv(text: string, fileName: string): ImportedWorkbook {
   }
 }
 
-export function importWorkbookFile(
-  bytes: Uint8Array | ArrayBuffer,
-  fileName: string,
-  contentType: WorkbookImportContentType,
-): ImportedWorkbook {
-  if (contentType === XLSX_CONTENT_TYPE) {
+export function importWorkbookFile(bytes: Uint8Array | ArrayBuffer, fileName: string, contentType: string): ImportedWorkbook {
+  const normalizedContentType = normalizeWorkbookImportContentType(contentType)
+  if (normalizedContentType === XLSX_CONTENT_TYPE) {
     return importXlsx(bytes, fileName)
   }
-  if (contentType === CSV_CONTENT_TYPE) {
+  if (normalizedContentType === CSV_CONTENT_TYPE) {
     const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)
     return importCsv(new TextDecoder().decode(data), fileName)
   }

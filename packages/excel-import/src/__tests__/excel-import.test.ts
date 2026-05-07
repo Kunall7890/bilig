@@ -14,7 +14,15 @@ import type {
   WorkbookTableSnapshot,
 } from '@bilig/protocol'
 import { SpreadsheetEngine } from '@bilig/core'
-import { CSV_CONTENT_TYPE, exportXlsx, importCsv, importWorkbookFile, importXlsx, readImportedXlsxCellStyle } from '../index.js'
+import {
+  CSV_CONTENT_TYPE,
+  XLSX_CONTENT_TYPE,
+  exportXlsx,
+  importCsv,
+  importWorkbookFile,
+  importXlsx,
+  readImportedXlsxCellStyle,
+} from '../index.js'
 
 function buildWorkbook(): Uint8Array {
   const workbook = XLSX.utils.book_new()
@@ -593,6 +601,24 @@ describe('excel import', () => {
 
     expect(imported.workbookName).toBe('dispatch')
     expect(imported.sheetNames).toEqual(['dispatch'])
+  })
+
+  it('normalizes workbook import content type parameters and case before dispatching', () => {
+    const csvBytes = new TextEncoder().encode('A,B\n1,2')
+    const csvVariants = [' text/csv; charset=utf-8 ', 'TEXT/CSV']
+    for (const contentType of csvVariants) {
+      const imported = importWorkbookFile(csvBytes, 'dispatch.csv', contentType)
+      expect(imported.preview.contentType).toBe(CSV_CONTENT_TYPE)
+      expect(imported.sheetNames).toEqual(['dispatch'])
+    }
+
+    const xlsxBytes = buildWorkbook()
+    const xlsxVariants = [`${XLSX_CONTENT_TYPE}; charset=binary`, XLSX_CONTENT_TYPE.toUpperCase()]
+    for (const contentType of xlsxVariants) {
+      const imported = importWorkbookFile(xlsxBytes, 'dispatch.xlsx', contentType)
+      expect(imported.preview.contentType).toBe(XLSX_CONTENT_TYPE)
+      expect(imported.sheetNames).toEqual(['Sheet1', 'Sheet2'])
+    }
   })
 
   it('bounds whole-column defined names to the imported sheet extent', () => {

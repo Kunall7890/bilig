@@ -3,6 +3,7 @@ import {
   XLSX_CONTENT_TYPE,
   decodeAgentFrame,
   encodeAgentFrame,
+  normalizeWorkbookImportContentType,
   type WorkbookImportContentType,
   type WorkbookLoadedResponse,
 } from '@bilig/agent-api'
@@ -83,7 +84,7 @@ async function readErrorMessage(response: Response): Promise<string> {
 }
 
 export function resolveWorkbookImportContentType(file: Pick<File, 'name' | 'type'>): WorkbookImportContentType | null {
-  const normalizedType = file.type.trim().toLowerCase()
+  const normalizedType = normalizeWorkbookImportContentType(file.type)
   const normalizedName = file.name.trim().toLowerCase()
   if (normalizedType === XLSX_CONTENT_TYPE || normalizedName.endsWith('.xlsx')) {
     return XLSX_CONTENT_TYPE

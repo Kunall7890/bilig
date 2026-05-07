@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { AgentFrame } from '@bilig/agent-api'
-import { routeAgentFrame } from './agent-routing.js'
+import { CSV_CONTENT_TYPE, type AgentFrame } from '@bilig/agent-api'
+import { prepareWorkbookLoad, routeAgentFrame } from './agent-routing.js'
 
 describe('routeAgentFrame', () => {
   it('rejects non-request frames with a shared invalid-frame response', async () => {
@@ -100,5 +100,26 @@ describe('routeAgentFrame', () => {
       kind: 'response',
       response: { kind: 'ok', id: 'open-1', sessionId: 'doc-1:replica-1' },
     })
+  })
+})
+
+describe('prepareWorkbookLoad', () => {
+  it('normalizes workbook upload content type metadata before import', () => {
+    const prepared = prepareWorkbookLoad(
+      {
+        kind: 'loadWorkbookFile',
+        id: 'upload-1',
+        replicaId: 'agent-local',
+        openMode: 'create',
+        fileName: 'upload.csv',
+        contentType: ' TEXT/CSV; charset=utf-8 ',
+        bytesBase64: Buffer.from('A,B\n1,2').toString('base64'),
+      },
+      {},
+    )
+
+    expect(prepared.imported.preview.contentType).toBe(CSV_CONTENT_TYPE)
+    expect(prepared.imported.sheetNames).toEqual(['upload'])
+    expect(prepared.documentId).toMatch(/^csv:/)
   })
 })

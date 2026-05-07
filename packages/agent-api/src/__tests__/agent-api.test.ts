@@ -6,6 +6,7 @@ import {
   decodeStdioMessages,
   encodeAgentFrame,
   encodeStdioMessage,
+  normalizeWorkbookImportContentType,
   XLSX_CONTENT_TYPE,
 } from '../index.js'
 
@@ -79,6 +80,20 @@ describe('agent api', () => {
     }
     expect(decodeAgentFrame(encodeAgentFrame(csvRequestFrame))).toEqual(csvRequestFrame)
 
+    const csvRequestFrameWithUploadMetadata = {
+      kind: 'request' as const,
+      request: {
+        kind: 'loadWorkbookFile' as const,
+        id: 'upload-3',
+        replicaId: 'agent-local',
+        openMode: 'create' as const,
+        fileName: 'report.csv',
+        contentType: 'TEXT/CSV; charset=utf-8',
+        bytesBase64: 'QUJD',
+      },
+    }
+    expect(decodeAgentFrame(encodeAgentFrame(csvRequestFrameWithUploadMetadata))).toEqual(csvRequestFrameWithUploadMetadata)
+
     const responseFrame = {
       kind: 'response' as const,
       response: {
@@ -94,5 +109,13 @@ describe('agent api', () => {
       },
     }
     expect(decodeAgentFrame(encodeAgentFrame(responseFrame))).toEqual(responseFrame)
+  })
+
+  it('normalizes workbook import content types from upload metadata', () => {
+    expect(normalizeWorkbookImportContentType(' text/csv; charset=utf-8 ')).toBe(CSV_CONTENT_TYPE)
+    expect(normalizeWorkbookImportContentType('TEXT/CSV')).toBe(CSV_CONTENT_TYPE)
+    expect(normalizeWorkbookImportContentType(`${XLSX_CONTENT_TYPE}; charset=binary`)).toBe(XLSX_CONTENT_TYPE)
+    expect(normalizeWorkbookImportContentType(XLSX_CONTENT_TYPE.toUpperCase())).toBe(XLSX_CONTENT_TYPE)
+    expect(normalizeWorkbookImportContentType('application/octet-stream')).toBeNull()
   })
 })

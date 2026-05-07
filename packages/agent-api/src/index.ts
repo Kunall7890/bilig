@@ -22,6 +22,14 @@ export const WORKBOOK_IMPORT_CONTENT_TYPES = [XLSX_CONTENT_TYPE, CSV_CONTENT_TYP
 export type WorkbookImportContentType = (typeof WORKBOOK_IMPORT_CONTENT_TYPES)[number]
 export type WorkbookFileOpenMode = 'create' | 'replace'
 
+export function normalizeWorkbookImportContentType(contentType: string): WorkbookImportContentType | null {
+  const mediaType = contentType.split(';', 1)[0]?.trim().toLowerCase() ?? ''
+  if (mediaType === XLSX_CONTENT_TYPE || mediaType === CSV_CONTENT_TYPE) {
+    return mediaType
+  }
+  return null
+}
+
 export interface LoadWorkbookFileRequest {
   kind: 'loadWorkbookFile'
   id: string
@@ -29,7 +37,7 @@ export interface LoadWorkbookFileRequest {
   openMode: WorkbookFileOpenMode
   documentId?: string
   fileName: string
-  contentType: WorkbookImportContentType
+  contentType: string
   bytesBase64: string
 }
 
@@ -161,8 +169,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
-function isWorkbookImportContentType(value: unknown): value is WorkbookImportContentType {
-  return value === XLSX_CONTENT_TYPE || value === CSV_CONTENT_TYPE
+function isWorkbookImportContentType(value: unknown): value is string {
+  return typeof value === 'string' && normalizeWorkbookImportContentType(value) !== null
 }
 
 function isLoadWorkbookFileRequest(value: unknown): value is LoadWorkbookFileRequest {

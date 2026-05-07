@@ -102,6 +102,12 @@ describe('workbook import', () => {
   it('classifies supported csv and xlsx workbook files', () => {
     expect(resolveWorkbookImportContentType(new File(['alpha'], 'metrics.csv', { type: CSV_CONTENT_TYPE }))).toBe(CSV_CONTENT_TYPE)
     expect(resolveWorkbookImportContentType(new File(['alpha'], 'model.xlsx', { type: XLSX_CONTENT_TYPE }))).toBe(XLSX_CONTENT_TYPE)
+    expect(resolveWorkbookImportContentType(new File(['alpha'], 'metrics.upload', { type: 'text/csv; charset=utf-8' }))).toBe(
+      CSV_CONTENT_TYPE,
+    )
+    expect(resolveWorkbookImportContentType(new File(['alpha'], 'model.upload', { type: `${XLSX_CONTENT_TYPE}; charset=binary` }))).toBe(
+      XLSX_CONTENT_TYPE,
+    )
     expect(resolveWorkbookImportContentType(new File(['alpha'], 'notes.txt'))).toBeNull()
   })
 
