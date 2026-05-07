@@ -147,6 +147,10 @@ Actions:
 - Keep `docs/assets/github-social-preview.png` uploaded as the custom GitHub
   social preview image through repository settings. Verified in GitHub settings
   on 2026-05-07. It is `1280x640`, under `1 MB`, and uses a solid background.
+- Regenerate the checked-in preview image with
+  `pnpm docs:social-preview:generate` when the package positioning or proof
+  points change, then run `pnpm docs:social-preview:check` before sharing fresh
+  links.
 - Pin or surface the external example in all launch copy:
   `examples/headless-workpaper`.
 - Keep the website and README first-run path npm-only, copy-pasteable, and tied
