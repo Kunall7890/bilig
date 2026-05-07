@@ -517,7 +517,9 @@ export class WorkPaper extends WorkPaperRuntimeSurface {
       functionAliasLookup: this.functionAliasLookup,
       internalFunctionLookup: this.internalFunctionLookup,
       globalCustomFunctions: workPaperGlobalCustomFunctions,
-      preserveInternalFunctionLookup: options.preserveInternalFunctionLookup,
+      ...(options.preserveInternalFunctionLookup !== undefined
+        ? { preserveInternalFunctionLookup: options.preserveInternalFunctionLookup }
+        : {}),
     })
   }
 
