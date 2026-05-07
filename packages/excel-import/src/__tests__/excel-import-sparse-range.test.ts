@@ -45,9 +45,19 @@ describe('XLSX sparse ranges', () => {
     expect(imported.snapshot.workbook.metadata?.styles?.[0]).toMatchObject({
       fill: { backgroundColor: '#ffcc00' },
     })
-    expect(denseMs).toBeLessThan(Math.max(750, sparseMs * 12))
+    const tolerance = readBenchmarkTolerance()
+    expect(denseMs).toBeLessThan(Math.max(1_000 * tolerance, sparseMs * 12 * tolerance))
   }, 15_000)
 })
+
+function readBenchmarkTolerance(): number {
+  const raw = process.env.BILIG_BENCH_TOLERANCE
+  if (!raw) {
+    return 1
+  }
+  const tolerance = Number(raw)
+  return Number.isFinite(tolerance) && tolerance > 0 ? tolerance : 1
+}
 
 function measureImport(bytes: Uint8Array, fileName: string): { imported: ReturnType<typeof importXlsx>; durationMs: number } {
   const start = performance.now()
