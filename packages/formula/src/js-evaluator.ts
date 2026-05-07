@@ -194,6 +194,20 @@ function coerceDirectNumericTextAggregateArgument(callee: string, value: CellVal
   return numeric === undefined ? error(ErrorCode.Value) : numberValue(numeric)
 }
 
+function toLookupBuiltinArgument(callee: string, rawArg: StackValue): CellValue | RangeBuiltinArgument | undefined {
+  if (rawArg.kind === 'omitted') {
+    return undefined
+  }
+  if (
+    callee === 'SUMPRODUCT' &&
+    rawArg.kind === 'scalar' &&
+    (rawArg.value.tag === ValueTag.Number || rawArg.value.tag === ValueTag.Boolean || rawArg.value.tag === ValueTag.Empty)
+  ) {
+    return { kind: 'range', values: [rawArg.value], refKind: 'cells', rows: 1, cols: 1 }
+  }
+  return toRangeArgument(rawArg)
+}
+
 const arrayLiftedScalarBuiltinArities = new Map<string, number>([
   ['IFERROR', 2],
   ['IFNA', 2],
@@ -558,7 +572,7 @@ function executePlan(
         if (lookupBuiltin) {
           const args: Array<CellValue | RangeBuiltinArgument | undefined> = []
           for (const rawArg of rawArgs) {
-            args.push(rawArg.kind === 'omitted' ? undefined : toRangeArgument(rawArg))
+            args.push(toLookupBuiltinArgument(instruction.callee, rawArg))
           }
           const result = lookupBuiltin(...args)
           stack.push(isArrayValue(result) ? result : { kind: 'scalar', value: result })
