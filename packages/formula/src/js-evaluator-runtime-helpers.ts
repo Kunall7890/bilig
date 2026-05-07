@@ -163,7 +163,7 @@ export function cloneStackValue(value: StackValue): StackValue {
       : { kind: 'scalar', value: value.value }
   }
   if (value.kind === 'omitted') {
-    return { kind: 'omitted' }
+    return value.source === undefined ? { kind: 'omitted' } : { kind: 'omitted', source: value.source }
   }
   if (value.kind === 'range') {
     return {

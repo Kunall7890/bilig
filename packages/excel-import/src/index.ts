@@ -36,6 +36,7 @@ import { readImportedWorkbookSheetTabColors } from './xlsx-tab-colors.js'
 import { readImportedWorkbookTables } from './xlsx-tables.js'
 import { readImportedWorkbookDataValidations } from './xlsx-validations.js'
 import { readImportedWorkbookProperties } from './xlsx-workbook-properties.js'
+import { readImportedExternalLinkCaches, translateImportedFormulaExternalReferences } from './xlsx-external-references.js'
 import { translateImportedFormulaStructuredReferences } from './xlsx-formula-translation.js'
 import { createPreservedVbaProjectPayload, type PreservedVbaProjectCodeNames } from './xlsx-macros.js'
 import { worksheetCellAt, worksheetCellEntries, worksheetCellEntriesAtAddresses, worksheetCellRecords } from './xlsx-worksheet-cells.js'
@@ -725,6 +726,7 @@ function importSheetJsWorkbook(
   const importedConditionalFormatsBySheet = workbookZip
     ? readImportedWorkbookConditionalFormats(workbookZip, workbook.SheetNames)
     : new Map()
+  const importedExternalLinkCaches = workbookZip ? readImportedExternalLinkCaches(workbookZip) : new Map()
 
   let ignoredCommentsSeen = false
   const styleCatalog = new Map<string, CellStyleRecord>()
@@ -813,8 +815,9 @@ function importSheetJsWorkbook(
       const nextCell: WorkbookSnapshot['sheets'][number]['cells'][number] = { address }
       const formula = cell['f']
       if (typeof formula === 'string' && formula.trim().length > 0) {
+        const externalReferenceFormula = translateImportedFormulaExternalReferences(formula, importedExternalLinkCaches).formula
         nextCell.formula = translateImportedFormulaStructuredReferences({
-          formula,
+          formula: externalReferenceFormula,
           ownerSheetName: sheetName,
           ownerAddress: address,
           tables: importedTables,

@@ -72,6 +72,19 @@ describe('formula builtins and JS evaluator', () => {
     expect(evaluateAst(parseFormula('SUM(A2)'), context)).toEqual({ tag: ValueTag.Number, value: 0 })
   })
 
+  it('treats omitted SUM arguments as empty values instead of errors', () => {
+    expect(
+      evaluateAst(parseFormula('SUM(2,3,)'), {
+        sheetName: 'Sheet1',
+        resolveCell: (): CellValue => ({ tag: ValueTag.Empty }),
+        resolveRange: (): CellValue[] => [],
+      }),
+    ).toEqual({
+      tag: ValueTag.Number,
+      value: 5,
+    })
+  })
+
   it('evaluates the Excel implicit-intersection SINGLE wrapper around lookup results and ranges', () => {
     const num = (value: number): CellValue => ({ tag: ValueTag.Number, value })
 

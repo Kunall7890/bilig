@@ -109,7 +109,10 @@ function applyLambda(lambdaValue: StackValue, args: StackValue[], context: Evalu
   }
   const parameterScope = new Map<string, StackValue>()
   lambdaValue.params.forEach((name: string, index: number) => {
-    parameterScope.set(normalizeScopeName(name), index < args.length ? cloneStackValue(args[index]!) : { kind: 'omitted' })
+    parameterScope.set(
+      normalizeScopeName(name),
+      index < args.length ? cloneStackValue(args[index]!) : { kind: 'omitted', source: 'binding' },
+    )
   })
   return executePlan(lambdaValue.body, context, [...cloneScopes(lambdaValue.scopes), parameterScope]) ?? stackScalar(error(ErrorCode.Value))
 }
@@ -314,7 +317,7 @@ function executePlan(
         }
         break
       case 'push-omitted':
-        stack.push({ kind: 'omitted' })
+        stack.push({ kind: 'omitted', source: 'argument' })
         break
       case 'push-cell':
         {
@@ -576,6 +579,10 @@ function executePlan(
             continue
           }
           if (rawArg.kind === 'omitted') {
+            if (rawArg.source === 'argument') {
+              args.push(emptyValue())
+              continue
+            }
             args.push(error(ErrorCode.Value))
             continue
           }

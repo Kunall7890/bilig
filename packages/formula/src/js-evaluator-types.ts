@@ -137,7 +137,7 @@ export type JsPlanInstruction =
 
 export type StackValue =
   | { kind: 'scalar'; value: CellValue; blankReference?: boolean }
-  | { kind: 'omitted' }
+  | { kind: 'omitted'; source?: 'argument' | 'binding' }
   | {
       kind: 'range'
       values: CellValue[]

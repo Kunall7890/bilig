@@ -2,16 +2,17 @@ import { describe, expect, it } from 'vitest'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import * as XLSX from 'xlsx'
 
-import type {
-  WorkbookChartSnapshot,
-  WorkbookConditionalFormatSnapshot,
-  WorkbookDataValidationSnapshot,
-  WorkbookPivotSnapshot,
-  WorkbookPivotValueSnapshot,
-  WorkbookRangeProtectionSnapshot,
-  WorkbookSortSnapshot,
-  WorkbookSnapshot,
-  WorkbookTableSnapshot,
+import {
+  ValueTag,
+  type WorkbookChartSnapshot,
+  type WorkbookConditionalFormatSnapshot,
+  type WorkbookDataValidationSnapshot,
+  type WorkbookPivotSnapshot,
+  type WorkbookPivotValueSnapshot,
+  type WorkbookRangeProtectionSnapshot,
+  type WorkbookSortSnapshot,
+  type WorkbookSnapshot,
+  type WorkbookTableSnapshot,
 } from '@bilig/protocol'
 import { SpreadsheetEngine } from '@bilig/core'
 import {
@@ -55,6 +56,46 @@ function buildWorkbook(): Uint8Array {
   }
 
   return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+}
+
+function buildExternalLinkCacheWorkbook(): Uint8Array {
+  const workbook = XLSX.utils.book_new()
+  const sheet = XLSX.utils.aoa_to_sheet([[]])
+  sheet.A1 = { t: 'n', f: "'[1]External Data'!A1+'[1]External Data'!A2", v: 5 }
+  sheet['!ref'] = 'A1:A1'
+  XLSX.utils.book_append_sheet(workbook, sheet, 'Report')
+
+  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  zip['xl/workbook.xml'] = strToU8(
+    strFromU8(zip['xl/workbook.xml'])
+      .replace(/<workbook\b([^>]*)>/u, (match) =>
+        match.includes('xmlns:r=')
+          ? match
+          : match.replace('>', ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'),
+      )
+      .replace('</workbook>', '<externalReferences><externalReference r:id="rId99"/></externalReferences></workbook>'),
+  )
+  zip['xl/_rels/workbook.xml.rels'] = strToU8(
+    strFromU8(zip['xl/_rels/workbook.xml.rels']).replace(
+      '</Relationships>',
+      '<Relationship Id="rId99" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/externalLink" Target="externalLinks/externalLink5.xml"/></Relationships>',
+    ),
+  )
+  zip['xl/externalLinks/externalLink5.xml'] = strToU8(
+    [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<externalLink xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+      '<externalBook>',
+      '<sheetNames><sheetName val="External Data"/></sheetNames>',
+      '<sheetDataSet><sheetData sheetId="0">',
+      '<row r="1"><cell r="A1"><v>2</v></cell></row>',
+      '<row r="2"><cell r="A2"><v>3</v></cell></row>',
+      '</sheetData></sheetDataSet>',
+      '</externalBook>',
+      '</externalLink>',
+    ].join(''),
+  )
+  return zipSync(zip)
 }
 
 function buildBinaryWorkbook(): Uint8Array {
@@ -253,6 +294,21 @@ describe('excel import', () => {
         }),
       ]),
     )
+  })
+
+  it('resolves external workbook cell references from saved XLSX external-link caches', async () => {
+    const imported = importXlsx(buildExternalLinkCacheWorkbook(), 'external-link-cache.xlsx')
+    const formulaCell = imported.snapshot.sheets[0]?.cells.find((cell) => cell.address === 'A1')
+
+    expect(formulaCell?.formula).toBe('2+3')
+    expect(imported.warnings).toEqual([])
+
+    const engine = new SpreadsheetEngine({ workbookName: 'external-link-cache-import' })
+    await engine.ready()
+    engine.importSnapshot(imported.snapshot)
+    engine.recalculateNow()
+
+    expect(engine.getCellValue('Report', 'A1')).toEqual({ tag: ValueTag.Number, value: 5 })
   })
 
   it('drops degenerate single-cell merge records during import', async () => {
