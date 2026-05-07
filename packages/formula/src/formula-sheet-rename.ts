@@ -156,6 +156,10 @@ export function renameCompiledFormulaSheetReferenceMetadataInPlace(
       dependency.sheetName = newSheetName
       sourceChanged = true
     }
+    if (dependency.kind === 'range' && dependency.sheetEndName === oldSheetName) {
+      dependency.sheetEndName = newSheetName
+      sourceChanged = true
+    }
   })
   compiled.parsedSymbolicRefs?.forEach((reference) => {
     if (reference.sheetName === oldSheetName) {
@@ -166,6 +170,10 @@ export function renameCompiledFormulaSheetReferenceMetadataInPlace(
   compiled.parsedSymbolicRanges?.forEach((reference) => {
     if (reference.sheetName === oldSheetName) {
       reference.sheetName = newSheetName
+      sourceChanged = true
+    }
+    if (reference.sheetEndName === oldSheetName) {
+      reference.sheetEndName = newSheetName
       sourceChanged = true
     }
   })
@@ -192,10 +200,15 @@ function renameNodeSheetReferences(node: FormulaNode, oldSheetName: string, newS
     case 'SpillRef':
     case 'RowRef':
     case 'ColumnRef':
+      return {
+        ...node,
+        ...(node.sheetName === oldSheetName ? { sheetName: newSheetName } : {}),
+      }
     case 'RangeRef':
       return {
         ...node,
         ...(node.sheetName === oldSheetName ? { sheetName: newSheetName } : {}),
+        ...(node.sheetEndName === oldSheetName ? { sheetEndName: newSheetName } : {}),
       }
     case 'UnaryExpr':
       return {
@@ -223,12 +236,50 @@ function renameNodeSheetReferences(node: FormulaNode, oldSheetName: string, newS
 }
 
 function renameQualifiedReferenceSheet(reference: string, oldSheetName: string, newSheetName: string): string {
-  const quotedOldPrefix = `${quoteSheetNameIfNeeded(oldSheetName)}!`
-  if (reference.startsWith(quotedOldPrefix)) {
-    return `${quoteSheetNameIfNeeded(newSheetName)}!${reference.slice(quotedOldPrefix.length)}`
+  const bang = reference.lastIndexOf('!')
+  if (bang <= 0) {
+    return reference
   }
-  const rawOldPrefix = `${oldSheetName}!`
-  return reference.startsWith(rawOldPrefix) ? `${quoteSheetNameIfNeeded(newSheetName)}!${reference.slice(rawOldPrefix.length)}` : reference
+  const qualifier = reference.slice(0, bang)
+  const suffix = reference.slice(bang)
+  const sheetRange = splitSheetRangeQualifier(qualifier)
+  if (sheetRange) {
+    const start = renameSheetQualifierPart(sheetRange.start, oldSheetName, newSheetName)
+    const end = renameSheetQualifierPart(sheetRange.end, oldSheetName, newSheetName)
+    return start === sheetRange.start && end === sheetRange.end ? reference : `${start}:${end}${suffix}`
+  }
+  const renamed = renameSheetQualifierPart(qualifier, oldSheetName, newSheetName)
+  return renamed === qualifier ? reference : `${renamed}${suffix}`
+}
+
+function splitSheetRangeQualifier(qualifier: string): { start: string; end: string } | undefined {
+  let quoted = false
+  for (let index = 0; index < qualifier.length; index += 1) {
+    const char = qualifier[index]!
+    if (char === "'") {
+      if (quoted && qualifier[index + 1] === "'") {
+        index += 1
+        continue
+      }
+      quoted = !quoted
+      continue
+    }
+    if (char === ':' && !quoted) {
+      return {
+        start: qualifier.slice(0, index),
+        end: qualifier.slice(index + 1),
+      }
+    }
+  }
+  return undefined
+}
+
+function unquoteSheetQualifierPart(part: string): string {
+  return part.startsWith("'") && part.endsWith("'") ? part.slice(1, -1).replace(/''/g, "'") : part
+}
+
+function renameSheetQualifierPart(part: string, oldSheetName: string, newSheetName: string): string {
+  return unquoteSheetQualifierPart(part) === oldSheetName ? quoteSheetNameIfNeeded(newSheetName) : part
 }
 
 function renameParsedCellReferenceSheet<Reference extends ParsedCellReferenceInfo>(
@@ -244,11 +295,14 @@ function renameParsedRangeReferenceSheet(
   oldSheetName: string,
   newSheetName: string,
 ): ParsedRangeReferenceInfo {
-  return reference.sheetName === oldSheetName
+  const nextSheetName = reference.sheetName === oldSheetName ? newSheetName : reference.sheetName
+  const nextSheetEndName = reference.sheetEndName === oldSheetName ? newSheetName : reference.sheetEndName
+  return nextSheetName !== reference.sheetName || nextSheetEndName !== reference.sheetEndName
     ? {
         ...reference,
-        sheetName: newSheetName,
-        address: formatQualifiedRangeReference(newSheetName, reference.startAddress, reference.endAddress),
+        ...(nextSheetName === undefined ? {} : { sheetName: nextSheetName }),
+        ...(nextSheetEndName === undefined ? {} : { sheetEndName: nextSheetEndName }),
+        address: formatQualifiedRangeReference(nextSheetName, nextSheetEndName, reference.startAddress, reference.endAddress),
       }
     : reference
 }
@@ -268,17 +322,38 @@ function renameReferenceOperandSheet(
   oldSheetName: string,
   newSheetName: string,
 ): ReferenceOperand | undefined {
-  return operand?.sheetName === oldSheetName ? { ...operand, sheetName: newSheetName } : operand
+  if (!operand) {
+    return operand
+  }
+  const nextSheetName = operand.sheetName === oldSheetName ? newSheetName : operand.sheetName
+  const nextSheetEndName = operand.sheetEndName === oldSheetName ? newSheetName : operand.sheetEndName
+  return nextSheetName !== operand.sheetName || nextSheetEndName !== operand.sheetEndName
+    ? {
+        ...operand,
+        ...(nextSheetName === undefined ? {} : { sheetName: nextSheetName }),
+        ...(nextSheetEndName === undefined ? {} : { sheetEndName: nextSheetEndName }),
+      }
+    : operand
 }
 
 function renameJsPlanSheetReferences(plan: readonly JsPlanInstruction[], oldSheetName: string, newSheetName: string): JsPlanInstruction[] {
   return plan.map((instruction) => {
     switch (instruction.opcode) {
       case 'push-cell':
-      case 'push-range':
       case 'lookup-exact-match':
       case 'lookup-approximate-match':
         return instruction.sheetName === oldSheetName ? { ...instruction, sheetName: newSheetName } : instruction
+      case 'push-range': {
+        const nextSheetName = instruction.sheetName === oldSheetName ? newSheetName : instruction.sheetName
+        const nextSheetEndName = instruction.sheetEndName === oldSheetName ? newSheetName : instruction.sheetEndName
+        return nextSheetName !== instruction.sheetName || nextSheetEndName !== instruction.sheetEndName
+          ? {
+              ...instruction,
+              ...(nextSheetName === undefined ? {} : { sheetName: nextSheetName }),
+              ...(nextSheetEndName === undefined ? {} : { sheetEndName: nextSheetEndName }),
+            }
+          : instruction
+      }
       case 'push-lambda':
         return { ...instruction, body: renameJsPlanSheetReferences(instruction.body, oldSheetName, newSheetName) }
       case 'call':
@@ -310,7 +385,17 @@ function renameJsPlanSheetReferences(plan: readonly JsPlanInstruction[], oldShee
   })
 }
 
-function formatQualifiedRangeReference(sheetName: string | undefined, start: string, end: string): string {
-  const prefix = sheetName ? `${quoteSheetNameIfNeeded(sheetName)}!` : ''
+function formatQualifiedRangeReference(
+  sheetName: string | undefined,
+  sheetEndName: string | undefined,
+  start: string,
+  end: string,
+): string {
+  const prefix =
+    sheetName && sheetEndName
+      ? `${quoteSheetNameIfNeeded(sheetName)}:${quoteSheetNameIfNeeded(sheetEndName)}!`
+      : sheetName
+        ? `${quoteSheetNameIfNeeded(sheetName)}!`
+        : ''
   return `${prefix}${start}:${end}`
 }

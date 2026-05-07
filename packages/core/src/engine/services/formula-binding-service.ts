@@ -119,14 +119,18 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     args.volatileFormulaCells.delete(cellIndex)
   }
 
-  const trackFormulaSheetIndexes = (cellIndex: number, ownerSheetName: string, compiled: Pick<CompiledFormula, 'deps'>): void => {
+  const trackFormulaSheetIndexes = (
+    cellIndex: number,
+    ownerSheetName: string,
+    compiled: Pick<CompiledFormula, 'deps' | 'parsedDeps'>,
+  ): void => {
     formulaSheetIndex.trackFormula(cellIndex, ownerSheetName, compiled)
   }
 
   const untrackFormulaSheetIndexes = (
     cellIndex: number,
     ownerSheetName: string | undefined,
-    compiled: Pick<CompiledFormula, 'deps'> | undefined,
+    compiled: Pick<CompiledFormula, 'deps' | 'parsedDeps'> | undefined,
   ): void => {
     formulaSheetIndex.untrackFormula(cellIndex, ownerSheetName, compiled)
   }

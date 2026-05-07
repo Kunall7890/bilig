@@ -169,7 +169,7 @@ function resolveDirectCriteriaRange(
       length: number
     }
   | undefined {
-  if (!node || node.kind !== 'RangeRef' || node.refKind !== 'cells') {
+  if (!node || node.kind !== 'RangeRef' || node.refKind !== 'cells' || node.sheetEndName !== undefined) {
     return undefined
   }
   const parsed = parseRangeAddress(`${node.start}:${node.end}`, node.sheetName ?? ownerSheetName)
@@ -504,7 +504,7 @@ export function buildDirectAggregateDescriptor(args: {
     return undefined
   }
   const rangeNode = node.args[0]
-  if (!rangeNode || rangeNode.kind !== 'RangeRef' || rangeNode.refKind !== 'cells') {
+  if (!rangeNode || rangeNode.kind !== 'RangeRef' || rangeNode.refKind !== 'cells' || rangeNode.sheetEndName !== undefined) {
     return undefined
   }
   if (rangeNode.sheetName !== undefined && rangeNode.sheetName !== args.ownerSheetName) {

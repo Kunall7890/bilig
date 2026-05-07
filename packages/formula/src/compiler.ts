@@ -8,6 +8,7 @@ import { lowerToPlan, type JsPlanInstruction } from './js-evaluator.js'
 import { optimizeFormula } from './optimizer.js'
 import { parseFormula } from './parser.js'
 import { rewriteSpecialCall } from './special-call-rewrites.js'
+import { quoteSheetNameIfNeeded } from './translation-reference-utils.js'
 
 function encodeInstruction(opcode: Opcode, operand = 0): number {
   return (opcode << 24) | (operand & 0x00ff_ffff)
@@ -42,7 +43,24 @@ function emitCellRefAsRange(ref: string, sheetName: string | undefined, state: C
   state.program.push(encodeInstruction(Opcode.PushRange, index))
 }
 
+function formatRangeReference(sheetName: string | undefined, sheetEndName: string | undefined, start: string, end: string): string {
+  if (sheetEndName !== undefined) {
+    if (sheetName === undefined) {
+      throw new Error('Sheet range references require a start sheet')
+    }
+    return `${quoteSheetNameIfNeeded(sheetName)}:${quoteSheetNameIfNeeded(sheetEndName)}!${start}:${end}`
+  }
+  return sheetName ? `${sheetName}!${start}:${end}` : `${start}:${end}`
+}
+
+function formatRangeReferenceNode(node: Extract<FormulaNode, { kind: 'RangeRef' }>): string {
+  return formatRangeReference(node.sheetName, node.sheetEndName, node.start, node.end)
+}
+
 function emitRangeRef(node: Extract<FormulaNode, { kind: 'RangeRef' }>, state: CompilerState): void {
+  if (node.sheetEndName !== undefined) {
+    throw new Error('Sheet range references are not supported on the wasm fast path')
+  }
   const qualifiedRange = formatRangeAddress(
     parseRangeAddress(node.sheetName ? `${node.sheetName}!${node.start}:${node.end}` : `${node.start}:${node.end}`),
   )
@@ -54,7 +72,7 @@ function emitRangeRef(node: Extract<FormulaNode, { kind: 'RangeRef' }>, state: C
 }
 
 function isCellRangeNode(node: FormulaNode): node is Extract<FormulaNode, { kind: 'RangeRef' }> {
-  if (node.kind !== 'RangeRef') {
+  if (node.kind !== 'RangeRef' || node.sheetEndName !== undefined) {
     return false
   }
   try {
@@ -366,6 +384,7 @@ export interface ParsedRangeReferenceInfo {
   kind: 'range'
   refKind: 'cells' | 'rows' | 'cols'
   sheetName?: string
+  sheetEndName?: string
   explicitSheet?: boolean
   startAddress: string
   endAddress: string
@@ -589,6 +608,67 @@ function buildParsedRangeReferenceInfo(reference: string): ParsedRangeReferenceI
   }
 }
 
+function buildParsedRangeReferenceInfoFromNode(node: Extract<FormulaNode, { kind: 'RangeRef' }>): ParsedRangeReferenceInfo {
+  if (node.sheetEndName === undefined) {
+    return buildParsedRangeReferenceInfo(formatRangeReferenceNode(node))
+  }
+  const parsedRange = parseRangeAddress(`${node.start}:${node.end}`)
+  const bounds =
+    parsedRange.kind === 'cells'
+      ? {
+          startRow: parsedRange.start.row,
+          endRow: parsedRange.end.row,
+          startCol: parsedRange.start.col,
+          endCol: parsedRange.end.col,
+        }
+      : parsedRange.kind === 'rows'
+        ? {
+            startRow: parsedRange.start.row,
+            endRow: parsedRange.end.row,
+            startCol: 0,
+            endCol: 0,
+          }
+        : {
+            startRow: 0,
+            endRow: 0,
+            startCol: parsedRange.start.col,
+            endCol: parsedRange.end.col,
+          }
+  const cellStart = parsedRange.kind === 'cells' ? parseCellReferenceParts(node.start) : undefined
+  const cellEnd = parsedRange.kind === 'cells' ? parseCellReferenceParts(node.end) : undefined
+  const rowStart = parsedRange.kind === 'rows' ? parseAxisReferenceParts(node.start, 'row') : undefined
+  const rowEnd = parsedRange.kind === 'rows' ? parseAxisReferenceParts(node.end, 'row') : undefined
+  const colStart = parsedRange.kind === 'cols' ? parseAxisReferenceParts(node.start, 'column') : undefined
+  const colEnd = parsedRange.kind === 'cols' ? parseAxisReferenceParts(node.end, 'column') : undefined
+  return {
+    address: formatRangeReferenceNode(node),
+    kind: 'range',
+    refKind: parsedRange.kind,
+    ...(node.sheetName === undefined ? {} : { sheetName: node.sheetName }),
+    sheetEndName: node.sheetEndName,
+    explicitSheet: true,
+    startAddress: parsedRange.start.text,
+    endAddress: parsedRange.end.text,
+    ...bounds,
+    ...(parsedRange.kind === 'cells'
+      ? {
+          startRowAbsolute: cellStart?.rowAbsolute ?? false,
+          endRowAbsolute: cellEnd?.rowAbsolute ?? false,
+          startColAbsolute: cellStart?.colAbsolute ?? false,
+          endColAbsolute: cellEnd?.colAbsolute ?? false,
+        }
+      : parsedRange.kind === 'rows'
+        ? {
+            startRowAbsolute: rowStart?.absolute ?? false,
+            endRowAbsolute: rowEnd?.absolute ?? false,
+          }
+        : {
+            startColAbsolute: colStart?.absolute ?? false,
+            endColAbsolute: colEnd?.absolute ?? false,
+          }),
+  }
+}
+
 function parseDependencyReference(reference: string): ParsedDependencyReference {
   if (reference.includes(':')) {
     return buildParsedRangeReferenceInfo(reference)
@@ -650,8 +730,8 @@ function collectParsedDependencyReferencesFromAst(ast: FormulaNode): Map<string,
         return
       }
       case 'RangeRef': {
-        const reference = node.sheetName ? `${node.sheetName}!${node.start}:${node.end}` : `${node.start}:${node.end}`
-        registerParsedDependencyReference(referencesByKey, reference, buildParsedRangeReferenceInfo(reference))
+        const reference = formatRangeReferenceNode(node)
+        registerParsedDependencyReference(referencesByKey, reference, buildParsedRangeReferenceInfoFromNode(node))
         return
       }
       case 'UnaryExpr':
@@ -862,7 +942,7 @@ function buildDirectAggregateCandidate(node: FormulaNode, symbolicRanges: readon
     return undefined
   }
   const rangeNode = node.args[0]
-  if (!rangeNode || rangeNode.kind !== 'RangeRef' || rangeNode.refKind !== 'cells') {
+  if (!rangeNode || rangeNode.kind !== 'RangeRef' || rangeNode.refKind !== 'cells' || rangeNode.sheetEndName !== undefined) {
     return undefined
   }
   const qualifiedRange = formatRangeAddress(

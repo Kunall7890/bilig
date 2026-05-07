@@ -96,7 +96,12 @@ export function tryCompileSimpleDirectAggregateFormula(source: string): Compiled
   if (fastRange) {
     rangeInfo = fastRange
   } else {
-    const parsedRange = parseRangeAddress(rawRange)
+    let parsedRange: ReturnType<typeof parseRangeAddress>
+    try {
+      parsedRange = parseRangeAddress(rawRange)
+    } catch {
+      return undefined
+    }
     if (parsedRange.kind !== 'cells' || parsedRange.sheetName !== undefined) {
       return undefined
     }

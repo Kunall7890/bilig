@@ -66,6 +66,7 @@ export type ApproximateVectorMatchResult = ExactVectorMatchResult
 export interface ReferenceOperand {
   kind: 'cell' | 'range' | 'row' | 'col'
   sheetName?: string
+  sheetEndName?: string
   address?: string
   start?: string
   end?: string
@@ -83,6 +84,7 @@ export type JsPlanInstruction =
   | {
       opcode: 'push-range'
       sheetName?: string
+      sheetEndName?: string
       start: string
       end: string
       refKind: 'cells' | 'rows' | 'cols'
@@ -143,6 +145,7 @@ export type StackValue =
       rows: number
       cols: number
       sheetName?: string
+      sheetEndName?: string
       start?: string
       end?: string
     }

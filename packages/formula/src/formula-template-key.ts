@@ -93,8 +93,13 @@ export function buildRelativeFormulaTemplateAstKey(node: FormulaNode, ownerRow: 
       return `col:${templateSheetKey(node.sheetName)}:${buildRelativeAxisReferenceTextKey(node.ref, ownerCol, 'column')}`
     case 'RowRef':
       return `row:${templateSheetKey(node.sheetName)}:${buildRelativeAxisReferenceTextKey(node.ref, ownerRow, 'row')}`
-    case 'RangeRef':
-      return `range:${node.refKind}:${templateSheetKey(node.sheetName)}:${buildRelativeRangeReferenceAstKey(node, ownerRow, ownerCol)}`
+    case 'RangeRef': {
+      const sheetKey =
+        node.sheetEndName === undefined
+          ? templateSheetKey(node.sheetName)
+          : `${templateSheetKey(node.sheetName)}:${templateSheetKey(node.sheetEndName)}`
+      return `range:${node.refKind}:${sheetKey}:${buildRelativeRangeReferenceAstKey(node, ownerRow, ownerCol)}`
+    }
     case 'UnaryExpr':
       return `unary:${node.operator}:${buildRelativeFormulaTemplateAstKey(node.argument, ownerRow, ownerCol)}`
     case 'BinaryExpr':

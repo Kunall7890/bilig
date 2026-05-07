@@ -12,6 +12,7 @@ import { builtinWasmEnabledNames } from './builtin-capabilities.js'
 import { formatAddress, formatRangeAddress, parseCellAddress, parseRangeAddress } from './addressing.js'
 import { hasBuiltin } from './builtins.js'
 import { rewriteSpecialCall } from './special-call-rewrites.js'
+import { quoteSheetNameIfNeeded } from './translation-reference-utils.js'
 
 const CONTEXTUAL_BUILTINS = new Set(['CELL', 'COLUMN', 'FORMULATEXT', 'OFFSET', 'ROW', 'SHEET', 'SHEETS', 'SUBTOTAL'])
 const MAX_EXPANDED_OFFSET_DEPENDENCY_CELLS = 4096
@@ -30,6 +31,16 @@ function assertNever(value: never): never {
 
 function formatCellAsSingleCellRange(ref: string, sheetName: string | undefined): string {
   return formatRangeAddress(parseRangeAddress(sheetName ? `${sheetName}!${ref}:${ref}` : `${ref}:${ref}`))
+}
+
+function formatRangeDependency(node: Extract<FormulaNode, { kind: 'RangeRef' }>): string {
+  if (node.sheetEndName !== undefined) {
+    if (node.sheetName === undefined) {
+      throw new Error('Sheet range references require a start sheet')
+    }
+    return `${quoteSheetNameIfNeeded(node.sheetName)}:${quoteSheetNameIfNeeded(node.sheetEndName)}!${node.start}:${node.end}`
+  }
+  return formatRangeAddress(parseRangeAddress(node.sheetName ? `${node.sheetName}!${node.start}:${node.end}` : `${node.start}:${node.end}`))
 }
 
 function staticIntegerValue(node: FormulaNode | undefined): number | undefined {
@@ -64,7 +75,7 @@ function offsetReferenceBounds(node: FormulaNode | undefined): OffsetReferenceBo
       colEnd: address.col,
     }
   }
-  if (node.kind !== 'RangeRef' || node.refKind !== 'cells') {
+  if (node.kind !== 'RangeRef' || node.refKind !== 'cells' || node.sheetEndName !== undefined) {
     return undefined
   }
   const range = parseRangeAddress(node.sheetName ? `${node.sheetName}!${node.start}:${node.end}` : `${node.start}:${node.end}`)
@@ -203,11 +214,7 @@ export function bindFormula(ast: FormulaNode): BoundFormula {
       case 'ColumnRef':
         throw new Error('Row and column references must appear inside a range')
       case 'RangeRef':
-        deps.add(
-          formatRangeAddress(
-            parseRangeAddress(node.sheetName ? `${node.sheetName}!${node.start}:${node.end}` : `${node.start}:${node.end}`),
-          ),
-        )
+        deps.add(formatRangeDependency(node))
         break
       case 'UnaryExpr':
         collectDeps(node.argument, localNames)
@@ -296,6 +303,7 @@ export function bindFormula(ast: FormulaNode): BoundFormula {
         return false
       case 'RangeRef':
         if (!allowRange) return false
+        if (node.sheetEndName !== undefined) return false
         try {
           const sheetPrefix = node.sheetName ? `${node.sheetName}!` : ''
           const range = parseRangeAddress(`${sheetPrefix}${node.start}:${node.end}`)

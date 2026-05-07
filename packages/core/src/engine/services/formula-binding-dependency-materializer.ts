@@ -128,10 +128,29 @@ export function createFormulaBindingDependencyMaterializer(
       },
     })
     const extraDynamicCellDependencyCount = dynamicIndexDependencyPlan?.selectedCells.length ?? 0
+    const sheetNamesInSpan = (startSheetName: string, endSheetName: string): string[] | undefined => {
+      const sheetNames = [...args.state.workbook.sheetsByName.values()]
+        .toSorted((left, right) => left.order - right.order)
+        .map((sheet) => sheet.name)
+      const startIndex = sheetNames.indexOf(startSheetName)
+      const endIndex = sheetNames.indexOf(endSheetName)
+      if (startIndex === -1 || endIndex === -1 || startIndex > endIndex) {
+        return undefined
+      }
+      return sheetNames.slice(startIndex, endIndex + 1)
+    }
+    const sheetRangeDependencyCapacity =
+      compiled.parsedDeps?.reduce((count, dependency) => {
+        if (dependency.kind !== 'range' || dependency.sheetEndName === undefined) {
+          return count
+        }
+        const sheetNames = sheetNamesInSpan(dependency.sheetName ?? currentSheetName, dependency.sheetEndName)
+        return count + Math.max((sheetNames?.length ?? 1) - 1, 0)
+      }, 0) ?? 0
 
     ensureDependencyBuildCapacity(
       args.state.workbook.cellStore.size + 1,
-      deps.length + extraDynamicCellDependencyCount + 1,
+      deps.length + extraDynamicCellDependencyCount + sheetRangeDependencyCapacity + 1,
       compiled.symbolicRefs.length + 1,
       compiled.symbolicRanges.length + 1,
     )
@@ -192,6 +211,38 @@ export function createFormulaBindingDependencyMaterializer(
       graphRangeDependencies.push(rangeIndex)
     }
 
+    const appendParsedRangeDependencyForSheet = (
+      parsedRangeDep: Extract<NonNullable<ParsedCompiledFormula['parsedDeps']>[number], { kind: 'range' }>,
+      sheetName: string,
+    ): void => {
+      const range = tryParseDependencyRangeAddress(`${parsedRangeDep.startAddress}:${parsedRangeDep.endAddress}`, sheetName)
+      if (!range) {
+        return
+      }
+      const sheet = args.state.workbook.getSheet(sheetName)
+      if (!sheet) {
+        return
+      }
+      const registered = args.state.ranges.intern(sheet.id, range, {
+        ensureCell: (sheetId, row, col) => args.ensureCellTrackedByCoords(sheetId, row, col),
+        forEachSheetCell: (sheetId, fn) => args.forEachSheetCell(sheetId, fn),
+        isFormulaCell: (cellIndex) => (args.state.workbook.cellStore.formulaIds[cellIndex] ?? 0) !== 0,
+      })
+      const needsSourceEdgeSync = registered.materialized || rangeDependencySourceEdgesNeedSync(registered.rangeIndex)
+      appendRuntimeRangeDependency(registered.rangeIndex, needsSourceEdgeSync)
+      appendGraphRangeDependency(registered.rangeIndex)
+      const memberIndices = args.state.ranges.getFormulaMembersView(registered.rangeIndex)
+      for (let memberIndex = 0; memberIndex < memberIndices.length; memberIndex += 1) {
+        const cellIndex = memberIndices[memberIndex]!
+        if (args.getDependencyBuildSeen()[cellIndex] === epoch) {
+          continue
+        }
+        args.getDependencyBuildSeen()[cellIndex] = epoch
+        args.getDependencyBuildCells()[dependencyIndexCount] = cellIndex
+        dependencyIndexCount += 1
+      }
+    }
+
     dynamicIndexDependencyPlan?.selectedCells.forEach((cell) => {
       const sheet = args.state.workbook.getSheet(cell.sheetName)
       if (!sheet) {
@@ -203,6 +254,13 @@ export function createFormulaBindingDependencyMaterializer(
     for (let depIndex = 0; depIndex < deps.length; depIndex += 1) {
       const dep = deps[depIndex]!
       const parsedDep = compiled.parsedDeps?.[depIndex]
+      if (parsedDep?.kind === 'range' && parsedDep.sheetEndName !== undefined) {
+        const sheetNames = sheetNamesInSpan(parsedDep.sheetName ?? currentSheetName, parsedDep.sheetEndName)
+        sheetNames?.forEach((sheetName) => {
+          appendParsedRangeDependencyForSheet(parsedDep, sheetName)
+        })
+        continue
+      }
       if (parsedDep?.kind === 'cell') {
         if (parsedDep.sheetName && !args.state.workbook.getSheet(parsedDep.sheetName)) {
           continue

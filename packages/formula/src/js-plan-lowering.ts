@@ -17,6 +17,7 @@ function referenceOperandFromNode(node: FormulaNode): ReferenceOperand | undefin
       return {
         kind: 'range',
         ...(node.sheetName === undefined ? {} : { sheetName: node.sheetName }),
+        ...(node.sheetEndName === undefined ? {} : { sheetEndName: node.sheetEndName }),
         start: node.start,
         end: node.end,
         refKind: node.refKind,
@@ -52,7 +53,7 @@ function referenceOperandFromNode(node: FormulaNode): ReferenceOperand | undefin
 }
 
 function isVectorCellRange(node: FormulaNode): node is Extract<FormulaNode, { kind: 'RangeRef' }> {
-  if (node.kind !== 'RangeRef' || node.refKind !== 'cells') {
+  if (node.kind !== 'RangeRef' || node.refKind !== 'cells' || node.sheetEndName !== undefined) {
     return false
   }
   const parsed = parseRangeAddress(`${node.start}:${node.end}`, node.sheetName)
@@ -240,22 +241,14 @@ function lowerNode(node: FormulaNode, plan: JsPlanInstruction[]): void {
       )
       return
     case 'RangeRef':
-      plan.push(
-        node.sheetName
-          ? {
-              opcode: 'push-range',
-              sheetName: node.sheetName,
-              start: node.start,
-              end: node.end,
-              refKind: node.refKind,
-            }
-          : {
-              opcode: 'push-range',
-              start: node.start,
-              end: node.end,
-              refKind: node.refKind,
-            },
-      )
+      plan.push({
+        opcode: 'push-range',
+        ...(node.sheetName === undefined ? {} : { sheetName: node.sheetName }),
+        ...(node.sheetEndName === undefined ? {} : { sheetEndName: node.sheetEndName }),
+        start: node.start,
+        end: node.end,
+        refKind: node.refKind,
+      })
       return
     case 'RowRef':
     case 'ColumnRef':

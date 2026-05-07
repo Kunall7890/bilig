@@ -67,5 +67,7 @@ describe('tryCompileSimpleDirectAggregateFormula', () => {
       endAddress: 'A32',
     })
     expect(tryCompileSimpleDirectAggregateFormula('SUM(Sheet2!A1:A2)')).toBeUndefined()
+    expect(tryCompileSimpleDirectAggregateFormula('SUM(Jan:Mar!B2)')).toBeUndefined()
+    expect(tryCompileSimpleDirectAggregateFormula("SUM('Jan 2026':'Mar 2026'!B2:C2)")).toBeUndefined()
   })
 })

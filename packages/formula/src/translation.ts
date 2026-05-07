@@ -343,7 +343,13 @@ function translateJsPlanInstructionWithoutAst(
     }
     case 'push-range': {
       const translated = translatedRangeMap.get(
-        translatedRangeInstructionKey(instruction.sheetName, instruction.refKind, instruction.start, instruction.end),
+        translatedRangeInstructionKey(
+          instruction.sheetName,
+          instruction.sheetEndName,
+          instruction.refKind,
+          instruction.start,
+          instruction.end,
+        ),
       )
       return translated
         ? {
@@ -356,7 +362,7 @@ function translateJsPlanInstructionWithoutAst(
     case 'lookup-exact-match':
     case 'lookup-approximate-match': {
       const translated = translatedRangeMap.get(
-        translatedRangeInstructionKey(instruction.sheetName, instruction.refKind, instruction.start, instruction.end),
+        translatedRangeInstructionKey(instruction.sheetName, undefined, instruction.refKind, instruction.start, instruction.end),
       )
       if (!translated || translated.refKind !== 'cells') {
         return translateJsPlanInstruction(instruction, rowDelta, colDelta)
@@ -465,7 +471,7 @@ function translateReferenceOperandWithoutAst(
         return operand
       }
       const translated = translatedRangeMap.get(
-        translatedRangeInstructionKey(operand.sheetName, operand.refKind, operand.start, operand.end),
+        translatedRangeInstructionKey(operand.sheetName, operand.sheetEndName, operand.refKind, operand.start, operand.end),
       )
       return translated
         ? {

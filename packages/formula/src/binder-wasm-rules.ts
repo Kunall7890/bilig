@@ -90,7 +90,7 @@ function hasMixedConditionalResultKinds(args: readonly FormulaNode[], resultInde
 }
 
 export function isCellRangeNode(node: FormulaNode): boolean {
-  if (node.kind !== 'RangeRef') {
+  if (node.kind !== 'RangeRef' || node.sheetEndName !== undefined) {
     return false
   }
   try {
@@ -166,7 +166,7 @@ export function isNativeMakearraySumLambda(node: FormulaNode): boolean {
 }
 
 export function isCellVectorNode(node: FormulaNode): boolean {
-  if (node.kind !== 'RangeRef') {
+  if (node.kind !== 'RangeRef' || node.sheetEndName !== undefined) {
     return false
   }
   try {
@@ -179,7 +179,7 @@ export function isCellVectorNode(node: FormulaNode): boolean {
 }
 
 function isAxisRangeNode(node: FormulaNode): boolean {
-  if (node.kind !== 'RangeRef') {
+  if (node.kind !== 'RangeRef' || node.sheetEndName !== undefined) {
     return false
   }
   try {
@@ -192,7 +192,7 @@ function isAxisRangeNode(node: FormulaNode): boolean {
 }
 
 function isWasmSafeCellVectorNode(node: FormulaNode): boolean {
-  if (node.kind !== 'RangeRef') {
+  if (node.kind !== 'RangeRef' || node.sheetEndName !== undefined) {
     return false
   }
   try {

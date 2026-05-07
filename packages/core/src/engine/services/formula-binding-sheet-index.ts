@@ -7,11 +7,11 @@ import {
 
 export interface FormulaBindingSheetIndex {
   readonly clear: () => void
-  readonly trackFormula: (cellIndex: number, ownerSheetName: string, compiled: Pick<CompiledFormula, 'deps'>) => void
+  readonly trackFormula: (cellIndex: number, ownerSheetName: string, compiled: Pick<CompiledFormula, 'deps' | 'parsedDeps'>) => void
   readonly untrackFormula: (
     cellIndex: number,
     ownerSheetName: string | undefined,
-    compiled: Pick<CompiledFormula, 'deps'> | undefined,
+    compiled: Pick<CompiledFormula, 'deps' | 'parsedDeps'> | undefined,
   ) => void
   readonly moveSheetName: (
     oldSheetName: string,
@@ -30,9 +30,21 @@ export interface FormulaBindingSheetIndex {
   readonly collectReferencingSheet: (sheetName: string) => number[]
 }
 
-function referencedSheetsForCompiled(compiled: Pick<CompiledFormula, 'deps'>): string[] {
+function referencedSheetsForCompiled(compiled: Pick<CompiledFormula, 'deps' | 'parsedDeps'>): string[] {
   const sheets = new Set<string>()
-  compiled.deps.forEach((dependency) => {
+  compiled.parsedDeps?.forEach((dependency) => {
+    if (dependency.sheetName) {
+      sheets.add(dependency.sheetName)
+    }
+    if (dependency.kind === 'range' && dependency.sheetEndName) {
+      sheets.add(dependency.sheetEndName)
+    }
+  })
+  compiled.deps.forEach((dependency, index) => {
+    const parsedDependency = compiled.parsedDeps?.[index]
+    if (parsedDependency?.kind === 'range' && parsedDependency.sheetEndName) {
+      return
+    }
     const sheetName = parseQualifiedDependencySheetName(dependency)
     if (sheetName) {
       sheets.add(sheetName)

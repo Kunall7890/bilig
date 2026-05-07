@@ -126,6 +126,7 @@ export function formatParsedLocalCellReference(reference: ParsedCellReferenceInf
 export function formatParsedRangeReference(reference: ParsedRangeReferenceInfo): string {
   return formatQualifiedRangeReference(
     reference.explicitSheet ? reference.sheetName : undefined,
+    reference.explicitSheet ? reference.sheetEndName : undefined,
     reference.startAddress,
     reference.endAddress,
   )
@@ -137,11 +138,12 @@ export function translatedCellInstructionKey(sheetName: string | undefined, addr
 
 export function translatedRangeInstructionKey(
   sheetName: string | undefined,
+  sheetEndName: string | undefined,
   refKind: 'cells' | 'rows' | 'cols',
   start: string,
   end: string,
 ): string {
-  return `${sheetName ?? ''}\t${refKind}\t${start}\t${end}`
+  return `${sheetName ?? ''}\t${sheetEndName ?? ''}\t${refKind}\t${start}\t${end}`
 }
 
 export function buildTranslatedCellReferenceMap(
@@ -177,7 +179,10 @@ export function buildTranslatedRangeReferenceMap(
     if (!source || !target) {
       continue
     }
-    output.set(translatedRangeInstructionKey(source.sheetName, source.refKind, source.startAddress, source.endAddress), target)
+    output.set(
+      translatedRangeInstructionKey(source.sheetName, source.sheetEndName, source.refKind, source.startAddress, source.endAddress),
+      target,
+    )
   }
   return output
 }
@@ -199,7 +204,7 @@ export function translateQualifiedRangeReference(raw: string, rowDelta: number, 
   const rawRange = splitRawRangeReference(raw)
   const nextRange = translateRangeEndpoints(parsed.kind, rawRange.start, rawRange.end, rowDelta, colDelta)
   if (explicitlyQualified) {
-    return formatQualifiedRangeReference(parsed.sheetName, nextRange.start, nextRange.end)
+    return formatQualifiedRangeReference(parsed.sheetName, undefined, nextRange.start, nextRange.end)
   }
   return `${nextRange.start}:${nextRange.end}`
 }
@@ -242,17 +247,17 @@ export function translateRangeAddress(range: RangeAddress, rowDelta: number, col
     case 'cells': {
       const startAddress = translateCellReference(range.start.text, rowDelta, colDelta)
       const endAddress = translateCellReference(range.end.text, rowDelta, colDelta)
-      return parseRangeAddress(formatQualifiedRangeReference(range.sheetName, startAddress, endAddress))
+      return parseRangeAddress(formatQualifiedRangeReference(range.sheetName, undefined, startAddress, endAddress))
     }
     case 'rows': {
       const start = translateRowReference(range.start.text, rowDelta)
       const end = translateRowReference(range.end.text, rowDelta)
-      return parseRangeAddress(formatQualifiedRangeReference(range.sheetName, start, end))
+      return parseRangeAddress(formatQualifiedRangeReference(range.sheetName, undefined, start, end))
     }
     case 'cols': {
       const start = translateColumnReference(range.start.text, colDelta)
       const end = translateColumnReference(range.end.text, colDelta)
-      return parseRangeAddress(formatQualifiedRangeReference(range.sheetName, start, end))
+      return parseRangeAddress(formatQualifiedRangeReference(range.sheetName, undefined, start, end))
     }
   }
 }
@@ -373,7 +378,17 @@ function formatQualifiedCellReference(sheetName: string | undefined, address: st
   return `${quoteSheetNameIfNeeded(sheetName)}!${parsed.text}`
 }
 
-function formatQualifiedRangeReference(sheetName: string | undefined, start: string, end: string): string {
-  const prefix = sheetName ? `${quoteSheetNameIfNeeded(sheetName)}!` : ''
+function formatQualifiedRangeReference(
+  sheetName: string | undefined,
+  sheetEndName: string | undefined,
+  start: string,
+  end: string,
+): string {
+  const prefix =
+    sheetName && sheetEndName
+      ? `${quoteSheetNameIfNeeded(sheetName)}:${quoteSheetNameIfNeeded(sheetEndName)}!`
+      : sheetName
+        ? `${quoteSheetNameIfNeeded(sheetName)}!`
+        : ''
   return `${prefix}${start}:${end}`
 }

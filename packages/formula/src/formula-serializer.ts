@@ -1,6 +1,6 @@
 import { ErrorCode } from '@bilig/protocol'
 import type { BinaryExprNode, FormulaNode } from './ast.js'
-import { formatSheetPrefix } from './translation-reference-utils.js'
+import { formatSheetPrefix, quoteSheetNameIfNeeded } from './translation-reference-utils.js'
 
 const BINARY_PRECEDENCE: Record<BinaryExprNode['operator'], number> = {
   '=': 1,
@@ -28,6 +28,16 @@ const ERROR_LITERAL_TEXT: Record<number, string> = {
   [ErrorCode.Blocked]: '#BLOCKED!',
 }
 
+function formatRangeSheetPrefix(sheetName: string | undefined, sheetEndName: string | undefined): string {
+  if (sheetEndName === undefined) {
+    return formatSheetPrefix(sheetName)
+  }
+  if (sheetName === undefined) {
+    return ''
+  }
+  return `${quoteSheetNameIfNeeded(sheetName)}:${quoteSheetNameIfNeeded(sheetEndName)}!`
+}
+
 export function serializeFormula(node: FormulaNode, parentPrecedence = 0, parentAssociativity: 'left' | 'right' | null = null): string {
   switch (node.kind) {
     case 'NumberLiteral':
@@ -53,7 +63,7 @@ export function serializeFormula(node: FormulaNode, parentPrecedence = 0, parent
     case 'RowRef':
       return `${formatSheetPrefix(node.sheetName)}${node.ref}`
     case 'RangeRef':
-      return `${formatSheetPrefix(node.sheetName)}${node.start}:${node.end}`
+      return `${formatRangeSheetPrefix(node.sheetName, node.sheetEndName)}${node.start}:${node.end}`
     case 'UnaryExpr':
       return `${node.operator}${serializeFormula(node.argument, 6)}`
     case 'CallExpr':

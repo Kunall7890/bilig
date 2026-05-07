@@ -51,7 +51,12 @@ export function collectIndexedExactLookupCandidates(node: FormulaNode): IndexedE
     case 'CallExpr': {
       const callee = node.callee.trim().toUpperCase()
       const lookupRange = node.args[1]
-      if (lookupRange?.kind === 'RangeRef' && lookupRange.refKind === 'cells' && lookupRange.start !== lookupRange.end) {
+      if (
+        lookupRange?.kind === 'RangeRef' &&
+        lookupRange.refKind === 'cells' &&
+        lookupRange.sheetEndName === undefined &&
+        lookupRange.start !== lookupRange.end
+      ) {
         const isIndexedLookupCall =
           (callee === 'MATCH' && node.args.length === 3 && staticIntegerValue(node.args[2]) === 0) ||
           (callee === 'XMATCH' &&
@@ -106,7 +111,12 @@ export function collectDirectApproximateLookupCandidates(node: FormulaNode): Dir
     case 'CallExpr': {
       const callee = node.callee.trim().toUpperCase()
       const lookupRange = node.args[1]
-      if (lookupRange?.kind === 'RangeRef' && lookupRange.refKind === 'cells' && lookupRange.start !== lookupRange.end) {
+      if (
+        lookupRange?.kind === 'RangeRef' &&
+        lookupRange.refKind === 'cells' &&
+        lookupRange.sheetEndName === undefined &&
+        lookupRange.start !== lookupRange.end
+      ) {
         const matchMode = staticIntegerValue(node.args[2])
         const searchMode = node.args.length >= 4 ? staticIntegerValue(node.args[3]) : 1
         const isDirectApproximateLookupCall =

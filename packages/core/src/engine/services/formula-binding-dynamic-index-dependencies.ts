@@ -78,7 +78,7 @@ function literalInputToCellValue(value: LiteralInput): CellValue {
 }
 
 function normalizeRangeDependency(node: RangeRefNode): string | undefined {
-  if (node.refKind !== 'cells') {
+  if (node.refKind !== 'cells' || node.sheetEndName !== undefined) {
     return undefined
   }
   try {
@@ -91,7 +91,7 @@ function normalizeRangeDependency(node: RangeRefNode): string | undefined {
 }
 
 function rangeBounds(node: FormulaNode | undefined, ownerSheetName: string): DynamicRangeBounds | undefined {
-  if (!node || node.kind !== 'RangeRef' || node.refKind !== 'cells') {
+  if (!node || node.kind !== 'RangeRef' || node.refKind !== 'cells' || node.sheetEndName !== undefined) {
     return undefined
   }
   try {

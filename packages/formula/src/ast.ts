@@ -81,6 +81,7 @@ export interface RangeRefNode {
   start: string
   end: string
   sheetName?: string
+  sheetEndName?: string
 }
 
 export interface UnaryExprNode {

@@ -252,6 +252,19 @@ function evaluateUnary(operator: Extract<JsPlanInstruction, { opcode: 'unary' }>
   return makeArrayStack(range.rows, range.cols, range.values.map(coerce))
 }
 
+function sheetNamesInRange(context: EvaluationContext, sheetName: string, sheetEndName: string): string[] | undefined {
+  const names = context.listSheetNames?.()
+  if (!names) {
+    return undefined
+  }
+  const startIndex = names.indexOf(sheetName)
+  const endIndex = names.indexOf(sheetEndName)
+  if (startIndex === -1 || endIndex === -1 || startIndex > endIndex) {
+    return undefined
+  }
+  return names.slice(startIndex, endIndex + 1)
+}
+
 function executePlan(
   plan: readonly JsPlanInstruction[],
   context: EvaluationContext,
@@ -311,6 +324,30 @@ function executePlan(
         break
       case 'push-range':
         {
+          if (instruction.sheetEndName !== undefined) {
+            const startSheetName = instruction.sheetName ?? context.sheetName
+            const rangeSheetNames = sheetNamesInRange(context, startSheetName, instruction.sheetEndName)
+            if (!rangeSheetNames || instruction.refKind !== 'cells') {
+              stack.push({ kind: 'scalar', value: error(ErrorCode.Ref) })
+              break
+            }
+            const values = rangeSheetNames.flatMap((sheetName) =>
+              context.resolveRange(sheetName, instruction.start, instruction.end, instruction.refKind),
+            )
+            context.noteRangeMaterialization?.(values.length)
+            stack.push({
+              kind: 'range',
+              values,
+              refKind: instruction.refKind,
+              rows: values.length,
+              cols: 1,
+              sheetName: startSheetName,
+              sheetEndName: instruction.sheetEndName,
+              start: instruction.start,
+              end: instruction.end,
+            })
+            break
+          }
           const values = context.resolveRange(
             instruction.sheetName ?? context.sheetName,
             instruction.start,

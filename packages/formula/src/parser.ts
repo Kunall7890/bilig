@@ -44,6 +44,43 @@ const ERROR_LITERAL_CODES: Record<string, ErrorCode> = {
   '#BLOCKED!': ErrorCode.Blocked,
 }
 
+function isSheetNameToken(token: Token): token is Token & { kind: 'identifier' | 'quotedIdentifier' } {
+  return token.kind === 'identifier' || token.kind === 'quotedIdentifier'
+}
+
+function refKindForEndpoint(endpoint: CellRefNode | ColumnRefNode | RowRefNode): RangeRefNode['refKind'] {
+  return endpoint.kind === 'CellRef' ? 'cells' : endpoint.kind === 'ColumnRef' ? 'cols' : 'rows'
+}
+
+function buildSheetRangeReference(
+  sheetName: string,
+  sheetEndName: string,
+  reference: CellRefNode | ColumnRefNode | RowRefNode,
+): RangeRefNode {
+  return {
+    kind: 'RangeRef',
+    refKind: refKindForEndpoint(reference),
+    sheetName,
+    sheetEndName,
+    start: reference.ref,
+    end: reference.ref,
+  }
+}
+
+function buildSheetRangeArea(left: RangeRefNode, right: CellRefNode | ColumnRefNode | RowRefNode): RangeRefNode {
+  const leftKind = left.refKind === 'cells' ? 'CellRef' : left.refKind === 'cols' ? 'ColumnRef' : 'RowRef'
+  if (right.kind !== leftKind) {
+    throw new Error('Range endpoints must use the same reference type')
+  }
+  if (right.sheetName && right.sheetName !== left.sheetName) {
+    throw new Error('Range endpoints must target the same sheet')
+  }
+  return {
+    ...left,
+    end: right.ref,
+  }
+}
+
 function assertNoStandaloneAxisRefs(node: FormulaNode): void {
   switch (node.kind) {
     case 'NumberLiteral':
@@ -83,6 +120,10 @@ export function parseFormula(source: string): FormulaNode {
 
   function current(): Token {
     return tokens[position]!
+  }
+
+  function peek(offset: number): Token {
+    return tokens[position + offset] ?? tokens[tokens.length - 1]!
   }
 
   function eat(kind?: Token['kind']): Token {
@@ -192,6 +233,16 @@ export function parseFormula(source: string): FormulaNode {
     throw new Error(`Expected a sheet-qualified reference, received ${token.kind}`)
   }
 
+  function maybeParseSheetRangeQualifiedReference(sheetName: string): RangeRefNode | undefined {
+    if (current().kind !== 'colon' || !isSheetNameToken(peek(1)) || peek(2).kind !== 'bang') {
+      return undefined
+    }
+    eat('colon')
+    const endSheetName = eat(current().kind).value
+    eat('bang')
+    return buildSheetRangeReference(sheetName, endSheetName, parseSheetQualifiedReference(sheetName))
+  }
+
   function buildRange(left: CellRefNode | ColumnRefNode | RowRefNode, right: CellRefNode | ColumnRefNode | RowRefNode): RangeRefNode {
     if (left.kind !== right.kind) {
       throw new Error('Range endpoints must use the same reference type')
@@ -267,7 +318,10 @@ export function parseFormula(source: string): FormulaNode {
       result = { kind: 'ErrorLiteral', code }
     } else if (token.kind === 'quotedIdentifier') {
       const first = eat('quotedIdentifier').value
-      if (current().kind === 'bang') {
+      const sheetRange = maybeParseSheetRangeQualifiedReference(first)
+      if (sheetRange) {
+        result = sheetRange
+      } else if (current().kind === 'bang') {
         eat('bang')
         result = parseSheetQualifiedReference(first)
       } else {
@@ -287,7 +341,10 @@ export function parseFormula(source: string): FormulaNode {
     } else if (token.kind === 'identifier') {
       const first = eat('identifier').value
 
-      if (current().kind === 'bang') {
+      const sheetRange = maybeParseSheetRangeQualifiedReference(first)
+      if (sheetRange) {
+        result = sheetRange
+      } else if (current().kind === 'bang') {
         eat('bang')
         result = parseSheetQualifiedReference(first)
       } else if (current().kind === 'lparen') {
@@ -355,6 +412,16 @@ export function parseFormula(source: string): FormulaNode {
       eat(token.kind)
 
       if (token.kind === 'colon') {
+        if (left.kind === 'RangeRef' && left.sheetEndName !== undefined) {
+          const right = parsePrimary()
+          const end = toRangeEndpoint(right)
+          if (!end) {
+            throw new Error('Range end must be a cell reference')
+          }
+          left = buildSheetRangeArea(left, end)
+          precedence = PRECEDENCE[current().kind]
+          continue
+        }
         const start = toRangeEndpoint(left)
         if (!start) {
           throw new Error('Range start must be a cell reference')
