@@ -2086,8 +2086,8 @@ describe('SpreadsheetEngine', () => {
     engine.setCellFormula('Sheet1', 'F1', 'NETWORKDAYS.INTL(A1,A2,7)')
     engine.setCellFormula('Sheet1', 'G1', 'NETWORKDAYS.INTL(A1,A2,7,B1)')
 
-    expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Number, value: 46097 })
-    expect(engine.getCellValue('Sheet1', 'E1')).toEqual({ tag: ValueTag.Number, value: 46099 })
+    expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Number, value: 46096 })
+    expect(engine.getCellValue('Sheet1', 'E1')).toEqual({ tag: ValueTag.Number, value: 46098 })
     expect(engine.getCellValue('Sheet1', 'F1')).toEqual({ tag: ValueTag.Number, value: 3 })
     expect(engine.getCellValue('Sheet1', 'G1')).toEqual({ tag: ValueTag.Number, value: 2 })
 

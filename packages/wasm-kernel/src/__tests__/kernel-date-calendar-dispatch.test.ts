@@ -284,7 +284,7 @@ describe('wasm kernel date/calendar dispatch seams', () => {
     expectNumberCell(kernel, cellIndex(1, 14, width), 60)
     expectNumberCell(kernel, cellIndex(1, 15, width), 60 / 360, 12)
     expectNumberCell(kernel, cellIndex(1, 16, width), 1)
-    expectNumberCell(kernel, cellIndex(1, 17, width), 46097)
+    expectNumberCell(kernel, cellIndex(1, 17, width), 46096)
     expectNumberCell(kernel, cellIndex(1, 18, width), 3)
   })
 })

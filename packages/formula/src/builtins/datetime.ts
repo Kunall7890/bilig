@@ -622,6 +622,19 @@ function isWeekendWithMask(serial: number, weekendDays: ReadonlySet<number>): bo
   return weekendDays.has(weekendSerialDay(serial))
 }
 
+function offsetWorkday(start: number, offset: number, isWorkday: (serial: number) => boolean): number {
+  let cursor = Math.trunc(start)
+  const direction = offset >= 0 ? 1 : -1
+  let remaining = Math.abs(offset)
+  while (remaining > 0) {
+    cursor += direction
+    if (isWorkday(cursor)) {
+      remaining -= 1
+    }
+  }
+  return cursor
+}
+
 function createWorkdayBuiltin(): Builtin {
   return (...args) => {
     const error = firstError(args)
@@ -647,21 +660,7 @@ function createWorkdayBuiltin(): Builtin {
     }
 
     const isWorkday = (value: number): boolean => !isWeekendSerial(value) && !holidays.has(Math.trunc(value))
-    let cursor = Math.trunc(start)
-    const direction = offset >= 0 ? 1 : -1
-
-    while (!isWorkday(cursor)) {
-      cursor += direction
-    }
-
-    let remaining = Math.abs(offset)
-    while (remaining > 0) {
-      cursor += direction
-      if (isWorkday(cursor)) {
-        remaining -= 1
-      }
-    }
-    return numberResult(cursor)
+    return numberResult(offsetWorkday(start, offset, isWorkday))
   }
 }
 
@@ -710,7 +709,7 @@ function createWorkdayIntlBuiltin(): Builtin {
     if (error) {
       return error
     }
-    if (args.length < 2 || args.length > 4) {
+    if (args.length < 2) {
       return valueError()
     }
 
@@ -728,27 +727,13 @@ function createWorkdayIntlBuiltin(): Builtin {
       return weekendDays
     }
 
-    const holidays = normalizeHolidayDateSet(args[3] === undefined ? undefined : [args[3]])
+    const holidays = normalizeHolidayDateSet(args.length <= 3 ? undefined : args.slice(3))
     if (isErrorValue(holidays)) {
       return holidays
     }
 
     const isWorkday = (value: number): boolean => !isWeekendWithMask(value, weekendDays) && !holidays.has(Math.trunc(value))
-    let cursor = Math.trunc(start)
-    const direction = offset >= 0 ? 1 : -1
-
-    while (!isWorkday(cursor)) {
-      cursor += direction
-    }
-
-    let remaining = Math.abs(offset)
-    while (remaining > 0) {
-      cursor += direction
-      if (isWorkday(cursor)) {
-        remaining -= 1
-      }
-    }
-    return numberResult(cursor)
+    return numberResult(offsetWorkday(start, offset, isWorkday))
   }
 }
 
@@ -758,7 +743,7 @@ function createNetworkdaysIntlBuiltin(): Builtin {
     if (error) {
       return error
     }
-    if (args.length < 2 || args.length > 4) {
+    if (args.length < 2) {
       return valueError()
     }
 
@@ -776,7 +761,7 @@ function createNetworkdaysIntlBuiltin(): Builtin {
       return weekendDays
     }
 
-    const holidays = normalizeHolidayDateSet(args[3] === undefined ? undefined : [args[3]])
+    const holidays = normalizeHolidayDateSet(args.length <= 3 ? undefined : args.slice(3))
     if (isErrorValue(holidays)) {
       return holidays
     }

@@ -140,6 +140,9 @@ describe('datetime builtins', () => {
     const fridaySerial = excelDatePartsToSerial(2026, 3, 13)!
     const mondayHoliday = excelDatePartsToSerial(2026, 3, 16)!
     const fridayNextWeek = excelDatePartsToSerial(2026, 3, 20)!
+    const jan1Holiday = excelDatePartsToSerial(2026, 1, 1)!
+    const jan2Holiday = excelDatePartsToSerial(2026, 1, 2)!
+    const jan7Serial = excelDatePartsToSerial(2026, 1, 7)!
 
     expect(datetimeBuiltins.DAYS({ tag: ValueTag.Number, value: fridayNextWeek }, { tag: ValueTag.Number, value: fridaySerial })).toEqual({
       tag: ValueTag.Number,
@@ -167,6 +170,14 @@ describe('datetime builtins', () => {
         { tag: ValueTag.Number, value: mondayHoliday },
       ),
     ).toEqual({ tag: ValueTag.Number, value: mondayHoliday + 1 })
+    expect(
+      datetimeBuiltins.WORKDAY(
+        { tag: ValueTag.Number, value: jan1Holiday },
+        { tag: ValueTag.Number, value: 3 },
+        { tag: ValueTag.Number, value: jan1Holiday },
+        { tag: ValueTag.Number, value: jan2Holiday },
+      ),
+    ).toEqual({ tag: ValueTag.Number, value: jan7Serial })
 
     expect(
       datetimeBuiltins.NETWORKDAYS({ tag: ValueTag.Number, value: fridaySerial }, { tag: ValueTag.Number, value: fridayNextWeek }),
@@ -186,6 +197,9 @@ describe('datetime builtins', () => {
     const sundaySerial = excelDatePartsToSerial(2026, 3, 15)!
     const mondaySerial = excelDatePartsToSerial(2026, 3, 16)!
     const tuesdaySerial = excelDatePartsToSerial(2026, 3, 17)!
+    const jan1Holiday = excelDatePartsToSerial(2026, 1, 1)!
+    const jan2Holiday = excelDatePartsToSerial(2026, 1, 2)!
+    const jan7Serial = excelDatePartsToSerial(2026, 1, 7)!
 
     expect(datetimeBuiltins['WORKDAY.INTL']({ tag: ValueTag.Number, value: fridaySerial }, { tag: ValueTag.Number, value: 1 })).toEqual({
       tag: ValueTag.Number,
@@ -197,7 +211,7 @@ describe('datetime builtins', () => {
         { tag: ValueTag.Number, value: 1 },
         { tag: ValueTag.Number, value: 7 },
       ),
-    ).toEqual({ tag: ValueTag.Number, value: mondaySerial })
+    ).toEqual({ tag: ValueTag.Number, value: sundaySerial })
     expect(
       datetimeBuiltins['WORKDAY.INTL'](
         { tag: ValueTag.Number, value: fridaySerial },
@@ -212,7 +226,16 @@ describe('datetime builtins', () => {
         { tag: ValueTag.Number, value: 7 },
         { tag: ValueTag.Number, value: sundaySerial },
       ),
-    ).toEqual({ tag: ValueTag.Number, value: tuesdaySerial + 1 })
+    ).toEqual({ tag: ValueTag.Number, value: tuesdaySerial })
+    expect(
+      datetimeBuiltins['WORKDAY.INTL'](
+        { tag: ValueTag.Number, value: jan1Holiday },
+        { tag: ValueTag.Number, value: 3 },
+        { tag: ValueTag.Number, value: 1 },
+        { tag: ValueTag.Number, value: jan1Holiday },
+        { tag: ValueTag.Number, value: jan2Holiday },
+      ),
+    ).toEqual({ tag: ValueTag.Number, value: jan7Serial })
 
     expect(
       datetimeBuiltins['NETWORKDAYS.INTL']({ tag: ValueTag.Number, value: fridaySerial }, { tag: ValueTag.Number, value: tuesdaySerial }),
@@ -636,7 +659,7 @@ describe('datetime builtins', () => {
 
     expect(datetimeBuiltins.WORKDAY({ tag: ValueTag.Number, value: saturdaySerial }, { tag: ValueTag.Number, value: 0 })).toEqual({
       tag: ValueTag.Number,
-      value: excelDatePartsToSerial(2026, 3, 16)!,
+      value: saturdaySerial,
     })
     expect(datetimeBuiltins.WORKDAY({ tag: ValueTag.Number, value: fridaySerial }, { tag: ValueTag.Number, value: -1 })).toEqual({
       tag: ValueTag.Number,

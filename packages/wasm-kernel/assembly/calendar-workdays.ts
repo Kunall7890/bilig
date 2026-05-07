@@ -129,6 +129,49 @@ export function isHolidaySerial(
   return 0
 }
 
+export function validateHolidayArgument(
+  kind: u8,
+  tag: u8,
+  value: f64,
+  rangeIndex: u32,
+  rangeOffsets: Uint32Array,
+  rangeLengths: Uint32Array,
+  rangeMembers: Uint32Array,
+  cellTags: Uint8Array,
+  cellNumbers: Float64Array,
+  cellStringIds: Uint32Array,
+  cellErrors: Uint16Array,
+): bool {
+  if (kind == STACK_KIND_SCALAR) {
+    if (tag == ValueTag.Empty) {
+      return true
+    }
+    if (tag == ValueTag.Error) {
+      return false
+    }
+    return truncToInt(tag, value) != i32.MIN_VALUE
+  }
+  if (kind != STACK_KIND_RANGE) {
+    return true
+  }
+  const start = <i32>rangeOffsets[rangeIndex]
+  const length = <i32>rangeLengths[rangeIndex]
+  for (let index = 0; index < length; index += 1) {
+    const memberIndex = rangeMembers[start + index]
+    if (cellTags[memberIndex] == ValueTag.Error) {
+      return false
+    }
+    const serialCandidate = truncToInt(
+      cellTags[memberIndex],
+      memberScalarValue(memberIndex, cellTags, cellNumbers, cellStringIds, cellErrors),
+    )
+    if (serialCandidate == i32.MIN_VALUE) {
+      return false
+    }
+  }
+  return true
+}
+
 export function isWorkdaySerial(
   serial: i32,
   kind: u8,

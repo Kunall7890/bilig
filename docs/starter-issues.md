@@ -7,7 +7,6 @@ search indexing.
 Current starter tickets as of May 7, 2026:
 
 - [`#32 CSV import lacks locale delimiter/decimal options for semicolon accounting exports`](https://github.com/proompteng/bilig/issues/32)
-- [`#49 WORKDAY and NETWORKDAYS ignore holiday ranges without diagnostics`](https://github.com/proompteng/bilig/issues/49)
 
 The list intentionally excludes closed issues and broad corpus/parity epics. Add
 new starter tickets only when the expected patch can stay small, has a clear

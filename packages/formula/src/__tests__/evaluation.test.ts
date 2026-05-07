@@ -200,6 +200,9 @@ describe('formula builtins and JS evaluator', () => {
         if (refKind === 'cells' && start === 'D80' && end === 'D84') {
           return [num(39448), num(39508), num(39751), num(39859), num(39904)]
         }
+        if (refKind === 'cells' && start === 'H2' && end === 'H3') {
+          return [num(46023), num(46024)]
+        }
         if (refKind === 'rows') {
           return [num(6)]
         }
@@ -306,9 +309,17 @@ describe('formula builtins and JS evaluator', () => {
       tag: ValueTag.Number,
       value: 46098,
     })
+    expect(evaluateAst(parseFormula('WORKDAY(DATE(2026,1,1),3,H2:H3)'), context)).toEqual({
+      tag: ValueTag.Number,
+      value: 46029,
+    })
     expect(evaluateAst(parseFormula('NETWORKDAYS(46094,46101,46097,46101)'), context)).toEqual({
       tag: ValueTag.Number,
       value: 4,
+    })
+    expect(evaluateAst(parseFormula('NETWORKDAYS(DATE(2026,1,1),DATE(2026,1,10),H2:H3)'), context)).toEqual({
+      tag: ValueTag.Number,
+      value: 5,
     })
     expect(evaluateAst(parseFormula('COUNTBLANK(A1,A3,A4)'), context)).toEqual({
       tag: ValueTag.Number,
@@ -626,11 +637,19 @@ describe('formula builtins and JS evaluator', () => {
     })
     expect(evaluateAst(parseFormula('WORKDAY.INTL(DATE(2026,3,13),1,7)'), context)).toEqual({
       tag: ValueTag.Number,
-      value: 46097,
+      value: 46096,
+    })
+    expect(evaluateAst(parseFormula('WORKDAY.INTL(DATE(2026,1,1),3,1,H2:H3)'), context)).toEqual({
+      tag: ValueTag.Number,
+      value: 46029,
     })
     expect(evaluateAst(parseFormula('NETWORKDAYS.INTL(DATE(2026,3,13),DATE(2026,3,17),7)'), context)).toEqual({
       tag: ValueTag.Number,
       value: 3,
+    })
+    expect(evaluateAst(parseFormula('NETWORKDAYS.INTL(DATE(2026,1,1),DATE(2026,1,10),1,H2:H3)'), context)).toEqual({
+      tag: ValueTag.Number,
+      value: 5,
     })
     expect(evaluateAst(parseFormula('FVSCHEDULE(1000,0.09,0.11,0.1)'), context)).toMatchObject({
       tag: ValueTag.Number,

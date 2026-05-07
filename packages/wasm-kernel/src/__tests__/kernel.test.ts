@@ -5059,8 +5059,8 @@ describe('wasm kernel', () => {
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
     kernel.evalBatch(Uint32Array.from([cellIndex(1, 0, width), cellIndex(1, 1, width), cellIndex(1, 2, width), cellIndex(1, 3, width)]))
 
-    expect(kernel.readNumbers()[cellIndex(1, 0, width)]).toBe(46097)
-    expect(kernel.readNumbers()[cellIndex(1, 1, width)]).toBe(46099)
+    expect(kernel.readNumbers()[cellIndex(1, 0, width)]).toBe(46096)
+    expect(kernel.readNumbers()[cellIndex(1, 1, width)]).toBe(46098)
     expect(kernel.readNumbers()[cellIndex(1, 2, width)]).toBe(3)
     expect(kernel.readNumbers()[cellIndex(1, 3, width)]).toBe(2)
   })

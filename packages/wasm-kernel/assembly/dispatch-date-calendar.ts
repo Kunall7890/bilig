@@ -1,6 +1,6 @@
 import { BuiltinId, ErrorCode, ValueTag } from './protocol'
 import { scalarErrorAt } from './builtin-args'
-import { coerceWeekendMask, isWorkdaySerial, isWorkdaySerialWithWeekendMask } from './calendar-workdays'
+import { coerceWeekendMask, isWorkdaySerial, isWorkdaySerialWithWeekendMask, validateHolidayArgument } from './calendar-workdays'
 import { excelDays360Value, excelSerialWhole, excelWeeknumFromSerial, excelYearfracValue } from './date-finance'
 import { truncToInt } from './numeric-core'
 import { STACK_KIND_SCALAR, writeResult } from './result-io'
@@ -104,12 +104,8 @@ export function tryApplyDateCalendarBuiltin(
     const holidayTag = argc == 3 ? tagStack[base + 2] : <u8>ValueTag.Empty
     const holidayValue = argc == 3 ? valueStack[base + 2] : 0.0
     const holidayRangeIndex = argc == 3 ? rangeIndexStack[base + 2] : 0
-
-    let cursor = start
-    const direction = offset >= 0 ? 1 : -1
-    while (true) {
-      const workday = isWorkdaySerial(
-        cursor,
+    if (
+      !validateHolidayArgument(
         holidayKind,
         holidayTag,
         holidayValue,
@@ -122,15 +118,12 @@ export function tryApplyDateCalendarBuiltin(
         cellStringIds,
         cellErrors,
       )
-      if (workday < 0) {
-        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
-      }
-      if (workday == 1) {
-        break
-      }
-      cursor += direction
+    ) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
 
+    let cursor = start
+    const direction = offset >= 0 ? 1 : -1
     let remaining = offset >= 0 ? offset : -offset
     while (remaining > 0) {
       cursor += direction
@@ -230,13 +223,8 @@ export function tryApplyDateCalendarBuiltin(
     const holidayTag = argc == 4 ? tagStack[base + 3] : <u8>ValueTag.Empty
     const holidayValue = argc == 4 ? valueStack[base + 3] : 0.0
     const holidayRangeIndex = argc == 4 ? rangeIndexStack[base + 3] : 0
-
-    let cursor = start
-    const direction = offset >= 0 ? 1 : -1
-    while (true) {
-      const workday = isWorkdaySerialWithWeekendMask(
-        cursor,
-        weekendMask,
+    if (
+      !validateHolidayArgument(
         holidayKind,
         holidayTag,
         holidayValue,
@@ -249,15 +237,12 @@ export function tryApplyDateCalendarBuiltin(
         cellStringIds,
         cellErrors,
       )
-      if (workday < 0) {
-        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
-      }
-      if (workday == 1) {
-        break
-      }
-      cursor += direction
+    ) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
 
+    let cursor = start
+    const direction = offset >= 0 ? 1 : -1
     let remaining = offset >= 0 ? offset : -offset
     while (remaining > 0) {
       cursor += direction

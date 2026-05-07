@@ -742,7 +742,7 @@ export const excelDateTimeFixtureSuite: ExcelFixtureSuite = {
         { address: 'A1', input: 46094 },
         { address: 'B1', input: 46096 },
       ],
-      outputs: [{ address: 'A2', expected: numberExpected(46099) }],
+      outputs: [{ address: 'A2', expected: numberExpected(46098) }],
     },
     {
       id: createExcelFixtureId('date-time', 'networkdays-intl-basic'),

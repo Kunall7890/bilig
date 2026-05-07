@@ -427,6 +427,31 @@ describe('GitHub issue reductions', () => {
     expectNumber(cellValue(workbook, 'Dates', 5, 1), 4)
   })
 
+  it('honors holiday ranges for WORKDAY and NETWORKDAYS formulas', () => {
+    const workbook = WorkPaper.buildFromSheets(
+      {
+        Dates: [
+          ['start', '=DATE(2026,1,1)'],
+          ['end', '=DATE(2026,1,10)'],
+          ['first holiday', '=DATE(2026,1,1)'],
+          ['second holiday', '=DATE(2026,1,2)'],
+          ['workday with holidays', '=WORKDAY(B1,3,B3:B4)'],
+          ['networkdays with holidays', '=NETWORKDAYS(B1,B2,B3:B4)'],
+          ['workday no holidays', '=WORKDAY(B1,3)'],
+          ['networkdays no holidays', '=NETWORKDAYS(B1,B2)'],
+          ['workday negative holidays', '=WORKDAY(B2,-3,B3:B4)'],
+        ],
+      },
+      { maxRows: 20, maxColumns: 10, useColumnIndex: true },
+    )
+
+    expectNumber(cellValue(workbook, 'Dates', 4, 1), 46_029)
+    expectNumber(cellValue(workbook, 'Dates', 5, 1), 5)
+    expectNumber(cellValue(workbook, 'Dates', 6, 1), 46_028)
+    expectNumber(cellValue(workbook, 'Dates', 7, 1), 7)
+    expectNumber(cellValue(workbook, 'Dates', 8, 1), 46_029)
+  })
+
   it('throws a public timeout error when initial evaluation exceeds the configured budget', () => {
     const config = {
       maxRows: 10,
