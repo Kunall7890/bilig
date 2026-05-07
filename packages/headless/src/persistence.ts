@@ -23,6 +23,7 @@ export const PERSISTABLE_WORK_PAPER_CONFIG_KEYS = [
   'functionArgSeparator',
   'decimalSeparator',
   'evaluateNullToZero',
+  'evaluationTimeoutMs',
   'ignorePunctuation',
   'language',
   'ignoreWhiteSpace',
@@ -185,6 +186,8 @@ function isPersistableConfigEntry(key: string, entry: unknown): boolean {
       return isStringArray(entry)
     case 'decimalSeparator':
       return entry === '.' || entry === ','
+    case 'evaluationTimeoutMs':
+      return isJsonNumber(entry) && entry >= 0
     case 'functionArgSeparator':
     case 'language':
     case 'licenseKey':

@@ -25,6 +25,7 @@ import {
   type U32,
 } from './runtime-state.js'
 import { createEngineServiceRuntime, runEngineEffect, type EngineServiceRuntime } from './live.js'
+import { EngineEvaluationTimeoutError } from './errors.js'
 
 export abstract class SpreadsheetEngineRuntimeBase {
   protected readonly performanceCounters: EngineCounters = createEngineCounters()
@@ -62,6 +63,11 @@ export abstract class SpreadsheetEngineRuntimeBase {
   protected readonly redoStack: TransactionLogEntry[] = []
   protected transactionReplayDepth = 0
   private useColumnIndexEnabled: boolean
+  private evaluationTimeoutMs: number | undefined
+  private evaluationBudgetActive = false
+  private evaluationBudgetDeadlineMs = Number.POSITIVE_INFINITY
+  private evaluationBudgetDepth = 0
+  private evaluationBudgetStepCount = 0
   private dependencyBuildEpoch = 1
   private dependencyBuildSeen: U32 = new Uint32Array(128)
   private dependencyBuildCells: U32 = new Uint32Array(128)
@@ -92,6 +98,7 @@ export abstract class SpreadsheetEngineRuntimeBase {
     this.formulas = new FormulaTable(this.workbook.cellStore)
     this.replicaState = createReplicaState(options.replicaId ?? 'local')
     this.useColumnIndexEnabled = options.useColumnIndex ?? false
+    this.evaluationTimeoutMs = options.evaluationTimeoutMs
     this.state = createEngineRuntimeState({
       workbook: this.workbook,
       strings: this.strings,
@@ -112,6 +119,18 @@ export abstract class SpreadsheetEngineRuntimeBase {
       getUseColumnIndex: () => this.useColumnIndexEnabled,
       setUseColumnIndex: (enabled) => {
         this.useColumnIndexEnabled = enabled
+      },
+      setEvaluationTimeoutMs: (timeoutMs) => {
+        this.evaluationTimeoutMs = timeoutMs
+      },
+      beginEvaluationBudget: (startedAtMs) => {
+        this.beginEvaluationBudget(startedAtMs)
+      },
+      endEvaluationBudget: () => {
+        this.endEvaluationBudget()
+      },
+      checkEvaluationBudget: (stepCost) => {
+        this.checkEvaluationBudget(stepCost)
       },
       getSelection: () => this.selection,
       setSelection: (selection) => {
@@ -415,6 +434,53 @@ export abstract class SpreadsheetEngineRuntimeBase {
     })
     this.redoStack.length = 0
     return true
+  }
+
+  setEvaluationTimeoutMs(timeoutMs: number | undefined): void {
+    this.state.setEvaluationTimeoutMs(timeoutMs)
+  }
+
+  private beginEvaluationBudget(startedAtMs: number): void {
+    const timeoutMs = this.evaluationTimeoutMs
+    if (timeoutMs === undefined) {
+      this.evaluationBudgetActive = false
+      this.evaluationBudgetDepth = 0
+      this.evaluationBudgetDeadlineMs = Number.POSITIVE_INFINITY
+      this.evaluationBudgetStepCount = 0
+      return
+    }
+    if (this.evaluationBudgetActive) {
+      this.evaluationBudgetDepth += 1
+      return
+    }
+    this.evaluationBudgetActive = true
+    this.evaluationBudgetDepth = 1
+    this.evaluationBudgetDeadlineMs = startedAtMs + timeoutMs
+    this.evaluationBudgetStepCount = 0
+  }
+
+  private endEvaluationBudget(): void {
+    if (!this.evaluationBudgetActive) {
+      return
+    }
+    this.evaluationBudgetDepth = Math.max(0, this.evaluationBudgetDepth - 1)
+    if (this.evaluationBudgetDepth > 0) {
+      return
+    }
+    this.evaluationBudgetActive = false
+    this.evaluationBudgetDepth = 0
+    this.evaluationBudgetDeadlineMs = Number.POSITIVE_INFINITY
+    this.evaluationBudgetStepCount = 0
+  }
+
+  private checkEvaluationBudget(stepCost = 1): void {
+    if (!this.evaluationBudgetActive || this.evaluationTimeoutMs === undefined) {
+      return
+    }
+    this.evaluationBudgetStepCount += Math.max(1, stepCost)
+    if (this.evaluationTimeoutMs === 0 || performance.now() >= this.evaluationBudgetDeadlineMs) {
+      throw new EngineEvaluationTimeoutError(this.evaluationTimeoutMs)
+    }
   }
 
   abstract getSelectionState(): SelectionState

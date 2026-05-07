@@ -24,6 +24,13 @@ export class EngineMutationError extends TaggedEngineMutationError {}
 
 export class EngineRecalcError extends TaggedEngineRecalcError {}
 
+export class EngineEvaluationTimeoutError extends Error {
+  constructor(readonly timeoutMs: number) {
+    super(`Workbook evaluation timed out after ${timeoutMs}ms`)
+    this.name = 'EngineEvaluationTimeoutError'
+  }
+}
+
 export class EngineSnapshotError extends TaggedEngineSnapshotError {}
 
 export class EngineSyncError extends TaggedEngineSyncError {}

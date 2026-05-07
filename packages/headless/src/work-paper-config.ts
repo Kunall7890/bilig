@@ -18,6 +18,7 @@ export const DEFAULT_CONFIG: Readonly<WorkPaperConfig> = Object.freeze({
   functionArgSeparator: ',',
   decimalSeparator: '.',
   evaluateNullToZero: true,
+  evaluationTimeoutMs: undefined,
   functionPlugins: [],
   ignorePunctuation: false,
   language: 'enGB',
@@ -59,6 +60,7 @@ export const WORKPAPER_CONFIG_KEYS = [
   'functionArgSeparator',
   'decimalSeparator',
   'evaluateNullToZero',
+  'evaluationTimeoutMs',
   'functionPlugins',
   'ignorePunctuation',
   'language',
@@ -93,6 +95,7 @@ export const WORKPAPER_PUBLIC_ERROR_NAMES = new Set([
   'WorkPaperConfigValueTooBigError',
   'WorkPaperConfigValueTooSmallError',
   'WorkPaperEvaluationSuspendedError',
+  'WorkPaperEvaluationTimeoutError',
   'WorkPaperExpectedOneOfValuesError',
   'WorkPaperExpectedValueOfTypeError',
   'WorkPaperFunctionPluginValidationError',
@@ -186,6 +189,9 @@ export function validateWorkPaperConfig(config: WorkPaperConfig): void {
   if (config.maxColumns !== undefined && (!Number.isInteger(config.maxColumns) || config.maxColumns < 1)) {
     throw new WorkPaperConfigValueTooSmallError('maxColumns', 1)
   }
+  if (config.evaluationTimeoutMs !== undefined && (!Number.isFinite(config.evaluationTimeoutMs) || config.evaluationTimeoutMs < 0)) {
+    throw new WorkPaperConfigValueTooSmallError('evaluationTimeoutMs', 0)
+  }
   if ((config.maxRows ?? MAX_ROWS) > MAX_ROWS) {
     throw new WorkPaperConfigValueTooBigError('maxRows', MAX_ROWS)
   }
@@ -255,5 +261,5 @@ export function canReuseWorkPaperSnapshotRebuild(currentConfig: WorkPaperConfig,
 }
 
 export function canApplyRuntimeOnlyWorkPaperConfigUpdate(changedKeys: readonly (keyof WorkPaperConfig)[]): boolean {
-  return changedKeys.every((key) => key === 'useColumnIndex' || key === 'useStats')
+  return changedKeys.every((key) => key === 'useColumnIndex' || key === 'useStats' || key === 'evaluationTimeoutMs')
 }

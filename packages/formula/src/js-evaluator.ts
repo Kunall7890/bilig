@@ -191,6 +191,7 @@ function executePlan(
   let pc = 0
 
   while (pc < plan.length) {
+    context.checkEvaluationBudget?.()
     const instruction = plan[pc]!
     switch (instruction.opcode) {
       case 'push-number':

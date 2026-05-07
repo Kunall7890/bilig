@@ -1,5 +1,5 @@
-import { readRuntimeImage, readRuntimeSnapshot, type SpreadsheetEngine } from '@bilig/core'
-import { loadInitialLiteralSheet, loadInitialMixedSheet } from './initial-sheet-load.js'
+import { readRuntimeImage, readRuntimeSnapshot, type EngineFormulaSourceRef, type SpreadsheetEngine } from '@bilig/core'
+import { loadInitialLiteralSheet, prepareInitialMixedSheetLoad } from './initial-sheet-load.js'
 import {
   inspectRuntimeSnapshotSheetDimensionsWithinLimits,
   inspectSheetWithinLimits,
@@ -48,6 +48,8 @@ export function initializeWorkPaperFromSheets(args: {
       args.namedExpressions.forEach((expression) => {
         args.upsertNamedExpression(expression, { duringInitialization: true })
       })
+      const initialFormulaRefs: EngineFormulaSourceRef[] = []
+      let initialFormulaPotentialNewCells = 0
       for (let index = 0; index < sheetEntries.length; index += 1) {
         const [, sheet] = sheetEntries[index]!
         const sheetId = sheetIds[index]!
@@ -60,13 +62,18 @@ export function initializeWorkPaperFromSheets(args: {
           !args.hasNamedExpressions() && !args.hasFunctionAliases()
             ? (formula: string) => formula
             : (formula: string) => args.rewriteFormulaForStorage(formula, sheetId)
-        loadInitialMixedSheet({
+        const prepared = prepareInitialMixedSheetLoad({
           engine: args.engine,
           sheetId,
           content: sheet,
           rewriteFormula: rewriteInitialFormula,
           inspection: inspected,
         })
+        initialFormulaRefs.push(...prepared.formulaRefs)
+        initialFormulaPotentialNewCells += prepared.potentialNewCells
+      }
+      if (initialFormulaRefs.length > 0) {
+        args.engine.initializeFormulaSourcesAtNow(initialFormulaRefs, initialFormulaPotentialNewCells)
       }
     }
     for (let index = 0; index < sheetEntries.length; index += 1) {

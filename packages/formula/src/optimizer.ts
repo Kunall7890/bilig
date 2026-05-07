@@ -5,7 +5,7 @@ import { isArrayValue } from './runtime-values.js'
 import { rewriteSpecialCall } from './special-call-rewrites.js'
 
 const VOLATILE_BUILTINS = new Set(['TODAY', 'NOW', 'RAND'])
-const CONTEXTUAL_BUILTINS = new Set(['CELL', 'COLUMN', 'FORMULATEXT', 'ROW', 'SHEET', 'SHEETS'])
+const CONTEXTUAL_BUILTINS = new Set(['CELL', 'COLUMN', 'FORMULATEXT', 'OFFSET', 'ROW', 'SHEET', 'SHEETS'])
 
 function cellValueToAst(value: CellValue): FormulaNode | undefined {
   switch (value.tag) {

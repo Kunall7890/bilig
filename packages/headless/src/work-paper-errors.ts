@@ -25,6 +25,12 @@ export class WorkPaperEvaluationSuspendedError extends BaseWorkPaperError {
   }
 }
 
+export class WorkPaperEvaluationTimeoutError extends BaseWorkPaperError {
+  constructor(readonly timeoutMs: number) {
+    super('WorkPaperEvaluationTimeoutError', `Workbook evaluation timed out after ${timeoutMs}ms`)
+  }
+}
+
 export class WorkPaperExpectedOneOfValuesError extends BaseWorkPaperError {
   constructor(values: string, paramName: string) {
     super('WorkPaperExpectedOneOfValuesError', `Expected one of ${values} for config parameter: ${paramName}`)

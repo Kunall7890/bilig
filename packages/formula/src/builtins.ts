@@ -355,8 +355,22 @@ function createExternalScalarBuiltin(name: string): Builtin {
       return existingError
     }
     const external = getExternalScalarFunction(name)
-    return external ? external(...args) : blockedError()
+    if (external) {
+      return external(...args)
+    }
+    return name === 'HYPERLINK' ? hyperlinkDisplayValue(args) : blockedError()
   }
+}
+
+function hyperlinkDisplayValue(args: CellValue[]): CellValue {
+  if (args.length < 1 || args.length > 2) {
+    return valueError()
+  }
+  const linkLocation = args[0]
+  if (!linkLocation || (linkLocation.tag !== ValueTag.String && linkLocation.tag !== ValueTag.Empty)) {
+    return valueError()
+  }
+  return args[1] ?? linkLocation
 }
 
 const externalScalarBuiltins = Object.fromEntries(

@@ -4,6 +4,7 @@ import type { CellSnapshot, RecalcMetrics } from '@bilig/protocol'
 import { ValueTag } from '@bilig/protocol'
 import type { ViewportPatch } from '@bilig/worker-transport'
 import { runProperty } from '@bilig/test-fuzz'
+import { PRODUCT_COLUMN_WIDTH, PRODUCT_ROW_HEIGHT } from '@bilig/grid'
 import { ProjectedViewportStore } from '../projected-viewport-store.js'
 
 type ViewportAction =
@@ -64,7 +65,11 @@ describe('projected viewport fuzz', () => {
               return
             }
             case 'column':
-              expectedColumnSizes.set(action.index, action.size)
+              if (action.size === PRODUCT_COLUMN_WIDTH) {
+                expectedColumnSizes.delete(action.index)
+              } else {
+                expectedColumnSizes.set(action.index, action.size)
+              }
               if (action.hidden) {
                 expectedHiddenColumns.set(action.index, true)
               } else {
@@ -72,7 +77,11 @@ describe('projected viewport fuzz', () => {
               }
               return
             case 'row':
-              expectedRowSizes.set(action.index, action.size)
+              if (action.size === PRODUCT_ROW_HEIGHT) {
+                expectedRowSizes.delete(action.index)
+              } else {
+                expectedRowSizes.set(action.index, action.size)
+              }
               if (action.hidden) {
                 expectedHiddenRows.set(action.index, true)
               } else {

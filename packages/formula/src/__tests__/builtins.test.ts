@@ -5209,10 +5209,7 @@ describe('formula builtins', () => {
       tag: ValueTag.Error,
       code: ErrorCode.Blocked,
     })
-    expect(HYPERLINK(hello, sourceLang)).toEqual({
-      tag: ValueTag.Error,
-      code: ErrorCode.Blocked,
-    })
+    expect(HYPERLINK(hello, sourceLang)).toBe(sourceLang)
     expect(DDE(hello, sourceLang, targetLang)).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.Blocked,

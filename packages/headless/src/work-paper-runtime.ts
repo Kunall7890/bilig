@@ -1,7 +1,10 @@
 import { SpreadsheetEngine, type EngineCellMutationRef, type SheetRecord } from '@bilig/core'
 import { MAX_COLS, MAX_ROWS, type CellSnapshot, type CellValue } from '@bilig/protocol'
-import { tryLoadInitialLiteralSheet } from './initial-sheet-load.js'
-import { WorkPaperNamedExpressionDoesNotExistError, WorkPaperSheetSizeLimitExceededError } from './work-paper-errors.js'
+import {
+  WorkPaperEvaluationTimeoutError,
+  WorkPaperNamedExpressionDoesNotExistError,
+  WorkPaperSheetSizeLimitExceededError,
+} from './work-paper-errors.js'
 import {
   cloneConfig,
   canApplyRuntimeOnlyWorkPaperConfigUpdate,
@@ -63,6 +66,22 @@ import { WorkPaperRuntimeSurface } from './work-paper-runtime-surface.js'
 type NamedExpressionValueSnapshot = WorkPaperNamedExpressionValueSnapshot
 
 let nextWorkbookId = 1
+
+function workPaperEvaluationTimeoutErrorFrom(error: unknown): WorkPaperEvaluationTimeoutError | undefined {
+  let current: unknown = error
+  while (typeof current === 'object' && current !== null) {
+    if (current instanceof WorkPaperEvaluationTimeoutError) {
+      return current
+    }
+    const name = current instanceof Error ? current.name : undefined
+    if (name === 'WorkPaperEvaluationTimeoutError' || name === 'EngineEvaluationTimeoutError') {
+      const timeoutMs = Reflect.get(current, 'timeoutMs')
+      return new WorkPaperEvaluationTimeoutError(typeof timeoutMs === 'number' ? timeoutMs : 0)
+    }
+    current = Reflect.get(current, 'cause')
+  }
+  return undefined
+}
 
 export class WorkPaper extends WorkPaperRuntimeSurface {
   readonly workbookId = nextWorkbookId++
@@ -218,6 +237,7 @@ export class WorkPaper extends WorkPaperRuntimeSurface {
       workbookName: 'Workbook',
       trackReplicaVersions: false,
       ...(this.config.useColumnIndex !== undefined ? { useColumnIndex: this.config.useColumnIndex } : {}),
+      ...(this.config.evaluationTimeoutMs !== undefined ? { evaluationTimeoutMs: this.config.evaluationTimeoutMs } : {}),
     })
     this.sheetDimensionCache = new WorkPaperSheetDimensionCache(this.engine)
     this.sheetDimensionCache.invalidateAll()
@@ -275,21 +295,29 @@ export class WorkPaper extends WorkPaperRuntimeSurface {
     namedExpressions: readonly SerializedWorkPaperNamedExpression[] = [],
   ): WorkPaper {
     const workbook = new WorkPaper(configInput)
-    initializeWorkPaperFromSheets({
-      engine: workbook.engine,
-      config: workbook.config,
-      sheets,
-      namedExpressions,
-      hasNamedExpressions: () => workbook.namedExpressions.size > 0,
-      hasFunctionAliases: () => workbook.functionAliasLookup.size > 0,
-      withEngineEventCaptureDisabled: (callback) => workbook.engineEvents.withCaptureDisabled(callback),
-      upsertNamedExpression: (expression, options) => workbook.upsertNamedExpressionInternal(expression, options),
-      rewriteFormulaForStorage: (formula, ownerSheetId) => workbook.rewriteFormulaForStorage(formula, ownerSheetId),
-      requireSheetId: (name) => workbook.requireSheetId(name),
-      cacheInitializedSheetDimensions: (sheetId, dimensions) => workbook.sheetDimensionCache.cacheInitialized(sheetId, dimensions),
-      clearHistoryStacks: () => workbook.clearHistoryStacks(),
-      resetChangeTrackingCaches: () => workbook.resetChangeTrackingCaches(),
-    })
+    try {
+      initializeWorkPaperFromSheets({
+        engine: workbook.engine,
+        config: workbook.config,
+        sheets,
+        namedExpressions,
+        hasNamedExpressions: () => workbook.namedExpressions.size > 0,
+        hasFunctionAliases: () => workbook.functionAliasLookup.size > 0,
+        withEngineEventCaptureDisabled: (callback) => workbook.engineEvents.withCaptureDisabled(callback),
+        upsertNamedExpression: (expression, options) => workbook.upsertNamedExpressionInternal(expression, options),
+        rewriteFormulaForStorage: (formula, ownerSheetId) => workbook.rewriteFormulaForStorage(formula, ownerSheetId),
+        requireSheetId: (name) => workbook.requireSheetId(name),
+        cacheInitializedSheetDimensions: (sheetId, dimensions) => workbook.sheetDimensionCache.cacheInitialized(sheetId, dimensions),
+        clearHistoryStacks: () => workbook.clearHistoryStacks(),
+        resetChangeTrackingCaches: () => workbook.resetChangeTrackingCaches(),
+      })
+    } catch (error) {
+      const timeoutError = workPaperEvaluationTimeoutErrorFrom(error)
+      if (timeoutError) {
+        throw timeoutError
+      }
+      throw error
+    }
     return workbook
   }
 
@@ -507,6 +535,9 @@ export class WorkPaper extends WorkPaperRuntimeSurface {
         nextConfig.useColumnIndex ?? false,
       )
     }
+    if (this.config.evaluationTimeoutMs !== nextConfig.evaluationTimeoutMs) {
+      this.engine.setEvaluationTimeoutMs(nextConfig.evaluationTimeoutMs)
+    }
     this.config = cloneConfig(nextConfig)
   }
 
@@ -532,6 +563,7 @@ export class WorkPaper extends WorkPaperRuntimeSurface {
       workbookName: 'Workbook',
       trackReplicaVersions: false,
       ...(nextConfig.useColumnIndex !== undefined ? { useColumnIndex: nextConfig.useColumnIndex } : {}),
+      ...(nextConfig.evaluationTimeoutMs !== undefined ? { evaluationTimeoutMs: nextConfig.evaluationTimeoutMs } : {}),
     })
     this.engineEvents.attach(this.engine)
     this.config = cloneConfig(nextConfig)
@@ -541,19 +573,29 @@ export class WorkPaper extends WorkPaperRuntimeSurface {
       if (snapshot) {
         this.engine.importSnapshot(snapshot)
       } else {
-        Object.keys(serializedSheets!).forEach((sheetName) => {
-          this.engine.createSheetForInitialization(sheetName)
-        })
-        serializedNamedExpressions!.forEach((expression) => {
-          this.upsertNamedExpressionInternal(expression, { duringInitialization: true })
-        })
-        Object.entries(serializedSheets!).forEach(([sheetName, sheet]) => {
-          const sheetId = this.requireSheetId(sheetName)
-          if (tryLoadInitialLiteralSheet(this.engine, sheetId, sheet)) {
-            return
+        try {
+          initializeWorkPaperFromSheets({
+            engine: this.engine,
+            config: this.config,
+            sheets: serializedSheets!,
+            namedExpressions: serializedNamedExpressions!,
+            hasNamedExpressions: () => this.namedExpressions.size > 0,
+            hasFunctionAliases: () => this.functionAliasLookup.size > 0,
+            withEngineEventCaptureDisabled: (callback) => callback(),
+            upsertNamedExpression: (expression, options) => this.upsertNamedExpressionInternal(expression, options),
+            rewriteFormulaForStorage: (formula, ownerSheetId) => this.rewriteFormulaForStorage(formula, ownerSheetId),
+            requireSheetId: (name) => this.requireSheetId(name),
+            cacheInitializedSheetDimensions: (sheetId, dimensions) => this.sheetDimensionCache.cacheInitialized(sheetId, dimensions),
+            clearHistoryStacks: () => this.clearHistoryStacks(),
+            resetChangeTrackingCaches: () => this.resetChangeTrackingCaches(),
+          })
+        } catch (error) {
+          const timeoutError = workPaperEvaluationTimeoutErrorFrom(error)
+          if (timeoutError) {
+            throw timeoutError
           }
-          this.replaceSheetContentInternal(sheetId, sheet, { duringInitialization: true })
-        })
+          throw error
+        }
       }
     })
     this.clearHistoryStacks()

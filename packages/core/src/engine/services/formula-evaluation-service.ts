@@ -55,6 +55,7 @@ export function createEngineFormulaEvaluationService(args: {
   readonly sortedLookup: Pick<SortedColumnSearchService, 'findVectorMatch' | 'prepareVectorLookup' | 'findPreparedVectorMatch'>
   readonly materializeSpill: (cellIndex: number, arrayValue: { values: CellValue[]; rows: number; cols: number }) => SpillMaterialization
   readonly clearOwnedSpill: (cellIndex: number) => number[]
+  readonly checkEvaluationBudget: (stepCost?: number) => void
   readonly resolvePivotData: (
     sheetName: string,
     address: string,
@@ -128,18 +129,23 @@ export function createEngineFormulaEvaluationService(args: {
     if (range.kind !== 'cells') {
       return []
     }
+    const cellCount = (range.end.row - range.start.row + 1) * (range.end.col - range.start.col + 1)
+    args.checkEvaluationBudget(cellCount)
     const values: CellValue[] = []
     if (!replacements || !visiting) {
-      return args.runtimeColumnStore.readRangeValues({
+      const rangeValues = args.runtimeColumnStore.readRangeValues({
         sheetName,
         rowStart: range.start.row,
         rowEnd: range.end.row,
         colStart: range.start.col,
         colEnd: range.end.col,
       })
+      args.checkEvaluationBudget(rangeValues.length)
+      return rangeValues
     }
     for (let row = range.start.row; row <= range.end.row; row += 1) {
       for (let col = range.start.col; col <= range.end.col; col += 1) {
+        args.checkEvaluationBudget()
         values.push(evaluateCellWithReferenceReplacements(sheetName, formatAddress(row, col), replacements, visiting))
       }
     }
@@ -572,6 +578,7 @@ export function createEngineFormulaEvaluationService(args: {
       }) => resolveMultipleOperationsNow(nested),
       listSheetNames: () =>
         [...args.state.workbook.sheetsByName.values()].toSorted((left, right) => left.order - right.order).map((sheet) => sheet.name),
+      checkEvaluationBudget: (stepCost) => args.checkEvaluationBudget(stepCost),
     }
     const jsPlan = formula.compiled.jsPlan.length > 0 ? formula.compiled.jsPlan : lowerToPlan(formula.compiled.optimizedAst)
     const result = evaluatePlanResult(jsPlan, evaluationContext)
@@ -737,6 +744,7 @@ export function createEngineFormulaEvaluationService(args: {
       }) => resolveMultipleOperationsNow(request),
       listSheetNames: () =>
         [...args.state.workbook.sheetsByName.values()].toSorted((left, right) => left.order - right.order).map((sheet) => sheet.name),
+      checkEvaluationBudget: (stepCost) => args.checkEvaluationBudget(stepCost),
       resolveExactVectorMatch: (request) => {
         if (
           request.startRow === undefined ||

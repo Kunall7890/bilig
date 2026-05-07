@@ -152,6 +152,7 @@ export interface WorkPaperConfig {
   functionArgSeparator?: string
   decimalSeparator?: '.' | ','
   evaluateNullToZero?: boolean
+  evaluationTimeoutMs?: number | undefined
   functionPlugins?: WorkPaperFunctionPluginDefinition[]
   ignorePunctuation?: boolean
   language?: string

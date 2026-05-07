@@ -50,6 +50,7 @@ export interface EvaluationContext {
     matchMode: 1 | -1
   }) => ApproximateVectorMatchResult
   noteRangeMaterialization?: (cellCount: number) => void
+  checkEvaluationBudget?: (stepCost?: number) => void
   noteExactLookupDirect?: () => void
   noteExactLookupFallback?: () => void
   listSheetNames?: () => string[]

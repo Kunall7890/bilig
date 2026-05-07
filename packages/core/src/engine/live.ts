@@ -163,6 +163,9 @@ type EngineRecalcRuntimeConfig = Omit<
   | 'getChangedInputBuffer'
   | 'flushWasmProgramSync'
   | 'dirtyScheduler'
+  | 'beginEvaluationBudget'
+  | 'endEvaluationBudget'
+  | 'checkEvaluationBudget'
   | 'materializeSpill'
   | 'clearOwnedSpill'
   | 'evaluateDirectLookupFormula'
@@ -432,6 +435,7 @@ export function createEngineServiceRuntime(args: {
     sortedLookup,
     materializeSpill: (cellIndex, arrayValue) => support.materializeSpillNow(cellIndex, arrayValue),
     clearOwnedSpill: (cellIndex) => support.clearOwnedSpillNow(cellIndex),
+    checkEvaluationBudget: (stepCost) => args.state.checkEvaluationBudget(stepCost),
     resolvePivotData: (sheetName, address, dataField, filters) =>
       runEngineEffect(requireService(pivot, 'pivot').resolvePivotData(sheetName, address, dataField, filters)),
   })
@@ -592,6 +596,9 @@ export function createEngineServiceRuntime(args: {
     getWasmBatch: () => scratch.getWasmBatchNow(),
     getChangedInputBuffer: () => support.getChangedInputBufferNow(),
     flushWasmProgramSync: () => graph.flushWasmProgramSyncNow(),
+    beginEvaluationBudget: (startedAtMs) => args.state.beginEvaluationBudget(startedAtMs),
+    endEvaluationBudget: () => args.state.endEvaluationBudget(),
+    checkEvaluationBudget: (stepCost) => args.state.checkEvaluationBudget(stepCost),
     dirtyScheduler,
     materializeSpill: (cellIndex, arrayValue) => support.materializeSpillNow(cellIndex, arrayValue),
     clearOwnedSpill: (cellIndex) => support.clearOwnedSpillNow(cellIndex),
@@ -640,6 +647,9 @@ export function createEngineServiceRuntime(args: {
         orderedFormulaCount,
         kernelSyncRoots,
       ),
+    beginEvaluationBudget: (startedAtMs) => args.state.beginEvaluationBudget(startedAtMs),
+    endEvaluationBudget: () => args.state.endEvaluationBudget(),
+    checkEvaluationBudget: (stepCost) => args.state.checkEvaluationBudget(stepCost),
     reconcilePivotOutputs: (baseChanged, forceAllPivots) =>
       requireService(recalc, 'recalc').reconcilePivotOutputsNow(baseChanged, forceAllPivots),
     getBatchMutationDepth: () => args.operation.getBatchMutationDepth(),

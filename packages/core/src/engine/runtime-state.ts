@@ -41,6 +41,7 @@ export interface SpreadsheetEngineOptions {
   useColumnIndex?: boolean
   trackReplicaVersions?: boolean
   initialCellCapacity?: number
+  evaluationTimeoutMs?: number
 }
 
 export interface EngineSyncClientConnection {
@@ -370,6 +371,10 @@ export interface EngineRuntimeState {
   setSyncClientConnection(connection: EngineSyncClientConnection | null): void
   getTransactionReplayDepth(): number
   setTransactionReplayDepth(depth: number): void
+  setEvaluationTimeoutMs(timeoutMs: number | undefined): void
+  beginEvaluationBudget(startedAtMs: number): void
+  endEvaluationBudget(): void
+  checkEvaluationBudget(stepCost?: number): void
   getLastMetrics(): RecalcMetrics
   setLastMetrics(metrics: RecalcMetrics): void
 }
@@ -401,6 +406,10 @@ export interface EngineRuntimeStateController {
   setSyncClientConnection(connection: EngineSyncClientConnection | null): void
   getTransactionReplayDepth(): number
   setTransactionReplayDepth(depth: number): void
+  setEvaluationTimeoutMs(timeoutMs: number | undefined): void
+  beginEvaluationBudget(startedAtMs: number): void
+  endEvaluationBudget(): void
+  checkEvaluationBudget(stepCost?: number): void
   getLastMetrics(): RecalcMetrics
   setLastMetrics(metrics: RecalcMetrics): void
 }

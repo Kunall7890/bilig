@@ -86,7 +86,7 @@ function isFreshInitialLogicalSheetInternals(value: unknown): value is FreshInit
   return typeof value === 'object' && value !== null
 }
 
-function prepareInitialMixedSheetLoad(args: {
+export function prepareInitialMixedSheetLoad(args: {
   engine: SpreadsheetEngine
   sheetId: number
   content: WorkPaperSheet

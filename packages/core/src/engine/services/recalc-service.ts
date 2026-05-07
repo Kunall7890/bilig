@@ -131,6 +131,9 @@ export function createEngineRecalcService(args: {
   readonly getWasmBatch: () => U32
   readonly getChangedInputBuffer: () => U32
   readonly flushWasmProgramSync: () => void
+  readonly beginEvaluationBudget: (startedAtMs: number) => void
+  readonly endEvaluationBudget: () => void
+  readonly checkEvaluationBudget: (stepCost?: number) => void
   readonly now: () => Date
   readonly random: () => number
   readonly performanceNow: () => number
@@ -210,184 +213,77 @@ export function createEngineRecalcService(args: {
     },
   ): U32 => {
     const started = args.performanceNow()
-    args.ensureRecalcScratchCapacity(args.state.workbook.cellStore.size + 1)
-    let pendingKernelSync = args.getPendingKernelSync()
-    let wasmBatch = args.getWasmBatch()
-    let deferredKernelSyncCount = args.getDeferredKernelSyncCount()
-    let deferredKernelSyncEpoch = args.getDeferredKernelSyncEpoch() + 1
-    const deferredKernelSyncSeen = args.getDeferredKernelSyncSeen()
-    if (deferredKernelSyncEpoch === 0xffff_ffff) {
-      deferredKernelSyncEpoch = 1
-      deferredKernelSyncSeen.fill(0)
-    }
-    args.setDeferredKernelSyncEpoch(deferredKernelSyncEpoch)
-    for (let index = 0; index < deferredKernelSyncCount; index += 1) {
-      const cellIndex = pendingKernelSync[index]
-      if (cellIndex !== undefined) {
-        deferredKernelSyncSeen[cellIndex] = deferredKernelSyncEpoch
-      }
-    }
-    if (args.state.wasm.ready) {
-      args.state.wasm.syncStringPool(args.state.strings.exportLayout())
-    }
-
-    const allChangedRoots = [...changedRoots]
-    const allOrdered: number[] = []
-    let singlePassOrdered: readonly number[] | U32 | null = null
-    let singlePassOrderedCount = 0
-    let pendingFirstPassOrder = firstPassOrder
-    let passRoots = [...changedRoots]
-    let passKernelRoots = [...kernelSyncRoots]
-    let totalOrderedCount = 0
-    let totalRangeNodeVisits = 0
-    let wasmCount = 0
-    let jsCount = 0
-    let pendingKernelSyncCount = deferredKernelSyncCount
-    const volatileState = createRecalcVolatileState(args.now)
-    let wasmProgramFlushed = false
-    const ensureWasmProgramFlushed = (): void => {
-      if (wasmProgramFlushed) {
-        return
-      }
-      args.flushWasmProgramSync()
-      wasmProgramFlushed = true
-    }
-
-    if (changedRoots.length === 0 && kernelSyncRoots.length > 0) {
-      for (let index = 0; index < kernelSyncRoots.length; index += 1) {
-        const cellIndex = kernelSyncRoots[index]!
-        if (deferredKernelSyncSeen[cellIndex] === deferredKernelSyncEpoch) {
-          continue
-        }
-        deferredKernelSyncSeen[cellIndex] = deferredKernelSyncEpoch
-        pendingKernelSync[pendingKernelSyncCount] = cellIndex
-        pendingKernelSyncCount += 1
-      }
-      const lastMetrics = { ...args.state.getLastMetrics() }
-      lastMetrics.dirtyFormulaCount = 0
-      lastMetrics.jsFormulaCount = 0
-      lastMetrics.wasmFormulaCount = 0
-      lastMetrics.rangeNodeVisits = 0
-      lastMetrics.recalcMs = args.performanceNow() - started
-      args.state.setLastMetrics(lastMetrics)
-      args.setDeferredKernelSyncCount(pendingKernelSyncCount)
-      return args.emptyChangedSet()
-    }
-
-    const flushWasmBatch = (batchCount: number, hasVolatile: boolean, randCount: number): number => {
-      if (batchCount === 0) {
-        return 0
-      }
-      ensureWasmProgramFlushed()
-      args.state.wasm.syncFromStore(args.state.workbook.cellStore, pendingKernelSync.subarray(0, pendingKernelSyncCount))
-      pendingKernelSyncCount = 0
-      deferredKernelSyncCount = 0
-      args.setDeferredKernelSyncCount(0)
-      deferredKernelSyncEpoch += 1
+    args.beginEvaluationBudget(started)
+    try {
+      args.checkEvaluationBudget()
+      args.ensureRecalcScratchCapacity(args.state.workbook.cellStore.size + 1)
+      let pendingKernelSync = args.getPendingKernelSync()
+      let wasmBatch = args.getWasmBatch()
+      let deferredKernelSyncCount = args.getDeferredKernelSyncCount()
+      let deferredKernelSyncEpoch = args.getDeferredKernelSyncEpoch() + 1
+      const deferredKernelSyncSeen = args.getDeferredKernelSyncSeen()
       if (deferredKernelSyncEpoch === 0xffff_ffff) {
         deferredKernelSyncEpoch = 1
         deferredKernelSyncSeen.fill(0)
       }
       args.setDeferredKernelSyncEpoch(deferredKernelSyncEpoch)
-      if (hasVolatile) {
-        args.state.wasm.uploadVolatileNowSerial(volatileState.nowSerial)
-        args.state.wasm.uploadVolatileRandomValues(consumeVolatileRandomValues(volatileState, randCount, args.random))
-      }
-      const batchIndices = wasmBatch.subarray(0, batchCount)
-      args.state.wasm.evalBatch(batchIndices)
-      args.state.wasm.syncToStore(args.state.workbook.cellStore, batchIndices, args.state.strings, (cellIndex) =>
-        args.state.workbook.notifyCellValueWritten(cellIndex),
-      )
-      return batchCount
-    }
-
-    while (pendingFirstPassOrder || passRoots.length > 0) {
-      let ordered: readonly number[] | U32
-      let orderedCount: number
-      let rangeNodeVisits = 0
-      if (pendingFirstPassOrder) {
-        ordered = pendingFirstPassOrder.orderedFormulaCellIndices
-        orderedCount = pendingFirstPassOrder.orderedFormulaCount
-        pendingFirstPassOrder = undefined
-      } else {
-        const scheduled = args.dirtyScheduler.collectDirty(passRoots)
-        ordered = scheduled.orderedFormulaCellIndices
-        orderedCount = scheduled.orderedFormulaCount
-        rangeNodeVisits = scheduled.rangeNodeVisits
-      }
-      totalOrderedCount += orderedCount
-      totalRangeNodeVisits += rangeNodeVisits
-      if (singlePassOrdered === null && allOrdered.length === 0) {
-        singlePassOrdered = ordered
-        singlePassOrderedCount = orderedCount
-      } else {
-        if (singlePassOrdered !== null) {
-          for (let orderedIndex = 0; orderedIndex < singlePassOrderedCount; orderedIndex += 1) {
-            const cellIndex = singlePassOrdered[orderedIndex]
-            if (cellIndex !== undefined) {
-              allOrdered.push(cellIndex)
-            }
-          }
-          singlePassOrdered = null
-          singlePassOrderedCount = 0
+      for (let index = 0; index < deferredKernelSyncCount; index += 1) {
+        const cellIndex = pendingKernelSync[index]
+        if (cellIndex !== undefined) {
+          deferredKernelSyncSeen[cellIndex] = deferredKernelSyncEpoch
         }
-        for (let orderedIndex = 0; orderedIndex < orderedCount; orderedIndex += 1) {
-          allOrdered.push(ordered[orderedIndex]!)
-        }
+      }
+      if (args.state.wasm.ready) {
+        args.state.wasm.syncStringPool(args.state.strings.exportLayout())
       }
 
-      for (let index = 0; index < passKernelRoots.length; index += 1) {
-        const cellIndex = passKernelRoots[index]!
-        if (deferredKernelSyncSeen[cellIndex] === deferredKernelSyncEpoch) {
-          continue
-        }
-        deferredKernelSyncSeen[cellIndex] = deferredKernelSyncEpoch
-        pendingKernelSync[pendingKernelSyncCount] = cellIndex
-        pendingKernelSyncCount += 1
-      }
-
-      let wasmBatchCount = 0
-      let wasmBatchHasVolatile = false
-      let wasmBatchRandCount = 0
-      const spillChangedRoots: number[] = []
-      const spillChangedSeen = new Set<number>()
-      const noteSpillChanges = (changedCellIndices: readonly number[]): void => {
-        for (let spillIndex = 0; spillIndex < changedCellIndices.length; spillIndex += 1) {
-          const changedCellIndex = changedCellIndices[spillIndex]!
-          if (spillChangedSeen.has(changedCellIndex)) {
-            continue
-          }
-          spillChangedSeen.add(changedCellIndex)
-          spillChangedRoots.push(changedCellIndex)
-        }
-      }
-      const queueKernelSync = (cellIndex: number): void => {
-        if (deferredKernelSyncSeen[cellIndex] === deferredKernelSyncEpoch) {
+      const allChangedRoots = [...changedRoots]
+      const allOrdered: number[] = []
+      let singlePassOrdered: readonly number[] | U32 | null = null
+      let singlePassOrderedCount = 0
+      let pendingFirstPassOrder = firstPassOrder
+      let passRoots = [...changedRoots]
+      let passKernelRoots = [...kernelSyncRoots]
+      let totalOrderedCount = 0
+      let totalRangeNodeVisits = 0
+      let wasmCount = 0
+      let jsCount = 0
+      let pendingKernelSyncCount = deferredKernelSyncCount
+      const volatileState = createRecalcVolatileState(args.now)
+      let wasmProgramFlushed = false
+      const ensureWasmProgramFlushed = (): void => {
+        if (wasmProgramFlushed) {
           return
         }
-        deferredKernelSyncSeen[cellIndex] = deferredKernelSyncEpoch
-        pendingKernelSync[pendingKernelSyncCount] = cellIndex
-        pendingKernelSyncCount += 1
+        args.flushWasmProgramSync()
+        wasmProgramFlushed = true
       }
-      const hasCycleDependency = (formula: RuntimeFormula): boolean => {
-        for (let dependencyIndex = 0; dependencyIndex < formula.dependencyIndices.length; dependencyIndex += 1) {
-          const dependencyCellIndex = formula.dependencyIndices[dependencyIndex]!
-          if (((args.state.workbook.cellStore.flags[dependencyCellIndex] ?? 0) & CellFlags.InCycle) !== 0) {
-            return true
+
+      if (changedRoots.length === 0 && kernelSyncRoots.length > 0) {
+        for (let index = 0; index < kernelSyncRoots.length; index += 1) {
+          const cellIndex = kernelSyncRoots[index]!
+          if (deferredKernelSyncSeen[cellIndex] === deferredKernelSyncEpoch) {
+            continue
           }
+          deferredKernelSyncSeen[cellIndex] = deferredKernelSyncEpoch
+          pendingKernelSync[pendingKernelSyncCount] = cellIndex
+          pendingKernelSyncCount += 1
         }
-        return false
+        const lastMetrics = { ...args.state.getLastMetrics() }
+        lastMetrics.dirtyFormulaCount = 0
+        lastMetrics.jsFormulaCount = 0
+        lastMetrics.wasmFormulaCount = 0
+        lastMetrics.rangeNodeVisits = 0
+        lastMetrics.recalcMs = args.performanceNow() - started
+        args.state.setLastMetrics(lastMetrics)
+        args.setDeferredKernelSyncCount(pendingKernelSyncCount)
+        return args.emptyChangedSet()
       }
-      const materializeCycleDependentError = (cellIndex: number): void => {
-        const spillChanges = args.clearOwnedSpill(cellIndex)
-        args.state.workbook.cellStore.setValue(cellIndex, errorValue(ErrorCode.Cycle))
-        queueKernelSync(cellIndex)
-        noteSpillChanges(spillChanges)
-        for (let spillIndex = 0; spillIndex < spillChanges.length; spillIndex += 1) {
-          queueKernelSync(spillChanges[spillIndex]!)
+
+      const flushWasmBatch = (batchCount: number, hasVolatile: boolean, randCount: number): number => {
+        if (batchCount === 0) {
+          return 0
         }
-      }
-      const evaluateWasmSpillFormula = (cellIndex: number, formula: RuntimeFormula): number => {
         ensureWasmProgramFlushed()
         args.state.wasm.syncFromStore(args.state.workbook.cellStore, pendingKernelSync.subarray(0, pendingKernelSyncCount))
         pendingKernelSyncCount = 0
@@ -399,152 +295,275 @@ export function createEngineRecalcService(args: {
           deferredKernelSyncSeen.fill(0)
         }
         args.setDeferredKernelSyncEpoch(deferredKernelSyncEpoch)
-        if (formula.compiled.volatile) {
+        if (hasVolatile) {
           args.state.wasm.uploadVolatileNowSerial(volatileState.nowSerial)
-          args.state.wasm.uploadVolatileRandomValues(
-            consumeVolatileRandomValues(volatileState, formula.compiled.randCallCount, args.random),
-          )
+          args.state.wasm.uploadVolatileRandomValues(consumeVolatileRandomValues(volatileState, randCount, args.random))
         }
-        const batchIndices = Uint32Array.of(cellIndex)
+        const batchIndices = wasmBatch.subarray(0, batchCount)
+        args.checkEvaluationBudget(batchCount)
         args.state.wasm.evalBatch(batchIndices)
-        args.state.wasm.syncToStore(args.state.workbook.cellStore, batchIndices, args.state.strings, (changedCellIndex) =>
-          args.state.workbook.notifyCellValueWritten(changedCellIndex),
+        args.state.wasm.syncToStore(args.state.workbook.cellStore, batchIndices, args.state.strings, (cellIndex) =>
+          args.state.workbook.notifyCellValueWritten(cellIndex),
         )
-        const spill = args.state.wasm.readSpill(cellIndex, args.state.strings)
-        const spillMaterialization = spill
-          ? args.materializeSpill(cellIndex, {
-              rows: spill.rows,
-              cols: spill.cols,
-              values: spill.values,
-            })
-          : {
-              changedCellIndices: args.clearOwnedSpill(cellIndex),
-              ownerValue: args.state.workbook.cellStore.getValue(cellIndex, (id) => args.state.strings.get(id)),
-            }
-        args.state.workbook.cellStore.setValue(
-          cellIndex,
-          spillMaterialization.ownerValue,
-          spillMaterialization.ownerValue.tag === ValueTag.String ? args.state.strings.intern(spillMaterialization.ownerValue.value) : 0,
-        )
-        queueKernelSync(cellIndex)
-        for (let spillIndex = 0; spillIndex < spillMaterialization.changedCellIndices.length; spillIndex += 1) {
-          queueKernelSync(spillMaterialization.changedCellIndices[spillIndex]!)
-        }
-        noteSpillChanges(spillMaterialization.changedCellIndices)
-        return 1
+        args.checkEvaluationBudget(batchCount)
+        return batchCount
       }
 
-      for (let index = 0; index < orderedCount; index += 1) {
-        const cellIndex = ordered[index]!
-        const formula = args.state.formulas.get(cellIndex)
-        if (!formula) {
-          continue
+      while (pendingFirstPassOrder || passRoots.length > 0) {
+        args.checkEvaluationBudget()
+        let ordered: readonly number[] | U32
+        let orderedCount: number
+        let rangeNodeVisits = 0
+        if (pendingFirstPassOrder) {
+          ordered = pendingFirstPassOrder.orderedFormulaCellIndices
+          orderedCount = pendingFirstPassOrder.orderedFormulaCount
+          pendingFirstPassOrder = undefined
+        } else {
+          const scheduled = args.dirtyScheduler.collectDirty(passRoots)
+          ordered = scheduled.orderedFormulaCellIndices
+          orderedCount = scheduled.orderedFormulaCount
+          rangeNodeVisits = scheduled.rangeNodeVisits
         }
-        if (((args.state.workbook.cellStore.flags[cellIndex] ?? 0) & CellFlags.InCycle) !== 0) {
-          continue
+        totalOrderedCount += orderedCount
+        totalRangeNodeVisits += rangeNodeVisits
+        if (singlePassOrdered === null && allOrdered.length === 0) {
+          singlePassOrdered = ordered
+          singlePassOrderedCount = orderedCount
+        } else {
+          if (singlePassOrdered !== null) {
+            for (let orderedIndex = 0; orderedIndex < singlePassOrderedCount; orderedIndex += 1) {
+              const cellIndex = singlePassOrdered[orderedIndex]
+              if (cellIndex !== undefined) {
+                allOrdered.push(cellIndex)
+              }
+            }
+            singlePassOrdered = null
+            singlePassOrderedCount = 0
+          }
+          for (let orderedIndex = 0; orderedIndex < orderedCount; orderedIndex += 1) {
+            allOrdered.push(ordered[orderedIndex]!)
+          }
         }
-        if (hasCycleDependency(formula)) {
+
+        for (let index = 0; index < passKernelRoots.length; index += 1) {
+          const cellIndex = passKernelRoots[index]!
+          if (deferredKernelSyncSeen[cellIndex] === deferredKernelSyncEpoch) {
+            continue
+          }
+          deferredKernelSyncSeen[cellIndex] = deferredKernelSyncEpoch
+          pendingKernelSync[pendingKernelSyncCount] = cellIndex
+          pendingKernelSyncCount += 1
+        }
+
+        let wasmBatchCount = 0
+        let wasmBatchHasVolatile = false
+        let wasmBatchRandCount = 0
+        const spillChangedRoots: number[] = []
+        const spillChangedSeen = new Set<number>()
+        const noteSpillChanges = (changedCellIndices: readonly number[]): void => {
+          for (let spillIndex = 0; spillIndex < changedCellIndices.length; spillIndex += 1) {
+            const changedCellIndex = changedCellIndices[spillIndex]!
+            if (spillChangedSeen.has(changedCellIndex)) {
+              continue
+            }
+            spillChangedSeen.add(changedCellIndex)
+            spillChangedRoots.push(changedCellIndex)
+          }
+        }
+        const queueKernelSync = (cellIndex: number): void => {
+          if (deferredKernelSyncSeen[cellIndex] === deferredKernelSyncEpoch) {
+            return
+          }
+          deferredKernelSyncSeen[cellIndex] = deferredKernelSyncEpoch
+          pendingKernelSync[pendingKernelSyncCount] = cellIndex
+          pendingKernelSyncCount += 1
+        }
+        const hasCycleDependency = (formula: RuntimeFormula): boolean => {
+          for (let dependencyIndex = 0; dependencyIndex < formula.dependencyIndices.length; dependencyIndex += 1) {
+            const dependencyCellIndex = formula.dependencyIndices[dependencyIndex]!
+            if (((args.state.workbook.cellStore.flags[dependencyCellIndex] ?? 0) & CellFlags.InCycle) !== 0) {
+              return true
+            }
+          }
+          return false
+        }
+        const materializeCycleDependentError = (cellIndex: number): void => {
+          const spillChanges = args.clearOwnedSpill(cellIndex)
+          args.state.workbook.cellStore.setValue(cellIndex, errorValue(ErrorCode.Cycle))
+          queueKernelSync(cellIndex)
+          noteSpillChanges(spillChanges)
+          for (let spillIndex = 0; spillIndex < spillChanges.length; spillIndex += 1) {
+            queueKernelSync(spillChanges[spillIndex]!)
+          }
+        }
+        const evaluateWasmSpillFormula = (cellIndex: number, formula: RuntimeFormula): number => {
+          ensureWasmProgramFlushed()
+          args.state.wasm.syncFromStore(args.state.workbook.cellStore, pendingKernelSync.subarray(0, pendingKernelSyncCount))
+          pendingKernelSyncCount = 0
+          deferredKernelSyncCount = 0
+          args.setDeferredKernelSyncCount(0)
+          deferredKernelSyncEpoch += 1
+          if (deferredKernelSyncEpoch === 0xffff_ffff) {
+            deferredKernelSyncEpoch = 1
+            deferredKernelSyncSeen.fill(0)
+          }
+          args.setDeferredKernelSyncEpoch(deferredKernelSyncEpoch)
+          if (formula.compiled.volatile) {
+            args.state.wasm.uploadVolatileNowSerial(volatileState.nowSerial)
+            args.state.wasm.uploadVolatileRandomValues(
+              consumeVolatileRandomValues(volatileState, formula.compiled.randCallCount, args.random),
+            )
+          }
+          const batchIndices = Uint32Array.of(cellIndex)
+          args.checkEvaluationBudget()
+          args.state.wasm.evalBatch(batchIndices)
+          args.state.wasm.syncToStore(args.state.workbook.cellStore, batchIndices, args.state.strings, (changedCellIndex) =>
+            args.state.workbook.notifyCellValueWritten(changedCellIndex),
+          )
+          args.checkEvaluationBudget()
+          const spill = args.state.wasm.readSpill(cellIndex, args.state.strings)
+          const spillMaterialization = spill
+            ? args.materializeSpill(cellIndex, {
+                rows: spill.rows,
+                cols: spill.cols,
+                values: spill.values,
+              })
+            : {
+                changedCellIndices: args.clearOwnedSpill(cellIndex),
+                ownerValue: args.state.workbook.cellStore.getValue(cellIndex, (id) => args.state.strings.get(id)),
+              }
+          args.state.workbook.cellStore.setValue(
+            cellIndex,
+            spillMaterialization.ownerValue,
+            spillMaterialization.ownerValue.tag === ValueTag.String ? args.state.strings.intern(spillMaterialization.ownerValue.value) : 0,
+          )
+          queueKernelSync(cellIndex)
+          for (let spillIndex = 0; spillIndex < spillMaterialization.changedCellIndices.length; spillIndex += 1) {
+            queueKernelSync(spillMaterialization.changedCellIndices[spillIndex]!)
+          }
+          noteSpillChanges(spillMaterialization.changedCellIndices)
+          return 1
+        }
+
+        for (let index = 0; index < orderedCount; index += 1) {
+          args.checkEvaluationBudget()
+          const cellIndex = ordered[index]!
+          const formula = args.state.formulas.get(cellIndex)
+          if (!formula) {
+            continue
+          }
+          if (((args.state.workbook.cellStore.flags[cellIndex] ?? 0) & CellFlags.InCycle) !== 0) {
+            continue
+          }
+          if (hasCycleDependency(formula)) {
+            jsCount += 1
+            materializeCycleDependentError(cellIndex)
+            continue
+          }
+          if (
+            formula.directLookup !== undefined ||
+            formula.directAggregate !== undefined ||
+            formula.directScalar !== undefined ||
+            formula.directCriteria !== undefined
+          ) {
+            if (wasmBatchCount > 0) {
+              wasmCount += flushWasmBatch(wasmBatchCount, wasmBatchHasVolatile, wasmBatchRandCount)
+              wasmBatchCount = 0
+              wasmBatchHasVolatile = false
+              wasmBatchRandCount = 0
+            }
+            args.checkEvaluationBudget()
+            const directLookupChanges = args.evaluateDirectLookupFormula(cellIndex)
+            args.checkEvaluationBudget()
+            if (directLookupChanges !== undefined) {
+              if (
+                formula.compiled.mode === FormulaMode.WasmFastPath &&
+                (formula.directScalar !== undefined || formula.directAggregate !== undefined)
+              ) {
+                wasmCount += 1
+              } else if (
+                formula.compiled.mode !== FormulaMode.WasmFastPath &&
+                (formula.directScalar !== undefined || formula.directAggregate !== undefined)
+              ) {
+                jsCount += 1
+              }
+              noteSpillChanges(directLookupChanges)
+              queueKernelSync(cellIndex)
+              continue
+            }
+          }
+          if (formula.compiled.mode === FormulaMode.WasmFastPath && args.state.wasm.ready) {
+            if (formula.compiled.producesSpill) {
+              wasmCount += flushWasmBatch(wasmBatchCount, wasmBatchHasVolatile, wasmBatchRandCount)
+              wasmBatchCount = 0
+              wasmBatchHasVolatile = false
+              wasmBatchRandCount = 0
+              wasmCount += evaluateWasmSpillFormula(cellIndex, formula)
+              continue
+            }
+            wasmBatch[wasmBatchCount] = cellIndex
+            wasmBatchCount += 1
+            wasmBatchHasVolatile = wasmBatchHasVolatile || formula.compiled.volatile
+            wasmBatchRandCount += formula.compiled.randCallCount
+            continue
+          }
+          wasmCount += flushWasmBatch(wasmBatchCount, wasmBatchHasVolatile, wasmBatchRandCount)
+          wasmBatchCount = 0
+          wasmBatchHasVolatile = false
+          wasmBatchRandCount = 0
           jsCount += 1
-          materializeCycleDependentError(cellIndex)
-          continue
+          args.checkEvaluationBudget()
+          const spillChanges = args.evaluateUnsupportedFormula(cellIndex)
+          args.checkEvaluationBudget()
+          noteSpillChanges(spillChanges)
+          queueKernelSync(cellIndex)
         }
-        if (
-          formula.directLookup !== undefined ||
-          formula.directAggregate !== undefined ||
-          formula.directScalar !== undefined ||
-          formula.directCriteria !== undefined
-        ) {
-          if (wasmBatchCount > 0) {
-            wasmCount += flushWasmBatch(wasmBatchCount, wasmBatchHasVolatile, wasmBatchRandCount)
-            wasmBatchCount = 0
-            wasmBatchHasVolatile = false
-            wasmBatchRandCount = 0
-          }
-          const directLookupChanges = args.evaluateDirectLookupFormula(cellIndex)
-          if (directLookupChanges !== undefined) {
-            if (
-              formula.compiled.mode === FormulaMode.WasmFastPath &&
-              (formula.directScalar !== undefined || formula.directAggregate !== undefined)
-            ) {
-              wasmCount += 1
-            } else if (
-              formula.compiled.mode !== FormulaMode.WasmFastPath &&
-              (formula.directScalar !== undefined || formula.directAggregate !== undefined)
-            ) {
-              jsCount += 1
-            }
-            noteSpillChanges(directLookupChanges)
-            queueKernelSync(cellIndex)
-            continue
-          }
-        }
-        if (formula.compiled.mode === FormulaMode.WasmFastPath && args.state.wasm.ready) {
-          if (formula.compiled.producesSpill) {
-            wasmCount += flushWasmBatch(wasmBatchCount, wasmBatchHasVolatile, wasmBatchRandCount)
-            wasmBatchCount = 0
-            wasmBatchHasVolatile = false
-            wasmBatchRandCount = 0
-            wasmCount += evaluateWasmSpillFormula(cellIndex, formula)
-            continue
-          }
-          wasmBatch[wasmBatchCount] = cellIndex
-          wasmBatchCount += 1
-          wasmBatchHasVolatile = wasmBatchHasVolatile || formula.compiled.volatile
-          wasmBatchRandCount += formula.compiled.randCallCount
-          continue
-        }
+
         wasmCount += flushWasmBatch(wasmBatchCount, wasmBatchHasVolatile, wasmBatchRandCount)
-        wasmBatchCount = 0
-        wasmBatchHasVolatile = false
-        wasmBatchRandCount = 0
-        jsCount += 1
-        const spillChanges = args.evaluateUnsupportedFormula(cellIndex)
-        noteSpillChanges(spillChanges)
-        queueKernelSync(cellIndex)
-      }
+        args.setDeferredKernelSyncCount(pendingKernelSyncCount)
+        deferredKernelSyncCount = pendingKernelSyncCount
 
-      wasmCount += flushWasmBatch(wasmBatchCount, wasmBatchHasVolatile, wasmBatchRandCount)
-      args.setDeferredKernelSyncCount(pendingKernelSyncCount)
-      deferredKernelSyncCount = pendingKernelSyncCount
-
-      if (spillChangedRoots.length === 0) {
-        break
-      }
-      if (singlePassOrdered !== null) {
-        for (let orderedIndex = 0; orderedIndex < singlePassOrderedCount; orderedIndex += 1) {
-          const cellIndex = singlePassOrdered[orderedIndex]
-          if (cellIndex !== undefined) {
-            allOrdered.push(cellIndex)
-          }
+        if (spillChangedRoots.length === 0) {
+          break
         }
-        singlePassOrdered = null
-        singlePassOrderedCount = 0
+        if (singlePassOrdered !== null) {
+          for (let orderedIndex = 0; orderedIndex < singlePassOrderedCount; orderedIndex += 1) {
+            const cellIndex = singlePassOrdered[orderedIndex]
+            if (cellIndex !== undefined) {
+              allOrdered.push(cellIndex)
+            }
+          }
+          singlePassOrdered = null
+          singlePassOrderedCount = 0
+        }
+        allChangedRoots.push(...spillChangedRoots)
+        passRoots = spillChangedRoots
+        passKernelRoots = spillChangedRoots
       }
-      allChangedRoots.push(...spillChangedRoots)
-      passRoots = spillChangedRoots
-      passKernelRoots = spillChangedRoots
-    }
 
-    const lastMetrics = { ...args.state.getLastMetrics() }
-    lastMetrics.dirtyFormulaCount = totalOrderedCount
-    lastMetrics.jsFormulaCount = jsCount
-    lastMetrics.wasmFormulaCount = wasmCount
-    lastMetrics.rangeNodeVisits = totalRangeNodeVisits
-    lastMetrics.recalcMs = args.performanceNow() - started
-    args.state.setLastMetrics(lastMetrics)
-    args.setDeferredKernelSyncCount(pendingKernelSyncCount)
-    if (singlePassOrdered !== null) {
+      const lastMetrics = { ...args.state.getLastMetrics() }
+      lastMetrics.dirtyFormulaCount = totalOrderedCount
+      lastMetrics.jsFormulaCount = jsCount
+      lastMetrics.wasmFormulaCount = wasmCount
+      lastMetrics.rangeNodeVisits = totalRangeNodeVisits
+      lastMetrics.recalcMs = args.performanceNow() - started
+      args.state.setLastMetrics(lastMetrics)
+      args.setDeferredKernelSyncCount(pendingKernelSyncCount)
+      if (singlePassOrdered !== null) {
+        return totalOrderedCount === 0 && allChangedRoots.length === 0
+          ? args.emptyChangedSet()
+          : args.composeChangedRootsAndOrdered(
+              allChangedRoots,
+              toOrderedUint32(singlePassOrdered, singlePassOrderedCount),
+              singlePassOrderedCount,
+            )
+      }
       return totalOrderedCount === 0 && allChangedRoots.length === 0
         ? args.emptyChangedSet()
-        : args.composeChangedRootsAndOrdered(
-            allChangedRoots,
-            toOrderedUint32(singlePassOrdered, singlePassOrderedCount),
-            singlePassOrderedCount,
-          )
+        : args.composeChangedRootsAndOrdered(allChangedRoots, Uint32Array.from(allOrdered), allOrdered.length)
+    } finally {
+      args.endEvaluationBudget()
     }
-    return totalOrderedCount === 0 && allChangedRoots.length === 0
-      ? args.emptyChangedSet()
-      : args.composeChangedRootsAndOrdered(allChangedRoots, Uint32Array.from(allOrdered), allOrdered.length)
   }
 
   const recalculate = (changedRoots: readonly number[] | U32, kernelSyncRoots: readonly number[] | U32 = changedRoots): U32 =>

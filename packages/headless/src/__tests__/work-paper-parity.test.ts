@@ -119,6 +119,7 @@ describe('WorkPaper parity surface', () => {
       'dateFormats',
       'decimalSeparator',
       'evaluateNullToZero',
+      'evaluationTimeoutMs',
       'functionArgSeparator',
       'functionPlugins',
       'ignorePunctuation',
