@@ -15,6 +15,8 @@ Current launch state:
   <https://www.reddit.com/r/github/comments/1jy8rea/promote_your_projects_here_selfpromotion/okhx8b5/>.
 - One adapted `r/coolgithubprojects` link submission is live:
   <https://www.reddit.com/r/coolgithubprojects/comments/1t6jo3s/i_built_a_headless_spreadsheet_engine_for_node/>.
+- One targeted `jsgrids` discovery-list PR is open:
+  <https://github.com/statico/jsgrids/pull/92>.
 - Do not repost the same launch angle while that thread is active.
 - Use new community posts only when there is time to answer replies and adapt
   the copy to the specific community.
@@ -29,6 +31,8 @@ Current launch state:
 - Do not frame a launch post as a fake neutral discovery.
 - Reply to comments before posting anywhere else.
 - Convert repeated objections into issues, docs, or examples.
+- Prefer durable directory/list contributions when `bilig` is an exact category
+  fit and the feature claims can stay conservative.
 
 The goal is to earn useful technical feedback and legitimate bookmarks from
 developers who care about spreadsheet automation, formula engines, Node services,
@@ -194,6 +198,33 @@ programming, typescript, practices
 ```
 
 Do not submit the repository homepage as a product announcement.
+
+## Discovery Lists
+
+Curated comparison lists are useful only when the category fit is clear. Treat
+them as maintainer-to-maintainer contributions, not link drops.
+
+Live contribution:
+
+```text
+https://github.com/statico/jsgrids/pull/92
+```
+
+Positioning used for `jsgrids`:
+
+```text
+bilig is a headless TypeScript spreadsheet engine and WorkPaper API for Node
+services, coding agents, and server-side workbook automation.
+```
+
+Rules:
+
+- add `bilig` only to lists that already include spreadsheet engines, formula
+  engines, workbook APIs, headless table/data libraries, or agent tooling
+- mark UI-only features as false unless `@bilig/headless` directly exposes the
+  behavior
+- prefer the npm package, runnable example, and docs as evidence
+- do not open directory PRs that are only backlinks
 
 ## Product Hunt
 

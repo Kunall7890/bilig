@@ -89,6 +89,10 @@ Verified on 2026-05-07 after the Show HN launch and topic refresh:
 - Posted one adapted link submission to `r/coolgithubprojects`, using the
   repository as the primary link and a short feedback-focused body:
   <https://www.reddit.com/r/coolgithubprojects/comments/1t6jo3s/i_built_a_headless_spreadsheet_engine_for_node/>.
+- Opened a targeted `jsgrids` directory contribution for `bilig` as a
+  headless spreadsheet library:
+  <https://github.com/statico/jsgrids/pull/92>. This is a discovery-list
+  placement, not a social repost.
 
 ## Research Findings
 
@@ -119,6 +123,9 @@ Case studies and founder writeups are also consistent:
   of repeated content distribution rather than a one-shot launch
 - Reddit, Product Hunt, Twitter/X, Indie Hackers, dev.to, community Slacks, and
   niche forums can work when the post speaks to a specific developer pain
+- curated comparison directories can create slower but more durable discovery
+  when the project is a real fit and the contribution uses conservative feature
+  claims
 - content based on actual user questions performs better than generic release
   announcements
 - a repo must deserve the traffic before marketing: clear README, demo,
@@ -245,6 +252,12 @@ Actions:
     anti-spam guardrails before posting outside HN
   - use `docs/dev-to-workbook-apis-post.md` as the first DEV article draft,
     then adapt it in the composer instead of posting a thin repo link
+- Contribute to legitimate comparison lists where the project clearly fits:
+  - `jsgrids` for JavaScript spreadsheet/data-grid libraries:
+    <https://github.com/statico/jsgrids/pull/92>
+  - use conservative feature metadata and mark UI-only behavior as false unless
+    `@bilig/headless` exposes it directly
+  - do not open list PRs that stretch the category fit just to gain backlinks
 - Track which posts create GitHub visitors, npm downloads, issues, and stars.
   Do not judge by likes alone.
 - Answer comments quickly. If the same question appears twice, convert it into
