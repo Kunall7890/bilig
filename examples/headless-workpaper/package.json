@@ -1,0 +1,12 @@
+{
+  "name": "bilig-headless-workpaper-example",
+  "private": true,
+  "description": "Runnable Node example for the @bilig/headless WorkPaper API.",
+  "type": "module",
+  "scripts": {
+    "start": "node revenue-plan.mjs"
+  },
+  "dependencies": {
+    "@bilig/headless": "latest"
+  }
+}

@@ -71,6 +71,11 @@ WorkPaper API directly. The package README is the contract for install, API
 usage, persistence, validation, supported scope, and agent workflow:
 [packages/headless/README.md](packages/headless/README.md).
 
+For a runnable external-consumer example, start with
+[examples/headless-workpaper](examples/headless-workpaper). The repository smoke
+test executes that same example against packed local runtime packages with
+`pnpm workpaper:smoke:external`.
+
 Minimal example:
 
 ```ts

@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
@@ -8,6 +8,7 @@ import { assertAlignedVersions, loadRuntimePackages, type RuntimePackageManifest
 
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
 const packDir = join(rootDir, 'build', 'npm-packages-runtime-smoke')
+const headlessExampleDir = join(rootDir, 'examples', 'headless-workpaper')
 const stageDir = mkdtempSync(join(tmpdir(), 'bilig-workpaper-external-smoke-'))
 const textDecoder = new TextDecoder()
 const keepStage = process.env.KEEP_WORKPAPER_SMOKE_STAGE === 'true'
@@ -75,88 +76,26 @@ function runNodeSmoke(
   tarballPaths: string[],
 ): {
   output: {
-    eastPrice: number
-    thresholdUnits: number[]
-    westUnits: number
+    afterAgentEdit: {
+      enterpriseArpa: number
+      qualifiedCustomerCounts: number[]
+      totalRevenue: number
+      westCustomers: number
+    }
+    initial: {
+      totalRevenue: number
+      westCustomers: number
+    }
+    persistedSheets: string[]
   }
   projectDir: string
 } {
   mkdirSync(projectDir, { recursive: true })
-  writeFileSync(
-    join(projectDir, 'package.json'),
-    `${JSON.stringify(
-      {
-        name: 'workpaper-node-consumer',
-        private: true,
-        type: 'module',
-      },
-      null,
-      2,
-    )}\n`,
-  )
-  writeFileSync(
-    join(projectDir, 'index.mjs'),
-    [
-      'import { ValueTag } from "@bilig/protocol";',
-      'import { createWorkPaperFromDocument, exportWorkPaperDocument, parseWorkPaperDocument, serializeWorkPaperDocument, WorkPaper } from "@bilig/headless";',
-      '',
-      'const workbook = WorkPaper.buildFromSheets({',
-      '  Inputs: [["Region", "Units", "Price"], ["West", 12, 4], ["East", 8, 5], ["West", 3, 6]],',
-      '  Summary: [',
-      '    ["West Units", \'=SUMIF(Inputs!A2:A4,"West",Inputs!B2:B4)\'],',
-      '    ["East Price", \'=XLOOKUP("East",Inputs!A2:A4,Inputs!C2:C4)\'],',
-      '    ["Threshold Units", "=FILTER(Inputs!B2:B4,Inputs!B2:B4>5)"],',
-      '  ],',
-      '});',
-      '',
-      'const summaryId = workbook.getSheetId("Summary");',
-      'if (summaryId === undefined) {',
-      '  throw new Error("Summary sheet is missing");',
-      '}',
-      'const restored = createWorkPaperFromDocument(parseWorkPaperDocument(serializeWorkPaperDocument(exportWorkPaperDocument(workbook))));',
-      'const restoredSummaryId = restored.getSheetId("Summary");',
-      'if (restoredSummaryId === undefined) {',
-      '  throw new Error("Restored Summary sheet is missing");',
-      '}',
-      '',
-      'const westUnits = restored.getCellValue({ sheet: restoredSummaryId, row: 0, col: 1 });',
-      'const eastPrice = restored.getCellValue({ sheet: restoredSummaryId, row: 1, col: 1 });',
-      'const thresholdUnits = restored.getRangeValues({',
-      '  start: { sheet: restoredSummaryId, row: 2, col: 1 },',
-      '  end: { sheet: restoredSummaryId, row: 3, col: 1 },',
-      '});',
-      '',
-      'if (westUnits.tag !== ValueTag.Number || westUnits.value !== 15) {',
-      '  throw new Error(`Expected west units to equal 15, received ${JSON.stringify(westUnits)}`);',
-      '}',
-      'if (eastPrice.tag !== ValueTag.Number || eastPrice.value !== 5) {',
-      '  throw new Error(`Expected east price to equal 5, received ${JSON.stringify(eastPrice)}`);',
-      '}',
-      '',
-      'const thresholdUnitValues = thresholdUnits.flat().map((value) => {',
-      '  if (value.tag !== ValueTag.Number) {',
-      '    throw new Error(`Expected filtered spill numbers, received ${JSON.stringify(value)}`);',
-      '  }',
-      '  return value.value;',
-      '});',
-      '',
-      'const summary = {',
-      '  westUnits: westUnits.value,',
-      '  eastPrice: eastPrice.value,',
-      '  thresholdUnits: thresholdUnitValues,',
-      '};',
-      '',
-      'if (JSON.stringify(summary.thresholdUnits) !== JSON.stringify([12, 8])) {',
-      '  throw new Error(`Unexpected filtered spill: ${JSON.stringify(summary)}`);',
-      '}',
-      '',
-      'console.log(JSON.stringify(summary));',
-      '',
-    ].join('\n'),
-  )
+  copyFileSync(join(headlessExampleDir, 'package.json'), join(projectDir, 'package.json'))
+  copyFileSync(join(headlessExampleDir, 'revenue-plan.mjs'), join(projectDir, 'revenue-plan.mjs'))
 
   installTarballs(projectDir, tarballPaths)
-  const output = parseNodeSmokeOutput(runTextCommand('node', ['index.mjs'], { cwd: projectDir }))
+  const output = parseNodeSmokeOutput(runTextCommand('node', ['revenue-plan.mjs'], { cwd: projectDir }))
 
   return {
     projectDir,
@@ -314,28 +253,58 @@ function readPackedManifest(tarballPath: string): { name: string; version: strin
 }
 
 function parseNodeSmokeOutput(output: string): {
-  eastPrice: number
-  thresholdUnits: number[]
-  westUnits: number
+  afterAgentEdit: {
+    enterpriseArpa: number
+    qualifiedCustomerCounts: number[]
+    totalRevenue: number
+    westCustomers: number
+  }
+  initial: {
+    totalRevenue: number
+    westCustomers: number
+  }
+  persistedSheets: string[]
 } {
   const parsed = parseJsonRecord(output, 'node smoke output')
-  const westUnits = parsed.westUnits
-  const eastPrice = parsed.eastPrice
-  const thresholdUnits = parsed.thresholdUnits
+  const initial = parseRecordValue(parsed.initial, 'node smoke initial output')
+  const afterAgentEdit = parseRecordValue(parsed.afterAgentEdit, 'node smoke edited output')
+  const persistedSheets = parsed.persistedSheets
+  const qualifiedCustomerCounts = afterAgentEdit.qualifiedCustomerCounts
 
-  if (typeof westUnits !== 'number' || typeof eastPrice !== 'number' || !isNumberArray(thresholdUnits)) {
+  if (
+    typeof initial.totalRevenue !== 'number' ||
+    typeof initial.westCustomers !== 'number' ||
+    typeof afterAgentEdit.totalRevenue !== 'number' ||
+    typeof afterAgentEdit.westCustomers !== 'number' ||
+    typeof afterAgentEdit.enterpriseArpa !== 'number' ||
+    !isNumberArray(qualifiedCustomerCounts) ||
+    !isStringArray(persistedSheets)
+  ) {
     throw new Error(`Unexpected node smoke output: ${output}`)
   }
 
   return {
-    westUnits,
-    eastPrice,
-    thresholdUnits,
+    initial: {
+      totalRevenue: initial.totalRevenue,
+      westCustomers: initial.westCustomers,
+    },
+    afterAgentEdit: {
+      totalRevenue: afterAgentEdit.totalRevenue,
+      westCustomers: afterAgentEdit.westCustomers,
+      enterpriseArpa: afterAgentEdit.enterpriseArpa,
+      qualifiedCustomerCounts,
+    },
+    persistedSheets,
   }
 }
 
 function parseJsonRecord(serialized: string, context: string): Record<string, unknown> {
   const parsed: unknown = JSON.parse(serialized)
+  return parseRecordValue(parsed, context)
+}
+
+function parseRecordValue(candidate: unknown, context: string): Record<string, unknown> {
+  const parsed = candidate
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
     throw new Error(`Expected ${context} to be a JSON object`)
   }
@@ -348,6 +317,10 @@ function parseJsonRecord(serialized: string, context: string): Record<string, un
 
 function isNumberArray(value: unknown): value is number[] {
   return Array.isArray(value) && value.every((entry) => typeof entry === 'number')
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((entry) => typeof entry === 'string')
 }
 
 function runTextCommand(command: string, args: string[], options: { cwd?: string } = {}): string {

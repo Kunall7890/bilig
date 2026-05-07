@@ -113,6 +113,22 @@ if (restoredSheet === undefined) {
 console.log(restored.getCellValue({ sheet: restoredSheet, row: 1, col: 2 }))
 ```
 
+## Runnable Example
+
+The repo includes a small external-consumer project at
+[`examples/headless-workpaper`](../../examples/headless-workpaper). It builds a
+revenue workbook, evaluates formulas, applies an agent-style edit, persists and
+restores the workbook, and verifies the final result.
+
+```sh
+cd examples/headless-workpaper
+npm install
+npm start
+```
+
+Repository CI also runs the same example against packed local runtime packages
+through `pnpm workpaper:smoke:external`.
+
 ## Core Concepts
 
 - `WorkPaper` is the top-level workbook object. Create it with
