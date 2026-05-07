@@ -492,6 +492,32 @@ describe('GitHub issue reductions', () => {
     expectNumber(cellValue(workbook, 'FormulaSparse', 0, 1), 1)
   })
 
+  it('resolves issue #113 LOOKUP latest-value array idioms used by financial schedules', () => {
+    const rows: TestCell[][] = [
+      [10, null, null, 1, 10],
+      ['x', 'Seed', null, 1, 20],
+      [20, '', null, 1, 30],
+      [null, 'Series A', null, null, null],
+      [30, 'Series C', null, null, null],
+      ['skip', '', null, null, null],
+      [
+        '=LOOKUP(2,1/(ISNUMBER(A1:A6)),A1:A6)',
+        '=LOOKUP(2,1/(B1:B6<>""),B1:B6)',
+        '=INDEX(E1:E3,MATCH(2,D1:D3,1))',
+        '=LOOKUP(2,D1:D3,E1:E3)',
+        '=IFERROR(LOOKUP(2,1/(ISNUMBER(A1:A6)),A1:A6),"na")',
+      ],
+    ]
+
+    const workbook = WorkPaper.buildFromSheets({ Sheet1: rows }, { maxRows: 20, maxColumns: 10, useColumnIndex: true })
+
+    expectNumber(cellValue(workbook, 'Sheet1', 6, 0), 30)
+    expectString(cellValue(workbook, 'Sheet1', 6, 1), 'Series C')
+    expectNumber(cellValue(workbook, 'Sheet1', 6, 2), 30)
+    expectNumber(cellValue(workbook, 'Sheet1', 6, 3), 30)
+    expectNumber(cellValue(workbook, 'Sheet1', 6, 4), 30)
+  })
+
   it('reports the published package version through WorkPaper.version', () => {
     expect(WorkPaper.version).toBe(readHeadlessPackageVersion())
   })

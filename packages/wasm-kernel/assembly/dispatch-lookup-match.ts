@@ -1,8 +1,30 @@
 import { BuiltinId, ErrorCode, ValueTag } from './protocol'
 import { compareScalarValues } from './comparison'
-import { memberScalarValue } from './operands'
+import { inputCellScalarValue, inputCellTag, inputColsFromSlot, inputRowsFromSlot, memberScalarValue } from './operands'
 import { truncToInt } from './numeric-core'
-import { STACK_KIND_RANGE, STACK_KIND_SCALAR, vectorSlotLength, writeMemberResult, writeResult } from './result-io'
+import { STACK_KIND_ARRAY, STACK_KIND_RANGE, STACK_KIND_SCALAR, writeMemberResult, writeResult } from './result-io'
+
+function lookupVectorSlotLength(
+  slot: i32,
+  kindStack: Uint8Array,
+  rangeIndexStack: Uint32Array,
+  rangeLengths: Uint32Array,
+  rangeRowCounts: Uint32Array,
+  rangeColCounts: Uint32Array,
+): i32 {
+  if (kindStack[slot] == STACK_KIND_SCALAR) {
+    return 1
+  }
+  if (kindStack[slot] != STACK_KIND_RANGE && kindStack[slot] != STACK_KIND_ARRAY) {
+    return i32.MIN_VALUE
+  }
+  const rows = inputRowsFromSlot(slot, kindStack, rangeIndexStack, rangeRowCounts)
+  const cols = inputColsFromSlot(slot, kindStack, rangeIndexStack, rangeColCounts)
+  if (rows <= 0 || cols <= 0 || (rows != 1 && cols != 1)) {
+    return i32.MIN_VALUE
+  }
+  return kindStack[slot] == STACK_KIND_RANGE ? <i32>rangeLengths[rangeIndexStack[slot]] : rows * cols
+}
 
 export function tryApplyLookupMatchBuiltin(
   builtinId: i32,
@@ -414,8 +436,11 @@ export function tryApplyLookupMatchBuiltin(
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     if (
-      (kindStack[base + 1] != STACK_KIND_SCALAR && kindStack[base + 1] != STACK_KIND_RANGE) ||
-      (argc == 3 && kindStack[base + 2] != STACK_KIND_SCALAR && kindStack[base + 2] != STACK_KIND_RANGE)
+      (kindStack[base + 1] != STACK_KIND_SCALAR && kindStack[base + 1] != STACK_KIND_RANGE && kindStack[base + 1] != STACK_KIND_ARRAY) ||
+      (argc == 3 &&
+        kindStack[base + 2] != STACK_KIND_SCALAR &&
+        kindStack[base + 2] != STACK_KIND_RANGE &&
+        kindStack[base + 2] != STACK_KIND_ARRAY)
     ) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
@@ -447,18 +472,55 @@ export function tryApplyLookupMatchBuiltin(
       )
     }
 
-    const lookupLength = vectorSlotLength(base + 1, kindStack, rangeIndexStack, rangeLengths, rangeRowCounts, rangeColCounts)
+    const lookupLength = lookupVectorSlotLength(base + 1, kindStack, rangeIndexStack, rangeLengths, rangeRowCounts, rangeColCounts)
     const resultSlot = argc == 3 ? base + 2 : base + 1
-    const resultLength = vectorSlotLength(resultSlot, kindStack, rangeIndexStack, rangeLengths, rangeRowCounts, rangeColCounts)
+    const resultLength = lookupVectorSlotLength(resultSlot, kindStack, rangeIndexStack, rangeLengths, rangeRowCounts, rangeColCounts)
     if (lookupLength == i32.MIN_VALUE || resultLength == i32.MIN_VALUE || lookupLength != resultLength) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
 
     let position = -1
-    if (kindStack[base + 1] == STACK_KIND_SCALAR) {
-      const exactComparison = compareScalarValues(
-        tagStack[base + 1],
-        valueStack[base + 1],
+    const lookupRows = inputRowsFromSlot(base + 1, kindStack, rangeIndexStack, rangeRowCounts)
+    for (let index = 0; index < lookupLength; index++) {
+      const row = lookupRows == 1 ? 0 : index
+      const col = lookupRows == 1 ? index : 0
+      const lookupTag = inputCellTag(
+        base + 1,
+        row,
+        col,
+        kindStack,
+        valueStack,
+        tagStack,
+        rangeIndexStack,
+        rangeOffsets,
+        rangeLengths,
+        rangeRowCounts,
+        rangeColCounts,
+        rangeMembers,
+        cellTags,
+        cellNumbers,
+      )
+      const lookupScalarValue = inputCellScalarValue(
+        base + 1,
+        row,
+        col,
+        kindStack,
+        valueStack,
+        tagStack,
+        rangeIndexStack,
+        rangeOffsets,
+        rangeLengths,
+        rangeRowCounts,
+        rangeColCounts,
+        rangeMembers,
+        cellTags,
+        cellNumbers,
+        cellStringIds,
+        cellErrors,
+      )
+      const comparison = compareScalarValues(
+        lookupTag,
+        lookupScalarValue,
         tagStack[base],
         valueStack[base],
         null,
@@ -469,19 +531,53 @@ export function tryApplyLookupMatchBuiltin(
         outputStringLengths,
         outputStringData,
       )
-      if (exactComparison == 0) {
-        position = 1
-      } else if (position < 0 && tagStack[base] == ValueTag.Number && exactComparison != i32.MIN_VALUE && exactComparison <= 0) {
-        position = 1
+      if (comparison == 0) {
+        position = index + 1
+        break
       }
-    } else {
-      const lookupRangeIndex = rangeIndexStack[base + 1]
-      const lookupStart = rangeOffsets[lookupRangeIndex]
+    }
+    if (position < 0 && tagStack[base] == ValueTag.Number) {
+      let best = -1
       for (let index = 0; index < lookupLength; index++) {
-        const memberIndex = rangeMembers[lookupStart + index]
+        const row = lookupRows == 1 ? 0 : index
+        const col = lookupRows == 1 ? index : 0
+        const lookupTag = inputCellTag(
+          base + 1,
+          row,
+          col,
+          kindStack,
+          valueStack,
+          tagStack,
+          rangeIndexStack,
+          rangeOffsets,
+          rangeLengths,
+          rangeRowCounts,
+          rangeColCounts,
+          rangeMembers,
+          cellTags,
+          cellNumbers,
+        )
+        const lookupScalarValue = inputCellScalarValue(
+          base + 1,
+          row,
+          col,
+          kindStack,
+          valueStack,
+          tagStack,
+          rangeIndexStack,
+          rangeOffsets,
+          rangeLengths,
+          rangeRowCounts,
+          rangeColCounts,
+          rangeMembers,
+          cellTags,
+          cellNumbers,
+          cellStringIds,
+          cellErrors,
+        )
         const comparison = compareScalarValues(
-          cellTags[memberIndex],
-          memberScalarValue(memberIndex, cellTags, cellNumbers, cellStringIds, cellErrors),
+          lookupTag,
+          lookupScalarValue,
           tagStack[base],
           valueStack[base],
           null,
@@ -492,40 +588,20 @@ export function tryApplyLookupMatchBuiltin(
           outputStringLengths,
           outputStringData,
         )
-        if (comparison == 0) {
-          position = index + 1
-          break
-        }
-      }
-      if (position < 0 && tagStack[base] == ValueTag.Number) {
-        let best = -1
-        for (let index = 0; index < lookupLength; index++) {
-          const memberIndex = rangeMembers[lookupStart + index]
-          const comparison = compareScalarValues(
-            cellTags[memberIndex],
-            memberScalarValue(memberIndex, cellTags, cellNumbers, cellStringIds, cellErrors),
-            tagStack[base],
-            valueStack[base],
-            null,
-            stringOffsets,
-            stringLengths,
-            stringData,
-            outputStringOffsets,
-            outputStringLengths,
-            outputStringData,
-          )
-          if (comparison == i32.MIN_VALUE) {
-            best = -1
-            break
-          }
-          if (comparison <= 0) {
-            best = index + 1
+        if (comparison == i32.MIN_VALUE) {
+          if (lookupTag == ValueTag.Error) {
             continue
           }
+          best = -1
           break
         }
-        position = best
+        if (comparison <= 0) {
+          best = index + 1
+          continue
+        }
+        break
       }
+      position = best
     }
 
     if (position < 0) {
@@ -545,20 +621,45 @@ export function tryApplyLookupMatchBuiltin(
       )
     }
 
-    const resultRangeIndex = rangeIndexStack[resultSlot]
-    const resultMemberIndex = rangeMembers[rangeOffsets[resultRangeIndex] + position - 1]
-    return writeMemberResult(
-      base,
-      resultMemberIndex,
-      rangeIndexStack,
+    const resultRows = inputRowsFromSlot(resultSlot, kindStack, rangeIndexStack, rangeRowCounts)
+    const resultIndex = position - 1
+    const resultRow = resultRows == 1 ? 0 : resultIndex
+    const resultCol = resultRows == 1 ? resultIndex : 0
+    const resultTag = inputCellTag(
+      resultSlot,
+      resultRow,
+      resultCol,
+      kindStack,
       valueStack,
       tagStack,
+      rangeIndexStack,
+      rangeOffsets,
+      rangeLengths,
+      rangeRowCounts,
+      rangeColCounts,
+      rangeMembers,
+      cellTags,
+      cellNumbers,
+    )
+    const resultValue = inputCellScalarValue(
+      resultSlot,
+      resultRow,
+      resultCol,
       kindStack,
+      valueStack,
+      tagStack,
+      rangeIndexStack,
+      rangeOffsets,
+      rangeLengths,
+      rangeRowCounts,
+      rangeColCounts,
+      rangeMembers,
       cellTags,
       cellNumbers,
       cellStringIds,
       cellErrors,
     )
+    return writeResult(base, STACK_KIND_SCALAR, resultTag, resultValue, rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
   return -1

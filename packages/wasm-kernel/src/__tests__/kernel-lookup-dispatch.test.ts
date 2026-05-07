@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BuiltinId, Opcode, ValueTag } from '@bilig/protocol'
+import { BuiltinId, ErrorCode, Opcode, ValueTag } from '@bilig/protocol'
 import { createKernel } from '../index.js'
 
 function encodeCall(builtinId: number, argc: number): number {
@@ -12,6 +12,10 @@ function encodePushNumber(constantIndex: number): number {
 
 function encodePushRange(rangeIndex: number): number {
   return (Opcode.PushRange << 24) | rangeIndex
+}
+
+function encodeBinary(opcode: Opcode): number {
+  return opcode << 24
 }
 
 function encodeRet(): number {
@@ -144,5 +148,64 @@ describe('wasm kernel lookup dispatch slab', () => {
     expectNumberCell(kernel, cellIndex(5, 2, width), 200)
     expectNumberCell(kernel, cellIndex(5, 3, width), 999)
     expectNumberCell(kernel, cellIndex(5, 4, width), 2)
+  })
+
+  it('skips lookup-vector error sentinels for approximate LOOKUP', async () => {
+    const kernel = await createKernel()
+    const width = 12
+    kernel.init(120, 2, 2, 3, 32)
+
+    const cellTags = new Uint8Array(120)
+    const cellNumbers = new Float64Array(120)
+    const cellErrors = new Uint16Array(120)
+    ;[0, 2, 5].forEach((index) => {
+      cellTags[index] = ValueTag.Error
+      cellErrors[index] = ErrorCode.Div0
+    })
+    ;[1, 3, 4].forEach((index) => {
+      cellTags[index] = ValueTag.Number
+      cellNumbers[index] = 1
+    })
+    ;[10, 20, 30, 40, 50, 60].forEach((value, index) => {
+      cellTags[10 + index] = ValueTag.Number
+      cellNumbers[10 + index] = value
+    })
+    ;[0, 1, 0, 1, 1, 0].forEach((value, index) => {
+      cellTags[20 + index] = ValueTag.Number
+      cellNumbers[20 + index] = value
+    })
+    kernel.writeCells(cellTags, cellNumbers, new Uint32Array(120), cellErrors)
+
+    kernel.uploadRangeMembers(
+      Uint32Array.from([0, 1, 2, 3, 4, 5, 10, 11, 12, 13, 14, 15, 20, 21, 22, 23, 24, 25]),
+      Uint32Array.from([0, 6, 12]),
+      Uint32Array.from([6, 6, 6]),
+    )
+    kernel.uploadRangeShapes(Uint32Array.from([6, 6, 6]), Uint32Array.from([1, 1, 1]))
+
+    const packed = packPrograms([
+      [encodePushNumber(0), encodePushRange(0), encodePushRange(1), encodeCall(BuiltinId.Lookup, 3), encodeRet()],
+      [
+        encodePushNumber(0),
+        encodePushNumber(1),
+        encodePushRange(2),
+        encodeBinary(Opcode.Div),
+        encodePushRange(1),
+        encodeCall(BuiltinId.Lookup, 3),
+        encodeRet(),
+      ],
+    ])
+    const constants = packConstants([[2], [2, 1]])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from([cellIndex(5, 0, width), cellIndex(5, 1, width)]),
+    )
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from([cellIndex(5, 0, width), cellIndex(5, 1, width)]))
+
+    expectNumberCell(kernel, cellIndex(5, 0, width), 50)
+    expectNumberCell(kernel, cellIndex(5, 1, width), 50)
   })
 })

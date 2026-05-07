@@ -41,6 +41,26 @@ function approximateMatchAscending(lookupValue: CellValue, range: RangeBuiltinAr
   return best
 }
 
+function approximateLookupAscending(lookupValue: CellValue, range: RangeBuiltinArgument, deps: LookupReferenceBuiltinDeps): number {
+  let best = -1
+  for (let index = 0; index < range.values.length; index += 1) {
+    const value = range.values[index]!
+    if (deps.isError(value)) {
+      continue
+    }
+    const comparison = deps.compareScalars(value, lookupValue)
+    if (comparison === undefined) {
+      return -1
+    }
+    if (comparison <= 0) {
+      best = index + 1
+    } else {
+      break
+    }
+  }
+  return best
+}
+
 function approximateMatchDescending(lookupValue: CellValue, range: RangeBuiltinArgument, deps: LookupReferenceBuiltinDeps): number {
   let best = -1
   for (let index = 0; index < range.values.length; index += 1) {
@@ -129,7 +149,7 @@ export function createLookupReferenceBuiltins(deps: LookupReferenceBuiltinDeps):
 
       const exactPosition = exactMatch(lookupValue, lookupRangeOrError, deps)
       const shouldApproximate = exactPosition === -1 && lookupValue.tag === ValueTag.Number
-      const position = shouldApproximate ? approximateMatchAscending(lookupValue, lookupRangeOrError, deps) : exactPosition
+      const position = shouldApproximate ? approximateLookupAscending(lookupValue, lookupRangeOrError, deps) : exactPosition
 
       if (position === -1) {
         return deps.errorValue(ErrorCode.NA)

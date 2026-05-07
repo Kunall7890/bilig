@@ -191,6 +191,50 @@ function coerceDirectNumericTextAggregateArgument(callee: string, value: CellVal
   return numeric === undefined ? error(ErrorCode.Value) : numberValue(numeric)
 }
 
+const arrayLiftedScalarBuiltinNames = new Set([
+  'ISBLANK',
+  'ISERR',
+  'ISERROR',
+  'ISEVEN',
+  'ISFORMULA',
+  'ISLOGICAL',
+  'ISNA',
+  'ISNONTEXT',
+  'ISNUMBER',
+  'ISODD',
+  'ISREF',
+  'ISTEXT',
+  'NOT',
+])
+
+function evaluateArrayLiftedScalarBuiltin(
+  callee: string,
+  rawArgs: readonly StackValue[],
+  builtin: (...args: CellValue[]) => EvaluationResult,
+): StackValue | undefined {
+  if (
+    rawArgs.length !== 1 ||
+    !arrayLiftedScalarBuiltinNames.has(callee) ||
+    !rawArgs.some((arg) => arg.kind === 'array' || arg.kind === 'range')
+  ) {
+    return undefined
+  }
+  const shape = getBroadcastShape(rawArgs)
+  if (!shape) {
+    return stackScalar(error(ErrorCode.Value))
+  }
+  const ranges = rawArgs.map(toRangeLike)
+  const values: CellValue[] = []
+  for (let row = 0; row < shape.rows; row += 1) {
+    for (let col = 0; col < shape.cols; col += 1) {
+      const args = ranges.map((range) => getRangeCell(range, Math.min(row, range.rows - 1), Math.min(col, range.cols - 1)))
+      const result = builtin(...args)
+      values.push(isArrayValue(result) ? scalarFromEvaluationResult(result) : result)
+    }
+  }
+  return shape.rows === 1 && shape.cols === 1 ? stackScalar(values[0] ?? emptyValue()) : makeArrayStack(shape.rows, shape.cols, values)
+}
+
 function evaluateUnary(operator: Extract<JsPlanInstruction, { opcode: 'unary' }>['operator'], value: StackValue): StackValue {
   const coerce = (cellValue: CellValue): CellValue => {
     const numeric = toArithmeticNumber(cellValue)
@@ -481,6 +525,11 @@ function executePlan(
         const builtin = context.resolveBuiltin?.(instruction.callee) ?? getBuiltin(instruction.callee)
         if (!builtin) {
           stack.push({ kind: 'scalar', value: error(ErrorCode.Name) })
+          break
+        }
+        const liftedResult = evaluateArrayLiftedScalarBuiltin(instruction.callee, rawArgs, builtin)
+        if (liftedResult) {
+          stack.push(liftedResult)
           break
         }
         const args: CellValue[] = []
