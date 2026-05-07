@@ -40,6 +40,8 @@ Shorter version:
   [`docs/node-service-workpaper-recipe.md`](node-service-workpaper-recipe.md)
 - CSV-shaped input recipe:
   [`docs/csv-shaped-workpaper-input-recipe.md`](csv-shaped-workpaper-input-recipe.md)
+- Unsupported formula troubleshooting:
+  [`docs/unsupported-formula-troubleshooting-recipe.md`](unsupported-formula-troubleshooting-recipe.md)
 - Benchmark evidence:
   [`docs/headless-workpaper-benchmark-evidence.md`](headless-workpaper-benchmark-evidence.md)
 - Benchmark explainer:
@@ -178,6 +180,12 @@ For service payloads that start as tabular data, link the
 [`CSV-shaped WorkPaper input recipe`](csv-shaped-workpaper-input-recipe.md). It
 keeps parsing deliberately small, normalizes rows into `WorkPaper.buildFromSheets()`,
 and reads formula-backed summary values.
+
+For evaluators asking what happens when a formula returns `#VALUE!` or
+`#NAME?`, link the
+[`Unsupported formula troubleshooting recipe`](unsupported-formula-troubleshooting-recipe.md).
+It shows the display-value read, structured diagnostic read, and a numeric-date
+fix for a concrete `XIRR()` error path.
 
 For evaluators who want to reproduce the benchmark checks locally, link the
 [`Local WorkPaper benchmark walkthrough`](local-workpaper-benchmark-walkthrough.md).

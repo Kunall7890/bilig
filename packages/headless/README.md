@@ -103,6 +103,8 @@ Repository:
   [`docs/node-service-workpaper-recipe.md`](../../docs/node-service-workpaper-recipe.md)
 - CSV-shaped input recipe:
   [`docs/csv-shaped-workpaper-input-recipe.md`](../../docs/csv-shaped-workpaper-input-recipe.md)
+- unsupported formula troubleshooting:
+  [`docs/unsupported-formula-troubleshooting-recipe.md`](../../docs/unsupported-formula-troubleshooting-recipe.md)
 - agent tool-calling recipe:
   [`docs/agent-workpaper-tool-calling-recipe.md`](../../docs/agent-workpaper-tool-calling-recipe.md)
 - public adoption kit:
@@ -234,6 +236,12 @@ For simple tabular service payloads, see
 [`docs/csv-shaped-workpaper-input-recipe.md`](../../docs/csv-shaped-workpaper-input-recipe.md).
 It normalizes a small CSV-shaped fixture into the `WorkPaper.buildFromSheets()`
 array shape and reads formula-backed summaries.
+
+For formula error handling, see
+[`docs/unsupported-formula-troubleshooting-recipe.md`](../../docs/unsupported-formula-troubleshooting-recipe.md).
+It shows how to pair `getCellDisplayValue()` with
+`getCellFormulaDiagnostics()` so Node services and agent tools can return
+actionable errors instead of silently accepting unsupported formula inputs.
 
 For a concise evaluator-facing summary with copy-paste npm commands, proof
 links, shareable copy, and overclaim guardrails, use the root

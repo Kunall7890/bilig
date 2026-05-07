@@ -150,6 +150,11 @@ For tabular service payloads, see
 It normalizes a small CSV-shaped fixture into a WorkPaper workbook and reads
 formula-backed summary values.
 
+For formula errors, see
+[`docs/unsupported-formula-troubleshooting-recipe.md`](docs/unsupported-formula-troubleshooting-recipe.md).
+It shows how to read `#VALUE!`/`#NAME?` display text together with structured
+diagnostics so services and agents can reject or normalize unsupported inputs.
+
 That example also includes `npm run agent:verify`, a small agent writeback demo
 that records the exact assumption cells changed, verifies dependent formula
 readback, persists the workbook, restores it, and proves the formulas and values

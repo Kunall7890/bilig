@@ -198,6 +198,9 @@ Follow-up artifact if anyone engages:
   WorkPaper API fits behind a backend or service route
 - link `docs/csv-shaped-workpaper-input-recipe.md` when someone asks how to
   turn tabular service data into formula-backed workbook state
+- link `docs/unsupported-formula-troubleshooting-recipe.md` when someone asks
+  what happens when a formula returns `#VALUE!`, `#NAME?`, or an unsupported
+  input diagnostic
 - link `docs/agent-workpaper-tool-calling-recipe.md` when someone asks how an
   agent should safely read, write, verify, and persist a workbook
 - link `docs/local-workpaper-benchmark-walkthrough.md` when someone asks how to
