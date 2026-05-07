@@ -76,6 +76,9 @@ Repository:
 
 - Website: <https://proompteng.github.io/bilig/>
 - GitHub: <https://github.com/proompteng/bilig>
+- Star or bookmark: <https://github.com/proompteng/bilig/stargazers>
+- Good first issues:
+  <https://github.com/proompteng/bilig/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22>
 - npm: <https://www.npmjs.com/package/@bilig/headless>
 - runnable example:
   [`examples/headless-workpaper`](../../examples/headless-workpaper)
