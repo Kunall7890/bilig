@@ -6,10 +6,10 @@ search indexing.
 
 Current starter tickets as of May 7, 2026:
 
-- [`#29 workbook import dispatcher rejects MIME types with parameters or different case`](https://github.com/proompteng/bilig/issues/29)
+- [`#41 Excel import dispatcher rejects XLSB content type despite direct parser support`](https://github.com/proompteng/bilig/issues/41)
+- [`#46 CSV import leaves common accounting number formats as strings`](https://github.com/proompteng/bilig/issues/46)
 - [`#67 XLSX import/export drops worksheet tab colors`](https://github.com/proompteng/bilig/issues/67)
 - [`#102 formula text coercion appends .0 to integer numbers during concatenation`](https://github.com/proompteng/bilig/issues/102)
-- [`#104 average over whole-column references returns 0 while bounded average works`](https://github.com/proompteng/bilig/issues/104)
 
 Step-up tickets with a small but production-facing implementation surface:
 
