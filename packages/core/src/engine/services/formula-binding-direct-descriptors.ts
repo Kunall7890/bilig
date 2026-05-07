@@ -141,6 +141,7 @@ function staticCellValue(node: FormulaNode | undefined): CellValue | undefined {
     case 'ColumnRef':
     case 'InvokeExpr':
     case 'NameRef':
+    case 'OmittedArgument':
     case 'RangeRef':
     case 'RowRef':
     case 'SpillRef':

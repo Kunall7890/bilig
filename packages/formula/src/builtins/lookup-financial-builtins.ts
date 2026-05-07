@@ -6,7 +6,7 @@ interface LookupFinancialBuiltinDeps {
   errorValue: (code: ErrorCode) => CellValue
   numberResult: (value: number) => CellValue
   isRangeArg: (value: LookupBuiltinArgument | undefined) => value is RangeBuiltinArgument
-  toNumber: (value: CellValue) => number | undefined
+  toNumber: (value: CellValue | undefined) => number | undefined
   collectNumericSeries: (arg: LookupBuiltinArgument, mode: 'lenient' | 'strict') => number[] | CellValue
 }
 

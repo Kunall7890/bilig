@@ -256,6 +256,9 @@ function executePlan(
           )
         }
         break
+      case 'push-omitted':
+        stack.push({ kind: 'omitted' })
+        break
       case 'push-cell':
         stack.push({
           kind: 'scalar',
@@ -466,9 +469,9 @@ function executePlan(
         }
         const lookupBuiltin = context.resolveLookupBuiltin?.(instruction.callee) ?? getLookupBuiltin(instruction.callee)
         if (lookupBuiltin) {
-          const args: Array<CellValue | RangeBuiltinArgument> = []
+          const args: Array<CellValue | RangeBuiltinArgument | undefined> = []
           for (const rawArg of rawArgs) {
-            args.push(toRangeArgument(rawArg))
+            args.push(rawArg.kind === 'omitted' ? undefined : toRangeArgument(rawArg))
           }
           const result = lookupBuiltin(...args)
           stack.push(isArrayValue(result) ? result : { kind: 'scalar', value: result })

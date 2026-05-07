@@ -282,6 +282,8 @@ function evaluateScalar(args: {
       return { tag: ValueTag.String, value: node.value, stringId: 0 }
     case 'ErrorLiteral':
       return errorValue(node.code as ErrorCode)
+    case 'OmittedArgument':
+      return undefined
     case 'CellRef':
       return readCellValue({ ...args, node })
     case 'NameRef': {

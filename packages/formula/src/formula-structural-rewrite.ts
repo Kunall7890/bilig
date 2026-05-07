@@ -160,6 +160,7 @@ function rewriteNodeForStructuralTransform(
     case 'BooleanLiteral':
     case 'StringLiteral':
     case 'ErrorLiteral':
+    case 'OmittedArgument':
     case 'NameRef':
     case 'StructuredRef':
       return node
@@ -217,6 +218,8 @@ function nodeStructuralShapeEqual(left: FormulaNode, right: FormulaNode): boolea
       return right.kind === 'StringLiteral' && left.value === right.value
     case 'ErrorLiteral':
       return right.kind === 'ErrorLiteral' && left.code === right.code
+    case 'OmittedArgument':
+      return true
     case 'NameRef':
       return right.kind === 'NameRef' && left.name === right.name
     case 'StructuredRef':
@@ -592,6 +595,7 @@ function rewriteJsPlanInstruction(
     case 'push-string':
     case 'push-error':
     case 'push-name':
+    case 'push-omitted':
     case 'unary':
     case 'binary':
     case 'invoke':

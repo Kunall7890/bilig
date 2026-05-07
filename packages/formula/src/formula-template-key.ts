@@ -79,6 +79,8 @@ export function buildRelativeFormulaTemplateAstKey(node: FormulaNode, ownerRow: 
       return `s:${JSON.stringify(node.value)}`
     case 'ErrorLiteral':
       return `e:${node.code}`
+    case 'OmittedArgument':
+      return 'omitted'
     case 'NameRef':
       return `name:${node.name}`
     case 'StructuredRef':

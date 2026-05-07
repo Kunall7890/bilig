@@ -6,8 +6,8 @@ interface LookupDatabaseBuiltinDeps {
   numberResult: (value: number) => CellValue
   isError: (value: LookupBuiltinArgument | undefined) => value is Extract<CellValue, { tag: ValueTag.Error }>
   isRangeArg: (value: LookupBuiltinArgument | undefined) => value is RangeBuiltinArgument
-  toNumber: (value: CellValue) => number | undefined
-  toStringValue: (value: CellValue) => string
+  toNumber: (value: CellValue | undefined) => number | undefined
+  toStringValue: (value: CellValue | undefined) => string
   requireCellRange: (arg: LookupBuiltinArgument) => RangeBuiltinArgument | CellValue
   getRangeValue: (range: RangeBuiltinArgument, row: number, col: number) => CellValue
   matchesCriteria: (value: CellValue, criteria: CellValue) => boolean
@@ -34,6 +34,9 @@ function normalizeHeaderLabel(value: CellValue, deps: LookupDatabaseBuiltinDeps)
 }
 
 function scalarFromLookupArgument(arg: LookupBuiltinArgument, deps: LookupDatabaseBuiltinDeps): CellValue {
+  if (arg === undefined) {
+    return deps.errorValue(ErrorCode.Value)
+  }
   if (!deps.isRangeArg(arg)) {
     return arg
   }

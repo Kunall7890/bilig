@@ -40,6 +40,7 @@ function referenceOperandFromNode(node: FormulaNode): ReferenceOperand | undefin
     case 'InvokeExpr':
     case 'NameRef':
     case 'NumberLiteral':
+    case 'OmittedArgument':
     case 'SpillRef':
     case 'StringLiteral':
     case 'StructuredRef':
@@ -222,6 +223,9 @@ function lowerNode(node: FormulaNode, plan: JsPlanInstruction[]): void {
       return
     case 'ErrorLiteral':
       plan.push({ opcode: 'push-error', code: node.code as ErrorCode })
+      return
+    case 'OmittedArgument':
+      plan.push({ opcode: 'push-omitted' })
       return
     case 'NameRef':
       plan.push({ opcode: 'push-name', name: node.name })

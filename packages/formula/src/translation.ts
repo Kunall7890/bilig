@@ -201,6 +201,7 @@ function translateNode(node: FormulaNode, rowDelta: number, colDelta: number): F
     case 'BooleanLiteral':
     case 'StringLiteral':
     case 'ErrorLiteral':
+    case 'OmittedArgument':
     case 'NameRef':
     case 'StructuredRef':
       return node
@@ -309,6 +310,7 @@ function translateJsPlanInstruction(instruction: JsPlanInstruction, rowDelta: nu
     case 'push-string':
     case 'push-error':
     case 'push-name':
+    case 'push-omitted':
     case 'unary':
     case 'binary':
     case 'invoke':
@@ -390,6 +392,7 @@ function translateJsPlanInstructionWithoutAst(
     case 'push-string':
     case 'push-error':
     case 'push-name':
+    case 'push-omitted':
     case 'unary':
     case 'binary':
     case 'invoke':

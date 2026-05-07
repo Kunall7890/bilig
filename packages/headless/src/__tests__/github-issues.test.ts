@@ -174,6 +174,30 @@ describe('GitHub issue reductions', () => {
     expectNumber(cellValue(workbook, 'Sheet1', 3, 3), 90)
   })
 
+  it('passes INDEX-wrapped boolean arrays into MATCH', () => {
+    const workbook = WorkPaper.buildFromSheets(
+      {
+        Sheet1: [
+          [0, 0, 25, 40, 0, 60],
+          [
+            '=MATCH(TRUE,A1:F1<>0,0)',
+            '=INDEX(A1:F1,MATCH(TRUE,A1:F1<>0,0))',
+            '=MATCH(TRUE,INDEX(A1:F1<>0,),0)',
+            '=INDEX(A1:F1,MATCH(TRUE,INDEX(A1:F1<>0,),0))',
+            '=MATCH(INDEX(A1:F1,MATCH(TRUE,INDEX(A1:F1<>0,),0)),A1:F1,0)',
+          ],
+        ],
+      },
+      { maxRows: 10, maxColumns: 8, useColumnIndex: true },
+    )
+
+    expectNumber(cellValue(workbook, 'Sheet1', 1, 0), 3)
+    expectNumber(cellValue(workbook, 'Sheet1', 1, 1), 25)
+    expectNumber(cellValue(workbook, 'Sheet1', 1, 2), 3)
+    expectNumber(cellValue(workbook, 'Sheet1', 1, 3), 25)
+    expectNumber(cellValue(workbook, 'Sheet1', 1, 4), 3)
+  })
+
   it('resolves row-offset INDEX and MATCH lookups during initial load', () => {
     const comparison = Array.from({ length: 14 }, () => [null, null, null, null, null] as TestCell[])
     comparison[13][2] = 'txn-123'

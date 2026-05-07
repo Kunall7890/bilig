@@ -67,6 +67,7 @@ function isTextLiteralLike(node: FormulaNode): boolean {
     case 'InvokeExpr':
     case 'NameRef':
     case 'NumberLiteral':
+    case 'OmittedArgument':
     case 'RangeRef':
     case 'RowRef':
     case 'SpillRef':

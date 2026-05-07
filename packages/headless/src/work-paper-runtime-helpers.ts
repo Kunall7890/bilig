@@ -218,6 +218,7 @@ export function transformFormulaNode(node: FormulaNode, transform: (current: For
     case 'ErrorLiteral':
     case 'NameRef':
     case 'NumberLiteral':
+    case 'OmittedArgument':
     case 'RangeRef':
     case 'RowRef':
     case 'SpillRef':
@@ -263,6 +264,7 @@ export function collectFormulaNameRefs(node: FormulaNode, output: Set<string>): 
       }
       return
     case 'NumberLiteral':
+    case 'OmittedArgument':
     case 'RangeRef':
     case 'RowRef':
     case 'SpillRef':
@@ -306,6 +308,7 @@ export function formulaHasRelativeReferences(node: FormulaNode): boolean {
     case 'ErrorLiteral':
     case 'NameRef':
     case 'NumberLiteral':
+    case 'OmittedArgument':
     case 'StringLiteral':
     case 'StructuredRef':
       return false

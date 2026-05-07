@@ -3,6 +3,7 @@ export type FormulaNode =
   | BooleanLiteralNode
   | StringLiteralNode
   | ErrorLiteralNode
+  | OmittedArgumentNode
   | NameRefNode
   | StructuredRefNode
   | CellRefNode
@@ -33,6 +34,10 @@ export interface StringLiteralNode {
 export interface ErrorLiteralNode {
   kind: 'ErrorLiteral'
   code: number
+}
+
+export interface OmittedArgumentNode {
+  kind: 'OmittedArgument'
 }
 
 export interface NameRefNode {

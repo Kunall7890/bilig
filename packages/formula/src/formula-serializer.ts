@@ -38,6 +38,8 @@ export function serializeFormula(node: FormulaNode, parentPrecedence = 0, parent
       return `"${node.value.replaceAll('"', '""')}"`
     case 'ErrorLiteral':
       return ERROR_LITERAL_TEXT[node.code] ?? '#ERROR!'
+    case 'OmittedArgument':
+      return ''
     case 'NameRef':
       return node.name
     case 'StructuredRef':

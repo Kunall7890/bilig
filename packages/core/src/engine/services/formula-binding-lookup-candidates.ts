@@ -91,6 +91,7 @@ export function collectIndexedExactLookupCandidates(node: FormulaNode): IndexedE
     case 'ErrorLiteral':
     case 'NameRef':
     case 'NumberLiteral':
+    case 'OmittedArgument':
     case 'RangeRef':
     case 'RowRef':
     case 'SpillRef':
@@ -147,6 +148,7 @@ export function collectDirectApproximateLookupCandidates(node: FormulaNode): Dir
     case 'ErrorLiteral':
     case 'NameRef':
     case 'NumberLiteral':
+    case 'OmittedArgument':
     case 'RangeRef':
     case 'RowRef':
     case 'SpillRef':

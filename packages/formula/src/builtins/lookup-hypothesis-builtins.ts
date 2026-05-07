@@ -4,7 +4,7 @@ import type { LookupBuiltin, LookupBuiltinArgument, RangeBuiltinArgument } from 
 interface LookupHypothesisBuiltinDeps {
   errorValue: (code: ErrorCode) => CellValue
   isRangeArg: (value: LookupBuiltinArgument | undefined) => value is RangeBuiltinArgument
-  toNumber: (value: CellValue) => number | undefined
+  toNumber: (value: CellValue | undefined) => number | undefined
   toNumericMatrix: (arg: LookupBuiltinArgument) => number[][] | CellValue
 }
 
@@ -200,6 +200,9 @@ function studentTCdf(x: number, degreesFreedom: number): number {
 }
 
 function collectSampleNumbers(arg: LookupBuiltinArgument, deps: LookupHypothesisBuiltinDeps): number[] | CellValue {
+  if (arg === undefined) {
+    return deps.errorValue(ErrorCode.Value)
+  }
   if (!deps.isRangeArg(arg)) {
     if (arg.tag === ValueTag.Error) {
       return arg

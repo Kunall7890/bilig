@@ -7,8 +7,8 @@ interface LookupSortFilterBuiltinDeps {
   arrayResult: (values: CellValue[], rows: number, cols: number) => ArrayValue
   isError: (value: LookupBuiltinArgument | undefined) => value is Extract<CellValue, { tag: ValueTag.Error }>
   isRangeArg: (value: LookupBuiltinArgument | undefined) => value is RangeBuiltinArgument
-  toBoolean: (value: CellValue) => boolean | undefined
-  toInteger: (value: CellValue) => number | undefined
+  toBoolean: (value: CellValue | undefined) => boolean | undefined
+  toInteger: (value: CellValue | undefined) => number | undefined
   requireCellRange: (arg: LookupBuiltinArgument) => RangeBuiltinArgument | CellValue
   toCellRange: (arg: LookupBuiltinArgument) => RangeBuiltinArgument | CellValue
   compareScalars: (left: CellValue, right: CellValue) => number | undefined

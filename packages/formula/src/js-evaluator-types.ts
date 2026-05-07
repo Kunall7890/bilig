@@ -76,6 +76,7 @@ export type JsPlanInstruction =
   | { opcode: 'push-boolean'; value: boolean }
   | { opcode: 'push-string'; value: string }
   | { opcode: 'push-error'; code: ErrorCode }
+  | { opcode: 'push-omitted' }
   | { opcode: 'push-name'; name: string }
   | { opcode: 'push-cell'; sheetName?: string; address: string }
   | {

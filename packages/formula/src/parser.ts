@@ -6,6 +6,7 @@ import type {
   FormulaNode,
   InvokeExprNode,
   NameRefNode,
+  OmittedArgumentNode,
   RangeRefNode,
   RowRefNode,
   SpillRefNode,
@@ -49,6 +50,7 @@ function assertNoStandaloneAxisRefs(node: FormulaNode): void {
     case 'BooleanLiteral':
     case 'StringLiteral':
     case 'ErrorLiteral':
+    case 'OmittedArgument':
     case 'NameRef':
     case 'StructuredRef':
     case 'SpillRef':
@@ -150,11 +152,27 @@ export function parseFormula(source: string): FormulaNode {
   function parseCallArguments(): FormulaNode[] {
     eat('lparen')
     const args: FormulaNode[] = []
-    if (current().kind !== 'rparen') {
-      args.push(parseExpression())
-      while (current().kind === 'comma') {
-        eat('comma')
+    if (current().kind === 'rparen') {
+      eat('rparen')
+      return args
+    }
+
+    let parsingArguments = true
+    while (parsingArguments) {
+      if (current().kind === 'comma' || current().kind === 'rparen') {
+        args.push({ kind: 'OmittedArgument' } satisfies OmittedArgumentNode)
+      } else {
         args.push(parseExpression())
+      }
+
+      if (current().kind !== 'comma') {
+        parsingArguments = false
+        continue
+      }
+      eat('comma')
+      if (current().kind === 'rparen') {
+        args.push({ kind: 'OmittedArgument' } satisfies OmittedArgumentNode)
+        parsingArguments = false
       }
     }
     eat('rparen')
@@ -210,6 +228,7 @@ export function parseFormula(source: string): FormulaNode {
       case 'BooleanLiteral':
       case 'StringLiteral':
       case 'ErrorLiteral':
+      case 'OmittedArgument':
       case 'UnaryExpr':
       case 'BinaryExpr':
       case 'CallExpr':

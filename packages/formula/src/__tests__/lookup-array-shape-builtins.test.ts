@@ -33,8 +33,25 @@ describe('lookup array-shape builtins', () => {
 
     expect(INDEX(matrix, num(2), num(3))).toEqual(text('b'))
     expect(INDEX(cellRange([num(1), num(2), num(3)], 1, 3), num(2))).toEqual(num(2))
+    expect(INDEX(cellRange([bool(false), bool(false), bool(true), bool(true)], 1, 4), undefined)).toEqual({
+      kind: 'array',
+      rows: 1,
+      cols: 4,
+      values: [bool(false), bool(false), bool(true), bool(true)],
+    })
+    expect(INDEX(matrix, num(0), num(2))).toEqual({
+      kind: 'array',
+      rows: 2,
+      cols: 1,
+      values: [text('a'), num(5)],
+    })
+    expect(INDEX(matrix, num(2), num(0))).toEqual({
+      kind: 'array',
+      rows: 1,
+      cols: 3,
+      values: [empty(), num(5), text('b')],
+    })
     expect(INDEX(matrix, err(ErrorCode.NA), num(1))).toEqual(err(ErrorCode.NA))
-    expect(INDEX(matrix, num(0), num(1))).toEqual(err(ErrorCode.Ref))
     expect(INDEX({ kind: 'range', refKind: 'rows', values: [num(1)], rows: 1, cols: 1 }, num(1), num(1))).toEqual(err(ErrorCode.Value))
 
     expect(OFFSET(matrix, num(0), num(1), num(2), num(2))).toEqual({

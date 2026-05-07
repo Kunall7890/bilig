@@ -116,6 +116,31 @@ describe('formula parser/compiler edges', () => {
     ])
   })
 
+  it('parses and lowers omitted call arguments', () => {
+    expect(parseFormula('INDEX(A1:F1<>0,)')).toEqual({
+      kind: 'CallExpr',
+      callee: 'INDEX',
+      args: [
+        {
+          kind: 'BinaryExpr',
+          operator: '<>',
+          left: { kind: 'RangeRef', refKind: 'cells', start: 'A1', end: 'F1' },
+          right: { kind: 'NumberLiteral', value: 0 },
+        },
+        { kind: 'OmittedArgument' },
+      ],
+    })
+
+    expect(lowerToPlan(parseFormula('INDEX(A1:F1<>0,)'))).toEqual([
+      { opcode: 'push-range', start: 'A1', end: 'F1', refKind: 'cells' },
+      { opcode: 'push-number', value: 0 },
+      { opcode: 'binary', operator: '<>' },
+      { opcode: 'push-omitted' },
+      { opcode: 'call', callee: 'INDEX', argc: 2, argRefs: [undefined, undefined] },
+      { opcode: 'return' },
+    ])
+  })
+
   it('lowers exact vector MATCH and XMATCH to the direct lookup opcode only for exact shapes', () => {
     expect(lowerToPlan(parseFormula('MATCH(A1,A2:A4,0)'))).toEqual([
       { opcode: 'push-cell', address: 'A1' },

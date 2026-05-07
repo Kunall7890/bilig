@@ -57,6 +57,7 @@ export function isStructurallyStableSimpleFormulaNode(node: CompiledFormula['opt
     case 'BinaryExpr':
       return isStructurallyStableSimpleFormulaNode(node.left) && isStructurallyStableSimpleFormulaNode(node.right)
     case 'NameRef':
+    case 'OmittedArgument':
     case 'StructuredRef':
     case 'SpillRef':
     case 'RowRef':

@@ -177,6 +177,8 @@ function emitNode(node: FormulaNode, state: CompilerState): void {
     case 'ErrorLiteral':
       state.program.push(encodeInstruction(Opcode.PushError, node.code))
       return
+    case 'OmittedArgument':
+      throw new Error('Omitted arguments are not supported on the wasm fast path')
     case 'NameRef':
     case 'StructuredRef':
     case 'SpillRef':
@@ -418,6 +420,7 @@ function computeMaxStackDepth(plan: readonly JsPlanInstruction[]): number {
       case 'push-boolean':
       case 'push-string':
       case 'push-error':
+      case 'push-omitted':
       case 'push-name':
       case 'push-cell':
       case 'push-range':
@@ -631,6 +634,7 @@ function collectParsedDependencyReferencesFromAst(ast: FormulaNode): Map<string,
       case 'BooleanLiteral':
       case 'StringLiteral':
       case 'ErrorLiteral':
+      case 'OmittedArgument':
       case 'NameRef':
       case 'StructuredRef':
       case 'SpillRef':

@@ -14,6 +14,7 @@ export function producesSpillResult(node: FormulaNode): boolean {
     case 'BooleanLiteral':
     case 'StringLiteral':
     case 'ErrorLiteral':
+    case 'OmittedArgument':
     case 'NameRef':
     case 'StructuredRef':
     case 'CellRef':
@@ -82,6 +83,7 @@ export function analyzeVolatileMetadata(node: FormulaNode): VolatileMetadata {
     case 'BooleanLiteral':
     case 'StringLiteral':
     case 'ErrorLiteral':
+    case 'OmittedArgument':
     case 'NameRef':
     case 'StructuredRef':
     case 'CellRef':

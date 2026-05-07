@@ -183,6 +183,7 @@ export function bindFormula(ast: FormulaNode): BoundFormula {
       case 'BooleanLiteral':
       case 'StringLiteral':
       case 'ErrorLiteral':
+      case 'OmittedArgument':
         break
       case 'NameRef':
         if (!localNames.has(node.name)) {
@@ -282,6 +283,8 @@ export function bindFormula(ast: FormulaNode): BoundFormula {
       case 'StringLiteral':
       case 'ErrorLiteral':
         return true
+      case 'OmittedArgument':
+        return false
       case 'NameRef':
       case 'StructuredRef':
       case 'SpillRef':

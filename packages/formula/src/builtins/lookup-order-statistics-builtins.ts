@@ -9,8 +9,8 @@ interface LookupOrderStatisticsBuiltinDeps {
   requireCellRange: (arg: LookupBuiltinArgument) => RangeBuiltinArgument | CellValue
   isError: (value: LookupBuiltinArgument | undefined) => value is Extract<CellValue, { tag: ValueTag.Error }>
   isRangeArg: (value: LookupBuiltinArgument | undefined) => value is RangeBuiltinArgument
-  toNumber: (value: CellValue) => number | undefined
-  toInteger: (value: CellValue) => number | undefined
+  toNumber: (value: CellValue | undefined) => number | undefined
+  toInteger: (value: CellValue | undefined) => number | undefined
   flattenNumbers: (arg: LookupBuiltinArgument) => number[] | CellValue
 }
 

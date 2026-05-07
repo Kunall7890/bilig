@@ -6,8 +6,8 @@ interface LookupRegressionBuiltinDeps {
   errorValue: (code: ErrorCode) => CellValue
   numberResult: (value: number) => CellValue
   isRangeArg: (value: LookupBuiltinArgument | undefined) => value is RangeBuiltinArgument
-  toNumber: (value: CellValue) => number | undefined
-  toBoolean: (value: CellValue) => boolean | undefined
+  toNumber: (value: CellValue | undefined) => number | undefined
+  toBoolean: (value: CellValue | undefined) => boolean | undefined
   flattenNumbers: (arg: LookupBuiltinArgument) => number[] | CellValue
 }
 

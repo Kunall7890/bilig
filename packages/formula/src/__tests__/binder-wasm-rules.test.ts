@@ -87,6 +87,7 @@ describe('binder wasm rules', () => {
           case 'ColumnRef':
           case 'InvokeExpr':
           case 'NameRef':
+          case 'OmittedArgument':
           case 'RowRef':
           case 'SpillRef':
           case 'StructuredRef':

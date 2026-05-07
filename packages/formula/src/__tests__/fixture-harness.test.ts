@@ -261,6 +261,7 @@ function resolveFixtureMetadataReferences(
     case 'BooleanLiteral':
     case 'StringLiteral':
     case 'ErrorLiteral':
+    case 'OmittedArgument':
     case 'CellRef':
     case 'RowRef':
     case 'ColumnRef':

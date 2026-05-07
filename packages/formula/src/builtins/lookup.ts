@@ -1,5 +1,5 @@
 import { ErrorCode } from '@bilig/protocol'
-import { getExternalLookupFunction } from '../external-function-adapter.js'
+import { getExternalLookupFunction, type ExternalLookupFunctionArgument } from '../external-function-adapter.js'
 import { createLookupArrayShapeBuiltins } from './lookup-array-shape-builtins.js'
 import {
   arrayResult,
@@ -56,11 +56,18 @@ export type {
 
 const externalLookupBuiltinNames = ['FILTERXML', 'STOCKHISTORY'] as const
 
+function isExternalLookupFunctionArgument(arg: LookupBuiltinArgument): arg is ExternalLookupFunctionArgument {
+  return arg !== undefined
+}
+
 function createExternalLookupBuiltin(name: string): LookupBuiltin {
   return (...args) => {
     const existingError = firstLookupError(args)
     if (existingError) {
       return existingError
+    }
+    if (!args.every(isExternalLookupFunctionArgument)) {
+      return errorValue(ErrorCode.Value)
     }
     const external = getExternalLookupFunction(name)
     return external ? external(...args) : errorValue(ErrorCode.Blocked)
@@ -211,7 +218,8 @@ export function createLookupBuiltinResolver(options: LookupBuiltinResolverOption
     if (upper === 'USE.THE.COUNTIF') {
       return builtins['COUNTIF']
     }
-    return builtins[upper] ?? getExternalLookupFunction(name)
+    const external = getExternalLookupFunction(name)
+    return builtins[upper] ?? (external ? (...args) => createExternalLookupBuiltin(name)(...args) : undefined)
   }
 }
 

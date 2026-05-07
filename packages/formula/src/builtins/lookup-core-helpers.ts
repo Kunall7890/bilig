@@ -12,7 +12,7 @@ export interface RangeBuiltinArgument {
   end?: string
 }
 
-export type LookupBuiltinArgument = CellValue | RangeBuiltinArgument
+export type LookupBuiltinArgument = CellValue | RangeBuiltinArgument | undefined
 export type LookupBuiltin = (...args: LookupBuiltinArgument[]) => EvaluationResult
 export interface LookupBuiltinResolverOptions {
   resolveIndexedExactMatch?: (lookupValue: CellValue, range: RangeBuiltinArgument) => number | undefined
@@ -34,20 +34,23 @@ export function isRangeArg(value: LookupBuiltinArgument | undefined): value is R
   return typeof value === 'object' && value !== null && 'kind' in value && value.kind === 'range'
 }
 
-export function findFirstNonRange(values: readonly (RangeBuiltinArgument | CellValue)[]): CellValue | undefined {
+export function findFirstNonRange(values: readonly LookupBuiltinArgument[]): CellValue | undefined {
   for (const value of values) {
-    if (!isRangeArg(value)) {
+    if (value !== undefined && !isRangeArg(value)) {
       return value
     }
   }
   return undefined
 }
 
-export function areRangeArgs(values: readonly (RangeBuiltinArgument | CellValue)[]): values is RangeBuiltinArgument[] {
+export function areRangeArgs(values: readonly LookupBuiltinArgument[]): values is RangeBuiltinArgument[] {
   return values.every((value) => isRangeArg(value))
 }
 
-export function toNumber(value: CellValue): number | undefined {
+export function toNumber(value: CellValue | undefined): number | undefined {
+  if (value === undefined) {
+    return undefined
+  }
   switch (value.tag) {
     case ValueTag.Number:
       return value.value
@@ -63,7 +66,7 @@ export function toNumber(value: CellValue): number | undefined {
   }
 }
 
-export function toInteger(value: CellValue): number | undefined {
+export function toInteger(value: CellValue | undefined): number | undefined {
   const numeric = toNumber(value)
   if (numeric === undefined || !Number.isFinite(numeric)) {
     return undefined
@@ -71,7 +74,10 @@ export function toInteger(value: CellValue): number | undefined {
   return Math.trunc(numeric)
 }
 
-export function toBoolean(value: CellValue): boolean | undefined {
+export function toBoolean(value: CellValue | undefined): boolean | undefined {
+  if (value === undefined) {
+    return undefined
+  }
   switch (value.tag) {
     case ValueTag.Boolean:
       return value.value
@@ -87,7 +93,10 @@ export function toBoolean(value: CellValue): boolean | undefined {
   }
 }
 
-export function toStringValue(value: CellValue): string {
+export function toStringValue(value: CellValue | undefined): string {
+  if (value === undefined) {
+    return ''
+  }
   switch (value.tag) {
     case ValueTag.Empty:
       return ''
@@ -153,6 +162,9 @@ export function arrayResult(values: CellValue[], rows: number, cols: number): Ar
 }
 
 export function collectNumericSeries(arg: LookupBuiltinArgument, mode: 'lenient' | 'strict'): number[] | CellValue {
+  if (arg === undefined) {
+    return errorValue(ErrorCode.Value)
+  }
   const values: number[] = []
   const cells = isRangeArg(arg) ? arg.values : [arg]
   if (isRangeArg(arg) && arg.refKind !== 'cells') {
@@ -173,11 +185,14 @@ export function collectNumericSeries(arg: LookupBuiltinArgument, mode: 'lenient'
   return values
 }
 
-export function numericAggregateCandidate(value: CellValue): number | undefined {
-  return value.tag === ValueTag.Number ? value.value : undefined
+export function numericAggregateCandidate(value: CellValue | undefined): number | undefined {
+  return value?.tag === ValueTag.Number ? value.value : undefined
 }
 
 export function toCellRange(arg: LookupBuiltinArgument): RangeBuiltinArgument | CellValue {
+  if (arg === undefined) {
+    return errorValue(ErrorCode.Value)
+  }
   if (!isRangeArg(arg)) {
     return { kind: 'range', values: [arg], refKind: 'cells', rows: 1, cols: 1 }
   }

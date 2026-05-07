@@ -27,6 +27,13 @@ describe('formula binding lookup candidates', () => {
     expect(hasIndexedExactLookupCandidate(parseFormula('MATCH(A1,A2:A4,1)'))).toBe(false)
   })
 
+  it('ignores omitted lookup arguments while walking nested formulas', () => {
+    const ast = parseFormula('MATCH(INDEX(A1:F1,MATCH(TRUE,INDEX(A1:F1<>0,),0)),A1:F1,0)')
+
+    expect(collectIndexedExactLookupCandidates(ast)).toEqual([{ start: 'A1', end: 'F1', startRow: 0, endRow: 0, startCol: 0, endCol: 5 }])
+    expect(collectDirectApproximateLookupCandidates(ast)).toEqual([])
+  })
+
   it('collects approximate lookup candidates only for supported forward search modes', () => {
     expect(collectDirectApproximateLookupCandidates(parseFormula('MATCH(A1,A2:A4,1)'))).toEqual([
       { start: 'A2', end: 'A4', startRow: 1, endRow: 3, startCol: 0, endCol: 0 },

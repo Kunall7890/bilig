@@ -157,6 +157,7 @@ export function resolveMetadataReferencesInAst(
     case 'StringLiteral':
     case 'ErrorLiteral':
     case 'CellRef':
+    case 'OmittedArgument':
     case 'RowRef':
     case 'ColumnRef':
     case 'RangeRef':

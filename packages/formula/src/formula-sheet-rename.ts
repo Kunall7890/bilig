@@ -184,6 +184,7 @@ function renameNodeSheetReferences(node: FormulaNode, oldSheetName: string, newS
     case 'BooleanLiteral':
     case 'StringLiteral':
     case 'ErrorLiteral':
+    case 'OmittedArgument':
     case 'NameRef':
     case 'StructuredRef':
       return node
@@ -298,6 +299,7 @@ function renameJsPlanSheetReferences(plan: readonly JsPlanInstruction[], oldShee
       case 'push-error':
       case 'push-name':
       case 'push-number':
+      case 'push-omitted':
       case 'push-string':
       case 'return':
       case 'unary':

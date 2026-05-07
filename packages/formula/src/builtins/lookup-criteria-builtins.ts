@@ -6,10 +6,10 @@ interface LookupCriteriaBuiltinDeps {
   numberResult: (value: number) => CellValue
   isError: (value: LookupBuiltinArgument | undefined) => value is Extract<CellValue, { tag: ValueTag.Error }>
   isRangeArg: (value: LookupBuiltinArgument | undefined) => value is RangeBuiltinArgument
-  toNumber: (value: CellValue) => number | undefined
+  toNumber: (value: CellValue | undefined) => number | undefined
   requireCellRange: (arg: LookupBuiltinArgument) => RangeBuiltinArgument | CellValue
   matchesCriteria: (value: CellValue, criteria: CellValue) => boolean
-  numericAggregateCandidate: (value: CellValue) => number | undefined
+  numericAggregateCandidate: (value: CellValue | undefined) => number | undefined
 }
 
 type RangeCriteriaPair = {
@@ -26,12 +26,12 @@ function validateCriteriaPairs(
   }
   const rangeCriteriaPairs: RangeCriteriaPair[] = []
   for (let index = 0; index < criteriaArgs.length; index += 2) {
-    const range = deps.requireCellRange(criteriaArgs[index]!)
+    const range = deps.requireCellRange(criteriaArgs[index])
     if (!deps.isRangeArg(range)) {
       return range
     }
-    const criteria = criteriaArgs[index + 1]!
-    if (deps.isRangeArg(criteria)) {
+    const criteria = criteriaArgs[index + 1]
+    if (criteria === undefined || deps.isRangeArg(criteria)) {
       return deps.errorValue(ErrorCode.Value)
     }
     if (deps.isError(criteria)) {
@@ -67,7 +67,7 @@ function findMatchingRowIndexes(
 function sumMatchingRows(range: RangeBuiltinArgument, rows: readonly number[], deps: LookupCriteriaBuiltinDeps): number {
   let sum = 0
   for (const row of rows) {
-    sum += deps.toNumber(range.values[row]!) ?? 0
+    sum += deps.toNumber(range.values[row]) ?? 0
   }
   return sum
 }
@@ -79,7 +79,7 @@ export function createLookupCriteriaBuiltins(deps: LookupCriteriaBuiltinDeps): R
       if (!deps.isRangeArg(range)) {
         return range
       }
-      if (deps.isRangeArg(criteriaArg)) {
+      if (criteriaArg === undefined || deps.isRangeArg(criteriaArg)) {
         return deps.errorValue(ErrorCode.Value)
       }
       if (deps.isError(criteriaArg)) {
@@ -125,7 +125,7 @@ export function createLookupCriteriaBuiltins(deps: LookupCriteriaBuiltinDeps): R
       if (range.values.length !== sumRange.values.length) {
         return deps.errorValue(ErrorCode.Value)
       }
-      if (deps.isRangeArg(criteriaArg)) {
+      if (criteriaArg === undefined || deps.isRangeArg(criteriaArg)) {
         return deps.errorValue(ErrorCode.Value)
       }
       if (deps.isError(criteriaArg)) {
@@ -137,7 +137,7 @@ export function createLookupCriteriaBuiltins(deps: LookupCriteriaBuiltinDeps): R
         if (!deps.matchesCriteria(range.values[index]!, criteriaArg)) {
           continue
         }
-        sum += deps.toNumber(sumRange.values[index]!) ?? 0
+        sum += deps.toNumber(sumRange.values[index]) ?? 0
       }
       return deps.numberResult(sum)
     },
@@ -164,7 +164,7 @@ export function createLookupCriteriaBuiltins(deps: LookupCriteriaBuiltinDeps): R
       if (range.values.length !== averageRange.values.length) {
         return deps.errorValue(ErrorCode.Value)
       }
-      if (deps.isRangeArg(criteriaArg)) {
+      if (criteriaArg === undefined || deps.isRangeArg(criteriaArg)) {
         return deps.errorValue(ErrorCode.Value)
       }
       if (deps.isError(criteriaArg)) {
@@ -177,7 +177,7 @@ export function createLookupCriteriaBuiltins(deps: LookupCriteriaBuiltinDeps): R
         if (!deps.matchesCriteria(range.values[index]!, criteriaArg)) {
           continue
         }
-        const numeric = deps.toNumber(averageRange.values[index]!)
+        const numeric = deps.toNumber(averageRange.values[index])
         if (numeric === undefined) {
           continue
         }
@@ -199,7 +199,7 @@ export function createLookupCriteriaBuiltins(deps: LookupCriteriaBuiltinDeps): R
       let count = 0
       let sum = 0
       for (const row of matchingRows) {
-        const numeric = deps.toNumber(averageRange.values[row]!)
+        const numeric = deps.toNumber(averageRange.values[row])
         if (numeric === undefined) {
           continue
         }
@@ -220,7 +220,7 @@ export function createLookupCriteriaBuiltins(deps: LookupCriteriaBuiltinDeps): R
 
       let minimum = Number.POSITIVE_INFINITY
       for (const row of matchingRows) {
-        const numeric = deps.numericAggregateCandidate(minRange.values[row]!)
+        const numeric = deps.numericAggregateCandidate(minRange.values[row])
         if (numeric === undefined) {
           continue
         }
@@ -240,7 +240,7 @@ export function createLookupCriteriaBuiltins(deps: LookupCriteriaBuiltinDeps): R
 
       let maximum = Number.NEGATIVE_INFINITY
       for (const row of matchingRows) {
-        const numeric = deps.numericAggregateCandidate(maxRange.values[row]!)
+        const numeric = deps.numericAggregateCandidate(maxRange.values[row])
         if (numeric === undefined) {
           continue
         }

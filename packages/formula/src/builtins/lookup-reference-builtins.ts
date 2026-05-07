@@ -6,8 +6,8 @@ interface LookupReferenceBuiltinDeps {
   numberResult: (value: number) => CellValue
   isError: (value: LookupBuiltinArgument | undefined) => value is Extract<CellValue, { tag: ValueTag.Error }>
   isRangeArg: (value: LookupBuiltinArgument | undefined) => value is RangeBuiltinArgument
-  toBoolean: (value: CellValue) => boolean | undefined
-  toInteger: (value: CellValue) => number | undefined
+  toBoolean: (value: CellValue | undefined) => boolean | undefined
+  toInteger: (value: CellValue | undefined) => number | undefined
   requireCellVector: (arg: LookupBuiltinArgument) => RangeBuiltinArgument | CellValue
   toCellRange: (arg: LookupBuiltinArgument) => RangeBuiltinArgument | CellValue
   compareScalars: (left: CellValue, right: CellValue) => number | undefined
@@ -60,6 +60,9 @@ function approximateMatchDescending(lookupValue: CellValue, range: RangeBuiltinA
 export function createLookupReferenceBuiltins(deps: LookupReferenceBuiltinDeps): Record<string, LookupBuiltin> {
   return {
     MATCH: (lookupValue, lookupArray, matchTypeValue = { tag: ValueTag.Number, value: 1 }) => {
+      if (lookupValue === undefined || lookupArray === undefined) {
+        return deps.errorValue(ErrorCode.Value)
+      }
       if (deps.isRangeArg(lookupValue) || deps.isRangeArg(matchTypeValue)) {
         return deps.errorValue(ErrorCode.Value)
       }
@@ -136,6 +139,9 @@ export function createLookupReferenceBuiltins(deps: LookupReferenceBuiltinDeps):
       return resultRangeOrError.values[resultIndex] ?? deps.errorValue(ErrorCode.NA)
     },
     VLOOKUP: (lookupValue, tableArray, colIndexValue, rangeLookupValue = { tag: ValueTag.Boolean, value: true }) => {
+      if (lookupValue === undefined || tableArray === undefined || colIndexValue === undefined) {
+        return deps.errorValue(ErrorCode.Value)
+      }
       if (deps.isRangeArg(lookupValue)) {
         return deps.errorValue(ErrorCode.Value)
       }
@@ -186,6 +192,9 @@ export function createLookupReferenceBuiltins(deps: LookupReferenceBuiltinDeps):
       return deps.getRangeValue(tableArray, matchedRow, colIndex - 1)
     },
     HLOOKUP: (lookupValue, tableArray, rowIndexValue, rangeLookupValue = { tag: ValueTag.Boolean, value: true }) => {
+      if (lookupValue === undefined || tableArray === undefined || rowIndexValue === undefined) {
+        return deps.errorValue(ErrorCode.Value)
+      }
       if (deps.isRangeArg(lookupValue)) {
         return deps.errorValue(ErrorCode.Value)
       }
@@ -243,6 +252,9 @@ export function createLookupReferenceBuiltins(deps: LookupReferenceBuiltinDeps):
       matchMode = { tag: ValueTag.Number, value: 0 },
       searchMode = { tag: ValueTag.Number, value: 1 },
     ) => {
+      if (lookupValue === undefined || lookupArray === undefined || returnArray === undefined) {
+        return deps.errorValue(ErrorCode.Value)
+      }
       if (deps.isRangeArg(lookupValue) || deps.isRangeArg(ifNotFound) || deps.isRangeArg(matchMode) || deps.isRangeArg(searchMode)) {
         return deps.errorValue(ErrorCode.Value)
       }
@@ -295,7 +307,12 @@ export function createLookupReferenceBuiltins(deps: LookupReferenceBuiltinDeps):
       matchModeValue = { tag: ValueTag.Number, value: 0 },
       searchModeValue = { tag: ValueTag.Number, value: 1 },
     ) => {
-      if (deps.isRangeArg(lookupValue) || deps.isRangeArg(matchModeValue) || deps.isRangeArg(searchModeValue)) {
+      if (
+        lookupValue === undefined ||
+        deps.isRangeArg(lookupValue) ||
+        deps.isRangeArg(matchModeValue) ||
+        deps.isRangeArg(searchModeValue)
+      ) {
         return deps.errorValue(ErrorCode.Value)
       }
       if (deps.isError(lookupValue)) {

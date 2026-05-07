@@ -8,9 +8,9 @@ interface LookupMatrixBuiltinDeps {
   arrayResult: (values: CellValue[], rows: number, cols: number) => ArrayValue
   isRangeArg: (value: LookupBuiltinArgument | undefined) => value is RangeBuiltinArgument
   requireCellRange: (arg: LookupBuiltinArgument) => RangeBuiltinArgument | CellValue
-  findFirstNonRange: (values: readonly (RangeBuiltinArgument | CellValue)[]) => CellValue | undefined
-  areRangeArgs: (values: readonly (RangeBuiltinArgument | CellValue)[]) => values is RangeBuiltinArgument[]
-  toNumber: (value: CellValue) => number | undefined
+  findFirstNonRange: (values: readonly LookupBuiltinArgument[]) => CellValue | undefined
+  areRangeArgs: (values: readonly LookupBuiltinArgument[]) => values is RangeBuiltinArgument[]
+  toNumber: (value: CellValue | undefined) => number | undefined
   toNumericMatrix: (arg: LookupBuiltinArgument) => number[][] | CellValue
   flattenNumbers: (arg: LookupBuiltinArgument) => number[] | CellValue
 }
@@ -149,7 +149,7 @@ export function createLookupMatrixBuiltins(deps: LookupMatrixBuiltinDeps): Recor
       for (let index = 0; index < expectedLength; index += 1) {
         let product = 1
         for (const range of typedRanges) {
-          product *= deps.toNumber(range.values[index]!) ?? 0
+          product *= deps.toNumber(range.values[index]) ?? 0
         }
         sum += product
       }

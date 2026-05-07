@@ -7,13 +7,13 @@ interface LookupArrayShapeBuiltinDeps {
   arrayResult: (values: CellValue[], rows: number, cols: number) => ArrayValue
   isError: (value: LookupBuiltinArgument | undefined) => value is Extract<CellValue, { tag: ValueTag.Error }>
   isRangeArg: (value: LookupBuiltinArgument | undefined) => value is RangeBuiltinArgument
-  toBoolean: (value: CellValue) => boolean | undefined
-  toInteger: (value: CellValue) => number | undefined
+  toBoolean: (value: CellValue | undefined) => boolean | undefined
+  toInteger: (value: CellValue | undefined) => number | undefined
   requireCellRange: (arg: LookupBuiltinArgument) => RangeBuiltinArgument | CellValue
   toCellRange: (arg: LookupBuiltinArgument) => RangeBuiltinArgument | CellValue
   getRangeValue: (range: RangeBuiltinArgument, row: number, col: number) => CellValue
-  findFirstNonRange: (values: readonly (RangeBuiltinArgument | CellValue)[]) => CellValue | undefined
-  areRangeArgs: (values: readonly (RangeBuiltinArgument | CellValue)[]) => values is RangeBuiltinArgument[]
+  findFirstNonRange: (values: readonly LookupBuiltinArgument[]) => CellValue | undefined
+  areRangeArgs: (values: readonly LookupBuiltinArgument[]) => values is RangeBuiltinArgument[]
   pickRangeRow: (range: RangeBuiltinArgument, row: number) => CellValue[]
 }
 
@@ -146,7 +146,7 @@ export function createLookupArrayShapeBuiltins(deps: LookupArrayShapeBuiltinDeps
       }
       return { tag: ValueTag.Number, value: range.rows }
     },
-    INDEX: (array, rowNumValue, colNumValue = { tag: ValueTag.Number, value: 1 }) => {
+    INDEX: (array, rowNumValue, colNumValue) => {
       if (!deps.isRangeArg(array) || array.refKind !== 'cells') {
         return deps.errorValue(ErrorCode.Value)
       }
@@ -160,21 +160,51 @@ export function createLookupArrayShapeBuiltins(deps: LookupArrayShapeBuiltinDeps
         return colNumValue
       }
 
-      const rawRowNum = deps.toInteger(rowNumValue)
-      const rawColNum = deps.toInteger(colNumValue)
-      if (rawRowNum === undefined || rawColNum === undefined) {
+      const rowNumOmitted = rowNumValue === undefined
+      const colNumOmitted = colNumValue === undefined
+      const rawRowNum = rowNumOmitted ? undefined : deps.toInteger(rowNumValue)
+      const rawColNum = colNumOmitted ? undefined : deps.toInteger(colNumValue)
+      if ((!rowNumOmitted && rawRowNum === undefined) || (!colNumOmitted && rawColNum === undefined)) {
         return deps.errorValue(ErrorCode.Value)
       }
 
-      let rowNum = rawRowNum
-      let colNum = rawColNum
-      if (array.rows === 1 && rawColNum === 1) {
+      if (rowNumOmitted && colNumOmitted) {
+        return deps.arrayResult([...array.values], array.rows, array.cols)
+      }
+
+      let rowNum = rawRowNum ?? 0
+      let colNum = rawColNum ?? 0
+      if (array.rows === 1 && colNumOmitted && rawRowNum !== undefined && rawRowNum !== 0) {
         rowNum = 1
         colNum = rawRowNum
       }
 
-      if (rowNum < 1 || colNum < 1 || rowNum > array.rows || colNum > array.cols) {
+      if (rowNum < 0 || colNum < 0 || rowNum > array.rows || colNum > array.cols) {
         return deps.errorValue(ErrorCode.Ref)
+      }
+
+      if (rowNum === 0 && colNum === 0) {
+        return deps.arrayResult([...array.values], array.rows, array.cols)
+      }
+      if (rowNum === 0) {
+        if (colNum < 1 || colNum > array.cols) {
+          return deps.errorValue(ErrorCode.Ref)
+        }
+        const values: CellValue[] = []
+        for (let row = 0; row < array.rows; row += 1) {
+          values.push(deps.getRangeValue(array, row, colNum - 1))
+        }
+        return values.length === 1 ? (values[0] ?? deps.errorValue(ErrorCode.Ref)) : deps.arrayResult(values, array.rows, 1)
+      }
+      if (colNum === 0) {
+        if (rowNum < 1 || rowNum > array.rows) {
+          return deps.errorValue(ErrorCode.Ref)
+        }
+        const values: CellValue[] = []
+        for (let col = 0; col < array.cols; col += 1) {
+          values.push(deps.getRangeValue(array, rowNum - 1, col))
+        }
+        return values.length === 1 ? (values[0] ?? deps.errorValue(ErrorCode.Ref)) : deps.arrayResult(values, 1, array.cols)
       }
 
       return deps.getRangeValue(array, rowNum - 1, colNum - 1)
@@ -196,15 +226,19 @@ export function createLookupArrayShapeBuiltins(deps: LookupArrayShapeBuiltinDeps
         deps.isError(widthArg) ||
         deps.isError(areaNumberArg)
       ) {
-        return deps.isError(rowsArg)
-          ? rowsArg
-          : deps.isError(colsArg)
-            ? colsArg
-            : deps.isError(heightArg)
-              ? heightArg
-              : deps.isError(widthArg)
-                ? widthArg
-                : areaNumberArg
+        if (deps.isError(rowsArg)) {
+          return rowsArg
+        }
+        if (deps.isError(colsArg)) {
+          return colsArg
+        }
+        if (deps.isError(heightArg)) {
+          return heightArg
+        }
+        if (deps.isError(widthArg)) {
+          return widthArg
+        }
+        return deps.isError(areaNumberArg) ? areaNumberArg : deps.errorValue(ErrorCode.Value)
       }
       const reference = deps.toCellRange(referenceArg)
       if (!deps.isRangeArg(reference)) {
@@ -241,7 +275,10 @@ export function createLookupArrayShapeBuiltins(deps: LookupArrayShapeBuiltinDeps
         return deps.errorValue(ErrorCode.Value)
       }
       if (deps.isError(rowsArg) || deps.isError(colsArg)) {
-        return deps.isError(rowsArg) ? rowsArg : colsArg
+        if (deps.isError(rowsArg)) {
+          return rowsArg
+        }
+        return deps.isError(colsArg) ? colsArg : deps.errorValue(ErrorCode.Value)
       }
 
       const requestedRows = rowsArg === undefined ? array.rows : deps.toInteger(rowsArg)
@@ -281,7 +318,10 @@ export function createLookupArrayShapeBuiltins(deps: LookupArrayShapeBuiltinDeps
         return deps.errorValue(ErrorCode.Value)
       }
       if (deps.isError(rowsArg) || deps.isError(colsArg)) {
-        return deps.isError(rowsArg) ? rowsArg : colsArg
+        if (deps.isError(rowsArg)) {
+          return rowsArg
+        }
+        return deps.isError(colsArg) ? colsArg : deps.errorValue(ErrorCode.Value)
       }
 
       const requestedRows = rowsArg === undefined ? 0 : deps.toInteger(rowsArg)
@@ -465,7 +505,10 @@ export function createLookupArrayShapeBuiltins(deps: LookupArrayShapeBuiltinDeps
         return deps.errorValue(ErrorCode.Value)
       }
       if (deps.isError(ignoreArg) || deps.isError(scanByColArg)) {
-        return deps.isError(ignoreArg) ? ignoreArg : scanByColArg
+        if (deps.isError(ignoreArg)) {
+          return ignoreArg
+        }
+        return deps.isError(scanByColArg) ? scanByColArg : deps.errorValue(ErrorCode.Value)
       }
       const ignoreValue = ignoreArg === undefined ? 0 : deps.toInteger(ignoreArg)
       if (ignoreValue === undefined || ![0, 1].includes(ignoreValue)) {
@@ -487,7 +530,10 @@ export function createLookupArrayShapeBuiltins(deps: LookupArrayShapeBuiltinDeps
         return deps.errorValue(ErrorCode.Value)
       }
       if (deps.isError(ignoreArg) || deps.isError(scanByColArg)) {
-        return deps.isError(ignoreArg) ? ignoreArg : scanByColArg
+        if (deps.isError(ignoreArg)) {
+          return ignoreArg
+        }
+        return deps.isError(scanByColArg) ? scanByColArg : deps.errorValue(ErrorCode.Value)
       }
       const ignoreValue = ignoreArg === undefined ? 0 : deps.toInteger(ignoreArg)
       if (ignoreValue === undefined || ![0, 1].includes(ignoreValue)) {
@@ -509,7 +555,10 @@ export function createLookupArrayShapeBuiltins(deps: LookupArrayShapeBuiltinDeps
         return deps.errorValue(ErrorCode.Value)
       }
       if (deps.isError(wrapCountArg) || deps.isError(padByColArg)) {
-        return deps.isError(wrapCountArg) ? wrapCountArg : padByColArg
+        if (deps.isError(wrapCountArg)) {
+          return wrapCountArg
+        }
+        return deps.isError(padByColArg) ? padByColArg : deps.errorValue(ErrorCode.Value)
       }
       if (padWithArg !== undefined && deps.isError(padWithArg)) {
         return padWithArg
@@ -540,7 +589,10 @@ export function createLookupArrayShapeBuiltins(deps: LookupArrayShapeBuiltinDeps
         return deps.errorValue(ErrorCode.Value)
       }
       if (deps.isError(wrapCountArg) || deps.isError(padByColArg)) {
-        return deps.isError(wrapCountArg) ? wrapCountArg : padByColArg
+        if (deps.isError(wrapCountArg)) {
+          return wrapCountArg
+        }
+        return deps.isError(padByColArg) ? padByColArg : deps.errorValue(ErrorCode.Value)
       }
       if (padWithArg !== undefined && deps.isError(padWithArg)) {
         return padWithArg

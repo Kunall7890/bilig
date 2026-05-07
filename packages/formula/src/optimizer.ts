@@ -6,6 +6,7 @@ import { rewriteSpecialCall } from './special-call-rewrites.js'
 
 const VOLATILE_BUILTINS = new Set(['TODAY', 'NOW', 'RAND'])
 const CONTEXTUAL_BUILTINS = new Set(['CELL', 'COLUMN', 'FORMULATEXT', 'OFFSET', 'ROW', 'SHEET', 'SHEETS'])
+const ZERO_ARG_STATIC_ERROR_BUILTINS = new Set(['NA'])
 
 function cellValueToAst(value: CellValue): FormulaNode | undefined {
   switch (value.tag) {
@@ -37,6 +38,8 @@ function isStaticNode(node: FormulaNode): boolean {
     case 'StringLiteral':
     case 'ErrorLiteral':
       return true
+    case 'OmittedArgument':
+      return false
     case 'NameRef':
     case 'StructuredRef':
     case 'CellRef':
@@ -72,6 +75,10 @@ function tryEvaluateStatic(node: FormulaNode): CellValue | undefined {
   }
 }
 
+function shouldPreserveStaticErrorCall(callee: string, args: readonly FormulaNode[], literal: FormulaNode): boolean {
+  return literal.kind === 'ErrorLiteral' && args.length === 0 && !ZERO_ARG_STATIC_ERROR_BUILTINS.has(callee)
+}
+
 function flattenConcatArgs(args: FormulaNode[]): FormulaNode[] {
   const flattened: FormulaNode[] = []
   args.forEach((arg) => {
@@ -94,6 +101,7 @@ function cloneFormulaNode(node: FormulaNode): FormulaNode {
     case 'BooleanLiteral':
     case 'StringLiteral':
     case 'ErrorLiteral':
+    case 'OmittedArgument':
     case 'NameRef':
       return { ...node }
     case 'StructuredRef':
@@ -130,6 +138,7 @@ function substituteNames(node: FormulaNode, replacements: ReadonlyMap<string, Fo
     case 'BooleanLiteral':
     case 'StringLiteral':
     case 'ErrorLiteral':
+    case 'OmittedArgument':
     case 'StructuredRef':
     case 'CellRef':
     case 'SpillRef':
@@ -326,6 +335,9 @@ function optimizeCall(node: CallExprNode): FormulaNode {
   if (args.every(isStaticNode)) {
     const folded = tryEvaluateStatic(candidate)
     const literal = folded ? cellValueToAst(folded) : undefined
+    if (literal && shouldPreserveStaticErrorCall(callee, args, literal)) {
+      return candidate
+    }
     if (literal) {
       return literal
     }
@@ -340,6 +352,7 @@ export function optimizeFormula(node: FormulaNode): FormulaNode {
     case 'BooleanLiteral':
     case 'StringLiteral':
     case 'ErrorLiteral':
+    case 'OmittedArgument':
     case 'NameRef':
     case 'StructuredRef':
     case 'CellRef':
