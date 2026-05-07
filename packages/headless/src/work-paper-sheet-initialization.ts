@@ -1,4 +1,5 @@
 import { readRuntimeImage, readRuntimeSnapshot, type EngineFormulaSourceRef, type SpreadsheetEngine } from '@bilig/core'
+import type { WorkbookSnapshot } from '@bilig/protocol'
 import { loadInitialLiteralSheet, prepareInitialMixedSheetLoad } from './initial-sheet-load.js'
 import {
   inspectRuntimeSnapshotSheetDimensionsWithinLimits,
@@ -82,6 +83,41 @@ export function initializeWorkPaperFromSheets(args: {
       if (inspected !== undefined) {
         args.cacheInitializedSheetDimensions(sheetId, inspected.dimensions)
       }
+    }
+  })
+  args.clearHistoryStacks()
+  args.resetChangeTrackingCaches()
+}
+
+export function initializeWorkPaperFromSnapshot(args: {
+  readonly engine: SpreadsheetEngine
+  readonly config: WorkPaperConfig
+  readonly snapshot: WorkbookSnapshot
+  readonly withEngineEventCaptureDisabled: (callback: () => void) => void
+  readonly requireSheetId: (name: string) => number
+  readonly cacheInitializedSheetDimensions: (sheetId: number, dimensions: WorkPaperSheetDimensions) => void
+  readonly clearHistoryStacks: () => void
+  readonly resetChangeTrackingCaches: () => void
+}): void {
+  const runtimeImageSheetCellsByName = new Map(
+    (readRuntimeImage(args.snapshot)?.sheetCells ?? []).map((sheet) => [sheet.sheetName, sheet] as const),
+  )
+  const inspectedSheets = args.snapshot.sheets.map((snapshotSheet) =>
+    inspectRuntimeSnapshotSheetDimensionsWithinLimits({
+      sheetName: snapshotSheet.name,
+      snapshotSheet,
+      ...(runtimeImageSheetCellsByName.get(snapshotSheet.name) !== undefined
+        ? { runtimeSheetCells: runtimeImageSheetCellsByName.get(snapshotSheet.name)! }
+        : {}),
+      config: args.config,
+    }),
+  )
+
+  args.withEngineEventCaptureDisabled(() => {
+    args.engine.importSnapshot(args.snapshot)
+    for (let index = 0; index < args.snapshot.sheets.length; index += 1) {
+      const sheetId = args.requireSheetId(args.snapshot.sheets[index]!.name)
+      args.cacheInitializedSheetDimensions(sheetId, inspectedSheets[index]!)
     }
   })
   args.clearHistoryStacks()

@@ -49,6 +49,9 @@ Supported scope:
 - The contract is the WorkPaper/headless API exported by this package.
 - Excel-file ingestion belongs to import/export pipelines before data reaches
   `WorkPaper`; this package executes the validated WorkPaper workbook model.
+  Use `WorkPaper.buildFromSnapshot()` for imported workbook snapshots so Excel
+  defined names, tables, and translated formulas stay attached to the runtime
+  model.
 - XLSX cached-result parity investigations are covered by the repository
   verifier, not by the published package surface. Use
   `pnpm workpaper:xlsx-corpus:check -- <xlsx-file-or-directory>` for external
@@ -198,8 +201,9 @@ npm run persistence
 ## Core Concepts
 
 - `WorkPaper` is the top-level workbook object. Create it with
-  `WorkPaper.buildEmpty()`, `WorkPaper.buildFromArray()`, or
-  `WorkPaper.buildFromSheets()`.
+  `WorkPaper.buildEmpty()`, `WorkPaper.buildFromArray()`,
+  `WorkPaper.buildFromSheets()`, or `WorkPaper.buildFromSnapshot()` for
+  importer-produced workbook snapshots.
 - Addresses are zero-based `{ sheet, row, col }` objects. Use `getSheetId(name)`
   to resolve the numeric sheet id.
 - A string beginning with `=` is a formula. Other strings are literal text.
@@ -463,7 +467,8 @@ Use this checklist when Codex, Claude Code, or another agent starts work here:
    integration work.
 3. Use zero-based `{ sheet, row, col }` addresses and resolve sheet ids with
    `getSheetId()`.
-4. Prefer `WorkPaper.buildFromSheets()` for fixtures and
+4. Prefer `WorkPaper.buildFromSheets()` for hand-authored fixtures,
+   `WorkPaper.buildFromSnapshot()` for importer-produced workbook snapshots, and
    `exportWorkPaperDocument()` / `createWorkPaperFromDocument()` for persistence
    round trips.
 5. Add or tighten regression tests before changing behavior around config

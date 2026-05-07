@@ -76,6 +76,7 @@ of `@bilig/core`:
 - `WorkPaper.buildEmpty`
 - `WorkPaper.buildFromArray`
 - `WorkPaper.buildFromSheets`
+- `WorkPaper.buildFromSnapshot`
 - workbook reads for cells, ranges, sheets, and named expressions
 - display-value and formula-diagnostic reads for user-facing errors and
   structured financial validation details

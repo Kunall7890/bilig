@@ -1,5 +1,5 @@
 import { SpreadsheetEngine, type EngineCellMutationRef, type SheetRecord } from '@bilig/core'
-import { MAX_COLS, MAX_ROWS, type CellSnapshot, type CellValue } from '@bilig/protocol'
+import { MAX_COLS, MAX_ROWS, type CellSnapshot, type CellValue, type WorkbookSnapshot } from '@bilig/protocol'
 import {
   WorkPaperEvaluationTimeoutError,
   WorkPaperNamedExpressionDoesNotExistError,
@@ -55,7 +55,7 @@ import {
   getAllRegisteredWorkPaperFunctionPlugins,
   workPaperGlobalCustomFunctions,
 } from './work-paper-static-registry.js'
-import { initializeWorkPaperFromSheets } from './work-paper-sheet-initialization.js'
+import { initializeWorkPaperFromSheets, initializeWorkPaperFromSnapshot } from './work-paper-sheet-initialization.js'
 import { buildWorkPaperRawCellMutation } from './work-paper-literal-mutation-queue.js'
 import { getVisibleWorkPaperCellIndexInSheet } from './work-paper-cell-read.js'
 import { WorkPaperMutationQueues } from './work-paper-mutation-queues.js'
@@ -306,6 +306,29 @@ export class WorkPaper extends WorkPaperRuntimeSurface {
         withEngineEventCaptureDisabled: (callback) => workbook.engineEvents.withCaptureDisabled(callback),
         upsertNamedExpression: (expression, options) => workbook.upsertNamedExpressionInternal(expression, options),
         rewriteFormulaForStorage: (formula, ownerSheetId) => workbook.rewriteFormulaForStorage(formula, ownerSheetId),
+        requireSheetId: (name) => workbook.requireSheetId(name),
+        cacheInitializedSheetDimensions: (sheetId, dimensions) => workbook.sheetDimensionCache.cacheInitialized(sheetId, dimensions),
+        clearHistoryStacks: () => workbook.clearHistoryStacks(),
+        resetChangeTrackingCaches: () => workbook.resetChangeTrackingCaches(),
+      })
+    } catch (error) {
+      const timeoutError = workPaperEvaluationTimeoutErrorFrom(error)
+      if (timeoutError) {
+        throw timeoutError
+      }
+      throw error
+    }
+    return workbook
+  }
+
+  static buildFromSnapshot(snapshot: WorkbookSnapshot, configInput: WorkPaperConfig = {}): WorkPaper {
+    const workbook = new WorkPaper(configInput)
+    try {
+      initializeWorkPaperFromSnapshot({
+        engine: workbook.engine,
+        config: workbook.config,
+        snapshot,
+        withEngineEventCaptureDisabled: (callback) => workbook.engineEvents.withCaptureDisabled(callback),
         requireSheetId: (name) => workbook.requireSheetId(name),
         cacheInitializedSheetDimensions: (sheetId, dimensions) => workbook.sheetDimensionCache.cacheInitialized(sheetId, dimensions),
         clearHistoryStacks: () => workbook.clearHistoryStacks(),

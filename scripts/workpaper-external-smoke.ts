@@ -114,22 +114,117 @@ function runNodeSmoke(
     restoredGrowthRatePercent: number
   }
   projectDir: string
+  snapshotImport: {
+    currencyLabel: string
+    firstPeriod: number
+    secondPeriod: number
+    totalValue: number
+    updatedFirstPeriod: number
+  }
 } {
   mkdirSync(projectDir, { recursive: true })
   copyFileSync(join(headlessExampleDir, 'package.json'), join(projectDir, 'package.json'))
   copyFileSync(join(headlessExampleDir, 'revenue-plan.mjs'), join(projectDir, 'revenue-plan.mjs'))
   copyFileSync(join(headlessExampleDir, 'persistence-roundtrip.mjs'), join(projectDir, 'persistence-roundtrip.mjs'))
   copyFileSync(join(headlessExampleDir, 'revenue-scenarios.mjs'), join(projectDir, 'revenue-scenarios.mjs'))
+  writeFileSync(
+    join(projectDir, 'snapshot-import.mjs'),
+    [
+      'import { ValueTag } from "@bilig/protocol";',
+      'import { WorkPaper } from "@bilig/headless";',
+      '',
+      'const snapshot = {',
+      '  version: 1,',
+      '  workbook: {',
+      '    name: "Structured Financial Model",',
+      '    metadata: {',
+      '      definedNames: [',
+      '        { name: "Currency", value: { kind: "cell-ref", sheetName: "Constants", address: "F7" } },',
+      '        { name: "Start_Year", value: { kind: "cell-ref", sheetName: "Constants", address: "B10" } },',
+      '      ],',
+      '      tables: [',
+      '        {',
+      '          name: "tblActuals",',
+      '          sheetName: "Imports",',
+      '          startAddress: "A6",',
+      '          endAddress: "D8",',
+      '          columnNames: ["Account", "Value", "Year", "Period"],',
+      '          headerRow: true,',
+      '          totalsRow: false,',
+      '        },',
+      '      ],',
+      '    },',
+      '  },',
+      '  sheets: [',
+      '    {',
+      '      id: 1,',
+      '      name: "Constants",',
+      '      order: 0,',
+      '      cells: [',
+      '        { address: "B10", value: 2012 },',
+      '        { address: "F7", value: "USD" },',
+      '        { address: "F9", formula: "Currency & \\"  000s\\"" },',
+      '      ],',
+      '    },',
+      '    {',
+      '      id: 2,',
+      '      name: "Imports",',
+      '      order: 1,',
+      '      cells: [',
+      '        { address: "A6", value: "Account" },',
+      '        { address: "B6", value: "Value" },',
+      '        { address: "C6", value: "Year" },',
+      '        { address: "D6", value: "Period" },',
+      '        { address: "A7", value: "Revenue" },',
+      '        { address: "B7", value: 100 },',
+      '        { address: "C7", value: 2011 },',
+      '        { address: "D7", formula: "\'Imports\'!C7-Start_Year+1" },',
+      '        { address: "A8", value: "Revenue" },',
+      '        { address: "B8", value: 125 },',
+      '        { address: "C8", value: 2012 },',
+      '        { address: "D8", formula: "\'Imports\'!C8-Start_Year+1" },',
+      '        { address: "F10", formula: "SUM(\'Imports\'!B7:B8)" },',
+      '      ],',
+      '    },',
+      '  ],',
+      '};',
+      '',
+      'const workbook = WorkPaper.buildFromSnapshot(snapshot, { maxRows: 20, maxColumns: 8, useColumnIndex: true });',
+      'const constantsId = workbook.getSheetId("Constants");',
+      'const importsId = workbook.getSheetId("Imports");',
+      'if (constantsId === undefined || importsId === undefined) throw new Error("Imported snapshot sheets are missing");',
+      'const read = (sheet, row, col) => workbook.getCellValue({ sheet, row, col });',
+      'const currencyLabel = read(constantsId, 8, 5);',
+      'const firstPeriod = read(importsId, 6, 3);',
+      'const secondPeriod = read(importsId, 7, 3);',
+      'const totalValue = read(importsId, 9, 5);',
+      'workbook.setCellContents({ sheet: importsId, row: 6, col: 2 }, 2013);',
+      'const updatedFirstPeriod = read(importsId, 6, 3);',
+      'if (currencyLabel.tag !== ValueTag.String || firstPeriod.tag !== ValueTag.Number || secondPeriod.tag !== ValueTag.Number || totalValue.tag !== ValueTag.Number || updatedFirstPeriod.tag !== ValueTag.Number) {',
+      '  throw new Error(`Unexpected snapshot values: ${JSON.stringify({ currencyLabel, firstPeriod, secondPeriod, totalValue, updatedFirstPeriod })}`);',
+      '}',
+      'console.log(JSON.stringify({',
+      '  currencyLabel: currencyLabel.value,',
+      '  firstPeriod: firstPeriod.value,',
+      '  secondPeriod: secondPeriod.value,',
+      '  totalValue: totalValue.value,',
+      '  updatedFirstPeriod: updatedFirstPeriod.value,',
+      '}));',
+      '',
+    ].join('\n'),
+  )
 
   installTarballs(projectDir, tarballPaths)
   const output = parseNodeSmokeOutput(runTextCommand('node', ['revenue-plan.mjs'], { cwd: projectDir }))
   const persistence = parseNodePersistenceOutput(runTextCommand('node', ['persistence-roundtrip.mjs'], { cwd: projectDir }))
   const scenarios = parseNodeRevenueScenarioOutput(runTextCommand('node', ['revenue-scenarios.mjs'], { cwd: projectDir }))
+  const snapshotImport = parseNodeSnapshotImportOutput(runTextCommand('node', ['snapshot-import.mjs'], { cwd: projectDir }))
 
   return {
     persistence,
     projectDir,
     scenarios,
+    snapshotImport,
     output,
   }
 }
@@ -339,6 +434,31 @@ function parseNodeSmokeOutput(output: string): {
     persistedSheets,
     persistedNamedExpressions,
     restoredGrowthRatePercent: parsed.restoredGrowthRatePercent,
+  }
+}
+
+function parseNodeSnapshotImportOutput(output: string): {
+  currencyLabel: string
+  firstPeriod: number
+  secondPeriod: number
+  totalValue: number
+  updatedFirstPeriod: number
+} {
+  const parsed = parseJsonRecord(output, 'node snapshot import output')
+  const currencyLabel = parsed.currencyLabel
+  const firstPeriod = parsed.firstPeriod
+  const secondPeriod = parsed.secondPeriod
+  const totalValue = parsed.totalValue
+  const updatedFirstPeriod = parsed.updatedFirstPeriod
+  if (currencyLabel !== 'USD  000s' || firstPeriod !== 0 || secondPeriod !== 1 || totalValue !== 225 || updatedFirstPeriod !== 2) {
+    throw new Error(`Unexpected node snapshot import output: ${output}`)
+  }
+  return {
+    currencyLabel,
+    firstPeriod,
+    secondPeriod,
+    totalValue,
+    updatedFirstPeriod,
   }
 }
 

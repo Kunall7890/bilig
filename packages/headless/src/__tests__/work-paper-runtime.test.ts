@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { ErrorCode, ValueTag } from '@bilig/protocol'
+import { ErrorCode, ValueTag, type WorkbookSnapshot } from '@bilig/protocol'
 
 import type { WorkPaperCellAddress, WorkPaperCellChange, WorkPaperChange } from '../index.js'
 import {
@@ -219,6 +219,79 @@ describe('WorkPaper', () => {
       start: cell(summaryId, 0, 0),
       end: cell(summaryId, 0, 1),
     })
+  })
+
+  it('builds from imported workbook snapshots with metadata-backed formulas', () => {
+    const snapshot: WorkbookSnapshot = {
+      version: 1,
+      workbook: {
+        name: 'Structured Financial Model',
+        metadata: {
+          definedNames: [
+            { name: 'Currency', value: { kind: 'cell-ref', sheetName: 'Constants', address: 'F7' } },
+            { name: 'Start_Year', value: { kind: 'cell-ref', sheetName: 'Constants', address: 'B10' } },
+          ],
+          tables: [
+            {
+              name: 'tblActuals',
+              sheetName: 'Imports',
+              startAddress: 'A6',
+              endAddress: 'D8',
+              columnNames: ['Account', 'Value', 'Year', 'Period'],
+              headerRow: true,
+              totalsRow: false,
+            },
+          ],
+        },
+      },
+      sheets: [
+        {
+          id: 1,
+          name: 'Constants',
+          order: 0,
+          cells: [
+            { address: 'B10', value: 2012 },
+            { address: 'F7', value: 'USD' },
+            { address: 'F9', formula: 'Currency & "  000s"' },
+          ],
+        },
+        {
+          id: 2,
+          name: 'Imports',
+          order: 1,
+          cells: [
+            { address: 'A6', value: 'Account' },
+            { address: 'B6', value: 'Value' },
+            { address: 'C6', value: 'Year' },
+            { address: 'D6', value: 'Period' },
+            { address: 'A7', value: 'Revenue' },
+            { address: 'B7', value: 100 },
+            { address: 'C7', value: 2011 },
+            { address: 'D7', formula: "'Imports'!C7-Start_Year+1" },
+            { address: 'A8', value: 'Revenue' },
+            { address: 'B8', value: 125 },
+            { address: 'C8', value: 2012 },
+            { address: 'D8', formula: "'Imports'!C8-Start_Year+1" },
+            { address: 'F10', formula: "SUM('Imports'!B7:B8)" },
+          ],
+        },
+      ],
+    }
+
+    const workbook = WorkPaper.buildFromSnapshot(snapshot, { maxRows: 20, maxColumns: 8, useColumnIndex: true })
+    const constantsId = workbook.getSheetId('Constants')!
+    const importsId = workbook.getSheetId('Imports')!
+
+    expect(workbook.getCellValue(cell(constantsId, 8, 5))).toMatchObject({ tag: ValueTag.String, value: 'USD  000s' })
+    expect(workbook.getCellValue(cell(importsId, 6, 3))).toEqual({ tag: ValueTag.Number, value: 0 })
+    expect(workbook.getCellValue(cell(importsId, 7, 3))).toEqual({ tag: ValueTag.Number, value: 1 })
+    expect(workbook.getCellValue(cell(importsId, 9, 5))).toEqual({ tag: ValueTag.Number, value: 225 })
+    expect(workbook.getSheetDimensions(importsId)).toEqual({ width: 6, height: 10 })
+
+    workbook.setCellContents(cell(importsId, 6, 2), 2013)
+
+    expect(workbook.getCellValue(cell(importsId, 6, 3))).toEqual({ tag: ValueTag.Number, value: 2 })
+    workbook.dispose()
   })
 
   it('keeps literal-only initialization compatible with named expressions and later formulas', () => {
