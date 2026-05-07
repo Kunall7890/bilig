@@ -413,6 +413,14 @@ command, like this xlookup exact case:
 https://github.com/proompteng/bilig/blob/main/docs/formula-edge-xlookup-exact-fixture.md
 ```
 
+```text
+the useful version is one behavior per fixture.
+
+for criteria aggregates, this is the kind of claim i trust: one sumifs case,
+expected rows, registry status, and the verifier command:
+https://github.com/proompteng/bilig/blob/main/docs/formula-edge-sumifs-paired-criteria-fixture.md
+```
+
 ### xlsx compatibility
 
 ```text

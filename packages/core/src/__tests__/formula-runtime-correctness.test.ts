@@ -28,6 +28,20 @@ const groupedArrayProductionFixtures = canonicalFormulaFixtures.filter((fixture)
   )
 })
 
+const criteriaAggregateProductionFixtureIds = new Set([
+  'statistical:averageif-basic',
+  'statistical:averageifs-basic',
+  'statistical:countif-basic',
+  'statistical:countifs-basic',
+  'statistical:sumif-basic',
+  'statistical:sumifs-basic',
+])
+
+const criteriaAggregateProductionFixtures = canonicalFormulaFixtures.filter((fixture) => {
+  const entry = getCompatibilityEntry(fixture.id)
+  return entry?.wasmStatus === 'production' && criteriaAggregateProductionFixtureIds.has(fixture.id)
+})
+
 describe('formula runtime correctness', () => {
   it('keeps canonical text and lookup fixtures in oracle parity on the wasm path', async () => {
     expect(productionRuntimeFixtures.length).toBeGreaterThan(0)
@@ -49,6 +63,21 @@ describe('formula runtime correctness', () => {
 
     await Promise.all(
       groupedArrayProductionFixtures.map(async (fixture) => {
+        try {
+          await expectFixtureParity(fixture)
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error)
+          throw new Error(`Fixture ${fixture.id} failed: ${message}`, { cause: error })
+        }
+      }),
+    )
+  })
+
+  it('keeps canonical criteria aggregate fixtures in oracle parity on the wasm path', async () => {
+    expect(criteriaAggregateProductionFixtures).toHaveLength(criteriaAggregateProductionFixtureIds.size)
+
+    await Promise.all(
+      criteriaAggregateProductionFixtures.map(async (fixture) => {
         try {
           await expectFixtureParity(fixture)
         } catch (error) {

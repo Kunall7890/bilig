@@ -54,6 +54,8 @@ Shorter version:
   [`docs/xlsx-corpus-verifier-walkthrough.md`](xlsx-corpus-verifier-walkthrough.md)
 - XLOOKUP exact fixture walkthrough:
   [`docs/formula-edge-xlookup-exact-fixture.md`](formula-edge-xlookup-exact-fixture.md)
+- SUMIFS paired criteria fixture walkthrough:
+  [`docs/formula-edge-sumifs-paired-criteria-fixture.md`](formula-edge-sumifs-paired-criteria-fixture.md)
 - GitHub stars growth plan:
   [`docs/github-stars-growth-plan.md`](github-stars-growth-plan.md)
 - X reply growth playbook:

@@ -258,6 +258,9 @@ For a formula-edge fixture walkthrough covering the exact-match `XLOOKUP` path,
 see
 [`docs/formula-edge-xlookup-exact-fixture.md`](docs/formula-edge-xlookup-exact-fixture.md).
 
+For a formula-edge fixture walkthrough covering paired-criteria `SUMIFS`, see
+[`docs/formula-edge-sumifs-paired-criteria-fixture.md`](docs/formula-edge-sumifs-paired-criteria-fixture.md).
+
 For the researched public-growth plan toward `1000` legitimate GitHub stars,
 see [`docs/github-stars-growth-plan.md`](docs/github-stars-growth-plan.md).
 
