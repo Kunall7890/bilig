@@ -16,11 +16,95 @@ repo as a bookmark: <https://github.com/proompteng/bilig/stargazers>
 If you want to try a small contribution first, start with the public
 [`starter issues`](docs/starter-issues.md) list.
 
-## Try `@bilig/headless`
+## Try `@bilig/headless` in 90 seconds
 
-The fastest evaluation path is the checked example package. It uses the
-published npm package, builds a formula-backed workbook, applies agent-style
-edits, persists the document, restores it, and verifies formula readback.
+The fastest evaluation path uses the published npm package only. It builds a
+formula-backed workbook, applies an edit, persists the document, restores it,
+and throws if formula readback does not survive the round trip.
+
+```bash
+mkdir bilig-headless-eval
+cd bilig-headless-eval
+npm init -y
+npm pkg set type=module
+npm install @bilig/headless
+```
+
+Create `eval.mjs`:
+
+```js
+import {
+  WorkPaper,
+  createWorkPaperFromDocument,
+  exportWorkPaperDocument,
+  parseWorkPaperDocument,
+  serializeWorkPaperDocument,
+} from '@bilig/headless'
+
+const workbook = WorkPaper.buildFromSheets({
+  Revenue: [
+    ['Region', 'Customers', 'ARPA', 'Revenue'],
+    ['West', 20, 1200, '=B2*C2'],
+    ['East', 30, 250, '=B3*C3'],
+    ['Central', 18, 300, '=B4*C4'],
+  ],
+  Summary: [
+    ['Metric', 'Value'],
+    ['Total revenue', '=SUM(Revenue!D2:D4)'],
+  ],
+})
+
+const numberValue = (cell) => {
+  if (typeof cell === 'object' && cell !== null && typeof cell.value === 'number') {
+    return cell.value
+  }
+  throw new Error(`expected numeric cell value, got ${JSON.stringify(cell)}`)
+}
+
+const revenue = workbook.getSheetId('Revenue')
+const summary = workbook.getSheetId('Summary')
+if (revenue === undefined || summary === undefined) {
+  throw new Error('workbook sheets were not created')
+}
+
+const before = numberValue(workbook.getCellValue({ sheet: summary, row: 1, col: 1 }))
+workbook.setCellContents({ sheet: revenue, row: 1, col: 1 }, 32)
+
+const saved = serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { includeConfig: true }))
+const restored = createWorkPaperFromDocument(parseWorkPaperDocument(saved))
+const restoredSummary = restored.getSheetId('Summary')
+if (restoredSummary === undefined) {
+  throw new Error('summary sheet was not restored')
+}
+
+const after = numberValue(restored.getCellValue({ sheet: restoredSummary, row: 1, col: 1 }))
+const verified = before === 36900 && after === 51300 && saved.length > 0
+if (!verified) {
+  throw new Error(`unexpected formula readback: ${JSON.stringify({ before, after, bytes: saved.length })}`)
+}
+
+console.log({ before, after, sheets: restored.getSheetNames(), bytes: saved.length, verified })
+```
+
+Run it:
+
+```bash
+node eval.mjs
+```
+
+Expected output:
+
+```json
+{
+  "before": 36900,
+  "after": 51300,
+  "sheets": ["Revenue", "Summary"],
+  "bytes": 1064,
+  "verified": true
+}
+```
+
+The maintained repository example adds agent-style writeback verification:
 
 ```bash
 git clone https://github.com/proompteng/bilig.git
@@ -30,7 +114,7 @@ npm start
 npm run agent:verify
 ```
 
-Expected proof from `npm run agent:verify`:
+Expected proof from `npm run agent:verify` includes:
 
 ```json
 {

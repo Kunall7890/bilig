@@ -143,6 +143,10 @@ pnpm --filter @bilig/headless build
 
 ## Quickstart
 
+This snippet is safe to paste into a one-file npm evaluation. It verifies formula
+readback before and after a persisted restore instead of only printing a demo
+value.
+
 ```ts
 import {
   WorkPaper,
@@ -167,6 +171,16 @@ const workbook = WorkPaper.buildFromSheets(
   },
 )
 
+const numberValue = (cell: unknown): number => {
+  if (typeof cell === 'object' && cell !== null && 'value' in cell) {
+    const value = (cell as { value: unknown }).value
+    if (typeof value === 'number') {
+      return value
+    }
+  }
+  throw new Error(`expected numeric cell value, got ${JSON.stringify(cell)}`)
+}
+
 const sheet = workbook.getSheetId('Sheet1')
 if (sheet === undefined) {
   throw new Error('Sheet1 was not created')
@@ -178,11 +192,15 @@ const at = (row: number, col: number): WorkPaperCellAddress => ({
   col,
 })
 
-console.log(workbook.getCellValue(at(0, 2))) // CellValue for 30
+const initial = numberValue(workbook.getCellValue(at(0, 2)))
+if (initial !== 30) {
+  throw new Error(`unexpected initial formula value: ${String(initial)}`)
+}
 
 workbook.setCellContents(at(1, 2), '=A2+B2')
-console.log(workbook.getCellFormula(at(1, 2))) // "=A2+B2"
-console.log(workbook.getCellSerialized(at(1, 2))) // "=A2+B2"
+if (workbook.getCellFormula(at(1, 2)) !== '=A2+B2') {
+  throw new Error('formula text was not recorded')
+}
 
 const document = exportWorkPaperDocument(workbook)
 const json = serializeWorkPaperDocument(document)
@@ -192,7 +210,13 @@ if (restoredSheet === undefined) {
   throw new Error('Sheet1 was not restored')
 }
 
-console.log(restored.getCellValue({ sheet: restoredSheet, row: 1, col: 2 }))
+const restoredValue = numberValue(restored.getCellValue({ sheet: restoredSheet, row: 1, col: 2 }))
+const verified = restoredValue === 28 && restored.getSheetNames().includes('Sheet1')
+if (!verified) {
+  throw new Error(`unexpected restored formula value: ${String(restoredValue)}`)
+}
+
+console.log({ initial, restoredValue, bytes: json.length, verified })
 ```
 
 ## Runnable Example

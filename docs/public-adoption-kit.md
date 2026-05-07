@@ -95,7 +95,8 @@ it is not a blanket "faster on every p95 row" statement.
 ## Ten-Minute Evaluation
 
 Use the published package path when the evaluator does not want to clone the
-monorepo:
+monorepo. The script below is intentionally self-verifying: it fails if formula
+readback or persisted restore behavior regresses.
 
 ```sh
 mkdir bilig-headless-eval
@@ -130,19 +131,36 @@ const workbook = WorkPaper.buildFromSheets({
   ],
 })
 
-const summary = workbook.getSheetId('Summary')
-if (summary === undefined) {
-  throw new Error('Summary sheet was not created')
+const numberValue = (cell) => {
+  if (typeof cell === 'object' && cell !== null && typeof cell.value === 'number') {
+    return cell.value
+  }
+  throw new Error(`expected numeric cell value, got ${JSON.stringify(cell)}`)
 }
 
-const total = workbook.getCellValue({ sheet: summary, row: 1, col: 1 })
+const revenue = workbook.getSheetId('Revenue')
+const summary = workbook.getSheetId('Summary')
+if (revenue === undefined || summary === undefined) {
+  throw new Error('workbook sheets were not created')
+}
+
+const before = numberValue(workbook.getCellValue({ sheet: summary, row: 1, col: 1 }))
+workbook.setCellContents({ sheet: revenue, row: 1, col: 1 }, 32)
+
 const saved = serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { includeConfig: true }))
 const restored = createWorkPaperFromDocument(parseWorkPaperDocument(saved))
+const restoredSummary = restored.getSheetId('Summary')
+if (restoredSummary === undefined) {
+  throw new Error('summary sheet was not restored')
+}
 
-console.log({
-  total,
-  sheets: restored.getSheetNames(),
-})
+const after = numberValue(restored.getCellValue({ sheet: restoredSummary, row: 1, col: 1 }))
+const verified = before === 36900 && after === 51300 && saved.length > 0
+if (!verified) {
+  throw new Error(`unexpected formula readback: ${JSON.stringify({ before, after, bytes: saved.length })}`)
+}
+
+console.log({ before, after, sheets: restored.getSheetNames(), bytes: saved.length, verified })
 ```
 
 Run it:

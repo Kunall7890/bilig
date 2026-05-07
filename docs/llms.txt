@@ -41,6 +41,10 @@ npm pkg set type=module
 npm install @bilig/headless
 ```
 
+create an eval.mjs file from the quickstart in the repository readme or public
+adoption kit, then run `node eval.mjs`. a successful smoke test prints
+`verified: true` after formula readback survives a persisted restore.
+
 repository example:
 
 ```sh

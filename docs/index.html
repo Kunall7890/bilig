@@ -651,8 +651,8 @@ npm install @bilig/headless</code></pre>
               <div class="expected">
                 <strong>then create <code>eval.mjs</code> and run <code>node eval.mjs</code></strong>
                 <p>
-                  expected output includes total revenue before and after an edit, the restored sheet names, and a positive serialized byte
-                  count.
+                  the script fails if formula readback or restore behavior changes; successful output includes <code>verified: true</code>
+                  and a positive serialized byte count.
                 </p>
               </div>
             </div>
@@ -678,6 +678,13 @@ const workbook = WorkPaper.buildFromSheets({
   ],
 });
 
+const numberValue = (cell) => {
+  if (typeof cell === "object" && cell !== null && typeof cell.value === "number") {
+    return cell.value;
+  }
+  throw new Error(`expected numeric cell value, got ${JSON.stringify(cell)}`);
+};
+
 const revenue = workbook.getSheetId("Revenue");
 const summary = workbook.getSheetId("Summary");
 
@@ -685,7 +692,7 @@ if (revenue === undefined || summary === undefined) {
   throw new Error("missing sheet");
 }
 
-const before = workbook.getCellValue({ sheet: summary, row: 1, col: 1 });
+const before = numberValue(workbook.getCellValue({ sheet: summary, row: 1, col: 1 }));
 workbook.setCellContents({ sheet: revenue, row: 1, col: 1 }, 32);
 const saved = serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { includeConfig: true }));
 const restored = createWorkPaperFromDocument(parseWorkPaperDocument(saved));
@@ -695,9 +702,14 @@ if (restoredSummary === undefined) {
   throw new Error("missing restored sheet");
 }
 
-const after = restored.getCellValue({ sheet: restoredSummary, row: 1, col: 1 });
+const after = numberValue(restored.getCellValue({ sheet: restoredSummary, row: 1, col: 1 }));
+const verified = before === 36900 && after === 51300 && saved.length > 0;
 
-console.log({ before, after, sheets: restored.getSheetNames(), bytes: saved.length });</code></pre>
+if (!verified) {
+  throw new Error(`unexpected formula readback: ${JSON.stringify({ before, after, bytes: saved.length })}`);
+}
+
+console.log({ before, after, sheets: restored.getSheetNames(), bytes: saved.length, verified });</code></pre>
             </div>
           </div>
         </section>

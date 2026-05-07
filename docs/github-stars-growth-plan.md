@@ -17,7 +17,7 @@ not from paid, automated, reciprocal, or misleading campaigns.
 Verified on 2026-05-07:
 
 - GitHub stars: `5`
-- GitHub open issues: `84`
+- GitHub open issues: `75`
 - Community profile: `100%`
 - Public package: `@bilig/headless`
 - GitHub repo description: headless spreadsheet engine for agents and Node
@@ -163,7 +163,8 @@ Actions:
 - Pin or surface the external example in all launch copy:
   `examples/headless-workpaper`.
 - Keep the website and README first-run path npm-only, copy-pasteable, and tied
-  to persistence/readback output. A cold visitor should not need monorepo
+  to persistence/readback output. A cold visitor should see a self-verifying
+  npm smoke test before any clone-first path and should not need monorepo
   knowledge to evaluate the package.
 - Add a Star History chart only after the repo has enough organic movement to
   avoid making `2` stars the visual focus.
