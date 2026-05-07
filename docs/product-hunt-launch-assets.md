@@ -26,6 +26,8 @@ Run:
 ```sh
 pnpm docs:launch-assets:generate
 pnpm docs:launch-assets:check
+pnpm docs:launch-demo:generate
+pnpm docs:launch-demo:check
 ```
 
 Files:
@@ -38,12 +40,18 @@ Files:
   [`docs/assets/product-hunt-gallery-02-agent-readback.png`](assets/product-hunt-gallery-02-agent-readback.png)
 - gallery image 3:
   [`docs/assets/product-hunt-gallery-03-node-service.png`](assets/product-hunt-gallery-03-node-service.png)
+- short demo recording:
+  [`docs/assets/product-hunt-demo.webm`](assets/product-hunt-demo.webm)
 
 ![Product Hunt gallery image showing the workbook API asset](assets/product-hunt-gallery-01-workbook-api.png)
 
 ![Product Hunt gallery image showing the agent readback asset](assets/product-hunt-gallery-02-agent-readback.png)
 
 ![Product Hunt gallery image showing the Node service asset](assets/product-hunt-gallery-03-node-service.png)
+
+<video controls muted playsinline poster="assets/product-hunt-gallery-02-agent-readback.png">
+  <source src="assets/product-hunt-demo.webm" type="video/webm" />
+</video>
 
 ## Draft fields
 
@@ -99,6 +107,8 @@ proof article: https://dev.to/gregkonush/why-agents-need-workbook-apis-instead-o
 - Create a draft first; do not pick a launch date until the support window is
   known.
 - Upload the generated thumbnail and at least two gallery images.
+- Use the generated WebM recording as the demo source or upload it to a video
+  host if the composer requires a hosted video URL.
 - Use the GitHub repository as the primary URL, not a blog post.
 - Keep the launch copy honest: early infrastructure, not a finished Excel clone.
 - Link the compatibility caveats:

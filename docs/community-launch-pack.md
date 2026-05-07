@@ -214,7 +214,7 @@ Do not launch on Product Hunt until these are ready:
 
 - small thumbnail or logo: ready in `docs/assets/product-hunt-thumbnail.png`
 - gallery images showing code and output: ready in `docs/assets/product-hunt-gallery-*.png`
-- one short demo recording
+- one short demo recording: ready in `docs/assets/product-hunt-demo.webm`
 - maintainer comment
 - support window for launch-day comments
 - follow-up plan for GitHub issues and docs

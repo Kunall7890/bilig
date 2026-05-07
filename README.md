@@ -389,7 +389,7 @@ For the Hacker News launch checklist, see
 For Reddit, DEV, Lobsters, and Product Hunt launch drafts, see
 [`docs/community-launch-pack.md`](docs/community-launch-pack.md).
 
-For Product Hunt gallery images, thumbnail, and draft copy, see
+For Product Hunt gallery images, thumbnail, demo recording, and draft copy, see
 [`docs/product-hunt-launch-assets.md`](docs/product-hunt-launch-assets.md).
 
 For the published DEV article, see
