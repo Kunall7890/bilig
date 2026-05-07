@@ -29,6 +29,15 @@ official API use instead of scraping or browser automation, and its behavior
 guidance treats repeated duplicated unsolicited replies as spam. That makes the
 correct strategy simple: fewer replies, higher fit, and no automation.
 
+Source links for the current guardrails:
+
+- X automation rules:
+  <https://help.x.com/articles/76915-automation-rules-and-best-practices>
+- X authenticity and platform-manipulation policy:
+  <https://help.x.com/en/rules-and-policies/platform-manipulation>
+- X account behavior guidance:
+  <https://help.x.com/articles/110878>
+
 ## Daily Reply Budget
 
 Use a hard cap until the account has real inbound discussion:
@@ -185,6 +194,8 @@ too crowded or the account needs more normal participation before linking.
 Follow-up artifact if anyone engages:
 
 - link `docs/why-agents-need-workbook-apis.md` for the conceptual argument
+- link `docs/agent-workpaper-tool-calling-recipe.md` when someone asks how an
+  agent should safely read, write, verify, and persist a workbook
 - link `examples/headless-workpaper` for the runnable Node example
 - point at `npm run agent:verify` inside that example when someone asks what
   writeback verification looks like

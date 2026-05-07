@@ -44,6 +44,8 @@ Shorter version:
   [`docs/hyperformula-alternative-headless-workpaper.md`](hyperformula-alternative-headless-workpaper.md)
 - Technical article:
   [`docs/why-agents-need-workbook-apis.md`](why-agents-need-workbook-apis.md)
+- Agent tool-calling recipe:
+  [`docs/agent-workpaper-tool-calling-recipe.md`](agent-workpaper-tool-calling-recipe.md)
 - DEV-ready article:
   [`docs/dev-to-workbook-apis-post.md`](dev-to-workbook-apis-post.md)
 - Persistence article:
@@ -160,6 +162,11 @@ npm run agent:verify
 That command records the exact assumption cells changed, verifies dependent
 formula outputs, persists the workbook, restores it, and checks that formulas
 and values survived the round trip.
+
+For a framework-neutral agent integration pattern, link the
+[`WorkPaper tool-calling recipe`](agent-workpaper-tool-calling-recipe.md). It
+shows how to expose summary reads, validated single-cell writes, computed
+before/after checks, and persistence without screen scraping a spreadsheet UI.
 
 ## Shareable Copy
 

@@ -16,6 +16,7 @@ language: typescript
 - https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper
 - https://github.com/proompteng/bilig/blob/main/docs/dev-to-workbook-apis-post.md
 - https://github.com/proompteng/bilig/blob/main/docs/public-adoption-kit.md
+- https://github.com/proompteng/bilig/blob/main/docs/agent-workpaper-tool-calling-recipe.md
 - https://github.com/proompteng/bilig/discussions/115
 
 ## what to use it for
@@ -56,6 +57,8 @@ npm run agent:verify
   https://github.com/proompteng/bilig/blob/main/docs/headless-workpaper-benchmark-evidence.md
 - workbook APIs for agents:
   https://github.com/proompteng/bilig/blob/main/docs/why-agents-need-workbook-apis.md
+- workpaper tool-calling recipe for agents:
+  https://github.com/proompteng/bilig/blob/main/docs/agent-workpaper-tool-calling-recipe.md
 - persistence walkthrough:
   https://github.com/proompteng/bilig/blob/main/docs/persisting-formula-backed-workpaper-documents-in-node.md
 - revenue model walkthrough:

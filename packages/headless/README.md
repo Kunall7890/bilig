@@ -99,6 +99,8 @@ Repository:
 - npm: <https://www.npmjs.com/package/@bilig/headless>
 - runnable example:
   [`examples/headless-workpaper`](../../examples/headless-workpaper)
+- agent tool-calling recipe:
+  [`docs/agent-workpaper-tool-calling-recipe.md`](../../docs/agent-workpaper-tool-calling-recipe.md)
 - public adoption kit:
   [`docs/public-adoption-kit.md`](../../docs/public-adoption-kit.md)
 - revenue-model article:
@@ -207,6 +209,12 @@ npm run agent:verify
 That demo records the exact assumption cells changed, verifies dependent formula
 readback, persists the workbook, restores it, and checks that formulas and
 outputs survived the round trip.
+
+For a framework-neutral recipe that wraps WorkPaper operations as agent-callable
+tools, see
+[`docs/agent-workpaper-tool-calling-recipe.md`](../../docs/agent-workpaper-tool-calling-recipe.md).
+It covers validated sheet/address parsing, computed before/after readback, and
+persistence after a successful edit.
 
 Repository CI also runs the same example against packed local runtime packages
 through `pnpm workpaper:smoke:external`.

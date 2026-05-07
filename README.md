@@ -231,6 +231,11 @@ For the first technical adoption article, see
 It explains why agents should operate on workbook APIs instead of spreadsheet
 screenshots.
 
+For a concrete framework-neutral agent tool loop, see
+[`docs/agent-workpaper-tool-calling-recipe.md`](docs/agent-workpaper-tool-calling-recipe.md).
+It wraps WorkPaper reads, validated writes, computed before/after checks, and
+persistence into a small tool surface.
+
 For the persistence-focused follow-up article and runnable example, see
 [`docs/persisting-formula-backed-workpaper-documents-in-node.md`](docs/persisting-formula-backed-workpaper-documents-in-node.md)
 and

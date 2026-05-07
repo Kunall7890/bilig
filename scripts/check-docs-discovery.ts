@@ -9,6 +9,7 @@ const siteRoot = 'https://proompteng.github.io/bilig/'
 const expectedSitemapUrls = [
   siteRoot,
   `${siteRoot}why-agents-need-workbook-apis.html`,
+  `${siteRoot}agent-workpaper-tool-calling-recipe.html`,
   `${siteRoot}building-a-revenue-model-with-headless-workpaper.html`,
   `${siteRoot}persisting-formula-backed-workpaper-documents-in-node.html`,
   `${siteRoot}what-workpaper-benchmark-proves.html`,
@@ -26,6 +27,7 @@ const expectedSitemapUrls = [
 const sourceFilesByUrl = new Map<string, string>([
   [siteRoot, 'index.html'],
   [`${siteRoot}why-agents-need-workbook-apis.html`, 'why-agents-need-workbook-apis.md'],
+  [`${siteRoot}agent-workpaper-tool-calling-recipe.html`, 'agent-workpaper-tool-calling-recipe.md'],
   [`${siteRoot}building-a-revenue-model-with-headless-workpaper.html`, 'building-a-revenue-model-with-headless-workpaper.md'],
   [`${siteRoot}persisting-formula-backed-workpaper-documents-in-node.html`, 'persisting-formula-backed-workpaper-documents-in-node.md'],
   [`${siteRoot}what-workpaper-benchmark-proves.html`, 'what-workpaper-benchmark-proves.md'],
@@ -144,6 +146,7 @@ for (const required of [
   'npm run agent:verify',
   'https://github.com/proompteng/bilig/discussions/115',
   'https://github.com/proompteng/bilig/blob/main/docs/dev-to-workbook-apis-post.md',
+  'https://github.com/proompteng/bilig/blob/main/docs/agent-workpaper-tool-calling-recipe.md',
   'https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md',
   'https://github.com/proompteng/bilig/blob/main/docs/hyperformula-alternative-headless-workpaper.md',
   'https://github.com/proompteng/bilig/blob/main/docs/where-bilig-is-not-excel-compatible-yet.md',
