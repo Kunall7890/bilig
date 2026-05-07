@@ -25,6 +25,10 @@ interface ImportedSheetDimensions {
   rows?: WorkbookAxisEntrySnapshot[]
 }
 
+interface ImportedWorkbookFileStylesOptions {
+  styleCandidateAddressesBySheet?: ReadonlyMap<string, ReadonlySet<string>>
+}
+
 const xmlParser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: '',
@@ -346,19 +350,38 @@ function readXmlBooleanAttribute(tag: string, name: string): boolean {
   return raw === '1' || raw?.toLowerCase() === 'true'
 }
 
-function parseSheetStyleIndexes(sheetXml: string): Map<string, number> {
+function parseSheetStyleIndexes(sheetXml: string, candidateAddresses?: ReadonlySet<string>): Map<string, number> {
   const output = new Map<string, number>()
+  if (candidateAddresses?.size === 0) {
+    return output
+  }
+  let remainingCandidateCount = candidateAddresses?.size ?? null
 
   for (const match of sheetXml.matchAll(/<c\b[^>]*>/gu)) {
     const cellTag = match[0]
     const address = readXmlAttribute(cellTag, 'r')
+    if (!address) {
+      continue
+    }
+    if (candidateAddresses) {
+      if (!candidateAddresses.has(address)) {
+        continue
+      }
+      remainingCandidateCount = remainingCandidateCount === null ? null : remainingCandidateCount - 1
+    }
     const styleIndexValue = readXmlAttribute(cellTag, 's')
-    if (!address || styleIndexValue === null || styleIndexValue.trim().length === 0) {
+    if (styleIndexValue === null || styleIndexValue.trim().length === 0) {
+      if (remainingCandidateCount === 0) {
+        break
+      }
       continue
     }
     const styleIndex = Number(styleIndexValue)
     if (Number.isSafeInteger(styleIndex)) {
       output.set(address, styleIndex)
+    }
+    if (remainingCandidateCount === 0) {
+      break
     }
   }
 
@@ -444,6 +467,7 @@ export function readImportedWorkbookSheetDimensions(
 export function readImportedWorkbookFileStyles(
   workbook: XLSX.WorkBook,
   sheetNames: readonly string[],
+  options: ImportedWorkbookFileStylesOptions = {},
 ): Map<string, Map<string, ImportedCellStyle>> {
   const files = workbookFiles(workbook)
   const stylePath = workbookStylePath(workbook)
@@ -459,12 +483,16 @@ export function readImportedWorkbookFileStyles(
   const sheetPaths = workbookSheetPaths(workbook)
   const output = new Map<string, Map<string, ImportedCellStyle>>()
   sheetNames.forEach((sheetName, index) => {
+    const candidateAddresses = options.styleCandidateAddressesBySheet?.get(sheetName)
+    if (candidateAddresses?.size === 0) {
+      return
+    }
     const sheetPath = sheetPaths[index]
     const sheetXml = sheetPath ? getFileText(files, sheetPath) : null
     if (!sheetXml) {
       return
     }
-    const styleIndexes = parseSheetStyleIndexes(sheetXml)
+    const styleIndexes = parseSheetStyleIndexes(sheetXml, candidateAddresses)
     const cellStyles = new Map<string, ImportedCellStyle>()
     for (const [address, styleIndex] of styleIndexes) {
       const style = stylesByIndex.get(styleIndex)

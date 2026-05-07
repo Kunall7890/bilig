@@ -35,6 +35,7 @@ import { readImportedWorkbookDataValidations } from './xlsx-validations.js'
 import { readImportedWorkbookProperties } from './xlsx-workbook-properties.js'
 import { translateImportedFormulaStructuredReferences } from './xlsx-formula-translation.js'
 import { createPreservedVbaProjectPayload, type PreservedVbaProjectCodeNames } from './xlsx-macros.js'
+import { worksheetCellAt, worksheetCellEntries } from './xlsx-worksheet-cells.js'
 
 export { exportXlsx } from './xlsx-export.js'
 
@@ -53,7 +54,7 @@ export function normalizeWorkbookImportContentType(contentType: string): Workboo
 
 const PREVIEW_ROW_LIMIT = 8
 const PREVIEW_COLUMN_LIMIT = 6
-const largeWorkbookXmlStyleCellMapThreshold = 100_000
+const largeWorkbookStyleCandidateThreshold = 100_000
 
 export interface ImportedWorkbook {
   snapshot: WorkbookSnapshot
@@ -92,13 +93,6 @@ interface SheetRowInfo {
   hidden: boolean
 }
 
-interface WorksheetCellEntry {
-  address: string
-  cell: Record<string, unknown>
-  row: number
-  column: number
-}
-
 interface HorizontalStyleRun {
   styleId: string
   startColumn: number
@@ -112,98 +106,6 @@ interface RectangularStyleRun extends HorizontalStyleRun {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
-}
-
-function isWorksheetCellAddress(value: string): boolean {
-  return /^[A-Z]{1,3}[1-9][0-9]*$/u.test(value)
-}
-
-function denseWorksheetRows(sheet: XLSX.WorkSheet): unknown[] | null {
-  const denseRows = (sheet as Record<string, unknown>)['!data']
-  return Array.isArray(denseRows) ? denseRows : null
-}
-
-function denseWorksheetCell(row: unknown, column: number): Record<string, unknown> | null {
-  if (!Array.isArray(row)) {
-    return null
-  }
-  const cell = row[column]
-  return isRecord(cell) ? cell : null
-}
-
-function worksheetCellAt(sheet: XLSX.WorkSheet, row: number, column: number): Record<string, unknown> | null {
-  const denseRows = denseWorksheetRows(sheet)
-  if (denseRows) {
-    return denseWorksheetCell(denseRows[row], column)
-  }
-  const value = sheet[XLSX.utils.encode_cell({ r: row, c: column })]
-  return isRecord(value) ? value : null
-}
-
-function* worksheetCellEntries(sheet: XLSX.WorkSheet): Generator<WorksheetCellEntry> {
-  const denseRows = denseWorksheetRows(sheet)
-  if (denseRows) {
-    for (const [rowIndex, row] of denseRows.entries()) {
-      if (!Array.isArray(row)) {
-        continue
-      }
-      for (const [columnIndex, cell] of row.entries()) {
-        if (!isRecord(cell)) {
-          continue
-        }
-        yield {
-          address: XLSX.utils.encode_cell({ r: rowIndex, c: columnIndex }),
-          cell,
-          row: rowIndex,
-          column: columnIndex,
-        }
-      }
-    }
-    return
-  }
-
-  for (const address in sheet) {
-    const value: unknown = sheet[address]
-    if (!isWorksheetCellAddress(address) || !isRecord(value)) {
-      continue
-    }
-    const decoded = XLSX.utils.decode_cell(address)
-    yield {
-      address,
-      cell: value,
-      row: decoded.r,
-      column: decoded.c,
-    }
-  }
-}
-
-function countWorkbookWorksheetCells(workbook: XLSX.WorkBook): number {
-  return workbook.SheetNames.reduce((sum, sheetName) => {
-    const sheet = workbook.Sheets[sheetName]
-    if (!sheet) {
-      return sum
-    }
-    const denseRows = denseWorksheetRows(sheet)
-    if (denseRows) {
-      return (
-        sum +
-        denseRows.reduce<number>((sheetSum, row) => {
-          if (!Array.isArray(row)) {
-            return sheetSum
-          }
-          return sheetSum + row.filter(isRecord).length
-        }, 0)
-      )
-    }
-    let cellCount = 0
-    for (const address in sheet) {
-      const value: unknown = sheet[address]
-      if (isWorksheetCellAddress(address) && isRecord(value)) {
-        cellCount += 1
-      }
-    }
-    return sum + cellCount
-  }, 0)
 }
 
 function styleRunKey(run: Pick<RectangularStyleRun, 'styleId' | 'startColumn' | 'endColumn'>): string {
@@ -450,6 +352,47 @@ function readImportedNumberFormat(value: unknown): string | undefined {
   return trimmed
 }
 
+function hasImportableXlsxCellPayload(cell: Record<string, unknown>): boolean {
+  const formula = cell['f']
+  if (typeof formula === 'string' && formula.trim().length > 0) {
+    return true
+  }
+  return toLiteralInput(cell['v']) !== undefined || readImportedNumberFormat(cell['z']) !== undefined
+}
+
+function collectStyleCandidateAddresses(
+  workbook: XLSX.WorkBook,
+  sheetNames: readonly string[],
+  maxCandidateCount: number,
+): {
+  addressesBySheet: Map<string, Set<string>>
+  count: number
+} {
+  const addressesBySheet = new Map<string, Set<string>>()
+  let count = 0
+  for (const sheetName of sheetNames) {
+    const sheet = workbook.Sheets[sheetName]
+    if (!sheet) {
+      continue
+    }
+    const addresses = new Set<string>()
+    for (const { address, cell } of worksheetCellEntries(sheet)) {
+      if (!hasImportableXlsxCellPayload(cell)) {
+        continue
+      }
+      addresses.add(address)
+      count += 1
+      if (count > maxCandidateCount) {
+        return { addressesBySheet: new Map(), count }
+      }
+    }
+    if (addresses.size > 0) {
+      addressesBySheet.set(sheetName, addresses)
+    }
+  }
+  return { addressesBySheet, count }
+}
+
 function readImportedFillStyle(style: Record<string, unknown>): CellStyleRecord['fill'] | undefined {
   const fill = isRecord(style['fill']) ? style['fill'] : style
   if (fill['patternType'] !== 'solid') {
@@ -686,10 +629,13 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
   const warnings: string[] = []
   const importedDefinedNames = readImportedDefinedNames(workbook)
   addWorkbookWarnings(workbook, warnings, importedDefinedNames.ignoredCount)
+  const styleCandidates = collectStyleCandidateAddresses(workbook, workbook.SheetNames, largeWorkbookStyleCandidateThreshold)
   const importedWorkbookStyles =
-    countWorkbookWorksheetCells(workbook) > largeWorkbookXmlStyleCellMapThreshold
+    styleCandidates.count === 0 || styleCandidates.count > largeWorkbookStyleCandidateThreshold
       ? new Map<string, Map<string, Omit<CellStyleRecord, 'id'>>>()
-      : readImportedWorkbookFileStyles(workbook, workbook.SheetNames)
+      : readImportedWorkbookFileStyles(workbook, workbook.SheetNames, {
+          styleCandidateAddressesBySheet: styleCandidates.addressesBySheet,
+        })
   const importedWorkbookSheetDimensions = readImportedWorkbookSheetDimensions(workbook, workbook.SheetNames)
   const importedWorkbookProperties = readImportedWorkbookProperties(data)
   const importedCalculationSettings = readImportedWorkbookCalculationSettings(data)

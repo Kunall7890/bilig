@@ -105,6 +105,10 @@ function setZipText(zip: ZipEntries, path: string, text: string): void {
   zip[normalizeZipPath(path)] = strToU8(text)
 }
 
+function hasWorksheetConditionalFormatting(sheetXml: string): boolean {
+  return /<(?:[A-Za-z_][\w.-]*:)?conditionalFormatting\b/u.test(sheetXml)
+}
+
 function normalizeRgbColor(value: unknown): string | null {
   if (typeof value !== 'string') {
     return null
@@ -470,6 +474,9 @@ export function readImportedWorkbookConditionalFormats(
   sheetNames.forEach((sheetName, sheetIndex) => {
     const sheetXml = getZipText(zip, `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`)
     if (!sheetXml) {
+      return
+    }
+    if (!hasWorksheetConditionalFormatting(sheetXml)) {
       return
     }
     const parsed: unknown = xmlParser.parse(sheetXml)
