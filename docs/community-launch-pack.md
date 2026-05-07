@@ -7,6 +7,14 @@ community-by-community distribution path. The rule is the same across every
 channel: adapt to the specific community, disclose the maintainer relationship,
 and do not ask for votes, stars, or artificial engagement.
 
+Current launch state:
+
+- Show HN is live:
+  <https://news.ycombinator.com/item?id=48052832>.
+- Do not repost the same launch angle while that thread is active.
+- Use new community posts only when there is time to answer replies and adapt
+  the copy to the specific community.
+
 ## Operating Rules
 
 - Post manually.

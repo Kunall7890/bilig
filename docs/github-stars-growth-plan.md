@@ -72,6 +72,10 @@ Verified on 2026-05-07:
   promoting scoped issues `#32` and `#49`, adding starter-scope comments, and
   removing closed issue `#102` from
   [`docs/starter-issues.md`](starter-issues.md).
+- Submitted Show HN:
+  <https://news.ycombinator.com/item?id=48052832>. Preflight included green
+  GitHub workflow pages, public site and repository checks, and a passing
+  `pnpm workpaper:smoke:external`. Stars remained `5` at launch.
 
 ## Research Findings
 

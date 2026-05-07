@@ -1,6 +1,20 @@
 # Show HN Launch Pack
 
-Status: ready-to-review launch checklist for a `bilig` Hacker News submission.
+Status: launched on 2026-05-07.
+
+HN item: <https://news.ycombinator.com/item?id=48052832>.
+
+Launch preflight:
+
+- GitHub repository target resolved at
+  `eba015223d02647ab491e8c6057059fc0b5b90da`.
+- GitHub Actions were green for `github-ci`, `bilig-runtime-packages`, and
+  `pages-build-deployment` before submission.
+- `pnpm workpaper:smoke:external` passed before submission.
+- Public GitHub star count was `5`.
+- The item page resolves publicly. Immediate unauthenticated `/newest`
+  visibility was not confirmed, so follow-up should use the item URL and
+  respond to actual comments rather than reposting.
 
 Use this only when a maintainer is available to answer comments for the next few
 hours. Do not ask friends, coworkers, followers, or other accounts to upvote or
