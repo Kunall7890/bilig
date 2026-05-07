@@ -2,7 +2,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ErrorCode, ValueTag } from '@bilig/protocol'
 
 import type { WorkPaperCellAddress, WorkPaperCellChange, WorkPaperChange } from '../index.js'
-import { WorkPaperEvaluationSuspendedError, WorkPaper } from '../index.js'
+import {
+  WorkPaperEvaluationSuspendedError,
+  WorkPaper,
+  createWorkPaperFromDocument,
+  exportWorkPaperDocument,
+  parseWorkPaperDocument,
+  serializeWorkPaperDocument,
+} from '../index.js'
 import { forceMaterializeTrackedIndexChanges, hasDeferredTrackedIndexChanges } from '../tracked-cell-index-changes.js'
 
 const TEST_LANGUAGE_CODE = 'xHF'
@@ -401,6 +408,45 @@ describe('WorkPaper', () => {
       value: 537,
     })
     expect(workbook.getStats().lastMetrics).toMatchObject({ dirtyFormulaCount: 0, wasmFormulaCount: 0, jsFormulaCount: 0 })
+  })
+
+  it('recalculates filter spills that share a dirty range with direct criteria formulas', () => {
+    const workbook = WorkPaper.buildFromSheets({
+      Deals: [
+        ['Region', 'Segment', 'Customers', 'ARPA', 'Revenue'],
+        ['West', 'Enterprise', 12, 1200, '=C2*D2'],
+        ['East', 'SMB', 30, 250, '=C3*D3'],
+        ['West', 'SMB', 18, 300, '=C4*D4'],
+      ],
+      Summary: [
+        ['Metric', 'Value'],
+        ['Total revenue', '=SUM(Deals!E2:E4)'],
+        ['West customers', '=SUMIF(Deals!A2:A4,"West",Deals!C2:C4)'],
+        ['Qualified customer counts', '=FILTER(Deals!C2:C4,Deals!C2:C4>=18)'],
+      ],
+    })
+    const dealsSheet = workbook.getSheetId('Deals')!
+    const summarySheet = workbook.getSheetId('Summary')!
+    const readQualifiedCounts = (target: WorkPaper, sheet: number) =>
+      target
+        .getRangeValues({
+          start: cell(sheet, 3, 1),
+          end: cell(sheet, 5, 1),
+        })
+        .flat()
+        .map((value) => (value.tag === ValueTag.Number ? value.value : null))
+
+    expect(readQualifiedCounts(workbook, summarySheet)).toEqual([30, 18, null])
+
+    workbook.setCellContents(cell(dealsSheet, 1, 2), 20)
+
+    expect(readQualifiedCounts(workbook, summarySheet)).toEqual([20, 30, 18])
+
+    const restored = createWorkPaperFromDocument(
+      parseWorkPaperDocument(serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { includeConfig: true }))),
+    )
+
+    expect(readQualifiedCounts(restored, restored.getSheetId('Summary')!)).toEqual([20, 30, 18])
   })
 
   it('captures tiny sliding aggregate listener payloads without the general tracked reducer', () => {

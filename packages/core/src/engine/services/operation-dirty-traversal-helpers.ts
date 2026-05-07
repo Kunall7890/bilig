@@ -98,9 +98,6 @@ export function canSkipOperationDirtyTraversalForChangedInputs(input: {
     if (input.postRecalcDirectFormulaIndices === undefined) {
       return false
     }
-    if (input.postRecalcDirectFormulaIndices.hasCoveredDirectRangeInput(cellIndex)) {
-      return true
-    }
     const cellStore = input.access.workbook.cellStore
     const sheetId = cellStore.sheetIds[cellIndex]
     if (sheetId === undefined) {

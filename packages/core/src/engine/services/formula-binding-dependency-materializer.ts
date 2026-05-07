@@ -11,6 +11,7 @@ import type { FormulaBindingMemberCounts } from './formula-binding-member-counts
 import { tryParseDependencyCellAddress, tryParseDependencyRangeAddress } from './formula-binding-direct-scalar.js'
 import type { ParsedCompiledFormula } from './formula-binding-direct-descriptors.js'
 import { collectDynamicIndexDependencyPlan } from './formula-binding-dynamic-index-dependencies.js'
+import { getFormulaBindingReverseEdgeSlice } from './formula-binding-reverse-edges.js'
 import type { CreateEngineFormulaBindingServiceArgs } from './formula-binding-service-types.js'
 
 const EMPTY_DEPENDENCY_BUFFER = new Uint32Array(0)
@@ -158,6 +159,22 @@ export function createFormulaBindingDependencyMaterializer(
       dependencyEntityCount += 1
     }
 
+    const rangeDependencySourceEdgesNeedSync = (rangeIndex: number): boolean => {
+      const rangeEntity = makeRangeEntity(rangeIndex)
+      const dependencySources = args.state.ranges.getDependencySourceEntities(rangeIndex)
+      for (let sourceIndex = 0; sourceIndex < dependencySources.length; sourceIndex += 1) {
+        const dependencyEntity = dependencySources[sourceIndex]!
+        const slice = getFormulaBindingReverseEdgeSlice(args.reverseState, dependencyEntity)
+        if (!slice) {
+          return true
+        }
+        if (!args.edgeArena.readView(slice).includes(rangeEntity)) {
+          return true
+        }
+      }
+      return false
+    }
+
     dynamicIndexDependencyPlan?.selectedCells.forEach((cell) => {
       const sheet = args.state.workbook.getSheet(cell.sheetName)
       if (!sheet) {
@@ -289,7 +306,7 @@ export function createFormulaBindingDependencyMaterializer(
           args.getDependencyBuildCells()[dependencyIndexCount] = cellIndex
           dependencyIndexCount += 1
         }
-        if (registered.materialized) {
+        if (registered.materialized || rangeDependencySourceEdgesNeedSync(registered.rangeIndex)) {
           args.getDependencyBuildNewRanges()[newRangeCount] = registered.rangeIndex
           newRangeCount += 1
         }
