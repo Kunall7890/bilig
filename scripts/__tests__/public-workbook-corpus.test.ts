@@ -837,6 +837,53 @@ describe('public workbook corpus', () => {
     )
   })
 
+  it('starts one isolated verification worker by default', async () => {
+    const fixture = createIsolatedVerificationFixture()
+    const artifact = fixture.manifest.artifacts[0]
+    if (!artifact) {
+      throw new Error('expected isolated verification fixture artifact')
+    }
+    const firstChild = createMockChildProcess()
+    const secondChild = createMockChildProcess()
+    const children = [firstChild, secondChild]
+    spawnMock.mockImplementation(() => children.shift() ?? createMockChildProcess())
+
+    const scorecardPromise = buildPublicWorkbookCorpusScorecard({
+      manifest: {
+        ...fixture.manifest,
+        artifacts: [
+          artifact,
+          {
+            ...artifact,
+            id: 'workbook-isolated-verification-2',
+            cachePath: 'files/public-budget-2.xlsx',
+            sha256: 'b'.repeat(64),
+            workbookFingerprint: 'isolated-verification-fingerprint-2',
+          },
+        ],
+      },
+      cacheDir: fixture.cacheDir,
+      manifestPath: fixture.manifestPath,
+      generatedAt: '2026-05-07T01:00:00.000Z',
+      isolatedVerification: true,
+      verifyTimeoutMs: 1_000,
+    })
+
+    expect(spawnMock).toHaveBeenCalledTimes(1)
+    firstChild.emit('close', 1, null)
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(spawnMock).toHaveBeenCalledTimes(2)
+    secondChild.emit('close', 1, null)
+
+    const scorecard = await scorecardPromise
+    expect(scorecard.summary).toMatchObject({
+      cachedWorkbookCount: 2,
+      errorWorkbookCount: 2,
+    })
+  })
+
   it('reports isolated verification timeouts in the evidence trail', async () => {
     vi.useFakeTimers()
 

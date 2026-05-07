@@ -92,6 +92,7 @@ const defaultCacheDir = join(rootDir, '.cache', 'public-workbook-corpus')
 const defaultManifestPath = join(defaultCacheDir, 'manifest.json')
 const defaultScorecardPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'public-workbook-corpus-scorecard.json')
 const defaultVerifyTimeoutMs = 180_000
+const defaultVerifyConcurrency = 1
 const defaultVerifyMaxRssBytes = 4096 * 1024 * 1024
 const maxVerifyMaxRssBytes = 4096 * 1024 * 1024
 const defaultVerifyMaxCellCount = 1_500_000
@@ -105,7 +106,7 @@ export async function sha256Hex(bytes: Uint8Array): Promise<string> {
 export async function buildPublicWorkbookCorpusScorecard(args: BuildScorecardArgs): Promise<PublicWorkbookCorpusScorecard> {
   validatePublicWorkbookManifest(args.manifest)
   const structuralSmokeSampleLimit = args.structuralSmokeSampleLimit ?? 50
-  const verifyConcurrency = Math.max(1, Math.trunc(args.verifyConcurrency ?? 2))
+  const verifyConcurrency = Math.max(1, Math.trunc(args.verifyConcurrency ?? defaultVerifyConcurrency))
   const verificationManifestPath = args.manifestPath
   const isolatedVerification = args.isolatedVerification === true && verificationManifestPath !== undefined
   const verifyTimeoutMs = Math.max(1, Math.trunc(args.verifyTimeoutMs ?? defaultVerifyTimeoutMs))
@@ -839,7 +840,7 @@ async function main(): Promise<void> {
           manifestPath,
           isolatedVerification: !readFlagArg('--in-process'),
           structuralSmokeSampleLimit: readNumberArg('--structural-smoke-sample-limit', 50),
-          verifyConcurrency: readNumberArg('--verify-concurrency', 2),
+          verifyConcurrency: readNumberArg('--verify-concurrency', defaultVerifyConcurrency),
           verifyTimeoutMs: readNumberArg('--verify-timeout-ms', defaultVerifyTimeoutMs),
           verifyMaxRssBytes: capVerifyMaxRssBytes(readMegabytesArg('--verify-max-rss-mb', defaultVerifyMaxRssBytes)),
           verifyMaxCellCount: readNumberArg('--verify-max-cells', defaultVerifyMaxCellCount),
