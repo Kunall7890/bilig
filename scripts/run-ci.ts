@@ -183,13 +183,13 @@ const browserLane: CiTask = {
     }),
   ],
 }
-const focusedCorrectnessLanes: readonly CiTask[] = [
+const parallelFocusedCorrectnessLanes: readonly CiTask[] = [
   pnpm('correctness core', 'test:correctness:core'),
   pnpm('correctness formula', 'test:correctness:formula'),
-  pnpm('correctness public workbook corpus', 'test:correctness:corpus'),
   pnpm('correctness server', 'test:correctness:server'),
   pnpm('correctness browser runtime', 'test:correctness:browser'),
 ]
+const corpusCorrectnessLane = pnpm('correctness public workbook corpus', 'test:correctness:corpus')
 const generatedSourceChecks: readonly CiTask[] = [
   pnpm('protocol check', 'protocol:check'),
   pnpm('protocol package build for generated-source imports', '--filter', '@bilig/protocol', 'build'),
@@ -256,7 +256,8 @@ try {
       ])),
     )
   } else {
-    allCompleted.push(...(await runStage('focused correctness checks', focusedCorrectnessLanes)))
+    allCompleted.push(...(await runStage('focused correctness checks', parallelFocusedCorrectnessLanes)))
+    allCompleted.push(...(await runSequential('corpus correctness benchmark', [corpusCorrectnessLane])))
     if (!skipBrowserGates) {
       allCompleted.push(...(await runStage('browser smoke setup', [browserWebBundleBuild])))
     }
