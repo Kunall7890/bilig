@@ -123,6 +123,11 @@ Rules for agents:
   `pnpm workpaper:bench:competitive:check`, and `pnpm run ci` before publishing
   or claiming production readiness.
 
+For a concise public evaluation path, share
+[`docs/public-adoption-kit.md`](docs/public-adoption-kit.md). It includes
+positioning, npm-only evaluation commands, proof links, shareable copy, and
+guardrails for honest benchmark claims.
+
 ## Quickstart
 
 Use Node `24+`, Bun, and `pnpm@10.32.1`.

@@ -77,6 +77,8 @@ Repository:
 - npm: <https://www.npmjs.com/package/@bilig/headless>
 - runnable example:
   [`examples/headless-workpaper`](../../examples/headless-workpaper)
+- public adoption kit:
+  [`docs/public-adoption-kit.md`](../../docs/public-adoption-kit.md)
 
 Inside this monorepo:
 
@@ -154,6 +156,10 @@ npm start
 
 Repository CI also runs the same example against packed local runtime packages
 through `pnpm workpaper:smoke:external`.
+
+For a concise evaluator-facing summary with copy-paste npm commands, proof
+links, shareable copy, and overclaim guardrails, use the root
+[`Public Adoption Kit`](../../docs/public-adoption-kit.md).
 
 ## Core Concepts
 
