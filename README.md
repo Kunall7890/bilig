@@ -87,35 +87,84 @@ Install from npm:
 pnpm add @bilig/headless
 ```
 
+Try the package without cloning the monorepo:
+
+```bash
+mkdir bilig-headless-eval
+cd bilig-headless-eval
+npm init -y
+npm pkg set type=module
+npm install @bilig/headless
+```
+
+Create `eval.mjs` with the quickstart below, then run `node eval.mjs`. The
+example builds a formula-backed workbook, edits source data, serializes the
+document, restores it, and verifies that the recalculated value survives the
+round trip.
+
 For a runnable external-consumer example, start with
 [examples/headless-workpaper](examples/headless-workpaper). The repository smoke
 test executes that same example against packed local runtime packages with
 `pnpm workpaper:smoke:external`.
 
-Minimal example:
+Quickstart:
 
-```ts
-import { WorkPaper, type WorkPaperCellAddress } from '@bilig/headless'
+```js
+import {
+  WorkPaper,
+  createWorkPaperFromDocument,
+  exportWorkPaperDocument,
+  parseWorkPaperDocument,
+  serializeWorkPaperDocument,
+} from '@bilig/headless'
 
 const workbook = WorkPaper.buildFromSheets(
   {
-    Sheet1: [
-      [10, 20, '=A1+B1'],
-      [7, '=A2*3', null],
+    Revenue: [
+      ['Region', 'Customers', 'ARPA', 'Revenue'],
+      ['West', 20, 1200, '=B2*C2'],
+      ['East', 30, 250, '=B3*C3'],
+      ['Central', 18, 300, '=B4*C4'],
+    ],
+    Summary: [
+      ['Metric', 'Value'],
+      ['Total revenue', '=SUM(Revenue!D2:D4)'],
     ],
   },
   { maxRows: 1_000, maxColumns: 100, useColumnIndex: true },
 )
 
-const sheet = workbook.getSheetId('Sheet1')
-if (sheet === undefined) {
-  throw new Error('Sheet1 was not created')
+const revenue = workbook.getSheetId('Revenue')
+const summary = workbook.getSheetId('Summary')
+if (revenue === undefined || summary === undefined) {
+  throw new Error('Workbook sheets were not created')
 }
 
-const at = (row: number, col: number): WorkPaperCellAddress => ({ sheet, row, col })
+const at = (row, col) => ({
+  sheet: summary,
+  row,
+  col,
+})
 
-workbook.setCellContents(at(1, 2), '=A2+B2')
-console.log(workbook.getCellValue(at(1, 2)))
+const before = workbook.getCellValue(at(1, 1))
+workbook.setCellContents({ sheet: revenue, row: 1, col: 1 }, 32)
+
+const saved = serializeWorkPaperDocument(
+  exportWorkPaperDocument(workbook, { includeConfig: true }),
+)
+const restored = createWorkPaperFromDocument(parseWorkPaperDocument(saved))
+const restoredSummary = restored.getSheetId('Summary')
+if (restoredSummary === undefined) {
+  throw new Error('Summary sheet was not restored')
+}
+
+const after = restored.getCellValue({
+  sheet: restoredSummary,
+  row: 1,
+  col: 1,
+})
+
+console.log({ before, after, sheets: restored.getSheetNames(), bytes: saved.length })
 ```
 
 Rules for agents:

@@ -149,6 +149,33 @@ Follow-up artifact if anyone engages:
 - if someone asks about Excel parity, link the fixture-scoped caveats instead
   of making a broad compatibility claim
 
+### AI Excel agent startups thread
+
+Target:
+<https://x.com/IM_Aeneas/status/2050729841947709822>
+
+Why it fits:
+
+- The post asks directly what Microsoft's Excel agent work means for AI Excel
+  agent startups.
+- The thread is not asking for a generic repo link; the useful contribution is
+  a technical distinction about where standalone infrastructure still matters.
+- `bilig` can add a maintainer-level point about workbook operations,
+  recalculation correctness, persistence, and readback.
+
+Draft reply:
+
+```text
+probably means the serious ones have to go deeper than chat around cells.
+
+the hard part is typed workbook ops, import/export fidelity, recalculation
+correctness, and verification after edits.
+```
+
+Only add a repo link if someone asks what an implementation of that boundary
+looks like. If that happens, link the website or adoption kit rather than
+dropping the repository into the first reply.
+
 ## Reply Templates
 
 Use these as starting points, not copy/paste automation.

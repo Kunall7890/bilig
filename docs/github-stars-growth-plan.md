@@ -42,6 +42,8 @@ Verified on 2026-05-07:
   - `examples/headless-workpaper/revenue-scenarios.mjs`
   - `docs/starter-issues.md`
   - `docs/assets/github-social-preview.png`
+  - GitHub repository social preview configured from
+    `docs/assets/github-social-preview.png`
   - `CONTRIBUTING.md`
   - `CODE_OF_CONDUCT.md`
   - `SECURITY.md`
@@ -135,11 +137,14 @@ first star feel like a useful bookmark.
 
 Actions:
 
-- Upload `docs/assets/github-social-preview.png` as the custom GitHub social
-  preview image through repository settings. It is `1280x640`, under `1 MB`,
-  and uses a solid background.
+- Keep `docs/assets/github-social-preview.png` uploaded as the custom GitHub
+  social preview image through repository settings. Verified in GitHub settings
+  on 2026-05-07. It is `1280x640`, under `1 MB`, and uses a solid background.
 - Pin or surface the external example in all launch copy:
   `examples/headless-workpaper`.
+- Keep the website and README first-run path npm-only, copy-pasteable, and tied
+  to persistence/readback output. A cold visitor should not need monorepo
+  knowledge to evaluate the package.
 - Add a Star History chart only after the repo has enough organic movement to
   avoid making `2` stars the visual focus.
 - Seed `3` to `5` real `good first issue` items:

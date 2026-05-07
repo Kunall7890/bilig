@@ -323,6 +323,15 @@
         align-items: stretch;
       }
 
+      .quickstart-wide {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      }
+
+      .copy-path {
+        display: grid;
+        gap: 14px;
+      }
+
       .code {
         overflow: auto;
         border: 1px solid var(--code-line);
@@ -338,6 +347,24 @@
         font-size: 13px;
         line-height: 1.65;
         white-space: pre;
+      }
+
+      .expected {
+        display: grid;
+        gap: 8px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        padding: 18px;
+      }
+
+      .expected strong {
+        font-size: 14px;
+      }
+
+      .expected p {
+        color: var(--muted);
+        font-size: 14px;
       }
 
       .muted {
@@ -478,6 +505,7 @@
 
         .hero-grid,
         .quickstart,
+        .quickstart-wide,
         .surface,
         .proof,
         .links,
@@ -588,27 +616,71 @@
 
         <section id="install" aria-labelledby="install-title">
           <div class="section-head">
-            <h2 id="install-title">Install and build a workbook from arrays.</h2>
-            <p>The public package is small enough to evaluate directly in a service, script, or agent tool runner.</p>
+            <h2 id="install-title">Try the published package without cloning the repo.</h2>
+            <p>
+              The first evaluation path uses npm only. It builds a formula-backed workbook, edits source data, persists the document,
+              restores it, and verifies the recalculated value.
+            </p>
           </div>
-          <div class="quickstart">
-            <div class="code">
-              <pre><code>pnpm add @bilig/headless</code></pre>
+          <div class="quickstart quickstart-wide">
+            <div class="copy-path">
+              <div class="code">
+                <pre><code>mkdir bilig-headless-eval
+cd bilig-headless-eval
+npm init -y
+npm pkg set type=module
+npm install @bilig/headless</code></pre>
+              </div>
+              <div class="expected">
+                <strong>then create <code>eval.mjs</code> and run <code>node eval.mjs</code></strong>
+                <p>
+                  expected output includes total revenue before and after an edit, the restored sheet names, and a positive serialized byte
+                  count.
+                </p>
+              </div>
             </div>
             <div class="code">
-              <pre><code>import { WorkPaper } from "@bilig/headless";
+              <pre><code>import {
+  WorkPaper,
+  createWorkPaperFromDocument,
+  exportWorkPaperDocument,
+  parseWorkPaperDocument,
+  serializeWorkPaperDocument,
+} from "@bilig/headless";
 
 const workbook = WorkPaper.buildFromSheets({
-  Sheet1: [
-    [10, 20, "=A1+B1"],
-    [7, "=A2*3", null],
+  Revenue: [
+    ["Region", "Customers", "ARPA", "Revenue"],
+    ["West", 20, 1200, "=B2*C2"],
+    ["East", 30, 250, "=B3*C3"],
+    ["Central", 18, 300, "=B4*C4"],
+  ],
+  Summary: [
+    ["Metric", "Value"],
+    ["Total revenue", "=SUM(Revenue!D2:D4)"],
   ],
 });
 
-const sheet = workbook.getSheetId("Sheet1");
-const value = workbook.getCellValue({ sheet, row: 0, col: 2 });
+const revenue = workbook.getSheetId("Revenue");
+const summary = workbook.getSheetId("Summary");
 
-console.log(value);</code></pre>
+if (revenue === undefined || summary === undefined) {
+  throw new Error("missing sheet");
+}
+
+const before = workbook.getCellValue({ sheet: summary, row: 1, col: 1 });
+workbook.setCellContents({ sheet: revenue, row: 1, col: 1 }, 32);
+const saved = serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { includeConfig: true }));
+const restored = createWorkPaperFromDocument(parseWorkPaperDocument(saved));
+const restoredSummary = restored.getSheetId("Summary");
+
+if (restoredSummary === undefined) {
+  throw new Error("missing restored sheet");
+}
+
+const after = restored.getCellValue({ sheet: restoredSummary, row: 1, col: 1 });
+
+console.log({ before, after, sheets: restored.getSheetNames(), bytes: saved.length });</code></pre>
             </div>
           </div>
         </section>
