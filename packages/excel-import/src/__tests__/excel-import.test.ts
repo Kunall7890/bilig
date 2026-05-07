@@ -16,6 +16,7 @@ import type {
 import { SpreadsheetEngine } from '@bilig/core'
 import {
   CSV_CONTENT_TYPE,
+  InvalidXlsxZipContainerError,
   XLSX_CONTENT_TYPE,
   exportXlsx,
   importCsv,
@@ -64,6 +65,29 @@ function buildMacroEnabledWorkbook(): Uint8Array {
   }
   workbook.vbaraw = new Uint8Array([1, 2, 3, 4])
   return XLSX.write(workbook, { bookType: 'xlsm', type: 'buffer', bookVBA: true })
+}
+
+function readZipUint16(bytes: Uint8Array, offset: number): number {
+  const low = bytes[offset]
+  const high = bytes[offset + 1]
+  if (low === undefined || high === undefined) {
+    throw new Error('Invalid ZIP fixture')
+  }
+  return low | (high << 8)
+}
+
+function buildCorruptZipBackedWorkbook(): Uint8Array {
+  const bytes = zipSync({ 'xl/workbook.xml': strToU8('a'.repeat(1000)) })
+  const nameLength = readZipUint16(bytes, 26)
+  const extraLength = readZipUint16(bytes, 28)
+  const compressedDataStart = 30 + nameLength + extraLength
+  const originalByte = bytes[compressedDataStart]
+  if (originalByte === undefined) {
+    throw new Error('Invalid ZIP fixture')
+  }
+  const corrupted = new Uint8Array(bytes)
+  corrupted[compressedDataStart] = originalByte ^ 0xff
+  return corrupted
 }
 
 function buildGenericWorkflowWorkbookFixture(shape: 'multi-sheet-operations' | 'single-sheet-planning'): Uint8Array {
@@ -705,6 +729,14 @@ describe('excel import', () => {
       expect(imported.preview.contentType).toBe(XLSX_CONTENT_TYPE)
       expect(imported.sheetNames).toEqual(['Sheet1', 'Sheet2'])
     }
+  })
+
+  it('rejects corrupt zip-backed xlsx packages before parsing', () => {
+    const bytes = buildCorruptZipBackedWorkbook()
+
+    expect(() => importXlsx(bytes, 'corrupt.xlsx')).toThrow(InvalidXlsxZipContainerError)
+    expect(() => importXlsx(bytes, 'corrupt.xlsx')).toThrow('Invalid or corrupt XLSX zip container')
+    expect(() => importWorkbookFile(bytes, 'corrupt.xlsx', XLSX_CONTENT_TYPE)).toThrow(InvalidXlsxZipContainerError)
   })
 
   it('bounds whole-column defined names to the imported sheet extent', () => {

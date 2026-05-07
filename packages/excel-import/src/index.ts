@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx'
+import { unzipSync } from 'fflate'
 
 import { parseCsv, parseCsvCellInput } from '@bilig/core'
 import type {
@@ -82,6 +83,13 @@ export interface ImportedWorkbookSheetPreview {
   columnCount: number
   nonEmptyCellCount: number
   previewRows: readonly (readonly string[])[]
+}
+
+export class InvalidXlsxZipContainerError extends Error {
+  constructor() {
+    super('Invalid or corrupt XLSX zip container')
+    this.name = 'InvalidXlsxZipContainerError'
+  }
 }
 
 interface SheetColumnInfo {
@@ -627,8 +635,17 @@ function addWorkbookWarnings(workbook: XLSX.WorkBook, warnings: string[], ignore
   }
 }
 
+function assertValidXlsxZipContainer(bytes: Uint8Array): void {
+  try {
+    unzipSync(bytes)
+  } catch {
+    throw new InvalidXlsxZipContainerError()
+  }
+}
+
 export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): ImportedWorkbook {
   const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)
+  assertValidXlsxZipContainer(data)
   const workbook = XLSX.read(data, {
     type: 'array',
     cellFormula: true,
