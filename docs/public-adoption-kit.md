@@ -38,6 +38,8 @@ Shorter version:
   [`examples/headless-workpaper`](../examples/headless-workpaper)
 - Benchmark evidence:
   [`docs/headless-workpaper-benchmark-evidence.md`](headless-workpaper-benchmark-evidence.md)
+- Benchmark explainer:
+  [`docs/what-workpaper-benchmark-proves.md`](what-workpaper-benchmark-proves.md)
 - Technical article:
   [`docs/why-agents-need-workbook-apis.md`](why-agents-need-workbook-apis.md)
 - Persistence article:
@@ -146,6 +148,13 @@ For contributors:
 > contributions are formula parity fixtures, engine correctness tests,
 > WorkPaper benchmark scenarios, grid accessibility fixes, and docs that turn
 > architecture notes into runnable examples.
+
+Benchmark reply:
+
+> the useful part is the audit trail: a checked-in benchmark artifact, a verify
+> command, and an explicit p95 caveat. the claim is `46/46` mean wins for the
+> current comparable headless WorkPaper workloads, not "we are faster at
+> everything."
 
 ## What Not To Overclaim
 

@@ -147,6 +147,11 @@ For the persistence-focused follow-up article and runnable example, see
 and
 [`examples/headless-workpaper/persistence-roundtrip.mjs`](examples/headless-workpaper/persistence-roundtrip.mjs).
 
+For the benchmark-focused explainer, see
+[`docs/what-workpaper-benchmark-proves.md`](docs/what-workpaper-benchmark-proves.md).
+It states the `46/46` mean-win claim and the known p95 caveat without turning
+the benchmark into a blanket performance claim.
+
 For the researched public-growth plan toward `1000` legitimate GitHub stars,
 see [`docs/github-stars-growth-plan.md`](docs/github-stars-growth-plan.md).
 
@@ -256,6 +261,7 @@ Start here:
 
 - `docs/workpaper-engine-leadership-program.md`
 - `docs/headless-workpaper-benchmark-evidence.md`
+- `docs/what-workpaper-benchmark-proves.md`
 - `docs/workpaper-oracle-sota-performance-design-2026-04-21.md`
 - `docs/workpaper-oracle-validated-performance-design-2026-04-26.md`
 - `docs/workpaper-oracle-benchmark-expansion-performance-plan-2026-04-28.md`

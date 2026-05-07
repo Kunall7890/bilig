@@ -32,6 +32,9 @@ Current release posture:
 - The public benchmark evidence note explains the measured workload families,
   engine metadata, exclusions, and the current p95 nuance:
   [`docs/headless-workpaper-benchmark-evidence.md`](../../docs/headless-workpaper-benchmark-evidence.md).
+- The shareable benchmark explainer states what the scorecard proves and what
+  it does not:
+  [`docs/what-workpaper-benchmark-proves.md`](../../docs/what-workpaper-benchmark-proves.md).
 - Recently fixed and hardened P1 risks are covered by regression tests:
   - `updateConfig()` now applies `useColumnIndex` correctly when a rebuild-only
     config key changes in the same update.

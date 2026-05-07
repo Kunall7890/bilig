@@ -16,7 +16,7 @@ not from paid, automated, reciprocal, or misleading campaigns.
 
 Verified on 2026-05-07:
 
-- GitHub stars: `2`
+- GitHub stars: `5`
 - Community profile: `100%`
 - Public package: `@bilig/headless`
 - GitHub repo description: headless spreadsheet engine and local-first workbook
@@ -71,6 +71,10 @@ Case studies and founder writeups are also consistent:
   announcements
 - a repo must deserve the traffic before marketing: clear README, demo,
   install path, proof, and contribution path first
+- X replies should be manual, low-volume, and tied to the specific post.
+  Official X guidance treats duplicated unsolicited replies as spam behavior,
+  and its automation rules prohibit using non-API website scripting or keyword
+  searches to spray automated replies.
 
 Do not buy stars or run fake-star exchanges. Recent research found increasing
 fake-star campaigns, and GitHub Trending appears to filter out most superficial
@@ -171,6 +175,42 @@ Actions:
 - Open GitHub Discussions only when there is enough inbound discussion to keep
   it alive.
 
+### Continuous X Reply Loop
+
+Goal: earn profile visits from people already discussing spreadsheets, agents,
+Excel automation, workbook persistence, and formula reliability.
+
+Operating rule: reply only when the post has a clear technical connection to
+`@bilig/headless`. Do not use duplicated templates, engagement bait, automated
+mentions, or bare links.
+
+Daily loop:
+
+1. Search X for `excel ai`, `spreadsheet agents`, `workbook api`,
+   `google sheets ai`, `formula engine`, and `hyperformula`.
+2. Pick at most `2` to `3` posts where a bilig maintainer can add a concrete
+   technical point.
+3. Reply in lowercase, plain human tone, and lead with the idea rather than the
+   repo.
+4. Link only when it genuinely helps the conversation; otherwise let the
+   profile and previous launch posts carry the repository.
+5. If the same question appears twice, convert the answer into a doc, example,
+   issue, or benchmark note before replying again.
+
+Good reply shapes:
+
+> the hard part is not generating a formula once. it is preserving workbook
+> state, formulas, provenance, and writeback so an agent can be checked after it
+> acts.
+
+> this is where headless workbook apis matter. screenshots are fine for demos,
+> but agents need ranges, formulas, structural edits, persistence, and readback
+> tests.
+
+> the benchmark story only matters if it is auditable. for bilig i’m keeping the
+> artifact, verify command, and p95 caveat in public instead of turning it into
+> a vague "faster than x" claim.
+
 ## Launch Copy
 
 Use this for the first broad post:
@@ -245,6 +285,10 @@ audience, or product friction.
   <https://opensource.guide/building-community/>
 - GitHub Blog, building an open source community:
   <https://github.blog/open-source/maintainers/four-steps-toward-building-an-open-source-community/>
+- X rules and best practices for replies:
+  <https://help.x.com/en/rules-and-policies/x-rules-and-best-practices>
+- X automation rules:
+  <https://help.x.com/en/rules-and-policies/x-automation>
 - Lago first-1000-stars case study:
   <https://getlago.com/blog/how-we-got-our-first-1000-github-stars>
 - Indie Hackers first-1000-stars writeup:
