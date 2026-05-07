@@ -79,8 +79,9 @@ Avoid:
 
 ## Current Style Scan
 
-Checked on 2026-05-07. Recent high-engagement `@sama` posts and replies tend to
-be compressed, casual, and low-friction:
+Checked on 2026-05-07 in Atlas on the live `@sama` X profile. Recent
+high-engagement posts and replies tend to be compressed, casual, and
+low-friction:
 
 - mostly lowercase, except when announcing a product milestone
 - one idea per post
@@ -88,11 +89,65 @@ be compressed, casual, and low-friction:
 - little punctuation
 - concrete belief or observation first, explanation second
 - no decorative hashtags
+- short replies can be a single sentence when the thread already has context
+- stronger standalone posts add one specific reason after the claim
 
 Use that shape only as a tone reference. Do not impersonate anyone, copy
 phrasing, or turn posts into vague ai hype. For `bilig`, the useful version is
 lowercase and human but still specific: workbook state, formula parity,
 readback, fixtures, examples, and measured caveats.
+
+## Live Reply Queue - 2026-05-07
+
+These are hand-picked targets from the logged-in Atlas X session. Do not treat
+this as a scraping queue. Use it as a small manual queue and stop after the first
+reply unless a real follow-up appears.
+
+### ChatGPT spreadsheet add-on post
+
+Target:
+<https://x.com/ChatGPTapp/status/2051776032127238266>
+
+Why it fits:
+
+- The post is directly about ChatGPT inside Excel and Google Sheets.
+- The thread is already about spreadsheet automation, formulas, messy data, and
+  explaining workbook changes.
+- `bilig` adds the adjacent developer angle: typed workbook operations and
+  verification for agents outside the browser grid.
+- The post has broad reach, but the reply still needs to stand alone as a useful
+  technical distinction.
+
+Draft reply:
+
+```text
+this is exactly the direction. one thing we keep hitting while building bilig is
+that agents need typed workbook operations and verification hooks, not
+screenshots of grids.
+
+open-source node api if useful for anyone experimenting:
+https://github.com/proompteng/bilig
+```
+
+Lower-promotion variant:
+
+```text
+this is exactly the direction. the thing i keep wanting for agents is typed
+workbook operations + verification hooks, not screenshots of grids.
+
+the grid is the ui. workbook state is the api.
+```
+
+Use the linked version only if the maintainer account is comfortable clearly
+owning the project in the reply. Use the no-link version when the thread feels
+too crowded or the account needs more normal participation before linking.
+
+Follow-up artifact if anyone engages:
+
+- link `docs/why-agents-need-workbook-apis.md` for the conceptual argument
+- link `examples/headless-workpaper` for the runnable Node example
+- if someone asks about Excel parity, link the fixture-scoped caveats instead
+  of making a broad compatibility claim
 
 ## Reply Templates
 
@@ -103,7 +158,8 @@ Use these as starting points, not copy/paste automation.
 ```text
 yeah, screenshots are the weak primitive here.
 
-the useful thing is a workbook api the agent can mutate and verify. i wrote up the shape we use in bilig:
+the useful thing is a workbook api the agent can mutate and verify. i wrote up
+the shape we use in bilig:
 https://github.com/proompteng/bilig/blob/main/docs/why-agents-need-workbook-apis.md
 ```
 
@@ -112,7 +168,8 @@ https://github.com/proompteng/bilig/blob/main/docs/why-agents-need-workbook-apis
 ```text
 i think the honest version is fixture-scoped parity, not "excel compatible".
 
-for bilig i'm trying to make each claim point at the exact fixture + verifier command, like this xlookup exact case:
+for bilig i'm trying to make each claim point at the exact fixture + verifier
+command, like this xlookup exact case:
 https://github.com/proompteng/bilig/blob/main/docs/formula-edge-xlookup-exact-fixture.md
 ```
 
@@ -121,14 +178,16 @@ https://github.com/proompteng/bilig/blob/main/docs/formula-edge-xlookup-exact-fi
 ```text
 cached xlsx parity is a useful test, but it should be described as corpus parity.
 
-this is the report shape we use: matching formulas, mismatches, skipped formulas, and why they were skipped:
+this is the report shape we use: matching formulas, mismatches, skipped formulas,
+and why they were skipped:
 https://github.com/proompteng/bilig/blob/main/docs/xlsx-corpus-verifier-walkthrough.md
 ```
 
 ### local-first workbooks
 
 ```text
-the part that gets interesting is when the workbook document can round-trip through json and still preserve formula-backed state.
+the part that gets interesting is when the workbook document can round-trip
+through json and still preserve formula-backed state.
 
 this is the small node example i keep pointing people at:
 https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper
@@ -139,7 +198,8 @@ https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper
 ```text
 the benchmark claim has to stay narrow or it becomes noise.
 
-for bilig the public claim is 46/46 mean wins on scorecard-eligible comparable workloads, with the p95 caveat left attached:
+for bilig the public claim is 46/46 mean wins on scorecard-eligible comparable
+workloads, with the p95 caveat left attached:
 https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md
 ```
 
@@ -148,15 +208,18 @@ https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-prov
 Use these when a link would feel premature:
 
 ```text
-this is where i think spreadsheet engines need more boring audit trails: exact fixture, expected value, verifier command, and explicit gaps.
+this is where i think spreadsheet engines need more boring audit trails: exact
+fixture, expected value, verifier command, and explicit gaps.
 ```
 
 ```text
-the thing i would separate is "can import the file" vs "can prove the formulas match cached results for this corpus".
+the thing i would separate is "can import the file" vs "can prove the formulas
+match cached results for this corpus".
 ```
 
 ```text
-for agent workflows, i think the grid is the ui, not the api. the api needs stable workbook state and readback.
+for agent workflows, i think the grid is the ui, not the api. the api needs
+stable workbook state and readback.
 ```
 
 ## Follow-Up Loop
