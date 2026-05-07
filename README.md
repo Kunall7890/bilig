@@ -353,6 +353,10 @@ benchmark, and compare benchmark diffs.
 For a concise HyperFormula comparison and evaluation path, see
 [`docs/hyperformula-alternative-headless-workpaper.md`](docs/hyperformula-alternative-headless-workpaper.md).
 
+For a broader headless spreadsheet-engine comparison across `@bilig/headless`,
+HyperFormula, IronCalc, ExcelJS, and Formula.js, see
+[`docs/headless-spreadsheet-engine-comparison.md`](docs/headless-spreadsheet-engine-comparison.md).
+
 For a runnable revenue-model walkthrough, see
 [`docs/building-a-revenue-model-with-headless-workpaper.md`](docs/building-a-revenue-model-with-headless-workpaper.md)
 and

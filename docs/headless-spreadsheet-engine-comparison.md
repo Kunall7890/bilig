@@ -1,0 +1,220 @@
+# Headless Spreadsheet Engine Comparison For Node Services And Agents
+
+Status: public comparison guide for developers evaluating spreadsheet engines.
+
+Research date: 2026-05-07.
+
+This page exists because "spreadsheet engine" can mean several different
+things. A library that writes XLSX files, a formula-function package, a
+calculation engine, a Rust/WASM spreadsheet product, and a Node WorkPaper
+runtime can all be correct choices for different jobs.
+
+`bilig` is not trying to claim that every evaluator should choose
+`@bilig/headless`. The useful claim is narrower: choose it when you need a
+TypeScript WorkPaper object for Node services and coding agents, with formulas,
+structural edits, persistence, restore, mutation receipts, and computed
+readback in one package.
+
+## Short Version
+
+Use `@bilig/headless` when the job is service-side workbook automation or agent
+writeback verification.
+
+Use HyperFormula when you need a mature JavaScript formula engine with broad
+built-in function coverage and a commercial support path.
+
+Use IronCalc when you want a broader open-source spreadsheet engine ecosystem
+with Rust/WASM roots, embeddable product ambitions, and language bindings.
+
+Use ExcelJS when your main job is reading, manipulating, styling, and writing
+XLSX files, especially when the calculation result can be supplied or generated
+by Excel or another spreadsheet app.
+
+Use Formula.js when you need Excel-like functions as direct JavaScript calls,
+not a workbook model with dependency graph, structural edits, and persistence.
+
+## Decision Table
+
+| Workload                                                                                    | Start With        | Why                                                                                                                                                                                            |
+| ------------------------------------------------------------------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Build an XLSX report with styles, tables, images, and supplied formula results              | ExcelJS           | It is an Excel workbook manager for reading, manipulating, and writing spreadsheet data and styles. Its README says formula results must be supplied rather than calculated by ExcelJS itself. |
+| Call `SUM`, `DATE`, `XLOOKUP`-style functions directly from JavaScript code                 | Formula.js        | It implements many Excel formula functions as JavaScript functions, but it is not a workbook engine.                                                                                           |
+| Embed a mature headless spreadsheet formula engine in a web app or Node process             | HyperFormula      | It is UI-independent, has extensive built-in function coverage, and documents browser and server-side installation paths.                                                                      |
+| Build around a Rust/WASM open-source spreadsheet ecosystem                                  | IronCalc          | It presents itself as an open-source spreadsheet engine and ecosystem, with programmatic use from multiple languages.                                                                          |
+| Give an agent or Node service a workbook object it can mutate, persist, restore, and verify | `@bilig/headless` | It exposes WorkPaper operations and recipes around mutation, formula readback, persistence, and restored state.                                                                                |
+
+## What Makes The Bilig Slice Different
+
+Most automation failures happen after the initial "write this formula" moment.
+The questions become operational:
+
+- which cells changed?
+- which formulas recalculated?
+- did the formula text survive the edit?
+- did persisted JSON restore into the same computed workbook state?
+- can the service reject unsupported formulas with useful diagnostics?
+- can a coding agent prove the write instead of narrating what it meant to do?
+
+That is the `@bilig/headless` wedge. It is a WorkPaper runtime surface, not just
+a formula parser, not just an XLSX writer, and not a browser grid.
+
+The maintained example demonstrates the shape:
+
+```sh
+git clone https://github.com/proompteng/bilig.git
+cd bilig/examples/headless-workpaper
+npm install
+npm start
+npm run agent:verify
+```
+
+`npm run agent:verify` changes assumption cells, checks dependent formula
+readback, persists the workbook, restores it, and verifies that formulas and
+values survived the round trip.
+
+## Where HyperFormula Fits
+
+HyperFormula is the strongest default comparison for a JavaScript headless
+formula engine. Its official docs describe extensive built-in function coverage,
+Node/server-side setup, browser integration, and explicit licensing under GPLv3
+or a proprietary license.
+
+Start with HyperFormula when the core need is formula calculation with mature
+engine behavior and a commercial option.
+
+Evaluate `@bilig/headless` when the core need is a Node WorkPaper object with
+agent-oriented writeback verification, persistence helpers, restored readback,
+history, and a narrow benchmark artifact tied to repository commands.
+
+Do not treat `bilig` as a complete HyperFormula replacement. `bilig` is early,
+does not claim full Excel formula parity, and keeps compatibility boundaries
+public.
+
+## Where IronCalc Fits
+
+IronCalc is the strongest adjacent open-source spreadsheet-engine project to
+watch on the Rust/WASM side. Its official site describes an open-source
+spreadsheet engine and ecosystem with MIT/Apache 2.0 licensing, WebAssembly in
+the browser, embeddable use cases, and headless calculations. Its programming
+docs describe using the same computational engine from programming languages to
+create spreadsheets or run inputs through a sheet and read outputs.
+
+Start with IronCalc when you want a broader spreadsheet engine ecosystem,
+standalone or embeddable spreadsheet product direction, Rust/WASM portability,
+or Python/Rust/JavaScript integration around the same engine.
+
+Evaluate `@bilig/headless` when the immediate slice is narrower: a TypeScript
+Node package for service WorkPaper state, mutation receipts, formula readback,
+JSON persistence, restore checks, and coding-agent workflows.
+
+Do not frame `bilig` as "IronCalc but in TypeScript." That is inaccurate.
+IronCalc is a broader spreadsheet ecosystem; `bilig` is currently strongest as a
+Node/service WorkPaper and agent-verification package.
+
+## Where ExcelJS Fits
+
+ExcelJS is a good choice when the workbook file is the product: generating XLSX
+reports, preserving workbook structure, styling cells, streaming large files, or
+writing files for Excel to open.
+
+Its formula-value documentation is the important boundary for engine
+evaluators: ExcelJS can store formulas and supplied results, but the README
+states that ExcelJS cannot process a formula to generate the result. That makes
+it useful for XLSX file management, but not the right primitive when a service
+must recalculate formulas and verify values before Excel opens the file.
+
+Use ExcelJS with `@bilig/headless` when the architecture needs both:
+
+1. WorkPaper calculation and verification in Node.
+2. XLSX file generation or richer workbook-file handling at the boundary.
+
+## Where Formula.js Fits
+
+Formula.js is useful when you want Excel-like functions as ordinary JavaScript
+functions. Its README and docs position it around formula-function
+implementations, with browser and Node usage.
+
+That is a different layer from a workbook engine. Formula.js does not give an
+agent a workbook document, dependency graph, structural edit model, mutation
+receipt, persistence round trip, or restored readback contract by itself.
+
+Use Formula.js when the job is "call this function." Use a workbook engine when
+the job is "mutate this sheet and prove the workbook state afterward."
+
+## Evaluation Checklist
+
+Before choosing a spreadsheet engine, write down which of these must happen
+inside your process:
+
+- formula parsing and calculation
+- dependency graph recalculation after edits
+- structural edits such as insert, delete, move, and undo
+- multiple sheets and cross-sheet references
+- XLSX import and export
+- formatting, tables, images, and other workbook-file metadata
+- persisted document round trips
+- agent writeback receipts and computed readback
+- licensing constraints for proprietary products
+- fixture-scoped Excel compatibility evidence
+
+If the must-have list is mostly XLSX output and style fidelity, start with an
+XLSX library. If it is mostly calculation, start with a formula engine. If it is
+agent or service workbook mutation with proof, evaluate `@bilig/headless`.
+
+## Bilig Proof Path
+
+Quick package evaluation:
+
+```sh
+mkdir bilig-headless-eval
+cd bilig-headless-eval
+npm init -y
+npm pkg set type=module
+npm install @bilig/headless
+```
+
+Then run the quickstart from the root README. The script builds a workbook,
+edits source data, persists the document, restores it, and fails if formula
+readback changes.
+
+Maintained repo example:
+
+```sh
+git clone https://github.com/proompteng/bilig.git
+cd bilig/examples/headless-workpaper
+npm install
+npm start
+npm run agent:verify
+```
+
+Related proof docs:
+
+- [`docs/hyperformula-alternative-headless-workpaper.md`](hyperformula-alternative-headless-workpaper.md)
+- [`docs/why-agents-need-workbook-apis.md`](why-agents-need-workbook-apis.md)
+- [`docs/agent-workpaper-tool-calling-recipe.md`](agent-workpaper-tool-calling-recipe.md)
+- [`docs/persisting-formula-backed-workpaper-documents-in-node.md`](persisting-formula-backed-workpaper-documents-in-node.md)
+- [`docs/unsupported-formula-troubleshooting-recipe.md`](unsupported-formula-troubleshooting-recipe.md)
+- [`docs/where-bilig-is-not-excel-compatible-yet.md`](where-bilig-is-not-excel-compatible-yet.md)
+
+## Sources
+
+- IronCalc official site:
+  <https://www.ironcalc.com/>
+- IronCalc programming docs:
+  <https://docs.ironcalc.com/programming/about.html>
+- IronCalc unsupported features:
+  <https://docs.ironcalc.com/features/unsupported-features.html>
+- HyperFormula official site:
+  <https://hyperformula.handsontable.com/>
+- HyperFormula built-in functions:
+  <https://hyperformula.handsontable.com/docs/guide/built-in-functions.html>
+- HyperFormula license key:
+  <https://hyperformula.handsontable.com/docs/guide/license-key.html>
+- HyperFormula known limitations:
+  <https://hyperformula.handsontable.com/docs/guide/known-limitations.html>
+- Formula.js repository:
+  <https://github.com/formulajs/formulajs>
+- Formula.js function docs:
+  <https://formulajs.info/functions/>
+- ExcelJS README formula-value section:
+  <https://github.com/exceljs/exceljs#formula-value>

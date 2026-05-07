@@ -23,6 +23,7 @@ language: typescript
 - https://github.com/proompteng/bilig/blob/main/docs/unsupported-formula-troubleshooting-recipe.md
 - https://github.com/proompteng/bilig/blob/main/docs/agent-workpaper-tool-calling-recipe.md
 - https://github.com/proompteng/bilig/blob/main/docs/local-workpaper-benchmark-walkthrough.md
+- https://github.com/proompteng/bilig/blob/main/docs/headless-spreadsheet-engine-comparison.md
 - https://github.com/proompteng/bilig/discussions/115
 
 ## what to use it for
@@ -63,6 +64,8 @@ npm run agent:verify
   https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md
 - hyperformula comparison:
   https://github.com/proompteng/bilig/blob/main/docs/hyperformula-alternative-headless-workpaper.md
+- headless spreadsheet engine comparison:
+  https://github.com/proompteng/bilig/blob/main/docs/headless-spreadsheet-engine-comparison.md
 - benchmark evidence:
   https://github.com/proompteng/bilig/blob/main/docs/headless-workpaper-benchmark-evidence.md
 - local benchmark walkthrough:
