@@ -56,6 +56,10 @@ function booleanValue(value: boolean): CellValue {
   return { tag: ValueTag.Boolean, value }
 }
 
+function stringValue(value: string): CellValue {
+  return { tag: ValueTag.String, value, stringId: 0 }
+}
+
 function errorValue(code: ErrorCode): CellValue {
   return { tag: ValueTag.Error, code }
 }
@@ -161,6 +165,21 @@ function coerceNumber(value: CellValue): number | undefined {
     case ValueTag.String:
     case ValueTag.Error:
       return undefined
+  }
+}
+
+function concatText(value: CellValue): string {
+  switch (value.tag) {
+    case ValueTag.Empty:
+      return ''
+    case ValueTag.Number:
+      return String(Object.is(value.value, -0) ? 0 : value.value)
+    case ValueTag.Boolean:
+      return value.value ? 'TRUE' : 'FALSE'
+    case ValueTag.String:
+      return value.value
+    case ValueTag.Error:
+      return String(value.code)
   }
 }
 
@@ -317,6 +336,15 @@ function evaluateScalar(args: {
       if (!left || !right) {
         return undefined
       }
+      if (node.operator === '&') {
+        if (left.tag === ValueTag.Error) {
+          return left
+        }
+        if (right.tag === ValueTag.Error) {
+          return right
+        }
+        return stringValue(`${concatText(left)}${concatText(right)}`)
+      }
       if (
         node.operator === '=' ||
         node.operator === '<>' ||
@@ -343,8 +371,6 @@ function evaluateScalar(args: {
           return rightNumber === 0 ? errorValue(ErrorCode.Div0) : numberValue(leftNumber / rightNumber)
         case '^':
           return numberValue(leftNumber ** rightNumber)
-        case '&':
-          return undefined
       }
     }
     case 'CallExpr': {
@@ -556,18 +582,27 @@ function selectedCriteriaAggregateCells(args: {
 
   const rowCount = aggregateRange.rowEnd - aggregateRange.rowStart + 1
   const colCount = aggregateRange.colEnd - aggregateRange.colStart + 1
-  if (
-    rowCount < 1 ||
-    colCount < 1 ||
-    criteriaPairs.some(
-      (pair) =>
-        pair.range.rowEnd - pair.range.rowStart + 1 !== rowCount ||
-        pair.range.colStart !== pair.range.colEnd ||
-        pair.range.sheetName !== aggregateRange.sheetName,
-    )
-  ) {
+  if (rowCount < 1 || colCount < 1) {
     return undefined
   }
+  const hasVerticalCriteria = criteriaPairs.every(
+    (pair) =>
+      pair.range.rowEnd - pair.range.rowStart + 1 === rowCount &&
+      pair.range.colStart === pair.range.colEnd &&
+      pair.range.sheetName === aggregateRange.sheetName,
+  )
+  const hasHorizontalCriteria =
+    rowCount === 1 &&
+    criteriaPairs.every(
+      (pair) =>
+        pair.range.rowStart === pair.range.rowEnd &&
+        pair.range.colEnd - pair.range.colStart + 1 === colCount &&
+        pair.range.sheetName === aggregateRange.sheetName,
+    )
+  if (!hasVerticalCriteria && !hasHorizontalCriteria) {
+    return undefined
+  }
+  const criteriaOrientation = hasVerticalCriteria ? 'vertical' : 'horizontal'
 
   const criteriaValues = criteriaPairs.map((pair) =>
     evaluateScalar({
@@ -581,11 +616,14 @@ function selectedCriteriaAggregateCells(args: {
   if (criteriaValues.every((value) => value !== undefined)) {
     const selectedCells: DynamicIndexSelectedCell[] = []
     let hadUnknownCriteriaCell = false
-    for (let offset = 0; offset < rowCount; offset += 1) {
+    const scanCount = criteriaOrientation === 'vertical' ? rowCount : colCount
+    for (let offset = 0; offset < scanCount; offset += 1) {
       let matched = true
       for (let pairIndex = 0; pairIndex < criteriaPairs.length; pairIndex += 1) {
         const pair = criteriaPairs[pairIndex]!
-        const address = formatAddress(pair.range.rowStart + offset, pair.range.colStart)
+        const row = criteriaOrientation === 'vertical' ? pair.range.rowStart + offset : pair.range.rowStart
+        const col = criteriaOrientation === 'vertical' ? pair.range.colStart : pair.range.colStart + offset
+        const address = formatAddress(row, col)
         const value = readCellValue({
           workbook: args.workbook,
           strings: args.strings,
@@ -609,19 +647,28 @@ function selectedCriteriaAggregateCells(args: {
       if (!matched) {
         continue
       }
-      for (let colOffset = 0; colOffset < colCount; colOffset += 1) {
-        const col = aggregateRange.colStart + colOffset
-        selectedCells.push({
-          sheetName: aggregateRange.sheetName,
-          row: aggregateRange.rowStart + offset,
-          col,
-          address: formatAddress(aggregateRange.rowStart + offset, col),
-        })
+      const selectedRowStart = criteriaOrientation === 'vertical' ? aggregateRange.rowStart + offset : aggregateRange.rowStart
+      const selectedRowEnd = criteriaOrientation === 'vertical' ? selectedRowStart : aggregateRange.rowEnd
+      const selectedColStart = criteriaOrientation === 'vertical' ? aggregateRange.colStart : aggregateRange.colStart + offset
+      const selectedColEnd = criteriaOrientation === 'vertical' ? aggregateRange.colEnd : selectedColStart
+      for (let row = selectedRowStart; row <= selectedRowEnd; row += 1) {
+        for (let col = selectedColStart; col <= selectedColEnd; col += 1) {
+          selectedCells.push({
+            sheetName: aggregateRange.sheetName,
+            row,
+            col,
+            address: formatAddress(row, col),
+          })
+        }
       }
     }
     if (!hadUnknownCriteriaCell) {
       return { aggregateRangeDependency, selectedCells }
     }
+  }
+
+  if (criteriaOrientation !== 'vertical') {
+    return undefined
   }
 
   const selectedRows = criteriaPairs.map((pair) =>
