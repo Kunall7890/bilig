@@ -157,6 +157,11 @@ For a runnable revenue-model walkthrough, see
 and
 [`examples/headless-workpaper/revenue-scenarios.mjs`](examples/headless-workpaper/revenue-scenarios.mjs).
 
+For the current Excel-compatibility boundaries, see
+[`docs/where-bilig-is-not-excel-compatible-yet.md`](docs/where-bilig-is-not-excel-compatible-yet.md).
+It names the macro, formula, XLSX corpus, and UI-claim gaps without treating
+the project as a complete Excel clone.
+
 For the researched public-growth plan toward `1000` legitimate GitHub stars,
 see [`docs/github-stars-growth-plan.md`](docs/github-stars-growth-plan.md).
 

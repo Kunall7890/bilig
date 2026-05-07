@@ -34,6 +34,7 @@ Verified on 2026-05-07:
   - `docs/persisting-formula-backed-workpaper-documents-in-node.md`
   - `docs/what-workpaper-benchmark-proves.md`
   - `docs/building-a-revenue-model-with-headless-workpaper.md`
+  - `docs/where-bilig-is-not-excel-compatible-yet.md`
   - `examples/headless-workpaper/revenue-scenarios.mjs`
   - `docs/starter-issues.md`
   - `docs/assets/github-social-preview.png`
@@ -289,13 +290,13 @@ audience, or product friction.
 
 ## Immediate Next Actions
 
-1. Post one lower-case X update for the revenue-model article and runnable
-   `revenue-scenarios.mjs` example.
+1. Post one lower-case X update for the compatibility-boundaries article.
 2. Manually reply to at most `2` high-fit X posts per day. Start with the idea;
    add a link only when it materially helps the thread.
 3. Respond to serious Hacker News and GitHub Discussion comments within the same
    day, then convert repeated feedback into docs or examples.
-4. Ship the next proof article: `Where bilig is not Excel-compatible yet`.
+4. Ship the next proof artifact: a small XLSX corpus walkthrough that shows how
+   skipped, matched, and mismatched cached formula results are reported.
 5. Track GitHub stars, npm downloads, GitHub traffic referrers, and issue
    quality every week.
 6. Add a Star History chart only after there is enough organic movement for the

@@ -89,6 +89,8 @@ Repository:
   [`docs/public-adoption-kit.md`](../../docs/public-adoption-kit.md)
 - revenue-model article:
   [`docs/building-a-revenue-model-with-headless-workpaper.md`](../../docs/building-a-revenue-model-with-headless-workpaper.md)
+- compatibility boundaries:
+  [`docs/where-bilig-is-not-excel-compatible-yet.md`](../../docs/where-bilig-is-not-excel-compatible-yet.md)
 
 Inside this monorepo:
 
