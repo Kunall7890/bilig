@@ -20,12 +20,11 @@ Verified on 2026-05-07:
 - GitHub open issues: `84`
 - Community profile: `100%`
 - Public package: `@bilig/headless`
-- GitHub repo description: headless spreadsheet engine for TypeScript, Node
-  services, local-first workbook automation, and agent-controlled formula
-  workflows
+- GitHub repo description: headless spreadsheet engine for agents and Node
+  services
 - Topics: `20`, including `spreadsheet`, `spreadsheet-engine`,
   `headless-spreadsheet`, `ai-agents`, `formula-engine`, `workbook`,
-  `typescript`, and `wasm`
+  `workbook-api`, `excel-automation`, `typescript`, and `wasm`
 - Public launch assets already present:
   - root `README.md`
   - `packages/headless/README.md`
