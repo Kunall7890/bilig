@@ -1,8 +1,9 @@
 import { applyBuiltin, registerTrackedArrayShape } from './builtins'
-import { ErrorCode, Opcode, ValueTag } from './protocol'
+import { BuiltinId, ErrorCode, Opcode, ValueTag } from './protocol'
 import { STACK_KIND_ARRAY, STACK_KIND_RANGE, STACK_KIND_SCALAR } from './result-io'
 import { scalarText as decodeScalarText } from './text-codec'
 import { parseNumericText } from './text-special'
+import { truncToInt } from './numeric-core'
 import {
   binaryNumeric,
   compareText,
@@ -643,6 +644,34 @@ function writeScalar(slot: i32, tag: u8, value: f64, blankReference: u8 = 0): vo
   blankReferenceStack[slot] = blankReference
 }
 
+function scalarEmptyBlankReferenceAt(slot: i32): u8 {
+  return kindStack[slot] == STACK_KIND_SCALAR && tagStack[slot] == ValueTag.Empty ? blankReferenceStack[slot] : 0
+}
+
+function passthroughBuiltinBlankReference(builtinId: i32, argc: i32, sp: i32): u8 {
+  const base = sp - argc
+  if (argc <= 0 || base < 0) {
+    return 0
+  }
+
+  if (builtinId == BuiltinId.Choose && argc >= 2) {
+    const choice = truncToInt(tagStack[base], valueStack[base])
+    return choice == i32.MIN_VALUE || choice < 1 || choice >= argc ? 0 : scalarEmptyBlankReferenceAt(base + choice)
+  }
+
+  if (builtinId == BuiltinId.Iferror && argc == 2) {
+    return tagStack[base] == ValueTag.Error ? scalarEmptyBlankReferenceAt(base + 1) : scalarEmptyBlankReferenceAt(base)
+  }
+
+  if (builtinId == BuiltinId.Ifna && argc == 2) {
+    return tagStack[base] == ValueTag.Error && <i32>valueStack[base] == ErrorCode.NA
+      ? scalarEmptyBlankReferenceAt(base + 1)
+      : scalarEmptyBlankReferenceAt(base)
+  }
+
+  return 0
+}
+
 function evalProgram(cellIndex: i32, formulaIndex: i32): void {
   let sp = 0
   const start = programOffsets[formulaIndex]
@@ -831,6 +860,7 @@ function evalProgram(cellIndex: i32, formulaIndex: i32): void {
     if (opcode == Opcode.CallBuiltin) {
       const builtinId = operand >>> 8
       const argc = operand & 0xff
+      const resultBlankReference = passthroughBuiltinBlankReference(builtinId, argc, sp)
       sp = applyBuiltin(
         builtinId,
         argc,
@@ -856,7 +886,7 @@ function evalProgram(cellIndex: i32, formulaIndex: i32): void {
         sp,
       )
       if (sp > 0) {
-        blankReferenceStack[sp - 1] = 0
+        blankReferenceStack[sp - 1] = resultBlankReference
       }
       continue
     }

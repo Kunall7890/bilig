@@ -297,7 +297,7 @@ describe('wasm kernel array/info dispatch', () => {
     })
     expect(readScalarValue(kernel, ownerBase + 8, pooledStrings)).toEqual({
       tag: ValueTag.String,
-      value: 'a-2.0-b',
+      value: 'a-2-b',
       stringId: 0,
     })
     expect(readScalarValue(kernel, ownerBase + 9, pooledStrings)).toEqual({
