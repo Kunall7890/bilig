@@ -274,12 +274,20 @@ function readResourceFileName(resource: Record<string, unknown>, downloadUrl: st
     return null
   }
   const pathName = parsedUrl.pathname.split('/').at(-1)
-  return pathName && pathName.trim().length > 0 ? decodeURIComponent(pathName) : null
+  return pathName && pathName.trim().length > 0 ? decodeUriComponentOrNull(pathName) : null
 }
 
 function parseUrlOrNull(value: string): URL | null {
   try {
     return new URL(value)
+  } catch {
+    return null
+  }
+}
+
+function decodeUriComponentOrNull(value: string): string | null {
+  try {
+    return decodeURIComponent(value)
   } catch {
     return null
   }

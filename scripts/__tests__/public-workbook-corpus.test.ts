@@ -721,6 +721,52 @@ describe('public workbook corpus', () => {
     })
   })
 
+  it('skips CKAN resource URLs with malformed percent-encoded filenames', async () => {
+    const fetchMock = vi.fn(async () =>
+      Response.json({
+        result: {
+          results: [
+            {
+              id: 'dataset-malformed-filename',
+              name: 'dataset-malformed-filename',
+              license_id: 'CC-BY-4.0',
+              license_title: 'Creative Commons Attribution 4.0 International',
+              license_url: 'https://creativecommons.org/licenses/by/4.0/',
+              resources: [
+                {
+                  id: 'bad-filename',
+                  name: '',
+                  url: 'https://example.com/public-workbooks/bad%EA.xlsx',
+                },
+                {
+                  id: 'good-filename',
+                  name: '',
+                  url: 'https://example.com/public-workbooks/good.xlsx',
+                },
+              ],
+            },
+          ],
+        },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const manifest = await discoverCkanWorkbookSources({
+      manifest: createEmptyPublicWorkbookManifest('2026-05-07T00:00:00.000Z'),
+      portalBases: ['https://example-ckan.test/api/3/action'],
+      query: 'finance',
+      limit: 10,
+      rowsPerRequest: 10,
+      discoveredAt: '2026-05-07T01:00:00.000Z',
+    })
+
+    expect(manifest.sources.map((source) => source.resourceId)).toEqual(['good-filename'])
+    expect(manifest.sources[0]).toMatchObject({
+      downloadUrl: 'https://example.com/public-workbooks/good.xlsx',
+      fileName: 'good.xlsx',
+    })
+  })
+
   it('resolves relative CKAN resource URLs during workbook discovery', async () => {
     const fetchMock = vi.fn(async () =>
       Response.json({
