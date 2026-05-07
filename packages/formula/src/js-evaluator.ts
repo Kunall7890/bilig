@@ -191,6 +191,23 @@ function coerceDirectNumericTextAggregateArgument(callee: string, value: CellVal
   return numeric === undefined ? error(ErrorCode.Value) : numberValue(numeric)
 }
 
+function evaluateUnary(operator: Extract<JsPlanInstruction, { opcode: 'unary' }>['operator'], value: StackValue): StackValue {
+  const coerce = (cellValue: CellValue): CellValue => {
+    const numeric = toArithmeticNumber(cellValue)
+    return numeric === undefined ? error(ErrorCode.Value) : numberValue(operator === '-' ? -numeric : numeric)
+  }
+
+  if (value.kind === 'scalar') {
+    return stackScalar(coerce(value.value))
+  }
+  if (value.kind === 'omitted' || value.kind === 'lambda') {
+    return stackScalar(error(ErrorCode.Value))
+  }
+
+  const range = toRangeLike(value)
+  return makeArrayStack(range.rows, range.cols, range.values.map(coerce))
+}
+
 function executePlan(
   plan: readonly JsPlanInstruction[],
   context: EvaluationContext,
@@ -412,15 +429,7 @@ function executePlan(
         })
         break
       case 'unary': {
-        const value = popScalar(stack)
-        const numeric = toArithmeticNumber(value)
-        stack.push({
-          kind: 'scalar',
-          value:
-            numeric === undefined
-              ? error(ErrorCode.Value)
-              : { tag: ValueTag.Number, value: instruction.operator === '-' ? -numeric : numeric },
-        })
+        stack.push(evaluateUnary(instruction.operator, popArgument(stack)))
         break
       }
       case 'binary': {

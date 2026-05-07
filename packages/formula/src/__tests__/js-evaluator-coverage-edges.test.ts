@@ -50,6 +50,17 @@ describe('js evaluator coverage edges', () => {
         context,
       ),
     ).toEqual(num(2))
+    expect(
+      evaluatePlanResult(
+        [{ opcode: 'push-range', start: 'A1', end: 'A2', refKind: 'cells' }, { opcode: 'unary', operator: '-' }, { opcode: 'return' }],
+        context,
+      ),
+    ).toEqual({
+      kind: 'array',
+      rows: 2,
+      cols: 1,
+      values: [num(-2), num(-3)],
+    })
 
     expect(
       evaluatePlanResult(

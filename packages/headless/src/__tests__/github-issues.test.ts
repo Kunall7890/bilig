@@ -150,6 +150,30 @@ describe('GitHub issue reductions', () => {
     expect(workbook.getCellFormula({ sheet: localId, row: 0, col: 2 })).toBe('=LocalBonus*LocalRevenue')
   })
 
+  it('coerces double-unary range comparisons inside SUMPRODUCT', () => {
+    const workbook = WorkPaper.buildFromSheets(
+      {
+        Sheet1: [
+          [10, 20, 30, 40, 50, 60],
+          ['Series A', 'Series B', 'Series A', 'Series C', 'Series A', 'Series B'],
+          [1, 0, 1, 0, 1, 0],
+          [
+            '=SUMPRODUCT($A$1:$F$1,--($A$2:$F$2="Series A"))',
+            '=SUMPRODUCT(--($A$2:$F$2="Series A"))',
+            '=SUMPRODUCT($A$1:$F$1,($A$2:$F$2="Series A")*1)',
+            '=SUMPRODUCT($A$1:$F$1,$A$3:$F$3)',
+          ],
+        ],
+      },
+      { maxRows: 20, maxColumns: 8, useColumnIndex: true },
+    )
+
+    expectNumber(cellValue(workbook, 'Sheet1', 3, 0), 90)
+    expectNumber(cellValue(workbook, 'Sheet1', 3, 1), 3)
+    expectNumber(cellValue(workbook, 'Sheet1', 3, 2), 90)
+    expectNumber(cellValue(workbook, 'Sheet1', 3, 3), 90)
+  })
+
   it('resolves row-offset INDEX and MATCH lookups during initial load', () => {
     const comparison = Array.from({ length: 14 }, () => [null, null, null, null, null] as TestCell[])
     comparison[13][2] = 'txn-123'
