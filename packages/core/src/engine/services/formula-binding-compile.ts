@@ -26,7 +26,7 @@ export function compileFormulaBindingForCell(args: {
   }
 
   const resolved = resolveMetadataReferencesInAst(compiled.ast, {
-    resolveName: (name) => args.serviceArgs.state.workbook.getDefinedName(name)?.value,
+    resolveName: (name) => args.serviceArgs.state.workbook.getDefinedName(name, args.currentSheetName)?.value,
     resolveStructuredReference: (tableName, columnName) => args.serviceArgs.resolveStructuredReference(tableName, columnName),
     resolveSpillReference: (sheetName, address) => args.serviceArgs.resolveSpillReference(args.currentSheetName, sheetName, address),
   })

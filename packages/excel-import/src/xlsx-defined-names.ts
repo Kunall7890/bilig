@@ -209,6 +209,14 @@ function parseImportedDefinedNameValue(
   return { kind: 'formula', formula: trimmed.startsWith('=') ? trimmed : `=${trimmed}` }
 }
 
+function importedDefinedNameKey(name: string, scopeSheetName: string | undefined): string {
+  return `${scopeSheetName ?? '<workbook>'}\u0000${name.toUpperCase()}`
+}
+
+function compareImportedDefinedNames(left: WorkbookDefinedNameSnapshot, right: WorkbookDefinedNameSnapshot): number {
+  return left.name.localeCompare(right.name) || (left.scopeSheetName ?? '').localeCompare(right.scopeSheetName ?? '')
+}
+
 export function readImportedDefinedNames(workbook: XLSX.WorkBook): {
   definedNames: WorkbookDefinedNameSnapshot[] | undefined
   ignoredCount: number
@@ -218,13 +226,14 @@ export function readImportedDefinedNames(workbook: XLSX.WorkBook): {
     return { definedNames: undefined, ignoredCount: 0 }
   }
 
-  const definedNamesByNormalizedName = new Map<string, WorkbookDefinedNameSnapshot>()
+  const definedNamesByKey = new Map<string, WorkbookDefinedNameSnapshot>()
   const sheetBoundsByName = readImportedSheetBounds(workbook)
   let ignoredCount = 0
   for (const entry of entries) {
     const name = typeof entry.Name === 'string' ? entry.Name.trim() : ''
     const ref = typeof entry.Ref === 'string' ? entry.Ref.trim() : ''
-    if (name.length === 0 || ref.length === 0 || typeof entry.Sheet === 'number') {
+    const scopeSheetName = typeof entry.Sheet === 'number' ? workbook.SheetNames[entry.Sheet] : undefined
+    if (name.length === 0 || ref.length === 0 || (typeof entry.Sheet === 'number' && scopeSheetName === undefined)) {
       ignoredCount += 1
       continue
     }
@@ -233,10 +242,14 @@ export function readImportedDefinedNames(workbook: XLSX.WorkBook): {
       ignoredCount += 1
       continue
     }
-    definedNamesByNormalizedName.set(name.toUpperCase(), { name, value })
+    definedNamesByKey.set(importedDefinedNameKey(name, scopeSheetName), {
+      name,
+      ...(scopeSheetName !== undefined ? { scopeSheetName } : {}),
+      value,
+    })
   }
 
-  const definedNames = [...definedNamesByNormalizedName.values()].toSorted((left, right) => left.name.localeCompare(right.name))
+  const definedNames = [...definedNamesByKey.values()].toSorted(compareImportedDefinedNames)
   return {
     definedNames: definedNames.length > 0 ? definedNames : undefined,
     ignoredCount,
@@ -303,6 +316,7 @@ function formatExportDefinedNameValue(
 export function buildExportDefinedNames(
   definedNames: readonly WorkbookDefinedNameSnapshot[] | undefined,
   exportSheetNamesByOriginalName: ReadonlyMap<string, string>,
+  exportSheetIndexesByOriginalName: ReadonlyMap<string, number>,
 ): XLSX.DefinedName[] | undefined {
   if (!definedNames || definedNames.length === 0) {
     return undefined
@@ -315,7 +329,11 @@ export function buildExportDefinedNames(
     }
     const ref = formatExportDefinedNameValue(definedName.value, exportSheetNamesByOriginalName)
     if (ref && ref.length > 0) {
-      output.push({ Name: name, Ref: ref })
+      const scopeSheetIndex = definedName.scopeSheetName ? exportSheetIndexesByOriginalName.get(definedName.scopeSheetName) : undefined
+      if (definedName.scopeSheetName && scopeSheetIndex === undefined) {
+        continue
+      }
+      output.push({ Name: name, Ref: ref, ...(scopeSheetIndex !== undefined ? { Sheet: scopeSheetIndex } : {}) })
     }
   }
   return output.length > 0 ? output : undefined

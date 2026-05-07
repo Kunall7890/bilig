@@ -24,7 +24,7 @@ export function rewriteDefinedNamesForStructuralTransform(
         return
       }
       if (`=${nextFormula}` !== record.value) {
-        args.state.workbook.setDefinedName(record.name, `=${nextFormula}`)
+        args.state.workbook.setDefinedName(record.name, `=${nextFormula}`, record.scopeSheetName)
       }
       return
     }
@@ -46,7 +46,7 @@ export function rewriteDefinedNamesForStructuralTransform(
           formula: record.value.formula.startsWith('=') ? `=${nextFormula}` : nextFormula,
         }
         if (nextValue.formula !== record.value.formula) {
-          args.state.workbook.setDefinedName(record.name, nextValue)
+          args.state.workbook.setDefinedName(record.name, nextValue, record.scopeSheetName)
           changedNames.add(normalizeDefinedName(record.name))
         }
         return
@@ -57,15 +57,19 @@ export function rewriteDefinedNamesForStructuralTransform(
         }
         const nextAddress = rewriteAddressForStructuralTransform(record.value.address, transform)
         if (!nextAddress) {
-          args.state.workbook.deleteDefinedName(record.name)
+          args.state.workbook.deleteDefinedName(record.name, record.scopeSheetName)
           changedNames.add(normalizeDefinedName(record.name))
           return
         }
         if (nextAddress !== record.value.address) {
-          args.state.workbook.setDefinedName(record.name, {
-            ...record.value,
-            address: nextAddress,
-          })
+          args.state.workbook.setDefinedName(
+            record.name,
+            {
+              ...record.value,
+              address: nextAddress,
+            },
+            record.scopeSheetName,
+          )
           changedNames.add(normalizeDefinedName(record.name))
         }
         return
@@ -76,16 +80,20 @@ export function rewriteDefinedNamesForStructuralTransform(
         }
         const nextRange = rewriteRangeForStructuralTransform(record.value.startAddress, record.value.endAddress, transform)
         if (!nextRange) {
-          args.state.workbook.deleteDefinedName(record.name)
+          args.state.workbook.deleteDefinedName(record.name, record.scopeSheetName)
           changedNames.add(normalizeDefinedName(record.name))
           return
         }
         if (nextRange.startAddress !== record.value.startAddress || nextRange.endAddress !== record.value.endAddress) {
-          args.state.workbook.setDefinedName(record.name, {
-            ...record.value,
-            startAddress: nextRange.startAddress,
-            endAddress: nextRange.endAddress,
-          })
+          args.state.workbook.setDefinedName(
+            record.name,
+            {
+              ...record.value,
+              startAddress: nextRange.startAddress,
+              endAddress: nextRange.endAddress,
+            },
+            record.scopeSheetName,
+          )
           changedNames.add(normalizeDefinedName(record.name))
         }
         return

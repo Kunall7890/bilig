@@ -74,7 +74,7 @@ export function createEngineMaintenanceService(args: {
     args.state.workbook.listDefinedNames().forEach((record) => {
       const nextValue = renameDefinedNameValueSheet(record.value, oldSheetName, newSheetName)
       if (!definedNameValuesEqual(record.value, nextValue)) {
-        args.state.workbook.setDefinedName(record.name, nextValue)
+        args.state.workbook.setDefinedName(record.name, nextValue, record.scopeSheetName)
       }
     })
   }

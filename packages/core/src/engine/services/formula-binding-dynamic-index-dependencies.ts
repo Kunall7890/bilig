@@ -285,7 +285,7 @@ function evaluateScalar(args: {
     case 'CellRef':
       return readCellValue({ ...args, node })
     case 'NameRef': {
-      const definedName = args.workbook.getDefinedName(node.name)
+      const definedName = args.workbook.getDefinedName(node.name, args.ownerSheetName)
       if (!definedName) {
         return undefined
       }

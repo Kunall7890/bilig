@@ -18,6 +18,7 @@ import {
   type WorkbookImageRecord,
   type WorkbookMacroPayloadRecord,
   type WorkbookMergeRangeRecord,
+  definedNameKey,
   normalizeWorkbookObjectName,
   type WorkbookNoteRecord,
   type WorkbookRangeProtectionRecord,
@@ -40,6 +41,7 @@ import { cloneMergeRangeRecord, mergeRangeKey } from './workbook-merge-records.j
 export function cloneDefinedNameRecord(record: WorkbookDefinedNameRecord): WorkbookDefinedNameRecord {
   return {
     name: record.name,
+    ...(record.scopeSheetName !== undefined ? { scopeSheetName: record.scopeSheetName } : {}),
     value: cloneDefinedNameValue(record.value),
   }
 }
@@ -448,7 +450,7 @@ export function spillKey(sheetName: string, address: string): string {
   return `${sheetName}!${canonicalWorkbookAddress(sheetName, address)}`
 }
 
-export function deleteRecordsBySheet<T>(bucket: Map<string, T>, sheetName: string, readSheetName: (record: T) => string): void {
+export function deleteRecordsBySheet<T>(bucket: Map<string, T>, sheetName: string, readSheetName: (record: T) => string | undefined): void {
   for (const [key, record] of bucket.entries()) {
     if (readSheetName(record) === sheetName) {
       bucket.delete(key)
@@ -500,6 +502,9 @@ function recordKey(record: unknown): string {
   }
   if (isNoteRecord(record)) {
     return noteKey(record.sheetName, record.address)
+  }
+  if (isDefinedNameRecord(record)) {
+    return definedNameKey(record.name, record.scopeSheetName)
   }
   if (isTableRecord(record)) {
     return tableKey(record.name)
@@ -555,6 +560,10 @@ function isAxisMetadataRecord(record: unknown): record is WorkbookAxisMetadataRe
 
 function isFilterRecord(record: unknown): record is WorkbookFilterRecord {
   return typeof record === 'object' && record !== null && 'sheetName' in record && 'range' in record && !('keys' in record)
+}
+
+function isDefinedNameRecord(record: unknown): record is WorkbookDefinedNameRecord {
+  return typeof record === 'object' && record !== null && 'name' in record && 'value' in record && !('sheetName' in record)
 }
 
 function isSheetProtectionRecord(record: unknown): record is WorkbookSheetProtectionRecord {

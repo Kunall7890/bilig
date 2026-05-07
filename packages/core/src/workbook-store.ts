@@ -427,16 +427,16 @@ export class WorkbookStore {
     return runWorkbookMetadataEffect(this.metadataService.getVolatileContext())
   }
 
-  setDefinedName(name: string, value: WorkbookDefinedNameValueSnapshot): WorkbookDefinedNameRecord {
-    return runWorkbookMetadataEffect(this.metadataService.setDefinedName(name, value))
+  setDefinedName(name: string, value: WorkbookDefinedNameValueSnapshot, scopeSheetName?: string): WorkbookDefinedNameRecord {
+    return runWorkbookMetadataEffect(this.metadataService.setDefinedName(name, value, scopeSheetName))
   }
 
-  getDefinedName(name: string): WorkbookDefinedNameRecord | undefined {
-    return runWorkbookMetadataEffect(this.metadataService.getDefinedName(name))
+  getDefinedName(name: string, scopeSheetName?: string): WorkbookDefinedNameRecord | undefined {
+    return runWorkbookMetadataEffect(this.metadataService.getDefinedName(name, scopeSheetName))
   }
 
-  deleteDefinedName(name: string): boolean {
-    return runWorkbookMetadataEffect(this.metadataService.deleteDefinedName(name))
+  deleteDefinedName(name: string, scopeSheetName?: string): boolean {
+    return runWorkbookMetadataEffect(this.metadataService.deleteDefinedName(name, scopeSheetName))
   }
 
   listDefinedNames(): WorkbookDefinedNameRecord[] {

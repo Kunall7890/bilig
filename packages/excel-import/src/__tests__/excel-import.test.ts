@@ -271,6 +271,32 @@ describe('excel import', () => {
     expect(roundTripped.snapshot.workbook.metadata?.definedNames).toEqual(imported.snapshot.workbook.metadata?.definedNames)
   })
 
+  it('preserves sheet-scoped defined names across import and export round trips', () => {
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([[100]]), 'Global')
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([[7, 10, { f: 'LocalBonus*LocalRevenue', v: 70 }]]), 'Local')
+    workbook.Workbook = {
+      Names: [
+        { Name: 'LocalBonus', Ref: 'Global!$A$1' },
+        { Name: 'LocalBonus', Sheet: 1, Ref: 'Local!$A$1' },
+        { Name: 'LocalRevenue', Sheet: 1, Ref: 'Local!$B$1' },
+      ],
+    }
+
+    const imported = importXlsx(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }), 'scoped-defined-names.xlsx')
+
+    expect(imported.warnings).toEqual([])
+    expect(imported.snapshot.workbook.metadata?.definedNames).toEqual([
+      { name: 'LocalBonus', value: { kind: 'cell-ref', sheetName: 'Global', address: 'A1' } },
+      { name: 'LocalBonus', scopeSheetName: 'Local', value: { kind: 'cell-ref', sheetName: 'Local', address: 'A1' } },
+      { name: 'LocalRevenue', scopeSheetName: 'Local', value: { kind: 'cell-ref', sheetName: 'Local', address: 'B1' } },
+    ])
+
+    const roundTripped = importXlsx(exportXlsx(imported.snapshot), 'scoped-defined-names-roundtrip.xlsx')
+    expect(roundTripped.warnings).toEqual([])
+    expect(roundTripped.snapshot.workbook.metadata?.definedNames).toEqual(imported.snapshot.workbook.metadata?.definedNames)
+  })
+
   it('preserves formula-only cells across export round trips', () => {
     const snapshot: WorkbookSnapshot = {
       version: 1,

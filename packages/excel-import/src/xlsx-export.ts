@@ -821,6 +821,7 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
   const workbook = useLargeSimpleFastPath ? XLSX.utils.book_new() : XLSXStyleRuntime.utils.book_new()
   const usedNames = new Set<string>()
   const exportSheetNamesByOriginalName = new Map<string, string>()
+  const exportSheetIndexesByOriginalName = new Map<string, number>()
   const formatCodesById = new Map((snapshot.workbook.metadata?.formats ?? []).map((format) => [format.id, format.code]))
   const exportSheetFormats = snapshot.sheets
     .toSorted((left, right) => left.order - right.order)
@@ -858,6 +859,7 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
 
     const exportSheetName = normalizeExportSheetName(sheet.name, sheet.order, usedNames)
     exportSheetNamesByOriginalName.set(sheet.name, exportSheetName)
+    exportSheetIndexesByOriginalName.set(sheet.name, exportSheetIndexesByOriginalName.size)
     if (useLargeSimpleFastPath) {
       XLSX.utils.book_append_sheet(workbook, worksheet, exportSheetName)
     } else {
@@ -865,7 +867,11 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
     }
   }
 
-  const definedNames = buildExportDefinedNames(snapshot.workbook.metadata?.definedNames, exportSheetNamesByOriginalName)
+  const definedNames = buildExportDefinedNames(
+    snapshot.workbook.metadata?.definedNames,
+    exportSheetNamesByOriginalName,
+    exportSheetIndexesByOriginalName,
+  )
   if (definedNames) {
     workbook.Workbook = {
       ...workbook.Workbook,

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
+import { ErrorCode, ValueTag, type CellValue, type WorkbookSnapshot } from '@bilig/protocol'
 
 import { WorkPaper } from '../index.js'
 
@@ -108,6 +108,46 @@ describe('GitHub issue reductions', () => {
     )
 
     expectNumber(cellValue(workbook, 'PDF Extract', 248, 5), 70)
+  })
+
+  it('resolves sheet-scoped defined names from imported snapshots before broken globals', () => {
+    const snapshot: WorkbookSnapshot = {
+      version: 1,
+      workbook: {
+        name: 'sheet-scoped-defined-names',
+        metadata: {
+          definedNames: [
+            { name: 'LocalBonus', scopeSheetName: 'Local', value: { kind: 'cell-ref', sheetName: 'Local', address: 'A1' } },
+            { name: 'LocalRevenue', scopeSheetName: 'Local', value: { kind: 'cell-ref', sheetName: 'Local', address: 'B1' } },
+            { name: 'LocalBonus', value: { kind: 'formula', formula: '=#REF!' } },
+          ],
+        },
+      },
+      sheets: [
+        {
+          id: 1,
+          name: 'Global',
+          order: 0,
+          cells: [{ address: 'A1', value: 100 }],
+        },
+        {
+          id: 2,
+          name: 'Local',
+          order: 1,
+          cells: [
+            { address: 'A1', value: 7 },
+            { address: 'B1', value: 10 },
+            { address: 'C1', formula: 'LocalBonus*LocalRevenue' },
+          ],
+        },
+      ],
+    }
+
+    const workbook = WorkPaper.buildFromSnapshot(snapshot, { maxRows: 20, maxColumns: 8, useColumnIndex: true })
+    const localId = workbook.getSheetId('Local')!
+
+    expectNumber(cellValue(workbook, 'Local', 0, 2), 70)
+    expect(workbook.getCellFormula({ sheet: localId, row: 0, col: 2 })).toBe('=LocalBonus*LocalRevenue')
   })
 
   it('resolves row-offset INDEX and MATCH lookups during initial load', () => {

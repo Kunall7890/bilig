@@ -345,7 +345,7 @@ function restoreWorkbookMetadata(args: {
     | {
         properties?: Array<{ key: string; value: LiteralInput }>
         macroPayloads?: WorkbookMacroPayloadSnapshot[]
-        definedNames?: Array<{ name: string; value: WorkbookDefinedNameValueSnapshot }>
+        definedNames?: Array<{ name: string; scopeSheetName?: string; value: WorkbookDefinedNameValueSnapshot }>
         calculationSettings?: WorkbookCalculationSettingsSnapshot
         volatileContext?: WorkbookVolatileContextSnapshot
         tables?: readonly Parameters<WorkbookStore['setTable']>[0][]
@@ -447,7 +447,7 @@ function restoreMetadataStructures(args: {
   readonly workbook: WorkbookStore
   readonly workbookMetadata:
     | {
-        definedNames?: Array<{ name: string; value: WorkbookDefinedNameValueSnapshot }>
+        definedNames?: Array<{ name: string; scopeSheetName?: string; value: WorkbookDefinedNameValueSnapshot }>
         tables?: readonly Parameters<WorkbookStore['setTable']>[0][]
         spills?: Array<{ sheetName: string; address: string; rows: number; cols: number }>
         pivots?: WorkbookPivotSnapshot[]
@@ -460,8 +460,8 @@ function restoreMetadataStructures(args: {
   args.workbookMetadata?.tables?.forEach((table) => {
     args.workbook.setTable(structuredClone(table))
   })
-  args.workbookMetadata?.definedNames?.forEach(({ name, value }) => {
-    args.workbook.setDefinedName(name, structuredClone(value))
+  args.workbookMetadata?.definedNames?.forEach(({ name, scopeSheetName, value }) => {
+    args.workbook.setDefinedName(name, structuredClone(value), scopeSheetName)
   })
   args.workbookMetadata?.spills?.forEach((spill) => {
     args.workbook.setSpill(spill.sheetName, spill.address, spill.rows, spill.cols)

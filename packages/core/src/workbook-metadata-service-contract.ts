@@ -77,9 +77,13 @@ export interface WorkbookMetadataService {
   readonly setDefinedName: (
     name: string,
     value: WorkbookDefinedNameValueSnapshot,
+    scopeSheetName?: string,
   ) => Effect.Effect<WorkbookDefinedNameRecord, WorkbookMetadataError>
-  readonly getDefinedName: (name: string) => Effect.Effect<WorkbookDefinedNameRecord | undefined, WorkbookMetadataError>
-  readonly deleteDefinedName: (name: string) => Effect.Effect<boolean, WorkbookMetadataError>
+  readonly getDefinedName: (
+    name: string,
+    scopeSheetName?: string,
+  ) => Effect.Effect<WorkbookDefinedNameRecord | undefined, WorkbookMetadataError>
+  readonly deleteDefinedName: (name: string, scopeSheetName?: string) => Effect.Effect<boolean, WorkbookMetadataError>
   readonly listDefinedNames: () => Effect.Effect<WorkbookDefinedNameRecord[], WorkbookMetadataError>
   readonly setTable: (record: WorkbookTableSnapshot) => Effect.Effect<WorkbookTableRecord, WorkbookMetadataError>
   readonly getTable: (name: string) => Effect.Effect<WorkbookTableRecord | undefined, WorkbookMetadataError>

@@ -43,7 +43,9 @@ import {
   type WorkbookChartRecord,
   type WorkbookCommentThreadRecord,
   type WorkbookConditionalFormatRecord,
-  normalizeDefinedName,
+  compareDefinedNameRecords,
+  definedNameKey,
+  normalizeDefinedNameScope,
   type WorkbookImageRecord,
   type WorkbookMacroPayloadRecord,
   type WorkbookMergeRangeRecord,
@@ -256,9 +258,15 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
     rekeyRecords(metadata.shapes, (record) =>
       record.sheetName === oldSheetName ? { ...cloneShapeRecord(record), sheetName: newSheetName } : cloneShapeRecord(record),
     )
+    rekeyRecords(metadata.definedNames, (record) =>
+      record.scopeSheetName === oldSheetName
+        ? { ...cloneDefinedNameRecord(record), scopeSheetName: newSheetName }
+        : cloneDefinedNameRecord(record),
+    )
   }
 
   const deleteSheetRecordsNow = (sheetName: string): void => {
+    deleteRecordsBySheet(metadata.definedNames, sheetName, (record) => record.scopeSheetName)
     deleteRecordsBySheet(metadata.tables, sheetName, (record) => record.sheetName)
     deleteRecordsBySheet(metadata.spills, sheetName, (record) => record.sheetName)
     deleteRecordsBySheet(metadata.pivots, sheetName, (record) => record.sheetName)
@@ -378,31 +386,32 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
     getVolatileContext() {
       return metadataEffect('Failed to get volatile context', () => ({ ...metadata.volatileContext }))
     },
-    setDefinedName(name, value) {
+    setDefinedName(name, value, scopeSheetName) {
       return metadataEffect('Failed to set defined name', () => {
         const trimmedName = name.trim()
+        const normalizedScope = normalizeDefinedNameScope(scopeSheetName)
         const record: WorkbookDefinedNameRecord = {
           name: trimmedName,
+          ...(normalizedScope !== undefined ? { scopeSheetName: normalizedScope } : {}),
           value: cloneDefinedNameValue(value),
         }
-        metadata.definedNames.set(normalizeDefinedName(trimmedName), record)
+        metadata.definedNames.set(definedNameKey(trimmedName, normalizedScope), record)
         return cloneDefinedNameRecord(record)
       })
     },
-    getDefinedName(name) {
+    getDefinedName(name, scopeSheetName) {
       return metadataEffect('Failed to get defined name', () => {
-        const record = metadata.definedNames.get(normalizeDefinedName(name))
+        const scopedKey = definedNameKey(name, scopeSheetName)
+        const record = metadata.definedNames.get(scopedKey) ?? metadata.definedNames.get(definedNameKey(name))
         return record ? cloneDefinedNameRecord(record) : undefined
       })
     },
-    deleteDefinedName(name) {
-      return metadataEffect('Failed to delete defined name', () => metadata.definedNames.delete(normalizeDefinedName(name)))
+    deleteDefinedName(name, scopeSheetName) {
+      return metadataEffect('Failed to delete defined name', () => metadata.definedNames.delete(definedNameKey(name, scopeSheetName)))
     },
     listDefinedNames() {
       return metadataEffect('Failed to list defined names', () =>
-        [...metadata.definedNames.values()]
-          .toSorted((left, right) => normalizeDefinedName(left.name).localeCompare(normalizeDefinedName(right.name)))
-          .map(cloneDefinedNameRecord),
+        [...metadata.definedNames.values()].toSorted(compareDefinedNameRecords).map(cloneDefinedNameRecord),
       )
     },
     setTable(record) {

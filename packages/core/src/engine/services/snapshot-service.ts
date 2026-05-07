@@ -48,7 +48,13 @@ export function createEngineSnapshotService(args: {
           }
           const properties = args.state.workbook.listWorkbookProperties().map(({ key, value }) => ({ key, value }))
           const macroPayloads = args.state.workbook.listMacroPayloads().map((payload) => Object.assign({}, payload))
-          const definedNames = args.state.workbook.listDefinedNames().map(({ name, value }) => ({ name, value }))
+          const definedNames = args.state.workbook.listDefinedNames().map(({ name, scopeSheetName, value }) => {
+            const snapshot: { name: string; scopeSheetName?: string; value: typeof value } = { name, value }
+            if (scopeSheetName !== undefined) {
+              snapshot.scopeSheetName = scopeSheetName
+            }
+            return snapshot
+          })
           const calculationSettings = args.state.workbook.getCalculationSettings()
           const volatileContext = args.state.workbook.getVolatileContext()
           const tables = args.state.workbook.listTables().map((table) => ({

@@ -147,6 +147,7 @@ export interface Viewport {
 
 export interface WorkbookDefinedNameSnapshot {
   name: string
+  scopeSheetName?: string
   value: WorkbookDefinedNameValueSnapshot
 }
 

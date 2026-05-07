@@ -27,6 +27,7 @@ import { canonicalWorkbookAddress } from './workbook-range-records.js'
 
 export interface WorkbookDefinedNameRecord {
   name: string
+  scopeSheetName?: string
   value: WorkbookDefinedNameValueSnapshot
 }
 
@@ -178,6 +179,22 @@ export function createWorkbookMetadataRecord(): WorkbookMetadataRecord {
 
 export function normalizeDefinedName(name: string): string {
   return normalizeWorkbookObjectName(name, 'Defined names')
+}
+
+export function normalizeDefinedNameScope(scopeSheetName: string | undefined): string | undefined {
+  const scope = scopeSheetName?.trim()
+  return scope && scope.length > 0 ? scope : undefined
+}
+
+export function definedNameKey(name: string, scopeSheetName?: string): string {
+  return `${normalizeDefinedNameScope(scopeSheetName) ?? '<workbook>'}\u0000${normalizeDefinedName(name)}`
+}
+
+export function compareDefinedNameRecords(left: WorkbookDefinedNameRecord, right: WorkbookDefinedNameRecord): number {
+  return (
+    normalizeDefinedName(left.name).localeCompare(normalizeDefinedName(right.name)) ||
+    (left.scopeSheetName ?? '').localeCompare(right.scopeSheetName ?? '')
+  )
 }
 
 export function normalizeWorkbookObjectName(name: string, label = 'Workbook object'): string {

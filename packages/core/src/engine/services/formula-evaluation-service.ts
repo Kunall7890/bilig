@@ -585,7 +585,7 @@ export function createEngineFormulaEvaluationService(args: {
         evaluateCellWithReferenceReplacements(targetSheetName, targetAddress, replacements, visiting),
       resolveRange: (targetSheetName, start, end, refKind) => readRangeValues(targetSheetName, start, end, refKind, replacements, visiting),
       resolveName: (name: string) => {
-        const definedName = args.state.workbook.getDefinedName(name)
+        const definedName = args.state.workbook.getDefinedName(name, sheetName)
         if (!definedName) {
           return errorValue(ErrorCode.Name)
         }
@@ -751,7 +751,7 @@ export function createEngineFormulaEvaluationService(args: {
       resolveRange: (targetSheetName: string, start: string, end: string, refKind: 'cells' | 'rows' | 'cols') =>
         readRangeValues(targetSheetName, start, end, refKind),
       resolveName: (name: string) => {
-        const definedName = args.state.workbook.getDefinedName(name)
+        const definedName = args.state.workbook.getDefinedName(name, sheetName)
         if (!definedName) {
           return errorValue(ErrorCode.Name)
         }

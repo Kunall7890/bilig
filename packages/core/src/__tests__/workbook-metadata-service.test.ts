@@ -139,6 +139,42 @@ describe('WorkbookMetadataService', () => {
     ])
   })
 
+  it('stores workbook and sheet-scoped defined names independently', () => {
+    const metadata = createWorkbookMetadataRecord()
+    const service = createWorkbookMetadataService(metadata)
+
+    Effect.runSync(service.setDefinedName(' Rate ', { kind: 'scalar', value: 1 }))
+    Effect.runSync(service.setDefinedName('Rate', { kind: 'scalar', value: 2 }, 'Detail'))
+    Effect.runSync(service.setDefinedName('LocalOnly', { kind: 'scalar', value: 3 }, 'Detail'))
+
+    expect(Effect.runSync(service.getDefinedName('rate'))).toEqual({
+      name: 'Rate',
+      value: { kind: 'scalar', value: 1 },
+    })
+    expect(Effect.runSync(service.getDefinedName('rate', 'Detail'))).toEqual({
+      name: 'Rate',
+      scopeSheetName: 'Detail',
+      value: { kind: 'scalar', value: 2 },
+    })
+    expect(Effect.runSync(service.getDefinedName('LocalOnly', 'Summary'))).toBeUndefined()
+    expect(Effect.runSync(service.listDefinedNames())).toEqual([
+      { name: 'LocalOnly', scopeSheetName: 'Detail', value: { kind: 'scalar', value: 3 } },
+      { name: 'Rate', value: { kind: 'scalar', value: 1 } },
+      { name: 'Rate', scopeSheetName: 'Detail', value: { kind: 'scalar', value: 2 } },
+    ])
+
+    Effect.runSync(service.renameSheet('Detail', 'Renamed'))
+    expect(Effect.runSync(service.getDefinedName('Rate', 'Renamed'))).toEqual({
+      name: 'Rate',
+      scopeSheetName: 'Renamed',
+      value: { kind: 'scalar', value: 2 },
+    })
+
+    Effect.runSync(service.deleteSheetRecords('Renamed'))
+    expect(Effect.runSync(service.listDefinedNames())).toEqual([{ name: 'Rate', value: { kind: 'scalar', value: 1 } }])
+    expect([...metadata.definedNames.keys()]).toEqual(['<workbook>\u0000RATE'])
+  })
+
   it('clones and normalizes data validation records on write and read', () => {
     const service = createService()
     const input = {

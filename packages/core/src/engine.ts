@@ -341,8 +341,8 @@ export class SpreadsheetEngine extends SpreadsheetEngineRuntimeBase {
     return true
   }
 
-  getDefinedName(name: string): WorkbookDefinedNameRecord | undefined {
-    return this.workbook.getDefinedName(name)
+  getDefinedName(name: string, scopeSheetName?: string): WorkbookDefinedNameRecord | undefined {
+    return this.workbook.getDefinedName(name, scopeSheetName)
   }
 
   getDefinedNames(): WorkbookDefinedNameRecord[] {
