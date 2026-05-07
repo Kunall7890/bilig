@@ -18,6 +18,7 @@ const workbook = WorkPaper.buildFromSheets({
     ['Total revenue', '=SUM(Deals!E2:E4)'],
     ['West customers', '=SUMIF(Deals!A2:A4,"West",Deals!C2:C4)'],
     ['Enterprise ARPA', '=XLOOKUP("Enterprise",Deals!B2:B4,Deals!D2:D4)'],
+    ['Target revenue', null],
     ['Qualified customer counts', '=FILTER(Deals!C2:C4,Deals!C2:C4>=18)'],
   ],
 })
@@ -25,9 +26,13 @@ const workbook = WorkPaper.buildFromSheets({
 const dealsSheet = requireSheet(workbook, 'Deals')
 const summarySheet = requireSheet(workbook, 'Summary')
 
+workbook.addNamedExpression('GrowthRatePercent', 12)
+workbook.setCellContents({ sheet: summarySheet, row: 4, col: 1 }, '=SUM(Deals!E2:E4)*(100+GrowthRatePercent)/100')
+
 const initial = {
   totalRevenue: readNumber(workbook, summarySheet, 1, 1, 'initial total revenue'),
   westCustomers: readNumber(workbook, summarySheet, 2, 1, 'initial west customers'),
+  targetRevenue: readNumber(workbook, summarySheet, 4, 1, 'initial target revenue'),
 }
 
 workbook.batch(() => {
@@ -42,13 +47,16 @@ const afterAgentEdit = {
   totalRevenue: readNumber(restored, restoredSummarySheet, 1, 1, 'edited total revenue'),
   westCustomers: readNumber(restored, restoredSummarySheet, 2, 1, 'edited west customers'),
   enterpriseArpa: readNumber(restored, restoredSummarySheet, 3, 1, 'enterprise ARPA'),
-  qualifiedCustomerCounts: readNumberColumn(restored, restoredSummarySheet, 4, 6, 1, 'qualified customer count'),
+  targetRevenue: readNumber(restored, restoredSummarySheet, 4, 1, 'edited target revenue'),
+  qualifiedCustomerCounts: readNumberColumn(restored, restoredSummarySheet, 5, 7, 1, 'qualified customer count'),
 }
 
 const output = {
   initial,
   afterAgentEdit,
   persistedSheets: restored.getSheetNames(),
+  persistedNamedExpressions: restored.listNamedExpressions(),
+  restoredGrowthRatePercent: readNamedNumber(restored, 'GrowthRatePercent'),
 }
 
 assertSummary(output)
@@ -85,19 +93,31 @@ function readNumberColumn(workpaper, sheet, startRow, endRow, col, label) {
     })
 }
 
+function readNamedNumber(workpaper, name) {
+  const cell = workpaper.getNamedExpressionValue(name)
+  if (!cell || typeof cell !== 'object' || !('value' in cell) || typeof cell.value !== 'number') {
+    throw new Error(`Expected named expression "${name}" to be a number, received ${JSON.stringify(cell)}`)
+  }
+  return cell.value
+}
+
 function assertSummary(summary) {
   const expected = {
     initial: {
       totalRevenue: 27300,
       westCustomers: 30,
+      targetRevenue: 30576,
     },
     afterAgentEdit: {
       totalRevenue: 36900,
       westCustomers: 38,
       enterpriseArpa: 1200,
+      targetRevenue: 41328,
       qualifiedCustomerCounts: [20, 30, 18],
     },
     persistedSheets: ['Deals', 'Summary'],
+    persistedNamedExpressions: ['GrowthRatePercent'],
+    restoredGrowthRatePercent: 12,
   }
 
   if (JSON.stringify(summary) !== JSON.stringify(expected)) {

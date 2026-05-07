@@ -43,6 +43,26 @@ ratio is `1.043096403103571` on `lookup-approximate-duplicates`, so the honest
 public claim is `46/46` mean wins with an overall p95 geomean lead and one known
 p95 holdout that still needs margin work.
 
+## How To Read The p95 Caveat
+
+The `46/46` count is about mean latency: for each comparable workload row,
+WorkPaper's average measured time is lower than HyperFormula's average measured
+time. Mean wins are useful for the headline because they summarize the normal
+cost of each workload, but they do not prove every slower tail sample has been
+eliminated.
+
+Each p95 row asks a different question: "near the slow end of this workload's
+sample set, which engine was faster?" A single row can lose on p95 even when its
+mean wins, because a small number of slower samples can move the tail without
+moving the average enough to flip the mean result.
+
+The p95 geomean is an aggregate across the per-workload p95 ratios. It can stay
+below `1.0` while one individual p95 row is above `1.0`, because the aggregate
+is balanced by the other p95 rows where WorkPaper has enough margin. Read the
+current result as: WorkPaper wins every comparable mean row and leads the
+overall p95 aggregate, but the repo is not claiming "faster on every p95 row"
+until the known p95 holdout is fixed.
+
 ## What Is Measured
 
 Scorecard-eligible families cover:

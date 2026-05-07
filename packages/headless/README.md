@@ -217,6 +217,39 @@ const changes = workbook.batch(() => {
 })
 ```
 
+Create and read named expressions:
+
+```ts
+import { WorkPaper, type WorkPaperCellAddress } from '@bilig/headless'
+
+const workbook = WorkPaper.buildFromSheets({
+  Plan: [
+    ['Metric', 'Value'],
+    ['Base revenue', 100],
+    ['Target revenue', null],
+  ],
+})
+
+const sheet = workbook.getSheetId('Plan')
+if (sheet === undefined) {
+  throw new Error('Plan sheet was not created')
+}
+
+const at = (row: number, col: number): WorkPaperCellAddress => ({
+  sheet,
+  row,
+  col,
+})
+
+workbook.addNamedExpression('GrowthRate', 0.15)
+workbook.setCellContents(at(2, 1), '=B2*(1+GrowthRate)')
+
+console.log(workbook.getNamedExpressionValue('GrowthRate')) // CellValue for 0.15
+console.log(workbook.getNamedExpressionFormula('GrowthRate')) // undefined for a scalar name
+console.log(workbook.getCellValue(at(2, 1))) // CellValue for 115
+console.log(workbook.getNamedExpressionValue('MissingName')) // undefined
+```
+
 Move cells inside configured bounds:
 
 ```ts
@@ -249,6 +282,39 @@ const saved = serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { inc
 
 const restored = createWorkPaperFromDocument(parseWorkPaperDocument(saved))
 ```
+
+Validate a persisted document before restore:
+
+```ts
+import {
+  WorkPaper,
+  createWorkPaperFromDocument,
+  exportWorkPaperDocument,
+  isPersistedWorkPaperDocument,
+  parseWorkPaperDocument,
+  serializeWorkPaperDocument,
+} from '@bilig/headless'
+
+const workbook = WorkPaper.buildFromSheets({
+  Sheet1: [[10, '=A1*2']],
+})
+
+const document = exportWorkPaperDocument(workbook, { includeConfig: true })
+const serialized = serializeWorkPaperDocument(document)
+
+const parsed = parseWorkPaperDocument(serialized)
+if (!isPersistedWorkPaperDocument(parsed)) {
+  throw new Error('Persisted WorkPaper document failed validation')
+}
+
+const restored = createWorkPaperFromDocument(parsed)
+```
+
+`parseWorkPaperDocument()` validates JSON and throws on invalid payloads.
+`isPersistedWorkPaperDocument()` is useful when a service already has an
+unknown parsed object. Custom function implementations, callback hooks, and
+other process state are not persisted; register those in application code before
+restoring the workbook.
 
 ## Persistence Contract
 

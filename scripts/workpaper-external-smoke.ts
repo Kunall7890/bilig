@@ -79,14 +79,18 @@ function runNodeSmoke(
     afterAgentEdit: {
       enterpriseArpa: number
       qualifiedCustomerCounts: number[]
+      targetRevenue: number
       totalRevenue: number
       westCustomers: number
     }
     initial: {
+      targetRevenue: number
       totalRevenue: number
       westCustomers: number
     }
+    persistedNamedExpressions: string[]
     persistedSheets: string[]
+    restoredGrowthRatePercent: number
   }
   projectDir: string
 } {
@@ -256,29 +260,38 @@ function parseNodeSmokeOutput(output: string): {
   afterAgentEdit: {
     enterpriseArpa: number
     qualifiedCustomerCounts: number[]
+    targetRevenue: number
     totalRevenue: number
     westCustomers: number
   }
   initial: {
+    targetRevenue: number
     totalRevenue: number
     westCustomers: number
   }
+  persistedNamedExpressions: string[]
   persistedSheets: string[]
+  restoredGrowthRatePercent: number
 } {
   const parsed = parseJsonRecord(output, 'node smoke output')
   const initial = parseRecordValue(parsed.initial, 'node smoke initial output')
   const afterAgentEdit = parseRecordValue(parsed.afterAgentEdit, 'node smoke edited output')
   const persistedSheets = parsed.persistedSheets
+  const persistedNamedExpressions = parsed.persistedNamedExpressions
   const qualifiedCustomerCounts = afterAgentEdit.qualifiedCustomerCounts
 
   if (
     typeof initial.totalRevenue !== 'number' ||
     typeof initial.westCustomers !== 'number' ||
+    typeof initial.targetRevenue !== 'number' ||
     typeof afterAgentEdit.totalRevenue !== 'number' ||
     typeof afterAgentEdit.westCustomers !== 'number' ||
     typeof afterAgentEdit.enterpriseArpa !== 'number' ||
+    typeof afterAgentEdit.targetRevenue !== 'number' ||
     !isNumberArray(qualifiedCustomerCounts) ||
-    !isStringArray(persistedSheets)
+    !isStringArray(persistedSheets) ||
+    !isStringArray(persistedNamedExpressions) ||
+    typeof parsed.restoredGrowthRatePercent !== 'number'
   ) {
     throw new Error(`Unexpected node smoke output: ${output}`)
   }
@@ -287,14 +300,18 @@ function parseNodeSmokeOutput(output: string): {
     initial: {
       totalRevenue: initial.totalRevenue,
       westCustomers: initial.westCustomers,
+      targetRevenue: initial.targetRevenue,
     },
     afterAgentEdit: {
       totalRevenue: afterAgentEdit.totalRevenue,
       westCustomers: afterAgentEdit.westCustomers,
       enterpriseArpa: afterAgentEdit.enterpriseArpa,
+      targetRevenue: afterAgentEdit.targetRevenue,
       qualifiedCustomerCounts,
     },
     persistedSheets,
+    persistedNamedExpressions,
+    restoredGrowthRatePercent: parsed.restoredGrowthRatePercent,
   }
 }
 
