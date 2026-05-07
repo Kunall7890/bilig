@@ -51,6 +51,24 @@ Verified on 2026-05-07:
   - issue and pull request templates
   - `good first issue` and `help wanted` labels
 
+## Execution Log
+
+2026-05-07:
+
+- Published the DEV article:
+  <https://dev.to/gregkonush/why-agents-need-workbook-apis-instead-of-spreadsheet-screenshots-3d61>.
+- Added Product Hunt thumbnail, gallery images, and short WebM demo to
+  [`docs/product-hunt-launch-assets.md`](product-hunt-launch-assets.md).
+- Verified GitHub Pages is serving the launch asset page and demo video.
+- Attempted the Product Hunt submit flow in Atlas. Posting is blocked by the
+  personal-account access gate, so the safe next step is waiting for access
+  before scheduling a launch.
+- Posted one manual X reply from `@GregKonush` in a high-fit spreadsheet
+  automation subthread:
+  <https://x.com/tulexaicom/status/2052288937717063977>.
+- Re-verified the GitHub mirror, public workflows, and star count after the
+  demo commit. Stars remain `5`.
+
 ## Research Findings
 
 GitHub stars are a bookmark and appreciation signal, and GitHub explicitly says

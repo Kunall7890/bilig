@@ -157,6 +157,12 @@ reply unless a real follow-up appears.
 Target:
 <https://x.com/ChatGPTapp/status/2051776032127238266>
 
+Status: one maintainer reply was posted on 2026-05-07 to a high-fit subthread
+about spreadsheet automation breaking silently:
+<https://x.com/tulexaicom/status/2052288937717063977>. Do not repost this
+same angle in the thread; wait for a real follow-up or move to a different
+topic.
+
 Why it fits:
 
 - The post is directly about ChatGPT inside Excel and Google Sheets.
@@ -175,6 +181,17 @@ that agents need typed workbook operations and verification hooks, not
 screenshots of grids.
 
 open-source node api if useful for anyone experimenting:
+https://github.com/proompteng/bilig
+```
+
+Posted reply:
+
+```text
+yes. the missing piece is a readback layer after the edit: what range changed,
+which formulas recalculated, and whether export still matches. narration alone
+is not enough.
+
+we're building that as an open-source node api:
 https://github.com/proompteng/bilig
 ```
 
