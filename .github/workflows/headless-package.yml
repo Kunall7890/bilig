@@ -52,6 +52,11 @@ on:
         type: boolean
         required: false
         default: false
+      allow_new_packages:
+        description: "Attempt first-time npm package creation when the package name is not already provisioned"
+        type: boolean
+        required: false
+        default: false
       target_version:
         description: "Optional explicit runtime package version to release"
         type: string
@@ -199,6 +204,7 @@ jobs:
       tag_name: ${{ steps.planner.outputs.tag_name }}
       npm_tag: ${{ steps.release_meta.outputs.npm_tag }}
       dry_run: ${{ steps.release_meta.outputs.dry_run }}
+      allow_new_packages: ${{ steps.release_meta.outputs.allow_new_packages }}
       planner_args: ${{ steps.release_meta.outputs.planner_args }}
     steps:
       - name: Checkout repository
@@ -232,6 +238,7 @@ jobs:
         env:
           INPUT_NPM_TAG: ${{ github.event.inputs.npm_tag }}
           INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
+          INPUT_ALLOW_NEW_PACKAGES: ${{ github.event.inputs.allow_new_packages }}
           INPUT_TARGET_VERSION: ${{ github.event.inputs.target_version }}
         run: |
           set -euo pipefail
@@ -239,9 +246,11 @@ jobs:
           if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
             npm_tag_input="latest"
             dry_run_input="false"
+            allow_new_packages_input="false"
           else
             npm_tag_input="${INPUT_NPM_TAG:-latest}"
             dry_run_input="${INPUT_DRY_RUN:-false}"
+            allow_new_packages_input="${INPUT_ALLOW_NEW_PACKAGES:-false}"
           fi
 
           case "$dry_run_input" in
@@ -253,6 +262,15 @@ jobs:
               ;;
           esac
 
+          case "$allow_new_packages_input" in
+            true|True|TRUE) allow_new_packages_value=true ;;
+            false|False|FALSE|"") allow_new_packages_value=false ;;
+            *)
+              echo 'allow_new_packages input must be true or false' >&2
+              exit 1
+              ;;
+          esac
+
           planner_args=""
           if [[ -n "${INPUT_TARGET_VERSION:-}" ]]; then
             planner_args="--release-as ${INPUT_TARGET_VERSION} --allow-untagged-baseline"
@@ -260,6 +278,7 @@ jobs:
 
           echo "npm_tag=$npm_tag_input" >> "$GITHUB_OUTPUT"
           echo "dry_run=$dry_run_value" >> "$GITHUB_OUTPUT"
+          echo "allow_new_packages=$allow_new_packages_value" >> "$GITHUB_OUTPUT"
           echo "planner_args=$planner_args" >> "$GITHUB_OUTPUT"
 
       - name: Configure canonical release remotes
@@ -537,6 +556,7 @@ jobs:
         env:
           NPM_DIST_TAG: ${{ needs.plan_release.outputs.npm_tag }}
           DRY_RUN: ${{ needs.plan_release.outputs.dry_run }}
+          ALLOW_NEW_NPM_PACKAGES: ${{ needs.plan_release.outputs.allow_new_packages }}
           TARGET_VERSION: ${{ needs.plan_release.outputs.target_version }}
         run: |
           set -euo pipefail

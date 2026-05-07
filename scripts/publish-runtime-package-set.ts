@@ -4,13 +4,14 @@ import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSyn
 import { tmpdir } from 'node:os'
 import { basename, join, resolve } from 'node:path'
 
-import { assertAlignedVersions, loadRuntimePackages, parseBooleanEnv } from './runtime-package-set.ts'
+import { assertAlignedVersions, loadRuntimePackages, parseBooleanEnv, shouldAttemptRuntimePackagePublish } from './runtime-package-set.ts'
 
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
 const defaultPackDir = join(rootDir, 'build', 'npm-packages-runtime')
 const textDecoder = new TextDecoder()
 const distTag = process.env.NPM_DIST_TAG ?? 'latest'
 const dryRun = parseBooleanEnv(process.env.DRY_RUN)
+const allowNewPackagePublishing = parseBooleanEnv(process.env.ALLOW_NEW_NPM_PACKAGES)
 const targetVersion = process.env.TARGET_VERSION?.trim()
 
 if (!targetVersion) {
@@ -54,6 +55,22 @@ try {
     const tarballPath = tarballsByPackage.get(`${runtimePackage.name}@${targetVersion}`)
     if (!tarballPath) {
       throw new Error(`Packed tarball missing for ${runtimePackage.name}@${targetVersion}`)
+    }
+
+    const packagePublished = isPackagePublished(runtimePackage.name)
+    if (
+      !shouldAttemptRuntimePackagePublish({
+        packagePublished,
+        allowNewPackagePublishing,
+      })
+    ) {
+      results.push({
+        package: runtimePackage.name,
+        version: targetVersion,
+        status: 'skipped',
+        reason: 'package name is not provisioned on npm; set ALLOW_NEW_NPM_PACKAGES=true after npm permissions are configured',
+      })
+      continue
     }
 
     if (isVersionPublished(runtimePackage.name, targetVersion)) {
@@ -132,6 +149,17 @@ function rewriteInternalDependencyRanges(manifest: Record<string, unknown>, inte
       }
     }
   }
+}
+
+function isPackagePublished(packageName: string) {
+  const result = Bun.spawnSync(['npm', 'view', packageName, 'name', '--json'], {
+    cwd: rootDir,
+    env: process.env,
+    stdin: 'ignore',
+    stdout: 'pipe',
+    stderr: 'pipe',
+  })
+  return result.exitCode === 0
 }
 
 function indexTarballs(targetDir: string) {

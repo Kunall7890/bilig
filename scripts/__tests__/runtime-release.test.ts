@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { highestPublishedStableSemver, highestStableSemver, RUNTIME_PACKAGE_DIRS } from '../runtime-package-set.ts'
+import {
+  highestPublishedStableSemver,
+  highestStableSemver,
+  RUNTIME_PACKAGE_DIRS,
+  shouldAttemptRuntimePackagePublish,
+} from '../runtime-package-set.ts'
 import { bumpVersion, isRuntimeAffectingPath, parseConventionalCommit, releaseTypeForConventionalCommit } from '../runtime-release.ts'
 
 describe('runtime release helpers', () => {
@@ -87,6 +92,27 @@ describe('runtime release helpers', () => {
 
   it('publishes the Excel importer with the aligned runtime package set', () => {
     expect(RUNTIME_PACKAGE_DIRS).toContain('packages/excel-import')
+  })
+
+  it('requires explicit opt-in before attempting first-time npm package creation', () => {
+    expect(
+      shouldAttemptRuntimePackagePublish({
+        packagePublished: true,
+        allowNewPackagePublishing: false,
+      }),
+    ).toBe(true)
+    expect(
+      shouldAttemptRuntimePackagePublish({
+        packagePublished: false,
+        allowNewPackagePublishing: false,
+      }),
+    ).toBe(false)
+    expect(
+      shouldAttemptRuntimePackagePublish({
+        packagePublished: false,
+        allowNewPackagePublishing: true,
+      }),
+    ).toBe(true)
   })
 
   it('matches runtime-affecting publish paths', () => {

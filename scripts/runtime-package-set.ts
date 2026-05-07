@@ -68,6 +68,10 @@ export function parseBooleanEnv(value: string | undefined): boolean {
   }
 }
 
+export function shouldAttemptRuntimePackagePublish(options: { packagePublished: boolean; allowNewPackagePublishing: boolean }): boolean {
+  return options.packagePublished || options.allowNewPackagePublishing
+}
+
 export function determineRuntimeReleaseVersion(options: {
   autoIncrement: boolean
   manifestVersion: string
