@@ -193,7 +193,7 @@ export function readImportedWorkbookProtectedRanges(
 
   sheetNames.forEach((sheetName, sheetIndex) => {
     const sheetXml = getZipText(zip, `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`)
-    if (!sheetXml) {
+    if (!sheetXml || !/<protectedRanges\b/u.test(sheetXml)) {
       return
     }
     const parsed: unknown = xmlParser.parse(sheetXml)

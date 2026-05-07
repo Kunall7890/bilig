@@ -29,7 +29,7 @@ import { readImportedWorkbookPivots } from './xlsx-pivots.js'
 import { readImportedWorkbookProtectedRanges } from './xlsx-protected-ranges.js'
 import { readImportedWorkbookSheetProtections } from './xlsx-sheet-protection.js'
 import { readImportedWorkbookSorts } from './xlsx-sorts.js'
-import { readImportedWorkbookFileStyles } from './xlsx-styles.js'
+import { readImportedWorkbookFileStyles, readImportedWorkbookSheetDimensions } from './xlsx-styles.js'
 import { readImportedWorkbookTables } from './xlsx-tables.js'
 import { readImportedWorkbookDataValidations } from './xlsx-validations.js'
 import { readImportedWorkbookProperties } from './xlsx-workbook-properties.js'
@@ -39,6 +39,7 @@ export { exportXlsx } from './xlsx-export.js'
 
 const PREVIEW_ROW_LIMIT = 8
 const PREVIEW_COLUMN_LIMIT = 6
+const largeWorkbookXmlStyleCellMapThreshold = 100_000
 
 export interface ImportedWorkbook {
   snapshot: WorkbookSnapshot
@@ -76,8 +77,159 @@ interface SheetRowInfo {
   size: number
 }
 
+interface WorksheetCellEntry {
+  address: string
+  cell: Record<string, unknown>
+  row: number
+  column: number
+}
+
+interface HorizontalStyleRun {
+  styleId: string
+  startColumn: number
+  endColumn: number
+}
+
+interface RectangularStyleRun extends HorizontalStyleRun {
+  startRow: number
+  endRow: number
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
+}
+
+function isWorksheetCellAddress(value: string): boolean {
+  return /^[A-Z]{1,3}[1-9][0-9]*$/u.test(value)
+}
+
+function denseWorksheetRows(sheet: XLSX.WorkSheet): unknown[] | null {
+  const denseRows = (sheet as Record<string, unknown>)['!data']
+  return Array.isArray(denseRows) ? denseRows : null
+}
+
+function denseWorksheetCell(row: unknown, column: number): Record<string, unknown> | null {
+  if (!Array.isArray(row)) {
+    return null
+  }
+  const cell = row[column]
+  return isRecord(cell) ? cell : null
+}
+
+function worksheetCellAt(sheet: XLSX.WorkSheet, row: number, column: number): Record<string, unknown> | null {
+  const denseRows = denseWorksheetRows(sheet)
+  if (denseRows) {
+    return denseWorksheetCell(denseRows[row], column)
+  }
+  const value = sheet[XLSX.utils.encode_cell({ r: row, c: column })]
+  return isRecord(value) ? value : null
+}
+
+function* worksheetCellEntries(sheet: XLSX.WorkSheet): Generator<WorksheetCellEntry> {
+  const denseRows = denseWorksheetRows(sheet)
+  if (denseRows) {
+    for (const [rowIndex, row] of denseRows.entries()) {
+      if (!Array.isArray(row)) {
+        continue
+      }
+      for (const [columnIndex, cell] of row.entries()) {
+        if (!isRecord(cell)) {
+          continue
+        }
+        yield {
+          address: XLSX.utils.encode_cell({ r: rowIndex, c: columnIndex }),
+          cell,
+          row: rowIndex,
+          column: columnIndex,
+        }
+      }
+    }
+    return
+  }
+
+  for (const address in sheet) {
+    const value: unknown = sheet[address]
+    if (!isWorksheetCellAddress(address) || !isRecord(value)) {
+      continue
+    }
+    const decoded = XLSX.utils.decode_cell(address)
+    yield {
+      address,
+      cell: value,
+      row: decoded.r,
+      column: decoded.c,
+    }
+  }
+}
+
+function countWorkbookWorksheetCells(workbook: XLSX.WorkBook): number {
+  return workbook.SheetNames.reduce((sum, sheetName) => {
+    const sheet = workbook.Sheets[sheetName]
+    if (!sheet) {
+      return sum
+    }
+    const denseRows = denseWorksheetRows(sheet)
+    if (denseRows) {
+      return (
+        sum +
+        denseRows.reduce<number>((sheetSum, row) => {
+          if (!Array.isArray(row)) {
+            return sheetSum
+          }
+          return sheetSum + row.filter(isRecord).length
+        }, 0)
+      )
+    }
+    let cellCount = 0
+    for (const address in sheet) {
+      const value: unknown = sheet[address]
+      if (isWorksheetCellAddress(address) && isRecord(value)) {
+        cellCount += 1
+      }
+    }
+    return sum + cellCount
+  }, 0)
+}
+
+function styleRunKey(run: Pick<RectangularStyleRun, 'styleId' | 'startColumn' | 'endColumn'>): string {
+  return `${run.styleId}:${String(run.startColumn)}:${String(run.endColumn)}`
+}
+
+function mergeStyleRuns(
+  rowIndex: number,
+  rowRuns: readonly HorizontalStyleRun[],
+  openRunsByKey: ReadonlyMap<string, RectangularStyleRun>,
+  styleRuns: RectangularStyleRun[],
+): Map<string, RectangularStyleRun> {
+  const nextOpenRunsByKey = new Map<string, RectangularStyleRun>()
+  for (const rowRun of rowRuns) {
+    const key = styleRunKey(rowRun)
+    const openRun = openRunsByKey.get(key)
+    if (openRun && openRun.endRow === rowIndex - 1) {
+      openRun.endRow = rowIndex
+      nextOpenRunsByKey.set(key, openRun)
+      continue
+    }
+    const nextRun: RectangularStyleRun = {
+      ...rowRun,
+      startRow: rowIndex,
+      endRow: rowIndex,
+    }
+    styleRuns.push(nextRun)
+    nextOpenRunsByKey.set(key, nextRun)
+  }
+  return nextOpenRunsByKey
+}
+
+function styleRunsToRanges(sheetName: string, styleRuns: readonly RectangularStyleRun[]): SheetStyleRangeSnapshot[] {
+  return styleRuns.map((run) => ({
+    range: {
+      sheetName,
+      startAddress: XLSX.utils.encode_cell({ r: run.startRow, c: run.startColumn }),
+      endAddress: XLSX.utils.encode_cell({ r: run.endRow, c: run.endColumn }),
+    },
+    styleId: run.styleId,
+  }))
 }
 
 function normalizeWorkbookName(fileName: string): string {
@@ -460,14 +612,6 @@ function buildMergeEntries(sheetName: string, merges: readonly XLSX.Range[] | un
   return entries.length > 0 ? entries : undefined
 }
 
-function createCellRange(sheetName: string, address: string) {
-  return {
-    sheetName,
-    startAddress: address,
-    endAddress: address,
-  }
-}
-
 function toUint8Array(value: unknown): Uint8Array | null {
   if (value instanceof Uint8Array) {
     return new Uint8Array(value)
@@ -522,17 +666,22 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
     type: 'array',
     cellFormula: true,
     cellNF: true,
-    cellStyles: true,
+    cellStyles: false,
     cellText: false,
     cellDates: false,
     bookFiles: true,
     bookVBA: true,
+    dense: true,
   })
   const workbookName = normalizeWorkbookName(fileName)
   const warnings: string[] = []
   const importedDefinedNames = readImportedDefinedNames(workbook)
   addWorkbookWarnings(workbook, warnings, importedDefinedNames.ignoredCount)
-  const importedWorkbookStyles = readImportedWorkbookFileStyles(workbook, workbook.SheetNames)
+  const importedWorkbookStyles =
+    countWorkbookWorksheetCells(workbook) > largeWorkbookXmlStyleCellMapThreshold
+      ? new Map<string, Map<string, Omit<CellStyleRecord, 'id'>>>()
+      : readImportedWorkbookFileStyles(workbook, workbook.SheetNames)
+  const importedWorkbookSheetDimensions = readImportedWorkbookSheetDimensions(workbook, workbook.SheetNames)
   const importedWorkbookProperties = readImportedWorkbookProperties(data)
   const importedCalculationSettings = readImportedWorkbookCalculationSettings(data)
   const importedMacroPayload = toUint8Array(workbook.vbaraw)
@@ -578,43 +727,74 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
     }
     const range = sheet['!ref'] ? XLSX.utils.decode_range(sheet['!ref']) : null
     const cells: WorkbookSnapshot['sheets'][number]['cells'] = []
-    const styleRanges: SheetStyleRangeSnapshot[] = []
-    const rowCount = range ? range.e.r + 1 : 0
-    const columnCount = range ? range.e.c + 1 : 0
-    if (range) {
-      for (let row = range.s.r; row <= range.e.r; row += 1) {
-        for (let col = range.s.c; col <= range.e.c; col += 1) {
-          const address = XLSX.utils.encode_cell({ r: row, c: col })
-          const cell = sheet[address]
-          if (!cell) {
-            continue
-          }
-          const nextCell: WorkbookSnapshot['sheets'][number]['cells'][number] = { address }
-          if (typeof cell.f === 'string' && cell.f.trim().length > 0) {
-            nextCell.formula = cell.f
-          } else {
-            const literal = toLiteralInput(cell.v)
-            if (literal !== undefined) {
-              nextCell.value = literal
-            }
-          }
-          const importedFormat = readImportedNumberFormat(cell.z)
-          if (importedFormat !== undefined) {
-            nextCell.format = importedFormat
-          }
-          const importedStyle = importedWorkbookStyles.get(sheetName)?.get(address) ?? readImportedXlsxCellStyle(cell.s)
-          if (importedStyle) {
-            styleRanges.push({
-              range: createCellRange(sheetName, address),
-              styleId: internImportedStyle(importedStyle, styleCatalog),
-            })
-          }
-          if (nextCell.value !== undefined || nextCell.formula !== undefined || nextCell.format !== undefined) {
-            cells.push(nextCell)
-          }
-        }
+    const styleRuns: RectangularStyleRun[] = []
+    let openStyleRunsByKey = new Map<string, RectangularStyleRun>()
+    let activeStyleRow: number | null = null
+    let activeStyleRun: HorizontalStyleRun | null = null
+    let activeStyleRowRuns: HorizontalStyleRun[] = []
+    const importedStylesByAddress = importedWorkbookStyles.get(sheetName)
+    const flushActiveStyleRun = () => {
+      if (activeStyleRun) {
+        activeStyleRowRuns.push(activeStyleRun)
+        activeStyleRun = null
       }
     }
+    const flushActiveStyleRow = () => {
+      if (activeStyleRow === null) {
+        return
+      }
+      flushActiveStyleRun()
+      openStyleRunsByKey = mergeStyleRuns(activeStyleRow, activeStyleRowRuns, openStyleRunsByKey, styleRuns)
+      activeStyleRowRuns = []
+      activeStyleRow = null
+    }
+    const addStyleCell = (row: number, column: number, styleId: string) => {
+      if (activeStyleRow === null) {
+        activeStyleRow = row
+      } else if (activeStyleRow !== row) {
+        flushActiveStyleRow()
+        activeStyleRow = row
+      }
+      if (activeStyleRun && activeStyleRun.styleId === styleId && activeStyleRun.endColumn + 1 === column) {
+        activeStyleRun.endColumn = column
+        return
+      }
+      flushActiveStyleRun()
+      activeStyleRun = {
+        styleId,
+        startColumn: column,
+        endColumn: column,
+      }
+    }
+    const rowCount = range ? range.e.r + 1 : 0
+    const columnCount = range ? range.e.c + 1 : 0
+    for (const { address, cell, row, column } of range ? worksheetCellEntries(sheet) : []) {
+      const nextCell: WorkbookSnapshot['sheets'][number]['cells'][number] = { address }
+      const formula = cell['f']
+      if (typeof formula === 'string' && formula.trim().length > 0) {
+        nextCell.formula = formula
+      } else {
+        const literal = toLiteralInput(cell['v'])
+        if (literal !== undefined) {
+          nextCell.value = literal
+        }
+      }
+      const importedFormat = readImportedNumberFormat(cell['z'])
+      if (importedFormat !== undefined) {
+        nextCell.format = importedFormat
+      }
+      const importedStyle = importedStylesByAddress?.get(address) ?? readImportedXlsxCellStyle(cell['s'])
+      if (importedStyle) {
+        addStyleCell(row, column, internImportedStyle(importedStyle, styleCatalog))
+      } else if (activeStyleRow === row) {
+        flushActiveStyleRun()
+      }
+      if (nextCell.value !== undefined || nextCell.formula !== undefined || nextCell.format !== undefined) {
+        cells.push(nextCell)
+      }
+    }
+    flushActiveStyleRow()
+    const styleRanges = styleRunsToRanges(sheetName, styleRuns)
 
     previewSheets.push(
       createSheetPreview({
@@ -623,20 +803,22 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
         columnCount,
         nonEmptyCellCount: cells.length,
         readCellText: (row, col) => {
-          const cell = sheet[XLSX.utils.encode_cell({ r: row, c: col })]
+          const cell = worksheetCellAt(sheet, row, col)
           if (!cell) {
             return ''
           }
-          if (typeof cell.f === 'string' && cell.f.trim().length > 0) {
-            return `=${cell.f}`
+          const formula = cell['f']
+          if (typeof formula === 'string' && formula.trim().length > 0) {
+            return `=${formula}`
           }
-          return toDisplayText(toLiteralInput(cell.v))
+          return toDisplayText(toLiteralInput(cell['v']))
         },
       }),
     )
 
-    const rows = buildRowEntries(sheet['!rows'])
-    const columns = buildColumnEntries(sheet['!cols'])
+    const importedSheetDimensions = importedWorkbookSheetDimensions.get(sheetName)
+    const rows = importedSheetDimensions?.rows ?? buildRowEntries(sheet['!rows'])
+    const columns = importedSheetDimensions?.columns ?? buildColumnEntries(sheet['!cols'])
     const importedFreezePane = importedFreezePanesBySheet.get(sheetName)
     const merges = buildMergeEntries(sheetName, sheet['!merges'])
     const importedSheetProtection = importedSheetProtectionsBySheet.get(sheetName)

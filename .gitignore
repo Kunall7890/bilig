@@ -7,6 +7,7 @@ artifacts/fuzz/
 .copilot/config.json
 .copilot/logs/
 .vite/
+.cache/
 *.tsbuildinfo
 .DS_Store
 npm-debug.log*

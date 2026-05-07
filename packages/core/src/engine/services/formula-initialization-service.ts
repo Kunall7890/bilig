@@ -3,23 +3,26 @@ import type { CompiledFormula } from '@bilig/formula'
 import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 import type { EngineCellMutationRef, EngineFormulaSourceRefs } from '../../cell-mutations-at.js'
 import { CellFlags } from '../../cell-store.js'
-import type {
-  FormulaFamilyFreshUniformRunRegistrationArgs,
-  FormulaFamilyMember,
-  FormulaFamilyRunUpsertArgs,
-} from '../../formula/formula-family-store.js'
+import type { FormulaFamilyFreshUniformRunRegistrationArgs, FormulaFamilyRunUpsertArgs } from '../../formula/formula-family-store.js'
 import type { FormulaTemplateResolution } from '../../formula/template-bank.js'
 import { translateSimpleDirectScalarFormula } from '../../formula/simple-direct-scalar-compile.js'
 import { addEngineCounter } from '../../perf/engine-counters.js'
 import type { EngineRuntimeState, RuntimeFormula, U32 } from '../runtime-state.js'
 import { EngineMutationError } from '../errors.js'
 import { evaluateInitialDirectScalar, evaluateInitialDirectScalarNumber } from './formula-initialization-direct-scalar.js'
+import { materializeDeferredFormulaFamilyRunMembers, type DeferredInitialFormulaFamilyRun } from './formula-initialization-family-runs.js'
 import {
   initialFormulaFamilyShapeKey,
   tryBuildInitialSimpleRowRelativeBinaryTemplateKey,
   type InitialTemplateFormulaCacheEntry,
 } from './formula-initialization-template-keys.js'
 import { createInitialFormulaValueWriter, type InitialFormulaValueWriter } from './formula-initialization-value-writer.js'
+import {
+  initialFormulaEntryRefAt,
+  type InitialFormulaCellIndexList,
+  type InitialFormulaEntryRefSource,
+  type InitialResolvedFormulaEntry,
+} from './formula-initialization-refs.js'
 import {
   canEvaluateInitialDirectRuntimeFormula,
   hasPendingFormulaDependency,
@@ -39,23 +42,6 @@ export type {
 
 const INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT = 16_384
 const EMPTY_U32 = new Uint32Array(0)
-type InitialFormulaCellIndexList = readonly number[] | U32
-type InitialFormulaEntryRefSource<Entry> = readonly Entry[] | { readonly length: number; readonly at: (index: number) => Entry }
-
-interface InitialResolvedFormulaEntry {
-  cellIndex: number
-  sheetId: number
-  row: number
-  col: number
-  ownerSheetName: string
-  source: string
-  compiled: CompiledFormula
-  templateId?: number
-}
-
-function initialFormulaEntryRefAt<Entry>(refs: InitialFormulaEntryRefSource<Entry>, index: number): Entry {
-  return Array.isArray(refs) ? refs[index]! : refs.at(index)!
-}
 
 type InitialPrefixAggregateKind = 'sum' | 'count' | 'average' | 'min' | 'max'
 
@@ -68,26 +54,6 @@ interface InitialPrefixAggregateGroup {
   lastRowEnd: number
   formulasAreOrdered: boolean
   readonly formulas: Array<{ cellIndex: number; rowEnd: number; resultOffset?: number }>
-}
-
-type DeferredInitialFormulaFamilyRun = Omit<FormulaFamilyRunUpsertArgs, 'members'> & {
-  axis: 'row'
-  fixedIndex: number
-  start: number
-  step: number
-  lastIndex: number
-  ordered: boolean
-  cellIndices: number[]
-  rows?: number[]
-}
-
-function materializeDeferredFormulaFamilyRunMembers(run: DeferredInitialFormulaFamilyRun): FormulaFamilyMember[] {
-  const step = run.cellIndices.length <= 1 ? 1 : run.step
-  return run.cellIndices.map((cellIndex, index) => ({
-    cellIndex,
-    row: run.ordered ? run.start + step * index : run.rows![index]!,
-    col: run.fixedIndex,
-  }))
 }
 
 export function createEngineFormulaInitializationService(args: {
@@ -761,7 +727,7 @@ export function createEngineFormulaInitializationService(args: {
           ? inlineInitialDirectScalarCellBuffer.subarray(0, inlineInitialDirectScalarCellCount)
           : targetCellIndices
         args.deferKernelSync(recalculated)
-        addEngineCounter(args.state.counters, 'directFormulaInitialEvaluations', inlineInitialDirectScalarCellCount)
+        addEngineCounter(args.state.counters, 'directFormulaInitialEvaluations', orderedPreparedCellCount)
       } else if (useInitialDirectEvaluation) {
         const direct = evaluateInitialDirectFormulas(orderedPreparedCellList(), {
           alreadyValidated: true,

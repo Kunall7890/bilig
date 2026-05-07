@@ -18,6 +18,49 @@ function normalizeCommentAddress(value: string): string | null {
   }
 }
 
+function denseWorksheetRows(sheet: XLSX.WorkSheet): unknown[] | null {
+  const denseRows = (sheet as Record<string, unknown>)['!data']
+  return Array.isArray(denseRows) ? denseRows : null
+}
+
+function readCellComments(value: unknown): unknown[] | null {
+  return isRecord(value) && Array.isArray(value['c']) && value['c'].length > 0 ? value['c'] : null
+}
+
+function appendCommentThread(input: {
+  commentThreads: WorkbookCommentThreadSnapshot[]
+  sheetName: string
+  address: string
+  commentsValue: readonly unknown[]
+  ignoredCount: number
+}): number {
+  const threadId = `xlsx-comment:${input.sheetName}:${input.address}`
+  let ignoredCount = input.ignoredCount
+  const comments = input.commentsValue.flatMap((comment, index) => {
+    if (!isRecord(comment) || typeof comment['t'] !== 'string') {
+      ignoredCount += 1
+      return []
+    }
+    const authorDisplayName = typeof comment['a'] === 'string' && comment['a'].trim().length > 0 ? comment['a'].trim() : undefined
+    return [
+      {
+        id: `${threadId}:${index + 1}`,
+        body: comment['t'],
+        ...(authorDisplayName !== undefined ? { authorDisplayName } : {}),
+      },
+    ]
+  })
+  if (comments.length > 0) {
+    input.commentThreads.push({
+      threadId,
+      sheetName: input.sheetName,
+      address: input.address,
+      comments,
+    })
+  }
+  return ignoredCount
+}
+
 export function readImportedSheetComments(
   sheetName: string,
   sheet: XLSX.WorkSheet,
@@ -28,39 +71,44 @@ export function readImportedSheetComments(
   const commentThreads: WorkbookCommentThreadSnapshot[] = []
   let ignoredCount = 0
 
+  const denseRows = denseWorksheetRows(sheet)
+  if (denseRows) {
+    denseRows.forEach((row, rowIndex) => {
+      if (!Array.isArray(row)) {
+        return
+      }
+      row.forEach((cell, columnIndex) => {
+        const commentsValue = readCellComments(cell)
+        if (!commentsValue) {
+          return
+        }
+        ignoredCount = appendCommentThread({
+          commentThreads,
+          sheetName,
+          address: XLSX.utils.encode_cell({ r: rowIndex, c: columnIndex }),
+          commentsValue,
+          ignoredCount,
+        })
+      })
+    })
+  }
+
   for (const [key, value] of Object.entries(sheet)) {
     if (key.startsWith('!') || !isRecord(value)) {
       continue
     }
     const address = normalizeCommentAddress(key)
-    const commentsValue = value['c']
-    if (!address || !Array.isArray(commentsValue) || commentsValue.length === 0) {
+    const commentsValue = readCellComments(value)
+    if (!address || !commentsValue) {
       continue
     }
 
-    const threadId = `xlsx-comment:${sheetName}:${address}`
-    const comments = commentsValue.flatMap((comment, index) => {
-      if (!isRecord(comment) || typeof comment['t'] !== 'string') {
-        ignoredCount += 1
-        return []
-      }
-      const authorDisplayName = typeof comment['a'] === 'string' && comment['a'].trim().length > 0 ? comment['a'].trim() : undefined
-      return [
-        {
-          id: `${threadId}:${index + 1}`,
-          body: comment['t'],
-          ...(authorDisplayName !== undefined ? { authorDisplayName } : {}),
-        },
-      ]
-    })
-    if (comments.length === 0) {
-      continue
-    }
-    commentThreads.push({
-      threadId,
+    ignoredCount = appendCommentThread({
+      commentThreads,
       sheetName,
       address,
-      comments,
+      commentsValue,
+      ignoredCount,
     })
   }
 

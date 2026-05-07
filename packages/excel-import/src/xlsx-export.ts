@@ -3,6 +3,7 @@ import * as XLSXStyle from 'xlsx-js-style'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 
 import type {
+  CellStyleRecord,
   LiteralInput,
   WorkbookAxisEntrySnapshot,
   WorkbookMacroPayloadSnapshot,
@@ -27,6 +28,7 @@ import { addExportWorkbookPropertiesToXlsxBytes } from './xlsx-workbook-properti
 import { decodePreservedVbaProjectPayload } from './xlsx-macros.js'
 
 const customNumberFormatStartId = 164
+const largeSimpleExportCellCountThreshold = 100_000
 
 function buildExportColumns(columns: readonly WorkbookAxisEntrySnapshot[] | undefined): XLSX.ColInfo[] | undefined {
   if (!columns || columns.length === 0) {
@@ -331,7 +333,7 @@ function addMissingFormattedCells(sheetXml: string, cells: readonly { readonly a
   const byRow = new Map<number, string[]>()
   for (const cell of cells) {
     const rowNumber = XLSX.utils.decode_cell(cell.address).r + 1
-    const cellXml = `<c r="${cell.address}" s="${String(cell.styleIndex)}"/>`
+    const cellXml = `<c r="${cell.address}" s="${String(cell.styleIndex)}" t="z"/>`
     byRow.set(rowNumber, [...(byRow.get(rowNumber) ?? []), cellXml])
   }
   for (const [rowNumber, rowCells] of byRow) {
@@ -404,6 +406,257 @@ function preserveSnapshotNumberFormats(bytes: Uint8Array, sheetFormats: readonly
     setZipText(zip, sheetPath, applyNumberFormatsToSheetXml(sheetXml, formats, registry))
   })
   setZipText(zip, 'xl/styles.xml', registry.apply(stylesXml))
+  return zipSync(zip)
+}
+
+function normalizeRgbColor(value: string | undefined): string | null {
+  if (!value) {
+    return null
+  }
+  const normalized = value.trim().replace(/^#/, '')
+  if (/^[0-9a-fA-F]{6}$/u.test(normalized)) {
+    return `FF${normalized.toUpperCase()}`
+  }
+  if (/^[0-9a-fA-F]{8}$/u.test(normalized)) {
+    return normalized.toUpperCase()
+  }
+  return null
+}
+
+function fastStyleFontXml(style: CellStyleRecord): string | null {
+  const font = style.font
+  if (!font) {
+    return null
+  }
+  const children: string[] = []
+  if (font.family) {
+    children.push(`<name val="${escapeXmlAttribute(font.family)}"/>`)
+  }
+  if (font.size && font.size > 0) {
+    children.push(`<sz val="${String(font.size)}"/>`)
+  }
+  const color = normalizeRgbColor(font.color)
+  if (color) {
+    children.push(`<color rgb="${color}"/>`)
+  }
+  if (font.bold === true) {
+    children.push('<b/>')
+  }
+  if (font.italic === true) {
+    children.push('<i/>')
+  }
+  if (font.underline === true) {
+    children.push('<u/>')
+  }
+  return children.length > 0 ? `<font>${children.join('')}</font>` : null
+}
+
+function fastStyleFillXml(style: CellStyleRecord): string | null {
+  const color = normalizeRgbColor(style.fill?.backgroundColor)
+  return color ? `<fill><patternFill patternType="solid"><fgColor rgb="${color}"/><bgColor indexed="64"/></patternFill></fill>` : null
+}
+
+function fastBorderStyle(value: NonNullable<CellStyleRecord['borders']>[keyof NonNullable<CellStyleRecord['borders']>]): string | null {
+  if (!value) {
+    return null
+  }
+  if (value.style === 'dashed') {
+    return value.weight === 'medium' ? 'mediumDashed' : 'dashed'
+  }
+  if (value.style === 'dotted') {
+    return 'dotted'
+  }
+  if (value.style === 'double') {
+    return 'thick'
+  }
+  return value.weight
+}
+
+function fastBorderSideXml(
+  name: 'left' | 'right' | 'top' | 'bottom',
+  value: NonNullable<CellStyleRecord['borders']>[keyof NonNullable<CellStyleRecord['borders']>],
+): string {
+  const borderStyle = fastBorderStyle(value)
+  if (!borderStyle || !value) {
+    return `<${name}/>`
+  }
+  const color = normalizeRgbColor(value.color) ?? 'FF000000'
+  return `<${name} style="${borderStyle}"><color rgb="${color}"/></${name}>`
+}
+
+function fastStyleBorderXml(style: CellStyleRecord): string | null {
+  const borders = style.borders
+  if (!borders) {
+    return null
+  }
+  return `<border>${fastBorderSideXml('left', borders.left)}${fastBorderSideXml('right', borders.right)}${fastBorderSideXml(
+    'top',
+    borders.top,
+  )}${fastBorderSideXml('bottom', borders.bottom)}<diagonal/></border>`
+}
+
+function fastStyleAlignmentXml(style: CellStyleRecord): string {
+  const alignment = style.alignment
+  if (!alignment) {
+    return ''
+  }
+  const attributes = [
+    alignment.horizontal && alignment.horizontal !== 'general' ? `horizontal="${alignment.horizontal}"` : null,
+    alignment.vertical ? `vertical="${alignment.vertical === 'middle' ? 'center' : alignment.vertical}"` : null,
+    alignment.wrap === true ? 'wrapText="1"' : null,
+    alignment.indent !== undefined && alignment.indent >= 0 ? `indent="${String(alignment.indent)}"` : null,
+  ].filter((entry): entry is string => Boolean(entry))
+  return attributes.length > 0 ? `<alignment ${attributes.join(' ')}/>` : ''
+}
+
+function appendXmlChildren(
+  xml: string,
+  elementName: 'fonts' | 'fills' | 'borders',
+  children: readonly string[],
+): { xml: string; startIndex: number } {
+  if (children.length === 0) {
+    const current = new RegExp(`<${elementName}\\b[^>]*>([\\s\\S]*?)</${elementName}>`, 'u').exec(xml)?.[1] ?? ''
+    return { xml, startIndex: Array.from(current.matchAll(new RegExp(`<${elementName.slice(0, -1)}\\b`, 'gu'))).length }
+  }
+  const pattern = new RegExp(`<${elementName}\\b([^>]*)>([\\s\\S]*?)</${elementName}>`, 'u')
+  const match = pattern.exec(xml)
+  if (!match) {
+    return { xml, startIndex: 0 }
+  }
+  const body = match[2] ?? ''
+  const childName = elementName.slice(0, -1)
+  const startIndex = Array.from(body.matchAll(new RegExp(`<${childName}\\b`, 'gu'))).length
+  const nextXml = xml.replace(pattern, (_tag, attributes: string, existingBody: string) => {
+    const count = startIndex + children.length
+    return `<${elementName}${updateElementCount(attributes, count)}>${existingBody}${children.join('')}</${elementName}>`
+  })
+  return { xml: nextXml, startIndex }
+}
+
+function appendFastStyleXfs(
+  stylesXml: string,
+  styles: readonly CellStyleRecord[],
+): { stylesXml: string; styleIndexById: Map<string, number> } {
+  let output = stylesXml
+  const fonts = styles.map(fastStyleFontXml)
+  const fills = styles.map(fastStyleFillXml)
+  const borders = styles.map(fastStyleBorderXml)
+  const appendedFonts = appendXmlChildren(
+    output,
+    'fonts',
+    fonts.filter((entry): entry is string => Boolean(entry)),
+  )
+  output = appendedFonts.xml
+  const appendedFills = appendXmlChildren(
+    output,
+    'fills',
+    fills.filter((entry): entry is string => Boolean(entry)),
+  )
+  output = appendedFills.xml
+  const appendedBorders = appendXmlChildren(
+    output,
+    'borders',
+    borders.filter((entry): entry is string => Boolean(entry)),
+  )
+  output = appendedBorders.xml
+
+  let nextFontIndex = appendedFonts.startIndex
+  let nextFillIndex = appendedFills.startIndex
+  let nextBorderIndex = appendedBorders.startIndex
+  const styleXfs: string[] = []
+  const styleIndexById = new Map<string, number>()
+  const baseStyleCount = readCellXfs(output).length
+  styles.forEach((style, index) => {
+    const fontXml = fonts[index]
+    const fillXml = fills[index]
+    const borderXml = borders[index]
+    const fontId = fontXml ? nextFontIndex++ : 0
+    const fillId = fillXml ? nextFillIndex++ : 0
+    const borderId = borderXml ? nextBorderIndex++ : 0
+    const alignmentXml = fastStyleAlignmentXml(style)
+    const attributes = [
+      'numFmtId="0"',
+      `fontId="${String(fontId)}"`,
+      `fillId="${String(fillId)}"`,
+      `borderId="${String(borderId)}"`,
+      'xfId="0"',
+      fontXml ? 'applyFont="1"' : null,
+      fillXml ? 'applyFill="1"' : null,
+      borderXml ? 'applyBorder="1"' : null,
+      alignmentXml ? 'applyAlignment="1"' : null,
+    ].filter((entry): entry is string => Boolean(entry))
+    styleIndexById.set(style.id, baseStyleCount + styleXfs.length)
+    styleXfs.push(alignmentXml ? `<xf ${attributes.join(' ')}>${alignmentXml}</xf>` : `<xf ${attributes.join(' ')}/>`)
+  })
+
+  return {
+    stylesXml: appendCustomCellXfsToStylesXml(output, styleXfs),
+    styleIndexById,
+  }
+}
+
+function applyStyleIndexesToSheetXml(
+  sheetXml: string,
+  sheet: WorkbookSnapshot['sheets'][number],
+  styleIndexById: ReadonlyMap<string, number>,
+): string {
+  const stylesByAddress = new Map<string, number>()
+  for (const styleRange of sheet.metadata?.styleRanges ?? []) {
+    if (styleRange.range.sheetName !== sheet.name) {
+      continue
+    }
+    const styleIndex = styleIndexById.get(styleRange.styleId)
+    if (styleIndex === undefined) {
+      continue
+    }
+    const range = decodeExportRange(styleRange.range.startAddress, styleRange.range.endAddress)
+    for (let row = range.s.r; row <= range.e.r; row += 1) {
+      for (let col = range.s.c; col <= range.e.c; col += 1) {
+        stylesByAddress.set(XLSX.utils.encode_cell({ r: row, c: col }), styleIndex)
+      }
+    }
+  }
+  if (stylesByAddress.size === 0) {
+    return sheetXml
+  }
+  const handledAddresses = new Set<string>()
+  let output = sheetXml.replace(/<c\b[^>]*(?:\/>|>[\s\S]*?<\/c>)/gu, (cellXml) => {
+    const openingTag = /<c\b[^>]*(?:\/>|>)/u.exec(cellXml)?.[0]
+    const address = openingTag ? /\br="([^"]+)"/u.exec(openingTag)?.[1] : undefined
+    const styleIndex = address ? stylesByAddress.get(address) : undefined
+    if (!openingTag || !address || styleIndex === undefined) {
+      return cellXml
+    }
+    handledAddresses.add(address)
+    return cellXml.replace(openingTag, setXmlAttribute(openingTag, 's', String(styleIndex)))
+  })
+  const missingCells = [...stylesByAddress.entries()]
+    .filter(([address]) => !handledAddresses.has(address))
+    .map(([address, styleIndex]) => ({ address, styleIndex }))
+  return missingCells.length > 0 ? addMissingFormattedCells(output, missingCells) : output
+}
+
+function preserveSnapshotStyles(bytes: Uint8Array, snapshot: WorkbookSnapshot): Uint8Array {
+  const styles = snapshot.workbook.metadata?.styles ?? []
+  if (styles.length === 0 || snapshot.sheets.every((sheet) => (sheet.metadata?.styleRanges?.length ?? 0) === 0)) {
+    return bytes
+  }
+  const zip = unzipSync(bytes)
+  const stylesXml = getZipText(zip, 'xl/styles.xml')
+  if (!stylesXml) {
+    return bytes
+  }
+  const { stylesXml: nextStylesXml, styleIndexById } = appendFastStyleXfs(stylesXml, styles)
+  snapshot.sheets
+    .toSorted((left, right) => left.order - right.order)
+    .forEach((sheet, sheetIndex) => {
+      const sheetPath = `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`
+      const sheetXml = getZipText(zip, sheetPath)
+      if (sheetXml) {
+        setZipText(zip, sheetPath, applyStyleIndexesToSheetXml(sheetXml, sheet, styleIndexById))
+      }
+    })
+  setZipText(zip, 'xl/styles.xml', nextStylesXml)
   return zipSync(zip)
 }
 
@@ -492,7 +745,12 @@ function buildExportCell(cell: WorkbookSnapshot['sheets'][number]['cells'][numbe
   }
   if (typeof cell.formula === 'string' && cell.formula.trim().length > 0) {
     output.f = cell.formula.trim().replace(/^=/, '')
-    output.t = output.t ?? 'n'
+    if (output.v === undefined) {
+      output.t = 'n'
+      output.v = 0
+    } else {
+      output.t = output.t ?? 'n'
+    }
   }
   return output.v !== undefined || output.f !== undefined ? output : null
 }
@@ -568,8 +826,45 @@ function applyMacroCodeNamesToWorkbook(
   workbook.Workbook = workbookMetadata
 }
 
+function countSnapshotCells(snapshot: WorkbookSnapshot): number {
+  return snapshot.sheets.reduce((sum, sheet) => sum + sheet.cells.length, 0)
+}
+
+function hasLargeSimpleExportShape(snapshot: WorkbookSnapshot): boolean {
+  if (countSnapshotCells(snapshot) < largeSimpleExportCellCountThreshold) {
+    return false
+  }
+  const metadata = snapshot.workbook.metadata
+  if (
+    (metadata?.macroPayloads?.length ?? 0) > 0 ||
+    (metadata?.tables?.length ?? 0) > 0 ||
+    (metadata?.charts?.length ?? 0) > 0 ||
+    (metadata?.pivots?.length ?? 0) > 0 ||
+    (metadata?.definedNames?.length ?? 0) > 0
+  ) {
+    return false
+  }
+  return snapshot.sheets.every((sheet) => {
+    if (sheet.cells.some((cell) => cell.formula !== undefined)) {
+      return false
+    }
+    const sheetMetadata = sheet.metadata
+    return (
+      (sheetMetadata?.commentThreads?.length ?? 0) === 0 &&
+      (sheetMetadata?.validations?.length ?? 0) === 0 &&
+      (sheetMetadata?.conditionalFormats?.length ?? 0) === 0 &&
+      (sheetMetadata?.filters?.length ?? 0) === 0 &&
+      (sheetMetadata?.sorts?.length ?? 0) === 0 &&
+      (sheetMetadata?.protectedRanges?.length ?? 0) === 0 &&
+      sheetMetadata?.sheetProtection === undefined &&
+      sheetMetadata?.freezePane === undefined
+    )
+  })
+}
+
 export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
-  const workbook = XLSXStyle.utils.book_new()
+  const useLargeSimpleFastPath = hasLargeSimpleExportShape(snapshot)
+  const workbook = useLargeSimpleFastPath ? XLSX.utils.book_new() : XLSXStyle.utils.book_new()
   const usedNames = new Set<string>()
   const exportSheetNamesByOriginalName = new Map<string, string>()
   const formatCodesById = new Map((snapshot.workbook.metadata?.formats ?? []).map((format) => [format.id, format.code]))
@@ -602,12 +897,18 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
     if (merges) {
       worksheet['!merges'] = merges
     }
-    addExportStylesToWorksheet(worksheet, sheet.metadata?.styleRanges, snapshot.workbook.metadata?.styles)
+    if (!useLargeSimpleFastPath) {
+      addExportStylesToWorksheet(worksheet, sheet.metadata?.styleRanges, snapshot.workbook.metadata?.styles)
+    }
     addExportCommentsToWorksheet(worksheet, sheet.metadata?.commentThreads)
 
     const exportSheetName = normalizeExportSheetName(sheet.name, sheet.order, usedNames)
     exportSheetNamesByOriginalName.set(sheet.name, exportSheetName)
-    XLSXStyle.utils.book_append_sheet(workbook, worksheet, exportSheetName)
+    if (useLargeSimpleFastPath) {
+      XLSX.utils.book_append_sheet(workbook, worksheet, exportSheetName)
+    } else {
+      XLSXStyle.utils.book_append_sheet(workbook, worksheet, exportSheetName)
+    }
   }
 
   const definedNames = buildExportDefinedNames(snapshot.workbook.metadata?.definedNames, exportSheetNamesByOriginalName)
@@ -627,12 +928,14 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
   }
 
   const bytes = toUint8Array(
-    XLSXStyle.write(workbook, {
-      bookType: preservedVbaProject ? 'xlsm' : 'xlsx',
-      type: 'buffer',
-      cellStyles: true,
-      bookVBA: Boolean(preservedVbaProject),
-    }) as unknown,
+    useLargeSimpleFastPath
+      ? (XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }) as unknown)
+      : (XLSXStyle.write(workbook, {
+          bookType: preservedVbaProject ? 'xlsm' : 'xlsx',
+          type: 'buffer',
+          cellStyles: true,
+          bookVBA: Boolean(preservedVbaProject),
+        }) as unknown),
   )
   const enrichedBytes = addExportChartsToXlsxBytes(
     addExportPivotsToXlsxBytes(
@@ -669,5 +972,8 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
     snapshot,
     exportSheetNamesByOriginalName,
   )
-  return preserveSnapshotNumberFormats(enrichedBytes, exportSheetFormats)
+  return preserveSnapshotNumberFormats(
+    useLargeSimpleFastPath ? preserveSnapshotStyles(enrichedBytes, snapshot) : enrichedBytes,
+    exportSheetFormats,
+  )
 }

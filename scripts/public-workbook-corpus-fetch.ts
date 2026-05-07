@@ -1,0 +1,406 @@
+import { spawn } from 'node:child_process'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+import { asRecord, readString, spreadsheetExtension, validatePublicWorkbookManifest } from './public-workbook-corpus-json.ts'
+import { fetchBodyBytesWithTimeout } from './public-workbook-corpus-http.ts'
+import { formatByteSize, startChildRssWatchdog, terminateChildProcess } from './public-workbook-corpus-process.ts'
+import type {
+  FetchCorpusArgs,
+  PublicWorkbookArtifact,
+  PublicWorkbookManifest,
+  PublicWorkbookSource,
+  WorkbookDownloadResult,
+} from './public-workbook-corpus-types.ts'
+import { fingerprintWorkbookBytes, sha256HexSync } from './public-workbook-corpus-workbook.ts'
+
+const rootDir = resolve(new URL('..', import.meta.url).pathname)
+const publicWorkbookCorpusScriptPath = fileURLToPath(new URL('./public-workbook-corpus.ts', import.meta.url))
+
+export const defaultDownloadTimeoutMs = 60_000
+export const defaultFingerprintTimeoutMs = 180_000
+export const defaultFingerprintMaxRssBytes = 1024 * 1024 * 1024
+const noop = (): void => undefined
+
+export async function fetchPublicWorkbookArtifacts(args: FetchCorpusArgs): Promise<PublicWorkbookManifest> {
+  validatePublicWorkbookManifest(args.manifest)
+  const fetchedAt = args.fetchedAt ?? new Date().toISOString()
+  const maxBytes = args.maxBytes ?? 50 * 1024 * 1024
+  const downloadTimeoutMs = args.downloadTimeoutMs ?? defaultDownloadTimeoutMs
+  const fingerprintTimeoutMs = args.fingerprintTimeoutMs ?? defaultFingerprintTimeoutMs
+  const fingerprintMaxRssBytes = args.fingerprintMaxRssBytes ?? defaultFingerprintMaxRssBytes
+  const isolatedFingerprinting = args.isolatedFingerprinting === true
+  const artifacts: PublicWorkbookArtifact[] = [...args.manifest.artifacts]
+  const knownHashes = new Set(artifacts.map((artifact) => artifact.sha256))
+  const knownFingerprints = new Set(artifacts.map((artifact) => artifact.workbookFingerprint))
+  mkdirSync(join(args.cacheDir, 'files'), { recursive: true })
+  const targetArtifactCount = Math.min(args.limit, args.manifest.targetWorkbookCount)
+  const remainingArtifactSlots = Math.max(0, targetArtifactCount - artifacts.length)
+  if (remainingArtifactSlots === 0) {
+    return {
+      ...args.manifest,
+      generatedAt: fetchedAt,
+      artifacts,
+    }
+  }
+  const existingSourceIds = new Set(artifacts.map((artifact) => artifact.sourceId))
+  const existingDownloadUrls = new Set(artifacts.map((artifact) => normalizeSourceUrl(artifact.downloadUrl)))
+  const candidateSources = dedupeCandidateSources(
+    args.manifest.sources.filter(
+      (source) => !existingSourceIds.has(source.id) && !existingDownloadUrls.has(normalizeSourceUrl(source.downloadUrl)),
+    ),
+  )
+  await fetchArtifactsFromCandidateSources({
+    candidateSources,
+    artifacts,
+    cacheDir: args.cacheDir,
+    fetchedAt,
+    knownFingerprints,
+    knownHashes,
+    downloadTimeoutMs,
+    fingerprintTimeoutMs,
+    fingerprintMaxRssBytes,
+    fingerprintRssCheckIntervalMs: args.fingerprintRssCheckIntervalMs,
+    isolatedFingerprinting,
+    maxBytes,
+    onArtifactsCommitted: args.onArtifactsCommitted,
+    targetArtifactCount,
+    sourceManifest: args.manifest,
+  })
+  return {
+    ...args.manifest,
+    generatedAt: fetchedAt,
+    artifacts,
+  }
+}
+
+async function fetchArtifactsFromCandidateSources(args: {
+  readonly candidateSources: readonly PublicWorkbookSource[]
+  readonly artifacts: PublicWorkbookArtifact[]
+  readonly cacheDir: string
+  readonly fetchedAt: string
+  readonly knownFingerprints: Set<string>
+  readonly knownHashes: Set<string>
+  readonly downloadTimeoutMs: number
+  readonly fingerprintTimeoutMs: number
+  readonly fingerprintMaxRssBytes: number
+  readonly fingerprintRssCheckIntervalMs?: number
+  readonly isolatedFingerprinting: boolean
+  readonly maxBytes: number
+  readonly onArtifactsCommitted?: (manifest: PublicWorkbookManifest) => void | Promise<void>
+  readonly startIndex?: number
+  readonly sourceManifest: PublicWorkbookManifest
+  readonly targetArtifactCount: number
+}): Promise<void> {
+  const startIndex = args.startIndex ?? 0
+  if (args.artifacts.length >= args.targetArtifactCount || startIndex >= args.candidateSources.length) {
+    return
+  }
+  const remainingArtifactSlots = args.targetArtifactCount - args.artifacts.length
+  const batchSize = Math.min(args.candidateSources.length - startIndex, Math.max(24, Math.min(remainingArtifactSlots * 3, 240)))
+  const batch = args.candidateSources.slice(startIndex, startIndex + batchSize)
+  const downloadResults = await mapWithConcurrency(batch, 6, (source) =>
+    downloadWorkbookCandidate(source, {
+      downloadTimeoutMs: args.downloadTimeoutMs,
+      fingerprintTimeoutMs: args.fingerprintTimeoutMs,
+      fingerprintMaxRssBytes: args.fingerprintMaxRssBytes,
+      fingerprintRssCheckIntervalMs: args.fingerprintRssCheckIntervalMs,
+      isolatedFingerprinting: args.isolatedFingerprinting,
+      maxBytes: args.maxBytes,
+    }),
+  )
+  let committedArtifactCount = 0
+  for (const result of downloadResults) {
+    if (args.artifacts.length >= args.targetArtifactCount) {
+      break
+    }
+    if (result.error || !result.bytes || !result.sha256 || !result.workbookFingerprint) {
+      continue
+    }
+    if (args.knownHashes.has(result.sha256)) {
+      continue
+    }
+    if (args.knownFingerprints.has(result.workbookFingerprint)) {
+      continue
+    }
+    const source = result.source
+    const bytes = result.bytes
+    const hash = result.sha256
+    const workbookFingerprint = result.workbookFingerprint
+    const cachePath = `files/${hash}.${spreadsheetExtension(source.fileName)}`
+    writeFileSync(join(args.cacheDir, cachePath), bytes)
+    args.knownHashes.add(hash)
+    args.knownFingerprints.add(workbookFingerprint)
+    args.artifacts.push({
+      id: `workbook-${hash.slice(0, 16)}`,
+      sourceId: source.id,
+      sourceUrl: source.sourceUrl,
+      downloadUrl: source.downloadUrl,
+      fileName: source.fileName,
+      cachePath,
+      sha256: hash,
+      byteSize: bytes.byteLength,
+      workbookFingerprint,
+      fetchedAt: args.fetchedAt,
+      license: source.license,
+      ...(source.topicEvidence ? { topicEvidence: source.topicEvidence } : {}),
+    })
+    committedArtifactCount += 1
+  }
+  if (committedArtifactCount > 0) {
+    await args.onArtifactsCommitted?.({
+      ...args.sourceManifest,
+      generatedAt: args.fetchedAt,
+      artifacts: [...args.artifacts],
+    })
+  }
+  await fetchArtifactsFromCandidateSources({
+    ...args,
+    startIndex: startIndex + batchSize,
+  })
+}
+
+function dedupeCandidateSources(sources: readonly PublicWorkbookSource[]): PublicWorkbookSource[] {
+  const seenDownloadUrls = new Set<string>()
+  const deduped: PublicWorkbookSource[] = []
+  for (const source of sources) {
+    const downloadUrl = normalizeSourceUrl(source.downloadUrl)
+    if (seenDownloadUrls.has(downloadUrl)) {
+      continue
+    }
+    seenDownloadUrls.add(downloadUrl)
+    deduped.push(source)
+  }
+  return deduped
+}
+
+function normalizeSourceUrl(value: string): string {
+  return value.trim().toLowerCase()
+}
+
+async function downloadWorkbookCandidate(
+  source: PublicWorkbookSource,
+  args: {
+    readonly downloadTimeoutMs: number
+    readonly fingerprintTimeoutMs: number
+    readonly fingerprintMaxRssBytes: number
+    readonly fingerprintRssCheckIntervalMs?: number
+    readonly isolatedFingerprinting: boolean
+    readonly maxBytes: number
+  },
+): Promise<WorkbookDownloadResult> {
+  try {
+    const bytes = await downloadWorkbookBytes(source.downloadUrl, args.maxBytes, args.downloadTimeoutMs)
+    const sha256 = sha256HexSync(bytes)
+    const workbookFingerprint = args.isolatedFingerprinting
+      ? await fingerprintWorkbookBytesIsolated(bytes, source.fileName, args.fingerprintTimeoutMs, {
+          maxRssBytes: args.fingerprintMaxRssBytes,
+          rssCheckIntervalMs: args.fingerprintRssCheckIntervalMs,
+        })
+      : fingerprintWorkbookBytes(bytes, source.fileName)
+    return {
+      source,
+      bytes,
+      sha256,
+      workbookFingerprint,
+      error: null,
+    }
+  } catch (error) {
+    return {
+      source,
+      bytes: null,
+      sha256: null,
+      workbookFingerprint: null,
+      error: error instanceof Error ? error.message : String(error),
+    }
+  }
+}
+
+function fingerprintWorkbookBytesIsolated(
+  bytes: Uint8Array,
+  fileName: string,
+  timeoutMs: number,
+  resourceLimits: {
+    readonly maxRssBytes: number
+    readonly rssCheckIntervalMs?: number
+  },
+): Promise<string> {
+  const tempDir = mkdtempSync(join(tmpdir(), 'public-workbook-fingerprint-'))
+  const tempPath = join(tempDir, `workbook.${spreadsheetExtension(fileName)}`)
+  writeFileSync(tempPath, bytes)
+  return fingerprintWorkbookFileIsolated(tempPath, fileName, timeoutMs, resourceLimits, () => {
+    rmSync(tempDir, { recursive: true, force: true })
+  })
+}
+
+export function fingerprintWorkbookFileIsolated(
+  filePath: string,
+  fileName: string,
+  timeoutMs: number,
+  resourceLimits: {
+    readonly maxRssBytes: number
+    readonly rssCheckIntervalMs?: number
+  },
+  onCleanup: () => void = noop,
+): Promise<string> {
+  return new Promise<string>((resolvePromise, rejectPromise) => {
+    const child = spawn(
+      process.execPath,
+      [
+        publicWorkbookCorpusScriptPath,
+        'fingerprint-artifact-worker',
+        '--file',
+        filePath,
+        '--file-name',
+        fileName,
+        '--fingerprint-max-rss-mb',
+        String(Math.ceil(resourceLimits.maxRssBytes / 1024 / 1024)),
+      ],
+      {
+        stdio: ['ignore', 'pipe', 'pipe'],
+      },
+    )
+    let stdout = ''
+    let stderr = ''
+    let timer: ReturnType<typeof setTimeout>
+    let settled = false
+    let stopRssWatchdog = noop
+    const cleanup = (): void => {
+      clearTimeout(timer)
+      stopRssWatchdog()
+      onCleanup()
+    }
+    const terminateChild = (signal: 'SIGTERM' | 'SIGKILL'): void => {
+      terminateChildProcess(child, signal)
+    }
+    const finish = (value: string): void => {
+      if (settled) {
+        return
+      }
+      settled = true
+      cleanup()
+      resolvePromise(value)
+    }
+    const fail = (error: Error): void => {
+      if (settled) {
+        return
+      }
+      settled = true
+      cleanup()
+      rejectPromise(error)
+    }
+    timer = setTimeout(() => {
+      terminateChild('SIGTERM')
+      const forceKillTimer = setTimeout(() => terminateChild('SIGKILL'), 5_000)
+      forceKillTimer.unref()
+      fail(new Error(`Workbook fingerprinting timed out after ${String(timeoutMs)}ms`))
+    }, timeoutMs)
+    stopRssWatchdog = startChildRssWatchdog(child, {
+      maxRssBytes: resourceLimits.maxRssBytes,
+      intervalMs: resourceLimits.rssCheckIntervalMs,
+      onLimitExceeded: (rssBytes) => {
+        terminateChild('SIGTERM')
+        const forceKillTimer = setTimeout(() => terminateChild('SIGKILL'), 5_000)
+        forceKillTimer.unref()
+        fail(
+          new Error(
+            `Workbook fingerprinting subprocess exceeded RSS limit: ${formatByteSize(rssBytes)} > ${formatByteSize(
+              resourceLimits.maxRssBytes,
+            )}`,
+          ),
+        )
+      },
+    })
+    child.stdout.setEncoding('utf8')
+    child.stderr.setEncoding('utf8')
+    child.stdout.on('data', (chunk: string) => {
+      stdout += chunk
+    })
+    child.stderr.on('data', (chunk: string) => {
+      stderr += chunk
+    })
+    child.on('error', (error) => {
+      fail(new Error(`Workbook fingerprinting subprocess failed to start: ${error.message}`))
+    })
+    child.on('close', (code, signal) => {
+      if (code !== 0) {
+        const details = compactProcessOutput(stderr || stdout)
+        fail(
+          new Error(
+            `Workbook fingerprinting subprocess exited with ${signal ? `signal ${signal}` : `code ${String(code)}`}${
+              details ? `: ${details}` : ''
+            }`,
+          ),
+        )
+        return
+      }
+      try {
+        const parsed = asRecord(JSON.parse(stdout) as unknown)
+        const workbookFingerprint = readString(parsed, 'workbookFingerprint')
+        if (!workbookFingerprint) {
+          throw new Error('Missing workbookFingerprint')
+        }
+        finish(workbookFingerprint)
+      } catch (error) {
+        fail(
+          new Error(`Workbook fingerprinting subprocess returned invalid JSON: ${error instanceof Error ? error.message : String(error)}`),
+        )
+      }
+    })
+  })
+}
+
+async function downloadWorkbookBytes(url: string, maxBytes: number, timeoutMs: number): Promise<Uint8Array> {
+  const { bytes } = await fetchBodyBytesWithTimeout(
+    url,
+    {
+      headers: {
+        'user-agent': 'bilig-public-workbook-corpus/1.0',
+        accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,*/*',
+      },
+    },
+    {
+      timeoutMs,
+      maxBytes,
+      maxBytesLabel: 'Workbook',
+      validateResponse: (response) => {
+        if (!response.ok) {
+          throw new Error(`Unable to download ${url}: HTTP ${String(response.status)}`)
+        }
+        const contentLength = Number(response.headers.get('content-length') ?? '0')
+        if (contentLength > maxBytes) {
+          throw new Error(`Workbook exceeds max byte size: ${String(contentLength)} > ${String(maxBytes)}`)
+        }
+      },
+    },
+  )
+  return bytes
+}
+
+async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  concurrency: number,
+  mapper: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = []
+  let nextIndex = 0
+  const workerCount = Math.min(Math.max(1, concurrency), items.length)
+  const runNext = async (): Promise<void> => {
+    const index = nextIndex
+    nextIndex += 1
+    if (index >= items.length) {
+      return
+    }
+    results[index] = await mapper(items[index], index)
+    await runNext()
+  }
+  await Promise.all(Array.from({ length: workerCount }, () => runNext()))
+  return results
+}
+
+function compactProcessOutput(value: string): string | null {
+  const compacted = value.replaceAll(rootDir, '<repo>').replace(/\s+/gu, ' ').trim()
+  return compacted.length > 0 ? compacted.slice(0, 1_000) : null
+}

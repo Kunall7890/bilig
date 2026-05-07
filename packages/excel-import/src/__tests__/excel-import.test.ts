@@ -262,6 +262,31 @@ describe('excel import', () => {
     expect(roundTripped.snapshot.workbook.metadata?.definedNames).toEqual(imported.snapshot.workbook.metadata?.definedNames)
   })
 
+  it('preserves formula-only cells across export round trips', () => {
+    const snapshot: WorkbookSnapshot = {
+      version: 1,
+      workbook: { name: 'formula-only-export' },
+      sheets: [
+        {
+          id: 1,
+          name: 'Summary',
+          order: 0,
+          cells: [
+            { address: 'A1', value: 12 },
+            { address: 'A2', value: 5 },
+            { address: 'A3', formula: 'A1-A2' },
+          ],
+        },
+      ],
+    }
+
+    const roundTripped = importXlsx(exportXlsx(snapshot), 'formula-only-export.xlsx')
+
+    expect(roundTripped.snapshot.sheets[0]?.cells).toEqual(
+      expect.arrayContaining([expect.objectContaining({ address: 'A3', formula: 'A1-A2' })]),
+    )
+  })
+
   it('preserves sheet names with trailing spaces across export round trips', () => {
     const snapshot: WorkbookSnapshot = {
       version: 1,
@@ -388,6 +413,62 @@ describe('excel import', () => {
           color: '#000000',
         },
       },
+    })
+  })
+
+  it('coalesces repeated imported xlsx styles into rectangular ranges', () => {
+    const snapshot: WorkbookSnapshot = {
+      version: 1,
+      workbook: {
+        name: 'Styled import',
+        metadata: {
+          styles: [
+            {
+              id: 'header-fill',
+              fill: { backgroundColor: '#1d3989' },
+              font: { bold: true, color: '#ffffff' },
+            },
+          ],
+        },
+      },
+      sheets: [
+        {
+          id: 1,
+          name: 'Styled',
+          order: 0,
+          cells: [
+            { address: 'A1', value: 'Header' },
+            { address: 'B1', value: 'Header' },
+            { address: 'C1', value: 'Header' },
+            { address: 'A2', value: 'Header' },
+            { address: 'B2', value: 'Header' },
+            { address: 'C2', value: 'Header' },
+            { address: 'A3', value: 'Header' },
+            { address: 'B3', value: 'Header' },
+            { address: 'C3', value: 'Header' },
+          ],
+          metadata: {
+            styleRanges: [
+              {
+                range: { sheetName: 'Styled', startAddress: 'A1', endAddress: 'C3' },
+                styleId: 'header-fill',
+              },
+            ],
+          },
+        },
+      ],
+    }
+
+    const imported = importXlsx(exportXlsx(snapshot), 'styled-block.xlsx')
+    const styleRanges = imported.snapshot.sheets[0]?.metadata?.styleRanges ?? []
+    const styleRange = styleRanges[0]
+
+    expect(styleRanges).toHaveLength(1)
+    expect(styleRange?.range).toEqual({ sheetName: 'Styled', startAddress: 'A1', endAddress: 'C3' })
+    const style = imported.snapshot.workbook.metadata?.styles?.find((entry) => entry.id === styleRange?.styleId)
+    expect(style).toMatchObject({
+      fill: { backgroundColor: '#1d3989' },
+      font: { bold: true, color: '#ffffff' },
     })
   })
 

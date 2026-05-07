@@ -290,7 +290,7 @@ export function readImportedWorkbookTables(bytes: Uint8Array, sheetNames: readon
   sheetNames.forEach((sheetName, sheetIndex) => {
     const sheetPath = `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`
     const sheetXml = getZipText(zip, sheetPath)
-    if (!sheetXml) {
+    if (!sheetXml || !/<tableParts\b/u.test(sheetXml)) {
       return
     }
     const sheetRelationships = parseRelationships(getZipText(zip, `xl/worksheets/_rels/sheet${String(sheetIndex + 1)}.xml.rels`))

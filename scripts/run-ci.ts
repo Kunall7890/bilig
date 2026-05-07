@@ -186,6 +186,7 @@ const browserLane: CiTask = {
 const focusedCorrectnessLanes: readonly CiTask[] = [
   pnpm('correctness core', 'test:correctness:core'),
   pnpm('correctness formula', 'test:correctness:formula'),
+  pnpm('correctness public workbook corpus', 'test:correctness:corpus'),
   pnpm('correctness server', 'test:correctness:server'),
   pnpm('correctness browser runtime', 'test:correctness:browser'),
 ]

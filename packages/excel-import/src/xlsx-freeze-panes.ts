@@ -161,7 +161,7 @@ export function readImportedWorkbookFreezePanes(bytes: Uint8Array, sheetNames: r
 
   sheetNames.forEach((sheetName, sheetIndex) => {
     const sheetXml = getZipText(zip, `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`)
-    if (!sheetXml) {
+    if (!sheetXml || !/<pane\b/u.test(sheetXml)) {
       return
     }
     const parsed: unknown = xmlParser.parse(sheetXml)

@@ -1,0 +1,270 @@
+import { createHash } from 'node:crypto'
+
+import * as XLSX from 'xlsx'
+
+import { importXlsx } from '../packages/excel-import/src/index.js'
+import { ValueTag } from '../packages/protocol/src/enums.js'
+import type { CellValue, WorkbookSnapshot } from '../packages/protocol/src/types.js'
+import type { FormulaOracle, PublicWorkbookCorpusCase, PublicWorkbookFeatureCounts } from './public-workbook-corpus-types.ts'
+
+export interface WorkbookFootprint {
+  readonly featureCounts: PublicWorkbookFeatureCounts
+  readonly workbookMetadata: PublicWorkbookCorpusCase['workbookMetadata']
+}
+
+interface WorksheetCellEntry {
+  readonly address: string
+  readonly cell: Record<string, unknown>
+  readonly row: number
+  readonly column: number
+}
+
+export function countWorkbookFeatures(snapshot: WorkbookSnapshot, warnings: readonly string[]): PublicWorkbookFeatureCounts {
+  return {
+    sheetCount: snapshot.sheets.length,
+    cellCount: snapshot.sheets.reduce((sum, sheet) => sum + sheet.cells.length, 0),
+    formulaCellCount: snapshot.sheets.reduce((sum, sheet) => sum + sheet.cells.filter((cell) => cell.formula !== undefined).length, 0),
+    valueCellCount: snapshot.sheets.reduce((sum, sheet) => sum + sheet.cells.filter((cell) => cell.value !== undefined).length, 0),
+    definedNameCount: snapshot.workbook.metadata?.definedNames?.length ?? 0,
+    tableCount: snapshot.workbook.metadata?.tables?.length ?? 0,
+    chartCount: snapshot.workbook.metadata?.charts?.length ?? 0,
+    pivotCount: snapshot.workbook.metadata?.pivots?.length ?? 0,
+    mergeCount: snapshot.sheets.reduce((sum, sheet) => sum + (sheet.metadata?.merges?.length ?? 0), 0),
+    styleRangeCount: snapshot.sheets.reduce((sum, sheet) => sum + (sheet.metadata?.styleRanges?.length ?? 0), 0),
+    conditionalFormatCount: snapshot.sheets.reduce((sum, sheet) => sum + (sheet.metadata?.conditionalFormats?.length ?? 0), 0),
+    dataValidationCount: snapshot.sheets.reduce((sum, sheet) => sum + (sheet.metadata?.validations?.length ?? 0), 0),
+    macroPayloadCount: snapshot.workbook.metadata?.macroPayloads?.length ?? 0,
+    warningCount: warnings.length,
+  }
+}
+
+export function workbookMetadata(snapshot: WorkbookSnapshot): PublicWorkbookCorpusCase['workbookMetadata'] {
+  return {
+    workbookName: snapshot.workbook.name,
+    sheetNames: snapshot.sheets.toSorted((left, right) => left.order - right.order).map((sheet) => sheet.name),
+    dimensions: snapshot.sheets
+      .toSorted((left, right) => left.order - right.order)
+      .map((sheet) => {
+        let rowCount = 0
+        let columnCount = 0
+        for (const cell of sheet.cells) {
+          rowCount = Math.max(rowCount, (cell.row ?? rowIndexFromAddress(cell.address)) + 1)
+          columnCount = Math.max(columnCount, (cell.col ?? columnIndexFromAddress(cell.address)) + 1)
+        }
+        return {
+          sheetName: sheet.name,
+          rowCount,
+          columnCount,
+          nonEmptyCellCount: sheet.cells.length,
+        }
+      }),
+  }
+}
+
+export function emptyFeatureCounts(): PublicWorkbookFeatureCounts {
+  return {
+    sheetCount: 0,
+    cellCount: 0,
+    formulaCellCount: 0,
+    valueCellCount: 0,
+    definedNameCount: 0,
+    tableCount: 0,
+    chartCount: 0,
+    pivotCount: 0,
+    mergeCount: 0,
+    styleRangeCount: 0,
+    conditionalFormatCount: 0,
+    dataValidationCount: 0,
+    macroPayloadCount: 0,
+    warningCount: 0,
+  }
+}
+
+export function inspectWorkbookFootprint(bytes: Uint8Array, fileName: string): WorkbookFootprint {
+  const workbook = XLSX.read(bytes, {
+    type: 'array',
+    cellFormula: true,
+    cellText: false,
+    cellDates: false,
+    dense: true,
+  })
+  const featureCounts = emptyFeatureCounts()
+  const dimensions: PublicWorkbookCorpusCase['workbookMetadata']['dimensions'] = []
+  featureCounts.sheetCount = workbook.SheetNames.length
+  featureCounts.definedNameCount = Array.isArray(workbook.Workbook?.Names) ? workbook.Workbook.Names.length : 0
+  for (const sheetName of workbook.SheetNames) {
+    const sheet = workbook.Sheets[sheetName]
+    let rowCount = 0
+    let columnCount = 0
+    let nonEmptyCellCount = 0
+    if (sheet) {
+      for (const { cell, row, column } of worksheetCellEntries(sheet)) {
+        rowCount = Math.max(rowCount, row + 1)
+        columnCount = Math.max(columnCount, column + 1)
+        nonEmptyCellCount += 1
+        featureCounts.cellCount += 1
+        if (typeof cell.f === 'string' && cell.f.trim().length > 0) {
+          featureCounts.formulaCellCount += 1
+        }
+        if (cell.v !== undefined) {
+          featureCounts.valueCellCount += 1
+        }
+      }
+      featureCounts.mergeCount += Array.isArray(sheet['!merges']) ? sheet['!merges'].length : 0
+    }
+    dimensions.push({ sheetName, rowCount, columnCount, nonEmptyCellCount })
+  }
+  return {
+    featureCounts,
+    workbookMetadata: {
+      workbookName: fileName.replace(/\.(xlsx|xlsm|csv)$/iu, '') || fileName,
+      sheetNames: workbook.SheetNames,
+      dimensions,
+    },
+  }
+}
+
+export function fingerprintWorkbookBytes(bytes: Uint8Array, fileName: string): string {
+  const imported = importXlsx(bytes, fileName)
+  const counts = countWorkbookFeatures(imported.snapshot, imported.warnings)
+  const metadata = workbookMetadata(imported.snapshot)
+  const formulaShapes = imported.snapshot.sheets.flatMap((sheet) =>
+    sheet.cells
+      .filter((cell) => cell.formula !== undefined)
+      .map((cell) => `${sheet.name}:${cell.address}:${cell.formula ?? ''}`)
+      .toSorted(),
+  )
+  return sha256HexSync(Buffer.from(JSON.stringify({ counts, metadata, formulaShapes })))
+}
+
+export function extractFormulaOracles(bytes: Uint8Array): FormulaOracle[] {
+  const workbook = XLSX.read(bytes, { type: 'array', cellFormula: true, cellText: false, cellDates: false })
+  const oracles: FormulaOracle[] = []
+  for (const sheetName of workbook.SheetNames) {
+    const sheet = workbook.Sheets[sheetName]
+    if (!sheet?.['!ref']) {
+      continue
+    }
+    for (const { address, cell } of worksheetCellEntries(sheet)) {
+      if (typeof cell['f'] !== 'string' || cell['v'] === undefined) {
+        continue
+      }
+      const expected = cellValueFromXlsx(cell)
+      if (expected) {
+        oracles.push({ sheetName, address, expected })
+      }
+    }
+  }
+  return oracles
+}
+
+export function cellValuesMatchOracle(actual: CellValue, expected: CellValue): boolean {
+  if (actual.tag !== expected.tag) {
+    return false
+  }
+  if (actual.tag === ValueTag.Number && expected.tag === ValueTag.Number) {
+    return Math.abs(actual.value - expected.value) < 1e-7
+  }
+  if (actual.tag === ValueTag.String && expected.tag === ValueTag.String) {
+    return actual.value === expected.value
+  }
+  if (actual.tag === ValueTag.Boolean && expected.tag === ValueTag.Boolean) {
+    return actual.value === expected.value
+  }
+  return true
+}
+
+export function formatCellValue(value: CellValue): string {
+  switch (value.tag) {
+    case ValueTag.Empty:
+      return '<empty>'
+    case ValueTag.Number:
+      return String(value.value)
+    case ValueTag.Boolean:
+      return String(value.value)
+    case ValueTag.String:
+      return value.value
+    case ValueTag.Error:
+      return `error:${String(value.code)}`
+  }
+}
+
+function cellValueFromXlsx(cell: Record<string, unknown>): CellValue | null {
+  const value = cell['v']
+  switch (cell['t']) {
+    case 'n':
+      return typeof value === 'number' && Number.isFinite(value) ? { tag: ValueTag.Number, value } : null
+    case 'b':
+      return typeof value === 'boolean' ? { tag: ValueTag.Boolean, value } : null
+    case 's':
+    case 'str':
+      return typeof value === 'string' ? { tag: ValueTag.String, value, stringId: 0 } : null
+    case 'd':
+    case 'e':
+    case 'z':
+      return null
+    default:
+      return null
+  }
+}
+
+function worksheetCellEntries(sheet: XLSX.WorkSheet): WorksheetCellEntry[] {
+  const denseRows = (sheet as Record<string, unknown>)['!data']
+  if (Array.isArray(denseRows)) {
+    const denseEntries: WorksheetCellEntry[] = []
+    denseRows.forEach((row, rowIndex) => {
+      if (!Array.isArray(row)) {
+        return
+      }
+      row.forEach((cell, columnIndex) => {
+        if (!isRecord(cell)) {
+          return
+        }
+        denseEntries.push({
+          address: XLSX.utils.encode_cell({ r: rowIndex, c: columnIndex }),
+          cell,
+          row: rowIndex,
+          column: columnIndex,
+        })
+      })
+    })
+    return denseEntries
+  }
+
+  const entries: WorksheetCellEntry[] = []
+  for (const [address, value] of Object.entries(sheet)) {
+    if (!/^[A-Z]{1,3}[1-9][0-9]*$/u.test(address) || !isRecord(value)) {
+      continue
+    }
+    const decoded = XLSX.utils.decode_cell(address)
+    entries.push({
+      address,
+      cell: value,
+      row: decoded.r,
+      column: decoded.c,
+    })
+  }
+  return entries.toSorted((left, right) => left.row - right.row || left.column - right.column)
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function rowIndexFromAddress(address: string): number {
+  const row = Number(/\d+$/u.exec(address)?.[0] ?? '1')
+  return Number.isInteger(row) && row > 0 ? row - 1 : 0
+}
+
+function columnIndexFromAddress(address: string): number {
+  const letters = /^[A-Z]+/iu.exec(address)?.[0].toUpperCase() ?? 'A'
+  let column = 0
+  for (const letter of letters) {
+    column = column * 26 + letter.charCodeAt(0) - 64
+  }
+  return Math.max(0, column - 1)
+}
+
+export function sha256HexSync(bytes: Uint8Array): string {
+  return createHash('sha256').update(bytes).digest('hex')
+}

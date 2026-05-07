@@ -13,11 +13,17 @@ import type {
   CellStyleFontSnapshot,
   CellStyleRecord,
   CellVerticalAlignment,
+  WorkbookAxisEntrySnapshot,
   SheetStyleRangeSnapshot,
 } from '@bilig/protocol'
 
 type ImportedCellStyle = Omit<CellStyleRecord, 'id'>
 type ExportCellAlignment = NonNullable<XLSXStyle.CellStyle['alignment']>
+
+interface ImportedSheetDimensions {
+  columns?: WorkbookAxisEntrySnapshot[]
+  rows?: WorkbookAxisEntrySnapshot[]
+}
 
 const xmlParser = new XMLParser({
   ignoreAttributes: false,
@@ -312,25 +318,119 @@ function parseWorkbookStyles(stylesXml: string): Map<number, ImportedCellStyle> 
   return styles
 }
 
+function readXmlAttribute(tag: string, name: string): string | null {
+  const doubleQuoted = new RegExp(`\\b${name}="([^"]*)"`, 'u').exec(tag)
+  if (doubleQuoted) {
+    return doubleQuoted[1] ?? null
+  }
+  const singleQuoted = new RegExp(`\\b${name}='([^']*)'`, 'u').exec(tag)
+  return singleQuoted?.[1] ?? null
+}
+
+function readXmlNumberAttribute(tag: string, name: string): number | null {
+  const raw = readXmlAttribute(tag, name)
+  if (raw === null || raw.trim().length === 0) {
+    return null
+  }
+  const value = Number(raw)
+  return Number.isFinite(value) ? value : null
+}
+
+function readXmlPositiveIntegerAttribute(tag: string, name: string): number | null {
+  const value = readXmlNumberAttribute(tag, name)
+  return value !== null && Number.isSafeInteger(value) && value > 0 ? value : null
+}
+
 function parseSheetStyleIndexes(sheetXml: string): Map<string, number> {
-  const parsed: unknown = xmlParser.parse(sheetXml)
-  const worksheet = recordChild(parsed, 'worksheet')
-  const sheetData = recordChild(worksheet, 'sheetData')
   const output = new Map<string, number>()
 
-  for (const row of asArray(sheetData?.['row'])) {
-    for (const cell of asArray(recordChild(row, 'c') ?? (isRecord(row) ? row['c'] : undefined))) {
-      if (!isRecord(cell)) {
-        continue
-      }
-      const address = stringValue(cell['r'])
-      const styleIndex = numberValue(cell['s'])
-      if (address && styleIndex !== null) {
-        output.set(address, styleIndex)
-      }
+  for (const match of sheetXml.matchAll(/<c\b[^>]*>/gu)) {
+    const cellTag = match[0]
+    const address = readXmlAttribute(cellTag, 'r')
+    const styleIndexValue = readXmlAttribute(cellTag, 's')
+    if (!address || styleIndexValue === null || styleIndexValue.trim().length === 0) {
+      continue
+    }
+    const styleIndex = Number(styleIndexValue)
+    if (Number.isSafeInteger(styleIndex)) {
+      output.set(address, styleIndex)
     }
   }
 
+  return output
+}
+
+function parseSheetColumnEntries(sheetXml: string): WorkbookAxisEntrySnapshot[] | undefined {
+  const entries: WorkbookAxisEntrySnapshot[] = []
+  for (const match of sheetXml.matchAll(/<col\b[^>]*\/?>/gu)) {
+    const columnTag = match[0]
+    const min = readXmlPositiveIntegerAttribute(columnTag, 'min')
+    const max = readXmlPositiveIntegerAttribute(columnTag, 'max') ?? min
+    const width = readXmlNumberAttribute(columnTag, 'width')
+    if (min === null || max === null || width === null || width <= 0) {
+      continue
+    }
+    const size = Math.round(width * 6)
+    if (size <= 0) {
+      continue
+    }
+    for (let column = min - 1; column <= max - 1; column += 1) {
+      entries.push({
+        id: `col:${String(column)}`,
+        index: column,
+        size,
+      })
+    }
+  }
+  return entries.length > 0 ? entries : undefined
+}
+
+function parseSheetRowEntries(sheetXml: string): WorkbookAxisEntrySnapshot[] | undefined {
+  const entries: WorkbookAxisEntrySnapshot[] = []
+  for (const match of sheetXml.matchAll(/<row\b[^>]*>/gu)) {
+    const rowTag = match[0]
+    const rowNumber = readXmlPositiveIntegerAttribute(rowTag, 'r')
+    const height = readXmlNumberAttribute(rowTag, 'ht')
+    if (rowNumber === null || height === null || height <= 0) {
+      continue
+    }
+    const index = rowNumber - 1
+    const size = Math.round(height)
+    if (size <= 0) {
+      continue
+    }
+    entries.push({
+      id: `row:${String(index)}`,
+      index,
+      size,
+    })
+  }
+  return entries.length > 0 ? entries : undefined
+}
+
+export function readImportedWorkbookSheetDimensions(
+  workbook: XLSX.WorkBook,
+  sheetNames: readonly string[],
+): Map<string, ImportedSheetDimensions> {
+  const files = workbookFiles(workbook)
+  const sheetPaths = workbookSheetPaths(workbook)
+  const output = new Map<string, ImportedSheetDimensions>()
+  sheetNames.forEach((sheetName, index) => {
+    const sheetPath = sheetPaths[index]
+    const sheetXml = sheetPath ? getFileText(files, sheetPath) : null
+    if (!sheetXml) {
+      return
+    }
+    const columns = parseSheetColumnEntries(sheetXml)
+    const rows = parseSheetRowEntries(sheetXml)
+    const dimensions: ImportedSheetDimensions = {
+      ...(columns ? { columns } : {}),
+      ...(rows ? { rows } : {}),
+    }
+    if (dimensions.columns || dimensions.rows) {
+      output.set(sheetName, dimensions)
+    }
+  })
   return output
 }
 
