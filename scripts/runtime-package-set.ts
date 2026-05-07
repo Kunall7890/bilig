@@ -22,6 +22,12 @@ export interface RuntimePackagePublishedVersion {
   version: string | null
 }
 
+export interface RuntimePackagePublishProvisioningPlan {
+  publishAllowed: boolean
+  missingPackageNames: string[]
+  reason: string
+}
+
 export interface StableSemver {
   major: number
   minor: number
@@ -151,6 +157,40 @@ export function formatRuntimePackagePublishedVersions(publishedVersions: readonl
 
 export function missingPublishedRuntimePackageNames(publishedVersions: readonly RuntimePackagePublishedVersion[]): string[] {
   return publishedVersions.filter((entry) => entry.version === null).map((entry) => entry.packageName)
+}
+
+export function planRuntimePackagePublishProvisioning(options: {
+  publishedVersions: readonly RuntimePackagePublishedVersion[]
+  allowNewNpmPackages: boolean
+  dryRun: boolean
+}): RuntimePackagePublishProvisioningPlan {
+  const missingPackageNames = missingPublishedRuntimePackageNames(options.publishedVersions)
+  if (options.dryRun) {
+    return {
+      publishAllowed: true,
+      missingPackageNames,
+      reason: 'dry-run publishing does not require pre-provisioned npm package names',
+    }
+  }
+  if (options.allowNewNpmPackages) {
+    return {
+      publishAllowed: true,
+      missingPackageNames,
+      reason: 'first-time npm package creation was explicitly enabled',
+    }
+  }
+  if (missingPackageNames.length === 0) {
+    return {
+      publishAllowed: true,
+      missingPackageNames,
+      reason: 'all runtime package names are provisioned on npm',
+    }
+  }
+  return {
+    publishAllowed: false,
+    missingPackageNames,
+    reason: `npm package name(s) are not provisioned: ${missingPackageNames.join(', ')}`,
+  }
 }
 
 export function resolvePublishedRuntimePackageBaseline(

@@ -29,6 +29,7 @@ on:
       - "scripts/gen-workpaper-vs-hyperformula-expanded-benchmark.ts"
       - "scripts/next-runtime-release-version.ts"
       - "scripts/plan-runtime-release.ts"
+      - "scripts/check-runtime-npm-provisioning.ts"
       - "scripts/publish-runtime-package-set.ts"
       - "scripts/runtime-package-set.ts"
       - "scripts/runtime-release.ts"
@@ -481,7 +482,35 @@ jobs:
           set -euo pipefail
           pnpm publish:runtime:check
 
+      - name: Check npm package name provisioning
+        id: npm_provisioning
+        env:
+          ALLOW_NEW_NPM_PACKAGES: ${{ needs.plan_release.outputs.allow_new_packages }}
+          DRY_RUN: ${{ needs.plan_release.outputs.dry_run }}
+        run: |
+          set -euo pipefail
+          bun scripts/check-runtime-npm-provisioning.ts
+
+      - name: Report skipped runtime package release
+        if: steps.npm_provisioning.outputs.publish_allowed != 'true'
+        env:
+          REASON: ${{ steps.npm_provisioning.outputs.reason }}
+          MISSING_PACKAGES: ${{ steps.npm_provisioning.outputs.missing_packages }}
+          PUBLISHED_VERSIONS: ${{ steps.npm_provisioning.outputs.published_versions }}
+        run: |
+          set -euo pipefail
+          {
+            echo "### runtime npm release skipped"
+            echo
+            echo "${REASON}"
+            echo
+            echo "missing package names: ${MISSING_PACKAGES}"
+            echo
+            echo "published versions: ${PUBLISHED_VERSIONS}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Inspect runtime tag state
+        if: steps.npm_provisioning.outputs.publish_allowed == 'true'
         id: tag_state
         env:
           TAG_NAME: ${{ needs.plan_release.outputs.tag_name }}
@@ -508,7 +537,7 @@ jobs:
           echo "exists=false" >> "$GITHUB_OUTPUT"
 
       - name: Create and push authoritative runtime tag
-        if: steps.tag_state.outputs.exists != 'true' && needs.plan_release.outputs.dry_run != 'true'
+        if: steps.npm_provisioning.outputs.publish_allowed == 'true' && steps.tag_state.outputs.exists != 'true' && needs.plan_release.outputs.dry_run != 'true'
         env:
           TAG_NAME: ${{ needs.plan_release.outputs.tag_name }}
           TARGET_VERSION: ${{ needs.plan_release.outputs.target_version }}
@@ -535,7 +564,7 @@ jobs:
           fi
 
       - name: Create GitHub release
-        if: needs.plan_release.outputs.dry_run != 'true'
+        if: steps.npm_provisioning.outputs.publish_allowed == 'true' && needs.plan_release.outputs.dry_run != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ needs.plan_release.outputs.tag_name }}
@@ -553,6 +582,7 @@ jobs:
             --notes-file build/runtime-release-notes.md
 
       - name: Publish runtime package set to npm
+        if: steps.npm_provisioning.outputs.publish_allowed == 'true'
         env:
           NPM_DIST_TAG: ${{ needs.plan_release.outputs.npm_tag }}
           DRY_RUN: ${{ needs.plan_release.outputs.dry_run }}

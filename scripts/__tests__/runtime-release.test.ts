@@ -4,6 +4,7 @@ import {
   highestPublishedStableSemver,
   highestStableSemver,
   missingPublishedRuntimePackageNames,
+  planRuntimePackagePublishProvisioning,
   resolvePublishedRuntimePackageBaseline,
   RUNTIME_PACKAGE_DIRS,
 } from '../runtime-package-set.ts'
@@ -127,6 +128,34 @@ describe('runtime release helpers', () => {
         { packageName: '@bilig/headless', version: '0.10.0' },
       ]),
     ).toEqual(['@bilig/excel-import'])
+  })
+
+  it('blocks automatic publishing when runtime package names are not provisioned on npm', () => {
+    const publishedVersions = [
+      { packageName: '@bilig/protocol', version: '0.10.1' },
+      { packageName: '@bilig/excel-import', version: null },
+      { packageName: '@bilig/headless', version: '0.10.0' },
+    ]
+
+    expect(
+      planRuntimePackagePublishProvisioning({
+        publishedVersions,
+        allowNewNpmPackages: false,
+        dryRun: false,
+      }),
+    ).toEqual({
+      publishAllowed: false,
+      missingPackageNames: ['@bilig/excel-import'],
+      reason: 'npm package name(s) are not provisioned: @bilig/excel-import',
+    })
+
+    expect(
+      planRuntimePackagePublishProvisioning({
+        publishedVersions,
+        allowNewNpmPackages: true,
+        dryRun: false,
+      }).publishAllowed,
+    ).toBe(true)
   })
 
   it('publishes the Excel importer with the aligned runtime package set', () => {

@@ -8,7 +8,7 @@ import {
   assertAlignedVersions,
   formatRuntimePackagePublishedVersions,
   loadRuntimePackages,
-  missingPublishedRuntimePackageNames,
+  planRuntimePackagePublishProvisioning,
   parseBooleanEnv,
   type RuntimePackagePublishedVersion,
 } from './runtime-package-set.ts'
@@ -198,11 +198,12 @@ function getPublishedVersion(packageName: string): string | null {
 }
 
 function assertKnownNpmPackagesBeforePublishing(publishedVersions: readonly RuntimePackagePublishedVersion[]): void {
-  if (dryRun || allowNewNpmPackages) {
-    return
-  }
-  const missingPackages = missingPublishedRuntimePackageNames(publishedVersions)
-  if (missingPackages.length === 0) {
+  const provisioningPlan = planRuntimePackagePublishProvisioning({
+    publishedVersions,
+    allowNewNpmPackages,
+    dryRun,
+  })
+  if (provisioningPlan.publishAllowed) {
     return
   }
   throw new Error(
