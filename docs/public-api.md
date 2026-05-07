@@ -77,6 +77,8 @@ of `@bilig/core`:
 - `WorkPaper.buildFromArray`
 - `WorkPaper.buildFromSheets`
 - workbook reads for cells, ranges, sheets, and named expressions
+- display-value and formula-diagnostic reads for user-facing errors and
+  structured financial validation details
 - workbook mutations for cells, rows, columns, sheets, clipboard, and history
 - `batch`, `suspendEvaluation`, `resumeEvaluation`, `undo`, and `redo`
 - formula helpers such as address parsing, normalization, validation, and scratch evaluation

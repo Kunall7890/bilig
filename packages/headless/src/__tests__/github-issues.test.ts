@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { ValueTag, type CellValue } from '@bilig/protocol'
+import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 
 import { WorkPaper } from '../index.js'
 
@@ -12,6 +12,14 @@ function cellValue(workbook: WorkPaper, sheetName: string, row: number, col: num
 
 function expectNumber(value: CellValue, expected: number): void {
   expect(value).toEqual({ tag: ValueTag.Number, value: expected })
+}
+
+function expectNumberClose(value: CellValue, expected: number): void {
+  expect(value.tag).toBe(ValueTag.Number)
+  if (value.tag !== ValueTag.Number) {
+    throw new Error(`Expected number ${String(expected)}, received ${JSON.stringify(value)}`)
+  }
+  expect(value.value).toBeCloseTo(expected, 12)
 }
 
 function expectString(value: CellValue, expected: string): void {
@@ -264,6 +272,47 @@ describe('GitHub issue reductions', () => {
     )
 
     expectNumber(cellValue(workbook, 'Action on requests', 315, 4), 18.91)
+  })
+
+  it('exposes issue #24 XIRR invalid-date diagnostics without breaking numeric-date XIRR', () => {
+    const workbook = WorkPaper.buildFromSheets(
+      {
+        Tax: [
+          ['Metric', 'Value', 'Date serial', 'All negative', 'Text cash flow'],
+          ['Cash flows', -100_000, 45_292, -100_000, -100_000],
+          ['Year 1', 25_000, 45_658, -25_000, 25_000],
+          ['Year 2', 35_000, 46_023, -35_000, 'bad'],
+          ['Year 3', 45_000, 46_388, -45_000, 45_000],
+          ['IRR', '=IRR(B2:B5)', null],
+          ['XIRR', '=XIRR(B2:B5,C2:C5)', null],
+          ['Invalid XIRR', '=XIRR(B2:B5,A2:A5)', null],
+          ['Mismatched XIRR', '=XIRR(B2:B5,C2:C4)', null],
+          ['Missing positive XIRR', '=XIRR(D2:D5,C2:C5)', null],
+          ['Invalid cash XIRR', '=XIRR(E2:E5,C2:C5)', null],
+        ],
+      },
+      { maxRows: 100_000, maxColumns: 512, useColumnIndex: true },
+    )
+
+    expectNumberClose(cellValue(workbook, 'Tax', 5, 1), 0.02259730507537016)
+    expectNumberClose(cellValue(workbook, 'Tax', 6, 1), 0.02256857579463996)
+    expect(cellValue(workbook, 'Tax', 7, 1)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    const tax = workbook.getSheetId('Tax')!
+    const invalidXirr = { sheet: tax, row: 7, col: 1 }
+    expect(workbook.getCellDisplayValue(invalidXirr)).toBe('#VALUE!')
+    expect(workbook.getCellFormulaDiagnostics(invalidXirr)).toMatchObject([
+      {
+        severity: 'error',
+        code: 'financial-unsupported-date-coercion',
+        functionName: 'XIRR',
+        errorText: '#VALUE!',
+        references: ['Tax!A2:A5', 'Tax!A2'],
+      },
+    ])
+    expect(workbook.getCellFormulaDiagnostics(invalidXirr)[0]?.message).toContain('Use numeric Excel serial dates')
+    expect(workbook.getCellFormulaDiagnostics({ sheet: tax, row: 8, col: 1 })[0]?.code).toBe('financial-mismatched-dimensions')
+    expect(workbook.getCellFormulaDiagnostics({ sheet: tax, row: 9, col: 1 })[0]?.code).toBe('financial-missing-positive-cash-flow')
+    expect(workbook.getCellFormulaDiagnostics({ sheet: tax, row: 10, col: 1 })[0]?.code).toBe('financial-invalid-cash-flow')
   })
 
   it('reports the published package version through WorkPaper.version', () => {

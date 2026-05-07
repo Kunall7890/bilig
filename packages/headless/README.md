@@ -172,6 +172,11 @@ links, shareable copy, and overclaim guardrails, use the root
 - A string beginning with `=` is a formula. Other strings are literal text.
   `null` clears a cell.
 - `getCellValue()` returns a computed `CellValue`.
+- `getCellDisplayValue()` returns the formatted user-facing text for a cell,
+  including workbook error text such as `#VALUE!`.
+- `getCellFormulaDiagnostics()` returns structured formula diagnostics for
+  supported error families, including financial cash-flow/date validation for
+  `XIRR()` and `XNPV()`.
 - `getCellFormula()` returns the formula text when the cell is a formula.
 - `getCellSerialized()` returns the persisted cell input shape.
 - Mutation methods return WorkPaper change arrays. Empty arrays are valid when
@@ -208,6 +213,27 @@ workbook.getRangeSerialized(range)
 workbook.getSheetValues(sheet)
 workbook.getSheetSerialized(sheet)
 ```
+
+Inspect a formula error:
+
+```ts
+const value = workbook.getCellValue(at(7, 1))
+const display = workbook.getCellDisplayValue(at(7, 1))
+const diagnostics = workbook.getCellFormulaDiagnostics(at(7, 1))
+
+console.log(value) // Raw CellValue protocol object
+console.log(display) // "#VALUE!"
+console.log(diagnostics[0]?.code) // e.g. "financial-unsupported-date-coercion"
+```
+
+Finance date inputs:
+
+`XIRR(values, dates, [guess])` and `XNPV(rate, values, dates)` accept numeric
+Excel serial dates in `dates`. Text labels and text date strings are not
+coerced in headless formulas; they evaluate to `#VALUE!`. Use
+`getCellFormulaDiagnostics()` to distinguish invalid date ranges, mismatched
+range dimensions, invalid cash-flow values, missing positive or negative cash
+flows, invalid rates/guesses, and solver non-convergence.
 
 Batch related edits:
 

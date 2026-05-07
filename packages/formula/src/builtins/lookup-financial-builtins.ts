@@ -19,7 +19,7 @@ function isCellError(
 
 function collectDateSerialSeries(
   arg: LookupBuiltinArgument | undefined,
-  { errorValue, collectNumericSeries }: LookupFinancialBuiltinDeps,
+  { collectNumericSeries, errorValue }: LookupFinancialBuiltinDeps,
 ): number[] | CellValue {
   if (arg === undefined) {
     return errorValue(ErrorCode.Value)

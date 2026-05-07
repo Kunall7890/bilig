@@ -46,6 +46,12 @@ describe('lookup financial builtins', () => {
     )
     expect(XIRR(xValues, cellRange([num(39448), num(39508), num(39400), num(39859), num(39904)], 5, 1))).toEqual(err(ErrorCode.Value))
     expect(XIRR(xValues, xDates, text('bad'))).toEqual(err(ErrorCode.Value))
+    expect(
+      XIRR(xValues, cellRange([text('2008-01-01'), text('2008-03-01'), text('2008-10-30'), text('2009-02-15'), text('2009-04-01')], 5, 1)),
+    ).toEqual(err(ErrorCode.Value))
+    expect(XIRR(xValues, cellRange([text('Year 0'), text('Year 1'), text('Year 2'), text('Year 3'), text('Year 4')], 5, 1))).toEqual(
+      err(ErrorCode.Value),
+    )
   })
 
   it('covers remaining cash-flow validation branches and missing required args', () => {

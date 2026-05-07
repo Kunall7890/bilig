@@ -1,4 +1,4 @@
-import type { CellValue, LiteralInput, RecalcMetrics } from '@bilig/protocol'
+import type { CellValue, ErrorCode, LiteralInput, RecalcMetrics } from '@bilig/protocol'
 import type { EvaluationResult } from '@bilig/formula'
 import type { EngineCounters } from '@bilig/core'
 
@@ -214,6 +214,33 @@ export type WorkPaperDetailedListener<EventName extends WorkPaperEventName> = (p
 export type WorkPaperCellType = 'EMPTY' | 'VALUE' | 'FORMULA' | 'ARRAY'
 export type WorkPaperCellValueType = 'EMPTY' | 'NUMBER' | 'STRING' | 'BOOLEAN' | 'ERROR'
 export type WorkPaperCellValueDetailedType = WorkPaperCellValueType | 'DATE' | 'TIME' | 'DATETIME'
+
+export type WorkPaperFormulaDiagnosticSeverity = 'error' | 'warning' | 'info'
+export type WorkPaperFormulaDiagnosticCode =
+  | 'formula-error'
+  | 'financial-invalid-argument'
+  | 'financial-invalid-cash-flow'
+  | 'financial-unsupported-date-coercion'
+  | 'financial-invalid-date-range'
+  | 'financial-mismatched-dimensions'
+  | 'financial-missing-positive-cash-flow'
+  | 'financial-missing-negative-cash-flow'
+  | 'financial-invalid-rate'
+  | 'financial-nonconvergence'
+
+export interface WorkPaperFormulaDiagnostic {
+  severity: WorkPaperFormulaDiagnosticSeverity
+  code: WorkPaperFormulaDiagnosticCode
+  message: string
+  address: WorkPaperCellAddress
+  sheetName: string
+  a1: string
+  formula?: string
+  functionName?: string
+  errorCode?: ErrorCode
+  errorText?: string
+  references?: string[]
+}
 
 export type WorkPaperDependencyRef =
   | { kind: 'cell'; address: WorkPaperCellAddress }

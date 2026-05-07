@@ -1,4 +1,5 @@
 import type { SpreadsheetEngine } from '@bilig/core'
+import { formatCellDisplayValue } from '@bilig/protocol'
 import type { CellValue } from '@bilig/protocol'
 import { checkWorkPaperLicenseKeyValidity, cloneConfig, DEFAULT_CONFIG } from './work-paper-config.js'
 import { numberToWorkPaperDate, numberToWorkPaperDateTime, numberToWorkPaperTime } from './work-paper-date-time.js'
@@ -9,6 +10,7 @@ import {
   normalizeWorkPaperFormula,
   validateWorkPaperFormula,
 } from './work-paper-formula-analysis.js'
+import { collectWorkPaperFormulaDiagnostics } from './work-paper-formula-diagnostics.js'
 import {
   getCapturedWorkPaperFunctionPlugin,
   getCapturedWorkPaperFunctionPlugins,
@@ -46,6 +48,7 @@ import type {
   WorkPaperArrayMappingAdapter,
   WorkPaperCellAddress,
   WorkPaperCellRange,
+  WorkPaperFormulaDiagnostic,
   WorkPaperColumnSearchAdapter,
   WorkPaperConfig,
   WorkPaperDateTime,
@@ -249,6 +252,23 @@ export abstract class WorkPaperPublicSurface extends WorkPaperCapabilitySurface 
       formula,
       ...(scope !== undefined ? { scope } : {}),
       messageOf: (error, fallback) => this.messageOf(error, fallback),
+    })
+  }
+
+  getCellDisplayValue(address: WorkPaperCellAddress): string {
+    return formatCellDisplayValue(this.getCellValue(address), this.getCellValueFormat(address))
+  }
+
+  getCellFormulaDiagnostics(address: WorkPaperCellAddress): WorkPaperFormulaDiagnostic[] {
+    return collectWorkPaperFormulaDiagnostics(address, {
+      getCellValue: (target) => this.getCellValue(target),
+      getCellValueFormat: (target) => this.getCellValueFormat(target),
+      getCellFormula: (target) => this.getCellFormula(target),
+      getRangeValues: (range) => this.getRangeValues(range),
+      getSheetId: (sheetName) => this.sheetMapping.getSheetId(sheetName),
+      getSheetName: (sheetId) => this.sheetMapping.getSheetName(sheetId),
+      simpleCellAddressToString: (target, options) => this.simpleCellAddressToString(target, options),
+      simpleCellRangeToString: (range, options) => this.simpleCellRangeToString(range, options),
     })
   }
 
