@@ -281,6 +281,21 @@ pnpm workpaper:bench:competitive:check
 Do not change benchmark definitions, scoring, sampling, or workload sizes to hide
 losses.
 
+For XLSX compatibility investigations with cached formula results, run the
+corpus verifier against real workbook files:
+
+```sh
+pnpm workpaper:xlsx-corpus:check -- /path/to/xlsx-corpus
+```
+
+The verifier reads `.xlsx`, `.xlsm`, and `.xls` files, builds a WorkPaper model
+with `useColumnIndex: true`, and compares formula cells against cached workbook
+results. It reports `totalFiles`, `failedTimeouts`, `comparableFormulaCells`,
+`matchingFormulaCells`, `mismatchedFormulaCells`, `matchRate`, skipped formulas,
+and actionable mismatch samples. Missing cached results and volatile or
+environment-dependent formulas such as `NOW()` and `CELL()` are counted as
+skipped instead of silently treated as parity evidence.
+
 ## Compatibility Notes
 
 - The facade follows HyperFormula-style public workbook workflows, but it is not
@@ -293,6 +308,10 @@ losses.
 - Stable compatibility adapters are available through `graph`, `rangeMapping`,
   `arrayMapping`, `sheetMapping`, `addressMapping`, `dependencyGraph`,
   `evaluator`, `columnSearch`, and `lazilyTransformingAstService`.
+- Cached XLSX result parity is a testable corpus property, not a blanket
+  package guarantee. Use `pnpm workpaper:xlsx-corpus:check -- <corpus>` for
+  supplied workbook corpora, and keep unsupported or volatile workbook functions
+  documented in the resulting report.
 
 ## For Coding Agents
 

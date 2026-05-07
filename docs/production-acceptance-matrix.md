@@ -7,6 +7,8 @@
 - closed canonical families pass JS oracle checks
 - closed canonical families pass WASM differential checks
 - closed canonical families route to WASM in production mode
+- XLSX cached-formula corpus investigations have a maintained verifier:
+  `pnpm workpaper:xlsx-corpus:check -- <xlsx-file-or-directory>`
 
 ## Metadata and dynamic arrays
 
