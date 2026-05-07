@@ -5,17 +5,13 @@ import type { EngineCellMutationRef, EngineFormulaSourceRefs } from '../../cell-
 import { CellFlags } from '../../cell-store.js'
 import type { FormulaFamilyFreshUniformRunRegistrationArgs, FormulaFamilyRunUpsertArgs } from '../../formula/formula-family-store.js'
 import type { FormulaTemplateResolution } from '../../formula/template-bank.js'
-import { translateSimpleDirectScalarFormula } from '../../formula/simple-direct-scalar-compile.js'
 import { addEngineCounter } from '../../perf/engine-counters.js'
 import type { EngineRuntimeState, RuntimeFormula, U32 } from '../runtime-state.js'
 import { EngineMutationError } from '../errors.js'
 import { evaluateInitialDirectScalar, evaluateInitialDirectScalarNumber } from './formula-initialization-direct-scalar.js'
 import { materializeDeferredFormulaFamilyRunMembers, type DeferredInitialFormulaFamilyRun } from './formula-initialization-family-runs.js'
-import {
-  initialFormulaFamilyShapeKey,
-  tryBuildInitialSimpleRowRelativeBinaryTemplateKey,
-  type InitialTemplateFormulaCacheEntry,
-} from './formula-initialization-template-keys.js'
+import { initialFormulaFamilyShapeKey } from './formula-initialization-template-keys.js'
+import { createInitialTemplateFormulaResolver } from './formula-initialization-template-resolver.js'
 import { createInitialFormulaValueWriter, type InitialFormulaValueWriter } from './formula-initialization-value-writer.js'
 import {
   initialFormulaEntryRefAt,
@@ -55,6 +51,7 @@ export function createEngineFormulaInitializationService(args: {
   readonly ensureCellTrackedByCoords: (sheetId: number, row: number, col: number) => number
   readonly resetMaterializedCellScratch: (expectedSize: number) => void
   readonly bindFormula: (cellIndex: number, ownerSheetName: string, source: string) => void
+  readonly withInitialFormulaCells: <T>(cellIndices: readonly number[] | U32, callback: () => T) => T
   readonly bindPreparedFormula: (
     cellIndex: number,
     ownerSheetName: string,
@@ -209,38 +206,6 @@ export function createEngineFormulaInitializationService(args: {
 
   const canEvaluateInitialDirectFormula = (cellIndex: number): boolean => {
     return canEvaluateInitialDirectRuntimeFormula(args.state.formulas.get(cellIndex))
-  }
-
-  const createInitialTemplateFormulaResolver = (): ((source: string, row: number, col: number) => FormulaTemplateResolution) => {
-    const simpleTemplateCache = new Map<string, InitialTemplateFormulaCacheEntry>()
-    return (source, row, col) => {
-      const templateKey = tryBuildInitialSimpleRowRelativeBinaryTemplateKey(source, row, col)
-      const cached = templateKey === undefined ? undefined : simpleTemplateCache.get(templateKey)
-      if (cached) {
-        const anchorRowDelta = row - cached.anchorRow
-        const anchorColDelta = col - cached.anchorCol
-        const compiled = translateSimpleDirectScalarFormula(cached.anchorCompiled, anchorRowDelta, anchorColDelta, source)
-        if (compiled) {
-          return {
-            ...cached.resolution,
-            compiled,
-            translated: cached.resolution.translated || anchorRowDelta !== 0 || anchorColDelta !== 0,
-            rowDelta: cached.resolution.rowDelta + anchorRowDelta,
-            colDelta: cached.resolution.colDelta + anchorColDelta,
-          }
-        }
-      }
-      const resolution = args.compileTemplateFormula(source, row, col)
-      if (templateKey !== undefined) {
-        simpleTemplateCache.set(templateKey, {
-          resolution,
-          anchorRow: row,
-          anchorCol: col,
-          anchorCompiled: resolution.compiled,
-        })
-      }
-      return resolution
-    }
   }
 
   const evaluateInitialPrefixAggregateGroups = (
@@ -459,11 +424,14 @@ export function createEngineFormulaInitializationService(args: {
       args.ensureRecalcScratchCapacity(args.state.workbook.cellStore.size + reservedNewCells + 1)
       args.resetMaterializedCellScratch(reservedNewCells)
       const targetCellIndices = hadExistingFormulas ? EMPTY_U32 : new Uint32Array(refs.length)
+      const pendingInitialFormulaCellIndices = hadExistingFormulas ? new Uint32Array(refs.length) : targetCellIndices
       let maxTargetCellIndex = 0
-      if (!hadExistingFormulas) {
-        for (let index = 0; index < refs.length; index += 1) {
-          args.checkEvaluationBudget()
-          const cellIndex = resolveCellIndex(initialFormulaEntryRefAt(refs, index))
+      for (let index = 0; index < refs.length; index += 1) {
+        args.checkEvaluationBudget()
+        const cellIndex = resolveCellIndex(initialFormulaEntryRefAt(refs, index))
+        if (hadExistingFormulas) {
+          pendingInitialFormulaCellIndices[index] = cellIndex
+        } else {
           targetCellIndices[index] = cellIndex
           if (cellIndex > maxTargetCellIndex) {
             maxTargetCellIndex = cellIndex
@@ -625,7 +593,7 @@ export function createEngineFormulaInitializationService(args: {
             for (let refIndex = 0; refIndex < refs.length; refIndex += 1) {
               args.checkEvaluationBudget()
               const ref = initialFormulaEntryRefAt(refs, refIndex)
-              const cellIndex = hadExistingFormulas ? resolveCellIndex(ref) : targetCellIndices[refIndex]!
+              const cellIndex = hadExistingFormulas ? pendingInitialFormulaCellIndices[refIndex]! : targetCellIndices[refIndex]!
               try {
                 const prepared = resolveEntry(ref, cellIndex)
                 const requiresWorkbookMetadataBinding = compiledFormulaRequiresWorkbookMetadataBinding(prepared.compiled)
@@ -673,7 +641,7 @@ export function createEngineFormulaInitializationService(args: {
             inlineInitialDirectScalarWriter?.flush()
           })
         }
-        bindFormulaEntries()
+        args.withInitialFormulaCells(pendingInitialFormulaCellIndices, bindFormulaEntries)
         canUseInitialDirectEvaluation =
           canAssignTopoInBatch &&
           !hadExistingFormulas &&
@@ -758,7 +726,7 @@ export function createEngineFormulaInitializationService(args: {
   }
 
   const initializeCellFormulasAtNow = (refs: readonly EngineCellMutationRef[], potentialNewCells?: number): void => {
-    const resolveInitialTemplateFormula = createInitialTemplateFormulaResolver()
+    const resolveInitialTemplateFormula = createInitialTemplateFormulaResolver(args.compileTemplateFormula)
     initializeFormulaEntriesNow(
       refs,
       potentialNewCells,
@@ -789,7 +757,7 @@ export function createEngineFormulaInitializationService(args: {
   }
 
   const initializeFormulaSourcesAtNow = (refs: EngineFormulaSourceRefs, potentialNewCells?: number): void => {
-    const resolveInitialTemplateFormula = createInitialTemplateFormulaResolver()
+    const resolveInitialTemplateFormula = createInitialTemplateFormulaResolver(args.compileTemplateFormula)
     initializeFormulaEntriesNow(
       refs,
       potentialNewCells,
@@ -850,6 +818,9 @@ export function createEngineFormulaInitializationService(args: {
     const targetCellIndices = hadExistingFormulas
       ? []
       : refs.map((ref) => ref.cellIndex ?? args.ensureCellTrackedByCoords(ref.sheetId, ref.row, ref.col))
+    const pendingInitialFormulaCellIndices = hadExistingFormulas
+      ? refs.map((ref) => ref.cellIndex ?? args.ensureCellTrackedByCoords(ref.sheetId, ref.row, ref.col))
+      : targetCellIndices
     const pendingFormulaCells = hadExistingFormulas
       ? undefined
       : new Uint8Array(args.state.workbook.cellStore.capacity + reservedNewCells + 1)
@@ -873,9 +844,7 @@ export function createEngineFormulaInitializationService(args: {
         args.state.workbook.withBatchedColumnVersionUpdates(() => {
           for (let refIndex = 0; refIndex < refs.length; refIndex += 1) {
             const ref = refs[refIndex]!
-            const cellIndex = hadExistingFormulas
-              ? (ref.cellIndex ?? args.ensureCellTrackedByCoords(ref.sheetId, ref.row, ref.col))
-              : targetCellIndices[refIndex]!
+            const cellIndex = hadExistingFormulas ? pendingInitialFormulaCellIndices[refIndex]! : targetCellIndices[refIndex]!
             const ownerSheetName = resolveSheetName(ref.sheetId)
             topologyChanged =
               args.bindPreparedFormula(cellIndex, ownerSheetName, ref.source, ref.compiled, ref.templateId, {
@@ -914,7 +883,7 @@ export function createEngineFormulaInitializationService(args: {
           valueWriter.flush()
         })
       }
-      bindFormulaEntries()
+      args.withInitialFormulaCells(pendingInitialFormulaCellIndices, bindFormulaEntries)
       compileMs += performance.now() - compileStarted
     } finally {
       args.setBatchMutationDepth(args.getBatchMutationDepth() - 1)

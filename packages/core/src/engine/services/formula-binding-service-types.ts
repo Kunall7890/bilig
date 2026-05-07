@@ -80,6 +80,7 @@ export interface EngineFormulaBindingService {
     preservesValue: boolean,
   ) => boolean
   readonly bindInitialFormulaNow: (cellIndex: number, ownerSheetName: string, source: string) => void
+  readonly withInitialFormulaCellsNow: <T>(cellIndices: readonly number[] | U32, callback: () => T) => T
   readonly clearFormulaNow: (cellIndex: number) => boolean
   readonly invalidateFormulaNow: (cellIndex: number) => void
   readonly clearFormulaBookkeepingNow: () => void

@@ -613,6 +613,7 @@ export function createEngineServiceRuntime(args: {
     ensureCellTrackedByCoords: (sheetId, row, col) => support.ensureCellTrackedByCoordsNow(sheetId, row, col),
     resetMaterializedCellScratch: (expectedSize) => support.resetMaterializedCellScratchNow(expectedSize),
     bindFormula: (cellIndex, ownerSheetName, source) => binding.bindInitialFormulaNow(cellIndex, ownerSheetName, source),
+    withInitialFormulaCells: (cellIndices, callback) => binding.withInitialFormulaCellsNow(cellIndices, callback),
     bindPreparedFormula: (cellIndex, ownerSheetName, source, compiled, templateId, options) =>
       binding.bindPreparedFormulaNow(cellIndex, ownerSheetName, source, compiled, templateId, options),
     upsertFormulaFamilyRun: (run) => {

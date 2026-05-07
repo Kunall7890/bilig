@@ -7,7 +7,6 @@ import {
   UNRESOLVED_WASM_OPERAND,
 } from '../runtime-state.js'
 import { makeCellEntity, makeRangeEntity } from '../../entity-ids.js'
-import type { FormulaBindingMemberCounts } from './formula-binding-member-counts.js'
 import { tryParseDependencyCellAddress, tryParseDependencyRangeAddress } from './formula-binding-direct-scalar.js'
 import type { ParsedCompiledFormula } from './formula-binding-direct-descriptors.js'
 import { collectDynamicIndexDependencyPlan } from './formula-binding-dynamic-index-dependencies.js'
@@ -18,7 +17,8 @@ const EMPTY_DEPENDENCY_BUFFER = new Uint32Array(0)
 
 interface FormulaBindingDependencyMaterializerArgs {
   readonly serviceArgs: CreateEngineFormulaBindingServiceArgs
-  readonly formulaMemberCounts: FormulaBindingMemberCounts
+  readonly hasFormulaColumnMembers: (sheetId: number, col: number) => boolean
+  readonly isFormulaCell: (cellIndex: number) => boolean
   readonly ensureDependencyBuildCapacity: (
     cellCapacity: number,
     dependencyCapacity: number,
@@ -48,7 +48,8 @@ export function createFormulaBindingDependencyMaterializer(
   materializerArgs: FormulaBindingDependencyMaterializerArgs,
 ): FormulaBindingDependencyMaterializer {
   const args = materializerArgs.serviceArgs
-  const { formulaMemberCounts, ensureDependencyBuildCapacity } = materializerArgs
+  const { ensureDependencyBuildCapacity } = materializerArgs
+  const isFormulaCell = materializerArgs.isFormulaCell
 
   const materializeDependencies = (
     currentSheetName: string,
@@ -226,7 +227,7 @@ export function createFormulaBindingDependencyMaterializer(
       const registered = args.state.ranges.intern(sheet.id, range, {
         ensureCell: (sheetId, row, col) => args.ensureCellTrackedByCoords(sheetId, row, col),
         forEachSheetCell: (sheetId, fn) => args.forEachSheetCell(sheetId, fn),
-        isFormulaCell: (cellIndex) => (args.state.workbook.cellStore.formulaIds[cellIndex] ?? 0) !== 0,
+        isFormulaCell,
       })
       const needsSourceEdgeSync = registered.materialized || rangeDependencySourceEdgesNeedSync(registered.rangeIndex)
       appendRuntimeRangeDependency(registered.rangeIndex, needsSourceEdgeSync)
@@ -302,7 +303,7 @@ export function createFormulaBindingDependencyMaterializer(
               if (cellIndex === -1) {
                 continue
               }
-              if ((args.state.workbook.cellStore.formulaIds[cellIndex] ?? 0) === 0) {
+              if (!isFormulaCell(cellIndex)) {
                 continue
               }
               if (args.getDependencyBuildSeen()[cellIndex] !== epoch) {
@@ -334,7 +335,7 @@ export function createFormulaBindingDependencyMaterializer(
           range.end.row === directAggregate.rowEnd &&
           sheetName === directAggregate.sheetName
         if (compactDirectAggregateRange) {
-          if (!formulaMemberCounts.hasColumnMembers(sheet.id, range.start.col)) {
+          if (!materializerArgs.hasFormulaColumnMembers(sheet.id, range.start.col)) {
             continue
           }
           for (let row = range.start.row; row <= range.end.row; row += 1) {
@@ -342,7 +343,7 @@ export function createFormulaBindingDependencyMaterializer(
             if (cellIndex === -1) {
               continue
             }
-            if ((args.state.workbook.cellStore.formulaIds[cellIndex] ?? 0) === 0) {
+            if (!isFormulaCell(cellIndex)) {
               continue
             }
             if (args.getDependencyBuildSeen()[cellIndex] !== epoch) {
@@ -358,7 +359,7 @@ export function createFormulaBindingDependencyMaterializer(
         const registered = args.state.ranges.intern(sheet.id, range, {
           ensureCell: (sheetId, row, col) => args.ensureCellTrackedByCoords(sheetId, row, col),
           forEachSheetCell: (sheetId, fn) => args.forEachSheetCell(sheetId, fn),
-          isFormulaCell: (cellIndex) => (args.state.workbook.cellStore.formulaIds[cellIndex] ?? 0) !== 0,
+          isFormulaCell,
         })
         if (symbolicRangeIndex !== -1) {
           args.getSymbolicRangeBindings()[symbolicRangeIndex] = registered.rangeIndex
@@ -486,7 +487,7 @@ export function createFormulaBindingDependencyMaterializer(
       return undefined
     }
     for (let col = directAggregate.col; col <= directAggregate.colEnd; col += 1) {
-      if (formulaMemberCounts.hasColumnMembers(sheet.id, col)) {
+      if (materializerArgs.hasFormulaColumnMembers(sheet.id, col)) {
         return undefined
       }
     }

@@ -83,6 +83,33 @@ describe('SpreadsheetEngine formula initialization', () => {
     expect(readRuntimeTemplateId(engine, 'C1')).toBeDefined()
   })
 
+  it('keeps aggregate dependencies on formula cells in existing-workbook initialization batches', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-existing-aggregate-deps' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellFormula('Sheet1', 'A1', '1+1')
+    engine.setCellValue('Sheet1', 'A2', 100)
+    engine.setCellValue('Sheet1', 'A3', 200)
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+
+    engine.initializeCellFormulasAt(
+      [
+        { sheetId, mutation: { kind: 'setCellFormula', row: 3, col: 2, formula: 'SUM(C5:C7)' } },
+        { sheetId, mutation: { kind: 'setCellFormula', row: 4, col: 2, formula: 'A2' } },
+        { sheetId, mutation: { kind: 'setCellFormula', row: 5, col: 2, formula: 'A3' } },
+        { sheetId, mutation: { kind: 'setCellFormula', row: 6, col: 2, formula: '300' } },
+      ],
+      4,
+    )
+
+    expect(engine.getCellValue('Sheet1', 'C4')).toEqual({ tag: ValueTag.Number, value: 600 })
+
+    engine.setCellValue('Sheet1', 'A2', 150)
+
+    expect(engine.getCellValue('Sheet1', 'C5')).toEqual({ tag: ValueTag.Number, value: 150 })
+    expect(engine.getCellValue('Sheet1', 'C4')).toEqual({ tag: ValueTag.Number, value: 650 })
+  })
+
   it('initializes invalid formulas and propagates their errors through dependent formulas', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-errors' })
     await engine.ready()

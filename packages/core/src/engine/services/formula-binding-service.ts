@@ -50,6 +50,7 @@ import { createFormulaBindingSheetIndex } from './formula-binding-sheet-index.js
 import { createFormulaBindingMemberCounts } from './formula-binding-member-counts.js'
 import type { FormulaBindingFamilyShapeKeyCache } from './formula-binding-family-shape-key.js'
 import { createFormulaBindingDependencyMaterializer } from './formula-binding-dependency-materializer.js'
+import { createPendingInitialFormulaCellTracker } from './formula-binding-pending-formula-cells.js'
 import { compileFormulaBindingForCell } from './formula-binding-compile.js'
 import { prepareFormulaBindingFromCompiled } from './formula-binding-prepare.js'
 import { createFormulaBindingInstanceTracker } from './formula-binding-instance-tracker.js'
@@ -164,10 +165,19 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     }
   }
 
+  const pendingInitialFormulaCells = createPendingInitialFormulaCellTracker({
+    getCellCapacity: () => args.state.workbook.cellStore.capacity,
+    getSheetId: (cellIndex) => args.state.workbook.cellStore.sheetIds[cellIndex],
+    getCol: (cellIndex) => args.state.workbook.getCellPosition(cellIndex)?.col ?? args.state.workbook.cellStore.cols[cellIndex],
+    isBoundFormulaCell: (cellIndex) => (args.state.workbook.cellStore.formulaIds[cellIndex] ?? 0) !== 0,
+    hasBoundColumnMembers: (sheetId, col) => formulaMemberCounts.hasColumnMembers(sheetId, col),
+  })
+
   const { materializeDependencies, materializeDirectScalarDependencies, materializeDirectAggregateDependencies } =
     createFormulaBindingDependencyMaterializer({
       serviceArgs: args,
-      formulaMemberCounts,
+      hasFormulaColumnMembers: pendingInitialFormulaCells.hasColumnMembers,
+      isFormulaCell: pendingInitialFormulaCells.isFormulaCell,
       ensureDependencyBuildCapacity,
     })
 
@@ -910,6 +920,7 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     rewriteCellFormulasForSheetRenameNow,
     retargetDirectAggregateFormulaForStructuralTransformNow,
     bindInitialFormulaNow,
+    withInitialFormulaCellsNow: (cellIndices, callback) => pendingInitialFormulaCells.withCells(cellIndices, callback),
     clearFormulaNow,
     invalidateFormulaNow,
     clearFormulaBookkeepingNow,
