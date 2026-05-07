@@ -252,6 +252,24 @@ function compareScalars(leftTag: u8, leftValue: f64, rightTag: u8, rightValue: f
     }
     return compareText(leftText, rightText)
   }
+  if (leftTag == ValueTag.String && (rightTag == ValueTag.Number || rightTag == ValueTag.Boolean)) {
+    const leftText = scalarText(leftTag, leftValue)
+    if (leftText == null) {
+      return i32.MIN_VALUE
+    }
+    if (leftText == '') {
+      return 1
+    }
+  }
+  if ((leftTag == ValueTag.Number || leftTag == ValueTag.Boolean) && rightTag == ValueTag.String) {
+    const rightText = scalarText(rightTag, rightValue)
+    if (rightText == null) {
+      return i32.MIN_VALUE
+    }
+    if (rightText == '') {
+      return -1
+    }
+  }
 
   const leftNumeric = comparableNumber(leftTag, leftValue)
   const rightNumeric = comparableNumber(rightTag, rightValue)

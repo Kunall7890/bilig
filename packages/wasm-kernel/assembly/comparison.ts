@@ -88,6 +88,45 @@ export function compareScalarValues(
     }
     return normalizedLeft < normalizedRight ? -1 : 1
   }
+  if (leftTag == ValueTag.String && (rightTag == ValueTag.Number || rightTag == ValueTag.Boolean || rightText != null)) {
+    const leftText = scalarText(
+      leftTag,
+      leftValue,
+      stringOffsets,
+      stringLengths,
+      stringData,
+      outputStringOffsets,
+      outputStringLengths,
+      outputStringData,
+    )
+    if (leftText == null) {
+      return i32.MIN_VALUE
+    }
+    if (leftText == '') {
+      return 1
+    }
+  }
+  if ((leftTag == ValueTag.Number || leftTag == ValueTag.Boolean) && (rightTag == ValueTag.String || rightText != null)) {
+    const resolvedRightText =
+      rightText != null
+        ? rightText
+        : scalarText(
+            rightTag,
+            rightValue,
+            stringOffsets,
+            stringLengths,
+            stringData,
+            outputStringOffsets,
+            outputStringLengths,
+            outputStringData,
+          )
+    if (resolvedRightText == null) {
+      return i32.MIN_VALUE
+    }
+    if (resolvedRightText == '') {
+      return -1
+    }
+  }
 
   const leftNumeric = valueNumber(
     leftTag,

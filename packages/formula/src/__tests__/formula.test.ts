@@ -627,7 +627,7 @@ describe('formula', () => {
   })
 
   it('treats numeric-vs-empty-string comparisons as false instead of value errors', () => {
-    const compiled = compileFormula('OR(A1="",B1="")')
+    const compiled = compileFormula('OR(A1="",B1="",C1="",C1<>"")')
     expect(compiled.mode).toBe(1)
     expect(
       evaluatePlan(compiled.jsPlan, {
@@ -638,13 +638,15 @@ describe('formula', () => {
               return { tag: ValueTag.Number, value: 46023 }
             case 'B1':
               return { tag: ValueTag.Number, value: 12 }
+            case 'C1':
+              return { tag: ValueTag.Number, value: 0 }
             default:
               return { tag: ValueTag.Empty }
           }
         },
         resolveRange: (): CellValue[] => [],
       }),
-    ).toEqual({ tag: ValueTag.Boolean, value: false })
+    ).toEqual({ tag: ValueTag.Boolean, value: true })
   })
 
   it('keeps unsupported candidate builtin arities on the JS path', () => {

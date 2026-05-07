@@ -40,6 +40,15 @@ describe('js evaluator', () => {
     expect(evaluatePlan(lowerToPlan(parseFormula('T(1)')), context)).toEqual(empty())
   })
 
+  it('does not compare numeric zero as equal to an empty string', () => {
+    expect(evaluatePlan(lowerToPlan(parseFormula('0=""')), context)).toEqual({ tag: ValueTag.Boolean, value: false })
+    expect(evaluatePlan(lowerToPlan(parseFormula('0<>""')), context)).toEqual({ tag: ValueTag.Boolean, value: true })
+    expect(evaluatePlan(lowerToPlan(parseFormula('IF(0="","blank","not blank")')), context)).toMatchObject({
+      tag: ValueTag.String,
+      value: 'not blank',
+    })
+  })
+
   it('evaluates direct plans for ranges, jumps, and fallback stack handling', () => {
     expect(
       evaluatePlan(
