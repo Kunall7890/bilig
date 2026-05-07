@@ -13,6 +13,7 @@ describe('headless package workflow', () => {
     expect(testPaths).toContain('packages/headless/src/__tests__/work-paper.test.ts')
     expect(testPaths).toContain('packages/headless/src/__tests__/work-paper-runtime.test.ts')
     expect(testPaths).toContain('packages/headless/src/__tests__/work-paper-parity.test.ts')
+    expect(testPaths).toContain('packages/headless/src/__tests__/github-issues.test.ts')
     expect(testPaths).toContain('packages/headless/src/__tests__/persistence.test.ts')
     expect(testPaths).toContain('packages/headless/src/__tests__/persistence.fuzz.test.ts')
     expect(testPaths).toContain('packages/headless/src/__tests__/hyperformula-surface-parity.test.ts')
