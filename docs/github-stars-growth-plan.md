@@ -86,6 +86,9 @@ Verified on 2026-05-07 after the Show HN launch and topic refresh:
   the logged-in maintainer account, linking the npm package, repository, and
   runnable example without asking for votes or stars:
   <https://www.reddit.com/r/github/comments/1jy8rea/promote_your_projects_here_selfpromotion/okhx8b5/>.
+- Posted one adapted link submission to `r/coolgithubprojects`, using the
+  repository as the primary link and a short feedback-focused body:
+  <https://www.reddit.com/r/coolgithubprojects/comments/1t6jo3s/i_built_a_headless_spreadsheet_engine_for_node/>.
 
 ## Research Findings
 

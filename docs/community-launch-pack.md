@@ -13,6 +13,8 @@ Current launch state:
   <https://news.ycombinator.com/item?id=48052832>.
 - One adapted `r/github` self-promotion megathread comment is live:
   <https://www.reddit.com/r/github/comments/1jy8rea/promote_your_projects_here_selfpromotion/okhx8b5/>.
+- One adapted `r/coolgithubprojects` link submission is live:
+  <https://www.reddit.com/r/coolgithubprojects/comments/1t6jo3s/i_built_a_headless_spreadsheet_engine_for_node/>.
 - Do not repost the same launch angle while that thread is active.
 - Use new community posts only when there is time to answer replies and adapt
   the copy to the specific community.
