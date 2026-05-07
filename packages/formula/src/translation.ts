@@ -105,7 +105,7 @@ export function translateCompiledFormulaWithoutAst(
         translatedParsedSymbolicRefs?.map((reference) => formatParsedCellReference(reference)) ??
         compiled.symbolicRefs.map((ref) => translateQualifiedCellReference(ref, rowDelta, colDelta)),
       symbolicRanges:
-        translatedParsedSymbolicRanges?.map((range) => formatParsedRangeReference(range)) ??
+        translatedParsedSymbolicRanges?.map((range) => formatCompiledRangeReference(range)) ??
         compiled.symbolicRanges.map((range) => translateQualifiedRangeReference(range, rowDelta, colDelta)),
       jsPlan: canReuseJsPlan
         ? compiled.jsPlan
@@ -152,7 +152,7 @@ export function translateCompiledFormula(
         translatedParsedSymbolicRefs?.map((reference) => formatParsedCellReference(reference)) ??
         compiled.symbolicRefs.map((ref) => translateQualifiedCellReference(ref, rowDelta, colDelta)),
       symbolicRanges:
-        translatedParsedSymbolicRanges?.map((range) => formatParsedRangeReference(range)) ??
+        translatedParsedSymbolicRanges?.map((range) => formatCompiledRangeReference(range)) ??
         compiled.symbolicRanges.map((range) => translateQualifiedRangeReference(range, rowDelta, colDelta)),
       jsPlan: compiled.jsPlan.map((instruction) => translateJsPlanInstruction(instruction, rowDelta, colDelta)),
       ...(translatedParsedDeps ? { parsedDeps: translatedParsedDeps } : {}),
@@ -498,10 +498,11 @@ function formatQualifiedRangeReference(sheetName: string | undefined, start: str
 }
 
 function formatCompiledDependencyReference(reference: ParsedDependencyReference): string {
-  const formatted = reference.kind === 'range' ? formatParsedRangeReference(reference) : formatParsedCellReference(reference)
-  if (reference.kind !== 'range') {
-    return formatted
-  }
+  return reference.kind === 'range' ? formatCompiledRangeReference(reference) : formatParsedCellReference(reference)
+}
+
+function formatCompiledRangeReference(reference: ParsedRangeReferenceInfo): string {
+  const formatted = formatParsedRangeReference(reference)
   try {
     return formatRangeAddress(parseRangeAddress(formatted))
   } catch {

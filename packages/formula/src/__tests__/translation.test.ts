@@ -958,4 +958,49 @@ describe('translateFormulaReferences', () => {
       { opcode: 'return' },
     ])
   })
+
+  it('preserves absolute symbolic range anchors when translating compiled formulas', () => {
+    const compiled = compileFormula('SLOPE(L20:L23,$N$20:$N$23)')
+    const translated = translateCompiledFormula(compiled, 0, 1, 'SLOPE(M20:M23,$N$20:$N$23)')
+    const translatedXRange = translated.compiled.parsedSymbolicRanges?.[1]
+
+    expect(compiled.deps).toEqual(['L20:L23', 'N20:N23'])
+    expect(compiled.symbolicRanges).toEqual(['L20:L23', 'N20:N23'])
+    expect(compiled.parsedSymbolicRanges?.[1]).toMatchObject({
+      address: '$N$20:$N$23',
+      startAddress: 'N20',
+      endAddress: 'N23',
+      startRowAbsolute: true,
+      endRowAbsolute: true,
+      startColAbsolute: true,
+      endColAbsolute: true,
+    })
+
+    expect(translated.source).toBe('SLOPE(M20:M23,$N$20:$N$23)')
+    expect(translated.compiled.deps).toEqual(['M20:M23', 'N20:N23'])
+    expect(translated.compiled.symbolicRanges).toEqual(['M20:M23', 'N20:N23'])
+    expect(translatedXRange).toMatchObject({
+      address: '$N$20:$N$23',
+      startAddress: '$N$20',
+      endAddress: '$N$23',
+      startRowAbsolute: true,
+      endRowAbsolute: true,
+      startColAbsolute: true,
+      endColAbsolute: true,
+    })
+    expect(translated.compiled.jsPlan).toEqual([
+      { opcode: 'push-range', start: 'M20', end: 'M23', refKind: 'cells' },
+      { opcode: 'push-range', start: '$N$20', end: '$N$23', refKind: 'cells' },
+      {
+        opcode: 'call',
+        callee: 'SLOPE',
+        argc: 2,
+        argRefs: [
+          { kind: 'range', start: 'M20', end: 'M23', refKind: 'cells' },
+          { kind: 'range', start: '$N$20', end: '$N$23', refKind: 'cells' },
+        ],
+      },
+      { opcode: 'return' },
+    ])
+  })
 })

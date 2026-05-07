@@ -26,6 +26,18 @@ function expectString(value: CellValue, expected: string): void {
   expect(value).toMatchObject({ tag: ValueTag.String, value: expected })
 }
 
+function slope(ys: readonly number[], xs: readonly number[]): number {
+  const xMean = xs.reduce((sum, value) => sum + value, 0) / xs.length
+  const yMean = ys.reduce((sum, value) => sum + value, 0) / ys.length
+  let numerator = 0
+  let denominator = 0
+  for (let index = 0; index < xs.length; index += 1) {
+    numerator += (xs[index] - xMean) * (ys[index] - yMean)
+    denominator += (xs[index] - xMean) ** 2
+  }
+  return numerator / denominator
+}
+
 function readHeadlessPackageVersion(): string {
   const packageJson: unknown = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'))
   if (typeof packageJson !== 'object' || packageJson === null) {
@@ -516,6 +528,51 @@ describe('GitHub issue reductions', () => {
     expectNumber(cellValue(workbook, 'Sheet1', 6, 2), 30)
     expectNumber(cellValue(workbook, 'Sheet1', 6, 3), 30)
     expectNumber(cellValue(workbook, 'Sheet1', 6, 4), 30)
+  })
+
+  it('resolves issue #110 adjacent SLOPE formulas that share an absolute x-range', () => {
+    const buildRows = (withFirstSlope: boolean): TestCell[][] => {
+      const rows = Array.from({ length: 28 }, () => Array.from<TestCell>({ length: 16 }).fill(null))
+      const firstYValues = [1 / 100, 1 / 101, 1 / 102, 1 / 103]
+      const secondYValues = [1 / 200, 1 / 201, 1 / 202, 1 / 203]
+      const xValues = [1 / 300, 1 / 301, 1 / 302, 1 / 303]
+      for (let index = 0; index < xValues.length; index += 1) {
+        const row = 19 + index
+        rows[row][11] = firstYValues[index]
+        rows[row][12] = secondYValues[index]
+        rows[row][13] = xValues[index]
+      }
+      if (withFirstSlope) {
+        rows[14][11] = '=SLOPE(L20:L23,$N$20:$N$23)'
+      }
+      rows[14][12] = '=SLOPE(M20:M23,$N$20:$N$23)'
+      return rows
+    }
+    const firstYValues = [1 / 100, 1 / 101, 1 / 102, 1 / 103]
+    const secondYValues = [1 / 200, 1 / 201, 1 / 202, 1 / 203]
+    const xValues = [1 / 300, 1 / 301, 1 / 302, 1 / 303]
+    const workbook = WorkPaper.buildFromSheets(
+      {
+        SharedX: buildRows(true),
+        SingleSlope: buildRows(false),
+      },
+      { maxRows: 100, maxColumns: 20, useColumnIndex: true },
+    )
+    const sharedX = workbook.getSheetId('SharedX')!
+    const singleSlope = workbook.getSheetId('SingleSlope')!
+    const expectSlopeNumber = (value: CellValue, expected: number): void => {
+      expect(value.tag).toBe(ValueTag.Number)
+      if (value.tag !== ValueTag.Number) {
+        throw new Error(`Expected number ${String(expected)}, received ${JSON.stringify(value)}`)
+      }
+      expect(value.value).toBeCloseTo(expected, 9)
+    }
+
+    expectSlopeNumber(cellValue(workbook, 'SharedX', 14, 11), slope(firstYValues, xValues))
+    expectSlopeNumber(cellValue(workbook, 'SharedX', 14, 12), slope(secondYValues, xValues))
+    expectSlopeNumber(cellValue(workbook, 'SingleSlope', 14, 12), slope(secondYValues, xValues))
+    expect(workbook.getCellFormulaDiagnostics({ sheet: sharedX, row: 14, col: 12 })).toEqual([])
+    expect(workbook.getCellFormulaDiagnostics({ sheet: singleSlope, row: 14, col: 12 })).toEqual([])
   })
 
   it('reports the published package version through WorkPaper.version', () => {

@@ -681,15 +681,28 @@ function collectParsedDependencyReferencesFromAst(ast: FormulaNode): Map<string,
   return referencesByKey
 }
 
-function buildParsedDependenciesFromAst(ast: FormulaNode, deps: readonly string[]): ParsedDependencyReference[] {
-  const referencesByKey = collectParsedDependencyReferencesFromAst(ast)
-  return deps.map((dependency) => {
-    const normalized = normalizedDependencyReferenceKey(dependency)
-    return (
-      referencesByKey.get(dependency) ??
-      (normalized === undefined ? undefined : referencesByKey.get(normalized)) ??
-      parseDependencyReference(dependency)
-    )
+function resolveParsedDependencyReference(
+  referencesByKey: ReadonlyMap<string, ParsedDependencyReference>,
+  reference: string,
+): ParsedDependencyReference | undefined {
+  const normalized = normalizedDependencyReferenceKey(reference)
+  return referencesByKey.get(reference) ?? (normalized === undefined ? undefined : referencesByKey.get(normalized))
+}
+
+function buildParsedDependenciesFromReferences(
+  referencesByKey: ReadonlyMap<string, ParsedDependencyReference>,
+  deps: readonly string[],
+): ParsedDependencyReference[] {
+  return deps.map((dependency) => resolveParsedDependencyReference(referencesByKey, dependency) ?? parseDependencyReference(dependency))
+}
+
+function buildParsedSymbolicRangesFromReferences(
+  referencesByKey: ReadonlyMap<string, ParsedDependencyReference>,
+  ranges: readonly string[],
+): ParsedRangeReferenceInfo[] {
+  return ranges.map((reference) => {
+    const parsed = resolveParsedDependencyReference(referencesByKey, reference)
+    return parsed?.kind === 'range' ? parsed : buildParsedRangeReferenceInfo(reference)
   })
 }
 
@@ -876,7 +889,8 @@ export function compileFormulaAst(source: string, ast: FormulaNode, options: Com
   const volatileMetadata = analyzeVolatileMetadata(options.originalAst ?? ast)
   const spillResult = producesSpillResult(optimizedAst)
   const directAggregateCandidate = buildDirectAggregateCandidate(optimizedAst, state.ranges)
-  const parsedDependencies = buildParsedDependenciesFromAst(optimizedAst, bound.deps)
+  const parsedReferencesByKey = collectParsedDependencyReferencesFromAst(optimizedAst)
+  const parsedDependencies = buildParsedDependenciesFromReferences(parsedReferencesByKey, bound.deps)
 
   if (bound.mode === FormulaMode.WasmFastPath) {
     emitNode(optimizedAst, state)
@@ -900,7 +914,7 @@ export function compileFormulaAst(source: string, ast: FormulaNode, options: Com
     symbolicRefs: state.refs,
     parsedSymbolicRefs: state.refs.map((reference) => buildParsedCellReferenceInfo(reference)),
     symbolicRanges: state.ranges,
-    parsedSymbolicRanges: state.ranges.map((reference) => buildParsedRangeReferenceInfo(reference)),
+    parsedSymbolicRanges: buildParsedSymbolicRangesFromReferences(parsedReferencesByKey, state.ranges),
     symbolicStrings: state.strings,
     ast: options.originalAst ?? ast,
     optimizedAst,
