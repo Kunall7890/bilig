@@ -74,6 +74,8 @@ i'm especially interested in feedback from people who have built spreadsheet-bac
   <https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md>
 - compatibility boundaries:
   <https://github.com/proompteng/bilig/blob/main/docs/where-bilig-is-not-excel-compatible-yet.md>
+- feedback discussion:
+  <https://github.com/proompteng/bilig/discussions/115>
 - starter issues:
   <https://github.com/proompteng/bilig/blob/main/docs/starter-issues.md>
 
@@ -143,7 +145,7 @@ Useful feedback includes:
 
 Within `24` hours of posting:
 
-1. Save the HN URL in the launch discussion.
+1. Save the HN URL in the feedback discussion.
 2. Create issues for concrete bugs or compatibility gaps.
 3. Add docs for repeated questions.
 4. Post one follow-up in the GitHub discussion with links to resulting artifacts.

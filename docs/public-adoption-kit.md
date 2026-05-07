@@ -64,6 +64,8 @@ Shorter version:
   [`docs/show-hn-launch-pack.md`](show-hn-launch-pack.md)
 - Community launch pack:
   [`docs/community-launch-pack.md`](community-launch-pack.md)
+- Feedback discussion:
+  <https://github.com/proompteng/bilig/discussions/115>
 - Launch discussion: <https://github.com/proompteng/bilig/discussions/18>
 - Starter issues: [`docs/starter-issues.md`](starter-issues.md)
 - Public API notes: [`docs/public-api.md`](public-api.md)

@@ -81,6 +81,8 @@ npm start
 Repo: https://github.com/proompteng/bilig
 
 The repo includes benchmark evidence and compatibility caveats. It is not a finished Excel clone. The most useful feedback would be API friction, missing formula semantics, import/export expectations, or real workbook automation cases you would want reduced into fixtures.
+
+Feedback thread: https://github.com/proompteng/bilig/discussions/115
 ```
 
 ## DEV Community
@@ -211,7 +213,11 @@ Do not launch on Product Hunt until these are ready:
 
 ## Tracking
 
-Track every community post in the GitHub launch discussion:
+Track every community post in the GitHub feedback discussion:
+
+```text
+https://github.com/proompteng/bilig/discussions/115
+```
 
 - platform
 - URL

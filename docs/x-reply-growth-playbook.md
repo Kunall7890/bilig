@@ -364,7 +364,10 @@ For every useful reply:
 1. Save the thread URL.
 2. Note the actual question or objection.
 3. Convert repeated questions into a doc, example, test, fixture, or issue.
-4. Reply once with the new artifact only if it directly answers the thread.
+4. Add substantial feedback to
+   <https://github.com/proompteng/bilig/discussions/115> when it is not yet a
+   concrete issue.
+5. Reply once with the new artifact only if it directly answers the thread.
 
 This compounds better than raw posting volume because it turns market feedback
 into repository evidence.

@@ -222,6 +222,10 @@ For a concise public evaluation path, share
 positioning, npm-only evaluation commands, proof links, shareable copy, and
 guardrails for honest benchmark claims.
 
+For implementation feedback from people building agent or service workflows,
+use the GitHub discussion:
+<https://github.com/proompteng/bilig/discussions/115>.
+
 For the first technical adoption article, see
 [`docs/why-agents-need-workbook-apis.md`](docs/why-agents-need-workbook-apis.md).
 It explains why agents should operate on workbook APIs instead of spreadsheet
