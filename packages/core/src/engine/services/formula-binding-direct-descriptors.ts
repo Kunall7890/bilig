@@ -8,7 +8,7 @@ import {
   type StructuralAxisTransform,
   parseRangeAddress,
 } from '@bilig/formula'
-import { ValueTag, type CellValue } from '@bilig/protocol'
+import { MAX_ROWS, ValueTag, type CellValue } from '@bilig/protocol'
 import { mapStructuralAxisInterval } from '../../engine-structural-utils.js'
 import { resolveRuntimeDirectLookupBinding } from '../direct-vector-lookup.js'
 import type {
@@ -169,15 +169,28 @@ function resolveDirectCriteriaRange(
       length: number
     }
   | undefined {
-  if (!node || node.kind !== 'RangeRef' || node.refKind !== 'cells' || node.sheetEndName !== undefined) {
+  if (!node || node.kind !== 'RangeRef' || node.sheetEndName !== undefined) {
     return undefined
   }
   const parsed = parseRangeAddress(`${node.start}:${node.end}`, node.sheetName ?? ownerSheetName)
+  const sheetName = parsed.sheetName ?? node.sheetName ?? ownerSheetName
+  if (parsed.kind === 'cols') {
+    if (parsed.start.col !== parsed.end.col) {
+      return undefined
+    }
+    return {
+      sheetName,
+      rowStart: 0,
+      rowEnd: MAX_ROWS - 1,
+      col: parsed.start.col,
+      length: MAX_ROWS,
+    }
+  }
   if (parsed.kind !== 'cells' || parsed.start.col !== parsed.end.col) {
     return undefined
   }
   return {
-    sheetName: node.sheetName ?? ownerSheetName,
+    sheetName,
     rowStart: parsed.start.row,
     rowEnd: parsed.end.row,
     col: parsed.start.col,

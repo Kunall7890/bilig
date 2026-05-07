@@ -1,6 +1,6 @@
 import { Effect } from 'effect'
 import { describe, expect, it, vi } from 'vitest'
-import { ValueTag } from '@bilig/protocol'
+import { MAX_ROWS, ValueTag } from '@bilig/protocol'
 import { compileFormula } from '@bilig/formula'
 import { SpreadsheetEngine } from '../engine.js'
 import { EngineFormulaBindingError } from '../engine/errors.js'
@@ -765,6 +765,52 @@ describe('EngineFormulaBindingService', () => {
     expect(sumFormula.directCriteria.aggregateKind).toBe('sum')
     expect(minFormula.directCriteria.aggregateKind).toBe('min')
     expect(maxFormula.directCriteria.aggregateKind).toBe('max')
+  })
+
+  it('binds whole-column criteria ranges onto the direct criteria path', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'binding-direct-whole-column-criteria' })
+    await engine.ready()
+    engine.createSheet('Data')
+    engine.createSheet('Summary')
+
+    engine.setCellValue('Data', 'A1', 'Year')
+    engine.setCellValue('Data', 'B1', 'Line')
+    engine.setCellValue('Data', 'C1', 'Amount')
+    engine.setCellValue('Data', 'A2', 2024)
+    engine.setCellValue('Data', 'B2', 'Revenue')
+    engine.setCellValue('Data', 'C2', 1000)
+    engine.setCellValue('Data', 'A3', 2024)
+    engine.setCellValue('Data', 'B3', 'Revenue')
+    engine.setCellValue('Data', 'C3', 1922)
+    engine.setCellValue('Summary', 'A2', 'Revenue')
+    engine.setCellValue('Summary', 'B1', 2024)
+    engine.setCellFormula('Summary', 'D2', 'SUMIFS(Data!$C:$C,Data!$B:$B,$A2,Data!$A:$A,B$1)')
+
+    const cellIndex = engine.workbook.getCellIndex('Summary', 'D2')
+    if (cellIndex === undefined) {
+      throw new Error('expected whole-column SUMIFS formula to be materialized')
+    }
+    const runtimeFormula = readRuntimeFormula(engine, cellIndex)
+    if (!isRuntimeFormulaWithDirectCriteria(runtimeFormula)) {
+      throw new Error('expected whole-column SUMIFS formula to expose direct criteria metadata')
+    }
+
+    expect(runtimeFormula.directCriteria.aggregateRange).toMatchObject({
+      sheetName: 'Data',
+      rowStart: 0,
+      rowEnd: MAX_ROWS - 1,
+      col: 2,
+      length: MAX_ROWS,
+    })
+    expect(runtimeFormula.directCriteria.criteriaPairs).toHaveLength(2)
+    expect(runtimeFormula.directCriteria.criteriaPairs[0]?.range).toMatchObject({
+      sheetName: 'Data',
+      rowStart: 0,
+      rowEnd: MAX_ROWS - 1,
+      col: 1,
+      length: MAX_ROWS,
+    })
+    expect(engine.getCellValue('Summary', 'D2')).toEqual({ tag: ValueTag.Number, value: 2922 })
   })
 
   it('binds direct criteria descriptors for string-concatenated criteria cells', async () => {

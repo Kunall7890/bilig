@@ -60,12 +60,23 @@ export interface CompiledFormulaTranslationResult {
   compiled: CompiledFormula
 }
 
+function hasDynamicAxisRangeDependency(compiled: CompiledFormula): boolean {
+  return compiled.deps.some((dependency) => {
+    try {
+      return parseRangeAddress(dependency).kind !== 'cells'
+    } catch {
+      return false
+    }
+  })
+}
+
 export function canTranslateCompiledFormulaWithoutAst(compiled: CompiledFormula): boolean {
   return (
     (compiled.symbolicRanges.length === 0 || compiled.directAggregateCandidate !== undefined) &&
     compiled.symbolicNames.length === 0 &&
     compiled.symbolicTables.length === 0 &&
     compiled.symbolicSpills.length === 0 &&
+    !hasDynamicAxisRangeDependency(compiled) &&
     !compiled.jsPlan.some((instruction) => instruction.opcode === 'lookup-exact-match' || instruction.opcode === 'lookup-approximate-match')
   )
 }

@@ -219,6 +219,58 @@ function slicePredicateMatches(
   }
 }
 
+function slicePredicateMatchesEmpty(predicate: SliceFastPredicate): boolean {
+  switch (predicate.kind) {
+    case 'eq-empty':
+      return !predicate.negate
+    case 'eq-bool':
+      return predicate.negate ? predicate.value : !predicate.value
+    case 'eq-number':
+      return predicate.negate ? predicate.value !== 0 : predicate.value === 0
+    case 'eq-string':
+      return predicate.negate ? predicate.value !== '' : predicate.value === ''
+    case 'cmp-number':
+      switch (predicate.operator) {
+        case '>':
+          return 0 > predicate.value
+        case '>=':
+          return 0 >= predicate.value
+        case '<':
+          return 0 < predicate.value
+        case '<=':
+          return 0 <= predicate.value
+      }
+    case 'generic':
+      return matchesCompiledCriteria({ tag: ValueTag.Empty }, predicate.compiled)
+  }
+}
+
+function countNonEmptyRowsInView(view: RuntimeColumnView): number {
+  let count = 0
+  view.owner.pages.forEach((page) => {
+    const rowStart = Math.max(view.rowStart, page.rowStart)
+    const rowEnd = Math.min(view.rowEnd, page.rowStart + page.tags.length - 1)
+    for (let row = rowStart; row <= rowEnd; row += 1) {
+      if (decodeValueTag(page.tags[row - page.rowStart]) !== ValueTag.Empty) {
+        count += 1
+      }
+    }
+  })
+  return count
+}
+
+function forEachNonEmptyRowOffsetInView(view: RuntimeColumnView, fn: (rowOffset: number) => void): void {
+  view.owner.pages.forEach((page) => {
+    const rowStart = Math.max(view.rowStart, page.rowStart)
+    const rowEnd = Math.min(view.rowEnd, page.rowStart + page.tags.length - 1)
+    for (let row = rowStart; row <= rowEnd; row += 1) {
+      if (decodeValueTag(page.tags[row - page.rowStart]) !== ValueTag.Empty) {
+        fn(row - view.rowStart)
+      }
+    }
+  })
+}
+
 export function createCriterionRangeCacheService(args: {
   readonly runtimeColumnStore: EngineRuntimeColumnStoreService
   readonly regionGraph: Pick<RegionGraph, 'internSingleColumnRegion'>
@@ -304,7 +356,23 @@ export function createCriterionRangeCacheService(args: {
 
     const predicates = criteriaPairs.map((pair) => buildSlicePredicate(compileCriteriaMatcher(pair.criteria)))
     const matchingRows: number[] = []
-    for (let rowOffset = 0; rowOffset < expectedLength; rowOffset += 1) {
+    let limitingPairIndex: number | undefined
+    let limitingPairNonEmptyRows = Number.POSITIVE_INFINITY
+    for (let pairIndex = 0; pairIndex < predicates.length; pairIndex += 1) {
+      if (slicePredicateMatchesEmpty(predicates[pairIndex]!)) {
+        continue
+      }
+      const view = resolvedPairs[pairIndex]!.view
+      if (view.owner.pages.size === 0) {
+        continue
+      }
+      const nonEmptyRows = countNonEmptyRowsInView(view)
+      if (nonEmptyRows < limitingPairNonEmptyRows) {
+        limitingPairIndex = pairIndex
+        limitingPairNonEmptyRows = nonEmptyRows
+      }
+    }
+    const visitCandidate = (rowOffset: number): void => {
       let matches = true
       for (let pairIndex = 0; pairIndex < predicates.length; pairIndex += 1) {
         if (!slicePredicateMatches(predicates[pairIndex]!, resolvedPairs[pairIndex]!.view, rowOffset, args.runtimeColumnStore)) {
@@ -315,6 +383,13 @@ export function createCriterionRangeCacheService(args: {
       if (matches) {
         matchingRows.push(rowOffset)
       }
+    }
+    if (limitingPairIndex === undefined) {
+      for (let rowOffset = 0; rowOffset < expectedLength; rowOffset += 1) {
+        visitCandidate(rowOffset)
+      }
+    } else {
+      forEachNonEmptyRowOffsetInView(resolvedPairs[limitingPairIndex]!.view, visitCandidate)
     }
 
     const entry: CriterionCacheEntry = {

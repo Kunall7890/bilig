@@ -166,6 +166,83 @@ describe('GitHub issue reductions', () => {
     expectString(cellValue(workbook, 'Summary', 0, 5), 'x')
   })
 
+  it('resolves issue #92 whole-column criteria ranges in conditional aggregates', () => {
+    const workbook = WorkPaper.buildFromSheets(
+      {
+        Data: [
+          ['Year', 'Line', 'Amount'],
+          [2024, 'Revenue', 1000],
+          [2024, 'Revenue', 1922],
+          [2024, 'COGS', -700],
+          [2024, 'COGS', -701],
+          [2025, 'Revenue', 3000],
+          [2025, 'Revenue', 3977],
+        ],
+        Summary: [
+          ['Line', 2024, 2025, 'Whole-column', 'Bounded'],
+          [
+            'Revenue',
+            null,
+            null,
+            '=SUMIFS(Data!$C:$C,Data!$B:$B,$A2,Data!$A:$A,B$1)',
+            '=SUMIFS(Data!$C$2:$C$7,Data!$B$2:$B$7,$A2,Data!$A$2:$A$7,B$1)',
+          ],
+          [
+            'COGS',
+            null,
+            null,
+            '=SUMIFS(Data!$C:$C,Data!$B:$B,$A3,Data!$A:$A,B$1)',
+            '=SUMIFS(Data!$C$2:$C$7,Data!$B$2:$B$7,$A3,Data!$A$2:$A$7,B$1)',
+          ],
+          [
+            'Other',
+            null,
+            null,
+            '=SUMIFS(Data!$C:$C,Data!$B:$B,$A4,Data!$A:$A,B$1)',
+            '=SUMIFS(Data!$C$2:$C$7,Data!$B$2:$B$7,$A4,Data!$A$2:$A$7,B$1)',
+          ],
+          [
+            'Revenue count',
+            null,
+            null,
+            '=COUNTIFS(Data!$B:$B,"Revenue",Data!$A:$A,C$1)',
+            '=COUNTIFS(Data!$B$2:$B$7,"Revenue",Data!$A$2:$A$7,C$1)',
+          ],
+          [
+            'Revenue average',
+            null,
+            null,
+            '=AVERAGEIFS(Data!$C:$C,Data!$B:$B,"Revenue")',
+            '=AVERAGEIFS(Data!$C$2:$C$7,Data!$B$2:$B$7,"Revenue")',
+          ],
+        ],
+      },
+      { maxRows: 64, maxColumns: 8, useColumnIndex: true },
+    )
+    const data = workbook.getSheetId('Data')!
+
+    expectNumber(cellValue(workbook, 'Summary', 1, 4), 2922)
+    expectNumber(cellValue(workbook, 'Summary', 2, 4), -1401)
+    expectNumber(cellValue(workbook, 'Summary', 3, 4), 0)
+    expectNumber(cellValue(workbook, 'Summary', 4, 4), 2)
+    expectNumberClose(cellValue(workbook, 'Summary', 5, 4), 2474.75)
+
+    expectNumber(cellValue(workbook, 'Summary', 1, 3), 2922)
+    expectNumber(cellValue(workbook, 'Summary', 2, 3), -1401)
+    expectNumber(cellValue(workbook, 'Summary', 3, 3), 0)
+    expectNumber(cellValue(workbook, 'Summary', 4, 3), 2)
+    expectNumberClose(cellValue(workbook, 'Summary', 5, 3), 2474.75)
+
+    workbook.setCellContents({ sheet: data, row: 7, col: 0 }, 2024)
+    workbook.setCellContents({ sheet: data, row: 7, col: 1 }, 'Revenue')
+    workbook.setCellContents({ sheet: data, row: 7, col: 2 }, 78)
+
+    expectNumber(cellValue(workbook, 'Summary', 1, 4), 2922)
+    expectNumber(cellValue(workbook, 'Summary', 1, 3), 3000)
+    expectNumberClose(cellValue(workbook, 'Summary', 5, 4), 2474.75)
+    expectNumberClose(cellValue(workbook, 'Summary', 5, 3), 1995.4)
+  })
+
   it('resolves sheet-scoped defined names from imported snapshots before broken globals', () => {
     const snapshot: WorkbookSnapshot = {
       version: 1,

@@ -126,6 +126,21 @@ describe('EngineFormulaTemplateNormalizationService', () => {
     expect(second.compiled.astMatchesSource).toBe(false)
   })
 
+  it('translates optimized AST criteria cells for whole-column aggregate templates', () => {
+    const service = createEngineFormulaTemplateNormalizationService()
+
+    const first = service.resolveForCell('SUMIFS(Data!$C:$C,Data!$B:$B,$A2,Data!$A:$A,B$1)', 1, 3)
+    const second = service.resolveForCell('SUMIFS(Data!$C:$C,Data!$B:$B,$A3,Data!$A:$A,B$1)', 2, 3)
+
+    expect(second.templateId).toBe(first.templateId)
+    expect(second.compiled.deps).toContain('$A3')
+    const optimizedAst = second.compiled.optimizedAst
+    if (optimizedAst.kind !== 'CallExpr') {
+      throw new Error('expected translated formula to remain a call expression')
+    }
+    expect(optimizedAst.args[2]).toMatchObject({ kind: 'CellRef', ref: '$A3' })
+  })
+
   it('collapses anchored prefix aggregate families into one template owner', () => {
     const counters = createEngineCounters()
     const service = createEngineFormulaTemplateNormalizationService({ counters })
