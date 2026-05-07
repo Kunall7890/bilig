@@ -511,12 +511,13 @@ export class WorkPaper extends WorkPaperRuntimeSurface {
     })
   }
 
-  private clearFunctionBindings(): void {
+  private clearFunctionBindings(options: { preserveInternalFunctionLookup?: boolean } = {}): void {
     clearWorkPaperFunctionBindings({
       functionSnapshot: this.functionSnapshot,
       functionAliasLookup: this.functionAliasLookup,
       internalFunctionLookup: this.internalFunctionLookup,
       globalCustomFunctions: workPaperGlobalCustomFunctions,
+      preserveInternalFunctionLookup: options.preserveInternalFunctionLookup,
     })
   }
 
@@ -555,7 +556,7 @@ export class WorkPaper extends WorkPaperRuntimeSurface {
     const suspended = this.evaluationSuspended
     const clipboard = cloneWorkPaperClipboardPayload(this.clipboard)
 
-    this.clearFunctionBindings()
+    this.clearFunctionBindings({ preserveInternalFunctionLookup: true })
     if (!canReuseSnapshot) {
       this.namedExpressions.clear()
     }

@@ -94,11 +94,14 @@ export function clearWorkPaperFunctionBindings(args: {
   readonly functionAliasLookup: Map<string, InternalFunctionBinding>
   readonly internalFunctionLookup: Map<string, InternalFunctionBinding>
   readonly globalCustomFunctions: Map<string, WorkPaperFunctionImplementation>
+  readonly preserveInternalFunctionLookup?: boolean
 }): void {
   args.internalFunctionLookup.forEach((_binding, internalName) => {
     args.globalCustomFunctions.delete(internalName)
   })
   args.functionSnapshot.clear()
   args.functionAliasLookup.clear()
-  args.internalFunctionLookup.clear()
+  if (args.preserveInternalFunctionLookup !== true) {
+    args.internalFunctionLookup.clear()
+  }
 }

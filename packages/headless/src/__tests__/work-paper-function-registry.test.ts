@@ -70,6 +70,36 @@ describe('work paper function registry helpers', () => {
     expect(globalCustomFunctions.size).toBe(0)
   })
 
+  it('can preserve internal names for public formula restoration while removing active implementations', () => {
+    const functionSnapshot = new Map<string, InternalFunctionBinding>()
+    const functionAliasLookup = new Map<string, InternalFunctionBinding>()
+    const internalFunctionLookup = new Map<string, InternalFunctionBinding>()
+    const globalCustomFunctions = new Map<string, WorkPaperFunctionImplementation>()
+    const addOne: WorkPaperFunctionImplementation = () => ({ tag: ValueTag.Number, value: 2 })
+    captureWorkPaperFunctionRegistry({
+      workbookId: 42,
+      configFunctionPlugins: undefined,
+      plugins: [plugin('math', { ADDONE: addOne })],
+      functionSnapshot,
+      functionAliasLookup,
+      internalFunctionLookup,
+      globalCustomFunctions,
+    })
+
+    clearWorkPaperFunctionBindings({
+      functionSnapshot,
+      functionAliasLookup,
+      internalFunctionLookup,
+      globalCustomFunctions,
+      preserveInternalFunctionLookup: true,
+    })
+
+    expect(functionSnapshot.size).toBe(0)
+    expect(functionAliasLookup.size).toBe(0)
+    expect(internalFunctionLookup.get('__BILIG_WORKPAPER_FN_42_ADDONE')?.publicName).toBe('ADDONE')
+    expect(globalCustomFunctions.size).toBe(0)
+  })
+
   it('lists captured function names with optional language translations', () => {
     const functionSnapshot = new Map<string, InternalFunctionBinding>([
       ['BETA', { pluginId: 'math', publicName: 'BETA', internalName: '__BETA' }],
