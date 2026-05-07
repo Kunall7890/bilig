@@ -11,6 +11,7 @@ import type {
   WorkbookSnapshot,
   WorkbookValidationComparisonOperator,
 } from '@bilig/protocol'
+import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 type ZipEntries = Record<string, Uint8Array>
 
@@ -257,8 +258,22 @@ function readDxfs(stylesXml: string | null): CellStylePatch[] {
   if (!stylesXml) {
     return []
   }
-  const parsed: unknown = xmlParser.parse(stylesXml)
+  const dxfsXml = extractStyleXmlElement(stylesXml, 'dxfs')
+  if (!dxfsXml) {
+    return []
+  }
+  const parsed: unknown = xmlParser.parse(`<styleSheet>${dxfsXml}</styleSheet>`)
   return asArray(recordChild(recordChild(parsed, 'styleSheet'), 'dxfs')?.['dxf']).map(readDxfStyle)
+}
+
+function extractStyleXmlElement(stylesXml: string, elementName: string): string | null {
+  const qualifiedName = `(?:[A-Za-z_][\\w.-]*:)?${elementName}`
+  const expanded = new RegExp(`<${qualifiedName}\\b[^>]*>[\\s\\S]*?<\\/${qualifiedName}>`, 'u').exec(stylesXml)
+  if (expanded) {
+    return expanded[0]
+  }
+  const selfClosing = new RegExp(`<${qualifiedName}\\b[^>]*\\/>`, 'u').exec(stylesXml)
+  return selfClosing?.[0] ?? null
 }
 
 function countExistingDxfs(stylesXml: string): number {
@@ -464,10 +479,10 @@ export function addExportConditionalFormatsToXlsxBytes(bytes: Uint8Array, snapsh
 }
 
 export function readImportedWorkbookConditionalFormats(
-  bytes: Uint8Array,
+  source: XlsxZipSource,
   sheetNames: readonly string[],
 ): Map<string, WorkbookConditionalFormatSnapshot[]> {
-  const zip = unzipSync(bytes)
+  const zip = readXlsxZipEntries(source)
   const dxfs = readDxfs(getZipText(zip, 'xl/styles.xml'))
   const conditionalFormatsBySheet = new Map<string, WorkbookConditionalFormatSnapshot[]>()
 

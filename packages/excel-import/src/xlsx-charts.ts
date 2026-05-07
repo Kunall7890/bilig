@@ -10,6 +10,7 @@ import type {
   WorkbookChartType,
   WorkbookSnapshot,
 } from '@bilig/protocol'
+import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 type ZipEntries = Record<string, Uint8Array>
 
@@ -684,8 +685,8 @@ function readAnchorNumber(anchor: unknown, key: 'from' | 'to', field: 'col' | 'r
   return Number.isFinite(number) ? number : null
 }
 
-export function readImportedWorkbookCharts(bytes: Uint8Array, sheetNames: readonly string[]): WorkbookChartSnapshot[] | undefined {
-  const zip = unzipSync(bytes)
+export function readImportedWorkbookCharts(source: XlsxZipSource, sheetNames: readonly string[]): WorkbookChartSnapshot[] | undefined {
+  const zip = readXlsxZipEntries(source)
   const charts: WorkbookChartSnapshot[] = []
 
   sheetNames.forEach((sheetName, sheetIndex) => {

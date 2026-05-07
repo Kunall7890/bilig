@@ -3,6 +3,7 @@ import { XMLParser } from 'fast-xml-parser'
 import * as XLSX from 'xlsx'
 
 import type { WorkbookFreezePaneActivePane, WorkbookFreezePaneSnapshot, WorkbookSnapshot } from '@bilig/protocol'
+import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 type ZipEntries = Record<string, Uint8Array>
 
@@ -207,8 +208,11 @@ function parseFreezePane(pane: Record<string, unknown>): WorkbookFreezePaneSnaps
   return freezePane
 }
 
-export function readImportedWorkbookFreezePanes(bytes: Uint8Array, sheetNames: readonly string[]): Map<string, WorkbookFreezePaneSnapshot> {
-  const zip = unzipSync(bytes)
+export function readImportedWorkbookFreezePanes(
+  source: XlsxZipSource,
+  sheetNames: readonly string[],
+): Map<string, WorkbookFreezePaneSnapshot> {
+  const zip = readXlsxZipEntries(source)
   const freezePanesBySheet = new Map<string, WorkbookFreezePaneSnapshot>()
 
   sheetNames.forEach((sheetName, sheetIndex) => {

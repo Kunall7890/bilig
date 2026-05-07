@@ -2,6 +2,7 @@ import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { XMLParser } from 'fast-xml-parser'
 
 import type { WorkbookSheetTabColorSnapshot, WorkbookSnapshot } from '@bilig/protocol'
+import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 type ZipEntries = Record<string, Uint8Array>
 
@@ -167,10 +168,10 @@ export function addExportSheetTabColorsToXlsxBytes(bytes: Uint8Array, snapshot: 
 }
 
 export function readImportedWorkbookSheetTabColors(
-  bytes: Uint8Array,
+  source: XlsxZipSource,
   sheetNames: readonly string[],
 ): Map<string, WorkbookSheetTabColorSnapshot> {
-  const zip = unzipSync(bytes)
+  const zip = readXlsxZipEntries(source)
   const tabColorsBySheet = new Map<string, WorkbookSheetTabColorSnapshot>()
 
   sheetNames.forEach((sheetName, sheetIndex) => {

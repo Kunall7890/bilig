@@ -2,6 +2,7 @@ import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { XMLParser } from 'fast-xml-parser'
 
 import type { WorkbookCalculationSettingsSnapshot, WorkbookSnapshot } from '@bilig/protocol'
+import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 type ZipEntries = Record<string, Uint8Array>
 
@@ -81,8 +82,8 @@ export function addExportCalculationSettingsToXlsxBytes(bytes: Uint8Array, snaps
   return zipSync(zip)
 }
 
-export function readImportedWorkbookCalculationSettings(bytes: Uint8Array): WorkbookCalculationSettingsSnapshot | undefined {
-  const zip = unzipSync(bytes)
+export function readImportedWorkbookCalculationSettings(source: XlsxZipSource): WorkbookCalculationSettingsSnapshot | undefined {
+  const zip = readXlsxZipEntries(source)
   const workbookXml = getZipText(zip, 'xl/workbook.xml')
   if (!workbookXml) {
     return undefined

@@ -3,6 +3,7 @@ import { XMLParser } from 'fast-xml-parser'
 import * as XLSX from 'xlsx'
 
 import type { CellRangeRef, WorkbookSnapshot, WorkbookSortSnapshot } from '@bilig/protocol'
+import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 type ZipEntries = Record<string, Uint8Array>
 
@@ -212,8 +213,8 @@ function parseSortState(sheetName: string, sortState: unknown): WorkbookSortSnap
   return keys.length > 0 ? { range, keys } : null
 }
 
-export function readImportedWorkbookSorts(bytes: Uint8Array, sheetNames: readonly string[]): Map<string, WorkbookSortSnapshot[]> {
-  const zip = unzipSync(bytes)
+export function readImportedWorkbookSorts(source: XlsxZipSource, sheetNames: readonly string[]): Map<string, WorkbookSortSnapshot[]> {
+  const zip = readXlsxZipEntries(source)
   const sortsBySheet = new Map<string, WorkbookSortSnapshot[]>()
 
   sheetNames.forEach((sheetName, sheetIndex) => {

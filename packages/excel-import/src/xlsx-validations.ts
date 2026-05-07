@@ -12,6 +12,7 @@ import type {
   WorkbookValidationErrorStyle,
   WorkbookValidationListSourceSnapshot,
 } from '@bilig/protocol'
+import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 type ZipEntries = Record<string, Uint8Array>
 
@@ -556,10 +557,10 @@ function parseDataValidationEntry(sheetName: string, entry: unknown): WorkbookDa
 }
 
 export function readImportedWorkbookDataValidations(
-  bytes: Uint8Array,
+  source: XlsxZipSource,
   sheetNames: readonly string[],
 ): Map<string, WorkbookDataValidationSnapshot[]> {
-  const zip = unzipSync(bytes)
+  const zip = readXlsxZipEntries(source)
   const validationsBySheet = new Map<string, WorkbookDataValidationSnapshot[]>()
 
   sheetNames.forEach((sheetName, sheetIndex) => {

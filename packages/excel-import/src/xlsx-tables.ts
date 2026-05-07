@@ -3,6 +3,7 @@ import { XMLParser } from 'fast-xml-parser'
 import * as XLSX from 'xlsx'
 
 import type { WorkbookSnapshot, WorkbookTableSnapshot } from '@bilig/protocol'
+import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 type ZipEntries = Record<string, Uint8Array>
 
@@ -283,8 +284,8 @@ function parseTableXml(sheetName: string, xml: string): WorkbookTableSnapshot | 
   }
 }
 
-export function readImportedWorkbookTables(bytes: Uint8Array, sheetNames: readonly string[]): WorkbookTableSnapshot[] | undefined {
-  const zip = unzipSync(bytes)
+export function readImportedWorkbookTables(source: XlsxZipSource, sheetNames: readonly string[]): WorkbookTableSnapshot[] | undefined {
+  const zip = readXlsxZipEntries(source)
   const tables: WorkbookTableSnapshot[] = []
 
   sheetNames.forEach((sheetName, sheetIndex) => {

@@ -2,6 +2,7 @@ import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { XMLParser } from 'fast-xml-parser'
 
 import type { WorkbookSheetProtectionSnapshot, WorkbookSnapshot } from '@bilig/protocol'
+import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 type ZipEntries = Record<string, Uint8Array>
 
@@ -107,10 +108,10 @@ export function addExportSheetProtectionsToXlsxBytes(bytes: Uint8Array, snapshot
 }
 
 export function readImportedWorkbookSheetProtections(
-  bytes: Uint8Array,
+  source: XlsxZipSource,
   sheetNames: readonly string[],
 ): Map<string, WorkbookSheetProtectionSnapshot> {
-  const zip = unzipSync(bytes)
+  const zip = readXlsxZipEntries(source)
   const protectionsBySheet = new Map<string, WorkbookSheetProtectionSnapshot>()
 
   sheetNames.forEach((sheetName, sheetIndex) => {

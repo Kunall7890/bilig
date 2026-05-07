@@ -24,6 +24,7 @@ type ExportCellAlignment = NonNullable<XLSXStyle.CellStyle['alignment']>
 interface ImportedSheetDimensions {
   columns?: WorkbookAxisEntrySnapshot[]
   rows?: WorkbookAxisEntrySnapshot[]
+  skippedColumnMetadata?: boolean
 }
 
 interface ImportedWorkbookFileStylesOptions {
@@ -36,6 +37,10 @@ const xmlParser = new XMLParser({
   parseAttributeValue: false,
   removeNSPrefix: true,
 })
+
+// XLSX can encode whole-sheet visual defaults as one <col min="1" max="16384"> range.
+// Preserve bounded column metadata, but do not expand broad defaults into snapshot state.
+const maxExpandedColumnMetadataEntries = 2_048
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
@@ -308,7 +313,16 @@ function readProtection(protection: unknown): CellStyleProtectionSnapshot | unde
 }
 
 function parseWorkbookStyles(stylesXml: string): Map<number, ImportedCellStyle> {
-  const parsed: unknown = xmlParser.parse(stylesXml)
+  const relevantStylesXml = ['fonts', 'fills', 'borders', 'cellXfs']
+    .flatMap((elementName) => {
+      const elementXml = extractStyleXmlElement(stylesXml, elementName)
+      return elementXml ? [elementXml] : []
+    })
+    .join('')
+  if (relevantStylesXml.length === 0) {
+    return new Map()
+  }
+  const parsed: unknown = xmlParser.parse(`<styleSheet>${relevantStylesXml}</styleSheet>`)
   const styleSheet = recordChild(parsed, 'styleSheet')
   if (!styleSheet) {
     return new Map()
@@ -345,6 +359,16 @@ function parseWorkbookStyles(stylesXml: string): Map<number, ImportedCellStyle> 
   })
 
   return styles
+}
+
+function extractStyleXmlElement(stylesXml: string, elementName: string): string | null {
+  const qualifiedName = `(?:[A-Za-z_][\\w.-]*:)?${elementName}`
+  const expanded = new RegExp(`<${qualifiedName}\\b[^>]*>[\\s\\S]*?<\\/${qualifiedName}>`, 'u').exec(stylesXml)
+  if (expanded) {
+    return expanded[0]
+  }
+  const selfClosing = new RegExp(`<${qualifiedName}\\b[^>]*\\/>`, 'u').exec(stylesXml)
+  return selfClosing?.[0] ?? null
 }
 
 function readXmlAttribute(tag: string, name: string): string | null {
@@ -413,8 +437,9 @@ function parseSheetStyleIndexes(sheetXml: string, candidateAddresses?: ReadonlyS
   return output
 }
 
-function parseSheetColumnEntries(sheetXml: string): WorkbookAxisEntrySnapshot[] | undefined {
+function parseSheetColumnEntries(sheetXml: string): { entries?: WorkbookAxisEntrySnapshot[]; skipped: boolean } {
   const entries: WorkbookAxisEntrySnapshot[] = []
+  let skipped = false
   for (const match of sheetXml.matchAll(/<col\b[^>]*\/?>/gu)) {
     const columnTag = match[0]
     const min = readXmlPositiveIntegerAttribute(columnTag, 'min')
@@ -427,7 +452,17 @@ function parseSheetColumnEntries(sheetXml: string): WorkbookAxisEntrySnapshot[] 
     if (size <= 0) {
       continue
     }
-    for (let column = min - 1; column <= max - 1; column += 1) {
+    const startColumn = min - 1
+    const endColumn = max - 1
+    const columnCount = endColumn - startColumn + 1
+    if (columnCount <= 0) {
+      continue
+    }
+    if (entries.length + columnCount > maxExpandedColumnMetadataEntries) {
+      skipped = true
+      continue
+    }
+    for (let column = startColumn; column <= endColumn; column += 1) {
       entries.push({
         id: `col:${String(column)}`,
         index: column,
@@ -435,7 +470,10 @@ function parseSheetColumnEntries(sheetXml: string): WorkbookAxisEntrySnapshot[] 
       })
     }
   }
-  return entries.length > 0 ? entries : undefined
+  return {
+    ...(entries.length > 0 ? { entries } : {}),
+    skipped,
+  }
 }
 
 function parseSheetRowEntries(sheetXml: string): WorkbookAxisEntrySnapshot[] | undefined {
@@ -476,13 +514,14 @@ export function readImportedWorkbookSheetDimensions(
     if (!sheetXml) {
       return
     }
-    const columns = parseSheetColumnEntries(sheetXml)
+    const parsedColumns = parseSheetColumnEntries(sheetXml)
     const rows = parseSheetRowEntries(sheetXml)
     const dimensions: ImportedSheetDimensions = {
-      ...(columns ? { columns } : {}),
+      ...(parsedColumns.entries ? { columns: parsedColumns.entries } : {}),
       ...(rows ? { rows } : {}),
+      ...(parsedColumns.skipped ? { skippedColumnMetadata: true } : {}),
     }
-    if (dimensions.columns || dimensions.rows) {
+    if (dimensions.columns || dimensions.rows || dimensions.skippedColumnMetadata) {
       output.set(sheetName, dimensions)
     }
   })

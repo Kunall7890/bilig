@@ -18,7 +18,26 @@ describe('large simple XLSX export', () => {
     expect(style?.fill?.backgroundColor).toBe('#ffcc00')
     expect(style?.font?.bold).toBe(true)
   }, 15_000)
+
+  it('does not let broad column metadata expand the exported worksheet scan range', () => {
+    const start = performance.now()
+    const exported = exportXlsx(buildBroadColumnMetadataSnapshot())
+    const durationMs = performance.now() - start
+    const workbook = XLSX.read(exported, { type: 'array', cellFormula: true, cellText: false, cellDates: false })
+
+    expect(durationMs).toBeLessThan(1_500 * readBenchmarkTolerance())
+    expect(workbook.Sheets['Wide']?.['!ref']).toBe('A3040')
+  }, 15_000)
 })
+
+function readBenchmarkTolerance(): number {
+  const raw = process.env.BILIG_BENCH_TOLERANCE
+  if (!raw) {
+    return 1
+  }
+  const tolerance = Number(raw)
+  return Number.isFinite(tolerance) && tolerance > 0 ? tolerance : 1
+}
 
 function buildLargeSimpleSnapshot(): WorkbookSnapshot {
   const cells: WorkbookSnapshot['sheets'][number]['cells'] = []
@@ -57,6 +76,28 @@ function buildLargeSimpleSnapshot(): WorkbookSnapshot {
           rows: [{ id: 'row:0', index: 0, size: 28 }],
           merges: [{ sheetName: 'Large', startAddress: 'A1', endAddress: 'B1' }],
           styleRanges: [{ range: { sheetName: 'Large', startAddress: 'A1', endAddress: 'B1' }, styleId: 'header' }],
+        },
+      },
+    ],
+  }
+}
+
+function buildBroadColumnMetadataSnapshot(): WorkbookSnapshot {
+  return {
+    version: 1,
+    workbook: { name: 'wide-column-metadata' },
+    sheets: [
+      {
+        id: 1,
+        name: 'Wide',
+        order: 0,
+        cells: [{ address: 'A3040', value: 1 }],
+        metadata: {
+          columns: Array.from({ length: 16_384 }, (_entry, index) => ({
+            id: `column:${String(index)}`,
+            index,
+            size: 64,
+          })),
         },
       },
     ],

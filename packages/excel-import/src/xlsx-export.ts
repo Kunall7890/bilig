@@ -656,11 +656,6 @@ function updateWorksheetBounds(bounds: XLSX.Range | null, address: string): XLSX
   }
 }
 
-function updateWorksheetBoundsForAxis(bounds: XLSX.Range | null, axis: 'row' | 'column', index: number): XLSX.Range {
-  const address = axis === 'row' ? XLSX.utils.encode_cell({ r: index, c: 0 }) : XLSX.utils.encode_cell({ r: 0, c: index })
-  return updateWorksheetBounds(bounds, address)
-}
-
 function inferExportWorksheetRange(sheet: WorkbookSnapshot['sheets'][number]): string | undefined {
   let bounds: XLSX.Range | null = null
   for (const cell of sheet.cells) {
@@ -680,12 +675,6 @@ function inferExportWorksheetRange(sheet: WorkbookSnapshot['sheets'][number]): s
   for (const formatRange of sheet.metadata?.formatRanges ?? []) {
     bounds = updateWorksheetBounds(bounds, formatRange.range.startAddress)
     bounds = updateWorksheetBounds(bounds, formatRange.range.endAddress)
-  }
-  for (const row of sheet.metadata?.rows ?? []) {
-    bounds = updateWorksheetBoundsForAxis(bounds, 'row', row.index)
-  }
-  for (const column of sheet.metadata?.columns ?? []) {
-    bounds = updateWorksheetBoundsForAxis(bounds, 'column', column.index)
   }
   return bounds ? XLSX.utils.encode_range(bounds) : undefined
 }

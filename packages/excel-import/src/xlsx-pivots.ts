@@ -10,6 +10,7 @@ import type {
   WorkbookPivotValueSnapshot,
   WorkbookSnapshot,
 } from '@bilig/protocol'
+import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 type ZipEntries = Record<string, Uint8Array>
 
@@ -687,8 +688,8 @@ function parsePivotTableXml(sheetName: string, xml: string, caches: ReadonlyMap<
   }
 }
 
-export function readImportedWorkbookPivots(bytes: Uint8Array, sheetNames: readonly string[]): WorkbookPivotSnapshot[] | undefined {
-  const zip = unzipSync(bytes)
+export function readImportedWorkbookPivots(source: XlsxZipSource, sheetNames: readonly string[]): WorkbookPivotSnapshot[] | undefined {
+  const zip = readXlsxZipEntries(source)
   const caches = parsePivotCaches(zip)
   if (caches.size === 0) {
     return undefined

@@ -48,7 +48,57 @@ describe('XLSX sparse ranges', () => {
     const tolerance = readBenchmarkTolerance()
     expect(denseMs).toBeLessThan(Math.max(1_000 * tolerance, sparseMs * 12 * tolerance))
   }, 15_000)
+
+  it('imports style-metadata-heavy workbooks without retaining inert style collections', () => {
+    const bytes = buildMetadataHeavyStyleWorkbookBytes(200_000)
+    collectGarbage()
+    const beforeRss = process.memoryUsage().rss
+    const start = performance.now()
+
+    const imported = importXlsx(bytes, 'metadata-heavy-styles.xlsx')
+    const durationMs = performance.now() - start
+    const rssDelta = process.memoryUsage().rss - beforeRss
+
+    expect(imported.snapshot.sheets[0]?.cells).toEqual([{ address: 'A1', value: 123 }])
+    expect(imported.snapshot.workbook.metadata?.styles).toHaveLength(1)
+    expect(imported.snapshot.sheets[0]?.metadata?.conditionalFormats).toHaveLength(1)
+    expect(durationMs).toBeLessThan(1_500 * readBenchmarkTolerance())
+    expect(rssDelta).toBeLessThan(256 * 1024 * 1024)
+  }, 15_000)
+
+  it('does not expand whole-worksheet column metadata into per-column snapshot entries', () => {
+    const imported = importXlsx(buildWholeWorksheetColumnMetadataWorkbookBytes(), 'whole-column-metadata.xlsx')
+    const sheet = imported.snapshot.sheets[0]
+
+    expect(sheet?.cells).toEqual([{ address: 'A3040', value: 1 }])
+    expect(sheet?.metadata?.columns).toBeUndefined()
+    expect(imported.preview.sheets[0]).toMatchObject({
+      rowCount: 3_040,
+      columnCount: 1,
+      nonEmptyCellCount: 1,
+    })
+  })
 })
+
+function collectGarbage(): void {
+  const bunValue = Reflect.get(globalThis, 'Bun')
+  if (isRecord(bunValue) && isGarbageCollector(bunValue['gc'])) {
+    bunValue['gc'](true)
+    return
+  }
+  const nodeGc = Reflect.get(globalThis, 'gc')
+  if (isGarbageCollector(nodeGc)) {
+    nodeGc()
+  }
+}
+
+function isRecord(value: unknown): value is Record<PropertyKey, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function isGarbageCollector(value: unknown): value is (force?: boolean) => void {
+  return typeof value === 'function'
+}
 
 function readBenchmarkTolerance(): number {
   const raw = process.env.BILIG_BENCH_TOLERANCE
@@ -90,6 +140,80 @@ function buildStyledBlankWorkbookBytes(options: { includeBlankCells: boolean }):
   zip['xl/worksheets/sheet1.xml'] = strToU8(buildStyledBlankWorksheetXml(options.includeBlankCells))
   zip['xl/styles.xml'] = strToU8(styledBlankWorkbookStylesXml)
   return zipSync(zip)
+}
+
+function buildMetadataHeavyStyleWorkbookBytes(styleCollectionCount: number): Uint8Array {
+  const workbook = XLSX.utils.book_new()
+  const sheet = XLSX.utils.aoa_to_sheet([[123]])
+  XLSX.utils.book_append_sheet(workbook, sheet, 'HeavyStyles')
+
+  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  zip['xl/worksheets/sheet1.xml'] = strToU8(buildMetadataHeavyStyleWorksheetXml())
+  zip['xl/styles.xml'] = strToU8(buildMetadataHeavyStylesXml(styleCollectionCount))
+  return zipSync(zip)
+}
+
+function buildWholeWorksheetColumnMetadataWorkbookBytes(): Uint8Array {
+  const workbook = XLSX.utils.book_new()
+  const sheet = XLSX.utils.aoa_to_sheet([[1]])
+  XLSX.utils.book_append_sheet(workbook, sheet, 'WideColumnMetadata')
+
+  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  zip['xl/worksheets/sheet1.xml'] = strToU8(
+    [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+      '<dimension ref="A3040:A3040"/>',
+      '<cols><col min="1" max="16384" width="10" customWidth="1"/></cols>',
+      '<sheetData><row r="3040"><c r="A3040"><v>1</v></c></row></sheetData>',
+      '</worksheet>',
+    ].join(''),
+  )
+  return zipSync(zip)
+}
+
+function buildMetadataHeavyStyleWorksheetXml(): string {
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<dimension ref="A1:A1"/>',
+    '<sheetData><row r="1"><c r="A1" s="1"><v>123</v></c></row></sheetData>',
+    '<conditionalFormatting sqref="A1">',
+    '<cfRule type="cellIs" priority="1" operator="greaterThan" dxfId="0"><formula>100</formula></cfRule>',
+    '</conditionalFormatting>',
+    '</worksheet>',
+  ].join('')
+}
+
+function buildMetadataHeavyStylesXml(styleCollectionCount: number): string {
+  const cellStyleXfs: string[] = []
+  const cellStyles: string[] = []
+  for (let index = 0; index < styleCollectionCount; index += 1) {
+    cellStyleXfs.push('<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>')
+    cellStyles.push(`<cellStyle name="Style${String(index)}" xfId="${String(index)}" builtinId="0"/>`)
+  }
+
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>',
+    '<fills count="3">',
+    '<fill><patternFill patternType="none"/></fill>',
+    '<fill><patternFill patternType="gray125"/></fill>',
+    '<fill><patternFill patternType="solid"><fgColor rgb="FFFFCC00"/><bgColor indexed="64"/></patternFill></fill>',
+    '</fills>',
+    '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>',
+    `<cellStyleXfs count="${String(styleCollectionCount)}">${cellStyleXfs.join('')}</cellStyleXfs>`,
+    '<cellXfs count="2">',
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>',
+    '<xf numFmtId="0" fontId="0" fillId="2" borderId="0" applyFill="1"/>',
+    '</cellXfs>',
+    '<dxfs count="1">',
+    '<dxf><fill><patternFill patternType="solid"><fgColor rgb="FFFF0000"/></patternFill></fill></dxf>',
+    '</dxfs>',
+    `<cellStyles count="${String(styleCollectionCount)}">${cellStyles.join('')}</cellStyles>`,
+    '</styleSheet>',
+  ].join('')
 }
 
 function buildStyledBlankWorksheetXml(includeBlankCells: boolean): string {

@@ -3,6 +3,7 @@ import { XMLParser } from 'fast-xml-parser'
 import * as XLSX from 'xlsx'
 
 import type { CellRangeRef, WorkbookRangeProtectionSnapshot, WorkbookSnapshot } from '@bilig/protocol'
+import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 type ZipEntries = Record<string, Uint8Array>
 
@@ -185,10 +186,10 @@ function parseProtectedRangeEntry(sheetName: string, entry: unknown, usedIds: Se
 }
 
 export function readImportedWorkbookProtectedRanges(
-  bytes: Uint8Array,
+  source: XlsxZipSource,
   sheetNames: readonly string[],
 ): Map<string, WorkbookRangeProtectionSnapshot[]> {
-  const zip = unzipSync(bytes)
+  const zip = readXlsxZipEntries(source)
   const protectedRangesBySheet = new Map<string, WorkbookRangeProtectionSnapshot[]>()
 
   sheetNames.forEach((sheetName, sheetIndex) => {

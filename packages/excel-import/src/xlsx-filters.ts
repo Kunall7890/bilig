@@ -12,6 +12,7 @@ import type {
   WorkbookAutoFilterValueCriteriaSnapshot,
   WorkbookSnapshot,
 } from '@bilig/protocol'
+import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 type ZipEntries = Record<string, Uint8Array>
 
@@ -289,8 +290,11 @@ export function addExportFiltersToXlsxBytes(bytes: Uint8Array, snapshot: Workboo
   return changed ? zipSync(zip) : bytes
 }
 
-export function readImportedWorkbookFilters(bytes: Uint8Array, sheetNames: readonly string[]): Map<string, WorkbookAutoFilterSnapshot[]> {
-  const zip = unzipSync(bytes)
+export function readImportedWorkbookFilters(
+  source: XlsxZipSource,
+  sheetNames: readonly string[],
+): Map<string, WorkbookAutoFilterSnapshot[]> {
+  const zip = readXlsxZipEntries(source)
   const filtersBySheet = new Map<string, WorkbookAutoFilterSnapshot[]>()
 
   sheetNames.forEach((sheetName, sheetIndex) => {
