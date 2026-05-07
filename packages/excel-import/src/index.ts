@@ -35,7 +35,7 @@ import { readImportedWorkbookDataValidations } from './xlsx-validations.js'
 import { readImportedWorkbookProperties } from './xlsx-workbook-properties.js'
 import { translateImportedFormulaStructuredReferences } from './xlsx-formula-translation.js'
 import { createPreservedVbaProjectPayload, type PreservedVbaProjectCodeNames } from './xlsx-macros.js'
-import { worksheetCellAt, worksheetCellEntries } from './xlsx-worksheet-cells.js'
+import { worksheetCellAt, worksheetCellEntries, worksheetCellEntriesAtAddresses, worksheetCellRecords } from './xlsx-worksheet-cells.js'
 
 export { exportXlsx } from './xlsx-export.js'
 
@@ -376,7 +376,7 @@ function collectStyleCandidateAddresses(
       continue
     }
     const addresses = new Set<string>()
-    for (const { address, cell } of worksheetCellEntries(sheet)) {
+    for (const { address, cell } of worksheetCellRecords(sheet)) {
       if (!hasImportableXlsxCellPayload(cell)) {
         continue
       }
@@ -728,7 +728,14 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): I
     }
     const rowCount = range ? range.e.r + 1 : 0
     const columnCount = range ? range.e.c + 1 : 0
-    for (const { address, cell, row, column } of range ? worksheetCellEntries(sheet) : []) {
+    const importableAddresses =
+      styleCandidates.count <= largeWorkbookStyleCandidateThreshold ? styleCandidates.addressesBySheet.get(sheetName) : undefined
+    const sheetCellEntries = range
+      ? importableAddresses
+        ? worksheetCellEntriesAtAddresses(sheet, importableAddresses)
+        : worksheetCellEntries(sheet)
+      : []
+    for (const { address, cell, row, column } of sheetCellEntries) {
       const nextCell: WorkbookSnapshot['sheets'][number]['cells'][number] = { address }
       const formula = cell['f']
       if (typeof formula === 'string' && formula.trim().length > 0) {
