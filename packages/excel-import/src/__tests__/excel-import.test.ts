@@ -14,8 +14,7 @@ import type {
   WorkbookTableSnapshot,
 } from '@bilig/protocol'
 import { SpreadsheetEngine } from '@bilig/core'
-import { exportXlsx, importCsv, importWorkbookFile, importXlsx, readImportedXlsxCellStyle } from '../index.js'
-import { CSV_CONTENT_TYPE } from '@bilig/agent-api'
+import { CSV_CONTENT_TYPE, exportXlsx, importCsv, importWorkbookFile, importXlsx, readImportedXlsxCellStyle } from '../index.js'
 
 function buildWorkbook(): Uint8Array {
   const workbook = XLSX.utils.book_new()

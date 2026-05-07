@@ -28,6 +28,10 @@ function assertNever(value: never): never {
   throw new Error(`Unexpected formula node: ${JSON.stringify(value)}`)
 }
 
+function formatCellAsSingleCellRange(ref: string, sheetName: string | undefined): string {
+  return formatRangeAddress(parseRangeAddress(sheetName ? `${sheetName}!${ref}:${ref}` : `${ref}:${ref}`))
+}
+
 function staticIntegerValue(node: FormulaNode | undefined): number | undefined {
   if (!node) {
     return undefined
@@ -247,6 +251,10 @@ export function bindFormula(ast: FormulaNode): BoundFormula {
         const aggregateArgumentIndex = callee === 'GROUPBY' ? 2 : callee === 'PIVOTBY' ? 3 : -1
         node.args.forEach((arg, index) => {
           if (index === aggregateArgumentIndex && arg.kind === 'NameRef') {
+            return
+          }
+          if (callee === 'SUM' && arg.kind === 'CellRef') {
+            deps.add(formatCellAsSingleCellRange(arg.ref, arg.sheetName))
             return
           }
           collectDeps(arg, localNames)

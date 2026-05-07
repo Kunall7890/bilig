@@ -25,6 +25,10 @@ describe('headless package workflow', () => {
   it('keeps publish, benchmark, and clean consumer smoke gates in the package workflow', () => {
     const source = readFileSync(resolve(repoRoot, '.github/workflows/headless-package.yml'), 'utf8')
 
+    expect(source).toContain('"packages/excel-import/**"')
+    expect(source).toContain('pnpm --filter @bilig/excel-import build')
+    expect(source).toContain('packages/excel-import/package.json')
+    expect(source).toContain('packages/excel-import')
     expect(source).toContain('pnpm publish:runtime:check')
     expect(source).toContain('pnpm workpaper:bench:competitive:check')
     expect(source).toContain('pnpm workpaper:smoke:external')

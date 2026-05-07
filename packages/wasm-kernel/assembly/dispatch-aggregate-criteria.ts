@@ -4,6 +4,7 @@ import { matchesCriteriaValue } from './criteria'
 import { gcdPairCalc, lcmPairCalc, truncAbs } from './numeric-core'
 import { toNumberOrNaN, toNumberOrZero } from './operands'
 import { STACK_KIND_ARRAY, STACK_KIND_RANGE, STACK_KIND_SCALAR, writeResult } from './result-io'
+import { coerceScalarNumberLikeText } from './text-special'
 import {
   readCachedRangeSumTag,
   readCachedRangeSumValue,
@@ -129,7 +130,19 @@ export function tryApplyAggregateCriteriaBuiltin(
         }
         continue
       }
-      const numeric = toNumberOrNaN(tagStack[slot], valueStack[slot])
+      const numeric = coerceScalarNumberLikeText(
+        tagStack[slot],
+        valueStack[slot],
+        stringOffsets,
+        stringLengths,
+        stringData,
+        outputStringOffsets,
+        outputStringLengths,
+        outputStringData,
+      )
+      if (isNaN(numeric) && tagStack[slot] == ValueTag.String) {
+        return writeAggregateError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
       if (!isNaN(numeric)) {
         sum += numeric
       }

@@ -78,6 +78,12 @@ Published package:
 pnpm add @bilig/headless
 ```
 
+For XLSX ingestion:
+
+```sh
+pnpm add @bilig/headless @bilig/excel-import
+```
+
 Repository:
 
 - Website: <https://proompteng.github.io/bilig/>

@@ -21,6 +21,7 @@ This program applies to the aligned library package set:
 - `@bilig/wasm-kernel`
 - `@bilig/formula`
 - `@bilig/core`
+- `@bilig/excel-import`
 - `@bilig/headless`
 
 Implemented in:
@@ -132,6 +133,7 @@ Initial runtime-affecting path set:
 - `packages/wasm-kernel/**`
 - `packages/formula/**`
 - `packages/core/**`
+- `packages/excel-import/**`
 - `packages/headless/**`
 - `scripts/runtime-package-set.ts`
 - `scripts/publish-runtime-package-set.ts`

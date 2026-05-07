@@ -1,6 +1,5 @@
 import * as XLSX from 'xlsx'
 
-import { CSV_CONTENT_TYPE, XLSX_CONTENT_TYPE, type WorkbookImportContentType } from '@bilig/agent-api'
 import { parseCsv, parseCsvCellInput } from '@bilig/core'
 import type {
   CellBorderSideSnapshot,
@@ -37,6 +36,11 @@ import { translateImportedFormulaStructuredReferences } from './xlsx-formula-tra
 import { createPreservedVbaProjectPayload, type PreservedVbaProjectCodeNames } from './xlsx-macros.js'
 
 export { exportXlsx } from './xlsx-export.js'
+
+export const XLSX_CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+export const CSV_CONTENT_TYPE = 'text/csv'
+export const WORKBOOK_IMPORT_CONTENT_TYPES = [XLSX_CONTENT_TYPE, CSV_CONTENT_TYPE] as const
+export type WorkbookImportContentType = (typeof WORKBOOK_IMPORT_CONTENT_TYPES)[number]
 
 const PREVIEW_ROW_LIMIT = 8
 const PREVIEW_COLUMN_LIMIT = 6

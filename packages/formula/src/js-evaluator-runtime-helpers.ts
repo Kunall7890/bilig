@@ -23,6 +23,18 @@ export function toNumber(value: CellValue): number | undefined {
   }
 }
 
+export function toArithmeticNumber(value: CellValue): number | undefined {
+  if (value.tag === ValueTag.String) {
+    const trimmed = value.value.trim()
+    if (trimmed === '') {
+      return 0
+    }
+    const parsed = Number(trimmed)
+    return Number.isFinite(parsed) ? parsed : undefined
+  }
+  return toNumber(value)
+}
+
 export function toStringValue(value: CellValue): string {
   switch (value.tag) {
     case ValueTag.Empty:
@@ -211,8 +223,8 @@ function scalarBinary(operator: BinaryOperator, leftValue: CellValue, rightValue
   }
 
   if (['+', '-', '*', '/', '^'].includes(operator)) {
-    const left = toNumber(leftValue)
-    const right = toNumber(rightValue)
+    const left = toArithmeticNumber(leftValue)
+    const right = toArithmeticNumber(rightValue)
     if (left === undefined || right === undefined) {
       return error(ErrorCode.Value)
     }

@@ -3739,6 +3739,28 @@ describe('SpreadsheetEngine', () => {
     expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
   })
 
+  it('coerces numeric text expressions in wasm SUM without summing referenced text cells', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'spec' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', "5'7")
+    engine.setCellValue('Sheet1', 'A2', '5')
+
+    engine.setCellFormula('Sheet1', 'B1', 'SUM(LEFT(A1,1),RIGHT(A1,LEN(A1)-2)/12)')
+    expect(engine.getCellValue('Sheet1', 'B1')).toMatchObject({
+      tag: ValueTag.Number,
+      value: 5 + 7 / 12,
+    })
+    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
+
+    engine.setCellFormula('Sheet1', 'B2', 'SUM(A2)')
+    expect(engine.getCellValue('Sheet1', 'B2')).toMatchObject({
+      tag: ValueTag.Number,
+      value: 0,
+    })
+    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
+  })
+
   it('uses the wasm fast path for exact-parity rounding builtins', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'spec' })
     await engine.ready()

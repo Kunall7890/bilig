@@ -1,6 +1,7 @@
 import { applyBuiltin, registerTrackedArrayShape } from './builtins'
 import { ErrorCode, Opcode, ValueTag } from './protocol'
 import { STACK_KIND_ARRAY, STACK_KIND_RANGE, STACK_KIND_SCALAR } from './result-io'
+import { scalarText as decodeScalarText } from './text-codec'
 import { parseNumericText } from './text-special'
 import {
   binaryNumeric,
@@ -217,13 +218,6 @@ const rangeIndexStack = new Uint32Array(256)
 let binaryResultTag: u8 = <u8>ValueTag.Empty
 let binaryResultValue: f64 = 0
 
-function outputStringIndex(value: f64): i32 {
-  if (value < OUTPUT_STRING_BASE) {
-    return -1
-  }
-  return <i32>(value - OUTPUT_STRING_BASE)
-}
-
 function writeCellValue(cellIndex: i32, tag: u8, value: f64): void {
   tags[cellIndex] = tag
   if (tag == ValueTag.String) {
@@ -243,50 +237,8 @@ function writeCellValue(cellIndex: i32, tag: u8, value: f64): void {
   }
 }
 
-function poolString(stringId: i32): string | null {
-  if (stringId < 0 || stringId >= stringLengths.length) {
-    return null
-  }
-  const offset = <i32>stringOffsets[stringId]
-  const length = <i32>stringLengths[stringId]
-  let text = ''
-  for (let index = 0; index < length; index++) {
-    text += String.fromCharCode(stringData[offset + index])
-  }
-  return text
-}
-
-function outputString(index: i32): string | null {
-  if (index < 0 || index >= outputStringLengths.length) {
-    return null
-  }
-  const offset = <i32>outputStringOffsets[index]
-  const length = <i32>outputStringLengths[index]
-  let text = ''
-  for (let i = 0; i < length; i++) {
-    text += String.fromCharCode(outputStringData[offset + i])
-  }
-  return text
-}
-
 function scalarText(tag: u8, value: f64): string | null {
-  if (tag == ValueTag.Empty) {
-    return ''
-  }
-  if (tag == ValueTag.Number) {
-    return value.toString()
-  }
-  if (tag == ValueTag.Boolean) {
-    return value != 0 ? 'TRUE' : 'FALSE'
-  }
-  if (tag == ValueTag.String) {
-    const outputIndex = outputStringIndex(value)
-    if (outputIndex >= 0) {
-      return outputString(outputIndex)
-    }
-    return poolString(<i32>value)
-  }
-  return null
+  return decodeScalarText(tag, value, stringOffsets, stringLengths, stringData, outputStringOffsets, outputStringLengths, outputStringData)
 }
 
 function compareScalars(leftTag: u8, leftValue: f64, rightTag: u8, rightValue: f64): i32 {
@@ -311,6 +263,20 @@ function compareScalars(leftTag: u8, leftValue: f64, rightTag: u8, rightValue: f
 }
 
 function comparableNumber(tag: u8, value: f64): f64 {
+  if (tag == ValueTag.Number || tag == ValueTag.Boolean) {
+    return value
+  }
+  if (tag == ValueTag.Empty) {
+    return 0
+  }
+  if (tag != ValueTag.String) {
+    return NaN
+  }
+  const text = scalarText(tag, value)
+  return text == null ? NaN : parseNumericText(text)
+}
+
+function arithmeticNumber(tag: u8, value: f64): f64 {
   if (tag == ValueTag.Number || tag == ValueTag.Boolean) {
     return value
   }
@@ -488,8 +454,8 @@ function computeBinaryScalarResult(opcode: i32, leftTag: u8, leftValue: f64, rig
     return
   }
 
-  const left = toNumeric(STACK_KIND_SCALAR, leftTag, leftValue)
-  const right = toNumeric(STACK_KIND_SCALAR, rightTag, rightValue)
+  const left = arithmeticNumber(leftTag, leftValue)
+  const right = arithmeticNumber(rightTag, rightValue)
   if (isNaN(left) || isNaN(right)) {
     binaryResultTag = <u8>ValueTag.Error
     binaryResultValue = ErrorCode.Value
@@ -827,7 +793,7 @@ function evalProgram(cellIndex: i32, formulaIndex: i32): void {
       if (tagStack[sp - 1] == ValueTag.Error) {
         continue
       }
-      const numeric = toNumeric(kindStack[sp - 1], tagStack[sp - 1], valueStack[sp - 1])
+      const numeric = kindStack[sp - 1] == STACK_KIND_SCALAR ? arithmeticNumber(tagStack[sp - 1], valueStack[sp - 1]) : NaN
       if (isNaN(numeric)) {
         writeScalar(sp - 1, <u8>ValueTag.Error, ErrorCode.Value)
       } else {

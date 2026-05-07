@@ -8,6 +8,7 @@ export const RUNTIME_AFFECTING_PATH_PATTERNS = [
   'packages/wasm-kernel/**',
   'packages/formula/**',
   'packages/core/**',
+  'packages/excel-import/**',
   'packages/headless/**',
   'scripts/runtime-package-set.ts',
   'scripts/publish-runtime-package-set.ts',

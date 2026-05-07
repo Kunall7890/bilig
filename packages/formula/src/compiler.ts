@@ -3,6 +3,7 @@ import type { FormulaNode } from './ast.js'
 import { columnToIndex, formatRangeAddress, parseCellAddress, parseRangeAddress } from './addressing.js'
 import { getNativeGroupedArrayKind } from './binder-wasm-rules.js'
 import { bindFormula, encodeBuiltin } from './binder.js'
+import { analyzeVolatileMetadata, producesSpillResult } from './compiler-analysis.js'
 import { lowerToPlan, type JsPlanInstruction } from './js-evaluator.js'
 import { optimizeFormula } from './optimizer.js'
 import { parseFormula } from './parser.js'
@@ -25,136 +26,20 @@ const SIMPLE_NUMBER_RE = /^[+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?$/
 const SIMPLE_BINARY_RE =
   /^\s*(\$?[A-Z]+\$?[1-9][0-9]*|[+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?)\s*([+*])\s*(\$?[A-Z]+\$?[1-9][0-9]*|[+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?)\s*$/
 
-const VOLATILE_BUILTINS = new Set(['TODAY', 'NOW', 'RAND', 'RANDBETWEEN', 'RANDARRAY'])
-
-interface VolatileMetadata {
-  volatile: boolean
-  randCallCount: number
-}
-
-function producesSpillResult(node: FormulaNode): boolean {
-  switch (node.kind) {
-    case 'NumberLiteral':
-    case 'BooleanLiteral':
-    case 'StringLiteral':
-    case 'ErrorLiteral':
-    case 'NameRef':
-    case 'StructuredRef':
-    case 'CellRef':
-    case 'SpillRef':
-    case 'RowRef':
-    case 'ColumnRef':
-    case 'InvokeExpr':
-      return false
-    case 'RangeRef':
-      return true
-    case 'UnaryExpr':
-      return producesSpillResult(node.argument)
-    case 'BinaryExpr':
-      return producesSpillResult(node.left) || producesSpillResult(node.right)
-    case 'CallExpr':
-      if (node.callee.toUpperCase() === 'CHOOSE') {
-        return node.args.slice(1).some((arg) => producesSpillResult(arg))
-      }
-      if (node.callee.toUpperCase() === 'TREND' || node.callee.toUpperCase() === 'GROWTH') {
-        const shapeArg = node.args[2] ?? node.args[1] ?? node.args[0]
-        if (shapeArg === undefined) {
-          return false
-        }
-        return producesSpillResult(shapeArg)
-      }
-      return [
-        'SEQUENCE',
-        'EXPAND',
-        'LINEST',
-        'LOGEST',
-        'OFFSET',
-        'TAKE',
-        'DROP',
-        'CHOOSECOLS',
-        'CHOOSEROWS',
-        'SORT',
-        'SORTBY',
-        'TOCOL',
-        'TOROW',
-        'WRAPROWS',
-        'WRAPCOLS',
-        'FILTER',
-        'UNIQUE',
-        'FREQUENCY',
-        'MODE.MULT',
-        'TEXTSPLIT',
-        'TRIMRANGE',
-        'GROUPBY',
-        'PIVOTBY',
-        'MAKEARRAY',
-        'MAP',
-        'SCAN',
-        'BYROW',
-        'BYCOL',
-        'RANDARRAY',
-        'MUNIT',
-        'MINVERSE',
-        'MMULT',
-      ].includes(node.callee.toUpperCase())
-  }
-}
-
-function analyzeVolatileMetadata(node: FormulaNode): VolatileMetadata {
-  switch (node.kind) {
-    case 'NumberLiteral':
-    case 'BooleanLiteral':
-    case 'StringLiteral':
-    case 'ErrorLiteral':
-    case 'NameRef':
-    case 'StructuredRef':
-    case 'CellRef':
-    case 'SpillRef':
-    case 'RowRef':
-    case 'ColumnRef':
-    case 'RangeRef':
-      return { volatile: false, randCallCount: 0 }
-    case 'UnaryExpr':
-      return analyzeVolatileMetadata(node.argument)
-    case 'BinaryExpr': {
-      const left = analyzeVolatileMetadata(node.left)
-      const right = analyzeVolatileMetadata(node.right)
-      return {
-        volatile: left.volatile || right.volatile,
-        randCallCount: left.randCallCount + right.randCallCount,
-      }
-    }
-    case 'CallExpr': {
-      const rewritten = rewriteSpecialCall(node)
-      if (rewritten) {
-        return analyzeVolatileMetadata(rewritten)
-      }
-      const callee = node.callee.toUpperCase()
-      let volatile = VOLATILE_BUILTINS.has(callee)
-      let randCallCount = callee === 'RAND' ? 1 : 0
-      node.args.forEach((arg) => {
-        const child = analyzeVolatileMetadata(arg)
-        volatile = volatile || child.volatile
-        randCallCount += child.randCallCount
-      })
-      return { volatile, randCallCount }
-    }
-    case 'InvokeExpr': {
-      const callee = analyzeVolatileMetadata(node.callee)
-      const args = node.args.map(analyzeVolatileMetadata)
-      return {
-        volatile: callee.volatile || args.some((child) => child.volatile),
-        randCallCount: callee.randCallCount + args.reduce((sum, child) => sum + child.randCallCount, 0),
-      }
-    }
-  }
-}
-
 function emitCellRef(ref: string, sheetName: string | undefined, state: CompilerState): void {
   const qualifiedRef = sheetName ? `${sheetName}!${ref}` : ref
   let index = state.refs.indexOf(qualifiedRef)
   if (index === -1) index = state.refs.push(qualifiedRef) - 1
   state.program.push(encodeInstruction(Opcode.PushCell, index))
+}
+
+function emitCellRefAsRange(ref: string, sheetName: string | undefined, state: CompilerState): void {
+  const qualifiedRange = formatRangeAddress(parseRangeAddress(sheetName ? `${sheetName}!${ref}:${ref}` : `${ref}:${ref}`))
+  let index = state.ranges.indexOf(qualifiedRange)
+  if (index === -1) {
+    index = state.ranges.push(qualifiedRange) - 1
+  }
+  state.program.push(encodeInstruction(Opcode.PushRange, index))
 }
 
 function emitRangeRef(node: Extract<FormulaNode, { kind: 'RangeRef' }>, state: CompilerState): void {
@@ -188,6 +73,14 @@ function emitArgument(node: FormulaNode, state: CompilerState): number {
 
   emitNode(node, state)
   return 1
+}
+
+function emitCallArgument(callee: string, node: FormulaNode, state: CompilerState): number {
+  if (callee === 'SUM' && node.kind === 'CellRef') {
+    emitCellRefAsRange(node.ref, node.sheetName, state)
+    return 1
+  }
+  return emitArgument(node, state)
 }
 
 const AXIS_AGGREGATE_CODES = new Map<string, number>([
@@ -423,7 +316,7 @@ function emitNode(node: FormulaNode, state: CompilerState): void {
         }
         let argc = 0
         node.args.forEach((arg) => {
-          argc += emitArgument(arg, state)
+          argc += emitCallArgument(callee, arg, state)
         })
         state.program.push(encodeInstruction(Opcode.CallBuiltin, (encodeBuiltin(callee) << 8) | argc))
       }

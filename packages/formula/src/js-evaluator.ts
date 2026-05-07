@@ -37,6 +37,7 @@ import {
   popScalar,
   scalarIntegerArgument,
   stackScalar,
+  toArithmeticNumber,
   toEvaluationResult,
   toNumber,
   toPositiveInteger,
@@ -180,6 +181,14 @@ function evaluateSpecialCall(
         })
       )
   }
+}
+
+function coerceDirectNumericTextAggregateArgument(callee: string, value: CellValue, argRef: ReferenceOperand | undefined): CellValue {
+  if (callee !== 'SUM' || argRef !== undefined || value.tag !== ValueTag.String) {
+    return value
+  }
+  const numeric = toArithmeticNumber(value)
+  return numeric === undefined ? error(ErrorCode.Value) : numberValue(numeric)
 }
 
 function executePlan(
@@ -404,7 +413,7 @@ function executePlan(
         break
       case 'unary': {
         const value = popScalar(stack)
-        const numeric = toNumber(value)
+        const numeric = toArithmeticNumber(value)
         stack.push({
           kind: 'scalar',
           value:
@@ -463,9 +472,9 @@ function executePlan(
           break
         }
         const args: CellValue[] = []
-        for (const rawArg of rawArgs) {
+        for (const [index, rawArg] of rawArgs.entries()) {
           if (rawArg.kind === 'scalar') {
-            args.push(rawArg.value)
+            args.push(coerceDirectNumericTextAggregateArgument(instruction.callee, rawArg.value, instruction.argRefs?.[index]))
             continue
           }
           if (rawArg.kind === 'omitted') {

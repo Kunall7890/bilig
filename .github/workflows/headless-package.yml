@@ -12,6 +12,7 @@ on:
       - "packages/protocol/**"
       - "packages/workbook-domain/**"
       - "packages/wasm-kernel/**"
+      - "packages/excel-import/**"
       - "packages/benchmarks/**"
       - "packages/headless/CHANGELOG.md"
       - "docs/public-api.md"
@@ -96,15 +97,16 @@ jobs:
           set -euo pipefail
           pnpm workspace-resolution:check
 
-      - name: Lint headless sources
+      - name: Lint runtime package sources
         run: |
           set -euo pipefail
-          pnpm exec oxlint --config .oxlintrc.json --type-aware --deny-warnings packages/headless/src
+          pnpm exec oxlint --config .oxlintrc.json --type-aware --deny-warnings packages/headless/src packages/excel-import/src
 
-      - name: Run headless parity tests
+      - name: Run import and headless parity tests
         run: |
           set -euo pipefail
           pnpm exec vitest run \
+            packages/excel-import/src/__tests__/structured-reference-import.test.ts \
             packages/headless/src/__tests__/work-paper.test.ts \
             packages/headless/src/__tests__/work-paper-runtime.test.ts \
             packages/headless/src/__tests__/work-paper-parity.test.ts \
@@ -120,6 +122,7 @@ jobs:
           pnpm --filter @bilig/wasm-kernel build
           pnpm --filter @bilig/formula build
           pnpm --filter @bilig/core build
+          pnpm --filter @bilig/excel-import build
           pnpm --filter @bilig/headless build
 
       - name: Validate publishable runtime package set
@@ -159,6 +162,7 @@ jobs:
             packages/wasm-kernel
             packages/formula
             packages/core
+            packages/excel-import
             packages/headless
           )
 
@@ -425,6 +429,7 @@ jobs:
             'packages/wasm-kernel/package.json',
             'packages/formula/package.json',
             'packages/core/package.json',
+            'packages/excel-import/package.json',
             'packages/headless/package.json',
           ];
           const packages = packagePaths.map((packagePath) =>
@@ -449,6 +454,7 @@ jobs:
           pnpm --filter @bilig/wasm-kernel build
           pnpm --filter @bilig/formula build
           pnpm --filter @bilig/core build
+          pnpm --filter @bilig/excel-import build
           pnpm --filter @bilig/headless build
 
       - name: Validate publishable runtime package set

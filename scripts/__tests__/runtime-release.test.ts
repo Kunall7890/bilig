@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { highestStableSemver } from '../runtime-package-set.ts'
+import { highestStableSemver, RUNTIME_PACKAGE_DIRS } from '../runtime-package-set.ts'
 import { bumpVersion, isRuntimeAffectingPath, parseConventionalCommit, releaseTypeForConventionalCommit } from '../runtime-release.ts'
 
 describe('runtime release helpers', () => {
@@ -80,8 +80,13 @@ describe('runtime release helpers', () => {
     expect(highestStableSemver(['0.7.8', '0.9.3', '0.1.95'])).toBe('0.9.3')
   })
 
+  it('publishes the Excel importer with the aligned runtime package set', () => {
+    expect(RUNTIME_PACKAGE_DIRS).toContain('packages/excel-import')
+  })
+
   it('matches runtime-affecting publish paths', () => {
     expect(isRuntimeAffectingPath('packages/core/src/index.ts')).toBe(true)
+    expect(isRuntimeAffectingPath('packages/excel-import/src/index.ts')).toBe(true)
     expect(isRuntimeAffectingPath('scripts/publish-runtime-package-set.ts')).toBe(true)
     expect(isRuntimeAffectingPath('apps/web/src/App.tsx')).toBe(false)
   })

@@ -30,6 +30,39 @@ import { decodePreservedVbaProjectPayload } from './xlsx-macros.js'
 const customNumberFormatStartId = 164
 const largeSimpleExportCellCountThreshold = 100_000
 
+function isRecord(value: unknown): value is Record<PropertyKey, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function isXlsxStyleRuntime(value: unknown): value is typeof XLSXStyle {
+  if (!isRecord(value)) {
+    return false
+  }
+  const utils = value['utils']
+  return (
+    typeof value['write'] === 'function' &&
+    isRecord(utils) &&
+    typeof utils['book_new'] === 'function' &&
+    typeof utils['book_append_sheet'] === 'function'
+  )
+}
+
+function resolveXlsxStyleRuntime(moduleValue: typeof XLSXStyle): typeof XLSXStyle {
+  if (isXlsxStyleRuntime(moduleValue)) {
+    return moduleValue
+  }
+
+  // Node ESM exposes this CommonJS package behind `default`; Bun and Vite expose
+  // the named runtime surface directly.
+  if (isRecord(moduleValue) && isXlsxStyleRuntime(moduleValue['default'])) {
+    return moduleValue['default']
+  }
+
+  throw new Error('xlsx-js-style did not expose the expected workbook writer API')
+}
+
+const XLSXStyleRuntime = resolveXlsxStyleRuntime(XLSXStyle)
+
 function buildExportColumns(columns: readonly WorkbookAxisEntrySnapshot[] | undefined): XLSX.ColInfo[] | undefined {
   if (!columns || columns.length === 0) {
     return undefined
@@ -864,7 +897,7 @@ function hasLargeSimpleExportShape(snapshot: WorkbookSnapshot): boolean {
 
 export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
   const useLargeSimpleFastPath = hasLargeSimpleExportShape(snapshot)
-  const workbook = useLargeSimpleFastPath ? XLSX.utils.book_new() : XLSXStyle.utils.book_new()
+  const workbook = useLargeSimpleFastPath ? XLSX.utils.book_new() : XLSXStyleRuntime.utils.book_new()
   const usedNames = new Set<string>()
   const exportSheetNamesByOriginalName = new Map<string, string>()
   const formatCodesById = new Map((snapshot.workbook.metadata?.formats ?? []).map((format) => [format.id, format.code]))
@@ -907,7 +940,7 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
     if (useLargeSimpleFastPath) {
       XLSX.utils.book_append_sheet(workbook, worksheet, exportSheetName)
     } else {
-      XLSXStyle.utils.book_append_sheet(workbook, worksheet, exportSheetName)
+      XLSXStyleRuntime.utils.book_append_sheet(workbook, worksheet, exportSheetName)
     }
   }
 
@@ -930,7 +963,7 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
   const bytes = toUint8Array(
     useLargeSimpleFastPath
       ? (XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }) as unknown)
-      : (XLSXStyle.write(workbook, {
+      : (XLSXStyleRuntime.write(workbook, {
           bookType: preservedVbaProject ? 'xlsm' : 'xlsx',
           type: 'buffer',
           cellStyles: true,

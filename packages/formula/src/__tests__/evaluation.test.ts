@@ -50,6 +50,28 @@ describe('formula builtins and JS evaluator', () => {
     expect(NOT({ tag: ValueTag.Empty })).toEqual({ tag: ValueTag.Boolean, value: true })
   })
 
+  it('coerces numeric text produced by expressions without summing referenced text cells', () => {
+    const context = {
+      sheetName: 'Sheet1',
+      resolveCell: (_sheetName: string, address: string): CellValue => {
+        if (address === 'A1') {
+          return { tag: ValueTag.String, value: '5-7', stringId: 1 }
+        }
+        if (address === 'A2') {
+          return { tag: ValueTag.String, value: '5', stringId: 2 }
+        }
+        return { tag: ValueTag.Empty }
+      },
+      resolveRange: (): CellValue[] => [],
+    }
+
+    expect(evaluateAst(parseFormula('SUM(LEFT(A1,1),RIGHT(A1,LEN(A1)-2)/12)'), context)).toEqual({
+      tag: ValueTag.Number,
+      value: 5 + 7 / 12,
+    })
+    expect(evaluateAst(parseFormula('SUM(A2)'), context)).toEqual({ tag: ValueTag.Number, value: 0 })
+  })
+
   it('evaluates the Excel implicit-intersection SINGLE wrapper around lookup results and ranges', () => {
     const num = (value: number): CellValue => ({ tag: ValueTag.Number, value })
 

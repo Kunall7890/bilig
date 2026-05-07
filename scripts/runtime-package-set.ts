@@ -7,6 +7,7 @@ export const RUNTIME_PACKAGE_DIRS = [
   'packages/wasm-kernel',
   'packages/formula',
   'packages/core',
+  'packages/excel-import',
   'packages/headless',
 ] as const
 

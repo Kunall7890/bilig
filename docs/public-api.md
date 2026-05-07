@@ -12,6 +12,7 @@
 
 - `@bilig/core`
 - `@bilig/headless`
+- `@bilig/excel-import`
 - `@bilig/formula`
 - `@bilig/wasm-kernel`
 - `@bilig/workbook-domain`
@@ -91,6 +92,23 @@ of `@bilig/core`:
   `columnSearch`, and `lazilyTransformingAstService`
 
 `WorkPaper` is the canonical top-level contract.
+
+## Excel Import Surface
+
+`@bilig/excel-import` exposes the public CSV/XLSX boundary for WorkPaper
+consumers:
+
+- `importXlsx(bytes, fileName)`
+- `importCsv(text, fileName)`
+- `importWorkbookFile({ bytes, fileName, contentType })`
+- `exportXlsx(snapshot)`
+- `CSV_CONTENT_TYPE`
+- `XLSX_CONTENT_TYPE`
+
+Use `importXlsx(...).snapshot` with `WorkPaper.buildFromSnapshot()` when a
+consumer needs Excel workbook metadata such as defined names, tables, and
+translated structured references. `WorkPaper.buildFromSheets()` remains a
+metadata-free array/sheet constructor.
 
 ### Core types added in the current tranche
 
