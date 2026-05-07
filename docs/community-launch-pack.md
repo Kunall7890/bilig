@@ -89,6 +89,17 @@ DEV's terms say posts should be on-topic, high quality, and not primarily for
 promotion or backlink creation. A DEV post should therefore be a real technical
 article, not a thin link wrapper.
 
+Ready-to-adapt repo draft:
+
+```text
+docs/dev-to-workbook-apis-post.md
+```
+
+It includes DEV-style front matter, a canonical URL, tags, the current social
+preview image, a concrete Node example, benchmark caveats, and feedback prompts.
+Use that draft as the source of truth, then edit in the DEV composer for
+community-specific polish.
+
 Article title:
 
 ```text
@@ -242,3 +253,5 @@ turning feedback into visible improvements.
   <https://lobste.rs/about>
 - Product Hunt launch guide:
   <https://www.producthunt.com/launch/>
+- DEV editor guide:
+  <https://dev.to/p/editor_guide/>

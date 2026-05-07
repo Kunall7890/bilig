@@ -42,6 +42,8 @@ Shorter version:
   [`docs/what-workpaper-benchmark-proves.md`](what-workpaper-benchmark-proves.md)
 - Technical article:
   [`docs/why-agents-need-workbook-apis.md`](why-agents-need-workbook-apis.md)
+- DEV-ready article:
+  [`docs/dev-to-workbook-apis-post.md`](dev-to-workbook-apis-post.md)
 - Persistence article:
   [`docs/persisting-formula-backed-workpaper-documents-in-node.md`](persisting-formula-backed-workpaper-documents-in-node.md)
 - Revenue-model article:

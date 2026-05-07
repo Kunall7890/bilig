@@ -181,6 +181,9 @@ For the Hacker News launch checklist, see
 For Reddit, DEV, Lobsters, and Product Hunt launch drafts, see
 [`docs/community-launch-pack.md`](docs/community-launch-pack.md).
 
+For a DEV-ready article draft with front matter, see
+[`docs/dev-to-workbook-apis-post.md`](docs/dev-to-workbook-apis-post.md).
+
 ## Quickstart
 
 Use Node `24+`, Bun, and `pnpm@10.32.1`.

@@ -101,6 +101,8 @@ Repository:
   [`docs/show-hn-launch-pack.md`](../../docs/show-hn-launch-pack.md)
 - Community launch pack:
   [`docs/community-launch-pack.md`](../../docs/community-launch-pack.md)
+- DEV-ready article:
+  [`docs/dev-to-workbook-apis-post.md`](../../docs/dev-to-workbook-apis-post.md)
 
 Inside this monorepo:
 

@@ -38,6 +38,7 @@ Verified on 2026-05-07:
   - `docs/xlsx-corpus-verifier-walkthrough.md`
   - `docs/show-hn-launch-pack.md`
   - `docs/community-launch-pack.md`
+  - `docs/dev-to-workbook-apis-post.md`
   - `examples/headless-workpaper/revenue-scenarios.mjs`
   - `docs/starter-issues.md`
   - `docs/assets/github-social-preview.png`
@@ -172,6 +173,8 @@ Actions:
   - dev.to or a personal/company blog with the benchmark story
   - use `docs/community-launch-pack.md` for platform-specific drafts and
     anti-spam guardrails before posting outside HN
+  - use `docs/dev-to-workbook-apis-post.md` as the first DEV article draft,
+    then adapt it in the composer instead of posting a thin repo link
 - Track which posts create GitHub visitors, npm downloads, issues, and stars.
   Do not judge by likes alone.
 - Answer comments quickly. If the same question appears twice, convert it into
