@@ -23,6 +23,7 @@ import {
 } from './bilig-dominance-formatters.ts'
 import { buildBiligDominanceCompletionAudit, hasUiResponsivenessSameCorpusTenXGap } from './bilig-dominance-completion-audit.ts'
 import { loadBiligDominanceScorecardInput, outputPath, rootDir } from './bilig-dominance-scorecard-input.ts'
+import { loadOperatorWorkflowEvidence, operatorWorkflowGaps } from './bilig-dominance-operator-workflow.ts'
 import { isFiniteNumber } from './json-scorecard-helpers.ts'
 import { formatJsonForRepo } from './scorecard-format.ts'
 
@@ -148,6 +149,8 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
     input.surfaceSnapshot.classSurface.instanceMethods.length
   const securityUncoveredControls = new Set(input.securityPostureScorecard.summary.uncoveredControls)
   const uiSameCorpusTenXGap = hasUiResponsivenessSameCorpusTenXGap(input.uiResponsivenessLiveBrowserScorecard)
+  const operatorWorkflowEvidence = loadOperatorWorkflowEvidence(rootDir)
+  const operatorWorkflowBlockers = operatorWorkflowGaps(operatorWorkflowEvidence)
   const completionAudit = buildBiligDominanceCompletionAudit(input, {
     calculationSemanticsPassed,
     googleSheetsLargeWorkbookTenXPassed,
@@ -806,17 +809,28 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
           'generated parity, formula inventory, formula dominance, workspace resolution, benchmark, publish, and smoke gates exist',
           'generated-source CI checks are serialized to avoid pnpm workspace-state races in the evidence gate',
           'this generated scorecard prevents blanket 10x claims from outrunning evidence',
+          `dominance package scripts present: ${String(
+            operatorWorkflowEvidence.dominanceGenerateScriptPresent &&
+              operatorWorkflowEvidence.dominanceCheckScriptPresent &&
+              operatorWorkflowEvidence.dominanceAuditCheckScriptPresent,
+          )}`,
+          `run-ci executes dominance checks: ${String(
+            operatorWorkflowEvidence.runCiDominanceCheckPresent && operatorWorkflowEvidence.runCiDominanceAuditCheckPresent,
+          )}`,
+          `blanket claim policy coupled to completion audit: ${String(operatorWorkflowEvidence.blanketClaimPolicyCoupledToCompletionAudit)}`,
+          `prompt-to-artifact audit coupled to live status: ${String(operatorWorkflowEvidence.promptArtifactAuditCoupledToLiveStatus)}`,
           `completion audit criteria passed: ${String(completionAudit.allCriteriaPassed)}`,
         ],
         evidenceArtifacts: [
           'package.json',
           'scripts/run-ci.ts',
+          'scripts/bilig-dominance-operator-workflow.ts',
           input.competitiveArtifactPath,
           input.formulaSnapshotPath,
           input.surfaceSnapshotPath,
         ],
         checkCommands: ['pnpm dominance:check', 'pnpm run ci'],
-        blockers: [],
+        blockers: operatorWorkflowBlockers,
       },
     ],
   }

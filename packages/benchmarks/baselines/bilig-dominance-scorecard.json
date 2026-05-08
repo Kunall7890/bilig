@@ -787,11 +787,16 @@
         "generated parity, formula inventory, formula dominance, workspace resolution, benchmark, publish, and smoke gates exist",
         "generated-source CI checks are serialized to avoid pnpm workspace-state races in the evidence gate",
         "this generated scorecard prevents blanket 10x claims from outrunning evidence",
+        "dominance package scripts present: true",
+        "run-ci executes dominance checks: true",
+        "blanket claim policy coupled to completion audit: true",
+        "prompt-to-artifact audit coupled to live status: true",
         "completion audit criteria passed: false"
       ],
       "evidenceArtifacts": [
         "package.json",
         "scripts/run-ci.ts",
+        "scripts/bilig-dominance-operator-workflow.ts",
         "packages/benchmarks/baselines/workpaper-vs-hyperformula.json",
         "packages/formula/src/__tests__/fixtures/formula-dominance-snapshot.json",
         "packages/headless/src/__tests__/fixtures/hyperformula-surface.json"
