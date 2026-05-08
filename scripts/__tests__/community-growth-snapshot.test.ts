@@ -18,6 +18,41 @@ function fetchInputUrl(input: string | URL | Request): string {
   return input.url
 }
 
+function growthSearchResponse(url: string): Response | undefined {
+  if (!url.startsWith('https://api.github.com/search/issues?')) {
+    return undefined
+  }
+
+  const query = new URL(url).searchParams.get('q')
+
+  if (query === 'repo:proompteng/bilig is:issue is:open label:"good first issue"') {
+    return responseJson({ total_count: 8 })
+  }
+  if (query === 'repo:proompteng/bilig is:issue is:open label:first-timers-only') {
+    return responseJson({ total_count: 5 })
+  }
+  if (query === 'repo:proompteng/bilig is:issue is:open label:"help wanted"') {
+    return responseJson({ total_count: 8 })
+  }
+  if (query === 'repo:proompteng/bilig is:pr is:open') {
+    return responseJson({ total_count: 2 })
+  }
+  if (query === 'repo:proompteng/bilig is:issue is:open -author:gregkonush') {
+    return responseJson({ total_count: 3 })
+  }
+  if (query === 'repo:proompteng/bilig is:pr is:open -author:gregkonush') {
+    return responseJson({ total_count: 1 })
+  }
+  if (query === 'repo:proompteng/bilig is:issue created:>=2026-05-01 -author:gregkonush') {
+    return responseJson({ total_count: 2 })
+  }
+  if (query === 'repo:proompteng/bilig is:pr created:>=2026-05-01 -author:gregkonush') {
+    return responseJson({ total_count: 1 })
+  }
+
+  return undefined
+}
+
 describe('community growth snapshot', () => {
   it('collects public GitHub and npm metrics without traffic when no token is configured', async () => {
     const calls: string[] = []
@@ -70,20 +105,9 @@ describe('community growth snapshot', () => {
         })
       }
 
-      if (url.startsWith('https://api.github.com/search/issues?')) {
-        const query = new URL(url).searchParams.get('q')
-        if (query === 'repo:proompteng/bilig is:issue is:open label:"good first issue"') {
-          return responseJson({ total_count: 8 })
-        }
-        if (query === 'repo:proompteng/bilig is:issue is:open label:first-timers-only') {
-          return responseJson({ total_count: 5 })
-        }
-        if (query === 'repo:proompteng/bilig is:issue is:open label:"help wanted"') {
-          return responseJson({ total_count: 8 })
-        }
-        if (query === 'repo:proompteng/bilig is:pr is:open') {
-          return responseJson({ total_count: 2 })
-        }
+      const searchResponse = growthSearchResponse(url)
+      if (searchResponse !== undefined) {
+        return searchResponse
       }
 
       throw new Error(`unexpected fetch ${url}`)
@@ -120,6 +144,10 @@ describe('community growth snapshot', () => {
         openFirstTimersOnlyIssueCount: 5,
         openHelpWantedIssueCount: 8,
         openPullRequestCount: 2,
+        externalOpenIssueCount: 3,
+        externalOpenPullRequestCount: 1,
+        externalIssuesOpenedLastSevenDays: 2,
+        externalPullRequestsOpenedLastSevenDays: 1,
       },
       traffic: {
         available: false,
@@ -167,20 +195,9 @@ describe('community growth snapshot', () => {
         return responseJson({ downloads: 2, start: '2026-04-07', end: '2026-05-06' })
       }
 
-      if (url.startsWith('https://api.github.com/search/issues?')) {
-        const query = new URL(url).searchParams.get('q')
-        if (query === 'repo:proompteng/bilig is:issue is:open label:"good first issue"') {
-          return responseJson({ total_count: 8 })
-        }
-        if (query === 'repo:proompteng/bilig is:issue is:open label:first-timers-only') {
-          return responseJson({ total_count: 5 })
-        }
-        if (query === 'repo:proompteng/bilig is:issue is:open label:"help wanted"') {
-          return responseJson({ total_count: 8 })
-        }
-        if (query === 'repo:proompteng/bilig is:pr is:open') {
-          return responseJson({ total_count: 2 })
-        }
+      const searchResponse = growthSearchResponse(url)
+      if (searchResponse !== undefined) {
+        return searchResponse
       }
 
       if (url === 'https://api.github.com/repos/proompteng/bilig/traffic/views') {

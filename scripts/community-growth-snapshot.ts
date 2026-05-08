@@ -43,6 +43,10 @@ export interface ContributorFunnelMetrics {
   readonly openFirstTimersOnlyIssueCount: number
   readonly openHelpWantedIssueCount: number
   readonly openPullRequestCount: number
+  readonly externalOpenIssueCount: number
+  readonly externalOpenPullRequestCount: number
+  readonly externalIssuesOpenedLastSevenDays: number
+  readonly externalPullRequestsOpenedLastSevenDays: number
 }
 
 export type GitHubTrafficSnapshot =
@@ -80,6 +84,7 @@ export interface CommunityGrowthSnapshotOptions {
   readonly owner?: string
   readonly repo?: string
   readonly packageName?: string
+  readonly maintainerLogin?: string
   readonly githubToken?: string
   readonly now?: Date
   readonly fetchImpl?: typeof fetch
@@ -89,12 +94,14 @@ interface CliOptions {
   readonly owner: string
   readonly repo: string
   readonly packageName: string
+  readonly maintainerLogin: string
   readonly outputPath: string | undefined
 }
 
 const defaultOwner = 'proompteng'
 const defaultRepo = 'bilig'
 const defaultPackageName = '@bilig/headless'
+const defaultMaintainerLogin = 'gregkonush'
 
 function asRecord(value: unknown, context: string): Record<string, unknown> {
   if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
@@ -246,6 +253,14 @@ function parseSearchCount(value: unknown, context: string): number {
   return numberField(asRecord(value, context), 'total_count', context)
 }
 
+function dateOnly(date: Date): string {
+  return date.toISOString().slice(0, 10)
+}
+
+function daysBefore(date: Date, days: number): Date {
+  return new Date(date.getTime() - days * 24 * 60 * 60 * 1000)
+}
+
 async function fetchIssueSearchCount(fetchImpl: typeof fetch, githubToken: string | undefined, query: string): Promise<number> {
   const searchUrl = new URL('https://api.github.com/search/issues')
   searchUrl.searchParams.set('q', query)
@@ -262,15 +277,32 @@ async function collectContributorFunnel(
   fetchImpl: typeof fetch,
   owner: string,
   repo: string,
+  maintainerLogin: string,
   githubToken: string | undefined,
+  now: Date,
 ): Promise<ContributorFunnelMetrics> {
   const repoQualifier = `repo:${owner}/${repo}`
+  const externalQualifier = `-author:${maintainerLogin}`
+  const since = dateOnly(daysBefore(now, 7))
 
-  const [openGoodFirstIssueCount, openFirstTimersOnlyIssueCount, openHelpWantedIssueCount, openPullRequestCount] = await Promise.all([
+  const [
+    openGoodFirstIssueCount,
+    openFirstTimersOnlyIssueCount,
+    openHelpWantedIssueCount,
+    openPullRequestCount,
+    externalOpenIssueCount,
+    externalOpenPullRequestCount,
+    externalIssuesOpenedLastSevenDays,
+    externalPullRequestsOpenedLastSevenDays,
+  ] = await Promise.all([
     fetchIssueSearchCount(fetchImpl, githubToken, `${repoQualifier} is:issue is:open label:"good first issue"`),
     fetchIssueSearchCount(fetchImpl, githubToken, `${repoQualifier} is:issue is:open label:first-timers-only`),
     fetchIssueSearchCount(fetchImpl, githubToken, `${repoQualifier} is:issue is:open label:"help wanted"`),
     fetchIssueSearchCount(fetchImpl, githubToken, `${repoQualifier} is:pr is:open`),
+    fetchIssueSearchCount(fetchImpl, githubToken, `${repoQualifier} is:issue is:open ${externalQualifier}`),
+    fetchIssueSearchCount(fetchImpl, githubToken, `${repoQualifier} is:pr is:open ${externalQualifier}`),
+    fetchIssueSearchCount(fetchImpl, githubToken, `${repoQualifier} is:issue created:>=${since} ${externalQualifier}`),
+    fetchIssueSearchCount(fetchImpl, githubToken, `${repoQualifier} is:pr created:>=${since} ${externalQualifier}`),
   ])
 
   return {
@@ -278,6 +310,10 @@ async function collectContributorFunnel(
     openFirstTimersOnlyIssueCount,
     openHelpWantedIssueCount,
     openPullRequestCount,
+    externalOpenIssueCount,
+    externalOpenPullRequestCount,
+    externalIssuesOpenedLastSevenDays,
+    externalPullRequestsOpenedLastSevenDays,
   }
 }
 
@@ -322,8 +358,10 @@ export async function collectCommunityGrowthSnapshot(options: CommunityGrowthSna
   const owner = options.owner ?? defaultOwner
   const repo = options.repo ?? defaultRepo
   const packageName = options.packageName ?? defaultPackageName
+  const maintainerLogin = options.maintainerLogin ?? defaultMaintainerLogin
   const fetchImpl = options.fetchImpl ?? fetch
   const githubToken = options.githubToken ?? process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN
+  const now = options.now ?? new Date()
   const encodedPackageName = encodeURIComponent(packageName)
 
   const [github, npmMetadata, lastWeekDownloads, lastMonthDownloads, contributorFunnel, traffic] = await Promise.all([
@@ -337,12 +375,12 @@ export async function collectCommunityGrowthSnapshot(options: CommunityGrowthSna
     fetchJson(fetchImpl, `https://api.npmjs.org/downloads/point/last-month/${encodedPackageName}`).then((value) =>
       parseDownloadWindow(value, 'npm last-month downloads'),
     ),
-    collectContributorFunnel(fetchImpl, owner, repo, githubToken),
+    collectContributorFunnel(fetchImpl, owner, repo, maintainerLogin, githubToken, now),
     collectGitHubTraffic(fetchImpl, owner, repo, githubToken),
   ])
 
   return {
-    capturedAt: (options.now ?? new Date()).toISOString(),
+    capturedAt: now.toISOString(),
     github,
     npm: parseNpmPackageMetrics(npmMetadata, {
       lastWeek: lastWeekDownloads,
@@ -357,6 +395,7 @@ function parseCliOptions(argv: readonly string[]): CliOptions {
   let owner = defaultOwner
   let repo = defaultRepo
   let packageName = defaultPackageName
+  let maintainerLogin = defaultMaintainerLogin
   let outputPath: string | undefined
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -372,6 +411,9 @@ function parseCliOptions(argv: readonly string[]): CliOptions {
     } else if (arg === '--package' && next !== undefined) {
       packageName = next
       index += 1
+    } else if (arg === '--maintainer' && next !== undefined) {
+      maintainerLogin = next
+      index += 1
     } else if (arg === '--output' && next !== undefined) {
       outputPath = next
       index += 1
@@ -384,6 +426,7 @@ function parseCliOptions(argv: readonly string[]): CliOptions {
     owner,
     repo,
     packageName,
+    maintainerLogin,
     outputPath,
   }
 }
