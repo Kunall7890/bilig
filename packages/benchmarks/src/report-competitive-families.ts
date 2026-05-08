@@ -95,7 +95,7 @@ export const EXPANDED_COMPARATIVE_FAMILY_GROUPS = {
   ],
   rebuild: ['rebuild-and-recalculate'],
   'runtime-restore': ['rebuild-runtime-from-snapshot'],
-  'config-toggle': ['rebuild-config-toggle'],
+  'config-toggle': ['rebuild-config-toggle', 'rebuild-config-toggle-large'],
   'sheet-lifecycle': ['sheet-rename-dependencies'],
   'named-expression': ['named-expression-change'],
   'dirty-execution': [

@@ -240,6 +240,13 @@ export function runWorkPaperVsHyperFormulaExpandedBenchmarkSuite(
       () => measureHyperFormulaConfigToggleSample(5_000),
     ),
     runComparableScenario(
+      'rebuild-config-toggle-large',
+      { rowCount: 20_000, config: 'useColumnIndex:false->true' },
+      runtimeOptions,
+      () => measureWorkPaperConfigToggleSample(20_000),
+      () => measureHyperFormulaConfigToggleSample(20_000),
+    ),
+    runComparableScenario(
       'rebuild-runtime-from-snapshot',
       { rowCount: 1_500, source: 'serialized-sheets' },
       runtimeOptions,

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "suite": "workpaper-vs-hyperformula",
-  "generatedAt": "2026-05-06T14:54:57.091Z",
+  "generatedAt": "2026-05-08T15:00:27.603Z",
   "host": {
     "arch": "arm64",
     "nodeVersion": "v24.3.0",
@@ -23,7 +23,7 @@
       "sourcePath": "/Users/gregkonush/github.com/hyperformula",
       "licenseKey": "gpl-v3",
       "metadataSource": "local-checkout",
-      "commit": "6de904b8876f920f287b63a95934c479acf78307"
+      "commit": "9a510a2acb97c3d3490f9e3b9e961a1c4a98b9ad"
     }
   },
   "families": [
@@ -91,17 +91,17 @@
     },
     {
       "family": "config-toggle",
-      "workloads": ["rebuild-config-toggle"],
+      "workloads": ["rebuild-config-toggle", "rebuild-config-toggle-large"],
       "scorecardEligible": false,
       "exclusionReason": "Control-only rebuild toggle; not evidence of broad competitive victory.",
-      "resultCount": 1,
-      "comparableCount": 1,
+      "resultCount": 2,
+      "comparableCount": 2,
       "leadershipCount": 0,
-      "workpaperWins": 1,
+      "workpaperWins": 2,
       "hyperformulaWins": 0,
-      "meanSpeedupGeomean": 204.29383125421174,
-      "directionalMeanRatioGeomean": 0.004894910403612026,
-      "directionalP95RatioGeomean": 0.005967418764648642,
+      "meanSpeedupGeomean": 330.43871258483824,
+      "directionalMeanRatioGeomean": 0.0030262797968723374,
+      "directionalP95RatioGeomean": 0.0035077444995471893,
       "worstWorkpaperToHyperFormulaMeanRatio": 0.004894910403612025,
       "worstMeanRatioWorkload": "rebuild-config-toggle",
       "worstWorkpaperToHyperFormulaP95Ratio": 0.0059674187646486425,
@@ -8070,6 +8070,840 @@
           },
           "verification": {
             "formulaValue": 2500
+          }
+        }
+      }
+    },
+    {
+      "workload": "rebuild-config-toggle-large",
+      "category": "directly-comparable",
+      "comparable": true,
+      "fixture": {
+        "rowCount": 20000,
+        "config": "useColumnIndex:false->true"
+      },
+      "comparison": {
+        "fasterEngine": "workpaper",
+        "meanSpeedup": 534.4740078757235,
+        "workpaperToHyperFormulaMeanRatio": 0.0018709983745973313,
+        "workpaperToHyperFormulaMedianRatio": 0.0018645269215205342,
+        "workpaperToHyperFormulaP95Ratio": 0.0020619085000360346,
+        "maxRelativeNoise": 0.1417029729504877,
+        "confidenceIntervalOverlaps": false,
+        "verificationEquivalent": true
+      },
+      "engines": {
+        "workpaper": {
+          "status": "supported",
+          "elapsedMs": {
+            "samples": [0.028542000000015832, 0.030416000000514032, 0.03554199999962293, 0.03991599999972095, 0.04104100000040489],
+            "min": 0.028542000000015832,
+            "median": 0.03554199999962293,
+            "p95": 0.04104100000040489,
+            "max": 0.04104100000040489,
+            "mean": 0.03509140000005573,
+            "standardDeviation": 0.0049725557050026405,
+            "relativeStandardDeviation": 0.1417029729504877,
+            "standardError": 0.002223794515658059,
+            "confidence95": {
+              "low": 0.030732762749365934,
+              "high": 0.03945003725074552
+            }
+          },
+          "memoryDeltaBytes": {
+            "rssBytes": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "heapUsedBytes": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "heapTotalBytes": {
+              "samples": [-212992, -212992, -212992, -212992, -196608],
+              "min": -212992,
+              "median": -212992,
+              "p95": -196608,
+              "max": -196608,
+              "mean": -209715.2,
+              "standardDeviation": 6553.6,
+              "relativeStandardDeviation": 0.03125,
+              "standardError": 2930.8590194685244,
+              "confidence95": {
+                "low": -215459.68367815833,
+                "high": -203970.7163218417
+              }
+            },
+            "externalBytes": {
+              "samples": [-4881, -4881, -4874, -4863, -4847],
+              "min": -4881,
+              "median": -4874,
+              "p95": -4847,
+              "max": -4847,
+              "mean": -4869.2,
+              "standardDeviation": 12.905812643921342,
+              "relativeStandardDeviation": 0.002650499598275146,
+              "standardError": 5.771654875336882,
+              "confidence95": {
+                "low": -4880.51244355566,
+                "high": -4857.88755644434
+              }
+            },
+            "arrayBuffersBytes": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            }
+          },
+          "engineCounters": {
+            "cellsRemapped": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "rangesMaterialized": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "rangeMembersExpanded": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "formulasParsed": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "formulasBound": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "columnSliceBuilds": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "exactIndexBuilds": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "approxIndexBuilds": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "topoRebuilds": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "changedCellPayloadsBuilt": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "snapshotOpsReplayed": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "wasmFullUploads": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "directAggregateScanEvaluations": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "directAggregateScanCells": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "directAggregatePrefixEvaluations": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "directAggregateDeltaApplications": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "directAggregateDeltaOnlyRecalcSkips": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "directScalarDeltaApplications": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "directScalarDeltaOnlyRecalcSkips": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "kernelSyncOnlyRecalcSkips": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "directFormulaKernelSyncOnlyRecalcSkips": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "directFormulaInitialEvaluations": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "structuralTransactions": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "structuralPlannedCells": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "structuralSurvivorCellsRemapped": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "structuralRemovedCells": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "structuralUndoCapturedCells": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "structuralFormulaImpactCandidates": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "structuralFormulaRebindInputs": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "structuralRangeRetargets": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "sheetGridBlockScans": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "axisMapSplices": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "axisMapMoves": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "regionQueryIndexBuilds": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "columnOwnerBuilds": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "lookupOwnerBuilds": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "calcChainFullScans": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "cycleFormulaScans": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "topoRepairs": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "topoRepairFailures": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            },
+            "topoRepairAffectedFormulas": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            }
+          },
+          "verification": {
+            "formulaValue": 10000
+          }
+        },
+        "hyperformula": {
+          "status": "supported",
+          "elapsedMs": {
+            "samples": [17.551666000000296, 17.863666000000194, 19.062207999999373, 19.395290999999816, 19.904375000000073],
+            "min": 17.551666000000296,
+            "median": 19.062207999999373,
+            "p95": 19.904375000000073,
+            "max": 19.904375000000073,
+            "mean": 18.75544119999995,
+            "standardDeviation": 0.9019867241144173,
+            "relativeStandardDeviation": 0.04809200244857048,
+            "standardError": 0.40338072598443714,
+            "confidence95": {
+              "low": 17.964814977070453,
+              "high": 19.546067422929447
+            }
+          },
+          "memoryDeltaBytes": {
+            "rssBytes": {
+              "samples": [0, 0, 0, 32768, 2392064],
+              "min": 0,
+              "median": 0,
+              "p95": 2392064,
+              "max": 2392064,
+              "mean": 484966.4,
+              "standardDeviation": 953633.2498686485,
+              "relativeStandardDeviation": 1.966390351720549,
+              "standardError": 426477.754462068,
+              "confidence95": {
+                "low": -350929.9987456533,
+                "high": 1320862.7987456534
+              }
+            },
+            "heapUsedBytes": {
+              "samples": [-1354214, -84467, 24209, 61833, 1377251],
+              "min": -1354214,
+              "median": 24209,
+              "p95": 1377251,
+              "max": 1377251,
+              "mean": 4922.4,
+              "standardDeviation": 865117.1937196949,
+              "relativeStandardDeviation": 175.75109574997865,
+              "standardError": 386892.17073221836,
+              "confidence95": {
+                "low": -753386.254635148,
+                "high": 763231.054635148
+              }
+            },
+            "heapTotalBytes": {
+              "samples": [6733824, 7340032, 7634944, 7634944, 7913472],
+              "min": 6733824,
+              "median": 7634944,
+              "p95": 7913472,
+              "max": 7913472,
+              "mean": 7451443.2,
+              "standardDeviation": 402046.1343987279,
+              "relativeStandardDeviation": 0.053955471927737156,
+              "standardError": 179800.4973213144,
+              "confidence95": {
+                "low": 7099034.225250224,
+                "high": 7803852.174749777
+              }
+            },
+            "externalBytes": {
+              "samples": [1755, 2719, 4691, 5344, 6551],
+              "min": 1755,
+              "median": 4691,
+              "p95": 6551,
+              "max": 6551,
+              "mean": 4212,
+              "standardDeviation": 1746.292300847713,
+              "relativeStandardDeviation": 0.41459931169223957,
+              "standardError": 780.965658656,
+              "confidence95": {
+                "low": 2681.30730903424,
+                "high": 5742.6926909657595
+              }
+            },
+            "arrayBuffersBytes": {
+              "samples": [0, 0, 0, 0, 0],
+              "min": 0,
+              "median": 0,
+              "p95": 0,
+              "max": 0,
+              "mean": 0,
+              "standardDeviation": 0,
+              "relativeStandardDeviation": 0,
+              "standardError": 0,
+              "confidence95": {
+                "low": 0,
+                "high": 0
+              }
+            }
+          },
+          "verification": {
+            "formulaValue": 10000
           }
         }
       }

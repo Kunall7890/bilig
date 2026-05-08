@@ -27,6 +27,12 @@
         "comparisonTarget": "HyperFormula"
       },
       {
+        "workload": "rebuild-config-toggle-large",
+        "meanRatio": 0.0018709983745973313,
+        "p95Ratio": 0.0020619085000360346,
+        "comparisonTarget": "HyperFormula"
+      },
+      {
         "workload": "structural-move-columns",
         "meanRatio": 0.05081519369866803,
         "p95Ratio": 0.05046197169892257,
@@ -170,9 +176,9 @@
     "securityPostureScorecard": "packages/benchmarks/baselines/security-posture-scorecard.json",
     "workpaperCompetitiveBenchmark": {
       "path": "packages/benchmarks/baselines/workpaper-vs-hyperformula.json",
-      "generatedAt": "2026-05-06T14:54:57.091Z",
+      "generatedAt": "2026-05-08T15:00:27.603Z",
       "hyperFormulaVersion": "3.2.0",
-      "hyperFormulaCommit": "6de904b8876f920f287b63a95934c479acf78307"
+      "hyperFormulaCommit": "9a510a2acb97c3d3490f9e3b9e961a1c4a98b9ad"
     }
   },
   "summary": {
@@ -400,7 +406,7 @@
     "hyperFormulaMeanGeomeanRatio": 0.521767150331573,
     "hyperFormulaP95GeomeanRatio": 0.5359737705859149,
     "hyperFormulaWins": 0,
-    "tenXMeanAndP95WorkloadCountAgainstHyperFormula": 2,
+    "tenXMeanAndP95WorkloadCountAgainstHyperFormula": 3,
     "workpaperWins": 46
   },
   "categories": [

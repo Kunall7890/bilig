@@ -8,6 +8,7 @@ export type ExpandedComparativeBenchmarkWorkload =
   | 'build-many-sheets'
   | 'rebuild-and-recalculate'
   | 'rebuild-config-toggle'
+  | 'rebuild-config-toggle-large'
   | 'rebuild-runtime-from-snapshot'
   | 'sheet-rename-dependencies'
   | 'named-expression-change'
@@ -61,6 +62,7 @@ export const EXPANDED_COMPARATIVE_WORKLOADS = [
   'build-many-sheets',
   'rebuild-and-recalculate',
   'rebuild-config-toggle',
+  'rebuild-config-toggle-large',
   'rebuild-runtime-from-snapshot',
   'sheet-rename-dependencies',
   'named-expression-change',
@@ -117,6 +119,7 @@ export const EXPANDED_COMPARATIVE_WORKLOAD_SCORECARD_LANE = {
   'build-many-sheets': 'public',
   'rebuild-and-recalculate': 'public',
   'rebuild-config-toggle': 'public',
+  'rebuild-config-toggle-large': 'public',
   'rebuild-runtime-from-snapshot': 'public',
   'sheet-rename-dependencies': 'holdout',
   'named-expression-change': 'holdout',
