@@ -90,6 +90,8 @@ function main(): void {
           goalStatus: audit.completionVerdict.goalStatus,
           allChecklistItemsPassed: audit.completionVerdict.allChecklistItemsPassed,
           targetComplete: audit.completionVerdict.targetComplete,
+          stopMarkerActive: audit.completionVerdict.stopMarkerActive,
+          nextCorpusRunRequiresExplicitResume: audit.completionVerdict.nextCorpusRunRequiresExplicitResume,
           checklistItemCount: audit.checklist.length,
           unmetRequirementCount: audit.completionVerdict.unmetRequirements.length,
           nextActionCount: audit.nextActions.length,
