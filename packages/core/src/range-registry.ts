@@ -90,7 +90,7 @@ export class RangeRegistry {
     }
 
     const cellRange = toCellRange(range)
-    const dynamic = range.kind !== 'cells'
+    const dynamic = range.kind !== 'cells' || cellRangeMemberCount(cellRange) > MAX_WASM_RANGE_CELLS
     const descriptor: RangeDescriptor = {
       index: this.descriptors.length,
       sheetId,
@@ -111,15 +111,15 @@ export class RangeRegistry {
     }
 
     const sourceReuse =
-      range.kind === 'cells' ? resolveCellRangeDependencyReuse(this.descriptors, this.byKey, sheetId, cellRange) : undefined
+      range.kind === 'cells' && !dynamic ? resolveCellRangeDependencyReuse(this.descriptors, this.byKey, sheetId, cellRange) : undefined
     const isFormulaCell =
       materializer.isFormulaCell === undefined ? undefined : (cellIndex: number): boolean => materializer.isFormulaCell!(cellIndex)
     const memberIndices =
-      range.kind === 'cells'
+      range.kind === 'cells' && !dynamic
         ? materializeBoundedMembers(sheetId, cellRange, materializer, this, sourceReuse)
         : materializeDynamicMembers(sheetId, cellRange, range.kind, materializer)
     const dependencySourceEntities =
-      range.kind === 'cells'
+      range.kind === 'cells' && !dynamic
         ? materializeCellRangeDependencySources(sourceReuse, memberIndices)
         : materializeDynamicDependencySources(memberIndices)
     const formulaMemberIndices = materializeFormulaMembers(
@@ -285,7 +285,7 @@ export class RangeRegistry {
     let formulaMemberIndices: Uint32Array
     let dependencySourceEntities: Uint32Array
     let nextParentRangeIndex: RangeIndex | undefined
-    if (descriptor.kind === 'cells') {
+    if (descriptor.kind === 'cells' && !descriptor.dynamic) {
       const range = descriptorToCellRangeAddress(descriptor)
       const sourceReuse = resolveCellRangeDependencyReuse(this.descriptors, this.byKey, descriptor.sheetId, range)
       nextParentRangeIndex = sourceReuse?.parentRangeIndex
@@ -532,6 +532,12 @@ function materializeDynamicMembers(
 ): Uint32Array {
   let matchCount = 0
   materializer.forEachSheetCell(sheetId, (_cellIndex, row, col) => {
+    if (kind === 'cells') {
+      if (row >= range.start.row && row <= range.end.row && col >= range.start.col && col <= range.end.col) {
+        matchCount += 1
+      }
+      return
+    }
     if (kind === 'rows') {
       if (row >= range.start.row && row <= range.end.row) {
         matchCount += 1
@@ -545,6 +551,13 @@ function materializeDynamicMembers(
   const matches = new Uint32Array(matchCount)
   let cursor = 0
   materializer.forEachSheetCell(sheetId, (cellIndex, row, col) => {
+    if (kind === 'cells') {
+      if (row >= range.start.row && row <= range.end.row && col >= range.start.col && col <= range.end.col) {
+        matches[cursor] = cellIndex
+        cursor += 1
+      }
+      return
+    }
     if (kind === 'rows') {
       if (row >= range.start.row && row <= range.end.row) {
         matches[cursor] = cellIndex
@@ -703,6 +716,9 @@ function materializeBoundedTailCells(
 }
 
 function matchesDynamicRange(descriptor: RangeDescriptor, row: number, col: number): boolean {
+  if (descriptor.kind === 'cells') {
+    return row >= descriptor.row1 && row <= descriptor.row2 && col >= descriptor.col1 && col <= descriptor.col2
+  }
   if (descriptor.kind === 'rows') {
     return row >= descriptor.row1 && row <= descriptor.row2
   }
@@ -710,6 +726,10 @@ function matchesDynamicRange(descriptor: RangeDescriptor, row: number, col: numb
     return col >= descriptor.col1 && col <= descriptor.col2
   }
   return false
+}
+
+function cellRangeMemberCount(range: CellRangeAddress): number {
+  return (range.end.row - range.start.row + 1) * (range.end.col - range.start.col + 1)
 }
 
 function syncDescriptorMembers(descriptor: RangeDescriptor, slice: EdgeSlice): void {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { MAX_WASM_RANGE_CELLS } from '@bilig/protocol'
 import { buildStructuralTransaction } from '../engine/structural-transaction.js'
 import { makeCellEntity, makeRangeEntity } from '../entity-ids.js'
 import { createEngineCounters } from '../perf/engine-counters.js'
@@ -27,6 +28,34 @@ describe('RangeRegistry', () => {
     expect(descriptor.membersLength).toBe(4)
     expect(registry.getMembers(registered.rangeIndex)).toEqual(Uint32Array.from([10, 11, 12, 13]))
     expect(registry.getMemberPoolView()).toEqual(Uint32Array.from([10, 11, 12, 13]))
+  })
+
+  it('tracks large bounded ranges sparsely instead of applying the wasm fast-path cap', () => {
+    const registry = new RangeRegistry()
+    const registered = registry.intern(
+      1,
+      {
+        kind: 'cells',
+        start: { row: 0, col: 0, text: 'A1' },
+        end: { row: MAX_WASM_RANGE_CELLS, col: 0, text: `A${MAX_WASM_RANGE_CELLS + 1}` },
+      },
+      {
+        ensureCell: () => {
+          throw new Error('large bounded ranges should not eagerly materialize every blank cell')
+        },
+        forEachSheetCell: (_sheetId, fn) => {
+          fn(10, 0, 0)
+          fn(11, MAX_WASM_RANGE_CELLS, 0)
+          fn(12, MAX_WASM_RANGE_CELLS + 1, 0)
+        },
+      },
+    )
+
+    expect(registered.materialized).toBe(true)
+    expect(registry.getMembers(registered.rangeIndex)).toEqual(Uint32Array.from([10, 11]))
+    expect(registry.getDependencySourceEntities(registered.rangeIndex)).toEqual(Uint32Array.from([makeCellEntity(10), makeCellEntity(11)]))
+    expect(registry.addDynamicMember(1, 5, 0, 13)).toEqual([registered.rangeIndex])
+    expect(registry.getMembers(registered.rangeIndex)).toEqual(Uint32Array.from([10, 11, 13]))
   })
 
   it('updates dynamic range member offsets and lengths when cells materialize later', () => {
