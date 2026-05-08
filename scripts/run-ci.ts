@@ -1,9 +1,11 @@
 #!/usr/bin/env bun
 
 import { runCoverageContracts } from './coverage-contracts.ts'
+import { assertLocalCiResourceGuardAllowsRun } from './ci-local-resource-guard.ts'
 
 import { spawn, type ChildProcess } from 'node:child_process'
 import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 
 interface CiTask {
   readonly label: string
@@ -19,6 +21,7 @@ interface CompletedTask {
 }
 
 const startedAt = performance.now()
+const rootDir = fileURLToPath(new URL('..', import.meta.url))
 const ciProfile = process.env['BILIG_CI_PROFILE'] === 'full' ? 'full' : 'fast'
 const runFullGates = ciProfile === 'full'
 const runDeepGates = runFullGates
@@ -340,6 +343,7 @@ const generatedSourceChecks: readonly CiTask[] = [
 ]
 
 try {
+  assertLocalCiResourceGuardAllowsRun(rootDir)
   const allCompleted: CompletedTask[] = []
   log(`profile ${ciProfile}`)
   if (!runFullGates) {

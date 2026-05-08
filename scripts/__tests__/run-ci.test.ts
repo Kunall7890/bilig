@@ -37,4 +37,13 @@ describe('run-ci', () => {
     expect(packageJson).toContain('"ci:core": "BILIG_CI_PROFILE=fast BILIG_CI_SKIP_BROWSER=1 tsx scripts/run-ci.ts"')
     expect(packageJson).toContain('"ci:full": "BILIG_CI_PROFILE=full tsx scripts/run-ci.ts"')
   })
+
+  it('guards broad pre-push lint through the same resource gate', () => {
+    const packageJson = readFileSync(resolve(repoRoot, 'package.json'), 'utf8')
+    const prePushSource = readFileSync(resolve(repoRoot, 'scripts/run-pre-push.ts'), 'utf8')
+
+    expect(packageJson).toContain('"hooks:pre-push": "tsx scripts/run-pre-push.ts"')
+    expect(prePushSource).toContain("assertLocalCiResourceGuardAllowsRun(rootDir, process.env, { runLabel: 'pre-push lint' })")
+    expect(prePushSource).toContain("await run('pnpm', ['lint'])")
+  })
 })

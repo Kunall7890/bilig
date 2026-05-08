@@ -3,7 +3,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
-import { buildVitestArgBatches, buildVitestArgs, readVitestBatchCooldownMs } from '../run-vitest.ts'
+import { buildVitestArgBatches, buildVitestArgs, isBroadCorpusVitestRun, readVitestBatchCooldownMs } from '../run-vitest.ts'
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 
@@ -72,12 +72,40 @@ describe('run-vitest wrapper arguments', () => {
     expect(readVitestBatchCooldownMs({ BILIG_CI_PROFILE: 'fast', BILIG_VITEST_BATCH_COOLDOWN_MS: '2500' })).toBe(2500)
   })
 
+  it('classifies the public workbook corpus correctness lane as broad', () => {
+    expect(
+      isBroadCorpusVitestRun([
+        '--run',
+        'scripts/__tests__/public-workbook-corpus.test.ts',
+        'scripts/__tests__/public-workbook-corpus-cli.test.ts',
+        'scripts/__tests__/public-workbook-corpus-completion-audit.test.ts',
+        'scripts/__tests__/public-workbook-corpus-links.test.ts',
+      ]),
+    ).toBe(true)
+  })
+
+  it('allows focused public workbook corpus Vitest checks', () => {
+    expect(isBroadCorpusVitestRun(['--run', 'scripts/__tests__/public-workbook-corpus-links.test.ts'])).toBe(false)
+  })
+
+  it('classifies mixed public-corpus and xlsx import correctness as broad', () => {
+    expect(
+      isBroadCorpusVitestRun([
+        '--run',
+        'scripts/__tests__/public-workbook-corpus.test.ts',
+        'packages/excel-import/src/__tests__/xlsx-formula-cache-roundtrip.test.ts',
+      ]),
+    ).toBe(true)
+  })
+
   it('runs package Vitest wrappers through tsx instead of bun', () => {
     const packageJson = readFileSync(resolve(repoRoot, 'package.json'), 'utf8')
+    const runVitestSource = readFileSync(resolve(repoRoot, 'scripts/run-vitest.ts'), 'utf8')
 
     expect(packageJson).toContain('"test": "tsx scripts/run-vitest.ts --run"')
     expect(packageJson).toContain('"coverage": "tsx scripts/run-vitest.ts --run --coverage')
     expect(packageJson).toContain('"test:watch": "tsx scripts/run-vitest.ts"')
     expect(packageJson).not.toContain('bun scripts/run-vitest.ts')
+    expect(runVitestSource).toContain('process.stderr.write(`${error instanceof Error ? error.message : String(error)}\\n`)')
   })
 })

@@ -2,11 +2,13 @@
 
 import { spawnSync } from 'node:child_process'
 import { resolve } from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+import { assertLocalCiResourceGuardAllowsRun } from './ci-local-resource-guard.ts'
 import { ensureWasmKernelArtifact } from './ensure-wasm-kernel.js'
 
 const DEFAULT_CI_FILE_CHUNK_SIZE = 3
 const DEFAULT_CI_BATCH_COOLDOWN_MS = 1_000
+const BROAD_CORPUS_FILE_THRESHOLD = 4
 
 export function buildVitestArgs(args: readonly string[], env: NodeJS.ProcessEnv = process.env): string[] {
   if (!env['BILIG_CI_PROFILE'] || hasArg(args, '--maxWorkers')) {
@@ -24,6 +26,22 @@ export function readVitestBatchCooldownMs(env: NodeJS.ProcessEnv = process.env):
     return 0
   }
   return readNonNegativeInt(env['BILIG_VITEST_BATCH_COOLDOWN_MS']) ?? DEFAULT_CI_BATCH_COOLDOWN_MS
+}
+
+export function isBroadCorpusVitestRun(args: readonly string[]): boolean {
+  const runIndex = args.indexOf('--run')
+  if (runIndex < 0) {
+    return false
+  }
+
+  const runFiles = args.slice(runIndex + 1).filter((arg) => !arg.startsWith('-'))
+  const publicCorpusTestFiles = runFiles.filter((arg) => arg.includes('public-workbook-corpus'))
+  if (publicCorpusTestFiles.length >= BROAD_CORPUS_FILE_THRESHOLD) {
+    return true
+  }
+
+  const excelCorpusTestFiles = runFiles.filter((arg) => arg.includes('packages/excel-import/src/__tests__/xlsx-'))
+  return publicCorpusTestFiles.length > 0 && excelCorpusTestFiles.length > 0
 }
 
 function splitVitestRunArgsForCi(args: readonly string[], env: NodeJS.ProcessEnv): string[][] {
@@ -84,10 +102,15 @@ function sleepSync(ms: number): void {
 }
 
 function main(): never {
-  ensureWasmKernelArtifact()
+  const rootDir = fileURLToPath(new URL('..', import.meta.url))
+  const requestedArgs = process.argv.slice(2)
+  if (isBroadCorpusVitestRun(requestedArgs)) {
+    assertLocalCiResourceGuardAllowsRun(rootDir, process.env, { runLabel: 'public workbook corpus Vitest lane' })
+  }
 
   const vitestBin = process.platform === 'win32' ? 'node_modules\\.bin\\vitest.cmd' : 'node_modules/.bin/vitest'
-  const batches = buildVitestArgBatches(process.argv.slice(2))
+  ensureWasmKernelArtifact()
+  const batches = buildVitestArgBatches(requestedArgs)
   const batchCooldownMs = readVitestBatchCooldownMs()
   for (const [index, args] of batches.entries()) {
     if (index > 0) {
@@ -116,5 +139,10 @@ function main(): never {
 }
 
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
-  main()
+  try {
+    main()
+  } catch (error) {
+    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`)
+    process.exit(1)
+  }
 }
