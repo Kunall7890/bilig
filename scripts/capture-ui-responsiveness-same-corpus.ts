@@ -20,6 +20,7 @@ import type {
   SameCorpusCaptureMeasurement,
   UiResponsivenessSameCorpusProduct,
 } from './gen-ui-responsiveness-live-browser-scorecard.ts'
+import { assertLocalCiResourceGuardAllowsRun } from './ci-local-resource-guard.ts'
 import { formatJsonForRepo } from './scorecard-format.ts'
 
 interface CaptureArgs {
@@ -110,6 +111,7 @@ const defaultViewport = { width: 1440, height: 900 } as const
 async function main(): Promise<void> {
   const saveStorageStateArgs = parseSaveStorageStateArgs(process.argv.slice(2))
   if (saveStorageStateArgs) {
+    assertSameCorpusBrowserRunAllowed()
     await saveStorageState(saveStorageStateArgs)
     return
   }
@@ -120,6 +122,7 @@ async function main(): Promise<void> {
   }
   const preflightArgs = parsePreflightArgs(process.argv.slice(2))
   if (preflightArgs) {
+    assertSameCorpusBrowserRunAllowed()
     const preflight = await preflightSameCorpusIncumbentAccess(preflightArgs)
     const serializedJson = `${JSON.stringify(preflight, null, 2)}\n`
     if (preflightArgs.outputPath) {
@@ -137,6 +140,7 @@ async function main(): Promise<void> {
     return
   }
   const args = parseCaptureArgs(process.argv.slice(2))
+  assertSameCorpusBrowserRunAllowed()
   const capture = await captureSameCorpusUiResponsiveness(args)
   mkdirSync(dirname(args.outputPath), { recursive: true })
   writeFileSync(
@@ -159,6 +163,13 @@ async function main(): Promise<void> {
       2,
     ),
   )
+}
+
+export function assertSameCorpusBrowserRunAllowed(
+  rootDirForGuard: string = rootDir,
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): void {
+  assertLocalCiResourceGuardAllowsRun(rootDirForGuard, env, { runLabel: 'same-corpus UI browser capture' })
 }
 
 export function parsePreflightArgs(argv: readonly string[]): PreflightArgs | null {

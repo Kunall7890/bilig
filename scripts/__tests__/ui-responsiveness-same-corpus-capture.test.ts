@@ -1,8 +1,12 @@
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import { exportXlsx } from '../../packages/excel-import/src/index.js'
 import { buildWorkbookBenchmarkCorpus } from '../../packages/benchmarks/src/workbook-corpus.js'
 import {
+  assertSameCorpusBrowserRunAllowed,
   buildSameCorpusFingerprint,
   parseCaptureArgs,
   parseEmitXlsxArgs,
@@ -206,6 +210,19 @@ describe('same-corpus UI responsiveness capture CLI', () => {
 
   it('requires an auth URL in storage-state bootstrap mode', () => {
     expect(() => parseSaveStorageStateArgs(['--save-storage-state', 'tmp/state.json'])).toThrow('Missing auth URL.')
+  })
+
+  it('blocks Playwright-backed capture modes while the local resource guard is active', () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'bilig-ui-same-corpus-guard-'))
+    const coordinationDir = join(rootDir, '.agent-coordination')
+    mkdirSync(coordinationDir)
+    writeFileSync(
+      join(coordinationDir, '20260508T092619Z-codex-memory-pressure-stop.md'),
+      '# Memory pressure stop\n\nStatus: active on 2026-05-08T09:26:19Z.\n',
+    )
+
+    expect(() => assertSameCorpusBrowserRunAllowed(rootDir, {})).toThrow(/same-corpus UI browser capture/u)
+    expect(() => assertSameCorpusBrowserRunAllowed(rootDir, { BILIG_ALLOW_LOCAL_CI_RESOURCE_GUARD: '1' })).not.toThrow()
   })
 
   it('rejects unknown corpus ids', () => {
