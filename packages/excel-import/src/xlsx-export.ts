@@ -29,6 +29,7 @@ import { addExportWorkbookPropertiesToXlsxBytes } from './xlsx-workbook-properti
 import { decodePreservedVbaProjectPayload } from './xlsx-macros.js'
 import { addExportPrinterSettingsToXlsxBytes } from './xlsx-printer-settings.js'
 import { addExportWorksheetPropertiesToXlsxBytes } from './xlsx-sheet-properties.js'
+import { applyExportSheetVisibilitiesToWorkbook } from './xlsx-sheet-visibility.js'
 import {
   addCustomNumberFormatsToStylesXml,
   customNumberFormatStartId,
@@ -821,6 +822,7 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
     macroWorkbook.vbaraw = preservedVbaProject
     applyMacroCodeNamesToWorkbook(workbook, macroPayload, exportSheetNamesByOriginalName)
   }
+  applyExportSheetVisibilitiesToWorkbook(workbook, snapshot)
 
   const bytes = toUint8Array(
     XLSX.write(workbook, {

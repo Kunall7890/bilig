@@ -736,6 +736,8 @@ export interface WorkbookSheetPrSnapshot {
   xml: string
 }
 
+export type WorkbookSheetVisibilitySnapshot = 'hidden' | 'veryHidden'
+
 export interface WorkbookMetadataSnapshot {
   properties?: WorkbookPropertySnapshot[]
   definedNames?: WorkbookDefinedNameSnapshot[]
@@ -774,6 +776,7 @@ export interface SheetMetadataSnapshot {
   legacyCommentVml?: WorkbookLegacyCommentVmlSnapshot
   printerSettings?: WorkbookPrinterSettingsSnapshot[]
   sheetPr?: WorkbookSheetPrSnapshot
+  visibility?: WorkbookSheetVisibilitySnapshot
 }
 
 export interface WorkbookSnapshot {

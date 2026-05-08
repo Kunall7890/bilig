@@ -59,6 +59,9 @@ roundtrips.
 Worksheet `<sheetPr>` properties preserve non-tabColor code names,
 `outlinePr`, and `pageSetUpPr` metadata during no-op XLSX roundtrips.
 
+Workbook sheet visibility preserves hidden and very hidden worksheet state
+during no-op XLSX roundtrips.
+
 ## CSV Import
 
 ```ts
