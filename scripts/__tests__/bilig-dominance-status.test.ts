@@ -127,6 +127,18 @@ describe('bilig dominance status', () => {
       nextPreflightRequiresOverride: true,
       nextCaptureRequiresOverride: true,
     })
+    expect(status.localCiResourceGuard).toEqual({
+      active: true,
+      activeMarkerPaths: [
+        '.agent-coordination/20260507T074946Z-codex-stop-interactive-corpus-runs.md',
+        '.agent-coordination/20260508T092619Z-codex-memory-pressure-stop.md',
+      ],
+      overrideEnvVar: 'BILIG_ALLOW_LOCAL_CI_RESOURCE_GUARD',
+      overridePrefix: 'BILIG_ALLOW_LOCAL_CI_RESOURCE_GUARD=1',
+    })
+    expect(status.unmetRequirements).toContain(
+      'operator/developer workflow local CI resource guard active: .agent-coordination/20260507T074946Z-codex-stop-interactive-corpus-runs.md, .agent-coordination/20260508T092619Z-codex-memory-pressure-stop.md',
+    )
   })
 
   it('keeps asking for the Google Sheets URL when captured same-corpus proof is not 10x', () => {

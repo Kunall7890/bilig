@@ -39,6 +39,12 @@ export interface BiligDominanceStatus {
   readonly blanketTenXClaimAllowed: boolean
   readonly unmetRequirements: readonly string[]
   readonly importExportBlockers: readonly string[]
+  readonly localCiResourceGuard: {
+    readonly active: boolean
+    readonly activeMarkerPaths: readonly string[]
+    readonly overrideEnvVar: string
+    readonly overridePrefix: string | null
+  }
   readonly publicWorkbookCorpus: {
     readonly targetWorkbookCount: number
     readonly cachedArtifactCount: number
@@ -286,14 +292,18 @@ export function buildBiligDominanceStatus(args: {
   const publicWorkbookCorpusBlockers = publicWorkbookCorpusDominanceBlockers(args.publicWorkbookCorpusStatus)
   const featureWitnessBlockers = publicWorkbookCorpusFeatureWitnessBlockers(args.featureWitnessPlan ?? null)
   const financialCorpusBlockers = financialWorkbookCorpusDominanceBlockers(args.financialCorpusStatus ?? null)
+  const localCiResourceGuardStatus = args.uiSameCorpusLocalCiResourceGuardStatus ?? { activeMarkerPaths: [] }
+  const localCiResourceGuardBlockers = localCiResourceGuardDominanceBlockers(localCiResourceGuardStatus)
   const corpusBlockers = [...publicWorkbookCorpusBlockers, ...featureWitnessBlockers, ...financialCorpusBlockers]
-  const unmetRequirements = [...scorecard.claimPolicy.unmetRequirements, ...corpusBlockers]
-  const blanketTenXClaimAllowed = scorecard.claimPolicy.blanketTenXClaimAllowed && corpusBlockers.length === 0
+  const liveStatusBlockers = [...corpusBlockers, ...localCiResourceGuardBlockers]
+  const unmetRequirements = [...scorecard.claimPolicy.unmetRequirements, ...liveStatusBlockers]
+  const blanketTenXClaimAllowed = scorecard.claimPolicy.blanketTenXClaimAllowed && liveStatusBlockers.length === 0
   return {
-    goalStatus: scorecard.goalStatus === 'achieved' && corpusBlockers.length === 0 ? 'achieved' : 'active-not-achieved',
+    goalStatus: scorecard.goalStatus === 'achieved' && liveStatusBlockers.length === 0 ? 'achieved' : 'active-not-achieved',
     blanketTenXClaimAllowed,
     unmetRequirements,
     importExportBlockers: [...(importExportCategory?.blockers ?? []), ...corpusBlockers],
+    localCiResourceGuard: buildLocalCiResourceGuardStatus(localCiResourceGuardStatus),
     publicWorkbookCorpus: {
       targetWorkbookCount: args.publicWorkbookCorpusStatus.targetWorkbookCount,
       cachedArtifactCount: args.publicWorkbookCorpusStatus.cachedArtifactCount,
@@ -344,7 +354,7 @@ export function buildBiligDominanceStatus(args: {
       gaps: args.publicWorkbookCorpusStatus.gaps,
     },
     uiSameCorpus: buildUiSameCorpusStatus(args.input, {
-      localCiResourceGuardStatus: args.uiSameCorpusLocalCiResourceGuardStatus ?? { activeMarkerPaths: [] },
+      localCiResourceGuardStatus,
       publicAccessCheckPath: args.uiSameCorpusPublicAccessCheckPath ?? '.cache/ui-responsiveness/same-corpus-public-access-check.json',
       ...resolveUiSameCorpusGoogleSheetsUrl({
         corpusCaseId: defaultUiSameCorpusId,
@@ -407,6 +417,12 @@ function financialWorkbookCorpusDominanceBlockers(status: FinancialWorkbookCorpu
       ? []
       : [`financial/accounting corpus non-passing recorded cases: ${String(status.recordedNonPassingCaseCount)}`]),
   ]
+}
+
+function localCiResourceGuardDominanceBlockers(status: LocalCiResourceGuardStatus): string[] {
+  return status.activeMarkerPaths.length === 0
+    ? []
+    : [`operator/developer workflow local CI resource guard active: ${status.activeMarkerPaths.join(', ')}`]
 }
 
 function countDominanceGap(actual: number, required: number, label: string): string[] {
@@ -581,6 +597,16 @@ function buildBrowserCaptureGuardStatus(status: LocalCiResourceGuardStatus): Bil
     overridePrefix: active ? `${localCiResourceGuardOverrideEnv}=1` : null,
     nextPreflightRequiresOverride: active,
     nextCaptureRequiresOverride: active,
+  }
+}
+
+function buildLocalCiResourceGuardStatus(status: LocalCiResourceGuardStatus): BiligDominanceStatus['localCiResourceGuard'] {
+  const active = status.activeMarkerPaths.length > 0
+  return {
+    active,
+    activeMarkerPaths: status.activeMarkerPaths,
+    overrideEnvVar: localCiResourceGuardOverrideEnv,
+    overridePrefix: active ? `${localCiResourceGuardOverrideEnv}=1` : null,
   }
 }
 

@@ -21,6 +21,7 @@ export interface BiligDominancePromptArtifactAudit {
     readonly unmetRequirements: readonly string[]
   }
   readonly checklist: readonly BiligDominancePromptArtifactChecklistItem[]
+  readonly liveLocalCiResourceGuard: BiligDominanceStatus['localCiResourceGuard']
   readonly livePublicWorkbookCorpus: BiligDominanceStatus['publicWorkbookCorpus']
   readonly liveUiSameCorpus: BiligDominanceStatus['uiSameCorpus']
 }
@@ -73,6 +74,7 @@ export function buildBiligDominancePromptArtifactAudit(args: {
       category: requiredCategory(args.scorecard.categories, criterion.id),
       criterion,
       liveBlockers: liveBlockersForCriterion(args.status, criterion.id),
+      liveLocalCiResourceGuard: args.status.localCiResourceGuard,
       livePublicWorkbookCorpus: args.status.publicWorkbookCorpus,
       liveUiSameCorpus: args.status.uiSameCorpus,
     }),
@@ -87,6 +89,7 @@ export function buildBiligDominancePromptArtifactAudit(args: {
       unmetRequirements: args.status.unmetRequirements,
     },
     checklist,
+    liveLocalCiResourceGuard: args.status.localCiResourceGuard,
     livePublicWorkbookCorpus: args.status.publicWorkbookCorpus,
     liveUiSameCorpus: args.status.uiSameCorpus,
   }
@@ -145,6 +148,7 @@ export function validateBiligDominancePromptArtifactAudit(audit: BiligDominanceP
   }
   const importExportItem = audit.checklist.find((entry) => entry.id === 'import-export-compatibility')
   const uiResponsivenessItem = audit.checklist.find((entry) => entry.id === 'ui-responsiveness')
+  const operatorWorkflowItem = audit.checklist.find((entry) => entry.id === 'operator-developer-workflow')
   if (!audit.livePublicWorkbookCorpus.targetComplete) {
     if (!importExportItem) {
       findings.push('live public workbook corpus is incomplete but import/export checklist item is missing')
@@ -166,6 +170,18 @@ export function validateBiligDominancePromptArtifactAudit(audit: BiligDominanceP
       }
       if (uiResponsivenessItem.liveBlockers.length === 0) {
         findings.push('live same-corpus UI proof is incomplete but UI responsiveness live blockers are empty')
+      }
+    }
+  }
+  if (audit.liveLocalCiResourceGuard.active) {
+    if (!operatorWorkflowItem) {
+      findings.push('local CI resource guard is active but operator/developer workflow checklist item is missing')
+    } else {
+      if (operatorWorkflowItem.passed) {
+        findings.push('operator/developer workflow checklist passed while local CI resource guard is active')
+      }
+      if (operatorWorkflowItem.liveBlockers.length === 0) {
+        findings.push('local CI resource guard is active but operator/developer workflow live blockers are empty')
       }
     }
   }
@@ -194,6 +210,7 @@ function buildChecklistItem(args: {
   readonly category: DominanceCategory
   readonly criterion: DominanceCompletionCriterion
   readonly liveBlockers: readonly string[]
+  readonly liveLocalCiResourceGuard: BiligDominanceStatus['localCiResourceGuard']
   readonly livePublicWorkbookCorpus: BiligDominanceStatus['publicWorkbookCorpus']
   readonly liveUiSameCorpus: BiligDominanceStatus['uiSameCorpus']
 }): BiligDominancePromptArtifactChecklistItem {
@@ -232,7 +249,14 @@ function buildChecklistItem(args: {
               `live same-corpus UI Google Sheets URL source: ${args.liveUiSameCorpus.googleSheetsUrlSource}`,
               `live same-corpus UI browser capture guard active: ${String(args.liveUiSameCorpus.browserCaptureGuard.active)}`,
             ]
-          : args.criterion.evidence,
+          : args.criterion.id === 'operator-developer-workflow'
+            ? [
+                ...args.criterion.evidence,
+                `local CI resource guard active: ${String(args.liveLocalCiResourceGuard.active)}`,
+                `local CI resource guard markers: ${args.liveLocalCiResourceGuard.activeMarkerPaths.join(', ') || 'none'}`,
+                `local CI resource guard override env: ${args.liveLocalCiResourceGuard.overrideEnvVar}`,
+              ]
+            : args.criterion.evidence,
     evidenceArtifacts:
       args.criterion.id === 'import-export-compatibility'
         ? [...args.category.evidenceArtifacts, 'packages/benchmarks/baselines/public-workbook-corpus-scorecard.json']
@@ -252,6 +276,9 @@ function liveBlockersForCriterion(status: BiligDominanceStatus, criterionId: str
   }
   if (criterionId === 'ui-responsiveness') {
     return uiSameCorpusLiveBlockers(status.uiSameCorpus)
+  }
+  if (criterionId === 'operator-developer-workflow') {
+    return localCiResourceGuardLiveBlockers(status.localCiResourceGuard)
   }
   return []
 }
@@ -278,6 +305,10 @@ function uiSameCorpusLiveBlockers(status: BiligDominanceStatus['uiSameCorpus']):
     )
   }
   return blockers
+}
+
+function localCiResourceGuardLiveBlockers(status: BiligDominanceStatus['localCiResourceGuard']): readonly string[] {
+  return status.active ? [`local CI resource guard active: ${status.activeMarkerPaths.join(', ')}`] : []
 }
 
 function uniqueStrings(values: readonly string[]): readonly string[] {

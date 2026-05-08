@@ -93,6 +93,12 @@ describe('bilig dominance prompt-to-artifact audit', () => {
         materializedCells: 250_000,
       },
     })
+    expect(audit.liveLocalCiResourceGuard).toMatchObject({
+      active: false,
+      activeMarkerPaths: [],
+      overrideEnvVar: 'BILIG_ALLOW_LOCAL_CI_RESOURCE_GUARD',
+      overridePrefix: null,
+    })
     expect(validateBiligDominancePromptArtifactAudit(audit)).toEqual([])
   })
 
@@ -138,6 +144,57 @@ describe('bilig dominance prompt-to-artifact audit', () => {
       ]),
     })
     expect(validateBiligDominancePromptArtifactAudit(audit)).toEqual([])
+  })
+
+  it('keeps operator workflow incomplete while local broad CI verification is guard-paused', () => {
+    const input = buildFixtureInput()
+    const status = buildBiligDominanceStatus({
+      input,
+      publicWorkbookCorpusStatus: publicWorkbookCorpusStatusFixture(),
+      stopMarkerActive: false,
+      stopMarkerPath: '/repo/.agent-coordination/stop.md',
+      uiSameCorpusLocalCiResourceGuardStatus: {
+        activeMarkerPaths: ['.agent-coordination/20260508T092619Z-codex-memory-pressure-stop.md'],
+      },
+    })
+    const audit = buildBiligDominancePromptArtifactAudit({
+      scorecard: buildBiligDominanceScorecard(input),
+      status,
+    })
+    const workflowItem = audit.checklist.find((entry) => entry.id === 'operator-developer-workflow')
+
+    expect(workflowItem).toMatchObject({
+      passed: false,
+      liveBlockers: ['local CI resource guard active: .agent-coordination/20260508T092619Z-codex-memory-pressure-stop.md'],
+      gaps: ['local CI resource guard active: .agent-coordination/20260508T092619Z-codex-memory-pressure-stop.md'],
+      evidence: expect.arrayContaining([
+        'local CI resource guard active: true',
+        'local CI resource guard markers: .agent-coordination/20260508T092619Z-codex-memory-pressure-stop.md',
+        'local CI resource guard override env: BILIG_ALLOW_LOCAL_CI_RESOURCE_GUARD',
+      ]),
+    })
+    expect(audit.completionVerdict.unmetRequirements).toContain(
+      'operator/developer workflow local CI resource guard active: .agent-coordination/20260508T092619Z-codex-memory-pressure-stop.md',
+    )
+    expect(validateBiligDominancePromptArtifactAudit(audit)).toEqual([])
+
+    const workflowIndex = audit.checklist.findIndex((entry) => entry.id === 'operator-developer-workflow')
+    if (!workflowItem || workflowIndex < 0) {
+      throw new Error('fixture audit is missing operator workflow checklist item')
+    }
+    const checklist = [...audit.checklist]
+    checklist[workflowIndex] = {
+      ...workflowItem,
+      passed: true,
+      gaps: [],
+      liveBlockers: [],
+    }
+    expect(validateBiligDominancePromptArtifactAudit({ ...audit, checklist })).toEqual(
+      expect.arrayContaining([
+        'operator/developer workflow checklist passed while local CI resource guard is active',
+        'local CI resource guard is active but operator/developer workflow live blockers are empty',
+      ]),
+    )
   })
 
   it('rejects hidden live corpus blockers and unverifiable blanket claims', () => {
