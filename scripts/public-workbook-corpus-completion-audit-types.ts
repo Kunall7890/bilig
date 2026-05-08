@@ -50,6 +50,7 @@ export interface PublicWorkbookCorpusAuditState {
   readonly recordedFormulaOracleMismatchCount: number
   readonly recordedStructuralSmokeRunCount: number
   readonly recordedRoundTripPassedCount: number
+  readonly recordedRoundTripSkippedCount: number
   readonly recordedRoundTripFailureCount: number
 }
 
