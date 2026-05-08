@@ -1,5 +1,4 @@
 import * as XLSX from 'xlsx'
-import * as XLSXStyle from 'xlsx-js-style'
 import { unzipSync, zipSync } from 'fflate'
 
 import type {
@@ -22,7 +21,6 @@ import { addExportPivotsToXlsxBytes } from './xlsx-pivots.js'
 import { addExportProtectedRangesToXlsxBytes } from './xlsx-protected-ranges.js'
 import { addExportSheetProtectionsToXlsxBytes } from './xlsx-sheet-protection.js'
 import { addExportSortsToXlsxBytes } from './xlsx-sorts.js'
-import { addExportStylesToWorksheet } from './xlsx-styles.js'
 import { addExportSheetTabColorsToXlsxBytes } from './xlsx-tab-colors.js'
 import { addExportTablesToXlsxBytes } from './xlsx-tables.js'
 import { addExportDataValidationsToXlsxBytes } from './xlsx-validations.js'
@@ -38,41 +36,6 @@ import {
   setXmlAttribute,
   setZipText,
 } from './xlsx-export-xml.js'
-
-const largeSimpleExportCellCountThreshold = 100_000
-
-function isRecord(value: unknown): value is Record<PropertyKey, unknown> {
-  return typeof value === 'object' && value !== null
-}
-
-function isXlsxStyleRuntime(value: unknown): value is typeof XLSXStyle {
-  if (!isRecord(value)) {
-    return false
-  }
-  const utils = value['utils']
-  return (
-    typeof value['write'] === 'function' &&
-    isRecord(utils) &&
-    typeof utils['book_new'] === 'function' &&
-    typeof utils['book_append_sheet'] === 'function'
-  )
-}
-
-function resolveXlsxStyleRuntime(moduleValue: typeof XLSXStyle): typeof XLSXStyle {
-  if (isXlsxStyleRuntime(moduleValue)) {
-    return moduleValue
-  }
-
-  // Node ESM exposes this CommonJS package behind `default`; Bun and Vite expose
-  // the named runtime surface directly.
-  if (isRecord(moduleValue) && isXlsxStyleRuntime(moduleValue['default'])) {
-    return moduleValue['default']
-  }
-
-  throw new Error('xlsx-js-style did not expose the expected workbook writer API')
-}
-
-const XLSXStyleRuntime = resolveXlsxStyleRuntime(XLSXStyle)
 
 function buildExportColumns(columns: readonly WorkbookAxisEntrySnapshot[] | undefined): XLSX.ColInfo[] | undefined {
   if (!columns || columns.length === 0) {
@@ -702,8 +665,8 @@ function cellTypeForLiteral(value: LiteralInput): XLSX.ExcelDataType | undefined
   return undefined
 }
 
-function buildExportCell(cell: WorkbookSnapshot['sheets'][number]['cells'][number]): XLSXStyle.CellObject | null {
-  const output: XLSXStyle.CellObject = { t: 'z' }
+function buildExportCell(cell: WorkbookSnapshot['sheets'][number]['cells'][number]): XLSX.CellObject | null {
+  const output: XLSX.CellObject = { t: 'z' }
   if (cell.value !== undefined && cell.value !== null) {
     const type = cellTypeForLiteral(cell.value)
     if (type) {
@@ -755,7 +718,7 @@ function toUint8Array(value: unknown): Uint8Array {
 }
 
 function applyMacroCodeNamesToWorkbook(
-  workbook: XLSXStyle.WorkBook,
+  workbook: XLSX.WorkBook,
   macroPayload: WorkbookMacroPayloadSnapshot | undefined,
   exportSheetNamesByOriginalName: ReadonlyMap<string, string>,
 ): void {
@@ -793,45 +756,8 @@ function applyMacroCodeNamesToWorkbook(
   workbook.Workbook = workbookMetadata
 }
 
-function countSnapshotCells(snapshot: WorkbookSnapshot): number {
-  return snapshot.sheets.reduce((sum, sheet) => sum + sheet.cells.length, 0)
-}
-
-function hasLargeSimpleExportShape(snapshot: WorkbookSnapshot): boolean {
-  if (countSnapshotCells(snapshot) < largeSimpleExportCellCountThreshold) {
-    return false
-  }
-  const metadata = snapshot.workbook.metadata
-  if (
-    (metadata?.macroPayloads?.length ?? 0) > 0 ||
-    (metadata?.tables?.length ?? 0) > 0 ||
-    (metadata?.charts?.length ?? 0) > 0 ||
-    (metadata?.pivots?.length ?? 0) > 0 ||
-    (metadata?.definedNames?.length ?? 0) > 0
-  ) {
-    return false
-  }
-  return snapshot.sheets.every((sheet) => {
-    if (sheet.cells.some((cell) => cell.formula !== undefined)) {
-      return false
-    }
-    const sheetMetadata = sheet.metadata
-    return (
-      (sheetMetadata?.commentThreads?.length ?? 0) === 0 &&
-      (sheetMetadata?.validations?.length ?? 0) === 0 &&
-      (sheetMetadata?.conditionalFormats?.length ?? 0) === 0 &&
-      (sheetMetadata?.filters?.length ?? 0) === 0 &&
-      (sheetMetadata?.sorts?.length ?? 0) === 0 &&
-      (sheetMetadata?.protectedRanges?.length ?? 0) === 0 &&
-      sheetMetadata?.sheetProtection === undefined &&
-      sheetMetadata?.freezePane === undefined
-    )
-  })
-}
-
 export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
-  const useLargeSimpleFastPath = hasLargeSimpleExportShape(snapshot)
-  const workbook = useLargeSimpleFastPath ? XLSX.utils.book_new() : XLSXStyleRuntime.utils.book_new()
+  const workbook = XLSX.utils.book_new()
   const usedNames = new Set<string>()
   const exportSheetNamesByOriginalName = new Map<string, string>()
   const exportSheetIndexesByOriginalName = new Map<string, number>()
@@ -841,7 +767,7 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
     .map((sheet) => buildSheetCellFormats(sheet, formatCodesById))
 
   for (const sheet of snapshot.sheets.toSorted((left, right) => left.order - right.order)) {
-    const worksheet: XLSXStyle.WorkSheet = {}
+    const worksheet: XLSX.WorkSheet = {}
     for (const cell of sheet.cells) {
       const exportCell = buildExportCell(cell)
       if (exportCell) {
@@ -865,19 +791,12 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
     if (merges) {
       worksheet['!merges'] = merges
     }
-    if (!useLargeSimpleFastPath) {
-      addExportStylesToWorksheet(worksheet, sheet.metadata?.styleRanges, snapshot.workbook.metadata?.styles)
-    }
     addExportCommentsToWorksheet(worksheet, sheet.metadata?.commentThreads)
 
     const exportSheetName = normalizeExportSheetName(sheet.name, sheet.order, usedNames)
     exportSheetNamesByOriginalName.set(sheet.name, exportSheetName)
     exportSheetIndexesByOriginalName.set(sheet.name, exportSheetIndexesByOriginalName.size)
-    if (useLargeSimpleFastPath) {
-      XLSX.utils.book_append_sheet(workbook, worksheet, exportSheetName)
-    } else {
-      XLSXStyleRuntime.utils.book_append_sheet(workbook, worksheet, exportSheetName)
-    }
+    XLSX.utils.book_append_sheet(workbook, worksheet, exportSheetName)
   }
 
   const definedNames = buildExportDefinedNames(
@@ -901,14 +820,11 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
   }
 
   const bytes = toUint8Array(
-    useLargeSimpleFastPath
-      ? (XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }) as unknown)
-      : (XLSXStyleRuntime.write(workbook, {
-          bookType: preservedVbaProject ? 'xlsm' : 'xlsx',
-          type: 'buffer',
-          cellStyles: true,
-          bookVBA: Boolean(preservedVbaProject),
-        }) as unknown),
+    XLSX.write(workbook, {
+      bookType: preservedVbaProject ? 'xlsm' : 'xlsx',
+      type: 'buffer',
+      bookVBA: Boolean(preservedVbaProject),
+    }) as unknown,
   )
   const enrichedBytes = addExportChartsToXlsxBytes(
     addExportPivotsToXlsxBytes(

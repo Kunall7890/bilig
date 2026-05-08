@@ -28,6 +28,24 @@ describe('large simple XLSX export', () => {
     expect(durationMs).toBeLessThan(1_500 * readBenchmarkTolerance())
     expect(workbook.Sheets['Wide']?.['!ref']).toBe('A3040')
   }, 15_000)
+
+  it('exports formula-heavy metadata workbooks inside the production timeout budget', () => {
+    const start = performance.now()
+    const exported = exportXlsx(buildFormulaHeavyMetadataSnapshot())
+    const durationMs = performance.now() - start
+    const workbook = XLSX.read(exported, { type: 'array', cellFormula: true, cellText: false, cellDates: false })
+    const imported = importXlsx(exported, 'issue-90-formula-heavy-export.xlsx')
+    const sheet = imported.snapshot.sheets[0]
+
+    expect(durationMs).toBeLessThan(6_000 * readBenchmarkTolerance())
+    expect(sheet?.cells).toHaveLength(60_000)
+    expect(sheet?.cells.find((cell) => cell.address === 'B100')).toMatchObject({
+      value: 1189,
+      formula: 'A100+1',
+    })
+    expect(workbook.Workbook?.Names).toHaveLength(40)
+    expect(workbook.Sheets['Export']?.['!ref']).toBe('A1:L5000')
+  }, 20_000)
 })
 
 function readBenchmarkTolerance(): number {
@@ -98,6 +116,63 @@ function buildBroadColumnMetadataSnapshot(): WorkbookSnapshot {
             index,
             size: 64,
           })),
+        },
+      },
+    ],
+  }
+}
+
+function buildFormulaHeavyMetadataSnapshot(): WorkbookSnapshot {
+  const cells: WorkbookSnapshot['sheets'][number]['cells'] = []
+  for (let row = 0; row < 5_000; row += 1) {
+    for (let column = 0; column < 12; column += 1) {
+      const address = XLSX.utils.encode_cell({ r: row, c: column })
+      const formula = row < 1_260 ? `A${String(row + 1)}+${String(column)}` : undefined
+      cells.push({
+        address,
+        value: row * 12 + column,
+        ...(formula !== undefined ? { formula } : {}),
+      })
+    }
+  }
+
+  return {
+    version: 1,
+    workbook: {
+      name: 'issue-90-formula-heavy-export',
+      metadata: {
+        definedNames: Array.from({ length: 40 }, (_entry, index) => ({
+          name: `Issue90Name_${String(index + 1)}`,
+          formula: `Export!$A$${String(index + 1)}`,
+        })),
+      },
+    },
+    sheets: [
+      {
+        id: 1,
+        name: 'Export',
+        order: 0,
+        cells,
+        metadata: {
+          rows: Array.from({ length: 9_000 }, (_entry, index) => ({
+            id: `row:${String(index)}`,
+            index,
+            size: 18,
+          })),
+          columns: Array.from({ length: 12 }, (_entry, index) => ({
+            id: `column:${String(index)}`,
+            index,
+            size: 64,
+          })),
+          filters: [
+            {
+              range: {
+                sheetName: 'Export',
+                startAddress: 'A1',
+                endAddress: 'L5000',
+              },
+            },
+          ],
         },
       },
     ],

@@ -382,14 +382,6 @@ function applyColumnMetadata(sheetXml: string, columns: readonly ExportColumnMet
   return match ? `${sheetXml.slice(0, match.index)}${columnsXml}${sheetXml.slice(match.index)}` : sheetXml
 }
 
-function rowOpeningTagPattern(rowNumber: number): RegExp {
-  return new RegExp(`<row\\b(?=[^>]*\\br="${String(rowNumber)}"(?:\\s|/|>))[^>]*>`, 'u')
-}
-
-function rowElementPattern(rowNumber: number): RegExp {
-  return new RegExp(`<row\\b(?=[^>]*\\br="${String(rowNumber)}"(?:\\s|/|>))[^>]*>([\\s\\S]*?)<\\/row>`, 'u')
-}
-
 function readRowNumber(rowTag: string): number | null {
   const match = /\br="([0-9]+)"/u.exec(rowTag)
   if (!match) {
@@ -441,56 +433,72 @@ function buildEmptyRowXml(row: ExportRowMetadata): string {
   return rowTag
 }
 
-function insertRowIntoSheetData(sheetDataXml: string, rowXml: string, rowNumber: number): string {
-  const closeIndex = sheetDataXml.lastIndexOf('</sheetData>')
-  if (closeIndex < 0) {
-    return sheetDataXml
+function updateExistingRowXml(rowXml: string, row: ExportRowMetadata): string {
+  const openingTag = /^<row\b[^>]*(?:\/>|>)/u.exec(rowXml)?.[0]
+  if (!openingTag) {
+    return rowXml
   }
-  let insertIndex = closeIndex
-  for (const match of sheetDataXml.matchAll(/<row\b[^>]*>/gu)) {
-    const existingRowNumber = readRowNumber(match[0])
-    if (existingRowNumber !== null && existingRowNumber > rowNumber) {
-      insertIndex = match.index
-      break
-    }
+  if (openingTag.endsWith('/>')) {
+    return applyRowMetadata(openingTag, row)
   }
-  return `${sheetDataXml.slice(0, insertIndex)}${rowXml}${sheetDataXml.slice(insertIndex)}`
+  const rowBody = rowXml.slice(openingTag.length, -'</row>'.length)
+  return rowBody.trim().length === 0 ? buildEmptyRowXml(row) : `${applyRowMetadata(openingTag, row)}${rowBody}</row>`
 }
 
 function upsertWorksheetRowMetadata(sheetXml: string, rows: readonly ExportRowMetadata[]): string {
-  let nextXml = sheetXml
-  for (const row of rows) {
-    const existingRowElementPattern = rowElementPattern(row.rowNumber)
-    const existingRowElementMatch = existingRowElementPattern.exec(nextXml)
-    if (existingRowElementMatch) {
-      const rowBody = existingRowElementMatch[1] ?? ''
-      if (rowBody.trim().length === 0) {
-        nextXml = nextXml.replace(existingRowElementPattern, () => buildEmptyRowXml(row))
-        continue
-      }
-      nextXml = nextXml.replace(rowOpeningTagPattern(row.rowNumber), (rowTag) => applyRowMetadata(rowTag, row))
-      continue
-    }
-
-    const existingRowPattern = rowOpeningTagPattern(row.rowNumber)
-    if (existingRowPattern.test(nextXml)) {
-      nextXml = nextXml.replace(existingRowPattern, (rowTag) => applyRowMetadata(rowTag, row))
-      continue
-    }
-    const rowXml = buildEmptyRowXml(row)
-    if (/<sheetData\b[^>]*\/>/u.test(nextXml)) {
-      nextXml = nextXml.replace(/<sheetData\b([^>]*)\/>/u, (_match, attributes: string) => `<sheetData${attributes}>${rowXml}</sheetData>`)
-      continue
-    }
-    const sheetDataMatch = /<sheetData\b[^>]*>[\s\S]*?<\/sheetData>/u.exec(nextXml)
-    if (!sheetDataMatch) {
-      continue
-    }
-    const sheetDataXml = sheetDataMatch[0]
-    const updatedSheetDataXml = insertRowIntoSheetData(sheetDataXml, rowXml, row.rowNumber)
-    nextXml = `${nextXml.slice(0, sheetDataMatch.index)}${updatedSheetDataXml}${nextXml.slice(sheetDataMatch.index + sheetDataXml.length)}`
+  const rowsByNumber = new Map(rows.map((row) => [row.rowNumber, row]))
+  const sortedMissingRows = [...rowsByNumber.values()].toSorted((left, right) => left.rowNumber - right.rowNumber)
+  const selfClosingSheetDataMatch = /<sheetData\b([^>]*)\/>/u.exec(sheetXml)
+  if (selfClosingSheetDataMatch) {
+    const rowXml = sortedMissingRows.map(buildEmptyRowXml).join('')
+    return sheetXml.replace(/<sheetData\b([^>]*)\/>/u, (_match, attributes: string) => `<sheetData${attributes}>${rowXml}</sheetData>`)
   }
-  return nextXml
+
+  const sheetDataMatch = /<sheetData\b[^>]*>[\s\S]*?<\/sheetData>/u.exec(sheetXml)
+  if (!sheetDataMatch) {
+    return sheetXml
+  }
+
+  const sheetDataXml = sheetDataMatch[0]
+  const sheetDataOpeningTag = /^<sheetData\b[^>]*>/u.exec(sheetDataXml)?.[0]
+  if (!sheetDataOpeningTag || !sheetDataXml.endsWith('</sheetData>')) {
+    return sheetXml
+  }
+
+  const bodyStart = sheetDataOpeningTag.length
+  const bodyEnd = sheetDataXml.length - '</sheetData>'.length
+  const sheetDataBody = sheetDataXml.slice(bodyStart, bodyEnd)
+  let outputBody = ''
+  let lastIndex = 0
+  let missingIndex = 0
+  for (const match of sheetDataBody.matchAll(/<row\b[^>]*(?:\/>|>[\s\S]*?<\/row>)/gu)) {
+    const rowXml = match[0]
+    const existingRowNumber = readRowNumber(rowXml)
+    outputBody += sheetDataBody.slice(lastIndex, match.index)
+    if (existingRowNumber !== null) {
+      while (missingIndex < sortedMissingRows.length && sortedMissingRows[missingIndex]!.rowNumber < existingRowNumber) {
+        outputBody += buildEmptyRowXml(sortedMissingRows[missingIndex]!)
+        missingIndex += 1
+      }
+      const row = rowsByNumber.get(existingRowNumber)
+      outputBody += row ? updateExistingRowXml(rowXml, row) : rowXml
+      if (row) {
+        while (missingIndex < sortedMissingRows.length && sortedMissingRows[missingIndex]!.rowNumber <= existingRowNumber) {
+          missingIndex += 1
+        }
+      }
+    } else {
+      outputBody += rowXml
+    }
+    lastIndex = match.index + rowXml.length
+  }
+  outputBody += sheetDataBody.slice(lastIndex)
+  while (missingIndex < sortedMissingRows.length) {
+    outputBody += buildEmptyRowXml(sortedMissingRows[missingIndex]!)
+    missingIndex += 1
+  }
+  const updatedSheetDataXml = `${sheetDataOpeningTag}${outputBody}</sheetData>`
+  return `${sheetXml.slice(0, sheetDataMatch.index)}${updatedSheetDataXml}${sheetXml.slice(sheetDataMatch.index + sheetDataXml.length)}`
 }
 
 export function hasExportWorksheetDimensions(snapshot: WorkbookSnapshot): boolean {
