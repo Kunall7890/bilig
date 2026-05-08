@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest'
 import { buildPublicWorkbookCorpusScorecard, createEmptyPublicWorkbookManifest } from '../public-workbook-corpus.ts'
 import { formatPublicCorpusStopMarkerPathForMessage } from '../public-workbook-corpus-cli.ts'
 import { buildPublicWorkbookCorpusResumePlan, validatePublicWorkbookCorpusResumePlan } from '../public-workbook-corpus-resume-plan.ts'
+import { publicWorkbookImportWarningClassifierEvidence } from '../public-workbook-corpus-evidence.ts'
 import { buildPublicWorkbookCorpusStatus } from '../public-workbook-corpus-status.ts'
 import {
   readReusablePublicWorkbookCorpusCases,
@@ -1533,5 +1534,22 @@ function passedCaseWithUsedRange(artifact: PublicWorkbookArtifact): PublicWorkbo
         },
       ],
     },
+  }
+}
+
+function importWarningUnsupportedCaseWithUsedRange(
+  artifact: PublicWorkbookArtifact,
+  hasCurrentClassifierEvidence: boolean,
+): PublicWorkbookCorpusCase {
+  const base = passedCaseWithUsedRange(artifact)
+  return {
+    ...base,
+    status: 'unsupported',
+    featureCounts: {
+      ...base.featureCounts,
+      warningCount: 1,
+    },
+    unsupportedFeatureClassifications: ['xlsx.import.warning:Some defined names were ignored during XLSX import.'],
+    evidence: [...base.evidence, ...(hasCurrentClassifierEvidence ? [publicWorkbookImportWarningClassifierEvidence] : [])],
   }
 }
