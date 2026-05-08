@@ -874,6 +874,7 @@ describe('public workbook corpus CLI resource guards', () => {
     const manifestPath = join(dir, 'manifest.json')
     const scorecardPath = join(dir, 'missing-scorecard.json')
     const checkpointPath = join(dir, 'verification-checkpoint.json')
+    const inactiveStopMarkerPath = join(dir, 'not-stopped.md')
     const fullManifest = manifestWithArtifacts([artifactA, artifactB])
     writeFileSync(manifestPath, `${JSON.stringify(fullManifest, null, 2)}\n`)
     writePublicWorkbookCorpusVerificationCheckpoint({
@@ -896,6 +897,8 @@ describe('public workbook corpus CLI resource guards', () => {
         checkpointPath,
         '--cache-dir',
         dir,
+        '--corpus-run-stop-marker',
+        inactiveStopMarkerPath,
       ],
       {
         encoding: 'utf8',
@@ -941,6 +944,7 @@ describe('public workbook corpus CLI resource guards', () => {
     const manifestPath = join(dir, 'manifest.json')
     const scorecardPath = join(dir, 'missing-scorecard.json')
     const checkpointPath = join(dir, 'verification-checkpoint.json')
+    const inactiveStopMarkerPath = join(dir, 'not-stopped.md')
     const fullManifest = manifestWithArtifacts([artifactA, artifactB])
     writeFileSync(manifestPath, `${JSON.stringify(fullManifest, null, 2)}\n`)
     writePublicWorkbookCorpusVerificationCheckpoint({
@@ -966,6 +970,8 @@ describe('public workbook corpus CLI resource guards', () => {
         checkpointPath,
         '--cache-dir',
         dir,
+        '--corpus-run-stop-marker',
+        inactiveStopMarkerPath,
       ],
       {
         encoding: 'utf8',
