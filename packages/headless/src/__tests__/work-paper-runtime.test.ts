@@ -727,6 +727,36 @@ describe('WorkPaper', () => {
     getRangeValues.mockRestore()
   })
 
+  it('keeps large physical dense range reads on the headless fast path', () => {
+    const rowCount = 260
+    const colCount = 64
+    const workbook = WorkPaper.buildFromSheets({
+      Bench: Array.from({ length: rowCount }, (_rowValue, row) =>
+        Array.from({ length: colCount }, (_colValue, col) => row * colCount + col + 1),
+      ),
+    })
+    const sheetId = workbook.getSheetId('Bench')!
+    const engine = Reflect.get(workbook, 'engine')
+    const getRangeValues = vi.spyOn(engine, 'getRangeValues').mockImplementation(() => {
+      throw new Error('large physical range reads should use the headless fast path')
+    })
+
+    const values = workbook.getRangeValues({
+      start: cell(sheetId, 0, 0),
+      end: cell(sheetId, rowCount - 1, colCount - 1),
+    })
+
+    expect(values).toHaveLength(rowCount)
+    expect(values[0]).toHaveLength(colCount)
+    expect(values[0]?.[0]).toEqual({ tag: ValueTag.Number, value: 1 })
+    expect(values[rowCount - 1]?.[colCount - 1]).toEqual({
+      tag: ValueTag.Number,
+      value: rowCount * colCount,
+    })
+    expect(getRangeValues).not.toHaveBeenCalled()
+    getRangeValues.mockRestore()
+  })
+
   it('uses initialized sheet dimensions without scanning existing-cell batch grids', () => {
     const workbook = WorkPaper.buildFromArray([
       [1, 2],

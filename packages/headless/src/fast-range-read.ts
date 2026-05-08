@@ -3,7 +3,7 @@ import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 import type { WorkPaperCellRange } from './work-paper-types.js'
 
 const EMPTY_CELL_VALUE: CellValue = Object.freeze({ tag: ValueTag.Empty })
-const FAST_PHYSICAL_RANGE_AREA_LIMIT = 16_384
+const FAST_PHYSICAL_RANGE_AREA_LIMIT = 262_144
 
 export function readFastPhysicalRangeValues(engine: SpreadsheetEngine, range: WorkPaperCellRange): CellValue[][] | undefined {
   const sheet = engine.workbook.getSheetById(range.start.sheet)
@@ -24,6 +24,11 @@ export function readFastPhysicalRangeValues(engine: SpreadsheetEngine, range: Wo
     rows[rowOffset] = row
   }
   const cellStore = engine.workbook.cellStore
+  const cellTags = cellStore.tags
+  const cellNumbers = cellStore.numbers
+  const cellStringIds = cellStore.stringIds
+  const cellErrors = cellStore.errors
+  const strings = engine.strings
   let filledCells = 0
   const blockRowStart = Math.floor(range.start.row / BLOCK_ROWS)
   const blockRowEnd = Math.floor(range.end.row / BLOCK_ROWS)
@@ -49,7 +54,38 @@ export function readFastPhysicalRangeValues(engine: SpreadsheetEngine, range: Wo
           if (encodedCellIndex === 0) {
             continue
           }
-          row[absoluteBlockCol + localCol - range.start.col] = readCellValue(cellStore, engine, encodedCellIndex - 1)
+          const cellIndex = encodedCellIndex - 1
+          const outputCol = absoluteBlockCol + localCol - range.start.col
+          switch ((cellTags[cellIndex] as ValueTag | undefined) ?? ValueTag.Empty) {
+            case ValueTag.Number:
+              row[outputCol] = { tag: ValueTag.Number, value: cellNumbers[cellIndex] ?? 0 }
+              break
+            case ValueTag.Boolean:
+              row[outputCol] = {
+                tag: ValueTag.Boolean,
+                value: (cellNumbers[cellIndex] ?? 0) !== 0,
+              }
+              break
+            case ValueTag.String: {
+              const stringId = cellStringIds[cellIndex] ?? 0
+              row[outputCol] = {
+                tag: ValueTag.String,
+                value: stringId === 0 ? '' : strings.get(stringId),
+                stringId,
+              }
+              break
+            }
+            case ValueTag.Error:
+              row[outputCol] = {
+                tag: ValueTag.Error,
+                code: (cellErrors[cellIndex] as ErrorCode | undefined) ?? ErrorCode.None,
+              }
+              break
+            case ValueTag.Empty:
+            default:
+              row[outputCol] = EMPTY_CELL_VALUE
+              break
+          }
           filledCells += 1
         }
       }
@@ -64,22 +100,4 @@ export function readFastPhysicalRangeValues(engine: SpreadsheetEngine, range: Wo
     }
   }
   return rows
-}
-
-function readCellValue(cellStore: SpreadsheetEngine['workbook']['cellStore'], engine: SpreadsheetEngine, cellIndex: number): CellValue {
-  switch ((cellStore.tags[cellIndex] as ValueTag | undefined) ?? ValueTag.Empty) {
-    case ValueTag.Number:
-      return { tag: ValueTag.Number, value: cellStore.numbers[cellIndex] ?? 0 }
-    case ValueTag.Boolean:
-      return { tag: ValueTag.Boolean, value: (cellStore.numbers[cellIndex] ?? 0) !== 0 }
-    case ValueTag.String: {
-      const stringId = cellStore.stringIds[cellIndex] ?? 0
-      return { tag: ValueTag.String, value: stringId === 0 ? '' : engine.strings.get(stringId), stringId }
-    }
-    case ValueTag.Error:
-      return { tag: ValueTag.Error, code: (cellStore.errors[cellIndex] as ErrorCode | undefined) ?? ErrorCode.None }
-    case ValueTag.Empty:
-    default:
-      return EMPTY_CELL_VALUE
-  }
 }
