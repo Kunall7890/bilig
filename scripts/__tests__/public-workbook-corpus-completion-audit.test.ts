@@ -710,6 +710,7 @@ function offlineCiPackageScripts(overrides: readonly (readonly [string, string])
         'scripts/__tests__/public-workbook-corpus-financial-plan.test.ts',
         'scripts/__tests__/public-workbook-corpus-links.test.ts',
         'scripts/__tests__/public-workbook-corpus-resource-limit-plan.test.ts',
+        'scripts/__tests__/public-workbook-corpus-missing.test.ts',
         'scripts/__tests__/public-workbook-corpus-verify-checkpoint.test.ts',
         'scripts/__tests__/public-workbook-corpus-workbook.test.ts',
         'packages/excel-import/src/__tests__/excel-import.test.ts',
