@@ -1,11 +1,13 @@
-import { readFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
+import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 
 import { describe, expect, it } from 'vitest'
 
 import {
   buildPublicWorkbookCorpusResourceLimitPlan,
+  buildPublicWorkbookCorpusResourceLimitPlanFromArgs,
   validatePublicWorkbookCorpusResourceLimitPlan,
 } from '../public-workbook-corpus-resource-limit-plan.ts'
 import { publicWorkbookResourceLimitClassifierEvidence } from '../public-workbook-corpus-evidence.ts'
@@ -102,6 +104,62 @@ describe('public workbook corpus resource-limit plan', () => {
         'current probe command mutates the verification checkpoint: workbook-current',
       ]),
     )
+  })
+
+  it('falls back to recorded cases when CI lacks the ephemeral manifest cache', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-resource-limit-plan-'))
+    const artifact = workbookArtifact('workbook-current', 2_000)
+    const checkpointPath = join(dir, 'verification-checkpoint.json')
+    writeFileSync(
+      checkpointPath,
+      `${JSON.stringify(
+        {
+          schemaVersion: 1,
+          suite: 'public-workbook-corpus-verification-checkpoint',
+          generatedAt: '2026-05-08T10:00:00.000Z',
+          cases: [resourceLimitedCase(artifact)],
+        },
+        null,
+        2,
+      )}\n`,
+    )
+    const originalArgv = process.argv
+
+    try {
+      process.argv = [
+        'bun',
+        'scripts/public-workbook-corpus-resource-limit-plan.ts',
+        '--manifest',
+        join(dir, 'missing-manifest.json'),
+        '--scorecard',
+        join(dir, 'missing-scorecard.json'),
+        '--verify-checkpoint',
+        checkpointPath,
+        '--cache-dir',
+        join(dir, 'cache'),
+        '--display-root',
+        dir,
+        '--generated-at',
+        '2026-05-08T10:00:00.000Z',
+      ]
+      const plan = buildPublicWorkbookCorpusResourceLimitPlanFromArgs()
+
+      expect(plan.currentState).toMatchObject({
+        manifestArtifactCount: 1,
+        recordedCaseCount: 1,
+        resourceLimitCaseCount: 1,
+        currentResourceLimitCaseCount: 1,
+        staleResourceLimitCaseCount: 0,
+      })
+      expect(plan.currentSamples[0]).toMatchObject({
+        id: 'workbook-current',
+        cachePath: `files/${artifact.sha256}.xlsx`,
+      })
+      expect(validatePublicWorkbookCorpusResourceLimitPlan(plan)).toEqual([])
+    } finally {
+      process.argv = originalArgv
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 
   it('exposes a package script for non-mutating resource-limit planning', () => {

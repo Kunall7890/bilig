@@ -19,6 +19,10 @@ describe('run-ci', () => {
     expect(source).toContain('const wasmBuildTask: CiTask = {')
     expect(source).toContain("directPackageScript('correctness public workbook corpus', 'test:correctness:corpus')")
     expect(source).toContain(
+      "withEnv(directPackageScript('correctness core', 'test:correctness:core'), { BILIG_VITEST_FILE_CHUNK_SIZE: '10' })",
+    )
+    expect(source).toContain("BILIG_VITEST_FILE_CHUNK_SIZE: '99'")
+    expect(source).toContain(
       "directPackageScript('financial public workbook corpus resume check', 'public-workbook-corpus:resume-financial:check')",
     )
     expect(source).toContain("await runSequential('static direct checks'")

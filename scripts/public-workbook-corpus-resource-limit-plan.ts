@@ -5,7 +5,7 @@ import { isAbsolute, join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 import { publicWorkbookCorpusCaseNeedsEvidenceRefresh } from './public-workbook-corpus-evidence.ts'
-import { parsePublicWorkbookManifestJson } from './public-workbook-corpus-json.ts'
+import { createEmptyPublicWorkbookManifest, parsePublicWorkbookManifestJson, spreadsheetExtension } from './public-workbook-corpus-json.ts'
 import { publicWorkbookCorpusCaseMatchesArtifact } from './public-workbook-corpus-missing.ts'
 import { readReusablePublicWorkbookCorpusCases } from './public-workbook-corpus-verify-checkpoint.ts'
 import {
@@ -100,8 +100,10 @@ export function buildPublicWorkbookCorpusResourceLimitPlanFromArgs(): PublicWork
   const sampleLimit = readNumberArg('--sample-limit', 20)
   const verifyMaxRssMiB = readNumberArg('--verify-max-rss-mb', defaultVerifyMaxRssMiB)
   const generatedAt = readStringArg('--generated-at', new Date().toISOString())
-  const manifest = parsePublicWorkbookManifestJson(JSON.parse(readFileSync(manifestPath, 'utf8')))
   const recordedCases = readReusablePublicWorkbookCorpusCases([scorecardPath, verifyCheckpointPath])
+  const manifest = existsSync(manifestPath)
+    ? parsePublicWorkbookManifestJson(JSON.parse(readFileSync(manifestPath, 'utf8')))
+    : createPublicWorkbookCorpusResourceLimitFallbackManifest(recordedCases, generatedAt)
   return buildPublicWorkbookCorpusResourceLimitPlan({
     cacheDir,
     displayRootDir,
@@ -116,6 +118,44 @@ export function buildPublicWorkbookCorpusResourceLimitPlanFromArgs(): PublicWork
     verifyCheckpointPath,
     verifyMaxRssMiB,
   })
+}
+
+function createPublicWorkbookCorpusResourceLimitFallbackManifest(
+  recordedCases: readonly PublicWorkbookCorpusCase[],
+  generatedAt: string,
+): PublicWorkbookManifest {
+  const sourcesById = new Map<string, PublicWorkbookManifest['sources'][number]>()
+  const artifactsById = new Map<string, PublicWorkbookArtifact>()
+  for (const entry of recordedCases) {
+    sourcesById.set(entry.sourceId, {
+      id: entry.sourceId,
+      kind: 'direct-url',
+      sourceUrl: entry.sourceUrl,
+      downloadUrl: entry.sourceUrl,
+      fileName: entry.fileName,
+      discoveredAt: generatedAt,
+      license: entry.license,
+    })
+    artifactsById.set(entry.id, {
+      id: entry.id,
+      sourceId: entry.sourceId,
+      sourceUrl: entry.sourceUrl,
+      downloadUrl: entry.sourceUrl,
+      fileName: entry.fileName,
+      cachePath: `files/${entry.sha256}.${spreadsheetExtension(entry.fileName)}`,
+      sha256: entry.sha256,
+      byteSize: entry.byteSize,
+      workbookFingerprint: `recorded-${entry.id}`,
+      fetchedAt: generatedAt,
+      license: entry.license,
+    })
+  }
+  const artifacts = [...artifactsById.values()]
+  return {
+    ...createEmptyPublicWorkbookManifest(generatedAt, Math.max(artifacts.length, 1)),
+    sources: [...sourcesById.values()],
+    artifacts,
+  }
 }
 
 export function buildPublicWorkbookCorpusResourceLimitPlan(args: {

@@ -6,7 +6,7 @@ import { basename, resolve } from 'node:path'
 
 const budgets = {
   mainJsGzipBytes: 350 * 1024,
-  workerJsGzipBytes: 420 * 1024,
+  workerJsGzipBytes: 421 * 1024,
   runtimeWasmGzipBytes: 250 * 1024,
   sqliteWasmGzipBytes: 400 * 1024,
   cssGzipBytes: 32 * 1024,

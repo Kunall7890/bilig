@@ -252,12 +252,14 @@ const browserLane: CiTask = {
   ],
 }
 const parallelFocusedCorrectnessLanes: readonly CiTask[] = [
-  directPackageScript('correctness core', 'test:correctness:core'),
+  withEnv(directPackageScript('correctness core', 'test:correctness:core'), { BILIG_VITEST_FILE_CHUNK_SIZE: '10' }),
   directPackageScript('correctness formula', 'test:correctness:formula'),
   directPackageScript('correctness server', 'test:correctness:server'),
   directPackageScript('correctness browser runtime', 'test:correctness:browser'),
 ]
-const corpusCorrectnessLane = directPackageScript('correctness public workbook corpus', 'test:correctness:corpus')
+const corpusCorrectnessLane = withEnv(directPackageScript('correctness public workbook corpus', 'test:correctness:corpus'), {
+  BILIG_VITEST_FILE_CHUNK_SIZE: '99',
+})
 const generatedSourceChecks: readonly CiTask[] = [
   bunScript('protocol check', 'scripts/gen-protocol.ts', '--check'),
   direct('protocol package build for generated-source imports', workspaceBin('tsc'), '-p', 'packages/protocol/tsconfig.json'),
