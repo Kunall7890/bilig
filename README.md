@@ -373,9 +373,9 @@ Rules for agents:
   `pnpm workpaper:bench:competitive:check`, and `pnpm run ci` before publishing
   or claiming production readiness.
 
-For implementation feedback from people building agent or service workflows,
-use the GitHub discussion:
-<https://github.com/proompteng/bilig/discussions/115>.
+For workflow feedback from people building Node services or agent tools, use
+the GitHub discussion:
+<https://github.com/proompteng/bilig/discussions/157>.
 
 For the first technical adoption article, see
 [`docs/why-agents-need-workbook-apis.md`](docs/why-agents-need-workbook-apis.md).

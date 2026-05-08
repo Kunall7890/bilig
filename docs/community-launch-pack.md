@@ -235,6 +235,9 @@ If you have a real workflow, please describe the input shape, formulas, and the
 output you need to trust.
 ```
 
+Live workflow-feedback thread:
+<https://github.com/proompteng/bilig/discussions/157>
+
 ## Weekly Operating Cadence
 
 Every week until `1,000` stars:

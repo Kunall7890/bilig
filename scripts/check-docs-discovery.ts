@@ -182,6 +182,7 @@ for (const required of [
   'npm run agent:verify',
   'https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-records-input',
   'https://github.com/proompteng/bilig/discussions',
+  'https://github.com/proompteng/bilig/discussions/157',
   'https://github.com/proompteng/bilig/discussions/115',
   'https://github.com/proompteng/bilig/blob/main/docs/dev-to-workbook-apis-post.md',
   'https://github.com/proompteng/bilig/blob/main/docs/node-service-workpaper-recipe.md',
@@ -222,6 +223,16 @@ for (const [path, content] of [
   ['docs/llms.txt', llms],
 ] as const) {
   requireIncludes(content, 'docs/sheetjs-exceljs-alternative-formula-workbook-api.md', path)
+}
+
+for (const [path, content] of [
+  ['README.md', readme],
+  ['packages/headless/README.md', headlessReadme],
+  ['docs/index.html', index],
+  ['docs/community-launch-pack.md', await readFile(join(docsRoot, 'community-launch-pack.md'), 'utf8')],
+  ['docs/llms.txt', llms],
+] as const) {
+  requireIncludes(content, 'https://github.com/proompteng/bilig/discussions/157', path)
 }
 
 for (const required of [

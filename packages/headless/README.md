@@ -120,7 +120,7 @@ Repository links:
 - GitHub: <https://github.com/proompteng/bilig>
 - Star or bookmark: <https://github.com/proompteng/bilig>
 - Feedback discussion:
-  <https://github.com/proompteng/bilig/discussions/115>
+  <https://github.com/proompteng/bilig/discussions/157>
 - Good first issues:
   <https://github.com/proompteng/bilig/blob/main/docs/starter-issues.md>
 - First-timers-only issues:
