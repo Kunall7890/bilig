@@ -242,8 +242,10 @@ try {
   // Keep pnpm generated-source checks serialized; parallel pnpm invocations can race on .pnpm-workspace-state-v1.json.
   allCompleted.push(...(await runSequential('generated-source checks', generatedSourceChecks)))
 
+  // These are all pnpm entrypoints. Keep them serialized for the same workspace-state
+  // stability reason as generated-source checks; parallel runs can terminate siblings.
   allCompleted.push(
-    ...(await runStage('static prerequisites', [
+    ...(await runSequential('static prerequisites', [
       pnpm('lint', 'lint'),
       pnpm('source size check', 'source-size:check'),
       skipBrowserGates ? pnpm('wasm build', 'wasm:build') : appRuntimeDependencyBuild,

@@ -6,12 +6,14 @@ import { describe, expect, it } from 'vitest'
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 
 describe('run-ci', () => {
-  it('serializes generated-source pnpm checks to avoid workspace-state races', () => {
+  it('serializes pnpm workspace-state-sensitive stages', () => {
     const source = readFileSync(resolve(repoRoot, 'scripts/run-ci.ts'), 'utf8')
 
     expect(source).toContain('const generatedSourceChecks: readonly CiTask[] = [')
     expect(source).toContain('parallel pnpm invocations can race on .pnpm-workspace-state-v1.json')
     expect(source).toContain("await runSequential('generated-source checks', generatedSourceChecks)")
+    expect(source).toContain("await runSequential('static prerequisites'")
     expect(source).not.toContain("await runStage('generated-source checks'")
+    expect(source).not.toContain("await runStage('static prerequisites'")
   })
 })
