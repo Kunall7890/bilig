@@ -21,10 +21,12 @@ describe('run-ci', () => {
     expect(source).toContain(
       "directPackageScript('financial public workbook corpus resume check', 'public-workbook-corpus:resume-financial:check')",
     )
+    expect(source).toContain("await runSequential('static direct checks'")
     expect(source).not.toContain("pnpm('protocol check'")
     expect(source).not.toContain("pnpm('wasm build'")
     expect(source).not.toContain("pnpm('correctness public workbook corpus'")
     expect(source).not.toContain("await runStage('generated-source checks'")
     expect(source).not.toContain("await runStage('static package build prerequisites'")
+    expect(source).not.toContain("await runStage('static direct checks'")
   })
 })

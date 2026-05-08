@@ -362,7 +362,7 @@ try {
   allCompleted.push(...(await runSequential('generated-source checks', generatedSourceChecks)))
 
   allCompleted.push(
-    ...(await runStage('static direct checks', [
+    ...(await runSequential('static direct checks', [
       direct(
         'lint',
         workspaceBin('oxlint'),
