@@ -1027,12 +1027,13 @@ describe('public workbook corpus CLI resource guards', () => {
   it('lists a bounded missing slice without starting verification', async () => {
     const artifactA = workbookArtifact('workbook-a')
     const artifactB = workbookArtifact('workbook-b')
+    const artifactC = { ...workbookArtifact('workbook-c'), sha256: 'c'.repeat(64) }
     const dir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-cli-verify-missing-plan-'))
     const manifestPath = join(dir, 'manifest.json')
     const scorecardPath = join(dir, 'scorecard.json')
     const checkpointPath = join(dir, 'verification-checkpoint.json')
     const stopMarkerPath = join(dir, 'stop.md')
-    const fullManifest = manifestWithArtifacts([artifactA, artifactB])
+    const fullManifest = manifestWithArtifacts([artifactA, artifactB, artifactC])
     const scorecard = await buildPublicWorkbookCorpusScorecard({
       manifest: manifestWithArtifacts([artifactA]),
       cacheDir: dir,
@@ -1058,7 +1059,7 @@ describe('public workbook corpus CLI resource guards', () => {
         '--corpus-run-stop-marker',
         stopMarkerPath,
         '--limit',
-        '1',
+        '20',
       ],
       {
         encoding: 'utf8',
@@ -1068,7 +1069,7 @@ describe('public workbook corpus CLI resource guards', () => {
 
     expect(result.status).toBe(0)
     expect(planned).toMatchObject({
-      totalMissingArtifactCount: 1,
+      totalMissingArtifactCount: 2,
       selectedArtifactCount: 1,
       artifacts: [
         {
@@ -1089,12 +1090,13 @@ describe('public workbook corpus CLI resource guards', () => {
   it('lists a bounded stale-evidence slice without starting verification', async () => {
     const artifactA = workbookArtifact('workbook-a')
     const artifactB = workbookArtifact('workbook-b')
+    const artifactC = { ...workbookArtifact('workbook-c'), sha256: 'c'.repeat(64) }
     const dir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-cli-verify-stale-plan-'))
     const manifestPath = join(dir, 'manifest.json')
     const scorecardPath = join(dir, 'scorecard.json')
     const checkpointPath = join(dir, 'verification-checkpoint.json')
     const stopMarkerPath = join(dir, 'stop.md')
-    const fullManifest = manifestWithArtifacts([artifactA, artifactB])
+    const fullManifest = manifestWithArtifacts([artifactA, artifactB, artifactC])
     writeFileSync(manifestPath, `${JSON.stringify(fullManifest, null, 2)}\n`)
     writeFileSync(stopMarkerPath, '# paused\n')
     writePublicWorkbookCorpusVerificationCheckpoint({
@@ -1102,7 +1104,8 @@ describe('public workbook corpus CLI resource guards', () => {
       manifest: fullManifest,
       casesById: new Map([
         [artifactA.id, passedCase(artifactA)],
-        [artifactB.id, passedCaseWithUsedRange(artifactB)],
+        [artifactB.id, passedCase(artifactB)],
+        [artifactC.id, passedCaseWithUsedRange(artifactC)],
       ]),
       generatedAt: '2026-05-07T01:30:00.000Z',
     })
@@ -1132,7 +1135,7 @@ describe('public workbook corpus CLI resource guards', () => {
 
     expect(result.status).toBe(0)
     expect(planned).toMatchObject({
-      totalStaleArtifactCount: 1,
+      totalStaleArtifactCount: 2,
       selectedArtifactCount: 1,
       artifacts: [
         {

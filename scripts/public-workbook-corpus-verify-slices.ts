@@ -50,7 +50,8 @@ const largeVerifyStaleLimitEnvVar = 'BILIG_ALLOW_LARGE_PUBLIC_CORPUS_VERIFY_STAL
 
 export async function runPublicWorkbookCorpusVerifyMissingCommand(args: PublicWorkbookCorpusVerifySliceCommandArgs): Promise<void> {
   const dryRun = readFlagArg('--dry-run') || readFlagArg('--list')
-  const limit = readVerifyMissingLimitArg(1, dryRun)
+  const requestedLimit = readVerifyMissingLimitArg(1, dryRun)
+  const limit = dryRun ? stopMarkerAwareDryRunLimit(requestedLimit, args.corpusRunStopMarkerPath) : requestedLimit
   if (dryRun) {
     const manifest = readManifest(args.manifestPath)
     const recordedCases = readReusablePublicWorkbookCorpusCases([args.scorecardPath, args.verifyCheckpointPath])
@@ -91,10 +92,11 @@ export async function runPublicWorkbookCorpusVerifyMissingCommand(args: PublicWo
 
 export async function runPublicWorkbookCorpusVerifyStaleCommand(args: PublicWorkbookCorpusVerifySliceCommandArgs): Promise<void> {
   const dryRun = readFlagArg('--dry-run') || readFlagArg('--list')
-  const limit = readPublicCorpusVerificationBatchLimitArg(1, dryRun, {
+  const requestedLimit = readPublicCorpusVerificationBatchLimitArg(1, dryRun, {
     commandName: 'verify-stale',
     envVar: largeVerifyStaleLimitEnvVar,
   })
+  const limit = dryRun ? stopMarkerAwareDryRunLimit(requestedLimit, args.corpusRunStopMarkerPath) : requestedLimit
   if (dryRun) {
     const manifest = readManifest(args.manifestPath)
     const recordedCases = readReusablePublicWorkbookCorpusCases([args.scorecardPath, args.verifyCheckpointPath])
@@ -221,6 +223,10 @@ function formatCommandPath(path: string): string {
   const absolutePath = resolve(path)
   const relativePath = relative(rootDir, absolutePath)
   return relativePath && !relativePath.startsWith('..') && !isAbsolute(relativePath) ? relativePath : path
+}
+
+function stopMarkerAwareDryRunLimit(requestedLimit: number, stopMarkerPath: string): number {
+  return existsSync(stopMarkerPath) ? Math.min(requestedLimit, 1) : requestedLimit
 }
 
 function formatVerifySliceCommand(
