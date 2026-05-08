@@ -42,6 +42,14 @@ function git(label: string, ...args: string[]): CiTask {
   return { label, command: ['git', ...args] }
 }
 
+function direct(label: string, ...args: string[]): CiTask {
+  return { label, command: args }
+}
+
+function workspaceBin(name: string): string {
+  return process.platform === 'win32' ? `node_modules\\.bin\\${name}.cmd` : `node_modules/.bin/${name}`
+}
+
 function withEnv(task: CiTask, env: Readonly<Record<string, string>>): CiTask {
   return {
     ...task,
@@ -242,14 +250,28 @@ try {
   // Keep pnpm generated-source checks serialized; parallel pnpm invocations can race on .pnpm-workspace-state-v1.json.
   allCompleted.push(...(await runSequential('generated-source checks', generatedSourceChecks)))
 
-  // These are all pnpm entrypoints. Keep them serialized for the same workspace-state
-  // stability reason as generated-source checks; parallel runs can terminate siblings.
   allCompleted.push(
-    ...(await runSequential('static prerequisites', [
-      pnpm('lint', 'lint'),
-      pnpm('source size check', 'source-size:check'),
+    ...(await runStage('static direct checks', [
+      direct(
+        'lint',
+        workspaceBin('oxlint'),
+        '--config',
+        '.oxlintrc.json',
+        '--type-aware',
+        '--deny-warnings',
+        'packages',
+        'apps',
+        'e2e',
+        'scripts',
+      ),
+      direct('source size check', 'bun', 'scripts/check-source-file-size.ts'),
+      direct('typecheck', workspaceBin('tsc'), '-b', '--pretty', 'false'),
+    ])),
+  )
+
+  allCompleted.push(
+    ...(await runSequential('static package build prerequisites', [
       skipBrowserGates ? pnpm('wasm build', 'wasm:build') : appRuntimeDependencyBuild,
-      pnpm('typecheck', 'typecheck'),
       ...(skipBrowserGates ? [] : [pnpm('playwright chromium install', 'exec', 'playwright', 'install', 'chromium')]),
     ])),
   )
