@@ -27,6 +27,7 @@ import { addExportTablesToXlsxBytes } from './xlsx-tables.js'
 import { addExportDataValidationsToXlsxBytes } from './xlsx-validations.js'
 import { addExportWorkbookPropertiesToXlsxBytes } from './xlsx-workbook-properties.js'
 import { decodePreservedVbaProjectPayload } from './xlsx-macros.js'
+import { addExportPrinterSettingsToXlsxBytes } from './xlsx-printer-settings.js'
 import {
   addCustomNumberFormatsToStylesXml,
   customNumberFormatStartId,
@@ -868,5 +869,5 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
   const styledBytes = preserveSnapshotStyles(enrichedBytes, snapshot)
   const formattedBytes = preserveSnapshotNumberFormats(styledBytes, exportSheetFormats)
   const dimensionedBytes = addExportWorksheetDimensionsToXlsxBytes(formattedBytes, snapshot)
-  return addExportLegacyCommentVmlToXlsxBytes(dimensionedBytes, snapshot)
+  return addExportPrinterSettingsToXlsxBytes(addExportLegacyCommentVmlToXlsxBytes(dimensionedBytes, snapshot), snapshot)
 }

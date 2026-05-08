@@ -52,6 +52,10 @@ Worksheet protection elements preserve non-default XML attributes from source
 workbooks, so protected sheets are not normalized into a different
 `<sheetProtection sheet="1"/>` state during no-op roundtrips.
 
+Worksheet printer settings preserve binary `xl/printerSettings/*.bin` parts,
+worksheet relationships, and `pageSetup` relationship links during no-op XLSX
+roundtrips.
+
 ## CSV Import
 
 ```ts

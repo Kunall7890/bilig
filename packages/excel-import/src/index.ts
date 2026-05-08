@@ -31,6 +31,7 @@ import { readImportedWorkbookFilters } from './xlsx-filters.js'
 import { readImportedWorkbookFreezePanes } from './xlsx-freeze-panes.js'
 import { buildMergeEntries } from './xlsx-merge-entries.js'
 import { readImportedWorkbookPivots } from './xlsx-pivots.js'
+import { readImportedWorkbookPrinterSettings } from './xlsx-printer-settings.js'
 import { readImportedWorkbookProtectedRanges } from './xlsx-protected-ranges.js'
 import { readImportedWorkbookSheetProtections } from './xlsx-sheet-protection.js'
 import { readImportedWorkbookSorts } from './xlsx-sorts.js'
@@ -682,6 +683,7 @@ function importSheetJsWorkbook(
   const importedPivots = workbookZip ? readImportedWorkbookPivots(workbookZip, workbook.SheetNames) : undefined
   const importedTables = workbookZip ? readImportedWorkbookTables(workbookZip, workbook.SheetNames) : undefined
   const importedLegacyCommentVmlBySheet = workbookZip ? readImportedWorkbookLegacyCommentVml(workbookZip, workbook.SheetNames) : new Map()
+  const importedPrinterSettingsBySheet = workbookZip ? readImportedWorkbookPrinterSettings(workbookZip, workbook.SheetNames) : new Map()
   const importedFiltersBySheet = workbookZip ? readImportedWorkbookFilters(workbookZip, workbook.SheetNames) : new Map()
   const importedFreezePanesBySheet = workbookZip ? readImportedWorkbookFreezePanes(workbookZip, workbook.SheetNames) : new Map()
   const importedSheetTabColorsBySheet = workbookZip ? readImportedWorkbookSheetTabColors(workbookZip, workbook.SheetNames) : new Map()
@@ -853,6 +855,7 @@ function importSheetJsWorkbook(
     const importedFilters = importedFiltersBySheet.get(sheetName)
     const importedValidations = importedValidationsBySheet.get(sheetName)
     const importedConditionalFormats = importedConditionalFormatsBySheet.get(sheetName)
+    const importedPrinterSettings = importedPrinterSettingsBySheet.get(sheetName)
     const metadata =
       rows ||
       columns ||
@@ -870,7 +873,8 @@ function importSheetJsWorkbook(
       importedValidations ||
       importedConditionalFormats ||
       importedComments.commentThreads ||
-      importedLegacyCommentVml
+      importedLegacyCommentVml ||
+      importedPrinterSettings
         ? {
             ...(rows ? { rows } : {}),
             ...(columns ? { columns } : {}),
@@ -889,6 +893,7 @@ function importSheetJsWorkbook(
             ...(importedConditionalFormats ? { conditionalFormats: importedConditionalFormats } : {}),
             ...(importedComments.commentThreads ? { commentThreads: importedComments.commentThreads } : {}),
             ...(importedLegacyCommentVml ? { legacyCommentVml: importedLegacyCommentVml } : {}),
+            ...(importedPrinterSettings ? { printerSettings: importedPrinterSettings } : {}),
           }
         : undefined
 

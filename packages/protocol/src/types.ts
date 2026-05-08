@@ -724,6 +724,14 @@ export interface WorkbookLegacyCommentVmlSnapshot {
   commentSignature: string
 }
 
+export interface WorkbookPrinterSettingsSnapshot {
+  relationshipTarget: string
+  storage: 'base64'
+  dataBase64: string
+  byteLength: number
+  pageSetupXml?: string
+}
+
 export interface WorkbookMetadataSnapshot {
   properties?: WorkbookPropertySnapshot[]
   definedNames?: WorkbookDefinedNameSnapshot[]
@@ -760,6 +768,7 @@ export interface SheetMetadataSnapshot {
   commentThreads?: WorkbookCommentThreadSnapshot[]
   notes?: WorkbookNoteSnapshot[]
   legacyCommentVml?: WorkbookLegacyCommentVmlSnapshot
+  printerSettings?: WorkbookPrinterSettingsSnapshot[]
 }
 
 export interface WorkbookSnapshot {
