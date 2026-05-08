@@ -1,8 +1,10 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { isAbsolute, relative, resolve } from 'node:path'
 
 import {
   assertPublicCorpusRunNotStopped,
+  publicCorpusStopMarkerOverrideEnvVar,
+  publicCorpusStopMarkerOverrideFlag,
   readDebugOnlyFlagArg,
   readFlagArg,
   readMegabytesArg,
@@ -52,11 +54,12 @@ export async function runPublicWorkbookCorpusVerifyMissingCommand(args: PublicWo
     const manifest = readManifest(args.manifestPath)
     const recordedCases = readReusablePublicWorkbookCorpusCases([args.scorecardPath, args.verifyCheckpointPath])
     const missingArtifacts = listMissingPublicWorkbookArtifacts({ manifest, cases: recordedCases })
+    const selectedArtifactCount = Math.min(limit, missingArtifacts.length)
     process.stdout.write(
       `${JSON.stringify(
         {
           totalMissingArtifactCount: missingArtifacts.length,
-          selectedArtifactCount: Math.min(limit, missingArtifacts.length),
+          selectedArtifactCount,
           artifacts: missingArtifacts.slice(0, limit).map((artifact) => ({
             id: artifact.id,
             fileName: artifact.fileName,
@@ -64,6 +67,8 @@ export async function runPublicWorkbookCorpusVerifyMissingCommand(args: PublicWo
             sourceUrl: artifact.sourceUrl,
             cachePath: artifact.cachePath,
           })),
+          nextVerificationCommand:
+            selectedArtifactCount > 0 ? formatVerifySliceCommand({ ...args, limit: selectedArtifactCount, slice: 'verify-missing' }) : null,
         },
         null,
         2,
@@ -93,11 +98,12 @@ export async function runPublicWorkbookCorpusVerifyStaleCommand(args: PublicWork
     const manifest = readManifest(args.manifestPath)
     const recordedCases = readReusablePublicWorkbookCorpusCases([args.scorecardPath, args.verifyCheckpointPath])
     const staleArtifacts = listStalePublicWorkbookArtifacts({ manifest, cases: recordedCases })
+    const selectedArtifactCount = Math.min(limit, staleArtifacts.length)
     process.stdout.write(
       `${JSON.stringify(
         {
           totalStaleArtifactCount: staleArtifacts.length,
-          selectedArtifactCount: Math.min(limit, staleArtifacts.length),
+          selectedArtifactCount,
           artifacts: staleArtifacts.slice(0, limit).map((artifact) => ({
             id: artifact.id,
             fileName: artifact.fileName,
@@ -106,6 +112,8 @@ export async function runPublicWorkbookCorpusVerifyStaleCommand(args: PublicWork
             cachePath: artifact.cachePath,
             reason: 'missing-used-range-evidence',
           })),
+          nextVerificationCommand:
+            selectedArtifactCount > 0 ? formatVerifySliceCommand({ ...args, limit: selectedArtifactCount, slice: 'verify-stale' }) : null,
         },
         null,
         2,
@@ -195,4 +203,35 @@ function formatCommandPath(path: string): string {
   const absolutePath = resolve(path)
   const relativePath = relative(rootDir, absolutePath)
   return relativePath && !relativePath.startsWith('..') && !isAbsolute(relativePath) ? relativePath : path
+}
+
+function formatVerifySliceCommand(
+  args: PublicWorkbookCorpusVerifySliceCommandArgs & {
+    readonly limit: number
+    readonly slice: 'verify-missing' | 'verify-stale'
+  },
+): string {
+  const command = [
+    'pnpm',
+    `public-workbook-corpus:${args.slice}`,
+    '--',
+    '--manifest',
+    formatCommandPath(args.manifestPath),
+    '--scorecard',
+    formatCommandPath(args.scorecardPath),
+    '--verify-checkpoint',
+    formatCommandPath(args.verifyCheckpointPath),
+    '--cache-dir',
+    formatCommandPath(args.cacheDir),
+    '--limit',
+    String(args.limit),
+  ]
+  if (!existsSync(args.corpusRunStopMarkerPath)) {
+    return command.map(shellQuote).join(' ')
+  }
+  return `${publicCorpusStopMarkerOverrideEnvVar}=1 ${[...command, publicCorpusStopMarkerOverrideFlag].map(shellQuote).join(' ')}`
+}
+
+function shellQuote(value: string): string {
+  return /^[A-Za-z0-9_./:=@+-]+$/u.test(value) ? value : `'${value.replaceAll("'", "'\\''")}'`
 }

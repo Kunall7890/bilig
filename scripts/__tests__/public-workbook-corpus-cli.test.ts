@@ -1074,6 +1074,7 @@ describe('public workbook corpus CLI resource guards', () => {
     const manifestPath = join(dir, 'manifest.json')
     const scorecardPath = join(dir, 'scorecard.json')
     const checkpointPath = join(dir, 'verification-checkpoint.json')
+    const stopMarkerPath = join(dir, 'stop.md')
     const fullManifest = manifestWithArtifacts([artifactA, artifactB])
     const scorecard = await buildPublicWorkbookCorpusScorecard({
       manifest: manifestWithArtifacts([artifactA]),
@@ -1083,6 +1084,7 @@ describe('public workbook corpus CLI resource guards', () => {
     })
     writeFileSync(manifestPath, `${JSON.stringify(fullManifest, null, 2)}\n`)
     writeFileSync(scorecardPath, `${JSON.stringify(scorecard, null, 2)}\n`)
+    writeFileSync(stopMarkerPath, '# paused\n')
 
     const result = spawnSync(
       'bun',
@@ -1096,6 +1098,8 @@ describe('public workbook corpus CLI resource guards', () => {
         scorecardPath,
         '--verify-checkpoint',
         checkpointPath,
+        '--corpus-run-stop-marker',
+        stopMarkerPath,
         '--limit',
         '1',
       ],
@@ -1116,7 +1120,12 @@ describe('public workbook corpus CLI resource guards', () => {
           cachePath: artifactB.cachePath,
         },
       ],
+      nextVerificationCommand: expect.stringContaining('public-workbook-corpus:verify-missing'),
     })
+    const nextVerificationCommand = readNextVerificationCommand(planned)
+    expect(nextVerificationCommand).toContain('--limit 1')
+    expect(nextVerificationCommand).toContain('BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE=1')
+    expect(nextVerificationCommand).toContain('--allow-active-stop-marker')
     expect(readReusablePublicWorkbookCorpusCases([checkpointPath])).toEqual([])
   })
 
@@ -1127,8 +1136,10 @@ describe('public workbook corpus CLI resource guards', () => {
     const manifestPath = join(dir, 'manifest.json')
     const scorecardPath = join(dir, 'scorecard.json')
     const checkpointPath = join(dir, 'verification-checkpoint.json')
+    const stopMarkerPath = join(dir, 'stop.md')
     const fullManifest = manifestWithArtifacts([artifactA, artifactB])
     writeFileSync(manifestPath, `${JSON.stringify(fullManifest, null, 2)}\n`)
+    writeFileSync(stopMarkerPath, '# paused\n')
     writePublicWorkbookCorpusVerificationCheckpoint({
       path: checkpointPath,
       manifest: fullManifest,
@@ -1151,6 +1162,8 @@ describe('public workbook corpus CLI resource guards', () => {
         scorecardPath,
         '--verify-checkpoint',
         checkpointPath,
+        '--corpus-run-stop-marker',
+        stopMarkerPath,
         '--limit',
         '20',
       ],
@@ -1172,7 +1185,12 @@ describe('public workbook corpus CLI resource guards', () => {
           reason: 'missing-used-range-evidence',
         },
       ],
+      nextVerificationCommand: expect.stringContaining('public-workbook-corpus:verify-stale'),
     })
+    const nextVerificationCommand = readNextVerificationCommand(planned)
+    expect(nextVerificationCommand).toContain('--limit 1')
+    expect(nextVerificationCommand).toContain('BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE=1')
+    expect(nextVerificationCommand).toContain('--allow-active-stop-marker')
   })
 
   it('refreshes the checked-in scorecard from existing checkpoint cases without verification workers', async () => {
@@ -1339,6 +1357,17 @@ function readPackageJson(): { readonly scripts?: Record<string, string> } {
     return {}
   }
   return { scripts: Object.fromEntries(Object.entries(scripts).filter((entry): entry is [string, string] => typeof entry[1] === 'string')) }
+}
+
+function readNextVerificationCommand(plan: unknown): string {
+  if (typeof plan !== 'object' || plan === null) {
+    throw new Error('verify slice plan was not an object')
+  }
+  const command = Reflect.get(plan, 'nextVerificationCommand')
+  if (typeof command !== 'string') {
+    throw new Error('verify slice plan did not include a next verification command')
+  }
+  return command
 }
 
 function corpusScriptPath(): string {
