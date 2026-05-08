@@ -29,4 +29,12 @@ describe('run-ci', () => {
     expect(source).not.toContain("await runStage('static package build prerequisites'")
     expect(source).not.toContain("await runStage('static direct checks'")
   })
+
+  it('runs the CI orchestrator through tsx instead of bun', () => {
+    const packageJson = readFileSync(resolve(repoRoot, 'package.json'), 'utf8')
+
+    expect(packageJson).toContain('"ci": "BILIG_CI_PROFILE=fast BILIG_CI_SKIP_BROWSER=1 tsx scripts/run-ci.ts"')
+    expect(packageJson).toContain('"ci:core": "BILIG_CI_PROFILE=fast BILIG_CI_SKIP_BROWSER=1 tsx scripts/run-ci.ts"')
+    expect(packageJson).toContain('"ci:full": "BILIG_CI_PROFILE=full tsx scripts/run-ci.ts"')
+  })
 })
