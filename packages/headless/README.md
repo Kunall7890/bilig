@@ -245,6 +245,7 @@ restores the workbook, and verifies the final result.
 cd examples/headless-workpaper
 npm install
 npm start
+npm run agent:tool-call
 ```
 
 For the agent-specific writeback proof, run:
@@ -256,6 +257,10 @@ npm run agent:verify
 That demo records the exact assumption cells changed, verifies dependent formula
 readback, persists the workbook, restores it, and checks that formulas and
 outputs survived the round trip.
+
+`npm run agent:tool-call` exposes a small SDK-neutral tool-call shape:
+`readRange`, `setInputCell`, computed before/after values, formula contracts,
+persistence bytes, and restored readback equality.
 
 For a framework-neutral recipe that wraps WorkPaper operations as agent-callable
 tools, see

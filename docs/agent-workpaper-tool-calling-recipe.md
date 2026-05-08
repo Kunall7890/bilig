@@ -14,6 +14,7 @@ Start with the package README for the public API contract:
 
 For a runnable external example, use
 [`examples/headless-workpaper`](../examples/headless-workpaper) and run
+`npm run agent:tool-call`. For a smaller writeback-only proof, run
 `npm run agent:verify`.
 
 ## Tool Contract

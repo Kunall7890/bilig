@@ -174,6 +174,7 @@ for (const url of actualSitemapUrls) {
 for (const required of [
   'repository: https://github.com/proompteng/bilig',
   'npm package: https://www.npmjs.com/package/@bilig/headless',
+  'npm run agent:tool-call',
   'npm run agent:verify',
   'https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-records-input',
   'https://github.com/proompteng/bilig/discussions',

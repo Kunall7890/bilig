@@ -137,7 +137,27 @@ git clone https://github.com/proompteng/bilig.git
 cd bilig/examples/headless-workpaper
 npm install
 npm start
+npm run agent:tool-call
 npm run agent:verify
+```
+
+Expected proof from `npm run agent:tool-call` includes:
+
+```json
+{
+  "toolCall": { "toolName": "setInputCell" },
+  "toolResult": {
+    "editedCell": "Inputs!B3",
+    "before": { "expectedArr": 60000, "targetGap": -34000 },
+    "after": { "expectedArr": 96000, "targetGap": 5600 },
+    "verified": {
+      "formulasPersisted": true,
+      "restoredMatchesAfter": true,
+      "expectedArrImproved": true,
+      "targetGapClosed": true
+    }
+  }
+}
 ```
 
 Expected proof from `npm run agent:verify` includes:
@@ -275,6 +295,10 @@ That example also includes `npm run agent:verify`, a small agent writeback demo
 that records the exact assumption cells changed, verifies dependent formula
 readback, persists the workbook, restores it, and proves the formulas and values
 survived the round trip.
+
+For a tool-calling shape closer to agent SDKs, run `npm run agent:tool-call`.
+It returns a compact tool call, before/after computed values, formula
+contracts, persistence proof, and round-trip verification.
 
 Quickstart:
 

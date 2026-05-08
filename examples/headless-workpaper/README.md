@@ -37,6 +37,60 @@ Expected output:
 The repository smoke test runs this same example against packed local runtime
 packages through `pnpm workpaper:smoke:external`.
 
+## Agent Tool Call Loop
+
+Run the tool-call loop example when you want a small SDK-neutral artifact for
+wrapping WorkPaper operations as agent tools. It reads a summary range, applies
+a planned input edit through a `setInputCell` tool, verifies formula readback,
+persists the workbook, restores it, and checks that computed outputs survive
+the round trip:
+
+```sh
+npm run agent:tool-call
+```
+
+Expected output:
+
+```json
+{
+  "toolCall": {
+    "toolName": "setInputCell",
+    "arguments": {
+      "sheetName": "Inputs",
+      "address": "B3",
+      "value": 0.4,
+      "reason": "Use the latest qualified pipeline conversion estimate."
+    }
+  },
+  "toolResult": {
+    "editedCell": "Inputs!B3",
+    "before": {
+      "expectedCustomers": 5,
+      "expectedArr": 60000,
+      "expansionArr": 66000,
+      "targetGap": -34000
+    },
+    "after": {
+      "expectedCustomers": 8,
+      "expectedArr": 96000,
+      "expansionArr": 105600,
+      "targetGap": 5600
+    },
+    "verified": {
+      "previousValue": 0.25,
+      "newValue": 0.4,
+      "formulasPersisted": true,
+      "restoredMatchesAfter": true,
+      "expectedArrImproved": true,
+      "targetGapClosed": true
+    }
+  }
+}
+```
+
+The actual output also includes the initial range read, formula contracts, the
+restored summary, and serialized byte count.
+
 ## Agent Writeback Verification
 
 Run the agent verification demo when you want a small artifact for the claim

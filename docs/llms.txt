@@ -55,6 +55,7 @@ git clone https://github.com/proompteng/bilig.git
 cd bilig/examples/headless-workpaper
 npm install
 npm start
+npm run agent:tool-call
 npm run agent:verify
 ```
 

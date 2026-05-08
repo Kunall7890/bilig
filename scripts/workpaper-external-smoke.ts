@@ -96,6 +96,7 @@ function runNodeSmoke(
     persistedSheets: string[]
     serializedBytes: number
   }
+  agentToolCall: AgentToolCallSummary
   agentVerification: AgentVerificationSummary
   output: {
     afterAgentEdit: {
@@ -134,6 +135,7 @@ function runNodeSmoke(
 } {
   mkdirSync(projectDir, { recursive: true })
   copyFileSync(join(headlessExampleDir, 'package.json'), join(projectDir, 'package.json'))
+  copyFileSync(join(headlessExampleDir, 'agent-tool-call-loop.mjs'), join(projectDir, 'agent-tool-call-loop.mjs'))
   copyFileSync(join(headlessExampleDir, 'agent-writeback-verification.mjs'), join(projectDir, 'agent-writeback-verification.mjs'))
   copyFileSync(join(headlessExampleDir, 'revenue-plan.mjs'), join(projectDir, 'revenue-plan.mjs'))
   copyFileSync(join(headlessExampleDir, 'persistence-roundtrip.mjs'), join(projectDir, 'persistence-roundtrip.mjs'))
@@ -367,6 +369,7 @@ function runNodeSmoke(
   const output = parseNodeSmokeOutput(runTextCommand('node', ['revenue-plan.mjs'], { cwd: projectDir }))
   const persistence = parseNodePersistenceOutput(runTextCommand('node', ['persistence-roundtrip.mjs'], { cwd: projectDir }))
   const scenarios = parseNodeRevenueScenarioOutput(runTextCommand('node', ['revenue-scenarios.mjs'], { cwd: projectDir }))
+  const agentToolCall = parseNodeAgentToolCallOutput(runTextCommand('node', ['agent-tool-call-loop.mjs'], { cwd: projectDir }))
   const agentVerification = parseNodeAgentVerificationOutput(
     runTextCommand('node', ['agent-writeback-verification.mjs'], { cwd: projectDir }),
   )
@@ -374,6 +377,7 @@ function runNodeSmoke(
   const xlsxImport = parseNodeXlsxImportOutput(runTextCommand('node', ['xlsx-import.mjs'], { cwd: projectDir }))
 
   return {
+    agentToolCall,
     agentVerification,
     persistence,
     projectDir,
@@ -754,6 +758,40 @@ type AgentVerificationSummary = {
   }
 }
 
+type AgentToolCallSummary = {
+  toolCall: {
+    arguments: {
+      address: string
+      reason: string
+      sheetName: string
+      value: number
+    }
+    toolName: string
+  }
+  toolResult: {
+    after: AgentToolCallProjection
+    before: AgentToolCallProjection
+    editedCell: string
+    restored: AgentToolCallProjection
+    verified: {
+      expectedArrImproved: boolean
+      formulasPersisted: boolean
+      newValue: number
+      previousValue: number
+      restoredMatchesAfter: boolean
+      serializedBytes: number
+      targetGapClosed: boolean
+    }
+  }
+}
+
+type AgentToolCallProjection = {
+  expectedArr: number
+  expectedCustomers: number
+  expansionArr: number
+  targetGap: number
+}
+
 function parseNodeRevenueScenarioOutput(output: string): {
   afterEdit: RevenueScenarioSummary
   beforeEdit: RevenueScenarioSummary
@@ -803,6 +841,94 @@ function parseRevenueScenarioSummary(value: unknown, context: string): RevenueSc
       expansionNetMrr: scenarios.expansionNetMrr,
       stretchNetMrr: scenarios.stretchNetMrr,
     },
+  }
+}
+
+function parseNodeAgentToolCallOutput(output: string): AgentToolCallSummary {
+  const parsed = parseJsonRecord(output, 'node agent tool-call output')
+  const toolCall = parseRecordValue(parsed.toolCall, 'node agent tool-call request')
+  const toolCallArguments = parseRecordValue(toolCall.arguments, 'node agent tool-call arguments')
+  const toolResult = parseRecordValue(parsed.toolResult, 'node agent tool-call result')
+  const before = parseAgentToolCallProjection(toolResult.before, 'node agent tool-call before output')
+  const after = parseAgentToolCallProjection(toolResult.after, 'node agent tool-call after output')
+  const restored = parseAgentToolCallProjection(toolResult.restored, 'node agent tool-call restored output')
+  const verified = parseRecordValue(toolResult.verified, 'node agent tool-call flags')
+
+  if (
+    toolCall.toolName !== 'setInputCell' ||
+    toolCallArguments.sheetName !== 'Inputs' ||
+    toolCallArguments.address !== 'B3' ||
+    toolCallArguments.value !== 0.4 ||
+    typeof toolCallArguments.reason !== 'string' ||
+    toolResult.editedCell !== 'Inputs!B3' ||
+    before.expectedCustomers !== 5 ||
+    before.expectedArr !== 60000 ||
+    before.expansionArr !== 66000 ||
+    before.targetGap !== -34000 ||
+    after.expectedCustomers !== 8 ||
+    after.expectedArr !== 96000 ||
+    after.expansionArr !== 105600 ||
+    after.targetGap !== 5600 ||
+    restored.expectedCustomers !== after.expectedCustomers ||
+    restored.expectedArr !== after.expectedArr ||
+    restored.expansionArr !== after.expansionArr ||
+    restored.targetGap !== after.targetGap ||
+    verified.previousValue !== 0.25 ||
+    verified.newValue !== 0.4 ||
+    verified.formulasPersisted !== true ||
+    verified.restoredMatchesAfter !== true ||
+    verified.expectedArrImproved !== true ||
+    verified.targetGapClosed !== true ||
+    typeof verified.serializedBytes !== 'number' ||
+    verified.serializedBytes <= 0
+  ) {
+    throw new Error(`Unexpected node agent tool-call output: ${output}`)
+  }
+
+  return {
+    toolCall: {
+      arguments: {
+        address: toolCallArguments.address,
+        reason: toolCallArguments.reason,
+        sheetName: toolCallArguments.sheetName,
+        value: toolCallArguments.value,
+      },
+      toolName: toolCall.toolName,
+    },
+    toolResult: {
+      after,
+      before,
+      editedCell: toolResult.editedCell,
+      restored,
+      verified: {
+        expectedArrImproved: verified.expectedArrImproved,
+        formulasPersisted: verified.formulasPersisted,
+        newValue: verified.newValue,
+        previousValue: verified.previousValue,
+        restoredMatchesAfter: verified.restoredMatchesAfter,
+        serializedBytes: verified.serializedBytes,
+        targetGapClosed: verified.targetGapClosed,
+      },
+    },
+  }
+}
+
+function parseAgentToolCallProjection(value: unknown, context: string): AgentToolCallProjection {
+  const parsed = parseRecordValue(value, context)
+  if (
+    typeof parsed.expectedCustomers !== 'number' ||
+    typeof parsed.expectedArr !== 'number' ||
+    typeof parsed.expansionArr !== 'number' ||
+    typeof parsed.targetGap !== 'number'
+  ) {
+    throw new Error(`Unexpected ${context}: ${JSON.stringify(value)}`)
+  }
+
+  return {
+    expectedArr: parsed.expectedArr,
+    expectedCustomers: parsed.expectedCustomers,
+    expansionArr: parsed.expansionArr,
+    targetGap: parsed.targetGap,
   }
 }
 
