@@ -46,7 +46,7 @@ pnpm --filter @bilig/headless build
   [HyperFormula comparison](https://github.com/proompteng/bilig/blob/main/docs/hyperformula-alternative-headless-workpaper.md)
   and [benchmark explainer](https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md).
 - Star or bookmark the project:
-  <https://github.com/proompteng/bilig/stargazers>.
+  <https://github.com/proompteng/bilig>.
 
 ## Production Status
 
@@ -118,7 +118,7 @@ Repository links:
 
 - Website: <https://proompteng.github.io/bilig/>
 - GitHub: <https://github.com/proompteng/bilig>
-- Star or bookmark: <https://github.com/proompteng/bilig/stargazers>
+- Star or bookmark: <https://github.com/proompteng/bilig>
 - Feedback discussion:
   <https://github.com/proompteng/bilig/discussions/115>
 - Good first issues:
