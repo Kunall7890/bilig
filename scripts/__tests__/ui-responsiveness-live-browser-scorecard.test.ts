@@ -64,7 +64,7 @@ describe('UI responsiveness live browser scorecard', () => {
     )
   })
 
-  it('derives same-corpus 10x ratios from captured browser operation samples', () => {
+  it('derives same-corpus 10x ratios from captured scroll-event samples', () => {
     const proof = buildSameCorpusProof(buildSameCorpusCapture({ workload: 'visible-scroll-response' }))
 
     expect(proof).toMatchObject({
@@ -80,7 +80,28 @@ describe('UI responsiveness live browser scorecard', () => {
       biligToGoogleSheetsP95Ratio: 0.06,
       biligToMicrosoftExcelWebMeanRatio: 0.0625,
       biligToMicrosoftExcelWebP95Ratio: 0.06666666666666667,
+      biligToGoogleSheetsScrollEventMeanRatio: 0.05,
+      biligToGoogleSheetsScrollEventP95Ratio: 0.06,
+      biligToMicrosoftExcelWebScrollEventMeanRatio: 0.0625,
+      biligToMicrosoftExcelWebScrollEventP95Ratio: 0.06666666666666667,
+      tenXMeanAndP95Metric: 'scrollEventResponseMs',
+      postOperationFrameGuardrailPassed: true,
+      scrollMovementGuardrailPassed: true,
       passed: true,
+    })
+  })
+
+  it('does not clear the 10x proof from legacy operation-only captures', () => {
+    const proof = buildSameCorpusProof(buildSameCorpusCapture({ includeScrollEventSamples: false, workload: 'visible-scroll-response' }))
+
+    expect(proof).toMatchObject({
+      tenXMeanAndP95CaseCount: 0,
+    })
+    expect(proof.cases[0]).toMatchObject({
+      tenXMeanAndP95Metric: 'operationResponseMs',
+      tenXMeanAndP95AgainstGoogleSheets: false,
+      tenXMeanAndP95AgainstMicrosoftExcelWeb: false,
+      passed: false,
     })
   })
 
@@ -143,7 +164,11 @@ describe('UI responsiveness live browser scorecard', () => {
   })
 })
 
-function buildSameCorpusCapture(args: { readonly workload: 'visible-scroll-response' | 'visible-edit-commit' }): SameCorpusCapture {
+function buildSameCorpusCapture(args: {
+  readonly includeScrollEventSamples?: boolean
+  readonly workload: 'visible-scroll-response' | 'visible-edit-commit'
+}): SameCorpusCapture {
+  const includeScrollEventSamples = args.includeScrollEventSamples ?? true
   return {
     schemaVersion: 1,
     suite: 'ui-responsiveness-same-corpus-capture',
@@ -160,6 +185,7 @@ function buildSameCorpusCapture(args: { readonly workload: 'visible-scroll-respo
           source: 'e2e/tests/web-shell-scroll-performance.pw.ts',
           operationResponseMsSamples: [4, 5, 6],
           postOperationFrameMsSamples: [8, 9, 10],
+          ...(includeScrollEventSamples ? { scrollEventResponseMsSamples: [4, 5, 6], scrollMovementPxSamples: [720, 720, 720] } : {}),
           corpusVerification: corpusVerification('bilig-benchmark-state', []),
           limitations: [],
         },
@@ -168,6 +194,7 @@ function buildSameCorpusCapture(args: { readonly workload: 'visible-scroll-respo
           source: 'https://docs.google.com/spreadsheets/d/example',
           operationResponseMsSamples: [100, 100, 100],
           postOperationFrameMsSamples: [14, 15, 16],
+          ...(includeScrollEventSamples ? { scrollEventResponseMsSamples: [100, 100, 100], scrollMovementPxSamples: [720, 720, 720] } : {}),
           corpusVerification: corpusVerification('google-sheets-xlsx-export', verifiedCells()),
           limitations: [],
         },
@@ -176,6 +203,7 @@ function buildSameCorpusCapture(args: { readonly workload: 'visible-scroll-respo
           source: 'https://view.officeapps.live.com/op/view.aspx?src=example',
           operationResponseMsSamples: [75, 75, 90],
           postOperationFrameMsSamples: [14, 15, 16],
+          ...(includeScrollEventSamples ? { scrollEventResponseMsSamples: [75, 75, 90], scrollMovementPxSamples: [720, 720, 720] } : {}),
           corpusVerification: corpusVerification('microsoft-excel-web-source-xlsx', verifiedCells()),
           limitations: [],
         },
