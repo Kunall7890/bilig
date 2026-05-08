@@ -1,0 +1,114 @@
+import type { PublicWorkbookCorpusStatus } from './public-workbook-corpus-status.ts'
+import type {
+  PublicWorkbookCorpusAuditNextAction,
+  PublicWorkbookCorpusAuditState,
+  PublicWorkbookCorpusNextActionId,
+} from './public-workbook-corpus-completion-audit-types.ts'
+
+export function buildPublicWorkbookCorpusAuditNextActions(args: {
+  readonly currentState: PublicWorkbookCorpusAuditState
+  readonly status: PublicWorkbookCorpusStatus
+}): PublicWorkbookCorpusAuditNextAction[] {
+  const actions: PublicWorkbookCorpusAuditNextAction[] = []
+  if (args.currentState.missingCachedArtifactCount > 0) {
+    actions.push(
+      nextAction({
+        id: 'resume-public-corpus-ingest',
+        priority: 1,
+        reason: `cached artifacts below target by ${String(args.currentState.missingCachedArtifactCount)}`,
+        commands: ['pnpm public-workbook-corpus:resume-plan:check', 'pnpm public-workbook-corpus:fetch:plan'],
+      }),
+    )
+  }
+  if (args.currentState.missingVerificationCount > 0) {
+    actions.push(
+      nextAction({
+        id: 'verify-missing-cached-artifacts',
+        priority: 3,
+        reason: `cached artifacts missing verification evidence: ${String(args.currentState.missingVerificationCount)}`,
+        commands: [
+          args.status.nextMissingVerificationPlanCommand,
+          args.status.nextMissingVerificationCommand,
+          'pnpm public-workbook-corpus:completion-audit:check',
+        ],
+      }),
+    )
+  }
+  if (args.currentState.staleRecordedVerificationCount > 0) {
+    actions.push(
+      nextAction({
+        id: 'refresh-stale-verification-evidence',
+        priority: 3,
+        reason: `recorded verification cases need evidence refresh: ${String(args.currentState.staleRecordedVerificationCount)}`,
+        commands: [
+          args.status.nextStaleVerificationPlanCommand,
+          args.status.nextStaleVerificationCommand,
+          'pnpm public-workbook-corpus:completion-audit:check',
+        ],
+      }),
+    )
+  }
+  if (args.currentState.missingFeatureWitnessCount > 0) {
+    actions.push(
+      nextAction({
+        id: 'fill-feature-witnesses',
+        priority: 3,
+        reason: `missing feature witness coverage: ${args.currentState.missingFeatureWitnesses.join(', ')}`,
+        commands: ['pnpm public-workbook-corpus:feature-witness:check', 'pnpm public-workbook-corpus:feature-witness:plan'],
+      }),
+    )
+  }
+  if (
+    args.currentState.financialCachedArtifactCount < args.currentState.financialWorkbookTargetCount ||
+    args.currentState.recordedFinancialManifestArtifactCount < args.currentState.financialWorkbookTargetCount ||
+    args.currentState.recordedFinancialNonPassingCaseCount > 0
+  ) {
+    actions.push(
+      nextAction({
+        id: 'resume-financial-workpapers',
+        priority: 2,
+        reason: [
+          `financial/accounting cached artifacts: ${String(args.currentState.financialCachedArtifactCount)}/${String(
+            args.currentState.financialWorkbookTargetCount,
+          )}`,
+          `recorded cases: ${String(args.currentState.recordedFinancialManifestArtifactCount)}/${String(
+            args.currentState.financialWorkbookTargetCount,
+          )}`,
+          `non-passing cases: ${String(args.currentState.recordedFinancialNonPassingCaseCount)}`,
+        ].join('; '),
+        commands: [
+          'pnpm public-workbook-corpus:discover-financial:check',
+          'pnpm public-workbook-corpus:resume-financial:check',
+          'pnpm public-workbook-corpus:fetch-financial:plan',
+        ],
+      }),
+    )
+  }
+  if (args.currentState.recordedFailedCaseCount > 0 || args.currentState.recordedErrorCaseCount > 0) {
+    actions.push(
+      nextAction({
+        id: 'inspect-non-passing-scorecard-cases',
+        priority: 6,
+        reason: `failed/error scorecard cases: ${String(args.currentState.recordedFailedCaseCount)}/${String(
+          args.currentState.recordedErrorCaseCount,
+        )}`,
+        commands: ['pnpm public-workbook-corpus:status', 'pnpm public-workbook-corpus:completion-audit:check'],
+      }),
+    )
+  }
+  return actions.toSorted((left, right) => left.priority - right.priority || left.id.localeCompare(right.id))
+}
+
+function nextAction(action: {
+  readonly id: PublicWorkbookCorpusNextActionId
+  readonly priority: number
+  readonly reason: string
+  readonly commands: readonly (string | null)[]
+}): PublicWorkbookCorpusAuditNextAction {
+  return {
+    id: action.id,
+    priority: action.priority,
+    reason: action.reason,
+    commands: action.commands.filter((command): command is string => typeof command === 'string' && command.trim().length > 0),
+  }
+}

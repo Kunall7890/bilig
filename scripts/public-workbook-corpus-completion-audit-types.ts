@@ -16,7 +16,15 @@ export interface PublicWorkbookCorpusCompletionAudit {
   }
   readonly currentState: PublicWorkbookCorpusAuditState
   readonly secondaryFormulaCorpus: PublicWorkbookCorpusSecondaryFormulaCorpusStatus
+  readonly nextActions: readonly PublicWorkbookCorpusAuditNextAction[]
   readonly checklist: readonly PublicWorkbookCorpusAuditChecklistItem[]
+}
+
+export interface PublicWorkbookCorpusAuditNextAction {
+  readonly id: PublicWorkbookCorpusNextActionId
+  readonly priority: number
+  readonly reason: string
+  readonly commands: readonly string[]
 }
 
 export interface PublicWorkbookCorpusAuditState {
@@ -92,3 +100,11 @@ export type PublicWorkbookCorpusRequirementId =
   | 'ci-offline-cached-mode'
   | 'unsupported-features-evidence'
   | 'hyperformula-secondary-corpus'
+
+export type PublicWorkbookCorpusNextActionId =
+  | 'resume-public-corpus-ingest'
+  | 'verify-missing-cached-artifacts'
+  | 'refresh-stale-verification-evidence'
+  | 'fill-feature-witnesses'
+  | 'resume-financial-workpapers'
+  | 'inspect-non-passing-scorecard-cases'

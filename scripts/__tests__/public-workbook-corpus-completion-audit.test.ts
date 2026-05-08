@@ -53,6 +53,40 @@ describe('public workbook corpus completion audit', () => {
       missingFeatureWitnesses: [],
       recordedFormulaOracleComparisonCount: 1,
     })
+    expect(audit.nextActions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'resume-public-corpus-ingest',
+          reason: 'cached artifacts below target by 1',
+          commands: ['pnpm public-workbook-corpus:resume-plan:check', 'pnpm public-workbook-corpus:fetch:plan'],
+        }),
+        expect.objectContaining({
+          id: 'verify-missing-cached-artifacts',
+          reason: 'cached artifacts missing verification evidence: 1',
+          commands: expect.arrayContaining([
+            'pnpm public-workbook-corpus:verify-missing:plan',
+            'pnpm public-workbook-corpus:verify-missing -- --limit 1',
+          ]),
+        }),
+        expect.objectContaining({
+          id: 'refresh-stale-verification-evidence',
+          reason: 'recorded verification cases need evidence refresh: 1',
+          commands: expect.arrayContaining([
+            'pnpm public-workbook-corpus:verify-stale:plan',
+            'pnpm public-workbook-corpus:verify-stale -- --limit 1',
+          ]),
+        }),
+        expect.objectContaining({
+          id: 'resume-financial-workpapers',
+          reason: 'financial/accounting cached artifacts: 0/3; recorded cases: 0/3; non-passing cases: 0',
+          commands: [
+            'pnpm public-workbook-corpus:discover-financial:check',
+            'pnpm public-workbook-corpus:resume-financial:check',
+            'pnpm public-workbook-corpus:fetch-financial:plan',
+          ],
+        }),
+      ]),
+    )
     expect(requirement(audit.checklist, 'download-10000-public-spreadsheets')).toMatchObject({
       passed: false,
       gaps: expect.arrayContaining(['cached artifacts below target: 2/3']),
@@ -101,6 +135,7 @@ describe('public workbook corpus completion audit', () => {
       targetComplete: true,
       allChecklistItemsPassed: true,
     })
+    expect(audit.nextActions).toEqual([])
     expect(requirement(audit.checklist, 'hyperformula-secondary-corpus')).toMatchObject({
       passed: true,
       gaps: [],
