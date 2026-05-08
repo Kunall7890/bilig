@@ -9,6 +9,7 @@ import type {
   WorkbookPivotSnapshot,
   WorkbookPivotValueSnapshot,
   WorkbookSnapshot,
+  WorkbookTableSnapshot,
 } from '@bilig/protocol'
 import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
@@ -585,16 +586,28 @@ function readWorkbookPivotCaches(zip: ZipEntries): Map<number, string> {
   return output
 }
 
-function parsePivotCacheDefinition(cacheId: number, xml: string): ParsedPivotCache | null {
+function parsePivotCacheDefinition(
+  cacheId: number,
+  xml: string,
+  tablesByName: ReadonlyMap<string, WorkbookTableSnapshot>,
+): ParsedPivotCache | null {
   const parsed: unknown = xmlParser.parse(xml)
   const definition = recordChild(parsed, 'pivotCacheDefinition')
   const sourceRecord = recordChild(recordChild(definition, 'cacheSource'), 'worksheetSource')
   const sheetName = typeof sourceRecord?.['sheet'] === 'string' ? sourceRecord['sheet'] : null
   const ref = typeof sourceRecord?.['ref'] === 'string' ? sourceRecord['ref'] : null
-  if (!sheetName || !ref) {
-    return null
-  }
-  const source = parseRangeRef(sheetName, ref)
+  const sourceName = typeof sourceRecord?.['name'] === 'string' ? sourceRecord['name'].trim() : ''
+  const tableSource = sourceName.length > 0 ? tablesByName.get(sourceName.toLocaleLowerCase('en-US')) : undefined
+  const source =
+    sheetName && ref
+      ? parseRangeRef(sheetName, ref)
+      : tableSource
+        ? {
+            sheetName: tableSource.sheetName,
+            startAddress: tableSource.startAddress,
+            endAddress: tableSource.endAddress,
+          }
+        : null
   if (!source) {
     return null
   }
@@ -607,11 +620,12 @@ function parsePivotCacheDefinition(cacheId: number, xml: string): ParsedPivotCac
   return fields.length > 0 ? { cacheId, source, fields } : null
 }
 
-function parsePivotCaches(zip: ZipEntries): Map<number, ParsedPivotCache> {
+function parsePivotCaches(zip: ZipEntries, tables: readonly WorkbookTableSnapshot[]): Map<number, ParsedPivotCache> {
   const cacheDefinitions = readWorkbookPivotCaches(zip)
+  const tablesByName = new Map(tables.map((table) => [table.name.toLocaleLowerCase('en-US'), table]))
   const output = new Map<number, ParsedPivotCache>()
   for (const [cacheId, path] of cacheDefinitions.entries()) {
-    const parsed = parsePivotCacheDefinition(cacheId, getZipText(zip, path) ?? '')
+    const parsed = parsePivotCacheDefinition(cacheId, getZipText(zip, path) ?? '', tablesByName)
     if (parsed) {
       output.set(cacheId, parsed)
     }
@@ -690,9 +704,13 @@ function parsePivotTableXml(sheetName: string, xml: string, caches: ReadonlyMap<
   }
 }
 
-export function readImportedWorkbookPivots(source: XlsxZipSource, sheetNames: readonly string[]): WorkbookPivotSnapshot[] | undefined {
+export function readImportedWorkbookPivots(
+  source: XlsxZipSource,
+  sheetNames: readonly string[],
+  tables: readonly WorkbookTableSnapshot[] = [],
+): WorkbookPivotSnapshot[] | undefined {
   const zip = readXlsxZipEntries(source)
-  const caches = parsePivotCaches(zip)
+  const caches = parsePivotCaches(zip, tables)
   if (caches.size === 0) {
     return undefined
   }
