@@ -59,6 +59,8 @@ describe('formula inventory', () => {
       'AVEDEV',
       'COMPLEX',
       'CONCATENATE',
+      'DATEVALUE',
+      'ENCODEURL',
       'IMABS',
       'LEGACY.NORMSDIST',
       'LEGACY.NORMSINV',

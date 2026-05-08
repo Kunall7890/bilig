@@ -72,6 +72,8 @@ const factoryBuiltinSources = [
   { filePath: mathBuiltinsPath, functionName: 'createMathBuiltins' },
   { filePath: radixBuiltinsPath, functionName: 'createRadixBuiltins' },
   { filePath: statisticalBuiltinsPath, functionName: 'createStatisticalBuiltins' },
+  { filePath: datetimeBuiltinsPath, functionName: 'createDateTimeBuiltins' },
+  { filePath: textBuiltinsPath, functionName: 'createTextBuiltins' },
   { filePath: textCoreBuiltinsPath, functionName: 'createTextCoreBuiltins' },
   { filePath: textFormatBuiltinsPath, functionName: 'createTextFormatBuiltins' },
   { filePath: textSearchBuiltinsPath, functionName: 'createTextSearchBuiltins' },

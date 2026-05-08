@@ -2,16 +2,16 @@
   "schemaVersion": 1,
   "formulaBreadth": {
     "officeListed": {
-      "production": 506,
+      "production": 508,
       "total": 508,
-      "percent": 99.6
+      "percent": 100
     },
     "tracked": {
-      "production": 523,
+      "production": 525,
       "total": 525,
-      "percent": 99.6
+      "percent": 100
     },
-    "missingOfficeFunctions": ["DATEVALUE", "ENCODEURL"]
+    "missingOfficeFunctions": []
   },
   "canonical": {
     "summary": {
