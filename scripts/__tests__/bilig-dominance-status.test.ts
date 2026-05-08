@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { buildBiligDominanceStatus, formatBiligDominanceStatusPathForMessage } from '../bilig-dominance-status.ts'
 import { buildSameCorpusProof, type SameCorpusCapture } from '../gen-ui-responsiveness-live-browser-scorecard.ts'
 import type { PublicWorkbookCorpusFinancialPlan } from '../public-workbook-corpus-financial-plan.ts'
+import type { PublicWorkbookCorpusFeatureWitnessPlan } from '../public-workbook-corpus-feature-witness-plan.ts'
 import type { PublicWorkbookCorpusStatus } from '../public-workbook-corpus-status.ts'
 import { buildFixtureInput } from './bilig-dominance-scorecard.fixture.ts'
 
@@ -152,6 +153,35 @@ describe('bilig dominance status', () => {
     })
   })
 
+  it('exposes feature witness coverage and targeted discovery commands in dominance status', () => {
+    const status = buildBiligDominanceStatus({
+      input: buildFixtureInput(),
+      featureWitnessPlan: featureWitnessPlanFixture(),
+      financialCorpusStatus: completeFinancialCorpusStatus(),
+      publicWorkbookCorpusStatus: completePublicWorkbookCorpusStatus(),
+      stopMarkerActive: true,
+      stopMarkerPath: '.agent-coordination/stop.md',
+    })
+
+    expect(status.publicWorkbookCorpus.featureWitnessPlan).toMatchObject({
+      recordedCaseCount: 9_880,
+      missingWitnessCount: 1,
+      nextPlanCommand: 'pnpm public-workbook-corpus:feature-witness:plan',
+      nextCheckCommand: 'pnpm public-workbook-corpus:feature-witness:check',
+      coverage: [
+        {
+          id: 'pivots',
+          label: 'pivots',
+          totalCount: 0,
+          witnessCaseCount: 0,
+          needsWitness: true,
+          discoveryQuery: 'pivot table xlsx',
+          nextDiscoverCommand: expect.stringContaining("--query 'pivot table xlsx'"),
+        },
+      ],
+    })
+  })
+
   it('formats repo-local status paths without exposing the checkout root', () => {
     expect(formatBiligDominanceStatusPathForMessage('/repo/.cache/public-workbook-corpus/manifest.json', '/repo')).toBe(
       '.cache/public-workbook-corpus/manifest.json',
@@ -246,6 +276,36 @@ function financialPlanFixture(): PublicWorkbookCorpusFinancialPlan {
       check: 'pnpm public-workbook-corpus:check-financial',
     },
     sampledCandidateSources: [],
+  }
+}
+
+function featureWitnessPlanFixture(): PublicWorkbookCorpusFeatureWitnessPlan {
+  return {
+    schemaVersion: 1,
+    mode: 'feature-witness-plan',
+    generatedAt: '2026-05-08T10:00:00.000Z',
+    stopMarker: {
+      active: true,
+      path: '.agent-coordination/stop.md',
+      overrideFlag: '--allow-active-stop-marker',
+      overrideEnvVar: 'BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE',
+    },
+    recordedCaseCount: 9_880,
+    coverage: [
+      {
+        id: 'pivots',
+        label: 'pivots',
+        totalCount: 0,
+        witnessCaseCount: 0,
+        needsWitness: true,
+        discoveryQuery: 'pivot table xlsx',
+        commands: {
+          discover:
+            "BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE=1 pnpm public-workbook-corpus:discover -- --manifest .cache/public-workbook-corpus/manifest.json --cache-dir .cache/public-workbook-corpus --query 'pivot table xlsx' --limit 10000 --allow-active-stop-marker",
+        },
+      },
+    ],
+    missingWitnessCount: 1,
   }
 }
 

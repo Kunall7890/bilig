@@ -19,6 +19,10 @@ import { readReusablePublicWorkbookCorpusCases } from './public-workbook-corpus-
 import { financialWorkbookTargetCount } from './public-workbook-corpus-completion-audit-helpers.ts'
 import type { PublicWorkbookManifest } from './public-workbook-corpus-types.ts'
 import { buildPublicWorkbookCorpusFinancialPlan, type PublicWorkbookCorpusFinancialPlan } from './public-workbook-corpus-financial-plan.ts'
+import {
+  buildPublicWorkbookCorpusFeatureWitnessPlan,
+  type PublicWorkbookCorpusFeatureWitnessPlan,
+} from './public-workbook-corpus-feature-witness-plan.ts'
 
 export interface BiligDominanceStatus {
   readonly goalStatus: 'achieved' | 'active-not-achieved'
@@ -36,6 +40,21 @@ export interface BiligDominanceStatus {
     readonly financialCachedArtifactCount: number | null
     readonly recordedFinancialManifestArtifactCount: number | null
     readonly recordedFinancialNonPassingCaseCount: number | null
+    readonly featureWitnessPlan: {
+      readonly recordedCaseCount: number
+      readonly missingWitnessCount: number
+      readonly nextPlanCommand: string
+      readonly nextCheckCommand: string
+      readonly coverage: readonly {
+        readonly id: string
+        readonly label: string
+        readonly totalCount: number
+        readonly witnessCaseCount: number
+        readonly needsWitness: boolean
+        readonly discoveryQuery: string
+        readonly nextDiscoverCommand: string
+      }[]
+    } | null
     readonly financialPlan: {
       readonly sourceCount: number
       readonly targetArtifactCount: number
@@ -188,7 +207,18 @@ export function buildBiligDominanceStatusFromArgs(): BiligDominanceStatus {
     targetWorkbookCount: financialTargetWorkbookCount,
     verifyCheckpointPath: financialVerifyCheckpointPath,
   })
+  const featureWitnessPlan = buildPublicWorkbookCorpusFeatureWitnessPlan({
+    cacheDir,
+    cases: readReusablePublicWorkbookCorpusCases([scorecardPath, verifyCheckpointPath]),
+    discoveryLimit: publicWorkbookCorpusStatus.targetWorkbookCount,
+    displayRootDir: rootDir,
+    generatedAt: new Date().toISOString(),
+    manifestPath,
+    stopMarkerActive,
+    stopMarkerPath,
+  })
   return buildBiligDominanceStatus({
+    featureWitnessPlan,
     fetchPlan,
     financialCorpusPlan,
     financialCorpusStatus,
@@ -202,6 +232,7 @@ export function buildBiligDominanceStatusFromArgs(): BiligDominanceStatus {
 }
 
 export function buildBiligDominanceStatus(args: {
+  readonly featureWitnessPlan?: PublicWorkbookCorpusFeatureWitnessPlan | null
   readonly fetchPlan?: PublicWorkbookCorpusFetchPlan | null
   readonly financialCorpusPlan?: PublicWorkbookCorpusFinancialPlan | null
   readonly financialCorpusStatus?: FinancialWorkbookCorpusStatus | null
@@ -241,6 +272,7 @@ export function buildBiligDominanceStatus(args: {
       financialCachedArtifactCount: args.financialCorpusStatus?.cachedArtifactCount ?? null,
       recordedFinancialManifestArtifactCount: args.financialCorpusStatus?.recordedManifestArtifactCount ?? null,
       recordedFinancialNonPassingCaseCount: args.financialCorpusStatus?.recordedNonPassingCaseCount ?? null,
+      featureWitnessPlan: args.featureWitnessPlan ? buildFeatureWitnessPlanStatus(args.featureWitnessPlan) : null,
       financialPlan: args.financialCorpusPlan ? buildFinancialPlanStatus(args.financialCorpusPlan) : null,
       fetchCandidateSourceCount: args.fetchPlan?.candidateSourceCount ?? null,
       fetchCandidateSourceDeficitCount: args.fetchPlan?.candidateSourceDeficitCount ?? null,
@@ -350,6 +382,26 @@ function buildFinancialPlanStatus(
     nextFetchPlanCommand: plan.commands.fetchPlan,
     nextFetchCommand: plan.commands.fetch,
     nextVerifyCommand: plan.commands.verify,
+  }
+}
+
+function buildFeatureWitnessPlanStatus(
+  plan: PublicWorkbookCorpusFeatureWitnessPlan,
+): NonNullable<BiligDominanceStatus['publicWorkbookCorpus']['featureWitnessPlan']> {
+  return {
+    recordedCaseCount: plan.recordedCaseCount,
+    missingWitnessCount: plan.missingWitnessCount,
+    nextPlanCommand: 'pnpm public-workbook-corpus:feature-witness:plan',
+    nextCheckCommand: 'pnpm public-workbook-corpus:feature-witness:check',
+    coverage: plan.coverage.map((entry) => ({
+      id: entry.id,
+      label: entry.label,
+      totalCount: entry.totalCount,
+      witnessCaseCount: entry.witnessCaseCount,
+      needsWitness: entry.needsWitness,
+      discoveryQuery: entry.discoveryQuery,
+      nextDiscoverCommand: entry.commands.discover,
+    })),
   }
 }
 
