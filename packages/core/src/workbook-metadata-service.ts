@@ -568,6 +568,7 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
         const stored: WorkbookSheetProtectionRecord = cloneSheetProtectionRecord({
           sheetName: record.sheetName,
           ...(record.hideFormulas !== undefined ? { hideFormulas: record.hideFormulas } : {}),
+          ...(record.xmlAttributes ? { xmlAttributes: record.xmlAttributes.map((attribute) => ({ ...attribute })) } : {}),
         })
         metadata.sheetProtections.set(record.sheetName, stored)
         return cloneSheetProtectionRecord(stored)

@@ -2,6 +2,7 @@ import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { XMLParser } from 'fast-xml-parser'
 
 import type { WorkbookSheetProtectionSnapshot, WorkbookSnapshot } from '@bilig/protocol'
+import { escapeXmlAttribute } from './xlsx-export-xml.js'
 import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 type ZipEntries = Record<string, Uint8Array>
@@ -63,8 +64,53 @@ function isFalseAttribute(value: unknown): boolean {
   return value === false || value === '0' || value === 'false'
 }
 
-function insertWorksheetSheetProtection(sheetXml: string): string {
-  const sheetProtection = '<sheetProtection sheet="1"/>'
+const xmlNamePattern = /^[A-Za-z_:][\w:.-]*$/u
+const xmlNamedEntities: Readonly<Record<string, string>> = {
+  amp: '&',
+  apos: "'",
+  gt: '>',
+  lt: '<',
+  quot: '"',
+}
+
+function unescapeXmlAttribute(value: string): string {
+  return value.replace(
+    /&#x([0-9a-fA-F]+);|&#([0-9]+);|&(quot|apos|lt|gt|amp);/gu,
+    (match, hex: string | undefined, decimal: string | undefined, named: string | undefined) => {
+      if (hex || decimal) {
+        const codePoint = Number.parseInt(hex ?? decimal ?? '', hex ? 16 : 10)
+        return Number.isSafeInteger(codePoint) && codePoint >= 0 && codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : match
+      }
+      return named ? (xmlNamedEntities[named] ?? match) : match
+    },
+  )
+}
+
+function readSheetProtectionXmlAttributes(sheetXml: string): WorkbookSheetProtectionSnapshot['xmlAttributes'] | undefined {
+  const match = /<sheetProtection\b[^>]*(?:\/>|>[\s\S]*?<\/sheetProtection>)/u.exec(sheetXml)
+  if (!match) {
+    return undefined
+  }
+  const attributes = [...match[0].matchAll(/\s([A-Za-z_:][\w:.-]*)=(?:"([^"]*)"|'([^']*)')/gu)].map((attributeMatch) => ({
+    name: attributeMatch[1] ?? '',
+    value: unescapeXmlAttribute(attributeMatch[2] ?? attributeMatch[3] ?? ''),
+  }))
+  if (attributes.length === 1 && attributes[0]?.name === 'sheet' && attributes[0].value === '1') {
+    return undefined
+  }
+  return attributes.length > 0 ? attributes : undefined
+}
+
+function buildWorksheetSheetProtectionXml(protection: WorkbookSheetProtectionSnapshot): string {
+  const attributes = (protection.xmlAttributes ?? []).filter((attribute) => xmlNamePattern.test(attribute.name))
+  if (attributes.length === 0) {
+    return '<sheetProtection sheet="1"/>'
+  }
+  return `<sheetProtection${attributes.map((attribute) => ` ${attribute.name}="${escapeXmlAttribute(attribute.value)}"`).join('')}/>`
+}
+
+function insertWorksheetSheetProtection(sheetXml: string, protection: WorkbookSheetProtectionSnapshot): string {
+  const sheetProtection = buildWorksheetSheetProtectionXml(protection)
   if (/<sheetProtection\b/u.test(sheetXml)) {
     return sheetXml.replace(/<sheetProtection\b[^>]*(?:\/>|>[\s\S]*?<\/sheetProtection>)/u, sheetProtection)
   }
@@ -95,12 +141,13 @@ export function addExportSheetProtectionsToXlsxBytes(bytes: Uint8Array, snapshot
       if (sheet.metadata?.sheetProtection?.sheetName !== sheet.name) {
         return
       }
+      const sheetProtection = sheet.metadata.sheetProtection
       const sheetPath = `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`
       const sheetXml = getZipText(zip, sheetPath)
       if (!sheetXml) {
         return
       }
-      setZipText(zip, sheetPath, insertWorksheetSheetProtection(sheetXml))
+      setZipText(zip, sheetPath, insertWorksheetSheetProtection(sheetXml, sheetProtection))
       changed = true
     })
 
@@ -124,7 +171,11 @@ export function readImportedWorkbookSheetProtections(
     if (!sheetProtection || isFalseAttribute(sheetProtection['sheet'])) {
       return
     }
-    protectionsBySheet.set(sheetName, { sheetName })
+    const xmlAttributes = readSheetProtectionXmlAttributes(sheetXml)
+    protectionsBySheet.set(sheetName, {
+      sheetName,
+      ...(xmlAttributes ? { xmlAttributes } : {}),
+    })
   })
 
   return protectionsBySheet

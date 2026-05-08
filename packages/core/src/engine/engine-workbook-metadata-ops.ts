@@ -17,6 +17,7 @@ export function buildSetSheetProtectionOps(workbook: WorkbookStore, protection: 
   const normalized: WorkbookSheetProtectionSnapshot = {
     sheetName: protection.sheetName,
     ...(protection.hideFormulas !== undefined ? { hideFormulas: protection.hideFormulas } : {}),
+    ...(protection.xmlAttributes ? { xmlAttributes: protection.xmlAttributes.map((attribute) => ({ ...attribute })) } : {}),
   }
   if (existing && JSON.stringify(existing) === JSON.stringify(normalized)) {
     return null

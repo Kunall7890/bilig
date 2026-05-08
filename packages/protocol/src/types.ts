@@ -677,9 +677,15 @@ export interface WorkbookConditionalFormatSnapshot {
   priority?: number
 }
 
+export interface WorkbookSheetProtectionXmlAttributeSnapshot {
+  name: string
+  value: string
+}
+
 export interface WorkbookSheetProtectionSnapshot {
   sheetName: string
   hideFormulas?: boolean
+  xmlAttributes?: WorkbookSheetProtectionXmlAttributeSnapshot[]
 }
 
 export interface WorkbookRangeProtectionSnapshot {

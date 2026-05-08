@@ -265,6 +265,7 @@ export function cloneSheetProtectionRecord(record: WorkbookSheetProtectionRecord
   return {
     sheetName: record.sheetName,
     ...(record.hideFormulas !== undefined ? { hideFormulas: record.hideFormulas } : {}),
+    ...(record.xmlAttributes ? { xmlAttributes: record.xmlAttributes.map((attribute) => ({ ...attribute })) } : {}),
   }
 }
 

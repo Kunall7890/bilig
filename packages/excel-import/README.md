@@ -48,6 +48,10 @@ Workbook calculation properties such as iterative calculation, iteration count
 and delta, forced recalculation, concurrent calculation, and manual calculation
 mode are preserved from XLSX `<calcPr>` metadata on roundtrip.
 
+Worksheet protection elements preserve non-default XML attributes from source
+workbooks, so protected sheets are not normalized into a different
+`<sheetProtection sheet="1"/>` state during no-op roundtrips.
+
 ## CSV Import
 
 ```ts
