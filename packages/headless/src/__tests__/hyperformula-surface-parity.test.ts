@@ -15,6 +15,7 @@ const ALLOWED_BILIG_INSTANCE_METHODS = [
   'onDetailed',
   'onceDetailed',
   'resetPerformanceCounters',
+  'transaction',
 ] as const
 const ALLOWED_BILIG_INSTANCE_ACCESSORS = ['internals'] as const
 const ALLOWED_BILIG_STATIC_METHODS = ['buildFromSnapshot'] as const
