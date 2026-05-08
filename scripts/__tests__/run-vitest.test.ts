@@ -31,15 +31,16 @@ describe('run-vitest wrapper arguments', () => {
   })
 
   it('splits large CI run file lists into serial batches', () => {
-    const files = Array.from({ length: 13 }, (_, index) => `test-${index + 1}.test.ts`)
+    const files = Array.from({ length: 7 }, (_, index) => `test-${index + 1}.test.ts`)
 
     expect(
       buildVitestArgBatches(['--run', ...files], {
         BILIG_CI_PROFILE: 'fast',
       }),
     ).toEqual([
-      ['--run', ...files.slice(0, 12), '--maxWorkers', '1'],
-      ['--run', files[12], '--maxWorkers', '1'],
+      ['--run', ...files.slice(0, 3), '--maxWorkers', '1'],
+      ['--run', ...files.slice(3, 6), '--maxWorkers', '1'],
+      ['--run', files[6], '--maxWorkers', '1'],
     ])
   })
 

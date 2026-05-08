@@ -5,7 +5,7 @@ import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { ensureWasmKernelArtifact } from './ensure-wasm-kernel.js'
 
-const DEFAULT_CI_FILE_CHUNK_SIZE = 12
+const DEFAULT_CI_FILE_CHUNK_SIZE = 3
 const DEFAULT_CI_BATCH_COOLDOWN_MS = 1_000
 
 export function buildVitestArgs(args: readonly string[], env: NodeJS.ProcessEnv = process.env): string[] {
