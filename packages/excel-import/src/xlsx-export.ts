@@ -9,6 +9,7 @@ import type {
   WorkbookMergeRangeSnapshot,
   WorkbookSnapshot,
 } from '@bilig/protocol'
+import { addExportCellMetadataToXlsxBytes } from './xlsx-cell-metadata.js'
 import { addExportCalculationSettingsToXlsxBytes } from './xlsx-calculation-settings.js'
 import { addExportChartsToXlsxBytes } from './xlsx-charts.js'
 import { addExportLegacyCommentVmlToXlsxBytes } from './xlsx-comment-vml.js'
@@ -875,5 +876,8 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
   const styledBytes = preserveSnapshotStyles(enrichedBytes, snapshot)
   const formattedBytes = preserveSnapshotNumberFormats(styledBytes, exportSheetFormats)
   const dimensionedBytes = addExportWorksheetDimensionsToXlsxBytes(formattedBytes, snapshot)
-  return addExportPrinterSettingsToXlsxBytes(addExportLegacyCommentVmlToXlsxBytes(dimensionedBytes, snapshot), snapshot)
+  return addExportCellMetadataToXlsxBytes(
+    addExportPrinterSettingsToXlsxBytes(addExportLegacyCommentVmlToXlsxBytes(dimensionedBytes, snapshot), snapshot),
+    snapshot,
+  )
 }

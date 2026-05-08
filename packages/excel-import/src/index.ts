@@ -22,6 +22,7 @@ import type {
 } from '@bilig/protocol'
 import { readImportedArrayFormulaSpills } from './xlsx-array-formulas.js'
 import { readImportedWorkbookCalculationSettings } from './xlsx-calculation-settings.js'
+import { buildImportedCellMetadataReferenceSnapshots, readImportedWorkbookCellMetadata } from './xlsx-cell-metadata.js'
 import { readImportedWorkbookCharts } from './xlsx-charts.js'
 import { legacyCommentThreadSignature, readImportedWorkbookLegacyCommentVml, type ImportedLegacyCommentVml } from './xlsx-comment-vml.js'
 import { readImportedSheetComments } from './xlsx-comments.js'
@@ -55,6 +56,7 @@ import {
 } from './workbook-import-helpers.js'
 import { readImportedExternalLinkCaches, translateImportedFormulaExternalReferences } from './xlsx-external-references.js'
 import { translateImportedFormulaStructuredReferences } from './xlsx-formula-translation.js'
+import { buildImportedSheetMetadata } from './xlsx-import-sheet-metadata.js'
 import { createPreservedVbaProjectPayload, type PreservedVbaProjectCodeNames } from './xlsx-macros.js'
 import { worksheetCellAt, worksheetCellEntries, worksheetCellEntriesAtAddresses, worksheetCellRecords } from './xlsx-worksheet-cells.js'
 
@@ -681,6 +683,7 @@ function importSheetJsWorkbook(
   const importedCalculationSettings = workbookZip ? readImportedWorkbookCalculationSettings(workbookZip) : undefined
   const importedMacroPayload = toUint8Array(workbook.vbaraw)
   const importedMacroCodeNames = importedMacroPayload ? readImportedMacroCodeNames(workbook) : undefined
+  const importedCellMetadata = workbookZip ? readImportedWorkbookCellMetadata(workbookZip, workbook.SheetNames) : undefined
   const importedCharts = workbookZip ? readImportedWorkbookCharts(workbookZip, workbook.SheetNames) : undefined
   const importedPivots = workbookZip ? readImportedWorkbookPivots(workbookZip, workbook.SheetNames) : undefined
   const importedTables = workbookZip ? readImportedWorkbookTables(workbookZip, workbook.SheetNames) : undefined
@@ -862,50 +865,30 @@ function importSheetJsWorkbook(
     const importedValidations = importedValidationsBySheet.get(sheetName)
     const importedConditionalFormats = importedConditionalFormatsBySheet.get(sheetName)
     const importedPrinterSettings = importedPrinterSettingsBySheet.get(sheetName)
-    const metadata =
-      rows ||
-      columns ||
-      rowMetadata ||
-      columnMetadata ||
-      sheetFormatPr ||
-      styleRanges.length > 0 ||
-      importedFreezePane ||
-      importedSheetTabColor ||
-      importedSheetPr ||
-      importedSheetVisibility ||
-      merges ||
-      importedSheetProtection ||
-      importedProtectedRanges ||
-      importedSorts ||
-      importedFilters ||
-      importedValidations ||
-      importedConditionalFormats ||
-      importedComments.commentThreads ||
-      importedLegacyCommentVml ||
-      importedPrinterSettings
-        ? {
-            ...(rows ? { rows } : {}),
-            ...(columns ? { columns } : {}),
-            ...(rowMetadata ? { rowMetadata } : {}),
-            ...(columnMetadata ? { columnMetadata } : {}),
-            ...(sheetFormatPr ? { sheetFormatPr } : {}),
-            ...(styleRanges.length > 0 ? { styleRanges } : {}),
-            ...(importedFreezePane ? { freezePane: importedFreezePane } : {}),
-            ...(importedSheetTabColor ? { tabColor: importedSheetTabColor } : {}),
-            ...(importedSheetPr ? { sheetPr: importedSheetPr } : {}),
-            ...(importedSheetVisibility ? { visibility: importedSheetVisibility } : {}),
-            ...(merges ? { merges } : {}),
-            ...(importedSheetProtection ? { sheetProtection: importedSheetProtection } : {}),
-            ...(importedProtectedRanges ? { protectedRanges: importedProtectedRanges } : {}),
-            ...(importedSorts ? { sorts: importedSorts } : {}),
-            ...(importedFilters ? { filters: importedFilters } : {}),
-            ...(importedValidations ? { validations: importedValidations } : {}),
-            ...(importedConditionalFormats ? { conditionalFormats: importedConditionalFormats } : {}),
-            ...(importedComments.commentThreads ? { commentThreads: importedComments.commentThreads } : {}),
-            ...(importedLegacyCommentVml ? { legacyCommentVml: importedLegacyCommentVml } : {}),
-            ...(importedPrinterSettings ? { printerSettings: importedPrinterSettings } : {}),
-          }
-        : undefined
+    const importedCellMetadataRefs = buildImportedCellMetadataReferenceSnapshots(importedCellMetadata?.refsBySheet.get(sheetName), cells)
+    const metadata = buildImportedSheetMetadata({
+      rows,
+      columns,
+      rowMetadata,
+      columnMetadata,
+      sheetFormatPr,
+      ...(styleRanges.length > 0 ? { styleRanges } : {}),
+      freezePane: importedFreezePane,
+      tabColor: importedSheetTabColor,
+      sheetPr: importedSheetPr,
+      visibility: importedSheetVisibility,
+      merges,
+      sheetProtection: importedSheetProtection,
+      protectedRanges: importedProtectedRanges,
+      sorts: importedSorts,
+      filters: importedFilters,
+      validations: importedValidations,
+      conditionalFormats: importedConditionalFormats,
+      commentThreads: importedComments.commentThreads,
+      legacyCommentVml: importedLegacyCommentVml,
+      printerSettings: importedPrinterSettings,
+      cellMetadataRefs: importedCellMetadataRefs,
+    })
 
     return {
       id: order + 1,
@@ -926,6 +909,7 @@ function importSheetJsWorkbook(
     ...(importedArrayFormulaSpills.length > 0 ? { spills: importedArrayFormulaSpills } : {}),
     ...(importedPivots ? { pivots: importedPivots } : {}),
     ...(importedCharts ? { charts: importedCharts } : {}),
+    ...(importedCellMetadata?.workbookMetadata ? { cellMetadata: importedCellMetadata.workbookMetadata } : {}),
   }
 
   return {

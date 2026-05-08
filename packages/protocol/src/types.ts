@@ -738,6 +738,18 @@ export interface WorkbookSheetPrSnapshot {
 
 export type WorkbookSheetVisibilitySnapshot = 'hidden' | 'veryHidden'
 
+export interface WorkbookCellMetadataSnapshot {
+  relationshipTarget: string
+  metadataXml: string
+}
+
+export interface WorkbookCellMetadataReferenceSnapshot {
+  address: string
+  cellSignature: string
+  cm?: string
+  vm?: string
+}
+
 export interface WorkbookMetadataSnapshot {
   properties?: WorkbookPropertySnapshot[]
   definedNames?: WorkbookDefinedNameSnapshot[]
@@ -752,6 +764,7 @@ export interface WorkbookMetadataSnapshot {
   macroPayloads?: WorkbookMacroPayloadSnapshot[]
   calculationSettings?: WorkbookCalculationSettingsSnapshot
   volatileContext?: WorkbookVolatileContextSnapshot
+  cellMetadata?: WorkbookCellMetadataSnapshot
 }
 
 export interface SheetMetadataSnapshot {
@@ -777,6 +790,7 @@ export interface SheetMetadataSnapshot {
   printerSettings?: WorkbookPrinterSettingsSnapshot[]
   sheetPr?: WorkbookSheetPrSnapshot
   visibility?: WorkbookSheetVisibilitySnapshot
+  cellMetadataRefs?: WorkbookCellMetadataReferenceSnapshot[]
 }
 
 export interface WorkbookSnapshot {
