@@ -117,8 +117,6 @@ const ARRAY_CONTEXT_ALL_ARGUMENT_CALLEES = new Set([
   'SKEW',
   'SKEW.P',
   'KURT',
-  'AND',
-  'OR',
   'BYROW',
   'BYCOL',
   'MAP',

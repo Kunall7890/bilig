@@ -10,7 +10,7 @@ function expectNumber(value: CellValue, expected: number): void {
   expect(value.value).toBeCloseTo(expected, 12)
 }
 
-describe('GitHub issue #120 INDIRECT out-of-grid defined names', () => {
+describe('GitHub issue #120 workbook defined-name semantics', () => {
   it('resolves names like change1 through INDIRECT instead of invalid far-right cells', () => {
     const snapshot: WorkbookSnapshot = {
       version: 1,
@@ -59,6 +59,50 @@ describe('GitHub issue #120 INDIRECT out-of-grid defined names', () => {
     try {
       expectNumber(workbook.getCellValue({ sheet: mainSheetId, row: 4, col: 9 }), 2.5)
       expectNumber(workbook.getCellValue({ sheet: mainSheetId, row: 4, col: 19 }), 1)
+    } finally {
+      workbook.dispose()
+    }
+  })
+
+  it('intersects row-vector defined names in scalar logical formulas', () => {
+    const snapshot: WorkbookSnapshot = {
+      version: 1,
+      workbook: {
+        name: 'issue-120-root-row-vector-intersection',
+        metadata: {
+          definedNames: [
+            { name: 'root1', value: { kind: 'range-ref', sheetName: 'Main', startAddress: 'B51', endAddress: 'D51' } },
+            { name: 'root2', value: { kind: 'range-ref', sheetName: 'Main', startAddress: 'B52', endAddress: 'D52' } },
+          ],
+        },
+      },
+      sheets: [
+        {
+          id: 1,
+          name: 'Main',
+          order: 0,
+          cells: [
+            { address: 'B51', value: 1 },
+            { address: 'C51', value: 2 },
+            { address: 'D51', value: 0.5 },
+            { address: 'B52', value: 10 },
+            { address: 'C52', value: 20 },
+            { address: 'D52', value: 30 },
+            { address: 'B54', formula: 'IF(AND(root1<=1,root1>=0),root1,root2)' },
+            { address: 'C54', formula: 'IF(AND(root1<=1,root1>=0),root1,root2)' },
+            { address: 'D54', formula: 'IF(AND(root1<=1,root1>=0),root1,root2)' },
+          ],
+        },
+      ],
+    }
+
+    const workbook = WorkPaper.buildFromSnapshot(snapshot, { maxRows: 64, maxColumns: 8, useColumnIndex: true })
+    const mainSheetId = workbook.getSheetId('Main')!
+
+    try {
+      expectNumber(workbook.getCellValue({ sheet: mainSheetId, row: 53, col: 1 }), 1)
+      expectNumber(workbook.getCellValue({ sheet: mainSheetId, row: 53, col: 2 }), 20)
+      expectNumber(workbook.getCellValue({ sheet: mainSheetId, row: 53, col: 3 }), 0.5)
     } finally {
       workbook.dispose()
     }
