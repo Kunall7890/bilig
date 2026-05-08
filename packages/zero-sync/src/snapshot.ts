@@ -268,6 +268,9 @@ function withSheetMetadataFallback(
   if (fallback?.ignoredErrors) {
     next.ignoredErrors = fallback.ignoredErrors
   }
+  if (fallback?.sparklines) {
+    next.sparklines = fallback.sparklines
+  }
   if (fallback?.merges) {
     next.merges = fallback.merges
   }

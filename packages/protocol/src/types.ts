@@ -766,6 +766,10 @@ export interface WorkbookIgnoredErrorsSnapshot {
   xml: string
 }
 
+export interface WorkbookSparklinesSnapshot {
+  xml: string
+}
+
 export type WorkbookSheetVisibilitySnapshot = 'hidden' | 'veryHidden'
 
 export interface WorkbookCellMetadataSnapshot {
@@ -822,6 +826,7 @@ export interface SheetMetadataSnapshot {
   printerSettings?: WorkbookPrinterSettingsSnapshot[]
   sheetPr?: WorkbookSheetPrSnapshot
   ignoredErrors?: WorkbookIgnoredErrorsSnapshot
+  sparklines?: WorkbookSparklinesSnapshot
   visibility?: WorkbookSheetVisibilitySnapshot
   cellMetadataRefs?: WorkbookCellMetadataReferenceSnapshot[]
 }

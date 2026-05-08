@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx'
-import { strFromU8, strToU8, unzipSync, zipSync, type Unzipped } from 'fflate'
+import { unzipSync, type Unzipped } from 'fflate'
 
 import { parseCsv, parseCsvCellInput, resolveCsvParseOptions, type CsvParseOptions } from '@bilig/core'
 import type {
@@ -39,6 +39,8 @@ import { readImportedWorkbookSheetProperties } from './xlsx-sheet-properties.js'
 import { readImportedWorkbookSheetProtections } from './xlsx-sheet-protection.js'
 import { readImportedWorkbookSheetVisibilities } from './xlsx-sheet-visibility.js'
 import { readImportedWorkbookSorts } from './xlsx-sorts.js'
+import { readImportedWorkbookSparklines } from './xlsx-sparklines.js'
+import { stripStyleOnlyBlankCellsForSheetJs } from './xlsx-style-only-blank-cells.js'
 import { mergeStyleRuns, styleRunsToRanges, type HorizontalStyleRun, type RectangularStyleRun } from './xlsx-style-runs.js'
 import { readImportedWorkbookFileStyles, readImportedWorkbookSheetDimensions } from './xlsx-styles.js'
 import { readImportedWorkbookSheetTabColors } from './xlsx-tab-colors.js'
@@ -99,7 +101,6 @@ export {
 export type { ExcelWorkbookImportContentType, WorkbookImportContentType } from './workbook-import-content-types.js'
 
 const largeWorkbookStyleCandidateThreshold = 100_000
-const xlsxWorksheetXmlPathPattern = /^xl\/worksheets\/[^/]+\.xml$/u
 const legacyExcelErrorTextByCode = new Map<number, string>([
   [0, '#NULL!'],
   [7, '#DIV/0!'],
@@ -134,37 +135,6 @@ export class InvalidXlsxZipContainerError extends Error {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
-}
-
-function isStyleOnlyBlankCellTag(tag: string): boolean {
-  const attributes = [...tag.matchAll(/\s([A-Za-z_:][\w:.-]*)=(?:"[^"]*"|'[^']*')/gu)].map((match) => match[1])
-  const attributeNames = new Set(attributes)
-  return attributeNames.size === 2 && attributeNames.has('r') && attributeNames.has('s')
-}
-
-function stripStyleOnlyBlankCells(sheetXml: string): string {
-  return sheetXml.replace(/<c\b[^>]*\/>/gu, (tag) => (isStyleOnlyBlankCellTag(tag) ? '' : tag))
-}
-
-function stripStyleOnlyBlankCellsForSheetJs(data: Uint8Array, zip: Unzipped): Uint8Array {
-  let changed = false
-  for (const path of Object.keys(zip)) {
-    if (!xlsxWorksheetXmlPathPattern.test(path)) {
-      continue
-    }
-    const worksheetBytes = zip[path]
-    if (!worksheetBytes) {
-      continue
-    }
-    const worksheetXml = strFromU8(worksheetBytes)
-    const strippedWorksheetXml = stripStyleOnlyBlankCells(worksheetXml)
-    if (strippedWorksheetXml === worksheetXml) {
-      continue
-    }
-    zip[path] = strToU8(strippedWorksheetXml)
-    changed = true
-  }
-  return changed ? zipSync(zip) : data
 }
 
 function normalizeRgbColor(value: unknown): string | null {
@@ -589,6 +559,7 @@ function importSheetJsWorkbook(
   const importedSheetTabColorsBySheet = workbookZip ? readImportedWorkbookSheetTabColors(workbookZip, workbook.SheetNames) : new Map()
   const importedSheetPropertiesBySheet = workbookZip ? readImportedWorkbookSheetProperties(workbookZip, workbook.SheetNames) : new Map()
   const importedIgnoredErrorsBySheet = workbookZip ? readImportedWorkbookIgnoredErrors(workbookZip, workbook.SheetNames) : new Map()
+  const importedSparklinesBySheet = workbookZip ? readImportedWorkbookSparklines(workbookZip, workbook.SheetNames) : new Map()
   const importedSheetVisibilitiesBySheet = readImportedWorkbookSheetVisibilities(workbook, workbook.SheetNames)
   const importedSheetProtectionsBySheet = workbookZip ? readImportedWorkbookSheetProtections(workbookZip, workbook.SheetNames) : new Map()
   const importedProtectedRangesBySheet = workbookZip ? readImportedWorkbookProtectedRanges(workbookZip, workbook.SheetNames) : new Map()
@@ -769,6 +740,7 @@ function importSheetJsWorkbook(
     const importedSheetTabColor = importedSheetTabColorsBySheet.get(sheetName)
     const importedSheetPr = importedSheetPropertiesBySheet.get(sheetName)
     const importedIgnoredErrors = importedIgnoredErrorsBySheet.get(sheetName)
+    const importedSparklines = importedSparklinesBySheet.get(sheetName)
     const importedSheetVisibility = importedSheetVisibilitiesBySheet.get(sheetName)
     const merges = buildMergeEntries(sheetName, sheet['!merges'])
     const importedSheetProtection = importedSheetProtectionsBySheet.get(sheetName)
@@ -790,6 +762,7 @@ function importSheetJsWorkbook(
       tabColor: importedSheetTabColor,
       sheetPr: importedSheetPr,
       ignoredErrors: importedIgnoredErrors,
+      sparklines: importedSparklines,
       visibility: importedSheetVisibility,
       merges,
       sheetProtection: importedSheetProtection,

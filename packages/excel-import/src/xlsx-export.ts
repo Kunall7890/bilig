@@ -33,6 +33,7 @@ import { decodePreservedVbaProjectPayload } from './xlsx-macros.js'
 import { addExportPrinterSettingsToXlsxBytes } from './xlsx-printer-settings.js'
 import { addExportWorksheetPropertiesToXlsxBytes } from './xlsx-sheet-properties.js'
 import { applyExportSheetVisibilitiesToWorkbook } from './xlsx-sheet-visibility.js'
+import { addExportSparklinesToXlsxBytes } from './xlsx-sparklines.js'
 import { addExportHyperlinksToWorksheet, hasExportHyperlinks } from './xlsx-hyperlinks.js'
 import {
   addCustomNumberFormatsToStylesXml,
@@ -889,8 +890,9 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
   const formattedBytes = preserveSnapshotNumberFormats(styledBytes, exportSheetFormats)
   const dimensionedBytes = addExportWorksheetDimensionsToXlsxBytes(formattedBytes, snapshot)
   const ignoredErrorsBytes = addExportIgnoredErrorsToXlsxBytes(dimensionedBytes, snapshot)
+  const sparklineBytes = addExportSparklinesToXlsxBytes(ignoredErrorsBytes, snapshot)
   return addExportCellMetadataToXlsxBytes(
-    addExportPrinterSettingsToXlsxBytes(addExportLegacyCommentVmlToXlsxBytes(ignoredErrorsBytes, snapshot), snapshot),
+    addExportPrinterSettingsToXlsxBytes(addExportLegacyCommentVmlToXlsxBytes(sparklineBytes, snapshot), snapshot),
     snapshot,
   )
 }
