@@ -14,6 +14,7 @@ interface PublicWorkbookCorpusCiPackageScriptPolicy {
 const ciOfflineCachedCorpusScriptNames = [
   'public-workbook-corpus:check:offline',
   'public-workbook-corpus:resume-plan:check',
+  'public-workbook-corpus:resource-limit:check',
   'public-workbook-corpus:resume-financial:check',
   'public-workbook-corpus:completion-audit:check',
   'test:correctness:corpus',
@@ -42,6 +43,11 @@ const ciOfflineCachedCorpusScriptPolicies: readonly PublicWorkbookCorpusCiPackag
   {
     name: 'public-workbook-corpus:resume-plan:check',
     requiredTokens: ['bun', 'scripts/public-workbook-corpus-resume-plan.ts', '--check'],
+    forbiddenTokens: ciUnsafeCorpusScriptTokens,
+  },
+  {
+    name: 'public-workbook-corpus:resource-limit:check',
+    requiredTokens: ['bun', 'scripts/public-workbook-corpus-resource-limit-plan.ts', '--check'],
     forbiddenTokens: ciUnsafeCorpusScriptTokens,
   },
   {

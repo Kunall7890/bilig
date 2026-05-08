@@ -4,7 +4,10 @@ import { fileURLToPath } from 'node:url'
 
 import { describe, expect, it } from 'vitest'
 
-import { buildPublicWorkbookCorpusResourceLimitPlan } from '../public-workbook-corpus-resource-limit-plan.ts'
+import {
+  buildPublicWorkbookCorpusResourceLimitPlan,
+  validatePublicWorkbookCorpusResourceLimitPlan,
+} from '../public-workbook-corpus-resource-limit-plan.ts'
 import { asRecord, createEmptyPublicWorkbookManifest } from '../public-workbook-corpus-json.ts'
 import type { PublicWorkbookArtifact, PublicWorkbookCorpusCase, PublicWorkbookManifest } from '../public-workbook-corpus-types.ts'
 
@@ -57,6 +60,47 @@ describe('public workbook corpus resource-limit plan', () => {
     expect(plan.currentSamples[0]?.probeCommand).not.toContain('--allow-active-stop-marker')
     expect(plan.currentSamples[0]?.checkpointRefreshCommand).toContain('BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE=1')
     expect(plan.currentSamples[0]?.checkpointRefreshCommand).toContain('--allow-active-stop-marker')
+    expect(validatePublicWorkbookCorpusResourceLimitPlan(plan)).toEqual([])
+  })
+
+  it('rejects inconsistent resource-limit plan counts and unsafe commands', () => {
+    const artifact = workbookArtifact('workbook-current', 2_000)
+    const plan = buildPublicWorkbookCorpusResourceLimitPlan({
+      cacheDir: '/repo/.cache/public-workbook-corpus',
+      displayRootDir: '/repo',
+      generatedAt: '2026-05-08T10:00:00.000Z',
+      manifest: manifestWithArtifacts([artifact]),
+      manifestPath: '/repo/.cache/public-workbook-corpus/manifest.json',
+      recordedCases: [resourceLimitedCase(artifact)],
+      sampleLimit: 10,
+      scorecardPath: '/repo/packages/benchmarks/baselines/public-workbook-corpus-scorecard.json',
+      stopMarkerActive: true,
+      stopMarkerPath: '/repo/.agent-coordination/stop.md',
+      verifyCheckpointPath: '/repo/.cache/public-workbook-corpus/verification-checkpoint.json',
+      verifyMaxRssMiB: 1536,
+    })
+    const invalidPlan = {
+      ...plan,
+      currentState: {
+        ...plan.currentState,
+        staleResourceLimitCaseCount: 1,
+      },
+      currentSamples: [
+        {
+          ...plan.currentSamples[0],
+          classifications: [],
+          probeCommand: `${plan.currentSamples[0].probeCommand} --update-verify-checkpoint`,
+        },
+      ],
+    }
+
+    expect(validatePublicWorkbookCorpusResourceLimitPlan(invalidPlan)).toEqual(
+      expect.arrayContaining([
+        'current and stale resource-limit counts do not add up to total resource-limit cases',
+        'current sample is missing resource-limit classifications: workbook-current',
+        'current probe command mutates the verification checkpoint: workbook-current',
+      ]),
+    )
   })
 
   it('exposes a package script for non-mutating resource-limit planning', () => {
@@ -64,6 +108,7 @@ describe('public workbook corpus resource-limit plan', () => {
     const scripts = asRecord(packageJson['scripts'])
 
     expect(scripts['public-workbook-corpus:resource-limit:plan']).toBe('bun scripts/public-workbook-corpus-resource-limit-plan.ts')
+    expect(scripts['public-workbook-corpus:resource-limit:check']).toBe('bun scripts/public-workbook-corpus-resource-limit-plan.ts --check')
   })
 })
 

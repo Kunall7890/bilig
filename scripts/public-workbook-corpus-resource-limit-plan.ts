@@ -66,6 +66,27 @@ const defaultVerifyMaxRssMiB = 1536
 
 function main(): void {
   const plan = buildPublicWorkbookCorpusResourceLimitPlanFromArgs()
+  if (process.argv.includes('--check')) {
+    const findings = validatePublicWorkbookCorpusResourceLimitPlan(plan)
+    if (findings.length > 0) {
+      throw new Error(`Public workbook corpus resource-limit plan is invalid: ${findings.join('; ')}`)
+    }
+    process.stdout.write(
+      `${JSON.stringify(
+        {
+          mode: 'check',
+          schemaVersion: plan.schemaVersion,
+          generatedAt: plan.generatedAt,
+          currentState: plan.currentState,
+          currentSampleCount: plan.currentSamples.length,
+          staleSampleCount: plan.staleSamples.length,
+        },
+        null,
+        2,
+      )}\n`,
+    )
+    return
+  }
   process.stdout.write(`${JSON.stringify(plan, null, 2)}\n`)
 }
 
@@ -145,6 +166,57 @@ export function buildPublicWorkbookCorpusResourceLimitPlan(args: {
   }
 }
 
+export function validatePublicWorkbookCorpusResourceLimitPlan(plan: PublicWorkbookCorpusResourceLimitPlan): string[] {
+  const findings: string[] = []
+  if (plan.schemaVersion !== 1) {
+    findings.push(`unexpected schema version: ${String(plan.schemaVersion)}`)
+  }
+  if (plan.mode !== 'resource-limit-plan') {
+    findings.push(`unexpected mode: ${String(plan.mode)}`)
+  }
+  if (!plan.generatedAt.trim()) {
+    findings.push('generatedAt is empty')
+  }
+  if (plan.stopMarker.active && plan.stopMarker.overrideFlag !== publicCorpusStopMarkerOverrideFlag) {
+    findings.push('stop-marker override flag does not match corpus CLI guard')
+  }
+  if (plan.stopMarker.active && plan.stopMarker.overrideEnvVar !== publicCorpusStopMarkerOverrideEnvVar) {
+    findings.push('stop-marker override environment variable does not match corpus CLI guard')
+  }
+  const splitResourceLimitCount = plan.currentState.currentResourceLimitCaseCount + plan.currentState.staleResourceLimitCaseCount
+  if (splitResourceLimitCount !== plan.currentState.resourceLimitCaseCount) {
+    findings.push('current and stale resource-limit counts do not add up to total resource-limit cases')
+  }
+  if (plan.currentState.resourceLimitCaseCount > plan.currentState.recordedCaseCount) {
+    findings.push('resource-limit case count exceeds recorded case count')
+  }
+  if (plan.currentState.recordedCaseCount > plan.currentState.manifestArtifactCount) {
+    findings.push('recorded case count exceeds manifest artifact count')
+  }
+  validateClassificationCounts(
+    findings,
+    'current',
+    plan.currentState.currentResourceLimitCaseCount,
+    plan.currentState.currentClassifications,
+  )
+  validateClassificationCounts(findings, 'stale', plan.currentState.staleResourceLimitCaseCount, plan.currentState.staleClassifications)
+  if (plan.currentSamples.length > plan.currentState.currentResourceLimitCaseCount) {
+    findings.push('current sample count exceeds current resource-limit case count')
+  }
+  if (plan.staleSamples.length > plan.currentState.staleResourceLimitCaseCount) {
+    findings.push('stale sample count exceeds stale resource-limit case count')
+  }
+  for (const [bucket, entries] of [
+    ['current', plan.currentSamples],
+    ['stale', plan.staleSamples],
+  ] as const) {
+    for (const entry of entries) {
+      validatePlanEntry(findings, bucket, entry, plan.stopMarker.active)
+    }
+  }
+  return findings
+}
+
 function samplePlanEntries(
   entries: readonly { readonly artifact: PublicWorkbookArtifact; readonly recordedCase: PublicWorkbookCorpusCase }[],
   args: Parameters<typeof buildPublicWorkbookCorpusResourceLimitPlan>[0],
@@ -193,6 +265,72 @@ function formatVerifyArtifactCommand(
   return args.updateCheckpoint && args.stopMarkerActive
     ? `${publicCorpusStopMarkerOverrideEnvVar}=1 ${formatted} ${publicCorpusStopMarkerOverrideFlag}`
     : formatted
+}
+
+function validateClassificationCounts(
+  findings: string[],
+  bucket: 'current' | 'stale',
+  caseCount: number,
+  classifications: readonly PublicWorkbookCorpusUnsupportedClassificationCount[],
+): void {
+  const classificationTotal = classifications.reduce((sum, entry) => sum + entry.count, 0)
+  if (caseCount === 0 && classificationTotal !== 0) {
+    findings.push(`${bucket} classification count is nonzero without ${bucket} resource-limit cases`)
+  }
+  if (caseCount > 0 && classificationTotal < caseCount) {
+    findings.push(`${bucket} classification count is lower than ${bucket} resource-limit case count`)
+  }
+  for (const entry of classifications) {
+    if (!entry.classification.startsWith(resourceLimitClassificationPrefix)) {
+      findings.push(`${bucket} classification is not resource-limit-scoped: ${entry.classification}`)
+    }
+    if (entry.count <= 0) {
+      findings.push(`${bucket} classification has nonpositive count: ${entry.classification}`)
+    }
+  }
+}
+
+function validatePlanEntry(
+  findings: string[],
+  bucket: 'current' | 'stale',
+  entry: PublicWorkbookCorpusResourceLimitPlanEntry,
+  stopMarkerActive: boolean,
+): void {
+  if (!entry.id.trim() || !entry.fileName.trim() || !entry.cachePath.trim() || !entry.sourceUrl.trim()) {
+    findings.push(`${bucket} sample has empty identity or source fields: ${entry.id}`)
+  }
+  if (entry.byteSize < 0) {
+    findings.push(`${bucket} sample has negative byte size: ${entry.id}`)
+  }
+  if (entry.classifications.length === 0) {
+    findings.push(`${bucket} sample is missing resource-limit classifications: ${entry.id}`)
+  }
+  for (const classification of entry.classifications) {
+    if (!classification.startsWith(resourceLimitClassificationPrefix)) {
+      findings.push(`${bucket} sample classification is not resource-limit-scoped: ${entry.id}`)
+    }
+  }
+  if (!entry.rssEvidence.every((evidence) => evidence.startsWith('Public corpus verification RSS limit exceeded:'))) {
+    findings.push(`${bucket} sample has malformed RSS evidence: ${entry.id}`)
+  }
+  if (!entry.probeCommand.includes('public-workbook-corpus:verify-artifact')) {
+    findings.push(`${bucket} probe command is missing verify-artifact: ${entry.id}`)
+  }
+  if (!entry.probeCommand.includes(`--artifact-id ${entry.id}`)) {
+    findings.push(`${bucket} probe command is missing artifact id: ${entry.id}`)
+  }
+  if (entry.probeCommand.includes('--update-verify-checkpoint')) {
+    findings.push(`${bucket} probe command mutates the verification checkpoint: ${entry.id}`)
+  }
+  if (entry.probeCommand.includes(publicCorpusStopMarkerOverrideFlag)) {
+    findings.push(`${bucket} probe command bypasses the active stop marker: ${entry.id}`)
+  }
+  if (!entry.checkpointRefreshCommand.includes('--update-verify-checkpoint')) {
+    findings.push(`${bucket} checkpoint refresh command does not update the verification checkpoint: ${entry.id}`)
+  }
+  if (stopMarkerActive && !entry.checkpointRefreshCommand.includes(publicCorpusStopMarkerOverrideFlag)) {
+    findings.push(`${bucket} checkpoint refresh command is missing stop-marker override: ${entry.id}`)
+  }
 }
 
 function commandPath(path: string, displayRootDir: string | undefined): string {
