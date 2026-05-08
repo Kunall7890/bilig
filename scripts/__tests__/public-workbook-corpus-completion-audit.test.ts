@@ -94,7 +94,7 @@ describe('public workbook corpus completion audit', () => {
             'pnpm public-workbook-corpus:fetch-financial:plan',
           ],
           blockedCommands: [
-            'BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE=1 pnpm public-workbook-corpus:fetch-financial -- --limit 3 --allow-active-stop-marker',
+            'BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE=1 pnpm public-workbook-corpus:fetch-financial -- --limit 3 --fetch-batch-size 6 --allow-active-stop-marker',
           ],
         }),
       ]),

@@ -7,7 +7,8 @@ import type {
 } from './public-workbook-corpus-completion-audit-types.ts'
 
 const resumeFetchBatchSize = 6
-const financialFetchBatchSize = 20
+const financialFetchTrancheSize = 20
+const financialFetchBatchSize = 6
 
 export function buildPublicWorkbookCorpusAuditNextActions(args: {
   readonly currentState: PublicWorkbookCorpusAuditState
@@ -136,7 +137,9 @@ function resumeFinancialWorkbookBlockedCommands(state: PublicWorkbookCorpusAudit
         'public-workbook-corpus:fetch-financial',
         '--',
         '--limit',
-        String(Math.min(financialFetchBatchSize, missingFinancialArtifacts)),
+        String(Math.min(financialFetchTrancheSize, missingFinancialArtifacts)),
+        '--fetch-batch-size',
+        String(financialFetchBatchSize),
       ]),
     )
   }
