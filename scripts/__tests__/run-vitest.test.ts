@@ -1,6 +1,11 @@
+import { readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 import { buildVitestArgBatches, buildVitestArgs, readVitestBatchCooldownMs } from '../run-vitest.ts'
+
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 
 describe('run-vitest wrapper arguments', () => {
   it('bounds Vitest workers in CI by default', () => {
@@ -64,5 +69,14 @@ describe('run-vitest wrapper arguments', () => {
     expect(readVitestBatchCooldownMs({ BILIG_CI_PROFILE: 'fast' })).toBe(1000)
     expect(readVitestBatchCooldownMs({ BILIG_CI_PROFILE: 'fast', BILIG_VITEST_BATCH_COOLDOWN_MS: '0' })).toBe(0)
     expect(readVitestBatchCooldownMs({ BILIG_CI_PROFILE: 'fast', BILIG_VITEST_BATCH_COOLDOWN_MS: '2500' })).toBe(2500)
+  })
+
+  it('runs package Vitest wrappers through tsx instead of bun', () => {
+    const packageJson = readFileSync(resolve(repoRoot, 'package.json'), 'utf8')
+
+    expect(packageJson).toContain('"test": "tsx scripts/run-vitest.ts --run"')
+    expect(packageJson).toContain('"coverage": "tsx scripts/run-vitest.ts --run --coverage')
+    expect(packageJson).toContain('"test:watch": "tsx scripts/run-vitest.ts"')
+    expect(packageJson).not.toContain('bun scripts/run-vitest.ts')
   })
 })

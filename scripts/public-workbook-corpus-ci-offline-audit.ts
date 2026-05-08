@@ -72,7 +72,7 @@ const ciOfflineCachedCorpusScriptPolicies: readonly PublicWorkbookCorpusCiPackag
   },
   {
     name: 'test:correctness:corpus',
-    requiredTokens: ['bun', 'scripts/run-vitest.ts', '--run'],
+    requiredTokens: ['scripts/run-vitest.ts', '--run'],
     requiredSubstrings: [
       'scripts/__tests__/public-workbook-corpus.test.ts',
       'scripts/__tests__/public-workbook-corpus-cli.test.ts',

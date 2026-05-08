@@ -205,7 +205,7 @@ describe('public workbook corpus completion audit', () => {
     const result = auditPublicWorkbookCorpusCiOfflineCachedMode({
       scripts: offlineCiPackageScripts([
         ['public-workbook-corpus:check:offline', 'bun scripts/public-workbook-corpus.ts fetch'],
-        ['test:correctness:corpus', 'bun scripts/run-vitest.ts --run scripts/__tests__/public-workbook-corpus.test.ts'],
+        ['test:correctness:corpus', 'tsx scripts/run-vitest.ts --run scripts/__tests__/public-workbook-corpus.test.ts'],
       ]),
       ciSource: ciSourceFor(['public-workbook-corpus:resume-plan:check', 'test:correctness:corpus']),
     })
@@ -542,7 +542,7 @@ function offlineCiPackageScripts(overrides: readonly (readonly [string, string])
     [
       'test:correctness:corpus',
       [
-        'bun scripts/run-vitest.ts --run',
+        'tsx scripts/run-vitest.ts --run',
         'scripts/__tests__/public-workbook-corpus.test.ts',
         'scripts/__tests__/public-workbook-corpus-cli.test.ts',
         'scripts/__tests__/public-workbook-corpus-completion-audit.test.ts',
