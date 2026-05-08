@@ -66,6 +66,8 @@
     "public-workbook-corpus:verify": "bun scripts/public-workbook-corpus.ts verify",
     "public-workbook-corpus:verify-missing": "bun scripts/public-workbook-corpus.ts verify-missing",
     "public-workbook-corpus:verify-missing:plan": "bun scripts/public-workbook-corpus.ts verify-missing --dry-run --limit 20",
+    "public-workbook-corpus:verify-stale": "bun scripts/public-workbook-corpus.ts verify-stale",
+    "public-workbook-corpus:verify-stale:plan": "bun scripts/public-workbook-corpus.ts verify-stale --dry-run --limit 20",
     "public-workbook-corpus:refresh-scorecard-from-checkpoint": "bun scripts/public-workbook-corpus.ts refresh-scorecard-from-checkpoint",
     "public-workbook-corpus:refresh-scorecard-from-checkpoint:check": "bun scripts/public-workbook-corpus.ts refresh-scorecard-from-checkpoint --check",
     "public-workbook-corpus:verify-financial": "bun scripts/public-workbook-corpus.ts verify --manifest .cache/public-workbook-corpus-financial/manifest.json --cache-dir .cache/public-workbook-corpus-financial --scorecard .cache/public-workbook-corpus-financial/scorecard.json",

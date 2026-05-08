@@ -10,6 +10,7 @@ import { readPublicWorkbookCorpusStatus, type PublicWorkbookCorpusStatus } from 
 import { readReusablePublicWorkbookCorpusCases } from './public-workbook-corpus-verify-checkpoint.ts'
 import { readFlagArg, readStringArg } from './public-workbook-corpus-cli.ts'
 import { auditPublicWorkbookCorpusCiOfflineCachedMode } from './public-workbook-corpus-ci-offline-audit.ts'
+import { hasPublicWorkbookCorpusUsedRangeEvidence } from './public-workbook-corpus-evidence.ts'
 import type { PublicWorkbookCorpusCase, PublicWorkbookManifest } from './public-workbook-corpus-types.ts'
 
 export type PublicWorkbookCorpusCompletionStatus = 'achieved' | 'active-not-achieved'
@@ -451,7 +452,7 @@ const requirementBuilders: readonly ((context: RequirementContext) => PublicWork
   },
   (context) => {
     const featureValidationGapCount = context.recordedCases.filter((entry) => !hasFeatureValidationEvidence(entry)).length
-    const usedRangeGapCount = context.recordedCases.filter((entry) => !hasUsedRangeValidationEvidence(entry)).length
+    const usedRangeGapCount = context.recordedCases.filter((entry) => !hasPublicWorkbookCorpusUsedRangeEvidence(entry)).length
     const featureWitnessCoverage = buildFeatureWitnessCoverage(context.recordedCases)
     const missingFeatureWitnesses = featureWitnessCoverage.filter((entry) => entry.witnessCaseCount === 0)
     return checklistItem({
@@ -843,28 +844,6 @@ function hasFeatureValidationEvidence(entry: PublicWorkbookCorpusCase): boolean 
     entry.featureCounts.macroPayloadCount >= 0 &&
     entry.featureCounts.warningCount >= 0
   )
-}
-
-function hasUsedRangeValidationEvidence(entry: PublicWorkbookCorpusCase): boolean {
-  return entry.workbookMetadata.dimensions.every((dimension) => {
-    if (!Object.hasOwn(dimension, 'usedRange')) {
-      return false
-    }
-    const range = dimension.usedRange
-    if (dimension.nonEmptyCellCount === 0) {
-      return range === null
-    }
-    return (
-      range !== null &&
-      range !== undefined &&
-      range.startRow >= 0 &&
-      range.startColumn >= 0 &&
-      range.endRow >= range.startRow &&
-      range.endColumn >= range.startColumn &&
-      dimension.rowCount === range.endRow + 1 &&
-      dimension.columnCount === range.endColumn + 1
-    )
-  })
 }
 
 function hasRecordedProvenanceEvidence(entry: PublicWorkbookCorpusCase): boolean {

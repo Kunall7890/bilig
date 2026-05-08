@@ -12,7 +12,9 @@ import {
 } from './public-workbook-corpus-cli.ts'
 import { planPublicWorkbookCorpusFetch } from './public-workbook-corpus-fetch.ts'
 import { createEmptyPublicWorkbookManifest, parsePublicWorkbookManifestJson } from './public-workbook-corpus-json.ts'
+import { listStalePublicWorkbookArtifacts } from './public-workbook-corpus-missing.ts'
 import { readPublicWorkbookCorpusStatus } from './public-workbook-corpus-status.ts'
+import { readReusablePublicWorkbookCorpusCases } from './public-workbook-corpus-verify-checkpoint.ts'
 
 export interface PublicWorkbookCorpusResumePlan {
   readonly schemaVersion: 1
@@ -30,10 +32,12 @@ export interface PublicWorkbookCorpusResumePlan {
     readonly recordedManifestArtifactCount: number
     readonly missingCachedArtifactCount: number
     readonly missingVerificationCount: number
+    readonly staleRecordedVerificationCount: number
     readonly recordedAllCasesPassed: boolean
   }
   readonly phases: {
     readonly verifyMissingCachedArtifacts: ResumePlanPhase
+    readonly refreshStaleRecordedEvidence: ResumePlanPhase
     readonly discoverAdditionalSources: ResumePlanPhase
     readonly fetchAdditionalArtifacts: ResumePlanPhase
     readonly finalEvidenceRefresh: ResumePlanPhase
@@ -73,6 +77,7 @@ function main(): void {
           currentState: plan.currentState,
           phases: {
             verifyMissingCachedArtifacts: phaseCheckSummary(plan.phases.verifyMissingCachedArtifacts),
+            refreshStaleRecordedEvidence: phaseCheckSummary(plan.phases.refreshStaleRecordedEvidence),
             discoverAdditionalSources: phaseCheckSummary(plan.phases.discoverAdditionalSources),
             fetchAdditionalArtifacts: phaseCheckSummary(plan.phases.fetchAdditionalArtifacts),
             finalEvidenceRefresh: phaseCheckSummary(plan.phases.finalEvidenceRefresh),
@@ -103,13 +108,22 @@ export function buildPublicWorkbookCorpusResumePlanFromArgs(): PublicWorkbookCor
     cacheDir,
     verifyCheckpointPath,
   })
-  const fetchPlan = existsSync(manifestPath)
+  const manifest = existsSync(manifestPath)
+    ? parsePublicWorkbookManifestJson(JSON.parse(readFileSync(manifestPath, 'utf8')) as unknown)
+    : null
+  const fetchPlan = manifest
     ? planPublicWorkbookCorpusFetch({
-        manifest: parsePublicWorkbookManifestJson(JSON.parse(readFileSync(manifestPath, 'utf8')) as unknown),
+        manifest,
         limit: fetchLimit,
         sampleLimit: 0,
       })
     : fallbackPublicWorkbookCorpusFetchPlan(status)
+  const staleRecordedVerificationCount = manifest
+    ? listStalePublicWorkbookArtifacts({
+        manifest,
+        cases: readReusablePublicWorkbookCorpusCases([scorecardPath, verifyCheckpointPath]),
+      }).length
+    : 0
   return buildPublicWorkbookCorpusResumePlan({
     cacheDir,
     fetchBatchSize,
@@ -120,6 +134,7 @@ export function buildPublicWorkbookCorpusResumePlanFromArgs(): PublicWorkbookCor
     scorecardPath,
     status,
     displayRootDir: rootDir,
+    staleRecordedVerificationCount,
     stopMarkerActive: existsSync(stopMarkerPath),
     stopMarkerPath,
     verifyBatchSize,
@@ -173,12 +188,14 @@ export function buildPublicWorkbookCorpusResumePlan(args: {
     readonly recordedManifestArtifactCount: number
     readonly targetWorkbookCount: number
   }
+  readonly staleRecordedVerificationCount?: number
   readonly stopMarkerActive: boolean
   readonly stopMarkerPath: string
   readonly verifyBatchSize: number
   readonly verifyCheckpointPath: string
 }): PublicWorkbookCorpusResumePlan {
   const missingCachedArtifactCount = Math.max(0, args.status.targetWorkbookCount - args.status.cachedArtifactCount)
+  const staleRecordedVerificationCount = args.staleRecordedVerificationCount ?? 0
   return {
     schemaVersion: 1,
     generatedAt: args.generatedAt,
@@ -195,10 +212,12 @@ export function buildPublicWorkbookCorpusResumePlan(args: {
       recordedManifestArtifactCount: args.status.recordedManifestArtifactCount,
       missingCachedArtifactCount,
       missingVerificationCount: args.status.missingManifestArtifactCount,
+      staleRecordedVerificationCount,
       recordedAllCasesPassed: args.status.recordedAllCasesPassed,
     },
     phases: {
       verifyMissingCachedArtifacts: buildVerifyMissingPhase(args),
+      refreshStaleRecordedEvidence: buildRefreshStaleRecordedEvidencePhase(args, staleRecordedVerificationCount),
       discoverAdditionalSources: buildDiscoverPhase(args),
       fetchAdditionalArtifacts: buildFetchPhase(args),
       finalEvidenceRefresh: buildFinalEvidenceRefreshPhase(args),
@@ -232,6 +251,9 @@ export function validatePublicWorkbookCorpusResumePlan(plan: PublicWorkbookCorpu
   if (!Number.isFinite(plan.currentState.missingVerificationCount) || plan.currentState.missingVerificationCount < 0) {
     findings.push('missing verification count must be non-negative')
   }
+  if (!Number.isFinite(plan.currentState.staleRecordedVerificationCount) || plan.currentState.staleRecordedVerificationCount < 0) {
+    findings.push('stale recorded verification count must be non-negative')
+  }
   if (plan.stopMarker.active) {
     if (plan.stopMarker.overrideFlag !== publicCorpusStopMarkerOverrideFlag) {
       findings.push('stop-marker override flag does not match corpus CLI guard')
@@ -252,11 +274,15 @@ export function validatePublicWorkbookCorpusResumePlan(plan: PublicWorkbookCorpu
     findings.push('recorded verification count exceeds cached artifact count')
   }
   validatePhase('verifyMissingCachedArtifacts', plan.phases.verifyMissingCachedArtifacts, plan.stopMarker.active, findings)
+  validatePhase('refreshStaleRecordedEvidence', plan.phases.refreshStaleRecordedEvidence, plan.stopMarker.active, findings)
   validatePhase('discoverAdditionalSources', plan.phases.discoverAdditionalSources, plan.stopMarker.active, findings)
   validatePhase('fetchAdditionalArtifacts', plan.phases.fetchAdditionalArtifacts, plan.stopMarker.active, findings)
   validatePhase('finalEvidenceRefresh', plan.phases.finalEvidenceRefresh, plan.stopMarker.active, findings)
   if (plan.phases.verifyMissingCachedArtifacts.totalWorkItems !== plan.currentState.missingVerificationCount) {
     findings.push('verify-missing phase does not match missing verification count')
+  }
+  if (plan.phases.refreshStaleRecordedEvidence.totalWorkItems !== plan.currentState.staleRecordedVerificationCount) {
+    findings.push('verify-stale phase does not match stale recorded verification count')
   }
   if (plan.phases.fetchAdditionalArtifacts.totalWorkItems !== plan.currentState.missingCachedArtifactCount) {
     findings.push('fetch phase does not match missing cached artifact count')
@@ -303,6 +329,53 @@ function buildVerifyMissingPhase(args: Parameters<typeof buildPublicWorkbookCorp
       guardedCommand(args.stopMarkerActive, [
         'pnpm',
         'public-workbook-corpus:verify-missing',
+        '--',
+        '--manifest',
+        commandPath(args.manifestPath, args.displayRootDir),
+        '--scorecard',
+        commandPath(args.scorecardPath, args.displayRootDir),
+        '--verify-checkpoint',
+        commandPath(args.verifyCheckpointPath, args.displayRootDir),
+        '--cache-dir',
+        commandPath(args.cacheDir, args.displayRootDir),
+        '--limit',
+        String(batchSize),
+      ]),
+    ],
+  }
+}
+
+function buildRefreshStaleRecordedEvidencePhase(
+  args: Parameters<typeof buildPublicWorkbookCorpusResumePlan>[0],
+  totalWorkItems: number,
+): ResumePlanPhase {
+  if (totalWorkItems === 0) {
+    return notNeededPhase('all recorded verification cases already satisfy the current evidence schema')
+  }
+  const batchSize = normalizedBatchSize(args.verifyBatchSize)
+  return {
+    status: phaseStatus(args.stopMarkerActive),
+    reason: 'recorded verification cases need refresh for current metadata evidence requirements',
+    totalWorkItems,
+    batchSize,
+    batchCount: batchCount(totalWorkItems, batchSize),
+    commands: [
+      command([
+        'pnpm',
+        'public-workbook-corpus:verify-stale:plan',
+        '--',
+        '--manifest',
+        commandPath(args.manifestPath, args.displayRootDir),
+        '--scorecard',
+        commandPath(args.scorecardPath, args.displayRootDir),
+        '--verify-checkpoint',
+        commandPath(args.verifyCheckpointPath, args.displayRootDir),
+        '--cache-dir',
+        commandPath(args.cacheDir, args.displayRootDir),
+      ]),
+      guardedCommand(args.stopMarkerActive, [
+        'pnpm',
+        'public-workbook-corpus:verify-stale',
         '--',
         '--manifest',
         commandPath(args.manifestPath, args.displayRootDir),
@@ -527,6 +600,7 @@ function validatePhase(name: string, phase: ResumePlanPhase, stopMarkerActive: b
 function isCorpusMutatingCommand(value: string): boolean {
   return [
     'public-workbook-corpus:verify-missing --',
+    'public-workbook-corpus:verify-stale --',
     'public-workbook-corpus:discover --',
     'public-workbook-corpus:fetch --',
     'public-workbook-corpus:verify --',

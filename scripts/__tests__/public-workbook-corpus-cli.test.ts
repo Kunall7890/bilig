@@ -206,6 +206,7 @@ describe('public workbook corpus CLI resource guards', () => {
         missingManifestArtifactCount: 688,
         recordedAllCasesPassed: true,
       },
+      staleRecordedVerificationCount: 4_897,
       stopMarkerActive: true,
       stopMarkerPath: '/repo/.agent-coordination/stop.md',
       verifyBatchSize: 20,
@@ -226,6 +227,7 @@ describe('public workbook corpus CLI resource guards', () => {
         recordedManifestArtifactCount: 4_940,
         missingCachedArtifactCount: 4_372,
         missingVerificationCount: 688,
+        staleRecordedVerificationCount: 4_897,
       },
       phases: {
         verifyMissingCachedArtifacts: {
@@ -236,6 +238,16 @@ describe('public workbook corpus CLI resource guards', () => {
           commands: expect.arrayContaining([
             expect.stringContaining('public-workbook-corpus:verify-missing:plan'),
             expect.stringContaining('BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE=1 pnpm public-workbook-corpus:verify-missing'),
+          ]),
+        },
+        refreshStaleRecordedEvidence: {
+          status: 'blocked-by-stop-marker',
+          totalWorkItems: 4_897,
+          batchSize: 20,
+          batchCount: 245,
+          commands: expect.arrayContaining([
+            expect.stringContaining('public-workbook-corpus:verify-stale:plan'),
+            expect.stringContaining('BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE=1 pnpm public-workbook-corpus:verify-stale'),
           ]),
         },
         discoverAdditionalSources: {
@@ -342,8 +354,10 @@ describe('public workbook corpus CLI resource guards', () => {
         recordedManifestArtifactCount: 2,
         missingCachedArtifactCount: 0,
         missingVerificationCount: 0,
+        staleRecordedVerificationCount: 0,
       },
       phases: {
+        refreshStaleRecordedEvidence: { status: 'not-needed', totalWorkItems: 0 },
         discoverAdditionalSources: { status: 'not-needed' },
         fetchAdditionalArtifacts: { status: 'not-needed' },
       },
@@ -394,6 +408,51 @@ describe('public workbook corpus CLI resource guards', () => {
     )
   })
 
+  it('rejects stale-evidence resume plans that hide active stop-marker overrides', () => {
+    const plan = buildPublicWorkbookCorpusResumePlan({
+      cacheDir: '/repo/.cache/public-workbook-corpus',
+      fetchBatchSize: 6,
+      fetchLimit: 10_000,
+      fetchPlan: {
+        candidateSourceCount: 1,
+        candidateSourceDeficitCount: 0,
+        recommendedDiscoveryLimit: 10_000,
+        remainingArtifactSlots: 0,
+        targetReachableFromKnownCandidates: true,
+      },
+      generatedAt: '2026-05-07T08:00:00.000Z',
+      manifestPath: '/repo/.cache/public-workbook-corpus/manifest.json',
+      scorecardPath: '/repo/packages/benchmarks/baselines/public-workbook-corpus-scorecard.json',
+      status: {
+        targetWorkbookCount: 10_000,
+        cachedArtifactCount: 10_000,
+        recordedManifestArtifactCount: 10_000,
+        missingManifestArtifactCount: 0,
+        recordedAllCasesPassed: true,
+      },
+      staleRecordedVerificationCount: 12,
+      stopMarkerActive: true,
+      stopMarkerPath: '/repo/.agent-coordination/stop.md',
+      verifyBatchSize: 20,
+      verifyCheckpointPath: '/repo/.cache/public-workbook-corpus/verification-checkpoint.json',
+    })
+    const invalidPlan = {
+      ...plan,
+      phases: {
+        ...plan.phases,
+        refreshStaleRecordedEvidence: Object.assign({}, plan.phases.refreshStaleRecordedEvidence, {
+          commands: ['pnpm public-workbook-corpus:verify-stale -- --limit 20'],
+        }),
+      },
+    }
+
+    expect(validatePublicWorkbookCorpusResumePlan(invalidPlan)).toEqual(
+      expect.arrayContaining([
+        'refreshStaleRecordedEvidence mutating command is missing the explicit stop-marker override: pnpm public-workbook-corpus:verify-stale -- --limit 20',
+      ]),
+    )
+  })
+
   it('rejects stale resume plans with impossible current-state counts', () => {
     const plan = buildPublicWorkbookCorpusResumePlan({
       cacheDir: '/repo/.cache/public-workbook-corpus',
@@ -428,12 +487,14 @@ describe('public workbook corpus CLI resource guards', () => {
         missingCachedArtifactCount: 7,
         missingVerificationCount: -1,
         recordedManifestArtifactCount: 9_995,
+        staleRecordedVerificationCount: -1,
       },
     }
 
     expect(validatePublicWorkbookCorpusResumePlan(invalidPlan)).toEqual(
       expect.arrayContaining([
         'missing verification count must be non-negative',
+        'stale recorded verification count must be non-negative',
         'missing cached artifact count is 7, expected 6',
         'recorded verification count exceeds cached artifact count',
       ]),
@@ -451,6 +512,19 @@ describe('public workbook corpus CLI resource guards', () => {
 
     expect(result.status).not.toBe(0)
     expect(result.stderr).toContain('--limit above 20 is disabled for public corpus verify-missing runs')
+  })
+
+  it('refuses large verify-stale tranches unless explicitly enabled', () => {
+    const env = { ...process.env }
+    delete env.BILIG_ALLOW_LARGE_PUBLIC_CORPUS_VERIFY_STALE
+
+    const result = spawnSync('bun', [corpusScriptPath(), 'verify-stale', '--limit', '21'], {
+      encoding: 'utf8',
+      env,
+    })
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain('--limit above 20 is disabled for public corpus verify-stale runs')
   })
 
   it('refuses high-RSS verification on interactive corpus runs', () => {
@@ -835,6 +909,61 @@ describe('public workbook corpus CLI resource guards', () => {
     expect(readReusablePublicWorkbookCorpusCases([checkpointPath])).toEqual([])
   })
 
+  it('lists a bounded stale-evidence slice without starting verification', async () => {
+    const artifactA = workbookArtifact('workbook-a')
+    const artifactB = workbookArtifact('workbook-b')
+    const dir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-cli-verify-stale-plan-'))
+    const manifestPath = join(dir, 'manifest.json')
+    const scorecardPath = join(dir, 'scorecard.json')
+    const checkpointPath = join(dir, 'verification-checkpoint.json')
+    const fullManifest = manifestWithArtifacts([artifactA, artifactB])
+    writeFileSync(manifestPath, `${JSON.stringify(fullManifest, null, 2)}\n`)
+    writePublicWorkbookCorpusVerificationCheckpoint({
+      path: checkpointPath,
+      manifest: fullManifest,
+      casesById: new Map([
+        [artifactA.id, passedCase(artifactA)],
+        [artifactB.id, passedCaseWithUsedRange(artifactB)],
+      ]),
+      generatedAt: '2026-05-07T01:30:00.000Z',
+    })
+
+    const result = spawnSync(
+      'bun',
+      [
+        corpusScriptPath(),
+        'verify-stale',
+        '--dry-run',
+        '--manifest',
+        manifestPath,
+        '--scorecard',
+        scorecardPath,
+        '--verify-checkpoint',
+        checkpointPath,
+        '--limit',
+        '20',
+      ],
+      {
+        encoding: 'utf8',
+      },
+    )
+    const planned: unknown = JSON.parse(result.stdout)
+
+    expect(result.status).toBe(0)
+    expect(planned).toMatchObject({
+      totalStaleArtifactCount: 1,
+      selectedArtifactCount: 1,
+      artifacts: [
+        {
+          id: artifactA.id,
+          fileName: artifactA.fileName,
+          cachePath: artifactA.cachePath,
+          reason: 'missing-used-range-evidence',
+        },
+      ],
+    })
+  })
+
   it('refreshes the checked-in scorecard from existing checkpoint cases without verification workers', async () => {
     const artifactA = workbookArtifact('workbook-a')
     const artifactB = workbookArtifact('workbook-b')
@@ -950,6 +1079,10 @@ describe('public workbook corpus CLI resource guards', () => {
     expect(packageJson.scripts?.['public-workbook-corpus:verify-missing']).toBe('bun scripts/public-workbook-corpus.ts verify-missing')
     expect(packageJson.scripts?.['public-workbook-corpus:verify-missing:plan']).toBe(
       'bun scripts/public-workbook-corpus.ts verify-missing --dry-run --limit 20',
+    )
+    expect(packageJson.scripts?.['public-workbook-corpus:verify-stale']).toBe('bun scripts/public-workbook-corpus.ts verify-stale')
+    expect(packageJson.scripts?.['public-workbook-corpus:verify-stale:plan']).toBe(
+      'bun scripts/public-workbook-corpus.ts verify-stale --dry-run --limit 20',
     )
     expect(packageJson.scripts?.['public-workbook-corpus:refresh-scorecard-from-checkpoint']).toBe(
       'bun scripts/public-workbook-corpus.ts refresh-scorecard-from-checkpoint',
@@ -1068,5 +1201,24 @@ function passedCase(artifact: PublicWorkbookArtifact): PublicWorkbookCorpusCase 
     },
     unsupportedFeatureClassifications: [],
     evidence: [`source=${artifact.sourceUrl}`, `license=${artifact.license.title}`, `sha256=${artifact.sha256}`],
+  }
+}
+
+function passedCaseWithUsedRange(artifact: PublicWorkbookArtifact): PublicWorkbookCorpusCase {
+  return {
+    ...passedCase(artifact),
+    workbookMetadata: {
+      workbookName: artifact.fileName,
+      sheetNames: ['Sheet1'],
+      dimensions: [
+        {
+          sheetName: 'Sheet1',
+          rowCount: 1,
+          columnCount: 1,
+          nonEmptyCellCount: 1,
+          usedRange: { startRow: 0, startColumn: 0, endRow: 0, endColumn: 0 },
+        },
+      ],
+    },
   }
 }

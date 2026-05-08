@@ -82,16 +82,27 @@ export function readFetchConcurrencyArg(defaultFetchConcurrency: number): number
   return fetchConcurrency
 }
 
-const maxInteractiveVerifyMissingLimit = 20
+const maxInteractiveVerificationBatchLimit = 20
 const largeVerifyMissingLimitEnvVar = 'BILIG_ALLOW_LARGE_PUBLIC_CORPUS_VERIFY_MISSING'
 
 export function readVerifyMissingLimitArg(defaultLimit: number, dryRun: boolean): number {
+  return readPublicCorpusVerificationBatchLimitArg(defaultLimit, dryRun, {
+    commandName: 'verify-missing',
+    envVar: largeVerifyMissingLimitEnvVar,
+  })
+}
+
+export function readPublicCorpusVerificationBatchLimitArg(
+  defaultLimit: number,
+  dryRun: boolean,
+  args: { readonly commandName: string; readonly envVar: string },
+): number {
   const limit = readNumberArg('--limit', defaultLimit)
-  if (!dryRun && limit > maxInteractiveVerifyMissingLimit && process.env[largeVerifyMissingLimitEnvVar] !== '1') {
+  if (!dryRun && limit > maxInteractiveVerificationBatchLimit && process.env[args.envVar] !== '1') {
     throw new Error(
       `--limit above ${String(
-        maxInteractiveVerifyMissingLimit,
-      )} is disabled for public corpus verify-missing runs because it can start many workbook verification workers. Set ${largeVerifyMissingLimitEnvVar}=1 only when intentionally resuming a large corpus verification tranche.`,
+        maxInteractiveVerificationBatchLimit,
+      )} is disabled for public corpus ${args.commandName} runs because it can start many workbook verification workers. Set ${args.envVar}=1 only when intentionally resuming a large corpus verification tranche.`,
     )
   }
   return limit
