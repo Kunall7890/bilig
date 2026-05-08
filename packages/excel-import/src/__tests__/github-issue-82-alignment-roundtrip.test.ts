@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import * as XLSX from 'xlsx'
 
-import type { CellStyleRecord } from '@bilig/protocol'
 import { exportXlsx, importXlsx } from '../index.js'
+
+type ImportedStyleWithAlignment = {
+  readonly alignment?: unknown
+}
 
 describe('GitHub issue #82 XLSX alignment roundtrip', () => {
   it('preserves cell alignment, wrapping, indentation, reading order, shrink-to-fit, and rotation', () => {
@@ -37,7 +40,7 @@ describe('GitHub issue #82 XLSX alignment roundtrip', () => {
   })
 })
 
-function readSingleImportedStyle(styles: readonly CellStyleRecord[]): CellStyleRecord | undefined {
+function readSingleImportedStyle(styles: readonly ImportedStyleWithAlignment[]): ImportedStyleWithAlignment | undefined {
   return styles.find((style) => style.alignment !== undefined)
 }
 
