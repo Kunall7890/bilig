@@ -142,79 +142,76 @@ async function fetchArtifactsFromCandidateSources(args: {
   readonly isolatedFingerprinting: boolean
   readonly maxBytes: number
   readonly onArtifactsCommitted?: (manifest: PublicWorkbookManifest) => void | Promise<void>
-  readonly startIndex?: number
   readonly sourceManifest: PublicWorkbookManifest
   readonly targetArtifactCount: number
 }): Promise<void> {
-  const startIndex = args.startIndex ?? 0
-  if (args.artifacts.length >= args.targetArtifactCount || startIndex >= args.candidateSources.length) {
-    return
+  let startIndex = 0
+  while (args.artifacts.length < args.targetArtifactCount && startIndex < args.candidateSources.length) {
+    const remainingArtifactSlots = args.targetArtifactCount - args.artifacts.length
+    const batchSize = Math.min(
+      args.candidateSources.length - startIndex,
+      Math.max(args.fetchConcurrency, Math.min(args.fetchBatchSize, remainingArtifactSlots * 3)),
+    )
+    const batch = args.candidateSources.slice(startIndex, startIndex + batchSize)
+    // oxlint-disable-next-line eslint(no-await-in-loop) -- Each batch must finish and release workbook bytes before fetching the next batch.
+    const downloadResults = await mapWithConcurrency(batch, args.fetchConcurrency, (source) =>
+      downloadWorkbookCandidate(source, {
+        downloadTimeoutMs: args.downloadTimeoutMs,
+        fingerprintTimeoutMs: args.fingerprintTimeoutMs,
+        fingerprintMaxRssBytes: args.fingerprintMaxRssBytes,
+        fingerprintRssCheckIntervalMs: args.fingerprintRssCheckIntervalMs,
+        isolatedFingerprinting: args.isolatedFingerprinting,
+        maxBytes: args.maxBytes,
+      }),
+    )
+    let committedArtifactCount = 0
+    for (const result of downloadResults) {
+      if (args.artifacts.length >= args.targetArtifactCount) {
+        break
+      }
+      if (result.error || !result.bytes || !result.sha256 || !result.workbookFingerprint) {
+        continue
+      }
+      if (args.knownHashes.has(result.sha256)) {
+        continue
+      }
+      if (args.knownFingerprints.has(result.workbookFingerprint)) {
+        continue
+      }
+      const source = result.source
+      const bytes = result.bytes
+      const hash = result.sha256
+      const workbookFingerprint = result.workbookFingerprint
+      const cachePath = `files/${hash}.${spreadsheetExtension(source.fileName)}`
+      writeFileSync(join(args.cacheDir, cachePath), bytes)
+      args.knownHashes.add(hash)
+      args.knownFingerprints.add(workbookFingerprint)
+      args.artifacts.push({
+        id: `workbook-${hash.slice(0, 16)}`,
+        sourceId: source.id,
+        sourceUrl: source.sourceUrl,
+        downloadUrl: source.downloadUrl,
+        fileName: source.fileName,
+        cachePath,
+        sha256: hash,
+        byteSize: bytes.byteLength,
+        workbookFingerprint,
+        fetchedAt: args.fetchedAt,
+        license: source.license,
+        ...(source.topicEvidence ? { topicEvidence: source.topicEvidence } : {}),
+      })
+      committedArtifactCount += 1
+    }
+    if (committedArtifactCount > 0) {
+      // oxlint-disable-next-line eslint(no-await-in-loop) -- Checkpoint each bounded batch before continuing the long corpus fetch.
+      await args.onArtifactsCommitted?.({
+        ...args.sourceManifest,
+        generatedAt: args.fetchedAt,
+        artifacts: [...args.artifacts],
+      })
+    }
+    startIndex += batchSize
   }
-  const remainingArtifactSlots = args.targetArtifactCount - args.artifacts.length
-  const batchSize = Math.min(
-    args.candidateSources.length - startIndex,
-    Math.max(args.fetchConcurrency, Math.min(args.fetchBatchSize, remainingArtifactSlots * 3)),
-  )
-  const batch = args.candidateSources.slice(startIndex, startIndex + batchSize)
-  const downloadResults = await mapWithConcurrency(batch, args.fetchConcurrency, (source) =>
-    downloadWorkbookCandidate(source, {
-      downloadTimeoutMs: args.downloadTimeoutMs,
-      fingerprintTimeoutMs: args.fingerprintTimeoutMs,
-      fingerprintMaxRssBytes: args.fingerprintMaxRssBytes,
-      fingerprintRssCheckIntervalMs: args.fingerprintRssCheckIntervalMs,
-      isolatedFingerprinting: args.isolatedFingerprinting,
-      maxBytes: args.maxBytes,
-    }),
-  )
-  let committedArtifactCount = 0
-  for (const result of downloadResults) {
-    if (args.artifacts.length >= args.targetArtifactCount) {
-      break
-    }
-    if (result.error || !result.bytes || !result.sha256 || !result.workbookFingerprint) {
-      continue
-    }
-    if (args.knownHashes.has(result.sha256)) {
-      continue
-    }
-    if (args.knownFingerprints.has(result.workbookFingerprint)) {
-      continue
-    }
-    const source = result.source
-    const bytes = result.bytes
-    const hash = result.sha256
-    const workbookFingerprint = result.workbookFingerprint
-    const cachePath = `files/${hash}.${spreadsheetExtension(source.fileName)}`
-    writeFileSync(join(args.cacheDir, cachePath), bytes)
-    args.knownHashes.add(hash)
-    args.knownFingerprints.add(workbookFingerprint)
-    args.artifacts.push({
-      id: `workbook-${hash.slice(0, 16)}`,
-      sourceId: source.id,
-      sourceUrl: source.sourceUrl,
-      downloadUrl: source.downloadUrl,
-      fileName: source.fileName,
-      cachePath,
-      sha256: hash,
-      byteSize: bytes.byteLength,
-      workbookFingerprint,
-      fetchedAt: args.fetchedAt,
-      license: source.license,
-      ...(source.topicEvidence ? { topicEvidence: source.topicEvidence } : {}),
-    })
-    committedArtifactCount += 1
-  }
-  if (committedArtifactCount > 0) {
-    await args.onArtifactsCommitted?.({
-      ...args.sourceManifest,
-      generatedAt: args.fetchedAt,
-      artifacts: [...args.artifacts],
-    })
-  }
-  await fetchArtifactsFromCandidateSources({
-    ...args,
-    startIndex: startIndex + batchSize,
-  })
 }
 
 function dedupeCandidateSources(sources: readonly PublicWorkbookSource[]): PublicWorkbookSource[] {

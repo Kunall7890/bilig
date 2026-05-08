@@ -986,6 +986,52 @@ describe('public workbook corpus', () => {
     expect(checkpoints).toEqual([1])
   })
 
+  it('fetches multi-batch corpus tranches without retaining prior batch results', async () => {
+    const cacheDir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-fetch-iterative-'))
+    const fetchMock = vi.fn(async (url: string) => {
+      const index = Number(url.match(/iterative-(\d+)/u)?.[1] ?? '0')
+      const workbookBytes = buildWorkbookBytes(`Batch${String(index)}`)
+      return new Response(workbookBytes, {
+        headers: {
+          'content-length': String(workbookBytes.byteLength),
+        },
+      })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const license = {
+      spdxId: 'CC-BY-4.0',
+      title: 'Creative Commons Attribution 4.0 International',
+      evidenceUrl: 'https://creativecommons.org/licenses/by/4.0/',
+    }
+    const manifest: PublicWorkbookManifest = {
+      ...createEmptyPublicWorkbookManifest('2026-05-07T00:00:00.000Z'),
+      sources: Array.from({ length: 4 }, (_, index) => ({
+        id: `source-iterative-${String(index)}`,
+        kind: 'direct-url',
+        sourceUrl: `https://example.com/iterative-${String(index)}.xlsx`,
+        downloadUrl: `https://example.com/iterative-${String(index)}.xlsx`,
+        fileName: `iterative-${String(index)}.xlsx`,
+        discoveredAt: '2026-05-07T00:00:00.000Z',
+        license,
+      })),
+    }
+    const checkpoints: number[] = []
+
+    const fetched = await fetchPublicWorkbookArtifacts({
+      manifest,
+      cacheDir,
+      limit: 4,
+      fetchedAt: '2026-05-07T01:00:00.000Z',
+      fetchBatchSize: 1,
+      onArtifactsCommitted: (checkpointManifest) => checkpoints.push(checkpointManifest.artifacts.length),
+    })
+
+    expect(fetched.artifacts).toHaveLength(4)
+    expect(fetchMock).toHaveBeenCalledTimes(4)
+    expect(checkpoints).toEqual([1, 2, 3, 4])
+  })
+
   it('times out stalled workbook response bodies during fetch', async () => {
     vi.useFakeTimers()
 
