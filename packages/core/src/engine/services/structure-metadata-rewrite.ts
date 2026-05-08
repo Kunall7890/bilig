@@ -1,5 +1,7 @@
-import type { CellRangeRef, SheetFormatRangeSnapshot, SheetStyleRangeSnapshot } from '@bilig/protocol'
+import { MAX_COLS, MAX_ROWS, type CellRangeRef, type SheetFormatRangeSnapshot, type SheetStyleRangeSnapshot } from '@bilig/protocol'
 import {
+  columnToIndex,
+  formatAddress,
   rewriteAddressForStructuralTransform,
   rewriteFormulaForStructuralTransform,
   rewriteRangeForStructuralTransform,
@@ -10,6 +12,14 @@ import { normalizeDefinedName } from '../../workbook-store.js'
 import type { CreateEngineStructureServiceArgs } from './structure-service-types.js'
 
 type StructureMetadataRewriteArgs = Pick<CreateEngineStructureServiceArgs, 'state' | 'clearOwnedPivot'>
+
+type MetadataRangeLike = {
+  readonly sheetName: string
+  readonly startAddress: string
+  readonly endAddress: string
+}
+
+const METADATA_CELL_REF_RE = /^\$?([A-Z]+)\$?([1-9][0-9]*)$/i
 
 export function rewriteDefinedNamesForStructuralTransform(
   args: StructureMetadataRewriteArgs,
@@ -78,7 +88,7 @@ export function rewriteDefinedNamesForStructuralTransform(
         if (record.value.sheetName !== sheetName) {
           return
         }
-        const nextRange = rewriteRangeForStructuralTransform(record.value.startAddress, record.value.endAddress, transform)
+        const nextRange = rewriteMetadataRangeForStructuralTransform(record.value, transform)
         if (!nextRange) {
           args.state.workbook.deleteDefinedName(record.name, record.scopeSheetName)
           changedNames.add(normalizeDefinedName(record.name))
@@ -124,7 +134,7 @@ export function rewriteWorkbookMetadataForStructuralTransform(
     .listTables()
     .filter((table) => table.sheetName === sheetName)
     .forEach((table) => {
-      const range = rewriteRangeForStructuralTransform(table.startAddress, table.endAddress, transform)
+      const range = rewriteMetadataRangeForStructuralTransform(table, transform)
       if (!range) {
         changedTableNames.add(table.name)
         args.state.workbook.deleteTable(table.name)
@@ -140,7 +150,7 @@ export function rewriteWorkbookMetadataForStructuralTransform(
   const mergeRanges = args.state.workbook.listMergeRanges(sheetName)
   const rewrittenMergeRanges: CellRangeRef[] = []
   mergeRanges.forEach((merge) => {
-    const range = rewriteRangeForStructuralTransform(merge.startAddress, merge.endAddress, transform)
+    const range = rewriteMetadataRangeForStructuralTransform(merge, transform)
     if (!range) {
       return
     }
@@ -152,7 +162,7 @@ export function rewriteWorkbookMetadataForStructuralTransform(
   })
   args.state.workbook.setMergeRanges(sheetName, rewrittenMergeRanges)
   args.state.workbook.listFilters(sheetName).forEach((filter) => {
-    const range = rewriteRangeForStructuralTransform(filter.range.startAddress, filter.range.endAddress, transform)
+    const range = rewriteMetadataRangeForStructuralTransform(filter.range, transform)
     args.state.workbook.deleteFilter(sheetName, filter.range)
     if (range) {
       args.state.workbook.setFilter(sheetName, {
@@ -163,7 +173,7 @@ export function rewriteWorkbookMetadataForStructuralTransform(
     }
   })
   args.state.workbook.listSorts(sheetName).forEach((sort) => {
-    const range = rewriteRangeForStructuralTransform(sort.range.startAddress, sort.range.endAddress, transform)
+    const range = rewriteMetadataRangeForStructuralTransform(sort.range, transform)
     args.state.workbook.deleteSort(sheetName, sort.range)
     if (!range) {
       return
@@ -173,12 +183,12 @@ export function rewriteWorkbookMetadataForStructuralTransform(
       { ...sort.range, startAddress: range.startAddress, endAddress: range.endAddress },
       sort.keys.map((key) => ({
         ...key,
-        keyAddress: rewriteAddressForStructuralTransform(key.keyAddress, transform) ?? key.keyAddress,
+        keyAddress: rewriteMetadataAddressForStructuralTransform(key.keyAddress, transform) ?? key.keyAddress,
       })),
     )
   })
   args.state.workbook.listDataValidations(sheetName).forEach((validation) => {
-    const range = rewriteRangeForStructuralTransform(validation.range.startAddress, validation.range.endAddress, transform)
+    const range = rewriteMetadataRangeForStructuralTransform(validation.range, transform)
     args.state.workbook.deleteDataValidation(sheetName, validation.range)
     if (!range) {
       return
@@ -195,7 +205,7 @@ export function rewriteWorkbookMetadataForStructuralTransform(
           if (nextValidation.rule.source.sheetName !== sheetName) {
             break
           }
-          const nextAddress = rewriteAddressForStructuralTransform(nextValidation.rule.source.address, transform)
+          const nextAddress = rewriteMetadataAddressForStructuralTransform(nextValidation.rule.source.address, transform)
           if (!nextAddress) {
             return
           }
@@ -206,11 +216,7 @@ export function rewriteWorkbookMetadataForStructuralTransform(
           if (nextValidation.rule.source.sheetName !== sheetName) {
             break
           }
-          const nextSourceRange = rewriteRangeForStructuralTransform(
-            nextValidation.rule.source.startAddress,
-            nextValidation.rule.source.endAddress,
-            transform,
-          )
+          const nextSourceRange = rewriteMetadataRangeForStructuralTransform(nextValidation.rule.source, transform)
           if (!nextSourceRange) {
             return
           }
@@ -226,7 +232,7 @@ export function rewriteWorkbookMetadataForStructuralTransform(
     args.state.workbook.setDataValidation(nextValidation)
   })
   args.state.workbook.listConditionalFormats(sheetName).forEach((format) => {
-    const range = rewriteRangeForStructuralTransform(format.range.startAddress, format.range.endAddress, transform)
+    const range = rewriteMetadataRangeForStructuralTransform(format.range, transform)
     args.state.workbook.deleteConditionalFormat(format.id)
     if (!range) {
       return
@@ -241,7 +247,7 @@ export function rewriteWorkbookMetadataForStructuralTransform(
     })
   })
   args.state.workbook.listRangeProtections(sheetName).forEach((protection) => {
-    const range = rewriteRangeForStructuralTransform(protection.range.startAddress, protection.range.endAddress, transform)
+    const range = rewriteMetadataRangeForStructuralTransform(protection.range, transform)
     args.state.workbook.deleteRangeProtection(protection.id)
     if (!range) {
       return
@@ -256,7 +262,7 @@ export function rewriteWorkbookMetadataForStructuralTransform(
     })
   })
   args.state.workbook.listCommentThreads(sheetName).forEach((thread) => {
-    const nextAddress = rewriteAddressForStructuralTransform(thread.address, transform)
+    const nextAddress = rewriteMetadataAddressForStructuralTransform(thread.address, transform)
     args.state.workbook.deleteCommentThread(sheetName, thread.address)
     if (!nextAddress) {
       return
@@ -267,7 +273,7 @@ export function rewriteWorkbookMetadataForStructuralTransform(
     })
   })
   args.state.workbook.listNotes(sheetName).forEach((note) => {
-    const nextAddress = rewriteAddressForStructuralTransform(note.address, transform)
+    const nextAddress = rewriteMetadataAddressForStructuralTransform(note.address, transform)
     args.state.workbook.deleteNote(sheetName, note.address)
     if (!nextAddress) {
       return
@@ -280,7 +286,7 @@ export function rewriteWorkbookMetadataForStructuralTransform(
   const rewrittenStyleRanges: SheetStyleRangeSnapshot[] = []
   const rewrittenFormatRanges: SheetFormatRangeSnapshot[] = []
   args.state.workbook.listStyleRanges(sheetName).forEach((record) => {
-    const range = rewriteRangeForStructuralTransform(record.range.startAddress, record.range.endAddress, transform)
+    const range = rewriteMetadataRangeForStructuralTransform(record.range, transform)
     if (!range) {
       return
     }
@@ -295,7 +301,7 @@ export function rewriteWorkbookMetadataForStructuralTransform(
   })
   args.state.workbook.setStyleRanges(sheetName, rewrittenStyleRanges)
   args.state.workbook.listFormatRanges(sheetName).forEach((record) => {
-    const range = rewriteRangeForStructuralTransform(record.range.startAddress, record.range.endAddress, transform)
+    const range = rewriteMetadataRangeForStructuralTransform(record.range, transform)
     if (!range) {
       return
     }
@@ -320,11 +326,10 @@ export function rewriteWorkbookMetadataForStructuralTransform(
     }
   }
   args.state.workbook.listPivots().forEach((pivot) => {
-    const nextAddress = pivot.sheetName === sheetName ? rewriteAddressForStructuralTransform(pivot.address, transform) : pivot.address
+    const nextAddress =
+      pivot.sheetName === sheetName ? rewriteMetadataAddressForStructuralTransform(pivot.address, transform) : pivot.address
     const nextSource =
-      pivot.source.sheetName === sheetName
-        ? rewriteRangeForStructuralTransform(pivot.source.startAddress, pivot.source.endAddress, transform)
-        : { startAddress: pivot.source.startAddress, endAddress: pivot.source.endAddress }
+      pivot.source.sheetName === sheetName ? rewriteMetadataRangeForStructuralTransform(pivot.source, transform) : pivot.source
     if (!nextAddress || !nextSource) {
       args.clearOwnedPivot(pivot)
       args.state.workbook.deletePivot(pivot.sheetName, pivot.address)
@@ -345,11 +350,10 @@ export function rewriteWorkbookMetadataForStructuralTransform(
     })
   })
   args.state.workbook.listCharts().forEach((chart) => {
-    const nextAddress = chart.sheetName === sheetName ? rewriteAddressForStructuralTransform(chart.address, transform) : chart.address
+    const nextAddress =
+      chart.sheetName === sheetName ? rewriteMetadataAddressForStructuralTransform(chart.address, transform) : chart.address
     const nextSource =
-      chart.source.sheetName === sheetName
-        ? rewriteRangeForStructuralTransform(chart.source.startAddress, chart.source.endAddress, transform)
-        : { startAddress: chart.source.startAddress, endAddress: chart.source.endAddress }
+      chart.source.sheetName === sheetName ? rewriteMetadataRangeForStructuralTransform(chart.source, transform) : chart.source
     if (!nextAddress || !nextSource) {
       args.state.workbook.deleteChart(chart.id)
       return
@@ -368,7 +372,7 @@ export function rewriteWorkbookMetadataForStructuralTransform(
     if (image.sheetName !== sheetName) {
       return
     }
-    const nextAddress = rewriteAddressForStructuralTransform(image.address, transform)
+    const nextAddress = rewriteMetadataAddressForStructuralTransform(image.address, transform)
     if (!nextAddress) {
       args.state.workbook.deleteImage(image.id)
       return
@@ -382,7 +386,7 @@ export function rewriteWorkbookMetadataForStructuralTransform(
     if (shape.sheetName !== sheetName) {
       return
     }
-    const nextAddress = rewriteAddressForStructuralTransform(shape.address, transform)
+    const nextAddress = rewriteMetadataAddressForStructuralTransform(shape.address, transform)
     if (!nextAddress) {
       args.state.workbook.deleteShape(shape.id)
       return
@@ -393,4 +397,65 @@ export function rewriteWorkbookMetadataForStructuralTransform(
     })
   })
   return { changedTableNames }
+}
+
+function rewriteMetadataRangeForStructuralTransform(
+  range: MetadataRangeLike,
+  transform: StructuralAxisTransform,
+): CellRangeRef | undefined {
+  const rewritten = rewriteRangeForStructuralTransform(range.startAddress, range.endAddress, transform)
+  if (!rewritten) {
+    return undefined
+  }
+  return clipMetadataRangeToSheetGrid({
+    sheetName: range.sheetName,
+    startAddress: rewritten.startAddress,
+    endAddress: rewritten.endAddress,
+  })
+}
+
+function rewriteMetadataAddressForStructuralTransform(address: string, transform: StructuralAxisTransform): string | undefined {
+  const rewritten = rewriteAddressForStructuralTransform(address, transform)
+  if (!rewritten) {
+    return undefined
+  }
+  const parsed = parseUnboundedMetadataCellAddress(rewritten)
+  if (!parsed) {
+    throw new Error(`Invalid metadata cell reference '${rewritten}'`)
+  }
+  if (parsed.row < 0 || parsed.row >= MAX_ROWS || parsed.col < 0 || parsed.col >= MAX_COLS) {
+    return undefined
+  }
+  return formatAddress(parsed.row, parsed.col)
+}
+
+function clipMetadataRangeToSheetGrid(range: MetadataRangeLike): CellRangeRef | undefined {
+  const start = parseUnboundedMetadataCellAddress(range.startAddress)
+  const end = parseUnboundedMetadataCellAddress(range.endAddress)
+  if (!start || !end) {
+    throw new Error(`Invalid metadata range reference '${range.startAddress}:${range.endAddress}'`)
+  }
+  const startRow = Math.max(0, Math.min(start.row, end.row))
+  const endRow = Math.min(MAX_ROWS - 1, Math.max(start.row, end.row))
+  const startCol = Math.max(0, Math.min(start.col, end.col))
+  const endCol = Math.min(MAX_COLS - 1, Math.max(start.col, end.col))
+  if (startRow > endRow || startCol > endCol) {
+    return undefined
+  }
+  return {
+    sheetName: range.sheetName,
+    startAddress: formatAddress(startRow, startCol),
+    endAddress: formatAddress(endRow, endCol),
+  }
+}
+
+function parseUnboundedMetadataCellAddress(address: string): { row: number; col: number } | undefined {
+  const match = METADATA_CELL_REF_RE.exec(address)
+  if (!match) {
+    return undefined
+  }
+  return {
+    col: columnToIndex(match[1]!.toUpperCase()),
+    row: Number.parseInt(match[2]!, 10) - 1,
+  }
 }

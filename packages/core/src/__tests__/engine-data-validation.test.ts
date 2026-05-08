@@ -148,4 +148,41 @@ describe('SpreadsheetEngine data validations', () => {
       },
     ])
   })
+
+  it('clips bottom-bounded data validation ranges during structural inserts', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'validation-structural-bottom-clip' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setDataValidation({
+      range: {
+        sheetName: 'Sheet1',
+        startAddress: 'C159',
+        endAddress: 'C1048576',
+      },
+      rule: {
+        kind: 'textLength',
+        operator: 'lessThanOrEqual',
+        values: [100],
+      },
+      allowBlank: true,
+    })
+
+    engine.insertRows('Sheet1', 0, 1)
+
+    expect(engine.getDataValidations('Sheet1')).toEqual([
+      {
+        range: {
+          sheetName: 'Sheet1',
+          startAddress: 'C160',
+          endAddress: 'C1048576',
+        },
+        rule: {
+          kind: 'textLength',
+          operator: 'lessThanOrEqual',
+          values: [100],
+        },
+        allowBlank: true,
+      },
+    ])
+  })
 })
