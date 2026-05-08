@@ -103,6 +103,17 @@ jobs:
           set -euo pipefail
           pnpm workspace-resolution:check
 
+      - name: Build runtime package chain
+        run: |
+          set -euo pipefail
+          pnpm --filter @bilig/protocol build
+          pnpm --filter @bilig/workbook-domain build
+          pnpm --filter @bilig/wasm-kernel build
+          pnpm --filter @bilig/formula build
+          pnpm --filter @bilig/core build
+          pnpm --filter @bilig/excel-import build
+          pnpm --filter @bilig/headless build
+
       - name: Lint runtime package sources
         run: |
           set -euo pipefail
@@ -125,17 +136,6 @@ jobs:
             packages/headless/src/__tests__/persistence.fuzz.test.ts \
             packages/headless/src/__tests__/hyperformula-surface-parity.test.ts \
             scripts/__tests__/runtime-package-publish-validation.test.ts
-
-      - name: Build runtime package chain
-        run: |
-          set -euo pipefail
-          pnpm --filter @bilig/protocol build
-          pnpm --filter @bilig/workbook-domain build
-          pnpm --filter @bilig/wasm-kernel build
-          pnpm --filter @bilig/formula build
-          pnpm --filter @bilig/core build
-          pnpm --filter @bilig/excel-import build
-          pnpm --filter @bilig/headless build
 
       - name: Validate publishable runtime package set
         run: |
