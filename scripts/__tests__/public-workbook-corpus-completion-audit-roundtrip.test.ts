@@ -313,6 +313,8 @@ function statusFixture(input: {
     staleRecordedVerificationCount: 0,
     recordedPassedCaseCount: input.recordedPassedCaseCount ?? 0,
     recordedUnsupportedCaseCount: input.recordedUnsupportedCaseCount,
+    currentRecordedUnsupportedCaseCount: input.recordedUnsupportedCaseCount,
+    staleRecordedUnsupportedCaseCount: 0,
     recordedFailedCaseCount: 0,
     recordedErrorCaseCount: 0,
     recordedCoversManifest: input.recordedManifestArtifactCount >= input.cachedArtifactCount,

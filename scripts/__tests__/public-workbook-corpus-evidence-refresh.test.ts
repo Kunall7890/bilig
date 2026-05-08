@@ -37,6 +37,9 @@ describe('public workbook corpus evidence refresh reasons', () => {
     })
 
     expect(status.staleRecordedVerificationCount).toBe(1)
+    expect(status.recordedUnsupportedCaseCount).toBe(2)
+    expect(status.currentRecordedUnsupportedCaseCount).toBe(1)
+    expect(status.staleRecordedUnsupportedCaseCount).toBe(1)
     expect(status.staleRecordedVerificationSample).toEqual([
       expect.objectContaining({
         id: artifactA.id,

@@ -28,6 +28,8 @@ export interface PublicWorkbookCorpusStatus {
   readonly staleRecordedVerificationCount: number
   readonly recordedPassedCaseCount: number
   readonly recordedUnsupportedCaseCount: number
+  readonly currentRecordedUnsupportedCaseCount: number
+  readonly staleRecordedUnsupportedCaseCount: number
   readonly recordedFailedCaseCount: number
   readonly recordedErrorCaseCount: number
   readonly recordedCoversManifest: boolean
@@ -174,7 +176,10 @@ export function buildPublicWorkbookCorpusStatus(args: {
     ? staleRecordedVerificationArtifacts.length
     : recordedCases.filter(publicWorkbookCorpusCaseNeedsEvidenceRefresh).length
   const recordedPassedCaseCount = recordedCases.filter((entry) => entry.status === 'passed').length
-  const recordedUnsupportedCaseCount = recordedCases.filter((entry) => entry.status === 'unsupported').length
+  const recordedUnsupportedCases = recordedCases.filter((entry) => entry.status === 'unsupported')
+  const staleRecordedUnsupportedCaseCount = recordedUnsupportedCases.filter(publicWorkbookCorpusCaseNeedsEvidenceRefresh).length
+  const currentRecordedUnsupportedCaseCount = recordedUnsupportedCases.length - staleRecordedUnsupportedCaseCount
+  const recordedUnsupportedCaseCount = recordedUnsupportedCases.length
   const recordedFailedCaseCount = recordedCases.filter((entry) => entry.status === 'failed').length
   const recordedErrorCaseCount = recordedCases.filter((entry) => entry.status === 'error').length
   const recordedCasesById = new Map(recordedCases.map((entry) => [entry.id, entry]))
@@ -251,6 +256,8 @@ export function buildPublicWorkbookCorpusStatus(args: {
     staleRecordedVerificationCount,
     recordedPassedCaseCount,
     recordedUnsupportedCaseCount,
+    currentRecordedUnsupportedCaseCount,
+    staleRecordedUnsupportedCaseCount,
     recordedFailedCaseCount,
     recordedErrorCaseCount,
     recordedCoversManifest,

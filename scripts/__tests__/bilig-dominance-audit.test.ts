@@ -356,6 +356,8 @@ function publicWorkbookCorpusStatusFixture(overrides: Partial<PublicWorkbookCorp
     staleRecordedVerificationCount: 0,
     recordedPassedCaseCount: 10_000,
     recordedUnsupportedCaseCount: 0,
+    currentRecordedUnsupportedCaseCount: 0,
+    staleRecordedUnsupportedCaseCount: 0,
     recordedFailedCaseCount: 0,
     recordedErrorCaseCount: 0,
     recordedCoversManifest: true,
