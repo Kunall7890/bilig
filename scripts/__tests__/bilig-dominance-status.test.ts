@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildBiligDominanceStatus } from '../bilig-dominance-status.ts'
+import { buildBiligDominanceStatus, formatBiligDominanceStatusPathForMessage } from '../bilig-dominance-status.ts'
 import type { PublicWorkbookCorpusStatus } from '../public-workbook-corpus-status.ts'
 import { buildFixtureInput } from './bilig-dominance-scorecard.fixture.ts'
 
@@ -33,6 +33,15 @@ describe('bilig dominance status', () => {
     expect(status.uiSameCorpus.nextPreflightCommand).toContain('<google-sheets-url>')
     expect(status.uiSameCorpus.nextCaptureCommand).toContain('.cache/ui-responsiveness/same-corpus-capture.json')
     expect(status.uiSameCorpus.nextGoogleSheetsUploadInstruction).toContain('share it to anyone with the link')
+  })
+
+  it('formats repo-local status paths without exposing the checkout root', () => {
+    expect(formatBiligDominanceStatusPathForMessage('/repo/.cache/public-workbook-corpus/manifest.json', '/repo')).toBe(
+      '.cache/public-workbook-corpus/manifest.json',
+    )
+    expect(formatBiligDominanceStatusPathForMessage('/tmp/public-workbook-corpus/manifest.json', '/repo')).toBe(
+      '/tmp/public-workbook-corpus/manifest.json',
+    )
   })
 })
 

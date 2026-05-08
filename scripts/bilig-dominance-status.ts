@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 import { existsSync, readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { isAbsolute, join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 import type { BuildScorecardInput } from './bilig-dominance-scorecard-types.ts'
@@ -107,6 +107,7 @@ export function buildBiligDominanceStatusFromArgs(): BiligDominanceStatus {
     publicWorkbookCorpusStatus.cachedArtifactCount < publicWorkbookCorpusStatus.targetWorkbookCount
       ? formatPublicWorkbookCorpusFetchPlanCommand({
           cacheDir,
+          displayRootDir: rootDir,
           limit: publicWorkbookCorpusStatus.targetWorkbookCount,
           manifestPath,
         })
@@ -124,7 +125,7 @@ export function buildBiligDominanceStatusFromArgs(): BiligDominanceStatus {
     nextFetchPlanCommand,
     publicWorkbookCorpusStatus,
     stopMarkerActive,
-    stopMarkerPath,
+    stopMarkerPath: formatBiligDominanceStatusPathForMessage(stopMarkerPath, rootDir),
   })
 }
 
@@ -279,6 +280,7 @@ function formatPublicWorkbookCorpusDiscoveryCommand(limit: number, stopMarkerAct
 
 function formatPublicWorkbookCorpusFetchPlanCommand(args: {
   readonly cacheDir: string
+  readonly displayRootDir?: string
   readonly limit: number
   readonly manifestPath: string
 }): string {
@@ -287,14 +289,25 @@ function formatPublicWorkbookCorpusFetchPlanCommand(args: {
     'public-workbook-corpus:fetch:plan',
     '--',
     '--manifest',
-    args.manifestPath,
+    formatBiligDominanceStatusPathForMessage(args.manifestPath, args.displayRootDir),
     '--cache-dir',
-    args.cacheDir,
+    formatBiligDominanceStatusPathForMessage(args.cacheDir, args.displayRootDir),
     '--limit',
     String(args.limit),
   ]
     .map(shellQuote)
     .join(' ')
+}
+
+export function formatBiligDominanceStatusPathForMessage(path: string, displayRootDir: string | undefined): string {
+  if (!displayRootDir) {
+    return path
+  }
+  const relativePath = relative(displayRootDir, path)
+  if (!relativePath || relativePath.startsWith('..') || isAbsolute(relativePath)) {
+    return path
+  }
+  return relativePath
 }
 
 function shellQuote(value: string): string {
