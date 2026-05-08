@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildVitestArgBatches, buildVitestArgs } from '../run-vitest.ts'
+import { buildVitestArgBatches, buildVitestArgs, readVitestBatchCooldownMs } from '../run-vitest.ts'
 
 describe('run-vitest wrapper arguments', () => {
   it('bounds Vitest workers in CI by default', () => {
@@ -57,5 +57,12 @@ describe('run-vitest wrapper arguments', () => {
         BILIG_VITEST_FILE_CHUNK_SIZE: '1',
       }),
     ).toEqual([['--run', 'sample.test.ts', '--reporter=dot', '--maxWorkers', '1']])
+  })
+
+  it('adds a short CI-only cooldown between split batches', () => {
+    expect(readVitestBatchCooldownMs({})).toBe(0)
+    expect(readVitestBatchCooldownMs({ BILIG_CI_PROFILE: 'fast' })).toBe(1000)
+    expect(readVitestBatchCooldownMs({ BILIG_CI_PROFILE: 'fast', BILIG_VITEST_BATCH_COOLDOWN_MS: '0' })).toBe(0)
+    expect(readVitestBatchCooldownMs({ BILIG_CI_PROFILE: 'fast', BILIG_VITEST_BATCH_COOLDOWN_MS: '2500' })).toBe(2500)
   })
 })

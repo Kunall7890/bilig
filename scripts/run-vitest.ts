@@ -6,6 +6,7 @@ import { pathToFileURL } from 'node:url'
 import { ensureWasmKernelArtifact } from './ensure-wasm-kernel.js'
 
 const DEFAULT_CI_FILE_CHUNK_SIZE = 12
+const DEFAULT_CI_BATCH_COOLDOWN_MS = 1_000
 
 export function buildVitestArgs(args: readonly string[], env: NodeJS.ProcessEnv = process.env): string[] {
   if (!env['BILIG_CI_PROFILE'] || hasArg(args, '--maxWorkers')) {
@@ -16,6 +17,13 @@ export function buildVitestArgs(args: readonly string[], env: NodeJS.ProcessEnv 
 
 export function buildVitestArgBatches(args: readonly string[], env: NodeJS.ProcessEnv = process.env): string[][] {
   return splitVitestRunArgsForCi(args, env).map((batchArgs) => buildVitestArgs(batchArgs, env))
+}
+
+export function readVitestBatchCooldownMs(env: NodeJS.ProcessEnv = process.env): number {
+  if (!env['BILIG_CI_PROFILE']) {
+    return 0
+  }
+  return readNonNegativeInt(env['BILIG_VITEST_BATCH_COOLDOWN_MS']) ?? DEFAULT_CI_BATCH_COOLDOWN_MS
 }
 
 function splitVitestRunArgsForCi(args: readonly string[], env: NodeJS.ProcessEnv): string[][] {
@@ -59,11 +67,32 @@ function readPositiveInt(value: string | undefined): number | undefined {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined
 }
 
+function readNonNegativeInt(value: string | undefined): number | undefined {
+  if (value === undefined) {
+    return undefined
+  }
+
+  const parsed = Number.parseInt(value, 10)
+  return Number.isInteger(parsed) && parsed >= 0 ? parsed : undefined
+}
+
+function sleepSync(ms: number): void {
+  if (ms <= 0) {
+    return
+  }
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
+}
+
 function main(): never {
   ensureWasmKernelArtifact()
 
   const vitestBin = process.platform === 'win32' ? 'node_modules\\.bin\\vitest.cmd' : 'node_modules/.bin/vitest'
-  for (const args of buildVitestArgBatches(process.argv.slice(2))) {
+  const batches = buildVitestArgBatches(process.argv.slice(2))
+  const batchCooldownMs = readVitestBatchCooldownMs()
+  for (const [index, args] of batches.entries()) {
+    if (index > 0) {
+      sleepSync(batchCooldownMs)
+    }
     const result = spawnSync(vitestBin, args, {
       cwd: process.cwd(),
       env: process.env,
