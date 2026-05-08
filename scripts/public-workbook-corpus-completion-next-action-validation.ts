@@ -1,5 +1,5 @@
 import { publicCorpusStopMarkerOverrideEnvVar, publicCorpusStopMarkerOverrideFlag } from './public-workbook-corpus-cli.ts'
-import { pnpmScriptName } from './public-workbook-corpus-completion-audit-helpers.ts'
+import { isPublicWorkbookCorpusMutatingScript, pnpmScriptName } from './public-workbook-corpus-completion-audit-helpers.ts'
 import type { PublicWorkbookCorpusCompletionAudit } from './public-workbook-corpus-completion-audit-types.ts'
 
 export function validatePublicWorkbookCorpusAuditNextActions(args: {
@@ -21,10 +21,14 @@ export function validatePublicWorkbookCorpusAuditNextActions(args: {
       findings.push(`${action.id} next action has no commands`)
     }
     for (const command of action.commands) {
+      const scriptName = pnpmScriptName(command)
       if (args.audit.completionVerdict.nextCorpusRunRequiresExplicitResume && bypassesActiveStopMarker(command)) {
         findings.push(`${action.id} runnable next action command bypasses the active corpus stop marker: ${command}`)
       }
-      validatePnpmScriptCommand(`${action.id} next action command`, command, args.packageScripts, findings)
+      if (args.audit.completionVerdict.nextCorpusRunRequiresExplicitResume && isPublicWorkbookCorpusMutatingScript(scriptName)) {
+        findings.push(`${action.id} runnable next action command is mutating while the public corpus stop marker is active: ${command}`)
+      }
+      validatePnpmScriptCommand(`${action.id} next action command`, command, args.packageScripts, findings, scriptName)
     }
     for (const command of action.blockedCommands) {
       if (args.audit.completionVerdict.nextCorpusRunRequiresExplicitResume && !bypassesActiveStopMarker(command)) {
@@ -36,8 +40,14 @@ export function validatePublicWorkbookCorpusAuditNextActions(args: {
   return findings
 }
 
-function validatePnpmScriptCommand(label: string, command: string, packageScripts: ReadonlyMap<string, string>, findings: string[]): void {
-  const scriptName = pnpmScriptName(command)
+function validatePnpmScriptCommand(
+  label: string,
+  command: string,
+  packageScripts: ReadonlyMap<string, string>,
+  findings: string[],
+  parsedScriptName?: string | null,
+): void {
+  const scriptName = parsedScriptName === undefined ? pnpmScriptName(command) : parsedScriptName
   if (!scriptName) {
     findings.push(`${label} is not a pnpm package script: ${command}`)
   } else if (!packageScripts.has(scriptName)) {

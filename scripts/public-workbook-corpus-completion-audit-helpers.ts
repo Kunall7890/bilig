@@ -114,6 +114,26 @@ export function pnpmScriptName(command: string): string | null {
   return candidate
 }
 
+export function isPublicWorkbookCorpusMutatingScript(scriptName: string | null): boolean {
+  return scriptName !== null && publicWorkbookCorpusMutatingScripts.has(scriptName)
+}
+
+const publicWorkbookCorpusMutatingScripts = new Set([
+  'public-workbook-corpus:init',
+  'public-workbook-corpus:add-link',
+  'public-workbook-corpus:discover',
+  'public-workbook-corpus:discover-financial',
+  'public-workbook-corpus:fetch',
+  'public-workbook-corpus:fetch-source',
+  'public-workbook-corpus:fetch-financial',
+  'public-workbook-corpus:verify',
+  'public-workbook-corpus:verify-artifact',
+  'public-workbook-corpus:verify-financial',
+  'public-workbook-corpus:verify-missing',
+  'public-workbook-corpus:verify-stale',
+  'public-workbook-corpus:refresh-scorecard-from-checkpoint',
+])
+
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }

@@ -30,6 +30,7 @@ import {
   isRecord,
   isRepoEvidenceArtifact,
   isResourceLimitedUnsupportedCase,
+  isPublicWorkbookCorpusMutatingScript,
   pnpmScriptName,
 } from './public-workbook-corpus-completion-audit-helpers.ts'
 import {
@@ -236,7 +237,7 @@ export function validatePublicWorkbookCorpusCompletionAudit(
       if (scriptName && !packageScripts().has(scriptName)) {
         findings.push(`${item.id} check command references missing package script: ${scriptName}`)
       }
-      if (audit.completionVerdict.nextCorpusRunRequiresExplicitResume && publicCorpusCheckCommandMutates(scriptName)) {
+      if (audit.completionVerdict.nextCorpusRunRequiresExplicitResume && isPublicWorkbookCorpusMutatingScript(scriptName)) {
         findings.push(`${item.id} check command is mutating while the public corpus stop marker is active: ${command}`)
       }
     }
@@ -914,26 +915,6 @@ function checklistItem(
 function uniqueStrings(values: readonly string[]): string[] {
   return [...new Set(values)]
 }
-
-function publicCorpusCheckCommandMutates(scriptName: string | null): boolean {
-  return scriptName !== null && publicCorpusMutatingScripts.has(scriptName)
-}
-
-const publicCorpusMutatingScripts = new Set([
-  'public-workbook-corpus:init',
-  'public-workbook-corpus:add-link',
-  'public-workbook-corpus:discover',
-  'public-workbook-corpus:discover-financial',
-  'public-workbook-corpus:fetch',
-  'public-workbook-corpus:fetch-source',
-  'public-workbook-corpus:fetch-financial',
-  'public-workbook-corpus:verify',
-  'public-workbook-corpus:verify-artifact',
-  'public-workbook-corpus:verify-financial',
-  'public-workbook-corpus:verify-missing',
-  'public-workbook-corpus:verify-stale',
-  'public-workbook-corpus:refresh-scorecard-from-checkpoint',
-])
 
 function packageScripts(): ReadonlyMap<string, string> {
   const parsed = JSON.parse(readFileSync(resolve(rootDir, 'package.json'), 'utf8')) as unknown

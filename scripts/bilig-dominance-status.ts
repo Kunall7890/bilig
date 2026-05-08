@@ -100,6 +100,7 @@ export interface BiligDominanceStatus {
     readonly recordedAllCasesPassed: boolean
     readonly targetComplete: boolean
     readonly nextFetchPlanCommand: string | null
+    readonly nextFetchCommand: string | null
     readonly nextDiscoveryPlanCommand: string | null
     readonly nextDiscoveryCommand: string | null
     readonly nextMissingVerificationPlanCommand: string | null
@@ -173,6 +174,7 @@ const defaultCorpusRunStopMarkerPath = join(rootDir, '.agent-coordination', '202
 const defaultUiSameCorpusId: WorkbookBenchmarkCorpusId = 'wide-mixed-250k'
 const defaultUiSameCorpusPublicAccessCheckPath = join(rootDir, '.cache', 'ui-responsiveness', 'same-corpus-public-access-check.json')
 const uiSameCorpusGoogleSheetsUrlEnvVar = 'BILIG_UI_SAME_CORPUS_GOOGLE_SHEETS_URL'
+const publicWorkbookCorpusFetchBatchSize = 6
 const requiredUiSameCorpusWorkloads = ['visible-scroll-response'] as const satisfies readonly UiResponsivenessSameCorpusWorkload[]
 
 function main(): void {
@@ -310,11 +312,17 @@ export function buildBiligDominanceStatus(args: {
     args.fetchPlan && args.fetchPlan.candidateSourceDeficitCount > 0
       ? formatPublicWorkbookCorpusDiscoveryCommand(args.fetchPlan.recommendedDiscoveryLimit)
       : null
+  const nextFetchCommand = formatNextPublicWorkbookCorpusFetchCommand({
+    cachedArtifactCount: args.publicWorkbookCorpusStatus.cachedArtifactCount,
+    fetchPlan: args.fetchPlan ?? null,
+    targetWorkbookCount: args.publicWorkbookCorpusStatus.targetWorkbookCount,
+  })
   const nextMissingVerificationCommand = args.publicWorkbookCorpusStatus.nextMissingVerificationCommand
   const nextStaleVerificationCommand = args.publicWorkbookCorpusStatus.nextStaleVerificationCommand
   const blockedCorpusCommands = args.stopMarkerActive
     ? [
         ...nonEmptyCommands([nextDiscoveryCommand]).map(corpusStopMarkerOverrideCommand),
+        ...nonEmptyCommands([nextFetchCommand]).map(corpusStopMarkerOverrideCommand),
         ...nonEmptyCommands([
           args.publicWorkbookCorpusStatus.blockedMissingVerificationCommand,
           args.publicWorkbookCorpusStatus.blockedStaleVerificationCommand,
@@ -353,6 +361,7 @@ export function buildBiligDominanceStatus(args: {
       recordedAllCasesPassed: args.publicWorkbookCorpusStatus.recordedAllCasesPassed,
       targetComplete: args.publicWorkbookCorpusStatus.targetComplete,
       nextFetchPlanCommand: args.nextFetchPlanCommand ?? null,
+      nextFetchCommand: args.stopMarkerActive ? null : nextFetchCommand,
       nextDiscoveryPlanCommand:
         args.fetchPlan && args.fetchPlan.candidateSourceDeficitCount > 0
           ? formatPublicWorkbookCorpusDiscoveryPlanCommand(args.fetchPlan.recommendedDiscoveryLimit)
@@ -769,6 +778,30 @@ function formatPublicWorkbookCorpusFetchPlanCommand(args: {
     formatBiligDominanceStatusPathForMessage(args.cacheDir, args.displayRootDir),
     '--limit',
     String(args.limit),
+  ]
+    .map(shellQuote)
+    .join(' ')
+}
+
+function formatNextPublicWorkbookCorpusFetchCommand(args: {
+  readonly cachedArtifactCount: number
+  readonly fetchPlan: PublicWorkbookCorpusFetchPlan | null
+  readonly targetWorkbookCount: number
+}): string | null {
+  const missingCachedArtifactCount = Math.max(0, args.targetWorkbookCount - args.cachedArtifactCount)
+  const candidateFetchCount = args.fetchPlan?.candidateSourceCount ?? 0
+  const batchSize = Math.min(publicWorkbookCorpusFetchBatchSize, missingCachedArtifactCount, candidateFetchCount)
+  if (batchSize <= 0) {
+    return null
+  }
+  return [
+    'pnpm',
+    'public-workbook-corpus:fetch',
+    '--',
+    '--limit',
+    String(args.cachedArtifactCount + batchSize),
+    '--fetch-batch-size',
+    String(batchSize),
   ]
     .map(shellQuote)
     .join(' ')

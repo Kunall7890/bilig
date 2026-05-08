@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { buildBiligDominanceStatus, formatBiligDominanceStatusPathForMessage } from '../bilig-dominance-status.ts'
 import { buildSameCorpusProof, type SameCorpusCapture } from '../gen-ui-responsiveness-live-browser-scorecard.ts'
+import type { PublicWorkbookCorpusFetchPlan } from '../public-workbook-corpus-fetch.ts'
 import type { PublicWorkbookCorpusFinancialPlan } from '../public-workbook-corpus-financial-plan.ts'
 import type { PublicWorkbookCorpusFeatureWitnessPlan } from '../public-workbook-corpus-feature-witness-plan.ts'
 import type { PublicWorkbookCorpusStatus } from '../public-workbook-corpus-status.ts'
@@ -219,6 +220,7 @@ describe('bilig dominance status', () => {
   it('separates stop-marker-blocked public corpus runs from runnable next commands', () => {
     const status = buildBiligDominanceStatus({
       input: buildFixtureInput(),
+      fetchPlan: incompletePublicWorkbookFetchPlan(),
       financialCorpusStatus: completeFinancialCorpusStatus(),
       publicWorkbookCorpusStatus: incompletePublicWorkbookCorpusStatus(),
       stopMarkerActive: true,
@@ -226,10 +228,13 @@ describe('bilig dominance status', () => {
     })
 
     expect(status.publicWorkbookCorpus.nextMissingVerificationPlanCommand).toBe('pnpm public-workbook-corpus:verify-missing:plan')
+    expect(status.publicWorkbookCorpus.nextFetchCommand).toBeNull()
     expect(status.publicWorkbookCorpus.nextMissingVerificationCommand).toBeNull()
     expect(status.publicWorkbookCorpus.nextStaleVerificationPlanCommand).toBe('pnpm public-workbook-corpus:verify-stale:plan')
     expect(status.publicWorkbookCorpus.nextStaleVerificationCommand).toBeNull()
     expect(status.publicWorkbookCorpus.blockedCommands).toEqual([
+      'BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE=1 pnpm public-workbook-corpus:discover -- --limit 10060 --allow-active-stop-marker',
+      'BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE=1 pnpm public-workbook-corpus:fetch -- --limit 9906 --fetch-batch-size 6 --allow-active-stop-marker',
       'BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE=1 pnpm public-workbook-corpus:verify-missing -- --limit 1 --allow-active-stop-marker',
       'BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE=1 pnpm public-workbook-corpus:verify-stale -- --limit 1 --allow-active-stop-marker',
     ])
@@ -388,6 +393,21 @@ function incompletePublicWorkbookCorpusStatus(): PublicWorkbookCorpusStatus {
       'recorded verification cases below cached artifacts: 9750/9900',
       'recorded verification cases need evidence refresh: 25',
     ],
+  }
+}
+
+function incompletePublicWorkbookFetchPlan(): PublicWorkbookCorpusFetchPlan {
+  return {
+    targetArtifactCount: 10_000,
+    cachedArtifactCount: 9_900,
+    sourceCount: 10_000,
+    remainingArtifactSlots: 100,
+    candidateSourceCount: 40,
+    candidateSourceDeficitCount: 60,
+    minimumAdditionalSourceCount: 60,
+    recommendedDiscoveryLimit: 10_060,
+    targetReachableFromKnownCandidates: false,
+    sampledCandidateSources: [],
   }
 }
 

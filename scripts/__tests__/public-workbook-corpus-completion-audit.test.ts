@@ -177,6 +177,47 @@ describe('public workbook corpus completion audit', () => {
     )
   })
 
+  it('rejects mutating runnable next-action commands while the corpus stop marker is active', () => {
+    const artifact = workbookArtifact('workbook-a')
+    const audit = buildPublicWorkbookCorpusCompletionAudit({
+      generatedAt: '2026-05-08T00:00:00.000Z',
+      manifest: manifestWithArtifacts([artifact], 2),
+      recordedCases: [passedCase(artifact, 1)],
+      status: statusFixture({
+        targetWorkbookCount: 2,
+        sourceCount: 2,
+        cachedArtifactCount: 1,
+        scorecardCaseCount: 1,
+        checkpointCaseCount: 1,
+        recordedManifestArtifactCount: 1,
+        missingManifestArtifactCount: 0,
+        recordedPassedCaseCount: 1,
+        scorecardCoversManifest: true,
+        targetComplete: false,
+        gaps: ['cached artifacts below target: 1/2'],
+      }),
+      stopMarkerActive: true,
+    })
+    const invalidNextActions = audit.nextActions.slice()
+    const resumeActionIndex = invalidNextActions.findIndex((action) => action.id === 'resume-public-corpus-ingest')
+    const resumeAction = invalidNextActions[resumeActionIndex]
+    if (!resumeAction) {
+      throw new Error('expected resume-public-corpus-ingest next action')
+    }
+    invalidNextActions[resumeActionIndex] = Object.assign({}, resumeAction, {
+      commands: [...resumeAction.commands, 'pnpm public-workbook-corpus:fetch -- --limit 2'],
+    })
+    const invalidAudit = Object.assign({}, audit, {
+      nextActions: invalidNextActions,
+    })
+
+    expect(validatePublicWorkbookCorpusCompletionAudit(invalidAudit)).toEqual(
+      expect.arrayContaining([
+        'resume-public-corpus-ingest runnable next action command is mutating while the public corpus stop marker is active: pnpm public-workbook-corpus:fetch -- --limit 2',
+      ]),
+    )
+  })
+
   it('rejects mutating checklist commands while the corpus stop marker is active', () => {
     const artifact = workbookArtifact('workbook-a')
     const audit = buildPublicWorkbookCorpusCompletionAudit({
