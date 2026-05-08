@@ -530,7 +530,9 @@ async function main(): Promise<void> {
       const reusableCases = readFlagArg('--no-verify-resume')
         ? []
         : readReusablePublicWorkbookCorpusCases([scorecardPath, verifyCheckpointPath])
-      const checkpointCasesById = new Map(reusableCases.map((entry) => [entry.id, entry]))
+      const checkpointCasesById = readFlagArg('--no-verify-resume')
+        ? new Map<string, PublicWorkbookCorpusCase>()
+        : new Map(readReusablePublicWorkbookCorpusCases([verifyCheckpointPath]).map((entry) => [entry.id, entry]))
       const progressIntervalMs = Math.max(1_000, readNumberArg('--verify-progress-interval-ms', 15_000))
       let completedCount = 0
       let latestArtifactId = 'none'

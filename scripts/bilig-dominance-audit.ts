@@ -22,6 +22,7 @@ export interface BiligDominancePromptArtifactAudit {
   }
   readonly checklist: readonly BiligDominancePromptArtifactChecklistItem[]
   readonly livePublicWorkbookCorpus: BiligDominanceStatus['publicWorkbookCorpus']
+  readonly liveUiSameCorpus: BiligDominanceStatus['uiSameCorpus']
 }
 
 export interface BiligDominancePromptArtifactChecklistItem {
@@ -86,6 +87,7 @@ export function buildBiligDominancePromptArtifactAudit(args: {
     },
     checklist,
     livePublicWorkbookCorpus: args.status.publicWorkbookCorpus,
+    liveUiSameCorpus: args.status.uiSameCorpus,
   }
 }
 

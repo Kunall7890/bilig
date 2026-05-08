@@ -85,6 +85,14 @@ describe('bilig dominance prompt-to-artifact audit', () => {
       nextCorpusRunRequiresExplicitResume: true,
       nextStaleVerificationCommand: null,
     })
+    expect(audit.liveUiSameCorpus).toMatchObject({
+      captured: false,
+      missingInputs: ['googleSheetsUrlForUploadedSameCorpusWorkbook'],
+      fixture: {
+        corpusCaseId: 'wide-mixed-250k',
+        materializedCells: 250_000,
+      },
+    })
     expect(validateBiligDominancePromptArtifactAudit(audit)).toEqual([])
   })
 

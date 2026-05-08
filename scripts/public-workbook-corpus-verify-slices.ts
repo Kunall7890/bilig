@@ -156,7 +156,7 @@ async function verifySelectedPublicWorkbookArtifacts(
     if (selectedArtifacts.length === 0) {
       return 0
     }
-    const checkpointCasesById = indexPublicWorkbookCorpusCases(recordedCases)
+    const checkpointCasesById = indexPublicWorkbookCorpusCases(readReusablePublicWorkbookCorpusCases([args.verifyCheckpointPath]))
     const scorecard = await buildPublicWorkbookCorpusScorecard({
       manifest: { ...manifest, artifacts: selectedArtifacts },
       cacheDir: args.cacheDir,

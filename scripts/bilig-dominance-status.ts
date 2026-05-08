@@ -7,6 +7,8 @@ import { pathToFileURL } from 'node:url'
 import type { BuildScorecardInput } from './bilig-dominance-scorecard-types.ts'
 import { loadBiligDominanceScorecardInput, rootDir } from './bilig-dominance-scorecard-input.ts'
 import { buildBiligDominanceScorecard } from './gen-bilig-dominance-scorecard.ts'
+import type { UiResponsivenessSameCorpusWorkload } from './gen-ui-responsiveness-live-browser-scorecard.ts'
+import { buildWorkbookBenchmarkCorpus, type WorkbookBenchmarkCorpusId } from '../packages/benchmarks/src/workbook-corpus.js'
 import { publicCorpusStopMarkerOverrideEnvVar, publicCorpusStopMarkerOverrideFlag, readStringArg } from './public-workbook-corpus-cli.ts'
 import { planPublicWorkbookCorpusFetch, type PublicWorkbookCorpusFetchPlan } from './public-workbook-corpus-fetch.ts'
 import { parsePublicWorkbookManifestJson } from './public-workbook-corpus-json.ts'
@@ -46,6 +48,32 @@ export interface BiligDominanceStatus {
     readonly corpusRunStopMarkerOverrideEnvVar: string
     readonly gaps: readonly string[]
   }
+  readonly uiSameCorpus: {
+    readonly captured: boolean
+    readonly evidenceKind: 'same-corpus-browser-capture' | 'not-captured'
+    readonly requiredProductCount: number
+    readonly requiredCaseCount: number
+    readonly tenXMeanAndP95CaseCount: number
+    readonly requiredWorkloads: readonly UiResponsivenessSameCorpusWorkload[]
+    readonly missingRequiredWorkloads: readonly UiResponsivenessSameCorpusWorkload[]
+    readonly coveredCorpusCaseIds: readonly string[]
+    readonly limitations: readonly string[]
+    readonly fixture: {
+      readonly corpusCaseId: WorkbookBenchmarkCorpusId
+      readonly materializedCells: number
+      readonly localXlsxPath: string
+      readonly publicGithubRawUrl: string
+      readonly publicForgejoRawUrl: string
+      readonly microsoftExcelWebUrl: string
+    }
+    readonly missingInputs: readonly string[]
+    readonly nextFixtureCheckCommand: string
+    readonly nextGoogleSheetsUploadInstruction: string
+    readonly nextPreflightCommand: string
+    readonly nextCaptureCommand: string
+    readonly nextScorecardGenerateCommand: string
+    readonly nextDominanceCheckCommand: string
+  }
 }
 
 const defaultCacheDir = join(rootDir, '.cache', 'public-workbook-corpus')
@@ -53,6 +81,8 @@ const defaultManifestPath = join(defaultCacheDir, 'manifest.json')
 const defaultScorecardPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'public-workbook-corpus-scorecard.json')
 const defaultVerifyCheckpointPath = join(defaultCacheDir, 'verification-checkpoint.json')
 const defaultCorpusRunStopMarkerPath = join(rootDir, '.agent-coordination', '20260507T074946Z-codex-stop-interactive-corpus-runs.md')
+const defaultUiSameCorpusId: WorkbookBenchmarkCorpusId = 'wide-mixed-250k'
+const requiredUiSameCorpusWorkloads = ['visible-scroll-response'] as const satisfies readonly UiResponsivenessSameCorpusWorkload[]
 
 function main(): void {
   process.stdout.write(`${JSON.stringify(buildBiligDominanceStatusFromArgs(), null, 2)}\n`)
@@ -160,6 +190,7 @@ export function buildBiligDominanceStatus(args: {
       corpusRunStopMarkerOverrideEnvVar: publicCorpusStopMarkerOverrideEnvVar,
       gaps: args.publicWorkbookCorpusStatus.gaps,
     },
+    uiSameCorpus: buildUiSameCorpusStatus(args.input),
   }
 }
 
@@ -171,6 +202,68 @@ function publicWorkbookCorpusDominanceBlockers(status: PublicWorkbookCorpusStatu
     }
     return `public workbook corpus ${gap}`
   })
+}
+
+function buildUiSameCorpusStatus(input: BuildScorecardInput): BiligDominanceStatus['uiSameCorpus'] {
+  const proof = input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof
+  const fixture = uiSameCorpusFixtureStatus(defaultUiSameCorpusId)
+  const coveredWorkloads = new Set(proof.cases.map((entry) => entry.workload))
+  return {
+    captured: proof.captured,
+    evidenceKind: proof.evidenceKind,
+    requiredProductCount: proof.requiredProductCount,
+    requiredCaseCount: proof.requiredCaseCount,
+    tenXMeanAndP95CaseCount: proof.tenXMeanAndP95CaseCount,
+    requiredWorkloads: requiredUiSameCorpusWorkloads,
+    missingRequiredWorkloads: requiredUiSameCorpusWorkloads.filter((workload) => !coveredWorkloads.has(workload)),
+    coveredCorpusCaseIds: proof.coveredCorpusCaseIds,
+    limitations: proof.limitations,
+    fixture,
+    missingInputs: proof.captured ? [] : ['googleSheetsUrlForUploadedSameCorpusWorkbook'],
+    nextFixtureCheckCommand: 'pnpm ui:same-corpus:fixture:check',
+    nextGoogleSheetsUploadInstruction: `Upload ${fixture.localXlsxPath} to Google Sheets as a native Google Sheet, share it to anyone with the link, then pass its edit URL as --google-sheets-url.`,
+    nextPreflightCommand: [
+      'pnpm',
+      'ui:same-corpus:capture',
+      '--',
+      '--preflight',
+      '--google-sheets-url',
+      '<google-sheets-url>',
+      '--microsoft-excel-web-url',
+      fixture.microsoftExcelWebUrl,
+    ]
+      .map(shellQuote)
+      .join(' '),
+    nextCaptureCommand: [
+      'pnpm',
+      'ui:same-corpus:capture',
+      '--',
+      '--output',
+      '.cache/ui-responsiveness/same-corpus-capture.json',
+      '--google-sheets-url',
+      '<google-sheets-url>',
+      '--microsoft-excel-web-url',
+      fixture.microsoftExcelWebUrl,
+    ]
+      .map(shellQuote)
+      .join(' '),
+    nextScorecardGenerateCommand: 'pnpm ui:browser-live:generate -- --capture .cache/ui-responsiveness/same-corpus-capture.json',
+    nextDominanceCheckCommand: 'pnpm dominance:generate && pnpm dominance:check && pnpm dominance:audit:check',
+  }
+}
+
+function uiSameCorpusFixtureStatus(corpusCaseId: WorkbookBenchmarkCorpusId): BiligDominanceStatus['uiSameCorpus']['fixture'] {
+  const corpus = buildWorkbookBenchmarkCorpus(corpusCaseId)
+  const localXlsxPath = `packages/benchmarks/baselines/ui-same-corpus/${corpus.id}.xlsx`
+  const publicGithubRawUrl = `https://raw.githubusercontent.com/proompteng/bilig/main/${localXlsxPath}`
+  return {
+    corpusCaseId,
+    materializedCells: corpus.materializedCellCount,
+    localXlsxPath,
+    publicGithubRawUrl,
+    publicForgejoRawUrl: `https://code.proompteng.ai/kalmyk/bilig/raw/branch/main/${localXlsxPath}`,
+    microsoftExcelWebUrl: `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(publicGithubRawUrl)}`,
+  }
 }
 
 function formatPublicWorkbookCorpusDiscoveryPlanCommand(limit: number): string {

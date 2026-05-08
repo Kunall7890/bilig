@@ -871,7 +871,7 @@ describe('public workbook corpus CLI resource guards', () => {
     })
   })
 
-  it('verifies a bounded missing slice into the checkpoint without rewriting the scorecard', async () => {
+  it('verifies a bounded missing slice into the checkpoint without duplicating scorecard cases', async () => {
     const artifactA = workbookArtifact('workbook-a')
     const artifactB = workbookArtifact('workbook-b')
     const dir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-cli-verify-missing-'))
@@ -913,14 +913,16 @@ describe('public workbook corpus CLI resource guards', () => {
       },
     )
     const checkpointCases = readReusablePublicWorkbookCorpusCases([checkpointPath])
+    const recordedCases = readReusablePublicWorkbookCorpusCases([scorecardPath, checkpointPath])
 
     expect(result.status).toBe(0)
     expect(result.stdout).toContain('Verified 1 missing public workbook cases')
-    expect(checkpointCases.map((entry) => [entry.id, entry.status])).toEqual([
+    expect(checkpointCases.map((entry) => [entry.id, entry.status])).toEqual([[artifactB.id, 'error']])
+    expect(recordedCases.map((entry) => [entry.id, entry.status])).toEqual([
       [artifactA.id, 'passed'],
       [artifactB.id, 'error'],
     ])
-    expect(checkpointCases[1]?.evidence).toEqual(expect.arrayContaining([`Missing cached workbook file: ${artifactB.cachePath}`]))
+    expect(checkpointCases[0]?.evidence).toEqual(expect.arrayContaining([`Missing cached workbook file: ${artifactB.cachePath}`]))
   })
 
   it('lists a bounded missing slice without starting verification', async () => {
