@@ -262,6 +262,7 @@ describe('bilig dominance status', () => {
       candidateSourceCount: 8_949,
       candidateSourceDeficitCount: 0,
       recommendedFetchLimit: 20,
+      recommendedFetchBatchSize: 6,
       needsAdditionalDiscovery: false,
       targetReachableFromKnownCandidates: true,
       nextPlanCommand: 'pnpm public-workbook-corpus:discover-financial:plan',
@@ -417,6 +418,7 @@ function financialPlanFixture(): PublicWorkbookCorpusFinancialPlan {
     minimumAdditionalSourceCount: 0,
     recommendedDiscoveryLimit: 9_824,
     recommendedFetchTrancheSize: 20,
+    recommendedFetchBatchSize: 6,
     recommendedFetchLimit: 20,
     needsAdditionalDiscovery: false,
     targetReachableFromKnownCandidates: true,
@@ -426,9 +428,9 @@ function financialPlanFixture(): PublicWorkbookCorpusFinancialPlan {
       fetchPlan:
         'pnpm public-workbook-corpus:fetch-financial:plan -- --manifest .cache/public-workbook-corpus-financial/manifest.json --cache-dir .cache/public-workbook-corpus-financial --limit 5000',
       fetch:
-        'BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE=1 pnpm public-workbook-corpus:fetch-financial -- --manifest .cache/public-workbook-corpus-financial/manifest.json --cache-dir .cache/public-workbook-corpus-financial --limit 20 --allow-active-stop-marker',
+        'BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE=1 pnpm public-workbook-corpus:fetch-financial -- --manifest .cache/public-workbook-corpus-financial/manifest.json --cache-dir .cache/public-workbook-corpus-financial --limit 20 --fetch-batch-size 6 --allow-active-stop-marker',
       fetchAll:
-        'BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE=1 pnpm public-workbook-corpus:fetch-financial -- --manifest .cache/public-workbook-corpus-financial/manifest.json --cache-dir .cache/public-workbook-corpus-financial --limit 5000 --allow-active-stop-marker',
+        'BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE=1 pnpm public-workbook-corpus:fetch-financial -- --manifest .cache/public-workbook-corpus-financial/manifest.json --cache-dir .cache/public-workbook-corpus-financial --limit 5000 --fetch-batch-size 6 --allow-active-stop-marker',
       resumePlan: 'pnpm public-workbook-corpus:resume-financial:plan',
       resumeCheck: 'pnpm public-workbook-corpus:resume-financial:check',
       verify:

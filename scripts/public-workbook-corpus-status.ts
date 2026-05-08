@@ -238,9 +238,7 @@ export function buildPublicWorkbookCorpusStatus(args: {
       : [`recorded verification cases need evidence refresh: ${String(staleRecordedVerificationCount)}`]),
     ...(recordedFailedCaseCount === 0 ? [] : [`recorded failed cases: ${String(recordedFailedCaseCount)}`]),
     ...(recordedErrorCaseCount === 0 ? [] : [`recorded error cases: ${String(recordedErrorCaseCount)}`]),
-    ...(args.scorecard && args.scorecard.summary.allCachedWorkbooksPassed
-      ? []
-      : ['scorecard is missing or has non-passing cached workbooks']),
+    ...scorecardHealthGaps(args.scorecard, cachedArtifactCount),
   ]
   return {
     targetWorkbookCount,
@@ -269,6 +267,16 @@ export function buildPublicWorkbookCorpusStatus(args: {
     targetComplete,
     gaps,
   }
+}
+
+function scorecardHealthGaps(scorecard: PublicWorkbookCorpusScorecard | null, cachedArtifactCount: number): string[] {
+  if (cachedArtifactCount === 0) {
+    return []
+  }
+  if (!scorecard) {
+    return ['scorecard is missing for cached workbooks']
+  }
+  return scorecard.summary.allCachedWorkbooksPassed ? [] : ['scorecard has non-passing cached workbooks']
 }
 
 function publicWorkbookCorpusVerificationBlockingGaps(status: PublicWorkbookCorpusStatus): string[] {

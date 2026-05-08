@@ -80,6 +80,7 @@ export interface BiligDominanceStatus {
       readonly candidateSourceCount: number
       readonly candidateSourceDeficitCount: number
       readonly recommendedFetchLimit: number | null
+      readonly recommendedFetchBatchSize: number
       readonly needsAdditionalDiscovery: boolean
       readonly targetReachableFromKnownCandidates: boolean
       readonly nextPlanCommand: string
@@ -232,6 +233,7 @@ export function buildBiligDominanceStatusFromArgs(): BiligDominanceStatus {
   })
   const financialCorpusPlan = buildPublicWorkbookCorpusFinancialPlan({
     cacheDir: financialCacheDir,
+    fetchBatchSize: 6,
     fetchPlan: planPublicWorkbookCorpusFetch({
       manifest: financialManifest ?? createEmptyPublicWorkbookManifest(undefined, financialTargetWorkbookCount),
       limit: financialTargetWorkbookCount,
@@ -459,6 +461,7 @@ function buildFinancialPlanStatus(
     candidateSourceCount: plan.candidateSourceCount,
     candidateSourceDeficitCount: plan.candidateSourceDeficitCount,
     recommendedFetchLimit: plan.recommendedFetchLimit,
+    recommendedFetchBatchSize: plan.recommendedFetchBatchSize,
     needsAdditionalDiscovery: plan.needsAdditionalDiscovery,
     targetReachableFromKnownCandidates: plan.targetReachableFromKnownCandidates,
     nextPlanCommand: 'pnpm public-workbook-corpus:discover-financial:plan',

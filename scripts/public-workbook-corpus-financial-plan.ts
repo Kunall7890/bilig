@@ -41,6 +41,7 @@ export interface PublicWorkbookCorpusFinancialPlan {
   readonly minimumAdditionalSourceCount: number
   readonly recommendedDiscoveryLimit: number
   readonly recommendedFetchTrancheSize: number
+  readonly recommendedFetchBatchSize: number
   readonly recommendedFetchLimit: number | null
   readonly needsAdditionalDiscovery: boolean
   readonly targetReachableFromKnownCandidates: boolean
@@ -94,6 +95,7 @@ async function main(): Promise<void> {
           candidateSourceCount: plan.candidateSourceCount,
           candidateSourceDeficitCount: plan.candidateSourceDeficitCount,
           recommendedFetchLimit: plan.recommendedFetchLimit,
+          recommendedFetchBatchSize: plan.recommendedFetchBatchSize,
           needsAdditionalDiscovery: plan.needsAdditionalDiscovery,
           stopMarker: {
             active: plan.stopMarker.active,
@@ -124,6 +126,7 @@ export function buildPublicWorkbookCorpusFinancialPlanFromArgs(): PublicWorkbook
   const limit = readNumberArg('--limit', targetWorkbookCount)
   const sampleLimit = readNumberArg('--sample-limit', 20)
   const fetchTrancheSize = readNumberArg('--fetch-tranche-size', 20)
+  const fetchBatchSize = readNumberArg('--fetch-batch-size', 6)
   const stopMarkerActive = existsSync(corpusRunStopMarkerPath)
   const manifest = readOrCreateFinancialManifest(manifestPath, targetWorkbookCount)
   const plan = planPublicWorkbookCorpusFetch({
@@ -133,6 +136,7 @@ export function buildPublicWorkbookCorpusFinancialPlanFromArgs(): PublicWorkbook
   })
   return buildPublicWorkbookCorpusFinancialPlan({
     cacheDir,
+    fetchBatchSize,
     fetchPlan: plan,
     fetchTrancheSize,
     generatedAt,
@@ -149,6 +153,7 @@ export function buildPublicWorkbookCorpusFinancialPlanFromArgs(): PublicWorkbook
 
 export function buildPublicWorkbookCorpusFinancialPlan(args: {
   readonly cacheDir: string
+  readonly fetchBatchSize: number
   readonly fetchPlan: ReturnType<typeof planPublicWorkbookCorpusFetch>
   readonly fetchTrancheSize: number
   readonly generatedAt: string
@@ -191,6 +196,7 @@ export function buildPublicWorkbookCorpusFinancialPlan(args: {
     minimumAdditionalSourceCount: plan.minimumAdditionalSourceCount,
     recommendedDiscoveryLimit: Math.max(plan.recommendedDiscoveryLimit, args.targetWorkbookCount),
     recommendedFetchTrancheSize: args.fetchTrancheSize,
+    recommendedFetchBatchSize: args.fetchBatchSize,
     recommendedFetchLimit: nextFetchLimit,
     needsAdditionalDiscovery,
     targetReachableFromKnownCandidates: plan.targetReachableFromKnownCandidates,
@@ -216,6 +222,7 @@ export function buildPublicWorkbookCorpusFinancialPlan(args: {
       fetch: nextFetchLimit
         ? formatFinancialFetchCommand({
             cacheDir: args.cacheDir,
+            fetchBatchSize: args.fetchBatchSize,
             limit: nextFetchLimit,
             manifestPath: args.manifestPath,
             stopMarkerActive: args.stopMarkerActive,
@@ -223,12 +230,14 @@ export function buildPublicWorkbookCorpusFinancialPlan(args: {
         : null,
       fetchAll: formatFinancialFetchCommand({
         cacheDir: args.cacheDir,
+        fetchBatchSize: args.fetchBatchSize,
         limit: args.limit,
         manifestPath: args.manifestPath,
         stopMarkerActive: args.stopMarkerActive,
       }),
       resumePlan: formatFinancialResumePlanCommand({
         cacheDir: args.cacheDir,
+        fetchBatchSize: args.fetchBatchSize,
         fetchLimit: args.limit,
         manifestPath: args.manifestPath,
         scorecardPath: args.scorecardPath,
@@ -237,6 +246,7 @@ export function buildPublicWorkbookCorpusFinancialPlan(args: {
       resumeCheck: formatFinancialResumePlanCommand({
         cacheDir: args.cacheDir,
         check: true,
+        fetchBatchSize: args.fetchBatchSize,
         fetchLimit: args.limit,
         manifestPath: args.manifestPath,
         scorecardPath: args.scorecardPath,
@@ -293,6 +303,7 @@ export function validatePublicWorkbookCorpusFinancialPlan(plan: PublicWorkbookCo
     ['minimum additional source count', plan.minimumAdditionalSourceCount],
     ['recommended discovery limit', plan.recommendedDiscoveryLimit],
     ['recommended fetch tranche size', plan.recommendedFetchTrancheSize],
+    ['recommended fetch batch size', plan.recommendedFetchBatchSize],
   ] as const) {
     if (!Number.isFinite(value) || value < 0) {
       findings.push(`${label} must be non-negative`)
@@ -425,6 +436,7 @@ function formatFinancialFetchPlanCommand(args: {
 
 function formatFinancialFetchCommand(args: {
   readonly cacheDir: string
+  readonly fetchBatchSize: number
   readonly limit: number
   readonly manifestPath: string
   readonly stopMarkerActive: boolean
@@ -440,6 +452,8 @@ function formatFinancialFetchCommand(args: {
       formatCommandPath(args.cacheDir),
       '--limit',
       String(args.limit),
+      '--fetch-batch-size',
+      String(args.fetchBatchSize),
     ],
     args.stopMarkerActive,
   )
@@ -448,6 +462,7 @@ function formatFinancialFetchCommand(args: {
 function formatFinancialResumePlanCommand(args: {
   readonly cacheDir: string
   readonly check?: boolean
+  readonly fetchBatchSize: number
   readonly fetchLimit: number
   readonly manifestPath: string
   readonly scorecardPath: string
@@ -467,6 +482,8 @@ function formatFinancialResumePlanCommand(args: {
     formatCommandPath(args.verifyCheckpointPath),
     '--fetch-limit',
     String(args.fetchLimit),
+    '--fetch-batch-size',
+    String(args.fetchBatchSize),
   ])
 }
 
@@ -538,8 +555,14 @@ function validateFinancialCommands(plan: PublicWorkbookCorpusFinancialPlan, find
   if (plan.remainingArtifactSlots > 0 && !plan.commands.fetch?.includes('public-workbook-corpus:fetch-financial')) {
     findings.push('bounded fetch command is missing while artifacts remain')
   }
+  if (plan.remainingArtifactSlots > 0 && !plan.commands.fetch?.includes('--fetch-batch-size')) {
+    findings.push('bounded fetch command is missing fetch batch size')
+  }
   if (!plan.commands.fetchAll.includes('public-workbook-corpus:fetch-financial')) {
     findings.push('fetch-all command is missing')
+  }
+  if (!plan.commands.fetchAll.includes('--fetch-batch-size')) {
+    findings.push('fetch-all command is missing fetch batch size')
   }
   if (!plan.commands.resumePlan.includes('public-workbook-corpus:resume-financial:plan')) {
     findings.push('resume plan command is missing')

@@ -45,6 +45,7 @@ describe('public workbook financial corpus plan CLI', () => {
       minimumAdditionalSourceCount: 5,
       needsAdditionalDiscovery: true,
       recommendedFetchLimit: 5,
+      recommendedFetchBatchSize: 6,
       recommendedFetchTrancheSize: 20,
       recommendedDiscoveryLimit: 5,
       targetReachableFromKnownCandidates: false,
@@ -103,6 +104,7 @@ describe('public workbook financial corpus plan CLI', () => {
       candidateSourceCount: 0,
       needsAdditionalDiscovery: true,
       recommendedFetchLimit: 5,
+      recommendedFetchBatchSize: 6,
       stopMarker: {
         active: false,
         requiresExplicitResume: false,
@@ -249,6 +251,8 @@ describe('public workbook financial corpus plan CLI', () => {
         '50',
         '--fetch-tranche-size',
         '7',
+        '--fetch-batch-size',
+        '3',
       ],
       {
         encoding: 'utf8',
@@ -261,11 +265,16 @@ describe('public workbook financial corpus plan CLI', () => {
     expect(plan).toMatchObject({
       cachedArtifactCount: 0,
       recommendedFetchLimit: 7,
+      recommendedFetchBatchSize: 3,
       recommendedFetchTrancheSize: 7,
       remainingArtifactSlots: 50,
     })
     expect(commands['fetch']).toEqual(expect.stringContaining('--limit 7'))
+    expect(commands['fetch']).toEqual(expect.stringContaining('--fetch-batch-size 3'))
     expect(commands['fetchAll']).toEqual(expect.stringContaining('--limit 50'))
+    expect(commands['fetchAll']).toEqual(expect.stringContaining('--fetch-batch-size 3'))
+    expect(commands['resumePlan']).toEqual(expect.stringContaining('--fetch-batch-size 3'))
+    expect(commands['resumeCheck']).toEqual(expect.stringContaining('--fetch-batch-size 3'))
   })
 
   it('exposes non-mutating package scripts for the financial corpus lane', () => {
@@ -276,6 +285,9 @@ describe('public workbook financial corpus plan CLI', () => {
     expect(scripts['public-workbook-corpus:discover-financial:check']).toBe('bun scripts/public-workbook-corpus-financial-plan.ts --check')
     expect(scripts['public-workbook-corpus:fetch-financial:plan']).toBe(
       'bun scripts/public-workbook-corpus.ts fetch --dry-run --manifest .cache/public-workbook-corpus-financial/manifest.json --cache-dir .cache/public-workbook-corpus-financial --limit 5000 --sample-limit 20',
+    )
+    expect(scripts['public-workbook-corpus:fetch-financial']).toBe(
+      'bun scripts/public-workbook-corpus.ts fetch --manifest .cache/public-workbook-corpus-financial/manifest.json --cache-dir .cache/public-workbook-corpus-financial --limit 5000 --fetch-batch-size 6 --max-bytes 52428800',
     )
     expect(scripts['public-workbook-corpus:resume-financial:plan']).toBe(
       'bun scripts/public-workbook-corpus-resume-plan.ts --manifest .cache/public-workbook-corpus-financial/manifest.json --cache-dir .cache/public-workbook-corpus-financial --scorecard .cache/public-workbook-corpus-financial/scorecard.json --verify-checkpoint .cache/public-workbook-corpus-financial/verification-checkpoint.json --fetch-limit 5000 --fetch-batch-size 6',
@@ -385,6 +397,7 @@ describe('public workbook financial corpus plan CLI', () => {
       minimumAdditionalSourceCount: 5,
       recommendedDiscoveryLimit: 5,
       recommendedFetchTrancheSize: 20,
+      recommendedFetchBatchSize: 6,
       recommendedFetchLimit: null,
       needsAdditionalDiscovery: true,
       targetReachableFromKnownCandidates: false,
@@ -407,6 +420,8 @@ describe('public workbook financial corpus plan CLI', () => {
         'remaining artifact slots do not match target and cached artifact counts',
         'recommended fetch limit is missing while artifacts remain',
         'bounded fetch command is missing while artifacts remain',
+        'bounded fetch command is missing fetch batch size',
+        'fetch-all command is missing fetch batch size',
         expect.stringContaining('mutating command is missing stop-marker override'),
         expect.stringContaining('non-mutating command unexpectedly bypasses stop marker'),
       ]),
@@ -462,6 +477,7 @@ function isFinancialPlan(value: unknown): value is PublicWorkbookCorpusFinancial
     typeof record['minimumAdditionalSourceCount'] === 'number' &&
     typeof record['recommendedDiscoveryLimit'] === 'number' &&
     typeof record['recommendedFetchTrancheSize'] === 'number' &&
+    typeof record['recommendedFetchBatchSize'] === 'number' &&
     (typeof record['recommendedFetchLimit'] === 'number' || record['recommendedFetchLimit'] === null) &&
     typeof record['needsAdditionalDiscovery'] === 'boolean' &&
     typeof record['targetReachableFromKnownCandidates'] === 'boolean' &&

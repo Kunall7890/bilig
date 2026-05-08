@@ -561,6 +561,37 @@ describe('public workbook corpus CLI resource guards', () => {
     expect(status.nextMissingVerificationPlanCommand).not.toContain('/repo/')
   })
 
+  it('does not report scorecard health gaps before any artifacts are cached', () => {
+    const status = buildPublicWorkbookCorpusStatus({
+      manifest: {
+        ...createEmptyPublicWorkbookManifest('2026-05-07T00:00:00.000Z', 5_000),
+        sources: [
+          {
+            id: 'source-financial-a',
+            kind: 'direct-url',
+            sourceUrl: 'https://example.com/financial-a.xlsx',
+            downloadUrl: 'https://example.com/financial-a.xlsx',
+            fileName: 'financial-a.xlsx',
+            discoveredAt: '2026-05-07T00:00:00.000Z',
+            license: {
+              spdxId: 'CC-BY-4.0',
+              title: 'Creative Commons Attribution 4.0 International',
+              evidenceUrl: 'https://creativecommons.org/licenses/by/4.0/',
+            },
+            topicEvidence: ['accounting:test'],
+          },
+        ],
+      },
+      scorecard: null,
+      checkpointCases: [],
+    })
+
+    expect(status.gaps).toEqual(expect.arrayContaining(['cached artifacts below target: 0/5000']))
+    expect(status.gaps).not.toContain('scorecard is missing or has non-passing cached workbooks')
+    expect(status.gaps).not.toContain('scorecard is missing for cached workbooks')
+    expect(status.gaps).not.toContain('scorecard has non-passing cached workbooks')
+  })
+
   it('checks a resume plan from the checked-in scorecard when the local manifest cache is absent', async () => {
     const artifactA = workbookArtifact('workbook-a')
     const artifactB = workbookArtifact('workbook-b')
