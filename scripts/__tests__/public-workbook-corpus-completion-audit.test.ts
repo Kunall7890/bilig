@@ -472,6 +472,43 @@ describe('public workbook corpus completion audit', () => {
     })
     expect(validatePublicWorkbookCorpusCompletionAudit(audit)).toEqual([])
   })
+
+  it('separates stale unsupported scorecard records from current unsupported evidence', () => {
+    const staleUnsupportedArtifact = workbookArtifact('workbook-a')
+    const currentUnsupportedArtifact = workbookArtifact('workbook-b')
+    const audit = buildPublicWorkbookCorpusCompletionAudit({
+      generatedAt: '2026-05-08T00:00:00.000Z',
+      manifest: manifestWithArtifacts([staleUnsupportedArtifact, currentUnsupportedArtifact], 2),
+      recordedCases: [staleUnsupportedCase(staleUnsupportedArtifact), resourceLimitedUnsupportedCase(currentUnsupportedArtifact)],
+      status: statusFixture({
+        targetWorkbookCount: 2,
+        sourceCount: 2,
+        cachedArtifactCount: 2,
+        scorecardCaseCount: 2,
+        checkpointCaseCount: 0,
+        recordedManifestArtifactCount: 2,
+        missingManifestArtifactCount: 0,
+        staleRecordedVerificationCount: 1,
+        recordedPassedCaseCount: 0,
+        recordedUnsupportedCaseCount: 2,
+        scorecardCoversManifest: true,
+        targetComplete: false,
+        gaps: ['recorded verification cases need evidence refresh: 1'],
+      }),
+      stopMarkerActive: true,
+    })
+
+    expect(audit.currentState).toMatchObject({
+      recordedUnsupportedCaseCount: 2,
+      staleRecordedUnsupportedCaseCount: 1,
+      currentRecordedUnsupportedCaseCount: 1,
+    })
+    expect(requirement(audit.checklist, 'scorecard-all-10000')).toMatchObject({
+      evidence: expect.arrayContaining(['scorecard unsupported cases: 2', 'stale unsupported cases: 1', 'current unsupported cases: 1']),
+      gaps: expect.arrayContaining(['recorded verification cases need evidence refresh: 1']),
+    })
+    expect(validatePublicWorkbookCorpusCompletionAudit(audit)).toEqual([])
+  })
 })
 
 function requirement(
@@ -658,6 +695,17 @@ function resourceLimitedUnsupportedCase(artifact: PublicWorkbookArtifact): Publi
       'Public corpus verification RSS limit exceeded: 1.53 GiB > 1.50 GiB',
       'The workbook was isolated in a subprocess so the corpus verification run could continue.',
     ],
+  }
+}
+
+function staleUnsupportedCase(artifact: PublicWorkbookArtifact): PublicWorkbookCorpusCase {
+  return {
+    ...resourceLimitedUnsupportedCase(artifact),
+    workbookMetadata: {
+      workbookName: artifact.fileName,
+      sheetNames: ['Sheet1'],
+      dimensions: [{ sheetName: 'Sheet1', rowCount: 1, columnCount: 1, nonEmptyCellCount: 1 }],
+    },
   }
 }
 

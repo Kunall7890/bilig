@@ -10,7 +10,10 @@ import { readPublicWorkbookCorpusStatus, type PublicWorkbookCorpusStatus } from 
 import { readReusablePublicWorkbookCorpusCases } from './public-workbook-corpus-verify-checkpoint.ts'
 import { readFlagArg, readStringArg } from './public-workbook-corpus-cli.ts'
 import { auditPublicWorkbookCorpusCiOfflineCachedMode } from './public-workbook-corpus-ci-offline-audit.ts'
-import { hasPublicWorkbookCorpusUsedRangeEvidence } from './public-workbook-corpus-evidence.ts'
+import {
+  hasPublicWorkbookCorpusUsedRangeEvidence,
+  publicWorkbookCorpusCaseNeedsEvidenceRefresh,
+} from './public-workbook-corpus-evidence.ts'
 import {
   buildFeatureWitnessCoverage,
   countGap,
@@ -68,6 +71,8 @@ export interface PublicWorkbookCorpusAuditState {
   readonly missingFeatureWitnesses: readonly string[]
   readonly recordedPassedCaseCount: number
   readonly recordedUnsupportedCaseCount: number
+  readonly staleRecordedUnsupportedCaseCount: number
+  readonly currentRecordedUnsupportedCaseCount: number
   readonly recordedFailedCaseCount: number
   readonly recordedErrorCaseCount: number
   readonly recordedFormulaOracleComparisonCount: number
@@ -695,6 +700,8 @@ const requirementBuilders: readonly ((context: RequirementContext) => PublicWork
         `scorecard failed cases: ${String(context.currentState.recordedFailedCaseCount)}`,
         `scorecard error cases: ${String(context.currentState.recordedErrorCaseCount)}`,
         `scorecard unsupported cases: ${String(context.currentState.recordedUnsupportedCaseCount)}`,
+        `current unsupported cases: ${String(context.currentState.currentRecordedUnsupportedCaseCount)}`,
+        `stale unsupported cases: ${String(context.currentState.staleRecordedUnsupportedCaseCount)}`,
         `stale recorded verification cases: ${String(context.currentState.staleRecordedVerificationCount)}`,
         `scorecard covers manifest: ${String(context.status.scorecardCoversManifest)}`,
         `target complete: ${String(context.status.targetComplete)}`,
@@ -830,6 +837,9 @@ function buildAuditState(
   const missingFeatureWitnesses = buildFeatureWitnessCoverage(recordedCases)
     .filter((entry) => entry.witnessCaseCount === 0)
     .map((entry) => entry.label)
+  const staleRecordedUnsupportedCaseCount = recordedCases.filter(
+    (entry) => entry.status === 'unsupported' && publicWorkbookCorpusCaseNeedsEvidenceRefresh(entry),
+  ).length
   const recordedFinancialCases = financialArtifacts.flatMap((artifact) => {
     const candidate = recordedCasesById.get(artifact.id)
     return candidate && publicWorkbookCorpusCaseMatchesArtifact(candidate, artifact) ? [candidate] : []
@@ -853,6 +863,8 @@ function buildAuditState(
     missingFeatureWitnesses,
     recordedPassedCaseCount: status.recordedPassedCaseCount,
     recordedUnsupportedCaseCount: status.recordedUnsupportedCaseCount,
+    staleRecordedUnsupportedCaseCount,
+    currentRecordedUnsupportedCaseCount: Math.max(0, status.recordedUnsupportedCaseCount - staleRecordedUnsupportedCaseCount),
     recordedFailedCaseCount: status.recordedFailedCaseCount,
     recordedErrorCaseCount: status.recordedErrorCaseCount,
     recordedFormulaOracleComparisonCount: recordedCases.reduce((sum, entry) => sum + entry.validation.formulaOracleComparisons, 0),
