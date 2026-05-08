@@ -19,6 +19,11 @@ Current starter tickets as of May 8, 2026:
 - [#149: docs(examples): add sheet inspection WorkPaper example](https://github.com/proompteng/bilig/issues/149)
 - [#150: docs(examples): add headless example command index](https://github.com/proompteng/bilig/issues/150)
 - [#151: docs(headless): map npm visitor needs to examples](https://github.com/proompteng/bilig/issues/151)
+- [#152: test(docs): guard package README links for npm readers](https://github.com/proompteng/bilig/issues/152)
+- [#153: docs(agent): add WorkPaper tool result contract table](https://github.com/proompteng/bilig/issues/153)
+- [#154: docs(comparison): add headless engine use-case chooser](https://github.com/proompteng/bilig/issues/154)
+- [#155: docs(troubleshooting): add formula diagnostic output examples](https://github.com/proompteng/bilig/issues/155)
+- [#156: docs(contributor): add first PR description template](https://github.com/proompteng/bilig/issues/156)
 
 The list intentionally excludes closed issues and broad corpus/parity epics. Add
 new starter tickets only when the expected patch can stay small, has a clear
