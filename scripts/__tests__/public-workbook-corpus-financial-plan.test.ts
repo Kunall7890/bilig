@@ -39,6 +39,8 @@ describe('public workbook financial corpus plan CLI', () => {
       candidateSourceDeficitCount: 5,
       minimumAdditionalSourceCount: 5,
       needsAdditionalDiscovery: true,
+      recommendedFetchLimit: 5,
+      recommendedFetchTrancheSize: 20,
       recommendedDiscoveryLimit: 5,
       targetReachableFromKnownCandidates: false,
       commands: {
@@ -83,6 +85,49 @@ describe('public workbook financial corpus plan CLI', () => {
     expect(commands['discoverPlan']).toBeNull()
     expect(commands['discover']).toBeNull()
     expect(commands['fetch']).toEqual(expect.stringContaining('public-workbook-corpus:fetch-financial'))
+  })
+
+  it('recommends bounded financial fetch tranches before the full target fetch', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-financial-plan-tranche-'))
+    const manifestPath = join(dir, 'manifest.json')
+    const cacheDir = join(dir, 'cache')
+    const manifest = {
+      ...createEmptyPublicWorkbookManifest('2026-05-07T00:00:00.000Z', 50),
+      sources: Array.from({ length: 50 }, (_, index) => financialSource(`source-${String(index + 1)}`)),
+    }
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
+
+    const result = spawnSync(
+      'bun',
+      [
+        financialPlanScriptPath(),
+        '--manifest',
+        manifestPath,
+        '--cache-dir',
+        cacheDir,
+        '--target-workbook-count',
+        '50',
+        '--limit',
+        '50',
+        '--fetch-tranche-size',
+        '7',
+      ],
+      {
+        encoding: 'utf8',
+      },
+    )
+    const plan = asRecord(JSON.parse(result.stdout))
+    const commands = asRecord(plan['commands'])
+
+    expect(result.status).toBe(0)
+    expect(plan).toMatchObject({
+      cachedArtifactCount: 0,
+      recommendedFetchLimit: 7,
+      recommendedFetchTrancheSize: 7,
+      remainingArtifactSlots: 50,
+    })
+    expect(commands['fetch']).toEqual(expect.stringContaining('--limit 7'))
+    expect(commands['fetchAll']).toEqual(expect.stringContaining('--limit 50'))
   })
 
   it('exposes non-mutating package scripts for the financial corpus lane', () => {
@@ -155,6 +200,8 @@ describe('public workbook financial corpus plan CLI', () => {
     expect(commands['discover']).toContain('--allow-active-stop-marker')
     expect(commands['fetch']).toContain('BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE=1')
     expect(commands['fetch']).toContain('--allow-active-stop-marker')
+    expect(commands['fetchAll']).toContain('BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE=1')
+    expect(commands['fetchAll']).toContain('--allow-active-stop-marker')
     expect(commands['verify']).toContain('BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE=1')
     expect(commands['verify']).toContain('--allow-active-stop-marker')
     expect(commands['fetchPlan']).not.toContain('--allow-active-stop-marker')

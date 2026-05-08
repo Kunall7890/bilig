@@ -29,6 +29,7 @@ async function main(): Promise<void> {
   const targetWorkbookCount = readNumberArg('--target-workbook-count', 5_000)
   const limit = readNumberArg('--limit', targetWorkbookCount)
   const sampleLimit = readNumberArg('--sample-limit', 20)
+  const fetchTrancheSize = readNumberArg('--fetch-tranche-size', 20)
   const stopMarkerActive = existsSync(corpusRunStopMarkerPath)
   const manifest = readOrCreateFinancialManifest(manifestPath, targetWorkbookCount)
   const plan = planPublicWorkbookCorpusFetch({
@@ -37,6 +38,8 @@ async function main(): Promise<void> {
     sampleLimit,
   })
   const needsAdditionalDiscovery = !plan.targetReachableFromKnownCandidates
+  const nextFetchLimit =
+    plan.remainingArtifactSlots === 0 ? null : Math.min(plan.targetArtifactCount, plan.cachedArtifactCount + fetchTrancheSize)
 
   process.stdout.write(
     `${JSON.stringify(
@@ -63,6 +66,8 @@ async function main(): Promise<void> {
         candidateSourceDeficitCount: plan.candidateSourceDeficitCount,
         minimumAdditionalSourceCount: plan.minimumAdditionalSourceCount,
         recommendedDiscoveryLimit: Math.max(plan.recommendedDiscoveryLimit, targetWorkbookCount),
+        recommendedFetchTrancheSize: fetchTrancheSize,
+        recommendedFetchLimit: nextFetchLimit,
         needsAdditionalDiscovery,
         targetReachableFromKnownCandidates: plan.targetReachableFromKnownCandidates,
         commands: {
@@ -79,7 +84,8 @@ async function main(): Promise<void> {
               })
             : null,
           fetchPlan: formatFinancialFetchPlanCommand({ cacheDir, limit, manifestPath }),
-          fetch: formatFinancialFetchCommand({ cacheDir, limit, manifestPath, stopMarkerActive }),
+          fetch: nextFetchLimit ? formatFinancialFetchCommand({ cacheDir, limit: nextFetchLimit, manifestPath, stopMarkerActive }) : null,
+          fetchAll: formatFinancialFetchCommand({ cacheDir, limit, manifestPath, stopMarkerActive }),
           verify: formatFinancialVerifyCommand({ cacheDir, manifestPath, scorecardPath, stopMarkerActive, verifyCheckpointPath }),
           check: formatFinancialCheckCommand({ cacheDir, manifestPath, scorecardPath, verifyCheckpointPath }),
         },
