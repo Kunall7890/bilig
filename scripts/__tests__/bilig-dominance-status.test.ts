@@ -19,6 +19,8 @@ describe('bilig dominance status', () => {
       evidenceKind: 'not-captured',
       requiredWorkloads: ['visible-scroll-response'],
       missingRequiredWorkloads: ['visible-scroll-response'],
+      googleSheetsUrl: null,
+      googleSheetsUrlEnvVar: 'BILIG_UI_SAME_CORPUS_GOOGLE_SHEETS_URL',
       missingInputs: ['googleSheetsUrlForUploadedSameCorpusWorkbook'],
       fixture: {
         corpusCaseId: 'wide-mixed-250k',
@@ -34,6 +36,25 @@ describe('bilig dominance status', () => {
     expect(status.uiSameCorpus.nextPreflightCommand).toContain('<google-sheets-url>')
     expect(status.uiSameCorpus.nextCaptureCommand).toContain('.cache/ui-responsiveness/same-corpus-capture.json')
     expect(status.uiSameCorpus.nextGoogleSheetsUploadInstruction).toContain('share it to anyone with the link')
+  })
+
+  it('fills same-corpus UI proof commands when the Google Sheets URL is known', () => {
+    const googleSheetsUrl = 'https://docs.google.com/spreadsheets/d/sameCorpusSheet/edit'
+    const status = buildBiligDominanceStatus({
+      input: buildFixtureInput(),
+      financialCorpusStatus: completeFinancialCorpusStatus(),
+      publicWorkbookCorpusStatus: completePublicWorkbookCorpusStatus(),
+      stopMarkerActive: false,
+      stopMarkerPath: '/repo/.agent-coordination/stop.md',
+      uiSameCorpusGoogleSheetsUrl: googleSheetsUrl,
+    })
+
+    expect(status.uiSameCorpus.googleSheetsUrl).toBe(googleSheetsUrl)
+    expect(status.uiSameCorpus.missingInputs).toEqual([])
+    expect(status.uiSameCorpus.nextPreflightCommand).toContain(googleSheetsUrl)
+    expect(status.uiSameCorpus.nextPreflightCommand).not.toContain('<google-sheets-url>')
+    expect(status.uiSameCorpus.nextCaptureCommand).toContain(googleSheetsUrl)
+    expect(status.uiSameCorpus.nextCaptureCommand).not.toContain('<google-sheets-url>')
   })
 
   it('surfaces financial workbook corpus blockers in dominance status', () => {

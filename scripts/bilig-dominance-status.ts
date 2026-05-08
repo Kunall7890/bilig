@@ -75,6 +75,8 @@ export interface BiligDominanceStatus {
       readonly publicForgejoRawUrl: string
       readonly microsoftExcelWebUrl: string
     }
+    readonly googleSheetsUrl: string | null
+    readonly googleSheetsUrlEnvVar: string
     readonly missingInputs: readonly string[]
     readonly nextFixtureCheckCommand: string
     readonly nextGoogleSheetsUploadInstruction: string
@@ -95,6 +97,7 @@ const defaultFinancialScorecardPath = join(defaultFinancialCacheDir, 'scorecard.
 const defaultFinancialVerifyCheckpointPath = join(defaultFinancialCacheDir, 'verification-checkpoint.json')
 const defaultCorpusRunStopMarkerPath = join(rootDir, '.agent-coordination', '20260507T074946Z-codex-stop-interactive-corpus-runs.md')
 const defaultUiSameCorpusId: WorkbookBenchmarkCorpusId = 'wide-mixed-250k'
+const uiSameCorpusGoogleSheetsUrlEnvVar = 'BILIG_UI_SAME_CORPUS_GOOGLE_SHEETS_URL'
 const requiredUiSameCorpusWorkloads = ['visible-scroll-response'] as const satisfies readonly UiResponsivenessSameCorpusWorkload[]
 
 function main(): void {
@@ -110,6 +113,8 @@ export function buildBiligDominanceStatusFromArgs(): BiligDominanceStatus {
   const financialScorecardPath = resolve(readStringArg('--financial-scorecard', defaultFinancialScorecardPath))
   const financialVerifyCheckpointPath = resolve(readStringArg('--financial-verify-checkpoint', defaultFinancialVerifyCheckpointPath))
   const stopMarkerPath = resolve(readStringArg('--corpus-run-stop-marker', defaultCorpusRunStopMarkerPath))
+  const uiSameCorpusGoogleSheetsUrl =
+    readStringArg('--ui-same-corpus-google-sheets-url', process.env[uiSameCorpusGoogleSheetsUrlEnvVar] ?? '') || null
   const input = loadBiligDominanceScorecardInput()
   const publicWorkbookCorpusStatus = readPublicWorkbookCorpusStatus({
     manifestPath,
@@ -148,6 +153,7 @@ export function buildBiligDominanceStatusFromArgs(): BiligDominanceStatus {
     publicWorkbookCorpusStatus,
     stopMarkerActive,
     stopMarkerPath: formatBiligDominanceStatusPathForMessage(stopMarkerPath, rootDir),
+    uiSameCorpusGoogleSheetsUrl,
   })
 }
 
@@ -159,6 +165,7 @@ export function buildBiligDominanceStatus(args: {
   readonly publicWorkbookCorpusStatus: PublicWorkbookCorpusStatus
   readonly stopMarkerActive: boolean
   readonly stopMarkerPath: string
+  readonly uiSameCorpusGoogleSheetsUrl?: string | null
 }): BiligDominanceStatus {
   const scorecard = buildBiligDominanceScorecard({
     ...args.input,
@@ -221,7 +228,7 @@ export function buildBiligDominanceStatus(args: {
       corpusRunStopMarkerOverrideEnvVar: publicCorpusStopMarkerOverrideEnvVar,
       gaps: args.publicWorkbookCorpusStatus.gaps,
     },
-    uiSameCorpus: buildUiSameCorpusStatus(args.input),
+    uiSameCorpus: buildUiSameCorpusStatus(args.input, args.uiSameCorpusGoogleSheetsUrl ?? null),
   }
 }
 
@@ -330,10 +337,11 @@ function readRecordedFinancialCases(args: {
   })
 }
 
-function buildUiSameCorpusStatus(input: BuildScorecardInput): BiligDominanceStatus['uiSameCorpus'] {
+function buildUiSameCorpusStatus(input: BuildScorecardInput, googleSheetsUrl: string | null): BiligDominanceStatus['uiSameCorpus'] {
   const proof = input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof
   const fixture = uiSameCorpusFixtureStatus(defaultUiSameCorpusId)
   const coveredWorkloads = new Set(proof.cases.map((entry) => entry.workload))
+  const googleSheetsUrlArgument = googleSheetsUrl ?? '<google-sheets-url>'
   return {
     captured: proof.captured,
     evidenceKind: proof.evidenceKind,
@@ -345,7 +353,9 @@ function buildUiSameCorpusStatus(input: BuildScorecardInput): BiligDominanceStat
     coveredCorpusCaseIds: proof.coveredCorpusCaseIds,
     limitations: proof.limitations,
     fixture,
-    missingInputs: proof.captured ? [] : ['googleSheetsUrlForUploadedSameCorpusWorkbook'],
+    googleSheetsUrl,
+    googleSheetsUrlEnvVar: uiSameCorpusGoogleSheetsUrlEnvVar,
+    missingInputs: proof.captured || googleSheetsUrl ? [] : ['googleSheetsUrlForUploadedSameCorpusWorkbook'],
     nextFixtureCheckCommand: 'pnpm ui:same-corpus:fixture:check',
     nextGoogleSheetsUploadInstruction: `Upload ${fixture.localXlsxPath} to Google Sheets as a native Google Sheet, share it to anyone with the link, then pass its edit URL as --google-sheets-url.`,
     nextPreflightCommand: [
@@ -354,7 +364,7 @@ function buildUiSameCorpusStatus(input: BuildScorecardInput): BiligDominanceStat
       '--',
       '--preflight',
       '--google-sheets-url',
-      '<google-sheets-url>',
+      googleSheetsUrlArgument,
       '--microsoft-excel-web-url',
       fixture.microsoftExcelWebUrl,
     ]
@@ -367,7 +377,7 @@ function buildUiSameCorpusStatus(input: BuildScorecardInput): BiligDominanceStat
       '--output',
       '.cache/ui-responsiveness/same-corpus-capture.json',
       '--google-sheets-url',
-      '<google-sheets-url>',
+      googleSheetsUrlArgument,
       '--microsoft-excel-web-url',
       fixture.microsoftExcelWebUrl,
     ]
