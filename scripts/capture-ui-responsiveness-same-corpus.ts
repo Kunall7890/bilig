@@ -372,11 +372,9 @@ export async function captureSameCorpusUiResponsiveness(args: CaptureArgs): Prom
   const corpus = buildWorkbookBenchmarkCorpus(args.corpusId)
   const browser = await chromium.launch({ headless: args.headless })
   try {
-    const [bilig, googleSheets, microsoftExcelWeb] = await Promise.all([
-      measureProduct(browser, 'bilig', args.biligUrl, corpus, args),
-      measureProduct(browser, 'google-sheets', args.googleSheetsUrl, corpus, args),
-      measureProduct(browser, 'microsoft-excel-web', args.microsoftExcelWebUrl, corpus, args),
-    ])
+    const bilig = await measureProduct(browser, 'bilig', args.biligUrl, corpus, args)
+    const googleSheets = await measureProduct(browser, 'google-sheets', args.googleSheetsUrl, corpus, args)
+    const microsoftExcelWeb = await measureProduct(browser, 'microsoft-excel-web', args.microsoftExcelWebUrl, corpus, args)
     return {
       schemaVersion: 1,
       suite: 'ui-responsiveness-same-corpus-capture',
@@ -521,30 +519,32 @@ async function measureProductSamples(
   url: string,
   corpus: WorkbookBenchmarkCorpusCase,
   args: CaptureArgs,
-  sampleIndex = 0,
-  samples: ScrollSample[] = [],
-  corpusVerification: SameCorpusCaptureCorpusVerification | null = null,
 ): Promise<ProductSampleCollection> {
-  if (sampleIndex >= args.sampleCount) {
-    if (!corpusVerification) {
-      throw new Error(`Missing same-corpus fingerprint verification for ${product}`)
-    }
-    return { corpusVerification, samples }
-  }
   const context = await browser.newContext(browserContextOptionsForProduct(product, args))
   const page = await context.newPage()
-  let nextCorpusVerification = corpusVerification
+  const samples: ScrollSample[] = []
   try {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60_000 })
     await waitForProductReady(page, product, args)
-    nextCorpusVerification ??= await verifyProductCorpus(page, product, url, corpus)
-    samples.push(await measureVisibleScrollResponse(page, args.deltaX, args.deltaY))
+    const corpusVerification = await verifyProductCorpus(page, product, url, corpus)
+    await collectSequentialScrollSamples(page, args, samples)
+    return { corpusVerification, samples }
   } catch (error: unknown) {
-    throw new Error(await productReadyFailureMessage(page, product, url, sampleIndex, error), { cause: error })
+    throw new Error(await productReadyFailureMessage(page, product, url, samples.length, error), { cause: error })
   } finally {
     await context.close()
   }
-  return measureProductSamples(browser, product, url, corpus, args, sampleIndex + 1, samples, nextCorpusVerification)
+}
+
+async function collectSequentialScrollSamples(page: Page, args: CaptureArgs, samples: ScrollSample[]): Promise<void> {
+  if (samples.length >= args.sampleCount) {
+    return
+  }
+  if (samples.length > 0) {
+    await settleFrames(page, 12)
+  }
+  samples.push(await measureVisibleScrollResponse(page, args.deltaX, args.deltaY))
+  await collectSequentialScrollSamples(page, args, samples)
 }
 
 function browserContextOptionsForProduct(product: UiResponsivenessSameCorpusProduct, args: CaptureArgs): BrowserContextOptions {
