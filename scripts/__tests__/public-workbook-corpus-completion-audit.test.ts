@@ -49,6 +49,8 @@ describe('public workbook corpus completion audit', () => {
       missingCachedArtifactCount: 1,
       missingVerificationCount: 1,
       staleRecordedVerificationCount: 1,
+      missingFeatureWitnessCount: 0,
+      missingFeatureWitnesses: [],
       recordedFormulaOracleComparisonCount: 1,
     })
     expect(requirement(audit.checklist, 'download-10000-public-spreadsheets')).toMatchObject({
@@ -463,6 +465,10 @@ describe('public workbook corpus completion audit', () => {
       passed: false,
       gaps: expect.arrayContaining(['no recorded charts witness in corpus evidence']),
       evidence: expect.arrayContaining(['charts witnessed cases: 0; total recorded count: 0']),
+    })
+    expect(audit.currentState).toMatchObject({
+      missingFeatureWitnessCount: 1,
+      missingFeatureWitnesses: ['charts'],
     })
     expect(validatePublicWorkbookCorpusCompletionAudit(audit)).toEqual([])
   })

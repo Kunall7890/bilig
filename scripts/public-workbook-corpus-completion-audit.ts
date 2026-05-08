@@ -64,6 +64,8 @@ export interface PublicWorkbookCorpusAuditState {
   readonly missingCachedArtifactCount: number
   readonly missingVerificationCount: number
   readonly staleRecordedVerificationCount: number
+  readonly missingFeatureWitnessCount: number
+  readonly missingFeatureWitnesses: readonly string[]
   readonly recordedPassedCaseCount: number
   readonly recordedUnsupportedCaseCount: number
   readonly recordedFailedCaseCount: number
@@ -825,6 +827,9 @@ function buildAuditState(
   const financialSources = financialManifest ? financialManifest.sources : (manifest?.sources.filter(hasFinancialTopicEvidence) ?? [])
   const financialCaseCandidates = financialManifest ? financialRecordedCases : recordedCases
   const recordedCasesById = new Map(financialCaseCandidates.map((entry) => [entry.id, entry]))
+  const missingFeatureWitnesses = buildFeatureWitnessCoverage(recordedCases)
+    .filter((entry) => entry.witnessCaseCount === 0)
+    .map((entry) => entry.label)
   const recordedFinancialCases = financialArtifacts.flatMap((artifact) => {
     const candidate = recordedCasesById.get(artifact.id)
     return candidate && publicWorkbookCorpusCaseMatchesArtifact(candidate, artifact) ? [candidate] : []
@@ -844,6 +849,8 @@ function buildAuditState(
     missingCachedArtifactCount: Math.max(0, status.targetWorkbookCount - status.cachedArtifactCount),
     missingVerificationCount: status.missingManifestArtifactCount,
     staleRecordedVerificationCount: status.staleRecordedVerificationCount,
+    missingFeatureWitnessCount: missingFeatureWitnesses.length,
+    missingFeatureWitnesses,
     recordedPassedCaseCount: status.recordedPassedCaseCount,
     recordedUnsupportedCaseCount: status.recordedUnsupportedCaseCount,
     recordedFailedCaseCount: status.recordedFailedCaseCount,
