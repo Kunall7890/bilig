@@ -1,0 +1,220 @@
+#!/usr/bin/env bun
+
+import { existsSync, readFileSync } from 'node:fs'
+import { join, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
+
+import type { BuildScorecardInput } from './bilig-dominance-scorecard-types.ts'
+import { loadBiligDominanceScorecardInput, rootDir } from './bilig-dominance-scorecard-input.ts'
+import { buildBiligDominanceScorecard } from './gen-bilig-dominance-scorecard.ts'
+import { publicCorpusStopMarkerOverrideEnvVar, publicCorpusStopMarkerOverrideFlag, readStringArg } from './public-workbook-corpus-cli.ts'
+import { planPublicWorkbookCorpusFetch, type PublicWorkbookCorpusFetchPlan } from './public-workbook-corpus-fetch.ts'
+import { parsePublicWorkbookManifestJson } from './public-workbook-corpus-json.ts'
+import type { PublicWorkbookCorpusStatus } from './public-workbook-corpus-status.ts'
+import { readPublicWorkbookCorpusStatus } from './public-workbook-corpus-status.ts'
+
+export interface BiligDominanceStatus {
+  readonly goalStatus: 'achieved' | 'active-not-achieved'
+  readonly blanketTenXClaimAllowed: boolean
+  readonly unmetRequirements: readonly string[]
+  readonly importExportBlockers: readonly string[]
+  readonly publicWorkbookCorpus: {
+    readonly targetWorkbookCount: number
+    readonly cachedArtifactCount: number
+    readonly missingCachedArtifactCount: number
+    readonly recordedManifestArtifactCount: number
+    readonly missingManifestArtifactCount: number
+    readonly fetchCandidateSourceCount: number | null
+    readonly fetchCandidateSourceDeficitCount: number | null
+    readonly minimumAdditionalSourceCount: number | null
+    readonly recommendedDiscoveryLimit: number | null
+    readonly targetReachableFromKnownCandidates: boolean | null
+    readonly scorecardCaseCount: number
+    readonly checkpointCaseCount: number
+    readonly recordedAllCasesPassed: boolean
+    readonly nextFetchPlanCommand: string | null
+    readonly nextDiscoveryPlanCommand: string | null
+    readonly nextDiscoveryCommand: string | null
+    readonly nextMissingVerificationPlanCommand: string | null
+    readonly nextMissingVerificationCommand: string | null
+    readonly nextStaleVerificationPlanCommand: string | null
+    readonly nextStaleVerificationCommand: string | null
+    readonly corpusRunStopMarkerActive: boolean
+    readonly corpusRunStopMarkerPath: string
+    readonly nextCorpusRunRequiresExplicitResume: boolean
+    readonly corpusRunStopMarkerOverrideFlag: string
+    readonly corpusRunStopMarkerOverrideEnvVar: string
+    readonly gaps: readonly string[]
+  }
+}
+
+const defaultCacheDir = join(rootDir, '.cache', 'public-workbook-corpus')
+const defaultManifestPath = join(defaultCacheDir, 'manifest.json')
+const defaultScorecardPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'public-workbook-corpus-scorecard.json')
+const defaultVerifyCheckpointPath = join(defaultCacheDir, 'verification-checkpoint.json')
+const defaultCorpusRunStopMarkerPath = join(rootDir, '.agent-coordination', '20260507T074946Z-codex-stop-interactive-corpus-runs.md')
+
+function main(): void {
+  process.stdout.write(`${JSON.stringify(buildBiligDominanceStatusFromArgs(), null, 2)}\n`)
+}
+
+export function buildBiligDominanceStatusFromArgs(): BiligDominanceStatus {
+  const cacheDir = resolve(readStringArg('--cache-dir', defaultCacheDir))
+  const scorecardPath = resolve(readStringArg('--scorecard', defaultScorecardPath))
+  const manifestPath = resolve(readStringArg('--manifest', defaultManifestPath))
+  const verifyCheckpointPath = resolve(readStringArg('--verify-checkpoint', defaultVerifyCheckpointPath))
+  const stopMarkerPath = resolve(readStringArg('--corpus-run-stop-marker', defaultCorpusRunStopMarkerPath))
+  const input = loadBiligDominanceScorecardInput()
+  const publicWorkbookCorpusStatus = readPublicWorkbookCorpusStatus({
+    manifestPath,
+    scorecardPath,
+    cacheDir,
+    verifyCheckpointPath,
+    corpusRunStopMarkerPath: stopMarkerPath,
+  })
+  const stopMarkerActive = existsSync(stopMarkerPath)
+  const nextFetchPlanCommand =
+    publicWorkbookCorpusStatus.cachedArtifactCount < publicWorkbookCorpusStatus.targetWorkbookCount
+      ? formatPublicWorkbookCorpusFetchPlanCommand({
+          cacheDir,
+          limit: publicWorkbookCorpusStatus.targetWorkbookCount,
+          manifestPath,
+        })
+      : null
+  const fetchPlan = existsSync(manifestPath)
+    ? planPublicWorkbookCorpusFetch({
+        manifest: parsePublicWorkbookManifestJson(JSON.parse(readFileSync(manifestPath, 'utf8')) as unknown),
+        limit: publicWorkbookCorpusStatus.targetWorkbookCount,
+        sampleLimit: 0,
+      })
+    : null
+  return buildBiligDominanceStatus({
+    fetchPlan,
+    input,
+    nextFetchPlanCommand,
+    publicWorkbookCorpusStatus,
+    stopMarkerActive,
+    stopMarkerPath,
+  })
+}
+
+export function buildBiligDominanceStatus(args: {
+  readonly fetchPlan?: PublicWorkbookCorpusFetchPlan | null
+  readonly input: BuildScorecardInput
+  readonly nextFetchPlanCommand?: string | null
+  readonly publicWorkbookCorpusStatus: PublicWorkbookCorpusStatus
+  readonly stopMarkerActive: boolean
+  readonly stopMarkerPath: string
+}): BiligDominanceStatus {
+  const scorecard = buildBiligDominanceScorecard({
+    ...args.input,
+    publicWorkbookCorpusStatus: args.publicWorkbookCorpusStatus,
+  })
+  const importExportCategory = scorecard.categories.find((category) => category.id === 'import-export-compatibility')
+  const publicWorkbookCorpusBlockers = publicWorkbookCorpusDominanceBlockers(args.publicWorkbookCorpusStatus)
+  const unmetRequirements = [...scorecard.claimPolicy.unmetRequirements, ...publicWorkbookCorpusBlockers]
+  const blanketTenXClaimAllowed = scorecard.claimPolicy.blanketTenXClaimAllowed && publicWorkbookCorpusBlockers.length === 0
+  return {
+    goalStatus: scorecard.goalStatus === 'achieved' && publicWorkbookCorpusBlockers.length === 0 ? 'achieved' : 'active-not-achieved',
+    blanketTenXClaimAllowed,
+    unmetRequirements,
+    importExportBlockers: [...(importExportCategory?.blockers ?? []), ...publicWorkbookCorpusBlockers],
+    publicWorkbookCorpus: {
+      targetWorkbookCount: args.publicWorkbookCorpusStatus.targetWorkbookCount,
+      cachedArtifactCount: args.publicWorkbookCorpusStatus.cachedArtifactCount,
+      missingCachedArtifactCount: Math.max(
+        0,
+        args.publicWorkbookCorpusStatus.targetWorkbookCount - args.publicWorkbookCorpusStatus.cachedArtifactCount,
+      ),
+      recordedManifestArtifactCount: args.publicWorkbookCorpusStatus.recordedManifestArtifactCount,
+      missingManifestArtifactCount: args.publicWorkbookCorpusStatus.missingManifestArtifactCount,
+      fetchCandidateSourceCount: args.fetchPlan?.candidateSourceCount ?? null,
+      fetchCandidateSourceDeficitCount: args.fetchPlan?.candidateSourceDeficitCount ?? null,
+      targetReachableFromKnownCandidates: args.fetchPlan?.targetReachableFromKnownCandidates ?? null,
+      minimumAdditionalSourceCount: args.fetchPlan?.minimumAdditionalSourceCount ?? null,
+      recommendedDiscoveryLimit: args.fetchPlan?.recommendedDiscoveryLimit ?? null,
+      scorecardCaseCount: args.publicWorkbookCorpusStatus.scorecardCaseCount,
+      checkpointCaseCount: args.publicWorkbookCorpusStatus.checkpointCaseCount,
+      recordedAllCasesPassed: args.publicWorkbookCorpusStatus.recordedAllCasesPassed,
+      nextFetchPlanCommand: args.nextFetchPlanCommand ?? null,
+      nextDiscoveryPlanCommand:
+        args.fetchPlan && args.fetchPlan.candidateSourceDeficitCount > 0
+          ? formatPublicWorkbookCorpusDiscoveryPlanCommand(args.fetchPlan.recommendedDiscoveryLimit)
+          : null,
+      nextDiscoveryCommand:
+        args.fetchPlan && args.fetchPlan.candidateSourceDeficitCount > 0
+          ? formatPublicWorkbookCorpusDiscoveryCommand(args.fetchPlan.recommendedDiscoveryLimit, args.stopMarkerActive)
+          : null,
+      nextMissingVerificationPlanCommand: args.publicWorkbookCorpusStatus.nextMissingVerificationPlanCommand,
+      nextMissingVerificationCommand: args.publicWorkbookCorpusStatus.nextMissingVerificationCommand
+        ? stopMarkerGuardedCorpusCommand(args.publicWorkbookCorpusStatus.nextMissingVerificationCommand, args.stopMarkerActive)
+        : null,
+      nextStaleVerificationPlanCommand: args.publicWorkbookCorpusStatus.nextStaleVerificationPlanCommand,
+      nextStaleVerificationCommand: args.publicWorkbookCorpusStatus.nextStaleVerificationCommand
+        ? stopMarkerGuardedCorpusCommand(args.publicWorkbookCorpusStatus.nextStaleVerificationCommand, args.stopMarkerActive)
+        : null,
+      corpusRunStopMarkerActive: args.stopMarkerActive,
+      corpusRunStopMarkerPath: args.stopMarkerPath,
+      nextCorpusRunRequiresExplicitResume: args.stopMarkerActive,
+      corpusRunStopMarkerOverrideFlag: publicCorpusStopMarkerOverrideFlag,
+      corpusRunStopMarkerOverrideEnvVar: publicCorpusStopMarkerOverrideEnvVar,
+      gaps: args.publicWorkbookCorpusStatus.gaps,
+    },
+  }
+}
+
+function publicWorkbookCorpusDominanceBlockers(status: PublicWorkbookCorpusStatus): string[] {
+  return status.gaps.map((gap) => {
+    const scorecardCoverage = /^scorecard cases do not cover manifest artifacts: (.+)$/u.exec(gap)
+    if (scorecardCoverage) {
+      return `public workbook corpus scorecard cases below cached artifacts: ${scorecardCoverage[1]}`
+    }
+    return `public workbook corpus ${gap}`
+  })
+}
+
+function formatPublicWorkbookCorpusDiscoveryPlanCommand(limit: number): string {
+  return ['pnpm', 'public-workbook-corpus:discover:plan', '--', '--limit', String(limit)].map(shellQuote).join(' ')
+}
+
+function formatPublicWorkbookCorpusDiscoveryCommand(limit: number, stopMarkerActive: boolean): string {
+  return stopMarkerGuardedCorpusCommand(
+    ['pnpm', 'public-workbook-corpus:discover', '--', '--limit', String(limit)].map(shellQuote).join(' '),
+    stopMarkerActive,
+  )
+}
+
+function formatPublicWorkbookCorpusFetchPlanCommand(args: {
+  readonly cacheDir: string
+  readonly limit: number
+  readonly manifestPath: string
+}): string {
+  return [
+    'pnpm',
+    'public-workbook-corpus:fetch:plan',
+    '--',
+    '--manifest',
+    args.manifestPath,
+    '--cache-dir',
+    args.cacheDir,
+    '--limit',
+    String(args.limit),
+  ]
+    .map(shellQuote)
+    .join(' ')
+}
+
+function shellQuote(value: string): string {
+  return /^[A-Za-z0-9_./:=@+-]+$/u.test(value) ? value : `'${value.replaceAll("'", "'\\''")}'`
+}
+
+function stopMarkerGuardedCorpusCommand(command: string, stopMarkerActive: boolean): string {
+  if (!stopMarkerActive || command.includes(`${publicCorpusStopMarkerOverrideEnvVar}=1`)) {
+    return command
+  }
+  return `${publicCorpusStopMarkerOverrideEnvVar}=1 ${command} ${publicCorpusStopMarkerOverrideFlag}`
+}
+
+if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
+  main()
+}

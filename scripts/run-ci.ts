@@ -221,6 +221,7 @@ const generatedSourceChecks: readonly CiTask[] = [
   pnpm('UI responsiveness live browser scorecard check', 'ui:browser-live:check'),
   pnpm('security posture scorecard check', 'security:posture:check'),
   pnpm('bilig dominance scorecard check', 'dominance:check'),
+  pnpm('bilig dominance audit check', 'dominance:audit:check'),
   pnpm('workspace resolution check', 'workspace-resolution:check'),
   pnpm('canonical naming check', 'naming:check'),
   pnpm('docs discovery check', 'docs:discovery:check'),
@@ -244,6 +245,7 @@ try {
   allCompleted.push(
     ...(await runStage('static prerequisites', [
       pnpm('lint', 'lint'),
+      pnpm('source size check', 'source-size:check'),
       skipBrowserGates ? pnpm('wasm build', 'wasm:build') : appRuntimeDependencyBuild,
       pnpm('typecheck', 'typecheck'),
       ...(skipBrowserGates ? [] : [pnpm('playwright chromium install', 'exec', 'playwright', 'install', 'chromium')]),

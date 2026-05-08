@@ -1,14 +1,30 @@
-import { BuiltinId, FormulaMode, Opcode, type FormulaRecord } from '@bilig/protocol'
+import { BuiltinId, FormulaMode, Opcode } from '@bilig/protocol'
 import type { FormulaNode } from './ast.js'
 import { columnToIndex, formatRangeAddress, parseCellAddress, parseRangeAddress } from './addressing.js'
 import { getNativeGroupedArrayKind } from './binder-wasm-rules.js'
 import { bindFormula, encodeBuiltin } from './binder.js'
 import { analyzeVolatileMetadata, producesSpillResult } from './compiler-analysis.js'
+import type {
+  CompiledFormula,
+  CompileFormulaAstOptions,
+  DirectAggregateCandidate,
+  ParsedCellReferenceInfo,
+  ParsedDependencyReference,
+  ParsedRangeReferenceInfo,
+} from './compiler-types.js'
 import { lowerToPlan, type JsPlanInstruction } from './js-evaluator.js'
 import { optimizeFormula } from './optimizer.js'
 import { parseFormula } from './parser.js'
 import { rewriteSpecialCall } from './special-call-rewrites.js'
 import { quoteSheetNameIfNeeded } from './translation-reference-utils.js'
+
+export type {
+  CompiledFormula,
+  DirectAggregateCandidate,
+  ParsedCellReferenceInfo,
+  ParsedDependencyReference,
+  ParsedRangeReferenceInfo,
+} from './compiler-types.js'
 
 function encodeInstruction(opcode: Opcode, operand = 0): number {
   return (opcode << 24) | (operand & 0x00ff_ffff)
@@ -344,74 +360,6 @@ function emitNode(node: FormulaNode, state: CompilerState): void {
     case 'InvokeExpr':
       throw new Error('Lambda invocation is not supported on the wasm fast path')
   }
-}
-
-export interface CompiledFormula extends FormulaRecord {
-  ast: FormulaNode
-  optimizedAst: FormulaNode
-  astMatchesSource?: boolean
-  directAggregateCandidate?: DirectAggregateCandidate
-  deps: string[]
-  parsedDeps?: ParsedDependencyReference[]
-  symbolicNames: string[]
-  symbolicTables: string[]
-  symbolicSpills: string[]
-  volatile: boolean
-  randCallCount: number
-  producesSpill: boolean
-  jsPlan: JsPlanInstruction[]
-  program: Uint32Array
-  constants: Float64Array
-  symbolicRefs: string[]
-  parsedSymbolicRefs?: ParsedCellReferenceInfo[]
-  symbolicRanges: string[]
-  parsedSymbolicRanges?: ParsedRangeReferenceInfo[]
-  symbolicStrings: string[]
-}
-
-export interface ParsedCellReferenceInfo {
-  address: string
-  sheetName?: string
-  explicitSheet?: boolean
-  row?: number
-  col?: number
-  rowAbsolute?: boolean
-  colAbsolute?: boolean
-}
-
-export interface ParsedRangeReferenceInfo {
-  address: string
-  kind: 'range'
-  refKind: 'cells' | 'rows' | 'cols'
-  sheetName?: string
-  sheetEndName?: string
-  explicitSheet?: boolean
-  startAddress: string
-  endAddress: string
-  startRow: number
-  endRow: number
-  startCol: number
-  endCol: number
-  startRowAbsolute?: boolean
-  endRowAbsolute?: boolean
-  startColAbsolute?: boolean
-  endColAbsolute?: boolean
-}
-
-export type ParsedDependencyReference = ({ kind: 'cell' } & ParsedCellReferenceInfo) | ParsedRangeReferenceInfo
-
-export interface DirectAggregateCandidate {
-  callee: string
-  aggregateKind: 'sum' | 'average' | 'count' | 'min' | 'max'
-  symbolicRangeIndex: number
-  resultOffset?: number
-}
-
-interface CompileFormulaAstOptions {
-  originalAst?: FormulaNode
-  symbolicNames?: string[]
-  symbolicTables?: string[]
-  symbolicSpills?: string[]
 }
 
 const CELL_REFERENCE_PARTS_RE = /^(\$?)([A-Z]+)(\$?)([1-9][0-9]*)$/i

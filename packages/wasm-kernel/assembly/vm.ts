@@ -15,12 +15,12 @@ let stringOffsets = new Uint32Array(64)
 let stringData = new Uint16Array(64)
 
 let programArena = new Uint32Array(64)
-let programOffsets = new Uint32Array(64)
-let programLengths = new Uint32Array(64)
+export let programOffsets = new Uint32Array(64)
+export let programLengths = new Uint32Array(64)
 let programTargets = new Uint32Array(64)
-let constantArena = new Float64Array(64)
-let constantOffsets = new Uint32Array(64)
-let constantLengths = new Uint32Array(64)
+export let constantArena = new Float64Array(64)
+export let constantOffsets = new Uint32Array(64)
+export let constantLengths = new Uint32Array(64)
 export let rangeOffsets = new Uint32Array(64)
 export let rangeLengths = new Uint32Array(64)
 export let rangeRowCounts = new Uint32Array(64)
@@ -946,72 +946,4 @@ export function evalBatch(cellIndices: Uint32Array): void {
     if (formulaIndex == 0) continue
     evalProgram(cellIndex, formulaIndex - 1)
   }
-}
-
-export function getTagsPtr(): usize {
-  return changetype<usize>(tags.dataStart)
-}
-
-export function getNumbersPtr(): usize {
-  return changetype<usize>(numbers.dataStart)
-}
-
-export function getStringIdsPtr(): usize {
-  return changetype<usize>(stringIds.dataStart)
-}
-
-export function getErrorsPtr(): usize {
-  return changetype<usize>(errors.dataStart)
-}
-
-export function getProgramOffsetsPtr(): usize {
-  return changetype<usize>(programOffsets.dataStart)
-}
-
-export function getProgramLengthsPtr(): usize {
-  return changetype<usize>(programLengths.dataStart)
-}
-
-export function getConstantOffsetsPtr(): usize {
-  return changetype<usize>(constantOffsets.dataStart)
-}
-
-export function getConstantLengthsPtr(): usize {
-  return changetype<usize>(constantLengths.dataStart)
-}
-
-export function getConstantArenaPtr(): usize {
-  return changetype<usize>(constantArena.dataStart)
-}
-
-export function getRangeOffsetsPtr(): usize {
-  return changetype<usize>(rangeOffsets.dataStart)
-}
-
-export function getRangeLengthsPtr(): usize {
-  return changetype<usize>(rangeLengths.dataStart)
-}
-
-export function getRangeMembersPtr(): usize {
-  return changetype<usize>(rangeMembers.dataStart)
-}
-
-export function getCellCapacity(): i32 {
-  return tags.length
-}
-
-export function getFormulaCapacity(): i32 {
-  return programOffsets.length
-}
-
-export function getConstantCapacity(): i32 {
-  return constantArena.length
-}
-
-export function getRangeCapacity(): i32 {
-  return rangeOffsets.length
-}
-
-export function getMemberCapacity(): i32 {
-  return rangeMembers.length
 }

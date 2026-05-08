@@ -15,18 +15,6 @@ export {
   uploadStrings,
   writeCells,
   evalBatch,
-  getTagsPtr,
-  getNumbersPtr,
-  getStringIdsPtr,
-  getErrorsPtr,
-  getProgramOffsetsPtr,
-  getProgramLengthsPtr,
-  getConstantOffsetsPtr,
-  getConstantLengthsPtr,
-  getConstantArenaPtr,
-  getRangeOffsetsPtr,
-  getRangeLengthsPtr,
-  getRangeMembersPtr,
   getOutputStringLengthsPtr,
   getOutputStringOffsetsPtr,
   getOutputStringDataPtr,
@@ -39,12 +27,27 @@ export {
   getSpillResultTagsPtr,
   getSpillResultNumbersPtr,
   getSpillResultValueCount,
+} from './vm'
+
+export {
+  getTagsPtr,
+  getNumbersPtr,
+  getStringIdsPtr,
+  getErrorsPtr,
+  getProgramOffsetsPtr,
+  getProgramLengthsPtr,
+  getConstantOffsetsPtr,
+  getConstantLengthsPtr,
+  getConstantArenaPtr,
+  getRangeOffsetsPtr,
+  getRangeLengthsPtr,
+  getRangeMembersPtr,
   getCellCapacity,
   getFormulaCapacity,
   getConstantCapacity,
   getRangeCapacity,
   getMemberCapacity,
-} from './vm'
+} from './vm-accessors'
 
 export {
   materializePivotTable,
