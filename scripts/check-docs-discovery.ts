@@ -95,11 +95,12 @@ function extractSitemapUrls(sitemap: string): string[] {
   return [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1] ?? '')
 }
 
-const [index, robots, sitemap, llms, headlessReadme, excelImportReadme, publicApi] = await Promise.all([
+const [index, robots, sitemap, llms, starterIssues, headlessReadme, excelImportReadme, publicApi] = await Promise.all([
   readFile(join(docsRoot, 'index.html'), 'utf8'),
   readFile(join(docsRoot, 'robots.txt'), 'utf8'),
   readFile(join(docsRoot, 'sitemap.xml'), 'utf8'),
   readFile(join(docsRoot, 'llms.txt'), 'utf8'),
+  readFile(join(docsRoot, 'starter-issues.md'), 'utf8'),
   readFile(join(repoRoot, 'packages', 'headless', 'README.md'), 'utf8'),
   readFile(join(repoRoot, 'packages', 'excel-import', 'README.md'), 'utf8'),
   readFile(join(docsRoot, 'public-api.md'), 'utf8'),
@@ -179,6 +180,18 @@ for (const required of [
   'https://github.com/proompteng/bilig/blob/main/docs/community-launch-pack.md',
 ]) {
   requireIncludes(llms, required, 'docs/llms.txt')
+}
+
+for (const required of [
+  'https://github.com/proompteng/bilig/issues/134',
+  'https://github.com/proompteng/bilig/issues/138',
+  'https://github.com/proompteng/bilig/issues/141',
+]) {
+  requireIncludes(starterIssues, required, 'docs/starter-issues.md')
+}
+
+if (starterIssues.includes('https://github.com/proompteng/bilig/issues/137')) {
+  throw new Error('docs/starter-issues.md still links to closed starter issue #137')
 }
 
 const publicDocs = [
