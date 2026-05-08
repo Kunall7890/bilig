@@ -21,6 +21,7 @@ import type { PublicWorkbookManifest } from './public-workbook-corpus-types.ts'
 import { buildPublicWorkbookCorpusFinancialPlan, type PublicWorkbookCorpusFinancialPlan } from './public-workbook-corpus-financial-plan.ts'
 import {
   buildPublicWorkbookCorpusFeatureWitnessPlan,
+  readPublicWorkbookCorpusFeatureWitnessCases,
   type PublicWorkbookCorpusFeatureWitnessPlan,
 } from './public-workbook-corpus-feature-witness-plan.ts'
 
@@ -209,7 +210,7 @@ export function buildBiligDominanceStatusFromArgs(): BiligDominanceStatus {
   })
   const featureWitnessPlan = buildPublicWorkbookCorpusFeatureWitnessPlan({
     cacheDir,
-    cases: readReusablePublicWorkbookCorpusCases([scorecardPath, verifyCheckpointPath]),
+    cases: readPublicWorkbookCorpusFeatureWitnessCases({ manifestPath, scorecardPath, verifyCheckpointPath }),
     discoveryLimit: publicWorkbookCorpusStatus.targetWorkbookCount,
     displayRootDir: rootDir,
     generatedAt: new Date().toISOString(),

@@ -1,10 +1,22 @@
+import { mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
 import { describe, expect, it } from 'vitest'
 
+import { createEmptyPublicWorkbookManifest } from '../public-workbook-corpus-json.ts'
 import {
   buildPublicWorkbookCorpusFeatureWitnessPlan,
+  readPublicWorkbookCorpusFeatureWitnessCases,
   validatePublicWorkbookCorpusFeatureWitnessPlan,
 } from '../public-workbook-corpus-feature-witness-plan.ts'
-import type { PublicWorkbookCorpusCase, PublicWorkbookFeatureCounts } from '../public-workbook-corpus-types.ts'
+import type {
+  PublicWorkbookArtifact,
+  PublicWorkbookCorpusCase,
+  PublicWorkbookFeatureCounts,
+  PublicWorkbookManifest,
+  PublicWorkbookSource,
+} from '../public-workbook-corpus-types.ts'
 
 describe('public workbook corpus feature witness plan', () => {
   it('reports missing pivot witnesses with a guarded targeted discovery command', () => {
@@ -42,6 +54,52 @@ describe('public workbook corpus feature witness plan', () => {
     expect(pivotCoverage?.commands.discover).toContain('--allow-active-stop-marker')
     expect(JSON.stringify(plan)).not.toContain('/repo/')
     expect(validatePublicWorkbookCorpusFeatureWitnessPlan(plan)).toEqual([])
+  })
+
+  it('deduplicates scorecard and checkpoint evidence through the current manifest', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-feature-witness-'))
+    const manifestPath = join(dir, 'manifest.json')
+    const scorecardPath = join(dir, 'scorecard.json')
+    const checkpointPath = join(dir, 'verification-checkpoint.json')
+    const workbookCase = caseWithFeatures({ pivotCount: 1 })
+    writeFileSync(manifestPath, `${JSON.stringify(manifestWithArtifacts([artifactForCase(workbookCase)]), null, 2)}\n`)
+    writeFileSync(
+      scorecardPath,
+      `${JSON.stringify({ schemaVersion: 1, suite: 'public-workbook-corpus', cases: [workbookCase] }, null, 2)}\n`,
+    )
+    writeFileSync(
+      checkpointPath,
+      `${JSON.stringify(
+        {
+          schemaVersion: 1,
+          suite: 'public-workbook-corpus-verification-checkpoint',
+          generatedAt: '2026-05-08T10:00:00.000Z',
+          cases: [workbookCase],
+        },
+        null,
+        2,
+      )}\n`,
+    )
+
+    const cases = readPublicWorkbookCorpusFeatureWitnessCases({ manifestPath, scorecardPath, verifyCheckpointPath: checkpointPath })
+    const plan = buildPublicWorkbookCorpusFeatureWitnessPlan({
+      cacheDir: join(dir, 'cache'),
+      cases,
+      discoveryLimit: 10_000,
+      generatedAt: '2026-05-08T10:00:00.000Z',
+      manifestPath,
+      stopMarkerActive: false,
+      stopMarkerPath: join(dir, 'stop.md'),
+    })
+    const pivotCoverage = plan.coverage.find((entry) => entry.id === 'pivots')
+
+    expect(cases.map((entry) => entry.id)).toEqual(['artifact-a'])
+    expect(plan.recordedCaseCount).toBe(1)
+    expect(pivotCoverage).toMatchObject({
+      totalCount: 1,
+      witnessCaseCount: 1,
+      needsWitness: false,
+    })
   })
 })
 
@@ -104,5 +162,41 @@ function caseWithFeatures(featureCounts: Partial<PublicWorkbookFeatureCounts>): 
       'license=Creative Commons Attribution 4.0 International',
       `sha256=${'a'.repeat(64)}`,
     ],
+  }
+}
+
+function artifactForCase(entry: PublicWorkbookCorpusCase): PublicWorkbookArtifact {
+  return {
+    id: entry.id,
+    sourceId: entry.sourceId,
+    sourceUrl: entry.sourceUrl,
+    downloadUrl: entry.sourceUrl,
+    cachePath: `.cache/public-workbook-corpus/${entry.id}.xlsx`,
+    fileName: entry.fileName,
+    sha256: entry.sha256,
+    byteSize: entry.byteSize,
+    license: entry.license,
+    fetchedAt: '2026-05-08T10:00:00.000Z',
+    workbookFingerprint: `${entry.id}-fingerprint`,
+  }
+}
+
+function sourceForArtifact(entry: PublicWorkbookArtifact): PublicWorkbookSource {
+  return {
+    id: entry.sourceId,
+    kind: 'direct-url',
+    sourceUrl: entry.sourceUrl,
+    downloadUrl: entry.downloadUrl,
+    fileName: entry.fileName,
+    discoveredAt: '2026-05-08T10:00:00.000Z',
+    license: entry.license,
+  }
+}
+
+function manifestWithArtifacts(artifacts: readonly PublicWorkbookArtifact[]): PublicWorkbookManifest {
+  return {
+    ...createEmptyPublicWorkbookManifest('2026-05-08T10:00:00.000Z', artifacts.length),
+    sources: artifacts.map(sourceForArtifact),
+    artifacts,
   }
 }

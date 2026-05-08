@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { isAbsolute, join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
@@ -11,8 +11,10 @@ import {
   readStringArg,
 } from './public-workbook-corpus-cli.ts'
 import { buildFeatureWitnessCoverage } from './public-workbook-corpus-completion-audit-helpers.ts'
+import { parsePublicWorkbookManifestJson } from './public-workbook-corpus-json.ts'
+import { publicWorkbookCorpusCaseMatchesArtifact } from './public-workbook-corpus-missing.ts'
 import { readReusablePublicWorkbookCorpusCases } from './public-workbook-corpus-verify-checkpoint.ts'
-import type { PublicWorkbookCorpusCase } from './public-workbook-corpus-types.ts'
+import type { PublicWorkbookCorpusCase, PublicWorkbookManifest } from './public-workbook-corpus-types.ts'
 
 export interface PublicWorkbookCorpusFeatureWitnessPlan {
   readonly schemaVersion: 1
@@ -68,7 +70,7 @@ function main(): void {
   const generatedAt = readStringArg('--generated-at', new Date().toISOString())
   const plan = buildPublicWorkbookCorpusFeatureWitnessPlan({
     cacheDir,
-    cases: readReusablePublicWorkbookCorpusCases([scorecardPath, verifyCheckpointPath]),
+    cases: readPublicWorkbookCorpusFeatureWitnessCases({ manifestPath, scorecardPath, verifyCheckpointPath }),
     discoveryLimit,
     displayRootDir: rootDir,
     generatedAt,
@@ -97,6 +99,30 @@ function main(): void {
     return
   }
   process.stdout.write(`${JSON.stringify(plan, null, 2)}\n`)
+}
+
+export function readPublicWorkbookCorpusFeatureWitnessCases(args: {
+  readonly manifestPath: string
+  readonly scorecardPath: string
+  readonly verifyCheckpointPath: string
+}): PublicWorkbookCorpusCase[] {
+  const reusableCases = readReusablePublicWorkbookCorpusCases([args.scorecardPath, args.verifyCheckpointPath])
+  const reusableCasesById = new Map(reusableCases.map((entry) => [entry.id, entry]))
+  if (!existsSync(args.manifestPath)) {
+    return [...reusableCasesById.values()]
+  }
+  const manifest = parsePublicWorkbookManifestJson(JSON.parse(readFileSync(args.manifestPath, 'utf8')) as unknown)
+  return featureWitnessCasesForManifest(manifest, reusableCasesById)
+}
+
+function featureWitnessCasesForManifest(
+  manifest: PublicWorkbookManifest,
+  casesById: ReadonlyMap<string, PublicWorkbookCorpusCase>,
+): PublicWorkbookCorpusCase[] {
+  return manifest.artifacts.flatMap((artifact) => {
+    const candidate = casesById.get(artifact.id)
+    return candidate && publicWorkbookCorpusCaseMatchesArtifact(candidate, artifact) ? [candidate] : []
+  })
 }
 
 export function buildPublicWorkbookCorpusFeatureWitnessPlan(args: {
