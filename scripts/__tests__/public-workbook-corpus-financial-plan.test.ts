@@ -48,6 +48,8 @@ describe('public workbook financial corpus plan CLI', () => {
         discover: expect.stringContaining('public-workbook-corpus:discover-financial'),
         fetchPlan: expect.stringContaining('public-workbook-corpus:fetch-financial:plan'),
         fetch: expect.stringContaining('public-workbook-corpus:fetch-financial'),
+        resumePlan: expect.stringContaining('public-workbook-corpus:resume-financial:plan'),
+        resumeCheck: expect.stringContaining('public-workbook-corpus:resume-financial:check'),
         verify: expect.stringContaining('public-workbook-corpus:verify-financial'),
         check: expect.stringContaining('public-workbook-corpus:check-financial'),
       },
@@ -138,6 +140,12 @@ describe('public workbook financial corpus plan CLI', () => {
     expect(scripts['public-workbook-corpus:fetch-financial:plan']).toBe(
       'bun scripts/public-workbook-corpus.ts fetch --dry-run --manifest .cache/public-workbook-corpus-financial/manifest.json --cache-dir .cache/public-workbook-corpus-financial --limit 5000 --sample-limit 20',
     )
+    expect(scripts['public-workbook-corpus:resume-financial:plan']).toBe(
+      'bun scripts/public-workbook-corpus-resume-plan.ts --manifest .cache/public-workbook-corpus-financial/manifest.json --cache-dir .cache/public-workbook-corpus-financial --scorecard .cache/public-workbook-corpus-financial/scorecard.json --verify-checkpoint .cache/public-workbook-corpus-financial/verification-checkpoint.json --fetch-limit 5000 --fetch-batch-size 6',
+    )
+    expect(scripts['public-workbook-corpus:resume-financial:check']).toBe(
+      'bun scripts/public-workbook-corpus-resume-plan.ts --check --manifest .cache/public-workbook-corpus-financial/manifest.json --cache-dir .cache/public-workbook-corpus-financial --scorecard .cache/public-workbook-corpus-financial/scorecard.json --verify-checkpoint .cache/public-workbook-corpus-financial/verification-checkpoint.json --fetch-limit 5000 --fetch-batch-size 6',
+    )
   })
 
   it('lets package-script arguments override baked-in corpus paths', () => {
@@ -202,6 +210,10 @@ describe('public workbook financial corpus plan CLI', () => {
     expect(commands['fetch']).toContain('--allow-active-stop-marker')
     expect(commands['fetchAll']).toContain('BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE=1')
     expect(commands['fetchAll']).toContain('--allow-active-stop-marker')
+    expect(commands['resumePlan']).toContain('public-workbook-corpus:resume-financial:plan')
+    expect(commands['resumePlan']).not.toContain('--allow-active-stop-marker')
+    expect(commands['resumeCheck']).toContain('public-workbook-corpus:resume-financial:check')
+    expect(commands['resumeCheck']).not.toContain('--allow-active-stop-marker')
     expect(commands['verify']).toContain('BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE=1')
     expect(commands['verify']).toContain('--allow-active-stop-marker')
     expect(commands['fetchPlan']).not.toContain('--allow-active-stop-marker')

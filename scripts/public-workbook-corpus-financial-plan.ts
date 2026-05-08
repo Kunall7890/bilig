@@ -86,6 +86,21 @@ async function main(): Promise<void> {
           fetchPlan: formatFinancialFetchPlanCommand({ cacheDir, limit, manifestPath }),
           fetch: nextFetchLimit ? formatFinancialFetchCommand({ cacheDir, limit: nextFetchLimit, manifestPath, stopMarkerActive }) : null,
           fetchAll: formatFinancialFetchCommand({ cacheDir, limit, manifestPath, stopMarkerActive }),
+          resumePlan: formatFinancialResumePlanCommand({
+            cacheDir,
+            fetchLimit: limit,
+            manifestPath,
+            scorecardPath,
+            verifyCheckpointPath,
+          }),
+          resumeCheck: formatFinancialResumePlanCommand({
+            cacheDir,
+            check: true,
+            fetchLimit: limit,
+            manifestPath,
+            scorecardPath,
+            verifyCheckpointPath,
+          }),
           verify: formatFinancialVerifyCommand({ cacheDir, manifestPath, scorecardPath, stopMarkerActive, verifyCheckpointPath }),
           check: formatFinancialCheckCommand({ cacheDir, manifestPath, scorecardPath, verifyCheckpointPath }),
         },
@@ -195,6 +210,31 @@ function formatFinancialFetchCommand(args: {
     ],
     args.stopMarkerActive,
   )
+}
+
+function formatFinancialResumePlanCommand(args: {
+  readonly cacheDir: string
+  readonly check?: boolean
+  readonly fetchLimit: number
+  readonly manifestPath: string
+  readonly scorecardPath: string
+  readonly verifyCheckpointPath: string
+}): string {
+  return formatCommand([
+    'pnpm',
+    args.check ? 'public-workbook-corpus:resume-financial:check' : 'public-workbook-corpus:resume-financial:plan',
+    '--',
+    '--manifest',
+    formatCommandPath(args.manifestPath),
+    '--cache-dir',
+    formatCommandPath(args.cacheDir),
+    '--scorecard',
+    formatCommandPath(args.scorecardPath),
+    '--verify-checkpoint',
+    formatCommandPath(args.verifyCheckpointPath),
+    '--fetch-limit',
+    String(args.fetchLimit),
+  ])
 }
 
 function formatFinancialVerifyCommand(args: {
