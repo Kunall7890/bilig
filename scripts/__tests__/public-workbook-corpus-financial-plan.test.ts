@@ -83,6 +83,49 @@ describe('public workbook financial corpus plan CLI', () => {
       cachedArtifactCount: 0,
     })
   })
+
+  it('marks mutating financial commands with explicit stop-marker overrides when paused', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-financial-paused-'))
+    const manifestPath = join(dir, 'manifest.json')
+    const stopMarkerPath = join(dir, 'stop.md')
+    writeFileSync(stopMarkerPath, '# stop\n')
+
+    const result = spawnSync(
+      'bun',
+      [
+        financialPlanScriptPath(),
+        '--manifest',
+        manifestPath,
+        '--corpus-run-stop-marker',
+        stopMarkerPath,
+        '--target-workbook-count',
+        '5',
+        '--limit',
+        '5',
+      ],
+      {
+        encoding: 'utf8',
+      },
+    )
+    const plan = asRecord(JSON.parse(result.stdout))
+    const stopMarker = asRecord(plan['stopMarker'])
+    const commands = asRecord(plan['commands'])
+
+    expect(result.status).toBe(0)
+    expect(stopMarker).toMatchObject({
+      active: true,
+      overrideFlag: '--allow-active-stop-marker',
+      overrideEnvVar: 'BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE',
+    })
+    expect(commands['discover']).toContain('BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE=1')
+    expect(commands['discover']).toContain('--allow-active-stop-marker')
+    expect(commands['fetch']).toContain('BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE=1')
+    expect(commands['fetch']).toContain('--allow-active-stop-marker')
+    expect(commands['verify']).toContain('BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE=1')
+    expect(commands['verify']).toContain('--allow-active-stop-marker')
+    expect(commands['fetchPlan']).not.toContain('--allow-active-stop-marker')
+    expect(commands['check']).not.toContain('--allow-active-stop-marker')
+  })
 })
 
 function financialPlanScriptPath(): string {

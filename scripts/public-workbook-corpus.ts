@@ -227,6 +227,10 @@ async function main(): Promise<void> {
   }
   if (command === 'discover-ckan') {
     const portalBases = readRepeatedStringArg('--ckan-base')
+    assertPublicCorpusRunNotStopped({
+      commandName: 'public-workbook-corpus discover',
+      stopMarkerPath: corpusRunStopMarkerPath,
+    })
     const manifest = await withPublicWorkbookCorpusCacheLock(cacheDir, 'discover-ckan', async () => {
       const discoveredManifest = await discoverCkanWorkbookSources({
         manifest: readOrCreateManifest(manifestPath, targetWorkbookCount),
@@ -247,6 +251,10 @@ async function main(): Promise<void> {
     const queries = readRepeatedStringArg('--query')
     const limit = readNumberArg('--limit', 5_000)
     const rowsPerRequest = readNumberArg('--rows', 100)
+    assertPublicCorpusRunNotStopped({
+      commandName: 'public-workbook-corpus discover-financial',
+      stopMarkerPath: corpusRunStopMarkerPath,
+    })
     const manifest = await withPublicWorkbookCorpusCacheLock(cacheDir, 'discover-financial-ckan', async () => {
       const discoveredManifest = await discoverFinancialCkanQueries({
         manifest: readOrCreateManifest(manifestPath, targetWorkbookCount),

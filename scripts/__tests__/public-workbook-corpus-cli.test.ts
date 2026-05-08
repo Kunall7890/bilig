@@ -86,6 +86,45 @@ describe('public workbook corpus CLI resource guards', () => {
     expect(result.stderr).toContain('BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE=1')
   })
 
+  it('refuses broad corpus discovery while a stop marker is active', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-cli-discover-stop-marker-'))
+    const stopMarkerPath = join(dir, 'stop.md')
+    writeFileSync(stopMarkerPath, '# stop\n')
+    const env = { ...process.env }
+    delete env.BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE
+
+    const genericDiscovery = spawnSync(
+      'bun',
+      [corpusScriptPath(), 'discover-ckan', '--corpus-run-stop-marker', stopMarkerPath, '--ckan-base', 'https://example.invalid/api'],
+      {
+        encoding: 'utf8',
+        env,
+      },
+    )
+    const financialDiscovery = spawnSync(
+      'bun',
+      [
+        corpusScriptPath(),
+        'discover-financial-ckan',
+        '--corpus-run-stop-marker',
+        stopMarkerPath,
+        '--ckan-base',
+        'https://example.invalid/api',
+      ],
+      {
+        encoding: 'utf8',
+        env,
+      },
+    )
+
+    expect(genericDiscovery.status).not.toBe(0)
+    expect(genericDiscovery.stderr).toContain('public-workbook-corpus discover is disabled while the public corpus stop marker is active')
+    expect(financialDiscovery.status).not.toBe(0)
+    expect(financialDiscovery.stderr).toContain(
+      'public-workbook-corpus discover-financial is disabled while the public corpus stop marker is active',
+    )
+  })
+
   it('requires both stop-marker override flag and environment variable', () => {
     const dir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-cli-stop-marker-opt-in-'))
     const stopMarkerPath = join(dir, 'stop.md')
