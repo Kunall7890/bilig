@@ -732,6 +732,10 @@ export interface WorkbookPrinterSettingsSnapshot {
   pageSetupXml?: string
 }
 
+export interface WorkbookSheetPrSnapshot {
+  xml: string
+}
+
 export interface WorkbookMetadataSnapshot {
   properties?: WorkbookPropertySnapshot[]
   definedNames?: WorkbookDefinedNameSnapshot[]
@@ -769,6 +773,7 @@ export interface SheetMetadataSnapshot {
   notes?: WorkbookNoteSnapshot[]
   legacyCommentVml?: WorkbookLegacyCommentVmlSnapshot
   printerSettings?: WorkbookPrinterSettingsSnapshot[]
+  sheetPr?: WorkbookSheetPrSnapshot
 }
 
 export interface WorkbookSnapshot {

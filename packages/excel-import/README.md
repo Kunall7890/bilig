@@ -56,6 +56,9 @@ Worksheet printer settings preserve binary `xl/printerSettings/*.bin` parts,
 worksheet relationships, and `pageSetup` relationship links during no-op XLSX
 roundtrips.
 
+Worksheet `<sheetPr>` properties preserve non-tabColor code names,
+`outlinePr`, and `pageSetUpPr` metadata during no-op XLSX roundtrips.
+
 ## CSV Import
 
 ```ts

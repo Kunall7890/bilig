@@ -28,6 +28,7 @@ import { addExportDataValidationsToXlsxBytes } from './xlsx-validations.js'
 import { addExportWorkbookPropertiesToXlsxBytes } from './xlsx-workbook-properties.js'
 import { decodePreservedVbaProjectPayload } from './xlsx-macros.js'
 import { addExportPrinterSettingsToXlsxBytes } from './xlsx-printer-settings.js'
+import { addExportWorksheetPropertiesToXlsxBytes } from './xlsx-sheet-properties.js'
 import {
   addCustomNumberFormatsToStylesXml,
   customNumberFormatStartId,
@@ -838,8 +839,11 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
                 addExportProtectedRangesToXlsxBytes(
                   addExportSheetProtectionsToXlsxBytes(
                     addExportFreezePanesToXlsxBytes(
-                      addExportSheetTabColorsToXlsxBytes(
-                        addExportCalculationSettingsToXlsxBytes(addExportWorkbookPropertiesToXlsxBytes(bytes, snapshot), snapshot),
+                      addExportWorksheetPropertiesToXlsxBytes(
+                        addExportSheetTabColorsToXlsxBytes(
+                          addExportCalculationSettingsToXlsxBytes(addExportWorkbookPropertiesToXlsxBytes(bytes, snapshot), snapshot),
+                          snapshot,
+                        ),
                         snapshot,
                       ),
                       snapshot,

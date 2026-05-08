@@ -33,6 +33,7 @@ import { buildMergeEntries } from './xlsx-merge-entries.js'
 import { readImportedWorkbookPivots } from './xlsx-pivots.js'
 import { readImportedWorkbookPrinterSettings } from './xlsx-printer-settings.js'
 import { readImportedWorkbookProtectedRanges } from './xlsx-protected-ranges.js'
+import { readImportedWorkbookSheetProperties } from './xlsx-sheet-properties.js'
 import { readImportedWorkbookSheetProtections } from './xlsx-sheet-protection.js'
 import { readImportedWorkbookSorts } from './xlsx-sorts.js'
 import { mergeStyleRuns, styleRunsToRanges, type HorizontalStyleRun, type RectangularStyleRun } from './xlsx-style-runs.js'
@@ -687,6 +688,7 @@ function importSheetJsWorkbook(
   const importedFiltersBySheet = workbookZip ? readImportedWorkbookFilters(workbookZip, workbook.SheetNames) : new Map()
   const importedFreezePanesBySheet = workbookZip ? readImportedWorkbookFreezePanes(workbookZip, workbook.SheetNames) : new Map()
   const importedSheetTabColorsBySheet = workbookZip ? readImportedWorkbookSheetTabColors(workbookZip, workbook.SheetNames) : new Map()
+  const importedSheetPropertiesBySheet = workbookZip ? readImportedWorkbookSheetProperties(workbookZip, workbook.SheetNames) : new Map()
   const importedSheetProtectionsBySheet = workbookZip ? readImportedWorkbookSheetProtections(workbookZip, workbook.SheetNames) : new Map()
   const importedProtectedRangesBySheet = workbookZip ? readImportedWorkbookProtectedRanges(workbookZip, workbook.SheetNames) : new Map()
   const importedSortsBySheet = workbookZip ? readImportedWorkbookSorts(workbookZip, workbook.SheetNames) : new Map()
@@ -848,6 +850,7 @@ function importSheetJsWorkbook(
     const sheetFormatPr = importedSheetDimensions?.sheetFormatPr
     const importedFreezePane = importedFreezePanesBySheet.get(sheetName)
     const importedSheetTabColor = importedSheetTabColorsBySheet.get(sheetName)
+    const importedSheetPr = importedSheetPropertiesBySheet.get(sheetName)
     const merges = buildMergeEntries(sheetName, sheet['!merges'])
     const importedSheetProtection = importedSheetProtectionsBySheet.get(sheetName)
     const importedProtectedRanges = importedProtectedRangesBySheet.get(sheetName)
@@ -865,6 +868,7 @@ function importSheetJsWorkbook(
       styleRanges.length > 0 ||
       importedFreezePane ||
       importedSheetTabColor ||
+      importedSheetPr ||
       merges ||
       importedSheetProtection ||
       importedProtectedRanges ||
@@ -884,6 +888,7 @@ function importSheetJsWorkbook(
             ...(styleRanges.length > 0 ? { styleRanges } : {}),
             ...(importedFreezePane ? { freezePane: importedFreezePane } : {}),
             ...(importedSheetTabColor ? { tabColor: importedSheetTabColor } : {}),
+            ...(importedSheetPr ? { sheetPr: importedSheetPr } : {}),
             ...(merges ? { merges } : {}),
             ...(importedSheetProtection ? { sheetProtection: importedSheetProtection } : {}),
             ...(importedProtectedRanges ? { protectedRanges: importedProtectedRanges } : {}),
