@@ -76,7 +76,17 @@ export function writePublicWorkbookCorpusCheck(args: {
       throw new Error(`Public workbook corpus verification incomplete: ${blockingGaps.join('; ')}${nextCommandMessage}`)
     }
     if (args.requireTarget && status.cachedArtifactCount < status.targetWorkbookCount) {
-      throw new Error(`Public workbook corpus target incomplete: ${status.gaps.join('; ')}`)
+      throw new Error(
+        `Public workbook corpus target incomplete: ${status.gaps.join('; ')}; next command: ${formatPublicWorkbookCorpusResumePlanCheckCommand(
+          {
+            cacheDir: args.cacheDir,
+            displayRootDir: rootDir,
+            manifestPath: args.manifestPath,
+            scorecardPath: args.scorecardPath,
+            verifyCheckpointPath: args.verifyCheckpointPath,
+          },
+        )}`,
+      )
     }
     console.log(
       `Checked public workbook corpus with ${String(status.recordedManifestArtifactCount)}/${String(
@@ -315,6 +325,24 @@ function formatPublicWorkbookCorpusVerifySliceCommand(
     return `${publicCorpusStopMarkerOverrideEnvVar}=1 ${[...command, publicCorpusStopMarkerOverrideFlag].map(shellQuote).join(' ')}`
   }
   return command.map(shellQuote).join(' ')
+}
+
+function formatPublicWorkbookCorpusResumePlanCheckCommand(paths: PublicWorkbookCorpusCommandPaths): string {
+  return [
+    'pnpm',
+    'public-workbook-corpus:resume-plan:check',
+    '--',
+    '--manifest',
+    commandPath(paths.manifestPath, paths.displayRootDir),
+    '--cache-dir',
+    commandPath(paths.cacheDir, paths.displayRootDir),
+    '--scorecard',
+    commandPath(paths.scorecardPath, paths.displayRootDir),
+    '--verify-checkpoint',
+    commandPath(paths.verifyCheckpointPath, paths.displayRootDir),
+  ]
+    .map(shellQuote)
+    .join(' ')
 }
 
 function commandPath(path: string, displayRootDir: string | undefined): string {
