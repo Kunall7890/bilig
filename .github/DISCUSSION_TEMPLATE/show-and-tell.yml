@@ -1,0 +1,47 @@
+title: "[show] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Share a workflow, prototype, benchmark, example, article, or integration built with `bilig`.
+  - type: input
+    id: link
+    attributes:
+      label: Link
+      description: Repository, article, demo, gist, benchmark artifact, or package link.
+      placeholder: https://github.com/...
+    validations:
+      required: true
+  - type: dropdown
+    id: workflow
+    attributes:
+      label: Workflow
+      options:
+        - Node service
+        - coding agent
+        - formula evaluation
+        - WorkPaper persistence
+        - benchmark
+        - import / export
+        - browser workbook
+        - docs / article
+        - other
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: What did you build?
+      description: Keep it concrete. Mention inputs, outputs, package versions, and what worked or failed.
+      placeholder: |
+        I used ...
+        It reads ...
+        It writes ...
+        The result was ...
+    validations:
+      required: true
+  - type: textarea
+    id: feedback
+    attributes:
+      label: Feedback for bilig
+      description: What should be easier, faster, better documented, or more compatible?

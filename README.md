@@ -28,6 +28,9 @@ Project site: <https://proompteng.github.io/bilig/>
   [agent tool-calling recipe](docs/agent-workpaper-tool-calling-recipe.md).
 - **Contribute a small patch**: pick a scoped
   [`good first issue`](docs/starter-issues.md).
+- **Ask a question or share a workflow**: use
+  [GitHub Discussions](https://github.com/proompteng/bilig/discussions) for
+  Q&A, ideas, and show-and-tell posts.
 - **Report an Excel compatibility gap**: use the issue templates and link the
   smallest workbook, formula, or fixture that reproduces the mismatch.
 - **Follow the project**: star the repo as a bookmark:

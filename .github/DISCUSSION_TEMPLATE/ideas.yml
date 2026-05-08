@@ -1,0 +1,52 @@
+title: "[idea] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for product, API, documentation, benchmark, or integration ideas that are not yet ready as implementation issues.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What real workflow or evaluation path should this improve?
+      placeholder: |
+        When evaluating bilig for ...
+        I need ...
+    validations:
+      required: true
+  - type: dropdown
+    id: audience
+    attributes:
+      label: Who benefits?
+      options:
+        - Node service builders
+        - coding agents
+        - spreadsheet engine evaluators
+        - formula compatibility contributors
+        - browser workbook users
+        - import / export users
+        - other
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Smallest useful version
+      description: Describe the narrowest version that would prove the idea.
+    validations:
+      required: true
+  - type: textarea
+    id: proof
+    attributes:
+      label: Proof
+      description: What example, test, benchmark, screenshot, or docs page would show it works?
+      placeholder: |
+        A runnable example should print ...
+        A test should cover ...
+        A benchmark should compare ...
+  - type: textarea
+    id: links
+    attributes:
+      label: Related links
+      description: Link related docs, issues, workflows, or comparable projects.

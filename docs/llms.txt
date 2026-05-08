@@ -16,6 +16,7 @@ language: typescript
 - https://github.com/proompteng/bilig/tree/main/packages/headless#readme
 - https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper
 - https://github.com/proompteng/bilig/blob/main/docs/dev-to-workbook-apis-post.md
+- https://github.com/proompteng/bilig/discussions
 - https://github.com/proompteng/bilig/blob/main/docs/node-service-workpaper-recipe.md
 - https://github.com/proompteng/bilig/blob/main/docs/csv-shaped-workpaper-input-recipe.md
 - https://github.com/proompteng/bilig/blob/main/docs/unsupported-formula-troubleshooting-recipe.md
@@ -94,6 +95,8 @@ npm run agent:verify
   https://github.com/proompteng/bilig/blob/main/docs/formula-edge-groupby-spill-fixture.md
 ## launch and feedback
 
+- discussions:
+  https://github.com/proompteng/bilig/discussions
 - feedback discussion for agent and service workflow input:
   https://github.com/proompteng/bilig/discussions/115
 - published dev article source:

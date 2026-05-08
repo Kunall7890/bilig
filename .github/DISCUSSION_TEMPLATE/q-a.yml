@@ -1,0 +1,49 @@
+title: "[q&a] "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for questions about using `@bilig/headless`, the workbook APIs, examples, formulas, persistence, or benchmark evidence.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - "@bilig/headless"
+        - formulas
+        - WorkPaper persistence
+        - agent workflow
+        - import / export
+        - benchmarks
+        - browser workbook shell
+        - contributing
+        - other
+    validations:
+      required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: What are you trying to do, and where are you stuck?
+      placeholder: |
+        I am trying to build ...
+        I expected ...
+        I got ...
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Link code, commands, docs, logs, or package versions that make the question easier to answer.
+      placeholder: |
+        package:
+        command:
+        docs I read:
+        minimal snippet:
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: What answer, example, or docs update would unblock you?

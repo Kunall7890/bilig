@@ -152,6 +152,7 @@ for (const required of [
   'repository: https://github.com/proompteng/bilig',
   'npm package: https://www.npmjs.com/package/@bilig/headless',
   'npm run agent:verify',
+  'https://github.com/proompteng/bilig/discussions',
   'https://github.com/proompteng/bilig/discussions/115',
   'https://github.com/proompteng/bilig/blob/main/docs/dev-to-workbook-apis-post.md',
   'https://github.com/proompteng/bilig/blob/main/docs/node-service-workpaper-recipe.md',
