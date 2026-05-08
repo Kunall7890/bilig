@@ -306,6 +306,15 @@ export interface WorkbookAxisMetadataSnapshot {
   count: number
   size?: number | null
   hidden?: boolean | null
+  xlsxWidth?: number | null
+  xlsxHeight?: number | null
+  customWidth?: boolean | null
+  bestFit?: boolean | null
+  outlineLevel?: number | null
+  collapsed?: boolean | null
+  customHeight?: boolean | null
+  thickTop?: boolean | null
+  thickBottom?: boolean | null
 }
 
 export interface WorkbookAxisEntrySnapshot {
@@ -313,6 +322,26 @@ export interface WorkbookAxisEntrySnapshot {
   index: number
   size?: number | null
   hidden?: boolean | null
+  xlsxWidth?: number | null
+  xlsxHeight?: number | null
+  customWidth?: boolean | null
+  bestFit?: boolean | null
+  outlineLevel?: number | null
+  collapsed?: boolean | null
+  customHeight?: boolean | null
+  thickTop?: boolean | null
+  thickBottom?: boolean | null
+}
+
+export interface WorkbookSheetFormatPrSnapshot {
+  baseColWidth?: number | null
+  defaultColWidth?: number | null
+  defaultRowHeight?: number | null
+  customHeight?: boolean | null
+  outlineLevelRow?: number | null
+  outlineLevelCol?: number | null
+  thickTop?: boolean | null
+  thickBottom?: boolean | null
 }
 
 export type WorkbookCalculationMode = 'automatic' | 'manual'
@@ -699,6 +728,7 @@ export interface SheetMetadataSnapshot {
   columns?: WorkbookAxisEntrySnapshot[]
   rowMetadata?: WorkbookAxisMetadataSnapshot[]
   columnMetadata?: WorkbookAxisMetadataSnapshot[]
+  sheetFormatPr?: WorkbookSheetFormatPrSnapshot
   styleRanges?: SheetStyleRangeSnapshot[]
   formatRanges?: SheetFormatRangeSnapshot[]
   freezePane?: WorkbookFreezePaneSnapshot

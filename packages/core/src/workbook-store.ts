@@ -6,6 +6,7 @@ import type {
   SheetFormatRangeSnapshot,
   SheetStyleRangeSnapshot,
   WorkbookAutoFilterSnapshot,
+  WorkbookAxisMetadataSnapshot,
   WorkbookAxisEntrySnapshot,
   WorkbookCalculationSettingsSnapshot,
   WorkbookCommentThreadSnapshot,
@@ -19,6 +20,7 @@ import type {
   WorkbookNoteSnapshot,
   WorkbookRangeProtectionSnapshot,
   WorkbookSheetProtectionSnapshot,
+  WorkbookSheetFormatPrSnapshot,
   WorkbookSheetTabColorSnapshot,
   WorkbookPivotSnapshot,
   WorkbookShapeSnapshot,
@@ -470,6 +472,7 @@ export class WorkbookStore {
     count: number,
     size: number | null,
     hidden: boolean | null,
+    geometry?: Omit<WorkbookAxisMetadataSnapshot, 'start' | 'count' | 'size' | 'hidden'>,
   ): WorkbookAxisMetadataRecord | undefined {
     return this.axisEntryStore.setAxisMetadata(
       this.getOrCreateSheet(sheetName),
@@ -480,6 +483,7 @@ export class WorkbookStore {
       count,
       size,
       hidden,
+      geometry,
     )
   }
 
@@ -498,6 +502,7 @@ export class WorkbookStore {
     count: number,
     size: number | null,
     hidden: boolean | null,
+    geometry?: Omit<WorkbookAxisMetadataSnapshot, 'start' | 'count' | 'size' | 'hidden'>,
   ): WorkbookAxisMetadataRecord | undefined {
     return this.axisEntryStore.setAxisMetadata(
       this.getOrCreateSheet(sheetName),
@@ -508,6 +513,7 @@ export class WorkbookStore {
       count,
       size,
       hidden,
+      geometry,
     )
   }
 
@@ -518,6 +524,15 @@ export class WorkbookStore {
 
   listColumnMetadata(sheetName: string): WorkbookAxisMetadataRecord[] {
     return this.axisEntryStore.listAxisMetadata(this.getSheet(sheetName), this.metadata.columnMetadata, sheetName, 'column')
+  }
+
+  setSheetFormatPr(sheetName: string, sheetFormatPr: WorkbookSheetFormatPrSnapshot): void {
+    this.getOrCreateSheet(sheetName).sheetFormatPr = structuredClone(sheetFormatPr)
+  }
+
+  getSheetFormatPr(sheetName: string): WorkbookSheetFormatPrSnapshot | undefined {
+    const sheetFormatPr = this.getSheet(sheetName)?.sheetFormatPr
+    return sheetFormatPr ? structuredClone(sheetFormatPr) : undefined
   }
 
   listRowAxisEntries(sheetName: string): WorkbookAxisEntrySnapshot[] {

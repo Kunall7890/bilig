@@ -811,6 +811,9 @@ function importSheetJsWorkbook(
     const importedSheetDimensions = importedWorkbookSheetDimensions.get(sheetName)
     const rows = importedSheetDimensions?.rows ?? buildRowEntries(sheet['!rows'])
     const columns = importedSheetDimensions ? importedSheetDimensions.columns : buildColumnEntries(sheet['!cols'])
+    const rowMetadata = importedSheetDimensions?.rowMetadata
+    const columnMetadata = importedSheetDimensions?.columnMetadata
+    const sheetFormatPr = importedSheetDimensions?.sheetFormatPr
     const importedFreezePane = importedFreezePanesBySheet.get(sheetName)
     const importedSheetTabColor = importedSheetTabColorsBySheet.get(sheetName)
     const merges = buildMergeEntries(sheetName, sheet['!merges'])
@@ -823,6 +826,9 @@ function importSheetJsWorkbook(
     const metadata =
       rows ||
       columns ||
+      rowMetadata ||
+      columnMetadata ||
+      sheetFormatPr ||
       styleRanges.length > 0 ||
       importedFreezePane ||
       importedSheetTabColor ||
@@ -837,6 +843,9 @@ function importSheetJsWorkbook(
         ? {
             ...(rows ? { rows } : {}),
             ...(columns ? { columns } : {}),
+            ...(rowMetadata ? { rowMetadata } : {}),
+            ...(columnMetadata ? { columnMetadata } : {}),
+            ...(sheetFormatPr ? { sheetFormatPr } : {}),
             ...(styleRanges.length > 0 ? { styleRanges } : {}),
             ...(importedFreezePane ? { freezePane: importedFreezePane } : {}),
             ...(importedSheetTabColor ? { tabColor: importedSheetTabColor } : {}),

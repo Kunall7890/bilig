@@ -1,4 +1,4 @@
-import type { WorkbookAxisEntrySnapshot } from '@bilig/protocol'
+import type { WorkbookAxisEntrySnapshot, WorkbookAxisMetadataSnapshot } from '@bilig/protocol'
 import { addEngineCounter, type EngineCounters } from './perf/engine-counters.js'
 import {
   getAxisMetadataRecord,
@@ -15,6 +15,55 @@ import { axisMetadataKey } from './workbook-store-records.js'
 import type { WorkbookAxisEntryRecord, WorkbookAxisMetadataRecord } from './workbook-metadata-types.js'
 
 type WorkbookAxis = 'row' | 'column'
+type AxisGeometryPatch = Omit<WorkbookAxisMetadataSnapshot, 'start' | 'count' | 'size' | 'hidden'>
+
+function applyAxisGeometryPatch(entry: WorkbookAxisEntryRecord, patch: AxisGeometryPatch | undefined): void {
+  if (patch?.xlsxWidth !== undefined) {
+    entry.xlsxWidth = patch.xlsxWidth
+  } else {
+    delete entry.xlsxWidth
+  }
+  if (patch?.xlsxHeight !== undefined) {
+    entry.xlsxHeight = patch.xlsxHeight
+  } else {
+    delete entry.xlsxHeight
+  }
+  if (patch?.customWidth !== undefined) {
+    entry.customWidth = patch.customWidth
+  } else {
+    delete entry.customWidth
+  }
+  if (patch?.bestFit !== undefined) {
+    entry.bestFit = patch.bestFit
+  } else {
+    delete entry.bestFit
+  }
+  if (patch?.outlineLevel !== undefined) {
+    entry.outlineLevel = patch.outlineLevel
+  } else {
+    delete entry.outlineLevel
+  }
+  if (patch?.collapsed !== undefined) {
+    entry.collapsed = patch.collapsed
+  } else {
+    delete entry.collapsed
+  }
+  if (patch?.customHeight !== undefined) {
+    entry.customHeight = patch.customHeight
+  } else {
+    delete entry.customHeight
+  }
+  if (patch?.thickTop !== undefined) {
+    entry.thickTop = patch.thickTop
+  } else {
+    delete entry.thickTop
+  }
+  if (patch?.thickBottom !== undefined) {
+    entry.thickBottom = patch.thickBottom
+  } else {
+    delete entry.thickBottom
+  }
+}
 
 export class WorkbookAxisEntryStore {
   constructor(
@@ -33,11 +82,13 @@ export class WorkbookAxisEntryStore {
     count: number,
     size: number | null,
     hidden: boolean | null,
+    geometry?: AxisGeometryPatch,
   ): WorkbookAxisMetadataRecord | undefined {
     const entries = this.materializeAxisEntryRecords(sheet, axis, start, count)
     entries.forEach((entry) => {
       entry.size = size
       entry.hidden = hidden
+      applyAxisGeometryPatch(entry, geometry)
     })
     this.syncAxisMetadataBucket(sheetName, sheet, axis, bucket)
     const record = this.getAxisMetadataRecord(sheet, axis, sheetName, start, count)

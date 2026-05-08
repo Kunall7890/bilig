@@ -2,8 +2,63 @@ import type { WorkbookAxisEntrySnapshot } from '@bilig/protocol'
 import type { WorkbookAxisEntryRecord, WorkbookAxisMetadataRecord } from './workbook-metadata-types.js'
 import { axisMetadataKey, deleteRecordsBySheet } from './workbook-store-records.js'
 
+type AxisGeometryKey =
+  | 'xlsxWidth'
+  | 'xlsxHeight'
+  | 'customWidth'
+  | 'bestFit'
+  | 'outlineLevel'
+  | 'collapsed'
+  | 'customHeight'
+  | 'thickTop'
+  | 'thickBottom'
+
+const axisGeometryKeys = [
+  'xlsxWidth',
+  'xlsxHeight',
+  'customWidth',
+  'bestFit',
+  'outlineLevel',
+  'collapsed',
+  'customHeight',
+  'thickTop',
+  'thickBottom',
+] as const satisfies readonly AxisGeometryKey[]
+
+type AxisGeometryMap = Partial<Record<AxisGeometryKey, number | boolean | null>>
+
+function axisGeometryValue(entry: WorkbookAxisEntryRecord | WorkbookAxisEntrySnapshot, key: AxisGeometryKey): number | boolean | null {
+  return entry[key] ?? null
+}
+
+function hasAxisGeometry(entry: WorkbookAxisEntryRecord): boolean {
+  return axisGeometryKeys.some((key) => axisGeometryValue(entry, key) !== null)
+}
+
+function axisEntriesHaveSameMetadata(left: WorkbookAxisEntryRecord, right: WorkbookAxisEntryRecord): boolean {
+  return (
+    left.size === right.size &&
+    left.hidden === right.hidden &&
+    axisGeometryKeys.every((key) => axisGeometryValue(left, key) === axisGeometryValue(right, key))
+  )
+}
+
+function copyAxisGeometry(source: WorkbookAxisEntryRecord | WorkbookAxisEntrySnapshot): Partial<WorkbookAxisEntrySnapshot> {
+  return {
+    ...(source.xlsxWidth !== undefined ? { xlsxWidth: source.xlsxWidth } : {}),
+    ...(source.xlsxHeight !== undefined ? { xlsxHeight: source.xlsxHeight } : {}),
+    ...(source.customWidth !== undefined ? { customWidth: source.customWidth } : {}),
+    ...(source.bestFit !== undefined ? { bestFit: source.bestFit } : {}),
+    ...(source.outlineLevel !== undefined ? { outlineLevel: source.outlineLevel } : {}),
+    ...(source.collapsed !== undefined ? { collapsed: source.collapsed } : {}),
+    ...(source.customHeight !== undefined ? { customHeight: source.customHeight } : {}),
+    ...(source.thickTop !== undefined ? { thickTop: source.thickTop } : {}),
+    ...(source.thickBottom !== undefined ? { thickBottom: source.thickBottom } : {}),
+  }
+}
+
 function makeAxisEntrySnapshot(entry: WorkbookAxisEntryRecord, index: number): WorkbookAxisEntrySnapshot {
-  const snapshot: WorkbookAxisEntrySnapshot = { id: entry.id, index }
+  const snapshot: WorkbookAxisEntrySnapshot = { id: entry.id, index, ...copyAxisGeometry(entry) }
   if (entry.size !== null) {
     snapshot.size = entry.size
   }
@@ -11,6 +66,56 @@ function makeAxisEntrySnapshot(entry: WorkbookAxisEntryRecord, index: number): W
     snapshot.hidden = entry.hidden
   }
   return snapshot
+}
+
+function makeAxisEntryRecord(snapshot: WorkbookAxisEntrySnapshot): WorkbookAxisEntryRecord {
+  return {
+    id: snapshot.id,
+    size: snapshot.size ?? null,
+    hidden: snapshot.hidden ?? null,
+    ...copyAxisGeometry(snapshot),
+  }
+}
+
+function copyAxisGeometryToMetadata(source: AxisGeometryMap): Partial<WorkbookAxisMetadataRecord> {
+  const xlsxWidth = typeof source.xlsxWidth === 'number' ? source.xlsxWidth : undefined
+  const xlsxHeight = typeof source.xlsxHeight === 'number' ? source.xlsxHeight : undefined
+  const customWidth = typeof source.customWidth === 'boolean' ? source.customWidth : undefined
+  const bestFit = typeof source.bestFit === 'boolean' ? source.bestFit : undefined
+  const outlineLevel = typeof source.outlineLevel === 'number' ? source.outlineLevel : undefined
+  const collapsed = typeof source.collapsed === 'boolean' ? source.collapsed : undefined
+  const customHeight = typeof source.customHeight === 'boolean' ? source.customHeight : undefined
+  const thickTop = typeof source.thickTop === 'boolean' ? source.thickTop : undefined
+  const thickBottom = typeof source.thickBottom === 'boolean' ? source.thickBottom : undefined
+  return {
+    ...(xlsxWidth !== undefined ? { xlsxWidth } : {}),
+    ...(xlsxHeight !== undefined ? { xlsxHeight } : {}),
+    ...(customWidth !== undefined ? { customWidth } : {}),
+    ...(bestFit !== undefined ? { bestFit } : {}),
+    ...(outlineLevel !== undefined ? { outlineLevel } : {}),
+    ...(collapsed !== undefined ? { collapsed } : {}),
+    ...(customHeight !== undefined ? { customHeight } : {}),
+    ...(thickTop !== undefined ? { thickTop } : {}),
+    ...(thickBottom !== undefined ? { thickBottom } : {}),
+  }
+}
+
+function makeAxisMetadataRecord(
+  sheetName: string,
+  start: number,
+  count: number,
+  entry: WorkbookAxisEntryRecord,
+): WorkbookAxisMetadataRecord {
+  return {
+    sheetName,
+    start,
+    count,
+    size: entry.size,
+    hidden: entry.hidden,
+    ...copyAxisGeometryToMetadata(
+      Object.fromEntries(axisGeometryKeys.map((key) => [key, axisGeometryValue(entry, key)])) as AxisGeometryMap,
+    ),
+  }
 }
 
 export function listAxisEntries(entries: Array<WorkbookAxisEntryRecord | undefined>): WorkbookAxisEntrySnapshot[] {
@@ -102,7 +207,7 @@ export function spliceAxisEntries(
     ...Array.from({ length: insertCount }, (_, index) => {
       const provided = providedEntries.get(index)
       if (provided) {
-        return { id: provided.id, size: provided.size ?? null, hidden: provided.hidden ?? null }
+        return makeAxisEntryRecord(provided)
       }
       if (providedSnapshots) {
         return undefined
@@ -136,6 +241,7 @@ export function getAxisMetadataRecord(
 ): WorkbookAxisMetadataRecord | undefined {
   let size: number | null | undefined
   let hidden: boolean | null | undefined
+  const geometry: AxisGeometryMap = {}
   let sawMaterialized = false
   for (let index = start; index < start + count; index += 1) {
     const entry = entries[index]
@@ -146,6 +252,9 @@ export function getAxisMetadataRecord(
       if (hidden === undefined) {
         hidden = null
       }
+      for (const key of axisGeometryKeys) {
+        geometry[key] ??= null
+      }
       continue
     }
     sawMaterialized = true
@@ -154,11 +263,28 @@ export function getAxisMetadataRecord(
     if (size !== entry.size || hidden !== entry.hidden) {
       return undefined
     }
+    for (const key of axisGeometryKeys) {
+      const value = axisGeometryValue(entry, key)
+      geometry[key] ??= value
+      if (geometry[key] !== value) {
+        return undefined
+      }
+    }
   }
-  if (!sawMaterialized || ((size ?? null) === null && (hidden ?? null) === null)) {
+  if (
+    !sawMaterialized ||
+    ((size ?? null) === null && (hidden ?? null) === null && axisGeometryKeys.every((key) => (geometry[key] ?? null) === null))
+  ) {
     return undefined
   }
-  return { sheetName, start, count, size: size ?? null, hidden: hidden ?? null }
+  return {
+    sheetName,
+    start,
+    count,
+    size: size ?? null,
+    hidden: hidden ?? null,
+    ...copyAxisGeometryToMetadata(geometry),
+  }
 }
 
 export function syncAxisMetadataBucket(
@@ -170,28 +296,20 @@ export function syncAxisMetadataBucket(
   let cursor = 0
   while (cursor < entries.length) {
     const entry = entries[cursor]
-    if (!entry || (entry.size === null && entry.hidden === null)) {
+    if (!entry || (entry.size === null && entry.hidden === null && !hasAxisGeometry(entry))) {
       cursor += 1
       continue
     }
     const start = cursor
-    const size = entry.size
-    const hidden = entry.hidden
     cursor += 1
     while (cursor < entries.length) {
       const next = entries[cursor]
-      if (!next || next.size !== size || next.hidden !== hidden) {
+      if (!next || !axisEntriesHaveSameMetadata(entry, next)) {
         break
       }
       cursor += 1
     }
-    const record: WorkbookAxisMetadataRecord = {
-      sheetName,
-      start,
-      count: cursor - start,
-      size,
-      hidden,
-    }
+    const record = makeAxisMetadataRecord(sheetName, start, cursor - start, entry)
     bucket.set(axisMetadataKey(sheetName, start, record.count), record)
   }
 }

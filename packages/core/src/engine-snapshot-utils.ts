@@ -29,6 +29,33 @@ function axisMetadataToSnapshot(records: readonly WorkbookAxisMetadataRecord[]):
     if (record.hidden !== null) {
       snapshot.hidden = record.hidden
     }
+    if (record.xlsxWidth !== undefined && record.xlsxWidth !== null) {
+      snapshot.xlsxWidth = record.xlsxWidth
+    }
+    if (record.xlsxHeight !== undefined && record.xlsxHeight !== null) {
+      snapshot.xlsxHeight = record.xlsxHeight
+    }
+    if (record.customWidth !== undefined && record.customWidth !== null) {
+      snapshot.customWidth = record.customWidth
+    }
+    if (record.bestFit !== undefined && record.bestFit !== null) {
+      snapshot.bestFit = record.bestFit
+    }
+    if (record.outlineLevel !== undefined && record.outlineLevel !== null) {
+      snapshot.outlineLevel = record.outlineLevel
+    }
+    if (record.collapsed !== undefined && record.collapsed !== null) {
+      snapshot.collapsed = record.collapsed
+    }
+    if (record.customHeight !== undefined && record.customHeight !== null) {
+      snapshot.customHeight = record.customHeight
+    }
+    if (record.thickTop !== undefined && record.thickTop !== null) {
+      snapshot.thickTop = record.thickTop
+    }
+    if (record.thickBottom !== undefined && record.thickBottom !== null) {
+      snapshot.thickBottom = record.thickBottom
+    }
     return snapshot
   })
 }
@@ -83,6 +110,7 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
   const columns = workbook.listColumnAxisEntries(sheetName)
   const rowMetadata = axisMetadataToSnapshot(workbook.listRowMetadata(sheetName))
   const columnMetadata = axisMetadataToSnapshot(workbook.listColumnMetadata(sheetName))
+  const sheetFormatPr = workbook.getSheetFormatPr(sheetName)
   const styleRanges = workbook.listStyleRanges(sheetName).map((record) => ({
     range: cloneSnapshotRangeRef(record.range),
     styleId: record.styleId,
@@ -111,6 +139,7 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
     columns.length === 0 &&
     rowMetadata.length === 0 &&
     columnMetadata.length === 0 &&
+    sheetFormatPr === undefined &&
     styleRanges.length === 0 &&
     formatRanges.length === 0 &&
     freezePane === undefined &&
@@ -140,6 +169,9 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
   }
   if (columnMetadata.length > 0) {
     metadata.columnMetadata = columnMetadata
+  }
+  if (sheetFormatPr) {
+    metadata.sheetFormatPr = sheetFormatPr
   }
   if (styleRanges.length > 0) {
     metadata.styleRanges = styleRanges

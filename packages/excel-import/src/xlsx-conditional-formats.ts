@@ -11,7 +11,7 @@ import type {
   WorkbookSnapshot,
   WorkbookValidationComparisonOperator,
 } from '@bilig/protocol'
-import { applyExportRowMetadataToWorksheetXml } from './xlsx-dimensions.js'
+import { applyExportWorksheetDimensionsToWorksheetXml } from './xlsx-dimensions.js'
 import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 type ZipEntries = Record<string, Uint8Array>
@@ -462,9 +462,9 @@ export function addExportConditionalFormatsToXlsxBytes(bytes: Uint8Array, snapsh
     if (!sheetXml) {
       return
     }
-    const updatedSheetXml = applyExportRowMetadataToWorksheetXml(
+    const updatedSheetXml = applyExportWorksheetDimensionsToWorksheetXml(
       insertWorksheetConditionalFormatting(sheetXml, conditionalFormattingXml),
-      sheet.metadata?.rows,
+      sheet.metadata,
     )
     if (updatedSheetXml === sheetXml) {
       return

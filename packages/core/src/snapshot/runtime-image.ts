@@ -396,11 +396,21 @@ function restoreSheetMetadata(args: { readonly workbook: WorkbookStore; readonly
     workbook.insertColumns(sheet.name, entry.index, 1, [cloneAxisEntry(entry)])
   })
   sheet.metadata?.rowMetadata?.forEach((record) => {
-    workbook.setRowMetadata(sheet.name, record.start, record.count, record.size ?? null, record.hidden ?? null)
+    workbook.setRowMetadata(sheet.name, record.start, record.count, record.size ?? null, record.hidden ?? null, cloneAxisGeometry(record))
   })
   sheet.metadata?.columnMetadata?.forEach((record) => {
-    workbook.setColumnMetadata(sheet.name, record.start, record.count, record.size ?? null, record.hidden ?? null)
+    workbook.setColumnMetadata(
+      sheet.name,
+      record.start,
+      record.count,
+      record.size ?? null,
+      record.hidden ?? null,
+      cloneAxisGeometry(record),
+    )
   })
+  if (sheet.metadata?.sheetFormatPr) {
+    workbook.setSheetFormatPr(sheet.name, sheet.metadata.sheetFormatPr)
+  }
   if (sheet.metadata?.freezePane) {
     workbook.setFreezePane(sheet.name, sheet.metadata.freezePane.rows, sheet.metadata.freezePane.cols, {
       ...(sheet.metadata.freezePane.topLeftCell !== undefined ? { topLeftCell: sheet.metadata.freezePane.topLeftCell } : {}),
@@ -454,6 +464,41 @@ function cloneAxisEntry(entry: WorkbookAxisEntrySnapshot): WorkbookAxisEntrySnap
     index: entry.index,
     ...(entry.size !== undefined ? { size: entry.size } : {}),
     ...(entry.hidden !== undefined ? { hidden: entry.hidden } : {}),
+    ...cloneAxisGeometry(entry),
+  }
+}
+
+function cloneAxisGeometry(entry: {
+  readonly xlsxWidth?: number | null
+  readonly xlsxHeight?: number | null
+  readonly customWidth?: boolean | null
+  readonly bestFit?: boolean | null
+  readonly outlineLevel?: number | null
+  readonly collapsed?: boolean | null
+  readonly customHeight?: boolean | null
+  readonly thickTop?: boolean | null
+  readonly thickBottom?: boolean | null
+}): {
+  xlsxWidth?: number | null
+  xlsxHeight?: number | null
+  customWidth?: boolean | null
+  bestFit?: boolean | null
+  outlineLevel?: number | null
+  collapsed?: boolean | null
+  customHeight?: boolean | null
+  thickTop?: boolean | null
+  thickBottom?: boolean | null
+} {
+  return {
+    ...(entry.xlsxWidth !== undefined ? { xlsxWidth: entry.xlsxWidth } : {}),
+    ...(entry.xlsxHeight !== undefined ? { xlsxHeight: entry.xlsxHeight } : {}),
+    ...(entry.customWidth !== undefined ? { customWidth: entry.customWidth } : {}),
+    ...(entry.bestFit !== undefined ? { bestFit: entry.bestFit } : {}),
+    ...(entry.outlineLevel !== undefined ? { outlineLevel: entry.outlineLevel } : {}),
+    ...(entry.collapsed !== undefined ? { collapsed: entry.collapsed } : {}),
+    ...(entry.customHeight !== undefined ? { customHeight: entry.customHeight } : {}),
+    ...(entry.thickTop !== undefined ? { thickTop: entry.thickTop } : {}),
+    ...(entry.thickBottom !== undefined ? { thickBottom: entry.thickBottom } : {}),
   }
 }
 

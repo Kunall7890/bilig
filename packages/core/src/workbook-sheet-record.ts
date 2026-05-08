@@ -6,6 +6,7 @@ import { SheetAxisMap } from './storage/sheet-axis-map.js'
 import { SheetGrid } from './sheet-grid.js'
 import type { EngineCounters } from './perf/engine-counters.js'
 import { makeLogicalCellKey } from './workbook-cell-key-index.js'
+import type { WorkbookSheetFormatPrSnapshot } from '@bilig/protocol'
 import type { WorkbookAxisEntryRecord, WorkbookFormatRangeRecord, WorkbookStyleRangeRecord } from './workbook-metadata-types.js'
 
 export interface SheetRecord {
@@ -22,6 +23,7 @@ export interface SheetRecord {
   structureVersion: number
   rowAxis: Array<WorkbookAxisEntryRecord | undefined>
   columnAxis: Array<WorkbookAxisEntryRecord | undefined>
+  sheetFormatPr?: WorkbookSheetFormatPrSnapshot
   styleRanges: WorkbookStyleRangeRecord[]
   formatRanges: WorkbookFormatRangeRecord[]
 }

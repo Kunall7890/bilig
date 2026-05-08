@@ -15,7 +15,7 @@ import { addExportChartsToXlsxBytes } from './xlsx-charts.js'
 import { addExportCommentsToWorksheet } from './xlsx-comments.js'
 import { addExportConditionalFormatsToXlsxBytes } from './xlsx-conditional-formats.js'
 import { buildExportDefinedNames } from './xlsx-defined-names.js'
-import { addExportRowMetadataToXlsxBytes, applyExportRowMetadataToWorksheetXml, hasExportRowMetadata } from './xlsx-dimensions.js'
+import { addExportWorksheetDimensionsToXlsxBytes, applyExportWorksheetDimensionsToWorksheetXml } from './xlsx-dimensions.js'
 import { addExportFiltersToXlsxBytes } from './xlsx-filters.js'
 import { addExportFreezePanesToXlsxBytes } from './xlsx-freeze-panes.js'
 import { addExportPivotsToXlsxBytes } from './xlsx-pivots.js'
@@ -631,7 +631,7 @@ function preserveSnapshotStyles(bytes: Uint8Array, snapshot: WorkbookSnapshot): 
         setZipText(
           zip,
           sheetPath,
-          applyExportRowMetadataToWorksheetXml(applyStyleIndexesToSheetXml(sheetXml, sheet, styleIndexById), sheet.metadata?.rows),
+          applyExportWorksheetDimensionsToWorksheetXml(applyStyleIndexesToSheetXml(sheetXml, sheet, styleIndexById), sheet.metadata),
         )
       }
     })
@@ -950,10 +950,5 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
   )
   const styledBytes = preserveSnapshotStyles(enrichedBytes, snapshot)
   const formattedBytes = preserveSnapshotNumberFormats(styledBytes, exportSheetFormats)
-  const existingWorksheetXmlPassAlreadyPatchedRows =
-    hasExportRowMetadata(snapshot) &&
-    (((snapshot.workbook.metadata?.styles ?? []).length > 0 &&
-      snapshot.sheets.some((sheet) => (sheet.metadata?.styleRanges?.length ?? 0) > 0)) ||
-      snapshot.sheets.some((sheet) => (sheet.metadata?.conditionalFormats ?? []).length > 0))
-  return existingWorksheetXmlPassAlreadyPatchedRows ? formattedBytes : addExportRowMetadataToXlsxBytes(formattedBytes, snapshot)
+  return addExportWorksheetDimensionsToXlsxBytes(formattedBytes, snapshot)
 }

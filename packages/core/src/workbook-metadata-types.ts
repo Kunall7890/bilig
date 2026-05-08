@@ -10,6 +10,8 @@ import type {
   CellStyleRecord,
   LiteralInput,
   WorkbookAutoFilterSnapshot,
+  WorkbookAxisEntrySnapshot,
+  WorkbookAxisMetadataSnapshot,
   WorkbookCalculationSettingsSnapshot,
   WorkbookCommentEntrySnapshot,
   WorkbookCommentThreadSnapshot,
@@ -58,7 +60,7 @@ export interface WorkbookShapeRecord extends WorkbookShapeSnapshot {}
 
 export interface WorkbookTableRecord extends WorkbookTableSnapshot {}
 
-export interface WorkbookAxisMetadataRecord {
+export interface WorkbookAxisMetadataRecord extends WorkbookAxisMetadataSnapshot {
   sheetName: string
   start: number
   count: number
@@ -66,7 +68,7 @@ export interface WorkbookAxisMetadataRecord {
   hidden: boolean | null
 }
 
-export interface WorkbookAxisEntryRecord {
+export interface WorkbookAxisEntryRecord extends Omit<WorkbookAxisEntrySnapshot, 'index'> {
   id: string
   size: number | null
   hidden: boolean | null

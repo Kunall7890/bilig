@@ -14,7 +14,9 @@ import type {
   CellStyleProtectionSnapshot,
   CellStyleRecord,
   CellVerticalAlignment,
+  WorkbookAxisMetadataSnapshot,
   WorkbookAxisEntrySnapshot,
+  WorkbookSheetFormatPrSnapshot,
   SheetStyleRangeSnapshot,
 } from '@bilig/protocol'
 
@@ -24,6 +26,9 @@ type ExportCellAlignment = Record<string, boolean | number | string>
 interface ImportedSheetDimensions {
   columns?: WorkbookAxisEntrySnapshot[]
   rows?: WorkbookAxisEntrySnapshot[]
+  columnMetadata?: WorkbookAxisMetadataSnapshot[]
+  rowMetadata?: WorkbookAxisMetadataSnapshot[]
+  sheetFormatPr?: WorkbookSheetFormatPrSnapshot
   skippedColumnMetadata?: boolean
 }
 
@@ -408,9 +413,17 @@ function readXmlPositiveIntegerAttribute(tag: string, name: string): number | nu
   return value !== null && Number.isSafeInteger(value) && value > 0 ? value : null
 }
 
-function readXmlBooleanAttribute(tag: string, name: string): boolean {
+function readXmlNonNegativeIntegerAttribute(tag: string, name: string): number | null {
+  const value = readXmlNumberAttribute(tag, name)
+  return value !== null && Number.isSafeInteger(value) && value >= 0 ? value : null
+}
+
+function readXmlOptionalBooleanAttribute(tag: string, name: string): boolean | null {
   const raw = readXmlAttribute(tag, name)
-  return raw === '1' || raw?.toLowerCase() === 'true'
+  if (raw === null) {
+    return null
+  }
+  return raw === '1' || raw.toLowerCase() === 'true'
 }
 
 function parseSheetStyleIndexes(sheetXml: string, candidateAddresses?: ReadonlySet<string>): Map<string, number> {
@@ -451,8 +464,42 @@ function parseSheetStyleIndexes(sheetXml: string, candidateAddresses?: ReadonlyS
   return output
 }
 
-function parseSheetColumnEntries(sheetXml: string): { entries?: WorkbookAxisEntrySnapshot[]; skipped: boolean } {
+function parseSheetFormatPr(sheetXml: string): WorkbookSheetFormatPrSnapshot | undefined {
+  const match = /<sheetFormatPr\b[^>]*\/?>/u.exec(sheetXml)
+  if (!match) {
+    return undefined
+  }
+  const tag = match[0]
+  const sheetFormatPr: WorkbookSheetFormatPrSnapshot = {
+    ...(readXmlNumberAttribute(tag, 'baseColWidth') !== null ? { baseColWidth: readXmlNumberAttribute(tag, 'baseColWidth') } : {}),
+    ...(readXmlNumberAttribute(tag, 'defaultColWidth') !== null ? { defaultColWidth: readXmlNumberAttribute(tag, 'defaultColWidth') } : {}),
+    ...(readXmlNumberAttribute(tag, 'defaultRowHeight') !== null
+      ? { defaultRowHeight: readXmlNumberAttribute(tag, 'defaultRowHeight') }
+      : {}),
+    ...(readXmlOptionalBooleanAttribute(tag, 'customHeight') !== null
+      ? { customHeight: readXmlOptionalBooleanAttribute(tag, 'customHeight') }
+      : {}),
+    ...(readXmlNonNegativeIntegerAttribute(tag, 'outlineLevelRow') !== null
+      ? { outlineLevelRow: readXmlNonNegativeIntegerAttribute(tag, 'outlineLevelRow') }
+      : {}),
+    ...(readXmlNonNegativeIntegerAttribute(tag, 'outlineLevelCol') !== null
+      ? { outlineLevelCol: readXmlNonNegativeIntegerAttribute(tag, 'outlineLevelCol') }
+      : {}),
+    ...(readXmlOptionalBooleanAttribute(tag, 'thickTop') !== null ? { thickTop: readXmlOptionalBooleanAttribute(tag, 'thickTop') } : {}),
+    ...(readXmlOptionalBooleanAttribute(tag, 'thickBottom') !== null
+      ? { thickBottom: readXmlOptionalBooleanAttribute(tag, 'thickBottom') }
+      : {}),
+  }
+  return Object.keys(sheetFormatPr).length > 0 ? sheetFormatPr : undefined
+}
+
+function parseSheetColumnEntries(sheetXml: string): {
+  entries?: WorkbookAxisEntrySnapshot[]
+  metadata?: WorkbookAxisMetadataSnapshot[]
+  skipped: boolean
+} {
   const entries: WorkbookAxisEntrySnapshot[] = []
+  const metadata: WorkbookAxisMetadataSnapshot[] = []
   let skipped = false
   for (const match of sheetXml.matchAll(/<col\b[^>]*\/?>/gu)) {
     const columnTag = match[0]
@@ -472,6 +519,22 @@ function parseSheetColumnEntries(sheetXml: string): { entries?: WorkbookAxisEntr
     if (columnCount <= 0) {
       continue
     }
+    const customWidth = readXmlOptionalBooleanAttribute(columnTag, 'customWidth')
+    const bestFit = readXmlOptionalBooleanAttribute(columnTag, 'bestFit')
+    const hidden = readXmlOptionalBooleanAttribute(columnTag, 'hidden')
+    const outlineLevel = readXmlNonNegativeIntegerAttribute(columnTag, 'outlineLevel')
+    const collapsed = readXmlOptionalBooleanAttribute(columnTag, 'collapsed')
+    metadata.push({
+      start: startColumn,
+      count: columnCount,
+      size,
+      xlsxWidth: width,
+      ...(customWidth !== null ? { customWidth } : {}),
+      ...(bestFit !== null ? { bestFit } : {}),
+      ...(hidden !== null ? { hidden } : {}),
+      ...(outlineLevel !== null ? { outlineLevel } : {}),
+      ...(collapsed !== null ? { collapsed } : {}),
+    })
     if (entries.length + columnCount > maxExpandedColumnMetadataEntries) {
       skipped = true
       continue
@@ -486,33 +549,63 @@ function parseSheetColumnEntries(sheetXml: string): { entries?: WorkbookAxisEntr
   }
   return {
     ...(entries.length > 0 ? { entries } : {}),
+    ...(metadata.length > 0 ? { metadata } : {}),
     skipped,
   }
 }
 
-function parseSheetRowEntries(sheetXml: string): WorkbookAxisEntrySnapshot[] | undefined {
+function parseSheetRowEntries(sheetXml: string): { entries?: WorkbookAxisEntrySnapshot[]; metadata?: WorkbookAxisMetadataSnapshot[] } {
   const entries: WorkbookAxisEntrySnapshot[] = []
+  const metadata: WorkbookAxisMetadataSnapshot[] = []
   for (const match of sheetXml.matchAll(/<row\b[^>]*>/gu)) {
     const rowTag = match[0]
     const rowNumber = readXmlPositiveIntegerAttribute(rowTag, 'r')
     const height = readXmlNumberAttribute(rowTag, 'ht')
-    const hidden = readXmlBooleanAttribute(rowTag, 'hidden')
+    const hidden = readXmlOptionalBooleanAttribute(rowTag, 'hidden')
     if (rowNumber === null) {
       continue
     }
     const index = rowNumber - 1
     const size = height !== null && height > 0 ? Math.round(height) : null
-    if ((size === null || size <= 0) && !hidden) {
+    const customHeight = readXmlOptionalBooleanAttribute(rowTag, 'customHeight')
+    const outlineLevel = readXmlNonNegativeIntegerAttribute(rowTag, 'outlineLevel')
+    const collapsed = readXmlOptionalBooleanAttribute(rowTag, 'collapsed')
+    const thickTop = readXmlOptionalBooleanAttribute(rowTag, 'thickTop')
+    const thickBottom = readXmlOptionalBooleanAttribute(rowTag, 'thickBot')
+    if (
+      (size === null || size <= 0) &&
+      hidden !== true &&
+      customHeight === null &&
+      outlineLevel === null &&
+      collapsed === null &&
+      thickTop === null &&
+      thickBottom === null
+    ) {
       continue
     }
     entries.push({
       id: `row:${String(index)}`,
       index,
       ...(size !== null && size > 0 ? { size } : {}),
-      ...(hidden ? { hidden: true } : {}),
+      ...(hidden === true ? { hidden: true } : {}),
+    })
+    metadata.push({
+      start: index,
+      count: 1,
+      ...(size !== null && size > 0 ? { size } : {}),
+      ...(height !== null && height > 0 ? { xlsxHeight: height } : {}),
+      ...(hidden !== null ? { hidden } : {}),
+      ...(customHeight !== null ? { customHeight } : {}),
+      ...(outlineLevel !== null ? { outlineLevel } : {}),
+      ...(collapsed !== null ? { collapsed } : {}),
+      ...(thickTop !== null ? { thickTop } : {}),
+      ...(thickBottom !== null ? { thickBottom } : {}),
     })
   }
-  return entries.length > 0 ? entries : undefined
+  return {
+    ...(entries.length > 0 ? { entries } : {}),
+    ...(metadata.length > 0 ? { metadata } : {}),
+  }
 }
 
 export function readImportedWorkbookSheetDimensions(
@@ -528,14 +621,25 @@ export function readImportedWorkbookSheetDimensions(
     if (!sheetXml) {
       return
     }
+    const sheetFormatPr = parseSheetFormatPr(sheetXml)
     const parsedColumns = parseSheetColumnEntries(sheetXml)
-    const rows = parseSheetRowEntries(sheetXml)
+    const parsedRows = parseSheetRowEntries(sheetXml)
     const dimensions: ImportedSheetDimensions = {
       ...(parsedColumns.entries ? { columns: parsedColumns.entries } : {}),
-      ...(rows ? { rows } : {}),
+      ...(parsedRows.entries ? { rows: parsedRows.entries } : {}),
+      ...(parsedColumns.metadata ? { columnMetadata: parsedColumns.metadata } : {}),
+      ...(parsedRows.metadata ? { rowMetadata: parsedRows.metadata } : {}),
+      ...(sheetFormatPr ? { sheetFormatPr } : {}),
       ...(parsedColumns.skipped ? { skippedColumnMetadata: true } : {}),
     }
-    if (dimensions.columns || dimensions.rows || dimensions.skippedColumnMetadata) {
+    if (
+      dimensions.columns ||
+      dimensions.rows ||
+      dimensions.columnMetadata ||
+      dimensions.rowMetadata ||
+      dimensions.sheetFormatPr ||
+      dimensions.skippedColumnMetadata
+    ) {
       output.set(sheetName, dimensions)
     }
   })
