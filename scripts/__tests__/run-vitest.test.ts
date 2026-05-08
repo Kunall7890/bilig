@@ -8,7 +8,7 @@ describe('run-vitest wrapper arguments', () => {
       '--run',
       'sample.test.ts',
       '--maxWorkers',
-      '2',
+      '1',
     ])
   })
 

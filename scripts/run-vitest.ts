@@ -9,7 +9,7 @@ export function buildVitestArgs(args: readonly string[], env: NodeJS.ProcessEnv 
   if (!env['BILIG_CI_PROFILE'] || hasArg(args, '--maxWorkers')) {
     return [...args]
   }
-  return [...args, '--maxWorkers', env['BILIG_VITEST_MAX_WORKERS'] ?? '2']
+  return [...args, '--maxWorkers', env['BILIG_VITEST_MAX_WORKERS'] ?? '1']
 }
 
 function hasArg(args: readonly string[], flag: string): boolean {
