@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs'
+import { isAbsolute, relative, resolve } from 'node:path'
 
 import { parsePublicWorkbookCorpusScorecardJson, parsePublicWorkbookManifestJson } from './public-workbook-corpus-json.ts'
 import { publicCorpusStopMarkerOverrideEnvVar, publicCorpusStopMarkerOverrideFlag } from './public-workbook-corpus-cli.ts'
@@ -40,6 +41,7 @@ export interface MissingManifestArtifactSummary {
 }
 
 const missingManifestArtifactSampleLimit = 20
+const rootDir = resolve(new URL('..', import.meta.url).pathname)
 
 export function writePublicWorkbookCorpusCheck(args: {
   readonly manifestPath: string
@@ -112,6 +114,7 @@ export function readPublicWorkbookCorpusStatus(args: {
       scorecardPath: args.scorecardPath,
       cacheDir: args.cacheDir,
       verifyCheckpointPath: args.verifyCheckpointPath,
+      displayRootDir: rootDir,
       stopMarkerActive: args.corpusRunStopMarkerPath ? existsSync(args.corpusRunStopMarkerPath) : false,
     },
   })
@@ -218,6 +221,7 @@ interface PublicWorkbookCorpusCommandPaths {
   readonly scorecardPath: string
   readonly cacheDir: string
   readonly verifyCheckpointPath: string
+  readonly displayRootDir?: string
   readonly stopMarkerActive?: boolean
 }
 
@@ -227,23 +231,23 @@ function formatPublicWorkbookCorpusVerifyMissingCommand(paths: PublicWorkbookCor
     mode === 'plan'
       ? [
           '--manifest',
-          paths.manifestPath,
+          commandPath(paths.manifestPath, paths.displayRootDir),
           '--scorecard',
-          paths.scorecardPath,
+          commandPath(paths.scorecardPath, paths.displayRootDir),
           '--verify-checkpoint',
-          paths.verifyCheckpointPath,
+          commandPath(paths.verifyCheckpointPath, paths.displayRootDir),
           '--cache-dir',
-          paths.cacheDir,
+          commandPath(paths.cacheDir, paths.displayRootDir),
         ]
       : [
           '--manifest',
-          paths.manifestPath,
+          commandPath(paths.manifestPath, paths.displayRootDir),
           '--scorecard',
-          paths.scorecardPath,
+          commandPath(paths.scorecardPath, paths.displayRootDir),
           '--verify-checkpoint',
-          paths.verifyCheckpointPath,
+          commandPath(paths.verifyCheckpointPath, paths.displayRootDir),
           '--cache-dir',
-          paths.cacheDir,
+          commandPath(paths.cacheDir, paths.displayRootDir),
           '--limit',
           '1',
         ]
@@ -252,6 +256,17 @@ function formatPublicWorkbookCorpusVerifyMissingCommand(paths: PublicWorkbookCor
     return `${publicCorpusStopMarkerOverrideEnvVar}=1 ${[...command, publicCorpusStopMarkerOverrideFlag].map(shellQuote).join(' ')}`
   }
   return command.map(shellQuote).join(' ')
+}
+
+function commandPath(path: string, displayRootDir: string | undefined): string {
+  if (!displayRootDir) {
+    return path
+  }
+  const relativePath = relative(displayRootDir, path)
+  if (!relativePath || relativePath.startsWith('..') || isAbsolute(relativePath)) {
+    return path
+  }
+  return relativePath
 }
 
 function shellQuote(value: string): string {

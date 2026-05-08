@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 
 import { buildPublicWorkbookCorpusScorecard, createEmptyPublicWorkbookManifest } from '../public-workbook-corpus.ts'
 import { buildPublicWorkbookCorpusResumePlan, validatePublicWorkbookCorpusResumePlan } from '../public-workbook-corpus-resume-plan.ts'
+import { buildPublicWorkbookCorpusStatus } from '../public-workbook-corpus-status.ts'
 import {
   readReusablePublicWorkbookCorpusCases,
   writePublicWorkbookCorpusVerificationCheckpoint,
@@ -189,6 +190,7 @@ describe('public workbook corpus CLI resource guards', () => {
         targetReachableFromKnownCandidates: false,
       },
       generatedAt: '2026-05-07T08:00:00.000Z',
+      displayRootDir: '/repo',
       manifestPath: '/repo/.cache/public-workbook-corpus/manifest.json',
       scorecardPath: '/repo/packages/benchmarks/baselines/public-workbook-corpus-scorecard.json',
       status: {
@@ -208,6 +210,7 @@ describe('public workbook corpus CLI resource guards', () => {
       schemaVersion: 1,
       stopMarker: {
         active: true,
+        path: '.agent-coordination/stop.md',
         requiresExplicitResume: true,
         overrideFlag: '--allow-active-stop-marker',
         overrideEnvVar: 'BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE',
@@ -252,7 +255,37 @@ describe('public workbook corpus CLI resource guards', () => {
         },
       },
     })
+    expect(JSON.stringify(plan)).not.toContain('/repo/')
+    expect(plan.phases.verifyMissingCachedArtifacts.commands[0]).toContain('--manifest .cache/public-workbook-corpus/manifest.json')
+    expect(plan.phases.verifyMissingCachedArtifacts.commands[0]).toContain(
+      '--scorecard packages/benchmarks/baselines/public-workbook-corpus-scorecard.json',
+    )
     expect(validatePublicWorkbookCorpusResumePlan(plan)).toEqual([])
+  })
+
+  it('uses repo-relative paths in status suggested commands for paths inside the checkout', () => {
+    const artifactA = workbookArtifact('workbook-a')
+    const artifactB = workbookArtifact('workbook-b')
+    const status = buildPublicWorkbookCorpusStatus({
+      manifest: manifestWithArtifacts([artifactA, artifactB]),
+      scorecard: null,
+      checkpointCases: [passedCase(artifactA)],
+      commandPaths: {
+        manifestPath: '/repo/.cache/public-workbook-corpus/manifest.json',
+        scorecardPath: '/repo/packages/benchmarks/baselines/public-workbook-corpus-scorecard.json',
+        verifyCheckpointPath: '/repo/.cache/public-workbook-corpus/verification-checkpoint.json',
+        cacheDir: '/repo/.cache/public-workbook-corpus',
+        displayRootDir: '/repo',
+        stopMarkerActive: true,
+      },
+    })
+
+    expect(status.nextMissingVerificationCommand).toContain('--manifest .cache/public-workbook-corpus/manifest.json')
+    expect(status.nextMissingVerificationCommand).toContain(
+      '--scorecard packages/benchmarks/baselines/public-workbook-corpus-scorecard.json',
+    )
+    expect(status.nextMissingVerificationCommand).not.toContain('/repo/')
+    expect(status.nextMissingVerificationPlanCommand).not.toContain('/repo/')
   })
 
   it('checks a resume plan from the checked-in scorecard when the local manifest cache is absent', async () => {

@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 import { existsSync, readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { isAbsolute, join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 import {
@@ -119,6 +119,7 @@ export function buildPublicWorkbookCorpusResumePlanFromArgs(): PublicWorkbookCor
     manifestPath,
     scorecardPath,
     status,
+    displayRootDir: rootDir,
     stopMarkerActive: existsSync(stopMarkerPath),
     stopMarkerPath,
     verifyBatchSize,
@@ -162,6 +163,7 @@ export function buildPublicWorkbookCorpusResumePlan(args: {
     readonly targetReachableFromKnownCandidates: boolean
   }
   readonly generatedAt: string
+  readonly displayRootDir?: string
   readonly manifestPath: string
   readonly scorecardPath: string
   readonly status: {
@@ -182,7 +184,7 @@ export function buildPublicWorkbookCorpusResumePlan(args: {
     generatedAt: args.generatedAt,
     stopMarker: {
       active: args.stopMarkerActive,
-      path: args.stopMarkerPath,
+      path: commandPath(args.stopMarkerPath, args.displayRootDir),
       requiresExplicitResume: args.stopMarkerActive,
       overrideFlag: publicCorpusStopMarkerOverrideFlag,
       overrideEnvVar: publicCorpusStopMarkerOverrideEnvVar,
@@ -290,26 +292,26 @@ function buildVerifyMissingPhase(args: Parameters<typeof buildPublicWorkbookCorp
         'public-workbook-corpus:verify-missing:plan',
         '--',
         '--manifest',
-        args.manifestPath,
+        commandPath(args.manifestPath, args.displayRootDir),
         '--scorecard',
-        args.scorecardPath,
+        commandPath(args.scorecardPath, args.displayRootDir),
         '--verify-checkpoint',
-        args.verifyCheckpointPath,
+        commandPath(args.verifyCheckpointPath, args.displayRootDir),
         '--cache-dir',
-        args.cacheDir,
+        commandPath(args.cacheDir, args.displayRootDir),
       ]),
       guardedCommand(args.stopMarkerActive, [
         'pnpm',
         'public-workbook-corpus:verify-missing',
         '--',
         '--manifest',
-        args.manifestPath,
+        commandPath(args.manifestPath, args.displayRootDir),
         '--scorecard',
-        args.scorecardPath,
+        commandPath(args.scorecardPath, args.displayRootDir),
         '--verify-checkpoint',
-        args.verifyCheckpointPath,
+        commandPath(args.verifyCheckpointPath, args.displayRootDir),
         '--cache-dir',
-        args.cacheDir,
+        commandPath(args.cacheDir, args.displayRootDir),
         '--limit',
         String(batchSize),
       ]),
@@ -335,9 +337,9 @@ function buildDiscoverPhase(args: Parameters<typeof buildPublicWorkbookCorpusRes
         'public-workbook-corpus:discover',
         '--',
         '--manifest',
-        args.manifestPath,
+        commandPath(args.manifestPath, args.displayRootDir),
         '--cache-dir',
-        args.cacheDir,
+        commandPath(args.cacheDir, args.displayRootDir),
         '--limit',
         String(args.fetchPlan.recommendedDiscoveryLimit),
       ]),
@@ -366,9 +368,9 @@ function buildFetchPhase(args: Parameters<typeof buildPublicWorkbookCorpusResume
         'public-workbook-corpus:fetch:plan',
         '--',
         '--manifest',
-        args.manifestPath,
+        commandPath(args.manifestPath, args.displayRootDir),
         '--cache-dir',
-        args.cacheDir,
+        commandPath(args.cacheDir, args.displayRootDir),
         '--limit',
         String(args.fetchLimit),
       ]),
@@ -377,9 +379,9 @@ function buildFetchPhase(args: Parameters<typeof buildPublicWorkbookCorpusResume
         'public-workbook-corpus:fetch',
         '--',
         '--manifest',
-        args.manifestPath,
+        commandPath(args.manifestPath, args.displayRootDir),
         '--cache-dir',
-        args.cacheDir,
+        commandPath(args.cacheDir, args.displayRootDir),
         '--limit',
         String(args.fetchLimit),
         '--fetch-batch-size',
@@ -402,13 +404,13 @@ function buildFinalEvidenceRefreshPhase(args: Parameters<typeof buildPublicWorkb
         'public-workbook-corpus:verify',
         '--',
         '--manifest',
-        args.manifestPath,
+        commandPath(args.manifestPath, args.displayRootDir),
         '--scorecard',
-        args.scorecardPath,
+        commandPath(args.scorecardPath, args.displayRootDir),
         '--verify-checkpoint',
-        args.verifyCheckpointPath,
+        commandPath(args.verifyCheckpointPath, args.displayRootDir),
         '--cache-dir',
-        args.cacheDir,
+        commandPath(args.cacheDir, args.displayRootDir),
       ]),
       command(['pnpm', 'public-workbook-corpus:completion-audit:check', '--', '--require-complete']),
       command(['pnpm', 'dominance:generate']),
@@ -437,6 +439,17 @@ function guardedCommand(stopMarkerActive: boolean, parts: readonly string[]): st
     return command(parts)
   }
   return `${publicCorpusStopMarkerOverrideEnvVar}=1 ${command([...parts, publicCorpusStopMarkerOverrideFlag])}`
+}
+
+function commandPath(path: string, displayRootDir: string | undefined): string {
+  if (!displayRootDir) {
+    return path
+  }
+  const relativePath = relative(displayRootDir, path)
+  if (!relativePath || relativePath.startsWith('..') || isAbsolute(relativePath)) {
+    return path
+  }
+  return relativePath
 }
 
 function command(parts: readonly string[]): string {
