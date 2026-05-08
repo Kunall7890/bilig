@@ -92,6 +92,7 @@ export async function runPublicWorkbookCorpusVerifyMissingCommand(args: PublicWo
     progressLabel: 'verified missing',
     selectArtifacts: (manifest, recordedCases) => selectMissingPublicWorkbookArtifacts({ manifest, cases: recordedCases, limit }),
     structuralSmokeSampleLimit: 0,
+    stopOnFailure: false,
   })
   console.log(`Verified ${String(verifiedCount)} missing public workbook cases into ${formatCommandPath(args.verifyCheckpointPath)}`)
 }
@@ -147,6 +148,7 @@ export async function runPublicWorkbookCorpusVerifyStaleCommand(args: PublicWork
     progressLabel: 'refreshed stale',
     selectArtifacts: (manifest, recordedCases) => selectStalePublicWorkbookArtifacts({ manifest, cases: recordedCases, limit }),
     structuralSmokeSampleLimit: readNumberArg('--structural-smoke-sample-limit', 50),
+    stopOnFailure: true,
   })
   console.log(`Refreshed ${String(verifiedCount)} stale public workbook cases into ${formatCommandPath(args.verifyCheckpointPath)}`)
 }
@@ -162,6 +164,7 @@ async function verifySelectedPublicWorkbookArtifacts(
       recordedCases: ReturnType<typeof readReusablePublicWorkbookCorpusCases>,
     ) => PublicWorkbookManifest['artifacts']
     readonly structuralSmokeSampleLimit: number
+    readonly stopOnFailure: boolean
   },
 ): Promise<number> {
   const inProcessVerification = readDebugOnlyFlagArg(
@@ -206,6 +209,11 @@ async function verifySelectedPublicWorkbookArtifacts(
             progress.totalCount,
           )}; latest=${progress.latestCase.id}; status=${progress.latestCase.status}`,
         )
+        if (args.stopOnFailure && (progress.latestCase.status === 'failed' || progress.latestCase.status === 'error')) {
+          throw new Error(
+            `Stopping ${args.commandName} after ${progress.latestCase.status} case ${progress.latestCase.id}; rerun that artifact before continuing the batch`,
+          )
+        }
       },
     })
     return scorecard.cases.length

@@ -1337,6 +1337,65 @@ describe('public workbook corpus CLI resource guards', () => {
     expect(checkpointCases[0]?.evidence).toEqual(expect.arrayContaining([`Missing cached workbook file: ${artifactB.cachePath}`]))
   })
 
+  it('stops stale verification batches after the first failed case', async () => {
+    const artifactA = workbookArtifact('workbook-a')
+    const artifactB = workbookArtifact('workbook-b')
+    const dir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-cli-verify-stale-fail-fast-'))
+    const manifestPath = join(dir, 'manifest.json')
+    const scorecardPath = join(dir, 'scorecard.json')
+    const checkpointPath = join(dir, 'verification-checkpoint.json')
+    const fullManifest = manifestWithArtifacts([artifactA, artifactB])
+    writeFileSync(manifestPath, `${JSON.stringify(fullManifest, null, 2)}\n`)
+    writePublicWorkbookCorpusVerificationCheckpoint({
+      path: checkpointPath,
+      manifest: fullManifest,
+      casesById: new Map([
+        [artifactA.id, passedCase(artifactA)],
+        [artifactB.id, passedCase(artifactB)],
+      ]),
+      generatedAt: '2026-05-07T01:30:00.000Z',
+    })
+
+    const result = spawnSync(
+      'bun',
+      [
+        corpusScriptPath(),
+        'verify-stale',
+        '--manifest',
+        manifestPath,
+        '--scorecard',
+        scorecardPath,
+        '--verify-checkpoint',
+        checkpointPath,
+        '--cache-dir',
+        dir,
+        '--corpus-run-stop-marker',
+        join(dir, 'inactive-stop-marker.md'),
+        '--limit',
+        '2',
+        '--in-process',
+      ],
+      {
+        encoding: 'utf8',
+        env: { ...process.env, BILIG_ALLOW_IN_PROCESS_PUBLIC_CORPUS_VERIFY: '1' },
+      },
+    )
+    const checkpointCases = readReusablePublicWorkbookCorpusCases([checkpointPath])
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain(`Stopping public-workbook-corpus verify-stale after error case ${artifactA.id}`)
+    expect(checkpointCases.map((entry) => [entry.id, entry.status])).toEqual([
+      [artifactA.id, 'error'],
+      [artifactB.id, 'passed'],
+    ])
+    expect(checkpointCases.find((entry) => entry.id === artifactA.id)?.evidence).toEqual(
+      expect.arrayContaining([`Missing cached workbook file: ${artifactA.cachePath}`]),
+    )
+    expect(checkpointCases.find((entry) => entry.id === artifactB.id)?.evidence).not.toEqual(
+      expect.arrayContaining([`Missing cached workbook file: ${artifactB.cachePath}`]),
+    )
+  })
+
   it('lists a bounded missing slice without starting verification', async () => {
     const artifactA = workbookArtifact('workbook-a')
     const artifactB = workbookArtifact('workbook-b')
