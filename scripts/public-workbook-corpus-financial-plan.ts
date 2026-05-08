@@ -13,7 +13,7 @@ import {
   readNumberArg,
   readStringArg,
 } from './public-workbook-corpus-cli.ts'
-import type { PublicWorkbookManifest } from './public-workbook-corpus-types.ts'
+import type { PublicWorkbookLicenseEvidence, PublicWorkbookManifest } from './public-workbook-corpus-types.ts'
 
 export interface PublicWorkbookCorpusFinancialPlan {
   readonly schemaVersion: 1
@@ -61,6 +61,7 @@ export interface PublicWorkbookCorpusFinancialPlan {
     readonly fileName: string
     readonly sourceUrl: string
     readonly downloadUrl: string
+    readonly license: PublicWorkbookLicenseEvidence
     readonly topicEvidence: readonly string[]
   }[]
 }
@@ -261,6 +262,7 @@ export function buildPublicWorkbookCorpusFinancialPlan(args: {
       fileName: source.fileName,
       sourceUrl: source.sourceUrl,
       downloadUrl: source.downloadUrl,
+      license: source.license,
       topicEvidence: source.topicEvidence ?? [],
     })),
   }

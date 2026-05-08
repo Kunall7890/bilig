@@ -199,6 +199,10 @@ describe('public workbook financial corpus plan CLI', () => {
     )
     const plan = asRecord(JSON.parse(result.stdout))
     const commands = asRecord(plan['commands'])
+    const sampledCandidateSources = plan['sampledCandidateSources']
+    if (!Array.isArray(sampledCandidateSources)) {
+      throw new Error('expected sampled candidate sources')
+    }
 
     expect(result.status).toBe(0)
     expect(plan).toMatchObject({
@@ -210,6 +214,15 @@ describe('public workbook financial corpus plan CLI', () => {
     expect(commands['discoverPlan']).toBeNull()
     expect(commands['discover']).toBeNull()
     expect(commands['fetch']).toEqual(expect.stringContaining('public-workbook-corpus:fetch-financial'))
+    expect(sampledCandidateSources[0]).toMatchObject({
+      id: 'source-a',
+      license: {
+        spdxId: 'CC-BY-4.0',
+        title: 'Creative Commons Attribution 4.0 International',
+        evidenceUrl: 'https://creativecommons.org/licenses/by/4.0/',
+      },
+      topicEvidence: ['financial:fileName'],
+    })
   })
 
   it('recommends bounded financial fetch tranches before the full target fetch', () => {
