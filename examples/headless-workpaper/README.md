@@ -181,3 +181,38 @@ Expected output:
   "totalQ1": 480
 }
 ```
+
+## JSON Records Input
+
+Run the JSON records input example when a Node service or agent already has an
+array of API records and needs to turn it into a formula-backed WorkPaper
+without writing an import subsystem:
+
+```sh
+npm run json-records
+```
+
+Expected output:
+
+```json
+{
+  "sourceRecords": 3,
+  "computed": {
+    "committedMrr": 39600,
+    "weightedPipelineMrr": 43400,
+    "westSeats": 27,
+    "largestOpportunityMrr": 21600
+  },
+  "serializedFirstDataRow": [
+    "Acme Manufacturing",
+    "West",
+    "Committed",
+    12,
+    1800,
+    1,
+    "=D2*E2",
+    "=G2*F2"
+  ],
+  "verified": true
+}
+```

@@ -25,6 +25,7 @@ Project site: <https://proompteng.github.io/bilig/>
   [benchmark explainer](docs/what-workpaper-benchmark-proves.md).
 - **Build a Node or agent workflow**: start from the
   [runnable WorkPaper example](examples/headless-workpaper),
+  [JSON records input example](examples/headless-workpaper#json-records-input),
   [Node service recipe](docs/node-service-workpaper-recipe.md), or
   [agent tool-calling recipe](docs/agent-workpaper-tool-calling-recipe.md).
 - **Contribute a small patch**: pick a scoped
@@ -257,6 +258,12 @@ For tabular service payloads, see
 [`docs/csv-shaped-workpaper-input-recipe.md`](docs/csv-shaped-workpaper-input-recipe.md).
 It normalizes a small CSV-shaped fixture into a WorkPaper workbook and reads
 formula-backed summary values.
+
+For JSON service/API payloads, the runnable example includes
+[`npm run json-records`](examples/headless-workpaper#json-records-input). It
+maps an array of opportunity records into `WorkPaper.buildFromSheets()`, adds
+formula-backed summary cells, and validates exact computed output before
+printing JSON.
 
 For formula errors, see
 [`docs/unsupported-formula-troubleshooting-recipe.md`](docs/unsupported-formula-troubleshooting-recipe.md).

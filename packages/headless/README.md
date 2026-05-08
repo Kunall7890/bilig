@@ -105,6 +105,8 @@ Repository:
 - npm: <https://www.npmjs.com/package/@bilig/headless>
 - runnable example:
   [`examples/headless-workpaper`](../../examples/headless-workpaper)
+- JSON records input example:
+  [`npm run json-records`](../../examples/headless-workpaper#json-records-input)
 - Node service recipe:
   [`docs/node-service-workpaper-recipe.md`](../../docs/node-service-workpaper-recipe.md)
 - CSV-shaped input recipe:
