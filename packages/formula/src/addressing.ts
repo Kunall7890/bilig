@@ -1,3 +1,5 @@
+import { MAX_COLS, MAX_ROWS } from '@bilig/protocol'
+
 const CELL_RE = /^\$?([A-Z]+)\$?([1-9][0-9]*)$/
 const COLUMN_RE = /^\$?([A-Z]+)$/
 const ROW_RE = /^\$?([1-9][0-9]*)$/
@@ -93,15 +95,18 @@ export function formatAddress(row: number, col: number): string {
 }
 
 export function isCellReferenceText(value: string): boolean {
-  return CELL_RE.test(value.toUpperCase())
+  const match = CELL_RE.exec(value.toUpperCase())
+  return match !== null && isValidCellCoordinate(match[1]!, match[2]!)
 }
 
 export function isColumnReferenceText(value: string): boolean {
-  return COLUMN_RE.test(value.toUpperCase())
+  const match = COLUMN_RE.exec(value.toUpperCase())
+  return match !== null && isValidColumnCoordinate(match[1]!)
 }
 
 export function isRowReferenceText(value: string): boolean {
-  return ROW_RE.test(value)
+  const match = ROW_RE.exec(value)
+  return match !== null && isValidRowCoordinate(match[1]!)
 }
 
 export function parseCellAddress(raw: string, defaultSheetName?: string): CellAddress {
@@ -217,7 +222,7 @@ function parseReference(raw: string, defaultSheetName?: string): ParsedReference
   const normalizedRefPart = refPart!.toUpperCase()
 
   const cellMatch = CELL_RE.exec(normalizedRefPart)
-  if (cellMatch) {
+  if (cellMatch && isValidCellCoordinate(cellMatch[1]!, cellMatch[2]!)) {
     const result: CellReference = {
       kind: 'cell',
       col: columnToIndex(cellMatch[1]!),
@@ -231,7 +236,7 @@ function parseReference(raw: string, defaultSheetName?: string): ParsedReference
   }
 
   const columnMatch = COLUMN_RE.exec(normalizedRefPart)
-  if (columnMatch) {
+  if (columnMatch && isValidColumnCoordinate(columnMatch[1]!)) {
     const result: ColumnReference = {
       kind: 'col',
       col: columnToIndex(columnMatch[1]!),
@@ -244,7 +249,7 @@ function parseReference(raw: string, defaultSheetName?: string): ParsedReference
   }
 
   const rowMatch = ROW_RE.exec(refPart!)
-  if (rowMatch) {
+  if (rowMatch && isValidRowCoordinate(rowMatch[1]!)) {
     const result: RowReference = {
       kind: 'row',
       row: Number.parseInt(rowMatch[1]!, 10) - 1,
@@ -257,6 +262,20 @@ function parseReference(raw: string, defaultSheetName?: string): ParsedReference
   }
 
   throw new Error(`Invalid reference: ${raw}`)
+}
+
+function isValidCellCoordinate(column: string, row: string): boolean {
+  return isValidColumnCoordinate(column) && isValidRowCoordinate(row)
+}
+
+function isValidColumnCoordinate(column: string): boolean {
+  const col = columnToIndex(column)
+  return col >= 0 && col < MAX_COLS
+}
+
+function isValidRowCoordinate(row: string): boolean {
+  const rowIndex = Number.parseInt(row, 10) - 1
+  return rowIndex >= 0 && rowIndex < MAX_ROWS
 }
 
 function quoteSheetNameIfNeeded(sheetName: string): string {

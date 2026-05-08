@@ -84,6 +84,61 @@ describe('engine INDIRECT defined-name references', () => {
     expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 11 })
   })
 
+  it('prefers out-of-grid A1-looking defined names over invalid cell addresses', async () => {
+    const snapshot: WorkbookSnapshot = {
+      version: 1,
+      workbook: {
+        name: 'indirect-out-of-grid-name-reference',
+        metadata: {
+          definedNames: [
+            { name: 'change1', value: { kind: 'range-ref', sheetName: 'YieldChanges', startAddress: 'A1', endAddress: 'A4' } },
+            { name: 'change2', value: { kind: 'range-ref', sheetName: 'YieldChanges', startAddress: 'B1', endAddress: 'B4' } },
+          ],
+        },
+      },
+      sheets: [
+        {
+          id: 1,
+          name: 'YieldChanges',
+          order: 0,
+          cells: [
+            { address: 'A1', value: 1 },
+            { address: 'A2', value: 2 },
+            { address: 'A3', value: 3 },
+            { address: 'A4', value: 4 },
+            { address: 'B1', value: 2 },
+            { address: 'B2', value: 4 },
+            { address: 'B3', value: 6 },
+            { address: 'B4', value: 8 },
+          ],
+        },
+        {
+          id: 2,
+          name: 'Main',
+          order: 1,
+          cells: [
+            { address: 'I5', value: 'change1' },
+            { address: 'J4', value: 'change2' },
+            { address: 'A1', formula: 'SUM(INDIRECT($I5))' },
+            { address: 'A2', formula: 'COVARIANCE.P(INDIRECT($I5),INDIRECT(J$4))' },
+            { address: 'A3', formula: 'CORREL(INDIRECT($I5),INDIRECT(J$4))' },
+          ],
+        },
+      ],
+    }
+
+    const engine = new SpreadsheetEngine({ workbookName: 'indirect-out-of-grid-name-reference' })
+    await engine.ready()
+    engine.importSnapshot(snapshot)
+
+    expect(engine.getCellValue('Main', 'A1')).toEqual({ tag: ValueTag.Number, value: 10 })
+    expect(engine.getCellValue('Main', 'A2')).toEqual({ tag: ValueTag.Number, value: 2.5 })
+    expect(engine.getCellValue('Main', 'A3')).toEqual({ tag: ValueTag.Number, value: 1 })
+
+    engine.setCellValue('YieldChanges', 'A4', 10)
+    expect(engine.getCellValue('Main', 'A1')).toEqual({ tag: ValueTag.Number, value: 16 })
+  })
+
   it('recalculates volatile INDIRECT names after initialization materializes target spills', async () => {
     const snapshot: WorkbookSnapshot = {
       version: 1,
