@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { buildBiligDominanceStatus, formatBiligDominanceStatusPathForMessage } from '../bilig-dominance-status.ts'
+import { buildSameCorpusProof, type SameCorpusCapture } from '../gen-ui-responsiveness-live-browser-scorecard.ts'
 import type { PublicWorkbookCorpusStatus } from '../public-workbook-corpus-status.ts'
 import { buildFixtureInput } from './bilig-dominance-scorecard.fixture.ts'
 
@@ -55,6 +56,35 @@ describe('bilig dominance status', () => {
     expect(status.uiSameCorpus.nextPreflightCommand).not.toContain('<google-sheets-url>')
     expect(status.uiSameCorpus.nextCaptureCommand).toContain(googleSheetsUrl)
     expect(status.uiSameCorpus.nextCaptureCommand).not.toContain('<google-sheets-url>')
+  })
+
+  it('keeps asking for the Google Sheets URL when captured same-corpus proof is not 10x', () => {
+    const fixtureInput = buildFixtureInput()
+    const status = buildBiligDominanceStatus({
+      input: {
+        ...fixtureInput,
+        uiResponsivenessLiveBrowserScorecard: {
+          ...fixtureInput.uiResponsivenessLiveBrowserScorecard,
+          sameCorpusProof: buildSameCorpusProof(failingSameCorpusCapture()),
+        },
+      },
+      financialCorpusStatus: completeFinancialCorpusStatus(),
+      publicWorkbookCorpusStatus: completePublicWorkbookCorpusStatus(),
+      stopMarkerActive: false,
+      stopMarkerPath: '/repo/.agent-coordination/stop.md',
+    })
+
+    expect(status.uiSameCorpus).toMatchObject({
+      captured: true,
+      evidenceKind: 'same-corpus-browser-capture',
+      requiredCaseCount: 1,
+      tenXMeanAndP95CaseCount: 0,
+      tenXRequirementSatisfied: false,
+      missingRequiredWorkloads: [],
+      missingInputs: ['googleSheetsUrlForUploadedSameCorpusWorkbook'],
+    })
+    expect(status.uiSameCorpus.nextPreflightCommand).toContain('<google-sheets-url>')
+    expect(status.uiSameCorpus.nextCaptureCommand).toContain('<google-sheets-url>')
   })
 
   it('surfaces financial workbook corpus blockers in dominance status', () => {
@@ -132,5 +162,60 @@ function completeFinancialCorpusStatus() {
     cachedArtifactCount: 5_000,
     recordedManifestArtifactCount: 5_000,
     recordedNonPassingCaseCount: 0,
+  }
+}
+
+function failingSameCorpusCapture(): SameCorpusCapture {
+  return {
+    schemaVersion: 1,
+    suite: 'ui-responsiveness-same-corpus-capture',
+    sampleCount: 3,
+    limitations: [],
+    cases: [
+      {
+        id: 'same-corpus-wide-mixed-250k-visible-scroll-response',
+        corpusCaseId: 'wide-mixed-250k',
+        materializedCells: 250_000,
+        workload: 'visible-scroll-response',
+        bilig: {
+          product: 'bilig',
+          source: 'e2e/tests/web-shell-scroll-performance.pw.ts',
+          operationResponseMsSamples: [200, 200, 200],
+          postOperationFrameMsSamples: [12, 12, 12],
+          corpusVerification: sameCorpusVerification('bilig-benchmark-state'),
+          limitations: [],
+        },
+        googleSheets: {
+          product: 'google-sheets',
+          source: 'https://docs.google.com/spreadsheets/d/sameCorpusSheet/edit',
+          operationResponseMsSamples: [100, 100, 100],
+          postOperationFrameMsSamples: [16, 16, 16],
+          corpusVerification: sameCorpusVerification('google-sheets-xlsx-export'),
+          limitations: [],
+        },
+        microsoftExcelWeb: {
+          product: 'microsoft-excel-web',
+          source: 'https://view.officeapps.live.com/op/view.aspx?src=sameCorpusWorkbook',
+          operationResponseMsSamples: [100, 100, 100],
+          postOperationFrameMsSamples: [16, 16, 16],
+          corpusVerification: sameCorpusVerification('microsoft-excel-web-source-xlsx'),
+          limitations: [],
+        },
+      },
+    ],
+  }
+}
+
+function sameCorpusVerification(method: SameCorpusCapture['cases'][number]['bilig']['corpusVerification']['method']) {
+  return {
+    verified: true,
+    method,
+    sheetName: 'WideGrid',
+    materializedCells: 250_000,
+    checkedCells: [
+      { address: 'A1', expected: 'metric-1', actual: 'metric-1' },
+      { address: 'B1', expected: 'metric-2', actual: 'metric-2' },
+      { address: 'F2', expected: 'note-1-5', actual: 'note-1-5' },
+    ],
   }
 }

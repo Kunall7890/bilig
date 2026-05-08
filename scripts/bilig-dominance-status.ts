@@ -63,6 +63,7 @@ export interface BiligDominanceStatus {
     readonly requiredProductCount: number
     readonly requiredCaseCount: number
     readonly tenXMeanAndP95CaseCount: number
+    readonly tenXRequirementSatisfied: boolean
     readonly requiredWorkloads: readonly UiResponsivenessSameCorpusWorkload[]
     readonly missingRequiredWorkloads: readonly UiResponsivenessSameCorpusWorkload[]
     readonly coveredCorpusCaseIds: readonly string[]
@@ -341,6 +342,8 @@ function buildUiSameCorpusStatus(input: BuildScorecardInput, googleSheetsUrl: st
   const proof = input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof
   const fixture = uiSameCorpusFixtureStatus(defaultUiSameCorpusId)
   const coveredWorkloads = new Set(proof.cases.map((entry) => entry.workload))
+  const missingRequiredWorkloads = requiredUiSameCorpusWorkloads.filter((workload) => !coveredWorkloads.has(workload))
+  const tenXRequirementSatisfied = uiSameCorpusTenXRequirementSatisfied(proof, missingRequiredWorkloads)
   const googleSheetsUrlArgument = googleSheetsUrl ?? '<google-sheets-url>'
   return {
     captured: proof.captured,
@@ -348,14 +351,15 @@ function buildUiSameCorpusStatus(input: BuildScorecardInput, googleSheetsUrl: st
     requiredProductCount: proof.requiredProductCount,
     requiredCaseCount: proof.requiredCaseCount,
     tenXMeanAndP95CaseCount: proof.tenXMeanAndP95CaseCount,
+    tenXRequirementSatisfied,
     requiredWorkloads: requiredUiSameCorpusWorkloads,
-    missingRequiredWorkloads: requiredUiSameCorpusWorkloads.filter((workload) => !coveredWorkloads.has(workload)),
+    missingRequiredWorkloads,
     coveredCorpusCaseIds: proof.coveredCorpusCaseIds,
     limitations: proof.limitations,
     fixture,
     googleSheetsUrl,
     googleSheetsUrlEnvVar: uiSameCorpusGoogleSheetsUrlEnvVar,
-    missingInputs: proof.captured || googleSheetsUrl ? [] : ['googleSheetsUrlForUploadedSameCorpusWorkbook'],
+    missingInputs: googleSheetsUrl || tenXRequirementSatisfied ? [] : ['googleSheetsUrlForUploadedSameCorpusWorkbook'],
     nextFixtureCheckCommand: 'pnpm ui:same-corpus:fixture:check',
     nextGoogleSheetsUploadInstruction: `Upload ${fixture.localXlsxPath} to Google Sheets as a native Google Sheet, share it to anyone with the link, then pass its edit URL as --google-sheets-url.`,
     nextPreflightCommand: [
@@ -386,6 +390,22 @@ function buildUiSameCorpusStatus(input: BuildScorecardInput, googleSheetsUrl: st
     nextScorecardGenerateCommand: 'pnpm ui:browser-live:generate -- --capture .cache/ui-responsiveness/same-corpus-capture.json',
     nextDominanceCheckCommand: 'pnpm dominance:generate && pnpm dominance:check && pnpm dominance:audit:check',
   }
+}
+
+function uiSameCorpusTenXRequirementSatisfied(
+  proof: BuildScorecardInput['uiResponsivenessLiveBrowserScorecard']['sameCorpusProof'],
+  missingRequiredWorkloads: readonly UiResponsivenessSameCorpusWorkload[],
+): boolean {
+  return (
+    proof.captured &&
+    proof.evidenceKind === 'same-corpus-browser-capture' &&
+    proof.requiredProductCount === 3 &&
+    proof.requiredCaseCount > 0 &&
+    proof.cases.length === proof.requiredCaseCount &&
+    proof.tenXMeanAndP95CaseCount === proof.requiredCaseCount &&
+    missingRequiredWorkloads.length === 0 &&
+    proof.cases.every((entry) => entry.passed)
+  )
 }
 
 function uiSameCorpusFixtureStatus(corpusCaseId: WorkbookBenchmarkCorpusId): BiligDominanceStatus['uiSameCorpus']['fixture'] {
