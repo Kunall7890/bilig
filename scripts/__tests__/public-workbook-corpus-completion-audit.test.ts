@@ -132,6 +132,100 @@ describe('public workbook corpus completion audit', () => {
     expect(validatePublicWorkbookCorpusCompletionAudit(audit)).toEqual([])
   })
 
+  it('fails completion when manifest cache paths are not hash-addressed', () => {
+    const artifact = { ...workbookArtifact('workbook-a'), cachePath: 'files/not-hash-addressed.xlsx' }
+    const audit = buildPublicWorkbookCorpusCompletionAudit({
+      generatedAt: '2026-05-08T00:00:00.000Z',
+      hyperformulaSecondaryCorpus: hyperFormulaSecondaryCorpusFixture(),
+      manifest: manifestWithArtifacts([artifact], 1),
+      recordedCases: [passedCase(artifact, 1)],
+      status: statusFixture({
+        targetWorkbookCount: 1,
+        sourceCount: 1,
+        cachedArtifactCount: 1,
+        scorecardCaseCount: 1,
+        checkpointCaseCount: 0,
+        recordedManifestArtifactCount: 1,
+        missingManifestArtifactCount: 0,
+        recordedPassedCaseCount: 1,
+        scorecardCoversManifest: true,
+        targetComplete: true,
+        gaps: [],
+      }),
+      stopMarkerActive: false,
+    })
+
+    expect(requirement(audit.checklist, 'source-license-hash-metadata-manifest')).toMatchObject({
+      passed: false,
+      gaps: expect.arrayContaining(['artifact cache paths not hash-addressed: 1']),
+      evidence: expect.arrayContaining(['hash-addressed artifact cache paths: 0/1']),
+    })
+    expect(validatePublicWorkbookCorpusCompletionAudit(audit)).toEqual([])
+  })
+
+  it('fails completion when recorded cases omit source/license/hash evidence', () => {
+    const artifact = workbookArtifact('workbook-a')
+    const audit = buildPublicWorkbookCorpusCompletionAudit({
+      generatedAt: '2026-05-08T00:00:00.000Z',
+      hyperformulaSecondaryCorpus: hyperFormulaSecondaryCorpusFixture(),
+      manifest: manifestWithArtifacts([artifact], 1),
+      recordedCases: [caseWithoutProvenanceEvidence(artifact)],
+      status: statusFixture({
+        targetWorkbookCount: 1,
+        sourceCount: 1,
+        cachedArtifactCount: 1,
+        scorecardCaseCount: 1,
+        checkpointCaseCount: 0,
+        recordedManifestArtifactCount: 1,
+        missingManifestArtifactCount: 0,
+        recordedPassedCaseCount: 1,
+        scorecardCoversManifest: true,
+        targetComplete: true,
+        gaps: [],
+      }),
+      stopMarkerActive: false,
+    })
+
+    expect(requirement(audit.checklist, 'source-license-hash-metadata-manifest')).toMatchObject({
+      passed: false,
+      gaps: expect.arrayContaining(['recorded cases missing source/license/hash evidence: 1']),
+      evidence: expect.arrayContaining(['recorded source/license/hash evidence cases: 0/1']),
+    })
+    expect(validatePublicWorkbookCorpusCompletionAudit(audit)).toEqual([])
+  })
+
+  it('fails completion when verification recorded a cache integrity failure', () => {
+    const artifact = workbookArtifact('workbook-a')
+    const audit = buildPublicWorkbookCorpusCompletionAudit({
+      generatedAt: '2026-05-08T00:00:00.000Z',
+      hyperformulaSecondaryCorpus: hyperFormulaSecondaryCorpusFixture(),
+      manifest: manifestWithArtifacts([artifact], 1),
+      recordedCases: [caseWithCacheIntegrityFailure(artifact)],
+      status: statusFixture({
+        targetWorkbookCount: 1,
+        sourceCount: 1,
+        cachedArtifactCount: 1,
+        scorecardCaseCount: 1,
+        checkpointCaseCount: 0,
+        recordedManifestArtifactCount: 1,
+        missingManifestArtifactCount: 0,
+        recordedPassedCaseCount: 0,
+        recordedFailedCaseCount: 1,
+        scorecardCoversManifest: true,
+        targetComplete: true,
+        gaps: [],
+      }),
+      stopMarkerActive: false,
+    })
+
+    expect(requirement(audit.checklist, 'source-license-hash-metadata-manifest')).toMatchObject({
+      passed: false,
+      gaps: expect.arrayContaining(['recorded cache integrity failures: 1']),
+      evidence: expect.arrayContaining(['recorded cache integrity failures: 1']),
+    })
+    expect(validatePublicWorkbookCorpusCompletionAudit(audit)).toEqual([])
+  })
+
   it('fails require-complete mode until every mapped objective requirement is satisfied', () => {
     const artifact = workbookArtifact('workbook-a')
     const audit = buildPublicWorkbookCorpusCompletionAudit({
@@ -314,14 +408,15 @@ function manifestWithArtifacts(artifacts: readonly PublicWorkbookArtifact[], tar
 
 function workbookArtifact(id: string): PublicWorkbookArtifact {
   const hashNibble = id.endsWith('b') ? 'b' : 'a'
+  const sha256 = hashNibble.repeat(64)
   return {
     id,
     sourceId: `source-${id}`,
     sourceUrl: `https://example.com/${id}.xlsx`,
     downloadUrl: `https://example.com/${id}.xlsx`,
     fileName: `${id}.xlsx`,
-    cachePath: `files/${id}.xlsx`,
-    sha256: hashNibble.repeat(64),
+    cachePath: `files/${sha256}.xlsx`,
+    sha256,
     byteSize: 1024,
     workbookFingerprint: `${id}-fingerprint`,
     fetchedAt: '2026-05-08T00:00:00.000Z',
@@ -474,6 +569,35 @@ function caseWithoutChartWitness(artifact: PublicWorkbookArtifact): PublicWorkbo
       ...base.featureCounts,
       chartCount: 0,
     },
+  }
+}
+
+function caseWithoutProvenanceEvidence(artifact: PublicWorkbookArtifact): PublicWorkbookCorpusCase {
+  return {
+    ...passedCase(artifact, 1),
+    evidence: [],
+  }
+}
+
+function caseWithCacheIntegrityFailure(artifact: PublicWorkbookArtifact): PublicWorkbookCorpusCase {
+  return {
+    ...passedCase(artifact, 1),
+    status: 'failed',
+    passed: false,
+    validation: {
+      importPassed: false,
+      formulaOraclePassed: false,
+      formulaOracleComparisons: 0,
+      formulaOracleMismatches: [],
+      roundTripPassed: false,
+      structuralSmokePassed: null,
+    },
+    evidence: [
+      `source=${artifact.sourceUrl}`,
+      `license=${artifact.license.title}`,
+      `sha256=${artifact.sha256}`,
+      `Cached workbook hash mismatch: expected ${artifact.sha256}, received ${'0'.repeat(64)}`,
+    ],
   }
 }
 

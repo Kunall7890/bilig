@@ -325,9 +325,12 @@ const requirementBuilders: readonly ((context: RequirementContext) => PublicWork
     const artifactMetadataGapCount = artifacts.filter(
       (entry) => !entry.sourceUrl || !entry.downloadUrl || !entry.fetchedAt || !entry.sha256 || entry.byteSize <= 0,
     ).length
+    const artifactCachePathGapCount = artifacts.filter((entry) => !isHashAddressedCachePath(entry.cachePath, entry.sha256)).length
     const metadataCaseGapCount = context.recordedCases.filter(
       (entry) => !hasWorkbookMetadata(entry) && !isResourceLimitedUnsupportedCase(entry),
     ).length
+    const provenanceCaseGapCount = context.recordedCases.filter((entry) => !hasRecordedProvenanceEvidence(entry)).length
+    const cacheIntegrityFailureCount = context.recordedCases.filter(hasCacheIntegrityFailureEvidence).length
     const resourceLimitedMetadataUnavailableCount = context.recordedCases.filter(
       (entry) => !hasWorkbookMetadata(entry) && isResourceLimitedUnsupportedCase(entry),
     ).length
@@ -340,13 +343,21 @@ const requirementBuilders: readonly ((context: RequirementContext) => PublicWork
         sourceLicenseGapCount === 0 &&
         artifactLicenseGapCount === 0 &&
         artifactMetadataGapCount === 0 &&
+        artifactCachePathGapCount === 0 &&
         metadataCaseGapCount === 0 &&
+        provenanceCaseGapCount === 0 &&
+        cacheIntegrityFailureCount === 0 &&
         context.status.recordedCoversManifest &&
         context.currentState.cachedArtifactCount >= context.currentState.targetWorkbookCount,
       evidence: [
         `manifest present: ${String(Boolean(context.manifest))}`,
         `manifest sources with license evidence: ${String(sources.length - sourceLicenseGapCount)}/${String(sources.length)}`,
         `artifacts with license evidence: ${String(artifacts.length - artifactLicenseGapCount)}/${String(artifacts.length)}`,
+        `hash-addressed artifact cache paths: ${String(artifacts.length - artifactCachePathGapCount)}/${String(artifacts.length)}`,
+        `recorded source/license/hash evidence cases: ${String(context.recordedCases.length - provenanceCaseGapCount)}/${String(
+          context.recordedCases.length,
+        )}`,
+        `recorded cache integrity failures: ${String(cacheIntegrityFailureCount)}`,
         `recorded workbook metadata cases: ${String(context.recordedCases.length - metadataCaseGapCount)}/${String(
           context.currentState.cachedArtifactCount,
         )}`,
@@ -357,7 +368,10 @@ const requirementBuilders: readonly ((context: RequirementContext) => PublicWork
         ...(sourceLicenseGapCount === 0 ? [] : [`sources missing usable license evidence: ${String(sourceLicenseGapCount)}`]),
         ...(artifactLicenseGapCount === 0 ? [] : [`artifacts missing usable license evidence: ${String(artifactLicenseGapCount)}`]),
         ...(artifactMetadataGapCount === 0 ? [] : [`artifacts missing source/hash/fetch metadata: ${String(artifactMetadataGapCount)}`]),
+        ...(artifactCachePathGapCount === 0 ? [] : [`artifact cache paths not hash-addressed: ${String(artifactCachePathGapCount)}`]),
         ...(metadataCaseGapCount === 0 ? [] : [`recorded cases missing workbook metadata: ${String(metadataCaseGapCount)}`]),
+        ...(provenanceCaseGapCount === 0 ? [] : [`recorded cases missing source/license/hash evidence: ${String(provenanceCaseGapCount)}`]),
+        ...(cacheIntegrityFailureCount === 0 ? [] : [`recorded cache integrity failures: ${String(cacheIntegrityFailureCount)}`]),
         ...(context.status.recordedCoversManifest
           ? []
           : [
@@ -853,6 +867,25 @@ function hasUsedRangeValidationEvidence(entry: PublicWorkbookCorpusCase): boolea
       dimension.columnCount === range.endColumn + 1
     )
   })
+}
+
+function hasRecordedProvenanceEvidence(entry: PublicWorkbookCorpusCase): boolean {
+  return (
+    entry.evidence.includes(`source=${entry.sourceUrl}`) &&
+    entry.evidence.includes(`license=${entry.license.title}`) &&
+    entry.evidence.includes(`sha256=${entry.sha256}`)
+  )
+}
+
+function hasCacheIntegrityFailureEvidence(entry: PublicWorkbookCorpusCase): boolean {
+  return entry.evidence.some(
+    (line) => line.startsWith('Missing cached workbook file:') || line.startsWith('Cached workbook hash mismatch:'),
+  )
+}
+
+function isHashAddressedCachePath(cachePath: string, sha256: string): boolean {
+  const parts = cachePath.split(/[\\/]/u)
+  return !cachePath.startsWith('/') && !parts.includes('..') && parts.some((part) => part.startsWith(sha256))
 }
 
 function buildFeatureWitnessCoverage(cases: readonly PublicWorkbookCorpusCase[]): {
