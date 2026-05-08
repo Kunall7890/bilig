@@ -22,6 +22,7 @@ language: typescript
 - https://github.com/proompteng/bilig/blob/main/docs/csv-shaped-workpaper-input-recipe.md
 - https://github.com/proompteng/bilig/blob/main/docs/unsupported-formula-troubleshooting-recipe.md
 - https://github.com/proompteng/bilig/blob/main/docs/agent-workpaper-tool-calling-recipe.md
+- https://github.com/proompteng/bilig/blob/main/docs/agent-spreadsheet-tool-call-loop.md
 - https://github.com/proompteng/bilig/blob/main/docs/local-workpaper-benchmark-walkthrough.md
 - https://github.com/proompteng/bilig/blob/main/docs/headless-spreadsheet-engine-comparison.md
 - https://github.com/proompteng/bilig/discussions/115
@@ -83,6 +84,8 @@ npm run agent:verify
   https://github.com/proompteng/bilig/blob/main/docs/unsupported-formula-troubleshooting-recipe.md
 - workpaper tool-calling recipe for agents:
   https://github.com/proompteng/bilig/blob/main/docs/agent-workpaper-tool-calling-recipe.md
+- agent spreadsheet tool-call loop:
+  https://github.com/proompteng/bilig/blob/main/docs/agent-spreadsheet-tool-call-loop.md
 - persistence walkthrough:
   https://github.com/proompteng/bilig/blob/main/docs/persisting-formula-backed-workpaper-documents-in-node.md
 - revenue model walkthrough:
