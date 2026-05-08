@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "suite": "ui-responsiveness-live-browser-timing",
-  "generatedAt": "2026-05-06T21:15:17.889Z",
+  "generatedAt": "2026-05-08T07:45:43.110Z",
   "host": {
     "arch": "arm64",
     "platform": "darwin"
@@ -43,48 +43,48 @@
       "workload": "open-public-workbook-and-scroll-viewport",
       "sampleCount": 3,
       "loadToReadyMs": {
-        "samples": [3019.4030839999996, 3067.6607920000006, 4224.42425],
-        "min": 3019.4030839999996,
-        "median": 3067.6607920000006,
-        "p95": 4224.42425,
-        "max": 4224.42425,
-        "mean": 3437.1627086666667,
-        "standardDeviation": 557.0264819810366,
-        "relativeStandardDeviation": 0.1620599689902712,
-        "standardError": 321.59938931750173,
+        "samples": [2932.333084, 3009.841708000001, 3659.650458],
+        "min": 2932.333084,
+        "median": 3009.841708000001,
+        "p95": 3659.650458,
+        "max": 3659.650458,
+        "mean": 3200.6084166666674,
+        "standardDeviation": 326.13043758819214,
+        "relativeStandardDeviation": 0.10189638816479983,
+        "standardError": 188.2914959324732,
         "confidence95": {
-          "low": 2806.8279056043634,
-          "high": 4067.49751172897
+          "low": 2831.55708463902,
+          "high": 3569.6597486943147
         }
       },
       "scrollResponseMs": {
-        "samples": [119.24049999999988, 130.79008299999987, 136.4885000000013],
-        "min": 119.24049999999988,
-        "median": 130.79008299999987,
-        "p95": 136.4885000000013,
-        "max": 136.4885000000013,
-        "mean": 128.83969433333368,
-        "standardDeviation": 7.175253211016649,
-        "relativeStandardDeviation": 0.055691324386821776,
-        "standardError": 4.1426343728841895,
+        "samples": [138.21687499999916, 138.82225000000017, 142.9385829999992],
+        "min": 138.21687499999916,
+        "median": 138.82225000000017,
+        "p95": 142.9385829999992,
+        "max": 142.9385829999992,
+        "mean": 139.99256933333285,
+        "standardDeviation": 2.097755485559945,
+        "relativeStandardDeviation": 0.014984763088139565,
+        "standardError": 1.2111396942820485,
         "confidence95": {
-          "low": 120.72013096248067,
-          "high": 136.95925770418668
+          "low": 137.61873553254003,
+          "high": 142.36640313412568
         }
       },
       "postScrollFrameMs": {
-        "samples": [9.300000000000182, 10, 10.300000000000182],
-        "min": 9.300000000000182,
-        "median": 10,
-        "p95": 10.300000000000182,
-        "max": 10.300000000000182,
-        "mean": 9.866666666666788,
-        "standardDeviation": 0.4189935029991985,
-        "relativeStandardDeviation": 0.04246555773640474,
-        "standardError": 0.24190601174529155,
+        "samples": [8.400000000000091, 8.5, 9],
+        "min": 8.400000000000091,
+        "median": 8.5,
+        "p95": 9,
+        "max": 9,
+        "mean": 8.633333333333363,
+        "standardDeviation": 0.26246692913370007,
+        "relativeStandardDeviation": 0.030401574803131177,
+        "standardError": 0.15153535218871617,
         "confidence95": {
-          "low": 9.392530883646016,
-          "high": 10.34080244968756
+          "low": 8.33632404304348,
+          "high": 8.930342623623247
         }
       },
       "passed": true,
@@ -104,48 +104,48 @@
       "workload": "open-public-workbook-and-scroll-viewport",
       "sampleCount": 3,
       "loadToReadyMs": {
-        "samples": [5071.570166000001, 5093.428584000001, 5099.323540999998],
-        "min": 5071.570166000001,
-        "median": 5093.428584000001,
-        "p95": 5099.323540999998,
-        "max": 5099.323540999998,
-        "mean": 5088.1074303333335,
-        "standardDeviation": 11.938689577191937,
-        "relativeStandardDeviation": 0.0023463910187937614,
-        "standardError": 6.892805641163145,
+        "samples": [5071.810750000001, 5090.028749999998, 6619.454207999999],
+        "min": 5071.810750000001,
+        "median": 5090.028749999998,
+        "p95": 6619.454207999999,
+        "max": 6619.454207999999,
+        "mean": 5593.7645693333325,
+        "standardDeviation": 725.3102324900327,
+        "relativeStandardDeviation": 0.12966406138477787,
+        "standardError": 418.75805797411044,
         "confidence95": {
-          "low": 5074.597531276654,
-          "high": 5101.617329390013
+          "low": 4772.998775704076,
+          "high": 6414.530362962589
         }
       },
       "scrollResponseMs": {
-        "samples": [96.00408400000015, 100.80020800000057, 101.38979199999812],
-        "min": 96.00408400000015,
-        "median": 100.80020800000057,
-        "p95": 101.38979199999812,
-        "max": 101.38979199999812,
-        "mean": 99.39802799999961,
-        "standardDeviation": 2.411920981239166,
-        "relativeStandardDeviation": 0.024265280003735845,
-        "standardError": 1.392523227782539,
+        "samples": [96.26058399999965, 98.28037499999846, 100.50479099999939],
+        "min": 96.26058399999965,
+        "median": 98.28037499999846,
+        "p95": 100.50479099999939,
+        "max": 100.50479099999939,
+        "mean": 98.3485833333325,
+        "standardDeviation": 1.7333613870673055,
+        "relativeStandardDeviation": 0.01762467061871578,
+        "standardError": 1.000756663426212,
         "confidence95": {
-          "low": 96.66868247354584,
-          "high": 102.12737352645338
+          "low": 96.38710027301713,
+          "high": 100.31006639364787
         }
       },
       "postScrollFrameMs": {
-        "samples": [9.399999999999636, 9.899999999999636, 10.300000000000182],
-        "min": 9.399999999999636,
-        "median": 9.899999999999636,
-        "p95": 10.300000000000182,
-        "max": 10.300000000000182,
-        "mean": 9.866666666666484,
-        "standardDeviation": 0.36817870057312274,
-        "relativeStandardDeviation": 0.03731540884187124,
-        "standardError": 0.21256807188577906,
+        "samples": [9.299999999999272, 9.300000000000182, 11.199999999999818],
+        "min": 9.299999999999272,
+        "median": 9.300000000000182,
+        "p95": 11.199999999999818,
+        "max": 11.199999999999818,
+        "mean": 9.93333333333309,
+        "standardDeviation": 0.8956685895030031,
+        "relativeStandardDeviation": 0.09016797880902937,
+        "standardError": 0.5171145012542513,
         "confidence95": {
-          "low": 9.450033245770356,
-          "high": 10.283300087562612
+          "low": 8.919788910874757,
+          "high": 10.946877755791423
         }
       },
       "passed": true,
@@ -156,13 +156,213 @@
     }
   ],
   "sameCorpusProof": {
-    "captured": false,
-    "evidenceKind": "not-captured",
+    "captured": true,
+    "evidenceKind": "same-corpus-browser-capture",
     "requiredProductCount": 3,
-    "requiredCaseCount": 0,
+    "requiredCaseCount": 1,
     "tenXMeanAndP95CaseCount": 0,
-    "coveredCorpusCaseIds": [],
-    "limitations": ["Same-corpus live browser timing against Bilig, Google Sheets, and Microsoft Excel Web has not been captured yet."],
-    "cases": []
+    "coveredCorpusCaseIds": ["wide-mixed-250k"],
+    "limitations": [
+      "Caller must supply Google Sheets and Microsoft Excel Web URLs for the same exported Bilig benchmark corpus.",
+      "This capture measures browser-visible scroll response; edit latency must be captured by a separate same-corpus workload."
+    ],
+    "cases": [
+      {
+        "id": "same-corpus-wide-mixed-250k-visible-scroll-response",
+        "corpusCaseId": "wide-mixed-250k",
+        "materializedCells": 250000,
+        "workload": "visible-scroll-response",
+        "sampleCount": 3,
+        "bilig": {
+          "product": "bilig",
+          "source": "http://localhost:5173/?benchmarkCorpus=wide-mixed-250k",
+          "operationResponseMs": {
+            "samples": [106.16458300000068, 132.28954199999953, 314.356667],
+            "min": 106.16458300000068,
+            "median": 132.28954199999953,
+            "p95": 314.356667,
+            "max": 314.356667,
+            "mean": 184.27026400000008,
+            "standardDeviation": 92.60123309041013,
+            "relativeStandardDeviation": 0.5025294427885016,
+            "standardError": 53.46334685203958,
+            "confidence95": {
+              "low": 79.48210417000251,
+              "high": 289.05842382999765
+            }
+          },
+          "postOperationFrameMs": {
+            "samples": [10.195000000000618, 33.339999999999236, 108.33499999999913],
+            "min": 10.195000000000618,
+            "median": 33.339999999999236,
+            "p95": 108.33499999999913,
+            "max": 108.33499999999913,
+            "mean": 50.623333333332994,
+            "standardDeviation": 41.88794662217499,
+            "relativeStandardDeviation": 0.8274434705111332,
+            "standardError": 24.184017258113403,
+            "confidence95": {
+              "low": 3.222659507430727,
+              "high": 98.02400715923525
+            }
+          },
+          "corpusVerification": {
+            "verified": true,
+            "method": "bilig-benchmark-state",
+            "sheetName": "WideGrid",
+            "materializedCells": 250000,
+            "checkedCells": []
+          },
+          "limitations": ["Bilig timing is captured from the supplied local app URL and benchmarkCorpus route."]
+        },
+        "googleSheets": {
+          "product": "google-sheets",
+          "source": "https://docs.google.com/spreadsheets/d/1o0qSHUht9gl7YVN9yBX7fEbQ1ns4sb-HG2aytBtdWxc/edit?usp=drivesdk",
+          "operationResponseMs": {
+            "samples": [149.50737500000105, 151.14516700000058, 204.28270899999916],
+            "min": 149.50737500000105,
+            "median": 151.14516700000058,
+            "p95": 204.28270899999916,
+            "max": 204.28270899999916,
+            "mean": 168.3117503333336,
+            "standardDeviation": 25.444095467095927,
+            "relativeStandardDeviation": 0.1511724250784932,
+            "standardError": 14.690155367214372,
+            "confidence95": {
+              "low": 139.51904581359344,
+              "high": 197.10445485307378
+            }
+          },
+          "postOperationFrameMs": {
+            "samples": [8.400000000000546, 9.699999999999818, 10.200000000000728],
+            "min": 8.400000000000546,
+            "median": 9.699999999999818,
+            "p95": 10.200000000000728,
+            "max": 10.200000000000728,
+            "mean": 9.433333333333698,
+            "standardDeviation": 0.7586537784493789,
+            "relativeStandardDeviation": 0.08042266202643282,
+            "standardError": 0.43800896320947563,
+            "confidence95": {
+              "low": 8.574835765443126,
+              "high": 10.29183090122427
+            }
+          },
+          "corpusVerification": {
+            "verified": true,
+            "method": "google-sheets-xlsx-export",
+            "sheetName": "WideGrid",
+            "materializedCells": 250000,
+            "checkedCells": [
+              {
+                "address": "A1",
+                "expected": "metric-1",
+                "actual": "metric-1"
+              },
+              {
+                "address": "B1",
+                "expected": "metric-2",
+                "actual": "metric-2"
+              },
+              {
+                "address": "AP977",
+                "expected": "note-8-2",
+                "actual": "note-8-2"
+              },
+              {
+                "address": "N1954",
+                "expected": "segment-14",
+                "actual": "segment-14"
+              },
+              {
+                "address": "P1954",
+                "expected": "30",
+                "actual": "30"
+              }
+            ]
+          },
+          "limitations": [
+            "Google Sheets timing requires the supplied URL to be browser-accessible and loaded with the same benchmark corpus."
+          ]
+        },
+        "microsoftExcelWeb": {
+          "product": "microsoft-excel-web",
+          "source": "https://view.officeapps.live.com/op/view.aspx?src=https%3A%2F%2Fraw.githubusercontent.com%2Fproompteng%2Fbilig%2Fmain%2Fpackages%2Fbenchmarks%2Fbaselines%2Fui-same-corpus%2Fwide-mixed-250k.xlsx",
+          "operationResponseMs": {
+            "samples": [108.01937499999985, 109.35887499999808, 111.02033300000039],
+            "min": 108.01937499999985,
+            "median": 109.35887499999808,
+            "p95": 111.02033300000039,
+            "max": 111.02033300000039,
+            "mean": 109.46619433333278,
+            "standardDeviation": 1.227483960227141,
+            "relativeStandardDeviation": 0.011213361053635976,
+            "standardError": 0.7086881948630878,
+            "confidence95": {
+              "low": 108.07716547140113,
+              "high": 110.85522319526443
+            }
+          },
+          "postOperationFrameMs": {
+            "samples": [9.200000000000273, 9.700000000000273, 10.099999999999909],
+            "min": 9.200000000000273,
+            "median": 9.700000000000273,
+            "p95": 10.099999999999909,
+            "max": 10.099999999999909,
+            "mean": 9.666666666666819,
+            "standardDeviation": 0.368178700572766,
+            "relativeStandardDeviation": 0.03808745178338899,
+            "standardError": 0.2125680718855731,
+            "confidence95": {
+              "low": 9.250033245771096,
+              "high": 10.083300087562542
+            }
+          },
+          "corpusVerification": {
+            "verified": true,
+            "method": "microsoft-excel-web-source-xlsx",
+            "sheetName": "WideGrid",
+            "materializedCells": 250000,
+            "checkedCells": [
+              {
+                "address": "A1",
+                "expected": "metric-1",
+                "actual": "metric-1"
+              },
+              {
+                "address": "B1",
+                "expected": "metric-2",
+                "actual": "metric-2"
+              },
+              {
+                "address": "AP977",
+                "expected": "note-8-2",
+                "actual": "note-8-2"
+              },
+              {
+                "address": "N1954",
+                "expected": "segment-14",
+                "actual": "segment-14"
+              },
+              {
+                "address": "P1954",
+                "expected": "30",
+                "actual": "30"
+              }
+            ]
+          },
+          "limitations": [
+            "Microsoft Excel Web timing requires the supplied URL to be browser-accessible and loaded with the same benchmark corpus."
+          ]
+        },
+        "biligToGoogleSheetsMeanRatio": 1.094815208296874,
+        "biligToGoogleSheetsP95Ratio": 1.538831497481274,
+        "biligToMicrosoftExcelWebMeanRatio": 1.6833531586827921,
+        "biligToMicrosoftExcelWebP95Ratio": 2.8315233660846513,
+        "tenXMeanAndP95AgainstGoogleSheets": false,
+        "tenXMeanAndP95AgainstMicrosoftExcelWeb": false,
+        "passed": false
+      }
+    ]
   }
 }
