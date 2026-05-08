@@ -8,6 +8,8 @@ artifacts/fuzz/
 .copilot/logs/
 .vite/
 .cache/
+.agent-coordination/
+.playwright-mcp/
 *.tsbuildinfo
 .DS_Store
 npm-debug.log*
