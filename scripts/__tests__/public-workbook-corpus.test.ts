@@ -28,6 +28,7 @@ import {
   publicWorkbookImportWarningClassifierEvidence,
   publicWorkbookResourceLimitClassifierEvidence,
 } from '../public-workbook-corpus-evidence.ts'
+import { fingerprintWorkbookFileIsolated } from '../public-workbook-corpus-fetch.ts'
 import { roundTripSemanticsDigest } from '../public-workbook-corpus-roundtrip.ts'
 import {
   classifyUnsupportedFeatures,
@@ -44,6 +45,7 @@ vi.mock('node:child_process', () => ({
 describe('public workbook corpus', () => {
   afterEach(() => {
     vi.useRealTimers()
+    vi.restoreAllMocks()
     vi.clearAllMocks()
     vi.unstubAllGlobals()
   })
@@ -975,6 +977,27 @@ describe('public workbook corpus', () => {
     expect(fetched.artifacts).toHaveLength(0)
   })
 
+  it('starts isolated fingerprint workers in their own process group for bounded termination', async () => {
+    vi.useFakeTimers()
+
+    const child = createMockChildProcess(24_680)
+    const killSpy = vi.spyOn(process, 'kill').mockImplementation(() => true)
+    spawnMock.mockImplementationOnce(() => child)
+
+    const fingerprintPromise = fingerprintWorkbookFileIsolated('/tmp/public-budget.xlsx', 'public-budget.xlsx', 5, {
+      maxRssBytes: 1024 * 1024,
+      rssCheckIntervalMs: 100,
+    })
+    const fingerprintExpectation = expect(fingerprintPromise).rejects.toThrow('Workbook fingerprinting timed out after 5ms')
+
+    await vi.advanceTimersByTimeAsync(5)
+    await fingerprintExpectation
+
+    expect(spawnMock.mock.calls[0]?.[2]).toMatchObject({ detached: true })
+    expect(killSpy).toHaveBeenCalledWith(-24_680, 'SIGTERM')
+    expect(child.kill).not.toHaveBeenCalled()
+  })
+
   it('skips malformed CKAN resource URLs during workbook discovery', async () => {
     const fetchMock = vi.fn(async () =>
       Response.json({
@@ -1234,7 +1257,8 @@ describe('public workbook corpus', () => {
     vi.useFakeTimers()
 
     const fixture = createIsolatedVerificationFixture()
-    const child = createMockChildProcess()
+    const child = createMockChildProcess(24_681)
+    const killSpy = vi.spyOn(process, 'kill').mockImplementation(() => true)
     spawnMock.mockImplementationOnce(() => child)
 
     const scorecardPromise = buildPublicWorkbookCorpusScorecard({
@@ -1251,8 +1275,10 @@ describe('public workbook corpus', () => {
     const scorecard = await scorecardPromise
 
     expect(spawnMock).toHaveBeenCalledTimes(1)
+    expect(spawnMock.mock.calls[0]?.[2]).toMatchObject({ detached: true })
     expect(spawnMock.mock.calls[0]?.[1]).toEqual(expect.arrayContaining(['verify-artifact-worker', '--verify-max-rss-mb', '1536']))
-    expect(child.kill).toHaveBeenCalledWith('SIGTERM')
+    expect(killSpy).toHaveBeenCalledWith(-24_681, 'SIGTERM')
+    expect(child.kill).not.toHaveBeenCalled()
     expect(scorecard.cases[0]?.status).toBe('error')
     expect(scorecard.cases[0]?.evidence).toEqual(
       expect.arrayContaining([
@@ -1268,6 +1294,7 @@ describe('public workbook corpus', () => {
     const fixture = createIsolatedVerificationFixture()
     const verificationChild = createMockChildProcess(12_345)
     const psChild = createMockChildProcess()
+    const killSpy = vi.spyOn(process, 'kill').mockImplementation(() => true)
     spawnMock.mockImplementation((command: string) => (command === '/bin/ps' ? psChild : verificationChild))
 
     const scorecardPromise = buildPublicWorkbookCorpusScorecard({
@@ -1289,7 +1316,9 @@ describe('public workbook corpus', () => {
     const scorecard = await scorecardPromise
 
     expect(spawnMock.mock.calls[0]?.[1]).toEqual(expect.arrayContaining(['verify-artifact-worker', '--verify-max-rss-mb', '1']))
-    expect(verificationChild.kill).toHaveBeenCalledWith('SIGTERM')
+    expect(spawnMock.mock.calls[0]?.[2]).toMatchObject({ detached: true })
+    expect(killSpy).toHaveBeenCalledWith(-12_345, 'SIGTERM')
+    expect(verificationChild.kill).not.toHaveBeenCalled()
     expect(scorecard.cases[0]?.status).toBe('unsupported')
     expect(scorecard.cases[0]?.passed).toBe(true)
     expect(scorecard.cases[0]?.unsupportedFeatureClassifications).toEqual(['xlsx.publicCorpus.resourceLimit:rss>1MiB'])

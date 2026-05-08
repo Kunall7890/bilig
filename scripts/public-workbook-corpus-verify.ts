@@ -156,6 +156,7 @@ export function verifyCachedWorkbookArtifactIsolated(args: {
       ...(args.runStructuralSmoke ? ['--structural-smoke'] : []),
     ]
     const child = spawn(process.execPath, childArgs, {
+      detached: true,
       stdio: ['ignore', 'pipe', 'pipe'],
     })
     let stdout = ''
@@ -167,7 +168,7 @@ export function verifyCachedWorkbookArtifactIsolated(args: {
       stopRssWatchdog()
     })
     const terminateChild = (signal: 'SIGTERM' | 'SIGKILL'): void => {
-      terminateChildProcess(child, signal)
+      terminateChildProcess(child, signal, { processGroup: true })
     }
     stopRssWatchdog = startChildRssWatchdog(child, {
       maxRssBytes: args.maxRssBytes,

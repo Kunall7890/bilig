@@ -14,7 +14,20 @@ export interface ChildRssWatchdogOptions {
 const defaultRssCheckIntervalMs = 1_000
 export const defaultSelfRssCheckIntervalMs = 500
 
-export function terminateChildProcess(child: WatchableChildProcess, signal: 'SIGTERM' | 'SIGKILL'): void {
+export function terminateChildProcess(
+  child: WatchableChildProcess,
+  signal: 'SIGTERM' | 'SIGKILL',
+  options: { readonly processGroup?: boolean } = {},
+): void {
+  const pid = child.pid ?? 0
+  if (options.processGroup === true && process.platform !== 'win32' && Number.isInteger(pid) && pid > 0) {
+    try {
+      process.kill(-pid, signal)
+      return
+    } catch {
+      // Fall back to the direct child below. The close/error handlers own final classification.
+    }
+  }
   try {
     child.kill(signal)
   } catch {

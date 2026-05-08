@@ -314,6 +314,7 @@ export function fingerprintWorkbookFileIsolated(
         String(Math.ceil(resourceLimits.maxRssBytes / 1024 / 1024)),
       ],
       {
+        detached: true,
         stdio: ['ignore', 'pipe', 'pipe'],
       },
     )
@@ -328,7 +329,7 @@ export function fingerprintWorkbookFileIsolated(
       onCleanup()
     }
     const terminateChild = (signal: 'SIGTERM' | 'SIGKILL'): void => {
-      terminateChildProcess(child, signal)
+      terminateChildProcess(child, signal, { processGroup: true })
     }
     const finish = (value: string): void => {
       if (settled) {
