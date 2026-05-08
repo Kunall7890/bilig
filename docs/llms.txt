@@ -108,6 +108,8 @@ including its p95 caveat.
 
 ## contributor path
 
+- new contributor guide:
+  https://github.com/proompteng/bilig/blob/main/docs/new-contributor-guide.md
 - starter issues:
   https://github.com/proompteng/bilig/blob/main/docs/starter-issues.md
 - current small example issue: xlsx formula-cache roundtrip:

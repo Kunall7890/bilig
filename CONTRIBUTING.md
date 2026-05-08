@@ -1,18 +1,30 @@
 # Contributing to bilig
 
-Thanks for taking the repo seriously. `bilig` is an engine-heavy TypeScript
-monorepo, so the best contributions are small, tested, and explicit about which
-runtime behavior they change.
+Thanks for contributing. `bilig` is an engine-heavy TypeScript monorepo, so the
+best contributions are small, tested, and explicit about which runtime behavior
+they change.
 
 ## Start Here
 
 - For a first patch, pick a current scoped ticket from
   [`docs/starter-issues.md`](docs/starter-issues.md).
+- If this is your first `bilig` pull request, use
+  [`docs/new-contributor-guide.md`](docs/new-contributor-guide.md) for the
+  shortest setup, code-map, and PR-proof path.
 - If you are reporting a formula or workbook bug, include the exact formula,
   workbook shape, expected result, actual result, and the smallest command or
   fixture that reproduces it.
 - If you are changing public behavior, add or tighten a regression test before
   changing implementation.
+
+## First Patch Flow
+
+1. Pick a starter issue and comment with the files you expect to touch, the
+   validation command, and any open assumption.
+2. Run the smallest useful local check before opening a pull request.
+3. Keep the PR tied to one issue, one package or doc path, and one proof command
+   whenever possible.
+4. Open a draft PR early if setup, expected behavior, or scope is unclear.
 
 ## Local Setup
 

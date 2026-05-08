@@ -165,6 +165,7 @@ for (const required of [
   'https://github.com/proompteng/bilig/blob/main/docs/where-bilig-is-not-excel-compatible-yet.md',
   'https://github.com/proompteng/bilig/blob/main/docs/formula-edge-sumifs-paired-criteria-fixture.md',
   'https://github.com/proompteng/bilig/blob/main/docs/formula-edge-groupby-spill-fixture.md',
+  'https://github.com/proompteng/bilig/blob/main/docs/new-contributor-guide.md',
   'https://github.com/proompteng/bilig/blob/main/docs/starter-issues.md',
 ]) {
   requireIncludes(llms, required, 'docs/llms.txt')

@@ -22,7 +22,9 @@ current assignee still wants help.
 
 For a first patch, keep the pull request focused on the issue's acceptance
 proof. Include the command you ran, mention the issue number, and open a draft
-pull request early if any requirement is unclear.
+pull request early if any requirement is unclear. The
+[new contributor guide](new-contributor-guide.md) gives the shortest setup,
+code-map, and PR-proof path.
 
 Useful filters:
 
@@ -45,6 +47,18 @@ broad architectural context.
 - Prefer runnable recipes over abstract prose.
 - Link back to the relevant package README or benchmark evidence note.
 - Include the focused validation command in the issue or PR description.
+
+## Maintainer Checklist
+
+When opening a starter task, use the `Starter task` issue template and include:
+
+- the likely files or directories to inspect first
+- a suggested implementation approach
+- the exact command or artifact that proves completion
+- any out-of-scope behavior that should not be pulled into the first PR
+
+Add `good first issue` only after the task has enough context for a newcomer to
+make progress without learning the whole workbook runtime.
 
 Before opening a PR, read [`CONTRIBUTING.md`](../CONTRIBUTING.md) and run the
 smallest relevant local check first. If the change touches package behavior,

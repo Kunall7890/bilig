@@ -1,0 +1,66 @@
+name: Starter task
+description: Propose a small task that a new contributor can complete with clear proof.
+title: "[starter]: "
+labels: ["help wanted"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for contributor-sized tasks. A maintainer can add `good first issue` after confirming the scope is small, current, and documented.
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Outcome
+      description: What should be true after this task is done?
+      placeholder: Add a runnable JSON-records WorkPaper example that prints verified formula readback.
+    validations:
+      required: true
+  - type: textarea
+    id: files
+    attributes:
+      label: Likely files
+      description: List the files or directories a contributor should start from.
+      placeholder: |
+        - examples/headless-workpaper/
+        - examples/headless-workpaper/README.md
+    validations:
+      required: true
+  - type: textarea
+    id: approach
+    attributes:
+      label: Suggested approach
+      description: Give enough context for someone new to make progress without knowing the whole repo.
+      placeholder: |
+        Follow the existing revenue-plan example shape, use public @bilig/headless exports, and keep the output deterministic.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance proof
+      description: Exact command, expected output, test, screenshot, or generated artifact that proves the task.
+      placeholder: |
+        npm run json-records
+
+        Expected output includes:
+        { "verified": true }
+    validations:
+      required: true
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: The task can be reviewed in one sitting.
+          required: true
+        - label: The task has one clear validation command or artifact.
+          required: true
+        - label: The task does not require broad architecture knowledge.
+          required: true
+        - label: The task should stay open for a new contributor unless it is urgent.
+          required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Link related docs, issues, examples, or constraints.

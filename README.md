@@ -534,8 +534,10 @@ Good entry points:
 
 ## Contributing
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR. The highest-value
-contributions are usually:
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR. If this is your
+first patch, start with the
+[new contributor guide](docs/new-contributor-guide.md) and then claim a scoped
+starter issue. The highest-value contributions are usually:
 
 - formula parity fixtures and semantic tests
 - WorkPaper benchmark scenarios with clear expected behavior
