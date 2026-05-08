@@ -4,10 +4,10 @@ This page is the stable contributor on-ramp for small public `bilig` tasks. It
 links directly to current scoped issues instead of relying on GitHub issue
 search indexing.
 
-Current starter tickets as of May 7, 2026:
+Current starter tickets as of May 8, 2026:
 
-No scoped starter tickets are currently open. Add a new one when the expected
-patch is small, testable, and safe for a first-time contributor.
+- [#134: docs(examples): add XLSX formula-cache roundtrip example](https://github.com/proompteng/bilig/issues/134)
+- [#135: docs(examples): add CSV-shaped WorkPaper input example](https://github.com/proompteng/bilig/issues/135)
 
 The list intentionally excludes closed issues and broad corpus/parity epics. Add
 new starter tickets only when the expected patch can stay small, has a clear
