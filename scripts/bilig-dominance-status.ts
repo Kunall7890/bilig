@@ -89,6 +89,7 @@ export interface BiligDominanceStatus {
     readonly scorecardCaseCount: number
     readonly checkpointCaseCount: number
     readonly recordedAllCasesPassed: boolean
+    readonly targetComplete: boolean
     readonly nextFetchPlanCommand: string | null
     readonly nextDiscoveryPlanCommand: string | null
     readonly nextDiscoveryCommand: string | null
@@ -317,6 +318,7 @@ export function buildBiligDominanceStatus(args: {
       scorecardCaseCount: args.publicWorkbookCorpusStatus.scorecardCaseCount,
       checkpointCaseCount: args.publicWorkbookCorpusStatus.checkpointCaseCount,
       recordedAllCasesPassed: args.publicWorkbookCorpusStatus.recordedAllCasesPassed,
+      targetComplete: args.publicWorkbookCorpusStatus.targetComplete,
       nextFetchPlanCommand: args.nextFetchPlanCommand ?? null,
       nextDiscoveryPlanCommand:
         args.fetchPlan && args.fetchPlan.candidateSourceDeficitCount > 0

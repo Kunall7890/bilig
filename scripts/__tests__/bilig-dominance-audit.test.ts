@@ -96,6 +96,36 @@ describe('bilig dominance prompt-to-artifact audit', () => {
     expect(validateBiligDominancePromptArtifactAudit(audit)).toEqual([])
   })
 
+  it('keeps UI proof gaps visible while surfacing local browser-capture guards', () => {
+    const input = buildFixtureInput()
+    const status = buildBiligDominanceStatus({
+      input,
+      publicWorkbookCorpusStatus: publicWorkbookCorpusStatusFixture(),
+      stopMarkerActive: false,
+      stopMarkerPath: '/repo/.agent-coordination/stop.md',
+      uiSameCorpusLocalCiResourceGuardStatus: {
+        activeMarkerPaths: ['.agent-coordination/20260508T092619Z-codex-memory-pressure-stop.md'],
+      },
+    })
+    const audit = buildBiligDominancePromptArtifactAudit({
+      scorecard: buildBiligDominanceScorecard(input),
+      status,
+    })
+    const uiItem = audit.checklist.find((entry) => entry.id === 'ui-responsiveness')
+
+    expect(uiItem).toMatchObject({
+      passed: false,
+      liveBlockers: [
+        'same-corpus UI browser capture paused by local resource guard: .agent-coordination/20260508T092619Z-codex-memory-pressure-stop.md',
+      ],
+      gaps: [
+        'live UI browser evidence is not a same-corpus 10x proof against incumbents',
+        'same-corpus UI browser capture paused by local resource guard: .agent-coordination/20260508T092619Z-codex-memory-pressure-stop.md',
+      ],
+    })
+    expect(validateBiligDominancePromptArtifactAudit(audit)).toEqual([])
+  })
+
   it('rejects hidden live corpus blockers and unverifiable blanket claims', () => {
     const input = buildFixtureInput()
     const status = buildBiligDominanceStatus({

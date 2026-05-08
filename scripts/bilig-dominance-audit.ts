@@ -182,7 +182,7 @@ function buildChecklistItem(args: {
   readonly liveBlockers: readonly string[]
   readonly livePublicWorkbookCorpus: BiligDominanceStatus['publicWorkbookCorpus']
 }): BiligDominancePromptArtifactChecklistItem {
-  const gaps = args.liveBlockers.length > 0 ? args.liveBlockers : args.criterion.gaps
+  const gaps = uniqueStrings([...args.criterion.gaps, ...args.liveBlockers])
   return {
     id: args.criterion.id,
     objectiveCategory: args.category.objectiveCategory,
@@ -222,7 +222,18 @@ function liveBlockersForCriterion(status: BiligDominanceStatus, criterionId: str
   if (criterionId === 'import-export-compatibility') {
     return status.importExportBlockers
   }
+  if (criterionId === 'ui-responsiveness' && status.uiSameCorpus.browserCaptureGuard.active) {
+    return [
+      `same-corpus UI browser capture paused by local resource guard: ${status.uiSameCorpus.browserCaptureGuard.activeMarkerPaths.join(
+        ', ',
+      )}`,
+    ]
+  }
   return []
+}
+
+function uniqueStrings(values: readonly string[]): readonly string[] {
+  return [...new Set(values)]
 }
 
 function requiredCategory(categories: readonly DominanceCategory[], id: string): DominanceCategory {

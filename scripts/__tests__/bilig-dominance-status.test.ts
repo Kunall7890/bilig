@@ -178,6 +178,7 @@ describe('bilig dominance status', () => {
       financialSourceCount: 9_824,
       financialCachedArtifactCount: 0,
       recordedFinancialManifestArtifactCount: 0,
+      targetComplete: true,
     })
     expect(status.importExportBlockers).toEqual(
       expect.arrayContaining([
