@@ -14,10 +14,10 @@ not from paid, automated, reciprocal, or misleading campaigns.
 
 ## Current Public State
 
-Verified on 2026-05-08 after the `libraries-v0.10.46` release:
+Verified on 2026-05-08 after the `libraries-v0.10.54` release:
 
 - GitHub stars: `6`
-- GitHub open issues: `49`
+- GitHub open issues: `40`
 - Community profile: `100%`
 - Public package: `@bilig/headless`
 - GitHub repo description: headless spreadsheet engine for formulas, persisted
@@ -57,6 +57,14 @@ Verified on 2026-05-08 after the `libraries-v0.10.46` release:
 
 2026-05-08:
 
+- Refreshed the public README and GitHub Pages first viewport with a stronger
+  generated workbook-runtime visual. The checked-in social preview now uses an
+  Imagen-generated technical background with deterministic SVG text rendered by
+  `rsvg-convert`, so `pnpm docs:social-preview:generate` no longer depends on
+  Playwright Chromium.
+- Re-verified the current public repo status after the `libraries-v0.10.54`
+  runtime release: GitHub CI, Pages, and runtime package publishing were green;
+  the live star count remained `6`, so the growth objective is still active.
 - Closed public correctness issues `#30` and `#28` with focused regressions,
   green GitHub workflows, and runtime releases through `libraries-v0.10.46`.
   `#30` normalizes Excel `_xlfn` and `_xlws` function prefixes on import and

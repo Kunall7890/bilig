@@ -5,6 +5,10 @@
 [![npm: @bilig/headless](https://img.shields.io/npm/v/@bilig/headless?label=%40bilig%2Fheadless)](https://www.npmjs.com/package/@bilig/headless)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
+<p align="center">
+  <img src="docs/assets/github-social-preview.png" alt="bilig headless spreadsheet engine for Node services and coding agents" />
+</p>
+
 **bilig is a headless spreadsheet engine for Node services, coding agents, and
 local-first workbook automation.**
 

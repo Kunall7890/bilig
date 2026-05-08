@@ -1,407 +1,134 @@
-import { chromium } from '@playwright/test'
+import { execFile } from 'node:child_process'
 import type { Buffer } from 'node:buffer'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const previewWidth = 1280
 const previewHeight = 640
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
-const outputPath = join(repoRoot, 'docs', 'assets', 'github-social-preview.png')
+const assetsRoot = join(repoRoot, 'docs', 'assets')
+const backgroundPath = join(assetsRoot, 'bilig-social-background.png')
+const outputPath = join(assetsRoot, 'github-social-preview.png')
 const checkMode = process.argv.includes('--check')
 
-const html = String.raw`<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <style>
-      * {
-        box-sizing: border-box;
-      }
+function escapeXml(value: string): string {
+  return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
+}
 
-      body {
-        margin: 0;
-        background: #f4f7f9;
-        color: #101720;
-        font-family: Inter, Arial, Helvetica, sans-serif;
-      }
+function renderTextLines(lines: readonly string[], x: number, y: number, lineHeight: number): string {
+  return lines.map((line, index) => `<tspan x="${x}" dy="${index === 0 ? 0 : lineHeight}">${escapeXml(line)}</tspan>`).join('')
+}
 
-      .frame {
-        position: relative;
-        width: ${previewWidth}px;
-        height: ${previewHeight}px;
-        overflow: hidden;
-        padding: 46px 64px;
-        background:
-          linear-gradient(rgba(24, 34, 45, 0.05) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(24, 34, 45, 0.05) 1px, transparent 1px),
-          #f4f7f9;
-        background-size: 32px 32px;
-      }
+function execFileBuffer(file: string, args: readonly string[]): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    execFile(
+      file,
+      [...args],
+      {
+        encoding: 'buffer',
+        maxBuffer: 16 * 1024 * 1024,
+      },
+      (error, stdout, stderr) => {
+        if (error !== null) {
+          const message = Buffer.isBuffer(stderr) ? stderr.toString('utf8') : String(stderr)
+          reject(new Error(`${file} failed: ${message.trim() || error.message}`))
+          return
+        }
+        resolve(Buffer.from(stdout))
+      },
+    )
+  })
+}
 
-      .shell {
-        display: grid;
-        grid-template-columns: 0.88fr 1.12fr;
-        gap: 34px;
-        height: 100%;
-        border: 1px solid #cfd9e2;
-        border-radius: 22px;
-        background: #ffffff;
-        box-shadow: 0 26px 70px rgba(15, 23, 42, 0.13);
-        padding: 30px;
-      }
+async function buildSvg(): Promise<string> {
+  const background = await readFile(backgroundPath)
+  const backgroundUri = `data:image/png;base64,${background.toString('base64')}`
+  const titleLines = ['headless spreadsheet', 'engine for node + agents']
+  const subtitleLines = ['formulas, structural edits, snapshots,', 'and persisted readback without a grid']
 
-      .left {
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        min-width: 0;
-        padding: 10px 0 4px;
-      }
+  return String.raw`<svg xmlns="http://www.w3.org/2000/svg" width="${previewWidth}" height="${previewHeight}" viewBox="0 0 ${previewWidth} ${previewHeight}">
+  <defs>
+    <linearGradient id="leftFade" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#f8fafc" stop-opacity="0.99"/>
+      <stop offset="0.72" stop-color="#f8fafc" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#f8fafc" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="cardShade" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.98"/>
+      <stop offset="1" stop-color="#edf4f7" stop-opacity="0.94"/>
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#0f172a" flood-opacity="0.18"/>
+    </filter>
+  </defs>
 
-      .mark-row {
-        display: flex;
-        align-items: center;
-        gap: 18px;
-      }
+  <rect width="${previewWidth}" height="${previewHeight}" fill="#f5f8fa"/>
+  <image href="${backgroundUri}" x="0" y="0" width="${previewWidth}" height="${previewHeight}" preserveAspectRatio="xMidYMid slice"/>
+  <rect width="760" height="${previewHeight}" fill="url(#leftFade)"/>
+  <rect x="64" y="48" width="1152" height="544" rx="24" fill="none" stroke="#cbd7e0" stroke-width="1.4"/>
 
-      .mark {
-        display: grid;
-        width: 60px;
-        height: 60px;
-        grid-template-columns: repeat(2, 1fr);
-        grid-template-rows: repeat(2, 1fr);
-        gap: 8px;
-        border: 1px solid #b7c7d4;
-        border-radius: 14px;
-        background: #111820;
-        padding: 11px;
-      }
+  <g filter="url(#softShadow)">
+    <rect x="74" y="72" width="520" height="496" rx="22" fill="url(#cardShade)" stroke="#cbd7e0" stroke-width="1"/>
+  </g>
 
-      .mark span {
-        border-radius: 3px;
-        background: #78c889;
-      }
+  <g transform="translate(102 102)">
+    <rect x="0" y="0" width="58" height="58" rx="14" fill="#111820"/>
+    <rect x="13" y="13" width="13" height="13" rx="3" fill="#78d38b"/>
+    <rect x="32" y="13" width="13" height="13" rx="3" fill="#78d38b"/>
+    <rect x="13" y="32" width="13" height="13" rx="3" fill="#78d38b"/>
+    <rect x="32" y="32" width="13" height="13" rx="3" fill="#78d38b"/>
+  </g>
 
-      .eyebrow {
-        color: #287346;
-        font-size: 22px;
-        font-weight: 760;
-        letter-spacing: 0;
-      }
+  <text x="176" y="126" fill="#176d3f" font-family="Inter, Arial, Helvetica, sans-serif" font-size="25" font-weight="760">npm i @bilig/headless</text>
+  <text x="102" y="238" fill="#0f1720" font-family="Inter, Arial, Helvetica, sans-serif" font-size="86" font-weight="820" letter-spacing="0">bilig</text>
+  <text x="102" y="296" fill="#263548" font-family="Inter, Arial, Helvetica, sans-serif" font-size="36" font-weight="750" letter-spacing="0">
+    ${renderTextLines(titleLines, 102, 296, 43)}
+  </text>
+  <text x="102" y="396" fill="#4b5d70" font-family="Inter, Arial, Helvetica, sans-serif" font-size="23" font-weight="590" letter-spacing="0">
+    ${renderTextLines(subtitleLines, 102, 396, 31)}
+  </text>
 
-      h1 {
-        margin: 34px 0 0;
-        color: #111820;
-        font-size: 82px;
-        font-weight: 790;
-        letter-spacing: 0;
-        line-height: 0.94;
-      }
+  <g fill="#f8fbfd" stroke="#cbd7e0" stroke-width="1">
+    <rect x="102" y="474" width="164" height="42" rx="10"/>
+    <rect x="278" y="474" width="152" height="42" rx="10"/>
+    <rect x="442" y="474" width="116" height="42" rx="10"/>
+  </g>
+  <g fill="#223042" font-family="Inter, Arial, Helvetica, sans-serif" font-size="20" font-weight="740">
+    <text x="120" y="501">formula api</text>
+    <text x="296" y="501">node 24+</text>
+    <text x="460" y="501">mit</text>
+  </g>
 
-      .subtitle {
-        max-width: 500px;
-        margin: 28px 0 0;
-        color: #475569;
-        font-size: 30px;
-        font-weight: 610;
-        letter-spacing: 0;
-        line-height: 1.22;
-      }
+  <g transform="translate(760 438)">
+    <rect x="0" y="0" width="420" height="92" rx="18" fill="#102033" fill-opacity="0.94"/>
+    <text x="24" y="35" fill="#93a8bc" font-family="Inter, Arial, Helvetica, sans-serif" font-size="18" font-weight="740">verified workbook loop</text>
+    <text x="24" y="66" fill="#ffffff" font-family="Inter, Arial, Helvetica, sans-serif" font-size="28" font-weight="800">write &#8594; recalc &#8594; save</text>
+    <rect x="334" y="24" width="56" height="44" rx="14" fill="#e6f8eb"/>
+    <path d="M350 46 l11 12 l23 -28" fill="none" stroke="#177344" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
 
-      .badges {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-        margin-top: 30px;
-      }
-
-      .badge {
-        display: inline-flex;
-        min-height: 38px;
-        align-items: center;
-        border: 1px solid #cbd7e0;
-        border-radius: 10px;
-        background: #f8fafc;
-        padding: 7px 12px;
-        color: #253241;
-        font-size: 20px;
-        font-weight: 700;
-      }
-
-      .url {
-        color: #526173;
-        font-family: "SFMono-Regular", Menlo, Consolas, monospace;
-        font-size: 22px;
-        letter-spacing: 0;
-      }
-
-      .right {
-        display: grid;
-        grid-template-rows: 310px 140px;
-        gap: 18px;
-        min-width: 0;
-      }
-
-      .panel {
-        overflow: hidden;
-        border: 1px solid #ccd8e2;
-        border-radius: 16px;
-        background: #f9fbfd;
-      }
-
-      .panel-title {
-        display: flex;
-        min-height: 44px;
-        align-items: center;
-        justify-content: space-between;
-        border-bottom: 1px solid #d7e1ea;
-        padding: 0 18px;
-        background: #ffffff;
-        color: #516173;
-        font-size: 15px;
-        font-weight: 780;
-      }
-
-      .grid {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 16px;
-      }
-
-      .grid th,
-      .grid td {
-        height: 35px;
-        border-right: 1px solid #d7e1ea;
-        border-bottom: 1px solid #d7e1ea;
-        padding: 0 14px;
-        text-align: left;
-        vertical-align: middle;
-      }
-
-      .grid th {
-        background: #eef4f8;
-        color: #607286;
-        font-size: 14px;
-        font-weight: 800;
-        text-transform: uppercase;
-      }
-
-      .grid td:first-child {
-        width: 42%;
-        color: #334155;
-        font-weight: 700;
-      }
-
-      .grid td:nth-child(2) {
-        width: 20%;
-        color: #1a7242;
-        font-family: "SFMono-Regular", Menlo, Consolas, monospace;
-      }
-
-      .grid td:nth-child(3) {
-        color: #1f2b3a;
-        font-family: "SFMono-Regular", Menlo, Consolas, monospace;
-      }
-
-      .result {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 20px;
-        padding: 14px 20px;
-        background: #102033;
-        color: #f8fafc;
-      }
-
-      .result small {
-        display: block;
-        color: #98aec1;
-        font-size: 17px;
-        font-weight: 730;
-      }
-
-      .result strong {
-        display: block;
-        margin-top: 1px;
-        font-size: 30px;
-        line-height: 1.05;
-      }
-
-      .verified {
-        border-radius: 999px;
-        background: #e5f7eb;
-        padding: 8px 12px;
-        color: #126a3b;
-        font-size: 16px;
-        font-weight: 800;
-        white-space: nowrap;
-      }
-
-      .terminal {
-        display: grid;
-        grid-template-rows: 44px 1fr;
-        background: #111820;
-      }
-
-      .dots {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-
-      .dot {
-        width: 12px;
-        height: 12px;
-        border-radius: 999px;
-      }
-
-      .dot.red {
-        background: #e96357;
-      }
-
-      .dot.yellow {
-        background: #e3a728;
-      }
-
-      .dot.green {
-        background: #71bf75;
-      }
-
-      .terminal-body {
-        padding: 12px 20px;
-        color: #d8e6f1;
-        font-family: "SFMono-Regular", Menlo, Consolas, monospace;
-        font-size: 18px;
-        line-height: 1.3;
-      }
-
-      .prompt {
-        color: #78c889;
-      }
-
-      .muted {
-        color: #8fa1b3;
-      }
-
-      .ok {
-        color: #79d596;
-      }
-    </style>
-  </head>
-  <body>
-    <main class="frame">
-      <section class="shell" aria-label="bilig social preview">
-        <div class="left">
-          <div>
-            <div class="mark-row">
-              <div class="mark" aria-hidden="true">
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-              <div class="eyebrow">npm i @bilig/headless</div>
-            </div>
-            <h1>bilig</h1>
-            <p class="subtitle">spreadsheet formulas without a spreadsheet ui</p>
-            <div class="badges" aria-label="package badges">
-              <span class="badge">formula readback</span>
-              <span class="badge">snapshot restore</span>
-              <span class="badge">node services</span>
-            </div>
-          </div>
-          <div class="url">github.com/proompteng/bilig</div>
-        </div>
-
-        <div class="right">
-          <section class="panel" aria-label="workpaper grid">
-            <div class="panel-title">
-              <span>write data -> verify formulas</span>
-              <span>after agent edit</span>
-            </div>
-            <table class="grid">
-              <thead>
-                <tr>
-                  <th>metric</th>
-                  <th>value</th>
-                  <th>formula</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>visitors</td>
-                  <td>650</td>
-                  <td>input</td>
-                </tr>
-                <tr>
-                  <td>conversion</td>
-                  <td>10%</td>
-                  <td>input</td>
-                </tr>
-                <tr>
-                  <td>customers</td>
-                  <td>65</td>
-                  <td>=B2*B3</td>
-                </tr>
-                <tr>
-                  <td>annual arr</td>
-                  <td>224640</td>
-                  <td>=B4*240*1.2*12</td>
-                </tr>
-              </tbody>
-            </table>
-            <div class="result">
-              <div>
-                <small>restored formula result</small>
-                <strong>$224,640 ARR</strong>
-              </div>
-              <span class="verified">formulas persisted</span>
-            </div>
-          </section>
-
-          <section class="panel terminal" aria-label="terminal proof">
-            <div class="panel-title">
-              <div class="dots" aria-hidden="true">
-                <span class="dot red"></span>
-                <span class="dot yellow"></span>
-                <span class="dot green"></span>
-              </div>
-              <span>node proof</span>
-            </div>
-            <div class="terminal-body">
-              <div><span class="prompt">&gt;</span> node eval.mjs</div>
-              <div class="ok">ok recalculated after edit</div>
-              <div class="ok">ok persisted after restore</div>
-            </div>
-          </section>
-        </div>
-      </section>
-    </main>
-  </body>
-</html>`
+  <text x="102" y="552" fill="#5b6a7a" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="21">github.com/proompteng/bilig</text>
+</svg>`
+}
 
 async function renderPreview(): Promise<Buffer> {
-  const browser = await chromium.launch()
+  const svg = await buildSvg()
+  const tempRoot = await mkdtemp(join(tmpdir(), 'bilig-social-preview-'))
+  const svgPath = join(tempRoot, 'preview.svg')
   try {
-    const page = await browser.newPage({
-      viewport: { width: previewWidth, height: previewHeight },
-      deviceScaleFactor: 1,
-      colorScheme: 'light',
-    })
-
-    await page.setContent(html, { waitUntil: 'load' })
-    return await page.screenshot({
-      type: 'png',
-      clip: {
-        x: 0,
-        y: 0,
-        width: previewWidth,
-        height: previewHeight,
-      },
-    })
+    await writeFile(svgPath, svg)
+    return await execFileBuffer('rsvg-convert', [
+      '--format=png',
+      '--width',
+      String(previewWidth),
+      '--height',
+      String(previewHeight),
+      svgPath,
+    ])
   } finally {
-    await browser.close()
+    await rm(tempRoot, { recursive: true, force: true })
   }
 }
 
