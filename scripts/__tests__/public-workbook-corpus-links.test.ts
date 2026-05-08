@@ -393,6 +393,20 @@ describe('public workbook corpus shared links', () => {
       'pnpm public-workbook-corpus:verify-artifact -- --manifest /repo/.cache/public-workbook-corpus/manifest.json --cache-dir /repo/.cache/public-workbook-corpus --verify-checkpoint /repo/.cache/public-workbook-corpus/verification-checkpoint.json --artifact-id workbook-abc123 --update-verify-checkpoint',
     )
   })
+
+  it('marks checkpoint-updating artifact verification commands with stop-marker overrides when paused', () => {
+    expect(
+      formatPublicWorkbookCorpusVerifyArtifactCommand({
+        artifactId: 'workbook-abc123',
+        cacheDir: '/repo/.cache/public-workbook-corpus',
+        manifestPath: '/repo/.cache/public-workbook-corpus/manifest.json',
+        stopMarkerActive: true,
+        verifyCheckpointPath: '/repo/.cache/public-workbook-corpus/verification-checkpoint.json',
+      }),
+    ).toBe(
+      'BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE=1 pnpm public-workbook-corpus:verify-artifact -- --manifest /repo/.cache/public-workbook-corpus/manifest.json --cache-dir /repo/.cache/public-workbook-corpus --verify-checkpoint /repo/.cache/public-workbook-corpus/verification-checkpoint.json --artifact-id workbook-abc123 --update-verify-checkpoint --allow-active-stop-marker',
+    )
+  })
 })
 
 function directSource(id: string, url: string): PublicWorkbookSource {

@@ -145,6 +145,34 @@ describe('public workbook corpus CLI resource guards', () => {
     expect(result.stderr).toContain('public-workbook-corpus fetch is disabled while the public corpus stop marker is active')
   })
 
+  it('refuses checkpoint-updating artifact verification while a stop marker is active', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-cli-verify-artifact-stop-marker-'))
+    const stopMarkerPath = join(dir, 'stop.md')
+    writeFileSync(stopMarkerPath, '# stop\n')
+    const env = { ...process.env }
+    delete env.BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE
+
+    const result = spawnSync(
+      'bun',
+      [
+        corpusScriptPath(),
+        'verify-artifact',
+        '--artifact-id',
+        'workbook-abc123',
+        '--update-verify-checkpoint',
+        '--corpus-run-stop-marker',
+        stopMarkerPath,
+      ],
+      {
+        encoding: 'utf8',
+        env,
+      },
+    )
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain('public-workbook-corpus verify-artifact is disabled while the public corpus stop marker is active')
+  })
+
   it('formats repo-local stop marker paths without exposing the checkout root', () => {
     expect(formatPublicCorpusStopMarkerPathForMessage('/repo/.agent-coordination/stop.md', '/repo')).toBe('.agent-coordination/stop.md')
     expect(formatPublicCorpusStopMarkerPathForMessage('/tmp/stop.md', '/repo')).toBe('/tmp/stop.md')

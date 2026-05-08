@@ -169,6 +169,7 @@ async function main(): Promise<void> {
                 artifactId,
                 cacheDir,
                 manifestPath,
+                stopMarkerActive: existsSync(corpusRunStopMarkerPath),
                 verifyCheckpointPath,
               }),
             ),
@@ -394,6 +395,7 @@ async function main(): Promise<void> {
               artifactId,
               cacheDir,
               manifestPath,
+              stopMarkerActive: existsSync(corpusRunStopMarkerPath),
               verifyCheckpointPath,
             }),
           ),
@@ -463,6 +465,13 @@ async function main(): Promise<void> {
     if (!artifactId) {
       throw new Error('Expected --artifact-id for verify-artifact')
     }
+    const updateVerifyCheckpoint = readFlagArg('--update-verify-checkpoint')
+    if (updateVerifyCheckpoint) {
+      assertPublicCorpusRunNotStopped({
+        commandName: 'public-workbook-corpus verify-artifact',
+        stopMarkerPath: corpusRunStopMarkerPath,
+      })
+    }
     const manifest = readManifest(manifestPath)
     const artifact = manifest.artifacts.find((entry) => entry.id === artifactId)
     if (!artifact) {
@@ -478,7 +487,7 @@ async function main(): Promise<void> {
       maxCellCount: readNumberArg('--verify-max-cells', defaultVerifyMaxCellCount),
       rssCheckIntervalMs: 250,
     })
-    if (readFlagArg('--update-verify-checkpoint')) {
+    if (updateVerifyCheckpoint) {
       await withPublicWorkbookCorpusCacheLock(cacheDir, 'verify-artifact-checkpoint', async () => {
         upsertPublicWorkbookCorpusVerificationCheckpoint({
           path: verifyCheckpointPath,
@@ -856,9 +865,10 @@ export function formatPublicWorkbookCorpusVerifyArtifactCommand(args: {
   readonly artifactId: string
   readonly cacheDir: string
   readonly manifestPath: string
+  readonly stopMarkerActive?: boolean
   readonly verifyCheckpointPath: string
 }): string {
-  return [
+  const parts = [
     'pnpm',
     'public-workbook-corpus:verify-artifact',
     '--',
@@ -872,8 +882,10 @@ export function formatPublicWorkbookCorpusVerifyArtifactCommand(args: {
     args.artifactId,
     '--update-verify-checkpoint',
   ]
-    .map(shellQuote)
-    .join(' ')
+  if (args.stopMarkerActive !== true) {
+    return parts.map(shellQuote).join(' ')
+  }
+  return `${publicCorpusStopMarkerOverrideEnvVar}=1 ${[...parts, publicCorpusStopMarkerOverrideFlag].map(shellQuote).join(' ')}`
 }
 
 function formatPublicWorkbookCorpusStatusCommand(args: {
