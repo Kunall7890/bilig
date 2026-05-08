@@ -219,6 +219,13 @@ export type RuntimeDirectCriteriaOperand =
       prefix: string
       suffix: string
     }
+  | {
+      kind: 'cell-month-boundary-string-concat'
+      cellIndex: number
+      prefix: string
+      suffix: string
+      offsetMonths: number
+    }
 
 export interface RuntimeDirectCriteriaPair {
   readonly range: RuntimeDirectCriteriaRange

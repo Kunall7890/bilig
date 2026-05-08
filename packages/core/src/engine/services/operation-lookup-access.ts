@@ -4,6 +4,7 @@ import { emptyValue } from '../../engine-value-utils.js'
 import type { EngineRuntimeState, RuntimeDirectCriteriaDescriptor } from '../runtime-state.js'
 import { normalizeApproximateTextValue } from './direct-lookup-helpers.js'
 import { directAggregateNumericContribution, directCriteriaValueString } from './direct-formula-recalc-helpers.js'
+import { readRuntimeDirectCriteriaOperandValue } from './direct-criteria-operands.js'
 
 export interface OperationLookupAccess {
   readonly readCellValueForLookup: (cellIndex: number | undefined) => { value: CellValue; stringId: number | undefined }
@@ -107,17 +108,11 @@ export function createOperationLookupAccess(args: {
   }
 
   const readDirectCriteriaOperandValue = (operand: RuntimeDirectCriteriaDescriptor['criteriaPairs'][number]['criterion']): CellValue => {
-    if (operand.kind === 'literal') {
-      return operand.value
-    }
-    const value = readCellValueForLookup(operand.cellIndex).value
-    if (operand.kind === 'cell') {
-      return value
-    }
-    if (value.tag === ValueTag.Error) {
-      return value
-    }
-    return { tag: ValueTag.String, value: `${operand.prefix}${directCriteriaValueString(value)}${operand.suffix}`, stringId: 0 }
+    return readRuntimeDirectCriteriaOperandValue({
+      operand,
+      readCellValueByIndex: (cellIndex) => readCellValueForLookup(cellIndex).value,
+      stringifyCriteriaValue: directCriteriaValueString,
+    })
   }
 
   const directCriteriaMatchesChangedAggregateRow = (

@@ -851,6 +851,47 @@ describe('EngineFormulaBindingService', () => {
     expect(engine.getCellValue('Sheet1', 'G2')).toEqual({ tag: ValueTag.Number, value: 0 })
   })
 
+  it('binds direct criteria descriptors for month-boundary date criteria cells', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'binding-direct-month-boundary-criteria' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+
+    engine.setCellFormula('Sheet1', 'N10', 'DATE(2024,3,15)')
+    engine.setCellValue('Sheet1', 'D11', 100)
+    engine.setCellValue('Sheet1', 'D12', 200)
+    engine.setCellValue('Sheet1', 'D13', 300)
+    engine.setCellValue('Sheet1', 'D14', 400)
+    engine.setCellFormula('Sheet1', 'E11', 'DATE(2024,3,1)')
+    engine.setCellFormula('Sheet1', 'E12', 'DATE(2024,3,31)')
+    engine.setCellFormula('Sheet1', 'E13', 'DATE(2024,4,1)')
+    engine.setCellFormula('Sheet1', 'E14', 'DATE(2024,3,12)')
+    engine.setCellValue('Sheet1', 'G11', '401000 Sales:SumIt Solution')
+    engine.setCellValue('Sheet1', 'G12', '401000 Sales:SumIt Solution')
+    engine.setCellValue('Sheet1', 'G13', '401000 Sales:SumIt Solution')
+    engine.setCellValue('Sheet1', 'G14', 'Other')
+    engine.setCellFormula(
+      'Sheet1',
+      'P10',
+      'SUMIFS($D$11:$D$14,$G$11:$G$14,"401000 Sales:SumIt Solution",$E$11:$E$14,">="&DATE(YEAR(N$10),MONTH(N$10),1),$E$11:$E$14,"<"&EDATE(DATE(YEAR(N$10),MONTH(N$10),1),1))',
+    )
+
+    const cellIndex = engine.workbook.getCellIndex('Sheet1', 'P10')
+    if (cellIndex === undefined) {
+      throw new Error('expected month-boundary SUMIFS formula to be materialized')
+    }
+    const runtimeFormula = readRuntimeFormula(engine, cellIndex)
+    if (!isRuntimeFormulaWithDirectCriteria(runtimeFormula)) {
+      throw new Error('expected month-boundary SUMIFS formula to expose direct criteria metadata')
+    }
+
+    expect(runtimeFormula.directCriteria.criteriaPairs).toHaveLength(3)
+    expect(Reflect.get(runtimeFormula.directCriteria.criteriaPairs[1]?.criterion, 'kind')).toBe('cell-month-boundary-string-concat')
+    expect(Reflect.get(runtimeFormula.directCriteria.criteriaPairs[1]?.criterion, 'offsetMonths')).toBe(0)
+    expect(Reflect.get(runtimeFormula.directCriteria.criteriaPairs[2]?.criterion, 'kind')).toBe('cell-month-boundary-string-concat')
+    expect(Reflect.get(runtimeFormula.directCriteria.criteriaPairs[2]?.criterion, 'offsetMonths')).toBe(1)
+    expect(engine.getCellValue('Sheet1', 'P10')).toEqual({ tag: ValueTag.Number, value: 300 })
+  })
+
   it('does not bind direct criteria descriptors for unsupported criteria shapes', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'binding-direct-criteria-unsupported' })
     await engine.ready()

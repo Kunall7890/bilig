@@ -95,6 +95,15 @@ export function directCriteriaOperandEqual(
       left.suffix === right.suffix
     )
   }
+  if (left.kind === 'cell-month-boundary-string-concat') {
+    return (
+      right.kind === 'cell-month-boundary-string-concat' &&
+      left.cellIndex === right.cellIndex &&
+      left.prefix === right.prefix &&
+      left.suffix === right.suffix &&
+      left.offsetMonths === right.offsetMonths
+    )
+  }
   return right.kind === 'literal' && JSON.stringify(left.value) === JSON.stringify(right.value)
 }
 

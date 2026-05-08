@@ -200,6 +200,11 @@ function resolveDirectCriteriaRange(
 
 type DirectCriteriaResolvedRange = NonNullable<ReturnType<typeof resolveDirectCriteriaRange>>
 type DirectCriteriaCallNode = Extract<FormulaNode, { readonly kind: 'CallExpr' }>
+type DirectCriteriaCellRefNode = Extract<FormulaNode, { readonly kind: 'CellRef' }>
+
+function callName(node: FormulaNode | undefined): string | undefined {
+  return node?.kind === 'CallExpr' ? node.callee.trim().toUpperCase() : undefined
+}
 
 function appendDirectCriteriaResultTransform(
   descriptor: RuntimeDirectCriteriaDescriptor,
@@ -218,6 +223,73 @@ export function buildDirectCriteriaDescriptor(args: {
   readonly ensureCellTracked: (sheetName: string, address: string) => number
   readonly regionGraph: RegionGraph
 }): RuntimeDirectCriteriaDescriptor | undefined {
+  const sameCellRef = (left: DirectCriteriaCellRefNode, right: DirectCriteriaCellRefNode): boolean => {
+    return (
+      left.ref.trim().toUpperCase() === right.ref.trim().toUpperCase() &&
+      (left.sheetName ?? args.ownerSheetName).trim().toUpperCase() === (right.sheetName ?? args.ownerSheetName).trim().toUpperCase()
+    )
+  }
+
+  const resolveDatePartCellRef = (
+    node: FormulaNode | undefined,
+    expectedCallee: 'YEAR' | 'MONTH',
+  ): DirectCriteriaCellRefNode | undefined => {
+    if (callName(node) !== expectedCallee || node?.kind !== 'CallExpr' || node.args.length !== 1) {
+      return undefined
+    }
+    const cellRef = node.args[0]
+    return cellRef?.kind === 'CellRef' ? cellRef : undefined
+  }
+
+  const resolveMonthStartCellRef = (node: FormulaNode | undefined): DirectCriteriaCellRefNode | undefined => {
+    if (callName(node) !== 'DATE' || node?.kind !== 'CallExpr' || node.args.length !== 3) {
+      return undefined
+    }
+    const yearCell = resolveDatePartCellRef(node.args[0], 'YEAR')
+    const monthCell = resolveDatePartCellRef(node.args[1], 'MONTH')
+    const day = staticCellValue(node.args[2])
+    if (!yearCell || !monthCell || day?.tag !== ValueTag.Number || !Object.is(day.value, 1) || !sameCellRef(yearCell, monthCell)) {
+      return undefined
+    }
+    return yearCell
+  }
+
+  const resolveMonthBoundaryCellRef = (
+    node: FormulaNode | undefined,
+  ): { readonly cellRef: DirectCriteriaCellRefNode; readonly offsetMonths: number } | undefined => {
+    const monthStartCell = resolveMonthStartCellRef(node)
+    if (monthStartCell) {
+      return { cellRef: monthStartCell, offsetMonths: 0 }
+    }
+    if (callName(node) !== 'EDATE' || node?.kind !== 'CallExpr' || node.args.length !== 2) {
+      return undefined
+    }
+    const startCell = resolveMonthStartCellRef(node.args[0])
+    const offset = staticCellValue(node.args[1])
+    if (!startCell || offset?.tag !== ValueTag.Number || !Number.isFinite(offset.value)) {
+      return undefined
+    }
+    return { cellRef: startCell, offsetMonths: offset.value }
+  }
+
+  const buildMonthBoundaryCriterion = (
+    boundary: { readonly cellRef: DirectCriteriaCellRefNode; readonly offsetMonths: number },
+    prefix: string,
+    suffix: string,
+  ): RuntimeDirectCriteriaDescriptor['criteriaPairs'][number]['criterion'] | undefined => {
+    const sheetName = boundary.cellRef.sheetName ?? args.ownerSheetName
+    if (!args.workbook.getSheet(sheetName)) {
+      return undefined
+    }
+    return {
+      kind: 'cell-month-boundary-string-concat',
+      cellIndex: args.ensureCellTracked(sheetName, boundary.cellRef.ref),
+      prefix,
+      suffix,
+      offsetMonths: boundary.offsetMonths,
+    }
+  }
+
   const resolveCriterionOperand = (
     criterionNode: FormulaNode | undefined,
   ): RuntimeDirectCriteriaDescriptor['criteriaPairs'][number]['criterion'] | undefined => {
@@ -239,6 +311,14 @@ export function buildDirectCriteriaDescriptor(args: {
       const rightLiteral = staticCellValue(criterionNode.right)
       const leftCell = criterionNode.left.kind === 'CellRef' ? criterionNode.left : undefined
       const rightCell = criterionNode.right.kind === 'CellRef' ? criterionNode.right : undefined
+      const leftMonthBoundary = resolveMonthBoundaryCellRef(criterionNode.left)
+      const rightMonthBoundary = resolveMonthBoundaryCellRef(criterionNode.right)
+      if (leftLiteral?.tag === ValueTag.String && rightMonthBoundary) {
+        return buildMonthBoundaryCriterion(rightMonthBoundary, leftLiteral.value, '')
+      }
+      if (rightLiteral?.tag === ValueTag.String && leftMonthBoundary) {
+        return buildMonthBoundaryCriterion(leftMonthBoundary, '', rightLiteral.value)
+      }
       if (leftLiteral?.tag === ValueTag.String && rightCell) {
         const sheetName = rightCell.sheetName ?? args.ownerSheetName
         if (!args.workbook.getSheet(sheetName)) {

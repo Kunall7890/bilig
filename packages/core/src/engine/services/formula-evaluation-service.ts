@@ -40,6 +40,7 @@ import {
   referenceReplacementKey,
   strictNumericAggregateCandidateAt,
 } from './formula-evaluation-helpers.js'
+import { readRuntimeDirectCriteriaOperandValue } from './direct-criteria-operands.js'
 import type { EngineFormulaEvaluationService } from './formula-evaluation-service-types.js'
 
 export type { EngineFormulaEvaluationService } from './formula-evaluation-service-types.js'
@@ -316,17 +317,11 @@ export function createEngineFormulaEvaluationService(args: {
   }
 
   const readDirectCriteriaOperandValue = (operand: RuntimeDirectCriteriaOperand): CellValue => {
-    if (operand.kind === 'literal') {
-      return operand.value
-    }
-    const value = readCellValueByIndex(operand.cellIndex)
-    if (operand.kind === 'cell') {
-      return value
-    }
-    if (value.tag === ValueTag.Error) {
-      return value
-    }
-    return { tag: ValueTag.String, value: `${operand.prefix}${cellValueCriteriaString(value)}${operand.suffix}`, stringId: 0 }
+    return readRuntimeDirectCriteriaOperandValue({
+      operand,
+      readCellValueByIndex,
+      stringifyCriteriaValue: cellValueCriteriaString,
+    })
   }
 
   const applyDirectCriteriaResultTransforms = (formula: RuntimeFormula, value: CellValue): CellValue => {
