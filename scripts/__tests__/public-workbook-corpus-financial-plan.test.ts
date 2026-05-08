@@ -290,10 +290,10 @@ describe('public workbook financial corpus plan CLI', () => {
       'bun scripts/public-workbook-corpus.ts fetch --manifest .cache/public-workbook-corpus-financial/manifest.json --cache-dir .cache/public-workbook-corpus-financial --limit 5000 --fetch-batch-size 6 --max-bytes 52428800',
     )
     expect(scripts['public-workbook-corpus:resume-financial:plan']).toBe(
-      'bun scripts/public-workbook-corpus-resume-plan.ts --manifest .cache/public-workbook-corpus-financial/manifest.json --cache-dir .cache/public-workbook-corpus-financial --scorecard .cache/public-workbook-corpus-financial/scorecard.json --verify-checkpoint .cache/public-workbook-corpus-financial/verification-checkpoint.json --fetch-limit 5000 --fetch-batch-size 6',
+      'bun scripts/public-workbook-corpus-resume-plan.ts --manifest .cache/public-workbook-corpus-financial/manifest.json --cache-dir .cache/public-workbook-corpus-financial --scorecard .cache/public-workbook-corpus-financial/scorecard.json --verify-checkpoint .cache/public-workbook-corpus-financial/verification-checkpoint.json --fetch-limit 5000 --fetch-batch-size 6 --fetch-plan-script-name public-workbook-corpus:fetch-financial:plan --fetch-script-name public-workbook-corpus:fetch-financial',
     )
     expect(scripts['public-workbook-corpus:resume-financial:check']).toBe(
-      'bun scripts/public-workbook-corpus-resume-plan.ts --check --manifest .cache/public-workbook-corpus-financial/manifest.json --cache-dir .cache/public-workbook-corpus-financial --scorecard .cache/public-workbook-corpus-financial/scorecard.json --verify-checkpoint .cache/public-workbook-corpus-financial/verification-checkpoint.json --fetch-limit 5000 --fetch-batch-size 6',
+      'bun scripts/public-workbook-corpus-resume-plan.ts --check --manifest .cache/public-workbook-corpus-financial/manifest.json --cache-dir .cache/public-workbook-corpus-financial --scorecard .cache/public-workbook-corpus-financial/scorecard.json --verify-checkpoint .cache/public-workbook-corpus-financial/verification-checkpoint.json --fetch-limit 5000 --fetch-batch-size 6 --fetch-plan-script-name public-workbook-corpus:fetch-financial:plan --fetch-script-name public-workbook-corpus:fetch-financial',
     )
   })
 

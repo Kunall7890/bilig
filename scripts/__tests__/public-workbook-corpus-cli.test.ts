@@ -580,6 +580,55 @@ describe('public workbook corpus CLI resource guards', () => {
     expect(validatePublicWorkbookCorpusResumePlan(plan)).toEqual([])
   })
 
+  it('preserves financial fetch scripts in stopped resume plans', () => {
+    const artifactA = workbookArtifact('workbook-a')
+    const artifactB = workbookArtifact('workbook-b')
+    const dir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-financial-resume-plan-paused-'))
+    const manifestPath = join(dir, 'manifest.json')
+    const stopMarkerPath = join(dir, 'stop.md')
+    const manifest = {
+      ...manifestWithArtifacts([artifactA, artifactB]),
+      targetWorkbookCount: 2,
+      artifacts: [artifactA],
+    }
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
+    writeFileSync(stopMarkerPath, '# stop\n')
+
+    const result = spawnSync(
+      'bun',
+      [
+        resumePlanScriptPath(),
+        '--manifest',
+        manifestPath,
+        '--cache-dir',
+        dir,
+        '--fetch-limit',
+        '2',
+        '--fetch-batch-size',
+        '6',
+        '--fetch-plan-script-name',
+        'public-workbook-corpus:fetch-financial:plan',
+        '--fetch-script-name',
+        'public-workbook-corpus:fetch-financial',
+        '--corpus-run-stop-marker',
+        stopMarkerPath,
+      ],
+      {
+        encoding: 'utf8',
+      },
+    )
+    const plan = asRecord(JSON.parse(result.stdout))
+    const phases = asRecord(plan['phases'])
+    const fetchPhase = asRecord(phases['fetchAdditionalArtifacts'])
+    const commands = stringArrayField(fetchPhase, 'commands')
+    const blockedCommands = stringArrayField(fetchPhase, 'blockedCommands')
+
+    expect(result.status).toBe(0)
+    expect(commands[0]).toContain('public-workbook-corpus:fetch-financial:plan')
+    expect(blockedCommands[0]).toContain('public-workbook-corpus:fetch-financial')
+    expect(blockedCommands[0]).toContain('--fetch-batch-size 6')
+  })
+
   it('uses repo-relative paths in status suggested commands for paths inside the checkout', () => {
     const artifactA = workbookArtifact('workbook-a')
     const artifactB = workbookArtifact('workbook-b')
@@ -1626,6 +1675,14 @@ function readPlanCommand(plan: unknown, key: string): string {
     throw new Error(`verify slice plan did not include ${key}`)
   }
   return command
+}
+
+function stringArrayField(value: Record<string, unknown>, key: string): readonly string[] {
+  const field = value[key]
+  if (!Array.isArray(field) || !field.every((entry) => typeof entry === 'string')) {
+    throw new Error(`expected ${key} to be a string array`)
+  }
+  return field
 }
 
 function corpusScriptPath(): string {

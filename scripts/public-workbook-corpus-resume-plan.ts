@@ -102,6 +102,8 @@ export function buildPublicWorkbookCorpusResumePlanFromArgs(): PublicWorkbookCor
   const verifyBatchSize = readNumberArg('--verify-batch-size', 20)
   const fetchLimit = readNumberArg('--fetch-limit', 10_000)
   const fetchBatchSize = readNumberArg('--fetch-batch-size', 6)
+  const fetchPlanScriptName = readStringArg('--fetch-plan-script-name', 'public-workbook-corpus:fetch:plan')
+  const fetchScriptName = readStringArg('--fetch-script-name', 'public-workbook-corpus:fetch')
   const generatedAt = readStringArg('--generated-at', new Date().toISOString())
   const status = readPublicWorkbookCorpusStatus({
     manifestPath,
@@ -129,6 +131,8 @@ export function buildPublicWorkbookCorpusResumePlanFromArgs(): PublicWorkbookCor
     cacheDir,
     fetchBatchSize,
     fetchLimit,
+    fetchPlanScriptName,
+    fetchScriptName,
     fetchPlan,
     generatedAt,
     manifestPath,
@@ -171,6 +175,8 @@ export function buildPublicWorkbookCorpusResumePlan(args: {
   readonly cacheDir: string
   readonly fetchBatchSize: number
   readonly fetchLimit: number
+  readonly fetchPlanScriptName?: string
+  readonly fetchScriptName?: string
   readonly fetchPlan: {
     readonly candidateSourceCount: number
     readonly candidateSourceDeficitCount: number
@@ -444,6 +450,8 @@ function buildFetchPhase(args: Parameters<typeof buildPublicWorkbookCorpusResume
   }
   const batchSize = normalizedBatchSize(args.fetchBatchSize)
   const nextFetchLimit = Math.min(args.fetchLimit, args.status.cachedArtifactCount + batchSize)
+  const fetchPlanScriptName = args.fetchPlanScriptName ?? 'public-workbook-corpus:fetch:plan'
+  const fetchScriptName = args.fetchScriptName ?? 'public-workbook-corpus:fetch'
   const reason = args.fetchPlan.targetReachableFromKnownCandidates
     ? 'known candidate sources can be fetched to fill the remaining artifact target'
     : 'candidate source discovery must run before fetch can fill the remaining artifact target'
@@ -458,7 +466,7 @@ function buildFetchPhase(args: Parameters<typeof buildPublicWorkbookCorpusResume
       [
         command([
           'pnpm',
-          'public-workbook-corpus:fetch:plan',
+          fetchPlanScriptName,
           '--',
           '--manifest',
           commandPath(args.manifestPath, args.displayRootDir),
@@ -471,7 +479,7 @@ function buildFetchPhase(args: Parameters<typeof buildPublicWorkbookCorpusResume
       [
         [
           'pnpm',
-          'public-workbook-corpus:fetch',
+          fetchScriptName,
           '--',
           '--manifest',
           commandPath(args.manifestPath, args.displayRootDir),
@@ -675,8 +683,9 @@ function validateFetchPhaseTrancheLimit(plan: PublicWorkbookCorpusResumePlan, fi
     return
   }
   const maximumNextFetchLimit = plan.currentState.cachedArtifactCount + phase.batchSize
-  for (const mutatingCommand of [...phase.commands, ...phase.blockedCommands].filter((commandText) =>
-    commandText.includes('public-workbook-corpus:fetch --'),
+  for (const mutatingCommand of [...phase.commands, ...phase.blockedCommands].filter(
+    (commandText) =>
+      commandText.includes('public-workbook-corpus:fetch --') || commandText.includes('public-workbook-corpus:fetch-financial --'),
   )) {
     const limit = commandLimit(mutatingCommand)
     if (limit !== null && limit > maximumNextFetchLimit) {
@@ -695,6 +704,7 @@ function isCorpusMutatingCommand(value: string): boolean {
     'public-workbook-corpus:verify-stale --',
     'public-workbook-corpus:discover --',
     'public-workbook-corpus:fetch --',
+    'public-workbook-corpus:fetch-financial --',
     'public-workbook-corpus:verify --',
   ].some((needle) => value.includes(needle))
 }
