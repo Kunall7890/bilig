@@ -113,6 +113,7 @@ export async function runPublicWorkbookCorpusVerifyStaleCommand(args: PublicWork
             sourceUrl: artifact.sourceUrl,
             cachePath: artifact.cachePath,
             reason: staleArtifactReason(artifact.id, recordedCasesById),
+            reasons: staleArtifactReasons(artifact.id, recordedCasesById),
           })),
           nextVerificationCommand:
             selectedArtifactCount > 0 ? formatVerifySliceCommand({ ...args, limit: selectedArtifactCount, slice: 'verify-stale' }) : null,
@@ -200,9 +201,15 @@ function staleArtifactReason(
   artifactId: string,
   recordedCasesById: ReadonlyMap<string, PublicWorkbookCorpusCase>,
 ): ReturnType<typeof publicWorkbookCorpusCaseEvidenceRefreshReasons>[number] {
+  return staleArtifactReasons(artifactId, recordedCasesById)[0] ?? 'missing-used-range-evidence'
+}
+
+function staleArtifactReasons(
+  artifactId: string,
+  recordedCasesById: ReadonlyMap<string, PublicWorkbookCorpusCase>,
+): readonly ReturnType<typeof publicWorkbookCorpusCaseEvidenceRefreshReasons>[number][] {
   const recordedCase = recordedCasesById.get(artifactId)
-  const reasons = recordedCase ? publicWorkbookCorpusCaseEvidenceRefreshReasons(recordedCase) : []
-  return reasons[0] ?? 'missing-used-range-evidence'
+  return recordedCase ? publicWorkbookCorpusCaseEvidenceRefreshReasons(recordedCase) : []
 }
 
 function readManifest(path: string): PublicWorkbookManifest {

@@ -94,6 +94,7 @@ const ciOfflineCachedCorpusScriptPolicies: readonly PublicWorkbookCorpusCiPackag
     requiredSubstrings: [
       'scripts/__tests__/public-workbook-corpus.test.ts',
       'scripts/__tests__/public-workbook-corpus-cli.test.ts',
+      'scripts/__tests__/public-workbook-corpus-evidence-refresh.test.ts',
       'scripts/__tests__/public-workbook-corpus-completion-audit.test.ts',
       'scripts/__tests__/public-workbook-corpus-completion-audit-roundtrip.test.ts',
       'scripts/__tests__/public-workbook-corpus-feature-witness-plan.test.ts',
@@ -103,6 +104,7 @@ const ciOfflineCachedCorpusScriptPolicies: readonly PublicWorkbookCorpusCiPackag
       'scripts/__tests__/public-workbook-corpus-verify-checkpoint.test.ts',
       'scripts/__tests__/public-workbook-corpus-workbook.test.ts',
       'packages/excel-import/src/__tests__/excel-import.test.ts',
+      'packages/excel-import/src/__tests__/xlsx-defined-names-import.test.ts',
       'packages/excel-import/src/__tests__/xlsx-export-large-simple.test.ts',
     ],
     forbiddenTokens: ciUnsafeCorpusScriptTokens,

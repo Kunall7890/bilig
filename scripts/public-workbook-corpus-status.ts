@@ -52,6 +52,7 @@ export interface MissingManifestArtifactSummary {
 
 export interface StaleRecordedVerificationSummary extends MissingManifestArtifactSummary {
   readonly reason: PublicWorkbookCorpusEvidenceRefreshReason
+  readonly reasons: readonly PublicWorkbookCorpusEvidenceRefreshReason[]
 }
 
 const missingManifestArtifactSampleLimit = 20
@@ -175,6 +176,7 @@ export function buildPublicWorkbookCorpusStatus(args: {
         byteSize: artifact.byteSize,
         sourceUrl: artifact.sourceUrl,
         reason: reasons[0] ?? 'missing-used-range-evidence',
+        reasons,
       }
     })
   const nextMissingVerificationCommand =
