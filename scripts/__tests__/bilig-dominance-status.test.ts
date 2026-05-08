@@ -101,6 +101,7 @@ describe('bilig dominance status', () => {
       '--output .cache/ui-responsiveness/same-corpus-public-access-check.json',
     )
     expect(status.uiSameCorpus.nextCaptureCommand).toContain(googleSheetsUrl)
+    expect(status.uiSameCorpus.nextGoogleSheetsUploadInstruction).toBeNull()
   })
 
   it('surfaces local resource guard state before same-corpus browser capture', () => {

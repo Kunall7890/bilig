@@ -148,7 +148,7 @@ export interface BiligDominanceStatus {
     readonly missingInputs: readonly string[]
     readonly nextFixtureCheckCommand: string
     readonly nextPublicAccessCheckCommand: string
-    readonly nextGoogleSheetsUploadInstruction: string
+    readonly nextGoogleSheetsUploadInstruction: string | null
     readonly nextPreflightCommand: string | null
     readonly nextCaptureCommand: string | null
     readonly blockedCommands: readonly string[]
@@ -571,6 +571,10 @@ function buildUiSameCorpusStatus(
   const tenXRequirementSatisfied = uiSameCorpusTenXRequirementSatisfied(proof, missingRequiredWorkloads, casesMissingScrollEventEvidence)
   const googleSheetsUrlArgument = args.googleSheetsUrl ?? '<google-sheets-url>'
   const browserCaptureGuard = buildBrowserCaptureGuardStatus(args.localCiResourceGuardStatus)
+  const missingInputs = args.googleSheetsUrl || tenXRequirementSatisfied ? [] : ['googleSheetsUrlForUploadedSameCorpusWorkbook']
+  const nextGoogleSheetsUploadInstruction = missingInputs.includes('googleSheetsUrlForUploadedSameCorpusWorkbook')
+    ? `Upload ${fixture.localXlsxPath} to Google Sheets as a native Google Sheet, share it to anyone with the link, then pass its edit URL as --google-sheets-url.`
+    : null
   const nextPreflightCommand = [
     'pnpm',
     'ui:same-corpus:capture',
@@ -615,7 +619,7 @@ function buildUiSameCorpusStatus(
     googleSheetsUrlSource: args.googleSheetsUrlSource,
     googleSheetsUrlEnvVar: uiSameCorpusGoogleSheetsUrlEnvVar,
     publicAccessCheckPath: args.publicAccessCheckPath,
-    missingInputs: args.googleSheetsUrl || tenXRequirementSatisfied ? [] : ['googleSheetsUrlForUploadedSameCorpusWorkbook'],
+    missingInputs,
     nextFixtureCheckCommand: 'pnpm ui:same-corpus:fixture:check',
     nextPublicAccessCheckCommand: [
       'pnpm',
@@ -630,7 +634,7 @@ function buildUiSameCorpusStatus(
     ]
       .map(shellQuote)
       .join(' '),
-    nextGoogleSheetsUploadInstruction: `Upload ${fixture.localXlsxPath} to Google Sheets as a native Google Sheet, share it to anyone with the link, then pass its edit URL as --google-sheets-url.`,
+    nextGoogleSheetsUploadInstruction,
     nextPreflightCommand: browserCaptureGuard.active ? null : nextPreflightCommand,
     nextCaptureCommand: browserCaptureGuard.active ? null : nextCaptureCommand,
     blockedCommands: browserCaptureGuard.active
