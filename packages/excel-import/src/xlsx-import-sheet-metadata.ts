@@ -18,6 +18,7 @@ interface ImportedSheetMetadataInput {
   readonly filters?: SheetMetadataSnapshot['filters']
   readonly validations?: SheetMetadataSnapshot['validations']
   readonly conditionalFormats?: SheetMetadataSnapshot['conditionalFormats']
+  readonly conditionalFormatArtifacts?: SheetMetadataSnapshot['conditionalFormatArtifacts']
   readonly commentThreads?: SheetMetadataSnapshot['commentThreads']
   readonly legacyCommentVml?: SheetMetadataSnapshot['legacyCommentVml']
   readonly hyperlinks?: SheetMetadataSnapshot['hyperlinks']
@@ -48,6 +49,7 @@ export function buildImportedSheetMetadata(input: ImportedSheetMetadataInput): S
     ...(input.filters ? { filters: input.filters } : {}),
     ...(input.validations ? { validations: input.validations } : {}),
     ...(input.conditionalFormats ? { conditionalFormats: input.conditionalFormats } : {}),
+    ...(input.conditionalFormatArtifacts ? { conditionalFormatArtifacts: input.conditionalFormatArtifacts } : {}),
     ...(input.commentThreads ? { commentThreads: input.commentThreads } : {}),
     ...(input.legacyCommentVml ? { legacyCommentVml: input.legacyCommentVml } : {}),
     ...(input.hyperlinks ? { hyperlinks: input.hyperlinks } : {}),

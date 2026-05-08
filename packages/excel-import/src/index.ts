@@ -26,7 +26,7 @@ import { buildImportedCellMetadataReferenceSnapshots, readImportedWorkbookCellMe
 import { readImportedWorkbookCharts } from './xlsx-charts.js'
 import { legacyCommentThreadSignature, readImportedWorkbookLegacyCommentVml, type ImportedLegacyCommentVml } from './xlsx-comment-vml.js'
 import { readImportedSheetComments } from './xlsx-comments.js'
-import { readImportedWorkbookConditionalFormats } from './xlsx-conditional-formats.js'
+import { readImportedWorkbookConditionalFormatArtifacts, readImportedWorkbookConditionalFormats } from './xlsx-conditional-formats.js'
 import { readImportedDefinedNames } from './xlsx-defined-names.js'
 import { readImportedWorkbookFilters } from './xlsx-filters.js'
 import { readImportedWorkbookFreezePanes } from './xlsx-freeze-panes.js'
@@ -567,8 +567,12 @@ function importSheetJsWorkbook(
   const importedProtectedRangesBySheet = workbookZip ? readImportedWorkbookProtectedRanges(workbookZip, workbook.SheetNames) : new Map()
   const importedSortsBySheet = workbookZip ? readImportedWorkbookSorts(workbookZip, workbook.SheetNames) : new Map()
   const importedValidationsBySheet = workbookZip ? readImportedWorkbookDataValidations(workbookZip, workbook.SheetNames) : new Map()
-  const importedConditionalFormatsBySheet = workbookZip
-    ? readImportedWorkbookConditionalFormats(workbookZip, workbook.SheetNames)
+  const conditionalFormatArtifactSource = contentType === XLSX_CONTENT_TYPE || contentType === XLSM_CONTENT_TYPE ? data : workbookZip
+  const importedConditionalFormatsBySheet = conditionalFormatArtifactSource
+    ? readImportedWorkbookConditionalFormats(conditionalFormatArtifactSource, workbook.SheetNames)
+    : new Map()
+  const importedConditionalFormatArtifactsBySheet = conditionalFormatArtifactSource
+    ? readImportedWorkbookConditionalFormatArtifacts(conditionalFormatArtifactSource, workbook.SheetNames)
     : new Map()
   const importedExternalLinkCaches = workbookZip ? readImportedExternalLinkCaches(workbookZip) : new Map()
 
@@ -753,6 +757,7 @@ function importSheetJsWorkbook(
     const importedFilters = importedFiltersBySheet.get(sheetName)
     const importedValidations = importedValidationsBySheet.get(sheetName)
     const importedConditionalFormats = importedConditionalFormatsBySheet.get(sheetName)
+    const importedConditionalFormatArtifacts = importedConditionalFormatArtifactsBySheet.get(sheetName)
     const importedPrinterSettings = importedPrinterSettingsBySheet.get(sheetName)
     const importedCellMetadataRefs = buildImportedCellMetadataReferenceSnapshots(importedCellMetadata?.refsBySheet.get(sheetName), cells)
     const metadata = buildImportedSheetMetadata({
@@ -777,6 +782,7 @@ function importSheetJsWorkbook(
       filters: importedFilters,
       validations: importedValidations,
       conditionalFormats: importedConditionalFormats,
+      conditionalFormatArtifacts: importedConditionalFormatArtifacts,
       commentThreads: importedComments.commentThreads,
       legacyCommentVml: importedLegacyCommentVml,
       hyperlinks: importedHyperlinks,

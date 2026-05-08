@@ -271,6 +271,9 @@ function withSheetMetadataFallback(
   if (fallback?.sparklines) {
     next.sparklines = fallback.sparklines
   }
+  if (fallback?.conditionalFormatArtifacts) {
+    next.conditionalFormatArtifacts = fallback.conditionalFormatArtifacts
+  }
   if (fallback?.styleArtifacts) {
     next.styleArtifacts = fallback.styleArtifacts
   }

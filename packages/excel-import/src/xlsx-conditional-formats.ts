@@ -8,6 +8,7 @@ import type {
   LiteralInput,
   WorkbookConditionalFormatRuleSnapshot,
   WorkbookConditionalFormatSnapshot,
+  WorkbookSheetConditionalFormatArtifactsSnapshot,
   WorkbookSnapshot,
   WorkbookValidationComparisonOperator,
 } from '@bilig/protocol'
@@ -109,6 +110,24 @@ function setZipText(zip: ZipEntries, path: string, text: string): void {
 
 function hasWorksheetConditionalFormatting(sheetXml: string): boolean {
   return /<(?:[A-Za-z_][\w.-]*:)?conditionalFormatting\b/u.test(sheetXml)
+}
+
+function worksheetConditionalFormattingRegex(): RegExp {
+  const qualifiedName = '(?:[A-Za-z_][\\w.-]*:)?conditionalFormatting'
+  return new RegExp(`<${qualifiedName}\\b[^>]*>[\\s\\S]*?<\\/${qualifiedName}>|<${qualifiedName}\\b[^>]*\\/>`, 'gu')
+}
+
+function extractWorksheetConditionalFormattingXml(sheetXml: string): string[] {
+  return Array.from(sheetXml.matchAll(worksheetConditionalFormattingRegex()), (match) => match[0])
+}
+
+function removeWorksheetConditionalFormattingXml(sheetXml: string): string {
+  return sheetXml.replace(worksheetConditionalFormattingRegex(), '')
+}
+
+function readSheetConditionalFormatArtifacts(sheetXml: string): WorkbookSheetConditionalFormatArtifactsSnapshot | undefined {
+  const xml = extractWorksheetConditionalFormattingXml(sheetXml).join('')
+  return xml.length > 0 ? { xml } : undefined
 }
 
 function normalizeRgbColor(value: unknown): string | null {
@@ -419,7 +438,12 @@ function parseConditionalFormatRule(rule: Record<string, unknown>): WorkbookCond
 
 export function addExportConditionalFormatsToXlsxBytes(bytes: Uint8Array, snapshot: WorkbookSnapshot): Uint8Array {
   const sheets = snapshot.sheets.toSorted((left, right) => left.order - right.order)
-  if (!sheets.some((sheet) => (sheet.metadata?.conditionalFormats ?? []).length > 0)) {
+  if (
+    !sheets.some(
+      (sheet) =>
+        (sheet.metadata?.conditionalFormats ?? []).length > 0 || (sheet.metadata?.conditionalFormatArtifacts?.xml.trim().length ?? 0) > 0,
+    )
+  ) {
     return bytes
   }
 
@@ -436,25 +460,28 @@ export function addExportConditionalFormatsToXlsxBytes(bytes: Uint8Array, snapsh
   let changed = false
   sheets.forEach((sheet, sheetIndex) => {
     const conditionalFormats = sheet.metadata?.conditionalFormats ?? []
-    const conditionalFormattingXml: string[] = []
-    for (const format of conditionalFormats) {
-      const dxfXml = buildDxfXml(format.style)
-      let dxfId: number | undefined
-      if (dxfXml) {
-        const cacheKey = JSON.stringify(format.style)
-        const cached = dxfIdsByStyle.get(cacheKey)
-        if (cached !== undefined) {
-          dxfId = cached
-        } else {
-          dxfId = existingDxfCount + dxfXmls.length
-          dxfIdsByStyle.set(cacheKey, dxfId)
-          dxfXmls.push(dxfXml)
+    const importedConditionalFormatXml = sheet.metadata?.conditionalFormatArtifacts?.xml.trim()
+    const conditionalFormattingXml: string[] = importedConditionalFormatXml ? [importedConditionalFormatXml] : []
+    if (!importedConditionalFormatXml) {
+      for (const format of conditionalFormats) {
+        const dxfXml = buildDxfXml(format.style)
+        let dxfId: number | undefined
+        if (dxfXml) {
+          const cacheKey = JSON.stringify(format.style)
+          const cached = dxfIdsByStyle.get(cacheKey)
+          if (cached !== undefined) {
+            dxfId = cached
+          } else {
+            dxfId = existingDxfCount + dxfXmls.length
+            dxfIdsByStyle.set(cacheKey, dxfId)
+            dxfXmls.push(dxfXml)
+          }
         }
-      }
-      const xml = buildConditionalFormattingXml(format, dxfId, priority)
-      priority += 1
-      if (xml) {
-        conditionalFormattingXml.push(xml)
+        const xml = buildConditionalFormattingXml(format, dxfId, priority)
+        priority += 1
+        if (xml) {
+          conditionalFormattingXml.push(xml)
+        }
       }
     }
     const sheetPath = `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`
@@ -463,7 +490,7 @@ export function addExportConditionalFormatsToXlsxBytes(bytes: Uint8Array, snapsh
       return
     }
     const updatedSheetXml = applyExportWorksheetDimensionsToWorksheetXml(
-      insertWorksheetConditionalFormatting(sheetXml, conditionalFormattingXml),
+      insertWorksheetConditionalFormatting(removeWorksheetConditionalFormattingXml(sheetXml), conditionalFormattingXml),
       sheet.metadata,
     )
     if (updatedSheetXml === sheetXml) {
@@ -539,4 +566,25 @@ export function readImportedWorkbookConditionalFormats(
   })
 
   return conditionalFormatsBySheet
+}
+
+export function readImportedWorkbookConditionalFormatArtifacts(
+  source: XlsxZipSource,
+  sheetNames: readonly string[],
+): Map<string, WorkbookSheetConditionalFormatArtifactsSnapshot> {
+  const zip = readXlsxZipEntries(source)
+  const artifactsBySheet = new Map<string, WorkbookSheetConditionalFormatArtifactsSnapshot>()
+
+  sheetNames.forEach((sheetName, sheetIndex) => {
+    const sheetXml = getZipText(zip, `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`)
+    if (!sheetXml || !hasWorksheetConditionalFormatting(sheetXml)) {
+      return
+    }
+    const artifacts = readSheetConditionalFormatArtifacts(sheetXml)
+    if (artifacts) {
+      artifactsBySheet.set(sheetName, artifacts)
+    }
+  })
+
+  return artifactsBySheet
 }

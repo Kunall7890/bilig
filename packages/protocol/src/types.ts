@@ -806,6 +806,10 @@ export interface WorkbookSparklinesSnapshot {
   xml: string
 }
 
+export interface WorkbookSheetConditionalFormatArtifactsSnapshot {
+  xml: string
+}
+
 export type WorkbookSheetVisibilitySnapshot = 'hidden' | 'veryHidden'
 
 export interface WorkbookCellMetadataSnapshot {
@@ -856,6 +860,7 @@ export interface SheetMetadataSnapshot {
   sorts?: WorkbookSortSnapshot[]
   validations?: WorkbookDataValidationSnapshot[]
   conditionalFormats?: WorkbookConditionalFormatSnapshot[]
+  conditionalFormatArtifacts?: WorkbookSheetConditionalFormatArtifactsSnapshot
   protectedRanges?: WorkbookRangeProtectionSnapshot[]
   commentThreads?: WorkbookCommentThreadSnapshot[]
   notes?: WorkbookNoteSnapshot[]
