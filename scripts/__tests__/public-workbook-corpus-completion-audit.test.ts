@@ -269,6 +269,42 @@ describe('public workbook corpus completion audit', () => {
     expect(validatePublicWorkbookCorpusCompletionAudit(audit)).toEqual([])
   })
 
+  it('fails completion when manifest artifacts are duplicated by hash or structure fingerprint', () => {
+    const artifactA = workbookArtifact('workbook-a')
+    const duplicateHashArtifact = workbookArtifact('workbook-c')
+    const duplicateFingerprintArtifact = {
+      ...workbookArtifact('workbook-b'),
+      workbookFingerprint: artifactA.workbookFingerprint,
+    }
+    const audit = buildPublicWorkbookCorpusCompletionAudit({
+      generatedAt: '2026-05-08T00:00:00.000Z',
+      hyperformulaSecondaryCorpus: hyperFormulaSecondaryCorpusFixture(),
+      manifest: manifestWithArtifacts([artifactA, duplicateHashArtifact, duplicateFingerprintArtifact], 3),
+      recordedCases: [passedCase(artifactA, 1), passedCase(duplicateHashArtifact, 1), passedCase(duplicateFingerprintArtifact, 1)],
+      status: statusFixture({
+        targetWorkbookCount: 3,
+        sourceCount: 3,
+        cachedArtifactCount: 3,
+        scorecardCaseCount: 3,
+        checkpointCaseCount: 0,
+        recordedManifestArtifactCount: 3,
+        missingManifestArtifactCount: 0,
+        recordedPassedCaseCount: 3,
+        scorecardCoversManifest: true,
+        targetComplete: true,
+        gaps: [],
+      }),
+      stopMarkerActive: false,
+    })
+
+    expect(requirement(audit.checklist, 'hash-and-structure-dedupe')).toMatchObject({
+      passed: false,
+      gaps: expect.arrayContaining(['duplicate artifact hashes: 1', 'duplicate workbook structure fingerprints: 1']),
+      evidence: expect.arrayContaining(['unique hashes: 2/3', 'unique workbook fingerprints: 2/3']),
+    })
+    expect(validatePublicWorkbookCorpusCompletionAudit(audit)).toEqual([])
+  })
+
   it('fails completion when recorded cases omit source/license/hash evidence', () => {
     const artifact = workbookArtifact('workbook-a')
     const audit = buildPublicWorkbookCorpusCompletionAudit({
