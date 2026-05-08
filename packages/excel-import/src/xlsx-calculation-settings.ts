@@ -84,6 +84,7 @@ function hasSemanticCalculationSettings(settings: WorkbookCalculationSettingsSna
     settings.iterate !== undefined ||
     settings.iterateCount !== undefined ||
     settings.iterateDelta !== undefined ||
+    settings.fullPrecision === false ||
     settings.fullCalcOnLoad !== undefined ||
     settings.concurrentCalc !== undefined
   )
@@ -95,6 +96,7 @@ function buildWorkbookCalcPr(settings: WorkbookCalculationSettingsSnapshot): str
   }
   const attributes = [
     calcPrAttribute('calcMode', settings.mode === 'manual' ? 'manual' : undefined),
+    calcPrAttribute('fullPrecision', settings.fullPrecision === false ? '0' : undefined),
     calcPrAttribute('iterate', typeof settings.iterate === 'boolean' ? formatBooleanAttribute(settings.iterate) : undefined),
     calcPrAttribute('iterateCount', Number.isSafeInteger(settings.iterateCount) ? String(settings.iterateCount) : undefined),
     calcPrAttribute('iterateDelta', typeof settings.iterateDelta === 'string' ? settings.iterateDelta : undefined),
@@ -201,6 +203,7 @@ export function readImportedWorkbookCalculationSettings(source: XlsxZipSource): 
   const iterate = booleanAttributeValue(calcPr?.['iterate'])
   const iterateCount = finiteIntegerAttributeValue(calcPr?.['iterateCount'])
   const iterateDelta = finiteNumericStringAttributeValue(calcPr?.['iterateDelta'])
+  const fullPrecision = booleanAttributeValue(calcPr?.['fullPrecision'])
   const fullCalcOnLoad = booleanAttributeValue(calcPr?.['fullCalcOnLoad'])
   const concurrentCalc = booleanAttributeValue(calcPr?.['concurrentCalc'])
   const settings: WorkbookCalculationSettingsSnapshot = {
@@ -210,13 +213,17 @@ export function readImportedWorkbookCalculationSettings(source: XlsxZipSource): 
     ...(iterate !== undefined ? { iterate } : {}),
     ...(iterateCount !== undefined ? { iterateCount } : {}),
     ...(iterateDelta !== undefined ? { iterateDelta } : {}),
+    ...(fullPrecision === false ? { fullPrecision } : {}),
     ...(fullCalcOnLoad !== undefined ? { fullCalcOnLoad } : {}),
     ...(concurrentCalc !== undefined ? { concurrentCalc } : {}),
   }
   return hasSemanticCalculationSettings(settings) || hasNonDefaultDateSystem(settings) ? settings : undefined
 }
 
-export function readImportedWorkbookCalculationWarnings(source: XlsxZipSource): string[] {
+export function readImportedWorkbookCalculationWarnings(
+  source: XlsxZipSource,
+  options: { readonly hasFormulaCells?: boolean } = {},
+): string[] {
   const zip = readXlsxZipEntries(source)
   const workbookXml = getZipText(zip, 'xl/workbook.xml')
   if (!workbookXml) {
@@ -226,6 +233,6 @@ export function readImportedWorkbookCalculationWarnings(source: XlsxZipSource): 
   const calcPr = recordChild(recordChild(parsed, 'workbook'), 'calcPr')
   return [
     ...(calcPr?.['calcMode'] === 'manual' ? [manualCalculationModeWarning] : []),
-    ...(calcPr?.['fullPrecision'] === '0' ? [precisionAsDisplayedCalculationWarning] : []),
+    ...(calcPr?.['fullPrecision'] === '0' && options.hasFormulaCells !== false ? [precisionAsDisplayedCalculationWarning] : []),
   ]
 }

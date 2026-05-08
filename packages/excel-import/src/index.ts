@@ -569,9 +569,6 @@ function importSheetJsWorkbook(
   const importedWorkbookProperties = workbookZip ? readImportedWorkbookProperties(workbookZip) : undefined
   const importedWorkbookProtection = workbookZip ? readImportedWorkbookProtection(workbookZip) : undefined
   const importedCalculationSettings = workbookZip ? readImportedWorkbookCalculationSettings(workbookZip) : undefined
-  if (workbookZip) {
-    warnings.push(...readImportedWorkbookCalculationWarnings(workbookZip))
-  }
   const importedMacroPayload = toUint8Array(workbook.vbaraw)
   const importedMacroCodeNames = importedMacroPayload ? readImportedMacroCodeNames(workbook) : undefined
   const importedCellMetadata = workbookZip ? readImportedWorkbookCellMetadata(workbookZip, workbook.SheetNames) : undefined
@@ -599,6 +596,7 @@ function importSheetJsWorkbook(
   let ignoredCommentsSeen = false
   let externalWorkbookReferenceWarningSeen = warnings.includes(externalWorkbookReferencesWarning)
   let volatileFormulaWarningSeen = false
+  let formulaCellSeen = false
   const styleCatalog = new Map<string, CellStyleRecord>()
   const importedArrayFormulaSpills: NonNullable<WorkbookMetadataSnapshot['spills']> = []
   const previewSheets: ImportedWorkbookSheetPreview[] = []
@@ -689,6 +687,7 @@ function importSheetJsWorkbook(
       const nextCell: WorkbookSnapshot['sheets'][number]['cells'][number] = { address }
       const formula = cell['f']
       if (typeof formula === 'string' && formula.trim().length > 0) {
+        formulaCellSeen = true
         const externalReferenceTranslation = translateImportedFormulaExternalReferences(formula, importedExternalLinkCaches)
         if (
           !externalWorkbookReferenceWarningSeen &&
@@ -806,6 +805,10 @@ function importSheetJsWorkbook(
       cells,
     }
   })
+
+  if (workbookZip) {
+    warnings.push(...readImportedWorkbookCalculationWarnings(workbookZip, { hasFormulaCells: formulaCellSeen }))
+  }
 
   const workbookMetadata: WorkbookMetadataSnapshot = {
     ...(importedWorkbookProperties ? { properties: importedWorkbookProperties } : {}),

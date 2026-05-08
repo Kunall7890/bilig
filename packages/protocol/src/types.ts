@@ -366,6 +366,7 @@ export interface WorkbookCalculationSettingsSnapshot {
   iterate?: boolean | null
   iterateCount?: number | null
   iterateDelta?: string | null
+  fullPrecision?: boolean | null
   fullCalcOnLoad?: boolean | null
   concurrentCalc?: boolean | null
 }
