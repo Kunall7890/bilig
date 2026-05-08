@@ -3,43 +3,45 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>bilig - Headless Spreadsheet Engine for Node.js</title>
+    <title>bilig - Headless Spreadsheet Engine for Node.js and Agents</title>
+    <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg" />
     <link rel="canonical" href="https://proompteng.github.io/bilig/" />
     <link rel="sitemap" type="application/xml" href="https://proompteng.github.io/bilig/sitemap.xml" />
     <link rel="alternate" type="text/plain" href="https://proompteng.github.io/bilig/llms.txt" title="llms.txt" />
-    <link rel="preload" as="image" href="https://proompteng.github.io/bilig/assets/bilig-hero-workbook-api.png?v=2026-05-08" />
+    <link rel="preload" as="image" href="https://proompteng.github.io/bilig/assets/bilig-hero-workbook-api.png?v=2026-05-08-2" />
     <meta
       name="description"
-      content="bilig lets Node.js code build workbooks, write formulas, recalculate cells, and save the result as JSON without opening a browser spreadsheet grid."
+      content="@bilig/headless is a TypeScript spreadsheet engine for Node.js services and agents that need formulas, workbook edits, readback, and JSON persistence without a browser grid."
     />
     <meta
       name="keywords"
       content="headless spreadsheet engine, Node spreadsheet engine, TypeScript formula engine, spreadsheet engine for agents, workbook automation, HyperFormula alternative, formula evaluation in Node"
     />
     <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="theme-color" content="#f6f8fa" />
     <meta property="og:site_name" content="bilig" />
-    <meta property="og:title" content="bilig - Headless Spreadsheet Engine for Node.js" />
+    <meta property="og:title" content="bilig - Headless Spreadsheet Engine for Node.js and Agents" />
     <meta
       property="og:description"
-      content="Build a workbook from arrays or JSON records, recalculate formulas, and save the result from TypeScript."
+      content="Build a workbook from arrays or JSON records, recalculate formulas, read values, and persist the result from TypeScript."
     />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://proompteng.github.io/bilig/" />
-    <meta property="og:image" content="https://proompteng.github.io/bilig/assets/github-social-preview.png?v=2026-05-08" />
+    <meta property="og:image" content="https://proompteng.github.io/bilig/assets/github-social-preview.png?v=2026-05-08-2" />
     <meta property="og:image:alt" content="bilig headless spreadsheet engine workbook and TypeScript code preview" />
     <meta property="og:image:width" content="1280" />
     <meta property="og:image:height" content="640" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="bilig - Headless Spreadsheet Engine for Node.js" />
+    <meta name="twitter:title" content="bilig - Headless Spreadsheet Engine for Node.js and Agents" />
     <meta name="twitter:description" content="Spreadsheet formulas, workbook edits, and JSON persistence for Node.js programs." />
-    <meta name="twitter:image" content="https://proompteng.github.io/bilig/assets/github-social-preview.png?v=2026-05-08" />
+    <meta name="twitter:image" content="https://proompteng.github.io/bilig/assets/github-social-preview.png?v=2026-05-08-2" />
     <meta name="twitter:image:alt" content="bilig headless spreadsheet engine workbook and TypeScript code preview" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "SoftwareSourceCode",
         "name": "bilig",
-        "description": "TypeScript headless spreadsheet engine for Node.js programs that need formulas, workbook edits, and JSON persistence without a spreadsheet UI.",
+        "description": "TypeScript headless spreadsheet engine for Node.js programs and agents that need formulas, workbook edits, readback, and JSON persistence without a spreadsheet UI.",
         "codeRepository": "https://github.com/proompteng/bilig",
         "license": "https://github.com/proompteng/bilig/blob/main/LICENSE",
         "programmingLanguage": "TypeScript",
@@ -50,7 +52,14 @@
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "macOS, Linux, Windows",
         "isAccessibleForFree": true,
-        "image": "https://proompteng.github.io/bilig/assets/github-social-preview.png?v=2026-05-08",
+        "image": "https://proompteng.github.io/bilig/assets/github-social-preview.png?v=2026-05-08-2",
+        "featureList": [
+          "Programmatic workbook creation",
+          "Formula evaluation and readback",
+          "Structural row and column edits",
+          "JSON workbook persistence",
+          "Agent write verification"
+        ],
         "sameAs": [
           "https://github.com/proompteng/bilig",
           "https://www.npmjs.com/package/@bilig/headless",
@@ -63,6 +72,38 @@
           "spreadsheet engine for agents",
           "workbook automation",
           "HyperFormula alternative"
+        ]
+      }
+    </script>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Can I use bilig without the browser app?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. @bilig/headless is published on npm for Node.js scripts, services, and agent tools that need workbook formulas and readback without opening the browser UI."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is bilig a complete Excel clone?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. It focuses on programmatic workbook workflows. The compatibility notes document the Excel behavior that is not complete yet."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "When should I try bilig instead of ExcelJS, SheetJS, or HyperFormula?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Try it when the job needs a workbook object with formulas, structural edits, deterministic value readback, and JSON persistence from TypeScript."
+            }
+          }
         ]
       }
     </script>
@@ -182,9 +223,9 @@
         overflow: hidden;
         border-bottom: 1px solid var(--line);
         background:
-          linear-gradient(90deg, rgba(246, 248, 250, 0.98) 0%, rgba(246, 248, 250, 0.92) 37%, rgba(246, 248, 250, 0.2) 72%),
-          linear-gradient(180deg, rgba(246, 248, 250, 0.24), rgba(246, 248, 250, 0.86)),
-          url('./assets/bilig-hero-workbook-api.png?v=2026-05-08');
+          linear-gradient(90deg, rgba(246, 248, 250, 0.99) 0%, rgba(246, 248, 250, 0.94) 42%, rgba(246, 248, 250, 0.18) 78%),
+          linear-gradient(180deg, rgba(246, 248, 250, 0.2), rgba(246, 248, 250, 0.78)),
+          url('./assets/bilig-hero-workbook-api.png?v=2026-05-08-2');
         background-position: center;
         background-size: cover;
         padding: 72px max(40px, calc((100vw - 1120px) / 2)) 64px;
@@ -203,7 +244,7 @@
         font-size: 13px;
         font-weight: 720;
         letter-spacing: 0;
-        text-transform: uppercase;
+        text-transform: none;
       }
 
       .label::before {
@@ -497,6 +538,12 @@
         gap: 14px;
       }
 
+      .faq-list {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+      }
+
       .doc-groups a {
         color: var(--ink);
         text-decoration: underline;
@@ -533,7 +580,7 @@
           min-height: auto;
           background:
             linear-gradient(180deg, rgba(246, 248, 250, 0.98) 0%, rgba(246, 248, 250, 0.88) 58%, rgba(246, 248, 250, 0.72) 100%),
-            url('./assets/bilig-hero-workbook-api.png?v=2026-05-08');
+            url('./assets/bilig-hero-workbook-api.png?v=2026-05-08-2');
           background-position: center top;
           background-size: cover;
           padding: 54px 20px 48px;
@@ -549,6 +596,7 @@
         .surface,
         .proof,
         .doc-groups,
+        .faq-list,
         .cols-3 {
           grid-template-columns: 1fr;
         }
@@ -583,23 +631,22 @@
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-content">
           <p class="label">@bilig/headless</p>
-          <h1 id="hero-title">Run spreadsheet formulas from Node.js.</h1>
+          <h1 id="hero-title">Run spreadsheet formulas in Node.js. No browser grid.</h1>
           <p class="lede">
-            Build a workbook from arrays or JSON records, edit cells, recalculate formulas, and save the document. No hidden grid, no screen
-            scraping.
+            Use a real workbook model when a service, script, or coding agent needs formulas, edits, calculated values, and saved state.
           </p>
           <div class="proof-strip" aria-label="project facts">
             <div>
-              <strong>published package</strong>
-              <span>install it from npm and run the examples in a clean Node project.</span>
+              <strong>npm package</strong>
+              <span>install it in a clean project and run the smoke test without cloning the repo.</span>
             </div>
             <div>
-              <strong>plain data in</strong>
-              <span>turn service records into sheets, formulas, and summary cells.</span>
+              <strong>records to formulas</strong>
+              <span>turn JSON-shaped service data into sheets, summary formulas, and readback checks.</span>
             </div>
             <div>
-              <strong>known limits</strong>
-              <span>the docs call out where Excel compatibility is still incomplete.</span>
+              <strong>honest limits</strong>
+              <span>compatibility notes call out what is not Excel-complete yet.</span>
             </div>
           </div>
           <div class="actions">
@@ -616,29 +663,32 @@
       <main>
         <section aria-labelledby="why-title">
           <div class="section-head">
-            <h2 id="why-title">Use a workbook when a table is not enough.</h2>
-            <p>Some backend jobs need sheets, ranges, formulas, and saved workbook state. bilig gives that model a TypeScript API.</p>
+            <h2 id="why-title">A workbook model for backend code.</h2>
+            <p>
+              Tables are fine until the job needs ranges, formulas, structural edits, and saved workbook state. bilig exposes those pieces
+              as TypeScript.
+            </p>
           </div>
           <div class="cols-3">
             <article class="card">
-              <h3>Write formulas</h3>
-              <p>Create sheets, set cells, and read calculated values from code.</p>
+              <h3>Calculate formulas</h3>
+              <p>Create sheets, set inputs, and read the calculated cells that matter to the service.</p>
             </article>
             <article class="card">
-              <h3>Edit the workbook</h3>
-              <p>Apply structural changes, undo and redo edits, and keep snapshots portable.</p>
+              <h3>Change structure</h3>
+              <p>Apply row and column edits, keep undo/redo behavior testable, and persist snapshots.</p>
             </article>
             <article class="card">
-              <h3>Skip UI automation</h3>
-              <p>Services and tools call an API instead of clicking around a spreadsheet screen.</p>
+              <h3>Verify writeback</h3>
+              <p>Agent tools can write, recalculate, and read values back before returning an answer.</p>
             </article>
           </div>
         </section>
 
         <section id="install" aria-labelledby="install-title">
           <div class="section-head">
-            <h2 id="install-title">Try it from npm.</h2>
-            <p>The shortest smoke test creates a workbook, changes an input, saves it, restores it, and checks the recalculated value.</p>
+            <h2 id="install-title">Smoke-test the npm package.</h2>
+            <p>This example creates a workbook, changes an input, saves it, restores it, and checks the recalculated value.</p>
           </div>
           <div class="quickstart quickstart-wide">
             <div class="copy-path">
@@ -717,8 +767,8 @@ console.log({ before, after, sheets: restored.getSheetNames(), bytes: saved.leng
 
         <section id="runtime" aria-labelledby="runtime-title">
           <div class="section-head">
-            <h2 id="runtime-title">What is in scope</h2>
-            <p>Use bilig when spreadsheet behavior belongs inside a program.</p>
+            <h2 id="runtime-title">The boundary is clear.</h2>
+            <p>Use bilig when spreadsheet behavior belongs inside a program, not when you need a finished Excel clone.</p>
           </div>
           <div class="surface">
             <table class="matrix">
@@ -753,7 +803,7 @@ console.log({ before, after, sheets: restored.getSheetNames(), bytes: saved.leng
                 <li>Node services, scripts, and tool-calling workflows.</li>
                 <li>Formula-backed business logic that needs deterministic readback.</li>
                 <li>Saved workbook documents that should round-trip as JSON.</li>
-                <li>Not a finished Excel clone; use the compatibility docs for limits.</li>
+                <li>Not a finished Excel clone; start with the compatibility docs when parity matters.</li>
               </ul>
             </article>
           </div>
@@ -761,8 +811,8 @@ console.log({ before, after, sheets: restored.getSheetNames(), bytes: saved.leng
 
         <section id="proof" aria-labelledby="proof-title">
           <div class="section-head">
-            <h2 id="proof-title">Start with the repo.</h2>
-            <p>The useful starting points are runnable examples, comparison notes, and small issues for first-time contributors.</p>
+            <h2 id="proof-title">Proof beats a pitch.</h2>
+            <p>The repo has runnable examples, comparison notes, benchmark caveats, and small issues for first-time contributors.</p>
           </div>
           <div class="proof">
             <div class="metric-list">
@@ -776,7 +826,7 @@ console.log({ before, after, sheets: restored.getSheetNames(), bytes: saved.leng
               </div>
             </div>
             <article class="card">
-              <h3>Start here</h3>
+              <h3>Check it directly</h3>
               <ul>
                 <li>Runnable package example</li>
                 <li>JSON-records example for service payloads</li>
@@ -789,9 +839,29 @@ console.log({ before, after, sheets: restored.getSheetNames(), bytes: saved.leng
           </div>
         </section>
 
+        <section aria-labelledby="faq-title">
+          <div class="section-head">
+            <h2 id="faq-title">Questions worth answering before you install it.</h2>
+          </div>
+          <div class="faq-list">
+            <article class="card">
+              <h3>Can I use it without the browser app?</h3>
+              <p>Yes. <code>@bilig/headless</code> is the package for Node.js scripts, services, and agent tools.</p>
+            </article>
+            <article class="card">
+              <h3>Is it a complete Excel clone?</h3>
+              <p>No. It targets programmatic workbook workflows, and the compatibility docs call out the gaps.</p>
+            </article>
+            <article class="card">
+              <h3>When is it a good fit?</h3>
+              <p>When you need formulas, structural edits, deterministic readback, and JSON persistence from TypeScript.</p>
+            </article>
+          </div>
+        </section>
+
         <section aria-labelledby="links-title">
           <div class="section-head">
-            <h2 id="links-title">Useful links</h2>
+            <h2 id="links-title">Pick the shortest path.</h2>
           </div>
           <div class="doc-groups">
             <article class="card">
