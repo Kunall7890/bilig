@@ -49,6 +49,12 @@ describe('js evaluator', () => {
     })
   })
 
+  it('sorts text after numbers for direct comparisons', () => {
+    expect(evaluatePlan(lowerToPlan(parseFormula('10<" "')), context)).toEqual({ tag: ValueTag.Boolean, value: true })
+    expect(evaluatePlan(lowerToPlan(parseFormula('999<"1"')), context)).toEqual({ tag: ValueTag.Boolean, value: true })
+    expect(evaluatePlan(lowerToPlan(parseFormula('"1">999')), context)).toEqual({ tag: ValueTag.Boolean, value: true })
+  })
+
   it('lifts IFERROR over array arithmetic before SUMPRODUCT aggregation', () => {
     expect(
       evaluatePlan(lowerToPlan(parseFormula('SUMPRODUCT(IFERROR(1*A1:B2,0))')), {

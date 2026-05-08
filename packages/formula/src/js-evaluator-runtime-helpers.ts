@@ -51,14 +51,6 @@ export function toStringValue(value: CellValue): string {
   }
 }
 
-function isTextLike(value: CellValue): boolean {
-  return value.tag === ValueTag.String || value.tag === ValueTag.Empty
-}
-
-function isEmptyString(value: CellValue): boolean {
-  return value.tag === ValueTag.String && value.value === ''
-}
-
 function isNumberLike(value: CellValue): boolean {
   return value.tag === ValueTag.Number || value.tag === ValueTag.Boolean
 }
@@ -73,13 +65,22 @@ function compareText(left: string, right: string): number {
 }
 
 function compareScalars(left: CellValue, right: CellValue): number | undefined {
-  if (isTextLike(left) && isTextLike(right)) {
-    return compareText(toStringValue(left), toStringValue(right))
+  if (left.tag === ValueTag.String && right.tag === ValueTag.String) {
+    return compareText(left.value, right.value)
   }
-  if (isEmptyString(left) && isNumberLike(right)) {
+  if (left.tag === ValueTag.Empty && right.tag === ValueTag.Empty) {
+    return 0
+  }
+  if (left.tag === ValueTag.String && right.tag === ValueTag.Empty) {
+    return compareText(left.value, '')
+  }
+  if (left.tag === ValueTag.Empty && right.tag === ValueTag.String) {
+    return compareText('', right.value)
+  }
+  if (left.tag === ValueTag.String && isNumberLike(right)) {
     return 1
   }
-  if (isNumberLike(left) && isEmptyString(right)) {
+  if (isNumberLike(left) && right.tag === ValueTag.String) {
     return -1
   }
 
@@ -104,14 +105,7 @@ function comparableNumber(value: CellValue): number | undefined {
       return value.value ? 1 : 0
     case ValueTag.Empty:
       return 0
-    case ValueTag.String: {
-      const trimmed = value.value.trim()
-      if (trimmed === '') {
-        return 0
-      }
-      const parsed = Number(trimmed)
-      return Number.isFinite(parsed) ? parsed : undefined
-    }
+    case ValueTag.String:
     case ValueTag.Error:
     default:
       return undefined

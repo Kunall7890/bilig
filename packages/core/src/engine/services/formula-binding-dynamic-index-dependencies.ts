@@ -183,6 +183,15 @@ function concatText(value: CellValue): string {
   }
 }
 
+function compareText(left: string, right: string): number {
+  const normalizedLeft = left.toUpperCase()
+  const normalizedRight = right.toUpperCase()
+  if (normalizedLeft === normalizedRight) {
+    return 0
+  }
+  return normalizedLeft < normalizedRight ? -1 : 1
+}
+
 function compareScalar(left: CellValue, right: CellValue, operator: '=' | '<>' | '>' | '>=' | '<' | '<='): CellValue {
   if (left.tag === ValueTag.Error) {
     return left
@@ -210,8 +219,22 @@ function compareScalar(left: CellValue, right: CellValue, operator: '=' | '<>' |
     }
   }
 
+  let comparison: number | undefined
   if (left.tag === ValueTag.String && right.tag === ValueTag.String) {
-    const comparison = left.value.localeCompare(right.value, undefined, { sensitivity: 'accent' })
+    comparison = compareText(left.value, right.value)
+  } else if (left.tag === ValueTag.Empty && right.tag === ValueTag.Empty) {
+    comparison = 0
+  } else if (left.tag === ValueTag.String && right.tag === ValueTag.Empty) {
+    comparison = compareText(left.value, '')
+  } else if (left.tag === ValueTag.Empty && right.tag === ValueTag.String) {
+    comparison = compareText('', right.value)
+  } else if (left.tag === ValueTag.String && (right.tag === ValueTag.Number || right.tag === ValueTag.Boolean)) {
+    comparison = 1
+  } else if ((left.tag === ValueTag.Number || left.tag === ValueTag.Boolean) && right.tag === ValueTag.String) {
+    comparison = -1
+  }
+
+  if (comparison !== undefined) {
     switch (operator) {
       case '=':
         return booleanValue(comparison === 0)

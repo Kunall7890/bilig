@@ -4,17 +4,7 @@ import { STACK_KIND_ARRAY, STACK_KIND_RANGE, STACK_KIND_SCALAR } from './result-
 import { scalarText as decodeScalarText } from './text-codec'
 import { parseNumericText } from './text-special'
 import { truncToInt } from './numeric-core'
-import {
-  binaryNumeric,
-  compareText,
-  ensureF64,
-  ensureU8,
-  ensureU16,
-  ensureU32,
-  isComparisonOpcode,
-  isTextLike,
-  toNumeric,
-} from './vm-core-helpers'
+import { binaryNumeric, compareText, ensureF64, ensureU8, ensureU16, ensureU32, isComparisonOpcode, toNumeric } from './vm-core-helpers'
 
 export let tags = new Uint8Array(64)
 export let numbers = new Float64Array(64)
@@ -244,7 +234,7 @@ function scalarText(tag: u8, value: f64): string | null {
 }
 
 function compareScalars(leftTag: u8, leftValue: f64, rightTag: u8, rightValue: f64): i32 {
-  if (isTextLike(leftTag) && isTextLike(rightTag)) {
+  if (leftTag == ValueTag.String && rightTag == ValueTag.String) {
     const leftText = scalarText(leftTag, leftValue)
     const rightText = scalarText(rightTag, rightValue)
     if (leftText == null || rightText == null) {
@@ -252,23 +242,36 @@ function compareScalars(leftTag: u8, leftValue: f64, rightTag: u8, rightValue: f
     }
     return compareText(leftText, rightText)
   }
+  if (leftTag == ValueTag.Empty && rightTag == ValueTag.Empty) {
+    return 0
+  }
+  if (leftTag == ValueTag.String && rightTag == ValueTag.Empty) {
+    const leftText = scalarText(leftTag, leftValue)
+    if (leftText == null) {
+      return i32.MIN_VALUE
+    }
+    return compareText(leftText, '')
+  }
+  if (leftTag == ValueTag.Empty && rightTag == ValueTag.String) {
+    const rightText = scalarText(rightTag, rightValue)
+    if (rightText == null) {
+      return i32.MIN_VALUE
+    }
+    return compareText('', rightText)
+  }
   if (leftTag == ValueTag.String && (rightTag == ValueTag.Number || rightTag == ValueTag.Boolean)) {
     const leftText = scalarText(leftTag, leftValue)
     if (leftText == null) {
       return i32.MIN_VALUE
     }
-    if (leftText == '') {
-      return 1
-    }
+    return 1
   }
   if ((leftTag == ValueTag.Number || leftTag == ValueTag.Boolean) && rightTag == ValueTag.String) {
     const rightText = scalarText(rightTag, rightValue)
     if (rightText == null) {
       return i32.MIN_VALUE
     }
-    if (rightText == '') {
-      return -1
-    }
+    return -1
   }
 
   const leftNumeric = comparableNumber(leftTag, leftValue)
@@ -289,11 +292,7 @@ function comparableNumber(tag: u8, value: f64): f64 {
   if (tag == ValueTag.Empty) {
     return 0
   }
-  if (tag != ValueTag.String) {
-    return NaN
-  }
-  const text = scalarText(tag, value)
-  return text == null ? NaN : parseNumericText(text)
+  return NaN
 }
 
 function arithmeticNumber(tag: u8, value: f64): f64 {
