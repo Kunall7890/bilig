@@ -68,7 +68,8 @@ export interface BiligDominanceStatus {
         readonly witnessCaseCount: number
         readonly needsWitness: boolean
         readonly discoveryQuery: string
-        readonly nextDiscoverCommand: string
+        readonly nextDiscoverCommand: string | null
+        readonly blockedDiscoverCommand: string | null
       }[]
     } | null
     readonly financialPlan: {
@@ -85,7 +86,8 @@ export interface BiligDominanceStatus {
       readonly nextCheckCommand: string
       readonly nextFetchPlanCommand: string
       readonly nextFetchCommand: string | null
-      readonly nextVerifyCommand: string
+      readonly nextVerifyCommand: string | null
+      readonly blockedCommands: readonly string[]
     } | null
     readonly fetchCandidateSourceCount: number | null
     readonly fetchCandidateSourceDeficitCount: number | null
@@ -455,8 +457,11 @@ function buildFinancialPlanStatus(
     nextPlanCommand: 'pnpm public-workbook-corpus:discover-financial:plan',
     nextCheckCommand: 'pnpm public-workbook-corpus:discover-financial:check',
     nextFetchPlanCommand: plan.commands.fetchPlan,
-    nextFetchCommand: plan.commands.fetch,
-    nextVerifyCommand: plan.commands.verify,
+    nextFetchCommand: plan.stopMarker.active ? null : plan.commands.fetch,
+    nextVerifyCommand: plan.stopMarker.active ? null : plan.commands.verify,
+    blockedCommands: plan.stopMarker.active
+      ? nonEmptyCommands([plan.commands.discover, plan.commands.fetch, plan.commands.fetchAll, plan.commands.verify])
+      : [],
   }
 }
 
@@ -475,7 +480,8 @@ function buildFeatureWitnessPlanStatus(
       witnessCaseCount: entry.witnessCaseCount,
       needsWitness: entry.needsWitness,
       discoveryQuery: entry.discoveryQuery,
-      nextDiscoverCommand: entry.commands.discover,
+      nextDiscoverCommand: plan.stopMarker.active ? null : entry.commands.discover,
+      blockedDiscoverCommand: plan.stopMarker.active ? entry.commands.discover : null,
     })),
   }
 }

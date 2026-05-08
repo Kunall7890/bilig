@@ -223,7 +223,7 @@ describe('bilig dominance status', () => {
     expect(status.publicWorkbookCorpus.corpusRunStopMarkerOverrideFlag).toBe('--allow-active-stop-marker')
   })
 
-  it('exposes the guarded financial corpus plan in dominance status', () => {
+  it('separates stop-marker-blocked financial corpus runs from runnable plan commands', () => {
     const status = buildBiligDominanceStatus({
       input: buildFixtureInput(),
       financialCorpusPlan: financialPlanFixture(),
@@ -252,8 +252,13 @@ describe('bilig dominance status', () => {
       nextPlanCommand: 'pnpm public-workbook-corpus:discover-financial:plan',
       nextCheckCommand: 'pnpm public-workbook-corpus:discover-financial:check',
       nextFetchPlanCommand: expect.stringContaining('public-workbook-corpus:fetch-financial:plan'),
-      nextFetchCommand: expect.stringContaining('--limit 20'),
-      nextVerifyCommand: expect.stringContaining('public-workbook-corpus:verify-financial'),
+      nextFetchCommand: null,
+      nextVerifyCommand: null,
+      blockedCommands: [
+        expect.stringContaining('public-workbook-corpus:fetch-financial'),
+        expect.stringContaining('--limit 5000'),
+        expect.stringContaining('public-workbook-corpus:verify-financial'),
+      ],
     })
   })
 
@@ -280,7 +285,8 @@ describe('bilig dominance status', () => {
           witnessCaseCount: 0,
           needsWitness: true,
           discoveryQuery: 'pivot table xlsx',
-          nextDiscoverCommand: expect.stringContaining("--query 'pivot table xlsx'"),
+          nextDiscoverCommand: null,
+          blockedDiscoverCommand: expect.stringContaining("--query 'pivot table xlsx'"),
         },
       ],
     })
