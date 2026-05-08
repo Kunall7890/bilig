@@ -25,6 +25,7 @@ import {
 } from '../public-workbook-corpus.ts'
 import { publicWorkbookImportWarningClassifierEvidence } from '../public-workbook-corpus-evidence.ts'
 import { roundTripSemanticsDigest } from '../public-workbook-corpus-roundtrip.ts'
+import { classifyUnsupportedFeatures, rawPivotPartUnsupportedClassification } from '../public-workbook-corpus-verify.ts'
 
 const spawnMock = vi.hoisted(() => vi.fn())
 
@@ -173,6 +174,31 @@ describe('public workbook corpus', () => {
     })
     expect(scorecard.cases[0]?.unsupportedFeatureClassifications).toEqual([])
     validatePublicWorkbookCorpusScorecard(scorecard)
+  })
+
+  it('classifies raw XLSX pivot parts when semantic import cannot project them', () => {
+    const classifications = classifyUnsupportedFeatures(
+      { version: 1, workbook: { name: 'raw-pivot' }, sheets: [{ id: 1, name: 'Sheet1', order: 0, cells: [] }] },
+      [],
+      {
+        sheetCount: 1,
+        cellCount: 0,
+        formulaCellCount: 0,
+        valueCellCount: 0,
+        definedNameCount: 0,
+        tableCount: 0,
+        chartCount: 0,
+        pivotCount: 1,
+        mergeCount: 0,
+        styleRangeCount: 0,
+        conditionalFormatCount: 0,
+        dataValidationCount: 0,
+        macroPayloadCount: 0,
+        warningCount: 0,
+      },
+    )
+
+    expect(classifications).toEqual([rawPivotPartUnsupportedClassification])
   })
 
   it('classifies external workbook formula references as unsupported instead of oracle failures', async () => {

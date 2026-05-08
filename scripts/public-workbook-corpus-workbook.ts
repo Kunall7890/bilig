@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto'
 import * as XLSX from 'xlsx'
 
 import { importXlsx } from '../packages/excel-import/src/index.js'
+import { readXlsxZipEntries } from '../packages/excel-import/src/xlsx-zip.js'
 import { ErrorCode, ValueTag } from '../packages/protocol/src/enums.js'
 import type { CellValue, WorkbookSnapshot } from '../packages/protocol/src/types.js'
 import type { FormulaOracle, PublicWorkbookCorpusCase, PublicWorkbookFeatureCounts } from './public-workbook-corpus-types.ts'
@@ -99,6 +100,7 @@ export function inspectWorkbookFootprint(bytes: Uint8Array, fileName: string): W
   const dimensions: PublicWorkbookCorpusCase['workbookMetadata']['dimensions'] = []
   featureCounts.sheetCount = workbook.SheetNames.length
   featureCounts.definedNameCount = Array.isArray(workbook.Workbook?.Names) ? workbook.Workbook.Names.length : 0
+  featureCounts.pivotCount = countRawPivotTableParts(bytes)
   for (const sheetName of workbook.SheetNames) {
     const sheet = workbook.Sheets[sheetName]
     let rowCount = 0
@@ -133,9 +135,22 @@ export function inspectWorkbookFootprint(bytes: Uint8Array, fileName: string): W
   }
 }
 
+function countRawPivotTableParts(bytes: Uint8Array): number {
+  try {
+    return Object.keys(readXlsxZipEntries(bytes)).filter((path) => /^xl\/pivotTables\/pivotTable\d+\.xml$/iu.test(path)).length
+  } catch {
+    return 0
+  }
+}
+
 export function fingerprintWorkbookBytes(bytes: Uint8Array, fileName: string): string {
   const imported = importXlsx(bytes, fileName)
-  const counts = countWorkbookFeatures(imported.snapshot, imported.warnings)
+  const footprint = inspectWorkbookFootprint(bytes, fileName)
+  const importedCounts = countWorkbookFeatures(imported.snapshot, imported.warnings)
+  const counts = {
+    ...importedCounts,
+    pivotCount: Math.max(importedCounts.pivotCount, footprint.featureCounts.pivotCount),
+  }
   const metadata = workbookMetadata(imported.snapshot)
   const formulaShapes = imported.snapshot.sheets.flatMap((sheet) =>
     sheet.cells

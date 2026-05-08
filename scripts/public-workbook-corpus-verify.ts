@@ -42,6 +42,7 @@ import type {
   PublicWorkbookCaseStatus,
   PublicWorkbookCorpusCase,
   PublicWorkbookCorpusScorecard,
+  PublicWorkbookFeatureCounts,
   PublicWorkbookValidationSummary,
 } from './public-workbook-corpus-types.ts'
 
@@ -63,6 +64,7 @@ export const isolatedFootprintByteThreshold = 1_000_000
 
 const externalWorkbookRoundTripSkipEvidence =
   'Round-trip projection skipped because external workbook links are not recalculated during XLSX import.'
+export const rawPivotPartUnsupportedClassification = 'xlsx.pivots.rawPartNotSemanticallyImported'
 
 export async function buildPublicWorkbookCorpusScorecard(args: BuildScorecardArgs): Promise<PublicWorkbookCorpusScorecard> {
   validatePublicWorkbookManifest(args.manifest)
@@ -265,7 +267,8 @@ export async function verifyCachedWorkbookArtifact(
     }
     collectGarbage()
     const imported = importXlsx(bytes, artifact.fileName)
-    const featureCounts = countWorkbookFeatures(imported.snapshot, imported.warnings)
+    const importedFeatureCounts = countWorkbookFeatures(imported.snapshot, imported.warnings)
+    const featureCounts = mergeImportedAndFootprintFeatureCounts(importedFeatureCounts, footprint.featureCounts)
     const metadata = workbookMetadata(imported.snapshot)
     const formulaOracleValidation =
       footprint.featureCounts.formulaCellCount === 0 || hasUnsupportedFormulaOracleWarning(imported.warnings)
@@ -273,7 +276,7 @@ export async function verifyCachedWorkbookArtifact(
         : await validateFormulaOracles(imported.snapshot, bytes)
     collectGarbage()
     const structuralSmokePassed = runStructuralSmoke ? runStructuralSmokeOps(imported.snapshot) : null
-    const unsupportedFeatureClassifications = classifyUnsupportedFeatures(imported.snapshot, imported.warnings)
+    const unsupportedFeatureClassifications = classifyUnsupportedFeatures(imported.snapshot, imported.warnings, featureCounts)
     const roundTripSkipEvidence = roundTripValidationSkipEvidence(imported.warnings)
     const roundTripPassed = roundTripSkipEvidence ? true : roundTripsSupportedSemantics(detachImportedWorkbookSnapshot(imported))
     const validation: PublicWorkbookValidationSummary = {
@@ -309,6 +312,7 @@ export async function verifyCachedWorkbookArtifact(
         `sheets=${String(featureCounts.sheetCount)}`,
         `cells=${String(featureCounts.cellCount)}`,
         `formulas=${String(featureCounts.formulaCellCount)}`,
+        ...(featureCounts.pivotCount > 0 ? [`pivots=${String(featureCounts.pivotCount)}`] : []),
         ...(hasImportWarningUnsupportedClassifications(unsupportedFeatureClassifications)
           ? [publicWorkbookImportWarningClassifierEvidence]
           : []),
@@ -586,10 +590,27 @@ function findStructuralSmokeSheetName(snapshot: WorkbookSnapshot): string | null
   return sheet?.name ?? null
 }
 
-function classifyUnsupportedFeatures(snapshot: WorkbookSnapshot, warnings: readonly string[]): string[] {
+export function mergeImportedAndFootprintFeatureCounts(
+  importedFeatureCounts: PublicWorkbookFeatureCounts,
+  footprintFeatureCounts: PublicWorkbookFeatureCounts,
+): PublicWorkbookFeatureCounts {
+  return {
+    ...importedFeatureCounts,
+    pivotCount: Math.max(importedFeatureCounts.pivotCount, footprintFeatureCounts.pivotCount),
+  }
+}
+
+export function classifyUnsupportedFeatures(
+  snapshot: WorkbookSnapshot,
+  warnings: readonly string[],
+  featureCounts: PublicWorkbookFeatureCounts = countWorkbookFeatures(snapshot, warnings),
+): string[] {
   const classifications = new Set<string>()
   if ((snapshot.workbook.metadata?.macroPayloads?.length ?? 0) > 0) {
     classifications.add('xlsx.macros.execution.declined')
+  }
+  if (featureCounts.pivotCount > (snapshot.workbook.metadata?.pivots?.length ?? 0)) {
+    classifications.add(rawPivotPartUnsupportedClassification)
   }
   for (const warning of warnings) {
     classifications.add(`xlsx.import.warning:${warning}`)
