@@ -14,7 +14,7 @@ import { buildFeatureWitnessCoverage } from './public-workbook-corpus-completion
 import { parsePublicWorkbookManifestJson } from './public-workbook-corpus-json.ts'
 import { publicWorkbookCorpusCaseMatchesArtifact } from './public-workbook-corpus-missing.ts'
 import { readReusablePublicWorkbookCorpusCases } from './public-workbook-corpus-verify-checkpoint.ts'
-import type { PublicWorkbookCorpusCase, PublicWorkbookManifest } from './public-workbook-corpus-types.ts'
+import type { PublicWorkbookArtifact, PublicWorkbookCorpusCase, PublicWorkbookManifest } from './public-workbook-corpus-types.ts'
 
 export interface PublicWorkbookCorpusFeatureWitnessPlan {
   readonly schemaVersion: 1
@@ -34,6 +34,8 @@ export interface PublicWorkbookCorpusFeatureWitnessPlan {
     readonly witnessCaseCount: number
     readonly needsWitness: boolean
     readonly discoveryQuery: string
+    readonly cachedCandidateCount: number
+    readonly cachedCandidates: readonly PublicWorkbookCorpusFeatureWitnessCandidate[]
     readonly commands: {
       readonly discover: string
     }
@@ -44,7 +46,17 @@ export interface PublicWorkbookCorpusFeatureWitnessPlan {
     readonly label: string
     readonly discoveryQuery: string
     readonly discoverCommand: string
+    readonly cachedCandidateCount: number
+    readonly cachedCandidates: readonly PublicWorkbookCorpusFeatureWitnessCandidate[]
   }[]
+}
+
+export interface PublicWorkbookCorpusFeatureWitnessCandidate {
+  readonly artifactId: string
+  readonly fileName: string
+  readonly byteSize: number
+  readonly sourceUrl: string
+  readonly verifyArtifactCommand: string
 }
 
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
@@ -66,6 +78,18 @@ const featureDiscoveryQueries: Readonly<Record<string, string>> = {
   values: 'xlsx',
 }
 
+const featureCandidateNeedles: Readonly<Record<string, readonly string[]>> = {
+  'conditional formats': ['conditional format', 'conditional-format', 'conditional_format'],
+  charts: ['chart'],
+  formulas: ['formula'],
+  'merged ranges': ['merged cell', 'merged-cell', 'merged_cell', 'merge'],
+  names: ['defined name', 'defined-name', 'defined_name', 'named range', 'named-range', 'named_range'],
+  pivots: ['pivot'],
+  styles: ['style'],
+  tables: ['table'],
+  values: ['xlsx'],
+}
+
 function main(): void {
   const cacheDir = resolve(readStringArg('--cache-dir', defaultCacheDir))
   const manifestPath = resolve(readStringArg('--manifest', defaultManifestPath))
@@ -75,6 +99,7 @@ function main(): void {
   const discoveryLimit = readNumberArg('--discovery-limit', 10_000)
   const generatedAt = readStringArg('--generated-at', new Date().toISOString())
   const plan = buildPublicWorkbookCorpusFeatureWitnessPlan({
+    artifacts: readPublicWorkbookCorpusFeatureWitnessArtifacts(manifestPath),
     cacheDir,
     cases: readPublicWorkbookCorpusFeatureWitnessCases({ manifestPath, scorecardPath, verifyCheckpointPath }),
     discoveryLimit,
@@ -83,6 +108,7 @@ function main(): void {
     manifestPath,
     stopMarkerActive: existsSync(stopMarkerPath),
     stopMarkerPath,
+    verifyCheckpointPath,
   })
   if (process.argv.includes('--check')) {
     const findings = validatePublicWorkbookCorpusFeatureWitnessPlan(plan)
@@ -122,6 +148,14 @@ export function readPublicWorkbookCorpusFeatureWitnessCases(args: {
   return featureWitnessCasesForManifest(manifest, reusableCasesById)
 }
 
+export function readPublicWorkbookCorpusFeatureWitnessArtifacts(manifestPath: string): PublicWorkbookArtifact[] {
+  if (!existsSync(manifestPath)) {
+    return []
+  }
+  const manifest = parsePublicWorkbookManifestJson(JSON.parse(readFileSync(manifestPath, 'utf8')) as unknown)
+  return [...manifest.artifacts]
+}
+
 function featureWitnessCasesForManifest(
   manifest: PublicWorkbookManifest,
   casesById: ReadonlyMap<string, PublicWorkbookCorpusCase>,
@@ -133,6 +167,7 @@ function featureWitnessCasesForManifest(
 }
 
 export function buildPublicWorkbookCorpusFeatureWitnessPlan(args: {
+  readonly artifacts?: readonly PublicWorkbookArtifact[]
   readonly cacheDir: string
   readonly cases: readonly PublicWorkbookCorpusCase[]
   readonly discoveryLimit: number
@@ -141,9 +176,21 @@ export function buildPublicWorkbookCorpusFeatureWitnessPlan(args: {
   readonly manifestPath: string
   readonly stopMarkerActive: boolean
   readonly stopMarkerPath: string
+  readonly verifyCheckpointPath?: string
 }): PublicWorkbookCorpusFeatureWitnessPlan {
   const coverage = buildFeatureWitnessCoverage(args.cases).map((entry) => {
     const discoveryQuery = featureDiscoveryQueries[entry.id] ?? `${entry.label} xlsx`
+    const candidateArtifacts = featureCandidateArtifacts(entry.id, args.artifacts ?? [])
+    const cachedCandidates = candidateArtifacts.slice(0, 5).map((artifact) =>
+      featureWitnessCandidate({
+        artifact,
+        cacheDir: args.cacheDir,
+        displayRootDir: args.displayRootDir,
+        manifestPath: args.manifestPath,
+        stopMarkerActive: args.stopMarkerActive,
+        verifyCheckpointPath: args.verifyCheckpointPath ?? defaultVerifyCheckpointPath,
+      }),
+    )
     return {
       id: entry.id,
       label: entry.label,
@@ -151,6 +198,8 @@ export function buildPublicWorkbookCorpusFeatureWitnessPlan(args: {
       witnessCaseCount: entry.witnessCaseCount,
       needsWitness: entry.witnessCaseCount === 0,
       discoveryQuery,
+      cachedCandidateCount: candidateArtifacts.length,
+      cachedCandidates,
       commands: {
         discover: guardedCommand(args.stopMarkerActive, [
           'pnpm',
@@ -175,6 +224,8 @@ export function buildPublicWorkbookCorpusFeatureWitnessPlan(args: {
       label: entry.label,
       discoveryQuery: entry.discoveryQuery,
       discoverCommand: entry.commands.discover,
+      cachedCandidateCount: entry.cachedCandidateCount,
+      cachedCandidates: entry.cachedCandidates,
     }))
   return {
     schemaVersion: 1,
@@ -225,8 +276,25 @@ export function validatePublicWorkbookCorpusFeatureWitnessPlan(plan: PublicWorkb
     if (entry.needsWitness !== (entry.witnessCaseCount === 0)) {
       findings.push(`feature witness row has inconsistent needsWitness flag: ${entry.id}`)
     }
+    if (entry.cachedCandidateCount < entry.cachedCandidates.length) {
+      findings.push(`feature witness candidate count is below listed candidates: ${entry.id}`)
+    }
     if (plan.stopMarker.active && !entry.commands.discover.includes(publicCorpusStopMarkerOverrideFlag)) {
       findings.push(`feature witness discover command is missing stop-marker override: ${entry.id}`)
+    }
+    for (const candidate of entry.cachedCandidates) {
+      if (!candidate.artifactId.trim() || !candidate.fileName.trim() || !candidate.sourceUrl.trim()) {
+        findings.push(`feature witness cached candidate has empty identity: ${entry.id}`)
+      }
+      if (!candidate.verifyArtifactCommand.includes('public-workbook-corpus:verify-artifact')) {
+        findings.push(`feature witness cached candidate verify command is missing verify-artifact script: ${entry.id}`)
+      }
+      if (!candidate.verifyArtifactCommand.includes('--update-verify-checkpoint')) {
+        findings.push(`feature witness cached candidate verify command is missing checkpoint update flag: ${entry.id}`)
+      }
+      if (plan.stopMarker.active && !candidate.verifyArtifactCommand.includes(publicCorpusStopMarkerOverrideFlag)) {
+        findings.push(`feature witness cached candidate verify command is missing stop-marker override: ${entry.id}`)
+      }
     }
   }
   for (const entry of plan.missingWitnesses) {
@@ -238,6 +306,53 @@ export function validatePublicWorkbookCorpusFeatureWitnessPlan(plan: PublicWorkb
     }
   }
   return findings
+}
+
+function featureCandidateArtifacts(featureId: string, artifacts: readonly PublicWorkbookArtifact[]): PublicWorkbookArtifact[] {
+  const needles = featureCandidateNeedles[featureId] ?? []
+  if (needles.length === 0) {
+    return []
+  }
+  return artifacts
+    .filter((artifact) => {
+      const haystack = [artifact.id, artifact.fileName, artifact.sourceUrl, artifact.downloadUrl, ...(artifact.topicEvidence ?? [])]
+        .join(' ')
+        .toLocaleLowerCase('en-US')
+      return needles.some((needle) => haystack.includes(needle))
+    })
+    .toSorted(
+      (left, right) => left.byteSize - right.byteSize || left.fileName.localeCompare(right.fileName) || left.id.localeCompare(right.id),
+    )
+}
+
+function featureWitnessCandidate(args: {
+  readonly artifact: PublicWorkbookArtifact
+  readonly cacheDir: string
+  readonly displayRootDir?: string
+  readonly manifestPath: string
+  readonly stopMarkerActive: boolean
+  readonly verifyCheckpointPath: string
+}): PublicWorkbookCorpusFeatureWitnessCandidate {
+  return {
+    artifactId: args.artifact.id,
+    fileName: args.artifact.fileName,
+    byteSize: args.artifact.byteSize,
+    sourceUrl: args.artifact.sourceUrl,
+    verifyArtifactCommand: guardedCommand(args.stopMarkerActive, [
+      'pnpm',
+      'public-workbook-corpus:verify-artifact',
+      '--',
+      '--manifest',
+      commandPath(args.manifestPath, args.displayRootDir),
+      '--cache-dir',
+      commandPath(args.cacheDir, args.displayRootDir),
+      '--verify-checkpoint',
+      commandPath(args.verifyCheckpointPath, args.displayRootDir),
+      '--artifact-id',
+      args.artifact.id,
+      '--update-verify-checkpoint',
+    ]),
+  }
 }
 
 function guardedCommand(stopMarkerActive: boolean, parts: readonly string[]): string {

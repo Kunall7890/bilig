@@ -20,7 +20,13 @@ import type {
 
 describe('public workbook corpus feature witness plan', () => {
   it('reports missing pivot witnesses with a guarded targeted discovery command', () => {
+    const pivotArtifact = artifactForCase(caseWithFeatures({ pivotCount: 0 }), {
+      fileName: 'visitor-visas-granted-pivot-table.xlsx',
+      id: 'pivot-artifact-a',
+      sourceUrl: 'https://data.gov.au/data/dataset/visitor-visas-granted-pivot-table',
+    })
     const plan = buildPublicWorkbookCorpusFeatureWitnessPlan({
+      artifacts: [pivotArtifact],
       cacheDir: '/repo/.cache/public-workbook-corpus',
       cases: [caseWithFeatures({ pivotCount: 0 })],
       discoveryLimit: 10_000,
@@ -29,6 +35,7 @@ describe('public workbook corpus feature witness plan', () => {
       manifestPath: '/repo/.cache/public-workbook-corpus/manifest.json',
       stopMarkerActive: true,
       stopMarkerPath: '/repo/.agent-coordination/stop.md',
+      verifyCheckpointPath: '/repo/.cache/public-workbook-corpus/verification-checkpoint.json',
     })
     const pivotCoverage = plan.coverage.find((entry) => entry.id === 'pivots')
 
@@ -42,6 +49,16 @@ describe('public workbook corpus feature witness plan', () => {
           label: 'pivots',
           discoveryQuery: 'pivot table xlsx',
           discoverCommand: expect.stringContaining("--query 'pivot table xlsx'"),
+          cachedCandidateCount: 1,
+          cachedCandidates: [
+            {
+              artifactId: 'pivot-artifact-a',
+              fileName: 'visitor-visas-granted-pivot-table.xlsx',
+              byteSize: 1024,
+              sourceUrl: 'https://data.gov.au/data/dataset/visitor-visas-granted-pivot-table',
+              verifyArtifactCommand: expect.stringContaining('--artifact-id pivot-artifact-a'),
+            },
+          ],
         },
       ],
       recordedCaseCount: 1,
@@ -56,6 +73,11 @@ describe('public workbook corpus feature witness plan', () => {
       totalCount: 0,
       witnessCaseCount: 0,
     })
+    expect(pivotCoverage?.cachedCandidateCount).toBe(1)
+    expect(pivotCoverage?.cachedCandidates[0]?.verifyArtifactCommand).toContain('BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE=1')
+    expect(pivotCoverage?.cachedCandidates[0]?.verifyArtifactCommand).toContain('public-workbook-corpus:verify-artifact')
+    expect(pivotCoverage?.cachedCandidates[0]?.verifyArtifactCommand).toContain('--update-verify-checkpoint')
+    expect(pivotCoverage?.cachedCandidates[0]?.verifyArtifactCommand).toContain('--allow-active-stop-marker')
     expect(pivotCoverage?.commands.discover).toContain('BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE=1')
     expect(pivotCoverage?.commands.discover).toContain('public-workbook-corpus:discover')
     expect(pivotCoverage?.commands.discover).toContain("--query 'pivot table xlsx'")
@@ -173,19 +195,22 @@ function caseWithFeatures(featureCounts: Partial<PublicWorkbookFeatureCounts>): 
   }
 }
 
-function artifactForCase(entry: PublicWorkbookCorpusCase): PublicWorkbookArtifact {
+function artifactForCase(
+  entry: PublicWorkbookCorpusCase,
+  overrides: Partial<Pick<PublicWorkbookArtifact, 'byteSize' | 'cachePath' | 'fileName' | 'id' | 'sourceUrl'>> = {},
+): PublicWorkbookArtifact {
   return {
-    id: entry.id,
+    id: overrides.id ?? entry.id,
     sourceId: entry.sourceId,
-    sourceUrl: entry.sourceUrl,
-    downloadUrl: entry.sourceUrl,
-    cachePath: `.cache/public-workbook-corpus/${entry.id}.xlsx`,
-    fileName: entry.fileName,
+    sourceUrl: overrides.sourceUrl ?? entry.sourceUrl,
+    downloadUrl: overrides.sourceUrl ?? entry.sourceUrl,
+    cachePath: overrides.cachePath ?? `.cache/public-workbook-corpus/${overrides.id ?? entry.id}.xlsx`,
+    fileName: overrides.fileName ?? entry.fileName,
     sha256: entry.sha256,
-    byteSize: entry.byteSize,
+    byteSize: overrides.byteSize ?? entry.byteSize,
     license: entry.license,
     fetchedAt: '2026-05-08T10:00:00.000Z',
-    workbookFingerprint: `${entry.id}-fingerprint`,
+    workbookFingerprint: `${overrides.id ?? entry.id}-fingerprint`,
   }
 }
 
