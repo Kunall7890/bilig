@@ -76,15 +76,7 @@ export function createEngineSnapshotService(args: {
           })
           const calculationSettings = args.state.workbook.getCalculationSettings()
           const volatileContext = args.state.workbook.getVolatileContext()
-          const tables = args.state.workbook.listTables().map((table) => ({
-            name: table.name,
-            sheetName: table.sheetName,
-            startAddress: table.startAddress,
-            endAddress: table.endAddress,
-            columnNames: [...table.columnNames],
-            headerRow: table.headerRow,
-            totalsRow: table.totalsRow,
-          }))
+          const tables = args.state.workbook.listTables()
           const spills = args.state.workbook.listSpills().map(({ sheetName, address, rows, cols }) => ({ sheetName, address, rows, cols }))
           const referencedStyleIds = new Set<string>()
           const referencedFormatIds = new Set<string>()

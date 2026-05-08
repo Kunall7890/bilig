@@ -311,6 +311,7 @@ export interface WorkbookTableSnapshot {
   columnNames: string[]
   headerRow: boolean
   totalsRow: boolean
+  sortState?: string
 }
 
 export interface WorkbookAxisMetadataSnapshot {

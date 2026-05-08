@@ -44,6 +44,31 @@ describe('run-vitest wrapper arguments', () => {
     ])
   })
 
+  it('keeps broad corpus CI runs in one worker-bounded batch', () => {
+    const files = [
+      'scripts/__tests__/public-workbook-corpus.test.ts',
+      'scripts/__tests__/public-workbook-corpus-cli.test.ts',
+      'scripts/__tests__/public-workbook-corpus-evidence-refresh.test.ts',
+      'scripts/__tests__/public-workbook-corpus-completion-audit.test.ts',
+      'scripts/__tests__/public-workbook-corpus-completion-audit-roundtrip.test.ts',
+      'scripts/__tests__/public-workbook-corpus-feature-witness-plan.test.ts',
+      'scripts/__tests__/public-workbook-corpus-financial-plan.test.ts',
+      'scripts/__tests__/public-workbook-corpus-links.test.ts',
+      'scripts/__tests__/public-workbook-corpus-resource-limit-plan.test.ts',
+      'scripts/__tests__/public-workbook-corpus-missing.test.ts',
+      'scripts/__tests__/public-workbook-corpus-verify-checkpoint.test.ts',
+      'scripts/__tests__/public-workbook-corpus-workbook.test.ts',
+      'packages/excel-import/src/__tests__/xlsx-formula-cache-roundtrip.test.ts',
+      'packages/excel-import/src/__tests__/xlsx-table-sort-state-roundtrip.test.ts',
+    ]
+
+    expect(
+      buildVitestArgBatches(['--run', ...files], {
+        BILIG_CI_PROFILE: 'fast',
+      }),
+    ).toEqual([['--run', ...files, '--maxWorkers', '1']])
+  })
+
   it('allows CI file chunk size overrides', () => {
     expect(
       buildVitestArgBatches(['--run', 'a.test.ts', 'b.test.ts', 'c.test.ts'], {

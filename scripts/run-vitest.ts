@@ -60,7 +60,8 @@ function splitVitestRunArgsForCi(args: readonly string[], env: NodeJS.ProcessEnv
     return [[...args]]
   }
 
-  const chunkSize = readPositiveInt(env['BILIG_VITEST_FILE_CHUNK_SIZE']) ?? DEFAULT_CI_FILE_CHUNK_SIZE
+  const chunkSize =
+    readPositiveInt(env['BILIG_VITEST_FILE_CHUNK_SIZE']) ?? (isBroadCorpusVitestRun(args) ? runArgs.length : DEFAULT_CI_FILE_CHUNK_SIZE)
   if (runArgs.length <= chunkSize) {
     return [[...args]]
   }

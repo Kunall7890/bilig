@@ -77,7 +77,7 @@ export function cloneDefinedNameValue(value: WorkbookDefinedNameValueSnapshot): 
 }
 
 export function clonePropertyRecord(record: WorkbookPropertyRecord): WorkbookPropertyRecord {
-  return { key: record.key, value: record.value }
+  return structuredClone(record)
 }
 
 export function cloneWorkbookProtectionRecord(record: WorkbookProtectionRecord): WorkbookProtectionRecord {
@@ -85,34 +85,15 @@ export function cloneWorkbookProtectionRecord(record: WorkbookProtectionRecord):
 }
 
 export function cloneMacroPayloadRecord(record: WorkbookMacroPayloadRecord): WorkbookMacroPayloadRecord {
-  return {
-    kind: record.kind,
-    storage: record.storage,
-    dataBase64: record.dataBase64,
-    byteLength: record.byteLength,
-    preservedWithoutExecution: record.preservedWithoutExecution,
-    ...(record.workbookCodeName ? { workbookCodeName: record.workbookCodeName } : {}),
-    ...(record.sheetCodeNames ? { sheetCodeNames: record.sheetCodeNames.map((entry) => ({ ...entry })) } : {}),
-  }
+  return structuredClone(record)
 }
 
 export function cloneTableRecord(record: WorkbookTableRecord): WorkbookTableRecord {
-  return {
-    name: record.name,
-    sheetName: record.sheetName,
-    startAddress: record.startAddress,
-    endAddress: record.endAddress,
-    columnNames: [...record.columnNames],
-    headerRow: record.headerRow,
-    totalsRow: record.totalsRow,
-  }
+  return structuredClone(record)
 }
 
 export function cloneFilterRecord(record: WorkbookFilterRecord): WorkbookFilterRecord {
-  return {
-    sheetName: record.sheetName,
-    range: structuredClone(record.range),
-  }
+  return structuredClone(record)
 }
 
 export function cloneSortKeyRecord(record: WorkbookSortKeyRecord): WorkbookSortKeyRecord {
@@ -120,11 +101,7 @@ export function cloneSortKeyRecord(record: WorkbookSortKeyRecord): WorkbookSortK
 }
 
 export function cloneSortRecord(record: WorkbookSortRecord): WorkbookSortRecord {
-  return {
-    sheetName: record.sheetName,
-    range: { ...record.range },
-    keys: record.keys.map(cloneSortKeyRecord),
-  }
+  return structuredClone(record)
 }
 
 function cloneValidationListSource(source: WorkbookValidationListSourceSnapshot): WorkbookValidationListSourceSnapshot {
@@ -251,52 +228,19 @@ export function cloneConditionalFormatRule(rule: WorkbookConditionalFormatRuleSn
 }
 
 export function cloneConditionalFormatRecord(record: WorkbookConditionalFormatRecord): WorkbookConditionalFormatRecord {
-  const cloned: WorkbookConditionalFormatRecord = {
-    id: record.id,
-    range: { ...record.range },
-    rule: cloneConditionalFormatRule(record.rule),
-    style: structuredClone(record.style),
-  }
-  if (record.stopIfTrue !== undefined) {
-    cloned.stopIfTrue = record.stopIfTrue
-  }
-  if (record.priority !== undefined) {
-    cloned.priority = record.priority
-  }
-  return cloned
+  return structuredClone(record)
 }
 
 export function cloneSheetProtectionRecord(record: WorkbookSheetProtectionRecord): WorkbookSheetProtectionRecord {
-  return {
-    sheetName: record.sheetName,
-    ...(record.hideFormulas !== undefined ? { hideFormulas: record.hideFormulas } : {}),
-    ...(record.xmlAttributes ? { xmlAttributes: record.xmlAttributes.map((attribute) => ({ ...attribute })) } : {}),
-  }
+  return structuredClone(record)
 }
 
 export function cloneRangeProtectionRecord(record: WorkbookRangeProtectionRecord): WorkbookRangeProtectionRecord {
-  return {
-    id: record.id,
-    range: { ...record.range },
-    ...(record.hideFormulas !== undefined ? { hideFormulas: record.hideFormulas } : {}),
-  }
+  return structuredClone(record)
 }
 
 export function cloneCommentEntryRecord(record: WorkbookCommentEntryRecord): WorkbookCommentEntryRecord {
-  const cloned: WorkbookCommentEntryRecord = {
-    id: record.id,
-    body: record.body,
-  }
-  if (record.authorUserId !== undefined) {
-    cloned.authorUserId = record.authorUserId
-  }
-  if (record.authorDisplayName !== undefined) {
-    cloned.authorDisplayName = record.authorDisplayName
-  }
-  if (record.createdAtUnixMs !== undefined) {
-    cloned.createdAtUnixMs = record.createdAtUnixMs
-  }
-  return cloned
+  return structuredClone(record)
 }
 
 export function cloneCommentThreadRecord(record: WorkbookCommentThreadRecord): WorkbookCommentThreadRecord {
@@ -343,35 +287,11 @@ export function rangeProtectionKey(id: string): string {
 }
 
 export function clonePivotRecord(record: WorkbookPivotRecord): WorkbookPivotRecord {
-  return {
-    ...record,
-    source: { ...record.source },
-    groupBy: [...record.groupBy],
-    values: record.values.map((value) => ({ ...value })),
-  }
+  return structuredClone(record)
 }
 
 export function cloneChartRecord(record: WorkbookChartRecord): WorkbookChartRecord {
-  const cloned: WorkbookChartRecord = {
-    ...record,
-    source: { ...record.source },
-  }
-  if (record.seriesOrientation !== undefined) {
-    cloned.seriesOrientation = record.seriesOrientation
-  }
-  if (record.firstRowAsHeaders !== undefined) {
-    cloned.firstRowAsHeaders = record.firstRowAsHeaders
-  }
-  if (record.firstColumnAsLabels !== undefined) {
-    cloned.firstColumnAsLabels = record.firstColumnAsLabels
-  }
-  if (record.title !== undefined) {
-    cloned.title = record.title
-  }
-  if (record.legendPosition !== undefined) {
-    cloned.legendPosition = record.legendPosition
-  }
-  return cloned
+  return structuredClone(record)
 }
 
 export function cloneImageRecord(record: WorkbookImageRecord): WorkbookImageRecord {
@@ -411,12 +331,7 @@ export function cloneShapeRecord(record: WorkbookShapeRecord): WorkbookShapeReco
 }
 
 export function cloneSpillRecord(record: WorkbookSpillRecord): WorkbookSpillRecord {
-  return {
-    sheetName: record.sheetName,
-    address: record.address,
-    rows: record.rows,
-    cols: record.cols,
-  }
+  return structuredClone(record)
 }
 
 export { cloneMergeRangeRecord, mergeRangeKey }

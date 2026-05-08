@@ -120,9 +120,14 @@ function exportSortConditionXml(sort: WorkbookSortSnapshot, key: WorkbookSortSna
   return `<sortCondition${descending} ref="${escapeXml(ref)}"/>`
 }
 
+export function readSortStateXml(xml: string): string | undefined {
+  return /<sortState\b[^>]*(?:\/>|>[\s\S]*?<\/sortState>)/u.exec(xml)?.[0]
+}
+
 function insertWorksheetSortState(sheetXml: string, sortXml: string): string {
-  if (/<sortState\b/u.test(sheetXml)) {
-    return sheetXml.replace(/<sortState\b[^>]*(?:\/>|>[\s\S]*?<\/sortState>)/u, sortXml)
+  const existing = readSortStateXml(sheetXml)
+  if (existing) {
+    return sheetXml.replace(existing, sortXml)
   }
 
   let insertIndex = sheetXml.indexOf('</worksheet>')

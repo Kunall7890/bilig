@@ -63,7 +63,6 @@ import {
   type WorkbookSortRecord,
   type WorkbookShapeRecord,
   type WorkbookSpillRecord,
-  type WorkbookTableRecord,
 } from './workbook-metadata-types.js'
 import type { WorkbookMetadataService } from './workbook-metadata-service-contract.js'
 import { canonicalMergeRangeRef, isSingleCellMergeRange, rangeContainsAddress, rangesIntersect } from './workbook-merge-records.js'
@@ -350,15 +349,8 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
     },
     setTable(record) {
       return metadataEffect('Failed to set table metadata', () => {
-        const stored: WorkbookTableRecord = {
-          name: record.name.trim(),
-          sheetName: record.sheetName,
-          startAddress: record.startAddress,
-          endAddress: record.endAddress,
-          columnNames: [...record.columnNames],
-          headerRow: record.headerRow,
-          totalsRow: record.totalsRow,
-        }
+        const stored = cloneTableRecord(record)
+        stored.name = stored.name.trim()
         metadata.tables.set(tableKey(stored.name), stored)
         return cloneTableRecord(stored)
       })

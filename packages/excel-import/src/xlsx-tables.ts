@@ -3,6 +3,7 @@ import { XMLParser } from 'fast-xml-parser'
 import * as XLSX from 'xlsx'
 
 import type { WorkbookSnapshot, WorkbookTableSnapshot } from '@bilig/protocol'
+import { readSortStateXml } from './xlsx-sorts.js'
 import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 type ZipEntries = Record<string, Uint8Array>
@@ -192,6 +193,7 @@ function buildTableXml(table: WorkbookTableSnapshot, tableId: number): string {
       displayName,
     )}" ref="${escapeXml(ref)}" headerRowCount="${table.headerRow ? '1' : '0'}" totalsRowShown="${table.totalsRow ? '1' : '0'}">`,
     table.headerRow ? `<autoFilter ref="${escapeXml(ref)}"/>` : '',
+    table.sortState ?? '',
     `<tableColumns count="${String(columns.length)}">`,
     ...columns.map((columnName, index) => `<tableColumn id="${String(index + 1)}" name="${escapeXml(columnName)}"/>`),
     '</tableColumns>',
@@ -273,6 +275,7 @@ function parseTableXml(sheetName: string, xml: string): WorkbookTableSnapshot | 
     }
     return [entry['name'].trim()]
   })
+  const sortState = readSortStateXml(xml)
   return {
     name,
     sheetName,
@@ -281,6 +284,7 @@ function parseTableXml(sheetName: string, xml: string): WorkbookTableSnapshot | 
     columnNames,
     headerRow: table['headerRowCount'] !== '0',
     totalsRow: table['totalsRowShown'] === '1' || table['totalsRowCount'] === '1',
+    ...(sortState ? { sortState } : {}),
   }
 }
 
