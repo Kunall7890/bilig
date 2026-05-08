@@ -69,6 +69,7 @@ const financialCheckpointArtifact = '.cache/public-workbook-corpus-financial/ver
 const defaultFinancialManifestPath = resolve(rootDir, financialManifestArtifact)
 const defaultFinancialScorecardPath = resolve(rootDir, financialScorecardArtifact)
 const defaultFinancialVerifyCheckpointPath = resolve(rootDir, financialCheckpointArtifact)
+const roundTripSkippedEvidencePrefix = 'Round-trip projection skipped because'
 function main(): void {
   const audit = buildPublicWorkbookCorpusCompletionAuditFromArgs()
   const requireComplete = readFlagArg('--require-complete')
@@ -612,6 +613,7 @@ const requirementBuilders: readonly ((context: RequirementContext) => PublicWork
         context.currentState.cachedArtifactCount >= context.currentState.targetWorkbookCount,
       evidence: [
         `supported round-trip passed cases: ${String(context.currentState.recordedRoundTripPassedCount)}`,
+        `round-trip skipped cases: ${String(context.currentState.recordedRoundTripSkippedCount)}`,
         `round-trip failures among recorded cases: ${String(context.currentState.recordedRoundTripFailureCount)}`,
       ],
       gaps: [
@@ -819,8 +821,8 @@ function buildAuditState(
     recordedFormulaOracleComparisonCount: recordedCases.reduce((sum, entry) => sum + entry.validation.formulaOracleComparisons, 0),
     recordedFormulaOracleMismatchCount: recordedCases.reduce((sum, entry) => sum + entry.validation.formulaOracleMismatches.length, 0),
     recordedStructuralSmokeRunCount: recordedCases.filter((entry) => entry.validation.structuralSmokePassed !== null).length,
-    recordedRoundTripPassedCount: recordedCases.filter((entry) => entry.validation.roundTripPassed && entry.status !== 'unsupported')
-      .length,
+    recordedRoundTripPassedCount: recordedCases.filter((entry) => isSupportedRoundTripSuccess(entry)).length,
+    recordedRoundTripSkippedCount: recordedCases.filter((entry) => hasRoundTripSkippedEvidence(entry)).length,
     recordedRoundTripFailureCount: recordedCases.filter((entry) => !entry.validation.roundTripPassed && entry.status !== 'unsupported')
       .length,
   }
@@ -828,6 +830,14 @@ function buildAuditState(
 
 function isXlsxArtifact(fileName: string, cachePath: string): boolean {
   return fileName.toLowerCase().endsWith('.xlsx') || cachePath.toLowerCase().endsWith('.xlsx')
+}
+
+function isSupportedRoundTripSuccess(entry: PublicWorkbookCorpusCase): boolean {
+  return entry.validation.roundTripPassed && entry.status !== 'unsupported' && !hasRoundTripSkippedEvidence(entry)
+}
+
+function hasRoundTripSkippedEvidence(entry: PublicWorkbookCorpusCase): boolean {
+  return entry.evidence.some((line) => line.startsWith(roundTripSkippedEvidencePrefix))
 }
 
 function readRecordedCases(args: {

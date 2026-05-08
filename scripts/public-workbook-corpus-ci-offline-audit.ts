@@ -95,6 +95,7 @@ const ciOfflineCachedCorpusScriptPolicies: readonly PublicWorkbookCorpusCiPackag
       'scripts/__tests__/public-workbook-corpus.test.ts',
       'scripts/__tests__/public-workbook-corpus-cli.test.ts',
       'scripts/__tests__/public-workbook-corpus-completion-audit.test.ts',
+      'scripts/__tests__/public-workbook-corpus-completion-audit-roundtrip.test.ts',
       'scripts/__tests__/public-workbook-corpus-feature-witness-plan.test.ts',
       'scripts/__tests__/public-workbook-corpus-financial-plan.test.ts',
       'scripts/__tests__/public-workbook-corpus-links.test.ts',

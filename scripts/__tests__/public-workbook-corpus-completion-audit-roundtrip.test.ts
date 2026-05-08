@@ -41,6 +41,38 @@ describe('public workbook corpus completion audit round-trip evidence', () => {
     })
     expect(validatePublicWorkbookCorpusCompletionAudit(audit)).toEqual([])
   })
+
+  it('does not count explicit round-trip skip evidence as a supported round-trip success', () => {
+    const artifact = workbookArtifact('workbook-a')
+    const audit = buildPublicWorkbookCorpusCompletionAudit({
+      generatedAt: '2026-05-08T00:00:00.000Z',
+      hyperformulaSecondaryCorpus: hyperFormulaSecondaryCorpusFixture(),
+      manifest: manifestWithArtifacts([artifact], 1),
+      recordedCases: [skippedRoundTripCase(artifact)],
+      status: statusFixture({
+        targetWorkbookCount: 1,
+        sourceCount: 1,
+        cachedArtifactCount: 1,
+        scorecardCaseCount: 1,
+        checkpointCaseCount: 0,
+        recordedManifestArtifactCount: 1,
+        missingManifestArtifactCount: 0,
+        recordedPassedCaseCount: 1,
+        recordedUnsupportedCaseCount: 0,
+        scorecardCoversManifest: true,
+        targetComplete: true,
+        gaps: [],
+      }),
+      stopMarkerActive: false,
+    })
+
+    expect(requirement(audit.checklist, 'roundtrip-supported-workbooks')).toMatchObject({
+      passed: false,
+      gaps: expect.arrayContaining(['no supported round-trip successes recorded']),
+      evidence: expect.arrayContaining(['supported round-trip passed cases: 0', 'round-trip skipped cases: 1']),
+    })
+    expect(validatePublicWorkbookCorpusCompletionAudit(audit)).toEqual([])
+  })
 })
 
 function requirement(
@@ -142,6 +174,71 @@ function resourceLimitedUnsupportedCase(artifact: PublicWorkbookArtifact): Publi
   }
 }
 
+function skippedRoundTripCase(artifact: PublicWorkbookArtifact): PublicWorkbookCorpusCase {
+  return {
+    ...baseSupportedCase(artifact),
+    evidence: [
+      `source=${artifact.sourceUrl}`,
+      `license=${artifact.license.title}`,
+      `sha256=${artifact.sha256}`,
+      'Round-trip projection skipped because external workbook links are not recalculated during XLSX import.',
+    ],
+  }
+}
+
+function baseSupportedCase(artifact: PublicWorkbookArtifact): PublicWorkbookCorpusCase {
+  return {
+    id: artifact.id,
+    sourceId: artifact.sourceId,
+    sourceUrl: artifact.sourceUrl,
+    fileName: artifact.fileName,
+    sha256: artifact.sha256,
+    byteSize: artifact.byteSize,
+    license: artifact.license,
+    status: 'passed',
+    passed: true,
+    featureCounts: {
+      sheetCount: 1,
+      cellCount: 1,
+      formulaCellCount: 0,
+      valueCellCount: 1,
+      definedNameCount: 0,
+      tableCount: 0,
+      chartCount: 0,
+      pivotCount: 0,
+      mergeCount: 0,
+      styleRangeCount: 1,
+      conditionalFormatCount: 0,
+      dataValidationCount: 0,
+      macroPayloadCount: 0,
+      warningCount: 0,
+    },
+    workbookMetadata: {
+      workbookName: artifact.fileName,
+      sheetNames: ['Sheet1'],
+      dimensions: [
+        {
+          sheetName: 'Sheet1',
+          rowCount: 1,
+          columnCount: 1,
+          nonEmptyCellCount: 1,
+          usedRange: { startRow: 0, startColumn: 0, endRow: 0, endColumn: 0 },
+        },
+      ],
+    },
+    validation: {
+      importPassed: true,
+      formulaOraclePassed: true,
+      formulaOracleComparisons: 0,
+      formulaOracleMismatches: [],
+      roundTripPassed: true,
+      structuralSmokePassed: true,
+    },
+    unsupportedFeatureClassifications: [],
+    evidence: [`source=${artifact.sourceUrl}`, `license=${artifact.license.title}`, `sha256=${artifact.sha256}`],
+  }
+}
+
 function statusFixture(input: {
   readonly targetWorkbookCount: number
   readonly sourceCount: number
@@ -150,6 +247,7 @@ function statusFixture(input: {
   readonly checkpointCaseCount: number
   readonly recordedManifestArtifactCount: number
   readonly missingManifestArtifactCount: number
+  readonly recordedPassedCaseCount?: number
   readonly recordedUnsupportedCaseCount: number
   readonly scorecardCoversManifest: boolean
   readonly targetComplete: boolean
@@ -164,7 +262,7 @@ function statusFixture(input: {
     recordedManifestArtifactCount: input.recordedManifestArtifactCount,
     missingManifestArtifactCount: input.missingManifestArtifactCount,
     staleRecordedVerificationCount: 0,
-    recordedPassedCaseCount: 0,
+    recordedPassedCaseCount: input.recordedPassedCaseCount ?? 0,
     recordedUnsupportedCaseCount: input.recordedUnsupportedCaseCount,
     recordedFailedCaseCount: 0,
     recordedErrorCaseCount: 0,
