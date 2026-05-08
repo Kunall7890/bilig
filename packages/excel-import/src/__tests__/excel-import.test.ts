@@ -98,6 +98,21 @@ function buildExternalLinkCacheWorkbook(): Uint8Array {
   return zipSync(zip)
 }
 
+function buildUnsupportedFunctionCacheWorkbook(): Uint8Array {
+  const workbook = XLSX.utils.book_new()
+  const sheet = XLSX.utils.aoa_to_sheet([[]])
+  sheet.A1 = {
+    t: 'n',
+    f: '_xldudf_WISEPRICE(B1,"Shares Outstanding")',
+    v: 14935800000,
+  }
+  sheet.B1 = { t: 's', v: 'AAPL' }
+  sheet.C1 = { t: 's', f: '_FV(B1,"Ticker symbol",TRUE)', v: 'AAPL' }
+  sheet['!ref'] = 'A1:C1'
+  XLSX.utils.book_append_sheet(workbook, sheet, 'Model')
+  return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+}
+
 function buildBinaryWorkbook(): Uint8Array {
   const workbook = XLSX.utils.book_new()
   const sheet = XLSX.utils.aoa_to_sheet([
@@ -309,6 +324,20 @@ describe('excel import', () => {
     engine.recalculateNow()
 
     expect(engine.getCellValue('Report', 'A1')).toEqual({ tag: ValueTag.Number, value: 5 })
+  })
+
+  it('retains cached values for imported formula cells that use unavailable add-in functions', () => {
+    const imported = importXlsx(buildUnsupportedFunctionCacheWorkbook(), 'udf-cache.xlsx')
+    const sheet = imported.snapshot.sheets[0]
+
+    expect(sheet?.cells.find((cell) => cell.address === 'A1')).toMatchObject({
+      formula: '_xldudf_WISEPRICE(B1,"Shares Outstanding")',
+      value: 14935800000,
+    })
+    expect(sheet?.cells.find((cell) => cell.address === 'C1')).toMatchObject({
+      formula: '_FV(B1,"Ticker symbol",TRUE)',
+      value: 'AAPL',
+    })
   })
 
   it('drops degenerate single-cell merge records during import', async () => {

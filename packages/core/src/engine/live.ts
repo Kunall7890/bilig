@@ -887,6 +887,7 @@ export function createEngineServiceRuntime(args: {
       }),
     hydrateTemplateBank: (templates) => formulaTemplates.hydrateTemplates(templates),
     resolveTemplateById: (templateId, source, row, col) => formulaTemplates.resolveTrustedByTemplateId(templateId, source, row, col),
+    resolveTemplateForCell: (source, row, col) => formulaTemplates.resolveForCell(source, row, col),
     beginEvaluationBudget: (startedAtMs) => args.state.beginEvaluationBudget(startedAtMs),
     endEvaluationBudget: () => args.state.endEvaluationBudget(),
     checkEvaluationBudget: (stepCost) => args.state.checkEvaluationBudget(stepCost),

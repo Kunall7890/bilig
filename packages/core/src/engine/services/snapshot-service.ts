@@ -34,6 +34,7 @@ export function createEngineSnapshotService(args: {
   readonly checkEvaluationBudget?: (stepCost?: number) => void
   readonly initializeCellFormulasAt: (refs: readonly EngineCellMutationRef[], potentialNewCells?: number) => void
   readonly initializeFormulaSourcesAt?: (refs: EngineFormulaSourceRefs, potentialNewCells?: number) => void
+  readonly resolveTemplateForCell?: (source: string, row: number, col: number) => FormulaTemplateResolution
   readonly initializePreparedCellFormulasAt?: (refs: readonly PreparedFormulaInitializationRef[], potentialNewCells?: number) => void
   readonly initializeHydratedPreparedCellFormulasAt?: (
     refs: readonly HydratedPreparedFormulaInitializationRef[],
@@ -301,6 +302,10 @@ export function createEngineSnapshotService(args: {
               ...(args.checkEvaluationBudget ? { checkEvaluationBudget: args.checkEvaluationBudget } : {}),
               initializeCellFormulasAt: args.initializeCellFormulasAt,
               ...(args.initializeFormulaSourcesAt ? { initializeFormulaSourcesAt: args.initializeFormulaSourcesAt } : {}),
+              ...(args.resolveTemplateForCell ? { resolveTemplateForCell: args.resolveTemplateForCell } : {}),
+              ...(args.initializeHydratedPreparedCellFormulasAt
+                ? { initializeHydratedPreparedCellFormulasAt: args.initializeHydratedPreparedCellFormulasAt }
+                : {}),
             })
             args.checkEvaluationBudget?.()
             materializeImportedPivots()

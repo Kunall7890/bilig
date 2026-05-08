@@ -13,7 +13,6 @@ import type {
   CellStyleProtectionSnapshot,
   CellStyleRecord,
   CellVerticalAlignment,
-  SheetStyleRangeSnapshot,
   WorkbookAxisEntrySnapshot,
   WorkbookMetadataSnapshot,
   WorkbookSnapshot,
@@ -31,17 +30,27 @@ import { readImportedWorkbookPivots } from './xlsx-pivots.js'
 import { readImportedWorkbookProtectedRanges } from './xlsx-protected-ranges.js'
 import { readImportedWorkbookSheetProtections } from './xlsx-sheet-protection.js'
 import { readImportedWorkbookSorts } from './xlsx-sorts.js'
+import { mergeStyleRuns, styleRunsToRanges, type HorizontalStyleRun, type RectangularStyleRun } from './xlsx-style-runs.js'
 import { readImportedWorkbookFileStyles, readImportedWorkbookSheetDimensions } from './xlsx-styles.js'
 import { readImportedWorkbookSheetTabColors } from './xlsx-tab-colors.js'
 import { readImportedWorkbookTables } from './xlsx-tables.js'
 import { readImportedWorkbookDataValidations } from './xlsx-validations.js'
 import { readImportedWorkbookProperties } from './xlsx-workbook-properties.js'
+import {
+  createSheetPreview,
+  normalizeCsvSheetName,
+  normalizeWorkbookName,
+  toDisplayText,
+  toLiteralInput,
+  type ImportedWorkbookSheetPreview,
+} from './workbook-import-helpers.js'
 import { readImportedExternalLinkCaches, translateImportedFormulaExternalReferences } from './xlsx-external-references.js'
 import { translateImportedFormulaStructuredReferences } from './xlsx-formula-translation.js'
 import { createPreservedVbaProjectPayload, type PreservedVbaProjectCodeNames } from './xlsx-macros.js'
 import { worksheetCellAt, worksheetCellEntries, worksheetCellEntriesAtAddresses, worksheetCellRecords } from './xlsx-worksheet-cells.js'
 
 export { exportXlsx } from './xlsx-export.js'
+export type { ImportedWorkbookSheetPreview } from './workbook-import-helpers.js'
 
 export const XLSX_CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 export const XLSB_CONTENT_TYPE = 'application/vnd.ms-excel.sheet.binary.macroenabled.12'
@@ -59,8 +68,6 @@ export function normalizeWorkbookImportContentType(contentType: string): Workboo
   return null
 }
 
-const PREVIEW_ROW_LIMIT = 8
-const PREVIEW_COLUMN_LIMIT = 6
 const largeWorkbookStyleCandidateThreshold = 100_000
 const xlsxWorksheetXmlPathPattern = /^xl\/worksheets\/[^/]+\.xml$/u
 
@@ -80,14 +87,6 @@ export interface ImportedWorkbookPreview {
   sheetCount: number
   sheets: readonly ImportedWorkbookSheetPreview[]
   warnings: readonly string[]
-}
-
-export interface ImportedWorkbookSheetPreview {
-  name: string
-  rowCount: number
-  columnCount: number
-  nonEmptyCellCount: number
-  previewRows: readonly (readonly string[])[]
 }
 
 export type CsvImportOptions = CsvParseOptions
@@ -112,17 +111,6 @@ interface SheetRowInfo {
   index: number
   size: number | null
   hidden: boolean
-}
-
-interface HorizontalStyleRun {
-  styleId: string
-  startColumn: number
-  endColumn: number
-}
-
-interface RectangularStyleRun extends HorizontalStyleRun {
-  startRow: number
-  endRow: number
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -158,112 +146,6 @@ function stripStyleOnlyBlankCellsForSheetJs(data: Uint8Array, zip: Unzipped): Ui
     changed = true
   }
   return changed ? zipSync(zip) : data
-}
-
-function styleRunKey(run: Pick<RectangularStyleRun, 'styleId' | 'startColumn' | 'endColumn'>): string {
-  return `${run.styleId}:${String(run.startColumn)}:${String(run.endColumn)}`
-}
-
-function mergeStyleRuns(
-  rowIndex: number,
-  rowRuns: readonly HorizontalStyleRun[],
-  openRunsByKey: ReadonlyMap<string, RectangularStyleRun>,
-  styleRuns: RectangularStyleRun[],
-): Map<string, RectangularStyleRun> {
-  const nextOpenRunsByKey = new Map<string, RectangularStyleRun>()
-  for (const rowRun of rowRuns) {
-    const key = styleRunKey(rowRun)
-    const openRun = openRunsByKey.get(key)
-    if (openRun && openRun.endRow === rowIndex - 1) {
-      openRun.endRow = rowIndex
-      nextOpenRunsByKey.set(key, openRun)
-      continue
-    }
-    const nextRun: RectangularStyleRun = {
-      ...rowRun,
-      startRow: rowIndex,
-      endRow: rowIndex,
-    }
-    styleRuns.push(nextRun)
-    nextOpenRunsByKey.set(key, nextRun)
-  }
-  return nextOpenRunsByKey
-}
-
-function styleRunsToRanges(sheetName: string, styleRuns: readonly RectangularStyleRun[]): SheetStyleRangeSnapshot[] {
-  return styleRuns.map((run) => ({
-    range: {
-      sheetName,
-      startAddress: XLSX.utils.encode_cell({ r: run.startRow, c: run.startColumn }),
-      endAddress: XLSX.utils.encode_cell({ r: run.endRow, c: run.endColumn }),
-    },
-    styleId: run.styleId,
-  }))
-}
-
-function normalizeWorkbookName(fileName: string): string {
-  const trimmed = fileName.trim()
-  if (trimmed.length === 0) {
-    return 'Imported workbook'
-  }
-  return trimmed.replace(/\.(xlsx|xlsm|xlsb|csv)$/i, '') || 'Imported workbook'
-}
-
-function normalizeCsvSheetName(workbookName: string): string {
-  const trimmed = workbookName.trim()
-  return trimmed.length > 0 ? trimmed : 'Sheet1'
-}
-
-function toLiteralInput(value: unknown) {
-  if (value === null || value === undefined) {
-    return undefined
-  }
-  if (typeof value === 'string') {
-    return value.replace(/\r\n?/gu, '\n')
-  }
-  if (typeof value === 'number' || typeof value === 'boolean') {
-    return value
-  }
-  if (value instanceof Date) {
-    return value.getTime()
-  }
-  return undefined
-}
-
-function toDisplayText(value: string | number | boolean | undefined): string {
-  if (value === undefined) {
-    return ''
-  }
-  if (typeof value === 'boolean') {
-    return value ? 'TRUE' : 'FALSE'
-  }
-  return String(value)
-}
-
-function createSheetPreview(input: {
-  name: string
-  rowCount: number
-  columnCount: number
-  nonEmptyCellCount: number
-  readCellText: (row: number, col: number) => string
-}): ImportedWorkbookSheetPreview {
-  const previewRows: string[][] = []
-  const previewRowCount = Math.min(input.rowCount, PREVIEW_ROW_LIMIT)
-  const previewColumnCount = Math.min(input.columnCount, PREVIEW_COLUMN_LIMIT)
-  for (let row = 0; row < previewRowCount; row += 1) {
-    const values: string[] = []
-    for (let col = 0; col < previewColumnCount; col += 1) {
-      values.push(input.readCellText(row, col))
-    }
-    previewRows.push(values)
-  }
-  return {
-    name: input.name,
-    rowCount: input.rowCount,
-    columnCount: input.columnCount,
-    nonEmptyCellCount: input.nonEmptyCellCount,
-    previewRows,
-  }
 }
 
 function createWorkbookPreview(input: {
@@ -828,6 +710,10 @@ function importSheetJsWorkbook(
           ownerAddress: address,
           tables: importedTables,
         })
+        const cachedLiteral = toLiteralInput(cell['v'])
+        if (cachedLiteral !== undefined) {
+          nextCell.value = cachedLiteral
+        }
       } else {
         const literal = toLiteralInput(cell['v'])
         if (literal !== undefined) {

@@ -21,9 +21,10 @@ import type {
   EngineFormulaSourceRefTable,
 } from '../cell-mutations-at.js'
 import { CellFlags } from '../cell-store.js'
-import { writeLiteralToCellStore } from '../engine-value-utils.js'
+import { literalToValue, writeLiteralToCellStore } from '../engine-value-utils.js'
 import type { FormulaInstanceSnapshot } from '../formula/formula-instance-table.js'
 import type { FormulaTemplateResolution, FormulaTemplateSnapshot } from '../formula/template-bank.js'
+import { collectDefinedFormulaNames, formulaShouldUseCachedUnsupportedFunctionValue } from './unsupported-formula-cache.js'
 import type { LogicalCellLocation } from '../storage/cell-page-store.js'
 import type { StringPool } from '../string-pool.js'
 import type { SheetRecord, WorkbookStore } from '../workbook-store.js'
@@ -91,6 +92,11 @@ export interface WorkbookSnapshotRestoreArgs {
   readonly checkEvaluationBudget?: (stepCost?: number) => void
   readonly initializeCellFormulasAt: (refs: readonly EngineCellMutationRef[], potentialNewCells?: number) => void
   readonly initializeFormulaSourcesAt?: (refs: EngineFormulaSourceRefs, potentialNewCells?: number) => void
+  readonly resolveTemplateForCell?: (source: string, row: number, col: number) => FormulaTemplateResolution
+  readonly initializeHydratedPreparedCellFormulasAt?: (
+    refs: readonly HydratedPreparedRuntimeFormulaRef[],
+    potentialNewCells?: number,
+  ) => void
 }
 
 export interface PreparedRuntimeFormulaRef {
@@ -585,6 +591,9 @@ export function restoreWorkbookFromSnapshot(args: WorkbookSnapshotRestoreArgs): 
   const potentialNewCells = orderedSheets.reduce((count, sheet) => count + sheet.cells.length, 0)
   const formulaRefs: EngineCellMutationRef[] = []
   const formulaSourceRefs = args.initializeFormulaSourcesAt ? new RestoredFormulaSourceRefTable(potentialNewCells) : undefined
+  const hydratedPreparedFormulaRefs: HydratedPreparedRuntimeFormulaRef[] = []
+  const canHydrateCachedUnsupportedFormulas = args.initializeHydratedPreparedCellFormulasAt && args.resolveTemplateForCell
+  const definedFormulaNames = canHydrateCachedUnsupportedFormulas ? collectDefinedFormulaNames(args.snapshot) : new Set<string>()
   const restoredStringIds = new Map<string, number>()
 
   args.checkEvaluationBudget?.()
@@ -616,19 +625,46 @@ export function restoreWorkbookFromSnapshot(args: WorkbookSnapshotRestoreArgs): 
           const colId = (colIds[coords.col] ??= ensureColId(coords.col))
           attachFreshCell(coords.row, coords.col, restoredCellIndex, rowId, colId)
           if (cell.formula !== undefined) {
-            if (formulaSourceRefs) {
-              formulaSourceRefs.push(sheetId, restoredCellIndex, coords.row, coords.col, cell.formula)
-            } else {
-              formulaRefs.push({
-                sheetId,
-                cellIndex: restoredCellIndex,
-                mutation: {
-                  kind: 'setCellFormula',
-                  row: coords.row,
-                  col: coords.col,
-                  formula: cell.formula,
-                },
-              })
+            let hydratedCachedFormula = false
+            if (
+              canHydrateCachedUnsupportedFormulas &&
+              cell.value !== undefined &&
+              formulaShouldUseCachedUnsupportedFunctionValue(cell.formula, definedFormulaNames)
+            ) {
+              try {
+                const template = args.resolveTemplateForCell(cell.formula, coords.row, coords.col)
+                if (!template.compiled.volatile && !template.compiled.producesSpill) {
+                  hydratedPreparedFormulaRefs.push({
+                    sheetId,
+                    row: coords.row,
+                    col: coords.col,
+                    cellIndex: restoredCellIndex,
+                    source: cell.formula,
+                    compiled: template.compiled,
+                    templateId: template.templateId,
+                    value: literalToValue(cell.value, args.strings),
+                  })
+                  hydratedCachedFormula = true
+                }
+              } catch {
+                hydratedCachedFormula = false
+              }
+            }
+            if (!hydratedCachedFormula) {
+              if (formulaSourceRefs) {
+                formulaSourceRefs.push(sheetId, restoredCellIndex, coords.row, coords.col, cell.formula)
+              } else {
+                formulaRefs.push({
+                  sheetId,
+                  cellIndex: restoredCellIndex,
+                  mutation: {
+                    kind: 'setCellFormula',
+                    row: coords.row,
+                    col: coords.col,
+                    formula: cell.formula,
+                  },
+                })
+              }
             }
           } else {
             restoreLiteralCell(args.workbook, args.strings, restoredCellIndex, cell.value ?? null, restoredStringIds)
@@ -648,6 +684,10 @@ export function restoreWorkbookFromSnapshot(args: WorkbookSnapshotRestoreArgs): 
     }
   })
 
+  if (hydratedPreparedFormulaRefs.length > 0 && args.initializeHydratedPreparedCellFormulasAt) {
+    args.checkEvaluationBudget?.()
+    args.initializeHydratedPreparedCellFormulasAt(hydratedPreparedFormulaRefs, hydratedPreparedFormulaRefs.length)
+  }
   if (formulaSourceRefs && formulaSourceRefs.length > 0) {
     args.checkEvaluationBudget?.()
     args.initializeFormulaSourcesAt!(formulaSourceRefs, potentialNewCells)
@@ -661,7 +701,7 @@ export function restoreWorkbookFromSnapshot(args: WorkbookSnapshotRestoreArgs): 
     workbook: args.workbook,
     workbookMetadata: args.snapshot.workbook.metadata,
   })
-  return { formulaCount: formulaSourceRefs?.length ?? formulaRefs.length }
+  return { formulaCount: hydratedPreparedFormulaRefs.length + (formulaSourceRefs?.length ?? formulaRefs.length) }
 }
 
 export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): WorkbookRestoreResult {

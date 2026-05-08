@@ -9,7 +9,7 @@ describe('XLSX sparse ranges', () => {
     const imported = importXlsx(buildBroadSparseWorkbookBytes(), 'broad-sparse.xlsx')
     const sheet = imported.snapshot.sheets[0]
 
-    expect(sheet?.cells).toEqual([{ address: 'XFD512', formula: '40+2' }])
+    expect(sheet?.cells).toEqual([{ address: 'XFD512', formula: '40+2', value: 42 }])
     expect(imported.preview.sheets[0]).toMatchObject({
       rowCount: 512,
       columnCount: 16_384,

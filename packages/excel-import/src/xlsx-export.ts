@@ -710,8 +710,7 @@ function buildExportCell(cell: WorkbookSnapshot['sheets'][number]['cells'][numbe
   if (typeof cell.formula === 'string' && cell.formula.trim().length > 0) {
     output.f = cell.formula.trim().replace(/^=/, '')
     if (output.v === undefined) {
-      output.t = 'n'
-      output.v = 0
+      output.t = 'e'
     } else {
       output.t = output.t ?? 'n'
     }
