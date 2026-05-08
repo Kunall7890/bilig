@@ -300,10 +300,13 @@ export function tryCreateLazyPhysicalTrackedIndexChanges(
   const length = changedCellIndices.length
   const split = options.sortedSliceSplit
   const sortedSliceSplit = split !== undefined && split > 0 && split < length ? split : undefined
+  let isReverseSorted = sortedSliceSplit === undefined
   let previousRow = -1
   let previousCol = -1
   let previousRightRow = -1
   let previousRightCol = -1
+  let previousReverseRow = Number.POSITIVE_INFINITY
+  let previousReverseCol = Number.POSITIVE_INFINITY
   for (let index = 0; index < length; index += 1) {
     const cellIndex = changedCellIndices[index]!
     if (cellStore.sheetIds[cellIndex] !== sheetId) {
@@ -311,6 +314,11 @@ export function tryCreateLazyPhysicalTrackedIndexChanges(
     }
     const row = cellStore.rows[cellIndex] ?? 0
     const col = cellStore.cols[cellIndex] ?? 0
+    if (isReverseSorted && (row > previousReverseRow || (row === previousReverseRow && col >= previousReverseCol))) {
+      isReverseSorted = false
+    }
+    previousReverseRow = row
+    previousReverseCol = col
     if (sortedSliceSplit !== undefined && index >= sortedSliceSplit) {
       if (row < previousRightRow || (row === previousRightRow && col < previousRightCol)) {
         return null
@@ -320,12 +328,30 @@ export function tryCreateLazyPhysicalTrackedIndexChanges(
       continue
     }
     if (row < previousRow || (row === previousRow && col < previousCol)) {
-      return null
+      if (sortedSliceSplit !== undefined) {
+        return null
+      }
+      previousRow = row
+      previousCol = col
+      continue
     }
     previousRow = row
     previousCol = col
   }
   const sheetName = sheet?.name ?? workbook.getSheetNameById(sheetId)
+  if (!isTrackedIndexSliceSorted(cellStore, changedCellIndices, 0, length)) {
+    if (!isReverseSorted) {
+      return null
+    }
+    return createLazyPhysicalTrackedIndexChanges(
+      sheetId,
+      sheetName,
+      cellStore,
+      engine,
+      copyReverseSortedTrackedCellIndices(changedCellIndices),
+      formatAddressCached,
+    )
+  }
   return createLazyPhysicalTrackedIndexChanges(
     sheetId,
     sheetName,
@@ -335,6 +361,15 @@ export function tryCreateLazyPhysicalTrackedIndexChanges(
     formatAddressCached,
     sortedSliceSplit,
   )
+}
+
+function copyReverseSortedTrackedCellIndices(changedCellIndices: readonly number[] | Uint32Array): Uint32Array {
+  const length = changedCellIndices.length
+  const reversed = new Uint32Array(length)
+  for (let index = 0; index < length; index += 1) {
+    reversed[length - index - 1] = changedCellIndices[index]!
+  }
+  return reversed
 }
 
 export function copyOrderedTrackedCellIndices(

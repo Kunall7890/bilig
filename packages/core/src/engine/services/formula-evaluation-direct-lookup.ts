@@ -83,23 +83,6 @@ function refreshDirectExactUniformLookup(
     directLookup.sheetColumnVersions = refreshed.sheetColumnVersions
     directLookup.start = refreshed.uniformStart
     directLookup.step = refreshed.uniformStep
-    delete directLookup.repeatedRunLength
-    delete directLookup.tailPatch
-    return directLookup
-  }
-  if (
-    refreshed.comparableKind === 'numeric' &&
-    refreshed.repeatedUniformStart !== undefined &&
-    refreshed.repeatedUniformStep !== undefined &&
-    refreshed.repeatedUniformRunLength !== undefined
-  ) {
-    directLookup.length = refreshed.length
-    directLookup.columnVersion = refreshed.columnVersion
-    directLookup.structureVersion = refreshed.structureVersion
-    directLookup.sheetColumnVersions = refreshed.sheetColumnVersions
-    directLookup.start = refreshed.repeatedUniformStart
-    directLookup.step = refreshed.repeatedUniformStep
-    directLookup.repeatedRunLength = refreshed.repeatedUniformRunLength
     delete directLookup.tailPatch
     return directLookup
   }

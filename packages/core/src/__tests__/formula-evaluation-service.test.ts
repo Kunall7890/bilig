@@ -157,7 +157,7 @@ describe('EngineFormulaEvaluationService', () => {
     engine.setCellFormula('Sheet1', 'B2', 'SUM(C2:C2)')
     engine.setCellValue('Sheet1', 'C2', 'text:HWbL')
     engine.setCellValue('Sheet1', 'A3', 'text:tK(p ')
-    engine.setCellFormula('Sheet1', 'B3', 'IF(C2>0,"text:yes","text:no")')
+    engine.setCellFormula('Sheet1', 'B3', 'IF(C2+0>0,"text:yes","text:no")')
 
     expect(engine.getCellValue('Sheet1', 'B3')).toEqual({
       tag: ValueTag.Error,
