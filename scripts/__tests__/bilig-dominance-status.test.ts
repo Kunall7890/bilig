@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { buildBiligDominanceStatus, formatBiligDominanceStatusPathForMessage } from '../bilig-dominance-status.ts'
 import { buildSameCorpusProof, type SameCorpusCapture } from '../gen-ui-responsiveness-live-browser-scorecard.ts'
+import type { PublicWorkbookCorpusFinancialPlan } from '../public-workbook-corpus-financial-plan.ts'
 import type { PublicWorkbookCorpusStatus } from '../public-workbook-corpus-status.ts'
 import { buildFixtureInput } from './bilig-dominance-scorecard.fixture.ts'
 
@@ -117,6 +118,40 @@ describe('bilig dominance status', () => {
     expect(status.goalStatus).toBe('active-not-achieved')
   })
 
+  it('exposes the guarded financial corpus plan in dominance status', () => {
+    const status = buildBiligDominanceStatus({
+      input: buildFixtureInput(),
+      financialCorpusPlan: financialPlanFixture(),
+      financialCorpusStatus: {
+        targetWorkbookCount: 5_000,
+        sourceCount: 9_824,
+        cachedArtifactCount: 0,
+        recordedManifestArtifactCount: 0,
+        recordedNonPassingCaseCount: 0,
+      },
+      publicWorkbookCorpusStatus: completePublicWorkbookCorpusStatus(),
+      stopMarkerActive: true,
+      stopMarkerPath: '.agent-coordination/stop.md',
+    })
+
+    expect(status.publicWorkbookCorpus.financialPlan).toMatchObject({
+      sourceCount: 9_824,
+      targetArtifactCount: 5_000,
+      cachedArtifactCount: 0,
+      remainingArtifactSlots: 5_000,
+      candidateSourceCount: 8_949,
+      candidateSourceDeficitCount: 0,
+      recommendedFetchLimit: 20,
+      needsAdditionalDiscovery: false,
+      targetReachableFromKnownCandidates: true,
+      nextPlanCommand: 'pnpm public-workbook-corpus:discover-financial:plan',
+      nextCheckCommand: 'pnpm public-workbook-corpus:discover-financial:check',
+      nextFetchPlanCommand: expect.stringContaining('public-workbook-corpus:fetch-financial:plan'),
+      nextFetchCommand: expect.stringContaining('--limit 20'),
+      nextVerifyCommand: expect.stringContaining('public-workbook-corpus:verify-financial'),
+    })
+  })
+
   it('formats repo-local status paths without exposing the checkout root', () => {
     expect(formatBiligDominanceStatusPathForMessage('/repo/.cache/public-workbook-corpus/manifest.json', '/repo')).toBe(
       '.cache/public-workbook-corpus/manifest.json',
@@ -162,6 +197,55 @@ function completeFinancialCorpusStatus() {
     cachedArtifactCount: 5_000,
     recordedManifestArtifactCount: 5_000,
     recordedNonPassingCaseCount: 0,
+  }
+}
+
+function financialPlanFixture(): PublicWorkbookCorpusFinancialPlan {
+  return {
+    schemaVersion: 1,
+    mode: 'plan',
+    corpus: 'financial-accounting-workpapers',
+    generatedAt: '2026-05-08T10:00:00.000Z',
+    manifestExists: true,
+    targetWorkbookCount: 5_000,
+    manifestPath: '.cache/public-workbook-corpus-financial/manifest.json',
+    cacheDir: '.cache/public-workbook-corpus-financial',
+    scorecardPath: '.cache/public-workbook-corpus-financial/scorecard.json',
+    verifyCheckpointPath: '.cache/public-workbook-corpus-financial/verification-checkpoint.json',
+    stopMarker: {
+      active: true,
+      path: '.agent-coordination/stop.md',
+      overrideFlag: '--allow-active-stop-marker',
+      overrideEnvVar: 'BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE',
+    },
+    sourceCount: 9_824,
+    targetArtifactCount: 5_000,
+    cachedArtifactCount: 0,
+    remainingArtifactSlots: 5_000,
+    candidateSourceCount: 8_949,
+    candidateSourceDeficitCount: 0,
+    minimumAdditionalSourceCount: 0,
+    recommendedDiscoveryLimit: 9_824,
+    recommendedFetchTrancheSize: 20,
+    recommendedFetchLimit: 20,
+    needsAdditionalDiscovery: false,
+    targetReachableFromKnownCandidates: true,
+    commands: {
+      discoverPlan: null,
+      discover: null,
+      fetchPlan:
+        'pnpm public-workbook-corpus:fetch-financial:plan -- --manifest .cache/public-workbook-corpus-financial/manifest.json --cache-dir .cache/public-workbook-corpus-financial --limit 5000',
+      fetch:
+        'BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE=1 pnpm public-workbook-corpus:fetch-financial -- --manifest .cache/public-workbook-corpus-financial/manifest.json --cache-dir .cache/public-workbook-corpus-financial --limit 20 --allow-active-stop-marker',
+      fetchAll:
+        'BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE=1 pnpm public-workbook-corpus:fetch-financial -- --manifest .cache/public-workbook-corpus-financial/manifest.json --cache-dir .cache/public-workbook-corpus-financial --limit 5000 --allow-active-stop-marker',
+      resumePlan: 'pnpm public-workbook-corpus:resume-financial:plan',
+      resumeCheck: 'pnpm public-workbook-corpus:resume-financial:check',
+      verify:
+        'BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE=1 pnpm public-workbook-corpus:verify-financial -- --manifest .cache/public-workbook-corpus-financial/manifest.json --cache-dir .cache/public-workbook-corpus-financial --scorecard .cache/public-workbook-corpus-financial/scorecard.json --verify-checkpoint .cache/public-workbook-corpus-financial/verification-checkpoint.json --allow-active-stop-marker',
+      check: 'pnpm public-workbook-corpus:check-financial',
+    },
+    sampledCandidateSources: [],
   }
 }
 

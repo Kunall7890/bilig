@@ -11,13 +11,14 @@ import type { UiResponsivenessSameCorpusWorkload } from './gen-ui-responsiveness
 import { buildWorkbookBenchmarkCorpus, type WorkbookBenchmarkCorpusId } from '../packages/benchmarks/src/workbook-corpus.js'
 import { publicCorpusStopMarkerOverrideEnvVar, publicCorpusStopMarkerOverrideFlag, readStringArg } from './public-workbook-corpus-cli.ts'
 import { planPublicWorkbookCorpusFetch, type PublicWorkbookCorpusFetchPlan } from './public-workbook-corpus-fetch.ts'
-import { parsePublicWorkbookManifestJson } from './public-workbook-corpus-json.ts'
+import { createEmptyPublicWorkbookManifest, parsePublicWorkbookManifestJson } from './public-workbook-corpus-json.ts'
 import { publicWorkbookCorpusCaseMatchesArtifact } from './public-workbook-corpus-missing.ts'
 import type { PublicWorkbookCorpusStatus } from './public-workbook-corpus-status.ts'
 import { readPublicWorkbookCorpusStatus } from './public-workbook-corpus-status.ts'
 import { readReusablePublicWorkbookCorpusCases } from './public-workbook-corpus-verify-checkpoint.ts'
 import { financialWorkbookTargetCount } from './public-workbook-corpus-completion-audit-helpers.ts'
 import type { PublicWorkbookManifest } from './public-workbook-corpus-types.ts'
+import { buildPublicWorkbookCorpusFinancialPlan, type PublicWorkbookCorpusFinancialPlan } from './public-workbook-corpus-financial-plan.ts'
 
 export interface BiligDominanceStatus {
   readonly goalStatus: 'achieved' | 'active-not-achieved'
@@ -35,6 +36,22 @@ export interface BiligDominanceStatus {
     readonly financialCachedArtifactCount: number | null
     readonly recordedFinancialManifestArtifactCount: number | null
     readonly recordedFinancialNonPassingCaseCount: number | null
+    readonly financialPlan: {
+      readonly sourceCount: number
+      readonly targetArtifactCount: number
+      readonly cachedArtifactCount: number
+      readonly remainingArtifactSlots: number
+      readonly candidateSourceCount: number
+      readonly candidateSourceDeficitCount: number
+      readonly recommendedFetchLimit: number | null
+      readonly needsAdditionalDiscovery: boolean
+      readonly targetReachableFromKnownCandidates: boolean
+      readonly nextPlanCommand: string
+      readonly nextCheckCommand: string
+      readonly nextFetchPlanCommand: string
+      readonly nextFetchCommand: string | null
+      readonly nextVerifyCommand: string
+    } | null
     readonly fetchCandidateSourceCount: number | null
     readonly fetchCandidateSourceDeficitCount: number | null
     readonly minimumAdditionalSourceCount: number | null
@@ -110,6 +127,7 @@ export function buildBiligDominanceStatusFromArgs(): BiligDominanceStatus {
   const scorecardPath = resolve(readStringArg('--scorecard', defaultScorecardPath))
   const manifestPath = resolve(readStringArg('--manifest', defaultManifestPath))
   const verifyCheckpointPath = resolve(readStringArg('--verify-checkpoint', defaultVerifyCheckpointPath))
+  const financialCacheDir = resolve(readStringArg('--financial-cache-dir', defaultFinancialCacheDir))
   const financialManifestPath = resolve(readStringArg('--financial-manifest', defaultFinancialManifestPath))
   const financialScorecardPath = resolve(readStringArg('--financial-scorecard', defaultFinancialScorecardPath))
   const financialVerifyCheckpointPath = resolve(readStringArg('--financial-verify-checkpoint', defaultFinancialVerifyCheckpointPath))
@@ -141,14 +159,39 @@ export function buildBiligDominanceStatusFromArgs(): BiligDominanceStatus {
         sampleLimit: 0,
       })
     : null
-  return buildBiligDominanceStatus({
-    fetchPlan,
-    financialCorpusStatus: readFinancialWorkbookCorpusStatus({
-      manifestPath: financialManifestPath,
+  const financialTargetWorkbookCount = financialWorkbookTargetCount(publicWorkbookCorpusStatus.targetWorkbookCount)
+  const financialManifest = readPublicWorkbookManifestOrNull(financialManifestPath)
+  const financialCorpusStatus = buildFinancialWorkbookCorpusStatus({
+    manifest: financialManifest,
+    recordedCases: readRecordedFinancialCases({
+      manifest: financialManifest,
       scorecardPath: financialScorecardPath,
-      targetWorkbookCount: publicWorkbookCorpusStatus.targetWorkbookCount,
       verifyCheckpointPath: financialVerifyCheckpointPath,
     }),
+    targetWorkbookCount: financialTargetWorkbookCount,
+  })
+  const financialCorpusPlan = buildPublicWorkbookCorpusFinancialPlan({
+    cacheDir: financialCacheDir,
+    fetchPlan: planPublicWorkbookCorpusFetch({
+      manifest: financialManifest ?? createEmptyPublicWorkbookManifest(undefined, financialTargetWorkbookCount),
+      limit: financialTargetWorkbookCount,
+      sampleLimit: 20,
+    }),
+    fetchTrancheSize: 20,
+    generatedAt: new Date().toISOString(),
+    limit: financialTargetWorkbookCount,
+    manifestExists: financialManifest !== null,
+    manifestPath: financialManifestPath,
+    scorecardPath: financialScorecardPath,
+    stopMarkerActive,
+    stopMarkerPath,
+    targetWorkbookCount: financialTargetWorkbookCount,
+    verifyCheckpointPath: financialVerifyCheckpointPath,
+  })
+  return buildBiligDominanceStatus({
+    fetchPlan,
+    financialCorpusPlan,
+    financialCorpusStatus,
     input,
     nextFetchPlanCommand,
     publicWorkbookCorpusStatus,
@@ -160,6 +203,7 @@ export function buildBiligDominanceStatusFromArgs(): BiligDominanceStatus {
 
 export function buildBiligDominanceStatus(args: {
   readonly fetchPlan?: PublicWorkbookCorpusFetchPlan | null
+  readonly financialCorpusPlan?: PublicWorkbookCorpusFinancialPlan | null
   readonly financialCorpusStatus?: FinancialWorkbookCorpusStatus | null
   readonly input: BuildScorecardInput
   readonly nextFetchPlanCommand?: string | null
@@ -197,6 +241,7 @@ export function buildBiligDominanceStatus(args: {
       financialCachedArtifactCount: args.financialCorpusStatus?.cachedArtifactCount ?? null,
       recordedFinancialManifestArtifactCount: args.financialCorpusStatus?.recordedManifestArtifactCount ?? null,
       recordedFinancialNonPassingCaseCount: args.financialCorpusStatus?.recordedNonPassingCaseCount ?? null,
+      financialPlan: args.financialCorpusPlan ? buildFinancialPlanStatus(args.financialCorpusPlan) : null,
       fetchCandidateSourceCount: args.fetchPlan?.candidateSourceCount ?? null,
       fetchCandidateSourceDeficitCount: args.fetchPlan?.candidateSourceDeficitCount ?? null,
       targetReachableFromKnownCandidates: args.fetchPlan?.targetReachableFromKnownCandidates ?? null,
@@ -283,24 +328,29 @@ function countDominanceGap(actual: number, required: number, label: string): str
   return actual >= required ? [] : [`${label}: ${String(actual)}/${String(required)}`]
 }
 
-function readFinancialWorkbookCorpusStatus(args: {
-  readonly manifestPath: string
-  readonly scorecardPath: string
-  readonly targetWorkbookCount: number
-  readonly verifyCheckpointPath: string
-}): FinancialWorkbookCorpusStatus {
-  const manifest = existsSync(args.manifestPath)
-    ? parsePublicWorkbookManifestJson(JSON.parse(readFileSync(args.manifestPath, 'utf8')) as unknown)
-    : null
-  return buildFinancialWorkbookCorpusStatus({
-    manifest,
-    recordedCases: readRecordedFinancialCases({
-      manifest,
-      scorecardPath: args.scorecardPath,
-      verifyCheckpointPath: args.verifyCheckpointPath,
-    }),
-    targetWorkbookCount: financialWorkbookTargetCount(args.targetWorkbookCount),
-  })
+function readPublicWorkbookManifestOrNull(path: string): PublicWorkbookManifest | null {
+  return existsSync(path) ? parsePublicWorkbookManifestJson(JSON.parse(readFileSync(path, 'utf8')) as unknown) : null
+}
+
+function buildFinancialPlanStatus(
+  plan: PublicWorkbookCorpusFinancialPlan,
+): NonNullable<BiligDominanceStatus['publicWorkbookCorpus']['financialPlan']> {
+  return {
+    sourceCount: plan.sourceCount,
+    targetArtifactCount: plan.targetArtifactCount,
+    cachedArtifactCount: plan.cachedArtifactCount,
+    remainingArtifactSlots: plan.remainingArtifactSlots,
+    candidateSourceCount: plan.candidateSourceCount,
+    candidateSourceDeficitCount: plan.candidateSourceDeficitCount,
+    recommendedFetchLimit: plan.recommendedFetchLimit,
+    needsAdditionalDiscovery: plan.needsAdditionalDiscovery,
+    targetReachableFromKnownCandidates: plan.targetReachableFromKnownCandidates,
+    nextPlanCommand: 'pnpm public-workbook-corpus:discover-financial:plan',
+    nextCheckCommand: 'pnpm public-workbook-corpus:discover-financial:check',
+    nextFetchPlanCommand: plan.commands.fetchPlan,
+    nextFetchCommand: plan.commands.fetch,
+    nextVerifyCommand: plan.commands.verify,
+  }
 }
 
 function buildFinancialWorkbookCorpusStatus(args: {
