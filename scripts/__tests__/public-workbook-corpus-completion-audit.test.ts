@@ -53,6 +53,13 @@ describe('public workbook corpus completion audit', () => {
       passed: false,
       gaps: expect.arrayContaining(['cached artifacts below target: 2/3']),
     })
+    expect(requirement(audit.checklist, 'financial-accounting-workpapers-5000')).toMatchObject({
+      passed: false,
+      gaps: expect.arrayContaining([
+        'financial/accounting cached artifacts below target: 0/3',
+        'financial/accounting recorded verification cases below target: 0/3',
+      ]),
+    })
     expect(requirement(audit.checklist, 'scorecard-all-10000')).toMatchObject({
       passed: false,
       gaps: expect.arrayContaining(['scorecard cases do not cover manifest artifacts: 1/2']),
@@ -61,8 +68,8 @@ describe('public workbook corpus completion audit', () => {
   })
 
   it('marks the goal achieved when public corpus evidence is complete and HyperFormula parity is folded in', () => {
-    const artifactA = workbookArtifact('workbook-a')
-    const artifactB = workbookArtifact('workbook-b')
+    const artifactA = financialWorkbookArtifact('workbook-a')
+    const artifactB = financialWorkbookArtifact('workbook-b')
     const audit = buildPublicWorkbookCorpusCompletionAudit({
       generatedAt: '2026-05-08T00:00:00.000Z',
       hyperformulaSecondaryCorpus: hyperFormulaSecondaryCorpusFixture(),
@@ -92,6 +99,15 @@ describe('public workbook corpus completion audit', () => {
     expect(requirement(audit.checklist, 'hyperformula-secondary-corpus')).toMatchObject({
       passed: true,
       gaps: [],
+    })
+    expect(requirement(audit.checklist, 'financial-accounting-workpapers-5000')).toMatchObject({
+      passed: true,
+      gaps: [],
+      evidence: expect.arrayContaining([
+        'financial/accounting workbook target: 2',
+        'financial/accounting cached artifacts: 2/2',
+        'financial/accounting recorded verification cases: 2/2',
+      ]),
     })
     expect(validatePublicWorkbookCorpusCompletionAudit(audit)).toEqual([])
     expect(validatePublicWorkbookCorpusCompletionAudit(audit, { requireComplete: true })).toEqual([])
@@ -498,6 +514,13 @@ function workbookArtifact(id: string): PublicWorkbookArtifact {
       title: 'Creative Commons Attribution 4.0 International',
       evidenceUrl: 'https://creativecommons.org/licenses/by/4.0/',
     },
+  }
+}
+
+function financialWorkbookArtifact(id: string): PublicWorkbookArtifact {
+  return {
+    ...workbookArtifact(id),
+    topicEvidence: ['financial:fileName'],
   }
 }
 

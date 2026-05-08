@@ -11,6 +11,23 @@ import { readReusablePublicWorkbookCorpusCases } from './public-workbook-corpus-
 import { readFlagArg, readStringArg } from './public-workbook-corpus-cli.ts'
 import { auditPublicWorkbookCorpusCiOfflineCachedMode } from './public-workbook-corpus-ci-offline-audit.ts'
 import { hasPublicWorkbookCorpusUsedRangeEvidence } from './public-workbook-corpus-evidence.ts'
+import {
+  buildFeatureWitnessCoverage,
+  countGap,
+  duplicateGap,
+  financialWorkbookTargetCount,
+  hasCacheIntegrityFailureEvidence,
+  hasFeatureValidationEvidence,
+  hasFinancialTopicEvidence,
+  hasRecordedProvenanceEvidence,
+  hasWorkbookMetadata,
+  isHashAddressedCachePath,
+  isRecord,
+  isRepoEvidenceArtifact,
+  isResourceLimitedUnsupportedCase,
+  pnpmScriptName,
+  readNonNegativeInteger,
+} from './public-workbook-corpus-completion-audit-helpers.ts'
 import type { PublicWorkbookCorpusCase, PublicWorkbookManifest } from './public-workbook-corpus-types.ts'
 
 export type PublicWorkbookCorpusCompletionStatus = 'achieved' | 'active-not-achieved'
@@ -34,11 +51,16 @@ export interface PublicWorkbookCorpusCompletionAudit {
 
 export interface PublicWorkbookCorpusAuditState {
   readonly targetWorkbookCount: number
+  readonly financialWorkbookTargetCount: number
   readonly sourceCount: number
   readonly cachedArtifactCount: number
+  readonly financialSourceCount: number
+  readonly financialCachedArtifactCount: number
   readonly scorecardCaseCount: number
   readonly checkpointCaseCount: number
   readonly recordedManifestArtifactCount: number
+  readonly recordedFinancialManifestArtifactCount: number
+  readonly recordedFinancialNonPassingCaseCount: number
   readonly missingCachedArtifactCount: number
   readonly missingVerificationCount: number
   readonly recordedPassedCaseCount: number
@@ -77,6 +99,7 @@ export interface PublicWorkbookCorpusSecondaryFormulaCorpusStatus {
 
 type PublicWorkbookCorpusRequirementId =
   | 'download-10000-public-spreadsheets'
+  | 'financial-accounting-workpapers-5000'
   | 'source-license-hash-metadata-manifest'
   | 'hash-and-structure-dedupe'
   | 'import-every-workbook'
@@ -103,22 +126,12 @@ const baselineScorecardArtifact = 'packages/benchmarks/baselines/public-workbook
 const hyperFormulaSecondaryCorpusArtifact = 'packages/benchmarks/baselines/workpaper-vs-hyperformula.json'
 const manifestArtifact = '.cache/public-workbook-corpus/manifest.json'
 const checkpointArtifact = '.cache/public-workbook-corpus/verification-checkpoint.json'
-const requiredFeatureWitnesses = [
-  { id: 'formulas', label: 'formulas', count: (entry: PublicWorkbookCorpusCase) => entry.featureCounts.formulaCellCount },
-  { id: 'values', label: 'values', count: (entry: PublicWorkbookCorpusCase) => entry.featureCounts.valueCellCount },
-  { id: 'names', label: 'defined names', count: (entry: PublicWorkbookCorpusCase) => entry.featureCounts.definedNameCount },
-  { id: 'tables', label: 'tables', count: (entry: PublicWorkbookCorpusCase) => entry.featureCounts.tableCount },
-  { id: 'charts', label: 'charts', count: (entry: PublicWorkbookCorpusCase) => entry.featureCounts.chartCount },
-  { id: 'pivots', label: 'pivots', count: (entry: PublicWorkbookCorpusCase) => entry.featureCounts.pivotCount },
-  { id: 'styles', label: 'styles', count: (entry: PublicWorkbookCorpusCase) => entry.featureCounts.styleRangeCount },
-  { id: 'merged ranges', label: 'merged ranges', count: (entry: PublicWorkbookCorpusCase) => entry.featureCounts.mergeCount },
-  {
-    id: 'conditional formats',
-    label: 'conditional formats',
-    count: (entry: PublicWorkbookCorpusCase) => entry.featureCounts.conditionalFormatCount,
-  },
-] as const
-
+const financialManifestArtifact = '.cache/public-workbook-corpus-financial/manifest.json'
+const financialScorecardArtifact = '.cache/public-workbook-corpus-financial/scorecard.json'
+const financialCheckpointArtifact = '.cache/public-workbook-corpus-financial/verification-checkpoint.json'
+const defaultFinancialManifestPath = resolve(rootDir, financialManifestArtifact)
+const defaultFinancialScorecardPath = resolve(rootDir, financialScorecardArtifact)
+const defaultFinancialVerifyCheckpointPath = resolve(rootDir, financialCheckpointArtifact)
 function main(): void {
   const audit = buildPublicWorkbookCorpusCompletionAuditFromArgs()
   const requireComplete = readFlagArg('--require-complete')
@@ -155,10 +168,23 @@ export function buildPublicWorkbookCorpusCompletionAuditFromArgs(): PublicWorkbo
   const scorecardPath = resolve(readStringArg('--scorecard', defaultScorecardPath))
   const verifyCheckpointPath = resolve(readStringArg('--verify-checkpoint', defaultVerifyCheckpointPath))
   const stopMarkerPath = resolve(readStringArg('--corpus-run-stop-marker', defaultCorpusRunStopMarkerPath))
+  const financialManifestPath = resolve(readStringArg('--financial-manifest', defaultFinancialManifestPath))
+  const financialScorecardPath = resolve(readStringArg('--financial-scorecard', defaultFinancialScorecardPath))
+  const financialVerifyCheckpointPath = resolve(readStringArg('--financial-verify-checkpoint', defaultFinancialVerifyCheckpointPath))
   const generatedAt = readStringArg('--generated-at', new Date().toISOString())
   const manifest = existsSync(manifestPath) ? parsePublicWorkbookManifestJson(JSON.parse(readFileSync(manifestPath, 'utf8'))) : null
+  const financialManifest = existsSync(financialManifestPath)
+    ? parsePublicWorkbookManifestJson(JSON.parse(readFileSync(financialManifestPath, 'utf8')))
+    : null
   const recordedCases = readRecordedCases({ manifest, scorecardPath, verifyCheckpointPath })
+  const financialRecordedCases = readRecordedCases({
+    manifest: financialManifest,
+    scorecardPath: financialScorecardPath,
+    verifyCheckpointPath: financialVerifyCheckpointPath,
+  })
   return buildPublicWorkbookCorpusCompletionAudit({
+    financialManifest,
+    financialRecordedCases,
     generatedAt,
     hyperformulaSecondaryCorpus: readHyperFormulaSecondaryCorpus(resolve(rootDir, hyperFormulaSecondaryCorpusArtifact)),
     manifest,
@@ -175,6 +201,8 @@ export function buildPublicWorkbookCorpusCompletionAuditFromArgs(): PublicWorkbo
 }
 
 export function buildPublicWorkbookCorpusCompletionAudit(args: {
+  readonly financialManifest?: PublicWorkbookManifest | null
+  readonly financialRecordedCases?: readonly PublicWorkbookCorpusCase[]
   readonly generatedAt: string
   readonly hyperformulaSecondaryCorpus?: PublicWorkbookCorpusSecondaryFormulaCorpusStatus
   readonly manifest: PublicWorkbookManifest | null
@@ -182,7 +210,13 @@ export function buildPublicWorkbookCorpusCompletionAudit(args: {
   readonly status: PublicWorkbookCorpusStatus
   readonly stopMarkerActive: boolean
 }): PublicWorkbookCorpusCompletionAudit {
-  const currentState = buildAuditState(args.status, args.recordedCases)
+  const currentState = buildAuditState(
+    args.status,
+    args.recordedCases,
+    args.manifest,
+    args.financialManifest ?? null,
+    args.financialRecordedCases ?? [],
+  )
   const secondaryFormulaCorpus = args.hyperformulaSecondaryCorpus ?? missingHyperFormulaSecondaryCorpus()
   const context = {
     currentState,
@@ -287,6 +321,7 @@ interface RequirementContext {
 
 const requiredRequirementIds: readonly PublicWorkbookCorpusRequirementId[] = [
   'download-10000-public-spreadsheets',
+  'financial-accounting-workpapers-5000',
   'source-license-hash-metadata-manifest',
   'hash-and-structure-dedupe',
   'import-every-workbook',
@@ -317,6 +352,65 @@ const requirementBuilders: readonly ((context: RequirementContext) => PublicWork
       gaps: [
         ...countGap(context.currentState.sourceCount, context.currentState.targetWorkbookCount, 'discovered sources below target'),
         ...countGap(context.currentState.cachedArtifactCount, context.currentState.targetWorkbookCount, 'cached artifacts below target'),
+      ],
+    }),
+  (context) =>
+    checklistItem({
+      id: 'financial-accounting-workpapers-5000',
+      priority: 2,
+      promptRequirement: 'Include 5,000 accounting and financial Excel workpapers in the public corpus evidence.',
+      passed:
+        context.currentState.financialCachedArtifactCount >= context.currentState.financialWorkbookTargetCount &&
+        context.currentState.recordedFinancialManifestArtifactCount >= context.currentState.financialWorkbookTargetCount &&
+        context.currentState.recordedFinancialNonPassingCaseCount === 0,
+      evidence: [
+        `financial/accounting workbook target: ${String(context.currentState.financialWorkbookTargetCount)}`,
+        `financial/accounting discovered sources: ${String(context.currentState.financialSourceCount)}`,
+        `financial/accounting cached artifacts: ${String(context.currentState.financialCachedArtifactCount)}/${String(
+          context.currentState.financialWorkbookTargetCount,
+        )}`,
+        `financial/accounting recorded verification cases: ${String(context.currentState.recordedFinancialManifestArtifactCount)}/${String(
+          context.currentState.financialCachedArtifactCount,
+        )}`,
+        `financial/accounting non-passing recorded cases: ${String(context.currentState.recordedFinancialNonPassingCaseCount)}`,
+      ],
+      gaps: [
+        ...(context.manifest ? [] : ['manifest artifact is missing']),
+        ...countGap(
+          context.currentState.financialCachedArtifactCount,
+          context.currentState.financialWorkbookTargetCount,
+          'financial/accounting cached artifacts below target',
+        ),
+        ...countGap(
+          context.currentState.recordedFinancialManifestArtifactCount,
+          context.currentState.financialWorkbookTargetCount,
+          'financial/accounting recorded verification cases below target',
+        ),
+        ...(context.currentState.recordedFinancialManifestArtifactCount >= context.currentState.financialCachedArtifactCount
+          ? []
+          : [
+              `financial/accounting cached artifacts missing verification evidence: ${String(
+                context.currentState.financialCachedArtifactCount - context.currentState.recordedFinancialManifestArtifactCount,
+              )}`,
+            ]),
+        ...(context.currentState.recordedFinancialNonPassingCaseCount === 0
+          ? []
+          : [`financial/accounting non-passing recorded cases: ${String(context.currentState.recordedFinancialNonPassingCaseCount)}`]),
+      ],
+      evidenceArtifacts: [
+        manifestArtifact,
+        baselineScorecardArtifact,
+        checkpointArtifact,
+        financialManifestArtifact,
+        financialScorecardArtifact,
+        financialCheckpointArtifact,
+      ],
+      checkCommands: [
+        'pnpm public-workbook-corpus:discover-financial',
+        'pnpm public-workbook-corpus:fetch-financial',
+        'pnpm public-workbook-corpus:verify-financial',
+        'pnpm public-workbook-corpus:check-financial',
+        'pnpm public-workbook-corpus:completion-audit:check',
       ],
     }),
   (context) => {
@@ -713,14 +807,30 @@ const requirementBuilders: readonly ((context: RequirementContext) => PublicWork
 function buildAuditState(
   status: PublicWorkbookCorpusStatus,
   recordedCases: readonly PublicWorkbookCorpusCase[],
+  manifest: PublicWorkbookManifest | null,
+  financialManifest: PublicWorkbookManifest | null,
+  financialRecordedCases: readonly PublicWorkbookCorpusCase[],
 ): PublicWorkbookCorpusAuditState {
+  const financialArtifacts = financialManifest ? financialManifest.artifacts : (manifest?.artifacts.filter(hasFinancialTopicEvidence) ?? [])
+  const financialSources = financialManifest ? financialManifest.sources : (manifest?.sources.filter(hasFinancialTopicEvidence) ?? [])
+  const financialCaseCandidates = financialManifest ? financialRecordedCases : recordedCases
+  const recordedCasesById = new Map(financialCaseCandidates.map((entry) => [entry.id, entry]))
+  const recordedFinancialCases = financialArtifacts.flatMap((artifact) => {
+    const candidate = recordedCasesById.get(artifact.id)
+    return candidate && publicWorkbookCorpusCaseMatchesArtifact(candidate, artifact) ? [candidate] : []
+  })
   return {
     targetWorkbookCount: status.targetWorkbookCount,
+    financialWorkbookTargetCount: financialWorkbookTargetCount(status.targetWorkbookCount),
     sourceCount: status.sourceCount,
     cachedArtifactCount: status.cachedArtifactCount,
+    financialSourceCount: financialSources.length,
+    financialCachedArtifactCount: financialArtifacts.length,
     scorecardCaseCount: status.scorecardCaseCount,
     checkpointCaseCount: status.checkpointCaseCount,
     recordedManifestArtifactCount: status.recordedManifestArtifactCount,
+    recordedFinancialManifestArtifactCount: recordedFinancialCases.length,
+    recordedFinancialNonPassingCaseCount: recordedFinancialCases.filter((entry) => !entry.passed).length,
     missingCachedArtifactCount: Math.max(0, status.targetWorkbookCount - status.cachedArtifactCount),
     missingVerificationCount: status.missingManifestArtifactCount,
     recordedPassedCaseCount: status.recordedPassedCaseCount,
@@ -817,94 +927,6 @@ function checklistItem(
   }
 }
 
-function hasFeatureValidationEvidence(entry: PublicWorkbookCorpusCase): boolean {
-  const dimensionCellCount = entry.workbookMetadata.dimensions.reduce((sum, dimension) => sum + dimension.nonEmptyCellCount, 0)
-  return (
-    entry.workbookMetadata.workbookName.trim().length > 0 &&
-    entry.workbookMetadata.sheetNames.length === entry.featureCounts.sheetCount &&
-    entry.workbookMetadata.dimensions.length === entry.featureCounts.sheetCount &&
-    dimensionCellCount === entry.featureCounts.cellCount &&
-    entry.workbookMetadata.dimensions.every(
-      (dimension) =>
-        dimension.sheetName.trim().length > 0 &&
-        dimension.rowCount >= 0 &&
-        dimension.columnCount >= 0 &&
-        dimension.nonEmptyCellCount >= 0 &&
-        (dimension.nonEmptyCellCount === 0 || (dimension.rowCount > 0 && dimension.columnCount > 0)),
-    ) &&
-    entry.featureCounts.cellCount >= entry.featureCounts.formulaCellCount + entry.featureCounts.valueCellCount &&
-    entry.featureCounts.definedNameCount >= 0 &&
-    entry.featureCounts.tableCount >= 0 &&
-    entry.featureCounts.chartCount >= 0 &&
-    entry.featureCounts.pivotCount >= 0 &&
-    entry.featureCounts.mergeCount >= 0 &&
-    entry.featureCounts.styleRangeCount >= 0 &&
-    entry.featureCounts.conditionalFormatCount >= 0 &&
-    entry.featureCounts.dataValidationCount >= 0 &&
-    entry.featureCounts.macroPayloadCount >= 0 &&
-    entry.featureCounts.warningCount >= 0
-  )
-}
-
-function hasRecordedProvenanceEvidence(entry: PublicWorkbookCorpusCase): boolean {
-  return (
-    entry.evidence.includes(`source=${entry.sourceUrl}`) &&
-    entry.evidence.includes(`license=${entry.license.title}`) &&
-    entry.evidence.includes(`sha256=${entry.sha256}`)
-  )
-}
-
-function hasCacheIntegrityFailureEvidence(entry: PublicWorkbookCorpusCase): boolean {
-  return entry.evidence.some(
-    (line) => line.startsWith('Missing cached workbook file:') || line.startsWith('Cached workbook hash mismatch:'),
-  )
-}
-
-function isHashAddressedCachePath(cachePath: string, sha256: string): boolean {
-  const parts = cachePath.split(/[\\/]/u)
-  return !cachePath.startsWith('/') && !parts.includes('..') && parts.some((part) => part.startsWith(sha256))
-}
-
-function buildFeatureWitnessCoverage(cases: readonly PublicWorkbookCorpusCase[]): {
-  readonly id: string
-  readonly label: string
-  readonly totalCount: number
-  readonly witnessCaseCount: number
-}[] {
-  return requiredFeatureWitnesses.map((family) => ({
-    id: family.id,
-    label: family.label,
-    totalCount: cases.reduce((sum, entry) => sum + family.count(entry), 0),
-    witnessCaseCount: cases.filter((entry) => family.count(entry) > 0).length,
-  }))
-}
-
-function hasWorkbookMetadata(entry: PublicWorkbookCorpusCase): boolean {
-  return entry.workbookMetadata.sheetNames.length > 0 && entry.workbookMetadata.dimensions.length > 0
-}
-
-function isResourceLimitedUnsupportedCase(entry: PublicWorkbookCorpusCase): boolean {
-  return (
-    entry.status === 'unsupported' &&
-    entry.passed &&
-    entry.unsupportedFeatureClassifications.some((classification) => classification.startsWith('xlsx.publicCorpus.resourceLimit:')) &&
-    entry.evidence.some((line) => line.startsWith('Public corpus verification RSS limit exceeded:'))
-  )
-}
-
-function countGap(actual: number, required: number, label: string): string[] {
-  return actual >= required ? [] : [`${label}: ${String(actual)}/${String(required)}`]
-}
-
-function duplicateGap(values: readonly string[], label: string): string[] {
-  return new Set(values).size === values.length ? [] : [`${label}: ${String(values.length - new Set(values).size)}`]
-}
-
-function readNonNegativeInteger(record: Record<string, unknown>, key: string, fallback: number): number {
-  const value = record[key]
-  return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : fallback
-}
-
 function packageScripts(): ReadonlyMap<string, string> {
   const parsed = JSON.parse(readFileSync(resolve(rootDir, 'package.json'), 'utf8')) as unknown
   if (!isRecord(parsed) || !isRecord(parsed['scripts'])) {
@@ -928,45 +950,6 @@ function hasPackageScripts(names: readonly string[]): boolean {
 function missingPackageScripts(names: readonly string[]): readonly string[] {
   const scripts = packageScripts()
   return names.filter((name) => !scripts.has(name))
-}
-
-function isRepoEvidenceArtifact(artifact: string): boolean {
-  return (
-    artifact.length > 0 &&
-    !artifact.startsWith('.cache/') &&
-    !artifact.startsWith('http://') &&
-    !artifact.startsWith('https://') &&
-    !artifact.includes('<') &&
-    !artifact.includes('>') &&
-    !artifact.startsWith('$') &&
-    !artifact.startsWith('/')
-  )
-}
-
-function pnpmScriptName(command: string): string | null {
-  const parts = command
-    .trim()
-    .split(/\s+/u)
-    .filter((part) => !/^[A-Za-z_][A-Za-z0-9_]*=.*/u.test(part))
-  const pnpmIndex = parts.indexOf('pnpm')
-  if (pnpmIndex < 0) {
-    return null
-  }
-  const candidate = parts[pnpmIndex + 1]
-  if (!candidate || candidate === '--' || candidate === 'exec' || candidate === 'dlx') {
-    return null
-  }
-  if (candidate === 'run') {
-    return parts[pnpmIndex + 2] ?? null
-  }
-  if (candidate.startsWith('-')) {
-    return null
-  }
-  return candidate
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
 }
 
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {

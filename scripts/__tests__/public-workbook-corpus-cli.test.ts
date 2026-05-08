@@ -1153,6 +1153,16 @@ describe('public workbook corpus CLI resource guards', () => {
     expect(packageJson.scripts?.['public-workbook-corpus:verify-stale:plan']).toBe(
       'bun scripts/public-workbook-corpus.ts verify-stale --dry-run --limit 20',
     )
+    expect(packageJson.scripts?.['public-workbook-corpus:verify-financial']).toContain(
+      '--verify-checkpoint .cache/public-workbook-corpus-financial/verification-checkpoint.json',
+    )
+    expect(packageJson.scripts?.['public-workbook-corpus:check-financial']).toContain(
+      '--manifest .cache/public-workbook-corpus-financial/manifest.json',
+    )
+    expect(packageJson.scripts?.['public-workbook-corpus:check-financial']).toContain('--cache-dir .cache/public-workbook-corpus-financial')
+    expect(packageJson.scripts?.['public-workbook-corpus:check-financial']).toContain(
+      '--verify-checkpoint .cache/public-workbook-corpus-financial/verification-checkpoint.json',
+    )
     expect(packageJson.scripts?.['public-workbook-corpus:refresh-scorecard-from-checkpoint']).toBe(
       'bun scripts/public-workbook-corpus.ts refresh-scorecard-from-checkpoint',
     )
