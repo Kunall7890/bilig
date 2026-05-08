@@ -256,6 +256,8 @@ describe('public workbook corpus CLI resource guards', () => {
           fileName: artifactB.fileName,
           sourceUrl: artifactB.sourceUrl,
           downloadUrl: artifactB.downloadUrl,
+          license: artifactB.license,
+          topicEvidence: [`test:${artifactB.id}`],
         },
       ],
     })
@@ -1439,6 +1441,7 @@ function manifestWithArtifacts(artifacts: readonly PublicWorkbookArtifact[]): Pu
       fileName: entry.fileName,
       discoveredAt: '2026-05-07T00:00:00.000Z',
       license: entry.license,
+      topicEvidence: [`test:${entry.id}`],
     })),
     artifacts,
   }
