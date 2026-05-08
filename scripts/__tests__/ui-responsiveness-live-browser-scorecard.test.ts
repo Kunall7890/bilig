@@ -1,3 +1,5 @@
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
@@ -5,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { hasUiResponsivenessSameCorpusTenXGap } from '../bilig-dominance-completion-audit.ts'
 import {
   buildSameCorpusProof,
+  assertUiResponsivenessLiveBrowserRunAllowed,
   parseUiResponsivenessLiveBrowserScorecard,
   validateUiResponsivenessLiveBrowserScorecard,
   type SameCorpusCapture,
@@ -62,6 +65,21 @@ describe('UI responsiveness live browser scorecard', () => {
     expect(() => validateUiResponsivenessLiveBrowserScorecard(staleScorecard)).toThrow(
       'UI responsiveness live browser scorecard is missing vendor: microsoft-excel-web',
     )
+  })
+
+  it('blocks live browser scorecard generation while the local resource guard is active', () => {
+    const rootDir = mkdtempSync(`${tmpdir()}/bilig-ui-browser-live-guard-`)
+    const coordinationDir = resolve(rootDir, '.agent-coordination')
+    mkdirSync(coordinationDir)
+    writeFileSync(
+      resolve(coordinationDir, '20260508T092619Z-codex-memory-pressure-stop.md'),
+      '# Memory pressure stop\n\nStatus: active on 2026-05-08T09:26:19Z.\n',
+    )
+
+    expect(() => assertUiResponsivenessLiveBrowserRunAllowed(rootDir, {})).toThrow(
+      /Refusing to start UI responsiveness live browser scorecard generation/u,
+    )
+    expect(() => assertUiResponsivenessLiveBrowserRunAllowed(rootDir, { BILIG_ALLOW_LOCAL_CI_RESOURCE_GUARD: '1' })).not.toThrow()
   })
 
   it('derives same-corpus 10x ratios from captured scroll-event samples', () => {

@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 import { hasUsableLicenseEvidence, parsePublicWorkbookManifestJson } from './public-workbook-corpus-json.ts'
-import { planPublicWorkbookCorpusFetch } from './public-workbook-corpus-fetch.ts'
+import { planPublicWorkbookCorpusFetch, type PublicWorkbookCorpusFetchPlan } from './public-workbook-corpus-fetch.ts'
 import { publicWorkbookCorpusCaseMatchesArtifact } from './public-workbook-corpus-missing.ts'
 import { readPublicWorkbookCorpusStatus, type PublicWorkbookCorpusStatus } from './public-workbook-corpus-status.ts'
 import { readReusablePublicWorkbookCorpusCases } from './public-workbook-corpus-verify-checkpoint.ts'
@@ -31,8 +31,12 @@ import {
   isRepoEvidenceArtifact,
   isResourceLimitedUnsupportedCase,
   pnpmScriptName,
-  readNonNegativeInteger,
 } from './public-workbook-corpus-completion-audit-helpers.ts'
+import {
+  hyperFormulaSecondaryCorpusArtifact,
+  missingHyperFormulaSecondaryCorpus,
+  readHyperFormulaSecondaryCorpus,
+} from './public-workbook-corpus-secondary-corpus.ts'
 import type { PublicWorkbookCorpusCase, PublicWorkbookManifest } from './public-workbook-corpus-types.ts'
 import type {
   PublicWorkbookCorpusAuditChecklistItem,
@@ -63,7 +67,6 @@ const objective =
   'Build a 10,000-spreadsheet legally usable public workbook corpus, verify every workbook through repeatable bilig correctness checks, and keep unsupported workbook behavior classified with evidence.'
 
 const baselineScorecardArtifact = 'packages/benchmarks/baselines/public-workbook-corpus-scorecard.json'
-const hyperFormulaSecondaryCorpusArtifact = 'packages/benchmarks/baselines/workpaper-vs-hyperformula.json'
 const manifestArtifact = '.cache/public-workbook-corpus/manifest.json'
 const checkpointArtifact = '.cache/public-workbook-corpus/verification-checkpoint.json'
 const financialManifestArtifact = '.cache/public-workbook-corpus-financial/manifest.json'
@@ -233,6 +236,9 @@ export function validatePublicWorkbookCorpusCompletionAudit(
       if (scriptName && !packageScripts().has(scriptName)) {
         findings.push(`${item.id} check command references missing package script: ${scriptName}`)
       }
+      if (audit.completionVerdict.nextCorpusRunRequiresExplicitResume && publicCorpusCheckCommandMutates(scriptName)) {
+        findings.push(`${item.id} check command is mutating while the public corpus stop marker is active: ${command}`)
+      }
     }
     if (item.passed && item.gaps.length > 0) {
       findings.push(`${item.id} is passed while still reporting gaps`)
@@ -373,10 +379,9 @@ const requirementBuilders: readonly ((context: RequirementContext) => PublicWork
         financialCheckpointArtifact,
       ],
       checkCommands: [
+        'pnpm public-workbook-corpus:discover-financial:check',
         'pnpm public-workbook-corpus:resume-financial:check',
-        'pnpm public-workbook-corpus:discover-financial',
-        'pnpm public-workbook-corpus:fetch-financial',
-        'pnpm public-workbook-corpus:verify-financial',
+        'pnpm public-workbook-corpus:fetch-financial:plan',
         'pnpm public-workbook-corpus:check-financial',
         'pnpm public-workbook-corpus:completion-audit:check',
       ],
@@ -803,7 +808,7 @@ function buildAuditState(
   const financialSources = financialManifest ? financialManifest.sources : (manifest?.sources.filter(hasFinancialTopicEvidence) ?? [])
   const financialCaseCandidates = financialManifest ? financialRecordedCases : recordedCases
   const recordedCasesById = new Map(financialCaseCandidates.map((entry) => [entry.id, entry]))
-  const fetchPlan = manifest ? planPublicWorkbookCorpusFetch({ manifest, limit: status.targetWorkbookCount, sampleLimit: 0 }) : null
+  const fetchPlan = planPublicWorkbookCorpusFetchForAudit(manifest, status.targetWorkbookCount)
   const missingFeatureWitnesses = buildFeatureWitnessCoverage(recordedCases)
     .filter((entry) => entry.witnessCaseCount === 0)
     .map((entry) => entry.label)
@@ -856,6 +861,20 @@ function isXlsxArtifact(fileName: string, cachePath: string): boolean {
   return fileName.toLowerCase().endsWith('.xlsx') || cachePath.toLowerCase().endsWith('.xlsx')
 }
 
+function planPublicWorkbookCorpusFetchForAudit(
+  manifest: PublicWorkbookManifest | null,
+  targetWorkbookCount: number,
+): PublicWorkbookCorpusFetchPlan | null {
+  if (!manifest) {
+    return null
+  }
+  try {
+    return planPublicWorkbookCorpusFetch({ manifest, limit: targetWorkbookCount, sampleLimit: 0 })
+  } catch {
+    return null
+  }
+}
+
 function isSupportedRoundTripSuccess(entry: PublicWorkbookCorpusCase): boolean {
   return entry.validation.roundTripPassed && entry.status !== 'unsupported' && !hasRoundTripSkippedEvidence(entry)
 }
@@ -879,59 +898,6 @@ function readRecordedCases(args: {
     return candidate && publicWorkbookCorpusCaseMatchesArtifact(candidate, artifact) ? [candidate] : []
   })
 }
-function readHyperFormulaSecondaryCorpus(path: string): PublicWorkbookCorpusSecondaryFormulaCorpusStatus {
-  if (!existsSync(path)) {
-    return missingHyperFormulaSecondaryCorpus()
-  }
-  try {
-    const record = JSON.parse(readFileSync(path, 'utf8')) as unknown
-    if (!isRecord(record)) {
-      throw new Error('artifact root is not an object')
-    }
-    const scorecard = isRecord(record['scorecard']) ? record['scorecard'] : {}
-    const results = Array.isArray(record['results']) ? record['results'] : []
-    const comparableResults = results.filter((entry) => isRecord(entry) && entry['comparable'] === true)
-    const comparableVerificationEquivalentCount = comparableResults.filter((entry) => {
-      const comparison = isRecord(entry) ? entry['comparison'] : null
-      return isRecord(comparison) && comparison['verificationEquivalent'] === true
-    }).length
-    const comparableCount = comparableResults.length || readNonNegativeInteger(scorecard, 'comparableCount', 0)
-    return {
-      artifact: hyperFormulaSecondaryCorpusArtifact,
-      artifactPresent: true,
-      suite: typeof record['suite'] === 'string' ? record['suite'] : null,
-      resultCount: results.length,
-      comparableCount,
-      workpaperWins: readNonNegativeInteger(scorecard, 'workpaperWins', 0),
-      hyperformulaWins: readNonNegativeInteger(scorecard, 'hyperformulaWins', 0),
-      comparableVerificationEquivalentCount,
-      allComparableVerificationEquivalent: comparableCount > 0 && comparableVerificationEquivalentCount === comparableCount,
-      parseError: null,
-    }
-  } catch (error) {
-    return {
-      ...missingHyperFormulaSecondaryCorpus(),
-      artifactPresent: true,
-      parseError: error instanceof Error ? error.message : String(error),
-    }
-  }
-}
-
-function missingHyperFormulaSecondaryCorpus(): PublicWorkbookCorpusSecondaryFormulaCorpusStatus {
-  return {
-    artifact: hyperFormulaSecondaryCorpusArtifact,
-    artifactPresent: false,
-    suite: null,
-    resultCount: 0,
-    comparableCount: 0,
-    workpaperWins: 0,
-    hyperformulaWins: 0,
-    comparableVerificationEquivalentCount: 0,
-    allComparableVerificationEquivalent: false,
-    parseError: null,
-  }
-}
-
 function checklistItem(
   item: Omit<PublicWorkbookCorpusAuditChecklistItem, 'evidenceArtifacts' | 'checkCommands'> & {
     readonly evidenceArtifacts?: readonly string[]
@@ -948,6 +914,26 @@ function checklistItem(
 function uniqueStrings(values: readonly string[]): string[] {
   return [...new Set(values)]
 }
+
+function publicCorpusCheckCommandMutates(scriptName: string | null): boolean {
+  return scriptName !== null && publicCorpusMutatingScripts.has(scriptName)
+}
+
+const publicCorpusMutatingScripts = new Set([
+  'public-workbook-corpus:init',
+  'public-workbook-corpus:add-link',
+  'public-workbook-corpus:discover',
+  'public-workbook-corpus:discover-financial',
+  'public-workbook-corpus:fetch',
+  'public-workbook-corpus:fetch-source',
+  'public-workbook-corpus:fetch-financial',
+  'public-workbook-corpus:verify',
+  'public-workbook-corpus:verify-artifact',
+  'public-workbook-corpus:verify-financial',
+  'public-workbook-corpus:verify-missing',
+  'public-workbook-corpus:verify-stale',
+  'public-workbook-corpus:refresh-scorecard-from-checkpoint',
+])
 
 function packageScripts(): ReadonlyMap<string, string> {
   const parsed = JSON.parse(readFileSync(resolve(rootDir, 'package.json'), 'utf8')) as unknown

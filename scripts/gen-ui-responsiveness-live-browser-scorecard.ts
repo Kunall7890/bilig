@@ -6,6 +6,7 @@ import { performance } from 'node:perf_hooks'
 
 import { chromium, type Browser, type Page } from '@playwright/test'
 import { summarizeNumbers, type NumericSummary } from '../packages/benchmarks/src/stats.js'
+import { assertLocalCiResourceGuardAllowsRun } from './ci-local-resource-guard.ts'
 import { readJsonObject } from './json-scorecard-helpers.ts'
 import { parseSameCorpusCapture, parseUiResponsivenessLiveBrowserScorecard } from './ui-responsiveness-live-browser-scorecard-parse.ts'
 
@@ -211,6 +212,7 @@ async function main(): Promise<void> {
     return
   }
 
+  assertUiResponsivenessLiveBrowserRunAllowed()
   const sameCorpusProof = capturePath
     ? buildSameCorpusProof(parseSameCorpusCapture(readJsonObject(resolve(capturePath))))
     : buildMissingSameCorpusProof()
@@ -265,6 +267,13 @@ export async function buildUiResponsivenessLiveBrowserScorecard(
   } finally {
     await browser.close()
   }
+}
+
+export function assertUiResponsivenessLiveBrowserRunAllowed(
+  rootDirForGuard: string = rootDir,
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): void {
+  assertLocalCiResourceGuardAllowsRun(rootDirForGuard, env, { runLabel: 'UI responsiveness live browser scorecard generation' })
 }
 
 async function measureBrowserCases(

@@ -130,10 +130,14 @@ describe('bilig dominance status', () => {
     })
     expect(status.uiSameCorpus.nextPreflightCommand).toBeNull()
     expect(status.uiSameCorpus.nextCaptureCommand).toBeNull()
+    expect(status.uiSameCorpus.nextScorecardGenerateCommand).toBeNull()
     expect(status.uiSameCorpus.blockedCommands).toEqual([
       expect.stringContaining('BILIG_ALLOW_LOCAL_CI_RESOURCE_GUARD=1 pnpm ui:same-corpus:capture -- --preflight'),
       expect.stringContaining(
         'BILIG_ALLOW_LOCAL_CI_RESOURCE_GUARD=1 pnpm ui:same-corpus:capture -- --output .cache/ui-responsiveness/same-corpus-capture.json',
+      ),
+      expect.stringContaining(
+        'BILIG_ALLOW_LOCAL_CI_RESOURCE_GUARD=1 pnpm ui:browser-live:generate -- --capture .cache/ui-responsiveness/same-corpus-capture.json',
       ),
     ])
     expect(status.localCiResourceGuard).toEqual({

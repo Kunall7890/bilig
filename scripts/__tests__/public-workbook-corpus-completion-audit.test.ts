@@ -118,6 +118,13 @@ describe('public workbook corpus completion audit', () => {
         'financial/accounting cached artifacts below target: 0/3',
         'financial/accounting recorded verification cases below target: 0/3',
       ]),
+      checkCommands: [
+        'pnpm public-workbook-corpus:discover-financial:check',
+        'pnpm public-workbook-corpus:resume-financial:check',
+        'pnpm public-workbook-corpus:fetch-financial:plan',
+        'pnpm public-workbook-corpus:check-financial',
+        'pnpm public-workbook-corpus:completion-audit:check',
+      ],
     })
     expect(requirement(audit.checklist, 'scorecard-all-10000')).toMatchObject({
       passed: false,
@@ -166,6 +173,47 @@ describe('public workbook corpus completion audit', () => {
     expect(validatePublicWorkbookCorpusCompletionAudit(invalidAudit)).toEqual(
       expect.arrayContaining([
         'resume-public-corpus-ingest blocked next action command is missing the active corpus stop-marker override: pnpm public-workbook-corpus:fetch -- --limit 2',
+      ]),
+    )
+  })
+
+  it('rejects mutating checklist commands while the corpus stop marker is active', () => {
+    const artifact = workbookArtifact('workbook-a')
+    const audit = buildPublicWorkbookCorpusCompletionAudit({
+      generatedAt: '2026-05-08T00:00:00.000Z',
+      manifest: manifestWithArtifacts([artifact], 2),
+      recordedCases: [passedCase(artifact, 1)],
+      status: statusFixture({
+        targetWorkbookCount: 2,
+        sourceCount: 2,
+        cachedArtifactCount: 1,
+        scorecardCaseCount: 1,
+        checkpointCaseCount: 1,
+        recordedManifestArtifactCount: 1,
+        missingManifestArtifactCount: 0,
+        recordedPassedCaseCount: 1,
+        scorecardCoversManifest: true,
+        targetComplete: false,
+        gaps: ['cached artifacts below target: 1/2'],
+      }),
+      stopMarkerActive: true,
+    })
+    const invalidChecklist = audit.checklist.slice()
+    const financialItemIndex = invalidChecklist.findIndex((item) => item.id === 'financial-accounting-workpapers-5000')
+    const financialItem = invalidChecklist[financialItemIndex]
+    if (!financialItem) {
+      throw new Error('expected financial-accounting-workpapers-5000 checklist item')
+    }
+    invalidChecklist[financialItemIndex] = Object.assign({}, financialItem, {
+      checkCommands: [...financialItem.checkCommands, 'pnpm public-workbook-corpus:fetch-financial'],
+    })
+    const invalidAudit = Object.assign({}, audit, {
+      checklist: invalidChecklist,
+    })
+
+    expect(validatePublicWorkbookCorpusCompletionAudit(invalidAudit)).toEqual(
+      expect.arrayContaining([
+        'financial-accounting-workpapers-5000 check command is mutating while the public corpus stop marker is active: pnpm public-workbook-corpus:fetch-financial',
       ]),
     )
   })

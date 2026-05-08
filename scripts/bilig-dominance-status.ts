@@ -153,7 +153,7 @@ export interface BiligDominanceStatus {
       readonly nextPreflightRequiresOverride: boolean
       readonly nextCaptureRequiresOverride: boolean
     }
-    readonly nextScorecardGenerateCommand: string
+    readonly nextScorecardGenerateCommand: string | null
     readonly nextDominanceCheckCommand: string
   }
 }
@@ -574,6 +574,7 @@ function buildUiSameCorpusStatus(
   ]
     .map(shellQuote)
     .join(' ')
+  const nextScorecardGenerateCommand = 'pnpm ui:browser-live:generate -- --capture .cache/ui-responsiveness/same-corpus-capture.json'
   return {
     captured: proof.captured,
     evidenceKind: proof.evidenceKind,
@@ -610,9 +611,11 @@ function buildUiSameCorpusStatus(
     nextGoogleSheetsUploadInstruction: `Upload ${fixture.localXlsxPath} to Google Sheets as a native Google Sheet, share it to anyone with the link, then pass its edit URL as --google-sheets-url.`,
     nextPreflightCommand: browserCaptureGuard.active ? null : nextPreflightCommand,
     nextCaptureCommand: browserCaptureGuard.active ? null : nextCaptureCommand,
-    blockedCommands: browserCaptureGuard.active ? [nextPreflightCommand, nextCaptureCommand].map(localCiResourceGuardOverrideCommand) : [],
+    blockedCommands: browserCaptureGuard.active
+      ? [nextPreflightCommand, nextCaptureCommand, nextScorecardGenerateCommand].map(localCiResourceGuardOverrideCommand)
+      : [],
     browserCaptureGuard,
-    nextScorecardGenerateCommand: 'pnpm ui:browser-live:generate -- --capture .cache/ui-responsiveness/same-corpus-capture.json',
+    nextScorecardGenerateCommand: browserCaptureGuard.active ? null : nextScorecardGenerateCommand,
     nextDominanceCheckCommand: 'pnpm dominance:generate && pnpm dominance:check && pnpm dominance:audit:check',
   }
 }
