@@ -17,6 +17,7 @@ import { addExportLegacyCommentVmlToXlsxBytes } from './xlsx-comment-vml.js'
 import { addExportCommentsToWorksheet } from './xlsx-comments.js'
 import { addExportConditionalFormatsToXlsxBytes } from './xlsx-conditional-formats.js'
 import { buildExportDefinedNames } from './xlsx-defined-names.js'
+import { addExportDrawingArtifactsToXlsxBytes } from './xlsx-drawing-artifacts.js'
 import { addExportWorksheetDimensionsToXlsxBytes, applyExportWorksheetDimensionsToWorksheetXml } from './xlsx-dimensions.js'
 import { addExportFiltersToXlsxBytes } from './xlsx-filters.js'
 import { addExportFreezePanesToXlsxBytes } from './xlsx-freeze-panes.js'
@@ -936,7 +937,8 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
   const formattedBytes = preserveSnapshotNumberFormats(styledBytes, exportSheetFormats)
   const styleArtifactBytes = addExportStyleArtifactsToXlsxBytes(formattedBytes, snapshot)
   const dimensionedBytes = addExportWorksheetDimensionsToXlsxBytes(styleArtifactBytes, snapshot)
-  const ignoredErrorsBytes = addExportIgnoredErrorsToXlsxBytes(dimensionedBytes, snapshot)
+  const drawingArtifactBytes = addExportDrawingArtifactsToXlsxBytes(dimensionedBytes, snapshot)
+  const ignoredErrorsBytes = addExportIgnoredErrorsToXlsxBytes(drawingArtifactBytes, snapshot)
   const sparklineBytes = addExportSparklinesToXlsxBytes(ignoredErrorsBytes, snapshot)
   return addExportCellMetadataToXlsxBytes(
     addExportPrinterSettingsToXlsxBytes(addExportLegacyCommentVmlToXlsxBytes(sparklineBytes, snapshot), snapshot),

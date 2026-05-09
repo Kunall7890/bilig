@@ -28,6 +28,7 @@ import { legacyCommentThreadSignature, readImportedWorkbookLegacyCommentVml, typ
 import { readImportedSheetComments } from './xlsx-comments.js'
 import { readImportedWorkbookConditionalFormatArtifacts, readImportedWorkbookConditionalFormats } from './xlsx-conditional-formats.js'
 import { readImportedDefinedNames } from './xlsx-defined-names.js'
+import { readImportedWorkbookDrawingArtifacts } from './xlsx-drawing-artifacts.js'
 import { readImportedWorkbookFilters } from './xlsx-filters.js'
 import { readImportedWorkbookFreezePanes } from './xlsx-freeze-panes.js'
 import { readImportedWorkbookIgnoredErrors } from './xlsx-ignored-errors.js'
@@ -548,6 +549,7 @@ function importSheetJsWorkbook(
   const importedCellMetadata = workbookZip ? readImportedWorkbookCellMetadata(workbookZip, workbook.SheetNames) : undefined
   const importedCharts = workbookZip ? readImportedWorkbookCharts(workbookZip, workbook.SheetNames) : undefined
   const importedTables = workbookZip ? readImportedWorkbookTables(workbookZip, workbook.SheetNames) : undefined
+  const importedDrawingArtifacts = workbookZip ? readImportedWorkbookDrawingArtifacts(workbookZip, workbook.SheetNames) : undefined
   const importedPivots = workbookZip
     ? readImportedWorkbookPivots(workbookZip, workbook.SheetNames, importedTables, importedDefinedNames.definedNames)
     : undefined
@@ -749,6 +751,7 @@ function importSheetJsWorkbook(
     const importedSparklines = importedSparklinesBySheet.get(sheetName)
     const importedStyleArtifactsForSheet = importedStyleArtifacts.sheetArtifactsByName.get(sheetName)
     const importedPivotArtifacts = importedPivots?.sheetArtifactsByName.get(sheetName)
+    const importedDrawingArtifactsForSheet = importedDrawingArtifacts?.sheetArtifactsByName.get(sheetName)
     const importedSheetVisibility = importedSheetVisibilitiesBySheet.get(sheetName)
     const merges = buildMergeEntries(sheetName, sheet['!merges'])
     const importedSheetProtection = importedSheetProtectionsBySheet.get(sheetName)
@@ -774,6 +777,7 @@ function importSheetJsWorkbook(
       sparklines: importedSparklines,
       styleArtifacts: importedStyleArtifactsForSheet,
       pivotArtifacts: importedPivotArtifacts,
+      drawingArtifacts: importedDrawingArtifactsForSheet,
       visibility: importedSheetVisibility,
       merges,
       sheetProtection: importedSheetProtection,
@@ -814,6 +818,7 @@ function importSheetJsWorkbook(
     ...(importedArrayFormulaSpills.length > 0 ? { spills: importedArrayFormulaSpills } : {}),
     ...(importedPivots?.pivots ? { pivots: importedPivots.pivots } : {}),
     ...(importedPivots?.artifacts ? { pivotArtifacts: importedPivots.artifacts } : {}),
+    ...(importedDrawingArtifacts?.artifacts ? { drawingArtifacts: importedDrawingArtifacts.artifacts } : {}),
     ...(importedCharts ? { charts: importedCharts } : {}),
     ...(importedStyleArtifacts.workbookArtifacts ? { styleArtifacts: importedStyleArtifacts.workbookArtifacts } : {}),
     ...(importedCellMetadata?.workbookMetadata ? { cellMetadata: importedCellMetadata.workbookMetadata } : {}),

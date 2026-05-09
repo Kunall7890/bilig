@@ -285,6 +285,33 @@ export interface WorkbookPivotPackagePartSnapshot {
   xml: string
 }
 
+export interface WorkbookPreservedPackagePartSnapshot {
+  path: string
+  storage: 'base64'
+  dataBase64: string
+  byteLength: number
+}
+
+export interface WorkbookContentTypeDefaultSnapshot {
+  extension: string
+  contentType: string
+}
+
+export interface WorkbookContentTypeOverrideSnapshot {
+  partName: string
+  contentType: string
+}
+
+export interface WorkbookDrawingArtifactsSnapshot {
+  parts: WorkbookPreservedPackagePartSnapshot[]
+  contentTypeDefaults?: WorkbookContentTypeDefaultSnapshot[]
+  contentTypeOverrides?: WorkbookContentTypeOverrideSnapshot[]
+}
+
+export interface WorkbookSheetDrawingArtifactsSnapshot {
+  relationshipTarget: string
+}
+
 export interface WorkbookPivotArtifactsSnapshot {
   parts: WorkbookPivotPackagePartSnapshot[]
   workbookPivotCachesXml?: string
@@ -832,6 +859,7 @@ export interface WorkbookMetadataSnapshot {
   spills?: WorkbookSpillSnapshot[]
   pivots?: WorkbookPivotSnapshot[]
   pivotArtifacts?: WorkbookPivotArtifactsSnapshot
+  drawingArtifacts?: WorkbookDrawingArtifactsSnapshot
   charts?: WorkbookChartSnapshot[]
   images?: WorkbookImageSnapshot[]
   shapes?: WorkbookShapeSnapshot[]
@@ -865,6 +893,7 @@ export interface SheetMetadataSnapshot {
   commentThreads?: WorkbookCommentThreadSnapshot[]
   notes?: WorkbookNoteSnapshot[]
   hyperlinks?: WorkbookHyperlinkSnapshot[]
+  drawingArtifacts?: WorkbookSheetDrawingArtifactsSnapshot
   legacyCommentVml?: WorkbookLegacyCommentVmlSnapshot
   printerSettings?: WorkbookPrinterSettingsSnapshot[]
   sheetPr?: WorkbookSheetPrSnapshot
