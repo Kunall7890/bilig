@@ -642,8 +642,10 @@ export function restoreWorkbookFromSnapshot(args: WorkbookSnapshotRestoreArgs): 
   const formulaRefs: EngineCellMutationRef[] = []
   const formulaSourceRefs = args.initializeFormulaSourcesAt ? new RestoredFormulaSourceRefTable(potentialNewCells) : undefined
   const hydratedPreparedFormulaRefs: HydratedPreparedRuntimeFormulaRef[] = []
-  const canHydrateCachedUnsupportedFormulas = args.initializeHydratedPreparedCellFormulasAt && args.resolveTemplateForCell
-  const definedFormulaNames = canHydrateCachedUnsupportedFormulas ? collectDefinedFormulaNames(args.snapshot) : new Set<string>()
+  const canHydrateCachedFormulaValues = args.initializeHydratedPreparedCellFormulasAt && args.resolveTemplateForCell
+  const shouldHydrateIterativeFormulaValues = args.snapshot.workbook.metadata?.calculationSettings?.iterate === true
+  const definedFormulaNames =
+    shouldHydrateIterativeFormulaValues || !canHydrateCachedFormulaValues ? undefined : collectDefinedFormulaNames(args.snapshot)
   const restoredStringIds = new Map<string, number>()
 
   args.checkEvaluationBudget?.()
@@ -657,7 +659,7 @@ export function restoreWorkbookFromSnapshot(args: WorkbookSnapshotRestoreArgs): 
         const sheet = orderedSheets[sheetIndex]!
         const sheetRecord = args.workbook.getSheet(sheet.name)
         if (!sheetRecord) {
-          throw new Error(`Missing sheet during snapshot restore: ${sheet.name}`)
+          throw new Error(`Missing restore sheet: ${sheet.name}`)
         }
         const sheetId = sheetRecord.id
         const rowIds: string[] = []
@@ -677,9 +679,9 @@ export function restoreWorkbookFromSnapshot(args: WorkbookSnapshotRestoreArgs): 
           if (cell.formula !== undefined) {
             let hydratedCachedFormula = false
             if (
-              canHydrateCachedUnsupportedFormulas &&
+              canHydrateCachedFormulaValues &&
               cell.value !== undefined &&
-              formulaShouldUseCachedUnsupportedFunctionValue(cell.formula, definedFormulaNames)
+              (shouldHydrateIterativeFormulaValues || formulaShouldUseCachedUnsupportedFunctionValue(cell.formula, definedFormulaNames!))
             ) {
               try {
                 const template = args.resolveTemplateForCell(cell.formula, coords.row, coords.col)
@@ -790,7 +792,7 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
       args.checkEvaluationBudget?.()
       const sheetRecord = args.workbook.getSheet(sheet.name)
       if (!sheetRecord) {
-        throw new Error(`Missing sheet during runtime image restore: ${sheet.name}`)
+        throw new Error(`Missing runtime restore sheet: ${sheet.name}`)
       }
       const sheetId = sheetRecord.id
       const sheetCoords = sheetCellsByName.get(sheet.name)

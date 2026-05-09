@@ -209,6 +209,42 @@ describe('EngineSnapshotService', () => {
     expect(restored.exportSnapshot()).toEqual(snapshot)
   })
 
+  it('seeds cached iterative cycle values during raw snapshot import', async () => {
+    const snapshot = {
+      version: 1 as const,
+      workbook: {
+        name: 'snapshot-iterative-cycle-seeds',
+        metadata: {
+          calculationSettings: {
+            mode: 'automatic' as const,
+            compatibilityMode: 'excel-modern' as const,
+            iterate: true,
+          },
+        },
+      },
+      sheets: [
+        {
+          id: 1,
+          name: 'Sheet1',
+          order: 0,
+          cells: [
+            { address: 'A1', formula: '1/B1', value: 1 },
+            { address: 'B1', formula: 'A1', value: 1 },
+          ],
+        },
+      ],
+    }
+    const restored = new SpreadsheetEngine({
+      workbookName: snapshot.workbook.name,
+      replicaId: 'snapshot-iterative-cycle-seeds-restore',
+    })
+    await restored.ready()
+    restored.importSnapshot(snapshot)
+
+    expect(restored.getCellValue('Sheet1', 'A1')).toEqual({ tag: ValueTag.Number, value: 1 })
+    expect(restored.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 1 })
+  })
+
   it('preserves macro payload metadata through engine snapshot import and export', async () => {
     const snapshot = {
       version: 1 as const,
