@@ -6,7 +6,8 @@ type StructuredReferenceSection = 'all' | 'data' | 'headers' | 'this-row' | 'tot
 
 interface StructuredReferenceParts {
   readonly section?: StructuredReferenceSection
-  readonly columnName?: string
+  readonly startColumnName?: string
+  readonly endColumnName?: string
 }
 
 interface StructuredReferenceRewriteContext {
@@ -76,43 +77,6 @@ function readBalancedStructuredReference(
   return undefined
 }
 
-function splitStructuredReferenceItems(text: string): string[] | undefined {
-  const trimmed = text.trim()
-  if (trimmed.length === 0) {
-    return undefined
-  }
-  if (!trimmed.startsWith('[')) {
-    return [trimmed]
-  }
-
-  const items: string[] = []
-  let index = 0
-  while (index < trimmed.length) {
-    while (trimmed[index] === ' ' || trimmed[index] === '\t' || trimmed[index] === '\n' || trimmed[index] === ',') {
-      index += 1
-    }
-    if (index >= trimmed.length) {
-      break
-    }
-    if (trimmed[index] !== '[') {
-      return undefined
-    }
-    const endIndex = trimmed.indexOf(']', index + 1)
-    if (endIndex < 0) {
-      return undefined
-    }
-    items.push(trimmed.slice(index + 1, endIndex).trim())
-    index = endIndex + 1
-    while (trimmed[index] === ' ' || trimmed[index] === '\t' || trimmed[index] === '\n') {
-      index += 1
-    }
-    if (index < trimmed.length && trimmed[index] !== ',') {
-      return undefined
-    }
-  }
-  return items.length > 0 ? items : undefined
-}
-
 function normalizeStructuredReferenceSection(item: string): StructuredReferenceSection | undefined {
   const normalized = item.replace(/\s+/gu, ' ').trim().toUpperCase()
   switch (normalized) {
@@ -137,36 +101,145 @@ function unescapeStructuredColumnName(item: string): string {
   return item.replace(/^@/u, '').replace(/''/gu, "'").trim()
 }
 
+function hasBalancedOuterBrackets(item: string): boolean {
+  if (!item.startsWith('[') || !item.endsWith(']')) {
+    return false
+  }
+  let depth = 0
+  for (let index = 0; index < item.length; index += 1) {
+    const character = item[index]
+    if (character === '[') {
+      depth += 1
+    } else if (character === ']') {
+      depth -= 1
+      if (depth === 0) {
+        return index === item.length - 1
+      }
+      if (depth < 0) {
+        return false
+      }
+    }
+  }
+  return false
+}
+
+function unwrapStructuredReferenceItem(item: string): string {
+  const trimmed = item.trim()
+  return hasBalancedOuterBrackets(trimmed) ? trimmed.slice(1, -1).trim() : trimmed
+}
+
+function splitStructuredReferenceTopLevel(text: string, separator: ',' | ':'): string[] | undefined {
+  const parts: string[] = []
+  let depth = 0
+  let startIndex = 0
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index]
+    if (character === '[') {
+      depth += 1
+    } else if (character === ']') {
+      depth -= 1
+      if (depth < 0) {
+        return undefined
+      }
+    } else if (character === separator && depth === 0) {
+      parts.push(text.slice(startIndex, index).trim())
+      startIndex = index + 1
+    }
+  }
+  if (depth !== 0) {
+    return undefined
+  }
+  parts.push(text.slice(startIndex).trim())
+  return parts
+}
+
+function parseStructuredReferenceToken(
+  item: string,
+): { readonly section?: StructuredReferenceSection; readonly columnName?: string } | undefined {
+  let trimmed = unwrapStructuredReferenceItem(item)
+  if (trimmed.length === 0) {
+    return undefined
+  }
+
+  const section = normalizeStructuredReferenceSection(trimmed)
+  if (section) {
+    return { section }
+  }
+
+  let tokenSection: StructuredReferenceSection | undefined
+  if (trimmed.startsWith('@')) {
+    tokenSection = 'this-row'
+    trimmed = unwrapStructuredReferenceItem(trimmed.slice(1).trim())
+  }
+  if (trimmed.length === 0) {
+    return tokenSection ? { section: tokenSection } : undefined
+  }
+
+  return {
+    ...(tokenSection ? { section: tokenSection } : {}),
+    columnName: unescapeStructuredColumnName(trimmed),
+  }
+}
+
 function parseStructuredReferenceParts(text: string): StructuredReferenceParts | undefined {
-  const items = splitStructuredReferenceItems(text)
+  const items = splitStructuredReferenceTopLevel(text.trim(), ',')
   if (!items) {
     return undefined
   }
 
   let section: StructuredReferenceSection | undefined
-  let columnName: string | undefined
-  for (const rawItem of items) {
-    const item = rawItem.trim()
+  let startColumnName: string | undefined
+  let endColumnName: string | undefined
+  for (const item of items) {
     if (item.length === 0) {
       continue
     }
-    if (item.startsWith('@')) {
-      section = 'this-row'
-      const shorthandColumnName = unescapeStructuredColumnName(item)
-      if (shorthandColumnName.length > 0) {
-        columnName = shorthandColumnName
+
+    const spanItems = splitStructuredReferenceTopLevel(item, ':')
+    if (!spanItems || spanItems.length === 0 || spanItems.length > 2) {
+      return undefined
+    }
+
+    if (spanItems.length === 2) {
+      const spanStart = parseStructuredReferenceToken(spanItems[0] ?? '')
+      const spanEnd = parseStructuredReferenceToken(spanItems[1] ?? '')
+      if (!spanStart?.columnName || !spanEnd?.columnName || startColumnName !== undefined) {
+        return undefined
       }
+      if (spanStart.section) {
+        section = spanStart.section
+      }
+      if (spanEnd.section && spanEnd.section !== section) {
+        return undefined
+      }
+      startColumnName = spanStart.columnName
+      endColumnName = spanEnd.columnName
       continue
     }
-    const parsedSection = normalizeStructuredReferenceSection(item)
-    if (parsedSection) {
-      section = parsedSection
+
+    const parsedItem = parseStructuredReferenceToken(item)
+    if (!parsedItem) {
       continue
     }
-    columnName = unescapeStructuredColumnName(item)
+    if (parsedItem.section) {
+      section = parsedItem.section
+    }
+    if (parsedItem.columnName) {
+      if (startColumnName !== undefined) {
+        return undefined
+      }
+      startColumnName = parsedItem.columnName
+      endColumnName = parsedItem.columnName
+    }
   }
 
-  return section || columnName ? { ...(section ? { section } : {}), ...(columnName ? { columnName } : {}) } : undefined
+  return section || startColumnName
+    ? {
+        ...(section ? { section } : {}),
+        ...(startColumnName ? { startColumnName } : {}),
+        ...(endColumnName ? { endColumnName } : {}),
+      }
+    : undefined
 }
 
 function decodeAddress(address: string): XLSX.CellAddress | undefined {
@@ -239,19 +312,59 @@ function rewriteStructuredReference(
 
   let startCol = tableStart.c
   let endCol = tableEnd.c
-  if (parts.columnName) {
-    const columnIndex = findTableColumnIndex(table, parts.columnName)
-    if (columnIndex < 0) {
+  if (parts.startColumnName) {
+    const startColumnIndex = findTableColumnIndex(table, parts.startColumnName)
+    const endColumnIndex = findTableColumnIndex(table, parts.endColumnName ?? parts.startColumnName)
+    if (startColumnIndex < 0 || endColumnIndex < 0) {
       return '#REF!'
     }
-    startCol = tableStart.c + columnIndex
-    endCol = startCol
+    startCol = tableStart.c + Math.min(startColumnIndex, endColumnIndex)
+    endCol = tableStart.c + Math.max(startColumnIndex, endColumnIndex)
   }
 
   if (endRow < startRow || endCol < startCol) {
     return '#REF!'
   }
   return formatFormulaReference(table.sheetName, startRow, startCol, endRow, endCol)
+}
+
+function ownerTableForAddress(
+  tables: readonly WorkbookTableSnapshot[],
+  ownerSheetName: string,
+  ownerAddress: string,
+): WorkbookTableSnapshot | undefined {
+  const owner = decodeAddress(ownerAddress)
+  if (!owner) {
+    return undefined
+  }
+  return tables.find((table) => {
+    if (table.sheetName !== ownerSheetName) {
+      return false
+    }
+    const tableStart = decodeAddress(table.startAddress)
+    const tableEnd = decodeAddress(table.endAddress)
+    return (
+      tableStart !== undefined &&
+      tableEnd !== undefined &&
+      owner.r >= tableStart.r &&
+      owner.r <= tableEnd.r &&
+      owner.c >= tableStart.c &&
+      owner.c <= tableEnd.c
+    )
+  })
+}
+
+function isExternalWorkbookReferencePrefix(source: string, startIndex: number): boolean {
+  const match = /^\[([1-9][0-9]*)\]/u.exec(source.slice(startIndex))
+  if (!match) {
+    return false
+  }
+  let index = startIndex + match[0].length
+  const sheetStart = index
+  while (index < source.length && /[A-Za-z0-9_.-]/u.test(source[index] ?? '')) {
+    index += 1
+  }
+  return index > sheetStart && source[index] === '!'
 }
 
 export function translateImportedFormulaStructuredReferences({
@@ -265,6 +378,7 @@ export function translateImportedFormulaStructuredReferences({
   }
 
   const tablesByName = new Map(tables.map((table) => [table.name.toLocaleLowerCase('en-US'), table]))
+  const ownerTable = ownerTableForAddress(tables, ownerSheetName, ownerAddress)
   let output = ''
   let index = 0
   while (index < formula.length) {
@@ -279,6 +393,25 @@ export function translateImportedFormulaStructuredReferences({
       const endIndex = skipSingleQuotedSheetName(formula, index)
       output += formula.slice(index, endIndex)
       index = endIndex
+      continue
+    }
+    if (character === '[') {
+      const structuredReference = !isExternalWorkbookReferencePrefix(formula, index)
+        ? readBalancedStructuredReference(formula, index)
+        : undefined
+      const parts = structuredReference ? parseStructuredReferenceParts(structuredReference.text) : undefined
+      const rewritten = ownerTable
+        ? parts
+          ? rewriteStructuredReference(ownerTable, parts, ownerSheetName, ownerAddress)
+          : undefined
+        : undefined
+      if (structuredReference && rewritten) {
+        output += rewritten
+        index = structuredReference.endIndex
+        continue
+      }
+      output += character
+      index += 1
       continue
     }
     if (!isIdentifierStart(character)) {

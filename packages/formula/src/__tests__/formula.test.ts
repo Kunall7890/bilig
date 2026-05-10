@@ -65,6 +65,11 @@ describe('formula', () => {
     expect(compiled.mode).toBe(1)
     expect([...compiled.symbolicRefs]).toEqual([])
     expect([...compiled.symbolicRanges]).toEqual(['A1:B2'])
+    expect(compiled.directAggregateCandidate).toMatchObject({
+      callee: 'SUM',
+      aggregateKind: 'sum',
+      symbolicRangeIndex: 0,
+    })
     expect(compileFormula('COUNTBLANK(A1:B2)').mode).toBe(1)
   })
 

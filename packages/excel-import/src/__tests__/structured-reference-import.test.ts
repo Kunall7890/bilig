@@ -160,4 +160,87 @@ describe('structured reference XLSX import', () => {
     expect(i18.tag === ValueTag.Number ? i18.value : Number.NaN).toBeCloseTo(5489.990996, 5)
     expect(engine.getCellValue('newsvendor', 'I19')).toEqual({ tag: ValueTag.Number, value: 225 })
   })
+
+  it('translates current-row shorthand and multi-column structured references from imported formulas', async () => {
+    const snapshot: WorkbookSnapshot = {
+      version: 1,
+      workbook: {
+        name: 'Structured Span Model',
+        metadata: {
+          tables: [
+            {
+              name: 'Metrics',
+              sheetName: 'PlayerData',
+              startAddress: 'A1',
+              endAddress: 'D4',
+              columnNames: ['Feet', 'Inches', 'Height', 'RowTotal'],
+              headerRow: true,
+              totalsRow: true,
+            },
+          ],
+        },
+      },
+      sheets: [
+        {
+          id: 1,
+          name: 'PlayerData',
+          order: 0,
+          cells: [
+            { address: 'A1', value: 'Feet' },
+            { address: 'B1', value: 'Inches' },
+            { address: 'C1', value: 'Height' },
+            { address: 'D1', value: 'RowTotal' },
+            { address: 'A2', value: 5 },
+            { address: 'B2', value: 7 },
+            { address: 'C2', formula: '[@Feet]+([@Inches]/12)' },
+            { address: 'D2', formula: 'SUM([@[Feet]:[Inches]])' },
+            { address: 'A3', value: 5 },
+            { address: 'B3', value: 9 },
+            { address: 'C3', formula: '[@Feet]+([@Inches]/12)' },
+            { address: 'D3', formula: 'SUM([@[Feet]:[Inches]])' },
+            { address: 'C4', formula: 'SUM(C2:C3)' },
+            { address: 'D4', formula: 'SUM(D2:D3)' },
+            { address: 'F1', formula: 'SUM(Metrics[[Feet]:[Inches]])' },
+            { address: 'F2', formula: 'COUNTA(Metrics[[#Headers],[Feet]:[Inches]])' },
+            { address: 'F3', formula: 'Metrics[[#Totals],[Height]]' },
+            { address: 'F4', formula: 'SUM(Metrics[[#Totals],[Height]:[RowTotal]])' },
+          ],
+        },
+      ],
+    }
+
+    const imported = importXlsx(exportXlsx(snapshot), 'structured-span-model.xlsx')
+    const playerData = imported.snapshot.sheets.find((sheet) => sheet.name === 'PlayerData')
+
+    expect(playerData?.cells.find((cell) => cell.address === 'C2')?.formula).not.toContain('[@Feet]')
+    expect(playerData?.cells.find((cell) => cell.address === 'D2')?.formula).not.toContain('[@[Feet]:[Inches]]')
+    expect(playerData?.cells.find((cell) => cell.address === 'F1')?.formula).not.toContain('Metrics[[Feet]:[Inches]]')
+    expect(playerData?.cells.find((cell) => cell.address === 'F2')?.formula).not.toContain('[[#Headers],[Feet]:[Inches]]')
+    expect(playerData?.cells.find((cell) => cell.address === 'F4')?.formula).not.toContain('[[#Totals],[Height]:[RowTotal]]')
+
+    const engine = new SpreadsheetEngine({ workbookName: 'structured-span-import' })
+    await engine.ready()
+    engine.importSnapshot(imported.snapshot)
+
+    const c2 = engine.getCellValue('PlayerData', 'C2')
+    expect(c2.tag).toBe(ValueTag.Number)
+    expect(c2.tag === ValueTag.Number ? c2.value : Number.NaN).toBeCloseTo(5.583333333333333, 10)
+
+    const c3 = engine.getCellValue('PlayerData', 'C3')
+    expect(c3.tag).toBe(ValueTag.Number)
+    expect(c3.tag === ValueTag.Number ? c3.value : Number.NaN).toBeCloseTo(5.75, 10)
+
+    expect(engine.getCellValue('PlayerData', 'D2')).toEqual({ tag: ValueTag.Number, value: 12 })
+    expect(engine.getCellValue('PlayerData', 'D3')).toEqual({ tag: ValueTag.Number, value: 14 })
+    expect(engine.getCellValue('PlayerData', 'F1')).toEqual({ tag: ValueTag.Number, value: 26 })
+    expect(engine.getCellValue('PlayerData', 'F2')).toEqual({ tag: ValueTag.Number, value: 2 })
+
+    const f3 = engine.getCellValue('PlayerData', 'F3')
+    expect(f3.tag).toBe(ValueTag.Number)
+    expect(f3.tag === ValueTag.Number ? f3.value : Number.NaN).toBeCloseTo(11.333333333333332, 10)
+
+    const f4 = engine.getCellValue('PlayerData', 'F4')
+    expect(f4.tag).toBe(ValueTag.Number)
+    expect(f4.tag === ValueTag.Number ? f4.value : Number.NaN).toBeCloseTo(37.33333333333333, 10)
+  })
 })

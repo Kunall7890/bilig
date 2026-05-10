@@ -154,6 +154,55 @@ describe('engine snapshot metadata formula restore', () => {
     expect(engine.getCellValue('Forecasting Model', 'C5')).toEqual({ tag: ValueTag.Number, value: 0 })
   })
 
+  it('binds defined names whose imported values are structured references', async () => {
+    const snapshot: WorkbookSnapshot = {
+      version: 1,
+      workbook: {
+        name: 'Imported Structured Name Model',
+        metadata: {
+          definedNames: [{ name: 'SalesAmounts', value: { kind: 'structured-ref', tableName: 'Sales', columnName: 'Amount' } }],
+          tables: [
+            {
+              name: 'Sales',
+              sheetName: 'Sheet1',
+              startAddress: 'A1',
+              endAddress: 'B4',
+              columnNames: ['Amount', 'Category'],
+              headerRow: true,
+              totalsRow: true,
+            },
+          ],
+        },
+      },
+      sheets: [
+        {
+          id: 1,
+          name: 'Sheet1',
+          order: 0,
+          cells: [
+            { address: 'A1', value: 'Amount' },
+            { address: 'B1', value: 'Category' },
+            { address: 'A2', value: 10 },
+            { address: 'B2', value: 'New' },
+            { address: 'A3', value: 15 },
+            { address: 'B3', value: 'Expansion' },
+            { address: 'A4', formula: 'SUM(A2:A3)' },
+            { address: 'B4', value: 'Total' },
+            { address: 'D2', formula: 'SUM(SalesAmounts)' },
+          ],
+        },
+      ],
+    }
+
+    const engine = new SpreadsheetEngine({ workbookName: 'restored-structured-defined-name' })
+    await engine.ready()
+    engine.importSnapshot(snapshot)
+
+    expect(engine.getCellValue('Sheet1', 'D2')).toEqual({ tag: ValueTag.Number, value: 25 })
+    expect(engine.setCellValue('Sheet1', 'A3', 30)).toEqual({ tag: ValueTag.Number, value: 30 })
+    expect(engine.getCellValue('Sheet1', 'D2')).toEqual({ tag: ValueTag.Number, value: 40 })
+  })
+
   it('restores imported style ranges through the bulk range path', async () => {
     const styleRanges = Array.from({ length: 200 }, (_value, index) => ({
       range: {

@@ -925,13 +925,14 @@ export function compileFormulaAst(source: string, ast: FormulaNode, options: Com
   const jsPlan = lowerToPlan(optimizedAst)
   const volatileMetadata = analyzeVolatileMetadata(options.originalAst ?? ast)
   const spillResult = producesSpillResult(optimizedAst)
-  const directAggregateCandidate = buildDirectAggregateCandidate(optimizedAst, state.ranges)
   const parsedReferencesByKey = collectParsedDependencyReferencesFromAst(optimizedAst)
   const parsedDependencies = buildParsedDependenciesFromReferences(parsedReferencesByKey, bound.deps)
 
   if (bound.mode === FormulaMode.WasmFastPath) {
     emitNode(optimizedAst, state)
   }
+
+  const directAggregateCandidate = buildDirectAggregateCandidate(optimizedAst, state.ranges)
 
   state.program.push(encodeInstruction(Opcode.Ret))
   return {
