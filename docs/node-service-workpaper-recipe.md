@@ -222,8 +222,10 @@ as a positive persistence signal, not a golden value.
   state.
 - Replace the demo's module-level JSON string with a durable row when deploying
   the service. The
+  [SQLite adapter](persisting-formula-backed-workpaper-documents-in-node.md#sqlite-adapter)
+  and
   [Postgres adapter](persisting-formula-backed-workpaper-documents-in-node.md#postgres-adapter)
-  shows the same `loadWorkbookJson()` / `saveWorkbookJson()` boundary against a
+  show the same `loadWorkbookJson()` / `saveWorkbookJson()` boundary against a
   database table.
 - Return computed values after every controlled edit. A successful HTTP status
   only proves the route ran; readback proves the workbook recalculated.

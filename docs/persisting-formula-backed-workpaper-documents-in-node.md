@@ -277,6 +277,97 @@ workbook, run that sequence inside a transaction and lock the row with
 database row should not be updated before the WorkPaper edit and verification
 readback have both succeeded.
 
+## SQLite Adapter
+
+SQLite is a good first durable store for local Node services, desktop tools, and
+single-instance agent workers. Store the serialized WorkPaper document as text,
+then keep every WorkPaper read or write behind the same load/verify/save
+boundary used by the serverless examples.
+
+```sql
+create table if not exists workpaper_documents (
+  id text primary key,
+  workbook_json text not null,
+  updated_at text not null default (datetime('now'))
+);
+```
+
+The adapter below assumes your chosen SQLite client exposes `get()` and `run()`
+methods. Keep those calls thin and swap in `better-sqlite3`, `node:sqlite`, or
+the SQLite client your service already uses.
+
+```ts
+import {
+  WorkPaper,
+  exportWorkPaperDocument,
+  parseWorkPaperDocument,
+  serializeWorkPaperDocument,
+} from '@bilig/headless'
+
+const documentId = 'local-revenue-plan'
+
+export function createSqliteWorkPaperStorage(db) {
+  return {
+    async loadWorkbookJson() {
+      const row = await db.get(
+        `
+          select workbook_json
+          from workpaper_documents
+          where id = ?
+        `,
+        [documentId],
+      )
+
+      if (row?.workbook_json === undefined) {
+        return createInitialWorkbookJson()
+      }
+
+      parseWorkPaperDocument(row.workbook_json)
+      return row.workbook_json
+    },
+
+    async saveWorkbookJson(workbookJson) {
+      parseWorkPaperDocument(workbookJson)
+
+      await db.run(
+        `
+          insert into workpaper_documents (id, workbook_json, updated_at)
+          values (?, ?, datetime('now'))
+          on conflict(id) do update set
+            workbook_json = excluded.workbook_json,
+            updated_at = datetime('now')
+        `,
+        [documentId, workbookJson],
+      )
+    },
+  }
+}
+
+function createInitialWorkbookJson() {
+  const workbook = WorkPaper.buildFromSheets({
+    Plan: [
+      ['Month', 'Bookings', 'Churn', 'Net MRR'],
+      ['January', 12000, 800, '=B2-C2'],
+    ],
+    Summary: [
+      ['Metric', 'Value'],
+      ['Net MRR', '=Plan!D2'],
+    ],
+  })
+
+  return serializeWorkPaperDocument(
+    exportWorkPaperDocument(workbook, { includeConfig: true }),
+  )
+}
+```
+
+Module memory is still useful for a tiny demo, but it should not be the deployed
+service store. Load the SQLite row before a request, restore the WorkPaper,
+apply one accepted mutation, verify computed readback, serialize the next
+document, and save the row after verification. If more than one process can
+write the same file, wrap the load/edit/save sequence in the transaction or
+write-lock primitive supported by your SQLite client.
+
 ## Notes For Services And Agents
 
 Keep persistence at the workbook-document boundary:
