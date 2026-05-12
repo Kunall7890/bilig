@@ -273,15 +273,7 @@ export function buildMutationMetadataInverseOps(workbook: WorkbookStore, op: Eng
       return [
         {
           kind: 'upsertTable',
-          table: {
-            name: existing.name,
-            sheetName: existing.sheetName,
-            startAddress: existing.startAddress,
-            endAddress: existing.endAddress,
-            columnNames: [...existing.columnNames],
-            headerRow: existing.headerRow,
-            totalsRow: existing.totalsRow,
-          },
+          table: structuredClone(existing),
         },
       ]
     }
@@ -293,15 +285,7 @@ export function buildMutationMetadataInverseOps(workbook: WorkbookStore, op: Eng
       return [
         {
           kind: 'upsertTable',
-          table: {
-            name: existing.name,
-            sheetName: existing.sheetName,
-            startAddress: existing.startAddress,
-            endAddress: existing.endAddress,
-            columnNames: [...existing.columnNames],
-            headerRow: existing.headerRow,
-            totalsRow: existing.totalsRow,
-          },
+          table: structuredClone(existing),
         },
       ]
     }

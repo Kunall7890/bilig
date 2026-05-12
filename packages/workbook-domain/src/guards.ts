@@ -451,7 +451,34 @@ function isWorkbookTableOp(value: unknown): boolean {
     hasString(value, 'endAddress') &&
     isStringArray(value['columnNames']) &&
     typeof value['headerRow'] === 'boolean' &&
-    typeof value['totalsRow'] === 'boolean'
+    typeof value['totalsRow'] === 'boolean' &&
+    (value['columns'] === undefined || isWorkbookTableColumns(value['columns'])) &&
+    (value['style'] === undefined || isWorkbookTableStyle(value['style'])) &&
+    isOptionalString(value['sortState'])
+  )
+}
+
+function isWorkbookTableColumns(value: unknown): boolean {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (entry) =>
+        isRecord(entry) &&
+        hasString(entry, 'name') &&
+        isOptionalString(entry['totalsRowLabel']) &&
+        isOptionalString(entry['totalsRowFunction']),
+    )
+  )
+}
+
+function isWorkbookTableStyle(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isOptionalString(value['name']) &&
+    isOptionalBoolean(value['showFirstColumn']) &&
+    isOptionalBoolean(value['showLastColumn']) &&
+    isOptionalBoolean(value['showRowStripes']) &&
+    isOptionalBoolean(value['showColumnStripes'])
   )
 }
 

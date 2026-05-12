@@ -542,14 +542,24 @@ function normalizeTableCommand(input: {
   if (columnNames.length !== width) {
     throw new Error(`Table ${input.name} spans ${String(width)} columns, but received ${String(columnNames.length)} column names`)
   }
+  const existingColumns =
+    input.existingTable?.columns && input.existingTable.columns.length === columnNames.length
+      ? input.existingTable.columns.map((column, index) => ({
+          ...column,
+          name: columnNames[index] ?? column.name,
+        }))
+      : undefined
   return {
     name: input.name,
     sheetName: input.range.sheetName,
     startAddress: input.range.startAddress,
     endAddress: input.range.endAddress,
     columnNames,
+    ...(existingColumns ? { columns: existingColumns } : {}),
     headerRow: input.headerRow ?? input.existingTable?.headerRow ?? true,
     totalsRow: input.totalsRow ?? input.existingTable?.totalsRow ?? false,
+    ...(input.existingTable?.style ? { style: structuredClone(input.existingTable.style) } : {}),
+    ...(input.existingTable?.sortState ? { sortState: input.existingTable.sortState } : {}),
   }
 }
 

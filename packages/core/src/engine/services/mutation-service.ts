@@ -189,15 +189,7 @@ export function createEngineMutationService(args: {
           .forEach((table) => {
             restoredOps.push({
               kind: 'upsertTable',
-              table: {
-                name: table.name,
-                sheetName: table.sheetName,
-                startAddress: table.startAddress,
-                endAddress: table.endAddress,
-                columnNames: [...table.columnNames],
-                headerRow: table.headerRow,
-                totalsRow: table.totalsRow,
-              },
+              table: structuredClone(table),
             })
           })
         args.state.workbook

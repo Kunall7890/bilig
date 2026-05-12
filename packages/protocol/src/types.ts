@@ -349,9 +349,25 @@ export interface WorkbookTableSnapshot {
   startAddress: string
   endAddress: string
   columnNames: string[]
+  columns?: WorkbookTableColumnSnapshot[]
   headerRow: boolean
   totalsRow: boolean
+  style?: WorkbookTableStyleSnapshot
   sortState?: string
+}
+
+export interface WorkbookTableColumnSnapshot {
+  name: string
+  totalsRowLabel?: string
+  totalsRowFunction?: string
+}
+
+export interface WorkbookTableStyleSnapshot {
+  name?: string
+  showFirstColumn?: boolean
+  showLastColumn?: boolean
+  showRowStripes?: boolean
+  showColumnStripes?: boolean
 }
 
 export interface WorkbookAxisMetadataSnapshot {

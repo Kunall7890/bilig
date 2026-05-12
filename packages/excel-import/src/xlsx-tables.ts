@@ -2,7 +2,7 @@ import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { XMLParser } from 'fast-xml-parser'
 import * as XLSX from 'xlsx'
 
-import type { WorkbookSnapshot, WorkbookTableSnapshot } from '@bilig/protocol'
+import type { WorkbookSnapshot, WorkbookTableColumnSnapshot, WorkbookTableSnapshot, WorkbookTableStyleSnapshot } from '@bilig/protocol'
 import { readSortStateXml } from './xlsx-sorts.js'
 import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
@@ -48,6 +48,20 @@ function recordChild(value: unknown, key: string): Record<string, unknown> | nul
 
 function escapeXml(value: string): string {
   return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&apos;')
+}
+
+function parseBooleanAttribute(value: unknown): boolean | undefined {
+  if (value === '1' || value === 'true') {
+    return true
+  }
+  if (value === '0' || value === 'false') {
+    return false
+  }
+  return undefined
+}
+
+function booleanAttribute(value: boolean): string {
+  return value ? '1' : '0'
 }
 
 function normalizeZipPath(path: string): string {
@@ -183,10 +197,51 @@ function tableDisplayName(name: string, fallbackIndex: number): string {
   return sanitized.length > 0 ? sanitized : `Table${String(fallbackIndex)}`
 }
 
+function exportTableColumns(table: WorkbookTableSnapshot): WorkbookTableColumnSnapshot[] {
+  const columnNames = table.columnNames.length > 0 ? table.columnNames : ['Column 1']
+  return columnNames.map((columnName, index) => {
+    const column = table.columns?.[index]
+    const exportedColumn: WorkbookTableColumnSnapshot = {
+      name: typeof column?.name === 'string' && column.name.trim().length > 0 ? column.name : columnName,
+    }
+    if (column?.totalsRowLabel !== undefined) {
+      exportedColumn.totalsRowLabel = column.totalsRowLabel
+    }
+    if (column?.totalsRowFunction !== undefined) {
+      exportedColumn.totalsRowFunction = column.totalsRowFunction
+    }
+    return exportedColumn
+  })
+}
+
+function buildTableColumnXml(column: WorkbookTableColumnSnapshot, index: number): string {
+  return [
+    `<tableColumn id="${String(index + 1)}" name="${escapeXml(column.name)}"`,
+    column.totalsRowLabel !== undefined ? ` totalsRowLabel="${escapeXml(column.totalsRowLabel)}"` : '',
+    column.totalsRowFunction !== undefined ? ` totalsRowFunction="${escapeXml(column.totalsRowFunction)}"` : '',
+    '/>',
+  ].join('')
+}
+
+function buildTableStyleXml(style: WorkbookTableStyleSnapshot | undefined): string {
+  const name = style?.name ?? 'TableStyleMedium2'
+  const showFirstColumn = style?.showFirstColumn ?? false
+  const showLastColumn = style?.showLastColumn ?? false
+  const showRowStripes = style?.showRowStripes ?? true
+  const showColumnStripes = style?.showColumnStripes ?? false
+  return [
+    `<tableStyleInfo name="${escapeXml(name)}"`,
+    ` showFirstColumn="${booleanAttribute(showFirstColumn)}"`,
+    ` showLastColumn="${booleanAttribute(showLastColumn)}"`,
+    ` showRowStripes="${booleanAttribute(showRowStripes)}"`,
+    ` showColumnStripes="${booleanAttribute(showColumnStripes)}"/>`,
+  ].join('')
+}
+
 function buildTableXml(table: WorkbookTableSnapshot, tableId: number): string {
   const ref = rangeRefA1(table)
   const displayName = tableDisplayName(table.name, tableId)
-  const columns = table.columnNames.length > 0 ? table.columnNames : ['Column 1']
+  const columns = exportTableColumns(table)
   return [
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
     `<table xmlns="${spreadsheetNamespace}" id="${String(tableId)}" name="${escapeXml(displayName)}" displayName="${escapeXml(
@@ -195,9 +250,9 @@ function buildTableXml(table: WorkbookTableSnapshot, tableId: number): string {
     table.headerRow ? `<autoFilter ref="${escapeXml(ref)}"/>` : '',
     table.sortState ?? '',
     `<tableColumns count="${String(columns.length)}">`,
-    ...columns.map((columnName, index) => `<tableColumn id="${String(index + 1)}" name="${escapeXml(columnName)}"/>`),
+    ...columns.map(buildTableColumnXml),
     '</tableColumns>',
-    '<tableStyleInfo name="TableStyleMedium2" showFirstColumn="0" showLastColumn="0" showRowStripes="1" showColumnStripes="0"/>',
+    buildTableStyleXml(table.style),
     '</table>',
   ].join('')
 }
@@ -269,23 +324,71 @@ function parseTableXml(sheetName: string, xml: string): WorkbookTableSnapshot | 
       : typeof table['name'] === 'string' && table['name'].trim().length > 0
         ? table['name'].trim()
         : `Table_${ref.startAddress}`
-  const columnNames = asArray(recordChild(table, 'tableColumns')?.['tableColumn']).flatMap((entry) => {
+  const columns = asArray(recordChild(table, 'tableColumns')?.['tableColumn']).flatMap((entry) => {
     if (!isRecord(entry) || typeof entry['name'] !== 'string' || entry['name'].trim().length === 0) {
       return []
     }
-    return [entry['name'].trim()]
+    const column: WorkbookTableColumnSnapshot = {
+      name: entry['name'].trim(),
+      ...(typeof entry['totalsRowLabel'] === 'string' ? { totalsRowLabel: entry['totalsRowLabel'] } : {}),
+      ...(typeof entry['totalsRowFunction'] === 'string' ? { totalsRowFunction: entry['totalsRowFunction'] } : {}),
+    }
+    return [column]
   })
+  const style = parseTableStyle(recordChild(table, 'tableStyleInfo'))
   const sortState = readSortStateXml(xml)
   return {
     name,
     sheetName,
     startAddress: ref.startAddress,
     endAddress: ref.endAddress,
-    columnNames,
+    columnNames: columns.map((column) => column.name),
+    ...(columns.some((column) => column.totalsRowLabel !== undefined || column.totalsRowFunction !== undefined) ? { columns } : {}),
     headerRow: table['headerRowCount'] !== '0',
     totalsRow: table['totalsRowShown'] === '1' || table['totalsRowCount'] === '1',
+    ...(style ? { style } : {}),
     ...(sortState ? { sortState } : {}),
   }
+}
+
+function parseTableStyle(style: Record<string, unknown> | null): WorkbookTableStyleSnapshot | undefined {
+  if (!style) {
+    return undefined
+  }
+  const parsed: WorkbookTableStyleSnapshot = {}
+  if (typeof style['name'] === 'string' && style['name'].trim().length > 0) {
+    parsed.name = style['name'].trim()
+  }
+  const showFirstColumn = parseBooleanAttribute(style['showFirstColumn'])
+  const showLastColumn = parseBooleanAttribute(style['showLastColumn'])
+  const showRowStripes = parseBooleanAttribute(style['showRowStripes'])
+  const showColumnStripes = parseBooleanAttribute(style['showColumnStripes'])
+  if (showFirstColumn !== undefined) {
+    parsed.showFirstColumn = showFirstColumn
+  }
+  if (showLastColumn !== undefined) {
+    parsed.showLastColumn = showLastColumn
+  }
+  if (showRowStripes !== undefined) {
+    parsed.showRowStripes = showRowStripes
+  }
+  if (showColumnStripes !== undefined) {
+    parsed.showColumnStripes = showColumnStripes
+  }
+  if (Object.keys(parsed).length === 0 || isDefaultTableStyle(parsed)) {
+    return undefined
+  }
+  return parsed
+}
+
+function isDefaultTableStyle(style: WorkbookTableStyleSnapshot): boolean {
+  return (
+    (style.name ?? 'TableStyleMedium2') === 'TableStyleMedium2' &&
+    !(style.showFirstColumn ?? false) &&
+    !(style.showLastColumn ?? false) &&
+    (style.showRowStripes ?? true) &&
+    !(style.showColumnStripes ?? false)
+  )
 }
 
 export function readImportedWorkbookTables(source: XlsxZipSource, sheetNames: readonly string[]): WorkbookTableSnapshot[] | undefined {

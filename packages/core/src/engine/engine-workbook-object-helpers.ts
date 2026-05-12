@@ -41,20 +41,11 @@ export function workbookObjectRecordEqual<T>(left: T | undefined, right: T): boo
 }
 
 export function workbookTablesEqual(left: WorkbookTableRecord | undefined, right: WorkbookTableRecord): boolean {
-  return (
-    left !== undefined &&
-    left.sheetName === right.sheetName &&
-    left.startAddress === right.startAddress &&
-    left.endAddress === right.endAddress &&
-    left.headerRow === right.headerRow &&
-    left.totalsRow === right.totalsRow &&
-    left.columnNames.length === right.columnNames.length &&
-    left.columnNames.every((name, index) => name === right.columnNames[index])
-  )
+  return workbookObjectRecordEqual(left, right)
 }
 
 export function cloneEngineTableRecord(table: WorkbookTableRecord): WorkbookTableRecord {
-  return Object.assign({}, table, { columnNames: [...table.columnNames] })
+  return structuredClone(table)
 }
 
 export function workbookChartsEqual(left: WorkbookChartSnapshot | undefined, right: WorkbookChartSnapshot): boolean {

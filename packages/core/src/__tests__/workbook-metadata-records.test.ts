@@ -52,8 +52,13 @@ describe('workbook metadata records', () => {
       startAddress: 'A1',
       endAddress: 'C10',
       columnNames: ['Region', 'Sales'],
+      columns: [
+        { name: 'Region', totalsRowLabel: 'Total' },
+        { name: 'Sales', totalsRowFunction: 'sum' },
+      ],
       headerRow: true,
       totalsRow: false,
+      style: { name: 'TableStyleMedium9', showRowStripes: true },
     }
     const filter = {
       sheetName: 'Sheet1',
@@ -78,6 +83,8 @@ describe('workbook metadata records', () => {
 
     definedName.value.startAddress = 'Z9'
     table.columnNames[0] = 'Changed'
+    table.columns[0].totalsRowLabel = 'Changed'
+    table.style.name = 'Changed'
     filter.range.startAddress = 'Z9'
     firstSortKey.keyAddress = 'Z9'
 
@@ -115,6 +122,11 @@ describe('workbook metadata records', () => {
     expect(clonedTable).toEqual({
       ...table,
       columnNames: ['Region', 'Sales'],
+      columns: [
+        { name: 'Region', totalsRowLabel: 'Total' },
+        { name: 'Sales', totalsRowFunction: 'sum' },
+      ],
+      style: { name: 'TableStyleMedium9', showRowStripes: true },
     })
     expect(clonedFilter).toEqual({
       sheetName: 'Sheet1',

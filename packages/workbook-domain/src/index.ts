@@ -21,6 +21,7 @@ import type {
   WorkbookCalculationSettingsSnapshot,
   WorkbookDefinedNameValueSnapshot,
   WorkbookPivotValueSnapshot,
+  WorkbookTableSnapshot,
   WorkbookVolatileContextSnapshot,
 } from '@bilig/protocol'
 
@@ -34,15 +35,7 @@ export interface Clock {
 export type WorkbookStructuralAxis = 'row' | 'column'
 export type WorkbookSortDirection = 'asc' | 'desc'
 
-export interface WorkbookTableOp {
-  name: string
-  sheetName: string
-  startAddress: string
-  endAddress: string
-  columnNames: string[]
-  headerRow: boolean
-  totalsRow: boolean
-}
+export interface WorkbookTableOp extends WorkbookTableSnapshot {}
 
 export interface WorkbookSortKey {
   keyAddress: string

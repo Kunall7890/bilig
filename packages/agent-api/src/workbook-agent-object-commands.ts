@@ -50,6 +50,14 @@ function isCellRangeRef(value: unknown): value is CellRangeRef {
   )
 }
 
+function isOptionalBoolean(value: unknown): value is boolean | undefined {
+  return value === undefined || typeof value === 'boolean'
+}
+
+function isOptionalString(value: unknown): value is string | undefined {
+  return value === undefined || typeof value === 'string'
+}
+
 function isWorkbookDefinedNameValueSnapshot(value: unknown): value is WorkbookDefinedNameValueSnapshot {
   if (value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
     return true
@@ -88,7 +96,34 @@ function isWorkbookTableSnapshot(value: unknown): value is WorkbookTableSnapshot
     Array.isArray(value['columnNames']) &&
     value['columnNames'].every((entry) => typeof entry === 'string') &&
     typeof value['headerRow'] === 'boolean' &&
-    typeof value['totalsRow'] === 'boolean'
+    typeof value['totalsRow'] === 'boolean' &&
+    (value['columns'] === undefined || isWorkbookTableColumns(value['columns'])) &&
+    (value['style'] === undefined || isWorkbookTableStyle(value['style'])) &&
+    isOptionalString(value['sortState'])
+  )
+}
+
+function isWorkbookTableColumns(value: unknown): boolean {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (entry) =>
+        isRecord(entry) &&
+        typeof entry['name'] === 'string' &&
+        isOptionalString(entry['totalsRowLabel']) &&
+        isOptionalString(entry['totalsRowFunction']),
+    )
+  )
+}
+
+function isWorkbookTableStyle(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isOptionalString(value['name']) &&
+    isOptionalBoolean(value['showFirstColumn']) &&
+    isOptionalBoolean(value['showLastColumn']) &&
+    isOptionalBoolean(value['showRowStripes']) &&
+    isOptionalBoolean(value['showColumnStripes'])
   )
 }
 

@@ -1513,7 +1513,7 @@ function projectPivotSemantics(pivot: WorkbookPivotSnapshot): WorkbookPivotSnaps
 }
 
 function projectTableSemantics(table: WorkbookTableSnapshot): WorkbookTableSnapshot {
-  return {
+  const projected: WorkbookTableSnapshot = {
     name: table.name,
     sheetName: table.sheetName,
     startAddress: table.startAddress,
@@ -1522,6 +1522,16 @@ function projectTableSemantics(table: WorkbookTableSnapshot): WorkbookTableSnaps
     headerRow: table.headerRow,
     totalsRow: table.totalsRow,
   }
+  if (table.columns !== undefined) {
+    projected.columns = structuredClone(table.columns)
+  }
+  if (table.style !== undefined) {
+    projected.style = { ...table.style }
+  }
+  if (table.sortState !== undefined) {
+    projected.sortState = table.sortState
+  }
+  return projected
 }
 
 function projectValidationSemantics(validation: WorkbookDataValidationSnapshot): WorkbookDataValidationSnapshot {

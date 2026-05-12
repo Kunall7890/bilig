@@ -552,15 +552,7 @@ export function listWorkbookNamedRanges(runtime: WorkbookRuntime): readonly {
 }
 
 export function listWorkbookTables(runtime: WorkbookRuntime): readonly WorkbookTableSnapshot[] {
-  return runtime.engine.getTables().map((table) => ({
-    name: table.name,
-    sheetName: table.sheetName,
-    startAddress: table.startAddress,
-    endAddress: table.endAddress,
-    columnNames: [...table.columnNames],
-    headerRow: table.headerRow,
-    totalsRow: table.totalsRow,
-  }))
+  return runtime.engine.getTables().map((table) => structuredClone(table))
 }
 
 export function resolveWorkbookSelector(input: ResolveWorkbookSelectorInput): ResolvedWorkbookSelector {
