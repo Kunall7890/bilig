@@ -78,6 +78,8 @@ module memory.
   `POST()`.
 - In a Cloudflare Worker, call it from `fetch(request)`.
 - In Hono, pass `c.req.raw` directly to the shared handler.
+- In Deno, return `handleWorkPaperRequest(request)` from `Deno.serve()` or a
+  `fetch` default export.
 - In Fastify, adapt the framework request into a web-standard `Request`, then
   write the returned `Response` through `reply`.
 - In Express, adapt the framework request into a web-standard `Request`, then

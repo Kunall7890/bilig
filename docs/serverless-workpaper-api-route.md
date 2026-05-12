@@ -430,6 +430,51 @@ curl -s -X POST http://localhost:3000/api/workpaper/revenue \
 If the Hono app is deployed to a worker or serverless runtime, pair this adapter
 with the durable storage variant above instead of relying on module memory.
 
+## Deno Deploy Adapter
+
+Deno's HTTP server uses Fetch `Request` and `Response` objects, so the adapter is
+the same shape as a Worker or Hono route. Keep the WorkPaper code in a shared
+module and let the Deno entrypoint delegate to it:
+
+```js
+import { handleWorkPaperRequest } from './workpaper-route.js'
+
+Deno.serve((request) => handleWorkPaperRequest(request))
+```
+
+For `deno serve` or Deno Deploy entrypoints that expect a default export, expose
+the same function through `fetch`:
+
+```js
+import { handleWorkPaperRequest } from './workpaper-route.js'
+
+export default {
+  fetch(request) {
+    return handleWorkPaperRequest(request)
+  },
+}
+```
+
+If the shared WorkPaper module runs directly in Deno instead of a bundled build,
+import the published package with Deno's npm specifier:
+
+```js
+import { WorkPaper } from 'npm:@bilig/headless'
+```
+
+The same route paths apply when the Deno server is running locally:
+
+```sh
+curl -s http://localhost:8000/api/workpaper/summary
+curl -s -X POST http://localhost:8000/api/workpaper/revenue \
+  -H 'content-type: application/json' \
+  -d '{"records":[{"region":"West","customers":20,"arpa":1200},{"region":"East","customers":30,"arpa":250},{"region":"Central","customers":18,"arpa":300},{"region":"North","customers":65,"arpa":180}]}'
+```
+
+Use the durable storage variant above for deployed Deno services. Module memory
+is fine for the local smoke test, but it is not a durable workbook store across
+deploys, isolates, or concurrent service instances.
+
 ## Fastify Adapter
 
 Fastify uses its own `request` and `reply` objects, so keep the adapter focused
