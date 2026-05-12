@@ -264,6 +264,8 @@ Keep the exported `handleWorkPaperRequest()` function as the stable boundary:
 - In Cloudflare Workers, call it from `fetch(request)`.
 - In Cloudflare Pages Functions, call it from `onRequestGet()` and
   `onRequestPost()`.
+- In Remix resource routes, return it from a `loader()` for `GET` and an
+  `action()` for `POST`.
 - In Hono, Fastify, or Express, adapt the framework request into a web-standard
   `Request`, then return or write the `Response`.
 - Persist `state.workbookJson` in your durable store instead of module memory
@@ -575,6 +577,58 @@ curl -s -X POST http://localhost:5173/api/workpaper/revenue \
 Keep the route files thin. The shared handler is what preserves identical
 formula evaluation, persisted document shape, and readback checks between the
 standalone Node server, SvelteKit, and other serverless surfaces.
+
+## Remix Resource Route Adapter
+
+Remix resource routes are route modules with no default component. They can
+return any `Response`, which makes them a small adapter for the shared WorkPaper
+handler.
+
+Create `app/workpaper-route.server.js` from the shared route code above:
+
+- keep the `@bilig/headless` imports
+- keep `state`, `handleWorkPaperRequest()`, and every workbook helper
+- omit `createServer()`, `toWebRequest()`, and the local Node adapter block
+
+Then create `app/routes/api.workpaper.summary.js`:
+
+```js
+import { handleWorkPaperRequest } from '../workpaper-route.server.js'
+
+export function loader({ request }) {
+  return handleWorkPaperRequest(request)
+}
+```
+
+Create `app/routes/api.workpaper.revenue.js`:
+
+```js
+import { handleWorkPaperRequest } from '../workpaper-route.server.js'
+
+export function action({ request }) {
+  return handleWorkPaperRequest(request)
+}
+```
+
+The route files intentionally export no React component. Remix will use the
+`loader()` response for `GET /api/workpaper/summary` and the `action()` response
+for `POST /api/workpaper/revenue`:
+
+```sh
+curl -s http://localhost:3000/api/workpaper/summary
+curl -s -X POST http://localhost:3000/api/workpaper/revenue \
+  -H 'content-type: application/json' \
+  -d '{"records":[{"region":"West","customers":20,"arpa":1200},{"region":"East","customers":30,"arpa":250},{"region":"Central","customers":18,"arpa":300},{"region":"North","customers":65,"arpa":180}]}'
+```
+
+If the files are TypeScript, annotate the arguments with `LoaderFunctionArgs`
+and `ActionFunctionArgs` from the Remix runtime package used by the app. The
+runtime value that matters here is still the incoming Fetch `Request`; the
+shared handler returns the `Response` directly.
+
+Use the durable storage variant above for deployed Remix apps. Module memory is
+fine for a local smoke test, but it is not a durable workbook store across
+server restarts, serverless cold starts, or multiple app instances.
 
 ## Bun.serve Adapter
 
