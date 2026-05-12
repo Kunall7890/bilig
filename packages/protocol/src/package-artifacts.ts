@@ -68,3 +68,10 @@ export interface WorkbookSheetControlArtifactsSnapshot {
   worksheetRootOpenTag: string
   relationships: WorkbookPackageRelationshipSnapshot[]
 }
+
+export interface WorkbookDataModelArtifactsSnapshot {
+  parts: WorkbookPreservedPackagePartSnapshot[]
+  workbookRelationships: WorkbookPackageRelationshipSnapshot[]
+  contentTypeDefaults?: WorkbookContentTypeDefaultSnapshot[]
+  contentTypeOverrides?: WorkbookContentTypeOverrideSnapshot[]
+}

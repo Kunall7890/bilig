@@ -1,5 +1,6 @@
 import { ErrorCode, type FormulaMode, type ValueTag } from './enums.js'
 import type {
+  WorkbookDataModelArtifactsSnapshot,
   WorkbookDocumentPropertiesArtifactsSnapshot,
   WorkbookControlArtifactsSnapshot,
   WorkbookDrawingArtifactsSnapshot,
@@ -838,6 +839,7 @@ export interface WorkbookMetadataSnapshot {
   pivotArtifacts?: WorkbookPivotArtifactsSnapshot
   drawingArtifacts?: WorkbookDrawingArtifactsSnapshot
   controlArtifacts?: WorkbookControlArtifactsSnapshot
+  dataModelArtifacts?: WorkbookDataModelArtifactsSnapshot
   charts?: WorkbookChartSnapshot[]
   images?: WorkbookImageSnapshot[]
   shapes?: WorkbookShapeSnapshot[]
