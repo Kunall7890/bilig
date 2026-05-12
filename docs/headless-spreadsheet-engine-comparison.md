@@ -2,7 +2,7 @@
 
 Status: public comparison guide for developers evaluating spreadsheet engines.
 
-Research date: 2026-05-07.
+Research date: 2026-05-12.
 
 This page exists because "spreadsheet engine" can mean several different
 things. A library that writes XLSX files, a formula-function package, a
@@ -33,6 +33,16 @@ by Excel or another spreadsheet app.
 Use Formula.js when you need Excel-like functions as direct JavaScript calls,
 not a workbook model with dependency graph, structural edits, and persistence.
 
+Use Hucre when the main problem is TypeScript spreadsheet file I/O across XLSX,
+CSV, and ODS, especially if early-access product status fits your risk profile.
+
+Use Formualizer when you want spreadsheet logic that can run across Rust,
+Python, and JavaScript/WASM runtimes.
+
+Use JSpreadsheet Formula Pro when you are already in the JSpreadsheet ecosystem
+or need its commercial JavaScript formula plugin for browser or Node
+calculations.
+
 ## Decision Table
 
 | Workload                                                                                    | Start With        | Why                                                                                                                                                                                            |
@@ -41,6 +51,9 @@ not a workbook model with dependency graph, structural edits, and persistence.
 | Call `SUM`, `DATE`, `XLOOKUP`-style functions directly from JavaScript code                 | Formula.js        | It implements many Excel formula functions as JavaScript functions, but it is not a workbook engine.                                                                                           |
 | Embed a mature headless spreadsheet formula engine in a web app or Node process             | HyperFormula      | It is UI-independent, has extensive built-in function coverage, and documents browser and server-side installation paths.                                                                      |
 | Build around a Rust/WASM open-source spreadsheet ecosystem                                  | IronCalc          | It presents itself as an open-source spreadsheet engine and ecosystem, with programmatic use from multiple languages.                                                                          |
+| Read, write, and transform spreadsheet files from modern TypeScript                         | Hucre             | Its site positions it around dependency-free TypeScript spreadsheet I/O for XLSX, CSV, and ODS, with built-in formula evaluation and streaming I/O.                                            |
+| Share spreadsheet logic across Rust, Python, and JavaScript/WASM                            | Formualizer       | Its docs describe an embeddable spreadsheet formula engine for apps, services, and automation pipelines across those runtimes.                                                                 |
+| Add commercial formula calculation to a JSpreadsheet-backed product                         | Formula Pro       | JSpreadsheet describes Formula Pro as a JavaScript plugin for spreadsheet-like calculations in the browser or Node.js.                                                                         |
 | Give an agent or Node service a workbook object it can mutate, persist, restore, and verify | `@bilig/headless` | It exposes WorkPaper operations and recipes around mutation, formula readback, persistence, and restored state.                                                                                |
 
 ## What Makes The Bilig Slice Different
@@ -141,6 +154,48 @@ receipt, persistence round trip, or restored readback contract by itself.
 Use Formula.js when the job is "call this function." Use a workbook engine when
 the job is "mutate this sheet and prove the workbook state afterward."
 
+## Where Hucre Fits
+
+Hucre is close enough to show up in the same search session, but the center of
+gravity is different. Its site leads with spreadsheet I/O for TypeScript:
+reading and writing XLSX, CSV, and ODS; streaming large files; a typed API; and
+formula evaluation as part of that file-oriented engine. It also says access is
+currently limited to approved early-access users.
+
+Start with Hucre when the product needs a modern TypeScript file I/O layer and
+the team is comfortable with early-access onboarding.
+
+Evaluate `@bilig/headless` when the immediate job is not file conversion, but a
+Node WorkPaper runtime that a service or coding agent can mutate, recalculate,
+persist as JSON, restore, and verify through computed readback.
+
+## Where Formualizer Fits
+
+Formualizer's docs describe spreadsheet logic that can be built once and run in
+Rust, Python, and JavaScript/WASM. That is a strong fit for teams that want one
+formula engine across multiple runtime languages or that already have Rust or
+Python automation paths.
+
+Start with Formualizer when cross-language runtime support is the deciding
+factor.
+
+Evaluate `@bilig/headless` when the project is already TypeScript-first and the
+hard part is an operational workbook object for Node services, agent tool calls,
+mutation receipts, persistence, and readback.
+
+## Where JSpreadsheet Formula Pro Fits
+
+JSpreadsheet Formula Pro is a commercial JavaScript formula plugin. The v4
+announcement describes browser and Node.js spreadsheet-like calculations,
+JSpreadsheet integration, and a broader formula set.
+
+Start with Formula Pro when the application already depends on JSpreadsheet or
+needs that commercial plugin path.
+
+Evaluate `@bilig/headless` when there is no grid dependency and the service
+needs a small package for formula-backed WorkPaper state, persisted documents,
+and verifiable agent edits.
+
 ## Evaluation Checklist
 
 Before choosing a spreadsheet engine, write down which of these must happen
@@ -218,3 +273,9 @@ Related proof docs:
   <https://formulajs.info/functions/>
 - ExcelJS README formula-value section:
   <https://github.com/exceljs/exceljs#formula-value>
+- Hucre official site:
+  <https://hucre.dev/>
+- Formualizer docs:
+  <https://www.formualizer.dev/docs>
+- JSpreadsheet Formula Pro v4 announcement:
+  <https://jspreadsheet.com/blog/formulas-pro-v4>
