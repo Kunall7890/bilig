@@ -18,6 +18,25 @@ function fetchInputUrl(input: string | URL | Request): string {
   return input.url
 }
 
+function requestBodyQuery(init: RequestInit | undefined): string {
+  const body = init?.body
+  if (typeof body !== 'string') {
+    throw new Error('expected GraphQL request body to be a string')
+  }
+
+  const parsed: unknown = JSON.parse(body)
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new Error('expected GraphQL request body to be an object')
+  }
+
+  const query = Reflect.get(parsed, 'query')
+  if (typeof query !== 'string') {
+    throw new Error('expected GraphQL request body query to be a string')
+  }
+
+  return query
+}
+
 function growthSearchResponse(url: string): Response | undefined {
   if (!url.startsWith('https://api.github.com/search/issues?')) {
     return undefined
@@ -161,7 +180,7 @@ describe('community growth snapshot', () => {
   })
 
   it('collects GitHub discussion and traffic metrics when a token is provided', async () => {
-    const fetchImpl = async (input: string | URL | Request): Promise<Response> => {
+    const fetchImpl = async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
       const url = fetchInputUrl(input)
 
       if (url === 'https://api.github.com/repos/proompteng/bilig') {
@@ -199,11 +218,6 @@ describe('community growth snapshot', () => {
         return responseJson({ downloads: 2, start: '2026-04-07', end: '2026-05-06' })
       }
 
-      const searchResponse = growthSearchResponse(url)
-      if (searchResponse !== undefined) {
-        return searchResponse
-      }
-
       if (url === 'https://api.github.com/repos/proompteng/bilig/traffic/views') {
         return responseJson({ count: 120, uniques: 33 })
       }
@@ -221,6 +235,43 @@ describe('community growth snapshot', () => {
       }
 
       if (url === 'https://api.github.com/graphql') {
+        const query = requestBodyQuery(init)
+
+        if (query.includes('CommunityGrowthContributorFunnel')) {
+          return responseJson({
+            data: {
+              goodFirst: {
+                issueCount: 8,
+              },
+              firstTimers: {
+                issueCount: 5,
+              },
+              helpWanted: {
+                issueCount: 8,
+              },
+              openPullRequests: {
+                issueCount: 2,
+              },
+              externalOpenIssues: {
+                issueCount: 3,
+              },
+              externalOpenPullRequests: {
+                issueCount: 1,
+              },
+              externalRecentIssues: {
+                issueCount: 2,
+              },
+              externalRecentPullRequests: {
+                issueCount: 1,
+              },
+            },
+          })
+        }
+
+        if (!query.includes('CommunityGrowthDiscussions')) {
+          throw new Error(`unexpected GraphQL query ${query}`)
+        }
+
         return responseJson({
           data: {
             repository: {
@@ -256,6 +307,16 @@ describe('community growth snapshot', () => {
       now: new Date('2026-05-08T06:00:00.000Z'),
     })
 
+    expect(snapshot.contributorFunnel).toEqual({
+      openGoodFirstIssueCount: 8,
+      openFirstTimersOnlyIssueCount: 5,
+      openHelpWantedIssueCount: 8,
+      openPullRequestCount: 2,
+      externalOpenIssueCount: 3,
+      externalOpenPullRequestCount: 1,
+      externalIssuesOpenedLastSevenDays: 2,
+      externalPullRequestsOpenedLastSevenDays: 1,
+    })
     expect(snapshot.discussionActivity).toEqual({
       available: true,
       totalCount: 2,
