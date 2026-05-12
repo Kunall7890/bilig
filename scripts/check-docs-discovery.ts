@@ -284,7 +284,6 @@ for (const required of [
   'https://github.com/proompteng/bilig/issues/156',
   'https://github.com/proompteng/bilig/issues/158',
   'https://github.com/proompteng/bilig/issues/159',
-  'https://github.com/proompteng/bilig/issues/160',
   'https://github.com/proompteng/bilig/issues/162',
   'https://github.com/proompteng/bilig/issues/163',
 ]) {
@@ -295,6 +294,7 @@ for (const required of [
 for (const closedIssue of [
   '137',
   '138',
+  '160',
   '161',
   '164',
   '165',

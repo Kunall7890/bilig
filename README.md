@@ -277,6 +277,8 @@ a service, or a Node script without opening the browser UI.
 WorkPaper API directly. The package README is the contract for install, API
 usage, persistence, validation, supported scope, and agent workflow:
 [packages/headless/README.md](packages/headless/README.md).
+For the shortest public method map, start with the
+[WorkPaper read/write cheat sheet](packages/headless/README.md#workpaper-readwrite-cheat-sheet).
 
 Install from npm:
 

@@ -25,7 +25,6 @@ Current starter tickets as of May 12, 2026:
 - [#156: docs(contributor): add first PR description template](https://github.com/proompteng/bilig/issues/156)
 - [#158: docs(contributor): add fuzz replay walkthrough](https://github.com/proompteng/bilig/issues/158)
 - [#159: docs(troubleshooting): document CSV delimiter autodetection](https://github.com/proompteng/bilig/issues/159)
-- [#160: docs(headless): add WorkPaper API read/write cheat sheet](https://github.com/proompteng/bilig/issues/160)
 - [#162: docs(benchmarks): add WorkPaper benchmark reproduction notes](https://github.com/proompteng/bilig/issues/162)
 - [#163: docs(agent): add coding-agent workbook automation recipe](https://github.com/proompteng/bilig/issues/163)
 The list intentionally excludes closed issues and broad corpus/parity epics. Add

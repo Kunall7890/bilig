@@ -332,6 +332,30 @@ npm run persistence
 - Mutation methods return WorkPaper change arrays. Empty arrays are valid when
   evaluation is suspended or a batch defers change publication.
 
+## WorkPaper Read/Write Cheat Sheet
+
+The common service and agent calls use the same zero-based address object:
+
+```ts
+const sheet = workbook.getSheetId('Sheet1')
+if (sheet === undefined) throw new Error('Sheet1 was not created')
+const at = (row: number, col: number) => ({ sheet, row, col })
+```
+
+| Operation               | Public API                                                     | Tiny snippet                                                                                          |
+| ----------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Create a workbook       | `WorkPaper.buildFromSheets()`                                  | `const workbook = WorkPaper.buildFromSheets({ Sheet1: [[1, '=A1*2']] })`                              |
+| Set a value             | `workbook.setCellContents()`                                   | `workbook.setCellContents(at(0, 0), 42)`                                                              |
+| Set a formula           | `workbook.setCellContents()`                                   | `workbook.setCellContents(at(0, 1), '=A1*2')`                                                         |
+| Read a calculated value | `workbook.getCellValue()`                                      | `const value = workbook.getCellValue(at(0, 1))`                                                       |
+| Read formula text       | `workbook.getCellFormula()`                                    | `const formula = workbook.getCellFormula(at(0, 1))`                                                   |
+| Export/persist state    | `exportWorkPaperDocument()` and `serializeWorkPaperDocument()` | `const json = serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { includeConfig: true }))` |
+| Restore persisted state | `parseWorkPaperDocument()` and `createWorkPaperFromDocument()` | `const restored = createWorkPaperFromDocument(parseWorkPaperDocument(json))`                          |
+
+Use `getCellDisplayValue()` for user-facing text, `getCellSerialized()` for the
+stored input shape, and range helpers such as `getRangeValues()` when an API
+response needs more than one cell.
+
 ## Common API Recipes
 
 Create an empty workbook:
