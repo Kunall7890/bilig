@@ -62,15 +62,16 @@ describe('csv helpers', () => {
   it('serializes and parses quoted CSV content, CRLF rows, and trailing empties', () => {
     expect(
       serializeCsv([
-        ['plain', 'two,parts', 'quote"inside'],
+        ['plain', 'two,parts', 'quote"inside', 'semi;inside', 'tab\tinside'],
         ['line\nbreak', ''],
       ]),
-    ).toBe('plain,"two,parts","quote""inside"\n"line\nbreak",')
+    ).toBe('plain,"two,parts","quote""inside","semi;inside","tab\tinside"\n"line\nbreak",')
 
     expect(parseCsv('"two,parts","quote""inside"\r\nlast,')).toEqual([
       ['two,parts', 'quote"inside'],
       ['last', ''],
     ])
+    expect(parseCsv(serializeCsv([['text:;']]))).toEqual([['text:;']])
     expect(parseCsv('')).toEqual([])
     expect(parseCsv('solo')).toEqual([['solo']])
   })

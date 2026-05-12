@@ -20,7 +20,7 @@ export interface ResolvedCsvParseOptions {
 }
 
 function escapeCsvValue(value: string): string {
-  if (!/[",\n\r]/.test(value)) {
+  if (!/[",;\t\n\r]/.test(value)) {
     return value
   }
   return `"${value.replaceAll('"', '""')}"`
