@@ -28,6 +28,7 @@ import { addExportFiltersToXlsxBytes } from './xlsx-filters.js'
 import { addExportFreezePanesToXlsxBytes } from './xlsx-freeze-panes.js'
 import { addExportPivotsToXlsxBytes } from './xlsx-pivots.js'
 import { addExportProtectedRangesToXlsxBytes } from './xlsx-protected-ranges.js'
+import { addExportRichTextArtifactsToXlsxBytes } from './xlsx-rich-text-artifacts.js'
 import { addExportSheetProtectionsToXlsxBytes } from './xlsx-sheet-protection.js'
 import { addExportSortsToXlsxBytes } from './xlsx-sorts.js'
 import { addExportSheetTabColorsToXlsxBytes } from './xlsx-tab-colors.js'
@@ -946,8 +947,9 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
   const dataTableFormulaBytes = addExportDataTableFormulasToXlsxBytes(controlArtifactBytes, snapshot)
   const arrayFormulaBytes = addExportArrayFormulasToXlsxBytes(dataTableFormulaBytes, snapshot)
   const dataModelArtifactBytes = addExportDataModelArtifactsToXlsxBytes(arrayFormulaBytes, snapshot)
+  const richTextArtifactBytes = addExportRichTextArtifactsToXlsxBytes(dataModelArtifactBytes, snapshot)
   return addExportCellMetadataToXlsxBytes(
-    addExportPrinterSettingsToXlsxBytes(addExportLegacyCommentVmlToXlsxBytes(dataModelArtifactBytes, snapshot), snapshot),
+    addExportPrinterSettingsToXlsxBytes(addExportLegacyCommentVmlToXlsxBytes(richTextArtifactBytes, snapshot), snapshot),
     snapshot,
   )
 }

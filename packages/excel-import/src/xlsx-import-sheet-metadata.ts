@@ -32,6 +32,7 @@ interface ImportedSheetMetadataInput {
   readonly styleArtifacts?: SheetMetadataSnapshot['styleArtifacts']
   readonly pivotArtifacts?: SheetMetadataSnapshot['pivotArtifacts']
   readonly cellMetadataRefs?: SheetMetadataSnapshot['cellMetadataRefs']
+  readonly richTextArtifacts?: SheetMetadataSnapshot['richTextArtifacts']
 }
 
 export function buildImportedSheetMetadata(input: ImportedSheetMetadataInput): SheetMetadataSnapshot | undefined {
@@ -67,6 +68,7 @@ export function buildImportedSheetMetadata(input: ImportedSheetMetadataInput): S
     ...(input.styleArtifacts ? { styleArtifacts: input.styleArtifacts } : {}),
     ...(input.pivotArtifacts ? { pivotArtifacts: input.pivotArtifacts } : {}),
     ...(input.cellMetadataRefs ? { cellMetadataRefs: input.cellMetadataRefs } : {}),
+    ...(input.richTextArtifacts ? { richTextArtifacts: input.richTextArtifacts } : {}),
   }
   return Object.keys(metadata).length > 0 ? metadata : undefined
 }

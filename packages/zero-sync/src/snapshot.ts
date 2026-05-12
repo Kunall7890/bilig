@@ -300,6 +300,9 @@ function withSheetMetadataFallback(
   if (fallback?.pivotArtifacts) {
     next.pivotArtifacts = fallback.pivotArtifacts
   }
+  if (fallback?.richTextArtifacts) {
+    next.richTextArtifacts = fallback.richTextArtifacts
+  }
   if (fallback?.merges) {
     next.merges = fallback.merges
   }

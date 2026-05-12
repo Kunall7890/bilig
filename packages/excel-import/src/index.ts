@@ -31,6 +31,7 @@ import { buildMergeEntries } from './xlsx-merge-entries.js'
 import { readImportedWorkbookPivots } from './xlsx-pivots.js'
 import { readImportedWorkbookPrinterSettings } from './xlsx-printer-settings.js'
 import { readImportedWorkbookProtectedRanges } from './xlsx-protected-ranges.js'
+import { readImportedWorkbookRichTextArtifacts } from './xlsx-rich-text-artifacts.js'
 import { readImportedWorkbookSheetProperties } from './xlsx-sheet-properties.js'
 import { readImportedWorkbookSheetProtections } from './xlsx-sheet-protection.js'
 import { readImportedWorkbookSheetVisibilities } from './xlsx-sheet-visibility.js'
@@ -317,6 +318,7 @@ function importSheetJsWorkbook(
     ? readImportedWorkbookConditionalFormatArtifacts(conditionalFormatArtifactSource, workbook.SheetNames)
     : new Map()
   const importedExternalLinkCaches = workbookZip ? readImportedExternalLinkCaches(workbookZip) : new Map()
+  const importedRichTextArtifactsBySheet = workbookZip ? readImportedWorkbookRichTextArtifacts(workbookZip, workbook.SheetNames) : new Map()
 
   let ignoredCommentsSeen = false
   let externalWorkbookReferenceWarningSeen = warnings.includes(externalWorkbookReferencesWarning)
@@ -506,6 +508,7 @@ function importSheetJsWorkbook(
     const importedConditionalFormatArtifacts = importedConditionalFormatArtifactsBySheet.get(sheetName)
     const importedPrinterSettings = importedPrinterSettingsBySheet.get(sheetName)
     const importedCellMetadataRefs = buildImportedCellMetadataReferenceSnapshots(importedCellMetadata?.refsBySheet.get(sheetName), cells)
+    const importedRichTextArtifacts = importedRichTextArtifactsBySheet.get(sheetName)
     const metadata = buildImportedSheetMetadata({
       rows,
       columns,
@@ -538,6 +541,7 @@ function importSheetJsWorkbook(
       hyperlinks: importedHyperlinks,
       printerSettings: importedPrinterSettings,
       cellMetadataRefs: importedCellMetadataRefs,
+      richTextArtifacts: importedRichTextArtifacts,
     })
 
     return {

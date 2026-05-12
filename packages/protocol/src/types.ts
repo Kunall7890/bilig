@@ -837,6 +837,17 @@ export interface WorkbookCellMetadataReferenceSnapshot {
   vm?: string
 }
 
+export interface WorkbookRichTextCellSnapshot {
+  address: string
+  text: string
+  storage: 'sharedString' | 'inlineString'
+  xml: string
+}
+
+export interface WorkbookSheetRichTextArtifactsSnapshot {
+  cells: WorkbookRichTextCellSnapshot[]
+}
+
 export interface WorkbookMetadataSnapshot {
   properties?: WorkbookPropertySnapshot[]
   documentPropertyArtifacts?: WorkbookDocumentPropertiesArtifactsSnapshot
@@ -897,6 +908,7 @@ export interface SheetMetadataSnapshot {
   pivotArtifacts?: WorkbookSheetPivotArtifactsSnapshot
   visibility?: WorkbookSheetVisibilitySnapshot
   cellMetadataRefs?: WorkbookCellMetadataReferenceSnapshot[]
+  richTextArtifacts?: WorkbookSheetRichTextArtifactsSnapshot
 }
 
 export interface WorkbookSnapshot {
