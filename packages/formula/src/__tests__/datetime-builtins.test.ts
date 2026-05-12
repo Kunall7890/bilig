@@ -502,10 +502,10 @@ describe('datetime builtins', () => {
     })
   })
 
-  it('supports DATEVALUE for serial numbers and ISO date strings', () => {
+  it('supports DATEVALUE for text dates and rejects numeric serials', () => {
     expect(datetimeBuiltins.DATEVALUE({ tag: ValueTag.Number, value: 1.2 })).toEqual({
-      tag: ValueTag.Number,
-      value: 1,
+      tag: ValueTag.Error,
+      code: ErrorCode.Value,
     })
     expect(datetimeBuiltins.DATEVALUE({ tag: ValueTag.String, value: '2024-02-29', stringId: 1 })).toEqual({
       tag: ValueTag.Number,
@@ -1123,8 +1123,11 @@ describe('datetime builtins', () => {
     })
     expect(datetimeBuiltins.DATE()).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
 
-    expect(datetimeBuiltins.DATEVALUE({ tag: ValueTag.Boolean, value: true })).toEqual({ tag: ValueTag.Number, value: 1 })
-    expect(datetimeBuiltins.DATEVALUE({ tag: ValueTag.Empty })).toEqual({ tag: ValueTag.Number, value: 0 })
+    expect(datetimeBuiltins.DATEVALUE({ tag: ValueTag.Boolean, value: true })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Value,
+    })
+    expect(datetimeBuiltins.DATEVALUE({ tag: ValueTag.Empty })).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
     expect(datetimeBuiltins.DATEVALUE({ tag: ValueTag.Number, value: Number.POSITIVE_INFINITY })).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.Value,

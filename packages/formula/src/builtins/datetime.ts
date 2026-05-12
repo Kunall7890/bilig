@@ -313,28 +313,13 @@ export function createDateValueBuiltin(dateSystem: ExcelDateSystem = '1900'): Bu
       return error
     }
 
-    const asNumber = toNumberValueDateValue(dateText)
-    if (asNumber !== undefined) {
-      return numberResult(asNumber)
-    }
-
-    const text = coerceText(dateText)
-    if (text === undefined) {
+    if (dateText.tag !== ValueTag.String) {
       return valueError()
     }
 
-    const serial = parseDateValueFromText(text, dateSystem)
+    const serial = parseDateValueFromText(dateText.value, dateSystem)
     return serial === undefined ? valueError() : numberResult(serial)
   }
-}
-
-function toNumberValueDateValue(value: CellValue): number | undefined {
-  const numeric = coerceNumber(value)
-  if (numeric === undefined) {
-    return undefined
-  }
-  const truncated = Math.trunc(numeric)
-  return Number.isFinite(truncated) ? truncated : undefined
 }
 
 function createDatePartBuiltin(part: keyof ExcelDateParts, dateSystem: ExcelDateSystem = '1900'): Builtin {

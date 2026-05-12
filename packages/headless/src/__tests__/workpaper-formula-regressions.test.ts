@@ -427,6 +427,22 @@ describe('GitHub issue reductions', () => {
     expectNumber(cellValue(workbook, 'Dates', 5, 1), 4)
   })
 
+  it('keeps DATEVALUE numeric serial rejection catchable by IFERROR', () => {
+    const workbook = WorkPaper.buildFromSheets(
+      {
+        Sheet1: [
+          ['date serial with time', 46_053.9138888889],
+          ['datevalue result', '=DATEVALUE(B1)'],
+          ['fallback result', '=IFERROR(DATEVALUE(B1),B1)'],
+        ],
+      },
+      { maxRows: 20, maxColumns: 10, useColumnIndex: true },
+    )
+
+    expect(cellValue(workbook, 'Sheet1', 1, 1)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expectNumberClose(cellValue(workbook, 'Sheet1', 2, 1), 46_053.9138888889)
+  })
+
   it('honors holiday ranges for WORKDAY and NETWORKDAYS formulas', () => {
     const workbook = WorkPaper.buildFromSheets(
       {
