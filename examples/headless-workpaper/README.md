@@ -91,6 +91,11 @@ Expected output:
 The actual output also includes the initial range read, formula contracts, the
 restored summary, and serialized byte count.
 
+For agent frameworks, the
+[`WorkPaper tool-calling recipe`](../../docs/agent-workpaper-tool-calling-recipe.md)
+also shows a LangChain-style wrapper that keeps the same validation and computed
+readback contract.
+
 ## Agent Writeback Verification
 
 Run the agent verification demo when you want a small artifact for the claim

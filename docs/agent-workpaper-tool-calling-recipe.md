@@ -182,6 +182,69 @@ summary changed as expected:
 `serializedBytes` will vary as the document schema evolves. Treat it as a
 positive persistence check, not a stable snapshot value.
 
+## LangChain Tool Wrapper
+
+LangChain users can wrap the same SDK-neutral WorkPaper functions without adding
+a LangChain dependency to this repository. In an app that already uses
+LangChain, define thin tools around the `tools` object from the example above:
+
+```js
+import { tool } from 'langchain'
+import * as z from 'zod'
+
+const readWorkPaperSummary = tool(
+  ({ range = 'Summary!A1:B3' }) => tools.readSummary(range),
+  {
+    name: 'read_workpaper_summary',
+    description:
+      'Read computed WorkPaper summary values and serialized inputs for a small range.',
+    schema: z.object({
+      range: z
+        .string()
+        .default('Summary!A1:B3')
+        .describe('A small A1 range, including the sheet name.'),
+    }),
+  },
+)
+
+const setWorkPaperInputCell = tool(
+  async ({ sheetName, address, value }) => {
+    const result = tools.setInputCell({ sheetName, address, value })
+
+    if (
+      !result.checks.currentMrrChanged ||
+      !result.checks.nextMonthMrrChanged
+    ) {
+      throw new Error(
+        `WorkPaper edit did not change the dependent summary: ${JSON.stringify(result.checks)}`,
+      )
+    }
+
+    return result
+  },
+  {
+    name: 'set_workpaper_input_cell',
+    description:
+      'Set one validated WorkPaper input cell and return before/after formula readback.',
+    schema: z.object({
+      sheetName: z.string().describe('Target sheet name, for example Revenue.'),
+      address: z.string().describe('A1 cell address inside the target sheet.'),
+      value: z
+        .union([z.string(), z.number(), z.boolean(), z.null()])
+        .describe('Literal cell value. Use a separate formula tool for formulas.'),
+    }),
+  },
+)
+
+export const workPaperTools = [readWorkPaperSummary, setWorkPaperInputCell]
+```
+
+Return structured objects, not prose. LangChain will pass the returned object
+back to the model as tool output, so keep the WorkPaper result explicit:
+`editedCell`, `before`, `after`, and `checks`. In a durable app, write the
+serialized workbook to external storage only after these computed readback
+checks pass.
+
 ## Agent Guardrails
 
 - Validate sheet names with `getSheetId()` before parsing a target address.
