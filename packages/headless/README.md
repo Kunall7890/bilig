@@ -37,6 +37,8 @@ pnpm --filter @bilig/headless build
   [`examples/headless-workpaper`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper) and
   [`npm run json-records`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-records-input)
   for in-process records, or
+  [`npm run json-file`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-file-input)
+  for records already saved on disk, or
   [`npm run http-json-summary`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#http-json-summary)
   for a no-framework Node HTTP boundary.
 - Run the

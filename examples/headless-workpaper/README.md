@@ -306,6 +306,33 @@ Expected output:
 }
 ```
 
+## JSON File Input
+
+Run the JSON file input example when a script or service already has exported
+records on disk. It reads `fixtures/opportunities.json`, builds the same
+formula-backed WorkPaper summary, verifies the expected output, and prints a
+compact JSON result:
+
+```sh
+npm run json-file
+```
+
+Expected output:
+
+```json
+{
+  "verified": true,
+  "source": "fixtures/opportunities.json",
+  "sourceRecords": 3,
+  "computed": {
+    "committedMrr": 39600,
+    "weightedPipelineMrr": 43400,
+    "westSeats": 27,
+    "largestOpportunityMrr": 21600
+  }
+}
+```
+
 ## HTTP JSON Summary
 
 Run the HTTP JSON summary example when you want the same record-to-WorkPaper

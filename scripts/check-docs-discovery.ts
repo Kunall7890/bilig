@@ -266,7 +266,6 @@ for (const [path, content] of [
 
 for (const required of [
   'https://github.com/proompteng/bilig/issues/134',
-  'https://github.com/proompteng/bilig/issues/142',
   'https://github.com/proompteng/bilig/issues/143',
   'https://github.com/proompteng/bilig/issues/144',
   'https://github.com/proompteng/bilig/issues/145',
@@ -284,6 +283,14 @@ for (const required of [
   'https://github.com/proompteng/bilig/issues/159',
   'https://github.com/proompteng/bilig/issues/162',
   'https://github.com/proompteng/bilig/issues/163',
+  'https://github.com/proompteng/bilig/issues/193',
+  'https://github.com/proompteng/bilig/issues/194',
+  'https://github.com/proompteng/bilig/issues/195',
+  'https://github.com/proompteng/bilig/issues/196',
+  'https://github.com/proompteng/bilig/issues/197',
+  'https://github.com/proompteng/bilig/issues/198',
+  'https://github.com/proompteng/bilig/issues/199',
+  'https://github.com/proompteng/bilig/issues/200',
 ]) {
   requireIncludes(starterIssues, required, 'docs/starter-issues.md')
   requireIncludes(llms, required, 'docs/llms.txt')
@@ -293,6 +300,7 @@ for (const closedIssue of [
   '137',
   '138',
   '141',
+  '142',
   '147',
   '160',
   '161',

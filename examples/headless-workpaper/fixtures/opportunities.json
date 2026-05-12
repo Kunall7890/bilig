@@ -1,0 +1,26 @@
+[
+  {
+    "account": "Acme Manufacturing",
+    "region": "West",
+    "stage": "Committed",
+    "seats": 12,
+    "arpa": 1800,
+    "probability": 1
+  },
+  {
+    "account": "Beacon Health",
+    "region": "East",
+    "stage": "Pipeline",
+    "seats": 8,
+    "arpa": 950,
+    "probability": 0.5
+  },
+  {
+    "account": "Cobalt Finance",
+    "region": "West",
+    "stage": "Committed",
+    "seats": 15,
+    "arpa": 1200,
+    "probability": 1
+  }
+]

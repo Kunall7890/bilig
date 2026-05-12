@@ -7,7 +7,6 @@ search indexing.
 Current starter tickets as of May 12, 2026:
 
 - [#134: docs(examples): add XLSX formula-cache roundtrip example](https://github.com/proompteng/bilig/issues/134)
-- [#142: docs(examples): add JSON file input WorkPaper example](https://github.com/proompteng/bilig/issues/142)
 - [#143: docs(examples): add markdown report WorkPaper output example](https://github.com/proompteng/bilig/issues/143)
 - [#144: docs(examples): add formula diagnostics WorkPaper example](https://github.com/proompteng/bilig/issues/144)
 - [#145: docs(examples): add snapshot diff WorkPaper example](https://github.com/proompteng/bilig/issues/145)
@@ -25,6 +24,14 @@ Current starter tickets as of May 12, 2026:
 - [#159: docs(troubleshooting): document CSV delimiter autodetection](https://github.com/proompteng/bilig/issues/159)
 - [#162: docs(benchmarks): add WorkPaper benchmark reproduction notes](https://github.com/proompteng/bilig/issues/162)
 - [#163: docs(agent): add coding-agent workbook automation recipe](https://github.com/proompteng/bilig/issues/163)
+- [#193: docs(examples): add append-rows WorkPaper example](https://github.com/proompteng/bilig/issues/193)
+- [#194: docs(examples): add changed-cells audit log example](https://github.com/proompteng/bilig/issues/194)
+- [#195: docs(examples): add range-to-records export example](https://github.com/proompteng/bilig/issues/195)
+- [#196: docs(examples): add validation-error JSON response example](https://github.com/proompteng/bilig/issues/196)
+- [#197: docs(headless): add WorkPaper persistence decision table](https://github.com/proompteng/bilig/issues/197)
+- [#198: docs(contributor): add first issue local verification matrix](https://github.com/proompteng/bilig/issues/198)
+- [#199: test(docs): check headless example README scripts exist](https://github.com/proompteng/bilig/issues/199)
+- [#200: docs(examples): add npm package install sanity example](https://github.com/proompteng/bilig/issues/200)
 
 The list intentionally excludes closed issues and broad corpus/parity epics. Add
 new starter tickets only when the expected patch can stay small, has a clear

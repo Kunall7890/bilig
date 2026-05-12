@@ -140,8 +140,6 @@ including its p95 caveat.
   https://github.com/proompteng/bilig/blob/main/docs/starter-issues.md
 - current small example issue: xlsx formula-cache roundtrip:
   https://github.com/proompteng/bilig/issues/134
-- current small example issue: JSON file input:
-  https://github.com/proompteng/bilig/issues/142
 - current small example issue: markdown report output:
   https://github.com/proompteng/bilig/issues/143
 - current small example issue: formula diagnostics:
@@ -176,6 +174,22 @@ including its p95 caveat.
   https://github.com/proompteng/bilig/issues/162
 - current small docs issue: coding-agent workbook automation recipe:
   https://github.com/proompteng/bilig/issues/163
+- current small example issue: append-rows WorkPaper example:
+  https://github.com/proompteng/bilig/issues/193
+- current small example issue: changed-cells audit log:
+  https://github.com/proompteng/bilig/issues/194
+- current small example issue: range-to-records export:
+  https://github.com/proompteng/bilig/issues/195
+- current small example issue: validation-error JSON response:
+  https://github.com/proompteng/bilig/issues/196
+- current small docs issue: WorkPaper persistence decision table:
+  https://github.com/proompteng/bilig/issues/197
+- current small docs issue: first issue local verification matrix:
+  https://github.com/proompteng/bilig/issues/198
+- current small docs issue: headless example README script guard:
+  https://github.com/proompteng/bilig/issues/199
+- current small example issue: npm package install sanity:
+  https://github.com/proompteng/bilig/issues/200
 - good first issue search:
   https://github.com/proompteng/bilig/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22
 - first-timers-only issue search:

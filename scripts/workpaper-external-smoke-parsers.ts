@@ -93,6 +93,45 @@ export function parseNodeHttpJsonSummaryOutput(output: string): {
   }
 }
 
+export function parseNodeJsonFileOutput(output: string): {
+  computed: {
+    committedMrr: number
+    largestOpportunityMrr: number
+    weightedPipelineMrr: number
+    westSeats: number
+  }
+  source: string
+  sourceRecords: number
+  verified: boolean
+} {
+  const parsed = parseJsonRecord(output, 'node JSON file output')
+  const computed = parseRecordValue(parsed.computed, 'node JSON file computed output')
+
+  if (
+    parsed.verified !== true ||
+    parsed.source !== 'fixtures/opportunities.json' ||
+    parsed.sourceRecords !== 3 ||
+    computed.committedMrr !== 39600 ||
+    computed.weightedPipelineMrr !== 43400 ||
+    computed.westSeats !== 27 ||
+    computed.largestOpportunityMrr !== 21600
+  ) {
+    throw new Error(`Unexpected node JSON file output: ${output}`)
+  }
+
+  return {
+    computed: {
+      committedMrr: computed.committedMrr,
+      largestOpportunityMrr: computed.largestOpportunityMrr,
+      weightedPipelineMrr: computed.weightedPipelineMrr,
+      westSeats: computed.westSeats,
+    },
+    source: parsed.source,
+    sourceRecords: parsed.sourceRecords,
+    verified: parsed.verified,
+  }
+}
+
 export function parseNodeSnapshotImportOutput(output: string): {
   currencyLabel: string
   firstPeriod: number

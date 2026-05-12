@@ -10,6 +10,7 @@ import {
   parseNodeHttpJsonSummaryOutput,
   parseNodeAgentToolCallOutput,
   parseNodeAgentVerificationOutput,
+  parseNodeJsonFileOutput,
   parseNodePersistenceOutput,
   parseNodeRevenueScenarioOutput,
   parseNodeSmokeOutput,
@@ -157,12 +158,26 @@ function runNodeSmoke(
     sourceRecords: number
     verified: boolean
   }
+  jsonFile: {
+    computed: {
+      committedMrr: number
+      largestOpportunityMrr: number
+      weightedPipelineMrr: number
+      westSeats: number
+    }
+    source: string
+    sourceRecords: number
+    verified: boolean
+  }
 } {
   mkdirSync(projectDir, { recursive: true })
+  mkdirSync(join(projectDir, 'fixtures'), { recursive: true })
   copyFileSync(join(headlessExampleDir, 'package.json'), join(projectDir, 'package.json'))
   copyFileSync(join(headlessExampleDir, 'agent-tool-call-loop.mjs'), join(projectDir, 'agent-tool-call-loop.mjs'))
   copyFileSync(join(headlessExampleDir, 'agent-writeback-verification.mjs'), join(projectDir, 'agent-writeback-verification.mjs'))
   copyFileSync(join(headlessExampleDir, 'http-json-summary.mjs'), join(projectDir, 'http-json-summary.mjs'))
+  copyFileSync(join(headlessExampleDir, 'json-file-input.mjs'), join(projectDir, 'json-file-input.mjs'))
+  copyFileSync(join(headlessExampleDir, 'fixtures', 'opportunities.json'), join(projectDir, 'fixtures', 'opportunities.json'))
   copyFileSync(join(headlessExampleDir, 'revenue-plan.mjs'), join(projectDir, 'revenue-plan.mjs'))
   copyFileSync(join(headlessExampleDir, 'persistence-roundtrip.mjs'), join(projectDir, 'persistence-roundtrip.mjs'))
   copyFileSync(join(headlessExampleDir, 'revenue-scenarios.mjs'), join(projectDir, 'revenue-scenarios.mjs'))
@@ -263,6 +278,7 @@ function runNodeSmoke(
     runTextCommand('node', ['agent-writeback-verification.mjs'], { cwd: projectDir }),
   )
   const httpJsonSummary = parseNodeHttpJsonSummaryOutput(runTextCommand('node', ['http-json-summary.mjs'], { cwd: projectDir }))
+  const jsonFile = parseNodeJsonFileOutput(runTextCommand('node', ['json-file-input.mjs'], { cwd: projectDir }))
   const snapshotImport = parseNodeSnapshotImportOutput(runTextCommand('node', ['snapshot-import.mjs'], { cwd: projectDir }))
   const xlsxImport = parseNodeXlsxImportOutput(runTextCommand('node', ['xlsx-import.mjs'], { cwd: projectDir }))
 
@@ -270,6 +286,7 @@ function runNodeSmoke(
     agentToolCall,
     agentVerification,
     httpJsonSummary,
+    jsonFile,
     persistence,
     projectDir,
     scenarios,
