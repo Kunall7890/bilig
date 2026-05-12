@@ -173,13 +173,17 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     hasBoundColumnMembers: (sheetId, col) => formulaMemberCounts.hasColumnMembers(sheetId, col),
   })
 
-  const { materializeDependencies, materializeDirectScalarDependencies, materializeDirectAggregateDependencies } =
-    createFormulaBindingDependencyMaterializer({
-      serviceArgs: args,
-      hasFormulaColumnMembers: pendingInitialFormulaCells.hasColumnMembers,
-      isFormulaCell: pendingInitialFormulaCells.isFormulaCell,
-      ensureDependencyBuildCapacity,
-    })
+  const {
+    materializeDependencies,
+    materializeDirectScalarDependencies,
+    materializeDirectAggregateDependencies,
+    materializeDirectCriteriaDependencies,
+  } = createFormulaBindingDependencyMaterializer({
+    serviceArgs: args,
+    hasFormulaColumnMembers: pendingInitialFormulaCells.hasColumnMembers,
+    isFormulaCell: pendingInitialFormulaCells.isFormulaCell,
+    ensureDependencyBuildCapacity,
+  })
 
   const setReverseEdgeSlice = (entityId: number, slice: EdgeSlice): void => {
     setFormulaBindingReverseEdgeSlice(args.reverseState, entityId, slice)
@@ -726,6 +730,7 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
       dependencyMaterializer: {
         materializeDependencies,
         materializeDirectAggregateDependencies,
+        materializeDirectCriteriaDependencies,
         materializeDirectScalarDependencies,
       },
       ensureDependencyBuildCapacity,

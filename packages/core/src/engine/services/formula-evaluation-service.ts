@@ -18,11 +18,17 @@ import { CellFlags } from '../../cell-store.js'
 import { definedNameValueToCellValue, definedNameValueToReferenceOperand } from '../../engine-metadata-utils.js'
 import { emptyValue, errorValue } from '../../engine-value-utils.js'
 import { addEngineCounter } from '../../perf/engine-counters.js'
-import type { EngineRuntimeState, RuntimeDirectCriteriaOperand, RuntimeFormula, SpillMaterialization } from '../runtime-state.js'
+import type {
+  EngineRuntimeState,
+  RuntimeDirectCriteriaOperand,
+  RuntimeDirectCriteriaResultTransform,
+  RuntimeFormula,
+  SpillMaterialization,
+} from '../runtime-state.js'
 import { EngineFormulaEvaluationError } from '../errors.js'
 import type { CriterionRangeCacheService } from './criterion-range-cache-service.js'
 import type { ExactColumnIndexService } from './exact-column-index-service.js'
-import type { EngineRuntimeColumnStoreService } from './runtime-column-store-service.js'
+import type { EngineRuntimeColumnStoreService, RuntimeColumnView } from './runtime-column-store-service.js'
 import type { RangeAggregateCacheService } from './range-aggregate-cache-service.js'
 import type { SortedColumnSearchService } from './sorted-column-search-service.js'
 import { tryEvaluateDirectVectorLookup } from './formula-evaluation-direct-lookup.js'
@@ -35,10 +41,8 @@ import {
   directErrorResult,
   directNumberResult,
   evaluationErrorMessage,
-  numericLikeValueAt,
   offsetDirectAggregateResult,
   referenceReplacementKey,
-  strictNumericAggregateCandidateAt,
 } from './formula-evaluation-helpers.js'
 import { readRuntimeDirectCriteriaOperandValue } from './direct-criteria-operands.js'
 import type { EngineFormulaEvaluationService } from './formula-evaluation-service-types.js'
@@ -47,6 +51,7 @@ export type { EngineFormulaEvaluationService } from './formula-evaluation-servic
 
 const DIRECT_AGGREGATE_SCAN_MAX_LENGTH = 64
 const DIRECT_AGGREGATE_PREFIX_MIN_LENGTH = 16
+const DIRECT_CRITERIA_AGGREGATE_CACHE_LIMIT = 16_384
 
 export function createEngineFormulaEvaluationService(args: {
   readonly state: Pick<EngineRuntimeState, 'workbook' | 'strings' | 'formulas' | 'counters' | 'getUseColumnIndex'>
@@ -77,7 +82,7 @@ export function createEngineFormulaEvaluationService(args: {
   }
 
   const rememberDirectCriteriaResult = (key: string, value: CellValue): CellValue => {
-    if (directCriteriaAggregateCache.size >= 512) {
+    if (directCriteriaAggregateCache.size >= DIRECT_CRITERIA_AGGREGATE_CACHE_LIMIT) {
       const firstKey = directCriteriaAggregateCache.keys().next().value
       if (firstKey !== undefined) {
         directCriteriaAggregateCache.delete(firstKey)
@@ -132,6 +137,15 @@ export function createEngineFormulaEvaluationService(args: {
     const cellCount = (bounds.rowEnd - bounds.rowStart + 1) * (bounds.colEnd - bounds.colStart + 1)
     args.checkEvaluationBudget(cellCount)
     if (!replacements || !visiting) {
+      if (cellCount <= 64) {
+        const values: CellValue[] = []
+        for (let row = bounds.rowStart; row <= bounds.rowEnd; row += 1) {
+          for (let col = bounds.colStart; col <= bounds.colEnd; col += 1) {
+            values.push(readCellValueAt(sheetName, row, col))
+          }
+        }
+        return values
+      }
       const rangeValues = args.runtimeColumnStore.readRangeValues({
         sheetName,
         rowStart: bounds.rowStart,
@@ -325,30 +339,89 @@ export function createEngineFormulaEvaluationService(args: {
     })
   }
 
-  const applyDirectCriteriaResultTransforms = (formula: RuntimeFormula, value: CellValue): CellValue => {
+  const isEmptyCellGuardValue = (value: CellValue): boolean =>
+    value.tag === ValueTag.Empty || (value.tag === ValueTag.String && value.value === '')
+
+  const applyDirectCriteriaResultTransform = (transform: RuntimeDirectCriteriaResultTransform, current: CellValue): CellValue => {
+    if (transform.kind === 'if-error') {
+      return current.tag === ValueTag.Error ? transform.fallback : current
+    }
+    if (transform.kind === 'if-empty-cell') {
+      const guard = readCellValueByIndex(transform.cellIndex)
+      if (guard.tag === ValueTag.Error) {
+        return guard
+      }
+      return isEmptyCellGuardValue(guard) ? transform.fallback : current
+    }
+    const rounded = roundBuiltin?.(current, transform.digits) ?? errorValue(ErrorCode.Name)
+    return isArrayValue(rounded) ? errorValue(ErrorCode.Value) : rounded
+  }
+
+  const applyDirectCriteriaResultTransformsFrom = (formula: RuntimeFormula, value: CellValue, startIndex: number): CellValue => {
     const transforms = formula.directCriteria?.resultTransforms
     if (!transforms || transforms.length === 0) {
       return value
     }
     let current = value
-    for (let index = 0; index < transforms.length; index += 1) {
-      const transform = transforms[index]!
-      if (transform.kind === 'if-error') {
-        if (current.tag === ValueTag.Error) {
-          current = transform.fallback
-        }
-        continue
-      }
-      const rounded = roundBuiltin?.(current, transform.digits) ?? errorValue(ErrorCode.Name)
-      current = isArrayValue(rounded) ? errorValue(ErrorCode.Value) : rounded
+    for (let index = startIndex; index < transforms.length; index += 1) {
+      current = applyDirectCriteriaResultTransform(transforms[index]!, current)
     }
     return current
   }
+
+  const applyDirectCriteriaResultTransforms = (formula: RuntimeFormula, value: CellValue): CellValue =>
+    applyDirectCriteriaResultTransformsFrom(formula, value, 0)
+
+  const tryEvaluateDirectCriteriaTransformShortCircuit = (formula: RuntimeFormula): CellValue | undefined => {
+    const transforms = formula.directCriteria?.resultTransforms
+    if (!transforms || transforms.length === 0) {
+      return undefined
+    }
+    for (let index = 0; index < transforms.length; index += 1) {
+      const transform = transforms[index]!
+      if (transform.kind !== 'if-empty-cell') {
+        continue
+      }
+      const guard = readCellValueByIndex(transform.cellIndex)
+      if (guard.tag === ValueTag.Error) {
+        return applyDirectCriteriaResultTransformsFrom(formula, guard, index + 1)
+      }
+      if (isEmptyCellGuardValue(guard)) {
+        return applyDirectCriteriaResultTransformsFrom(formula, transform.fallback, index + 1)
+      }
+    }
+    return undefined
+  }
+
+  const readColumnViewTag = (view: RuntimeColumnView, offset: number): ValueTag => view.readTagAt(offset) as ValueTag
+
+  const numericLikeValueInView = (view: RuntimeColumnView, offset: number): number | undefined => {
+    switch (readColumnViewTag(view, offset)) {
+      case ValueTag.Number:
+        return view.readNumberAt(offset)
+      case ValueTag.Boolean:
+        return view.readNumberAt(offset) !== 0 ? 1 : 0
+      case ValueTag.Empty:
+        return 0
+      case ValueTag.String:
+      case ValueTag.Error:
+      default:
+        return undefined
+    }
+  }
+
+  const strictNumericAggregateCandidateInView = (view: RuntimeColumnView, offset: number): number | undefined =>
+    readColumnViewTag(view, offset) === ValueTag.Number ? view.readNumberAt(offset) : undefined
 
   const tryEvaluateDirectCriteriaAggregate = (formula: RuntimeFormula): CellValue | undefined => {
     const directCriteria = formula.directCriteria
     if (!directCriteria) {
       return undefined
+    }
+
+    const transformShortCircuit = tryEvaluateDirectCriteriaTransformShortCircuit(formula)
+    if (transformShortCircuit) {
+      return transformShortCircuit
     }
 
     const resolvedPairs = directCriteria.criteriaPairs.map((pair) => ({
@@ -401,7 +474,7 @@ export function createEngineFormulaEvaluationService(args: {
       return applyDirectCriteriaResultTransforms(formula, rememberDirectCriteriaResult(aggregateCacheKey, result))
     }
 
-    const aggregateSlice = args.runtimeColumnStore.getColumnSlice({
+    const aggregateView = args.runtimeColumnStore.getColumnView({
       sheetName: aggregateRange.sheetName,
       rowStart: aggregateRange.rowStart,
       rowEnd: aggregateRange.rowEnd,
@@ -411,7 +484,7 @@ export function createEngineFormulaEvaluationService(args: {
     if (directCriteria.aggregateKind === 'sum') {
       let sum = 0
       for (let index = 0; index < matches.length; index += 1) {
-        sum += numericLikeValueAt(aggregateSlice, matches.rows[index]!) ?? 0
+        sum += numericLikeValueInView(aggregateView, matches.rows[index]!) ?? 0
       }
       return applyDirectCriteriaResultTransforms(formula, rememberDirectCriteriaResult(aggregateCacheKey, directNumberResult(sum)))
     }
@@ -420,7 +493,7 @@ export function createEngineFormulaEvaluationService(args: {
       let count = 0
       let sum = 0
       for (let index = 0; index < matches.length; index += 1) {
-        const numeric = numericLikeValueAt(aggregateSlice, matches.rows[index]!)
+        const numeric = numericLikeValueInView(aggregateView, matches.rows[index]!)
         if (numeric === undefined) {
           continue
         }
@@ -436,7 +509,7 @@ export function createEngineFormulaEvaluationService(args: {
     if (directCriteria.aggregateKind === 'min') {
       let minimum = Number.POSITIVE_INFINITY
       for (let index = 0; index < matches.length; index += 1) {
-        const numeric = strictNumericAggregateCandidateAt(aggregateSlice, matches.rows[index]!)
+        const numeric = strictNumericAggregateCandidateInView(aggregateView, matches.rows[index]!)
         if (numeric === undefined) {
           continue
         }
@@ -450,7 +523,7 @@ export function createEngineFormulaEvaluationService(args: {
 
     let maximum = Number.NEGATIVE_INFINITY
     for (let index = 0; index < matches.length; index += 1) {
-      const numeric = strictNumericAggregateCandidateAt(aggregateSlice, matches.rows[index]!)
+      const numeric = strictNumericAggregateCandidateInView(aggregateView, matches.rows[index]!)
       if (numeric === undefined) {
         continue
       }

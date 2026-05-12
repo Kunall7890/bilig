@@ -128,6 +128,16 @@ function directCriteriaResultTransformsEqual(
       }
       continue
     }
+    if (leftTransform.kind === 'if-empty-cell') {
+      if (
+        rightTransform.kind !== 'if-empty-cell' ||
+        leftTransform.cellIndex !== rightTransform.cellIndex ||
+        JSON.stringify(leftTransform.fallback) !== JSON.stringify(rightTransform.fallback)
+      ) {
+        return false
+      }
+      continue
+    }
     if (rightTransform.kind !== 'if-error' || JSON.stringify(leftTransform.fallback) !== JSON.stringify(rightTransform.fallback)) {
       return false
     }

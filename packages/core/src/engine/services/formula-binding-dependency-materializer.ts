@@ -2,6 +2,9 @@ import type { resolveRuntimeDirectLookupBinding } from '../direct-vector-lookup.
 import {
   type MaterializedDependencies,
   type RuntimeDirectAggregateDescriptor,
+  type RuntimeDirectCriteriaDescriptor,
+  type RuntimeDirectCriteriaOperand,
+  type RuntimeDirectCriteriaResultTransform,
   type RuntimeDirectScalarDescriptor,
   type RuntimeDirectScalarOperand,
   UNRESOLVED_WASM_OPERAND,
@@ -44,6 +47,10 @@ export interface FormulaBindingDependencyMaterializer {
   readonly materializeDirectAggregateDependencies: (
     compiled: ParsedCompiledFormula,
     directAggregate: RuntimeDirectAggregateDescriptor | undefined,
+  ) => MaterializedDependencies | undefined
+  readonly materializeDirectCriteriaDependencies: (
+    compiled: ParsedCompiledFormula,
+    directCriteria: RuntimeDirectCriteriaDescriptor | undefined,
   ) => MaterializedDependencies | undefined
 }
 
@@ -362,6 +369,18 @@ export function createFormulaBindingDependencyMaterializer(
           }
           continue
         }
+        const rowCount = range.kind === 'cells' ? range.end.row - range.start.row + 1 : 0
+        const colCount = range.kind === 'cells' ? range.end.col - range.start.col + 1 : 0
+        const canInlineSmallCellRangeDependency =
+          range.kind === 'cells' && symbolicRangeIndex === -1 && rowCount > 0 && colCount > 0 && rowCount * colCount <= 64
+        if (canInlineSmallCellRangeDependency) {
+          for (let row = range.start.row; row <= range.end.row; row += 1) {
+            for (let col = range.start.col; col <= range.end.col; col += 1) {
+              appendCellDependency(args.ensureCellTrackedByCoords(sheet.id, row, col))
+            }
+          }
+          continue
+        }
         const registered = args.state.ranges.intern(sheet.id, range, {
           ensureCell: (sheetId, row, col) => args.ensureCellTrackedByCoords(sheetId, row, col),
           forEachSheetCell: (sheetId, fn) => args.forEachSheetCell(sheetId, fn),
@@ -511,9 +530,70 @@ export function createFormulaBindingDependencyMaterializer(
     }
   }
 
+  const materializeDirectCriteriaDependencies = (
+    compiled: ParsedCompiledFormula,
+    directCriteria: RuntimeDirectCriteriaDescriptor | undefined,
+  ): MaterializedDependencies | undefined => {
+    if (
+      directCriteria === undefined ||
+      compiled.symbolicRanges.length !== 0 ||
+      compiled.symbolicNames.length !== 0 ||
+      compiled.symbolicTables.length !== 0 ||
+      compiled.symbolicSpills.length !== 0
+    ) {
+      return undefined
+    }
+    ensureDependencyBuildCapacity(
+      args.state.workbook.cellStore.size + 1,
+      compiled.symbolicRefs.length + 1,
+      compiled.symbolicRefs.length + 1,
+      1,
+    )
+    let dependencyIndexCount = 0
+    let dependencyEntityCount = 0
+    const appendCellIndex = (cellIndex: number): void => {
+      let seen = false
+      for (let existingIndex = 0; existingIndex < dependencyIndexCount; existingIndex += 1) {
+        if (args.getDependencyBuildCells()[existingIndex] === cellIndex) {
+          seen = true
+          break
+        }
+      }
+      if (!seen) {
+        args.getDependencyBuildCells()[dependencyIndexCount] = cellIndex
+        dependencyIndexCount += 1
+      }
+      args.getDependencyBuildEntities()[dependencyEntityCount] = makeCellEntity(cellIndex)
+      dependencyEntityCount += 1
+    }
+    const appendOperand = (operand: RuntimeDirectCriteriaOperand): void => {
+      if (operand.kind !== 'literal') {
+        appendCellIndex(operand.cellIndex)
+      }
+    }
+    const appendTransform = (transform: RuntimeDirectCriteriaResultTransform): void => {
+      if (transform.kind === 'if-empty-cell') {
+        appendCellIndex(transform.cellIndex)
+      }
+    }
+    directCriteria.criteriaPairs.forEach((pair) => appendOperand(pair.criterion))
+    directCriteria.resultTransforms?.forEach(appendTransform)
+    return {
+      dependencyIndices: args.getDependencyBuildCells().slice(0, dependencyIndexCount),
+      dependencyEntities: args.getDependencyBuildEntities().slice(0, dependencyEntityCount),
+      rangeDependencies: EMPTY_DEPENDENCY_BUFFER,
+      graphRangeDependencies: EMPTY_DEPENDENCY_BUFFER,
+      symbolicRangeIndices: EMPTY_DEPENDENCY_BUFFER,
+      symbolicRangeCount: 0,
+      newRangeIndices: EMPTY_DEPENDENCY_BUFFER,
+      newRangeCount: 0,
+    }
+  }
+
   return {
     materializeDependencies,
     materializeDirectScalarDependencies,
     materializeDirectAggregateDependencies,
+    materializeDirectCriteriaDependencies,
   }
 }

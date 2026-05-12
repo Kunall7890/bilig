@@ -767,6 +767,51 @@ describe('EngineFormulaBindingService', () => {
     expect(maxFormula.directCriteria.aggregateKind).toBe('max')
   })
 
+  it('binds IF-guarded direct criteria descriptors without dropping blank-branch semantics', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'binding-direct-criteria-if-guard' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+
+    engine.setCellValue('Sheet1', 'A1', 'x')
+    engine.setCellValue('Sheet1', 'B1', 10)
+    engine.setCellValue('Sheet1', 'A2', 'y')
+    engine.setCellValue('Sheet1', 'B2', 20)
+    engine.setCellValue('Sheet1', 'A3', 'x')
+    engine.setCellValue('Sheet1', 'B3', 30)
+    engine.setCellValue('Sheet1', 'D1', 'x')
+    engine.setCellFormula('Sheet1', 'E1', 'IF(D1="","",SUMIFS(B1:B3,A1:A3,D1))')
+    engine.setCellFormula('Sheet1', 'E2', 'IF(D2<>"",SUMIFS(B1:B3,A1:A3,D2),"")')
+
+    const populatedIndex = engine.workbook.getCellIndex('Sheet1', 'E1')
+    const blankIndex = engine.workbook.getCellIndex('Sheet1', 'E2')
+    if (populatedIndex === undefined || blankIndex === undefined) {
+      throw new Error('expected guarded criteria formulas to be materialized')
+    }
+
+    for (const [address, cellIndex] of [
+      ['E1', populatedIndex],
+      ['E2', blankIndex],
+    ] as const) {
+      const runtimeFormula = readRuntimeFormula(engine, cellIndex)
+      if (!isRuntimeFormulaWithDirectCriteria(runtimeFormula)) {
+        throw new Error(`expected ${address} to expose direct criteria metadata`)
+      }
+      expect(runtimeFormula.directCriteria.aggregateKind).toBe('sum')
+      expect(Reflect.get(runtimeFormula.directCriteria, 'resultTransforms')).toMatchObject([
+        {
+          kind: 'if-empty-cell',
+          fallback: { tag: ValueTag.String, value: '' },
+        },
+      ])
+    }
+    expect(engine.getCellValue('Sheet1', 'E1')).toEqual({ tag: ValueTag.Number, value: 40 })
+    expect(engine.getCellValue('Sheet1', 'E2')).toMatchObject({ tag: ValueTag.String, value: '' })
+
+    engine.setCellValue('Sheet1', 'D2', 'y')
+
+    expect(engine.getCellValue('Sheet1', 'E2')).toEqual({ tag: ValueTag.Number, value: 20 })
+  })
+
   it('binds whole-column criteria ranges onto the direct criteria path', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'binding-direct-whole-column-criteria' })
     await engine.ready()

@@ -6,6 +6,7 @@ import {
   type ParsedDependencyReference,
   type ParsedRangeReferenceInfo,
   type StructuralAxisTransform,
+  parseFormula,
   parseRangeAddress,
 } from '@bilig/formula'
 import { MAX_ROWS, ValueTag, type CellValue } from '@bilig/protocol'
@@ -203,9 +204,28 @@ function resolveDirectCriteriaRange(
 type DirectCriteriaResolvedRange = NonNullable<ReturnType<typeof resolveDirectCriteriaRange>>
 type DirectCriteriaCallNode = Extract<FormulaNode, { readonly kind: 'CallExpr' }>
 type DirectCriteriaCellRefNode = Extract<FormulaNode, { readonly kind: 'CellRef' }>
+const DIRECT_CRITERIA_PLAN_CALLEES = new Set([
+  'COUNTIF',
+  'COUNTIFS',
+  'SUMIF',
+  'SUMIFS',
+  'AVERAGEIF',
+  'AVERAGEIFS',
+  'MINIFS',
+  'MAXIFS',
+  'INDEX',
+])
 
 function callName(node: FormulaNode | undefined): string | undefined {
   return node?.kind === 'CallExpr' ? node.callee.trim().toUpperCase() : undefined
+}
+
+function mayContainDirectCriteriaPlanCall(compiled: ParsedCompiledFormula): boolean {
+  return compiled.jsPlan.some((instruction) => {
+    const opcode = Reflect.get(instruction, 'opcode')
+    const callee = Reflect.get(instruction, 'callee')
+    return opcode === 'call' && typeof callee === 'string' && DIRECT_CRITERIA_PLAN_CALLEES.has(callee.trim().toUpperCase())
+  })
 }
 
 function appendDirectCriteriaResultTransform(
@@ -220,6 +240,7 @@ function appendDirectCriteriaResultTransform(
 
 export function buildDirectCriteriaDescriptor(args: {
   readonly compiled: ParsedCompiledFormula
+  readonly source: string
   readonly ownerSheetName: string
   readonly workbook: Pick<EngineRuntimeState, 'workbook'>['workbook']
   readonly ensureCellTracked: (sheetName: string, address: string) => number
@@ -290,6 +311,44 @@ export function buildDirectCriteriaDescriptor(args: {
       suffix,
       offsetMonths: boundary.offsetMonths,
     }
+  }
+
+  const resolveEmptyStringCellGuard = (
+    node: FormulaNode | undefined,
+  ): { readonly cellRef: DirectCriteriaCellRefNode; readonly operator: '=' | '<>' } | undefined => {
+    if (!node || node.kind !== 'BinaryExpr' || (node.operator !== '=' && node.operator !== '<>')) {
+      return undefined
+    }
+    const leftLiteral = staticCellValue(node.left)
+    const rightLiteral = staticCellValue(node.right)
+    const leftCell = node.left.kind === 'CellRef' ? node.left : undefined
+    const rightCell = node.right.kind === 'CellRef' ? node.right : undefined
+    if (leftCell && rightLiteral?.tag === ValueTag.String && rightLiteral.value === '') {
+      return { cellRef: leftCell, operator: node.operator }
+    }
+    if (rightCell && leftLiteral?.tag === ValueTag.String && leftLiteral.value === '') {
+      return { cellRef: rightCell, operator: node.operator }
+    }
+    return undefined
+  }
+
+  const appendIfEmptyCellTransform = (
+    descriptor: RuntimeDirectCriteriaDescriptor | undefined,
+    cellRef: DirectCriteriaCellRefNode,
+    fallback: CellValue | undefined,
+  ): RuntimeDirectCriteriaDescriptor | undefined => {
+    if (!descriptor || !fallback) {
+      return undefined
+    }
+    const sheetName = cellRef.sheetName ?? args.ownerSheetName
+    if (!args.workbook.getSheet(sheetName)) {
+      return undefined
+    }
+    return appendDirectCriteriaResultTransform(descriptor, {
+      kind: 'if-empty-cell',
+      cellIndex: args.ensureCellTracked(sheetName, cellRef.ref),
+      fallback,
+    })
   }
 
   const resolveCriterionOperand = (
@@ -457,6 +516,20 @@ export function buildDirectCriteriaDescriptor(args: {
       return inner ? appendDirectCriteriaResultTransform(inner, { kind: 'if-error', fallback }) : undefined
     }
 
+    if (callee === 'IF') {
+      if (node.args.length !== 3) {
+        return undefined
+      }
+      const guard = resolveEmptyStringCellGuard(node.args[0])
+      if (!guard) {
+        return undefined
+      }
+      if (guard.operator === '=') {
+        return appendIfEmptyCellTransform(buildDescriptorForNode(node.args[2]!), guard.cellRef, staticCellValue(node.args[1]))
+      }
+      return appendIfEmptyCellTransform(buildDescriptorForNode(node.args[1]!), guard.cellRef, staticCellValue(node.args[2]))
+    }
+
     if (callee === 'INDEX') {
       return buildIndexMatchCriteriaDescriptor(node)
     }
@@ -534,6 +607,9 @@ export function buildDirectCriteriaDescriptor(args: {
     }
   }
 
+  if (args.compiled.astMatchesSource === false && mayContainDirectCriteriaPlanCall(args.compiled)) {
+    return buildDescriptorForNode(parseFormula(args.source))
+  }
   return buildDescriptorForNode(args.compiled.optimizedAst)
 }
 

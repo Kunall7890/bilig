@@ -110,6 +110,7 @@ export function prepareFormulaBindingFromCompiled(args: {
     directScalar === undefined && !requiresWorkbookDateSystemJs
       ? buildDirectCriteriaDescriptor({
           compiled,
+          source: args.source,
           ownerSheetName: args.ownerSheetName,
           workbook: serviceArgs.state.workbook,
           ensureCellTracked: serviceArgs.ensureCellTracked,
@@ -124,9 +125,14 @@ export function prepareFormulaBindingFromCompiled(args: {
     directScalarDependencies === undefined
       ? args.dependencyMaterializer.materializeDirectAggregateDependencies(compiled, directAggregate)
       : undefined
+  const directCriteriaDependencies =
+    directScalarDependencies === undefined && directAggregateDependencies === undefined
+      ? args.dependencyMaterializer.materializeDirectCriteriaDependencies(compiled, directCriteria)
+      : undefined
   const dependencies =
     directScalarDependencies ??
     directAggregateDependencies ??
+    directCriteriaDependencies ??
     args.dependencyMaterializer.materializeDependencies(args.ownerSheetName, compiled, directAggregate, directLookupBinding)
   const directLookup = directLookupBinding
     ? buildDirectLookupDescriptor({

@@ -539,6 +539,28 @@ describe('GitHub issue reductions', () => {
     expect(workbook.getPerformanceCounters().directFormulaInitialEvaluations).toBe(formulaCount)
   }, 15_000)
 
+  it('keeps issue #214 IF-guarded reconciliation SUMIFS on the direct evaluator path', () => {
+    const rowCount = 800
+    const rows = Array.from({ length: rowCount }, (_, row) => {
+      if (row === 0) {
+        return ['Donor', 'Amount', 'Guarded Total']
+      }
+      const donor = row === rowCount - 1 ? '' : `donor-${row % 20}`
+      return [donor, row, `=IF(A${row + 1}="","",SUMIFS($B$2:$B$${rowCount},$A$2:$A$${rowCount},A${row + 1}))`]
+    })
+
+    const workbook = WorkPaper.buildFromSheets(
+      {
+        Donations: rows,
+      },
+      { maxRows: rowCount + 5, maxColumns: 8, useColumnIndex: true, evaluationTimeoutMs: 25_000 },
+    )
+
+    expectNumber(cellValue(workbook, 'Donations', 1, 2), 15_640)
+    expectString(cellValue(workbook, 'Donations', rowCount - 1, 2), '')
+    expect(workbook.getPerformanceCounters().directFormulaInitialEvaluations).toBeGreaterThanOrEqual(rowCount - 1)
+  }, 15_000)
+
   it('recalculates rounded criteria aggregates after edits instead of applying raw deltas', () => {
     const workbook = WorkPaper.buildFromSheets(
       {

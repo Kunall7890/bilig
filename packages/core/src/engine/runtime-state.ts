@@ -242,6 +242,11 @@ export type RuntimeDirectCriteriaResultTransform =
       readonly kind: 'if-error'
       readonly fallback: CellValue
     }
+  | {
+      readonly kind: 'if-empty-cell'
+      readonly cellIndex: number
+      readonly fallback: CellValue
+    }
 
 export interface RuntimeDirectCriteriaDescriptor {
   readonly aggregateKind: 'count' | 'sum' | 'average' | 'min' | 'max' | 'first'
