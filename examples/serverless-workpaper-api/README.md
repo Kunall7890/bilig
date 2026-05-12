@@ -76,6 +76,8 @@ module memory.
 
 - In a Next.js app route, call `handleWorkPaperRequest()` from `GET()` and
   `POST()`.
+- In a Vercel Function, export small web-standard `GET()` and `POST()` handlers
+  from files under `/api`.
 - In a Cloudflare Worker, call it from `fetch(request)`.
 - In Cloudflare Pages Functions, call it from small `onRequestGet()` and
   `onRequestPost()` files under `/functions`.
@@ -90,6 +92,8 @@ module memory.
   files.
 - In Bun, return `handleWorkPaperRequest(request)` from the `Bun.serve()`
   `fetch` handler.
+- In NestJS, adapt the Express request into a web-standard `Request`, then copy
+  the returned `Response` back through `@Res()`.
 - In Fastify, adapt the framework request into a web-standard `Request`, then
   write the returned `Response` through `reply`.
 - In Express, adapt the framework request into a web-standard `Request`, then

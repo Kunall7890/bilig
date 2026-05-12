@@ -182,12 +182,8 @@ including its p95 caveat.
   https://github.com/proompteng/bilig/issues/162
 - current small docs issue: coding-agent workbook automation recipe:
   https://github.com/proompteng/bilig/issues/163
-- current small docs issue: NestJS controller adapter:
-  https://github.com/proompteng/bilig/issues/183
 - current small docs issue: Elysia route adapter:
   https://github.com/proompteng/bilig/issues/184
-- current small docs issue: Vercel Function adapter:
-  https://github.com/proompteng/bilig/issues/185
 - current small docs issue: Firebase Functions HTTPS adapter:
   https://github.com/proompteng/bilig/issues/186
 - good first issue search:

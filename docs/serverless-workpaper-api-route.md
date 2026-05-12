@@ -9,8 +9,8 @@ For a clone-and-run copy of this route, start with
 [`examples/serverless-workpaper-api`](../examples/serverless-workpaper-api).
 
 The example also includes a tiny Node adapter so you can run it locally before
-moving the route into Vercel, Cloudflare Workers, Fastify, Hono, or another HTTP
-surface.
+moving the route into Vercel Functions, Cloudflare Workers, Fastify, Hono, or
+another HTTP surface.
 
 ## Setup
 
@@ -260,7 +260,8 @@ as a positive persistence signal, not a golden value.
 
 Keep the exported `handleWorkPaperRequest()` function as the stable boundary:
 
-- In a Vercel or Next.js route handler, call it from `GET()` and `POST()`.
+- In a Vercel Function, export `GET()` and `POST()` from files under `/api`.
+- In a Next.js route handler, call it from `GET()` and `POST()`.
 - In Cloudflare Workers, call it from `fetch(request)`.
 - In Cloudflare Pages Functions, call it from `onRequestGet()` and
   `onRequestPost()`.
@@ -268,6 +269,7 @@ Keep the exported `handleWorkPaperRequest()` function as the stable boundary:
   `action()` for `POST`.
 - In Nitro, wrap it with H3's `fromWebHandler()` and export that from
   method-specific route files.
+- In NestJS, adapt the Express request and response inside a thin controller.
 - In Hono, Fastify, or Express, adapt the framework request into a web-standard
   `Request`, then return or write the `Response`.
 - Persist `state.workbookJson` in your durable store instead of module memory
@@ -328,6 +330,102 @@ Do not put the workbook helpers into both route files. The adapter should stay
 small; the shared handler is what keeps formula evaluation, persistence, and
 readback behavior identical between local Node, Next.js, and other web-standard
 route surfaces.
+
+## Vercel Function Adapter
+
+Plain Vercel Functions can use the same web-standard `Request` and `Response`
+objects as the shared WorkPaper handler. This is different from the Next.js App
+Router layout above: the function files live under `/api` and do not need a
+Next.js route segment.
+
+Put the shared WorkPaper route in `api/workpaper-route.js`:
+
+- keep the `@bilig/headless` imports
+- keep `state`, `handleWorkPaperRequest()`, and every workbook helper
+- omit `createServer()`, `toWebRequest()`, and the local Node adapter block
+
+Then create `api/workpaper/summary.js`:
+
+```js
+import { handleWorkPaperRequest } from '../workpaper-route.js'
+
+export function GET(request) {
+  return handleWorkPaperRequest(request)
+}
+```
+
+Create `api/workpaper/revenue.js`:
+
+```js
+import { handleWorkPaperRequest } from '../workpaper-route.js'
+
+export function POST(request) {
+  return handleWorkPaperRequest(request)
+}
+```
+
+Vercel also supports a single `fetch` web handler when one file should own every
+method:
+
+```js
+import { handleWorkPaperRequest } from './workpaper-route.js'
+
+export default {
+  fetch(request) {
+    return handleWorkPaperRequest(request)
+  },
+}
+```
+
+For older Vercel projects that still use a Node-style `(request, response)`
+handler, keep the compatibility layer at the edge of the route and convert back
+to the Vercel response object:
+
+```js
+import { Readable } from 'node:stream'
+import { handleWorkPaperRequest } from './workpaper-route.js'
+
+export default async function handler(request, response) {
+  const webResponse = await handleWorkPaperRequest(toWebRequest(request))
+  response.status(webResponse.status)
+
+  for (const [name, value] of webResponse.headers) {
+    response.setHeader(name, value)
+  }
+
+  response.send(Buffer.from(await webResponse.arrayBuffer()))
+}
+
+function toWebRequest(request) {
+  const protocol = request.headers['x-forwarded-proto'] ?? 'https'
+  const host = request.headers.host ?? 'localhost'
+  const url = new URL(request.url ?? '/', `${protocol}://${host}`)
+  const headers = new Headers()
+
+  for (const [name, value] of Object.entries(request.headers)) {
+    if (Array.isArray(value)) {
+      for (const item of value) headers.append(name, item)
+    } else if (value !== undefined) {
+      headers.set(name, String(value))
+    }
+  }
+
+  return new Request(url, {
+    method: request.method,
+    headers,
+    body:
+      request.method === 'GET' || request.method === 'HEAD'
+        ? undefined
+        : Readable.toWeb(request),
+    duplex: 'half',
+  })
+}
+```
+
+Use the modern web handler form for new Vercel Functions. The Node-style bridge
+exists only for older projects where Vercel has already handed you a
+request/response pair. In either form, keep durable workbook storage behind the
+`createWorkPaperRequestHandler(storage)` boundary before deploying.
 
 ## Cloudflare Worker Adapter
 
@@ -711,6 +809,91 @@ curl -s -X POST http://localhost:3000/api/workpaper/revenue \
 Use the durable storage variant above for deployed Bun services. The local
 example's module memory is intentionally small, but it should not be treated as
 the workbook store for multiple processes, containers, or regions.
+
+## NestJS Controller Adapter
+
+NestJS controllers route requests with decorators such as `@Get()` and
+`@Post()`. Keep those controller methods thin: convert the platform request into
+a web-standard `Request`, pass it to the shared WorkPaper handler, then copy the
+returned `Response` back to Nest's response object.
+
+Create `workpaper-route.js` from the shared route code above:
+
+- keep the `@bilig/headless` imports
+- keep `state`, `handleWorkPaperRequest()`, and every workbook helper
+- omit `createServer()`, `toWebRequest()`, and the local Node adapter block
+
+Then create `workpaper.controller.ts`:
+
+```ts
+import { Controller, Get, Post, Req, Res } from '@nestjs/common'
+import type { Request, Response } from 'express'
+import { handleWorkPaperRequest } from './workpaper-route.js'
+
+@Controller('api/workpaper')
+export class WorkPaperController {
+  @Get('summary')
+  summary(@Req() request: Request, @Res() response: Response) {
+    return runWorkPaperRoute(request, response)
+  }
+
+  @Post('revenue')
+  revenue(@Req() request: Request, @Res() response: Response) {
+    return runWorkPaperRoute(request, response)
+  }
+}
+
+async function runWorkPaperRoute(request: Request, response: Response) {
+  const routeResponse = await handleWorkPaperRequest(toWebRequest(request))
+
+  routeResponse.headers.forEach((value, name) => {
+    response.setHeader(name, value)
+  })
+  response.status(routeResponse.status)
+  response.send(Buffer.from(await routeResponse.arrayBuffer()))
+}
+
+function toWebRequest(request: Request) {
+  const protocol = request.protocol ?? 'http'
+  const host = request.get('host') ?? 'localhost:3000'
+  const url = new URL(request.originalUrl ?? request.url, `${protocol}://${host}`)
+  const headers = new Headers()
+
+  for (const [name, value] of Object.entries(request.headers)) {
+    if (Array.isArray(value)) {
+      headers.set(name, value.join(', '))
+    } else if (value !== undefined) {
+      headers.set(name, String(value))
+    }
+  }
+
+  return new Request(url, {
+    method: request.method,
+    headers,
+    body:
+      request.method === 'GET' || request.method === 'HEAD'
+        ? undefined
+        : JSON.stringify(request.body ?? {}),
+  })
+}
+```
+
+The controller exposes the same route paths:
+
+```sh
+curl -s http://localhost:3000/api/workpaper/summary
+curl -s -X POST http://localhost:3000/api/workpaper/revenue \
+  -H 'content-type: application/json' \
+  -d '{"records":[{"region":"West","customers":20,"arpa":1200},{"region":"East","customers":30,"arpa":250},{"region":"Central","customers":18,"arpa":300},{"region":"North","customers":65,"arpa":180}]}'
+```
+
+This adapter assumes the default Nest Express setup has already parsed the JSON
+body. If the route needs raw uploads or webhook signature verification, preserve
+the raw body instead of serializing `request.body`.
+
+Use the durable storage variant above for deployed NestJS services. Module
+memory is fine for a local smoke test, but it is not a durable workbook store
+across restarts, replicas, or background workers.
 
 ## Fastify Adapter
 
