@@ -319,6 +319,15 @@ requireIncludes(
   'description: A runnable @bilig/headless loop where an agent writes one workbook input',
   'docs/agent-spreadsheet-tool-call-loop.md',
 )
+for (const [path, content] of [
+  ['docs/why-agents-need-workbook-apis.md', whyAgentsDoc],
+  ['docs/agent-workpaper-tool-calling-recipe.md', agentToolCallingDoc],
+  ['docs/agent-spreadsheet-tool-call-loop.md', agentToolCallLoopDoc],
+  ['docs/workbook-automation-examples-node.md', await readFile(join(docsRoot, 'workbook-automation-examples-node.md'), 'utf8')],
+  ['docs/dev-to-workbook-apis-post.md', await readFile(join(docsRoot, 'dev-to-workbook-apis-post.md'), 'utf8')],
+] as const) {
+  requireIncludes(content, 'image: https://proompteng.github.io/bilig/assets/github-social-preview.png?v=2026-05-08-2', path)
+}
 
 for (const [path, content] of [
   ['.github/ISSUE_TEMPLATE/config.yml', issueTemplateConfig],
