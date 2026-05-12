@@ -20,6 +20,8 @@ Project site: <https://proompteng.github.io/bilig/>
 
 - **Evaluate in 90 seconds**: run the npm-only
   [`@bilig/headless` quickstart](#try-biligheadless-in-90-seconds).
+- **Decide if it fits your backend**: read the
+  [Node.js spreadsheet formula engine guide](docs/node-spreadsheet-formula-engine.md).
 - **Compare spreadsheet engines**: read the
   [SheetJS and ExcelJS comparison](docs/sheetjs-exceljs-alternative-formula-workbook-api.md),
   [HyperFormula comparison](docs/hyperformula-alternative-headless-workpaper.md),

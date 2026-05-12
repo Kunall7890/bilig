@@ -79,6 +79,8 @@ Pick the path that matches the job:
 
 - Prove the package works from npm:
   [clean npm sanity check](#clean-npm-sanity-check).
+- Decide if this package fits a backend formula workload:
+  [Node.js spreadsheet formula engine guide](https://proompteng.github.io/bilig/node-spreadsheet-formula-engine.html).
 - Test formula edits plus persistence:
   [quickstart](#quickstart).
 - Convert API records into workbook output:

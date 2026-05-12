@@ -355,6 +355,7 @@ for (const [path, content] of [
   ['docs/index.html', index],
   ['docs/llms.txt', llms],
 ] as const) {
+  requireIncludes(content, 'node-spreadsheet-formula-engine', path)
   requireIncludes(content, 'examples/serverless-workpaper-api', path)
 }
 
