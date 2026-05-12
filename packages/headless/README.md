@@ -138,9 +138,11 @@ Current release posture:
 - Full local CI passed after the latest headless hardening work, including unit,
   contract, fuzz, browser, clean-diff, release-budget, runtime-publish, and
   WorkPaper competitive benchmark gates.
-- The checked-in competitive artifact generated on `2026-05-06T14:54:57.091Z`
+- The checked-in competitive artifact generated on `2026-05-08T15:00:27.603Z`
   shows `46/46` comparable WorkPaper mean wins against HyperFormula-style
   workloads: `38/38` public and `8/8` holdout.
+- The shareable benchmark card is generated from that artifact:
+  [`docs/assets/workpaper-benchmark-card.png`](https://github.com/proompteng/bilig/blob/main/docs/assets/workpaper-benchmark-card.png).
 - The public benchmark evidence note explains the measured workload families,
   engine metadata, exclusions, and the current p95 nuance:
   [`docs/headless-workpaper-benchmark-evidence.md`](https://github.com/proompteng/bilig/blob/main/docs/headless-workpaper-benchmark-evidence.md).

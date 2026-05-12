@@ -606,11 +606,18 @@ The WorkPaper track is the repo's performance-leadership program. It compares
 bilig's spreadsheet runtime against HyperFormula-style workloads and keeps the
 important claims tied to benchmark artifacts, counters, and docs.
 
+<p align="center">
+  <img src="docs/assets/workpaper-benchmark-card.png" alt="WorkPaper benchmark evidence card with 46 out of 46 comparable mean wins and the visible p95 caveat" />
+</p>
+
 Current public evidence:
 
 - `packages/benchmarks/baselines/workpaper-vs-hyperformula.json`, generated at
-  `2026-05-06T14:54:57.091Z`, records WorkPaper `46/46` mean wins on
+  `2026-05-08T15:00:27.603Z`, records WorkPaper `46/46` mean wins on
   scorecard-eligible comparable workloads: `38/38` public and `8/8` holdout.
+- `docs/assets/workpaper-benchmark-card.png` is the shareable chart for the
+  current scorecard. It is generated from the checked-in artifact with
+  `pnpm docs:benchmark-card:generate`.
 - `docs/headless-workpaper-benchmark-evidence.md` explains what is measured,
   what is excluded, and why this is a mean-win claim rather than a blanket p95
   guarantee.

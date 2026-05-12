@@ -110,6 +110,8 @@
     "naming:check": "bun scripts/check-canonical-naming.ts",
     "docs:social-preview:generate": "tsx scripts/render-social-preview.ts",
     "docs:social-preview:check": "tsx scripts/render-social-preview.ts --check",
+    "docs:benchmark-card:generate": "tsx scripts/render-benchmark-card.ts",
+    "docs:benchmark-card:check": "tsx scripts/render-benchmark-card.ts --check",
     "docs:launch-assets:generate": "tsx scripts/render-launch-assets.ts",
     "docs:launch-assets:check": "tsx scripts/render-launch-assets.ts --check",
     "docs:launch-demo:generate": "tsx scripts/render-launch-demo.ts",

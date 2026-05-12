@@ -215,6 +215,9 @@ await Promise.all(
     requireFile(join(repoRoot, 'examples', 'serverless-workpaper-api', sourceFile)),
   ),
 )
+await Promise.all(
+  ['github-social-preview.png', 'workpaper-benchmark-card.png'].map((sourceFile) => requireFile(join(docsRoot, 'assets', sourceFile))),
+)
 
 for (const url of actualSitemapUrls) {
   if (!url.startsWith(siteRoot)) {
@@ -377,6 +380,16 @@ for (const [path, content] of [
   ['docs/llms.txt', llms],
 ] as const) {
   requireIncludes(content, 'docs/sheetjs-exceljs-alternative-formula-workbook-api.md', path)
+}
+
+for (const [path, content] of [
+  ['README.md', readme],
+  ['packages/headless/README.md', headlessReadme],
+  ['docs/index.html', index],
+  ['docs/llms.txt', llms],
+  ['docs/what-workpaper-benchmark-proves.md', await readFile(join(docsRoot, 'what-workpaper-benchmark-proves.md'), 'utf8')],
+] as const) {
+  requireIncludes(content, 'workpaper-benchmark-card.png', path)
 }
 
 for (const [path, content] of [

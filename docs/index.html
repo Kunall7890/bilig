@@ -414,6 +414,19 @@
         padding-left: 18px;
       }
 
+      .benchmark-card-link {
+        display: block;
+        margin-bottom: 16px;
+      }
+
+      .benchmark-card-image {
+        display: block;
+        width: 100%;
+        height: auto;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+
       .quickstart {
         display: grid;
         grid-template-columns: minmax(0, 0.72fr) minmax(0, 1fr);
@@ -854,6 +867,13 @@ console.log({ before, after, sheets: restored.getSheetNames(), bytes: saved.leng
               </div>
             </div>
             <article class="card">
+              <a class="benchmark-card-link" href="./what-workpaper-benchmark-proves.html">
+                <img
+                  class="benchmark-card-image"
+                  src="./assets/workpaper-benchmark-card.png?v=2026-05-12-1"
+                  alt="WorkPaper benchmark evidence: 46 out of 46 comparable mean wins with a visible p95 caveat"
+                />
+              </a>
               <h3>Check it directly</h3>
               <ul>
                 <li>Runnable package example</li>

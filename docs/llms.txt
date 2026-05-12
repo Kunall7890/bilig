@@ -82,6 +82,8 @@ npm run agent:verify
 
 - benchmark explainer:
   https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md
+- benchmark share card:
+  https://github.com/proompteng/bilig/blob/main/docs/assets/workpaper-benchmark-card.png
 - hyperformula comparison:
   https://github.com/proompteng/bilig/blob/main/docs/hyperformula-alternative-headless-workpaper.md
 - headless spreadsheet engine comparison:

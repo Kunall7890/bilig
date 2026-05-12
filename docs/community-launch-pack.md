@@ -108,7 +108,8 @@ something.
 
 The `46/46` WorkPaper mean-win claim should become small, quotable artifacts:
 
-- one chart image for X, Bluesky, LinkedIn, and README embeds
+- one chart image for X, Bluesky, LinkedIn, and README embeds:
+  [`docs/assets/workpaper-benchmark-card.png`](assets/workpaper-benchmark-card.png)
 - one short post explaining the p95 caveat honestly
 - one "run this benchmark locally" post
 - one "what would make this benchmark unfair?" discussion prompt

@@ -6,6 +6,8 @@ This page is the short, shareable version of the WorkPaper benchmark claim. It
 turns the checked-in artifact into a plain-English evaluation guide without
 inflating what the benchmark can prove.
 
+![WorkPaper benchmark card showing 46 out of 46 comparable mean wins and the visible p95 caveat](assets/workpaper-benchmark-card.png)
+
 ## The Claim
 
 The current checked-in WorkPaper-vs-HyperFormula artifact records WorkPaper
@@ -19,7 +21,7 @@ The current checked-in WorkPaper-vs-HyperFormula artifact records WorkPaper
 
 The artifact is
 [`packages/benchmarks/baselines/workpaper-vs-hyperformula.json`](../packages/benchmarks/baselines/workpaper-vs-hyperformula.json),
-generated at `2026-05-06T14:54:57.091Z`.
+generated at `2026-05-08T15:00:27.603Z`.
 
 The overall directional mean-ratio geomean is `0.521767150331573`, and the
 overall directional p95-ratio geomean is `0.5359737705859149`. Ratios below
@@ -79,6 +81,7 @@ For the benchmark evidence, start with:
 
 - [`docs/headless-workpaper-benchmark-evidence.md`](headless-workpaper-benchmark-evidence.md)
 - [`packages/benchmarks/baselines/workpaper-vs-hyperformula.json`](../packages/benchmarks/baselines/workpaper-vs-hyperformula.json)
+- [`docs/assets/workpaper-benchmark-card.png`](assets/workpaper-benchmark-card.png)
 
 For the API surface, run the published package or maintained example:
 

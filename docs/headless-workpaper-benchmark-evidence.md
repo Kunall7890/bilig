@@ -12,12 +12,12 @@ The decision artifact is
 
 Current checked-in metadata:
 
-- generated at `2026-05-06T14:54:57.091Z`
+- generated at `2026-05-08T15:00:27.603Z`
 - host: macOS `arm64`, Node `v24.3.0`
 - benchmark sampling: `5` measured samples after `2` warmup samples
 - WorkPaper package: `@bilig/headless`
 - comparison engine: HyperFormula `3.2.0`, local checkout commit
-  `6de904b8876f920f287b63a95934c479acf78307`, GPL-v3 license key
+  `9a510a2acb97c3d3490f9e3b9e961a1c4a98b9ad`, GPL-v3 license key
 
 ## What The Claim Is
 
