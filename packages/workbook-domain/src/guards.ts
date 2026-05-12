@@ -217,6 +217,8 @@ function isWorkbookDataValidationRule(value: unknown): boolean {
     }
     case 'checkbox':
       return isOptionalLiteralInput(value['checkedValue']) && isOptionalLiteralInput(value['uncheckedValue'])
+    case 'any':
+      return true
     case 'whole':
     case 'decimal':
     case 'date':

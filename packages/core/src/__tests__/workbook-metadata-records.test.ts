@@ -188,6 +188,7 @@ describe('workbook metadata records', () => {
       checkedValue: 'yes',
       uncheckedValue: 'no',
     })
+    expect(cloneDataValidationRule({ kind: 'any' })).toEqual({ kind: 'any' })
     expect(
       cloneDataValidationRule({
         kind: 'whole',

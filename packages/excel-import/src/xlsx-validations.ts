@@ -132,6 +132,7 @@ function formatExportSheetReference(
 
 function formatValidationListSource(
   source: WorkbookValidationListSourceSnapshot,
+  ownerSheetName: string,
   exportSheetNamesByOriginalName: ReadonlyMap<string, string>,
 ): string | null {
   switch (source.kind) {
@@ -139,14 +140,23 @@ function formatValidationListSource(
       return source.name.trim().length > 0 ? source.name.trim() : null
     case 'cell-ref': {
       const address = absoluteAddress(source.address)
-      return address ? formatExportSheetReference(source.sheetName, address, exportSheetNamesByOriginalName) : null
+      if (!address) {
+        return null
+      }
+      return source.sheetName === ownerSheetName
+        ? address
+        : formatExportSheetReference(source.sheetName, address, exportSheetNamesByOriginalName)
     }
     case 'range-ref': {
       const startAddress = absoluteAddress(source.startAddress)
       const endAddress = absoluteAddress(source.endAddress)
-      return startAddress && endAddress
-        ? formatExportSheetReference(source.sheetName, `${startAddress}:${endAddress}`, exportSheetNamesByOriginalName)
-        : null
+      if (!startAddress || !endAddress) {
+        return null
+      }
+      const reference = `${startAddress}:${endAddress}`
+      return source.sheetName === ownerSheetName
+        ? reference
+        : formatExportSheetReference(source.sheetName, reference, exportSheetNamesByOriginalName)
     }
     case 'structured-ref':
       return source.columnName.trim().length > 0 ? `${source.tableName}[${source.columnName}]` : source.tableName
@@ -164,13 +174,14 @@ function formatListLiteral(value: LiteralInput): string {
 }
 
 function formatListFormula(
+  ownerSheetName: string,
   rule: Extract<WorkbookDataValidationRuleSnapshot, { kind: 'list' }>,
   exportSheetNamesByOriginalName: ReadonlyMap<string, string>,
 ): string | null {
   if (rule.values && rule.values.length > 0) {
     return `"${rule.values.map(formatListLiteral).join(',').replaceAll('"', '""')}"`
   }
-  return rule.source ? formatValidationListSource(rule.source, exportSheetNamesByOriginalName) : null
+  return rule.source ? formatValidationListSource(rule.source, ownerSheetName, exportSheetNamesByOriginalName) : null
 }
 
 function formatScalarFormulaValue(value: LiteralInput): string | null {
@@ -190,8 +201,8 @@ function formatScalarFormulaValue(value: LiteralInput): string | null {
   return '""'
 }
 
-function buildDataValidationAttributes(validation: WorkbookDataValidationSnapshot, type: string, operator?: string): string {
-  const attributes = [`type="${escapeXml(type)}"`]
+function buildDataValidationAttributes(validation: WorkbookDataValidationSnapshot, type?: string, operator?: string): string {
+  const attributes = type ? [`type="${escapeXml(type)}"`] : []
   if (operator) {
     attributes.push(`operator="${escapeXml(operator)}"`)
   }
@@ -241,8 +252,11 @@ function buildExportDataValidationXml(
   if (rule.kind === 'checkbox') {
     return null
   }
+  if (rule.kind === 'any') {
+    return `<dataValidation ${buildDataValidationAttributes(validation)}/>`
+  }
   if (rule.kind === 'list') {
-    const formula = formatListFormula(rule, exportSheetNamesByOriginalName)
+    const formula = formatListFormula(validation.range.sheetName, rule, exportSheetNamesByOriginalName)
     if (!formula) {
       return null
     }
@@ -435,6 +449,7 @@ function parseStructuredReference(value: string): WorkbookValidationListSourceSn
 }
 
 function parseListFormula(
+  sheetName: string,
   formula: string,
 ): Pick<Extract<WorkbookDataValidationRuleSnapshot, { kind: 'list' }>, 'values' | 'source'> | null {
   const trimmed = formula.trim()
@@ -444,6 +459,10 @@ function parseListFormula(
     }
   }
   const expression = trimmed.startsWith('=') ? trimmed.slice(1).trim() : trimmed
+  const sameSheetSource = parseSourceReference(sheetName, expression)
+  if (sameSheetSource) {
+    return { source: sameSheetSource }
+  }
   const sheetReference = parseSheetReference(expression)
   if (sheetReference) {
     const source = parseSourceReference(sheetReference.sheetName, sheetReference.reference)
@@ -476,7 +495,7 @@ function parseScalarFormulaValue(formula: string): LiteralInput {
   return trimmed
 }
 
-function parseValidationRule(entry: Record<string, unknown>): WorkbookDataValidationRuleSnapshot | null {
+function parseValidationRule(sheetName: string, entry: Record<string, unknown>): WorkbookDataValidationRuleSnapshot | null {
   const type = stringChild(entry, 'type') ?? 'any'
   const formula1 = stringChild(entry, 'formula1')
   const formula2 = stringChild(entry, 'formula2')
@@ -485,9 +504,11 @@ function parseValidationRule(entry: Record<string, unknown>): WorkbookDataValida
       if (!formula1) {
         return null
       }
-      const listFormula = parseListFormula(formula1)
+      const listFormula = parseListFormula(sheetName, formula1)
       return listFormula ? { kind: 'list', ...listFormula } : null
     }
+    case 'any':
+      return { kind: 'any' }
     case 'whole':
     case 'decimal':
     case 'date':
@@ -506,7 +527,7 @@ function parseDataValidationEntry(sheetName: string, entry: unknown): WorkbookDa
   if (!isRecord(entry)) {
     return []
   }
-  const rule = parseValidationRule(entry)
+  const rule = parseValidationRule(sheetName, entry)
   const sqref = stringChild(entry, 'sqref')
   if (!rule || !sqref) {
     return []

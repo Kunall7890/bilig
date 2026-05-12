@@ -67,6 +67,8 @@ function isWorkbookDataValidationRule(value: unknown): value is WorkbookDataVali
         (value['checkedValue'] === undefined || isLiteralInputValue(value['checkedValue'])) &&
         (value['uncheckedValue'] === undefined || isLiteralInputValue(value['uncheckedValue']))
       )
+    case 'any':
+      return true
     case 'whole':
     case 'decimal':
     case 'date':

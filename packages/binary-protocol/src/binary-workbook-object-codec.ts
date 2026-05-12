@@ -455,6 +455,9 @@ function encodeDataValidationRule(writer: BinaryWriter, rule: WorkbookDataValida
         encodeLiteral(writer, rule.uncheckedValue)
       }
       return
+    case 'any':
+      writer.u8(7)
+      return
     case 'whole':
     case 'decimal':
     case 'date':
@@ -548,6 +551,8 @@ function decodeDataValidationRule(reader: BinaryReader): WorkbookDataValidationR
         values,
       }
     }
+    case 7:
+      return { kind: 'any' }
     default:
       throw new BinaryProtocolError('Unknown data validation rule tag')
   }

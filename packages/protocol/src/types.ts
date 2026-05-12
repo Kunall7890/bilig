@@ -673,6 +673,10 @@ export interface WorkbookCheckboxValidationRuleSnapshot {
   uncheckedValue?: LiteralInput
 }
 
+export interface WorkbookAnyValidationRuleSnapshot {
+  kind: 'any'
+}
+
 export interface WorkbookScalarValidationRuleSnapshot {
   kind: 'whole' | 'decimal' | 'date' | 'time' | 'textLength'
   operator: WorkbookValidationComparisonOperator
@@ -682,6 +686,7 @@ export interface WorkbookScalarValidationRuleSnapshot {
 export type WorkbookDataValidationRuleSnapshot =
   | WorkbookListValidationRuleSnapshot
   | WorkbookCheckboxValidationRuleSnapshot
+  | WorkbookAnyValidationRuleSnapshot
   | WorkbookScalarValidationRuleSnapshot
 
 export interface WorkbookDataValidationSnapshot {

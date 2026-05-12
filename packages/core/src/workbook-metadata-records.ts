@@ -158,6 +158,8 @@ export function cloneDataValidationRule(rule: WorkbookDataValidationRuleSnapshot
       }
       return cloned
     }
+    case 'any':
+      return { kind: 'any' }
     case 'whole':
     case 'decimal':
     case 'date':
