@@ -6,13 +6,17 @@
 [![GitHub Repo stars](https://img.shields.io/github/stars/proompteng/bilig?style=social)](https://github.com/proompteng/bilig/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/proompteng/bilig/blob/main/LICENSE)
 
-`@bilig/headless` lets Node.js programs build workbooks, write formulas, read
-calculated cells, and save or restore the workbook as JSON. It is the `bilig`
-spreadsheet engine without the browser UI.
+`@bilig/headless` is the `bilig` spreadsheet engine without the browser UI.
+It lets Node.js programs build workbooks, write formulas, read calculated
+cells, and save or restore the workbook as JSON.
 
-Use it for service-side spreadsheet calculations, deterministic tests around
-formula-backed business logic, local-first workbook state, and tool-calling
-workflows that need stable cell addresses.
+Use it when spreadsheet logic belongs inside a service, test suite, local-first
+app, queue worker, or coding-agent tool. It gives code a workbook boundary with
+stable sheet names, cell addresses, formulas, and persisted state.
+
+It is not Excel desktop automation and it is not a visual grid. XLSX import and
+export live in the repository import/export packages; this package executes the
+validated WorkPaper model once data is in workbook form.
 
 ## Install
 
@@ -71,55 +75,32 @@ pnpm --filter @bilig/headless build
 
 ## Start Here
 
-- Run the [clean npm sanity check](#clean-npm-sanity-check) before cloning, or
-  the [quickstart](#quickstart) for a one-file formula and persistence
-  smoke test.
-- Try the
-  [five Node workbook automation examples](https://github.com/proompteng/bilig/blob/main/docs/workbook-automation-examples-node.md)
-  overview, then run
-  [`examples/headless-workpaper`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper) and
-  [`npm run json-records`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-records-input)
-  for in-process records, or
-  [`npm run json-file`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-file-input)
-  for records already saved on disk, or
-  [`npm run formula-diagnostics`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#formula-diagnostics)
-  for structured formula error handling, or
-  [`npm run markdown-report`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#markdown-report-output)
-  for a calculated Markdown table, or
-  [`npm run snapshot-diff`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#snapshot-diff)
-  for before/after persisted-state comparison, or
-  [`npm run range-readback`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#range-readback)
-  for computed values and serialized formulas from the same range, or
-  [`npm run sheet-inspection`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#sheet-inspection)
-  for checking restored workbook shape before writes, or
-  [`npm run http-json-summary`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#http-json-summary)
-  for a no-framework Node HTTP boundary, or
-  [`npm run invoice-totals`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#invoice-totals)
-  for subtotal, tax, and total formula readback, or
-  [`npm run budget-variance`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#budget-variance-alerts)
-  for formula-backed budget variance alerts, or
-  [`npm run subscription-mrr`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#subscription-mrr-forecast)
-  for churn, expansion, and ending MRR formulas, or
-  [`npm run quote-approval`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#quote-approval-threshold)
-  for formula-backed quote discount approvals, or
-  [`npm run fulfillment-capacity`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#fulfillment-capacity-plan)
-  for order volume, labor hours, and capacity gap formulas.
-- Run the
-  [serverless WorkPaper API example](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api)
-  when the workbook belongs behind an HTTP or agent-tool boundary.
-- Build a small service from the
-  [Node service recipe](https://github.com/proompteng/bilig/blob/main/docs/node-service-workpaper-recipe.md).
-- Put the same workbook boundary behind a
-  [serverless API route](https://github.com/proompteng/bilig/blob/main/docs/serverless-workpaper-api-route.md).
-- Check the
-  [compatibility boundaries](https://github.com/proompteng/bilig/blob/main/docs/where-bilig-is-not-excel-compatible-yet.md)
-  before assuming full Excel parity.
-- Compare against other engines with the
+Pick the path that matches the job:
+
+- Prove the package works from npm:
+  [clean npm sanity check](#clean-npm-sanity-check).
+- Test formula edits plus persistence:
+  [quickstart](#quickstart).
+- Convert API records into workbook output:
+  [`npm run json-records`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-records-input).
+- Wrap workbook edits as agent tools:
+  [`npm run agent:tool-call`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#agent-tool-call-loop).
+- Put WorkPaper behind HTTP:
+  [`examples/serverless-workpaper-api`](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api).
+- Compare engines before adopting:
   [SheetJS and ExcelJS comparison](https://github.com/proompteng/bilig/blob/main/docs/sheetjs-exceljs-alternative-formula-workbook-api.md),
-  [HyperFormula comparison](https://github.com/proompteng/bilig/blob/main/docs/hyperformula-alternative-headless-workpaper.md)
-  and [benchmark explainer](https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md).
-- Star or bookmark the project:
-  <https://github.com/proompteng/bilig>.
+  [HyperFormula comparison](https://github.com/proompteng/bilig/blob/main/docs/hyperformula-alternative-headless-workpaper.md),
+  and
+  [benchmark explainer](https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md).
+
+For more workflows, read the
+[five Node workbook automation examples](https://github.com/proompteng/bilig/blob/main/docs/workbook-automation-examples-node.md),
+the [Node service recipe](https://github.com/proompteng/bilig/blob/main/docs/node-service-workpaper-recipe.md),
+the [serverless API route walkthrough](https://github.com/proompteng/bilig/blob/main/docs/serverless-workpaper-api-route.md),
+and the
+[compatibility boundaries](https://github.com/proompteng/bilig/blob/main/docs/where-bilig-is-not-excel-compatible-yet.md).
+
+Star or bookmark the project: <https://github.com/proompteng/bilig>.
 
 ## Which Example Should I Run?
 
