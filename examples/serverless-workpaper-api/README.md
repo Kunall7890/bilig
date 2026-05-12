@@ -82,6 +82,8 @@ module memory.
   `fetch` default export.
 - In SvelteKit, return `handleWorkPaperRequest(request)` from thin `+server.js`
   `GET` and `POST` handlers.
+- In Bun, return `handleWorkPaperRequest(request)` from the `Bun.serve()`
+  `fetch` handler.
 - In Fastify, adapt the framework request into a web-standard `Request`, then
   write the returned `Response` through `reply`.
 - In Express, adapt the framework request into a web-standard `Request`, then

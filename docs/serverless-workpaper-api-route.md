@@ -524,6 +524,37 @@ Keep the route files thin. The shared handler is what preserves identical
 formula evaluation, persisted document shape, and readback checks between the
 standalone Node server, SvelteKit, and other serverless surfaces.
 
+## Bun.serve Adapter
+
+`Bun.serve()` receives a web-standard `Request` and can return a `Response`, so
+the adapter does not need to translate the route body, headers, or status code.
+Keep the WorkPaper code in a shared module and let the Bun entrypoint pass each
+request through.
+
+```js
+import { handleWorkPaperRequest } from './workpaper-route.js'
+
+Bun.serve({
+  port: 3000,
+  fetch(request) {
+    return handleWorkPaperRequest(request)
+  },
+})
+```
+
+The shared handler still owns the route paths:
+
+```sh
+curl -s http://localhost:3000/api/workpaper/summary
+curl -s -X POST http://localhost:3000/api/workpaper/revenue \
+  -H 'content-type: application/json' \
+  -d '{"records":[{"region":"West","customers":20,"arpa":1200},{"region":"East","customers":30,"arpa":250},{"region":"Central","customers":18,"arpa":300},{"region":"North","customers":65,"arpa":180}]}'
+```
+
+Use the durable storage variant above for deployed Bun services. The local
+example's module memory is intentionally small, but it should not be treated as
+the workbook store for multiple processes, containers, or regions.
+
 ## Fastify Adapter
 
 Fastify uses its own `request` and `reply` objects, so keep the adapter focused
