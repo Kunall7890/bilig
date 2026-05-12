@@ -355,6 +355,51 @@ but a real Worker should load and save the serialized WorkPaper document through
 KV, Durable Objects, D1, R2, or another storage boundary that matches the
 workflow.
 
+## Durable JSON Persistence Variant
+
+For production routes, keep storage behind two small functions and pass them to
+the shared handler. The storage provider can be a database row, object storage,
+KV, a Durable Object, or a queue-backed persistence layer; the WorkPaper API only
+needs serialized JSON.
+
+```js
+import { createWorkPaperRequestHandler, createInMemoryWorkbookStorage } from './workpaper-route.js'
+
+const fallbackStorage = createInMemoryWorkbookStorage()
+
+const storage = {
+  async loadWorkbookJson() {
+    const stored = await loadTextFromYourStore('workpaper/revenue.json')
+    return stored ?? fallbackStorage.loadWorkbookJson()
+  },
+  async saveWorkbookJson(workbookJson) {
+    await saveTextToYourStore('workpaper/revenue.json', workbookJson)
+  },
+}
+
+export const handleWorkPaperRequest = createWorkPaperRequestHandler(storage)
+```
+
+The POST route does not need to know where the document lives. It loads the
+current serialized WorkPaper JSON, writes the new records into a fresh workbook,
+calculates formulas, saves the next serialized document, and returns the same
+summary and verification checks as the in-memory demo:
+
+```json
+{
+  "checks": {
+    "totalRevenueChanged": true,
+    "formulasPersisted": true,
+    "serializedBytes": 1195
+  }
+}
+```
+
+Use module memory only for local demos and smoke tests. If the route can run in
+multiple instances, cold starts, edge isolates, or background workers, the
+serialized WorkPaper document should come from durable storage before reads and
+be written back after accepted mutations.
+
 ## Validation
 
 For the standalone recipe:

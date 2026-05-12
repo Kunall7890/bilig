@@ -1,4 +1,17 @@
-import { handleWorkPaperRequest } from './route.mjs'
+import { createInMemoryWorkbookStorage, createWorkPaperRequestHandler } from './route.mjs'
+
+const storageEvents = []
+const inMemoryStorage = createInMemoryWorkbookStorage()
+const handleWorkPaperRequest = createWorkPaperRequestHandler({
+  async loadWorkbookJson() {
+    storageEvents.push('load')
+    return inMemoryStorage.loadWorkbookJson()
+  },
+  async saveWorkbookJson(workbookJson) {
+    storageEvents.push('save')
+    await inMemoryStorage.saveWorkbookJson(workbookJson)
+  },
+})
 
 const updateRecords = [
   { region: 'West', customers: 20, arpa: 1200 },
@@ -59,7 +72,8 @@ function assertOutput(actual) {
     actual.edit.records !== 4 ||
     actual.edit.checks.totalRevenueChanged !== true ||
     actual.edit.checks.formulasPersisted !== true ||
-    actual.edit.checks.serializedBytes <= 0
+    actual.edit.checks.serializedBytes <= 0 ||
+    !storageEvents.includes('save')
   ) {
     throw new Error(`unexpected WorkPaper API result: ${JSON.stringify(actual)}`)
   }

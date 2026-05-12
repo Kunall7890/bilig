@@ -66,6 +66,12 @@ The exported `handleWorkPaperRequest(request)` function uses web-standard
 `Request` and `Response` objects, so it can be adapted to framework route
 handlers without changing the workbook logic.
 
+The lower-level `createWorkPaperRequestHandler(storage)` helper accepts
+`loadWorkbookJson()` and `saveWorkbookJson(workbookJson)` functions. Use that
+shape when the serialized WorkPaper document should live in a database, object
+store, KV namespace, Durable Object, or another durable service instead of
+module memory.
+
 ## Moving Into A Real Route
 
 - In a Next.js app route, call `handleWorkPaperRequest()` from `GET()` and

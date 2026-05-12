@@ -10,48 +10,61 @@ import {
   serializeWorkPaperDocument,
 } from '@bilig/headless'
 
-const state = {
-  workbookJson: serializeWorkbook(createInitialWorkbook()),
+export function createInMemoryWorkbookStorage(initialWorkbook = createInitialWorkbook()) {
+  let workbookJson = serializeWorkbook(initialWorkbook)
+  return {
+    async loadWorkbookJson() {
+      return workbookJson
+    },
+    async saveWorkbookJson(nextWorkbookJson) {
+      workbookJson = nextWorkbookJson
+    },
+  }
 }
 
-export async function handleWorkPaperRequest(request) {
-  const url = new URL(request.url)
+export const handleWorkPaperRequest = createWorkPaperRequestHandler(createInMemoryWorkbookStorage())
 
-  if (request.method === 'GET' && url.pathname === '/api/workpaper/summary') {
-    const workbook = loadWorkbook()
-    return json({
-      summary: readSummary(workbook),
-      sheets: workbook.getSheetNames(),
-    })
-  }
+export function createWorkPaperRequestHandler(storage) {
+  return async function handleStoredWorkPaperRequest(request) {
+    const url = new URL(request.url)
 
-  if (request.method === 'POST' && url.pathname === '/api/workpaper/revenue') {
-    let records
-    try {
-      const body = await request.json()
-      records = normalizeRevenueRecords(body.records)
-    } catch (error) {
-      return json({ error: error instanceof Error ? error.message : String(error) }, 400)
+    if (request.method === 'GET' && url.pathname === '/api/workpaper/summary') {
+      const workbook = await loadWorkbook(storage)
+      return json({
+        summary: readSummary(workbook),
+        sheets: workbook.getSheetNames(),
+      })
     }
 
-    const before = readSummary(loadWorkbook())
-    const workbook = buildRevenueWorkbook(records)
-    const after = readSummary(workbook)
-    state.workbookJson = serializeWorkbook(workbook)
+    if (request.method === 'POST' && url.pathname === '/api/workpaper/revenue') {
+      let records
+      try {
+        const body = await request.json()
+        records = normalizeRevenueRecords(body.records)
+      } catch (error) {
+        return json({ error: error instanceof Error ? error.message : String(error) }, 400)
+      }
 
-    return json({
-      records: records.length,
-      before,
-      after,
-      checks: {
-        totalRevenueChanged: before.totalRevenue !== after.totalRevenue,
-        formulasPersisted: state.workbookJson.includes('=SUM(Revenue!D2:D'),
-        serializedBytes: Buffer.byteLength(state.workbookJson, 'utf8'),
-      },
-    })
+      const before = readSummary(await loadWorkbook(storage))
+      const workbook = buildRevenueWorkbook(records)
+      const after = readSummary(workbook)
+      const workbookJson = serializeWorkbook(workbook)
+      await storage.saveWorkbookJson(workbookJson)
+
+      return json({
+        records: records.length,
+        before,
+        after,
+        checks: {
+          totalRevenueChanged: before.totalRevenue !== after.totalRevenue,
+          formulasPersisted: workbookJson.includes('=SUM(Revenue!D2:D'),
+          serializedBytes: Buffer.byteLength(workbookJson, 'utf8'),
+        },
+      })
+    }
+
+    return json({ error: 'not found' }, 404)
   }
-
-  return json({ error: 'not found' }, 404)
 }
 
 function createInitialWorkbook() {
@@ -80,8 +93,8 @@ function buildRevenueWorkbook(records) {
   })
 }
 
-function loadWorkbook() {
-  return createWorkPaperFromDocument(parseWorkPaperDocument(state.workbookJson))
+async function loadWorkbook(storage) {
+  return createWorkPaperFromDocument(parseWorkPaperDocument(await storage.loadWorkbookJson()))
 }
 
 function serializeWorkbook(workbook) {
