@@ -15,6 +15,8 @@ language: typescript
 - https://dev.to/gregkonush/why-agents-need-workbook-apis-instead-of-spreadsheet-screenshots-3d61
 - https://github.com/proompteng/bilig/tree/main/packages/headless#readme
 - https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper
+- https://proompteng.github.io/bilig/workbook-automation-examples-node.html
+- https://github.com/proompteng/bilig/blob/main/docs/workbook-automation-examples-node.md
 - https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-records-input
 - https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#invoice-totals
 - https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#budget-variance-alerts
@@ -105,6 +107,8 @@ npm run agent:verify
   https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#subscription-mrr-forecast
 - serverless API route example:
   https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api
+- five Node workbook automation examples:
+  https://proompteng.github.io/bilig/workbook-automation-examples-node.html
 - unsupported formula troubleshooting:
   https://github.com/proompteng/bilig/blob/main/docs/unsupported-formula-troubleshooting-recipe.md
 - workpaper tool-calling recipe for agents:

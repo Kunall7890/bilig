@@ -74,7 +74,9 @@ pnpm --filter @bilig/headless build
 - Run the [clean npm sanity check](#clean-npm-sanity-check) before cloning, or
   the [quickstart](#quickstart) for a one-file formula and persistence
   smoke test.
-- Try the runnable examples:
+- Try the
+  [five Node workbook automation examples](https://github.com/proompteng/bilig/blob/main/docs/workbook-automation-examples-node.md)
+  overview, then run
   [`examples/headless-workpaper`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper) and
   [`npm run json-records`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-records-input)
   for in-process records, or

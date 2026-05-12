@@ -12,6 +12,7 @@ const expectedSitemapUrls = [
   `${siteRoot}agent-workpaper-tool-calling-recipe.html`,
   `${siteRoot}agent-spreadsheet-tool-call-loop.html`,
   `${siteRoot}node-service-workpaper-recipe.html`,
+  `${siteRoot}workbook-automation-examples-node.html`,
   `${siteRoot}serverless-workpaper-api-route.html`,
   `${siteRoot}csv-shaped-workpaper-input-recipe.html`,
   `${siteRoot}unsupported-formula-troubleshooting-recipe.html`,
@@ -38,6 +39,7 @@ const sourceFilesByUrl = new Map<string, string>([
   [`${siteRoot}agent-workpaper-tool-calling-recipe.html`, 'agent-workpaper-tool-calling-recipe.md'],
   [`${siteRoot}agent-spreadsheet-tool-call-loop.html`, 'agent-spreadsheet-tool-call-loop.md'],
   [`${siteRoot}node-service-workpaper-recipe.html`, 'node-service-workpaper-recipe.md'],
+  [`${siteRoot}workbook-automation-examples-node.html`, 'workbook-automation-examples-node.md'],
   [`${siteRoot}serverless-workpaper-api-route.html`, 'serverless-workpaper-api-route.md'],
   [`${siteRoot}csv-shaped-workpaper-input-recipe.html`, 'csv-shaped-workpaper-input-recipe.md'],
   [`${siteRoot}unsupported-formula-troubleshooting-recipe.html`, 'unsupported-formula-troubleshooting-recipe.md'],
@@ -196,6 +198,8 @@ for (const required of [
   'npm run agent:tool-call',
   'npm run agent:verify',
   'https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-records-input',
+  'https://proompteng.github.io/bilig/workbook-automation-examples-node.html',
+  'https://github.com/proompteng/bilig/blob/main/docs/workbook-automation-examples-node.md',
   'https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#invoice-totals',
   'https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#budget-variance-alerts',
   'https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#fulfillment-capacity-plan',
@@ -246,6 +250,16 @@ requireIncludes(newContributorGuide, 'pnpm format:check', 'docs/new-contributor-
 requireIncludes(newContributorGuide, 'pnpm lint', 'docs/new-contributor-guide.md')
 requireIncludes(starterIssues, 'new-contributor-guide.md#first-time-command-checklist', 'docs/starter-issues.md')
 requireIncludes(contributing, 'new-contributor-guide.md#first-time-command-checklist', 'CONTRIBUTING.md')
+
+for (const [path, content] of [
+  ['README.md', readme],
+  ['packages/headless/README.md', headlessReadme],
+  ['docs/index.html', index],
+  ['docs/community-launch-pack.md', await readFile(join(docsRoot, 'community-launch-pack.md'), 'utf8')],
+  ['docs/llms.txt', llms],
+] as const) {
+  requireIncludes(content, 'workbook-automation-examples-node', path)
+}
 
 for (const [path, content] of [
   ['README.md', readme],

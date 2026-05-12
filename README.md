@@ -26,6 +26,7 @@ Project site: <https://proompteng.github.io/bilig/>
   [engine comparison](docs/headless-spreadsheet-engine-comparison.md), and
   [benchmark explainer](docs/what-workpaper-benchmark-proves.md).
 - **Build a Node workflow**: start from the
+  [five runnable workbook automation examples](docs/workbook-automation-examples-node.md),
   [runnable WorkPaper example](examples/headless-workpaper),
   [JSON records input example](examples/headless-workpaper#json-records-input),
   [invoice totals example](examples/headless-workpaper#invoice-totals),
@@ -444,6 +445,9 @@ the GitHub discussion:
 
 For the five runnable service-workflow examples as one shareable thread, see:
 <https://github.com/proompteng/bilig/discussions/213>.
+
+For the search-friendly version with commands and current output snippets, see
+[`docs/workbook-automation-examples-node.md`](docs/workbook-automation-examples-node.md).
 
 For the first technical adoption article, see
 [`docs/why-agents-need-workbook-apis.md`](docs/why-agents-need-workbook-apis.md).

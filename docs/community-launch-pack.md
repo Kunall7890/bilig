@@ -277,6 +277,9 @@ Live workflow-feedback thread:
 Live five-example show-and-tell thread:
 <https://github.com/proompteng/bilig/discussions/213>
 
+Search-targeted page for the five runnable Node workbook automation examples:
+<https://proompteng.github.io/bilig/workbook-automation-examples-node.html>
+
 Live serverless-route feedback thread:
 <https://github.com/proompteng/bilig/discussions/167>
 
