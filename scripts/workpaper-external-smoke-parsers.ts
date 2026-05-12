@@ -284,6 +284,50 @@ export function parseNodeRangeReadbackOutput(output: string): {
   }
 }
 
+export function parseNodeSheetInspectionOutput(output: string): {
+  lookup: {
+    dimensions: {
+      height: number
+      width: number
+    }
+    query: string
+    sheetId: number
+    sheetName: string
+  }
+  restoredSheets: string[]
+  verified: boolean
+} {
+  const parsed = parseJsonRecord(output, 'node sheet inspection output')
+  const lookup = parseRecordValue(parsed.lookup, 'node sheet inspection lookup')
+  const dimensions = parseRecordValue(lookup.dimensions, 'node sheet inspection dimensions')
+
+  if (
+    parsed.verified !== true ||
+    !sameJson(parsed.restoredSheets, ['Inputs', 'Summary']) ||
+    lookup.query !== 'Summary' ||
+    lookup.sheetId !== 2 ||
+    lookup.sheetName !== 'Summary' ||
+    dimensions.width !== 2 ||
+    dimensions.height !== 3
+  ) {
+    throw new Error(`Unexpected node sheet inspection output: ${output}`)
+  }
+
+  return {
+    lookup: {
+      dimensions: {
+        height: dimensions.height,
+        width: dimensions.width,
+      },
+      query: lookup.query,
+      sheetId: lookup.sheetId,
+      sheetName: lookup.sheetName,
+    },
+    restoredSheets: ['Inputs', 'Summary'],
+    verified: parsed.verified,
+  }
+}
+
 function parseFormulaDiagnostics(value: unknown): {
   code: string
   errorText: string

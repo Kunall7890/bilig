@@ -16,6 +16,7 @@ import {
   parseNodePersistenceOutput,
   parseNodeRangeReadbackOutput,
   parseNodeRevenueScenarioOutput,
+  parseNodeSheetInspectionOutput,
   parseNodeSmokeOutput,
   parseNodeSnapshotDiffOutput,
   parseNodeSnapshotImportOutput,
@@ -195,6 +196,19 @@ function runNodeSmoke(
     valueReadback: unknown[][]
     verified: boolean
   }
+  sheetInspection: {
+    lookup: {
+      dimensions: {
+        height: number
+        width: number
+      }
+      query: string
+      sheetId: number
+      sheetName: string
+    }
+    restoredSheets: string[]
+    verified: boolean
+  }
   snapshotDiff: {
     afterSerializedInput: number
     beforeSerializedInput: number
@@ -230,6 +244,7 @@ function runNodeSmoke(
   copyFileSync(join(headlessExampleDir, 'persistence-roundtrip.mjs'), join(projectDir, 'persistence-roundtrip.mjs'))
   copyFileSync(join(headlessExampleDir, 'range-readback.mjs'), join(projectDir, 'range-readback.mjs'))
   copyFileSync(join(headlessExampleDir, 'revenue-scenarios.mjs'), join(projectDir, 'revenue-scenarios.mjs'))
+  copyFileSync(join(headlessExampleDir, 'sheet-inspection.mjs'), join(projectDir, 'sheet-inspection.mjs'))
   copyFileSync(join(headlessExampleDir, 'snapshot-diff.mjs'), join(projectDir, 'snapshot-diff.mjs'))
   writeFileSync(
     join(projectDir, 'snapshot-import.mjs'),
@@ -332,6 +347,7 @@ function runNodeSmoke(
   const jsonFile = parseNodeJsonFileOutput(runTextCommand('node', ['json-file-input.mjs'], { cwd: projectDir }))
   const markdownReport = parseNodeMarkdownReportOutput(runTextCommand('node', ['markdown-report.mjs'], { cwd: projectDir }))
   const rangeReadback = parseNodeRangeReadbackOutput(runTextCommand('node', ['range-readback.mjs'], { cwd: projectDir }))
+  const sheetInspection = parseNodeSheetInspectionOutput(runTextCommand('node', ['sheet-inspection.mjs'], { cwd: projectDir }))
   const snapshotDiff = parseNodeSnapshotDiffOutput(runTextCommand('node', ['snapshot-diff.mjs'], { cwd: projectDir }))
   const snapshotImport = parseNodeSnapshotImportOutput(runTextCommand('node', ['snapshot-import.mjs'], { cwd: projectDir }))
   const xlsxImport = parseNodeXlsxImportOutput(runTextCommand('node', ['xlsx-import.mjs'], { cwd: projectDir }))
@@ -347,6 +363,7 @@ function runNodeSmoke(
     projectDir,
     rangeReadback,
     scenarios,
+    sheetInspection,
     snapshotDiff,
     snapshotImport,
     xlsxImport,

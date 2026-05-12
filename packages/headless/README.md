@@ -47,6 +47,8 @@ pnpm --filter @bilig/headless build
   for before/after persisted-state comparison, or
   [`npm run range-readback`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#range-readback)
   for computed values and serialized formulas from the same range, or
+  [`npm run sheet-inspection`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#sheet-inspection)
+  for checking restored workbook shape before writes, or
   [`npm run http-json-summary`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#http-json-summary)
   for a no-framework Node HTTP boundary.
 - Run the
@@ -156,6 +158,8 @@ Repository links:
   [`npm run snapshot-diff`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#snapshot-diff)
 - Range readback example:
   [`npm run range-readback`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#range-readback)
+- Sheet inspection example:
+  [`npm run sheet-inspection`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#sheet-inspection)
 - serverless API route example:
   [`examples/serverless-workpaper-api`](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api)
 - Node service recipe:

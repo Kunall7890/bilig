@@ -463,6 +463,35 @@ Expected output:
 }
 ```
 
+## Sheet Inspection
+
+Run the sheet inspection example when a service or agent should check workbook
+shape before writing cells. It builds a two-sheet WorkPaper, persists and
+restores it, reads the restored sheet names with `getSheetNames()`, verifies a
+`Summary` sheet lookup with `getSheetId()`, and prints a compact JSON result:
+
+```sh
+npm run sheet-inspection
+```
+
+Expected output:
+
+```json
+{
+  "verified": true,
+  "restoredSheets": ["Inputs", "Summary"],
+  "lookup": {
+    "query": "Summary",
+    "sheetId": 2,
+    "sheetName": "Summary",
+    "dimensions": {
+      "width": 2,
+      "height": 3
+    }
+  }
+}
+```
+
 ## HTTP JSON Summary
 
 Run the HTTP JSON summary example when you want the same record-to-WorkPaper
