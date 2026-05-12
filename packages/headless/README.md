@@ -39,6 +39,8 @@ pnpm --filter @bilig/headless build
   for in-process records, or
   [`npm run json-file`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-file-input)
   for records already saved on disk, or
+  [`npm run formula-diagnostics`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#formula-diagnostics)
+  for structured formula error handling, or
   [`npm run markdown-report`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#markdown-report-output)
   for a calculated Markdown table, or
   [`npm run http-json-summary`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#http-json-summary)
@@ -142,6 +144,8 @@ Repository links:
   [`examples/headless-workpaper`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper)
 - JSON records input example:
   [`npm run json-records`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-records-input)
+- Formula diagnostics example:
+  [`npm run formula-diagnostics`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#formula-diagnostics)
 - Markdown report output example:
   [`npm run markdown-report`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#markdown-report-output)
 - serverless API route example:

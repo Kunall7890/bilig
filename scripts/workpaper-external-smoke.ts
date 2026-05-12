@@ -7,6 +7,7 @@ import { join, resolve } from 'node:path'
 import { assertAlignedVersions, loadRuntimePackages, type RuntimePackageManifest } from './runtime-package-set.ts'
 import {
   parseJsonRecord,
+  parseNodeFormulaDiagnosticsOutput,
   parseNodeHttpJsonSummaryOutput,
   parseNodeAgentToolCallOutput,
   parseNodeAgentVerificationOutput,
@@ -159,6 +160,18 @@ function runNodeSmoke(
     sourceRecords: number
     verified: boolean
   }
+  formulaDiagnostics: {
+    invalidDiagnostics: {
+      code: string
+      errorText: string
+      functionName: string
+      references: string[]
+    }[]
+    invalidDisplay: string
+    validDisplay: string
+    validValue: number
+    verified: boolean
+  }
   jsonFile: {
     computed: {
       committedMrr: number
@@ -180,6 +193,7 @@ function runNodeSmoke(
   copyFileSync(join(headlessExampleDir, 'package.json'), join(projectDir, 'package.json'))
   copyFileSync(join(headlessExampleDir, 'agent-tool-call-loop.mjs'), join(projectDir, 'agent-tool-call-loop.mjs'))
   copyFileSync(join(headlessExampleDir, 'agent-writeback-verification.mjs'), join(projectDir, 'agent-writeback-verification.mjs'))
+  copyFileSync(join(headlessExampleDir, 'formula-diagnostics.mjs'), join(projectDir, 'formula-diagnostics.mjs'))
   copyFileSync(join(headlessExampleDir, 'http-json-summary.mjs'), join(projectDir, 'http-json-summary.mjs'))
   copyFileSync(join(headlessExampleDir, 'json-file-input.mjs'), join(projectDir, 'json-file-input.mjs'))
   copyFileSync(join(headlessExampleDir, 'markdown-report.mjs'), join(projectDir, 'markdown-report.mjs'))
@@ -283,6 +297,7 @@ function runNodeSmoke(
   const agentVerification = parseNodeAgentVerificationOutput(
     runTextCommand('node', ['agent-writeback-verification.mjs'], { cwd: projectDir }),
   )
+  const formulaDiagnostics = parseNodeFormulaDiagnosticsOutput(runTextCommand('node', ['formula-diagnostics.mjs'], { cwd: projectDir }))
   const httpJsonSummary = parseNodeHttpJsonSummaryOutput(runTextCommand('node', ['http-json-summary.mjs'], { cwd: projectDir }))
   const jsonFile = parseNodeJsonFileOutput(runTextCommand('node', ['json-file-input.mjs'], { cwd: projectDir }))
   const markdownReport = parseNodeMarkdownReportOutput(runTextCommand('node', ['markdown-report.mjs'], { cwd: projectDir }))
@@ -292,6 +307,7 @@ function runNodeSmoke(
   return {
     agentToolCall,
     agentVerification,
+    formulaDiagnostics,
     httpJsonSummary,
     jsonFile,
     markdownReport,

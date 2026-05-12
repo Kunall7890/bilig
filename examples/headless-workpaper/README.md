@@ -333,6 +333,38 @@ Expected output:
 }
 ```
 
+## Formula Diagnostics
+
+Run the formula diagnostics example when a Node service or agent needs to turn a
+visible workbook error into a structured response. It builds a WorkPaper with
+one invalid `XIRR()` formula and one valid `XIRR()` formula, reads the display
+value with `getCellDisplayValue()`, reads structured diagnostics with
+`getCellFormulaDiagnostics()`, verifies the diagnostic code and references, and
+prints a compact JSON result:
+
+```sh
+npm run formula-diagnostics
+```
+
+Expected output:
+
+```json
+{
+  "verified": true,
+  "invalidDisplay": "#VALUE!",
+  "invalidDiagnostics": [
+    {
+      "code": "financial-unsupported-date-coercion",
+      "functionName": "XIRR",
+      "errorText": "#VALUE!",
+      "references": ["Tax!D2:D5", "Tax!D2"]
+    }
+  ],
+  "validDisplay": "0.02256857579464",
+  "validValue": 0.02256857579463996
+}
+```
+
 ## Markdown Report Output
 
 Run the Markdown report example when a service or agent needs a plain-text

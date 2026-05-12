@@ -132,6 +132,44 @@ export function parseNodeJsonFileOutput(output: string): {
   }
 }
 
+export function parseNodeFormulaDiagnosticsOutput(output: string): {
+  invalidDiagnostics: {
+    code: string
+    errorText: string
+    functionName: string
+    references: string[]
+  }[]
+  invalidDisplay: string
+  validDisplay: string
+  validValue: number
+  verified: boolean
+} {
+  const parsed = parseJsonRecord(output, 'node formula diagnostics output')
+  const invalidDiagnostics = parseFormulaDiagnostics(parsed.invalidDiagnostics)
+
+  if (
+    parsed.verified !== true ||
+    parsed.invalidDisplay !== '#VALUE!' ||
+    invalidDiagnostics.length !== 1 ||
+    invalidDiagnostics[0]?.code !== 'financial-unsupported-date-coercion' ||
+    invalidDiagnostics[0]?.functionName !== 'XIRR' ||
+    invalidDiagnostics[0]?.errorText !== '#VALUE!' ||
+    JSON.stringify(invalidDiagnostics[0]?.references) !== JSON.stringify(['Tax!D2:D5', 'Tax!D2']) ||
+    parsed.validDisplay !== '0.02256857579464' ||
+    parsed.validValue !== 0.02256857579463996
+  ) {
+    throw new Error(`Unexpected node formula diagnostics output: ${output}`)
+  }
+
+  return {
+    invalidDiagnostics,
+    invalidDisplay: parsed.invalidDisplay,
+    validDisplay: parsed.validDisplay,
+    validValue: parsed.validValue,
+    verified: parsed.verified,
+  }
+}
+
 export function parseNodeMarkdownReportOutput(output: string): {
   report: string
   verified: boolean
@@ -153,6 +191,37 @@ export function parseNodeMarkdownReportOutput(output: string): {
     report: parsed.report,
     verified: parsed.verified,
   }
+}
+
+function parseFormulaDiagnostics(value: unknown): {
+  code: string
+  errorText: string
+  functionName: string
+  references: string[]
+}[] {
+  if (!Array.isArray(value)) {
+    throw new Error(`Expected formula diagnostics to be an array: ${JSON.stringify(value)}`)
+  }
+
+  return value.map((entry, index) => {
+    const diagnostic = parseRecordValue(entry, `formula diagnostic ${String(index + 1)}`)
+    const references = diagnostic.references
+    if (
+      typeof diagnostic.code !== 'string' ||
+      typeof diagnostic.errorText !== 'string' ||
+      typeof diagnostic.functionName !== 'string' ||
+      !isStringArray(references)
+    ) {
+      throw new Error(`Unexpected formula diagnostic output: ${JSON.stringify(entry)}`)
+    }
+
+    return {
+      code: diagnostic.code,
+      errorText: diagnostic.errorText,
+      functionName: diagnostic.functionName,
+      references,
+    }
+  })
 }
 
 export function parseNodeSnapshotImportOutput(output: string): {

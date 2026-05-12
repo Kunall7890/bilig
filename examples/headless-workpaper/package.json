@@ -7,6 +7,7 @@
     "agent:tool-call": "node agent-tool-call-loop.mjs",
     "agent:verify": "node agent-writeback-verification.mjs",
     "csv-shaped": "node csv-shaped-input.mjs",
+    "formula-diagnostics": "node formula-diagnostics.mjs",
     "http-json-summary": "node http-json-summary.mjs",
     "json-file": "node json-file-input.mjs",
     "json-records": "node json-records-input.mjs",
