@@ -29,11 +29,17 @@ function axisMetadataToSnapshot(records: readonly WorkbookAxisMetadataRecord[]):
     if (record.hidden !== null) {
       snapshot.hidden = record.hidden
     }
+    if (record.styleIndex !== undefined && record.styleIndex !== null) {
+      snapshot.styleIndex = record.styleIndex
+    }
     if (record.xlsxWidth !== undefined && record.xlsxWidth !== null) {
       snapshot.xlsxWidth = record.xlsxWidth
     }
     if (record.xlsxHeight !== undefined && record.xlsxHeight !== null) {
       snapshot.xlsxHeight = record.xlsxHeight
+    }
+    if (record.customFormat !== undefined && record.customFormat !== null) {
+      snapshot.customFormat = record.customFormat
     }
     if (record.customWidth !== undefined && record.customWidth !== null) {
       snapshot.customWidth = record.customWidth

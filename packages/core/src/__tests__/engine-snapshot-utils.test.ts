@@ -17,8 +17,8 @@ describe('engine snapshot utils', () => {
     workbook.createSheet('Sheet1')
     workbook.insertRows('Sheet1', 0, 1, [{ id: 'row-1', index: 0, size: 24, hidden: true }])
     workbook.insertColumns('Sheet1', 1, 1, [{ id: 'column-2', index: 1, size: 140, hidden: false }])
-    workbook.setRowMetadata('Sheet1', 2, 2, 30, true)
-    workbook.setColumnMetadata('Sheet1', 3, 1, 160, false)
+    workbook.setRowMetadata('Sheet1', 2, 2, 30, true, { styleIndex: 7, customFormat: true })
+    workbook.setColumnMetadata('Sheet1', 3, 1, 160, false, { styleIndex: 9, customFormat: true })
     workbook.upsertCellStyle({ id: 'style-bold', font: { bold: true } })
     workbook.setStyleRange({ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'B2' }, 'style-bold')
     workbook.upsertCellNumberFormat(createCellNumberFormatRecord('format-decimal', '0.00'))
@@ -41,20 +41,20 @@ describe('engine snapshot utils', () => {
     expect(metadata).toEqual({
       rows: [
         { id: 'row-1', index: 0, size: 24, hidden: true },
-        { id: 'row-1', index: 2, size: 30, hidden: true },
-        { id: 'row-2', index: 3, size: 30, hidden: true },
+        { id: 'row-1', index: 2, size: 30, hidden: true, styleIndex: 7, customFormat: true },
+        { id: 'row-2', index: 3, size: 30, hidden: true, styleIndex: 7, customFormat: true },
       ],
       columns: [
         { id: 'column-2', index: 1, size: 140, hidden: false },
-        { id: 'column-1', index: 3, size: 160, hidden: false },
+        { id: 'column-1', index: 3, size: 160, hidden: false, styleIndex: 9, customFormat: true },
       ],
       rowMetadata: [
         { start: 0, count: 1, size: 24, hidden: true },
-        { start: 2, count: 2, size: 30, hidden: true },
+        { start: 2, count: 2, size: 30, hidden: true, styleIndex: 7, customFormat: true },
       ],
       columnMetadata: [
         { start: 1, count: 1, size: 140, hidden: false },
-        { start: 3, count: 1, size: 160, hidden: false },
+        { start: 3, count: 1, size: 160, hidden: false, styleIndex: 9, customFormat: true },
       ],
       styleRanges: [
         {

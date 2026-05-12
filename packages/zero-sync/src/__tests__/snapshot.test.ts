@@ -163,4 +163,49 @@ describe('projectWorkbookToSnapshot', () => {
       },
     ])
   })
+
+  it('preserves fallback axis style metadata when normalized rows omit it', () => {
+    const projected = projectWorkbookToSnapshot(
+      {
+        id: 'doc-1',
+        name: 'Projected Book',
+        snapshot: {
+          version: 1,
+          workbook: { name: 'Warm Snapshot' },
+          sheets: [
+            {
+              name: 'Sheet1',
+              order: 0,
+              cells: [],
+              metadata: {
+                rowMetadata: [{ start: 0, count: 1, size: 28, styleIndex: 7, customFormat: true }],
+                columnMetadata: [{ start: 0, count: 1, size: 144, styleIndex: 9, customFormat: true }],
+              },
+            },
+          ],
+        },
+        calculationSettings: {
+          mode: 'automatic',
+          recalcEpoch: 0,
+        },
+        sheets: [
+          {
+            name: 'Sheet1',
+            sortOrder: 0,
+            freezeRows: 0,
+            freezeCols: 0,
+            cells: [],
+            rowMetadata: [{ startIndex: 0, count: 1, size: 28 }],
+            columnMetadata: [{ startIndex: 0, count: 1, size: 144 }],
+            styleRanges: [],
+            formatRanges: [],
+          },
+        ],
+      },
+      'doc-1',
+    )
+
+    expect(projected?.sheets[0]?.metadata?.rowMetadata).toEqual([{ start: 0, count: 1, size: 28, styleIndex: 7, customFormat: true }])
+    expect(projected?.sheets[0]?.metadata?.columnMetadata).toEqual([{ start: 0, count: 1, size: 144, styleIndex: 9, customFormat: true }])
+  })
 })

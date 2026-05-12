@@ -99,6 +99,26 @@ function parseAxisMetadata(entries: unknown[]): WorkbookAxisMetadataSnapshot[] {
     .filter((entry): entry is WorkbookAxisMetadataSnapshot => entry !== null)
 }
 
+function mergeAxisMetadataEntries(
+  primary: readonly WorkbookAxisMetadataSnapshot[],
+  fallback: readonly WorkbookAxisMetadataSnapshot[] | undefined,
+): WorkbookAxisMetadataSnapshot[] {
+  if (!fallback || fallback.length === 0) {
+    return [...primary]
+  }
+  const fallbackByKey = new Map(fallback.map((entry) => [`${String(entry.start)}:${String(entry.count)}`, entry]))
+  return primary.map((entry) => {
+    const preserved = fallbackByKey.get(`${String(entry.start)}:${String(entry.count)}`)
+    if (!preserved) {
+      return entry
+    }
+    return {
+      ...preserved,
+      ...entry,
+    }
+  })
+}
+
 function parseWorkbookProperties(entries: unknown[]): WorkbookPropertySnapshot[] {
   return entries
     .map((entry) => {
@@ -284,12 +304,12 @@ function withSheetMetadataFallback(
     next.merges = fallback.merges
   }
   if (rowEntries.length > 0) {
-    next.rowMetadata = rowEntries
+    next.rowMetadata = mergeAxisMetadataEntries(rowEntries, fallback?.rowMetadata)
   } else if (fallback?.rowMetadata) {
     next.rowMetadata = fallback.rowMetadata
   }
   if (columnEntries.length > 0) {
-    next.columnMetadata = columnEntries
+    next.columnMetadata = mergeAxisMetadataEntries(columnEntries, fallback?.columnMetadata)
   } else if (fallback?.columnMetadata) {
     next.columnMetadata = fallback.columnMetadata
   }

@@ -474,8 +474,10 @@ function cloneAxisEntry(entry: WorkbookAxisEntrySnapshot): WorkbookAxisEntrySnap
 }
 
 function cloneAxisGeometry(entry: {
+  readonly styleIndex?: number | null
   readonly xlsxWidth?: number | null
   readonly xlsxHeight?: number | null
+  readonly customFormat?: boolean | null
   readonly customWidth?: boolean | null
   readonly bestFit?: boolean | null
   readonly outlineLevel?: number | null
@@ -484,8 +486,10 @@ function cloneAxisGeometry(entry: {
   readonly thickTop?: boolean | null
   readonly thickBottom?: boolean | null
 }): {
+  styleIndex?: number | null
   xlsxWidth?: number | null
   xlsxHeight?: number | null
+  customFormat?: boolean | null
   customWidth?: boolean | null
   bestFit?: boolean | null
   outlineLevel?: number | null
@@ -495,8 +499,10 @@ function cloneAxisGeometry(entry: {
   thickBottom?: boolean | null
 } {
   return {
+    ...(entry.styleIndex !== undefined ? { styleIndex: entry.styleIndex } : {}),
     ...(entry.xlsxWidth !== undefined ? { xlsxWidth: entry.xlsxWidth } : {}),
     ...(entry.xlsxHeight !== undefined ? { xlsxHeight: entry.xlsxHeight } : {}),
+    ...(entry.customFormat !== undefined ? { customFormat: entry.customFormat } : {}),
     ...(entry.customWidth !== undefined ? { customWidth: entry.customWidth } : {}),
     ...(entry.bestFit !== undefined ? { bestFit: entry.bestFit } : {}),
     ...(entry.outlineLevel !== undefined ? { outlineLevel: entry.outlineLevel } : {}),

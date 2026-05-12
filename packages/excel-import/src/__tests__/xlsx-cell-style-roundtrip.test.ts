@@ -24,6 +24,18 @@ describe('xlsx cell style roundtrip', () => {
 
     expect(readCellStyleParts(exported, 'xl/worksheets/sheet1.xml!A1')).toEqual(readCellStyleParts(source, 'xl/worksheets/sheet1.xml!A1'))
   })
+
+  it('preserves row and column default style indexes for unchanged imported cells', () => {
+    const source = buildAxisStyleReferenceWorkbook()
+
+    const exported = exportXlsx(importXlsx(source, 'axis-style-references.xlsx').snapshot)
+
+    expect(readColumnAttributes(exported, 1)).toMatchObject(readColumnAttributes(source, 1))
+    expect(readRowAttributes(exported, 1)).toMatchObject(readRowAttributes(source, 1))
+    expect(readRowAttributes(exported, 2)).toMatchObject(readRowAttributes(source, 2))
+    expect(readColumnStyleNumberFormat(exported, 1)).toBe(readColumnStyleNumberFormat(source, 1))
+    expect(readRowStyleNumberFormat(exported, 1)).toBe(readRowStyleNumberFormat(source, 1))
+  })
 })
 
 const expectedVisibleStyle = {
@@ -107,6 +119,18 @@ function buildRawStyleReferenceWorkbook(): Uint8Array {
   return zipSync(zip)
 }
 
+function buildAxisStyleReferenceWorkbook(): Uint8Array {
+  const zip = unzipSync(exportXlsx(buildStyledWorkbook()))
+  zip['xl/styles.xml'] = strToU8(axisStyleReferenceStylesXml)
+  const sheetXml = strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+    .replace(/\s+s="[^"]*"/u, '')
+    .replace(/<sheetData\b/u, '<cols><col min="1" max="1" width="20" customWidth="1" style="1" customFormat="1"/></cols><sheetData')
+    .replace(/<row\b(?=[^>]*\br="1")[^>]*>/u, (tag) => `${tag.slice(0, -1)} s="1" customFormat="1">`)
+    .replace(/<\/sheetData>/u, '<row r="2" customFormat="1"/></sheetData>')
+  zip['xl/worksheets/sheet1.xml'] = strToU8(sheetXml)
+  return zipSync(zip)
+}
+
 function readCellStyleParts(bytes: Uint8Array, cellRef: string): { border: string; fill: string; font: string } {
   const [sheetPath, address] = cellRef.split('!')
   const zip = unzipSync(bytes)
@@ -122,6 +146,48 @@ function readCellStyleParts(bytes: Uint8Array, cellRef: string): { border: strin
     fill: normalizeFill(listElements(stylesXml, 'fills', 'fill')[fillId] ?? ''),
     font: normalizeFont(listElements(stylesXml, 'fonts', 'font')[fontId] ?? ''),
   }
+}
+
+function readColumnAttributes(bytes: Uint8Array, columnNumber: number): { style?: string; customFormat?: string } {
+  const sheetXml = strFromU8(unzipSync(bytes)['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+  const colXml = new RegExp(`<col\\b(?=[^>]*\\bmin="${String(columnNumber)}")(?=[^>]*\\bmax="${String(columnNumber)}")[^>]*\\/>`, 'u').exec(
+    sheetXml,
+  )?.[0]
+  return {
+    ...(colXml ? { style: readXmlAttribute(colXml, 'style') } : {}),
+    ...(colXml ? { customFormat: readXmlAttribute(colXml, 'customFormat') } : {}),
+  }
+}
+
+function readRowAttributes(bytes: Uint8Array, rowNumber: number): { style?: string; customFormat?: string } {
+  const sheetXml = strFromU8(unzipSync(bytes)['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+  const rowXml = new RegExp(`<row\\b(?=[^>]*\\br="${String(rowNumber)}")[^>]*>`, 'u').exec(sheetXml)?.[0]
+  return {
+    ...(rowXml ? { style: readXmlAttribute(rowXml, 's') } : {}),
+    ...(rowXml ? { customFormat: readXmlAttribute(rowXml, 'customFormat') } : {}),
+  }
+}
+
+function readColumnStyleNumberFormat(bytes: Uint8Array, columnNumber: number): string | undefined {
+  const styleIndex = readColumnAttributes(bytes, columnNumber).style
+  return styleIndex ? readStyleNumberFormat(bytes, Number(styleIndex)) : undefined
+}
+
+function readRowStyleNumberFormat(bytes: Uint8Array, rowNumber: number): string | undefined {
+  const styleIndex = readRowAttributes(bytes, rowNumber).style
+  return styleIndex ? readStyleNumberFormat(bytes, Number(styleIndex)) : undefined
+}
+
+function readStyleNumberFormat(bytes: Uint8Array, styleIndex: number): string | undefined {
+  const stylesXml = strFromU8(unzipSync(bytes)['xl/styles.xml'] ?? new Uint8Array())
+  const xf = listElements(stylesXml, 'cellXfs', 'xf')[styleIndex] ?? ''
+  const numFmtId = readXmlAttribute(xf, 'numFmtId')
+  if (!numFmtId) {
+    return undefined
+  }
+  return [...stylesXml.matchAll(/<numFmt\b[^>]*numFmtId="([^"]+)"[^>]*formatCode="([^"]*)"\/?>(?:<\/numFmt>)?/gu)].find(
+    (match) => match[1] === numFmtId,
+  )?.[2]
 }
 
 function listElements(xml: string, parent: string, tag: string): string[] {
@@ -188,6 +254,19 @@ const rawStyleReferenceStylesXml = [
   '<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color indexed="64"/></left><right style="thin"><color theme="0"/></right><top style="thin"><color theme="0"/></top><bottom style="thin"><color indexed="64"/></bottom><diagonal/></border></borders>',
   '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>',
   '<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0"/></cellXfs>',
+  '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>',
+  '</styleSheet>',
+].join('')
+
+const axisStyleReferenceStylesXml = [
+  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+  '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+  '<numFmts count="1"><numFmt numFmtId="164" formatCode="00000"/></numFmts>',
+  '<fonts count="2"><font><sz val="11"/><name val="Aptos"/></font><font><i/><u/><color rgb="FF0000FF"/></font></fonts>',
+  '<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor theme="0"/><bgColor rgb="FF000000"/></patternFill></fill></fills>',
+  '<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color indexed="64"/></left><right style="thin"><color theme="0"/></right><top style="thin"><color theme="0"/></top><bottom style="thin"><color indexed="64"/></bottom><diagonal/></border></borders>',
+  '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>',
+  '<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="164" fontId="1" fillId="2" borderId="1" xfId="0" applyNumberFormat="1"/></cellXfs>',
   '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>',
   '</styleSheet>',
 ].join('')

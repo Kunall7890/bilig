@@ -382,8 +382,10 @@ export interface WorkbookAxisMetadataSnapshot {
   count: number
   size?: number | null
   hidden?: boolean | null
+  styleIndex?: number | null
   xlsxWidth?: number | null
   xlsxHeight?: number | null
+  customFormat?: boolean | null
   customWidth?: boolean | null
   bestFit?: boolean | null
   outlineLevel?: number | null
@@ -398,8 +400,10 @@ export interface WorkbookAxisEntrySnapshot {
   index: number
   size?: number | null
   hidden?: boolean | null
+  styleIndex?: number | null
   xlsxWidth?: number | null
   xlsxHeight?: number | null
+  customFormat?: boolean | null
   customWidth?: boolean | null
   bestFit?: boolean | null
   outlineLevel?: number | null

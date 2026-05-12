@@ -13,7 +13,9 @@ interface ExportRowMetadata {
   readonly rowNumber: number
   readonly size?: number
   readonly hidden?: boolean
+  readonly styleIndex?: number
   readonly xlsxHeight?: number
+  readonly customFormat?: boolean
   readonly customHeight?: boolean
   readonly outlineLevel?: number
   readonly collapsed?: boolean
@@ -25,7 +27,9 @@ interface ExportRowMetadata {
 interface ExportColumnMetadata {
   start: number
   count: number
+  styleIndex?: number
   xlsxWidth?: number
+  customFormat?: boolean
   customWidth?: boolean
   bestFit?: boolean
   hidden?: boolean
@@ -97,7 +101,9 @@ function readXmlOptionalBooleanAttribute(tag: string, name: string): boolean | u
 
 function hasExactRowGeometry(row: WorkbookAxisMetadataSnapshot): boolean {
   return (
+    row.styleIndex !== undefined ||
     row.xlsxHeight !== undefined ||
+    row.customFormat !== undefined ||
     row.customHeight !== undefined ||
     row.outlineLevel !== undefined ||
     row.collapsed !== undefined ||
@@ -108,7 +114,9 @@ function hasExactRowGeometry(row: WorkbookAxisMetadataSnapshot): boolean {
 
 function hasExactColumnGeometry(column: WorkbookAxisMetadataSnapshot): boolean {
   return (
+    column.styleIndex !== undefined ||
     column.xlsxWidth !== undefined ||
+    column.customFormat !== undefined ||
     column.customWidth !== undefined ||
     column.bestFit !== undefined ||
     column.outlineLevel !== undefined ||
@@ -129,19 +137,31 @@ function normalizeExportRowMetadata(
         const xlsxHeight = finitePositiveNumber(row.xlsxHeight ?? undefined)
         const size = finitePositiveNumber(row.size ?? undefined)
         const hidden = optionalBoolean(row.hidden)
+        const styleIndex = finiteNonNegativeInteger(row.styleIndex ?? undefined)
+        const customFormat = optionalBoolean(row.customFormat)
         const customHeight = optionalBoolean(row.customHeight)
         const outlineLevel = finiteNonNegativeInteger(row.outlineLevel ?? undefined)
         const collapsed = optionalBoolean(row.collapsed)
         const thickTop = optionalBoolean(row.thickTop)
         const thickBottom = optionalBoolean(row.thickBottom)
-        if (xlsxHeight === undefined && size === undefined && row.hidden !== true && row.hidden !== false && !hasExactRowGeometry(row)) {
+        if (
+          xlsxHeight === undefined &&
+          size === undefined &&
+          row.hidden !== true &&
+          row.hidden !== false &&
+          styleIndex === undefined &&
+          customFormat === undefined &&
+          !hasExactRowGeometry(row)
+        ) {
           return []
         }
         const normalized: ExportRowMetadata = {
           rowNumber: row.start + 1,
           ...(size !== undefined ? { size } : {}),
           ...(hidden !== undefined ? { hidden } : {}),
+          ...(styleIndex !== undefined ? { styleIndex } : {}),
           ...(xlsxHeight !== undefined ? { xlsxHeight } : {}),
+          ...(customFormat !== undefined ? { customFormat } : {}),
           ...(customHeight !== undefined ? { customHeight } : {}),
           ...(outlineLevel !== undefined ? { outlineLevel } : {}),
           ...(collapsed !== undefined ? { collapsed } : {}),
@@ -196,7 +216,9 @@ function normalizeExportColumnMetadata(columnMetadata: readonly WorkbookAxisMeta
         return []
       }
       const xlsxWidth = finitePositiveNumber(column.xlsxWidth ?? undefined)
-      if (xlsxWidth === undefined) {
+      const styleIndex = finiteNonNegativeInteger(column.styleIndex ?? undefined)
+      const customFormat = optionalBoolean(column.customFormat)
+      if (xlsxWidth === undefined && styleIndex === undefined && customFormat === undefined) {
         return []
       }
       const customWidth = optionalBoolean(column.customWidth)
@@ -207,7 +229,9 @@ function normalizeExportColumnMetadata(columnMetadata: readonly WorkbookAxisMeta
       const normalized: ExportColumnMetadata = {
         start: column.start,
         count: column.count,
-        xlsxWidth,
+        ...(styleIndex !== undefined ? { styleIndex } : {}),
+        ...(xlsxWidth !== undefined ? { xlsxWidth } : {}),
+        ...(customFormat !== undefined ? { customFormat } : {}),
         ...(customWidth !== undefined ? { customWidth } : {}),
         ...(bestFit !== undefined ? { bestFit } : {}),
         ...(hidden !== undefined ? { hidden } : {}),
@@ -228,6 +252,8 @@ function parseExistingColumnMetadata(sheetXml: string): ExportColumnMetadata[] {
       return []
     }
     const xlsxWidth = finitePositiveNumber(readXmlNumberAttribute(columnTag, 'width') ?? undefined)
+    const styleIndex = finiteNonNegativeInteger(readXmlNumberAttribute(columnTag, 'style') ?? undefined)
+    const customFormat = readXmlOptionalBooleanAttribute(columnTag, 'customFormat')
     const customWidth = readXmlOptionalBooleanAttribute(columnTag, 'customWidth')
     const bestFit = readXmlOptionalBooleanAttribute(columnTag, 'bestFit')
     const hidden = readXmlOptionalBooleanAttribute(columnTag, 'hidden')
@@ -235,6 +261,8 @@ function parseExistingColumnMetadata(sheetXml: string): ExportColumnMetadata[] {
     const collapsed = readXmlOptionalBooleanAttribute(columnTag, 'collapsed')
     if (
       xlsxWidth === undefined &&
+      styleIndex === undefined &&
+      customFormat === undefined &&
       customWidth === undefined &&
       bestFit === undefined &&
       hidden === undefined &&
@@ -246,7 +274,9 @@ function parseExistingColumnMetadata(sheetXml: string): ExportColumnMetadata[] {
     const column: ExportColumnMetadata = {
       start: min - 1,
       count: max - min + 1,
+      ...(styleIndex !== undefined ? { styleIndex } : {}),
       ...(xlsxWidth !== undefined ? { xlsxWidth } : {}),
+      ...(customFormat !== undefined ? { customFormat } : {}),
       ...(customWidth !== undefined ? { customWidth } : {}),
       ...(bestFit !== undefined ? { bestFit } : {}),
       ...(hidden !== undefined ? { hidden } : {}),
@@ -286,8 +316,14 @@ function subtractColumnRanges(column: ExportColumnMetadata, exactColumns: readon
       start: segment.start,
       count: segment.count,
     }
+    if (column.styleIndex !== undefined) {
+      output.styleIndex = column.styleIndex
+    }
     if (column.xlsxWidth !== undefined) {
       output.xlsxWidth = column.xlsxWidth
+    }
+    if (column.customFormat !== undefined) {
+      output.customFormat = column.customFormat
     }
     if (column.customWidth !== undefined) {
       output.customWidth = column.customWidth
@@ -356,7 +392,9 @@ function buildColumnsXml(columns: readonly ExportColumnMetadata[]): string {
         '<col',
         xmlAttribute('min', String(min)),
         xmlAttribute('max', String(max)),
+        xmlAttribute('style', column.styleIndex !== undefined ? formatXmlNumber(column.styleIndex) : undefined),
         xmlAttribute('width', column.xlsxWidth !== undefined ? formatXmlNumber(column.xlsxWidth) : undefined),
+        xmlAttribute('customFormat', column.customFormat !== undefined ? formatXmlBoolean(column.customFormat) : undefined),
         xmlAttribute('customWidth', column.customWidth !== undefined ? formatXmlBoolean(column.customWidth) : undefined),
         xmlAttribute('bestFit', column.bestFit !== undefined ? formatXmlBoolean(column.bestFit) : undefined),
         xmlAttribute('hidden', column.hidden !== undefined ? formatXmlBoolean(column.hidden) : undefined),
@@ -395,7 +433,7 @@ function readRowNumber(rowTag: string): number | null {
 }
 
 function clearManagedRowAttributes(rowTag: string): string {
-  return ['ht', 'customHeight', 'hidden', 'outlineLevel', 'collapsed', 'thickTop', 'thickBot'].reduce(
+  return ['s', 'customFormat', 'ht', 'customHeight', 'hidden', 'outlineLevel', 'collapsed', 'thickTop', 'thickBot'].reduce(
     (tag, attribute) => removeXmlAttribute(tag, attribute),
     rowTag,
   )
@@ -404,6 +442,12 @@ function clearManagedRowAttributes(rowTag: string): string {
 function applyRowMetadata(rowTag: string, row: ExportRowMetadata): string {
   let nextTag = clearManagedRowAttributes(rowTag)
   const height = row.xlsxHeight ?? row.size
+  if (row.styleIndex !== undefined) {
+    nextTag = setXmlAttribute(nextTag, 's', formatXmlNumber(row.styleIndex))
+  }
+  if (row.customFormat !== undefined) {
+    nextTag = setXmlAttribute(nextTag, 'customFormat', formatXmlBoolean(row.customFormat))
+  }
   if (height !== undefined) {
     nextTag = setXmlAttribute(nextTag, 'ht', formatXmlNumber(height))
     if (!row.exact || row.customHeight !== undefined) {

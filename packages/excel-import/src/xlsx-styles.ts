@@ -538,11 +538,22 @@ function parseSheetColumnEntries(sheetXml: string): {
       continue
     }
     const customWidth = readXmlOptionalBooleanAttribute(columnTag, 'customWidth')
+    const styleIndex = readXmlNonNegativeIntegerAttribute(columnTag, 'style')
+    const customFormat = readXmlOptionalBooleanAttribute(columnTag, 'customFormat')
     const bestFit = readXmlOptionalBooleanAttribute(columnTag, 'bestFit')
     const hidden = readXmlOptionalBooleanAttribute(columnTag, 'hidden')
     const outlineLevel = readXmlNonNegativeIntegerAttribute(columnTag, 'outlineLevel')
     const collapsed = readXmlOptionalBooleanAttribute(columnTag, 'collapsed')
-    if (size === null && customWidth === null && bestFit === null && hidden === null && outlineLevel === null && collapsed === null) {
+    if (
+      size === null &&
+      customWidth === null &&
+      styleIndex === null &&
+      customFormat === null &&
+      bestFit === null &&
+      hidden === null &&
+      outlineLevel === null &&
+      collapsed === null
+    ) {
       continue
     }
     metadata.push({
@@ -550,6 +561,8 @@ function parseSheetColumnEntries(sheetXml: string): {
       count: columnCount,
       ...(size !== null && size > 0 ? { size } : {}),
       ...(width !== null && width > 0 ? { xlsxWidth: width } : {}),
+      ...(styleIndex !== null ? { styleIndex } : {}),
+      ...(customFormat !== null ? { customFormat } : {}),
       ...(customWidth !== null ? { customWidth } : {}),
       ...(bestFit !== null ? { bestFit } : {}),
       ...(hidden !== null ? { hidden } : {}),
@@ -592,6 +605,8 @@ function parseSheetRowEntries(sheetXml: string): { entries?: WorkbookAxisEntrySn
     }
     const index = rowNumber - 1
     const size = height !== null && height > 0 ? Math.round(height) : null
+    const styleIndex = readXmlNonNegativeIntegerAttribute(rowTag, 's')
+    const customFormat = readXmlOptionalBooleanAttribute(rowTag, 'customFormat')
     const customHeight = readXmlOptionalBooleanAttribute(rowTag, 'customHeight')
     const outlineLevel = readXmlNonNegativeIntegerAttribute(rowTag, 'outlineLevel')
     const collapsed = readXmlOptionalBooleanAttribute(rowTag, 'collapsed')
@@ -600,6 +615,8 @@ function parseSheetRowEntries(sheetXml: string): { entries?: WorkbookAxisEntrySn
     if (
       (size === null || size <= 0) &&
       hidden !== true &&
+      styleIndex === null &&
+      customFormat === null &&
       customHeight === null &&
       outlineLevel === null &&
       collapsed === null &&
@@ -620,6 +637,8 @@ function parseSheetRowEntries(sheetXml: string): { entries?: WorkbookAxisEntrySn
       ...(size !== null && size > 0 ? { size } : {}),
       ...(height !== null && height > 0 ? { xlsxHeight: height } : {}),
       ...(hidden !== null ? { hidden } : {}),
+      ...(styleIndex !== null ? { styleIndex } : {}),
+      ...(customFormat !== null ? { customFormat } : {}),
       ...(customHeight !== null ? { customHeight } : {}),
       ...(outlineLevel !== null ? { outlineLevel } : {}),
       ...(collapsed !== null ? { collapsed } : {}),

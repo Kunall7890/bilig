@@ -3,8 +3,10 @@ import type { WorkbookAxisEntryRecord, WorkbookAxisMetadataRecord } from './work
 import { axisMetadataKey, deleteRecordsBySheet } from './workbook-store-records.js'
 
 type AxisGeometryKey =
+  | 'styleIndex'
   | 'xlsxWidth'
   | 'xlsxHeight'
+  | 'customFormat'
   | 'customWidth'
   | 'bestFit'
   | 'outlineLevel'
@@ -13,9 +15,11 @@ type AxisGeometryKey =
   | 'thickTop'
   | 'thickBottom'
 
-const axisGeometryKeys = [
+export const axisGeometryKeys = [
+  'styleIndex',
   'xlsxWidth',
   'xlsxHeight',
+  'customFormat',
   'customWidth',
   'bestFit',
   'outlineLevel',
@@ -44,17 +48,13 @@ function axisEntriesHaveSameMetadata(left: WorkbookAxisEntryRecord, right: Workb
 }
 
 function copyAxisGeometry(source: WorkbookAxisEntryRecord | WorkbookAxisEntrySnapshot): Partial<WorkbookAxisEntrySnapshot> {
-  return {
-    ...(source.xlsxWidth !== undefined ? { xlsxWidth: source.xlsxWidth } : {}),
-    ...(source.xlsxHeight !== undefined ? { xlsxHeight: source.xlsxHeight } : {}),
-    ...(source.customWidth !== undefined ? { customWidth: source.customWidth } : {}),
-    ...(source.bestFit !== undefined ? { bestFit: source.bestFit } : {}),
-    ...(source.outlineLevel !== undefined ? { outlineLevel: source.outlineLevel } : {}),
-    ...(source.collapsed !== undefined ? { collapsed: source.collapsed } : {}),
-    ...(source.customHeight !== undefined ? { customHeight: source.customHeight } : {}),
-    ...(source.thickTop !== undefined ? { thickTop: source.thickTop } : {}),
-    ...(source.thickBottom !== undefined ? { thickBottom: source.thickBottom } : {}),
+  const geometry: Partial<WorkbookAxisEntrySnapshot> = {}
+  for (const key of axisGeometryKeys) {
+    if (source[key] !== undefined) {
+      Object.assign(geometry, { [key]: source[key] })
+    }
   }
+  return geometry
 }
 
 function makeAxisEntrySnapshot(entry: WorkbookAxisEntryRecord, index: number): WorkbookAxisEntrySnapshot {
@@ -78,26 +78,13 @@ function makeAxisEntryRecord(snapshot: WorkbookAxisEntrySnapshot): WorkbookAxisE
 }
 
 function copyAxisGeometryToMetadata(source: AxisGeometryMap): Partial<WorkbookAxisMetadataRecord> {
-  const xlsxWidth = typeof source.xlsxWidth === 'number' ? source.xlsxWidth : undefined
-  const xlsxHeight = typeof source.xlsxHeight === 'number' ? source.xlsxHeight : undefined
-  const customWidth = typeof source.customWidth === 'boolean' ? source.customWidth : undefined
-  const bestFit = typeof source.bestFit === 'boolean' ? source.bestFit : undefined
-  const outlineLevel = typeof source.outlineLevel === 'number' ? source.outlineLevel : undefined
-  const collapsed = typeof source.collapsed === 'boolean' ? source.collapsed : undefined
-  const customHeight = typeof source.customHeight === 'boolean' ? source.customHeight : undefined
-  const thickTop = typeof source.thickTop === 'boolean' ? source.thickTop : undefined
-  const thickBottom = typeof source.thickBottom === 'boolean' ? source.thickBottom : undefined
-  return {
-    ...(xlsxWidth !== undefined ? { xlsxWidth } : {}),
-    ...(xlsxHeight !== undefined ? { xlsxHeight } : {}),
-    ...(customWidth !== undefined ? { customWidth } : {}),
-    ...(bestFit !== undefined ? { bestFit } : {}),
-    ...(outlineLevel !== undefined ? { outlineLevel } : {}),
-    ...(collapsed !== undefined ? { collapsed } : {}),
-    ...(customHeight !== undefined ? { customHeight } : {}),
-    ...(thickTop !== undefined ? { thickTop } : {}),
-    ...(thickBottom !== undefined ? { thickBottom } : {}),
+  const metadata: Partial<WorkbookAxisMetadataRecord> = {}
+  for (const key of axisGeometryKeys) {
+    if (typeof source[key] === 'number' || typeof source[key] === 'boolean') {
+      Object.assign(metadata, { [key]: source[key] })
+    }
   }
+  return metadata
 }
 
 function makeAxisMetadataRecord(
