@@ -249,6 +249,41 @@ export function parseNodeSnapshotDiffOutput(output: string): {
   }
 }
 
+export function parseNodeRangeReadbackOutput(output: string): {
+  range: string
+  serializedReadback: unknown[][]
+  valueReadback: unknown[][]
+  verified: boolean
+} {
+  const parsed = parseJsonRecord(output, 'node range readback output')
+  const expectedValueReadback = [
+    ['Metric', 'Value'],
+    ['Total MRR', 31500],
+    ['West Customers', 20],
+  ]
+  const expectedSerializedReadback = [
+    ['Metric', 'Value'],
+    ['Total MRR', '=SUM(Revenue!D2:D3)'],
+    ['West Customers', '=Revenue!B2'],
+  ]
+
+  if (
+    parsed.verified !== true ||
+    parsed.range !== 'Summary!A1:B3' ||
+    !sameJson(parsed.valueReadback, expectedValueReadback) ||
+    !sameJson(parsed.serializedReadback, expectedSerializedReadback)
+  ) {
+    throw new Error(`Unexpected node range readback output: ${output}`)
+  }
+
+  return {
+    range: parsed.range,
+    serializedReadback: expectedSerializedReadback,
+    valueReadback: expectedValueReadback,
+    verified: parsed.verified,
+  }
+}
+
 function parseFormulaDiagnostics(value: unknown): {
   code: string
   errorText: string
@@ -776,4 +811,8 @@ function isNumberArray(value: unknown): value is number[] {
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((entry) => typeof entry === 'string')
+}
+
+function sameJson(left: unknown, right: unknown): boolean {
+  return JSON.stringify(left) === JSON.stringify(right)
 }

@@ -432,6 +432,37 @@ Expected output:
 }
 ```
 
+## Range Readback
+
+Run the range readback example when a service, agent, or test needs both
+calculated cell values and the source formulas for the same WorkPaper range. It
+builds a tiny revenue workbook, reads `Summary!A1:B3` with `getRangeValues()`,
+reads the same range with `getRangeSerialized()`, verifies both views, and
+prints a compact JSON result:
+
+```sh
+npm run range-readback
+```
+
+Expected output:
+
+```json
+{
+  "verified": true,
+  "range": "Summary!A1:B3",
+  "valueReadback": [
+    ["Metric", "Value"],
+    ["Total MRR", 31500],
+    ["West Customers", 20]
+  ],
+  "serializedReadback": [
+    ["Metric", "Value"],
+    ["Total MRR", "=SUM(Revenue!D2:D3)"],
+    ["West Customers", "=Revenue!B2"]
+  ]
+}
+```
+
 ## HTTP JSON Summary
 
 Run the HTTP JSON summary example when you want the same record-to-WorkPaper
