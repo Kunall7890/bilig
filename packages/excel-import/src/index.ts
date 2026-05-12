@@ -27,6 +27,7 @@ import { readImportedWorkbookCharts } from './xlsx-charts.js'
 import { legacyCommentThreadSignature, readImportedWorkbookLegacyCommentVml, type ImportedLegacyCommentVml } from './xlsx-comment-vml.js'
 import { readImportedSheetComments } from './xlsx-comments.js'
 import { readImportedWorkbookConditionalFormatArtifacts, readImportedWorkbookConditionalFormats } from './xlsx-conditional-formats.js'
+import { readImportedWorkbookControlArtifacts } from './xlsx-control-artifacts.js'
 import { readImportedDefinedNames } from './xlsx-defined-names.js'
 import { readImportedWorkbookDrawingArtifacts } from './xlsx-drawing-artifacts.js'
 import { readImportedWorkbookFilters } from './xlsx-filters.js'
@@ -551,6 +552,7 @@ function importSheetJsWorkbook(
   const importedCharts = workbookZip ? readImportedWorkbookCharts(workbookZip, workbook.SheetNames) : undefined
   const importedTables = workbookZip ? readImportedWorkbookTables(workbookZip, workbook.SheetNames) : undefined
   const importedDrawingArtifacts = workbookZip ? readImportedWorkbookDrawingArtifacts(workbookZip, workbook.SheetNames) : undefined
+  const importedControlArtifacts = workbookZip ? readImportedWorkbookControlArtifacts(workbookZip, workbook.SheetNames) : undefined
   const importedPivots = workbookZip
     ? readImportedWorkbookPivots(workbookZip, workbook.SheetNames, importedTables, importedDefinedNames.definedNames)
     : undefined
@@ -753,6 +755,7 @@ function importSheetJsWorkbook(
     const importedStyleArtifactsForSheet = importedStyleArtifacts.sheetArtifactsByName.get(sheetName)
     const importedPivotArtifacts = importedPivots?.sheetArtifactsByName.get(sheetName)
     const importedDrawingArtifactsForSheet = importedDrawingArtifacts?.sheetArtifactsByName.get(sheetName)
+    const importedControlArtifactsForSheet = importedControlArtifacts?.sheetArtifactsByName.get(sheetName)
     const importedSheetVisibility = importedSheetVisibilitiesBySheet.get(sheetName)
     const merges = buildMergeEntries(sheetName, sheet['!merges'])
     const importedSheetProtection = importedSheetProtectionsBySheet.get(sheetName)
@@ -779,6 +782,7 @@ function importSheetJsWorkbook(
       styleArtifacts: importedStyleArtifactsForSheet,
       pivotArtifacts: importedPivotArtifacts,
       drawingArtifacts: importedDrawingArtifactsForSheet,
+      controlArtifacts: importedControlArtifactsForSheet,
       visibility: importedSheetVisibility,
       merges,
       sheetProtection: importedSheetProtection,
@@ -821,6 +825,7 @@ function importSheetJsWorkbook(
     ...(importedPivots?.pivots ? { pivots: importedPivots.pivots } : {}),
     ...(importedPivots?.artifacts ? { pivotArtifacts: importedPivots.artifacts } : {}),
     ...(importedDrawingArtifacts?.artifacts ? { drawingArtifacts: importedDrawingArtifacts.artifacts } : {}),
+    ...(importedControlArtifacts?.artifacts ? { controlArtifacts: importedControlArtifacts.artifacts } : {}),
     ...(importedCharts ? { charts: importedCharts } : {}),
     ...(importedStyleArtifacts.workbookArtifacts ? { styleArtifacts: importedStyleArtifacts.workbookArtifacts } : {}),
     ...(importedCellMetadata?.workbookMetadata ? { cellMetadata: importedCellMetadata.workbookMetadata } : {}),

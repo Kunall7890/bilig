@@ -1,7 +1,11 @@
 import { ErrorCode, type FormulaMode, type ValueTag } from './enums.js'
 import type {
   WorkbookDocumentPropertiesArtifactsSnapshot,
+  WorkbookControlArtifactsSnapshot,
+  WorkbookDrawingArtifactsSnapshot,
   WorkbookPackageRelationshipSnapshot,
+  WorkbookSheetControlArtifactsSnapshot,
+  WorkbookSheetDrawingArtifactsSnapshot,
   WorkbookStyleArtifactsSnapshot,
 } from './package-artifacts.js'
 
@@ -278,33 +282,6 @@ export interface WorkbookSheetStyleArtifactsSnapshot {
 export interface WorkbookPivotPackagePartSnapshot {
   path: string
   xml: string
-}
-
-export interface WorkbookPreservedPackagePartSnapshot {
-  path: string
-  storage: 'base64'
-  dataBase64: string
-  byteLength: number
-}
-
-export interface WorkbookContentTypeDefaultSnapshot {
-  extension: string
-  contentType: string
-}
-
-export interface WorkbookContentTypeOverrideSnapshot {
-  partName: string
-  contentType: string
-}
-
-export interface WorkbookDrawingArtifactsSnapshot {
-  parts: WorkbookPreservedPackagePartSnapshot[]
-  contentTypeDefaults?: WorkbookContentTypeDefaultSnapshot[]
-  contentTypeOverrides?: WorkbookContentTypeOverrideSnapshot[]
-}
-
-export interface WorkbookSheetDrawingArtifactsSnapshot {
-  relationshipTarget: string
 }
 
 export interface WorkbookPivotArtifactsSnapshot {
@@ -860,6 +837,7 @@ export interface WorkbookMetadataSnapshot {
   pivots?: WorkbookPivotSnapshot[]
   pivotArtifacts?: WorkbookPivotArtifactsSnapshot
   drawingArtifacts?: WorkbookDrawingArtifactsSnapshot
+  controlArtifacts?: WorkbookControlArtifactsSnapshot
   charts?: WorkbookChartSnapshot[]
   images?: WorkbookImageSnapshot[]
   shapes?: WorkbookShapeSnapshot[]
@@ -894,6 +872,7 @@ export interface SheetMetadataSnapshot {
   notes?: WorkbookNoteSnapshot[]
   hyperlinks?: WorkbookHyperlinkSnapshot[]
   drawingArtifacts?: WorkbookSheetDrawingArtifactsSnapshot
+  controlArtifacts?: WorkbookSheetControlArtifactsSnapshot
   legacyCommentVml?: WorkbookLegacyCommentVmlSnapshot
   printerSettings?: WorkbookPrinterSettingsSnapshot[]
   sheetPr?: WorkbookSheetPrSnapshot

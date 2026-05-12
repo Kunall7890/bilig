@@ -16,6 +16,7 @@ import { addExportChartsToXlsxBytes } from './xlsx-charts.js'
 import { addExportLegacyCommentVmlToXlsxBytes } from './xlsx-comment-vml.js'
 import { addExportCommentsToWorksheet } from './xlsx-comments.js'
 import { addExportConditionalFormatsToXlsxBytes } from './xlsx-conditional-formats.js'
+import { addExportControlArtifactsToXlsxBytes } from './xlsx-control-artifacts.js'
 import { buildExportDefinedNames } from './xlsx-defined-names.js'
 import { addExportDrawingArtifactsToXlsxBytes } from './xlsx-drawing-artifacts.js'
 import { addExportWorksheetDimensionsToXlsxBytes, applyExportWorksheetDimensionsToWorksheetXml } from './xlsx-dimensions.js'
@@ -939,8 +940,9 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
   const drawingArtifactBytes = addExportDrawingArtifactsToXlsxBytes(dimensionedBytes, snapshot)
   const ignoredErrorsBytes = addExportIgnoredErrorsToXlsxBytes(drawingArtifactBytes, snapshot)
   const sparklineBytes = addExportSparklinesToXlsxBytes(ignoredErrorsBytes, snapshot)
+  const controlArtifactBytes = addExportControlArtifactsToXlsxBytes(sparklineBytes, snapshot)
   return addExportCellMetadataToXlsxBytes(
-    addExportPrinterSettingsToXlsxBytes(addExportLegacyCommentVmlToXlsxBytes(sparklineBytes, snapshot), snapshot),
+    addExportPrinterSettingsToXlsxBytes(addExportLegacyCommentVmlToXlsxBytes(controlArtifactBytes, snapshot), snapshot),
     snapshot,
   )
 }

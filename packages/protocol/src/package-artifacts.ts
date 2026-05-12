@@ -29,3 +29,42 @@ export interface WorkbookDocumentPropertiesArtifactsSnapshot {
   app?: WorkbookDocumentPropertyPartSnapshot
   custom?: WorkbookDocumentPropertyPartSnapshot
 }
+
+export interface WorkbookPreservedPackagePartSnapshot {
+  path: string
+  storage: 'base64'
+  dataBase64: string
+  byteLength: number
+}
+
+export interface WorkbookContentTypeDefaultSnapshot {
+  extension: string
+  contentType: string
+}
+
+export interface WorkbookContentTypeOverrideSnapshot {
+  partName: string
+  contentType: string
+}
+
+export interface WorkbookDrawingArtifactsSnapshot {
+  parts: WorkbookPreservedPackagePartSnapshot[]
+  contentTypeDefaults?: WorkbookContentTypeDefaultSnapshot[]
+  contentTypeOverrides?: WorkbookContentTypeOverrideSnapshot[]
+}
+
+export interface WorkbookSheetDrawingArtifactsSnapshot {
+  relationshipTarget: string
+}
+
+export interface WorkbookControlArtifactsSnapshot {
+  parts: WorkbookPreservedPackagePartSnapshot[]
+  contentTypeDefaults?: WorkbookContentTypeDefaultSnapshot[]
+  contentTypeOverrides?: WorkbookContentTypeOverrideSnapshot[]
+}
+
+export interface WorkbookSheetControlArtifactsSnapshot {
+  controlsXml: string
+  worksheetRootOpenTag: string
+  relationships: WorkbookPackageRelationshipSnapshot[]
+}
