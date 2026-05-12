@@ -4,11 +4,16 @@ export class FormulaTable<T extends { cellIndex: number }> {
   private readonly records: Array<T | undefined> = []
   private readonly freeSlots: number[] = []
   private activeCount = 0
+  private mutationVersion = 0
 
   constructor(private readonly store: CellStore) {}
 
   get size(): number {
     return this.activeCount
+  }
+
+  get version(): number {
+    return this.mutationVersion
   }
 
   get(cellIndex: number): T | undefined {
@@ -24,6 +29,7 @@ export class FormulaTable<T extends { cellIndex: number }> {
     const existingId = this.store.formulaIds[cellIndex] ?? 0
     if (existingId !== 0) {
       this.records[existingId - 1] = record
+      this.mutationVersion += 1
       return existingId
     }
 
@@ -31,6 +37,7 @@ export class FormulaTable<T extends { cellIndex: number }> {
     this.records[slot] = record
     this.store.formulaIds[cellIndex] = slot + 1
     this.activeCount += 1
+    this.mutationVersion += 1
     return slot + 1
   }
 
@@ -46,6 +53,7 @@ export class FormulaTable<T extends { cellIndex: number }> {
       this.records[slot] = undefined
       this.freeSlots.push(slot)
       this.activeCount -= 1
+      this.mutationVersion += 1
     }
     this.store.formulaIds[cellIndex] = 0
     return existing
@@ -61,6 +69,7 @@ export class FormulaTable<T extends { cellIndex: number }> {
     this.records.length = 0
     this.freeSlots.length = 0
     this.activeCount = 0
+    this.mutationVersion += 1
   }
 
   forEach(callback: (record: T, cellIndex: number) => void): void {

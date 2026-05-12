@@ -498,6 +498,22 @@ export function buildDirectCriteriaDescriptor(args: {
     }
     const callee = node.callee.trim().toUpperCase()
 
+    if (callee === 'IF') {
+      const guard = resolveEmptyStringCellGuard(node.args[0])
+      if (!guard || node.args.length < 3) {
+        return undefined
+      }
+      const trueValue = staticCellValue(node.args[1])
+      const falseValue = staticCellValue(node.args[2])
+      if (guard.operator === '=' && trueValue) {
+        return appendIfEmptyCellTransform(buildDescriptorForNode(node.args[2]!), guard.cellRef, trueValue)
+      }
+      if (guard.operator === '<>' && falseValue) {
+        return appendIfEmptyCellTransform(buildDescriptorForNode(node.args[1]!), guard.cellRef, falseValue)
+      }
+      return undefined
+    }
+
     if (callee === 'ROUND') {
       const digits = staticCellValue(node.args[1])
       if (node.args.length !== 2 || !digits) {
@@ -514,20 +530,6 @@ export function buildDirectCriteriaDescriptor(args: {
       }
       const inner = buildDescriptorForNode(node.args[0]!)
       return inner ? appendDirectCriteriaResultTransform(inner, { kind: 'if-error', fallback }) : undefined
-    }
-
-    if (callee === 'IF') {
-      if (node.args.length !== 3) {
-        return undefined
-      }
-      const guard = resolveEmptyStringCellGuard(node.args[0])
-      if (!guard) {
-        return undefined
-      }
-      if (guard.operator === '=') {
-        return appendIfEmptyCellTransform(buildDescriptorForNode(node.args[2]!), guard.cellRef, staticCellValue(node.args[1]))
-      }
-      return appendIfEmptyCellTransform(buildDescriptorForNode(node.args[1]!), guard.cellRef, staticCellValue(node.args[2]))
     }
 
     if (callee === 'INDEX') {

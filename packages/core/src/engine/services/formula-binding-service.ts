@@ -151,12 +151,7 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     hasBoundColumnMembers: (sheetId, col) => formulaMemberCounts.hasColumnMembers(sheetId, col),
   })
 
-  const {
-    materializeDependencies,
-    materializeDirectScalarDependencies,
-    materializeDirectAggregateDependencies,
-    materializeDirectCriteriaDependencies,
-  } = createFormulaBindingDependencyMaterializer({
+  const dependencyMaterializer = createFormulaBindingDependencyMaterializer({
     serviceArgs: args,
     hasFormulaColumnMembers: pendingInitialFormulaCells.hasColumnMembers,
     isFormulaCell: pendingInitialFormulaCells.isFormulaCell,
@@ -705,12 +700,7 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
       compiledInput,
       templateId,
       normalizeLookupCompileMode: normalizeFormulaBindingLookupCompileMode,
-      dependencyMaterializer: {
-        materializeDependencies,
-        materializeDirectAggregateDependencies,
-        materializeDirectCriteriaDependencies,
-        materializeDirectScalarDependencies,
-      },
+      dependencyMaterializer,
       ensureDependencyBuildCapacity,
       directAggregateContainsOwnerCell: (directAggregate, ownerCellIndex) =>
         directAggregateContainsFormulaOwnerCell(args, directAggregate, ownerCellIndex),

@@ -415,7 +415,14 @@ export function createEngineRecalcService(args: {
           args.state.workbook.cellStore.flags[cellIndex] = nextFlags
           return true
         }
+        let hasAnyCycleFormula = false
+        args.state.formulas.forEach((_formula, formulaCellIndex) => {
+          hasAnyCycleFormula ||= ((args.state.workbook.cellStore.flags[formulaCellIndex] ?? 0) & CellFlags.InCycle) !== 0
+        })
         const hasCycleDependency = (cellIndex: number): boolean => {
+          if (!hasAnyCycleFormula) {
+            return false
+          }
           let found = false
           args.forEachFormulaDependencyCell(cellIndex, (dependencyCellIndex) => {
             if (!found && ((args.state.workbook.cellStore.flags[dependencyCellIndex] ?? 0) & CellFlags.InCycle) !== 0) {

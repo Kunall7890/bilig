@@ -1,3 +1,4 @@
+import { formatAddress, type RangeAddress } from '@bilig/formula'
 import type { resolveRuntimeDirectLookupBinding } from '../direct-vector-lookup.js'
 import {
   type MaterializedDependencies,
@@ -536,7 +537,6 @@ export function createFormulaBindingDependencyMaterializer(
   ): MaterializedDependencies | undefined => {
     if (
       directCriteria === undefined ||
-      compiled.symbolicRanges.length !== 0 ||
       compiled.symbolicNames.length !== 0 ||
       compiled.symbolicTables.length !== 0 ||
       compiled.symbolicSpills.length !== 0
@@ -545,12 +545,14 @@ export function createFormulaBindingDependencyMaterializer(
     }
     ensureDependencyBuildCapacity(
       args.state.workbook.cellStore.size + 1,
-      compiled.symbolicRefs.length + 1,
+      compiled.symbolicRefs.length + directCriteria.criteriaPairs.length + 1,
       compiled.symbolicRefs.length + 1,
       1,
     )
     let dependencyIndexCount = 0
     let dependencyEntityCount = 0
+    const graphRangeDependencies: number[] = []
+
     const appendCellIndex = (cellIndex: number): void => {
       let seen = false
       for (let existingIndex = 0; existingIndex < dependencyIndexCount; existingIndex += 1) {
@@ -576,13 +578,43 @@ export function createFormulaBindingDependencyMaterializer(
         appendCellIndex(transform.cellIndex)
       }
     }
-    directCriteria.criteriaPairs.forEach((pair) => appendOperand(pair.criterion))
+
+    const appendRange = (range: RuntimeDirectCriteriaDescriptor['aggregateRange']): void => {
+      if (range === undefined) {
+        return
+      }
+      const sheet = args.state.workbook.getSheet(range.sheetName)
+      if (!sheet) {
+        return
+      }
+      const address: RangeAddress = {
+        kind: 'cells',
+        sheetName: range.sheetName,
+        start: { sheetName: range.sheetName, row: range.rowStart, col: range.col, text: formatAddress(range.rowStart, range.col) },
+        end: { sheetName: range.sheetName, row: range.rowEnd, col: range.col, text: formatAddress(range.rowEnd, range.col) },
+      }
+      graphRangeDependencies.push(
+        args.state.ranges.intern(sheet.id, address, {
+          ensureCell: (sheetId, row, col) => args.ensureCellTrackedByCoords(sheetId, row, col),
+          forEachSheetCell: (sheetId, fn) => args.forEachSheetCell(sheetId, fn),
+          isFormulaCell,
+        }).rangeIndex,
+      )
+    }
+
+    appendRange(directCriteria.aggregateRange)
+    for (let index = 0; index < directCriteria.criteriaPairs.length; index += 1) {
+      const pair = directCriteria.criteriaPairs[index]!
+      appendOperand(pair.criterion)
+      appendRange(pair.range)
+    }
     directCriteria.resultTransforms?.forEach(appendTransform)
+
     return {
       dependencyIndices: args.getDependencyBuildCells().slice(0, dependencyIndexCount),
       dependencyEntities: args.getDependencyBuildEntities().slice(0, dependencyEntityCount),
       rangeDependencies: EMPTY_DEPENDENCY_BUFFER,
-      graphRangeDependencies: EMPTY_DEPENDENCY_BUFFER,
+      graphRangeDependencies: Uint32Array.from(graphRangeDependencies),
       symbolicRangeIndices: EMPTY_DEPENDENCY_BUFFER,
       symbolicRangeCount: 0,
       newRangeIndices: EMPTY_DEPENDENCY_BUFFER,

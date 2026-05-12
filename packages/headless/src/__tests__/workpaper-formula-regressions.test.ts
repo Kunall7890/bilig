@@ -50,7 +50,7 @@ function readHeadlessPackageVersion(): string {
   return version
 }
 
-describe('GitHub issue reductions', () => {
+describe('Workpaper formula regressions', () => {
   it('evaluates initial cross-sheet references after all sheets are materialized', () => {
     const activity = Array.from({ length: 20 }, () => Array.from<TestCell>({ length: 8 }).fill(null))
     activity[0] = ['A', 'Type', 'C', 'D', 'E', 'F', 'G', 'Amount']
@@ -122,7 +122,7 @@ describe('GitHub issue reductions', () => {
     expectNumber(cellValue(workbook, 'PDF Extract', 248, 5), 70)
   })
 
-  it('resolves issue #93 blank-reference formulas as numeric zero', () => {
+  it('treats blank-reference formulas as numeric zero', () => {
     const workbook = WorkPaper.buildFromSheets(
       {
         Inputs: [[null, null]],
@@ -166,7 +166,7 @@ describe('GitHub issue reductions', () => {
     expectString(cellValue(workbook, 'Summary', 0, 5), 'x')
   })
 
-  it('resolves issue #92 whole-column criteria ranges in conditional aggregates', () => {
+  it('evaluates whole-column criteria ranges in conditional aggregates', () => {
     const workbook = WorkPaper.buildFromSheets(
       {
         Data: [
@@ -518,7 +518,7 @@ describe('GitHub issue reductions', () => {
     expect(thrown.message).toContain('timed out')
   })
 
-  it('keeps issue #7 wrapped criteria aggregates on the direct evaluator path', () => {
+  it('keeps wrapped criteria aggregates on the direct evaluator path', () => {
     const rowCount = 5_000
     const formulaCount = 20
     const data = Array.from({ length: rowCount }, (_, row) => [row % 3 === 0 ? 'Deposit' : 'Withdrawal', row + 1])
@@ -539,7 +539,7 @@ describe('GitHub issue reductions', () => {
     expect(workbook.getPerformanceCounters().directFormulaInitialEvaluations).toBe(formulaCount)
   }, 15_000)
 
-  it('keeps issue #214 IF-guarded reconciliation SUMIFS on the direct evaluator path', () => {
+  it('keeps IF-guarded reconciliation SUMIFS on the direct evaluator path', () => {
     const rowCount = 800
     const rows = Array.from({ length: rowCount }, (_, row) => {
       if (row === 0) {
@@ -602,7 +602,7 @@ describe('GitHub issue reductions', () => {
     expectNumber(cellValue(workbook, 'Action on requests', 315, 4), 18.91)
   })
 
-  it('exposes issue #24 XIRR invalid-date diagnostics without breaking numeric-date XIRR', () => {
+  it('exposes XIRR invalid-date diagnostics without breaking numeric-date XIRR', () => {
     const workbook = WorkPaper.buildFromSheets(
       {
         Tax: [
@@ -643,7 +643,7 @@ describe('GitHub issue reductions', () => {
     expect(workbook.getCellFormulaDiagnostics({ sheet: tax, row: 10, col: 1 })[0]?.code).toBe('financial-invalid-cash-flow')
   })
 
-  it('evaluates issue #24 XIRR over formula-derived numeric cash-flow cells', () => {
+  it('evaluates XIRR over formula-derived numeric cash-flow cells', () => {
     const workbook = WorkPaper.buildFromSheets(
       {
         Project: [
@@ -669,7 +669,7 @@ describe('GitHub issue reductions', () => {
     expect(cellValue(workbook, 'Project', 3, 1)).toEqual(cellValue(workbook, 'Project', 8, 1))
   })
 
-  it('treats issue #95 undefined and sparse buildFromSheets cells as blanks', () => {
+  it('treats undefined and sparse buildFromSheets cells as blanks', () => {
     const leadingSparseRow: unknown[] = []
     leadingSparseRow[1] = 'Revenue'
     const middleSparseRow: unknown[] = Array(3)
@@ -707,7 +707,7 @@ describe('GitHub issue reductions', () => {
     expectNumber(cellValue(workbook, 'FormulaSparse', 0, 1), 1)
   })
 
-  it('resolves issue #113 LOOKUP latest-value array idioms used by financial schedules', () => {
+  it('resolves LOOKUP latest-value array idioms used by financial schedules', () => {
     const rows: TestCell[][] = [
       [10, null, null, 1, 10],
       ['x', 'Seed', null, 1, 20],
@@ -733,7 +733,7 @@ describe('GitHub issue reductions', () => {
     expectNumber(cellValue(workbook, 'Sheet1', 6, 4), 30)
   })
 
-  it('resolves issue #105 VLOOKUP cell-reference keys across translated formula templates', () => {
+  it('resolves VLOOKUP cell-reference keys across translated formula templates', () => {
     const workbook = WorkPaper.buildFromSheets(
       {
         Sheet1: [
@@ -768,7 +768,7 @@ describe('GitHub issue reductions', () => {
     expectString(cellValue(workbook, 'Quoted', 2, 1), 'Four')
   })
 
-  it('resolves issues #101, #107, and #109 range-valued defined names with scalar implicit intersection', () => {
+  it('resolves range-valued defined names with scalar implicit intersection', () => {
     const rows = Array.from({ length: 43 }, () => Array.from<TestCell>({ length: 8 }).fill(null))
     rows[2][2] = 1
     rows[2][3] = 2
@@ -851,7 +851,7 @@ describe('GitHub issue reductions', () => {
     expectNumber(cellValue(workbook, 'Model', 41, 6), 30)
   })
 
-  it('resolves issue #110 adjacent SLOPE formulas that share an absolute x-range', () => {
+  it('resolves adjacent SLOPE formulas that share an absolute x-range', () => {
     const buildRows = (withFirstSlope: boolean): TestCell[][] => {
       const rows = Array.from({ length: 28 }, () => Array.from<TestCell>({ length: 16 }).fill(null))
       const firstYValues = [1 / 100, 1 / 101, 1 / 102, 1 / 103]
@@ -900,7 +900,7 @@ describe('GitHub issue reductions', () => {
     expect(WorkPaper.version).toBe(readHeadlessPackageVersion())
   })
 
-  it('resolves issue #106 normal CDF drift in option-pricing formulas', () => {
+  it('resolves normal CDF drift in option-pricing formulas', () => {
     const workbook = WorkPaper.buildFromSheets(
       {
         Sheet1: [
@@ -921,7 +921,7 @@ describe('GitHub issue reductions', () => {
     expectNumberClose(cellValue(workbook, 'Sheet1', 0, 3), 0.2831397103054239)
   })
 
-  it('resolves issue #104 whole-column AVERAGE references', () => {
+  it('resolves whole-column AVERAGE references', () => {
     const rows = Array.from({ length: 25 }, () => Array.from<TestCell>({ length: 30 }).fill(null))
     const values = [5, 10, 20, 25, 40]
 
@@ -973,7 +973,7 @@ describe('GitHub issue reductions', () => {
     expectNumber(cellValue(workbook, 'Sheet1', 1, 6), 20)
   })
 
-  it('resolves issue #103 worksheet-reference OFFSET ranges', () => {
+  it('resolves worksheet-reference OFFSET ranges', () => {
     const rows = Array.from({ length: 20 }, () => Array.from<TestCell>({ length: 12 }).fill(null))
 
     rows[1][1] = 100
@@ -1010,7 +1010,7 @@ describe('GitHub issue reductions', () => {
     expectNumber(cellValue(workbook, 'Sheet1', 2, 5), 19)
   })
 
-  it('resolves issue #116 advanced XLOOKUP modes and spill returns', () => {
+  it('resolves advanced XLOOKUP modes and spill returns', () => {
     const rows = Array.from({ length: 20 }, () => Array.from<TestCell>({ length: 22 }).fill(null))
 
     rows[0][0] = '=XLOOKUP(72,G1:G5,H1:H5,,-1)'
@@ -1068,7 +1068,7 @@ describe('GitHub issue reductions', () => {
     expectString(cellValue(workbook, 'Sheet1', 6, 0), 'Keyboard')
   })
 
-  it('resolves issue #102 formula number text coercion during concatenation', () => {
+  it('resolves formula number text coercion during concatenation', () => {
     const rows = Array.from({ length: 45 }, () => Array.from<TestCell>({ length: 10 }).fill(null))
 
     rows[5][4] = 1989
@@ -1097,7 +1097,7 @@ describe('GitHub issue reductions', () => {
     expectString(cellValue(workbook, 'Step 1', 44, 5), '0.3 cash')
   })
 
-  it('resolves issue #117 imported hidden-row SUBTOTAL values', () => {
+  it('resolves imported hidden-row SUBTOTAL values', () => {
     const tableRows: Array<{ readonly amount: number; readonly quarter: string }> = [
       { amount: 3255, quarter: 'Qtr 2' },
       { amount: 4865, quarter: 'Qtr 4' },

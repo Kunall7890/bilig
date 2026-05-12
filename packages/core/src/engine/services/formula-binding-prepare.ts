@@ -180,7 +180,8 @@ export function prepareFormulaBindingFromCompiled(args: {
     }
   }
 
-  const directOnlyRuntimeProgram = directScalar !== undefined && !compiled.volatile && !compiled.producesSpill
+  const directOnlyRuntimeProgram =
+    (directScalar !== undefined || directCriteria !== undefined) && !compiled.volatile && !compiled.producesSpill
   const literalStringIds = directOnlyRuntimeProgram ? [] : compiled.symbolicStrings.map((value) => serviceArgs.state.strings.intern(value))
   const runtimeProgram =
     directOnlyRuntimeProgram || compiled.program.length === 0 ? EMPTY_RUNTIME_PROGRAM : new Uint32Array(compiled.program.length)

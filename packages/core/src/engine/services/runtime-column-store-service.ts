@@ -406,12 +406,13 @@ export function createEngineRuntimeColumnStoreService(args: {
       return view.readCellValueAt(0)
     },
     readRangeValues({ sheetName, rowStart, rowEnd, colStart, colEnd }) {
+      const height = rowEnd - rowStart + 1
       const columnSlices: RuntimeColumnSlice[] = []
       for (let col = colStart; col <= colEnd; col += 1) {
         columnSlices.push(getColumnSlice({ sheetName, rowStart, rowEnd, col }))
       }
       const values: CellValue[] = []
-      for (let rowOffset = 0; rowOffset <= rowEnd - rowStart; rowOffset += 1) {
+      for (let rowOffset = 0; rowOffset < height; rowOffset += 1) {
         for (let colOffset = 0; colOffset < columnSlices.length; colOffset += 1) {
           values.push(materializeCellValueFromSlice(columnSlices[colOffset]!, rowOffset))
         }

@@ -12,6 +12,7 @@ import { growUint32 } from '../../engine-buffer-utils.js'
 import type { EngineRuntimeState, U32 } from '../runtime-state.js'
 import { EngineTraversalError } from '../errors.js'
 import type { RegionGraph } from '../../deps/region-graph.js'
+import { CellFlags } from '../../cell-store.js'
 
 export interface EngineTraversalService {
   readonly getEntityDependents: (entityId: number) => Effect.Effect<Uint32Array, EngineTraversalError>
@@ -59,6 +60,8 @@ export function createEngineTraversalService(args: {
   let topoRangeSeen: U32 = new Uint32Array(128)
   const topoExactLookupSeen = new Map<number, number>()
   const topoSortedLookupSeen = new Map<number, number>()
+  let directRegionFormulaCacheVersion = -1
+  const directRegionFormulaMaxCellCache = new Map<number, number | undefined>()
 
   const ensureTraversalScratchCapacity = (cellSize: number, entitySize: number, rangeSize: number): void => {
     if (cellSize > topoFormulaBuffer.length) {
@@ -140,14 +143,54 @@ export function createEngineTraversalService(args: {
     for (let index = 0; index < formula.dependencyIndices.length; index += 1) {
       push(formula.dependencyIndices[index]!)
     }
-    for (let index = 0; index < formula.graphRangeDependencies.length; index += 1) {
-      const members = args.state.ranges.expandToCells(formula.graphRangeDependencies[index]!)
-      for (let memberIndex = 0; memberIndex < members.length; memberIndex += 1) {
-        push(members[memberIndex]!)
+    if (formula.directCriteria === undefined) {
+      for (let index = 0; index < formula.graphRangeDependencies.length; index += 1) {
+        const members = args.state.ranges.expandToCells(formula.graphRangeDependencies[index]!)
+        for (let memberIndex = 0; memberIndex < members.length; memberIndex += 1) {
+          push(members[memberIndex]!)
+        }
       }
+    }
+    const maxFormulaCellInDirectRegion = (regionId: number): number | undefined => {
+      const formulaVersion = args.state.formulas.version
+      if (directRegionFormulaCacheVersion !== formulaVersion) {
+        directRegionFormulaCacheVersion = formulaVersion
+        directRegionFormulaMaxCellCache.clear()
+      }
+      if (directRegionFormulaMaxCellCache.has(regionId)) {
+        return directRegionFormulaMaxCellCache.get(regionId)
+      }
+      const region = args.regionGraph.getRegion(regionId)
+      const sheet = region ? args.state.workbook.getSheet(region.sheetName) : undefined
+      if (!region || !sheet) {
+        directRegionFormulaMaxCellCache.set(regionId, undefined)
+        return undefined
+      }
+      let bestCellIndex: number | undefined
+      let bestRank = -1
+      for (let row = region.rowStart; row <= region.rowEnd; row += 1) {
+        const dependencyCellIndex = sheet.grid.get(row, region.col)
+        if (dependencyCellIndex === -1 || ((args.state.workbook.cellStore.flags[dependencyCellIndex] ?? 0) & CellFlags.HasFormula) === 0) {
+          continue
+        }
+        const rank = args.state.workbook.cellStore.topoRanks[dependencyCellIndex] ?? 0
+        if (bestCellIndex === undefined || rank > bestRank || (rank === bestRank && dependencyCellIndex > bestCellIndex)) {
+          bestCellIndex = dependencyCellIndex
+          bestRank = rank
+        }
+      }
+      directRegionFormulaMaxCellCache.set(regionId, bestCellIndex)
+      return bestCellIndex
     }
     const pushDirectRegion = (regionId: number | undefined): void => {
       if (regionId === undefined) {
+        return
+      }
+      if (formula.directCriteria !== undefined) {
+        const dependencyCellIndex = maxFormulaCellInDirectRegion(regionId)
+        if (dependencyCellIndex !== undefined) {
+          push(dependencyCellIndex)
+        }
         return
       }
       const region = args.regionGraph.getRegion(regionId)

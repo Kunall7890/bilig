@@ -321,9 +321,7 @@ export function createEngineFormulaEvaluationService(args: {
 
   const tryEvaluateDirectCriteriaAggregate = (formula: RuntimeFormula): CellValue | undefined => {
     const directCriteria = formula.directCriteria
-    if (!directCriteria) {
-      return undefined
-    }
+    if (!directCriteria) return undefined
 
     const transformShortCircuit = tryEvaluateDirectCriteriaTransformShortCircuit(readCellValueByIndex, formula)
     if (transformShortCircuit) {
@@ -942,9 +940,7 @@ export function createEngineFormulaEvaluationService(args: {
     evaluateDirectLookupFormulaNow: evaluateDirectLookupFormulaNow,
     evaluateDirectLookupFormula(cellIndex) {
       return Effect.try({
-        try: () => {
-          return evaluateDirectLookupFormulaNow(cellIndex)
-        },
+        try: () => evaluateDirectLookupFormulaNow(cellIndex),
         catch: (cause) =>
           new EngineFormulaEvaluationError({
             message: evaluationErrorMessage(`Failed to evaluate direct lookup formula ${cellIndex}`, cause),
