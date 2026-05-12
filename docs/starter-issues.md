@@ -29,7 +29,6 @@ Current starter tickets as of May 12, 2026:
 - [#163: docs(agent): add coding-agent workbook automation recipe](https://github.com/proompteng/bilig/issues/163)
 - [#187: docs(storage): add SQLite WorkPaper persistence recipe](https://github.com/proompteng/bilig/issues/187)
 - [#188: docs(storage): add Postgres WorkPaper persistence recipe](https://github.com/proompteng/bilig/issues/188)
-- [#189: docs(storage): add object-storage WorkPaper persistence recipe](https://github.com/proompteng/bilig/issues/189)
 
 The list intentionally excludes closed issues and broad corpus/parity epics. Add
 new starter tickets only when the expected patch can stay small, has a clear

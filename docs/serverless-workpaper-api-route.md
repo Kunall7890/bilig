@@ -521,7 +521,8 @@ across cold starts, edge isolates, or concurrent deployments.
 For production routes, keep storage behind two small functions and pass them to
 the shared handler. The storage provider can be a database row, object storage,
 KV, a Durable Object, or a queue-backed persistence layer; the WorkPaper API only
-needs serialized JSON.
+needs serialized JSON. For a blob-store version of this boundary, see the
+[object storage adapter](persisting-formula-backed-workpaper-documents-in-node.md#object-storage-adapter).
 
 ```js
 import { createWorkPaperRequestHandler, createInMemoryWorkbookStorage } from './workpaper-route.js'

@@ -115,6 +115,76 @@ The expected summary is:
 }
 ```
 
+## Object Storage Adapter
+
+For serverless routes, object storage is often the simplest durable store. Keep
+the WorkPaper side SDK-neutral: the workbook code only needs text load and save
+functions, while the host app can map those helpers to S3, R2, GCS, Azure Blob
+Storage, or another provider.
+
+```ts
+import {
+  WorkPaper,
+  exportWorkPaperDocument,
+  parseWorkPaperDocument,
+  serializeWorkPaperDocument,
+} from '@bilig/headless'
+
+const workbookKey = 'workpapers/revenue-plan.json'
+
+export const objectStorage = {
+  async loadWorkbookJson() {
+    const stored = await getObjectText(workbookKey)
+    if (stored === null) {
+      return createInitialWorkbookJson()
+    }
+
+    parseWorkPaperDocument(stored)
+    return stored
+  },
+
+  async saveWorkbookJson(workbookJson) {
+    parseWorkPaperDocument(workbookJson)
+    await putObjectText(workbookKey, workbookJson, {
+      contentType: 'application/json; charset=utf-8',
+    })
+  },
+}
+
+function createInitialWorkbookJson() {
+  const workbook = WorkPaper.buildFromSheets({
+    Plan: [
+      ['Month', 'Bookings', 'Churn', 'Net MRR'],
+      ['January', 12000, 800, '=B2-C2'],
+    ],
+    Summary: [
+      ['Metric', 'Value'],
+      ['Net MRR', '=Plan!D2'],
+    ],
+  })
+
+  return serializeWorkPaperDocument(
+    exportWorkPaperDocument(workbook, { includeConfig: true }),
+  )
+}
+```
+
+`getObjectText()` and `putObjectText()` are the only provider-specific pieces.
+For S3 or R2 they usually wrap `GetObject` and `PutObject`; for GCS they wrap
+download and upload calls. Pass the resulting object into the same durable route
+boundary used by the serverless example:
+
+```ts
+export const handleWorkPaperRequest =
+  createWorkPaperRequestHandler(objectStorage)
+```
+
+Read the current serialized document before a request, apply one accepted
+WorkPaper mutation, verify computed readback, and write the next serialized
+document only after verification passes. If multiple writers can update the
+same key, use your provider's ETag, generation, or conditional-write support so
+one request cannot silently overwrite another accepted workbook version.
+
 ## Notes For Services And Agents
 
 Keep persistence at the workbook-document boundary:
