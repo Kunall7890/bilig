@@ -4,6 +4,7 @@ import type {
   WorkbookDocumentPropertiesArtifactsSnapshot,
   WorkbookControlArtifactsSnapshot,
   WorkbookDrawingArtifactsSnapshot,
+  WorkbookExternalLinkArtifactsSnapshot,
   WorkbookPackageRelationshipSnapshot,
   WorkbookSheetArrayFormulasSnapshot,
   WorkbookSheetDataTableFormulasSnapshot,
@@ -902,6 +903,7 @@ export interface WorkbookMetadataSnapshot {
   chartSheetArtifacts?: WorkbookChartSheetArtifactsSnapshot[]
   controlArtifacts?: WorkbookControlArtifactsSnapshot
   dataModelArtifacts?: WorkbookDataModelArtifactsSnapshot
+  externalLinkArtifacts?: WorkbookExternalLinkArtifactsSnapshot
   threadedCommentArtifacts?: WorkbookThreadedCommentArtifactsSnapshot
   viewState?: WorkbookViewStateSnapshot
   charts?: WorkbookChartSnapshot[]

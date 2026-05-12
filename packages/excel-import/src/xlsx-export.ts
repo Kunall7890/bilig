@@ -23,6 +23,7 @@ import { addExportDataModelArtifactsToXlsxBytes } from './xlsx-data-model-artifa
 import { addExportDataTableFormulasToXlsxBytes } from './xlsx-data-table-formulas.js'
 import { buildExportDefinedNames } from './xlsx-defined-names.js'
 import { addExportDrawingArtifactsToXlsxBytes } from './xlsx-drawing-artifacts.js'
+import { addExportExternalLinkArtifactsToXlsxBytes } from './xlsx-external-link-artifacts.js'
 import { addExportWorksheetDimensionsToXlsxBytes, applyExportWorksheetDimensionsToWorksheetXml } from './xlsx-dimensions.js'
 import { addExportFiltersToXlsxBytes } from './xlsx-filters.js'
 import { addExportFreezePanesToXlsxBytes } from './xlsx-freeze-panes.js'
@@ -953,7 +954,8 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
   const dataTableFormulaBytes = addExportDataTableFormulasToXlsxBytes(controlArtifactBytes, snapshot)
   const arrayFormulaBytes = addExportArrayFormulasToXlsxBytes(dataTableFormulaBytes, snapshot)
   const dataModelArtifactBytes = addExportDataModelArtifactsToXlsxBytes(arrayFormulaBytes, snapshot)
-  const threadedCommentArtifactBytes = addExportThreadedCommentArtifactsToXlsxBytes(dataModelArtifactBytes, snapshot)
+  const externalLinkArtifactBytes = addExportExternalLinkArtifactsToXlsxBytes(dataModelArtifactBytes, snapshot)
+  const threadedCommentArtifactBytes = addExportThreadedCommentArtifactsToXlsxBytes(externalLinkArtifactBytes, snapshot)
   const richTextArtifactBytes = addExportRichTextArtifactsToXlsxBytes(threadedCommentArtifactBytes, snapshot)
   const printPageSetupBytes = addExportPrintPageSetupToXlsxBytes(
     addExportLegacyCommentVmlToXlsxBytes(richTextArtifactBytes, snapshot),

@@ -24,6 +24,7 @@ import { readImportedWorkbookDataModelArtifacts } from './xlsx-data-model-artifa
 import { readImportedWorkbookDataTableFormulas } from './xlsx-data-table-formulas.js'
 import { readImportedDefinedNames } from './xlsx-defined-names.js'
 import { readImportedWorkbookDrawingArtifacts } from './xlsx-drawing-artifacts.js'
+import { readImportedWorkbookExternalLinkArtifacts } from './xlsx-external-link-artifacts.js'
 import { readImportedWorkbookFilters } from './xlsx-filters.js'
 import { readImportedWorkbookFreezePanes } from './xlsx-freeze-panes.js'
 import { readImportedWorkbookIgnoredErrors } from './xlsx-ignored-errors.js'
@@ -292,6 +293,7 @@ function importSheetJsWorkbook(
   const importedDrawingArtifacts = workbookZip ? readImportedWorkbookDrawingArtifacts(workbookZip, workbook.SheetNames) : undefined
   const importedControlArtifacts = workbookZip ? readImportedWorkbookControlArtifacts(workbookZip, workbook.SheetNames) : undefined
   const importedDataModelArtifacts = workbookZip ? readImportedWorkbookDataModelArtifacts(workbookZip) : undefined
+  const importedExternalLinkArtifacts = workbookZip ? readImportedWorkbookExternalLinkArtifacts(workbookZip) : undefined
   const importedArrayFormulasBySheet = workbookZip ? readImportedWorkbookArrayFormulas(workbookZip, workbook.SheetNames) : new Map()
   const importedDataTableFormulasBySheet = workbookZip ? readImportedWorkbookDataTableFormulas(workbookZip, workbook.SheetNames) : new Map()
   const importedPivots = workbookZip
@@ -588,6 +590,7 @@ function importSheetJsWorkbook(
     chartSheetArtifacts: importedChartArtifacts?.chartSheetArtifacts,
     controlArtifacts: importedControlArtifacts?.artifacts,
     dataModelArtifacts: importedDataModelArtifacts,
+    externalLinkArtifacts: importedExternalLinkArtifacts,
     threadedCommentArtifacts: importedThreadedCommentArtifacts?.artifacts,
     viewState: importedViewState?.workbookViewState,
     charts: importedCharts,
