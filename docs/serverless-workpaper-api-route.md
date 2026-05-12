@@ -323,6 +323,38 @@ small; the shared handler is what keeps formula evaluation, persistence, and
 readback behavior identical between local Node, Next.js, and other web-standard
 route surfaces.
 
+## Cloudflare Worker Adapter
+
+Cloudflare Workers use the same web-standard `Request` and `Response` shape as
+the shared route handler. Keep the WorkPaper code in a module such as
+`workpaper-route.js`, then make `src/index.js` small:
+
+```js
+import { handleWorkPaperRequest } from './workpaper-route.js'
+
+export default {
+  async fetch(request, env, ctx) {
+    return handleWorkPaperRequest(request)
+  },
+}
+```
+
+The Worker entrypoint stays a pass-through. The shared handler still owns the
+route paths:
+
+```sh
+curl -s https://example.workers.dev/api/workpaper/summary
+curl -s -X POST https://example.workers.dev/api/workpaper/revenue \
+  -H 'content-type: application/json' \
+  -d '{"records":[{"region":"West","customers":20,"arpa":1200},{"region":"East","customers":30,"arpa":250},{"region":"Central","customers":18,"arpa":300},{"region":"North","customers":65,"arpa":180}]}'
+```
+
+Do not rely on module memory for durable workbook state on the edge. The
+standalone recipe keeps `state.workbookJson` in memory so the example is small,
+but a real Worker should load and save the serialized WorkPaper document through
+KV, Durable Objects, D1, R2, or another storage boundary that matches the
+workflow.
+
 ## Validation
 
 For the standalone recipe:
