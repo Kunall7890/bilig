@@ -37,6 +37,26 @@ Expected output:
 The repository smoke test runs this same example against packed local runtime
 packages through `pnpm workpaper:smoke:external`.
 
+## Command Index
+
+| Use case                | Command                       | What it proves                               |
+| ----------------------- | ----------------------------- | -------------------------------------------- |
+| Quick revenue workbook  | `npm start`                   | formulas, named expressions, persistence     |
+| Agent tool call loop    | `npm run agent:tool-call`     | read, edit, verify, serialize, restore       |
+| Agent writeback check   | `npm run agent:verify`        | exact input edits and formula preservation   |
+| Revenue scenarios       | `npm run scenarios`           | multi-sheet formulas and planning edits      |
+| Persistence round trip  | `npm run persistence`         | save, restore, edit, and export              |
+| Named expression update | `npm run named-expression`    | workbook-scoped names and dependent formulas |
+| CSV-shaped input        | `npm run csv-shaped`          | array-shaped data plus formula summary       |
+| JSON records input      | `npm run json-records`        | API records to formula-backed workbook       |
+| JSON file input         | `npm run json-file`           | disk JSON records to verified summary        |
+| Formula diagnostics     | `npm run formula-diagnostics` | display errors and structured diagnostics    |
+| Markdown report output  | `npm run markdown-report`     | calculated plain-text report generation      |
+| Snapshot diff           | `npm run snapshot-diff`       | persisted before/after input and outputs     |
+| Range readback          | `npm run range-readback`      | computed values and serialized formulas      |
+| Sheet inspection        | `npm run sheet-inspection`    | restored sheet names, IDs, and dimensions    |
+| HTTP JSON summary       | `npm run http-json-summary`   | no-framework Node HTTP service boundary      |
+
 ## Agent Tool Call Loop
 
 Run the tool-call loop example when you want a small SDK-neutral artifact for

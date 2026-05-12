@@ -7,7 +7,6 @@ search indexing.
 Current starter tickets as of May 12, 2026:
 
 - [#134: docs(examples): add XLSX formula-cache roundtrip example](https://github.com/proompteng/bilig/issues/134)
-- [#150: docs(examples): add headless example command index](https://github.com/proompteng/bilig/issues/150)
 - [#151: docs(headless): map npm visitor needs to examples](https://github.com/proompteng/bilig/issues/151)
 - [#152: test(docs): guard package README links for npm readers](https://github.com/proompteng/bilig/issues/152)
 - [#153: docs(agent): add WorkPaper tool result contract table](https://github.com/proompteng/bilig/issues/153)
