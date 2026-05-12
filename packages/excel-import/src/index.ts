@@ -14,6 +14,7 @@ import { readImportedArrayFormulaSpills, readImportedWorkbookArrayFormulas } fro
 import { buildColumnEntries, buildRowEntries } from './xlsx-axis-entries.js'
 import { readImportedWorkbookCalculationSettings, readImportedWorkbookCalculationWarnings } from './xlsx-calculation-settings.js'
 import { buildImportedCellMetadataReferenceSnapshots, readImportedWorkbookCellMetadata } from './xlsx-cell-metadata.js'
+import { readImportedWorkbookChartArtifacts } from './xlsx-chart-artifacts.js'
 import { readImportedWorkbookCharts } from './xlsx-charts.js'
 import { legacyCommentThreadSignature, readImportedWorkbookLegacyCommentVml, type ImportedLegacyCommentVml } from './xlsx-comment-vml.js'
 import { readImportedSheetComments } from './xlsx-comments.js'
@@ -281,6 +282,7 @@ function importSheetJsWorkbook(
   const importedMacroPayload = toUint8Array(workbook.vbaraw)
   const importedMacroCodeNames = importedMacroPayload ? readImportedMacroCodeNames(workbook) : undefined
   const importedCellMetadata = workbookZip ? readImportedWorkbookCellMetadata(workbookZip, workbook.SheetNames) : undefined
+  const importedChartArtifacts = workbookZip ? readImportedWorkbookChartArtifacts(workbookZip) : undefined
   const importedCharts = workbookZip ? readImportedWorkbookCharts(workbookZip, workbook.SheetNames) : undefined
   const importedTables = workbookZip ? readImportedWorkbookTables(workbookZip, workbook.SheetNames) : undefined
   const importedDrawingArtifacts = workbookZip ? readImportedWorkbookDrawingArtifacts(workbookZip, workbook.SheetNames) : undefined
@@ -564,6 +566,8 @@ function importSheetJsWorkbook(
     pivots: importedPivots?.pivots,
     pivotArtifacts: importedPivots?.artifacts,
     drawingArtifacts: importedDrawingArtifacts?.artifacts,
+    chartArtifacts: importedChartArtifacts?.artifacts,
+    chartSheetArtifacts: importedChartArtifacts?.chartSheetArtifacts,
     controlArtifacts: importedControlArtifacts?.artifacts,
     dataModelArtifacts: importedDataModelArtifacts,
     charts: importedCharts,

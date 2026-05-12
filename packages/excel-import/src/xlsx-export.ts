@@ -13,6 +13,7 @@ import { addExportArrayFormulasToXlsxBytes } from './xlsx-array-formulas.js'
 import { addExportCellMetadataToXlsxBytes } from './xlsx-cell-metadata.js'
 import { addMissingBlankCells, addMissingFormattedCells } from './xlsx-cell-insertion.js'
 import { addExportCalculationSettingsToXlsxBytes } from './xlsx-calculation-settings.js'
+import { addExportChartArtifactsToXlsxBytes } from './xlsx-chart-artifacts.js'
 import { addExportChartsToXlsxBytes } from './xlsx-charts.js'
 import { addExportLegacyCommentVmlToXlsxBytes } from './xlsx-comment-vml.js'
 import { addExportCommentsToWorksheet } from './xlsx-comments.js'
@@ -891,22 +892,19 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
       bookVBA: Boolean(preservedVbaProject),
     }) as unknown,
   )
-  const enrichedBytes = addExportChartsToXlsxBytes(
-    addExportPivotsToXlsxBytes(
-      addExportTablesToXlsxBytes(
-        addExportDataValidationsToXlsxBytes(
-          addExportConditionalFormatsToXlsxBytes(
-            addExportSortsToXlsxBytes(
-              addExportFiltersToXlsxBytes(
-                addExportProtectedRangesToXlsxBytes(
-                  addExportSheetProtectionsToXlsxBytes(
-                    addExportFreezePanesToXlsxBytes(
-                      addExportWorksheetPropertiesToXlsxBytes(
-                        addExportSheetTabColorsToXlsxBytes(
-                          addExportCalculationSettingsToXlsxBytes(
-                            addExportWorkbookProtectionToXlsxBytes(addExportWorkbookPropertiesToXlsxBytes(bytes, snapshot), snapshot),
-                            snapshot,
-                          ),
+  const pivotBytes = addExportPivotsToXlsxBytes(
+    addExportTablesToXlsxBytes(
+      addExportDataValidationsToXlsxBytes(
+        addExportConditionalFormatsToXlsxBytes(
+          addExportSortsToXlsxBytes(
+            addExportFiltersToXlsxBytes(
+              addExportProtectedRangesToXlsxBytes(
+                addExportSheetProtectionsToXlsxBytes(
+                  addExportFreezePanesToXlsxBytes(
+                    addExportWorksheetPropertiesToXlsxBytes(
+                      addExportSheetTabColorsToXlsxBytes(
+                        addExportCalculationSettingsToXlsxBytes(
+                          addExportWorkbookProtectionToXlsxBytes(addExportWorkbookPropertiesToXlsxBytes(bytes, snapshot), snapshot),
                           snapshot,
                         ),
                         snapshot,
@@ -924,7 +922,6 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
             snapshot,
           ),
           snapshot,
-          exportSheetNamesByOriginalName,
         ),
         snapshot,
         exportSheetNamesByOriginalName,
@@ -935,6 +932,8 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
     snapshot,
     exportSheetNamesByOriginalName,
   )
+  const chartArtifactBytes = addExportChartArtifactsToXlsxBytes(pivotBytes, snapshot)
+  const enrichedBytes = addExportChartsToXlsxBytes(chartArtifactBytes, snapshot, exportSheetNamesByOriginalName)
   const styledBytes = preserveSnapshotStyles(enrichedBytes, snapshot)
   const formattedBytes = preserveSnapshotNumberFormats(styledBytes, exportSheetFormats)
   const styleArtifactBytes = addExportStyleArtifactsToXlsxBytes(formattedBytes, snapshot)

@@ -13,6 +13,8 @@ interface ImportedWorkbookMetadataInput {
   readonly pivots?: WorkbookMetadataSnapshot['pivots']
   readonly pivotArtifacts?: WorkbookMetadataSnapshot['pivotArtifacts']
   readonly drawingArtifacts?: WorkbookMetadataSnapshot['drawingArtifacts']
+  readonly chartArtifacts?: WorkbookMetadataSnapshot['chartArtifacts']
+  readonly chartSheetArtifacts?: WorkbookMetadataSnapshot['chartSheetArtifacts']
   readonly controlArtifacts?: WorkbookMetadataSnapshot['controlArtifacts']
   readonly dataModelArtifacts?: WorkbookMetadataSnapshot['dataModelArtifacts']
   readonly charts?: WorkbookMetadataSnapshot['charts']
@@ -34,6 +36,8 @@ export function buildImportedWorkbookMetadata(input: ImportedWorkbookMetadataInp
     ...(input.pivots ? { pivots: input.pivots } : {}),
     ...(input.pivotArtifacts ? { pivotArtifacts: input.pivotArtifacts } : {}),
     ...(input.drawingArtifacts ? { drawingArtifacts: input.drawingArtifacts } : {}),
+    ...(input.chartArtifacts ? { chartArtifacts: input.chartArtifacts } : {}),
+    ...(input.chartSheetArtifacts ? { chartSheetArtifacts: input.chartSheetArtifacts } : {}),
     ...(input.controlArtifacts ? { controlArtifacts: input.controlArtifacts } : {}),
     ...(input.dataModelArtifacts ? { dataModelArtifacts: input.dataModelArtifacts } : {}),
     ...(input.charts ? { charts: input.charts } : {}),

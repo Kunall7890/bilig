@@ -816,6 +816,13 @@ export interface WorkbookSheetConditionalFormatArtifactsSnapshot {
   xml: string
 }
 
+export interface WorkbookChartSheetArtifactsSnapshot {
+  name: string
+  relationshipTarget: string
+  sheetId?: number
+  state?: 'hidden' | 'veryHidden'
+}
+
 export type WorkbookSheetVisibilitySnapshot = 'hidden' | 'veryHidden'
 
 export interface WorkbookCellMetadataSnapshot {
@@ -840,6 +847,8 @@ export interface WorkbookMetadataSnapshot {
   pivots?: WorkbookPivotSnapshot[]
   pivotArtifacts?: WorkbookPivotArtifactsSnapshot
   drawingArtifacts?: WorkbookDrawingArtifactsSnapshot
+  chartArtifacts?: WorkbookDrawingArtifactsSnapshot
+  chartSheetArtifacts?: WorkbookChartSheetArtifactsSnapshot[]
   controlArtifacts?: WorkbookControlArtifactsSnapshot
   dataModelArtifacts?: WorkbookDataModelArtifactsSnapshot
   charts?: WorkbookChartSnapshot[]
