@@ -48,6 +48,14 @@ interface WholeAxisReference {
   parsed: WholeAxisRangeAddress
 }
 
+interface ReferenceBounds {
+  sheetName: string
+  rowStart: number
+  rowEnd: number
+  colStart: number
+  colEnd: number
+}
+
 type ScalarArgumentResult = { kind: 'ok'; value: CellValue | undefined } | { kind: 'error'; value: CellValue }
 type IntegerArgumentResult = { kind: 'omitted' } | { kind: 'ok'; value: number } | { kind: 'error'; value: CellValue }
 
@@ -161,6 +169,87 @@ function integerIndexArgument(value: StackValue | undefined, deps: WorkbookSpeci
   return integer === undefined ? { kind: 'error', value: valueError() } : { kind: 'ok', value: integer }
 }
 
+function referenceBoundsFromArg(
+  value: StackValue | undefined,
+  ref: ReferenceOperand | undefined,
+  context: EvaluationContext,
+): ReferenceBounds | undefined {
+  const sheetName = ref?.sheetName ?? (value?.kind === 'range' ? value.sheetName : undefined) ?? context.sheetName
+  if (ref?.kind === 'cell' && ref.address) {
+    const parsed = parseCellAddress(ref.address, sheetName)
+    return {
+      sheetName: parsed.sheetName ?? sheetName,
+      rowStart: parsed.row,
+      rowEnd: parsed.row,
+      colStart: parsed.col,
+      colEnd: parsed.col,
+    }
+  }
+
+  const start = (ref?.kind === 'range' ? ref.start : undefined) ?? (value?.kind === 'range' ? value.start : undefined)
+  const end = (ref?.kind === 'range' ? ref.end : undefined) ?? (value?.kind === 'range' ? value.end : undefined)
+  const refKind =
+    ref?.kind === 'row' ? 'rows' : ref?.kind === 'col' ? 'cols' : (ref?.refKind ?? (value?.kind === 'range' ? value.refKind : undefined))
+  const address = ref?.kind === 'row' || ref?.kind === 'col' ? ref.address : undefined
+  const rangeStart = start ?? address
+  const rangeEnd = end ?? address
+  if (!rangeStart || !rangeEnd || !refKind) {
+    return undefined
+  }
+
+  const parsed = parseRangeAddress(`${rangeStart}:${rangeEnd}`, sheetName)
+  if (parsed.kind !== refKind) {
+    return undefined
+  }
+  if (parsed.kind === 'cells') {
+    return {
+      sheetName: parsed.sheetName ?? sheetName,
+      rowStart: parsed.start.row,
+      rowEnd: parsed.end.row,
+      colStart: parsed.start.col,
+      colEnd: parsed.end.col,
+    }
+  }
+  if (parsed.kind === 'rows') {
+    return {
+      sheetName: parsed.sheetName ?? sheetName,
+      rowStart: parsed.start.row,
+      rowEnd: parsed.end.row,
+      colStart: 0,
+      colEnd: MAX_COLS - 1,
+    }
+  }
+  return {
+    sheetName: parsed.sheetName ?? sheetName,
+    rowStart: 0,
+    rowEnd: MAX_ROWS - 1,
+    colStart: parsed.start.col,
+    colEnd: parsed.end.col,
+  }
+}
+
+function stackCellRange(
+  bounds: Pick<ReferenceBounds, 'sheetName' | 'rowStart' | 'rowEnd' | 'colStart' | 'colEnd'>,
+  context: EvaluationContext,
+): StackValue {
+  const start = formatAddress(bounds.rowStart, bounds.colStart)
+  const end = formatAddress(bounds.rowEnd, bounds.colEnd)
+  const values =
+    bounds.rowStart === bounds.rowEnd && bounds.colStart === bounds.colEnd
+      ? [context.resolveCell(bounds.sheetName, start)]
+      : context.resolveRange(bounds.sheetName, start, end, 'cells')
+  return {
+    kind: 'range',
+    values,
+    refKind: 'cells',
+    rows: bounds.rowEnd - bounds.rowStart + 1,
+    cols: bounds.colEnd - bounds.colStart + 1,
+    sheetName: bounds.sheetName,
+    start,
+    end,
+  }
+}
+
 function wholeAxisLookupRange(
   reference: WholeAxisReference,
   context: EvaluationContext,
@@ -245,14 +334,14 @@ function evaluateWholeAxisMatch(
   return isArrayValue(result) ? result : deps.stackScalar(result)
 }
 
-function evaluateWholeAxisIndex(
+function evaluateReferenceIndex(
   rawArgs: StackValue[],
   context: EvaluationContext,
   argRefs: readonly (ReferenceOperand | undefined)[],
   deps: WorkbookSpecialCallDeps,
 ): StackValue | undefined {
-  const reference = wholeAxisReferenceFromArg(rawArgs[0], argRefs[0], context, deps)
-  if (!reference) {
+  const bounds = referenceBoundsFromArg(rawArgs[0], argRefs[0], context)
+  if (!bounds) {
     return undefined
   }
   if (rawArgs.length < 1 || rawArgs.length > 3) {
@@ -274,43 +363,59 @@ function evaluateWholeAxisIndex(
     return deps.stackScalar(deps.error(ErrorCode.Value))
   }
 
-  if (reference.parsed.kind === 'cols') {
-    const colCount = reference.parsed.end.col - reference.parsed.start.col + 1
-    const rowNum = rawRowNum ?? 0
-    const colNum = rawColNum ?? (colCount === 1 && rowNum !== 0 ? 1 : 0)
-    if (rowNum <= 0 || colNum <= 0) {
-      return deps.stackScalar(deps.error(ErrorCode.Value))
-    }
-    if (rowNum > MAX_ROWS || colNum > colCount) {
-      return deps.stackScalar(deps.error(ErrorCode.Ref))
-    }
-    const targetRow = rowNum - 1
-    const targetCol = reference.parsed.start.col + colNum - 1
-    if (targetCol >= MAX_COLS) {
-      return deps.stackScalar(deps.error(ErrorCode.Ref))
-    }
-    return deps.stackScalar(context.resolveCell(reference.sheetName, formatAddress(targetRow, targetCol)))
-  }
-
-  const rowCount = reference.parsed.end.row - reference.parsed.start.row + 1
+  const rowCount = bounds.rowEnd - bounds.rowStart + 1
+  const colCount = bounds.colEnd - bounds.colStart + 1
   let rowNum = rawRowNum ?? 0
   let colNum = rawColNum ?? 0
   if (rowCount === 1 && rawColNum === undefined && rawRowNum !== undefined && rawRowNum !== 0) {
     rowNum = 1
     colNum = rawRowNum
   }
-  if (rowNum <= 0 || colNum <= 0) {
-    return deps.stackScalar(deps.error(ErrorCode.Value))
+  if (colCount === 1 && rawColNum === undefined && rawRowNum !== undefined && rawRowNum !== 0) {
+    colNum = 1
   }
-  if (rowNum > rowCount || colNum > MAX_COLS) {
+  if (rowNum < 0 || colNum < 0 || rowNum > rowCount || colNum > colCount) {
     return deps.stackScalar(deps.error(ErrorCode.Ref))
   }
-  const targetRow = reference.parsed.start.row + rowNum - 1
-  const targetCol = colNum - 1
-  if (targetRow >= MAX_ROWS) {
-    return deps.stackScalar(deps.error(ErrorCode.Ref))
+
+  if (rowNum === 0 && colNum === 0) {
+    return stackCellRange(bounds, context)
   }
-  return deps.stackScalar(context.resolveCell(reference.sheetName, formatAddress(targetRow, targetCol)))
+  if (rowNum === 0) {
+    return stackCellRange(
+      {
+        sheetName: bounds.sheetName,
+        rowStart: bounds.rowStart,
+        rowEnd: bounds.rowEnd,
+        colStart: bounds.colStart + colNum - 1,
+        colEnd: bounds.colStart + colNum - 1,
+      },
+      context,
+    )
+  }
+  if (colNum === 0) {
+    return stackCellRange(
+      {
+        sheetName: bounds.sheetName,
+        rowStart: bounds.rowStart + rowNum - 1,
+        rowEnd: bounds.rowStart + rowNum - 1,
+        colStart: bounds.colStart,
+        colEnd: bounds.colEnd,
+      },
+      context,
+    )
+  }
+
+  return stackCellRange(
+    {
+      sheetName: bounds.sheetName,
+      rowStart: bounds.rowStart + rowNum - 1,
+      rowEnd: bounds.rowStart + rowNum - 1,
+      colStart: bounds.colStart + colNum - 1,
+      colEnd: bounds.colStart + colNum - 1,
+    },
+    context,
+  )
 }
 
 function hiddenAwareSubtotalValues(value: StackValue, ref: ReferenceOperand | undefined, context: EvaluationContext): CellValue[] {
@@ -375,7 +480,7 @@ export function evaluateWorkbookSpecialCall(
     case 'XMATCH':
       return evaluateWholeAxisMatch(callee, rawArgs, context, argRefs, deps)
     case 'INDEX':
-      return evaluateWholeAxisIndex(rawArgs, context, argRefs, deps)
+      return evaluateReferenceIndex(rawArgs, context, argRefs, deps)
     case 'SUBTOTAL': {
       const functionNum = deps.scalarIntegerArgument(rawArgs[0])
       if (functionNum === undefined) {

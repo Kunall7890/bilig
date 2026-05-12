@@ -1,6 +1,6 @@
 import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 import type { FormulaNode } from './ast.js'
-import { parseRangeAddress } from './addressing.js'
+import { formatAddress, parseRangeAddress } from './addressing.js'
 import { getBuiltin, getDateSystemBuiltin, normalizeBuiltinLookupName } from './builtins.js'
 import { getLookupBuiltin, type RangeBuiltinArgument } from './builtins/lookup.js'
 import { evaluateArraySpecialCall } from './js-evaluator-array-special-calls.js'
@@ -280,6 +280,56 @@ function evaluateUnary(operator: Extract<JsPlanInstruction, { opcode: 'unary' }>
   return makeArrayStack(range.rows, range.cols, range.values.map(coerce))
 }
 
+function evaluateDynamicRange(leftValue: StackValue, rightValue: StackValue, context: EvaluationContext): StackValue {
+  const left = dynamicRangeEndpoint(leftValue, context)
+  if ('tag' in left) {
+    return stackScalar(left)
+  }
+  const right = dynamicRangeEndpoint(rightValue, context)
+  if ('tag' in right) {
+    return stackScalar(right)
+  }
+  if (left.sheetName !== right.sheetName) {
+    return stackScalar(error(ErrorCode.Value))
+  }
+
+  const start = formatAddress(left.row, left.col)
+  const end = formatAddress(right.row, right.col)
+  const parsed = parseRangeAddress(`${start}:${end}`, left.sheetName)
+  if (parsed.kind !== 'cells') {
+    return stackScalar(error(ErrorCode.Value))
+  }
+
+  const values = context.resolveRange(left.sheetName, start, end, 'cells')
+  context.noteRangeMaterialization?.(values.length)
+  return {
+    kind: 'range',
+    values,
+    refKind: 'cells',
+    rows: parsed.end.row - parsed.start.row + 1,
+    cols: parsed.end.col - parsed.start.col + 1,
+    sheetName: left.sheetName,
+    start: parsed.start.text,
+    end: parsed.end.text,
+  }
+}
+
+function dynamicRangeEndpoint(value: StackValue, context: EvaluationContext): { sheetName: string; row: number; col: number } | CellValue {
+  if (value.kind !== 'range' || value.refKind !== 'cells' || value.rows !== 1 || value.cols !== 1 || !value.start || !value.end) {
+    return error(ErrorCode.Value)
+  }
+  const sheetName = value.sheetName ?? context.sheetName
+  const parsed = parseRangeAddress(`${value.start}:${value.end}`, sheetName)
+  if (parsed.kind !== 'cells' || parsed.start.row !== parsed.end.row || parsed.start.col !== parsed.end.col) {
+    return error(ErrorCode.Value)
+  }
+  return {
+    sheetName: parsed.sheetName ?? sheetName,
+    row: parsed.start.row,
+    col: parsed.start.col,
+  }
+}
+
 function sheetNamesInRange(context: EvaluationContext, sheetName: string, sheetEndName: string): string[] | undefined {
   const names = context.listSheetNames?.()
   if (!names) {
@@ -556,6 +606,10 @@ function executePlan(
       case 'binary': {
         const right = popArgument(stack)
         const left = popArgument(stack)
+        if (instruction.operator === ':') {
+          stack.push(evaluateDynamicRange(left, right, context))
+          break
+        }
         const result = evaluateBinary(instruction.operator, left, right)
         stack.push(isArrayValue(result) ? result : { kind: 'scalar', value: result })
         break

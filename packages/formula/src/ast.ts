@@ -98,7 +98,7 @@ export interface UnaryExprNode {
 
 export interface BinaryExprNode {
   kind: 'BinaryExpr'
-  operator: '+' | '-' | '*' | '/' | '^' | '&' | '=' | '<>' | '>' | '>=' | '<' | '<='
+  operator: '+' | '-' | '*' | '/' | '^' | '&' | '=' | '<>' | '>' | '>=' | '<' | '<=' | ':'
   left: FormulaNode
   right: FormulaNode
 }

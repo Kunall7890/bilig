@@ -236,6 +236,9 @@ function emitNode(node: FormulaNode, state: CompilerState): void {
       }
       return
     case 'BinaryExpr':
+      if (node.operator === ':') {
+        throw new Error('Dynamic range references are not supported on the wasm fast path')
+      }
       emitNode(node.left, state)
       emitNode(node.right, state)
       state.program.push(

@@ -458,6 +458,8 @@ function evaluateScalar(args: {
           return rightNumber === 0 ? errorValue(ErrorCode.Div0) : numberValue(leftNumber / rightNumber)
         case '^':
           return numberValue(leftNumber ** rightNumber)
+        case ':':
+          return undefined
       }
     }
     case 'CallExpr': {

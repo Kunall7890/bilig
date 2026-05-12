@@ -282,6 +282,10 @@ function scalarBinary(operator: BinaryOperator, leftValue: CellValue, rightValue
 }
 
 export function evaluateBinary(operator: BinaryOperator, leftValue: StackValue, rightValue: StackValue): EvaluationResult {
+  if (operator === ':') {
+    return error(ErrorCode.Value)
+  }
+
   if (leftValue.kind === 'scalar' && rightValue.kind === 'scalar') {
     return scalarBinary(operator, leftValue.value, rightValue.value)
   }

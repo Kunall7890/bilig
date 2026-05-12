@@ -123,7 +123,7 @@ export type JsPlanInstruction =
   | { opcode: 'unary'; operator: '+' | '-' }
   | {
       opcode: 'binary'
-      operator: '+' | '-' | '*' | '/' | '^' | '&' | '=' | '<>' | '>' | '>=' | '<' | '<='
+      operator: '+' | '-' | '*' | '/' | '^' | '&' | '=' | '<>' | '>' | '>=' | '<' | '<=' | ':'
     }
   | {
       opcode: 'call'

@@ -275,6 +275,12 @@ function lowerNode(node: FormulaNode, plan: JsPlanInstruction[]): void {
       plan.push({ opcode: 'unary', operator: node.operator })
       return
     case 'BinaryExpr':
+      if (node.operator === ':') {
+        lowerRangeEndpointNode(node.left, plan)
+        lowerRangeEndpointNode(node.right, plan)
+        plan.push({ opcode: 'binary', operator: node.operator })
+        return
+      }
       lowerNode(node.left, plan)
       lowerNode(node.right, plan)
       plan.push({ opcode: 'binary', operator: node.operator })
@@ -373,6 +379,21 @@ function lowerNode(node: FormulaNode, plan: JsPlanInstruction[]): void {
       return
     }
   }
+}
+
+function lowerRangeEndpointNode(node: FormulaNode, plan: JsPlanInstruction[]): void {
+  const ref = referenceOperandFromNode(node)
+  if (ref?.kind === 'cell' && ref.address) {
+    plan.push({
+      opcode: 'push-range',
+      ...(ref.sheetName === undefined ? {} : { sheetName: ref.sheetName }),
+      start: ref.address,
+      end: ref.address,
+      refKind: 'cells',
+    })
+    return
+  }
+  lowerNode(node, plan)
 }
 
 export function lowerToPlan(node: FormulaNode): JsPlanInstruction[] {

@@ -459,6 +459,22 @@ describe('formula parser/compiler edges', () => {
     ])
   })
 
+  it('parses dynamic INDEX range endpoints on the JS path', () => {
+    const ast = parseFormula('SUM(INDEX(C:C,1):INDEX(C:C,2))')
+
+    expect(ast).toMatchObject({
+      kind: 'CallExpr',
+      callee: 'SUM',
+      args: [
+        {
+          kind: 'BinaryExpr',
+          operator: ':',
+        },
+      ],
+    })
+    expect(compileFormula('SUM(INDEX(C:C,1):INDEX(C:C,2))').mode).toBe(FormulaMode.JsOnly)
+  })
+
   it('parses and lowers lambda invocation syntax', () => {
     expect(parseFormula('LAMBDA(x,x+1)(4)')).toEqual({
       kind: 'InvokeExpr',

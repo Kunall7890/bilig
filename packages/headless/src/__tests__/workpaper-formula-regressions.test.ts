@@ -443,6 +443,25 @@ describe('GitHub issue reductions', () => {
     expectNumberClose(cellValue(workbook, 'Sheet1', 2, 1), 46_053.9138888889)
   })
 
+  it('evaluates INDEX reference endpoints in dynamic ranges lazily', () => {
+    const workbook = WorkPaper.buildFromSheets(
+      {
+        Sheet1: [
+          ['case', 'value', 1],
+          ['serial', 46_053.9138888889, 2],
+          ['index-range-sum', '=SUM(INDEX(C:C,1):INDEX(C:C,2))', null],
+          ['if-lazy-index-range', '=IF(B2<>"","ok",SUM(INDEX(C:C,1):INDEX(C:C,2)))', null],
+          ['dynamic-index-range-sum', '=SUM(INDEX(C:C,MATCH(1,C1:C2,0)):INDEX(C:C,MATCH(2,C1:C2,0)))', null],
+        ],
+      },
+      { maxRows: 20, maxColumns: 10, useColumnIndex: true },
+    )
+
+    expectNumber(cellValue(workbook, 'Sheet1', 2, 1), 3)
+    expectString(cellValue(workbook, 'Sheet1', 3, 1), 'ok')
+    expectNumber(cellValue(workbook, 'Sheet1', 4, 1), 3)
+  })
+
   it('honors holiday ranges for WORKDAY and NETWORKDAYS formulas', () => {
     const workbook = WorkPaper.buildFromSheets(
       {

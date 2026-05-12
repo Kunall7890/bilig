@@ -15,6 +15,7 @@ const BINARY_PRECEDENCE: Record<BinaryExprNode['operator'], number> = {
   '*': 4,
   '/': 4,
   '^': 5,
+  ':': 6,
 }
 
 const ERROR_LITERAL_TEXT: Record<number, string> = {

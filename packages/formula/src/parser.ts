@@ -454,15 +454,18 @@ export function parseFormula(source: string): FormulaNode {
           continue
         }
         const start = toRangeEndpoint(left)
-        if (!start) {
-          throw new Error('Range start must be a cell reference')
-        }
         const right = parsePrimary()
         const end = toRangeEndpoint(right)
-        if (!end) {
-          throw new Error('Range end must be a cell reference')
+        if (start && end) {
+          left = buildRange(start, end)
+        } else {
+          left = {
+            kind: 'BinaryExpr',
+            operator: ':',
+            left,
+            right,
+          }
         }
-        left = buildRange(start, end)
         precedence = PRECEDENCE[current().kind]
         continue
       }
