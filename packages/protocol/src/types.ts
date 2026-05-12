@@ -5,6 +5,7 @@ import type {
   WorkbookControlArtifactsSnapshot,
   WorkbookDrawingArtifactsSnapshot,
   WorkbookPackageRelationshipSnapshot,
+  WorkbookSheetDataTableFormulasSnapshot,
   WorkbookSheetControlArtifactsSnapshot,
   WorkbookSheetDrawingArtifactsSnapshot,
   WorkbookStyleArtifactsSnapshot,
@@ -875,6 +876,7 @@ export interface SheetMetadataSnapshot {
   hyperlinks?: WorkbookHyperlinkSnapshot[]
   drawingArtifacts?: WorkbookSheetDrawingArtifactsSnapshot
   controlArtifacts?: WorkbookSheetControlArtifactsSnapshot
+  dataTableFormulas?: WorkbookSheetDataTableFormulasSnapshot
   legacyCommentVml?: WorkbookLegacyCommentVmlSnapshot
   printerSettings?: WorkbookPrinterSettingsSnapshot[]
   sheetPr?: WorkbookSheetPrSnapshot

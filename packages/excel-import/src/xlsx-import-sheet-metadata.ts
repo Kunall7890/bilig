@@ -22,6 +22,7 @@ interface ImportedSheetMetadataInput {
   readonly commentThreads?: SheetMetadataSnapshot['commentThreads']
   readonly drawingArtifacts?: SheetMetadataSnapshot['drawingArtifacts']
   readonly controlArtifacts?: SheetMetadataSnapshot['controlArtifacts']
+  readonly dataTableFormulas?: SheetMetadataSnapshot['dataTableFormulas']
   readonly legacyCommentVml?: SheetMetadataSnapshot['legacyCommentVml']
   readonly hyperlinks?: SheetMetadataSnapshot['hyperlinks']
   readonly printerSettings?: SheetMetadataSnapshot['printerSettings']
@@ -55,6 +56,7 @@ export function buildImportedSheetMetadata(input: ImportedSheetMetadataInput): S
     ...(input.commentThreads ? { commentThreads: input.commentThreads } : {}),
     ...(input.drawingArtifacts ? { drawingArtifacts: input.drawingArtifacts } : {}),
     ...(input.controlArtifacts ? { controlArtifacts: input.controlArtifacts } : {}),
+    ...(input.dataTableFormulas ? { dataTableFormulas: input.dataTableFormulas } : {}),
     ...(input.legacyCommentVml ? { legacyCommentVml: input.legacyCommentVml } : {}),
     ...(input.hyperlinks ? { hyperlinks: input.hyperlinks } : {}),
     ...(input.printerSettings ? { printerSettings: input.printerSettings } : {}),
