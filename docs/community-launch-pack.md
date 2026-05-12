@@ -23,13 +23,16 @@ Latest public snapshot on May 8, 2026:
 - Contributor funnel: `18` open `good first issue`, `18` open
   `first-timers-only`, and `18` open `help wanted` issues
 
-Latest execution snapshot on May 12, 2026 at `20:38:42Z`:
+Latest execution snapshot on May 12, 2026 at `20:55:29Z`:
 
 - GitHub surface: public repo, `24` stars, `3` forks, `31` open issues
 - npm surface: `@bilig/headless@0.11.18`, MIT, TypeScript types, npm API
   downloads: `13,427` last week and `24,931` last month
-- Contributor funnel: `20` open `good first issue`, `20` open
-  `first-timers-only`, and `20` open `help wanted` issues
+- Contributor funnel: `21` open `good first issue`, `21` open
+  `first-timers-only`, and `21` open `help wanted` issues
+- Starter funnel refresh: five new first-timer example issues, `#201` through
+  `#205`, cover invoice totals, budget variance, subscription MRR, quote
+  approval, and fulfillment capacity workflows
 - External activity: `1` open external issue, `22` external issues opened in
   the last seven days, and `4` external pull requests opened in the last seven
   days
