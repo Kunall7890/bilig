@@ -6,9 +6,15 @@ contact_links:
   - name: Starter issues
     url: https://github.com/proompteng/bilig/blob/main/docs/starter-issues.md
     about: Find scoped good-first and step-up tasks before opening a new issue.
+  - name: Five Node workbook automation examples
+    url: https://proompteng.github.io/bilig/workbook-automation-examples-node.html
+    about: Run invoice, budget, MRR, quote, and capacity examples before proposing a new workflow.
   - name: Feedback discussion
-    url: https://github.com/proompteng/bilig/discussions/115
-    about: Share workflow feedback that is not a bug, feature request, or reduced formula mismatch.
+    url: https://github.com/proompteng/bilig/discussions/157
+    about: Share Node service, coding-agent, or workbook automation feedback that is not a bug or reduced formula mismatch.
+  - name: Example show-and-tell
+    url: https://github.com/proompteng/bilig/discussions/213
+    about: Comment on the current runnable service-workflow examples or request the next example.
   - name: Architecture docs
     url: https://github.com/proompteng/bilig/tree/main/docs
     about: Start here for engine, formula, sync, agent, and performance design notes.

@@ -24,6 +24,12 @@ behavior, and actual behavior.
 For feature requests, describe the smallest useful version and the acceptance
 proof.
 
+For workflow feedback or example requests, prefer the current discussion:
+https://github.com/proompteng/bilig/discussions/157
+
+For existing Node workbook automation examples, start here:
+https://proompteng.github.io/bilig/workbook-automation-examples-node.html
+
 ## Environment
 
 - Node:

@@ -7,7 +7,7 @@ body:
     id: problem
     attributes:
       label: Problem
-      description: What user or runtime problem should this solve?
+      description: What user or runtime problem should this solve? For workflow requests, compare against https://proompteng.github.io/bilig/workbook-automation-examples-node.html first.
     validations:
       required: true
   - type: dropdown
@@ -38,6 +38,6 @@ body:
     id: proof
     attributes:
       label: Acceptance proof
-      description: Tests, benchmark cases, fixtures, screenshots, or docs that should prove it works.
+      description: Tests, benchmark cases, fixtures, screenshots, runnable examples, or docs that should prove it works.
     validations:
       required: true

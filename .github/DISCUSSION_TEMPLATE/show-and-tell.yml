@@ -4,6 +4,7 @@ body:
     attributes:
       value: |
         Share a workflow, prototype, benchmark, example, article, or integration built with `bilig`.
+        If you are extending the current runnable example set, link the closest starting point from https://proompteng.github.io/bilig/workbook-automation-examples-node.html.
   - type: input
     id: link
     attributes:

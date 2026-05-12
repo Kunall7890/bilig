@@ -121,6 +121,13 @@ const [
   headlessReadme,
   excelImportReadme,
   publicApi,
+  issueTemplateConfig,
+  issueTemplateRoot,
+  featureRequestTemplate,
+  ideasDiscussionTemplate,
+  qaDiscussionTemplate,
+  showAndTellDiscussionTemplate,
+  pullRequestTemplate,
 ] = await Promise.all([
   readFile(join(repoRoot, 'README.md'), 'utf8'),
   readFile(join(repoRoot, 'CONTRIBUTING.md'), 'utf8'),
@@ -133,6 +140,13 @@ const [
   readFile(join(repoRoot, 'packages', 'headless', 'README.md'), 'utf8'),
   readFile(join(repoRoot, 'packages', 'excel-import', 'README.md'), 'utf8'),
   readFile(join(docsRoot, 'public-api.md'), 'utf8'),
+  readFile(join(repoRoot, '.github', 'ISSUE_TEMPLATE', 'config.yml'), 'utf8'),
+  readFile(join(repoRoot, '.github', 'ISSUE_TEMPLATE.md'), 'utf8'),
+  readFile(join(repoRoot, '.github', 'ISSUE_TEMPLATE', 'feature_request.yml'), 'utf8'),
+  readFile(join(repoRoot, '.github', 'DISCUSSION_TEMPLATE', 'ideas.yml'), 'utf8'),
+  readFile(join(repoRoot, '.github', 'DISCUSSION_TEMPLATE', 'q-a.yml'), 'utf8'),
+  readFile(join(repoRoot, '.github', 'DISCUSSION_TEMPLATE', 'show-and-tell.yml'), 'utf8'),
+  readFile(join(repoRoot, '.github', 'PULL_REQUEST_TEMPLATE.md'), 'utf8'),
 ])
 
 requireIncludes(index, '<link rel="canonical" href="https://proompteng.github.io/bilig/" />', 'docs/index.html')
@@ -257,9 +271,30 @@ for (const [path, content] of [
   ['docs/index.html', index],
   ['docs/community-launch-pack.md', await readFile(join(docsRoot, 'community-launch-pack.md'), 'utf8')],
   ['docs/llms.txt', llms],
+  ['.github/ISSUE_TEMPLATE/config.yml', issueTemplateConfig],
+  ['.github/ISSUE_TEMPLATE.md', issueTemplateRoot],
+  ['.github/ISSUE_TEMPLATE/feature_request.yml', featureRequestTemplate],
+  ['.github/DISCUSSION_TEMPLATE/ideas.yml', ideasDiscussionTemplate],
+  ['.github/DISCUSSION_TEMPLATE/q-a.yml', qaDiscussionTemplate],
+  ['.github/DISCUSSION_TEMPLATE/show-and-tell.yml', showAndTellDiscussionTemplate],
 ] as const) {
   requireIncludes(content, 'workbook-automation-examples-node', path)
 }
+
+for (const [path, content] of [
+  ['.github/ISSUE_TEMPLATE/config.yml', issueTemplateConfig],
+  ['.github/ISSUE_TEMPLATE.md', issueTemplateRoot],
+] as const) {
+  requireIncludes(content, 'https://github.com/proompteng/bilig/discussions/157', path)
+  requireNotIncludes(content, 'https://github.com/proompteng/bilig/discussions/115', path)
+}
+
+requireIncludes(issueTemplateConfig, 'https://github.com/proompteng/bilig/discussions/213', '.github/ISSUE_TEMPLATE/config.yml')
+requireIncludes(
+  pullRequestTemplate,
+  'For public docs or example work, include the page or discussion that a new',
+  '.github/PULL_REQUEST_TEMPLATE.md',
+)
 
 for (const [path, content] of [
   ['README.md', readme],

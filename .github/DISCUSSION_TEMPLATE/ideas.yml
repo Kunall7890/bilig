@@ -5,6 +5,7 @@ body:
     attributes:
       value: |
         Use this for product, API, documentation, benchmark, or integration ideas that are not yet ready as implementation issues.
+        For current runnable workflow examples, start with https://proompteng.github.io/bilig/workbook-automation-examples-node.html.
   - type: textarea
     id: problem
     attributes:

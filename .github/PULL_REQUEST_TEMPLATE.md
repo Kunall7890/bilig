@@ -19,3 +19,6 @@ sync, or agent-runtime risks.
 ## Notes
 
 Link issues, docs, benchmark artifacts, or follow-up work.
+
+For public docs or example work, include the page or discussion that a new
+visitor should use after the merge.
