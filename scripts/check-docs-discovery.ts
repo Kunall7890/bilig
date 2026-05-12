@@ -169,6 +169,19 @@ requireIncludes(index, 'bilig-hero-workbook-api.png?v=2026-05-08-2', 'docs/index
 requireIncludes(index, '"downloadUrl": "https://www.npmjs.com/package/@bilig/headless"', 'docs/index.html')
 requireIncludes(index, '"applicationCategory": "DeveloperApplication"', 'docs/index.html')
 requireIncludes(index, '"@type": "FAQPage"', 'docs/index.html')
+for (const required of [
+  './why-agents-need-workbook-apis.html',
+  './agent-workpaper-tool-calling-recipe.html',
+  './agent-spreadsheet-tool-call-loop.html',
+  './node-service-workpaper-recipe.html',
+  './serverless-workpaper-api-route.html',
+  './persisting-formula-backed-workpaper-documents-in-node.html',
+  './building-a-revenue-model-with-headless-workpaper.html',
+  './headless-spreadsheet-engine-comparison.html',
+  './hyperformula-alternative-headless-workpaper.html',
+]) {
+  requireIncludes(index, required, 'docs/index.html')
+}
 
 requireIncludes(robots, 'User-agent: *', 'docs/robots.txt')
 requireIncludes(robots, 'Allow: /', 'docs/robots.txt')
@@ -212,6 +225,11 @@ for (const required of [
   'npm run agent:tool-call',
   'npm run agent:verify',
   'https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-records-input',
+  'https://proompteng.github.io/bilig/why-agents-need-workbook-apis.html',
+  'https://proompteng.github.io/bilig/agent-workpaper-tool-calling-recipe.html',
+  'https://proompteng.github.io/bilig/agent-spreadsheet-tool-call-loop.html',
+  'https://proompteng.github.io/bilig/node-service-workpaper-recipe.html',
+  'https://proompteng.github.io/bilig/serverless-workpaper-api-route.html',
   'https://proompteng.github.io/bilig/workbook-automation-examples-node.html',
   'https://github.com/proompteng/bilig/blob/main/docs/workbook-automation-examples-node.md',
   'https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#invoice-totals',
@@ -280,6 +298,27 @@ for (const [path, content] of [
 ] as const) {
   requireIncludes(content, 'workbook-automation-examples-node', path)
 }
+
+const [whyAgentsDoc, agentToolCallingDoc, agentToolCallLoopDoc] = await Promise.all([
+  readFile(join(docsRoot, 'why-agents-need-workbook-apis.md'), 'utf8'),
+  readFile(join(docsRoot, 'agent-workpaper-tool-calling-recipe.md'), 'utf8'),
+  readFile(join(docsRoot, 'agent-spreadsheet-tool-call-loop.md'), 'utf8'),
+])
+requireIncludes(
+  whyAgentsDoc,
+  'description: Why coding agents should edit workbook formulas through a Node.js WorkPaper API',
+  'docs/why-agents-need-workbook-apis.md',
+)
+requireIncludes(
+  agentToolCallingDoc,
+  'description: Wrap @bilig/headless workbook reads, writes, formula readback, and persistence as deterministic Node.js tools',
+  'docs/agent-workpaper-tool-calling-recipe.md',
+)
+requireIncludes(
+  agentToolCallLoopDoc,
+  'description: A runnable @bilig/headless loop where an agent writes one workbook input',
+  'docs/agent-spreadsheet-tool-call-loop.md',
+)
 
 for (const [path, content] of [
   ['.github/ISSUE_TEMPLATE/config.yml', issueTemplateConfig],
