@@ -400,6 +400,36 @@ multiple instances, cold starts, edge isolates, or background workers, the
 serialized WorkPaper document should come from durable storage before reads and
 be written back after accepted mutations.
 
+## Hono Adapter
+
+Hono exposes the raw Fetch `Request`, so the adapter does not need to translate
+headers, bodies, or responses. Keep the WorkPaper logic in the shared handler and
+make the framework route file small:
+
+```js
+import { Hono } from 'hono'
+import { handleWorkPaperRequest } from './workpaper-route.js'
+
+const app = new Hono()
+
+app.get('/api/workpaper/summary', (c) => handleWorkPaperRequest(c.req.raw))
+app.post('/api/workpaper/revenue', (c) => handleWorkPaperRequest(c.req.raw))
+
+export default app
+```
+
+The same smoke calls apply when the Hono app is running locally:
+
+```sh
+curl -s http://localhost:3000/api/workpaper/summary
+curl -s -X POST http://localhost:3000/api/workpaper/revenue \
+  -H 'content-type: application/json' \
+  -d '{"records":[{"region":"West","customers":20,"arpa":1200},{"region":"East","customers":30,"arpa":250},{"region":"Central","customers":18,"arpa":300},{"region":"North","customers":65,"arpa":180}]}'
+```
+
+If the Hono app is deployed to a worker or serverless runtime, pair this adapter
+with the durable storage variant above instead of relying on module memory.
+
 ## Validation
 
 For the standalone recipe:

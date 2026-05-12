@@ -77,8 +77,9 @@ module memory.
 - In a Next.js app route, call `handleWorkPaperRequest()` from `GET()` and
   `POST()`.
 - In a Cloudflare Worker, call it from `fetch(request)`.
-- In Hono, Fastify, or Express, adapt the framework request into a
-  web-standard `Request`, then return or write the `Response`.
+- In Hono, pass `c.req.raw` directly to the shared handler.
+- In Fastify or Express, adapt the framework request into a web-standard
+  `Request`, then return or write the `Response`.
 - Replace the in-memory `state.workbookJson` with your durable store when the
   workbook needs to survive cold starts or multiple instances.
 
