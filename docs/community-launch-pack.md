@@ -298,9 +298,9 @@ pnpm community:growth:snapshot
 ```
 
 Set `GITHUB_TOKEN` or `GH_TOKEN` with repository traffic access to include
-views, clones, popular referrers, and popular paths. Without a token, the
-snapshot still records public GitHub stars, forks, open issues, package version,
-and npm download windows.
+recent discussion activity, views, clones, popular referrers, and popular paths.
+Without a token, the snapshot still records public GitHub stars, forks, open
+issues, package version, and npm download windows.
 
 ## Anti-Spam Rules
 

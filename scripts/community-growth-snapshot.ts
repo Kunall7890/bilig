@@ -6,6 +6,7 @@ export interface CommunityGrowthSnapshot {
   readonly github: GitHubRepoGrowthMetrics
   readonly npm: NpmPackageGrowthMetrics
   readonly contributorFunnel: ContributorFunnelMetrics
+  readonly discussionActivity: GitHubDiscussionActivitySnapshot
   readonly traffic: GitHubTrafficSnapshot
 }
 
@@ -47,6 +48,27 @@ export interface ContributorFunnelMetrics {
   readonly externalOpenPullRequestCount: number
   readonly externalIssuesOpenedLastSevenDays: number
   readonly externalPullRequestsOpenedLastSevenDays: number
+}
+
+export type GitHubDiscussionActivitySnapshot =
+  | {
+      readonly available: false
+      readonly reason: string
+    }
+  | {
+      readonly available: true
+      readonly totalCount: number
+      readonly recent: readonly GitHubDiscussionSummary[]
+    }
+
+export interface GitHubDiscussionSummary {
+  readonly number: number
+  readonly title: string
+  readonly url: string
+  readonly category: string
+  readonly createdAt: string
+  readonly updatedAt: string
+  readonly commentCount: number
 }
 
 export type GitHubTrafficSnapshot =
@@ -146,7 +168,7 @@ function nestedRecord(record: Record<string, unknown>, key: string, context: str
   return asRecord(record[key], `${context}.${key}`)
 }
 
-function githubHeaders(githubToken: string | undefined): HeadersInit {
+function githubHeaders(githubToken: string | undefined): Record<string, string> {
   const headers: Record<string, string> = {
     accept: 'application/vnd.github+json',
     'x-github-api-version': '2022-11-28',
@@ -164,6 +186,35 @@ async function fetchJson(fetchImpl: typeof fetch, url: string, init?: RequestIni
   if (!response.ok) {
     throw new Error(`GET ${url} failed with HTTP ${String(response.status)}`)
   }
+  return await response.json()
+}
+
+async function fetchGitHubGraphqlJson(
+  fetchImpl: typeof fetch,
+  githubToken: string,
+  query: string,
+  variables: Record<string, unknown>,
+): Promise<unknown> {
+  const response = await fetchImpl('https://api.github.com/graphql', {
+    method: 'POST',
+    headers: {
+      ...githubHeaders(githubToken),
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      query,
+      variables,
+    }),
+  })
+
+  if (response.status === 401 || response.status === 403) {
+    return undefined
+  }
+
+  if (!response.ok) {
+    throw new Error(`POST https://api.github.com/graphql failed with HTTP ${String(response.status)}`)
+  }
+
   return await response.json()
 }
 
@@ -253,6 +304,56 @@ function parseSearchCount(value: unknown, context: string): number {
   return numberField(asRecord(value, context), 'total_count', context)
 }
 
+function parseDiscussionSummary(value: Record<string, unknown>): GitHubDiscussionSummary {
+  const category = nestedRecord(value, 'category', 'GitHub discussion')
+  const comments = nestedRecord(value, 'comments', 'GitHub discussion')
+
+  return {
+    number: numberField(value, 'number', 'GitHub discussion'),
+    title: stringField(value, 'title', 'GitHub discussion'),
+    url: stringField(value, 'url', 'GitHub discussion'),
+    category: stringField(category, 'name', 'GitHub discussion category'),
+    createdAt: stringField(value, 'createdAt', 'GitHub discussion'),
+    updatedAt: stringField(value, 'updatedAt', 'GitHub discussion'),
+    commentCount: numberField(comments, 'totalCount', 'GitHub discussion comments'),
+  }
+}
+
+function parseDiscussionActivity(value: unknown): GitHubDiscussionActivitySnapshot {
+  const payload = asRecord(value, 'GitHub GraphQL response')
+  const data = nestedRecord(payload, 'data', 'GitHub GraphQL response')
+  const repository = nestedRecord(data, 'repository', 'GitHub GraphQL data')
+  const discussions = nestedRecord(repository, 'discussions', 'GitHub repository')
+  const nodes = asRecordArray(discussions.nodes, 'GitHub discussions')
+
+  return {
+    available: true,
+    totalCount: numberField(discussions, 'totalCount', 'GitHub discussions'),
+    recent: nodes.map(parseDiscussionSummary),
+  }
+}
+
+function graphqlSearchCount(data: Record<string, unknown>, key: string): number {
+  const result = nestedRecord(data, key, `GitHub GraphQL search ${key}`)
+  return numberField(result, 'issueCount', `GitHub GraphQL search ${key}`)
+}
+
+function parseContributorFunnelGraphql(value: unknown): ContributorFunnelMetrics {
+  const payload = asRecord(value, 'GitHub GraphQL response')
+  const data = nestedRecord(payload, 'data', 'GitHub GraphQL response')
+
+  return {
+    openGoodFirstIssueCount: graphqlSearchCount(data, 'goodFirst'),
+    openFirstTimersOnlyIssueCount: graphqlSearchCount(data, 'firstTimers'),
+    openHelpWantedIssueCount: graphqlSearchCount(data, 'helpWanted'),
+    openPullRequestCount: graphqlSearchCount(data, 'openPullRequests'),
+    externalOpenIssueCount: graphqlSearchCount(data, 'externalOpenIssues'),
+    externalOpenPullRequestCount: graphqlSearchCount(data, 'externalOpenPullRequests'),
+    externalIssuesOpenedLastSevenDays: graphqlSearchCount(data, 'externalRecentIssues'),
+    externalPullRequestsOpenedLastSevenDays: graphqlSearchCount(data, 'externalRecentPullRequests'),
+  }
+}
+
 function dateOnly(date: Date): string {
   return date.toISOString().slice(0, 10)
 }
@@ -284,6 +385,60 @@ async function collectContributorFunnel(
   const repoQualifier = `repo:${owner}/${repo}`
   const externalQualifier = `-author:${maintainerLogin}`
   const since = dateOnly(daysBefore(now, 7))
+
+  if (githubToken !== undefined && githubToken.trim() !== '') {
+    const query = `
+      query CommunityGrowthContributorFunnel(
+        $goodFirst: String!
+        $firstTimers: String!
+        $helpWanted: String!
+        $openPullRequests: String!
+        $externalOpenIssues: String!
+        $externalOpenPullRequests: String!
+        $externalRecentIssues: String!
+        $externalRecentPullRequests: String!
+      ) {
+        goodFirst: search(type: ISSUE, query: $goodFirst, first: 0) {
+          issueCount
+        }
+        firstTimers: search(type: ISSUE, query: $firstTimers, first: 0) {
+          issueCount
+        }
+        helpWanted: search(type: ISSUE, query: $helpWanted, first: 0) {
+          issueCount
+        }
+        openPullRequests: search(type: ISSUE, query: $openPullRequests, first: 0) {
+          issueCount
+        }
+        externalOpenIssues: search(type: ISSUE, query: $externalOpenIssues, first: 0) {
+          issueCount
+        }
+        externalOpenPullRequests: search(type: ISSUE, query: $externalOpenPullRequests, first: 0) {
+          issueCount
+        }
+        externalRecentIssues: search(type: ISSUE, query: $externalRecentIssues, first: 0) {
+          issueCount
+        }
+        externalRecentPullRequests: search(type: ISSUE, query: $externalRecentPullRequests, first: 0) {
+          issueCount
+        }
+      }
+    `
+    const result = await fetchGitHubGraphqlJson(fetchImpl, githubToken, query, {
+      goodFirst: `${repoQualifier} is:issue is:open label:"good first issue"`,
+      firstTimers: `${repoQualifier} is:issue is:open label:first-timers-only`,
+      helpWanted: `${repoQualifier} is:issue is:open label:"help wanted"`,
+      openPullRequests: `${repoQualifier} is:pr is:open`,
+      externalOpenIssues: `${repoQualifier} is:issue is:open ${externalQualifier}`,
+      externalOpenPullRequests: `${repoQualifier} is:pr is:open ${externalQualifier}`,
+      externalRecentIssues: `${repoQualifier} is:issue created:>=${since} ${externalQualifier}`,
+      externalRecentPullRequests: `${repoQualifier} is:pr created:>=${since} ${externalQualifier}`,
+    })
+
+    if (result !== undefined) {
+      return parseContributorFunnelGraphql(result)
+    }
+  }
 
   const [
     openGoodFirstIssueCount,
@@ -354,6 +509,56 @@ async function collectGitHubTraffic(
   }
 }
 
+async function collectGitHubDiscussionActivity(
+  fetchImpl: typeof fetch,
+  owner: string,
+  repo: string,
+  githubToken: string | undefined,
+): Promise<GitHubDiscussionActivitySnapshot> {
+  if (githubToken === undefined || githubToken.trim() === '') {
+    return {
+      available: false,
+      reason: 'Set GITHUB_TOKEN or GH_TOKEN to collect recent GitHub discussion activity.',
+    }
+  }
+
+  const query = `
+    query CommunityGrowthDiscussions($owner: String!, $repo: String!) {
+      repository(owner: $owner, name: $repo) {
+        discussions(first: 20, orderBy: { field: UPDATED_AT, direction: DESC }) {
+          totalCount
+          nodes {
+            number
+            title
+            url
+            createdAt
+            updatedAt
+            category {
+              name
+            }
+            comments {
+              totalCount
+            }
+          }
+        }
+      }
+    }
+  `
+  const result = await fetchGitHubGraphqlJson(fetchImpl, githubToken, query, {
+    owner,
+    repo,
+  })
+
+  if (result === undefined) {
+    return {
+      available: false,
+      reason: 'GitHub Discussions GraphQL API was unavailable for this token.',
+    }
+  }
+
+  return parseDiscussionActivity(result)
+}
+
 export async function collectCommunityGrowthSnapshot(options: CommunityGrowthSnapshotOptions = {}): Promise<CommunityGrowthSnapshot> {
   const owner = options.owner ?? defaultOwner
   const repo = options.repo ?? defaultRepo
@@ -364,7 +569,7 @@ export async function collectCommunityGrowthSnapshot(options: CommunityGrowthSna
   const now = options.now ?? new Date()
   const encodedPackageName = encodeURIComponent(packageName)
 
-  const [github, npmMetadata, lastWeekDownloads, lastMonthDownloads, contributorFunnel, traffic] = await Promise.all([
+  const [github, npmMetadata, lastWeekDownloads, lastMonthDownloads, contributorFunnel, discussionActivity, traffic] = await Promise.all([
     fetchJson(fetchImpl, `https://api.github.com/repos/${owner}/${repo}`, {
       headers: githubHeaders(githubToken),
     }).then(parseGitHubRepoMetrics),
@@ -376,6 +581,7 @@ export async function collectCommunityGrowthSnapshot(options: CommunityGrowthSna
       parseDownloadWindow(value, 'npm last-month downloads'),
     ),
     collectContributorFunnel(fetchImpl, owner, repo, maintainerLogin, githubToken, now),
+    collectGitHubDiscussionActivity(fetchImpl, owner, repo, githubToken),
     collectGitHubTraffic(fetchImpl, owner, repo, githubToken),
   ])
 
@@ -387,6 +593,7 @@ export async function collectCommunityGrowthSnapshot(options: CommunityGrowthSna
       lastMonth: lastMonthDownloads,
     }),
     contributorFunnel,
+    discussionActivity,
     traffic,
   }
 }

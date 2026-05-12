@@ -149,14 +149,18 @@ describe('community growth snapshot', () => {
         externalIssuesOpenedLastSevenDays: 2,
         externalPullRequestsOpenedLastSevenDays: 1,
       },
+      discussionActivity: {
+        available: false,
+      },
       traffic: {
         available: false,
       },
     })
     expect(calls).not.toContain('https://api.github.com/repos/proompteng/bilig/traffic/views')
+    expect(calls).not.toContain('https://api.github.com/graphql')
   })
 
-  it('collects GitHub traffic metrics when a token is provided', async () => {
+  it('collects GitHub discussion and traffic metrics when a token is provided', async () => {
     const fetchImpl = async (input: string | URL | Request): Promise<Response> => {
       const url = fetchInputUrl(input)
 
@@ -216,6 +220,33 @@ describe('community growth snapshot', () => {
         return responseJson([{ path: '/proompteng/bilig', title: 'bilig', count: 50, uniques: 25 }])
       }
 
+      if (url === 'https://api.github.com/graphql') {
+        return responseJson({
+          data: {
+            repository: {
+              discussions: {
+                totalCount: 2,
+                nodes: [
+                  {
+                    number: 157,
+                    title: 'Which Node workbook automation workflow should @bilig/headless prove next?',
+                    url: 'https://github.com/proompteng/bilig/discussions/157',
+                    category: {
+                      name: 'Ideas',
+                    },
+                    createdAt: '2026-05-08T21:46:51Z',
+                    updatedAt: '2026-05-12T21:10:00Z',
+                    comments: {
+                      totalCount: 2,
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        })
+      }
+
       throw new Error(`unexpected fetch ${url}`)
     }
 
@@ -225,6 +256,21 @@ describe('community growth snapshot', () => {
       now: new Date('2026-05-08T06:00:00.000Z'),
     })
 
+    expect(snapshot.discussionActivity).toEqual({
+      available: true,
+      totalCount: 2,
+      recent: [
+        {
+          number: 157,
+          title: 'Which Node workbook automation workflow should @bilig/headless prove next?',
+          url: 'https://github.com/proompteng/bilig/discussions/157',
+          category: 'Ideas',
+          createdAt: '2026-05-08T21:46:51Z',
+          updatedAt: '2026-05-12T21:10:00Z',
+          commentCount: 2,
+        },
+      ],
+    })
     expect(snapshot.traffic).toEqual({
       available: true,
       views: {
