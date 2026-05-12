@@ -48,6 +48,7 @@ packages through `pnpm workpaper:smoke:external`.
 | Persistence round trip  | `npm run persistence`         | save, restore, edit, and export              |
 | Named expression update | `npm run named-expression`    | workbook-scoped names and dependent formulas |
 | CSV-shaped input        | `npm run csv-shaped`          | array-shaped data plus formula summary       |
+| Invoice totals          | `npm run invoice-totals`      | line items, subtotal, tax, total             |
 | JSON records input      | `npm run json-records`        | API records to formula-backed workbook       |
 | JSON file input         | `npm run json-file`           | disk JSON records to verified summary        |
 | Formula diagnostics     | `npm run formula-diagnostics` | display errors and structured diagnostics    |
@@ -212,6 +213,33 @@ Expected output:
   },
   "persistedSheets": ["Pipeline", "Summary", "Scenarios"],
   "serializedBytes": 1594
+}
+```
+
+## Invoice Totals
+
+Run the invoice totals example when you want a compact service-side billing
+workflow. It builds invoice line items, calculates line totals, subtotal, tax,
+and grand total formulas, then verifies both computed values and serialized
+formula readback:
+
+```sh
+npm run invoice-totals
+```
+
+Expected output:
+
+```json
+{
+  "invoiceNumber": "INV-2026-001",
+  "lineItems": 4,
+  "subtotal": 1890,
+  "taxRate": 0.08,
+  "tax": 151.2,
+  "total": 2041.2,
+  "formulas": [["=SUM(Invoice!D2:D5)"], [0.08], ["=B2*B3"], ["=B2+B4"]],
+  "firstLineItem": ["Implementation workshop", 5, 120, "=B2*C2"],
+  "verified": true
 }
 ```
 

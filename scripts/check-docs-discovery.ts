@@ -196,6 +196,7 @@ for (const required of [
   'npm run agent:tool-call',
   'npm run agent:verify',
   'https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-records-input',
+  'https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#invoice-totals',
   'https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api',
   'https://github.com/proompteng/bilig/discussions',
   'https://github.com/proompteng/bilig/discussions/157',
@@ -256,6 +257,14 @@ for (const [path, content] of [
   ['packages/headless/README.md', headlessReadme],
   ['docs/llms.txt', llms],
 ] as const) {
+  requireIncludes(content, 'examples/headless-workpaper#invoice-totals', path)
+}
+
+for (const [path, content] of [
+  ['README.md', readme],
+  ['packages/headless/README.md', headlessReadme],
+  ['docs/llms.txt', llms],
+] as const) {
   requireIncludes(content, 'docs/sheetjs-exceljs-alternative-formula-workbook-api.md', path)
 }
 
@@ -294,7 +303,6 @@ for (const required of [
   'https://github.com/proompteng/bilig/issues/197',
   'https://github.com/proompteng/bilig/issues/198',
   'https://github.com/proompteng/bilig/issues/199',
-  'https://github.com/proompteng/bilig/issues/201',
   'https://github.com/proompteng/bilig/issues/202',
   'https://github.com/proompteng/bilig/issues/203',
   'https://github.com/proompteng/bilig/issues/204',
@@ -320,6 +328,7 @@ for (const closedIssue of [
   '151',
   '152',
   '200',
+  '201',
   '160',
   '161',
   '164',
@@ -376,6 +385,12 @@ for (const [path, content] of publicDocs) {
 for (const blockedLink of ['](../../docs/', '](../../examples/', '](../../LICENSE)']) {
   requireNotIncludes(headlessReadme, blockedLink, 'packages/headless/README.md')
 }
+
+const headlessExampleReadme = await readFile(join(repoRoot, 'examples', 'headless-workpaper', 'README.md'), 'utf8')
+requireIncludes(headlessExampleReadme, 'npm run invoice-totals', 'examples/headless-workpaper/README.md')
+requireIncludes(headlessExampleReadme, '## Invoice Totals', 'examples/headless-workpaper/README.md')
+requireIncludes(headlessReadme, 'npm run invoice-totals', 'packages/headless/README.md')
+requireIncludes(headlessReadme, '#invoice-totals', 'packages/headless/README.md')
 
 for (const required of [
   '## Clean npm Sanity Check',

@@ -28,6 +28,7 @@ Project site: <https://proompteng.github.io/bilig/>
 - **Build a Node workflow**: start from the
   [runnable WorkPaper example](examples/headless-workpaper),
   [JSON records input example](examples/headless-workpaper#json-records-input),
+  [invoice totals example](examples/headless-workpaper#invoice-totals),
   [serverless API route example](examples/serverless-workpaper-api),
   [Node service recipe](docs/node-service-workpaper-recipe.md), or
   [serverless route walkthrough](docs/serverless-workpaper-api-route.md).
@@ -321,6 +322,11 @@ For JSON service/API payloads, the runnable example includes
 maps an array of opportunity records into `WorkPaper.buildFromSheets()`, adds
 formula-backed summary cells, and validates exact computed output before
 printing JSON.
+
+For billing-style service payloads, the runnable example includes
+[`npm run invoice-totals`](examples/headless-workpaper#invoice-totals). It
+calculates line-item totals, subtotal, tax, and grand total formulas, then
+validates exact computed and serialized formula readback.
 
 For formula errors, see
 [`docs/unsupported-formula-troubleshooting-recipe.md`](docs/unsupported-formula-troubleshooting-recipe.md).

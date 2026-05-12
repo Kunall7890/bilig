@@ -16,6 +16,7 @@ language: typescript
 - https://github.com/proompteng/bilig/tree/main/packages/headless#readme
 - https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper
 - https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-records-input
+- https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#invoice-totals
 - https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api
 - https://github.com/proompteng/bilig/blob/main/docs/dev-to-workbook-apis-post.md
 - https://github.com/proompteng/bilig/discussions
@@ -88,6 +89,8 @@ npm run agent:verify
   https://github.com/proompteng/bilig/blob/main/docs/csv-shaped-workpaper-input-recipe.md
 - json records input example:
   https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-records-input
+- invoice totals example:
+  https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#invoice-totals
 - serverless API route example:
   https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api
 - unsupported formula troubleshooting:
@@ -170,8 +173,6 @@ including its p95 caveat.
   https://github.com/proompteng/bilig/issues/198
 - current small docs issue: headless example README script guard:
   https://github.com/proompteng/bilig/issues/199
-- current small example issue: invoice totals WorkPaper example:
-  https://github.com/proompteng/bilig/issues/201
 - current small example issue: budget variance alert WorkPaper example:
   https://github.com/proompteng/bilig/issues/202
 - current small example issue: subscription MRR forecast:

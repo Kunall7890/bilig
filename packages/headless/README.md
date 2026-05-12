@@ -91,7 +91,9 @@ pnpm --filter @bilig/headless build
   [`npm run sheet-inspection`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#sheet-inspection)
   for checking restored workbook shape before writes, or
   [`npm run http-json-summary`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#http-json-summary)
-  for a no-framework Node HTTP boundary.
+  for a no-framework Node HTTP boundary, or
+  [`npm run invoice-totals`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#invoice-totals)
+  for subtotal, tax, and total formula readback.
 - Run the
   [serverless WorkPaper API example](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api)
   when the workbook belongs behind an HTTP or agent-tool boundary.
@@ -122,6 +124,7 @@ The full example catalog lives in
 | Verify an agent writeback            | `npm run agent:verify`      | [Agent writeback verification](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#agent-writeback-verification) |
 | Wrap WorkPaper operations as tools   | `npm run agent:tool-call`   | [Agent tool call loop](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#agent-tool-call-loop)                 |
 | Return workbook results over HTTP    | `npm run http-json-summary` | [HTTP JSON summary](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#http-json-summary)                       |
+| Calculate invoice totals             | `npm run invoice-totals`    | [Invoice totals](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#invoice-totals)                             |
 | Inspect restored workbook shape      | `npm run sheet-inspection`  | [Sheet inspection](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#sheet-inspection)                         |
 | Compare computed values and formulas | `npm run range-readback`    | [Range readback](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#range-readback)                             |
 
