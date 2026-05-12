@@ -68,6 +68,22 @@ pnpm --filter @bilig/headless build
 - Star or bookmark the project:
   <https://github.com/proompteng/bilig>.
 
+## Which Example Should I Run?
+
+The full example catalog lives in
+[`examples/headless-workpaper/README.md`](https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/README.md).
+
+| Need                                 | Start with                  | Existing example                                                                                                                       |
+| ------------------------------------ | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Evaluate formulas from API records   | `npm run json-records`      | [JSON records input](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-records-input)                     |
+| Load records already saved on disk   | `npm run json-file`         | [JSON file input](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-file-input)                           |
+| Persist and restore a workbook       | `npm run persistence`       | [Persistence round trip](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#persistence-round-trip)             |
+| Verify an agent writeback            | `npm run agent:verify`      | [Agent writeback verification](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#agent-writeback-verification) |
+| Wrap WorkPaper operations as tools   | `npm run agent:tool-call`   | [Agent tool call loop](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#agent-tool-call-loop)                 |
+| Return workbook results over HTTP    | `npm run http-json-summary` | [HTTP JSON summary](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#http-json-summary)                       |
+| Inspect restored workbook shape      | `npm run sheet-inspection`  | [Sheet inspection](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#sheet-inspection)                         |
+| Compare computed values and formulas | `npm run range-readback`    | [Range readback](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#range-readback)                             |
+
 ## Production Status
 
 Use this package in production for documented WorkPaper/headless API workflows:
