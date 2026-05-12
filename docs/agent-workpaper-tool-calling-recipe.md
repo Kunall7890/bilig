@@ -1,3 +1,12 @@
+---
+title: WorkPaper tool-calling recipe for AI agents
+published: true
+description: Wrap @bilig/headless workbook reads, writes, formula readback, and persistence as deterministic Node.js tools for coding agents.
+tags: ai agents, tool calling, node, spreadsheet, typescript
+canonical_url: https://proompteng.github.io/bilig/agent-workpaper-tool-calling-recipe.html
+cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
+---
+
 # WorkPaper Tool-Calling Recipe For Agents
 
 This recipe shows how to wrap `@bilig/headless` WorkPaper operations as

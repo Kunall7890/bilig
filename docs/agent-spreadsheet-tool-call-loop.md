@@ -1,3 +1,12 @@
+---
+title: Agent spreadsheet tool-call loop
+published: true
+description: A runnable @bilig/headless loop where an agent writes one workbook input, checks formula outputs, and persists the verified result.
+tags: ai agents, tool calling, node, spreadsheet, workpaper
+canonical_url: https://proompteng.github.io/bilig/agent-spreadsheet-tool-call-loop.html
+cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
+---
+
 # Agent Spreadsheet Tool Call Loop
 
 This page is for people building coding agents or backend workers that need a

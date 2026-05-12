@@ -1,14 +1,25 @@
+---
+title: Spreadsheet APIs for AI agents
+published: true
+description: Why coding agents should edit workbook formulas through a Node.js WorkPaper API instead of spreadsheet screenshots, with a runnable @bilig/headless example.
+tags: ai agents, spreadsheet, node, workpaper, typescript
+canonical_url: https://proompteng.github.io/bilig/why-agents-need-workbook-apis.html
+cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
+---
+
 # Why Agents Need Workbook APIs, Not Spreadsheet Screenshots
 
-AI agents can click through a spreadsheet UI, but screenshots are a weak
-runtime boundary. They hide formulas, make structural edits ambiguous, and turn
-verification into a visual guess. If a workflow depends on workbook state, the
-agent should operate on a workbook API.
+Agents can click through a spreadsheet UI. That does not make the UI a good
+runtime boundary.
 
-`@bilig/headless` is the small public wedge of `bilig`: a TypeScript WorkPaper
-runtime for Node services, coding agents, and local workbook automation. It is
-for cases where a program needs spreadsheet behavior without opening a browser
-grid.
+Screenshots hide formulas, make structural edits ambiguous, and turn
+verification into a visual guess. If the workflow depends on workbook state, the
+agent needs an API that can read formulas, write cells, recalculate, and prove
+what changed.
+
+`@bilig/headless` is the public WorkPaper runtime from `bilig`. It is a
+TypeScript package for Node services, coding agents, and local workbook
+automation that need spreadsheet behavior without opening a browser grid.
 
 ## The Problem With Screen-Driven Spreadsheets
 
