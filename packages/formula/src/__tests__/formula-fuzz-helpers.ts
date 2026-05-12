@@ -120,7 +120,7 @@ export function renameScopedFormulaArbitrary(oldSheetName: string, newSheetName:
   )
 }
 
-export const invalidFormulaArbitrary = fc.constantFrom('SUM(', 'A1:B', 'A1:2', "'Sheet 1'!1", "'Sheet 1'!$1", 'SUM(A1,,B2)')
+export const invalidFormulaArbitrary = fc.constantFrom('SUM(', 'A1:B', 'A1:2', "'Sheet 1'!1", "'Sheet 1'!$1", 'A1+')
 
 const evaluableCellReferenceArbitrary = fc.constantFrom('A1', 'B2', 'C3', 'Sheet2!B1', 'Summary!C2')
 

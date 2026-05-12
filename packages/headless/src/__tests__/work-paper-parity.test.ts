@@ -39,6 +39,7 @@ function createConfigFixture(): WorkPaperConfig {
     accentSensitive: true,
     caseSensitive: true,
     caseFirst: 'upper',
+    calculationSettings: { iterate: true, iterateCount: 32, iterateDelta: '0.01' },
     chooseAddressMappingPolicy: { mode: 'dense' },
     context: { requestId: 'ctx-1' },
     currencySymbol: ['$', 'USD'],
@@ -111,6 +112,7 @@ describe('WorkPaper parity surface', () => {
       'accentSensitive',
       'arrayColumnSeparator',
       'arrayRowSeparator',
+      'calculationSettings',
       'caseFirst',
       'caseSensitive',
       'chooseAddressMappingPolicy',
@@ -186,6 +188,7 @@ describe('WorkPaper parity surface', () => {
       accentSensitive: true,
       caseSensitive: true,
       caseFirst: 'upper',
+      calculationSettings: { iterate: true, iterateCount: 32, iterateDelta: '0.01' },
       currencySymbol: ['$', 'USD'],
       dateFormats: ['YYYY-MM-DD'],
       functionArgSeparator: ';',
@@ -240,6 +243,9 @@ describe('WorkPaper parity surface', () => {
       id: 'mutated',
       implementedFunctions: {},
     })
+    if (snapshot.calculationSettings) {
+      snapshot.calculationSettings.iterateCount = 99
+    }
     if (snapshot.chooseAddressMappingPolicy) {
       snapshot.chooseAddressMappingPolicy.mode = 'sparse'
     }
@@ -251,6 +257,7 @@ describe('WorkPaper parity surface', () => {
     expect(workbook.getConfig().dateFormats).toEqual(['YYYY-MM-DD'])
     expect(workbook.getConfig().timeFormats).toEqual(['HH:mm:ss'])
     expect(workbook.getConfig().functionPlugins?.map((plugin) => plugin.id)).toEqual([CUSTOM_PLUGIN.id])
+    expect(workbook.getConfig().calculationSettings).toEqual({ iterate: true, iterateCount: 32, iterateDelta: '0.01' })
     expect(workbook.getConfig().chooseAddressMappingPolicy).toEqual({ mode: 'dense' })
     expect(workbook.getConfig().context).toEqual({ requestId: 'ctx-1' })
 
@@ -258,6 +265,7 @@ describe('WorkPaper parity surface', () => {
       accentSensitive: false,
       caseSensitive: false,
       caseFirst: 'lower',
+      calculationSettings: { mode: 'manual', iterate: false },
       chooseAddressMappingPolicy: { mode: 'sparse' },
       context: { requestId: 'ctx-2' },
       currencySymbol: ['EUR'],
@@ -298,6 +306,7 @@ describe('WorkPaper parity surface', () => {
       accentSensitive: false,
       caseSensitive: false,
       caseFirst: 'lower',
+      calculationSettings: { mode: 'manual', iterate: false },
       currencySymbol: ['EUR'],
       dateFormats: ['DD/MM/YYYY'],
       functionArgSeparator: ',',

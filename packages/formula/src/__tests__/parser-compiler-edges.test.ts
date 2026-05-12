@@ -139,6 +139,12 @@ describe('formula parser/compiler edges', () => {
       { opcode: 'call', callee: 'INDEX', argc: 2, argRefs: [undefined, undefined] },
       { opcode: 'return' },
     ])
+
+    expect(parseFormula('SUM(A1,,B2)')).toEqual({
+      kind: 'CallExpr',
+      callee: 'SUM',
+      args: [{ kind: 'CellRef', ref: 'A1' }, { kind: 'OmittedArgument' }, { kind: 'CellRef', ref: 'B2' }],
+    })
   })
 
   it('lowers exact vector MATCH and XMATCH to the direct lookup opcode only for exact shapes', () => {
