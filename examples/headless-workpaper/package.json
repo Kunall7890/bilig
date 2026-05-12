@@ -16,6 +16,7 @@
     "markdown-report": "node markdown-report.mjs",
     "named-expression": "node named-expression-update.mjs",
     "persistence": "node persistence-roundtrip.mjs",
+    "quote-approval": "node quote-approval-threshold.mjs",
     "range-readback": "node range-readback.mjs",
     "scenarios": "node revenue-scenarios.mjs",
     "sheet-inspection": "node sheet-inspection.mjs",

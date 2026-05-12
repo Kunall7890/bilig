@@ -45,6 +45,7 @@ packages through `pnpm workpaper:smoke:external`.
 | Agent tool call loop    | `npm run agent:tool-call`     | read, edit, verify, serialize, restore       |
 | Agent writeback check   | `npm run agent:verify`        | exact input edits and formula preservation   |
 | Budget variance alerts  | `npm run budget-variance`     | budget, actuals, variance, alert formulas    |
+| Quote approval          | `npm run quote-approval`      | quote total, discount, approval threshold    |
 | Subscription MRR        | `npm run subscription-mrr`    | churn, expansion, ending MRR forecast        |
 | Revenue scenarios       | `npm run scenarios`           | multi-sheet formulas and planning edits      |
 | Persistence round trip  | `npm run persistence`         | save, restore, edit, and export              |
@@ -248,6 +249,34 @@ Expected output:
     "=F2*Assumptions!B5",
     "=F2+G2"
   ],
+  "verified": true
+}
+```
+
+## Quote Approval Threshold
+
+Run the quote approval example when you want a compact sales-ops workflow that
+calculates line totals, discount amount, quote total, and an approval flag for
+discounts above the threshold:
+
+```sh
+npm run quote-approval
+```
+
+Expected output:
+
+```json
+{
+  "quoteId": "Q-2026-041",
+  "lineItems": 4,
+  "listTotal": 6980,
+  "discountAmount": 993,
+  "quoteTotal": 5987,
+  "discountPercent": 0.1423,
+  "maxLineDiscount": 0.25,
+  "approvalRequired": "Review",
+  "reviewedSku": "SETUP",
+  "firstQuoteRow": ["PRO-ANNUAL", 12, 240, 0.1, "=B2*C2", "=E2*D2", "=E2-F2", "=IF(D2>0.2,\"Review\",\"OK\")"],
   "verified": true
 }
 ```

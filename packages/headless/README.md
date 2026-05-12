@@ -97,7 +97,9 @@ pnpm --filter @bilig/headless build
   [`npm run budget-variance`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#budget-variance-alerts)
   for formula-backed budget variance alerts, or
   [`npm run subscription-mrr`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#subscription-mrr-forecast)
-  for churn, expansion, and ending MRR formulas.
+  for churn, expansion, and ending MRR formulas, or
+  [`npm run quote-approval`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#quote-approval-threshold)
+  for formula-backed quote discount approvals.
 - Run the
   [serverless WorkPaper API example](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api)
   when the workbook belongs behind an HTTP or agent-tool boundary.
@@ -128,6 +130,7 @@ The full example catalog lives in
 | Verify an agent writeback            | `npm run agent:verify`      | [Agent writeback verification](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#agent-writeback-verification) |
 | Wrap WorkPaper operations as tools   | `npm run agent:tool-call`   | [Agent tool call loop](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#agent-tool-call-loop)                 |
 | Flag budget variance rows            | `npm run budget-variance`   | [Budget variance alerts](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#budget-variance-alerts)             |
+| Check quote approval threshold       | `npm run quote-approval`    | [Quote approval threshold](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#quote-approval-threshold)         |
 | Forecast subscription MRR            | `npm run subscription-mrr`  | [Subscription MRR forecast](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#subscription-mrr-forecast)       |
 | Return workbook results over HTTP    | `npm run http-json-summary` | [HTTP JSON summary](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#http-json-summary)                       |
 | Calculate invoice totals             | `npm run invoice-totals`    | [Invoice totals](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#invoice-totals)                             |
