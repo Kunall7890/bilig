@@ -132,6 +132,29 @@ export function parseNodeJsonFileOutput(output: string): {
   }
 }
 
+export function parseNodeMarkdownReportOutput(output: string): {
+  report: string
+  verified: boolean
+} {
+  const parsed = parseJsonRecord(output, 'node Markdown report output')
+  const expectedReport = [
+    '| Metric | Value |',
+    '| --- | ---: |',
+    '| Committed MRR | $39,600 |',
+    '| Weighted pipeline MRR | $43,400 |',
+    '| Target gap | $10,400 |',
+  ].join('\n')
+
+  if (parsed.verified !== true || parsed.report !== expectedReport) {
+    throw new Error(`Unexpected node Markdown report output: ${output}`)
+  }
+
+  return {
+    report: parsed.report,
+    verified: parsed.verified,
+  }
+}
+
 export function parseNodeSnapshotImportOutput(output: string): {
   currencyLabel: string
   firstPeriod: number

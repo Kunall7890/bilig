@@ -10,6 +10,7 @@
     "http-json-summary": "node http-json-summary.mjs",
     "json-file": "node json-file-input.mjs",
     "json-records": "node json-records-input.mjs",
+    "markdown-report": "node markdown-report.mjs",
     "named-expression": "node named-expression-update.mjs",
     "persistence": "node persistence-roundtrip.mjs",
     "scenarios": "node revenue-scenarios.mjs",

@@ -333,6 +333,36 @@ Expected output:
 }
 ```
 
+## Markdown Report Output
+
+Run the Markdown report example when a service or agent needs a plain-text
+artifact for a pull request, job summary, Slack draft, or email body. It builds
+a WorkPaper workbook, reads calculated summary cells, formats the result as a
+Markdown table, verifies the exact text, and prints the table inside JSON:
+
+```sh
+npm run markdown-report
+```
+
+Expected output:
+
+```json
+{
+  "verified": true,
+  "report": "| Metric | Value |\n| --- | ---: |\n| Committed MRR | $39,600 |\n| Weighted pipeline MRR | $43,400 |\n| Target gap | $10,400 |"
+}
+```
+
+Generated report:
+
+```md
+| Metric                |   Value |
+| --------------------- | ------: |
+| Committed MRR         | $39,600 |
+| Weighted pipeline MRR | $43,400 |
+| Target gap            | $10,400 |
+```
+
 ## HTTP JSON Summary
 
 Run the HTTP JSON summary example when you want the same record-to-WorkPaper

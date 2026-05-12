@@ -39,6 +39,8 @@ pnpm --filter @bilig/headless build
   for in-process records, or
   [`npm run json-file`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-file-input)
   for records already saved on disk, or
+  [`npm run markdown-report`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#markdown-report-output)
+  for a calculated Markdown table, or
   [`npm run http-json-summary`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#http-json-summary)
   for a no-framework Node HTTP boundary.
 - Run the
@@ -140,6 +142,8 @@ Repository links:
   [`examples/headless-workpaper`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper)
 - JSON records input example:
   [`npm run json-records`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-records-input)
+- Markdown report output example:
+  [`npm run markdown-report`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#markdown-report-output)
 - serverless API route example:
   [`examples/serverless-workpaper-api`](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api)
 - Node service recipe:

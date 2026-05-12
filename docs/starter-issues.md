@@ -7,7 +7,6 @@ search indexing.
 Current starter tickets as of May 12, 2026:
 
 - [#134: docs(examples): add XLSX formula-cache roundtrip example](https://github.com/proompteng/bilig/issues/134)
-- [#143: docs(examples): add markdown report WorkPaper output example](https://github.com/proompteng/bilig/issues/143)
 - [#144: docs(examples): add formula diagnostics WorkPaper example](https://github.com/proompteng/bilig/issues/144)
 - [#145: docs(examples): add snapshot diff WorkPaper example](https://github.com/proompteng/bilig/issues/145)
 - [#146: docs(readme): add first-time contributor command checklist](https://github.com/proompteng/bilig/issues/146)

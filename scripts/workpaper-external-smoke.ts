@@ -11,6 +11,7 @@ import {
   parseNodeAgentToolCallOutput,
   parseNodeAgentVerificationOutput,
   parseNodeJsonFileOutput,
+  parseNodeMarkdownReportOutput,
   parseNodePersistenceOutput,
   parseNodeRevenueScenarioOutput,
   parseNodeSmokeOutput,
@@ -169,6 +170,10 @@ function runNodeSmoke(
     sourceRecords: number
     verified: boolean
   }
+  markdownReport: {
+    report: string
+    verified: boolean
+  }
 } {
   mkdirSync(projectDir, { recursive: true })
   mkdirSync(join(projectDir, 'fixtures'), { recursive: true })
@@ -177,6 +182,7 @@ function runNodeSmoke(
   copyFileSync(join(headlessExampleDir, 'agent-writeback-verification.mjs'), join(projectDir, 'agent-writeback-verification.mjs'))
   copyFileSync(join(headlessExampleDir, 'http-json-summary.mjs'), join(projectDir, 'http-json-summary.mjs'))
   copyFileSync(join(headlessExampleDir, 'json-file-input.mjs'), join(projectDir, 'json-file-input.mjs'))
+  copyFileSync(join(headlessExampleDir, 'markdown-report.mjs'), join(projectDir, 'markdown-report.mjs'))
   copyFileSync(join(headlessExampleDir, 'fixtures', 'opportunities.json'), join(projectDir, 'fixtures', 'opportunities.json'))
   copyFileSync(join(headlessExampleDir, 'revenue-plan.mjs'), join(projectDir, 'revenue-plan.mjs'))
   copyFileSync(join(headlessExampleDir, 'persistence-roundtrip.mjs'), join(projectDir, 'persistence-roundtrip.mjs'))
@@ -279,6 +285,7 @@ function runNodeSmoke(
   )
   const httpJsonSummary = parseNodeHttpJsonSummaryOutput(runTextCommand('node', ['http-json-summary.mjs'], { cwd: projectDir }))
   const jsonFile = parseNodeJsonFileOutput(runTextCommand('node', ['json-file-input.mjs'], { cwd: projectDir }))
+  const markdownReport = parseNodeMarkdownReportOutput(runTextCommand('node', ['markdown-report.mjs'], { cwd: projectDir }))
   const snapshotImport = parseNodeSnapshotImportOutput(runTextCommand('node', ['snapshot-import.mjs'], { cwd: projectDir }))
   const xlsxImport = parseNodeXlsxImportOutput(runTextCommand('node', ['xlsx-import.mjs'], { cwd: projectDir }))
 
@@ -287,6 +294,7 @@ function runNodeSmoke(
     agentVerification,
     httpJsonSummary,
     jsonFile,
+    markdownReport,
     persistence,
     projectDir,
     scenarios,
