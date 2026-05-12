@@ -262,6 +262,14 @@ export interface WorkbookPivotSnapshot {
 
 export interface WorkbookStyleArtifactsSnapshot {
   stylesXml: string
+  theme?: WorkbookThemeArtifactSnapshot
+}
+
+export interface WorkbookThemeArtifactSnapshot {
+  path: string
+  xml: string
+  relationship: WorkbookPackageRelationshipSnapshot
+  contentType?: string
 }
 
 export interface WorkbookSheetCellStyleIndexSnapshot {

@@ -21,6 +21,7 @@ import type {
   WorkbookStyleArtifactsSnapshot,
   SheetStyleRangeSnapshot,
 } from '@bilig/protocol'
+import { readImportedWorkbookThemeArtifact } from './xlsx-theme-artifacts.js'
 import { getZipText as getZipEntryText, readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 type ImportedCellStyle = Omit<CellStyleRecord, 'id'>
@@ -811,6 +812,7 @@ export function readImportedWorkbookStyleArtifacts(
     return zip ? getZipEntryText(zip, path) : getFileText(files, path)
   }
   const stylesXml = readPartText(stylePath)
+  const theme = readImportedWorkbookThemeArtifact(zip ?? undefined)
   const sheetPaths = workbookSheetPaths(workbook)
   const sheetArtifactsByName = new Map<string, WorkbookSheetStyleArtifactsSnapshot>()
 
@@ -827,7 +829,7 @@ export function readImportedWorkbookStyleArtifacts(
   })
 
   return {
-    ...(stylesXml ? { workbookArtifacts: { stylesXml } } : {}),
+    ...(stylesXml ? { workbookArtifacts: { stylesXml, ...(theme ? { theme } : {}) } } : {}),
     sheetArtifactsByName,
   }
 }
