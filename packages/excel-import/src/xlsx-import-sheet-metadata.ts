@@ -27,6 +27,7 @@ interface ImportedSheetMetadataInput {
   readonly legacyCommentVml?: SheetMetadataSnapshot['legacyCommentVml']
   readonly hyperlinks?: SheetMetadataSnapshot['hyperlinks']
   readonly printerSettings?: SheetMetadataSnapshot['printerSettings']
+  readonly printPageSetup?: SheetMetadataSnapshot['printPageSetup']
   readonly ignoredErrors?: SheetMetadataSnapshot['ignoredErrors']
   readonly sparklines?: SheetMetadataSnapshot['sparklines']
   readonly styleArtifacts?: SheetMetadataSnapshot['styleArtifacts']
@@ -65,6 +66,7 @@ export function buildImportedSheetMetadata(input: ImportedSheetMetadataInput): S
     ...(input.legacyCommentVml ? { legacyCommentVml: input.legacyCommentVml } : {}),
     ...(input.hyperlinks ? { hyperlinks: input.hyperlinks } : {}),
     ...(input.printerSettings ? { printerSettings: input.printerSettings } : {}),
+    ...(input.printPageSetup ? { printPageSetup: input.printPageSetup } : {}),
     ...(input.ignoredErrors ? { ignoredErrors: input.ignoredErrors } : {}),
     ...(input.sparklines ? { sparklines: input.sparklines } : {}),
     ...(input.styleArtifacts ? { styleArtifacts: input.styleArtifacts } : {}),

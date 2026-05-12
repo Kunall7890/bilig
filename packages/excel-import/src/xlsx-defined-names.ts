@@ -209,6 +209,16 @@ function parseImportedDefinedNameValue(
   return { kind: 'formula', formula: trimmed.startsWith('=') ? trimmed : `=${trimmed}` }
 }
 
+function isBuiltInPrintDefinedName(name: string): boolean {
+  const normalized = name.trim().toLocaleLowerCase('en-US')
+  return normalized === '_xlnm.print_area' || normalized === '_xlnm.print_titles'
+}
+
+function parseImportedPrintDefinedNameValue(ref: string): WorkbookDefinedNameValueSnapshot | null {
+  const trimmed = ref.trim()
+  return trimmed.length > 0 ? { kind: 'formula', formula: trimmed.startsWith('=') ? trimmed : `=${trimmed}` } : null
+}
+
 function importedDefinedNameKey(name: string, scopeSheetName: string | undefined): string {
   return `${scopeSheetName ?? '<workbook>'}\u0000${name.toUpperCase()}`
 }
@@ -237,7 +247,9 @@ export function readImportedDefinedNames(workbook: XLSX.WorkBook): {
       ignoredCount += 1
       continue
     }
-    const value = parseImportedDefinedNameValue(ref, sheetBoundsByName)
+    const value = isBuiltInPrintDefinedName(name)
+      ? parseImportedPrintDefinedNameValue(ref)
+      : parseImportedDefinedNameValue(ref, sheetBoundsByName)
     if (!value) {
       ignoredCount += 1
       continue

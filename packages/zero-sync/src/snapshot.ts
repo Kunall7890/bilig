@@ -309,6 +309,9 @@ function withSheetMetadataFallback(
   if (fallback?.viewState) {
     next.viewState = fallback.viewState
   }
+  if (fallback?.printPageSetup) {
+    next.printPageSetup = fallback.printPageSetup
+  }
   if (fallback?.merges) {
     next.merges = fallback.merges
   }

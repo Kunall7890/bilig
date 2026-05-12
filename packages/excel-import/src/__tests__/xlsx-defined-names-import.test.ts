@@ -42,18 +42,9 @@ describe('XLSX defined name import', () => {
 
     expect(imported.warnings).toEqual([])
     expect(imported.snapshot.workbook.metadata?.definedNames).toEqual([
-      { name: '_xlnm.Print_Area', scopeSheetName: 'Summary Info', value: printAreaValue('A1', 'F5') },
-      { name: '_xlnm.Print_Titles', scopeSheetName: 'Summary Info', value: printAreaValue('A4', 'F5') },
+      { name: '_xlnm.Print_Area', scopeSheetName: 'Summary Info', value: { kind: 'formula', formula: "='Summary Info'!$A$1:$F$5" } },
+      { name: '_xlnm.Print_Titles', scopeSheetName: 'Summary Info', value: { kind: 'formula', formula: "='Summary Info'!$4:$5" } },
       { name: 'AgenLength', value: { kind: 'formula', formula: '=#REF!' } },
     ])
   })
 })
-
-function printAreaValue(startAddress: string, endAddress: string) {
-  return {
-    kind: 'range-ref',
-    sheetName: 'Summary Info',
-    startAddress,
-    endAddress,
-  }
-}

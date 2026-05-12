@@ -858,6 +858,15 @@ export interface WorkbookSheetViewStateSnapshot {
   sheetViewsXml: string
 }
 
+export interface WorkbookSheetPrintPageSetupSnapshot {
+  printOptionsXml?: string
+  pageMarginsXml?: string
+  pageSetupXml?: string
+  headerFooterXml?: string
+  rowBreaksXml?: string
+  colBreaksXml?: string
+}
+
 export interface WorkbookMetadataSnapshot {
   properties?: WorkbookPropertySnapshot[]
   documentPropertyArtifacts?: WorkbookDocumentPropertiesArtifactsSnapshot
@@ -923,6 +932,7 @@ export interface SheetMetadataSnapshot {
   richTextArtifacts?: WorkbookSheetRichTextArtifactsSnapshot
   threadedCommentArtifacts?: WorkbookSheetThreadedCommentArtifactsSnapshot
   viewState?: WorkbookSheetViewStateSnapshot
+  printPageSetup?: WorkbookSheetPrintPageSetupSnapshot
 }
 
 export interface WorkbookSnapshot {

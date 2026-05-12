@@ -27,6 +27,7 @@ import { addExportWorksheetDimensionsToXlsxBytes, applyExportWorksheetDimensions
 import { addExportFiltersToXlsxBytes } from './xlsx-filters.js'
 import { addExportFreezePanesToXlsxBytes } from './xlsx-freeze-panes.js'
 import { addExportPivotsToXlsxBytes } from './xlsx-pivots.js'
+import { addExportPrintPageSetupToXlsxBytes } from './xlsx-print-page-setup.js'
 import { addExportProtectedRangesToXlsxBytes } from './xlsx-protected-ranges.js'
 import { addExportRichTextArtifactsToXlsxBytes } from './xlsx-rich-text-artifacts.js'
 import { addExportSheetProtectionsToXlsxBytes } from './xlsx-sheet-protection.js'
@@ -954,8 +955,9 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
   const dataModelArtifactBytes = addExportDataModelArtifactsToXlsxBytes(arrayFormulaBytes, snapshot)
   const threadedCommentArtifactBytes = addExportThreadedCommentArtifactsToXlsxBytes(dataModelArtifactBytes, snapshot)
   const richTextArtifactBytes = addExportRichTextArtifactsToXlsxBytes(threadedCommentArtifactBytes, snapshot)
-  return addExportCellMetadataToXlsxBytes(
-    addExportPrinterSettingsToXlsxBytes(addExportLegacyCommentVmlToXlsxBytes(richTextArtifactBytes, snapshot), snapshot),
+  const printPageSetupBytes = addExportPrintPageSetupToXlsxBytes(
+    addExportLegacyCommentVmlToXlsxBytes(richTextArtifactBytes, snapshot),
     snapshot,
   )
+  return addExportCellMetadataToXlsxBytes(addExportPrinterSettingsToXlsxBytes(printPageSetupBytes, snapshot), snapshot)
 }

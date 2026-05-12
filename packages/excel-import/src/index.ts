@@ -29,6 +29,7 @@ import { readImportedWorkbookFreezePanes } from './xlsx-freeze-panes.js'
 import { readImportedWorkbookIgnoredErrors } from './xlsx-ignored-errors.js'
 import { buildMergeEntries } from './xlsx-merge-entries.js'
 import { readImportedWorkbookPivots } from './xlsx-pivots.js'
+import { readImportedWorkbookPrintPageSetup } from './xlsx-print-page-setup.js'
 import { readImportedWorkbookPrinterSettings } from './xlsx-printer-settings.js'
 import { readImportedWorkbookProtectedRanges } from './xlsx-protected-ranges.js'
 import { readImportedWorkbookRichTextArtifacts } from './xlsx-rich-text-artifacts.js'
@@ -301,6 +302,7 @@ function importSheetJsWorkbook(
   }
   const importedLegacyCommentVmlBySheet = workbookZip ? readImportedWorkbookLegacyCommentVml(workbookZip, workbook.SheetNames) : new Map()
   const importedPrinterSettingsBySheet = workbookZip ? readImportedWorkbookPrinterSettings(workbookZip, workbook.SheetNames) : new Map()
+  const importedPrintPageSetupBySheet = workbookZip ? readImportedWorkbookPrintPageSetup(workbookZip, workbook.SheetNames) : new Map()
   const importedFiltersBySheet = workbookZip ? readImportedWorkbookFilters(workbookZip, workbook.SheetNames) : new Map()
   const importedFreezePanesBySheet = workbookZip ? readImportedWorkbookFreezePanes(workbookZip, workbook.SheetNames) : new Map()
   const importedSheetTabColorsBySheet = workbookZip ? readImportedWorkbookSheetTabColors(workbookZip, workbook.SheetNames) : new Map()
@@ -513,6 +515,7 @@ function importSheetJsWorkbook(
     const importedConditionalFormats = importedConditionalFormatsBySheet.get(sheetName)
     const importedConditionalFormatArtifacts = importedConditionalFormatArtifactsBySheet.get(sheetName)
     const importedPrinterSettings = importedPrinterSettingsBySheet.get(sheetName)
+    const importedPrintPageSetup = importedPrintPageSetupBySheet.get(sheetName)
     const importedCellMetadataRefs = buildImportedCellMetadataReferenceSnapshots(importedCellMetadata?.refsBySheet.get(sheetName), cells)
     const importedRichTextArtifacts = importedRichTextArtifactsBySheet.get(sheetName)
     const importedThreadedCommentArtifactsForSheet = importedThreadedCommentArtifacts?.sheetArtifactsByName.get(sheetName)
@@ -548,6 +551,7 @@ function importSheetJsWorkbook(
       legacyCommentVml: importedLegacyCommentVml,
       hyperlinks: importedHyperlinks,
       printerSettings: importedPrinterSettings,
+      printPageSetup: importedPrintPageSetup,
       cellMetadataRefs: importedCellMetadataRefs,
       richTextArtifacts: importedRichTextArtifacts,
       threadedCommentArtifacts: importedThreadedCommentArtifactsForSheet,
