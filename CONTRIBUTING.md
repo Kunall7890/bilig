@@ -13,7 +13,7 @@ they change.
   queue.
 - If this is your first `bilig` pull request, use
   [`docs/new-contributor-guide.md`](docs/new-contributor-guide.md) for the
-  shortest setup, code-map, and PR-proof path.
+  shortest setup, code-map, and first-time command checklist.
 - If you are reporting a formula or workbook bug, include the exact formula,
   workbook shape, expected result, actual result, and the smallest command or
   fixture that reproduces it.
@@ -48,6 +48,8 @@ pnpm dev:web-local
 
 For targeted changes, run the smallest useful gate first:
 
+- Docs or example-only starter tasks:
+  [`docs/new-contributor-guide.md#first-time-command-checklist`](docs/new-contributor-guide.md#first-time-command-checklist)
 - Formula or WorkPaper behavior: `pnpm test:correctness:core`
 - Formula package changes: `pnpm --filter @bilig/formula build`
 - Headless package changes: `pnpm --filter @bilig/headless build`

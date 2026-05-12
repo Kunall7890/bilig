@@ -229,6 +229,13 @@ for (const [path, content] of [
   requireIncludes(content, 'https://github.com/proompteng/bilig/issues?q=is%3Aissue%20state%3Aopen%20label%3Afirst-timers-only', path)
 }
 
+requireIncludes(newContributorGuide, '## First-Time Command Checklist', 'docs/new-contributor-guide.md')
+requireIncludes(newContributorGuide, 'pnpm docs:discovery:check', 'docs/new-contributor-guide.md')
+requireIncludes(newContributorGuide, 'pnpm format:check', 'docs/new-contributor-guide.md')
+requireIncludes(newContributorGuide, 'pnpm lint', 'docs/new-contributor-guide.md')
+requireIncludes(starterIssues, 'new-contributor-guide.md#first-time-command-checklist', 'docs/starter-issues.md')
+requireIncludes(contributing, 'new-contributor-guide.md#first-time-command-checklist', 'CONTRIBUTING.md')
+
 for (const [path, content] of [
   ['README.md', readme],
   ['packages/headless/README.md', headlessReadme],
@@ -266,7 +273,6 @@ for (const [path, content] of [
 
 for (const required of [
   'https://github.com/proompteng/bilig/issues/134',
-  'https://github.com/proompteng/bilig/issues/146',
   'https://github.com/proompteng/bilig/issues/148',
   'https://github.com/proompteng/bilig/issues/149',
   'https://github.com/proompteng/bilig/issues/150',
@@ -301,6 +307,7 @@ for (const closedIssue of [
   '143',
   '144',
   '145',
+  '146',
   '147',
   '160',
   '161',

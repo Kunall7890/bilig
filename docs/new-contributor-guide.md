@@ -20,6 +20,7 @@ A useful claim comment says:
 I can take this.
 
 Plan:
+
 - files I expect to touch:
 - validation command:
 - question or assumption:
@@ -47,6 +48,36 @@ Then run the narrowest check that matches the change:
 
 Run `pnpm run ci` before asking for review when the change touches runtime
 behavior, generated artifacts, benchmarks, browser flows, or multiple packages.
+
+## First-Time Command Checklist
+
+For a docs-only or example-only starter issue, run the command named in the
+issue first. That might be a local example command such as:
+
+```bash
+cd examples/headless-workpaper
+npm install
+npm run snapshot-diff
+```
+
+Then run the repo checks that usually cover small documentation and example
+patches:
+
+```bash
+pnpm docs:discovery:check
+pnpm format:check
+pnpm lint
+```
+
+If your example changes the packaged WorkPaper example set, also run:
+
+```bash
+pnpm workpaper:smoke:external
+```
+
+If the patch changes package behavior, generated files, benchmarks, browser
+flows, or more than one package, run the narrower package test named in the
+issue and then `pnpm run ci` before asking for review.
 
 ## Know Where To Look
 

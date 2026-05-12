@@ -7,7 +7,6 @@ search indexing.
 Current starter tickets as of May 12, 2026:
 
 - [#134: docs(examples): add XLSX formula-cache roundtrip example](https://github.com/proompteng/bilig/issues/134)
-- [#146: docs(readme): add first-time contributor command checklist](https://github.com/proompteng/bilig/issues/146)
 - [#148: docs(examples): add range readback WorkPaper example](https://github.com/proompteng/bilig/issues/148)
 - [#149: docs(examples): add sheet inspection WorkPaper example](https://github.com/proompteng/bilig/issues/149)
 - [#150: docs(examples): add headless example command index](https://github.com/proompteng/bilig/issues/150)
@@ -45,7 +44,8 @@ For a first patch, keep the pull request focused on the issue's acceptance
 proof. Include the command you ran, mention the issue number, and open a draft
 pull request early if any requirement is unclear. The
 [new contributor guide](new-contributor-guide.md) gives the shortest setup,
-code-map, and PR-proof path.
+code-map, and
+[first-time command checklist](new-contributor-guide.md#first-time-command-checklist).
 
 Useful filters:
 
