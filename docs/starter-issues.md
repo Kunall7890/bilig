@@ -28,8 +28,6 @@ Current starter tickets as of May 12, 2026:
 - [#160: docs(headless): add WorkPaper API read/write cheat sheet](https://github.com/proompteng/bilig/issues/160)
 - [#162: docs(benchmarks): add WorkPaper benchmark reproduction notes](https://github.com/proompteng/bilig/issues/162)
 - [#163: docs(agent): add coding-agent workbook automation recipe](https://github.com/proompteng/bilig/issues/163)
-- [#186: docs(serverless): add Firebase Functions HTTPS adapter](https://github.com/proompteng/bilig/issues/186)
-
 The list intentionally excludes closed issues and broad corpus/parity epics. Add
 new starter tickets only when the expected patch can stay small, has a clear
 acceptance test, and does not require understanding the whole workbook runtime.

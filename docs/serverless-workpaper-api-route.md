@@ -272,6 +272,9 @@ Keep the exported `handleWorkPaperRequest()` function as the stable boundary:
 - In NestJS, adapt the Express request and response inside a thin controller.
 - In Elysia, adapt the route context's web request and parsed body, then return
   the shared `Response`.
+- In Firebase Functions, adapt the HTTPS function request into a web-standard
+  `Request`, then write the shared `Response` through the Express-style
+  response object.
 - In Hono, Fastify, or Express, adapt the framework request into a web-standard
   `Request`, then return or write the `Response`.
 - Persist `state.workbookJson` in your durable store instead of module memory
@@ -1465,6 +1468,89 @@ curl -s -X POST http://localhost:8888/api/workpaper/revenue \
 Use the durable storage variant above for deployed Netlify Functions. Function
 instances can be short-lived or scaled out, so module memory is only appropriate
 for a local smoke test.
+
+## Firebase Functions HTTPS Adapter
+
+Firebase HTTPS functions receive an Express-style request and response object.
+Keep Firebase at the edge of the route: convert the incoming function request to
+a web-standard `Request`, pass it to the shared WorkPaper handler, then copy the
+returned `Response` back to Firebase.
+
+Create `functions/workpaper-route.js` from the shared route code above:
+
+- keep the `@bilig/headless` imports
+- keep `state`, `handleWorkPaperRequest()`, and every workbook helper
+- omit `createServer()`, `toWebRequest()`, and the local Node adapter block
+
+Then create `functions/index.js`:
+
+```js
+import { onRequest } from 'firebase-functions/v2/https'
+import { handleWorkPaperRequest } from './workpaper-route.js'
+
+export const workpaper = onRequest(async (request, response) => {
+  const routeResponse = await handleWorkPaperRequest(toWebRequest(request))
+  await writeFirebaseResponse(response, routeResponse)
+})
+
+function toWebRequest(request) {
+  const protocol = request.get('x-forwarded-proto') ?? request.protocol ?? 'https'
+  const host = request.get('host') ?? 'localhost'
+  const url = new URL(request.originalUrl ?? request.url ?? '/', `${protocol}://${host}`)
+  url.pathname = stripFunctionNamePrefix(url.pathname, 'workpaper')
+
+  const headers = new Headers()
+  for (const [name, value] of Object.entries(request.headers)) {
+    if (Array.isArray(value)) {
+      for (const item of value) headers.append(name, item)
+    } else if (value !== undefined) {
+      headers.set(name, String(value))
+    }
+  }
+
+  return new Request(url, {
+    method: request.method,
+    headers,
+    body:
+      request.method === 'GET' || request.method === 'HEAD'
+        ? undefined
+        : request.rawBody ?? JSON.stringify(request.body ?? {}),
+  })
+}
+
+function stripFunctionNamePrefix(pathname, functionName) {
+  const prefix = `/${functionName}`
+  return pathname === prefix || pathname.startsWith(`${prefix}/`)
+    ? pathname.slice(prefix.length) || '/'
+    : pathname
+}
+
+async function writeFirebaseResponse(response, routeResponse) {
+  routeResponse.headers.forEach((value, name) => {
+    response.set(name, value)
+  })
+  response.status(routeResponse.status)
+  response.send(Buffer.from(await routeResponse.arrayBuffer()))
+}
+```
+
+When the function is called directly, include the exported function name before
+the WorkPaper route path:
+
+```sh
+curl -s https://REGION-PROJECT.cloudfunctions.net/workpaper/api/workpaper/summary
+curl -s -X POST https://REGION-PROJECT.cloudfunctions.net/workpaper/api/workpaper/revenue \
+  -H 'content-type: application/json' \
+  -d '{"records":[{"region":"West","customers":20,"arpa":1200},{"region":"East","customers":30,"arpa":250},{"region":"Central","customers":18,"arpa":300},{"region":"North","customers":65,"arpa":180}]}'
+```
+
+If Firebase Hosting rewrites `/api/workpaper/**` to the function, the same
+adapter also works without the `workpaper` prefix because it only strips the
+prefix when Firebase includes it in the request path.
+
+Use the durable storage variant above for deployed Firebase functions. Module
+memory is fine for a local emulator smoke test, but it is not a durable workbook
+store across cold starts, scaled instances, or function redeploys.
 
 ## Validation
 

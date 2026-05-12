@@ -111,6 +111,8 @@ module memory.
 - In Netlify Functions, return `handleWorkPaperRequest(request)` from the
   default export, or use the Lambda-compatible adapter for named `handler`
   functions.
+- In Firebase Functions, adapt the HTTPS request into a web-standard `Request`,
+  then write the returned `Response` through the function response object.
 - Replace the in-memory `state.workbookJson` with your durable store when the
   workbook needs to survive cold starts or multiple instances.
 
