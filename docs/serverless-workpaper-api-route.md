@@ -270,6 +270,8 @@ Keep the exported `handleWorkPaperRequest()` function as the stable boundary:
 - In Nitro, wrap it with H3's `fromWebHandler()` and export that from
   method-specific route files.
 - In NestJS, adapt the Express request and response inside a thin controller.
+- In Elysia, adapt the route context's web request and parsed body, then return
+  the shared `Response`.
 - In Hono, Fastify, or Express, adapt the framework request into a web-standard
   `Request`, then return or write the `Response`.
 - Persist `state.workbookJson` in your durable store instead of module memory
@@ -809,6 +811,57 @@ curl -s -X POST http://localhost:3000/api/workpaper/revenue \
 Use the durable storage variant above for deployed Bun services. The local
 example's module memory is intentionally small, but it should not be treated as
 the workbook store for multiple processes, containers, or regions.
+
+## Elysia Route Adapter
+
+Elysia route handlers receive a context object that includes the web-standard
+`request` and a parsed `body`. Keep the Elysia layer as a small bridge: rebuild
+the WorkPaper request at the route edge, then return the shared `Response`
+directly.
+
+```js
+import { Elysia } from 'elysia'
+import { handleWorkPaperRequest } from './workpaper-route.js'
+
+const app = new Elysia()
+  .get('/api/workpaper/summary', ({ request }) => {
+    return handleWorkPaperRequest(toWorkPaperRequest(request))
+  })
+  .post('/api/workpaper/revenue', ({ request, body }) => {
+    return handleWorkPaperRequest(toWorkPaperRequest(request, body))
+  })
+  .listen(3000)
+
+console.log(`WorkPaper API route listening on ${app.server?.url}`)
+
+function toWorkPaperRequest(request, body) {
+  return new Request(request.url, {
+    method: request.method,
+    headers: request.headers,
+    body:
+      request.method === 'GET' || request.method === 'HEAD'
+        ? undefined
+        : JSON.stringify(body ?? {}),
+  })
+}
+```
+
+The same route paths apply when the Elysia app is running locally:
+
+```sh
+curl -s http://localhost:3000/api/workpaper/summary
+curl -s -X POST http://localhost:3000/api/workpaper/revenue \
+  -H 'content-type: application/json' \
+  -d '{"records":[{"region":"West","customers":20,"arpa":1200},{"region":"East","customers":30,"arpa":250},{"region":"Central","customers":18,"arpa":300},{"region":"North","customers":65,"arpa":180}]}'
+```
+
+This adapter assumes Elysia has parsed the JSON request body before the handler
+runs. If a route accepts raw uploads or signed webhooks, preserve the raw request
+body instead of serializing `body`.
+
+Use the durable storage variant above for deployed Elysia services. Module
+memory is fine for a local smoke test, but it is not a durable workbook store
+across restarts, scale-out instances, or background workers.
 
 ## NestJS Controller Adapter
 

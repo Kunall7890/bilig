@@ -287,7 +287,6 @@ for (const required of [
   'https://github.com/proompteng/bilig/issues/160',
   'https://github.com/proompteng/bilig/issues/162',
   'https://github.com/proompteng/bilig/issues/163',
-  'https://github.com/proompteng/bilig/issues/184',
   'https://github.com/proompteng/bilig/issues/186',
 ]) {
   requireIncludes(starterIssues, required, 'docs/starter-issues.md')
@@ -316,6 +315,7 @@ for (const closedIssue of [
   '181',
   '182',
   '183',
+  '184',
   '185',
 ]) {
   if (starterIssues.includes(`https://github.com/proompteng/bilig/issues/${closedIssue}`)) {

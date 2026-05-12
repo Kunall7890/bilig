@@ -92,6 +92,8 @@ module memory.
   files.
 - In Bun, return `handleWorkPaperRequest(request)` from the `Bun.serve()`
   `fetch` handler.
+- In Elysia, adapt the route context's web request and parsed body, then return
+  the shared `Response`.
 - In NestJS, adapt the Express request into a web-standard `Request`, then copy
   the returned `Response` back through `@Res()`.
 - In Fastify, adapt the framework request into a web-standard `Request`, then
