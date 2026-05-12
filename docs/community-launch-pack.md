@@ -23,18 +23,21 @@ Latest public snapshot on May 8, 2026:
 - Contributor funnel: `18` open `good first issue`, `18` open
   `first-timers-only`, and `18` open `help wanted` issues
 
-Latest execution snapshot on May 12, 2026:
+Latest execution snapshot on May 12, 2026 at `20:38:42Z`:
 
-- GitHub surface: public repo, `24` stars, `3` forks, `48` open issues
-- npm surface: `@bilig/headless@0.11.12`, MIT, TypeScript types, npm API
+- GitHub surface: public repo, `24` stars, `3` forks, `31` open issues
+- npm surface: `@bilig/headless@0.11.18`, MIT, TypeScript types, npm API
   downloads: `13,427` last week and `24,931` last month
-- Contributor funnel: `30` open `good first issue`, `30` open
-  `first-timers-only`, and `30` open `help wanted` issues
-- GitHub traffic: `393` views from `159` uniques, `18,287` clones from
-  `1,907` uniques, with visible referrers from Hacker News, X, Google,
-  the project site, Reddit, and LibHunt
-- Top visible repository paths: overview, issues, pull requests,
-  `examples/headless-workpaper`, Discussions, contributors, and stargazers
+- Contributor funnel: `20` open `good first issue`, `20` open
+  `first-timers-only`, and `20` open `help wanted` issues
+- External activity: `1` open external issue, `22` external issues opened in
+  the last seven days, and `4` external pull requests opened in the last seven
+  days
+- Current shell traffic access: unavailable without a repository traffic token
+- Earlier May 12 token-backed traffic showed visible referrers from Hacker
+  News, X, Google, the project site, Reddit, and LibHunt, with top paths
+  including overview, issues, pull requests, `examples/headless-workpaper`,
+  Discussions, contributors, and stargazers
 
 ## Goal Text
 
