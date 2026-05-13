@@ -27,8 +27,18 @@ interface WorkPaperMcpCapabilities {
 
 interface WorkPaperMcpToolDefinition {
   name: 'read_workpaper_summary' | 'set_workpaper_input_cell'
+  title: string
   description: string
   inputSchema: JsonObject
+  annotations: WorkPaperMcpToolAnnotations
+}
+
+interface WorkPaperMcpToolAnnotations {
+  title: string
+  readOnlyHint: boolean
+  destructiveHint: boolean
+  idempotentHint: boolean
+  openWorldHint: false
 }
 
 interface WorkPaperMcpToolsListResult {
@@ -164,6 +174,7 @@ function createWorkPaperMcpToolServer(workbook: WorkPaper): WorkPaperMcpToolServ
   const toolDefinitions: WorkPaperMcpToolDefinition[] = [
     {
       name: 'read_workpaper_summary',
+      title: 'Read WorkPaper Summary',
       description: 'Read computed WorkPaper summary values for a small range.',
       inputSchema: {
         type: 'object',
@@ -176,9 +187,17 @@ function createWorkPaperMcpToolServer(workbook: WorkPaper): WorkPaperMcpToolServ
         },
         additionalProperties: false,
       },
+      annotations: {
+        title: 'Read WorkPaper Summary',
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
     },
     {
       name: 'set_workpaper_input_cell',
+      title: 'Set WorkPaper Input Cell',
       description: 'Set one validated WorkPaper input cell and return formula readback.',
       inputSchema: {
         type: 'object',
@@ -197,6 +216,13 @@ function createWorkPaperMcpToolServer(workbook: WorkPaper): WorkPaperMcpToolServ
           },
         },
         additionalProperties: false,
+      },
+      annotations: {
+        title: 'Set WorkPaper Input Cell',
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
       },
     },
   ]

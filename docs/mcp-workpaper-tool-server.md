@@ -122,9 +122,15 @@ pnpm docs:discovery:check
 The script implements two JSON-RPC methods shaped around the MCP tool model:
 
 - `tools/list` returns `read_workpaper_summary` and
-  `set_workpaper_input_cell` with JSON Schema inputs.
+  `set_workpaper_input_cell` with JSON Schema inputs and MCP tool annotations.
 - `tools/call` invokes the requested WorkPaper tool and returns text content
   plus structured formula readback.
+
+The annotations are explicit for directory reviewers and cautious MCP clients:
+`read_workpaper_summary` is read-only, idempotent, and closed-world.
+`set_workpaper_input_cell` mutates the local WorkPaper state, is idempotent for
+the same cell/value arguments, and is closed-world rather than a network or
+filesystem tool.
 
 ### MCP Stdio Troubleshooting
 
@@ -185,8 +191,8 @@ Expose only the minimum useful surface first:
 3. Everything outside that boundary stays in your MCP host: auth, transport,
    rate limits, logging, and user approval policy.
 
-The official MCP specification describes tool discovery through `tools/list`
-and tool invocation through `tools/call`, with input schemas on each tool:
+The official MCP specification describes tool discovery through `tools/list`,
+tool invocation through `tools/call`, input schemas, and tool annotations:
 <https://modelcontextprotocol.io/specification/2025-06-18/server/tools>.
 
 ## Files To Inspect

@@ -9,6 +9,14 @@ describe('headless WorkPaper MCP tool server contract', () => {
     expect(output.listResponse.result.tools).toEqual([
       expect.objectContaining({
         name: 'read_workpaper_summary',
+        title: 'Read WorkPaper Summary',
+        annotations: {
+          title: 'Read WorkPaper Summary',
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
         inputSchema: expect.objectContaining({
           type: 'object',
           properties: expect.objectContaining({
@@ -18,6 +26,14 @@ describe('headless WorkPaper MCP tool server contract', () => {
       }),
       expect.objectContaining({
         name: 'set_workpaper_input_cell',
+        title: 'Set WorkPaper Input Cell',
+        annotations: {
+          title: 'Set WorkPaper Input Cell',
+          readOnlyHint: false,
+          destructiveHint: true,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
         inputSchema: expect.objectContaining({
           type: 'object',
           required: ['sheetName', 'address', 'value'],

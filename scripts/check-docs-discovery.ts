@@ -531,6 +531,17 @@ requireIncludes(
 )
 requireIncludes(mcpWorkPaperToolServerDoc, 'tools/list', 'docs/mcp-workpaper-tool-server.md')
 requireIncludes(mcpWorkPaperToolServerDoc, 'tools/call', 'docs/mcp-workpaper-tool-server.md')
+requireIncludes(mcpWorkPaperToolServerDoc, 'MCP tool annotations', 'docs/mcp-workpaper-tool-server.md')
+requireIncludes(
+  mcpWorkPaperToolServerDoc,
+  '`read_workpaper_summary` is read-only, idempotent, and closed-world',
+  'docs/mcp-workpaper-tool-server.md',
+)
+requireIncludes(
+  mcpWorkPaperToolServerDoc,
+  '`set_workpaper_input_cell` mutates the local WorkPaper state, is idempotent',
+  'docs/mcp-workpaper-tool-server.md',
+)
 requireIncludes(
   mcpWorkPaperToolServerDoc,
   'https://modelcontextprotocol.io/specification/2025-06-18/server/tools',
@@ -830,6 +841,8 @@ requireIncludes(headlessExampleReadme, 'npm run agent:mcp-tools', 'examples/head
 requireIncludes(headlessExampleReadme, 'npm run agent:mcp-stdio', 'examples/headless-workpaper/README.md')
 requireIncludes(headlessExampleReadme, '## MCP Tool Server Shape', 'examples/headless-workpaper/README.md')
 requireIncludes(headlessExampleReadme, '## MCP Stdio Server', 'examples/headless-workpaper/README.md')
+requireIncludes(headlessExampleReadme, 'annotations.', 'examples/headless-workpaper/README.md')
+requireIncludes(headlessExampleReadme, 'read tool is annotated as read-only', 'examples/headless-workpaper/README.md')
 requireIncludes(
   headlessExamplePackage,
   '"agent:framework-adapters": "tsx agent-framework-adapters.ts"',

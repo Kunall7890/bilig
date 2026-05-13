@@ -74,6 +74,28 @@ describe('WorkPaper MCP server', () => {
 
     assertWorkPaperMcpDemoOutput(output)
     expect(output.listResponse.result.tools.map((tool) => tool.name)).toEqual(['read_workpaper_summary', 'set_workpaper_input_cell'])
+    expect(output.listResponse.result.tools).toEqual([
+      expect.objectContaining({
+        title: 'Read WorkPaper Summary',
+        annotations: {
+          title: 'Read WorkPaper Summary',
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
+      }),
+      expect.objectContaining({
+        title: 'Set WorkPaper Input Cell',
+        annotations: {
+          title: 'Set WorkPaper Input Cell',
+          readOnlyHint: false,
+          destructiveHint: true,
+          idempotentHint: true,
+          openWorldHint: false,
+        },
+      }),
+    ])
     expect(output.writeResponse.result.structuredContent).toMatchObject({
       editedCell: 'Inputs!B3',
       after: {

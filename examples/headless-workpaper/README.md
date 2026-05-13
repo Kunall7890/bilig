@@ -191,9 +191,14 @@ npm run agent:mcp-tools
 The script exposes the same WorkPaper functions through two JSON-RPC methods:
 
 - `tools/list` returns `read_workpaper_summary` and
-  `set_workpaper_input_cell` with JSON Schema input definitions.
+  `set_workpaper_input_cell` with JSON Schema input definitions and MCP tool
+  annotations.
 - `tools/call` runs the selected tool and returns both text content and
   structured output for computed readback.
+
+The read tool is annotated as read-only, idempotent, and closed-world. The
+write tool is annotated as mutating local WorkPaper state, idempotent for the
+same cell/value arguments, and closed-world.
 
 Expected write output:
 
