@@ -6,8 +6,8 @@ search indexing.
 
 Current starter queue as of May 13, 2026:
 
-- 88 open `first-timers-only` issues.
-- 80 issues are generally available for a new contributor to claim.
+- 90 open `first-timers-only` issues.
+- 82 issues are generally available for a new contributor to claim.
 - 8 issues already have active pull requests; comment before duplicating one of
   those patches.
 
@@ -98,6 +98,11 @@ Current starter queue as of May 13, 2026:
 - [#158: docs(contributor): add fuzz replay walkthrough](https://github.com/proompteng/bilig/issues/158)
 - [#198: docs(contributor): add first issue local verification matrix](https://github.com/proompteng/bilig/issues/198)
 - [#256: test(docs): enforce public snippets stay TypeScript-first](https://github.com/proompteng/bilig/issues/256)
+
+### Public Site And Distribution Docs
+
+- [#328: docs(site): add social preview checklist to the contributor guide](https://github.com/proompteng/bilig/issues/328)
+- [#329: docs(site): add OpenGraph cache-bust note to the launch pack](https://github.com/proompteng/bilig/issues/329)
 
 ### Headless Package, Benchmarks, And Troubleshooting
 

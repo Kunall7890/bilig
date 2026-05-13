@@ -533,8 +533,10 @@ Latest JavaScript-library comparison starter snapshot on May 13, 2026:
 - Replacement starter issues `#323` through `#327` now cover verification
   transcripts, LangGraph state handoff, CopilotKit UI result copy, and
   Cloudflare Agents persistence notes for the same framework pages.
-- The public growth snapshot now records `88` open `first-timers-only`,
-  `good first issue`, and `help wanted` issues, with `80` generally available
+- Starter issues `#328` and `#329` cover social preview contributor guidance
+  and OpenGraph cache-busting notes for public distribution work.
+- The public growth snapshot now records `90` open `first-timers-only`,
+  `good first issue`, and `help wanted` issues, with `82` generally available
   and `8` already in review.
 
 Latest agent-framework search-intent snapshot on May 13, 2026:

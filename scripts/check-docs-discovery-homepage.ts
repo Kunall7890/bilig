@@ -48,7 +48,7 @@ export function requireHomepageDiscovery(index: string, siteCss: string): void {
       '<strong>The headless package is public on npm.</strong>',
       '<strong>Run the benchmark from the repo.</strong>',
       '<span>Contribute</span>',
-      '<strong>88 small issues are open for first pull requests.</strong>',
+      '<strong>90 small issues are open for first pull requests.</strong>',
       'Speed claims are cheap. Run the benchmark.',
       'The current run is checked in: 46 of 46 comparable mean rows ahead of HyperFormula',
       'plus the p95 row where bilig loses.',

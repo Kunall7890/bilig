@@ -284,7 +284,7 @@ including its p95 caveat.
   https://github.com/proompteng/bilig/blob/main/docs/starter-issues.md
 - community growth snapshot:
   https://github.com/proompteng/bilig/blob/main/docs/community-growth-snapshot.md
-- current starter queue snapshot: 88 open first-timers-only issues, 80 generally available, 8 already in review.
+- current starter queue snapshot: 90 open first-timers-only issues, 82 generally available, 8 already in review.
 - current small example issue: xlsx formula-cache roundtrip:
   https://github.com/proompteng/bilig/issues/134
 - current small docs issue: WorkPaper agent tool result contract:
