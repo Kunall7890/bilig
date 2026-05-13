@@ -122,7 +122,7 @@
       }
     </script>
     <link rel="stylesheet" href="./assets/fonts.css?v=2026-05-13-1" />
-    <link rel="stylesheet" href="./assets/site.css?v=2026-05-13-22" />
+    <link rel="stylesheet" href="./assets/site.css?v=2026-05-13-23" />
     <link rel="stylesheet" href="./assets/product-demo.css?v=2026-05-13-1" />
   </head>
   <body>
@@ -491,67 +491,53 @@ console.log({ before, after, bytes: saved.length, verified: before === <span cla
 
       <section id="proof" class="section proof-section" aria-labelledby="proof-title">
         <div class="wrap">
-          <div class="section-head proof-head">
-            <div>
-              <p class="kicker">Proof</p>
-              <h2 id="proof-title">Run the benchmark yourself.</h2>
-            </div>
+          <div class="proof-intro">
+            <p class="kicker">Evidence</p>
+            <h2 id="proof-title">The benchmark is checked in.</h2>
             <p>
-              Current checked run: 46 of 46 comparable mean-latency rows are faster than the HyperFormula comparison. One p95 row is slower.
-              The command and source file are below.
+              Clone the repo and run the same command. The current artifact shows 46 of 46 comparable mean rows ahead of HyperFormula, with
+              one slower p95 row called out by name.
             </p>
           </div>
 
-          <div class="proof-layout">
-            <div class="proof-ledger" aria-label="Benchmark details">
-              <div class="proof-run">
-                <span>Run</span>
-                <code>pnpm workpaper:bench:competitive:check</code>
-                <p>Same command used to check the public artifact.</p>
-              </div>
-              <dl class="proof-stats">
-                <div>
-                  <dt>Mean rows</dt>
-                  <dd>46 of 46</dd>
-                  <p>Faster on every comparable mean-latency row in this run.</p>
-                </div>
-                <div>
-                  <dt>p95 ratio</dt>
-                  <dd>0.536x</dd>
-                  <p>Aggregate p95 ratio. Lower is faster.</p>
-                </div>
-                <div>
-                  <dt>Known miss</dt>
-                  <dd><code>lookup-approximate-duplicates</code></dd>
-                  <p>That p95 row is slower at 1.043x.</p>
-                </div>
-              </dl>
-              <div class="proof-artifact">
-                <span>Artifact</span>
-                <code>packages/benchmarks/baselines/workpaper-vs-hyperformula.json</code>
-              </div>
+          <div class="proof-board" aria-label="Benchmark evidence">
+            <div class="proof-command">
+              <span>command</span>
+              <code>pnpm workpaper:bench:competitive:check</code>
             </div>
-            <aside class="proof-notes" aria-label="Benchmark notes">
-              <h3>Do not use this as a blanket speed claim.</h3>
-              <p>
-                This is one repo benchmark. The workload, exclusions, and compatibility gaps are linked here so the tradeoff is visible
-                before adoption.
-              </p>
-              <div class="proof-links" aria-label="Benchmark evidence links">
-                <a href="./what-workpaper-benchmark-proves.html">
-                  <span>Benchmark notes</span>
-                  <strong>Workloads, caveats, and exclusions</strong>
-                </a>
-                <a href="./where-bilig-is-not-excel-compatible-yet.html">
-                  <span>Compatibility</span>
-                  <strong>Missing Excel behavior</strong>
-                </a>
-                <a href="https://github.com/proompteng/bilig/issues?q=is%3Aissue%20state%3Aopen%20label%3Afirst-timers-only">
-                  <span>First PRs</span>
-                  <strong>Small TypeScript tasks for contributors</strong>
-                </a>
+
+            <dl class="proof-ledger">
+              <div class="proof-row">
+                <dt>Result</dt>
+                <dd>46 / 46 comparable mean rows</dd>
+                <p>Mean latency only. This is not a promise that every workbook, formula, or p95 row is faster.</p>
               </div>
-            </aside>
+              <div class="proof-row proof-row-code">
+                <dt>Artifact</dt>
+                <dd><code>packages/benchmarks/baselines/workpaper-vs-hyperformula.json</code></dd>
+                <p>The checked-in JSON is the thing to inspect in review, not a screenshot of the number.</p>
+              </div>
+              <div class="proof-row proof-row-code">
+                <dt>Caveat</dt>
+                <dd><code>lookup-approximate-duplicates</code> p95 is 1.043x</dd>
+                <p>That slower row stays visible because it matters if your workload looks like it.</p>
+              </div>
+            </dl>
+
+            <div class="proof-links" aria-label="Benchmark evidence links">
+              <a href="./what-workpaper-benchmark-proves.html">
+                <span>Benchmark notes</span>
+                <strong>Workloads, caveats, and exclusions</strong>
+              </a>
+              <a href="./where-bilig-is-not-excel-compatible-yet.html">
+                <span>Compatibility</span>
+                <strong>Missing Excel behavior</strong>
+              </a>
+              <a href="https://github.com/proompteng/bilig/issues?q=is%3Aissue%20state%3Aopen%20label%3Afirst-timers-only">
+                <span>First PRs</span>
+                <strong>Small TypeScript tasks for contributors</strong>
+              </a>
+            </div>
           </div>
         </div>
       </section>
