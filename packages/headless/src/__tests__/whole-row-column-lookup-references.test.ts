@@ -36,4 +36,27 @@ describe('whole-row and whole-column lookup references', () => {
 
     workpaper.dispose()
   })
+
+  it('evaluates lookup tables backed by whole-column and whole-row references', () => {
+    const workpaper = WorkPaper.buildFromSheets(
+      {
+        Data: [
+          [1, 'ignored'],
+          ['State', 22],
+          ['Gender', 36],
+        ],
+        Headings: [
+          [1, 'State', 'Gender'],
+          ['ignored', 22, 36],
+        ],
+        Out: [['=VLOOKUP("State",Data!A:B,2,FALSE)', '=HLOOKUP("Gender",Headings!1:2,2,FALSE)']],
+      },
+      { maxRows: 20, maxColumns: 10, useColumnIndex: true },
+    )
+
+    expect(display(workpaper, 'Out!A1')).toBe('22')
+    expect(display(workpaper, 'Out!B1')).toBe('36')
+
+    workpaper.dispose()
+  })
 })

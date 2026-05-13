@@ -289,6 +289,94 @@ function wholeAxisLookupRange(
   }
 }
 
+function wholeAxisTableRange(
+  reference: WholeAxisReference,
+  context: EvaluationContext,
+  deps: WorkbookSpecialCallDeps,
+): RangeBuiltinArgument | CellValue {
+  const values = context.resolveRange(reference.sheetName, reference.start, reference.end, reference.refKind)
+  if (reference.parsed.kind === 'cols') {
+    const cols = reference.parsed.end.col - reference.parsed.start.col + 1
+    if (cols <= 0 || values.length % cols !== 0) {
+      return deps.error(ErrorCode.Value)
+    }
+    const rows = values.length / cols
+    return {
+      kind: 'range',
+      values,
+      refKind: 'cells',
+      rows,
+      cols,
+      sheetName: reference.sheetName,
+      start: formatAddress(0, reference.parsed.start.col),
+      end: formatAddress(Math.max(rows - 1, 0), reference.parsed.end.col),
+    }
+  }
+
+  const rows = reference.parsed.end.row - reference.parsed.start.row + 1
+  if (rows <= 0 || values.length % rows !== 0) {
+    return deps.error(ErrorCode.Value)
+  }
+  const cols = values.length / rows
+  return {
+    kind: 'range',
+    values,
+    refKind: 'cells',
+    rows,
+    cols,
+    sheetName: reference.sheetName,
+    start: formatAddress(reference.parsed.start.row, 0),
+    end: formatAddress(reference.parsed.end.row, Math.max(cols - 1, 0)),
+  }
+}
+
+function evaluateWholeAxisTableLookup(
+  callee: 'VLOOKUP' | 'HLOOKUP',
+  rawArgs: StackValue[],
+  context: EvaluationContext,
+  argRefs: readonly (ReferenceOperand | undefined)[],
+  deps: WorkbookSpecialCallDeps,
+): StackValue | undefined {
+  const reference = wholeAxisReferenceFromArg(rawArgs[1], argRefs[1], context, deps)
+  if (!reference) {
+    return undefined
+  }
+  if (rawArgs.length < 3 || rawArgs.length > 4) {
+    return deps.stackScalar(deps.error(ErrorCode.Value))
+  }
+
+  const lookupBuiltin = context.resolveLookupBuiltin?.(callee) ?? getLookupBuiltin(callee)
+  if (!lookupBuiltin) {
+    return undefined
+  }
+
+  const lookupValue = scalarLookupArgument(rawArgs[0], deps)
+  if (lookupValue.kind === 'error') {
+    return deps.stackScalar(lookupValue.value)
+  }
+  if (lookupValue.value === undefined) {
+    return deps.stackScalar(deps.error(ErrorCode.Value))
+  }
+
+  const indexValue = scalarLookupArgument(rawArgs[2], deps)
+  if (indexValue.kind === 'error') {
+    return deps.stackScalar(indexValue.value)
+  }
+
+  const rangeLookupValue = scalarLookupArgument(rawArgs[3], deps)
+  if (rangeLookupValue.kind === 'error') {
+    return deps.stackScalar(rangeLookupValue.value)
+  }
+
+  const tableRange = wholeAxisTableRange(reference, context, deps)
+  if ('tag' in tableRange) {
+    return deps.stackScalar(tableRange)
+  }
+
+  const result = lookupBuiltin(lookupValue.value, tableRange, indexValue.value, rangeLookupValue.value)
+  return isArrayValue(result) ? result : deps.stackScalar(result)
+}
+
 function evaluateWholeAxisMatch(
   callee: 'MATCH' | 'XMATCH',
   rawArgs: StackValue[],
@@ -476,6 +564,9 @@ export function evaluateWorkbookSpecialCall(
   deps: WorkbookSpecialCallDeps,
 ): StackValue | undefined {
   switch (callee) {
+    case 'VLOOKUP':
+    case 'HLOOKUP':
+      return evaluateWholeAxisTableLookup(callee, rawArgs, context, argRefs, deps)
     case 'MATCH':
     case 'XMATCH':
       return evaluateWholeAxisMatch(callee, rawArgs, context, argRefs, deps)

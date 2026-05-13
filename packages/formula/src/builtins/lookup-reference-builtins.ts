@@ -375,6 +375,9 @@ export function createLookupReferenceBuiltins(deps: LookupReferenceBuiltinDeps):
       for (let row = 0; row < tableArray.rows; row += 1) {
         const comparison = deps.compareScalars(deps.getRangeValue(tableArray, row, 0), lookupValue)
         if (comparison === undefined) {
+          if (!rangeLookup) {
+            continue
+          }
           return deps.errorValue(ErrorCode.Value)
         }
         if (comparison === 0) {
@@ -428,6 +431,9 @@ export function createLookupReferenceBuiltins(deps: LookupReferenceBuiltinDeps):
       for (let col = 0; col < tableArray.cols; col += 1) {
         const comparison = deps.compareScalars(deps.getRangeValue(tableArray, 0, col), lookupValue)
         if (comparison === undefined) {
+          if (!rangeLookup) {
+            continue
+          }
           return deps.errorValue(ErrorCode.Value)
         }
         if (comparison === 0) {
