@@ -11,6 +11,7 @@ import {
   externalPivotCachesWarning,
   externalWorkbookReferencesWarning,
   importXlsx,
+  macroExecutionDeclinedWarning,
   manualCalculationModeWarning,
   precisionAsDisplayedCalculationWarning,
   volatileFormulasWarning,
@@ -73,6 +74,7 @@ export const isolatedFootprintByteThreshold = 1_000_000
 
 const externalWorkbookRoundTripSkipEvidence =
   'Round-trip projection skipped because external workbook links are not recalculated during XLSX import.'
+const macroRoundTripSkipEvidence = 'Round-trip projection skipped because macro execution is intentionally declined during XLSM import.'
 export const rawPivotPartUnsupportedClassification = 'xlsx.pivots.rawPartNotSemanticallyImported'
 export const externalPivotCacheUnsupportedClassification = 'xlsx.pivots.externalCacheNotSemanticallyImported'
 export const staleFormulaCacheUnsupportedClassification = 'xlsx.publicCorpus.formulaOracleCache:independentRecalcMatched'
@@ -464,7 +466,10 @@ function classifyUnsupportedFormulaOracleCache(
 function hasFormulaOracleBlockingWarning(warnings: readonly string[]): boolean {
   return warnings.some(
     (warning) =>
-      warning === externalWorkbookReferencesWarning || warning === manualCalculationModeWarning || warning === volatileFormulasWarning,
+      warning === externalWorkbookReferencesWarning ||
+      warning === macroExecutionDeclinedWarning ||
+      warning === manualCalculationModeWarning ||
+      warning === volatileFormulasWarning,
   )
 }
 
@@ -479,7 +484,13 @@ function supportedFormulaOracleImportWarnings(warnings: readonly string[], valid
 }
 
 function roundTripValidationSkipEvidence(warnings: readonly string[]): string | null {
-  return warnings.includes(externalWorkbookReferencesWarning) ? externalWorkbookRoundTripSkipEvidence : null
+  if (warnings.includes(externalWorkbookReferencesWarning)) {
+    return externalWorkbookRoundTripSkipEvidence
+  }
+  if (warnings.includes(macroExecutionDeclinedWarning)) {
+    return macroRoundTripSkipEvidence
+  }
+  return null
 }
 
 function validationEvidence(validation: PublicWorkbookValidationSummary): string[] {

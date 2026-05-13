@@ -82,6 +82,7 @@ import {
   externalWorkbookReferencesWarning,
   formulaReferencesExternalWorkbook,
   formulaReferencesVolatileFunction,
+  macroExecutionDeclinedWarning,
   volatileFormulasWarning,
   workbookDefinedNamesReferenceExternalWorkbook,
 } from './xlsx-import-warnings.js'
@@ -91,7 +92,12 @@ import { readImportedWorksheetTextValues } from './xlsx-worksheet-text-values.js
 
 export { exportXlsx } from './xlsx-export.js'
 export { manualCalculationModeWarning, precisionAsDisplayedCalculationWarning } from './xlsx-calculation-settings.js'
-export { externalPivotCachesWarning, externalWorkbookReferencesWarning, volatileFormulasWarning } from './xlsx-import-warnings.js'
+export {
+  externalPivotCachesWarning,
+  externalWorkbookReferencesWarning,
+  macroExecutionDeclinedWarning,
+  volatileFormulasWarning,
+} from './xlsx-import-warnings.js'
 export { readImportedXlsxCellStyle } from './xlsx-import-cell-styles.js'
 export type { ImportedWorkbookSheetPreview } from './workbook-import-helpers.js'
 export type { ImportedWorkbookPreview } from './workbook-import-preview.js'
@@ -280,7 +286,7 @@ function buildImportedLegacyCommentVmlSnapshot(
 
 function addWorkbookWarnings(workbook: XLSX.WorkBook, warnings: string[], ignoredDefinedNameCount: number): void {
   if (workbook.vbaraw) {
-    warnings.push('Macros were preserved but not executed during XLSX import.')
+    warnings.push(macroExecutionDeclinedWarning)
   }
   if (ignoredDefinedNameCount > 0) {
     warnings.push('Some defined names were ignored during XLSX import.')

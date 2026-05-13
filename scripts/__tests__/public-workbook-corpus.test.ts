@@ -8,6 +8,7 @@ import * as XLSX from 'xlsx'
 import {
   externalWorkbookReferencesWarning,
   externalPivotCachesWarning,
+  macroExecutionDeclinedWarning,
   manualCalculationModeWarning,
   precisionAsDisplayedCalculationWarning,
   volatileFormulasWarning,
@@ -479,6 +480,31 @@ describe('public workbook corpus', () => {
       validation: { formulaOraclePassed: true, formulaOracleComparisons: 0, roundTripPassed: true },
       unsupportedFeatureClassifications: [`xlsx.import.warning:${volatileFormulasWarning}`],
     })
+  })
+
+  it('classifies macro-enabled workbooks as unsupported without formula or round-trip failures', async () => {
+    const scorecard = await buildSingleWorkbookScorecard({
+      cacheDirPrefix: 'public-workbook-corpus-macro-enabled-',
+      fileName: 'macro-enabled.xlsm',
+      sourceId: 'source-macro-enabled',
+      workbookBytes: buildMacroEnabledWorkbookBytes(),
+    })
+
+    expect(scorecard.summary.allCachedWorkbooksPassed).toBe(true)
+    expect(scorecard.summary.formulaOracleComparisonCount).toBe(0)
+    expect(scorecard.cases[0]).toMatchObject({
+      status: 'unsupported',
+      passed: true,
+      featureCounts: { formulaCellCount: 1, macroPayloadCount: 1, warningCount: 1 },
+      validation: { formulaOraclePassed: true, formulaOracleComparisons: 0, roundTripPassed: true },
+      unsupportedFeatureClassifications: [`xlsx.import.warning:${macroExecutionDeclinedWarning}`, 'xlsx.macros.execution.declined'],
+    })
+    expect(scorecard.cases[0]?.evidence).toEqual(
+      expect.arrayContaining([
+        publicWorkbookImportWarningClassifierEvidence,
+        'Round-trip projection skipped because macro execution is intentionally declined during XLSM import.',
+      ]),
+    )
   })
 
   it('classifies stale cached formula values after independent recalculation agrees', async () => {
@@ -1724,6 +1750,21 @@ function buildVolatileFormulaWorkbookBytes(): Uint8Array {
   sheet['!ref'] = 'A1:B2'
   XLSX.utils.book_append_sheet(workbook, sheet, 'Summary')
   return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+}
+
+function buildMacroEnabledWorkbookBytes(): Uint8Array {
+  const workbook = XLSX.utils.book_new()
+  const sheet = XLSX.utils.aoa_to_sheet([
+    ['Input', 'Value'],
+    ['A', 1],
+    ['B', 2],
+    ['Total', null],
+  ])
+  sheet.B4 = { t: 'n', f: 'B2+B3', v: 99 }
+  sheet['!ref'] = 'A1:B4'
+  workbook.vbaraw = new Uint8Array([1, 2, 3, 4])
+  XLSX.utils.book_append_sheet(workbook, sheet, 'Summary')
+  return XLSX.write(workbook, { bookType: 'xlsm', type: 'buffer', bookVBA: true })
 }
 
 function buildStaleFormulaCacheWorkbookBytes(): Uint8Array {
