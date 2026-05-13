@@ -166,7 +166,7 @@ pnpm --filter @bilig/headless build
 | Build from service data      | [`npm run json-records`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-records-input), [workbook-automation-examples-node guide](https://proompteng.github.io/bilig/workbook-automation-examples-node.html), [Node service recipe](https://github.com/proompteng/bilig/blob/main/docs/node-service-workpaper-recipe.md), [Express/Fastify/Hono adapters](https://proompteng.github.io/bilig/node-framework-workpaper-adapters.html) |
 | Wrap agent tools             | [`npm run agent:tool-call`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#agent-tool-call-loop), [framework adapter guide](https://proompteng.github.io/bilig/vercel-ai-sdk-langchain-spreadsheet-tool.html)                                                                                                                                                                                                                             |
 | Expose MCP tools             | [`npm run agent:mcp-tools`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#mcp-tool-server-shape), [MCP server guide](https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html), [MCP client setup](https://proompteng.github.io/bilig/mcp-client-setup.html), [Claude Desktop MCPB bundle](https://proompteng.github.io/bilig/claude-desktop-mcpb-workpaper.html)                                                               |
-| Compare engines              | [headless engine comparison](https://github.com/proompteng/bilig/blob/main/docs/headless-spreadsheet-engine-comparison.md), [HyperFormula comparison](https://github.com/proompteng/bilig/blob/main/docs/hyperformula-alternative-headless-workpaper.md)                                                                                                                                                                                                             |
+| Compare engines              | [JavaScript spreadsheet library guide](https://github.com/proompteng/bilig/blob/main/docs/javascript-spreadsheet-library-headless-node.md), [headless engine comparison](https://github.com/proompteng/bilig/blob/main/docs/headless-spreadsheet-engine-comparison.md), [HyperFormula comparison](https://github.com/proompteng/bilig/blob/main/docs/hyperformula-alternative-headless-workpaper.md)                                                                 |
 
 Run the packaged MCP stdio server with
 `npm exec --package @bilig/headless -- bilig-workpaper-mcp`. The published MCP
@@ -333,6 +333,8 @@ Repository links:
   [`docs/hyperformula-alternative-headless-workpaper.md`](https://github.com/proompteng/bilig/blob/main/docs/hyperformula-alternative-headless-workpaper.md)
 - SheetJS and ExcelJS comparison:
   [`docs/sheetjs-exceljs-alternative-formula-workbook-api.md`](https://github.com/proompteng/bilig/blob/main/docs/sheetjs-exceljs-alternative-formula-workbook-api.md)
+- JavaScript spreadsheet library guide:
+  [`docs/javascript-spreadsheet-library-headless-node.md`](https://github.com/proompteng/bilig/blob/main/docs/javascript-spreadsheet-library-headless-node.md)
 - broader headless spreadsheet engine comparison:
   [`docs/headless-spreadsheet-engine-comparison.md`](https://github.com/proompteng/bilig/blob/main/docs/headless-spreadsheet-engine-comparison.md)
 - local benchmark walkthrough:

@@ -94,12 +94,12 @@ formula evaluation, and computed readback from Node.
 Start here when the service needs a workbook model, not just isolated formula
 functions.
 
-| Need | Why `@bilig/headless` helps |
-| --- | --- |
-| Put spreadsheet formulas behind an API | The service can build a WorkPaper, edit input cells, and return computed cells. |
-| Let an agent edit a workbook safely | The agent can report exact changed cells and post-write readback instead of only narrating intent. |
-| Persist formula-backed state | Export the WorkPaper document, store JSON, restore it later, and verify formulas still calculate. |
-| Keep examples runnable | The repo includes invoice, budget variance, subscription MRR, quote approval, and capacity examples. |
+| Need                                   | Why `@bilig/headless` helps                                                                          |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Put spreadsheet formulas behind an API | The service can build a WorkPaper, edit input cells, and return computed cells.                      |
+| Let an agent edit a workbook safely    | The agent can report exact changed cells and post-write readback instead of only narrating intent.   |
+| Persist formula-backed state           | Export the WorkPaper document, store JSON, restore it later, and verify formulas still calculate.    |
+| Keep examples runnable                 | The repo includes invoice, budget variance, subscription MRR, quote approval, and capacity examples. |
 
 ## When to choose something else
 
@@ -141,6 +141,7 @@ Then inspect the focused examples:
 - [WorkPaper Node service recipe](node-service-workpaper-recipe.md)
 - [Persist formula-backed WorkPaper documents in Node](persisting-formula-backed-workpaper-documents-in-node.md)
 - [Headless spreadsheet engine comparison for Node services and agents](headless-spreadsheet-engine-comparison.md)
+- [JavaScript spreadsheet library for Node services](javascript-spreadsheet-library-headless-node.md)
 - [SheetJS and ExcelJS alternative for formula-backed workbook APIs](sheetjs-exceljs-alternative-formula-workbook-api.md)
 - [HyperFormula alternative for headless WorkPaper workflows](hyperformula-alternative-headless-workpaper.md)
 - [Where bilig is not Excel-compatible yet](where-bilig-is-not-excel-compatible-yet.md)

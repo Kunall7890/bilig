@@ -16,6 +16,7 @@ language: typescript
 - https://github.com/proompteng/bilig/tree/main/packages/headless#readme
 - https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper
 - https://proompteng.github.io/bilig/node-spreadsheet-formula-engine.html
+- https://proompteng.github.io/bilig/javascript-spreadsheet-library-headless-node.html
 - https://proompteng.github.io/bilig/evaluate-excel-formulas-in-node-typescript.html
 - https://proompteng.github.io/bilig/try-bilig-headless-in-node.html
 - https://proompteng.github.io/bilig/workbook-automation-examples-node.html
@@ -58,6 +59,7 @@ language: typescript
 - https://github.com/proompteng/bilig/blob/main/docs/agent-spreadsheet-tool-call-loop.md
 - https://github.com/proompteng/bilig/blob/main/docs/local-workpaper-benchmark-walkthrough.md
 - https://github.com/proompteng/bilig/blob/main/docs/headless-spreadsheet-engine-comparison.md
+- https://github.com/proompteng/bilig/blob/main/docs/javascript-spreadsheet-library-headless-node.md
 - https://github.com/proompteng/bilig/blob/main/docs/sheetjs-exceljs-alternative-formula-workbook-api.md
 - https://github.com/proompteng/bilig/discussions/115
 
@@ -106,6 +108,8 @@ npm run agent:verify
   https://github.com/proompteng/bilig/blob/main/docs/hyperformula-alternative-headless-workpaper.md
 - headless spreadsheet engine comparison:
   https://github.com/proompteng/bilig/blob/main/docs/headless-spreadsheet-engine-comparison.md
+- JavaScript spreadsheet library guide for Node services:
+  https://github.com/proompteng/bilig/blob/main/docs/javascript-spreadsheet-library-headless-node.md
 - SheetJS and ExcelJS comparison:
   https://github.com/proompteng/bilig/blob/main/docs/sheetjs-exceljs-alternative-formula-workbook-api.md
 - benchmark evidence:

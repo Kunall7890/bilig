@@ -245,6 +245,7 @@ npm run agent:verify
 Related proof docs:
 
 - [`docs/hyperformula-alternative-headless-workpaper.md`](hyperformula-alternative-headless-workpaper.md)
+- [`docs/javascript-spreadsheet-library-headless-node.md`](javascript-spreadsheet-library-headless-node.md)
 - [`docs/why-agents-need-workbook-apis.md`](why-agents-need-workbook-apis.md)
 - [`docs/agent-workpaper-tool-calling-recipe.md`](agent-workpaper-tool-calling-recipe.md)
 - [`docs/persisting-formula-backed-workpaper-documents-in-node.md`](persisting-formula-backed-workpaper-documents-in-node.md)

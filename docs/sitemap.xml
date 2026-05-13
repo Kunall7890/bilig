@@ -151,6 +151,12 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://proompteng.github.io/bilig/javascript-spreadsheet-library-headless-node.html</loc>
+    <lastmod>2026-05-13</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://proompteng.github.io/bilig/sheetjs-exceljs-alternative-formula-workbook-api.html</loc>
     <lastmod>2026-05-08</lastmod>
     <changefreq>monthly</changefreq>

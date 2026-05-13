@@ -55,7 +55,7 @@ repo so you can find it again:
 | Prove the npm package     | [`@bilig/headless` in 90 seconds](#try-biligheadless-in-90-seconds) and the [npm-only smoke test page](docs/try-bilig-headless-in-node.md)                                                                                                                                                                                                                                                                      |
 | Build a Node workflow     | [server-side spreadsheet automation](docs/server-side-spreadsheet-automation-node.md), [five runnable workbook automation examples](docs/workbook-automation-examples-node.md), [framework adapters](docs/node-framework-workpaper-adapters.md), [evaluate Excel formulas in Node.js](docs/evaluate-excel-formulas-in-node-typescript.md), and the [Node service recipe](docs/node-service-workpaper-recipe.md) |
 | Wire an agent or MCP tool | [agent tool-calling recipe](docs/agent-workpaper-tool-calling-recipe.md), [MCP spreadsheet tool server guide](docs/mcp-workpaper-tool-server.md), [MCP directory status](docs/mcp-spreadsheet-server-directory.md), [MCP client setup](docs/mcp-client-setup.md), and [Claude Desktop MCPB bundle](docs/claude-desktop-mcpb-workpaper.md)                                                                       |
-| Compare alternatives      | [headless engine comparison](docs/headless-spreadsheet-engine-comparison.md), [HyperFormula comparison](docs/hyperformula-alternative-headless-workpaper.md)                                                                                                                                                                                                                                                    |
+| Compare alternatives      | [JavaScript spreadsheet library guide](docs/javascript-spreadsheet-library-headless-node.md), [headless engine comparison](docs/headless-spreadsheet-engine-comparison.md), [HyperFormula comparison](docs/hyperformula-alternative-headless-workpaper.md)                                                                                                                                                      |
 | Contribute                | [starter issues](docs/starter-issues.md), [GitHub Discussions](https://github.com/proompteng/bilig/discussions), and [CONTRIBUTING.md](CONTRIBUTING.md)                                                                                                                                                                                                                                                         |
 
 Useful direct paths:
@@ -88,6 +88,7 @@ Useful direct paths:
 - SEO comparison pages:
   [evaluate Excel formulas in Node.js](docs/evaluate-excel-formulas-in-node-typescript.md),
   [Node spreadsheet formula engine](docs/node-spreadsheet-formula-engine.md),
+  [JavaScript spreadsheet library for Node services](docs/javascript-spreadsheet-library-headless-node.md),
   [SheetJS and ExcelJS alternative](docs/sheetjs-exceljs-alternative-formula-workbook-api.md),
   [headless engine comparison](docs/headless-spreadsheet-engine-comparison.md),
   and [HyperFormula comparison](docs/hyperformula-alternative-headless-workpaper.md).
@@ -569,6 +570,11 @@ For a broader headless spreadsheet-engine comparison across `@bilig/headless`,
 HyperFormula, IronCalc, ExcelJS, Formula.js, Hucre, Formualizer, and
 JSpreadsheet Formula Pro, see
 [`docs/headless-spreadsheet-engine-comparison.md`](docs/headless-spreadsheet-engine-comparison.md).
+
+If your search starts with "JavaScript spreadsheet library," use
+[`docs/javascript-spreadsheet-library-headless-node.md`](docs/javascript-spreadsheet-library-headless-node.md)
+to separate browser grids, XLSX file tooling, formula engines, and backend
+WorkPaper runtimes before choosing a package.
 
 For a runnable revenue-model walkthrough, see
 [`docs/building-a-revenue-model-with-headless-workpaper.md`](docs/building-a-revenue-model-with-headless-workpaper.md)

@@ -6,81 +6,47 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const docsRoot = join(repoRoot, 'docs')
 const siteRoot = 'https://proompteng.github.io/bilig/'
 
-const expectedSitemapUrls = [
-  siteRoot,
-  `${siteRoot}why-agents-need-workbook-apis.html`,
-  `${siteRoot}agent-workpaper-tool-calling-recipe.html`,
-  `${siteRoot}vercel-ai-sdk-langchain-spreadsheet-tool.html`,
-  `${siteRoot}mcp-workpaper-tool-server.html`,
-  `${siteRoot}mcp-spreadsheet-server-directory.html`,
-  `${siteRoot}mcp-client-setup.html`,
-  `${siteRoot}claude-desktop-mcpb-workpaper.html`,
-  `${siteRoot}agent-spreadsheet-tool-call-loop.html`,
-  `${siteRoot}node-service-workpaper-recipe.html`,
-  `${siteRoot}server-side-spreadsheet-automation-node.html`,
-  `${siteRoot}node-spreadsheet-formula-engine.html`,
-  `${siteRoot}evaluate-excel-formulas-in-node-typescript.html`,
-  `${siteRoot}try-bilig-headless-in-node.html`,
-  `${siteRoot}workbook-automation-examples-node.html`,
-  `${siteRoot}serverless-workpaper-api-route.html`,
-  `${siteRoot}node-framework-workpaper-adapters.html`,
-  `${siteRoot}csv-shaped-workpaper-input-recipe.html`,
-  `${siteRoot}unsupported-formula-troubleshooting-recipe.html`,
-  `${siteRoot}local-workpaper-benchmark-walkthrough.html`,
-  `${siteRoot}building-a-revenue-model-with-headless-workpaper.html`,
-  `${siteRoot}persisting-formula-backed-workpaper-documents-in-node.html`,
-  `${siteRoot}what-workpaper-benchmark-proves.html`,
-  `${siteRoot}hyperformula-alternative-headless-workpaper.html`,
-  `${siteRoot}headless-spreadsheet-engine-comparison.html`,
-  `${siteRoot}sheetjs-exceljs-alternative-formula-workbook-api.html`,
-  `${siteRoot}where-bilig-is-not-excel-compatible-yet.html`,
-  `${siteRoot}xlsx-corpus-verifier-walkthrough.html`,
-  `${siteRoot}formula-edge-xlookup-exact-fixture.html`,
-  `${siteRoot}formula-edge-sumifs-paired-criteria-fixture.html`,
-  `${siteRoot}formula-edge-groupby-spill-fixture.html`,
-  `${siteRoot}starter-issues.html`,
-  `${siteRoot}community-launch-pack.html`,
-  `${siteRoot}community-growth-snapshot.html`,
-  `${siteRoot}llms.txt`,
+const docsSiteSources = [
+  ['', 'index.html'],
+  ['why-agents-need-workbook-apis.html', 'why-agents-need-workbook-apis.md'],
+  ['agent-workpaper-tool-calling-recipe.html', 'agent-workpaper-tool-calling-recipe.md'],
+  ['vercel-ai-sdk-langchain-spreadsheet-tool.html', 'vercel-ai-sdk-langchain-spreadsheet-tool.md'],
+  ['mcp-workpaper-tool-server.html', 'mcp-workpaper-tool-server.md'],
+  ['mcp-spreadsheet-server-directory.html', 'mcp-spreadsheet-server-directory.md'],
+  ['mcp-client-setup.html', 'mcp-client-setup.md'],
+  ['claude-desktop-mcpb-workpaper.html', 'claude-desktop-mcpb-workpaper.md'],
+  ['agent-spreadsheet-tool-call-loop.html', 'agent-spreadsheet-tool-call-loop.md'],
+  ['node-service-workpaper-recipe.html', 'node-service-workpaper-recipe.md'],
+  ['server-side-spreadsheet-automation-node.html', 'server-side-spreadsheet-automation-node.md'],
+  ['node-spreadsheet-formula-engine.html', 'node-spreadsheet-formula-engine.md'],
+  ['evaluate-excel-formulas-in-node-typescript.html', 'evaluate-excel-formulas-in-node-typescript.md'],
+  ['try-bilig-headless-in-node.html', 'try-bilig-headless-in-node.md'],
+  ['workbook-automation-examples-node.html', 'workbook-automation-examples-node.md'],
+  ['serverless-workpaper-api-route.html', 'serverless-workpaper-api-route.md'],
+  ['node-framework-workpaper-adapters.html', 'node-framework-workpaper-adapters.md'],
+  ['csv-shaped-workpaper-input-recipe.html', 'csv-shaped-workpaper-input-recipe.md'],
+  ['unsupported-formula-troubleshooting-recipe.html', 'unsupported-formula-troubleshooting-recipe.md'],
+  ['local-workpaper-benchmark-walkthrough.html', 'local-workpaper-benchmark-walkthrough.md'],
+  ['building-a-revenue-model-with-headless-workpaper.html', 'building-a-revenue-model-with-headless-workpaper.md'],
+  ['persisting-formula-backed-workpaper-documents-in-node.html', 'persisting-formula-backed-workpaper-documents-in-node.md'],
+  ['what-workpaper-benchmark-proves.html', 'what-workpaper-benchmark-proves.md'],
+  ['hyperformula-alternative-headless-workpaper.html', 'hyperformula-alternative-headless-workpaper.md'],
+  ['headless-spreadsheet-engine-comparison.html', 'headless-spreadsheet-engine-comparison.md'],
+  ['javascript-spreadsheet-library-headless-node.html', 'javascript-spreadsheet-library-headless-node.md'],
+  ['sheetjs-exceljs-alternative-formula-workbook-api.html', 'sheetjs-exceljs-alternative-formula-workbook-api.md'],
+  ['where-bilig-is-not-excel-compatible-yet.html', 'where-bilig-is-not-excel-compatible-yet.md'],
+  ['xlsx-corpus-verifier-walkthrough.html', 'xlsx-corpus-verifier-walkthrough.md'],
+  ['formula-edge-xlookup-exact-fixture.html', 'formula-edge-xlookup-exact-fixture.md'],
+  ['formula-edge-sumifs-paired-criteria-fixture.html', 'formula-edge-sumifs-paired-criteria-fixture.md'],
+  ['formula-edge-groupby-spill-fixture.html', 'formula-edge-groupby-spill-fixture.md'],
+  ['starter-issues.html', 'starter-issues.md'],
+  ['community-launch-pack.html', 'community-launch-pack.md'],
+  ['community-growth-snapshot.html', 'community-growth-snapshot.md'],
+  ['llms.txt', 'llms.txt'],
 ] as const
 
-const sourceFilesByUrl = new Map<string, string>([
-  [siteRoot, 'index.html'],
-  [`${siteRoot}why-agents-need-workbook-apis.html`, 'why-agents-need-workbook-apis.md'],
-  [`${siteRoot}agent-workpaper-tool-calling-recipe.html`, 'agent-workpaper-tool-calling-recipe.md'],
-  [`${siteRoot}vercel-ai-sdk-langchain-spreadsheet-tool.html`, 'vercel-ai-sdk-langchain-spreadsheet-tool.md'],
-  [`${siteRoot}mcp-workpaper-tool-server.html`, 'mcp-workpaper-tool-server.md'],
-  [`${siteRoot}mcp-spreadsheet-server-directory.html`, 'mcp-spreadsheet-server-directory.md'],
-  [`${siteRoot}mcp-client-setup.html`, 'mcp-client-setup.md'],
-  [`${siteRoot}claude-desktop-mcpb-workpaper.html`, 'claude-desktop-mcpb-workpaper.md'],
-  [`${siteRoot}agent-spreadsheet-tool-call-loop.html`, 'agent-spreadsheet-tool-call-loop.md'],
-  [`${siteRoot}node-service-workpaper-recipe.html`, 'node-service-workpaper-recipe.md'],
-  [`${siteRoot}server-side-spreadsheet-automation-node.html`, 'server-side-spreadsheet-automation-node.md'],
-  [`${siteRoot}node-spreadsheet-formula-engine.html`, 'node-spreadsheet-formula-engine.md'],
-  [`${siteRoot}evaluate-excel-formulas-in-node-typescript.html`, 'evaluate-excel-formulas-in-node-typescript.md'],
-  [`${siteRoot}try-bilig-headless-in-node.html`, 'try-bilig-headless-in-node.md'],
-  [`${siteRoot}workbook-automation-examples-node.html`, 'workbook-automation-examples-node.md'],
-  [`${siteRoot}serverless-workpaper-api-route.html`, 'serverless-workpaper-api-route.md'],
-  [`${siteRoot}node-framework-workpaper-adapters.html`, 'node-framework-workpaper-adapters.md'],
-  [`${siteRoot}csv-shaped-workpaper-input-recipe.html`, 'csv-shaped-workpaper-input-recipe.md'],
-  [`${siteRoot}unsupported-formula-troubleshooting-recipe.html`, 'unsupported-formula-troubleshooting-recipe.md'],
-  [`${siteRoot}local-workpaper-benchmark-walkthrough.html`, 'local-workpaper-benchmark-walkthrough.md'],
-  [`${siteRoot}building-a-revenue-model-with-headless-workpaper.html`, 'building-a-revenue-model-with-headless-workpaper.md'],
-  [`${siteRoot}persisting-formula-backed-workpaper-documents-in-node.html`, 'persisting-formula-backed-workpaper-documents-in-node.md'],
-  [`${siteRoot}what-workpaper-benchmark-proves.html`, 'what-workpaper-benchmark-proves.md'],
-  [`${siteRoot}hyperformula-alternative-headless-workpaper.html`, 'hyperformula-alternative-headless-workpaper.md'],
-  [`${siteRoot}headless-spreadsheet-engine-comparison.html`, 'headless-spreadsheet-engine-comparison.md'],
-  [`${siteRoot}sheetjs-exceljs-alternative-formula-workbook-api.html`, 'sheetjs-exceljs-alternative-formula-workbook-api.md'],
-  [`${siteRoot}where-bilig-is-not-excel-compatible-yet.html`, 'where-bilig-is-not-excel-compatible-yet.md'],
-  [`${siteRoot}xlsx-corpus-verifier-walkthrough.html`, 'xlsx-corpus-verifier-walkthrough.md'],
-  [`${siteRoot}formula-edge-xlookup-exact-fixture.html`, 'formula-edge-xlookup-exact-fixture.md'],
-  [`${siteRoot}formula-edge-sumifs-paired-criteria-fixture.html`, 'formula-edge-sumifs-paired-criteria-fixture.md'],
-  [`${siteRoot}formula-edge-groupby-spill-fixture.html`, 'formula-edge-groupby-spill-fixture.md'],
-  [`${siteRoot}starter-issues.html`, 'starter-issues.md'],
-  [`${siteRoot}community-launch-pack.html`, 'community-launch-pack.md'],
-  [`${siteRoot}community-growth-snapshot.html`, 'community-growth-snapshot.md'],
-  [`${siteRoot}llms.txt`, 'llms.txt'],
-])
+const expectedSitemapUrls = docsSiteSources.map(([urlPath]) => `${siteRoot}${urlPath}`)
+const sourceFilesByUrl = new Map<string, string>(docsSiteSources.map(([urlPath, sourceFile]) => [`${siteRoot}${urlPath}`, sourceFile]))
 
 function requireIncludes(haystack: string, needle: string, context: string): void {
   if (!haystack.includes(needle)) {
@@ -230,39 +196,43 @@ requireIncludes(
 )
 requireIncludes(index, '"@type": "SoftwareSourceCode"', 'docs/index.html')
 requireIncludes(index, '"codeRepository": "https://github.com/proompteng/bilig"', 'docs/index.html')
-requireIncludes(index, '<title>bilig - Headless Spreadsheet Engine for Node.js Services and Agents</title>', 'docs/index.html')
+requireIncludes(index, '<title>bilig - Spreadsheet Formulas for Node.js Services and Agent Tools</title>', 'docs/index.html')
 requireIncludes(index, '<meta name="robots" content="index, follow, max-image-preview:large" />', 'docs/index.html')
 requireIncludes(index, '<link rel="icon" type="image/svg+xml" href="./assets/favicon.svg" />', 'docs/index.html')
 requireIncludes(index, '<link rel="stylesheet" href="./assets/fonts.css?v=2026-05-13-1" />', 'docs/index.html')
-requireIncludes(index, '<link rel="stylesheet" href="./assets/site.css?v=2026-05-13-15" />', 'docs/index.html')
+requireIncludes(index, '<link rel="stylesheet" href="./assets/site.css?v=2026-05-13-16" />', 'docs/index.html')
 requireIncludes(index, '<link rel="stylesheet" href="./assets/product-demo.css?v=2026-05-13-1" />', 'docs/index.html')
 requireNotIncludes(index, 'bilig-hero-workbook-api.png?v=2026-05-08-2', 'docs/index.html')
 requireNotIncludes(siteCss, 'bilig-hero-workbook-api.png?v=2026-05-08-2', 'docs/assets/site.css')
-requireIncludes(siteCss, 'max-width: 500px;', 'docs/assets/site.css')
-requireIncludes(siteCss, 'grid-template-columns: minmax(104px, 0.38fr) minmax(0, 1fr);', 'docs/assets/site.css')
+requireIncludes(siteCss, "'Bilig Condensed', 'Bilig Sans'", 'docs/assets/site.css')
+requireIncludes(siteCss, 'max-width: 470px;', 'docs/assets/site.css')
+requireIncludes(siteCss, 'grid-template-columns: minmax(100px, 0.34fr) minmax(0, 1fr);', 'docs/assets/site.css')
 requireIncludes(siteCss, 'border-bottom: 1px solid rgba(255, 250, 240, 0.14);', 'docs/assets/site.css')
 requireNotIncludes(siteCss, 'border-left: 1px solid rgba(255, 250, 240, 0.16);', 'docs/assets/site.css')
 requireIncludes(index, 'Revenue.workpaper', 'docs/index.html')
-requireIncludes(index, 'Build a workbook in Node, change inputs through code', 'docs/index.html')
-requireIncludes(index, '<span>Typed examples</span>', 'docs/index.html')
-requireIncludes(index, '<strong>Every guide links to runnable .ts files.</strong>', 'docs/index.html')
-requireIncludes(index, '<span>Starter issues</span>', 'docs/index.html')
-requireIncludes(index, '<strong>77 small tasks are ready for first-time contributors.</strong>', 'docs/index.html')
-requireIncludes(index, 'One claim, with the caveat beside it.', 'docs/index.html')
-requireIncludes(index, 'bilig currently claims 46/46 mean-latency wins on the comparable WorkPaper suite.', 'docs/index.html')
-requireIncludes(index, 'That is the whole claim.', 'docs/index.html')
+requireIncludes(index, 'When a feature still depends on formulas, build a WorkPaper in TypeScript', 'docs/index.html')
+requireIncludes(index, '<span>Install</span>', 'docs/index.html')
+requireIncludes(index, '<strong>@bilig/headless is published on npm.</strong>', 'docs/index.html')
+requireIncludes(index, '<span>Contribute</span>', 'docs/index.html')
+requireIncludes(index, '<strong>77 first-timers-only issues are open.</strong>', 'docs/index.html')
+requireIncludes(index, 'Fast where the benchmark says so. Clear where it does not.', 'docs/index.html')
+requireIncludes(index, 'workload trails HyperFormula by 4.3%.', 'docs/index.html')
+requireIncludes(index, 'Rerun the command before using the number in your own docs.', 'docs/index.html')
 requireIncludes(index, 'packages/benchmarks/baselines/workpaper-vs-hyperformula.json', 'docs/index.html')
 requireIncludes(index, 'pnpm workpaper:bench:competitive:check', 'docs/index.html')
 requireIncludes(index, '<dd>@bilig/headless 0.14.0</dd>', 'docs/index.html')
 requireIncludes(index, '<dd>0.536x WorkPaper / HyperFormula</dd>', 'docs/index.html')
 requireIncludes(index, '<dd>lookup-approximate-duplicates at 1.043x</dd>', 'docs/index.html')
-requireIncludes(index, 'Read the artifact summary, caveat, and rerun instructions.', 'docs/index.html')
-requireIncludes(index, 'Pick up one of 77 small docs, examples, or integration tasks.', 'docs/index.html')
+requireIncludes(index, 'Artifact summary, caveat, and rerun instructions.', 'docs/index.html')
+requireIncludes(index, 'Small docs, examples, and integration tasks for first PRs.', 'docs/index.html')
+requireNotIncludes(index, 'Run the TypeScript example', 'docs/index.html')
+requireNotIncludes(index, 'Build a workbook in Node, change inputs through code', 'docs/index.html')
 requireNotIncludes(index, 'Run the benchmark before you depend on it.', 'docs/index.html')
 requireNotIncludes(index, 'Public project numbers', 'docs/index.html')
 requireNotIncludes(index, '<span>Stars</span>', 'docs/index.html')
 requireNotIncludes(index, '<strong>24</strong>', 'docs/index.html')
 requireNotIncludes(index, 'No trust-me homepage claims', 'docs/index.html')
+requireNotIncludes(index, 'One claim, with the caveat beside it.', 'docs/index.html')
 requireNotIncludes(index, 'The benchmark is public. So are the gaps.', 'docs/index.html')
 requireNotIncludes(index, 'Public project signals', 'docs/index.html')
 requireNotIncludes(index, '<strong>40 starter tasks</strong>', 'docs/index.html')
@@ -290,6 +260,7 @@ for (const required of [
   'examples/serverless-workpaper-api#persistence-adapters',
   './building-a-revenue-model-with-headless-workpaper.html',
   './headless-spreadsheet-engine-comparison.html',
+  './javascript-spreadsheet-library-headless-node.html',
   './hyperformula-alternative-headless-workpaper.html',
 ]) {
   requireIncludes(index, required, 'docs/index.html')
@@ -415,6 +386,7 @@ for (const required of [
   'https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md',
   'https://github.com/proompteng/bilig/blob/main/docs/hyperformula-alternative-headless-workpaper.md',
   'https://github.com/proompteng/bilig/blob/main/docs/headless-spreadsheet-engine-comparison.md',
+  'https://github.com/proompteng/bilig/blob/main/docs/javascript-spreadsheet-library-headless-node.md',
   'https://github.com/proompteng/bilig/blob/main/docs/sheetjs-exceljs-alternative-formula-workbook-api.md',
   'https://github.com/proompteng/bilig/blob/main/docs/where-bilig-is-not-excel-compatible-yet.md',
   'https://github.com/proompteng/bilig/blob/main/docs/formula-edge-sumifs-paired-criteria-fixture.md',
@@ -743,6 +715,7 @@ for (const [path, content] of [
   ['packages/headless/README.md', headlessReadme],
   ['docs/llms.txt', llms],
 ] as const) {
+  requireIncludes(content, 'docs/javascript-spreadsheet-library-headless-node.md', path)
   requireIncludes(content, 'docs/sheetjs-exceljs-alternative-formula-workbook-api.md', path)
 }
 
