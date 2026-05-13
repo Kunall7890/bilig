@@ -23,9 +23,9 @@ Latest public snapshot on May 8, 2026:
 - Contributor funnel: `18` open `good first issue`, `18` open
   `first-timers-only`, and `18` open `help wanted` issues
 
-Latest execution snapshot on May 13, 2026 at `00:04:40Z`:
+Latest execution snapshot on May 13, 2026 at `00:13:38Z`:
 
-- GitHub surface: public repo, `24` stars, `4` forks, `29` open issues
+- GitHub surface: public repo, `24` stars, `4` forks, `31` open issues
 - npm surface: `@bilig/headless@0.11.29`, MIT, TypeScript types, npm API
   downloads: `13,427` last week and `24,931` last month
 - Contributor funnel: `30` open `good first issue`, `29` open
@@ -40,7 +40,7 @@ Latest execution snapshot on May 13, 2026 at `00:04:40Z`:
   docs examples.
 - Discussion activity: `5` GitHub Discussions, including the five-example
   show-and-tell thread and the workflow-feedback thread
-- External activity: `3` open external issues, `25` external issues opened in
+- External activity: `1` open external issue, `25` external issues opened in
   the last seven days, and `5` external pull requests opened in the last seven
   days
 - Token-backed traffic: `393` views from `159` unique visitors and `18,287`
@@ -308,6 +308,16 @@ Capture the baseline before and after each distribution push:
 ```sh
 pnpm community:growth:snapshot
 ```
+
+Publish the current Markdown snapshot when the weekly operating cadence changes
+or after a major distribution push:
+
+```sh
+pnpm community:growth:snapshot:markdown
+```
+
+Current checked-in snapshot:
+[`docs/community-growth-snapshot.md`](community-growth-snapshot.md).
 
 Set `GITHUB_TOKEN` or `GH_TOKEN` with repository traffic access, or run with an
 authenticated `gh` CLI session, to include recent discussion activity, views,

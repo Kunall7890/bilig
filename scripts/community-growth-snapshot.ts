@@ -132,12 +132,14 @@ interface CliOptions {
   readonly packageName: string
   readonly maintainerLogin: string
   readonly outputPath: string | undefined
+  readonly format: 'json' | 'markdown'
 }
 
 const defaultOwner = 'proompteng'
 const defaultRepo = 'bilig'
 const defaultPackageName = '@bilig/headless'
 const defaultMaintainerLogin = 'gregkonush'
+const starGoal = 1000
 const execFileAsync = promisify(execFile)
 const githubCliMaxBufferBytes = 4 * 1024 * 1024
 
@@ -696,12 +698,127 @@ export async function collectCommunityGrowthSnapshot(options: CommunityGrowthSna
   }
 }
 
+function formatCount(value: number): string {
+  return String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+}
+
+function markdownLink(label: string, url: string): string {
+  return `[${label}](${url})`
+}
+
+function formatCommentCount(value: number): string {
+  return `${formatCount(value)} ${value === 1 ? 'comment' : 'comments'}`
+}
+
+function renderDiscussionActivityMarkdown(discussionActivity: GitHubDiscussionActivitySnapshot): readonly string[] {
+  if (!discussionActivity.available) {
+    return [`- Discussion activity: unavailable. ${discussionActivity.reason}`]
+  }
+
+  const lines = [`- Total discussions: ${formatCount(discussionActivity.totalCount)}`]
+  for (const discussion of discussionActivity.recent.slice(0, 5)) {
+    lines.push(
+      `- #${String(discussion.number)} ${markdownLink(discussion.title, discussion.url)} (${discussion.category}, ${formatCommentCount(discussion.commentCount)})`,
+    )
+  }
+  return lines
+}
+
+function renderTrafficMarkdown(traffic: GitHubTrafficSnapshot): readonly string[] {
+  if (!traffic.available) {
+    return [`- Traffic: unavailable. ${traffic.reason}`]
+  }
+
+  const lines = [
+    `- Views: ${formatCount(traffic.views.count)} from ${formatCount(traffic.views.uniques)} unique visitors`,
+    `- Clones: ${formatCount(traffic.clones.count)} from ${formatCount(traffic.clones.uniques)} unique cloners`,
+  ]
+
+  if (traffic.referrers.length > 0) {
+    lines.push(
+      `- Top referrers: ${traffic.referrers
+        .slice(0, 5)
+        .map((referrer) => `${referrer.referrer} (${formatCount(referrer.count)}/${formatCount(referrer.uniques)})`)
+        .join(', ')}`,
+    )
+  }
+
+  if (traffic.paths.length > 0) {
+    lines.push(
+      `- Top paths: ${traffic.paths
+        .slice(0, 5)
+        .map((path) => `${path.path} (${formatCount(path.count)}/${formatCount(path.uniques)})`)
+        .join(', ')}`,
+    )
+  }
+
+  return lines
+}
+
+export function renderCommunityGrowthSnapshotMarkdown(snapshot: CommunityGrowthSnapshot): string {
+  const starRemaining = Math.max(0, starGoal - snapshot.github.stargazerCount)
+  const lines = [
+    '# Community Growth Snapshot',
+    '',
+    `Captured at: \`${snapshot.capturedAt}\``,
+    '',
+    'This snapshot tracks the public signals for the `@bilig/headless` growth loop: GitHub conversion, npm demand, contributor on-ramp health, discussion activity, and traffic quality.',
+    '',
+    '## GitHub',
+    '',
+    `- Repository: ${markdownLink(snapshot.github.fullName, snapshot.github.htmlUrl)}`,
+    `- Stars: ${formatCount(snapshot.github.stargazerCount)} / ${formatCount(starGoal)} (${formatCount(starRemaining)} remaining)`,
+    `- Forks: ${formatCount(snapshot.github.forkCount)}`,
+    `- Watchers: ${formatCount(snapshot.github.watcherCount)}`,
+    `- Open issues: ${formatCount(snapshot.github.openIssueCount)}`,
+    `- Default branch: \`${snapshot.github.defaultBranch}\``,
+    '',
+    '## npm',
+    '',
+    `- Package: \`${snapshot.npm.name}@${snapshot.npm.version}\``,
+    `- License: \`${snapshot.npm.license || 'unknown'}\``,
+    `- Modified: \`${snapshot.npm.modifiedAt}\``,
+    `- Downloads last week: ${formatCount(snapshot.npm.downloads.lastWeek.downloads)} (${snapshot.npm.downloads.lastWeek.start} to ${snapshot.npm.downloads.lastWeek.end})`,
+    `- Downloads last month: ${formatCount(snapshot.npm.downloads.lastMonth.downloads)} (${snapshot.npm.downloads.lastMonth.start} to ${snapshot.npm.downloads.lastMonth.end})`,
+    '',
+    '## Contributor Funnel',
+    '',
+    `- Open good first issues: ${formatCount(snapshot.contributorFunnel.openGoodFirstIssueCount)}`,
+    `- Open first-timers-only issues: ${formatCount(snapshot.contributorFunnel.openFirstTimersOnlyIssueCount)}`,
+    `- Open help wanted issues: ${formatCount(snapshot.contributorFunnel.openHelpWantedIssueCount)}`,
+    `- Open pull requests: ${formatCount(snapshot.contributorFunnel.openPullRequestCount)}`,
+    `- External open issues: ${formatCount(snapshot.contributorFunnel.externalOpenIssueCount)}`,
+    `- External open pull requests: ${formatCount(snapshot.contributorFunnel.externalOpenPullRequestCount)}`,
+    `- External issues opened in the last 7 days: ${formatCount(snapshot.contributorFunnel.externalIssuesOpenedLastSevenDays)}`,
+    `- External pull requests opened in the last 7 days: ${formatCount(snapshot.contributorFunnel.externalPullRequestsOpenedLastSevenDays)}`,
+    '',
+    '## Discussions',
+    '',
+    ...renderDiscussionActivityMarkdown(snapshot.discussionActivity),
+    '',
+    '## Traffic',
+    '',
+    ...renderTrafficMarkdown(snapshot.traffic),
+    '',
+    '## Read This Snapshot',
+    '',
+    '- Stars are the primary lagging goal; npm downloads, clone traffic, and external issues are leading signals.',
+    '- If downloads or clones rise without stars, improve README and npm star/bookmark conversion after proof blocks.',
+    '- If traffic comes from a channel but discussions stay quiet, switch from launch copy to a specific workflow-feedback ask.',
+    '- If the starter queue drops below three current issues, open scoped example tasks before the next distribution push.',
+    '',
+  ]
+
+  return `${lines.join('\n')}\n`
+}
+
 function parseCliOptions(argv: readonly string[]): CliOptions {
   let owner = defaultOwner
   let repo = defaultRepo
   let packageName = defaultPackageName
   let maintainerLogin = defaultMaintainerLogin
   let outputPath: string | undefined
+  let format: 'json' | 'markdown' = 'json'
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index]
@@ -722,6 +839,12 @@ function parseCliOptions(argv: readonly string[]): CliOptions {
     } else if (arg === '--output' && next !== undefined) {
       outputPath = next
       index += 1
+    } else if (arg === '--format' && next !== undefined) {
+      if (next !== 'json' && next !== 'markdown') {
+        throw new Error(`Unsupported snapshot format: ${next}`)
+      }
+      format = next
+      index += 1
     } else {
       throw new Error(`Unknown or incomplete argument: ${arg ?? ''}`)
     }
@@ -733,21 +856,22 @@ function parseCliOptions(argv: readonly string[]): CliOptions {
     packageName,
     maintainerLogin,
     outputPath,
+    format,
   }
 }
 
 async function runCli(): Promise<void> {
   const options = parseCliOptions(process.argv.slice(2))
   const snapshot = await collectCommunityGrowthSnapshot(options)
-  const json = `${JSON.stringify(snapshot, null, 2)}\n`
+  const output = options.format === 'markdown' ? renderCommunityGrowthSnapshotMarkdown(snapshot) : `${JSON.stringify(snapshot, null, 2)}\n`
 
   if (options.outputPath !== undefined) {
-    await writeFile(options.outputPath, json)
+    await writeFile(options.outputPath, output)
     console.log(`wrote ${options.outputPath}`)
     return
   }
 
-  process.stdout.write(json)
+  process.stdout.write(output)
 }
 
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {

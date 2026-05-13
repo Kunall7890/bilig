@@ -31,6 +31,7 @@ const expectedSitemapUrls = [
   `${siteRoot}formula-edge-groupby-spill-fixture.html`,
   `${siteRoot}starter-issues.html`,
   `${siteRoot}community-launch-pack.html`,
+  `${siteRoot}community-growth-snapshot.html`,
   `${siteRoot}llms.txt`,
 ] as const
 
@@ -59,6 +60,7 @@ const sourceFilesByUrl = new Map<string, string>([
   [`${siteRoot}formula-edge-groupby-spill-fixture.html`, 'formula-edge-groupby-spill-fixture.md'],
   [`${siteRoot}starter-issues.html`, 'starter-issues.md'],
   [`${siteRoot}community-launch-pack.html`, 'community-launch-pack.md'],
+  [`${siteRoot}community-growth-snapshot.html`, 'community-growth-snapshot.md'],
   [`${siteRoot}llms.txt`, 'llms.txt'],
 ])
 
@@ -268,6 +270,7 @@ for (const required of [
   'https://github.com/proompteng/bilig/blob/main/docs/new-contributor-guide.md',
   'https://github.com/proompteng/bilig/blob/main/docs/starter-issues.md',
   'https://github.com/proompteng/bilig/blob/main/docs/community-launch-pack.md',
+  'https://github.com/proompteng/bilig/blob/main/docs/community-growth-snapshot.md',
   'https://github.com/proompteng/bilig/issues?q=is%3Aissue%20state%3Aopen%20label%3Afirst-timers-only',
 ]) {
   requireIncludes(llms, required, 'docs/llms.txt')

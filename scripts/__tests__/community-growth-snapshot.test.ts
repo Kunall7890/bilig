@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { collectCommunityGrowthSnapshot, type GitHubCliApiJson } from '../community-growth-snapshot.ts'
+import {
+  collectCommunityGrowthSnapshot,
+  renderCommunityGrowthSnapshotMarkdown,
+  type GitHubCliApiJson,
+} from '../community-growth-snapshot.ts'
 
 function responseJson(value: unknown): Response {
   return Response.json(value)
@@ -596,5 +600,101 @@ describe('community growth snapshot', () => {
         },
       ],
     })
+  })
+
+  it('renders a markdown growth snapshot for weekly tracking', () => {
+    const markdown = renderCommunityGrowthSnapshotMarkdown({
+      capturedAt: '2026-05-12T22:14:21.495Z',
+      github: {
+        fullName: 'proompteng/bilig',
+        htmlUrl: 'https://github.com/proompteng/bilig',
+        description: 'Headless spreadsheet engine',
+        stargazerCount: 24,
+        forkCount: 4,
+        watcherCount: 1,
+        openIssueCount: 29,
+        defaultBranch: 'main',
+      },
+      npm: {
+        name: '@bilig/headless',
+        version: '0.11.24',
+        description: 'Headless spreadsheet engine',
+        license: 'MIT',
+        modifiedAt: '2026-05-12T05:53:15.971Z',
+        downloads: {
+          lastWeek: {
+            downloads: 13427,
+            start: '2026-05-05',
+            end: '2026-05-11',
+          },
+          lastMonth: {
+            downloads: 24931,
+            start: '2026-04-12',
+            end: '2026-05-11',
+          },
+        },
+      },
+      contributorFunnel: {
+        openGoodFirstIssueCount: 22,
+        openFirstTimersOnlyIssueCount: 22,
+        openHelpWantedIssueCount: 22,
+        openPullRequestCount: 0,
+        externalOpenIssueCount: 1,
+        externalOpenPullRequestCount: 0,
+        externalIssuesOpenedLastSevenDays: 22,
+        externalPullRequestsOpenedLastSevenDays: 5,
+      },
+      discussionActivity: {
+        available: true,
+        totalCount: 4,
+        recent: [
+          {
+            number: 213,
+            title: 'Five Node workbook automation examples',
+            url: 'https://github.com/proompteng/bilig/discussions/213',
+            category: 'Show and tell',
+            createdAt: '2026-05-12T21:46:51Z',
+            updatedAt: '2026-05-12T22:10:00Z',
+            commentCount: 1,
+          },
+        ],
+      },
+      traffic: {
+        available: true,
+        views: {
+          count: 393,
+          uniques: 159,
+        },
+        clones: {
+          count: 18287,
+          uniques: 1907,
+        },
+        referrers: [
+          {
+            referrer: 'news.ycombinator.com',
+            count: 51,
+            uniques: 36,
+          },
+        ],
+        paths: [
+          {
+            path: '/proompteng/bilig',
+            title: 'bilig',
+            count: 199,
+            uniques: 145,
+          },
+        ],
+      },
+    })
+
+    expect(markdown).toContain('# Community Growth Snapshot')
+    expect(markdown).toContain('- Stars: 24 / 1,000 (976 remaining)')
+    expect(markdown).toContain('- Downloads last week: 13,427 (2026-05-05 to 2026-05-11)')
+    expect(markdown).toContain('- Open good first issues: 22')
+    expect(markdown).toContain(
+      '- #213 [Five Node workbook automation examples](https://github.com/proompteng/bilig/discussions/213) (Show and tell, 1 comment)',
+    )
+    expect(markdown).toContain('- Clones: 18,287 from 1,907 unique cloners')
+    expect(markdown).toContain('news.ycombinator.com (51/36)')
   })
 })
