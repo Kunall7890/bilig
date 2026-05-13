@@ -1,21 +1,21 @@
 :root {
   color-scheme: light;
-  --page: #f6f5ef;
-  --paper: #fffdf7;
-  --ink: #151713;
-  --muted: #5d645c;
-  --soft: #82897e;
-  --line: #d7dacd;
-  --line-strong: #aeb6a7;
-  --dark: #141510;
-  --dark-2: #202116;
-  --dark-line: #3d4033;
-  --accent: #1f8a54;
-  --accent-bright: #37d878;
-  --code: #111820;
-  --font-body: 'Bilig Sans', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-display: 'Bilig Condensed', 'Bilig Sans', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'Bilig Mono', 'SFMono-Regular', ui-monospace, Consolas, monospace;
+  --page: #f7f6f0;
+  --paper: #fffefa;
+  --ink: #151611;
+  --muted: #5a5f55;
+  --soft: #7b8277;
+  --line: #d8dacf;
+  --line-strong: #aeb5a9;
+  --dark: #171812;
+  --dark-2: #22231a;
+  --dark-line: #424538;
+  --accent: #14784b;
+  --accent-bright: #35d179;
+  --code: #101820;
+  --font-body: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'SFMono-Regular', ui-monospace, 'Cascadia Code', Consolas, monospace;
 }
 
 * {
@@ -167,15 +167,20 @@ pre,
   overflow: hidden;
   border-bottom: 1px solid var(--line);
   background:
-    radial-gradient(circle at 78% 18%, rgba(55, 216, 120, 0.16), transparent 28%), linear-gradient(180deg, #faf9f3 0%, var(--page) 100%);
+    linear-gradient(rgba(21, 22, 17, 0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(21, 22, 17, 0.035) 1px, transparent 1px),
+    #f9f8f2;
+  background-size:
+    72px 72px,
+    72px 72px,
+    auto;
 }
 
 .hero-inner {
   display: grid;
-  grid-template-columns: minmax(0, 455px) minmax(0, 645px);
-  gap: clamp(36px, 5vw, 64px);
+  grid-template-columns: minmax(0, 480px) minmax(0, 610px);
+  gap: clamp(40px, 5vw, 70px);
   align-items: center;
-  padding: clamp(58px, 8vw, 98px) 0 clamp(54px, 7vw, 88px);
+  padding: clamp(62px, 8vw, 104px) 0 clamp(58px, 7vw, 94px);
 }
 
 .hero-copy {
@@ -205,20 +210,20 @@ pre,
 
 .hero-title strong {
   display: block;
-  font-size: clamp(64px, 8vw, 96px);
-  line-height: 0.9;
+  font-size: clamp(58px, 7vw, 88px);
+  line-height: 0.95;
 }
 
 .hero-title span {
   display: block;
-  max-width: 440px;
-  font-size: clamp(42px, 5.2vw, 66px);
-  font-weight: 600;
-  line-height: 0.98;
+  max-width: 470px;
+  font-size: clamp(38px, 4.3vw, 56px);
+  font-weight: 800;
+  line-height: 1.03;
 }
 
 .lede {
-  max-width: 430px;
+  max-width: 460px;
   color: var(--muted);
   font-size: 18px;
   line-height: 1.55;
@@ -292,9 +297,9 @@ pre,
 .hero-notes {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
+  gap: 22px;
   border-top: 1px solid var(--line-strong);
-  padding-top: 18px;
+  padding-top: 20px;
 }
 
 .hero-note {
@@ -304,14 +309,14 @@ pre,
 }
 
 .hero-note strong {
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.25;
 }
 
 .hero-note span {
   color: var(--muted);
-  font-size: 13px;
-  line-height: 1.35;
+  font-size: 14px;
+  line-height: 1.45;
 }
 
 main {
@@ -339,9 +344,9 @@ h2 {
   margin-top: 8px;
   max-width: 760px;
   font-family: var(--font-display);
-  font-size: clamp(38px, 5vw, 58px);
-  font-weight: 600;
-  line-height: 1;
+  font-size: clamp(34px, 4.5vw, 52px);
+  font-weight: 800;
+  line-height: 1.04;
 }
 
 .section-head p,
