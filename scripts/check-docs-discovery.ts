@@ -92,6 +92,25 @@ function getPackageScripts(packageJson: string, context: string): Record<string,
   return scripts
 }
 
+function requirePackageKeywords(packageJson: string, requiredKeywords: readonly string[], context: string): void {
+  const manifest: unknown = JSON.parse(packageJson)
+
+  if (typeof manifest !== 'object' || manifest === null || !('keywords' in manifest)) {
+    throw new Error(`${context} is missing a keywords array`)
+  }
+
+  const { keywords } = manifest
+  if (!Array.isArray(keywords) || !keywords.every((keyword) => typeof keyword === 'string')) {
+    throw new Error(`${context} keywords must be an array of strings`)
+  }
+
+  for (const requiredKeyword of requiredKeywords) {
+    if (!keywords.includes(requiredKeyword)) {
+      throw new Error(`${context} is missing discovery keyword: ${requiredKeyword}`)
+    }
+  }
+}
+
 function requireDocumentedScriptsExist(readme: string, packageJson: string, context: string): void {
   const scripts = getPackageScripts(packageJson, 'examples/headless-workpaper/package.json')
 
@@ -114,6 +133,7 @@ const [
   communityLaunchPack,
   starterIssues,
   newContributorGuide,
+  headlessPackageJson,
   headlessReadme,
   excelImportReadme,
   publicApi,
@@ -136,6 +156,7 @@ const [
   readFile(join(docsRoot, 'community-launch-pack.md'), 'utf8'),
   readFile(join(docsRoot, 'starter-issues.md'), 'utf8'),
   readFile(join(docsRoot, 'new-contributor-guide.md'), 'utf8'),
+  readFile(join(repoRoot, 'packages', 'headless', 'package.json'), 'utf8'),
   readFile(join(repoRoot, 'packages', 'headless', 'README.md'), 'utf8'),
   readFile(join(repoRoot, 'packages', 'excel-import', 'README.md'), 'utf8'),
   readFile(join(docsRoot, 'public-api.md'), 'utf8'),
@@ -149,6 +170,11 @@ const [
 ])
 
 requireHomepageDiscovery(index, siteCss)
+requirePackageKeywords(
+  headlessPackageJson,
+  ['calculation', 'compute', 'excel', 'headless-spreadsheet', 'node-spreadsheet', 'sheet', 'spreadsheet-engine', 'worksheet'],
+  'packages/headless/package.json',
+)
 requireIncludes(index, '"downloadUrl": "https://www.npmjs.com/package/@bilig/headless"', 'docs/index.html')
 requireIncludes(index, '"applicationCategory": "DeveloperApplication"', 'docs/index.html')
 requireIncludes(index, '"@type": "FAQPage"', 'docs/index.html')
