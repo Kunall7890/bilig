@@ -6,9 +6,9 @@ search indexing.
 
 Current starter queue as of May 13, 2026:
 
-- 64 open `first-timers-only` issues.
-- 58 issues are generally available for a new contributor to claim.
-- 6 issues already have active pull requests; comment before duplicating one of
+- 67 open `first-timers-only` issues.
+- 60 issues are generally available for a new contributor to claim.
+- 7 issues already have active pull requests; comment before duplicating one of
   those patches.
 
 ## Available Starter Picks
@@ -18,9 +18,16 @@ Current starter queue as of May 13, 2026:
 - [#153: docs(agent): add WorkPaper tool result contract table](https://github.com/proompteng/bilig/issues/153)
 - [#163: docs(agent): add coding-agent workbook automation recipe](https://github.com/proompteng/bilig/issues/163)
 - [#247: docs(agent): add OpenAI WorkPaper tool-calling recipe](https://github.com/proompteng/bilig/issues/247)
+- [#283: docs(mcp): add Cursor MCP config for the WorkPaper stdio server](https://github.com/proompteng/bilig/issues/283)
+- [#284: docs(mcp): add Windsurf MCP config for local WorkPaper testing](https://github.com/proompteng/bilig/issues/284)
+- [#285: docs(mcp): add MCP Inspector smoke-test transcript for the WorkPaper server](https://github.com/proompteng/bilig/issues/285)
+- [#287: docs(mcp): add official registry API verification snippet](https://github.com/proompteng/bilig/issues/287)
 - [#288: docs(mcp): add VS Code MCP config for WorkPaper](https://github.com/proompteng/bilig/issues/288)
 - [#289: docs(mcp): add Claude Code setup for WorkPaper](https://github.com/proompteng/bilig/issues/289)
 - [#290: docs(mcp): add Codex MCP config for WorkPaper](https://github.com/proompteng/bilig/issues/290)
+- [#292: docs(mcp): add Zed MCP config for WorkPaper](https://github.com/proompteng/bilig/issues/292)
+- [#293: docs(mcp): add Continue MCP config for WorkPaper](https://github.com/proompteng/bilig/issues/293)
+- [#294: docs(mcp): add Cline MCP config for WorkPaper](https://github.com/proompteng/bilig/issues/294)
 
 ### npm Smoke Test Improvements
 
@@ -44,6 +51,7 @@ Current starter queue as of May 13, 2026:
 - [#279: docs(examples): add Remix resource route WorkPaper smoke](https://github.com/proompteng/bilig/issues/279)
 - [#280: docs(examples): add Netlify Function WorkPaper route smoke](https://github.com/proompteng/bilig/issues/280)
 - [#281: docs(examples): add Cloudflare D1 WorkPaper persistence smoke](https://github.com/proompteng/bilig/issues/281)
+- [#286: docs(examples): add Nuxt Nitro WorkPaper route smoke](https://github.com/proompteng/bilig/issues/286)
 
 ### Example Recipes
 
@@ -89,6 +97,7 @@ These are still open, but a contributor has an active pull request attached.
 Pick one only after checking the PR thread or asking whether the scope is free.
 
 - [#231: test(examples): cover MCP stdio JSON-RPC error responses](https://github.com/proompteng/bilig/issues/231) via [PR #237](https://github.com/proompteng/bilig/pull/237)
+- [#282: docs(mcp): add Claude Desktop config for the published WorkPaper server](https://github.com/proompteng/bilig/issues/282) via [PR #291](https://github.com/proompteng/bilig/pull/291)
 - [#257: docs(examples): add a runnable Hono WorkPaper route smoke](https://github.com/proompteng/bilig/issues/257) via [PR #264](https://github.com/proompteng/bilig/pull/264)
 - [#258: docs(examples): add Cloudflare KV WorkPaper persistence snippet](https://github.com/proompteng/bilig/issues/258) via [PR #263](https://github.com/proompteng/bilig/pull/263)
 - [#259: docs(service): add Prisma-backed WorkPaper JSON persistence recipe](https://github.com/proompteng/bilig/issues/259) via [PR #262](https://github.com/proompteng/bilig/pull/262)

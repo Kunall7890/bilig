@@ -78,12 +78,12 @@ Latest public execution snapshot on May 13, 2026 after the landing-page pass:
 Latest starter-queue execution snapshot on May 13, 2026 after the adapter smoke
 issue pass:
 
-- GitHub surface: `24` stars, `10` forks, `71` open issues, and `6` open pull
+- GitHub surface: `24` stars, `11` forks, `68` open issues, and `7` open pull
   requests.
-- npm surface: `@bilig/headless@0.13.21`, with `15,592` downloads last week
+- npm surface: `@bilig/headless@0.13.26`, with `15,592` downloads last week
   and `23,240` downloads in the last 30 days.
-- Contributor funnel: `64` open `good first issue`, `64` open
-  `first-timers-only`, and `64` open `help wanted` issues.
+- Contributor funnel: `67` open `good first issue`, `67` open
+  `first-timers-only`, and `67` open `help wanted` issues.
 - New starter issues `#272` through `#281` cover NestJS, Express, Supabase Edge
   Functions, Deno Deploy, Next.js Route Handlers, Bun.serve, SvelteKit, Remix,
   Netlify Functions, and Cloudflare D1 WorkPaper smoke examples.
@@ -96,6 +96,8 @@ issue pass:
   WorkPaper docs.
 - New agent-client starter issues `#288` through `#290` cover VS Code, Claude
   Code, and Codex MCP setup for the published WorkPaper stdio server.
+- New editor-client starter issues `#292` through `#294` cover Zed, Continue,
+  and Cline MCP setup for the published WorkPaper stdio server.
 - README and npm conversion surface: the GitHub README and package README now
   expose the Glama score badge, link the official MCP Registry and Glama pages,
   and make the npm sanity check prove formula readback after edit, JSON save,
@@ -119,12 +121,12 @@ issue pass:
 - External MCP directory surface: Glama published the Bilig WorkPaper server at
   <https://glama.ai/mcp/servers/proompteng/bilig>. The score badge was added to
   the punkpeye PR, replacing the `missing-glama` label with `has-glama`.
-- Official MCP Registry surface: the published `io.github.proompteng/bilig-workpaper`
-  entry was refreshed to `@bilig/headless@0.13.21` with the existing Publish MCP
-  Registry workflow:
-  <https://github.com/proompteng/bilig/actions/runs/25794844239>
-  Live API verification on 2026-05-13 returned 5 matching registry entries,
-  with `0.13.21` marked as latest.
+- Official MCP Registry surface: the published
+  `io.github.proompteng/bilig-workpaper` entry was refreshed again to
+  `@bilig/headless@0.13.26` with the existing Publish MCP Registry workflow:
+  <https://github.com/proompteng/bilig/actions/runs/25801774940>
+  Live API verification on 2026-05-13 returned 6 matching registry entries,
+  with `0.13.26` marked as latest.
 - External MCP directory surface: `mcp.directory` accepted the public server
   submission for review with repository `https://github.com/proompteng/bilig`,
   npm package `@bilig/headless`, and the WorkPaper persistence/readback
