@@ -385,6 +385,7 @@ for (const [path, content] of [
   requireIncludes(content, '## Current Public Proof', path)
   requireIncludes(content, 'https://proompteng.github.io/bilig/community-growth-snapshot.html', path)
   requireIncludes(content, 'https://github.com/proompteng/bilig/stargazers', path)
+  requireIncludes(content, '`10` forks', path)
   requireIncludes(content, '13,427` npm downloads in the', path)
   requireIncludes(content, '`45` open', path)
   requireIncludes(content, '`good first issue` tickets', path)
