@@ -170,6 +170,11 @@ issue pass:
   `bcdce4e1-3b05-4be2-b611-2a2abb8baf79`. Immediate search for `bilig` still
   returned no published result:
   <https://mcpserver.cc/en?q=bilig>
+- External MCP directory surface: AgentNDX accepted the public Bilig WorkPaper
+  MCP submission for review through its no-login submit endpoint. Immediate API
+  search for `bilig` returned `0` results before submission, so the listing is
+  pending review:
+  <https://agentndx.ai/browse?q=bilig>
 - External MCP directory follow-up: PulseMCP currently returns `0` results for
   `bilig` in Atlas, and its submit page says server submissions are ingested
   from the official MCP Registry. The next action is to let the fresh official
