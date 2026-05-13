@@ -1,11 +1,13 @@
 {
   "name": "@bilig/headless",
   "version": "0.1.95",
-  "description": "Headless spreadsheet engine for Node.js formulas, workbook JSON persistence, and service-side spreadsheet automation.",
+  "description": "Headless spreadsheet engine for Node.js formulas, agent tools, workbook JSON persistence, and service-side spreadsheet automation.",
   "keywords": [
     "agent",
+    "agent-tools",
     "agents",
     "ai-agents",
+    "ai-sdk",
     "ai-spreadsheet",
     "automation",
     "bilig",
@@ -18,6 +20,7 @@
     "headless-spreadsheet",
     "headless-workbook",
     "hyperformula",
+    "langchain",
     "local-first",
     "node",
     "node-spreadsheet",
@@ -27,12 +30,15 @@
     "spreadsheet-automation",
     "spreadsheet-engine",
     "spreadsheet-formulas",
+    "vercel-ai-sdk",
     "workbook",
     "workbook-api",
     "workbook-automation",
     "workbook-engine",
     "workbook-state",
-    "workpaper"
+    "workpaper",
+    "workpaper-json",
+    "xlsx"
   ],
   "homepage": "https://proompteng.github.io/bilig/",
   "bugs": {
