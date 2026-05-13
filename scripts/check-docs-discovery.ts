@@ -15,6 +15,7 @@ const expectedSitemapUrls = [
   `${siteRoot}mcp-client-setup.html`,
   `${siteRoot}agent-spreadsheet-tool-call-loop.html`,
   `${siteRoot}node-service-workpaper-recipe.html`,
+  `${siteRoot}server-side-spreadsheet-automation-node.html`,
   `${siteRoot}node-spreadsheet-formula-engine.html`,
   `${siteRoot}evaluate-excel-formulas-in-node-typescript.html`,
   `${siteRoot}try-bilig-headless-in-node.html`,
@@ -49,6 +50,7 @@ const sourceFilesByUrl = new Map<string, string>([
   [`${siteRoot}mcp-client-setup.html`, 'mcp-client-setup.md'],
   [`${siteRoot}agent-spreadsheet-tool-call-loop.html`, 'agent-spreadsheet-tool-call-loop.md'],
   [`${siteRoot}node-service-workpaper-recipe.html`, 'node-service-workpaper-recipe.md'],
+  [`${siteRoot}server-side-spreadsheet-automation-node.html`, 'server-side-spreadsheet-automation-node.md'],
   [`${siteRoot}node-spreadsheet-formula-engine.html`, 'node-spreadsheet-formula-engine.md'],
   [`${siteRoot}evaluate-excel-formulas-in-node-typescript.html`, 'evaluate-excel-formulas-in-node-typescript.md'],
   [`${siteRoot}try-bilig-headless-in-node.html`, 'try-bilig-headless-in-node.md'],
@@ -246,6 +248,7 @@ for (const required of [
   './mcp-client-setup.html',
   './agent-spreadsheet-tool-call-loop.html',
   './node-service-workpaper-recipe.html',
+  './server-side-spreadsheet-automation-node.html',
   './node-spreadsheet-formula-engine.html',
   './evaluate-excel-formulas-in-node-typescript.html',
   './try-bilig-headless-in-node.html',
@@ -329,6 +332,7 @@ for (const required of [
   'https://proompteng.github.io/bilig/agent-workpaper-tool-calling-recipe.html',
   'https://proompteng.github.io/bilig/agent-spreadsheet-tool-call-loop.html',
   'https://proompteng.github.io/bilig/node-service-workpaper-recipe.html',
+  'https://proompteng.github.io/bilig/server-side-spreadsheet-automation-node.html',
   'https://proompteng.github.io/bilig/serverless-workpaper-api-route.html',
   'https://proompteng.github.io/bilig/workbook-automation-examples-node.html',
   'https://github.com/proompteng/bilig/blob/main/docs/workbook-automation-examples-node.md',
@@ -349,6 +353,7 @@ for (const required of [
   'https://proompteng.github.io/bilig/evaluate-excel-formulas-in-node-typescript.html',
   'https://github.com/proompteng/bilig/blob/main/docs/node-spreadsheet-formula-engine.md',
   'https://github.com/proompteng/bilig/blob/main/docs/evaluate-excel-formulas-in-node-typescript.md',
+  'https://github.com/proompteng/bilig/blob/main/docs/server-side-spreadsheet-automation-node.md',
   'https://github.com/proompteng/bilig/blob/main/docs/node-service-workpaper-recipe.md',
   'https://github.com/proompteng/bilig/blob/main/docs/serverless-workpaper-api-route.md',
   'https://github.com/proompteng/bilig/blob/main/docs/csv-shaped-workpaper-input-recipe.md',
@@ -435,6 +440,11 @@ requireIncludes(
   await readFile(join(docsRoot, 'evaluate-excel-formulas-in-node-typescript.md'), 'utf8'),
   'npx tsx eval-node-formulas.ts',
   'docs/evaluate-excel-formulas-in-node-typescript.md',
+)
+requireIncludes(
+  await readFile(join(docsRoot, 'server-side-spreadsheet-automation-node.md'), 'utf8'),
+  'npx tsx eval.ts',
+  'docs/server-side-spreadsheet-automation-node.md',
 )
 
 for (const [path, content] of [
@@ -541,6 +551,7 @@ for (const [path, content] of [
   ['docs/mcp-client-setup.md', mcpClientSetupDoc],
   ['docs/agent-spreadsheet-tool-call-loop.md', agentToolCallLoopDoc],
   ['docs/workbook-automation-examples-node.md', await readFile(join(docsRoot, 'workbook-automation-examples-node.md'), 'utf8')],
+  ['docs/server-side-spreadsheet-automation-node.md', await readFile(join(docsRoot, 'server-side-spreadsheet-automation-node.md'), 'utf8')],
   ['docs/dev-to-workbook-apis-post.md', await readFile(join(docsRoot, 'dev-to-workbook-apis-post.md'), 'utf8')],
 ] as const) {
   requireIncludes(content, 'image: /assets/github-social-preview.png', path)
@@ -568,6 +579,7 @@ for (const [path, content] of [
   ['docs/llms.txt', llms],
 ] as const) {
   requireIncludes(content, 'node-spreadsheet-formula-engine', path)
+  requireIncludes(content, 'server-side-spreadsheet-automation-node', path)
   requireIncludes(content, 'examples/serverless-workpaper-api', path)
 }
 

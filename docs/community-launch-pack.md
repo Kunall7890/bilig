@@ -98,6 +98,10 @@ issue pass:
   Code, and Codex MCP setup for the published WorkPaper stdio server.
 - New editor-client starter issues `#292` through `#294` cover Zed, Continue,
   and Cline MCP setup for the published WorkPaper stdio server.
+- New search-intent page targets server-side spreadsheet automation in Node.js
+  with a TypeScript smoke test, service boundary notes, and links into the
+  maintained examples:
+  <https://proompteng.github.io/bilig/server-side-spreadsheet-automation-node.html>
 - README and npm conversion surface: the GitHub README and package README now
   expose the Glama score badge, link the official MCP Registry and Glama pages,
   and make the npm sanity check prove formula readback after edit, JSON save,

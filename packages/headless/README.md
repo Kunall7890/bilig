@@ -296,6 +296,8 @@ Repository links:
   [`npm run sheet-inspection`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#sheet-inspection)
 - serverless API route example:
   [`examples/serverless-workpaper-api`](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api)
+- server-side spreadsheet automation:
+  [`docs/server-side-spreadsheet-automation-node.md`](https://github.com/proompteng/bilig/blob/main/docs/server-side-spreadsheet-automation-node.md)
 - Node service recipe:
   [`docs/node-service-workpaper-recipe.md`](https://github.com/proompteng/bilig/blob/main/docs/node-service-workpaper-recipe.md)
 - serverless API route recipe:
