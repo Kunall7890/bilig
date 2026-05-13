@@ -80,7 +80,7 @@ issue pass:
 
 - GitHub surface: `24` stars, `10` forks, `58` open issues, and `6` open pull
   requests.
-- npm surface: `@bilig/headless@0.13.16`, with `15,592` downloads last week
+- npm surface: `@bilig/headless@0.13.18`, with `15,592` downloads last week
   and `23,240` downloads in the last 30 days.
 - Contributor funnel: `51` open `good first issue`, `51` open
   `first-timers-only`, and `51` open `help wanted` issues.
@@ -90,6 +90,9 @@ issue pass:
 - External contributor-directory surface: the Up For Grabs listing pull request
   is open and passing its project checks:
   <https://github.com/up-for-grabs/up-for-grabs.net/pull/5790>
+- External contributor-directory surface: the Good First Issue CLI listing pull
+  request is open, mergeable, and passing its security checks:
+  <https://github.com/cutenode/good-first-issue/pull/1088>
 
 ## Goal Text
 

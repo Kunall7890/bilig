@@ -227,7 +227,7 @@ requireNotIncludes(siteCss, 'bilig-hero-workbook-api.png?v=2026-05-08-2', 'docs/
 requireIncludes(index, 'Revenue.workpaper', 'docs/index.html')
 requireIncludes(index, 'Build a workbook in Node, change inputs through code', 'docs/index.html')
 requireIncludes(index, '<strong>51 starter tasks</strong>', 'docs/index.html')
-requireIncludes(index, '<strong>0.13.16</strong>', 'docs/index.html')
+requireIncludes(index, '<strong>0.13.18</strong>', 'docs/index.html')
 requireIncludes(index, '<span>Open first-timer issues</span>', 'docs/index.html')
 requireIncludes(index, '<strong>51</strong>', 'docs/index.html')
 requireNotIncludes(index, '<strong>40 starter tasks</strong>', 'docs/index.html')
