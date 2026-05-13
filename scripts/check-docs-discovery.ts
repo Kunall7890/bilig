@@ -230,7 +230,7 @@ requireIncludes(index, '<strong>Checked .ts files, not pseudocode.</strong>', 'd
 requireIncludes(index, '<strong>Small tasks for first PRs are open now.</strong>', 'docs/index.html')
 requireIncludes(index, '<strong>0.13.19</strong>', 'docs/index.html')
 requireIncludes(index, '<span>Open first-timer issues</span>', 'docs/index.html')
-requireIncludes(index, '<strong>61</strong>', 'docs/index.html')
+requireIncludes(index, '<strong>64</strong>', 'docs/index.html')
 requireNotIncludes(index, '<strong>40 starter tasks</strong>', 'docs/index.html')
 requireNotIncludes(index, '<strong>0.13.9</strong>', 'docs/index.html')
 requireIncludes(index, '"downloadUrl": "https://www.npmjs.com/package/@bilig/headless"', 'docs/index.html')
@@ -393,7 +393,7 @@ for (const [path, content] of [
   requireIncludes(content, 'https://github.com/proompteng/bilig/stargazers', path)
   requireIncludes(content, '`10` forks', path)
   requireIncludes(content, '15,592` npm downloads in the', path)
-  requireIncludes(content, '`61` open', path)
+  requireIncludes(content, '`64` open', path)
   requireIncludes(content, '`good first issue` tickets', path)
 }
 
@@ -403,8 +403,8 @@ requireIncludes(newContributorGuide, 'pnpm format:check', 'docs/new-contributor-
 requireIncludes(newContributorGuide, 'pnpm lint', 'docs/new-contributor-guide.md')
 requireIncludes(starterIssues, 'new-contributor-guide.md#first-time-command-checklist', 'docs/starter-issues.md')
 requireIncludes(starterIssues, 'https://github.com/proompteng/bilig/blob/main/CONTRIBUTING.md', 'docs/starter-issues.md')
-requireIncludes(starterIssues, '61 open `first-timers-only` issues.', 'docs/starter-issues.md')
-requireIncludes(starterIssues, '55 issues are generally available for a new contributor to claim.', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '64 open `first-timers-only` issues.', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '58 issues are generally available for a new contributor to claim.', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '### npm Smoke Test Improvements', 'docs/starter-issues.md')
 requireIncludes(starterIssues, 'https://github.com/proompteng/bilig/issues/265', 'docs/starter-issues.md')
 requireIncludes(starterIssues, 'https://github.com/proompteng/bilig/issues/269', 'docs/starter-issues.md')
@@ -417,7 +417,7 @@ requireIncludes(starterIssues, '#266: docs(try): add a Docker smoke test for cle
 requireIncludes(starterIssues, 'https://github.com/proompteng/bilig/pull/271', 'docs/starter-issues.md')
 requireNotIncludes(starterIssues, 'https://github.com/proompteng/bilig/pull/251', 'docs/starter-issues.md')
 requireIncludes(contributing, 'new-contributor-guide.md#first-time-command-checklist', 'CONTRIBUTING.md')
-requireIncludes(llms, '61 open first-timers-only issues, 55 generally available, 6 already in review', 'docs/llms.txt')
+requireIncludes(llms, '64 open first-timers-only issues, 58 generally available, 6 already in review', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/issues/272', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/issues/277', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/issues/281', 'docs/llms.txt')
@@ -616,7 +616,7 @@ for (const [path, content] of [
 const currentStarterIssueNumbers = [
   134, 153, 154, 155, 156, 158, 159, 162, 163, 193, 194, 195, 196, 197, 198, 207, 208, 209, 210, 211, 212, 217, 218, 219, 220, 221, 222,
   223, 231, 233, 247, 248, 249, 250, 255, 256, 257, 258, 259, 260, 265, 266, 267, 268, 269, 272, 273, 274, 275, 276, 277, 278, 279, 280,
-  281,
+  281, 288, 289, 290,
 ]
 
 for (const required of currentStarterIssueNumbers.map((issueNumber) => `https://github.com/proompteng/bilig/issues/${issueNumber}`)) {

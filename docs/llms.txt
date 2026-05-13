@@ -225,7 +225,7 @@ including its p95 caveat.
   https://github.com/proompteng/bilig/blob/main/docs/starter-issues.md
 - community growth snapshot:
   https://github.com/proompteng/bilig/blob/main/docs/community-growth-snapshot.md
-- current starter queue snapshot: 61 open first-timers-only issues, 55 generally available, 6 already in review.
+- current starter queue snapshot: 64 open first-timers-only issues, 58 generally available, 6 already in review.
 - current small example issue: xlsx formula-cache roundtrip:
   https://github.com/proompteng/bilig/issues/134
 - current small docs issue: WorkPaper agent tool result contract:
@@ -288,6 +288,12 @@ including its p95 caveat.
   https://github.com/proompteng/bilig/issues/233
 - current small docs issue: OpenAI WorkPaper tool-calling recipe:
   https://github.com/proompteng/bilig/issues/247
+- current small docs issue: VS Code MCP config for WorkPaper:
+  https://github.com/proompteng/bilig/issues/288
+- current small docs issue: Claude Code setup for WorkPaper:
+  https://github.com/proompteng/bilig/issues/289
+- current small docs issue: Codex MCP config for WorkPaper:
+  https://github.com/proompteng/bilig/issues/290
 - current small docs issue: downstream GitHub Actions smoke snippet:
   https://github.com/proompteng/bilig/issues/248
 - current small example issue: AWS Lambda Function URL WorkPaper adapter note:

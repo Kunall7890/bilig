@@ -6,8 +6,8 @@ search indexing.
 
 Current starter queue as of May 13, 2026:
 
-- 61 open `first-timers-only` issues.
-- 55 issues are generally available for a new contributor to claim.
+- 64 open `first-timers-only` issues.
+- 58 issues are generally available for a new contributor to claim.
 - 6 issues already have active pull requests; comment before duplicating one of
   those patches.
 
@@ -18,6 +18,9 @@ Current starter queue as of May 13, 2026:
 - [#153: docs(agent): add WorkPaper tool result contract table](https://github.com/proompteng/bilig/issues/153)
 - [#163: docs(agent): add coding-agent workbook automation recipe](https://github.com/proompteng/bilig/issues/163)
 - [#247: docs(agent): add OpenAI WorkPaper tool-calling recipe](https://github.com/proompteng/bilig/issues/247)
+- [#288: docs(mcp): add VS Code MCP config for WorkPaper](https://github.com/proompteng/bilig/issues/288)
+- [#289: docs(mcp): add Claude Code setup for WorkPaper](https://github.com/proompteng/bilig/issues/289)
+- [#290: docs(mcp): add Codex MCP config for WorkPaper](https://github.com/proompteng/bilig/issues/290)
 
 ### npm Smoke Test Improvements
 

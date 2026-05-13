@@ -78,12 +78,12 @@ Latest public execution snapshot on May 13, 2026 after the landing-page pass:
 Latest starter-queue execution snapshot on May 13, 2026 after the adapter smoke
 issue pass:
 
-- GitHub surface: `24` stars, `10` forks, `68` open issues, and `6` open pull
+- GitHub surface: `24` stars, `10` forks, `71` open issues, and `6` open pull
   requests.
 - npm surface: `@bilig/headless@0.13.21`, with `15,592` downloads last week
   and `23,240` downloads in the last 30 days.
-- Contributor funnel: `61` open `good first issue`, `61` open
-  `first-timers-only`, and `61` open `help wanted` issues.
+- Contributor funnel: `64` open `good first issue`, `64` open
+  `first-timers-only`, and `64` open `help wanted` issues.
 - New starter issues `#272` through `#281` cover NestJS, Express, Supabase Edge
   Functions, Deno Deploy, Next.js Route Handlers, Bun.serve, SvelteKit, Remix,
   Netlify Functions, and Cloudflare D1 WorkPaper smoke examples.
@@ -94,6 +94,8 @@ issue pass:
 - New registry-proof starter issue `#287` asks a first-time contributor to add
   a copy-pasteable official MCP Registry API verification snippet to the
   WorkPaper docs.
+- New agent-client starter issues `#288` through `#290` cover VS Code, Claude
+  Code, and Codex MCP setup for the published WorkPaper stdio server.
 - README and npm conversion surface: the GitHub README and package README now
   expose the Glama score badge, link the official MCP Registry and Glama pages,
   and make the npm sanity check prove formula readback after edit, JSON save,
