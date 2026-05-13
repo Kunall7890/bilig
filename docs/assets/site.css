@@ -180,16 +180,17 @@ pre,
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(300px, 0.58fr) minmax(520px, 1.42fr);
+  grid-template-columns: minmax(320px, 390px) minmax(0, 1fr);
   min-height: clamp(620px, 86svh, 740px);
   align-items: center;
-  gap: 30px;
+  gap: clamp(34px, 4vw, 64px);
   padding: clamp(26px, 4svh, 48px) 0 clamp(28px, 4svh, 50px);
 }
 
 .hero-copy {
   display: grid;
-  max-width: 500px;
+  width: 100%;
+  max-width: 390px;
   gap: 20px;
 }
 
@@ -219,7 +220,7 @@ pre,
 
 .hero-title span {
   display: block;
-  max-width: 500px;
+  max-width: 390px;
   color: #e7dece;
   font-family: var(--font-display);
   font-size: clamp(34px, 4vw, 60px);
@@ -229,7 +230,7 @@ pre,
 }
 
 .lede {
-  max-width: 520px;
+  max-width: 390px;
   color: #d1c5b5;
   font-size: 18px;
   line-height: 1.5;
@@ -237,7 +238,7 @@ pre,
 
 .install-command {
   display: flex;
-  width: min(100%, 560px);
+  width: 100%;
   min-width: 0;
   align-items: center;
   border: 1px solid #51483b;
@@ -321,7 +322,7 @@ pre,
 .hero-facts {
   display: grid;
   grid-template-columns: repeat(3, minmax(120px, 1fr));
-  width: min(100%, 620px);
+  width: 100%;
   gap: 12px;
   color: #beb2a1;
 }
@@ -689,10 +690,7 @@ footer {
 
   .hero {
     min-height: auto;
-    background:
-      linear-gradient(rgba(17, 16, 12, 0.96), rgba(17, 16, 12, 0.9)),
-      url('./assets/bilig-hero-workbook-api.png?v=2026-05-08-2') center top / cover no-repeat,
-      var(--charcoal);
+    background: linear-gradient(rgba(17, 16, 12, 0.96), rgba(17, 16, 12, 0.9)), var(--charcoal);
   }
 
   .hero-inner {
@@ -732,7 +730,6 @@ footer {
   }
 
   .hero-fact {
-    border-right: 0;
     border-bottom: 1px solid rgba(255, 250, 240, 0.16);
     padding: 14px 0;
   }
