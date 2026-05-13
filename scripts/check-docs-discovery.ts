@@ -397,6 +397,13 @@ requireIncludes(newContributorGuide, 'pnpm format:check', 'docs/new-contributor-
 requireIncludes(newContributorGuide, 'pnpm lint', 'docs/new-contributor-guide.md')
 requireIncludes(starterIssues, 'new-contributor-guide.md#first-time-command-checklist', 'docs/starter-issues.md')
 requireIncludes(starterIssues, 'https://github.com/proompteng/bilig/blob/main/CONTRIBUTING.md', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '45 open `first-timers-only` issues.', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '39 issues are generally available for a new contributor to claim.', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '### npm Smoke Test Improvements', 'docs/starter-issues.md')
+requireIncludes(starterIssues, 'https://github.com/proompteng/bilig/issues/265', 'docs/starter-issues.md')
+requireIncludes(starterIssues, 'https://github.com/proompteng/bilig/issues/269', 'docs/starter-issues.md')
+requireIncludes(starterIssues, 'https://github.com/proompteng/bilig/pull/271', 'docs/starter-issues.md')
+requireNotIncludes(starterIssues, 'https://github.com/proompteng/bilig/pull/251', 'docs/starter-issues.md')
 requireIncludes(contributing, 'new-contributor-guide.md#first-time-command-checklist', 'CONTRIBUTING.md')
 
 for (const [path, content] of [
