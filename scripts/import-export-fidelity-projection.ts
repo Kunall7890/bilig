@@ -32,11 +32,9 @@ function projectChartSemantics(chart: WorkbookChartSnapshot): ProjectedChartSema
     address: chart.address,
     source: chart.source,
     chartType: chart.chartType,
+    seriesOrientation: chart.seriesOrientation ?? 'columns',
     rows: chart.rows,
     cols: chart.cols,
-  }
-  if (chart.seriesOrientation !== undefined) {
-    projected.seriesOrientation = chart.seriesOrientation
   }
   if (chart.firstRowAsHeaders !== undefined) {
     projected.firstRowAsHeaders = chart.firstRowAsHeaders

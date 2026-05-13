@@ -654,6 +654,15 @@ describe('public workbook corpus', () => {
     expect(roundTripSemanticsDigest(broadStyleRange)).not.toBe(roundTripSemanticsDigest(differentPopulatedStyle))
   })
 
+  it('normalizes default chart series orientation in round-trip digests', () => {
+    const implicitColumnOrientation = buildChartOrientationSnapshot()
+    const explicitColumnOrientation = buildChartOrientationSnapshot('columns')
+    const rowOrientation = buildChartOrientationSnapshot('rows')
+
+    expect(roundTripSemanticsDigest(implicitColumnOrientation)).toBe(roundTripSemanticsDigest(explicitColumnOrientation))
+    expect(roundTripSemanticsDigest(implicitColumnOrientation)).not.toBe(roundTripSemanticsDigest(rowOrientation))
+  })
+
   it('runs structural smoke against a mutable sheet when the first sheet is protected', async () => {
     const cacheDir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-protected-first-'))
     mkdirSync(join(cacheDir, 'files'), { recursive: true })
@@ -1782,6 +1791,46 @@ function buildInteriorStyledSnapshot(startAddress: string, endAddress: string, b
             },
           ],
         },
+      },
+    ],
+  }
+}
+
+function buildChartOrientationSnapshot(seriesOrientation?: 'columns' | 'rows'): WorkbookSnapshot {
+  return {
+    version: 1,
+    workbook: {
+      name: 'chart-orientation',
+      metadata: {
+        charts: [
+          {
+            id: 'sales-chart',
+            sheetName: 'Chart Data',
+            address: 'E1',
+            source: { sheetName: 'Chart Data', startAddress: 'A1', endAddress: 'B3' },
+            chartType: 'column',
+            ...(seriesOrientation !== undefined ? { seriesOrientation } : {}),
+            firstRowAsHeaders: true,
+            firstColumnAsLabels: true,
+            rows: 12,
+            cols: 6,
+          },
+        ],
+      },
+    },
+    sheets: [
+      {
+        id: 1,
+        name: 'Chart Data',
+        order: 0,
+        cells: [
+          { address: 'A1', value: 'Month' },
+          { address: 'B1', value: 'Revenue' },
+          { address: 'A2', value: 'Jan' },
+          { address: 'B2', value: 10 },
+          { address: 'A3', value: 'Feb' },
+          { address: 'B3', value: 12 },
+        ],
       },
     ],
   }
