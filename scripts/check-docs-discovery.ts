@@ -382,6 +382,8 @@ for (const required of [
   'https://github.com/proompteng/bilig/discussions/167',
   'https://github.com/proompteng/bilig/discussions/230',
   'https://github.com/proompteng/bilig/discussions/270',
+  'https://github.com/proompteng/bilig/discussions/307',
+  'https://github.com/proompteng/bilig/discussions/230#discussioncomment-16907632',
   'https://github.com/proompteng/bilig/discussions/115',
   'https://github.com/proompteng/bilig/blob/main/docs/dev-to-workbook-apis-post.md',
   'https://proompteng.github.io/bilig/node-spreadsheet-formula-engine.html',
@@ -442,7 +444,9 @@ for (const [path, content] of [
   requireIncludes(content, '`12` forks', path)
   requireIncludes(content, '15,592` npm downloads in the', path)
   requireIncludes(content, '`77` open', path)
+  requireIncludes(content, '`9` GitHub Discussions', path)
   requireIncludes(content, '`good first issue` tickets', path)
+  requireIncludes(content, 'https://github.com/proompteng/bilig/discussions/307', path)
 }
 
 requireIncludes(newContributorGuide, '## First-Time Command Checklist', 'docs/new-contributor-guide.md')
@@ -593,6 +597,7 @@ for (const required of [
   'https://github.com/cline/mcp-marketplace/issues/1557',
   'Not indexed yet as of May 13, 2026',
   'https://www.pulsemcp.com/servers?search=bilig&q=bilig',
+  'marked `@bilig/headless@0.14.0` as the',
   'read_workpaper_summary',
   'set_workpaper_input_cell',
 ]) {
@@ -634,8 +639,8 @@ for (const required of [
 for (const required of [
   'Latest MCPB execution snapshot on May 13, 2026 after the Claude Desktop bundle',
   'https://proompteng.github.io/bilig/claude-desktop-mcpb-workpaper.html',
-  'pnpm mcpb:workpaper:build -- --package-version 0.13.28',
-  '`0.13.28` marked as latest',
+  'pnpm mcpb:workpaper:build -- --package-version 0.14.0',
+  '`0.14.0` marked as latest',
   'read_workpaper_summary',
   'set_workpaper_input_cell',
   'Latest PulseMCP verification snapshot on May 13, 2026 after the directory',
@@ -746,37 +751,28 @@ for (const [path, content] of [
   requireIncludes(content, 'workpaper-benchmark-card.png', path)
 }
 
-for (const [path, content] of [
-  ['README.md', readme],
-  ['packages/headless/README.md', headlessReadme],
-  ['docs/index.html', index],
-  ['docs/community-launch-pack.md', await readFile(join(docsRoot, 'community-launch-pack.md'), 'utf8')],
-  ['docs/llms.txt', llms],
-] as const) {
-  requireIncludes(content, 'https://github.com/proompteng/bilig/discussions/157', path)
-}
+const discussionDocs = {
+  readme: ['README.md', readme],
+  headless: ['packages/headless/README.md', headlessReadme],
+  index: ['docs/index.html', index],
+  launch: ['docs/community-launch-pack.md', communityLaunchPack],
+  llms: ['docs/llms.txt', llms],
+  mcp: ['docs/mcp-workpaper-tool-server.md', mcpWorkPaperToolServerDoc],
+} as const
 
-for (const [path, content] of [
-  ['README.md', readme],
-  ['docs/community-launch-pack.md', await readFile(join(docsRoot, 'community-launch-pack.md'), 'utf8')],
-  ['docs/llms.txt', llms],
-] as const) {
-  requireIncludes(content, 'https://github.com/proompteng/bilig/discussions/213', path)
-}
+const discussionDocChecks = [
+  ['https://github.com/proompteng/bilig/discussions/157', ['readme', 'headless', 'index', 'launch', 'llms']],
+  ['https://github.com/proompteng/bilig/discussions/213', ['readme', 'launch', 'llms']],
+  ['https://github.com/proompteng/bilig/discussions/230', ['mcp', 'llms']],
+  ['https://github.com/proompteng/bilig/discussions/167', ['index', 'launch', 'llms']],
+  ['https://github.com/proompteng/bilig/discussions/307', ['readme', 'headless', 'index', 'launch', 'llms']],
+] as const
 
-for (const [path, content] of [
-  ['docs/mcp-workpaper-tool-server.md', mcpWorkPaperToolServerDoc],
-  ['docs/llms.txt', llms],
-] as const) {
-  requireIncludes(content, 'https://github.com/proompteng/bilig/discussions/230', path)
-}
-
-for (const [path, content] of [
-  ['docs/index.html', index],
-  ['docs/community-launch-pack.md', await readFile(join(docsRoot, 'community-launch-pack.md'), 'utf8')],
-  ['docs/llms.txt', llms],
-] as const) {
-  requireIncludes(content, 'https://github.com/proompteng/bilig/discussions/167', path)
+for (const [url, docKeys] of discussionDocChecks) {
+  for (const docKey of docKeys) {
+    const [path, content] = discussionDocs[docKey]
+    requireIncludes(content, url, path)
+  }
 }
 
 const currentStarterIssueNumbers = [

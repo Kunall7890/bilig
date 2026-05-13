@@ -34,7 +34,7 @@ validated WorkPaper model once data is in workbook form.
   <https://proompteng.github.io/bilig/community-growth-snapshot.html>
 - Latest checked-in snapshot: `24` GitHub stars, `12` forks, `15,592` npm downloads in the
   last week, `23,240` npm downloads in the last 30 days, `77` open
-  `good first issue` tickets, `8` GitHub Discussions, and `455` recent
+  `good first issue` tickets, `9` GitHub Discussions, and `455` recent
   repository views.
 - Benchmark evidence:
   [`46/46` comparable WorkPaper mean wins](https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md),
@@ -309,6 +309,8 @@ Repository links:
   [`npm run framework-adapters`](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api#framework-adapters)
 - Postgres JSONB, Redis/KV, and object-storage persistence adapters:
   [`npm run persistence-adapters`](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api#persistence-adapters)
+- persistence adapter feedback:
+  <https://github.com/proompteng/bilig/discussions/307>
 - server-side spreadsheet automation:
   [`docs/server-side-spreadsheet-automation-node.md`](https://github.com/proompteng/bilig/blob/main/docs/server-side-spreadsheet-automation-node.md)
 - Node service recipe:

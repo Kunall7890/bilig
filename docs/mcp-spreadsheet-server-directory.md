@@ -71,6 +71,10 @@ A useful result includes:
 - `transport.type: stdio`
 - `repository.url: https://github.com/proompteng/bilig`
 
+Latest checked result on May 13, 2026: the official Registry API returned 9
+matching Bilig WorkPaper entries and marked `@bilig/headless@0.14.0` as the
+latest server package.
+
 The package itself carries the matching `mcpName` field. That is the ownership
 signal the registry uses for npm package validation.
 
