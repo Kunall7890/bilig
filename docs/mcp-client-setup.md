@@ -44,9 +44,12 @@ Claude Code can add an MCP server from JSON. Add the server to the current
 project:
 
 ```sh
-claude mcp add-json bilig-workpaper \
-  '{"type":"stdio","command":"npm","args":["exec","--package","@bilig/headless","--","bilig-workpaper-mcp"],"env":{}}' \
-  --scope project
+claude mcp add-json bilig-workpaper '{
+  "type": "stdio",
+  "command": "npm",
+  "args": ["exec", "--package", "@bilig/headless", "--", "bilig-workpaper-mcp"],
+  "env": {}
+}' --scope project
 ```
 
 Then check it:
