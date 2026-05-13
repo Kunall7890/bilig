@@ -413,7 +413,7 @@ h2 {
 }
 
 .install-grid {
-  grid-template-columns: minmax(280px, 0.44fr) minmax(0, 1fr);
+  grid-template-columns: minmax(430px, 0.68fr) minmax(0, 1fr);
 }
 
 .path-grid {
@@ -462,6 +462,12 @@ h2 {
   white-space: pre-wrap;
 }
 
+.terminal-panel pre {
+  font-size: 12px;
+  overflow-wrap: normal;
+  white-space: pre;
+}
+
 .code-panel .kw {
   color: #8cc8ff;
 }
@@ -489,45 +495,54 @@ h2 {
 }
 
 .proof-section {
-  background: #eef1e8;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: #f1f2eb;
 }
 
 .proof-layout {
-  grid-template-columns: minmax(260px, 0.62fr) minmax(0, 1fr);
+  grid-template-columns: minmax(280px, 0.54fr) minmax(0, 1fr);
+  gap: clamp(34px, 5vw, 78px);
+  align-items: start;
 }
 
 .proof-intro {
   display: grid;
   gap: 13px;
-  max-width: 500px;
+  max-width: 520px;
 }
 
 .proof-intro h2 {
   margin-top: 0;
-  font-size: clamp(36px, 4.4vw, 56px);
+  font-size: clamp(38px, 4.2vw, 58px);
+  line-height: 1.02;
 }
 
 .proof-intro p:not(.kicker) {
   color: var(--muted);
   font-size: 18px;
+  line-height: 1.55;
 }
 
 .proof-board {
-  border-top: 2px solid var(--ink);
+  border-top: 1px solid var(--ink);
 }
 
 .proof-command,
 .proof-row {
   display: grid;
-  grid-template-columns: 142px minmax(0, 1fr) minmax(220px, 0.42fr);
-  gap: 22px;
-  align-items: baseline;
+  grid-template-columns: minmax(108px, 0.2fr) minmax(220px, 0.46fr) minmax(230px, 0.42fr);
+  gap: clamp(16px, 2.5vw, 30px);
+  align-items: start;
   border-bottom: 1px solid var(--line);
-  padding: 19px 0;
+  padding: 22px 0;
 }
 
 .proof-command {
-  grid-template-columns: 142px minmax(0, 1fr);
+  grid-template-columns: minmax(108px, 0.2fr) minmax(0, 1fr);
+  align-items: center;
+  padding-top: 18px;
+  padding-bottom: 18px;
 }
 
 .proof-command code,
@@ -536,6 +551,12 @@ h2 {
   word-break: normal;
   color: var(--ink);
   font-size: 14px;
+}
+
+.proof-command code {
+  border: 1px solid var(--line);
+  background: rgba(255, 254, 250, 0.68);
+  padding: 10px 12px;
 }
 
 .proof-row dd {

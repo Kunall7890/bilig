@@ -116,71 +116,7 @@ npm init -y
 npm pkg set type=module
 npm install @bilig/headless
 npm install -D tsx typescript @types/node
-```
-
-Create `eval.ts`:
-
-```ts
-import {
-  WorkPaper,
-  createWorkPaperFromDocument,
-  exportWorkPaperDocument,
-  parseWorkPaperDocument,
-  serializeWorkPaperDocument,
-} from '@bilig/headless'
-
-type NumericCell = {
-  value: number
-}
-
-const workbook = WorkPaper.buildFromSheets({
-  Revenue: [
-    ['Region', 'Customers', 'ARPA', 'Revenue'],
-    ['West', 20, 1200, '=B2*C2'],
-    ['East', 30, 250, '=B3*C3'],
-    ['Central', 18, 300, '=B4*C4'],
-  ],
-  Summary: [
-    ['Metric', 'Value'],
-    ['Total revenue', '=SUM(Revenue!D2:D4)'],
-  ],
-})
-
-function numberValue(cell: unknown): number {
-  if (typeof cell === 'object' && cell !== null && typeof (cell as NumericCell).value === 'number') {
-    return (cell as NumericCell).value
-  }
-  throw new Error(`Expected numeric cell value, got ${JSON.stringify(cell)}`)
-}
-
-const revenue = workbook.getSheetId('Revenue')
-const summary = workbook.getSheetId('Summary')
-if (revenue === undefined || summary === undefined) {
-  throw new Error('Workbook sheets were not created')
-}
-
-const before = numberValue(workbook.getCellValue({ sheet: summary, row: 1, col: 1 }))
-workbook.setCellContents({ sheet: revenue, row: 1, col: 1 }, 32)
-
-const saved = serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { includeConfig: true }))
-const restored = createWorkPaperFromDocument(parseWorkPaperDocument(saved))
-const restoredSummary = restored.getSheetId('Summary')
-if (restoredSummary === undefined) {
-  throw new Error('Summary sheet was not restored')
-}
-
-const after = numberValue(restored.getCellValue({ sheet: restoredSummary, row: 1, col: 1 }))
-const verified = before === 36900 && after === 51300 && saved.length > 0
-if (!verified) {
-  throw new Error(`Unexpected formula readback: ${JSON.stringify({ before, after, bytes: saved.length })}`)
-}
-
-console.log({ before, after, sheets: restored.getSheetNames(), bytes: saved.length, verified })
-```
-
-Run it:
-
-```bash
+curl -fsSLo eval.ts https://proompteng.github.io/bilig/npm-eval.ts
 npx tsx eval.ts
 ```
 
@@ -188,13 +124,19 @@ Expected output:
 
 ```json
 {
-  "before": 36900,
-  "after": 51300,
-  "sheets": ["Revenue", "Summary"],
-  "bytes": 1064,
+  "before": 24000,
+  "after": 38400,
+  "afterRestore": 38400,
+  "sheets": ["Inputs", "Summary"],
+  "bytes": 1000,
   "verified": true
 }
 ```
+
+The TypeScript file is maintained in
+[`examples/headless-workpaper/npm-eval.ts`](examples/headless-workpaper/npm-eval.ts).
+The exact byte count can change between package versions; `verified: true` and
+matching `after`/`afterRestore` values are the check.
 
 The maintained repository example adds agent-style writeback verification:
 
@@ -360,12 +302,14 @@ cd bilig-headless-eval
 npm init -y
 npm pkg set type=module
 npm install @bilig/headless
+npm install -D tsx typescript @types/node
+curl -fsSLo eval.ts https://proompteng.github.io/bilig/npm-eval.ts
+npx tsx eval.ts
 ```
 
-Create `eval.ts` with the quickstart below, then run `npx tsx eval.ts`. The
-example builds a formula-backed workbook, edits source data, serializes the
-document, restores it, and verifies that the recalculated value survives the
-round trip.
+That maintained TypeScript file builds a formula-backed workbook, edits source
+data, serializes the document, restores it, and verifies that the recalculated
+value survives the round trip.
 
 For a runnable external-consumer example, start with
 [examples/headless-workpaper](examples/headless-workpaper). The repository smoke

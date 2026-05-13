@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { agentFrameworkDocRequirements, agentFrameworkLlmsRequiredLinks } from './check-docs-discovery-agent-pages.ts'
 import { communityLaunchPackRequiredLinks, llmsExternalSurfaceLinks } from './check-docs-discovery-growth-links.ts'
 import { requireHomepageDiscovery } from './check-docs-discovery-homepage.ts'
+import { requireNpmEvalDiscovery } from './check-docs-discovery-npm-eval.ts'
 import { docsSiteSources } from './check-docs-discovery-site-sources.ts'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -881,6 +882,7 @@ const [headlessExampleReadme, headlessExamplePackage, headlessPackageManifest, h
   readFile(join(repoRoot, 'packages', 'headless', 'package.json'), 'utf8'),
   readFile(join(repoRoot, 'packages', 'headless', 'server.json'), 'utf8'),
 ])
+await requireNpmEvalDiscovery(repoRoot, docsRoot, readme, headlessReadme, headlessExampleReadme)
 await requireFile(join(repoRoot, 'examples', 'headless-workpaper', 'agent-framework-adapters.ts'))
 await requireFile(join(repoRoot, 'examples', 'headless-workpaper', 'mcp-tool-server.ts'))
 await requireFile(join(repoRoot, 'examples', 'headless-workpaper', 'mcp-stdio-server.ts'))
@@ -974,10 +976,9 @@ for (const required of [
   '## Clean npm Sanity Check',
   'mkdir bilig-headless-sanity',
   'npx tsx sanity.ts',
-  'createWorkPaperFromDocument',
-  'serializeWorkPaperDocument',
-  'workbook.setCellContents({ sheet: revenue, row: 1, col: 1 }, 32);',
-  'console.log({ before, after, sheets: restored.getSheetNames(), bytes: saved.length, verified });',
+  'curl -fsSLo sanity.ts https://proompteng.github.io/bilig/npm-eval.ts',
+  'afterRestore',
+  'matching `after`/`afterRestore` values are the check.',
 ]) {
   requireIncludes(headlessReadme, required, 'packages/headless/README.md')
 }

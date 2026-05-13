@@ -26,71 +26,7 @@ npm init -y
 npm pkg set type=module
 npm install @bilig/headless
 npm install -D tsx typescript @types/node
-cat > eval.ts <<'EOF'
-import {
-  WorkPaper,
-  createWorkPaperFromDocument,
-  exportWorkPaperDocument,
-  parseWorkPaperDocument,
-  serializeWorkPaperDocument,
-} from '@bilig/headless'
-
-type NumericCell = {
-  value: number
-}
-
-function numberValue(cell: unknown): number {
-  if (typeof cell === 'object' && cell !== null && typeof (cell as NumericCell).value === 'number') {
-    return (cell as NumericCell).value
-  }
-
-  throw new Error(`expected numeric cell value, got ${JSON.stringify(cell)}`)
-}
-
-const workbook = WorkPaper.buildFromSheets({
-  Inputs: [
-    ['Metric', 'Value'],
-    ['Customers', 20],
-    ['Average revenue', 1200],
-  ],
-  Summary: [
-    ['Metric', 'Value'],
-    ['Revenue', '=Inputs!B2*Inputs!B3'],
-  ],
-})
-
-const inputs = workbook.getSheetId('Inputs')
-const summary = workbook.getSheetId('Summary')
-if (inputs === undefined || summary === undefined) {
-  throw new Error('missing sheet')
-}
-
-const before = numberValue(workbook.getCellValue({ sheet: summary, row: 1, col: 1 }))
-workbook.setCellContents({ sheet: inputs, row: 1, col: 1 }, 32)
-
-const after = numberValue(workbook.getCellValue({ sheet: summary, row: 1, col: 1 }))
-const saved = serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { includeConfig: true }))
-const restored = createWorkPaperFromDocument(parseWorkPaperDocument(saved))
-const restoredSummary = restored.getSheetId('Summary')
-if (restoredSummary === undefined) {
-  throw new Error('missing restored Summary sheet')
-}
-
-const afterRestore = numberValue(restored.getCellValue({ sheet: restoredSummary, row: 1, col: 1 }))
-console.log(
-  JSON.stringify(
-    {
-      before,
-      after,
-      afterRestore,
-      bytes: saved.length,
-      verified: before === 24000 && after === 38400 && afterRestore === 38400,
-    },
-    null,
-    2,
-  ),
-)
-EOF
+curl -fsSLo eval.ts https://proompteng.github.io/bilig/npm-eval.ts
 npx tsx eval.ts
 ```
 
@@ -101,6 +37,7 @@ Expected output:
   "before": 24000,
   "after": 38400,
   "afterRestore": 38400,
+  "sheets": ["Inputs", "Summary"],
   "bytes": 1000,
   "verified": true
 }
@@ -108,6 +45,9 @@ Expected output:
 
 The exact byte count can change between package versions. The important part is
 that `verified` is `true` and `afterRestore` matches `after`.
+
+The downloaded file is the maintained TypeScript example at
+[`examples/headless-workpaper/npm-eval.ts`](https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/npm-eval.ts).
 
 ## Try it in Docker (optional)
 
@@ -133,6 +73,7 @@ Expected output (same as above; `verified` must be `true`):
   "before": 24000,
   "after": 38400,
   "afterRestore": 38400,
+  "sheets": ["Inputs", "Summary"],
   "bytes": 1000,
   "verified": true
 }

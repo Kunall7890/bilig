@@ -15,10 +15,12 @@ language: typescript
 - https://dev.to/gregkonush/why-agents-need-workbook-apis-instead-of-spreadsheet-screenshots-3d61
 - https://github.com/proompteng/bilig/tree/main/packages/headless#readme
 - https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper
+- https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/npm-eval.ts
 - https://proompteng.github.io/bilig/node-spreadsheet-formula-engine.html
 - https://proompteng.github.io/bilig/javascript-spreadsheet-library-headless-node.html
 - https://proompteng.github.io/bilig/evaluate-excel-formulas-in-node-typescript.html
 - https://proompteng.github.io/bilig/try-bilig-headless-in-node.html
+- https://proompteng.github.io/bilig/npm-eval.ts
 - https://proompteng.github.io/bilig/workbook-automation-examples-node.html
 - https://proompteng.github.io/bilig/server-side-spreadsheet-automation-node.html
 - https://proompteng.github.io/bilig/why-agents-need-workbook-apis.html
@@ -85,11 +87,15 @@ npm init -y
 npm pkg set type=module
 npm install @bilig/headless
 npm install -D tsx typescript @types/node
+curl -fsSLo eval.ts https://proompteng.github.io/bilig/npm-eval.ts
+npx tsx eval.ts
 ```
 
-create an eval.ts file from the quickstart in the repository readme, then run
-`npx tsx eval.ts`. a successful smoke test prints `verified: true` after formula
-readback survives a persisted restore.
+the downloaded TypeScript file is maintained at:
+https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/npm-eval.ts
+
+a successful smoke test prints `verified: true` after formula readback survives
+a persisted restore.
 
 repository example:
 

@@ -335,6 +335,8 @@ npm init -y
 npm pkg set type=module
 npm install @bilig/headless
 npm install -D tsx typescript @types/node
+curl -fsSLo eval.ts \
+  https://proompteng.github.io/bilig/npm-eval.ts
 npx tsx eval.ts</code></pre>
               </div>
               <p>
@@ -360,37 +362,27 @@ npx tsx eval.ts</code></pre>
   serializeWorkPaperDocument,
 } <span class="kw">from</span> <span class="str">"@bilig/headless"</span>;
 
-type NumericCell = { value: number };
-
 const workbook = WorkPaper.buildFromSheets({
-  Revenue: [
-    [<span class="str">"Region"</span>, <span class="str">"Customers"</span>, <span class="str">"ARPA"</span>, <span class="str">"Revenue"</span>],
-    [<span class="str">"West"</span>, <span class="num">20</span>, <span class="num">1200</span>, <span class="str">"=B2*C2"</span>],
-    [<span class="str">"East"</span>, <span class="num">30</span>, <span class="num">250</span>, <span class="str">"=B3*C3"</span>],
-    [<span class="str">"Central"</span>, <span class="num">18</span>, <span class="num">300</span>, <span class="str">"=B4*C4"</span>],
+  Inputs: [
+    [<span class="str">"Metric"</span>, <span class="str">"Value"</span>],
+    [<span class="str">"Customers"</span>, <span class="num">20</span>],
+    [<span class="str">"Average revenue"</span>, <span class="num">1200</span>],
   ],
   Summary: [
     [<span class="str">"Metric"</span>, <span class="str">"Value"</span>],
-    [<span class="str">"Total revenue"</span>, <span class="str">"=SUM(Revenue!D2:D4)"</span>],
+    [<span class="str">"Revenue"</span>, <span class="str">"=Inputs!B2*Inputs!B3"</span>],
   ],
 });
 
-function numberValue(cell: unknown): number {
-  if (typeof cell === <span class="str">"object"</span> && cell !== null && typeof (cell as NumericCell).value === <span class="str">"number"</span>) {
-    return (cell as NumericCell).value;
-  }
-
-  throw new Error(`Expected numeric cell value, got ${JSON.stringify(cell)}`);
-}
-
+const inputs = workbook.getSheetId(<span class="str">"Inputs"</span>);
 const summary = workbook.getSheetId(<span class="str">"Summary"</span>);
-const revenue = workbook.getSheetId(<span class="str">"Revenue"</span>);
-if (summary === undefined || revenue === undefined) {
+if (inputs === undefined || summary === undefined) {
   throw new Error(<span class="str">"Missing sheet"</span>);
 }
 
-const before = numberValue(workbook.getCellValue({ sheet: summary, row: <span class="num">1</span>, col: <span class="num">1</span> }));
-workbook.setCellContents({ sheet: revenue, row: <span class="num">1</span>, col: <span class="num">1</span> }, <span class="num">32</span>);
+const before = readNumber(workbook.getCellValue({ sheet: summary, row: <span class="num">1</span>, col: <span class="num">1</span> }));
+workbook.setCellContents({ sheet: inputs, row: <span class="num">1</span>, col: <span class="num">1</span> }, <span class="num">32</span>);
+const after = readNumber(workbook.getCellValue({ sheet: summary, row: <span class="num">1</span>, col: <span class="num">1</span> }));
 
 const saved = serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { includeConfig: true }));
 const restored = createWorkPaperFromDocument(parseWorkPaperDocument(saved));
@@ -399,8 +391,15 @@ if (restoredSummary === undefined) {
   throw new Error(<span class="str">"Missing restored Summary sheet"</span>);
 }
 
-const after = numberValue(restored.getCellValue({ sheet: restoredSummary, row: <span class="num">1</span>, col: <span class="num">1</span> }));
-console.log({ before, after, bytes: saved.length, verified: before === <span class="num">36900</span> && after === <span class="num">51300</span> });</code></pre>
+const afterRestore = readNumber(restored.getCellValue({ sheet: restoredSummary, row: <span class="num">1</span>, col: <span class="num">1</span> }));
+console.log({ before, after, afterRestore, verified: after === afterRestore });
+
+function readNumber(cell: unknown): number {
+  if (typeof cell === <span class="str">"object"</span> && cell !== null && typeof (cell as { value: unknown }).value === <span class="str">"number"</span>) {
+    return (cell as { value: number }).value;
+  }
+  throw new Error(`Expected numeric cell value, got ${JSON.stringify(cell)}`);
+}</code></pre>
             </div>
           </div>
         </div>
@@ -485,49 +484,47 @@ console.log({ before, after, bytes: saved.length, verified: before === <span cla
           <div class="proof-layout">
             <div class="proof-intro">
               <p class="kicker">Benchmark</p>
-              <h2 id="proof-title">The benchmark is checked in.</h2>
+              <h2 id="proof-title">Run the benchmark, then decide.</h2>
               <p>
-                The current WorkPaper vs HyperFormula suite has WorkPaper ahead on mean latency for 46 of 46 comparable workloads. The p95
-                caveat stays next to the result.
+                bilig is ahead on this checked-in WorkPaper suite. That is a narrow claim: mean latency, comparable rows, and one slower p95
+                row called out in the open.
               </p>
             </div>
 
             <div class="proof-board" aria-label="Benchmark evidence">
               <div class="proof-command">
-                <span>Run it</span>
+                <span>Local check</span>
                 <code>pnpm workpaper:bench:competitive:check</code>
               </div>
 
               <dl class="proof-ledger">
                 <div class="proof-row">
-                  <dt>Result</dt>
-                  <dd>46 / 46 mean rows</dd>
-                  <p>Comparable WorkPaper vs HyperFormula workloads only. Not a blanket claim for every workbook.</p>
+                  <dt>Mean latency</dt>
+                  <dd>46 / 46 rows ahead</dd>
+                  <p>Only the comparable WorkPaper vs HyperFormula rows in the repo.</p>
                 </div>
                 <div class="proof-row proof-row-code">
-                  <dt>Baseline</dt>
+                  <dt>Artifact</dt>
                   <dd>
                     <code>packages/benchmarks/baselines/<wbr />workpaper-vs-hyperformula.json</code>
                   </dd>
-                  <p>Committed in the repo and checked by CI. Benchmark drift becomes a normal review diff.</p>
+                  <p>Committed with the source. If the benchmark moves, review shows the JSON diff.</p>
                 </div>
                 <div class="proof-row proof-row-code">
-                  <dt>Slower row</dt>
+                  <dt>Miss</dt>
                   <dd><code>lookup-approximate-duplicates</code> p95 1.043x</dd>
-                  <p>
-                    If approximate lookup with duplicate keys matters to your workload, run your own workbook before choosing an engine.
-                  </p>
+                  <p>That case is slower. If your workbook looks like it, test first.</p>
                 </div>
               </dl>
 
               <div class="proof-links" aria-label="Benchmark evidence links">
                 <a href="./what-workpaper-benchmark-proves.html">
-                  <span>Notes</span>
-                  <strong>How to read the benchmark</strong>
+                  <span>Benchmark notes</span>
+                  <strong>Read what the numbers mean</strong>
                 </a>
                 <a href="./where-bilig-is-not-excel-compatible-yet.html">
-                  <span>Limits</span>
-                  <strong>Excel gaps</strong>
+                  <span>Compatibility</span>
+                  <strong>Check the Excel gaps</strong>
                 </a>
                 <a href="https://github.com/proompteng/bilig/issues?q=is%3Aissue%20state%3Aopen%20label%3Afirst-timers-only">
                   <span>Contribute</span>

@@ -46,6 +46,7 @@ packages through `pnpm workpaper:smoke:external`.
 | Agent framework adapters | `npm run agent:framework-adapters` | TypeScript wrappers for AI SDK, LangChain, Mastra, LlamaIndex.TS, LangGraph.js, CopilotKit, and Cloudflare Agents |
 | MCP tool server shape    | `npm run agent:mcp-tools`          | `tools/list`, `tools/call`, verified edits                                                                        |
 | MCP stdio server         | `npm run agent:mcp-stdio`          | newline-delimited JSON-RPC over stdin/stdout                                                                      |
+| npm package eval         | `npm run npm-eval`                 | the same `.ts` file used by the npm-only smoke test                                                               |
 | Agent writeback check    | `npm run agent:verify`             | exact input edits and formula preservation                                                                        |
 | Budget variance alerts   | `npm run budget-variance`          | budget, actuals, variance, alert formulas                                                                         |
 | Fulfillment capacity     | `npm run fulfillment-capacity`     | orders, labor hours, capacity gap                                                                                 |
@@ -64,6 +65,32 @@ packages through `pnpm workpaper:smoke:external`.
 | Range readback           | `npm run range-readback`           | computed values and serialized formulas                                                                           |
 | Sheet inspection         | `npm run sheet-inspection`         | restored sheet names, IDs, and dimensions                                                                         |
 | HTTP JSON summary        | `npm run http-json-summary`        | no-framework Node HTTP service boundary                                                                           |
+
+## npm Package Eval
+
+Run this when you want the smallest maintained TypeScript file for checking the
+published package. It creates two sheets, edits one input cell, serializes the
+document, restores it, and verifies the recalculated value:
+
+```sh
+npm run npm-eval
+```
+
+Expected output:
+
+```json
+{
+  "before": 24000,
+  "after": 38400,
+  "afterRestore": 38400,
+  "sheets": ["Inputs", "Summary"],
+  "bytes": 1000,
+  "verified": true
+}
+```
+
+The exact byte count can move between package versions. The important part is
+that `verified` is `true` and `afterRestore` matches `after`.
 
 ## Agent Tool Call Loop
 

@@ -19,6 +19,7 @@
     "json-records": "tsx json-records-input.ts",
     "markdown-report": "tsx markdown-report.ts",
     "named-expression": "tsx named-expression-update.ts",
+    "npm-eval": "tsx npm-eval.ts",
     "persistence": "tsx persistence-roundtrip.ts",
     "quote-approval": "tsx quote-approval-threshold.ts",
     "range-readback": "tsx range-readback.ts",

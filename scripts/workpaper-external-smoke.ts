@@ -138,6 +138,14 @@ function runNodeSmoke(
     persistedSheets: string[]
     restoredGrowthRatePercent: number
   }
+  npmEval: {
+    before: number
+    after: number
+    afterRestore: number
+    sheets: string[]
+    bytes: number
+    verified: boolean
+  }
   projectDir: string
   snapshotImport: {
     currencyLabel: string
@@ -365,6 +373,7 @@ function runNodeSmoke(
   writeXlsxImportScript(projectDir)
 
   installTarballs(projectDir, tarballPaths)
+  const npmEval = parseNodeNpmEvalOutput(runTextCommand('npm', ['run', '--silent', 'npm-eval'], { cwd: projectDir }))
   const output = parseNodeSmokeOutput(runTextCommand('npm', ['run', '--silent', 'start'], { cwd: projectDir }))
   const persistence = parseNodePersistenceOutput(runTextCommand('npm', ['run', '--silent', 'persistence'], { cwd: projectDir }))
   const scenarios = parseNodeRevenueScenarioOutput(runTextCommand('npm', ['run', '--silent', 'scenarios'], { cwd: projectDir }))
@@ -452,6 +461,7 @@ function runNodeSmoke(
     packageMcpStdio,
     persistence,
     projectDir,
+    npmEval,
     rangeReadback,
     scenarios,
     sheetInspection,
@@ -459,6 +469,46 @@ function runNodeSmoke(
     snapshotImport,
     xlsxImport,
     output,
+  }
+}
+
+function parseNodeNpmEvalOutput(output: string): {
+  before: number
+  after: number
+  afterRestore: number
+  sheets: string[]
+  bytes: number
+  verified: boolean
+} {
+  const record = parseJsonRecord(output, 'npm eval output')
+  const before = record.before
+  const after = record.after
+  const afterRestore = record.afterRestore
+  const sheets = record.sheets
+  const bytes = record.bytes
+  const verified = record.verified
+
+  if (
+    before !== 24000 ||
+    after !== 38400 ||
+    afterRestore !== 38400 ||
+    !Array.isArray(sheets) ||
+    !sheets.every((sheet): sheet is string => typeof sheet === 'string') ||
+    sheets.join(',') !== 'Inputs,Summary' ||
+    typeof bytes !== 'number' ||
+    bytes <= 0 ||
+    verified !== true
+  ) {
+    throw new Error(`Unexpected npm eval output: ${output}`)
+  }
+
+  return {
+    before,
+    after,
+    afterRestore,
+    sheets,
+    bytes,
+    verified,
   }
 }
 
