@@ -169,6 +169,13 @@ const [
   readFile(join(repoRoot, '.github', 'PULL_REQUEST_TEMPLATE.md'), 'utf8'),
 ])
 
+const [headlessSpreadsheetEngineComparison, sheetjsExceljsAlternativeFormulaWorkbookApi, hyperformulaAlternativeHeadlessWorkpaper] =
+  await Promise.all([
+    readFile(join(docsRoot, 'headless-spreadsheet-engine-comparison.md'), 'utf8'),
+    readFile(join(docsRoot, 'sheetjs-exceljs-alternative-formula-workbook-api.md'), 'utf8'),
+    readFile(join(docsRoot, 'hyperformula-alternative-headless-workpaper.md'), 'utf8'),
+  ])
+
 requireHomepageDiscovery(index, siteCss)
 requirePackageKeywords(
   headlessPackageJson,
@@ -422,7 +429,7 @@ requireIncludes(starterIssues, 'https://github.com/proompteng/bilig/pull/291', '
 requireIncludes(starterIssues, 'https://github.com/proompteng/bilig/pull/295', 'docs/starter-issues.md')
 requireNotIncludes(starterIssues, 'https://github.com/proompteng/bilig/pull/251', 'docs/starter-issues.md')
 requireIncludes(contributing, 'new-contributor-guide.md#first-time-command-checklist', 'CONTRIBUTING.md')
-requireIncludes(llms, '90 open first-timers-only issues, 82 generally available, 8 already in review', 'docs/llms.txt')
+requireIncludes(llms, 'see docs/starter-issues.md for the maintained', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/issues/272', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/issues/277', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/issues/281', 'docs/llms.txt')
@@ -682,6 +689,33 @@ for (const [path, content] of [
   requireIncludes(content, 'examples/headless-workpaper#subscription-mrr-forecast', path)
 }
 
+for (const required of [
+  '## Use-Case Chooser',
+  'Formula-backed calculations inside a Node service',
+  'Agent writeback that must prove the value after an edit',
+  'XLSX parsing, export, styling, images, and workbook-file metadata',
+  'Persisting a workbook document as JSON and restoring it later',
+  'Embedding a spreadsheet UI that users edit directly',
+  '[npm smoke test](try-bilig-headless-in-node.md)',
+  '[agent tool-calling recipe](agent-workpaper-tool-calling-recipe.md)',
+  '[SheetJS and ExcelJS boundary guide](sheetjs-exceljs-alternative-formula-workbook-api.md)',
+  '[HyperFormula alternative notes](hyperformula-alternative-headless-workpaper.md)',
+  '[documented Excel gaps](where-bilig-is-not-excel-compatible-yet.md)',
+]) {
+  requireIncludes(headlessSpreadsheetEngineComparison, required, 'docs/headless-spreadsheet-engine-comparison.md')
+}
+
+for (const [path, content] of [
+  ['docs/sheetjs-exceljs-alternative-formula-workbook-api.md', sheetjsExceljsAlternativeFormulaWorkbookApi],
+  ['docs/hyperformula-alternative-headless-workpaper.md', hyperformulaAlternativeHeadlessWorkpaper],
+] as const) {
+  requireIncludes(
+    content,
+    '[headless spreadsheet engine use-case chooser](headless-spreadsheet-engine-comparison.md#use-case-chooser)',
+    path,
+  )
+}
+
 for (const [path, content] of [
   ['README.md', readme],
   ['packages/headless/README.md', headlessReadme],
@@ -726,10 +760,10 @@ for (const [url, docKeys] of discussionDocChecks) {
 }
 
 const currentStarterIssueNumbers = [
-  134, 153, 154, 155, 156, 158, 159, 162, 163, 193, 194, 195, 196, 197, 198, 207, 208, 209, 210, 211, 212, 217, 218, 219, 220, 221, 222,
-  223, 231, 233, 247, 248, 249, 250, 255, 256, 257, 258, 259, 260, 265, 266, 267, 268, 269, 272, 273, 274, 275, 277, 278, 279, 280, 281,
-  282, 283, 284, 285, 286, 287, 288, 289, 290, 292, 293, 294, 296, 297, 298, 299, 300, 301, 302, 303, 304, 305, 306, 309, 310, 311, 312,
-  313, 314, 323, 324, 325, 326, 327,
+  134, 153, 155, 156, 158, 159, 162, 163, 193, 194, 195, 196, 197, 198, 207, 208, 209, 210, 211, 212, 217, 218, 219, 220, 221, 222, 223,
+  231, 233, 247, 248, 249, 250, 255, 256, 257, 258, 259, 260, 265, 266, 267, 268, 269, 272, 273, 274, 275, 277, 278, 279, 280, 281, 282,
+  283, 284, 285, 286, 287, 288, 289, 290, 292, 293, 294, 296, 297, 298, 299, 300, 301, 302, 303, 304, 305, 306, 309, 310, 311, 312, 313,
+  314, 323, 324, 325, 326, 327,
 ]
 
 for (const required of currentStarterIssueNumbers.map((issueNumber) => `https://github.com/proompteng/bilig/issues/${issueNumber}`)) {
@@ -752,6 +786,7 @@ for (const closedIssue of [
   '150',
   '151',
   '152',
+  '154',
   '224',
   '199',
   '200',

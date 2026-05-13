@@ -29,6 +29,9 @@ features such as sheets, rows, styles, and formula records.
 Use `@bilig/headless` when the service must mutate a formula-backed workbook
 and read the recalculated values back in the same process.
 
+For the broader library choice, start with the
+[headless spreadsheet engine use-case chooser](headless-spreadsheet-engine-comparison.md#use-case-chooser).
+
 ## The Boundary That Matters
 
 SheetJS Community Edition stores cell formulas in the `f` field and cell values

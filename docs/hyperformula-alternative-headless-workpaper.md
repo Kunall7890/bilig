@@ -25,6 +25,9 @@ workbook as a service object: build it, mutate it, read formulas and values,
 persist it, restore it, and verify agent-style edits without opening a browser
 grid.
 
+For the broader engine choice, start with the
+[headless spreadsheet engine use-case chooser](headless-spreadsheet-engine-comparison.md#use-case-chooser).
+
 ## Comparison Surface
 
 | Question | HyperFormula | `@bilig/headless` |

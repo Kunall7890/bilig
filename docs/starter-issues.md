@@ -106,7 +106,6 @@ Current starter queue as of May 13, 2026:
 
 ### Headless Package, Benchmarks, And Troubleshooting
 
-- [#154: docs(comparison): add headless engine use-case chooser](https://github.com/proompteng/bilig/issues/154)
 - [#155: docs(troubleshooting): add formula diagnostic output examples](https://github.com/proompteng/bilig/issues/155)
 - [#159: docs(troubleshooting): document CSV delimiter autodetection](https://github.com/proompteng/bilig/issues/159)
 - [#162: docs(benchmarks): add WorkPaper benchmark reproduction notes](https://github.com/proompteng/bilig/issues/162)
