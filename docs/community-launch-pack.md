@@ -100,8 +100,14 @@ issue pass:
   is open with the repository entry in `repositories.yaml`:
   <https://github.com/abordage/awesome-mcp/pull/36>
 - External MCP directory surface: the punkpeye awesome-mcp-servers listing pull
-  request is open, mergeable, and passing its submission check:
+  request is open and passing its submission check; the repository bot now
+  requires a Glama listing badge before merge:
   <https://github.com/punkpeye/awesome-mcp-servers/pull/6291>
+- External MCP directory surface: Glama accepted the Bilig WorkPaper server
+  submission for review from repository `https://github.com/proompteng/bilig`.
+  The punkpeye PR has a maintainer-facing note that the badge will be added once
+  Glama publishes the server path:
+  <https://github.com/punkpeye/awesome-mcp-servers/pull/6291#issuecomment-4440100318>
 - Official MCP Registry surface: the published `io.github.proompteng/bilig-workpaper`
   entry was refreshed to `@bilig/headless@0.13.20` with the existing Publish MCP
   Registry workflow:
