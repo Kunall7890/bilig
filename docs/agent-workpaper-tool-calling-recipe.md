@@ -46,12 +46,7 @@ tool result carry enough evidence for verification.
 ## Complete Node Example
 
 ```ts
-import {
-  WorkPaper,
-  exportWorkPaperDocument,
-  serializeWorkPaperDocument,
-  type WorkPaperCellAddress,
-} from '@bilig/headless'
+import { WorkPaper, exportWorkPaperDocument, serializeWorkPaperDocument, type WorkPaperCellAddress } from '@bilig/headless'
 
 type CellInputValue = string | number | boolean | null
 
@@ -168,12 +163,7 @@ function readComputedSummary(): SummaryReadback {
 
 function readNumber(address: WorkPaperCellAddress, label: string): number {
   const value = workbook.getCellValue(address) as unknown
-  if (
-    typeof value !== 'object' ||
-    value === null ||
-    !('value' in value) ||
-    typeof value.value !== 'number'
-  ) {
+  if (typeof value !== 'object' || value === null || !('value' in value) || typeof value.value !== 'number') {
     throw new Error(`expected ${label} to be numeric, received ${JSON.stringify(value)}`)
   }
   return Math.round(value.value * 100) / 100
@@ -244,15 +234,7 @@ export const workPaperTools = {
         .union([z.string(), z.number(), z.boolean(), z.null()])
         .describe('Literal cell value. Use a separate formula tool for formulas.'),
     }),
-    execute: async ({
-      sheetName,
-      address,
-      value,
-    }: {
-      sheetName: string
-      address: string
-      value: WorkPaperToolValue
-    }) => {
+    execute: async ({ sheetName, address, value }: { sheetName: string; address: string; value: WorkPaperToolValue }) => {
       const result = tools.setInputCell({ sheetName, address, value })
 
       if (!result.checks.currentMrrChanged || !result.checks.nextMonthMrrChanged) {
@@ -300,15 +282,7 @@ const readWorkPaperSummary = tool(({ range = 'Summary!A1:B3' }: { range?: string
 })
 
 const setWorkPaperInputCell = tool(
-  async ({
-    sheetName,
-    address,
-    value,
-  }: {
-    sheetName: string
-    address: string
-    value: WorkPaperToolValue
-  }) => {
+  async ({ sheetName, address, value }: { sheetName: string; address: string; value: WorkPaperToolValue }) => {
     const result = tools.setInputCell({ sheetName, address, value })
 
     if (!result.checks.currentMrrChanged || !result.checks.nextMonthMrrChanged) {

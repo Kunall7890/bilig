@@ -421,10 +421,7 @@ function toWebRequest(request) {
   return new Request(url, {
     method: request.method,
     headers,
-    body:
-      request.method === 'GET' || request.method === 'HEAD'
-        ? undefined
-        : Readable.toWeb(request),
+    body: request.method === 'GET' || request.method === 'HEAD' ? undefined : Readable.toWeb(request),
     duplex: 'half',
   })
 }
@@ -665,18 +662,13 @@ function toWorkPaperRouteRequest(request: Request): Request {
   return new Request(url.toString(), {
     method: request.method,
     headers: request.headers,
-    body:
-      request.method === 'GET' || request.method === 'HEAD'
-        ? undefined
-        : request.body,
+    body: request.method === 'GET' || request.method === 'HEAD' ? undefined : request.body,
   })
 }
 
 function stripFunctionNamePrefix(pathname: string, functionName: string): string {
   const prefix = `/${functionName}`
-  return pathname === prefix || pathname.startsWith(`${prefix}/`)
-    ? pathname.slice(prefix.length) || '/'
-    : pathname
+  return pathname === prefix || pathname.startsWith(`${prefix}/`) ? pathname.slice(prefix.length) || '/' : pathname
 }
 ```
 
@@ -905,10 +897,7 @@ function toWorkPaperRequest(request, body) {
   return new Request(request.url, {
     method: request.method,
     headers: request.headers,
-    body:
-      request.method === 'GET' || request.method === 'HEAD'
-        ? undefined
-        : JSON.stringify(body ?? {}),
+    body: request.method === 'GET' || request.method === 'HEAD' ? undefined : JSON.stringify(body ?? {}),
   })
 }
 ```
@@ -990,10 +979,7 @@ function toWebRequest(request: Request) {
   return new Request(url, {
     method: request.method,
     headers,
-    body:
-      request.method === 'GET' || request.method === 'HEAD'
-        ? undefined
-        : JSON.stringify(request.body ?? {}),
+    body: request.method === 'GET' || request.method === 'HEAD' ? undefined : JSON.stringify(request.body ?? {}),
   })
 }
 ```
@@ -1050,10 +1036,7 @@ function toWebRequest(request) {
   return new Request(url, {
     method: request.method,
     headers,
-    body:
-      request.method === 'GET' || request.method === 'HEAD'
-        ? undefined
-        : JSON.stringify(request.body ?? {}),
+    body: request.method === 'GET' || request.method === 'HEAD' ? undefined : JSON.stringify(request.body ?? {}),
   })
 }
 
@@ -1123,10 +1106,7 @@ function toWebRequest(req) {
   return new Request(url, {
     method: req.method,
     headers,
-    body:
-      req.method === 'GET' || req.method === 'HEAD'
-        ? undefined
-        : JSON.stringify(req.body ?? {}),
+    body: req.method === 'GET' || req.method === 'HEAD' ? undefined : JSON.stringify(req.body ?? {}),
   })
 }
 
@@ -1176,10 +1156,7 @@ app.use(async (ctx, next) => {
 })
 
 function isWorkPaperRoute(ctx) {
-  return (
-    (ctx.method === 'GET' && ctx.path === '/api/workpaper/summary') ||
-    (ctx.method === 'POST' && ctx.path === '/api/workpaper/revenue')
-  )
+  return (ctx.method === 'GET' && ctx.path === '/api/workpaper/summary') || (ctx.method === 'POST' && ctx.path === '/api/workpaper/revenue')
 }
 
 function toWebRequest(ctx) {
@@ -1196,10 +1173,7 @@ function toWebRequest(ctx) {
   return new Request(new URL(ctx.originalUrl ?? ctx.url, ctx.origin), {
     method: ctx.method,
     headers,
-    body:
-      ctx.method === 'GET' || ctx.method === 'HEAD'
-        ? undefined
-        : Readable.toWeb(ctx.req),
+    body: ctx.method === 'GET' || ctx.method === 'HEAD' ? undefined : Readable.toWeb(ctx.req),
     duplex: 'half',
   })
 }
@@ -1277,10 +1251,7 @@ function toWebRequest(request) {
   return new Request(new URL(path, `${protocol}://${host}`), {
     method: request.method,
     headers,
-    body:
-      request.method === 'GET' || request.method === 'HEAD'
-        ? undefined
-        : normalizePayload(request.payload),
+    body: request.method === 'GET' || request.method === 'HEAD' ? undefined : normalizePayload(request.payload),
   })
 }
 
@@ -1348,16 +1319,9 @@ function toWebRequest(event) {
   const protocol = headers.get('x-forwarded-proto') ?? 'https'
   const host = event.requestContext?.domainName ?? headers.get('host') ?? 'localhost'
   const path = event.rawPath ?? event.path ?? '/'
-  const query =
-    event.rawQueryString === undefined || event.rawQueryString === ''
-      ? ''
-      : `?${event.rawQueryString}`
+  const query = event.rawQueryString === undefined || event.rawQueryString === '' ? '' : `?${event.rawQueryString}`
   const body =
-    event.body === undefined || event.body === null
-      ? undefined
-      : event.isBase64Encoded
-        ? Buffer.from(event.body, 'base64')
-        : event.body
+    event.body === undefined || event.body === null ? undefined : event.isBase64Encoded ? Buffer.from(event.body, 'base64') : event.body
 
   return new Request(new URL(`${path}${query}`, `${protocol}://${host}`), {
     method,
@@ -1427,10 +1391,7 @@ async function toWebRequest(request) {
   return new Request(request.url, {
     method: request.method,
     headers: request.headers,
-    body:
-      request.method === 'GET' || request.method === 'HEAD'
-        ? undefined
-        : await request.arrayBuffer(),
+    body: request.method === 'GET' || request.method === 'HEAD' ? undefined : await request.arrayBuffer(),
   })
 }
 
@@ -1494,19 +1455,13 @@ function toWebRequest(event) {
   const protocol = headers.get('x-forwarded-proto') ?? 'https'
   const host = headers.get('host') ?? 'localhost'
   const path = event.rawUrl ?? event.path ?? '/api/workpaper/summary'
-  const body = event.body === undefined || event.body === null
-    ? undefined
-    : event.isBase64Encoded
-      ? Buffer.from(event.body, 'base64')
-      : event.body
+  const body =
+    event.body === undefined || event.body === null ? undefined : event.isBase64Encoded ? Buffer.from(event.body, 'base64') : event.body
 
   return new Request(new URL(path, `${protocol}://${host}`), {
     method: event.httpMethod ?? 'GET',
     headers,
-    body:
-      event.httpMethod === 'GET' || event.httpMethod === 'HEAD'
-        ? undefined
-        : body,
+    body: event.httpMethod === 'GET' || event.httpMethod === 'HEAD' ? undefined : body,
   })
 }
 
@@ -1575,18 +1530,13 @@ function toWebRequest(request) {
   return new Request(url, {
     method: request.method,
     headers,
-    body:
-      request.method === 'GET' || request.method === 'HEAD'
-        ? undefined
-        : request.rawBody ?? JSON.stringify(request.body ?? {}),
+    body: request.method === 'GET' || request.method === 'HEAD' ? undefined : (request.rawBody ?? JSON.stringify(request.body ?? {})),
   })
 }
 
 function stripFunctionNamePrefix(pathname, functionName) {
   const prefix = `/${functionName}`
-  return pathname === prefix || pathname.startsWith(`${prefix}/`)
-    ? pathname.slice(prefix.length) || '/'
-    : pathname
+  return pathname === prefix || pathname.startsWith(`${prefix}/`) ? pathname.slice(prefix.length) || '/' : pathname
 }
 
 async function writeFirebaseResponse(response, routeResponse) {

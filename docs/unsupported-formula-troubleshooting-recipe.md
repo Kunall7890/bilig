@@ -102,8 +102,7 @@ Expected output excerpt:
 Before:
 
 ```ts
-['Date label', '2024-01-01', '2025-01-01', '2026-01-01', '2027-01-01']
-['Invalid XIRR', '=XIRR(B2:B5,D2:D5)']
+;['Date label', '2024-01-01', '2025-01-01', '2026-01-01', '2027-01-01'][('Invalid XIRR', '=XIRR(B2:B5,D2:D5)')]
 ```
 
 `XIRR()` currently accepts numeric Excel serial dates in headless formulas.
@@ -113,8 +112,7 @@ the diagnostic code is `financial-unsupported-date-coercion`.
 After:
 
 ```ts
-['Date serial', 45292, 45658, 46023, 46388]
-['Valid XIRR', '=XIRR(B2:B5,C2:C5)']
+;['Date serial', 45292, 45658, 46023, 46388][('Valid XIRR', '=XIRR(B2:B5,C2:C5)')]
 ```
 
 The service should normalize dates before building the workbook, or reject the
