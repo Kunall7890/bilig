@@ -16,6 +16,21 @@ opening a spreadsheet UI.
 
 Project site: <https://proompteng.github.io/bilig/>
 
+## Current Public Proof
+
+- Live growth snapshot:
+  <https://proompteng.github.io/bilig/community-growth-snapshot.html>
+- Latest checked-in snapshot: `24` GitHub stars, `13,427` npm downloads in the
+  last week, `30` open `good first issue` tickets, `5` GitHub Discussions, and
+  `393` recent repository views.
+- Benchmark evidence:
+  [`46/46` comparable WorkPaper mean wins](docs/what-workpaper-benchmark-proves.md),
+  with the p95 caveat documented instead of hidden.
+
+If the 90-second check below saves you a workbook-automation spike, star or
+bookmark the repo after you see the verification output:
+<https://github.com/proompteng/bilig/stargazers>.
+
 ## Choose Your Path
 
 - **Evaluate in 90 seconds**: run the npm-only
@@ -40,7 +55,9 @@ Project site: <https://proompteng.github.io/bilig/>
   [Node service recipe](docs/node-service-workpaper-recipe.md), or
   [serverless route walkthrough](docs/serverless-workpaper-api-route.md).
 - **Wire a coding-agent tool**: use the
-  [agent tool-calling recipe](docs/agent-workpaper-tool-calling-recipe.md).
+  [agent tool-calling recipe](docs/agent-workpaper-tool-calling-recipe.md) or
+  run the
+  [Vercel AI SDK / LangChain adapter example](examples/headless-workpaper#agent-framework-adapters).
 - **Contribute a small patch**: pick a scoped
   [`good first issue`](docs/starter-issues.md).
 - **Ask a question or share a workflow**: use
@@ -150,6 +167,7 @@ cd bilig/examples/headless-workpaper
 npm install
 npm start
 npm run agent:tool-call
+npm run agent:framework-adapters
 npm run agent:verify
 ```
 
@@ -368,6 +386,11 @@ survived the round trip.
 For a tool-calling shape closer to agent SDKs, run `npm run agent:tool-call`.
 It returns a compact tool call, before/after computed values, formula
 contracts, persistence proof, and round-trip verification.
+
+For Vercel AI SDK and LangChain-shaped wrappers, run
+`npm run agent:framework-adapters`. The example keeps the same validated
+WorkPaper read/write functions and exposes thin framework adapter shapes
+without adding either framework as a dependency.
 
 Quickstart:
 

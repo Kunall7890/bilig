@@ -23,6 +23,7 @@ language: typescript
 - https://proompteng.github.io/bilig/node-service-workpaper-recipe.html
 - https://proompteng.github.io/bilig/serverless-workpaper-api-route.html
 - https://github.com/proompteng/bilig/blob/main/docs/workbook-automation-examples-node.md
+- https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#agent-framework-adapters
 - https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-records-input
 - https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#invoice-totals
 - https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#budget-variance-alerts
@@ -76,6 +77,7 @@ cd bilig/examples/headless-workpaper
 npm install
 npm start
 npm run agent:tool-call
+npm run agent:framework-adapters
 npm run agent:verify
 ```
 
@@ -130,6 +132,8 @@ npm run agent:verify
 - workpaper tool-calling recipe for agents:
   https://proompteng.github.io/bilig/agent-workpaper-tool-calling-recipe.html
   https://github.com/proompteng/bilig/blob/main/docs/agent-workpaper-tool-calling-recipe.md
+- runnable Vercel AI SDK and LangChain-shaped agent adapter example:
+  https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/agent-framework-adapters.mjs
 - agent spreadsheet tool-call loop:
   https://proompteng.github.io/bilig/agent-spreadsheet-tool-call-loop.html
   https://github.com/proompteng/bilig/blob/main/docs/agent-spreadsheet-tool-call-loop.md

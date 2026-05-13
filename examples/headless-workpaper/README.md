@@ -39,28 +39,29 @@ packages through `pnpm workpaper:smoke:external`.
 
 ## Command Index
 
-| Use case                | Command                        | What it proves                               |
-| ----------------------- | ------------------------------ | -------------------------------------------- |
-| Quick revenue workbook  | `npm start`                    | formulas, named expressions, persistence     |
-| Agent tool call loop    | `npm run agent:tool-call`      | read, edit, verify, serialize, restore       |
-| Agent writeback check   | `npm run agent:verify`         | exact input edits and formula preservation   |
-| Budget variance alerts  | `npm run budget-variance`      | budget, actuals, variance, alert formulas    |
-| Fulfillment capacity    | `npm run fulfillment-capacity` | orders, labor hours, capacity gap            |
-| Quote approval          | `npm run quote-approval`       | quote total, discount, approval threshold    |
-| Subscription MRR        | `npm run subscription-mrr`     | churn, expansion, ending MRR forecast        |
-| Revenue scenarios       | `npm run scenarios`            | multi-sheet formulas and planning edits      |
-| Persistence round trip  | `npm run persistence`          | save, restore, edit, and export              |
-| Named expression update | `npm run named-expression`     | workbook-scoped names and dependent formulas |
-| CSV-shaped input        | `npm run csv-shaped`           | array-shaped data plus formula summary       |
-| Invoice totals          | `npm run invoice-totals`       | line items, subtotal, tax, total             |
-| JSON records input      | `npm run json-records`         | API records to formula-backed workbook       |
-| JSON file input         | `npm run json-file`            | disk JSON records to verified summary        |
-| Formula diagnostics     | `npm run formula-diagnostics`  | display errors and structured diagnostics    |
-| Markdown report output  | `npm run markdown-report`      | calculated plain-text report generation      |
-| Snapshot diff           | `npm run snapshot-diff`        | persisted before/after input and outputs     |
-| Range readback          | `npm run range-readback`       | computed values and serialized formulas      |
-| Sheet inspection        | `npm run sheet-inspection`     | restored sheet names, IDs, and dimensions    |
-| HTTP JSON summary       | `npm run http-json-summary`    | no-framework Node HTTP service boundary      |
+| Use case                 | Command                            | What it proves                               |
+| ------------------------ | ---------------------------------- | -------------------------------------------- |
+| Quick revenue workbook   | `npm start`                        | formulas, named expressions, persistence     |
+| Agent tool call loop     | `npm run agent:tool-call`          | read, edit, verify, serialize, restore       |
+| Agent framework adapters | `npm run agent:framework-adapters` | Vercel AI SDK and LangChain-shaped wrappers  |
+| Agent writeback check    | `npm run agent:verify`             | exact input edits and formula preservation   |
+| Budget variance alerts   | `npm run budget-variance`          | budget, actuals, variance, alert formulas    |
+| Fulfillment capacity     | `npm run fulfillment-capacity`     | orders, labor hours, capacity gap            |
+| Quote approval           | `npm run quote-approval`           | quote total, discount, approval threshold    |
+| Subscription MRR         | `npm run subscription-mrr`         | churn, expansion, ending MRR forecast        |
+| Revenue scenarios        | `npm run scenarios`                | multi-sheet formulas and planning edits      |
+| Persistence round trip   | `npm run persistence`              | save, restore, edit, and export              |
+| Named expression update  | `npm run named-expression`         | workbook-scoped names and dependent formulas |
+| CSV-shaped input         | `npm run csv-shaped`               | array-shaped data plus formula summary       |
+| Invoice totals           | `npm run invoice-totals`           | line items, subtotal, tax, total             |
+| JSON records input       | `npm run json-records`             | API records to formula-backed workbook       |
+| JSON file input          | `npm run json-file`                | disk JSON records to verified summary        |
+| Formula diagnostics      | `npm run formula-diagnostics`      | display errors and structured diagnostics    |
+| Markdown report output   | `npm run markdown-report`          | calculated plain-text report generation      |
+| Snapshot diff            | `npm run snapshot-diff`            | persisted before/after input and outputs     |
+| Range readback           | `npm run range-readback`           | computed values and serialized formulas      |
+| Sheet inspection         | `npm run sheet-inspection`         | restored sheet names, IDs, and dimensions    |
+| HTTP JSON summary        | `npm run http-json-summary`        | no-framework Node HTTP service boundary      |
 
 ## Agent Tool Call Loop
 
@@ -120,6 +121,61 @@ For agent frameworks, the
 [`WorkPaper tool-calling recipe`](../../docs/agent-workpaper-tool-calling-recipe.md)
 also shows Vercel AI SDK and LangChain-style wrappers that keep the same
 validation and computed readback contract.
+
+## Agent Framework Adapters
+
+Run this when you want copyable wrapper shapes for Vercel AI SDK and LangChain
+without adding either package to the standalone example:
+
+```sh
+npm run agent:framework-adapters
+```
+
+Expected output:
+
+```json
+{
+  "aiSdk": {
+    "toolNames": ["readWorkPaperSummary", "setWorkPaperInputCell"],
+    "writeResult": {
+      "editedCell": "Inputs!B3",
+      "before": {
+        "expectedCustomers": 5,
+        "expectedArr": 60000,
+        "expansionArr": 66000,
+        "targetGap": -34000
+      },
+      "after": {
+        "expectedCustomers": 8,
+        "expectedArr": 96000,
+        "expansionArr": 105600,
+        "targetGap": 5600
+      },
+      "checks": {
+        "previousValue": 0.25,
+        "newValue": 0.4,
+        "formulasPersisted": true,
+        "restoredMatchesAfter": true,
+        "expectedArrChanged": true
+      }
+    }
+  },
+  "langChain": {
+    "toolNames": ["read_workpaper_summary", "set_workpaper_input_cell"],
+    "writeResult": {
+      "editedCell": "Inputs!B3",
+      "checks": {
+        "formulasPersisted": true,
+        "restoredMatchesAfter": true,
+        "expectedArrChanged": true
+      }
+    }
+  }
+}
+```
+
+The actual output also includes the read results, formula contracts, restored
+summary, and serialized byte counts.
 
 ## Agent Writeback Verification
 

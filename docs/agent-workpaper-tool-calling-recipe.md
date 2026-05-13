@@ -25,7 +25,9 @@ Start with the package README for the public API contract:
 For a runnable external example, use
 [`examples/headless-workpaper`](../examples/headless-workpaper) and run
 `npm run agent:tool-call`. For a smaller writeback-only proof, run
-`npm run agent:verify`.
+`npm run agent:verify`. For framework-shaped wrappers that do not pull Vercel
+AI SDK or LangChain into this repository, run
+`npm run agent:framework-adapters`.
 
 ## Tool Contract
 
@@ -44,11 +46,7 @@ tool result carry enough evidence for verification.
 ## Complete Node Example
 
 ```js
-import {
-  WorkPaper,
-  exportWorkPaperDocument,
-  serializeWorkPaperDocument,
-} from '@bilig/headless'
+import { WorkPaper, exportWorkPaperDocument, serializeWorkPaperDocument } from '@bilig/headless'
 
 const workbook = WorkPaper.buildFromSheets({
   Assumptions: [
@@ -205,20 +203,15 @@ import { z } from 'zod'
 
 export const workPaperTools = {
   readWorkPaperSummary: tool({
-    description:
-      'Read computed WorkPaper summary values and serialized inputs for a small range.',
+    description: 'Read computed WorkPaper summary values and serialized inputs for a small range.',
     inputSchema: z.object({
-      range: z
-        .string()
-        .default('Summary!A1:B3')
-        .describe('A small A1 range, including the sheet name.'),
+      range: z.string().default('Summary!A1:B3').describe('A small A1 range, including the sheet name.'),
     }),
     execute: async ({ range = 'Summary!A1:B3' }) => tools.readSummary(range),
   }),
 
   setWorkPaperInputCell: tool({
-    description:
-      'Set one validated WorkPaper input cell and return before/after formula readback.',
+    description: 'Set one validated WorkPaper input cell and return before/after formula readback.',
     inputSchema: z.object({
       sheetName: z.string().describe('Target sheet name, for example Revenue.'),
       address: z.string().describe('A1 cell address inside the target sheet.'),
@@ -229,13 +222,8 @@ export const workPaperTools = {
     execute: async ({ sheetName, address, value }) => {
       const result = tools.setInputCell({ sheetName, address, value })
 
-      if (
-        !result.checks.currentMrrChanged ||
-        !result.checks.nextMonthMrrChanged
-      ) {
-        throw new Error(
-          `WorkPaper edit did not change the dependent summary: ${JSON.stringify(result.checks)}`,
-        )
+      if (!result.checks.currentMrrChanged || !result.checks.nextMonthMrrChanged) {
+        throw new Error(`WorkPaper edit did not change the dependent summary: ${JSON.stringify(result.checks)}`)
       }
 
       return result
@@ -250,6 +238,14 @@ return `editedCell`, `before`, `after`, and `checks` so the next model step can
 explain exactly what changed. Persist the serialized workbook only after these
 computed readback checks pass.
 
+For a dependency-free runnable version of this shape, use
+[`examples/headless-workpaper/agent-framework-adapters.mjs`](../examples/headless-workpaper/agent-framework-adapters.mjs):
+
+```sh
+cd examples/headless-workpaper
+npm run agent:framework-adapters
+```
+
 ## LangChain Tool Wrapper
 
 LangChain users can wrap the same SDK-neutral WorkPaper functions without adding
@@ -260,40 +256,27 @@ LangChain, define thin tools around the `tools` object from the example above:
 import { tool } from 'langchain'
 import * as z from 'zod'
 
-const readWorkPaperSummary = tool(
-  ({ range = 'Summary!A1:B3' }) => tools.readSummary(range),
-  {
-    name: 'read_workpaper_summary',
-    description:
-      'Read computed WorkPaper summary values and serialized inputs for a small range.',
-    schema: z.object({
-      range: z
-        .string()
-        .default('Summary!A1:B3')
-        .describe('A small A1 range, including the sheet name.'),
-    }),
-  },
-)
+const readWorkPaperSummary = tool(({ range = 'Summary!A1:B3' }) => tools.readSummary(range), {
+  name: 'read_workpaper_summary',
+  description: 'Read computed WorkPaper summary values and serialized inputs for a small range.',
+  schema: z.object({
+    range: z.string().default('Summary!A1:B3').describe('A small A1 range, including the sheet name.'),
+  }),
+})
 
 const setWorkPaperInputCell = tool(
   async ({ sheetName, address, value }) => {
     const result = tools.setInputCell({ sheetName, address, value })
 
-    if (
-      !result.checks.currentMrrChanged ||
-      !result.checks.nextMonthMrrChanged
-    ) {
-      throw new Error(
-        `WorkPaper edit did not change the dependent summary: ${JSON.stringify(result.checks)}`,
-      )
+    if (!result.checks.currentMrrChanged || !result.checks.nextMonthMrrChanged) {
+      throw new Error(`WorkPaper edit did not change the dependent summary: ${JSON.stringify(result.checks)}`)
     }
 
     return result
   },
   {
     name: 'set_workpaper_input_cell',
-    description:
-      'Set one validated WorkPaper input cell and return before/after formula readback.',
+    description: 'Set one validated WorkPaper input cell and return before/after formula readback.',
     schema: z.object({
       sheetName: z.string().describe('Target sheet name, for example Revenue.'),
       address: z.string().describe('A1 cell address inside the target sheet.'),

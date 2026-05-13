@@ -231,6 +231,7 @@ for (const required of [
   'repository: https://github.com/proompteng/bilig',
   'npm package: https://www.npmjs.com/package/@bilig/headless',
   'npm run agent:tool-call',
+  'npm run agent:framework-adapters',
   'npm run agent:verify',
   'https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-records-input',
   'https://proompteng.github.io/bilig/why-agents-need-workbook-apis.html',
@@ -258,6 +259,7 @@ for (const required of [
   'https://github.com/proompteng/bilig/blob/main/docs/csv-shaped-workpaper-input-recipe.md',
   'https://github.com/proompteng/bilig/blob/main/docs/unsupported-formula-troubleshooting-recipe.md',
   'https://github.com/proompteng/bilig/blob/main/docs/agent-workpaper-tool-calling-recipe.md',
+  'https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/agent-framework-adapters.mjs',
   'https://github.com/proompteng/bilig/blob/main/docs/agent-spreadsheet-tool-call-loop.md',
   'https://github.com/proompteng/bilig/blob/main/docs/local-workpaper-benchmark-walkthrough.md',
   'https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md',
@@ -285,6 +287,17 @@ for (const [path, content] of [
   ['docs/llms.txt', llms],
 ] as const) {
   requireIncludes(content, 'https://github.com/proompteng/bilig/issues?q=is%3Aissue%20state%3Aopen%20label%3Afirst-timers-only', path)
+}
+
+for (const [path, content] of [
+  ['README.md', readme],
+  ['packages/headless/README.md', headlessReadme],
+] as const) {
+  requireIncludes(content, '## Current Public Proof', path)
+  requireIncludes(content, 'https://proompteng.github.io/bilig/community-growth-snapshot.html', path)
+  requireIncludes(content, 'https://github.com/proompteng/bilig/stargazers', path)
+  requireIncludes(content, '13,427` npm downloads in the', path)
+  requireIncludes(content, '`30` open `good first issue` tickets', path)
 }
 
 requireIncludes(newContributorGuide, '## First-Time Command Checklist', 'docs/new-contributor-guide.md')
@@ -325,6 +338,7 @@ requireIncludes(
   'description: Wrap @bilig/headless workbook reads, writes, formula readback, and persistence as deterministic Node.js tools',
   'docs/agent-workpaper-tool-calling-recipe.md',
 )
+requireIncludes(agentToolCallingDoc, 'npm run agent:framework-adapters', 'docs/agent-workpaper-tool-calling-recipe.md')
 requireIncludes(
   agentToolCallLoopDoc,
   'description: A runnable @bilig/headless loop where an agent writes one workbook input',
@@ -371,6 +385,8 @@ for (const [path, content] of [
   ['docs/llms.txt', llms],
 ] as const) {
   requireIncludes(content, 'examples/headless-workpaper#invoice-totals', path)
+  requireIncludes(content, 'examples/headless-workpaper#agent-framework-adapters', path)
+  requireIncludes(content, 'npm run agent:framework-adapters', path)
   requireIncludes(content, 'examples/headless-workpaper#budget-variance-alerts', path)
   requireIncludes(content, 'examples/headless-workpaper#fulfillment-capacity-plan', path)
   requireIncludes(content, 'examples/headless-workpaper#quote-approval-threshold', path)
@@ -535,7 +551,11 @@ for (const blockedLink of ['](../../docs/', '](../../examples/', '](../../LICENS
   requireNotIncludes(headlessReadme, blockedLink, 'packages/headless/README.md')
 }
 
-const headlessExampleReadme = await readFile(join(repoRoot, 'examples', 'headless-workpaper', 'README.md'), 'utf8')
+const [headlessExampleReadme, headlessExamplePackage] = await Promise.all([
+  readFile(join(repoRoot, 'examples', 'headless-workpaper', 'README.md'), 'utf8'),
+  readFile(join(repoRoot, 'examples', 'headless-workpaper', 'package.json'), 'utf8'),
+])
+await requireFile(join(repoRoot, 'examples', 'headless-workpaper', 'agent-framework-adapters.mjs'))
 requireIncludes(headlessExampleReadme, 'npm run invoice-totals', 'examples/headless-workpaper/README.md')
 requireIncludes(headlessExampleReadme, '## Invoice Totals', 'examples/headless-workpaper/README.md')
 requireIncludes(headlessExampleReadme, 'npm run budget-variance', 'examples/headless-workpaper/README.md')
@@ -546,6 +566,13 @@ requireIncludes(headlessExampleReadme, 'npm run quote-approval', 'examples/headl
 requireIncludes(headlessExampleReadme, '## Quote Approval Threshold', 'examples/headless-workpaper/README.md')
 requireIncludes(headlessExampleReadme, 'npm run subscription-mrr', 'examples/headless-workpaper/README.md')
 requireIncludes(headlessExampleReadme, '## Subscription MRR Forecast', 'examples/headless-workpaper/README.md')
+requireIncludes(headlessExampleReadme, 'npm run agent:framework-adapters', 'examples/headless-workpaper/README.md')
+requireIncludes(headlessExampleReadme, '## Agent Framework Adapters', 'examples/headless-workpaper/README.md')
+requireIncludes(
+  headlessExamplePackage,
+  '"agent:framework-adapters": "node agent-framework-adapters.mjs"',
+  'examples/headless-workpaper/package.json',
+)
 requireIncludes(headlessReadme, 'npm run invoice-totals', 'packages/headless/README.md')
 requireIncludes(headlessReadme, '#invoice-totals', 'packages/headless/README.md')
 requireIncludes(headlessReadme, 'npm run budget-variance', 'packages/headless/README.md')

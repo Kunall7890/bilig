@@ -233,6 +233,7 @@ function runNodeSmoke(
   mkdirSync(projectDir, { recursive: true })
   mkdirSync(join(projectDir, 'fixtures'), { recursive: true })
   copyFileSync(join(headlessExampleDir, 'package.json'), join(projectDir, 'package.json'))
+  copyFileSync(join(headlessExampleDir, 'agent-framework-adapters.mjs'), join(projectDir, 'agent-framework-adapters.mjs'))
   copyFileSync(join(headlessExampleDir, 'agent-tool-call-loop.mjs'), join(projectDir, 'agent-tool-call-loop.mjs'))
   copyFileSync(join(headlessExampleDir, 'agent-writeback-verification.mjs'), join(projectDir, 'agent-writeback-verification.mjs'))
   copyFileSync(join(headlessExampleDir, 'formula-diagnostics.mjs'), join(projectDir, 'formula-diagnostics.mjs'))
@@ -339,6 +340,7 @@ function runNodeSmoke(
   const persistence = parseNodePersistenceOutput(runTextCommand('node', ['persistence-roundtrip.mjs'], { cwd: projectDir }))
   const scenarios = parseNodeRevenueScenarioOutput(runTextCommand('node', ['revenue-scenarios.mjs'], { cwd: projectDir }))
   const agentToolCall = parseNodeAgentToolCallOutput(runTextCommand('node', ['agent-tool-call-loop.mjs'], { cwd: projectDir }))
+  runTextCommand('node', ['agent-framework-adapters.mjs'], { cwd: projectDir })
   const agentVerification = parseNodeAgentVerificationOutput(
     runTextCommand('node', ['agent-writeback-verification.mjs'], { cwd: projectDir }),
   )
