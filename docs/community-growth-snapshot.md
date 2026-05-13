@@ -54,4 +54,3 @@ This snapshot tracks the public signals for the `@bilig/headless` growth loop: G
 - If downloads or clones rise without stars, improve README and npm star/bookmark conversion after proof blocks.
 - If traffic comes from a channel but discussions stay quiet, switch from launch copy to a specific workflow-feedback ask.
 - If the starter queue drops below three current issues, open scoped example tasks before the next distribution push.
-
