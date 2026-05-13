@@ -1,4 +1,4 @@
-import { strFromU8, unzipSync } from 'fflate'
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import * as XLSX from 'xlsx'
 import { describe, expect, it } from 'vitest'
 
@@ -27,6 +27,25 @@ describe('formula cache roundtrip', () => {
     expect(reimportedCells.get('B2')).toMatchObject({ formula: 'SUM(A1:A2)', value: 1550 })
     expect(reimportedCells.get('C2')).toMatchObject({ formula: 'B1/A1', value: 1.2916666666666667 })
   })
+
+  it('preserves string-literal references when expanding shared formulas', () => {
+    const imported = importXlsx(buildSharedIndirectFormulaWorkbookBytes(), 'shared-indirect-formulas.xlsx')
+    const contents = imported.snapshot.sheets.find((sheet) => sheet.name === 'Contents')
+    const cells = new Map(contents?.cells.map((cell) => [cell.address, cell]) ?? [])
+
+    expect(cells.get('B2')).toMatchObject({
+      formula: `INDIRECT("'"&A2&"'!A2")`,
+      value: 'First title',
+    })
+    expect(cells.get('B3')).toMatchObject({
+      formula: `INDIRECT("'"&A3&"'!A2")`,
+      value: 'Second title',
+    })
+    expect(cells.get('B3')?.formula).not.toContain("'!A3")
+
+    const preview = imported.preview.sheets.find((sheet) => sheet.name === 'Contents')
+    expect(preview?.previewRows[2]?.[1]).toBe(`=INDIRECT("'"&A3&"'!A2")`)
+  })
 })
 
 function buildFormulaCacheWorkbookBytes(): Uint8Array {
@@ -44,6 +63,45 @@ function buildFormulaCacheWorkbookBytes(): Uint8Array {
   return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
 }
 
+function buildSharedIndirectFormulaWorkbookBytes(): Uint8Array {
+  const workbook = XLSX.utils.book_new()
+  const contents = XLSX.utils.aoa_to_sheet([
+    ['Sheet', 'Title'],
+    ['Data 1', null],
+    ['Data 2', null],
+  ])
+  contents.B2 = { t: 'str', f: `INDIRECT("'"&A2&"'!A2")`, v: 'First title' }
+  contents.B3 = { t: 'str', f: `INDIRECT("'"&A3&"'!A2")`, v: 'Second title' }
+  contents['!ref'] = 'A1:B3'
+
+  XLSX.utils.book_append_sheet(workbook, contents, 'Contents')
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([[], ['First title']]), 'Data 1')
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([[], ['Second title']]), 'Data 2')
+
+  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const sheetXml = strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+  zip['xl/worksheets/sheet1.xml'] = strToU8(
+    replaceCellXml(
+      replaceCellXml(
+        sheetXml,
+        'B2',
+        '<c r="B2" t="str"><f t="shared" ref="B2:B3" si="0">INDIRECT(&quot;\'&quot;&amp;A2&amp;&quot;\'!A2&quot;)</f><v>First title</v></c>',
+      ),
+      'B3',
+      '<c r="B3" t="str"><f t="shared" si="0"/><v>Second title</v></c>',
+    ),
+  )
+  return zipSync(zip)
+}
+
 function cellXml(sheetXml: string, address: string): string {
   return sheetXml.match(new RegExp(`<c[^>]* r="${address}"[^>]*>[\\s\\S]*?<\\/c>`))?.[0] ?? ''
+}
+
+function replaceCellXml(sheetXml: string, address: string, replacement: string): string {
+  const pattern = new RegExp(`<c\\b(?=[^>]*\\br="${address}")[\\s\\S]*?<\\/c>`, 'u')
+  if (!pattern.test(sheetXml)) {
+    throw new Error(`Missing fixture cell ${address}`)
+  }
+  return sheetXml.replace(pattern, replacement)
 }

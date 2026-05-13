@@ -26,6 +26,7 @@ import { readImportedDefinedNames } from './xlsx-defined-names.js'
 import { readImportedWorkbookDrawingArtifacts } from './xlsx-drawing-artifacts.js'
 import { readImportedWorkbookExternalLinkArtifacts } from './xlsx-external-link-artifacts.js'
 import { readImportedWorkbookFilters } from './xlsx-filters.js'
+import { readImportedWorksheetFormulas } from './xlsx-formulas.js'
 import { readImportedWorkbookFreezePanes } from './xlsx-freeze-panes.js'
 import { readImportedWorkbookIgnoredErrors } from './xlsx-ignored-errors.js'
 import { buildMergeEntries } from './xlsx-merge-entries.js'
@@ -403,6 +404,9 @@ function importSheetJsWorkbook(
   const importedWorksheetTextValuesBySheet = workbookZip
     ? readImportedWorksheetTextValues(workbookZip, workbook.SheetNames, sheetPathsByName, fallbackSheetPaths)
     : new Map()
+  const importedWorksheetFormulasBySheet = workbookZip
+    ? readImportedWorksheetFormulas(workbookZip, workbook.SheetNames, sheetPathsByName, fallbackSheetPaths)
+    : new Map()
   const importedThreadedCommentArtifacts = workbookZip
     ? readImportedWorkbookThreadedCommentArtifacts(workbookZip, workbook.SheetNames)
     : undefined
@@ -438,6 +442,7 @@ function importSheetJsWorkbook(
 
     const importedComments = readImportedSheetComments(sheetName, sheet)
     const importedWorksheetTextValues = importedWorksheetTextValuesBySheet.get(sheetName)
+    const importedWorksheetFormulas = importedWorksheetFormulasBySheet.get(sheetName)
     const importedHyperlinks = readImportedSheetHyperlinks(sheetName, sheet)
     if (importedComments.ignoredCount > 0 && !ignoredCommentsSeen) {
       ignoredCommentsSeen = true
@@ -505,7 +510,7 @@ function importSheetJsWorkbook(
     for (const { address, cell, row, column } of sheetCellEntries) {
       seenCellAddresses.add(address)
       const nextCell: WorkbookSnapshot['sheets'][number]['cells'][number] = { address }
-      const formula = cell['f']
+      const formula = importedWorksheetFormulas?.get(address) ?? cell['f']
       const xmlTextValue = importedWorksheetTextValues?.get(address)
       if (typeof formula === 'string' && formula.trim().length > 0) {
         const normalizedFormula = normalizeImportedFormulaSource(formula)
@@ -588,11 +593,11 @@ function importSheetJsWorkbook(
           if (!cell) {
             return ''
           }
-          const formula = cell['f']
+          const address = XLSX.utils.encode_cell({ r: row, c: col })
+          const formula = importedWorksheetFormulas?.get(address) ?? cell['f']
           if (typeof formula === 'string' && formula.trim().length > 0) {
             return `=${normalizeImportedFormulaSource(formula)}`
           }
-          const address = XLSX.utils.encode_cell({ r: row, c: col })
           return toDisplayText(readImportedLiteralCellValue(cell) ?? importedWorksheetTextValues?.get(address))
         },
       }),

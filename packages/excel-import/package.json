@@ -43,14 +43,12 @@
   },
   "dependencies": {
     "@bilig/core": "workspace:*",
+    "@bilig/formula": "workspace:*",
     "@bilig/protocol": "workspace:*",
     "fast-xml-parser": "5.7.3",
     "fflate": "0.3.11",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "xlsx-js-style": "1.2.0"
-  },
-  "devDependencies": {
-    "@bilig/formula": "workspace:*"
   },
   "engines": {
     "node": ">=24.0.0"

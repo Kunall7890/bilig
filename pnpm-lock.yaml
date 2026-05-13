@@ -326,6 +326,9 @@ importers:
       '@bilig/core':
         specifier: workspace:*
         version: link:../core
+      '@bilig/formula':
+        specifier: workspace:*
+        version: link:../formula
       '@bilig/protocol':
         specifier: workspace:*
         version: link:../protocol
@@ -341,11 +344,6 @@ importers:
       xlsx-js-style:
         specifier: 1.2.0
         version: 1.2.0
-    devDependencies:
-      '@bilig/formula':
-        specifier: workspace:*
-        version: link:../formula
-
   packages/formula:
     dependencies:
       '@bilig/protocol':
