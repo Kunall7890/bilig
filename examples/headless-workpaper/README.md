@@ -243,6 +243,53 @@ JSON-RPC response per line to stdout. It supports `initialize`,
 `notifications/initialized`, `tools/list`, and `tools/call` without adding a
 transport package or MCP SDK dependency.
 
+### Vercel AI SDK MCP Client Recipe
+
+Use the published stdio command when you want an AI SDK agent to call the same
+MCP tools from a TypeScript workflow:
+
+```ts
+import { createMCPClient } from '@ai-sdk/mcp'
+import { Experimental_StdioMCPTransport } from '@ai-sdk/mcp/mcp-stdio'
+import { generateText } from 'ai'
+
+const client = await createMCPClient({
+  transport: new Experimental_StdioMCPTransport({
+    command: 'npm',
+    args: ['exec', '--package', '@bilig/headless', '--', 'bilig-workpaper-mcp'],
+  }),
+})
+
+try {
+  const tools = await client.tools()
+  const { text } = await generateText({
+    model: 'your-model',
+    tools,
+    prompt: [
+      'Read the WorkPaper summary with read_workpaper_summary for Summary!A1:B5.',
+      'Then set Inputs!B3 to 0.4 with set_workpaper_input_cell.',
+      'Return editedCell plus the before and after expectedArr values.',
+    ].join('\n'),
+  })
+
+  console.log(text)
+} finally {
+  await client.close()
+}
+```
+
+The important calls are still the MCP `read_workpaper_summary` read and the
+`set_workpaper_input_cell` write. The server command is `bilig-workpaper-mcp`;
+`npm exec --package @bilig/headless -- bilig-workpaper-mcp` just resolves the
+published package for a clean local recipe. The stdio transport receives `npm`
+as the command and the rest as `args`, so the SDK launches the process directly.
+
+Verify this docs recipe from the repo root with:
+
+```sh
+pnpm docs:discovery:check
+```
+
 ### MCP Stdio Troubleshooting
 
 | Symptom                        | What to check                                                                                   |
