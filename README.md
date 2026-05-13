@@ -33,7 +33,7 @@ Project site: <https://proompteng.github.io/bilig/>
   <https://proompteng.github.io/bilig/community-growth-snapshot.html>
 - Latest checked-in snapshot: `24` GitHub stars, `12` forks, `15,592` npm downloads in the
   last week, `23,240` npm downloads in the last 30 days, `77` open
-  `good first issue` tickets, `9` GitHub Discussions, and `455` recent
+  `good first issue` tickets, `10` GitHub Discussions, and `455` recent
   repository views.
 - Benchmark evidence:
   [`46/46` comparable WorkPaper mean wins](docs/what-workpaper-benchmark-proves.md),
@@ -83,8 +83,9 @@ Useful direct paths:
   `npm run agent:mcp-stdio`, or
   `pnpm mcpb:workpaper:build`, or
   `npm exec --package @bilig/headless -- bilig-workpaper-mcp`.
-- Persistence feedback:
-  [Postgres, Redis, and object storage adapters discussion](https://github.com/proompteng/bilig/discussions/307).
+- Open feedback threads:
+  [Postgres, Redis, and object storage adapters discussion](https://github.com/proompteng/bilig/discussions/307)
+  and [JavaScript spreadsheet library guide discussion](https://github.com/proompteng/bilig/discussions/308).
 - SEO comparison pages:
   [evaluate Excel formulas in Node.js](docs/evaluate-excel-formulas-in-node-typescript.md),
   [Node spreadsheet formula engine](docs/node-spreadsheet-formula-engine.md),

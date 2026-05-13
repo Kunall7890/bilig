@@ -201,8 +201,12 @@ Postgres/Redis/object-storage adapter pass:
   production-shaped WorkPaper persistence recipe, with direct links to the
   runnable adapter source, service docs, and storage starter issues:
   <https://github.com/proompteng/bilig/discussions/307>
-- The public growth snapshot now records `9` GitHub Discussions and keeps the
-  persistence feedback loop visible beside stars, npm demand, contributor
+- GitHub Discussion `#308` now asks for feedback on the JavaScript spreadsheet
+  library chooser page, with a direct path from grid/file/formula-engine search
+  intent to the WorkPaper runtime:
+  <https://github.com/proompteng/bilig/discussions/308>
+- The public growth snapshot now records `10` GitHub Discussions and keeps the
+  active feedback loops visible beside stars, npm demand, contributor
   queue health, and traffic.
 
 ## Goal Text

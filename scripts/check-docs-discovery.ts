@@ -371,6 +371,7 @@ for (const required of [
   'https://github.com/proompteng/bilig/discussions/230',
   'https://github.com/proompteng/bilig/discussions/270',
   'https://github.com/proompteng/bilig/discussions/307',
+  'https://github.com/proompteng/bilig/discussions/308',
   'https://github.com/proompteng/bilig/discussions/230#discussioncomment-16907632',
   'https://github.com/proompteng/bilig/discussions/115',
   'https://github.com/proompteng/bilig/blob/main/docs/dev-to-workbook-apis-post.md',
@@ -433,9 +434,10 @@ for (const [path, content] of [
   requireIncludes(content, '`12` forks', path)
   requireIncludes(content, '15,592` npm downloads in the', path)
   requireIncludes(content, '`77` open', path)
-  requireIncludes(content, '`9` GitHub Discussions', path)
+  requireIncludes(content, '`10` GitHub Discussions', path)
   requireIncludes(content, '`good first issue` tickets', path)
   requireIncludes(content, 'https://github.com/proompteng/bilig/discussions/307', path)
+  requireIncludes(content, 'https://github.com/proompteng/bilig/discussions/308', path)
 }
 
 requireIncludes(newContributorGuide, '## First-Time Command Checklist', 'docs/new-contributor-guide.md')
@@ -755,6 +757,7 @@ const discussionDocChecks = [
   ['https://github.com/proompteng/bilig/discussions/230', ['mcp', 'llms']],
   ['https://github.com/proompteng/bilig/discussions/167', ['index', 'launch', 'llms']],
   ['https://github.com/proompteng/bilig/discussions/307', ['readme', 'headless', 'index', 'launch', 'llms']],
+  ['https://github.com/proompteng/bilig/discussions/308', ['readme', 'headless', 'launch', 'llms']],
 ] as const
 
 for (const [url, docKeys] of discussionDocChecks) {
