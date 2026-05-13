@@ -194,7 +194,8 @@ pre,
 .step,
 .path-link span,
 .proof-row dt,
-.proof-links span {
+.proof-links span,
+.proof-label {
   color: var(--accent);
   font-size: 12px;
   font-weight: 700;
@@ -497,25 +498,25 @@ h2 {
 .proof-section {
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
-  background: #f1f2eb;
+  background: #f5f5ef;
 }
 
 .proof-layout {
-  grid-template-columns: minmax(280px, 0.54fr) minmax(0, 1fr);
-  gap: clamp(34px, 5vw, 78px);
+  grid-template-columns: minmax(280px, 0.5fr) minmax(0, 0.95fr);
+  gap: clamp(32px, 5vw, 68px);
   align-items: start;
 }
 
 .proof-intro {
   display: grid;
-  gap: 13px;
-  max-width: 520px;
+  gap: 15px;
+  max-width: 540px;
 }
 
 .proof-intro h2 {
   margin-top: 0;
-  font-size: clamp(38px, 4.2vw, 58px);
-  line-height: 1.02;
+  font-size: clamp(36px, 4vw, 54px);
+  line-height: 1.04;
 }
 
 .proof-intro p:not(.kicker) {
@@ -525,24 +526,63 @@ h2 {
 }
 
 .proof-board {
-  border-top: 1px solid var(--ink);
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  box-shadow: 0 16px 38px rgba(27, 31, 24, 0.08);
 }
 
-.proof-command,
-.proof-row {
+.proof-summary {
   display: grid;
-  grid-template-columns: minmax(108px, 0.2fr) minmax(220px, 0.46fr) minmax(230px, 0.42fr);
-  gap: clamp(16px, 2.5vw, 30px);
-  align-items: start;
+  grid-template-columns: 1fr;
   border-bottom: 1px solid var(--line);
-  padding: 22px 0;
+}
+
+.proof-result {
+  display: grid;
+  gap: 10px;
+  background: var(--dark);
+  padding: clamp(22px, 3vw, 30px);
+  color: #f6f1e7;
+}
+
+.proof-result strong {
+  color: var(--accent-bright);
+  font-size: clamp(50px, 7vw, 78px);
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 0.95;
+}
+
+.proof-result p {
+  max-width: 360px;
+  color: #d8d3c7;
+  font-size: 15px;
 }
 
 .proof-command {
-  grid-template-columns: minmax(108px, 0.2fr) minmax(0, 1fr);
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 12px;
   align-items: center;
-  padding-top: 18px;
-  padding-bottom: 18px;
+  min-width: 0;
+  padding: clamp(22px, 3vw, 30px);
+}
+
+.proof-command span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.proof-row {
+  display: grid;
+  grid-template-columns: 116px minmax(0, 0.66fr) minmax(230px, 0.48fr);
+  gap: clamp(16px, 2.5vw, 30px);
+  align-items: start;
+  border-bottom: 1px solid var(--line);
+  padding: 20px clamp(22px, 3vw, 30px);
 }
 
 .proof-command code,
@@ -550,31 +590,34 @@ h2 {
   overflow-wrap: break-word;
   word-break: normal;
   color: var(--ink);
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .proof-command code {
+  display: block;
+  max-width: 100%;
   border: 1px solid var(--line);
   background: rgba(255, 254, 250, 0.68);
   padding: 10px 12px;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .proof-row dd {
   color: var(--ink);
-  font-size: clamp(23px, 3vw, 34px);
+  font-size: clamp(20px, 2.3vw, 27px);
   font-weight: 700;
-  line-height: 1.05;
+  line-height: 1.12;
 }
 
 .proof-row-code dd {
-  font-size: clamp(15px, 1.7vw, 20px);
+  font-size: clamp(14px, 1.55vw, 18px);
   line-height: 1.35;
 }
 
 .proof-links {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  border-bottom: 1px solid var(--line);
 }
 
 .proof-links a {
@@ -582,13 +625,12 @@ h2 {
   gap: 6px;
   min-width: 0;
   border-left: 1px solid var(--line);
-  padding: 18px 20px;
+  padding: 18px clamp(18px, 2.4vw, 24px);
   text-decoration: none;
 }
 
 .proof-links a:first-child {
   border-left: 0;
-  padding-left: 0;
 }
 
 .proof-links strong {
@@ -720,9 +762,12 @@ footer {
     gap: 7px;
   }
 
+  .proof-summary {
+    grid-template-columns: 1fr;
+  }
+
   .proof-command {
     grid-template-columns: 1fr;
-    gap: 8px;
   }
 
   .proof-links a,

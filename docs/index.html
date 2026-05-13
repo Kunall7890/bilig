@@ -484,36 +484,43 @@ function readNumber(cell: unknown): number {
           <div class="proof-layout">
             <div class="proof-intro">
               <p class="kicker">Benchmark</p>
-              <h2 id="proof-title">Run the benchmark, then decide.</h2>
+              <h2 id="proof-title">46/46 mean wins. One p95 row is slower.</h2>
               <p>
-                bilig is ahead on this checked-in WorkPaper suite. That is a narrow claim: mean latency, comparable rows, and one slower p95
-                row called out in the open.
+                The current WorkPaper vs HyperFormula artifact puts WorkPaper ahead on mean latency for this suite. Use it for comparable
+                headless workloads, not as a general speed claim.
               </p>
             </div>
 
             <div class="proof-board" aria-label="Benchmark evidence">
-              <div class="proof-command">
-                <span>Local check</span>
-                <code>pnpm workpaper:bench:competitive:check</code>
+              <div class="proof-summary">
+                <div class="proof-result">
+                  <span class="proof-label">Current checked-in result</span>
+                  <strong>46 / 46</strong>
+                  <p>Lower mean latency on every comparable row in the current artifact.</p>
+                </div>
+                <div class="proof-command">
+                  <span>Run it locally</span>
+                  <code>pnpm workpaper:bench:competitive:check</code>
+                </div>
               </div>
 
               <dl class="proof-ledger">
                 <div class="proof-row">
-                  <dt>Mean latency</dt>
-                  <dd>46 / 46 rows ahead</dd>
-                  <p>Only the comparable WorkPaper vs HyperFormula rows in the repo.</p>
+                  <dt>Scope</dt>
+                  <dd>Comparable headless workloads</dd>
+                  <p>No UI-performance claim. No Excel-compatibility claim.</p>
                 </div>
                 <div class="proof-row proof-row-code">
                   <dt>Artifact</dt>
                   <dd>
                     <code>packages/benchmarks/baselines/<wbr />workpaper-vs-hyperformula.json</code>
                   </dd>
-                  <p>Committed with the source. If the benchmark moves, review shows the JSON diff.</p>
+                  <p>Committed JSON, not a screenshot. Benchmark changes show up as normal diffs.</p>
                 </div>
                 <div class="proof-row proof-row-code">
-                  <dt>Miss</dt>
-                  <dd><code>lookup-approximate-duplicates</code> p95 1.043x</dd>
-                  <p>That case is slower. If your workbook looks like it, test first.</p>
+                  <dt>Caveat</dt>
+                  <dd><code>lookup-approximate-duplicates</code></dd>
+                  <p>p95 is 1.043x slower. If your workbook relies on approximate lookups with duplicates, test it first.</p>
                 </div>
               </dl>
 
