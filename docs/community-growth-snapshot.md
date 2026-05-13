@@ -1,6 +1,6 @@
 # Community Growth Snapshot
 
-Captured at: `2026-05-13T15:27:38.580Z`
+Captured at: `2026-05-13T16:11:51.942Z`
 
 This snapshot tracks the public signals for the `@bilig/headless` growth loop: GitHub conversion, npm demand, contributor on-ramp health, discussion activity, and traffic quality.
 
@@ -10,7 +10,7 @@ This snapshot tracks the public signals for the `@bilig/headless` growth loop: G
 - Stars: 24 / 1,000 (976 remaining)
 - Forks: 12
 - Watchers: 0
-- Open issues: 73
+- Open issues: 77
 - Default branch: `main`
 
 ## npm
@@ -23,9 +23,9 @@ This snapshot tracks the public signals for the `@bilig/headless` growth loop: G
 
 ## Contributor Funnel
 
-- Open good first issues: 73
-- Open first-timers-only issues: 73
-- Open help wanted issues: 73
+- Open good first issues: 77
+- Open first-timers-only issues: 77
+- Open help wanted issues: 77
 - Open pull requests: 8
 - External open issues: 0
 - External open pull requests: 8
@@ -35,9 +35,9 @@ This snapshot tracks the public signals for the `@bilig/headless` growth loop: G
 ## Discussions
 
 - Total discussions: 8
+- #230 [Show and tell: MCP spreadsheet tool server for WorkPaper agents](https://github.com/proompteng/bilig/discussions/230) (Show and tell, 1 comment)
 - #167 [Show and tell: serverless WorkPaper API route recipe](https://github.com/proompteng/bilig/discussions/167) (Show and tell, 3 comments)
 - #270 [Show and tell: try @bilig/headless from npm in an empty Node project](https://github.com/proompteng/bilig/discussions/270) (Show and tell, 0 comments)
-- #230 [Show and tell: MCP spreadsheet tool server for WorkPaper agents](https://github.com/proompteng/bilig/discussions/230) (Show and tell, 0 comments)
 - #226 [Vercel AI SDK and LangChain spreadsheet tools for WorkPaper agents](https://github.com/proompteng/bilig/discussions/226) (Announcements, 0 comments)
 - #213 [Show and tell: five runnable Node workbook automation examples](https://github.com/proompteng/bilig/discussions/213) (Show and tell, 1 comment)
 

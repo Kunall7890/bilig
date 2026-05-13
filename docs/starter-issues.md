@@ -6,8 +6,8 @@ search indexing.
 
 Current starter queue as of May 13, 2026:
 
-- 73 open `first-timers-only` issues.
-- 65 issues are generally available for a new contributor to claim.
+- 77 open `first-timers-only` issues.
+- 69 issues are generally available for a new contributor to claim.
 - 8 issues already have active pull requests; comment before duplicating one of
   those patches.
 
@@ -60,6 +60,10 @@ Current starter queue as of May 13, 2026:
 
 - [#301: docs(storage): add Drizzle WorkPaper JSON persistence recipe](https://github.com/proompteng/bilig/issues/301)
 - [#302: docs(storage): add Kysely WorkPaper JSON persistence recipe](https://github.com/proompteng/bilig/issues/302)
+- [#303: docs(storage): add Upstash Redis WorkPaper persistence recipe](https://github.com/proompteng/bilig/issues/303)
+- [#304: docs(storage): add Neon Postgres WorkPaper persistence recipe](https://github.com/proompteng/bilig/issues/304)
+- [#305: docs(storage): add Cloudflare R2 WorkPaper persistence recipe](https://github.com/proompteng/bilig/issues/305)
+- [#306: docs(storage): add AWS S3 WorkPaper persistence recipe](https://github.com/proompteng/bilig/issues/306)
 
 ### Example Recipes
 

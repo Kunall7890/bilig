@@ -256,7 +256,7 @@ including its p95 caveat.
   https://github.com/proompteng/bilig/blob/main/docs/starter-issues.md
 - community growth snapshot:
   https://github.com/proompteng/bilig/blob/main/docs/community-growth-snapshot.md
-- current starter queue snapshot: 73 open first-timers-only issues, 65 generally available, 8 already in review.
+- current starter queue snapshot: 77 open first-timers-only issues, 69 generally available, 8 already in review.
 - current small example issue: xlsx formula-cache roundtrip:
   https://github.com/proompteng/bilig/issues/134
 - current small docs issue: WorkPaper agent tool result contract:
@@ -357,6 +357,14 @@ including its p95 caveat.
   https://github.com/proompteng/bilig/issues/301
 - current small storage issue: Kysely WorkPaper JSON persistence recipe:
   https://github.com/proompteng/bilig/issues/302
+- current small storage issue: Upstash Redis WorkPaper persistence recipe:
+  https://github.com/proompteng/bilig/issues/303
+- current small storage issue: Neon Postgres WorkPaper persistence recipe:
+  https://github.com/proompteng/bilig/issues/304
+- current small storage issue: Cloudflare R2 WorkPaper persistence recipe:
+  https://github.com/proompteng/bilig/issues/305
+- current small storage issue: AWS S3 WorkPaper persistence recipe:
+  https://github.com/proompteng/bilig/issues/306
 - current small docs issue: downstream GitHub Actions smoke snippet:
   https://github.com/proompteng/bilig/issues/248
 - current small example issue: AWS Lambda Function URL WorkPaper adapter note:
