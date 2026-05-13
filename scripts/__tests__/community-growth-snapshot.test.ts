@@ -155,7 +155,7 @@ describe('community growth snapshot', () => {
         fullName: 'proompteng/bilig',
         stargazerCount: 8,
         forkCount: 1,
-        openIssueCount: 39,
+        openIssueCount: 37,
       },
       npm: {
         name: '@bilig/headless',

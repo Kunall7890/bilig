@@ -684,10 +684,15 @@ export async function collectCommunityGrowthSnapshot(options: CommunityGrowthSna
     collectGitHubDiscussionActivity(fetchImpl, owner, repo, githubToken, githubCliApiJson),
     collectGitHubTraffic(fetchImpl, owner, repo, githubToken, githubCliApiJson),
   ])
+  const issueOnlyGitHubMetrics = {
+    ...github,
+    // GitHub REST's open_issues_count includes pull requests.
+    openIssueCount: Math.max(0, github.openIssueCount - contributorFunnel.openPullRequestCount),
+  }
 
   return {
     capturedAt: now.toISOString(),
-    github,
+    github: issueOnlyGitHubMetrics,
     npm: parseNpmPackageMetrics(npmMetadata, {
       lastWeek: lastWeekDownloads,
       lastMonth: lastMonthDownloads,
@@ -806,7 +811,6 @@ export function renderCommunityGrowthSnapshotMarkdown(snapshot: CommunityGrowthS
     '- If downloads or clones rise without stars, improve README and npm star/bookmark conversion after proof blocks.',
     '- If traffic comes from a channel but discussions stay quiet, switch from launch copy to a specific workflow-feedback ask.',
     '- If the starter queue drops below three current issues, open scoped example tasks before the next distribution push.',
-    '',
   ]
 
   return `${lines.join('\n')}\n`

@@ -78,7 +78,7 @@ Latest public execution snapshot on May 13, 2026 after the landing-page pass:
 Latest starter-queue execution snapshot on May 13, 2026 after the adapter smoke
 issue pass:
 
-- GitHub surface: `24` stars, `10` forks, `62` open issues, and `6` open pull
+- GitHub surface: `24` stars, `10` forks, `56` open issues, and `6` open pull
   requests.
 - npm surface: `@bilig/headless@0.13.19`, with `15,592` downloads last week
   and `23,240` downloads in the last 30 days.
