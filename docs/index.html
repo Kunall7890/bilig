@@ -243,10 +243,10 @@
 
       .topbar .wrap {
         display: flex;
-        min-height: 58px;
+        min-height: 50px;
         align-items: center;
         justify-content: space-between;
-        gap: 24px;
+        gap: 18px;
       }
 
       .brand {
@@ -279,9 +279,9 @@
       .nav {
         display: flex;
         align-items: center;
-        gap: 18px;
+        gap: 14px;
         color: #d8d0c2;
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 650;
       }
 
@@ -291,32 +291,32 @@
 
       .hero {
         position: relative;
-        min-height: 740px;
+        min-height: 666px;
         overflow: hidden;
-        background: linear-gradient(110deg, rgba(18, 16, 12, 1) 0%, rgba(18, 16, 12, 0.98) 46%, rgba(34, 29, 22, 0.9) 100%), var(--black);
+        border-bottom: 1px solid #2e281f;
+        background: #11100c;
         color: #fff8ee;
       }
 
       .hero::before {
         position: absolute;
         inset: 0;
-        opacity: 0.18;
+        opacity: 0.12;
         background-image:
           linear-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px),
           linear-gradient(90deg, rgba(255, 255, 255, 0.12) 1px, transparent 1px);
-        background-size: 48px 48px;
+        background-size: 56px 56px;
         content: '';
-        mask-image: linear-gradient(90deg, black, transparent 75%);
+        mask-image: linear-gradient(90deg, black, rgba(0, 0, 0, 0.72), transparent 92%);
       }
 
       .hero::after {
         position: absolute;
-        right: -18%;
-        bottom: -38%;
-        width: 72%;
-        height: 82%;
-        transform: rotate(-12deg);
-        background: linear-gradient(90deg, rgba(51, 209, 122, 0.13), rgba(224, 167, 47, 0.08));
+        right: 0;
+        bottom: 0;
+        width: 52%;
+        height: 210px;
+        background: linear-gradient(90deg, transparent, rgba(51, 209, 122, 0.12));
         content: '';
       }
 
@@ -324,17 +324,17 @@
         position: relative;
         z-index: 1;
         display: grid;
-        grid-template-columns: minmax(0, 0.82fr) minmax(520px, 1fr);
-        min-height: 740px;
+        grid-template-columns: minmax(360px, 0.78fr) minmax(420px, 0.72fr);
+        min-height: 666px;
         align-items: center;
-        gap: 42px;
-        padding: 56px 0 72px;
+        gap: 70px;
+        padding: 58px 0 68px;
       }
 
       .hero-copy {
         display: grid;
-        gap: 26px;
-        max-width: 620px;
+        gap: 22px;
+        max-width: 560px;
       }
 
       .kicker {
@@ -348,29 +348,30 @@
       }
 
       h1 {
-        font-size: 92px;
-        line-height: 0.92;
+        font-size: 104px;
+        line-height: 0.9;
         letter-spacing: 0;
       }
 
       .hero-copy h1 span {
         display: block;
-        color: #d4c7b6;
-        font-size: 30px;
+        color: #e2d8ca;
+        font-size: 31px;
         font-weight: 720;
         line-height: 1.2;
         margin-top: 18px;
-        max-width: 540px;
+        max-width: 520px;
       }
 
       .lede {
-        max-width: 590px;
-        color: #d8d0c2;
-        font-size: 19px;
+        max-width: 510px;
+        color: #cfc4b4;
+        font-size: 18px;
       }
 
       .command-line {
         display: flex;
+        width: min(100%, 520px);
         min-width: 0;
         align-items: center;
         border: 1px solid #4d4439;
@@ -396,7 +397,7 @@
       .hero-actions {
         display: flex;
         flex-wrap: wrap;
-        gap: 10px;
+        gap: 12px;
       }
 
       .button {
@@ -453,14 +454,14 @@
       .proof-strip {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        border-top: 1px solid rgba(255, 248, 238, 0.24);
+        width: min(100%, 520px);
+        border-top: 1px solid rgba(255, 248, 238, 0.22);
         color: #c8bbaa;
       }
 
       .proof-strip div {
-        min-height: 70px;
         border-right: 1px solid rgba(255, 248, 238, 0.14);
-        padding: 14px 16px 0 0;
+        padding: 13px 14px 0 0;
       }
 
       .proof-strip div:last-child {
@@ -470,13 +471,103 @@
       .proof-strip strong {
         display: block;
         color: #fff8ee;
-        font-size: 13px;
+        font-size: 12px;
       }
 
       .proof-strip span {
         display: block;
         margin-top: 5px;
+        font-size: 11px;
+        line-height: 1.42;
+      }
+
+      .runtime-card {
+        justify-self: end;
+        width: min(100%, 540px);
+        overflow: hidden;
+        border: 1px solid #4a4237;
+        border-radius: 4px;
+        background: rgba(25, 22, 17, 0.92);
+        box-shadow: 0 30px 90px rgba(0, 0, 0, 0.34);
+        animation: lift-in 520ms ease both;
+      }
+
+      .runtime-top,
+      .runtime-result {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        border-bottom: 1px solid #3d362d;
+        background: #211d17;
+        padding: 12px 14px;
+        color: #c7bcae;
         font-size: 12px;
+        font-weight: 760;
+      }
+
+      .runtime-flow {
+        display: grid;
+      }
+
+      .runtime-row {
+        display: grid;
+        grid-template-columns: 92px minmax(0, 1fr) auto;
+        gap: 16px;
+        align-items: center;
+        border-bottom: 1px solid #2e2922;
+        padding: 15px 14px;
+      }
+
+      .runtime-row span {
+        color: #9d927f;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      .runtime-row strong {
+        color: #f7efe4;
+        font-size: 15px;
+      }
+
+      .runtime-row code {
+        color: var(--green);
+        font-size: 13px;
+        text-align: right;
+      }
+
+      .runtime-code {
+        border-bottom: 1px solid #2e2922;
+        padding: 16px 14px;
+        color: #f7efe4;
+        font-size: 12px;
+        line-height: 1.75;
+        overflow-wrap: anywhere;
+        white-space: pre-wrap;
+      }
+
+      .runtime-code .kw {
+        color: #8cc8ff;
+      }
+
+      .runtime-code .str {
+        color: #91e9a7;
+      }
+
+      .runtime-code .num {
+        color: #ffd787;
+      }
+
+      .runtime-result {
+        border-bottom: 0;
+        background: #15120e;
+      }
+
+      .runtime-result strong {
+        color: var(--green);
+        font-size: 22px;
+        font-variant-numeric: tabular-nums;
       }
 
       .traceboard {
@@ -625,22 +716,11 @@
       }
 
       .scroll-cue {
-        position: absolute;
-        left: 50%;
-        bottom: 28px;
-        width: 1px;
-        height: 44px;
-        overflow: hidden;
-        background: rgba(255, 248, 238, 0.2);
+        display: none;
       }
 
       .scroll-cue::before {
-        display: block;
-        width: 1px;
-        height: 18px;
-        background: var(--green);
-        content: '';
-        animation: scan 1500ms ease-in-out infinite;
+        content: none;
       }
 
       main {
@@ -654,15 +734,15 @@
 
       .section {
         border-bottom: 1px solid var(--line);
-        padding: 86px 0;
+        padding: 76px 0;
       }
 
       .section-head {
         display: grid;
-        grid-template-columns: minmax(0, 0.7fr) minmax(320px, 0.55fr);
-        gap: 36px;
+        grid-template-columns: minmax(0, 0.68fr) minmax(320px, 0.5fr);
+        gap: 48px;
         align-items: end;
-        margin-bottom: 34px;
+        margin-bottom: 30px;
       }
 
       .section-kicker {
@@ -675,19 +755,20 @@
 
       h2 {
         margin-top: 8px;
-        font-size: 46px;
+        font-size: 42px;
         line-height: 1.04;
         letter-spacing: 0;
       }
 
       .section-head p {
         color: var(--muted);
-        font-size: 17px;
+        font-size: 16px;
       }
 
       .work-row {
         display: grid;
-        grid-template-columns: 170px minmax(0, 1fr) minmax(260px, 0.55fr);
+        grid-template-columns: 132px minmax(0, 0.86fr) minmax(260px, 0.54fr);
+        column-gap: 38px;
         border-top: 1px solid var(--line);
       }
 
@@ -707,8 +788,8 @@
       }
 
       .work-row h3 {
-        font-size: 23px;
-        line-height: 1.18;
+        font-size: 21px;
+        line-height: 1.2;
       }
 
       .work-row p {
@@ -722,9 +803,11 @@
         display: grid;
         grid-template-columns: minmax(0, 0.72fr) minmax(0, 1fr);
         gap: 18px;
+        align-items: start;
       }
 
       .panel {
+        align-self: start;
         border: 1px solid var(--line);
         border-radius: 6px;
         background: #fffef9;
@@ -773,6 +856,7 @@
       }
 
       .terminal {
+        align-self: start;
         border: 1px solid #2f2922;
       }
 
@@ -1129,11 +1213,10 @@
           <p class="kicker" translate="no">@bilig/headless</p>
           <h1 id="hero-title">
             bilig
-            <span>Spreadsheet formulas that run where your TypeScript runs.</span>
+            <span>A headless workbook runtime for TypeScript.</span>
           </h1>
           <p class="lede">
-            Most spreadsheet packages parse files or render grids. bilig keeps the workbook alive in Node.js: set cells, recalculate,
-            inspect the result, and persist the document that produced it.
+            Write cells, recalculate formulas, read the value, and save the workbook document from a Node service or agent tool.
           </p>
           <div class="command-line" aria-label="Install command">
             <span class="mono">$</span>
@@ -1141,78 +1224,49 @@
           </div>
           <div class="hero-actions">
             <a class="button primary" href="https://www.npmjs.com/package/@bilig/headless">Install from npm</a>
-            <a class="button dark" href="#install">Run the TypeScript smoke test</a>
+            <a class="button dark" href="#install">Run eval.ts</a>
             <a class="button dark" href="https://github.com/proompteng/bilig/blob/main/docs/starter-issues.md">Starter issues</a>
           </div>
           <div class="proof-strip" aria-label="Public proof points">
             <div>
-              <strong>TypeScript first</strong>
-              <span>examples, serverless routes, and agent adapters run as .ts.</span>
+              <strong>TypeScript examples</strong>
+              <span>the public starter code runs as .ts.</span>
             </div>
             <div>
-              <strong>MCP ready</strong>
-              <span>stdio server listed as io.github.proompteng/bilig-workpaper.</span>
+              <strong>Checked edits</strong>
+              <span>write a cell, recalc, read it back.</span>
             </div>
             <div>
-              <strong>CI gated</strong>
-              <span>package smoke tests and public docs checks run before release.</span>
+              <strong>MCP server</strong>
+              <span>stdio tool server for agent workflows.</span>
             </div>
           </div>
         </div>
 
-        <div class="traceboard" aria-label="WorkPaper runtime proof">
-          <div class="trace-frame">
-            <div class="trace-head">
-              <span>workpaper runtime trace</span>
-              <span>verified readback</span>
+        <div class="runtime-card" aria-label="WorkPaper runtime proof">
+          <div class="runtime-top">
+            <span>eval.ts</span>
+            <span>verified readback</span>
+          </div>
+          <div class="runtime-flow">
+            <div class="runtime-row">
+              <span>write</span>
+              <strong>Revenue!B2</strong>
+              <code>32</code>
             </div>
-            <div class="trace-grid">
-              <div class="trace-cell">
-                <div class="trace-label">
-                  <span>Revenue</span>
-                  <span>after edit</span>
-                </div>
-                <table class="trace-table">
-                  <thead>
-                    <tr>
-                      <th>metric</th>
-                      <th>value</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>West customers</td>
-                      <td class="green">32</td>
-                    </tr>
-                    <tr>
-                      <td>West ARPA</td>
-                      <td>1,200</td>
-                    </tr>
-                    <tr>
-                      <td>Formula</td>
-                      <td>=B2*C2</td>
-                    </tr>
-                    <tr>
-                      <td>Total revenue</td>
-                      <td class="green">51,300</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <div class="trace-cell">
-                <div class="trace-label">
-                  <span>eval.ts</span>
-                  <span>TypeScript</span>
-                </div>
-                <pre class="trace-code"><code><span class="kw">const</span> workbook = WorkPaper.buildFromSheets({
-  Revenue: [
-    [<span class="str">"Region"</span>, <span class="str">"Customers"</span>, <span class="str">"ARPA"</span>, <span class="str">"Revenue"</span>],
-    [<span class="str">"West"</span>, <span class="num">20</span>, <span class="num">1200</span>, <span class="str">"=B2*C2"</span>],
-  ]
-});
-
-workbook.setCellContents({ sheet: revenue, row: <span class="num">1</span>, col: <span class="num">1</span> }, <span class="num">32</span>);
-<span class="kw">const</span> before = workbook.getCellValue(total);
+            <div class="runtime-row">
+              <span>formula</span>
+              <strong>Revenue!D2</strong>
+              <code>=B2*C2</code>
+            </div>
+            <div class="runtime-row">
+              <span>read</span>
+              <strong>Summary!B2</strong>
+              <code>51,300</code>
+            </div>
+          </div>
+          <pre class="runtime-code"><code><span class="kw">const</span> before = workbook.getCellValue(total);
+workbook.setCellContents(customerCell, <span class="num">32</span>);
 
 <span class="kw">const</span> saved = serializeWorkPaperDocument(
   exportWorkPaperDocument(workbook, { includeConfig: <span class="kw">true</span> })
@@ -1220,22 +1274,9 @@ workbook.setCellContents({ sheet: revenue, row: <span class="num">1</span>, col:
 <span class="kw">const</span> after = createWorkPaperFromDocument(
   parseWorkPaperDocument(saved)
 ).getCellValue(total);</code></pre>
-              </div>
-            </div>
-            <div class="trace-output">
-              <div>
-                <strong>36,900</strong>
-                <span>before edit</span>
-              </div>
-              <div>
-                <strong>51,300</strong>
-                <span>after restore</span>
-              </div>
-              <div>
-                <strong>true</strong>
-                <span>verified</span>
-              </div>
-            </div>
+          <div class="runtime-result">
+            <span>after restore</span>
+            <strong>51,300</strong>
           </div>
         </div>
       </div>
@@ -1248,34 +1289,33 @@ workbook.setCellContents({ sheet: revenue, row: <span class="num">1</span>, col:
           <div class="section-head">
             <div>
               <p class="section-kicker">Why it exists</p>
-              <h2 id="why-title">Formulas are product logic. Treat them like code.</h2>
+              <h2 id="why-title">For spreadsheet logic that has to run unattended.</h2>
             </div>
             <p>
-              Use bilig when a spreadsheet model should live inside a service, queue worker, tool call, or serverless route instead of a
-              user-facing spreadsheet tab.
+              Use it when a pricing model, revenue schedule, import check, or agent tool needs formulas without opening a spreadsheet UI.
             </p>
           </div>
 
           <div class="work-rows">
             <div class="work-row">
               <span class="step">01 / create</span>
-              <h3>Build sheets from arrays, JSON records, or service data.</h3>
-              <p>Examples cover invoice totals, budget variance, fulfillment capacity, quote approval, and subscription MRR.</p>
+              <h3>Start from rows, JSON, or service data.</h3>
+              <p>Build a workbook in memory instead of preparing an XLSX file just to calculate a result.</p>
             </div>
             <div class="work-row">
               <span class="step">02 / edit</span>
-              <h3>Write inputs and structural changes through a workbook API.</h3>
-              <p>No screen scraping. No hidden UI state. The changed workbook is the object your code already owns.</p>
+              <h3>Change inputs through the workbook API.</h3>
+              <p>No screen scraping, hidden grid state, or browser tab pretending to be backend logic.</p>
             </div>
             <div class="work-row">
               <span class="step">03 / read</span>
-              <h3>Recalculate and read the value that was actually produced.</h3>
-              <p>Agent tools can return evidence after each write instead of guessing from a screenshot or stale cache.</p>
+              <h3>Read the calculated value after the edit.</h3>
+              <p>Services and agents can return the same evidence they checked before responding.</p>
             </div>
             <div class="work-row">
               <span class="step">04 / persist</span>
-              <h3>Serialize the WorkPaper document and restore it later.</h3>
-              <p>The persistence guides show JSON state behind SQLite, Postgres, and object storage adapters.</p>
+              <h3>Store the workbook document as JSON.</h3>
+              <p>Restore it later behind SQLite, Postgres, object storage, or a small tool server.</p>
             </div>
           </div>
         </div>
@@ -1286,9 +1326,9 @@ workbook.setCellContents({ sheet: revenue, row: <span class="num">1</span>, col:
           <div class="section-head">
             <div>
               <p class="section-kicker">Clean start</p>
-              <h2 id="install-title">Run the TypeScript smoke test before you believe the page.</h2>
+              <h2 id="install-title">A TypeScript smoke test you can paste.</h2>
             </div>
-            <p>This checks the basic contract from a clean Node project: calculate, edit, serialize, restore, and compare the readback.</p>
+            <p>It creates a workbook, changes an input, serializes the document, restores it, and checks the calculated value.</p>
           </div>
 
           <div class="install-grid">
@@ -1376,12 +1416,9 @@ console.log({ before, after, bytes: saved.length, verified });</code></pre>
           <div class="section-head">
             <div>
               <p class="section-kicker">Agent tools</p>
-              <h2 id="mcp-title">Expose workbook edits through MCP.</h2>
+              <h2 id="mcp-title">Give agents a workbook tool with readback.</h2>
             </div>
-            <p>
-              The stdio server gives agent clients a narrow surface for workbook reads, verified edits, formula contracts, and document
-              persistence.
-            </p>
+            <p>The stdio server exposes a small surface for reads, writes, formula checks, and document persistence.</p>
           </div>
 
           <div class="mcp-grid">
@@ -1430,12 +1467,9 @@ console.log({ before, after, bytes: saved.length, verified });</code></pre>
           <div class="section-head">
             <div>
               <p class="section-kicker">Proof and limits</p>
-              <h2 id="proof-title">Readable evidence beats a bigger claim.</h2>
+              <h2 id="proof-title">Check the claims before you depend on it.</h2>
             </div>
-            <p>
-              The repo keeps benchmark notes, compatibility gaps, examples, and contribution tasks close to the code so the public surface
-              can be checked.
-            </p>
+            <p>Benchmarks, compatibility notes, examples, and contribution tasks are public and linked from the page.</p>
           </div>
 
           <div class="proof-grid">
@@ -1520,9 +1554,9 @@ console.log({ before, after, bytes: saved.length, verified });</code></pre>
           <div class="section-head">
             <div>
               <p class="section-kicker">Entry points</p>
-              <h2 id="docs-title">Pick the job you actually have.</h2>
+              <h2 id="docs-title">Start from the job in front of you.</h2>
             </div>
-            <p>Start from a runnable example, an agent-tool recipe, a comparison page, or a small contributor task. No scavenger hunt.</p>
+            <p>Use a runnable example, an agent-tool recipe, a comparison page, or a small contributor task.</p>
           </div>
 
           <div class="docs-grid">
@@ -1610,11 +1644,8 @@ console.log({ before, after, bytes: saved.length, verified });</code></pre>
       <section class="final" aria-labelledby="final-title">
         <div class="wrap">
           <div>
-            <h2 id="final-title">Install it, run the TypeScript example, and inspect the readback.</h2>
-            <p>
-              If formulas belong inside your service instead of a spreadsheet tab, start with the smoke test and then move to the MCP or
-              serverless route recipes.
-            </p>
+            <h2 id="final-title">Install the package and run the TypeScript smoke test.</h2>
+            <p>If the result matches, move on to the MCP server, service recipe, or serverless route example.</p>
           </div>
           <div class="hero-actions">
             <a class="button primary" href="https://www.npmjs.com/package/@bilig/headless">Install</a>
