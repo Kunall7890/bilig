@@ -6,31 +6,41 @@
 [![GitHub Repo stars](https://img.shields.io/github/stars/proompteng/bilig?style=social)](https://github.com/proompteng/bilig/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/proompteng/bilig/blob/main/LICENSE)
 
-`@bilig/headless` is the `bilig` spreadsheet engine without the browser UI.
-It lets Node.js programs build workbooks, write formulas, read calculated
-cells, and save or restore the workbook as JSON.
+`@bilig/headless` is a headless workbook runtime for TypeScript. It lets Node
+services and agent tools build workbooks, write formulas, read calculated cells,
+and save or restore the workbook as JSON.
 
 Use it when spreadsheet logic belongs inside a service, test suite, local-first
-app, queue worker, or coding-agent tool. It gives code a workbook boundary with
-stable sheet names, cell addresses, formulas, and persisted state.
+app, queue worker, or coding-agent tool. The package gives code a workbook
+boundary with stable sheet names, cell addresses, formulas, and persisted state.
 
 It is not Excel desktop automation and it is not a visual grid. XLSX import and
 export live in the repository import/export packages; this package executes the
 validated WorkPaper model once data is in workbook form.
+
+## Best Fit
+
+| Use it for                                                             | Do not use it for                                           |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Formula-backed calculations in Node services and serverless routes     | Manual spreadsheet editing                                  |
+| Agent tools that write workbook inputs and return verified readback    | Browser grid rendering by itself                            |
+| Persisting a workbook document after code changes cells or formulas    | Office macros, COM automation, or desktop Excel integration |
+| Tests that need deterministic spreadsheet state instead of screenshots | One-off arithmetic where a workbook model adds no value     |
 
 ## Current Public Proof
 
 - Live growth snapshot:
   <https://proompteng.github.io/bilig/community-growth-snapshot.html>
 - Latest checked-in snapshot: `24` GitHub stars, `13,427` npm downloads in the
-  last week, `37` open `good first issue` tickets, `7` GitHub Discussions, and
-  `393` recent repository views.
+  last week, `24,931` npm downloads in the last 30 days, `35` open
+  `good first issue` tickets, `7` GitHub Discussions, and `393` recent
+  repository views.
 - Benchmark evidence:
   [`46/46` comparable WorkPaper mean wins](https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md),
   with the p95 caveat documented instead of hidden.
 
-If the sanity check below saves you a workbook-automation spike, star or
-bookmark the repo after you see the verification output:
+If the sanity check below saves you a workbook automation spike, star the repo
+so you can find it again:
 <https://github.com/proompteng/bilig/stargazers>.
 
 ## Install
@@ -97,45 +107,20 @@ pnpm --filter @bilig/headless build
 
 ## Start Here
 
-Pick the path that matches the job:
+| Job                          | Start with                                                                                                                                                                                                                                                                                                                                               |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Prove the package from npm   | [clean npm sanity check](#clean-npm-sanity-check)                                                                                                                                                                                                                                                                                                        |
+| Decide if the backend fits   | [Node.js spreadsheet formula engine guide](https://proompteng.github.io/bilig/node-spreadsheet-formula-engine.html) and [compatibility boundaries](https://github.com/proompteng/bilig/blob/main/docs/where-bilig-is-not-excel-compatible-yet.md)                                                                                                        |
+| Test formula edits and state | [quickstart](#quickstart) and [persistence round trip](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#persistence-round-trip)                                                                                                                                                                                                 |
+| Build from service data      | [`npm run json-records`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-records-input), [workbook-automation-examples-node guide](https://proompteng.github.io/bilig/workbook-automation-examples-node.html), [Node service recipe](https://github.com/proompteng/bilig/blob/main/docs/node-service-workpaper-recipe.md) |
+| Wrap agent tools             | [`npm run agent:tool-call`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#agent-tool-call-loop), [framework adapter guide](https://proompteng.github.io/bilig/vercel-ai-sdk-langchain-spreadsheet-tool.html)                                                                                                                 |
+| Expose MCP tools             | [`npm run agent:mcp-tools`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#mcp-tool-server-shape), [MCP server guide](https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html)                                                                                                                                      |
+| Compare engines              | [headless engine comparison](https://github.com/proompteng/bilig/blob/main/docs/headless-spreadsheet-engine-comparison.md), [HyperFormula comparison](https://github.com/proompteng/bilig/blob/main/docs/hyperformula-alternative-headless-workpaper.md)                                                                                                 |
 
-- Prove the package works from npm:
-  [clean npm sanity check](#clean-npm-sanity-check).
-- Decide if this package fits a backend formula workload:
-  [Node.js spreadsheet formula engine guide](https://proompteng.github.io/bilig/node-spreadsheet-formula-engine.html).
-- Test formula edits plus persistence:
-  [quickstart](#quickstart).
-- Convert API records into workbook output:
-  [`npm run json-records`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-records-input).
-- Wrap workbook edits as agent tools:
-  [`npm run agent:tool-call`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#agent-tool-call-loop).
-- Adapt the same WorkPaper tools to agent frameworks:
-  [`npm run agent:framework-adapters`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#agent-framework-adapters).
-- Map WorkPaper tools to Vercel AI SDK and LangChain:
-  [framework adapter guide](https://proompteng.github.io/bilig/vercel-ai-sdk-langchain-spreadsheet-tool.html).
-- Expose WorkPaper through an MCP-style tool server shape:
-  [`npm run agent:mcp-tools`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#mcp-tool-server-shape)
-  and the
-  [MCP spreadsheet tool server guide](https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html).
-- Run the packaged MCP stdio server:
-  `npm exec --package @bilig/headless -- bilig-workpaper-mcp`.
-- Discover the published MCP Registry entry:
-  [`io.github.proompteng/bilig-workpaper`](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper).
-- Put WorkPaper behind HTTP:
-  [`examples/serverless-workpaper-api`](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api).
-- Compare engines before adopting:
-  [SheetJS and ExcelJS comparison](https://github.com/proompteng/bilig/blob/main/docs/sheetjs-exceljs-alternative-formula-workbook-api.md),
-  [HyperFormula comparison](https://github.com/proompteng/bilig/blob/main/docs/hyperformula-alternative-headless-workpaper.md),
-  [headless spreadsheet engine comparison](https://github.com/proompteng/bilig/blob/main/docs/headless-spreadsheet-engine-comparison.md),
-  and
-  [benchmark explainer](https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md).
-
-For more workflows, read the
-[five Node workbook automation examples](https://github.com/proompteng/bilig/blob/main/docs/workbook-automation-examples-node.md),
-the [Node service recipe](https://github.com/proompteng/bilig/blob/main/docs/node-service-workpaper-recipe.md),
-the [serverless API route walkthrough](https://github.com/proompteng/bilig/blob/main/docs/serverless-workpaper-api-route.md),
-and the
-[compatibility boundaries](https://github.com/proompteng/bilig/blob/main/docs/where-bilig-is-not-excel-compatible-yet.md).
+Run the packaged MCP stdio server with
+`npm exec --package @bilig/headless -- bilig-workpaper-mcp`. The published MCP
+Registry entry is
+[`io.github.proompteng/bilig-workpaper`](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper).
 
 Star or bookmark the project: <https://github.com/proompteng/bilig>.
 

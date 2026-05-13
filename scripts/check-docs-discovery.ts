@@ -350,7 +350,8 @@ for (const [path, content] of [
   requireIncludes(content, 'https://proompteng.github.io/bilig/community-growth-snapshot.html', path)
   requireIncludes(content, 'https://github.com/proompteng/bilig/stargazers', path)
   requireIncludes(content, '13,427` npm downloads in the', path)
-  requireIncludes(content, '`37` open `good first issue` tickets', path)
+  requireIncludes(content, '`35` open', path)
+  requireIncludes(content, '`good first issue` tickets', path)
 }
 
 requireIncludes(newContributorGuide, '## First-Time Command Checklist', 'docs/new-contributor-guide.md')
@@ -547,39 +548,12 @@ for (const [path, content] of [
   requireIncludes(content, 'https://github.com/proompteng/bilig/discussions/167', path)
 }
 
-for (const required of [
-  'https://github.com/proompteng/bilig/issues/134',
-  'https://github.com/proompteng/bilig/issues/153',
-  'https://github.com/proompteng/bilig/issues/154',
-  'https://github.com/proompteng/bilig/issues/155',
-  'https://github.com/proompteng/bilig/issues/156',
-  'https://github.com/proompteng/bilig/issues/158',
-  'https://github.com/proompteng/bilig/issues/159',
-  'https://github.com/proompteng/bilig/issues/162',
-  'https://github.com/proompteng/bilig/issues/163',
-  'https://github.com/proompteng/bilig/issues/193',
-  'https://github.com/proompteng/bilig/issues/194',
-  'https://github.com/proompteng/bilig/issues/195',
-  'https://github.com/proompteng/bilig/issues/196',
-  'https://github.com/proompteng/bilig/issues/197',
-  'https://github.com/proompteng/bilig/issues/198',
-  'https://github.com/proompteng/bilig/issues/199',
-  'https://github.com/proompteng/bilig/issues/207',
-  'https://github.com/proompteng/bilig/issues/208',
-  'https://github.com/proompteng/bilig/issues/209',
-  'https://github.com/proompteng/bilig/issues/210',
-  'https://github.com/proompteng/bilig/issues/211',
-  'https://github.com/proompteng/bilig/issues/212',
-  'https://github.com/proompteng/bilig/issues/217',
-  'https://github.com/proompteng/bilig/issues/218',
-  'https://github.com/proompteng/bilig/issues/219',
-  'https://github.com/proompteng/bilig/issues/220',
-  'https://github.com/proompteng/bilig/issues/221',
-  'https://github.com/proompteng/bilig/issues/222',
-  'https://github.com/proompteng/bilig/issues/223',
-  'https://github.com/proompteng/bilig/issues/228',
-  'https://github.com/proompteng/bilig/issues/229',
-]) {
+const currentStarterIssueNumbers = [
+  134, 153, 154, 155, 156, 158, 159, 162, 163, 193, 194, 195, 196, 197, 198, 207, 208, 209, 210, 211, 212, 217, 218, 219, 220, 221, 222,
+  223, 231, 233, 246, 247, 248, 249, 250,
+]
+
+for (const required of currentStarterIssueNumbers.map((issueNumber) => `https://github.com/proompteng/bilig/issues/${issueNumber}`)) {
   requireIncludes(starterIssues, required, 'docs/starter-issues.md')
   requireIncludes(llms, required, 'docs/llms.txt')
 }
@@ -600,12 +574,15 @@ for (const closedIssue of [
   '151',
   '152',
   '224',
+  '199',
   '200',
   '201',
   '202',
   '203',
   '204',
   '205',
+  '228',
+  '229',
   '160',
   '161',
   '164',
