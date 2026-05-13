@@ -737,6 +737,10 @@ describe('formula builtins', () => {
       tag: ValueTag.Number,
       value: 8,
     })
+    expect(getBuiltin('POWER')?.({ tag: ValueTag.Number, value: -32 }, { tag: ValueTag.Number, value: 1 / 5 })).toEqual({
+      tag: ValueTag.Number,
+      value: -2,
+    })
     expect(getBuiltin('LOG')?.({ tag: ValueTag.Number, value: 1000 })).toEqual({
       tag: ValueTag.Number,
       value: 3,

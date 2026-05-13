@@ -171,12 +171,13 @@ describe('wasm kernel scalar math dispatch', () => {
       [encodePushNumber(0), encodeCall(BuiltinId.Csc, 1), encodeRet()],
       [encodePushNumber(0), encodeCall(BuiltinId.Sech, 1), encodeRet()],
       [encodePushNumber(0), encodeCall(BuiltinId.Sign, 1), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Power, 2), encodeRet()],
     ])
     kernel.uploadPrograms(
       packed.programs,
       packed.offsets,
       packed.lengths,
-      Uint32Array.from(Array.from({ length: 22 }, (_, index) => cellIndex(1, index, width))),
+      Uint32Array.from(Array.from({ length: 23 }, (_, index) => cellIndex(1, index, width))),
     )
     const constants = packConstants([
       [Math.PI / 2],
@@ -201,9 +202,10 @@ describe('wasm kernel scalar math dispatch', () => {
       [0],
       [0],
       [-7],
+      [-32, 1 / 5],
     ])
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
-    kernel.evalBatch(Uint32Array.from(Array.from({ length: 22 }, (_, index) => cellIndex(1, index, width))))
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 23 }, (_, index) => cellIndex(1, index, width))))
 
     expect(kernel.readNumbers()[cellIndex(1, 0, width)]).toBeCloseTo(1, 12)
     expect(kernel.readNumbers()[cellIndex(1, 1, width)]).toBeCloseTo(1, 12)
@@ -228,6 +230,7 @@ describe('wasm kernel scalar math dispatch', () => {
     expect(kernel.readErrors()[cellIndex(1, 19, width)]).toBe(ErrorCode.Div0)
     expect(kernel.readNumbers()[cellIndex(1, 20, width)]).toBeCloseTo(1, 12)
     expect(kernel.readNumbers()[cellIndex(1, 21, width)]).toBe(-1)
+    expect(kernel.readNumbers()[cellIndex(1, 22, width)]).toBeCloseTo(-2, 12)
   })
 
   it('keeps bessel and combinatorics dispatch stable across refactors', async () => {

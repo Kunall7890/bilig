@@ -643,6 +643,44 @@ describe('translateFormulaReferences', () => {
     expect(rewritten.compiled.jsPlan).toEqual([{ opcode: 'push-cell', address: 'A7' }, { opcode: 'return' }])
   })
 
+  it('rewrites compiled explicit-sheet cell reference metadata without recompiling', () => {
+    const compiled = compileFormula('English!B4')
+    const rewritten = rewriteCompiledFormulaForStructuralTransform(compiled, 'French', 'English', {
+      kind: 'insert',
+      axis: 'row',
+      start: 0,
+      count: 1,
+    })
+
+    expect(rewritten.source).toBe('English!B5')
+    expect(rewritten.reusedProgram).toBe(true)
+    expect(rewritten.compiled.deps).toEqual(['English!B5'])
+    expect(rewritten.compiled.symbolicRefs).toEqual(['English!B5'])
+    expect(rewritten.compiled.parsedDeps).toEqual([
+      {
+        kind: 'cell',
+        address: 'English!B5',
+        sheetName: 'English',
+        explicitSheet: true,
+        row: 4,
+        col: 1,
+        rowAbsolute: false,
+        colAbsolute: false,
+      },
+    ])
+    expect(rewritten.compiled.parsedSymbolicRefs).toEqual([
+      {
+        address: 'English!B5',
+        sheetName: 'English',
+        explicitSheet: true,
+        row: 4,
+        col: 1,
+        rowAbsolute: false,
+        colAbsolute: false,
+      },
+    ])
+  })
+
   it('rewrites compiled row and column range plans without recompiling', () => {
     const rowCompiled = compileFormula('SUM(5:7)')
     const rowRewritten = rewriteCompiledFormulaForStructuralTransform(rowCompiled, 'Sheet1', 'Sheet1', {

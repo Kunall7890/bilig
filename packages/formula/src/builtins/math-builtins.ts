@@ -2,6 +2,7 @@ import { ErrorCode, ValueTag } from '@bilig/protocol'
 import type { CellValue } from '@bilig/protocol'
 import { besselIValue, besselJValue, besselKValue, besselYValue } from './distributions.js'
 import { collectNumericArgs } from './numeric.js'
+import { excelPower } from '../excel-power.js'
 import type { EvaluationResult } from '../runtime-values.js'
 
 type Builtin = (...args: CellValue[]) => EvaluationResult
@@ -88,7 +89,7 @@ export function createMathBuiltins({
       const result = base === undefined ? Math.log10(numeric) : Math.log(numeric) / Math.log(baseValue)
       return numericResultOrError(result)
     },
-    POWER: (base, exponent) => binaryMath(base, exponent, Math.pow),
+    POWER: (base, exponent) => binaryMath(base, exponent, excelPower),
     SQRT: (value) => unaryMath(value, Math.sqrt),
     PI: () => numberResult(Math.PI),
     SINH: (value) => unaryMath(value, Math.sinh),

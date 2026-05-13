@@ -3,6 +3,7 @@ import { doubleFactorialCalc, evenCalc, factorialCalc, oddCalc, roundToDigits, r
 import { toNumberExact, toNumberOrZero } from './operands'
 import { besselIValue, besselJValue, besselKValue, besselYValue } from './distributions'
 import { STACK_KIND_SCALAR, writeResult } from './result-io'
+import { excelPower } from './vm-core-helpers'
 
 function writeScalarMathError(
   base: i32,
@@ -377,7 +378,7 @@ export function tryApplyScalarMathBuiltin(
   if (builtinId == BuiltinId.Power && argc == 2) {
     return writeScalarMathNumber(
       base,
-      Math.pow(toNumberOrZero(tagStack[base], valueStack[base]), toNumberOrZero(tagStack[base + 1], valueStack[base + 1])),
+      excelPower(toNumberOrZero(tagStack[base], valueStack[base]), toNumberOrZero(tagStack[base + 1], valueStack[base + 1])),
       rangeIndexStack,
       valueStack,
       tagStack,

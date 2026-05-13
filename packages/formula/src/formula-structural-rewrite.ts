@@ -373,18 +373,19 @@ function rewriteParsedCellReference<Reference extends ParsedCellReferenceInfo>(
   targetSheetName: string,
   transform: StructuralAxisTransform,
 ): Reference {
-  const sheetName = reference.sheetName ?? ownerSheetName
+  const parsedReference = parseCellAddress(reference.address, ownerSheetName)
+  const sheetName = parsedReference.sheetName ?? ownerSheetName
   if (sheetName !== targetSheetName) {
     return reference
   }
-  const nextAddress = rewriteAddressForStructuralTransform(reference.address, transform)
+  const nextAddress = rewriteAddressForStructuralTransform(parsedReference.text, transform)
   if (!nextAddress) {
     return reference
   }
   const parsed = parseCellAddress(nextAddress, sheetName)
   return {
     ...reference,
-    address: parsed.text,
+    address: reference.explicitSheet ? formatQualifiedCellReference(sheetName, parsed.text) : parsed.text,
     ...(reference.sheetName !== undefined ? { sheetName: parsed.sheetName } : {}),
     ...(reference.row !== undefined ? { row: parsed.row } : {}),
     ...(reference.col !== undefined ? { col: parsed.col } : {}),

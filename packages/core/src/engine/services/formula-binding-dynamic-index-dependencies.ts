@@ -1,4 +1,12 @@
-import { formatAddress, formatRangeAddress, parseCellAddress, parseRangeAddress, type FormulaNode, type RangeRefNode } from '@bilig/formula'
+import {
+  excelPower,
+  formatAddress,
+  formatRangeAddress,
+  parseCellAddress,
+  parseRangeAddress,
+  type FormulaNode,
+  type RangeRefNode,
+} from '@bilig/formula'
 import { ErrorCode, ValueTag, type CellValue, type LiteralInput } from '@bilig/protocol'
 import type { StringPool } from '../../string-pool.js'
 import type { WorkbookStore } from '../../workbook-store.js'
@@ -456,8 +464,10 @@ function evaluateScalar(args: {
           return numberValue(leftNumber * rightNumber)
         case '/':
           return rightNumber === 0 ? errorValue(ErrorCode.Div0) : numberValue(leftNumber / rightNumber)
-        case '^':
-          return numberValue(leftNumber ** rightNumber)
+        case '^': {
+          const value = excelPower(leftNumber, rightNumber)
+          return Number.isFinite(value) ? numberValue(value) : errorValue(ErrorCode.Value)
+        }
         case ':':
           return undefined
       }

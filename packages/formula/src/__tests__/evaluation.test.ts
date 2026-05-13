@@ -255,6 +255,10 @@ describe('formula builtins and JS evaluator', () => {
       tag: ValueTag.Number,
       value: 8,
     })
+    expect(evaluateAst(parseFormula('(-32)^(1/5)'), context)).toEqual({
+      tag: ValueTag.Number,
+      value: -2,
+    })
     expect(evaluateAst(parseFormula('TRUNC(-3.98,1)'), context)).toEqual({
       tag: ValueTag.Number,
       value: -3.9,
