@@ -240,10 +240,10 @@ requireIncludes(siteCss, 'padding-left: clamp(22px, 2.5vw, 36px);', 'docs/assets
 requireIncludes(index, 'Revenue.workpaper', 'docs/index.html')
 requireIncludes(index, 'Build a workbook in Node, change inputs through code', 'docs/index.html')
 requireIncludes(index, '<strong>Examples ship as real .ts files.</strong>', 'docs/index.html')
-requireIncludes(index, '<strong>67 scoped starter issues are open.</strong>', 'docs/index.html')
-requireIncludes(index, '<strong>0.13.27</strong>', 'docs/index.html')
+requireIncludes(index, '<strong>70 scoped starter issues are open.</strong>', 'docs/index.html')
+requireIncludes(index, '<strong>0.13.28</strong>', 'docs/index.html')
 requireIncludes(index, '<span>Open first-timer issues</span>', 'docs/index.html')
-requireIncludes(index, '<strong>67</strong>', 'docs/index.html')
+requireIncludes(index, '<strong>70</strong>', 'docs/index.html')
 requireNotIncludes(index, '<strong>40 starter tasks</strong>', 'docs/index.html')
 requireNotIncludes(index, '<strong>0.13.9</strong>', 'docs/index.html')
 requireIncludes(index, '"downloadUrl": "https://www.npmjs.com/package/@bilig/headless"', 'docs/index.html')
@@ -417,7 +417,7 @@ for (const [path, content] of [
   requireIncludes(content, 'https://github.com/proompteng/bilig/stargazers', path)
   requireIncludes(content, '`12` forks', path)
   requireIncludes(content, '15,592` npm downloads in the', path)
-  requireIncludes(content, '`67` open', path)
+  requireIncludes(content, '`70` open', path)
   requireIncludes(content, '`good first issue` tickets', path)
 }
 
@@ -427,8 +427,8 @@ requireIncludes(newContributorGuide, 'pnpm format:check', 'docs/new-contributor-
 requireIncludes(newContributorGuide, 'pnpm lint', 'docs/new-contributor-guide.md')
 requireIncludes(starterIssues, 'new-contributor-guide.md#first-time-command-checklist', 'docs/starter-issues.md')
 requireIncludes(starterIssues, 'https://github.com/proompteng/bilig/blob/main/CONTRIBUTING.md', 'docs/starter-issues.md')
-requireIncludes(starterIssues, '67 open `first-timers-only` issues.', 'docs/starter-issues.md')
-requireIncludes(starterIssues, '60 issues are generally available for a new contributor to claim.', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '70 open `first-timers-only` issues.', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '63 issues are generally available for a new contributor to claim.', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '### npm Smoke Test Improvements', 'docs/starter-issues.md')
 requireIncludes(starterIssues, 'https://github.com/proompteng/bilig/issues/265', 'docs/starter-issues.md')
 requireIncludes(starterIssues, 'https://github.com/proompteng/bilig/issues/269', 'docs/starter-issues.md')
@@ -441,12 +441,15 @@ requireIncludes(starterIssues, '#286: docs(examples): add Nuxt Nitro WorkPaper r
 requireIncludes(starterIssues, '#292: docs(mcp): add Zed MCP config for WorkPaper', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#293: docs(mcp): add Continue MCP config for WorkPaper', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#294: docs(mcp): add Cline MCP config for WorkPaper', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '#296: docs(mcpb): add Windows install notes for the Claude Desktop bundle', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '#297: docs(mcpb): add a Claude Desktop MCPB troubleshooting table', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '#298: docs(mcpb): add a copy-paste verification transcript for the bundle server', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#266: docs(try): add a Docker smoke test for clean Node 24 runs', 'docs/starter-issues.md')
 requireIncludes(starterIssues, 'https://github.com/proompteng/bilig/pull/271', 'docs/starter-issues.md')
 requireIncludes(starterIssues, 'https://github.com/proompteng/bilig/pull/291', 'docs/starter-issues.md')
 requireNotIncludes(starterIssues, 'https://github.com/proompteng/bilig/pull/251', 'docs/starter-issues.md')
 requireIncludes(contributing, 'new-contributor-guide.md#first-time-command-checklist', 'CONTRIBUTING.md')
-requireIncludes(llms, '67 open first-timers-only issues, 60 generally available, 7 already in review', 'docs/llms.txt')
+requireIncludes(llms, '70 open first-timers-only issues, 63 generally available, 7 already in review', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/issues/272', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/issues/277', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/issues/281', 'docs/llms.txt')
@@ -568,8 +571,8 @@ for (const required of [
 for (const required of [
   'Latest MCPB execution snapshot on May 13, 2026 after the Claude Desktop bundle',
   'https://proompteng.github.io/bilig/claude-desktop-mcpb-workpaper.html',
-  'pnpm mcpb:workpaper:build -- --package-version 0.13.27',
-  '`0.13.27` marked as latest',
+  'pnpm mcpb:workpaper:build -- --package-version 0.13.28',
+  '`0.13.28` marked as latest',
   'read_workpaper_summary',
   'set_workpaper_input_cell',
 ]) {
@@ -708,7 +711,7 @@ for (const [path, content] of [
 const currentStarterIssueNumbers = [
   134, 153, 154, 155, 156, 158, 159, 162, 163, 193, 194, 195, 196, 197, 198, 207, 208, 209, 210, 211, 212, 217, 218, 219, 220, 221, 222,
   223, 231, 233, 247, 248, 249, 250, 255, 256, 257, 258, 259, 260, 265, 266, 267, 268, 269, 272, 273, 274, 275, 276, 277, 278, 279, 280,
-  281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 292, 293, 294,
+  281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 292, 293, 294, 296, 297, 298,
 ]
 
 for (const required of currentStarterIssueNumbers.map((issueNumber) => `https://github.com/proompteng/bilig/issues/${issueNumber}`)) {

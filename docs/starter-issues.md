@@ -6,8 +6,8 @@ search indexing.
 
 Current starter queue as of May 13, 2026:
 
-- 67 open `first-timers-only` issues.
-- 60 issues are generally available for a new contributor to claim.
+- 70 open `first-timers-only` issues.
+- 63 issues are generally available for a new contributor to claim.
 - 7 issues already have active pull requests; comment before duplicating one of
   those patches.
 
@@ -28,6 +28,9 @@ Current starter queue as of May 13, 2026:
 - [#292: docs(mcp): add Zed MCP config for WorkPaper](https://github.com/proompteng/bilig/issues/292)
 - [#293: docs(mcp): add Continue MCP config for WorkPaper](https://github.com/proompteng/bilig/issues/293)
 - [#294: docs(mcp): add Cline MCP config for WorkPaper](https://github.com/proompteng/bilig/issues/294)
+- [#296: docs(mcpb): add Windows install notes for the Claude Desktop bundle](https://github.com/proompteng/bilig/issues/296)
+- [#297: docs(mcpb): add a Claude Desktop MCPB troubleshooting table](https://github.com/proompteng/bilig/issues/297)
+- [#298: docs(mcpb): add a copy-paste verification transcript for the bundle server](https://github.com/proompteng/bilig/issues/298)
 
 ### npm Smoke Test Improvements
 

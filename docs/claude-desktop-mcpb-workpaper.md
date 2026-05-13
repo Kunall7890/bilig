@@ -34,7 +34,7 @@ build/mcpb/bilig-workpaper.mcpb
 For a reproducible build, pin the package version:
 
 ```sh
-pnpm mcpb:workpaper:build -- --package-version 0.13.27
+pnpm mcpb:workpaper:build -- --package-version 0.13.28
 ```
 
 ## Install in Claude Desktop

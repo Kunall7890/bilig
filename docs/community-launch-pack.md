@@ -80,10 +80,10 @@ issue pass:
 
 - GitHub surface: `24` stars, `12` forks, `68` open issues, and `8` open pull
   requests.
-- npm surface: `@bilig/headless@0.13.27`, with `15,592` downloads last week
+- npm surface: `@bilig/headless@0.13.28`, with `15,592` downloads last week
   and `23,240` downloads in the last 30 days.
-- Contributor funnel: `67` open `good first issue`, `67` open
-  `first-timers-only`, and `67` open `help wanted` issues.
+- Contributor funnel: `70` open `good first issue`, `70` open
+  `first-timers-only`, and `70` open `help wanted` issues.
 - New starter issues `#272` through `#281` cover NestJS, Express, Supabase Edge
   Functions, Deno Deploy, Next.js Route Handlers, Bun.serve, SvelteKit, Remix,
   Netlify Functions, and Cloudflare D1 WorkPaper smoke examples.
@@ -127,10 +127,10 @@ issue pass:
   the punkpeye PR, replacing the `missing-glama` label with `has-glama`.
 - Official MCP Registry surface: the published
   `io.github.proompteng/bilig-workpaper` entry was refreshed again to
-  `@bilig/headless@0.13.27` with the existing Publish MCP Registry workflow:
-  <https://github.com/proompteng/bilig/actions/runs/25804090480>
-  Live API verification on 2026-05-13 returned 7 matching registry entries,
-  with `0.13.27` marked as latest.
+  `@bilig/headless@0.13.28` with the existing Publish MCP Registry workflow:
+  <https://github.com/proompteng/bilig/actions/runs/25804570091>
+  Live API verification on 2026-05-13 returned 8 matching registry entries,
+  with `0.13.28` marked as latest.
 - External MCP directory surface: `mcp.directory` accepted the public server
   submission for review with repository `https://github.com/proompteng/bilig`,
   npm package `@bilig/headless`, and the WorkPaper persistence/readback
@@ -169,9 +169,9 @@ pass:
 - Claude Desktop adoption surface: the homepage, README, npm README,
   `llms.txt`, sitemap, and MCP client setup guide now point to
   <https://proompteng.github.io/bilig/claude-desktop-mcpb-workpaper.html>.
-- Bundle path: `pnpm mcpb:workpaper:build -- --package-version 0.13.27`
+- Bundle path: `pnpm mcpb:workpaper:build -- --package-version 0.13.28`
   creates `build/mcpb/bilig-workpaper.mcpb` from the published npm package.
-- Build proof: the MCPB manifest validates, packages `bilig-workpaper@0.13.27`,
+- Build proof: the MCPB manifest validates, packages `bilig-workpaper@0.13.28`,
   and emits a `4.1MB` local Claude Desktop bundle.
 - Runtime proof: the generated `server/index.js` entrypoint responds to MCP
   `initialize` and `tools/list`, including `read_workpaper_summary` and
