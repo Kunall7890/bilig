@@ -180,6 +180,9 @@ function validatePackedMcpMetadata(packageLabel, packedManifest, tarballPath, fa
   if (serverJson.name !== packedManifest.mcpName) {
     failureMessages.push(`${packageLabel}: package.json mcpName must match server.json name`)
   }
+  if (typeof serverJson.description !== 'string' || serverJson.description.length > 100) {
+    failureMessages.push(`${packageLabel}: server.json description must be a string no longer than 100 characters`)
+  }
   const npmPackage = Array.isArray(serverJson.packages)
     ? serverJson.packages.find((entry) => entry?.registryType === 'npm' && entry?.identifier === packedManifest.name)
     : undefined

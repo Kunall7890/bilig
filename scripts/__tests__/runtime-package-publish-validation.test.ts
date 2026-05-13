@@ -62,6 +62,19 @@ describe('runtime package publish validation', () => {
     )
   })
 
+  it('rejects MCP registry descriptions over the published registry limit', () => {
+    const stagedPackageDir = stageHeadlessPackage({
+      manifestVersion: '9.9.9',
+      serverDescription:
+        'Headless spreadsheet WorkPaper tools for formula-backed workbook readback, validated input edits, and JSON persistence.',
+      versionModuleSource: packageManifestVersionModuleSource(),
+    })
+
+    expect(() => validateStagedRuntimePackageVersion('@bilig/headless', stagedPackageDir, '9.9.9')).toThrow(
+      'Staged @bilig/headless server.json description must be a string no longer than 100 characters',
+    )
+  })
+
   it('does not require WorkPaper metadata from other runtime packages', () => {
     expect(() => validateStagedRuntimePackageVersion('@bilig/core', '/missing-package-dir', '9.9.9')).not.toThrow()
   })
@@ -69,6 +82,7 @@ describe('runtime package publish validation', () => {
 
 function stageHeadlessPackage(args: {
   readonly manifestVersion: string
+  readonly serverDescription?: string
   readonly serverVersion?: string
   readonly versionModuleSource: string
 }): string {
@@ -89,6 +103,7 @@ function stageHeadlessPackage(args: {
     `${JSON.stringify(
       {
         name: 'io.github.proompteng/bilig-workpaper',
+        description: args.serverDescription ?? 'Formula-backed WorkPaper tools for workbook readback, input edits, and JSON persistence.',
         version: serverVersion,
         packages: [
           {

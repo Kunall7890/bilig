@@ -41,6 +41,9 @@ export function validateStagedMcpServerMetadata(packageName: string, stagedPacka
       `Staged ${packageName} server.json version must match package version: ${String(serverJson['version'])} !== ${expectedVersion}`,
     )
   }
+  if (typeof serverJson['description'] !== 'string' || serverJson['description'].length > 100) {
+    throw new Error(`Staged ${packageName} server.json description must be a string no longer than 100 characters`)
+  }
 
   const npmPackage = findNpmPackageEntry(serverJson, manifest['name'])
   if (!npmPackage) {
