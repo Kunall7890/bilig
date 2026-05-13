@@ -390,8 +390,9 @@ requireIncludes(newContributorGuide, 'pnpm format:check', 'docs/new-contributor-
 requireIncludes(newContributorGuide, 'pnpm lint', 'docs/new-contributor-guide.md')
 requireIncludes(starterIssues, 'new-contributor-guide.md#first-time-command-checklist', 'docs/starter-issues.md')
 requireIncludes(starterIssues, 'https://github.com/proompteng/bilig/blob/main/CONTRIBUTING.md', 'docs/starter-issues.md')
-requireIncludes(starterIssues, '90 open `first-timers-only` issues.', 'docs/starter-issues.md')
-requireIncludes(starterIssues, '82 issues are generally available for a new contributor to claim.', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '86 open `first-timers-only` issues.', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '86 issues are generally available for a new contributor to claim.', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '0 issues already have active pull requests.', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '### npm Smoke Test Improvements', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '### JavaScript Library Comparison Starters', 'docs/starter-issues.md')
 requireIncludes(starterIssues, 'https://github.com/proompteng/bilig/issues/265', 'docs/starter-issues.md')
@@ -404,7 +405,6 @@ requireIncludes(starterIssues, '#281: docs(examples): add Cloudflare D1 WorkPape
 requireIncludes(starterIssues, '#286: docs(examples): add Nuxt Nitro WorkPaper route smoke', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#292: docs(mcp): add Zed MCP config for WorkPaper', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#293: docs(mcp): add Continue MCP config for WorkPaper', 'docs/starter-issues.md')
-requireIncludes(starterIssues, '#294: docs(mcp): add Cline MCP config for WorkPaper', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#296: docs(mcpb): add Windows install notes for the Claude Desktop bundle', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#297: docs(mcpb): add a Claude Desktop MCPB troubleshooting table', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#298: docs(mcpb): add a copy-paste verification transcript for the bundle server', 'docs/starter-issues.md')
@@ -423,10 +423,14 @@ requireIncludes(starterIssues, '#303: docs(storage): add Upstash Redis WorkPaper
 requireIncludes(starterIssues, '#304: docs(storage): add Neon Postgres WorkPaper persistence recipe', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#305: docs(storage): add Cloudflare R2 WorkPaper persistence recipe', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#306: docs(storage): add AWS S3 WorkPaper persistence recipe', 'docs/starter-issues.md')
-requireIncludes(starterIssues, '#266: docs(try): add a Docker smoke test for clean Node 24 runs', 'docs/starter-issues.md')
-requireIncludes(starterIssues, 'https://github.com/proompteng/bilig/pull/271', 'docs/starter-issues.md')
-requireIncludes(starterIssues, 'https://github.com/proompteng/bilig/pull/291', 'docs/starter-issues.md')
-requireIncludes(starterIssues, 'https://github.com/proompteng/bilig/pull/295', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '#154: docs(comparison): add headless engine use-case chooser', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '#257: docs(examples): add a runnable Hono WorkPaper route smoke', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '#258: docs(examples): add Cloudflare KV WorkPaper persistence snippet', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '#259: docs(service): add Prisma-backed WorkPaper JSON persistence recipe', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '#260: docs(examples): add Fastify WorkPaper route smoke snippet', 'docs/starter-issues.md')
+requireNotIncludes(starterIssues, 'https://github.com/proompteng/bilig/pull/271', 'docs/starter-issues.md')
+requireNotIncludes(starterIssues, 'https://github.com/proompteng/bilig/pull/291', 'docs/starter-issues.md')
+requireNotIncludes(starterIssues, 'https://github.com/proompteng/bilig/pull/295', 'docs/starter-issues.md')
 requireNotIncludes(starterIssues, 'https://github.com/proompteng/bilig/pull/251', 'docs/starter-issues.md')
 requireIncludes(contributing, 'new-contributor-guide.md#first-time-command-checklist', 'CONTRIBUTING.md')
 requireIncludes(llms, 'see docs/starter-issues.md for the maintained', 'docs/llms.txt')
@@ -575,11 +579,11 @@ for (const required of [
   'claude mcp add-json bilig-workpaper',
   '.cursor/mcp.json',
   '.vscode/mcp.json',
-  '~/.cline/mcp.json',
-  '"autoApprove": []',
+  'cline_mcp_settings.json',
+  '~/.cline/data/settings/cline_mcp_settings.json',
   '[mcp_servers.bilig-workpaper]',
   'https://code.visualstudio.com/docs/copilot/reference/mcp-configuration',
-  'https://docs.cline.bot/mcp/mcp-overview',
+  'https://docs.cline.bot/mcp/adding-and-configuring-servers',
   'https://platform.openai.com/docs/docs-mcp',
 ]) {
   requireIncludes(mcpClientSetupDoc, required, 'docs/mcp-client-setup.md')
@@ -760,10 +764,10 @@ for (const [url, docKeys] of discussionDocChecks) {
 }
 
 const currentStarterIssueNumbers = [
-  134, 153, 155, 156, 158, 159, 162, 163, 193, 194, 195, 196, 197, 198, 207, 208, 209, 210, 211, 212, 217, 218, 219, 220, 221, 222, 223,
-  231, 233, 247, 248, 249, 250, 255, 256, 257, 258, 259, 260, 265, 266, 267, 268, 269, 272, 273, 274, 275, 277, 278, 279, 280, 281, 282,
-  283, 284, 285, 286, 287, 288, 289, 290, 292, 293, 294, 296, 297, 298, 299, 300, 301, 302, 303, 304, 305, 306, 309, 310, 311, 312, 313,
-  314, 323, 324, 325, 326, 327,
+  134, 153, 154, 155, 156, 158, 159, 162, 163, 193, 194, 195, 196, 197, 198, 207, 208, 209, 210, 211, 212, 217, 218, 219, 220, 221, 222,
+  223, 233, 247, 248, 249, 250, 255, 256, 257, 258, 259, 260, 265, 267, 268, 269, 272, 273, 274, 275, 277, 278, 279, 280, 281, 283, 284,
+  285, 286, 287, 288, 289, 290, 292, 293, 296, 297, 298, 299, 300, 301, 302, 303, 304, 305, 306, 309, 310, 311, 312, 313, 314, 323, 324,
+  325, 326, 327, 328, 329,
 ]
 
 for (const required of currentStarterIssueNumbers.map((issueNumber) => `https://github.com/proompteng/bilig/issues/${issueNumber}`)) {
@@ -786,8 +790,8 @@ for (const closedIssue of [
   '150',
   '151',
   '152',
-  '154',
   '224',
+  '231',
   '199',
   '200',
   '201',
@@ -798,6 +802,9 @@ for (const closedIssue of [
   '228',
   '229',
   '246',
+  '266',
+  '282',
+  '294',
   '160',
   '161',
   '164',

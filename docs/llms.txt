@@ -290,6 +290,8 @@ including its p95 caveat.
   https://github.com/proompteng/bilig/issues/134
 - current small docs issue: WorkPaper agent tool result contract:
   https://github.com/proompteng/bilig/issues/153
+- current small docs issue: headless engine use-case chooser:
+  https://github.com/proompteng/bilig/issues/154
 - current small docs issue: formula diagnostic output examples:
   https://github.com/proompteng/bilig/issues/155
 - current small docs issue: first PR description template:
@@ -340,14 +342,10 @@ including its p95 caveat.
   https://github.com/proompteng/bilig/issues/222
 - current small example issue: deferred revenue roll-forward:
   https://github.com/proompteng/bilig/issues/223
-- current small test issue in review: MCP stdio JSON-RPC error responses:
-  https://github.com/proompteng/bilig/issues/231
 - current small docs issue: MCP stdio output transcript:
   https://github.com/proompteng/bilig/issues/233
 - current small docs issue: OpenAI WorkPaper tool-calling recipe:
   https://github.com/proompteng/bilig/issues/247
-- current small docs issue in review: Claude Desktop MCP config for WorkPaper:
-  https://github.com/proompteng/bilig/issues/282
 - current small docs issue: Cursor MCP config for the WorkPaper stdio server:
   https://github.com/proompteng/bilig/issues/283
 - current small docs issue: Windsurf MCP config for local WorkPaper testing:
@@ -368,8 +366,6 @@ including its p95 caveat.
   https://github.com/proompteng/bilig/issues/292
 - current small docs issue: Continue MCP config for WorkPaper:
   https://github.com/proompteng/bilig/issues/293
-- current small docs issue in review: Cline MCP config for WorkPaper:
-  https://github.com/proompteng/bilig/issues/294
 - current small docs issue: Windows install notes for the Claude Desktop MCPB bundle:
   https://github.com/proompteng/bilig/issues/296
 - current small docs issue: Claude Desktop MCPB troubleshooting table:
@@ -402,18 +398,16 @@ including its p95 caveat.
   https://github.com/proompteng/bilig/issues/255
 - current small test issue: TypeScript-first public snippet guard:
   https://github.com/proompteng/bilig/issues/256
-- current small example issue in review: runnable Hono WorkPaper route smoke:
+- current small example issue: runnable Hono WorkPaper route smoke:
   https://github.com/proompteng/bilig/issues/257
-- current small example issue in review: Cloudflare KV WorkPaper persistence snippet:
+- current small example issue: Cloudflare KV WorkPaper persistence snippet:
   https://github.com/proompteng/bilig/issues/258
-- current small service issue in review: Prisma-backed WorkPaper JSON persistence recipe:
+- current small service issue: Prisma-backed WorkPaper JSON persistence recipe:
   https://github.com/proompteng/bilig/issues/259
-- current small example issue in review: Fastify WorkPaper route smoke snippet:
+- current small example issue: Fastify WorkPaper route smoke snippet:
   https://github.com/proompteng/bilig/issues/260
 - current small docs issue: ESM troubleshooting for the npm smoke test:
   https://github.com/proompteng/bilig/issues/265
-- current small docs issue in review: Docker smoke test for clean Node 24 runs:
-  https://github.com/proompteng/bilig/issues/266
 - current small example issue: Vitest assertions for the WorkPaper readback smoke:
   https://github.com/proompteng/bilig/issues/267
 - current small example issue: CSV records to WorkPaper smoke test:
@@ -460,6 +454,10 @@ including its p95 caveat.
   https://github.com/proompteng/bilig/issues/326
 - current small agent issue: Cloudflare Agents WorkPaper state persistence note:
   https://github.com/proompteng/bilig/issues/327
+- current small site issue: social preview checklist:
+  https://github.com/proompteng/bilig/issues/328
+- current small site issue: OpenGraph cache-bust note:
+  https://github.com/proompteng/bilig/issues/329
 - good first issue search:
   https://github.com/proompteng/bilig/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22
 - first-timers-only issue search:

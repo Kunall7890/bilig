@@ -6,10 +6,9 @@ search indexing.
 
 Current starter queue as of May 13, 2026:
 
-- 90 open `first-timers-only` issues.
-- 82 issues are generally available for a new contributor to claim.
-- 8 issues already have active pull requests; comment before duplicating one of
-  those patches.
+- 86 open `first-timers-only` issues.
+- 86 issues are generally available for a new contributor to claim.
+- 0 issues already have active pull requests.
 
 ## Available Starter Picks
 
@@ -48,6 +47,8 @@ Current starter queue as of May 13, 2026:
 - [#248: docs(service): add downstream GitHub Actions smoke snippet](https://github.com/proompteng/bilig/issues/248)
 - [#249: docs(examples): add AWS Lambda Function URL WorkPaper adapter note](https://github.com/proompteng/bilig/issues/249)
 - [#255: docs(serverless): explain TypeScript local import suffixes](https://github.com/proompteng/bilig/issues/255)
+- [#257: docs(examples): add a runnable Hono WorkPaper route smoke](https://github.com/proompteng/bilig/issues/257)
+- [#260: docs(examples): add Fastify WorkPaper route smoke snippet](https://github.com/proompteng/bilig/issues/260)
 - [#272: docs(examples): add NestJS WorkPaper controller smoke](https://github.com/proompteng/bilig/issues/272)
 - [#273: docs(examples): add Express WorkPaper route smoke](https://github.com/proompteng/bilig/issues/273)
 - [#274: docs(examples): add Supabase Edge Function WorkPaper smoke](https://github.com/proompteng/bilig/issues/274)
@@ -63,6 +64,8 @@ Current starter queue as of May 13, 2026:
 
 ### Storage And Persistence Recipes
 
+- [#258: docs(examples): add Cloudflare KV WorkPaper persistence snippet](https://github.com/proompteng/bilig/issues/258)
+- [#259: docs(service): add Prisma-backed WorkPaper JSON persistence recipe](https://github.com/proompteng/bilig/issues/259)
 - [#301: docs(storage): add Drizzle WorkPaper JSON persistence recipe](https://github.com/proompteng/bilig/issues/301)
 - [#302: docs(storage): add Kysely WorkPaper JSON persistence recipe](https://github.com/proompteng/bilig/issues/302)
 - [#303: docs(storage): add Upstash Redis WorkPaper persistence recipe](https://github.com/proompteng/bilig/issues/303)
@@ -114,6 +117,7 @@ Current starter queue as of May 13, 2026:
 
 ### JavaScript Library Comparison Starters
 
+- [#154: docs(comparison): add headless engine use-case chooser](https://github.com/proompteng/bilig/issues/154)
 - [#309: docs(comparison): add Handsontable grid boundary note](https://github.com/proompteng/bilig/issues/309)
 - [#310: docs(comparison): add AG Grid boundary note](https://github.com/proompteng/bilig/issues/310)
 - [#311: docs(comparison): add SheetJS handoff recipe note](https://github.com/proompteng/bilig/issues/311)
@@ -123,17 +127,8 @@ Current starter queue as of May 13, 2026:
 
 ## Already In Review
 
-These are still open, but a contributor has an active pull request attached.
-Pick one only after checking the PR thread or asking whether the scope is free.
-
-- [#231: test(examples): cover MCP stdio JSON-RPC error responses](https://github.com/proompteng/bilig/issues/231) via [PR #237](https://github.com/proompteng/bilig/pull/237)
-- [#282: docs(mcp): add Claude Desktop config for the published WorkPaper server](https://github.com/proompteng/bilig/issues/282) via [PR #291](https://github.com/proompteng/bilig/pull/291)
-- [#294: docs(mcp): add Cline MCP config for WorkPaper](https://github.com/proompteng/bilig/issues/294) via [PR #295](https://github.com/proompteng/bilig/pull/295)
-- [#257: docs(examples): add a runnable Hono WorkPaper route smoke](https://github.com/proompteng/bilig/issues/257) via [PR #264](https://github.com/proompteng/bilig/pull/264)
-- [#258: docs(examples): add Cloudflare KV WorkPaper persistence snippet](https://github.com/proompteng/bilig/issues/258) via [PR #263](https://github.com/proompteng/bilig/pull/263)
-- [#259: docs(service): add Prisma-backed WorkPaper JSON persistence recipe](https://github.com/proompteng/bilig/issues/259) via [PR #262](https://github.com/proompteng/bilig/pull/262)
-- [#260: docs(examples): add Fastify WorkPaper route smoke snippet](https://github.com/proompteng/bilig/issues/260) via [PR #261](https://github.com/proompteng/bilig/pull/261)
-- [#266: docs(try): add a Docker smoke test for clean Node 24 runs](https://github.com/proompteng/bilig/issues/266) via [PR #271](https://github.com/proompteng/bilig/pull/271)
+No starter issues currently have active pull requests. If that changes, move
+the issue here until the PR lands or closes.
 
 The list intentionally excludes closed issues and broad corpus/parity epics. Add
 new starter tickets only when the expected patch can stay small, has a clear
