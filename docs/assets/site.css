@@ -1,7 +1,6 @@
 :root {
   color-scheme: light;
   --bg: #f4f6f2;
-  --bg-strong: #e7ece4;
   --ink: #171a16;
   --ink-muted: #596155;
   --ink-soft: #737e70;
@@ -9,17 +8,13 @@
   --line-strong: #a9b9a8;
   --charcoal: #11100c;
   --charcoal-2: #1c1813;
-  --charcoal-3: #29231b;
   --cream: #fffdf6;
   --green: #33d17a;
   --green-deep: #116242;
-  --blue: #4078b2;
-  --gold: #c58b28;
-  --rust: #a25332;
   --shadow: 0 28px 90px rgba(17, 16, 12, 0.22);
-  --font-body: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-display: var(--font-body);
-  --font-mono: ui-monospace, 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  --font-body: 'Bilig Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'Bilig Condensed', 'Bilig Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Bilig Mono', ui-monospace, 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
 }
 
 * {
@@ -67,12 +62,6 @@ pre {
 h1,
 h2 {
   text-wrap: balance;
-}
-
-img {
-  display: block;
-  max-width: 100%;
-  height: auto;
 }
 
 code,

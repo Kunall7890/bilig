@@ -213,6 +213,7 @@ requireIncludes(index, '"codeRepository": "https://github.com/proompteng/bilig"'
 requireIncludes(index, '<title>bilig - Headless Spreadsheet Engine for Node.js Services and Agents</title>', 'docs/index.html')
 requireIncludes(index, '<meta name="robots" content="index, follow, max-image-preview:large" />', 'docs/index.html')
 requireIncludes(index, '<link rel="icon" type="image/svg+xml" href="./assets/favicon.svg" />', 'docs/index.html')
+requireIncludes(index, '<link rel="stylesheet" href="./assets/fonts.css?v=2026-05-13-1" />', 'docs/index.html')
 requireIncludes(index, 'bilig-hero-workbook-api.png?v=2026-05-08-2', 'docs/index.html')
 requireIncludes(index, '"downloadUrl": "https://www.npmjs.com/package/@bilig/headless"', 'docs/index.html')
 requireIncludes(index, '"applicationCategory": "DeveloperApplication"', 'docs/index.html')
@@ -265,6 +266,22 @@ await Promise.all(
 )
 await Promise.all(
   ['github-social-preview.png', 'workpaper-benchmark-card.png'].map((sourceFile) => requireFile(join(docsRoot, 'assets', sourceFile))),
+)
+await Promise.all(
+  [
+    'fonts.css',
+    'fonts/LICENSE.txt',
+    'fonts/README.md',
+    'fonts/ibm-plex-mono-400.woff2',
+    'fonts/ibm-plex-mono-500.woff2',
+    'fonts/ibm-plex-mono-600.woff2',
+    'fonts/ibm-plex-sans-400.woff2',
+    'fonts/ibm-plex-sans-500.woff2',
+    'fonts/ibm-plex-sans-600.woff2',
+    'fonts/ibm-plex-sans-700.woff2',
+    'fonts/ibm-plex-sans-condensed-600.woff2',
+    'fonts/ibm-plex-sans-condensed-700.woff2',
+  ].map((sourceFile) => requireFile(join(docsRoot, 'assets', sourceFile))),
 )
 
 for (const url of actualSitemapUrls) {
