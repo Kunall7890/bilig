@@ -22,6 +22,7 @@ import type {
   SheetStyleRangeSnapshot,
 } from '@bilig/protocol'
 import { readImportedWorkbookThemeArtifact } from './xlsx-theme-artifacts.js'
+import { workbookDirectorySheetPaths, workbookSheetPath, workbookSheetPathsByName } from './xlsx-workbook-sheet-paths.js'
 import { getZipText as getZipEntryText, readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 type ImportedCellStyle = Omit<CellStyleRecord, 'id'>
@@ -119,14 +120,6 @@ function workbookRecord(workbook: XLSX.WorkBook): Record<string, unknown> | null
 
 function workbookFiles(workbook: XLSX.WorkBook): unknown {
   return workbookRecord(workbook)?.['files']
-}
-
-function workbookSheetPaths(workbook: XLSX.WorkBook): string[] {
-  const directory = workbookRecord(workbook)?.['Directory']
-  if (!isRecord(directory)) {
-    return []
-  }
-  return asArray(directory['sheets']).flatMap((entry) => (typeof entry === 'string' ? [entry] : []))
 }
 
 function workbookStylePath(workbook: XLSX.WorkBook): string | null {
@@ -720,10 +713,11 @@ export function readImportedWorkbookSheetDimensions(
   sheetNames: readonly string[],
 ): Map<string, ImportedSheetDimensions> {
   const files = workbookFiles(workbook)
-  const sheetPaths = workbookSheetPaths(workbook)
+  const sheetPathsByName = workbookSheetPathsByName(workbook)
+  const fallbackSheetPaths = workbookDirectorySheetPaths(workbook)
   const output = new Map<string, ImportedSheetDimensions>()
   sheetNames.forEach((sheetName, index) => {
-    const sheetPath = sheetPaths[index]
+    const sheetPath = workbookSheetPath(sheetPathsByName, fallbackSheetPaths, sheetName, index)
     const sheetXml = sheetPath ? getFileText(files, sheetPath) : null
     if (!sheetXml) {
       return
@@ -769,14 +763,15 @@ export function readImportedWorkbookFileStyles(
     return new Map()
   }
 
-  const sheetPaths = workbookSheetPaths(workbook)
+  const sheetPathsByName = workbookSheetPathsByName(workbook)
+  const fallbackSheetPaths = workbookDirectorySheetPaths(workbook)
   const output = new Map<string, Map<string, ImportedCellStyle>>()
   sheetNames.forEach((sheetName, index) => {
     const candidateAddresses = options.styleCandidateAddressesBySheet?.get(sheetName)
     if (candidateAddresses?.size === 0) {
       return
     }
-    const sheetPath = sheetPaths[index]
+    const sheetPath = workbookSheetPath(sheetPathsByName, fallbackSheetPaths, sheetName, index)
     const sheetXml = sheetPath ? getFileText(files, sheetPath) : null
     if (!sheetXml) {
       return
@@ -813,11 +808,12 @@ export function readImportedWorkbookStyleArtifacts(
   }
   const stylesXml = readPartText(stylePath)
   const theme = readImportedWorkbookThemeArtifact(zip ?? undefined)
-  const sheetPaths = workbookSheetPaths(workbook)
+  const sheetPathsByName = workbookSheetPathsByName(workbook)
+  const fallbackSheetPaths = workbookDirectorySheetPaths(workbook)
   const sheetArtifactsByName = new Map<string, WorkbookSheetStyleArtifactsSnapshot>()
 
   sheetNames.forEach((sheetName, index) => {
-    const sheetPath = sheetPaths[index]
+    const sheetPath = workbookSheetPath(sheetPathsByName, fallbackSheetPaths, sheetName, index)
     const sheetXml = readPartText(sheetPath)
     if (!sheetXml) {
       return

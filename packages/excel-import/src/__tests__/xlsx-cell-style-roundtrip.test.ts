@@ -25,6 +25,13 @@ describe('xlsx cell style roundtrip', () => {
     expect(readCellStyleParts(exported, 'xl/worksheets/sheet1.xml!A1')).toEqual(readCellStyleParts(source, 'xl/worksheets/sheet1.xml!A1'))
   })
 
+  it('reads imported cell styles through workbook sheet relationships', () => {
+    const imported = importXlsx(buildRelationshipMappedStyleWorkbook(), 'relationship-mapped-styles.xlsx')
+
+    expect(readAppliedStyle(imported.snapshot, 'First', 'A1')).toMatchObject(expectedHeaderStyle)
+    expect(readAppliedStyle(imported.snapshot, 'Second', 'A1')).toBeUndefined()
+  })
+
   it('preserves row and column default style indexes for unchanged imported cells', () => {
     const source = buildAxisStyleReferenceWorkbook()
 
@@ -181,6 +188,56 @@ function buildRawStyleReferenceWorkbook(): Uint8Array {
   const sheetXml = strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
   zip['xl/worksheets/sheet1.xml'] = strToU8(sheetXml.replace(/<c\b(?=[^>]*\br="A1")[^>]*>/u, (tag) => setXmlAttribute(tag, 's', '1')))
   return zipSync(zip)
+}
+
+function buildRelationshipMappedStyleWorkbook(): Uint8Array {
+  const zip = unzipSync(exportXlsx(buildTwoSheetWorkbook()))
+  zip['xl/styles.xml'] = strToU8(headerStyleReferenceStylesXml)
+  const firstSheetXml = strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array()).replace(/<c\b(?=[^>]*\br="A1")[^>]*>/u, (tag) =>
+    setXmlAttribute(tag, 's', '1'),
+  )
+  const relationshipsXml = strFromU8(zip['xl/_rels/workbook.xml.rels'] ?? new Uint8Array()).replace(
+    /<Relationship\b(?=[^>]*\bId="rId1")[^>]*\/>/u,
+    (tag) => setXmlAttribute(tag, 'Target', 'worksheets/sheet7.xml'),
+  )
+  zip['xl/_rels/workbook.xml.rels'] = strToU8(relationshipsXml)
+  delete zip['xl/worksheets/sheet1.xml']
+  zip['xl/worksheets/sheet7.xml'] = strToU8(firstSheetXml)
+
+  const reordered: Record<string, Uint8Array> = {}
+  for (const path of ['xl/worksheets/sheet2.xml', 'xl/worksheets/sheet7.xml']) {
+    const entry = zip[path]
+    if (entry) {
+      reordered[path] = entry
+    }
+  }
+  for (const [path, entry] of Object.entries(zip)) {
+    if (!(path in reordered)) {
+      reordered[path] = entry
+    }
+  }
+  return zipSync(reordered)
+}
+
+function buildTwoSheetWorkbook(): WorkbookSnapshot {
+  return {
+    version: 1,
+    workbook: { name: 'Relationship mapped styles' },
+    sheets: [
+      {
+        id: 1,
+        name: 'First',
+        order: 0,
+        cells: [{ address: 'A1', value: 'Styled' }],
+      },
+      {
+        id: 2,
+        name: 'Second',
+        order: 1,
+        cells: [{ address: 'A1', value: 'Plain' }],
+      },
+    ],
+  }
 }
 
 function buildAxisStyleReferenceWorkbook(): Uint8Array {
