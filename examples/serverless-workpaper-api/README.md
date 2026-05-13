@@ -13,6 +13,7 @@ Run it outside the monorepo with the published package:
 ```sh
 npm install
 npm run smoke
+npm run next-route-handler
 npm run framework-adapters
 ```
 
@@ -72,6 +73,55 @@ The lower-level `createWorkPaperRequestHandler(storage)` helper accepts
 shape when the serialized WorkPaper document should live in a database, object
 store, KV namespace, Durable Object, or another durable service instead of
 module memory.
+
+## Next.js App Router Smoke
+
+Run the Next.js-shaped route handler smoke when you want a copyable App Router
+boundary without adding a full Next app to this example:
+
+```sh
+npm run next-route-handler
+```
+
+The script exports the same route constants a Next.js route file expects,
+delegates `GET()` and `POST()` to the shared WorkPaper request handler, sends a
+summary read, sends a revenue write, reads the summary again, and prints
+`verified: true` only after the formulas recalculate and the saved document
+still contains formulas.
+
+Expected output:
+
+```json
+{
+  "route": "Next.js App Router",
+  "runtime": "nodejs",
+  "dynamic": "force-dynamic",
+  "before": {
+    "largestDeal": 24000,
+    "totalRevenue": 36900,
+    "westCustomers": 20
+  },
+  "edit": {
+    "records": 4,
+    "after": {
+      "largestDeal": 24000,
+      "totalRevenue": 48600,
+      "westCustomers": 20
+    },
+    "checks": {
+      "formulasPersisted": true,
+      "serializedBytes": 1195,
+      "totalRevenueChanged": true
+    }
+  },
+  "after": {
+    "largestDeal": 24000,
+    "totalRevenue": 48600,
+    "westCustomers": 20
+  },
+  "verified": true
+}
+```
 
 ## Framework Adapters
 

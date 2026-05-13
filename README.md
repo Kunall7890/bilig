@@ -32,7 +32,7 @@ Project site: <https://proompteng.github.io/bilig/>
 - Live growth snapshot:
   <https://proompteng.github.io/bilig/community-growth-snapshot.html>
 - Latest checked-in snapshot: `24` GitHub stars, `12` forks, `15,592` npm downloads in the
-  last week, `23,240` npm downloads in the last 30 days, `74` open
+  last week, `23,240` npm downloads in the last 30 days, `73` open
   `good first issue` tickets, `8` GitHub Discussions, and `455` recent
   repository views.
 - Benchmark evidence:
@@ -239,10 +239,11 @@ JSON boundary:
 git clone https://github.com/proompteng/bilig.git
 cd bilig/examples/serverless-workpaper-api
 npm install
+npm run next-route-handler
 npm run smoke
 ```
 
-Expected proof from `npm run smoke` includes:
+Expected proof from `npm run next-route-handler` and `npm run smoke` includes:
 
 ```json
 {

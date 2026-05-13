@@ -33,7 +33,7 @@ validated WorkPaper model once data is in workbook form.
 - Live growth snapshot:
   <https://proompteng.github.io/bilig/community-growth-snapshot.html>
 - Latest checked-in snapshot: `24` GitHub stars, `12` forks, `15,592` npm downloads in the
-  last week, `23,240` npm downloads in the last 30 days, `74` open
+  last week, `23,240` npm downloads in the last 30 days, `73` open
   `good first issue` tickets, `8` GitHub Discussions, and `455` recent
   repository views.
 - Benchmark evidence:
@@ -300,6 +300,8 @@ Repository links:
   [`npm run sheet-inspection`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#sheet-inspection)
 - serverless API route example:
   [`examples/serverless-workpaper-api`](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api)
+- Next.js App Router smoke:
+  [`npm run next-route-handler`](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api#nextjs-app-router-smoke)
 - Express, Fastify, and Hono API adapters:
   [`npm run framework-adapters`](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api#framework-adapters)
 - server-side spreadsheet automation:

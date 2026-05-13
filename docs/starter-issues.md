@@ -6,8 +6,8 @@ search indexing.
 
 Current starter queue as of May 13, 2026:
 
-- 74 open `first-timers-only` issues.
-- 66 issues are generally available for a new contributor to claim.
+- 73 open `first-timers-only` issues.
+- 65 issues are generally available for a new contributor to claim.
 - 8 issues already have active pull requests; comment before duplicating one of
   those patches.
 
@@ -47,7 +47,6 @@ Current starter queue as of May 13, 2026:
 - [#273: docs(examples): add Express WorkPaper route smoke](https://github.com/proompteng/bilig/issues/273)
 - [#274: docs(examples): add Supabase Edge Function WorkPaper smoke](https://github.com/proompteng/bilig/issues/274)
 - [#275: docs(examples): add Deno Deploy WorkPaper route smoke](https://github.com/proompteng/bilig/issues/275)
-- [#276: docs(examples): add Next.js route handler WorkPaper smoke](https://github.com/proompteng/bilig/issues/276)
 - [#277: docs(examples): add Bun.serve WorkPaper route smoke](https://github.com/proompteng/bilig/issues/277)
 - [#278: docs(examples): add SvelteKit WorkPaper route smoke](https://github.com/proompteng/bilig/issues/278)
 - [#279: docs(examples): add Remix resource route WorkPaper smoke](https://github.com/proompteng/bilig/issues/279)

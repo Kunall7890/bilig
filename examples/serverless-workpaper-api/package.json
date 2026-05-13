@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "framework-adapters": "tsx framework-adapters.ts",
+    "next-route-handler": "tsx next-route-handler.ts",
     "smoke": "tsx smoke.ts",
     "start": "tsx route.ts",
     "typecheck": "tsc --noEmit"

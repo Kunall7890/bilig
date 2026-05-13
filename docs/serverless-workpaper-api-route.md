@@ -16,6 +16,10 @@ If the route is going into an existing Node service, use the runnable
 [`Express, Fastify, and Hono adapter guide`](./node-framework-workpaper-adapters.md)
 with `npm run framework-adapters`.
 
+For a copyable Next.js App Router boundary, the same example ships a runnable
+`npm run next-route-handler` smoke that exports `GET()` and `POST()` around the
+shared WorkPaper handler.
+
 ## Setup
 
 ```sh

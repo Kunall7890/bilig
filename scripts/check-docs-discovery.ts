@@ -245,10 +245,10 @@ requireIncludes(index, 'Build a workbook in Node, change inputs through code', '
 requireIncludes(index, '<span>Typed examples</span>', 'docs/index.html')
 requireIncludes(index, '<strong>Every guide links to runnable .ts files.</strong>', 'docs/index.html')
 requireIncludes(index, '<span>Starter issues</span>', 'docs/index.html')
-requireIncludes(index, '<strong>74 small tasks are ready for first-time contributors.</strong>', 'docs/index.html')
+requireIncludes(index, '<strong>73 small tasks are ready for first-time contributors.</strong>', 'docs/index.html')
 requireIncludes(index, '<strong>npm latest</strong>', 'docs/index.html')
 requireIncludes(index, '<span>Open first-timer issues</span>', 'docs/index.html')
-requireIncludes(index, '<strong>74</strong>', 'docs/index.html')
+requireIncludes(index, '<strong>73</strong>', 'docs/index.html')
 requireNotIncludes(index, '<strong>40 starter tasks</strong>', 'docs/index.html')
 requireNotIncludes(index, '<strong>0.13.9</strong>', 'docs/index.html')
 requireIncludes(index, '"downloadUrl": "https://www.npmjs.com/package/@bilig/headless"', 'docs/index.html')
@@ -426,7 +426,7 @@ for (const [path, content] of [
   requireIncludes(content, 'https://github.com/proompteng/bilig/stargazers', path)
   requireIncludes(content, '`12` forks', path)
   requireIncludes(content, '15,592` npm downloads in the', path)
-  requireIncludes(content, '`74` open', path)
+  requireIncludes(content, '`73` open', path)
   requireIncludes(content, '`good first issue` tickets', path)
 }
 
@@ -436,8 +436,8 @@ requireIncludes(newContributorGuide, 'pnpm format:check', 'docs/new-contributor-
 requireIncludes(newContributorGuide, 'pnpm lint', 'docs/new-contributor-guide.md')
 requireIncludes(starterIssues, 'new-contributor-guide.md#first-time-command-checklist', 'docs/starter-issues.md')
 requireIncludes(starterIssues, 'https://github.com/proompteng/bilig/blob/main/CONTRIBUTING.md', 'docs/starter-issues.md')
-requireIncludes(starterIssues, '74 open `first-timers-only` issues.', 'docs/starter-issues.md')
-requireIncludes(starterIssues, '66 issues are generally available for a new contributor to claim.', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '73 open `first-timers-only` issues.', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '65 issues are generally available for a new contributor to claim.', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '### npm Smoke Test Improvements', 'docs/starter-issues.md')
 requireIncludes(starterIssues, 'https://github.com/proompteng/bilig/issues/265', 'docs/starter-issues.md')
 requireIncludes(starterIssues, 'https://github.com/proompteng/bilig/issues/269', 'docs/starter-issues.md')
@@ -463,7 +463,7 @@ requireIncludes(starterIssues, 'https://github.com/proompteng/bilig/pull/291', '
 requireIncludes(starterIssues, 'https://github.com/proompteng/bilig/pull/295', 'docs/starter-issues.md')
 requireNotIncludes(starterIssues, 'https://github.com/proompteng/bilig/pull/251', 'docs/starter-issues.md')
 requireIncludes(contributing, 'new-contributor-guide.md#first-time-command-checklist', 'CONTRIBUTING.md')
-requireIncludes(llms, '74 open first-timers-only issues, 66 generally available, 8 already in review', 'docs/llms.txt')
+requireIncludes(llms, '73 open first-timers-only issues, 65 generally available, 8 already in review', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/issues/272', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/issues/277', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/issues/281', 'docs/llms.txt')
@@ -739,8 +739,8 @@ for (const [path, content] of [
 
 const currentStarterIssueNumbers = [
   134, 153, 154, 155, 156, 158, 159, 162, 163, 193, 194, 195, 196, 197, 198, 207, 208, 209, 210, 211, 212, 217, 218, 219, 220, 221, 222,
-  223, 231, 233, 247, 248, 249, 250, 255, 256, 257, 258, 259, 260, 265, 266, 267, 268, 269, 272, 273, 274, 275, 276, 277, 278, 279, 280,
-  281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 292, 293, 294, 296, 297, 298, 299, 300, 301, 302,
+  223, 231, 233, 247, 248, 249, 250, 255, 256, 257, 258, 259, 260, 265, 266, 267, 268, 269, 272, 273, 274, 275, 277, 278, 279, 280, 281,
+  282, 283, 284, 285, 286, 287, 288, 289, 290, 292, 293, 294, 296, 297, 298, 299, 300, 301, 302,
 ]
 
 for (const required of currentStarterIssueNumbers.map((issueNumber) => `https://github.com/proompteng/bilig/issues/${issueNumber}`)) {
@@ -803,6 +803,7 @@ for (const closedIssue of [
   '190',
   '191',
   '192',
+  '276',
   '227',
 ]) {
   if (starterIssues.includes(`https://github.com/proompteng/bilig/issues/${closedIssue}`)) {
@@ -868,12 +869,22 @@ requireIncludes(
 requireIncludes(headlessExamplePackage, '"agent:mcp-tools": "tsx mcp-tool-server.ts"', 'examples/headless-workpaper/package.json')
 requireIncludes(headlessExamplePackage, '"agent:mcp-stdio": "tsx mcp-stdio-server.ts"', 'examples/headless-workpaper/package.json')
 await requireFile(join(repoRoot, 'examples', 'serverless-workpaper-api', 'framework-adapters.ts'))
+await requireFile(join(repoRoot, 'examples', 'serverless-workpaper-api', 'next-route-handler.ts'))
 const [serverlessExampleReadme, serverlessExamplePackage] = await Promise.all([
   readFile(join(repoRoot, 'examples', 'serverless-workpaper-api', 'README.md'), 'utf8'),
   readFile(join(repoRoot, 'examples', 'serverless-workpaper-api', 'package.json'), 'utf8'),
 ])
+const serverlessWorkPaperApiRouteDoc = await readFile(join(docsRoot, 'serverless-workpaper-api-route.md'), 'utf8')
+requireIncludes(serverlessExampleReadme, 'npm run next-route-handler', 'examples/serverless-workpaper-api/README.md')
+requireIncludes(serverlessExampleReadme, '## Next.js App Router Smoke', 'examples/serverless-workpaper-api/README.md')
+requireIncludes(serverlessWorkPaperApiRouteDoc, 'npm run next-route-handler', 'docs/serverless-workpaper-api-route.md')
 requireIncludes(serverlessExampleReadme, 'npm run framework-adapters', 'examples/serverless-workpaper-api/README.md')
 requireIncludes(serverlessExampleReadme, '## Framework Adapters', 'examples/serverless-workpaper-api/README.md')
+requireIncludes(
+  serverlessExamplePackage,
+  '"next-route-handler": "tsx next-route-handler.ts"',
+  'examples/serverless-workpaper-api/package.json',
+)
 requireIncludes(
   serverlessExamplePackage,
   '"framework-adapters": "tsx framework-adapters.ts"',
@@ -893,6 +904,7 @@ requireIncludes(headlessReadme, 'npm run quote-approval', 'packages/headless/REA
 requireIncludes(headlessReadme, '#quote-approval-threshold', 'packages/headless/README.md')
 requireIncludes(headlessReadme, 'npm run subscription-mrr', 'packages/headless/README.md')
 requireIncludes(headlessReadme, '#subscription-mrr-forecast', 'packages/headless/README.md')
+requireIncludes(headlessReadme, 'npm run next-route-handler', 'packages/headless/README.md')
 requireIncludes(headlessReadme, 'npm run framework-adapters', 'packages/headless/README.md')
 requireIncludes(headlessReadme, 'node-framework-workpaper-adapters.html', 'packages/headless/README.md')
 

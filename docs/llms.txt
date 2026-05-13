@@ -247,7 +247,7 @@ including its p95 caveat.
   https://github.com/proompteng/bilig/blob/main/docs/starter-issues.md
 - community growth snapshot:
   https://github.com/proompteng/bilig/blob/main/docs/community-growth-snapshot.md
-- current starter queue snapshot: 74 open first-timers-only issues, 66 generally available, 8 already in review.
+- current starter queue snapshot: 73 open first-timers-only issues, 65 generally available, 8 already in review.
 - current small example issue: xlsx formula-cache roundtrip:
   https://github.com/proompteng/bilig/issues/134
 - current small docs issue: WorkPaper agent tool result contract:
@@ -384,8 +384,6 @@ including its p95 caveat.
   https://github.com/proompteng/bilig/issues/274
 - current small example issue: Deno Deploy WorkPaper route smoke:
   https://github.com/proompteng/bilig/issues/275
-- current small example issue: Next.js route handler WorkPaper smoke:
-  https://github.com/proompteng/bilig/issues/276
 - current small example issue: Bun.serve WorkPaper route smoke:
   https://github.com/proompteng/bilig/issues/277
 - current small example issue: SvelteKit WorkPaper route smoke:
