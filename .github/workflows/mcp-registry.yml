@@ -75,6 +75,7 @@ jobs:
           const fs = require("node:fs");
           const manifest = JSON.parse(fs.readFileSync("build/mcp-registry/package/package.json", "utf8"));
           const server = JSON.parse(fs.readFileSync("build/mcp-registry/package/server.json", "utf8"));
+          server.description = "Formula-backed WorkPaper tools for workbook readback, input edits, and JSON persistence.";
           const npmPackage = Array.isArray(server.packages)
             ? server.packages.find((entry) => entry.registryType === "npm" && entry.identifier === manifest.name)
             : undefined;
@@ -105,6 +106,7 @@ jobs:
             serverVersion: server.version,
             descriptionLength: server.description.length,
           }, null, 2));
+          fs.writeFileSync("build/mcp-registry/package/server.json", `${JSON.stringify(server, null, 2)}\n`);
           NODE
 
       - name: Install mcp-publisher
