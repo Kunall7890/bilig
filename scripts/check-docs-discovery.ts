@@ -161,6 +161,7 @@ const [
   readme,
   contributing,
   index,
+  siteCss,
   robots,
   sitemap,
   llms,
@@ -180,6 +181,7 @@ const [
   readFile(join(repoRoot, 'README.md'), 'utf8'),
   readFile(join(repoRoot, 'CONTRIBUTING.md'), 'utf8'),
   readFile(join(docsRoot, 'index.html'), 'utf8'),
+  readFile(join(docsRoot, 'assets', 'site.css'), 'utf8'),
   readFile(join(docsRoot, 'robots.txt'), 'utf8'),
   readFile(join(docsRoot, 'sitemap.xml'), 'utf8'),
   readFile(join(docsRoot, 'llms.txt'), 'utf8'),
@@ -215,7 +217,8 @@ requireIncludes(index, '<meta name="robots" content="index, follow, max-image-pr
 requireIncludes(index, '<link rel="icon" type="image/svg+xml" href="./assets/favicon.svg" />', 'docs/index.html')
 requireIncludes(index, '<link rel="stylesheet" href="./assets/fonts.css?v=2026-05-13-1" />', 'docs/index.html')
 requireIncludes(index, '<link rel="stylesheet" href="./assets/product-demo.css?v=2026-05-13-1" />', 'docs/index.html')
-requireIncludes(index, 'bilig-hero-workbook-api.png?v=2026-05-08-2', 'docs/index.html')
+requireNotIncludes(index, 'bilig-hero-workbook-api.png?v=2026-05-08-2', 'docs/index.html')
+requireNotIncludes(siteCss, 'bilig-hero-workbook-api.png?v=2026-05-08-2', 'docs/assets/site.css')
 requireIncludes(index, 'Revenue.workpaper', 'docs/index.html')
 requireIncludes(index, '"downloadUrl": "https://www.npmjs.com/package/@bilig/headless"', 'docs/index.html')
 requireIncludes(index, '"applicationCategory": "DeveloperApplication"', 'docs/index.html')
