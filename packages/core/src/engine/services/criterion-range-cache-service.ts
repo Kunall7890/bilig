@@ -197,7 +197,7 @@ function slicePredicateMatches(
     }
     case 'cmp-number': {
       const tag = decodeValueTag(view.readTagAt(offset))
-      if (tag !== ValueTag.Number && tag !== ValueTag.Boolean && tag !== ValueTag.Empty) {
+      if (tag !== ValueTag.Number && tag !== ValueTag.Boolean) {
         return false
       }
       const numeric = Object.is(view.readNumberAt(offset), -0) ? 0 : view.readNumberAt(offset)
@@ -230,16 +230,7 @@ function slicePredicateMatchesEmpty(predicate: SliceFastPredicate): boolean {
     case 'eq-string':
       return predicate.negate ? predicate.value !== '' : predicate.value === ''
     case 'cmp-number':
-      switch (predicate.operator) {
-        case '>':
-          return 0 > predicate.value
-        case '>=':
-          return 0 >= predicate.value
-        case '<':
-          return 0 < predicate.value
-        case '<=':
-          return 0 <= predicate.value
-      }
+      return false
     case 'generic':
       return matchesCompiledCriteria({ tag: ValueTag.Empty }, predicate.compiled)
   }

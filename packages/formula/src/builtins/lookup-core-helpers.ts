@@ -289,6 +289,9 @@ export function matchesCompiledCriteria(value: CellValue, compiled: CompiledCrit
     const matches = compiled.wildcardPattern.test(toStringValue(value))
     return compiled.operator === '=' ? matches : !matches
   }
+  if (value.tag === ValueTag.Empty && compiled.operand.tag === ValueTag.Number && compiled.operator !== '=' && compiled.operator !== '<>') {
+    return false
+  }
   const comparison = compareScalars(value, compiled.operand)
   if (comparison === undefined) {
     return false
@@ -431,9 +434,26 @@ function parseCriteriaOperand(raw: string): CellValue {
   if (upper === 'TRUE' || upper === 'FALSE') {
     return { tag: ValueTag.Boolean, value: upper === 'TRUE' }
   }
-  const numeric = Number(trimmed)
-  if (Number.isFinite(numeric)) {
+  const numeric = parseCriteriaNumericOperand(trimmed)
+  if (numeric !== undefined) {
     return { tag: ValueTag.Number, value: numeric }
   }
   return { tag: ValueTag.String, value: trimmed, stringId: 0 }
+}
+
+function parseCriteriaNumericOperand(trimmed: string): number | undefined {
+  const direct = Number(trimmed)
+  if (Number.isFinite(direct)) {
+    return direct
+  }
+  if (!trimmed.includes(',')) {
+    return undefined
+  }
+  const grouped = /^([+-]?)(\d{1,3}(?:,\d{3})+)(\.\d*)?([eE][+-]?\d+)?$/.exec(trimmed)
+  if (!grouped) {
+    return undefined
+  }
+  const normalized = `${grouped[1] ?? ''}${(grouped[2] ?? '').replaceAll(',', '')}${grouped[3] ?? ''}${grouped[4] ?? ''}`
+  const numeric = Number(normalized)
+  return Number.isFinite(numeric) ? numeric : undefined
 }

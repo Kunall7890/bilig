@@ -122,6 +122,42 @@ describe('Workpaper formula regressions', () => {
     expectNumber(cellValue(workbook, 'PDF Extract', 248, 5), 70)
   })
 
+  it.each([false, true])('parses comma-grouped numeric criteria in conditional aggregates with useColumnIndex=%s', (useColumnIndex) => {
+    const data = [
+      [446_968, 1],
+      [25_399, 2],
+      [89_119, 3],
+      [647_384, 4],
+      [1_322_686, 5],
+      [168_122, 6],
+      [22_176, 7],
+      [21_731, 8],
+      [200_000, 9],
+      [0, 10],
+      [50_000, 11],
+      [null, 99],
+    ]
+    const summary = [
+      ['large', '=COUNTIF(Data!$A$1:$A$12,">=200,000")'],
+      ['small', '=COUNTIF(Data!$A$1:$A$12,"<=50,000")'],
+      ['band', '=COUNTIFS(Data!$A$1:$A$12,">=20,000",Data!$A$1:$A$12,"<=50,000")'],
+      ['small sum', '=SUMIF(Data!$A$1:$A$12,"<=50,000",Data!$B$1:$B$12)'],
+    ]
+
+    const workbook = WorkPaper.buildFromSheets(
+      {
+        Data: data,
+        Summary: summary,
+      },
+      { maxRows: 100, maxColumns: 20, useColumnIndex },
+    )
+
+    expectNumber(cellValue(workbook, 'Summary', 0, 1), 4)
+    expectNumber(cellValue(workbook, 'Summary', 1, 1), 5)
+    expectNumber(cellValue(workbook, 'Summary', 2, 1), 4)
+    expectNumber(cellValue(workbook, 'Summary', 3, 1), 38)
+  })
+
   it('treats blank-reference formulas as numeric zero', () => {
     const workbook = WorkPaper.buildFromSheets(
       {

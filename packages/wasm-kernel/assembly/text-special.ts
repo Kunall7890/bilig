@@ -128,14 +128,37 @@ export function parseNumericText(input: string): f64 {
 
   let value = 0.0
   let digitCount = 0
+  let sawComma = false
+  let currentGroupDigits = 0
   while (index < text.length) {
     const char = text.charCodeAt(index)
+    if (char == 44) {
+      if (currentGroupDigits == 0) {
+        return NaN
+      }
+      if (!sawComma) {
+        if (currentGroupDigits > 3) {
+          return NaN
+        }
+        sawComma = true
+      } else if (currentGroupDigits != 3) {
+        return NaN
+      }
+      currentGroupDigits = 0
+      index += 1
+      continue
+    }
     if (char < 48 || char > 57) {
       break
     }
     value = value * 10.0 + <f64>(char - 48)
     digitCount += 1
+    currentGroupDigits += 1
     index += 1
+  }
+
+  if (sawComma && currentGroupDigits != 3) {
+    return NaN
   }
 
   if (index < text.length && text.charCodeAt(index) == 46) {

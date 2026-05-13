@@ -67,6 +67,15 @@ describe('lookup builtins', () => {
     expect(matchesCompiledCriteria(text('3'), greaterThan)).toBe(false)
     expect(matchesCompiledCriteria(err(ErrorCode.Div0), greaterThan)).toBe(false)
 
+    const groupedThousands = compileCriteriaMatcher(text('>=200,000'))
+    expect(groupedThousands.operand).toMatchObject({ tag: ValueTag.Number, value: 200_000 })
+    expect(matchesCompiledCriteria(num(250_000), groupedThousands)).toBe(true)
+    expect(matchesCompiledCriteria(num(50_000), groupedThousands)).toBe(false)
+
+    const invalidGrouping = compileCriteriaMatcher(text('>=20,00'))
+    expect(invalidGrouping.operand).toMatchObject({ tag: ValueTag.String, value: '20,00' })
+    expect(matchesCompiledCriteria(num(20_000), invalidGrouping)).toBe(false)
+
     const scalarEquality = compileCriteriaMatcher(bool(true))
     expect(matchesCompiledCriteria(bool(true), scalarEquality)).toBe(true)
     expect(matchesCompiledCriteria(bool(false), scalarEquality)).toBe(false)
@@ -467,6 +476,12 @@ describe('lookup builtins', () => {
     ).toEqual(text('fallback'))
 
     expect(COUNTIF(cellRange([num(2), num(4), num(-1), num(6)], 4, 1), text('>0'))).toEqual(num(3))
+    expect(
+      COUNTIF(cellRange([num(446_968), { tag: ValueTag.Empty }, num(25_399), num(200_000), num(50_000)], 5, 1), text('>=200,000')),
+    ).toEqual(num(2))
+    expect(
+      COUNTIF(cellRange([num(446_968), { tag: ValueTag.Empty }, num(25_399), num(200_000), num(50_000)], 5, 1), text('<=50,000')),
+    ).toEqual(num(2))
 
     expect(
       COUNTIFS(

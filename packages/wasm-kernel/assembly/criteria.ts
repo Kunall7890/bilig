@@ -214,6 +214,10 @@ export function matchesCriteriaValue(
     }
   }
 
+  if (valueTag == ValueTag.Empty && operandTag == ValueTag.Number && operator != CRITERIA_OP_EQ && operator != CRITERIA_OP_NE) {
+    return false
+  }
+
   const comparison = compareScalarValues(
     valueTag,
     valueValue,

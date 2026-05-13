@@ -197,7 +197,7 @@ describe('createCriterionRangeCacheService', () => {
     const gteMatches = criterionCache.getOrBuildMatchingRows({
       criteriaPairs: [
         {
-          range: { sheetName: 'Sheet1', rowStart: 0, rowEnd: 6, col: 0, length: 7 },
+          range: { sheetName: 'Sheet1', rowStart: 0, rowEnd: 7, col: 0, length: 8 },
           criteria: { tag: ValueTag.String, value: '>=4', stringId: strings.intern('>=4') },
         },
       ],
@@ -210,7 +210,7 @@ describe('createCriterionRangeCacheService', () => {
     const lteMatches = criterionCache.getOrBuildMatchingRows({
       criteriaPairs: [
         {
-          range: { sheetName: 'Sheet1', rowStart: 0, rowEnd: 6, col: 0, length: 7 },
+          range: { sheetName: 'Sheet1', rowStart: 0, rowEnd: 7, col: 0, length: 8 },
           criteria: { tag: ValueTag.String, value: '<=2', stringId: strings.intern('<=2') },
         },
       ],
@@ -223,7 +223,7 @@ describe('createCriterionRangeCacheService', () => {
     const lessThanMatches = criterionCache.getOrBuildMatchingRows({
       criteriaPairs: [
         {
-          range: { sheetName: 'Sheet1', rowStart: 0, rowEnd: 6, col: 0, length: 7 },
+          range: { sheetName: 'Sheet1', rowStart: 0, rowEnd: 7, col: 0, length: 8 },
           criteria: { tag: ValueTag.String, value: '<4', stringId: strings.intern('<4') },
         },
       ],

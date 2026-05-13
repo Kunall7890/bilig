@@ -145,6 +145,74 @@ describe('wasm kernel aggregate and criteria dispatch', () => {
     expect(kernel.readNumbers()[cellIndex(2, 2, 4)]).toBe(1)
   })
 
+  it('matches comma-grouped numeric criteria in conditional aggregates', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    const strings = packStrings(['>=200,000', '<=50,000', '>=20,000', '>=20,00'])
+    kernel.init(32, 4, 6, 4, 8)
+    kernel.uploadStrings(strings.offsets, strings.lengths, strings.data)
+
+    const cellTags = new Uint8Array(32)
+    const cellNumbers = new Float64Array(32)
+    const cellStringIds = new Uint32Array(32)
+    const cellErrors = new Uint16Array(32)
+    const values = [446_968, 25_399, 89_119, 647_384, 1_322_686, 168_122, 22_176, 21_731]
+    for (let index = 0; index < values.length; index += 1) {
+      cellTags[index] = ValueTag.Number
+      cellNumbers[index] = values[index]!
+      cellTags[index + 9] = ValueTag.Number
+      cellNumbers[index + 9] = index + 1
+    }
+    cellTags[17] = ValueTag.Number
+    cellNumbers[17] = 99
+
+    kernel.writeCells(cellTags, cellNumbers, cellStringIds, cellErrors)
+    kernel.uploadRangeMembers(
+      Uint32Array.from([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]),
+      Uint32Array.from([0, 9]),
+      Uint32Array.from([9, 9]),
+    )
+    kernel.uploadRangeShapes(Uint32Array.from([9, 9]), Uint32Array.from([1, 1]))
+
+    const packed = packPrograms([
+      [encodePushRange(0), encodePushString(0), encodeCall(BuiltinId.Countif, 2), encodeRet()],
+      [encodePushRange(0), encodePushString(1), encodeCall(BuiltinId.Countif, 2), encodeRet()],
+      [encodePushRange(0), encodePushString(1), encodePushRange(1), encodeCall(BuiltinId.Sumif, 3), encodeRet()],
+      [encodePushRange(0), encodePushString(2), encodePushRange(0), encodePushString(1), encodeCall(BuiltinId.Countifs, 4), encodeRet()],
+      [encodePushRange(0), encodePushString(3), encodeCall(BuiltinId.Countif, 2), encodeRet()],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from([
+        cellIndex(3, 0, width),
+        cellIndex(3, 1, width),
+        cellIndex(3, 2, width),
+        cellIndex(3, 3, width),
+        cellIndex(3, 4, width),
+      ]),
+    )
+    const constants = packConstants([[], [], [], [], []])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+
+    kernel.evalBatch(
+      Uint32Array.from([
+        cellIndex(3, 0, width),
+        cellIndex(3, 1, width),
+        cellIndex(3, 2, width),
+        cellIndex(3, 3, width),
+        cellIndex(3, 4, width),
+      ]),
+    )
+
+    expect(kernel.readNumbers()[cellIndex(3, 0, width)]).toBe(3)
+    expect(kernel.readNumbers()[cellIndex(3, 1, width)]).toBe(3)
+    expect(kernel.readNumbers()[cellIndex(3, 2, width)]).toBe(17)
+    expect(kernel.readNumbers()[cellIndex(3, 3, width)]).toBe(3)
+    expect(kernel.readNumbers()[cellIndex(3, 4, width)]).toBe(0)
+  })
+
   it('reuses repeated SUM range aggregates within a batch and refreshes them across batches', async () => {
     const kernel = await createKernel()
     const width = 4
