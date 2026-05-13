@@ -22,7 +22,12 @@ export function rewriteStructuralFormulaCompiled(
   sheetName: string,
   transform: StructuralAxisTransform,
 ): ReturnType<typeof rewriteCompiledFormulaForStructuralTransform> | undefined {
-  if (formula.directAggregate) {
+  if (
+    formula.directAggregate &&
+    formula.compiled.symbolicNames.length === 0 &&
+    formula.compiled.symbolicTables.length === 0 &&
+    formula.compiled.symbolicSpills.length === 0
+  ) {
     const directAggregateCandidate = formula.compiled.directAggregateCandidate
     const rangeIndex = directAggregateCandidate?.symbolicRangeIndex
     const parsedRange = rangeIndex === undefined ? undefined : formula.compiled.parsedSymbolicRanges?.[rangeIndex]

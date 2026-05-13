@@ -341,6 +341,40 @@ describe('engine fuzz regressions', () => {
     expect(engine.exportSnapshot()).toEqual(seedSnapshot)
   })
 
+  it('keeps named-range aggregate formulas symbolic across structural column undo', async () => {
+    const seedSnapshot = await createEngineSeedSnapshot('named-structures', 'structural-named-range-symbolic-undo-regression')
+    const engine = new SpreadsheetEngine({
+      workbookName: seedSnapshot.workbook.name,
+      replicaId: 'structural-named-range-symbolic-undo-regression',
+    })
+    await engine.ready()
+    engine.importSnapshot(structuredClone(seedSnapshot))
+
+    engine.insertColumns('Sheet1', 2, 1)
+    expect(engine.getCell('Sheet1', 'D1').formula).toBe('SUM(SalesRange)')
+    expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Number, value: 33 })
+
+    engine.deleteColumns('Sheet1', 0, 1)
+    expect(engine.getDefinedName('SalesRange')).toEqual({
+      name: 'SalesRange',
+      value: {
+        kind: 'range-ref',
+        sheetName: 'Sheet1',
+        startAddress: 'A1',
+        endAddress: 'A3',
+      },
+    })
+    expect(engine.getCell('Sheet1', 'C1').formula).toBe('SUM(SalesRange)')
+    expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 30 })
+
+    expect(engine.undo()).toBe(true)
+    expect(engine.getCell('Sheet1', 'D1').formula).toBe('SUM(SalesRange)')
+    expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Number, value: 33 })
+
+    expect(engine.undo()).toBe(true)
+    expect(normalizeSnapshotForSemanticComparison(engine.exportSnapshot())).toEqual(normalizeSnapshotForSemanticComparison(seedSnapshot))
+  })
+
   it('imports snapshots with structurally invalidated formula dependencies as ref errors', async () => {
     const seedSnapshot = await createEngineSeedSnapshot('formula-graph', 'invalid-range-dependency-import-regression')
     const engine = new SpreadsheetEngine({
