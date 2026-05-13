@@ -685,6 +685,7 @@ export function createEngineFormulaEvaluationService(args: {
     const isRowHidden = createRowHiddenResolver()
     const evaluationContext: EvaluationContext = {
       sheetName,
+      workbookName: args.state.workbook.workbookName,
       currentAddress: address,
       dateSystem: workbookDateSystem(),
       resolveCell: (targetSheetName, targetAddress) =>
@@ -858,6 +859,7 @@ export function createEngineFormulaEvaluationService(args: {
     const isRowHidden = createRowHiddenResolver()
     const evaluationContext: EvaluationContext = {
       sheetName,
+      workbookName: args.state.workbook.workbookName,
       currentAddress: args.state.workbook.getAddress(cellIndex),
       dateSystem: workbookDateSystem(),
       resolveCell: (targetSheetName: string, address: string) => readCellValue(targetSheetName, address),

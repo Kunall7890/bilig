@@ -41,6 +41,15 @@ describe('js evaluator context special calls', () => {
     expect(evaluatePlan(lowerToPlan(parseFormula('CELL("col",B1)')), context)).toEqual(number(2))
     expect(evaluatePlan(lowerToPlan(parseFormula('CELL("type",B1)')), context)).toEqual(text('v'))
     expect(evaluatePlan(lowerToPlan(parseFormula('CELL("filename")')), context)).toEqual(text(''))
+    expect(evaluatePlan(lowerToPlan(parseFormula('CELL("filename",B1)')), { ...context, workbookName: 'Book.xlsx' })).toEqual(
+      text('[Book.xlsx]Sheet2'),
+    )
+    expect(
+      evaluatePlan(lowerToPlan(parseFormula('MID(CELL("filename",B1),FIND("]",CELL("filename",B1))+1,99)')), {
+        ...context,
+        workbookName: 'Book.xlsx',
+      }),
+    ).toEqual(text('Sheet2'))
   })
 
   it('preserves validation and NA or REF branches', () => {

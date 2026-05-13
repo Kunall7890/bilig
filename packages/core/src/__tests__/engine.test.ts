@@ -876,6 +876,7 @@ describe('SpreadsheetEngine', () => {
     engine.setCellFormula('Sheet1', 'H1', 'CELL("address",B3)')
     engine.setCellFormula('Sheet1', 'I1', 'CELL("contents",A1)')
     engine.setCellFormula('Sheet1', 'J1', 'CELL("type",A2)')
+    engine.setCellFormula('Sheet1', 'K1', 'MID(CELL("filename",F4),FIND("]",CELL("filename",F4))+1,99)')
 
     expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 1 })
     expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Number, value: 4 })
@@ -893,6 +894,10 @@ describe('SpreadsheetEngine', () => {
     expect(engine.getCellValue('Sheet1', 'J1')).toMatchObject({
       tag: ValueTag.String,
       value: 'l',
+    })
+    expect(engine.getCellValue('Sheet1', 'K1')).toMatchObject({
+      tag: ValueTag.String,
+      value: 'Sheet1',
     })
     expect(engine.explainCell('Sheet1', 'C1').mode).toBe(FormulaMode.JsOnly)
     expect(engine.explainCell('Sheet1', 'E1').mode).toBe(FormulaMode.JsOnly)

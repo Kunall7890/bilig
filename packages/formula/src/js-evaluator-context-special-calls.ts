@@ -244,8 +244,10 @@ export function evaluateContextSpecialCall(
           }
           return deps.stackScalar(deps.stringValue(deps.cellTypeCode(context.resolveCell(sheetName, address))))
         }
-        case 'filename':
-          return deps.stackScalar(deps.stringValue(''))
+        case 'filename': {
+          const sheetName = deps.referenceSheetName(ref, context)
+          return deps.stackScalar(deps.stringValue(context.workbookName && sheetName ? `[${context.workbookName}]${sheetName}` : ''))
+        }
         default:
           return deps.stackScalar(deps.error(ErrorCode.Value))
       }

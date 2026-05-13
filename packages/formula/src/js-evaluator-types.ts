@@ -5,6 +5,7 @@ import type { ArrayValue, EvaluationResult } from './runtime-values.js'
 
 export interface EvaluationContext {
   sheetName: string
+  workbookName?: string
   currentAddress?: string
   resolveCell: (sheetName: string, address: string) => CellValue
   resolveRange: (sheetName: string, start: string, end: string, refKind: 'cells' | 'rows' | 'cols') => CellValue[]
