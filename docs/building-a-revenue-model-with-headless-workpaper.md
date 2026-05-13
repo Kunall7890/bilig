@@ -22,7 +22,7 @@ The example builds three sheets:
 
 The key point is that the formulas stay in the workbook:
 
-```js
+```ts
 const workbook = WorkPaper.buildFromSheets({
   Pipeline: [
     ['Segment', 'Leads', 'Conversion Rate', 'Customers', 'ARPA', 'Gross MRR', 'Churn Rate', 'Net MRR'],
@@ -47,7 +47,7 @@ a pile of copied numbers.
 
 The example applies a focused planning change in a single batch:
 
-```js
+```ts
 workbook.batch(() => {
   workbook.setCellContents({ sheet: pipelineSheet, row: 1, col: 1 }, 92)
   workbook.setCellContents({ sheet: pipelineSheet, row: 2, col: 2 }, 0.26)
@@ -71,7 +71,7 @@ fails if the values drift.
 
 The example also serializes and restores the workbook before final readback:
 
-```js
+```ts
 const serialized = serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { includeConfig: true }))
 const restored = createWorkPaperFromDocument(parseWorkPaperDocument(serialized))
 ```

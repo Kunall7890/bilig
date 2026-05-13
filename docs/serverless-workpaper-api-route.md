@@ -292,17 +292,17 @@ computed values that prove the write took effect.
 For a Next.js App Router project, keep the WorkPaper code in a shared module and
 make the route files thin.
 
-Create `app/api/workpaper/workpaper-route.js` from the shared route code above:
+Create `app/api/workpaper/workpaper-route.ts` from the shared route code above:
 
 - keep the `@bilig/headless` imports
 - keep `state`, `handleWorkPaperRequest()`, and every workbook helper
 - omit `createServer()`, `toWebRequest()`, and the `if (import.meta.url === ...)`
   local Node adapter block
 
-Then create `app/api/workpaper/summary/route.js`:
+Then create `app/api/workpaper/summary/route.ts`:
 
-```js
-import { handleWorkPaperRequest } from '../workpaper-route.js'
+```ts
+import { handleWorkPaperRequest } from '../workpaper-route.ts'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -312,10 +312,10 @@ export async function GET(request) {
 }
 ```
 
-Create `app/api/workpaper/revenue/route.js`:
+Create `app/api/workpaper/revenue/route.ts`:
 
-```js
-import { handleWorkPaperRequest } from '../workpaper-route.js'
+```ts
+import { handleWorkPaperRequest } from '../workpaper-route.ts'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -346,26 +346,26 @@ objects as the shared WorkPaper handler. This is different from the Next.js App
 Router layout above: the function files live under `/api` and do not need a
 Next.js route segment.
 
-Put the shared WorkPaper route in `api/workpaper-route.js`:
+Put the shared WorkPaper route in `api/workpaper-route.ts`:
 
 - keep the `@bilig/headless` imports
 - keep `state`, `handleWorkPaperRequest()`, and every workbook helper
 - omit `createServer()`, `toWebRequest()`, and the local Node adapter block
 
-Then create `api/workpaper/summary.js`:
+Then create `api/workpaper/summary.ts`:
 
-```js
-import { handleWorkPaperRequest } from '../workpaper-route.js'
+```ts
+import { handleWorkPaperRequest } from '../workpaper-route.ts'
 
 export function GET(request) {
   return handleWorkPaperRequest(request)
 }
 ```
 
-Create `api/workpaper/revenue.js`:
+Create `api/workpaper/revenue.ts`:
 
-```js
-import { handleWorkPaperRequest } from '../workpaper-route.js'
+```ts
+import { handleWorkPaperRequest } from '../workpaper-route.ts'
 
 export function POST(request) {
   return handleWorkPaperRequest(request)
@@ -375,7 +375,7 @@ export function POST(request) {
 Vercel also supports a single `fetch` web handler when one file should own every
 method:
 
-```js
+```ts
 import { handleWorkPaperRequest } from './workpaper-route.ts'
 
 export default {
@@ -389,7 +389,7 @@ For older Vercel projects that still use a Node-style `(request, response)`
 handler, keep the compatibility layer at the edge of the route and convert back
 to the Vercel response object:
 
-```js
+```ts
 import { Readable } from 'node:stream'
 import { handleWorkPaperRequest } from './workpaper-route.ts'
 
@@ -439,9 +439,9 @@ request/response pair. In either form, keep durable workbook storage behind the
 
 Cloudflare Workers use the same web-standard `Request` and `Response` shape as
 the shared route handler. Keep the WorkPaper code in a module such as
-`workpaper-route.js`, then make `src/index.js` small:
+`workpaper-route.ts`, then make `src/index.ts` small:
 
-```js
+```ts
 import { handleWorkPaperRequest } from './workpaper-route.ts'
 
 export default {
@@ -473,26 +473,26 @@ Cloudflare Pages Functions use file-based routes under `/functions`. The
 function receives a context object with a web-standard `request`, so the adapter
 can stay as thin as the Worker adapter.
 
-Put the shared WorkPaper route in `src/workpaper-route.js`:
+Put the shared WorkPaper route in `src/workpaper-route.ts`:
 
 - keep the `@bilig/headless` imports
 - keep `state`, `handleWorkPaperRequest()`, and every workbook helper
 - omit `createServer()`, `toWebRequest()`, and the local Node adapter block
 
-Then create `functions/api/workpaper/summary.js`:
+Then create `functions/api/workpaper/summary.ts`:
 
-```js
-import { handleWorkPaperRequest } from '../../../src/workpaper-route.js'
+```ts
+import { handleWorkPaperRequest } from '../../../src/workpaper-route.ts'
 
 export function onRequestGet({ request }) {
   return handleWorkPaperRequest(request)
 }
 ```
 
-Create `functions/api/workpaper/revenue.js`:
+Create `functions/api/workpaper/revenue.ts`:
 
-```js
-import { handleWorkPaperRequest } from '../../../src/workpaper-route.js'
+```ts
+import { handleWorkPaperRequest } from '../../../src/workpaper-route.ts'
 
 export function onRequestPost({ request }) {
   return handleWorkPaperRequest(request)
@@ -525,8 +525,8 @@ KV, a Durable Object, or a queue-backed persistence layer; the WorkPaper API onl
 needs serialized JSON. For a blob-store version of this boundary, see the
 [object storage adapter](persisting-formula-backed-workpaper-documents-in-node.md#object-storage-adapter).
 
-```js
-import { createWorkPaperRequestHandler, createInMemoryWorkbookStorage } from './workpaper-route.js'
+```ts
+import { createWorkPaperRequestHandler, createInMemoryWorkbookStorage } from './workpaper-route.ts'
 
 const fallbackStorage = createInMemoryWorkbookStorage()
 
@@ -569,9 +569,9 @@ Hono exposes the raw Fetch `Request`, so the adapter does not need to translate
 headers, bodies, or responses. Keep the WorkPaper logic in the shared handler and
 make the framework route file small:
 
-```js
+```ts
 import { Hono } from 'hono'
-import { handleWorkPaperRequest } from './workpaper-route.js'
+import { handleWorkPaperRequest } from './workpaper-route.ts'
 
 const app = new Hono()
 
@@ -599,8 +599,8 @@ Deno's HTTP server uses Fetch `Request` and `Response` objects, so the adapter i
 the same shape as a Worker or Hono route. Keep the WorkPaper code in a shared
 module and let the Deno entrypoint delegate to it:
 
-```js
-import { handleWorkPaperRequest } from './workpaper-route.js'
+```ts
+import { handleWorkPaperRequest } from './workpaper-route.ts'
 
 Deno.serve((request) => handleWorkPaperRequest(request))
 ```
@@ -608,8 +608,8 @@ Deno.serve((request) => handleWorkPaperRequest(request))
 For `deno serve` or Deno Deploy entrypoints that expect a default export, expose
 the same function through `fetch`:
 
-```js
-import { handleWorkPaperRequest } from './workpaper-route.js'
+```ts
+import { handleWorkPaperRequest } from './workpaper-route.ts'
 
 export default {
   fetch(request) {
@@ -621,7 +621,7 @@ export default {
 If the shared WorkPaper module runs directly in Deno instead of a bundled build,
 import the published package with Deno's npm specifier:
 
-```js
+```ts
 import { WorkPaper } from 'npm:@bilig/headless'
 ```
 
@@ -700,20 +700,20 @@ durable service before returning formula readback.
 
 ## SvelteKit Endpoint Adapter
 
-SvelteKit `+server.js` handlers receive a request event and return a web-standard
+SvelteKit `+server.ts` handlers receive a request event and return a web-standard
 `Response`. Put the shared WorkPaper route in a server-only module, then keep
 each endpoint file as a pass-through.
 
-Create `src/lib/server/workpaper-route.js` from the shared route code above:
+Create `src/lib/server/workpaper-route.ts` from the shared route code above:
 
 - keep the `@bilig/headless` imports
 - keep `state`, `handleWorkPaperRequest()`, and every workbook helper
 - omit `createServer()`, `toWebRequest()`, and the local Node adapter block
 
-Then create `src/routes/api/workpaper/summary/+server.js`:
+Then create `src/routes/api/workpaper/summary/+server.ts`:
 
-```js
-import { handleWorkPaperRequest } from '$lib/server/workpaper-route.js'
+```ts
+import { handleWorkPaperRequest } from '$lib/server/workpaper-route.ts'
 
 export const prerender = false
 
@@ -722,10 +722,10 @@ export function GET({ request }) {
 }
 ```
 
-Create `src/routes/api/workpaper/revenue/+server.js`:
+Create `src/routes/api/workpaper/revenue/+server.ts`:
 
-```js
-import { handleWorkPaperRequest } from '$lib/server/workpaper-route.js'
+```ts
+import { handleWorkPaperRequest } from '$lib/server/workpaper-route.ts'
 
 export const prerender = false
 
@@ -753,26 +753,26 @@ Remix resource routes are route modules with no default component. They can
 return any `Response`, which makes them a small adapter for the shared WorkPaper
 handler.
 
-Create `app/workpaper-route.server.js` from the shared route code above:
+Create `app/workpaper-route.server.ts` from the shared route code above:
 
 - keep the `@bilig/headless` imports
 - keep `state`, `handleWorkPaperRequest()`, and every workbook helper
 - omit `createServer()`, `toWebRequest()`, and the local Node adapter block
 
-Then create `app/routes/api.workpaper.summary.js`:
+Then create `app/routes/api.workpaper.summary.ts`:
 
-```js
-import { handleWorkPaperRequest } from '../workpaper-route.server.js'
+```ts
+import { handleWorkPaperRequest } from '../workpaper-route.server.ts'
 
 export function loader({ request }) {
   return handleWorkPaperRequest(request)
 }
 ```
 
-Create `app/routes/api.workpaper.revenue.js`:
+Create `app/routes/api.workpaper.revenue.ts`:
 
-```js
-import { handleWorkPaperRequest } from '../workpaper-route.server.js'
+```ts
+import { handleWorkPaperRequest } from '../workpaper-route.server.ts'
 
 export function action({ request }) {
   return handleWorkPaperRequest(request)
@@ -806,26 +806,26 @@ web-standard `Response`, and its `fromWebHandler()` helper converts a
 `Request => Response` function into an event handler, so the WorkPaper route can
 stay framework-agnostic.
 
-Create `workpaper-route.js` from the shared route code above:
+Create `workpaper-route.ts` from the shared route code above:
 
 - keep the `@bilig/headless` imports
 - keep `state`, `handleWorkPaperRequest()`, and every workbook helper
 - omit `createServer()`, `toWebRequest()`, and the local Node adapter block
 
-Then create `routes/api/workpaper/summary.get.js`:
+Then create `routes/api/workpaper/summary.get.ts`:
 
-```js
+```ts
 import { fromWebHandler } from 'h3'
-import { handleWorkPaperRequest } from '../../../workpaper-route.js'
+import { handleWorkPaperRequest } from '../../../workpaper-route.ts'
 
 export default fromWebHandler((request) => handleWorkPaperRequest(request))
 ```
 
-Create `routes/api/workpaper/revenue.post.js`:
+Create `routes/api/workpaper/revenue.post.ts`:
 
-```js
+```ts
 import { fromWebHandler } from 'h3'
-import { handleWorkPaperRequest } from '../../../workpaper-route.js'
+import { handleWorkPaperRequest } from '../../../workpaper-route.ts'
 
 export default fromWebHandler((request) => handleWorkPaperRequest(request))
 ```
@@ -855,8 +855,8 @@ the adapter does not need to translate the route body, headers, or status code.
 Keep the WorkPaper code in a shared module and let the Bun entrypoint pass each
 request through.
 
-```js
-import { handleWorkPaperRequest } from './workpaper-route.js'
+```ts
+import { handleWorkPaperRequest } from './workpaper-route.ts'
 
 Bun.serve({
   port: 3000,
@@ -886,9 +886,9 @@ Elysia route handlers receive a context object that includes the web-standard
 the WorkPaper request at the route edge, then return the shared `Response`
 directly.
 
-```js
+```ts
 import { Elysia } from 'elysia'
-import { handleWorkPaperRequest } from './workpaper-route.js'
+import { handleWorkPaperRequest } from './workpaper-route.ts'
 
 const app = new Elysia()
   .get('/api/workpaper/summary', ({ request }) => {
@@ -937,7 +937,7 @@ NestJS controllers route requests with decorators such as `@Get()` and
 a web-standard `Request`, pass it to the shared WorkPaper handler, then copy the
 returned `Response` back to Nest's response object.
 
-Create `workpaper-route.js` from the shared route code above:
+Create `workpaper-route.ts` from the shared route code above:
 
 - keep the `@bilig/headless` imports
 - keep `state`, `handleWorkPaperRequest()`, and every workbook helper
@@ -948,7 +948,7 @@ Then create `workpaper.controller.ts`:
 ```ts
 import { Controller, Get, Post, Req, Res } from '@nestjs/common'
 import type { Request, Response } from 'express'
-import { handleWorkPaperRequest } from './workpaper-route.js'
+import { handleWorkPaperRequest } from './workpaper-route.ts'
 
 @Controller('api/workpaper')
 export class WorkPaperController {
@@ -1022,8 +1022,8 @@ on translating those objects to and from the web-standard boundary. The WorkPape
 handler should still own the route paths, formula writes, persistence, and
 readback checks.
 
-```js
-import { handleWorkPaperRequest } from './workpaper-route.js'
+```ts
+import { handleWorkPaperRequest } from './workpaper-route.ts'
 
 fastify.get('/api/workpaper/summary', async (request, reply) => {
   return writeWebResponse(reply, await handleWorkPaperRequest(toWebRequest(request)))
@@ -1087,9 +1087,9 @@ Express apps need the same thin translation layer as Fastify. Parse JSON before
 the route, convert the incoming request into the shared web-standard shape, then
 copy the returned `Response` back to Express.
 
-```js
+```ts
 import express from 'express'
-import { handleWorkPaperRequest } from './workpaper-route.js'
+import { handleWorkPaperRequest } from './workpaper-route.ts'
 
 const app = express()
 
@@ -1159,10 +1159,10 @@ Koa middleware receives a `ctx` object, but the shared WorkPaper route still onl
 needs a web-standard `Request`. Mount the adapter before any middleware that
 consumes the request body, then let Koa own the final response fields.
 
-```js
+```ts
 import { Readable } from 'node:stream'
 import Koa from 'koa'
-import { handleWorkPaperRequest } from './workpaper-route.js'
+import { handleWorkPaperRequest } from './workpaper-route.ts'
 
 const app = new Koa()
 
@@ -1236,9 +1236,9 @@ Keep the WorkPaper handler framework-agnostic by translating the Hapi request
 into a web-standard `Request`, then translate the returned `Response` through
 `h.response()`.
 
-```js
+```ts
 import Hapi from '@hapi/hapi'
-import { handleWorkPaperRequest } from './workpaper-route.js'
+import { handleWorkPaperRequest } from './workpaper-route.ts'
 
 const server = Hapi.server({ port: 3000 })
 
@@ -1327,8 +1327,8 @@ Lambda Function URLs use the API Gateway payload format version 2.0. Keep the
 Lambda handler small: convert the event into a web-standard `Request`, run the
 shared WorkPaper handler, then return a Lambda proxy response.
 
-```js
-import { handleWorkPaperRequest } from './workpaper-route.js'
+```ts
+import { handleWorkPaperRequest } from './workpaper-route.ts'
 
 export async function handler(event) {
   const response = await handleWorkPaperRequest(toWebRequest(event))
@@ -1400,9 +1400,9 @@ The function handler receives an `HttpRequest` with a full URL, method, headers,
 and body readers, then returns an HTTP response object. Keep the adapter thin and
 let the shared WorkPaper handler own the route behavior.
 
-```js
+```ts
 import { app } from '@azure/functions'
-import { handleWorkPaperRequest } from './workpaper-route.js'
+import { handleWorkPaperRequest } from './workpaper-route.ts'
 
 app.http('workpaperSummary', {
   methods: ['GET'],
@@ -1466,7 +1466,7 @@ pass-through.
 Create `netlify/functions/workpaper.ts`:
 
 ```ts
-import { handleWorkPaperRequest } from './workpaper-route.js'
+import { handleWorkPaperRequest } from './workpaper-route.ts'
 
 export default async function workpaper(request) {
   return handleWorkPaperRequest(request)
@@ -1481,8 +1481,8 @@ If your Netlify project is using the Lambda-compatible named `handler` export,
 adapt the event into a `Request` and convert the `Response` back into a function
 result:
 
-```js
-import { handleWorkPaperRequest } from './workpaper-route.js'
+```ts
+import { handleWorkPaperRequest } from './workpaper-route.ts'
 
 export async function handler(event) {
   const response = await handleWorkPaperRequest(toWebRequest(event))
@@ -1540,17 +1540,17 @@ Keep Firebase at the edge of the route: convert the incoming function request to
 a web-standard `Request`, pass it to the shared WorkPaper handler, then copy the
 returned `Response` back to Firebase.
 
-Create `functions/workpaper-route.js` from the shared route code above:
+Create `functions/workpaper-route.ts` from the shared route code above:
 
 - keep the `@bilig/headless` imports
 - keep `state`, `handleWorkPaperRequest()`, and every workbook helper
 - omit `createServer()`, `toWebRequest()`, and the local Node adapter block
 
-Then create `functions/index.js`:
+Then create `functions/index.ts`:
 
-```js
+```ts
 import { onRequest } from 'firebase-functions/v2/https'
-import { handleWorkPaperRequest } from './workpaper-route.js'
+import { handleWorkPaperRequest } from './workpaper-route.ts'
 
 export const workpaper = onRequest(async (request, response) => {
   const routeResponse = await handleWorkPaperRequest(toWebRequest(request))

@@ -45,8 +45,26 @@ tool result carry enough evidence for verification.
 
 ## Complete Node Example
 
-```js
-import { WorkPaper, exportWorkPaperDocument, serializeWorkPaperDocument } from '@bilig/headless'
+```ts
+import {
+  WorkPaper,
+  exportWorkPaperDocument,
+  serializeWorkPaperDocument,
+  type WorkPaperCellAddress,
+} from '@bilig/headless'
+
+type CellInputValue = string | number | boolean | null
+
+type SummaryReadback = {
+  currentMrr: number
+  nextMonthMrr: number
+}
+
+type SetInputCellArgs = {
+  sheetName: string
+  address: string
+  value: CellInputValue
+}
 
 const workbook = WorkPaper.buildFromSheets({
   Assumptions: [
@@ -70,7 +88,7 @@ const currentMrrAddress = requireCellAddress('Summary', 'B2')
 const nextMonthMrrAddress = requireCellAddress('Summary', 'B3')
 
 const tools = {
-  readSummary(range = 'Summary!A1:B3') {
+  readSummary(range: string = 'Summary!A1:B3') {
     const parsedRange = workbook.simpleCellRangeFromString(range, summarySheet)
     if (parsedRange === undefined) {
       throw new Error(`invalid summary range: ${range}`)
@@ -83,7 +101,7 @@ const tools = {
     }
   },
 
-  setInputCell({ sheetName, address, value }) {
+  setInputCell({ sheetName, address, value }: SetInputCellArgs) {
     const target = requireCellAddress(sheetName, address)
     const before = readComputedSummary()
 
@@ -118,7 +136,7 @@ console.log(
   }),
 )
 
-function requireSheet(sheetName) {
+function requireSheet(sheetName: string): number {
   const sheetId = workbook.getSheetId(sheetName)
   if (sheetId === undefined) {
     throw new Error(`unknown sheet: ${sheetName}`)
@@ -126,7 +144,7 @@ function requireSheet(sheetName) {
   return sheetId
 }
 
-function requireCellAddress(sheetName, a1Address) {
+function requireCellAddress(sheetName: string, a1Address: string): WorkPaperCellAddress {
   const sheetId = requireSheet(sheetName)
   const parsed = workbook.simpleCellAddressFromString(a1Address, sheetId)
 
@@ -141,22 +159,27 @@ function requireCellAddress(sheetName, a1Address) {
   return parsed
 }
 
-function readComputedSummary() {
+function readComputedSummary(): SummaryReadback {
   return {
     currentMrr: readNumber(currentMrrAddress, 'Current MRR'),
     nextMonthMrr: readNumber(nextMonthMrrAddress, 'Next month MRR'),
   }
 }
 
-function readNumber(address, label) {
-  const value = workbook.getCellValue(address)
-  if (typeof value !== 'object' || value === null || typeof value.value !== 'number') {
+function readNumber(address: WorkPaperCellAddress, label: string): number {
+  const value = workbook.getCellValue(address) as unknown
+  if (
+    typeof value !== 'object' ||
+    value === null ||
+    !('value' in value) ||
+    typeof value.value !== 'number'
+  ) {
     throw new Error(`expected ${label} to be numeric, received ${JSON.stringify(value)}`)
   }
   return Math.round(value.value * 100) / 100
 }
 
-function serializeWorkbook() {
+function serializeWorkbook(): string {
   return serializeWorkPaperDocument(
     exportWorkPaperDocument(workbook, {
       includeConfig: true,
@@ -197,9 +220,11 @@ AI-SDK-shaped `tools` object. This repository does not need the AI SDK as a
 dependency; the snippet is for applications that already use `ai` and want a
 familiar `tool()` wrapper:
 
-```js
+```ts
 import { tool } from 'ai'
 import { z } from 'zod'
+
+type WorkPaperToolValue = string | number | boolean | null
 
 export const workPaperTools = {
   readWorkPaperSummary: tool({
@@ -207,7 +232,7 @@ export const workPaperTools = {
     inputSchema: z.object({
       range: z.string().default('Summary!A1:B3').describe('A small A1 range, including the sheet name.'),
     }),
-    execute: async ({ range = 'Summary!A1:B3' }) => tools.readSummary(range),
+    execute: async ({ range = 'Summary!A1:B3' }: { range?: string }) => tools.readSummary(range),
   }),
 
   setWorkPaperInputCell: tool({
@@ -219,7 +244,15 @@ export const workPaperTools = {
         .union([z.string(), z.number(), z.boolean(), z.null()])
         .describe('Literal cell value. Use a separate formula tool for formulas.'),
     }),
-    execute: async ({ sheetName, address, value }) => {
+    execute: async ({
+      sheetName,
+      address,
+      value,
+    }: {
+      sheetName: string
+      address: string
+      value: WorkPaperToolValue
+    }) => {
       const result = tools.setInputCell({ sheetName, address, value })
 
       if (!result.checks.currentMrrChanged || !result.checks.nextMonthMrrChanged) {
@@ -252,11 +285,13 @@ LangChain users can wrap the same SDK-neutral WorkPaper functions without adding
 a LangChain dependency to this repository. In an app that already uses
 LangChain, define thin tools around the `tools` object from the example above:
 
-```js
+```ts
 import { tool } from 'langchain'
 import * as z from 'zod'
 
-const readWorkPaperSummary = tool(({ range = 'Summary!A1:B3' }) => tools.readSummary(range), {
+type WorkPaperToolValue = string | number | boolean | null
+
+const readWorkPaperSummary = tool(({ range = 'Summary!A1:B3' }: { range?: string }) => tools.readSummary(range), {
   name: 'read_workpaper_summary',
   description: 'Read computed WorkPaper summary values and serialized inputs for a small range.',
   schema: z.object({
@@ -265,7 +300,15 @@ const readWorkPaperSummary = tool(({ range = 'Summary!A1:B3' }) => tools.readSum
 })
 
 const setWorkPaperInputCell = tool(
-  async ({ sheetName, address, value }) => {
+  async ({
+    sheetName,
+    address,
+    value,
+  }: {
+    sheetName: string
+    address: string
+    value: WorkPaperToolValue
+  }) => {
     const result = tools.setInputCell({ sheetName, address, value })
 
     if (!result.checks.currentMrrChanged || !result.checks.nextMonthMrrChanged) {

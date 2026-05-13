@@ -47,7 +47,7 @@ if (sheet === undefined) {
   throw new Error('Tax sheet was not created')
 }
 
-const at = (row, col) => ({ sheet, row, col })
+const at = (row: number, col: number) => ({ sheet, row, col })
 const invalid = at(5, 1)
 const valid = at(6, 1)
 
@@ -101,7 +101,7 @@ Expected output excerpt:
 
 Before:
 
-```js
+```ts
 ['Date label', '2024-01-01', '2025-01-01', '2026-01-01', '2027-01-01']
 ['Invalid XIRR', '=XIRR(B2:B5,D2:D5)']
 ```
@@ -112,7 +112,7 @@ the diagnostic code is `financial-unsupported-date-coercion`.
 
 After:
 
-```js
+```ts
 ['Date serial', 45292, 45658, 46023, 46388]
 ['Valid XIRR', '=XIRR(B2:B5,C2:C5)']
 ```
@@ -125,10 +125,28 @@ the bad formula result as if it were a valid business number.
 
 Use a small error boundary around reads that must produce numbers:
 
-```js
-function readRequiredNumber(workbook, address) {
-  const value = workbook.getCellValue(address)
-  if (value.tag === 1) {
+```ts
+import type { WorkPaper, WorkPaperCellAddress } from '@bilig/headless'
+
+type RequiredNumberRead =
+  | number
+  | {
+      error: string
+      code: string
+      message: string
+      references: readonly string[]
+    }
+
+function readRequiredNumber(workbook: WorkPaper, address: WorkPaperCellAddress): RequiredNumberRead {
+  const value = workbook.getCellValue(address) as unknown
+  if (
+    typeof value === 'object' &&
+    value !== null &&
+    'tag' in value &&
+    value.tag === 1 &&
+    'value' in value &&
+    typeof value.value === 'number'
+  ) {
     return value.value
   }
 

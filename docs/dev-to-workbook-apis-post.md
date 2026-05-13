@@ -72,7 +72,7 @@ npm install @bilig/headless
 
 build a workbook, evaluate a formula, and round-trip the document:
 
-```js
+```ts
 import {
   WorkPaper,
   createWorkPaperFromDocument,
