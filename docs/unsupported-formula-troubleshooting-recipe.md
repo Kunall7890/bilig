@@ -19,11 +19,12 @@ cd bilig-unsupported-formula-eval
 npm init -y
 npm pkg set type=module
 npm install @bilig/headless
+npm install --save-dev tsx typescript
 ```
 
-Create `unsupported-formula.mjs`:
+Create `unsupported-formula.ts`:
 
-```js
+```ts
 import { WorkPaper } from '@bilig/headless'
 
 const workbook = WorkPaper.buildFromSheets(
@@ -67,7 +68,7 @@ console.log(
 Run it:
 
 ```sh
-node unsupported-formula.mjs
+tsx unsupported-formula.ts
 ```
 
 Expected output excerpt:

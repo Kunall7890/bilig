@@ -19,13 +19,14 @@ mkdir bilig-serverless-workpaper
 cd bilig-serverless-workpaper
 npm init -y
 npm pkg set type=module
-npm pkg set scripts.start="node route.mjs"
+npm pkg set scripts.start="tsx route.ts"
 npm install @bilig/headless
+npm install --save-dev tsx typescript @types/node
 ```
 
-Create `route.mjs`:
+Create `route.ts`:
 
-```js
+```ts
 import { createServer } from 'node:http'
 import { Readable } from 'node:stream'
 import {
@@ -375,7 +376,7 @@ Vercel also supports a single `fetch` web handler when one file should own every
 method:
 
 ```js
-import { handleWorkPaperRequest } from './workpaper-route.js'
+import { handleWorkPaperRequest } from './workpaper-route.ts'
 
 export default {
   fetch(request) {
@@ -390,7 +391,7 @@ to the Vercel response object:
 
 ```js
 import { Readable } from 'node:stream'
-import { handleWorkPaperRequest } from './workpaper-route.js'
+import { handleWorkPaperRequest } from './workpaper-route.ts'
 
 export default async function handler(request, response) {
   const webResponse = await handleWorkPaperRequest(toWebRequest(request))
@@ -441,7 +442,7 @@ the shared route handler. Keep the WorkPaper code in a module such as
 `workpaper-route.js`, then make `src/index.js` small:
 
 ```js
-import { handleWorkPaperRequest } from './workpaper-route.js'
+import { handleWorkPaperRequest } from './workpaper-route.ts'
 
 export default {
   async fetch(request, env, ctx) {
@@ -1459,12 +1460,12 @@ regional deployments.
 
 Netlify's current Functions runtime passes a web-standard `Request` into the
 default export and expects a `Response` back. Put the shared WorkPaper route in a
-module such as `workpaper-route.js`, then keep the function file as a direct
+module such as `workpaper-route.ts`, then keep the function file as a direct
 pass-through.
 
-Create `netlify/functions/workpaper.mjs`:
+Create `netlify/functions/workpaper.ts`:
 
-```js
+```ts
 import { handleWorkPaperRequest } from './workpaper-route.js'
 
 export default async function workpaper(request) {

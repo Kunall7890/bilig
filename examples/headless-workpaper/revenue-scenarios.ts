@@ -6,6 +6,8 @@ import {
   serializeWorkPaperDocument,
 } from '@bilig/headless'
 
+type WorkPaperInstance = ReturnType<typeof WorkPaper.buildFromSheets>
+
 const workbook = WorkPaper.buildFromSheets({
   Pipeline: [
     ['Segment', 'Leads', 'Conversion Rate', 'Customers', 'ARPA', 'Gross MRR', 'Churn Rate', 'Net MRR'],
@@ -50,7 +52,7 @@ const output = {
 assertOutput(output)
 console.log(JSON.stringify(output, null, 2))
 
-function readModel(workpaper) {
+function readModel(workpaper: WorkPaperInstance) {
   const summarySheet = requireSheet(workpaper, 'Summary')
   const scenariosSheet = requireSheet(workpaper, 'Scenarios')
 
@@ -67,7 +69,7 @@ function readModel(workpaper) {
   }
 }
 
-function requireSheet(workpaper, sheetName) {
+function requireSheet(workpaper: WorkPaperInstance, sheetName: string): number {
   const sheetId = workpaper.getSheetId(sheetName)
   if (sheetId === undefined) {
     throw new Error(`Expected sheet "${sheetName}" to exist`)
@@ -75,7 +77,7 @@ function requireSheet(workpaper, sheetName) {
   return sheetId
 }
 
-function readCurrency(workpaper, sheet, row, col, label) {
+function readCurrency(workpaper: WorkPaperInstance, sheet: number, row: number, col: number, label: string): number {
   const cell = workpaper.getCellValue({ sheet, row, col })
   if (!cell || typeof cell !== 'object' || !('value' in cell) || typeof cell.value !== 'number') {
     throw new Error(`Expected ${label} to be a number, received ${JSON.stringify(cell)}`)
@@ -83,7 +85,7 @@ function readCurrency(workpaper, sheet, row, col, label) {
   return Math.round(cell.value * 100) / 100
 }
 
-function assertOutput(actual) {
+function assertOutput(actual: typeof output): void {
   const expected = {
     beforeEdit: {
       totalNetMrr: 119267.2,

@@ -6,6 +6,8 @@ import {
   serializeWorkPaperDocument,
 } from '@bilig/headless'
 
+type WorkPaperInstance = ReturnType<typeof WorkPaper.buildFromSheets>
+
 const workbook = WorkPaper.buildFromSheets({
   Pipeline: [
     ['Stage', 'Revenue'],
@@ -54,7 +56,7 @@ const output = {
 assertOutput(output)
 console.log(JSON.stringify(output, null, 2))
 
-function requireSheet(workpaper, sheetName) {
+function requireSheet(workpaper: WorkPaperInstance, sheetName: string): number {
   const sheetId = workpaper.getSheetId(sheetName)
   if (sheetId === undefined) {
     throw new Error(`Expected sheet "${sheetName}" to exist`)
@@ -62,14 +64,14 @@ function requireSheet(workpaper, sheetName) {
   return sheetId
 }
 
-function readSummary(workpaper, summarySheet) {
+function readSummary(workpaper: WorkPaperInstance, sheet: number) {
   return {
-    baseRevenue: readNumber(workpaper, summarySheet, 1, 1, 'base revenue'),
-    growthAdjustedRevenue: readNumber(workpaper, summarySheet, 2, 1, 'growth-adjusted revenue'),
+    baseRevenue: readNumber(workpaper, sheet, 1, 1, 'base revenue'),
+    growthAdjustedRevenue: readNumber(workpaper, sheet, 2, 1, 'growth-adjusted revenue'),
   }
 }
 
-function readNumber(workpaper, sheet, row, col, label) {
+function readNumber(workpaper: WorkPaperInstance, sheet: number, row: number, col: number, label: string): number {
   const cell = workpaper.getCellValue({ sheet, row, col })
   if (!cell || typeof cell !== 'object' || !('value' in cell) || typeof cell.value !== 'number') {
     throw new Error(`Expected ${label} to be a number, received ${JSON.stringify(cell)}`)
@@ -77,7 +79,7 @@ function readNumber(workpaper, sheet, row, col, label) {
   return cell.value
 }
 
-function readNamedNumber(workpaper, name) {
+function readNamedNumber(workpaper: WorkPaperInstance, name: string): number {
   const cell = workpaper.getNamedExpressionValue(name)
   if (!cell || typeof cell !== 'object' || !('value' in cell) || typeof cell.value !== 'number') {
     throw new Error(`Expected named expression "${name}" to be a number, received ${JSON.stringify(cell)}`)
@@ -85,11 +87,11 @@ function readNamedNumber(workpaper, name) {
   return cell.value
 }
 
-function sameJson(left, right) {
+function sameJson(left: unknown, right: unknown): boolean {
   return JSON.stringify(left) === JSON.stringify(right)
 }
 
-function assertOutput(actual) {
+function assertOutput(actual: typeof output): void {
   const expected = {
     verified: true,
     namedExpression: 'GrowthRatePercent',

@@ -102,13 +102,13 @@ Official docs for the framework shapes:
 ## Files To Inspect
 
 - adapter script:
-  [`examples/headless-workpaper/agent-framework-adapters.mjs`](../examples/headless-workpaper/agent-framework-adapters.mjs)
+  [`examples/headless-workpaper/agent-framework-adapters.ts`](../examples/headless-workpaper/agent-framework-adapters.ts)
 - example README:
   [`examples/headless-workpaper/README.md#agent-framework-adapters`](../examples/headless-workpaper/README.md#agent-framework-adapters)
 - longer tool-calling recipe:
   [`docs/agent-workpaper-tool-calling-recipe.md`](agent-workpaper-tool-calling-recipe.md)
 - agent writeback verification:
-  [`examples/headless-workpaper/agent-writeback-verification.mjs`](../examples/headless-workpaper/agent-writeback-verification.mjs)
+  [`examples/headless-workpaper/agent-writeback-verification.ts`](../examples/headless-workpaper/agent-writeback-verification.ts)
 
 ## When This Is A Good Fit
 

@@ -1,5 +1,7 @@
 import { WorkPaper } from '@bilig/headless'
 
+type WorkPaperInstance = ReturnType<typeof WorkPaper.buildFromSheets>
+
 const csvInput = [
   ['Product', 'Q1', 'Q2', 'Q3', 'Q4'],
   ['Widget A', 100, 150, 200, 250],
@@ -18,17 +20,15 @@ workbook.setCellContents({ sheet: dataSheet, row: 4, col: 0 }, 'Total Q1')
 workbook.setCellContents({ sheet: dataSheet, row: 4, col: 1 }, '=SUM(B2:B4)')
 
 // Read the display/result back
-const totalQ1Cell = workbook.getCellValue({ sheet: dataSheet, row: 4, col: 1 })
-
 const output = {
   success: true,
-  totalQ1: totalQ1Cell.value,
+  totalQ1: readNumber(workbook, dataSheet, 4, 1, 'total Q1'),
 }
 
 assertSummary(output)
 console.log(JSON.stringify(output, null, 2))
 
-function requireSheet(workpaper, sheetName) {
+function requireSheet(workpaper: WorkPaperInstance, sheetName: string): number {
   const sheetId = workpaper.getSheetId(sheetName)
   if (sheetId === undefined) {
     throw new Error(`Expected sheet "${sheetName}" to exist`)
@@ -36,7 +36,15 @@ function requireSheet(workpaper, sheetName) {
   return sheetId
 }
 
-function assertSummary(summary) {
+function readNumber(workpaper: WorkPaperInstance, sheet: number, row: number, col: number, label: string): number {
+  const cell = workpaper.getCellValue({ sheet, row, col })
+  if (!cell || typeof cell !== 'object' || !('value' in cell) || typeof cell.value !== 'number') {
+    throw new Error(`Expected ${label} to be numeric, received ${JSON.stringify(cell)}`)
+  }
+  return cell.value
+}
+
+function assertSummary(summary: typeof output): void {
   const expected = {
     success: true,
     totalQ1: 480,

@@ -239,7 +239,7 @@ explain exactly what changed. Persist the serialized workbook only after these
 computed readback checks pass.
 
 For a dependency-free runnable version of this shape, use
-[`examples/headless-workpaper/agent-framework-adapters.mjs`](../examples/headless-workpaper/agent-framework-adapters.mjs):
+[`examples/headless-workpaper/agent-framework-adapters.ts`](../examples/headless-workpaper/agent-framework-adapters.ts):
 
 ```sh
 cd examples/headless-workpaper

@@ -6,6 +6,8 @@ import {
   serializeWorkPaperDocument,
 } from '@bilig/headless'
 
+type WorkPaperInstance = ReturnType<typeof WorkPaper.buildFromSheets>
+
 const workbook = WorkPaper.buildFromSheets({
   Assumptions: [
     ['Metric', 'Value'],
@@ -75,7 +77,7 @@ const output = {
 assertOutput(output)
 console.log(JSON.stringify(output, null, 2))
 
-function readModel(workpaper, plan, review) {
+function readModel(workpaper: WorkPaperInstance, plan: number, review: number) {
   return {
     customers: readNumber(workpaper, plan, 1, 1, 'customers'),
     grossMrr: readNumber(workpaper, plan, 2, 1, 'gross MRR'),
@@ -85,7 +87,7 @@ function readModel(workpaper, plan, review) {
   }
 }
 
-function readFormulaContracts(workpaper, plan, review) {
+function readFormulaContracts(workpaper: WorkPaperInstance, plan: number, review: number) {
   return {
     customers: readFormula(workpaper, plan, 1, 1, 'customers'),
     grossMrr: readFormula(workpaper, plan, 2, 1, 'gross MRR'),
@@ -95,7 +97,7 @@ function readFormulaContracts(workpaper, plan, review) {
   }
 }
 
-function requireSheet(workpaper, sheetName) {
+function requireSheet(workpaper: WorkPaperInstance, sheetName: string): number {
   const sheetId = workpaper.getSheetId(sheetName)
   if (sheetId === undefined) {
     throw new Error(`Expected sheet "${sheetName}" to exist`)
@@ -103,7 +105,7 @@ function requireSheet(workpaper, sheetName) {
   return sheetId
 }
 
-function readNumber(workpaper, sheet, row, col, label) {
+function readNumber(workpaper: WorkPaperInstance, sheet: number, row: number, col: number, label: string): number {
   const cell = workpaper.getCellValue({ sheet, row, col })
   if (!cell || typeof cell !== 'object' || !('value' in cell) || typeof cell.value !== 'number') {
     throw new Error(`Expected ${label} to be a number, received ${JSON.stringify(cell)}`)
@@ -111,7 +113,7 @@ function readNumber(workpaper, sheet, row, col, label) {
   return Math.round(cell.value * 100) / 100
 }
 
-function readFormula(workpaper, sheet, row, col, label) {
+function readFormula(workpaper: WorkPaperInstance, sheet: number, row: number, col: number, label: string): string {
   const formula = workpaper.getCellFormula({ sheet, row, col })
   if (formula === undefined) {
     throw new Error(`Expected ${label} to be a formula`)
@@ -119,11 +121,11 @@ function readFormula(workpaper, sheet, row, col, label) {
   return formula
 }
 
-function sameJson(left, right) {
+function sameJson(left: unknown, right: unknown): boolean {
   return JSON.stringify(left) === JSON.stringify(right)
 }
 
-function assertOutput(actual) {
+function assertOutput(actual: typeof output): void {
   const expected = {
     edits: [
       { cell: 'Assumptions!B2', before: 500, after: 650 },
@@ -163,9 +165,9 @@ function assertOutput(actual) {
   if (
     !sameJson(comparable, expected) ||
     !sameJson(actual.restored, expected.after) ||
-    actual.verified.formulasUnchanged !== true ||
-    actual.verified.formulasPersisted !== true ||
-    actual.verified.restoredMatchesAfter !== true ||
+    !actual.verified.formulasUnchanged ||
+    !actual.verified.formulasPersisted ||
+    !actual.verified.restoredMatchesAfter ||
     actual.verified.serializedBytes <= 0
   ) {
     throw new Error(`Unexpected agent writeback verification result: ${JSON.stringify(actual)}`)

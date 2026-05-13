@@ -219,7 +219,7 @@ for (const expectedUrl of expectedSitemapUrls) {
 
 await Promise.all(sourceFilesToVerify.map((sourceFile) => requirePublishedSource(join(docsRoot, sourceFile))))
 await Promise.all(
-  ['README.md', 'package.json', 'route.mjs', 'smoke.mjs'].map((sourceFile) =>
+  ['README.md', 'package.json', 'route.ts', 'smoke.ts'].map((sourceFile) =>
     requireFile(join(repoRoot, 'examples', 'serverless-workpaper-api', sourceFile)),
   ),
 )
@@ -272,7 +272,7 @@ for (const required of [
   'https://github.com/proompteng/bilig/blob/main/docs/mcp-workpaper-tool-server.md',
   'https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/mcp-tool-server.ts',
   'https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/mcp-stdio-server.ts',
-  'https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/agent-framework-adapters.mjs',
+  'https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/agent-framework-adapters.ts',
   'https://github.com/proompteng/bilig/blob/main/docs/agent-spreadsheet-tool-call-loop.md',
   'https://github.com/proompteng/bilig/blob/main/docs/local-workpaper-benchmark-walkthrough.md',
   'https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md',
@@ -630,7 +630,7 @@ const [headlessExampleReadme, headlessExamplePackage, headlessPackageManifest, h
   readFile(join(repoRoot, 'packages', 'headless', 'package.json'), 'utf8'),
   readFile(join(repoRoot, 'packages', 'headless', 'server.json'), 'utf8'),
 ])
-await requireFile(join(repoRoot, 'examples', 'headless-workpaper', 'agent-framework-adapters.mjs'))
+await requireFile(join(repoRoot, 'examples', 'headless-workpaper', 'agent-framework-adapters.ts'))
 await requireFile(join(repoRoot, 'examples', 'headless-workpaper', 'mcp-tool-server.ts'))
 await requireFile(join(repoRoot, 'examples', 'headless-workpaper', 'mcp-stdio-server.ts'))
 requireIncludes(headlessExampleReadme, 'npm run invoice-totals', 'examples/headless-workpaper/README.md')
@@ -651,7 +651,7 @@ requireIncludes(headlessExampleReadme, '## MCP Tool Server Shape', 'examples/hea
 requireIncludes(headlessExampleReadme, '## MCP Stdio Server', 'examples/headless-workpaper/README.md')
 requireIncludes(
   headlessExamplePackage,
-  '"agent:framework-adapters": "node agent-framework-adapters.mjs"',
+  '"agent:framework-adapters": "tsx agent-framework-adapters.ts"',
   'examples/headless-workpaper/package.json',
 )
 requireIncludes(headlessExamplePackage, '"agent:mcp-tools": "tsx mcp-tool-server.ts"', 'examples/headless-workpaper/package.json')

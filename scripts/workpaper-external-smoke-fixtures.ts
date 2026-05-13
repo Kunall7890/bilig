@@ -3,13 +3,13 @@ import { join } from 'node:path'
 
 export function writeXlsxImportScript(projectDir: string): void {
   writeFileSync(
-    join(projectDir, 'xlsx-import.mjs'),
+    join(projectDir, 'xlsx-import.ts'),
     [
-      'import { ValueTag } from "@bilig/protocol";',
+      'import { ValueTag, type WorkbookSnapshot } from "@bilig/protocol";',
       'import { WorkPaper } from "@bilig/headless";',
       'import { exportXlsx, importXlsx } from "@bilig/excel-import";',
       '',
-      'const snapshot = {',
+      'const snapshot: WorkbookSnapshot = {',
       '  version: 1,',
       '  workbook: {',
       '    name: "Structured Financial Model",',
@@ -118,7 +118,7 @@ export function writeXlsxImportScript(projectDir: string): void {
       'const importsId = workbook.getSheetId("Imports");',
       'const playerDataId = workbook.getSheetId("PlayerData");',
       'if (constantsId === undefined || importsId === undefined || playerDataId === undefined) throw new Error("Imported XLSX sheets are missing");',
-      'const read = (sheet, row, col) => workbook.getCellValue({ sheet, row, col });',
+      'const read = (sheet: number, row: number, col: number) => workbook.getCellValue({ sheet, row, col });',
       'const currencyLabel = read(constantsId, 8, 5);',
       'const headerPeriod = read(constantsId, 6, 7);',
       'const firstPeriod = read(importsId, 6, 3);',

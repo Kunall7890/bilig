@@ -1,5 +1,7 @@
 import { WorkPaper } from '@bilig/headless'
 
+type WorkPaperInstance = ReturnType<typeof WorkPaper.buildFromSheets>
+
 const workbook = WorkPaper.buildFromSheets(
   {
     Revenue: [
@@ -36,7 +38,7 @@ const output = {
 assertOutput(output)
 console.log(JSON.stringify(output, null, 2))
 
-function requireSheet(workpaper, sheetName) {
+function requireSheet(workpaper: WorkPaperInstance, sheetName: string): number {
   const sheetId = workpaper.getSheetId(sheetName)
   if (sheetId === undefined) {
     throw new Error(`Expected sheet "${sheetName}" to exist`)
@@ -44,19 +46,22 @@ function requireSheet(workpaper, sheetName) {
   return sheetId
 }
 
-function readCellValue(cell) {
+function readCellValue(cell: unknown): string | number | boolean | null {
   if (cell === undefined || cell === null) {
     return null
   }
 
   if (typeof cell === 'object' && 'value' in cell) {
-    return cell.value
+    const value = cell.value
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' || value === null) {
+      return value
+    }
   }
 
   throw new Error(`Expected a scalar WorkPaper cell value, received ${JSON.stringify(cell)}`)
 }
 
-function assertOutput(actual) {
+function assertOutput(actual: typeof output): void {
   const expected = {
     verified: true,
     range: 'Summary!A1:B3',

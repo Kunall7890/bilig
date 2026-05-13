@@ -1,6 +1,16 @@
 import { readFile } from 'node:fs/promises'
 import { WorkPaper } from '@bilig/headless'
 
+type WorkPaperInstance = ReturnType<typeof WorkPaper.buildFromSheets>
+type OpportunityRecord = {
+  account: string
+  region: string
+  stage: string
+  seats: number
+  arpa: number
+  probability: number
+}
+
 const source = 'fixtures/opportunities.json'
 const opportunityRecords = parseOpportunityRecords(await readFile(new URL(source, import.meta.url), 'utf8'))
 
@@ -47,7 +57,7 @@ const output = {
 assertOutput(output)
 console.log(JSON.stringify(output, null, 2))
 
-function parseOpportunityRecords(serializedRecords) {
+function parseOpportunityRecords(serializedRecords: string): OpportunityRecord[] {
   const records = JSON.parse(serializedRecords)
   if (!Array.isArray(records)) {
     throw new Error('expected JSON array')
@@ -75,7 +85,7 @@ function parseOpportunityRecords(serializedRecords) {
   })
 }
 
-function readString(record, field, index) {
+function readString(record: Record<string, unknown>, field: string, index: number): string {
   const value = record[field]
   if (typeof value !== 'string' || value.trim().length === 0) {
     throw new Error(`record ${index + 1} ${field} must be a non-empty string`)
@@ -83,7 +93,7 @@ function readString(record, field, index) {
   return value
 }
 
-function readNumberField(record, field, index) {
+function readNumberField(record: Record<string, unknown>, field: string, index: number): number {
   const value = record[field]
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     throw new Error(`record ${index + 1} ${field} must be a finite number`)
@@ -91,7 +101,7 @@ function readNumberField(record, field, index) {
   return value
 }
 
-function requireSheet(workpaper, sheetName) {
+function requireSheet(workpaper: WorkPaperInstance, sheetName: string): number {
   const sheetId = workpaper.getSheetId(sheetName)
   if (sheetId === undefined) {
     throw new Error(`Expected sheet "${sheetName}" to exist`)
@@ -99,7 +109,7 @@ function requireSheet(workpaper, sheetName) {
   return sheetId
 }
 
-function readNumber(workpaper, sheet, row, col, label) {
+function readNumber(workpaper: WorkPaperInstance, sheet: number, row: number, col: number, label: string): number {
   const cell = workpaper.getCellValue({ sheet, row, col })
   if (!cell || typeof cell !== 'object' || !('value' in cell) || typeof cell.value !== 'number') {
     throw new Error(`Expected ${label} to be numeric, received ${JSON.stringify(cell)}`)
@@ -107,7 +117,7 @@ function readNumber(workpaper, sheet, row, col, label) {
   return Math.round(cell.value * 100) / 100
 }
 
-function assertOutput(actual) {
+function assertOutput(actual: typeof output): void {
   const expected = {
     verified: true,
     source: 'fixtures/opportunities.json',

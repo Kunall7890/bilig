@@ -1,5 +1,8 @@
 import { WorkPaper, exportWorkPaperDocument, serializeWorkPaperDocument } from '@bilig/headless'
 
+type WorkPaperInstance = ReturnType<typeof WorkPaper.buildFromSheets>
+type WorkPaperDocument = ReturnType<typeof exportWorkPaperDocument>
+
 const workbook = WorkPaper.buildFromSheets(
   {
     Revenue: [
@@ -50,7 +53,7 @@ const output = {
 assertOutput(output)
 console.log(JSON.stringify(output, null, 2))
 
-function requireSheet(workpaper, sheetName) {
+function requireSheet(workpaper: WorkPaperInstance, sheetName: string): number {
   const sheetId = workpaper.getSheetId(sheetName)
   if (sheetId === undefined) {
     throw new Error(`Expected sheet "${sheetName}" to exist`)
@@ -58,14 +61,14 @@ function requireSheet(workpaper, sheetName) {
   return sheetId
 }
 
-function readSummary(workpaper, sheet) {
+function readSummary(workpaper: WorkPaperInstance, sheet: number) {
   return {
     netMrr: readNumber(workpaper, sheet, 1, 1, 'net MRR'),
     annualizedArr: readNumber(workpaper, sheet, 2, 1, 'annualized ARR'),
   }
 }
 
-function readNumber(workpaper, sheet, row, col, label) {
+function readNumber(workpaper: WorkPaperInstance, sheet: number, row: number, col: number, label: string): number {
   const cell = workpaper.getCellValue({ sheet, row, col })
   if (!cell || typeof cell !== 'object' || !('value' in cell) || typeof cell.value !== 'number') {
     throw new Error(`Expected ${label} to be numeric, received ${JSON.stringify(cell)}`)
@@ -73,7 +76,7 @@ function readNumber(workpaper, sheet, row, col, label) {
   return cell.value
 }
 
-function readDocumentCell(document, sheetName, row, col) {
+function readDocumentCell(document: WorkPaperDocument, sheetName: string, row: number, col: number): unknown {
   const sheet = document.sheets.find((candidate) => candidate.name === sheetName)
   if (sheet === undefined) {
     throw new Error(`Expected exported document to include sheet "${sheetName}"`)
@@ -82,7 +85,7 @@ function readDocumentCell(document, sheetName, row, col) {
   return sheet.content[row]?.[col] ?? null
 }
 
-function assertOutput(actual) {
+function assertOutput(actual: typeof output): void {
   const expected = {
     verified: true,
     changedCell: 'Revenue!B2',

@@ -6,6 +6,8 @@ import {
   serializeWorkPaperDocument,
 } from '@bilig/headless'
 
+type WorkPaperInstance = ReturnType<typeof WorkPaper.buildFromSheets>
+
 const workbook = WorkPaper.buildFromSheets({
   Deals: [
     ['Region', 'Segment', 'Customers', 'ARPA', 'Revenue'],
@@ -62,7 +64,7 @@ const output = {
 assertSummary(output)
 console.log(JSON.stringify(output, null, 2))
 
-function requireSheet(workpaper, sheetName) {
+function requireSheet(workpaper: WorkPaperInstance, sheetName: string): number {
   const sheetId = workpaper.getSheetId(sheetName)
   if (sheetId === undefined) {
     throw new Error(`Expected sheet "${sheetName}" to exist`)
@@ -70,7 +72,7 @@ function requireSheet(workpaper, sheetName) {
   return sheetId
 }
 
-function readNumber(workpaper, sheet, row, col, label) {
+function readNumber(workpaper: WorkPaperInstance, sheet: number, row: number, col: number, label: string): number {
   const cell = workpaper.getCellValue({ sheet, row, col })
   if (!cell || typeof cell !== 'object' || !('value' in cell) || typeof cell.value !== 'number') {
     throw new Error(`Expected ${label} to be a number, received ${JSON.stringify(cell)}`)
@@ -78,14 +80,21 @@ function readNumber(workpaper, sheet, row, col, label) {
   return cell.value
 }
 
-function readNumberColumn(workpaper, sheet, startRow, endRow, col, label) {
+function readNumberColumn(
+  workpaper: WorkPaperInstance,
+  sheet: number,
+  startRow: number,
+  endRow: number,
+  col: number,
+  label: string,
+): number[] {
   return workpaper
     .getRangeValues({
       start: { sheet, row: startRow, col },
       end: { sheet, row: endRow, col },
     })
     .flat()
-    .map((cell, index) => {
+    .map((cell: unknown, index: number) => {
       if (!cell || typeof cell !== 'object' || !('value' in cell) || typeof cell.value !== 'number') {
         throw new Error(`Expected ${label} ${index + 1} to be a number, received ${JSON.stringify(cell)}`)
       }
@@ -93,7 +102,7 @@ function readNumberColumn(workpaper, sheet, startRow, endRow, col, label) {
     })
 }
 
-function readNamedNumber(workpaper, name) {
+function readNamedNumber(workpaper: WorkPaperInstance, name: string): number {
   const cell = workpaper.getNamedExpressionValue(name)
   if (!cell || typeof cell !== 'object' || !('value' in cell) || typeof cell.value !== 'number') {
     throw new Error(`Expected named expression "${name}" to be a number, received ${JSON.stringify(cell)}`)
@@ -101,7 +110,7 @@ function readNamedNumber(workpaper, name) {
   return cell.value
 }
 
-function assertSummary(summary) {
+function assertSummary(summary: typeof output): void {
   const expected = {
     initial: {
       totalRevenue: 27300,

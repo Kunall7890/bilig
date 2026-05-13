@@ -78,7 +78,7 @@ of relying on a stale display value.
 ## Runnable Example
 
 The focused example is checked in at
-[`examples/headless-workpaper/persistence-roundtrip.mjs`](../examples/headless-workpaper/persistence-roundtrip.mjs).
+[`examples/headless-workpaper/persistence-roundtrip.ts`](../examples/headless-workpaper/persistence-roundtrip.ts).
 
 Run it from the example package:
 

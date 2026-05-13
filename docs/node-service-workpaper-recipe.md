@@ -16,13 +16,14 @@ mkdir bilig-workpaper-service
 cd bilig-workpaper-service
 npm init -y
 npm pkg set type=module
-npm pkg set scripts.start="node service.mjs"
+npm pkg set scripts.start="tsx service.ts"
 npm install @bilig/headless
+npm install --save-dev tsx typescript @types/node
 ```
 
-Create `service.mjs`:
+Create `service.ts`:
 
-```js
+```ts
 import { createServer } from 'node:http'
 import {
   WorkPaper,

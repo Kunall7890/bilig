@@ -4,10 +4,16 @@
   "description": "Runnable serverless-style API route example for @bilig/headless.",
   "type": "module",
   "scripts": {
-    "smoke": "node smoke.mjs",
-    "start": "node route.mjs"
+    "smoke": "tsx smoke.ts",
+    "start": "tsx route.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@bilig/headless": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "25.5.0",
+    "tsx": "4.21.0",
+    "typescript": "6.0.2"
   }
 }

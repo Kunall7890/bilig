@@ -1,4 +1,6 @@
-import { WorkPaper } from '@bilig/headless'
+import { WorkPaper, type WorkPaperCellAddress, type WorkPaperFormulaDiagnostic } from '@bilig/headless'
+
+type WorkPaperInstance = ReturnType<typeof WorkPaper.buildFromSheets>
 
 const workbook = WorkPaper.buildFromSheets(
   {
@@ -38,7 +40,7 @@ const output = {
 assertOutput(output, invalidDiagnostic)
 console.log(JSON.stringify(output, null, 2))
 
-function requireSheet(workpaper, sheetName) {
+function requireSheet(workpaper: WorkPaperInstance, sheetName: string): number {
   const sheetId = workpaper.getSheetId(sheetName)
   if (sheetId === undefined) {
     throw new Error(`Expected sheet "${sheetName}" to exist`)
@@ -46,7 +48,7 @@ function requireSheet(workpaper, sheetName) {
   return sheetId
 }
 
-function requireFirstDiagnostic(diagnostics) {
+function requireFirstDiagnostic(diagnostics: readonly WorkPaperFormulaDiagnostic[]): WorkPaperFormulaDiagnostic {
   const diagnostic = diagnostics[0]
   if (diagnostic === undefined) {
     throw new Error('Expected formula diagnostics for invalid XIRR')
@@ -54,7 +56,7 @@ function requireFirstDiagnostic(diagnostics) {
   return diagnostic
 }
 
-function readNumber(workpaper, address, label) {
+function readNumber(workpaper: WorkPaperInstance, address: WorkPaperCellAddress, label: string): number {
   const cell = workpaper.getCellValue(address)
   if (!cell || typeof cell !== 'object' || !('value' in cell) || typeof cell.value !== 'number') {
     throw new Error(`Expected ${label} to be numeric, received ${JSON.stringify(cell)}`)
@@ -62,7 +64,7 @@ function readNumber(workpaper, address, label) {
   return cell.value
 }
 
-function assertOutput(actual, diagnostic) {
+function assertOutput(actual: typeof output, diagnostic: WorkPaperFormulaDiagnostic): void {
   const expected = {
     verified: true,
     invalidDisplay: '#VALUE!',

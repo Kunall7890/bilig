@@ -6,6 +6,15 @@ import {
   serializeWorkPaperDocument,
 } from '@bilig/headless'
 
+type WorkPaperInstance = ReturnType<typeof WorkPaper.buildFromSheets>
+type CellAddress = NonNullable<ReturnType<WorkPaperInstance['simpleCellAddressFromString']>>
+type SetInputCellArgs = {
+  sheetName: string
+  address: string
+  value: string | number | boolean | null
+  reason?: string
+}
+
 const workbook = WorkPaper.buildFromSheets({
   Inputs: [
     ['Metric', 'Value'],
@@ -48,7 +57,7 @@ const tools = {
     }
   },
 
-  setInputCell({ sheetName, address, value, reason }) {
+  setInputCell({ sheetName, address, value, reason }: SetInputCellArgs) {
     if (sheetName !== 'Inputs') {
       throw new Error(`This tool can only edit Inputs cells, received ${sheetName}`)
     }
@@ -98,7 +107,7 @@ const output = {
 assertOutput(output)
 console.log(JSON.stringify(output, null, 2))
 
-function requireSheet(workpaper, sheetName) {
+function requireSheet(workpaper: WorkPaperInstance, sheetName: string): number {
   const sheetId = workpaper.getSheetId(sheetName)
   if (sheetId === undefined) {
     throw new Error(`Expected sheet "${sheetName}" to exist`)
@@ -106,7 +115,7 @@ function requireSheet(workpaper, sheetName) {
   return sheetId
 }
 
-function requireCellAddress(workpaper, sheetName, a1Address) {
+function requireCellAddress(workpaper: WorkPaperInstance, sheetName: string, a1Address: string): CellAddress {
   const sheetId = requireSheet(workpaper, sheetName)
   const parsed = workpaper.simpleCellAddressFromString(a1Address, sheetId)
 
@@ -117,7 +126,7 @@ function requireCellAddress(workpaper, sheetName, a1Address) {
   return parsed
 }
 
-function readSummary(workpaper, summary) {
+function readSummary(workpaper: WorkPaperInstance, summary: number) {
   return {
     expectedCustomers: readNumber(workpaper, summary, 1, 1, 'expected customers'),
     expectedArr: readNumber(workpaper, summary, 2, 1, 'expected ARR'),
@@ -126,7 +135,7 @@ function readSummary(workpaper, summary) {
   }
 }
 
-function readFormulaContracts(workpaper, summary) {
+function readFormulaContracts(workpaper: WorkPaperInstance, summary: number) {
   return {
     expectedCustomers: readFormula(workpaper, summary, 1, 1, 'expected customers'),
     expectedArr: readFormula(workpaper, summary, 2, 1, 'expected ARR'),
@@ -135,7 +144,7 @@ function readFormulaContracts(workpaper, summary) {
   }
 }
 
-function readNumber(workpaper, sheet, row, col, label) {
+function readNumber(workpaper: WorkPaperInstance, sheet: number, row: number, col: number, label: string): number {
   const cell = workpaper.getCellValue({ sheet, row, col })
   if (!cell || typeof cell !== 'object' || !('value' in cell) || typeof cell.value !== 'number') {
     throw new Error(`Expected ${label} to be numeric, received ${JSON.stringify(cell)}`)
@@ -143,7 +152,7 @@ function readNumber(workpaper, sheet, row, col, label) {
   return Math.round(cell.value * 100) / 100
 }
 
-function readFormula(workpaper, sheet, row, col, label) {
+function readFormula(workpaper: WorkPaperInstance, sheet: number, row: number, col: number, label: string): string {
   const formula = workpaper.getCellFormula({ sheet, row, col })
   if (formula === undefined) {
     throw new Error(`Expected ${label} to be a formula`)
@@ -151,7 +160,7 @@ function readFormula(workpaper, sheet, row, col, label) {
   return formula
 }
 
-function serializeWorkbook(workpaper) {
+function serializeWorkbook(workpaper: WorkPaperInstance): string {
   return serializeWorkPaperDocument(
     exportWorkPaperDocument(workpaper, {
       includeConfig: true,
@@ -159,11 +168,11 @@ function serializeWorkbook(workpaper) {
   )
 }
 
-function sameJson(left, right) {
+function sameJson(left: unknown, right: unknown): boolean {
   return JSON.stringify(left) === JSON.stringify(right)
 }
 
-function assertOutput(actual) {
+function assertOutput(actual: typeof output): void {
   const result = actual.toolResult
   const expectedBefore = {
     expectedCustomers: 5,
@@ -193,10 +202,10 @@ function assertOutput(actual) {
     !sameJson(result.formulaContracts, expectedFormulaContracts) ||
     result.verified.previousValue !== 0.25 ||
     result.verified.newValue !== 0.4 ||
-    result.verified.formulasPersisted !== true ||
-    result.verified.restoredMatchesAfter !== true ||
-    result.verified.expectedArrImproved !== true ||
-    result.verified.targetGapClosed !== true ||
+    !result.verified.formulasPersisted ||
+    !result.verified.restoredMatchesAfter ||
+    !result.verified.expectedArrImproved ||
+    !result.verified.targetGapClosed ||
     result.verified.serializedBytes <= 0
   ) {
     throw new Error(`Unexpected agent tool-call result: ${JSON.stringify(actual)}`)

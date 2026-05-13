@@ -10,6 +10,8 @@ import {
   serializeWorkPaperDocument,
 } from '@bilig/headless'
 
+type WorkPaperInstance = ReturnType<typeof WorkPaper.buildFromSheets>
+
 const workspace = mkdtempSync(join(tmpdir(), 'bilig-workpaper-persistence-'))
 const savePath = join(workspace, 'workpaper.json')
 
@@ -59,7 +61,7 @@ try {
   rmSync(workspace, { recursive: true, force: true })
 }
 
-function readSummary(workpaper) {
+function readSummary(workpaper: WorkPaperInstance) {
   const summarySheet = requireSheet(workpaper, 'Summary')
   return {
     quarterNetMrr: readNumber(workpaper, summarySheet, 1, 1, 'quarter net MRR'),
@@ -68,7 +70,7 @@ function readSummary(workpaper) {
   }
 }
 
-function requireSheet(workpaper, sheetName) {
+function requireSheet(workpaper: WorkPaperInstance, sheetName: string): number {
   const sheetId = workpaper.getSheetId(sheetName)
   if (sheetId === undefined) {
     throw new Error(`Expected sheet "${sheetName}" to exist`)
@@ -76,7 +78,7 @@ function requireSheet(workpaper, sheetName) {
   return sheetId
 }
 
-function readNumber(workpaper, sheet, row, col, label) {
+function readNumber(workpaper: WorkPaperInstance, sheet: number, row: number, col: number, label: string): number {
   const cell = workpaper.getCellValue({ sheet, row, col })
   if (!cell || typeof cell !== 'object' || !('value' in cell) || typeof cell.value !== 'number') {
     throw new Error(`Expected ${label} to be a number, received ${JSON.stringify(cell)}`)
@@ -84,7 +86,13 @@ function readNumber(workpaper, sheet, row, col, label) {
   return cell.value
 }
 
-function assertOutput(output) {
+function assertOutput(output: {
+  beforeSave: ReturnType<typeof readSummary>
+  afterRestoreAndEdit: ReturnType<typeof readSummary>
+  persistedSheets: string[]
+  persistedNamedExpressions: string[]
+  saveFileBytes: number
+}): void {
   const expected = {
     beforeSave: {
       quarterNetMrr: 42100,

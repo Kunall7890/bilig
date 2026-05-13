@@ -1,5 +1,7 @@
 import { WorkPaper } from '@bilig/headless'
 
+type WorkPaperInstance = ReturnType<typeof WorkPaper.buildFromSheets>
+
 const budgetRows = [
   {
     department: 'Marketing',
@@ -78,7 +80,7 @@ const output = {
 assertOutput(output)
 console.log(JSON.stringify(output, null, 2))
 
-function requireSheet(workpaper, sheetName) {
+function requireSheet(workpaper: WorkPaperInstance, sheetName: string): number {
   const sheetId = workpaper.getSheetId(sheetName)
   if (sheetId === undefined) {
     throw new Error(`Expected sheet "${sheetName}" to exist`)
@@ -86,7 +88,7 @@ function requireSheet(workpaper, sheetName) {
   return sheetId
 }
 
-function readNumber(workpaper, sheet, row, col, label) {
+function readNumber(workpaper: WorkPaperInstance, sheet: number, row: number, col: number, label: string): number {
   const cell = workpaper.getCellValue({ sheet, row, col })
   if (!cell || typeof cell !== 'object' || !('value' in cell) || typeof cell.value !== 'number') {
     throw new Error(`Expected ${label} to be numeric, received ${JSON.stringify(cell)}`)
@@ -94,7 +96,7 @@ function readNumber(workpaper, sheet, row, col, label) {
   return Math.round(cell.value * 10000) / 10000
 }
 
-function readString(workpaper, sheet, row, col, label) {
+function readString(workpaper: WorkPaperInstance, sheet: number, row: number, col: number, label: string): string {
   const cell = workpaper.getCellValue({ sheet, row, col })
   if (!cell || typeof cell !== 'object' || !('value' in cell) || typeof cell.value !== 'string') {
     throw new Error(`Expected ${label} to be text, received ${JSON.stringify(cell)}`)
@@ -102,7 +104,7 @@ function readString(workpaper, sheet, row, col, label) {
   return cell.value
 }
 
-function assertOutput(actual) {
+function assertOutput(actual: typeof output): void {
   const expected = {
     rows: 4,
     flaggedDepartment: 'Marketing',

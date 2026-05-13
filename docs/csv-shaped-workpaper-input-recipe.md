@@ -17,11 +17,12 @@ cd bilig-csv-shaped-input
 npm init -y
 npm pkg set type=module
 npm install @bilig/headless
+npm install --save-dev tsx typescript
 ```
 
-Create `csv-input.mjs`:
+Create `csv-input.ts`:
 
-```js
+```ts
 import { WorkPaper } from '@bilig/headless'
 
 const csv = `
@@ -100,7 +101,7 @@ function readComputedNumber(workbook, sheet, row, col, label) {
 Run it:
 
 ```sh
-node csv-input.mjs
+tsx csv-input.ts
 ```
 
 Expected output:
@@ -156,7 +157,7 @@ Expected output:
 For the standalone recipe:
 
 ```sh
-node csv-input.mjs
+tsx csv-input.ts
 ```
 
 For a documentation patch in this repository:

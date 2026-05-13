@@ -8,7 +8,7 @@ recalculate formulas, verify outputs, and persist the document for the next
 turn.
 
 This article uses the runnable
-[`examples/headless-workpaper/revenue-scenarios.mjs`](../examples/headless-workpaper/revenue-scenarios.mjs)
+[`examples/headless-workpaper/revenue-scenarios.ts`](../examples/headless-workpaper/revenue-scenarios.ts)
 example to show that loop with `@bilig/headless`.
 
 ## The Model

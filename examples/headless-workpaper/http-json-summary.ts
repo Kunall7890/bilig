@@ -1,5 +1,16 @@
-import { createServer } from 'node:http'
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { WorkPaper } from '@bilig/headless'
+
+type WorkPaperInstance = ReturnType<typeof WorkPaper.buildFromSheets>
+type OpportunityRecord = {
+  account: string
+  region: string
+  stage: string
+  seats: number
+  arpa: number
+  probability: number
+}
+type OpportunitySummary = ReturnType<typeof summarizeOpportunities>
 
 const opportunityRecords = [
   {
@@ -47,7 +58,12 @@ const server = createServer(async (request, response) => {
 await listen(server)
 
 try {
-  const { port } = server.address()
+  const address = server.address()
+  if (typeof address !== 'object' || address === null) {
+    throw new Error(`Expected HTTP server address info, received ${JSON.stringify(address)}`)
+  }
+
+  const { port } = address
   const result = await fetch(`http://127.0.0.1:${port}/summary`, {
     method: 'POST',
     headers: {
@@ -67,7 +83,7 @@ try {
   await close(server)
 }
 
-function summarizeOpportunities(records) {
+function summarizeOpportunities(records: readonly OpportunityRecord[]) {
   const opportunityRows = records.map((record, index) => {
     const spreadsheetRow = index + 2
 
@@ -108,7 +124,7 @@ function summarizeOpportunities(records) {
   }
 }
 
-function parseOpportunityRecords(body) {
+function parseOpportunityRecords(body: string): OpportunityRecord[] {
   const records = JSON.parse(body)
   if (!Array.isArray(records)) {
     throw new Error('expected JSON array')
@@ -136,7 +152,7 @@ function parseOpportunityRecords(body) {
   })
 }
 
-function readString(record, field, index) {
+function readString(record: Record<string, unknown>, field: string, index: number): string {
   const value = record[field]
   if (typeof value !== 'string' || value.trim().length === 0) {
     throw new Error(`record ${index + 1} ${field} must be a non-empty string`)
@@ -144,7 +160,7 @@ function readString(record, field, index) {
   return value
 }
 
-function readNumberField(record, field, index) {
+function readNumberField(record: Record<string, unknown>, field: string, index: number): number {
   const value = record[field]
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     throw new Error(`record ${index + 1} ${field} must be a finite number`)
@@ -152,7 +168,7 @@ function readNumberField(record, field, index) {
   return value
 }
 
-function requireSheet(workpaper, sheetName) {
+function requireSheet(workpaper: WorkPaperInstance, sheetName: string): number {
   const sheetId = workpaper.getSheetId(sheetName)
   if (sheetId === undefined) {
     throw new Error(`Expected sheet "${sheetName}" to exist`)
@@ -160,7 +176,7 @@ function requireSheet(workpaper, sheetName) {
   return sheetId
 }
 
-function readNumber(workpaper, sheet, row, col, label) {
+function readNumber(workpaper: WorkPaperInstance, sheet: number, row: number, col: number, label: string): number {
   const cell = workpaper.getCellValue({ sheet, row, col })
   if (!cell || typeof cell !== 'object' || !('value' in cell) || typeof cell.value !== 'number') {
     throw new Error(`Expected ${label} to be numeric, received ${JSON.stringify(cell)}`)
@@ -168,7 +184,7 @@ function readNumber(workpaper, sheet, row, col, label) {
   return Math.round(cell.value * 100) / 100
 }
 
-function assertOutput(actual) {
+function assertOutput(actual: unknown): asserts actual is OpportunitySummary {
   const expected = {
     verified: true,
     sourceRecords: 3,
@@ -185,12 +201,12 @@ function assertOutput(actual) {
   }
 }
 
-function readRequestBody(request) {
-  return new Promise((resolve, reject) => {
+function readRequestBody(request: IncomingMessage): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
     let body = ''
 
     request.setEncoding('utf8')
-    request.on('data', (chunk) => {
+    request.on('data', (chunk: string) => {
       body += chunk
     })
     request.on('end', () => resolve(body))
@@ -198,15 +214,15 @@ function readRequestBody(request) {
   })
 }
 
-function writeJson(response, statusCode, payload) {
+function writeJson(response: ServerResponse, statusCode: number, payload: unknown): void {
   response.writeHead(statusCode, {
     'content-type': 'application/json; charset=utf-8',
   })
   response.end(JSON.stringify(payload))
 }
 
-function listen(httpServer) {
-  return new Promise((resolve, reject) => {
+function listen(httpServer: Server): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
     httpServer.once('error', reject)
     httpServer.listen(0, '127.0.0.1', () => {
       httpServer.off('error', reject)
@@ -215,8 +231,8 @@ function listen(httpServer) {
   })
 }
 
-function close(httpServer) {
-  return new Promise((resolve, reject) => {
+function close(httpServer: Server): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
     httpServer.close((error) => {
       if (error) {
         reject(error)

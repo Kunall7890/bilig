@@ -235,29 +235,17 @@ function runNodeSmoke(
   mkdirSync(join(projectDir, 'fixtures'), { recursive: true })
   copyFileSync(join(headlessExampleDir, 'package.json'), join(projectDir, 'package.json'))
   copyFileSync(join(headlessExampleDir, 'tsconfig.json'), join(projectDir, 'tsconfig.json'))
-  copyFileSync(join(headlessExampleDir, 'agent-framework-adapters.mjs'), join(projectDir, 'agent-framework-adapters.mjs'))
-  copyFileSync(join(headlessExampleDir, 'agent-tool-call-loop.mjs'), join(projectDir, 'agent-tool-call-loop.mjs'))
-  copyFileSync(join(headlessExampleDir, 'agent-writeback-verification.mjs'), join(projectDir, 'agent-writeback-verification.mjs'))
-  copyFileSync(join(headlessExampleDir, 'formula-diagnostics.mjs'), join(projectDir, 'formula-diagnostics.mjs'))
-  copyFileSync(join(headlessExampleDir, 'http-json-summary.mjs'), join(projectDir, 'http-json-summary.mjs'))
-  copyFileSync(join(headlessExampleDir, 'json-file-input.mjs'), join(projectDir, 'json-file-input.mjs'))
-  copyFileSync(join(headlessExampleDir, 'markdown-report.mjs'), join(projectDir, 'markdown-report.mjs'))
-  copyFileSync(join(headlessExampleDir, 'mcp-stdio-server.ts'), join(projectDir, 'mcp-stdio-server.ts'))
-  copyFileSync(join(headlessExampleDir, 'mcp-tool-server.ts'), join(projectDir, 'mcp-tool-server.ts'))
+  for (const entry of readdirSync(headlessExampleDir).filter((fileName) => fileName.endsWith('.ts'))) {
+    copyFileSync(join(headlessExampleDir, entry), join(projectDir, entry))
+  }
   copyFileSync(join(headlessExampleDir, 'fixtures', 'opportunities.json'), join(projectDir, 'fixtures', 'opportunities.json'))
-  copyFileSync(join(headlessExampleDir, 'revenue-plan.mjs'), join(projectDir, 'revenue-plan.mjs'))
-  copyFileSync(join(headlessExampleDir, 'persistence-roundtrip.mjs'), join(projectDir, 'persistence-roundtrip.mjs'))
-  copyFileSync(join(headlessExampleDir, 'range-readback.mjs'), join(projectDir, 'range-readback.mjs'))
-  copyFileSync(join(headlessExampleDir, 'revenue-scenarios.mjs'), join(projectDir, 'revenue-scenarios.mjs'))
-  copyFileSync(join(headlessExampleDir, 'sheet-inspection.mjs'), join(projectDir, 'sheet-inspection.mjs'))
-  copyFileSync(join(headlessExampleDir, 'snapshot-diff.mjs'), join(projectDir, 'snapshot-diff.mjs'))
   writeFileSync(
-    join(projectDir, 'snapshot-import.mjs'),
+    join(projectDir, 'snapshot-import.ts'),
     [
-      'import { ValueTag } from "@bilig/protocol";',
+      'import { ValueTag, type WorkbookSnapshot } from "@bilig/protocol";',
       'import { WorkPaper } from "@bilig/headless";',
       '',
-      'const snapshot = {',
+      'const snapshot: WorkbookSnapshot = {',
       '  version: 1,',
       '  workbook: {',
       '    name: "Structured Financial Model",',
@@ -317,7 +305,7 @@ function runNodeSmoke(
       'const constantsId = workbook.getSheetId("Constants");',
       'const importsId = workbook.getSheetId("Imports");',
       'if (constantsId === undefined || importsId === undefined) throw new Error("Imported snapshot sheets are missing");',
-      'const read = (sheet, row, col) => workbook.getCellValue({ sheet, row, col });',
+      'const read = (sheet: number, row: number, col: number) => workbook.getCellValue({ sheet, row, col });',
       'const currencyLabel = read(constantsId, 8, 5);',
       'const firstPeriod = read(importsId, 6, 3);',
       'const secondPeriod = read(importsId, 7, 3);',
@@ -340,12 +328,12 @@ function runNodeSmoke(
   writeXlsxImportScript(projectDir)
 
   installTarballs(projectDir, tarballPaths)
-  const output = parseNodeSmokeOutput(runTextCommand('node', ['revenue-plan.mjs'], { cwd: projectDir }))
-  const persistence = parseNodePersistenceOutput(runTextCommand('node', ['persistence-roundtrip.mjs'], { cwd: projectDir }))
-  const scenarios = parseNodeRevenueScenarioOutput(runTextCommand('node', ['revenue-scenarios.mjs'], { cwd: projectDir }))
-  const agentToolCall = parseNodeAgentToolCallOutput(runTextCommand('node', ['agent-tool-call-loop.mjs'], { cwd: projectDir }))
-  runTextCommand('node', ['agent-framework-adapters.mjs'], { cwd: projectDir })
-  runTextCommand('npm', ['run', '--silent', 'typecheck:mcp'], { cwd: projectDir })
+  const output = parseNodeSmokeOutput(runTextCommand('npm', ['run', '--silent', 'start'], { cwd: projectDir }))
+  const persistence = parseNodePersistenceOutput(runTextCommand('npm', ['run', '--silent', 'persistence'], { cwd: projectDir }))
+  const scenarios = parseNodeRevenueScenarioOutput(runTextCommand('npm', ['run', '--silent', 'scenarios'], { cwd: projectDir }))
+  const agentToolCall = parseNodeAgentToolCallOutput(runTextCommand('npm', ['run', '--silent', 'agent:tool-call'], { cwd: projectDir }))
+  runTextCommand('npm', ['run', '--silent', 'agent:framework-adapters'], { cwd: projectDir })
+  runTextCommand('npm', ['run', '--silent', 'typecheck'], { cwd: projectDir })
   runTextCommand('npm', ['run', '--silent', 'agent:mcp-tools'], { cwd: projectDir })
   const mcpStdio = parseNodeMcpStdioOutput(
     runTextCommand(
@@ -385,17 +373,25 @@ function runNodeSmoke(
     { expectedServerName: 'bilig-headless-workpaper' },
   )
   const agentVerification = parseNodeAgentVerificationOutput(
-    runTextCommand('node', ['agent-writeback-verification.mjs'], { cwd: projectDir }),
+    runTextCommand('npm', ['run', '--silent', 'agent:verify'], { cwd: projectDir }),
   )
-  const formulaDiagnostics = parseNodeFormulaDiagnosticsOutput(runTextCommand('node', ['formula-diagnostics.mjs'], { cwd: projectDir }))
-  const httpJsonSummary = parseNodeHttpJsonSummaryOutput(runTextCommand('node', ['http-json-summary.mjs'], { cwd: projectDir }))
-  const jsonFile = parseNodeJsonFileOutput(runTextCommand('node', ['json-file-input.mjs'], { cwd: projectDir }))
-  const markdownReport = parseNodeMarkdownReportOutput(runTextCommand('node', ['markdown-report.mjs'], { cwd: projectDir }))
-  const rangeReadback = parseNodeRangeReadbackOutput(runTextCommand('node', ['range-readback.mjs'], { cwd: projectDir }))
-  const sheetInspection = parseNodeSheetInspectionOutput(runTextCommand('node', ['sheet-inspection.mjs'], { cwd: projectDir }))
-  const snapshotDiff = parseNodeSnapshotDiffOutput(runTextCommand('node', ['snapshot-diff.mjs'], { cwd: projectDir }))
-  const snapshotImport = parseNodeSnapshotImportOutput(runTextCommand('node', ['snapshot-import.mjs'], { cwd: projectDir }))
-  const xlsxImport = parseNodeXlsxImportOutput(runTextCommand('node', ['xlsx-import.mjs'], { cwd: projectDir }))
+  const formulaDiagnostics = parseNodeFormulaDiagnosticsOutput(
+    runTextCommand('npm', ['run', '--silent', 'formula-diagnostics'], { cwd: projectDir }),
+  )
+  const httpJsonSummary = parseNodeHttpJsonSummaryOutput(
+    runTextCommand('npm', ['run', '--silent', 'http-json-summary'], { cwd: projectDir }),
+  )
+  const jsonFile = parseNodeJsonFileOutput(runTextCommand('npm', ['run', '--silent', 'json-file'], { cwd: projectDir }))
+  const markdownReport = parseNodeMarkdownReportOutput(runTextCommand('npm', ['run', '--silent', 'markdown-report'], { cwd: projectDir }))
+  const rangeReadback = parseNodeRangeReadbackOutput(runTextCommand('npm', ['run', '--silent', 'range-readback'], { cwd: projectDir }))
+  const sheetInspection = parseNodeSheetInspectionOutput(
+    runTextCommand('npm', ['run', '--silent', 'sheet-inspection'], { cwd: projectDir }),
+  )
+  const snapshotDiff = parseNodeSnapshotDiffOutput(runTextCommand('npm', ['run', '--silent', 'snapshot-diff'], { cwd: projectDir }))
+  const snapshotImport = parseNodeSnapshotImportOutput(
+    runTextCommand('npx', ['--no-install', 'tsx', 'snapshot-import.ts'], { cwd: projectDir }),
+  )
+  const xlsxImport = parseNodeXlsxImportOutput(runTextCommand('npx', ['--no-install', 'tsx', 'xlsx-import.ts'], { cwd: projectDir }))
 
   return {
     agentToolCall,

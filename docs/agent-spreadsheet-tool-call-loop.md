@@ -72,7 +72,7 @@ The agent SDK can change without rewriting the workbook logic.
 ## Files To Inspect
 
 - runnable script:
-  [`examples/headless-workpaper/agent-tool-call-loop.mjs`](../examples/headless-workpaper/agent-tool-call-loop.mjs)
+  [`examples/headless-workpaper/agent-tool-call-loop.ts`](../examples/headless-workpaper/agent-tool-call-loop.ts)
 - external smoke check:
   [`scripts/workpaper-external-smoke.ts`](../scripts/workpaper-external-smoke.ts)
 - package contract:
@@ -91,5 +91,5 @@ persistence proof.
 If the workflow needs HTTP boundaries instead of direct function calls, start
 with the [Node service recipe](node-service-workpaper-recipe.md). If the input
 is JSON records rather than arrays, use the
-[`json-records-input.mjs`](../examples/headless-workpaper/json-records-input.mjs)
+[`json-records-input.ts`](../examples/headless-workpaper/json-records-input.ts)
 example.

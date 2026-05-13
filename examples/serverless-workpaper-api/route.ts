@@ -1,5 +1,4 @@
-import { createServer } from 'node:http'
-import { Readable } from 'node:stream'
+import { createServer, type IncomingMessage } from 'node:http'
 import { pathToFileURL } from 'node:url'
 
 import {
@@ -10,13 +9,25 @@ import {
   serializeWorkPaperDocument,
 } from '@bilig/headless'
 
-export function createInMemoryWorkbookStorage(initialWorkbook = createInitialWorkbook()) {
+type WorkPaperInstance = ReturnType<typeof WorkPaper.buildFromSheets>
+type RevenueRecord = {
+  region: string
+  customers: number
+  arpa: number
+}
+export type WorkPaperJsonStorage = {
+  loadWorkbookJson(): Promise<string> | string
+  saveWorkbookJson(nextWorkbookJson: string): Promise<void> | void
+}
+type WorkPaperRequestHandler = (request: Request) => Promise<Response>
+
+export function createInMemoryWorkbookStorage(initialWorkbook: WorkPaperInstance = createInitialWorkbook()): WorkPaperJsonStorage {
   let workbookJson = serializeWorkbook(initialWorkbook)
   return {
     async loadWorkbookJson() {
       return workbookJson
     },
-    async saveWorkbookJson(nextWorkbookJson) {
+    async saveWorkbookJson(nextWorkbookJson: string) {
       workbookJson = nextWorkbookJson
     },
   }
@@ -24,8 +35,8 @@ export function createInMemoryWorkbookStorage(initialWorkbook = createInitialWor
 
 export const handleWorkPaperRequest = createWorkPaperRequestHandler(createInMemoryWorkbookStorage())
 
-export function createWorkPaperRequestHandler(storage) {
-  return async function handleStoredWorkPaperRequest(request) {
+export function createWorkPaperRequestHandler(storage: WorkPaperJsonStorage): WorkPaperRequestHandler {
+  return async function handleStoredWorkPaperRequest(request: Request) {
     const url = new URL(request.url)
 
     if (request.method === 'GET' && url.pathname === '/api/workpaper/summary') {
@@ -40,7 +51,7 @@ export function createWorkPaperRequestHandler(storage) {
       let records
       try {
         const body = await request.json()
-        records = normalizeRevenueRecords(body.records)
+        records = normalizeRevenueRecords(readJsonRecord(body).records)
       } catch (error) {
         return json({ error: error instanceof Error ? error.message : String(error) }, 400)
       }
@@ -67,7 +78,7 @@ export function createWorkPaperRequestHandler(storage) {
   }
 }
 
-function createInitialWorkbook() {
+function createInitialWorkbook(): WorkPaperInstance {
   return buildRevenueWorkbook([
     { region: 'West', customers: 20, arpa: 1200 },
     { region: 'East', customers: 30, arpa: 250 },
@@ -75,7 +86,7 @@ function createInitialWorkbook() {
   ])
 }
 
-function buildRevenueWorkbook(records) {
+function buildRevenueWorkbook(records: readonly RevenueRecord[]): WorkPaperInstance {
   const dataRows = records.map((record, index) => {
     const spreadsheetRow = index + 2
     return [record.region, record.customers, record.arpa, `=B${spreadsheetRow}*C${spreadsheetRow}`]
@@ -93,11 +104,11 @@ function buildRevenueWorkbook(records) {
   })
 }
 
-async function loadWorkbook(storage) {
+async function loadWorkbook(storage: WorkPaperJsonStorage): Promise<WorkPaperInstance> {
   return createWorkPaperFromDocument(parseWorkPaperDocument(await storage.loadWorkbookJson()))
 }
 
-function serializeWorkbook(workbook) {
+function serializeWorkbook(workbook: WorkPaperInstance): string {
   return serializeWorkPaperDocument(
     exportWorkPaperDocument(workbook, {
       includeConfig: true,
@@ -105,13 +116,13 @@ function serializeWorkbook(workbook) {
   )
 }
 
-function normalizeRevenueRecords(value) {
+function normalizeRevenueRecords(value: unknown): RevenueRecord[] {
   if (!Array.isArray(value) || value.length === 0) {
     throw new Error('records must be a non-empty array')
   }
 
   return value.map((record, index) => {
-    if (typeof record !== 'object' || record === null) {
+    if (!isJsonRecord(record)) {
       throw new Error(`record ${index + 1} must be an object`)
     }
 
@@ -136,7 +147,7 @@ function normalizeRevenueRecords(value) {
   })
 }
 
-function readSummary(workbook) {
+function readSummary(workbook: WorkPaperInstance) {
   const summary = requireSheet(workbook, 'Summary')
   return {
     totalRevenue: readNumber(workbook, summary, 1, 1, 'Total revenue'),
@@ -145,7 +156,7 @@ function readSummary(workbook) {
   }
 }
 
-function requireSheet(workbook, name) {
+function requireSheet(workbook: WorkPaperInstance, name: string): number {
   const sheet = workbook.getSheetId(name)
   if (sheet === undefined) {
     throw new Error(`missing sheet: ${name}`)
@@ -153,15 +164,15 @@ function requireSheet(workbook, name) {
   return sheet
 }
 
-function readNumber(workbook, sheet, row, col, label) {
+function readNumber(workbook: WorkPaperInstance, sheet: number, row: number, col: number, label: string): number {
   const cell = workbook.getCellValue({ sheet, row, col })
-  if (typeof cell !== 'object' || cell === null || typeof cell.value !== 'number') {
+  if (typeof cell !== 'object' || cell === null || !('value' in cell) || typeof cell.value !== 'number') {
     throw new Error(`expected ${label} to be numeric, received ${JSON.stringify(cell)}`)
   }
   return Math.round(cell.value * 100) / 100
 }
 
-function json(payload, status = 200) {
+function json(payload: unknown, status = 200): Response {
   return Response.json(payload, {
     status,
     headers: {
@@ -173,7 +184,7 @@ function json(payload, status = 200) {
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
   createServer(async (incoming, outgoing) => {
     try {
-      const request = toWebRequest(incoming)
+      const request = await toWebRequest(incoming)
       const response = await handleWorkPaperRequest(request)
       outgoing.writeHead(response.status, Object.fromEntries(response.headers))
       outgoing.end(Buffer.from(await response.arrayBuffer()))
@@ -186,7 +197,7 @@ if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.a
   })
 }
 
-function toWebRequest(incoming) {
+async function toWebRequest(incoming: IncomingMessage): Promise<Request> {
   const origin = `http://${incoming.headers.host ?? 'localhost:8787'}`
   const url = new URL(incoming.url ?? '/', origin)
   const headers = new Headers()
@@ -199,10 +210,34 @@ function toWebRequest(incoming) {
     }
   }
 
-  return new Request(url, {
+  const init: RequestInit & { duplex?: 'half' } = {
     method: incoming.method,
     headers,
-    body: incoming.method === 'GET' || incoming.method === 'HEAD' ? undefined : Readable.toWeb(incoming),
+    body: incoming.method === 'GET' || incoming.method === 'HEAD' ? undefined : await readIncomingBody(incoming),
     duplex: 'half',
+  }
+
+  return new Request(url, init)
+}
+
+function readJsonRecord(value: unknown): Record<string, unknown> {
+  if (!isJsonRecord(value)) {
+    throw new Error('request body must be a JSON object')
+  }
+  return value
+}
+
+function isJsonRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function readIncomingBody(incoming: IncomingMessage): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const chunks: Uint8Array[] = []
+    incoming.on('data', (chunk: Buffer | string) => {
+      chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk)
+    })
+    incoming.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')))
+    incoming.on('error', reject)
   })
 }

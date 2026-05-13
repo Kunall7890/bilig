@@ -521,7 +521,7 @@ persistence into a small tool surface.
 For the persistence-focused follow-up article and runnable example, see
 [`docs/persisting-formula-backed-workpaper-documents-in-node.md`](docs/persisting-formula-backed-workpaper-documents-in-node.md)
 and
-[`examples/headless-workpaper/persistence-roundtrip.mjs`](examples/headless-workpaper/persistence-roundtrip.mjs).
+[`examples/headless-workpaper/persistence-roundtrip.ts`](examples/headless-workpaper/persistence-roundtrip.ts).
 
 For the benchmark-focused explainer, see
 [`docs/what-workpaper-benchmark-proves.md`](docs/what-workpaper-benchmark-proves.md).
@@ -544,7 +544,7 @@ JSpreadsheet Formula Pro, see
 For a runnable revenue-model walkthrough, see
 [`docs/building-a-revenue-model-with-headless-workpaper.md`](docs/building-a-revenue-model-with-headless-workpaper.md)
 and
-[`examples/headless-workpaper/revenue-scenarios.mjs`](examples/headless-workpaper/revenue-scenarios.mjs).
+[`examples/headless-workpaper/revenue-scenarios.ts`](examples/headless-workpaper/revenue-scenarios.ts).
 
 For the current Excel-compatibility boundaries, see
 [`docs/where-bilig-is-not-excel-compatible-yet.md`](docs/where-bilig-is-not-excel-compatible-yet.md).
