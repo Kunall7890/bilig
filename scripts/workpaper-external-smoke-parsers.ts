@@ -693,7 +693,10 @@ export function parseNodeAgentToolCallOutput(output: string): AgentToolCallSumma
   }
 }
 
-export function parseNodeMcpStdioOutput(output: string): {
+export function parseNodeMcpStdioOutput(
+  output: string,
+  options: { expectedServerName?: string } = {},
+): {
   editedCell: string
   initialized: boolean
   toolNames: string[]
@@ -706,6 +709,7 @@ export function parseNodeMcpStdioOutput(output: string): {
     serializedBytes: number
   }
 } {
+  const expectedServerName = options.expectedServerName ?? 'bilig-headless-workpaper-example'
   const responses = output
     .split(/\r?\n/)
     .filter((line) => line.trim().length > 0)
@@ -726,7 +730,7 @@ export function parseNodeMcpStdioOutput(output: string): {
 
   if (
     initializeResult.protocolVersion !== '2025-06-18' ||
-    parseRecordValue(initializeResult.serverInfo, 'node MCP stdio server info').name !== 'bilig-headless-workpaper-example' ||
+    parseRecordValue(initializeResult.serverInfo, 'node MCP stdio server info').name !== expectedServerName ||
     !sameJson(tools, ['read_workpaper_summary', 'set_workpaper_input_cell']) ||
     writeResult.isError !== false ||
     structuredContent.editedCell !== 'Inputs!B3' ||

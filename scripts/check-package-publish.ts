@@ -52,7 +52,7 @@ for (const packageDir of packageDirs) {
   validateTarballContents(packageLabel, manifest, tarEntries, failures)
 
   const packedManifest = JSON.parse(runTextCommand('tar', ['-xOf', tarballPath, 'package/package.json']))
-  validatePackedManifest(packageLabel, packedManifest, failures)
+  validatePackedManifest(packageLabel, packedManifest, tarballPath, failures)
 }
 
 if (failures.length > 0) {
@@ -140,6 +140,10 @@ function validateTarballContents(packageLabel, manifest, tarEntries, failureMess
   if (packageLabel === '@bilig/wasm-kernel') {
     requiredEntries.add('package/build/release.wasm')
   }
+  if (typeof manifest.mcpName === 'string') {
+    requiredEntries.add('package/server.json')
+  }
+  collectBinTargets(manifest.bin).forEach((target) => requiredEntries.add(`package/${stripDotSlash(target)}`))
 
   for (const requiredEntry of requiredEntries) {
     if (!tarEntries.includes(requiredEntry)) {
@@ -160,10 +164,29 @@ function validateTarballContents(packageLabel, manifest, tarEntries, failureMess
   }
 }
 
-function validatePackedManifest(packageLabel, packedManifest, failureMessages) {
+function validatePackedManifest(packageLabel, packedManifest, tarballPath, failureMessages) {
   const serialized = JSON.stringify(packedManifest)
   if (serialized.includes('workspace:*')) {
     failureMessages.push(`${packageLabel}: packed manifest still contains workspace:* dependency ranges`)
+  }
+
+  if (typeof packedManifest.mcpName === 'string') {
+    validatePackedMcpMetadata(packageLabel, packedManifest, tarballPath, failureMessages)
+  }
+}
+
+function validatePackedMcpMetadata(packageLabel, packedManifest, tarballPath, failureMessages) {
+  const serverJson = JSON.parse(runTextCommand('tar', ['-xOf', tarballPath, 'package/server.json']))
+  if (serverJson.name !== packedManifest.mcpName) {
+    failureMessages.push(`${packageLabel}: package.json mcpName must match server.json name`)
+  }
+  const npmPackage = Array.isArray(serverJson.packages)
+    ? serverJson.packages.find((entry) => entry?.registryType === 'npm' && entry?.identifier === packedManifest.name)
+    : undefined
+  if (!npmPackage) {
+    failureMessages.push(`${packageLabel}: server.json must include an npm package entry for ${packedManifest.name}`)
+  } else if (npmPackage.version !== packedManifest.version) {
+    failureMessages.push(`${packageLabel}: server.json package version must match package.json version`)
   }
 }
 
@@ -192,6 +215,16 @@ function collectExportTargets(exportsField) {
   const targets = new Set()
   visitExports(exportsField, targets)
   return [...targets]
+}
+
+function collectBinTargets(binField) {
+  if (typeof binField === 'string') {
+    return [binField]
+  }
+  if (!binField || typeof binField !== 'object') {
+    return []
+  }
+  return Object.values(binField).filter((value) => typeof value === 'string')
 }
 
 function visitExports(node, targets) {

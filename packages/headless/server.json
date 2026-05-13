@@ -1,0 +1,21 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.proompteng/bilig-workpaper",
+  "title": "Bilig WorkPaper",
+  "description": "Headless spreadsheet WorkPaper tools for formula-backed workbook readback, validated input edits, and JSON persistence.",
+  "version": "0.1.95",
+  "repository": {
+    "url": "https://github.com/proompteng/bilig",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@bilig/headless",
+      "version": "0.1.95",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

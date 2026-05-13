@@ -86,11 +86,12 @@ cd bilig-headless-eval
 npm init -y
 npm pkg set type=module
 npm install @bilig/headless
+npm install -D tsx typescript @types/node
 ```
 
-Create `eval.mjs`:
+Create `eval.ts`:
 
-```js
+```ts
 import {
   WorkPaper,
   createWorkPaperFromDocument,
@@ -98,6 +99,10 @@ import {
   parseWorkPaperDocument,
   serializeWorkPaperDocument,
 } from '@bilig/headless'
+
+type NumericCell = {
+  value: number
+}
 
 const workbook = WorkPaper.buildFromSheets({
   Revenue: [
@@ -112,17 +117,17 @@ const workbook = WorkPaper.buildFromSheets({
   ],
 })
 
-const numberValue = (cell) => {
-  if (typeof cell === 'object' && cell !== null && typeof cell.value === 'number') {
-    return cell.value
+function numberValue(cell: unknown): number {
+  if (typeof cell === 'object' && cell !== null && typeof (cell as NumericCell).value === 'number') {
+    return (cell as NumericCell).value
   }
-  throw new Error(`expected numeric cell value, got ${JSON.stringify(cell)}`)
+  throw new Error(`Expected numeric cell value, got ${JSON.stringify(cell)}`)
 }
 
 const revenue = workbook.getSheetId('Revenue')
 const summary = workbook.getSheetId('Summary')
 if (revenue === undefined || summary === undefined) {
-  throw new Error('workbook sheets were not created')
+  throw new Error('Workbook sheets were not created')
 }
 
 const before = numberValue(workbook.getCellValue({ sheet: summary, row: 1, col: 1 }))
@@ -132,13 +137,13 @@ const saved = serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { inc
 const restored = createWorkPaperFromDocument(parseWorkPaperDocument(saved))
 const restoredSummary = restored.getSheetId('Summary')
 if (restoredSummary === undefined) {
-  throw new Error('summary sheet was not restored')
+  throw new Error('Summary sheet was not restored')
 }
 
 const after = numberValue(restored.getCellValue({ sheet: restoredSummary, row: 1, col: 1 }))
 const verified = before === 36900 && after === 51300 && saved.length > 0
 if (!verified) {
-  throw new Error(`unexpected formula readback: ${JSON.stringify({ before, after, bytes: saved.length })}`)
+  throw new Error(`Unexpected formula readback: ${JSON.stringify({ before, after, bytes: saved.length })}`)
 }
 
 console.log({ before, after, sheets: restored.getSheetNames(), bytes: saved.length, verified })
@@ -147,7 +152,7 @@ console.log({ before, after, sheets: restored.getSheetNames(), bytes: saved.leng
 Run it:
 
 ```bash
-node eval.mjs
+npx tsx eval.ts
 ```
 
 Expected output:
@@ -325,7 +330,7 @@ npm pkg set type=module
 npm install @bilig/headless
 ```
 
-Create `eval.mjs` with the quickstart below, then run `node eval.mjs`. The
+Create `eval.ts` with the quickstart below, then run `npx tsx eval.ts`. The
 example builds a formula-backed workbook, edits source data, serializes the
 document, restores it, and verifies that the recalculated value survives the
 round trip.
@@ -399,17 +404,24 @@ For an MCP-style shape, run `npm run agent:mcp-tools`. It returns a
 dependency-free `tools/list` response, a `tools/call` read, and a verified
 input edit with structured computed readback. Run `npm run agent:mcp-stdio`
 when you want the same tools over newline-delimited JSON-RPC stdio.
+The package-level stdio binary is `bilig-workpaper-mcp`, runnable with
+`npm exec --package @bilig/headless -- bilig-workpaper-mcp`.
 
 Quickstart:
 
-```js
+```ts
 import {
   WorkPaper,
   createWorkPaperFromDocument,
   exportWorkPaperDocument,
   parseWorkPaperDocument,
   serializeWorkPaperDocument,
+  type WorkPaperCellAddress,
 } from '@bilig/headless'
+
+type NumericCell = {
+  value: number
+}
 
 const workbook = WorkPaper.buildFromSheets(
   {
@@ -427,19 +439,26 @@ const workbook = WorkPaper.buildFromSheets(
   { maxRows: 1_000, maxColumns: 100, useColumnIndex: true },
 )
 
+function numberValue(cell: unknown): number {
+  if (typeof cell === 'object' && cell !== null && typeof (cell as NumericCell).value === 'number') {
+    return (cell as NumericCell).value
+  }
+  throw new Error(`Expected numeric cell value, got ${JSON.stringify(cell)}`)
+}
+
 const revenue = workbook.getSheetId('Revenue')
 const summary = workbook.getSheetId('Summary')
 if (revenue === undefined || summary === undefined) {
   throw new Error('Workbook sheets were not created')
 }
 
-const at = (row, col) => ({
+const at = (row: number, col: number): WorkPaperCellAddress => ({
   sheet: summary,
   row,
   col,
 })
 
-const before = workbook.getCellValue(at(1, 1))
+const before = numberValue(workbook.getCellValue(at(1, 1)))
 workbook.setCellContents({ sheet: revenue, row: 1, col: 1 }, 32)
 
 const saved = serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { includeConfig: true }))
@@ -449,11 +468,13 @@ if (restoredSummary === undefined) {
   throw new Error('Summary sheet was not restored')
 }
 
-const after = restored.getCellValue({
-  sheet: restoredSummary,
-  row: 1,
-  col: 1,
-})
+const after = numberValue(
+  restored.getCellValue({
+    sheet: restoredSummary,
+    row: 1,
+    col: 1,
+  }),
+)
 
 console.log({ before, after, sheets: restored.getSheetNames(), bytes: saved.length })
 ```

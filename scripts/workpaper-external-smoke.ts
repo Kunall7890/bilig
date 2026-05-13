@@ -234,6 +234,7 @@ function runNodeSmoke(
   mkdirSync(projectDir, { recursive: true })
   mkdirSync(join(projectDir, 'fixtures'), { recursive: true })
   copyFileSync(join(headlessExampleDir, 'package.json'), join(projectDir, 'package.json'))
+  copyFileSync(join(headlessExampleDir, 'tsconfig.json'), join(projectDir, 'tsconfig.json'))
   copyFileSync(join(headlessExampleDir, 'agent-framework-adapters.mjs'), join(projectDir, 'agent-framework-adapters.mjs'))
   copyFileSync(join(headlessExampleDir, 'agent-tool-call-loop.mjs'), join(projectDir, 'agent-tool-call-loop.mjs'))
   copyFileSync(join(headlessExampleDir, 'agent-writeback-verification.mjs'), join(projectDir, 'agent-writeback-verification.mjs'))
@@ -241,8 +242,8 @@ function runNodeSmoke(
   copyFileSync(join(headlessExampleDir, 'http-json-summary.mjs'), join(projectDir, 'http-json-summary.mjs'))
   copyFileSync(join(headlessExampleDir, 'json-file-input.mjs'), join(projectDir, 'json-file-input.mjs'))
   copyFileSync(join(headlessExampleDir, 'markdown-report.mjs'), join(projectDir, 'markdown-report.mjs'))
-  copyFileSync(join(headlessExampleDir, 'mcp-stdio-server.mjs'), join(projectDir, 'mcp-stdio-server.mjs'))
-  copyFileSync(join(headlessExampleDir, 'mcp-tool-server.mjs'), join(projectDir, 'mcp-tool-server.mjs'))
+  copyFileSync(join(headlessExampleDir, 'mcp-stdio-server.ts'), join(projectDir, 'mcp-stdio-server.ts'))
+  copyFileSync(join(headlessExampleDir, 'mcp-tool-server.ts'), join(projectDir, 'mcp-tool-server.ts'))
   copyFileSync(join(headlessExampleDir, 'fixtures', 'opportunities.json'), join(projectDir, 'fixtures', 'opportunities.json'))
   copyFileSync(join(headlessExampleDir, 'revenue-plan.mjs'), join(projectDir, 'revenue-plan.mjs'))
   copyFileSync(join(headlessExampleDir, 'persistence-roundtrip.mjs'), join(projectDir, 'persistence-roundtrip.mjs'))
@@ -344,7 +345,8 @@ function runNodeSmoke(
   const scenarios = parseNodeRevenueScenarioOutput(runTextCommand('node', ['revenue-scenarios.mjs'], { cwd: projectDir }))
   const agentToolCall = parseNodeAgentToolCallOutput(runTextCommand('node', ['agent-tool-call-loop.mjs'], { cwd: projectDir }))
   runTextCommand('node', ['agent-framework-adapters.mjs'], { cwd: projectDir })
-  runTextCommand('node', ['mcp-tool-server.mjs'], { cwd: projectDir })
+  runTextCommand('npm', ['run', '--silent', 'typecheck:mcp'], { cwd: projectDir })
+  runTextCommand('npm', ['run', '--silent', 'agent:mcp-tools'], { cwd: projectDir })
   const mcpStdio = parseNodeMcpStdioOutput(
     runTextCommand(
       'sh',
@@ -357,11 +359,30 @@ function runNodeSmoke(
           '\'{"jsonrpc":"2.0","id":2,"method":"tools/list"}\'',
           '\'{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"set_workpaper_input_cell","arguments":{"sheetName":"Inputs","address":"B3","value":0.4}}}\'',
           '|',
-          'node mcp-stdio-server.mjs',
+          'npm run --silent agent:mcp-stdio',
         ].join(' '),
       ],
       { cwd: projectDir },
     ),
+  )
+  const packageMcpStdio = parseNodeMcpStdioOutput(
+    runTextCommand(
+      'sh',
+      [
+        '-c',
+        [
+          "printf '%s\\n'",
+          '\'{"jsonrpc":"2.0","id":1,"method":"initialize"}\'',
+          '\'{"jsonrpc":"2.0","method":"notifications/initialized"}\'',
+          '\'{"jsonrpc":"2.0","id":2,"method":"tools/list"}\'',
+          '\'{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"set_workpaper_input_cell","arguments":{"sheetName":"Inputs","address":"B3","value":0.4}}}\'',
+          '|',
+          './node_modules/.bin/bilig-workpaper-mcp',
+        ].join(' '),
+      ],
+      { cwd: projectDir },
+    ),
+    { expectedServerName: 'bilig-headless-workpaper' },
   )
   const agentVerification = parseNodeAgentVerificationOutput(
     runTextCommand('node', ['agent-writeback-verification.mjs'], { cwd: projectDir }),
@@ -384,6 +405,7 @@ function runNodeSmoke(
     jsonFile,
     markdownReport,
     mcpStdio,
+    packageMcpStdio,
     persistence,
     projectDir,
     rangeReadback,

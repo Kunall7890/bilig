@@ -57,8 +57,12 @@
     "url": "git+https://github.com/proompteng/bilig.git",
     "directory": "packages/headless"
   },
+  "bin": {
+    "bilig-workpaper-mcp": "./dist/work-paper-mcp-stdio-bin.js"
+  },
   "files": [
     "dist",
+    "server.json",
     "README.md",
     "LICENSE"
   ],
@@ -85,5 +89,6 @@
   },
   "engines": {
     "node": ">=24.0.0"
-  }
+  },
+  "mcpName": "io.github.proompteng/bilig-workpaper"
 }

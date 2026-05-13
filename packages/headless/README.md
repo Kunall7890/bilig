@@ -50,29 +50,36 @@ before cloning the repository:
 mkdir bilig-headless-sanity
 cd bilig-headless-sanity
 npm init -y
+npm pkg set type=module
 npm install @bilig/headless
-node --input-type=module <<'EOF'
-import { WorkPaper } from '@bilig/headless'
+npm install -D tsx typescript @types/node
+cat > sanity.ts <<'EOF'
+import { WorkPaper } from '@bilig/headless';
+
+type NumericCell = {
+  value: number;
+};
 
 const workbook = WorkPaper.buildFromSheets({
   Revenue: [
     ['Units', 'Price', 'Revenue'],
     [7, 6, '=A2*B2'],
   ],
-})
+});
 
-const sheet = workbook.getSheetId('Revenue')
+const sheet = workbook.getSheetId('Revenue');
 if (sheet === undefined) {
-  throw new Error('Revenue sheet was not created')
+  throw new Error('Revenue sheet was not created');
 }
 
-const cell = workbook.getCellValue({ sheet, row: 1, col: 2 })
-if (typeof cell !== 'object' || cell === null || cell.value !== 42) {
-  throw new Error(`unexpected formula readback: ${JSON.stringify(cell)}`)
+const cell = workbook.getCellValue({ sheet, row: 1, col: 2 });
+if (typeof cell !== 'object' || cell === null || (cell as NumericCell).value !== 42) {
+  throw new Error(`Unexpected formula readback: ${JSON.stringify(cell)}`);
 }
 
-console.log({ revenue: cell.value, verified: true })
+console.log({ revenue: (cell as NumericCell).value, verified: true });
 EOF
+npx tsx sanity.ts
 ```
 
 Expected output:
@@ -110,6 +117,8 @@ Pick the path that matches the job:
   [`npm run agent:mcp-tools`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#mcp-tool-server-shape)
   and the
   [MCP spreadsheet tool server guide](https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html).
+- Run the packaged MCP stdio server:
+  `npm exec --package @bilig/headless -- bilig-workpaper-mcp`.
 - Put WorkPaper behind HTTP:
   [`examples/serverless-workpaper-api`](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api).
 - Compare engines before adopting:
@@ -402,6 +411,16 @@ inputs and structured formula readback.
 `npm run agent:mcp-stdio` puts the same handlers behind newline-delimited
 JSON-RPC over stdin/stdout. The `mcp` keyword points to these runnable local
 adapters: no hosted service, no API key, and no agent framework dependency.
+
+The npm package also ships the same demo server as a stdio binary:
+
+```sh
+npm exec --package @bilig/headless -- bilig-workpaper-mcp
+```
+
+Its package metadata includes `mcpName: io.github.proompteng/bilig-workpaper`
+and `server.json`, so the server can be published to MCP registries after the
+runtime package version is released.
 
 For a framework-neutral recipe that wraps WorkPaper operations as agent-callable
 tools, see

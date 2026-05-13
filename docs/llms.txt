@@ -67,10 +67,11 @@ cd bilig-headless-eval
 npm init -y
 npm pkg set type=module
 npm install @bilig/headless
+npm install -D tsx typescript @types/node
 ```
 
-create an eval.mjs file from the quickstart in the repository readme, then run
-`node eval.mjs`. a successful smoke test prints `verified: true` after formula
+create an eval.ts file from the quickstart in the repository readme, then run
+`npx tsx eval.ts`. a successful smoke test prints `verified: true` after formula
 readback survives a persisted restore.
 
 repository example:
@@ -148,10 +149,14 @@ npm run agent:verify
   https://github.com/proompteng/bilig/discussions/230
 - runnable MCP-style WorkPaper tool server example:
   npm run agent:mcp-tools
-  https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/mcp-tool-server.mjs
+  https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/mcp-tool-server.ts
 - local MCP stdio WorkPaper tool server example:
   npm run agent:mcp-stdio
-  https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/mcp-stdio-server.mjs
+  https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/mcp-stdio-server.ts
+- packaged MCP stdio WorkPaper server:
+  npm exec --package @bilig/headless -- bilig-workpaper-mcp
+  mcpName: io.github.proompteng/bilig-workpaper
+  https://github.com/proompteng/bilig/blob/main/packages/headless/server.json
 - agent spreadsheet tool-call loop:
   https://proompteng.github.io/bilig/agent-spreadsheet-tool-call-loop.html
   https://github.com/proompteng/bilig/blob/main/docs/agent-spreadsheet-tool-call-loop.md

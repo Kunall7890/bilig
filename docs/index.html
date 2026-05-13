@@ -18,12 +18,12 @@
       content="headless spreadsheet engine, Node spreadsheet engine, TypeScript formula engine, spreadsheet engine for agents, workbook automation, HyperFormula alternative, formula evaluation in Node, SQLite spreadsheet persistence, Postgres workbook persistence, serverless spreadsheet API"
     />
     <meta name="robots" content="index, follow, max-image-preview:large" />
-    <meta name="theme-color" content="#f6f8fa" />
+    <meta name="theme-color" content="#f7f5ef" />
     <meta property="og:site_name" content="bilig" />
     <meta property="og:title" content="bilig - Headless Spreadsheet Engine for Node.js Services and Agents" />
     <meta
       property="og:description"
-      content="Build WorkPaper documents from TypeScript, recalculate formulas, verify writeback, and persist state in JSON, SQLite, Postgres, or object storage."
+      content="Create WorkPaper documents from TypeScript, recalculate formulas, verify writeback, and persist workbook state."
     />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://proompteng.github.io/bilig/" />
@@ -35,7 +35,7 @@
     <meta name="twitter:title" content="bilig - Headless Spreadsheet Engine for Node.js Services and Agents" />
     <meta
       name="twitter:description"
-      content="Spreadsheet formulas, verified edits, and durable WorkPaper persistence for Node.js programs."
+      content="Spreadsheet formulas, verified edits, and durable WorkPaper persistence for TypeScript programs."
     />
     <meta name="twitter:image" content="https://proompteng.github.io/bilig/assets/github-social-preview.png?v=2026-05-08-2" />
     <meta name="twitter:image:alt" content="bilig headless spreadsheet engine workbook and TypeScript code preview" />
@@ -98,7 +98,7 @@
             "name": "Is bilig a complete Excel clone?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "No. It focuses on programmatic workbook workflows. The compatibility notes document the Excel behavior that is not complete yet."
+              "text": "No. It focuses on programmatic workbook workflows. The compatibility notes document Excel behavior that is not complete yet."
             }
           },
           {
@@ -123,21 +123,20 @@
     <style>
       :root {
         color-scheme: light;
-        --page: #f6f8fa;
-        --panel: #ffffff;
-        --panel-soft: #eef3f6;
-        --ink: #111820;
-        --muted: #536170;
-        --subtle: #7a8794;
-        --line: #d8e0e7;
-        --line-strong: #b8c4cf;
-        --code: #0d1318;
-        --code-line: #22303b;
-        --green: #107047;
-        --red: #b14a2c;
-        --blue: #2f5f9f;
-        --yellow: #b88718;
-        --shadow: 0 18px 45px rgba(17, 24, 32, 0.08);
+        --page: #f7f5ef;
+        --paper: #fffefa;
+        --paper-warm: #f1eadf;
+        --ink: #181411;
+        --muted: #645d55;
+        --quiet: #8c8378;
+        --line: #d9d0c3;
+        --line-strong: #a99d8f;
+        --code: #171513;
+        --code-line: #3a332d;
+        --green: #166f51;
+        --blue: #245b91;
+        --rust: #9b4f29;
+        --gold: #8a6b17;
       }
 
       * {
@@ -150,6 +149,7 @@
 
       body {
         margin: 0;
+        overflow-x: hidden;
         background: var(--page);
         color: var(--ink);
         font-family:
@@ -161,111 +161,28 @@
           'Segoe UI',
           sans-serif;
         line-height: 1.55;
+        -webkit-tap-highlight-color: rgba(22, 111, 81, 0.18);
       }
 
       a {
         color: inherit;
-        text-decoration: none;
+        text-decoration-thickness: 1px;
+        text-underline-offset: 0.2em;
       }
 
-      .wrap {
-        width: min(1120px, calc(100% - 40px));
-        margin: 0 auto;
+      a:hover {
+        color: var(--blue);
       }
 
-      .topbar {
-        border-bottom: 1px solid var(--line);
-        background: rgba(246, 248, 250, 0.92);
-        backdrop-filter: blur(12px);
+      a:focus-visible,
+      button:focus-visible {
+        outline: 3px solid rgba(36, 91, 145, 0.35);
+        outline-offset: 3px;
       }
 
-      .topbar .wrap {
-        display: flex;
-        min-height: 68px;
-        align-items: center;
-        justify-content: space-between;
-        gap: 20px;
-      }
-
-      .brand {
-        display: inline-flex;
-        align-items: center;
-        gap: 11px;
-        font-weight: 720;
-      }
-
-      .brand-mark {
-        display: grid;
-        width: 32px;
-        height: 32px;
-        place-items: center;
-        border: 1px solid #c5d1da;
-        border-radius: 8px;
-        background: #121820;
-      }
-
-      .brand-mark::before {
-        width: 14px;
-        height: 18px;
-        background: #6fd08c;
-        content: '';
-        clip-path: polygon(0 0, 100% 0, 100% 100%, 62% 100%, 62% 36%, 38% 36%, 38% 100%, 0 100%);
-      }
-
-      .nav {
-        display: flex;
-        align-items: center;
-        gap: 18px;
-        color: var(--muted);
-        font-size: 14px;
-        font-weight: 560;
-      }
-
-      .nav a:hover,
-      .nav a:focus-visible {
-        color: var(--ink);
-      }
-
-      .hero {
-        position: relative;
-        display: flex;
-        width: 100vw;
-        min-height: min(720px, calc(100vh - 68px));
-        align-items: center;
-        margin: 0 calc(50% - 50vw);
-        overflow: hidden;
-        border-bottom: 1px solid var(--line);
-        background:
-          linear-gradient(90deg, rgba(246, 248, 250, 0.99) 0%, rgba(246, 248, 250, 0.94) 42%, rgba(246, 248, 250, 0.18) 78%),
-          linear-gradient(180deg, rgba(246, 248, 250, 0.2), rgba(246, 248, 250, 0.78)),
-          url('./assets/bilig-hero-workbook-api.png?v=2026-05-08-2');
-        background-position: center;
-        background-size: cover;
-        padding: 72px max(40px, calc((100vw - 1120px) / 2)) 64px;
-      }
-
-      .hero-content {
-        width: min(690px, 100%);
-        padding: 0;
-      }
-
-      .label {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        color: var(--green);
-        font-size: 13px;
-        font-weight: 720;
-        letter-spacing: 0;
-        text-transform: none;
-      }
-
-      .label::before {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: var(--green);
-        content: '';
+      code,
+      pre {
+        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
       }
 
       h1,
@@ -275,58 +192,317 @@
         margin: 0;
       }
 
-      h1 {
-        max-width: 720px;
+      h1,
+      h2 {
+        text-wrap: balance;
+      }
+
+      img {
+        max-width: 100%;
+        height: auto;
+      }
+
+      .skip-link {
+        position: absolute;
+        left: 16px;
+        top: 16px;
+        z-index: 20;
+        border: 1px solid var(--ink);
+        background: var(--paper);
+        padding: 9px 12px;
+        color: var(--ink);
+        font-weight: 700;
+        transform: translateY(-160%);
+        transition: transform 160ms ease;
+      }
+
+      .skip-link:focus {
+        transform: translateY(0);
+      }
+
+      .wrap {
+        width: min(1120px, calc(100% - 40px));
+        margin: 0 auto;
+      }
+
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        border-bottom: 1px solid var(--line);
+        background: rgba(247, 245, 239, 0.95);
+        backdrop-filter: blur(10px);
+      }
+
+      .topbar .wrap {
+        display: flex;
+        min-height: 64px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+      }
+
+      .brand {
+        display: inline-flex;
+        min-width: 0;
+        align-items: center;
+        gap: 10px;
+        color: var(--ink);
+        font-weight: 750;
+        text-decoration: none;
+      }
+
+      .brand-mark {
+        display: grid;
+        width: 30px;
+        height: 30px;
+        flex: 0 0 auto;
+        place-items: center;
+        border: 1px solid #2d241e;
+        border-radius: 7px;
+        background: #1c1713;
+      }
+
+      .brand-mark::before {
+        width: 14px;
+        height: 17px;
+        background: #75d091;
+        content: '';
+        clip-path: polygon(0 0, 100% 0, 100% 100%, 65% 100%, 65% 38%, 35% 38%, 35% 100%, 0 100%);
+      }
+
+      .nav {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 16px;
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 620;
+      }
+
+      .nav a {
+        text-decoration: none;
+      }
+
+      .hero {
+        position: relative;
+        width: 100vw;
+        min-height: clamp(560px, 74vh, 760px);
+        margin: 0 calc(50% - 50vw);
+        overflow: hidden;
+        border-bottom: 1px solid var(--line);
+        background: #efe8dd;
+      }
+
+      .hero-scene {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        grid-template-columns: minmax(280px, 0.92fr) minmax(520px, 1.08fr);
+        gap: 24px;
+        padding: 88px max(28px, calc((100vw - 1120px) / 2)) 72px;
+      }
+
+      .hero-scene::before {
+        position: absolute;
+        inset: 0;
+        background:
+          linear-gradient(90deg, rgba(247, 245, 239, 0.97) 0%, rgba(247, 245, 239, 0.84) 44%, rgba(247, 245, 239, 0.18) 88%),
+          linear-gradient(180deg, rgba(247, 245, 239, 0.12), rgba(247, 245, 239, 0.76));
+        content: '';
+      }
+
+      .workspace {
+        position: relative;
+        display: grid;
+        min-width: 0;
+        align-content: center;
+        gap: 14px;
+        opacity: 0.94;
+      }
+
+      .sheet-window,
+      .code-window,
+      .readback-window {
+        border: 1px solid rgba(89, 79, 69, 0.25);
+        border-radius: 8px;
+        background: rgba(255, 254, 250, 0.9);
+        box-shadow: 0 22px 70px rgba(39, 31, 25, 0.12);
+      }
+
+      .sheet-window {
+        justify-self: end;
+        width: min(640px, 100%);
+        overflow: hidden;
+      }
+
+      .window-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(241, 234, 223, 0.86);
+        padding: 9px 12px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .sheet-grid {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .sheet-grid th,
+      .sheet-grid td {
+        border-bottom: 1px solid #e6ded4;
+        border-left: 1px solid #e6ded4;
+        padding: 10px 12px;
+        text-align: right;
+        white-space: nowrap;
+      }
+
+      .sheet-grid th {
+        background: #f5f0e9;
+        color: var(--muted);
+        font-weight: 700;
+        text-align: center;
+      }
+
+      .sheet-grid td:first-child {
+        color: var(--muted);
+        font-weight: 650;
+        text-align: left;
+      }
+
+      .sheet-grid tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .edited {
+        background: #e8f4ee;
+        color: var(--green);
+        font-weight: 760;
+      }
+
+      .formula {
+        color: var(--blue);
+      }
+
+      .code-window {
+        justify-self: end;
+        width: min(560px, 92%);
+        background: rgba(23, 21, 19, 0.96);
+        color: #f3efe8;
+      }
+
+      .code-window .window-head {
+        border-bottom-color: var(--code-line);
+        background: #211d19;
+        color: #bdb3a7;
+      }
+
+      .code-window pre,
+      .code-panel pre {
+        margin: 0;
+        overflow: auto;
+        padding: 16px;
+        font-size: 13px;
+        line-height: 1.7;
+        white-space: pre;
+      }
+
+      .code-window pre {
+        overflow: hidden;
+        white-space: pre-wrap;
+      }
+
+      .readback-window {
+        justify-self: end;
+        width: min(500px, 86%);
+        padding: 14px 16px;
+      }
+
+      .readback-window strong,
+      .readback-window span {
+        display: block;
+      }
+
+      .readback-window strong {
+        font-size: 13px;
+      }
+
+      .readback-window span {
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .hero-copy {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        max-width: 650px;
+        align-content: center;
+        padding: 108px 0 72px;
+      }
+
+      .eyebrow {
+        color: var(--green);
+        font-size: 13px;
+        font-weight: 780;
+      }
+
+      .hero h1 {
         margin-top: 18px;
-        font-size: clamp(42px, 5vw, 70px);
-        line-height: 0.98;
+        font-size: clamp(42px, 5vw, 68px);
+        line-height: 1;
         letter-spacing: 0;
       }
 
       .lede {
-        max-width: 660px;
-        margin-top: 24px;
+        max-width: 610px;
+        margin-top: 22px;
         color: var(--muted);
-        font-size: clamp(18px, 1.7vw, 20px);
+        font-size: clamp(17px, 1.7vw, 20px);
       }
 
-      .proof-strip {
+      .facts {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 10px;
-        max-width: 760px;
         margin-top: 24px;
       }
 
-      .proof-strip div {
-        min-height: 92px;
-        border: 1px solid var(--line);
-        border-radius: 8px;
-        background: rgba(255, 255, 255, 0.72);
-        padding: 13px 14px;
+      .fact {
+        border-top: 1px solid var(--line-strong);
+        padding-top: 10px;
       }
 
-      .proof-strip strong,
-      .proof-strip span {
+      .fact strong,
+      .fact span {
         display: block;
       }
 
-      .proof-strip strong {
-        color: var(--ink);
+      .fact strong {
         font-size: 13px;
       }
 
-      .proof-strip span {
+      .fact span {
         margin-top: 5px;
         color: var(--muted);
         font-size: 13px;
-        line-height: 1.35;
+        line-height: 1.4;
       }
 
       .actions {
         display: flex;
         flex-wrap: wrap;
-        gap: 12px;
+        gap: 10px;
         margin-top: 26px;
       }
 
@@ -336,69 +512,93 @@
         align-items: center;
         justify-content: center;
         border: 1px solid var(--line-strong);
-        border-radius: 8px;
-        padding: 10px 15px;
-        background: var(--panel);
+        border-radius: 7px;
+        background: var(--paper);
+        padding: 10px 14px;
         color: var(--ink);
         font-size: 14px;
-        font-weight: 680;
+        font-weight: 720;
+        text-decoration: none;
+        transition:
+          background-color 160ms ease,
+          border-color 160ms ease,
+          color 160ms ease;
+      }
+
+      .button:hover {
+        border-color: var(--blue);
+        background: #f5f9ff;
+        color: var(--blue);
       }
 
       .button.primary {
-        border-color: #121820;
-        background: #121820;
-        color: #ffffff;
+        border-color: #1c1713;
+        background: #1c1713;
+        color: #fffefa;
       }
 
-      .button:hover,
-      .button:focus-visible {
-        border-color: var(--blue);
+      .button.primary:hover {
+        border-color: var(--green);
+        background: var(--green);
+        color: #ffffff;
       }
 
       main {
         display: grid;
-        gap: 70px;
-        padding: 64px 0 88px;
+        gap: 72px;
+        padding: 54px 0 88px;
       }
 
       section {
         display: grid;
         gap: 24px;
+        scroll-margin-top: 84px;
       }
 
       .section-head {
-        max-width: 760px;
+        max-width: 780px;
       }
 
       h2 {
-        font-size: clamp(28px, 3.8vw, 42px);
-        line-height: 1.08;
-        letter-spacing: 0;
+        font-size: clamp(27px, 3.4vw, 40px);
+        line-height: 1.12;
       }
 
       .section-head p {
         margin-top: 10px;
         color: var(--muted);
-        font-size: 17px;
+        font-size: 16px;
       }
 
-      .cols-3 {
+      .two-col {
+        display: grid;
+        grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+        gap: 16px;
+      }
+
+      .three-col {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .four-col {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 14px;
       }
 
       .card {
         border: 1px solid var(--line);
         border-radius: 8px;
-        background: var(--panel);
+        background: var(--paper);
         padding: 20px;
       }
 
       .card h3 {
         margin-bottom: 10px;
         font-size: 17px;
-        line-height: 1.3;
+        line-height: 1.25;
       }
 
       .card p,
@@ -414,50 +614,18 @@
         padding-left: 18px;
       }
 
-      .benchmark-card-link {
-        display: block;
-        margin-bottom: 16px;
-      }
-
-      .benchmark-card-image {
-        display: block;
-        width: 100%;
-        height: auto;
-        border: 1px solid var(--line);
-        border-radius: 8px;
-      }
-
-      .quickstart {
-        display: grid;
-        grid-template-columns: minmax(0, 0.72fr) minmax(0, 1fr);
-        gap: 14px;
-        align-items: stretch;
-      }
-
-      .quickstart-wide {
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-      }
-
-      .copy-path {
-        display: grid;
-        gap: 14px;
-      }
-
-      .code {
-        overflow: auto;
+      .code-panel {
+        min-width: 0;
+        overflow: hidden;
         border: 1px solid var(--code-line);
         border-radius: 8px;
         background: var(--code);
-        color: #e7eef6;
-        padding: 18px;
+        color: #f4efe7;
       }
 
-      pre {
-        margin: 0;
-        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-        font-size: 13px;
-        line-height: 1.65;
-        white-space: pre;
+      .code-panel code {
+        display: block;
+        min-width: max-content;
       }
 
       .expected {
@@ -465,7 +633,7 @@
         gap: 8px;
         border: 1px solid var(--line);
         border-radius: 8px;
-        background: var(--panel);
+        background: var(--paper);
         padding: 18px;
       }
 
@@ -478,36 +646,26 @@
         font-size: 14px;
       }
 
-      .muted {
-        color: var(--muted);
-      }
-
-      .surface {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-        gap: 14px;
-      }
-
       .matrix {
         width: 100%;
         border-collapse: collapse;
         overflow: hidden;
         border: 1px solid var(--line);
         border-radius: 8px;
-        background: var(--panel);
+        background: var(--paper);
         font-size: 14px;
       }
 
       .matrix th,
       .matrix td {
         border-bottom: 1px solid var(--line);
-        padding: 13px 14px;
+        padding: 12px 14px;
         text-align: left;
         vertical-align: top;
       }
 
       .matrix th {
-        background: var(--panel-soft);
+        background: var(--paper-warm);
         color: var(--ink);
         font-size: 13px;
       }
@@ -516,20 +674,20 @@
         border-bottom: 0;
       }
 
-      .pill {
+      .status {
         display: inline-flex;
         border-radius: 999px;
+        background: #e6f2ec;
         padding: 3px 9px;
-        background: #e4f5ea;
         color: var(--green);
         font-size: 12px;
-        font-weight: 680;
+        font-weight: 760;
       }
 
-      .proof {
+      .proof-grid {
         display: grid;
-        grid-template-columns: minmax(0, 0.8fr) minmax(0, 1fr);
-        gap: 14px;
+        grid-template-columns: minmax(0, 0.74fr) minmax(0, 1.26fr);
+        gap: 16px;
       }
 
       .metric-list {
@@ -540,61 +698,75 @@
       .metric {
         border: 1px solid var(--line);
         border-radius: 8px;
-        background: var(--panel);
+        background: var(--paper);
         padding: 18px;
       }
 
       .metric strong {
         display: block;
-        color: var(--ink);
-        font-size: 27px;
+        font-size: 26px;
         line-height: 1.1;
+        font-variant-numeric: tabular-nums;
       }
 
       .metric span {
         display: block;
-        margin-top: 7px;
+        margin-top: 8px;
         color: var(--muted);
         font-size: 14px;
       }
 
-      .doc-groups {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 14px;
+      .benchmark-card-link {
+        display: block;
+        margin-bottom: 16px;
       }
 
-      .faq-list {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 14px;
+      .benchmark-card-image {
+        display: block;
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--paper-warm);
       }
 
-      .doc-groups a {
+      .doc-groups a,
+      .card a {
         color: var(--ink);
-        text-decoration: underline;
-        text-decoration-color: rgba(47, 95, 159, 0.35);
-        text-underline-offset: 3px;
+        text-decoration-color: rgba(36, 91, 145, 0.38);
       }
 
       .doc-groups a:hover,
-      .doc-groups a:focus-visible {
+      .doc-groups a:focus-visible,
+      .card a:hover,
+      .card a:focus-visible {
+        color: var(--blue);
         text-decoration-color: var(--blue);
       }
 
       footer {
         border-top: 1px solid var(--line);
         padding: 24px 0;
-        color: var(--subtle);
+        color: var(--quiet);
         font-size: 13px;
       }
 
-      @media (max-width: 900px) {
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          transition-duration: 0.01ms !important;
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+        }
+      }
+
+      @media (max-width: 980px) {
         .topbar .wrap {
           align-items: flex-start;
           flex-direction: column;
           justify-content: center;
-          padding: 16px 0;
+          padding: 14px 0;
         }
 
         .nav {
@@ -604,144 +776,257 @@
 
         .hero {
           min-height: auto;
+        }
+
+        .hero-scene {
+          grid-template-columns: 1fr;
+          padding: 220px 20px 42px;
+        }
+
+        .hero-scene::before {
           background:
-            linear-gradient(180deg, rgba(246, 248, 250, 0.98) 0%, rgba(246, 248, 250, 0.88) 58%, rgba(246, 248, 250, 0.72) 100%),
-            url('./assets/bilig-hero-workbook-api.png?v=2026-05-08-2');
-          background-position: center top;
-          background-size: cover;
-          padding: 54px 20px 48px;
+            linear-gradient(180deg, rgba(247, 245, 239, 0.72) 0%, rgba(247, 245, 239, 0.96) 32%, rgba(247, 245, 239, 1) 100%),
+            linear-gradient(90deg, rgba(247, 245, 239, 0.12), rgba(247, 245, 239, 0.76));
         }
 
-        .hero-content {
+        .workspace {
+          position: absolute;
+          inset: 24px 20px auto;
+          max-height: 210px;
+          overflow: hidden;
+        }
+
+        .sheet-window,
+        .code-window,
+        .readback-window {
           width: 100%;
+          justify-self: stretch;
         }
 
-        .proof-strip,
-        .quickstart,
-        .quickstart-wide,
-        .surface,
-        .proof,
-        .doc-groups,
-        .faq-list,
-        .cols-3 {
+        .code-window,
+        .readback-window {
+          display: none;
+        }
+
+        .hero-copy {
+          padding: 0;
+        }
+
+        .facts,
+        .two-col,
+        .three-col,
+        .four-col,
+        .proof-grid {
           grid-template-columns: 1fr;
         }
 
-        pre {
-          font-size: 12px;
+        .code-panel pre,
+        .code-window pre {
           overflow-wrap: anywhere;
           white-space: pre-wrap;
+        }
+      }
+
+      @media (max-width: 560px) {
+        .wrap {
+          width: min(100% - 28px, 1120px);
+        }
+
+        .hero h1 {
+          font-size: 39px;
+        }
+
+        .actions {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .button {
+          width: 100%;
+        }
+
+        .sheet-grid {
+          font-size: 12px;
+        }
+
+        .sheet-grid th,
+        .sheet-grid td {
+          padding: 8px 9px;
         }
       }
     </style>
   </head>
   <body>
+    <a class="skip-link" href="#main">Skip to content</a>
     <header class="topbar">
       <div class="wrap">
-        <a class="brand" href="https://github.com/proompteng/bilig">
+        <a class="brand" href="https://github.com/proompteng/bilig" aria-label="bilig GitHub repository">
           <span class="brand-mark" aria-hidden="true"></span>
-          <span>bilig</span>
+          <span translate="no">bilig</span>
         </a>
-        <nav class="nav" aria-label="primary">
+        <nav class="nav" aria-label="Primary">
           <a href="#install">Install</a>
           <a href="#runtime">Runtime</a>
-          <a href="#proof">Checks</a>
+          <a href="#proof">Proof</a>
           <a href="https://www.npmjs.com/package/@bilig/headless">npm</a>
           <a href="https://github.com/proompteng/bilig/stargazers">Star</a>
-          <a href="https://github.com/proompteng/bilig/discussions/157">Feedback</a>
           <a href="https://github.com/proompteng/bilig">GitHub</a>
         </nav>
       </div>
     </header>
 
-    <div class="wrap">
-      <section class="hero" aria-labelledby="hero-title">
-        <div class="hero-content">
-          <p class="label">@bilig/headless</p>
-          <h1 id="hero-title">Run spreadsheet formulas in Node.js. Keep the workbook state.</h1>
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-scene" aria-hidden="true">
+        <div></div>
+        <div class="workspace">
+          <div class="sheet-window">
+            <div class="window-head">
+              <span>Revenue WorkPaper</span>
+              <span>formula readback</span>
+            </div>
+            <table class="sheet-grid" aria-hidden="true">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>A</th>
+                  <th>B</th>
+                  <th>C</th>
+                  <th>D</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>1</td>
+                  <td>Region</td>
+                  <td>Customers</td>
+                  <td>ARPA</td>
+                  <td>Revenue</td>
+                </tr>
+                <tr>
+                  <td>2</td>
+                  <td>West</td>
+                  <td class="edited">32</td>
+                  <td>1200</td>
+                  <td class="formula">=B2*C2</td>
+                </tr>
+                <tr>
+                  <td>3</td>
+                  <td>East</td>
+                  <td>30</td>
+                  <td>250</td>
+                  <td class="formula">=B3*C3</td>
+                </tr>
+                <tr>
+                  <td>4</td>
+                  <td>Central</td>
+                  <td>18</td>
+                  <td>300</td>
+                  <td class="formula">=B4*C4</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="code-window">
+            <div class="window-head">
+              <span>tool.ts</span>
+              <span>TypeScript</span>
+            </div>
+            <pre><code>const cell = { sheet: revenue, row: 1, col: 1 };
+workbook.setCellContents(cell, 32);
+
+const saved = serializeWorkPaperDocument(
+  exportWorkPaperDocument(workbook, { includeConfig: true }),
+);
+const restored = createWorkPaperFromDocument(
+  parseWorkPaperDocument(saved),
+);</code></pre>
+          </div>
+          <div class="readback-window">
+            <strong>after restore: 51,300</strong>
+            <span>formulas and workbook document state round-trip together.</span>
+          </div>
+        </div>
+      </div>
+      <div class="wrap">
+        <div class="hero-copy">
+          <p class="eyebrow" translate="no">@bilig/headless</p>
+          <h1 id="hero-title">Spreadsheet formulas for TypeScript services.</h1>
           <p class="lede">
-            Use a real workbook model when a service, script, or coding agent needs formulas, edits, calculated values, and durable state.
+            bilig is a small headless workbook runtime for code that needs formulas, edits, calculated values, and durable JSON state.
           </p>
-          <div class="proof-strip" aria-label="project facts">
-            <div>
-              <strong>npm package</strong>
-              <span>13,427 downloads last week, measured May 12 from the public npm API.</span>
+          <div class="facts" aria-label="Project facts">
+            <div class="fact">
+              <strong>Use it from Node.js</strong>
+              <span>Build WorkPaper documents directly from TypeScript.</span>
             </div>
-            <div>
-              <strong>records to formulas</strong>
-              <span>turn JSON-shaped service data into sheets, summary formulas, and readback checks.</span>
+            <div class="fact">
+              <strong>Check writes</strong>
+              <span>Edit an input, recalculate formulas, and read the result back.</span>
             </div>
-            <div>
-              <strong>durable storage</strong>
-              <span>persist WorkPaper JSON in SQLite, Postgres, object storage, or your service database.</span>
+            <div class="fact">
+              <strong>Store the document</strong>
+              <span>Persist JSON in SQLite, Postgres, object storage, or your own database.</span>
             </div>
           </div>
           <div class="actions">
-            <a class="button primary" href="https://www.npmjs.com/package/@bilig/headless">Install the package</a>
-            <a class="button" href="https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api">
-              Build an API route
-            </a>
-            <a
-              class="button"
-              href="https://github.com/proompteng/bilig/blob/main/docs/persisting-formula-backed-workpaper-documents-in-node.md"
-            >
-              Persist workbook state
-            </a>
+            <a class="button primary" href="https://www.npmjs.com/package/@bilig/headless">Install from npm</a>
+            <a class="button" href="https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper">Run the example</a>
+            <a class="button" href="https://github.com/proompteng/bilig/blob/main/docs/starter-issues.md">Open starter issues</a>
             <a class="button" href="https://github.com/proompteng/bilig/stargazers">Star on GitHub</a>
-            <a class="button" href="https://github.com/proompteng/bilig/discussions/157">Request a workflow</a>
-            <a class="button" href="https://github.com/proompteng/bilig">Read the source</a>
           </div>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <main>
+    <div class="wrap">
+      <main id="main">
         <section aria-labelledby="why-title">
           <div class="section-head">
-            <h2 id="why-title">A workbook model for backend code.</h2>
+            <h2 id="why-title">Use a workbook when a table stops being enough.</h2>
             <p>
-              Tables are fine until the job needs ranges, formulas, structural edits, and durable workbook state. bilig exposes those pieces
-              as TypeScript.
+              A plain table can hold numbers. A WorkPaper can keep formulas, ranges, structural edits, and the serialized state that
+              explains how a value was produced.
             </p>
           </div>
-          <div class="cols-3">
+          <div class="three-col">
             <article class="card">
-              <h3>Calculate formulas</h3>
-              <p>Create sheets, set inputs, and read the calculated cells that matter to the service.</p>
+              <h3>Formulas stay in the model</h3>
+              <p>Create sheets, set formulas, edit inputs, and read calculated cells without opening a spreadsheet UI.</p>
             </article>
             <article class="card">
-              <h3>Change structure</h3>
-              <p>Apply row and column edits, keep undo/redo behavior testable, and persist snapshots.</p>
+              <h3>State can round-trip</h3>
+              <p>Export a WorkPaper document, store it, restore it later, and keep the formulas and sheet structure intact.</p>
             </article>
             <article class="card">
-              <h3>Verify writeback</h3>
-              <p>Agent tools can write, recalculate, and read values back before returning an answer.</p>
+              <h3>Agents get readback</h3>
+              <p>Tool-calling code can write a cell, recalculate, and return the value it actually produced.</p>
             </article>
           </div>
         </section>
 
         <section id="install" aria-labelledby="install-title">
           <div class="section-head">
-            <h2 id="install-title">Smoke-test the npm package.</h2>
-            <p>This example creates a workbook, changes an input, saves it, restores it, and checks the recalculated value.</p>
+            <h2 id="install-title">Run a TypeScript smoke test.</h2>
+            <p>This is enough to check formula calculation, writeback, serialization, and restore behavior from a clean Node project.</p>
           </div>
-          <div class="quickstart quickstart-wide">
-            <div class="copy-path">
-              <div class="code">
+          <div class="two-col">
+            <div class="card">
+              <h3>Setup</h3>
+              <div class="code-panel">
                 <pre><code>mkdir bilig-headless-eval
 cd bilig-headless-eval
 npm init -y
 npm pkg set type=module
-npm install @bilig/headless</code></pre>
+npm install @bilig/headless
+npm install -D tsx typescript @types/node
+npx tsx eval.ts</code></pre>
               </div>
               <div class="expected">
-                <strong>then create <code>eval.mjs</code> and run <code>node eval.mjs</code></strong>
-                <p>
-                  the script fails if calculation or restore behavior changes. Successful output includes <code>verified: true</code> and a
-                  positive serialized byte count.
-                </p>
+                <strong>Create <code>eval.ts</code>.</strong>
+                <p>The script throws if calculation or restore behavior changes. A good run prints <code>verified: true</code>.</p>
               </div>
             </div>
-            <div class="code">
+            <div class="code-panel" aria-label="TypeScript smoke test">
               <pre><code>import {
   WorkPaper,
   createWorkPaperFromDocument,
@@ -749,6 +1034,8 @@ npm install @bilig/headless</code></pre>
   parseWorkPaperDocument,
   serializeWorkPaperDocument,
 } from "@bilig/headless";
+
+type NumericCell = { value: number };
 
 const workbook = WorkPaper.buildFromSheets({
   Revenue: [
@@ -763,35 +1050,36 @@ const workbook = WorkPaper.buildFromSheets({
   ],
 });
 
-const numberValue = (cell) => {
-  if (typeof cell === "object" && cell !== null && typeof cell.value === "number") {
-    return cell.value;
+function numberValue(cell: unknown): number {
+  if (typeof cell === "object" && cell !== null && typeof (cell as NumericCell).value === "number") {
+    return (cell as NumericCell).value;
   }
-  throw new Error(`expected numeric cell value, got ${JSON.stringify(cell)}`);
-};
-
-const revenue = workbook.getSheetId("Revenue");
-const summary = workbook.getSheetId("Summary");
-
-if (revenue === undefined || summary === undefined) {
-  throw new Error("missing sheet");
+  throw new Error(`Expected numeric cell value, got ${JSON.stringify(cell)}`);
 }
 
-const before = numberValue(workbook.getCellValue({ sheet: summary, row: 1, col: 1 }));
-workbook.setCellContents({ sheet: revenue, row: 1, col: 1 }, 32);
+function sheetId(name: string): number {
+  const id = workbook.getSheetId(name);
+  if (id === undefined) {
+    throw new Error(`Missing sheet: ${name}`);
+  }
+  return id;
+}
+
+const before = numberValue(workbook.getCellValue({ sheet: sheetId("Summary"), row: 1, col: 1 }));
+workbook.setCellContents({ sheet: sheetId("Revenue"), row: 1, col: 1 }, 32);
+
 const saved = serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { includeConfig: true }));
 const restored = createWorkPaperFromDocument(parseWorkPaperDocument(saved));
 const restoredSummary = restored.getSheetId("Summary");
-
 if (restoredSummary === undefined) {
-  throw new Error("missing restored sheet");
+  throw new Error("Missing restored Summary sheet");
 }
 
 const after = numberValue(restored.getCellValue({ sheet: restoredSummary, row: 1, col: 1 }));
 const verified = before === 36900 && after === 51300 && saved.length > 0;
 
 if (!verified) {
-  throw new Error(`unexpected formula readback: ${JSON.stringify({ before, after, bytes: saved.length })}`);
+  throw new Error(`Unexpected formula readback: ${JSON.stringify({ before, after, bytes: saved.length })}`);
 }
 
 console.log({ before, after, sheets: restored.getSheetNames(), bytes: saved.length, verified });</code></pre>
@@ -801,10 +1089,13 @@ console.log({ before, after, sheets: restored.getSheetNames(), bytes: saved.leng
 
         <section id="runtime" aria-labelledby="runtime-title">
           <div class="section-head">
-            <h2 id="runtime-title">The boundary is clear.</h2>
-            <p>Use bilig when spreadsheet behavior belongs inside a program, not when you need a finished Excel clone.</p>
+            <h2 id="runtime-title">What the runtime is for.</h2>
+            <p>
+              bilig is useful when spreadsheet behavior belongs in code. It is not a finished Excel clone, and the comparison docs are clear
+              about that boundary.
+            </p>
           </div>
-          <div class="surface">
+          <div class="two-col">
             <table class="matrix">
               <thead>
                 <tr>
@@ -815,29 +1106,29 @@ console.log({ before, after, sheets: restored.getSheetNames(), bytes: saved.leng
               <tbody>
                 <tr>
                   <td>Programmatic workbook creation</td>
-                  <td><span class="pill">available</span></td>
+                  <td><span class="status">available</span></td>
                 </tr>
                 <tr>
                   <td>Formula evaluation and readback</td>
-                  <td><span class="pill">available</span></td>
+                  <td><span class="status">available</span></td>
                 </tr>
                 <tr>
-                  <td>Structural edits and undo/redo</td>
-                  <td><span class="pill">available</span></td>
+                  <td>Structural row and column edits</td>
+                  <td><span class="status">available</span></td>
                 </tr>
                 <tr>
-                  <td>Snapshot and restore</td>
-                  <td><span class="pill">available</span></td>
+                  <td>Snapshot, restore, and JSON persistence</td>
+                  <td><span class="status">available</span></td>
                 </tr>
               </tbody>
             </table>
             <article class="card">
               <h3>Good fit</h3>
               <ul>
-                <li>Node services, scripts, and tool-calling workflows.</li>
-                <li>Formula-backed business logic that needs deterministic readback.</li>
-                <li>Saved workbook documents that should round-trip through JSON, SQLite, Postgres, or object storage.</li>
-                <li>Not a finished Excel clone; start with the compatibility docs when parity matters.</li>
+                <li>Node services, serverless routes, and scripts that need spreadsheet formulas.</li>
+                <li>Agent tools that must verify a write before responding.</li>
+                <li>Formula-backed business logic that should be stored as a workbook document.</li>
+                <li>Internal tools where deterministic readback matters more than Excel UI parity.</li>
               </ul>
             </article>
           </div>
@@ -845,25 +1136,24 @@ console.log({ before, after, sheets: restored.getSheetNames(), bytes: saved.leng
 
         <section id="proof" aria-labelledby="proof-title">
           <div class="section-head">
-            <h2 id="proof-title">Proof beats a pitch.</h2>
+            <h2 id="proof-title">Check the proof before trusting the pitch.</h2>
             <p>
-              The repo has runnable examples, persistence recipes, comparison notes, benchmark caveats, and small issues for first-time
-              contributors.
+              The repo keeps runnable examples, persistence recipes, benchmark notes, and small first-contribution tasks close to the code.
             </p>
           </div>
-          <div class="proof">
+          <div class="proof-grid">
             <div class="metric-list">
               <div class="metric">
                 <strong>46/46</strong>
-                <span>mean wins in the checked-in WorkPaper benchmark rows where the workloads are comparable.</span>
+                <span>mean wins in checked-in WorkPaper benchmark rows where the workloads are comparable.</span>
               </div>
               <div class="metric">
                 <strong>CI gated</strong>
-                <span>type checks, unit tests, generated-file checks, package smoke paths, and browser checks run in CI.</span>
+                <span>type checks, unit tests, generated-file checks, package smoke tests, and browser checks run in CI.</span>
               </div>
               <div class="metric">
-                <strong>fresh queue</strong>
-                <span>first-timer tasks stay scoped around small public examples and docs proof.</span>
+                <strong>Starter queue</strong>
+                <span>first-timer tasks stay scoped around public examples, docs proof, and compatibility notes.</span>
               </div>
             </div>
             <article class="card">
@@ -871,18 +1161,19 @@ console.log({ before, after, sheets: restored.getSheetNames(), bytes: saved.leng
                 <img
                   class="benchmark-card-image"
                   src="./assets/workpaper-benchmark-card.png?v=2026-05-12-1"
+                  width="1200"
+                  height="630"
+                  loading="lazy"
                   alt="WorkPaper benchmark evidence: 46 out of 46 comparable mean wins with a visible p95 caveat"
                 />
               </a>
-              <h3>Check it directly</h3>
+              <h3>Read the evidence</h3>
               <ul>
-                <li>Runnable package example</li>
-                <li>JSON-records example for service payloads</li>
-                <li>Package readme with install commands</li>
-                <li>SQLite, Postgres, and object-storage persistence recipes</li>
-                <li>Compatibility notes before making Excel-parity assumptions</li>
-                <li>Benchmark explainer with the measured claim and caveat</li>
-                <li><a href="https://github.com/proompteng/bilig/blob/main/docs/starter-issues.md">starter issues</a> for small patches</li>
+                <li><a href="./what-workpaper-benchmark-proves.html">Benchmark explainer with the measured claim and caveat</a></li>
+                <li><a href="./where-bilig-is-not-excel-compatible-yet.html">Compatibility notes before assuming Excel parity</a></li>
+                <li><a href="https://github.com/proompteng/bilig/blob/main/docs/starter-issues.md">Starter issues for small patches</a></li>
+                <li><a href="https://github.com/proompteng/bilig/discussions/157">Workflow feedback discussion</a></li>
+                <li><a href="https://github.com/proompteng/bilig/discussions/167">Serverless route feedback discussion</a></li>
               </ul>
             </article>
           </div>
@@ -890,16 +1181,16 @@ console.log({ before, after, sheets: restored.getSheetNames(), bytes: saved.leng
 
         <section aria-labelledby="faq-title">
           <div class="section-head">
-            <h2 id="faq-title">Questions worth answering before you install it.</h2>
+            <h2 id="faq-title">Before you install</h2>
           </div>
-          <div class="faq-list">
+          <div class="four-col">
             <article class="card">
               <h3>Can I use it without the browser app?</h3>
-              <p>Yes. <code>@bilig/headless</code> is the package for Node.js scripts, services, and agent tools.</p>
+              <p>Yes. <code translate="no">@bilig/headless</code> is the package for Node.js scripts, services, and agent tools.</p>
             </article>
             <article class="card">
               <h3>Is it a complete Excel clone?</h3>
-              <p>No. It targets programmatic workbook workflows, and the compatibility docs call out the gaps.</p>
+              <p>No. It targets programmatic workbook workflows, and the compatibility docs call out current gaps.</p>
             </article>
             <article class="card">
               <h3>How do I persist state?</h3>
@@ -916,76 +1207,50 @@ console.log({ before, after, sheets: restored.getSheetNames(), bytes: saved.leng
 
         <section aria-labelledby="links-title">
           <div class="section-head">
-            <h2 id="links-title">Pick the shortest path.</h2>
+            <h2 id="links-title">Find the shortest path</h2>
           </div>
-          <div class="doc-groups">
+          <div class="four-col doc-groups">
             <article class="card">
               <h3>Try it</h3>
               <ul>
                 <li><a href="https://www.npmjs.com/package/@bilig/headless">npm package</a></li>
                 <li><a href="./node-spreadsheet-formula-engine.html">Node spreadsheet formula engine guide</a></li>
-                <li><a href="./workbook-automation-examples-node.html">five Node workbook automation examples</a></li>
+                <li><a href="./workbook-automation-examples-node.html">workbook-automation-examples-node guide</a></li>
                 <li><a href="https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper">runnable example</a></li>
                 <li>
                   <a href="https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-records-input">
                     JSON records example
                   </a>
                 </li>
-                <li>
-                  <a href="./node-service-workpaper-recipe.html">Node service recipe</a>
-                </li>
+                <li><a href="./node-service-workpaper-recipe.html">Node service recipe</a></li>
                 <li>
                   <a href="https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api">
                     serverless API route example
                   </a>
                 </li>
-                <li>
-                  <a href="./serverless-workpaper-api-route.html"> serverless route walkthrough </a>
-                </li>
+                <li><a href="./serverless-workpaper-api-route.html">serverless route walkthrough</a></li>
               </ul>
             </article>
             <article class="card">
-              <h3>Learn the API</h3>
+              <h3>Use the API</h3>
               <ul>
-                <li>
-                  <a href="./why-agents-need-workbook-apis.html">workbook API article</a>
-                </li>
-                <li>
-                  <a href="./agent-workpaper-tool-calling-recipe.html"> tool-calling recipe </a>
-                </li>
-                <li>
-                  <a href="./vercel-ai-sdk-langchain-spreadsheet-tool.html"> Vercel AI SDK and LangChain spreadsheet tools </a>
-                </li>
-                <li>
-                  <a href="./mcp-workpaper-tool-server.html"> MCP spreadsheet tool server </a>
-                </li>
-                <li>
-                  <a href="./agent-spreadsheet-tool-call-loop.html"> agent tool-call loop </a>
-                </li>
-                <li>
-                  <a href="./persisting-formula-backed-workpaper-documents-in-node.html"> persistence recipes </a>
-                </li>
-                <li>
-                  <a href="./building-a-revenue-model-with-headless-workpaper.html"> revenue model article </a>
-                </li>
+                <li><a href="./why-agents-need-workbook-apis.html">workbook API article</a></li>
+                <li><a href="./agent-workpaper-tool-calling-recipe.html">tool-calling recipe</a></li>
+                <li><a href="./vercel-ai-sdk-langchain-spreadsheet-tool.html">Vercel AI SDK and LangChain spreadsheet tools</a></li>
+                <li><a href="./mcp-workpaper-tool-server.html">MCP spreadsheet tool server</a></li>
+                <li><a href="./agent-spreadsheet-tool-call-loop.html">agent tool-call loop</a></li>
+                <li><a href="./persisting-formula-backed-workpaper-documents-in-node.html">persistence recipes</a></li>
+                <li><a href="./building-a-revenue-model-with-headless-workpaper.html">revenue model article</a></li>
               </ul>
             </article>
             <article class="card">
               <h3>Compare it</h3>
               <ul>
-                <li>
-                  <a href="./headless-spreadsheet-engine-comparison.html"> engine comparison: HyperFormula, ExcelJS, Hucre, Formualizer </a>
-                </li>
-                <li>
-                  <a href="./sheetjs-exceljs-alternative-formula-workbook-api.html"> SheetJS and ExcelJS comparison </a>
-                </li>
-                <li>
-                  <a href="./hyperformula-alternative-headless-workpaper.html"> HyperFormula comparison </a>
-                </li>
+                <li><a href="./headless-spreadsheet-engine-comparison.html">engine comparison</a></li>
+                <li><a href="./sheetjs-exceljs-alternative-formula-workbook-api.html">SheetJS and ExcelJS comparison</a></li>
+                <li><a href="./hyperformula-alternative-headless-workpaper.html">HyperFormula comparison</a></li>
                 <li><a href="./what-workpaper-benchmark-proves.html">benchmark explainer</a></li>
-                <li>
-                  <a href="./where-bilig-is-not-excel-compatible-yet.html"> compatibility limits </a>
-                </li>
+                <li><a href="./where-bilig-is-not-excel-compatible-yet.html">compatibility limits</a></li>
               </ul>
             </article>
             <article class="card">
@@ -994,6 +1259,7 @@ console.log({ before, after, sheets: restored.getSheetNames(), bytes: saved.leng
                 <li><a href="https://github.com/proompteng/bilig">GitHub repository</a></li>
                 <li><a href="https://github.com/proompteng/bilig/stargazers">star the project</a></li>
                 <li><a href="https://github.com/proompteng/bilig/blob/main/docs/starter-issues.md">starter issues</a></li>
+                <li><a href="https://github.com/proompteng/bilig/discussions">GitHub discussions</a></li>
                 <li><a href="https://github.com/proompteng/bilig/discussions/157">workflow feedback</a></li>
                 <li><a href="https://github.com/proompteng/bilig/discussions/167">serverless route feedback</a></li>
               </ul>

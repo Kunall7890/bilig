@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "agent:framework-adapters": "node agent-framework-adapters.mjs",
-    "agent:mcp-stdio": "node mcp-stdio-server.mjs",
-    "agent:mcp-tools": "node mcp-tool-server.mjs",
+    "agent:mcp-stdio": "tsx mcp-stdio-server.ts",
+    "agent:mcp-tools": "tsx mcp-tool-server.ts",
     "agent:tool-call": "node agent-tool-call-loop.mjs",
     "agent:verify": "node agent-writeback-verification.mjs",
     "budget-variance": "node budget-variance-alerts.mjs",
@@ -26,9 +26,15 @@
     "sheet-inspection": "node sheet-inspection.mjs",
     "snapshot-diff": "node snapshot-diff.mjs",
     "start": "node revenue-plan.mjs",
-    "subscription-mrr": "node subscription-mrr-forecast.mjs"
+    "subscription-mrr": "node subscription-mrr-forecast.mjs",
+    "typecheck:mcp": "tsc --noEmit"
   },
   "dependencies": {
     "@bilig/headless": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "25.5.0",
+    "tsx": "4.21.0",
+    "typescript": "6.0.2"
   }
 }

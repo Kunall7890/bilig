@@ -40,6 +40,16 @@ printf '%s\n' \
   npm run --silent agent:mcp-stdio
 ```
 
+The npm package also exposes the same demo server as `bilig-workpaper-mcp`:
+
+```sh
+npm exec --package @bilig/headless -- bilig-workpaper-mcp
+```
+
+The package carries `mcpName: io.github.proompteng/bilig-workpaper` and a
+matching `server.json`, which is the metadata shape expected by MCP registries
+for npm-hosted stdio servers.
+
 The script implements two JSON-RPC methods shaped around the MCP tool model:
 
 - `tools/list` returns `read_workpaper_summary` and
@@ -104,9 +114,9 @@ and tool invocation through `tools/call`, with input schemas on each tool:
 ## Files To Inspect
 
 - MCP-style adapter script:
-  [`examples/headless-workpaper/mcp-tool-server.mjs`](https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/mcp-tool-server.mjs)
+  [`examples/headless-workpaper/mcp-tool-server.ts`](https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/mcp-tool-server.ts)
 - stdio adapter script:
-  [`examples/headless-workpaper/mcp-stdio-server.mjs`](https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/mcp-stdio-server.mjs)
+  [`examples/headless-workpaper/mcp-stdio-server.ts`](https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/mcp-stdio-server.ts)
 - example README:
   [`examples/headless-workpaper/README.md#mcp-tool-server-shape`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#mcp-tool-server-shape)
 - SDK-neutral tool-calling recipe:
