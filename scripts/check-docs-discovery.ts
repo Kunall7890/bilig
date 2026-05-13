@@ -214,6 +214,7 @@ requireIncludes(index, '<title>bilig - Headless Spreadsheet Engine for Node.js S
 requireIncludes(index, '<meta name="robots" content="index, follow, max-image-preview:large" />', 'docs/index.html')
 requireIncludes(index, '<link rel="icon" type="image/svg+xml" href="./assets/favicon.svg" />', 'docs/index.html')
 requireIncludes(index, '<link rel="stylesheet" href="./assets/fonts.css?v=2026-05-13-1" />', 'docs/index.html')
+requireIncludes(index, '<link rel="stylesheet" href="./assets/product-demo.css?v=2026-05-13-1" />', 'docs/index.html')
 requireIncludes(index, 'bilig-hero-workbook-api.png?v=2026-05-08-2', 'docs/index.html')
 requireIncludes(index, '"downloadUrl": "https://www.npmjs.com/package/@bilig/headless"', 'docs/index.html')
 requireIncludes(index, '"applicationCategory": "DeveloperApplication"', 'docs/index.html')
@@ -270,6 +271,7 @@ await Promise.all(
 await Promise.all(
   [
     'fonts.css',
+    'product-demo.css',
     'fonts/LICENSE.txt',
     'fonts/README.md',
     'fonts/ibm-plex-mono-400.woff2',
