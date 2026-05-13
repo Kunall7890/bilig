@@ -527,8 +527,12 @@ Latest JavaScript-library comparison starter snapshot on May 13, 2026:
 - Starter issues `#309` through `#314` now cover Handsontable, AG Grid,
   SheetJS, ExcelJS, HyperFormula, and Formula.js boundary notes for the
   JavaScript spreadsheet library guide.
-- Starter issues `#315` through `#319` now cover Mastra, LlamaIndex.TS,
-  LangGraph.js, CopilotKit, and Cloudflare Agents WorkPaper tool recipes.
+- Starter issues `#315` through `#319` covered Mastra, LlamaIndex.TS,
+  LangGraph.js, CopilotKit, and Cloudflare Agents WorkPaper tool recipes and
+  were closed after the framework pages shipped in `fd2cb58f8`.
+- Replacement starter issues `#323` through `#327` now cover verification
+  transcripts, LangGraph state handoff, CopilotKit UI result copy, and
+  Cloudflare Agents persistence notes for the same framework pages.
 - The public growth snapshot now records `88` open `first-timers-only`,
   `good first issue`, and `help wanted` issues, with `80` generally available
   and `8` already in review.

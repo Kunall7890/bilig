@@ -432,6 +432,11 @@ requireIncludes(starterIssues, '#294: docs(mcp): add Cline MCP config for WorkPa
 requireIncludes(starterIssues, '#296: docs(mcpb): add Windows install notes for the Claude Desktop bundle', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#297: docs(mcpb): add a Claude Desktop MCPB troubleshooting table', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#298: docs(mcpb): add a copy-paste verification transcript for the bundle server', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '#323: docs(agent): add Mastra WorkPaper verification transcript', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '#324: docs(agent): add LlamaIndex.TS WorkPaper verification transcript', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '#325: docs(agent): add LangGraph.js ToolNode state handoff note', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '#326: docs(agent): add CopilotKit WorkPaper action UI result note', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '#327: docs(agent): add Cloudflare Agents WorkPaper state persistence note', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#299: docs(examples): add AdonisJS WorkPaper controller smoke', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#300: docs(examples): add tRPC WorkPaper procedure smoke', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#301: docs(storage): add Drizzle WorkPaper JSON persistence recipe', 'docs/starter-issues.md')
@@ -753,7 +758,7 @@ const currentStarterIssueNumbers = [
   134, 153, 154, 155, 156, 158, 159, 162, 163, 193, 194, 195, 196, 197, 198, 207, 208, 209, 210, 211, 212, 217, 218, 219, 220, 221, 222,
   223, 231, 233, 247, 248, 249, 250, 255, 256, 257, 258, 259, 260, 265, 266, 267, 268, 269, 272, 273, 274, 275, 277, 278, 279, 280, 281,
   282, 283, 284, 285, 286, 287, 288, 289, 290, 292, 293, 294, 296, 297, 298, 299, 300, 301, 302, 303, 304, 305, 306, 309, 310, 311, 312,
-  313, 314, 315, 316, 317, 318, 319,
+  313, 314, 323, 324, 325, 326, 327,
 ]
 
 for (const required of currentStarterIssueNumbers.map((issueNumber) => `https://github.com/proompteng/bilig/issues/${issueNumber}`)) {
@@ -818,6 +823,11 @@ for (const closedIssue of [
   '192',
   '276',
   '227',
+  '315',
+  '316',
+  '317',
+  '318',
+  '319',
 ]) {
   if (starterIssues.includes(`https://github.com/proompteng/bilig/issues/${closedIssue}`)) {
     throw new Error(`docs/starter-issues.md still links to closed starter issue #${closedIssue}`)
