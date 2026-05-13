@@ -6,27 +6,52 @@ export function escapeXmlAttribute(value: string): string {
   return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
+function xmlPrefixForTagName(tagName: string): string {
+  const separator = tagName.indexOf(':')
+  return separator >= 0 ? tagName.slice(0, separator + 1) : ''
+}
+
+function xmlTagName(prefix: string, localName: string): string {
+  return `${prefix}${localName}`
+}
+
 export function addCustomNumberFormatsToStylesXml(stylesXml: string, formatIdsByCode: ReadonlyMap<string, number>): string {
   if (formatIdsByCode.size === 0) {
     return stylesXml
   }
-  const numFmtEntries = [...formatIdsByCode.entries()]
-    .map(([formatCode, id]) => `<numFmt numFmtId="${String(id)}" formatCode="${escapeXmlAttribute(formatCode)}"/>`)
-    .join('')
-  const selfClosingNumFmts = /<numFmts\b[^>]*\/>/u
-  if (selfClosingNumFmts.test(stylesXml)) {
-    return stylesXml.replace(selfClosingNumFmts, () => `<numFmts count="${String(formatIdsByCode.size)}">${numFmtEntries}</numFmts>`)
+  const buildNumFmtEntries = (prefix: string) =>
+    [...formatIdsByCode.entries()]
+      .map(
+        ([formatCode, id]) => `<${xmlTagName(prefix, 'numFmt')} numFmtId="${String(id)}" formatCode="${escapeXmlAttribute(formatCode)}"/>`,
+      )
+      .join('')
+  const selfClosingNumFmts = /<((?:[A-Za-z_][\w.-]*:)?numFmts)\b[^>]*\/>/u
+  const selfClosingMatch = selfClosingNumFmts.exec(stylesXml)
+  if (selfClosingMatch) {
+    const tagName = selfClosingMatch[1]!
+    const prefix = xmlPrefixForTagName(tagName)
+    return stylesXml.replace(
+      selfClosingNumFmts,
+      () => `<${tagName} count="${String(formatIdsByCode.size)}">${buildNumFmtEntries(prefix)}</${tagName}>`,
+    )
   }
-  const existingNumFmts = /<numFmts count="([0-9]+)">/u.exec(stylesXml)
+  const existingNumFmts = /<((?:[A-Za-z_][\w.-]*:)?numFmts)\b[^>]*>/u.exec(stylesXml)
   if (existingNumFmts) {
-    const count = Number(existingNumFmts[1])
+    const openingTag = existingNumFmts[0]
+    const tagName = existingNumFmts[1]!
+    const prefix = xmlPrefixForTagName(tagName)
+    const count = readXmlNumberAttribute(openingTag, 'count') ?? 0
     const nextCount = Number.isFinite(count) ? count + formatIdsByCode.size : formatIdsByCode.size
+    const closingTag = `</${tagName}>`
     return stylesXml
-      .replace(/<numFmts count="[0-9]+">/u, () => `<numFmts count="${String(nextCount)}">`)
-      .replace('</numFmts>', () => `${numFmtEntries}</numFmts>`)
+      .replace(openingTag, () => setXmlAttribute(openingTag, 'count', String(nextCount)))
+      .replace(closingTag, () => `${buildNumFmtEntries(prefix)}${closingTag}`)
   }
-  const numFmtsXml = `<numFmts count="${String(formatIdsByCode.size)}">${numFmtEntries}</numFmts>`
-  return stylesXml.replace(/<fonts\b/u, (match) => `${numFmtsXml}${match}`)
+  const fontsMatch = /<((?:[A-Za-z_][\w.-]*:)?fonts)\b/u.exec(stylesXml)
+  const prefix = fontsMatch ? xmlPrefixForTagName(fontsMatch[1]!) : ''
+  const numFmtsTagName = xmlTagName(prefix, 'numFmts')
+  const numFmtsXml = `<${numFmtsTagName} count="${String(formatIdsByCode.size)}">${buildNumFmtEntries(prefix)}</${numFmtsTagName}>`
+  return fontsMatch ? stylesXml.replace(fontsMatch[0], (match) => `${numFmtsXml}${match}`) : stylesXml
 }
 
 export function repairLeadingZeroNumberFormatIds(bytes: Uint8Array): Uint8Array {
@@ -54,9 +79,9 @@ export function repairLeadingZeroNumberFormatIds(bytes: Uint8Array): Uint8Array 
     stylesXml = stylesXml.replaceAll(`numFmtId="${formatCode}"`, `numFmtId="${String(id)}"`)
   }
   const customIds = [...formatIdsByCode.values()].map(String).join('|')
-  const xfWithCustomNumberFormatPattern = new RegExp(`<xf\\b([^>]*)\\bnumFmtId="(${customIds})"([^>]*)/>`, 'gu')
-  stylesXml = stylesXml.replace(xfWithCustomNumberFormatPattern, (tag: string, before: string, id: string, after: string) =>
-    tag.includes('applyNumberFormat=') ? tag : `<xf${before} numFmtId="${id}"${after} applyNumberFormat="1"/>`,
+  const xfWithCustomNumberFormatPattern = new RegExp(`<(?:[A-Za-z_][\\w.-]*:)?xf\\b[^>]*\\bnumFmtId="(${customIds})"[^>]*(?:/?>)`, 'gu')
+  stylesXml = stylesXml.replace(xfWithCustomNumberFormatPattern, (tag: string) =>
+    tag.includes('applyNumberFormat=') ? tag : setXmlAttribute(tag, 'applyNumberFormat', '1'),
   )
   stylesXml = addCustomNumberFormatsToStylesXml(stylesXml, formatIdsByCode)
   zip['xl/styles.xml'] = strToU8(stylesXml)

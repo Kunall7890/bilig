@@ -113,20 +113,27 @@ function buildExportRows(rows: readonly WorkbookAxisEntrySnapshot[] | undefined)
 }
 
 function readCellXfs(stylesXml: string): readonly string[] {
-  const match = /<cellXfs\b[^>]*>([\s\S]*?)<\/cellXfs>/u.exec(stylesXml)
+  const match = /<((?:[A-Za-z_][\w.-]*:)?cellXfs)\b[^>]*>([\s\S]*?)<\/\1>/u.exec(stylesXml)
   if (!match) {
     return []
   }
-  const body = match[1] ?? ''
+  const body = match[2] ?? ''
   const entries: string[] = []
   let cursor = 0
+  const nextXf = /<(?:[A-Za-z_][\w.-]*:)?xf\b/gu
   while (cursor < body.length) {
-    const start = body.indexOf('<xf', cursor)
-    if (start < 0) {
+    nextXf.lastIndex = cursor
+    const startMatch = nextXf.exec(body)
+    if (!startMatch) {
       break
     }
+    const start = startMatch.index
     const openingEnd = body.indexOf('>', start)
     if (openingEnd < 0) {
+      break
+    }
+    const tagName = /^<([^\s/>]+)/u.exec(body.slice(start, openingEnd + 1))?.[1]
+    if (!tagName) {
       break
     }
     if (body[openingEnd - 1] === '/') {
@@ -134,12 +141,13 @@ function readCellXfs(stylesXml: string): readonly string[] {
       cursor = openingEnd + 1
       continue
     }
-    const closingStart = body.indexOf('</xf>', openingEnd + 1)
+    const closingTag = `</${tagName}>`
+    const closingStart = body.indexOf(closingTag, openingEnd + 1)
     if (closingStart < 0) {
       break
     }
-    entries.push(body.slice(start, closingStart + '</xf>'.length))
-    cursor = closingStart + '</xf>'.length
+    entries.push(body.slice(start, closingStart + closingTag.length))
+    cursor = closingStart + closingTag.length
   }
   return entries
 }
@@ -154,14 +162,17 @@ function appendCustomCellXfsToStylesXml(stylesXml: string, xfs: readonly string[
   if (xfs.length === 0) {
     return stylesXml
   }
-  return stylesXml.replace(/<cellXfs\b([^>]*)>([\s\S]*?)<\/cellXfs>/u, (_match, attributes: string, body: string) => {
-    const count = Array.from(body.matchAll(/<xf\b/gu)).length + xfs.length
-    return `<cellXfs${updateElementCount(attributes, count)}>${body}${xfs.join('')}</cellXfs>`
-  })
+  return stylesXml.replace(
+    /<((?:[A-Za-z_][\w.-]*:)?cellXfs)\b([^>]*)>([\s\S]*?)<\/\1>/u,
+    (_match, tagName: string, attributes: string, body: string) => {
+      const count = Array.from(body.matchAll(/<(?:[A-Za-z_][\w.-]*:)?xf\b/gu)).length + xfs.length
+      return `<${tagName}${updateElementCount(attributes, count)}>${body}${xfs.join('')}</${tagName}>`
+    },
+  )
 }
 
 function styleXfWithNumberFormat(xf: string, numberFormatId: number): string {
-  return xf.replace(/<xf\b[^>]*(?:\/>|>)/u, (openingTag) =>
+  return xf.replace(/<(?:[A-Za-z_][\w.-]*:)?xf\b[^>]*(?:\/>|>)/u, (openingTag) =>
     setXmlAttribute(
       setXmlAttribute(setXmlAttribute(openingTag, 'numFmtId', String(numberFormatId)), 'applyNumberFormat', '1'),
       'xfId',

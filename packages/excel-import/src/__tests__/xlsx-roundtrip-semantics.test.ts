@@ -153,6 +153,39 @@ describe('XLSX round-trip semantics', () => {
     })
   })
 
+  it('preserves number formats when style artifacts use namespaced XML tags', () => {
+    const snapshot: WorkbookSnapshot = {
+      version: 1,
+      workbook: {
+        name: 'namespaced-style-number-format',
+        metadata: {
+          styleArtifacts: {
+            stylesXml: prefixedMinimalStylesXml(),
+          },
+        },
+      },
+      sheets: [
+        {
+          id: 1,
+          name: 'Data',
+          order: 0,
+          cells: [
+            { address: 'D10', value: 43556, format: 'm/d/yy' },
+            { address: 'E10', value: 7, format: '00' },
+          ],
+        },
+      ],
+    }
+
+    const exported = exportXlsx(snapshot)
+    const imported = importXlsx(exported, 'namespaced-style-number-format.xlsx')
+
+    expect(imported.snapshot.sheets[0]?.cells).toEqual([
+      { address: 'D10', value: 43556, format: 'm/d/yy' },
+      { address: 'E10', value: 7, format: '00' },
+    ])
+  })
+
   it('keeps rich text containing dollar apostrophe literals', () => {
     const snapshot: WorkbookSnapshot = {
       version: 1,
@@ -224,5 +257,19 @@ function minimalStylesXml(): string {
     '<cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs>',
     '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>',
     '</styleSheet>',
+  ].join('')
+}
+
+function prefixedMinimalStylesXml(): string {
+  return [
+    '<?xml version="1.0" encoding="utf-8"?>',
+    '<x:styleSheet xmlns:x="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<x:fonts count="1"><x:font><x:sz val="11"/><x:name val="Calibri"/></x:font></x:fonts>',
+    '<x:fills count="1"><x:fill><x:patternFill patternType="none"/></x:fill></x:fills>',
+    '<x:borders count="1"><x:border/></x:borders>',
+    '<x:cellStyleXfs count="1"><x:xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></x:cellStyleXfs>',
+    '<x:cellXfs count="1"><x:xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></x:cellXfs>',
+    '<x:cellStyles count="1"><x:cellStyle name="Normal" xfId="0" builtinId="0"/></x:cellStyles>',
+    '</x:styleSheet>',
   ].join('')
 }
