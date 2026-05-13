@@ -44,7 +44,9 @@ Claude Code can add an MCP server from JSON. Add the server to the current
 project:
 
 ```sh
-claude mcp add-json bilig-workpaper '{"type":"stdio","command":"npm","args":["exec","--package","@bilig/headless","--","bilig-workpaper-mcp"],"env":{}}' --scope project
+claude mcp add-json bilig-workpaper \
+  '{"type":"stdio","command":"npm","args":["exec","--package","@bilig/headless","--","bilig-workpaper-mcp"],"env":{}}' \
+  --scope project
 ```
 
 Then check it:
@@ -56,7 +58,10 @@ claude mcp get bilig-workpaper
 Ask Claude:
 
 ```text
-List the Bilig WorkPaper tools. Then read the sample WorkPaper summary, set the input cell that controls conversion rate to 0.4, and report the before/after expected ARR plus the persistence checks.
+List the Bilig WorkPaper tools.
+Then read the sample WorkPaper summary, set the input cell that controls
+conversion rate to 0.4, and report the before/after expected ARR plus the
+persistence checks.
 ```
 
 ## Claude Desktop
