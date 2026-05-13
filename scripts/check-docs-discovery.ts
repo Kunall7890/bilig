@@ -248,9 +248,14 @@ requireIncludes(index, '<span>Typed examples</span>', 'docs/index.html')
 requireIncludes(index, '<strong>Every guide links to runnable .ts files.</strong>', 'docs/index.html')
 requireIncludes(index, '<span>Starter issues</span>', 'docs/index.html')
 requireIncludes(index, '<strong>73 small tasks are ready for first-time contributors.</strong>', 'docs/index.html')
-requireIncludes(index, '<strong>npm latest</strong>', 'docs/index.html')
-requireIncludes(index, '<span>Open first-timer issues</span>', 'docs/index.html')
-requireIncludes(index, '<strong>73</strong>', 'docs/index.html')
+requireIncludes(index, 'The benchmark is public. So are the gaps.', 'docs/index.html')
+requireIncludes(index, 'The link also covers the caveat, unsupported formulas, and open starter work.', 'docs/index.html')
+requireIncludes(index, 'aria-label="Public project signals"', 'docs/index.html')
+requireIncludes(index, '<span>npm package</span>', 'docs/index.html')
+requireIncludes(index, '<strong>latest</strong>', 'docs/index.html')
+requireIncludes(index, '<span>Starter tasks</span>', 'docs/index.html')
+requireIncludes(index, '<strong>73 open</strong>', 'docs/index.html')
+requireNotIncludes(index, 'No trust-me homepage claims', 'docs/index.html')
 requireNotIncludes(index, '<strong>40 starter tasks</strong>', 'docs/index.html')
 requireNotIncludes(index, '<strong>0.13.9</strong>', 'docs/index.html')
 requireIncludes(index, '"downloadUrl": "https://www.npmjs.com/package/@bilig/headless"', 'docs/index.html')
@@ -273,6 +278,7 @@ for (const required of [
   './serverless-workpaper-api-route.html',
   './node-framework-workpaper-adapters.html',
   './persisting-formula-backed-workpaper-documents-in-node.html',
+  'examples/serverless-workpaper-api#persistence-adapters',
   './building-a-revenue-model-with-headless-workpaper.html',
   './headless-spreadsheet-engine-comparison.html',
   './hyperformula-alternative-headless-workpaper.html',
@@ -898,16 +904,29 @@ requireIncludes(headlessExamplePackage, '"agent:mcp-tools": "tsx mcp-tool-server
 requireIncludes(headlessExamplePackage, '"agent:mcp-stdio": "tsx mcp-stdio-server.ts"', 'examples/headless-workpaper/package.json')
 await requireFile(join(repoRoot, 'examples', 'serverless-workpaper-api', 'framework-adapters.ts'))
 await requireFile(join(repoRoot, 'examples', 'serverless-workpaper-api', 'next-route-handler.ts'))
+await requireFile(join(repoRoot, 'examples', 'serverless-workpaper-api', 'persistence-adapters.ts'))
 const [serverlessExampleReadme, serverlessExamplePackage] = await Promise.all([
   readFile(join(repoRoot, 'examples', 'serverless-workpaper-api', 'README.md'), 'utf8'),
   readFile(join(repoRoot, 'examples', 'serverless-workpaper-api', 'package.json'), 'utf8'),
 ])
 const serverlessWorkPaperApiRouteDoc = await readFile(join(docsRoot, 'serverless-workpaper-api-route.md'), 'utf8')
+const persistenceDoc = await readFile(join(docsRoot, 'persisting-formula-backed-workpaper-documents-in-node.md'), 'utf8')
 requireIncludes(serverlessExampleReadme, 'npm run next-route-handler', 'examples/serverless-workpaper-api/README.md')
 requireIncludes(serverlessExampleReadme, '## Next.js App Router Smoke', 'examples/serverless-workpaper-api/README.md')
 requireIncludes(serverlessWorkPaperApiRouteDoc, 'npm run next-route-handler', 'docs/serverless-workpaper-api-route.md')
 requireIncludes(serverlessExampleReadme, 'npm run framework-adapters', 'examples/serverless-workpaper-api/README.md')
 requireIncludes(serverlessExampleReadme, '## Framework Adapters', 'examples/serverless-workpaper-api/README.md')
+requireIncludes(serverlessExampleReadme, 'npm run persistence-adapters', 'examples/serverless-workpaper-api/README.md')
+requireIncludes(serverlessExampleReadme, '## Persistence Adapters', 'examples/serverless-workpaper-api/README.md')
+requireIncludes(serverlessExampleReadme, 'Postgres JSONB', 'examples/serverless-workpaper-api/README.md')
+requireIncludes(
+  persistenceDoc,
+  'examples/serverless-workpaper-api/persistence-adapters.ts',
+  'docs/persisting-formula-backed-workpaper-documents-in-node.md',
+)
+requireIncludes(persistenceDoc, 'npm run persistence-adapters', 'docs/persisting-formula-backed-workpaper-documents-in-node.md')
+requireIncludes(persistenceDoc, 'Postgres JSONB', 'docs/persisting-formula-backed-workpaper-documents-in-node.md')
+requireIncludes(persistenceDoc, 'Redis or string-KV adapter', 'docs/persisting-formula-backed-workpaper-documents-in-node.md')
 requireIncludes(
   serverlessExamplePackage,
   '"next-route-handler": "tsx next-route-handler.ts"',
@@ -916,6 +935,11 @@ requireIncludes(
 requireIncludes(
   serverlessExamplePackage,
   '"framework-adapters": "tsx framework-adapters.ts"',
+  'examples/serverless-workpaper-api/package.json',
+)
+requireIncludes(
+  serverlessExamplePackage,
+  '"persistence-adapters": "tsx persistence-adapters.ts"',
   'examples/serverless-workpaper-api/package.json',
 )
 requireIncludes(headlessPackageManifest, '"mcpName": "io.github.proompteng/bilig-workpaper"', 'packages/headless/package.json')
@@ -934,6 +958,8 @@ requireIncludes(headlessReadme, 'npm run subscription-mrr', 'packages/headless/R
 requireIncludes(headlessReadme, '#subscription-mrr-forecast', 'packages/headless/README.md')
 requireIncludes(headlessReadme, 'npm run next-route-handler', 'packages/headless/README.md')
 requireIncludes(headlessReadme, 'npm run framework-adapters', 'packages/headless/README.md')
+requireIncludes(headlessReadme, 'npm run persistence-adapters', 'packages/headless/README.md')
+requireIncludes(headlessReadme, '#persistence-adapters', 'packages/headless/README.md')
 requireIncludes(headlessReadme, 'node-framework-workpaper-adapters.html', 'packages/headless/README.md')
 
 for (const required of [

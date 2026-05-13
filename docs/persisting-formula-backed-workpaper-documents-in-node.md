@@ -115,6 +115,31 @@ The expected summary is:
 }
 ```
 
+## Runnable Service Storage Adapters
+
+The service-route example also includes a typed persistence smoke for the
+stores most Node services already use:
+
+```sh
+cd examples/serverless-workpaper-api
+npm install
+npm run persistence-adapters
+```
+
+The source is
+[`examples/serverless-workpaper-api/persistence-adapters.ts`](../examples/serverless-workpaper-api/persistence-adapters.ts).
+It runs the real `createWorkPaperRequestHandler(storage)` boundary through:
+
+- a Postgres JSONB adapter with a `query(sql, values)` client shape
+- a Redis or string-KV adapter with `get(key)` and `set(key, value)`
+- an object-storage adapter with text load and save functions
+
+Each adapter starts empty, loads the initial WorkPaper document, accepts a
+revenue edit, saves the serialized workbook JSON, creates a fresh handler, and
+then reads the restored workbook back. The script only prints `verified: true`
+after the cold read returns the recalculated total and the saved document still
+contains formulas.
+
 ## Object Storage Adapter
 
 For serverless routes, object storage is often the simplest durable store. Keep
@@ -123,12 +148,7 @@ functions, while the host app can map those helpers to S3, R2, GCS, Azure Blob
 Storage, or another provider.
 
 ```ts
-import {
-  WorkPaper,
-  exportWorkPaperDocument,
-  parseWorkPaperDocument,
-  serializeWorkPaperDocument,
-} from '@bilig/headless'
+import { WorkPaper, exportWorkPaperDocument, parseWorkPaperDocument, serializeWorkPaperDocument } from '@bilig/headless'
 
 const workbookKey = 'workpapers/revenue-plan.json'
 
@@ -163,9 +183,7 @@ function createInitialWorkbookJson() {
     ],
   })
 
-  return serializeWorkPaperDocument(
-    exportWorkPaperDocument(workbook, { includeConfig: true }),
-  )
+  return serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { includeConfig: true }))
 }
 ```
 
@@ -175,8 +193,7 @@ download and upload calls. Pass the resulting object into the same durable route
 boundary used by the serverless example:
 
 ```ts
-export const handleWorkPaperRequest =
-  createWorkPaperRequestHandler(objectStorage)
+export const handleWorkPaperRequest = createWorkPaperRequestHandler(objectStorage)
 ```
 
 Read the current serialized document before a request, apply one accepted
@@ -204,12 +221,7 @@ create table workpaper_documents (
 The storage adapter still has the same two-function shape:
 
 ```ts
-import {
-  WorkPaper,
-  exportWorkPaperDocument,
-  parseWorkPaperDocument,
-  serializeWorkPaperDocument,
-} from '@bilig/headless'
+import { WorkPaper, exportWorkPaperDocument, parseWorkPaperDocument, serializeWorkPaperDocument } from '@bilig/headless'
 
 const documentId = 'revenue-plan'
 
@@ -263,9 +275,7 @@ function createInitialWorkbookJson() {
     ],
   })
 
-  return serializeWorkPaperDocument(
-    exportWorkPaperDocument(workbook, { includeConfig: true }),
-  )
+  return serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { includeConfig: true }))
 }
 ```
 
@@ -297,12 +307,7 @@ methods. Keep those calls thin and swap in `better-sqlite3`, `node:sqlite`, or
 the SQLite client your service already uses.
 
 ```ts
-import {
-  WorkPaper,
-  exportWorkPaperDocument,
-  parseWorkPaperDocument,
-  serializeWorkPaperDocument,
-} from '@bilig/headless'
+import { WorkPaper, exportWorkPaperDocument, parseWorkPaperDocument, serializeWorkPaperDocument } from '@bilig/headless'
 
 const documentId = 'local-revenue-plan'
 
@@ -355,9 +360,7 @@ function createInitialWorkbookJson() {
     ],
   })
 
-  return serializeWorkPaperDocument(
-    exportWorkPaperDocument(workbook, { includeConfig: true }),
-  )
+  return serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { includeConfig: true }))
 }
 ```
 

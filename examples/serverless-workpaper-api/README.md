@@ -15,6 +15,7 @@ npm install
 npm run smoke
 npm run next-route-handler
 npm run framework-adapters
+npm run persistence-adapters
 ```
 
 Expected smoke output:
@@ -183,6 +184,67 @@ Expected output:
 }
 ```
 
+## Persistence Adapters
+
+Run the persistence smoke when the route needs durable state instead of module
+memory:
+
+```sh
+npm run persistence-adapters
+```
+
+The script exercises the same WorkPaper request handler through three typed
+storage adapters:
+
+- Postgres JSONB, using a `query(sql, values)` client shape compatible with
+  `pg`-style clients.
+- Redis or another string KV store, using `get(key)` and `set(key, value)`.
+- Object storage such as S3, R2, GCS, or Azure Blob, using small text load and
+  save functions.
+
+Each adapter starts from an empty store, handles a summary read, accepts the
+revenue write, creates a fresh handler, then reads the restored workbook from
+the saved document. `verified: true` means formulas survived persistence and
+the cold read returned the recalculated total.
+
+Expected output shape:
+
+```json
+{
+  "adapters": ["postgres-jsonb", "redis", "object-storage"],
+  "postgres": {
+    "before": {
+      "totalRevenue": 36900,
+      "westCustomers": 20,
+      "largestDeal": 24000
+    },
+    "after": {
+      "totalRevenue": 48600,
+      "westCustomers": 20,
+      "largestDeal": 24000
+    },
+    "verified": true
+  },
+  "redis": {
+    "after": {
+      "totalRevenue": 48600,
+      "westCustomers": 20,
+      "largestDeal": 24000
+    },
+    "verified": true
+  },
+  "objectStorage": {
+    "after": {
+      "totalRevenue": 48600,
+      "westCustomers": 20,
+      "largestDeal": 24000
+    },
+    "verified": true
+  },
+  "verified": true
+}
+```
+
 ## Moving Into A Real Route
 
 - In a Next.js app route, call `handleWorkPaperRequest()` from `GET()` and
@@ -229,7 +291,9 @@ Expected output:
 - In Firebase Functions, adapt the HTTPS request into a web-standard `Request`,
   then write the returned `Response` through the function response object.
 - Replace the in-memory `state.workbookJson` with your durable store when the
-  workbook needs to survive cold starts or multiple instances.
+  workbook needs to survive cold starts or multiple instances; start from the
+  typed adapters in `persistence-adapters.ts` for Postgres JSONB, Redis/KV, or
+  object storage.
 
 For the longer walkthrough, see
 [`docs/serverless-workpaper-api-route.md`](../../docs/serverless-workpaper-api-route.md).

@@ -245,9 +245,11 @@ cd bilig/examples/serverless-workpaper-api
 npm install
 npm run next-route-handler
 npm run smoke
+npm run persistence-adapters
 ```
 
-Expected proof from `npm run next-route-handler` and `npm run smoke` includes:
+Expected proof from `npm run next-route-handler`, `npm run smoke`, and
+`npm run persistence-adapters` includes:
 
 ```json
 {
@@ -544,6 +546,9 @@ For the persistence-focused follow-up article and runnable example, see
 [`docs/persisting-formula-backed-workpaper-documents-in-node.md`](docs/persisting-formula-backed-workpaper-documents-in-node.md)
 and
 [`examples/headless-workpaper/persistence-roundtrip.ts`](examples/headless-workpaper/persistence-roundtrip.ts).
+For service storage, run the typed Postgres JSONB, Redis/KV, and object-storage
+adapters in
+[`examples/serverless-workpaper-api/persistence-adapters.ts`](examples/serverless-workpaper-api/persistence-adapters.ts).
 
 For the benchmark-focused explainer, see
 [`docs/what-workpaper-benchmark-proves.md`](docs/what-workpaper-benchmark-proves.md).

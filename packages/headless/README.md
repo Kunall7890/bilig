@@ -307,6 +307,8 @@ Repository links:
   [`npm run next-route-handler`](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api#nextjs-app-router-smoke)
 - Express, Fastify, and Hono API adapters:
   [`npm run framework-adapters`](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api#framework-adapters)
+- Postgres JSONB, Redis/KV, and object-storage persistence adapters:
+  [`npm run persistence-adapters`](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api#persistence-adapters)
 - server-side spreadsheet automation:
   [`docs/server-side-spreadsheet-automation-node.md`](https://github.com/proompteng/bilig/blob/main/docs/server-side-spreadsheet-automation-node.md)
 - Node service recipe:
@@ -526,6 +528,15 @@ and run the example package:
 cd examples/headless-workpaper
 npm install
 npm run persistence
+```
+
+For service storage, run the typed Postgres JSONB, Redis/KV, and object-storage
+adapter smoke:
+
+```sh
+cd examples/serverless-workpaper-api
+npm install
+npm run persistence-adapters
 ```
 
 ## Core Concepts
