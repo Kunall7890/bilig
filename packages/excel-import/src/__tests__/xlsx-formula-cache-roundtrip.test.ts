@@ -2,6 +2,7 @@ import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import * as XLSX from 'xlsx'
 import { describe, expect, it } from 'vitest'
 
+import type { WorkbookSnapshot } from '@bilig/protocol'
 import { exportXlsx, importXlsx } from '../index.js'
 
 describe('formula cache roundtrip', () => {
@@ -45,6 +46,37 @@ describe('formula cache roundtrip', () => {
 
     const preview = imported.preview.sheets.find((sheet) => sheet.name === 'Contents')
     expect(preview?.previewRows[2]?.[1]).toBe(`=INDIRECT("'"&A3&"'!A2")`)
+  })
+
+  it('preserves leading formula whitespace across export round trips', () => {
+    const snapshot: WorkbookSnapshot = {
+      version: 1,
+      workbook: { name: 'formula-whitespace-export' },
+      sheets: [
+        {
+          id: 1,
+          name: 'A5',
+          order: 0,
+          cells: [
+            {
+              address: 'A1',
+              formula: ' "   Canada Health Transfer (CHT) "&REPT(".",150)',
+              value: '   Canada Health Transfer (CHT) ',
+            },
+          ],
+        },
+      ],
+    }
+
+    const reimported = importXlsx(exportXlsx(snapshot), 'formula-whitespace-export.xlsx')
+    expect(reimported.snapshot.sheets[0]?.cells).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          address: 'A1',
+          formula: ' "   Canada Health Transfer (CHT) "&REPT(".",150)',
+        }),
+      ]),
+    )
   })
 })
 

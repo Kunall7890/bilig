@@ -754,7 +754,7 @@ function buildExportCell(cell: WorkbookSnapshot['sheets'][number]['cells'][numbe
     }
   }
   if (typeof cell.formula === 'string' && cell.formula.trim().length > 0) {
-    output.f = cell.formula.trim().replace(/^=/, '')
+    output.f = cell.formula.replace(/^=/, '')
     if (output.v === undefined) {
       output.t = 'e'
     } else {
