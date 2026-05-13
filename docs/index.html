@@ -485,51 +485,52 @@ console.log({ before, after, bytes: saved.length, verified: before === <span cla
         <div class="wrap">
           <div class="proof-layout">
             <div class="proof-intro">
-              <p class="kicker">Benchmarks</p>
-              <h2 id="proof-title">What this benchmark says.</h2>
+              <p class="kicker">Benchmark</p>
+              <h2 id="proof-title">46/46 on the current mean-latency suite.</h2>
               <p>
-                The checked-in run has WorkPaper faster on mean latency for 46 of 46 comparable workloads. One p95 caveat stays visible.
+                That is the whole claim: WorkPaper is ahead on the comparable mean rows in the checked-in HyperFormula suite. One slower p95
+                row is called out below.
               </p>
             </div>
 
             <div class="proof-board" aria-label="Benchmark evidence">
               <div class="proof-command">
-                <span>command</span>
+                <span>Run it</span>
                 <code>pnpm workpaper:bench:competitive:check</code>
               </div>
 
               <dl class="proof-ledger">
                 <div class="proof-row">
-                  <dt>Claim</dt>
-                  <dd>46 / 46</dd>
-                  <p>Mean latency wins on the comparable rows in the current WorkPaper vs HyperFormula suite.</p>
+                  <dt>Result</dt>
+                  <dd>46 / 46 mean rows</dd>
+                  <p>Comparable WorkPaper vs HyperFormula workloads only. This is not a blanket Excel-performance claim.</p>
                 </div>
                 <div class="proof-row proof-row-code">
-                  <dt>Artifact</dt>
+                  <dt>Baseline</dt>
                   <dd>
                     <code>packages/benchmarks/baselines/<wbr />workpaper-vs-hyperformula.json</code>
                   </dd>
-                  <p>CI checks this file, so benchmark drift shows up as a normal review diff.</p>
+                  <p>Committed in the repo and checked by CI, so benchmark movement shows up in review.</p>
                 </div>
                 <div class="proof-row proof-row-code">
-                  <dt>Caveat</dt>
+                  <dt>Slower row</dt>
                   <dd><code>lookup-approximate-duplicates</code> p95 1.043x</dd>
-                  <p>The approximate-lookup duplicate case is slower at p95. Benchmark your own workbook if that pattern matters.</p>
+                  <p>If approximate lookup with duplicate keys matters to you, benchmark your own workbook before choosing an engine.</p>
                 </div>
               </dl>
 
               <div class="proof-links" aria-label="Benchmark evidence links">
                 <a href="./what-workpaper-benchmark-proves.html">
                   <span>Notes</span>
-                  <strong>Read the benchmark notes</strong>
+                  <strong>How to read the benchmark</strong>
                 </a>
                 <a href="./where-bilig-is-not-excel-compatible-yet.html">
                   <span>Limits</span>
-                  <strong>Check the Excel gaps</strong>
+                  <strong>Excel gaps</strong>
                 </a>
                 <a href="https://github.com/proompteng/bilig/issues?q=is%3Aissue%20state%3Aopen%20label%3Afirst-timers-only">
                   <span>Contribute</span>
-                  <strong>Pick a starter issue</strong>
+                  <strong>Good first issues</strong>
                 </a>
               </div>
             </div>
