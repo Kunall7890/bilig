@@ -24,6 +24,7 @@ import {
   XLSB_CONTENT_TYPE,
   XLSM_CONTENT_TYPE,
   XLSX_CONTENT_TYPE,
+  externalWorkbookReferencesWarning,
   exportXlsx,
   importCsv,
   importWorkbookFile,
@@ -94,6 +95,49 @@ function buildExternalLinkCacheWorkbook(): Uint8Array {
       '<sheetDataSet><sheetData sheetId="0">',
       '<row r="1"><cell r="A1"><v>2</v></cell></row>',
       '<row r="2"><cell r="A2"><v>3</v></cell></row>',
+      '</sheetData></sheetDataSet>',
+      '</externalBook>',
+      '</externalLink>',
+    ].join(''),
+  )
+  return zipSync(zip)
+}
+
+function buildExternalGetPivotDataLinkCacheWorkbook(): Uint8Array {
+  const workbook = XLSX.utils.book_new()
+  const sheet = XLSX.utils.aoa_to_sheet([[]])
+  sheet.A1 = {
+    t: 'n',
+    f: 'GETPIVOTDATA("Amount",\'[1]External Pivot\'!$G$3,"Region","East")',
+    v: 15,
+  }
+  sheet['!ref'] = 'A1:A1'
+  XLSX.utils.book_append_sheet(workbook, sheet, 'Report')
+
+  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  zip['xl/workbook.xml'] = strToU8(
+    strFromU8(zip['xl/workbook.xml'])
+      .replace(/<workbook\b([^>]*)>/u, (match) =>
+        match.includes('xmlns:r=')
+          ? match
+          : match.replace('>', ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'),
+      )
+      .replace('</workbook>', '<externalReferences><externalReference r:id="rId99"/></externalReferences></workbook>'),
+  )
+  zip['xl/_rels/workbook.xml.rels'] = strToU8(
+    strFromU8(zip['xl/_rels/workbook.xml.rels']).replace(
+      '</Relationships>',
+      '<Relationship Id="rId99" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/externalLink" Target="externalLinks/externalLink5.xml"/></Relationships>',
+    ),
+  )
+  zip['xl/externalLinks/externalLink5.xml'] = strToU8(
+    [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<externalLink xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+      '<externalBook>',
+      '<sheetNames><sheetName val="External Pivot"/></sheetNames>',
+      '<sheetDataSet><sheetData sheetId="0">',
+      '<row r="3"><cell r="G3" t="str"><v>Row Labels</v></cell></row>',
       '</sheetData></sheetDataSet>',
       '</externalBook>',
       '</externalLink>',
@@ -351,6 +395,15 @@ describe('excel import', () => {
     engine.recalculateNow()
 
     expect(engine.getCellValue('Report', 'A1')).toEqual({ tag: ValueTag.Number, value: 5 })
+  })
+
+  it('preserves external GETPIVOTDATA anchors instead of replacing them with cached labels', () => {
+    const imported = importXlsx(buildExternalGetPivotDataLinkCacheWorkbook(), 'external-pivot-link-cache.xlsx')
+    const formulaCell = imported.snapshot.sheets[0]?.cells.find((cell) => cell.address === 'A1')
+
+    expect(formulaCell?.formula).toBe('GETPIVOTDATA("Amount",\'[1]External Pivot\'!$G$3,"Region","East")')
+    expect(formulaCell?.value).toBe(15)
+    expect(imported.warnings).toContain(externalWorkbookReferencesWarning)
   })
 
   it('retains cached values for imported formula cells that use unavailable add-in functions', () => {

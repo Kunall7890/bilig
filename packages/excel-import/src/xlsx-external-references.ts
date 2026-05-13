@@ -352,11 +352,18 @@ function cachedExternalValue(
   return caches.get(bookIndex)?.get(normalizeSheetName(sheetName))?.get(normalizeCellAddress(address)) ?? null
 }
 
+function formulaNeedsPivotReferenceContext(formula: string): boolean {
+  return /\bGETPIVOTDATA\s*\(/iu.test(formula)
+}
+
 export function translateImportedFormulaExternalReferences(
   formula: string,
   caches: ImportedExternalLinkCaches,
 ): ImportedFormulaExternalReferenceTranslation {
   if (caches.size === 0 || !formula.includes('[')) {
+    return { formula, resolvedCount: 0, unresolvedCount: 0 }
+  }
+  if (formulaNeedsPivotReferenceContext(formula)) {
     return { formula, resolvedCount: 0, unresolvedCount: 0 }
   }
   let output = ''
