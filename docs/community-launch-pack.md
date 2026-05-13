@@ -87,6 +87,14 @@ issue pass:
 - New starter issues `#272` through `#281` cover NestJS, Express, Supabase Edge
   Functions, Deno Deploy, Next.js Route Handlers, Bun.serve, SvelteKit, Remix,
   Netlify Functions, and Cloudflare D1 WorkPaper smoke examples.
+- New MCP-client starter issues `#282` through `#286` cover Claude Desktop,
+  Cursor, Windsurf, MCP Inspector, and Nuxt/Nitro WorkPaper setup or smoke
+  recipes for contributors who want small docs-only first PRs tied directly to
+  agent-client adoption.
+- README and npm conversion surface: the GitHub README and package README now
+  expose the Glama score badge, link the official MCP Registry and Glama pages,
+  and make the npm sanity check prove formula readback after edit, JSON save,
+  and restored workbook load instead of only printing a toy value.
 - External contributor-directory surface: the Up For Grabs listing pull request
   is open and passing its project checks:
   <https://github.com/up-for-grabs/up-for-grabs.net/pull/5790>

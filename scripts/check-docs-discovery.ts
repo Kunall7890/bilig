@@ -759,8 +759,10 @@ for (const required of [
   '## Clean npm Sanity Check',
   'mkdir bilig-headless-sanity',
   'npx tsx sanity.ts',
-  "import { WorkPaper } from '@bilig/headless'",
-  'console.log({ revenue: (cell as NumericCell).value, verified: true });',
+  'createWorkPaperFromDocument',
+  'serializeWorkPaperDocument',
+  'workbook.setCellContents({ sheet: revenue, row: 1, col: 1 }, 32);',
+  'console.log({ before, after, sheets: restored.getSheetNames(), bytes: saved.length, verified });',
 ]) {
   requireIncludes(headlessReadme, required, 'packages/headless/README.md')
 }

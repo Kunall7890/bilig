@@ -4,6 +4,7 @@
 [![npm weekly downloads](https://img.shields.io/npm/dw/@bilig/headless?label=npm%20downloads)](https://www.npmjs.com/package/@bilig/headless)
 [![GitHub](https://img.shields.io/badge/GitHub-proompteng%2Fbilig-blue)](https://github.com/proompteng/bilig)
 [![GitHub Repo stars](https://img.shields.io/github/stars/proompteng/bilig?style=social)](https://github.com/proompteng/bilig/stargazers)
+[![MCP server score](https://glama.ai/mcp/servers/proompteng/bilig/badges/score.svg)](https://glama.ai/mcp/servers/proompteng/bilig)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/proompteng/bilig/blob/main/LICENSE)
 
 `@bilig/headless` is a headless workbook runtime for TypeScript. It lets Node
@@ -38,6 +39,9 @@ validated WorkPaper model once data is in workbook form.
 - Benchmark evidence:
   [`46/46` comparable WorkPaper mean wins](https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md),
   with the p95 caveat documented instead of hidden.
+- MCP discovery: listed in the
+  [official MCP Registry](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper)
+  and on [Glama](https://glama.ai/mcp/servers/proompteng/bilig).
 
 If the sanity check below saves you a workbook automation spike, star the repo
 so you can find it again:
@@ -59,7 +63,9 @@ or the
 ## Clean npm Sanity Check
 
 Run this from an empty directory when you want to verify the published package
-before cloning the repository:
+before cloning the repository. It builds a workbook, changes an input, saves the
+document, restores it, and checks that the dependent formula still reads back
+correctly.
 
 ```sh
 mkdir bilig-headless-sanity
@@ -69,7 +75,13 @@ npm pkg set type=module
 npm install @bilig/headless
 npm install -D tsx typescript @types/node
 cat > sanity.ts <<'EOF'
-import { WorkPaper } from '@bilig/headless';
+import {
+  WorkPaper,
+  createWorkPaperFromDocument,
+  exportWorkPaperDocument,
+  parseWorkPaperDocument,
+  serializeWorkPaperDocument,
+} from '@bilig/headless';
 
 type NumericCell = {
   value: number;
@@ -77,22 +89,47 @@ type NumericCell = {
 
 const workbook = WorkPaper.buildFromSheets({
   Revenue: [
-    ['Units', 'Price', 'Revenue'],
-    [7, 6, '=A2*B2'],
+    ['Region', 'Customers', 'ARPA', 'Revenue'],
+    ['West', 20, 1200, '=B2*C2'],
+    ['East', 30, 250, '=B3*C3'],
+    ['Central', 18, 300, '=B4*C4'],
+  ],
+  Summary: [
+    ['Metric', 'Value'],
+    ['Total revenue', '=SUM(Revenue!D2:D4)'],
   ],
 });
 
-const sheet = workbook.getSheetId('Revenue');
-if (sheet === undefined) {
-  throw new Error('Revenue sheet was not created');
+const numberValue = (cell: unknown): number => {
+  if (typeof cell === 'object' && cell !== null && typeof (cell as NumericCell).value === 'number') {
+    return (cell as NumericCell).value;
+  }
+  throw new Error(`Expected numeric cell value, got ${JSON.stringify(cell)}`);
+};
+
+const revenue = workbook.getSheetId('Revenue');
+const summary = workbook.getSheetId('Summary');
+if (revenue === undefined || summary === undefined) {
+  throw new Error('Workbook sheets were not created');
 }
 
-const cell = workbook.getCellValue({ sheet, row: 1, col: 2 });
-if (typeof cell !== 'object' || cell === null || (cell as NumericCell).value !== 42) {
-  throw new Error(`Unexpected formula readback: ${JSON.stringify(cell)}`);
+const before = numberValue(workbook.getCellValue({ sheet: summary, row: 1, col: 1 }));
+workbook.setCellContents({ sheet: revenue, row: 1, col: 1 }, 32);
+
+const saved = serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { includeConfig: true }));
+const restored = createWorkPaperFromDocument(parseWorkPaperDocument(saved));
+const restoredSummary = restored.getSheetId('Summary');
+if (restoredSummary === undefined) {
+  throw new Error('Summary sheet was not restored');
 }
 
-console.log({ revenue: (cell as NumericCell).value, verified: true });
+const after = numberValue(restored.getCellValue({ sheet: restoredSummary, row: 1, col: 1 }));
+const verified = before === 36900 && after === 51300 && saved.length > 0;
+if (!verified) {
+  throw new Error(`Unexpected formula readback: ${JSON.stringify({ before, after, bytes: saved.length })}`);
+}
+
+console.log({ before, after, sheets: restored.getSheetNames(), bytes: saved.length, verified });
 EOF
 npx tsx sanity.ts
 ```
@@ -100,7 +137,13 @@ npx tsx sanity.ts
 Expected output:
 
 ```json
-{ "revenue": 42, "verified": true }
+{
+  "before": 36900,
+  "after": 51300,
+  "sheets": ["Revenue", "Summary"],
+  "bytes": 1064,
+  "verified": true
+}
 ```
 
 Inside this monorepo:

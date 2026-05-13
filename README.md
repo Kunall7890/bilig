@@ -4,6 +4,7 @@
 [![GitHub Repo stars](https://img.shields.io/github/stars/proompteng/bilig?style=social)](https://github.com/proompteng/bilig/stargazers)
 [![npm: @bilig/headless](https://img.shields.io/npm/v/@bilig/headless?label=%40bilig%2Fheadless)](https://www.npmjs.com/package/@bilig/headless)
 [![npm weekly downloads](https://img.shields.io/npm/dw/@bilig/headless?label=npm%20downloads)](https://www.npmjs.com/package/@bilig/headless)
+[![MCP server score](https://glama.ai/mcp/servers/proompteng/bilig/badges/score.svg)](https://glama.ai/mcp/servers/proompteng/bilig)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 <p align="center">
@@ -37,6 +38,9 @@ Project site: <https://proompteng.github.io/bilig/>
 - Benchmark evidence:
   [`46/46` comparable WorkPaper mean wins](docs/what-workpaper-benchmark-proves.md),
   with the p95 caveat documented instead of hidden.
+- MCP discovery: listed in the
+  [official MCP Registry](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper)
+  and on [Glama](https://glama.ai/mcp/servers/proompteng/bilig).
 
 If the 90-second check below saves you a workbook automation spike, star the
 repo so you can find it again:
