@@ -633,9 +633,10 @@ function recalculateWorkbookWithHyperFormula(
   snapshot: WorkbookSnapshot,
   mismatches: readonly FormulaOracleMismatchDetail[],
 ): Map<string, CellValue> | null {
-  let hyperFormula: HyperFormula | null = null
+  let destroyHyperFormula: (() => void) | null = null
   try {
-    hyperFormula = HyperFormula.buildFromSheets(buildHyperFormulaSheets(snapshot), { licenseKey: 'gpl-v3' })
+    const hyperFormula = HyperFormula.buildFromSheets(buildHyperFormulaSheets(snapshot), { licenseKey: 'gpl-v3' })
+    destroyHyperFormula = () => hyperFormula.destroy()
     const independentValues = new Map<string, CellValue>()
     for (const mismatch of mismatches) {
       const sheetId = hyperFormula.getSheetId(mismatch.sheetName)
@@ -653,7 +654,7 @@ function recalculateWorkbookWithHyperFormula(
   } catch {
     return null
   } finally {
-    hyperFormula?.destroy()
+    destroyHyperFormula?.()
   }
 }
 
