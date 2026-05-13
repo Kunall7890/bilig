@@ -61,6 +61,7 @@
           "Formula evaluation and readback",
           "Structural row and column edits",
           "JSON workbook persistence",
+          "MCP stdio server for agent tools",
           "SQLite, Postgres, and object storage persistence recipes",
           "Serverless API route integration",
           "Agent write verification"
@@ -68,6 +69,7 @@
         "sameAs": [
           "https://github.com/proompteng/bilig",
           "https://www.npmjs.com/package/@bilig/headless",
+          "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper",
           "https://dev.to/gregkonush/why-agents-need-workbook-apis-instead-of-spreadsheet-screenshots-3d61"
         ],
         "keywords": [
@@ -395,7 +397,7 @@
 
       .code-window {
         justify-self: end;
-        width: min(560px, 92%);
+        width: min(440px, 92%);
         background: rgba(23, 21, 19, 0.96);
         color: #f3efe8;
       }
@@ -418,6 +420,11 @@
 
       .code-window pre {
         overflow: hidden;
+        white-space: pre-wrap;
+      }
+
+      .command-panel pre {
+        overflow-wrap: anywhere;
         white-space: pre-wrap;
       }
 
@@ -866,6 +873,7 @@
         </a>
         <nav class="nav" aria-label="Primary">
           <a href="#install">Install</a>
+          <a href="#mcp">MCP</a>
           <a href="#runtime">Runtime</a>
           <a href="#proof">Proof</a>
           <a href="https://www.npmjs.com/package/@bilig/headless">npm</a>
@@ -964,12 +972,13 @@ const restored = createWorkPaperFromDocument(
               <span>Edit an input, recalculate formulas, and read the result back.</span>
             </div>
             <div class="fact">
-              <strong>Store the document</strong>
-              <span>Persist JSON in SQLite, Postgres, object storage, or your own database.</span>
+              <strong>Run it as an MCP server</strong>
+              <span>Expose workbook reads, verified edits, and persistence to agent clients.</span>
             </div>
           </div>
           <div class="actions">
             <a class="button primary" href="https://www.npmjs.com/package/@bilig/headless">Install from npm</a>
+            <a class="button" href="#mcp">Run the MCP server</a>
             <a class="button" href="https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper">Run the example</a>
             <a class="button" href="https://github.com/proompteng/bilig/blob/main/docs/starter-issues.md">Open starter issues</a>
             <a class="button" href="https://github.com/proompteng/bilig/stargazers">Star on GitHub</a>
@@ -1084,6 +1093,51 @@ if (!verified) {
 
 console.log({ before, after, sheets: restored.getSheetNames(), bytes: saved.length, verified });</code></pre>
             </div>
+          </div>
+        </section>
+
+        <section id="mcp" aria-labelledby="mcp-title">
+          <div class="section-head">
+            <h2 id="mcp-title">Use it as an MCP spreadsheet tool.</h2>
+            <p>
+              The published server gives coding agents workbook readback, input edits, formula contracts, and JSON persistence through a
+              stdio transport.
+            </p>
+          </div>
+          <div class="two-col">
+            <div class="card">
+              <h3>Run the package binary</h3>
+              <div class="code-panel command-panel">
+                <pre><code>npm exec --package @bilig/headless -- \
+  bilig-workpaper-mcp</code></pre>
+              </div>
+              <div class="expected">
+                <strong>Published server name</strong>
+                <p>
+                  <code translate="no">io.github.proompteng/bilig-workpaper</code> is listed in the official MCP Registry and backed by the
+                  same npm package.
+                </p>
+              </div>
+            </div>
+            <article class="card">
+              <h3>Agent-facing docs</h3>
+              <ul>
+                <li><a href="./mcp-workpaper-tool-server.html">MCP spreadsheet tool server guide</a></li>
+                <li>
+                  <a href="https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper">
+                    official MCP Registry entry
+                  </a>
+                </li>
+                <li>
+                  <a href="https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#mcp-tool-server-shape">
+                    runnable MCP tool-server example
+                  </a>
+                </li>
+                <li><a href="./agent-workpaper-tool-calling-recipe.html">agent tool-calling recipe</a></li>
+                <li><a href="./vercel-ai-sdk-langchain-spreadsheet-tool.html">Vercel AI SDK and LangChain adapter guide</a></li>
+                <li><a href="https://github.com/proompteng/bilig/discussions/230">MCP workflow feedback thread</a></li>
+              </ul>
+            </article>
           </div>
         </section>
 
