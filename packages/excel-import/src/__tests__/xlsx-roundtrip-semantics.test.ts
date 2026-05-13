@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { strFromU8, unzipSync } from 'fflate'
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 
 import type { WorkbookSnapshot } from '@bilig/protocol'
 import { exportXlsx, importXlsx } from '../index.js'
@@ -109,4 +109,86 @@ describe('XLSX round-trip semantics', () => {
     expect(sheetXml).toContain('<c r="A3"')
     expect(imported.snapshot.sheets[0]?.cells).toEqual(snapshot.sheets[0]?.cells)
   })
+
+  it('keeps text-formatted strings after formatted blank cells are exported', () => {
+    const snapshot: WorkbookSnapshot = {
+      version: 1,
+      workbook: {
+        name: 'text-after-blank-formatting',
+        metadata: {
+          styleArtifacts: {
+            stylesXml: minimalStylesXml(),
+          },
+        },
+      },
+      sheets: [
+        {
+          id: 1,
+          name: 'Data',
+          order: 0,
+          cells: [
+            { address: 'A2', value: 'Name' },
+            { address: 'B2', value: 'Application Type' },
+            { address: 'A3', value: 'TBA17-40676P1', format: '@' },
+            { address: 'B3', value: 'Building Application', format: '@' },
+          ],
+          metadata: {
+            styleArtifacts: {
+              cellStyleIndexes: [],
+              blankCellAddresses: ['C2', 'D2', 'E2'],
+            },
+          },
+        },
+      ],
+    }
+
+    const exported = exportXlsx(snapshot)
+    const sheetXml = strFromU8(unzipSync(exported)['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+    const imported = importXlsx(exported, 'text-after-blank-formatting.xlsx')
+
+    expect([...sheetXml.matchAll(/\br="A3"/gu)]).toHaveLength(1)
+    expect(imported.snapshot.sheets[0]?.cells.find((cell) => cell.address === 'A3')).toMatchObject({
+      value: 'TBA17-40676P1',
+      format: '@',
+    })
+  })
+
+  it('keeps earlier text values when duplicate blank cell XML follows them', () => {
+    const snapshot: WorkbookSnapshot = {
+      version: 1,
+      workbook: {
+        name: 'duplicate-blank-cell',
+      },
+      sheets: [
+        {
+          id: 1,
+          name: 'Data',
+          order: 0,
+          cells: [{ address: 'A3', value: 'TBA17-40676P1', format: '@' }],
+        },
+      ],
+    }
+    const zip = unzipSync(exportXlsx(snapshot))
+    const sheetPath = 'xl/worksheets/sheet1.xml'
+    const sheetXml = strFromU8(zip[sheetPath] ?? new Uint8Array())
+    zip[sheetPath] = strToU8(sheetXml.replace(/(<row r="3"[^>]*>[\s\S]*?)<\/row>/u, '$1<c r="A3" s="4" t="z"></c></row>'))
+
+    const imported = importXlsx(zipSync(zip), 'duplicate-blank-cell.xlsx')
+
+    expect(imported.snapshot.sheets[0]?.cells.find((cell) => cell.address === 'A3')).toMatchObject({ value: 'TBA17-40676P1' })
+  })
 })
+
+function minimalStylesXml(): string {
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>',
+    '<fills count="1"><fill><patternFill patternType="none"/></fill></fills>',
+    '<borders count="1"><border/></borders>',
+    '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>',
+    '<cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs>',
+    '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>',
+    '</styleSheet>',
+  ].join('')
+}

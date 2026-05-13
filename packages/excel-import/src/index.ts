@@ -49,6 +49,7 @@ import { readImportedWorkbookThreadedCommentArtifacts } from './xlsx-threaded-co
 import { readImportedWorkbookDataValidations } from './xlsx-validations.js'
 import { readImportedWorkbookViewState } from './xlsx-view-state.js'
 import { readImportedWorkbookProtection } from './xlsx-workbook-protection.js'
+import { workbookDirectorySheetPaths, workbookSheetPathsByName } from './xlsx-workbook-sheet-paths.js'
 import { readImportedWorkbookDocumentPropertiesArtifacts, readImportedWorkbookProperties } from './xlsx-workbook-properties.js'
 import {
   createSheetPreview,
@@ -84,6 +85,7 @@ import {
 } from './xlsx-import-warnings.js'
 import { createPreservedVbaProjectPayload, type PreservedVbaProjectCodeNames } from './xlsx-macros.js'
 import { worksheetCellAt, worksheetCellEntries, worksheetCellEntriesAtAddresses } from './xlsx-worksheet-cells.js'
+import { readImportedWorksheetTextValues } from './xlsx-worksheet-text-values.js'
 
 export { exportXlsx } from './xlsx-export.js'
 export { manualCalculationModeWarning, precisionAsDisplayedCalculationWarning } from './xlsx-calculation-settings.js'
@@ -265,6 +267,8 @@ function importSheetJsWorkbook(
     dense: false,
   })
   const workbookName = normalizeWorkbookName(fileName)
+  const sheetPathsByName = workbookSheetPathsByName(workbook)
+  const fallbackSheetPaths = workbookDirectorySheetPaths(workbook)
   const warnings: string[] = []
   const importedDefinedNames = readImportedDefinedNames(workbook)
   addWorkbookWarnings(workbook, warnings, importedDefinedNames.ignoredCount)
@@ -329,6 +333,9 @@ function importSheetJsWorkbook(
     : new Map()
   const importedExternalLinkCaches = workbookZip ? readImportedExternalLinkCaches(workbookZip) : new Map()
   const importedRichTextArtifactsBySheet = workbookZip ? readImportedWorkbookRichTextArtifacts(workbookZip, workbook.SheetNames) : new Map()
+  const importedWorksheetTextValuesBySheet = workbookZip
+    ? readImportedWorksheetTextValues(workbookZip, workbook.SheetNames, sheetPathsByName, fallbackSheetPaths)
+    : new Map()
   const importedThreadedCommentArtifacts = workbookZip
     ? readImportedWorkbookThreadedCommentArtifacts(workbookZip, workbook.SheetNames)
     : undefined
@@ -362,6 +369,7 @@ function importSheetJsWorkbook(
     }
 
     const importedComments = readImportedSheetComments(sheetName, sheet)
+    const importedWorksheetTextValues = importedWorksheetTextValuesBySheet.get(sheetName)
     const importedHyperlinks = readImportedSheetHyperlinks(sheetName, sheet)
     if (importedComments.ignoredCount > 0 && !ignoredCommentsSeen) {
       ignoredCommentsSeen = true
@@ -424,9 +432,12 @@ function importSheetJsWorkbook(
         ? worksheetCellEntriesAtAddresses(sheet, importableAddresses)
         : worksheetCellEntries(sheet)
       : []
+    const seenCellAddresses = new Set<string>()
     for (const { address, cell, row, column } of sheetCellEntries) {
+      seenCellAddresses.add(address)
       const nextCell: WorkbookSnapshot['sheets'][number]['cells'][number] = { address }
       const formula = cell['f']
+      const xmlTextValue = importedWorksheetTextValues?.get(address)
       if (typeof formula === 'string' && formula.trim().length > 0) {
         formulaCellSeen = true
         const externalReferenceTranslation = translateImportedFormulaExternalReferences(formula, importedExternalLinkCaches)
@@ -450,11 +461,15 @@ function importSheetJsWorkbook(
         const cachedLiteral = readImportedLiteralCellValue(cell)
         if (cachedLiteral !== undefined) {
           nextCell.value = cachedLiteral
+        } else if (xmlTextValue !== undefined) {
+          nextCell.value = xmlTextValue
         }
       } else {
         const literal = readImportedLiteralCellValue(cell)
         if (literal !== undefined) {
           nextCell.value = literal
+        } else if (xmlTextValue !== undefined) {
+          nextCell.value = xmlTextValue
         }
       }
       const importedFormat = readImportedNumberFormat(cell['z'])
@@ -469,6 +484,11 @@ function importSheetJsWorkbook(
       }
       if (nextCell.value !== undefined || nextCell.formula !== undefined || nextCell.format !== undefined) {
         cells.push(nextCell)
+      }
+    }
+    for (const [address, value] of importedWorksheetTextValues ?? []) {
+      if (!seenCellAddresses.has(address)) {
+        cells.push({ address, value })
       }
     }
     flushActiveStyleRow()
@@ -489,7 +509,8 @@ function importSheetJsWorkbook(
           if (typeof formula === 'string' && formula.trim().length > 0) {
             return `=${formula}`
           }
-          return toDisplayText(readImportedLiteralCellValue(cell))
+          const address = XLSX.utils.encode_cell({ r: row, c: col })
+          return toDisplayText(readImportedLiteralCellValue(cell) ?? importedWorksheetTextValues?.get(address))
         },
       }),
     )

@@ -2,15 +2,17 @@ import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { XMLParser } from 'fast-xml-parser'
 import * as XLSX from 'xlsx'
 
-import type {
-  CellRangeRef,
-  LiteralInput,
-  WorkbookDataValidationRuleSnapshot,
-  WorkbookDataValidationSnapshot,
-  WorkbookSnapshot,
-  WorkbookValidationComparisonOperator,
-  WorkbookValidationErrorStyle,
-  WorkbookValidationListSourceSnapshot,
+import {
+  MAX_COLS,
+  MAX_ROWS,
+  type CellRangeRef,
+  type LiteralInput,
+  type WorkbookDataValidationRuleSnapshot,
+  type WorkbookDataValidationSnapshot,
+  type WorkbookSnapshot,
+  type WorkbookValidationComparisonOperator,
+  type WorkbookValidationErrorStyle,
+  type WorkbookValidationListSourceSnapshot,
 } from '@bilig/protocol'
 import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
@@ -23,6 +25,8 @@ const xmlParser = new XMLParser({
   parseTagValue: false,
   removeNSPrefix: true,
 })
+
+const cellAddressPattern = /^\$?([A-Za-z]+)\$?([1-9][0-9]*)$/u
 
 const worksheetDataValidationTailElements = [
   'hyperlinks',
@@ -91,12 +95,33 @@ function setZipText(zip: ZipEntries, path: string, text: string): void {
   zip[normalizeZipPath(path)] = strToU8(text)
 }
 
+function columnLabelToIndex(column: string): number {
+  let value = 0
+  for (const character of column.toUpperCase()) {
+    value = value * 26 + (character.charCodeAt(0) - 64)
+  }
+  return value - 1
+}
+
 function normalizeAddress(address: string): string | null {
-  try {
-    return XLSX.utils.encode_cell(XLSX.utils.decode_cell(address.replaceAll('$', '')))
-  } catch {
+  const match = cellAddressPattern.exec(address.trim())
+  if (!match) {
     return null
   }
+  const column = match[1]!
+  const row = Number(match[2]!)
+  const columnIndex = columnLabelToIndex(column)
+  if (
+    !Number.isSafeInteger(row) ||
+    !Number.isSafeInteger(columnIndex) ||
+    row < 1 ||
+    row > MAX_ROWS ||
+    columnIndex < 0 ||
+    columnIndex >= MAX_COLS
+  ) {
+    return null
+  }
+  return XLSX.utils.encode_cell({ r: row - 1, c: columnIndex })
 }
 
 function absoluteAddress(address: string): string | null {

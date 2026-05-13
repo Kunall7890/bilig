@@ -1,6 +1,7 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
 import * as XLSX from 'xlsx'
+import { SpreadsheetEngine } from '@bilig/core'
 
 import { exportXlsx, importXlsx } from '../index.js'
 
@@ -68,6 +69,18 @@ describe('data validation roundtrip', () => {
       },
     ])
   })
+
+  it('ignores broken list validation references during XLSX import', async () => {
+    const source = buildBrokenListValidationWorkbookBytes()
+    const imported = importXlsx(source, 'broken-list-validation.xlsx')
+
+    expect(imported.snapshot.sheets[0]?.metadata?.validations ?? []).toEqual([])
+
+    const engine = new SpreadsheetEngine({ workbookName: 'broken-list-validation-import' })
+    await engine.ready()
+
+    expect(() => engine.importSnapshot(imported.snapshot)).not.toThrow()
+  })
 })
 
 function buildDataValidationWorkbookBytes(): Uint8Array {
@@ -93,6 +106,21 @@ function buildDataValidationWorkbookBytes(): Uint8Array {
         '<dataValidation allowBlank="1" showInputMessage="1" showErrorMessage="1" promptTitle="Use model choices" prompt="Pick a case from the list." sqref="B3"/>' +
         '<dataValidation type="decimal" operator="between" allowBlank="1" showInputMessage="1" showErrorMessage="1" promptTitle="Debt ratio" prompt="Enter a ratio from 0 to 1." sqref="B4"><formula1>0</formula1><formula2>1</formula2></dataValidation>' +
         '</dataValidations></worksheet>',
+    ),
+  )
+  return zipSync(zip)
+}
+
+function buildBrokenListValidationWorkbookBytes(): Uint8Array {
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['Choice']]), 'Model')
+  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const sheetPath = 'xl/worksheets/sheet1.xml'
+  const sheetXml = strFromU8(zip[sheetPath] ?? new Uint8Array())
+  zip[sheetPath] = strToU8(
+    sheetXml.replace(
+      '</worksheet>',
+      '<dataValidations count="1"><dataValidation type="list" allowBlank="1" sqref="A1"><formula1>#REF!</formula1></dataValidation></dataValidations></worksheet>',
     ),
   )
   return zipSync(zip)

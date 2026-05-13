@@ -60,6 +60,10 @@ import {
   setZipText,
 } from './xlsx-export-xml.js'
 
+const worksheetCellElementPattern =
+  /<(?:[A-Za-z_][\w.-]*:)?c\b(?:[^>"']|"[^"]*"|'[^']*')*\/>|<((?:[A-Za-z_][\w.-]*:)?c)\b(?:[^>"']|"[^"]*"|'[^']*')*>[\s\S]*?<\/\1>/gu
+const worksheetCellOpeningTagPattern = /<(?:[A-Za-z_][\w.-]*:)?c\b(?:[^>"']|"[^"]*"|'[^']*')*(?:\/>|>)/u
+
 function buildExportColumns(columns: readonly WorkbookAxisEntrySnapshot[] | undefined): XLSX.ColInfo[] | undefined {
   if (!columns || columns.length === 0) {
     return undefined
@@ -279,8 +283,8 @@ function applyNumberFormatsToSheetXml(
     return sheetXml
   }
   const handledAddresses = new Set<string>()
-  let output = sheetXml.replace(/<c\b[^>]*(?:\/>|>[\s\S]*?<\/c>)/gu, (cellXml) => {
-    const openingTag = /<c\b[^>]*(?:\/>|>)/u.exec(cellXml)?.[0]
+  let output = sheetXml.replace(worksheetCellElementPattern, (cellXml) => {
+    const openingTag = worksheetCellOpeningTagPattern.exec(cellXml)?.[0]
     const address = openingTag ? /\br="([^"]+)"/u.exec(openingTag)?.[1] : undefined
     const format = address ? formats.get(address) : undefined
     if (!openingTag || !address || !format) {
@@ -564,8 +568,8 @@ function applyStyleIndexesToSheetXml(
     return sheetXml
   }
   const handledAddresses = new Set<string>()
-  let output = sheetXml.replace(/<c\b[^>]*(?:\/>|>[\s\S]*?<\/c>)/gu, (cellXml) => {
-    const openingTag = /<c\b[^>]*(?:\/>|>)/u.exec(cellXml)?.[0]
+  let output = sheetXml.replace(worksheetCellElementPattern, (cellXml) => {
+    const openingTag = worksheetCellOpeningTagPattern.exec(cellXml)?.[0]
     const address = openingTag ? /\br="([^"]+)"/u.exec(openingTag)?.[1] : undefined
     const styleIndex = address ? stylesByAddress.get(address) : undefined
     if (!openingTag || !address || styleIndex === undefined) {
@@ -592,8 +596,8 @@ function applyStyleArtifactIndexesToSheetXml(
   const stylesByAddress = new Map(cellStyleIndexes.map((entry) => [entry.address, entry.styleIndex]))
   const handledAddresses = new Set<string>()
   const presentAddresses = new Set<string>()
-  let output = sheetXml.replace(/<c\b[^>]*(?:\/>|>[\s\S]*?<\/c>)/gu, (cellXml) => {
-    const openingTag = /<c\b[^>]*(?:\/>|>)/u.exec(cellXml)?.[0]
+  let output = sheetXml.replace(worksheetCellElementPattern, (cellXml) => {
+    const openingTag = worksheetCellOpeningTagPattern.exec(cellXml)?.[0]
     const address = openingTag ? /\br="([^"]+)"/u.exec(openingTag)?.[1] : undefined
     const styleIndex = address ? stylesByAddress.get(address) : undefined
     if (!openingTag || !address) {
