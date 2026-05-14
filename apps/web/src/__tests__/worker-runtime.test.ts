@@ -984,6 +984,89 @@ describe('WorkbookWorkerRuntime', () => {
     expect(received[0]?.cells.find((cell) => cell.snapshot.address === 'B1')?.displayText).toBe('6')
   })
 
+  it('falls back to the installed engine when persisted local projection omits visible material cells', async () => {
+    const seedEngine = new SpreadsheetEngine({ workbookName: 'stale-local-doc', replicaId: 'seed' })
+    seedEngine.createSheet('Sheet1')
+    seedEngine.setCellValue('Sheet1', 'A1', 'Prepaid Expense Template')
+    seedEngine.setCellValue('Sheet1', 'B2', 54600)
+    let viewportReadCount = 0
+
+    const runtime = new WorkbookWorkerRuntime({
+      localStoreFactory: {
+        async open() {
+          return {
+            async loadBootstrapState() {
+              return {
+                workbookName: 'stale-local-doc',
+                sheetNames: ['Sheet1'],
+                materializedCellCount: 2,
+                authoritativeRevision: 7,
+                appliedPendingLocalSeq: 0,
+              }
+            },
+            async loadState() {
+              return {
+                snapshot: seedEngine.exportSnapshot(),
+                replica: seedEngine.exportReplicaSnapshot(),
+                authoritativeRevision: 7,
+                appliedPendingLocalSeq: 0,
+              }
+            },
+            async persistProjectionState() {},
+            async ingestAuthoritativeDelta() {},
+            async listPendingMutations() {
+              return []
+            },
+            async listMutationJournalEntries() {
+              return []
+            },
+            async appendPendingMutation() {},
+            async updatePendingMutation() {},
+            async removePendingMutation() {},
+            readViewportProjection() {
+              viewportReadCount += 1
+              return {
+                sheetId: 1,
+                sheetName: 'Sheet1',
+                freezeRows: 0,
+                freezeCols: 0,
+                cells: [],
+                rowAxisEntries: [],
+                columnAxisEntries: [],
+                styles: [{ id: 'style-0' }],
+              }
+            },
+            close() {},
+          }
+        },
+      },
+    })
+
+    await runtime.bootstrap({
+      documentId: 'stale-local-doc',
+      replicaId: 'browser:test',
+      persistState: true,
+    })
+
+    const received = new Array<ReturnType<typeof decodeViewportPatch>>()
+    runtime.subscribeViewportPatches(
+      {
+        sheetName: 'Sheet1',
+        rowStart: 0,
+        rowEnd: 1,
+        colStart: 0,
+        colEnd: 1,
+      },
+      (bytes) => {
+        received.push(decodeViewportPatch(bytes))
+      },
+    )
+
+    expect(viewportReadCount).toBe(1)
+    expect(received[0]?.cells.find((cell) => cell.snapshot.address === 'A1')?.displayText).toBe('Prepaid Expense Template')
+    expect(received[0]?.cells.find((cell) => cell.snapshot.address === 'B2')?.displayText).toBe('54600')
+  })
+
   it('renders date-formatted cells from persisted local projection on the first viewport patch', async () => {
     const seedEngine = new SpreadsheetEngine({ workbookName: 'date-doc', replicaId: 'seed' })
     seedEngine.createSheet('Sheet1')

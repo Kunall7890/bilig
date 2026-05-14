@@ -16,9 +16,7 @@ import { GridRenderTilePaneRuntime, getGridRenderTilePaneRuntime } from '../runt
 import { GridRuntimeHost } from '../runtime/gridRuntimeHost.js'
 
 const TEST_ENGINE: GridEngineLike = {
-  getCell: () => {
-    throw new Error('GridRenderTilePaneRuntime remote-tile tests do not read cells')
-  },
+  getCell: (_sheetName, address) => createEmptyCellSnapshot(address),
   getCellStyle: () => undefined,
   subscribeCells: () => () => {},
   workbook: {
@@ -1708,6 +1706,44 @@ describe('GridRenderTilePaneRuntime', () => {
     )
 
     expect(fallback.renderTilePanes.map((pane) => pane.tile.tileId)).toEqual(expectedTileIds)
+  })
+
+  it('materializes a visible remote tile locally when its text payload is incomplete', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const tileId = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+    })[0]
+    if (tileId === undefined) {
+      throw new Error('Expected a visible render tile key for the test viewport')
+    }
+    const remoteTileWithoutText = createRenderTile(tileId)
+    const engineWithVisibleText: GridEngineLike = {
+      getCell: (_sheetName, address) =>
+        address === 'A15' ? createStringCellSnapshot('A15', 'Amortization Schedule Examples') : createEmptyCellSnapshot(address),
+      getCellStyle: () => undefined,
+      subscribeCells: () => () => {},
+      workbook: {
+        getSheet: () => undefined,
+      },
+    }
+
+    const fallback = runtime.resolve(
+      createInput({
+        engine: engineWithVisibleText,
+        gridRuntimeHost: host,
+        renderTileSource: createRenderTileSource([remoteTileWithoutText]),
+        visibleViewport: { colEnd: 10, colStart: 0, rowEnd: 34, rowStart: 3 },
+      }),
+    )
+
+    expect(fallback.renderTilePanes[0]?.tile.tileId).toBe(tileId)
+    expect(fallback.renderTilePanes[0]?.tile).not.toBe(remoteTileWithoutText)
+    expect(
+      fallback.renderTilePanes[0]?.tile.textRuns.some((run) => run.row === 14 && run.col === 0 && run.text.includes('Amortization')),
+    ).toBe(true)
   })
 
   it('reuses remote static rect buffers for text-only local dirty tiles', () => {

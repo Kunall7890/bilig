@@ -1,6 +1,8 @@
 import { ValueTag, type CellSnapshot, type Viewport } from '@bilig/protocol'
+import { formatAddress } from '@bilig/formula'
 import { noteRendererTileReadiness, noteTypeGpuTileCacheStaleLookups, noteTypeGpuTileCacheVisibleMark } from '../grid-render-counters.js'
 import type { GridEngineLike } from '../grid-engine.js'
+import { snapshotToRenderCell } from '../gridCells.js'
 import type { GridMetrics } from '../gridMetrics.js'
 import type { Item } from '../gridTypes.js'
 import { buildLocalFixedRenderTiles } from '../renderer-v3/local-render-tile-materializer.js'
@@ -234,6 +236,43 @@ function tileSelectedTextNeedsLocalRefresh(
     return selectedRun !== null
   }
   return selectedRun?.text !== expectedText
+}
+
+function tileVisibleTextNeedsLocalRefresh(
+  tile: GridRenderTile | null,
+  input: Pick<GridRenderTilePaneRuntimeInput, 'engine' | 'sheetName' | 'visibleViewport'>,
+): boolean {
+  if (!tile) {
+    return false
+  }
+  const visibleRowStart = Math.max(tile.bounds.rowStart, input.visibleViewport.rowStart)
+  const visibleRowEnd = Math.min(tile.bounds.rowEnd, input.visibleViewport.rowEnd)
+  const visibleColStart = Math.max(tile.bounds.colStart, input.visibleViewport.colStart)
+  const visibleColEnd = Math.min(tile.bounds.colEnd, input.visibleViewport.colEnd)
+  if (visibleRowStart > visibleRowEnd || visibleColStart > visibleColEnd) {
+    return false
+  }
+
+  const textRunsByCell = new Map<string, string>()
+  for (const run of tile.textRuns) {
+    if (run.text.length > 0) {
+      textRunsByCell.set(`${run.row}:${run.col}`, run.text)
+    }
+  }
+
+  for (let row = visibleRowStart; row <= visibleRowEnd; row += 1) {
+    for (let col = visibleColStart; col <= visibleColEnd; col += 1) {
+      const snapshot = input.engine.getCell(input.sheetName, formatAddress(row, col))
+      const renderCell = snapshotToRenderCell(snapshot, input.engine.getCellStyle(snapshot.styleId))
+      if (renderCell.displayText.length === 0) {
+        continue
+      }
+      if (textRunsByCell.get(`${row}:${col}`) !== renderCell.displayText) {
+        return true
+      }
+    }
+  }
+  return false
 }
 
 interface RuntimeConnection<Identity> {
@@ -829,16 +868,18 @@ export class GridRenderTilePaneRuntime {
       const shouldLocalizeDirty = (options.localizeDirtyVisibleTiles ?? true) && isDirty
       const shouldLocalizeSelectedCellText =
         selectedCellTileKey === tileKey && tileSelectedTextNeedsLocalRefresh(tile, input.selectedCell, input.selectedCellSnapshot)
+      const shouldLocalizeVisibleText = visibleTileKeys.has(tileKey) && tileVisibleTextNeedsLocalRefresh(tile, input)
       const shouldLocalizeEditingCellText = editingCellTileKey === tileKey
       if (
         shouldLocalizeDirty ||
         isMissingResidentTile ||
         isMissingGridPayload ||
         shouldLocalizeSelectedCellText ||
+        shouldLocalizeVisibleText ||
         shouldLocalizeEditingCellText
       ) {
         if (
-          (shouldLocalizeDirty || shouldLocalizeSelectedCellText || shouldLocalizeEditingCellText) &&
+          (shouldLocalizeDirty || shouldLocalizeSelectedCellText || shouldLocalizeVisibleText || shouldLocalizeEditingCellText) &&
           tile &&
           hasCompleteRenderTileGrid(tile)
         ) {
