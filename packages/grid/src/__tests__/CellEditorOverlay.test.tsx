@@ -169,7 +169,7 @@ describe('CellEditorOverlay', () => {
     }
   })
 
-  it('flushes local draft text before committing', async () => {
+  it('commits local draft text without forcing a parent sync first', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
     vi.useFakeTimers()
@@ -205,8 +205,7 @@ describe('CellEditorOverlay', () => {
         textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
       })
 
-      expect(onChange).toHaveBeenCalledTimes(1)
-      expect(onChange).toHaveBeenLastCalledWith('x')
+      expect(onChange).not.toHaveBeenCalled()
       expect(onCommit).toHaveBeenCalledTimes(1)
       expect(onCommit).toHaveBeenLastCalledWith([0, 1], 'x', makeTargetSelection())
     } finally {
@@ -265,8 +264,7 @@ describe('CellEditorOverlay', () => {
         textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
       })
 
-      expect(onChange).toHaveBeenCalledTimes(1)
-      expect(onChange).toHaveBeenLastCalledWith('bcde')
+      expect(onChange).not.toHaveBeenCalled()
       expect(onCommit).toHaveBeenCalledTimes(1)
       expect(onCommit).toHaveBeenLastCalledWith([0, 1], 'bcde', makeTargetSelection())
     } finally {
@@ -274,6 +272,53 @@ describe('CellEditorOverlay', () => {
         root.unmount()
       })
       vi.useRealTimers()
+    }
+  })
+
+  it('keeps Home and End caret movement inside the editor', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+
+    try {
+      await act(async () => {
+        root.render(
+          <CellEditorOverlay
+            label="Sheet1!B2"
+            targetSelection={makeTargetSelection()}
+            onCancel={() => {}}
+            onChange={() => {}}
+            onCommit={() => {}}
+            resolvedValue=""
+            selectionBehavior="caret-end"
+            value="abcd"
+          />,
+        )
+      })
+
+      const textarea = host.querySelector<HTMLTextAreaElement>("[data-testid='cell-editor-input']")
+      expect(textarea).not.toBeNull()
+      if (!textarea) {
+        throw new Error('Expected mounted cell editor input')
+      }
+
+      await act(async () => {
+        textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true, cancelable: true }))
+      })
+      expect(textarea.selectionStart).toBe(0)
+      expect(textarea.selectionEnd).toBe(0)
+
+      await act(async () => {
+        textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true, cancelable: true }))
+      })
+      expect(textarea.selectionStart).toBe(4)
+      expect(textarea.selectionEnd).toBe(4)
+    } finally {
+      await act(async () => {
+        root.unmount()
+      })
     }
   })
 

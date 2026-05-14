@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { flushSync } from 'react-dom'
 import type { EditMovement, EditTargetSelection } from './SheetGridView.js'
 
 function normalizeNumpadKey(key: string, code: string): string | null {
@@ -28,6 +29,16 @@ function normalizeNumpadKey(key: string, code: string): string | null {
 }
 
 const PARENT_SYNC_DEBOUNCE_MS = 80
+
+function moveCaretToBoundary(input: HTMLTextAreaElement, boundary: 'start' | 'end', extendSelection: boolean) {
+  const nextPosition = boundary === 'start' ? 0 : input.value.length
+  const anchor = boundary === 'start' ? input.selectionEnd : input.selectionStart
+  if (extendSelection) {
+    input.setSelectionRange(boundary === 'start' ? nextPosition : anchor, boundary === 'start' ? anchor : nextPosition)
+    return
+  }
+  input.setSelectionRange(nextPosition, nextPosition)
+}
 
 interface CellEditorOverlayProps {
   label: string
@@ -73,6 +84,12 @@ export function CellEditorOverlay({
   const pendingBlurCommitRef = useRef<number | null>(null)
   const pendingParentSyncRef = useRef<number | null>(null)
   const pendingParentSyncValueRef = useRef(value)
+  const pendingSelectionRestoreRef = useRef<{
+    readonly direction: 'backward' | 'forward' | 'none'
+    readonly end: number
+    readonly start: number
+  } | null>(null)
+  const caretWriteSequenceRef = useRef(0)
   const targetSelectionRef = useRef(targetSelection)
   const [isCompleting, setIsCompleting] = useState(false)
   const [draftValue, setDraftValue] = useState(value)
@@ -96,14 +113,11 @@ export function CellEditorOverlay({
     window.clearTimeout(pendingTimer)
   }
 
-  const flushParentSync = (nextValue = pendingParentSyncValueRef.current) => {
-    cancelPendingParentSync()
-    onChange(nextValue)
-  }
-
   const updateDraftValue = (nextValue: string) => {
     pendingParentSyncValueRef.current = nextValue
-    setDraftValue(nextValue)
+    flushSync(() => {
+      setDraftValue(nextValue)
+    })
     if (pendingParentSyncRef.current !== null) {
       return
     }
@@ -119,14 +133,34 @@ export function CellEditorOverlay({
     overlayRef.current?.style.setProperty('pointer-events', 'none')
   }
 
+  const insertTextAtSelection = (input: HTMLTextAreaElement, text: string) => {
+    const currentValue = input.value
+    const selectionStart = input.selectionStart ?? currentValue.length
+    const selectionEnd = input.selectionEnd ?? currentValue.length
+    const nextValue = `${currentValue.slice(0, selectionStart)}${text}${currentValue.slice(selectionEnd)}`
+    const caretPosition = selectionStart + text.length
+    input.value = nextValue
+    updateDraftValue(nextValue)
+    input.setSelectionRange(caretPosition, caretPosition)
+    caretWriteSequenceRef.current += 1
+    const sequence = caretWriteSequenceRef.current
+    window.requestAnimationFrame(() => {
+      if (caretWriteSequenceRef.current !== sequence) {
+        return
+      }
+      inputRef.current?.setSelectionRange(caretPosition, caretPosition)
+    })
+  }
+
   useLayoutEffect(() => {
     blurArmedRef.current = false
-    inputRef.current?.focus()
+    const input = inputRef.current
+    input?.focus()
     if (selectionBehavior === 'select-all') {
-      inputRef.current?.select()
+      input?.select()
     } else {
-      const caretPosition = value.length
-      inputRef.current?.setSelectionRange(caretPosition, caretPosition)
+      const caretPosition = input?.value.length ?? 0
+      input?.setSelectionRange(caretPosition, caretPosition)
     }
     const blurArm = window.requestAnimationFrame(() => {
       blurArmedRef.current = true
@@ -135,13 +169,36 @@ export function CellEditorOverlay({
     return () => {
       window.cancelAnimationFrame(blurArm)
     }
-  }, [selectionBehavior, value.length])
+  }, [selectionBehavior, targetAddress, targetSheetName])
 
   useEffect(() => cancelPendingBlurCommit, [])
   useEffect(() => cancelPendingParentSync, [])
 
+  useLayoutEffect(() => {
+    const restore = pendingSelectionRestoreRef.current
+    if (!restore) {
+      return
+    }
+    pendingSelectionRestoreRef.current = null
+    const input = inputRef.current
+    if (!input || document.activeElement !== input) {
+      return
+    }
+    const start = Math.min(restore.start, input.value.length)
+    const end = Math.min(restore.end, input.value.length)
+    input.setSelectionRange(start, end, restore.direction)
+  }, [draftValue])
+
   useEffect(() => {
     cancelPendingParentSync()
+    const input = inputRef.current
+    if (input && document.activeElement === input) {
+      pendingSelectionRestoreRef.current = {
+        direction: input.selectionDirection ?? 'none',
+        end: input.selectionEnd ?? input.value.length,
+        start: input.selectionStart ?? input.value.length,
+      }
+    }
     targetSelectionRef.current = {
       address: targetAddress,
       sheetName: targetSheetName,
@@ -166,7 +223,8 @@ export function CellEditorOverlay({
       cancelPendingBlurCommit()
     }
     const nextValue = inputRef.current?.value ?? draftValue
-    flushParentSync(nextValue)
+    cancelPendingParentSync()
+    pendingParentSyncValueRef.current = nextValue
     if (completionRef.current !== 'idle') {
       if (movement && completionRef.current === 'commit') {
         onCommit(movement, nextValue, targetSelectionRef.current)
@@ -226,32 +284,17 @@ export function CellEditorOverlay({
           const normalizedNumpadKey = normalizeNumpadKey(event.key, event.code)
           if (normalizedNumpadKey !== null && event.key !== normalizedNumpadKey) {
             event.preventDefault()
-            const input = event.currentTarget
-            const currentValue = input.value
-            const selectionStart = input.selectionStart ?? currentValue.length
-            const selectionEnd = input.selectionEnd ?? currentValue.length
-            const nextValue = `${currentValue.slice(0, selectionStart)}${normalizedNumpadKey}${currentValue.slice(selectionEnd)}`
-            input.value = nextValue
-            updateDraftValue(nextValue)
-            window.requestAnimationFrame(() => {
-              const caretPosition = selectionStart + normalizedNumpadKey.length
-              inputRef.current?.setSelectionRange(caretPosition, caretPosition)
-            })
+            insertTextAtSelection(event.currentTarget, normalizedNumpadKey)
             return
           }
           if (!event.nativeEvent.isComposing && event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
             event.preventDefault()
-            const input = event.currentTarget
-            const currentValue = input.value
-            const selectionStart = input.selectionStart ?? currentValue.length
-            const selectionEnd = input.selectionEnd ?? currentValue.length
-            const nextValue = `${currentValue.slice(0, selectionStart)}${event.key}${currentValue.slice(selectionEnd)}`
-            input.value = nextValue
-            updateDraftValue(nextValue)
-            window.requestAnimationFrame(() => {
-              const caretPosition = selectionStart + event.key.length
-              inputRef.current?.setSelectionRange(caretPosition, caretPosition)
-            })
+            insertTextAtSelection(event.currentTarget, event.key)
+            return
+          }
+          if ((event.key === 'Home' || event.key === 'End') && !event.ctrlKey && !event.metaKey && !event.altKey) {
+            event.preventDefault()
+            moveCaretToBoundary(event.currentTarget, event.key === 'Home' ? 'start' : 'end', event.shiftKey)
             return
           }
           if (event.key === 'Enter') {
