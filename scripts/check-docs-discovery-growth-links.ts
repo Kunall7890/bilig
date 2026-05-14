@@ -13,6 +13,7 @@ export const communityLaunchPackRequiredLinks = [
   'https://github.com/tolkonepiu/best-of-mcp-servers/pull/192',
   'https://github.com/MunGell/awesome-for-beginners/pull/2012',
   'https://github.com/ever-works/awesome-mcp-servers-data/pull/4',
+  'https://github.com/jmstfv/mcpserve/pull/19',
 ] as const
 
 export const llmsExternalSurfaceLinks = [
@@ -21,4 +22,5 @@ export const llmsExternalSurfaceLinks = [
   'https://github.com/tolkonepiu/best-of-mcp-servers/pull/192',
   'https://github.com/MunGell/awesome-for-beginners/pull/2012',
   'https://github.com/ever-works/awesome-mcp-servers-data/pull/4',
+  'https://github.com/jmstfv/mcpserve/pull/19',
 ] as const

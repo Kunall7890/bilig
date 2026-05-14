@@ -274,6 +274,8 @@ npm run agent:verify
   https://github.com/toolsdk-ai/toolsdk-mcp-registry/pull/309
 - external MCP source-data directory submission:
   https://github.com/ever-works/awesome-mcp-servers-data/pull/4
+- external mcpserve.com directory submission:
+  https://github.com/jmstfv/mcpserve/pull/19
 - external first-time-contributor directory submission:
   https://github.com/MunGell/awesome-for-beginners/pull/2012
 - external MCP directory submission:

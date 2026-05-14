@@ -53,6 +53,7 @@ network service to answer `tools/list` and `tools/call`.
 | YuzeHao2023 Awesome MCP Servers | Submitted for maintainer review    | <https://github.com/YuzeHao2023/Awesome-MCP-Servers/pull/244>                                         |
 | ToolSDK MCP Registry            | Submitted for maintainer review    | <https://github.com/toolsdk-ai/toolsdk-mcp-registry/pull/309>                                         |
 | Ever Works MCP data             | Submitted for maintainer review    | <https://github.com/ever-works/awesome-mcp-servers-data/pull/4>                                       |
+| mcpserve.com                    | Submitted for maintainer review    | <https://github.com/jmstfv/mcpserve/pull/19>                                                          |
 | PulseMCP                        | Not indexed yet as of May 13, 2026 | <https://www.pulsemcp.com/servers?search=bilig&q=bilig>                                               |
 
 PulseMCP says server listings are ingested from the official MCP Registry daily
@@ -85,6 +86,12 @@ with source data for the generated mcpserver.works / Awesome MCP Servers
 directory. GitHub reports the pull request as mergeable with no repository
 checks configured, so treat it as pending maintainer review until it is merged
 and appears in the generated directory.
+
+The mcpserve.com pull request was opened on May 13, 2026 with a
+`content/servers/bilig-workpaper.md` listing for Bilig WorkPaper. GitHub reports
+the pull request as mergeable; Netlify preview checks were pending immediately
+after creation, so treat it as submitted until the maintainer merges it and the
+listing appears on mcpserve.com.
 
 ## Verify The Registry Entry
 

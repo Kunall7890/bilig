@@ -152,6 +152,9 @@ issue pass:
   pull request is open with `data/bilig-workpaper-mcp` source files for the
   generated mcpserver.works / Awesome MCP Servers directory:
   <https://github.com/ever-works/awesome-mcp-servers-data/pull/4>
+- External MCP directory surface: the mcpserve.com listing pull request is open
+  with `content/servers/bilig-workpaper.md` and the npm stdio install command:
+  <https://github.com/jmstfv/mcpserve/pull/19>
 - External MCP directory surface: Glama published the Bilig WorkPaper server at
   <https://glama.ai/mcp/servers/proompteng/bilig>. The score badge was added to
   the punkpeye PR, replacing the `missing-glama` label with `has-glama`.
