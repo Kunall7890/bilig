@@ -232,13 +232,14 @@ Latest TypeScript-example guard action on May 14, 2026:
   adapter boundary instead of a `+server.js` file.
 - The completed guard replaced one closed starter with three new scoped
   first-timer issues. The Hapi route smoke
-  <https://github.com/proompteng/bilig/issues/374> and AdonisJS route smoke
-  <https://github.com/proompteng/bilig/issues/377> later shipped as runnable
+  <https://github.com/proompteng/bilig/issues/374>, AdonisJS route smoke
+  <https://github.com/proompteng/bilig/issues/377>, and Oak route smoke
+  <https://github.com/proompteng/bilig/issues/380> later shipped as runnable
   `framework-adapters.ts` paths, so the active queue now keeps Turso WorkPaper
   JSON persistence <https://github.com/proompteng/bilig/issues/375>, Firebase
   Genkit WorkPaper tool recipe <https://github.com/proompteng/bilig/issues/376>,
-  and an Oak WorkPaper route smoke
-  <https://github.com/proompteng/bilig/issues/380>.
+  and a Fresh WorkPaper route smoke
+  <https://github.com/proompteng/bilig/issues/381>.
 
 Latest Hapi route adapter action on May 14, 2026:
 
@@ -262,8 +263,21 @@ Latest AdonisJS route adapter action on May 14, 2026:
   AdonisJS writing status, headers, and JSON back through `ctx.response`.
 - The framework adapter guide and serverless example README now include the
   AdonisJS route shape in the expected output and point contributors at the
-  next first-time route task,
-  <https://github.com/proompteng/bilig/issues/380>.
+  next first-time route task.
+
+Latest Oak route adapter action on May 14, 2026:
+
+- The serverless WorkPaper API example now exercises an Oak-style route pair in
+  `examples/serverless-workpaper-api/framework-adapters.ts`: one route reads
+  `/api/workpaper/summary`, and one route posts `/api/workpaper/revenue`.
+- `npm run framework-adapters` now proves Fetch, Hono, Oak, AdonisJS, Hapi,
+  Express, and Fastify wrappers against the shared WorkPaper request handler,
+  with Oak receiving a web-standard `Request` from `ctx.request.source` and
+  writing status, headers, and JSON back through `ctx.response`.
+- The framework adapter guide and serverless example README now include the Oak
+  route shape in the expected output and point contributors at the next
+  first-time route task,
+  <https://github.com/proompteng/bilig/issues/381>.
 - External MCP directory follow-up: mcpservers.org submission form is staged in
   Atlas with public project data and category `Development`. The remaining
   steps are entering a contact email and clicking Submit, both held for

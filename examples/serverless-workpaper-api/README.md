@@ -312,9 +312,9 @@ npm run framework-adapters
 ```
 
 The script exercises the same WorkPaper route through Fetch-style handlers,
-Hono-style `context.req.raw`, AdonisJS-style `HttpContext`, Hapi-style `request` plus `h.response()`,
+Hono-style `context.req.raw`, Oak-style `context.request.source`, AdonisJS-style `HttpContext`, Hapi-style `request` plus `h.response()`,
 Express-style `(req, res, next)`, and Fastify-style `(request, reply)` adapters.
-It reads the summary and writes the revenue update through the AdonisJS and Hapi
+It reads the summary and writes the revenue update through the Oak, AdonisJS, and Hapi
 routes, keeps the existing Express and Fastify wrappers covered, and prints
 `verified: true` only after the calculated summary matches.
 
@@ -322,7 +322,7 @@ Expected output:
 
 ```json
 {
-  "adapters": ["fetch", "hono", "adonis", "hapi", "express", "fastify"],
+  "adapters": ["fetch", "hono", "oak", "adonis", "hapi", "express", "fastify"],
   "before": {
     "fetch": {
       "totalRevenue": 36900,
@@ -330,6 +330,11 @@ Expected output:
       "largestDeal": 24000
     },
     "hono": {
+      "totalRevenue": 36900,
+      "westCustomers": 20,
+      "largestDeal": 24000
+    },
+    "oak": {
       "totalRevenue": 36900,
       "westCustomers": 20,
       "largestDeal": 24000
@@ -343,6 +348,22 @@ Expected output:
       "totalRevenue": 36900,
       "westCustomers": 20,
       "largestDeal": 24000
+    }
+  },
+  "oak": {
+    "status": 200,
+    "edit": {
+      "records": 4,
+      "after": {
+        "totalRevenue": 48600,
+        "westCustomers": 20,
+        "largestDeal": 24000
+      },
+      "checks": {
+        "totalRevenueChanged": true,
+        "formulasPersisted": true,
+        "serializedBytes": 1195
+      }
     }
   },
   "adonis": {
@@ -483,6 +504,10 @@ Expected output shape:
   `/functions/v1/workpaper/api/workpaper/...`, strip the leading `workpaper`
   function segment before passing the request to the shared handler.
 - In Hono, pass `c.req.raw` directly to the shared handler.
+- In Oak, adapt `ctx.request.source` into the shared handler, then write the
+  returned status, headers, and body back through `ctx.response`. The
+  `framework-adapters.ts` smoke includes both `/api/workpaper/summary` and
+  `/api/workpaper/revenue` Oak routes.
 - In Deno, return `handleWorkPaperRequest(request)` from `Deno.serve()` or a
   `fetch` default export.
 - In SvelteKit, return `handleWorkPaperRequest(request)` from thin `+server.ts`

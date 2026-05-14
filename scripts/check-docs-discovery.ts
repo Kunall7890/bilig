@@ -389,7 +389,7 @@ requireIncludes(starterIssues, '#339: docs(examples): add Qwik City WorkPaper ro
 requireIncludes(starterIssues, '#342: docs(examples): add Next.js Server Action validation-error smoke', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#375: docs(storage): add Turso WorkPaper JSON persistence recipe', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#376: docs(agent): add Firebase Genkit WorkPaper tool recipe', 'docs/starter-issues.md')
-requireIncludes(starterIssues, '#380: docs(examples): add Oak WorkPaper route smoke', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '#381: docs(examples): add Fresh WorkPaper route smoke', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#358: docs(agent): add AI SDK onStepFinish WorkPaper transcript', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#359: docs(agent): add Anthropic tool-use WorkPaper transcript', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#348: docs(examples): add Docker healthcheck for the WorkPaper MCP stdio server', 'docs/starter-issues.md')

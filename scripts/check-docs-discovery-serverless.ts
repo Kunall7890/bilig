@@ -60,21 +60,26 @@ export async function requireServerlessWorkPaperApiDiscovery({
 
   requireIncludes(serverlessExampleReadme, 'npm run framework-adapters', 'examples/serverless-workpaper-api/README.md')
   requireIncludes(serverlessExampleReadme, '## Framework Adapters', 'examples/serverless-workpaper-api/README.md')
+  requireIncludes(serverlessExampleReadme, 'Oak-style `context.request.source`', 'examples/serverless-workpaper-api/README.md')
   requireIncludes(serverlessExampleReadme, 'AdonisJS-style `HttpContext`', 'examples/serverless-workpaper-api/README.md')
   requireIncludes(serverlessExampleReadme, 'Hapi-style `request` plus `h.response()`', 'examples/serverless-workpaper-api/README.md')
   requireIncludes(
     serverlessExampleReadme,
-    '"adapters": ["fetch", "hono", "adonis", "hapi", "express", "fastify"]',
+    '"adapters": ["fetch", "hono", "oak", "adonis", "hapi", "express", "fastify"]',
     'examples/serverless-workpaper-api/README.md',
   )
+  requireIncludes(serverlessFrameworkAdapters, 'createOakWorkPaperHandler', 'examples/serverless-workpaper-api/framework-adapters.ts')
+  requireIncludes(serverlessFrameworkAdapters, 'createOakWorkPaperRoutes', 'examples/serverless-workpaper-api/framework-adapters.ts')
   requireIncludes(serverlessFrameworkAdapters, 'createAdonisWorkPaperHandler', 'examples/serverless-workpaper-api/framework-adapters.ts')
   requireIncludes(serverlessFrameworkAdapters, 'createAdonisWorkPaperRoutes', 'examples/serverless-workpaper-api/framework-adapters.ts')
   requireIncludes(serverlessFrameworkAdapters, 'createHapiWorkPaperRoutes', 'examples/serverless-workpaper-api/framework-adapters.ts')
   requireIncludes(
     serverlessFrameworkAdapters,
-    "adapters: ['fetch', 'hono', 'adonis', 'hapi', 'express', 'fastify']",
+    "adapters: ['fetch', 'hono', 'oak', 'adonis', 'hapi', 'express', 'fastify']",
     'examples/serverless-workpaper-api/framework-adapters.ts',
   )
+  requireIncludes(nodeFrameworkAdapterDoc, '## Oak', 'docs/node-framework-workpaper-adapters.md')
+  requireIncludes(nodeFrameworkAdapterDoc, 'createOakWorkPaperRoutes', 'docs/node-framework-workpaper-adapters.md')
   requireIncludes(nodeFrameworkAdapterDoc, '## AdonisJS', 'docs/node-framework-workpaper-adapters.md')
   requireIncludes(nodeFrameworkAdapterDoc, 'createAdonisWorkPaperRoutes', 'docs/node-framework-workpaper-adapters.md')
   requireIncludes(nodeFrameworkAdapterDoc, '## Hapi', 'docs/node-framework-workpaper-adapters.md')

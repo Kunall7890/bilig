@@ -1,14 +1,14 @@
 ---
-title: Express, Fastify, Hono, Hapi, and AdonisJS adapters for a WorkPaper API
+title: Express, Fastify, Hono, Oak, Hapi, and AdonisJS adapters for a WorkPaper API
 published: true
-description: Copyable TypeScript adapters for serving @bilig/headless WorkPaper formulas from Express, Fastify, Hono, Hapi, AdonisJS, Next.js, Vercel Functions, and Fetch-style route handlers.
+description: Copyable TypeScript adapters for serving @bilig/headless WorkPaper formulas from Express, Fastify, Hono, Oak, Hapi, AdonisJS, Next.js, Vercel Functions, and Fetch-style route handlers.
 tags: typescript, node, spreadsheet, express
 canonical_url: https://proompteng.github.io/bilig/node-framework-workpaper-adapters.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
 image: /assets/github-social-preview.png
 ---
 
-# Express, Fastify, Hono, Hapi, and AdonisJS adapters for a WorkPaper API
+# Express, Fastify, Hono, Oak, Hapi, and AdonisJS adapters for a WorkPaper API
 
 Most Node framework code should not know how the workbook is built. Keep the
 spreadsheet logic behind one web-standard `Request -> Response` handler, then
@@ -33,7 +33,7 @@ Expected output:
 
 ```json
 {
-  "adapters": ["fetch", "hono", "adonis", "hapi", "express", "fastify"],
+  "adapters": ["fetch", "hono", "oak", "adonis", "hapi", "express", "fastify"],
   "before": {
     "fetch": {
       "totalRevenue": 36900,
@@ -41,6 +41,11 @@ Expected output:
       "largestDeal": 24000
     },
     "hono": {
+      "totalRevenue": 36900,
+      "westCustomers": 20,
+      "largestDeal": 24000
+    },
+    "oak": {
       "totalRevenue": 36900,
       "westCustomers": 20,
       "largestDeal": 24000
@@ -54,6 +59,22 @@ Expected output:
       "totalRevenue": 36900,
       "westCustomers": 20,
       "largestDeal": 24000
+    }
+  },
+  "oak": {
+    "status": 200,
+    "edit": {
+      "records": 4,
+      "after": {
+        "totalRevenue": 48600,
+        "westCustomers": 20,
+        "largestDeal": 24000
+      },
+      "checks": {
+        "totalRevenueChanged": true,
+        "formulasPersisted": true,
+        "serializedBytes": 1195
+      }
     }
   },
   "adonis": {
@@ -162,7 +183,7 @@ export async function POST(request: Request) {
 ```
 
 Use this for Next.js route handlers; use the generic adapters below when the
-framework gives you Express, Fastify, Hono, AdonisJS, Hapi, or another request
+framework gives you Express, Fastify, Hono, Oak, AdonisJS, Hapi, or another request
 wrapper.
 
 ## Express
@@ -208,6 +229,25 @@ app.get('/api/workpaper/summary', workpaper)
 app.post('/api/workpaper/revenue', workpaper)
 
 export default app
+```
+
+## Oak
+
+```ts
+import { Application, Router } from '@oak/oak'
+import { createOakWorkPaperRoutes } from './framework-adapters.ts'
+
+const app = new Application()
+const router = new Router()
+const [summaryRoute, revenueRoute] = createOakWorkPaperRoutes()
+
+router.get(summaryRoute.path, summaryRoute.handler)
+router.post(revenueRoute.path, revenueRoute.handler)
+
+app.use(router.routes())
+app.use(router.allowedMethods())
+
+await app.listen({ port: 8787 })
 ```
 
 ## AdonisJS

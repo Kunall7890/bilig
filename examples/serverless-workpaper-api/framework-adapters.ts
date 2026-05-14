@@ -5,6 +5,7 @@ import { createInMemoryWorkbookStorage, createWorkPaperRequestHandler, handleWor
 type JsonRecord = Record<string, unknown>
 type HeaderValue = number | string | string[] | undefined
 type HeaderBag = Record<string, HeaderValue>
+type HeaderSource = HeaderBag | Headers
 type WorkPaperRequestHandler = (request: Request) => Promise<Response>
 
 export type ExpressLikeRequest = {
@@ -95,6 +96,32 @@ export type HonoLikeContext = {
   }
 }
 
+export type OakLikeBody = {
+  json(): Promise<unknown>
+  text(): Promise<string>
+}
+
+export type OakLikeRequest = {
+  body?: OakLikeBody
+  headers: HeaderSource
+  method: string
+  source?: Request
+  url: URL
+}
+
+export type OakLikeResponse = {
+  body?: unknown
+  headers: Headers
+  status?: number
+  type?: string
+  with?(response: Response): void
+}
+
+export type OakLikeContext = {
+  request: OakLikeRequest
+  response: OakLikeResponse
+}
+
 export function createFetchWorkPaperHandler(handler: WorkPaperRequestHandler = handleWorkPaperRequest) {
   return {
     GET: handler,
@@ -105,6 +132,28 @@ export function createFetchWorkPaperHandler(handler: WorkPaperRequestHandler = h
 
 export function createHonoWorkPaperHandler(handler: WorkPaperRequestHandler = handleWorkPaperRequest) {
   return (context: HonoLikeContext): Promise<Response> => handler(context.req.raw)
+}
+
+export function createOakWorkPaperHandler(handler: WorkPaperRequestHandler = handleWorkPaperRequest) {
+  return async (context: OakLikeContext): Promise<unknown> => {
+    return writeOakResponse(context.response, await handler(await createWebRequestFromOak(context.request)))
+  }
+}
+
+export function createOakWorkPaperRoutes(handler: WorkPaperRequestHandler = handleWorkPaperRequest) {
+  const routeHandler = createOakWorkPaperHandler(handler)
+  return [
+    {
+      method: 'GET',
+      path: '/api/workpaper/summary',
+      handler: routeHandler,
+    },
+    {
+      method: 'POST',
+      path: '/api/workpaper/revenue',
+      handler: routeHandler,
+    },
+  ] as const
 }
 
 export function createExpressWorkPaperHandler(handler: WorkPaperRequestHandler = handleWorkPaperRequest) {
@@ -172,6 +221,7 @@ export async function createFrameworkAdapterDemoOutput() {
   const honoHandler = createHonoWorkPaperHandler(handler)
   const expressHandler = createExpressWorkPaperHandler(handler)
   const fastifyHandler = createFastifyWorkPaperHandler(handler)
+  const oakRoutes = createOakWorkPaperRoutes(createWorkPaperRequestHandler(createInMemoryWorkbookStorage()))
   const adonisRoutes = createAdonisWorkPaperRoutes(createWorkPaperRequestHandler(createInMemoryWorkbookStorage()))
   const hapiRoutes = createHapiWorkPaperRoutes(createWorkPaperRequestHandler(createInMemoryWorkbookStorage()))
 
@@ -184,6 +234,16 @@ export async function createFrameworkAdapterDemoOutput() {
     }),
     'hono before',
   )
+  const oakBeforeContext = createMockOakContext('GET', '/api/workpaper/summary')
+  await oakRoutes[0].handler(oakBeforeContext)
+  const oakBefore = readOakContextResponse(oakBeforeContext, 'oak before')
+
+  const oakEditContext = createMockOakContext('POST', '/api/workpaper/revenue', {
+    records: updatedRevenueRecords,
+  })
+  await oakRoutes[1].handler(oakEditContext)
+  const oakEdit = readOakContextResponse(oakEditContext, 'oak edit')
+
   const adonisBeforeContext = createMockAdonisContext('GET', '/api/workpaper/summary')
   await adonisRoutes[0].handler(adonisBeforeContext)
   const adonisBefore = readAdonisContextResponse(adonisBeforeContext, 'adonis before')
@@ -257,12 +317,21 @@ export async function createFrameworkAdapterDemoOutput() {
   const fastifyAfter = readJsonRecord(fastifyReply.payload, 'fastify after body')
 
   const output = {
-    adapters: ['fetch', 'hono', 'adonis', 'hapi', 'express', 'fastify'],
+    adapters: ['fetch', 'hono', 'oak', 'adonis', 'hapi', 'express', 'fastify'],
     before: {
       fetch: readSummary(readJsonRecord(fetchBefore.summary, 'fetch summary')),
       hono: readSummary(readJsonRecord(honoBefore.summary, 'hono summary')),
+      oak: readSummary(readJsonRecord(oakBefore.summary, 'oak summary')),
       adonis: readSummary(readJsonRecord(adonisBefore.summary, 'adonis summary')),
       hapi: readSummary(readJsonRecord(hapiBefore.summary, 'hapi summary')),
+    },
+    oak: {
+      status: oakEditContext.response.status ?? 0,
+      edit: {
+        records: readNumber(oakEdit.records, 'oak edit records'),
+        after: readSummary(readJsonRecord(oakEdit.after, 'oak edit after')),
+        checks: readChecks(readJsonRecord(oakEdit.checks, 'oak edit checks')),
+      },
     },
     adonis: {
       status: adonisEditContext.response.statusCode ?? 0,
@@ -325,6 +394,16 @@ function createWebRequestFromFastify(request: FastifyLikeRequest): Request {
   })
 }
 
+async function createWebRequestFromOak(request: OakLikeRequest): Promise<Request> {
+  if (request.source !== undefined) {
+    return request.source.clone()
+  }
+
+  return createWebRequest(request.method, request.url.href, await readOakRequestBody(request), {
+    headers: request.headers,
+  })
+}
+
 function createWebRequestFromAdonis(request: AdonisLikeRequest): Request {
   return createWebRequest(request.method(), request.url(true), request.body(), {
     headers: request.headers(),
@@ -343,7 +422,7 @@ function createWebRequest(
   method: string,
   path: string,
   body?: unknown,
-  options: { headers?: HeaderBag; host?: string; protocol?: string } = {},
+  options: { headers?: HeaderSource; host?: string; protocol?: string } = {},
 ): Request {
   const headers = createHeaders(options.headers)
   const requestUrl = new URL(path, `${options.protocol ?? 'http'}://${options.host ?? readHost(headers)}`).href
@@ -357,7 +436,11 @@ function createWebRequest(
   return new Request(requestUrl, init)
 }
 
-function createHeaders(source: HeaderBag = {}): Headers {
+function createHeaders(source: HeaderSource = {}): Headers {
+  if (source instanceof Headers) {
+    return new Headers(source)
+  }
+
   const headers = new Headers()
   for (const [name, value] of Object.entries(source)) {
     if (Array.isArray(value)) {
@@ -367,6 +450,20 @@ function createHeaders(source: HeaderBag = {}): Headers {
     }
   }
   return headers
+}
+
+async function readOakRequestBody(request: OakLikeRequest): Promise<unknown> {
+  if (request.method === 'GET' || request.method === 'HEAD' || request.body === undefined) {
+    return undefined
+  }
+
+  const contentType = createHeaders(request.headers).get('content-type')
+  if (contentType?.includes('application/json')) {
+    return request.body.json()
+  }
+
+  const text = await request.body.text()
+  return text.length === 0 ? undefined : text
 }
 
 function serializeBody(body: unknown, headers: Headers): BodyInit | undefined {
@@ -404,6 +501,23 @@ async function writeFastifyResponse(reply: FastifyLikeReply, webResponse: Respon
 
   const body = await webResponse.text()
   return reply.code(webResponse.status).send(readResponsePayload(body, webResponse.headers))
+}
+
+async function writeOakResponse(oakResponse: OakLikeResponse, webResponse: Response): Promise<unknown> {
+  if (oakResponse.with !== undefined) {
+    oakResponse.with(webResponse)
+    return undefined
+  }
+
+  for (const [name, value] of webResponse.headers) {
+    oakResponse.headers.set(name, value)
+  }
+
+  const body = await webResponse.text()
+  oakResponse.status = webResponse.status
+  oakResponse.type = webResponse.headers.get('content-type')?.split(';')[0]
+  oakResponse.body = readResponsePayload(body, webResponse.headers)
+  return oakResponse.body
 }
 
 async function writeAdonisResponse(adonisResponse: AdonisLikeResponse, webResponse: Response): Promise<unknown> {
@@ -481,6 +595,23 @@ function createMockFastifyReply() {
   return reply
 }
 
+function createMockOakContext(method: string, path: string, body?: unknown): OakLikeContext {
+  const source = createWebRequest(method, path, body)
+  return {
+    request: {
+      headers: source.headers,
+      method,
+      source,
+      url: new URL(source.url),
+    },
+    response: {
+      body: undefined,
+      headers: new Headers(),
+      status: 200,
+    },
+  }
+}
+
 function createMockAdonisContext(method: string, path: string, body?: unknown) {
   const response = createMockAdonisResponse()
   return {
@@ -553,6 +684,13 @@ function createMockHapiToolkit() {
     },
   }
   return toolkit
+}
+
+function readOakContextResponse(context: { response: OakLikeResponse }, label: string): JsonRecord {
+  if (context.response.status !== 200) {
+    throw new Error(`${label} failed: ${context.response.status} ${JSON.stringify(context.response.body)}`)
+  }
+  return readJsonRecord(context.response.body, label)
 }
 
 function readAdonisContextResponse(context: { response: AdonisLikeResponse }, label: string): JsonRecord {
@@ -629,19 +767,26 @@ function assertOutput(output: Awaited<ReturnType<typeof createFrameworkAdapterDe
   if (
     JSON.stringify(output.before.fetch) !== JSON.stringify(expectedBefore) ||
     JSON.stringify(output.before.hono) !== JSON.stringify(expectedBefore) ||
+    JSON.stringify(output.before.oak) !== JSON.stringify(expectedBefore) ||
     JSON.stringify(output.before.adonis) !== JSON.stringify(expectedBefore) ||
     JSON.stringify(output.before.hapi) !== JSON.stringify(expectedBefore) ||
+    JSON.stringify(output.oak.edit.after) !== JSON.stringify(expectedAfter) ||
     JSON.stringify(output.adonis.edit.after) !== JSON.stringify(expectedAfter) ||
     JSON.stringify(output.hapi.edit.after) !== JSON.stringify(expectedAfter) ||
     JSON.stringify(output.express.edit.after) !== JSON.stringify(expectedAfter) ||
     JSON.stringify(output.fastify.summary) !== JSON.stringify(expectedAfter) ||
+    output.oak.status !== 200 ||
     output.adonis.status !== 200 ||
     output.hapi.status !== 200 ||
     output.express.status !== 200 ||
     output.fastify.status !== 200 ||
+    output.oak.edit.records !== 4 ||
     output.adonis.edit.records !== 4 ||
     output.hapi.edit.records !== 4 ||
     output.express.edit.records !== 4 ||
+    !output.oak.edit.checks.totalRevenueChanged ||
+    !output.oak.edit.checks.formulasPersisted ||
+    output.oak.edit.checks.serializedBytes <= 0 ||
     !output.adonis.edit.checks.totalRevenueChanged ||
     !output.adonis.edit.checks.formulasPersisted ||
     output.adonis.edit.checks.serializedBytes <= 0 ||
