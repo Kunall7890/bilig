@@ -324,6 +324,18 @@ Latest contributor-funnel action on May 14, 2026:
   request: it points contributors at existing scoped tasks and asks them to
   comment on the target issue before opening a PR.
 
+Latest technical-content action on May 14, 2026:
+
+- The agent/workbook API article source now leads with the maintained
+  empty-directory `@bilig/headless` eval instead of asking readers to clone the
+  monorepo first.
+- The canonical page and DEV article source both show the same TypeScript
+  proof shape: create workbook state, edit one input, read the recalculated
+  value, serialize WorkPaper JSON, restore it, and read the restored value.
+- Public pages:
+  <https://proompteng.github.io/bilig/why-agents-need-workbook-apis.html> and
+  <https://github.com/proompteng/bilig/blob/main/docs/dev-to-workbook-apis-post.md>.
+
 Latest HN conversion signal on May 14, 2026:
 
 - The checked-in public growth snapshot records `news.ycombinator.com` as a top

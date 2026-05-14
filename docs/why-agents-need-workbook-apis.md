@@ -54,15 +54,49 @@ A workbook API gives the agent explicit operations and explicit readback:
 That shape fits backend jobs, coding-agent tools, and local-first workflows
 better than asking a model to infer state from a rendered grid.
 
-## A Small Example
+## Run The Maintained Eval First
+
+The shortest trial starts from an empty Node project and uses the published npm
+package:
+
+```sh
+mkdir bilig-headless-eval
+cd bilig-headless-eval
+npm init -y
+npm pkg set type=module
+npm install @bilig/headless
+npm install -D tsx typescript @types/node
+curl -fsSLo eval.ts https://proompteng.github.io/bilig/npm-eval.ts
+npx tsx eval.ts
+```
+
+Expected output:
+
+```json
+{
+  "before": 24000,
+  "after": 38400,
+  "afterRestore": 38400,
+  "sheets": ["Inputs", "Summary"],
+  "bytes": 1000,
+  "verified": true
+}
+```
+
+The byte count can change between versions. The important check is that
+`verified` is `true` and the restored workbook returns the same calculated
+value as the edited workbook.
+
+## What The API Looks Like
 
 The public package is installable as a normal Node dependency:
 
 ```sh
-pnpm add @bilig/headless
+npm install @bilig/headless
 ```
 
-Build a workbook, read a formula result, and persist the document:
+Build a workbook, change one input, read the recalculated value, and restore the
+saved document:
 
 ```ts
 import {
@@ -74,28 +108,38 @@ import {
 } from '@bilig/headless'
 
 const workbook = WorkPaper.buildFromSheets({
-  Revenue: [
-    ['Region', 'Customers', 'ARPA', 'Revenue'],
-    ['West', 20, 1200, '=B2*C2'],
-    ['East', 30, 250, '=B3*C3'],
+  Inputs: [
+    ['Metric', 'Value'],
+    ['Customers', 20],
+    ['Average revenue', 1200],
   ],
   Summary: [
     ['Metric', 'Value'],
-    ['Total revenue', '=SUM(Revenue!D2:D3)'],
+    ['Revenue', '=Inputs!B2*Inputs!B3'],
   ],
 })
 
+const inputs = workbook.getSheetId('Inputs')
 const summary = workbook.getSheetId('Summary')
-if (summary === undefined) {
-  throw new Error('Summary sheet was not created')
+if (inputs === undefined || summary === undefined) {
+  throw new Error('Workbook did not create the expected sheets')
 }
 
-const total = workbook.getCellValue({ sheet: summary, row: 1, col: 1 })
+const before = workbook.getCellValue({ sheet: summary, row: 1, col: 1 })
+workbook.setCellContents({ sheet: inputs, row: 1, col: 1 }, 32)
+const after = workbook.getCellValue({ sheet: summary, row: 1, col: 1 })
+
 const saved = serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { includeConfig: true }))
 const restored = createWorkPaperFromDocument(parseWorkPaperDocument(saved))
+const restoredSummary = restored.getSheetId('Summary')
+if (restoredSummary === undefined) {
+  throw new Error('Restored workbook did not create the Summary sheet')
+}
 
 console.log({
-  total,
+  before,
+  after,
+  afterRestore: restored.getCellValue({ sheet: restoredSummary, row: 1, col: 1 }),
   sheets: restored.getSheetNames(),
 })
 ```
@@ -140,6 +184,8 @@ Read the benchmark note here:
 - GitHub: <https://github.com/proompteng/bilig>
 - Website: <https://proompteng.github.io/bilig/>
 - npm: <https://www.npmjs.com/package/@bilig/headless>
+- Empty-directory eval:
+  <https://proompteng.github.io/bilig/try-bilig-headless-in-node.html>
 - Runnable example: [`examples/headless-workpaper`](../examples/headless-workpaper)
 
 If this is relevant to an agent or Node workflow, star the repo as a bookmark:
