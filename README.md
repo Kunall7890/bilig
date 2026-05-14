@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 <p align="center">
-  <img src="docs/assets/bilig-hero-workbook-api.png" alt="bilig WorkPaper runtime trace with a workbook table and TypeScript code" />
+  <img src="docs/assets/bilig-hero-workbook-api.png" alt="bilig workbook grid showing an edited input cell and recalculated formula result" />
 </p>
 
 **bilig runs workbook-shaped calculations inside TypeScript services.**

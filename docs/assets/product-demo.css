@@ -6,12 +6,11 @@
 }
 
 .product-frame {
-  overflow: hidden;
   max-width: 100%;
-  border: 1px solid #bcc7b6;
-  border-radius: 8px;
-  background: #f7f6ef;
-  box-shadow: 0 24px 60px rgba(31, 36, 27, 0.16);
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .product-frame img {
@@ -20,33 +19,9 @@
   height: auto;
 }
 
-.frame-caption {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 18px;
-  align-items: center;
-  border-top: 1px solid #c9d1c3;
-  background: #1b2118;
-  padding: 14px 18px;
-  color: #ded8cb;
-  font-size: 13px;
-  line-height: 1.45;
-}
-
-.frame-caption strong {
-  color: var(--accent-bright);
-  white-space: nowrap;
-}
-
 @media (max-width: 1180px) {
   .hero-media {
     justify-self: stretch;
     max-width: 860px;
-  }
-}
-
-@media (max-width: 720px) {
-  .frame-caption {
-    grid-template-columns: 1fr;
   }
 }
