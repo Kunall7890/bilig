@@ -52,6 +52,7 @@ network service to answer `tools/list` and `tools/call`.
 | AgentNDX                        | Submitted for review               | <https://agentndx.ai/browse?q=bilig>                                                                  |
 | YuzeHao2023 Awesome MCP Servers | Submitted for maintainer review    | <https://github.com/YuzeHao2023/Awesome-MCP-Servers/pull/244>                                         |
 | ToolSDK MCP Registry            | Submitted for maintainer review    | <https://github.com/toolsdk-ai/toolsdk-mcp-registry/pull/309>                                         |
+| Ever Works MCP data             | Submitted for maintainer review    | <https://github.com/ever-works/awesome-mcp-servers-data/pull/4>                                       |
 | PulseMCP                        | Not indexed yet as of May 13, 2026 | <https://www.pulsemcp.com/servers?search=bilig&q=bilig>                                               |
 
 PulseMCP says server listings are ingested from the official MCP Registry daily
@@ -78,6 +79,12 @@ Developer Tools package entry for `@bilig/headless` and the
 `bilig-workpaper-mcp` stdio binary. Biome passed on the pull request; the
 integration job failed before package validation because the base workflow used
 latest pnpm on Node.js 20 and hit `node:sqlite` before reading the Bilig entry.
+
+The Ever Works awesome-mcp-servers-data pull request was opened on May 13, 2026
+with source data for the generated mcpserver.works / Awesome MCP Servers
+directory. GitHub reports the pull request as mergeable with no repository
+checks configured, so treat it as pending maintainer review until it is merged
+and appears in the generated directory.
 
 ## Verify The Registry Entry
 

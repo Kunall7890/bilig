@@ -12,6 +12,7 @@ export const communityLaunchPackRequiredLinks = [
   'https://github.com/zhangming1978/js-spreadsheet-benchmark/issues/1',
   'https://github.com/tolkonepiu/best-of-mcp-servers/pull/192',
   'https://github.com/MunGell/awesome-for-beginners/pull/2012',
+  'https://github.com/ever-works/awesome-mcp-servers-data/pull/4',
 ] as const
 
 export const llmsExternalSurfaceLinks = [
@@ -19,4 +20,5 @@ export const llmsExternalSurfaceLinks = [
   'https://github.com/zhangming1978/js-spreadsheet-benchmark/issues/1',
   'https://github.com/tolkonepiu/best-of-mcp-servers/pull/192',
   'https://github.com/MunGell/awesome-for-beginners/pull/2012',
+  'https://github.com/ever-works/awesome-mcp-servers-data/pull/4',
 ] as const

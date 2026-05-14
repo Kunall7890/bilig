@@ -148,6 +148,10 @@ issue pass:
   is open with a `packages/developer-tools/bilig-workpaper-mcp.json` entry for
   `@bilig/headless` and the `bilig-workpaper-mcp` stdio binary:
   <https://github.com/toolsdk-ai/toolsdk-mcp-registry/pull/309>
+- External MCP source-data surface: the Ever Works awesome-mcp-servers-data
+  pull request is open with `data/bilig-workpaper-mcp` source files for the
+  generated mcpserver.works / Awesome MCP Servers directory:
+  <https://github.com/ever-works/awesome-mcp-servers-data/pull/4>
 - External MCP directory surface: Glama published the Bilig WorkPaper server at
   <https://glama.ai/mcp/servers/proompteng/bilig>. The score badge was added to
   the punkpeye PR, replacing the `missing-glama` label with `has-glama`.
