@@ -436,7 +436,7 @@ requireIncludes(starterIssues, '#337: docs(examples): add Astro endpoint WorkPap
 requireIncludes(starterIssues, '#338: docs(examples): add TanStack Start server function WorkPaper smoke', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#339: docs(examples): add Qwik City WorkPaper route smoke', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#342: docs(examples): add Next.js Server Action validation-error smoke', 'docs/starter-issues.md')
-requireIncludes(starterIssues, '#343: docs(agent): add Vercel AI SDK generateText WorkPaper tool smoke', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '#354: docs(agent): add Vercel AI SDK streamText WorkPaper tool smoke', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#344: docs(agent): add LangChain.js structured tool WorkPaper smoke', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#345: docs(examples): add Next.js Route Handler WorkPaper JSON smoke', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#346: docs(examples): add Vercel Function WorkPaper route smoke', 'docs/starter-issues.md')

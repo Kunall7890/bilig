@@ -505,8 +505,8 @@ including its p95 caveat.
   https://github.com/proompteng/bilig/issues/327
 - current small agent issue: OpenAI Responses streaming tool-call transcript:
   https://github.com/proompteng/bilig/issues/334
-- current small agent issue: Vercel AI SDK generateText WorkPaper tool smoke:
-  https://github.com/proompteng/bilig/issues/343
+- current small agent issue: Vercel AI SDK streamText WorkPaper tool smoke:
+  https://github.com/proompteng/bilig/issues/354
 - current small agent issue: LangChain.js structured tool WorkPaper smoke:
   https://github.com/proompteng/bilig/issues/344
 - current small mcp issue: Docker healthcheck for the WorkPaper MCP stdio server:

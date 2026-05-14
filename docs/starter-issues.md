@@ -22,7 +22,7 @@ Current starter queue as of May 14, 2026:
 - [#326: docs(agent): add CopilotKit WorkPaper action UI result note](https://github.com/proompteng/bilig/issues/326)
 - [#327: docs(agent): add Cloudflare Agents WorkPaper state persistence note](https://github.com/proompteng/bilig/issues/327)
 - [#334: docs(agent): add OpenAI Responses streaming tool-call transcript](https://github.com/proompteng/bilig/issues/334)
-- [#343: docs(agent): add Vercel AI SDK generateText WorkPaper tool smoke](https://github.com/proompteng/bilig/issues/343)
+- [#354: docs(agent): add Vercel AI SDK streamText WorkPaper tool smoke](https://github.com/proompteng/bilig/issues/354)
 - [#344: docs(agent): add LangChain.js structured tool WorkPaper smoke](https://github.com/proompteng/bilig/issues/344)
 - [#283: docs(mcp): add Cursor MCP config for the WorkPaper stdio server](https://github.com/proompteng/bilig/issues/283)
 - [#284: docs(mcp): add Windsurf MCP config for local WorkPaper testing](https://github.com/proompteng/bilig/issues/284)
