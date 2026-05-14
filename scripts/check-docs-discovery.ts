@@ -3,8 +3,8 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { agentFrameworkDocRequirements, agentFrameworkLlmsRequiredLinks } from './check-docs-discovery-agent-pages.ts'
 import { requireAiSdkDiscovery } from './check-docs-discovery-ai-sdk.ts'
-import { communityLaunchPackRequiredLinks, llmsExternalSurfaceLinks } from './check-docs-discovery-growth-links.ts'
 import { requireHomepageDiscovery } from './check-docs-discovery-homepage.ts'
+import { productHuntLaunchAssetFiles, requireGrowthSurfaceDiscovery } from './check-docs-discovery-launch-kit.ts'
 import { requireNpmEvalDiscovery } from './check-docs-discovery-npm-eval.ts'
 import { requireOpenAiResponsesDiscovery } from './check-docs-discovery-openai-responses.ts'
 import { docsSiteSources } from './check-docs-discovery-site-sources.ts'
@@ -252,15 +252,9 @@ await Promise.all(
 )
 await requireFile(join(repoRoot, 'scripts', 'build-workpaper-mcpb.ts'))
 await Promise.all(
-  [
-    'github-social-preview.png',
-    'workpaper-benchmark-card.png',
-    'product-hunt-thumbnail.png',
-    'product-hunt-gallery-01-workbook-api.png',
-    'product-hunt-gallery-02-agent-readback.png',
-    'product-hunt-gallery-03-node-service.png',
-    'product-hunt-demo.webm',
-  ].map((sourceFile) => requireFile(join(docsRoot, 'assets', sourceFile))),
+  ['github-social-preview.png', 'workpaper-benchmark-card.png', ...productHuntLaunchAssetFiles].map((sourceFile) =>
+    requireFile(join(docsRoot, 'assets', sourceFile)),
+  ),
 )
 await Promise.all(
   [
@@ -360,8 +354,6 @@ for (const required of [
   'https://github.com/proompteng/bilig/blob/main/docs/starter-issues.md',
   'https://github.com/proompteng/bilig/blob/main/docs/community-launch-pack.md',
   'https://github.com/proompteng/bilig/blob/main/docs/community-growth-snapshot.md',
-  'https://proompteng.github.io/bilig/product-hunt-launch-kit.html',
-  'https://github.com/proompteng/bilig/blob/main/docs/product-hunt-launch-kit.md',
   'https://github.com/proompteng/bilig/issues?q=is%3Aissue%20state%3Aopen%20label%3Afirst-timers-only',
 ]) {
   requireIncludes(llms, required, 'docs/llms.txt')
@@ -656,29 +648,7 @@ for (const required of [
 ]) {
   requireIncludes(claudeDesktopMcpbDoc, required, 'docs/claude-desktop-mcpb-workpaper.md')
 }
-for (const required of communityLaunchPackRequiredLinks) {
-  requireIncludes(communityLaunchPack, required, 'docs/community-launch-pack.md')
-}
-for (const required of llmsExternalSurfaceLinks) {
-  requireIncludes(llms, required, 'docs/llms.txt')
-}
-for (const required of [
-  'title: Product Hunt launch kit for bilig',
-  'Workbook formulas for TypeScript services and agents.',
-  'start from an empty Node project, install @bilig/headless, run eval.ts',
-  '46/46 comparable mean-latency rows are faster',
-  'product-hunt-thumbnail.png',
-  'product-hunt-gallery-01-workbook-api.png',
-  'product-hunt-gallery-02-agent-readback.png',
-  'product-hunt-gallery-03-node-service.png',
-  'product-hunt-demo.webm',
-  'try-bilig-headless-in-node.html',
-  'what-workpaper-benchmark-proves.html',
-  'where-bilig-is-not-excel-compatible-yet.html',
-  'mcp-client-setup.html',
-]) {
-  requireIncludes(productHuntLaunchKit, required, 'docs/product-hunt-launch-kit.md')
-}
+requireGrowthSurfaceDiscovery(communityLaunchPack, llms, productHuntLaunchKit, requireIncludes)
 requireIncludes(
   aiSdkLangChainDoc,
   'https://ai-sdk.dev/docs/ai-sdk-core/tools-and-tool-calling',
