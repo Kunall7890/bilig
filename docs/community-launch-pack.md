@@ -166,11 +166,21 @@ issue pass:
   `@bilig/headless@0.14.0` with the existing Publish MCP Registry workflow:
   <https://github.com/proompteng/bilig/actions/runs/25812680602>
   Live API verification on 2026-05-13 returned 9 matching registry entries,
-  with `0.14.0` marked as latest.
+  with `0.14.0` marked as latest at the time.
 - GitHub Discussion `#230` now has a maintainer update for MCP users with the
   `0.14.0` registry proof, MCPB proof, and a concrete feedback ask about the
   next useful WorkPaper tool shape:
   <https://github.com/proompteng/bilig/discussions/230#discussioncomment-16907632>
+- Official MCP Registry refresh on May 14, 2026: the existing Publish MCP
+  Registry workflow registered `@bilig/headless@0.14.2`, and the live Registry
+  API returned 10 matching `io.github.proompteng/bilig-workpaper` entries with
+  `0.14.2` marked as latest:
+  <https://github.com/proompteng/bilig/actions/runs/25850256208>
+- GitHub Discussion `#230` has a May 14 maintainer update for MCP users with
+  the `0.14.2` registry proof, the unchanged npm stdio install command, and a
+  concrete ask about named inputs, range validation, or storage-backed
+  save/restore proof:
+  <https://github.com/proompteng/bilig/discussions/230#discussioncomment-16916374>
 - External MCP directory surface: `mcp.directory` accepted the public server
   submission for review with repository `https://github.com/proompteng/bilig`,
   npm package `@bilig/headless`, and the WorkPaper persistence/readback
