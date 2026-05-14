@@ -466,6 +466,19 @@ requireIncludes(
   'docs/server-side-spreadsheet-automation-node.md',
 )
 
+const xlsxCorpusVerifier = await readFile(join(docsRoot, 'xlsx-corpus-verifier-walkthrough.md'), 'utf8')
+for (const required of [
+  'not on a vague',
+  'Run It Against Your Files',
+  'Put It In CI',
+  'pnpm workpaper:xlsx-corpus:check -- /path/to/workbooks',
+  'Turn A Miss Into A Contribution',
+  'https://github.com/proompteng/bilig/issues/new/choose',
+  'https://github.com/proompteng/bilig/issues?q=is%3Aissue%20state%3Aopen%20label%3Afirst-timers-only',
+] as const) {
+  requireIncludes(xlsxCorpusVerifier, required, 'docs/xlsx-corpus-verifier-walkthrough.md')
+}
+
 for (const [path, content] of [
   ['README.md', readme],
   ['packages/headless/README.md', headlessReadme],
