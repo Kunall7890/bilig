@@ -336,6 +336,18 @@ Latest technical-content action on May 14, 2026:
   <https://proompteng.github.io/bilig/why-agents-need-workbook-apis.html> and
   <https://github.com/proompteng/bilig/blob/main/docs/dev-to-workbook-apis-post.md>.
 
+Latest homepage polish action on May 14, 2026:
+
+- The homepage first viewport now leads with the plain product category
+  "Workbook models for TypeScript services" instead of a large repeated brand
+  mark and generic spreadsheet tagline.
+- The hero copy says exactly what the package does: change workbook inputs from
+  code, read recalculated values, and save the same workbook state as JSON.
+- The local Dia check verified the first viewport at
+  `http://127.0.0.1:4176/?v=home-polish-1`: no hero/media overlap, no stranded
+  headline word, and the next section is visible at the bottom of the initial
+  viewport.
+
 Latest HN conversion signal on May 14, 2026:
 
 - The checked-in public growth snapshot records `news.ycombinator.com` as a top
