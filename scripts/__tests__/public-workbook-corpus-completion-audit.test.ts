@@ -808,6 +808,36 @@ describe('public workbook corpus completion audit', () => {
     expect(validatePublicWorkbookCorpusCompletionAudit(audit)).toEqual([])
   })
 
+  it('accepts overlapping formula value counts and whitespace sheet names as complete feature evidence', () => {
+    const artifact = financialWorkbookArtifact('workbook-a')
+    const audit = buildPublicWorkbookCorpusCompletionAudit({
+      generatedAt: '2026-05-08T00:00:00.000Z',
+      hyperformulaSecondaryCorpus: hyperFormulaSecondaryCorpusFixture(),
+      manifest: manifestWithArtifacts([artifact], 1),
+      recordedCases: [caseWithFormulaValueOverlapAndWhitespaceSheetName(artifact)],
+      status: statusFixture({
+        targetWorkbookCount: 1,
+        sourceCount: 1,
+        cachedArtifactCount: 1,
+        scorecardCaseCount: 1,
+        checkpointCaseCount: 1,
+        recordedManifestArtifactCount: 1,
+        missingManifestArtifactCount: 0,
+        recordedPassedCaseCount: 1,
+        scorecardCoversManifest: true,
+        targetComplete: true,
+        gaps: [],
+      }),
+      stopMarkerActive: false,
+    })
+
+    expect(requirement(audit.checklist, 'validate-workbook-features')).toMatchObject({
+      passed: true,
+      gaps: [],
+    })
+    expect(validatePublicWorkbookCorpusCompletionAudit(audit)).toEqual([])
+  })
+
   it('fails completion when recorded sheet dimensions omit explicit used-range evidence', () => {
     const artifact = workbookArtifact('workbook-a')
     const audit = buildPublicWorkbookCorpusCompletionAudit({
@@ -1157,6 +1187,32 @@ function caseWithInvalidFeatureEvidence(artifact: PublicWorkbookArtifact): Publi
       dimensions: [
         {
           sheetName: 'Sheet1',
+          rowCount: 1,
+          columnCount: 2,
+          nonEmptyCellCount: 2,
+          usedRange: { startRow: 0, startColumn: 0, endRow: 0, endColumn: 1 },
+        },
+      ],
+    },
+  }
+}
+
+function caseWithFormulaValueOverlapAndWhitespaceSheetName(artifact: PublicWorkbookArtifact): PublicWorkbookCorpusCase {
+  const base = passedCase(artifact, 1)
+  return {
+    ...base,
+    featureCounts: {
+      ...base.featureCounts,
+      formulaCellCount: 1,
+      valueCellCount: 2,
+      cellCount: 2,
+    },
+    workbookMetadata: {
+      workbookName: artifact.fileName,
+      sheetNames: [' '],
+      dimensions: [
+        {
+          sheetName: ' ',
           rowCount: 1,
           columnCount: 2,
           nonEmptyCellCount: 2,

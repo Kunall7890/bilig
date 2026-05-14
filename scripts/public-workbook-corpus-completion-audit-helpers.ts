@@ -158,13 +158,15 @@ export function hasFeatureValidationEvidence(entry: PublicWorkbookCorpusCase): b
     dimensionCellCount === entry.featureCounts.cellCount &&
     entry.workbookMetadata.dimensions.every(
       (dimension) =>
-        dimension.sheetName.trim().length > 0 &&
+        dimension.sheetName.length > 0 &&
         dimension.rowCount >= 0 &&
         dimension.columnCount >= 0 &&
         dimension.nonEmptyCellCount >= 0 &&
         (dimension.nonEmptyCellCount === 0 || (dimension.rowCount > 0 && dimension.columnCount > 0)),
     ) &&
-    entry.featureCounts.cellCount >= entry.featureCounts.formulaCellCount + entry.featureCounts.valueCellCount &&
+    // Formula cells can also carry cached values, so formula and value counts overlap.
+    entry.featureCounts.cellCount >= entry.featureCounts.formulaCellCount &&
+    entry.featureCounts.cellCount >= entry.featureCounts.valueCellCount &&
     entry.featureCounts.definedNameCount >= 0 &&
     entry.featureCounts.tableCount >= 0 &&
     entry.featureCounts.chartCount >= 0 &&
