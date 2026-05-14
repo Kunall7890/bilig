@@ -819,6 +819,52 @@ describe('GridRenderTilePaneRuntime', () => {
     expect(state.tileReadiness.misses).toEqual([])
   })
 
+  it('rebuilds visible row-tile boundary text from authoritative cache when remote text is stale', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const tileIds = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 0 },
+    })
+    const staleRemoteTile: GridRenderTile = {
+      ...createRenderTile(tileIds[1]),
+      bounds: { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 32 },
+      coord: {
+        colTile: 0,
+        dprBucket: 1,
+        paneKind: 'body',
+        rowTile: 1,
+        sheetId: 7,
+        sheetOrdinal: 7,
+      },
+      textCount: 0,
+      textMetrics: new Float32Array(GRID_TEXT_METRIC_FLOAT_COUNT_V3),
+      textRuns: [],
+    }
+    const engine: GridEngineLike = {
+      ...LOCAL_EMPTY_ENGINE,
+      getCell: (_sheetName, address) =>
+        address === 'C33' ? createStringCellSnapshot(address, 'Annual software subscription') : createEmptyCellSnapshot(address),
+    }
+    const state = runtime.resolve(
+      createInput({
+        engine,
+        gridRuntimeHost: host,
+        renderTileSource: createRenderTileSource([createRenderTile(tileIds[0]), staleRemoteTile]),
+        renderTileViewport: { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 0 },
+        residentViewport: { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 0 },
+        visibleViewport: { colEnd: 10, colStart: 0, rowEnd: 42, rowStart: 11 },
+      }),
+    )
+
+    const boundaryTile = state.renderTilePanes.find((pane) => pane.tile.bounds.rowStart === 32)?.tile
+    expect(boundaryTile).toBeDefined()
+    expect(boundaryTile).not.toBe(staleRemoteTile)
+    expect(boundaryTile?.textRuns.some((run) => run.row === 32 && run.col === 2 && run.text === 'Annual software subscription')).toBe(true)
+    expect(state.tileReadiness.misses).toEqual([])
+  })
+
   it('requires coherent sheet id and ordinal for remote tiles when both are known', () => {
     const runtime = new GridRenderTilePaneRuntime()
     const host = createHost()

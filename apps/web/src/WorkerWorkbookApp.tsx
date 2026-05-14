@@ -5,6 +5,7 @@ import { resolveRuntimeConfig } from './runtime-config.js'
 import type { ZeroClient } from './runtime-session.js'
 import { parseSelectionTarget, type ZeroConnectionState } from './worker-workbook-app-model.js'
 import { getWorkbookScrollPerfCollector } from './perf/workbook-scroll-perf.js'
+import { readSelectionFromUrl, subscribeSelectionUrlChanges } from './selection-persistence.js'
 import { WorkbookToastRegion } from './WorkbookToastRegion.js'
 import { useWorkbookImportPane } from './use-workbook-import-pane.js'
 import { useWorkbookShortcutDialog } from './use-workbook-shortcut-dialog.js'
@@ -18,6 +19,30 @@ const persistenceBannerButtonClass =
   'inline-flex h-8 items-center rounded-[var(--wb-radius-control)] border border-[var(--wb-border-strong)] bg-[var(--wb-surface)] px-3 text-[12px] font-medium text-[var(--wb-text)] transition-colors hover:bg-[var(--wb-surface)]/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--wb-accent-ring)] focus-visible:ring-offset-1'
 const missingSheetActionClass =
   'inline-flex h-8 items-center rounded-[var(--wb-radius-control)] border border-[var(--wb-border)] bg-[var(--wb-surface)] px-3 text-[12px] font-medium text-[var(--wb-text)] shadow-[var(--wb-shadow-sm)] transition-colors hover:border-[var(--wb-border-strong)] hover:bg-[var(--wb-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--wb-accent-ring)] focus-visible:ring-offset-1'
+
+function sameWorkbookSelection(
+  left: { readonly sheetName: string; readonly address: string },
+  right: { readonly sheetName: string; readonly address: string },
+): boolean {
+  return left.sheetName === right.sheetName && left.address === right.address
+}
+
+function isResolvingWorkbookSheet(syncState: unknown): boolean {
+  return syncState === 'syncing' || syncState === 'reconnecting'
+}
+
+function WorkbookResolvingState(props: { readonly requestedSheetName: string }) {
+  return (
+    <div className="flex h-full min-h-0 items-center justify-center bg-[var(--wb-surface)] px-6" data-testid="workbook-resolving-state">
+      <div className="max-w-lg rounded-[var(--wb-radius-panel)] border border-[var(--wb-border)] bg-[var(--wb-surface-subtle)] p-5 shadow-[var(--wb-shadow-sm)]">
+        <div className="text-[13px] font-semibold text-[var(--wb-text)]">Loading workbook</div>
+        <div className="mt-2 text-[12px] leading-5 text-[var(--wb-text-muted)]">
+          Resolving <span className="font-medium text-[var(--wb-text)]">{props.requestedSheetName}</span>.
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function MissingSheetState(props: {
   readonly availableSheets: readonly string[]
@@ -189,10 +214,35 @@ function WorkerWorkbookAppInner({
       runtimeError,
     ],
   )
-  const visibleSelection = app.visibleSelection ?? app.selection
+  const visibleSelection = app.visibleSelection ?? app.selection ?? { sheetName: 'Sheet1', address: 'A1' }
   const visibleSelectedCell = app.visibleSelectedCell ?? app.selectedCell
-  const missingVisibleSheet =
+  const visibleSelectionRef = useRef(visibleSelection)
+  const selectAddressRef = useRef(app.selectAddress)
+  visibleSelectionRef.current = visibleSelection
+  selectAddressRef.current = app.selectAddress
+  const resolvingVisibleSheet =
     app.workbookReady && app.workerHandle && app.sheetNames.length > 0 && !app.sheetNames.includes(visibleSelection.sheetName)
+      ? isResolvingWorkbookSheet(app.runtimeSyncState)
+      : false
+  const missingVisibleSheet =
+    app.workbookReady &&
+    app.workerHandle &&
+    app.sheetNames.length > 0 &&
+    !app.sheetNames.includes(visibleSelection.sheetName) &&
+    !resolvingVisibleSheet
+
+  const syncSelectionFromUrl = useCallback(() => {
+    const nextSelection = readSelectionFromUrl()
+    if (!nextSelection || sameWorkbookSelection(nextSelection, visibleSelectionRef.current)) {
+      return
+    }
+    selectAddressRef.current(nextSelection.sheetName, nextSelection.address)
+  }, [])
+
+  useEffect(() => {
+    syncSelectionFromUrl()
+    return subscribeSelectionUrlChanges(syncSelectionFromUrl)
+  }, [syncSelectionFromUrl])
 
   return (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-[var(--wb-app-bg)] text-[var(--wb-text)]">
@@ -259,6 +309,8 @@ function WorkerWorkbookAppInner({
               requestedSheetName={visibleSelection.sheetName}
               onSelectSheet={(sheetName) => app.selectAddress(sheetName, 'A1')}
             />
+          ) : resolvingVisibleSheet ? (
+            <WorkbookResolvingState requestedSheetName={visibleSelection.sheetName} />
           ) : app.workbookReady && app.workerHandle ? (
             <Profiler
               id="workbook-shell"

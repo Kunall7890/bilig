@@ -143,6 +143,41 @@ describe('workbook visible-state regressions', () => {
       root.unmount()
     })
   })
+
+  it('holds a resolving state for URL-requested sheets while workbook sync is still loading', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    useWorkerWorkbookAppState.mockReturnValue(
+      createWorkbookAppState({
+        selectedCell: { sheetName: 'Prepaid Template', address: 'C12' },
+        selection: { sheetName: 'Prepaid Template', address: 'C12' },
+        selectionSnapshot: {
+          sheetName: 'Prepaid Template',
+          address: 'C12',
+          kind: 'cell',
+          range: {
+            startAddress: 'C12',
+            endAddress: 'C12',
+          },
+        },
+        sheetIdsByName: { Sheet1: 1 },
+        sheetNames: ['Sheet1'],
+        sheetOrdinalsByName: { Sheet1: 0 },
+        runtimeSyncState: 'syncing',
+        visibleSelectedCell: { sheetName: 'Prepaid Template', address: 'C12' },
+        visibleSelection: { sheetName: 'Prepaid Template', address: 'C12' },
+      }),
+    )
+
+    const { host, root } = await renderWorkbookApp()
+
+    expect(host.querySelector("[data-testid='missing-sheet-state']")).toBeNull()
+    expect(host.querySelector("[data-testid='workbook-resolving-state']")?.textContent).toContain('Prepaid Template')
+    expect(latestWorkbookViewProps.current).toBeNull()
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
 })
 
 function createWorkbookAppState(overrides: Record<string, unknown> = {}): Record<string, unknown> {

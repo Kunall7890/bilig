@@ -56,12 +56,117 @@ vi.mock('../use-workbook-shortcut-dialog.js', () => ({
   }),
 }))
 
+function createCellSelectionSnapshot(sheetName: string, address: string): Record<string, unknown> {
+  return {
+    sheetName,
+    address,
+    kind: 'cell',
+    range: {
+      startAddress: address,
+      endAddress: address,
+    },
+  }
+}
+
+function createReadyWorkbookAppState(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    agentError: null,
+    approvePersistenceTransfer: vi.fn(),
+    autofitColumn: vi.fn(),
+    beginEditing: vi.fn(),
+    canRedo: false,
+    canUndo: false,
+    cancelEditor: vi.fn(),
+    changeCount: 0,
+    changesPanel: null,
+    clearAgentError: vi.fn(),
+    clearRuntimeError: vi.fn(),
+    clearSelectedCell: vi.fn(),
+    columnWidths: {},
+    commitEditor: vi.fn(),
+    copySelectionRange: vi.fn(),
+    createSheet: vi.fn(),
+    definedNames: [],
+    deleteSheet: vi.fn(),
+    dismissPersistenceTransferRequest: vi.fn(),
+    editorConflictBanner: null,
+    editorSelectionBehavior: 'select-all',
+    failedPendingMutation: null,
+    fillSelectionRange: vi.fn(),
+    freezeCols: 0,
+    freezeRows: 0,
+    getCellEditorSeed: vi.fn(),
+    acknowledgeExternalSelectionSync: vi.fn(),
+    handleEditorChange: vi.fn(),
+    handleSelectionChange: vi.fn(),
+    handleVisibleViewportChange: vi.fn(),
+    hiddenColumns: {},
+    hiddenRows: {},
+    invokeColumnVisibilityMutation: vi.fn(),
+    invokeColumnWidthMutation: vi.fn(),
+    invokeDeleteColumnsMutation: vi.fn(),
+    invokeDeleteRowsMutation: vi.fn(),
+    invokeInsertColumnsMutation: vi.fn(),
+    invokeInsertRowsMutation: vi.fn(),
+    invokeRowHeightMutation: vi.fn(),
+    invokeRowVisibilityMutation: vi.fn(),
+    invokeSetFreezePaneMutation: vi.fn(),
+    isEditing: false,
+    isEditingCell: false,
+    localPersistenceMode: 'persistent',
+    moveSelectionRange: vi.fn(),
+    pasteIntoSelection: vi.fn(),
+    pendingTransferRequest: null,
+    previewRanges: [],
+    redoLatestChange: vi.fn(),
+    remoteSyncAvailable: true,
+    renameSheet: vi.fn(),
+    reportRuntimeError: vi.fn(),
+    requestPersistenceTransfer: vi.fn(),
+    resolvedValue: '',
+    retryFailedPendingMutation: vi.fn(),
+    ribbon: null,
+    rowHeights: {},
+    runtimeError: null,
+    runtimeReady: true,
+    runtimeSyncState: 'local-only',
+    selection: { sheetName: 'Sheet1', address: 'A1' },
+    selectionSnapshot: createCellSelectionSnapshot('Sheet1', 'A1'),
+    selectAddress: vi.fn(),
+    selectSelectionSnapshot: vi.fn(),
+    selectedCell: { sheetName: 'Sheet1', address: 'A1' },
+    setSidePanelWidth: vi.fn(),
+    sheetIdsByName: { 'Prepaid Template': 1, Sheet1: 2 },
+    sheetNames: ['Prepaid Template', 'Sheet1'],
+    sheetOrdinalsByName: { 'Prepaid Template': 0, Sheet1: 1 },
+    sidePanel: null,
+    sidePanelId: undefined,
+    sidePanelWidth: undefined,
+    statusModeLabel: 'Live',
+    toggleBooleanCell: vi.fn(),
+    toolbarTrailingContent: null,
+    transferRequested: false,
+    undoLatestChange: vi.fn(),
+    visibleEditorValue: '',
+    visibleSelectedCell: { sheetName: 'Sheet1', address: 'A1' },
+    visibleSelection: { sheetName: 'Sheet1', address: 'A1' },
+    workbookReady: true,
+    workerHandle: {
+      viewportStore: {},
+    },
+    writesAllowed: true,
+    zeroConfigured: true,
+    ...overrides,
+  }
+}
+
 describe('WorkerWorkbookApp', () => {
   afterEach(() => {
     toast.dismiss()
     vi.clearAllMocks()
     latestWorkbookViewProps.current = null
     document.body.innerHTML = ''
+    window.history.replaceState({}, '', '/')
   })
 
   it('renders a retry toast for failed pending mutations', async () => {
@@ -690,6 +795,95 @@ describe('WorkerWorkbookApp', () => {
     })
 
     expect(selectAddress).toHaveBeenCalledWith('Prepaid Template', 'A1')
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it('applies same-document URL sheet and cell changes to workbook selection', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    window.history.replaceState({}, '', '/?sheet=Prepaid+Template&cell=F16')
+
+    const selectAddress = vi.fn()
+    useWorkerWorkbookAppState.mockReturnValue(createReadyWorkbookAppState({ selectAddress }))
+
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+
+    await act(async () => {
+      root.render(
+        <WorkerWorkbookApp
+          config={{
+            currentUserId: 'guest:test',
+            defaultDocumentId: 'doc-1',
+            persistState: true,
+            zeroCacheUrl: 'http://127.0.0.1:4848',
+          }}
+          connectionState={{ name: 'connected' }}
+        />,
+      )
+    })
+
+    expect(selectAddress).toHaveBeenCalledWith('Prepaid Template', 'F16')
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it('does not replay stale URL selection after a local click selection update', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    window.history.replaceState({}, '', '/?sheet=Prepaid+Template&cell=D53')
+
+    const selectAddress = vi.fn()
+    const initialState = createReadyWorkbookAppState({
+      selectAddress,
+      selection: { sheetName: 'Prepaid Template', address: 'D53' },
+      selectionSnapshot: createCellSelectionSnapshot('Prepaid Template', 'D53'),
+      selectedCell: { sheetName: 'Prepaid Template', address: 'D53' },
+      visibleSelectedCell: { sheetName: 'Prepaid Template', address: 'D53' },
+      visibleSelection: { sheetName: 'Prepaid Template', address: 'D53' },
+    })
+    let currentState = initialState
+    useWorkerWorkbookAppState.mockImplementation(() => currentState)
+
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+    const appElement = (
+      <WorkerWorkbookApp
+        config={{
+          currentUserId: 'guest:test',
+          defaultDocumentId: 'doc-1',
+          persistState: true,
+          zeroCacheUrl: 'http://127.0.0.1:4848',
+        }}
+        connectionState={{ name: 'connected' }}
+      />
+    )
+
+    await act(async () => {
+      root.render(appElement)
+    })
+
+    expect(selectAddress).not.toHaveBeenCalled()
+    selectAddress.mockClear()
+    currentState = {
+      ...initialState,
+      selection: { sheetName: 'Prepaid Template', address: 'E54' },
+      selectionSnapshot: createCellSelectionSnapshot('Prepaid Template', 'E54'),
+      selectedCell: { sheetName: 'Prepaid Template', address: 'E54' },
+      visibleSelectedCell: { sheetName: 'Prepaid Template', address: 'E54' },
+      visibleSelection: { sheetName: 'Prepaid Template', address: 'E54' },
+    }
+
+    await act(async () => {
+      root.render(appElement)
+    })
+
+    expect(selectAddress).not.toHaveBeenCalled()
 
     await act(async () => {
       root.unmount()

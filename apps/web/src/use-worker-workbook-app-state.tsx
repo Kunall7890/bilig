@@ -463,6 +463,7 @@ export function useWorkerWorkbookAppState(input: {
   )
   const failedPendingMutation = runtimeState?.pendingMutationSummary?.firstFailed ?? null
   const localPersistenceMode = runtimeState?.localPersistenceMode ?? 'ephemeral'
+  const runtimeSyncState = runtimeState?.syncState ?? (runtimeReady ? 'syncing' : 'local-only')
   const {
     approvePersistenceTransfer,
     dismissPersistenceTransferRequest,
@@ -657,6 +658,7 @@ export function useWorkerWorkbookAppState(input: {
     ribbon,
     runtimeError,
     runtimeReady,
+    runtimeSyncState,
     retryFailedPendingMutation,
     getCellEditorSeed,
     approvePersistenceTransfer,

@@ -11,6 +11,7 @@ function AgentContextHarness(props: {
   selection: WorkerRuntimeSelection
   selectionSnapshot: GridSelectionSnapshot
   capture: (value: ReturnType<typeof useWorkerWorkbookAgentContext>) => void
+  subscribeViewport?: (sheetName: string, viewport: { rowStart: number; rowEnd: number; colStart: number; colEnd: number }) => () => void
 }) {
   const selectionRangeRef = useRef({
     sheetName: props.selectionSnapshot.sheetName,
@@ -23,7 +24,7 @@ function AgentContextHarness(props: {
     viewportStore: createViewportStoreStub(),
   })
   const runtimeControllerRef = useRef({
-    subscribeViewport: vi.fn(() => () => undefined),
+    subscribeViewport: props.subscribeViewport ?? vi.fn(() => () => undefined),
   })
 
   useEffect(() => {
@@ -34,7 +35,8 @@ function AgentContextHarness(props: {
       startAddress: props.selectionSnapshot.range.startAddress,
       endAddress: props.selectionSnapshot.range.endAddress,
     }
-  }, [props.selection, props.selectionSnapshot])
+    runtimeControllerRef.current.subscribeViewport = props.subscribeViewport ?? runtimeControllerRef.current.subscribeViewport
+  }, [props.selection, props.selectionSnapshot, props.subscribeViewport])
 
   const state = useWorkerWorkbookAgentContext({
     selection: props.selection,
@@ -145,7 +147,56 @@ describe('useWorkerWorkbookAgentContext', () => {
       harness.root.unmount()
     })
   })
+
+  it('prewarms same-sheet deep selections before visible viewport feedback arrives', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const subscribeViewport = vi.fn(() => () => undefined)
+    const harness = mountHarness()
+    const capture = vi.fn()
+    await harness.render({
+      selection: { sheetName: 'Sheet1', address: 'A1' },
+      selectionSnapshot: createCellSelectionSnapshot('Sheet1', 'A1'),
+      subscribeViewport,
+      capture,
+    })
+
+    await harness.render({
+      selection: { sheetName: 'Sheet1', address: 'D250' },
+      selectionSnapshot: createCellSelectionSnapshot('Sheet1', 'D250'),
+      subscribeViewport,
+      capture,
+    })
+
+    expect(subscribeViewport).toHaveBeenCalledWith(
+      'Sheet1',
+      expect.objectContaining({
+        rowStart: 153,
+        rowEnd: 345,
+        colStart: 0,
+        colEnd: 131,
+      }),
+      expect.any(Function),
+      { initialPatch: 'full' },
+    )
+
+    await act(async () => {
+      harness.root.unmount()
+    })
+  })
 })
+
+function createCellSelectionSnapshot(sheetName: string, address: string): GridSelectionSnapshot {
+  return {
+    sheetName,
+    address,
+    kind: 'cell',
+    range: {
+      startAddress: address,
+      endAddress: address,
+    },
+  }
+}
 
 function createViewportStoreStub() {
   return {

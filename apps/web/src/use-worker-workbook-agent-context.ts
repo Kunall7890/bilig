@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type MutableRefObject } from 'react'
 import type { GridSelectionSnapshot } from '@bilig/grid'
 import { formatAddress, parseCellAddress } from '@bilig/formula'
 import type { WorkbookAgentRenderedRange, WorkbookAgentUiContext } from '@bilig/contracts'
@@ -167,6 +167,13 @@ export function useWorkerWorkbookAgentContext(input: {
     },
     [notifyRenderedAgentContextChanged, runtimeControllerRef],
   )
+
+  const selectedAddress = selection.address
+  const selectedSheetName = selection.sheetName
+
+  useLayoutEffect(() => {
+    syncVisibleViewportProjection(selectedSheetName, selectionViewport({ address: selectedAddress, sheetName: selectedSheetName }))
+  }, [selectedAddress, selectedSheetName, syncVisibleViewportProjection])
 
   useEffect(() => {
     syncVisibleViewportProjection(selection.sheetName, visibleViewportRef.current)

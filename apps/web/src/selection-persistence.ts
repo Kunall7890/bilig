@@ -8,6 +8,8 @@ const DEFAULT_SELECTION: WorkerRuntimeSelection = {
 const SHEET_QUERY_PARAM = 'sheet'
 const CELL_QUERY_PARAM = 'cell'
 const SELECTION_PERSIST_DEBOUNCE_MS = 120
+const SELECTION_URL_CHANGE_EVENT = 'bilig-selection-url-change'
+const SELECTION_HISTORY_STATE_KEY = '__biligSelectionHistoryInstrumentation'
 
 let pendingPersist: {
   readonly documentId: string
@@ -15,6 +17,16 @@ let pendingPersist: {
   readonly timeoutId: ReturnType<typeof globalThis.setTimeout>
 } | null = null
 let flushListenersInstalled = false
+
+interface SelectionHistoryInstrumentation {
+  readonly history: History
+  readonly originalPushState: History['pushState'] | null
+  readonly originalReplaceState: History['replaceState']
+}
+
+type SelectionHistoryWindow = Window & {
+  [SELECTION_HISTORY_STATE_KEY]?: SelectionHistoryInstrumentation | undefined
+}
 
 function storageKey(documentId: string): string {
   return `bilig:selection:${documentId}`
@@ -71,6 +83,17 @@ function readCellSelectionFromUrl(): string | null {
   }
 }
 
+export function readSelectionFromUrl(): WorkerRuntimeSelection | null {
+  const sheetName = readSheetSelectionFromUrl()
+  if (!sheetName) {
+    return null
+  }
+  return {
+    sheetName,
+    address: readCellSelectionFromUrl() ?? DEFAULT_SELECTION.address,
+  }
+}
+
 function readStoredSelection(documentId: string): WorkerRuntimeSelection | null {
   if (typeof window === 'undefined') {
     return null
@@ -110,6 +133,60 @@ export function loadPersistedSelection(documentId: string): WorkerRuntimeSelecti
     return DEFAULT_SELECTION
   }
   return storedSelection ?? DEFAULT_SELECTION
+}
+
+function emitSelectionUrlChange(): void {
+  if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') {
+    return
+  }
+  window.dispatchEvent(new Event(SELECTION_URL_CHANGE_EVENT))
+}
+
+function installHistorySelectionListeners(): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+  const history = window.history
+  const selectionWindow = window as SelectionHistoryWindow
+  if (selectionWindow[SELECTION_HISTORY_STATE_KEY]?.history === history) {
+    return
+  }
+  if (!history || typeof history.replaceState !== 'function') {
+    return
+  }
+  const state: SelectionHistoryInstrumentation = {
+    history,
+    originalPushState: typeof history.pushState === 'function' ? history.pushState.bind(history) : null,
+    originalReplaceState: history.replaceState.bind(history),
+  }
+  selectionWindow[SELECTION_HISTORY_STATE_KEY] = state
+  if (state.originalPushState) {
+    history.pushState = ((...args: Parameters<History['pushState']>) => {
+      const result = state.originalPushState?.(...args)
+      emitSelectionUrlChange()
+      return result
+    }) as History['pushState']
+  }
+  history.replaceState = ((...args: Parameters<History['replaceState']>) => {
+    const result = state.originalReplaceState(...args)
+    emitSelectionUrlChange()
+    return result
+  }) as History['replaceState']
+}
+
+export function subscribeSelectionUrlChanges(listener: () => void): () => void {
+  if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') {
+    return () => undefined
+  }
+  installHistorySelectionListeners()
+  window.addEventListener(SELECTION_URL_CHANGE_EVENT, listener)
+  window.addEventListener('popstate', listener)
+  window.addEventListener('hashchange', listener)
+  return () => {
+    window.removeEventListener(SELECTION_URL_CHANGE_EVENT, listener)
+    window.removeEventListener('popstate', listener)
+    window.removeEventListener('hashchange', listener)
+  }
 }
 
 function persistSelectionToUrl(selection: WorkerRuntimeSelection): void {

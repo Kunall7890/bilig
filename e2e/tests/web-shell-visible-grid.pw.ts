@@ -67,6 +67,22 @@ test('web app paints deep querystring-selected cell content in the visible grid'
   }
 })
 
+test('web app keeps a user click selection after opening from a deep cell URL', async ({ page }) => {
+  const documentId = createTestDocumentId('playwright-visible-click-deep-cell')
+  await page.setViewportSize({ width: 1166, height: 820 })
+  await page.goto(`/?document=${encodeURIComponent(documentId)}&sheet=Sheet1&cell=D53`)
+  await waitForWorkbookReady(page)
+
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!D53')
+  await expect(page.getByTestId('name-box')).toHaveValue('D53')
+
+  await clickVisibleGridBodySlot(page, 2, 3)
+
+  await expect.poll(() => page.getByTestId('status-selection').textContent()).not.toBe('Sheet1!D53')
+  await expect.poll(() => page.getByTestId('name-box').inputValue()).not.toBe('D53')
+  await expect.poll(() => page.evaluate(() => new URL(window.location.href).searchParams.get('cell') ?? '')).not.toBe('D53')
+})
+
 async function pollDarkInteriorPixelsInCell(
   page: Page,
   columnIndex: number,
@@ -86,6 +102,25 @@ async function pollDarkInteriorPixelsInCell(
     return poll()
   }
   return await poll()
+}
+
+async function clickVisibleGridBodySlot(page: Page, columnIndex: number, visibleRowSlot: number): Promise<void> {
+  const gridLocator = page.getByTestId('sheet-grid')
+  await expect(gridLocator).toBeVisible()
+  const grid = await gridLocator.boundingBox()
+  if (!grid) {
+    throw new Error('sheet grid is not visible')
+  }
+
+  const [columnLeft, columnWidth, rowHeight] = await Promise.all([
+    getProductColumnLeft(page, columnIndex),
+    getProductColumnWidth(page, columnIndex),
+    getProductRowHeight(page, visibleRowSlot),
+  ])
+  await page.mouse.click(
+    grid.x + columnLeft + Math.floor(columnWidth / 2),
+    grid.y + PRODUCT_HEADER_HEIGHT + visibleRowSlot * rowHeight + Math.floor(rowHeight / 2),
+  )
 }
 
 function shouldAllowHeadlessWebGpuScreenshotGap(): boolean {

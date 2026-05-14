@@ -3,17 +3,23 @@ import {
   flushScheduledSelectionPersistence,
   loadPersistedSelection,
   persistSelection,
+  readSelectionFromUrl,
   scheduleSelectionPersistence,
+  subscribeSelectionUrlChanges,
 } from '../selection-persistence.js'
 
 describe('selection persistence', () => {
   const storage = new Map<string, string>()
   const replaceState = vi.fn()
+  let eventTarget: EventTarget
 
   beforeEach(() => {
     storage.clear()
     replaceState.mockReset()
+    eventTarget = new EventTarget()
     vi.stubGlobal('window', {
+      addEventListener: eventTarget.addEventListener.bind(eventTarget),
+      dispatchEvent: eventTarget.dispatchEvent.bind(eventTarget),
       history: {
         replaceState,
         state: { from: 'test' },
@@ -30,6 +36,7 @@ describe('selection persistence', () => {
         },
       },
       location: new URL('https://bilig.test/'),
+      removeEventListener: eventTarget.removeEventListener.bind(eventTarget),
     })
   })
 
@@ -128,7 +135,10 @@ describe('selection persistence', () => {
   })
 
   it('restores a URL-backed cell selection when both sheet and cell are present', () => {
+    eventTarget = new EventTarget()
     vi.stubGlobal('window', {
+      addEventListener: eventTarget.addEventListener.bind(eventTarget),
+      dispatchEvent: eventTarget.dispatchEvent.bind(eventTarget),
       history: {
         replaceState,
         state: { from: 'test' },
@@ -145,12 +155,55 @@ describe('selection persistence', () => {
         },
       },
       location: new URL('https://bilig.test/?sheet=Sheet9&cell=d14'),
+      removeEventListener: eventTarget.removeEventListener.bind(eventTarget),
     })
 
     expect(loadPersistedSelection('book-1')).toEqual({
       sheetName: 'Sheet9',
       address: 'D14',
     })
+  })
+
+  it('reads explicit URL selection for same-document navigation', () => {
+    eventTarget = new EventTarget()
+    vi.stubGlobal('window', {
+      addEventListener: eventTarget.addEventListener.bind(eventTarget),
+      dispatchEvent: eventTarget.dispatchEvent.bind(eventTarget),
+      history: {
+        replaceState,
+        state: { from: 'test' },
+      },
+      localStorage: {
+        getItem(key: string) {
+          return storage.get(key) ?? null
+        },
+        setItem(key: string, value: string) {
+          storage.set(key, value)
+        },
+        clear() {
+          storage.clear()
+        },
+      },
+      location: new URL('https://bilig.test/?sheet=Prepaid+Template&cell=f16'),
+      removeEventListener: eventTarget.removeEventListener.bind(eventTarget),
+    })
+
+    expect(readSelectionFromUrl()).toEqual({
+      sheetName: 'Prepaid Template',
+      address: 'F16',
+    })
+  })
+
+  it('emits selection URL changes from history writes', () => {
+    const listener = vi.fn()
+    const unsubscribe = subscribeSelectionUrlChanges(listener)
+
+    persistSelection('book-1', { sheetName: 'Sheet1', address: 'C3' })
+
+    expect(listener).toHaveBeenCalledTimes(1)
+    unsubscribe()
+    persistSelection('book-1', { sheetName: 'Sheet1', address: 'D4' })
+    expect(listener).toHaveBeenCalledTimes(1)
   })
 
   it('coalesces rapid scheduled selection writes into the last selection', () => {
