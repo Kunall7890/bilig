@@ -288,92 +288,75 @@ defined names, tables, hidden sheets, and translated structured references. Use
 `workbook.exportSnapshot()` with `exportXlsx()` when exporting a WorkPaper after
 edits.
 
-Repository links:
+## Stay Connected
 
 - Website: <https://proompteng.github.io/bilig/>
 - GitHub: <https://github.com/proompteng/bilig>
-- Star or bookmark: <https://github.com/proompteng/bilig>
-- Feedback discussion:
-  <https://github.com/proompteng/bilig/discussions/157>
-- Good first issues:
-  <https://github.com/proompteng/bilig/blob/main/docs/starter-issues.md>
-- First-timers-only issues:
-  <https://github.com/proompteng/bilig/issues?q=is%3Aissue%20state%3Aopen%20label%3Afirst-timers-only>
 - npm: <https://www.npmjs.com/package/@bilig/headless>
-- runnable example:
-  [`examples/headless-workpaper`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper)
-- agent framework adapters example:
-  [`npm run agent:framework-adapters`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#agent-framework-adapters)
-- JSON records input example:
-  [`npm run json-records`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-records-input)
-- Formula diagnostics example:
-  [`npm run formula-diagnostics`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#formula-diagnostics)
-- Markdown report output example:
-  [`npm run markdown-report`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#markdown-report-output)
-- Snapshot diff example:
-  [`npm run snapshot-diff`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#snapshot-diff)
-- Range readback example:
-  [`npm run range-readback`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#range-readback)
-- Sheet inspection example:
-  [`npm run sheet-inspection`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#sheet-inspection)
-- serverless API route example:
-  [`examples/serverless-workpaper-api`](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api)
-- Next.js App Router smoke:
-  [`npm run next-route-handler`](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api#nextjs-app-router-smoke)
-- Next.js Server Action smoke:
-  [`npm run next-server-action`](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api#nextjs-server-action-smoke)
-- Next.js Server Action FormData smoke:
-  [`npm run next-server-action-formdata`](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api#nextjs-server-action-formdata-smoke)
-- Express, Fastify, and Hono API adapters:
-  [`npm run framework-adapters`](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api#framework-adapters)
-- Postgres JSONB, Redis/KV, and object-storage persistence adapters:
-  [`npm run persistence-adapters`](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api#persistence-adapters)
-- persistence adapter feedback:
-  <https://github.com/proompteng/bilig/discussions/307>
-- JavaScript spreadsheet library guide feedback:
-  <https://github.com/proompteng/bilig/discussions/308>
-- OpenAI Responses tool-call feedback:
-  <https://github.com/proompteng/bilig/discussions/335>
-- benchmark critique:
-  <https://github.com/proompteng/bilig/discussions/340>
-- server-side spreadsheet automation:
-  [`docs/server-side-spreadsheet-automation-node.md`](https://github.com/proompteng/bilig/blob/main/docs/server-side-spreadsheet-automation-node.md)
-- Node service recipe:
-  [`docs/node-service-workpaper-recipe.md`](https://github.com/proompteng/bilig/blob/main/docs/node-service-workpaper-recipe.md)
-- serverless API route recipe:
-  [`docs/serverless-workpaper-api-route.md`](https://github.com/proompteng/bilig/blob/main/docs/serverless-workpaper-api-route.md)
-- CSV-shaped input recipe:
-  [`docs/csv-shaped-workpaper-input-recipe.md`](https://github.com/proompteng/bilig/blob/main/docs/csv-shaped-workpaper-input-recipe.md)
-- unsupported formula troubleshooting:
-  [`docs/unsupported-formula-troubleshooting-recipe.md`](https://github.com/proompteng/bilig/blob/main/docs/unsupported-formula-troubleshooting-recipe.md)
-- agent tool-calling recipe:
-  [`docs/agent-workpaper-tool-calling-recipe.md`](https://github.com/proompteng/bilig/blob/main/docs/agent-workpaper-tool-calling-recipe.md)
-- revenue-model article:
-  [`docs/building-a-revenue-model-with-headless-workpaper.md`](https://github.com/proompteng/bilig/blob/main/docs/building-a-revenue-model-with-headless-workpaper.md)
-- compatibility boundaries:
-  [`docs/where-bilig-is-not-excel-compatible-yet.md`](https://github.com/proompteng/bilig/blob/main/docs/where-bilig-is-not-excel-compatible-yet.md)
-- XLSX corpus verifier walkthrough:
-  [`docs/xlsx-corpus-verifier-walkthrough.md`](https://github.com/proompteng/bilig/blob/main/docs/xlsx-corpus-verifier-walkthrough.md)
-- HyperFormula comparison:
-  [`docs/hyperformula-alternative-headless-workpaper.md`](https://github.com/proompteng/bilig/blob/main/docs/hyperformula-alternative-headless-workpaper.md)
-- SheetJS and ExcelJS comparison:
-  [`docs/sheetjs-exceljs-alternative-formula-workbook-api.md`](https://github.com/proompteng/bilig/blob/main/docs/sheetjs-exceljs-alternative-formula-workbook-api.md)
-- JavaScript spreadsheet library guide:
-  [`docs/javascript-spreadsheet-library-headless-node.md`](https://github.com/proompteng/bilig/blob/main/docs/javascript-spreadsheet-library-headless-node.md)
-- broader headless spreadsheet engine comparison:
-  [`docs/headless-spreadsheet-engine-comparison.md`](https://github.com/proompteng/bilig/blob/main/docs/headless-spreadsheet-engine-comparison.md)
-- local benchmark walkthrough:
-  [`docs/local-workpaper-benchmark-walkthrough.md`](https://github.com/proompteng/bilig/blob/main/docs/local-workpaper-benchmark-walkthrough.md)
-- XLOOKUP exact fixture walkthrough:
-  [`docs/formula-edge-xlookup-exact-fixture.md`](https://github.com/proompteng/bilig/blob/main/docs/formula-edge-xlookup-exact-fixture.md)
-- SUMIFS paired criteria fixture walkthrough:
-  [`docs/formula-edge-sumifs-paired-criteria-fixture.md`](https://github.com/proompteng/bilig/blob/main/docs/formula-edge-sumifs-paired-criteria-fixture.md)
-- GROUPBY spill fixture walkthrough:
-  [`docs/formula-edge-groupby-spill-fixture.md`](https://github.com/proompteng/bilig/blob/main/docs/formula-edge-groupby-spill-fixture.md)
-- published DEV article:
-  <https://dev.to/gregkonush/why-agents-need-workbook-apis-instead-of-spreadsheet-screenshots-3d61>
-- DEV article source:
-  [`docs/dev-to-workbook-apis-post.md`](https://github.com/proompteng/bilig/blob/main/docs/dev-to-workbook-apis-post.md)
+- Star or bookmark: <https://github.com/proompteng/bilig/stargazers>
+- Ask a workflow question:
+  <https://github.com/proompteng/bilig/discussions/157>
+- Pick a scoped first patch:
+  [starter issues](https://github.com/proompteng/bilig/blob/main/docs/starter-issues.md)
+  or
+  [first-timers-only issues](https://github.com/proompteng/bilig/issues?q=is%3Aissue%20state%3Aopen%20label%3Afirst-timers-only).
+
+## More Guides
+
+When the sanity check passes, these are the next useful pages.
+
+- Service workflows:
+  [server-side spreadsheet automation](https://github.com/proompteng/bilig/blob/main/docs/server-side-spreadsheet-automation-node.md),
+  [Node service recipe](https://github.com/proompteng/bilig/blob/main/docs/node-service-workpaper-recipe.md),
+  [serverless API route recipe](https://github.com/proompteng/bilig/blob/main/docs/serverless-workpaper-api-route.md),
+  and
+  [CSV-shaped input recipe](https://github.com/proompteng/bilig/blob/main/docs/csv-shaped-workpaper-input-recipe.md).
+- Agent and MCP workflows:
+  [agent tool-calling recipe](https://github.com/proompteng/bilig/blob/main/docs/agent-workpaper-tool-calling-recipe.md),
+  [`npm run agent:framework-adapters`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#agent-framework-adapters),
+  [`npm run agent:mcp-tools`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#mcp-tool-server-shape),
+  and
+  [OpenAI Responses tool-call feedback](https://github.com/proompteng/bilig/discussions/335).
+- Runnable data examples:
+  [`npm run json-records`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-records-input),
+  [`npm run formula-diagnostics`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#formula-diagnostics),
+  [`npm run markdown-report`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#markdown-report-output),
+  [`npm run snapshot-diff`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#snapshot-diff),
+  [`npm run range-readback`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#range-readback),
+  and
+  [`npm run sheet-inspection`](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#sheet-inspection).
+- Server route examples:
+  [`examples/serverless-workpaper-api`](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api),
+  [`npm run next-route-handler`](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api#nextjs-app-router-smoke),
+  [`npm run next-server-action`](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api#nextjs-server-action-smoke),
+  [`npm run next-server-action-formdata`](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api#nextjs-server-action-formdata-smoke),
+  [`npm run framework-adapters`](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api#framework-adapters),
+  and
+  [`npm run persistence-adapters`](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api#persistence-adapters).
+- Proof and comparison:
+  [compatibility boundaries](https://github.com/proompteng/bilig/blob/main/docs/where-bilig-is-not-excel-compatible-yet.md),
+  [XLSX corpus verifier walkthrough](https://github.com/proompteng/bilig/blob/main/docs/xlsx-corpus-verifier-walkthrough.md),
+  [HyperFormula comparison](https://github.com/proompteng/bilig/blob/main/docs/hyperformula-alternative-headless-workpaper.md),
+  [SheetJS and ExcelJS comparison](https://github.com/proompteng/bilig/blob/main/docs/sheetjs-exceljs-alternative-formula-workbook-api.md),
+  [JavaScript spreadsheet library guide](https://github.com/proompteng/bilig/blob/main/docs/javascript-spreadsheet-library-headless-node.md),
+  [headless engine comparison](https://github.com/proompteng/bilig/blob/main/docs/headless-spreadsheet-engine-comparison.md),
+  [local benchmark walkthrough](https://github.com/proompteng/bilig/blob/main/docs/local-workpaper-benchmark-walkthrough.md),
+  and
+  [benchmark critique](https://github.com/proompteng/bilig/discussions/340).
+- Feedback threads:
+  [persistence adapter feedback](https://github.com/proompteng/bilig/discussions/307),
+  [JavaScript spreadsheet library guide feedback](https://github.com/proompteng/bilig/discussions/308),
+  and
+  [OpenAI Responses tool-call feedback](https://github.com/proompteng/bilig/discussions/335).
+- Formula edge cases:
+  [XLOOKUP exact fixture](https://github.com/proompteng/bilig/blob/main/docs/formula-edge-xlookup-exact-fixture.md),
+  [SUMIFS paired criteria fixture](https://github.com/proompteng/bilig/blob/main/docs/formula-edge-sumifs-paired-criteria-fixture.md),
+  and
+  [GROUPBY spill fixture](https://github.com/proompteng/bilig/blob/main/docs/formula-edge-groupby-spill-fixture.md).
+- Background article:
+  [Why agents need workbook APIs instead of spreadsheet screenshots](https://dev.to/gregkonush/why-agents-need-workbook-apis-instead-of-spreadsheet-screenshots-3d61)
+  and its
+  [source markdown](https://github.com/proompteng/bilig/blob/main/docs/dev-to-workbook-apis-post.md).
 
 ## Quickstart
 

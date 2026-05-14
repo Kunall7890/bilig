@@ -125,7 +125,7 @@ it again: <https://github.com/proompteng/bilig/stargazers>.
 | Build a Node workflow     | [server-side spreadsheet automation](docs/server-side-spreadsheet-automation-node.md), [five runnable workbook automation examples](docs/workbook-automation-examples-node.md), [framework adapters](docs/node-framework-workpaper-adapters.md), [evaluate Excel formulas in Node.js](docs/evaluate-excel-formulas-in-node-typescript.md), and the [Node service recipe](docs/node-service-workpaper-recipe.md) |
 | Wire an agent or MCP tool | [agent tool-calling recipe](docs/agent-workpaper-tool-calling-recipe.md), [MCP spreadsheet tool server guide](docs/mcp-workpaper-tool-server.md), [MCP directory status](docs/mcp-spreadsheet-server-directory.md), [MCP client setup](docs/mcp-client-setup.md), and [Claude Desktop MCPB bundle](docs/claude-desktop-mcpb-workpaper.md)                                                                       |
 | Compare alternatives      | [JavaScript spreadsheet library guide](docs/javascript-spreadsheet-library-headless-node.md), [headless engine comparison](docs/headless-spreadsheet-engine-comparison.md), [HyperFormula comparison](docs/hyperformula-alternative-headless-workpaper.md)                                                                                                                                                      |
-| Contribute                | [starter issues](docs/starter-issues.md), [GitHub Discussions](https://github.com/proompteng/bilig/discussions), and [CONTRIBUTING.md](CONTRIBUTING.md)                                                                                                                                                                                                                                                         |
+| Contribute                | [starter issues](docs/starter-issues.md), [first-timers-only issues](https://github.com/proompteng/bilig/issues?q=is%3Aissue%20state%3Aopen%20label%3Afirst-timers-only), [GitHub Discussions](https://github.com/proompteng/bilig/discussions), and [CONTRIBUTING.md](CONTRIBUTING.md)                                                                                                                                                                                     |
 
 Useful direct paths:
 
@@ -784,10 +784,9 @@ starter issue. The highest-value contributions are usually:
 - docs that turn existing architecture notes into runnable examples
 
 The shortest public on-ramp is the
-[`starter issues`](docs/starter-issues.md) queue. Current starter issues are
-scoped around small runnable examples with explicit acceptance commands, so a
-first contribution can improve the public WorkPaper evaluation path without
-understanding the whole engine.
+[`starter issues`](docs/starter-issues.md) queue. It keeps code/test picks,
+example tasks, adapters, and focused docs work in one current list, with small
+acceptance commands for first patches.
 If this is your first contribution to `bilig`, start with the
 [`first-timers-only`](https://github.com/proompteng/bilig/issues?q=is%3Aissue%20state%3Aopen%20label%3Afirst-timers-only)
 filter.

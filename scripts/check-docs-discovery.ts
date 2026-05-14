@@ -313,6 +313,12 @@ for (const [path, content] of [
   requireNotIncludes(content, 'repository views.', path)
 }
 
+requireIncludes(readme, 'acceptance commands for first patches.', 'README.md')
+requireIncludes(headlessReadme, '## Stay Connected', 'packages/headless/README.md')
+requireIncludes(headlessReadme, '## More Guides', 'packages/headless/README.md')
+requireIncludes(headlessReadme, 'Pick a scoped first patch:', 'packages/headless/README.md')
+requireIncludes(headlessReadme, 'When the sanity check passes, these are the next useful pages.', 'packages/headless/README.md')
+
 requireIncludes(newContributorGuide, '## First-Time Command Checklist', 'docs/new-contributor-guide.md')
 requireIncludes(newContributorGuide, 'pnpm docs:discovery:check', 'docs/new-contributor-guide.md')
 requireIncludes(newContributorGuide, 'pnpm format:check', 'docs/new-contributor-guide.md')
