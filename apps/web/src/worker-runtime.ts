@@ -182,7 +182,7 @@ export class WorkbookWorkerRuntime {
   > = new WorkerRuntimePersistCoordinator({
     canPersistState: () => this.canPersistState(),
     getLocalStore: () => this.localStore,
-    getAuthoritativeEngine: () => this.getAuthoritativeEngine(),
+    getAuthoritativeEngine: () => this.getAuthoritativeEngineForPersist(),
     getProjectionEngine: () => this.getProjectionEngine(),
     buildPersistedState: ({ authoritativeEngine, projectionEngine }) =>
       buildPersistedWorkerState({
@@ -359,13 +359,33 @@ export class WorkbookWorkerRuntime {
     this.projectionBuildVersion += 1
     this.projectionEnginePromise = null
     const options = this.requireBootstrapOptions()
+    this.authoritativeRevision = mode === 'bootstrap' ? Math.max(this.authoritativeRevision, authoritativeRevision) : authoritativeRevision
+
+    if (mode === 'bootstrap' && this.mutationJournal.getPendingMutationCount() === 0) {
+      const { engine, overlayScope } = await createProjectionEngineFromState({
+        workbookName: options.documentId,
+        replicaId: options.replicaId,
+        snapshot,
+        replica: null,
+        pendingMutations: [],
+      })
+      this.installRestoredAuthoritativeState(snapshot, engine.exportReplicaSnapshot())
+      this.projectionOverlayScope = overlayScope
+      this.installEngine(engine)
+      this.projectionMatchesLocalStore = false
+      this.viewportTileStore.reset()
+      this.snapshotCaches.invalidateProjectionSnapshot()
+      await this.persistCoordinator.queuePersist()
+      this.broadcastViewportPatches(null, engine.getLastMetrics(), 'authoritative-snapshot')
+      return this.getRuntimeState()
+    }
+
     const authoritativeEngine = await createWorkbookEngineFromState({
       workbookName: options.documentId,
       replicaId: options.replicaId,
       snapshot,
       replica: null,
     })
-    this.authoritativeRevision = mode === 'bootstrap' ? Math.max(this.authoritativeRevision, authoritativeRevision) : authoritativeRevision
     this.installAuthoritativeEngine(authoritativeEngine, snapshot, null)
     const { engine, overlayScope } = await this.rebuildProjectionEngine()
     if (mode === 'reconcile' && this.mutationJournal.getPendingMutationCount() > 0) {
@@ -815,6 +835,13 @@ export class WorkbookWorkerRuntime {
     })
     this.authoritativeEngine = engine
     return engine
+  }
+
+  private async getAuthoritativeEngineForPersist(): Promise<SpreadsheetEngine> {
+    if (!this.authoritativeEngine && this.mutationJournal.getPendingMutationCount() === 0) {
+      return await this.getProjectionEngine()
+    }
+    return await this.getAuthoritativeEngine()
   }
 
   private async rebuildProjectionEngine(): Promise<{
