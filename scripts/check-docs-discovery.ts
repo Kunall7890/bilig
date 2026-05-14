@@ -433,7 +433,7 @@ requireIncludes(starterIssues, '#333: docs(comparison): add Univer spreadsheet U
 requireIncludes(starterIssues, '#337: docs(examples): add Astro endpoint WorkPaper smoke', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#338: docs(examples): add TanStack Start server function WorkPaper smoke', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#339: docs(examples): add Qwik City WorkPaper route smoke', 'docs/starter-issues.md')
-requireIncludes(starterIssues, '#341: docs(examples): add Next.js Server Action FormData smoke', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '#342: docs(examples): add Next.js Server Action validation-error smoke', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#257: docs(examples): add a runnable Hono WorkPaper route smoke', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#258: docs(examples): add Cloudflare KV WorkPaper persistence snippet', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#259: docs(service): add Prisma-backed WorkPaper JSON persistence recipe', 'docs/starter-issues.md')

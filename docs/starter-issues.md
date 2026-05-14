@@ -66,7 +66,7 @@ Current starter queue as of May 14, 2026:
 - [#337: docs(examples): add Astro endpoint WorkPaper smoke](https://github.com/proompteng/bilig/issues/337)
 - [#338: docs(examples): add TanStack Start server function WorkPaper smoke](https://github.com/proompteng/bilig/issues/338)
 - [#339: docs(examples): add Qwik City WorkPaper route smoke](https://github.com/proompteng/bilig/issues/339)
-- [#341: docs(examples): add Next.js Server Action FormData smoke](https://github.com/proompteng/bilig/issues/341)
+- [#342: docs(examples): add Next.js Server Action validation-error smoke](https://github.com/proompteng/bilig/issues/342)
 
 ### Storage And Persistence Recipes
 

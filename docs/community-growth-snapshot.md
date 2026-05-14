@@ -1,6 +1,6 @@
 # Community Growth Snapshot
 
-Captured at: `2026-05-14T01:44:08.283Z`
+Captured at: `2026-05-14T02:14:46.466Z`
 
 This snapshot tracks the public signals for the `@bilig/headless` growth loop: GitHub conversion, npm demand, contributor on-ramp health, discussion activity, and traffic quality.
 
