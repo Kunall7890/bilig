@@ -567,6 +567,7 @@ for (const required of [
   'bcdce4e1-3b05-4be2-b611-2a2abb8baf79',
   'https://agentndx.ai/browse?q=bilig',
   'AgentNDX submission was accepted for review on May 13, 2026',
+  'https://github.com/YuzeHao2023/Awesome-MCP-Servers/pull/244',
   'Not indexed yet as of May 13, 2026',
   'https://www.pulsemcp.com/servers?search=bilig&q=bilig',
   'marked `@bilig/headless@0.14.0` as the',

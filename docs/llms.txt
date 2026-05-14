@@ -266,6 +266,8 @@ npm run agent:verify
   https://github.com/zhangming1978/js-spreadsheet-benchmark/issues/1
 - external MCP ranking list submission:
   https://github.com/tolkonepiu/best-of-mcp-servers/pull/192
+- external MCP directory list submission:
+  https://github.com/YuzeHao2023/Awesome-MCP-Servers/pull/244
 - external first-time-contributor directory submission:
   https://github.com/MunGell/awesome-for-beginners/pull/2012
 - external MCP directory submission:

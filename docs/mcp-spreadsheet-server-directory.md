@@ -42,15 +42,16 @@ network service to answer `tools/list` and `tools/call`.
 
 ## Directory Status
 
-| Directory             | Status                             | Link                                                                                                  |
-| --------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Official MCP Registry | Live                               | <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper> |
-| Glama                 | Live                               | <https://glama.ai/mcp/servers/proompteng/bilig>                                                       |
-| mcp.so                | Submitted for maintainer review    | <https://github.com/chatmcp/mcpso/issues/2295>                                                        |
-| Cline MCP Marketplace | Submitted for maintainer review    | <https://github.com/cline/mcp-marketplace/issues/1557>                                                |
-| mcpserver.cc          | Submitted for maintainer review    | <https://mcpserver.cc/en?q=bilig>                                                                     |
-| AgentNDX              | Submitted for review               | <https://agentndx.ai/browse?q=bilig>                                                                  |
-| PulseMCP              | Not indexed yet as of May 13, 2026 | <https://www.pulsemcp.com/servers?search=bilig&q=bilig>                                               |
+| Directory                       | Status                             | Link                                                                                                  |
+| ------------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Official MCP Registry           | Live                               | <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper> |
+| Glama                           | Live                               | <https://glama.ai/mcp/servers/proompteng/bilig>                                                       |
+| mcp.so                          | Submitted for maintainer review    | <https://github.com/chatmcp/mcpso/issues/2295>                                                        |
+| Cline MCP Marketplace           | Submitted for maintainer review    | <https://github.com/cline/mcp-marketplace/issues/1557>                                                |
+| mcpserver.cc                    | Submitted for maintainer review    | <https://mcpserver.cc/en?q=bilig>                                                                     |
+| AgentNDX                        | Submitted for review               | <https://agentndx.ai/browse?q=bilig>                                                                  |
+| YuzeHao2023 Awesome MCP Servers | Submitted for maintainer review    | <https://github.com/YuzeHao2023/Awesome-MCP-Servers/pull/244>                                         |
+| PulseMCP                        | Not indexed yet as of May 13, 2026 | <https://www.pulsemcp.com/servers?search=bilig&q=bilig>                                               |
 
 PulseMCP says server listings are ingested from the official MCP Registry daily
 and processed weekly. The Bilig WorkPaper registry entry is already live, so the
@@ -66,6 +67,10 @@ The AgentNDX submission was accepted for review on May 13, 2026 through the
 public submit endpoint with the GitHub repository, homepage, MCP protocol, and
 WorkPaper MCP description. AgentNDX search returned `0` Bilig results before
 submission, so treat it as pending until the reviewed listing appears.
+
+The YuzeHao2023 Awesome-MCP-Servers pull request was opened on May 13, 2026
+with a Development Tools entry for the Bilig WorkPaper MCP server. Treat it as
+pending until the maintainer merges the pull request.
 
 ## Verify The Registry Entry
 

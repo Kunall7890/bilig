@@ -140,6 +140,10 @@ issue pass:
   request is open, mergeable, and passing its submission check with the
   required Glama score badge:
   <https://github.com/punkpeye/awesome-mcp-servers/pull/6291>
+- External MCP directory surface: the YuzeHao2023 Awesome-MCP-Servers listing
+  pull request is open with the Bilig WorkPaper MCP entry in the Development
+  Tools category:
+  <https://github.com/YuzeHao2023/Awesome-MCP-Servers/pull/244>
 - External MCP directory surface: Glama published the Bilig WorkPaper server at
   <https://glama.ai/mcp/servers/proompteng/bilig>. The score badge was added to
   the punkpeye PR, replacing the `missing-glama` label with `has-glama`.
@@ -181,7 +185,7 @@ issue pass:
   registry entry propagate, then email `hello@pulsemcp.com` only if it remains
   missing after the daily ingest window.
 - External MCP directory follow-up: mcpservers.org submission form is staged in
-  Atlas with public project data and category `Productivity`. The remaining
+  Atlas with public project data and category `Development`. The remaining
   steps are entering a contact email and clicking Submit, both held for
   action-time confirmation.
 - External MCP directory follow-up: MCP Server Spot submission form is staged
