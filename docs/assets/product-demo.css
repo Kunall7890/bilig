@@ -224,7 +224,7 @@
   line-height: 1.45;
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1180px) {
   .hero-media {
     justify-self: stretch;
     max-width: 760px;

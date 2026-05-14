@@ -3,14 +3,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>bilig - Spreadsheet Models for TypeScript</title>
+    <title>bilig - Spreadsheet Logic for TypeScript Services</title>
     <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg" />
     <link rel="canonical" href="https://proompteng.github.io/bilig/" />
     <link rel="sitemap" type="application/xml" href="https://proompteng.github.io/bilig/sitemap.xml" />
     <link rel="alternate" type="text/plain" href="https://proompteng.github.io/bilig/llms.txt" title="llms.txt" />
     <meta
       name="description"
-      content="bilig runs workbook formulas from TypeScript: build a WorkPaper, write inputs, read calculated cells, and save JSON state for services or agent tools."
+      content="bilig runs small spreadsheet models from TypeScript: build a WorkPaper, change inputs, read calculated cells, and save JSON state for services or agent tools."
     />
     <meta
       name="keywords"
@@ -19,10 +19,10 @@
     <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta name="theme-color" content="#151713" />
     <meta property="og:site_name" content="bilig" />
-    <meta property="og:title" content="bilig - Spreadsheet Models for TypeScript" />
+    <meta property="og:title" content="bilig - Spreadsheet Logic for TypeScript Services" />
     <meta
       property="og:description"
-      content="Build a WorkPaper in TypeScript, write inputs, read calculated cells, and persist the workbook as JSON."
+      content="Build a WorkPaper in TypeScript, change inputs, read calculated cells, and persist the workbook as JSON."
     />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://proompteng.github.io/bilig/" />
@@ -31,10 +31,10 @@
     <meta property="og:image:width" content="1280" />
     <meta property="og:image:height" content="640" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="bilig - Spreadsheet Models for TypeScript" />
+    <meta name="twitter:title" content="bilig - Spreadsheet Logic for TypeScript Services" />
     <meta
       name="twitter:description"
-      content="Workbook formulas, typed writes, calculated readback, and WorkPaper JSON persistence for TypeScript programs."
+      content="Workbook formulas, typed writes, calculated readback, and JSON persistence for TypeScript services."
     />
     <meta name="twitter:image" content="https://proompteng.github.io/bilig/assets/github-social-preview.png?v=2026-05-14-5" />
     <meta name="twitter:image:alt" content="bilig headless spreadsheet engine workbook and TypeScript code preview" />
@@ -121,9 +121,8 @@
         ]
       }
     </script>
-    <link rel="stylesheet" href="./assets/fonts.css?v=2026-05-14-1" />
-    <link rel="stylesheet" href="./assets/site.css?v=2026-05-14-7" />
-    <link rel="stylesheet" href="./assets/product-demo.css?v=2026-05-14-1" />
+    <link rel="stylesheet" href="./assets/site.css?v=2026-05-14-8" />
+    <link rel="stylesheet" href="./assets/product-demo.css?v=2026-05-14-2" />
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
@@ -151,11 +150,11 @@
           <p class="eyebrow" translate="no">@bilig/headless</p>
           <h1 id="hero-title" class="hero-title">
             <strong translate="no">bilig</strong>
-            <span>Run spreadsheet models from TypeScript.</span>
+            <span>Spreadsheet logic for TypeScript services.</span>
           </h1>
           <p class="lede">
-            Use cells and formulas when that is the simplest way to describe the work. Your service changes inputs, reads the calculated
-            cells, and saves the workbook as JSON.
+            When a pricing rule, budget check, or payout model is easiest to express as cells and formulas, keep it that way. Change the
+            inputs, read the calculated cells, and save the workbook as JSON.
           </p>
           <div class="install-command" aria-label="Install command">
             <span class="mono">$</span>
@@ -168,16 +167,16 @@
           </div>
           <div class="hero-notes" aria-label="Project status">
             <div class="hero-note">
-              <strong>Real TypeScript</strong>
-              <span>Examples are `.ts` files with package imports.</span>
+              <strong>TypeScript examples</strong>
+              <span>The docs link to runnable TypeScript files.</span>
             </div>
             <div class="hero-note">
-              <strong>Write and read</strong>
+              <strong>Edit, then read</strong>
               <span>Change one input and inspect the dependent total.</span>
             </div>
             <div class="hero-note">
-              <strong>99 starter issues</strong>
-              <span>Small docs, examples, adapters, and tests are kept open.</span>
+              <strong>100 starter issues</strong>
+              <span>Small docs, examples, adapters, and tests are open.</span>
             </div>
           </div>
         </div>
@@ -279,7 +278,7 @@ workbook.setCellContents(
           <div class="section-head">
             <div>
               <p class="kicker">The job</p>
-              <h2 id="why-title">Use it when a spreadsheet is the model, not the interface.</h2>
+              <h2 id="why-title">Use it when the spreadsheet is the model, not the UI.</h2>
             </div>
             <p>
               Pricing tables, budget checks, imports, payouts, and agent tools often start as rows and formulas. Keep that shape, then run
@@ -317,9 +316,9 @@ workbook.setCellContents(
           <div class="section-head">
             <div>
               <p class="kicker">Install</p>
-              <h2 id="install-title">Run the smoke test before you trust the docs.</h2>
+              <h2 id="install-title">Run the smoke test in a blank Node project.</h2>
             </div>
-            <p>It changes a customer count, restores the saved document, and checks that the recalculated total survived the round trip.</p>
+            <p>It changes a customer count, restores the saved document, and checks that the calculated total survived the round trip.</p>
           </div>
 
           <div class="install-grid">
@@ -493,17 +492,17 @@ function readNumber(cell: unknown): number {
           <div class="proof-layout">
             <div class="proof-intro">
               <p class="kicker">Benchmark</p>
-              <h2 id="proof-title">46 mean wins. One p95 miss.</h2>
+              <h2 id="proof-title">The benchmark says exactly what passed.</h2>
               <p>
-                This is the current checked-in WorkPaper vs HyperFormula run. It is useful evidence, with the caveat kept beside the number
-                instead of buried below it.
+                The checked-in WorkPaper vs HyperFormula artifact is good evidence for this workload mix. Do not read it as a universal
+                speed claim.
               </p>
             </div>
 
             <div class="proof-board" aria-label="Benchmark evidence">
               <div class="proof-board-head">
                 <span>workpaper-vs-hyperformula.json</span>
-                <strong>current baseline</strong>
+                <strong>checked-in baseline</strong>
               </div>
 
               <div class="proof-result">
@@ -511,7 +510,9 @@ function readNumber(cell: unknown): number {
                   <span class="proof-label">mean latency</span>
                   <strong>46/46</strong>
                 </div>
-                <p>Every comparable mean row is green in this artifact. That does not make every workbook, p95 row, or UI path faster.</p>
+                <p>
+                  Every comparable mean-latency row is green in this artifact. One p95 row is not, and UI rendering is outside this run.
+                </p>
               </div>
 
               <dl class="proof-facts">
@@ -527,7 +528,7 @@ function readNumber(cell: unknown): number {
                 </div>
                 <div class="proof-fact">
                   <dt>Caveat</dt>
-                  <dd>One approximate-lookup duplicate row is slower at p95: <code>1.043x</code>.</dd>
+                  <dd>Approximate lookup with duplicate keys is slower at p95: <code>1.043x</code>.</dd>
                 </div>
                 <div class="proof-fact">
                   <dt>Out of scope</dt>
