@@ -132,6 +132,40 @@ describe('use workbook selection action helpers', () => {
     })
   })
 
+  it('clears cached cells for huge selected ranges without materializing every address', () => {
+    const cached = { ...emptyCell('Sheet1', 'B1'), input: 'clear', value: { tag: ValueTag.String, value: 'clear' } as const, version: 3 }
+    const writes: CellSnapshot[] = []
+    const viewportStore = {
+      forEachCellSnapshotInRange(
+        _range: { sheetName: string; startAddress: string; endAddress: string },
+        listener: (snapshot: CellSnapshot) => void,
+      ) {
+        listener(cached)
+      },
+      getCell() {
+        throw new Error('huge optimistic clears must not materialize missing cells')
+      },
+      setCellSnapshot(snapshot: CellSnapshot) {
+        writes.push(snapshot)
+      },
+    }
+
+    const rollback = applyOptimisticClearRange(viewportStore, {
+      sheetName: 'Sheet1',
+      startAddress: 'B1',
+      endAddress: 'B1048576',
+    })
+
+    expect(rollback).toEqual(expect.any(Function))
+    expect(writes).toHaveLength(1)
+    expect(writes[0]).toMatchObject({
+      address: 'B1',
+      sheetName: 'Sheet1',
+      value: { tag: ValueTag.Empty },
+      version: 4,
+    })
+  })
+
   it('copies projected ranges with translated formulas before worker patches arrive', () => {
     const cells = new Map<string, CellSnapshot>([
       ['Sheet1:B2', { ...emptyCell('Sheet1', 'B2'), input: 3, value: { tag: ValueTag.Number, value: 3 }, version: 1 }],

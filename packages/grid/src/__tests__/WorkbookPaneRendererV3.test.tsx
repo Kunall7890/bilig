@@ -10,6 +10,7 @@ import {
   TYPEGPU_V3_ACTIVE_RESOURCE_DEFER_MS,
   WorkbookPaneRendererV3,
   resolveTypeGpuV3DrawScrollSnapshot,
+  shouldMountWorkbookCanvasProofLayerV3,
   shouldDeferTypeGpuV3PreloadSync,
 } from '../renderer-v3/WorkbookPaneRendererV3.js'
 import { GridDrawSchedulerV3 } from '../renderer-v3/draw-scheduler.js'
@@ -141,6 +142,40 @@ describe('WorkbookPaneRendererV3', () => {
     await act(async () => {
       root.unmount()
     })
+  })
+
+  test('keeps a canvas proof layer for visible panes even after TypeGPU reports a frame', () => {
+    expect(
+      shouldMountWorkbookCanvasProofLayerV3({
+        backendStatus: 'ready',
+        frameProofStatus: 'pending',
+        headerPaneCount: 1,
+        tilePaneCount: 1,
+      }),
+    ).toBe(true)
+    expect(
+      shouldMountWorkbookCanvasProofLayerV3({
+        backendStatus: 'ready',
+        frameProofStatus: 'presented',
+        headerPaneCount: 1,
+        tilePaneCount: 1,
+      }),
+    ).toBe(true)
+    expect(
+      shouldMountWorkbookCanvasProofLayerV3({
+        backendStatus: 'ready',
+        frameProofStatus: 'idle',
+        headerPaneCount: 0,
+        tilePaneCount: 0,
+      }),
+    ).toBe(false)
+    expect(
+      shouldMountWorkbookCanvasProofLayerV3({
+        backendStatus: 'initializing',
+        headerPaneCount: 0,
+        tilePaneCount: 0,
+      }),
+    ).toBe(true)
   })
 
   test('derives draw scroll from live scroll and the current V3 body tile viewport', () => {

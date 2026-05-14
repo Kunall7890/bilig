@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
+import { ValueTag } from '@bilig/protocol'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ProjectedViewportStore } from '../projected-viewport-store.js'
 import type { WorkerHandle } from '../runtime-session.js'
@@ -309,6 +310,74 @@ describe('useWorkbookSync', () => {
       root.unmount()
     })
     frames.restore()
+  })
+
+  it('applies simple cell mutations to the visible viewport before persistence catches up', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    const viewportStore = new ProjectedViewportStore()
+    const workerHandleRef: { current: WorkerHandle | null } = {
+      current: {
+        viewportStore,
+      },
+    }
+    let sync: ReturnType<typeof useWorkbookSync> | null = null
+    const runtimeController = {
+      invoke: vi.fn(async (method: string, input?: unknown) => {
+        if (method !== 'enqueuePendingMutation') {
+          throw new Error(`Unexpected runtime invoke: ${method}`)
+        }
+        if (!isPendingMutationInput(input)) {
+          throw new Error('Expected pending mutation input')
+        }
+        return {
+          ...createPendingMutation(),
+          method: input.method,
+          args: input.args,
+        }
+      }),
+    }
+
+    function Harness() {
+      sync = useWorkbookSync({
+        documentId: 'doc-1',
+        connectionStateName: 'disconnected',
+        connectionStateRef: { current: 'disconnected' },
+        runtimeController,
+        workerHandleRef,
+        zeroRef: {
+          current: {
+            mutate() {
+              throw new Error('Cell mutation visibility test should not attempt remote sync while disconnected')
+            },
+          },
+        },
+        reportRuntimeError: vi.fn(),
+      })
+      return null
+    }
+
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+    await act(async () => {
+      root.render(<Harness />)
+    })
+    if (!sync) {
+      throw new Error('Expected useWorkbookSync harness to initialize')
+    }
+
+    await act(async () => {
+      await sync!.invokeMutation('setCellValue', 'Sheet1', 'D53', 'Month 1')
+    })
+
+    expect(viewportStore.getCell('Sheet1', 'D53')).toMatchObject({
+      input: 'Month 1',
+      value: { tag: ValueTag.String, value: 'Month 1' },
+    })
+
+    await act(async () => {
+      root.unmount()
+    })
   })
 })
 

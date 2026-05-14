@@ -1,4 +1,4 @@
-export const WORKBOOK_FONT_SANS = '"Aptos", "Calibri", Arial, "SF Pro Text", "Segoe UI", sans-serif'
+export const WORKBOOK_FONT_SANS = 'Arial, "Helvetica Neue", Helvetica, sans-serif'
 
 export const workbookThemeColors = {
   accent: '#21563a',

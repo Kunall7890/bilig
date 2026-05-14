@@ -1,4 +1,4 @@
-import { VIEWPORT_TILE_COLUMN_COUNT, VIEWPORT_TILE_ROW_COUNT, ValueTag, type Viewport } from '@bilig/protocol'
+import { VIEWPORT_TILE_COLUMN_COUNT, VIEWPORT_TILE_ROW_COUNT, ValueTag, type CellSnapshot, type Viewport } from '@bilig/protocol'
 import { indexToColumn } from '@bilig/formula'
 import { buildGridGpuScene } from '../gridGpuScene.js'
 import { getResolvedColumnWidth, getResolvedRowHeight, resolveRowOffset, type GridMetrics } from '../gridMetrics.js'
@@ -46,6 +46,8 @@ export interface MaterializeGridRenderTileInputV3 extends GridTileMaterializerAx
   readonly dirtyLocalCols?: Uint32Array | undefined
   readonly dirtyMasks?: Uint32Array | undefined
   readonly reuseStaticGridRectsFrom?: GridRenderTile | undefined
+  readonly selectedCell?: Item | undefined
+  readonly selectedCellSnapshot?: CellSnapshot | null | undefined
 }
 
 const STATIC_TILE_SELECTED_CELL: Item = Object.freeze([-1, -1] as const)
@@ -84,6 +86,8 @@ export function materializeGridRenderTileV3(input: MaterializeGridRenderTileInpu
     ...input,
     minCol: inboundTextSourceItems.reduce((min, [col]) => Math.min(min, col), input.viewport.colStart),
   })
+  const selectedCell = input.selectedCell ?? STATIC_TILE_SELECTED_CELL
+  const selectedCellSnapshot = input.selectedCellSnapshot ?? null
   const reuseRectTile = canReuseStaticGridRectsForTile(input, tileId) ? input.reuseStaticGridRectsFrom : undefined
   const rectBuffer = reuseRectTile
     ? {
@@ -105,7 +109,7 @@ export function materializeGridRenderTileV3(input: MaterializeGridRenderTileInpu
           resizeGuideColumn: null,
           resizeGuideRow: null,
           rowHeights: input.rowHeights,
-          selectedCell: STATIC_TILE_SELECTED_CELL,
+          selectedCell,
           selectionRange: null,
           sheetName: input.sheetName,
           visibleItems,
@@ -130,8 +134,8 @@ export function materializeGridRenderTileV3(input: MaterializeGridRenderTileInpu
     hoveredHeader: null,
     resizeGuideColumn: null,
     rowHeights: input.rowHeights,
-    selectedCell: STATIC_TILE_SELECTED_CELL,
-    selectedCellSnapshot: null,
+    selectedCell,
+    selectedCellSnapshot,
     selectionRange: null,
     sheetName: input.sheetName,
     visibleItems: inboundTextSourceItems.length > 0 ? [...visibleItems, ...inboundTextSourceItems] : visibleItems,

@@ -1,5 +1,5 @@
 import { useMemo, type Dispatch, type SetStateAction } from 'react'
-import type { Viewport } from '@bilig/protocol'
+import type { CellSnapshot, Viewport } from '@bilig/protocol'
 import type { GridAxisWorldIndex } from './gridAxisWorldIndex.js'
 import type { GridEngineLike } from './grid-engine.js'
 import type { GridMetrics } from './gridMetrics.js'
@@ -63,6 +63,7 @@ export function useWorkbookGridPaneRenderRuntime(input: {
   readonly scrollTransformStore: WorkbookGridScrollStore
   readonly scrollViewportRef: MutableRef<HTMLDivElement | null>
   readonly selectedCell: Item
+  readonly selectedCellSnapshot?: CellSnapshot | null | undefined
   readonly setVisibleRegion: Dispatch<SetStateAction<VisibleRegionState>>
   readonly sheetId?: number | undefined
   readonly sheetOrdinal?: number | undefined
@@ -97,6 +98,7 @@ export function useWorkbookGridPaneRenderRuntime(input: {
     scrollTransformStore,
     scrollViewportRef,
     selectedCell,
+    selectedCellSnapshot,
     setVisibleRegion,
     sheetId,
     sheetOrdinal,
@@ -179,6 +181,8 @@ export function useWorkbookGridPaneRenderRuntime(input: {
     residentViewport,
     rowHeights,
     sceneRevision,
+    selectedCell,
+    selectedCellSnapshot,
     sheetId,
     sheetOrdinal,
     sheetName,

@@ -189,6 +189,7 @@ export function useWorkbookGridRenderState(input: {
     scrollTransformStore,
     scrollViewportRef,
     selectedCell: selectedItem,
+    selectedCellSnapshot,
     setVisibleRegion,
     selectedCol: selectedCell.col,
     selectedRow: selectedCell.row,

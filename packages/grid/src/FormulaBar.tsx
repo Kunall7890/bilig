@@ -4,6 +4,7 @@ import { FormulaArgumentHint } from './FormulaArgumentHint.js'
 import { FormulaAutocomplete } from './FormulaAutocomplete.js'
 import { applyFormulaSuggestion, resolveFormulaAssistState, type FormulaSuggestion } from './formulaAssist.js'
 import { formulaBarRootClass, formulaFieldAddonClass, formulaFieldShellClass, formulaInputClass } from './formula-bar-theme.js'
+import { isGridKeyboardEditableTarget } from './gridClipboardKeyboardController.js'
 import { NameBox } from './NameBox.js'
 
 interface FormulaBarProps {
@@ -75,7 +76,7 @@ export function FormulaBar({
 
   useEffect(() => {
     const handleGoToShortcut = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.altKey || event.shiftKey) {
+      if (event.defaultPrevented || isGridKeyboardEditableTarget(event.target) || event.altKey || event.shiftKey) {
         return
       }
       const hasPrimaryModifier = event.metaKey || event.ctrlKey

@@ -305,6 +305,8 @@ export async function createWorkerRuntimeSessionController(
   const fetchImpl = input.fetchImpl ?? fetch
   let currentSelection = input.initialSelection
   let currentRuntimeState = createInitialRuntimeState(input.documentId)
+  viewportStore.setKnownSheets(currentRuntimeState.sheetNames)
+  viewportStore.setSheetIdentities(currentRuntimeState.sheets ?? [])
   let disposed = false
   let bootstrapped = false
   let currentAuthoritativeRevision = 0
@@ -342,6 +344,7 @@ export async function createWorkerRuntimeSessionController(
     }
     currentRuntimeState = runtimeStateWithRevision
     viewportStore.setKnownSheets(runtimeStateWithRevision.sheetNames)
+    viewportStore.setSheetIdentities(runtimeStateWithRevision.sheets ?? [])
     callbacks.onRuntimeState(runtimeStateWithRevision)
   }
 

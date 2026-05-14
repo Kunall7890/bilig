@@ -345,6 +345,37 @@ describe('ProjectedViewportStore render delta source bridge', () => {
     unsubscribe()
   })
 
+  it('publishes optimistic workbook deltas after runtime sheet identities are registered', () => {
+    const store = new ProjectedViewportStore({
+      subscribeRenderTileDeltas: () => () => undefined,
+      subscribeViewportPatches: () => () => undefined,
+      subscribeWorkbookDeltas: () => () => undefined,
+    })
+    const listener = vi.fn()
+
+    store.setSheetIdentities([{ id: 7, name: 'Sheet1', order: 3 }])
+    const unsubscribe = store.subscribeWorkbookDeltas(listener)
+    store.setCellSnapshot({
+      address: 'D53',
+      flags: 0,
+      input: 'Month 1',
+      sheetName: 'Sheet1',
+      value: { tag: ValueTag.String, stringId: 0, value: 'Month 1' },
+      version: 12,
+    })
+
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dirty: expect.objectContaining({ cellRanges: new Uint32Array([52, 52, 3, 3, 5]) }),
+        sheetId: 7,
+        sheetOrdinal: 3,
+        source: 'localOptimistic',
+      }),
+    )
+
+    unsubscribe()
+  })
+
   it('publishes style-aware local optimistic workbook deltas for styled projected cell snapshots', () => {
     const store = new ProjectedViewportStore({
       subscribeRenderTileDeltas: () => () => undefined,

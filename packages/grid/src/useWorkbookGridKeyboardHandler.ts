@@ -4,6 +4,7 @@ import { ValueTag } from '@bilig/protocol'
 import {
   getNormalizedGridKeyboardKey,
   handleGridKey as dispatchGridKey,
+  isGridKeyboardEditableTarget,
   shouldHandleGridWindowKey,
   type GridKeyboardEventLike,
 } from './gridClipboardKeyboardController.js'
@@ -70,6 +71,13 @@ export function useWorkbookGridKeyboardHandler(input: {
 
   useEffect(() => {
     const handleWindowKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.defaultPrevented ||
+        (event as KeyboardEvent & { __biligGridHandled?: boolean }).__biligGridHandled === true ||
+        isGridKeyboardEditableTarget(event.target)
+      ) {
+        return
+      }
       const normalizedKey = getNormalizedGridKeyboardKey(event.key, event.code)
       const activeElement = document.activeElement
       if (

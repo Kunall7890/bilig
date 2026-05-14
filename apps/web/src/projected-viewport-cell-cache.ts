@@ -1,5 +1,5 @@
 import { parseCellAddress } from '@bilig/formula'
-import { ValueTag, type CellSnapshot, type CellStyleRecord, type Viewport } from '@bilig/protocol'
+import { ValueTag, type CellRangeRef, type CellSnapshot, type CellStyleRecord, type Viewport } from '@bilig/protocol'
 import { selectProjectedViewportKeysToEvict } from './projected-viewport-cache-pruning.js'
 import {
   cellSnapshotSignature,
@@ -128,6 +128,26 @@ export class ProjectedViewportCellCache {
 
   getCell(sheetName: string, address: string): CellSnapshot {
     return this.peekCell(sheetName, address) ?? this.emptyCellSnapshot(sheetName, address)
+  }
+
+  forEachCellSnapshotInRange(range: CellRangeRef, listener: (snapshot: CellSnapshot) => void): void {
+    const start = parseCellAddress(range.startAddress, range.sheetName)
+    const end = parseCellAddress(range.endAddress, range.sheetName)
+    const startRow = Math.min(start.row, end.row)
+    const endRow = Math.max(start.row, end.row)
+    const startCol = Math.min(start.col, end.col)
+    const endCol = Math.max(start.col, end.col)
+    this.cellKeysBySheet.get(range.sheetName)?.forEach((key) => {
+      const snapshot = this.cellSnapshots.get(key)
+      if (!snapshot) {
+        return
+      }
+      const parsed = parseCellAddress(snapshot.address, snapshot.sheetName)
+      if (parsed.row < startRow || parsed.row > endRow || parsed.col < startCol || parsed.col > endCol) {
+        return
+      }
+      listener(snapshot)
+    })
   }
 
   getCellStyle(styleId: string | undefined): CellStyleRecord | undefined {

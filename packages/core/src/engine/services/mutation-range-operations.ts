@@ -76,14 +76,6 @@ export function createMutationRangeOperations(args: MutationRangeOperationsRunti
       formatOverride,
     })
 
-  const hasStoredCellContent = (sheetName: string, address: string): boolean => {
-    const cellIndex = args.workbook.getCellIndex(sheetName, address)
-    if (cellIndex === undefined) {
-      return false
-    }
-    return hasMutationCellContent(args.getCellByIndex(cellIndex))
-  }
-
   const hasStoredCellState = (sheetName: string, address: string): boolean => {
     const cellIndex = args.workbook.getCellIndex(sheetName, address)
     if (cellIndex === undefined) {
@@ -186,19 +178,23 @@ export function createMutationRangeOperations(args: MutationRangeOperationsRunti
         try: () => {
           const bounds = normalizeRange(range)
           const ops: EngineOp[] = []
-          for (let row = bounds.startRow; row <= bounds.endRow; row += 1) {
-            for (let col = bounds.startCol; col <= bounds.endCol; col += 1) {
-              const address = formatAddress(row, col)
-              if (!hasStoredCellContent(range.sheetName, address)) {
-                continue
-              }
-              ops.push({
-                kind: 'clearCell',
-                sheetName: range.sheetName,
-                address,
-              })
-            }
+          const sheet = args.workbook.getSheet(range.sheetName)
+          if (!sheet) {
+            return
           }
+          sheet.grid.forEachCellEntry((cellIndex, row, col) => {
+            if (row < bounds.startRow || row > bounds.endRow || col < bounds.startCol || col > bounds.endCol) {
+              return
+            }
+            if (!hasMutationCellContent(args.getCellByIndex(cellIndex))) {
+              return
+            }
+            ops.push({
+              kind: 'clearCell',
+              sheetName: range.sheetName,
+              address: formatAddress(row, col),
+            })
+          })
           if (ops.length === 0) {
             return
           }

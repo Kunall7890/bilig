@@ -7026,6 +7026,31 @@ describe('SpreadsheetEngine', () => {
     expect(engine.getCellValue('Sheet1', 'C2')).toEqual({ tag: ValueTag.Number, value: 0 })
   })
 
+  it('clears sparse whole-column ranges without scanning every row address', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'sparse-clear-column' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'B1', 'clear-me')
+    engine.setCellValue('Sheet1', 'C1', 'keep-me')
+
+    const originalGetCellIndex = engine.workbook.getCellIndex.bind(engine.workbook)
+    let lookupCount = 0
+    const getCellIndexSpy = vi.spyOn(engine.workbook, 'getCellIndex').mockImplementation((sheetName, address) => {
+      lookupCount += 1
+      if (lookupCount > 10) {
+        throw new Error('clearRange scanned row addresses instead of resident cells')
+      }
+      return originalGetCellIndex(sheetName, address)
+    })
+
+    engine.clearRange({ sheetName: 'Sheet1', startAddress: 'B1', endAddress: 'B1048576' })
+    getCellIndexSpy.mockRestore()
+
+    expect(lookupCount).toBeLessThanOrEqual(10)
+    expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Empty })
+    expect(engine.getCellValue('Sheet1', 'C1')).toEqual(expect.objectContaining({ tag: ValueTag.String, value: 'keep-me' }))
+  })
+
   it('captures undo ops for a local mutation and reapplies raw engine ops deterministically', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'spec' })
     await engine.ready()

@@ -171,6 +171,7 @@ describe('workbook shortcut dialog', () => {
   it('formats shortcut labels per platform', () => {
     expect(getWorkbookShortcutLabel('undo', 'MacIntel')).toBe('⌘Z')
     expect(getWorkbookShortcutLabel('undo', 'Win32')).toBe('Ctrl+Z')
+    expect(getWorkbookShortcutLabel('clear-selection', 'Win32')).toBe('Delete / Backspace')
   })
 
   it('splits shortcuts into readable keycap parts', () => {

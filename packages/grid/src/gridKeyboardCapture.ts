@@ -30,6 +30,10 @@ export function handleWorkbookGridKeyDownCapture(input: {
   resetPointerInteraction: () => void
 }): void {
   const { event, handleGridKey, openHeaderContextMenuFromKeyboard, resetPointerInteraction } = input
+  if (event.defaultPrevented) {
+    return
+  }
+
   const normalizedKey = getNormalizedGridKeyboardKey(event.key, event.code)
   resetPointerInteraction()
   if (normalizedKey === 'ContextMenu' || (event.shiftKey && normalizedKey === 'F10')) {

@@ -259,8 +259,13 @@ export class WorkbookViewportScrollRuntime {
       viewportHeight: scrollViewport.clientHeight,
       viewportWidth: scrollViewport.clientWidth,
     })
+    const scrollChanged =
+      scrollViewport.scrollLeft !== nextScrollPosition.scrollLeft || scrollViewport.scrollTop !== nextScrollPosition.scrollTop
     scrollViewport.scrollLeft = nextScrollPosition.scrollLeft
     scrollViewport.scrollTop = nextScrollPosition.scrollTop
+    if (scrollChanged) {
+      this.syncVisibleRegion()
+    }
   }
 
   restoreViewportTarget(): void {
@@ -279,8 +284,12 @@ export class WorkbookViewportScrollRuntime {
       freezeRows: input.freezeRows,
       viewport: input.restoreViewportTarget.viewport,
     })
+    const scrollChanged = scrollViewport.scrollLeft !== scrollLeft || scrollViewport.scrollTop !== scrollTop
     scrollViewport.scrollLeft = scrollLeft
     scrollViewport.scrollTop = scrollTop
+    if (scrollChanged) {
+      this.syncVisibleRegion()
+    }
   }
 
   dispose(): void {

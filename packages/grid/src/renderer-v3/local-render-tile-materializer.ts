@@ -1,6 +1,7 @@
-import { MAX_COLS, MAX_ROWS, VIEWPORT_TILE_COLUMN_COUNT, VIEWPORT_TILE_ROW_COUNT, type Viewport } from '@bilig/protocol'
+import { MAX_COLS, MAX_ROWS, VIEWPORT_TILE_COLUMN_COUNT, VIEWPORT_TILE_ROW_COUNT, type CellSnapshot, type Viewport } from '@bilig/protocol'
 import type { GridMetrics } from '../gridMetrics.js'
 import type { GridEngineLike } from '../grid-engine.js'
+import type { Item } from '../gridTypes.js'
 import { materializeGridRenderTileV3 } from './grid-tile-materializer.js'
 import { unpackTileKey53, tileKeysForViewport } from './tile-key.js'
 import type { GridRenderTile } from './render-tile-source.js'
@@ -24,6 +25,8 @@ export function buildLocalFixedRenderTiles(input: {
   readonly tileKeys?: readonly number[] | undefined
   readonly dirtySpansForTile?: ((tileId: number) => readonly DirtyTileLocalSpanV3[]) | undefined
   readonly reuseStaticGridRectsByTileId?: ReadonlyMap<number, GridRenderTile> | undefined
+  readonly selectedCell?: Item | undefined
+  readonly selectedCellSnapshot?: CellSnapshot | null | undefined
 }): readonly GridRenderTile[] {
   const axisVersionX = hashAxisOverrides(input.sortedColumnWidthOverrides)
   const axisVersionY = hashAxisOverrides(input.sortedRowHeightOverrides)

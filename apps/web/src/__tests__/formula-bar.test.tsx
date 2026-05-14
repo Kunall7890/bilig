@@ -214,6 +214,35 @@ describe('FormulaBar', () => {
     })
   })
 
+  it('does not steal the Go To shortcut from an active text input', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+
+    await act(async () => {
+      root.render(<FormulaBarHarness initialEditing initialValue="draft" selectionLabel="B2:D5" />)
+    })
+
+    const formulaInput = host.querySelector<HTMLInputElement>("[data-testid='formula-input']")
+    const nameBox = host.querySelector<HTMLInputElement>("[data-testid='name-box']")
+    expect(formulaInput).not.toBeNull()
+    expect(nameBox).not.toBeNull()
+    formulaInput?.focus()
+
+    await act(async () => {
+      formulaInput?.dispatchEvent(new KeyboardEvent('keydown', { key: 'g', ctrlKey: true, bubbles: true, cancelable: true }))
+    })
+
+    expect(document.activeElement).toBe(formulaInput)
+    expect(document.activeElement).not.toBe(nameBox)
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
   it('shows an inline validation message for invalid name-box input and clears it on escape', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useSyncExternalStore } from 'react'
-import type { Viewport } from '@bilig/protocol'
+import type { CellSnapshot, Viewport } from '@bilig/protocol'
 import type { GridEngineLike } from './grid-engine.js'
 import type { GridMetrics } from './gridMetrics.js'
+import type { Item } from './gridTypes.js'
 import type { GridRenderTileSource } from './renderer-v3/render-tile-source.js'
 import type { WorkbookRenderTilePaneState } from './renderer-v3/render-tile-pane-state.js'
 import type { GridTileReadinessSnapshotV3 } from './runtime/gridTileCoordinator.js'
@@ -35,6 +36,8 @@ export function useWorkbookRenderTilePanes(input: {
   readonly residentViewport: Viewport
   readonly rowHeights: Readonly<Record<number, number>>
   readonly sceneRevision: number
+  readonly selectedCell?: Item | undefined
+  readonly selectedCellSnapshot?: CellSnapshot | null | undefined
   readonly sheetId?: number | undefined
   readonly sheetOrdinal?: number | undefined
   readonly sheetName: string
@@ -61,6 +64,8 @@ export function useWorkbookRenderTilePanes(input: {
     residentViewport,
     rowHeights,
     sceneRevision,
+    selectedCell,
+    selectedCellSnapshot,
     sheetId,
     sheetOrdinal,
     sheetName,
@@ -102,6 +107,8 @@ export function useWorkbookRenderTilePanes(input: {
       residentViewport,
       rowHeights,
       sceneRevision,
+      selectedCell,
+      selectedCellSnapshot,
       sheetId,
       sheetOrdinal,
       sheetName,
@@ -128,6 +135,8 @@ export function useWorkbookRenderTilePanes(input: {
     residentViewport,
     rowHeights,
     sceneRevision,
+    selectedCell,
+    selectedCellSnapshot,
     sheetId,
     sheetOrdinal,
     sheetName,

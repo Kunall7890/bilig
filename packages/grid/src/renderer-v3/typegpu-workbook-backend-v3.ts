@@ -82,7 +82,7 @@ export function drawWorkbookTypeGpuTileFrameV3(input: {
   readonly syncPreloadPanes?: boolean | undefined
   readonly scrollSnapshot: WorkbookGridScrollSnapshot
   readonly surface: TypeGpuTileDrawSurface
-}): void {
+}): boolean {
   const retainPanes = input.preloadTilePanes?.length ? [...input.preloadTilePanes, ...input.tilePanes] : input.tilePanes
   const resourcePanes = input.syncPreloadPanes === false ? input.tilePanes : retainPanes
   const headerPanes = input.headerPanes ?? []
@@ -128,7 +128,7 @@ export function drawWorkbookTypeGpuTileFrameV3(input: {
     residency: input.backend.tileResidency,
     tileResources: input.backend.tileResources,
   })
-  drawTypeGpuTilePanesV3({
+  return drawTypeGpuTilePanesV3({
     artifacts: input.backend.artifacts,
     headerPanes,
     layerResources: input.backend.layerResources,

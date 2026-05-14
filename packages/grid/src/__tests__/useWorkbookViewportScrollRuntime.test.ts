@@ -287,4 +287,66 @@ describe('WorkbookViewportScrollRuntime', () => {
 
     expect(scrollViewport.scrollTop).toBeGreaterThan(600)
   })
+
+  it('syncs the visible region immediately after selected-cell autoscroll', () => {
+    const metrics = getGridMetrics()
+    const columnAxis = createGridAxisWorldIndexFromRecords({
+      axisLength: MAX_COLS,
+      defaultSize: metrics.columnWidth,
+    })
+    const rowAxis = createGridAxisWorldIndexFromRecords({
+      axisLength: MAX_ROWS,
+      defaultSize: metrics.rowHeight,
+    })
+    const gridRuntimeHost = new GridRuntimeHost({
+      columnCount: MAX_COLS,
+      defaultColumnWidth: metrics.columnWidth,
+      defaultRowHeight: metrics.rowHeight,
+      gridMetrics: metrics,
+      rowCount: MAX_ROWS,
+      viewportHeight: 700,
+      viewportWidth: 640,
+    })
+    const scrollViewport = document.createElement('div')
+    Object.defineProperty(scrollViewport, 'clientWidth', { configurable: true, value: 640 })
+    Object.defineProperty(scrollViewport, 'clientHeight', { configurable: true, value: 160 })
+    const scrollTransformStore = new WorkbookGridScrollStore()
+    const scrollTransformRef = { current: scrollTransformStore.getSnapshot() }
+    const liveVisibleRegionRef = { current: region({ x: 0, y: 0 }) }
+    let committedRegion = liveVisibleRegionRef.current
+    const setVisibleRegion = vi.fn((updater: VisibleRegionState | ((current: VisibleRegionState) => VisibleRegionState)) => {
+      committedRegion = typeof updater === 'function' ? updater(committedRegion) : updater
+    })
+    const runtime = new WorkbookViewportScrollRuntime()
+
+    runtime.updateInput({
+      columnAxis,
+      freezeCols: 0,
+      freezeRows: 0,
+      gridCameraStore: new GridCameraStore(),
+      gridMetrics: metrics,
+      gridRuntimeHost,
+      hostElement: scrollViewport,
+      liveVisibleRegionRef,
+      requiresLiveViewportState: false,
+      rowAxis,
+      scrollTransformRef,
+      scrollTransformStore,
+      scrollViewportRef: { current: scrollViewport },
+      selectedCell: [3, 53] as const,
+      setVisibleRegion,
+      sheetName: 'Sheet1',
+      sortedColumnWidthOverrides: [],
+      sortedRowHeightOverrides: [],
+      syncRuntimeAxes: vi.fn(),
+      viewport: { colEnd: 11, colStart: 0, rowEnd: 23, rowStart: 0 },
+    })
+
+    runtime.autoScrollSelectionIntoView()
+
+    expect(scrollViewport.scrollTop).toBeGreaterThan(0)
+    expect(liveVisibleRegionRef.current.range.y).toBeGreaterThan(0)
+    expect(setVisibleRegion).toHaveBeenCalled()
+    expect(scrollTransformRef.current.scrollTop).toBe(scrollViewport.scrollTop)
+  })
 })

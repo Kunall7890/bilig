@@ -37,6 +37,17 @@ function createEmptyCellSnapshot(address: string): CellSnapshot {
   }
 }
 
+function createStringCellSnapshot(address: string, value: string): CellSnapshot {
+  return {
+    address,
+    flags: 0,
+    input: value,
+    sheetName: 'Sheet1',
+    value: { tag: ValueTag.String, value, stringId: 0 },
+    version: 1,
+  }
+}
+
 const LOCAL_EMPTY_ENGINE: GridEngineLike = {
   getCell: (_sheetName, address) => createEmptyCellSnapshot(address),
   getCellStyle: () => undefined,
@@ -481,7 +492,7 @@ describe('GridRenderTilePaneRuntime', () => {
 
     expect(state.residentBodyPane?.tile.tileId).toBe(tileId)
     expect(state.residentBodyPane?.tile.rectCount).toBeGreaterThan(0)
-    expect(state.needsLocalCellInvalidation).toBe(false)
+    expect(state.needsLocalCellInvalidation).toBe(true)
     expect(state.residentDataPanes).toHaveLength(1)
     expect(state.tileReadiness.misses).toEqual([])
   })
@@ -505,13 +516,42 @@ describe('GridRenderTilePaneRuntime', () => {
       }),
     )
 
-    expect(state.needsLocalCellInvalidation).toBe(false)
+    expect(state.needsLocalCellInvalidation).toBe(true)
     expect(state.renderTilePanes.map((pane) => pane.tile.tileId)).toEqual(tileIds)
     expect(state.renderTilePanes[1]?.tile.rectCount).toBeGreaterThan(0)
     expect(state.tileReadiness).toMatchObject({
       exactHits: tileIds,
       misses: [],
     })
+  })
+
+  it('localizes a selected-cell tile when the remote tile is missing selected text', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const tileIds = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 32 },
+    })
+    const state = runtime.resolve(
+      createInput({
+        engine: {
+          ...LOCAL_EMPTY_ENGINE,
+          getCell: (_sheetName, address) =>
+            address === 'D53' ? createStringCellSnapshot('D53', 'Month 1') : createEmptyCellSnapshot(address),
+        },
+        gridRuntimeHost: host,
+        renderTileSource: createRenderTileSource([createRenderTile(tileIds[0])]),
+        renderTileViewport: { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 32 },
+        residentViewport: { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 32 },
+        selectedCell: [3, 52],
+        selectedCellSnapshot: createStringCellSnapshot('D53', 'Month 1'),
+        visibleViewport: { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 32 },
+      }),
+    )
+
+    expect(state.needsLocalCellInvalidation).toBe(true)
+    expect(state.renderTilePanes.flatMap((pane) => pane.tile.textRuns.map((run) => run.text))).toContain('Month 1')
   })
 
   it('rebuilds visible remote tiles with missing grid payloads as local grid tiles', () => {
@@ -1520,6 +1560,30 @@ describe('GridRenderTilePaneRuntime', () => {
     expect(fallback.renderTilePanes[0]?.tile.dirtyLocalRows).toEqual(new Uint32Array([6, 6]))
     expect(fallback.renderTilePanes[0]?.tile.dirtyLocalCols).toEqual(new Uint32Array([5, 5]))
     expect(fallback.renderTilePanes[0]?.tile.dirtyMasks).toEqual(new Uint32Array([DirtyMaskV3.Value | DirtyMaskV3.Text]))
+  })
+
+  it('materializes every missing resident tile when the remote source has not caught up', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const renderTileViewport = { colEnd: 127, colStart: 0, rowEnd: 95, rowStart: 0 }
+    const expectedTileIds = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: renderTileViewport,
+    })
+
+    const fallback = runtime.resolve(
+      createInput({
+        engine: LOCAL_EMPTY_ENGINE,
+        gridRuntimeHost: host,
+        renderTileSource: createRenderTileSource([]),
+        renderTileViewport,
+        residentViewport: renderTileViewport,
+        visibleViewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+      }),
+    )
+
+    expect(fallback.renderTilePanes.map((pane) => pane.tile.tileId)).toEqual(expectedTileIds)
   })
 
   it('reuses remote static rect buffers for text-only local dirty tiles', () => {

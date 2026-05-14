@@ -320,7 +320,7 @@ describe('useWorkbookGridRenderState viewport residency', () => {
     })
   })
 
-  it('keeps remote mode after V3 workbook deltas while remote tiles are unavailable', async () => {
+  it('fills remote tile holes from local cells after V3 workbook deltas', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
     let cellText = ''
@@ -405,7 +405,7 @@ describe('useWorkbookGridRenderState viewport residency', () => {
       await new Promise((resolve) => window.setTimeout(resolve, 0))
     })
 
-    expect(subscribeCells).not.toHaveBeenCalled()
+    expect(subscribeCells).toHaveBeenCalled()
     expect(subscribeWorkbookDeltas).toHaveBeenCalled()
     expect(latestRenderState?.renderTilePanes.some((pane) => pane.tile.textRuns.some((run) => run.text === cellText))).toBe(false)
 
@@ -424,7 +424,7 @@ describe('useWorkbookGridRenderState viewport residency', () => {
       await new Promise((resolve) => window.setTimeout(resolve, 0))
     })
 
-    expect(latestRenderState?.renderTilePanes.some((pane) => pane.tile.textRuns.some((run) => run.text === cellText))).toBe(false)
+    expect(latestRenderState?.renderTilePanes.some((pane) => pane.tile.textRuns.some((run) => run.text === cellText))).toBe(true)
 
     await act(async () => {
       root.unmount()

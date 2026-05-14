@@ -21,15 +21,19 @@ import {
   assert,
   canAttemptRemoteSync,
   isMutationErrorResult,
+  parsedEditorInputMatchesSnapshot,
   toErrorMessage,
+  type ParsedEditorInput,
   type ZeroConnectionState,
 } from './worker-workbook-app-model.js'
+import { createOptimisticCellSnapshot, createSupersedingCellSnapshot, evaluateOptimisticFormula } from './workbook-optimistic-cell.js'
 
 interface ZeroMutationSource {
   mutate(mutation: unknown): unknown
 }
 
 type WorkbookSyncRuntimeController = Pick<WorkerRuntimeSessionController, 'invoke'>
+type ViewportStore = WorkerHandle['viewportStore']
 
 const AUTHORITATIVE_REFRESH_PROBE_DELAYS_MS = [400, 1_200, 3_000] as const
 
@@ -59,6 +63,67 @@ function observeZeroMutationResult(result: unknown): Promise<unknown> | null {
   }
   const observer = result['server'] ?? result['client']
   return observer instanceof Promise ? observer : null
+}
+
+function parsedCellInputForMutation(
+  mutation: PendingWorkbookMutationInput,
+): { readonly sheetName: string; readonly address: string; readonly parsed: ParsedEditorInput } | null {
+  if (mutation.method === 'setCellValue') {
+    const [sheetName, address, value] = mutation.args
+    if (typeof sheetName !== 'string' || typeof address !== 'string' || !isLiteralInput(value)) {
+      return null
+    }
+    return { sheetName, address, parsed: { kind: 'value', value } }
+  }
+  if (mutation.method === 'setCellFormula') {
+    const [sheetName, address, formula] = mutation.args
+    if (typeof sheetName !== 'string' || typeof address !== 'string' || typeof formula !== 'string') {
+      return null
+    }
+    return { sheetName, address, parsed: { kind: 'formula', formula } }
+  }
+  if (mutation.method === 'clearCell') {
+    const [sheetName, address] = mutation.args
+    if (typeof sheetName !== 'string' || typeof address !== 'string') {
+      return null
+    }
+    return { sheetName, address, parsed: { kind: 'clear' } }
+  }
+  return null
+}
+
+function applyOptimisticCellMutation(
+  viewportStore: ViewportStore | null | undefined,
+  mutation: PendingWorkbookMutationInput,
+): (() => void) | null {
+  if (!viewportStore) {
+    return null
+  }
+  const target = parsedCellInputForMutation(mutation)
+  if (!target) {
+    return null
+  }
+  const previous = viewportStore.getCell(target.sheetName, target.address)
+  if (parsedEditorInputMatchesSnapshot(target.parsed, previous)) {
+    return null
+  }
+  const optimistic = createOptimisticCellSnapshot({
+    sheetName: target.sheetName,
+    address: target.address,
+    current: previous,
+    parsed: target.parsed,
+    evaluateFormula: (formula) =>
+      evaluateOptimisticFormula({
+        sheetName: target.sheetName,
+        address: target.address,
+        formula,
+        getCell: (sheetName, address) => viewportStore.getCell(sheetName, address),
+      }),
+  })
+  viewportStore.setCellSnapshot(optimistic)
+  return () => {
+    viewportStore.setCellSnapshot(createSupersedingCellSnapshot(previous, optimistic.version + 1))
+  }
 }
 
 export function useWorkbookSync(input: {
@@ -347,8 +412,14 @@ export function useWorkbookSync(input: {
       }
 
       await runSerializedLocalMutationTask(async () => {
-        await enqueuePendingMutation(mutation)
-        scheduleAuthoritativeRefreshProbes()
+        const rollbackOptimisticCell = applyOptimisticCellMutation(workerHandleRef.current?.viewportStore, mutation)
+        try {
+          await enqueuePendingMutation(mutation)
+          scheduleAuthoritativeRefreshProbes()
+        } catch (error) {
+          rollbackOptimisticCell?.()
+          throw error
+        }
       })
       void (async () => {
         try {
@@ -371,6 +442,7 @@ export function useWorkbookSync(input: {
       runSerializedSyncTask,
       runtimeController,
       scheduleAuthoritativeRefreshProbes,
+      workerHandleRef,
     ],
   )
 

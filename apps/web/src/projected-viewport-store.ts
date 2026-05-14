@@ -3,6 +3,7 @@ import { parseCellAddress } from '@bilig/formula'
 import {
   MAX_COLS,
   MAX_ROWS,
+  type CellRangeRef,
   type CellSnapshot,
   type CellStyleRecord,
   type Viewport,
@@ -134,6 +135,10 @@ export class ProjectedViewportStore implements GridEngineLike {
 
   getCell(sheetName: string, address: string): CellSnapshot {
     return this.cellCache.getCell(sheetName, address)
+  }
+
+  forEachCellSnapshotInRange(range: CellRangeRef, listener: (snapshot: CellSnapshot) => void): void {
+    this.cellCache.forEachCellSnapshotInRange(range, listener)
   }
 
   getCellStyle(styleId: string | undefined): CellStyleRecord | undefined {
@@ -286,6 +291,16 @@ export class ProjectedViewportStore implements GridEngineLike {
     removedSheets.forEach((sheetName) => {
       this.mergeRangesBySheet.delete(sheetName)
       this.sheetChannelListeners.delete(sheetName)
+      this.sheetIdentitiesByName.delete(sheetName)
+    })
+  }
+
+  setSheetIdentities(sheets: readonly { readonly id: number; readonly name: string; readonly order: number }[]): void {
+    sheets.forEach((sheet) => {
+      this.sheetIdentitiesByName.set(sheet.name, {
+        sheetId: sheet.id,
+        sheetOrdinal: sheet.order,
+      })
     })
   }
 

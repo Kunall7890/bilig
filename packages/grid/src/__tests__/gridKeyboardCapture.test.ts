@@ -48,6 +48,29 @@ describe('gridKeyboardCapture', () => {
     expect(event.stopPropagation).not.toHaveBeenCalled()
   })
 
+  it('should ignore already-prevented keydown events', () => {
+    // Arrange
+    const event = createKeyboardEvent({ key: 'Backspace', code: 'Backspace' })
+    event.preventDefault()
+    const handleGridKey = vi.fn()
+    const openHeaderContextMenuFromKeyboard = vi.fn(() => false)
+    const resetPointerInteraction = vi.fn()
+
+    // Act
+    handleWorkbookGridKeyDownCapture({
+      event,
+      handleGridKey,
+      openHeaderContextMenuFromKeyboard,
+      resetPointerInteraction,
+    })
+
+    // Assert
+    expect(resetPointerInteraction).not.toHaveBeenCalled()
+    expect(openHeaderContextMenuFromKeyboard).not.toHaveBeenCalled()
+    expect(handleGridKey).not.toHaveBeenCalled()
+    expect(event.stopPropagation).not.toHaveBeenCalled()
+  })
+
   it('should forward handled keys and stop propagation when default is prevented', () => {
     // Arrange
     const event = createKeyboardEvent({ key: 'Backspace', code: 'Backspace' })

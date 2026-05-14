@@ -4,7 +4,7 @@ import type { GridCameraStore } from '../runtime/gridCameraStore.js'
 import type { WorkbookGridScrollStore } from '../workbookGridScrollStore.js'
 import type { DynamicGridOverlayBatchV3 } from './dynamic-overlay-batch.js'
 import type { WorkbookRenderTilePaneState } from './render-tile-pane-state.js'
-import { WorkbookPaneRendererRuntimeV3 } from './workbook-pane-renderer-runtime.js'
+import { WorkbookPaneRendererRuntimeV3, type WorkbookPaneFrameResultV3 } from './workbook-pane-renderer-runtime.js'
 import {
   EMPTY_WORKBOOK_PANE_SURFACE_SNAPSHOT_V3,
   WorkbookPaneSurfaceRuntimeV3,
@@ -30,6 +30,8 @@ export interface WorkbookPaneRendererHostRuntimeOptionsV3 {
   readonly surfaceRuntime?: WorkbookPaneSurfaceRuntimeV3 | undefined
 }
 
+export type WorkbookPaneFrameProofStatusV3 = 'idle' | 'pending' | 'presented'
+
 const EMPTY_HOST_PROPS: WorkbookPaneRendererHostPropsV3 = Object.freeze({
   active: false,
   cameraStore: null,
@@ -47,6 +49,9 @@ export class WorkbookPaneRendererHostRuntimeV3 {
   private canvas: HTMLCanvasElement | null = null
   private disposed = false
   private readonly backendStatusListeners = new Set<() => void>()
+  private readonly frameProofListeners = new Set<() => void>()
+  private frameProofSignature = ''
+  private frameProofStatus: WorkbookPaneFrameProofStatusV3 = 'idle'
   private props: WorkbookPaneRendererHostPropsV3 = EMPTY_HOST_PROPS
   private readonly rendererRuntime: WorkbookPaneRendererRuntimeV3
   private surfaceBackendStatus: WorkbookPaneSurfaceBackendStatusV3
@@ -56,6 +61,7 @@ export class WorkbookPaneRendererHostRuntimeV3 {
 
   constructor(options: WorkbookPaneRendererHostRuntimeOptionsV3 = {}) {
     this.rendererRuntime = options.rendererRuntime ?? new WorkbookPaneRendererRuntimeV3()
+    this.rendererRuntime.setFrameResultListener((result) => this.handleFrameResult(result))
     this.surfaceRuntime = options.surfaceRuntime ?? new WorkbookPaneSurfaceRuntimeV3()
     this.surfaceBackendStatus = this.surfaceRuntime.getSnapshot().backendStatus
     this.unsubscribeSurface = this.surfaceRuntime.subscribe((snapshot) => {
@@ -64,12 +70,16 @@ export class WorkbookPaneRendererHostRuntimeV3 {
         this.surfaceBackendStatus = snapshot.backendStatus
         this.emitBackendStatus()
       }
+      if (snapshot.backendStatus !== 'ready') {
+        this.setFrameProofStatus(this.frameProofSignature ? 'pending' : 'idle')
+      }
       this.applyRendererState()
       this.requestRenderDraw()
     })
   }
 
   readonly getBackendStatusSnapshot = (): WorkbookPaneSurfaceBackendStatusV3 => this.surfaceBackendStatus
+  readonly getFrameProofStatusSnapshot = (): WorkbookPaneFrameProofStatusV3 => this.frameProofStatus
 
   readonly subscribeBackendStatus = (listener: () => void): (() => void) => {
     if (this.disposed) {
@@ -81,10 +91,21 @@ export class WorkbookPaneRendererHostRuntimeV3 {
     }
   }
 
+  readonly subscribeFrameProofStatus = (listener: () => void): (() => void) => {
+    if (this.disposed) {
+      return () => {}
+    }
+    this.frameProofListeners.add(listener)
+    return () => {
+      this.frameProofListeners.delete(listener)
+    }
+  }
+
   updateProps(props: WorkbookPaneRendererHostPropsV3): void {
     if (this.disposed) {
       return
     }
+    this.syncFrameProofSignature(props)
     this.props = props
     this.surfaceRuntime.setHost(props.host)
     this.surfaceRuntime.setActive(props.active)
@@ -108,6 +129,8 @@ export class WorkbookPaneRendererHostRuntimeV3 {
     this.disposed = true
     this.unsubscribeSurface()
     this.backendStatusListeners.clear()
+    this.frameProofListeners.clear()
+    this.rendererRuntime.setFrameResultListener(null)
     const canvas = this.canvas
     this.canvas = null
     this.surfaceRuntime.dispose()
@@ -143,10 +166,68 @@ export class WorkbookPaneRendererHostRuntimeV3 {
     this.backendStatusListeners.forEach((listener) => listener())
   }
 
+  private emitFrameProofStatus(): void {
+    this.frameProofListeners.forEach((listener) => listener())
+  }
+
+  private handleFrameResult(result: WorkbookPaneFrameResultV3): void {
+    if (!result.submitted || !this.frameProofSignature) {
+      return
+    }
+    this.setFrameProofStatus('presented')
+  }
+
+  private setFrameProofStatus(status: WorkbookPaneFrameProofStatusV3): void {
+    if (this.frameProofStatus === status) {
+      return
+    }
+    this.frameProofStatus = status
+    this.emitFrameProofStatus()
+  }
+
+  private syncFrameProofSignature(props: WorkbookPaneRendererHostPropsV3): void {
+    const signature = resolveWorkbookPaneFrameProofSignatureV3(props)
+    if (this.frameProofSignature === signature) {
+      return
+    }
+    this.frameProofSignature = signature
+    this.setFrameProofStatus(signature ? 'pending' : 'idle')
+  }
+
   private syncCanvasTarget(): void {
     if (this.disposed) {
       return
     }
     this.surfaceRuntime.setCanvas(this.props.active && this.props.host ? this.canvas : null)
   }
+}
+
+export function resolveWorkbookPaneFrameProofSignatureV3(props: {
+  readonly headerPanes: readonly GridHeaderPaneState[]
+  readonly overlay: DynamicGridOverlayBatchV3 | null
+  readonly tilePanes: readonly WorkbookRenderTilePaneState[]
+}): string {
+  const tileSignature = props.tilePanes
+    .map((pane) => {
+      const tile = pane.tile
+      return [
+        pane.paneId,
+        pane.generation,
+        tile.tileId,
+        tile.textCount,
+        tile.rectCount,
+        tile.version.axisX,
+        tile.version.axisY,
+        tile.version.freeze,
+        tile.version.styles,
+        tile.version.text,
+        tile.version.values,
+      ].join(':')
+    })
+    .join('|')
+  const headerSignature = props.headerPanes
+    .map((pane) => [pane.paneId, pane.rectSignature, pane.textSignature, pane.rectCount, pane.textCount].join(':'))
+    .join('|')
+  const overlaySignature = props.overlay ? `${props.overlay.seq}:${props.overlay.rectCount}` : ''
+  return [tileSignature, headerSignature, overlaySignature].filter(Boolean).join('#')
 }

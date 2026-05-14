@@ -76,9 +76,9 @@ export function drawTypeGpuTilePanesV3(input: {
   readonly overlay?: DynamicGridOverlayBatchV3 | null | undefined
   readonly surface: TypeGpuTileDrawSurface
   readonly scrollSnapshot: WorkbookGridScrollSnapshot
-}): void {
+}): boolean {
   if (!hasCompleteTypeGpuBodyTileContentV3(input) || !hasDrawableTypeGpuBodyPaneFramesV3(input)) {
-    return
+    return false
   }
 
   const commandEncoder = input.artifacts.device.createCommandEncoder()
@@ -157,6 +157,7 @@ export function drawTypeGpuTilePanesV3(input: {
   input.artifacts.device.queue.submit([commandEncoder.finish()])
   noteTypeGpuSubmit()
   noteGridDrawFrame(performance.now())
+  return true
 }
 
 function hasDrawableTypeGpuBodyPaneFramesV3(input: {

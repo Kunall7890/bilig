@@ -12,9 +12,12 @@ import { createOptimisticCellSnapshot, createSupersedingCellSnapshot, evaluateOp
 type RangeMutationMethod = 'fillRange' | 'copyRange' | 'moveRange'
 
 interface OptimisticViewportStore {
+  forEachCellSnapshotInRange?(range: CellRangeRef, listener: (snapshot: CellSnapshot) => void): void
   getCell(sheetName: string, address: string): CellSnapshot
   setCellSnapshot(snapshot: CellSnapshot): void
 }
+
+const MAX_MATERIALIZED_OPTIMISTIC_CLEAR_CELLS = 10_000
 
 export function buildPasteCommitOps(sheetName: string, startAddr: string, values: readonly (readonly string[])[]): CommitOp[] {
   const start = parseCellAddress(startAddr, sheetName)
@@ -269,6 +272,29 @@ export function applyOptimisticClearRange(viewportStore: OptimisticViewportStore
   const previousSnapshots: CellSnapshot[] = []
   const nextSnapshots: CellSnapshot[] = []
   let rollbackVersion = 0
+  const cellCount = (bounds.endRow - bounds.startRow + 1) * (bounds.endCol - bounds.startCol + 1)
+
+  if (cellCount > MAX_MATERIALIZED_OPTIMISTIC_CLEAR_CELLS) {
+    if (!viewportStore.forEachCellSnapshotInRange) {
+      return null
+    }
+    viewportStore.forEachCellSnapshotInRange(range, (previous) => {
+      const next = createEmptyOptimisticSnapshot(previous.sheetName, previous.address, previous.version + 1)
+      previousSnapshots.push(previous)
+      nextSnapshots.push(next)
+      rollbackVersion = Math.max(rollbackVersion, next.version)
+    })
+    if (nextSnapshots.length === 0) {
+      return null
+    }
+    nextSnapshots.forEach((snapshot) => viewportStore.setCellSnapshot(snapshot))
+    return () => {
+      previousSnapshots.forEach((snapshot) => {
+        rollbackVersion += 1
+        viewportStore.setCellSnapshot(createSupersedingCellSnapshot(snapshot, rollbackVersion))
+      })
+    }
+  }
 
   for (let row = bounds.startRow; row <= bounds.endRow; row += 1) {
     for (let col = bounds.startCol; col <= bounds.endCol; col += 1) {

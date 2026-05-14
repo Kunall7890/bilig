@@ -99,6 +99,25 @@ describe('gridCells', () => {
     })
   })
 
+  test('normalizes imported spreadsheet default fonts to the workbook font stack', () => {
+    const aptosStyle: CellStyleRecord = {
+      id: 'style-aptos',
+      font: { family: 'Aptos', size: 11 },
+    }
+    const calibriStyle: CellStyleRecord = {
+      id: 'style-calibri',
+      font: { family: 'Calibri', size: 11 },
+    }
+
+    expect(snapshotToRenderCell(makeSnapshot({ value: { tag: ValueTag.String, value: 'hello' } }), aptosStyle).font).toBe(
+      `400 11px ${WORKBOOK_FONT_SANS}`,
+    )
+    expect(cellStyleToThemeOverride(calibriStyle)).toEqual({
+      baseFontStyle: '400 11px',
+      fontFamily: WORKBOOK_FONT_SANS,
+    })
+  })
+
   test('makes text cells transparent when the text surface is active and routes booleans to the custom surface', () => {
     const textCell = snapshotToGridCell(makeSnapshot({ value: { tag: ValueTag.String, value: 'hello' } }), undefined, {
       textSurfaceEnabled: true,

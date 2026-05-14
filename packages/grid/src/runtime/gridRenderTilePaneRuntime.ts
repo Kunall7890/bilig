@@ -1,7 +1,8 @@
-import type { Viewport } from '@bilig/protocol'
+import { ValueTag, type CellSnapshot, type Viewport } from '@bilig/protocol'
 import { noteRendererTileReadiness, noteTypeGpuTileCacheStaleLookups, noteTypeGpuTileCacheVisibleMark } from '../grid-render-counters.js'
 import type { GridEngineLike } from '../grid-engine.js'
 import type { GridMetrics } from '../gridMetrics.js'
+import type { Item } from '../gridTypes.js'
 import { buildLocalFixedRenderTiles } from '../renderer-v3/local-render-tile-materializer.js'
 import { GRID_RECT_INSTANCE_FLOAT_COUNT_V3 } from '../renderer-v3/rect-instance-buffer.js'
 import { buildFixedRenderTilePaneStates } from '../renderer-v3/render-tile-pane-builder.js'
@@ -68,6 +69,8 @@ export interface GridRenderTilePaneRuntimeInput {
   readonly residentViewport: Viewport
   readonly rowHeights: Readonly<Record<number, number>>
   readonly sceneRevision: number
+  readonly selectedCell?: Item | undefined
+  readonly selectedCellSnapshot?: CellSnapshot | null | undefined
   readonly sheetId?: number | undefined
   readonly sheetOrdinal?: number | undefined
   readonly sheetName: string
@@ -190,6 +193,26 @@ function hasCompleteRenderTileGrid(tile: GridRenderTile): boolean {
   return expectedBorderCount === 0 || countRenderTileGridBorderRects(tile) >= expectedBorderCount
 }
 
+function selectedSnapshotHasRenderableText(snapshot: CellSnapshot | null | undefined): boolean {
+  if (!snapshot) {
+    return false
+  }
+  return (
+    snapshot.formula !== undefined ||
+    snapshot.input !== undefined ||
+    snapshot.value.tag === ValueTag.String ||
+    snapshot.value.tag === ValueTag.Number ||
+    snapshot.value.tag === ValueTag.Error
+  )
+}
+
+function tileHasSelectedTextRun(tile: GridRenderTile | null, selectedCell: Item | undefined): boolean {
+  if (!tile || !selectedCell) {
+    return false
+  }
+  return tile.textRuns.some((run) => run.col === selectedCell[0] && run.row === selectedCell[1] && run.text.length > 0)
+}
+
 interface RuntimeConnection<Identity> {
   readonly identity: Identity
   readonly unsubscribe: (() => void) | undefined
@@ -234,8 +257,9 @@ export class GridRenderTilePaneRuntime {
         ? this.retainedFixedRenderTileDataPanes.panes
         : null)
     const residentDataPanes = retainedFixedRenderTileDataPanes ?? []
+    const usesLocalTilePanes = fixedRenderTileDataPanes?.source === 'local'
     return {
-      needsLocalCellInvalidation: !shouldUseRemoteRenderTileSource,
+      needsLocalCellInvalidation: usesLocalTilePanes || !shouldUseRemoteRenderTileSource,
       preloadDataPanes: preloadResolution.panes,
       renderTilePanes: residentDataPanes,
       residentBodyPane: residentDataPanes.find((pane) => pane.paneId === 'body') ?? null,
@@ -707,6 +731,8 @@ export class GridRenderTilePaneRuntime {
         generation: input.sceneRevision,
         gridMetrics: input.gridMetrics,
         rowHeights: input.rowHeights,
+        selectedCell: input.selectedCell,
+        selectedCellSnapshot: input.selectedCellSnapshot,
         sheetId: input.sheetId ?? 0,
         sheetOrdinal: resolveGridRenderTileInputSheetOrdinal(input),
         sheetName: input.sheetName,
@@ -743,6 +769,19 @@ export class GridRenderTilePaneRuntime {
         viewport: input.visibleViewport,
       }),
     )
+    const selectedCellTileKey =
+      input.selectedCell && selectedSnapshotHasRenderableText(input.selectedCellSnapshot)
+        ? input.gridRuntimeHost.viewportTileKeys({
+            dprBucket: input.dprBucket,
+            sheetOrdinal,
+            viewport: {
+              colEnd: input.selectedCell[0],
+              colStart: input.selectedCell[0],
+              rowEnd: input.selectedCell[1],
+              rowStart: input.selectedCell[1],
+            },
+          })[0]
+        : undefined
     for (const tileKey of tileKeys) {
       const sourceTile = renderTileSource.peekRenderTile(tileKey)
       const tile =
@@ -750,11 +789,12 @@ export class GridRenderTilePaneRuntime {
           ? sourceTile
           : this.resolveResidentRenderTile(input, tileKey, sheetId, sheetOrdinal)
       const isDirty = visibleTileKeys.has(tileKey) && input.gridRuntimeHost.tiles.dirtyTiles.getUnconsumedMask(tileKey) !== 0
-      const isVisibleMiss = visibleTileKeys.has(tileKey) && !tile
-      const isVisibleMissingGridPayload = visibleTileKeys.has(tileKey) && tile !== null && !hasCompleteRenderTileGrid(tile)
+      const isMissingResidentTile = !tile
+      const isMissingGridPayload = tile !== null && !hasCompleteRenderTileGrid(tile)
       const shouldLocalizeDirty = (options.localizeDirtyVisibleTiles ?? true) && isDirty
-      if (shouldLocalizeDirty || isVisibleMiss || isVisibleMissingGridPayload) {
-        if (shouldLocalizeDirty && tile && hasCompleteRenderTileGrid(tile)) {
+      const shouldLocalizeSelectedCellText = selectedCellTileKey === tileKey && !tileHasSelectedTextRun(tile, input.selectedCell)
+      if (shouldLocalizeDirty || isMissingResidentTile || isMissingGridPayload || shouldLocalizeSelectedCellText) {
+        if ((shouldLocalizeDirty || shouldLocalizeSelectedCellText) && tile && hasCompleteRenderTileGrid(tile)) {
           dirtyBaseTiles.set(tileKey, tile)
         }
         dirtyTileKeys.push(tileKey)
@@ -779,6 +819,8 @@ export class GridRenderTilePaneRuntime {
         generation: input.sceneRevision,
         gridMetrics: input.gridMetrics,
         rowHeights: input.rowHeights,
+        selectedCell: input.selectedCell,
+        selectedCellSnapshot: input.selectedCellSnapshot,
         sheetId,
         sheetOrdinal,
         sheetName: input.sheetName,

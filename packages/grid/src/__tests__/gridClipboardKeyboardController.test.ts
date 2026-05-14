@@ -520,6 +520,51 @@ describe('gridClipboardKeyboardController', () => {
     })
   })
 
+  test('does not route Delete from editable event targets into the grid', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    document.body.innerHTML = ''
+    const beginSelectedEdit = vi.fn()
+    const onClearCell = vi.fn()
+    const setGridSelection = vi.fn()
+    const onSelectionChange = vi.fn()
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+
+    await act(async () => {
+      root.render(
+        createElement(KeyboardHandlerHarness, {
+          beginSelectedEdit,
+          onClearCell,
+          onSelectionChange,
+          setGridSelection,
+        }),
+      )
+    })
+
+    const formulaInput = document.createElement('input')
+    document.body.append(formulaInput)
+    const event = new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key: 'Delete',
+    })
+
+    await act(async () => {
+      formulaInput.dispatchEvent(event)
+    })
+
+    expect(onClearCell).not.toHaveBeenCalled()
+    expect(beginSelectedEdit).not.toHaveBeenCalled()
+    expect(setGridSelection).not.toHaveBeenCalled()
+    expect(onSelectionChange).not.toHaveBeenCalled()
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
   test('reads the latest runtime selection when routing global clear keys', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
