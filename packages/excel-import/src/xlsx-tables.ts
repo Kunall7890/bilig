@@ -3,6 +3,7 @@ import { XMLParser } from 'fast-xml-parser'
 import * as XLSX from 'xlsx'
 
 import type { WorkbookSnapshot, WorkbookTableColumnSnapshot, WorkbookTableSnapshot, WorkbookTableStyleSnapshot } from '@bilig/protocol'
+import { decodeExcelEscapedText, encodeExcelEscapedText } from './xlsx-escaped-text.js'
 import { readSortStateXml } from './xlsx-sorts.js'
 import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
@@ -48,6 +49,10 @@ function recordChild(value: unknown, key: string): Record<string, unknown> | nul
 
 function escapeXml(value: string): string {
   return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&apos;')
+}
+
+function escapeExcelXmlTextAttribute(value: string): string {
+  return escapeXml(encodeExcelEscapedText(value))
 }
 
 function parseBooleanAttribute(value: unknown): boolean | undefined {
@@ -216,8 +221,8 @@ function exportTableColumns(table: WorkbookTableSnapshot): WorkbookTableColumnSn
 
 function buildTableColumnXml(column: WorkbookTableColumnSnapshot, index: number): string {
   return [
-    `<tableColumn id="${String(index + 1)}" name="${escapeXml(column.name)}"`,
-    column.totalsRowLabel !== undefined ? ` totalsRowLabel="${escapeXml(column.totalsRowLabel)}"` : '',
+    `<tableColumn id="${String(index + 1)}" name="${escapeExcelXmlTextAttribute(column.name)}"`,
+    column.totalsRowLabel !== undefined ? ` totalsRowLabel="${escapeExcelXmlTextAttribute(column.totalsRowLabel)}"` : '',
     column.totalsRowFunction !== undefined ? ` totalsRowFunction="${escapeXml(column.totalsRowFunction)}"` : '',
     '/>',
   ].join('')
@@ -325,12 +330,16 @@ function parseTableXml(sheetName: string, xml: string): WorkbookTableSnapshot | 
         ? table['name'].trim()
         : `Table_${ref.startAddress}`
   const columns = asArray(recordChild(table, 'tableColumns')?.['tableColumn']).flatMap((entry) => {
-    if (!isRecord(entry) || typeof entry['name'] !== 'string' || entry['name'].trim().length === 0) {
+    if (!isRecord(entry) || typeof entry['name'] !== 'string') {
+      return []
+    }
+    const columnName = decodeExcelEscapedText(entry['name']).trim()
+    if (columnName.length === 0) {
       return []
     }
     const column: WorkbookTableColumnSnapshot = {
-      name: entry['name'].trim(),
-      ...(typeof entry['totalsRowLabel'] === 'string' ? { totalsRowLabel: entry['totalsRowLabel'] } : {}),
+      name: columnName,
+      ...(typeof entry['totalsRowLabel'] === 'string' ? { totalsRowLabel: decodeExcelEscapedText(entry['totalsRowLabel']) } : {}),
       ...(typeof entry['totalsRowFunction'] === 'string' ? { totalsRowFunction: entry['totalsRowFunction'] } : {}),
     }
     return [column]

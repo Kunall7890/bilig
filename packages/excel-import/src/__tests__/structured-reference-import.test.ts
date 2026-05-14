@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { SpreadsheetEngine } from '@bilig/core'
 import type { WorkbookSnapshot } from '@bilig/protocol'
 import { ValueTag } from '@bilig/protocol'
@@ -169,6 +170,73 @@ describe('structured reference XLSX import', () => {
     expect(engine.getCellValue('Panel', 'B2')).toMatchObject({ tag: ValueTag.String, value: 'PUB-0 ' })
   })
 
+  it('decodes Excel-escaped table column names before rewriting structured references', async () => {
+    const snapshot: WorkbookSnapshot = {
+      version: 1,
+      workbook: {
+        name: 'Escaped Table Headers',
+        metadata: {
+          tables: [
+            {
+              name: 'Table41',
+              sheetName: 'Local and Regional Initiatives',
+              startAddress: 'A1',
+              endAddress: 'C4',
+              columnNames: ['Year', 'Number of\n people inducted', 'Road show \nvisits'],
+              columns: [
+                { name: 'Year', totalsRowLabel: 'Total' },
+                { name: 'Number of\n people inducted', totalsRowFunction: 'sum' },
+                { name: 'Road show \nvisits', totalsRowFunction: 'sum' },
+              ],
+              headerRow: true,
+              totalsRow: true,
+            },
+          ],
+        },
+      },
+      sheets: [
+        {
+          id: 1,
+          name: 'Local and Regional Initiatives',
+          order: 0,
+          cells: [
+            { address: 'A1', value: 'Year' },
+            { address: 'B1', value: 'Number of\n people inducted' },
+            { address: 'C1', value: 'Road show \nvisits' },
+            { address: 'A2', value: 2013 },
+            { address: 'B2', value: 64 },
+            { address: 'C2', value: 10 },
+            { address: 'A3', value: 2014 },
+            { address: 'B3', value: 15 },
+            { address: 'C3', value: 5 },
+            { address: 'A4', value: 'Total' },
+            { address: 'B4', formula: 'SUBTOTAL(109,Table41[Number of\n people inducted])' },
+            { address: 'C4', formula: 'SUBTOTAL(109,Table41[Road show \nvisits])' },
+          ],
+        },
+      ],
+    }
+
+    const imported = importXlsx(withExcelEscapedTableColumnNames(exportXlsx(snapshot)), 'escaped-table-headers.xlsx')
+    const table = imported.snapshot.workbook.metadata?.tables?.find((candidate) => candidate.name === 'Table41')
+    const sheet = imported.snapshot.sheets.find((candidate) => candidate.name === 'Local and Regional Initiatives')
+
+    expect(table?.columnNames).toEqual(['Year', 'Number of\n people inducted', 'Road show \nvisits'])
+    expect(sheet?.cells.find((cell) => cell.address === 'B4')?.formula).toBe("SUBTOTAL(109,'Local and Regional Initiatives'!B2:B3)")
+    expect(sheet?.cells.find((cell) => cell.address === 'C4')?.formula).toBe("SUBTOTAL(109,'Local and Regional Initiatives'!C2:C3)")
+
+    const engine = new SpreadsheetEngine({ workbookName: 'escaped-table-headers' })
+    await engine.ready()
+    engine.importSnapshot(imported.snapshot)
+
+    expect(engine.getCellValue('Local and Regional Initiatives', 'B4')).toEqual({ tag: ValueTag.Number, value: 79 })
+    expect(engine.getCellValue('Local and Regional Initiatives', 'C4')).toEqual({ tag: ValueTag.Number, value: 15 })
+
+    const reexportedTableXml = readOnlyTableXml(exportXlsx(imported.snapshot))
+    expect(reexportedTableXml).toMatch(/name="Number of_x000a_ people inducted"/iu)
+    expect(reexportedTableXml).toMatch(/name="Road show _x000a_visits"/iu)
+  })
+
   it('preserves lowercase defined names and named ranges used by simulation formulas', async () => {
     const snapshot: WorkbookSnapshot = {
       version: 1,
@@ -314,3 +382,26 @@ describe('structured reference XLSX import', () => {
     expect(f4.tag === ValueTag.Number ? f4.value : Number.NaN).toBeCloseTo(37.33333333333333, 10)
   })
 })
+
+function withExcelEscapedTableColumnNames(bytes: Uint8Array): Uint8Array {
+  const zip = unzipSync(bytes)
+  const tablePath = onlyTablePath(zip)
+  const tableXml = strFromU8(zip[tablePath] ?? new Uint8Array())
+  zip[tablePath] = strToU8(
+    tableXml
+      .replace(/Number of(?:\r?\n|_x000a_) people inducted/giu, 'Number of_x000a_ people inducted')
+      .replace(/Road show (?:\r?\n|_x000a_)visits/giu, 'Road show _x000a_visits'),
+  )
+  return zipSync(zip)
+}
+
+function readOnlyTableXml(bytes: Uint8Array): string {
+  const zip = unzipSync(bytes)
+  return strFromU8(zip[onlyTablePath(zip)] ?? new Uint8Array())
+}
+
+function onlyTablePath(zip: Record<string, Uint8Array>): string {
+  const tablePaths = Object.keys(zip).filter((path) => /^xl\/tables\/table[0-9]+\.xml$/u.test(path))
+  expect(tablePaths).toHaveLength(1)
+  return tablePaths[0]
+}

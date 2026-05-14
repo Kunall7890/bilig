@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx'
 
 import { toLiteralInput } from './workbook-import-helpers.js'
+import { decodeExcelEscapedText } from './xlsx-escaped-text.js'
 import { getZipText, readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 interface SharedStringEntry {
@@ -43,17 +44,6 @@ function decodeXmlText(value: string): string {
         return ''
     }
   })
-}
-
-function decodeExcelEscapedText(value: string): string {
-  const escapedUnderscore = '\uE000'
-  return value
-    .replace(/_x005F_/giu, escapedUnderscore)
-    .replace(/_x([0-9a-fA-F]{4})_/gu, (_match, code: string) => {
-      const codePoint = Number.parseInt(code, 16)
-      return isValidXmlCodePoint(codePoint) ? String.fromCodePoint(codePoint) : ''
-    })
-    .replaceAll(escapedUnderscore, '_')
 }
 
 function normalizeWorksheetText(value: string): string {
