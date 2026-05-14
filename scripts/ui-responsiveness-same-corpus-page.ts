@@ -39,7 +39,11 @@ import {
   settleFrames,
   waitForNextFrame,
 } from './ui-responsiveness-same-corpus-page-utils.ts'
-import { measureProductWorkload, type ProductOperationSample } from './ui-responsiveness-same-corpus-workload-runner.ts'
+import {
+  incumbentEditableWorkloadBlocker,
+  measureProductWorkload,
+  type ProductOperationSample,
+} from './ui-responsiveness-same-corpus-workload-runner.ts'
 
 interface ProductSampleCollection {
   readonly corpusVerification: SameCorpusCaptureCorpusVerification
@@ -297,6 +301,7 @@ async function preflightIncumbentProduct(
   try {
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60_000 })
     await waitForProductReady(page, product, captureArgsForPreflight(args, product, url))
+    await assertIncumbentEditableForPreflight(page, product)
     const corpusVerification = await verifyProductCorpus(page, product, url, corpus)
     return {
       product,
@@ -310,6 +315,20 @@ async function preflightIncumbentProduct(
     throw new Error(await productReadyFailureMessage(page, product, url, 0, error), { cause: error })
   } finally {
     await context.close()
+  }
+}
+
+async function assertIncumbentEditableForPreflight(
+  page: Page,
+  product: Exclude<UiResponsivenessSameCorpusProduct, 'bilig'>,
+): Promise<void> {
+  const bodyText = await page
+    .locator('body')
+    .innerText({ timeout: 2_000 })
+    .catch(() => '')
+  const blocker = incumbentEditableWorkloadBlocker(product, page.url(), bodyText)
+  if (blocker) {
+    throw new Error(`Cannot preflight same-corpus editable workloads on ${product}: ${blocker}`)
   }
 }
 
