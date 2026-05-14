@@ -301,6 +301,14 @@ Latest HN conversion signal on May 14, 2026:
   reposting; it is making the landing page, README, and narrow benchmark asks
   convert the traffic that already arrived.
 
+Latest Product Hunt launch surface on May 14, 2026:
+
+- The public launch kit is now wired into the docs site:
+  <https://proompteng.github.io/bilig/product-hunt-launch-kit.html>.
+- It keeps the tagline, short description, first comment, proof links, thumbnail,
+  gallery images, WebM demo, and launch checklist together so the next launch
+  action can use the real assets instead of rewriting copy in a browser form.
+
 ## Goal Text
 
 Grow `proompteng/bilig` from `8` to `1,000` legitimate GitHub stars by making

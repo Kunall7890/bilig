@@ -38,6 +38,7 @@ export const docsSiteSources = [
   ['formula-edge-sumifs-paired-criteria-fixture.html', 'formula-edge-sumifs-paired-criteria-fixture.md'],
   ['formula-edge-groupby-spill-fixture.html', 'formula-edge-groupby-spill-fixture.md'],
   ['starter-issues.html', 'starter-issues.md'],
+  ['product-hunt-launch-kit.html', 'product-hunt-launch-kit.md'],
   ['community-launch-pack.html', 'community-launch-pack.md'],
   ['community-growth-snapshot.html', 'community-growth-snapshot.md'],
   ['llms.txt', 'llms.txt'],

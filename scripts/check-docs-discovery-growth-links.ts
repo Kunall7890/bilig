@@ -16,6 +16,7 @@ export const communityLaunchPackRequiredLinks = [
   'https://github.com/MunGell/awesome-for-beginners/pull/2012',
   'https://github.com/ever-works/awesome-mcp-servers-data/pull/4',
   'https://github.com/jmstfv/mcpserve/pull/19',
+  'https://proompteng.github.io/bilig/product-hunt-launch-kit.html',
 ] as const
 
 export const llmsExternalSurfaceLinks = [

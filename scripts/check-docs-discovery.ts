@@ -137,6 +137,7 @@ const [
   sitemap,
   llms,
   communityLaunchPack,
+  productHuntLaunchKit,
   starterIssues,
   newContributorGuide,
   headlessPackageJson,
@@ -161,6 +162,7 @@ const [
   readFile(join(docsRoot, 'sitemap.xml'), 'utf8'),
   readFile(join(docsRoot, 'llms.txt'), 'utf8'),
   readFile(join(docsRoot, 'community-launch-pack.md'), 'utf8'),
+  readFile(join(docsRoot, 'product-hunt-launch-kit.md'), 'utf8'),
   readFile(join(docsRoot, 'starter-issues.md'), 'utf8'),
   readFile(join(docsRoot, 'new-contributor-guide.md'), 'utf8'),
   readFile(join(repoRoot, 'packages', 'headless', 'package.json'), 'utf8'),
@@ -214,6 +216,7 @@ for (const required of [
   './headless-spreadsheet-engine-comparison.html',
   './javascript-spreadsheet-library-headless-node.html',
   './hyperformula-alternative-headless-workpaper.html',
+  './product-hunt-launch-kit.html',
 ]) {
   requireIncludes(index, required, 'docs/index.html')
 }
@@ -249,7 +252,15 @@ await Promise.all(
 )
 await requireFile(join(repoRoot, 'scripts', 'build-workpaper-mcpb.ts'))
 await Promise.all(
-  ['github-social-preview.png', 'workpaper-benchmark-card.png'].map((sourceFile) => requireFile(join(docsRoot, 'assets', sourceFile))),
+  [
+    'github-social-preview.png',
+    'workpaper-benchmark-card.png',
+    'product-hunt-thumbnail.png',
+    'product-hunt-gallery-01-workbook-api.png',
+    'product-hunt-gallery-02-agent-readback.png',
+    'product-hunt-gallery-03-node-service.png',
+    'product-hunt-demo.webm',
+  ].map((sourceFile) => requireFile(join(docsRoot, 'assets', sourceFile))),
 )
 await Promise.all(
   [
@@ -349,6 +360,8 @@ for (const required of [
   'https://github.com/proompteng/bilig/blob/main/docs/starter-issues.md',
   'https://github.com/proompteng/bilig/blob/main/docs/community-launch-pack.md',
   'https://github.com/proompteng/bilig/blob/main/docs/community-growth-snapshot.md',
+  'https://proompteng.github.io/bilig/product-hunt-launch-kit.html',
+  'https://github.com/proompteng/bilig/blob/main/docs/product-hunt-launch-kit.md',
   'https://github.com/proompteng/bilig/issues?q=is%3Aissue%20state%3Aopen%20label%3Afirst-timers-only',
 ]) {
   requireIncludes(llms, required, 'docs/llms.txt')
@@ -648,6 +661,23 @@ for (const required of communityLaunchPackRequiredLinks) {
 }
 for (const required of llmsExternalSurfaceLinks) {
   requireIncludes(llms, required, 'docs/llms.txt')
+}
+for (const required of [
+  'title: Product Hunt launch kit for bilig',
+  'Workbook formulas for TypeScript services and agents.',
+  'start from an empty Node project, install @bilig/headless, run eval.ts',
+  '46/46 comparable mean-latency rows are faster',
+  'product-hunt-thumbnail.png',
+  'product-hunt-gallery-01-workbook-api.png',
+  'product-hunt-gallery-02-agent-readback.png',
+  'product-hunt-gallery-03-node-service.png',
+  'product-hunt-demo.webm',
+  'try-bilig-headless-in-node.html',
+  'what-workpaper-benchmark-proves.html',
+  'where-bilig-is-not-excel-compatible-yet.html',
+  'mcp-client-setup.html',
+]) {
+  requireIncludes(productHuntLaunchKit, required, 'docs/product-hunt-launch-kit.md')
 }
 requireIncludes(
   aiSdkLangChainDoc,
