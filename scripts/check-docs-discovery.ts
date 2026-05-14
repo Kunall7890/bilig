@@ -425,6 +425,8 @@ requireIncludes(
 )
 
 requireXlsxCorpusVerifierDiscovery(await readFile(join(docsRoot, 'xlsx-corpus-verifier-walkthrough.md'), 'utf8'))
+requireIncludes(index, './xlsx-corpus-verifier-walkthrough.html', 'docs/index.html')
+requireIncludes(llms, 'https://proompteng.github.io/bilig/xlsx-corpus-verifier-walkthrough.html', 'docs/llms.txt')
 
 for (const [path, content] of [
   ['README.md', readme],

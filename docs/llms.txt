@@ -143,6 +143,9 @@ npm run agent:verify
 - evaluate Excel formulas in Node.js with TypeScript:
   https://proompteng.github.io/bilig/evaluate-excel-formulas-in-node-typescript.html
   https://github.com/proompteng/bilig/blob/main/docs/evaluate-excel-formulas-in-node-typescript.md
+- stale XLSX cache and fresh Excel oracle checks:
+  https://proompteng.github.io/bilig/xlsx-corpus-verifier-walkthrough.html
+  https://github.com/proompteng/bilig/blob/main/docs/xlsx-corpus-verifier-walkthrough.md
 - server-side spreadsheet automation in Node.js:
   https://proompteng.github.io/bilig/server-side-spreadsheet-automation-node.html
   https://github.com/proompteng/bilig/blob/main/docs/server-side-spreadsheet-automation-node.md
@@ -255,6 +258,7 @@ npm run agent:verify
 - compatibility boundaries:
   https://github.com/proompteng/bilig/blob/main/docs/where-bilig-is-not-excel-compatible-yet.md
 - xlsx verifier walkthrough:
+  https://proompteng.github.io/bilig/xlsx-corpus-verifier-walkthrough.html
   https://github.com/proompteng/bilig/blob/main/docs/xlsx-corpus-verifier-walkthrough.md
 - xlookup exact fixture:
   https://github.com/proompteng/bilig/blob/main/docs/formula-edge-xlookup-exact-fixture.md
