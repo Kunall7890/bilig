@@ -8,6 +8,7 @@ import { WorkbookPaneRendererRuntimeV3 } from './workbook-pane-renderer-runtime.
 import {
   EMPTY_WORKBOOK_PANE_SURFACE_SNAPSHOT_V3,
   WorkbookPaneSurfaceRuntimeV3,
+  type WorkbookPaneSurfaceBackendStatusV3,
   type WorkbookPaneSurfaceSnapshotV3,
 } from './workbook-pane-surface-runtime.js'
 
@@ -25,6 +26,7 @@ export interface WorkbookPaneRendererHostPropsV3 {
 }
 
 export interface WorkbookPaneRendererHostRuntimeOptionsV3 {
+  readonly onSurfaceBackendStatusChange?: ((status: WorkbookPaneSurfaceBackendStatusV3) => void) | undefined
   readonly rendererRuntime?: WorkbookPaneRendererRuntimeV3 | undefined
   readonly surfaceRuntime?: WorkbookPaneSurfaceRuntimeV3 | undefined
 }
@@ -47,15 +49,23 @@ export class WorkbookPaneRendererHostRuntimeV3 {
   private disposed = false
   private props: WorkbookPaneRendererHostPropsV3 = EMPTY_HOST_PROPS
   private readonly rendererRuntime: WorkbookPaneRendererRuntimeV3
+  private readonly onSurfaceBackendStatusChange: ((status: WorkbookPaneSurfaceBackendStatusV3) => void) | null
+  private surfaceBackendStatus: WorkbookPaneSurfaceBackendStatusV3
   private surfaceSnapshot: WorkbookPaneSurfaceSnapshotV3 = EMPTY_WORKBOOK_PANE_SURFACE_SNAPSHOT_V3
   private readonly surfaceRuntime: WorkbookPaneSurfaceRuntimeV3
   private readonly unsubscribeSurface: () => void
 
   constructor(options: WorkbookPaneRendererHostRuntimeOptionsV3 = {}) {
+    this.onSurfaceBackendStatusChange = options.onSurfaceBackendStatusChange ?? null
     this.rendererRuntime = options.rendererRuntime ?? new WorkbookPaneRendererRuntimeV3()
     this.surfaceRuntime = options.surfaceRuntime ?? new WorkbookPaneSurfaceRuntimeV3()
+    this.surfaceBackendStatus = this.surfaceRuntime.getSnapshot().backendStatus
     this.unsubscribeSurface = this.surfaceRuntime.subscribe((snapshot) => {
       this.surfaceSnapshot = snapshot
+      if (this.surfaceBackendStatus !== snapshot.backendStatus) {
+        this.surfaceBackendStatus = snapshot.backendStatus
+        this.onSurfaceBackendStatusChange?.(snapshot.backendStatus)
+      }
       this.applyRendererState()
       this.requestRenderDraw()
     })

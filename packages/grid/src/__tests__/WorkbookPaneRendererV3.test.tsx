@@ -80,9 +80,11 @@ describe('WorkbookPaneRendererV3', () => {
       value: TestResizeObserver,
       writable: true,
     })
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
   })
 
   afterEach(() => {
+    vi.restoreAllMocks()
     Object.defineProperty(globalThis, 'ResizeObserver', {
       configurable: true,
       value: originalResizeObserver,
@@ -91,7 +93,7 @@ describe('WorkbookPaneRendererV3', () => {
     document.body.innerHTML = ''
   })
 
-  test('mounts the V3 TypeGPU canvas for the workbook surface path', async () => {
+  test('falls back when the V3 TypeGPU backend is unavailable', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
     const host = document.createElement('div')
     Object.defineProperty(host, 'clientWidth', { configurable: true, value: 640 })
@@ -108,18 +110,9 @@ describe('WorkbookPaneRendererV3', () => {
 
     const canvas = host.querySelector('[data-testid="grid-pane-renderer"]')
     const fallbackCanvas = host.querySelector('[data-testid="grid-pane-renderer-fallback"]')
-    expect(canvas).toBeInstanceOf(HTMLCanvasElement)
-    expect(fallbackCanvas).toBeNull()
-    expect(canvas?.getAttribute('data-pane-renderer')).toBe('workbook-pane-renderer-v3')
-    expect(canvas?.getAttribute('data-renderer-mode')).toBe('typegpu-v3')
-    expect(canvas?.getAttribute('data-v3-tile-pane-count')).toBe('1')
-    expect(canvas?.getAttribute('data-v3-header-pane-count')).toBe('0')
-    if (!(canvas instanceof HTMLCanvasElement)) {
-      throw new Error('expected V3 renderer canvas to mount')
-    }
-    expect(canvas.style.width).toBe('100%')
-    expect(canvas.style.height).toBe('100%')
-    expect(canvas.style.contain).toBe('strict')
+    expect(canvas).toBeNull()
+    expect(fallbackCanvas).toBeInstanceOf(HTMLCanvasElement)
+    expect(fallbackCanvas?.getAttribute('data-renderer-mode')).toBe('canvas2d-v3-fallback')
 
     await act(async () => {
       root.unmount()

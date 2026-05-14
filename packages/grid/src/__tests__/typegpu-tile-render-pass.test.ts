@@ -126,4 +126,19 @@ describe('typegpu tile render pass readiness', () => {
 
     expect(hasCompleteTypeGpuBodyTileContentV3({ tilePanes: [pane], tileResources })).toBe(false)
   })
+
+  test('ignores hidden resident body panes when deciding whether the visible TypeGPU frame can draw', () => {
+    const tileResources = new TypeGpuTileResourceCacheV3()
+    const visiblePane = createPane('body', createRenderTile(101, { rectCount: 1 }))
+    const hiddenPane = {
+      ...createPane('body:0:1', createRenderTile(102)),
+      drawVisible: false,
+    }
+    const visibleContent = tileResources.getContent(resolveWorkbookTileContentBufferKeyV3(visiblePane))
+    visibleContent.rectCount = 1
+    Reflect.set(visibleContent, 'rectHandle', createHandle('rectInstances'))
+    tileResources.getContent(resolveWorkbookTileContentBufferKeyV3(hiddenPane))
+
+    expect(hasCompleteTypeGpuBodyTileContentV3({ tilePanes: [visiblePane, hiddenPane], tileResources })).toBe(true)
+  })
 })

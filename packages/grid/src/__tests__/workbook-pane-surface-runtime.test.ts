@@ -140,7 +140,35 @@ describe('WorkbookPaneSurfaceRuntimeV3', () => {
     })
     expect(snapshots.at(-1)).toMatchObject({
       backend: null,
+      backendStatus: 'idle',
       webGpuReady: false,
     })
+  })
+
+  test('marks the backend unavailable when TypeGPU cannot create a backend', async () => {
+    const host = document.createElement('div')
+    const canvas = document.createElement('canvas')
+    defineHostSize(host, 640, 360)
+    const snapshots: WorkbookPaneSurfaceSnapshotV3[] = []
+    const runtime = new WorkbookPaneSurfaceRuntimeV3({
+      createBackend: vi.fn(async () => null),
+      createResizeObserver: () => null,
+      syncSurface: vi.fn(),
+    })
+
+    runtime.subscribe((snapshot) => snapshots.push(snapshot))
+    runtime.setHost(host)
+    runtime.setActive(true)
+    runtime.setCanvas(canvas)
+    await flushMicrotasks()
+
+    expect(snapshots.map((snapshot) => snapshot.backendStatus)).toContain('initializing')
+    expect(runtime.getSnapshot()).toMatchObject({
+      backend: null,
+      backendStatus: 'unavailable',
+      webGpuReady: false,
+    })
+
+    runtime.dispose()
   })
 })

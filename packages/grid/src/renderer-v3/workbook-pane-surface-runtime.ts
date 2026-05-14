@@ -8,9 +8,12 @@ import type { TypeGpuSurfaceSizeV3 } from './workbook-pane-renderer-runtime.js'
 
 export interface WorkbookPaneSurfaceSnapshotV3 {
   readonly backend: object | null
+  readonly backendStatus: WorkbookPaneSurfaceBackendStatusV3
   readonly surface: TypeGpuSurfaceSizeV3
   readonly webGpuReady: boolean
 }
+
+export type WorkbookPaneSurfaceBackendStatusV3 = 'idle' | 'initializing' | 'ready' | 'unavailable'
 
 export interface WorkbookPaneSurfaceRuntimeResizeObserverV3 {
   observe(target: Element): void
@@ -37,6 +40,7 @@ const EMPTY_TYPEGPU_SURFACE_SIZE_V3: TypeGpuSurfaceSizeV3 = Object.freeze({
 
 export const EMPTY_WORKBOOK_PANE_SURFACE_SNAPSHOT_V3: WorkbookPaneSurfaceSnapshotV3 = Object.freeze({
   backend: null,
+  backendStatus: 'idle',
   surface: EMPTY_TYPEGPU_SURFACE_SIZE_V3,
   webGpuReady: false,
 })
@@ -108,6 +112,7 @@ function syncDefaultSurface(input: {
 export class WorkbookPaneSurfaceRuntimeV3 {
   private active = false
   private backend: object | null = null
+  private backendStatus: WorkbookPaneSurfaceBackendStatusV3 = 'idle'
   private canvas: HTMLCanvasElement | null = null
   private host: HTMLElement | null = null
   private initToken = 0
@@ -153,7 +158,7 @@ export class WorkbookPaneSurfaceRuntimeV3 {
     }
     this.active = active
     if (!active) {
-      this.destroyCurrentBackend()
+      this.destroyCurrentBackend('idle')
       return
     }
     void this.ensureBackend()
@@ -211,6 +216,7 @@ export class WorkbookPaneSurfaceRuntimeV3 {
       : EMPTY_TYPEGPU_SURFACE_SIZE_V3
     this.updateSnapshot({
       backend: this.backend,
+      backendStatus: this.backendStatus,
       surface,
       webGpuReady: this.backend !== null,
     })
@@ -218,11 +224,18 @@ export class WorkbookPaneSurfaceRuntimeV3 {
 
   private async ensureBackend(): Promise<void> {
     const canvas = this.canvas
-    if (!this.active || !canvas || this.backend) {
+    if (!this.active || !canvas || this.backend || this.backendStatus === 'initializing' || this.backendStatus === 'unavailable') {
       return
     }
     const token = ++this.initToken
-    const backend = await this.createBackend(canvas)
+    this.backendStatus = 'initializing'
+    this.refreshSurface()
+    let backend: object | null = null
+    try {
+      backend = await this.createBackend(canvas)
+    } catch {
+      backend = null
+    }
     if (token !== this.initToken || !this.active || this.canvas !== canvas) {
       if (backend) {
         this.destroyBackend(backend)
@@ -230,22 +243,26 @@ export class WorkbookPaneSurfaceRuntimeV3 {
       return
     }
     this.backend = backend
+    this.backendStatus = backend ? 'ready' : 'unavailable'
     this.updateSnapshot({
       backend,
+      backendStatus: this.backendStatus,
       surface: this.snapshot.surface,
       webGpuReady: backend !== null,
     })
   }
 
-  private destroyCurrentBackend(): void {
+  private destroyCurrentBackend(nextStatus: WorkbookPaneSurfaceBackendStatusV3 = 'idle'): void {
     this.initToken += 1
     const backend = this.backend
     this.backend = null
+    this.backendStatus = nextStatus
     if (backend) {
       this.destroyBackend(backend)
     }
     this.updateSnapshot({
       backend: null,
+      backendStatus: this.backendStatus,
       surface: this.snapshot.surface,
       webGpuReady: false,
     })

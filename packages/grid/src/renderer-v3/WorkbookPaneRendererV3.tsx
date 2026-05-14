@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { GridGeometrySnapshot } from '../gridGeometry.js'
 import type { GridHeaderPaneState } from '../gridHeaderPanes.js'
 import type { GridCameraStore } from '../runtime/gridCameraStore.js'
@@ -9,6 +9,11 @@ export { resolveTypeGpuV3DrawScrollSnapshot } from './workbook-pane-renderer-run
 import type { DynamicGridOverlayBatchV3 } from './dynamic-overlay-batch.js'
 import type { WorkbookRenderTilePaneState } from './render-tile-pane-state.js'
 import { WorkbookPaneRendererHostRuntimeV3 } from './workbook-pane-renderer-host-runtime.js'
+import type { WorkbookPaneSurfaceBackendStatusV3 } from './workbook-pane-surface-runtime.js'
+
+function resolveInitialBackendStatus(): WorkbookPaneSurfaceBackendStatusV3 {
+  return typeof navigator === 'undefined' || !('gpu' in navigator) ? 'unavailable' : 'idle'
+}
 
 export interface WorkbookPaneRendererV3Props {
   readonly active: boolean
@@ -37,9 +42,13 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
   scrollTransformStore = null,
   tilePanes,
 }: WorkbookPaneRendererV3Props) {
+  const [backendStatus, setBackendStatus] = useState<WorkbookPaneSurfaceBackendStatusV3>(resolveInitialBackendStatus)
   const hostRuntimeRef = useRef<WorkbookPaneRendererHostRuntimeV3 | null>(null)
+  const hostRuntimeLifetimeRef = useRef(0)
   if (!hostRuntimeRef.current) {
-    hostRuntimeRef.current = new WorkbookPaneRendererHostRuntimeV3()
+    hostRuntimeRef.current = new WorkbookPaneRendererHostRuntimeV3({
+      onSurfaceBackendStatusChange: setBackendStatus,
+    })
   }
   const hostRuntime = hostRuntimeRef.current
 
@@ -77,18 +86,30 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
   ])
 
   useEffect(() => {
+    const lifetime = hostRuntimeLifetimeRef.current + 1
+    hostRuntimeLifetimeRef.current = lifetime
     return () => {
-      hostRuntime.dispose()
+      queueMicrotask(() => {
+        if (hostRuntimeLifetimeRef.current !== lifetime) {
+          return
+        }
+        hostRuntime.dispose()
+        if (hostRuntimeRef.current === hostRuntime) {
+          hostRuntimeRef.current = null
+        }
+      })
     }
   }, [hostRuntime])
 
   if (!active || !host) {
     return null
   }
+  const showCanvasFallback = enableCanvasFallback || backendStatus !== 'ready'
+  const showTypeGpuCanvas = backendStatus !== 'unavailable'
 
   return (
     <>
-      {enableCanvasFallback ? (
+      {showCanvasFallback ? (
         <WorkbookPaneCanvasFallbackV3
           active={active}
           cameraStore={cameraStore}
@@ -101,20 +122,23 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           tilePanes={tilePanes}
         />
       ) : null}
-      <canvas
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 z-10"
-        data-pane-renderer="workbook-pane-renderer-v3"
-        data-renderer-mode="typegpu-v3"
-        data-testid="grid-pane-renderer"
-        data-v3-body-world-x={geometry?.camera.bodyWorldX ?? 0}
-        data-v3-body-world-y={geometry?.camera.bodyWorldY ?? 0}
-        data-v3-header-pane-count={headerPanes.length}
-        data-v3-preload-pane-count={preloadTilePanes.length}
-        data-v3-tile-pane-count={tilePanes.length}
-        ref={setCanvasRef}
-        style={{ contain: 'strict', height: '100%', width: '100%' }}
-      />
+      {showTypeGpuCanvas ? (
+        <canvas
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-10"
+          data-pane-renderer="workbook-pane-renderer-v3"
+          data-renderer-mode="typegpu-v3"
+          data-testid="grid-pane-renderer"
+          data-v3-backend-status={backendStatus}
+          data-v3-body-world-x={geometry?.camera.bodyWorldX ?? 0}
+          data-v3-body-world-y={geometry?.camera.bodyWorldY ?? 0}
+          data-v3-header-pane-count={headerPanes.length}
+          data-v3-preload-pane-count={preloadTilePanes.length}
+          data-v3-tile-pane-count={tilePanes.length}
+          ref={setCanvasRef}
+          style={{ contain: 'strict', height: '100%', width: '100%' }}
+        />
+      ) : null}
     </>
   )
 })

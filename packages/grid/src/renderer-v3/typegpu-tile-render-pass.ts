@@ -43,6 +43,9 @@ export function hasCompleteTypeGpuBodyTileContentV3(input: {
     if (pane.paneId !== 'body' && !pane.paneId.startsWith('body:')) {
       continue
     }
+    if (!isPaneDrawVisible(pane)) {
+      continue
+    }
     const content = input.tileResources.peekContent(resolveWorkbookTileContentBufferKeyV3(pane))
     if (!content) {
       return false
