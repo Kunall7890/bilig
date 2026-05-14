@@ -34,6 +34,7 @@ language: typescript
 - https://proompteng.github.io/bilig/mcp-client-setup.html
 - https://proompteng.github.io/bilig/claude-desktop-mcpb-workpaper.html
 - https://proompteng.github.io/bilig/agent-workpaper-tool-calling-recipe.html
+- https://proompteng.github.io/bilig/openai-responses-workpaper-tool-call.html
 - https://proompteng.github.io/bilig/agent-spreadsheet-tool-call-loop.html
 - https://proompteng.github.io/bilig/node-service-workpaper-recipe.html
 - https://proompteng.github.io/bilig/serverless-workpaper-api-route.html
@@ -62,6 +63,7 @@ language: typescript
 - https://github.com/proompteng/bilig/blob/main/docs/csv-shaped-workpaper-input-recipe.md
 - https://github.com/proompteng/bilig/blob/main/docs/unsupported-formula-troubleshooting-recipe.md
 - https://github.com/proompteng/bilig/blob/main/docs/agent-workpaper-tool-calling-recipe.md
+- https://github.com/proompteng/bilig/blob/main/docs/openai-responses-workpaper-tool-call.md
 - https://github.com/proompteng/bilig/blob/main/docs/mcp-workpaper-tool-server.md
 - https://github.com/proompteng/bilig/blob/main/docs/agent-spreadsheet-tool-call-loop.md
 - https://github.com/proompteng/bilig/blob/main/docs/local-workpaper-benchmark-walkthrough.md
@@ -105,6 +107,7 @@ cd bilig/examples/headless-workpaper
 npm install
 npm start
 npm run agent:tool-call
+npm run agent:openai-responses
 npm run agent:framework-adapters
 npm run agent:verify
 ```
@@ -182,6 +185,11 @@ npm run agent:verify
 - workpaper tool-calling recipe for agents:
   https://proompteng.github.io/bilig/agent-workpaper-tool-calling-recipe.html
   https://github.com/proompteng/bilig/blob/main/docs/agent-workpaper-tool-calling-recipe.md
+- OpenAI Responses WorkPaper tool-call recipe:
+  npm run agent:openai-responses
+  https://proompteng.github.io/bilig/openai-responses-workpaper-tool-call.html
+  https://github.com/proompteng/bilig/blob/main/docs/openai-responses-workpaper-tool-call.md
+  https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/openai-responses-tool-wrapper.ts
 - agent framework spreadsheet tool guide:
   https://proompteng.github.io/bilig/vercel-ai-sdk-langchain-spreadsheet-tool.html
   https://github.com/proompteng/bilig/blob/main/docs/vercel-ai-sdk-langchain-spreadsheet-tool.md

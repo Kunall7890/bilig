@@ -7,6 +7,7 @@
     "agent:framework-adapters": "tsx agent-framework-adapters.ts",
     "agent:mcp-stdio": "tsx mcp-stdio-server.ts",
     "agent:mcp-tools": "tsx mcp-tool-server.ts",
+    "agent:openai-responses": "tsx openai-responses-tool-wrapper.ts",
     "agent:tool-call": "tsx agent-tool-call-loop.ts",
     "agent:verify": "tsx agent-writeback-verification.ts",
     "budget-variance": "tsx budget-variance-alerts.ts",

@@ -81,6 +81,7 @@ Useful direct paths:
   [CopilotKit](docs/copilotkit-workpaper-spreadsheet-action.md), and
   [Cloudflare Agents](docs/cloudflare-agents-workpaper-spreadsheet-tool.md),
   [framework adapters](examples/headless-workpaper#agent-framework-adapters),
+  [OpenAI Responses WorkPaper tools](docs/openai-responses-workpaper-tool-call.md),
   [MCP tool server shape](examples/headless-workpaper#mcp-tool-server-shape), and
   [MCP server guide](docs/mcp-workpaper-tool-server.md). Check the
   [MCP directory status page](docs/mcp-spreadsheet-server-directory.md) when
@@ -88,6 +89,7 @@ Useful direct paths:
   [MCP client setup](docs/mcp-client-setup.md) for Claude, Cursor, VS Code,
   Cline, and Codex configs, or build the
   [Claude Desktop MCPB bundle](docs/claude-desktop-mcpb-workpaper.md). Run
+  `npm run agent:openai-responses`,
   `npm run agent:framework-adapters`, `npm run agent:mcp-tools`,
   `npm run agent:mcp-stdio`, or
   `pnpm mcpb:workpaper:build`, or
@@ -150,6 +152,7 @@ cd bilig/examples/headless-workpaper
 npm install
 npm start
 npm run agent:tool-call
+npm run agent:openai-responses
 npm run agent:framework-adapters
 npm run agent:verify
 ```
@@ -381,6 +384,11 @@ WorkPaper read/write functions and exposes thin framework adapter shapes
 for AI SDK, LangChain, Mastra, LlamaIndex.TS, LangGraph.js, CopilotKit, and
 Cloudflare Agents.
 
+For the OpenAI Responses function-calling shape on its own, run
+`npm run agent:openai-responses`. It shows the application-side loop: receive
+`function_call` items, execute the WorkPaper tools in TypeScript, append
+`function_call_output` items, and ground the final answer in computed readback.
+
 For an MCP-style shape, run `npm run agent:mcp-tools`. It returns a
 dependency-free `tools/list` response, a `tools/call` read, and a verified
 input edit with structured computed readback. Run `npm run agent:mcp-stdio`
@@ -506,7 +514,11 @@ For a concrete framework-neutral agent tool loop, see
 [`docs/agent-workpaper-tool-calling-recipe.md`](docs/agent-workpaper-tool-calling-recipe.md).
 It wraps WorkPaper reads, validated writes, computed before/after checks, and
 persistence into a small tool surface, including an OpenAI Responses API
-function-calling wrapper.
+function-calling wrapper. For the standalone runnable OpenAI Responses
+dispatcher, see
+[`docs/openai-responses-workpaper-tool-call.md`](docs/openai-responses-workpaper-tool-call.md)
+and
+[`examples/headless-workpaper/openai-responses-tool-wrapper.ts`](examples/headless-workpaper/openai-responses-tool-wrapper.ts).
 
 For the persistence-focused follow-up article and runnable example, see
 [`docs/persisting-formula-backed-workpaper-documents-in-node.md`](docs/persisting-formula-backed-workpaper-documents-in-node.md)

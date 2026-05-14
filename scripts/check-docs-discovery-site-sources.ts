@@ -2,6 +2,7 @@ export const docsSiteSources = [
   ['', 'index.html'],
   ['why-agents-need-workbook-apis.html', 'why-agents-need-workbook-apis.md'],
   ['agent-workpaper-tool-calling-recipe.html', 'agent-workpaper-tool-calling-recipe.md'],
+  ['openai-responses-workpaper-tool-call.html', 'openai-responses-workpaper-tool-call.md'],
   ['vercel-ai-sdk-langchain-spreadsheet-tool.html', 'vercel-ai-sdk-langchain-spreadsheet-tool.md'],
   ['mastra-workpaper-spreadsheet-tool.html', 'mastra-workpaper-spreadsheet-tool.md'],
   ['llamaindex-workpaper-spreadsheet-tool.html', 'llamaindex-workpaper-spreadsheet-tool.md'],

@@ -24,7 +24,10 @@ Start with the package README for the public API contract:
 
 For a runnable external example, use
 [`examples/headless-workpaper`](../examples/headless-workpaper) and run
-`npm run agent:tool-call`. For a smaller writeback-only proof, run
+`npm run agent:tool-call`. If your app calls OpenAI Responses directly, run
+`npm run agent:openai-responses` and read the
+[OpenAI Responses WorkPaper tool-call guide](openai-responses-workpaper-tool-call.md).
+For a smaller writeback-only proof, run
 `npm run agent:verify`. For framework-shaped wrappers that do not pull Vercel
 AI SDK or LangChain into this repository, run
 `npm run agent:framework-adapters`.
@@ -217,6 +220,14 @@ OpenAI function tools should stay thin. The model chooses a tool call; your
 Node process parses the arguments, runs the WorkPaper function, and sends the
 structured result back as a `function_call_output`. Do not ask the model to
 modify workbook JSON by hand.
+
+The maintained repository script for this section is
+[`examples/headless-workpaper/openai-responses-tool-wrapper.ts`](../examples/headless-workpaper/openai-responses-tool-wrapper.ts):
+
+```sh
+cd examples/headless-workpaper
+npm run agent:openai-responses
+```
 
 The official Responses API function-calling flow preserves the model output,
 executes every `function_call`, appends `function_call_output` items, and sends

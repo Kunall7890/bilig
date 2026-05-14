@@ -5,6 +5,7 @@ import { agentFrameworkDocRequirements, agentFrameworkLlmsRequiredLinks } from '
 import { communityLaunchPackRequiredLinks, llmsExternalSurfaceLinks } from './check-docs-discovery-growth-links.ts'
 import { requireHomepageDiscovery } from './check-docs-discovery-homepage.ts'
 import { requireNpmEvalDiscovery } from './check-docs-discovery-npm-eval.ts'
+import { requireOpenAiResponsesDiscovery } from './check-docs-discovery-openai-responses.ts'
 import { docsSiteSources } from './check-docs-discovery-site-sources.ts'
 import { requireStarterIssueDiscovery } from './check-docs-discovery-starter-issues.ts'
 
@@ -825,6 +826,17 @@ const [headlessExampleReadme, headlessExamplePackage, headlessPackageManifest, h
   readFile(join(repoRoot, 'packages', 'headless', 'server.json'), 'utf8'),
 ])
 await requireNpmEvalDiscovery(repoRoot, docsRoot, readme, headlessReadme, headlessExampleReadme)
+await requireOpenAiResponsesDiscovery({
+  repoRoot,
+  docsRoot,
+  readme,
+  headlessReadme,
+  index,
+  llms,
+  agentToolCallingDoc,
+  headlessExampleReadme,
+  headlessExamplePackage,
+})
 await requireFile(join(repoRoot, 'examples', 'headless-workpaper', 'agent-framework-adapters.ts'))
 await requireFile(join(repoRoot, 'examples', 'headless-workpaper', 'mcp-tool-server.ts'))
 await requireFile(join(repoRoot, 'examples', 'headless-workpaper', 'mcp-stdio-server.ts'))

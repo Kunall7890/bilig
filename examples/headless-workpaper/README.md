@@ -43,6 +43,7 @@ packages through `pnpm workpaper:smoke:external`.
 | ------------------------ | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | Quick revenue workbook   | `npm start`                        | formulas, named expressions, persistence                                                                          |
 | Agent tool call loop     | `npm run agent:tool-call`          | read, edit, verify, serialize, restore                                                                            |
+| OpenAI Responses wrapper | `npm run agent:openai-responses`   | `function_call` dispatch, `function_call_output`, verified WorkPaper readback                                     |
 | Agent framework adapters | `npm run agent:framework-adapters` | TypeScript wrappers for AI SDK, LangChain, Mastra, LlamaIndex.TS, LangGraph.js, CopilotKit, and Cloudflare Agents |
 | MCP tool server shape    | `npm run agent:mcp-tools`          | `tools/list`, `tools/call`, verified edits                                                                        |
 | MCP stdio server         | `npm run agent:mcp-stdio`          | newline-delimited JSON-RPC over stdin/stdout                                                                      |
@@ -151,6 +152,43 @@ For agent frameworks, the
 also links to wrappers that keep the same validation and computed readback
 contract across the OpenAI Responses API, AI SDK, LangChain, Mastra,
 LlamaIndex.TS, LangGraph.js, CopilotKit, and Cloudflare Agents.
+
+## OpenAI Responses Tool Wrapper
+
+Run this when your app calls OpenAI Responses directly and you want the
+application-side WorkPaper dispatcher without an API key:
+
+```sh
+npm run agent:openai-responses
+```
+
+The example mirrors the Responses tool loop: model output contains
+`function_call` items, the Node process runs the WorkPaper tools, and the next
+input includes matching `function_call_output` items.
+
+Expected proof:
+
+```json
+{
+  "apiShape": "OpenAI Responses function_call -> function_call_output",
+  "toolNames": ["read_workpaper_summary", "set_workpaper_input_cell"],
+  "followupInputTypes": ["user", "function_call", "function_call", "function_call_output", "function_call_output"],
+  "writeResult": {
+    "editedCell": "Inputs!B3",
+    "before": { "expectedArr": 60000, "targetGap": -34000 },
+    "after": { "expectedArr": 96000, "targetGap": 5600 },
+    "checks": {
+      "formulasPersisted": true,
+      "restoredMatchesAfter": true,
+      "expectedArrChanged": true
+    }
+  }
+}
+```
+
+Use this file as the local dispatcher around the official OpenAI Responses API
+call. The workbook logic stays in TypeScript functions; the model only sees the
+tool schema and structured tool output.
 
 ## Agent Framework Adapters
 
