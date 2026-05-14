@@ -1,5 +1,4 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
-import { flushSync } from 'react-dom'
 import type { EditMovement, EditTargetSelection } from './SheetGridView.js'
 
 function normalizeNumpadKey(key: string, code: string): string | null {
@@ -115,9 +114,7 @@ export function CellEditorOverlay({
 
   const updateDraftValue = (nextValue: string) => {
     pendingParentSyncValueRef.current = nextValue
-    flushSync(() => {
-      setDraftValue(nextValue)
-    })
+    setDraftValue(nextValue)
     if (pendingParentSyncRef.current !== null) {
       return
     }

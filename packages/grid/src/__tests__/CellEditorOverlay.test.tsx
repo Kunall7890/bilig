@@ -1,11 +1,22 @@
 // @vitest-environment jsdom
 import { act } from 'react'
+import { flushSync } from 'react-dom'
 import { createRoot } from 'react-dom/client'
+import type * as ReactDom from 'react-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CellEditorOverlay } from '../CellEditorOverlay.js'
 
+vi.mock('react-dom', async (importOriginal) => {
+  const actual = await importOriginal<typeof ReactDom>()
+  return {
+    ...actual,
+    flushSync: vi.fn(actual.flushSync),
+  }
+})
+
 afterEach(() => {
   document.body.innerHTML = ''
+  vi.mocked(flushSync).mockClear()
 })
 
 function makeTargetSelection() {
@@ -166,6 +177,53 @@ describe('CellEditorOverlay', () => {
         root.unmount()
       })
       vi.useRealTimers()
+    }
+  })
+
+  it('keeps printable key insertion off synchronous React flushes', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const onChange = vi.fn()
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+
+    try {
+      await act(async () => {
+        root.render(
+          <CellEditorOverlay
+            label="Sheet1!B2"
+            targetSelection={makeTargetSelection()}
+            onCancel={() => {}}
+            onChange={onChange}
+            onCommit={() => {}}
+            resolvedValue=""
+            value=""
+          />,
+        )
+      })
+
+      const textarea = host.querySelector<HTMLTextAreaElement>("[data-testid='cell-editor-input']")
+      expect(textarea).not.toBeNull()
+      if (!textarea) {
+        throw new Error('Expected mounted cell editor input')
+      }
+
+      vi.mocked(flushSync).mockClear()
+
+      await act(async () => {
+        textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true }))
+        textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', bubbles: true, cancelable: true }))
+        textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'c', bubbles: true, cancelable: true }))
+      })
+
+      expect(textarea.value).toBe('abc')
+      expect(onChange).not.toHaveBeenCalled()
+      expect(flushSync).not.toHaveBeenCalled()
+    } finally {
+      await act(async () => {
+        root.unmount()
+      })
     }
   })
 
