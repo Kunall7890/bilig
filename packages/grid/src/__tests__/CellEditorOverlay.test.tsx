@@ -453,12 +453,16 @@ describe('CellEditorOverlay', () => {
         mockFrames.flushAnimationFrames()
       })
 
+      const overlay = host.querySelector<HTMLElement>("[data-testid='cell-editor-overlay']")
       const textarea = host.querySelector<HTMLTextAreaElement>("[data-testid='cell-editor-input']")
 
       await act(async () => {
         textarea?.dispatchEvent(new FocusEvent('focusout', { bubbles: true }))
       })
       expect(onCommit).not.toHaveBeenCalled()
+      expect(overlay?.dataset['completing']).toBe('true')
+      expect(textarea?.readOnly).toBe(true)
+      expect(textarea?.style.opacity).toBe('0')
 
       await act(async () => {
         textarea?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))

@@ -490,6 +490,8 @@ describe('public workbook corpus shared links', () => {
           manifestPath,
           '--cache-dir',
           cacheDir,
+          '--corpus-run-stop-marker',
+          join(cacheDir, 'inactive-stop.md'),
           '--source-id',
           'source-missing',
           '--download-timeout-ms',
@@ -497,6 +499,7 @@ describe('public workbook corpus shared links', () => {
         ],
         { encoding: 'utf8' },
       )
+      expect(result.status, result.stderr).toBe(0)
       const output = asRecord(JSON.parse(result.stdout) as unknown)
       const checkpointProgress = output['checkpointProgress']
       expect(Array.isArray(checkpointProgress)).toBe(true)
@@ -504,7 +507,6 @@ describe('public workbook corpus shared links', () => {
       const failedSourceSamples = firstProgress['failedSourceSamples']
       expect(Array.isArray(failedSourceSamples)).toBe(true)
 
-      expect(result.status).toBe(0)
       expect(firstProgress).toMatchObject({
         artifactCount: 0,
         exhaustedSourceCount: 1,

@@ -20,12 +20,12 @@ import {
 } from '@bilig/contracts'
 import { createWorkbookPerfSession } from './perf/workbook-perf.js'
 import { WorkbookAgentPanel } from './WorkbookAgentPanel.js'
-import { logDebug } from './runtime-logger.js'
 import {
   useWorkbookAgentThreadSummaries,
   useWorkbookAgentWorkflowRuns,
   type ZeroWorkbookAgentSource,
 } from './use-workbook-agent-durable-state.js'
+import { useWorkbookAgentContextSync } from './use-workbook-agent-context-sync.js'
 import {
   clearStoredDraft,
   clearStoredSession,
@@ -189,7 +189,6 @@ export function useWorkbookAgentPane(input: {
   const sessionRef = useRef<WorkbookAgentLiveSession | null>(null)
   const eventSourceRef = useRef<EventSource | null>(null)
   const recoveringStreamRef = useRef(false)
-  const lastContextKeyRef = useRef<string>('')
   const lastAppliedSnapshotContextKeyRef = useRef<string>('')
   const lastRequestedAuthoritativeRevisionRef = useRef(0)
   const lastDraftKeyRef = useRef<string | null>(null)
@@ -223,6 +222,14 @@ export function useWorkbookAgentPane(input: {
   )
   const usesLiveThreadSummaries = zeroEnabled && Boolean(zero)
   const client = useMemo(() => createWorkbookAgentClient(documentId), [documentId])
+  const { clearPendingContextSync, resetContextSync, scheduleContextSync } = useWorkbookAgentContextSync({
+    client,
+    documentId,
+    enabled,
+    getContextRef,
+    sessionRef,
+    snapshot,
+  })
 
   useEffect(() => {
     getContextRef.current = getContext
@@ -630,6 +637,7 @@ export function useWorkbookAgentPane(input: {
   useEffect(() => {
     if (!enabled || !apiEnabled) {
       closeStream()
+      resetContextSync()
       sessionRef.current = null
       recoveringStreamRef.current = false
       setFetchedThreadSummaries([])
@@ -638,7 +646,7 @@ export function useWorkbookAgentPane(input: {
       return
     }
     let cancelled = false
-    lastContextKeyRef.current = ''
+    resetContextSync()
     const storedSession = loadStoredSession(documentId)
     sessionRef.current = null
 
@@ -665,6 +673,7 @@ export function useWorkbookAgentPane(input: {
       return () => {
         cancelled = true
         closeStream()
+        clearPendingContextSync()
       }
     }
 
@@ -692,8 +701,20 @@ export function useWorkbookAgentPane(input: {
     return () => {
       cancelled = true
       closeStream()
+      clearPendingContextSync()
     }
-  }, [closeStream, connectStream, client, documentId, enabled, persistSessionSnapshot, apiEnabled, usesLiveThreadSummaries])
+  }, [
+    clearPendingContextSync,
+    closeStream,
+    connectStream,
+    client,
+    documentId,
+    enabled,
+    persistSessionSnapshot,
+    apiEnabled,
+    resetContextSync,
+    usesLiveThreadSummaries,
+  ])
 
   const selectThread = useCallback(
     async (threadId: string) => {
@@ -742,32 +763,14 @@ export function useWorkbookAgentPane(input: {
   }, [showAssistantProgress, syncAuthoritativeRevision])
 
   useEffect(() => {
-    if (!enabled || !snapshot) {
-      return
-    }
-    const timeout = window.setTimeout(() => {
-      const activeSession = sessionRef.current
-      if (!activeSession) {
-        return
-      }
-      const nextContext = getContextRef.current()
-      const nextContextKey = `${activeSession.threadId}:${stringifyWorkbookAgentContextSyncKey(nextContext)}`
-      if (lastContextKeyRef.current === nextContextKey) {
-        return
-      }
-      lastContextKeyRef.current = nextContextKey
-      void (async () => {
-        try {
-          await client.syncThreadContext(activeSession.threadId, nextContext)
-        } catch (syncError) {
-          logDebug('Failed to sync agent context update', { documentId, error: syncError })
-        }
-      })()
-    }, 150)
-    return () => {
-      window.clearTimeout(timeout)
-    }
+    scheduleContextSync()
   })
+
+  useEffect(() => {
+    return () => {
+      clearPendingContextSync()
+    }
+  }, [clearPendingContextSync])
 
   const sendPrompt = useCallback(async () => {
     const prompt = draft.trim()

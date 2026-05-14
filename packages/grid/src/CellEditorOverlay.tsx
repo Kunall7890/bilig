@@ -238,9 +238,14 @@ export function CellEditorOverlay({
     if (!blurArmedRef.current || completionRef.current !== 'idle' || pendingBlurCommitRef.current !== null) {
       return
     }
+    const nextValue = inputRef.current?.value ?? draftValue
+    const nextTargetSelection = targetSelectionRef.current
+    cancelPendingParentSync()
+    pendingParentSyncValueRef.current = nextValue
+    beginCompletion('commit')
     pendingBlurCommitRef.current = window.requestAnimationFrame(() => {
       pendingBlurCommitRef.current = null
-      commit()
+      onCommit(undefined, nextValue, nextTargetSelection)
     })
   }
 
