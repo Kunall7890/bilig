@@ -15,6 +15,14 @@ function cellAttributeValues(tag: string): Map<string, string> {
   return attributes
 }
 
+function readSheetDefaultRowHeight(sheetXml: string): string | undefined {
+  const sheetFormatTag = /<sheetFormatPr\b(?:[^>"']|"[^"]*"|'[^']*')*(?:\/>|>)/u.exec(sheetXml)?.[0]
+  if (!sheetFormatTag) {
+    return undefined
+  }
+  return cellAttributeValues(sheetFormatTag).get('defaultRowHeight')
+}
+
 function isStyleOnlyBlankCellXml(cellXml: string): boolean {
   const openingTag = /^<c\b(?:[^>"']|"[^"]*"|'[^']*')*(?:\/>|>)/u.exec(cellXml)?.[0]
   if (!openingTag) {
@@ -30,13 +38,48 @@ function isStyleOnlyBlankCellXml(cellXml: string): boolean {
   return attributes.size === 3 && attributes.get('t') === 'z'
 }
 
-function stripStyleOnlyBlankCells(sheetXml: string): string {
-  return sheetXml.replace(/<c\b(?:[^>"']|"[^"]*"|'[^']*')*\/>|<c\b(?:[^>"']|"[^"]*"|'[^']*')*>\s*<\/c>/gu, (cellXml) =>
-    isStyleOnlyBlankCellXml(cellXml) ? '' : cellXml,
+function isNoOpEmptyRowXml(rowXml: string, defaultRowHeight: string | undefined): boolean {
+  const openingTag = /^<row\b(?:[^>"']|"[^"]*"|'[^']*')*(?:\/>|>)/u.exec(rowXml)?.[0]
+  if (!openingTag) {
+    return false
+  }
+  if (/<c\b/u.test(rowXml)) {
+    return false
+  }
+  const attributes = cellAttributeValues(openingTag)
+  for (const name of attributes.keys()) {
+    if (name === 'r' || name === 'spans') {
+      continue
+    }
+    if (name === 'x14ac:dyDescent') {
+      continue
+    }
+    if (name === 'customHeight' && attributes.get(name) === '1' && attributes.get('ht') === defaultRowHeight) {
+      continue
+    }
+    if (name === 'ht' && attributes.get(name) === defaultRowHeight) {
+      continue
+    }
+    return false
+  }
+  return true
+}
+
+function stripNoOpEmptyRows(sheetXml: string): string {
+  const defaultRowHeight = readSheetDefaultRowHeight(sheetXml)
+  return sheetXml.replace(/<row\b(?:[^>"']|"[^"]*"|'[^']*')*\/>|<row\b(?:[^>"']|"[^"]*"|'[^']*')*>\s*<\/row>/gu, (rowXml) =>
+    isNoOpEmptyRowXml(rowXml, defaultRowHeight) ? '' : rowXml,
   )
 }
 
-export function stripStyleOnlyBlankCellsForSheetJs(data: Uint8Array, zip: Unzipped): Uint8Array {
+function stripStyleOnlyBlankCells(sheetXml: string): string {
+  const withoutBlankCells = sheetXml.replace(/<c\b(?:[^>"']|"[^"]*"|'[^']*')*\/>|<c\b(?:[^>"']|"[^"]*"|'[^']*')*>\s*<\/c>/gu, (cellXml) =>
+    isStyleOnlyBlankCellXml(cellXml) ? '' : cellXml,
+  )
+  return stripNoOpEmptyRows(withoutBlankCells)
+}
+
+function stripWorkbookWorksheetXml(data: Uint8Array, zip: Unzipped, stripWorksheet: (sheetXml: string) => string): Uint8Array {
   let changed = false
   for (const path of Object.keys(zip)) {
     if (!xlsxWorksheetXmlPathPattern.test(path)) {
@@ -47,7 +90,7 @@ export function stripStyleOnlyBlankCellsForSheetJs(data: Uint8Array, zip: Unzipp
       continue
     }
     const worksheetXml = strFromU8(worksheetBytes)
-    const strippedWorksheetXml = stripStyleOnlyBlankCells(worksheetXml)
+    const strippedWorksheetXml = stripWorksheet(worksheetXml)
     if (strippedWorksheetXml === worksheetXml) {
       continue
     }
@@ -55,4 +98,12 @@ export function stripStyleOnlyBlankCellsForSheetJs(data: Uint8Array, zip: Unzipp
     changed = true
   }
   return changed ? zipSync(zip) : data
+}
+
+export function stripNoOpEmptyRowsFromXlsx(data: Uint8Array, zip: Unzipped): Uint8Array {
+  return stripWorkbookWorksheetXml(data, zip, stripNoOpEmptyRows)
+}
+
+export function stripStyleOnlyBlankCellsForSheetJs(data: Uint8Array, zip: Unzipped): Uint8Array {
+  return stripWorkbookWorksheetXml(data, zip, stripStyleOnlyBlankCells)
 }
