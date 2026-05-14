@@ -299,7 +299,7 @@ pre,
 
 .hero-notes {
   display: grid;
-  grid-template-columns: repeat(3, minmax(150px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: clamp(14px, 2.2vw, 24px);
   border-top: 1px solid var(--line-strong);
   padding-top: 22px;
@@ -833,6 +833,12 @@ footer {
   .proof-links a:first-child {
     border: 1px solid var(--line);
     padding: 14px 15px;
+  }
+}
+
+@media (max-width: 700px) {
+  .hero-notes {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -132,6 +132,7 @@ const [
   rootPackageJson,
   index,
   siteCss,
+  productCss,
   robots,
   sitemap,
   llms,
@@ -155,6 +156,7 @@ const [
   readFile(join(repoRoot, 'package.json'), 'utf8'),
   readFile(join(docsRoot, 'index.html'), 'utf8'),
   readFile(join(docsRoot, 'assets', 'site.css'), 'utf8'),
+  readFile(join(docsRoot, 'assets', 'product-demo.css'), 'utf8'),
   readFile(join(docsRoot, 'robots.txt'), 'utf8'),
   readFile(join(docsRoot, 'sitemap.xml'), 'utf8'),
   readFile(join(docsRoot, 'llms.txt'), 'utf8'),
@@ -181,7 +183,7 @@ const [headlessSpreadsheetEngineComparison, sheetjsExceljsAlternativeFormulaWork
     readFile(join(docsRoot, 'hyperformula-alternative-headless-workpaper.md'), 'utf8'),
   ])
 
-requireHomepageDiscovery(index, siteCss)
+requireHomepageDiscovery(index, siteCss, productCss)
 requirePackageKeywords(
   headlessPackageJson,
   ['calculation', 'compute', 'excel', 'headless-spreadsheet', 'node-spreadsheet', 'sheet', 'spreadsheet-engine', 'worksheet'],

@@ -3,14 +3,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>bilig - Spreadsheet Logic for TypeScript Services</title>
+    <title>bilig - Workbook Formulas in TypeScript</title>
     <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg" />
     <link rel="canonical" href="https://proompteng.github.io/bilig/" />
     <link rel="sitemap" type="application/xml" href="https://proompteng.github.io/bilig/sitemap.xml" />
     <link rel="alternate" type="text/plain" href="https://proompteng.github.io/bilig/llms.txt" title="llms.txt" />
     <meta
       name="description"
-      content="bilig runs small spreadsheet models from TypeScript: build a WorkPaper, change inputs, read calculated cells, and save JSON state for services or agent tools."
+      content="bilig runs workbook formulas from TypeScript: build a WorkPaper, change inputs, read calculated cells, and save JSON state for services or agent tools."
     />
     <meta
       name="keywords"
@@ -19,7 +19,7 @@
     <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta name="theme-color" content="#151713" />
     <meta property="og:site_name" content="bilig" />
-    <meta property="og:title" content="bilig - Spreadsheet Logic for TypeScript Services" />
+    <meta property="og:title" content="bilig - Workbook Formulas in TypeScript" />
     <meta
       property="og:description"
       content="Build a WorkPaper in TypeScript, change inputs, read calculated cells, and persist the workbook as JSON."
@@ -31,7 +31,7 @@
     <meta property="og:image:width" content="1280" />
     <meta property="og:image:height" content="640" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="bilig - Spreadsheet Logic for TypeScript Services" />
+    <meta name="twitter:title" content="bilig - Workbook Formulas in TypeScript" />
     <meta
       name="twitter:description"
       content="Workbook formulas, typed writes, calculated readback, and JSON persistence for TypeScript services."
@@ -121,7 +121,7 @@
         ]
       }
     </script>
-    <link rel="stylesheet" href="./assets/site.css?v=2026-05-14-9" />
+    <link rel="stylesheet" href="./assets/site.css?v=2026-05-14-10" />
     <link rel="stylesheet" href="./assets/product-demo.css?v=2026-05-14-2" />
   </head>
   <body>
@@ -150,11 +150,11 @@
           <p class="eyebrow" translate="no">@bilig/headless</p>
           <h1 id="hero-title" class="hero-title">
             <strong translate="no">bilig</strong>
-            <span>Spreadsheet logic for TypeScript services.</span>
+            <span>Run workbook formulas in TypeScript.</span>
           </h1>
           <p class="lede">
-            When a pricing rule, budget check, or payout model is easiest to express as cells and formulas, keep it that way. Change the
-            inputs, read the calculated cells, and save the workbook as JSON.
+            Use a WorkPaper when a calculation is easier to review as cells and formulas. Build the sheets, change the inputs, read the
+            calculated cells, and save the workbook as JSON.
           </p>
           <div class="install-command" aria-label="Install command">
             <span class="mono">$</span>
@@ -167,16 +167,16 @@
           </div>
           <div class="hero-notes" aria-label="Project status">
             <div class="hero-note">
-              <strong>TypeScript examples</strong>
-              <span>The docs link to runnable TypeScript files.</span>
+              <strong>Runnable .ts examples</strong>
+              <span>The docs link to real TypeScript files.</span>
             </div>
             <div class="hero-note">
-              <strong>Edit, then read</strong>
-              <span>Change one input and inspect the dependent total.</span>
+              <strong>Write, then read</strong>
+              <span>Set an input cell and read the recalculated total.</span>
             </div>
             <div class="hero-note">
               <strong>100 starter issues</strong>
-              <span>Small docs, examples, adapters, and tests are open.</span>
+              <span>Small docs, examples, adapters, and tests.</span>
             </div>
           </div>
         </div>
@@ -278,11 +278,11 @@ workbook.setCellContents(
           <div class="section-head">
             <div>
               <p class="kicker">The job</p>
-              <h2 id="why-title">Use it when the spreadsheet is the model, not the UI.</h2>
+              <h2 id="why-title">Use it when the spreadsheet is the model.</h2>
             </div>
             <p>
-              Pricing tables, budget checks, imports, payouts, and agent tools often start as rows and formulas. Keep that shape, then run
-              it from Node.
+              Pricing tables, import checks, payouts, and budget rules often make the most sense as rows and formulas. bilig lets the
+              service own that model directly.
             </p>
           </div>
 
@@ -290,22 +290,22 @@ workbook.setCellContents(
             <div class="work-row">
               <span class="step">01 / create</span>
               <h3>Build the workbook.</h3>
-              <p>Start from arrays, service records, CSV-shaped data, or saved WorkPaper JSON.</p>
+              <p>Start from arrays, records, CSV-shaped data, or saved WorkPaper JSON.</p>
             </div>
             <div class="work-row">
               <span class="step">02 / edit</span>
               <h3>Write the input.</h3>
-              <p>Update the quote quantity, budget assumption, payout rate, or imported value.</p>
+              <p>Update a quantity, rate, assumption, imported value, or threshold.</p>
             </div>
             <div class="work-row">
               <span class="step">03 / read</span>
-              <h3>Read the output cell.</h3>
-              <p>The workbook recalculates before the service uses the value.</p>
+              <h3>Read the result.</h3>
+              <p>Use the value the workbook produced after the input changed.</p>
             </div>
             <div class="work-row">
               <span class="step">04 / save</span>
-              <h3>Save the state.</h3>
-              <p>Persist formulas, sheets, and config as JSON between runs.</p>
+              <h3>Save the workbook.</h3>
+              <p>Persist sheets, formulas, and config as JSON between runs.</p>
             </div>
           </div>
         </div>
@@ -410,7 +410,7 @@ function readNumber(cell: unknown): number {
           <div class="section-head">
             <div>
               <p class="kicker">Where it runs</p>
-              <h2 id="mcp-title">Put the workbook behind the workflow that needs the answer.</h2>
+              <h2 id="mcp-title">Put the workbook where the calculation happens.</h2>
             </div>
             <p>Route handler, queue worker, CLI, or MCP server: load the workbook, edit cells, read results, save state.</p>
           </div>
@@ -560,10 +560,10 @@ function readNumber(cell: unknown): number {
           <div class="section-head">
             <div>
               <p class="kicker">Start here</p>
-              <h2 id="learn-title">Start where you already are.</h2>
+              <h2 id="learn-title">Pick the path that matches your codebase.</h2>
             </div>
             <p>
-              Try the package, drop it behind a service route, expose it as an agent tool, or compare it with the usual spreadsheet stack.
+              Try the package, put it behind a service route, expose it as an agent tool, or compare it with the usual spreadsheet stack.
             </p>
           </div>
 
@@ -607,7 +607,7 @@ function readNumber(cell: unknown): number {
           <div class="section-head">
             <div>
               <p class="kicker">Reference</p>
-              <h2 id="docs-title">Reference by job, not by package name.</h2>
+              <h2 id="docs-title">Docs by job, not package name.</h2>
             </div>
             <p>Open the install path, service recipe, agent adapter, or comparison page that matches what you are building.</p>
           </div>
