@@ -22,6 +22,7 @@ import {
   formulaSourcesEquivalentForOracle,
   normalizedValuesEqual,
   reproNotesFor,
+  sanitizeNormalizedValue,
   sanitizeErrorMessage,
   sanitizeFormula,
   trueMismatchClassifications,
@@ -106,12 +107,20 @@ export function runExcelOracleEvaluation(
   options: HarnessOptions,
 ): OracleHarnessReport {
   const files = collectWorkbookFiles(originalDir)
+  const oracleRoot = resolvedRecalculatedDir(recalculatedDir)
   const workbooks = files.map((filePath) => {
-    const oraclePath = join(recalculatedDir, relative(originalDir, filePath))
+    const id = workbookIdForFile(filePath)
+    const oraclePath = findOracleWorkbookPath({
+      id,
+      originalDir,
+      filePath,
+      oracleRoot,
+    })
     return evaluateWorkbookAgainstOracle({
       inputDir: originalDir,
       filePath,
-      oraclePath: existsSync(oraclePath) ? oraclePath : undefined,
+      oraclePath,
+      oracleRequired: true,
       options,
     })
   })
@@ -142,27 +151,27 @@ export function prepareExcelOracle(inputDir: string, outputDir: string): void {
   const recalculatedDir = join(outputDir, 'recalculated')
   const excelAvailable = isExcelAutomationAvailable()
   const workbooks = files.map((filePath) => {
-    const relativePath = relative(inputDir, filePath)
-    const outputPath = join(recalculatedDir, relativePath)
+    const id = workbookIdForFile(filePath)
+    const outputPath = join(recalculatedDir, sanitizedWorkbookName(id, filePath))
     if (!excelAvailable) {
       return {
-        id: workbookIdForFile(filePath),
-        workbook: sanitizedWorkbookName(workbookIdForFile(filePath), filePath),
+        id,
+        workbook: sanitizedWorkbookName(id, filePath),
         status: 'missing_excel_oracle',
       }
     }
     try {
       recalculateWorkbookWithExcel(filePath, outputPath)
       return {
-        id: workbookIdForFile(filePath),
-        workbook: sanitizedWorkbookName(workbookIdForFile(filePath), filePath),
+        id,
+        workbook: sanitizedWorkbookName(id, filePath),
         status: 'recalculated',
       }
     } catch (error) {
       return {
         error: sanitizeErrorMessage(errorMessage(error)),
-        id: workbookIdForFile(filePath),
-        workbook: sanitizedWorkbookName(workbookIdForFile(filePath), filePath),
+        id,
+        workbook: sanitizedWorkbookName(id, filePath),
         status: 'oracle_failure',
       }
     }
@@ -183,6 +192,7 @@ export function prepareExcelOracle(inputDir: string, outputDir: string): void {
 function evaluateWorkbookAgainstOracle(args: {
   readonly filePath: string
   readonly inputDir: string
+  readonly oracleRequired?: boolean
   readonly options: HarnessOptions
   readonly oraclePath?: string
 }): WorkbookEvaluation {
@@ -195,11 +205,11 @@ function evaluateWorkbookAgainstOracle(args: {
     const oracleCells = args.oraclePath ? readFormulaOracleCellMap(args.oraclePath) : new Map<string, FormulaOracleCell>()
     const workbook = WorkPaper.buildFromSheets(prepared.sheets, workPaperConfigFor(prepared, args.options))
     try {
-      const comparisons = compareFormulaCells({ id, oracleCells, prepared, sampleLimit: args.options.sampleLimit, workbook })
+      const comparisons = compareFormulaCells({ id, oracleCells, prepared, workbook })
       return {
         id,
         workbook: workbookName,
-        status: 'ok',
+        status: args.oracleRequired && !args.oraclePath ? 'missing_excel_oracle' : 'ok',
         formulaCells: prepared.formulaCells.length,
         comparisons,
         elapsedMs: roundElapsed(performance.now() - startedAt),
@@ -233,7 +243,6 @@ function compareFormulaCells(args: {
   readonly id: string
   readonly oracleCells: ReadonlyMap<string, FormulaOracleCell>
   readonly prepared: PreparedWorkbook
-  readonly sampleLimit: number
   readonly workbook: WorkPaper
 }): FormulaCellComparison[] {
   const comparisons: FormulaCellComparison[] = []
@@ -254,27 +263,36 @@ function compareFormulaCells(args: {
       formula: cell.formula,
       volatile: cell.volatile,
     })
-    const cacheMatchesExcel =
-      cell.cachedValue === undefined || excelOracleValue === undefined
+    const biligMatchesEmbeddedCache =
+      classification === 'volatile_skipped' || cell.cachedValue === undefined
         ? undefined
-        : normalizedValuesEqual(cell.cachedValue, excelOracleValue)
-    const biligMatchesExcel = excelOracleValue === undefined ? undefined : normalizedValuesEqual(actualBiligValue, excelOracleValue)
-    if (comparisons.length < args.sampleLimit || trueMismatchClassifications.has(classification)) {
-      comparisons.push({
-        actualBiligValue,
-        address: cell.address,
-        biligMatchesExcel,
-        cacheMatchesExcel,
-        classification,
-        embeddedCacheValue: cell.cachedValue,
-        expectedExcelValue: excelOracleValue,
-        formula: sanitizeFormula(cell.formula),
-        functionFamilies: formulaFamilies(cell.formula),
-        reproNotes: reproNotesFor(classification),
-        sheet: `sheet-${String(cell.sheetIndex + 1)}`,
-        workbookId: args.id,
-      })
-    }
+        : normalizedValuesEqual(cell.cachedValue, actualBiligValue)
+    const oracleComparable =
+      classification !== 'missing_excel_oracle' &&
+      classification !== 'volatile_skipped' &&
+      classification !== 'parser_failure' &&
+      classification !== 'timeout_failure'
+    const cacheMatchesExcel =
+      oracleComparable && cell.cachedValue !== undefined && excelOracleValue !== undefined
+        ? normalizedValuesEqual(cell.cachedValue, excelOracleValue)
+        : undefined
+    const biligMatchesExcel =
+      oracleComparable && excelOracleValue !== undefined ? normalizedValuesEqual(actualBiligValue, excelOracleValue) : undefined
+    comparisons.push({
+      actualBiligValue: sanitizeNormalizedValue(actualBiligValue),
+      address: cell.address,
+      biligMatchesEmbeddedCache,
+      biligMatchesExcel,
+      cacheMatchesExcel,
+      classification,
+      embeddedCacheValue: sanitizeNormalizedValue(cell.cachedValue),
+      expectedExcelValue: sanitizeNormalizedValue(excelOracleValue),
+      formula: sanitizeFormula(cell.formula),
+      functionFamilies: formulaFamilies(cell.formula),
+      reproNotes: reproNotesFor(classification),
+      sheet: `sheet-${String(cell.sheetIndex + 1)}`,
+      workbookId: args.id,
+    })
   }
   return comparisons
 }
@@ -287,7 +305,7 @@ function comparisonForFailure(args: {
   return {
     address: args.cell.address,
     classification: args.classification,
-    embeddedCacheValue: args.cell.cachedValue,
+    embeddedCacheValue: sanitizeNormalizedValue(args.cell.cachedValue),
     formula: sanitizeFormula(args.cell.formula),
     functionFamilies: formulaFamilies(args.cell.formula),
     reproNotes: reproNotesFor(args.classification),
@@ -526,6 +544,28 @@ function sanitizedWorkbookName(id: string, filePath: string): string {
   return `${id}${extension}`
 }
 
+function resolvedRecalculatedDir(recalculatedDir: string): string {
+  const nested = join(recalculatedDir, 'recalculated')
+  return existsSync(nested) && statSync(nested).isDirectory() ? nested : recalculatedDir
+}
+
+function findOracleWorkbookPath(args: {
+  readonly filePath: string
+  readonly id: string
+  readonly oracleRoot: string
+  readonly originalDir: string
+}): string | undefined {
+  const sanitizedPath = join(args.oracleRoot, sanitizedWorkbookName(args.id, args.filePath))
+  if (existsSync(sanitizedPath)) {
+    return sanitizedPath
+  }
+  const relativePath = join(args.oracleRoot, relative(args.originalDir, args.filePath))
+  if (existsSync(relativePath)) {
+    return relativePath
+  }
+  return undefined
+}
+
 function formatSummaryMarkdown(report: OracleHarnessReport, cacheReport: OracleHarnessReport | null): string {
   const summary = report.summary
   const samples = report.workbooks
@@ -542,12 +582,15 @@ function formatSummaryMarkdown(report: OracleHarnessReport, cacheReport: OracleH
     `- Total workbooks evaluated: ${String(summary.totalWorkbooksEvaluated)}`,
     `- Import/parser failures: ${String(summary.importParserFailures)}`,
     `- Timeout failures: ${String(summary.timeoutFailures)}`,
+    `- Missing Excel oracle workbooks: ${String(summary.missingExcelOracleWorkbooks)}`,
     `- Total formula cells: ${String(summary.totalFormulaCells)}`,
     `- Comparable formula cells: ${String(summary.comparableFormulaCells)}`,
+    `- Bilig vs embedded cache match rate: ${formatNullableRate(summary.biligVsEmbeddedCacheMatchRate)} (diagnostic/non-authoritative)`,
     `- Bilig vs fresh Excel match rate: ${formatNullableRate(summary.biligVsFreshExcelMatchRate)}`,
     `- Embedded-cache freshness rate: ${formatNullableRate(summary.embeddedCacheFreshnessRate)}`,
     `- Stale-cache false positives: ${String(summary.staleCacheFalsePositives)}`,
     `- Real Bilig mismatches: ${String(summary.realBiligMismatches)}`,
+    `- Cache-only mismatches: ${String(summary.cacheOnlyMismatches)} (diagnostic/non-authoritative)`,
   ]
   if (cacheReport && report.mode === 'excel-oracle') {
     lines.push(`- Cache-only diagnostic cells from cache report: ${String(cacheReport.summary.cacheOnlyDiagnosticCells)}`)

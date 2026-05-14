@@ -41,6 +41,7 @@ export interface SanitizedFormulaSample {
 }
 
 export interface FormulaCellComparison extends SanitizedFormulaSample {
+  readonly biligMatchesEmbeddedCache?: boolean
   readonly cacheMatchesExcel?: boolean
   readonly biligMatchesExcel?: boolean
 }
@@ -50,17 +51,20 @@ export interface WorkbookEvaluation {
   readonly error?: string
   readonly formulaCells: number
   readonly id: string
-  readonly status: 'ok' | 'parser_failure' | 'timeout_failure'
+  readonly status: 'missing_excel_oracle' | 'ok' | 'parser_failure' | 'timeout_failure'
   readonly workbook: string
   readonly comparisons: readonly FormulaCellComparison[]
 }
 
 export interface OracleHarnessSummary {
+  readonly biligVsEmbeddedCacheMatchRate: number | null
   readonly biligVsFreshExcelMatchRate: number | null
   readonly cacheOnlyDiagnosticCells: number
+  readonly cacheOnlyMismatches: number
   readonly comparableFormulaCells: number
   readonly embeddedCacheFreshnessRate: number | null
   readonly importParserFailures: number
+  readonly missingExcelOracleWorkbooks: number
   readonly realBiligMismatches: number
   readonly staleCacheFalsePositives: number
   readonly timeoutFailures: number
@@ -136,6 +140,7 @@ export function buildReportSummary(report: Pick<OracleHarnessReport, 'workbooks'
   const comparisons = report.workbooks.flatMap((workbook) => workbook.comparisons)
   const trueOracleComparisons = comparisons.filter((comparison) => comparison.biligMatchesExcel !== undefined)
   const cacheFreshnessComparisons = comparisons.filter((comparison) => comparison.cacheMatchesExcel !== undefined)
+  const embeddedCacheComparisons = comparisons.filter((comparison) => comparison.biligMatchesEmbeddedCache !== undefined)
   const realMismatches = comparisons.filter((comparison) => trueMismatchClassifications.has(comparison.classification))
   const familyCounts = new Map<string, number>()
   for (const mismatch of realMismatches) {
@@ -148,8 +153,16 @@ export function buildReportSummary(report: Pick<OracleHarnessReport, 'workbooks'
     totalWorkbooksEvaluated: report.workbooks.length,
     importParserFailures: report.workbooks.filter((workbook) => workbook.status === 'parser_failure').length,
     timeoutFailures: report.workbooks.filter((workbook) => workbook.status === 'timeout_failure').length,
+    missingExcelOracleWorkbooks: report.workbooks.filter((workbook) => workbook.status === 'missing_excel_oracle').length,
     totalFormulaCells: report.workbooks.reduce((sum, workbook) => sum + workbook.formulaCells, 0),
     comparableFormulaCells: trueOracleComparisons.length,
+    biligVsEmbeddedCacheMatchRate:
+      embeddedCacheComparisons.length === 0
+        ? null
+        : ratio(
+            embeddedCacheComparisons.filter((comparison) => comparison.biligMatchesEmbeddedCache).length,
+            embeddedCacheComparisons.length,
+          ),
     biligVsFreshExcelMatchRate:
       trueOracleComparisons.length === 0
         ? null
@@ -161,6 +174,9 @@ export function buildReportSummary(report: Pick<OracleHarnessReport, 'workbooks'
     staleCacheFalsePositives: comparisons.filter((comparison) => comparison.classification === 'cache_stale_bilig_matches_excel').length,
     realBiligMismatches: realMismatches.length,
     cacheOnlyDiagnosticCells: comparisons.filter((comparison) => comparison.classification === 'missing_excel_oracle').length,
+    cacheOnlyMismatches: embeddedCacheComparisons.filter(
+      (comparison) => comparison.classification === 'missing_excel_oracle' && comparison.biligMatchesEmbeddedCache === false,
+    ).length,
     topMismatchFormulaFamilies: [...familyCounts.entries()]
       .toSorted((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
       .slice(0, 10)
@@ -191,7 +207,10 @@ export function sanitizeFormula(formula: string): string {
     .replace(/"(?:""|[^"])*"/gu, '"<text>"')
     .replace(/\[[^\]]+\]/gu, '[workbook]')
     .replace(/'[^']+'!/gu, "'<sheet>'!")
+    .replace(/\b[A-Z_][A-Z0-9_. -]*!/giu, '<sheet>!')
     .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/giu, '<email>')
+    .replace(/https?:\/\/[^\s,)"]+/giu, '<url>')
+    .replace(/(?:[A-Z]:\\|\/Users\/|\/home\/|\/var\/|\/tmp\/|\/private\/)[^\s,)"]+/giu, '<path>')
 }
 
 export function sanitizeErrorMessage(message: string): string {
@@ -242,8 +261,15 @@ export function formatNormalizedValue(value: NormalizedFormulaValue | undefined)
     case 'number':
       return String(value.value)
     case 'string':
-      return JSON.stringify(value.value)
+      return JSON.stringify(redactedStringValue(value.value))
   }
+}
+
+export function sanitizeNormalizedValue(value: NormalizedFormulaValue | undefined): NormalizedFormulaValue | undefined {
+  if (!value || value.kind !== 'string') {
+    return value
+  }
+  return { kind: 'string', value: redactedStringValue(value.value) }
 }
 
 export function formatNullableRate(value: number | null): string {
@@ -260,4 +286,8 @@ function numbersEqual(left: number, right: number): boolean {
 
 function ratio(numerator: number, denominator: number): number {
   return denominator === 0 ? 0 : Number((numerator / denominator).toFixed(6))
+}
+
+function redactedStringValue(value: string): string {
+  return `<redacted-string len=${String(value.length)}>`
 }
