@@ -1,4 +1,4 @@
-import type { CompiledFormula } from '@bilig/formula'
+import type { CompiledFormula, FormulaNode, ParsedDependencyReference, ParsedRangeReferenceInfo } from '@bilig/formula'
 import { buildFormulaFamilyShapeKey } from '../../formula/formula-family-deps.js'
 import type { FormulaTemplateResolution } from '../../formula/template-bank.js'
 import type { RuntimeFormula } from '../runtime-state.js'
@@ -9,6 +9,14 @@ export interface InitialTemplateFormulaCacheEntry {
   readonly anchorCol: number
   readonly anchorCompiled: CompiledFormula
 }
+
+export interface InitialPrefixSumTemplateKey {
+  readonly key: number
+  readonly rangeCol: number
+  readonly rangeColumn: string
+}
+
+const INITIAL_PREFIX_SUM_RE = /^SUM\(([A-Z]+)1:\1([1-9]\d*)\)$/
 
 function initialColumnToIndex(column: string): number {
   let value = 0
@@ -107,6 +115,81 @@ export function tryBuildInitialSimpleRowRelativeBinaryTemplateKey(source: string
   }
   const rightNumber = initialReadNumberLiteral(source, index)
   return rightNumber && rightNumber.next === source.length ? `${left.token}${operator}n${rightNumber.text}` : undefined
+}
+
+export function tryBuildInitialPrefixSumTemplateKey(
+  source: string,
+  ownerRow: number,
+  ownerCol: number,
+): InitialPrefixSumTemplateKey | undefined {
+  const match = INITIAL_PREFIX_SUM_RE.exec(source)
+  if (!match || Number.parseInt(match[2]!, 10) !== ownerRow + 1) {
+    return undefined
+  }
+  const rangeColumn = match[1]!
+  const rangeCol = initialColumnToIndex(rangeColumn)
+  if (rangeCol < 0) {
+    return undefined
+  }
+  return {
+    key: rangeCol - ownerCol,
+    rangeCol,
+    rangeColumn,
+  }
+}
+
+export function translateInitialPrefixSumFormula(
+  entry: InitialTemplateFormulaCacheEntry,
+  source: string,
+  ownerRow: number,
+  ownerCol: number,
+  templateKey: InitialPrefixSumTemplateKey,
+): FormulaTemplateResolution {
+  const column = templateKey.rangeColumn
+  const startAddress = `${column}1`
+  const endAddress = `${column}${ownerRow + 1}`
+  const rangeAddress = `${startAddress}:${endAddress}`
+  const range: ParsedRangeReferenceInfo = {
+    address: rangeAddress,
+    kind: 'range',
+    refKind: 'cells',
+    startAddress,
+    endAddress,
+    startRow: 0,
+    endRow: ownerRow,
+    startCol: templateKey.rangeCol,
+    endCol: templateKey.rangeCol,
+  }
+  const rangeNode: FormulaNode = {
+    kind: 'RangeRef',
+    refKind: 'cells',
+    start: startAddress,
+    end: endAddress,
+  }
+  const ast: FormulaNode = {
+    kind: 'CallExpr',
+    callee: entry.anchorCompiled.directAggregateCandidate!.callee,
+    args: [rangeNode],
+  }
+  const rowDelta = ownerRow - entry.anchorRow
+  const colDelta = ownerCol - entry.anchorCol
+  return {
+    ...entry.resolution,
+    compiled: {
+      ...entry.anchorCompiled,
+      source,
+      ast,
+      optimizedAst: ast,
+      astMatchesSource: true,
+      deps: [rangeAddress],
+      parsedDeps: [range satisfies ParsedDependencyReference],
+      symbolicRanges: [rangeAddress],
+      parsedSymbolicRanges: [range],
+    },
+    translated: entry.resolution.translated || rowDelta !== 0 || colDelta !== 0,
+    rowDelta: entry.resolution.rowDelta + rowDelta,
+    colDelta: entry.resolution.colDelta + colDelta,
+  }
 }
 
 export function initialFormulaFamilyShapeKey(formula: RuntimeFormula): string {

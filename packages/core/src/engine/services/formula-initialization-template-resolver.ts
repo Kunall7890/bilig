@@ -1,6 +1,8 @@
 import type { FormulaTemplateResolution } from '../../formula/template-bank.js'
 import { translateSimpleDirectScalarFormula } from '../../formula/simple-direct-scalar-compile.js'
 import {
+  translateInitialPrefixSumFormula,
+  tryBuildInitialPrefixSumTemplateKey,
   tryBuildInitialSimpleRowRelativeBinaryTemplateKey,
   type InitialTemplateFormulaCacheEntry,
 } from './formula-initialization-template-keys.js'
@@ -8,7 +10,7 @@ import {
 export function createInitialTemplateFormulaResolver(
   compileTemplateFormula: (source: string, row: number, col: number) => FormulaTemplateResolution,
 ): (source: string, row: number, col: number) => FormulaTemplateResolution {
-  const simpleTemplateCache = new Map<string, InitialTemplateFormulaCacheEntry>()
+  const simpleTemplateCache = new Map<string | number, InitialTemplateFormulaCacheEntry>()
   return (source, row, col) => {
     const templateKey = tryBuildInitialSimpleRowRelativeBinaryTemplateKey(source, row, col)
     const cached = templateKey === undefined ? undefined : simpleTemplateCache.get(templateKey)
@@ -26,9 +28,22 @@ export function createInitialTemplateFormulaResolver(
         }
       }
     }
+    const sumTemplateKey = tryBuildInitialPrefixSumTemplateKey(source, row, col)
+    const cachedSum = sumTemplateKey === undefined ? undefined : simpleTemplateCache.get(sumTemplateKey.key)
+    if (cachedSum && sumTemplateKey !== undefined) {
+      return translateInitialPrefixSumFormula(cachedSum, source, row, col, sumTemplateKey)
+    }
     const resolution = compileTemplateFormula(source, row, col)
     if (templateKey !== undefined) {
       simpleTemplateCache.set(templateKey, {
+        resolution,
+        anchorRow: row,
+        anchorCol: col,
+        anchorCompiled: resolution.compiled,
+      })
+    }
+    if (sumTemplateKey !== undefined) {
+      simpleTemplateCache.set(sumTemplateKey.key, {
         resolution,
         anchorRow: row,
         anchorCol: col,
