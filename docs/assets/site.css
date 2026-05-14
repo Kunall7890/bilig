@@ -537,6 +537,7 @@ h2 {
 .proof-board-head {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 18px;
   border-bottom: 1px solid var(--line);
@@ -557,7 +558,7 @@ h2 {
 .proof-result {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 18px;
+  gap: 16px;
   align-items: start;
   border-bottom: 1px solid var(--line);
   padding: clamp(24px, 3.5vw, 36px) clamp(22px, 3vw, 32px);
@@ -571,19 +572,20 @@ h2 {
 
 .proof-result strong {
   display: block;
+  width: fit-content;
   max-width: 100%;
   color: var(--accent);
-  font-size: clamp(56px, 7.2vw, 82px);
+  font-size: clamp(48px, 11vw, 72px);
   font-variant-numeric: tabular-nums;
   font-weight: 700;
   letter-spacing: 0;
-  line-height: 0.92;
+  line-height: 0.94;
   white-space: nowrap;
 }
 
 .proof-result p {
   min-width: 0;
-  max-width: 58ch;
+  max-width: 52ch;
   color: var(--muted);
   font-size: 16px;
   line-height: 1.58;
@@ -757,14 +759,6 @@ footer {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-  }
-}
-
-@media (min-width: 1181px) {
-  .proof-result {
-    grid-template-columns: minmax(210px, max-content) minmax(0, 1fr);
-    gap: clamp(26px, 4vw, 48px);
-    align-items: center;
   }
 }
 

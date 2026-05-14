@@ -121,7 +121,7 @@
         ]
       }
     </script>
-    <link rel="stylesheet" href="./assets/site.css?v=2026-05-14-8" />
+    <link rel="stylesheet" href="./assets/site.css?v=2026-05-14-9" />
     <link rel="stylesheet" href="./assets/product-demo.css?v=2026-05-14-2" />
   </head>
   <body>
@@ -492,26 +492,26 @@ function readNumber(cell: unknown): number {
           <div class="proof-layout">
             <div class="proof-intro">
               <p class="kicker">Benchmark</p>
-              <h2 id="proof-title">The benchmark says exactly what passed.</h2>
+              <h2 id="proof-title">Here is the benchmark. Here is the caveat.</h2>
               <p>
-                The checked-in WorkPaper vs HyperFormula artifact is good evidence for this workload mix. Do not read it as a universal
-                speed claim.
+                The checked JSON shows bilig ahead on every comparable mean-latency row. It does not claim every workbook will be faster.
               </p>
             </div>
 
             <div class="proof-board" aria-label="Benchmark evidence">
               <div class="proof-board-head">
                 <span>workpaper-vs-hyperformula.json</span>
-                <strong>checked-in baseline</strong>
+                <strong>current run</strong>
               </div>
 
               <div class="proof-result">
                 <div class="proof-metric">
-                  <span class="proof-label">mean latency</span>
+                  <span class="proof-label">comparable mean rows</span>
                   <strong>46/46</strong>
                 </div>
                 <p>
-                  Every comparable mean-latency row is green in this artifact. One p95 row is not, and UI rendering is outside this run.
+                  46 of 46 comparable mean-latency rows are faster in the checked file. One duplicate-lookup p95 row is slower. UI rendering
+                  is not part of this benchmark.
                 </p>
               </div>
 
@@ -528,7 +528,7 @@ function readNumber(cell: unknown): number {
                 </div>
                 <div class="proof-fact">
                   <dt>Caveat</dt>
-                  <dd>Approximate lookup with duplicate keys is slower at p95: <code>1.043x</code>.</dd>
+                  <dd>Duplicate-key approximate lookup is slower at p95: <code>1.043x</code>.</dd>
                 </div>
                 <div class="proof-fact">
                   <dt>Out of scope</dt>

@@ -39,7 +39,7 @@ export function requireHomepageDiscovery(index: string, siteCss: string): void {
       '<meta name="twitter:card" content="summary_large_image" />',
       '<meta name="twitter:image" content="https://proompteng.github.io/bilig/assets/github-social-preview.png?v=2026-05-14-5" />',
       '<meta name="twitter:image:alt" content="bilig headless spreadsheet engine workbook and TypeScript code preview" />',
-      '<link rel="stylesheet" href="./assets/site.css?v=2026-05-14-8" />',
+      '<link rel="stylesheet" href="./assets/site.css?v=2026-05-14-9" />',
       '<link rel="stylesheet" href="./assets/product-demo.css?v=2026-05-14-2" />',
       'Spreadsheet logic for TypeScript services.',
       'When a pricing rule, budget check, or payout model is easiest to express as cells and formulas',
@@ -61,18 +61,19 @@ export function requireHomepageDiscovery(index: string, siteCss: string): void {
       'More TypeScript examples live in',
       'Put the workbook behind the workflow that needs the answer.',
       'Route handler, queue worker, CLI, or MCP server: load the workbook',
-      'The benchmark says exactly what passed.',
-      'The checked-in WorkPaper vs HyperFormula artifact is good evidence for this workload mix.',
-      'Do not read it as a universal',
+      'Here is the benchmark. Here is the caveat.',
+      'The checked JSON shows bilig ahead on every comparable mean-latency row.',
+      'It does not claim every workbook will be faster.',
       'workpaper-vs-hyperformula.json',
-      'checked-in baseline',
-      'mean latency',
+      'current run',
+      'comparable mean rows',
       'pnpm workpaper:bench:competitive:check',
       '<strong>46/46</strong>',
-      'Every comparable mean-latency row is green in this artifact.',
-      'One p95 row is not, and UI rendering is outside this run.',
+      '46 of 46 comparable mean-latency rows are faster in the checked file.',
+      'One duplicate-lookup p95 row is slower.',
+      'UI rendering',
       '<code>1.043x</code>',
-      'Approximate lookup with duplicate keys is slower at p95:',
+      'Duplicate-key approximate lookup is slower at p95:',
       'UI rendering, Excel file compatibility, and workbook shapes this suite does not cover.',
       'packages/benchmarks/baselines/<wbr />workpaper-vs-hyperformula.json',
       'Benchmark notes',
@@ -102,7 +103,7 @@ export function requireHomepageDiscovery(index: string, siteCss: string): void {
       'grid-template-columns: minmax(0, 0.88fr) minmax(420px, 1fr);',
       '@media (max-width: 1180px) {',
       '.proof-result {\n  display: grid;\n  grid-template-columns: minmax(0, 1fr);',
-      'grid-template-columns: minmax(210px, max-content) minmax(0, 1fr);',
+      'width: fit-content;',
       '.proof-metric {\n  display: grid;',
       '.proof-result p {\n  min-width: 0;',
       '.hero-notes',
@@ -240,5 +241,6 @@ export function requireHomepageDiscovery(index: string, siteCss: string): void {
 
   requireNotIncludes(siteCss, 'bilig-hero-workbook-api.png?v=2026-05-08-2', 'docs/assets/site.css')
   requireNotIncludes(siteCss, 'grid-template-columns: minmax(150px, 0.34fr) minmax(0, 1fr);', 'docs/assets/site.css')
+  requireNotIncludes(siteCss, 'grid-template-columns: minmax(210px, max-content) minmax(0, 1fr);', 'docs/assets/site.css')
   requireNotIncludes(siteCss, 'border-left: 1px solid rgba(255, 250, 240, 0.16);', 'docs/assets/site.css')
 }
