@@ -1,6 +1,6 @@
 # Community Growth Snapshot
 
-Captured at: `2026-05-14T19:28:47.897Z`
+Captured at: `2026-05-14T19:46:11.475Z`
 
 This snapshot tracks the public signals for the `@bilig/headless` growth loop: GitHub conversion, npm demand, contributor on-ramp health, discussion activity, and traffic quality.
 
@@ -15,9 +15,9 @@ This snapshot tracks the public signals for the `@bilig/headless` growth loop: G
 
 ## npm
 
-- Package: `@bilig/headless@0.14.8`
+- Package: `@bilig/headless@0.14.9`
 - License: `MIT`
-- Modified: `2026-05-14T18:46:55.812Z`
+- Modified: `2026-05-14T19:45:15.828Z`
 - Downloads last week: 15,592 (2026-05-06 to 2026-05-12)
 - Downloads last month: 23,240 (2026-04-13 to 2026-05-12)
 
