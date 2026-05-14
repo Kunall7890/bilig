@@ -39,6 +39,7 @@ describe('worker runtime state helpers', () => {
 
     expect(publicState.syncState).toBe('syncing')
     expect(cachedState.syncState).toBe('local')
+    expect(publicState.localHistoryState).toEqual({ canUndo: false, canRedo: false })
     expect(publicState.localPersistenceMode).toBe('persistent')
     expect(publicState.sheets).toEqual([{ id: 1, name: 'Sheet1', order: 0 }])
     expect(publicState.sheets).not.toBe(cachedState.sheets)
@@ -61,6 +62,7 @@ describe('worker runtime state helpers', () => {
       definedNames: [],
       metrics: EMPTY_RUNTIME_METRICS,
       syncState: 'syncing',
+      localHistoryState: { canUndo: false, canRedo: false },
       localPersistenceMode: 'follower',
     })
   })
