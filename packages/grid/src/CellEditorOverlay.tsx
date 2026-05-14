@@ -268,12 +268,14 @@ export function CellEditorOverlay({
         className="w-full resize-none border-0 bg-transparent px-2 py-1.5 leading-tight outline-none"
         data-testid="cell-editor-input"
         ref={inputRef}
+        readOnly={isCompleting}
         rows={1}
         style={{
           color,
           font,
           fontSize,
           minHeight: '100%',
+          opacity: isCompleting ? 0 : undefined,
           textAlign,
           textDecorationLine: underline ? 'underline' : undefined,
         }}

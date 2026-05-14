@@ -216,6 +216,51 @@ describe('CellEditorOverlay', () => {
     }
   })
 
+  it('hides editable text while a commit is completing to avoid duplicate grid text', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const onCommit = vi.fn()
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+
+    try {
+      await act(async () => {
+        root.render(
+          <CellEditorOverlay
+            label="Sheet1!B2"
+            targetSelection={makeTargetSelection()}
+            onCancel={() => {}}
+            onChange={() => {}}
+            onCommit={onCommit}
+            resolvedValue=""
+            value="visible draft"
+          />,
+        )
+      })
+
+      const overlay = host.querySelector<HTMLElement>("[data-testid='cell-editor-overlay']")
+      const textarea = host.querySelector<HTMLTextAreaElement>("[data-testid='cell-editor-input']")
+      expect(textarea).not.toBeNull()
+      if (!textarea) {
+        throw new Error('Expected mounted cell editor input')
+      }
+
+      await act(async () => {
+        textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+      })
+
+      expect(onCommit).toHaveBeenCalledTimes(1)
+      expect(overlay?.dataset['completing']).toBe('true')
+      expect(textarea.readOnly).toBe(true)
+      expect(textarea.style.opacity).toBe('0')
+    } finally {
+      await act(async () => {
+        root.unmount()
+      })
+    }
+  })
+
   it('keeps delete and backspace edits in the local draft before the debounced parent sync', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
