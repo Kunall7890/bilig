@@ -260,6 +260,8 @@ npm run agent:verify
 - xlsx verifier walkthrough:
   https://proompteng.github.io/bilig/xlsx-corpus-verifier-walkthrough.html
   https://github.com/proompteng/bilig/blob/main/docs/xlsx-corpus-verifier-walkthrough.md
+- xlsx oracle design feedback discussion:
+  https://github.com/proompteng/bilig/discussions/382
 - xlookup exact fixture:
   https://github.com/proompteng/bilig/blob/main/docs/formula-edge-xlookup-exact-fixture.md
 - sumifs paired criteria fixture:
@@ -296,6 +298,8 @@ npm run agent:verify
   https://github.com/proompteng/bilig/discussions/335
 - benchmark critique discussion:
   https://github.com/proompteng/bilig/discussions/340
+- stale xlsx cache and excel oracle feedback discussion:
+  https://github.com/proompteng/bilig/discussions/382
 - external JavaScript spreadsheet directory submission:
   https://github.com/krzysztofspilka/JSpreadsheets/pull/50
 - external JavaScript spreadsheet benchmark adapter request:

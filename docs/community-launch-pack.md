@@ -384,6 +384,18 @@ Latest contributor-funnel action on May 14, 2026:
   request: it points contributors at existing scoped tasks and asks them to
   comment on the target issue before opening a PR.
 
+Latest XLSX oracle feedback action on May 14, 2026:
+
+- GitHub Discussion `#382` asks people who evaluate spreadsheet engines how a
+  headless runtime should handle stale XLSX cached formula values, fresh Excel
+  recalculation oracles, cache-only diagnostics, and CI-safe private workbook
+  reports:
+  <https://github.com/proompteng/bilig/discussions/382>.
+- The stale-cache walkthrough now points readers at that feedback thread so the
+  public accuracy framework can be challenged without turning stale embedded
+  workbook caches into fake wins or fake bugs:
+  <https://proompteng.github.io/bilig/xlsx-corpus-verifier-walkthrough.html>.
+
 Latest technical-content action on May 14, 2026:
 
 - The agent/workbook API article source now leads with the maintained
