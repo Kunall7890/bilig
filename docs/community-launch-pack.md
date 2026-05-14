@@ -262,6 +262,22 @@ Postgres/Redis/object-storage adapter pass:
   active feedback loops visible beside stars, npm demand, contributor
   queue health, and traffic.
 
+Latest README conversion snapshot on May 14, 2026:
+
+- GitHub surface: `24` stars, `12` forks, `100` open issues, and `100` open
+  `good first issue`, `first-timers-only`, and `help wanted` issues.
+- npm surface: `@bilig/headless@0.14.2`, with `15,592` downloads last week and
+  `23,240` downloads in the last 30 days.
+- README and npm README conversion surface: both now put the empty-directory
+  npm evaluation before fit tables, proof notes, and navigation links. The
+  first visible command path installs `@bilig/headless`, runs the maintained
+  TypeScript evaluation, edits an input, verifies the dependent formula, saves
+  the WorkPaper JSON document, restores it, and checks the value again.
+- Feedback surface: discussion `#340` now has a maintainer update tying the
+  homepage proof rewrite to the benchmark caveat and asking which missing
+  workload would change a real adoption decision:
+  <https://github.com/proompteng/bilig/discussions/340#discussioncomment-16915578>
+
 ## Goal Text
 
 Grow `proompteng/bilig` from `8` to `1,000` legitimate GitHub stars by making
@@ -412,24 +428,61 @@ contributor onboarding into public marketing:
 
 ## Channel Copy
 
-### X / Bluesky
+### X / Bluesky Thread
 
 ```text
-I am building @bilig/headless: a TypeScript WorkPaper engine for Node services
-and coding agents that need spreadsheet semantics without opening a browser
-grid.
+1/ I maintain @bilig/headless, a TypeScript WorkPaper runtime for Node services
+and coding agents that need spreadsheet formulas without driving a browser grid.
 
-It does formula evaluation, structural edits, range reads, JSON persistence,
-and post-write verification.
+2/ The shortest eval now starts from an empty npm project:
+https://github.com/proompteng/bilig#try-biligheadless-in-90-seconds
 
-The current benchmark artifact shows 46/46 mean wins against HyperFormula-style
-headless workloads, with the p95 caveat documented instead of hidden.
+It edits an input, reads the recalculated value, saves WorkPaper JSON, restores
+it, and checks the value again.
 
-Repo: https://github.com/proompteng/bilig
-npm: https://www.npmjs.com/package/@bilig/headless
+3/ Benchmark caveat is public too: 46/46 comparable mean-latency rows are faster
+in the checked file, one duplicate-lookup p95 row is slower, and UI rendering is
+not part of the benchmark.
 
-Question for people who automate spreadsheets: what workflow would you need to
-see before trying a new headless workbook engine?
+4/ Question for people who automate spreadsheets from services or agents: what
+workflow would you need to see before trying a new headless workbook engine?
+```
+
+### Short Evidence-Led Post
+
+Use this when the audience already cares about Node services, coding agents,
+spreadsheet automation, or headless formula engines. Do not post it unchanged
+to every channel.
+
+```text
+I maintain Bilig, an open-source TypeScript workbook runtime. The public npm
+package is @bilig/headless.
+
+The quickest way to judge it now starts from an empty directory:
+
+1. npm install @bilig/headless
+2. download the maintained eval.ts file
+3. run it with tsx
+4. inspect the before/after/afterRestore output
+
+The example builds a formula-backed workbook, edits an input, reads the
+dependent formula result, serializes the workbook as WorkPaper JSON, restores
+it, and checks that the restored value still matches.
+
+Repo quickstart:
+https://github.com/proompteng/bilig#try-biligheadless-in-90-seconds
+
+This is for backend and agent workflows where workbook formulas are business
+logic but opening a browser grid is the wrong runtime boundary. It is not an
+Excel clone, and the compatibility limits are documented:
+https://github.com/proompteng/bilig/blob/main/docs/where-bilig-is-not-excel-compatible-yet.md
+
+The benchmark claim is intentionally narrow: the checked artifact has 46/46
+comparable mean-latency wins against HyperFormula-style workloads, one duplicate
+lookup p95 row is slower, and UI rendering is not part of the benchmark.
+
+If you automate spreadsheets from Node, what workflow or formula family would
+make or break a real trial?
 ```
 
 ### Hacker News Follow-Up Comment
