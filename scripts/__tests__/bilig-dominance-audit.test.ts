@@ -425,13 +425,18 @@ function legacyOperationOnlySameCorpusProof(): UiResponsivenessSameCorpusProof {
 }
 
 function sameCorpusScenarioProof(biligMs: number, googleMs: number) {
+  const microsoftExcelWebMs = googleMs
   return {
     biligMeanMs: biligMs,
     biligP95Ms: biligMs,
     googleMeanMs: googleMs,
     googleP95Ms: googleMs,
+    microsoftExcelWebMeanMs: microsoftExcelWebMs,
+    microsoftExcelWebP95Ms: microsoftExcelWebMs,
     meanRatio: biligMs / googleMs,
     p95Ratio: biligMs / googleMs,
+    microsoftExcelWebMeanRatio: biligMs / microsoftExcelWebMs,
+    microsoftExcelWebP95Ratio: biligMs / microsoftExcelWebMs,
     screenshotProof: {
       captured: true,
       requiredProducts: ['bilig', 'google-sheets', 'microsoft-excel-web'],

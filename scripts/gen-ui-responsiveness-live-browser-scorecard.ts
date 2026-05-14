@@ -730,7 +730,7 @@ function validateSameCorpusCase(entry: UiResponsivenessSameCorpusCase): void {
   if (entry.tenXMeanAndP95Metric !== expectedMetric) {
     throw new Error(`UI responsiveness same-corpus metric is stale: ${entry.id}`)
   }
-  validateSameCorpusScenarioProof(entry.scenarioProof, entry.id, entry.bilig, entry.googleSheets)
+  validateSameCorpusScenarioProof(entry.scenarioProof, entry.id, entry.bilig, entry.googleSheets, entry.microsoftExcelWeb)
   const visualProofGuardrailPassed = entry.scenarioProof.screenshotProof.captured && entry.scenarioProof.pixelGridProof.captured
   const timingMetricPassedAgainstGoogleSheets = requiresScrollEventMetric
     ? scrollEventMetrics !== null &&

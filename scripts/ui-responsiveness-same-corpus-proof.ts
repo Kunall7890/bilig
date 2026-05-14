@@ -17,8 +17,12 @@ export interface SameCorpusScenarioProof {
   readonly biligP95Ms: number
   readonly googleMeanMs: number
   readonly googleP95Ms: number
+  readonly microsoftExcelWebMeanMs: number
+  readonly microsoftExcelWebP95Ms: number
   readonly meanRatio: number
   readonly p95Ratio: number
+  readonly microsoftExcelWebMeanRatio: number
+  readonly microsoftExcelWebP95Ratio: number
   readonly screenshotProof: SameCorpusScreenshotProof
   readonly pixelGridProof: SameCorpusPixelGridProof
 }
@@ -56,11 +60,13 @@ export interface SameCorpusProductPixelGridProof {
 export function buildCaptureScenarioProof(args: {
   readonly bilig: SameCorpusCaptureMeasurement
   readonly googleSheets: SameCorpusCaptureMeasurement
+  readonly microsoftExcelWeb: SameCorpusCaptureMeasurement
   readonly visualProofs: readonly SameCorpusProductVisualProof[]
 }): SameCorpusScenarioProof {
   return buildScenarioProof({
     biligTiming: summarizeNumbers(primaryCaptureTimingSamples(args.bilig)),
     googleSheetsTiming: summarizeNumbers(primaryCaptureTimingSamples(args.googleSheets)),
+    microsoftExcelWebTiming: summarizeNumbers(primaryCaptureTimingSamples(args.microsoftExcelWeb)),
     visualProofs: args.visualProofs,
   })
 }
@@ -68,11 +74,13 @@ export function buildCaptureScenarioProof(args: {
 export function buildScorecardScenarioProof(args: {
   readonly bilig: UiResponsivenessSameCorpusMeasurement
   readonly googleSheets: UiResponsivenessSameCorpusMeasurement
+  readonly microsoftExcelWeb: UiResponsivenessSameCorpusMeasurement
   readonly visualProofs: readonly SameCorpusProductVisualProof[]
 }): SameCorpusScenarioProof {
   return buildScenarioProof({
     biligTiming: primaryScorecardTiming(args.bilig),
     googleSheetsTiming: primaryScorecardTiming(args.googleSheets),
+    microsoftExcelWebTiming: primaryScorecardTiming(args.microsoftExcelWeb),
     visualProofs: args.visualProofs,
   })
 }
@@ -101,10 +109,12 @@ export function validateSameCorpusScenarioProof(
   caseId: string,
   bilig: UiResponsivenessSameCorpusMeasurement,
   googleSheets: UiResponsivenessSameCorpusMeasurement,
+  microsoftExcelWeb: UiResponsivenessSameCorpusMeasurement,
 ): void {
   const expected = buildScorecardScenarioProof({
     bilig,
     googleSheets,
+    microsoftExcelWeb,
     visualProofs: proof.pixelGridProof.products.map((entry) => ({
       product: entry.product,
       screenshotPath: proof.screenshotProof.artifactPaths.find((artifact) => artifact.includes(`${entry.product}-`)) ?? null,
@@ -117,8 +127,12 @@ export function validateSameCorpusScenarioProof(
     proof.biligP95Ms !== expected.biligP95Ms ||
     proof.googleMeanMs !== expected.googleMeanMs ||
     proof.googleP95Ms !== expected.googleP95Ms ||
+    proof.microsoftExcelWebMeanMs !== expected.microsoftExcelWebMeanMs ||
+    proof.microsoftExcelWebP95Ms !== expected.microsoftExcelWebP95Ms ||
     proof.meanRatio !== expected.meanRatio ||
-    proof.p95Ratio !== expected.p95Ratio
+    proof.p95Ratio !== expected.p95Ratio ||
+    proof.microsoftExcelWebMeanRatio !== expected.microsoftExcelWebMeanRatio ||
+    proof.microsoftExcelWebP95Ratio !== expected.microsoftExcelWebP95Ratio
   ) {
     throw new Error(`UI responsiveness same-corpus scenario proof timing is stale: ${caseId}`)
   }
@@ -147,6 +161,7 @@ export function validateSameCorpusScenarioProof(
 function buildScenarioProof(args: {
   readonly biligTiming: NumericSummary
   readonly googleSheetsTiming: NumericSummary
+  readonly microsoftExcelWebTiming: NumericSummary
   readonly visualProofs: readonly SameCorpusProductVisualProof[]
 }): SameCorpusScenarioProof {
   const requiredProducts = ['bilig', 'google-sheets', 'microsoft-excel-web'] as const satisfies readonly UiResponsivenessSameCorpusProduct[]
@@ -159,8 +174,12 @@ function buildScenarioProof(args: {
     biligP95Ms: args.biligTiming.p95,
     googleMeanMs: args.googleSheetsTiming.mean,
     googleP95Ms: args.googleSheetsTiming.p95,
+    microsoftExcelWebMeanMs: args.microsoftExcelWebTiming.mean,
+    microsoftExcelWebP95Ms: args.microsoftExcelWebTiming.p95,
     meanRatio: ratio(args.biligTiming.mean, args.googleSheetsTiming.mean),
     p95Ratio: ratio(args.biligTiming.p95, args.googleSheetsTiming.p95),
+    microsoftExcelWebMeanRatio: ratio(args.biligTiming.mean, args.microsoftExcelWebTiming.mean),
+    microsoftExcelWebP95Ratio: ratio(args.biligTiming.p95, args.microsoftExcelWebTiming.p95),
     screenshotProof: {
       captured: requiredProducts.every((product) => screenshotProducts.has(product)),
       requiredProducts,

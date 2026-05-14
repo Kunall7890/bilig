@@ -276,6 +276,7 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     const proof = buildCaptureScenarioProof({
       bilig: sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state'),
       googleSheets: sameCorpusCaptureMeasurement('google-sheets', 'google-sheets-xlsx-export'),
+      microsoftExcelWeb: sameCorpusCaptureMeasurement('microsoft-excel-web', 'microsoft-excel-web-source-xlsx'),
       visualProofs: [
         sameCorpusVisualProof('bilig', 'typegpu-visible-canvas'),
         sameCorpusVisualProof('google-sheets', 'google-sheets-visible-grid'),
@@ -382,7 +383,10 @@ describe('same-corpus UI responsiveness capture CLI', () => {
   })
 })
 
-function sameCorpusCaptureMeasurement(product: 'bilig' | 'google-sheets', method: 'bilig-benchmark-state' | 'google-sheets-xlsx-export') {
+function sameCorpusCaptureMeasurement(
+  product: 'bilig' | 'google-sheets' | 'microsoft-excel-web',
+  method: 'bilig-benchmark-state' | 'google-sheets-xlsx-export' | 'microsoft-excel-web-source-xlsx',
+) {
   return {
     product,
     source: product === 'bilig' ? 'http://127.0.0.1:5173/?benchmarkCorpus=wide-mixed-250k' : 'https://example.com/sheet',

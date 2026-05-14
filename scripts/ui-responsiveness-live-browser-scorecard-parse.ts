@@ -220,8 +220,12 @@ function parseSameCorpusScenarioProof(value: Record<string, unknown>): SameCorpu
     biligP95Ms: numberField(value, 'biligP95Ms'),
     googleMeanMs: numberField(value, 'googleMeanMs'),
     googleP95Ms: numberField(value, 'googleP95Ms'),
+    microsoftExcelWebMeanMs: numberField(value, 'microsoftExcelWebMeanMs'),
+    microsoftExcelWebP95Ms: numberField(value, 'microsoftExcelWebP95Ms'),
     meanRatio: numberField(value, 'meanRatio'),
     p95Ratio: numberField(value, 'p95Ratio'),
+    microsoftExcelWebMeanRatio: numberField(value, 'microsoftExcelWebMeanRatio'),
+    microsoftExcelWebP95Ratio: numberField(value, 'microsoftExcelWebP95Ratio'),
     screenshotProof: parseSameCorpusScreenshotProof(objectField(value, 'screenshotProof')),
     pixelGridProof: parseSameCorpusPixelGridProof(objectField(value, 'pixelGridProof')),
   }
