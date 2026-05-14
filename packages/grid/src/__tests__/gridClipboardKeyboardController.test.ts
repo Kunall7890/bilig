@@ -13,7 +13,7 @@ import {
   shouldHandleGridWindowKey,
   shouldSuppressWorkbookChromeClearKey,
 } from '../gridClipboardKeyboardController.js'
-import { useWorkbookGridKeyboardHandler } from '../useWorkbookGridKeyboardHandler.js'
+import { createDeferredBeginEditScheduler, useWorkbookGridKeyboardHandler } from '../useWorkbookGridKeyboardHandler.js'
 import { describe, expect, test, vi } from 'vitest'
 import type { GridEngineLike } from '../grid-engine.js'
 
@@ -42,7 +42,9 @@ function createEngine(cells: Record<string, string>): GridEngineLike {
 function KeyboardHandlerHarness(props: {
   beginSelectedEdit: ReturnType<typeof vi.fn>
   getGridSelection?: () => ReturnType<typeof createGridSelection>
+  onCancelEdit?: ReturnType<typeof vi.fn>
   onClearCell?: ReturnType<typeof vi.fn>
+  onCommitEdit?: ReturnType<typeof vi.fn>
   setGridSelection: ReturnType<typeof vi.fn>
   onSelectionChange: ReturnType<typeof vi.fn>
 }) {
@@ -62,9 +64,9 @@ function KeyboardHandlerHarness(props: {
     hostRef,
     internalClipboardRef,
     isEditingCell: false,
-    onCancelEdit: vi.fn(),
+    onCancelEdit: props.onCancelEdit ?? vi.fn(),
     onClearCell: props.onClearCell ?? vi.fn(),
-    onCommitEdit: vi.fn(),
+    onCommitEdit: props.onCommitEdit ?? vi.fn(),
     onEditorChange: vi.fn(),
     onSelectionChange: props.onSelectionChange,
     pendingClipboardCopySequenceRef: { current: 0 },
@@ -85,6 +87,132 @@ function KeyboardHandlerHarness(props: {
 }
 
 describe('gridClipboardKeyboardController', () => {
+  test('batches rapid typed edit seeds into one deferred begin-edit', () => {
+    const beginSelectedEdit = vi.fn()
+    const callbacks: FrameRequestCallback[] = []
+    const scheduler = createDeferredBeginEditScheduler({
+      beginSelectedEdit,
+      requestAnimationFrame: (callback) => {
+        callbacks.push(callback)
+        return callbacks.length
+      },
+      cancelAnimationFrame: vi.fn(),
+    })
+
+    scheduler.schedule('a', 'caret-end')
+    scheduler.schedule('ab', 'caret-end')
+    scheduler.schedule('abc', 'caret-end')
+
+    expect(beginSelectedEdit).not.toHaveBeenCalled()
+    expect(callbacks).toHaveLength(1)
+
+    callbacks[0]?.(performance.now())
+
+    expect(beginSelectedEdit).toHaveBeenCalledTimes(1)
+    expect(beginSelectedEdit).toHaveBeenCalledWith('abc', 'caret-end')
+  })
+
+  test('immediate begin-edit cancels a deferred typed seed', () => {
+    const beginSelectedEdit = vi.fn()
+    const cancelAnimationFrame = vi.fn()
+    const callbacks: FrameRequestCallback[] = []
+    const scheduler = createDeferredBeginEditScheduler({
+      beginSelectedEdit,
+      requestAnimationFrame: (callback) => {
+        callbacks.push(callback)
+        return 17
+      },
+      cancelAnimationFrame,
+    })
+
+    scheduler.schedule('a', 'caret-end')
+    scheduler.beginImmediate(undefined, 'caret-end')
+
+    expect(cancelAnimationFrame).toHaveBeenCalledWith(17)
+    expect(beginSelectedEdit).toHaveBeenCalledTimes(1)
+    expect(beginSelectedEdit).toHaveBeenCalledWith(undefined, 'caret-end')
+
+    callbacks[0]?.(performance.now())
+
+    expect(beginSelectedEdit).toHaveBeenCalledTimes(1)
+  })
+
+  test.each([
+    { expectedCommitMovement: [0, 1] as const, expectedSeed: 'ab', key: 'Enter' },
+    { expectedCommitMovement: [1, 0] as const, expectedSeed: 'ab', key: 'ArrowRight' },
+    { expectedBeginSeed: 'a', key: 'Backspace' },
+  ] as const)('resolves a rapid typed seed when $key arrives before the deferred editor opens', async (scenario) => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    document.body.innerHTML = ''
+    const originalRequestAnimationFrame = window.requestAnimationFrame
+    const originalCancelAnimationFrame = window.cancelAnimationFrame
+    const callbacks: FrameRequestCallback[] = []
+    window.requestAnimationFrame = vi.fn((callback: FrameRequestCallback) => {
+      callbacks.push(callback)
+      return callbacks.length
+    })
+    window.cancelAnimationFrame = vi.fn()
+    const beginSelectedEdit = vi.fn()
+    const onClearCell = vi.fn()
+    const onCommitEdit = vi.fn()
+    const setGridSelection = vi.fn()
+    const onSelectionChange = vi.fn()
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+
+    try {
+      await act(async () => {
+        root.render(
+          createElement(KeyboardHandlerHarness, {
+            beginSelectedEdit,
+            onClearCell,
+            onCommitEdit,
+            onSelectionChange,
+            setGridSelection,
+          }),
+        )
+      })
+
+      const firstKey = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: 'a' })
+      const secondKey = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: 'b' })
+      const resolvingKey = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: scenario.key })
+
+      await act(async () => {
+        window.dispatchEvent(firstKey)
+        window.dispatchEvent(secondKey)
+        window.dispatchEvent(resolvingKey)
+      })
+
+      expect(firstKey.defaultPrevented).toBe(true)
+      expect(secondKey.defaultPrevented).toBe(true)
+      expect(resolvingKey.defaultPrevented).toBe(true)
+      expect(callbacks).toHaveLength(1)
+      expect(onClearCell).not.toHaveBeenCalled()
+
+      if ('expectedCommitMovement' in scenario) {
+        expect(beginSelectedEdit).not.toHaveBeenCalled()
+        expect(onCommitEdit).toHaveBeenCalledTimes(1)
+        expect(onCommitEdit).toHaveBeenCalledWith(scenario.expectedCommitMovement, scenario.expectedSeed)
+      } else {
+        expect(onCommitEdit).not.toHaveBeenCalled()
+        expect(beginSelectedEdit).toHaveBeenCalledTimes(1)
+        expect(beginSelectedEdit).toHaveBeenCalledWith(scenario.expectedBeginSeed, 'caret-end')
+      }
+
+      callbacks[0]?.(performance.now())
+
+      expect(beginSelectedEdit).toHaveBeenCalledTimes('expectedBeginSeed' in scenario ? 1 : 0)
+    } finally {
+      window.requestAnimationFrame = originalRequestAnimationFrame
+      window.cancelAnimationFrame = originalCancelAnimationFrame
+      await act(async () => {
+        root.unmount()
+      })
+    }
+  })
+
   test('routes external clipboard data through paste operations', () => {
     const onCopyRange = vi.fn()
     const onPaste = vi.fn()

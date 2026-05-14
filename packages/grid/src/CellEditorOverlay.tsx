@@ -27,7 +27,7 @@ function normalizeNumpadKey(key: string, code: string): string | null {
   return key.length === 1 ? key : null
 }
 
-const PARENT_SYNC_DEBOUNCE_MS = 80
+const PARENT_SYNC_DEBOUNCE_MS = 250
 
 function moveCaretToBoundary(input: HTMLTextAreaElement, boundary: 'start' | 'end', extendSelection: boolean) {
   const nextPosition = boundary === 'start' ? 0 : input.value.length
@@ -114,13 +114,14 @@ export function CellEditorOverlay({
 
   const updateDraftValue = (nextValue: string) => {
     pendingParentSyncValueRef.current = nextValue
-    setDraftValue(nextValue)
     if (pendingParentSyncRef.current !== null) {
       return
     }
     pendingParentSyncRef.current = window.setTimeout(() => {
       pendingParentSyncRef.current = null
-      onChange(pendingParentSyncValueRef.current)
+      const syncedValue = pendingParentSyncValueRef.current
+      setDraftValue(syncedValue)
+      onChange(syncedValue)
     }, PARENT_SYNC_DEBOUNCE_MS)
   }
 

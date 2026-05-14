@@ -1,4 +1,4 @@
-import { useCallback, useEffect, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
+import { useCallback, useEffect, useMemo, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
 import { formatAddress } from '@bilig/formula'
 import { ValueTag } from '@bilig/protocol'
 import {
@@ -6,11 +6,112 @@ import {
   handleGridKey as dispatchGridKey,
   isGridKeyboardEditableTarget,
   shouldHandleGridWindowKey,
+  shouldHandleGridSurfaceKey,
   shouldSuppressWorkbookChromeClearKey,
   type GridKeyboardEventLike,
 } from './gridClipboardKeyboardController.js'
 import type { InternalClipboardRange } from './gridInternalClipboard.js'
 import type { GridSelection, GridSelectionSnapshot } from './gridTypes.js'
+
+type BeginSelectedEdit = (seed?: string, selectionBehavior?: 'select-all' | 'caret-end') => void
+
+interface DeferredBeginEditScheduler {
+  beginImmediate(seed: string | undefined, selectionBehavior: 'select-all' | 'caret-end'): void
+  cancel(): void
+  consume(): { readonly seed: string; readonly selectionBehavior: 'select-all' | 'caret-end' } | null
+  schedule(seed: string, selectionBehavior: 'select-all' | 'caret-end'): void
+}
+
+type PendingTypedEditResolution =
+  | { readonly kind: 'begin'; readonly seed: (pendingSeed: string) => string }
+  | { readonly kind: 'cancel' }
+  | { readonly kind: 'commit'; readonly movement: readonly [-1 | 0 | 1, -1 | 0 | 1] }
+
+function isPendingTypedEditTextContinuation(event: GridKeyboardEventLike): boolean {
+  return event.key.length === 1 && !event.altKey && !event.ctrlKey && !event.metaKey && !(event.key === ' ' && event.shiftKey)
+}
+
+function resolvePendingTypedEdit(event: GridKeyboardEventLike): PendingTypedEditResolution | null {
+  if (isPendingTypedEditTextContinuation(event) || !shouldHandleGridSurfaceKey(event)) {
+    return null
+  }
+
+  const hasPlainGridModifierState = !event.altKey && !event.ctrlKey && !event.metaKey
+  if (event.key === 'Enter' && hasPlainGridModifierState) {
+    return { kind: 'commit', movement: [0, event.shiftKey ? -1 : 1] }
+  }
+  if (event.key === 'Tab' && hasPlainGridModifierState) {
+    return { kind: 'commit', movement: [event.shiftKey ? -1 : 1, 0] }
+  }
+  if (event.key === 'ArrowUp' && hasPlainGridModifierState) {
+    return { kind: 'commit', movement: [0, -1] }
+  }
+  if (event.key === 'ArrowDown' && hasPlainGridModifierState) {
+    return { kind: 'commit', movement: [0, 1] }
+  }
+  if (event.key === 'ArrowLeft' && hasPlainGridModifierState) {
+    return { kind: 'commit', movement: [-1, 0] }
+  }
+  if (event.key === 'ArrowRight' && hasPlainGridModifierState) {
+    return { kind: 'commit', movement: [1, 0] }
+  }
+  if (event.key === 'Escape' && hasPlainGridModifierState) {
+    return { kind: 'cancel' }
+  }
+  if (event.key === 'Backspace' && hasPlainGridModifierState) {
+    return { kind: 'begin', seed: (pendingSeed) => pendingSeed.slice(0, -1) }
+  }
+  return { kind: 'begin', seed: (pendingSeed) => pendingSeed }
+}
+
+export function createDeferredBeginEditScheduler(input: {
+  readonly beginSelectedEdit: BeginSelectedEdit
+  readonly cancelAnimationFrame?: ((handle: number) => void) | undefined
+  readonly requestAnimationFrame?: ((callback: FrameRequestCallback) => number) | undefined
+}): DeferredBeginEditScheduler {
+  let pendingFrame: number | null = null
+  let pendingEdit: { readonly seed: string; readonly selectionBehavior: 'select-all' | 'caret-end' } | null = null
+
+  const cancel = (): void => {
+    if (pendingFrame !== null) {
+      input.cancelAnimationFrame?.(pendingFrame)
+    }
+    pendingFrame = null
+    pendingEdit = null
+  }
+  const flush = (): void => {
+    const nextEdit = pendingEdit
+    pendingFrame = null
+    pendingEdit = null
+    if (nextEdit) {
+      input.beginSelectedEdit(nextEdit.seed, nextEdit.selectionBehavior)
+    }
+  }
+
+  return {
+    beginImmediate(seed, selectionBehavior) {
+      cancel()
+      input.beginSelectedEdit(seed, selectionBehavior)
+    },
+    cancel,
+    consume() {
+      const nextEdit = pendingEdit
+      cancel()
+      return nextEdit
+    },
+    schedule(seed, selectionBehavior) {
+      pendingEdit = { seed, selectionBehavior }
+      if (pendingFrame !== null) {
+        return
+      }
+      if (!input.requestAnimationFrame) {
+        flush()
+        return
+      }
+      pendingFrame = input.requestAnimationFrame(flush)
+    },
+  }
+}
 
 export function useWorkbookGridKeyboardHandler(input: {
   applyClipboardValues: (target: readonly [number, number], values: readonly (readonly string[])[]) => void
@@ -37,13 +138,48 @@ export function useWorkbookGridKeyboardHandler(input: {
   suppressNextNativePasteRef: MutableRefObject<boolean>
   toggleSelectedBooleanCell: () => void
 }) {
+  const deferredBeginEditScheduler = useMemo(
+    () =>
+      createDeferredBeginEditScheduler({
+        beginSelectedEdit: input.beginSelectedEdit,
+        cancelAnimationFrame: typeof window === 'undefined' ? undefined : (handle: number) => window.cancelAnimationFrame(handle),
+        requestAnimationFrame:
+          typeof window === 'undefined' ? undefined : (callback: FrameRequestCallback) => window.requestAnimationFrame(callback),
+      }),
+    [input.beginSelectedEdit],
+  )
+  useEffect(() => () => deferredBeginEditScheduler.cancel(), [deferredBeginEditScheduler])
+
   const handleGridKey = useCallback(
     (event: GridKeyboardEventLike) => {
+      const pendingTypedEdit = resolvePendingTypedEdit(event)
+      if (!input.isEditingCell && pendingTypedEdit) {
+        const pendingEdit = deferredBeginEditScheduler.consume()
+        if (pendingEdit) {
+          input.pendingTypeSeedRef.current = null
+          event.preventDefault()
+          event.cancel?.()
+          if (pendingTypedEdit.kind === 'commit') {
+            input.onCommitEdit(pendingTypedEdit.movement, pendingEdit.seed)
+          } else if (pendingTypedEdit.kind === 'cancel') {
+            input.onCancelEdit()
+          } else {
+            deferredBeginEditScheduler.beginImmediate(pendingTypedEdit.seed(pendingEdit.seed), pendingEdit.selectionBehavior)
+          }
+          return
+        }
+      }
       const gridSelection = input.getGridSelection?.() ?? input.gridSelection
       const selectedCell = gridSelection.current?.cell ?? [input.selectedCell.col, input.selectedCell.row]
       dispatchGridKey({
         applyClipboardValues: input.applyClipboardValues,
-        beginSelectedEdit: input.beginSelectedEdit,
+        beginSelectedEdit: (seed, selectionBehavior = 'caret-end') => {
+          if (seed === undefined) {
+            deferredBeginEditScheduler.beginImmediate(seed, selectionBehavior)
+            return
+          }
+          deferredBeginEditScheduler.schedule(seed, selectionBehavior)
+        },
         captureInternalClipboardSelection: input.captureInternalClipboardSelection,
         editorValue: input.editorValue,
         event,
@@ -67,7 +203,7 @@ export function useWorkbookGridKeyboardHandler(input: {
         toggleSelectedBooleanCell: input.toggleSelectedBooleanCell,
       })
     },
-    [input],
+    [deferredBeginEditScheduler, input],
   )
 
   useEffect(() => {

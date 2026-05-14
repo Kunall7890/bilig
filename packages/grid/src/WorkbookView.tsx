@@ -81,6 +81,11 @@ interface WorkbookViewProps {
     | undefined
 }
 
+interface LocalSelectionLabel {
+  readonly baseCommittedLabel: string
+  readonly label: string
+}
+
 const MIN_SIDE_PANEL_WIDTH = 280
 const MAX_SIDE_PANEL_WIDTH = 420
 const SIDE_PANEL_VIEWPORT_FRACTION = 0.42
@@ -249,11 +254,14 @@ export function WorkbookView({
     startWidth: number
   } | null>(null)
   const [isResizingSidePanel, setIsResizingSidePanel] = useState(false)
-  const [selectionLabel, setSelectionLabel] = useState(formatSelectionSnapshotSummary(selectionSnapshot))
+  const committedSelectionLabel = React.useMemo(() => formatSelectionSnapshotSummary(selectionSnapshot), [selectionSnapshot])
+  const [localSelectionLabel, setLocalSelectionLabel] = useState<LocalSelectionLabel | null>(null)
   const [viewportWidth, setViewportWidth] = useState(getViewportWidth)
   const [gridFocusRequestToken, setGridFocusRequestToken] = useState(0)
   const gridFocusApiRef = useRef<(() => void) | null>(null)
   const resolvedSidePanelWidth = resolveSidePanelWidth(sidePanelWidth ?? 344, viewportWidth)
+  const selectionLabel =
+    localSelectionLabel?.baseCommittedLabel === committedSelectionLabel ? localSelectionLabel.label : committedSelectionLabel
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -265,17 +273,23 @@ export function WorkbookView({
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  useEffect(() => {
-    const nextSelectionLabel = formatSelectionSnapshotSummary(selectionSnapshot)
-    setSelectionLabel(nextSelectionLabel)
-  }, [selectionSnapshot, sheetName])
-
   const handleSelectionLabelChange = useCallback(
     (label: string) => {
-      setSelectionLabel(label)
+      const nextLocalSelectionLabel =
+        label === committedSelectionLabel
+          ? null
+          : {
+              baseCommittedLabel: committedSelectionLabel,
+              label,
+            }
+      setLocalSelectionLabel((current) =>
+        current?.baseCommittedLabel === nextLocalSelectionLabel?.baseCommittedLabel && current?.label === nextLocalSelectionLabel?.label
+          ? current
+          : nextLocalSelectionLabel,
+      )
       onSelectionLabelChange?.(label)
     },
-    [onSelectionLabelChange],
+    [committedSelectionLabel, onSelectionLabelChange],
   )
 
   const handleSidePanelPointerMove = useCallback(

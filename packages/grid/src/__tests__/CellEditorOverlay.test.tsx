@@ -161,7 +161,7 @@ describe('CellEditorOverlay', () => {
       expect(onChange).not.toHaveBeenCalled()
 
       await act(async () => {
-        vi.advanceTimersByTime(79)
+        vi.advanceTimersByTime(249)
       })
 
       expect(onChange).not.toHaveBeenCalled()
