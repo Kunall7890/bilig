@@ -307,6 +307,7 @@ for (const required of [
   'https://github.com/proompteng/bilig/discussions/270',
   'https://github.com/proompteng/bilig/discussions/307',
   'https://github.com/proompteng/bilig/discussions/308',
+  'https://github.com/proompteng/bilig/discussions/335',
   'https://github.com/proompteng/bilig/discussions/230#discussioncomment-16907632',
   'https://github.com/proompteng/bilig/discussions/115',
   'https://github.com/proompteng/bilig/blob/main/docs/dev-to-workbook-apis-post.md',
@@ -562,6 +563,7 @@ requireIncludes(
   'docs/mcp-workpaper-tool-server.md',
 )
 requireIncludes(mcpWorkPaperToolServerDoc, 'https://github.com/proompteng/bilig/discussions/230', 'docs/mcp-workpaper-tool-server.md')
+requireIncludes(agentToolCallingDoc, 'https://github.com/proompteng/bilig/discussions/335', 'docs/agent-workpaper-tool-calling-recipe.md')
 requireIncludes(mcpWorkPaperToolServerDoc, 'mcp-client-setup.md', 'docs/mcp-workpaper-tool-server.md')
 for (const required of [
   'description: Live directory and install status for the Bilig WorkPaper MCP server',
@@ -759,6 +761,7 @@ for (const [path, content] of [
 const discussionDocs = {
   readme: ['README.md', readme],
   headless: ['packages/headless/README.md', headlessReadme],
+  agent: ['docs/agent-workpaper-tool-calling-recipe.md', agentToolCallingDoc],
   index: ['docs/index.html', index],
   launch: ['docs/community-launch-pack.md', communityLaunchPack],
   llms: ['docs/llms.txt', llms],
@@ -772,6 +775,7 @@ const discussionDocChecks = [
   ['https://github.com/proompteng/bilig/discussions/167', ['index', 'launch', 'llms']],
   ['https://github.com/proompteng/bilig/discussions/307', ['readme', 'headless', 'index', 'launch', 'llms']],
   ['https://github.com/proompteng/bilig/discussions/308', ['readme', 'headless', 'launch', 'llms']],
+  ['https://github.com/proompteng/bilig/discussions/335', ['readme', 'headless', 'agent', 'launch', 'llms']],
 ] as const
 
 for (const [url, docKeys] of discussionDocChecks) {

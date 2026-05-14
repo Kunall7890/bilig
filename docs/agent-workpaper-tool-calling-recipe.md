@@ -32,6 +32,10 @@ AI SDK or LangChain into this repository, run
 If your app calls OpenAI directly, start with the
 [Responses API function-calling guide](https://developers.openai.com/api/docs/guides/function-calling)
 and keep the WorkPaper functions below as your application-side tool handlers.
+If this is the path you are trying, use the
+[OpenAI Responses tool-call discussion](https://github.com/proompteng/bilig/discussions/335)
+to say what readback or streaming transcript shape would make the example more
+useful.
 
 ## Tool Contract
 

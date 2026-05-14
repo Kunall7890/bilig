@@ -241,7 +241,11 @@ Postgres/Redis/object-storage adapter pass:
   library chooser page, with a direct path from grid/file/formula-engine search
   intent to the WorkPaper runtime:
   <https://github.com/proompteng/bilig/discussions/308>
-- The public growth snapshot now records `10` GitHub Discussions and keeps the
+- GitHub Discussion `#335` now asks OpenAI Responses API users whether the
+  WorkPaper tool-call wrapper needs streaming `function_call_output`, richer
+  write readback, or different audit fields:
+  <https://github.com/proompteng/bilig/discussions/335>
+- The public growth snapshot now records `11` GitHub Discussions and keeps the
   active feedback loops visible beside stars, npm demand, contributor
   queue health, and traffic.
 

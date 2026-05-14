@@ -264,6 +264,8 @@ Repository links:
   <https://github.com/proompteng/bilig/discussions/307>
 - JavaScript spreadsheet library guide feedback:
   <https://github.com/proompteng/bilig/discussions/308>
+- OpenAI Responses tool-call feedback:
+  <https://github.com/proompteng/bilig/discussions/335>
 - server-side spreadsheet automation:
   [`docs/server-side-spreadsheet-automation-node.md`](https://github.com/proompteng/bilig/blob/main/docs/server-side-spreadsheet-automation-node.md)
 - Node service recipe:

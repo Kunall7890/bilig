@@ -91,7 +91,8 @@ Useful direct paths:
   `npm exec --package @bilig/headless -- bilig-workpaper-mcp`.
 - Open feedback threads:
   [Postgres, Redis, and object storage adapters discussion](https://github.com/proompteng/bilig/discussions/307)
-  and [JavaScript spreadsheet library guide discussion](https://github.com/proompteng/bilig/discussions/308).
+  [JavaScript spreadsheet library guide discussion](https://github.com/proompteng/bilig/discussions/308),
+  and [OpenAI Responses tool-call discussion](https://github.com/proompteng/bilig/discussions/335).
 - SEO comparison pages:
   [evaluate Excel formulas in Node.js](docs/evaluate-excel-formulas-in-node-typescript.md),
   [Node spreadsheet formula engine](docs/node-spreadsheet-formula-engine.md),
@@ -483,6 +484,9 @@ the GitHub discussion:
 
 For the five runnable service-workflow examples as one shareable thread, see:
 <https://github.com/proompteng/bilig/discussions/213>.
+
+For OpenAI Responses API tool-call feedback, use:
+<https://github.com/proompteng/bilig/discussions/335>.
 
 For the search-friendly version with commands and current output snippets, see
 [`docs/workbook-automation-examples-node.md`](docs/workbook-automation-examples-node.md).
