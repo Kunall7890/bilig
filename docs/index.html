@@ -122,8 +122,8 @@
       }
     </script>
     <link rel="stylesheet" href="./assets/fonts.css?v=2026-05-14-1" />
-    <link rel="stylesheet" href="./assets/site.css?v=2026-05-14-12" />
-    <link rel="stylesheet" href="./assets/product-demo.css?v=2026-05-14-3" />
+    <link rel="stylesheet" href="./assets/site.css?v=2026-05-14-14" />
+    <link rel="stylesheet" href="./assets/product-demo.css?v=2026-05-14-4" />
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
@@ -148,10 +148,14 @@
     <section class="hero" aria-labelledby="hero-title">
       <div class="wrap hero-inner">
         <div class="hero-copy">
-          <h1 id="hero-title" class="hero-title">Workbook models for TypeScript services.</h1>
+          <p class="eyebrow">@bilig/headless</p>
+          <h1 id="hero-title" class="hero-title" translate="no">bilig</h1>
+          <p class="hero-subtitle" aria-label="Headless workbooks for TypeScript services.">
+            Headless workbooks for<br />TypeScript services.
+          </p>
           <p class="lede">
-            Use a workbook when the calculation is easiest to review as cells and formulas. Your code changes the inputs, reads the
-            recalculated values, and saves the same workbook state as JSON.
+            Keep the spreadsheet shape when cells and formulas are still the clearest way to explain the calculation. Change inputs in code,
+            read the formula result, and save the workbook as JSON.
           </p>
           <div class="install-command" aria-label="Install command">
             <span class="mono">$</span>
@@ -162,107 +166,35 @@
             <a class="button" href="#install">Run the smoke test</a>
             <a class="button dark" href="https://github.com/proompteng/bilig">View GitHub</a>
           </div>
-          <div class="hero-notes" aria-label="Project status">
-            <div class="hero-note">
-              <strong>TypeScript examples</strong>
-              <span>Runnable <code>.ts</code> files with public package imports.</span>
+          <div class="hero-proof" aria-label="Project status">
+            <div class="hero-proof-item">
+              <strong>TypeScript package</strong>
+              <span>Examples are real <code>.ts</code> files with public imports.</span>
             </div>
-            <div class="hero-note">
-              <strong>Write, then read</strong>
-              <span>Change an input and inspect the value the workbook produced.</span>
+            <div class="hero-proof-item">
+              <strong>MCP server</strong>
+              <span>The npm package ships a stdio server for agent tools.</span>
             </div>
-            <div class="hero-note">
-              <strong>111 starter issues</strong>
-              <span>Small code, test, docs, example, and adapter tasks.</span>
+            <div class="hero-proof-item">
+              <strong>Public benchmark</strong>
+              <span>The HyperFormula comparison links to the JSON artifact and caveat.</span>
             </div>
           </div>
         </div>
 
-        <figure class="hero-media" aria-label="WorkPaper TypeScript artifact">
+        <figure class="hero-media">
           <div class="product-frame">
-            <div
-              class="product-demo"
-              role="img"
-              aria-label="A revenue WorkPaper beside TypeScript code that edits a cell and reads the recalculated total"
-            >
-              <div class="demo-titlebar">
-                <span>Revenue.workpaper</span>
-                <strong>verified after edit</strong>
-              </div>
-              <div class="demo-body">
-                <div class="sheet-pane" aria-hidden="true">
-                  <div class="formula-bar"><span>D2</span><code>=B2*C2</code></div>
-                  <table class="sheet-table">
-                    <thead>
-                      <tr>
-                        <th></th>
-                        <th>A</th>
-                        <th>B</th>
-                        <th>C</th>
-                        <th>D</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <th>1</th>
-                        <td>Region</td>
-                        <td>Cust.</td>
-                        <td>ARPA</td>
-                        <td>Revenue</td>
-                      </tr>
-                      <tr>
-                        <th>2</th>
-                        <td>West</td>
-                        <td class="selected">32</td>
-                        <td>1200</td>
-                        <td class="formula">38,400</td>
-                      </tr>
-                      <tr>
-                        <th>3</th>
-                        <td>East</td>
-                        <td>30</td>
-                        <td>250</td>
-                        <td>7,500</td>
-                      </tr>
-                      <tr>
-                        <th>4</th>
-                        <td>Central</td>
-                        <td>18</td>
-                        <td>300</td>
-                        <td>5,400</td>
-                      </tr>
-                      <tr>
-                        <th>5</th>
-                        <td>Total</td>
-                        <td></td>
-                        <td></td>
-                        <td class="total">51,300</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                <div class="code-pane" aria-hidden="true">
-                  <div class="code-head"><span>eval.ts</span><strong>TypeScript</strong></div>
-                  <pre><code><span class="kw">const</span> revenue = workbook.getSheetId(<span class="str">"Revenue"</span>);
-workbook.setCellContents(
-  { sheet: revenue, row: <span class="num">1</span>, col: <span class="num">1</span> },
-  <span class="num">32</span>,
-);
-
-<span class="kw">const</span> total = workbook.getCellValue(
-  { sheet: summary, row: <span class="num">1</span>, col: <span class="num">1</span> },
-);</code></pre>
-                </div>
-              </div>
-              <div class="demo-readout">
-                <span>before <strong>36,900</strong></span>
-                <span>after <strong>51,300</strong></span>
-                <span>restored <strong>true</strong></span>
-              </div>
-            </div>
+            <img
+              src="./assets/bilig-hero-workbook-api.png?v=2026-05-14-2"
+              width="1600"
+              height="900"
+              alt="A WorkPaper table next to TypeScript code that edits an input cell and reads the recalculated result."
+              decoding="async"
+              fetchpriority="high"
+            />
             <figcaption class="frame-caption">
-              <span>A WorkPaper keeps the data, formulas, and saved state together.</span>
-              <strong>No browser grid</strong>
+              <span>Edit cells. Read formulas. Save JSON.</span>
+              <strong>No grid required</strong>
             </figcaption>
           </div>
         </figure>

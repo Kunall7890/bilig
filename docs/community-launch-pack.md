@@ -447,15 +447,13 @@ Latest search-intent boundary action on May 14, 2026:
 
 Latest homepage polish action on May 14, 2026:
 
-- The homepage first viewport now leads with the plain product category
-  "Workbook models for TypeScript services" instead of a large repeated brand
-  mark and generic spreadsheet tagline.
-- The hero copy says exactly what the package does: change workbook inputs from
-  code, read recalculated values, and save the same workbook state as JSON.
-- The local Dia check verified the first viewport at
-  `http://127.0.0.1:4176/?v=home-polish-1`: no hero/media overlap, no stranded
-  headline word, and the next section is visible at the bottom of the initial
-  viewport.
+- The homepage first viewport now leads with the product name `bilig` and the
+  plain category line "Headless workbooks for TypeScript services."
+- The hero copy says exactly what the package does: keep a workbook-shaped
+  formula model, change inputs from code, read the formula result, and save the
+  workbook as JSON.
+- The product visual is now a generated `bilig-hero-workbook-api.png` asset
+  instead of a CSS-composed table/code mockup that can overlap at narrow widths.
 
 Latest HN conversion signal on May 14, 2026:
 
@@ -640,7 +638,7 @@ contributor onboarding into public marketing:
 and coding agents that need spreadsheet formulas without driving a browser grid.
 
 2/ The shortest eval now starts from an empty npm project:
-https://github.com/proompteng/bilig#try-biligheadless-in-90-seconds
+https://github.com/proompteng/bilig#try-it-in-90-seconds
 
 It edits an input, reads the recalculated value, saves WorkPaper JSON, restores
 it, and checks the value again.
@@ -675,7 +673,7 @@ dependent formula result, serializes the workbook as WorkPaper JSON, restores
 it, and checks that the restored value still matches.
 
 Repo quickstart:
-https://github.com/proompteng/bilig#try-biligheadless-in-90-seconds
+https://github.com/proompteng/bilig#try-it-in-90-seconds
 
 This is for backend and agent workflows where workbook formulas are business
 logic but opening a browser grid is the wrong runtime boundary. It is not an

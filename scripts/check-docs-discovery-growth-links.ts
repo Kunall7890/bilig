@@ -10,7 +10,7 @@ export const communityLaunchPackRequiredLinks = [
   'Latest technical-content action on May 14, 2026',
   'https://proompteng.github.io/bilig/why-agents-need-workbook-apis.html',
   'Latest homepage polish action on May 14, 2026',
-  'Workbook models for TypeScript services',
+  'Headless workbooks for TypeScript services',
   'Latest TypeScript-example guard action on May 14, 2026',
   'runnable examples are TypeScript files',
   'Latest Hapi route adapter action on May 14, 2026',

@@ -14,7 +14,7 @@
   --accent-bright: #35d179;
   --code: #101820;
   --font-body: 'Bilig Sans', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-display: 'Bilig Condensed', 'Bilig Sans', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'Bilig Sans', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'Bilig Mono', 'SFMono-Regular', ui-monospace, 'Cascadia Code', Consolas, monospace;
 }
 
@@ -180,7 +180,7 @@ pre,
 
 .hero-inner {
   display: grid;
-  grid-template-columns: minmax(0, 0.74fr) minmax(480px, 1fr);
+  grid-template-columns: minmax(0, 0.62fr) minmax(560px, 0.98fr);
   gap: clamp(42px, 6vw, 78px);
   align-items: center;
   padding: clamp(48px, 6.4vw, 76px) 0 clamp(42px, 5vw, 62px);
@@ -188,7 +188,7 @@ pre,
 
 .hero-copy {
   display: grid;
-  gap: 24px;
+  gap: 20px;
   min-width: 0;
 }
 
@@ -209,15 +209,24 @@ pre,
 .hero-title {
   max-width: 620px;
   font-family: var(--font-display);
-  font-size: clamp(48px, 6.6vw, 78px);
+  font-size: 112px;
   font-weight: 700;
-  line-height: 0.94;
+  line-height: 0.84;
+}
+
+.hero-subtitle {
+  max-width: min(620px, 100%);
+  color: var(--ink);
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1.08;
+  overflow-wrap: break-word;
 }
 
 .lede {
   max-width: 550px;
   color: var(--muted);
-  font-size: clamp(18px, 1.6vw, 21px);
+  font-size: 20px;
   line-height: 1.55;
 }
 
@@ -242,6 +251,7 @@ pre,
 }
 
 .install-command code {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -288,7 +298,7 @@ pre,
   color: #f5f1e7;
 }
 
-.hero-notes {
+.hero-proof {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
@@ -297,27 +307,27 @@ pre,
   padding-top: 18px;
 }
 
-.hero-note {
+.hero-proof-item {
   display: grid;
   gap: 7px;
   min-width: 0;
   align-content: start;
-  border-left: 1px solid var(--line);
-  padding-left: 14px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
 }
 
-.hero-note strong {
+.hero-proof-item strong {
   font-size: 14px;
   line-height: 1.25;
 }
 
-.hero-note span {
+.hero-proof-item span {
   color: var(--muted);
   font-size: 14px;
   line-height: 1.45;
 }
 
-.hero-note code {
+.hero-proof-item code {
   font-size: 0.95em;
   font-weight: 600;
 }
@@ -347,7 +357,7 @@ h2 {
   margin-top: 8px;
   max-width: 760px;
   font-family: var(--font-display);
-  font-size: clamp(36px, 4.7vw, 58px);
+  font-size: 52px;
   font-weight: 700;
   line-height: 1;
 }
@@ -382,7 +392,7 @@ h2 {
 .work-row h3,
 .path-link strong {
   color: var(--ink);
-  font-size: clamp(20px, 2vw, 24px);
+  font-size: 23px;
   font-weight: 700;
   line-height: 1.18;
 }
@@ -515,7 +525,7 @@ h2 {
 .proof-intro h2 {
   margin-top: 0;
   max-width: 620px;
-  font-size: clamp(38px, 4.6vw, 60px);
+  font-size: 56px;
   line-height: 1;
 }
 
@@ -575,7 +585,7 @@ h2 {
   width: fit-content;
   max-width: 100%;
   color: var(--accent);
-  font-size: clamp(52px, 7vw, 84px);
+  font-size: 76px;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
   letter-spacing: 0;
@@ -648,7 +658,7 @@ h2 {
 }
 
 .proof-row-code dd {
-  font-size: clamp(13px, 1.45vw, 16px);
+  font-size: 15px;
   line-height: 1.35;
 }
 
@@ -724,7 +734,7 @@ h2 {
 
 .final h2 {
   max-width: 760px;
-  font-size: clamp(38px, 5vw, 64px);
+  font-size: 58px;
 }
 
 .final p {
@@ -798,7 +808,7 @@ footer {
     justify-content: flex-start;
   }
 
-  .hero-notes,
+  .hero-proof,
   .proof-links,
   .docs-grid {
     grid-template-columns: 1fr 1fr;
@@ -841,14 +851,16 @@ footer {
 }
 
 @media (max-width: 700px) {
-  .hero-notes {
+  .hero-proof {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 560px) {
   .wrap {
-    width: min(100% - 28px, 1160px);
+    width: min(calc(100vw - 28px), 362px);
+    margin-left: 14px;
+    margin-right: 14px;
   }
 
   .hero-copy,
@@ -856,7 +868,7 @@ footer {
   .lede,
   .install-command,
   .hero-actions,
-  .hero-notes {
+  .hero-proof {
     width: 100%;
     max-width: none;
   }
@@ -866,14 +878,22 @@ footer {
   }
 
   .hero-title {
-    font-size: 50px;
+    font-size: 68px;
+  }
+
+  .hero-subtitle {
+    font-size: 26px;
   }
 
   h2 {
     font-size: 34px;
   }
 
-  .hero-notes,
+  .proof-result strong {
+    font-size: 56px;
+  }
+
+  .hero-proof,
   .proof-links,
   .docs-grid,
   .final .wrap {

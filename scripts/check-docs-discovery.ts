@@ -167,9 +167,13 @@ await Promise.all(
 )
 await requireFile(join(repoRoot, 'scripts', 'build-workpaper-mcpb.ts'))
 await Promise.all(
-  ['github-social-preview.png', 'workpaper-benchmark-card.png', ...productHuntLaunchAssetFiles].map((sourceFile) =>
-    requireFile(join(docsRoot, 'assets', sourceFile)),
-  ),
+  [
+    'bilig-hero-workbook-api.png',
+    'bilig-hero-workbook-api.svg',
+    'github-social-preview.png',
+    'workpaper-benchmark-card.png',
+    ...productHuntLaunchAssetFiles,
+  ].map((sourceFile) => requireFile(join(docsRoot, 'assets', sourceFile))),
 )
 await Promise.all(
   [

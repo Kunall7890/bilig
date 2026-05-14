@@ -345,6 +345,7 @@ const generatedSourceChecks: readonly CiTask[] = [
   bunScript('public claims check', 'scripts/check-public-claims.ts'),
   bunScript('workspace resolution check', 'scripts/gen-workspace-resolution.ts', '--check'),
   bunScript('canonical naming check', 'scripts/check-canonical-naming.ts'),
+  tsxScript('docs hero asset check', 'scripts/render-hero-workbook-api.ts', '--check'),
   tsxScript('docs social preview asset check', 'scripts/render-social-preview.ts', '--check'),
   tsxScript('docs benchmark card asset check', 'scripts/render-benchmark-card.ts', '--check'),
   tsxScript('docs discovery check', 'scripts/check-docs-discovery.ts'),

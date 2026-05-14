@@ -109,6 +109,8 @@
     "workspace-resolution:check": "bun scripts/gen-workspace-resolution.ts --check",
     "zero:data-migrate": "bun scripts/run-zero-data-migrations.ts",
     "naming:check": "bun scripts/check-canonical-naming.ts",
+    "docs:hero-asset:generate": "tsx scripts/render-hero-workbook-api.ts",
+    "docs:hero-asset:check": "tsx scripts/render-hero-workbook-api.ts --check",
     "docs:social-preview:generate": "tsx scripts/render-social-preview.ts",
     "docs:social-preview:check": "tsx scripts/render-social-preview.ts --check",
     "docs:benchmark-card:generate": "tsx scripts/render-benchmark-card.ts",
