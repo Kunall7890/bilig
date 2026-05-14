@@ -268,6 +268,8 @@ npm run agent:verify
   https://github.com/proompteng/bilig/discussions
 - feedback discussion for agent and service workflow input:
   https://github.com/proompteng/bilig/discussions/157
+- conversion-feedback comment after npm download and clone traffic review:
+  https://github.com/proompteng/bilig/discussions/157#discussioncomment-16920401
 - show-and-tell discussion for five runnable node workbook automation examples:
   https://github.com/proompteng/bilig/discussions/213
 - show-and-tell discussion for MCP spreadsheet tool server feedback:

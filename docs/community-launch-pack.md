@@ -298,6 +298,21 @@ Latest README conversion snapshot on May 14, 2026:
   workload would change a real adoption decision:
   <https://github.com/proompteng/bilig/discussions/340#discussioncomment-16915578>
 
+Latest conversion-feedback action on May 14, 2026:
+
+- Live demand signal: `@bilig/headless@0.14.5` has `15,592` npm downloads in
+  the latest weekly window, and GitHub traffic reports `20,066` clones from
+  `2,270` unique cloners.
+- Lagging conversion signal: the repository still has `23` GitHub stars, so
+  the next public ask is about what blocks a real trial instead of asking for
+  empty stars.
+- Feedback surface: discussion `#157` now has a maintainer update asking
+  people who tried or considered the package what made them stop, with prompts
+  for missing formulas, XLSX expectations, framework examples, benchmark
+  shape, persistence API shape, MCP read/write contracts, and README first-90s
+  gaps:
+  <https://github.com/proompteng/bilig/discussions/157#discussioncomment-16920401>
+
 Latest HN conversion signal on May 14, 2026:
 
 - The checked-in public growth snapshot records `news.ycombinator.com` as a top
