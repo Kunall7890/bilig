@@ -9,6 +9,7 @@ import { requireNpmEvalDiscovery } from './check-docs-discovery-npm-eval.ts'
 import { requireOpenAiResponsesDiscovery } from './check-docs-discovery-openai-responses.ts'
 import { docsSiteSources } from './check-docs-discovery-site-sources.ts'
 import { requireStarterIssueDiscovery } from './check-docs-discovery-starter-issues.ts'
+import { requireXlsxCorpusVerifierDiscovery } from './check-docs-discovery-xlsx-verifier.ts'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const docsRoot = join(repoRoot, 'docs')
@@ -466,18 +467,7 @@ requireIncludes(
   'docs/server-side-spreadsheet-automation-node.md',
 )
 
-const xlsxCorpusVerifier = await readFile(join(docsRoot, 'xlsx-corpus-verifier-walkthrough.md'), 'utf8')
-for (const required of [
-  'not on a vague',
-  'Run It Against Your Files',
-  'Put It In CI',
-  'pnpm workpaper:xlsx-corpus:check -- /path/to/workbooks',
-  'Turn A Miss Into A Contribution',
-  'https://github.com/proompteng/bilig/issues/new/choose',
-  'https://github.com/proompteng/bilig/issues?q=is%3Aissue%20state%3Aopen%20label%3Afirst-timers-only',
-] as const) {
-  requireIncludes(xlsxCorpusVerifier, required, 'docs/xlsx-corpus-verifier-walkthrough.md')
-}
+requireXlsxCorpusVerifierDiscovery(await readFile(join(docsRoot, 'xlsx-corpus-verifier-walkthrough.md'), 'utf8'))
 
 for (const [path, content] of [
   ['README.md', readme],
