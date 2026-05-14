@@ -288,6 +288,19 @@ Latest README conversion snapshot on May 14, 2026:
   workload would change a real adoption decision:
   <https://github.com/proompteng/bilig/discussions/340#discussioncomment-16915578>
 
+Latest HN conversion signal on May 14, 2026:
+
+- The checked-in public growth snapshot records `news.ycombinator.com` as a top
+  referrer with `51` views from `36` unique visitors.
+- The two public Show HN submissions are
+  <https://news.ycombinator.com/item?id=48045427> and
+  <https://news.ycombinator.com/item?id=48052832>. The HN Algolia API returned
+  `2` points and `0` comments for `48045427`, and `3` points and `0` comments
+  for `48052832`.
+- There is no HN comment thread to answer right now. The next HN move is not
+  reposting; it is making the landing page, README, and narrow benchmark asks
+  convert the traffic that already arrived.
+
 ## Goal Text
 
 Grow `proompteng/bilig` from `8` to `1,000` legitimate GitHub stars by making

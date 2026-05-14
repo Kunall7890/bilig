@@ -1,6 +1,6 @@
 # Community Growth Snapshot
 
-Captured at: `2026-05-14T07:17:14.596Z`
+Captured at: `2026-05-14T09:02:52.527Z`
 
 This snapshot tracks the public signals for the `@bilig/headless` growth loop: GitHub conversion, npm demand, contributor on-ramp health, discussion activity, and traffic quality.
 
@@ -35,18 +35,18 @@ This snapshot tracks the public signals for the `@bilig/headless` growth loop: G
 ## Discussions
 
 - Total discussions: 12
+- #230 [Show and tell: MCP spreadsheet tool server for WorkPaper agents](https://github.com/proompteng/bilig/discussions/230) (Show and tell, 3 comments)
 - #340 [What would make the WorkPaper benchmark unfair?](https://github.com/proompteng/bilig/discussions/340) (Ideas, 1 comment)
 - #335 [Show and tell: OpenAI Responses tool calls for WorkPaper spreadsheets](https://github.com/proompteng/bilig/discussions/335) (Show and tell, 0 comments)
 - #226 [Vercel AI SDK and LangChain spreadsheet tools for WorkPaper agents](https://github.com/proompteng/bilig/discussions/226) (Announcements, 1 comment)
 - #308 [How to choose a JavaScript spreadsheet library for Node services](https://github.com/proompteng/bilig/discussions/308) (Announcements, 0 comments)
-- #230 [Show and tell: MCP spreadsheet tool server for WorkPaper agents](https://github.com/proompteng/bilig/discussions/230) (Show and tell, 2 comments)
 
 ## Traffic
 
-- Views: 455 from 165 unique visitors
-- Clones: 18,381 from 2,002 unique cloners
-- Top referrers: github.com (61/15), news.ycombinator.com (51/36), t.co (29/24), Google (16/2), proompteng.github.io (13/10)
-- Top paths: /proompteng/bilig (208/148), /proompteng/bilig/issues (28/6), /proompteng/bilig/tree/main/examples/headless-workpaper (11/7), /proompteng/bilig/pulls (11/6), /proompteng/bilig/graphs/contributors (6/4)
+- Views: 507 from 174 unique visitors
+- Clones: 20,066 from 2,270 unique cloners
+- Top referrers: github.com (72/22), news.ycombinator.com (51/36), t.co (29/24), proompteng.github.io (16/10), Google (16/2)
+- Top paths: /proompteng/bilig (226/153), /proompteng/bilig/issues (29/6), /proompteng/bilig/pulls (15/7), /proompteng/bilig/tree/main/examples/headless-workpaper (11/7), /proompteng/bilig/commits/main (10/1)
 
 ## Read This Snapshot
 
