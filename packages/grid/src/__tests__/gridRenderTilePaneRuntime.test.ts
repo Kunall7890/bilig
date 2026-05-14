@@ -46,6 +46,22 @@ const LOCAL_EMPTY_ENGINE: GridEngineLike = {
   },
 }
 
+function expectedGridBorderRectCount(bounds: GridRenderTile['bounds']): number {
+  return bounds.rowEnd - bounds.rowStart + 1 + bounds.colEnd - bounds.colStart + 1
+}
+
+function createGridBorderRectInstances(rectCount: number): Float32Array {
+  const rectInstances = new Float32Array(rectCount * GRID_RECT_INSTANCE_FLOAT_COUNT_V3)
+  for (let index = 0; index < rectCount; index += 1) {
+    const offset = index * GRID_RECT_INSTANCE_FLOAT_COUNT_V3
+    rectInstances[offset + 2] = index % 2 === 0 ? 100 : 1
+    rectInstances[offset + 3] = index % 2 === 0 ? 1 : 20
+    rectInstances[offset + 11] = 1
+    rectInstances[offset + 13] = 1
+  }
+  return rectInstances
+}
+
 function createHost(): GridRuntimeHost {
   return new GridRuntimeHost({
     columnCount: 1000,
@@ -59,8 +75,10 @@ function createHost(): GridRuntimeHost {
 }
 
 function createRenderTile(tileId: number, sheetId = 7, sheetOrdinal = sheetId): GridRenderTile {
+  const bounds = { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 }
+  const rectCount = expectedGridBorderRectCount(bounds)
   return {
-    bounds: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+    bounds,
     coord: {
       colTile: 0,
       dprBucket: 1,
@@ -71,8 +89,8 @@ function createRenderTile(tileId: number, sheetId = 7, sheetOrdinal = sheetId): 
     },
     lastBatchId: 1,
     lastCameraSeq: 1,
-    rectCount: 1,
-    rectInstances: new Float32Array(GRID_RECT_INSTANCE_FLOAT_COUNT_V3),
+    rectCount,
+    rectInstances: createGridBorderRectInstances(rectCount),
     textCount: 0,
     textMetrics: new Float32Array(GRID_TEXT_METRIC_FLOAT_COUNT_V3),
     textRuns: [],
@@ -496,7 +514,7 @@ describe('GridRenderTilePaneRuntime', () => {
     })
   })
 
-  it('rebuilds visible remote tiles with empty drawable payloads as local grid tiles', () => {
+  it('rebuilds visible remote tiles with missing grid payloads as local grid tiles', () => {
     const runtime = new GridRenderTilePaneRuntime()
     const host = createHost()
     const tileIds = host.viewportTileKeys({
@@ -532,8 +550,110 @@ describe('GridRenderTilePaneRuntime', () => {
     )
 
     expect(state.renderTilePanes.map((pane) => pane.tile.tileId)).toEqual(tileIds)
-    expect(state.renderTilePanes[0]?.tile.rectCount).toBe(1)
+    expect(state.renderTilePanes[0]?.tile.rectCount).toBe(expectedGridBorderRectCount(state.renderTilePanes[0].tile.bounds))
     expect(state.renderTilePanes[1]?.tile).not.toBe(emptyRemoteTile)
+    expect(state.renderTilePanes[1]?.tile.rectCount).toBeGreaterThan(0)
+    expect(state.tileReadiness.misses).toEqual([])
+  })
+
+  it('rebuilds visible remote tiles with partial gridline payloads as local grid tiles', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const tileIds = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 0 },
+    })
+    const partialRectCount = 12
+    const partialRemoteTile: GridRenderTile = {
+      ...createRenderTile(tileIds[1]),
+      bounds: { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 32 },
+      coord: {
+        colTile: 0,
+        dprBucket: 1,
+        paneKind: 'body',
+        rowTile: 1,
+        sheetId: 7,
+        sheetOrdinal: 7,
+      },
+      rectCount: partialRectCount,
+      rectInstances: createGridBorderRectInstances(partialRectCount),
+    }
+    const state = runtime.resolve(
+      createInput({
+        engine: LOCAL_EMPTY_ENGINE,
+        gridRuntimeHost: host,
+        renderTileSource: createRenderTileSource([createRenderTile(tileIds[0]), partialRemoteTile]),
+        renderTileViewport: { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 0 },
+        residentViewport: { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 0 },
+        visibleViewport: { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 0 },
+      }),
+    )
+
+    expect(state.renderTilePanes.map((pane) => pane.tile.tileId)).toEqual(tileIds)
+    expect(state.renderTilePanes[1]?.tile).not.toBe(partialRemoteTile)
+    expect(state.renderTilePanes[1]?.tile.rectCount).toBeGreaterThan(partialRectCount)
+    expect(state.tileReadiness.misses).toEqual([])
+  })
+
+  it('rebuilds visible text-only remote tiles so blank cells keep gridlines', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const tileIds = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 0 },
+    })
+    const textOnlyRemoteTile: GridRenderTile = {
+      ...createRenderTile(tileIds[1]),
+      bounds: { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 32 },
+      coord: {
+        colTile: 0,
+        dprBucket: 1,
+        paneKind: 'body',
+        rowTile: 1,
+        sheetId: 7,
+        sheetOrdinal: 7,
+      },
+      rectCount: 0,
+      rectInstances: new Float32Array(),
+      textCount: 1,
+      textRuns: [
+        {
+          align: 'left',
+          clipHeight: 20,
+          clipWidth: 120,
+          clipX: 0,
+          clipY: 0,
+          color: '#000000',
+          col: 0,
+          font: '12px sans-serif',
+          fontSize: 12,
+          height: 20,
+          row: 32,
+          strike: false,
+          text: 'remote text without grid rects',
+          underline: false,
+          width: 120,
+          wrap: false,
+          x: 0,
+          y: 0,
+        },
+      ],
+    }
+    const state = runtime.resolve(
+      createInput({
+        engine: LOCAL_EMPTY_ENGINE,
+        gridRuntimeHost: host,
+        renderTileSource: createRenderTileSource([createRenderTile(tileIds[0]), textOnlyRemoteTile]),
+        renderTileViewport: { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 0 },
+        residentViewport: { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 0 },
+        visibleViewport: { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 0 },
+      }),
+    )
+
+    expect(state.renderTilePanes.map((pane) => pane.tile.tileId)).toEqual(tileIds)
+    expect(state.renderTilePanes[1]?.tile).not.toBe(textOnlyRemoteTile)
     expect(state.renderTilePanes[1]?.tile.rectCount).toBeGreaterThan(0)
     expect(state.tileReadiness.misses).toEqual([])
   })
@@ -1413,11 +1533,13 @@ describe('GridRenderTilePaneRuntime', () => {
     if (tileId === undefined) {
       throw new Error('Expected a visible render tile key for the test viewport')
     }
-    const rectInstances = new Float32Array(GRID_RECT_INSTANCE_FLOAT_COUNT_V3 * 2)
+    const baseTile = createRenderTile(tileId)
+    const rectCount = expectedGridBorderRectCount(baseTile.bounds)
+    const rectInstances = createGridBorderRectInstances(rectCount)
     rectInstances[0] = 42
     const remoteTile: GridRenderTile = {
-      ...createRenderTile(tileId),
-      rectCount: 2,
+      ...baseTile,
+      rectCount,
       rectInstances,
     }
 
@@ -1441,7 +1563,7 @@ describe('GridRenderTilePaneRuntime', () => {
     )
 
     expect(fallback.renderTilePanes[0]?.tile.tileId).toBe(tileId)
-    expect(fallback.renderTilePanes[0]?.tile.rectCount).toBe(2)
+    expect(fallback.renderTilePanes[0]?.tile.rectCount).toBe(rectCount)
     expect(fallback.renderTilePanes[0]?.tile.rectInstances).toBe(rectInstances)
     expect(fallback.renderTilePanes[0]?.tile.dirty?.rectSpans).toEqual([])
     expect(fallback.renderTilePanes[0]?.tile.dirty?.textSpans).toEqual([])
@@ -1458,11 +1580,13 @@ describe('GridRenderTilePaneRuntime', () => {
     if (tileId === undefined) {
       throw new Error('Expected a visible render tile key for the test viewport')
     }
-    const rectInstances = new Float32Array(GRID_RECT_INSTANCE_FLOAT_COUNT_V3 * 2)
+    const baseTile = createRenderTile(tileId)
+    const rectCount = expectedGridBorderRectCount(baseTile.bounds)
+    const rectInstances = createGridBorderRectInstances(rectCount)
     rectInstances[0] = 77
     const residentTile: GridRenderTile = {
-      ...createRenderTile(tileId),
-      rectCount: 2,
+      ...baseTile,
+      rectCount,
       rectInstances,
     }
 
@@ -1492,7 +1616,7 @@ describe('GridRenderTilePaneRuntime', () => {
     )
 
     expect(fallback.renderTilePanes[0]?.tile.tileId).toBe(tileId)
-    expect(fallback.renderTilePanes[0]?.tile.rectCount).toBe(2)
+    expect(fallback.renderTilePanes[0]?.tile.rectCount).toBe(rectCount)
     expect(fallback.renderTilePanes[0]?.tile.rectInstances).toBe(rectInstances)
     expect(fallback.renderTilePanes[0]?.tile.dirty?.rectSpans).toEqual([])
   })

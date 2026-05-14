@@ -68,6 +68,23 @@ function formatWorkbookAgentContextLabel(context: WorkbookAgentUiContext): strin
   return `${context.selection.sheetName}!${address}`
 }
 
+function stringifyWorkbookAgentContextSyncKey(context: WorkbookAgentUiContext): string {
+  const rendered = context.rendered
+  return JSON.stringify({
+    selection: context.selection,
+    viewport: context.viewport,
+    rendered:
+      rendered === undefined
+        ? null
+        : {
+            capturedRevision: rendered.capturedRevision ?? null,
+            batchId: rendered.batchId,
+            selection: rendered.selection,
+            visibleRange: rendered.visibleRange,
+          },
+  })
+}
+
 function readAppliedRevision(record: unknown): number | null {
   if (!isRecord(record)) {
     return null
@@ -429,7 +446,7 @@ export function useWorkbookAgentPane(input: {
       setThreadScope(nextSnapshot.scope)
       const nextApplyContext = applyContextRef.current
       if (nextSnapshot.context && nextApplyContext) {
-        const nextContextKey = JSON.stringify(nextSnapshot.context)
+        const nextContextKey = stringifyWorkbookAgentContextSyncKey(nextSnapshot.context)
         if (lastAppliedSnapshotContextKeyRef.current !== nextContextKey) {
           lastAppliedSnapshotContextKeyRef.current = nextContextKey
           nextApplyContext(nextSnapshot.context)
@@ -779,7 +796,7 @@ export function useWorkbookAgentPane(input: {
         return
       }
       const nextContext = getContextRef.current()
-      const nextContextKey = JSON.stringify(nextContext)
+      const nextContextKey = `${activeSession.threadId}:${stringifyWorkbookAgentContextSyncKey(nextContext)}`
       if (lastContextKeyRef.current === nextContextKey) {
         return
       }

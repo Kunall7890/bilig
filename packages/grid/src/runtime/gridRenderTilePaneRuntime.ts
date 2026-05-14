@@ -3,6 +3,7 @@ import { noteRendererTileReadiness, noteTypeGpuTileCacheStaleLookups, noteTypeGp
 import type { GridEngineLike } from '../grid-engine.js'
 import type { GridMetrics } from '../gridMetrics.js'
 import { buildLocalFixedRenderTiles } from '../renderer-v3/local-render-tile-materializer.js'
+import { GRID_RECT_INSTANCE_FLOAT_COUNT_V3 } from '../renderer-v3/rect-instance-buffer.js'
 import { buildFixedRenderTilePaneStates } from '../renderer-v3/render-tile-pane-builder.js'
 import type { GridRenderTile, GridRenderTileSceneChange, GridRenderTileSource } from '../renderer-v3/render-tile-source.js'
 import type { WorkbookRenderTilePaneState } from '../renderer-v3/render-tile-pane-state.js'
@@ -162,8 +163,31 @@ interface GridRenderTilePreloadResolution {
   readonly tiles: readonly GridRenderTile[]
 }
 
-function hasDrawableRenderTilePayload(tile: GridRenderTile): boolean {
-  return tile.rectCount > 0 || tile.textCount > 0
+function expectedRenderTileGridBorderCount(tile: GridRenderTile): number {
+  const rowCount = tile.bounds.rowEnd - tile.bounds.rowStart + 1
+  const colCount = tile.bounds.colEnd - tile.bounds.colStart + 1
+  return rowCount > 0 && colCount > 0 ? rowCount + colCount : 0
+}
+
+function countRenderTileGridBorderRects(tile: GridRenderTile): number {
+  const readableRectCount = Math.min(tile.rectCount, Math.floor(tile.rectInstances.length / GRID_RECT_INSTANCE_FLOAT_COUNT_V3))
+  let count = 0
+  for (let index = 0; index < readableRectCount; index += 1) {
+    const offset = index * GRID_RECT_INSTANCE_FLOAT_COUNT_V3
+    const width = tile.rectInstances[offset + 2] ?? 0
+    const height = tile.rectInstances[offset + 3] ?? 0
+    const borderAlpha = tile.rectInstances[offset + 11] ?? 0
+    const borderThickness = tile.rectInstances[offset + 13] ?? 0
+    if (borderAlpha > 0 && borderThickness > 0 && ((width <= 1.5 && height > 0) || (height <= 1.5 && width > 0))) {
+      count += 1
+    }
+  }
+  return count
+}
+
+function hasCompleteRenderTileGrid(tile: GridRenderTile): boolean {
+  const expectedBorderCount = expectedRenderTileGridBorderCount(tile)
+  return expectedBorderCount === 0 || countRenderTileGridBorderRects(tile) >= expectedBorderCount
 }
 
 interface RuntimeConnection<Identity> {
@@ -727,10 +751,10 @@ export class GridRenderTilePaneRuntime {
           : this.resolveResidentRenderTile(input, tileKey, sheetId, sheetOrdinal)
       const isDirty = visibleTileKeys.has(tileKey) && input.gridRuntimeHost.tiles.dirtyTiles.getUnconsumedMask(tileKey) !== 0
       const isVisibleMiss = visibleTileKeys.has(tileKey) && !tile
-      const isVisibleEmptyPayload = visibleTileKeys.has(tileKey) && tile !== null && !hasDrawableRenderTilePayload(tile)
+      const isVisibleMissingGridPayload = visibleTileKeys.has(tileKey) && tile !== null && !hasCompleteRenderTileGrid(tile)
       const shouldLocalizeDirty = (options.localizeDirtyVisibleTiles ?? true) && isDirty
-      if (shouldLocalizeDirty || isVisibleMiss || isVisibleEmptyPayload) {
-        if (shouldLocalizeDirty && tile) {
+      if (shouldLocalizeDirty || isVisibleMiss || isVisibleMissingGridPayload) {
+        if (shouldLocalizeDirty && tile && hasCompleteRenderTileGrid(tile)) {
           dirtyBaseTiles.set(tileKey, tile)
         }
         dirtyTileKeys.push(tileKey)

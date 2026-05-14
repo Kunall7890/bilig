@@ -6,7 +6,7 @@ export const workbookThemeColors = {
   accentSoft: 'rgba(33, 86, 58, 0.12)',
   border: '#ddd8cc',
   borderSubtle: '#e7e2d6',
-  gridBorder: '#ece9e1',
+  gridBorder: '#ddd8cc',
   hoverFill: 'rgba(82, 96, 109, 0.08)',
   hoverOutline: 'rgba(82, 96, 109, 0.42)',
   muted: '#f0ece3',
