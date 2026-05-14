@@ -12,6 +12,45 @@ import type {
   WorkPaperSheetDimensions,
 } from './work-paper-types.js'
 
+const SPILL_PRODUCING_FUNCTION_NAMES = [
+  'SEQUENCE',
+  'EXPAND',
+  'LINEST',
+  'LOGEST',
+  'OFFSET',
+  'TAKE',
+  'DROP',
+  'CHOOSECOLS',
+  'CHOOSEROWS',
+  'SORT',
+  'SORTBY',
+  'TOCOL',
+  'TOROW',
+  'WRAPROWS',
+  'WRAPCOLS',
+  'FILTER',
+  'UNIQUE',
+  'FREQUENCY',
+  'MODE.MULT',
+  'TEXTSPLIT',
+  'TRIMRANGE',
+  'GROUPBY',
+  'PIVOTBY',
+  'MAKEARRAY',
+  'MAP',
+  'SCAN',
+  'BYROW',
+  'BYCOL',
+  'RANDARRAY',
+  'MUNIT',
+  'MINVERSE',
+  'MMULT',
+] as const
+
+const SCALAR_RANGE_FUNCTION_RE =
+  /^(?:_XLFN\.)?(?:_XLWS\.)?(?:SUM|COUNT|COUNTA|COUNTBLANK|MIN|MAX|AVERAGE|AVG|SUMIF|COUNTIF|SUMIFS|COUNTIFS|ABS)\(.*\)(?:[+\-*/]\d+(?:\.\d+)?)?$/
+const SIMPLE_SCALAR_EXPRESSION_RE = /^\$?[A-Z]+\$?\d+(?:[+\-*/](?:\$?[A-Z]+\$?\d+|\d+(?:\.\d+)?))*$/
+
 export interface WorkPaperSheetInspection {
   readonly hasFormula: boolean
   readonly hasDynamicSpillFormula: boolean
@@ -190,11 +229,25 @@ export function cellHasFormulaPrefix(value: string): boolean {
 
 function formulaMayResizeDynamically(value: string): boolean {
   const formula = stripFormulaPrefix(value)
+  if (isDefinitelyScalarFormulaShape(formula)) {
+    return false
+  }
   try {
     return compileFormula(formula).producesSpill
   } catch {
     return true
   }
+}
+
+function isDefinitelyScalarFormulaShape(formula: string): boolean {
+  const normalized = formula.replace(/\s+/g, '').toUpperCase()
+  if (normalized.length === 0 || normalized.includes('{') || normalized.includes('#')) {
+    return false
+  }
+  if (SPILL_PRODUCING_FUNCTION_NAMES.some((name) => normalized.includes(`${name}(`))) {
+    return false
+  }
+  return SIMPLE_SCALAR_EXPRESSION_RE.test(normalized) || SCALAR_RANGE_FUNCTION_RE.test(normalized)
 }
 
 function stripFormulaPrefix(value: string): string {

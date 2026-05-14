@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import * as formula from '@bilig/formula'
 import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 import {
   cellHasFormulaPrefix,
@@ -41,6 +42,51 @@ describe('work paper sheet inspection', () => {
       maxColumnCount: 3,
       formulaCellCount: 1,
     })
+  })
+
+  it('does not compile definite scalar formulas just to inspect spill-resizing dimensions', () => {
+    const compileSpy = vi.spyOn(formula, 'compileFormula')
+    try {
+      const sheet: WorkPaperSheet = [
+        [1, 2, '=A1+B1', '=SUM(A1:A1)+1'],
+        [3, 4, '=A2*B2+5', '=COUNTIFS(A1:A2,">0")'],
+        [5, 6, '=ABS(A3)', '=MAX(A1:A3)'],
+      ]
+
+      expect(inspectSheetWithinLimits('Sheet1', sheet, {})).toEqual({
+        hasFormula: true,
+        hasDynamicSpillFormula: false,
+        dimensions: { width: 4, height: 3 },
+        materializedCellCount: 12,
+        maxColumnCount: 4,
+        formulaCellCount: 6,
+      })
+      expect(compileSpy).not.toHaveBeenCalled()
+    } finally {
+      compileSpy.mockRestore()
+    }
+  })
+
+  it('keeps dynamic array formulas on compiler-backed spill inspection', () => {
+    const compileSpy = vi.spyOn(formula, 'compileFormula')
+    try {
+      const filterInspection = inspectSheetWithinLimits('Sheet1', [[1], [2], ['=FILTER(A1:A2,A1:A2>1)']], {})
+      const rangeExpressionInspection = inspectSheetWithinLimits('Sheet1', [[1], [2], ['=A1:A2>1']], {})
+
+      expect(filterInspection).toMatchObject({
+        hasFormula: true,
+        hasDynamicSpillFormula: true,
+        formulaCellCount: 1,
+      })
+      expect(rangeExpressionInspection).toMatchObject({
+        hasFormula: true,
+        hasDynamicSpillFormula: true,
+        formulaCellCount: 1,
+      })
+      expect(compileSpy).toHaveBeenCalledTimes(2)
+    } finally {
+      compileSpy.mockRestore()
+    }
   })
 
   it('rejects invalid rows and sheets over configured limits', () => {
