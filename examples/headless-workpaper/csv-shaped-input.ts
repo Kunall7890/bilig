@@ -1,32 +1,97 @@
 import { WorkPaper } from '@bilig/headless'
 
 type WorkPaperInstance = ReturnType<typeof WorkPaper.buildFromSheets>
+type RevenueCsvRow = {
+  region: string
+  customers: string
+  arpa: string
+}
 
-const csvInput = [
-  ['Product', 'Q1', 'Q2', 'Q3', 'Q4'],
-  ['Widget A', 100, 150, 200, 250],
-  ['Widget B', 80, 90, 100, 110],
-  ['Widget C', 300, 310, 320, 330],
-]
+const csvInput = `
+region,customers,arpa
+West,20,1200
+East,30,250
+Central,18,300
+`.trim()
 
-const workbook = WorkPaper.buildFromSheets({
-  Data: csvInput,
+const sourceRows = parseRevenueCsv(csvInput)
+const revenueRows = sourceRows.map((row, index) => {
+  const spreadsheetRow = index + 2
+  return [
+    row.region,
+    readInputNumber(row.customers, `customers row ${spreadsheetRow}`),
+    readInputNumber(row.arpa, `arpa row ${spreadsheetRow}`),
+    `=B${spreadsheetRow}*C${spreadsheetRow}`,
+  ]
 })
 
-const dataSheet = requireSheet(workbook, 'Data')
+const workbook = WorkPaper.buildFromSheets({
+  Revenue: [['Region', 'Customers', 'ARPA', 'Revenue'], ...revenueRows],
+  Summary: [
+    ['Metric', 'Value'],
+    ['Total revenue', '=SUM(Revenue!D2:D4)'],
+    ['West customers', '=SUMIF(Revenue!A2:A4,"West",Revenue!B2:B4)'],
+    ['Largest deal', '=MAX(Revenue!D2:D4)'],
+  ],
+})
 
-// Add one formula-backed summary cell
-workbook.setCellContents({ sheet: dataSheet, row: 4, col: 0 }, 'Total Q1')
-workbook.setCellContents({ sheet: dataSheet, row: 4, col: 1 }, '=SUM(B2:B4)')
+const revenueSheet = requireSheet(workbook, 'Revenue')
+const summarySheet = requireSheet(workbook, 'Summary')
+const serializedRevenueSheet = workbook.getSheetSerialized(revenueSheet)
 
-// Read the display/result back
 const output = {
-  success: true,
-  totalQ1: readNumber(workbook, dataSheet, 4, 1, 'total Q1'),
+  sourceRows: sourceRows.length,
+  computed: {
+    totalRevenue: readComputedNumber(workbook, summarySheet, 1, 1, 'total revenue'),
+    westCustomers: readComputedNumber(workbook, summarySheet, 2, 1, 'West customers'),
+    largestDeal: readComputedNumber(workbook, summarySheet, 3, 1, 'largest deal'),
+  },
+  serializedFirstDataRow: readSerializedRow(serializedRevenueSheet, 1, 'Revenue row 2'),
+  verified: true,
 }
 
 assertSummary(output)
 console.log(JSON.stringify(output, null, 2))
+
+function parseRevenueCsv(input: string): RevenueCsvRow[] {
+  const lines = input
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+  const headerLine = lines[0]
+  const dataLines = lines.slice(1)
+  if (headerLine === undefined) {
+    throw new Error('expected CSV header row')
+  }
+
+  const headers = headerLine.split(',').map((header) => header.trim())
+  const expectedHeaders = ['region', 'customers', 'arpa']
+  if (JSON.stringify(headers) !== JSON.stringify(expectedHeaders)) {
+    throw new Error(`expected CSV headers ${expectedHeaders.join(',')}, received ${headers.join(',')}`)
+  }
+
+  return dataLines.map((line, index) => {
+    const values = line.split(',').map((value) => value.trim())
+    if (values.length !== expectedHeaders.length) {
+      throw new Error(`expected ${expectedHeaders.length} CSV fields on data row ${index + 2}, received ${values.length}`)
+    }
+
+    const [region, customers, arpa] = values
+    if (region === undefined || customers === undefined || arpa === undefined) {
+      throw new Error(`missing CSV field on data row ${index + 2}`)
+    }
+
+    return { region, customers, arpa }
+  })
+}
+
+function readInputNumber(value: string, label: string): number {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`Expected ${label} to be numeric, received ${JSON.stringify(value)}`)
+  }
+  return parsed
+}
 
 function requireSheet(workpaper: WorkPaperInstance, sheetName: string): number {
   const sheetId = workpaper.getSheetId(sheetName)
@@ -36,7 +101,7 @@ function requireSheet(workpaper: WorkPaperInstance, sheetName: string): number {
   return sheetId
 }
 
-function readNumber(workpaper: WorkPaperInstance, sheet: number, row: number, col: number, label: string): number {
+function readComputedNumber(workpaper: WorkPaperInstance, sheet: number, row: number, col: number, label: string): number {
   const cell = workpaper.getCellValue({ sheet, row, col })
   if (!cell || typeof cell !== 'object' || !('value' in cell) || typeof cell.value !== 'number') {
     throw new Error(`Expected ${label} to be numeric, received ${JSON.stringify(cell)}`)
@@ -44,10 +109,24 @@ function readNumber(workpaper: WorkPaperInstance, sheet: number, row: number, co
   return cell.value
 }
 
+function readSerializedRow(sheet: unknown, rowIndex: number, label: string): unknown {
+  if (!Array.isArray(sheet) || !Array.isArray(sheet[rowIndex])) {
+    throw new Error(`Expected ${label} to be present in serialized sheet, received ${JSON.stringify(sheet)}`)
+  }
+
+  return sheet[rowIndex]
+}
+
 function assertSummary(summary: typeof output): void {
   const expected = {
-    success: true,
-    totalQ1: 480,
+    sourceRows: 3,
+    computed: {
+      totalRevenue: 36900,
+      westCustomers: 20,
+      largestDeal: 24000,
+    },
+    serializedFirstDataRow: ['West', 20, 1200, '=B2*C2'],
+    verified: true,
   }
 
   if (JSON.stringify(summary) !== JSON.stringify(expected)) {

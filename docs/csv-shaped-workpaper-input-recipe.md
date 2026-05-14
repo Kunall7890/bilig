@@ -20,25 +20,43 @@ npm install @bilig/headless
 npm install --save-dev tsx typescript
 ```
 
-Create `csv-input.ts`:
+Download the maintained TypeScript example:
+
+```sh
+curl -fsSLo csv-input.ts \
+  https://raw.githubusercontent.com/proompteng/bilig/main/examples/headless-workpaper/csv-shaped-input.ts
+```
+
+The file is also kept in the repository at
+[`examples/headless-workpaper/csv-shaped-input.ts`](https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/csv-shaped-input.ts).
+
+The important shape is small: parse the payload, build a workbook with formulas,
+then read calculated cells from a separate summary sheet.
 
 ```ts
 import { WorkPaper } from '@bilig/headless'
 
-const csv = `
+type WorkPaperInstance = ReturnType<typeof WorkPaper.buildFromSheets>
+type RevenueCsvRow = {
+  region: string
+  customers: string
+  arpa: string
+}
+
+const csvInput = `
 region,customers,arpa
 West,20,1200
 East,30,250
 Central,18,300
 `.trim()
 
-const rows = parseSimpleCsv(csv)
-const revenueRows = rows.map((row, index) => {
+const sourceRows = parseRevenueCsv(csvInput)
+const revenueRows = sourceRows.map((row, index) => {
   const spreadsheetRow = index + 2
   return [
     row.region,
-    readNumber(row.customers, `customers row ${spreadsheetRow}`),
-    readNumber(row.arpa, `arpa row ${spreadsheetRow}`),
+    readInputNumber(row.customers, `customers row ${spreadsheetRow}`),
+    readInputNumber(row.arpa, `arpa row ${spreadsheetRow}`),
     `=B${spreadsheetRow}*C${spreadsheetRow}`,
   ]
 })
@@ -53,35 +71,62 @@ const workbook = WorkPaper.buildFromSheets({
   ],
 })
 
-const summary = requireSheet(workbook, 'Summary')
+const revenueSheet = requireSheet(workbook, 'Revenue')
+const summarySheet = requireSheet(workbook, 'Summary')
+const serializedRevenueSheet = workbook.getSheetSerialized(revenueSheet)
+
 const output = {
-  totalRevenue: readComputedNumber(workbook, summary, 1, 1, 'Total revenue'),
-  westCustomers: readComputedNumber(workbook, summary, 2, 1, 'West customers'),
-  largestDeal: readComputedNumber(workbook, summary, 3, 1, 'Largest deal'),
-  revenueSheet: workbook.getSheetSerialized(requireSheet(workbook, 'Revenue')),
+  sourceRows: sourceRows.length,
+  computed: {
+    totalRevenue: readComputedNumber(workbook, summarySheet, 1, 1, 'total revenue'),
+    westCustomers: readComputedNumber(workbook, summarySheet, 2, 1, 'West customers'),
+    largestDeal: readComputedNumber(workbook, summarySheet, 3, 1, 'largest deal'),
+  },
+  serializedFirstDataRow: readSerializedRow(serializedRevenueSheet, 1, 'Revenue row 2'),
+  verified: true,
 }
 
+assertSummary(output)
 console.log(JSON.stringify(output, null, 2))
 
-function parseSimpleCsv(input) {
-  const [headerLine, ...dataLines] = input.split(/\r?\n/)
-  const headers = headerLine.split(',').map((header) => header.trim())
+function parseRevenueCsv(input: string): RevenueCsvRow[] {
+  const lines = input.split(/\r?\n/).map((line) => line.trim()).filter((line) => line.length > 0)
+  const headerLine = lines[0]
+  const dataLines = lines.slice(1)
+  if (headerLine === undefined) {
+    throw new Error('expected CSV header row')
+  }
 
-  return dataLines.map((line) => {
+  const headers = headerLine.split(',').map((header) => header.trim())
+  const expectedHeaders = ['region', 'customers', 'arpa']
+  if (JSON.stringify(headers) !== JSON.stringify(expectedHeaders)) {
+    throw new Error(`expected CSV headers ${expectedHeaders.join(',')}, received ${headers.join(',')}`)
+  }
+
+  return dataLines.map((line, index) => {
     const values = line.split(',').map((value) => value.trim())
-    return Object.fromEntries(headers.map((header, index) => [header, values[index] ?? '']))
+    if (values.length !== expectedHeaders.length) {
+      throw new Error(`expected ${expectedHeaders.length} CSV fields on data row ${index + 2}, received ${values.length}`)
+    }
+
+    const [region, customers, arpa] = values
+    if (region === undefined || customers === undefined || arpa === undefined) {
+      throw new Error(`missing CSV field on data row ${index + 2}`)
+    }
+
+    return { region, customers, arpa }
   })
 }
 
-function readNumber(value, label) {
+function readInputNumber(value: string, label: string): number {
   const parsed = Number(value)
   if (!Number.isFinite(parsed)) {
-    throw new Error(`expected ${label} to be numeric, received ${JSON.stringify(value)}`)
+    throw new Error(`Expected ${label} to be numeric, received ${JSON.stringify(value)}`)
   }
   return parsed
 }
 
-function requireSheet(workbook, sheetName) {
+function requireSheet(workbook: WorkPaperInstance, sheetName: string): number {
   const sheet = workbook.getSheetId(sheetName)
   if (sheet === undefined) {
     throw new Error(`missing sheet: ${sheetName}`)
@@ -89,54 +134,58 @@ function requireSheet(workbook, sheetName) {
   return sheet
 }
 
-function readComputedNumber(workbook, sheet, row, col, label) {
-  const value = workbook.getCellValue({ sheet, row, col })
-  if (typeof value !== 'object' || value === null || typeof value.value !== 'number') {
-    throw new Error(`expected ${label} to be numeric, received ${JSON.stringify(value)}`)
+function readComputedNumber(workbook: WorkPaperInstance, sheet: number, row: number, col: number, label: string): number {
+  const cell = workbook.getCellValue({ sheet, row, col })
+  if (!cell || typeof cell !== 'object' || !('value' in cell) || typeof cell.value !== 'number') {
+    throw new Error(`Expected ${label} to be numeric, received ${JSON.stringify(cell)}`)
   }
-  return Math.round(value.value * 100) / 100
+  return cell.value
+}
+
+function readSerializedRow(sheet: unknown, rowIndex: number, label: string): unknown {
+  if (!Array.isArray(sheet) || !Array.isArray(sheet[rowIndex])) {
+    throw new Error(`Expected ${label} to be present in serialized sheet, received ${JSON.stringify(sheet)}`)
+  }
+
+  return sheet[rowIndex]
+}
+
+function assertSummary(summary: typeof output): void {
+  const expected = {
+    sourceRows: 3,
+    computed: {
+      totalRevenue: 36900,
+      westCustomers: 20,
+      largestDeal: 24000,
+    },
+    serializedFirstDataRow: ['West', 20, 1200, '=B2*C2'],
+    verified: true,
+  }
+
+  if (JSON.stringify(summary) !== JSON.stringify(expected)) {
+    throw new Error(`Unexpected WorkPaper result: ${JSON.stringify(summary)}`)
+  }
 }
 ```
 
 Run it:
 
 ```sh
-tsx csv-input.ts
+npx tsx csv-input.ts
 ```
 
 Expected output:
 
 ```json
 {
-  "totalRevenue": 36900,
-  "westCustomers": 20,
-  "largestDeal": 24000,
-  "revenueSheet": [
-    [
-      "Region",
-      "Customers",
-      "ARPA",
-      "Revenue"
-    ],
-    [
-      "West",
-      20,
-      1200,
-      "=B2*C2"
-    ],
-    [
-      "East",
-      30,
-      250,
-      "=B3*C3"
-    ],
-    [
-      "Central",
-      18,
-      300,
-      "=B4*C4"
-    ]
-  ]
+  "sourceRows": 3,
+  "computed": {
+    "totalRevenue": 36900,
+    "westCustomers": 20,
+    "largestDeal": 24000
+  },
+  "serializedFirstDataRow": ["West", 20, 1200, "=B2*C2"],
+  "verified": true
 }
 ```
 
@@ -157,12 +206,15 @@ Expected output:
 For the standalone recipe:
 
 ```sh
-tsx csv-input.ts
+npx tsc --ignoreConfig --noEmit --module NodeNext --moduleResolution NodeNext --target ES2022 --types node csv-input.ts
+npx tsx csv-input.ts
 ```
 
 For a documentation patch in this repository:
 
 ```sh
+pnpm --dir examples/headless-workpaper run typecheck
+pnpm --dir examples/headless-workpaper run csv-shaped
 pnpm docs:discovery:check
 pnpm run ci
 ```

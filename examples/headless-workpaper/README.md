@@ -58,7 +58,7 @@ packages through `pnpm workpaper:smoke:external`.
 | Revenue scenarios        | `npm run scenarios`                | multi-sheet formulas and planning edits                                                                           |
 | Persistence round trip   | `npm run persistence`              | save, restore, edit, and export                                                                                   |
 | Named expression update  | `npm run named-expression`         | workbook-scoped names and dependent formulas                                                                      |
-| CSV-shaped input         | `npm run csv-shaped`               | array-shaped data plus formula summary                                                                            |
+| CSV-shaped input         | `npm run csv-shaped`               | CSV-shaped data plus formula summary                                                                              |
 | Invoice totals           | `npm run invoice-totals`           | line items, subtotal, tax, total                                                                                  |
 | JSON records input       | `npm run json-records`             | API records to formula-backed workbook                                                                            |
 | JSON file input          | `npm run json-file`                | disk JSON records to verified summary                                                                             |
@@ -883,7 +883,9 @@ Expected output:
 
 ## CSV Shaped Input
 
-Run the CSV shaped input example when you want to see how to load a simple array or CSV-shaped data into a WorkPaper, add a formula-backed summary cell, and read back the result:
+Run the CSV shaped input example when a service receives a small tabular
+payload, normalizes it into a WorkPaper, and needs formula-backed totals rather
+than hand-coded arithmetic:
 
 ```sh
 npm run csv-shaped
@@ -893,8 +895,14 @@ Expected output:
 
 ```json
 {
-  "success": true,
-  "totalQ1": 480
+  "sourceRows": 3,
+  "computed": {
+    "totalRevenue": 36900,
+    "westCustomers": 20,
+    "largestDeal": 24000
+  },
+  "serializedFirstDataRow": ["West", 20, 1200, "=B2*C2"],
+  "verified": true
 }
 ```
 
