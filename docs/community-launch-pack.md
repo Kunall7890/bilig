@@ -140,7 +140,8 @@ issue pass:
   re-review comment posted:
   <https://github.com/TensorBlock/awesome-mcp-servers/pull/536#issuecomment-4454308656>
 - External MCP directory surface: the abordage awesome-mcp listing pull request
-  is open with the repository entry in `repositories.yaml`:
+  merged on May 14, 2026 with the Bilig repository entry in
+  `repositories.yaml`:
   <https://github.com/abordage/awesome-mcp/pull/36>
 - External MCP directory surface: the punkpeye awesome-mcp-servers listing pull
   request is open, mergeable, and passing its submission check with the
