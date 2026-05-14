@@ -10,6 +10,7 @@ const previewHeight = 640
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const assetsRoot = join(repoRoot, 'docs', 'assets')
 const outputPath = join(assetsRoot, 'github-social-preview.png')
+const svgOutputPath = join(assetsRoot, 'github-social-preview.svg')
 const checkMode = process.argv.includes('--check')
 
 function escapeXml(value: string): string {
@@ -44,6 +45,20 @@ function execFileBuffer(file: string, args: readonly string[]): Promise<Buffer> 
       },
     )
   })
+}
+
+function requirePngDimensions(image: Buffer, context: string): void {
+  const expectedSignature = '89504e470d0a1a0a'
+  const signature = image.subarray(0, 8).toString('hex')
+  if (signature !== expectedSignature) {
+    throw new Error(`${context} is not a PNG image`)
+  }
+
+  const width = image.readUInt32BE(16)
+  const height = image.readUInt32BE(20)
+  if (width !== previewWidth || height !== previewHeight) {
+    throw new Error(`${context} must be ${previewWidth}x${previewHeight}; got ${width}x${height}`)
+  }
 }
 
 async function buildSvg(): Promise<string> {
@@ -201,8 +216,7 @@ async function buildSvg(): Promise<string> {
 </svg>`
 }
 
-async function renderPreview(): Promise<Buffer> {
-  const svg = await buildSvg()
+async function renderPreview(svg: string): Promise<Buffer> {
   const tempRoot = await mkdtemp(join(tmpdir(), 'bilig-social-preview-'))
   const svgPath = join(tempRoot, 'preview.svg')
   try {
@@ -220,16 +234,22 @@ async function renderPreview(): Promise<Buffer> {
   }
 }
 
-const image = await renderPreview()
+const svg = await buildSvg()
+const image = await renderPreview(svg)
+requirePngDimensions(image, 'rendered social preview')
 
 if (checkMode) {
-  const existing = await readFile(outputPath)
-  if (!existing.equals(image)) {
-    throw new Error(`${outputPath} is stale. Run pnpm docs:social-preview:generate.`)
+  const existingSvg = await readFile(svgOutputPath, 'utf8')
+  if (existingSvg !== svg) {
+    throw new Error(`${svgOutputPath} is stale. Run pnpm docs:social-preview:generate.`)
   }
-  console.log(`social preview is current: ${outputPath}`)
+
+  const existingImage = await readFile(outputPath)
+  requirePngDimensions(existingImage, 'committed social preview')
+  console.log(`social preview source and dimensions are current: ${outputPath}`)
 } else {
   await mkdir(dirname(outputPath), { recursive: true })
+  await writeFile(svgOutputPath, svg)
   await writeFile(outputPath, image)
   console.log(`wrote ${outputPath}`)
 }
