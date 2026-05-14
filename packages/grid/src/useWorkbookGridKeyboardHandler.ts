@@ -6,6 +6,7 @@ import {
   handleGridKey as dispatchGridKey,
   isGridKeyboardEditableTarget,
   shouldHandleGridWindowKey,
+  shouldSuppressWorkbookChromeClearKey,
   type GridKeyboardEventLike,
 } from './gridClipboardKeyboardController.js'
 import type { InternalClipboardRange } from './gridInternalClipboard.js'
@@ -80,6 +81,24 @@ export function useWorkbookGridKeyboardHandler(input: {
       }
       const normalizedKey = getNormalizedGridKeyboardKey(event.key, event.code)
       const activeElement = document.activeElement
+      if (
+        shouldSuppressWorkbookChromeClearKey(
+          {
+            altKey: event.altKey,
+            ctrlKey: event.ctrlKey,
+            key: normalizedKey,
+            metaKey: event.metaKey,
+            shiftKey: event.shiftKey,
+          },
+          activeElement,
+          input.hostRef.current,
+        )
+      ) {
+        event.preventDefault()
+        event.stopPropagation()
+        ;(event as KeyboardEvent & { __biligGridHandled?: boolean }).__biligGridHandled = true
+        return
+      }
       if (
         !shouldHandleGridWindowKey(
           {

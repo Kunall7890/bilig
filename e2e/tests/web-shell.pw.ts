@@ -949,8 +949,8 @@ test('web app applies core formatting shortcuts from the keyboard', async ({ pag
   await expect(page.getByLabel('Underline')).not.toHaveClass(/bg-\[var\(--wb-accent-soft\)\]/)
 })
 
-test('web app keeps grid shortcuts active after toolbar focus moves outside the grid', async ({ page }) => {
-  const documentId = createTestDocumentId('playwright-grid-shortcuts-after-toolbar-focus')
+test('web app keeps formatting shortcuts active after toolbar focus without letting delete keys clear cells', async ({ page }) => {
+  const documentId = createTestDocumentId('playwright-toolbar-focus-shortcut-scope')
   await page.goto(`/?document=${encodeURIComponent(documentId)}`)
   await waitForWorkbookReady(page)
 
@@ -965,6 +965,20 @@ test('web app keeps grid shortcuts active after toolbar focus moves outside the 
 
   await boldButton.click()
   await expect(boldButton).toBeFocused()
+  await expect(page.getByLabel('Bold')).toHaveClass(/bg-\[var\(--wb-accent-soft\)\]/)
+  await page.keyboard.press('Delete')
+  await expect(formulaInput).toHaveValue('clear-after-toolbar-focus')
+  await expect(boldButton).toBeFocused()
+
+  await page.keyboard.press('Backspace')
+  await expect(formulaInput).toHaveValue('clear-after-toolbar-focus')
+  await expect(boldButton).toBeFocused()
+
+  await page.keyboard.press(`${PRIMARY_MODIFIER}+B`)
+  await expect(page.getByLabel('Bold')).not.toHaveClass(/bg-\[var\(--wb-accent-soft\)\]/)
+
+  await clickProductCell(page, 2, 2)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C3')
   await page.keyboard.press('Delete')
   await expect(formulaInput).toHaveValue('')
 

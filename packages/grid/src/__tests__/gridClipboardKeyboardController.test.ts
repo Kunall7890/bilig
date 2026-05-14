@@ -11,6 +11,7 @@ import {
   isGridKeyboardEditableTarget,
   shouldHandleGridSurfaceKey,
   shouldHandleGridWindowKey,
+  shouldSuppressWorkbookChromeClearKey,
 } from '../gridClipboardKeyboardController.js'
 import { useWorkbookGridKeyboardHandler } from '../useWorkbookGridKeyboardHandler.js'
 import { describe, expect, test, vi } from 'vitest'
@@ -565,7 +566,7 @@ describe('gridClipboardKeyboardController', () => {
     })
   })
 
-  test('routes high-confidence grid shortcuts from workbook chrome without stealing button activation keys', () => {
+  test('routes high-confidence grid shortcuts from workbook chrome without stealing button activation keys or delete ownership', () => {
     document.body.innerHTML = ''
     const scope = document.createElement('section')
     scope.dataset['workbookKeyboardScope'] = 'true'
@@ -577,6 +578,20 @@ describe('gridClipboardKeyboardController', () => {
 
     expect(
       shouldHandleGridWindowKey({ altKey: false, ctrlKey: false, key: 'Delete', metaKey: false, shiftKey: false }, toolbarButton, gridHost),
+    ).toBe(false)
+    expect(
+      shouldSuppressWorkbookChromeClearKey(
+        { altKey: false, ctrlKey: false, key: 'Delete', metaKey: false, shiftKey: false },
+        toolbarButton,
+        gridHost,
+      ),
+    ).toBe(true)
+    expect(
+      shouldSuppressWorkbookChromeClearKey(
+        { altKey: false, ctrlKey: false, key: 'Backspace', metaKey: false, shiftKey: false },
+        toolbarButton,
+        gridHost,
+      ),
     ).toBe(true)
     expect(
       shouldHandleGridWindowKey({ altKey: false, ctrlKey: true, key: 'c', metaKey: false, shiftKey: false }, toolbarButton, gridHost),
@@ -599,6 +614,13 @@ describe('gridClipboardKeyboardController', () => {
       shouldHandleGridWindowKey({ altKey: true, ctrlKey: false, key: 'Delete', metaKey: false, shiftKey: false }, toolbarButton, gridHost),
     ).toBe(false)
     expect(
+      shouldSuppressWorkbookChromeClearKey(
+        { altKey: true, ctrlKey: false, key: 'Delete', metaKey: false, shiftKey: false },
+        toolbarButton,
+        gridHost,
+      ),
+    ).toBe(false)
+    expect(
       shouldHandleGridWindowKey({ altKey: false, ctrlKey: false, key: 'Enter', metaKey: false, shiftKey: false }, toolbarButton, gridHost),
     ).toBe(false)
     expect(
@@ -609,7 +631,7 @@ describe('gridClipboardKeyboardController', () => {
     ).toBe(false)
   })
 
-  test('clears the latest selection when Delete is pressed from workbook chrome', async () => {
+  test('suppresses browser clear-key defaults from workbook chrome without clearing the grid', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
     document.body.innerHTML = ''
@@ -638,16 +660,16 @@ describe('gridClipboardKeyboardController', () => {
     })
 
     toolbarButton.focus()
+    const deleteEvent = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: 'Delete' })
+    const backspaceEvent = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: 'Backspace' })
     await act(async () => {
-      window.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: 'Delete' }))
+      toolbarButton.dispatchEvent(deleteEvent)
+      toolbarButton.dispatchEvent(backspaceEvent)
     })
 
-    expect(onClearCell).toHaveBeenCalledWith({
-      address: 'E9',
-      kind: 'cell',
-      range: { startAddress: 'E9', endAddress: 'E9' },
-      sheetName: 'Sheet1',
-    })
+    expect(deleteEvent.defaultPrevented).toBe(true)
+    expect(backspaceEvent.defaultPrevented).toBe(true)
+    expect(onClearCell).not.toHaveBeenCalled()
     expect(beginSelectedEdit).not.toHaveBeenCalled()
     expect(setGridSelection).not.toHaveBeenCalled()
     expect(onSelectionChange).not.toHaveBeenCalled()

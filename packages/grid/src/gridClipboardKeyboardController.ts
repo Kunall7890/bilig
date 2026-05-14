@@ -445,11 +445,23 @@ export function shouldHandleGridWindowKey(
   return isHandledGridKey(event)
 }
 
+export function shouldSuppressWorkbookChromeClearKey(
+  event: Pick<GridKeyboardEventLike, 'altKey' | 'ctrlKey' | 'key' | 'metaKey' | 'shiftKey'>,
+  activeElement: Element | null,
+  host: HTMLDivElement | null,
+): boolean {
+  if (hasOpenModalDialog() || isGridKeyboardEditableTarget(activeElement) || !isClearCellKey(event)) {
+    return false
+  }
+
+  const workbookScope = host?.closest('[data-workbook-keyboard-scope="true"]') ?? null
+  return Boolean(activeElement && !host?.contains(activeElement) && workbookScope?.contains(activeElement))
+}
+
 function isWorkbookChromeGridShortcut(event: Pick<GridKeyboardEventLike, 'altKey' | 'ctrlKey' | 'key' | 'metaKey' | 'shiftKey'>): boolean {
   const hasPrimaryModifier = event.ctrlKey || event.metaKey
   const normalizedKey = event.key.toLowerCase()
   return (
-    isClearCellKey(event) ||
     isClipboardShortcut(event) ||
     isNavigationShortcut(event) ||
     (hasPrimaryModifier && !event.altKey && normalizedKey === 'a') ||
