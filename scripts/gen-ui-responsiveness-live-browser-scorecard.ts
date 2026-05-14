@@ -10,6 +10,8 @@ import { assertLocalCiResourceGuardAllowsRun } from './ci-local-resource-guard.t
 import { readJsonObject } from './json-scorecard-helpers.ts'
 import { parseSameCorpusCapture, parseUiResponsivenessLiveBrowserScorecard } from './ui-responsiveness-live-browser-scorecard-parse.ts'
 import { formatJsonForRepo } from './scorecard-format.ts'
+import type { SameCorpusScenarioProof } from './ui-responsiveness-same-corpus-proof.ts'
+import { validateSameCorpusScenarioProof } from './ui-responsiveness-same-corpus-proof.ts'
 
 export { parseSameCorpusCapture, parseUiResponsivenessLiveBrowserScorecard } from './ui-responsiveness-live-browser-scorecard-parse.ts'
 
@@ -63,6 +65,7 @@ export interface UiResponsivenessSameCorpusCase {
   readonly biligToMicrosoftExcelWebScrollEventMeanRatio?: number
   readonly biligToMicrosoftExcelWebScrollEventP95Ratio?: number
   readonly tenXMeanAndP95Metric?: 'operationResponseMs' | 'scrollEventResponseMs'
+  readonly scenarioProof: SameCorpusScenarioProof
   readonly tenXMeanAndP95AgainstGoogleSheets: boolean
   readonly tenXMeanAndP95AgainstMicrosoftExcelWeb: boolean
   readonly postOperationFrameGuardrailPassed?: boolean
@@ -144,6 +147,7 @@ export interface SameCorpusCaptureCase {
   readonly corpusCaseId: string
   readonly materializedCells: number
   readonly workload: UiResponsivenessSameCorpusWorkload
+  readonly scenarioProof: SameCorpusScenarioProof
   readonly bilig: SameCorpusCaptureMeasurement
   readonly googleSheets: SameCorpusCaptureMeasurement
   readonly microsoftExcelWeb: SameCorpusCaptureMeasurement
@@ -564,6 +568,7 @@ function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivene
           scrollMovementGuardrailPassed,
         }
       : { tenXMeanAndP95Metric: 'operationResponseMs' as const }),
+    scenarioProof: { ...captureCase.scenarioProof },
     tenXMeanAndP95AgainstGoogleSheets,
     tenXMeanAndP95AgainstMicrosoftExcelWeb,
     passed: tenXMeanAndP95AgainstGoogleSheets && tenXMeanAndP95AgainstMicrosoftExcelWeb,
@@ -710,20 +715,24 @@ function validateSameCorpusCase(entry: UiResponsivenessSameCorpusCase): void {
     throw new Error(`UI responsiveness same-corpus scroll-movement guardrail is stale: ${entry.id}`)
   }
   const usesScrollEventMetric = entry.tenXMeanAndP95Metric === 'scrollEventResponseMs'
+  validateSameCorpusScenarioProof(entry.scenarioProof, entry.id, entry.bilig, entry.googleSheets)
+  const visualProofGuardrailPassed = entry.scenarioProof.screenshotProof.captured && entry.scenarioProof.pixelGridProof.captured
   const tenXAgainstGoogleSheets =
     usesScrollEventMetric &&
     scrollEventMetrics !== null &&
     scrollEventMetrics.biligToGoogleSheetsMeanRatio <= 0.1 &&
     scrollEventMetrics.biligToGoogleSheetsP95Ratio <= 0.1 &&
     postOperationFrameGuardrailPassed &&
-    scrollMovementGuardrailPassed
+    scrollMovementGuardrailPassed &&
+    visualProofGuardrailPassed
   const tenXAgainstMicrosoftExcelWeb =
     usesScrollEventMetric &&
     scrollEventMetrics !== null &&
     scrollEventMetrics.biligToMicrosoftExcelWebMeanRatio <= 0.1 &&
     scrollEventMetrics.biligToMicrosoftExcelWebP95Ratio <= 0.1 &&
     postOperationFrameGuardrailPassed &&
-    scrollMovementGuardrailPassed
+    scrollMovementGuardrailPassed &&
+    visualProofGuardrailPassed
   if (
     entry.tenXMeanAndP95AgainstGoogleSheets !== tenXAgainstGoogleSheets ||
     entry.tenXMeanAndP95AgainstMicrosoftExcelWeb !== tenXAgainstMicrosoftExcelWeb ||

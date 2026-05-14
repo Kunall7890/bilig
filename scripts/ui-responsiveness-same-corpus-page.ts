@@ -21,6 +21,11 @@ import {
   type ScrollTriggerResult,
 } from './ui-responsiveness-same-corpus-scroll.ts'
 import { verifyProductCorpus, waitForVerifiedBiligRenderedSurface } from './ui-responsiveness-same-corpus-verification.ts'
+import {
+  buildCaptureScenarioProof,
+  captureSameCorpusProductVisualProof,
+  type SameCorpusProductVisualProof,
+} from './ui-responsiveness-same-corpus-proof.ts'
 
 interface ProductSampleCollection {
   readonly corpusVerification: SameCorpusCaptureCorpusVerification
@@ -99,10 +104,16 @@ export async function saveStorageState(args: SaveStorageStateArgs): Promise<void
 export async function captureSameCorpusUiResponsiveness(args: CaptureArgs): Promise<SameCorpusCapture> {
   const corpus = buildWorkbookBenchmarkCorpus(args.corpusId)
   const browser = await chromium.launch({ headless: args.headless })
+  const caseId = `same-corpus-${args.corpusId}-visible-scroll-response`
+  const visualProofs: SameCorpusProductVisualProof[] = []
   try {
     const { bilig, googleSheets, microsoftExcelWeb } = await collectSameCorpusProductMeasurements(args, (product, url) =>
-      measureProduct(browser, product, url, corpus, args),
+      measureProduct(browser, product, url, corpus, args, caseId, visualProofs),
     )
+    const scenarioProof = buildCaptureScenarioProof({ bilig, googleSheets, visualProofs })
+    if (!scenarioProof.screenshotProof.captured || !scenarioProof.pixelGridProof.captured) {
+      throw new Error(`same-corpus UI capture is missing browser-visible proof for ${caseId}: ${JSON.stringify(scenarioProof)}`)
+    }
     return {
       schemaVersion: 1,
       suite: 'ui-responsiveness-same-corpus-capture',
@@ -113,10 +124,11 @@ export async function captureSameCorpusUiResponsiveness(args: CaptureArgs): Prom
       ],
       cases: [
         {
-          id: `same-corpus-${args.corpusId}-visible-scroll-response`,
+          id: caseId,
           corpusCaseId: args.corpusId,
           materializedCells: corpus.materializedCellCount,
           workload: 'visible-scroll-response',
+          scenarioProof,
           bilig,
           googleSheets,
           microsoftExcelWeb,
@@ -313,8 +325,10 @@ async function measureProduct(
   url: string,
   corpus: WorkbookBenchmarkCorpusCase,
   args: CaptureArgs,
+  caseId?: string,
+  visualProofs?: SameCorpusProductVisualProof[],
 ): Promise<SameCorpusCaptureMeasurement> {
-  const { corpusVerification, samples } = await measureProductSamples(browser, product, url, corpus, args)
+  const { corpusVerification, samples } = await measureProductSamples(browser, product, url, corpus, args, caseId, visualProofs)
 
   return {
     product,
@@ -334,6 +348,8 @@ async function measureProductSamples(
   url: string,
   corpus: WorkbookBenchmarkCorpusCase,
   args: CaptureArgs,
+  caseId: string | undefined = undefined,
+  visualProofs: SameCorpusProductVisualProof[] | undefined = undefined,
   sampleIndex = 0,
   samples: ScrollSample[] = [],
   corpusVerification: SameCorpusCaptureCorpusVerification | null = null,
@@ -356,12 +372,15 @@ async function measureProductSamples(
       await settleFrames(page, 3)
     }
     samples.push(await measureVisibleScrollResponseWithRetries(page, product, args.deltaX, args.deltaY))
+    if (caseId && visualProofs && sampleIndex === 0) {
+      visualProofs.push(await captureSameCorpusProductVisualProof({ caseId, outputPath: args.outputPath, page, product, sampleIndex }))
+    }
   } catch (error: unknown) {
     throw new Error(await productReadyFailureMessage(page, product, url, sampleIndex, error), { cause: error })
   } finally {
     await context.close()
   }
-  return measureProductSamples(browser, product, url, corpus, args, sampleIndex + 1, samples, nextCorpusVerification)
+  return measureProductSamples(browser, product, url, corpus, args, caseId, visualProofs, sampleIndex + 1, samples, nextCorpusVerification)
 }
 
 function browserContextOptionsForProduct(product: UiResponsivenessSameCorpusProduct, args: CaptureArgs): BrowserContextOptions {

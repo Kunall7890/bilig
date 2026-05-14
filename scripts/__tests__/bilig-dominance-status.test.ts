@@ -589,6 +589,7 @@ function failingSameCorpusCapture(): SameCorpusCapture {
         corpusCaseId: 'wide-mixed-250k',
         materializedCells: 250_000,
         workload: 'visible-scroll-response',
+        scenarioProof: sameCorpusScenarioProof(200, 100),
         bilig: {
           product: 'bilig',
           source: 'e2e/tests/web-shell-scroll-performance.pw.ts',
@@ -621,6 +622,46 @@ function failingSameCorpusCapture(): SameCorpusCapture {
         },
       },
     ],
+  }
+}
+
+function sameCorpusScenarioProof(biligMs: number, googleMs: number) {
+  return {
+    biligMeanMs: biligMs,
+    biligP95Ms: biligMs,
+    googleMeanMs: googleMs,
+    googleP95Ms: googleMs,
+    meanRatio: biligMs / googleMs,
+    p95Ratio: biligMs / googleMs,
+    screenshotProof: {
+      captured: true,
+      requiredProducts: ['bilig', 'google-sheets'],
+      artifactPaths: ['tmp/bilig-sample-1.png', 'tmp/google-sheets-sample-1.png'],
+      missingProducts: [],
+    },
+    pixelGridProof: {
+      captured: true,
+      requiredProducts: ['bilig', 'google-sheets'],
+      products: [
+        {
+          product: 'bilig',
+          captured: true,
+          method: 'typegpu-visible-canvas',
+          viewportPixelWidth: 1440,
+          viewportPixelHeight: 900,
+          evidence: ['mode=typegpu-v3'],
+        },
+        {
+          product: 'google-sheets',
+          captured: true,
+          method: 'google-sheets-visible-grid',
+          viewportPixelWidth: 1440,
+          viewportPixelHeight: 900,
+          evidence: ['selector=.grid-scrollable-wrapper'],
+        },
+      ],
+      missingProducts: [],
+    },
   }
 }
 

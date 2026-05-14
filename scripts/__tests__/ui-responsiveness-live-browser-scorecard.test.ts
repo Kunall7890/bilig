@@ -96,6 +96,16 @@ describe('UI responsiveness live browser scorecard', () => {
       biligToMicrosoftExcelWebScrollEventMeanRatio: 0.0625,
       biligToMicrosoftExcelWebScrollEventP95Ratio: 0.06666666666666667,
       tenXMeanAndP95Metric: 'scrollEventResponseMs',
+      scenarioProof: {
+        biligMeanMs: 5,
+        biligP95Ms: 6,
+        googleMeanMs: 100,
+        googleP95Ms: 100,
+        meanRatio: 0.05,
+        p95Ratio: 0.06,
+        screenshotProof: { captured: true, missingProducts: [] },
+        pixelGridProof: { captured: true, missingProducts: [] },
+      },
       postOperationFrameGuardrailPassed: true,
       scrollMovementGuardrailPassed: true,
       passed: true,
@@ -225,6 +235,7 @@ function buildSameCorpusCapture(args: {
         corpusCaseId: 'wide-mixed-250k',
         materializedCells: 250000,
         workload: args.workload,
+        scenarioProof: sameCorpusScenarioProof(),
         bilig: {
           product: 'bilig',
           source: 'e2e/tests/web-shell-scroll-performance.pw.ts',
@@ -254,6 +265,49 @@ function buildSameCorpusCapture(args: {
         },
       },
     ],
+  }
+}
+
+function sameCorpusScenarioProof() {
+  return {
+    biligMeanMs: 5,
+    biligP95Ms: 6,
+    googleMeanMs: 100,
+    googleP95Ms: 100,
+    meanRatio: 0.05,
+    p95Ratio: 0.06,
+    screenshotProof: {
+      captured: true,
+      requiredProducts: ['bilig', 'google-sheets'],
+      artifactPaths: [
+        'tmp/same-corpus-wide-mixed-250k-visible-scroll-response/bilig-sample-1.png',
+        'tmp/same-corpus-wide-mixed-250k-visible-scroll-response/google-sheets-sample-1.png',
+      ],
+      missingProducts: [],
+    },
+    pixelGridProof: {
+      captured: true,
+      requiredProducts: ['bilig', 'google-sheets'],
+      products: [
+        {
+          product: 'bilig',
+          captured: true,
+          method: 'typegpu-visible-canvas',
+          viewportPixelWidth: 1440,
+          viewportPixelHeight: 900,
+          evidence: ['mode=typegpu-v3'],
+        },
+        {
+          product: 'google-sheets',
+          captured: true,
+          method: 'google-sheets-visible-grid',
+          viewportPixelWidth: 1440,
+          viewportPixelHeight: 900,
+          evidence: ['selector=.grid-scrollable-wrapper'],
+        },
+      ],
+      missingProducts: [],
+    },
   }
 }
 

@@ -24,6 +24,12 @@ import type {
   UiResponsivenessSameCorpusProof,
   UiResponsivenessSameCorpusWorkload,
 } from './gen-ui-responsiveness-live-browser-scorecard.ts'
+import type {
+  SameCorpusPixelGridProof,
+  SameCorpusProductPixelGridProof,
+  SameCorpusScenarioProof,
+  SameCorpusScreenshotProof,
+} from './ui-responsiveness-same-corpus-proof.ts'
 
 export function parseUiResponsivenessLiveBrowserScorecard(value: Record<string, unknown>): UiResponsivenessLiveBrowserScorecard {
   const host = objectField(value, 'host')
@@ -135,6 +141,7 @@ function parseSameCorpusCase(value: unknown): UiResponsivenessSameCorpusCase {
     ...(biligToMicrosoftExcelWebScrollEventMeanRatio !== undefined ? { biligToMicrosoftExcelWebScrollEventMeanRatio } : {}),
     ...(biligToMicrosoftExcelWebScrollEventP95Ratio !== undefined ? { biligToMicrosoftExcelWebScrollEventP95Ratio } : {}),
     ...(tenXMeanAndP95Metric ? { tenXMeanAndP95Metric } : {}),
+    scenarioProof: parseSameCorpusScenarioProof(objectField(record, 'scenarioProof')),
     tenXMeanAndP95AgainstGoogleSheets: booleanField(record, 'tenXMeanAndP95AgainstGoogleSheets'),
     tenXMeanAndP95AgainstMicrosoftExcelWeb: booleanField(record, 'tenXMeanAndP95AgainstMicrosoftExcelWeb'),
     ...(postOperationFrameGuardrailPassed !== undefined ? { postOperationFrameGuardrailPassed } : {}),
@@ -165,6 +172,7 @@ function parseSameCorpusCaptureCase(value: unknown): SameCorpusCaptureCase {
     corpusCaseId: stringField(record, 'corpusCaseId'),
     materializedCells: numberField(record, 'materializedCells'),
     workload: parseSameCorpusWorkload(stringField(record, 'workload')),
+    scenarioProof: parseSameCorpusScenarioProof(objectField(record, 'scenarioProof')),
     bilig: parseSameCorpusCaptureMeasurement(objectField(record, 'bilig'), 'bilig'),
     googleSheets: parseSameCorpusCaptureMeasurement(objectField(record, 'googleSheets'), 'google-sheets'),
     microsoftExcelWeb: parseSameCorpusCaptureMeasurement(objectField(record, 'microsoftExcelWeb'), 'microsoft-excel-web'),
@@ -202,6 +210,49 @@ function parseSameCorpusVerification(value: Record<string, unknown>): SameCorpus
     sheetName: stringField(value, 'sheetName'),
     materializedCells: numberField(value, 'materializedCells'),
     checkedCells: arrayField(value, 'checkedCells').map(parseSameCorpusVerifiedCell),
+  }
+}
+
+function parseSameCorpusScenarioProof(value: Record<string, unknown>): SameCorpusScenarioProof {
+  return {
+    biligMeanMs: numberField(value, 'biligMeanMs'),
+    biligP95Ms: numberField(value, 'biligP95Ms'),
+    googleMeanMs: numberField(value, 'googleMeanMs'),
+    googleP95Ms: numberField(value, 'googleP95Ms'),
+    meanRatio: numberField(value, 'meanRatio'),
+    p95Ratio: numberField(value, 'p95Ratio'),
+    screenshotProof: parseSameCorpusScreenshotProof(objectField(value, 'screenshotProof')),
+    pixelGridProof: parseSameCorpusPixelGridProof(objectField(value, 'pixelGridProof')),
+  }
+}
+
+function parseSameCorpusScreenshotProof(value: Record<string, unknown>): SameCorpusScreenshotProof {
+  return {
+    captured: booleanField(value, 'captured'),
+    requiredProducts: stringArrayField(value, 'requiredProducts').map(parseSameCorpusProduct),
+    artifactPaths: stringArrayField(value, 'artifactPaths'),
+    missingProducts: stringArrayField(value, 'missingProducts').map(parseSameCorpusProduct),
+  }
+}
+
+function parseSameCorpusPixelGridProof(value: Record<string, unknown>): SameCorpusPixelGridProof {
+  return {
+    captured: booleanField(value, 'captured'),
+    requiredProducts: stringArrayField(value, 'requiredProducts').map(parseSameCorpusProduct),
+    products: arrayField(value, 'products').map(parseSameCorpusProductPixelGridProof),
+    missingProducts: stringArrayField(value, 'missingProducts').map(parseSameCorpusProduct),
+  }
+}
+
+function parseSameCorpusProductPixelGridProof(value: unknown): SameCorpusProductPixelGridProof {
+  const record = asObject(value, 'UI responsiveness same-corpus product pixel grid proof')
+  return {
+    product: parseSameCorpusProduct(stringField(record, 'product')),
+    captured: booleanField(record, 'captured'),
+    method: parseSameCorpusPixelGridMethod(stringField(record, 'method')),
+    viewportPixelWidth: numberField(record, 'viewportPixelWidth'),
+    viewportPixelHeight: numberField(record, 'viewportPixelHeight'),
+    evidence: stringArrayField(record, 'evidence'),
   }
 }
 
@@ -291,6 +342,13 @@ function parseSameCorpusVerificationMethod(value: string): SameCorpusCaptureCorp
     return value
   }
   throw new Error(`Unexpected UI responsiveness same-corpus verification method: ${value}`)
+}
+
+function parseSameCorpusPixelGridMethod(value: string): SameCorpusProductPixelGridProof['method'] {
+  if (value === 'typegpu-visible-canvas' || value === 'google-sheets-visible-grid' || value === 'excel-web-visible-grid') {
+    return value
+  }
+  throw new Error(`Unexpected UI responsiveness same-corpus pixel grid proof method: ${value}`)
 }
 
 function parseSameCorpusWorkload(value: string): UiResponsivenessSameCorpusWorkload {

@@ -407,11 +407,52 @@ function legacyOperationOnlySameCorpusProof(): UiResponsivenessSameCorpusProof {
         biligToMicrosoftExcelWebMeanRatio: 2,
         biligToMicrosoftExcelWebP95Ratio: 2,
         tenXMeanAndP95Metric: 'operationResponseMs',
+        scenarioProof: sameCorpusScenarioProof(200, 100),
         tenXMeanAndP95AgainstGoogleSheets: false,
         tenXMeanAndP95AgainstMicrosoftExcelWeb: false,
         passed: false,
       },
     ],
+  }
+}
+
+function sameCorpusScenarioProof(biligMs: number, googleMs: number) {
+  return {
+    biligMeanMs: biligMs,
+    biligP95Ms: biligMs,
+    googleMeanMs: googleMs,
+    googleP95Ms: googleMs,
+    meanRatio: biligMs / googleMs,
+    p95Ratio: biligMs / googleMs,
+    screenshotProof: {
+      captured: true,
+      requiredProducts: ['bilig', 'google-sheets'],
+      artifactPaths: ['tmp/bilig-sample-1.png', 'tmp/google-sheets-sample-1.png'],
+      missingProducts: [],
+    },
+    pixelGridProof: {
+      captured: true,
+      requiredProducts: ['bilig', 'google-sheets'],
+      products: [
+        {
+          product: 'bilig',
+          captured: true,
+          method: 'typegpu-visible-canvas',
+          viewportPixelWidth: 1440,
+          viewportPixelHeight: 900,
+          evidence: ['mode=typegpu-v3'],
+        },
+        {
+          product: 'google-sheets',
+          captured: true,
+          method: 'google-sheets-visible-grid',
+          viewportPixelWidth: 1440,
+          viewportPixelHeight: 900,
+          evidence: ['selector=.grid-scrollable-wrapper'],
+        },
+      ],
+      missingProducts: [],
+    },
   }
 }
 
