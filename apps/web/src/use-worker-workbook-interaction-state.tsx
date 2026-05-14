@@ -584,11 +584,11 @@ export function useWorkerWorkbookInteractionState(input: {
       selectionRef.current = nextSelection
       if (!wasEditing) {
         editorTargetRef.current = nextSelection
-        resetEditorConflictTracking(nextSelection)
+        setEditorConflict((current) => (current === null ? current : null))
       }
       sendSelectionChanged(nextSelection)
     },
-    [onSelectionSheetChanged, resetEditorConflictTracking, sendSelectionChanged],
+    [onSelectionSheetChanged, sendSelectionChanged],
   )
 
   const selectAddress = useCallback(

@@ -459,6 +459,55 @@ describe('useWorkerWorkbookInteractionState', () => {
       harness.root.unmount()
     })
   })
+
+  it('does not clone selected cells during idle selection navigation', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const sendSelectionChanged = vi.fn()
+    const initialCell = stringCell('Sheet1', 'A1', 'one')
+    const getCell = vi.fn((sheetName: string, address: string) => stringCell(sheetName, address, address))
+    const harness = mountHarness()
+    let captured: ReturnType<typeof useWorkerWorkbookInteractionState> | null = null
+
+    await harness.render({
+      documentId: 'doc-1',
+      selection: { sheetName: 'Sheet1', address: 'A1' },
+      selectedCell: initialCell,
+      workerHandle: {
+        viewportStore: {
+          getCell,
+          setCellSnapshot: vi.fn(),
+        },
+      },
+      invokeMutation: vi.fn(async () => undefined),
+      sendSelectionChanged,
+      capture: (value) => {
+        captured = value
+      },
+    })
+    if (!captured) {
+      throw new Error('Expected interaction state capture')
+    }
+
+    getCell.mockClear()
+    await act(async () => {
+      captured?.handleSelectionChange(singleCellSnapshot('Sheet1', 'C3'))
+    })
+
+    expect(captured.selectionRef.current).toEqual({ sheetName: 'Sheet1', address: 'C3' })
+    expect(sendSelectionChanged).toHaveBeenCalledWith({ sheetName: 'Sheet1', address: 'C3' })
+    expect(getCell).not.toHaveBeenCalledWith('Sheet1', 'C3')
+
+    await act(async () => {
+      captured?.beginEditing()
+    })
+
+    expect(getCell).toHaveBeenCalledWith('Sheet1', 'C3')
+
+    await act(async () => {
+      harness.root.unmount()
+    })
+  })
 })
 
 function createViewportStoreStub(sheetName: string, address: string, cell: CellSnapshot) {
