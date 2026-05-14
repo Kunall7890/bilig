@@ -76,8 +76,8 @@ describe('gridKeyboard', () => {
     expect(isClearCellKey({ altKey: false, ctrlKey: true, key: 'Backspace', metaKey: false })).toBe(false)
     expect(isClearCellKey({ altKey: false, ctrlKey: false, key: 'Backspace', metaKey: true })).toBe(false)
     expect(isClearCellKey({ altKey: false, ctrlKey: false, key: 'Delete', metaKey: false, shiftKey: true })).toBe(false)
-    expect(isHandledGridKey({ altKey: false, ctrlKey: false, key: 'Delete', metaKey: true })).toBe(true)
-    expect(isHandledGridKey({ altKey: false, ctrlKey: false, key: 'Backspace', metaKey: true })).toBe(true)
+    expect(isHandledGridKey({ altKey: false, ctrlKey: false, key: 'Delete', metaKey: true })).toBe(false)
+    expect(isHandledGridKey({ altKey: false, ctrlKey: false, key: 'Backspace', metaKey: true })).toBe(false)
   })
 
   test('detects numeric editor seeds', () => {

@@ -50,6 +50,7 @@ export function handleWorkbookGridKeyDownCapture(input: {
       ctrlKey: event.ctrlKey,
       key: normalizedKey,
       metaKey: event.metaKey,
+      shiftKey: event.shiftKey,
     })
   ) {
     return

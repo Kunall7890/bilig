@@ -13,7 +13,7 @@ import { parseClipboardContent, parseClipboardPlainText } from './gridClipboard.
 import { cellToEditorSeed } from './gridCells.js'
 import {
   isClipboardShortcut,
-  isDeleteKey,
+  isClearCellKey,
   isHandledGridKey,
   isNavigationKey,
   isPrintableKey,
@@ -246,7 +246,7 @@ export function handleGridKey({
   })
 
   if (action.kind === 'none') {
-    if (!isEditingCell && isDeleteKey(event.key)) {
+    if (!isEditingCell && isClearCellKey(event)) {
       event.preventDefault()
       event.cancel?.()
     }
@@ -450,7 +450,7 @@ export function shouldHandleGridSurfaceKey(
     event.key === 'Enter' ||
     event.key === 'Tab' ||
     event.key === 'F2' ||
-    isDeleteKey(event.key)
+    isClearCellKey(event)
   )
 }
 

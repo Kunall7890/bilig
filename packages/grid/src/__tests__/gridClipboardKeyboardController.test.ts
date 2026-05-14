@@ -613,7 +613,7 @@ describe('gridClipboardKeyboardController', () => {
     })
 
     for (const event of events) {
-      expect(event.defaultPrevented).toBe(true)
+      expect(event.defaultPrevented).toBe(false)
     }
 
     expect(onClearCell).not.toHaveBeenCalled()

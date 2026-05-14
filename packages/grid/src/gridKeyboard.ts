@@ -85,7 +85,7 @@ export function isHandledGridKey(
     event.key === 'Tab' ||
     event.key === 'Escape' ||
     event.key === 'F2' ||
-    isDeleteKey(event.key) ||
+    isClearCellKey(event) ||
     event.key === 'Home' ||
     event.key === 'End' ||
     event.key === 'PageUp' ||

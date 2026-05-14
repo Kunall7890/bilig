@@ -93,11 +93,50 @@ describe('gridKeyboardCapture', () => {
     expect(event.preventDefault).toHaveBeenCalledTimes(1)
     expect(event.stopPropagation).toHaveBeenCalledTimes(1)
   })
+
+  it('should not claim modified delete key combinations', () => {
+    // Arrange
+    const handleGridKey = vi.fn()
+    const openHeaderContextMenuFromKeyboard = vi.fn(() => false)
+    const resetPointerInteraction = vi.fn()
+    const events = [
+      createKeyboardEvent({ key: 'Backspace', code: 'Backspace', metaKey: true }),
+      createKeyboardEvent({ key: 'Delete', code: 'Delete', ctrlKey: true }),
+      createKeyboardEvent({ key: 'Backspace', code: 'Backspace', altKey: true }),
+      createKeyboardEvent({ key: 'Delete', code: 'Delete', shiftKey: true }),
+    ]
+
+    // Act
+    for (const event of events) {
+      handleWorkbookGridKeyDownCapture({
+        event,
+        handleGridKey,
+        openHeaderContextMenuFromKeyboard,
+        resetPointerInteraction,
+      })
+    }
+
+    // Assert
+    expect(resetPointerInteraction).toHaveBeenCalledTimes(events.length)
+    expect(openHeaderContextMenuFromKeyboard).not.toHaveBeenCalled()
+    expect(handleGridKey).not.toHaveBeenCalled()
+    for (const event of events) {
+      expect(event.preventDefault).not.toHaveBeenCalled()
+      expect(event.stopPropagation).not.toHaveBeenCalled()
+    }
+  })
 })
 
 // Helpers
 
-function createKeyboardEvent(input: { key: string; code: string; shiftKey?: boolean | undefined }): {
+function createKeyboardEvent(input: {
+  altKey?: boolean | undefined
+  code: string
+  ctrlKey?: boolean | undefined
+  key: string
+  metaKey?: boolean | undefined
+  shiftKey?: boolean | undefined
+}): {
   altKey: boolean
   code: string
   ctrlKey: boolean
@@ -108,14 +147,14 @@ function createKeyboardEvent(input: { key: string; code: string; shiftKey?: bool
   shiftKey: boolean
   stopPropagation: ReturnType<typeof vi.fn>
 } {
-  const { code, key, shiftKey = false } = input
+  const { altKey = false, code, ctrlKey = false, key, metaKey = false, shiftKey = false } = input
   const event = {
-    altKey: false,
+    altKey,
     code,
-    ctrlKey: false,
+    ctrlKey,
     defaultPrevented: false,
     key,
-    metaKey: false,
+    metaKey,
     shiftKey,
     preventDefault: vi.fn(() => {
       event.defaultPrevented = true
