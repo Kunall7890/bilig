@@ -123,6 +123,9 @@ pnpm --filter @bilig/headless build
 
 - The clean TypeScript sanity check above edits one input, restores the saved
   JSON document, and verifies the dependent formula result.
+- Auditing imported Excel files is a separate workflow. Cached formula values
+  embedded in `.xlsx` files are useful for triage, but Bilig accuracy claims
+  should be checked against a fresh Microsoft Excel recalculation.
 - Run `pnpm workpaper:bench:competitive:check` from the repository. The
   checked-in artifact shows
   [`46/46` comparable WorkPaper mean wins](https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md)
