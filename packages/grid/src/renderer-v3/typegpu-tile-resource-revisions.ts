@@ -14,6 +14,7 @@ const TEXT_DECORATION_DIRTY_MASK_V3 = DirtyMaskV3.Value | DirtyMaskV3.Text
 export interface TypeGpuTileTextRevisionKeyV3 {
   readonly tileId: number
   readonly textRunCount: number
+  readonly textSignature: string
   readonly valueSeq: number
   readonly styleSeq: number
   readonly textSeq: number
@@ -26,6 +27,7 @@ export interface TypeGpuTileTextRevisionKeyV3 {
 export interface TypeGpuTileRectRevisionKeyV3 {
   readonly tileId: number
   readonly rectCount: number
+  readonly rectSignature: string
   readonly valueSeq: number
   readonly styleSeq: number
   readonly axisSeqX: number
@@ -43,6 +45,7 @@ export function resolveGridTextTileRevisionKeyV3(tile: GridRenderTile): TypeGpuT
     freezeSeq: tile.version.freeze,
     styleSeq: tile.version.styles,
     textRunCount: tile.textCount,
+    textSignature: resolveGridTextRunSignatureV3(tile),
     textSeq: tile.version.text,
     tileId: tile.tileId,
     valueSeq: tile.version.values,
@@ -61,6 +64,7 @@ export function resolveGridRectTileRevisionKeyV3(input: {
     decorationRectCount: decorationRects.length,
     freezeSeq: input.tile.version.freeze,
     rectCount: input.tile.rectCount,
+    rectSignature: input.tile.rectSignature ?? '',
     styleSeq: input.tile.version.styles,
     tileId: input.tile.tileId,
     valueSeq: input.tile.version.values,
@@ -78,6 +82,7 @@ export function areGridTextTileRevisionKeysEqualV3(
     right !== undefined &&
     left.tileId === right.tileId &&
     left.textRunCount === right.textRunCount &&
+    left.textSignature === right.textSignature &&
     left.valueSeq === right.valueSeq &&
     left.styleSeq === right.styleSeq &&
     left.textSeq === right.textSeq &&
@@ -86,6 +91,49 @@ export function areGridTextTileRevisionKeysEqualV3(
     left.freezeSeq === right.freezeSeq &&
     left.batchSeq === right.batchSeq
   )
+}
+
+function resolveGridTextRunSignatureV3(tile: Pick<GridRenderTile, 'textRuns' | 'textSignature'>): string {
+  if (tile.textSignature) {
+    return tile.textSignature
+  }
+  let hash = 2_166_136_261
+  hash = mixRevisionNumber(hash, tile.textRuns.length)
+  for (const run of tile.textRuns) {
+    hash = mixRevisionString(hash, run.text)
+    hash = mixRevisionNumber(hash, run.x)
+    hash = mixRevisionNumber(hash, run.y)
+    hash = mixRevisionNumber(hash, run.width)
+    hash = mixRevisionNumber(hash, run.height)
+    hash = mixRevisionNumber(hash, run.clipX)
+    hash = mixRevisionNumber(hash, run.clipY)
+    hash = mixRevisionNumber(hash, run.clipWidth)
+    hash = mixRevisionNumber(hash, run.clipHeight)
+    hash = mixRevisionString(hash, run.align ?? 'left')
+    hash = mixRevisionNumber(hash, run.wrap ? 1 : 0)
+    hash = mixRevisionString(hash, run.font)
+    hash = mixRevisionNumber(hash, run.fontSize)
+    hash = mixRevisionString(hash, run.color)
+    hash = mixRevisionNumber(hash, run.underline ? 1 : 0)
+    hash = mixRevisionNumber(hash, run.strike ? 1 : 0)
+  }
+  return hash.toString(36)
+}
+
+function mixRevisionString(hash: number, value: string): number {
+  let next = hash
+  for (let index = 0; index < value.length; index += 1) {
+    next = mixRevisionInteger(next, value.charCodeAt(index))
+  }
+  return next
+}
+
+function mixRevisionNumber(hash: number, value: number): number {
+  return mixRevisionInteger(hash, Math.round(value * 1_000))
+}
+
+function mixRevisionInteger(hash: number, value: number): number {
+  return Math.imul((hash ^ value) >>> 0, 16_777_619) >>> 0
 }
 
 export function areGridRectTileRevisionKeysEqualV3(
@@ -99,6 +147,7 @@ export function areGridRectTileRevisionKeysEqualV3(
     right !== undefined &&
     left.tileId === right.tileId &&
     left.rectCount === right.rectCount &&
+    left.rectSignature === right.rectSignature &&
     left.valueSeq === right.valueSeq &&
     left.styleSeq === right.styleSeq &&
     left.axisSeqX === right.axisSeqX &&

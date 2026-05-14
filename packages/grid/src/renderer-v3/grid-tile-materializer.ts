@@ -94,6 +94,7 @@ export function materializeGridRenderTileV3(input: MaterializeGridRenderTileInpu
     ? {
         rectCount: reuseRectTile.rectCount,
         rectInstances: reuseRectTile.rectInstances,
+        rectSignature: reuseRectTile.rectSignature,
       }
     : packGridRectBufferV3(
         buildGridGpuScene({
@@ -185,9 +186,11 @@ export function materializeGridRenderTileV3(input: MaterializeGridRenderTileInpu
     packet,
     rectCount: rectBuffer.rectCount,
     rectInstances: rectBuffer.rectInstances,
+    rectSignature: rectBuffer.rectSignature,
     textCount: textBuffer.textCount,
     textMetrics: textBuffer.textMetrics,
     textRuns: textBuffer.textRuns,
+    textSignature: textBuffer.textSignature,
     dirty: {
       glyphSpans: [],
       rectSpans: [],

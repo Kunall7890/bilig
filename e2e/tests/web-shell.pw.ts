@@ -823,8 +823,27 @@ test('web app shows #VALUE! for invalid formulas', async ({ page }) => {
   await expect(resolvedValue).toHaveText('#VALUE!')
 })
 
+test('web app focuses the name box from the Go To keyboard shortcut', async ({ page }) => {
+  const documentId = createTestDocumentId('playwright-goto-shortcut')
+  await page.goto(`/?document=${encodeURIComponent(documentId)}`)
+  await waitForWorkbookReady(page)
+
+  const nameBox = page.getByTestId('name-box')
+  await clickProductCell(page, 0, 0)
+  await page.keyboard.press(`${PRIMARY_MODIFIER}+G`)
+  await page.keyboard.up(PRIMARY_MODIFIER)
+
+  await expect(nameBox).toBeFocused()
+  await nameBox.fill('C12')
+  await nameBox.press('Enter')
+
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C12')
+  await expect(nameBox).toHaveValue('C12')
+})
+
 test('web app commits in-cell string edits when clicking away', async ({ page }) => {
-  await page.goto('/')
+  await page.keyboard.up(PRIMARY_MODIFIER)
+  await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-click-away-edit'))}`)
   await waitForWorkbookReady(page)
 
   const grid = page.getByTestId('sheet-grid')
@@ -841,6 +860,7 @@ test('web app commits in-cell string edits when clicking away', async ({ page })
   await clickProductCell(page, 2, 0)
 
   await expect(nameBox).toHaveValue('C1')
+  await expect(page.getByTestId('grid-pane-text-overlay')).toHaveCount(0)
   await clickProductCell(page, 1, 0)
   await expect(nameBox).toHaveValue('B1')
   await expect(formulaInput).toHaveValue('h')

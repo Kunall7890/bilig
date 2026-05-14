@@ -264,7 +264,6 @@ export function handleGridPointerDown({
   defaultColumnWidth,
   focusGrid,
   interactionState,
-  isEditingCell,
   onCommitEdit,
   onSelectionChange,
   resolvePointerGeometry,
@@ -289,9 +288,7 @@ export function handleGridPointerDown({
   }
   const headerSelection = resolveHeaderSelectionAtPointer(event.clientX, event.clientY)
   if (headerSelection) {
-    if (isEditingCell) {
-      onCommitEdit()
-    }
+    onCommitEdit()
     beginGridHeaderDrag(interactionState, headerSelection)
     if (headerSelection.kind === 'row') {
       interactionState.ignoreNextPointerSelectionRef.current = true
@@ -315,9 +312,7 @@ export function handleGridPointerDown({
     interactionState.dragAnchorCellRef.current = anchorCell
     interactionState.dragPointerCellRef.current = pointerCell
     interactionState.ignoreNextPointerSelectionRef.current = true
-    if (isEditingCell) {
-      onCommitEdit()
-    }
+    onCommitEdit()
     const nextSelection = event.shiftKey
       ? resolveBodyDragSelection(anchorCell, pointerCell)
       : createGridSelection(pointerCell[0], pointerCell[1])

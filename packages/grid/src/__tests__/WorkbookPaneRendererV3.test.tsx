@@ -13,14 +13,13 @@ import {
   resolveWorkbookPaneTileSceneRevisionV3,
   resolveTypeGpuV3DrawScrollSnapshot,
   shouldMountWorkbookCanvasProofLayerV3,
-  shouldMountWorkbookTextOverlayV3,
   shouldDeferTypeGpuV3PreloadSync,
 } from '../renderer-v3/WorkbookPaneRendererV3.js'
 import { GridDrawSchedulerV3 } from '../renderer-v3/draw-scheduler.js'
 import { GridRenderLoop } from '../renderer-v3/gridRenderLoop.js'
 import type { GridRenderTile } from '../renderer-v3/render-tile-source.js'
 import type { WorkbookRenderTilePaneState } from '../renderer-v3/render-tile-pane-state.js'
-import { DirtyMaskV3 } from '../renderer-v3/tile-damage-index.js'
+import { resolveWorkbookPaneFrameProofSignatureV3 } from '../renderer-v3/workbook-pane-renderer-host-runtime.js'
 import { WorkbookPaneRendererRuntimeV3, type WorkbookPaneFrameDrawerV3 } from '../renderer-v3/workbook-pane-renderer-runtime.js'
 import { WorkbookGridScrollStore } from '../workbookGridScrollStore.js'
 
@@ -182,51 +181,6 @@ describe('WorkbookPaneRendererV3', () => {
     ).toBe(true)
   })
 
-  test('mounts the DOM text overlay only for pending local text damage after TypeGPU presents', () => {
-    expect(
-      shouldMountWorkbookTextOverlayV3({
-        backendStatus: 'ready',
-        frameProofStatus: 'presented',
-        showCanvasFallback: false,
-        tilePanes: [createTilePane()],
-      }),
-    ).toBe(false)
-
-    expect(
-      shouldMountWorkbookTextOverlayV3({
-        backendStatus: 'ready',
-        frameProofStatus: 'presented',
-        showCanvasFallback: false,
-        tilePanes: [
-          {
-            ...createTilePane(),
-            tile: {
-              ...createTilePane().tile,
-              dirtyMasks: new Uint32Array([DirtyMaskV3.Value | DirtyMaskV3.Text]),
-            },
-          },
-        ],
-      }),
-    ).toBe(true)
-
-    expect(
-      shouldMountWorkbookTextOverlayV3({
-        backendStatus: 'ready',
-        frameProofStatus: 'presented',
-        showCanvasFallback: false,
-        tilePanes: [
-          {
-            ...createTilePane(),
-            tile: {
-              ...createTilePane().tile,
-              dirtyMasks: new Uint32Array([DirtyMaskV3.Style | DirtyMaskV3.Rect]),
-            },
-          },
-        ],
-      }),
-    ).toBe(false)
-  })
-
   test('resolves visible tile-scene revision counters from rendered panes', () => {
     const firstPane = createTilePane()
     const secondPane = {
@@ -242,6 +196,53 @@ describe('WorkbookPaneRendererV3', () => {
     expect(resolveWorkbookPaneTileSceneCameraSeqV3([firstPane, secondPane])).toBe(13)
     expect(resolveWorkbookPaneTileSceneRevisionV3([])).toBeNull()
     expect(resolveWorkbookPaneTileSceneCameraSeqV3([])).toBeNull()
+  })
+
+  test('includes tile payload signatures in frame proof identity', () => {
+    const basePane = createTilePane()
+    const changedTextPane: WorkbookRenderTilePaneState = {
+      ...basePane,
+      tile: {
+        ...basePane.tile,
+        textCount: 1,
+        textRuns: [
+          {
+            align: 'left',
+            clipHeight: 18,
+            clipWidth: 80,
+            clipX: 4,
+            clipY: 4,
+            color: '#1f2933',
+            font: '400 13px "IBM Plex Sans", Inter, "SF Pro Text", "SF Pro Display", "Segoe UI", "Helvetica Neue", Arial, sans-serif',
+            fontSize: 13,
+            height: 21,
+            row: 52,
+            col: 3,
+            strike: false,
+            text: 'Month 1',
+            underline: false,
+            width: 104,
+            wrap: false,
+            x: 312,
+            y: 420,
+          },
+        ],
+      },
+    }
+    const changedRectPane: WorkbookRenderTilePaneState = {
+      ...basePane,
+      tile: {
+        ...basePane.tile,
+        rectSignature: 'changed-grid-lines',
+      },
+    }
+
+    expect(resolveWorkbookPaneFrameProofSignatureV3({ headerPanes: [], overlay: null, tilePanes: [basePane] })).not.toBe(
+      resolveWorkbookPaneFrameProofSignatureV3({ headerPanes: [], overlay: null, tilePanes: [changedTextPane] }),
+    )
+    expect(resolveWorkbookPaneFrameProofSignatureV3({ headerPanes: [], overlay: null, tilePanes: [basePane] })).not.toBe(
+      resolveWorkbookPaneFrameProofSignatureV3({ headerPanes: [], overlay: null, tilePanes: [changedRectPane] }),
+    )
   })
 
   test('derives draw scroll from live scroll and the current V3 body tile viewport', () => {

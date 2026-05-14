@@ -484,6 +484,7 @@ export function useWorkerWorkbookInteractionState(input: {
         optimisticKey,
         optimisticResult?.resolvedValue ?? resolveDetachedOptimisticValue(targetSelection, selectedCell, parsed),
       )
+      bumpOptimisticSeedRevision((revision) => revision + 1)
       finishEditingAtSelection(nextSelection)
       void (async () => {
         try {

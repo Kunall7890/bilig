@@ -17,7 +17,7 @@ function createInteractionState() {
 }
 
 describe('gridInteractionController', () => {
-  it('commits the active edit before applying a body-click selection change', () => {
+  it('asks the commit hook before applying a body-click selection change even when edit state is stale', () => {
     const order: string[] = []
     const onCommitEdit = vi.fn(() => {
       order.push('commit')
@@ -39,7 +39,7 @@ describe('gridInteractionController', () => {
       defaultColumnWidth: 120,
       focusGrid: vi.fn(),
       interactionState: createInteractionState(),
-      isEditingCell: true,
+      isEditingCell: false,
       onCommitEdit,
       onSelectionChange,
       resolvePointerGeometry: vi.fn(() => null),

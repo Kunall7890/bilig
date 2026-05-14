@@ -4,6 +4,7 @@ import type { GridCameraStore } from '../runtime/gridCameraStore.js'
 import type { WorkbookGridScrollStore } from '../workbookGridScrollStore.js'
 import type { DynamicGridOverlayBatchV3 } from './dynamic-overlay-batch.js'
 import type { WorkbookRenderTilePaneState } from './render-tile-pane-state.js'
+import { resolveGridTextTileRevisionKeyV3 } from './typegpu-tile-resource-revisions.js'
 import { WorkbookPaneRendererRuntimeV3, type WorkbookPaneFrameResultV3 } from './workbook-pane-renderer-runtime.js'
 import {
   EMPTY_WORKBOOK_PANE_SURFACE_SNAPSHOT_V3,
@@ -215,7 +216,9 @@ export function resolveWorkbookPaneFrameProofSignatureV3(props: {
         pane.generation,
         tile.tileId,
         tile.textCount,
+        tile.textSignature ?? resolveGridTextTileRevisionKeyV3(tile).textSignature,
         tile.rectCount,
+        tile.rectSignature ?? '',
         tile.version.axisX,
         tile.version.axisY,
         tile.version.freeze,

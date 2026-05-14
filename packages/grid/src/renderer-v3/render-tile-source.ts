@@ -86,9 +86,11 @@ export interface GridRenderTile {
   readonly bounds: Viewport
   readonly rectInstances: Float32Array
   readonly rectCount: number
+  readonly rectSignature?: string | undefined
   readonly textMetrics: Float32Array
   readonly textRuns: readonly GridRenderTileTextRun[]
   readonly textCount: number
+  readonly textSignature?: string | undefined
   readonly dirty?: GridRenderTileDirtySpans | undefined
   readonly dirtyLocalRows?: Uint32Array | undefined
   readonly dirtyLocalCols?: Uint32Array | undefined

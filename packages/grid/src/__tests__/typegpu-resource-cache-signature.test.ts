@@ -110,11 +110,22 @@ describe('typegpu v3 resource cache revision keys', () => {
       textRuns: first.textRuns.map((run) => ({ ...run, text: 'A2' })),
       version: { ...first.version, text: 2 },
     })
+    const changedWithoutSequenceBump = createTile({
+      textCount: first.textCount,
+      textRuns: first.textRuns.map((run) => ({ ...run, text: 'A2' })),
+      version: { ...first.version },
+    })
 
     expect(areGridTextTileRevisionKeysEqualV3(resolveGridTextTileRevisionKeyV3(first), resolveGridTextTileRevisionKeyV3(second))).toBe(true)
     expect(areGridTextTileRevisionKeysEqualV3(resolveGridTextTileRevisionKeyV3(changed), resolveGridTextTileRevisionKeyV3(first))).toBe(
       false,
     )
+    expect(
+      areGridTextTileRevisionKeysEqualV3(
+        resolveGridTextTileRevisionKeyV3(changedWithoutSequenceBump),
+        resolveGridTextTileRevisionKeyV3(first),
+      ),
+    ).toBe(false)
   })
 
   test('keeps V3 resource revision keys stable across camera sequence churn', () => {
@@ -131,6 +142,20 @@ describe('typegpu v3 resource cache revision keys', () => {
         resolveGridTextTileRevisionKeyV3(base),
       ),
     ).toBe(true)
+  })
+
+  test('detects V3 rect payload changes without relying only on sequence bumps', () => {
+    const base = createTile({
+      rectSignature: 'base-grid-rects',
+    })
+    const changedWithoutSequenceBump = createTile({
+      rectCount: base.rectCount,
+      rectInstances: new Float32Array(base.rectInstances),
+      rectSignature: 'changed-grid-rects',
+      version: { ...base.version },
+    })
+
+    expect(areGridRectTileRevisionKeysEqualV3(rectRevisionKey(changedWithoutSequenceBump), rectRevisionKey(base))).toBe(false)
   })
 
   test('compares V3 text run counts separately from GPU quad counts', () => {

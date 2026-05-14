@@ -199,12 +199,15 @@ export function useWorkbookGridInteractions(
         flushSync,
         onEditorChange,
       })
+      if (valueOverride === null && !isEditingCell) {
+        return
+      }
       onCommitEdit(movement, valueOverride ?? undefined, {
         sheetName,
         address: formatAddress(activeSelectionCell[1], activeSelectionCell[0]),
       })
     },
-    [activeSelectionCell, editorValue, inputController, onCommitEdit, onEditorChange, sheetName],
+    [activeSelectionCell, editorValue, inputController, isEditingCell, onCommitEdit, onEditorChange, sheetName],
   )
   const toggleBooleanCellAt = useCallback(
     (col: number, row: number): boolean => {
