@@ -121,7 +121,7 @@
         ]
       }
     </script>
-    <link rel="stylesheet" href="./assets/site.css?v=2026-05-13-29" />
+    <link rel="stylesheet" href="./assets/site.css?v=2026-05-14-1" />
     <link rel="stylesheet" href="./assets/product-demo.css?v=2026-05-13-4" />
   </head>
   <body>
@@ -484,10 +484,10 @@ function readNumber(cell: unknown): number {
           <div class="proof-layout">
             <div class="proof-intro">
               <p class="kicker">Benchmark</p>
-              <h2 id="proof-title">Fast on the checked-in suite. Test your own workbook.</h2>
+              <h2 id="proof-title">Benchmark proof, caveat included.</h2>
               <p>
-                The benchmark is intentionally narrow: WorkPaper versus HyperFormula-style headless workloads. The command, baseline JSON,
-                and p95 caveat live in the repo.
+                It compares WorkPaper with HyperFormula on the repo's headless formula workloads. It is useful evidence, not a promise about
+                every Excel file, every formula, or the browser grid.
               </p>
             </div>
 
@@ -498,43 +498,46 @@ function readNumber(cell: unknown): number {
               </div>
 
               <div class="proof-result">
-                <span class="proof-label">Current artifact</span>
+                <span class="proof-label">latest artifact</span>
                 <strong>46/46</strong>
-                <p>WorkPaper is faster on mean latency for every comparable row in the current run.</p>
+                <p>
+                  WorkPaper has the lower mean latency on every comparable row. One lookup workload is slower at p95 by
+                  <code>1.043x</code>, so the caveat stays visible.
+                </p>
               </div>
 
               <dl class="proof-facts">
                 <div class="proof-fact proof-command">
-                  <dt>Run</dt>
+                  <dt>Run locally</dt>
                   <dd><code>pnpm workpaper:bench:competitive:check</code></dd>
                 </div>
                 <div class="proof-fact proof-row-code">
-                  <dt>Source</dt>
+                  <dt>Artifact</dt>
                   <dd>
                     <code>packages/benchmarks/baselines/<wbr />workpaper-vs-hyperformula.json</code>
                   </dd>
                 </div>
                 <div class="proof-fact">
-                  <dt>Caveat</dt>
-                  <dd><code>lookup-approximate-duplicates</code> is slower at p95: 1.043x.</dd>
+                  <dt>Covers</dt>
+                  <dd>Headless formula workloads that both engines can run.</dd>
                 </div>
                 <div class="proof-fact">
-                  <dt>Not measured</dt>
-                  <dd>Browser grid speed, Excel compatibility, or every possible workbook.</dd>
+                  <dt>Does not cover</dt>
+                  <dd>Browser rendering speed, full Excel compatibility, or arbitrary customer workbooks.</dd>
                 </div>
               </dl>
 
               <div class="proof-links" aria-label="Benchmark evidence links">
                 <a href="./what-workpaper-benchmark-proves.html">
-                  <span>Notes</span>
-                  <strong>What the benchmark says</strong>
+                  <span>Read</span>
+                  <strong>Benchmark notes</strong>
                 </a>
                 <a href="./where-bilig-is-not-excel-compatible-yet.html">
-                  <span>Limits</span>
-                  <strong>Known Excel gaps</strong>
+                  <span>Check</span>
+                  <strong>Compatibility gaps</strong>
                 </a>
                 <a href="https://github.com/proompteng/bilig/issues?q=is%3Aissue%20state%3Aopen%20label%3Afirst-timers-only">
-                  <span>Contribute</span>
+                  <span>Help</span>
                   <strong>Starter issues</strong>
                 </a>
               </div>
