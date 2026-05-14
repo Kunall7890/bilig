@@ -71,7 +71,7 @@ function createRenderTile(tileId: number, sheetId = 7, sheetOrdinal = sheetId): 
     },
     lastBatchId: 1,
     lastCameraSeq: 1,
-    rectCount: 0,
+    rectCount: 1,
     rectInstances: new Float32Array(GRID_RECT_INSTANCE_FLOAT_COUNT_V3),
     textCount: 0,
     textMetrics: new Float32Array(GRID_TEXT_METRIC_FLOAT_COUNT_V3),
@@ -440,49 +440,102 @@ describe('GridRenderTilePaneRuntime', () => {
       }),
     )
 
-    expect(missing.residentDataPanes).toBe(ready.residentDataPanes)
-    expect(missing.residentBodyPane).toBe(ready.residentBodyPane)
+    expect(missing.residentDataPanes.map((pane) => pane.tile.tileId)).toEqual([tileId])
+    expect(missing.residentBodyPane?.tile).toBe(ready.residentBodyPane?.tile)
     expect(missing.needsLocalCellInvalidation).toBe(false)
   })
 
-  it('does not build local fixed tiles when remote tiles are unavailable before same-sheet retention exists', () => {
+  it('builds a local visible tile when remote tiles are unavailable before same-sheet retention exists', () => {
     const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const tileId = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+    })[0]
     const state = runtime.resolve(
       createInput({
         engine: LOCAL_EMPTY_ENGINE,
+        gridRuntimeHost: host,
         renderTileSource: createRenderTileSource([]),
       }),
     )
 
-    expect(state.residentBodyPane).toBeNull()
+    expect(state.residentBodyPane?.tile.tileId).toBe(tileId)
+    expect(state.residentBodyPane?.tile.rectCount).toBeGreaterThan(0)
     expect(state.needsLocalCellInvalidation).toBe(false)
-    expect(state.residentDataPanes).toHaveLength(0)
+    expect(state.residentDataPanes).toHaveLength(1)
+    expect(state.tileReadiness.misses).toEqual([])
   })
 
-  it('uses available remote tiles without discarding the viewport when another remote tile is missing', () => {
+  it('fills visible remote tile holes with local grid tiles', () => {
     const runtime = new GridRenderTilePaneRuntime()
     const host = createHost()
     const tileIds = host.viewportTileKeys({
       dprBucket: 1,
       sheetOrdinal: 7,
-      viewport: { colEnd: 255, colStart: 0, rowEnd: 31, rowStart: 0 },
+      viewport: { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 0 },
     })
     const state = runtime.resolve(
       createInput({
+        engine: LOCAL_EMPTY_ENGINE,
         gridRuntimeHost: host,
         renderTileSource: createRenderTileSource([createRenderTile(tileIds[0])]),
-        renderTileViewport: { colEnd: 255, colStart: 0, rowEnd: 31, rowStart: 0 },
-        residentViewport: { colEnd: 255, colStart: 0, rowEnd: 31, rowStart: 0 },
-        visibleViewport: { colEnd: 255, colStart: 0, rowEnd: 31, rowStart: 0 },
+        renderTileViewport: { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 0 },
+        residentViewport: { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 0 },
+        visibleViewport: { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 0 },
       }),
     )
 
     expect(state.needsLocalCellInvalidation).toBe(false)
-    expect(state.renderTilePanes.map((pane) => pane.tile.tileId)).toEqual([tileIds[0]])
+    expect(state.renderTilePanes.map((pane) => pane.tile.tileId)).toEqual(tileIds)
+    expect(state.renderTilePanes[1]?.tile.rectCount).toBeGreaterThan(0)
     expect(state.tileReadiness).toMatchObject({
-      exactHits: [tileIds[0]],
-      misses: [tileIds[1]],
+      exactHits: tileIds,
+      misses: [],
     })
+  })
+
+  it('rebuilds visible remote tiles with empty drawable payloads as local grid tiles', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const tileIds = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 0 },
+    })
+    const emptyRemoteTile: GridRenderTile = {
+      ...createRenderTile(tileIds[1]),
+      bounds: { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 32 },
+      coord: {
+        colTile: 0,
+        dprBucket: 1,
+        paneKind: 'body',
+        rowTile: 1,
+        sheetId: 7,
+        sheetOrdinal: 7,
+      },
+      rectCount: 0,
+      rectInstances: new Float32Array(),
+      textCount: 0,
+      textMetrics: new Float32Array(),
+    }
+    const state = runtime.resolve(
+      createInput({
+        engine: LOCAL_EMPTY_ENGINE,
+        gridRuntimeHost: host,
+        renderTileSource: createRenderTileSource([createRenderTile(tileIds[0]), emptyRemoteTile]),
+        renderTileViewport: { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 0 },
+        residentViewport: { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 0 },
+        visibleViewport: { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 0 },
+      }),
+    )
+
+    expect(state.renderTilePanes.map((pane) => pane.tile.tileId)).toEqual(tileIds)
+    expect(state.renderTilePanes[0]?.tile.rectCount).toBe(1)
+    expect(state.renderTilePanes[1]?.tile).not.toBe(emptyRemoteTile)
+    expect(state.renderTilePanes[1]?.tile.rectCount).toBeGreaterThan(0)
+    expect(state.tileReadiness.misses).toEqual([])
   })
 
   it('requires coherent sheet id and ordinal for remote tiles when both are known', () => {
@@ -496,6 +549,7 @@ describe('GridRenderTilePaneRuntime', () => {
 
     const sameOrdinalWrongSheetId = runtime.resolve(
       createInput({
+        engine: LOCAL_EMPTY_ENGINE,
         gridRuntimeHost: host,
         renderTileSource: createRenderTileSource([createRenderTile(tileId, 99, 7)]),
         sheetId: 7,
@@ -504,6 +558,7 @@ describe('GridRenderTilePaneRuntime', () => {
     )
     const sameSheetIdWrongOrdinal = runtime.resolve(
       createInput({
+        engine: LOCAL_EMPTY_ENGINE,
         gridRuntimeHost: host,
         renderTileSource: createRenderTileSource([createRenderTile(tileId, 7, 2)]),
         sheetId: 7,
@@ -511,8 +566,12 @@ describe('GridRenderTilePaneRuntime', () => {
       }),
     )
 
-    expect(sameOrdinalWrongSheetId.residentDataPanes).toHaveLength(0)
-    expect(sameSheetIdWrongOrdinal.residentDataPanes).toHaveLength(0)
+    expect(sameOrdinalWrongSheetId.residentDataPanes).toHaveLength(1)
+    expect(sameOrdinalWrongSheetId.residentDataPanes[0]?.tile.coord).toMatchObject({ sheetId: 7, sheetOrdinal: 7 })
+    expect(sameOrdinalWrongSheetId.residentDataPanes[0]?.tile.rectCount).toBeGreaterThan(0)
+    expect(sameSheetIdWrongOrdinal.residentDataPanes).toHaveLength(1)
+    expect(sameSheetIdWrongOrdinal.residentDataPanes[0]?.tile.coord).toMatchObject({ sheetId: 7, sheetOrdinal: 7 })
+    expect(sameSheetIdWrongOrdinal.residentDataPanes[0]?.tile.rectCount).toBeGreaterThan(0)
   })
 
   it('does not retain local fallback panes as authoritative remote panes', () => {
@@ -610,8 +669,8 @@ describe('GridRenderTilePaneRuntime', () => {
           gridRuntimeHost: host,
           renderTileSource: createRenderTileSource([]),
         }),
-      ).residentDataPanes,
-    ).toBe(ready.residentDataPanes)
+      ).residentBodyPane?.tile,
+    ).toBe(ready.residentBodyPane?.tile)
 
     invalidationListener?.()
     mergeInvalidationListener?.()
@@ -1535,7 +1594,8 @@ describe('GridRenderTilePaneRuntime', () => {
     )
 
     expect(switched.residentDataPanes).not.toBe(ready.residentDataPanes)
-    expect(switched.residentDataPanes).toEqual([])
+    expect(switched.residentDataPanes).toHaveLength(1)
+    expect(switched.residentDataPanes[0]?.tile.coord).toMatchObject({ sheetId: 8, sheetOrdinal: 8 })
     expect(
       runtime.resolve(
         createInput({

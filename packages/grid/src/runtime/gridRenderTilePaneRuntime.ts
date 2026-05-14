@@ -162,6 +162,10 @@ interface GridRenderTilePreloadResolution {
   readonly tiles: readonly GridRenderTile[]
 }
 
+function hasDrawableRenderTilePayload(tile: GridRenderTile): boolean {
+  return tile.rectCount > 0 || tile.textCount > 0
+}
+
 interface RuntimeConnection<Identity> {
   readonly identity: Identity
   readonly unsubscribe: (() => void) | undefined
@@ -649,21 +653,9 @@ export class GridRenderTilePaneRuntime {
     }
 
     if (input.renderTileSource && input.sheetId !== undefined) {
-      const tiles: GridRenderTile[] = []
-      const sheetOrdinal = resolveGridRenderTileInputSheetOrdinal(input)
-      const tileKeys = input.gridRuntimeHost.viewportTileKeys({
-        dprBucket: input.dprBucket,
-        sheetOrdinal,
-        viewport: input.renderTileViewport,
+      return this.buildHybridLocalDirtyTiles(input, input.renderTileSource, input.sheetId, {
+        localizeDirtyVisibleTiles: false,
       })
-      for (const tileKey of tileKeys) {
-        const tile = input.renderTileSource.peekRenderTile(tileKey)
-        if (!tile || !matchesRenderTileSheetIdentity(tile.coord, { sheetId: input.sheetId, sheetOrdinal })) {
-          continue
-        }
-        tiles.push(tile)
-      }
-      return { source: 'remote', tiles }
     }
 
     return this.buildLocalTiles(input)
@@ -705,6 +697,7 @@ export class GridRenderTilePaneRuntime {
     input: GridRenderTilePaneRuntimeInput,
     renderTileSource: GridRenderTileSource,
     sheetId: number,
+    options: { readonly localizeDirtyVisibleTiles?: boolean | undefined } = {},
   ): GridRenderTileResolution | null {
     const sheetOrdinal = resolveGridRenderTileInputSheetOrdinal(input)
     const tileKeys = input.gridRuntimeHost.viewportTileKeys({
@@ -733,14 +726,19 @@ export class GridRenderTilePaneRuntime {
           ? sourceTile
           : this.resolveResidentRenderTile(input, tileKey, sheetId, sheetOrdinal)
       const isDirty = visibleTileKeys.has(tileKey) && input.gridRuntimeHost.tiles.dirtyTiles.getUnconsumedMask(tileKey) !== 0
-      if (isDirty || !tile) {
-        if (isDirty && tile) {
+      const isVisibleMiss = visibleTileKeys.has(tileKey) && !tile
+      const isVisibleEmptyPayload = visibleTileKeys.has(tileKey) && tile !== null && !hasDrawableRenderTilePayload(tile)
+      const shouldLocalizeDirty = (options.localizeDirtyVisibleTiles ?? true) && isDirty
+      if (shouldLocalizeDirty || isVisibleMiss || isVisibleEmptyPayload) {
+        if (shouldLocalizeDirty && tile) {
           dirtyBaseTiles.set(tileKey, tile)
         }
         dirtyTileKeys.push(tileKey)
         continue
       }
-      remoteTiles.set(tileKey, tile)
+      if (tile) {
+        remoteTiles.set(tileKey, tile)
+      }
     }
 
     if (dirtyTileKeys.length === 0 && remoteTiles.size === tileKeys.length) {
