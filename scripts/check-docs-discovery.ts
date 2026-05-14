@@ -332,8 +332,8 @@ requireIncludes(newContributorGuide, 'first-time contributor review happens on G
 requireIncludes(contributing, 'pull requests on GitHub are welcome; maintainers', 'CONTRIBUTING.md')
 requireIncludes(starterIssues, 'new-contributor-guide.md#first-time-command-checklist', 'docs/starter-issues.md')
 requireIncludes(starterIssues, 'https://github.com/proompteng/bilig/blob/main/CONTRIBUTING.md', 'docs/starter-issues.md')
-requireIncludes(starterIssues, '109 open `first-timers-only` issues.', 'docs/starter-issues.md')
-requireIncludes(starterIssues, '108 issues are currently available for a new contributor to claim.', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '110 open `first-timers-only` issues.', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '109 issues are currently available for a new contributor to claim.', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '10 starter issues are code or test tasks; 9 are not under active review.', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '1 open starter issue currently has an active pull request.', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '## Currently In Review', 'docs/starter-issues.md')
@@ -343,6 +343,7 @@ requireIncludes(starterIssues, '### Code And Test Starters', 'docs/starter-issue
 requireIncludes(starterIssues, '### npm Smoke Test Improvements', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '### JavaScript Library Comparison Starters', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#360: test(headless): cover display-value readback after JSON restore', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '#384: docs(mcp): refresh PulseMCP directory indexing proof', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#361: test(headless): cover range readback after an input edit', 'docs/starter-issues.md')
 requireIncludes(
   starterIssues,
@@ -559,8 +560,9 @@ for (const required of [
   'https://github.com/toolsdk-ai/toolsdk-mcp-registry/pull/309',
   'https://github.com/ever-works/awesome-mcp-servers-data/pull/4',
   'https://github.com/jmstfv/mcpserve/pull/19',
-  'Not indexed yet as of May 13, 2026',
+  'Not indexed in public search on May 14, 2026',
   'https://www.pulsemcp.com/servers?search=bilig&q=bilig',
+  'https://github.com/proompteng/bilig/issues/384',
   'marked `@bilig/headless@0.14.9` as the',
   'https://github.com/proompteng/bilig/actions/runs/25882165865',
   'read_workpaper_summary',

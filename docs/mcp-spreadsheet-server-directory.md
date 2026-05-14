@@ -54,12 +54,14 @@ network service to answer `tools/list` and `tools/call`.
 | ToolSDK MCP Registry            | Submitted for maintainer review    | <https://github.com/toolsdk-ai/toolsdk-mcp-registry/pull/309>                                         |
 | Ever Works MCP data             | Submitted for maintainer review    | <https://github.com/ever-works/awesome-mcp-servers-data/pull/4>                                       |
 | mcpserve.com                    | Submitted for maintainer review    | <https://github.com/jmstfv/mcpserve/pull/19>                                                          |
-| PulseMCP                        | Not indexed yet as of May 13, 2026 | <https://www.pulsemcp.com/servers?search=bilig&q=bilig>                                               |
+| PulseMCP                        | Not indexed in public search on May 14, 2026 | <https://www.pulsemcp.com/servers?search=bilig&q=bilig>                                               |
 
 PulseMCP says server listings are ingested from the official MCP Registry daily
-and processed weekly. The Bilig WorkPaper registry entry is already live, so the
-right next step is to let that import run, then contact PulseMCP only if the
-server still does not appear after their stated review window.
+and processed weekly. The Bilig WorkPaper registry entry is already live at
+`@bilig/headless@0.14.9`, so PulseMCP absence is a directory-ingest delay, not a
+missing package or server metadata problem. Starter issue
+[#384](https://github.com/proompteng/bilig/issues/384) tracks the next public
+verification pass.
 
 The `mcpserver.cc` submission was accepted for review on May 13, 2026 with
 submission UUID `bcdce4e1-3b05-4be2-b611-2a2abb8baf79`. Search still returned no

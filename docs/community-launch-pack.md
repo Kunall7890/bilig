@@ -227,6 +227,10 @@ issue pass:
   from the official MCP Registry. The next action is to let the fresh official
   registry entry propagate, then email `hello@pulsemcp.com` only if it remains
   missing after the daily ingest window.
+- External MCP directory follow-up: starter issue `#384` now gives a
+  first-time contributor a small public verification task for PulseMCP indexing
+  after the official MCP Registry refresh to `@bilig/headless@0.14.9`:
+  <https://github.com/proompteng/bilig/issues/384>.
 
 Latest TypeScript-example guard action on May 14, 2026:
 

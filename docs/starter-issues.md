@@ -9,8 +9,8 @@ Current starter queue as of May 14, 2026:
 - Pinned contributor map:
   [#372](https://github.com/proompteng/bilig/issues/372) groups current code,
   docs, agent, and MCP starter picks for people opening the issue queue cold.
-- 109 open `first-timers-only` issues.
-- 108 issues are currently available for a new contributor to claim.
+- 110 open `first-timers-only` issues.
+- 109 issues are currently available for a new contributor to claim.
 - 10 starter issues are code or test tasks; 9 are not under active review.
 - 1 open starter issue currently has an active pull request.
 
@@ -54,6 +54,7 @@ Current starter queue as of May 14, 2026:
 - [#297: docs(mcpb): add a Claude Desktop MCPB troubleshooting table](https://github.com/proompteng/bilig/issues/297)
 - [#298: docs(mcpb): add a copy-paste verification transcript for the bundle server](https://github.com/proompteng/bilig/issues/298)
 - [#348: docs(examples): add Docker healthcheck for the WorkPaper MCP stdio server](https://github.com/proompteng/bilig/issues/348)
+- [#384: docs(mcp): refresh PulseMCP directory indexing proof](https://github.com/proompteng/bilig/issues/384)
 
 ### npm Smoke Test Improvements
 

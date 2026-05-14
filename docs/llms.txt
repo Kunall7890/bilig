@@ -220,7 +220,8 @@ npm run agent:verify
   https://proompteng.github.io/bilig/mcp-spreadsheet-server-directory.html
   https://github.com/proompteng/bilig/blob/main/docs/mcp-spreadsheet-server-directory.md
   npm exec --package @bilig/headless -- bilig-workpaper-mcp
-  PulseMCP not indexed yet as of May 13, 2026
+  PulseMCP not indexed in public search on May 14, 2026; follow-up issue:
+  https://github.com/proompteng/bilig/issues/384
 - MCP client setup for Claude, Cursor, VS Code, Cline, and Codex:
   https://proompteng.github.io/bilig/mcp-client-setup.html
   https://github.com/proompteng/bilig/blob/main/docs/mcp-client-setup.md
