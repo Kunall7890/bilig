@@ -53,6 +53,40 @@ The TypeScript file is maintained in
 The exact byte count can change between package versions; `verified: true` and
 matching `after`/`afterRestore` values are the check.
 
+## TypeScript API Shape
+
+This is the loop the package is for: build a workbook, write an input, read the
+calculated value, and save the workbook state your service owns.
+
+```ts
+import { WorkPaper, exportWorkPaperDocument, serializeWorkPaperDocument } from '@bilig/headless'
+
+const workbook = WorkPaper.buildFromSheets({
+  Inputs: [
+    ['Metric', 'Value'],
+    ['Customers', 20],
+    ['Average revenue', 1200],
+  ],
+  Summary: [
+    ['Metric', 'Value'],
+    ['Revenue', '=Inputs!B2*Inputs!B3'],
+  ],
+})
+
+const inputs = workbook.getSheetId('Inputs')
+const summary = workbook.getSheetId('Summary')
+if (inputs === undefined || summary === undefined) {
+  throw new Error('Workbook is missing required sheets')
+}
+
+workbook.setCellContents({ sheet: inputs, row: 1, col: 1 }, 32)
+
+const revenue = workbook.getCellDisplayValue({ sheet: summary, row: 1, col: 1 })
+const saved = serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { includeConfig: true }))
+
+console.log({ revenue, savedBytes: saved.length })
+```
+
 ## When It Fits
 
 | Good fit                                                                  | Use something else when                                                    |

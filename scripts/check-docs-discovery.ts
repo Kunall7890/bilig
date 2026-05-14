@@ -286,6 +286,13 @@ for (const [path, content] of [
   ['README.md', readme],
   ['packages/headless/README.md', headlessReadme],
 ] as const) {
+  requireIncludes(content, '## TypeScript API Shape', path)
+  requireIncludes(content, 'WorkPaper.buildFromSheets({', path)
+  requireIncludes(content, "['Revenue', '=Inputs!B2*Inputs!B3']", path)
+  requireIncludes(content, 'workbook.setCellContents({ sheet: inputs, row: 1, col: 1 }, 32)', path)
+  requireIncludes(content, 'workbook.getCellDisplayValue({ sheet: summary, row: 1, col: 1 })', path)
+  requireIncludes(content, 'serializeWorkPaperDocument(', path)
+  requireIncludes(content, 'exportWorkPaperDocument(workbook, { includeConfig: true })', path)
   requireIncludes(content, '## Proof You Can Reproduce', path)
   requireIncludes(content, 'https://proompteng.github.io/bilig/community-growth-snapshot.html', path)
   requireIncludes(content, 'https://github.com/proompteng/bilig/stargazers', path)

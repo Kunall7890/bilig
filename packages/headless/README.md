@@ -32,6 +32,41 @@ For a copy-paste evaluation from an empty directory, use the
 or the
 [TypeScript guide for evaluating Excel formulas in Node.js](https://proompteng.github.io/bilig/evaluate-excel-formulas-in-node-typescript.html).
 
+## TypeScript API Shape
+
+Most service and agent integrations use this loop: build a workbook, write an
+input, read the recalculated value, then save the WorkPaper JSON that your
+service owns.
+
+```ts
+import { WorkPaper, exportWorkPaperDocument, serializeWorkPaperDocument } from '@bilig/headless'
+
+const workbook = WorkPaper.buildFromSheets({
+  Inputs: [
+    ['Metric', 'Value'],
+    ['Customers', 20],
+    ['Average revenue', 1200],
+  ],
+  Summary: [
+    ['Metric', 'Value'],
+    ['Revenue', '=Inputs!B2*Inputs!B3'],
+  ],
+})
+
+const inputs = workbook.getSheetId('Inputs')
+const summary = workbook.getSheetId('Summary')
+if (inputs === undefined || summary === undefined) {
+  throw new Error('Workbook is missing required sheets')
+}
+
+workbook.setCellContents({ sheet: inputs, row: 1, col: 1 }, 32)
+
+const revenue = workbook.getCellDisplayValue({ sheet: summary, row: 1, col: 1 })
+const saved = serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { includeConfig: true }))
+
+console.log({ revenue, savedBytes: saved.length })
+```
+
 ## Clean npm Sanity Check
 
 Run this from an empty directory when you want to verify the published package
