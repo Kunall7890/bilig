@@ -14,6 +14,7 @@ import type { SameCorpusScenarioProof } from './ui-responsiveness-same-corpus-pr
 import { validateSameCorpusScenarioProof } from './ui-responsiveness-same-corpus-proof.ts'
 import {
   requiredUiResponsivenessSameCorpusWorkloads,
+  uiSameCorpusWorkloadRequiresScrollEventEvidence,
   type UiResponsivenessSameCorpusWorkload,
 } from './ui-responsiveness-same-corpus-workloads.ts'
 
@@ -398,11 +399,7 @@ function validateSameCorpusCapture(capture: SameCorpusCapture): void {
     const hasAnyScrollEventSamples = [entry.bilig, entry.googleSheets, entry.microsoftExcelWeb].some(
       (measurement) => measurement.scrollEventResponseMsSamples !== undefined || measurement.scrollMovementPxSamples !== undefined,
     )
-    const requiresScrollEventSamples =
-      entry.workload === 'scroll-vertical' ||
-      entry.workload === 'scroll-horizontal' ||
-      entry.workload === 'wide-sheet-navigation' ||
-      hasAnyScrollEventSamples
+    const requiresScrollEventSamples = uiSameCorpusWorkloadRequiresScrollEventEvidence(entry.workload) || hasAnyScrollEventSamples
     for (const measurement of [entry.bilig, entry.googleSheets, entry.microsoftExcelWeb]) {
       if (
         measurement.operationResponseMsSamples.length < capture.sampleCount ||
@@ -536,18 +533,24 @@ function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivene
   )
   const scrollMovementGuardrailPassed =
     scrollEventMetrics !== null && [bilig, googleSheets, microsoftExcelWeb].every((entry) => (entry.scrollMovementPx?.min ?? 0) >= 1)
+  const requiresScrollEventMetric = uiSameCorpusWorkloadRequiresScrollEventEvidence(captureCase.workload)
+  const timingMetricPassedAgainstGoogleSheets = requiresScrollEventMetric
+    ? scrollEventMetrics !== null &&
+      scrollEventMetrics.biligToGoogleSheetsMeanRatio <= 0.1 &&
+      scrollEventMetrics.biligToGoogleSheetsP95Ratio <= 0.1 &&
+      scrollMovementGuardrailPassed
+    : biligToGoogleSheetsMeanRatio <= 0.1 && biligToGoogleSheetsP95Ratio <= 0.1
+  const timingMetricPassedAgainstMicrosoftExcelWeb = requiresScrollEventMetric
+    ? scrollEventMetrics !== null &&
+      scrollEventMetrics.biligToMicrosoftExcelWebMeanRatio <= 0.1 &&
+      scrollEventMetrics.biligToMicrosoftExcelWebP95Ratio <= 0.1 &&
+      scrollMovementGuardrailPassed
+    : biligToMicrosoftExcelWebMeanRatio <= 0.1 && biligToMicrosoftExcelWebP95Ratio <= 0.1
+  const visualProofGuardrailPassed = captureCase.scenarioProof.screenshotProof.captured && captureCase.scenarioProof.pixelGridProof.captured
   const tenXMeanAndP95AgainstGoogleSheets =
-    scrollEventMetrics !== null &&
-    scrollEventMetrics.biligToGoogleSheetsMeanRatio <= 0.1 &&
-    scrollEventMetrics.biligToGoogleSheetsP95Ratio <= 0.1 &&
-    postOperationFrameGuardrailPassed &&
-    scrollMovementGuardrailPassed
+    timingMetricPassedAgainstGoogleSheets && postOperationFrameGuardrailPassed && visualProofGuardrailPassed
   const tenXMeanAndP95AgainstMicrosoftExcelWeb =
-    scrollEventMetrics !== null &&
-    scrollEventMetrics.biligToMicrosoftExcelWebMeanRatio <= 0.1 &&
-    scrollEventMetrics.biligToMicrosoftExcelWebP95Ratio <= 0.1 &&
-    postOperationFrameGuardrailPassed &&
-    scrollMovementGuardrailPassed
+    timingMetricPassedAgainstMicrosoftExcelWeb && postOperationFrameGuardrailPassed && visualProofGuardrailPassed
   return {
     id: captureCase.id,
     corpusCaseId: captureCase.corpusCaseId,
@@ -565,18 +568,18 @@ function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivene
     biligToGoogleSheetsP95Ratio,
     biligToMicrosoftExcelWebMeanRatio,
     biligToMicrosoftExcelWebP95Ratio,
-    ...(scrollEventMetrics
+    ...(requiresScrollEventMetric && scrollEventMetrics
       ? {
           biligToGoogleSheetsScrollEventMeanRatio: scrollEventMetrics.biligToGoogleSheetsMeanRatio,
           biligToGoogleSheetsScrollEventP95Ratio: scrollEventMetrics.biligToGoogleSheetsP95Ratio,
           biligToMicrosoftExcelWebScrollEventMeanRatio: scrollEventMetrics.biligToMicrosoftExcelWebMeanRatio,
           biligToMicrosoftExcelWebScrollEventP95Ratio: scrollEventMetrics.biligToMicrosoftExcelWebP95Ratio,
           tenXMeanAndP95Metric: 'scrollEventResponseMs' as const,
-          postOperationFrameGuardrailPassed,
           scrollMovementGuardrailPassed,
         }
       : { tenXMeanAndP95Metric: 'operationResponseMs' as const }),
     scenarioProof: { ...captureCase.scenarioProof },
+    postOperationFrameGuardrailPassed,
     tenXMeanAndP95AgainstGoogleSheets,
     tenXMeanAndP95AgainstMicrosoftExcelWeb,
     passed: tenXMeanAndP95AgainstGoogleSheets && tenXMeanAndP95AgainstMicrosoftExcelWeb,
@@ -671,7 +674,7 @@ function validateSameCorpusCase(entry: UiResponsivenessSameCorpusCase): void {
   validateSameCorpusMeasurement(entry.googleSheets, 'google-sheets', entry.id)
   validateSameCorpusMeasurement(entry.microsoftExcelWeb, 'microsoft-excel-web', entry.id)
   if (
-    (entry.workload === 'scroll-vertical' || entry.workload === 'scroll-horizontal' || entry.workload === 'wide-sheet-navigation') &&
+    uiSameCorpusWorkloadRequiresScrollEventEvidence(entry.workload) &&
     ![entry.bilig, entry.googleSheets, entry.microsoftExcelWeb].every((measurement) => hasSameCorpusScrollEvidence(measurement))
   ) {
     throw new Error(`UI responsiveness same-corpus proof is missing scroll-event evidence for ${entry.id}`)
@@ -722,25 +725,28 @@ function validateSameCorpusCase(entry: UiResponsivenessSameCorpusCase): void {
   if (entry.scrollMovementGuardrailPassed !== undefined && entry.scrollMovementGuardrailPassed !== scrollMovementGuardrailPassed) {
     throw new Error(`UI responsiveness same-corpus scroll-movement guardrail is stale: ${entry.id}`)
   }
-  const usesScrollEventMetric = entry.tenXMeanAndP95Metric === 'scrollEventResponseMs'
+  const requiresScrollEventMetric = uiSameCorpusWorkloadRequiresScrollEventEvidence(entry.workload)
+  const expectedMetric = requiresScrollEventMetric ? 'scrollEventResponseMs' : 'operationResponseMs'
+  if (entry.tenXMeanAndP95Metric !== expectedMetric) {
+    throw new Error(`UI responsiveness same-corpus metric is stale: ${entry.id}`)
+  }
   validateSameCorpusScenarioProof(entry.scenarioProof, entry.id, entry.bilig, entry.googleSheets)
   const visualProofGuardrailPassed = entry.scenarioProof.screenshotProof.captured && entry.scenarioProof.pixelGridProof.captured
-  const tenXAgainstGoogleSheets =
-    usesScrollEventMetric &&
-    scrollEventMetrics !== null &&
-    scrollEventMetrics.biligToGoogleSheetsMeanRatio <= 0.1 &&
-    scrollEventMetrics.biligToGoogleSheetsP95Ratio <= 0.1 &&
-    postOperationFrameGuardrailPassed &&
-    scrollMovementGuardrailPassed &&
-    visualProofGuardrailPassed
+  const timingMetricPassedAgainstGoogleSheets = requiresScrollEventMetric
+    ? scrollEventMetrics !== null &&
+      scrollEventMetrics.biligToGoogleSheetsMeanRatio <= 0.1 &&
+      scrollEventMetrics.biligToGoogleSheetsP95Ratio <= 0.1 &&
+      scrollMovementGuardrailPassed
+    : googleSheetsMeanRatio <= 0.1 && googleSheetsP95Ratio <= 0.1
+  const timingMetricPassedAgainstMicrosoftExcelWeb = requiresScrollEventMetric
+    ? scrollEventMetrics !== null &&
+      scrollEventMetrics.biligToMicrosoftExcelWebMeanRatio <= 0.1 &&
+      scrollEventMetrics.biligToMicrosoftExcelWebP95Ratio <= 0.1 &&
+      scrollMovementGuardrailPassed
+    : microsoftExcelWebMeanRatio <= 0.1 && microsoftExcelWebP95Ratio <= 0.1
+  const tenXAgainstGoogleSheets = timingMetricPassedAgainstGoogleSheets && postOperationFrameGuardrailPassed && visualProofGuardrailPassed
   const tenXAgainstMicrosoftExcelWeb =
-    usesScrollEventMetric &&
-    scrollEventMetrics !== null &&
-    scrollEventMetrics.biligToMicrosoftExcelWebMeanRatio <= 0.1 &&
-    scrollEventMetrics.biligToMicrosoftExcelWebP95Ratio <= 0.1 &&
-    postOperationFrameGuardrailPassed &&
-    scrollMovementGuardrailPassed &&
-    visualProofGuardrailPassed
+    timingMetricPassedAgainstMicrosoftExcelWeb && postOperationFrameGuardrailPassed && visualProofGuardrailPassed
   if (
     entry.tenXMeanAndP95AgainstGoogleSheets !== tenXAgainstGoogleSheets ||
     entry.tenXMeanAndP95AgainstMicrosoftExcelWeb !== tenXAgainstMicrosoftExcelWeb ||

@@ -84,7 +84,7 @@ async function main(): Promise<void> {
         outputPath: args.outputPath,
         corpusCaseId: args.corpusId,
         sampleCount: args.sampleCount,
-        workload: 'scroll-vertical',
+        workloads: capture.cases.map((entry) => entry.workload),
       },
       null,
       2,

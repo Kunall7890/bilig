@@ -13,7 +13,10 @@ import {
 } from './ci-local-resource-guard.ts'
 import { buildBiligDominanceScorecard } from './gen-bilig-dominance-scorecard.ts'
 import type { UiResponsivenessSameCorpusWorkload } from './gen-ui-responsiveness-live-browser-scorecard.ts'
-import { requiredUiResponsivenessSameCorpusWorkloads } from './ui-responsiveness-same-corpus-workloads.ts'
+import {
+  requiredUiResponsivenessSameCorpusWorkloads,
+  uiSameCorpusWorkloadRequiresScrollEventEvidence,
+} from './ui-responsiveness-same-corpus-workloads.ts'
 import {
   parseSameCorpusPublicAccessCheckJson,
   type SameCorpusPublicAccessCheck,
@@ -756,10 +759,6 @@ function uiSameCorpusCaseHasScrollEventEvidence(
     Boolean(entry.googleSheets.scrollMovementPx) &&
     Boolean(entry.microsoftExcelWeb.scrollMovementPx)
   )
-}
-
-function uiSameCorpusWorkloadRequiresScrollEventEvidence(workload: UiResponsivenessSameCorpusWorkload): boolean {
-  return workload === 'scroll-vertical' || workload === 'scroll-horizontal' || workload === 'wide-sheet-navigation'
 }
 
 function uiSameCorpusFixtureStatus(corpusCaseId: WorkbookBenchmarkCorpusId): BiligDominanceStatus['uiSameCorpus']['fixture'] {

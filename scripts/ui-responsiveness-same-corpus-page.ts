@@ -7,12 +7,18 @@ import { chromium, type Browser, type BrowserContextOptions, type Frame, type Pa
 import { buildWorkbookBenchmarkCorpus, type WorkbookBenchmarkCorpusCase } from '../packages/benchmarks/src/workbook-corpus.js'
 import type {
   SameCorpusCapture,
+  SameCorpusCaptureCase,
   SameCorpusCaptureCorpusVerification,
   SameCorpusCaptureMeasurement,
   UiResponsivenessSameCorpusProduct,
 } from './gen-ui-responsiveness-live-browser-scorecard.ts'
 import type { CaptureArgs, PreflightArgs, SaveStorageStateArgs } from './ui-responsiveness-same-corpus-args.ts'
 import { defaultViewport } from './ui-responsiveness-same-corpus-args.ts'
+import {
+  requiredUiResponsivenessSameCorpusWorkloads,
+  uiSameCorpusWorkloadRequiresScrollEventEvidence,
+  type UiResponsivenessSameCorpusWorkload,
+} from './ui-responsiveness-same-corpus-workloads.ts'
 import {
   measureVisibleScrollResponseWithHooks,
   ScrollMovementVerificationError,
@@ -26,10 +32,12 @@ import {
   captureSameCorpusProductVisualProof,
   type SameCorpusProductVisualProof,
 } from './ui-responsiveness-same-corpus-proof.ts'
+import { collectFrameIntervals, productLimitations, settleFrames, waitForNextFrame } from './ui-responsiveness-same-corpus-page-utils.ts'
+import { measureProductWorkload, type ProductOperationSample } from './ui-responsiveness-same-corpus-workload-runner.ts'
 
 interface ProductSampleCollection {
   readonly corpusVerification: SameCorpusCaptureCorpusVerification
-  readonly samples: readonly ScrollSample[]
+  readonly samples: readonly ProductOperationSample[]
 }
 
 interface PreflightProductResult {
@@ -62,7 +70,11 @@ interface SameCorpusProductMeasurements {
   readonly microsoftExcelWeb: SameCorpusCaptureMeasurement
 }
 
-type SameCorpusProductMeasure = (product: UiResponsivenessSameCorpusProduct, url: string) => Promise<SameCorpusCaptureMeasurement>
+type SameCorpusProductMeasure = (
+  product: UiResponsivenessSameCorpusProduct,
+  url: string,
+  workload: UiResponsivenessSameCorpusWorkload,
+) => Promise<SameCorpusCaptureMeasurement>
 type ScrollEventResponseProbeContext = Page | Frame
 
 const scrollEventResponseProbeTimeoutMs = 5_000
@@ -104,52 +116,69 @@ export async function saveStorageState(args: SaveStorageStateArgs): Promise<void
 export async function captureSameCorpusUiResponsiveness(args: CaptureArgs): Promise<SameCorpusCapture> {
   const corpus = buildWorkbookBenchmarkCorpus(args.corpusId)
   const browser = await chromium.launch({ headless: args.headless })
-  const caseId = `same-corpus-${args.corpusId}-scroll-vertical`
-  const visualProofs: SameCorpusProductVisualProof[] = []
   try {
-    const { bilig, googleSheets, microsoftExcelWeb } = await collectSameCorpusProductMeasurements(args, (product, url) =>
-      measureProduct(browser, product, url, corpus, args, caseId, visualProofs),
-    )
-    const scenarioProof = buildCaptureScenarioProof({ bilig, googleSheets, visualProofs })
-    if (!scenarioProof.screenshotProof.captured || !scenarioProof.pixelGridProof.captured) {
-      throw new Error(`same-corpus UI capture is missing browser-visible proof for ${caseId}: ${JSON.stringify(scenarioProof)}`)
-    }
+    const cases = await captureSameCorpusWorkloadCases(browser, corpus, args)
     return {
       schemaVersion: 1,
       suite: 'ui-responsiveness-same-corpus-capture',
       sampleCount: args.sampleCount,
       limitations: [
         'Caller must supply Google Sheets and Microsoft Excel Web URLs for the same exported Bilig benchmark corpus.',
-        'This capture currently measures the vertical scroll workload only; the dominance gate requires the full same-corpus UI workload suite.',
+        'Edit and format workloads require the supplied incumbent URLs to allow browser-driven editing in the authenticated context.',
       ],
-      cases: [
-        {
-          id: caseId,
-          corpusCaseId: args.corpusId,
-          materializedCells: corpus.materializedCellCount,
-          workload: 'scroll-vertical',
-          scenarioProof,
-          bilig,
-          googleSheets,
-          microsoftExcelWeb,
-        },
-      ],
+      cases,
     }
   } finally {
     await browser.close()
   }
 }
 
+async function captureSameCorpusWorkloadCases(
+  browser: Browser,
+  corpus: WorkbookBenchmarkCorpusCase,
+  args: CaptureArgs,
+  workloadIndex = 0,
+  cases: SameCorpusCaptureCase[] = [],
+): Promise<SameCorpusCaptureCase[]> {
+  const workload = requiredUiResponsivenessSameCorpusWorkloads[workloadIndex]
+  if (!workload) {
+    return cases
+  }
+  const caseId = `same-corpus-${args.corpusId}-${workload}`
+  const visualProofs: SameCorpusProductVisualProof[] = []
+  const { bilig, googleSheets, microsoftExcelWeb } = await collectSameCorpusProductMeasurements(
+    args,
+    (product, url, measuredWorkload) => measureProduct(browser, product, url, corpus, args, measuredWorkload, caseId, visualProofs),
+    workload,
+  )
+  const scenarioProof = buildCaptureScenarioProof({ bilig, googleSheets, visualProofs })
+  if (!scenarioProof.screenshotProof.captured || !scenarioProof.pixelGridProof.captured) {
+    throw new Error(`same-corpus UI capture is missing browser-visible proof for ${caseId}: ${JSON.stringify(scenarioProof)}`)
+  }
+  cases.push({
+    id: caseId,
+    corpusCaseId: args.corpusId,
+    materializedCells: corpus.materializedCellCount,
+    workload,
+    scenarioProof,
+    bilig,
+    googleSheets,
+    microsoftExcelWeb,
+  })
+  return await captureSameCorpusWorkloadCases(browser, corpus, args, workloadIndex + 1, cases)
+}
+
 export async function collectSameCorpusProductMeasurements(
   urls: SameCorpusProductMeasurementUrls,
   measure: SameCorpusProductMeasure,
+  workload: UiResponsivenessSameCorpusWorkload = 'scroll-vertical',
 ): Promise<SameCorpusProductMeasurements> {
-  const bilig = await measure('bilig', urls.biligUrl)
-  assertSameCorpusProductMeasurement('bilig', urls.biligUrl, bilig)
-  const googleSheets = await measure('google-sheets', urls.googleSheetsUrl)
-  assertSameCorpusProductMeasurement('google-sheets', urls.googleSheetsUrl, googleSheets)
-  const microsoftExcelWeb = await measure('microsoft-excel-web', urls.microsoftExcelWebUrl)
-  assertSameCorpusProductMeasurement('microsoft-excel-web', urls.microsoftExcelWebUrl, microsoftExcelWeb)
+  const bilig = await measure('bilig', urls.biligUrl, workload)
+  assertSameCorpusProductMeasurement('bilig', urls.biligUrl, bilig, workload)
+  const googleSheets = await measure('google-sheets', urls.googleSheetsUrl, workload)
+  assertSameCorpusProductMeasurement('google-sheets', urls.googleSheetsUrl, googleSheets, workload)
+  const microsoftExcelWeb = await measure('microsoft-excel-web', urls.microsoftExcelWebUrl, workload)
+  assertSameCorpusProductMeasurement('microsoft-excel-web', urls.microsoftExcelWebUrl, microsoftExcelWeb, workload)
   return { bilig, googleSheets, microsoftExcelWeb }
 }
 
@@ -157,6 +186,7 @@ function assertSameCorpusProductMeasurement(
   product: UiResponsivenessSameCorpusProduct,
   source: string,
   measurement: SameCorpusCaptureMeasurement,
+  workload: UiResponsivenessSameCorpusWorkload,
 ): void {
   if (measurement.product !== product) {
     throw new Error(`same-corpus UI measurement expected ${product} but received ${measurement.product}`)
@@ -171,18 +201,20 @@ function assertSameCorpusProductMeasurement(
     measurement.postOperationFrameMsSamples,
     measurement.operationResponseMsSamples.length,
   )
-  assertSameCorpusSampleArray(
-    product,
-    'scroll-event response',
-    measurement.scrollEventResponseMsSamples,
-    measurement.operationResponseMsSamples.length,
-  )
-  assertSameCorpusSampleArray(
-    product,
-    'scroll movement',
-    measurement.scrollMovementPxSamples,
-    measurement.operationResponseMsSamples.length,
-  )
+  if (uiSameCorpusWorkloadRequiresScrollEventEvidence(workload)) {
+    assertSameCorpusSampleArray(
+      product,
+      'scroll-event response',
+      measurement.scrollEventResponseMsSamples,
+      measurement.operationResponseMsSamples.length,
+    )
+    assertSameCorpusSampleArray(
+      product,
+      'scroll movement',
+      measurement.scrollMovementPxSamples,
+      measurement.operationResponseMsSamples.length,
+    )
+  }
 }
 
 function assertSameCorpusSampleArray(
@@ -325,18 +357,23 @@ async function measureProduct(
   url: string,
   corpus: WorkbookBenchmarkCorpusCase,
   args: CaptureArgs,
+  workload: UiResponsivenessSameCorpusWorkload,
   caseId?: string,
   visualProofs?: SameCorpusProductVisualProof[],
 ): Promise<SameCorpusCaptureMeasurement> {
-  const { corpusVerification, samples } = await measureProductSamples(browser, product, url, corpus, args, caseId, visualProofs)
+  const { corpusVerification, samples } = await measureProductSamples(browser, product, url, corpus, args, workload, caseId, visualProofs)
 
   return {
     product,
     source: url,
     operationResponseMsSamples: samples.map((entry) => entry.operationResponseMs),
     postOperationFrameMsSamples: samples.map((entry) => entry.postOperationFrameMs),
-    scrollEventResponseMsSamples: samples.map((entry) => entry.scrollEventResponseMs),
-    scrollMovementPxSamples: samples.map((entry) => entry.scrollMovementPx),
+    ...(uiSameCorpusWorkloadRequiresScrollEventEvidence(workload)
+      ? {
+          scrollEventResponseMsSamples: samples.map((entry) => entry.scrollEventResponseMs ?? Number.NaN),
+          scrollMovementPxSamples: samples.map((entry) => entry.scrollMovementPx ?? Number.NaN),
+        }
+      : {}),
     corpusVerification,
     limitations: productLimitations(product, storageStatePathForProduct(product, args)),
   }
@@ -348,10 +385,11 @@ async function measureProductSamples(
   url: string,
   corpus: WorkbookBenchmarkCorpusCase,
   args: CaptureArgs,
+  workload: UiResponsivenessSameCorpusWorkload,
   caseId: string | undefined = undefined,
   visualProofs: SameCorpusProductVisualProof[] | undefined = undefined,
   sampleIndex = 0,
-  samples: ScrollSample[] = [],
+  samples: ProductOperationSample[] = [],
   corpusVerification: SameCorpusCaptureCorpusVerification | null = null,
 ): Promise<ProductSampleCollection> {
   if (sampleIndex >= args.sampleCount) {
@@ -364,14 +402,29 @@ async function measureProductSamples(
   const page = await context.newPage()
   let nextCorpusVerification = corpusVerification
   try {
+    const loadStartedAt = performance.now()
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60_000 })
     await waitForProductReady(page, product, args)
+    const loadToReadyMs = performance.now() - loadStartedAt
     nextCorpusVerification ??= await verifyProductCorpus(page, product, url, corpus)
-    if (product !== 'microsoft-excel-web') {
+    if (product !== 'microsoft-excel-web' && uiSameCorpusWorkloadRequiresScrollEventEvidence(workload)) {
       await resetProductScrollPosition(page, product)
       await settleFrames(page, 3)
     }
-    samples.push(await measureVisibleScrollResponseWithRetries(page, product, args.deltaX, args.deltaY))
+    samples.push(
+      await measureProductWorkload({
+        page,
+        product,
+        captureArgs: args,
+        workload,
+        sampleIndex,
+        loadToReadyMs,
+        hooks: {
+          measureVisibleScrollResponseWithRetries,
+          movePointerToProductViewport,
+        },
+      }),
+    )
     if (caseId && visualProofs && sampleIndex === 0) {
       visualProofs.push(await captureSameCorpusProductVisualProof({ caseId, outputPath: args.outputPath, page, product, sampleIndex }))
     }
@@ -380,7 +433,19 @@ async function measureProductSamples(
   } finally {
     await context.close()
   }
-  return measureProductSamples(browser, product, url, corpus, args, caseId, visualProofs, sampleIndex + 1, samples, nextCorpusVerification)
+  return measureProductSamples(
+    browser,
+    product,
+    url,
+    corpus,
+    args,
+    workload,
+    caseId,
+    visualProofs,
+    sampleIndex + 1,
+    samples,
+    nextCorpusVerification,
+  )
 }
 
 function browserContextOptionsForProduct(product: UiResponsivenessSameCorpusProduct, args: CaptureArgs): BrowserContextOptions {
@@ -902,57 +967,4 @@ async function firstFrameElementBox(page: Page, selector: string): Promise<{ x: 
     }),
   )
   return boxes.find((box): box is { x: number; y: number; width: number; height: number } => box !== null) ?? null
-}
-
-async function waitForNextFrame(page: Page): Promise<void> {
-  await page.evaluate(async () => {
-    await new Promise<void>((resolveFrame) => requestAnimationFrame(() => resolveFrame()))
-  })
-}
-
-async function collectFrameIntervals(page: Page, frameCount: number): Promise<number[]> {
-  const frameIntervals = await page.evaluate(async (targetFrameCount) => {
-    const intervals: number[] = []
-    let previous = performance.now()
-    await new Promise<void>((finish) => {
-      const step = (now: number): void => {
-        intervals.push(now - previous)
-        previous = now
-        if (intervals.length >= targetFrameCount) {
-          finish()
-          return
-        }
-        requestAnimationFrame(step)
-      }
-      requestAnimationFrame(step)
-    })
-    return intervals
-  }, frameCount)
-  return frameIntervals
-}
-
-async function settleFrames(page: Page, frames: number): Promise<void> {
-  await page.evaluate(async (frameCount) => {
-    await Array.from({ length: frameCount }).reduce<Promise<void>>(async (previous) => {
-      await previous
-      await new Promise<void>((resolveFrame) => requestAnimationFrame(() => resolveFrame()))
-    }, Promise.resolve())
-  }, frames)
-}
-
-function productLimitations(product: UiResponsivenessSameCorpusProduct, storageStatePath: string | null): string[] {
-  const authLimitations = storageStatePath ? ['Browser context used an explicit Playwright storage state for authenticated access.'] : []
-  if (product === 'bilig') {
-    return ['Bilig timing is captured from the supplied local app URL and benchmarkCorpus route.', ...authLimitations]
-  }
-  if (product === 'google-sheets') {
-    return [
-      'Google Sheets timing requires the supplied URL to be browser-accessible and loaded with the same benchmark corpus.',
-      ...authLimitations,
-    ]
-  }
-  return [
-    'Microsoft Excel Web timing requires the supplied URL to be browser-accessible and loaded with the same benchmark corpus.',
-    ...authLimitations,
-  ]
 }

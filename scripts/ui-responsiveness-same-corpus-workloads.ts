@@ -15,3 +15,7 @@ export type UiResponsivenessSameCorpusWorkload = (typeof requiredUiResponsivenes
 export function isUiResponsivenessSameCorpusWorkload(value: string): value is UiResponsivenessSameCorpusWorkload {
   return (requiredUiResponsivenessSameCorpusWorkloads as readonly string[]).includes(value)
 }
+
+export function uiSameCorpusWorkloadRequiresScrollEventEvidence(workload: UiResponsivenessSameCorpusWorkload): boolean {
+  return workload === 'scroll-vertical' || workload === 'scroll-horizontal' || workload === 'wide-sheet-navigation'
+}

@@ -16,6 +16,7 @@ import {
 import { readJsonObject } from '../json-scorecard-helpers.ts'
 import {
   requiredUiResponsivenessSameCorpusWorkloads,
+  uiSameCorpusWorkloadRequiresScrollEventEvidence,
   type UiResponsivenessSameCorpusWorkload,
 } from '../ui-responsiveness-same-corpus-workloads.ts'
 
@@ -79,7 +80,7 @@ describe('UI responsiveness live browser scorecard', () => {
     expect(() => assertUiResponsivenessLiveBrowserRunAllowed(rootDir, { BILIG_ALLOW_LOCAL_CI_RESOURCE_GUARD: '1' })).not.toThrow()
   })
 
-  it('derives same-corpus 10x ratios from captured scroll-event samples', () => {
+  it('derives same-corpus 10x ratios from operation and scroll-event samples', () => {
     const proof = buildSameCorpusProof(buildSameCorpusCapture())
 
     expect(proof).toMatchObject({
@@ -95,11 +96,7 @@ describe('UI responsiveness live browser scorecard', () => {
       biligToGoogleSheetsP95Ratio: 0.06,
       biligToMicrosoftExcelWebMeanRatio: 0.0625,
       biligToMicrosoftExcelWebP95Ratio: 0.06666666666666667,
-      biligToGoogleSheetsScrollEventMeanRatio: 0.05,
-      biligToGoogleSheetsScrollEventP95Ratio: 0.06,
-      biligToMicrosoftExcelWebScrollEventMeanRatio: 0.0625,
-      biligToMicrosoftExcelWebScrollEventP95Ratio: 0.06666666666666667,
-      tenXMeanAndP95Metric: 'scrollEventResponseMs',
+      tenXMeanAndP95Metric: 'operationResponseMs',
       scenarioProof: {
         biligMeanMs: 5,
         biligP95Ms: 6,
@@ -111,6 +108,14 @@ describe('UI responsiveness live browser scorecard', () => {
         pixelGridProof: { captured: true, missingProducts: [] },
       },
       postOperationFrameGuardrailPassed: true,
+      passed: true,
+    })
+    expect(proof.cases.find((entry) => entry.workload === 'scroll-vertical')).toMatchObject({
+      biligToGoogleSheetsScrollEventMeanRatio: 0.05,
+      biligToGoogleSheetsScrollEventP95Ratio: 0.06,
+      biligToMicrosoftExcelWebScrollEventMeanRatio: 0.0625,
+      biligToMicrosoftExcelWebScrollEventP95Ratio: 0.06666666666666667,
+      tenXMeanAndP95Metric: 'scrollEventResponseMs',
       scrollMovementGuardrailPassed: true,
       passed: true,
     })
@@ -245,7 +250,9 @@ function buildSameCorpusCapture(
         source: 'e2e/tests/web-shell-scroll-performance.pw.ts',
         operationResponseMsSamples: [4, 5, 6],
         postOperationFrameMsSamples: [8, 9, 10],
-        ...(includeScrollEventSamples ? { scrollEventResponseMsSamples: [4, 5, 6], scrollMovementPxSamples: [720, 720, 720] } : {}),
+        ...(includeScrollEventSamples && uiSameCorpusWorkloadRequiresScrollEventEvidence(workload)
+          ? { scrollEventResponseMsSamples: [4, 5, 6], scrollMovementPxSamples: [720, 720, 720] }
+          : {}),
         corpusVerification: corpusVerification('bilig-benchmark-state', []),
         limitations: [],
       },
@@ -254,7 +261,9 @@ function buildSameCorpusCapture(
         source: 'https://docs.google.com/spreadsheets/d/example',
         operationResponseMsSamples: [100, 100, 100],
         postOperationFrameMsSamples: [14, 15, 16],
-        ...(includeScrollEventSamples ? { scrollEventResponseMsSamples: [100, 100, 100], scrollMovementPxSamples: [720, 720, 720] } : {}),
+        ...(includeScrollEventSamples && uiSameCorpusWorkloadRequiresScrollEventEvidence(workload)
+          ? { scrollEventResponseMsSamples: [100, 100, 100], scrollMovementPxSamples: [720, 720, 720] }
+          : {}),
         corpusVerification: corpusVerification('google-sheets-xlsx-export', verifiedCells()),
         limitations: [],
       },
@@ -263,7 +272,9 @@ function buildSameCorpusCapture(
         source: 'https://view.officeapps.live.com/op/view.aspx?src=example',
         operationResponseMsSamples: [75, 75, 90],
         postOperationFrameMsSamples: [14, 15, 16],
-        ...(includeScrollEventSamples ? { scrollEventResponseMsSamples: [75, 75, 90], scrollMovementPxSamples: [720, 720, 720] } : {}),
+        ...(includeScrollEventSamples && uiSameCorpusWorkloadRequiresScrollEventEvidence(workload)
+          ? { scrollEventResponseMsSamples: [75, 75, 90], scrollMovementPxSamples: [720, 720, 720] }
+          : {}),
         corpusVerification: corpusVerification('microsoft-excel-web-source-xlsx', verifiedCells()),
         limitations: [],
       },

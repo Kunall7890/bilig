@@ -15,6 +15,7 @@ import {
   parseSaveStorageStateArgs,
   verifyXlsxCorpusFingerprint,
 } from '../capture-ui-responsiveness-same-corpus.ts'
+import { requiredUiResponsivenessSameCorpusWorkloads } from '../ui-responsiveness-same-corpus-workloads.ts'
 
 describe('same-corpus UI responsiveness capture CLI', () => {
   it('builds a default Bilig benchmark URL from the selected corpus', () => {
@@ -214,6 +215,58 @@ describe('same-corpus UI responsiveness capture CLI', () => {
         }),
       ),
     ).rejects.toThrow('same-corpus UI measurement for bilig is missing scroll-event response samples')
+  })
+
+  it('allows operation-only measurements for non-scroll same-corpus workloads', async () => {
+    const measuredWorkloads: string[] = []
+    const measurements = await collectSameCorpusProductMeasurements(
+      {
+        biligUrl: 'http://127.0.0.1:5173/?benchmarkCorpus=wide-mixed-250k',
+        googleSheetsUrl: 'https://docs.google.com/spreadsheets/d/sheet-id/edit',
+        microsoftExcelWebUrl: 'https://view.officeapps.live.com/op/view.aspx?src=example.xlsx',
+      },
+      async (product, url, workload) => {
+        measuredWorkloads.push(workload)
+        return {
+          product,
+          source: url,
+          operationResponseMsSamples: [10, 11, 12],
+          postOperationFrameMsSamples: [8, 9, 10],
+          corpusVerification: {
+            verified: true,
+            method:
+              product === 'bilig'
+                ? 'bilig-benchmark-state'
+                : product === 'google-sheets'
+                  ? 'google-sheets-xlsx-export'
+                  : 'microsoft-excel-web-source-xlsx',
+            sheetName: 'WideGrid',
+            materializedCells: 250000,
+            checkedCells: [],
+          },
+          limitations: [],
+        }
+      },
+      'edit-visible-cell',
+    )
+
+    expect(measuredWorkloads).toEqual(['edit-visible-cell', 'edit-visible-cell', 'edit-visible-cell'])
+    expect(measurements.bilig.source).toBe('http://127.0.0.1:5173/?benchmarkCorpus=wide-mixed-250k')
+    expect(measurements.googleSheets.scrollEventResponseMsSamples).toBeUndefined()
+  })
+
+  it('declares the fixed same-corpus workload suite in capture order', () => {
+    expect(requiredUiResponsivenessSameCorpusWorkloads).toEqual([
+      'open-workbook',
+      'select-cell',
+      'edit-visible-cell',
+      'scroll-vertical',
+      'scroll-horizontal',
+      'jump-deep-row',
+      'formula-edit',
+      'fill-format-change',
+      'wide-sheet-navigation',
+    ])
   })
 
   it('parses storage-state bootstrap mode for authenticated capture', () => {
