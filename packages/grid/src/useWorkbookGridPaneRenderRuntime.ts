@@ -36,6 +36,7 @@ export function resolveShouldUseRemoteRenderTileSource(input: {
 export function useWorkbookGridPaneRenderRuntime(input: {
   readonly columnAxis: GridAxisWorldIndex
   readonly columnWidths: Readonly<Record<number, number>>
+  readonly editingCell?: Item | null | undefined
   readonly engine: GridEngineLike
   readonly freezeCols: number
   readonly freezeRows: number
@@ -76,6 +77,7 @@ export function useWorkbookGridPaneRenderRuntime(input: {
   const {
     columnAxis,
     columnWidths,
+    editingCell,
     engine,
     freezeCols,
     freezeRows,
@@ -166,6 +168,7 @@ export function useWorkbookGridPaneRenderRuntime(input: {
   const renderTileState = useWorkbookRenderTilePanes({
     columnWidths,
     dprBucket,
+    editingCell,
     engine,
     freezeCols,
     freezeRows,

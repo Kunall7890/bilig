@@ -158,6 +158,34 @@ describe('renderer-v3 grid tile materializer', () => {
     expect(tiles.flatMap((tile) => tile.textRuns.map((run) => run.text))).toContain('Month 1')
   })
 
+  test('local fixed tile generation suppresses the active editor cell text', () => {
+    const tiles = buildLocalFixedRenderTiles({
+      cameraSeq: 4,
+      columnWidths: {},
+      dprBucket: 1,
+      editingCell: [3, 52],
+      engine: makeEngine({}),
+      generation: 21,
+      gridMetrics: getGridMetrics(),
+      rowHeights: {},
+      selectedCell: [3, 52],
+      selectedCellSnapshot: createCellSnapshot('D53', { tag: ValueTag.String, value: 'Month 1' }),
+      sheetId: 2,
+      sheetOrdinal: 0,
+      sheetName: 'Sheet1',
+      sortedColumnWidthOverrides: [],
+      sortedRowHeightOverrides: [],
+      viewport: {
+        colEnd: VIEWPORT_TILE_COLUMN_COUNT - 1,
+        colStart: 0,
+        rowEnd: VIEWPORT_TILE_ROW_COUNT * 2 - 1,
+        rowStart: VIEWPORT_TILE_ROW_COUNT,
+      },
+    })
+
+    expect(tiles.flatMap((tile) => tile.textRuns.map((run) => run.text))).not.toContain('Month 1')
+  })
+
   test('local fixed tile generation preserves runtime freeze sequence', () => {
     const tiles = buildLocalFixedRenderTiles({
       cameraSeq: 4,

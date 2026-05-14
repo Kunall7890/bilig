@@ -179,6 +179,7 @@ export function useWorkbookGridRenderState(input: {
     hostClientHeight,
     hostClientWidth,
     hostElement,
+    editingCell: isEditingCell ? selectedItem : null,
     isEditingCell,
     liveVisibleRegionRef,
     onVisibleViewportChange,

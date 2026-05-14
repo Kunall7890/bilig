@@ -21,6 +21,7 @@ export interface WorkbookRenderTilePanesState {
 export function useWorkbookRenderTilePanes(input: {
   readonly columnWidths: Readonly<Record<number, number>>
   readonly dprBucket: number
+  readonly editingCell?: Item | null | undefined
   readonly engine: GridEngineLike
   readonly freezeCols: number
   readonly freezeRows: number
@@ -49,6 +50,7 @@ export function useWorkbookRenderTilePanes(input: {
   const {
     columnWidths,
     dprBucket,
+    editingCell,
     engine,
     freezeCols,
     freezeRows,
@@ -92,6 +94,7 @@ export function useWorkbookRenderTilePanes(input: {
     return gridRuntimeHost.resolveRenderTilePanes({
       columnWidths,
       dprBucket,
+      editingCell,
       engine,
       freezeCols,
       freezeRows,
@@ -119,6 +122,7 @@ export function useWorkbookRenderTilePanes(input: {
   }, [
     columnWidths,
     dprBucket,
+    editingCell,
     engine,
     freezeCols,
     freezeRows,

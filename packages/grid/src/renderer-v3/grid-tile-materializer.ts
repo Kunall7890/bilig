@@ -26,6 +26,7 @@ export interface GridTileMaterializerAxisInputV3 {
 
 export interface MaterializeGridRenderTileInputV3 extends GridTileMaterializerAxisInputV3 {
   readonly engine: GridEngineLike
+  readonly editingCell?: Item | null | undefined
   readonly sheetName: string
   readonly sheetId: number
   readonly sheetOrdinal: number
@@ -121,7 +122,7 @@ export function materializeGridRenderTileV3(input: MaterializeGridRenderTileInpu
     activeHeaderDrag: null,
     columnWidths: input.columnWidths,
     contentMode: 'data',
-    editingCell: null,
+    editingCell: input.editingCell ?? null,
     engine: input.engine,
     getCellBounds: getTextCellBounds,
     gridMetrics: input.gridMetrics,

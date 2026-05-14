@@ -24,6 +24,7 @@ export function buildLocalFixedRenderTiles(input: {
   readonly freezeSeq?: number | undefined
   readonly tileKeys?: readonly number[] | undefined
   readonly dirtySpansForTile?: ((tileId: number) => readonly DirtyTileLocalSpanV3[]) | undefined
+  readonly editingCell?: Item | null | undefined
   readonly reuseStaticGridRectsByTileId?: ReadonlyMap<number, GridRenderTile> | undefined
   readonly selectedCell?: Item | undefined
   readonly selectedCellSnapshot?: CellSnapshot | null | undefined

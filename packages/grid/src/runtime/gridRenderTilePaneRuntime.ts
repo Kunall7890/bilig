@@ -53,6 +53,7 @@ export interface GridRenderTilePaneBridgeState {
 export interface GridRenderTilePaneRuntimeInput {
   readonly columnWidths: Readonly<Record<number, number>>
   readonly dprBucket: number
+  readonly editingCell?: Item | null | undefined
   readonly engine: GridEngineLike
   readonly freezeCols: number
   readonly freezeRows: number
@@ -748,6 +749,7 @@ export class GridRenderTilePaneRuntime {
         columnWidths: input.columnWidths,
         dirtySpansForTile: (tileId) => input.gridRuntimeHost.tiles.dirtyTiles.getSpans(tileId),
         dprBucket: input.dprBucket,
+        editingCell: input.editingCell ?? null,
         engine: input.engine,
         freezeSeq: input.gridRuntimeHost.snapshot().freezeSeq,
         generation: input.sceneRevision,
@@ -803,6 +805,18 @@ export class GridRenderTilePaneRuntime {
           },
         })[0]
       : undefined
+    const editingCellTileKey = input.editingCell
+      ? input.gridRuntimeHost.viewportTileKeys({
+          dprBucket: input.dprBucket,
+          sheetOrdinal,
+          viewport: {
+            colEnd: input.editingCell[0],
+            colStart: input.editingCell[0],
+            rowEnd: input.editingCell[1],
+            rowStart: input.editingCell[1],
+          },
+        })[0]
+      : undefined
     for (const tileKey of tileKeys) {
       const sourceTile = renderTileSource.peekRenderTile(tileKey)
       const tile =
@@ -815,8 +829,19 @@ export class GridRenderTilePaneRuntime {
       const shouldLocalizeDirty = (options.localizeDirtyVisibleTiles ?? true) && isDirty
       const shouldLocalizeSelectedCellText =
         selectedCellTileKey === tileKey && tileSelectedTextNeedsLocalRefresh(tile, input.selectedCell, input.selectedCellSnapshot)
-      if (shouldLocalizeDirty || isMissingResidentTile || isMissingGridPayload || shouldLocalizeSelectedCellText) {
-        if ((shouldLocalizeDirty || shouldLocalizeSelectedCellText) && tile && hasCompleteRenderTileGrid(tile)) {
+      const shouldLocalizeEditingCellText = editingCellTileKey === tileKey
+      if (
+        shouldLocalizeDirty ||
+        isMissingResidentTile ||
+        isMissingGridPayload ||
+        shouldLocalizeSelectedCellText ||
+        shouldLocalizeEditingCellText
+      ) {
+        if (
+          (shouldLocalizeDirty || shouldLocalizeSelectedCellText || shouldLocalizeEditingCellText) &&
+          tile &&
+          hasCompleteRenderTileGrid(tile)
+        ) {
           dirtyBaseTiles.set(tileKey, tile)
         }
         dirtyTileKeys.push(tileKey)
@@ -837,6 +862,7 @@ export class GridRenderTilePaneRuntime {
         columnWidths: input.columnWidths,
         dirtySpansForTile: (tileId) => input.gridRuntimeHost.tiles.dirtyTiles.getSpans(tileId),
         dprBucket: input.dprBucket,
+        editingCell: input.editingCell ?? null,
         engine: input.engine,
         generation: input.sceneRevision,
         gridMetrics: input.gridMetrics,
