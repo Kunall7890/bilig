@@ -331,7 +331,10 @@ export function createFormulaBindingDependencyMaterializer(
           }
           continue
         }
-        const symbolicRangeIndex = symbolicRangeIndexByAddress?.get(dep) ?? -1
+        const symbolicRangeIndex =
+          symbolicRangeIndexByAddress?.get(dep) ??
+          (parsedRangeDep?.kind === 'range' ? symbolicRangeIndexByAddress?.get(parsedRangeDep.address) : undefined) ??
+          -1
         if (range.sheetName && !args.state.workbook.getSheet(sheetName)) {
           continue
         }
@@ -339,7 +342,9 @@ export function createFormulaBindingDependencyMaterializer(
         if (!sheet) {
           continue
         }
-        const shouldCompactDynamicIndexRange = dynamicIndexDependencyPlan?.compactedRangeDependencies.has(dep) === true
+        const shouldCompactDynamicIndexRange =
+          dynamicIndexDependencyPlan?.compactedRangeDependencies.has(dep) === true ||
+          (parsedRangeDep?.kind === 'range' && dynamicIndexDependencyPlan?.compactedRangeDependencies.has(parsedRangeDep.address) === true)
         const compactDirectAggregateRange =
           directAggregate !== undefined &&
           range.kind === 'cells' &&
@@ -348,6 +353,9 @@ export function createFormulaBindingDependencyMaterializer(
           range.start.row === directAggregate.rowStart &&
           range.end.row === directAggregate.rowEnd &&
           sheetName === directAggregate.sheetName
+        if (shouldCompactDynamicIndexRange && symbolicRangeIndex === -1) {
+          continue
+        }
         if (compactDirectAggregateRange) {
           if (!materializerArgs.hasFormulaColumnMembers(sheet.id, range.start.col)) {
             continue
@@ -390,11 +398,11 @@ export function createFormulaBindingDependencyMaterializer(
         if (symbolicRangeIndex !== -1) {
           args.getSymbolicRangeBindings()[symbolicRangeIndex] = registered.rangeIndex
         }
-        const needsSourceEdgeSync = registered.materialized || rangeDependencySourceEdgesNeedSync(registered.rangeIndex)
         if (shouldCompactDynamicIndexRange) {
-          appendRuntimeRangeDependency(registered.rangeIndex, needsSourceEdgeSync)
+          appendRuntimeRangeDependency(registered.rangeIndex, false)
           continue
         }
+        const needsSourceEdgeSync = registered.materialized || rangeDependencySourceEdgesNeedSync(registered.rangeIndex)
         appendRuntimeRangeDependency(registered.rangeIndex, needsSourceEdgeSync)
         appendGraphRangeDependency(registered.rangeIndex)
         const memberIndices = args.state.ranges.getFormulaMembersView(registered.rangeIndex)

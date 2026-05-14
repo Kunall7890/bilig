@@ -93,4 +93,20 @@ describe('EdgeArena', () => {
     expect(grown.cap).toBeGreaterThanOrEqual(3)
     expect([...arena.read(grown)]).toEqual([5, 9, 13])
   })
+
+  it('skips undersized free slices when growing many singleton edges', () => {
+    const arena = new EdgeArena()
+    const singletons = Array.from({ length: 128 }, (_, index) => arena.singleton(index))
+    singletons.forEach((slice) => arena.free(slice))
+
+    const larger = arena.alloc(2)
+    expect(singletons.map((slice) => slice.ptr)).not.toContain(larger.ptr)
+
+    arena.free(larger)
+    const reusedLarger = arena.alloc(2)
+    expect(reusedLarger.ptr).toBe(larger.ptr)
+
+    const reusedSingleton = arena.alloc(1)
+    expect(singletons.map((slice) => slice.ptr)).toContain(reusedSingleton.ptr)
+  })
 })

@@ -1,16 +1,14 @@
-import {
-  excelPower,
-  formatAddress,
-  formatRangeAddress,
-  parseCellAddress,
-  parseRangeAddress,
-  type FormulaNode,
-  type RangeRefNode,
-} from '@bilig/formula'
+import { excelPower, formatAddress, parseCellAddress, parseRangeAddress, type FormulaNode, type RangeRefNode } from '@bilig/formula'
 import { ErrorCode, ValueTag, type CellValue, type LiteralInput } from '@bilig/protocol'
 import type { StringPool } from '../../string-pool.js'
 import type { WorkbookStore } from '../../workbook-store.js'
 import type { ParsedCompiledFormula } from './formula-binding-direct-descriptors.js'
+import {
+  type DynamicRangeBounds,
+  normalizeRangeDependency,
+  rangeBounds,
+  residentRangeShape,
+} from './formula-binding-dynamic-range-bounds.js'
 
 const MAX_COMPACT_INDEX_DEPENDENCY_CELLS = 4096
 const MAX_DYNAMIC_OFFSET_DEPENDENCY_CELLS = 4096
@@ -49,14 +47,6 @@ interface DynamicScalarContext {
   readonly visitingFormulaCells?: ReadonlySet<string>
 }
 
-interface DynamicRangeBounds {
-  readonly sheetName: string
-  readonly rowStart: number
-  readonly rowEnd: number
-  readonly colStart: number
-  readonly colEnd: number
-}
-
 function numberValue(value: number): CellValue {
   return { tag: ValueTag.Number, value }
 }
@@ -88,40 +78,6 @@ function literalInputToCellValue(value: LiteralInput): CellValue {
     return booleanValue(value)
   }
   return { tag: ValueTag.String, value, stringId: 0 }
-}
-
-function normalizeRangeDependency(node: RangeRefNode): string | undefined {
-  if (node.refKind !== 'cells' || node.sheetEndName !== undefined) {
-    return undefined
-  }
-  try {
-    return formatRangeAddress(
-      parseRangeAddress(node.sheetName ? `${node.sheetName}!${node.start}:${node.end}` : `${node.start}:${node.end}`),
-    )
-  } catch {
-    return undefined
-  }
-}
-
-function rangeBounds(node: FormulaNode | undefined, ownerSheetName: string): DynamicRangeBounds | undefined {
-  if (!node || node.kind !== 'RangeRef' || node.refKind !== 'cells' || node.sheetEndName !== undefined) {
-    return undefined
-  }
-  try {
-    const parsed = parseRangeAddress(`${node.start}:${node.end}`, node.sheetName ?? ownerSheetName)
-    if (parsed.kind !== 'cells') {
-      return undefined
-    }
-    return {
-      sheetName: parsed.sheetName ?? ownerSheetName,
-      rowStart: Math.min(parsed.start.row, parsed.end.row),
-      rowEnd: Math.max(parsed.start.row, parsed.end.row),
-      colStart: Math.min(parsed.start.col, parsed.end.col),
-      colEnd: Math.max(parsed.start.col, parsed.end.col),
-    }
-  } catch {
-    return undefined
-  }
 }
 
 function readCellValue(args: {
@@ -495,6 +451,16 @@ function evaluateScalar(args: {
           }
         }
       }
+      if ((callee === 'ROWS' || callee === 'COLUMNS') && node.args.length === 1 && node.args[0]?.kind === 'RangeRef') {
+        const shape = residentRangeShape({
+          workbook: args.workbook,
+          ownerSheetName: args.ownerSheetName,
+          range: node.args[0],
+        })
+        if (shape) {
+          return numberValue(callee === 'ROWS' ? shape.rows : shape.cols)
+        }
+      }
       return undefined
     }
     case 'ColumnRef':
@@ -539,23 +505,15 @@ function selectedIndexCells(args: {
   readonly rowArg: FormulaNode | undefined
   readonly colArg: FormulaNode | undefined
 }): DynamicIndexSelectedCell[] {
-  if (args.range.refKind !== 'cells') {
-    return []
-  }
-  let parsed: ReturnType<typeof parseRangeAddress>
-  try {
-    parsed = parseRangeAddress(`${args.range.start}:${args.range.end}`, args.range.sheetName ?? args.ownerSheetName)
-  } catch {
-    return []
-  }
-  if (parsed.kind !== 'cells') {
+  const bounds = rangeBounds(args.range, args.ownerSheetName)
+  if (!bounds) {
     return []
   }
 
-  const rowStart = Math.min(parsed.start.row, parsed.end.row)
-  const rowEnd = Math.max(parsed.start.row, parsed.end.row)
-  const colStart = Math.min(parsed.start.col, parsed.end.col)
-  const colEnd = Math.max(parsed.start.col, parsed.end.col)
+  const rowStart = bounds.rowStart
+  const rowEnd = bounds.rowEnd
+  const colStart = bounds.colStart
+  const colEnd = bounds.colEnd
   const cols = colEnd - colStart + 1
   const rowNumber = integerScalar({ ...args, node: args.rowArg })
   const colNumber = args.colArg ? integerScalar({ ...args, node: args.colArg }) : cols === 1 ? 1 : undefined
@@ -582,7 +540,7 @@ function selectedIndexCells(args: {
   for (let row = selectedRowStart; row <= selectedRowEnd; row += 1) {
     for (let col = selectedColStart; col <= selectedColEnd; col += 1) {
       cells.push({
-        sheetName: parsed.sheetName ?? args.ownerSheetName,
+        sheetName: bounds.sheetName,
         row,
         col,
         address: formatAddress(row, col),
@@ -939,6 +897,13 @@ export function collectDynamicIndexDependencyPlan(args: {
             rowArg: node.args[1],
             colArg: node.args[2],
           }).forEach(addSelectedCell)
+        }
+        return
+      }
+      if ((callee === 'ROWS' || callee === 'COLUMNS') && node.args.length === 1 && node.args[0]?.kind === 'RangeRef') {
+        const rangeDependency = normalizeRangeDependency(node.args[0])
+        if (rangeDependency) {
+          compactedRangeDependencies.add(rangeDependency)
         }
         return
       }

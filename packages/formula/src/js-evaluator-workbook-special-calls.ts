@@ -330,6 +330,54 @@ function wholeAxisTableRange(
   }
 }
 
+function wholeAxisResidentShape(
+  value: StackValue | undefined,
+  ref: ReferenceOperand | undefined,
+  context: EvaluationContext,
+  deps: WorkbookSpecialCallDeps,
+): { rows: number; cols: number } | undefined {
+  const reference = wholeAxisReferenceFromArg(value, ref, context, deps)
+  if (!reference) {
+    return undefined
+  }
+  const values =
+    value?.kind === 'range' ? value.values : context.resolveRange(reference.sheetName, reference.start, reference.end, reference.refKind)
+
+  if (reference.parsed.kind === 'cols') {
+    const cols = reference.parsed.end.col - reference.parsed.start.col + 1
+    return {
+      rows: cols <= 0 ? 0 : Math.floor(values.length / cols),
+      cols,
+    }
+  }
+
+  const rows = reference.parsed.end.row - reference.parsed.start.row + 1
+  return {
+    rows,
+    cols: rows <= 0 ? 0 : Math.floor(values.length / rows),
+  }
+}
+
+function evaluateWholeAxisShape(
+  callee: 'ROWS' | 'COLUMNS',
+  rawArgs: StackValue[],
+  context: EvaluationContext,
+  argRefs: readonly (ReferenceOperand | undefined)[],
+  deps: WorkbookSpecialCallDeps,
+): StackValue | undefined {
+  const shape = wholeAxisResidentShape(rawArgs[0], argRefs[0], context, deps)
+  if (!shape) {
+    return undefined
+  }
+  if (rawArgs.length !== 1) {
+    return deps.stackScalar(deps.error(ErrorCode.Value))
+  }
+  return deps.stackScalar({
+    tag: ValueTag.Number,
+    value: callee === 'ROWS' ? shape.rows : shape.cols,
+  })
+}
+
 function evaluateWholeAxisTableLookup(
   callee: 'VLOOKUP' | 'HLOOKUP',
   rawArgs: StackValue[],
@@ -572,6 +620,9 @@ export function evaluateWorkbookSpecialCall(
       return evaluateWholeAxisMatch(callee, rawArgs, context, argRefs, deps)
     case 'INDEX':
       return evaluateReferenceIndex(rawArgs, context, argRefs, deps)
+    case 'ROWS':
+    case 'COLUMNS':
+      return evaluateWholeAxisShape(callee, rawArgs, context, argRefs, deps)
     case 'SUBTOTAL': {
       const functionNum = deps.scalarIntegerArgument(rawArgs[0])
       if (functionNum === undefined) {

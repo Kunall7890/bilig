@@ -9,11 +9,13 @@ const EMPTY_SLICE: EdgeSlice = { ptr: -1, len: 0, cap: 0 }
 export class EdgeArena {
   private buffer = new Uint32Array(64)
   private freeList: EdgeSlice[] = []
+  private maxFreeCapacity = 0
   private nextPtr = 0
 
   reset(): void {
     this.buffer.fill(0)
     this.freeList = []
+    this.maxFreeCapacity = 0
     this.nextPtr = 0
   }
 
@@ -26,12 +28,16 @@ export class EdgeArena {
       return EMPTY_SLICE
     }
 
-    if (this.freeList.length > 0) {
+    if (this.freeList.length > 0 && this.maxFreeCapacity >= size) {
       const freeIndex = this.freeList.findIndex((slice) => slice.cap >= size)
       if (freeIndex !== -1) {
         const [slice] = this.freeList.splice(freeIndex, 1)
+        if (slice!.cap === this.maxFreeCapacity) {
+          this.recomputeMaxFreeCapacity()
+        }
         return { ptr: slice!.ptr, len: 0, cap: slice!.cap }
       }
+      this.recomputeMaxFreeCapacity()
     }
 
     const ptr = this.nextPtr
@@ -166,6 +172,7 @@ export class EdgeArena {
       len: 0,
       cap: slice.cap,
     })
+    this.maxFreeCapacity = Math.max(this.maxFreeCapacity, slice.cap)
   }
 
   private ensureCapacity(nextSize: number): void {
@@ -179,5 +186,13 @@ export class EdgeArena {
     const next = new Uint32Array(capacity)
     next.set(this.buffer)
     this.buffer = next
+  }
+
+  private recomputeMaxFreeCapacity(): void {
+    let maxCapacity = 0
+    for (let index = 0; index < this.freeList.length; index += 1) {
+      maxCapacity = Math.max(maxCapacity, this.freeList[index]!.cap)
+    }
+    this.maxFreeCapacity = maxCapacity
   }
 }

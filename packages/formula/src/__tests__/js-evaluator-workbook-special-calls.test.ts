@@ -163,6 +163,30 @@ describe('js evaluator workbook special calls', () => {
     expect(evaluateAst(parseFormula('INDIRECT("R1C1",FALSE())'), context)).toEqual(err(ErrorCode.Value))
     expect(evaluateAst(parseFormula('INDIRECT("A1","x")'), context)).toEqual(err(ErrorCode.Value))
   })
+
+  it('uses resident whole-axis shapes for ROWS and COLUMNS', () => {
+    const context = {
+      sheetName: 'Data',
+      resolveCell: (): CellValue => ({ tag: ValueTag.Empty }),
+      resolveRange: (_sheetName: string, start: string, end: string, refKind: 'cells' | 'rows' | 'cols'): CellValue[] => {
+        if (refKind === 'cols' && start === 'A' && end === 'A') {
+          return [number(1), number(2), number(3), number(4)]
+        }
+        if (refKind === 'cols' && start === 'A' && end === 'Z') {
+          return Array.from({ length: 4 * 26 }, () => ({ tag: ValueTag.Empty }) satisfies CellValue)
+        }
+        if (refKind === 'rows' && start === '1' && end === '2') {
+          return Array.from({ length: 2 * 5 }, () => ({ tag: ValueTag.Empty }) satisfies CellValue)
+        }
+        return []
+      },
+    }
+
+    expect(evaluateAst(parseFormula('ROWS(A:A)'), context)).toEqual(number(4))
+    expect(evaluateAst(parseFormula('COLUMNS(A:Z)'), context)).toEqual(number(26))
+    expect(evaluateAst(parseFormula('ROWS(1:2)'), context)).toEqual(number(2))
+    expect(evaluateAst(parseFormula('COLUMNS(1:2)'), context)).toEqual(number(5))
+  })
 })
 
 function number(value: number): CellValue {
