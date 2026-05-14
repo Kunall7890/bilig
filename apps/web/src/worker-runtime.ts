@@ -61,6 +61,11 @@ import {
 } from './worker-runtime-state.js'
 import { WorkerRuntimeSnapshotCaches } from './worker-runtime-snapshot-caches.js'
 import { WorkerRuntimeDeltaPublisher } from './worker-runtime-delta-publisher.js'
+import {
+  applyWorkerRuntimeLocalHistoryChange,
+  buildWorkerRuntimeLocalHistoryState,
+  type WorkerRuntimeLocalHistoryState,
+} from './worker-runtime-local-history.js'
 import { WorkerRuntimeRenderTileDeltaPublisher } from './worker-runtime-render-tile-subscription.js'
 import type { WorkerRuntimeRenderTileDiagnostics } from './worker-runtime-render-tile-subscription.js'
 import {
@@ -101,10 +106,7 @@ export interface WorkbookWorkerStateSnapshot {
   definedNames: WorkbookDefinedNameSnapshot[]
   metrics: RecalcMetrics
   syncState: SyncState
-  localHistoryState: {
-    canUndo: boolean
-    canRedo: boolean
-  }
+  localHistoryState: WorkerRuntimeLocalHistoryState
   authoritativeRevision?: number | undefined
   pendingMutationSummary?: WorkbookPendingMutationSummarySnapshot
   localPersistenceMode?: 'persistent' | 'ephemeral' | 'follower'
@@ -628,27 +630,11 @@ export class WorkbookWorkerRuntime {
   }
 
   async undoLocalChange(): Promise<boolean> {
-    const engine = await this.getProjectionEngine()
-    const applied = engine.undo()
-    if (!applied) {
-      return false
-    }
-    this.markProjectionDivergedFromLocalStore()
-    await this.persistCoordinator.queuePersist()
-    this.updateRuntimeStateFromEngine(engine)
-    return true
+    return await this.applyLocalHistoryChange('undo')
   }
 
   async redoLocalChange(): Promise<boolean> {
-    const engine = await this.getProjectionEngine()
-    const applied = engine.redo()
-    if (!applied) {
-      return false
-    }
-    this.markProjectionDivergedFromLocalStore()
-    await this.persistCoordinator.queuePersist()
-    this.updateRuntimeStateFromEngine(engine)
-    return true
+    return await this.applyLocalHistoryChange('redo')
   }
 
   async renderCommit(ops: CommitOp[]): Promise<void> {
@@ -834,16 +820,21 @@ export class WorkbookWorkerRuntime {
   }
 
   private buildLocalHistoryState(): WorkbookWorkerStateSnapshot['localHistoryState'] {
-    if (!this.engine) {
-      return {
-        canUndo: false,
-        canRedo: false,
-      }
-    }
-    return {
-      canUndo: this.engine.canUndo(),
-      canRedo: this.engine.canRedo(),
-    }
+    return buildWorkerRuntimeLocalHistoryState(this.engine)
+  }
+
+  private async applyLocalHistoryChange(direction: 'undo' | 'redo'): Promise<boolean> {
+    return await applyWorkerRuntimeLocalHistoryChange(
+      {
+        getProjectionEngine: () => this.getProjectionEngine(),
+        markProjectionDivergedFromLocalStore: () => this.markProjectionDivergedFromLocalStore(),
+        queuePersist: () => this.persistCoordinator.queuePersist(),
+        updateRuntimeStateFromEngine: (engine) => {
+          this.updateRuntimeStateFromEngine(engine)
+        },
+      },
+      direction,
+    )
   }
 
   private async getAuthoritativeStateInput(): Promise<{
