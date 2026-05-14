@@ -35,6 +35,9 @@ function readDataTableFormulaSnapshots(sheetXml: string | null): WorkbookSheetDa
   if (!sheetXml) {
     return []
   }
+  if (!sheetXml.includes('t="dataTable"') && !sheetXml.includes("t='dataTable'")) {
+    return []
+  }
   const formulas: WorkbookSheetDataTableFormulaSnapshot[] = []
   cellElementPattern.lastIndex = 0
   for (const match of sheetXml.matchAll(cellElementPattern)) {

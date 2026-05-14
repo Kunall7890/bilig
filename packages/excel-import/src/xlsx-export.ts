@@ -733,12 +733,6 @@ function inferExportWorksheetRange(sheet: WorkbookSnapshot['sheets'][number]): s
     bounds = updateWorksheetBounds(bounds, formatRange.range.startAddress)
     bounds = updateWorksheetBounds(bounds, formatRange.range.endAddress)
   }
-  for (const cellStyleIndex of sheet.metadata?.styleArtifacts?.cellStyleIndexes ?? []) {
-    bounds = updateWorksheetBounds(bounds, cellStyleIndex.address)
-  }
-  for (const address of sheet.metadata?.styleArtifacts?.blankCellAddresses ?? []) {
-    bounds = updateWorksheetBounds(bounds, address)
-  }
   return bounds ? XLSX.utils.encode_range(bounds) : undefined
 }
 
@@ -963,7 +957,8 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
   )
   const chartArtifactBytes = addExportChartArtifactsToXlsxBytes(pivotBytes, snapshot)
   const enrichedBytes = addExportChartsToXlsxBytes(chartArtifactBytes, snapshot, exportSheetNamesByOriginalName)
-  const artifactStyledBytes = addExportStyleArtifactsToXlsxBytes(enrichedBytes, snapshot)
+  const richTextArtifactBytes = addExportRichTextArtifactsToXlsxBytes(enrichedBytes, snapshot)
+  const artifactStyledBytes = addExportStyleArtifactsToXlsxBytes(richTextArtifactBytes, snapshot)
   const styledBytes = preserveSnapshotStyles(artifactStyledBytes, snapshot)
   const formattedBytes = preserveSnapshotNumberFormats(styledBytes, exportSheetFormats)
   const themeArtifactBytes = addExportThemeArtifactToXlsxBytes(formattedBytes, snapshot)
@@ -978,9 +973,8 @@ export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
   const externalLinkArtifactBytes = addExportExternalLinkArtifactsToXlsxBytes(dataModelArtifactBytes, snapshot)
   const slicerConnectionArtifactBytes = addExportSlicerConnectionArtifactsToXlsxBytes(externalLinkArtifactBytes, snapshot)
   const threadedCommentArtifactBytes = addExportThreadedCommentArtifactsToXlsxBytes(slicerConnectionArtifactBytes, snapshot)
-  const richTextArtifactBytes = addExportRichTextArtifactsToXlsxBytes(threadedCommentArtifactBytes, snapshot)
   const printPageSetupBytes = addExportPrintPageSetupToXlsxBytes(
-    addExportLegacyCommentVmlToXlsxBytes(richTextArtifactBytes, snapshot),
+    addExportLegacyCommentVmlToXlsxBytes(threadedCommentArtifactBytes, snapshot),
     snapshot,
   )
   return addExportCellMetadataToXlsxBytes(addExportPrinterSettingsToXlsxBytes(printPageSetupBytes, snapshot), snapshot)

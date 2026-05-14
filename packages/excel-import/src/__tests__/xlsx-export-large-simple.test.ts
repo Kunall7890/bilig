@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import * as XLSX from 'xlsx'
+import { strFromU8, unzipSync } from 'fflate'
 
 import type { WorkbookSnapshot } from '@bilig/protocol'
 import { exportXlsx, importXlsx } from '../index.js'
@@ -27,6 +28,17 @@ describe('large simple XLSX export', () => {
 
     expect(durationMs).toBeLessThan(1_500 * readBenchmarkTolerance())
     expect(workbook.Sheets['Wide']?.['!ref']).toBe('A3040')
+  }, 15_000)
+
+  it('exports sparse raw style artifacts without widening the SheetJS writer scan range', () => {
+    const start = performance.now()
+    const exported = exportXlsx(buildSparseStyleArtifactSnapshot())
+    const durationMs = performance.now() - start
+    const sheetXml = strFromU8(unzipSync(exported)['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+
+    expect(durationMs).toBeLessThan(3_000 * readBenchmarkTolerance())
+    expect(sheetXml).toContain('<dimension ref="A1:CF65000"/>')
+    expect(sheetXml).toContain('<c r="CF65000" s="1"/>')
   }, 15_000)
 
   it('exports formula-heavy metadata workbooks inside the production timeout budget', () => {
@@ -122,6 +134,46 @@ function buildBroadColumnMetadataSnapshot(): WorkbookSnapshot {
   }
 }
 
+function buildSparseStyleArtifactSnapshot(): WorkbookSnapshot {
+  return {
+    version: 1,
+    workbook: {
+      name: 'sparse-style-artifacts',
+      metadata: {
+        styleArtifacts: {
+          stylesXml: minimalStylesXml,
+        },
+      },
+    },
+    sheets: [
+      {
+        id: 1,
+        name: 'Sparse',
+        order: 0,
+        cells: [{ address: 'A1', value: 'Header' }],
+        metadata: {
+          richTextArtifacts: {
+            cells: [
+              {
+                address: 'A1',
+                text: 'Header',
+                storage: 'sharedString',
+                xml: '<si><r><rPr><b/></rPr><t>Header</t></r></si>',
+              },
+            ],
+          },
+          styleArtifacts: {
+            cellStyleIndexes: Array.from({ length: 65_000 }, (_entry, index) => ({
+              address: `CF${String(index + 1)}`,
+              styleIndex: 1,
+            })),
+          },
+        },
+      },
+    ],
+  }
+}
+
 function buildFormulaHeavyMetadataSnapshot(): WorkbookSnapshot {
   const cells: WorkbookSnapshot['sheets'][number]['cells'] = []
   for (let row = 0; row < 5_000; row += 1) {
@@ -178,3 +230,15 @@ function buildFormulaHeavyMetadataSnapshot(): WorkbookSnapshot {
     ],
   }
 }
+
+const minimalStylesXml = [
+  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+  '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+  '<fonts count="1"><font><sz val="11"/><name val="Aptos"/></font></fonts>',
+  '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>',
+  '<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>',
+  '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>',
+  '<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs>',
+  '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>',
+  '</styleSheet>',
+].join('')

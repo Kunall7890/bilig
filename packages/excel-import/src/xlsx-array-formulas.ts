@@ -91,6 +91,9 @@ function readArrayFormulaSnapshots(sheetXml: string | null): WorkbookSheetArrayF
   if (!sheetXml) {
     return []
   }
+  if (!sheetXml.includes('t="array"') && !sheetXml.includes("t='array'")) {
+    return []
+  }
   const formulas: WorkbookSheetArrayFormulaSnapshot[] = []
   cellElementPattern.lastIndex = 0
   for (const match of sheetXml.matchAll(cellElementPattern)) {

@@ -15,6 +15,7 @@ import { setXmlAttribute } from './xlsx-export-xml.js'
 const worksheetRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet'
 const sharedStringsRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings'
 const sharedStringsContentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml'
+const stringCellElementPattern = /<((?:[A-Za-z_][\w.-]*:)?c)\b(?=[^>]*\bt=(["'])(?:s|inlineStr)\2)[^>]*(?:\/>|>[\s\S]*?<\/\1>)/gu
 
 interface WorkbookSheetEntry {
   readonly name: string
@@ -154,8 +155,13 @@ function richTextArtifactsForWorksheet(
   if (!sheetXml) {
     return undefined
   }
+  const hasRichSharedStrings = sharedStrings.some((entry) => entry.rich)
+  if (!hasRichSharedStrings && !/\bt=(["'])inlineStr\1/u.test(sheetXml)) {
+    return undefined
+  }
   const cells: WorkbookRichTextCellSnapshot[] = []
-  for (const match of sheetXml.matchAll(/<((?:[A-Za-z_][\w.-]*:)?c)\b[^>]*(?:\/>|>[\s\S]*?<\/\1>)/gu)) {
+  stringCellElementPattern.lastIndex = 0
+  for (const match of sheetXml.matchAll(stringCellElementPattern)) {
     const cellXml = match[0]
     const openingTag = /<((?:[A-Za-z_][\w.-]*:)?c)\b[^>]*(?:\/>|>)/u.exec(cellXml)?.[0]
     const address = openingTag ? readXmlAttribute(openingTag, 'r') : null
