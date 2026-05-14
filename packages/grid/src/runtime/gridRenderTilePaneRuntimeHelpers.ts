@@ -247,7 +247,7 @@ function sameStringListIdentity(left: readonly string[], right: readonly string[
 }
 
 export function shouldForceLocalTilesForWorkbookDelta(batch: WorkbookDeltaBatchLikeV3): boolean {
-  return batch.source === 'localOptimistic'
+  return batch.source === 'localOptimistic' || batch.source === 'workerAuthoritative'
 }
 
 function sameViewportIdentity(left: Viewport, right: Viewport): boolean {

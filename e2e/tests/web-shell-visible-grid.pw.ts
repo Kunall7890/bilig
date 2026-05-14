@@ -41,6 +41,15 @@ test('web app paints deep querystring-selected cell content in the visible grid'
       timeout: 5_000,
     })
     .toBeGreaterThan(12)
+
+  await page.keyboard.press('Delete')
+  await expect(formulaInput).toHaveValue('')
+  await expect
+    .poll(() => countDarkInteriorPixelsInCell(page, 3, 52), {
+      message: 'D53 should stop painting stale text after Delete clears the selected cell',
+      timeout: 5_000,
+    })
+    .toBeLessThan(6)
 })
 
 function readRendererSurfaceState(page: Page): () => Promise<{

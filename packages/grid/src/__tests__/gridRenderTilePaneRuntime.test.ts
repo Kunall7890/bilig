@@ -1252,7 +1252,7 @@ describe('GridRenderTilePaneRuntime', () => {
     unsubscribe?.()
   })
 
-  it('keeps remote tiles resident for worker-authoritative damage until fresh render tiles arrive', () => {
+  it('uses local tiles for worker-authoritative damage until fresh render tiles arrive', () => {
     const runtime = new GridRenderTilePaneRuntime()
     const host = createHost()
     const tileId = host.viewportTileKeys({
@@ -1327,11 +1327,12 @@ describe('GridRenderTilePaneRuntime', () => {
       }),
     )
     expect(runtime.snapshotBridgeState()).toEqual({
-      forceLocalTiles: false,
-      localFallbackRevision: 0,
+      forceLocalTiles: true,
+      localFallbackRevision: 1,
       renderTileRevision: 1,
     })
-    expect(fallback.residentBodyPane?.tile.textRuns.some((run) => run.text === 'stale remote text')).toBe(true)
+    expect(fallback.residentBodyPane?.tile.textRuns.some((run) => run.text === 'stale remote text')).toBe(false)
+    expect(fallback.residentBodyPane?.tile.textRuns).toEqual([])
 
     const freshRemoteTile: GridRenderTile = {
       ...remoteTile,
@@ -1358,7 +1359,7 @@ describe('GridRenderTilePaneRuntime', () => {
     )
     expect(runtime.snapshotBridgeState()).toEqual({
       forceLocalTiles: false,
-      localFallbackRevision: 0,
+      localFallbackRevision: 1,
       renderTileRevision: 2,
     })
     expect(refreshed.residentBodyPane?.tile.textRuns).toEqual([])
@@ -1706,8 +1707,8 @@ describe('GridRenderTilePaneRuntime', () => {
     })
 
     expect(runtime.snapshotBridgeState()).toEqual({
-      forceLocalTiles: false,
-      localFallbackRevision: 0,
+      forceLocalTiles: true,
+      localFallbackRevision: 1,
       renderTileRevision: 1,
     })
 
@@ -1718,7 +1719,7 @@ describe('GridRenderTilePaneRuntime', () => {
 
     expect(runtime.snapshotBridgeState()).toEqual({
       forceLocalTiles: true,
-      localFallbackRevision: 1,
+      localFallbackRevision: 2,
       renderTileRevision: 2,
     })
   })
