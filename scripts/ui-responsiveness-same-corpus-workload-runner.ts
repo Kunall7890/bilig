@@ -127,6 +127,7 @@ async function performIncumbentUiOperation(
     await page.keyboard.press(process.platform === 'darwin' ? 'Meta+ArrowDown' : 'Control+ArrowDown')
     return
   }
+  await assertIncumbentEditableForWorkload(page, product, workload)
   if (workload === 'fill-format-change') {
     await page.keyboard.press(process.platform === 'darwin' ? 'Meta+B' : 'Control+B')
     return
@@ -134,6 +135,42 @@ async function performIncumbentUiOperation(
   const value = workload === 'formula-edit' ? `=${String(sampleIndex + 1)}+1` : `${product}-same-corpus-${String(sampleIndex + 1)}`
   await page.keyboard.type(value)
   await page.keyboard.press('Enter')
+}
+
+async function assertIncumbentEditableForWorkload(
+  page: Page,
+  product: Exclude<UiResponsivenessSameCorpusProduct, 'bilig'>,
+  workload: NonScrollWorkload,
+): Promise<void> {
+  const bodyText = await page
+    .locator('body')
+    .innerText({ timeout: 2_000 })
+    .catch(() => '')
+  const blocker = incumbentEditableWorkloadBlocker(product, page.url(), bodyText)
+  if (blocker) {
+    throw new Error(`Cannot measure ${workload} on ${product}: ${blocker}`)
+  }
+}
+
+export function incumbentEditableWorkloadBlocker(
+  product: Exclude<UiResponsivenessSameCorpusProduct, 'bilig'>,
+  pageUrl: string,
+  bodyText: string,
+): string | null {
+  const normalizedBody = bodyText.replace(/\s+/g, ' ').toLowerCase()
+  if (product === 'google-sheets') {
+    if (normalizedBody.includes('view only') || normalizedBody.includes('comment only') || normalizedBody.includes('request edit access')) {
+      return 'Google Sheets page is read-only; provide an editable same-corpus Google Sheet URL or authenticated storage state.'
+    }
+    return null
+  }
+  if (pageUrl.includes('view.officeapps.live.com/op/view.aspx')) {
+    return 'Microsoft Excel Web URL is the read-only Office viewer; provide an editable Excel Web workbook URL for edit workloads.'
+  }
+  if (normalizedBody.includes('view only') || normalizedBody.includes('read-only') || normalizedBody.includes('request edit access')) {
+    return 'Microsoft Excel Web page is read-only; provide an editable same-corpus workbook URL or authenticated storage state.'
+  }
+  return null
 }
 
 function percentile(values: readonly number[], percentileValue: number): number {

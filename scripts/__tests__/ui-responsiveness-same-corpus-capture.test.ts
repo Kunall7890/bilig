@@ -16,6 +16,8 @@ import {
   verifyXlsxCorpusFingerprint,
 } from '../capture-ui-responsiveness-same-corpus.ts'
 import { requiredUiResponsivenessSameCorpusWorkloads } from '../ui-responsiveness-same-corpus-workloads.ts'
+import { sameCorpusChromiumLaunchOptions } from '../ui-responsiveness-same-corpus-page-utils.ts'
+import { incumbentEditableWorkloadBlocker } from '../ui-responsiveness-same-corpus-workload-runner.ts'
 
 describe('same-corpus UI responsiveness capture CLI', () => {
   it('builds a default Bilig benchmark URL from the selected corpus', () => {
@@ -267,6 +269,37 @@ describe('same-corpus UI responsiveness capture CLI', () => {
       'fill-format-change',
       'wide-sheet-navigation',
     ])
+  })
+
+  it('rejects read-only incumbent edit surfaces before timing same-corpus edits', () => {
+    expect(
+      incumbentEditableWorkloadBlocker(
+        'google-sheets',
+        'https://docs.google.com/spreadsheets/d/example/edit',
+        'File Edit View Comment only Share',
+      ),
+    ).toContain('read-only')
+    expect(
+      incumbentEditableWorkloadBlocker(
+        'microsoft-excel-web',
+        'https://view.officeapps.live.com/op/view.aspx?src=example.xlsx',
+        'Excel workbook viewer',
+      ),
+    ).toContain('read-only Office viewer')
+    expect(
+      incumbentEditableWorkloadBlocker(
+        'google-sheets',
+        'https://docs.google.com/spreadsheets/d/example/edit',
+        'File Edit Insert Format Data Tools Extensions Help',
+      ),
+    ).toBeNull()
+  })
+
+  it('launches same-corpus capture browsers with WebGPU enabled for TypeGPU proof', () => {
+    expect(sameCorpusChromiumLaunchOptions(true)).toEqual({
+      args: ['--enable-unsafe-webgpu', '--ignore-gpu-blocklist'],
+      headless: true,
+    })
   })
 
   it('parses storage-state bootstrap mode for authenticated capture', () => {

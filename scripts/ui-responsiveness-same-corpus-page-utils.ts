@@ -2,6 +2,13 @@ import type { Page } from '@playwright/test'
 
 import type { UiResponsivenessSameCorpusProduct } from './gen-ui-responsiveness-live-browser-scorecard.ts'
 
+export function sameCorpusChromiumLaunchOptions(headless: boolean): { readonly args: string[]; readonly headless: boolean } {
+  return {
+    args: ['--enable-unsafe-webgpu', '--ignore-gpu-blocklist'],
+    headless,
+  }
+}
+
 export async function waitForNextFrame(page: Page): Promise<void> {
   await page.evaluate(async () => {
     await new Promise<void>((resolveFrame) => requestAnimationFrame(() => resolveFrame()))

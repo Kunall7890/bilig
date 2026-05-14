@@ -148,11 +148,14 @@ export interface BiligDominanceStatus {
     readonly googleSheetsUrl: string | null
     readonly googleSheetsUrlSource: UiSameCorpusGoogleSheetsUrlSource
     readonly googleSheetsUrlEnvVar: string
+    readonly microsoftExcelWebEditableUrl: string | null
+    readonly microsoftExcelWebEditableUrlEnvVar: string
     readonly publicAccessCheckPath: string
     readonly missingInputs: readonly string[]
     readonly nextFixtureCheckCommand: string
     readonly nextPublicAccessCheckCommand: string
     readonly nextGoogleSheetsUploadInstruction: string | null
+    readonly nextMicrosoftExcelWebUploadInstruction: string | null
     readonly nextPreflightCommand: string | null
     readonly nextCaptureCommand: string | null
     readonly blockedCommands: readonly string[]
@@ -183,6 +186,7 @@ const defaultCorpusRunStopMarkerPath = join(rootDir, '.agent-coordination', '202
 const defaultUiSameCorpusId: WorkbookBenchmarkCorpusId = 'wide-mixed-250k'
 const defaultUiSameCorpusPublicAccessCheckPath = join(rootDir, '.cache', 'ui-responsiveness', 'same-corpus-public-access-check.json')
 const uiSameCorpusGoogleSheetsUrlEnvVar = 'BILIG_UI_SAME_CORPUS_GOOGLE_SHEETS_URL'
+const uiSameCorpusMicrosoftExcelWebUrlEnvVar = 'BILIG_UI_SAME_CORPUS_MICROSOFT_EXCEL_WEB_URL'
 const publicWorkbookCorpusFetchBatchSize = 6
 const requiredUiSameCorpusWorkloads = requiredUiResponsivenessSameCorpusWorkloads
 
@@ -205,6 +209,8 @@ export function buildBiligDominanceStatusFromArgs(): BiligDominanceStatus {
   )
   const explicitUiSameCorpusGoogleSheetsUrl =
     readStringArg('--ui-same-corpus-google-sheets-url', process.env[uiSameCorpusGoogleSheetsUrlEnvVar] ?? '') || null
+  const explicitUiSameCorpusMicrosoftExcelWebUrl =
+    readStringArg('--ui-same-corpus-microsoft-excel-web-url', process.env[uiSameCorpusMicrosoftExcelWebUrlEnvVar] ?? '') || null
   const uiSameCorpusPublicAccessCheck = readSameCorpusPublicAccessCheckOrNull(uiSameCorpusPublicAccessCheckPath)
   const input = loadBiligDominanceScorecardInput()
   const publicWorkbookCorpusStatus = readPublicWorkbookCorpusStatus({
@@ -283,6 +289,7 @@ export function buildBiligDominanceStatusFromArgs(): BiligDominanceStatus {
     stopMarkerPath: formatBiligDominanceStatusPathForMessage(stopMarkerPath, rootDir),
     uiSameCorpusGoogleSheetsUrl: explicitUiSameCorpusGoogleSheetsUrl,
     uiSameCorpusLocalCiResourceGuardStatus: readLocalCiResourceGuardStatus(rootDir),
+    uiSameCorpusMicrosoftExcelWebUrl: explicitUiSameCorpusMicrosoftExcelWebUrl,
     uiSameCorpusPublicAccessCheck,
     uiSameCorpusPublicAccessCheckPath: formatBiligDominanceStatusPathForMessage(uiSameCorpusPublicAccessCheckPath, rootDir),
   })
@@ -300,6 +307,7 @@ export function buildBiligDominanceStatus(args: {
   readonly stopMarkerPath: string
   readonly uiSameCorpusGoogleSheetsUrl?: string | null
   readonly uiSameCorpusLocalCiResourceGuardStatus?: LocalCiResourceGuardStatus
+  readonly uiSameCorpusMicrosoftExcelWebUrl?: string | null
   readonly uiSameCorpusPublicAccessCheck?: SameCorpusPublicAccessCheck | null
   readonly uiSameCorpusPublicAccessCheckPath?: string
 }): BiligDominanceStatus {
@@ -395,6 +403,7 @@ export function buildBiligDominanceStatus(args: {
     },
     uiSameCorpus: buildUiSameCorpusStatus(args.input, {
       localCiResourceGuardStatus,
+      microsoftExcelWebEditableUrl: args.uiSameCorpusMicrosoftExcelWebUrl ?? null,
       publicAccessCheckPath: args.uiSameCorpusPublicAccessCheckPath ?? '.cache/ui-responsiveness/same-corpus-public-access-check.json',
       ...resolveUiSameCorpusGoogleSheetsUrl({
         corpusCaseId: defaultUiSameCorpusId,
@@ -560,6 +569,7 @@ function buildUiSameCorpusStatus(
     readonly googleSheetsUrl: string | null
     readonly googleSheetsUrlSource: UiSameCorpusGoogleSheetsUrlSource
     readonly localCiResourceGuardStatus: LocalCiResourceGuardStatus
+    readonly microsoftExcelWebEditableUrl: string | null
     readonly publicAccessCheckPath: string
   },
 ): BiligDominanceStatus['uiSameCorpus'] {
@@ -577,10 +587,17 @@ function buildUiSameCorpusStatus(
   const scrollEventEvidenceCaseCount = Math.max(0, scrollEvidenceRequiredProofCases.length - casesMissingScrollEventEvidence.length)
   const tenXRequirementSatisfied = uiSameCorpusTenXRequirementSatisfied(proof, missingRequiredWorkloads, casesMissingScrollEventEvidence)
   const googleSheetsUrlArgument = args.googleSheetsUrl ?? '<google-sheets-url>'
+  const microsoftExcelWebUrlArgument = args.microsoftExcelWebEditableUrl ?? '<microsoft-excel-web-editable-url>'
   const browserCaptureGuard = buildBrowserCaptureGuardStatus(args.localCiResourceGuardStatus)
-  const missingInputs = args.googleSheetsUrl || tenXRequirementSatisfied ? [] : ['googleSheetsUrlForUploadedSameCorpusWorkbook']
+  const missingInputs = [
+    ...(args.googleSheetsUrl || tenXRequirementSatisfied ? [] : ['googleSheetsUrlForUploadedSameCorpusWorkbook']),
+    ...(args.microsoftExcelWebEditableUrl || tenXRequirementSatisfied ? [] : ['microsoftExcelWebEditableUrlForUploadedSameCorpusWorkbook']),
+  ]
   const nextGoogleSheetsUploadInstruction = missingInputs.includes('googleSheetsUrlForUploadedSameCorpusWorkbook')
     ? `Upload ${fixture.localXlsxPath} to Google Sheets as a native Google Sheet, share it to anyone with the link, then pass its edit URL as --google-sheets-url.`
+    : null
+  const nextMicrosoftExcelWebUploadInstruction = missingInputs.includes('microsoftExcelWebEditableUrlForUploadedSameCorpusWorkbook')
+    ? `Upload ${fixture.localXlsxPath} to OneDrive or Microsoft 365, open it as an editable Excel Web workbook, then pass its browser URL as --microsoft-excel-web-url. The Office viewer URL is only valid for public XLSX identity checks.`
     : null
   const nextPreflightCommand = [
     'pnpm',
@@ -590,7 +607,7 @@ function buildUiSameCorpusStatus(
     '--google-sheets-url',
     googleSheetsUrlArgument,
     '--microsoft-excel-web-url',
-    fixture.microsoftExcelWebUrl,
+    microsoftExcelWebUrlArgument,
   ]
     .map(shellQuote)
     .join(' ')
@@ -603,7 +620,7 @@ function buildUiSameCorpusStatus(
     '--google-sheets-url',
     googleSheetsUrlArgument,
     '--microsoft-excel-web-url',
-    fixture.microsoftExcelWebUrl,
+    microsoftExcelWebUrlArgument,
   ]
     .map(shellQuote)
     .join(' ')
@@ -625,6 +642,8 @@ function buildUiSameCorpusStatus(
     googleSheetsUrl: args.googleSheetsUrl,
     googleSheetsUrlSource: args.googleSheetsUrlSource,
     googleSheetsUrlEnvVar: uiSameCorpusGoogleSheetsUrlEnvVar,
+    microsoftExcelWebEditableUrl: args.microsoftExcelWebEditableUrl,
+    microsoftExcelWebEditableUrlEnvVar: uiSameCorpusMicrosoftExcelWebUrlEnvVar,
     publicAccessCheckPath: args.publicAccessCheckPath,
     missingInputs,
     nextFixtureCheckCommand: 'pnpm ui:same-corpus:fixture:check',
@@ -642,6 +661,7 @@ function buildUiSameCorpusStatus(
       .map(shellQuote)
       .join(' '),
     nextGoogleSheetsUploadInstruction,
+    nextMicrosoftExcelWebUploadInstruction,
     nextPreflightCommand: browserCaptureGuard.active ? null : nextPreflightCommand,
     nextCaptureCommand: browserCaptureGuard.active ? null : nextCaptureCommand,
     blockedCommands: browserCaptureGuard.active

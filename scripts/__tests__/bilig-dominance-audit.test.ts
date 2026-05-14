@@ -14,6 +14,8 @@ import { requiredUiResponsivenessSameCorpusWorkloads } from '../ui-responsivenes
 import { buildFixtureInput } from './bilig-dominance-scorecard.fixture.ts'
 
 const requiredUiSameCorpusWorkloadList = requiredUiResponsivenessSameCorpusWorkloads.join(', ')
+const requiredUiSameCorpusInputList =
+  'googleSheetsUrlForUploadedSameCorpusWorkbook, microsoftExcelWebEditableUrlForUploadedSameCorpusWorkbook'
 
 describe('bilig dominance prompt-to-artifact audit', () => {
   it('maps every objective criterion to evidence artifacts, check commands, and live blockers', () => {
@@ -96,7 +98,7 @@ describe('bilig dominance prompt-to-artifact audit', () => {
     })
     expect(audit.liveUiSameCorpus).toMatchObject({
       captured: false,
-      missingInputs: ['googleSheetsUrlForUploadedSameCorpusWorkbook'],
+      missingInputs: ['googleSheetsUrlForUploadedSameCorpusWorkbook', 'microsoftExcelWebEditableUrlForUploadedSameCorpusWorkbook'],
       fixture: {
         corpusCaseId: 'wide-mixed-250k',
         materializedCells: 250_000,
@@ -133,14 +135,14 @@ describe('bilig dominance prompt-to-artifact audit', () => {
       liveBlockers: [
         'same-corpus UI browser capture has not been recorded',
         `same-corpus UI proof missing required workloads: ${requiredUiSameCorpusWorkloadList}`,
-        'same-corpus UI proof missing inputs: googleSheetsUrlForUploadedSameCorpusWorkbook',
+        `same-corpus UI proof missing inputs: ${requiredUiSameCorpusInputList}`,
         'same-corpus UI browser capture paused by local resource guard: .agent-coordination/20260508T092619Z-codex-memory-pressure-stop.md',
       ],
       gaps: [
         'live UI browser evidence is not a same-corpus 10x proof against incumbents',
         'same-corpus UI browser capture has not been recorded',
         `same-corpus UI proof missing required workloads: ${requiredUiSameCorpusWorkloadList}`,
-        'same-corpus UI proof missing inputs: googleSheetsUrlForUploadedSameCorpusWorkbook',
+        `same-corpus UI proof missing inputs: ${requiredUiSameCorpusInputList}`,
         'same-corpus UI browser capture paused by local resource guard: .agent-coordination/20260508T092619Z-codex-memory-pressure-stop.md',
       ],
       evidence: expect.arrayContaining([
@@ -148,7 +150,7 @@ describe('bilig dominance prompt-to-artifact audit', () => {
         'live same-corpus UI 10x cases: 0/0',
         `live same-corpus UI required workloads: ${requiredUiSameCorpusWorkloadList}`,
         `live same-corpus UI missing required workloads: ${requiredUiSameCorpusWorkloadList}`,
-        'live same-corpus UI missing inputs: googleSheetsUrlForUploadedSameCorpusWorkbook',
+        `live same-corpus UI missing inputs: ${requiredUiSameCorpusInputList}`,
         'live same-corpus UI browser capture guard active: true',
       ]),
     })

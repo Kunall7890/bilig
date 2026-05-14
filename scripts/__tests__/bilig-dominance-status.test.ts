@@ -28,8 +28,10 @@ describe('bilig dominance status', () => {
       googleSheetsUrl: null,
       googleSheetsUrlSource: 'missing',
       googleSheetsUrlEnvVar: 'BILIG_UI_SAME_CORPUS_GOOGLE_SHEETS_URL',
+      microsoftExcelWebEditableUrl: null,
+      microsoftExcelWebEditableUrlEnvVar: 'BILIG_UI_SAME_CORPUS_MICROSOFT_EXCEL_WEB_URL',
       publicAccessCheckPath: '.cache/ui-responsiveness/same-corpus-public-access-check.json',
-      missingInputs: ['googleSheetsUrlForUploadedSameCorpusWorkbook'],
+      missingInputs: ['googleSheetsUrlForUploadedSameCorpusWorkbook', 'microsoftExcelWebEditableUrlForUploadedSameCorpusWorkbook'],
       fixture: {
         corpusCaseId: 'wide-mixed-250k',
         materializedCells: 250_000,
@@ -55,12 +57,17 @@ describe('bilig dominance status', () => {
     )
     expect(status.uiSameCorpus.nextPreflightCommand).toContain('--google-sheets-url')
     expect(status.uiSameCorpus.nextPreflightCommand).toContain('<google-sheets-url>')
+    expect(status.uiSameCorpus.nextPreflightCommand).toContain('<microsoft-excel-web-editable-url>')
     expect(status.uiSameCorpus.nextCaptureCommand).toContain('.cache/ui-responsiveness/same-corpus-capture.json')
+    expect(status.uiSameCorpus.nextCaptureCommand).toContain('<microsoft-excel-web-editable-url>')
+    expect(status.uiSameCorpus.nextCaptureCommand).not.toContain('view.officeapps.live.com/op/view.aspx')
     expect(status.uiSameCorpus.nextGoogleSheetsUploadInstruction).toContain('share it to anyone with the link')
+    expect(status.uiSameCorpus.nextMicrosoftExcelWebUploadInstruction).toContain('editable Excel Web workbook')
   })
 
-  it('fills same-corpus UI proof commands when the Google Sheets URL is known', () => {
+  it('fills same-corpus UI proof commands when incumbent editable URLs are known', () => {
     const googleSheetsUrl = 'https://docs.google.com/spreadsheets/d/sameCorpusSheet/edit'
+    const microsoftExcelWebUrl = 'https://m365.cloud.microsoft/launch/excel?sameCorpusWorkbook'
     const status = buildBiligDominanceStatus({
       input: buildFixtureInput(),
       financialCorpusStatus: completeFinancialCorpusStatus(),
@@ -68,17 +75,23 @@ describe('bilig dominance status', () => {
       stopMarkerActive: false,
       stopMarkerPath: '/repo/.agent-coordination/stop.md',
       uiSameCorpusGoogleSheetsUrl: googleSheetsUrl,
+      uiSameCorpusMicrosoftExcelWebUrl: microsoftExcelWebUrl,
     })
 
     expect(status.uiSameCorpus.googleSheetsUrl).toBe(googleSheetsUrl)
     expect(status.uiSameCorpus.googleSheetsUrlSource).toBe('argument-or-environment')
+    expect(status.uiSameCorpus.microsoftExcelWebEditableUrl).toBe(microsoftExcelWebUrl)
     expect(status.uiSameCorpus.missingInputs).toEqual([])
     expect(status.uiSameCorpus.nextPreflightCommand).toContain(googleSheetsUrl)
+    expect(status.uiSameCorpus.nextPreflightCommand).toContain(microsoftExcelWebUrl)
     expect(status.uiSameCorpus.nextPreflightCommand).not.toContain('<google-sheets-url>')
+    expect(status.uiSameCorpus.nextPreflightCommand).not.toContain('<microsoft-excel-web-editable-url>')
     expect(status.uiSameCorpus.nextPublicAccessCheckCommand).toContain(googleSheetsUrl)
     expect(status.uiSameCorpus.nextPublicAccessCheckCommand).not.toContain('<google-sheets-url>')
     expect(status.uiSameCorpus.nextCaptureCommand).toContain(googleSheetsUrl)
+    expect(status.uiSameCorpus.nextCaptureCommand).toContain(microsoftExcelWebUrl)
     expect(status.uiSameCorpus.nextCaptureCommand).not.toContain('<google-sheets-url>')
+    expect(status.uiSameCorpus.nextCaptureCommand).not.toContain('<microsoft-excel-web-editable-url>')
   })
 
   it('reuses verified public-access evidence for same-corpus UI proof commands', () => {
@@ -95,14 +108,18 @@ describe('bilig dominance status', () => {
 
     expect(status.uiSameCorpus.googleSheetsUrl).toBe(googleSheetsUrl)
     expect(status.uiSameCorpus.googleSheetsUrlSource).toBe('public-access-check')
-    expect(status.uiSameCorpus.missingInputs).toEqual([])
+    expect(status.uiSameCorpus.microsoftExcelWebEditableUrl).toBeNull()
+    expect(status.uiSameCorpus.missingInputs).toEqual(['microsoftExcelWebEditableUrlForUploadedSameCorpusWorkbook'])
     expect(status.uiSameCorpus.nextPreflightCommand).toContain(googleSheetsUrl)
     expect(status.uiSameCorpus.nextPreflightCommand).not.toContain('<google-sheets-url>')
+    expect(status.uiSameCorpus.nextPreflightCommand).toContain('<microsoft-excel-web-editable-url>')
     expect(status.uiSameCorpus.nextPublicAccessCheckCommand).toContain(
       '--output .cache/ui-responsiveness/same-corpus-public-access-check.json',
     )
     expect(status.uiSameCorpus.nextCaptureCommand).toContain(googleSheetsUrl)
+    expect(status.uiSameCorpus.nextCaptureCommand).toContain('<microsoft-excel-web-editable-url>')
     expect(status.uiSameCorpus.nextGoogleSheetsUploadInstruction).toBeNull()
+    expect(status.uiSameCorpus.nextMicrosoftExcelWebUploadInstruction).toContain('editable Excel Web workbook')
   })
 
   it('surfaces local resource guard state before same-corpus browser capture', () => {
@@ -182,10 +199,12 @@ describe('bilig dominance status', () => {
       missingRequiredWorkloads: [],
       scrollEventEvidenceCaseCount: 3,
       casesMissingScrollEventEvidence: [],
-      missingInputs: ['googleSheetsUrlForUploadedSameCorpusWorkbook'],
+      missingInputs: ['googleSheetsUrlForUploadedSameCorpusWorkbook', 'microsoftExcelWebEditableUrlForUploadedSameCorpusWorkbook'],
     })
     expect(status.uiSameCorpus.nextPreflightCommand).toContain('<google-sheets-url>')
+    expect(status.uiSameCorpus.nextPreflightCommand).toContain('<microsoft-excel-web-editable-url>')
     expect(status.uiSameCorpus.nextCaptureCommand).toContain('<google-sheets-url>')
+    expect(status.uiSameCorpus.nextCaptureCommand).toContain('<microsoft-excel-web-editable-url>')
   })
 
   it('surfaces financial workbook corpus blockers in dominance status', () => {

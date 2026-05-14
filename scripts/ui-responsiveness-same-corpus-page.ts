@@ -32,7 +32,13 @@ import {
   captureSameCorpusProductVisualProof,
   type SameCorpusProductVisualProof,
 } from './ui-responsiveness-same-corpus-proof.ts'
-import { collectFrameIntervals, productLimitations, settleFrames, waitForNextFrame } from './ui-responsiveness-same-corpus-page-utils.ts'
+import {
+  collectFrameIntervals,
+  productLimitations,
+  sameCorpusChromiumLaunchOptions,
+  settleFrames,
+  waitForNextFrame,
+} from './ui-responsiveness-same-corpus-page-utils.ts'
 import { measureProductWorkload, type ProductOperationSample } from './ui-responsiveness-same-corpus-workload-runner.ts'
 
 interface ProductSampleCollection {
@@ -81,7 +87,7 @@ const scrollEventResponseProbeTimeoutMs = 5_000
 
 export async function saveStorageState(args: SaveStorageStateArgs): Promise<void> {
   const corpus = buildWorkbookBenchmarkCorpus(args.corpusId)
-  const browser = await chromium.launch({ headless: args.headless })
+  const browser = await chromium.launch(sameCorpusChromiumLaunchOptions(args.headless))
   const context = await browser.newContext({ viewport: defaultViewport })
   const page = await context.newPage()
   try {
@@ -115,7 +121,7 @@ export async function saveStorageState(args: SaveStorageStateArgs): Promise<void
 
 export async function captureSameCorpusUiResponsiveness(args: CaptureArgs): Promise<SameCorpusCapture> {
   const corpus = buildWorkbookBenchmarkCorpus(args.corpusId)
-  const browser = await chromium.launch({ headless: args.headless })
+  const browser = await chromium.launch(sameCorpusChromiumLaunchOptions(args.headless))
   try {
     const cases = await captureSameCorpusWorkloadCases(browser, corpus, args)
     return {
@@ -240,7 +246,7 @@ function assertSameCorpusSampleArray(
 
 export async function preflightSameCorpusIncumbentAccess(args: PreflightArgs): Promise<SameCorpusPreflight> {
   const corpus = buildWorkbookBenchmarkCorpus(args.corpusId)
-  const browser = await chromium.launch({ headless: args.headless })
+  const browser = await chromium.launch(sameCorpusChromiumLaunchOptions(args.headless))
   try {
     const productSpecs = [
       ...(args.googleSheetsUrl ? [{ product: 'google-sheets' as const, url: args.googleSheetsUrl }] : []),
