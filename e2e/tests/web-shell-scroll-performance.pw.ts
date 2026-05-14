@@ -239,6 +239,39 @@ test.describe('@browser-perf web app scroll performance', () => {
     }
   })
 
+  test('keeps keyboard selection navigation overlay-only on the wide corpus', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 920, height: 680 })
+    await gotoWorkbookShell(page, '/?benchmarkCorpus=wide-mixed-250k')
+    await waitForWorkbookReady(page)
+    const benchmarkState = await waitForBenchmarkCorpus(page)
+
+    expect(benchmarkState.fixture?.id).toBe('wide-mixed-250k')
+
+    await settleWorkbookScrollPerf(page, 80)
+    await page.getByTestId('sheet-grid-focus-target').focus()
+    await warmStartWorkbookScrollPerf(page, 'wide-250k-keyboard-selection')
+    await page.keyboard.press('ArrowRight')
+    await settleWorkbookScrollPerf(page, 40)
+    const report = await stopWorkbookScrollPerf(page)
+
+    if (!report) {
+      throw new Error('scroll performance report was not available')
+    }
+
+    await writeFile(testInfo.outputPath('scroll-perf-wide-250k-keyboard-selection.json'), JSON.stringify(report, null, 2), 'utf8')
+
+    expect(report.fixture?.id).toBe('wide-mixed-250k')
+    expect(report.summary.frameMs.p95).toBeLessThan(20)
+    expect(report.summary.longTasksMs.max).toBeLessThan(50)
+    expect(report.counters.viewportSubscriptions).toBe(0)
+    expectNoRendererMutationChurn(report)
+    expectNoTypeGpuDataTileUpload(report)
+    expect(readCounter(report.counters, 'typeGpuBufferAllocations')).toBe(0)
+    expect(readCounter(report.counters, 'rendererTileMisses')).toBe(0)
+    expectQuietShell(report)
+    await expect(page.getByTestId('status-selection')).toContainText('!B1')
+  })
+
   test('keeps frozen-pane browse smooth without repainting resident body or frozen data panes inside a tile window', async ({
     page,
   }, testInfo) => {

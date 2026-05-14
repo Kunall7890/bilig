@@ -7,6 +7,14 @@ const DEFAULT_SELECTION: WorkerRuntimeSelection = {
 }
 const SHEET_QUERY_PARAM = 'sheet'
 const CELL_QUERY_PARAM = 'cell'
+const SELECTION_PERSIST_DEBOUNCE_MS = 120
+
+let pendingPersist: {
+  readonly documentId: string
+  readonly selection: WorkerRuntimeSelection
+  readonly timeoutId: ReturnType<typeof globalThis.setTimeout>
+} | null = null
+let flushListenersInstalled = false
 
 function storageKey(documentId: string): string {
   return `bilig:selection:${documentId}`
@@ -116,14 +124,96 @@ function persistSelectionToUrl(selection: WorkerRuntimeSelection): void {
   window.history.replaceState(window.history.state, '', currentUrl)
 }
 
+function persistNormalizedSelection(documentId: string, normalizedSelection: WorkerRuntimeSelection): void {
+  persistSelectionToUrl(normalizedSelection)
+  window.localStorage.setItem(storageKey(documentId), JSON.stringify(normalizedSelection))
+}
+
+function clearPendingPersist(): void {
+  if (!pendingPersist || typeof window === 'undefined') {
+    pendingPersist = null
+    return
+  }
+  globalThis.clearTimeout(pendingPersist.timeoutId)
+  pendingPersist = null
+}
+
+function installScheduledPersistFlushListeners(): void {
+  if (flushListenersInstalled || typeof window === 'undefined' || typeof window.addEventListener !== 'function') {
+    return
+  }
+  flushListenersInstalled = true
+  window.addEventListener('pagehide', flushScheduledSelectionPersistence)
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        flushScheduledSelectionPersistence()
+      }
+    })
+  }
+}
+
 export function persistSelection(documentId: string, selection: WorkerRuntimeSelection): void {
   if (typeof window === 'undefined') {
     return
   }
   try {
+    clearPendingPersist()
     const normalizedSelection = normalizeSelection(selection.sheetName, selection.address) ?? DEFAULT_SELECTION
-    persistSelectionToUrl(normalizedSelection)
-    window.localStorage.setItem(storageKey(documentId), JSON.stringify(normalizedSelection))
+    persistNormalizedSelection(documentId, normalizedSelection)
+  } catch {
+    // Ignore storage failures and keep the runtime usable.
+  }
+}
+
+export function scheduleSelectionPersistence(documentId: string, selection: WorkerRuntimeSelection): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+  try {
+    installScheduledPersistFlushListeners()
+    const normalizedSelection = normalizeSelection(selection.sheetName, selection.address) ?? DEFAULT_SELECTION
+    if (
+      pendingPersist?.documentId === documentId &&
+      pendingPersist.selection.sheetName === normalizedSelection.sheetName &&
+      pendingPersist.selection.address === normalizedSelection.address
+    ) {
+      return
+    }
+
+    clearPendingPersist()
+    const timeoutId = globalThis.setTimeout(() => {
+      const current = pendingPersist
+      pendingPersist = null
+      if (!current) {
+        return
+      }
+      try {
+        persistNormalizedSelection(current.documentId, current.selection)
+      } catch {
+        // Ignore storage failures and keep the runtime usable.
+      }
+    }, SELECTION_PERSIST_DEBOUNCE_MS)
+    pendingPersist = {
+      documentId,
+      selection: normalizedSelection,
+      timeoutId,
+    }
+  } catch {
+    // Ignore storage failures and keep the runtime usable.
+  }
+}
+
+export function flushScheduledSelectionPersistence(): void {
+  if (!pendingPersist || typeof window === 'undefined') {
+    pendingPersist = null
+    return
+  }
+  const current = pendingPersist
+  globalThis.clearTimeout(current.timeoutId)
+  pendingPersist = null
+  try {
+    persistNormalizedSelection(current.documentId, current.selection)
   } catch {
     // Ignore storage failures and keep the runtime usable.
   }

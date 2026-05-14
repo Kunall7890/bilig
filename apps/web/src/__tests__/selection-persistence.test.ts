@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { loadPersistedSelection, persistSelection } from '../selection-persistence.js'
+import {
+  flushScheduledSelectionPersistence,
+  loadPersistedSelection,
+  persistSelection,
+  scheduleSelectionPersistence,
+} from '../selection-persistence.js'
 
 describe('selection persistence', () => {
   const storage = new Map<string, string>()
@@ -29,6 +34,8 @@ describe('selection persistence', () => {
   })
 
   afterEach(() => {
+    flushScheduledSelectionPersistence()
+    vi.useRealTimers()
     vi.unstubAllGlobals()
   })
 
@@ -144,5 +151,39 @@ describe('selection persistence', () => {
       sheetName: 'Sheet9',
       address: 'D14',
     })
+  })
+
+  it('coalesces rapid scheduled selection writes into the last selection', () => {
+    vi.useFakeTimers()
+
+    scheduleSelectionPersistence('book-1', { sheetName: 'Sheet1', address: 'A1' })
+    scheduleSelectionPersistence('book-1', { sheetName: 'Sheet1', address: 'B1' })
+    scheduleSelectionPersistence('book-1', { sheetName: 'Sheet1', address: 'C1' })
+
+    expect(replaceState).not.toHaveBeenCalled()
+    expect(storage.get('bilig:selection:book-1')).toBeUndefined()
+
+    vi.advanceTimersByTime(119)
+    expect(replaceState).not.toHaveBeenCalled()
+
+    vi.advanceTimersByTime(1)
+    expect(replaceState).toHaveBeenCalledTimes(1)
+    const [, , nextUrl] = replaceState.mock.calls[0]
+    expect(String(nextUrl)).toBe('https://bilig.test/?sheet=Sheet1&cell=C1')
+    expect(storage.get('bilig:selection:book-1')).toBe(JSON.stringify({ sheetName: 'Sheet1', address: 'C1' }))
+  })
+
+  it('flushes the latest scheduled selection before an immediate persistence write', () => {
+    vi.useFakeTimers()
+
+    scheduleSelectionPersistence('book-1', { sheetName: 'Sheet1', address: 'B2' })
+    persistSelection('book-1', { sheetName: 'Sheet2', address: 'D4' })
+
+    vi.runOnlyPendingTimers()
+
+    expect(replaceState).toHaveBeenCalledTimes(1)
+    const [, , nextUrl] = replaceState.mock.calls[0]
+    expect(String(nextUrl)).toBe('https://bilig.test/?sheet=Sheet2&cell=D4')
+    expect(storage.get('bilig:selection:book-1')).toBe(JSON.stringify({ sheetName: 'Sheet2', address: 'D4' }))
   })
 })

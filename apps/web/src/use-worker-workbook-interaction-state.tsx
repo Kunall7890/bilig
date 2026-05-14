@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObjec
 import type { EditMovement, EditSelectionBehavior, GridSelectionSnapshot } from '@bilig/grid'
 import { formatAddress, parseCellAddress } from '@bilig/formula'
 import type { CellRangeRef, CellSnapshot } from '@bilig/protocol'
-import { persistSelection } from './selection-persistence.js'
+import { scheduleSelectionPersistence } from './selection-persistence.js'
 import type { WorkbookPerfSession } from './perf/workbook-perf.js'
 import type { WorkerHandle, WorkerRuntimeSelection } from './runtime-session.js'
 import { useWorkbookEditorConflict } from './use-workbook-editor-conflict.js'
@@ -158,7 +158,7 @@ export function useWorkerWorkbookInteractionState(input: {
   }, [selection])
 
   useEffect(() => {
-    persistSelection(documentId, selection)
+    scheduleSelectionPersistence(documentId, selection)
   }, [documentId, selection])
 
   useEffect(() => {
