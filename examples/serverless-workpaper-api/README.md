@@ -442,7 +442,7 @@ Expected output shape:
 - In Hono, pass `c.req.raw` directly to the shared handler.
 - In Deno, return `handleWorkPaperRequest(request)` from `Deno.serve()` or a
   `fetch` default export.
-- In SvelteKit, return `handleWorkPaperRequest(request)` from thin `+server.js`
+- In SvelteKit, return `handleWorkPaperRequest(request)` from thin `+server.ts`
   `GET` and `POST` handlers.
 - In Remix, return `handleWorkPaperRequest(request)` from resource-route
   `loader` and `action` functions.

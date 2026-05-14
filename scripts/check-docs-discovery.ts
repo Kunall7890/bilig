@@ -19,6 +19,7 @@ import { requireNpmEvalDiscovery } from './check-docs-discovery-npm-eval.ts'
 import { requireOpenAiResponsesDiscovery } from './check-docs-discovery-openai-responses.ts'
 import { docsSiteSources } from './check-docs-discovery-site-sources.ts'
 import { requireStarterIssueDiscovery } from './check-docs-discovery-starter-issues.ts'
+import { requireTypeScriptFirstPublicSnippets } from './check-docs-discovery-typescript-snippets.ts'
 import { requireXlsxCorpusVerifierDiscovery } from './check-docs-discovery-xlsx-verifier.ts'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -90,6 +91,7 @@ const [headlessSpreadsheetEngineComparison, sheetjsExceljsAlternativeFormulaWork
   ])
 
 requireHomepageDiscovery(index, siteCss, productCss)
+await requireTypeScriptFirstPublicSnippets(repoRoot)
 requireNoUnsupportedGoogleSheetsTenXClaims(dominanceScorecard, {
   'README.md': readme,
   'docs/index.html': index,
@@ -325,8 +327,8 @@ requireIncludes(newContributorGuide, 'pnpm format:check', 'docs/new-contributor-
 requireIncludes(newContributorGuide, 'pnpm lint', 'docs/new-contributor-guide.md')
 requireIncludes(starterIssues, 'new-contributor-guide.md#first-time-command-checklist', 'docs/starter-issues.md')
 requireIncludes(starterIssues, 'https://github.com/proompteng/bilig/blob/main/CONTRIBUTING.md', 'docs/starter-issues.md')
-requireIncludes(starterIssues, '106 open `first-timers-only` issues.', 'docs/starter-issues.md')
-requireIncludes(starterIssues, '106 issues are generally available for a new contributor to claim.', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '108 open `first-timers-only` issues.', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '108 issues are generally available for a new contributor to claim.', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '10 starter issues are code or test tasks rather than docs-only tasks.', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '0 open starter issues currently have active pull requests.', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '## Currently In Review', 'docs/starter-issues.md')
@@ -384,6 +386,9 @@ requireIncludes(starterIssues, '#337: docs(examples): add Astro endpoint WorkPap
 requireIncludes(starterIssues, '#338: docs(examples): add TanStack Start server function WorkPaper smoke', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#339: docs(examples): add Qwik City WorkPaper route smoke', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#342: docs(examples): add Next.js Server Action validation-error smoke', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '#374: docs(examples): add Hapi WorkPaper route smoke', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '#375: docs(storage): add Turso WorkPaper JSON persistence recipe', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '#376: docs(agent): add Firebase Genkit WorkPaper tool recipe', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#358: docs(agent): add AI SDK onStepFinish WorkPaper transcript', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#359: docs(agent): add Anthropic tool-use WorkPaper transcript', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#348: docs(examples): add Docker healthcheck for the WorkPaper MCP stdio server', 'docs/starter-issues.md')

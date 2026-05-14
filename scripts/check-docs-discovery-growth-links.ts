@@ -11,6 +11,8 @@ export const communityLaunchPackRequiredLinks = [
   'https://proompteng.github.io/bilig/why-agents-need-workbook-apis.html',
   'Latest homepage polish action on May 14, 2026',
   'Workbook models for TypeScript services',
+  'Latest TypeScript-example guard action on May 14, 2026',
+  'runnable examples are TypeScript files',
   'read_workpaper_summary',
   'set_workpaper_input_cell',
   'Latest PulseMCP verification snapshot on May 13, 2026 after the directory',

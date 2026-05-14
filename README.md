@@ -182,6 +182,10 @@ The published MCP Registry entry is
 
 ## Maintained Examples
 
+The runnable examples are TypeScript files. Some source imports end in `.js`
+because Node ESM resolves the compiled package output that way; the example
+files you edit and run are still `.ts`.
+
 The maintained repository example adds agent-style writeback verification:
 
 ```bash

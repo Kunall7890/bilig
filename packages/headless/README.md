@@ -172,6 +172,9 @@ Star or bookmark the project: <https://github.com/proompteng/bilig>.
 
 The full example catalog lives in
 [`examples/headless-workpaper/README.md`](https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/README.md).
+Those examples are TypeScript files. Some source imports end in `.js` because
+Node ESM resolves the compiled package output that way; the files you edit and
+run are still `.ts`.
 
 | Need                                 | Start with                           | Existing example                                                                                                                           |
 | ------------------------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |

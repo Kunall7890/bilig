@@ -9,8 +9,8 @@ Current starter queue as of May 14, 2026:
 - Pinned contributor map:
   [#372](https://github.com/proompteng/bilig/issues/372) groups current code,
   docs, agent, and MCP starter picks for people opening the issue queue cold.
-- 106 open `first-timers-only` issues.
-- 106 issues are generally available for a new contributor to claim.
+- 108 open `first-timers-only` issues.
+- 108 issues are generally available for a new contributor to claim.
 - 10 starter issues are code or test tasks rather than docs-only tasks.
 - 0 open starter issues currently have active pull requests.
 
@@ -41,6 +41,7 @@ Current starter queue as of May 14, 2026:
 - [#334: docs(agent): add OpenAI Responses streaming tool-call transcript](https://github.com/proompteng/bilig/issues/334)
 - [#358: docs(agent): add AI SDK onStepFinish WorkPaper transcript](https://github.com/proompteng/bilig/issues/358)
 - [#359: docs(agent): add Anthropic tool-use WorkPaper transcript](https://github.com/proompteng/bilig/issues/359)
+- [#376: docs(agent): add Firebase Genkit WorkPaper tool recipe](https://github.com/proompteng/bilig/issues/376)
 - [#283: docs(mcp): add Cursor MCP config for the WorkPaper stdio server](https://github.com/proompteng/bilig/issues/283)
 - [#284: docs(mcp): add Windsurf MCP config for local WorkPaper testing](https://github.com/proompteng/bilig/issues/284)
 - [#285: docs(mcp): add MCP Inspector smoke-test transcript for the WorkPaper server](https://github.com/proompteng/bilig/issues/285)
@@ -87,6 +88,7 @@ Current starter queue as of May 14, 2026:
 - [#338: docs(examples): add TanStack Start server function WorkPaper smoke](https://github.com/proompteng/bilig/issues/338)
 - [#339: docs(examples): add Qwik City WorkPaper route smoke](https://github.com/proompteng/bilig/issues/339)
 - [#342: docs(examples): add Next.js Server Action validation-error smoke](https://github.com/proompteng/bilig/issues/342)
+- [#374: docs(examples): add Hapi WorkPaper route smoke](https://github.com/proompteng/bilig/issues/374)
 
 ### Storage And Persistence Recipes
 
@@ -99,6 +101,7 @@ Current starter queue as of May 14, 2026:
 - [#305: docs(storage): add Cloudflare R2 WorkPaper persistence recipe](https://github.com/proompteng/bilig/issues/305)
 - [#306: docs(storage): add AWS S3 WorkPaper persistence recipe](https://github.com/proompteng/bilig/issues/306)
 - [#332: docs(storage): add MongoDB WorkPaper JSON persistence recipe](https://github.com/proompteng/bilig/issues/332)
+- [#375: docs(storage): add Turso WorkPaper JSON persistence recipe](https://github.com/proompteng/bilig/issues/375)
 
 ### Example Recipes
 
@@ -127,7 +130,6 @@ Current starter queue as of May 14, 2026:
 - [#156: docs(contributor): add first PR description template](https://github.com/proompteng/bilig/issues/156)
 - [#158: docs(contributor): add fuzz replay walkthrough](https://github.com/proompteng/bilig/issues/158)
 - [#198: docs(contributor): add first issue local verification matrix](https://github.com/proompteng/bilig/issues/198)
-- [#256: test(docs): enforce public snippets stay TypeScript-first](https://github.com/proompteng/bilig/issues/256)
 
 ### Public Site And Distribution Docs
 

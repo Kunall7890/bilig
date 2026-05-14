@@ -218,6 +218,23 @@ issue pass:
   from the official MCP Registry. The next action is to let the fresh official
   registry entry propagate, then email `hello@pulsemcp.com` only if it remains
   missing after the daily ingest window.
+
+Latest TypeScript-example guard action on May 14, 2026:
+
+- Public conversion docs now have a `docs:discovery:check` guard that rejects
+  JavaScript-labeled fences, direct dot-js smoke commands, dot-js creation
+  instructions, and MJS example paths on the README, package README, core
+  growth docs, and `examples/**/*.md`.
+- The root README and `@bilig/headless` package README now say directly that
+  runnable examples are TypeScript files, even when Node ESM import specifiers
+  end in `.js` after compilation.
+- The serverless example README now points SvelteKit readers at a `+server.ts`
+  adapter boundary instead of a `+server.js` file.
+- The completed guard replaces one closed starter with three new scoped
+  first-timer issues: Hapi route smoke
+  <https://github.com/proompteng/bilig/issues/374>, Turso WorkPaper JSON
+  persistence <https://github.com/proompteng/bilig/issues/375>, and Firebase
+  Genkit WorkPaper tool recipe <https://github.com/proompteng/bilig/issues/376>.
 - External MCP directory follow-up: mcpservers.org submission form is staged in
   Atlas with public project data and category `Development`. The remaining
   steps are entering a contact email and clicking Submit, both held for
