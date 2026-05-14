@@ -343,6 +343,90 @@ describe('workbook layout', () => {
     })
   })
 
+  it('does not scan materialized grid cells for single-cell footer selections', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    const getSheet = vi.fn(() => ({
+      grid: {
+        forEachCellEntry: vi.fn(() => {
+          throw new Error('single-cell selections should not build aggregate summaries')
+        }),
+      },
+    }))
+    const subscribeCells = vi.fn(() => () => {})
+    const engine: GridEngineLike = {
+      getCell: () => ({
+        sheetName: 'Sheet1',
+        address: 'B2',
+        value: { tag: ValueTag.Empty },
+        flags: 0,
+        version: 0,
+      }),
+      getCellStyle: () => undefined,
+      subscribeCells,
+      workbook: {
+        getSheet,
+      },
+    }
+
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+
+    await act(async () => {
+      root.render(
+        <WorkbookView
+          engine={engine}
+          sheetNames={['Sheet1']}
+          sheetName="Sheet1"
+          selectedAddr="B2"
+          selectedCellSnapshot={{
+            sheetName: 'Sheet1',
+            address: 'B2',
+            value: { tag: ValueTag.Empty },
+            flags: 0,
+            version: 0,
+          }}
+          selectionSnapshot={{
+            sheetName: 'Sheet1',
+            address: 'B2',
+            kind: 'cell',
+            range: {
+              startAddress: 'B2',
+              endAddress: 'B2',
+            },
+          }}
+          editorValue=""
+          editorSelectionBehavior="select-all"
+          resolvedValue=""
+          isEditing={false}
+          isEditingCell={false}
+          onSelectSheet={() => {}}
+          onSelectionChange={() => {}}
+          onAddressCommit={() => true}
+          onBeginEdit={() => {}}
+          onBeginFormulaEdit={() => {}}
+          onEditorChange={() => {}}
+          onCommitEdit={() => {}}
+          onCancelEdit={() => {}}
+          onClearCell={() => {}}
+          onFillRange={() => {}}
+          onCopyRange={() => {}}
+          onMoveRange={() => {}}
+          onPaste={() => {}}
+        />,
+      )
+    })
+
+    const summary = host.querySelector("[data-testid='workbook-selection-summary']")
+    expect(summary?.textContent).toBe('B2')
+    expect(getSheet).not.toHaveBeenCalled()
+    expect(subscribeCells).not.toHaveBeenCalled()
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
   it('shows a sum summary chip in the footer for numeric range selections', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 

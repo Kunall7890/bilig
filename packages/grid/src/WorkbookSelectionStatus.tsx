@@ -26,6 +26,12 @@ interface SelectionAggregateOption {
   readonly valueText: string
 }
 
+const emptySelectionAggregateSummary: SelectionAggregateSummary = {
+  materializedAddresses: [],
+  nonEmptyCount: 0,
+  numericValues: [],
+}
+
 const decimalFormatter = new Intl.NumberFormat('en-US', {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
@@ -55,11 +61,7 @@ function isCellIncludedInSelection(
 function collectSelectionAggregateSummary(engine: GridEngineLike, selection: GridSelectionSnapshot): SelectionAggregateSummary {
   const sheet = engine.workbook.getSheet(selection.sheetName)
   if (!sheet) {
-    return {
-      materializedAddresses: [],
-      nonEmptyCount: 0,
-      numericValues: [],
-    }
+    return emptySelectionAggregateSummary
   }
 
   const start = parseCellAddress(selection.range.startAddress, selection.sheetName)
@@ -169,7 +171,8 @@ export function WorkbookSelectionStatus({ engine, selectionLabel, selectionSnaps
   const [selectedMetric, setSelectedMetric] = React.useState<SelectionAggregateMetric>('sum')
   const [, setRevision] = React.useState(0)
 
-  const summary = collectSelectionAggregateSummary(engine, selectionSnapshot)
+  const summary =
+    selectionSnapshot.kind === 'cell' ? emptySelectionAggregateSummary : collectSelectionAggregateSummary(engine, selectionSnapshot)
 
   const addressesKey = React.useMemo(() => summary.materializedAddresses.join('\u001f'), [summary.materializedAddresses])
 
