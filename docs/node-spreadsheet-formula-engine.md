@@ -50,8 +50,21 @@ cd bilig-formula-engine-eval
 npm init -y
 npm pkg set type=module
 npm install @bilig/headless
-node --input-type=module <<'EOF'
+npm install -D tsx typescript @types/node
+cat > formula-engine-smoke.ts <<'EOF'
 import { WorkPaper } from '@bilig/headless'
+
+type NumericCell = {
+  value: number
+}
+
+function readNumber(cell: unknown, label: string): number {
+  if (typeof cell === 'object' && cell !== null && typeof (cell as NumericCell).value === 'number') {
+    return (cell as NumericCell).value
+  }
+
+  throw new Error(`Expected ${label} to be numeric, got ${JSON.stringify(cell)}`)
+}
 
 const workbook = WorkPaper.buildFromSheets({
   Plan: [
@@ -71,13 +84,14 @@ if (sheet === undefined) {
   throw new Error('Summary sheet was not created')
 }
 
-const cell = workbook.getCellValue({ sheet, row: 1, col: 1 })
-if (typeof cell !== 'object' || cell === null || cell.value !== 3606.4) {
-  throw new Error(`unexpected formula readback: ${JSON.stringify(cell)}`)
+const netRevenue = readNumber(workbook.getCellValue({ sheet, row: 1, col: 1 }), 'net revenue')
+if (netRevenue !== 3606.4) {
+  throw new Error(`Unexpected formula readback: ${netRevenue}`)
 }
 
-console.log({ netRevenue: cell.value, verified: true })
+console.log({ netRevenue, verified: true })
 EOF
+npx tsx formula-engine-smoke.ts
 ```
 
 Expected output:

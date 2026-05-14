@@ -131,7 +131,10 @@ npm run agent:verify
 - JavaScript spreadsheet library guide for Node services:
   https://github.com/proompteng/bilig/blob/main/docs/javascript-spreadsheet-library-headless-node.md
 - SheetJS and ExcelJS comparison:
+  https://proompteng.github.io/bilig/sheetjs-exceljs-alternative-formula-workbook-api.html
   https://github.com/proompteng/bilig/blob/main/docs/sheetjs-exceljs-alternative-formula-workbook-api.md
+  includes a TypeScript WorkPaper runtime check for edit, readback, serialize,
+  restore, and verified recalculation.
 - benchmark evidence:
   https://github.com/proompteng/bilig/blob/main/docs/headless-workpaper-benchmark-evidence.md
 - local benchmark walkthrough:

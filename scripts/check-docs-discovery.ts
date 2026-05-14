@@ -742,6 +742,27 @@ for (const [path, content] of [
   )
 }
 
+for (const required of [
+  'title: SheetJS and ExcelJS alternative for formula-backed workbook APIs',
+  'canonical_url: https://proompteng.github.io/bilig/sheetjs-exceljs-alternative-formula-workbook-api.html',
+  'Research date: 2026-05-14.',
+  '## TypeScript Evaluation Path',
+  'npm install -D tsx typescript @types/node',
+  'const workbook = WorkPaper.buildFromSheets({',
+  'workbook.setCellContents({ sheet: inputs, row: 1, col: 1 }, 40)',
+  'verified: before === 36864 && after === 46080 && afterRestore === after',
+  'SheetJS Pro has a formula calculator component',
+  'ExcelJS can store formulas and supplied results',
+] as const) {
+  requireIncludes(sheetjsExceljsAlternativeFormulaWorkbookApi, required, 'docs/sheetjs-exceljs-alternative-formula-workbook-api.md')
+}
+
+requireIncludes(
+  await readFile(join(docsRoot, 'node-spreadsheet-formula-engine.md'), 'utf8'),
+  'cat > formula-engine-smoke.ts',
+  'docs/node-spreadsheet-formula-engine.md',
+)
+
 for (const [path, content] of [
   ['README.md', readme],
   ['packages/headless/README.md', headlessReadme],
@@ -750,6 +771,8 @@ for (const [path, content] of [
   requireIncludes(content, 'docs/javascript-spreadsheet-library-headless-node.md', path)
   requireIncludes(content, 'docs/sheetjs-exceljs-alternative-formula-workbook-api.md', path)
 }
+requireIncludes(llms, 'https://proompteng.github.io/bilig/sheetjs-exceljs-alternative-formula-workbook-api.html', 'docs/llms.txt')
+requireIncludes(llms, 'includes a TypeScript WorkPaper runtime check', 'docs/llms.txt')
 
 for (const [path, content] of [
   ['README.md', readme],
