@@ -6,8 +6,8 @@ search indexing.
 
 Current starter queue as of May 14, 2026:
 
-- 93 open `first-timers-only` issues.
-- 93 issues are generally available for a new contributor to claim.
+- 99 open `first-timers-only` issues.
+- 99 issues are generally available for a new contributor to claim.
 - 0 issues already have active pull requests.
 
 ## Available Starter Picks
@@ -22,6 +22,8 @@ Current starter queue as of May 14, 2026:
 - [#326: docs(agent): add CopilotKit WorkPaper action UI result note](https://github.com/proompteng/bilig/issues/326)
 - [#327: docs(agent): add Cloudflare Agents WorkPaper state persistence note](https://github.com/proompteng/bilig/issues/327)
 - [#334: docs(agent): add OpenAI Responses streaming tool-call transcript](https://github.com/proompteng/bilig/issues/334)
+- [#343: docs(agent): add Vercel AI SDK generateText WorkPaper tool smoke](https://github.com/proompteng/bilig/issues/343)
+- [#344: docs(agent): add LangChain.js structured tool WorkPaper smoke](https://github.com/proompteng/bilig/issues/344)
 - [#283: docs(mcp): add Cursor MCP config for the WorkPaper stdio server](https://github.com/proompteng/bilig/issues/283)
 - [#284: docs(mcp): add Windsurf MCP config for local WorkPaper testing](https://github.com/proompteng/bilig/issues/284)
 - [#285: docs(mcp): add MCP Inspector smoke-test transcript for the WorkPaper server](https://github.com/proompteng/bilig/issues/285)
@@ -34,6 +36,7 @@ Current starter queue as of May 14, 2026:
 - [#296: docs(mcpb): add Windows install notes for the Claude Desktop bundle](https://github.com/proompteng/bilig/issues/296)
 - [#297: docs(mcpb): add a Claude Desktop MCPB troubleshooting table](https://github.com/proompteng/bilig/issues/297)
 - [#298: docs(mcpb): add a copy-paste verification transcript for the bundle server](https://github.com/proompteng/bilig/issues/298)
+- [#348: docs(examples): add Docker healthcheck for the WorkPaper MCP stdio server](https://github.com/proompteng/bilig/issues/348)
 
 ### npm Smoke Test Improvements
 
@@ -67,6 +70,8 @@ Current starter queue as of May 14, 2026:
 - [#338: docs(examples): add TanStack Start server function WorkPaper smoke](https://github.com/proompteng/bilig/issues/338)
 - [#339: docs(examples): add Qwik City WorkPaper route smoke](https://github.com/proompteng/bilig/issues/339)
 - [#342: docs(examples): add Next.js Server Action validation-error smoke](https://github.com/proompteng/bilig/issues/342)
+- [#345: docs(examples): add Next.js Route Handler WorkPaper JSON smoke](https://github.com/proompteng/bilig/issues/345)
+- [#346: docs(examples): add Vercel Function WorkPaper route smoke](https://github.com/proompteng/bilig/issues/346)
 
 ### Storage And Persistence Recipes
 
@@ -79,6 +84,7 @@ Current starter queue as of May 14, 2026:
 - [#305: docs(storage): add Cloudflare R2 WorkPaper persistence recipe](https://github.com/proompteng/bilig/issues/305)
 - [#306: docs(storage): add AWS S3 WorkPaper persistence recipe](https://github.com/proompteng/bilig/issues/306)
 - [#332: docs(storage): add MongoDB WorkPaper JSON persistence recipe](https://github.com/proompteng/bilig/issues/332)
+- [#347: docs(storage): add plain node-postgres WorkPaper JSON persistence recipe](https://github.com/proompteng/bilig/issues/347)
 
 ### Example Recipes
 

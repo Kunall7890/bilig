@@ -460,6 +460,10 @@ including its p95 caveat.
   https://github.com/proompteng/bilig/issues/281
 - current small example issue: Next.js Server Action validation-error smoke:
   https://github.com/proompteng/bilig/issues/342
+- current small example issue: Next.js Route Handler WorkPaper JSON smoke:
+  https://github.com/proompteng/bilig/issues/345
+- current small example issue: Vercel Function WorkPaper route smoke:
+  https://github.com/proompteng/bilig/issues/346
 - current small example issue: Koa WorkPaper route smoke:
   https://github.com/proompteng/bilig/issues/330
 - current small example issue: Elysia WorkPaper route smoke:
@@ -490,12 +494,20 @@ including its p95 caveat.
   https://github.com/proompteng/bilig/issues/327
 - current small agent issue: OpenAI Responses streaming tool-call transcript:
   https://github.com/proompteng/bilig/issues/334
+- current small agent issue: Vercel AI SDK generateText WorkPaper tool smoke:
+  https://github.com/proompteng/bilig/issues/343
+- current small agent issue: LangChain.js structured tool WorkPaper smoke:
+  https://github.com/proompteng/bilig/issues/344
+- current small mcp issue: Docker healthcheck for the WorkPaper MCP stdio server:
+  https://github.com/proompteng/bilig/issues/348
 - current small site issue: social preview checklist:
   https://github.com/proompteng/bilig/issues/328
 - current small site issue: OpenGraph cache-bust note:
   https://github.com/proompteng/bilig/issues/329
 - current small storage issue: MongoDB WorkPaper JSON persistence recipe:
   https://github.com/proompteng/bilig/issues/332
+- current small storage issue: plain node-postgres WorkPaper JSON persistence recipe:
+  https://github.com/proompteng/bilig/issues/347
 - good first issue search:
   https://github.com/proompteng/bilig/issues?q=is%3Aissue%20is%3Aopen%20label%3A%22good%20first%20issue%22
 - first-timers-only issue search:

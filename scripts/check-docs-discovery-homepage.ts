@@ -40,7 +40,7 @@ export function requireHomepageDiscovery(index: string, siteCss: string): void {
       '<meta name="twitter:image" content="https://proompteng.github.io/bilig/assets/github-social-preview.png?v=2026-05-08-2" />',
       '<meta name="twitter:image:alt" content="bilig headless spreadsheet engine workbook and TypeScript code preview" />',
       '<link rel="stylesheet" href="./assets/fonts.css?v=2026-05-14-1" />',
-      '<link rel="stylesheet" href="./assets/site.css?v=2026-05-14-3" />',
+      '<link rel="stylesheet" href="./assets/site.css?v=2026-05-14-4" />',
       '<link rel="stylesheet" href="./assets/product-demo.css?v=2026-05-14-1" />',
       'Run spreadsheet models from TypeScript.',
       'Use cells and formulas when that is the simplest way to describe the work.',
@@ -48,7 +48,7 @@ export function requireHomepageDiscovery(index: string, siteCss: string): void {
       'Examples are `.ts` files with package imports.',
       'Write and read',
       'Change one input and inspect the dependent total.',
-      '93 starter issues',
+      '99 starter issues',
       'Small docs, examples, adapters, and tests are kept open.',
       'Revenue.workpaper',
       'A WorkPaper keeps the data, formulas, and saved state together.',
@@ -101,6 +101,8 @@ export function requireHomepageDiscovery(index: string, siteCss: string): void {
       "--font-display: 'Bilig Sans'",
       "--font-mono: 'Bilig Mono'",
       'grid-template-columns: minmax(0, 470px) minmax(0, 650px);',
+      '.proof-result {\n  display: grid;\n  grid-template-columns: minmax(0, 1fr);',
+      '.proof-result p {\n  max-width: 54ch;',
       '.hero-notes',
       '.proof-facts',
     ],
@@ -221,5 +223,6 @@ export function requireHomepageDiscovery(index: string, siteCss: string): void {
   )
 
   requireNotIncludes(siteCss, 'bilig-hero-workbook-api.png?v=2026-05-08-2', 'docs/assets/site.css')
+  requireNotIncludes(siteCss, 'grid-template-columns: minmax(150px, 0.34fr) minmax(0, 1fr);', 'docs/assets/site.css')
   requireNotIncludes(siteCss, 'border-left: 1px solid rgba(255, 250, 240, 0.16);', 'docs/assets/site.css')
 }
