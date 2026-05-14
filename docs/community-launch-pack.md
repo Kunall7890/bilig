@@ -438,6 +438,10 @@ Latest search-intent boundary action on May 14, 2026:
   WorkPaper case: install `@bilig/headless`, build workbook state, edit one
   input, read a recalculated value, save JSON, restore it, and verify the
   restored value.
+- Starter issue `#385` gives a first-time contributor a focused follow-up:
+  add a Sheets API handoff checklist to the boundary page without making broad
+  replacement claims:
+  <https://github.com/proompteng/bilig/issues/385>.
 - Public page:
   <https://proompteng.github.io/bilig/google-sheets-api-alternative-node-workpaper.html>.
 

@@ -9,8 +9,8 @@ Current starter queue as of May 14, 2026:
 - Pinned contributor map:
   [#372](https://github.com/proompteng/bilig/issues/372) groups current code,
   docs, agent, and MCP starter picks for people opening the issue queue cold.
-- 110 open `first-timers-only` issues.
-- 109 issues are currently available for a new contributor to claim.
+- 111 open `first-timers-only` issues.
+- 110 issues are currently available for a new contributor to claim.
 - 10 starter issues are code or test tasks; 9 are not under active review.
 - 1 open starter issue currently has an active pull request.
 
@@ -154,6 +154,7 @@ Current starter queue as of May 14, 2026:
 - [#313: docs(comparison): add HyperFormula migration checklist](https://github.com/proompteng/bilig/issues/313)
 - [#314: docs(comparison): add Formula.js boundary examples](https://github.com/proompteng/bilig/issues/314)
 - [#333: docs(comparison): add Univer spreadsheet UI boundary note](https://github.com/proompteng/bilig/issues/333)
+- [#385: docs(google-sheets): add a Sheets API handoff checklist](https://github.com/proompteng/bilig/issues/385)
 
 ## Currently In Review
 

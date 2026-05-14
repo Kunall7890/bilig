@@ -526,6 +526,8 @@ including its p95 caveat.
   https://github.com/proompteng/bilig/issues/314
 - current small comparison issue: Univer spreadsheet UI boundary note:
   https://github.com/proompteng/bilig/issues/333
+- current small comparison issue: Google Sheets API handoff checklist:
+  https://github.com/proompteng/bilig/issues/385
 - current small agent issue: Mastra WorkPaper verification transcript:
   https://github.com/proompteng/bilig/issues/323
 - current small agent issue: LlamaIndex.TS WorkPaper verification transcript:

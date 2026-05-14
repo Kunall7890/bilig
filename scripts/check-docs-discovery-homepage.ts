@@ -48,7 +48,7 @@ export function requireHomepageDiscovery(index: string, siteCss: string, product
       'Runnable <code>.ts</code> files with public package imports.',
       'Write, then read',
       'Change an input and inspect the value the workbook produced.',
-      '108 starter issues',
+      '111 starter issues',
       'Small code, test, docs, example, and adapter tasks.',
       'Revenue.workpaper',
       'A WorkPaper keeps the data, formulas, and saved state together.',
