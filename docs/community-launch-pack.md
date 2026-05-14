@@ -191,6 +191,11 @@ issue pass:
   concrete ask about named input schemas, range-level validation errors, or
   storage-backed save/restore across multiple tool calls:
   <https://github.com/proompteng/bilig/discussions/230#discussioncomment-16920242>
+- Official MCP Registry refresh on May 14, 2026: the existing Publish MCP
+  Registry workflow registered `@bilig/headless@0.14.9`, and the live Registry
+  API returned 12 matching `io.github.proompteng/bilig-workpaper` entries with
+  `0.14.9` marked as latest:
+  <https://github.com/proompteng/bilig/actions/runs/25882165865>
 - External MCP directory surface: `mcp.directory` accepted the public server
   submission for review with repository `https://github.com/proompteng/bilig`,
   npm package `@bilig/headless`, and the WorkPaper persistence/readback

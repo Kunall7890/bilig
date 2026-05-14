@@ -561,8 +561,8 @@ for (const required of [
   'https://github.com/jmstfv/mcpserve/pull/19',
   'Not indexed yet as of May 13, 2026',
   'https://www.pulsemcp.com/servers?search=bilig&q=bilig',
-  'marked `@bilig/headless@0.14.5` as the',
-  'https://github.com/proompteng/bilig/actions/runs/25868014475',
+  'marked `@bilig/headless@0.14.9` as the',
+  'https://github.com/proompteng/bilig/actions/runs/25882165865',
   'read_workpaper_summary',
   'set_workpaper_input_cell',
 ]) {
