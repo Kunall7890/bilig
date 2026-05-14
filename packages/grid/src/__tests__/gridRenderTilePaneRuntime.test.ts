@@ -554,6 +554,65 @@ describe('GridRenderTilePaneRuntime', () => {
     expect(state.renderTilePanes.flatMap((pane) => pane.tile.textRuns.map((run) => run.text))).toContain('Month 1')
   })
 
+  it('localizes a selected-cell tile when the remote tile still has text for a cleared cell', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const tileIds = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 32 },
+    })
+    const staleRemoteTile: GridRenderTile = {
+      ...createRenderTile(tileIds[0]),
+      bounds: { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 32 },
+      coord: {
+        colTile: 0,
+        dprBucket: 1,
+        paneKind: 'body',
+        rowTile: 1,
+        sheetId: 7,
+        sheetOrdinal: 7,
+      },
+      textCount: 1,
+      textRuns: [
+        {
+          align: 'left',
+          clipHeight: 20,
+          clipWidth: 100,
+          clipX: 300,
+          clipY: 400,
+          color: '#111827',
+          col: 3,
+          font: '400 12px Arial',
+          fontSize: 12,
+          height: 20,
+          row: 52,
+          strike: false,
+          text: 'Month 1',
+          underline: false,
+          width: 100,
+          x: 300,
+          y: 400,
+        },
+      ],
+    }
+    const state = runtime.resolve(
+      createInput({
+        engine: LOCAL_EMPTY_ENGINE,
+        gridRuntimeHost: host,
+        renderTileSource: createRenderTileSource([staleRemoteTile]),
+        renderTileViewport: { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 32 },
+        residentViewport: { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 32 },
+        selectedCell: [3, 52],
+        selectedCellSnapshot: createEmptyCellSnapshot('D53'),
+        visibleViewport: { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 32 },
+      }),
+    )
+
+    expect(state.needsLocalCellInvalidation).toBe(true)
+    expect(state.renderTilePanes.flatMap((pane) => pane.tile.textRuns.map((run) => run.text))).not.toContain('Month 1')
+  })
+
   it('rebuilds visible remote tiles with missing grid payloads as local grid tiles', () => {
     const runtime = new GridRenderTilePaneRuntime()
     const host = createHost()

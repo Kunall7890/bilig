@@ -193,24 +193,46 @@ function hasCompleteRenderTileGrid(tile: GridRenderTile): boolean {
   return expectedBorderCount === 0 || countRenderTileGridBorderRects(tile) >= expectedBorderCount
 }
 
-function selectedSnapshotHasRenderableText(snapshot: CellSnapshot | null | undefined): boolean {
+function selectedSnapshotTextHint(snapshot: CellSnapshot | null | undefined): string | null {
   if (!snapshot) {
-    return false
+    return null
   }
-  return (
-    snapshot.formula !== undefined ||
-    snapshot.input !== undefined ||
-    snapshot.value.tag === ValueTag.String ||
-    snapshot.value.tag === ValueTag.Number ||
-    snapshot.value.tag === ValueTag.Error
-  )
+  if (snapshot.input !== undefined && snapshot.input !== null && snapshot.input !== '') {
+    return String(snapshot.input)
+  }
+  if (snapshot.formula !== undefined && snapshot.formula.length > 0) {
+    return snapshot.formula
+  }
+  if (snapshot.value.tag === ValueTag.String) {
+    return snapshot.value.value
+  }
+  if (snapshot.value.tag === ValueTag.Number) {
+    return String(snapshot.value.value)
+  }
+  return null
 }
 
-function tileHasSelectedTextRun(tile: GridRenderTile | null, selectedCell: Item | undefined): boolean {
+function findSelectedTextRun(tile: GridRenderTile | null, selectedCell: Item | undefined): { readonly text: string } | null {
   if (!tile || !selectedCell) {
+    return null
+  }
+  return tile.textRuns.find((run) => run.col === selectedCell[0] && run.row === selectedCell[1] && run.text.length > 0) ?? null
+}
+
+function tileSelectedTextNeedsLocalRefresh(
+  tile: GridRenderTile | null,
+  selectedCell: Item | undefined,
+  selectedCellSnapshot: CellSnapshot | null | undefined,
+): boolean {
+  if (!selectedCell) {
     return false
   }
-  return tile.textRuns.some((run) => run.col === selectedCell[0] && run.row === selectedCell[1] && run.text.length > 0)
+  const selectedRun = findSelectedTextRun(tile, selectedCell)
+  const expectedText = selectedSnapshotTextHint(selectedCellSnapshot)
+  if (expectedText === null) {
+    return selectedRun !== null
+  }
+  return selectedRun?.text !== expectedText
 }
 
 interface RuntimeConnection<Identity> {
@@ -769,19 +791,18 @@ export class GridRenderTilePaneRuntime {
         viewport: input.visibleViewport,
       }),
     )
-    const selectedCellTileKey =
-      input.selectedCell && selectedSnapshotHasRenderableText(input.selectedCellSnapshot)
-        ? input.gridRuntimeHost.viewportTileKeys({
-            dprBucket: input.dprBucket,
-            sheetOrdinal,
-            viewport: {
-              colEnd: input.selectedCell[0],
-              colStart: input.selectedCell[0],
-              rowEnd: input.selectedCell[1],
-              rowStart: input.selectedCell[1],
-            },
-          })[0]
-        : undefined
+    const selectedCellTileKey = input.selectedCell
+      ? input.gridRuntimeHost.viewportTileKeys({
+          dprBucket: input.dprBucket,
+          sheetOrdinal,
+          viewport: {
+            colEnd: input.selectedCell[0],
+            colStart: input.selectedCell[0],
+            rowEnd: input.selectedCell[1],
+            rowStart: input.selectedCell[1],
+          },
+        })[0]
+      : undefined
     for (const tileKey of tileKeys) {
       const sourceTile = renderTileSource.peekRenderTile(tileKey)
       const tile =
@@ -792,7 +813,8 @@ export class GridRenderTilePaneRuntime {
       const isMissingResidentTile = !tile
       const isMissingGridPayload = tile !== null && !hasCompleteRenderTileGrid(tile)
       const shouldLocalizeDirty = (options.localizeDirtyVisibleTiles ?? true) && isDirty
-      const shouldLocalizeSelectedCellText = selectedCellTileKey === tileKey && !tileHasSelectedTextRun(tile, input.selectedCell)
+      const shouldLocalizeSelectedCellText =
+        selectedCellTileKey === tileKey && tileSelectedTextNeedsLocalRefresh(tile, input.selectedCell, input.selectedCellSnapshot)
       if (shouldLocalizeDirty || isMissingResidentTile || isMissingGridPayload || shouldLocalizeSelectedCellText) {
         if ((shouldLocalizeDirty || shouldLocalizeSelectedCellText) && tile && hasCompleteRenderTileGrid(tile)) {
           dirtyBaseTiles.set(tileKey, tile)

@@ -323,6 +323,62 @@ describe('ProjectedViewportStore render delta source bridge', () => {
     unsubscribe()
   })
 
+  it('keeps local optimistic workbook deltas newer than observed render batches', async () => {
+    let emitRenderDelta: ((bytes: Uint8Array) => void) | null = null
+    const store = new ProjectedViewportStore({
+      subscribeRenderTileDeltas: vi.fn((_subscription, listener: (bytes: Uint8Array) => void) => {
+        emitRenderDelta = listener
+        return () => undefined
+      }),
+      subscribeViewportPatches: () => () => undefined,
+      subscribeWorkbookDeltas: () => () => undefined,
+    })
+    const listener = vi.fn()
+
+    store.subscribeRenderTileDeltas(
+      {
+        sheetId: 7,
+        sheetName: 'Sheet1',
+        sheetOrdinal: 3,
+        rowStart: 32,
+        rowEnd: 63,
+        colStart: 0,
+        colEnd: 63,
+      },
+      () => undefined,
+    )
+    await vi.waitFor(() => {
+      expect(emitRenderDelta).not.toBeNull()
+    })
+    emitRenderDelta?.(
+      encodeRenderTileDeltaBatch({
+        ...createBatch(42, [createTileReplace(101, 42, 3, 7)]),
+        sheetOrdinal: 3,
+      }),
+    )
+    const unsubscribe = store.subscribeWorkbookDeltas(listener)
+
+    store.setCellSnapshot({
+      address: 'D53',
+      flags: 0,
+      sheetName: 'Sheet1',
+      value: { tag: ValueTag.Empty },
+      version: 13,
+    })
+
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dirty: expect.objectContaining({ cellRanges: new Uint32Array([52, 52, 3, 3, 5]) }),
+        seq: 43,
+        sheetId: 7,
+        sheetOrdinal: 3,
+        source: 'localOptimistic',
+      }),
+    )
+
+    unsubscribe()
+  })
+
   it('does not publish optimistic workbook deltas before render tile sheet identity is known', () => {
     const store = new ProjectedViewportStore({
       subscribeRenderTileDeltas: () => () => undefined,

@@ -355,7 +355,10 @@ export class ProjectedViewportStore implements GridEngineLike {
       if (disposed) {
         return
       }
-      unsubscribe = store.subscribe(subscription, listener)
+      unsubscribe = store.subscribe(subscription, (change) => {
+        this.noteObservedBatchId(change.batchId)
+        listener(change)
+      })
     })()
     return () => {
       disposed = true
@@ -456,6 +459,7 @@ export class ProjectedViewportStore implements GridEngineLike {
     }
     const parsed = parseCellAddress(snapshot.address, snapshot.sheetName)
     const valueSeq = Math.max(0, snapshot.version)
+    const seq = this.nextLocalWorkbookDeltaSeq()
     const batch: WorkbookDeltaBatchV3 = {
       axisSeqX: 0,
       axisSeqY: 0,
@@ -467,7 +471,7 @@ export class ProjectedViewportStore implements GridEngineLike {
       },
       freezeSeq: 0,
       magic: 'bilig.workbook.delta.v3',
-      seq: ++this.localWorkbookDeltaSeq,
+      seq,
       sheetId: identity.sheetId,
       sheetOrdinal: identity.sheetOrdinal,
       source: 'localOptimistic',
@@ -499,7 +503,7 @@ export class ProjectedViewportStore implements GridEngineLike {
     if (!identity) {
       return
     }
-    const seq = ++this.localWorkbookDeltaSeq
+    const seq = this.nextLocalWorkbookDeltaSeq()
     const batch: WorkbookDeltaBatchV3 = {
       axisSeqX: axis === 'column' ? seq : 0,
       axisSeqY: axis === 'row' ? seq : 0,
@@ -527,6 +531,17 @@ export class ProjectedViewportStore implements GridEngineLike {
       durationMs: Math.max(0, nowMs() - startedAt),
       mutationCount: 1,
     })
+  }
+
+  private nextLocalWorkbookDeltaSeq(): number {
+    this.localWorkbookDeltaSeq = Math.max(this.localWorkbookDeltaSeq, this.lastBatchId, this.lastAuthoritativeRevision ?? 0)
+    return ++this.localWorkbookDeltaSeq
+  }
+
+  private noteObservedBatchId(batchId: number): void {
+    if (Number.isInteger(batchId) && batchId >= 0) {
+      this.lastBatchId = Math.max(this.lastBatchId, batchId)
+    }
   }
 }
 
