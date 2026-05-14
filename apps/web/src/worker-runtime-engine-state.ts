@@ -27,6 +27,7 @@ export async function createWorkbookEngineFromState(input: {
   if (engine.workbook.sheetsByName.size === 0) {
     engine.createSheet('Sheet1')
   }
+  engine.clearHistory()
   return engine
 }
 

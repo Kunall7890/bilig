@@ -15,6 +15,11 @@ interface WorkbookPendingMutationSummaryLike {
   readonly firstFailed: WorkbookFailedPendingMutationLike | null
 }
 
+interface WorkbookLocalHistoryStateLike {
+  readonly canUndo: boolean
+  readonly canRedo: boolean
+}
+
 export const EMPTY_RUNTIME_METRICS: RecalcMetrics = {
   batchId: 0,
   changedInputCount: 0,
@@ -87,6 +92,7 @@ export function cloneWorkerRuntimeState(input: {
   definedNames: readonly WorkbookDefinedNameSnapshot[]
   metrics: RecalcMetrics
   syncState: SyncState
+  localHistoryState?: WorkbookLocalHistoryStateLike | undefined
   authoritativeRevision?: number | undefined
   pendingMutationSummary?: WorkbookPendingMutationSummaryLike
   localPersistenceMode?: 'persistent' | 'ephemeral' | 'follower'
@@ -97,6 +103,7 @@ export function cloneWorkerRuntimeState(input: {
   definedNames: WorkbookDefinedNameSnapshot[]
   metrics: RecalcMetrics
   syncState: SyncState
+  localHistoryState: WorkbookLocalHistoryStateLike
   authoritativeRevision?: number | undefined
   pendingMutationSummary?: WorkbookPendingMutationSummaryLike
   localPersistenceMode?: 'persistent' | 'ephemeral' | 'follower'
@@ -110,6 +117,10 @@ export function cloneWorkerRuntimeState(input: {
     definedNames: input.definedNames.map((entry) => structuredClone(entry)),
     metrics: cloneRuntimeMetrics(input.metrics),
     syncState: input.syncState,
+    localHistoryState: {
+      canUndo: input.localHistoryState?.canUndo === true,
+      canRedo: input.localHistoryState?.canRedo === true,
+    },
     ...(typeof input.authoritativeRevision === 'number' ? { authoritativeRevision: input.authoritativeRevision } : {}),
     ...(pendingMutationSummary ? { pendingMutationSummary } : {}),
     ...(input.localPersistenceMode ? { localPersistenceMode: input.localPersistenceMode } : {}),
@@ -124,6 +135,7 @@ export function withExternalSyncState(
     definedNames: readonly WorkbookDefinedNameSnapshot[]
     metrics: RecalcMetrics
     syncState: SyncState
+    localHistoryState?: WorkbookLocalHistoryStateLike | undefined
     authoritativeRevision?: number | undefined
     pendingMutationSummary?: WorkbookPendingMutationSummaryLike
     localPersistenceMode?: 'persistent' | 'ephemeral' | 'follower'
@@ -136,6 +148,7 @@ export function withExternalSyncState(
   definedNames: WorkbookDefinedNameSnapshot[]
   metrics: RecalcMetrics
   syncState: SyncState
+  localHistoryState: WorkbookLocalHistoryStateLike
   authoritativeRevision?: number | undefined
   pendingMutationSummary?: WorkbookPendingMutationSummaryLike
   localPersistenceMode?: 'persistent' | 'ephemeral' | 'follower'
@@ -159,6 +172,7 @@ export function buildWorkerRuntimeStateFromBootstrap(input: {
   definedNames: WorkbookDefinedNameSnapshot[]
   metrics: RecalcMetrics
   syncState: SyncState
+  localHistoryState: WorkbookLocalHistoryStateLike
   authoritativeRevision?: number | undefined
   pendingMutationSummary?: WorkbookPendingMutationSummaryLike
   localPersistenceMode?: 'persistent' | 'ephemeral' | 'follower'
@@ -171,6 +185,7 @@ export function buildWorkerRuntimeStateFromBootstrap(input: {
     definedNames: (input.definedNames ?? []).map((entry) => structuredClone(entry)),
     metrics: cloneRuntimeMetrics(),
     syncState: 'syncing',
+    localHistoryState: { canUndo: false, canRedo: false },
     ...(typeof input.authoritativeRevision === 'number' ? { authoritativeRevision: input.authoritativeRevision } : {}),
     ...(input.localPersistenceMode ? { localPersistenceMode: input.localPersistenceMode } : {}),
   }
@@ -183,6 +198,7 @@ export function buildWorkerRuntimeStateFromEngine(engine: SpreadsheetEngine & Wo
   definedNames: WorkbookDefinedNameSnapshot[]
   metrics: RecalcMetrics
   syncState: SyncState
+  localHistoryState: WorkbookLocalHistoryStateLike
   authoritativeRevision?: number | undefined
   pendingMutationSummary?: WorkbookPendingMutationSummaryLike
   localPersistenceMode?: 'persistent' | 'ephemeral' | 'follower'
@@ -195,6 +211,10 @@ export function buildWorkerRuntimeStateFromEngine(engine: SpreadsheetEngine & Wo
     definedNames: engine.getDefinedNames().map((entry) => structuredClone(entry)),
     metrics: cloneRuntimeMetrics(engine.getLastMetrics()),
     syncState: engine.getSyncState(),
+    localHistoryState: {
+      canUndo: engine.canUndo(),
+      canRedo: engine.canRedo(),
+    },
   }
 }
 

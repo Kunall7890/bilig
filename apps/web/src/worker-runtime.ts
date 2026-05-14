@@ -101,6 +101,10 @@ export interface WorkbookWorkerStateSnapshot {
   definedNames: WorkbookDefinedNameSnapshot[]
   metrics: RecalcMetrics
   syncState: SyncState
+  localHistoryState: {
+    canUndo: boolean
+    canRedo: boolean
+  }
   authoritativeRevision?: number | undefined
   pendingMutationSummary?: WorkbookPendingMutationSummarySnapshot
   localPersistenceMode?: 'persistent' | 'ephemeral' | 'follower'
@@ -332,6 +336,7 @@ export class WorkbookWorkerRuntime {
           definedNames: cachedState.definedNames,
           metrics: cachedState.metrics,
           syncState: cachedState.syncState,
+          localHistoryState: this.buildLocalHistoryState(),
           authoritativeRevision: this.authoritativeRevision,
           pendingMutationSummary: this.buildPendingMutationSummary(),
           localPersistenceMode: this.localPersistenceMode,
@@ -622,6 +627,30 @@ export class WorkbookWorkerRuntime {
     return await this.projectionCommands.clearCell(sheetName, address)
   }
 
+  async undoLocalChange(): Promise<boolean> {
+    const engine = await this.getProjectionEngine()
+    const applied = engine.undo()
+    if (!applied) {
+      return false
+    }
+    this.markProjectionDivergedFromLocalStore()
+    await this.persistCoordinator.queuePersist()
+    this.updateRuntimeStateFromEngine(engine)
+    return true
+  }
+
+  async redoLocalChange(): Promise<boolean> {
+    const engine = await this.getProjectionEngine()
+    const applied = engine.redo()
+    if (!applied) {
+      return false
+    }
+    this.markProjectionDivergedFromLocalStore()
+    await this.persistCoordinator.queuePersist()
+    this.updateRuntimeStateFromEngine(engine)
+    return true
+  }
+
   async renderCommit(ops: CommitOp[]): Promise<void> {
     await this.projectionCommands.renderCommit(ops)
   }
@@ -802,6 +831,19 @@ export class WorkbookWorkerRuntime {
 
   private buildPendingMutationSummary(): WorkbookPendingMutationSummarySnapshot {
     return this.mutationJournal.buildPendingMutationSummary()
+  }
+
+  private buildLocalHistoryState(): WorkbookWorkerStateSnapshot['localHistoryState'] {
+    if (!this.engine) {
+      return {
+        canUndo: false,
+        canRedo: false,
+      }
+    }
+    return {
+      canUndo: this.engine.canUndo(),
+      canRedo: this.engine.canRedo(),
+    }
   }
 
   private async getAuthoritativeStateInput(): Promise<{

@@ -97,6 +97,10 @@ function createInitialRuntimeState(documentId: string): WorkbookWorkerStateSnaps
     definedNames: [],
     metrics: EMPTY_METRICS,
     syncState: 'syncing',
+    localHistoryState: {
+      canUndo: false,
+      canRedo: false,
+    },
     authoritativeRevision: 0,
     localPersistenceMode: 'ephemeral',
     pendingMutationSummary: {
@@ -134,6 +138,9 @@ function isWorkbookWorkerStateSnapshot(value: unknown): value is WorkbookWorkerS
     typeof value['metrics'] === 'object' &&
     value['metrics'] !== null &&
     typeof value['syncState'] === 'string' &&
+    isRecord(value['localHistoryState']) &&
+    typeof value['localHistoryState']['canUndo'] === 'boolean' &&
+    typeof value['localHistoryState']['canRedo'] === 'boolean' &&
     (value['authoritativeRevision'] === undefined || typeof value['authoritativeRevision'] === 'number') &&
     (value['localPersistenceMode'] === undefined ||
       value['localPersistenceMode'] === 'persistent' ||
@@ -703,7 +710,13 @@ export async function createWorkerRuntimeSessionController(
         } else if (method === 'markPendingMutationFailed' || method === 'retryPendingMutation') {
           await refreshRuntimeState()
         }
-        if (method === 'renderCommit' || method === 'installAuthoritativeSnapshot' || method === 'installBenchmarkCorpus') {
+        if (
+          method === 'renderCommit' ||
+          method === 'undoLocalChange' ||
+          method === 'redoLocalChange' ||
+          method === 'installAuthoritativeSnapshot' ||
+          method === 'installBenchmarkCorpus'
+        ) {
           await refreshRuntimeState()
         }
         return result

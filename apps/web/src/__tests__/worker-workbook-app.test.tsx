@@ -630,11 +630,11 @@ describe('WorkerWorkbookApp', () => {
       selection: { sheetName: 'Sheet1', address: 'A1' },
       selectionSnapshot: {
         sheetName: 'Sheet1',
-        address: 'A1',
+        address: 'C3',
         kind: 'cell',
         range: {
-          startAddress: 'A1',
-          endAddress: 'A1',
+          startAddress: 'C3',
+          endAddress: 'C3',
         },
       },
       selectAddress: vi.fn(),
@@ -653,6 +653,8 @@ describe('WorkerWorkbookApp', () => {
       transferRequested: false,
       undoLatestChange: vi.fn(),
       visibleEditorValue: '',
+      visibleSelectedCell: { sheetName: 'Sheet2', address: 'C3' },
+      visibleSelection: { sheetName: 'Sheet2', address: 'C3' },
       workbookReady: true,
       workerHandle: {
         viewportStore: {},
@@ -701,13 +703,16 @@ describe('WorkerWorkbookApp', () => {
     onColumnWidthChange(0, 152)
     onRowHeightChange(0, 48)
 
-    expect(invokeDeleteRowsMutation).toHaveBeenCalledWith('Sheet1', 1, 2)
-    expect(invokeDeleteColumnsMutation).toHaveBeenCalledWith('Sheet1', 3, 1)
-    expect(invokeColumnWidthMutation).toHaveBeenCalledWith('Sheet1', 0, 152, {
+    expect(latestWorkbookViewProps.current?.['sheetName']).toBe('Sheet2')
+    expect(latestWorkbookViewProps.current?.['selectedAddr']).toBe('C3')
+    expect(latestWorkbookViewProps.current?.['selectedCellSnapshot']).toEqual({ sheetName: 'Sheet2', address: 'C3' })
+    expect(invokeDeleteRowsMutation).toHaveBeenCalledWith('Sheet2', 1, 2)
+    expect(invokeDeleteColumnsMutation).toHaveBeenCalledWith('Sheet2', 3, 1)
+    expect(invokeColumnWidthMutation).toHaveBeenCalledWith('Sheet2', 0, 152, {
       deferLocalApplication: true,
       deferPersistence: true,
     })
-    expect(invokeRowHeightMutation).toHaveBeenCalledWith('Sheet1', 0, 48, {
+    expect(invokeRowHeightMutation).toHaveBeenCalledWith('Sheet2', 0, 48, {
       deferLocalApplication: true,
       deferPersistence: true,
     })

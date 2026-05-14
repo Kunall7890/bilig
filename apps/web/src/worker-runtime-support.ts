@@ -62,6 +62,10 @@ export interface WorkerEngine {
   setRangeStyle(range: CellRangeRef, patch: CellStylePatch): void
   clearRangeStyle(range: CellRangeRef, fields?: readonly CellStyleField[]): void
   clearCell(sheetName: string, address: string): void
+  undo(): boolean
+  redo(): boolean
+  canUndo(): boolean
+  canRedo(): boolean
   renderCommit(ops: CommitOp[]): void
   fillRange(source: CellRangeRef, target: CellRangeRef): void
   copyRange(source: CellRangeRef, target: CellRangeRef): void

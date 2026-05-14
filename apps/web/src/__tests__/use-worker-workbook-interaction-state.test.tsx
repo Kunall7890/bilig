@@ -460,7 +460,103 @@ describe('useWorkerWorkbookInteractionState', () => {
     })
   })
 
-  it('does not clone selected cells during idle selection navigation', async () => {
+  it('keeps an external selection visible while a stale authoritative selection update catches up', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const sendSelectionChanged = vi.fn()
+    const harness = mountHarness()
+    const workerHandle = {
+      viewportStore: createViewportStoreMapStub([
+        stringCell('Sheet1', 'A1', 'one'),
+        stringCell('Sheet1', 'B2', 'two'),
+        stringCell('Sheet1', 'C3', 'three'),
+      ]),
+    }
+    let captured: ReturnType<typeof useWorkerWorkbookInteractionState> | null = null
+    const baseProps = {
+      documentId: 'doc-1',
+      selectedCell: stringCell('Sheet1', 'A1', 'one'),
+      workerHandle,
+      invokeMutation: vi.fn(async () => undefined),
+      sendSelectionChanged,
+      capture: (value: ReturnType<typeof useWorkerWorkbookInteractionState>) => {
+        captured = value
+      },
+    }
+
+    await harness.render({
+      ...baseProps,
+      selection: { sheetName: 'Sheet1', address: 'A1' },
+    })
+    if (!captured) {
+      throw new Error('Expected interaction state capture')
+    }
+
+    await act(async () => {
+      captured?.selectAddress('Sheet1', 'B2')
+    })
+    expect(captured.visibleSelection).toEqual({ sheetName: 'Sheet1', address: 'B2' })
+
+    await harness.render({
+      ...baseProps,
+      selection: { sheetName: 'Sheet1', address: 'C3' },
+    })
+    expect(captured.visibleSelection).toEqual({ sheetName: 'Sheet1', address: 'B2' })
+    expect(captured.selectionRef.current).toEqual({ sheetName: 'Sheet1', address: 'B2' })
+
+    await harness.render({
+      ...baseProps,
+      selection: { sheetName: 'Sheet1', address: 'B2' },
+    })
+    expect(captured.visibleSelection).toEqual({ sheetName: 'Sheet1', address: 'B2' })
+
+    await act(async () => {
+      harness.root.unmount()
+    })
+  })
+
+  it('updates visible selection and editor readback before authoritative selection catches up', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const sendSelectionChanged = vi.fn()
+    const selectedCell = stringCell('Sheet1', 'A1', 'one')
+    const workerHandle = {
+      viewportStore: createViewportStoreMapStub([selectedCell, stringCell('Sheet1', 'B2', 'two')]),
+    }
+    const harness = mountHarness()
+    let captured: ReturnType<typeof useWorkerWorkbookInteractionState> | null = null
+
+    await harness.render({
+      documentId: 'doc-1',
+      selection: { sheetName: 'Sheet1', address: 'A1' },
+      selectedCell,
+      workerHandle,
+      invokeMutation: vi.fn(async () => undefined),
+      sendSelectionChanged,
+      capture: (value) => {
+        captured = value
+      },
+    })
+    if (!captured) {
+      throw new Error('Expected interaction state capture')
+    }
+
+    await act(async () => {
+      captured?.handleSelectionChange(singleCellSnapshot('Sheet1', 'B2'))
+    })
+
+    expect(captured?.visibleSelection).toEqual({ sheetName: 'Sheet1', address: 'B2' })
+    expect(captured?.visibleSelectedCell).toMatchObject({ sheetName: 'Sheet1', address: 'B2', input: 'two' })
+    expect(captured?.visibleEditorValue).toBe('two')
+    expect(captured?.selectionRef.current).toEqual({ sheetName: 'Sheet1', address: 'B2' })
+    expect(sendSelectionChanged).toHaveBeenCalledWith({ sheetName: 'Sheet1', address: 'B2' })
+
+    await act(async () => {
+      harness.root.unmount()
+    })
+  })
+
+  it('updates visible readback during idle selection navigation without starting edit conflict tracking', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
     const sendSelectionChanged = vi.fn()
@@ -496,13 +592,16 @@ describe('useWorkerWorkbookInteractionState', () => {
 
     expect(captured.selectionRef.current).toEqual({ sheetName: 'Sheet1', address: 'C3' })
     expect(sendSelectionChanged).toHaveBeenCalledWith({ sheetName: 'Sheet1', address: 'C3' })
-    expect(getCell).not.toHaveBeenCalledWith('Sheet1', 'C3')
+    expect(captured.visibleEditorValue).toBe('C3')
+    expect(getCell).toHaveBeenCalledWith('Sheet1', 'C3')
+    const visibleReadbackCallCount = getCell.mock.calls.length
 
     await act(async () => {
       captured?.beginEditing()
     })
 
     expect(getCell).toHaveBeenCalledWith('Sheet1', 'C3')
+    expect(getCell.mock.calls.length).toBeGreaterThan(visibleReadbackCallCount)
 
     await act(async () => {
       harness.root.unmount()

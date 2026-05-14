@@ -892,6 +892,19 @@ export class SpreadsheetEngine extends SpreadsheetEngineRuntimeBase {
     return runEngineEffect(this.runtime.history.redo())
   }
 
+  canUndo(): boolean {
+    return this.undoStack.length > 0
+  }
+
+  canRedo(): boolean {
+    return this.redoStack.length > 0
+  }
+
+  clearHistory(): void {
+    this.undoStack.length = 0
+    this.redoStack.length = 0
+  }
+
   exportSheetCsv(sheetName: string): string {
     return runEngineEffect(this.runtime.read.exportSheetCsv(sheetName))
   }

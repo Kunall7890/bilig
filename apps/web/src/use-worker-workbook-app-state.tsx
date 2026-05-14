@@ -270,8 +270,10 @@ export function useWorkerWorkbookAppState(input: {
     selectSelectionSnapshot,
     supersedeOptimisticCellSeedsForSheet,
     toggleBooleanCell,
+    visibleSelectedCell,
     visibleEditorValue,
     visibleResolvedValue,
+    visibleSelection,
   } = useWorkerWorkbookInteractionState({
     documentId,
     selection,
@@ -378,7 +380,14 @@ export function useWorkerWorkbookAppState(input: {
     [selectSelectionSnapshot],
   )
 
-  const { canRedo, canUndo, changeCount, changesPanel, redoLatestChange, undoLatestChange } = useWorkbookChangesPane({
+  const {
+    canRedo: remoteCanRedo,
+    canUndo: remoteCanUndo,
+    changeCount,
+    changesPanel,
+    redoLatestChange: redoRemoteLatestChange,
+    undoLatestChange: undoRemoteLatestChange,
+  } = useWorkbookChangesPane({
     documentId,
     currentUserId: runtimeConfig.currentUserId,
     sheetNames,
@@ -394,6 +403,38 @@ export function useWorkerWorkbookAppState(input: {
       selectAddress(sheetName, address)
     },
   })
+  const localHistoryState = runtimeState?.localHistoryState ?? {
+    canUndo: false,
+    canRedo: false,
+  }
+  const undoLocalLatestChange = useCallback(() => {
+    if (!runtimeController || !localHistoryState.canUndo) {
+      return
+    }
+    void (async () => {
+      try {
+        await runtimeController.invoke('undoLocalChange')
+      } catch (error) {
+        reportRuntimeError(error)
+      }
+    })()
+  }, [localHistoryState.canUndo, reportRuntimeError, runtimeController])
+  const redoLocalLatestChange = useCallback(() => {
+    if (!runtimeController || !localHistoryState.canRedo) {
+      return
+    }
+    void (async () => {
+      try {
+        await runtimeController.invoke('redoLocalChange')
+      } catch (error) {
+        reportRuntimeError(error)
+      }
+    })()
+  }, [localHistoryState.canRedo, reportRuntimeError, runtimeController])
+  const canUndo = zeroConfigured ? remoteCanUndo : localHistoryState.canUndo
+  const canRedo = zeroConfigured ? remoteCanRedo : localHistoryState.canRedo
+  const undoLatestChange = zeroConfigured ? undoRemoteLatestChange : undoLocalLatestChange
+  const redoLatestChange = zeroConfigured ? redoRemoteLatestChange : redoLocalLatestChange
 
   const previewAgentCommandBundle = useCallback(
     async (bundle: WorkbookAgentCommandBundle) => {
@@ -415,8 +456,11 @@ export function useWorkerWorkbookAppState(input: {
     [runtimeController],
   )
 
-  const selectedStyle = workerHandle?.viewportStore.getCellStyle(selectedCell.styleId)
-  const selectedPosition = useMemo(() => parseCellAddress(selection.address, selection.sheetName), [selection.address, selection.sheetName])
+  const selectedStyle = workerHandle?.viewportStore.getCellStyle(visibleSelectedCell.styleId)
+  const selectedPosition = useMemo(
+    () => parseCellAddress(visibleSelection.address, visibleSelection.sheetName),
+    [visibleSelection.address, visibleSelection.sheetName],
+  )
   const failedPendingMutation = runtimeState?.pendingMutationSummary?.firstFailed ?? null
   const localPersistenceMode = runtimeState?.localPersistenceMode ?? 'ephemeral'
   const {
@@ -481,7 +525,7 @@ export function useWorkerWorkbookAppState(input: {
     onHideCurrentColumn: () => {
       void (async () => {
         try {
-          await invokeColumnVisibilityMutation(selection.sheetName, selectedPosition.col, true)
+          await invokeColumnVisibilityMutation(visibleSelection.sheetName, selectedPosition.col, true)
         } catch (error) {
           reportRuntimeError(error)
         }
@@ -490,7 +534,7 @@ export function useWorkerWorkbookAppState(input: {
     onHideCurrentRow: () => {
       void (async () => {
         try {
-          await invokeRowVisibilityMutation(selection.sheetName, selectedPosition.row, true)
+          await invokeRowVisibilityMutation(visibleSelection.sheetName, selectedPosition.row, true)
         } catch (error) {
           reportRuntimeError(error)
         }
@@ -501,7 +545,7 @@ export function useWorkerWorkbookAppState(input: {
     onUnhideCurrentColumn: () => {
       void (async () => {
         try {
-          await invokeColumnVisibilityMutation(selection.sheetName, selectedPosition.col, false)
+          await invokeColumnVisibilityMutation(visibleSelection.sheetName, selectedPosition.col, false)
         } catch (error) {
           reportRuntimeError(error)
         }
@@ -510,14 +554,14 @@ export function useWorkerWorkbookAppState(input: {
     onUnhideCurrentRow: () => {
       void (async () => {
         try {
-          await invokeRowVisibilityMutation(selection.sheetName, selectedPosition.row, false)
+          await invokeRowVisibilityMutation(visibleSelection.sheetName, selectedPosition.row, false)
         } catch (error) {
           reportRuntimeError(error)
         }
       })()
     },
     selectionRangeRef,
-    selectedCell,
+    selectedCell: visibleSelectedCell,
     selectedStyle,
     trailingContent: (
       <>
@@ -621,6 +665,8 @@ export function useWorkerWorkbookAppState(input: {
     selectedCell,
     selection,
     selectionSnapshot,
+    visibleSelectedCell,
+    visibleSelection,
     sidePanelId,
     dismissPersistenceTransferRequest,
     acknowledgeExternalSelectionSync,

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react'
 import type { EditMovement, EditSelectionBehavior, GridSelectionSnapshot } from '@bilig/grid'
 import { formatAddress, parseCellAddress } from '@bilig/formula'
 import type { CellRangeRef, CellSnapshot } from '@bilig/protocol'
@@ -130,8 +130,14 @@ export function useWorkerWorkbookInteractionState(input: {
 
   useEffect(() => {
     const previousSelection = selectionRef.current
-    selectionRef.current = selection
     const activeExternalSelection = pendingExternalSelectionRef.current
+    if (
+      activeExternalSelection &&
+      (activeExternalSelection.sheetName !== selection.sheetName || activeExternalSelection.address !== selection.address)
+    ) {
+      return
+    }
+    selectionRef.current = selection
     if (
       activeExternalSelection &&
       activeExternalSelection.sheetName === selection.sheetName &&
@@ -652,11 +658,18 @@ export function useWorkerWorkbookInteractionState(input: {
 
   const isEditing = editingMode !== 'idle'
   const isEditingCell = editingMode === 'cell'
-  const visibleCellKey = optimisticCellKey(selection.sheetName, selection.address)
-  const liveVisibleCell = getLiveSelectedCell(selection)
+  const visibleSelection = useMemo(
+    () => ({
+      sheetName: selectionSnapshot.sheetName,
+      address: selectionSnapshot.address,
+    }),
+    [selectionSnapshot.address, selectionSnapshot.sheetName],
+  )
+  const visibleCellKey = optimisticCellKey(visibleSelection.sheetName, visibleSelection.address)
+  const liveVisibleCell = getLiveSelectedCell(visibleSelection)
   const visibleEditorValue = isEditing
     ? editorValue
-    : (getCellEditorSeed(selection.sheetName, selection.address) ?? toEditorValue(liveVisibleCell))
+    : (getCellEditorSeed(visibleSelection.sheetName, visibleSelection.address) ?? toEditorValue(liveVisibleCell))
   const visibleResolvedValue = optimisticCellResolvedValuesRef.current.get(visibleCellKey) ?? toResolvedValue(liveVisibleCell)
 
   useEffect(() => {
@@ -718,7 +731,9 @@ export function useWorkerWorkbookInteractionState(input: {
     selectSelectionSnapshot,
     supersedeOptimisticCellSeedsForSheet,
     toggleBooleanCell,
+    visibleSelectedCell: liveVisibleCell,
     visibleEditorValue,
     visibleResolvedValue,
+    visibleSelection,
   }
 }

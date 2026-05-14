@@ -748,6 +748,45 @@ describe('WorkbookWorkerRuntime', () => {
     expect(ranges.some((value, index) => index % 5 === 0 && value === 1 && ranges[index + 2] === 1)).toBe(true)
   })
 
+  it('exposes local undo and redo state for offline toolbar history controls', async () => {
+    const runtime = new WorkbookWorkerRuntime({
+      localStoreFactory: createMemoryLocalStoreFactory(),
+    })
+    await runtime.bootstrap({
+      documentId: 'local-history-doc',
+      replicaId: 'browser:test',
+      persistState: false,
+    })
+
+    expect(runtime.getRuntimeState().localHistoryState).toEqual({
+      canUndo: false,
+      canRedo: false,
+    })
+
+    await runtime.setCellValue('Sheet1', 'B2', 'local edit')
+
+    expect(runtime.getRuntimeState().localHistoryState).toEqual({
+      canUndo: true,
+      canRedo: false,
+    })
+    expect(await runtime.undoLocalChange()).toBe(true)
+    expect(runtime.getCell('Sheet1', 'B2').input ?? null).toBeNull()
+    expect(runtime.getRuntimeState().localHistoryState).toEqual({
+      canUndo: false,
+      canRedo: true,
+    })
+
+    expect(await runtime.redoLocalChange()).toBe(true)
+    expect(runtime.getCell('Sheet1', 'B2').value).toMatchObject({
+      tag: ValueTag.String,
+      value: 'local edit',
+    })
+    expect(runtime.getRuntimeState().localHistoryState).toEqual({
+      canUndo: true,
+      canRedo: false,
+    })
+  })
+
   it('publishes numeric cell font-size style updates through viewport patches', async () => {
     const runtime = new WorkbookWorkerRuntime({
       localStoreFactory: createMemoryLocalStoreFactory(),

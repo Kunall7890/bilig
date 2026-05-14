@@ -161,6 +161,8 @@ function WorkerWorkbookAppInner({
       runtimeError,
     ],
   )
+  const visibleSelection = app.visibleSelection ?? app.selection
+  const visibleSelectedCell = app.visibleSelectedCell ?? app.selectedCell
 
   return (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-[var(--wb-app-bg)] text-[var(--wb-text)]">
@@ -238,7 +240,7 @@ function WorkerWorkbookAppInner({
                 isEditingCell={Boolean(app.writesAllowed && app.isEditingCell)}
                 getCellEditorSeed={app.getCellEditorSeed}
                 onAddressCommit={(input) => {
-                  const nextTarget = parseSelectionTarget(input, app.selection.sheetName, app.definedNames)
+                  const nextTarget = parseSelectionTarget(input, visibleSelection.sheetName, app.definedNames)
                   if (!nextTarget) {
                     return false
                   }
@@ -248,7 +250,7 @@ function WorkerWorkbookAppInner({
                 onAutofitColumn={(columnIndex: number, fallbackWidth: number) => {
                   return (async () => {
                     try {
-                      await app.autofitColumn(app.selection.sheetName, columnIndex, fallbackWidth)
+                      await app.autofitColumn(visibleSelection.sheetName, columnIndex, fallbackWidth)
                     } catch (error) {
                       app.reportRuntimeError(error)
                     }
@@ -260,7 +262,7 @@ function WorkerWorkbookAppInner({
                 onClearCell={app.clearSelectedCell}
                 onColumnWidthChange={(columnIndex: number, newSize: number) => {
                   reportAsyncError(
-                    app.invokeColumnWidthMutation(app.selection.sheetName, columnIndex, newSize, {
+                    app.invokeColumnWidthMutation(visibleSelection.sheetName, columnIndex, newSize, {
                       deferLocalApplication: true,
                       deferPersistence: true,
                     }),
@@ -268,36 +270,36 @@ function WorkerWorkbookAppInner({
                 }}
                 onRowHeightChange={(rowIndex: number, newSize: number) => {
                   reportAsyncError(
-                    app.invokeRowHeightMutation(app.selection.sheetName, rowIndex, newSize, {
+                    app.invokeRowHeightMutation(visibleSelection.sheetName, rowIndex, newSize, {
                       deferLocalApplication: true,
                       deferPersistence: true,
                     }),
                   )
                 }}
                 onSetColumnHidden={(columnIndex: number, hidden: boolean) => {
-                  reportAsyncError(app.invokeColumnVisibilityMutation(app.selection.sheetName, columnIndex, hidden))
+                  reportAsyncError(app.invokeColumnVisibilityMutation(visibleSelection.sheetName, columnIndex, hidden))
                 }}
                 onInsertColumns={(startCol: number, count: number) => {
-                  reportAsyncError(app.invokeInsertColumnsMutation(app.selection.sheetName, startCol, count))
+                  reportAsyncError(app.invokeInsertColumnsMutation(visibleSelection.sheetName, startCol, count))
                 }}
                 onDeleteColumns={(startCol: number, count: number) => {
-                  const task = app.invokeDeleteColumnsMutation(app.selection.sheetName, startCol, count)
+                  const task = app.invokeDeleteColumnsMutation(visibleSelection.sheetName, startCol, count)
                   reportAsyncError(task)
                   return task
                 }}
                 onSetRowHidden={(rowIndex: number, hidden: boolean) => {
-                  reportAsyncError(app.invokeRowVisibilityMutation(app.selection.sheetName, rowIndex, hidden))
+                  reportAsyncError(app.invokeRowVisibilityMutation(visibleSelection.sheetName, rowIndex, hidden))
                 }}
                 onInsertRows={(startRow: number, count: number) => {
-                  reportAsyncError(app.invokeInsertRowsMutation(app.selection.sheetName, startRow, count))
+                  reportAsyncError(app.invokeInsertRowsMutation(visibleSelection.sheetName, startRow, count))
                 }}
                 onDeleteRows={(startRow: number, count: number) => {
-                  const task = app.invokeDeleteRowsMutation(app.selection.sheetName, startRow, count)
+                  const task = app.invokeDeleteRowsMutation(visibleSelection.sheetName, startRow, count)
                   reportAsyncError(task)
                   return task
                 }}
                 onSetFreezePane={(rows: number, cols: number) => {
-                  reportAsyncError(app.invokeSetFreezePaneMutation(app.selection.sheetName, rows, cols))
+                  reportAsyncError(app.invokeSetFreezePaneMutation(visibleSelection.sheetName, rows, cols))
                 }}
                 onVisibleViewportChange={app.handleVisibleViewportChange}
                 onCommitEdit={app.commitEditor}
@@ -315,12 +317,12 @@ function WorkerWorkbookAppInner({
                 onExternalSelectionSync={app.acknowledgeExternalSelectionSync}
                 onSelectSheet={(sheetName) => app.selectAddress(sheetName, 'A1')}
                 resolvedValue={app.resolvedValue}
-                selectedAddr={app.selection.address}
-                selectedCellSnapshot={app.selectedCell}
+                selectedAddr={visibleSelection.address}
+                selectedCellSnapshot={visibleSelectedCell}
                 selectionSnapshot={app.selectionSnapshot}
-                sheetId={app.sheetIdsByName?.[app.selection.sheetName]}
-                sheetOrdinal={app.sheetOrdinalsByName?.[app.selection.sheetName]}
-                sheetName={app.selection.sheetName}
+                sheetId={app.sheetIdsByName?.[visibleSelection.sheetName]}
+                sheetOrdinal={app.sheetOrdinalsByName?.[visibleSelection.sheetName]}
+                sheetName={visibleSelection.sheetName}
                 sheetNames={app.sheetNames}
                 renderTileSource={app.workerHandle?.viewportStore}
                 columnWidths={app.columnWidths}
