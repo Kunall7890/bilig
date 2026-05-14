@@ -386,9 +386,9 @@ requireIncludes(starterIssues, '#337: docs(examples): add Astro endpoint WorkPap
 requireIncludes(starterIssues, '#338: docs(examples): add TanStack Start server function WorkPaper smoke', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#339: docs(examples): add Qwik City WorkPaper route smoke', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#342: docs(examples): add Next.js Server Action validation-error smoke', 'docs/starter-issues.md')
-requireIncludes(starterIssues, '#374: docs(examples): add Hapi WorkPaper route smoke', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#375: docs(storage): add Turso WorkPaper JSON persistence recipe', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#376: docs(agent): add Firebase Genkit WorkPaper tool recipe', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '#377: docs(examples): add AdonisJS WorkPaper route smoke', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#358: docs(agent): add AI SDK onStepFinish WorkPaper transcript', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#359: docs(agent): add Anthropic tool-use WorkPaper transcript', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#348: docs(examples): add Docker healthcheck for the WorkPaper MCP stdio server', 'docs/starter-issues.md')
@@ -839,9 +839,10 @@ await requireFile(join(repoRoot, 'examples', 'serverless-workpaper-api', 'next-r
 await requireFile(join(repoRoot, 'examples', 'serverless-workpaper-api', 'next-server-action.ts'))
 await requireFile(join(repoRoot, 'examples', 'serverless-workpaper-api', 'next-server-action-formdata.ts'))
 await requireFile(join(repoRoot, 'examples', 'serverless-workpaper-api', 'persistence-adapters.ts'))
-const [serverlessExampleReadme, serverlessExamplePackage] = await Promise.all([
+const [serverlessExampleReadme, serverlessExamplePackage, serverlessFrameworkAdapters] = await Promise.all([
   readFile(join(repoRoot, 'examples', 'serverless-workpaper-api', 'README.md'), 'utf8'),
   readFile(join(repoRoot, 'examples', 'serverless-workpaper-api', 'package.json'), 'utf8'),
+  readFile(join(repoRoot, 'examples', 'serverless-workpaper-api', 'framework-adapters.ts'), 'utf8'),
 ])
 const serverlessWorkPaperApiRouteDoc = await readFile(join(docsRoot, 'serverless-workpaper-api-route.md'), 'utf8')
 const persistenceDoc = await readFile(join(docsRoot, 'persisting-formula-backed-workpaper-documents-in-node.md'), 'utf8')
@@ -864,6 +865,12 @@ requireIncludes(llms, 'npm run next-server-action-formdata', 'docs/llms.txt')
 requireIncludes(readme, 'npm run next-server-action-formdata', 'README.md')
 requireIncludes(serverlessExampleReadme, 'npm run framework-adapters', 'examples/serverless-workpaper-api/README.md')
 requireIncludes(serverlessExampleReadme, '## Framework Adapters', 'examples/serverless-workpaper-api/README.md')
+requireIncludes(serverlessExampleReadme, 'Hapi-style `request` plus `h.response()`', 'examples/serverless-workpaper-api/README.md')
+requireIncludes(
+  serverlessExampleReadme,
+  '"adapters": ["fetch", "hono", "hapi", "express", "fastify"]',
+  'examples/serverless-workpaper-api/README.md',
+)
 requireIncludes(serverlessExampleReadme, 'npm run persistence-adapters', 'examples/serverless-workpaper-api/README.md')
 requireIncludes(serverlessExampleReadme, '## Persistence Adapters', 'examples/serverless-workpaper-api/README.md')
 requireIncludes(serverlessExampleReadme, 'Postgres JSONB', 'examples/serverless-workpaper-api/README.md')
@@ -894,6 +901,12 @@ requireIncludes(
   serverlessExamplePackage,
   '"framework-adapters": "tsx framework-adapters.ts"',
   'examples/serverless-workpaper-api/package.json',
+)
+requireIncludes(serverlessFrameworkAdapters, 'createHapiWorkPaperRoutes', 'examples/serverless-workpaper-api/framework-adapters.ts')
+requireIncludes(
+  serverlessFrameworkAdapters,
+  "adapters: ['fetch', 'hono', 'hapi', 'express', 'fastify']",
+  'examples/serverless-workpaper-api/framework-adapters.ts',
 )
 requireIncludes(
   serverlessExamplePackage,

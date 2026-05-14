@@ -39,6 +39,36 @@ export type FastifyLikeReply = {
   send(payload: unknown): unknown
 }
 
+export type HapiLikeRequest = {
+  headers: HeaderBag
+  info?: {
+    host?: string
+    protocol?: string
+  }
+  method: string
+  path: string
+  payload?: unknown
+  raw?: {
+    req?: {
+      url?: string
+    }
+  }
+  url?: {
+    href?: string
+  }
+}
+
+export type HapiLikeResponse = {
+  code(status: number): HapiLikeResponse
+  header(name: string, value: string): HapiLikeResponse
+  payload?: unknown
+  statusCode?: number
+}
+
+export type HapiLikeResponseToolkit = {
+  response(payload: unknown): HapiLikeResponse
+}
+
 export type HonoLikeContext = {
   req: {
     raw: Request
@@ -77,12 +107,30 @@ export function createFastifyWorkPaperHandler(handler: WorkPaperRequestHandler =
   }
 }
 
+export function createHapiWorkPaperRoutes(handler: WorkPaperRequestHandler = handleWorkPaperRequest) {
+  return [
+    {
+      method: 'GET',
+      path: '/api/workpaper/summary',
+      handler: (request: HapiLikeRequest, h: HapiLikeResponseToolkit): Promise<HapiLikeResponse> =>
+        writeHapiResponse(h, handler(createWebRequestFromHapi(request))),
+    },
+    {
+      method: 'POST',
+      path: '/api/workpaper/revenue',
+      handler: (request: HapiLikeRequest, h: HapiLikeResponseToolkit): Promise<HapiLikeResponse> =>
+        writeHapiResponse(h, handler(createWebRequestFromHapi(request))),
+    },
+  ] as const
+}
+
 export async function createFrameworkAdapterDemoOutput() {
   const handler = createWorkPaperRequestHandler(createInMemoryWorkbookStorage())
   const fetchHandlers = createFetchWorkPaperHandler(handler)
   const honoHandler = createHonoWorkPaperHandler(handler)
   const expressHandler = createExpressWorkPaperHandler(handler)
   const fastifyHandler = createFastifyWorkPaperHandler(handler)
+  const hapiRoutes = createHapiWorkPaperRoutes(createWorkPaperRequestHandler(createInMemoryWorkbookStorage()))
 
   const fetchBefore = await readJsonResponse(fetchHandlers.GET(createWebRequest('GET', '/api/workpaper/summary')), 'fetch before')
   const honoBefore = await readJsonResponse(
@@ -92,6 +140,37 @@ export async function createFrameworkAdapterDemoOutput() {
       },
     }),
     'hono before',
+  )
+  const hapiBeforeResponse = createMockHapiToolkit()
+  const hapiBefore = await readHapiRouteResponse(
+    hapiRoutes[0].handler(
+      {
+        headers: {
+          host: 'localhost:8787',
+        },
+        method: 'GET',
+        path: '/api/workpaper/summary',
+      },
+      hapiBeforeResponse,
+    ),
+    'hapi before',
+  )
+  const hapiEditResponse = createMockHapiToolkit()
+  const hapiEdit = await readHapiRouteResponse(
+    hapiRoutes[1].handler(
+      {
+        headers: {
+          host: 'localhost:8787',
+        },
+        method: 'POST',
+        path: '/api/workpaper/revenue',
+        payload: {
+          records: updatedRevenueRecords,
+        },
+      },
+      hapiEditResponse,
+    ),
+    'hapi edit',
   )
 
   const expressResponse = createMockExpressResponse()
@@ -125,10 +204,19 @@ export async function createFrameworkAdapterDemoOutput() {
   const fastifyAfter = readJsonRecord(fastifyReply.payload, 'fastify after body')
 
   const output = {
-    adapters: ['fetch', 'hono', 'express', 'fastify'],
+    adapters: ['fetch', 'hono', 'hapi', 'express', 'fastify'],
     before: {
       fetch: readSummary(readJsonRecord(fetchBefore.summary, 'fetch summary')),
       hono: readSummary(readJsonRecord(honoBefore.summary, 'hono summary')),
+      hapi: readSummary(readJsonRecord(hapiBefore.summary, 'hapi summary')),
+    },
+    hapi: {
+      status: hapiEditResponse.responseObject?.statusCode ?? 0,
+      edit: {
+        records: readNumber(hapiEdit.records, 'hapi edit records'),
+        after: readSummary(readJsonRecord(hapiEdit.after, 'hapi edit after')),
+        checks: readChecks(readJsonRecord(hapiEdit.checks, 'hapi edit checks')),
+      },
     },
     express: {
       status: expressResponse.statusCode,
@@ -172,6 +260,14 @@ function createWebRequestFromFastify(request: FastifyLikeRequest): Request {
     headers: request.headers,
     host: request.hostname,
     protocol: request.protocol,
+  })
+}
+
+function createWebRequestFromHapi(request: HapiLikeRequest): Request {
+  return createWebRequest(request.method, request.raw?.req?.url ?? request.url?.href ?? request.path, request.payload, {
+    headers: request.headers,
+    host: request.info?.host,
+    protocol: request.info?.protocol,
   })
 }
 
@@ -242,6 +338,16 @@ async function writeFastifyResponse(reply: FastifyLikeReply, webResponse: Respon
   return reply.code(webResponse.status).send(readResponsePayload(body, webResponse.headers))
 }
 
+async function writeHapiResponse(h: HapiLikeResponseToolkit, webResponsePromise: Promise<Response> | Response): Promise<HapiLikeResponse> {
+  const webResponse = await webResponsePromise
+  const body = await webResponse.text()
+  const response = h.response(readResponsePayload(body, webResponse.headers)).code(webResponse.status)
+  for (const [name, value] of webResponse.headers) {
+    response.header(name, value)
+  }
+  return response
+}
+
 function readResponsePayload(body: string, headers: Headers): unknown {
   if (headers.get('content-type')?.includes('application/json')) {
     return JSON.parse(body) as unknown
@@ -296,6 +402,44 @@ function createMockFastifyReply() {
     },
   }
   return reply
+}
+
+function createMockHapiToolkit() {
+  const toolkit = {
+    responseObject: undefined as
+      | {
+          headers: Map<string, string>
+          payload: unknown
+          statusCode: number
+        }
+      | undefined,
+    response(payload: unknown) {
+      const response = {
+        headers: new Map<string, string>(),
+        payload,
+        statusCode: 200,
+        code(status: number) {
+          response.statusCode = status
+          return response
+        },
+        header(name: string, value: string) {
+          response.headers.set(name.toLowerCase(), value)
+          return response
+        },
+      }
+      toolkit.responseObject = response
+      return response
+    },
+  }
+  return toolkit
+}
+
+async function readHapiRouteResponse(responsePromise: Promise<HapiLikeResponse>, label: string): Promise<JsonRecord> {
+  const response = await responsePromise
+  if (response.statusCode !== 200) {
+    throw new Error(`${label} failed: ${response.statusCode} ${JSON.stringify(response.payload)}`)
+  }
+  return readJsonRecord(response.payload, label)
 }
 
 function readJsonRecord(value: unknown, label: string): JsonRecord {
@@ -357,11 +501,18 @@ function assertOutput(output: Awaited<ReturnType<typeof createFrameworkAdapterDe
   if (
     JSON.stringify(output.before.fetch) !== JSON.stringify(expectedBefore) ||
     JSON.stringify(output.before.hono) !== JSON.stringify(expectedBefore) ||
+    JSON.stringify(output.before.hapi) !== JSON.stringify(expectedBefore) ||
+    JSON.stringify(output.hapi.edit.after) !== JSON.stringify(expectedAfter) ||
     JSON.stringify(output.express.edit.after) !== JSON.stringify(expectedAfter) ||
     JSON.stringify(output.fastify.summary) !== JSON.stringify(expectedAfter) ||
+    output.hapi.status !== 200 ||
     output.express.status !== 200 ||
     output.fastify.status !== 200 ||
+    output.hapi.edit.records !== 4 ||
     output.express.edit.records !== 4 ||
+    !output.hapi.edit.checks.totalRevenueChanged ||
+    !output.hapi.edit.checks.formulasPersisted ||
+    output.hapi.edit.checks.serializedBytes <= 0 ||
     !output.express.edit.checks.totalRevenueChanged ||
     !output.express.edit.checks.formulasPersisted ||
     output.express.edit.checks.serializedBytes <= 0

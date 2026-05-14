@@ -230,11 +230,26 @@ Latest TypeScript-example guard action on May 14, 2026:
   end in `.js` after compilation.
 - The serverless example README now points SvelteKit readers at a `+server.ts`
   adapter boundary instead of a `+server.js` file.
-- The completed guard replaces one closed starter with three new scoped
-  first-timer issues: Hapi route smoke
-  <https://github.com/proompteng/bilig/issues/374>, Turso WorkPaper JSON
-  persistence <https://github.com/proompteng/bilig/issues/375>, and Firebase
-  Genkit WorkPaper tool recipe <https://github.com/proompteng/bilig/issues/376>.
+- The completed guard replaced one closed starter with three new scoped
+  first-timer issues. The Hapi route smoke
+  <https://github.com/proompteng/bilig/issues/374> later shipped as a runnable
+  `framework-adapters.ts` path, so the active queue now keeps Turso WorkPaper
+  JSON persistence <https://github.com/proompteng/bilig/issues/375>, Firebase
+  Genkit WorkPaper tool recipe <https://github.com/proompteng/bilig/issues/376>,
+  and an AdonisJS WorkPaper route smoke
+  <https://github.com/proompteng/bilig/issues/377>.
+
+Latest Hapi route adapter action on May 14, 2026:
+
+- The serverless WorkPaper API example now exercises a Hapi-style route pair in
+  `examples/serverless-workpaper-api/framework-adapters.ts`: one route reads
+  `/api/workpaper/summary`, and one route posts `/api/workpaper/revenue`.
+- `npm run framework-adapters` now proves Fetch, Hono, Hapi, Express, and
+  Fastify wrappers against the shared WorkPaper request handler, with Hapi
+  returning through a typed `h.response()` toolkit shape.
+- The serverless example README now includes the Hapi adapter in the expected
+  output and points contributors at the next first-time route task,
+  <https://github.com/proompteng/bilig/issues/377>.
 - External MCP directory follow-up: mcpservers.org submission form is staged in
   Atlas with public project data and category `Development`. The remaining
   steps are entering a contact email and clicking Submit, both held for

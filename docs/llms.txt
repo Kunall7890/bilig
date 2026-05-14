@@ -452,8 +452,8 @@ including its p95 caveat.
   https://github.com/proompteng/bilig/issues/250
 - current small docs issue: TypeScript local import suffix note:
   https://github.com/proompteng/bilig/issues/255
-- current small example issue: Hapi WorkPaper route smoke:
-  https://github.com/proompteng/bilig/issues/374
+- current small example issue: AdonisJS WorkPaper route smoke:
+  https://github.com/proompteng/bilig/issues/377
 - current small storage issue: Turso WorkPaper JSON persistence recipe:
   https://github.com/proompteng/bilig/issues/375
 - current small agent issue: Firebase Genkit WorkPaper tool recipe:

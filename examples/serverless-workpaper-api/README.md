@@ -312,16 +312,17 @@ npm run framework-adapters
 ```
 
 The script exercises the same WorkPaper route through Fetch-style handlers,
-Hono-style `context.req.raw`, Express-style `(req, res, next)`, and
-Fastify-style `(request, reply)` adapters. It writes the revenue update through
-the Express wrapper, reads the persisted workbook through the Fastify wrapper,
-and prints `verified: true` only after the calculated summary matches.
+Hono-style `context.req.raw`, Hapi-style `request` plus `h.response()`,
+Express-style `(req, res, next)`, and Fastify-style `(request, reply)` adapters.
+It reads the summary and writes the revenue update through the Hapi routes,
+keeps the existing Express and Fastify wrappers covered, and prints
+`verified: true` only after the calculated summary matches.
 
 Expected output:
 
 ```json
 {
-  "adapters": ["fetch", "hono", "express", "fastify"],
+  "adapters": ["fetch", "hono", "hapi", "express", "fastify"],
   "before": {
     "fetch": {
       "totalRevenue": 36900,
@@ -332,6 +333,27 @@ Expected output:
       "totalRevenue": 36900,
       "westCustomers": 20,
       "largestDeal": 24000
+    },
+    "hapi": {
+      "totalRevenue": 36900,
+      "westCustomers": 20,
+      "largestDeal": 24000
+    }
+  },
+  "hapi": {
+    "status": 200,
+    "edit": {
+      "records": 4,
+      "after": {
+        "totalRevenue": 48600,
+        "westCustomers": 20,
+        "largestDeal": 24000
+      },
+      "checks": {
+        "totalRevenueChanged": true,
+        "formulasPersisted": true,
+        "serializedBytes": 1195
+      }
     }
   },
   "express": {
@@ -461,7 +483,9 @@ Expected output shape:
 - In Koa, adapt `ctx` into a web-standard `Request`, then write status, headers,
   and body back to the Koa context.
 - In Hapi, adapt the framework request into a web-standard `Request`, then
-  return the shared response through `h.response()`.
+  return the shared response through `h.response()`. The
+  `framework-adapters.ts` smoke includes both `/api/workpaper/summary` and
+  `/api/workpaper/revenue` Hapi routes.
 - In an AWS Lambda Function URL handler, adapt the event into a web-standard
   `Request`, then return a Lambda proxy response.
 - In Azure Functions, adapt the HTTP trigger request into a web-standard
