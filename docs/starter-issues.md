@@ -6,8 +6,8 @@ search indexing.
 
 Current starter queue as of May 14, 2026:
 
-- 99 open `first-timers-only` issues.
-- 99 issues are generally available for a new contributor to claim.
+- 100 open `first-timers-only` issues.
+- 100 issues are generally available for a new contributor to claim.
 - 0 issues already have active pull requests.
 
 ## Available Starter Picks
@@ -23,6 +23,7 @@ Current starter queue as of May 14, 2026:
 - [#327: docs(agent): add Cloudflare Agents WorkPaper state persistence note](https://github.com/proompteng/bilig/issues/327)
 - [#334: docs(agent): add OpenAI Responses streaming tool-call transcript](https://github.com/proompteng/bilig/issues/334)
 - [#358: docs(agent): add AI SDK onStepFinish WorkPaper transcript](https://github.com/proompteng/bilig/issues/358)
+- [#359: docs(agent): add Anthropic tool-use WorkPaper transcript](https://github.com/proompteng/bilig/issues/359)
 - [#344: docs(agent): add LangChain.js structured tool WorkPaper smoke](https://github.com/proompteng/bilig/issues/344)
 - [#283: docs(mcp): add Cursor MCP config for the WorkPaper stdio server](https://github.com/proompteng/bilig/issues/283)
 - [#284: docs(mcp): add Windsurf MCP config for local WorkPaper testing](https://github.com/proompteng/bilig/issues/284)
