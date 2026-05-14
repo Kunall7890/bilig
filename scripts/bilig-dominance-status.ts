@@ -154,6 +154,8 @@ export interface BiligDominanceStatus {
     readonly missingInputs: readonly string[]
     readonly nextFixtureCheckCommand: string
     readonly nextPublicAccessCheckCommand: string
+    readonly nextGoogleSheetsStorageStateCommand: string | null
+    readonly nextMicrosoftExcelWebStorageStateCommand: string | null
     readonly nextGoogleSheetsUploadInstruction: string | null
     readonly nextMicrosoftExcelWebUploadInstruction: string | null
     readonly nextPreflightCommand: string | null
@@ -599,6 +601,36 @@ function buildUiSameCorpusStatus(
   const nextMicrosoftExcelWebUploadInstruction = missingInputs.includes('microsoftExcelWebEditableUrlForUploadedSameCorpusWorkbook')
     ? `Upload ${fixture.localXlsxPath} to OneDrive or Microsoft 365, open it as an editable Excel Web workbook, then pass its browser URL as --microsoft-excel-web-url. The Office viewer URL is only valid for public XLSX identity checks.`
     : null
+  const nextGoogleSheetsStorageStateCommand = [
+    'pnpm',
+    'ui:same-corpus:capture',
+    '--',
+    '--save-storage-state',
+    '.cache/ui-responsiveness/google-sheets-storage-state.json',
+    '--auth-product',
+    'google-sheets',
+    '--google-sheets-url',
+    googleSheetsUrlArgument,
+    '--corpus',
+    fixture.corpusCaseId,
+  ]
+    .map(shellQuote)
+    .join(' ')
+  const nextMicrosoftExcelWebStorageStateCommand = [
+    'pnpm',
+    'ui:same-corpus:capture',
+    '--',
+    '--save-storage-state',
+    '.cache/ui-responsiveness/microsoft-excel-web-storage-state.json',
+    '--auth-product',
+    'microsoft-excel-web',
+    '--microsoft-excel-web-url',
+    microsoftExcelWebUrlArgument,
+    '--corpus',
+    fixture.corpusCaseId,
+  ]
+    .map(shellQuote)
+    .join(' ')
   const nextPreflightCommand = [
     'pnpm',
     'ui:same-corpus:capture',
@@ -660,12 +692,20 @@ function buildUiSameCorpusStatus(
     ]
       .map(shellQuote)
       .join(' '),
+    nextGoogleSheetsStorageStateCommand: browserCaptureGuard.active ? null : nextGoogleSheetsStorageStateCommand,
+    nextMicrosoftExcelWebStorageStateCommand: browserCaptureGuard.active ? null : nextMicrosoftExcelWebStorageStateCommand,
     nextGoogleSheetsUploadInstruction,
     nextMicrosoftExcelWebUploadInstruction,
     nextPreflightCommand: browserCaptureGuard.active ? null : nextPreflightCommand,
     nextCaptureCommand: browserCaptureGuard.active ? null : nextCaptureCommand,
     blockedCommands: browserCaptureGuard.active
-      ? [nextPreflightCommand, nextCaptureCommand, nextScorecardGenerateCommand].map(localCiResourceGuardOverrideCommand)
+      ? [
+          nextGoogleSheetsStorageStateCommand,
+          nextMicrosoftExcelWebStorageStateCommand,
+          nextPreflightCommand,
+          nextCaptureCommand,
+          nextScorecardGenerateCommand,
+        ].map(localCiResourceGuardOverrideCommand)
       : [],
     browserCaptureGuard,
     nextScorecardGenerateCommand: browserCaptureGuard.active ? null : nextScorecardGenerateCommand,

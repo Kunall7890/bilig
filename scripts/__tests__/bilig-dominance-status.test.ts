@@ -39,6 +39,8 @@ describe('bilig dominance status', () => {
       },
       nextFixtureCheckCommand: 'pnpm ui:same-corpus:fixture:check',
       nextPublicAccessCheckCommand: expect.stringContaining('pnpm ui:same-corpus:public-check'),
+      nextGoogleSheetsStorageStateCommand: expect.stringContaining('--auth-product google-sheets'),
+      nextMicrosoftExcelWebStorageStateCommand: expect.stringContaining('--auth-product microsoft-excel-web'),
       browserCaptureGuard: {
         active: false,
         activeMarkerPaths: [],
@@ -61,6 +63,12 @@ describe('bilig dominance status', () => {
     expect(status.uiSameCorpus.nextCaptureCommand).toContain('.cache/ui-responsiveness/same-corpus-capture.json')
     expect(status.uiSameCorpus.nextCaptureCommand).toContain('<microsoft-excel-web-editable-url>')
     expect(status.uiSameCorpus.nextCaptureCommand).not.toContain('view.officeapps.live.com/op/view.aspx')
+    expect(status.uiSameCorpus.nextGoogleSheetsStorageStateCommand).toContain('.cache/ui-responsiveness/google-sheets-storage-state.json')
+    expect(status.uiSameCorpus.nextGoogleSheetsStorageStateCommand).toContain('<google-sheets-url>')
+    expect(status.uiSameCorpus.nextMicrosoftExcelWebStorageStateCommand).toContain(
+      '.cache/ui-responsiveness/microsoft-excel-web-storage-state.json',
+    )
+    expect(status.uiSameCorpus.nextMicrosoftExcelWebStorageStateCommand).toContain('<microsoft-excel-web-editable-url>')
     expect(status.uiSameCorpus.nextGoogleSheetsUploadInstruction).toContain('share it to anyone with the link')
     expect(status.uiSameCorpus.nextMicrosoftExcelWebUploadInstruction).toContain('editable Excel Web workbook')
   })
@@ -88,6 +96,8 @@ describe('bilig dominance status', () => {
     expect(status.uiSameCorpus.nextPreflightCommand).not.toContain('<microsoft-excel-web-editable-url>')
     expect(status.uiSameCorpus.nextPublicAccessCheckCommand).toContain(googleSheetsUrl)
     expect(status.uiSameCorpus.nextPublicAccessCheckCommand).not.toContain('<google-sheets-url>')
+    expect(status.uiSameCorpus.nextGoogleSheetsStorageStateCommand).toContain(googleSheetsUrl)
+    expect(status.uiSameCorpus.nextMicrosoftExcelWebStorageStateCommand).toContain(microsoftExcelWebUrl)
     expect(status.uiSameCorpus.nextCaptureCommand).toContain(googleSheetsUrl)
     expect(status.uiSameCorpus.nextCaptureCommand).toContain(microsoftExcelWebUrl)
     expect(status.uiSameCorpus.nextCaptureCommand).not.toContain('<google-sheets-url>')
@@ -113,6 +123,8 @@ describe('bilig dominance status', () => {
     expect(status.uiSameCorpus.nextPreflightCommand).toContain(googleSheetsUrl)
     expect(status.uiSameCorpus.nextPreflightCommand).not.toContain('<google-sheets-url>')
     expect(status.uiSameCorpus.nextPreflightCommand).toContain('<microsoft-excel-web-editable-url>')
+    expect(status.uiSameCorpus.nextGoogleSheetsStorageStateCommand).toContain(googleSheetsUrl)
+    expect(status.uiSameCorpus.nextMicrosoftExcelWebStorageStateCommand).toContain('<microsoft-excel-web-editable-url>')
     expect(status.uiSameCorpus.nextPublicAccessCheckCommand).toContain(
       '--output .cache/ui-responsiveness/same-corpus-public-access-check.json',
     )
@@ -151,7 +163,15 @@ describe('bilig dominance status', () => {
     expect(status.uiSameCorpus.nextPreflightCommand).toBeNull()
     expect(status.uiSameCorpus.nextCaptureCommand).toBeNull()
     expect(status.uiSameCorpus.nextScorecardGenerateCommand).toBeNull()
+    expect(status.uiSameCorpus.nextGoogleSheetsStorageStateCommand).toBeNull()
+    expect(status.uiSameCorpus.nextMicrosoftExcelWebStorageStateCommand).toBeNull()
     expect(status.uiSameCorpus.blockedCommands).toEqual([
+      expect.stringContaining(
+        'BILIG_ALLOW_LOCAL_CI_RESOURCE_GUARD=1 pnpm ui:same-corpus:capture -- --save-storage-state .cache/ui-responsiveness/google-sheets-storage-state.json',
+      ),
+      expect.stringContaining(
+        'BILIG_ALLOW_LOCAL_CI_RESOURCE_GUARD=1 pnpm ui:same-corpus:capture -- --save-storage-state .cache/ui-responsiveness/microsoft-excel-web-storage-state.json',
+      ),
       expect.stringContaining('BILIG_ALLOW_LOCAL_CI_RESOURCE_GUARD=1 pnpm ui:same-corpus:capture -- --preflight'),
       expect.stringContaining(
         'BILIG_ALLOW_LOCAL_CI_RESOURCE_GUARD=1 pnpm ui:same-corpus:capture -- --output .cache/ui-responsiveness/same-corpus-capture.json',
