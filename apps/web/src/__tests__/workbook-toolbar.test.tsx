@@ -337,6 +337,50 @@ describe('WorkbookToolbar', () => {
     })
   })
 
+  it('keeps workbook history shortcuts inside active text entry targets', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const invokeMutation = vi.fn(async () => {})
+    const onRedo = vi.fn()
+    const onUndo = vi.fn()
+    const selectionRangeRef: MutableRefObject<CellRangeRef> = {
+      current: {
+        sheetName: 'Sheet1',
+        startAddress: 'A1',
+        endAddress: 'A1',
+      },
+    }
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+    const textInput = document.createElement('input')
+    textInput.value = 'native-history'
+    document.body.appendChild(textInput)
+
+    await act(async () => {
+      root.render(
+        <ToolbarHookHarness invokeMutation={invokeMutation} onRedo={onRedo} onUndo={onUndo} selectionRangeRef={selectionRangeRef} />,
+      )
+    })
+
+    await act(async () => {
+      const undoKeyEvent = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: 'z', metaKey: true })
+      const redoInputEvent = new InputEvent('beforeinput', { bubbles: true, cancelable: true, inputType: 'historyRedo' })
+      textInput.dispatchEvent(undoKeyEvent)
+      textInput.dispatchEvent(redoInputEvent)
+      expect(undoKeyEvent.defaultPrevented).toBe(false)
+      expect(redoInputEvent.defaultPrevented).toBe(false)
+    })
+
+    expect(onUndo).not.toHaveBeenCalled()
+    expect(onRedo).not.toHaveBeenCalled()
+
+    textInput.remove()
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
   it('derives clear visible save states for saved, saving, local-only, offline, and sync issues', () => {
     expect(
       deriveWorkbookStatusPresentation({

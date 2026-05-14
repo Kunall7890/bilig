@@ -1190,6 +1190,32 @@ test('web app restores a keyboard clear through undo and redo history controls',
   await expect(formulaInput).toHaveValue('')
 })
 
+test('web app routes workbook undo and redo keyboard shortcuts from the grid', async ({ page }) => {
+  const documentId = createTestDocumentId('playwright-grid-history-shortcuts')
+  await page.goto(`/?document=${encodeURIComponent(documentId)}`)
+  await waitForWorkbookReady(page)
+
+  const formulaInput = page.getByTestId('formula-input')
+  const resolvedValue = page.getByTestId('formula-resolved-value')
+  const grid = page.getByTestId('sheet-grid')
+  const redoShortcut = PRIMARY_MODIFIER === 'Meta' ? `${PRIMARY_MODIFIER}+Shift+Z` : `${PRIMARY_MODIFIER}+Y`
+
+  await clickProductCell(page, 3, 11)
+  await formulaInput.fill('keyboard-history-check')
+  await formulaInput.press('Enter')
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!D12')
+  await expect(formulaInput).toHaveValue('keyboard-history-check')
+  await expect(resolvedValue).toHaveText('keyboard-history-check')
+
+  await grid.press(`${PRIMARY_MODIFIER}+Z`)
+  await expect(formulaInput).toHaveValue('')
+  await expect(resolvedValue).toHaveText('∅')
+
+  await grid.press(redoShortcut)
+  await expect(formulaInput).toHaveValue('keyboard-history-check')
+  await expect(resolvedValue).toHaveText('keyboard-history-check')
+})
+
 test('web app ignores modified delete keys instead of clearing the grid selection', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-modified-delete-ignored')
   await page.goto(`/?document=${encodeURIComponent(documentId)}`)

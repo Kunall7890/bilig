@@ -408,7 +408,7 @@ export function useWorkerWorkbookAppState(input: {
     canRedo: false,
   }
   const undoLocalLatestChange = useCallback(() => {
-    if (!runtimeController || !localHistoryState.canUndo) {
+    if (!runtimeController) {
       return
     }
     void (async () => {
@@ -418,9 +418,9 @@ export function useWorkerWorkbookAppState(input: {
         reportRuntimeError(error)
       }
     })()
-  }, [localHistoryState.canUndo, reportRuntimeError, runtimeController])
+  }, [reportRuntimeError, runtimeController])
   const redoLocalLatestChange = useCallback(() => {
-    if (!runtimeController || !localHistoryState.canRedo) {
+    if (!runtimeController) {
       return
     }
     void (async () => {
@@ -430,7 +430,7 @@ export function useWorkerWorkbookAppState(input: {
         reportRuntimeError(error)
       }
     })()
-  }, [localHistoryState.canRedo, reportRuntimeError, runtimeController])
+  }, [reportRuntimeError, runtimeController])
   const canUndo = zeroConfigured ? remoteCanUndo : localHistoryState.canUndo
   const canRedo = zeroConfigured ? remoteCanRedo : localHistoryState.canRedo
   const undoLatestChange = zeroConfigured ? undoRemoteLatestChange : undoLocalLatestChange

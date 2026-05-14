@@ -415,7 +415,9 @@ export function useWorkbookSync(input: {
         const rollbackOptimisticCell = applyOptimisticCellMutation(workerHandleRef.current?.viewportStore, mutation)
         try {
           await enqueuePendingMutation(mutation)
-          scheduleAuthoritativeRefreshProbes()
+          if (canAttemptRemoteSync(connectionStateRef.current)) {
+            scheduleAuthoritativeRefreshProbes()
+          }
         } catch (error) {
           rollbackOptimisticCell?.()
           throw error

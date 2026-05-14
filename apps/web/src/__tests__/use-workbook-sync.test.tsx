@@ -379,6 +379,74 @@ describe('useWorkbookSync', () => {
       root.unmount()
     })
   })
+
+  it('does not probe authoritative events for local-only mutations while disconnected', async () => {
+    vi.useFakeTimers()
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    let sync: ReturnType<typeof useWorkbookSync> | null = null
+    const reportRuntimeError = vi.fn()
+    const runtimeController = {
+      invoke: vi.fn(async (method: string, input?: unknown) => {
+        if (method !== 'enqueuePendingMutation') {
+          throw new Error(`Unexpected runtime invoke: ${method}`)
+        }
+        if (!isPendingMutationInput(input)) {
+          throw new Error('Expected pending mutation input')
+        }
+        return {
+          ...createPendingMutation(),
+          method: input.method,
+          args: input.args,
+        }
+      }),
+    }
+
+    function Harness() {
+      sync = useWorkbookSync({
+        documentId: 'doc-1',
+        connectionStateName: 'closed',
+        connectionStateRef: { current: 'closed' },
+        runtimeController,
+        workerHandleRef: { current: null },
+        zeroRef: {
+          current: {
+            mutate() {
+              throw new Error('Local-only mutation must not attempt remote sync')
+            },
+          },
+        },
+        reportRuntimeError,
+      })
+      return null
+    }
+
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+    await act(async () => {
+      root.render(<Harness />)
+    })
+    if (!sync) {
+      throw new Error('Expected useWorkbookSync harness to initialize')
+    }
+
+    await act(async () => {
+      await sync!.invokeMutation('setCellValue', 'Sheet1', 'D12', 'local-only')
+      await vi.advanceTimersByTimeAsync(10_000)
+    })
+
+    expect(runtimeController.invoke).toHaveBeenCalledTimes(1)
+    expect(runtimeController.invoke).toHaveBeenCalledWith('enqueuePendingMutation', {
+      method: 'setCellValue',
+      args: ['Sheet1', 'D12', 'local-only'],
+    })
+    expect(reportRuntimeError).not.toHaveBeenCalled()
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
 })
 
 function isPendingMutationInput(
