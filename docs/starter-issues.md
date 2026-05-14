@@ -6,10 +6,10 @@ search indexing.
 
 Current starter queue as of May 14, 2026:
 
-- 111 open `first-timers-only` issues.
+- 106 open `first-timers-only` issues.
 - 106 issues are generally available for a new contributor to claim.
 - 10 starter issues are code or test tasks rather than docs-only tasks.
-- 5 open starter issues already have active pull requests.
+- 0 open starter issues currently have active pull requests.
 
 ## Available Starter Picks
 
@@ -149,15 +149,11 @@ Current starter queue as of May 14, 2026:
 - [#314: docs(comparison): add Formula.js boundary examples](https://github.com/proompteng/bilig/issues/314)
 - [#333: docs(comparison): add Univer spreadsheet UI boundary note](https://github.com/proompteng/bilig/issues/333)
 
-## Already In Review
+## Currently In Review
 
-- [#344: docs(agent): add LangChain.js structured tool WorkPaper smoke](https://github.com/proompteng/bilig/issues/344) is covered by [PR #351](https://github.com/proompteng/bilig/pull/351).
-- [#345: docs(examples): add Next.js Route Handler WorkPaper JSON smoke](https://github.com/proompteng/bilig/issues/345) is covered by [PR #353](https://github.com/proompteng/bilig/pull/353).
-- [#346: docs(examples): add Vercel Function WorkPaper route smoke](https://github.com/proompteng/bilig/issues/346) is covered by [PR #352](https://github.com/proompteng/bilig/pull/352).
-- [#347: docs(storage): add plain node-postgres WorkPaper JSON persistence recipe](https://github.com/proompteng/bilig/issues/347) is covered by [PR #349](https://github.com/proompteng/bilig/pull/349).
-- [#364: test(core): add quoted semicolon CSV fixture](https://github.com/proompteng/bilig/issues/364) is covered by [PR #365](https://github.com/proompteng/bilig/pull/365).
-
-Keep active starter work here until the PR lands or closes.
+No starter issues currently have open pull requests. When a contributor opens a
+PR for one of these tickets, move the issue into this section until the PR lands
+or closes.
 
 The list intentionally excludes closed issues and broad corpus/parity epics. Add
 new starter tickets only when the expected patch can stay small, has a clear

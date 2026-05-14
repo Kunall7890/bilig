@@ -48,7 +48,7 @@ export function requireHomepageDiscovery(index: string, siteCss: string, product
       'Copy <code>.ts</code> files, not pseudocode.',
       'Edit and verify',
       'Write a cell, recalc, then read the dependent value.',
-      '111 starter issues',
+      '106 starter issues',
       '10 code/test picks plus docs, examples, and adapters.',
       'Revenue.workpaper',
       'The workbook is the artifact: data, formulas, and saved state.',
