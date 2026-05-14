@@ -720,6 +720,30 @@ describe('public workbook corpus', () => {
     expect(roundTripSemanticsDigest(broadStyleRange)).not.toBe(roundTripSemanticsDigest(differentPopulatedStyle))
   })
 
+  it('ignores blank row and column dimensions in round-trip digests', () => {
+    const blankAxisDimensions = buildAxisDimensionSnapshot({
+      rows: [
+        { id: 'row:0', index: 0, size: 22 },
+        { id: 'row:1', index: 1, size: 44 },
+      ],
+      columns: [
+        { id: 'col:0', index: 0, size: 72 },
+        { id: 'col:1', index: 1, size: 144 },
+      ],
+    })
+    const populatedAxisDimensions = buildAxisDimensionSnapshot({
+      rows: [{ id: 'row:1', index: 1, size: 44 }],
+      columns: [{ id: 'col:1', index: 1, size: 144 }],
+    })
+    const differentPopulatedAxisDimensions = buildAxisDimensionSnapshot({
+      rows: [],
+      columns: [{ id: 'col:1', index: 1, size: 144 }],
+    })
+
+    expect(roundTripSemanticsDigest(blankAxisDimensions)).toBe(roundTripSemanticsDigest(populatedAxisDimensions))
+    expect(roundTripSemanticsDigest(blankAxisDimensions)).not.toBe(roundTripSemanticsDigest(differentPopulatedAxisDimensions))
+  })
+
   it('normalizes default chart series orientation in round-trip digests', () => {
     const implicitColumnOrientation = buildChartOrientationSnapshot()
     const explicitColumnOrientation = buildChartOrientationSnapshot('columns')
@@ -1968,6 +1992,22 @@ function buildInteriorStyledSnapshot(startAddress: string, endAddress: string, b
             },
           ],
         },
+      },
+    ],
+  }
+}
+
+function buildAxisDimensionSnapshot(metadata: NonNullable<WorkbookSnapshot['sheets'][number]['metadata']>): WorkbookSnapshot {
+  return {
+    version: 1,
+    workbook: { name: 'axis-dimensions' },
+    sheets: [
+      {
+        id: 1,
+        name: 'Dimensions',
+        order: 0,
+        cells: [{ address: 'B2', value: 'Visible' }],
+        metadata,
       },
     ],
   }

@@ -7,10 +7,14 @@ import { projectSupportedSnapshotSemantics } from './import-export-fidelity-proj
 export function roundTripSemanticsDigest(snapshot: WorkbookSnapshot): string {
   const hash = createHash('sha256')
   const populatedCellRowsBySheet = new Map<string, Map<number, PopulatedCellPosition[]>>()
+  const dimensionAxesBySheet = new Map<string, DimensionAxisCoverage>()
   for (const sheet of snapshot.sheets) {
+    const axes = dimensionAxesBySheet.get(sheet.name) ?? { rows: new Set<number>(), columns: new Set<number>() }
     for (const cell of sheet.cells) {
       if (cell.value !== undefined || cell.formula !== undefined) {
         const parsed = parseCellAddress(cell.address, sheet.name)
+        axes.rows.add(parsed.row)
+        axes.columns.add(parsed.col)
         const rows = populatedCellRowsBySheet.get(sheet.name) ?? new Map<number, PopulatedCellPosition[]>()
         const rowCells = rows.get(parsed.row) ?? []
         rowCells.push({ row: parsed.row, col: parsed.col, address: cell.address })
@@ -18,6 +22,7 @@ export function roundTripSemanticsDigest(snapshot: WorkbookSnapshot): string {
         populatedCellRowsBySheet.set(sheet.name, rows)
       }
     }
+    dimensionAxesBySheet.set(sheet.name, axes)
   }
   const metadataOnlyProjection = projectSupportedSnapshotSemantics({
     ...snapshot,
@@ -33,8 +38,12 @@ export function roundTripSemanticsDigest(snapshot: WorkbookSnapshot): string {
     populatedCellStyles: populatedStyleCells(styleRanges, populatedCellRowsBySheet),
     dimensionSheets: metadataOnlyProjection.dimensionSheets.map((sheet) => ({
       name: sheet.name,
-      columns: sheet.columns.filter((column) => column.size > 0).map((column) => ({ index: column.index, size: 0 })),
-      rows: sheet.rows.filter((row) => row.size > 0).map((row) => ({ index: row.index, size: 0 })),
+      columns: sheet.columns
+        .filter((column) => column.size > 0 && dimensionAxesBySheet.get(sheet.name)?.columns.has(column.index) === true)
+        .map((column) => ({ index: column.index, size: 0 })),
+      rows: sheet.rows
+        .filter((row) => row.size > 0 && dimensionAxesBySheet.get(sheet.name)?.rows.has(row.index) === true)
+        .map((row) => ({ index: row.index, size: 0 })),
       merges: sheet.merges,
     })),
   })
@@ -58,6 +67,11 @@ interface PopulatedCellPosition {
   readonly row: number
   readonly col: number
   readonly address: string
+}
+
+interface DimensionAxisCoverage {
+  readonly rows: Set<number>
+  readonly columns: Set<number>
 }
 
 type ProjectedStyleRange = ReturnType<typeof projectSupportedSnapshotSemantics>['styleRanges'][number]
