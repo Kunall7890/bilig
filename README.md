@@ -90,6 +90,7 @@ Useful direct paths:
   Cline, and Codex configs, or build the
   [Claude Desktop MCPB bundle](docs/claude-desktop-mcpb-workpaper.md). Run
   `npm run agent:openai-responses`,
+  `npm run agent:ai-sdk-generate-text`,
   `npm run agent:framework-adapters`, `npm run agent:mcp-tools`,
   `npm run agent:mcp-stdio`, or
   `pnpm mcpb:workpaper:build`, or
@@ -153,6 +154,7 @@ npm install
 npm start
 npm run agent:tool-call
 npm run agent:openai-responses
+npm run agent:ai-sdk-generate-text
 npm run agent:framework-adapters
 npm run agent:verify
 ```
@@ -388,6 +390,12 @@ For the OpenAI Responses function-calling shape on its own, run
 `npm run agent:openai-responses`. It shows the application-side loop: receive
 `function_call` items, execute the WorkPaper tools in TypeScript, append
 `function_call_output` items, and ground the final answer in computed readback.
+
+For the Vercel AI SDK shape on its own, run
+`npm run agent:ai-sdk-generate-text`. It uses the real `generateText()` and
+`tool()` APIs with a deterministic `ai/test` model, then verifies the same
+WorkPaper edit and restore checks in
+[`examples/headless-workpaper/ai-sdk-generate-text-tool-smoke.ts`](examples/headless-workpaper/ai-sdk-generate-text-tool-smoke.ts).
 
 For an MCP-style shape, run `npm run agent:mcp-tools`. It returns a
 dependency-free `tools/list` response, a `tools/call` read, and a verified

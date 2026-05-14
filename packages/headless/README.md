@@ -138,24 +138,25 @@ Star or bookmark the project: <https://github.com/proompteng/bilig>.
 The full example catalog lives in
 [`examples/headless-workpaper/README.md`](https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/README.md).
 
-| Need                                 | Start with                         | Existing example                                                                                                                         |
-| ------------------------------------ | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Evaluate formulas from API records   | `npm run json-records`             | [JSON records input](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-records-input)                       |
-| Load records already saved on disk   | `npm run json-file`                | [JSON file input](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-file-input)                             |
-| Persist and restore a workbook       | `npm run persistence`              | [Persistence round trip](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#persistence-round-trip)               |
-| Verify an agent writeback            | `npm run agent:verify`             | [Agent writeback verification](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#agent-writeback-verification)   |
-| Wrap WorkPaper operations as tools   | `npm run agent:tool-call`          | [Agent tool call loop](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#agent-tool-call-loop)                   |
-| Wire OpenAI Responses function calls | `npm run agent:openai-responses`   | [OpenAI Responses tool wrapper](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#openai-responses-tool-wrapper) |
-| Adapt tools to agent frameworks      | `npm run agent:framework-adapters` | [Agent framework adapters](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#agent-framework-adapters)           |
-| Expose MCP-style tools               | `npm run agent:mcp-tools`          | [MCP tool server shape](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#mcp-tool-server-shape)                 |
-| Flag budget variance rows            | `npm run budget-variance`          | [Budget variance alerts](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#budget-variance-alerts)               |
-| Check fulfillment capacity           | `npm run fulfillment-capacity`     | [Fulfillment capacity plan](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#fulfillment-capacity-plan)         |
-| Check quote approval threshold       | `npm run quote-approval`           | [Quote approval threshold](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#quote-approval-threshold)           |
-| Forecast subscription MRR            | `npm run subscription-mrr`         | [Subscription MRR forecast](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#subscription-mrr-forecast)         |
-| Return workbook results over HTTP    | `npm run http-json-summary`        | [HTTP JSON summary](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#http-json-summary)                         |
-| Calculate invoice totals             | `npm run invoice-totals`           | [Invoice totals](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#invoice-totals)                               |
-| Inspect restored workbook shape      | `npm run sheet-inspection`         | [Sheet inspection](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#sheet-inspection)                           |
-| Compare computed values and formulas | `npm run range-readback`           | [Range readback](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#range-readback)                               |
+| Need                                 | Start with                           | Existing example                                                                                                                           |
+| ------------------------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Evaluate formulas from API records   | `npm run json-records`               | [JSON records input](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-records-input)                         |
+| Load records already saved on disk   | `npm run json-file`                  | [JSON file input](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-file-input)                               |
+| Persist and restore a workbook       | `npm run persistence`                | [Persistence round trip](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#persistence-round-trip)                 |
+| Verify an agent writeback            | `npm run agent:verify`               | [Agent writeback verification](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#agent-writeback-verification)     |
+| Wrap WorkPaper operations as tools   | `npm run agent:tool-call`            | [Agent tool call loop](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#agent-tool-call-loop)                     |
+| Wire OpenAI Responses function calls | `npm run agent:openai-responses`     | [OpenAI Responses tool wrapper](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#openai-responses-tool-wrapper)   |
+| Run AI SDK generateText tools        | `npm run agent:ai-sdk-generate-text` | [AI SDK generateText tool smoke](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#ai-sdk-generatetext-tool-smoke) |
+| Adapt tools to agent frameworks      | `npm run agent:framework-adapters`   | [Agent framework adapters](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#agent-framework-adapters)             |
+| Expose MCP-style tools               | `npm run agent:mcp-tools`            | [MCP tool server shape](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#mcp-tool-server-shape)                   |
+| Flag budget variance rows            | `npm run budget-variance`            | [Budget variance alerts](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#budget-variance-alerts)                 |
+| Check fulfillment capacity           | `npm run fulfillment-capacity`       | [Fulfillment capacity plan](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#fulfillment-capacity-plan)           |
+| Check quote approval threshold       | `npm run quote-approval`             | [Quote approval threshold](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#quote-approval-threshold)             |
+| Forecast subscription MRR            | `npm run subscription-mrr`           | [Subscription MRR forecast](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#subscription-mrr-forecast)           |
+| Return workbook results over HTTP    | `npm run http-json-summary`          | [HTTP JSON summary](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#http-json-summary)                           |
+| Calculate invoice totals             | `npm run invoice-totals`             | [Invoice totals](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#invoice-totals)                                 |
+| Inspect restored workbook shape      | `npm run sheet-inspection`           | [Sheet inspection](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#sheet-inspection)                             |
+| Compare computed values and formulas | `npm run range-readback`             | [Range readback](https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#range-readback)                                 |
 
 ## Production Status
 
@@ -406,6 +407,7 @@ npm install
 npm start
 npm run http-json-summary
 npm run agent:tool-call
+npm run agent:ai-sdk-generate-text
 npm run agent:framework-adapters
 ```
 
@@ -428,6 +430,12 @@ into OpenAI Responses API, AI SDK, LangChain, Mastra, LlamaIndex.TS,
 LangGraph.js, CopilotKit, and Cloudflare Agents tool shapes. The example
 verifies the same write and readback contract for each wrapper without adding
 those agent frameworks as dependencies.
+
+`npm run agent:ai-sdk-generate-text` uses the real Vercel AI SDK `generateText()`
+and `tool()` APIs with a deterministic `ai/test` model. It proves the model can
+call WorkPaper read/write tools and receive structured computed readback. The
+runnable TypeScript file is
+[`examples/headless-workpaper/ai-sdk-generate-text-tool-smoke.ts`](https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/ai-sdk-generate-text-tool-smoke.ts).
 
 `npm run agent:mcp-tools` exposes the same operations through dependency-free
 MCP-style `tools/list` and `tools/call` JSON-RPC responses with JSON Schema

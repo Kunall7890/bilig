@@ -19,6 +19,48 @@ formulas, computed readback, and JSON persistence. The framework wrapper should
 stay thin. Keep the workbook behavior in ordinary Node functions, then expose
 those functions through the tool shape your agent framework expects.
 
+## Real AI SDK `generateText()` Smoke
+
+Run this first if you use the Vercel AI SDK and want to see the complete
+`generateText()` path execute WorkPaper tools:
+
+```sh
+git clone https://github.com/proompteng/bilig.git
+cd bilig/examples/headless-workpaper
+npm install
+npm run agent:ai-sdk-generate-text
+```
+
+The smoke test uses the real `ai` package: `generateText()`, `tool()`,
+`stepCountIs()`, and `MockLanguageModelV3` from `ai/test`. The mock model keeps
+the example provider-free. The WorkPaper tool execution is real TypeScript:
+`readWorkPaperSummary` reads `Summary!A1:B5`, then `setWorkPaperInputCell`
+writes `Inputs!B3 = 0.4`, recalculates dependent formulas, serializes the
+document, restores it, and returns structured readback.
+
+Passing output includes:
+
+```json
+{
+  "apiShape": "AI SDK generateText -> tool -> execute",
+  "modelCallCount": 2,
+  "toolNames": ["readWorkPaperSummary", "setWorkPaperInputCell"],
+  "writeResult": {
+    "editedCell": "Inputs!B3",
+    "before": { "expectedArr": 60000, "targetGap": -34000 },
+    "after": { "expectedArr": 96000, "targetGap": 5600 },
+    "checks": {
+      "formulasPersisted": true,
+      "restoredMatchesAfter": true,
+      "expectedArrChanged": true
+    }
+  }
+}
+```
+
+Inspect the runnable file here:
+[`examples/headless-workpaper/ai-sdk-generate-text-tool-smoke.ts`](../examples/headless-workpaper/ai-sdk-generate-text-tool-smoke.ts).
+
 ## Runnable Adapter Example
 
 Run the dependency-free adapter example from a clean checkout:

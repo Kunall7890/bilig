@@ -31,6 +31,9 @@ For a smaller writeback-only proof, run
 `npm run agent:verify`. For framework-shaped wrappers that do not pull Vercel
 AI SDK or LangChain into this repository, run
 `npm run agent:framework-adapters`.
+If you want the real AI SDK loop, run `npm run agent:ai-sdk-generate-text`.
+That script calls `generateText()` and `tool()` from `ai`, using `ai/test` as a
+deterministic provider so no API key is needed.
 
 If your app calls OpenAI directly, start with the
 [Responses API function-calling guide](https://developers.openai.com/api/docs/guides/function-calling)
@@ -414,6 +417,14 @@ For a dependency-free runnable version of this shape, use
 ```sh
 cd examples/headless-workpaper
 npm run agent:framework-adapters
+```
+
+For the actual AI SDK `generateText()` loop, use
+[`examples/headless-workpaper/ai-sdk-generate-text-tool-smoke.ts`](../examples/headless-workpaper/ai-sdk-generate-text-tool-smoke.ts):
+
+```sh
+cd examples/headless-workpaper
+npm run agent:ai-sdk-generate-text
 ```
 
 ## LangChain Tool Wrapper

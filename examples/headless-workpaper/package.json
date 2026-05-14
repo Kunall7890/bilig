@@ -4,6 +4,7 @@
   "description": "Runnable Node example for the @bilig/headless WorkPaper API.",
   "type": "module",
   "scripts": {
+    "agent:ai-sdk-generate-text": "tsx ai-sdk-generate-text-tool-smoke.ts",
     "agent:framework-adapters": "tsx agent-framework-adapters.ts",
     "agent:mcp-stdio": "tsx mcp-stdio-server.ts",
     "agent:mcp-tools": "tsx mcp-tool-server.ts",
@@ -34,9 +35,11 @@
   },
   "dependencies": {
     "@bilig/headless": "latest",
+    "ai": "6.0.182",
     "zod": "4.3.6"
   },
   "devDependencies": {
+    "@types/json-schema": "7.0.15",
     "@types/node": "25.5.0",
     "tsx": "4.21.0",
     "typescript": "6.0.2"

@@ -44,6 +44,7 @@ packages through `pnpm workpaper:smoke:external`.
 | Quick revenue workbook   | `npm start`                        | formulas, named expressions, persistence                                                                          |
 | Agent tool call loop     | `npm run agent:tool-call`          | read, edit, verify, serialize, restore                                                                            |
 | OpenAI Responses wrapper | `npm run agent:openai-responses`   | `function_call` dispatch, `function_call_output`, verified WorkPaper readback                                     |
+| AI SDK generateText      | `npm run agent:ai-sdk-generate-text` | real `generateText()` and `tool()` calls with verified WorkPaper readback                                         |
 | Agent framework adapters | `npm run agent:framework-adapters` | TypeScript wrappers for AI SDK, LangChain, Mastra, LlamaIndex.TS, LangGraph.js, CopilotKit, and Cloudflare Agents |
 | MCP tool server shape    | `npm run agent:mcp-tools`          | `tools/list`, `tools/call`, verified edits                                                                        |
 | MCP stdio server         | `npm run agent:mcp-stdio`          | newline-delimited JSON-RPC over stdin/stdout                                                                      |
@@ -189,6 +190,47 @@ Expected proof:
 Use this file as the local dispatcher around the official OpenAI Responses API
 call. The workbook logic stays in TypeScript functions; the model only sees the
 tool schema and structured tool output.
+
+## AI SDK GenerateText Tool Smoke
+
+Run this when your app uses the Vercel AI SDK and you want the actual
+`generateText()` loop, not just a framework-shaped object:
+
+```sh
+npm run agent:ai-sdk-generate-text
+```
+
+The script imports `generateText`, `stepCountIs`, and `tool` from `ai`. It uses
+`MockLanguageModelV3` from `ai/test` so the smoke test is deterministic and does
+not need a provider key. The mocked model asks for two tools:
+
+- `readWorkPaperSummary` reads `Summary!A1:B5`.
+- `setWorkPaperInputCell` writes `Inputs!B3 = 0.4` and returns computed
+  readback.
+
+Expected proof:
+
+```json
+{
+  "apiShape": "AI SDK generateText -> tool -> execute",
+  "modelCallCount": 2,
+  "toolNames": ["readWorkPaperSummary", "setWorkPaperInputCell"],
+  "writeResult": {
+    "editedCell": "Inputs!B3",
+    "before": { "expectedArr": 60000, "targetGap": -34000 },
+    "after": { "expectedArr": 96000, "targetGap": 5600 },
+    "checks": {
+      "formulasPersisted": true,
+      "restoredMatchesAfter": true,
+      "expectedArrChanged": true
+    }
+  }
+}
+```
+
+Use [`ai-sdk-generate-text-tool-smoke.ts`](ai-sdk-generate-text-tool-smoke.ts)
+when you want a copyable TypeScript file that proves the AI SDK can call the
+WorkPaper tools and receive structured results.
 
 ## Agent Framework Adapters
 

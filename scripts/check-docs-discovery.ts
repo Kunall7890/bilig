@@ -2,6 +2,7 @@ import { readFile, stat } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { agentFrameworkDocRequirements, agentFrameworkLlmsRequiredLinks } from './check-docs-discovery-agent-pages.ts'
+import { requireAiSdkGenerateTextDiscovery } from './check-docs-discovery-ai-sdk-generate-text.ts'
 import { communityLaunchPackRequiredLinks, llmsExternalSurfaceLinks } from './check-docs-discovery-growth-links.ts'
 import { requireHomepageDiscovery } from './check-docs-discovery-homepage.ts'
 import { requireNpmEvalDiscovery } from './check-docs-discovery-npm-eval.ts'
@@ -834,6 +835,18 @@ await requireOpenAiResponsesDiscovery({
   index,
   llms,
   agentToolCallingDoc,
+  headlessExampleReadme,
+  headlessExamplePackage,
+})
+await requireAiSdkGenerateTextDiscovery({
+  repoRoot,
+  docsRoot,
+  readme,
+  headlessReadme,
+  index,
+  llms,
+  agentToolCallingDoc,
+  aiSdkLangChainDoc,
   headlessExampleReadme,
   headlessExamplePackage,
 })
