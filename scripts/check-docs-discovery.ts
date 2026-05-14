@@ -328,6 +328,8 @@ requireIncludes(newContributorGuide, '## First-Time Command Checklist', 'docs/ne
 requireIncludes(newContributorGuide, 'pnpm docs:discovery:check', 'docs/new-contributor-guide.md')
 requireIncludes(newContributorGuide, 'pnpm format:check', 'docs/new-contributor-guide.md')
 requireIncludes(newContributorGuide, 'pnpm lint', 'docs/new-contributor-guide.md')
+requireIncludes(newContributorGuide, 'first-time contributor review happens on GitHub.', 'docs/new-contributor-guide.md')
+requireIncludes(contributing, 'pull requests on GitHub are welcome; maintainers', 'CONTRIBUTING.md')
 requireIncludes(starterIssues, 'new-contributor-guide.md#first-time-command-checklist', 'docs/starter-issues.md')
 requireIncludes(starterIssues, 'https://github.com/proompteng/bilig/blob/main/CONTRIBUTING.md', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '108 open `first-timers-only` issues.', 'docs/starter-issues.md')

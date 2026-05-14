@@ -27,7 +27,9 @@ they change.
 2. Run the smallest useful local check before opening a pull request.
 3. Keep the PR tied to one issue, one package or doc path, and one proof command
    whenever possible.
-4. Open a draft PR early if setup, expected behavior, or scope is unclear.
+4. Open the pull request on GitHub. Maintainers use Forgejo as the primary
+   source-of-truth remote, but public contributor review happens on GitHub.
+5. Open a draft PR early if setup, expected behavior, or scope is unclear.
 
 ## Local Setup
 
@@ -164,4 +166,6 @@ reports.
 ## Source of Truth
 
 Forgejo `origin` is the primary repo workflow for maintainers. GitHub mirrors
-the public verification contract and public collaboration surface.
+the public verification contract and public collaboration surface. External
+pull requests on GitHub are welcome; maintainers handle any Forgejo-side
+mirroring needed after review.

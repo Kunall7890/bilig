@@ -99,6 +99,8 @@ unless the issue is specifically about package internals.
 - Add or tighten a focused test before changing behavior.
 - Include the exact command output or fixture proof in the PR description.
 - Link the issue with `Fixes #...` when the PR fully closes it.
+- Open the pull request on GitHub. Maintainers use Forgejo internally, but
+  first-time contributor review happens on GitHub.
 - Open a draft PR early if setup, scope, or expected behavior is unclear.
 
 The best first contribution gives a future user a clearer path to evaluate
