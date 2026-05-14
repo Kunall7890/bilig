@@ -970,6 +970,22 @@ Expected output:
 }
 ```
 
+Run the malformed CSV smoke to confirm bad input fails before a workbook is
+created:
+
+```sh
+npm run csv-shaped:malformed
+```
+
+Expected output:
+
+```json
+{
+  "malformedCsvError": "expected 3 CSV fields on data row 3, received 2",
+  "verified": true
+}
+```
+
 ## JSON Records Input
 
 Run the JSON records input example when a Node service or agent already has an
