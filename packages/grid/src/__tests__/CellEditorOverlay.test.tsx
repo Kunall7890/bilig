@@ -121,10 +121,9 @@ describe('CellEditorOverlay', () => {
     })
   })
 
-  it('keeps typed draft text local until the debounced parent sync', async () => {
+  it('keeps typed draft text local while mirroring parent state immediately', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
-    vi.useFakeTimers()
     const onChange = vi.fn()
     const host = document.createElement('div')
     document.body.appendChild(host)
@@ -158,29 +157,20 @@ describe('CellEditorOverlay', () => {
       })
 
       expect(textarea.value).toBe('abc')
-      expect(onChange).not.toHaveBeenCalled()
-
-      await act(async () => {
-        vi.advanceTimersByTime(249)
-      })
-
-      expect(onChange).not.toHaveBeenCalled()
-
-      await act(async () => {
-        vi.advanceTimersByTime(1)
-      })
-
-      expect(onChange).toHaveBeenCalledTimes(1)
+      expect(textarea.selectionStart).toBe(3)
+      expect(textarea.selectionEnd).toBe(3)
+      expect(onChange).toHaveBeenCalledTimes(3)
+      expect(onChange).toHaveBeenNthCalledWith(1, 'a')
+      expect(onChange).toHaveBeenNthCalledWith(2, 'ab')
       expect(onChange).toHaveBeenLastCalledWith('abc')
     } finally {
       await act(async () => {
         root.unmount()
       })
-      vi.useRealTimers()
     }
   })
 
-  it('keeps printable key insertion off synchronous React flushes', async () => {
+  it('keeps printable key insertion off synchronous React flushes while syncing each draft', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
     const onChange = vi.fn()
@@ -218,7 +208,8 @@ describe('CellEditorOverlay', () => {
       })
 
       expect(textarea.value).toBe('abc')
-      expect(onChange).not.toHaveBeenCalled()
+      expect(onChange).toHaveBeenCalledTimes(3)
+      expect(onChange).toHaveBeenLastCalledWith('abc')
       expect(flushSync).not.toHaveBeenCalled()
     } finally {
       await act(async () => {
@@ -227,7 +218,7 @@ describe('CellEditorOverlay', () => {
     }
   })
 
-  it('keeps local draft text and caret stable across parent renders before the debounced sync', async () => {
+  it('keeps local draft text and caret stable across parent renders after immediate parent sync', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
     vi.useFakeTimers()
@@ -282,7 +273,8 @@ describe('CellEditorOverlay', () => {
       expect(textarea.value).toBe('abc')
       expect(textarea.selectionStart).toBe(3)
       expect(textarea.selectionEnd).toBe(3)
-      expect(onChange).not.toHaveBeenCalled()
+      expect(onChange).toHaveBeenCalledTimes(3)
+      expect(onChange).toHaveBeenLastCalledWith('abc')
 
       await act(async () => {
         host.querySelector<HTMLButtonElement>("[data-testid='force-parent-render']")?.click()
@@ -291,13 +283,13 @@ describe('CellEditorOverlay', () => {
       expect(textarea.value).toBe('abc')
       expect(textarea.selectionStart).toBe(3)
       expect(textarea.selectionEnd).toBe(3)
-      expect(onChange).not.toHaveBeenCalled()
+      expect(onChange).toHaveBeenCalledTimes(3)
 
       await act(async () => {
         vi.advanceTimersByTime(250)
       })
 
-      expect(onChange).toHaveBeenCalledTimes(1)
+      expect(onChange).toHaveBeenCalledTimes(3)
       expect(onChange).toHaveBeenLastCalledWith('abc')
     } finally {
       await act(async () => {
@@ -359,7 +351,8 @@ describe('CellEditorOverlay', () => {
 
       expect(textarea.value).toBe('abc')
       expect(textarea.selectionStart).toBe(3)
-      expect(onChange).not.toHaveBeenCalled()
+      expect(onChange).toHaveBeenCalledTimes(3)
+      expect(onChange).toHaveBeenLastCalledWith('abc')
 
       await act(async () => {
         vi.advanceTimersByTime(250)
@@ -367,7 +360,7 @@ describe('CellEditorOverlay', () => {
 
       expect(textarea.value).toBe('abc')
       expect(textarea.selectionStart).toBe(3)
-      expect(onChange).toHaveBeenCalledTimes(1)
+      expect(onChange).toHaveBeenCalledTimes(3)
       expect(onChange).toHaveBeenLastCalledWith('abc')
     } finally {
       await act(async () => {
@@ -377,7 +370,7 @@ describe('CellEditorOverlay', () => {
     }
   })
 
-  it('commits local draft text without forcing a parent sync first', async () => {
+  it('commits local draft text after immediate parent sync', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
     vi.useFakeTimers()
@@ -413,7 +406,8 @@ describe('CellEditorOverlay', () => {
         textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
       })
 
-      expect(onChange).not.toHaveBeenCalled()
+      expect(onChange).toHaveBeenCalledTimes(1)
+      expect(onChange).toHaveBeenLastCalledWith('x')
       expect(onCommit).toHaveBeenCalledTimes(1)
       expect(onCommit).toHaveBeenLastCalledWith([0, 1], 'x', makeTargetSelection())
     } finally {
@@ -469,7 +463,7 @@ describe('CellEditorOverlay', () => {
     }
   })
 
-  it('keeps delete and backspace edits in the local draft before the debounced parent sync', async () => {
+  it('commits delete and backspace DOM edits from the mounted editor', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
     vi.useFakeTimers()
@@ -531,6 +525,7 @@ describe('CellEditorOverlay', () => {
   it('keeps Home and End caret movement inside the editor', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
+    const mockFrames = installMockAnimationFrames()
     const host = document.createElement('div')
     document.body.appendChild(host)
     const root = createRoot(host)
@@ -562,16 +557,25 @@ describe('CellEditorOverlay', () => {
       })
       expect(textarea.selectionStart).toBe(0)
       expect(textarea.selectionEnd).toBe(0)
+      textarea.setSelectionRange(4, 4)
+      mockFrames.flushAnimationFrames()
+      expect(textarea.selectionStart).toBe(0)
+      expect(textarea.selectionEnd).toBe(0)
 
       await act(async () => {
         textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true, cancelable: true }))
       })
       expect(textarea.selectionStart).toBe(4)
       expect(textarea.selectionEnd).toBe(4)
+      textarea.setSelectionRange(0, 0)
+      mockFrames.flushAnimationFrames()
+      expect(textarea.selectionStart).toBe(4)
+      expect(textarea.selectionEnd).toBe(4)
     } finally {
       await act(async () => {
         root.unmount()
       })
+      mockFrames.restore()
     }
   })
 

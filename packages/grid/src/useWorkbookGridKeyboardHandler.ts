@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
 import { formatAddress } from '@bilig/formula'
 import { ValueTag } from '@bilig/protocol'
 import {
@@ -138,15 +138,22 @@ export function useWorkbookGridKeyboardHandler(input: {
   suppressNextNativePasteRef: MutableRefObject<boolean>
   toggleSelectedBooleanCell: () => void
 }) {
+  const beginSelectedEditRef = useRef(input.beginSelectedEdit)
+  useLayoutEffect(() => {
+    beginSelectedEditRef.current = input.beginSelectedEdit
+  }, [input.beginSelectedEdit])
+
   const deferredBeginEditScheduler = useMemo(
     () =>
       createDeferredBeginEditScheduler({
-        beginSelectedEdit: input.beginSelectedEdit,
+        beginSelectedEdit: (seed, selectionBehavior) => {
+          beginSelectedEditRef.current(seed, selectionBehavior)
+        },
         cancelAnimationFrame: typeof window === 'undefined' ? undefined : (handle: number) => window.cancelAnimationFrame(handle),
         requestAnimationFrame:
           typeof window === 'undefined' ? undefined : (callback: FrameRequestCallback) => window.requestAnimationFrame(callback),
       }),
-    [input.beginSelectedEdit],
+    [],
   )
   useEffect(() => () => deferredBeginEditScheduler.cancel(), [deferredBeginEditScheduler])
 

@@ -5,7 +5,11 @@ import { resolveRequiresLiveViewportState } from '../useGridSelectionState.js'
 import { resolveResizeGuideColumn, resolveResizeGuideRow } from '../useGridResizeState.js'
 import { sameBounds } from '../useGridOverlayState.js'
 import { visibleRegionFromCamera } from '../useGridCameraState.js'
-import { resolveGridDrawDprBucket, resolveShouldUseRemoteRenderTileSource } from '../useWorkbookGridPaneRenderRuntime.js'
+import {
+  resolveGridDrawDprBucket,
+  resolveHeaderPaneWindowMode,
+  resolveShouldUseRemoteRenderTileSource,
+} from '../useWorkbookGridPaneRenderRuntime.js'
 
 describe('grid hook boundary helpers', () => {
   test('resolves live viewport, resize, overlay, and camera helpers', () => {
@@ -78,6 +82,20 @@ describe('grid hook boundary helpers', () => {
     expect(resolveShouldUseRemoteRenderTileSource({ renderTileSource: undefined, sheetId: 1 })).toBe(false)
     expect(resolveShouldUseRemoteRenderTileSource({ renderTileSource: {}, sheetId: undefined })).toBe(false)
     expect(resolveShouldUseRemoteRenderTileSource({ renderTileSource: {}, sheetId: 1 })).toBe(true)
+    expect(
+      resolveHeaderPaneWindowMode({
+        residentViewport: { rowStart: 0, rowEnd: 48, colStart: 0, colEnd: 12 },
+        viewport: { rowStart: 0, rowEnd: 48, colStart: 0, colEnd: 8 },
+        visibleDirtyTileKeys: [123],
+      }),
+    ).toBe('resident')
+    expect(
+      resolveHeaderPaneWindowMode({
+        residentViewport: { rowStart: 0, rowEnd: 20, colStart: 0, colEnd: 8 },
+        viewport: { rowStart: 25, rowEnd: 48, colStart: 0, colEnd: 8 },
+        visibleDirtyTileKeys: [123],
+      }),
+    ).toBe('visible')
   })
 
   test('keeps workbook render hook behind the runtime camera boundary', () => {

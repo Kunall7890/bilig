@@ -27,8 +27,6 @@ function normalizeNumpadKey(key: string, code: string): string | null {
   return key.length === 1 ? key : null
 }
 
-const PARENT_SYNC_DEBOUNCE_MS = 250
-
 function moveCaretToBoundary(input: HTMLTextAreaElement, boundary: 'start' | 'end', extendSelection: boolean) {
   const nextPosition = boundary === 'start' ? 0 : input.value.length
   const anchor = boundary === 'start' ? input.selectionEnd : input.selectionStart
@@ -81,8 +79,6 @@ export function CellEditorOverlay({
   const completionRef = useRef<'idle' | 'commit' | 'cancel'>('idle')
   const blurArmedRef = useRef(false)
   const pendingBlurCommitRef = useRef<number | null>(null)
-  const pendingParentSyncRef = useRef<number | null>(null)
-  const pendingParentSyncValueRef = useRef(value)
   const pendingSelectionRestoreRef = useRef<{
     readonly direction: 'backward' | 'forward' | 'none'
     readonly end: number
@@ -104,15 +100,6 @@ export function CellEditorOverlay({
     window.cancelAnimationFrame(pendingFrame)
   }
 
-  const cancelPendingParentSync = () => {
-    const pendingTimer = pendingParentSyncRef.current
-    if (pendingTimer === null) {
-      return
-    }
-    pendingParentSyncRef.current = null
-    window.clearTimeout(pendingTimer)
-  }
-
   const updateDraftValue = (
     nextValue: string,
     selection?: {
@@ -125,15 +112,24 @@ export function CellEditorOverlay({
       pendingSelectionRestoreRef.current = selection
     }
     setDraftValue(nextValue)
-    pendingParentSyncValueRef.current = nextValue
-    if (pendingParentSyncRef.current !== null) {
-      return
+    onChange(nextValue)
+  }
+
+  const preserveCaretSelection = (input: HTMLTextAreaElement) => {
+    const selection = {
+      direction: input.selectionDirection ?? 'none',
+      end: input.selectionEnd ?? input.value.length,
+      start: input.selectionStart ?? input.value.length,
     }
-    pendingParentSyncRef.current = window.setTimeout(() => {
-      pendingParentSyncRef.current = null
-      const syncedValue = pendingParentSyncValueRef.current
-      onChange(syncedValue)
-    }, PARENT_SYNC_DEBOUNCE_MS)
+    pendingSelectionRestoreRef.current = selection
+    caretWriteSequenceRef.current += 1
+    const sequence = caretWriteSequenceRef.current
+    window.requestAnimationFrame(() => {
+      if (caretWriteSequenceRef.current !== sequence || document.activeElement !== input) {
+        return
+      }
+      inputRef.current?.setSelectionRange(selection.start, selection.end, selection.direction)
+    })
   }
 
   const beginCompletion = (nextState: 'commit' | 'cancel') => {
@@ -185,7 +181,6 @@ export function CellEditorOverlay({
   }, [selectionBehavior, targetAddress, targetSheetName])
 
   useEffect(() => cancelPendingBlurCommit, [])
-  useEffect(() => cancelPendingParentSync, [])
 
   useEffect(() => {
     draftValueRef.current = draftValue
@@ -218,7 +213,6 @@ export function CellEditorOverlay({
     if (!targetChanged && editorHasFocusedDraft) {
       return
     }
-    cancelPendingParentSync()
     if (input && document.activeElement === input) {
       pendingSelectionRestoreRef.current = {
         direction: input.selectionDirection ?? 'none',
@@ -226,7 +220,6 @@ export function CellEditorOverlay({
         start: input.selectionStart ?? input.value.length,
       }
     }
-    pendingParentSyncValueRef.current = value
     setDraftValue(value)
   }, [targetAddress, targetSheetName, value])
 
@@ -246,8 +239,6 @@ export function CellEditorOverlay({
       cancelPendingBlurCommit()
     }
     const nextValue = inputRef.current?.value ?? draftValue
-    cancelPendingParentSync()
-    pendingParentSyncValueRef.current = nextValue
     if (completionRef.current !== 'idle') {
       if (movement && completionRef.current === 'commit') {
         onCommit(movement, nextValue, targetSelectionRef.current)
@@ -265,8 +256,6 @@ export function CellEditorOverlay({
     }
     const nextValue = inputRef.current?.value ?? draftValue
     const nextTargetSelection = targetSelectionRef.current
-    cancelPendingParentSync()
-    pendingParentSyncValueRef.current = nextValue
     beginCompletion('commit')
     pendingBlurCommitRef.current = window.requestAnimationFrame(() => {
       pendingBlurCommitRef.current = null
@@ -331,6 +320,7 @@ export function CellEditorOverlay({
           if ((event.key === 'Home' || event.key === 'End') && !event.ctrlKey && !event.metaKey && !event.altKey) {
             event.preventDefault()
             moveCaretToBoundary(event.currentTarget, event.key === 'Home' ? 'start' : 'end', event.shiftKey)
+            preserveCaretSelection(event.currentTarget)
             return
           }
           if (event.key === 'Enter') {

@@ -268,7 +268,6 @@ test('web app preserves multi-digit numeric type-to-replace input', async ({ pag
   await page.goto('/')
   await waitForWorkbookReady(page)
 
-  const grid = page.getByTestId('sheet-grid')
   const nameBox = page.getByTestId('name-box')
   const formulaInput = page.getByTestId('formula-input')
   const cellEditor = page.getByTestId('cell-editor-input')
@@ -343,7 +342,6 @@ test('@browser-serial web app supports F2 edit in the product shell', async ({ p
   await waitForWorkbookReady(page)
   await waitForWorkbookReady(page)
 
-  const grid = page.getByTestId('sheet-grid')
   const nameBox = page.getByTestId('name-box')
   const formulaInput = page.getByTestId('formula-input')
   const cellEditor = page.getByTestId('cell-editor-input')
@@ -870,7 +868,6 @@ test('web app commits in-cell string edits when clicking away', async ({ page })
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-click-away-edit'))}`)
   await waitForWorkbookReady(page)
 
-  const grid = page.getByTestId('sheet-grid')
   const nameBox = page.getByTestId('name-box')
   const formulaInput = page.getByTestId('formula-input')
   const resolvedValue = page.getByTestId('formula-resolved-value')
@@ -878,9 +875,11 @@ test('web app commits in-cell string edits when clicking away', async ({ page })
 
   await clickProductCell(page, 1, 0)
   await expect(nameBox).toHaveValue('B1')
-  await grid.press('a')
+  await page.getByTestId('sheet-grid-focus-target').focus()
+  await page.keyboard.press('a')
   await expect(cellEditor).toBeVisible()
   await expect(cellEditor).toHaveValue('a')
+  expect(await formulaInput.evaluate((input) => (input instanceof HTMLInputElement ? input.value : ''))).toBe('a')
   await expect
     .poll(async () => await cellEditor.evaluate((input) => (input instanceof HTMLTextAreaElement ? input.selectionStart : -1)))
     .toBe(1)
@@ -892,6 +891,7 @@ test('web app commits in-cell string edits when clicking away', async ({ page })
     const nextText = `${previousText}${character}`
     await cellEditor.press(character)
     await expect(cellEditor).toHaveValue(nextText)
+    expect(await formulaInput.evaluate((input) => (input instanceof HTMLInputElement ? input.value : ''))).toBe(nextText)
     await expect
       .poll(async () => await cellEditor.evaluate((input) => (input instanceof HTMLTextAreaElement ? input.selectionStart : -1)))
       .toBe(nextText.length)
@@ -913,16 +913,16 @@ test('web app keeps delayed in-cell typing anchored and exits cleanly on click-a
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-delayed-click-away-edit'))}`)
   await waitForWorkbookReady(page)
 
-  const grid = page.getByTestId('sheet-grid')
   const formulaInput = page.getByTestId('formula-input')
   const cellEditor = page.getByTestId('cell-editor-input')
   const renderer = page.getByTestId('grid-pane-renderer')
 
   await clickProductCell(page, 2, 11)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C12')
-  await grid.press('a')
+  await page.keyboard.press('a')
   await expect(cellEditor).toBeVisible()
   await expect(cellEditor).toHaveValue('a')
+  expect(await formulaInput.evaluate((input) => (input instanceof HTMLInputElement ? input.value : ''))).toBe('a')
   await expect
     .poll(async () => await cellEditor.evaluate((input) => (input instanceof HTMLTextAreaElement ? input.selectionStart : -1)))
     .toBe(1)
@@ -930,6 +930,7 @@ test('web app keeps delayed in-cell typing anchored and exits cleanly on click-a
   await page.waitForTimeout(300)
   await cellEditor.press('s')
   await expect(cellEditor).toHaveValue('as')
+  expect(await formulaInput.evaluate((input) => (input instanceof HTMLInputElement ? input.value : ''))).toBe('as')
   await expect
     .poll(async () => await cellEditor.evaluate((input) => (input instanceof HTMLTextAreaElement ? input.selectionStart : -1)))
     .toBe(2)
@@ -938,6 +939,7 @@ test('web app keeps delayed in-cell typing anchored and exits cleanly on click-a
   await cellEditor.press('d')
   await cellEditor.press('f')
   await expect(cellEditor).toHaveValue('asdf')
+  expect(await formulaInput.evaluate((input) => (input instanceof HTMLInputElement ? input.value : ''))).toBe('asdf')
   await expect
     .poll(async () => await cellEditor.evaluate((input) => (input instanceof HTMLTextAreaElement ? input.selectionStart : -1)))
     .toBe(4)
@@ -1147,7 +1149,8 @@ test('web app collapses the selected range before typing into the cell editor', 
   await grid.press('Shift+ArrowRight')
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C5:E5')
 
-  await grid.press('a')
+  await page.getByTestId('sheet-grid-focus-target').focus()
+  await page.keyboard.press('a')
 
   await expect(page.getByTestId('cell-editor-input')).toHaveValue('a')
   await expect(nameBox).toHaveValue('C5')
@@ -1389,11 +1392,11 @@ test('web app keeps delete keys scoped to the in-cell editor while editing', asy
   await page.goto(`/?document=${encodeURIComponent(documentId)}`)
   await waitForWorkbookReady(page)
 
-  const grid = page.getByTestId('sheet-grid')
   const formulaInput = page.getByTestId('formula-input')
 
   await clickProductCell(page, 2, 2)
-  await grid.press('a')
+  await page.getByTestId('sheet-grid-focus-target').focus()
+  await page.keyboard.press('a')
   const editor = page.getByTestId('cell-editor-input')
   await expect(editor).toBeVisible()
   await page.keyboard.type('bcd')
@@ -1401,10 +1404,12 @@ test('web app keeps delete keys scoped to the in-cell editor while editing', asy
 
   await editor.press('Backspace')
   await expect(editor).toHaveValue('abc')
+  expect(await formulaInput.evaluate((input) => (input instanceof HTMLInputElement ? input.value : ''))).toBe('abc')
 
   await editor.press('Home')
   await editor.press('Delete')
   await expect(editor).toHaveValue('bc')
+  expect(await formulaInput.evaluate((input) => (input instanceof HTMLInputElement ? input.value : ''))).toBe('bc')
 
   await editor.press('Enter')
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C4')

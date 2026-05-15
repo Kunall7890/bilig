@@ -11,7 +11,7 @@ import type { WorkbookGridScrollStore } from './workbookGridScrollStore.js'
 
 export interface WorkbookGridEditorRuntimeState extends WorkbookEditorOverlayAnchorState {
   readonly computeAutofitColumnWidth: (columnIndex: number) => number
-  readonly focusGrid: () => void
+  readonly focusGrid: (options?: { readonly force?: boolean }) => void
 }
 
 export function useWorkbookGridEditorRuntime(input: {
@@ -71,21 +71,44 @@ export function useWorkbookGridEditorRuntime(input: {
     selectedRow: selectedCell.row,
   })
 
-  const focusGrid = useCallback(() => {
-    const activeElement = typeof document === 'undefined' ? null : document.activeElement
-    if (
-      (activeElement instanceof HTMLInputElement || activeElement instanceof HTMLTextAreaElement) &&
-      activeElement.dataset['testid'] === 'cell-editor-input'
-    ) {
-      return
-    }
-    const focusTarget = focusTargetRef.current
-    if (focusTarget) {
-      focusTarget.focus({ preventScroll: true })
-      return
-    }
-    hostRef.current?.focus({ preventScroll: true })
-  }, [focusTargetRef, hostRef])
+  const focusGrid = useCallback(
+    (options?: { readonly force?: boolean }) => {
+      const activeElement = typeof document === 'undefined' ? null : document.activeElement
+      if (
+        !options?.force &&
+        (activeElement instanceof HTMLInputElement || activeElement instanceof HTMLTextAreaElement) &&
+        activeElement.dataset['testid'] === 'cell-editor-input'
+      ) {
+        return
+      }
+
+      const applyFocus = (): HTMLElement | null => {
+        const focusTarget = focusTargetRef.current ?? hostRef.current
+        focusTarget?.focus({ preventScroll: true })
+        return focusTarget
+      }
+
+      const focusedElement = applyFocus()
+      if (!focusedElement || typeof window === 'undefined') {
+        return
+      }
+      window.requestAnimationFrame(() => {
+        const latestActiveElement = document.activeElement
+        if (
+          !options?.force &&
+          (latestActiveElement instanceof HTMLInputElement || latestActiveElement instanceof HTMLTextAreaElement) &&
+          latestActiveElement.dataset['testid'] === 'cell-editor-input'
+        ) {
+          return
+        }
+        const latestFocusTarget = focusTargetRef.current ?? hostRef.current
+        if (latestFocusTarget && document.activeElement !== latestFocusTarget) {
+          latestFocusTarget.focus({ preventScroll: true })
+        }
+      })
+    },
+    [focusTargetRef, hostRef],
+  )
 
   const computeAutofitColumnWidth = useWorkbookColumnAutofit({
     editorFontSize,

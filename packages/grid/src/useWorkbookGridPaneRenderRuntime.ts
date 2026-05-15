@@ -33,6 +33,22 @@ export function resolveShouldUseRemoteRenderTileSource(input: {
   return input.renderTileSource !== undefined && input.sheetId !== undefined
 }
 
+export function resolveHeaderPaneWindowMode(input: {
+  readonly residentViewport: Viewport
+  readonly viewport: Viewport
+  readonly visibleDirtyTileKeys: readonly unknown[]
+}): 'resident' | 'visible' {
+  if (input.visibleDirtyTileKeys.length === 0) {
+    return 'resident'
+  }
+  const residentCoversVisible =
+    input.residentViewport.rowStart <= input.viewport.rowStart &&
+    input.residentViewport.rowEnd >= input.viewport.rowEnd &&
+    input.residentViewport.colStart <= input.viewport.colStart &&
+    input.residentViewport.colEnd >= input.viewport.colEnd
+  return residentCoversVisible ? 'resident' : 'visible'
+}
+
 export function useWorkbookGridPaneRenderRuntime(input: {
   readonly columnAxis: GridAxisWorldIndex
   readonly columnWidths: Readonly<Record<number, number>>
@@ -194,7 +210,12 @@ export function useWorkbookGridPaneRenderRuntime(input: {
     visibleAddresses,
     visibleViewport: viewport,
   })
-  const useVisibleHeaderPaneWindow = renderTileState.tileReadiness.visibleDirtyTileKeys.length > 0
+  const useVisibleHeaderPaneWindow =
+    resolveHeaderPaneWindowMode({
+      residentViewport,
+      viewport,
+      visibleDirtyTileKeys: renderTileState.tileReadiness.visibleDirtyTileKeys,
+    }) === 'visible'
   const visibleHeaderItems = useMemo(
     () =>
       collectViewportItems(viewport, {

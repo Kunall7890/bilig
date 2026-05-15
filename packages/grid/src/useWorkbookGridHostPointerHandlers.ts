@@ -643,7 +643,7 @@ export function useWorkbookGridHostPointerHandlers(input: {
       if (clickedCell) {
         toggleBooleanCellAt(clickedCell[0], clickedCell[1])
       }
-      focusGrid()
+      focusGrid({ force: true })
       setActiveHeaderDrag(null)
       refreshHoverState(event.clientX, event.clientY, 0)
     },
