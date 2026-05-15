@@ -13,7 +13,13 @@ import {
   RUNTIME_NPM_PACKAGE_DIRS,
   RUNTIME_PACKAGE_DIRS,
 } from '../runtime-package-set.ts'
-import { bumpVersion, isRuntimeAffectingPath, parseConventionalCommit, releaseTypeForConventionalCommit } from '../runtime-release.ts'
+import {
+  bumpVersion,
+  isRuntimeAffectingPath,
+  isRuntimePackageContentPath,
+  parseConventionalCommit,
+  releaseTypeForConventionalCommit,
+} from '../runtime-release.ts'
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 
@@ -194,6 +200,13 @@ describe('runtime release helpers', () => {
     expect(isRuntimeAffectingPath('scripts/sync-runtime-package-versions.ts')).toBe(true)
     expect(isRuntimeAffectingPath('scripts/sync-runtime-release-metadata.ts')).toBe(true)
     expect(isRuntimeAffectingPath('apps/web/src/App.tsx')).toBe(false)
+  })
+
+  it('separates package content changes from release automation changes', () => {
+    expect(isRuntimePackageContentPath('packages/core/src/index.ts')).toBe(true)
+    expect(isRuntimePackageContentPath('packages/headless/package.json')).toBe(true)
+    expect(isRuntimePackageContentPath('scripts/plan-runtime-release.ts')).toBe(false)
+    expect(isRuntimePackageContentPath('.github/workflows/headless-package.yml')).toBe(false)
   })
 
   it('requires committed runtime package versions before staging npm packages', () => {

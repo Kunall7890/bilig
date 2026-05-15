@@ -18,6 +18,7 @@ import {
 import {
   bumpVersion,
   extractVersionFromRuntimeTag,
+  isRuntimePackageContentPath,
   isRuntimeAffectingPath,
   maxReleaseType,
   parseConventionalCommit,
@@ -42,6 +43,7 @@ interface RuntimeReleasePlan {
     | 'no-runtime-commits'
     | 'no-release-commits'
     | 'release-required'
+    | 'manifest-version-unpublished'
     | 'npm-packages-unprovisioned'
   targetVersion: string | null
   tagName: string | null
@@ -219,7 +221,38 @@ function buildRuntimeReleasePlan(input: {
   const strongestReleaseType = runtimeCommits.reduce<ReleaseType>((highest, commit) => maxReleaseType(highest, commit.releaseType), 'none')
 
   const tagVersion = extractVersionFromRuntimeTag(lastTag ?? '')
+  const publishedOrTaggedBaseline = highestPublishedStableSemver([tagVersion, publishedVersion])
   const baselineVersion = highestStableSemver([tagVersion, publishedVersion, manifestVersion])
+
+  if (!releaseAs && shouldPublishCommittedManifestVersion({ manifestVersion, publishedOrTaggedBaseline, runtimeCommits })) {
+    const effectiveReleaseType =
+      strongestReleaseType === 'none'
+        ? publishedOrTaggedBaseline && compareStableSemver(manifestVersion, publishedOrTaggedBaseline) > 0
+          ? inferReleaseTypeFromVersionChange(publishedOrTaggedBaseline, manifestVersion)
+          : 'patch'
+        : strongestReleaseType
+
+    return {
+      manifestVersion,
+      publishedVersion,
+      lastTag,
+      releaseNeeded: true,
+      bootstrapRequired: false,
+      manualOverride: false,
+      releaseType: effectiveReleaseType,
+      reason: 'manifest-version-unpublished',
+      targetVersion: manifestVersion,
+      tagName: `${RUNTIME_RELEASE_TAG_PREFIX}${manifestVersion}`,
+      notesMarkdown: summarizeReleaseNotes({
+        targetVersion: manifestVersion,
+        lastTag,
+        commits: runtimeCommits,
+        releaseType: effectiveReleaseType,
+        manualOverride: false,
+      }),
+      commits,
+    }
+  }
 
   if (!runtimeCommits.length && !releaseAs) {
     return {
@@ -301,6 +334,29 @@ function buildRuntimeReleasePlan(input: {
     }),
     commits,
   }
+}
+
+function shouldPublishCommittedManifestVersion(input: {
+  manifestVersion: string
+  publishedOrTaggedBaseline: string | null
+  runtimeCommits: RuntimeReleaseCommit[]
+}): boolean {
+  if (input.publishedOrTaggedBaseline !== null && compareStableSemver(input.manifestVersion, input.publishedOrTaggedBaseline) <= 0) {
+    return false
+  }
+
+  const releaseCommitIndex = input.runtimeCommits.findLastIndex(
+    (commit) => commit.subject === `chore(release): runtime packages v${input.manifestVersion}`,
+  )
+  if (releaseCommitIndex < 0) {
+    return false
+  }
+
+  const packageContentCommitsAfterRelease = input.runtimeCommits
+    .slice(releaseCommitIndex + 1)
+    .filter((commit) => commit.files.some((file) => isRuntimePackageContentPath(file)))
+
+  return packageContentCommitsAfterRelease.length === 0
 }
 
 function collectRuntimeReleaseCommits(baseTag: string | null): RuntimeReleaseCommit[] {

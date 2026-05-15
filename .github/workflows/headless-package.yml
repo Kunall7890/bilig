@@ -67,7 +67,7 @@ on:
 
 concurrency:
   group: runtime-packages-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.ref }}
-  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
+  cancel-in-progress: false
 
 jobs:
   verify:

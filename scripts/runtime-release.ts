@@ -2,7 +2,7 @@ import { incrementMajor, incrementMinor, incrementPatch } from './runtime-packag
 
 export const RUNTIME_RELEASE_TAG_PREFIX = 'libraries-v'
 
-export const RUNTIME_AFFECTING_PATH_PATTERNS = [
+export const RUNTIME_PACKAGE_CONTENT_PATH_PATTERNS = [
   'packages/protocol/**',
   'packages/workbook-domain/**',
   'packages/wasm-kernel/**',
@@ -10,6 +10,10 @@ export const RUNTIME_AFFECTING_PATH_PATTERNS = [
   'packages/core/**',
   'packages/excel-import/**',
   'packages/headless/**',
+] as const
+
+export const RUNTIME_AFFECTING_PATH_PATTERNS = [
+  ...RUNTIME_PACKAGE_CONTENT_PATH_PATTERNS,
   'scripts/runtime-package-set.ts',
   'scripts/publish-runtime-package-set.ts',
   'scripts/sync-runtime-package-versions.ts',
@@ -112,6 +116,10 @@ export function extractVersionFromRuntimeTag(tagName: string): string | null {
 
 export function isRuntimeAffectingPath(path: string): boolean {
   return RUNTIME_AFFECTING_PATH_PATTERNS.some((pattern) => matchesPathPattern(path, pattern))
+}
+
+export function isRuntimePackageContentPath(path: string): boolean {
+  return RUNTIME_PACKAGE_CONTENT_PATH_PATTERNS.some((pattern) => matchesPathPattern(path, pattern))
 }
 
 export function summarizeReleaseNotes(input: {
