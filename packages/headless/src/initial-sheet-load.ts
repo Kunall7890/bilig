@@ -3,6 +3,7 @@ import {
   loadDenseLiteralSheetIntoEmptySheet,
   loadLiteralSheetIntoEmptySheet,
   type EngineFormulaSourceRef,
+  type EngineFormulaSourceRefTable,
   type LiteralSheetLoadInspection,
   type SheetRecord,
   type SpreadsheetEngine,
@@ -45,7 +46,7 @@ function sheetContainsFormulaContent(content: WorkPaperSheet): boolean {
 }
 
 export interface PreparedInitialMixedSheetLoad {
-  formulaRefs: EngineFormulaSourceRef[]
+  formulaRefs: EngineFormulaSourceRefTable
   potentialNewCells: number
 }
 
@@ -79,6 +80,74 @@ interface FreshInitialLogicalSheetInternals {
 }
 
 type FreshInitialCellAttacher = (row: number, col: number, cellIndex: number, rowId: string, colId: string) => void
+
+class InitialFormulaSourceRefTable implements EngineFormulaSourceRefTable {
+  private sheetIds: Uint32Array
+  private cellIndices: Uint32Array
+  private rows: Uint32Array
+  private cols: Uint32Array
+  private readonly sources: string[]
+  private readonly reusable: EngineFormulaSourceRef = {
+    sheetId: 0,
+    cellIndex: 0,
+    row: 0,
+    col: 0,
+    source: '',
+  }
+
+  length = 0
+
+  constructor(capacity: number) {
+    const initialCapacity = Math.max(1, capacity)
+    this.sheetIds = new Uint32Array(initialCapacity)
+    this.cellIndices = new Uint32Array(initialCapacity)
+    this.rows = new Uint32Array(initialCapacity)
+    this.cols = new Uint32Array(initialCapacity)
+    this.sources = Array<string>(initialCapacity)
+  }
+
+  push(sheetId: number, cellIndex: number, row: number, col: number, source: string): void {
+    if (this.length === this.sheetIds.length) {
+      this.grow()
+    }
+    const index = this.length
+    this.sheetIds[index] = sheetId
+    this.cellIndices[index] = cellIndex
+    this.rows[index] = row
+    this.cols[index] = col
+    this.sources[index] = source
+    this.length = index + 1
+  }
+
+  at(index: number): EngineFormulaSourceRef {
+    if (index < 0 || index >= this.length) {
+      throw new RangeError(`Initial formula ref index out of bounds: ${index.toString()}`)
+    }
+    this.reusable.sheetId = this.sheetIds[index]!
+    this.reusable.cellIndex = this.cellIndices[index]!
+    this.reusable.row = this.rows[index]!
+    this.reusable.col = this.cols[index]!
+    this.reusable.source = this.sources[index]!
+    return this.reusable
+  }
+
+  private grow(): void {
+    const nextCapacity = this.sheetIds.length * 2
+    const nextSheetIds = new Uint32Array(nextCapacity)
+    const nextCellIndices = new Uint32Array(nextCapacity)
+    const nextRows = new Uint32Array(nextCapacity)
+    const nextCols = new Uint32Array(nextCapacity)
+    nextSheetIds.set(this.sheetIds)
+    nextCellIndices.set(this.cellIndices)
+    nextRows.set(this.rows)
+    nextCols.set(this.cols)
+    this.sheetIds = nextSheetIds
+    this.cellIndices = nextCellIndices
+    this.rows = nextRows
+    this.cols = nextCols
+    this.sources.length = nextCapacity
+  }
+}
 
 function isFreshInitialLogicalSheetInternals(value: unknown): value is FreshInitialLogicalSheetInternals {
   return typeof value === 'object' && value !== null
@@ -124,9 +193,7 @@ export function prepareInitialMixedSheetLoad(args: {
   const ensureRowId = args.engine.workbook.createLogicalAxisIdEnsurer(args.sheetId, 'row')
   const ensureColumnId = args.engine.workbook.createLogicalAxisIdEnsurer(args.sheetId, 'column')
   let writtenColumnCount = 0
-  const formulaRefs: EngineFormulaSourceRef[] =
-    args.inspection?.formulaCellCount !== undefined ? Array<EngineFormulaSourceRef>(args.inspection.formulaCellCount) : []
-  let formulaRefCount = 0
+  const formulaRefs = new InitialFormulaSourceRefTable(args.inspection?.formulaCellCount ?? Math.min(potentialCellCount, 1024))
   const attachFreshCell = createFreshInitialCellAttacher(sheet)
   const previousOnSetValue = cellStore.onSetValue
   cellStore.onSetValue = null
@@ -146,14 +213,7 @@ export function prepareInitialMixedSheetLoad(args: {
               rowIds[rowIndex] = materializedRowId
               const colId = (colIds[colIndex] ??= ensureColumnId(colIndex))
               attachFreshCell(rowIndex, colIndex, cellIndex, materializedRowId, colId)
-              formulaRefs[formulaRefCount] = {
-                sheetId: args.sheetId,
-                cellIndex,
-                row: rowIndex,
-                col: colIndex,
-                source: args.rewriteFormula(formula, rowIndex, colIndex),
-              }
-              formulaRefCount += 1
+              formulaRefs.push(args.sheetId, cellIndex, rowIndex, colIndex, args.rewriteFormula(formula, rowIndex, colIndex))
               continue
             }
           }
@@ -199,9 +259,6 @@ export function prepareInitialMixedSheetLoad(args: {
     cellStore.onSetValue = previousOnSetValue
   }
 
-  if (formulaRefs.length !== formulaRefCount) {
-    formulaRefs.length = formulaRefCount
-  }
   return {
     formulaRefs,
     potentialNewCells: 0,

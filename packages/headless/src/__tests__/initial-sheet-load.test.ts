@@ -77,8 +77,10 @@ describe('initial mixed sheet load', () => {
       const potentialNewCells = initSpy.mock.calls[0]?.[1]
 
       expect(refs).toHaveLength(4)
-      expect(refs.every((ref) => typeof ref.cellIndex === 'number')).toBe(true)
-      expect(refs.map((ref) => ref.source)).toEqual(['A1+B1', 'C1*2', 'A2+B2', 'C2*2'])
+      expect(Array.isArray(refs)).toBe(false)
+      const collectedRefs = Array.from({ length: refs.length }, (_, index) => ({ ...refs.at(index) }))
+      expect(collectedRefs.every((ref) => typeof ref.cellIndex === 'number')).toBe(true)
+      expect(collectedRefs.map((ref) => ref.source)).toEqual(['A1+B1', 'C1*2', 'A2+B2', 'C2*2'])
       expect(potentialNewCells).toBe(0)
       expect(attachSpy).not.toHaveBeenCalled()
       expect(workbook.getCellValue({ sheet: sheetId, row: 1, col: 3 })).toEqual({
@@ -87,6 +89,39 @@ describe('initial mixed sheet load', () => {
       })
     } finally {
       attachSpy.mockRestore()
+      initSpy.mockRestore()
+    }
+  })
+
+  it('merges compact initial formula refs across multiple mixed sheets', () => {
+    const initSpy = vi.spyOn(SpreadsheetEngine.prototype, 'initializeFormulaSourcesAtNow')
+    try {
+      const workbook = WorkPaper.buildFromSheets({
+        North: [
+          [1, 10, '=A1+B1'],
+          [2, 20, '=A2+B2'],
+        ],
+        South: [
+          [3, 30, '=A1+B1'],
+          [4, 40, '=A2+B2'],
+        ],
+      })
+      const northId = workbook.getSheetId('North')!
+      const southId = workbook.getSheetId('South')!
+      const refs = initSpy.mock.calls[0]?.[0] ?? []
+
+      expect(refs).toHaveLength(4)
+      expect(Array.isArray(refs)).toBe(true)
+      expect(Array.from({ length: refs.length }, (_, index) => refs.at(index)?.source)).toEqual(['A1+B1', 'A2+B2', 'A1+B1', 'A2+B2'])
+      expect(workbook.getCellValue({ sheet: northId, row: 1, col: 2 })).toEqual({
+        tag: ValueTag.Number,
+        value: 22,
+      })
+      expect(workbook.getCellValue({ sheet: southId, row: 1, col: 2 })).toEqual({
+        tag: ValueTag.Number,
+        value: 44,
+      })
+    } finally {
       initSpy.mockRestore()
     }
   })

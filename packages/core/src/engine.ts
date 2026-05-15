@@ -41,7 +41,7 @@ import type {
   EngineExistingLiteralCellMutationRef,
   EngineExistingNumericCellMutationRef,
   EngineExistingNumericCellMutationResult,
-  EngineFormulaSourceRef,
+  EngineFormulaSourceRefs,
 } from './cell-mutations-at.js'
 import { calculationSettingsEqual, definedNameValuesEqual, normalizeWorkbookCalculationSettings } from './engine-metadata-utils.js'
 import { buildFormatClearOps, buildFormatPatchOps, buildStyleClearOps, buildStylePatchOps } from './engine-range-format-ops.js'
@@ -279,7 +279,7 @@ export class SpreadsheetEngine extends SpreadsheetEngineRuntimeBase {
     this.runtime.formulaInitialization.initializeCellFormulasAtNow(refs, potentialNewCells)
   }
 
-  initializeFormulaSourcesAtNow(refs: readonly EngineFormulaSourceRef[], potentialNewCells?: number): void {
+  initializeFormulaSourcesAtNow(refs: EngineFormulaSourceRefs, potentialNewCells?: number): void {
     this.runtime.formulaInitialization.initializeFormulaSourcesAtNow(refs, potentialNewCells)
   }
 

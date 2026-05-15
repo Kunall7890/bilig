@@ -1,4 +1,10 @@
-import { readRuntimeImage, readRuntimeSnapshot, type EngineFormulaSourceRef, type SpreadsheetEngine } from '@bilig/core'
+import {
+  readRuntimeImage,
+  readRuntimeSnapshot,
+  type EngineFormulaSourceRef,
+  type EngineFormulaSourceRefs,
+  type SpreadsheetEngine,
+} from '@bilig/core'
 import type { WorkbookSnapshot } from '@bilig/protocol'
 import { loadInitialLiteralSheet, prepareInitialMixedSheetLoad } from './initial-sheet-load.js'
 import { normalizeConfiguredWorkPaperCalculationSettings } from './work-paper-config.js'
@@ -89,7 +95,7 @@ export function initializeWorkPaperFromSheetEntries(args: {
       args.namedExpressions.forEach((expression) => {
         args.upsertNamedExpression(expression, { duringInitialization: true })
       })
-      let initialFormulaRefs: EngineFormulaSourceRef[] | undefined
+      let initialFormulaRefs: EngineFormulaSourceRefs | undefined
       let initialFormulaPotentialNewCells = 0
       for (let index = 0; index < sheetEntries.length; index += 1) {
         const [, sheet] = sheetEntries[index]!
@@ -111,15 +117,7 @@ export function initializeWorkPaperFromSheetEntries(args: {
           inspection: inspected,
         })
         if (prepared.formulaRefs.length > 0) {
-          if (initialFormulaRefs === undefined) {
-            initialFormulaRefs = prepared.formulaRefs
-          } else {
-            const startIndex = initialFormulaRefs.length
-            initialFormulaRefs.length = startIndex + prepared.formulaRefs.length
-            for (let refIndex = 0; refIndex < prepared.formulaRefs.length; refIndex += 1) {
-              initialFormulaRefs[startIndex + refIndex] = prepared.formulaRefs[refIndex]!
-            }
-          }
+          initialFormulaRefs = appendInitialFormulaRefs(initialFormulaRefs, prepared.formulaRefs)
         }
         initialFormulaPotentialNewCells += prepared.potentialNewCells
       }
@@ -226,4 +224,45 @@ function inspectWorkPaperInitialSheets(args: {
       : inspectSheetWithinLimits(sheetName, sheet, args.config)
   }
   return inspectedSheets
+}
+
+function appendInitialFormulaRefs(existing: EngineFormulaSourceRefs | undefined, next: EngineFormulaSourceRefs): EngineFormulaSourceRefs {
+  if (existing === undefined) {
+    return next
+  }
+  const merged = materializeInitialFormulaRefs(existing)
+  const startIndex = merged.length
+  merged.length = startIndex + next.length
+  for (let refIndex = 0; refIndex < next.length; refIndex += 1) {
+    merged[startIndex + refIndex] = cloneInitialFormulaRef(readInitialFormulaRef(next, refIndex))
+  }
+  return merged
+}
+
+function materializeInitialFormulaRefs(refs: EngineFormulaSourceRefs): EngineFormulaSourceRef[] {
+  if (Array.isArray(refs)) {
+    return refs
+  }
+  const materialized = Array<EngineFormulaSourceRef>(refs.length)
+  for (let index = 0; index < refs.length; index += 1) {
+    materialized[index] = cloneInitialFormulaRef(readInitialFormulaRef(refs, index))
+  }
+  return materialized
+}
+
+function readInitialFormulaRef(refs: EngineFormulaSourceRefs, index: number): EngineFormulaSourceRef {
+  if (Array.isArray(refs)) {
+    return refs[index]!
+  }
+  return refs.at(index)!
+}
+
+function cloneInitialFormulaRef(ref: EngineFormulaSourceRef): EngineFormulaSourceRef {
+  return {
+    sheetId: ref.sheetId,
+    row: ref.row,
+    col: ref.col,
+    source: ref.source,
+    ...(ref.cellIndex !== undefined ? { cellIndex: ref.cellIndex } : {}),
+  }
 }
