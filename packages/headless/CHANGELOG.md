@@ -4,6 +4,19 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.14.24
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.14.23
+- Manual override: no
+
+## Fixes
+- perf(headless): fast path exact index match (7ea2aaf1)
+
+## Internal runtime changes
+- docs(site): rebuild landing hero (9ccc2f13)
+- test(bench): broaden headless competitive workloads (a9b3d5d8)
+
 ## 0.14.23
 
 - Release type: patch
