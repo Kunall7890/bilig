@@ -33,7 +33,7 @@ npm install @bilig/headless
 ```
 
 For a clean copy-paste run, use the
-[npm-only smoke test](https://proompteng.github.io/bilig/try-bilig-headless-in-node.html).
+[Node quickstart](https://proompteng.github.io/bilig/try-bilig-headless-in-node.html).
 If you are choosing between formula engines, read the
 [TypeScript guide for evaluating Excel formulas in Node.js](https://proompteng.github.io/bilig/evaluate-excel-formulas-in-node-typescript.html)
 and the

@@ -122,8 +122,8 @@
       }
     </script>
     <link rel="stylesheet" href="./assets/fonts.css?v=2026-05-14-1" />
-    <link rel="stylesheet" href="./assets/site.css?v=2026-05-14-14" />
-    <link rel="stylesheet" href="./assets/product-demo.css?v=2026-05-14-6" />
+    <link rel="stylesheet" href="./assets/site.css?v=2026-05-15-1" />
+    <link rel="stylesheet" href="./assets/product-demo.css?v=2026-05-15-3" />
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
@@ -148,37 +148,41 @@
     <section class="hero" aria-labelledby="hero-title">
       <div class="wrap hero-inner">
         <div class="hero-copy">
-          <p class="eyebrow">@bilig/headless</p>
-          <h1 id="hero-title" class="hero-title" translate="no">bilig</h1>
-          <p class="hero-subtitle" aria-label="Headless workbooks for TypeScript services.">
-            Headless workbooks for<br />TypeScript services.
-          </p>
-          <p class="lede">
-            Keep the spreadsheet shape when cells and formulas are still the clearest way to explain the calculation. Change inputs in code,
-            read the formula result, and save the workbook as JSON.
-          </p>
+          <p class="eyebrow">Workbook runtime</p>
+          <h1 id="hero-title" class="hero-title">Formulas for TypeScript.</h1>
+          <p class="hero-subtitle">Edit cells. Recalculate. Save JSON.</p>
           <div class="install-command" aria-label="Install command">
             <span class="mono">$</span>
             <code>npm i @bilig/headless</code>
           </div>
           <div class="hero-actions">
             <a class="button primary" href="https://www.npmjs.com/package/@bilig/headless">Install from npm</a>
-            <a class="button" href="#install">Run the smoke test</a>
+            <a class="button" href="#install">Open the quickstart</a>
             <a class="button dark" href="https://github.com/proompteng/bilig">View GitHub</a>
           </div>
         </div>
 
-        <figure class="hero-media">
-          <div class="product-frame">
-            <img
-              src="./assets/bilig-hero-workbook-api.png?v=2026-05-14-6"
-              width="1600"
-              height="900"
-              alt="A workbook grid showing cell B2 changed to 32 and cell D5 recalculated to 51,300."
-              decoding="async"
-              fetchpriority="high"
-            />
-          </div>
+        <figure class="hero-media" aria-label="Animated workbook scene showing a formula result after a TypeScript write.">
+          <img
+            class="hero-ambient"
+            src="./assets/bilig-hero-ambient.png?v=2026-05-15-1"
+            width="1680"
+            height="960"
+            alt=""
+            aria-hidden="true"
+            decoding="async"
+            fetchpriority="high"
+          />
+          <img
+            class="hero-fallback"
+            src="./assets/bilig-hero-workbook-api.png?v=2026-05-15-1"
+            width="1600"
+            height="900"
+            alt="A workbook grid showing cell B2 changed to 32 and cell D5 recalculated to 51,300."
+            decoding="async"
+            fetchpriority="high"
+          />
+          <canvas id="hero-workbook-scene" class="hero-canvas" aria-hidden="true"></canvas>
         </figure>
       </div>
     </section>
@@ -226,17 +230,15 @@
         <div class="wrap">
           <div class="section-head">
             <div>
-              <p class="kicker">Install</p>
-              <h2 id="install-title">Run the maintained eval before reading more docs.</h2>
+              <p class="kicker">Quickstart</p>
+              <h2 id="install-title">Create a workbook in a blank Node project.</h2>
             </div>
-            <p>
-              The smoke test changes one input, restores the saved document, and checks that the calculated total survived the round trip.
-            </p>
+            <p>This installs the package, changes one input, reads the calculated total, saves JSON, and restores the workbook.</p>
           </div>
 
           <div class="install-grid">
             <div class="setup-box">
-              <h3>Setup</h3>
+              <h3>Blank Node project</h3>
               <div class="terminal-panel">
                 <div class="panel-label">
                   <span>terminal</span>
@@ -248,9 +250,9 @@ npm init -y
 npm pkg set type=module
 npm install @bilig/headless
 npm install -D tsx typescript @types/node
-curl -fsSLo eval.ts \
+curl -fsSLo quickstart.ts \
   https://proompteng.github.io/bilig/npm-eval.ts
-npx tsx eval.ts</code></pre>
+npx tsx quickstart.ts</code></pre>
               </div>
               <p>
                 More TypeScript examples live in
@@ -262,9 +264,9 @@ npx tsx eval.ts</code></pre>
               </p>
             </div>
 
-            <div class="code-panel" aria-label="TypeScript smoke test">
+            <div class="code-panel" aria-label="TypeScript quickstart example">
               <div class="panel-label">
-                <span>eval.ts</span>
+                <span>quickstart.ts</span>
                 <span>TypeScript</span>
               </div>
               <pre><code><span class="kw">import</span> {
@@ -490,7 +492,7 @@ function readNumber(cell: unknown): number {
           <div class="row-list">
             <a class="path-link" href="./try-bilig-headless-in-node.html">
               <span>try it</span>
-              <strong>Install from npm in a blank folder.</strong>
+              <strong>Try it in a blank Node project.</strong>
               <em>Edit one input, restore the JSON document, and check the recalculated total.</em>
             </a>
             <a class="path-link" href="./node-service-workpaper-recipe.html">
@@ -537,7 +539,7 @@ function readNumber(cell: unknown): number {
               <h3>Run</h3>
               <ul>
                 <li><a href="https://www.npmjs.com/package/@bilig/headless">npm package</a></li>
-                <li><a href="./try-bilig-headless-in-node.html">npm-only smoke test</a></li>
+                <li><a href="./try-bilig-headless-in-node.html">Node quickstart</a></li>
                 <li><a href="https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper">TypeScript examples</a></li>
                 <li><a href="./workbook-automation-examples-node.html">workbook automation examples</a></li>
                 <li>
@@ -642,7 +644,7 @@ function readNumber(cell: unknown): number {
                 </li>
                 <li><a href="./product-hunt-launch-kit.html">Product Hunt launch kit</a></li>
                 <li><a href="https://github.com/proompteng/bilig/discussions">GitHub discussions</a></li>
-                <li><a href="https://github.com/proompteng/bilig/discussions/270">npm smoke test feedback</a></li>
+                <li><a href="https://github.com/proompteng/bilig/discussions/270">quickstart feedback</a></li>
                 <li><a href="https://github.com/proompteng/bilig/discussions/157">workflow feedback</a></li>
                 <li><a href="https://github.com/proompteng/bilig/discussions/167">serverless route feedback</a></li>
                 <li><a href="https://github.com/proompteng/bilig/discussions/307">persistence adapter feedback</a></li>
@@ -656,7 +658,7 @@ function readNumber(cell: unknown): number {
         <div class="wrap">
           <div>
             <h2 id="final-title">Run it on one calculation you care about.</h2>
-            <p>If the smoke test matches your workflow, star the repo or take one of the starter issues.</p>
+            <p>If the quickstart matches your workflow, star the repo or take one of the starter issues.</p>
           </div>
           <div class="final-actions">
             <a class="button primary" href="https://www.npmjs.com/package/@bilig/headless">Install</a>
@@ -669,5 +671,6 @@ function readNumber(cell: unknown): number {
     <footer>
       <div class="wrap">MIT licensed. Built in the open at github.com/proompteng/bilig.</div>
     </footer>
+    <script type="module" src="./assets/hero-scene.js?v=2026-05-15-1"></script>
   </body>
 </html>

@@ -45,19 +45,19 @@ calculations.
 
 ## Use-Case Chooser
 
-| If your job is... | Start with... | Check next |
-| --- | --- | --- |
-| Formula-backed calculations inside a Node service | `@bilig/headless` | Run the [npm smoke test](try-bilig-headless-in-node.md), then wire the [Node service recipe](node-service-workpaper-recipe.md). |
-| Agent writeback that must prove the value after an edit | `@bilig/headless` | Use the [agent tool-calling recipe](agent-workpaper-tool-calling-recipe.md) or the [MCP WorkPaper server](mcp-workpaper-tool-server.md). |
-| XLSX parsing, export, styling, images, and workbook-file metadata | SheetJS or ExcelJS | Read the [SheetJS and ExcelJS boundary guide](sheetjs-exceljs-alternative-formula-workbook-api.md) before mixing file I/O with formula runtime state. |
-| A mature formula engine with broad spreadsheet-function coverage | HyperFormula | Compare against the [HyperFormula alternative notes](hyperformula-alternative-headless-workpaper.md) and the [compatibility caveats](where-bilig-is-not-excel-compatible-yet.md). |
-| Persisting a workbook document as JSON and restoring it later | `@bilig/headless` | Follow the [WorkPaper persistence guide](persisting-formula-backed-workpaper-documents-in-node.md). |
-| Embedding a spreadsheet UI that users edit directly | A browser grid or spreadsheet component | Use bilig only if a backend WorkPaper runtime also needs to verify calculations outside the UI. |
+| If your job is...                                                 | Start with...                           | Check next                                                                                                                                                                        |
+| ----------------------------------------------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Formula-backed calculations inside a Node service                 | `@bilig/headless`                       | Start with the [Node quickstart](try-bilig-headless-in-node.md), then wire the [Node service recipe](node-service-workpaper-recipe.md).                                           |
+| Agent writeback that must prove the value after an edit           | `@bilig/headless`                       | Use the [agent tool-calling recipe](agent-workpaper-tool-calling-recipe.md) or the [MCP WorkPaper server](mcp-workpaper-tool-server.md).                                          |
+| XLSX parsing, export, styling, images, and workbook-file metadata | SheetJS or ExcelJS                      | Read the [SheetJS and ExcelJS boundary guide](sheetjs-exceljs-alternative-formula-workbook-api.md) before mixing file I/O with formula runtime state.                             |
+| A mature formula engine with broad spreadsheet-function coverage  | HyperFormula                            | Compare against the [HyperFormula alternative notes](hyperformula-alternative-headless-workpaper.md) and the [compatibility caveats](where-bilig-is-not-excel-compatible-yet.md). |
+| Persisting a workbook document as JSON and restoring it later     | `@bilig/headless`                       | Follow the [WorkPaper persistence guide](persisting-formula-backed-workpaper-documents-in-node.md).                                                                               |
+| Embedding a spreadsheet UI that users edit directly               | A browser grid or spreadsheet component | Use bilig only if a backend WorkPaper runtime also needs to verify calculations outside the UI.                                                                                   |
 
 This is a chooser, not a compatibility guarantee. `bilig` does not claim full
 Excel parity, broad XLSX fidelity, or blanket speed wins. Check the
 [documented Excel gaps](where-bilig-is-not-excel-compatible-yet.md) and run the
-benchmark or smoke test that matches your workload.
+benchmark or small workbook check that matches your workload.
 
 ## Library Decision Table
 

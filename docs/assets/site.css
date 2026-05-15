@@ -107,8 +107,8 @@ pre,
   position: sticky;
   top: 0;
   z-index: 20;
-  border-bottom: 1px solid rgba(21, 23, 19, 0.12);
-  background: rgba(247, 248, 244, 0.94);
+  border-bottom: 1px solid rgba(247, 244, 235, 0.1);
+  background: rgba(10, 11, 9, 0.94);
   backdrop-filter: blur(16px);
 }
 
@@ -127,6 +127,7 @@ pre,
 
 .brand {
   gap: 10px;
+  color: #f7f4eb;
   font-weight: 700;
   text-decoration: none;
 }
@@ -153,7 +154,7 @@ pre,
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 15px;
-  color: var(--muted);
+  color: #b7bcb2;
   font-size: 12px;
   font-weight: 600;
 }
@@ -168,13 +169,17 @@ pre,
   position: relative;
   overflow: hidden;
   border-bottom: 1px solid var(--line);
+  color: #f7f4eb;
   background:
-    linear-gradient(rgba(21, 22, 17, 0.032) 1px, transparent 1px), linear-gradient(90deg, rgba(21, 22, 17, 0.028) 1px, transparent 1px),
-    radial-gradient(circle at 78% 24%, rgba(20, 120, 75, 0.1), transparent 32%), linear-gradient(135deg, #fbfcf8 0%, #f2f5ed 100%);
+    radial-gradient(circle at 74% 42%, rgba(53, 209, 121, 0.18), transparent 32%),
+    radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.08), transparent 28%),
+    linear-gradient(rgba(247, 244, 235, 0.034) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(247, 244, 235, 0.03) 1px, transparent 1px), linear-gradient(135deg, #151610 0%, #090a08 72%);
   background-size:
-    72px 72px,
-    72px 72px,
     auto,
+    auto,
+    72px 72px,
+    72px 72px,
     auto;
 }
 
@@ -207,20 +212,24 @@ pre,
 }
 
 .hero-title {
-  max-width: 620px;
+  max-width: 680px;
   font-family: var(--font-display);
-  font-size: 112px;
+  font-size: clamp(52px, 4.8vw, 72px);
   font-weight: 700;
-  line-height: 0.84;
+  line-height: 1;
 }
 
 .hero-subtitle {
-  max-width: min(620px, 100%);
-  color: var(--ink);
-  font-size: 34px;
-  font-weight: 700;
-  line-height: 1.08;
+  max-width: min(560px, 100%);
+  color: #b9bdb4;
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.38;
   overflow-wrap: break-word;
+}
+
+.hero .eyebrow {
+  color: var(--accent-bright);
 }
 
 .lede {
@@ -240,6 +249,12 @@ pre,
   box-shadow: 0 10px 30px rgba(31, 36, 27, 0.07);
 }
 
+.hero .install-command {
+  border-color: #3b4537;
+  background: rgba(13, 16, 12, 0.78);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.32);
+}
+
 .install-command span,
 .install-command code {
   padding: 13px 15px;
@@ -248,6 +263,15 @@ pre,
 .install-command span {
   border-right: 1px solid var(--line);
   color: var(--accent);
+}
+
+.hero .install-command span {
+  border-right-color: #313a2f;
+  color: var(--accent-bright);
+}
+
+.hero .install-command code {
+  color: #f8f4ea;
 }
 
 .install-command code {
@@ -281,6 +305,18 @@ pre,
     background-color 160ms ease;
 }
 
+.hero .button {
+  border-color: #4a5347;
+  background: rgba(247, 244, 235, 0.04);
+  color: #f8f4ea;
+}
+
+.hero .button:hover {
+  border-color: var(--accent-bright);
+  background: rgba(53, 209, 121, 0.1);
+  color: #ffffff;
+}
+
 .button:hover {
   transform: translateY(-1px);
   border-color: var(--accent);
@@ -291,6 +327,12 @@ pre,
   border-color: var(--accent);
   background: var(--accent);
   color: white;
+}
+
+.hero .button.primary {
+  border-color: var(--accent-bright);
+  background: var(--accent-bright);
+  color: #07120d;
 }
 
 .button.dark {
@@ -836,11 +878,11 @@ footer {
   }
 
   .hero-title {
-    font-size: 68px;
+    font-size: 42px;
   }
 
   .hero-subtitle {
-    font-size: 26px;
+    font-size: 19px;
   }
 
   h2 {

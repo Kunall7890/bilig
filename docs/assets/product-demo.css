@@ -1,27 +1,83 @@
 .hero-media {
+  position: relative;
   justify-self: end;
   min-width: 0;
   width: 100%;
-  max-width: 760px;
+  max-width: 840px;
+  min-height: clamp(360px, 38vw, 570px);
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  isolation: isolate;
 }
 
-.product-frame {
-  max-width: 100%;
-  overflow: visible;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
+.hero-media::after {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 62% 40%, rgba(53, 209, 121, 0.22), transparent 36%),
+    radial-gradient(circle at 74% 64%, rgba(255, 255, 255, 0.08), transparent 30%);
+  content: '';
+  pointer-events: none;
 }
 
-.product-frame img {
+.hero-ambient,
+.hero-canvas,
+.hero-fallback {
+  position: absolute;
   display: block;
   width: 100%;
-  height: auto;
+  height: 100%;
+}
+
+.hero-ambient {
+  inset: 0;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.16;
+  filter: blur(1px) saturate(0.72) contrast(1.08);
+  mix-blend-mode: screen;
+  -webkit-mask-image: radial-gradient(ellipse at 58% 48%, black 0 42%, transparent 72%);
+  mask-image: radial-gradient(ellipse at 58% 48%, black 0 42%, transparent 72%);
+  pointer-events: none;
+  user-select: none;
+}
+
+.hero-canvas {
+  inset: 0;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 280ms ease;
+}
+
+.hero-fallback {
+  inset: 0;
+  object-fit: contain;
+  opacity: 1;
+  transition: opacity 280ms ease;
+}
+
+.hero-media.is-scene-ready .hero-canvas {
+  opacity: 1;
+}
+
+.hero-media.is-scene-ready .hero-fallback {
+  opacity: 0;
 }
 
 @media (max-width: 1180px) {
   .hero-media {
     justify-self: stretch;
-    max-width: 860px;
+    max-width: 920px;
+    min-height: clamp(330px, 58vw, 560px);
+  }
+}
+
+@media (max-width: 560px) {
+  .hero-media {
+    min-height: 340px;
+    aspect-ratio: 1 / 0.82;
   }
 }

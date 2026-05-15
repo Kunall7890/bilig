@@ -93,14 +93,14 @@ npm init -y
 npm pkg set type=module
 npm install @bilig/headless
 npm install -D tsx typescript @types/node
-curl -fsSLo eval.ts https://proompteng.github.io/bilig/npm-eval.ts
-npx tsx eval.ts
+curl -fsSLo quickstart.ts https://proompteng.github.io/bilig/npm-eval.ts
+npx tsx quickstart.ts
 ```
 
 the downloaded TypeScript file is maintained at:
 https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/npm-eval.ts
 
-a successful smoke test prints `verified: true` after formula readback survives
+a successful quickstart run prints `verified: true` after formula readback survives
 a persisted restore.
 
 repository example:
@@ -157,7 +157,7 @@ npm run agent:verify
 - Google Sheets API boundary for local Node workbook execution:
   https://proompteng.github.io/bilig/google-sheets-api-alternative-node-workpaper.html
   https://github.com/proompteng/bilig/blob/main/docs/google-sheets-api-alternative-node-workpaper.md
-- npm-only smoke test:
+- Node quickstart:
   https://proompteng.github.io/bilig/try-bilig-headless-in-node.html
   https://github.com/proompteng/bilig/blob/main/docs/try-bilig-headless-in-node.md
 - node service recipe:
@@ -295,7 +295,7 @@ npm run agent:verify
   https://github.com/proompteng/bilig/discussions/230#discussioncomment-16920242
 - MCP registry 0.14.0 feedback comment:
   https://github.com/proompteng/bilig/discussions/230#discussioncomment-16907632
-- show-and-tell discussion for the npm-only TypeScript smoke test:
+- show-and-tell discussion for the npm TypeScript quickstart:
   https://github.com/proompteng/bilig/discussions/270
 - serverless route feedback discussion:
   https://github.com/proompteng/bilig/discussions/167

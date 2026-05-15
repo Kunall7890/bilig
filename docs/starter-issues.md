@@ -9,9 +9,9 @@ Current starter queue as of May 15, 2026:
 - Pinned contributor map:
   [#372](https://github.com/proompteng/bilig/issues/372) groups current code,
   docs, agent, and MCP starter picks for people opening the issue queue cold.
-- 111 open `first-timers-only` issues.
-- All 111 starter issues are unassigned.
-- 110 issues are currently good claim targets for a new contributor.
+- 115 open `first-timers-only` issues.
+- All 115 starter issues are unassigned.
+- 114 issues are currently good claim targets for a new contributor.
 - 10 starter issues are code or test tasks; 9 are not under active review.
 - 1 open starter issue currently has an active pull request.
 
@@ -35,7 +35,7 @@ list. They are small, current, and map to the public adoption path for
   covers a common TypeScript RPC integration.
 - [#334: docs(agent): add OpenAI Responses streaming tool-call transcript](https://github.com/proompteng/bilig/issues/334)
   helps agent builders see the tool-call loop.
-- [#383: docs(xlsx): add a sanitized Excel oracle summary sample](https://github.com/proompteng/bilig/issues/383)
+- [#401: docs(evals): add cache-vs-oracle wording to the XLSX verifier guide](https://github.com/proompteng/bilig/issues/401)
   reinforces the stale-cache accuracy boundary.
 
 ## Available Starter Picks
@@ -65,6 +65,8 @@ list. They are small, current, and map to the public adoption path for
 - [#358: docs(agent): add AI SDK onStepFinish WorkPaper transcript](https://github.com/proompteng/bilig/issues/358)
 - [#359: docs(agent): add Anthropic tool-use WorkPaper transcript](https://github.com/proompteng/bilig/issues/359)
 - [#376: docs(agent): add Firebase Genkit WorkPaper tool recipe](https://github.com/proompteng/bilig/issues/376)
+- [#396: docs(agent): add CrewAI WorkPaper tool recipe](https://github.com/proompteng/bilig/issues/396)
+- [#397: docs(agent): add Pydantic AI WorkPaper tool recipe](https://github.com/proompteng/bilig/issues/397)
 - [#283: docs(mcp): add Cursor MCP config for the WorkPaper stdio server](https://github.com/proompteng/bilig/issues/283)
 - [#284: docs(mcp): add Windsurf MCP config for local WorkPaper testing](https://github.com/proompteng/bilig/issues/284)
 - [#285: docs(mcp): add MCP Inspector smoke-test transcript for the WorkPaper server](https://github.com/proompteng/bilig/issues/285)
@@ -126,6 +128,7 @@ list. They are small, current, and map to the public adoption path for
 - [#306: docs(storage): add AWS S3 WorkPaper persistence recipe](https://github.com/proompteng/bilig/issues/306)
 - [#332: docs(storage): add MongoDB WorkPaper JSON persistence recipe](https://github.com/proompteng/bilig/issues/332)
 - [#375: docs(storage): add Turso WorkPaper JSON persistence recipe](https://github.com/proompteng/bilig/issues/375)
+- [#400: docs(storage): add SQLite WorkPaper JSON persistence recipe](https://github.com/proompteng/bilig/issues/400)
 
 ### Example Recipes
 
@@ -168,6 +171,7 @@ list. They are small, current, and map to the public adoption path for
 - [#197: docs(headless): add WorkPaper persistence decision table](https://github.com/proompteng/bilig/issues/197)
 - [#250: docs(headless): add package-size and cold-start evaluation note](https://github.com/proompteng/bilig/issues/250)
 - [#383: docs(xlsx): add a sanitized Excel oracle summary sample](https://github.com/proompteng/bilig/issues/383)
+- [#401: docs(evals): add cache-vs-oracle wording to the XLSX verifier guide](https://github.com/proompteng/bilig/issues/401)
 
 ### JavaScript Library Comparison Starters
 

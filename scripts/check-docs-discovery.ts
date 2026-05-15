@@ -170,6 +170,8 @@ await Promise.all(
   [
     'bilig-hero-workbook-api.png',
     'bilig-hero-workbook-api.svg',
+    'bilig-hero-ambient.png',
+    'hero-scene.js',
     'github-social-preview.png',
     'workpaper-benchmark-card.png',
     ...productHuntLaunchAssetFiles,
@@ -342,9 +344,9 @@ requireIncludes(contributing, 'pull requests on GitHub are welcome; maintainers'
 requireIncludes(starterIssues, 'new-contributor-guide.md#first-time-command-checklist', 'docs/starter-issues.md')
 requireIncludes(starterIssues, 'https://github.com/proompteng/bilig/blob/main/CONTRIBUTING.md', 'docs/starter-issues.md')
 requireIncludes(starterIssues, 'Current starter queue as of May 15, 2026:', 'docs/starter-issues.md')
-requireIncludes(starterIssues, '111 open `first-timers-only` issues.', 'docs/starter-issues.md')
-requireIncludes(starterIssues, 'All 111 starter issues are unassigned.', 'docs/starter-issues.md')
-requireIncludes(starterIssues, '110 issues are currently good claim targets for a new contributor.', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '115 open `first-timers-only` issues.', 'docs/starter-issues.md')
+requireIncludes(starterIssues, 'All 115 starter issues are unassigned.', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '114 issues are currently good claim targets for a new contributor.', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '10 starter issues are code or test tasks; 9 are not under active review.', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '1 open starter issue currently has an active pull request.', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '## Start Here This Week', 'docs/starter-issues.md')
@@ -358,6 +360,10 @@ requireIncludes(starterIssues, '### npm Smoke Test Improvements', 'docs/starter-
 requireIncludes(starterIssues, '### JavaScript Library Comparison Starters', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#360: test(headless): cover display-value readback after JSON restore', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#384: docs(mcp): refresh PulseMCP directory indexing proof', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '#396: docs(agent): add CrewAI WorkPaper tool recipe', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '#397: docs(agent): add Pydantic AI WorkPaper tool recipe', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '#400: docs(storage): add SQLite WorkPaper JSON persistence recipe', 'docs/starter-issues.md')
+requireIncludes(starterIssues, '#401: docs(evals): add cache-vs-oracle wording to the XLSX verifier guide', 'docs/starter-issues.md')
 requireIncludes(starterIssues, '#361: test(headless): cover range readback after an input edit', 'docs/starter-issues.md')
 requireIncludes(
   starterIssues,
@@ -731,7 +737,7 @@ for (const required of [
   'XLSX parsing, export, styling, images, and workbook-file metadata',
   'Persisting a workbook document as JSON and restoring it later',
   'Embedding a spreadsheet UI that users edit directly',
-  '[npm smoke test](try-bilig-headless-in-node.md)',
+  '[Node quickstart](try-bilig-headless-in-node.md)',
   '[agent tool-calling recipe](agent-workpaper-tool-calling-recipe.md)',
   '[SheetJS and ExcelJS boundary guide](sheetjs-exceljs-alternative-formula-workbook-api.md)',
   '[HyperFormula alternative notes](hyperformula-alternative-headless-workpaper.md)',

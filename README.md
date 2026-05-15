@@ -31,8 +31,8 @@ Project site: <https://proompteng.github.io/bilig/>
 ## Try It In 90 Seconds
 
 This uses the published npm package. It builds a workbook, changes one input,
-restores the saved document, and fails if the calculated result does not survive
-the round trip.
+reads the calculated value, saves JSON, restores the workbook, and prints the
+same value again.
 
 ```sh
 mkdir bilig-headless-eval
@@ -41,8 +41,8 @@ npm init -y
 npm pkg set type=module
 npm install @bilig/headless
 npm install -D tsx typescript @types/node
-curl -fsSLo eval.ts https://proompteng.github.io/bilig/npm-eval.ts
-npx tsx eval.ts
+curl -fsSLo quickstart.ts https://proompteng.github.io/bilig/npm-eval.ts
+npx tsx quickstart.ts
 ```
 
 Expected output:
@@ -69,11 +69,7 @@ Most integrations are just this: build a workbook, write an input, read the
 calculated value, and save the workbook state.
 
 ```ts
-import {
-  WorkPaper,
-  exportWorkPaperDocument,
-  serializeWorkPaperDocument,
-} from '@bilig/headless'
+import { WorkPaper, exportWorkPaperDocument, serializeWorkPaperDocument } from '@bilig/headless'
 
 const workbook = WorkPaper.buildFromSheets({
   Inputs: [
@@ -96,9 +92,7 @@ if (inputs === undefined || summary === undefined) {
 workbook.setCellContents({ sheet: inputs, row: 1, col: 1 }, 32)
 
 const revenue = workbook.getCellDisplayValue({ sheet: summary, row: 1, col: 1 })
-const saved = serializeWorkPaperDocument(
-  exportWorkPaperDocument(workbook, { includeConfig: true }),
-)
+const saved = serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { includeConfig: true }))
 
 console.log({ revenue, savedBytes: saved.length })
 ```
@@ -124,7 +118,7 @@ Pick the path closest to what you are building.
 
 - If you are evaluating the npm package:
   [90-second npm eval](#try-it-in-90-seconds) and
-  [npm-only smoke test](docs/try-bilig-headless-in-node.md).
+  [Node quickstart](docs/try-bilig-headless-in-node.md).
 - If you are writing code against the API:
   [packages/headless/README.md](packages/headless/README.md) and the
   [WorkPaper read/write cheat sheet](packages/headless/README.md#workpaper-readwrite-cheat-sheet).
