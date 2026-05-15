@@ -10,10 +10,11 @@
 
 ## Stable packages
 
-`@bilig/headless` and `@bilig/excel-import` are the current external npm
-adoption path for WorkPaper calculation and Excel workbook import/export. The
-other package surfaces listed here are stable repository package boundaries; not
-every package name is provisioned on npm yet.
+`@bilig/headless` is the current external npm adoption path for WorkPaper
+calculation and Excel workbook import/export. Its `@bilig/headless/xlsx`
+subpath exposes the repository XLSX importer/exporter without requiring a second
+public npm package. The other package surfaces listed here are stable repository
+package boundaries; not every package name is provisioned on npm yet.
 
 - `@bilig/core`
 - `@bilig/headless`
@@ -100,7 +101,7 @@ of `@bilig/core`:
 
 ## Excel Import Surface
 
-`@bilig/excel-import` exposes the CSV/XLSX boundary for WorkPaper consumers:
+`@bilig/headless/xlsx` exposes the CSV/XLSX boundary for WorkPaper consumers:
 
 - `importXlsx(bytes, fileName)`
 - `importCsv(text, fileName, options?)`
@@ -113,13 +114,13 @@ CSV import auto-detects comma, semicolon, and tab delimiters. For locale-specifi
 accounting exports, pass `{ delimiter: ";", decimalSeparator: "," }`.
 
 ```sh
-pnpm add @bilig/headless @bilig/excel-import
+pnpm add @bilig/headless
 ```
 
 ```ts
 import { readFileSync, writeFileSync } from 'node:fs'
 import { WorkPaper } from '@bilig/headless'
-import { exportXlsx, importXlsx } from '@bilig/excel-import'
+import { exportXlsx, importXlsx } from '@bilig/headless/xlsx'
 
 const imported = importXlsx(new Uint8Array(readFileSync('model.xlsx')), 'model.xlsx')
 const workbook = WorkPaper.buildFromSnapshot(imported.snapshot, {

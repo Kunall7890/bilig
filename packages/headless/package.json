@@ -1,7 +1,7 @@
 {
   "name": "@bilig/headless",
   "version": "0.1.95",
-  "description": "Headless spreadsheet engine for Node.js formulas, agent tools, workbook JSON persistence, and service-side spreadsheet automation.",
+  "description": "Headless spreadsheet engine for Node.js formulas, XLSX import/export, agent tools, workbook JSON persistence, and service-side spreadsheet automation.",
   "keywords": [
     "agent",
     "agent-spreadsheet",
@@ -79,18 +79,26 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./xlsx": {
+      "types": "./dist/xlsx.d.ts",
+      "import": "./dist/xlsx.js"
     }
   },
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json"
+    "build": "pnpm --dir ../.. --filter @bilig/excel-import build && rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && bun ../../scripts/build-headless-xlsx-subpath.ts"
   },
   "dependencies": {
     "@bilig/core": "workspace:*",
     "@bilig/formula": "workspace:*",
-    "@bilig/protocol": "workspace:*"
+    "@bilig/protocol": "workspace:*",
+    "fast-xml-parser": "5.7.3",
+    "fflate": "0.3.11",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
+    "xlsx-js-style": "1.2.0"
   },
   "engines": {
     "node": ">=24.0.0"

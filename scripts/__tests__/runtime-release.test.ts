@@ -1,3 +1,7 @@
+import { readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -10,6 +14,8 @@ import {
   RUNTIME_PACKAGE_DIRS,
 } from '../runtime-package-set.ts'
 import { bumpVersion, isRuntimeAffectingPath, parseConventionalCommit, releaseTypeForConventionalCommit } from '../runtime-release.ts'
+
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 
 describe('runtime release helpers', () => {
   it('parses standard conventional commits', () => {
@@ -159,10 +165,26 @@ describe('runtime release helpers', () => {
     ).toBe(true)
   })
 
-  it('publishes the Excel importer with the runtime npm package set', () => {
+  it('keeps the Excel importer runtime-affecting without requiring standalone npm publication', () => {
     expect(RUNTIME_PACKAGE_DIRS).toContain('packages/excel-import')
-    expect(RUNTIME_NPM_PACKAGE_DIRS).toContain('packages/excel-import')
+    expect(RUNTIME_NPM_PACKAGE_DIRS).not.toContain('packages/excel-import')
     expect(RUNTIME_NPM_PACKAGE_DIRS).toContain('packages/headless')
+  })
+
+  it('publishes XLSX import/export through the headless package subpath', () => {
+    const manifest = JSON.parse(readFileSync(resolve(repoRoot, 'packages/headless/package.json'), 'utf8'))
+
+    expect(manifest.exports['./xlsx']).toEqual({
+      types: './dist/xlsx.d.ts',
+      import: './dist/xlsx.js',
+    })
+    expect(manifest.dependencies).not.toHaveProperty('@bilig/excel-import')
+    expect(manifest.dependencies).toMatchObject({
+      'fast-xml-parser': '5.7.3',
+      fflate: '0.3.11',
+      xlsx: 'https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz',
+      'xlsx-js-style': '1.2.0',
+    })
   })
 
   it('matches runtime-affecting publish paths', () => {

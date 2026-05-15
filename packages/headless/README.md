@@ -20,9 +20,9 @@ without shipping a spreadsheet UI. For coding agents, it gives the model narrow
 tools such as `readRange` and `setInputCell` instead of asking it to infer state
 from screenshots.
 
-This package is not a browser grid, desktop Excel automation, or an XLSX parser.
-XLSX import/export lives in `@bilig/excel-import`; this package runs the
-validated WorkPaper model after your data is already in workbook form.
+This package is not a browser grid or desktop Excel automation. XLSX
+import/export is available from the `@bilig/headless/xlsx` subpath for Node.js
+services that need real workbook ingestion around the same WorkPaper model.
 
 ## Install
 
@@ -305,17 +305,17 @@ The public framework guide is
 
 ## XLSX Import And Export
 
-Use `@bilig/excel-import` with `@bilig/headless` for XLSX import, WorkPaper
-calculation, edits, and XLSX export from published npm packages:
+Use the `@bilig/headless/xlsx` subpath for XLSX import, WorkPaper calculation,
+edits, and XLSX export from the same published npm package:
 
 ```sh
-pnpm add @bilig/headless @bilig/excel-import
+pnpm add @bilig/headless
 ```
 
 ```ts
 import { readFileSync, writeFileSync } from 'node:fs'
 import { WorkPaper } from '@bilig/headless'
-import { exportXlsx, importXlsx } from '@bilig/excel-import'
+import { exportXlsx, importXlsx } from '@bilig/headless/xlsx'
 
 const imported = importXlsx(new Uint8Array(readFileSync('model.xlsx')), 'model.xlsx')
 const workbook = WorkPaper.buildFromSnapshot(imported.snapshot, {

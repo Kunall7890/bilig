@@ -830,8 +830,8 @@ const publicDocs = [
 ] as const
 
 for (const [path, content] of publicDocs) {
-  requireIncludes(content, 'pnpm add @bilig/headless @bilig/excel-import', path)
-  requireIncludes(content, "import { exportXlsx, importXlsx } from '@bilig/excel-import'", path)
+  requireIncludes(content, '@bilig/headless/xlsx', path)
+  requireIncludes(content, "import { exportXlsx, importXlsx } from '@bilig/headless/xlsx'", path)
   requireIncludes(content, 'workbook.exportSnapshot()', path)
 }
 
