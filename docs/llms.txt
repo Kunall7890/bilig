@@ -363,6 +363,8 @@ including its p95 caveat.
   https://github.com/proompteng/bilig/blob/main/docs/community-growth-snapshot.md
 - current starter queue snapshot: see docs/starter-issues.md for the maintained
   open first-timers-only issue list.
+- current first patch shortlist: see docs/starter-issues.md#start-here-this-week
+  before browsing the full issue queue.
 - current small example issue: xlsx formula-cache roundtrip:
   https://github.com/proompteng/bilig/issues/134
 - current small docs issue: WorkPaper agent tool result contract:

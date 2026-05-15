@@ -4,15 +4,39 @@ This page is the stable contributor on-ramp for small public `bilig` tasks. It
 links directly to current scoped issues instead of relying on GitHub issue
 search indexing.
 
-Current starter queue as of May 14, 2026:
+Current starter queue as of May 15, 2026:
 
 - Pinned contributor map:
   [#372](https://github.com/proompteng/bilig/issues/372) groups current code,
   docs, agent, and MCP starter picks for people opening the issue queue cold.
 - 111 open `first-timers-only` issues.
-- 110 issues are currently available for a new contributor to claim.
+- All 111 starter issues are unassigned.
+- 110 issues are currently good claim targets for a new contributor.
 - 10 starter issues are code or test tasks; 9 are not under active review.
 - 1 open starter issue currently has an active pull request.
+
+## Start Here This Week
+
+If you are opening the queue cold, pick one of these before browsing the full
+list. They are small, current, and map to the public adoption path for
+`@bilig/headless`.
+
+- [#360: test(headless): cover display-value readback after JSON restore](https://github.com/proompteng/bilig/issues/360)
+  proves the persistence readback path in a focused headless test.
+- [#361: test(headless): cover range readback after an input edit](https://github.com/proompteng/bilig/issues/361)
+  proves the service/agent write-then-read workflow.
+- [#362: test(examples): guard the headless README command index against missing scripts](https://github.com/proompteng/bilig/issues/362)
+  keeps the npm README commands from drifting.
+- [#363: test(examples): add invalid-request proof to the HTTP JSON summary smoke](https://github.com/proompteng/bilig/issues/363)
+  gives service examples a clear error-path check.
+- [#273: docs(examples): add Express WorkPaper route smoke](https://github.com/proompteng/bilig/issues/273)
+  adds the most familiar Node service entry point.
+- [#300: docs(examples): add tRPC WorkPaper procedure smoke](https://github.com/proompteng/bilig/issues/300)
+  covers a common TypeScript RPC integration.
+- [#334: docs(agent): add OpenAI Responses streaming tool-call transcript](https://github.com/proompteng/bilig/issues/334)
+  helps agent builders see the tool-call loop.
+- [#383: docs(xlsx): add a sanitized Excel oracle summary sample](https://github.com/proompteng/bilig/issues/383)
+  reinforces the stale-cache accuracy boundary.
 
 ## Available Starter Picks
 
