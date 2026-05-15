@@ -562,7 +562,17 @@ jobs:
           if [[ "$(git rev-parse github/main)" == "$(git rev-parse HEAD)" ]]; then
             echo "GitHub main already mirrors release metadata SHA"
           else
-            git push github HEAD:main
+            if git push github HEAD:main; then
+              echo "Pushed release metadata SHA to GitHub main"
+            else
+              git fetch --force github main
+              if [[ "$(git rev-parse github/main)" == "$(git rev-parse HEAD)" ]]; then
+                echo "GitHub main reached release metadata SHA during push"
+              else
+                echo "Failed to mirror release metadata SHA to GitHub main" >&2
+                exit 1
+              fi
+            fi
           fi
 
           git fetch --force origin main

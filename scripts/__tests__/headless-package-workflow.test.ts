@@ -32,7 +32,7 @@ describe('headless package workflow', () => {
   it('keeps publish, benchmark, and clean consumer smoke gates in the package workflow', () => {
     const source = readFileSync(resolve(repoRoot, '.github/workflows/headless-package.yml'), 'utf8')
 
-    expect(source).toContain('"packages/excel-import/**"')
+    expect(source).toMatch(/['"]packages\/excel-import\/\*\*['"]/)
     expect(source).toContain('pnpm --filter @bilig/excel-import build')
     expect(source).toContain('packages/excel-import/package.json')
     expect(source).toContain('packages/excel-import')
@@ -41,6 +41,7 @@ describe('headless package workflow', () => {
     expect(source).toContain('bun scripts/sync-runtime-release-metadata.ts')
     expect(source).toContain('git push origin HEAD:main')
     expect(source).toContain('git push github HEAD:main')
+    expect(source).toContain('GitHub main reached release metadata SHA during push')
     expect(source).toContain('git tag -a "${TAG_NAME}" -m "Libraries v${TARGET_VERSION}" HEAD')
     expect(source).toContain('pnpm publish:runtime:check')
     expect(source).toContain('pnpm workpaper:bench:competitive:check')
