@@ -1888,6 +1888,63 @@ describe('GridRenderTilePaneRuntime', () => {
     expect(getCellCallCount).toBeGreaterThan(callsAfterInitialResolve)
   })
 
+  it('rechecks visible remote tile text when the authoritative workbook revision changes', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const tileId = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+    })[0]
+    if (tileId === undefined) {
+      throw new Error('Expected a visible render tile key for the test viewport')
+    }
+    const staleRemoteTile = createRenderTile(tileId)
+    let authoritativeRevision = 1
+    let visibleText = ''
+    const engineWithChangingVisibleText: GridEngineLike = {
+      getCell: (_sheetName, address) =>
+        address === 'A1' && visibleText ? createStringCellSnapshot('A1', visibleText) : createEmptyCellSnapshot(address),
+      getCellStyle: () => undefined,
+      getRenderRevisionSnapshot: () => ({
+        authoritativeRevision,
+        projectedRevision: authoritativeRevision,
+        tileSceneCameraSeq: null,
+        tileSceneRevision: null,
+      }),
+      subscribeCells: () => () => {},
+      workbook: {
+        getSheet: () => undefined,
+      },
+    }
+    const renderTileSource = createRenderTileSource([staleRemoteTile])
+
+    const initial = runtime.resolve(
+      createInput({
+        engine: engineWithChangingVisibleText,
+        gridRuntimeHost: host,
+        renderTileSource,
+        visibleViewport: { colEnd: 10, colStart: 0, rowEnd: 10, rowStart: 0 },
+      }),
+    )
+    expect(initial.residentBodyPane?.tile).toBe(staleRemoteTile)
+
+    authoritativeRevision = 2
+    visibleText = 'Prepaid Expense Template'
+
+    const refreshed = runtime.resolve(
+      createInput({
+        engine: engineWithChangingVisibleText,
+        gridRuntimeHost: host,
+        renderTileSource,
+        visibleViewport: { colEnd: 10, colStart: 0, rowEnd: 10, rowStart: 0 },
+      }),
+    )
+
+    expect(refreshed.residentBodyPane?.tile).not.toBe(staleRemoteTile)
+    expect(refreshed.residentBodyPane?.tile.textRuns.some((run) => run.row === 0 && run.col === 0 && run.text === visibleText)).toBe(true)
+  })
+
   it('reuses remote static rect buffers for text-only local dirty tiles', () => {
     const runtime = new GridRenderTilePaneRuntime()
     const host = createHost()

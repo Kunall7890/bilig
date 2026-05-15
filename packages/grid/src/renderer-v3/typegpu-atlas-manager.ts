@@ -57,20 +57,31 @@ export interface GlyphAtlasDirtyPageStats {
 
 type AtlasCanvasLike = HTMLCanvasElement | OffscreenCanvas
 type AtlasContextLike = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
+type WorkbookFontKerning = 'auto' | 'normal' | 'none'
+type WorkbookTextRendering = 'auto' | 'optimizeSpeed' | 'optimizeLegibility' | 'geometricPrecision'
+
+export interface TextContextConfigurationTarget {
+  fontKerning?: WorkbookFontKerning
+  imageSmoothingEnabled: boolean
+  imageSmoothingQuality: ImageSmoothingQuality
+  textBaseline: CanvasTextBaseline
+  textRendering?: WorkbookTextRendering
+}
 
 const ATLAS_SCALE = 3
 const ATLAS_DIRTY_PAGE_SIZE = 32
 const ATLAS_PAGE_ID_STRIDE = 65536
+export const WORKBOOK_ATLAS_TEXT_RENDERING: WorkbookTextRendering = 'optimizeLegibility'
 
-function configureTextContext(context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D): void {
+export function configureTextContext(context: TextContextConfigurationTarget): void {
   context.textBaseline = 'alphabetic'
   context.imageSmoothingEnabled = true
   context.imageSmoothingQuality = 'high'
   if ('fontKerning' in context) {
-    Reflect.set(context, 'fontKerning', 'normal')
+    context.fontKerning = 'normal'
   }
   if ('textRendering' in context) {
-    Reflect.set(context, 'textRendering', 'geometricPrecision')
+    context.textRendering = WORKBOOK_ATLAS_TEXT_RENDERING
   }
 }
 

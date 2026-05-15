@@ -1,8 +1,31 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
-import { createGlyphAtlas } from '../renderer-v3/typegpu-atlas-manager.js'
+import {
+  WORKBOOK_ATLAS_TEXT_RENDERING,
+  configureTextContext,
+  createGlyphAtlas,
+  type TextContextConfigurationTarget,
+} from '../renderer-v3/typegpu-atlas-manager.js'
 
 describe('glyph-atlas', () => {
+  it('configures atlas text for small spreadsheet legibility', () => {
+    const context: TextContextConfigurationTarget = {
+      fontKerning: 'none',
+      imageSmoothingEnabled: false,
+      imageSmoothingQuality: 'low',
+      textBaseline: 'top',
+      textRendering: 'geometricPrecision',
+    }
+
+    configureTextContext(context)
+
+    expect(context.textBaseline).toBe('alphabetic')
+    expect(context.imageSmoothingEnabled).toBe(true)
+    expect(context.imageSmoothingQuality).toBe('high')
+    expect(context.fontKerning).toBe('normal')
+    expect(context.textRendering).toBe(WORKBOOK_ATLAS_TEXT_RENDERING)
+  })
+
   it('returns stable glyph keys for repeated runs', () => {
     const atlas = createGlyphAtlas()
     const first = atlas.intern('400 11px Geist', 'A')

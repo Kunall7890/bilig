@@ -14,6 +14,7 @@ interface VisibleTextRefreshCacheInput {
 
 interface VisibleTextRefreshCacheEntry extends VisibleTextRefreshCacheInput {
   readonly needsLocalRefresh: boolean
+  readonly renderRevisionKey: string
   readonly tile: GridRenderTile
   readonly visibleColEnd: number
   readonly visibleColStart: number
@@ -38,6 +39,7 @@ export class GridVisibleTextRefreshCache {
       return false
     }
 
+    const renderRevisionKey = resolveRenderRevisionKey(input.engine)
     const cached = this.entries.get(tileKey)
     if (
       cached &&
@@ -45,6 +47,7 @@ export class GridVisibleTextRefreshCache {
       cached.engine === input.engine &&
       cached.sheetName === input.sheetName &&
       cached.sceneRevision === input.sceneRevision &&
+      cached.renderRevisionKey === renderRevisionKey &&
       cached.visibleRowStart === visibleRowStart &&
       cached.visibleRowEnd === visibleRowEnd &&
       cached.visibleColStart === visibleColStart &&
@@ -62,6 +65,7 @@ export class GridVisibleTextRefreshCache {
     this.entries.set(tileKey, {
       ...input,
       needsLocalRefresh,
+      renderRevisionKey,
       tile,
       visibleColEnd,
       visibleColStart,
@@ -102,4 +106,17 @@ function tileVisibleTextNeedsLocalRefresh(
     }
   }
   return false
+}
+
+function resolveRenderRevisionKey(engine: GridEngineLike): string {
+  const revision = engine.getRenderRevisionSnapshot?.()
+  if (!revision) {
+    return 'untracked'
+  }
+  return [
+    revision.authoritativeRevision ?? 'none',
+    revision.projectedRevision,
+    revision.tileSceneRevision ?? 'none',
+    revision.tileSceneCameraSeq ?? 'none',
+  ].join(':')
 }
