@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act } from 'react'
+import { act, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { createRoot } from 'react-dom/client'
 import type * as ReactDom from 'react-dom'
@@ -224,6 +224,86 @@ describe('CellEditorOverlay', () => {
       await act(async () => {
         root.unmount()
       })
+    }
+  })
+
+  it('keeps local draft text and caret stable across parent renders before the debounced sync', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    vi.useFakeTimers()
+    const onChange = vi.fn()
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+
+    function RerenderHarness() {
+      const [renderCount, setRenderCount] = useState(0)
+      return (
+        <div>
+          <button
+            data-testid="force-parent-render"
+            type="button"
+            onClick={() => {
+              setRenderCount((current) => current + 1)
+            }}
+          >
+            {renderCount}
+          </button>
+          <CellEditorOverlay
+            label="Sheet1!B2"
+            targetSelection={makeTargetSelection()}
+            onCancel={() => {}}
+            onChange={onChange}
+            onCommit={() => {}}
+            resolvedValue=""
+            value=""
+          />
+        </div>
+      )
+    }
+
+    try {
+      await act(async () => {
+        root.render(<RerenderHarness />)
+      })
+
+      const textarea = host.querySelector<HTMLTextAreaElement>("[data-testid='cell-editor-input']")
+      expect(textarea).not.toBeNull()
+      if (!textarea) {
+        throw new Error('Expected mounted cell editor input')
+      }
+
+      await act(async () => {
+        textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true }))
+        textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', bubbles: true, cancelable: true }))
+        textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'c', bubbles: true, cancelable: true }))
+      })
+
+      expect(textarea.value).toBe('abc')
+      expect(textarea.selectionStart).toBe(3)
+      expect(textarea.selectionEnd).toBe(3)
+      expect(onChange).not.toHaveBeenCalled()
+
+      await act(async () => {
+        host.querySelector<HTMLButtonElement>("[data-testid='force-parent-render']")?.click()
+      })
+
+      expect(textarea.value).toBe('abc')
+      expect(textarea.selectionStart).toBe(3)
+      expect(textarea.selectionEnd).toBe(3)
+      expect(onChange).not.toHaveBeenCalled()
+
+      await act(async () => {
+        vi.advanceTimersByTime(250)
+      })
+
+      expect(onChange).toHaveBeenCalledTimes(1)
+      expect(onChange).toHaveBeenLastCalledWith('abc')
+    } finally {
+      await act(async () => {
+        root.unmount()
+      })
+      vi.useRealTimers()
     }
   })
 

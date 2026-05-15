@@ -112,7 +112,18 @@ export function CellEditorOverlay({
     window.clearTimeout(pendingTimer)
   }
 
-  const updateDraftValue = (nextValue: string) => {
+  const updateDraftValue = (
+    nextValue: string,
+    selection?: {
+      readonly direction: 'backward' | 'forward' | 'none'
+      readonly end: number
+      readonly start: number
+    },
+  ) => {
+    if (selection) {
+      pendingSelectionRestoreRef.current = selection
+    }
+    setDraftValue(nextValue)
     pendingParentSyncValueRef.current = nextValue
     if (pendingParentSyncRef.current !== null) {
       return
@@ -138,7 +149,11 @@ export function CellEditorOverlay({
     const nextValue = `${currentValue.slice(0, selectionStart)}${text}${currentValue.slice(selectionEnd)}`
     const caretPosition = selectionStart + text.length
     input.value = nextValue
-    updateDraftValue(nextValue)
+    updateDraftValue(nextValue, {
+      direction: 'none',
+      end: caretPosition,
+      start: caretPosition,
+    })
     input.setSelectionRange(caretPosition, caretPosition)
     caretWriteSequenceRef.current += 1
     const sequence = caretWriteSequenceRef.current
@@ -284,7 +299,13 @@ export function CellEditorOverlay({
         }}
         value={draftValue}
         onBlur={commitAfterBlur}
-        onChange={(event) => updateDraftValue(event.target.value)}
+        onChange={(event) =>
+          updateDraftValue(event.target.value, {
+            direction: event.currentTarget.selectionDirection ?? 'none',
+            end: event.currentTarget.selectionEnd ?? event.currentTarget.value.length,
+            start: event.currentTarget.selectionStart ?? event.currentTarget.value.length,
+          })
+        }
         onKeyDown={(event) => {
           const normalizedNumpadKey = normalizeNumpadKey(event.key, event.code)
           if (normalizedNumpadKey !== null && event.key !== normalizedNumpadKey) {

@@ -243,6 +243,102 @@ test('@browser-webgpu @browser-serial main workbook shell grid renders and updat
   await saveReadbackArtifact(page, testInfo, 'main-workbook-grid-readback.png', 'main-workbook-grid-readback')
 })
 
+test('@browser-webgpu @browser-serial main workbook shell keeps row headers visible after click-away edit', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 960, height: 720 })
+  await installTypeGpuReadbackHarness(page)
+  await gotoWorkbookShell(page, `/?document=${encodeURIComponent(createTestDocumentId('typegpu-click-away-edit-row-headers'))}`)
+  await waitForWorkbookReady(page)
+  await waitForTypeGpuRenderer(page)
+  await page.waitForFunction(
+    () =>
+      Boolean(
+        (window as Window & { __biligGpuReadbackInspector?: { readonly isReady: () => boolean } }).__biligGpuReadbackInspector?.isReady(),
+      ),
+    undefined,
+    { timeout: 15_000 },
+  )
+  await waitForReadbackSequence(page, 0)
+
+  const rowHeaderProbe = {
+    points: [],
+    regions: [
+      {
+        name: 'rowHeaderText',
+        x0: 0,
+        y0: PRODUCT_HEADER_HEIGHT,
+        x1: PRODUCT_ROW_MARKER_WIDTH,
+        y1: PRODUCT_HEADER_HEIGHT + PRODUCT_ROW_HEIGHT * 30,
+      },
+    ],
+  } as const
+  const initialReadback = await waitForReadback(page, rowHeaderProbe, (result) => result.darkPixelCounts.rowHeaderText > 20)
+
+  await clickProductCell(page, 1, 24)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B25')
+  await page.keyboard.press('a')
+
+  const cellEditor = page.getByTestId('cell-editor-input')
+  await expect(cellEditor).toBeVisible()
+  await expect(cellEditor).toHaveValue('a')
+  await expect
+    .poll(async () => await cellEditor.evaluate((input) => (input instanceof HTMLTextAreaElement ? input.selectionStart : -1)))
+    .toBe(1)
+  const pressRemainingText = async (remainingCharacters: readonly string[], previousText: string): Promise<void> => {
+    const [character, ...rest] = remainingCharacters
+    if (!character) {
+      return
+    }
+    const nextText = `${previousText}${character}`
+    await cellEditor.press(character)
+    await expect(cellEditor).toHaveValue(nextText)
+    await expect
+      .poll(async () => await cellEditor.evaluate((input) => (input instanceof HTMLTextAreaElement ? input.selectionStart : -1)))
+      .toBe(nextText.length)
+    await pressRemainingText(rest, nextText)
+  }
+  await pressRemainingText(['b', 'c', 'd', 'e', 'f'], 'a')
+
+  await clickProductCell(page, 3, 25)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!D26')
+  await expect(cellEditor).toHaveCount(0)
+  await waitForReadbackSequence(page, initialReadback.sequence)
+
+  const committedProbe = {
+    points: [],
+    regions: [
+      {
+        name: 'rowHeaderText',
+        x0: 0,
+        y0: PRODUCT_HEADER_HEIGHT,
+        x1: PRODUCT_ROW_MARKER_WIDTH,
+        y1: PRODUCT_HEADER_HEIGHT + PRODUCT_ROW_HEIGHT * 30,
+      },
+      {
+        name: 'b25Text',
+        x0: PRODUCT_ROW_MARKER_WIDTH + PRODUCT_COLUMN_WIDTH + 8,
+        y0: PRODUCT_HEADER_HEIGHT + PRODUCT_ROW_HEIGHT * 24 + 4,
+        x1: PRODUCT_ROW_MARKER_WIDTH + PRODUCT_COLUMN_WIDTH * 2 - 8,
+        y1: PRODUCT_HEADER_HEIGHT + PRODUCT_ROW_HEIGHT * 25 - 4,
+      },
+    ],
+  } as const
+  const committedReadback = await waitForReadback(
+    page,
+    committedProbe,
+    (result) => result.darkPixelCounts.rowHeaderText > 20 && result.darkPixelCounts.b25Text > 5,
+  )
+
+  expect(committedReadback.darkPixelCounts.rowHeaderText).toBeGreaterThan(20)
+  expect(committedReadback.darkPixelCounts.b25Text).toBeGreaterThan(5)
+
+  await saveReadbackArtifact(
+    page,
+    testInfo,
+    'main-workbook-click-away-edit-row-headers-readback.png',
+    'main-workbook-click-away-edit-row-headers-readback',
+  )
+})
+
 test('@browser-webgpu @browser-perf main workbook shell keeps resident typegpu content visible while selection moves', async ({
   page,
 }, testInfo) => {

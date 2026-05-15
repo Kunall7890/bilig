@@ -854,17 +854,34 @@ test('web app commits in-cell string edits when clicking away', async ({ page })
 
   await clickProductCell(page, 1, 0)
   await expect(nameBox).toHaveValue('B1')
-  await grid.press('h')
+  await grid.press('a')
   await expect(cellEditor).toBeVisible()
-  await expect(cellEditor).toHaveValue('h')
+  await expect(cellEditor).toHaveValue('a')
+  await expect
+    .poll(async () => await cellEditor.evaluate((input) => (input instanceof HTMLTextAreaElement ? input.selectionStart : -1)))
+    .toBe(1)
+  const pressRemainingText = async (remainingCharacters: readonly string[], previousText: string): Promise<void> => {
+    const [character, ...rest] = remainingCharacters
+    if (!character) {
+      return
+    }
+    const nextText = `${previousText}${character}`
+    await cellEditor.press(character)
+    await expect(cellEditor).toHaveValue(nextText)
+    await expect
+      .poll(async () => await cellEditor.evaluate((input) => (input instanceof HTMLTextAreaElement ? input.selectionStart : -1)))
+      .toBe(nextText.length)
+    await pressRemainingText(rest, nextText)
+  }
+  await pressRemainingText(['b', 'c', 'd', 'e', 'f'], 'a')
   await clickProductCell(page, 2, 0)
 
   await expect(nameBox).toHaveValue('C1')
   await expect(page.getByTestId('grid-pane-text-overlay')).toHaveCount(0)
   await clickProductCell(page, 1, 0)
   await expect(nameBox).toHaveValue('B1')
-  await expect(formulaInput).toHaveValue('h')
-  await expect(resolvedValue).toHaveText('h')
+  await expect(formulaInput).toHaveValue('abcdef')
+  await expect(resolvedValue).toHaveText('abcdef')
 })
 
 test('web app drags a selected range by its border with a grab cursor', async ({ page }) => {
