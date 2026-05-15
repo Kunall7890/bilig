@@ -4,6 +4,18 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.14.26
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.14.25
+- Manual override: no
+
+## Fixes
+- perf(headless): expand competitive workbook benchmarks (9f63cbc7)
+
+## Internal runtime changes
+- ci(release): tolerate github mirror race (204afce8)
+
 ## 0.14.25
 
 - Release type: patch
