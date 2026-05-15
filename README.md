@@ -223,6 +223,7 @@ the [Node spreadsheet formula engine guide](docs/node-spreadsheet-formula-engine
 [formula bug clinic](docs/formula-bug-clinic.md),
 [workbook fixture submissions](docs/submit-workbook-fixture.md),
 [AI SDK and LangChain tools](docs/vercel-ai-sdk-langchain-spreadsheet-tool.md),
+[CrewAI adapter](docs/crewai-workpaper-spreadsheet-tool.md),
 the [MCP server guide](docs/mcp-workpaper-tool-server.md),
 [spreadsheet MCP server comparison](docs/spreadsheet-mcp-server-comparison.md),
 [MCP directory status](docs/mcp-spreadsheet-server-directory.md),
