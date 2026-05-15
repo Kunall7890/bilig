@@ -6,6 +6,7 @@ import type { FormulaFamilyFreshUniformRunRegistrationArgs, FormulaFamilyRunUpse
 import type { FormulaTemplateResolution } from '../../formula/template-bank.js'
 import type { EngineMutationError } from '../errors.js'
 import type { EngineRuntimeState, U32 } from '../runtime-state.js'
+import type { DeferredInitialFormulaFamilyRun } from './formula-initialization-family-runs.js'
 
 export interface EngineFormulaInitializationService {
   readonly initializeCellFormulasAt: (
@@ -69,6 +70,7 @@ export interface EngineFormulaInitializationServiceArgs {
   readonly upsertFormulaFamilyRun: (args: FormulaFamilyRunUpsertArgs) => void
   readonly registerFreshFormulaFamilyRun: (args: FormulaFamilyFreshUniformRunRegistrationArgs) => boolean
   readonly deferFormulaFamilyIndexRebuild?: () => void
+  readonly deferFormulaFamilyIndexRuns?: (runs: readonly DeferredInitialFormulaFamilyRun[]) => void
   readonly deferFormulaInstanceTableRebuild?: () => void
   readonly compileTemplateFormula: (source: string, row: number, col: number) => FormulaTemplateResolution
   readonly clearTemplateFormulaCache: () => void

@@ -11,6 +11,7 @@ interface ImportedWorkbookMetadataInput {
   readonly tables?: WorkbookMetadataSnapshot['tables']
   readonly spills?: WorkbookMetadataSnapshot['spills']
   readonly pivots?: WorkbookMetadataSnapshot['pivots']
+  readonly externalWorkbookReferences?: WorkbookMetadataSnapshot['externalWorkbookReferences']
   readonly unsupportedFormulaDependencies?: WorkbookMetadataSnapshot['unsupportedFormulaDependencies']
   readonly unsupportedPivots?: WorkbookMetadataSnapshot['unsupportedPivots']
   readonly pivotArtifacts?: WorkbookMetadataSnapshot['pivotArtifacts']
@@ -40,6 +41,7 @@ export function buildImportedWorkbookMetadata(input: ImportedWorkbookMetadataInp
     ...(input.tables ? { tables: input.tables } : {}),
     ...(input.spills ? { spills: input.spills } : {}),
     ...(input.pivots ? { pivots: input.pivots } : {}),
+    ...(input.externalWorkbookReferences ? { externalWorkbookReferences: input.externalWorkbookReferences } : {}),
     ...(input.unsupportedFormulaDependencies ? { unsupportedFormulaDependencies: input.unsupportedFormulaDependencies } : {}),
     ...(input.unsupportedPivots ? { unsupportedPivots: input.unsupportedPivots } : {}),
     ...(input.pivotArtifacts ? { pivotArtifacts: input.pivotArtifacts } : {}),

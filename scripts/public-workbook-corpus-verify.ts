@@ -61,8 +61,11 @@ import type {
   PublicWorkbookCaseStatus,
   PublicWorkbookCorpusCase,
   PublicWorkbookCorpusScorecard,
+  PublicWorkbookExternalReferenceSummary,
   PublicWorkbookFeatureCounts,
   PublicWorkbookValidationSummary,
+  PublicWorkbookVerificationPhase,
+  PublicWorkbookVerificationPhaseTiming,
 } from './public-workbook-corpus-types.ts'
 
 declare const Bun:
@@ -107,6 +110,11 @@ interface UnsupportedFormulaOracleCacheClassification {
   readonly unsupported: boolean
   readonly classifications: readonly string[]
   readonly evidence: readonly string[]
+}
+
+interface VerificationRuntimeMetrics {
+  readonly startedAt: number
+  readonly phaseTimings: PublicWorkbookVerificationPhaseTiming[]
 }
 
 export async function buildPublicWorkbookCorpusScorecard(args: BuildScorecardArgs): Promise<PublicWorkbookCorpusScorecard> {
@@ -177,6 +185,7 @@ export function verifyCachedWorkbookArtifactIsolated(args: {
   readonly rssCheckIntervalMs?: number
 }): Promise<PublicWorkbookCorpusCase> {
   const baseEvidence = artifactBaseEvidence(args.artifact)
+  const runtimeMetrics = startVerificationRuntimeMetrics()
   return new Promise<PublicWorkbookCorpusCase>((resolvePromise) => {
     const childArgs = [
       publicWorkbookCorpusScriptPath,
@@ -222,11 +231,15 @@ export function verifyCachedWorkbookArtifactIsolated(args: {
         const forceKillTimer = setTimeout(() => terminateChild('SIGKILL'), 5_000)
         forceKillTimer.unref()
         finish(
-          unsupportedRssLimitCase(args.artifact, baseEvidence, rssBytes, args.maxRssBytes, [
-            `rss-limit-phase=${latestWorkerPhase}`,
-            `peak-rss=${formatByteSize(Math.max(peakRssBytes, rssBytes))}`,
-            'The workbook was isolated in a subprocess so the corpus verification run could continue.',
-          ]),
+          withVerificationRuntimeMetrics(
+            unsupportedRssLimitCase(args.artifact, baseEvidence, rssBytes, args.maxRssBytes, [
+              `rss-limit-phase=${latestWorkerPhase}`,
+              `peak-rss=${formatByteSize(Math.max(peakRssBytes, rssBytes))}`,
+              'The workbook was isolated in a subprocess so the corpus verification run could continue.',
+            ]),
+            runtimeMetrics,
+            Math.max(peakRssBytes, rssBytes),
+          ),
         )
       },
     })
@@ -235,10 +248,14 @@ export function verifyCachedWorkbookArtifactIsolated(args: {
       const forceKillTimer = setTimeout(() => terminateChild('SIGKILL'), 5_000)
       forceKillTimer.unref()
       finish(
-        failedCase(args.artifact, 'error', baseEvidence, [
-          `Verification timed out after ${String(args.timeoutMs)}ms`,
-          'The workbook was isolated in a subprocess so the corpus verification run could continue.',
-        ]),
+        withVerificationRuntimeMetrics(
+          failedCase(args.artifact, 'error', baseEvidence, [
+            `Verification timed out after ${String(args.timeoutMs)}ms`,
+            'The workbook was isolated in a subprocess so the corpus verification run could continue.',
+          ]),
+          runtimeMetrics,
+          peakRssBytes,
+        ),
       )
     }, args.timeoutMs)
     child.stdout.setEncoding('utf8')
@@ -257,29 +274,43 @@ export function verifyCachedWorkbookArtifactIsolated(args: {
       }
     })
     child.on('error', (error) => {
-      finish(failedCase(args.artifact, 'error', baseEvidence, [`Verification subprocess failed to start: ${error.message}`]))
+      finish(
+        withVerificationRuntimeMetrics(
+          failedCase(args.artifact, 'error', baseEvidence, [`Verification subprocess failed to start: ${error.message}`]),
+          runtimeMetrics,
+          peakRssBytes,
+        ),
+      )
     })
     child.on('close', (code, signal) => {
       if (code !== 0) {
         const failureDetails = compactProcessOutput(stderr || stdout)
         finish(
-          failedCase(args.artifact, 'error', baseEvidence, [
-            `Verification subprocess exited with ${signal ? `signal ${signal}` : `code ${String(code)}`}`,
-            ...(failureDetails ? [failureDetails] : []),
-          ]),
+          withVerificationRuntimeMetrics(
+            failedCase(args.artifact, 'error', baseEvidence, [
+              `Verification subprocess exited with ${signal ? `signal ${signal}` : `code ${String(code)}`}`,
+              ...(failureDetails ? [failureDetails] : []),
+            ]),
+            runtimeMetrics,
+            peakRssBytes,
+          ),
         )
         return
       }
       try {
         const parsed: unknown = JSON.parse(stdout)
-        finish(parsePublicWorkbookCorpusCase(parsed))
+        finish(withPeakRssBytes(parsePublicWorkbookCorpusCase(parsed), peakRssBytes))
       } catch (error) {
         const details = compactProcessOutput(stderr || stdout)
         finish(
-          failedCase(args.artifact, 'error', baseEvidence, [
-            `Verification subprocess returned invalid JSON: ${error instanceof Error ? error.message : String(error)}`,
-            ...(details ? [details] : []),
-          ]),
+          withVerificationRuntimeMetrics(
+            failedCase(args.artifact, 'error', baseEvidence, [
+              `Verification subprocess returned invalid JSON: ${error instanceof Error ? error.message : String(error)}`,
+              ...(details ? [details] : []),
+            ]),
+            runtimeMetrics,
+            peakRssBytes,
+          ),
         )
       }
     })
@@ -293,59 +324,87 @@ export async function verifyCachedWorkbookArtifact(
   maxCellCount: number,
   workerOptions: PublicWorkbookCorpusWorkerOptions,
 ): Promise<PublicWorkbookCorpusCase> {
+  const runtimeMetrics = startVerificationRuntimeMetrics()
+  const finishCase = (corpusCase: PublicWorkbookCorpusCase): PublicWorkbookCorpusCase =>
+    withVerificationRuntimeMetrics(corpusCase, runtimeMetrics)
   const cachePath = join(cacheDir, artifact.cachePath)
   const baseEvidence = artifactBaseEvidence(artifact)
   if (!existsSync(cachePath)) {
-    return failedCase(artifact, 'error', baseEvidence, [`Missing cached workbook file: ${artifact.cachePath}`])
+    return finishCase(failedCase(artifact, 'error', baseEvidence, [`Missing cached workbook file: ${artifact.cachePath}`]))
   }
   try {
-    workerOptions.onPhase?.('read-cache')
-    const bytes = readFileSync(cachePath)
+    const bytes = await timeVerificationPhase(runtimeMetrics, workerOptions, 'read-cache', () => readFileSync(cachePath))
     const actualHash = sha256HexSync(bytes)
     if (actualHash !== artifact.sha256) {
-      return failedCase(artifact, 'failed', baseEvidence, [
-        `Cached workbook hash mismatch: expected ${artifact.sha256}, received ${actualHash}`,
-      ])
+      return finishCase(
+        failedCase(artifact, 'failed', baseEvidence, [
+          `Cached workbook hash mismatch: expected ${artifact.sha256}, received ${actualHash}`,
+        ]),
+      )
     }
-    workerOptions.onPhase?.('inspect-footprint')
-    const footprint =
+    const footprint = await timeVerificationPhase(runtimeMetrics, workerOptions, 'inspect-footprint', () =>
       bytes.byteLength >= isolatedFootprintByteThreshold
-        ? await inspectWorkbookFootprintIsolated({
+        ? inspectWorkbookFootprintIsolated({
             bytes,
             fileName: artifact.fileName,
             scriptPath: publicWorkbookCorpusScriptPath,
             options: workerOptions,
           })
-        : inspectWorkbookFootprint(bytes, artifact.fileName)
+        : inspectWorkbookFootprint(bytes, artifact.fileName),
+    )
     if (!footprint) {
-      return failedCase(artifact, 'error', baseEvidence, [
-        'Workbook footprint subprocess did not return a valid footprint.',
-        'The workbook was isolated in a subprocess so the corpus verification run could continue.',
-      ])
+      return finishCase(
+        failedCase(artifact, 'error', baseEvidence, [
+          'Workbook footprint subprocess did not return a valid footprint.',
+          'The workbook was isolated in a subprocess so the corpus verification run could continue.',
+        ]),
+      )
     }
     if (footprint.featureCounts.cellCount > maxCellCount) {
-      return unsupportedResourceLimitCase(artifact, baseEvidence, footprint, maxCellCount)
+      return finishCase(unsupportedResourceLimitCase(artifact, baseEvidence, footprint, maxCellCount))
     }
     const importResourceLimit = importResourceLimitPreflight(artifact, footprint)
     if (importResourceLimit) {
-      return unsupportedPreflightResourceLimitCase(artifact, baseEvidence, footprint, importResourceLimit)
+      return finishCase(unsupportedPreflightResourceLimitCase(artifact, baseEvidence, footprint, importResourceLimit))
     }
     collectGarbage()
-    workerOptions.onPhase?.('import-xlsx')
-    const imported = importXlsx(bytes, artifact.fileName)
-    const importedFeatureCounts = countWorkbookFeatures(imported.snapshot, imported.warnings)
-    const featureCounts = mergeImportedAndFootprintFeatureCounts(importedFeatureCounts, footprint.featureCounts)
-    const metadata = workbookMetadata(imported.snapshot)
-    workerOptions.onPhase?.('formula-oracle')
-    const formulaOracleValidation =
-      footprint.featureCounts.formulaCellCount === 0 || hasFormulaOracleBlockingWarning(imported.warnings)
-        ? { comparisons: 0, mismatches: [], mismatchDetails: [], skippedUnsupportedFormulaCount: 0 }
-        : await validateFormulaOracles(imported.snapshot, bytes, unsupportedFormulaDependencyKeys(imported.snapshot))
-    const unsupportedFormulaOracleWarning = hasUnsupportedPrecisionAsDisplayedOracleWarning(imported.warnings, formulaOracleValidation)
-    const unsupportedFormulaOracleCache = unsupportedFormulaOracleWarning
-      ? emptyUnsupportedFormulaOracleCacheClassification()
-      : classifyUnsupportedFormulaOracleCache(imported.snapshot, formulaOracleValidation)
-    const unsupportedExternalLinkFormulaOracle = classifyUnsupportedExternalLinkFormulaOracle(imported.snapshot, formulaOracleValidation)
+    const { imported, featureCounts, metadata } = await timeVerificationPhase(runtimeMetrics, workerOptions, 'import-xlsx', () => {
+      const importedWorkbook = importXlsx(bytes, artifact.fileName)
+      const importedFeatureCounts = countWorkbookFeatures(importedWorkbook.snapshot, importedWorkbook.warnings)
+      return {
+        imported: importedWorkbook,
+        featureCounts: mergeImportedAndFootprintFeatureCounts(importedFeatureCounts, footprint.featureCounts),
+        metadata: workbookMetadata(importedWorkbook.snapshot),
+      }
+    })
+    const {
+      formulaOracleValidation,
+      unsupportedFormulaOracleWarning,
+      unsupportedFormulaOracleCache,
+      unsupportedExternalLinkFormulaOracle,
+    } = await timeVerificationPhase(runtimeMetrics, workerOptions, 'formula-oracle', async () => {
+      const nextFormulaOracleValidation =
+        footprint.featureCounts.formulaCellCount === 0 || hasFormulaOracleBlockingWarning(imported.warnings)
+          ? { comparisons: 0, mismatches: [], mismatchDetails: [], skippedUnsupportedFormulaCount: 0 }
+          : await validateFormulaOracles(imported.snapshot, bytes, unsupportedFormulaDependencyKeys(imported.snapshot))
+      const nextUnsupportedFormulaOracleWarning = hasUnsupportedPrecisionAsDisplayedOracleWarning(
+        imported.warnings,
+        nextFormulaOracleValidation,
+      )
+      const nextUnsupportedFormulaOracleCache = nextUnsupportedFormulaOracleWarning
+        ? emptyUnsupportedFormulaOracleCacheClassification()
+        : classifyUnsupportedFormulaOracleCache(imported.snapshot, nextFormulaOracleValidation)
+      const nextUnsupportedExternalLinkFormulaOracle = classifyUnsupportedExternalLinkFormulaOracle(
+        imported.snapshot,
+        nextFormulaOracleValidation,
+      )
+      return {
+        formulaOracleValidation: nextFormulaOracleValidation,
+        unsupportedFormulaOracleWarning: nextUnsupportedFormulaOracleWarning,
+        unsupportedFormulaOracleCache: nextUnsupportedFormulaOracleCache,
+        unsupportedExternalLinkFormulaOracle: nextUnsupportedExternalLinkFormulaOracle,
+      }
+    })
     const roundTripResourceLimit = roundTripResourceLimitPreflight(artifact, featureCounts)
     const structuralSmokeResourceLimit = runStructuralSmoke ? structuralSmokeResourceLimitPreflight(featureCounts) : null
     const phaseResourceLimitClassifications = [
@@ -364,16 +423,14 @@ export async function verifyCachedWorkbookArtifact(
     })
     const roundTripSkipEvidence = roundTripValidationSkipEvidence(imported.warnings)
     const structuralSmokeSnapshot = imported.snapshot
-    workerOptions.onPhase?.('round-trip')
-    const roundTripPassed =
-      roundTripSkipEvidence || roundTripResourceLimit ? true : roundTripsSupportedSemantics(detachImportedWorkbookSnapshot(imported))
+    const externalWorkbookReferences = summarizeExternalWorkbookReferences(imported.snapshot)
+    const roundTripPassed = await timeVerificationPhase(runtimeMetrics, workerOptions, 'round-trip', () =>
+      roundTripSkipEvidence || roundTripResourceLimit ? true : roundTripsSupportedSemantics(detachImportedWorkbookSnapshot(imported)),
+    )
     collectGarbage()
-    workerOptions.onPhase?.('structural-smoke')
-    const structuralSmokePassed = runStructuralSmoke
-      ? structuralSmokeResourceLimit
-        ? null
-        : runStructuralSmokeOps(structuralSmokeSnapshot)
-      : null
+    const structuralSmokePassed = await timeVerificationPhase(runtimeMetrics, workerOptions, 'structural-smoke', () =>
+      runStructuralSmoke ? (structuralSmokeResourceLimit ? null : runStructuralSmokeOps(structuralSmokeSnapshot)) : null,
+    )
     collectGarbage()
     const formulaOraclePassed =
       unsupportedFormulaOracleWarning ||
@@ -394,7 +451,7 @@ export async function verifyCachedWorkbookArtifact(
       validation.roundTripPassed &&
       (validation.structuralSmokePassed === null || validation.structuralSmokePassed)
     const status: PublicWorkbookCaseStatus = passed ? (unsupportedFeatureClassifications.length > 0 ? 'unsupported' : 'passed') : 'failed'
-    return {
+    return finishCase({
       id: artifact.id,
       sourceId: artifact.sourceId,
       sourceUrl: artifact.sourceUrl,
@@ -404,6 +461,7 @@ export async function verifyCachedWorkbookArtifact(
       license: artifact.license,
       status,
       passed,
+      ...(externalWorkbookReferences ? { externalWorkbookReferences } : {}),
       featureCounts,
       workbookMetadata: metadata,
       validation,
@@ -429,10 +487,10 @@ export async function verifyCachedWorkbookArtifact(
         ...(roundTripSkipEvidence ? [roundTripSkipEvidence] : []),
         ...validationEvidence(validation),
       ],
-    }
+    })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    return failedCase(artifact, 'error', baseEvidence, [message])
+    return finishCase(failedCase(artifact, 'error', baseEvidence, [message]))
   }
 }
 
@@ -465,6 +523,59 @@ function artifactBaseEvidence(artifact: PublicWorkbookArtifact): string[] {
     `sha256=${artifact.sha256}`,
     ...(artifact.topicEvidence ?? []).map((entry) => `topic=${entry}`),
   ]
+}
+
+function startVerificationRuntimeMetrics(): VerificationRuntimeMetrics {
+  return {
+    startedAt: performance.now(),
+    phaseTimings: [],
+  }
+}
+
+async function timeVerificationPhase<T>(
+  metrics: VerificationRuntimeMetrics,
+  workerOptions: PublicWorkbookCorpusWorkerOptions,
+  phase: PublicWorkbookVerificationPhase,
+  fn: () => T | Promise<T>,
+): Promise<T> {
+  workerOptions.onPhase?.(phase)
+  const startedAt = performance.now()
+  try {
+    return await fn()
+  } finally {
+    metrics.phaseTimings.push({ phase, elapsedMs: roundElapsedMs(performance.now() - startedAt) })
+  }
+}
+
+function withVerificationRuntimeMetrics(
+  corpusCase: PublicWorkbookCorpusCase,
+  metrics: VerificationRuntimeMetrics,
+  peakRssBytes?: number,
+): PublicWorkbookCorpusCase {
+  return withPeakRssBytes(
+    {
+      ...corpusCase,
+      elapsedMs: roundElapsedMs(performance.now() - metrics.startedAt),
+      phaseTimings: metrics.phaseTimings,
+    },
+    peakRssBytes,
+  )
+}
+
+function withPeakRssBytes(corpusCase: PublicWorkbookCorpusCase, peakRssBytes: number): PublicWorkbookCorpusCase
+function withPeakRssBytes(corpusCase: PublicWorkbookCorpusCase, peakRssBytes?: number): PublicWorkbookCorpusCase
+function withPeakRssBytes(corpusCase: PublicWorkbookCorpusCase, peakRssBytes?: number): PublicWorkbookCorpusCase {
+  if (peakRssBytes === undefined || peakRssBytes <= 0) {
+    return corpusCase
+  }
+  return {
+    ...corpusCase,
+    peakRssBytes: Math.max(corpusCase.peakRssBytes ?? 0, Math.trunc(peakRssBytes)),
+  }
+}
+
+function roundElapsedMs(value: number): number {
+  return Math.max(0, Math.round(value))
 }
 
 async function validateFormulaOracles(
@@ -838,6 +949,9 @@ export function classifyUnsupportedFeatures(
   if ((snapshot.workbook.metadata?.unsupportedFormulaDependencies?.length ?? 0) > 0) {
     classifications.add('xlsx.externalLinks.formulaDependenciesUnsupported')
   }
+  if ((snapshot.workbook.metadata?.externalWorkbookReferences?.length ?? 0) > 0) {
+    classifications.add('xlsx.externalLinks.workbookReferencesPreserved')
+  }
   if ((snapshot.workbook.metadata?.unsupportedPivots?.length ?? 0) > 0) {
     const hasExternalUnsupportedPivot = snapshot.workbook.metadata?.unsupportedPivots?.some((pivot) => pivot.kind === 'external-cache')
     classifications.add(hasExternalUnsupportedPivot ? externalPivotCacheUnsupportedClassification : rawPivotPartUnsupportedClassification)
@@ -866,8 +980,20 @@ function unsupportedWorkbookMetadataEvidence(
 ): readonly string[] {
   const evidence: string[] = []
   const unsupportedFormulaDependencies = snapshot.workbook.metadata?.unsupportedFormulaDependencies ?? []
+  const externalWorkbookReferences = summarizeExternalWorkbookReferences(snapshot)
+  if (externalWorkbookReferences) {
+    evidence.push(`external-workbook-links=${String(externalWorkbookReferences.linkedWorkbookCount)}`)
+    evidence.push(`external-workbook-formula-dependencies=${String(externalWorkbookReferences.formulaDependencyCount)}`)
+    evidence.push(`external-workbook-cached-value-dependencies=${String(externalWorkbookReferences.cachedValueDependencyCount)}`)
+    evidence.push(
+      ...(snapshot.workbook.metadata?.externalWorkbookReferences ?? [])
+        .slice(0, 10)
+        .map(
+          (entry) => `external-workbook=${entry.workbookName ?? entry.target ?? entry.packagePath ?? `book#${String(entry.bookIndex)}`}`,
+        ),
+    )
+  }
   if (unsupportedFormulaDependencies.length > 0) {
-    evidence.push(`external-workbook-formula-dependencies=${String(unsupportedFormulaDependencies.length)}`)
     if (validation.skippedUnsupportedFormulaCount > 0) {
       evidence.push(`formula-oracle-skipped-unsupported-external-formulas=${String(validation.skippedUnsupportedFormulaCount)}`)
     }
@@ -876,7 +1002,11 @@ function unsupportedWorkbookMetadataEvidence(
         .slice(0, 10)
         .map(
           (entry) =>
-            `external-formula=${entry.sheetName}!${entry.address} resolved=${String(entry.resolvedExternalReferenceCount)} unresolved=${String(entry.unresolvedExternalReferenceCount)}`,
+            `external-formula=${entry.sheetName}!${entry.address} linked=${formatLinkedWorkbookReferences(
+              entry.linkedWorkbooks,
+            )} cached=${String(entry.cachedValuesUsed)} resolved=${String(entry.resolvedExternalReferenceCount)} unresolved=${String(
+              entry.unresolvedExternalReferenceCount,
+            )}`,
         ),
     )
   }
@@ -895,6 +1025,49 @@ function unsupportedWorkbookMetadataEvidence(
     )
   }
   return evidence
+}
+
+function summarizeExternalWorkbookReferences(snapshot: WorkbookSnapshot): PublicWorkbookExternalReferenceSummary | undefined {
+  const dependencies = snapshot.workbook.metadata?.unsupportedFormulaDependencies ?? []
+  const externalWorkbookReferences = snapshot.workbook.metadata?.externalWorkbookReferences ?? []
+  if (dependencies.length === 0 && externalWorkbookReferences.length === 0) {
+    return undefined
+  }
+  const linkedWorkbookKeys = new Set<string>()
+  for (const linkedWorkbook of externalWorkbookReferences) {
+    linkedWorkbookKeys.add(
+      `${String(linkedWorkbook.bookIndex)}\t${linkedWorkbook.target ?? ''}\t${linkedWorkbook.packagePath ?? ''}\t${linkedWorkbook.workbookName ?? ''}`,
+    )
+  }
+  for (const dependency of dependencies) {
+    for (const linkedWorkbook of dependency.linkedWorkbooks) {
+      linkedWorkbookKeys.add(
+        `${String(linkedWorkbook.bookIndex)}\t${linkedWorkbook.target ?? ''}\t${linkedWorkbook.packagePath ?? ''}\t${linkedWorkbook.workbookName ?? ''}`,
+      )
+    }
+  }
+  return {
+    linkedWorkbookCount: linkedWorkbookKeys.size,
+    formulaDependencyCount: dependencies.length,
+    cachedValueDependencyCount: dependencies.filter((dependency) => dependency.cachedValuesUsed).length,
+  }
+}
+
+function formatLinkedWorkbookReferences(
+  linkedWorkbooks: readonly {
+    readonly bookIndex: number
+    readonly workbookName?: string
+    readonly target?: string
+    readonly packagePath?: string
+  }[],
+): string {
+  if (linkedWorkbooks.length === 0) {
+    return '[]'
+  }
+  return `[${linkedWorkbooks
+    .slice(0, 3)
+    .map((entry) => entry.workbookName ?? entry.target ?? entry.packagePath ?? `book#${String(entry.bookIndex)}`)
+    .join(',')}]`
 }
 
 function stableId(value: string): string {

@@ -62,7 +62,11 @@ import {
   getAllRegisteredWorkPaperFunctionPlugins,
   workPaperGlobalCustomFunctions,
 } from './work-paper-static-registry.js'
-import { initializeWorkPaperFromSheets, initializeWorkPaperFromSnapshot } from './work-paper-sheet-initialization.js'
+import {
+  initializeWorkPaperFromSheetEntries,
+  initializeWorkPaperFromSheets,
+  initializeWorkPaperFromSnapshot,
+} from './work-paper-sheet-initialization.js'
 import { buildWorkPaperRawCellMutation } from './work-paper-literal-mutation-queue.js'
 import { getVisibleWorkPaperCellIndexInSheet } from './work-paper-cell-read.js'
 import { WorkPaperMutationQueues } from './work-paper-mutation-queues.js'
@@ -312,6 +316,39 @@ export class WorkPaper extends WorkPaperRuntimeSurface {
         engine: workbook.engine,
         config: workbook.config,
         sheets,
+        namedExpressions,
+        hasNamedExpressions: () => workbook.namedExpressions.size > 0,
+        hasFunctionAliases: () => workbook.functionAliasLookup.size > 0 || workbook.internalFunctionLookup.size > 0,
+        withEngineEventCaptureDisabled: (callback) => workbook.engineEvents.withCaptureDisabled(callback),
+        upsertNamedExpression: (expression, options) => workbook.upsertNamedExpressionInternal(expression, options),
+        rewriteFormulaForStorage: (formula, ownerSheetId) => workbook.rewriteFormulaForStorage(formula, ownerSheetId),
+        requireSheetId: (name) => workbook.requireSheetId(name),
+        cacheInitializedSheetDimensions: (sheetId, dimensions, options) =>
+          workbook.sheetDimensionCache.cacheInitialized(sheetId, dimensions, options),
+        clearHistoryStacks: () => workbook.clearHistoryStacks(),
+        resetChangeTrackingCaches: () => workbook.resetChangeTrackingCaches(),
+      })
+    } catch (error) {
+      const timeoutError = workPaperEvaluationTimeoutErrorFrom(error)
+      if (timeoutError) {
+        throw timeoutError
+      }
+      throw error
+    }
+    return workbook
+  }
+
+  static buildFromSheetEntries(
+    sheetEntries: readonly (readonly [string, WorkPaperSheet])[],
+    configInput: WorkPaperConfig = {},
+    namedExpressions: readonly SerializedWorkPaperNamedExpression[] = [],
+  ): WorkPaper {
+    const workbook = new WorkPaper(configInput)
+    try {
+      initializeWorkPaperFromSheetEntries({
+        engine: workbook.engine,
+        config: workbook.config,
+        sheetEntries,
         namedExpressions,
         hasNamedExpressions: () => workbook.namedExpressions.size > 0,
         hasFunctionAliases: () => workbook.functionAliasLookup.size > 0 || workbook.internalFunctionLookup.size > 0,

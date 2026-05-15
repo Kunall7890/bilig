@@ -69,6 +69,19 @@ export interface PublicWorkbookFeatureCounts {
   readonly warningCount: number
 }
 
+export type PublicWorkbookVerificationPhase =
+  | 'read-cache'
+  | 'inspect-footprint'
+  | 'import-xlsx'
+  | 'formula-oracle'
+  | 'round-trip'
+  | 'structural-smoke'
+
+export interface PublicWorkbookVerificationPhaseTiming {
+  readonly phase: PublicWorkbookVerificationPhase
+  readonly elapsedMs: number
+}
+
 export interface PublicWorkbookValidationSummary {
   readonly importPassed: boolean
   readonly formulaOraclePassed: boolean
@@ -76,6 +89,12 @@ export interface PublicWorkbookValidationSummary {
   readonly formulaOracleMismatches: readonly string[]
   readonly roundTripPassed: boolean
   readonly structuralSmokePassed: boolean | null
+}
+
+export interface PublicWorkbookExternalReferenceSummary {
+  readonly linkedWorkbookCount: number
+  readonly formulaDependencyCount: number
+  readonly cachedValueDependencyCount: number
 }
 
 export interface PublicWorkbookCorpusCase {
@@ -88,6 +107,10 @@ export interface PublicWorkbookCorpusCase {
   readonly license: PublicWorkbookLicenseEvidence
   readonly status: PublicWorkbookCaseStatus
   readonly passed: boolean
+  readonly elapsedMs?: number
+  readonly peakRssBytes?: number | null
+  readonly phaseTimings?: readonly PublicWorkbookVerificationPhaseTiming[]
+  readonly externalWorkbookReferences?: PublicWorkbookExternalReferenceSummary
   readonly featureCounts: PublicWorkbookFeatureCounts
   readonly workbookMetadata: {
     readonly workbookName: string

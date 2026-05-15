@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events'
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -42,10 +42,19 @@ import {
   mergeImportedAndFootprintFeatureCounts,
   rawPivotPartUnsupportedClassification,
   staleFormulaCacheUnsupportedClassification,
+  verifyCachedWorkbookArtifact,
 } from '../public-workbook-corpus-verify.ts'
 import { writeFingerprintArtifactWorkerResult } from '../public-workbook-corpus-worker-commands.ts'
 
 const spawnMock = vi.hoisted(() => vi.fn())
+const commandManningArtifactId = 'workbook-364f955dd990c3d4'
+const commandManningPerformanceBudgetMs = 30_000
+const commandManningManifestPath = process.env['BILIG_COMMAND_MANNING_MANIFEST']
+const commandManningCacheDir = process.env['BILIG_COMMAND_MANNING_CACHE_DIR']
+const commandManningPerformanceIt =
+  commandManningManifestPath && commandManningCacheDir && existsSync(commandManningManifestPath) && existsSync(commandManningCacheDir)
+    ? it
+    : it.skip
 
 vi.mock('node:child_process', () => ({
   spawn: spawnMock,
@@ -390,6 +399,11 @@ describe('public workbook corpus', () => {
       passed: true,
       featureCounts: { formulaCellCount: 1, warningCount: 1 },
       validation: { formulaOraclePassed: true, formulaOracleComparisons: 0 },
+      externalWorkbookReferences: {
+        linkedWorkbookCount: 1,
+        formulaDependencyCount: 1,
+        cachedValueDependencyCount: 1,
+      },
       unsupportedFeatureClassifications: [
         'xlsx.externalLinks.formulaDependenciesUnsupported',
         `xlsx.import.warning:${externalWorkbookReferencesWarning}`,
@@ -398,6 +412,8 @@ describe('public workbook corpus', () => {
     expect(scorecard.cases[0]?.evidence).toEqual(
       expect.arrayContaining([
         'external-workbook-formula-dependencies=1',
+        'external-workbook-links=1',
+        'external-workbook-cached-value-dependencies=1',
         'formula-oracle-skipped-unsupported-external-formulas=1',
         publicWorkbookImportWarningClassifierEvidence,
         'Round-trip projection skipped because external workbook links are not recalculated during XLSX import.',
@@ -420,6 +436,11 @@ describe('public workbook corpus', () => {
       passed: true,
       featureCounts: { formulaCellCount: 2, warningCount: 1 },
       validation: { formulaOraclePassed: true, formulaOracleComparisons: 1 },
+      externalWorkbookReferences: {
+        linkedWorkbookCount: 1,
+        formulaDependencyCount: 1,
+        cachedValueDependencyCount: 1,
+      },
       unsupportedFeatureClassifications: [
         'xlsx.externalLinks.formulaDependenciesUnsupported',
         `xlsx.import.warning:${externalWorkbookReferencesWarning}`,
@@ -429,6 +450,53 @@ describe('public workbook corpus', () => {
       expect.arrayContaining(['external-workbook-formula-dependencies=1', 'formula-oracle-skipped-unsupported-external-formulas=1']),
     )
   })
+
+  it('records per-case elapsed and phase timings in the scorecard', async () => {
+    const scorecard = await buildSingleWorkbookScorecard({
+      cacheDirPrefix: 'public-workbook-corpus-timing-',
+      fileName: 'timing.xlsx',
+      sourceId: 'source-timing',
+      workbookBytes: buildWorkbookBytes(),
+    })
+
+    const corpusCase = scorecard.cases[0]
+    expect(corpusCase?.elapsedMs).toEqual(expect.any(Number))
+    expect(corpusCase?.phaseTimings?.map((entry) => entry.phase)).toEqual([
+      'read-cache',
+      'inspect-footprint',
+      'import-xlsx',
+      'formula-oracle',
+      'round-trip',
+      'structural-smoke',
+    ])
+    expect(corpusCase?.phaseTimings?.every((entry) => Number.isInteger(entry.elapsedMs) && entry.elapsedMs >= 0)).toBe(true)
+  })
+
+  commandManningPerformanceIt(
+    'keeps the real command-manning workbook under the headless production budget',
+    async () => {
+      if (!commandManningManifestPath || !commandManningCacheDir) {
+        throw new Error('Expected command-manning corpus fixture paths')
+      }
+      const manifest = parsePublicWorkbookManifestJson(JSON.parse(readFileSync(commandManningManifestPath, 'utf8')) as unknown)
+      const artifact = manifest.artifacts.find((entry) => entry.id === commandManningArtifactId)
+      if (!artifact) {
+        throw new Error(`Missing ${commandManningArtifactId} in command-manning corpus manifest`)
+      }
+
+      const corpusCase = await verifyCachedWorkbookArtifact(artifact, commandManningCacheDir, false, 1_500_000, {
+        timeoutMs: 180_000,
+        maxRssBytes: 1536 * 1024 * 1024,
+        rssCheckIntervalMs: 250,
+      })
+
+      expect(corpusCase.status).toBe('passed')
+      expect(corpusCase.validation.formulaOracleComparisons).toBeGreaterThanOrEqual(2_199)
+      expect(corpusCase.elapsedMs).toBeLessThanOrEqual(commandManningPerformanceBudgetMs)
+      expect(corpusCase.phaseTimings?.map((entry) => entry.phase)).toContain('round-trip')
+    },
+    180_000,
+  )
 
   it('classifies manual calculation cached formula values as unsupported instead of oracle failures', async () => {
     const cacheDir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-manual-calculation-'))

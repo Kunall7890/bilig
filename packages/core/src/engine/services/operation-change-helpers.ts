@@ -75,6 +75,12 @@ export function mergeChangedCellIndices(base: readonly number[] | U32, extras: r
     const extraCellIndex = extras[0]!
     return baseCellIndex === extraCellIndex ? Uint32Array.of(baseCellIndex) : Uint32Array.of(baseCellIndex, extraCellIndex)
   }
+  if (base.length === 1) {
+    return mergeSingleBaseChangedCellIndex(base[0]!, extras)
+  }
+  if (extras.length === 1) {
+    return mergeSingleExtraChangedCellIndex(base, extras[0]!)
+  }
   const merged = new Set<number>()
   for (let index = 0; index < base.length; index += 1) {
     merged.add(base[index]!)
@@ -83,6 +89,41 @@ export function mergeChangedCellIndices(base: readonly number[] | U32, extras: r
     merged.add(extras[index]!)
   }
   return Uint32Array.from(merged)
+}
+
+function mergeSingleBaseChangedCellIndex(baseCellIndex: number, extras: readonly number[] | U32): U32 {
+  let duplicateIndex = -1
+  for (let index = 0; index < extras.length; index += 1) {
+    if (extras[index] === baseCellIndex) {
+      duplicateIndex = index
+      break
+    }
+  }
+  const merged = new Uint32Array(duplicateIndex === -1 ? extras.length + 1 : extras.length)
+  merged[0] = baseCellIndex
+  let writeIndex = 1
+  for (let index = 0; index < extras.length; index += 1) {
+    if (index === duplicateIndex) {
+      continue
+    }
+    merged[writeIndex] = extras[index]!
+    writeIndex += 1
+  }
+  return merged
+}
+
+function mergeSingleExtraChangedCellIndex(base: readonly number[] | U32, extraCellIndex: number): U32 {
+  for (let index = 0; index < base.length; index += 1) {
+    if (base[index] === extraCellIndex) {
+      return base instanceof Uint32Array ? base : Uint32Array.from(base)
+    }
+  }
+  const merged = new Uint32Array(base.length + 1)
+  for (let index = 0; index < base.length; index += 1) {
+    merged[index] = base[index]!
+  }
+  merged[base.length] = extraCellIndex
+  return merged
 }
 
 export function tagTrustedPhysicalTrackedChanges(changed: U32, sheetId: number, sortedSliceSplit: number): void {

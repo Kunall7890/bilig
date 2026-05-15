@@ -6,6 +6,9 @@ import type { EngineStructureService } from '../engine/services/structure-servic
 
 interface FormulaBindingServiceForStructureTest {
   readonly collectFormulaCellsReferencingSheetNow: (sheetName: string) => readonly number[]
+  readonly deferFormulaFamilyIndexRebuildNow: () => void
+  readonly forEachFormulaFamilyNow: (fn: (...args: unknown[]) => void) => void
+  readonly retargetRangeDependenciesNow: (...args: unknown[]) => void
 }
 
 function isEngineStructureService(value: unknown): value is EngineStructureService {
@@ -29,7 +32,14 @@ function getEngineRuntime(engine: SpreadsheetEngine): object {
 }
 
 function isFormulaBindingServiceForStructureTest(value: unknown): value is FormulaBindingServiceForStructureTest {
-  return typeof value === 'object' && value !== null && typeof Reflect.get(value, 'collectFormulaCellsReferencingSheetNow') === 'function'
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof Reflect.get(value, 'collectFormulaCellsReferencingSheetNow') === 'function' &&
+    typeof Reflect.get(value, 'deferFormulaFamilyIndexRebuildNow') === 'function' &&
+    typeof Reflect.get(value, 'forEachFormulaFamilyNow') === 'function' &&
+    typeof Reflect.get(value, 'retargetRangeDependenciesNow') === 'function'
+  )
 }
 
 function getStructureService(engine: SpreadsheetEngine): EngineStructureService {
@@ -266,6 +276,48 @@ describe('EngineStructureService', () => {
     )
 
     expect(events).toEqual(['planStructuralAxisTransform', 'insertRows', 'applyPlannedStructuralTransaction'])
+  })
+
+  it('short-circuits empty column-insert cleanup after formula family deferral', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'structure-empty-column-insert-fast-path' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    for (let row = 1; row <= 12; row += 1) {
+      engine.setCellValue('Sheet1', `A${row}`, row)
+      engine.setCellValue('Sheet1', `B${row}`, row * 2)
+      engine.setCellFormula('Sheet1', `C${row}`, `A${row}+B${row}`)
+      engine.setCellFormula('Sheet1', `D${row}`, `C${row}*2`)
+    }
+
+    const binding = getFormulaBindingService(engine)
+    binding.deferFormulaFamilyIndexRebuildNow()
+    const inspectFormulaFamilies = vi.spyOn(binding, 'forEachFormulaFamilyNow')
+    const retargetRanges = vi.spyOn(binding, 'retargetRangeDependenciesNow')
+
+    engine.resetPerformanceCounters()
+    const result = Effect.runSync(
+      getStructureService(engine).applyStructuralAxisOp({
+        kind: 'insertColumns',
+        sheetName: 'Sheet1',
+        start: 1,
+        count: 1,
+      }),
+    )
+
+    expect(result).toMatchObject({
+      changedCellIndices: [],
+      formulaCellIndices: [],
+      graphRefreshRequired: false,
+      topologyChanged: false,
+    })
+    expect(inspectFormulaFamilies).not.toHaveBeenCalled()
+    expect(retargetRanges).not.toHaveBeenCalled()
+    expect(engine.getCellValue('Sheet1', 'E12')).toEqual({ tag: ValueTag.Number, value: 72 })
+    expect(engine.getPerformanceCounters()).toMatchObject({
+      structuralFormulaImpactCandidates: 0,
+      structuralFormulaRebindInputs: 0,
+      structuralRangeRetargets: 0,
+    })
   })
 
   it('keeps repeated direct aggregate row inserts off the topology and dirty-formula path', async () => {

@@ -1,6 +1,11 @@
 import { publicWorkbookResourceLimitClassifierEvidence } from './public-workbook-corpus-evidence.ts'
 import { formatByteSize } from './public-workbook-corpus-process.ts'
-import type { PublicWorkbookArtifact, PublicWorkbookCorpusCase, PublicWorkbookFeatureCounts } from './public-workbook-corpus-types.ts'
+import type {
+  PublicWorkbookArtifact,
+  PublicWorkbookCorpusCase,
+  PublicWorkbookExternalReferenceSummary,
+  PublicWorkbookFeatureCounts,
+} from './public-workbook-corpus-types.ts'
 import { emptyFeatureCounts, type WorkbookFootprint } from './public-workbook-corpus-workbook.ts'
 
 const preflightImportCellCountLimit = 200_000
@@ -117,6 +122,7 @@ export function unsupportedResourceLimitCase(
     license: artifact.license,
     status: 'unsupported',
     passed: true,
+    ...externalWorkbookReferenceSummaryFields(footprint),
     featureCounts: footprint.featureCounts,
     workbookMetadata: footprint.workbookMetadata,
     validation: {
@@ -127,11 +133,15 @@ export function unsupportedResourceLimitCase(
       roundTripPassed: true,
       structuralSmokePassed: null,
     },
-    unsupportedFeatureClassifications: [`xlsx.publicCorpus.resourceLimit:cellCount>${String(maxCellCount)}`],
+    unsupportedFeatureClassifications: [
+      `xlsx.publicCorpus.resourceLimit:cellCount>${String(maxCellCount)}`,
+      ...externalWorkbookReferenceClassifications(footprint),
+    ],
     evidence: [
       ...evidence,
       publicWorkbookResourceLimitClassifierEvidence,
       `cells=${String(footprint.featureCounts.cellCount)}`,
+      ...externalWorkbookReferenceEvidence(footprint),
       `Public corpus verification cell-count limit exceeded: ${String(footprint.featureCounts.cellCount)} > ${String(maxCellCount)}`,
     ],
   }
@@ -153,6 +163,7 @@ export function unsupportedPreflightResourceLimitCase(
     license: artifact.license,
     status: 'unsupported',
     passed: true,
+    ...externalWorkbookReferenceSummaryFields(footprint),
     featureCounts: footprint.featureCounts,
     workbookMetadata: footprint.workbookMetadata,
     validation: {
@@ -163,16 +174,53 @@ export function unsupportedPreflightResourceLimitCase(
       roundTripPassed: true,
       structuralSmokePassed: null,
     },
-    unsupportedFeatureClassifications: [resourceLimit.classification],
+    unsupportedFeatureClassifications: [resourceLimit.classification, ...externalWorkbookReferenceClassifications(footprint)],
     evidence: [
       ...evidence,
       publicWorkbookResourceLimitClassifierEvidence,
       `sheets=${String(footprint.featureCounts.sheetCount)}`,
       `cells=${String(footprint.featureCounts.cellCount)}`,
       `formulas=${String(footprint.featureCounts.formulaCellCount)}`,
+      ...externalWorkbookReferenceEvidence(footprint),
       ...resourceLimit.evidence,
     ],
   }
+}
+
+function externalWorkbookReferenceSummary(footprint: WorkbookFootprint): PublicWorkbookExternalReferenceSummary | undefined {
+  if (footprint.externalWorkbookReferences.length === 0) {
+    return undefined
+  }
+  return {
+    linkedWorkbookCount: footprint.externalWorkbookReferences.length,
+    formulaDependencyCount: 0,
+    cachedValueDependencyCount: 0,
+  }
+}
+
+function externalWorkbookReferenceSummaryFields(footprint: WorkbookFootprint): {
+  readonly externalWorkbookReferences?: PublicWorkbookExternalReferenceSummary
+} {
+  const summary = externalWorkbookReferenceSummary(footprint)
+  return summary ? { externalWorkbookReferences: summary } : {}
+}
+
+function externalWorkbookReferenceClassifications(footprint: WorkbookFootprint): readonly string[] {
+  return footprint.externalWorkbookReferences.length > 0 ? ['xlsx.externalLinks.workbookReferencesPreserved'] : []
+}
+
+function externalWorkbookReferenceEvidence(footprint: WorkbookFootprint): readonly string[] {
+  if (footprint.externalWorkbookReferences.length === 0) {
+    return []
+  }
+  return [
+    `external-workbook-links=${String(footprint.externalWorkbookReferences.length)}`,
+    'external-workbook-formula-dependencies=0',
+    'external-workbook-cached-value-dependencies=0',
+    ...footprint.externalWorkbookReferences
+      .slice(0, 10)
+      .map((entry) => `external-workbook=${entry.workbookName ?? entry.target ?? entry.packagePath ?? `book#${String(entry.bookIndex)}`}`),
+  ]
 }
 
 export function unsupportedRssLimitCase(

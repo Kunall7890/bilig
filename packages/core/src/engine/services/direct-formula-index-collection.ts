@@ -271,6 +271,10 @@ export class DirectFormulaIndexCollection {
     return (this.sharedCellIndices ?? this.cellIndices)[index]!
   }
 
+  getCellIndicesForRead(): readonly number[] | U32 {
+    return this.sharedCellIndices ?? this.cellIndices
+  }
+
   markDirectRangeInputCovered(cellIndex: number): void {
     const covered = (this.directRangeCoveredInputCellIndices ??= [])
     for (let index = 0; index < covered.length; index += 1) {

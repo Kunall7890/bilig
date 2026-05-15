@@ -341,6 +341,34 @@ defined names, tables, hidden sheets, and translated structured references. Use
 `workbook.exportSnapshot()` with `exportXlsx()` when exporting a WorkPaper after
 edits.
 
+### External Workbook References
+
+XLSX files can contain links to other workbooks. `@bilig/headless/xlsx`
+preserves those package artifacts, but it does not open or recalculate linked
+workbooks by itself.
+
+The importer exposes linked-workbook state in structured metadata:
+
+- `snapshot.workbook.metadata.externalWorkbookReferences`: linked workbook
+  package paths, external targets, workbook names when available, and cached
+  sheet names.
+- `snapshot.workbook.metadata.unsupportedFormulaDependencies`: affected formula
+  cells, original and imported formula text, linked workbook references, and
+  whether cached formula or linked-cell values were used.
+
+Use one of these policies:
+
+- Resolve: provide ordinary local inputs or formulas after import, then
+  recalculate with `WorkPaper`.
+- Preserve stale: keep imported cached values and preserved external-link
+  artifacts, but treat formula correctness as unaudited for those dependencies.
+- Strict-fail: reject the import when either metadata field above is non-empty.
+
+The real-workbook corpus scorecard reports external references as
+`xlsx.externalLinks.workbookReferencesPreserved` and direct formula dependencies
+as `xlsx.externalLinks.formulaDependenciesUnsupported`, with linked workbook,
+affected formula, and cached-value counts.
+
 ## Accuracy Policy
 
 Do not call a Bilig accuracy bug from stale XLSX cache data.

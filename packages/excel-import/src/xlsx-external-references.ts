@@ -1,5 +1,6 @@
 import { XMLParser } from 'fast-xml-parser'
 
+import type { WorkbookExternalWorkbookReferenceSnapshot } from '@bilig/protocol'
 import { getZipText, readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 interface ExternalCachedNumber {
@@ -31,6 +32,7 @@ interface ParsedRelationship {
   readonly id: string
   readonly target: string
   readonly type: string
+  readonly targetMode?: string
 }
 
 export interface ImportedFormulaExternalReferenceTranslation {
@@ -38,6 +40,8 @@ export interface ImportedFormulaExternalReferenceTranslation {
   readonly resolvedCount: number
   readonly unresolvedCount: number
 }
+
+export type ImportedExternalWorkbookReferences = Map<number, WorkbookExternalWorkbookReferenceSnapshot>
 
 const xmlParser = new XMLParser({
   ignoreAttributes: false,
@@ -48,6 +52,7 @@ const xmlParser = new XMLParser({
 })
 
 const externalLinkRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/externalLink'
+const externalLinkPathRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/externalLinkPath'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
@@ -120,7 +125,14 @@ function parseRelationships(xml: string | null): ParsedRelationship[] {
     if (!isRecord(entry) || typeof entry['Id'] !== 'string' || typeof entry['Target'] !== 'string' || typeof entry['Type'] !== 'string') {
       return []
     }
-    return [{ id: entry['Id'], target: entry['Target'], type: entry['Type'] }]
+    return [
+      {
+        id: entry['Id'],
+        target: entry['Target'],
+        type: entry['Type'],
+        ...(typeof entry['TargetMode'] === 'string' ? { targetMode: entry['TargetMode'] } : {}),
+      },
+    ]
   })
 }
 
@@ -222,6 +234,48 @@ function readWorkbookExternalLinkTargets(zip: Record<string, Uint8Array>): Map<n
   return targets
 }
 
+function externalLinkRelationshipsPartPath(partPath: string): string {
+  const fileName = partPath.slice(partPath.lastIndexOf('/') + 1)
+  return `xl/externalLinks/_rels/${fileName}.rels`
+}
+
+function readExternalBookRelationshipId(xml: string): string | null {
+  const parsed: unknown = xmlParser.parse(xml)
+  const externalBook = recordChild(recordChild(parsed, 'externalLink'), 'externalBook')
+  return externalBook ? stringValue(externalBook['id']) : null
+}
+
+function readExternalBookSheetNames(xml: string): string[] {
+  const parsed: unknown = xmlParser.parse(xml)
+  const externalBook = recordChild(recordChild(parsed, 'externalLink'), 'externalBook')
+  return externalBook ? readSheetNames(externalBook) : []
+}
+
+function workbookNameFromExternalTarget(target: string | undefined): string | undefined {
+  if (!target) {
+    return undefined
+  }
+  const targetPath = target.split(/[?#]/u)[0] ?? target
+  const normalizedTarget = targetPath.replace(/^file:\/+/iu, '').replace(/\\/gu, '/')
+  const targetSegments = normalizedTarget.split('/')
+  let lastSegment: string | undefined
+  for (let index = targetSegments.length - 1; index >= 0; index -= 1) {
+    const segment = targetSegments[index]
+    if (segment && segment.length > 0) {
+      lastSegment = segment
+      break
+    }
+  }
+  if (!lastSegment) {
+    return undefined
+  }
+  try {
+    return decodeURIComponent(lastSegment)
+  } catch {
+    return lastSegment
+  }
+}
+
 function readFallbackExternalLinkTargets(zip: Record<string, Uint8Array>): Map<number, string> {
   const targets = new Map<number, string>()
   for (const path of Object.keys(zip)) {
@@ -231,6 +285,35 @@ function readFallbackExternalLinkTargets(zip: Record<string, Uint8Array>): Map<n
     }
   }
   return targets
+}
+
+export function readImportedExternalWorkbookReferences(source: XlsxZipSource): ImportedExternalWorkbookReferences {
+  const zip = readXlsxZipEntries(source)
+  const references: ImportedExternalWorkbookReferences = new Map()
+  const workbookTargets = readWorkbookExternalLinkTargets(zip)
+  const linkTargets = workbookTargets.size > 0 ? workbookTargets : readFallbackExternalLinkTargets(zip)
+  for (const [bookIndex, path] of [...linkTargets.entries()].toSorted((left, right) => left[0] - right[0])) {
+    const xml = getZipText(zip, path)
+    if (!xml) {
+      continue
+    }
+    const relationships = parseRelationships(getZipText(zip, externalLinkRelationshipsPartPath(path)))
+    const externalBookRelationshipId = readExternalBookRelationshipId(xml)
+    const linkedWorkbookRelationship =
+      (externalBookRelationshipId ? relationships.find((relationship) => relationship.id === externalBookRelationshipId) : undefined) ??
+      relationships.find((relationship) => relationship.type === externalLinkPathRelationshipType)
+    const target = linkedWorkbookRelationship?.target
+    const workbookName = workbookNameFromExternalTarget(target)
+    references.set(bookIndex, {
+      bookIndex,
+      packagePath: path,
+      ...(target ? { target } : {}),
+      ...(linkedWorkbookRelationship?.targetMode ? { targetMode: linkedWorkbookRelationship.targetMode } : {}),
+      ...(workbookName ? { workbookName } : {}),
+      sheetNames: readExternalBookSheetNames(xml),
+    })
+  }
+  return references
 }
 
 export function readImportedExternalLinkCaches(source: XlsxZipSource): ImportedExternalLinkCaches {
@@ -249,6 +332,49 @@ export function readImportedExternalLinkCaches(source: XlsxZipSource): ImportedE
     }
   }
   return caches
+}
+
+export function collectImportedFormulaExternalWorkbookReferences(
+  formula: string,
+  references: ImportedExternalWorkbookReferences,
+): readonly WorkbookExternalWorkbookReferenceSnapshot[] {
+  if (!formula.includes('[')) {
+    return []
+  }
+  const bookIndices = new Set<number>()
+  let index = 0
+  while (index < formula.length) {
+    const character = formula[index]
+    if (character === '"') {
+      index = skipDoubleQuotedString(formula, index)
+      continue
+    }
+    if (character === "'") {
+      const quoted = readSingleQuotedIdentifier(formula, index)
+      const externalSheet = quoted ? readExternalSheetName(quoted.value) : null
+      if (externalSheet) {
+        bookIndices.add(externalSheet.bookIndex)
+      }
+      index = quoted?.endIndex ?? index + 1
+      continue
+    }
+    if (character === '[') {
+      const externalSheet = readUnquotedExternalSheetReference(formula, index)
+      if (externalSheet) {
+        bookIndices.add(externalSheet.bookIndex)
+        index = externalSheet.endIndex
+        continue
+      }
+      const externalBook = /^\[([1-9][0-9]*)\]/u.exec(formula.slice(index))
+      if (externalBook) {
+        bookIndices.add(Number(externalBook[1]))
+        index += externalBook[0].length
+        continue
+      }
+    }
+    index += 1
+  }
+  return [...bookIndices].toSorted((left, right) => left - right).map((bookIndex) => references.get(bookIndex) ?? { bookIndex })
 }
 
 function skipDoubleQuotedString(source: string, startIndex: number): number {

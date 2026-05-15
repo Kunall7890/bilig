@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process'
 import { asRecord } from './public-workbook-corpus-json.ts'
 import { startChildRssWatchdog, terminateChildProcess } from './public-workbook-corpus-process.ts'
 import type { WorkbookFootprint } from './public-workbook-corpus-workbook.ts'
+import type { WorkbookExternalWorkbookReferenceSnapshot } from '../packages/protocol/src/types.js'
 
 const noop = (): void => undefined
 
@@ -103,6 +104,7 @@ export function readFootprintWorkerResult(value: unknown): WorkbookFootprint | n
       warningCount: readInteger(featureCounts, 'warningCount'),
     },
     workbookMetadata: readWorkbookMetadata(asRecord(footprint['workbookMetadata'])),
+    externalWorkbookReferences: readExternalWorkbookReferences(footprint['externalWorkbookReferences']),
   }
 }
 
@@ -125,6 +127,39 @@ function readWorkbookMetadata(record: Record<string, unknown>): WorkbookFootprin
       return parsedDimension
     }),
   }
+}
+
+function readExternalWorkbookReferences(value: unknown): readonly WorkbookExternalWorkbookReferenceSnapshot[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+  return value.map((entry) => {
+    const record = asRecord(entry)
+    const parsed: WorkbookExternalWorkbookReferenceSnapshot = {
+      bookIndex: readInteger(record, 'bookIndex'),
+    }
+    const packagePath = readOptionalString(record, 'packagePath')
+    const target = readOptionalString(record, 'target')
+    const targetMode = readOptionalString(record, 'targetMode')
+    const workbookName = readOptionalString(record, 'workbookName')
+    const sheetNames = readOptionalStringArray(record, 'sheetNames')
+    if (packagePath) {
+      Object.assign(parsed, { packagePath })
+    }
+    if (target) {
+      Object.assign(parsed, { target })
+    }
+    if (targetMode) {
+      Object.assign(parsed, { targetMode })
+    }
+    if (workbookName) {
+      Object.assign(parsed, { workbookName })
+    }
+    if (sheetNames.length > 0) {
+      Object.assign(parsed, { sheetNames })
+    }
+    return parsed
+  })
 }
 
 function readOptionalUsedRange(value: unknown): WorkbookFootprint['workbookMetadata']['dimensions'][number]['usedRange'] | undefined {
@@ -171,6 +206,11 @@ function readRequiredString(record: Record<string, unknown>, key: string): strin
   return value
 }
 
+function readOptionalString(record: Record<string, unknown>, key: string): string | undefined {
+  const value = record[key]
+  return typeof value === 'string' && value.length > 0 ? value : undefined
+}
+
 function readRequiredStringArray(record: Record<string, unknown>, key: string): string[] {
   return readRequiredArray(record, key).map((entry) => {
     if (typeof entry !== 'string') {
@@ -178,6 +218,14 @@ function readRequiredStringArray(record: Record<string, unknown>, key: string): 
     }
     return entry
   })
+}
+
+function readOptionalStringArray(record: Record<string, unknown>, key: string): string[] {
+  const value = record[key]
+  if (!Array.isArray(value)) {
+    return []
+  }
+  return value.flatMap((entry) => (typeof entry === 'string' && entry.length > 0 ? [entry] : []))
 }
 
 function readRequiredArray(record: Record<string, unknown>, key: string): unknown[] {

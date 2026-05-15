@@ -382,24 +382,10 @@ export function exportWorkPaperDocument(workbook: WorkPaper, options: { includeC
  */
 export function createWorkPaperFromDocument(document: PersistedWorkPaperDocument): WorkPaper {
   assertPersistedWorkPaperDocument(document)
-  const workbook = WorkPaper.buildEmpty(document.config ?? {})
-  document.sheets.forEach((sheet) => {
-    workbook.addSheet(sheet.name)
-  })
-  document.namedExpressions.forEach((expression) => {
-    const scope = expression.scopeSheetName ? workbook.getSheetId(expression.scopeSheetName) : undefined
-    if (expression.scopeSheetName && scope === undefined) {
-      throw new WorkPaperPersistenceError(`Missing scoped sheet ${expression.scopeSheetName}`)
-    }
-    workbook.addNamedExpression(expression.name, expression.expression, scope, expression.options)
-  })
-  document.sheets.forEach((sheet) => {
-    const sheetId = workbook.getSheetId(sheet.name)
-    if (sheetId === undefined) {
-      throw new WorkPaperPersistenceError(`Missing restored sheet ${sheet.name}`)
-    }
-    workbook.setSheetContent(sheetId, sheet.content)
-  })
+  const sheetEntries = document.sheets.map((sheet) => [sheet.name, sheet.content] as const)
+  const sheetIdsByName = new Map(sheetEntries.map(([name], index) => [name, index + 1] as const))
+  const namedExpressions = document.namedExpressions.map((expression) => deserializeNamedExpression(expression, sheetIdsByName))
+  const workbook = WorkPaper.buildFromSheetEntries(sheetEntries, document.config ?? {}, namedExpressions)
   workbook.clearUndoStack()
   workbook.clearRedoStack()
   return workbook
@@ -444,4 +430,26 @@ function serializeNamedExpression(workbook: WorkPaper, expression: SerializedWor
   }
   persisted.scopeSheetName = scopeSheetName
   return persisted
+}
+
+function deserializeNamedExpression(
+  expression: PersistedWorkPaperNamedExpression,
+  sheetIdsByName: ReadonlyMap<string, number>,
+): SerializedWorkPaperNamedExpression {
+  const serialized: SerializedWorkPaperNamedExpression = {
+    name: expression.name,
+    expression: expression.expression,
+  }
+  if (expression.options !== undefined) {
+    serialized.options = structuredClone(expression.options)
+  }
+  if (expression.scopeSheetName === undefined) {
+    return serialized
+  }
+  const scope = sheetIdsByName.get(expression.scopeSheetName)
+  if (scope === undefined) {
+    throw new WorkPaperPersistenceError(`Missing scoped sheet ${expression.scopeSheetName}`)
+  }
+  serialized.scope = scope
+  return serialized
 }

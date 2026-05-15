@@ -4,11 +4,14 @@ import type {
   PublicWorkbookCorpusCase,
   PublicWorkbookCorpusScorecard,
   PublicWorkbookFeatureCounts,
+  PublicWorkbookExternalReferenceSummary,
   PublicWorkbookLicenseEvidence,
   PublicWorkbookManifest,
   PublicWorkbookSource,
   PublicWorkbookSourceKind,
   PublicWorkbookValidationSummary,
+  PublicWorkbookVerificationPhase,
+  PublicWorkbookVerificationPhaseTiming,
 } from './public-workbook-corpus-types.ts'
 
 const allowedLicenseTokens = [
@@ -148,6 +151,10 @@ export function parsePublicWorkbookCorpusScorecardJson(value: unknown): PublicWo
 
 export function parsePublicWorkbookCorpusCase(value: unknown): PublicWorkbookCorpusCase {
   const record = asRecord(value)
+  const elapsedMs = readOptionalNonNegativeInteger(record, 'elapsedMs')
+  const peakRssBytes = readOptionalNonNegativeIntegerOrNull(record, 'peakRssBytes')
+  const phaseTimings = parseOptionalPublicWorkbookVerificationPhaseTimings(record['phaseTimings'])
+  const externalWorkbookReferences = parseOptionalPublicWorkbookExternalReferenceSummary(record['externalWorkbookReferences'])
   return {
     id: readRequiredString(record, 'id'),
     sourceId: readRequiredString(record, 'sourceId'),
@@ -158,6 +165,10 @@ export function parsePublicWorkbookCorpusCase(value: unknown): PublicWorkbookCor
     license: parsePublicWorkbookLicenseEvidence(record['license']),
     status: parsePublicWorkbookCaseStatus(readRequiredString(record, 'status')),
     passed: readRequiredBoolean(record, 'passed'),
+    ...(elapsedMs !== undefined ? { elapsedMs } : {}),
+    ...(peakRssBytes !== undefined ? { peakRssBytes } : {}),
+    ...(phaseTimings !== undefined ? { phaseTimings } : {}),
+    ...(externalWorkbookReferences !== undefined ? { externalWorkbookReferences } : {}),
     featureCounts: parsePublicWorkbookFeatureCounts(record['featureCounts']),
     workbookMetadata: parsePublicWorkbookMetadata(record['workbookMetadata']),
     validation: parsePublicWorkbookValidationSummary(record['validation']),
@@ -344,6 +355,31 @@ function parsePublicWorkbookFeatureCounts(value: unknown): PublicWorkbookFeature
   }
 }
 
+function parseOptionalPublicWorkbookVerificationPhaseTimings(value: unknown): readonly PublicWorkbookVerificationPhaseTiming[] | undefined {
+  if (value === undefined) {
+    return undefined
+  }
+  return readRequiredArray({ phaseTimings: value }, 'phaseTimings').map((entry) => {
+    const record = asRecord(entry)
+    return {
+      phase: parsePublicWorkbookVerificationPhase(readRequiredString(record, 'phase')),
+      elapsedMs: readRequiredInteger(record, 'elapsedMs'),
+    }
+  })
+}
+
+function parseOptionalPublicWorkbookExternalReferenceSummary(value: unknown): PublicWorkbookExternalReferenceSummary | undefined {
+  if (value === undefined) {
+    return undefined
+  }
+  const record = asRecord(value)
+  return {
+    linkedWorkbookCount: readRequiredInteger(record, 'linkedWorkbookCount'),
+    formulaDependencyCount: readRequiredInteger(record, 'formulaDependencyCount'),
+    cachedValueDependencyCount: readRequiredInteger(record, 'cachedValueDependencyCount'),
+  }
+}
+
 function parsePublicWorkbookMetadata(value: unknown): PublicWorkbookCorpusCase['workbookMetadata'] {
   const record = asRecord(value)
   return {
@@ -407,6 +443,20 @@ function parsePublicWorkbookSourceKind(value: string): PublicWorkbookSourceKind 
   }
 }
 
+function parsePublicWorkbookVerificationPhase(value: string): PublicWorkbookVerificationPhase {
+  switch (value) {
+    case 'read-cache':
+    case 'inspect-footprint':
+    case 'import-xlsx':
+    case 'formula-oracle':
+    case 'round-trip':
+    case 'structural-smoke':
+      return value
+    default:
+      throw new Error(`Unexpected public workbook verification phase: ${value}`)
+  }
+}
+
 function parsePublicWorkbookCaseStatus(value: string): PublicWorkbookCaseStatus {
   switch (value) {
     case 'passed':
@@ -463,6 +513,23 @@ function readRequiredInteger(value: Record<string, unknown>, key: string): numbe
     throw new Error(`Expected ${key} to be a non-negative integer`)
   }
   return fieldValue
+}
+
+function readOptionalNonNegativeInteger(value: Record<string, unknown>, key: string): number | undefined {
+  if (value[key] === undefined) {
+    return undefined
+  }
+  return readRequiredInteger(value, key)
+}
+
+function readOptionalNonNegativeIntegerOrNull(value: Record<string, unknown>, key: string): number | null | undefined {
+  if (value[key] === undefined) {
+    return undefined
+  }
+  if (value[key] === null) {
+    return null
+  }
+  return readRequiredInteger(value, key)
 }
 
 function readTargetWorkbookCount(value: Record<string, unknown>, key: string): number {

@@ -71,7 +71,12 @@ import {
   type ExcelWorkbookImportContentType,
 } from './workbook-import-content-types.js'
 import { createWorkbookPreview, type ImportedWorkbookPreview } from './workbook-import-preview.js'
-import { readImportedExternalLinkCaches, translateImportedFormulaExternalReferences } from './xlsx-external-references.js'
+import {
+  collectImportedFormulaExternalWorkbookReferences,
+  readImportedExternalLinkCaches,
+  readImportedExternalWorkbookReferences,
+  translateImportedFormulaExternalReferences,
+} from './xlsx-external-references.js'
 import { normalizeImportedFormulaSource, translateImportedFormulaStructuredReferences } from './xlsx-formula-translation.js'
 import { readImportedSheetHyperlinks } from './xlsx-hyperlinks.js'
 import { collectStyleCandidateAddresses, internImportedStyle, readImportedXlsxCellStyle } from './xlsx-import-cell-styles.js'
@@ -407,6 +412,7 @@ function importSheetJsWorkbook(
     ? readImportedWorkbookConditionalFormatArtifacts(conditionalFormatArtifactSource, workbook.SheetNames)
     : new Map()
   const importedExternalLinkCaches = workbookZip ? readImportedExternalLinkCaches(workbookZip) : new Map()
+  const importedExternalWorkbookReferences = workbookZip ? readImportedExternalWorkbookReferences(workbookZip) : new Map()
   const importedRichTextArtifactsBySheet = workbookZip ? readImportedWorkbookRichTextArtifacts(workbookZip, workbook.SheetNames) : new Map()
   const importedWorksheetTextValuesBySheet = workbookZip
     ? readImportedWorksheetTextValues(workbookZip, workbook.SheetNames, sheetPathsByName, fallbackSheetPaths)
@@ -542,6 +548,7 @@ function importSheetJsWorkbook(
           ownerAddress: address,
           tables: importedTables,
         })
+        const cachedLiteral = xmlTextValue ?? readImportedLiteralCellValue(cell)
         if (hasExternalWorkbookDependency) {
           unsupportedFormulaDependencies.push({
             kind: 'external-workbook-reference',
@@ -549,13 +556,16 @@ function importSheetJsWorkbook(
             address,
             formula: normalizedFormula,
             importedFormula: nextCell.formula,
+            linkedWorkbooks: [...collectImportedFormulaExternalWorkbookReferences(normalizedFormula, importedExternalWorkbookReferences)],
+            cachedValuesUsed: cachedLiteral !== undefined || externalReferenceTranslation.resolvedCount > 0,
+            cachedFormulaValuePreserved: cachedLiteral !== undefined,
+            cachedExternalReferenceValuesUsed: externalReferenceTranslation.resolvedCount > 0,
             resolvedExternalReferenceCount: externalReferenceTranslation.resolvedCount,
             unresolvedExternalReferenceCount: externalReferenceTranslation.unresolvedCount,
             reason:
               'Formula depends on an external workbook reference; cached linked values are preserved but linked workbooks are not recalculated during import.',
           })
         }
-        const cachedLiteral = xmlTextValue ?? readImportedLiteralCellValue(cell)
         if (cachedLiteral !== undefined) {
           nextCell.value = cachedLiteral
         }
@@ -719,6 +729,7 @@ function importSheetJsWorkbook(
     tables: importedTables,
     spills: importedArrayFormulaSpills.length > 0 ? importedArrayFormulaSpills : undefined,
     pivots: importedPivots?.pivots,
+    externalWorkbookReferences: importedExternalWorkbookReferences.size > 0 ? [...importedExternalWorkbookReferences.values()] : undefined,
     unsupportedFormulaDependencies:
       unsupportedFormulaDependencies.length > 0
         ? unsupportedFormulaDependencies.toSorted((left, right) =>

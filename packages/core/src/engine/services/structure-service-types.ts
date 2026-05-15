@@ -78,6 +78,7 @@ export interface CreateEngineStructureServiceArgs {
   readonly collectFormulaCellsOwnedBySheet: (sheetName: string) => readonly number[]
   readonly forEachFormulaCellOwnedBySheet: (sheetName: string, fn: (cellIndex: number) => void) => void
   readonly countFormulaSheetMembers: (sheetId: number) => number
+  readonly canUseFormulaFamilyIndex: () => boolean
   readonly forEachFormulaFamily: (fn: (family: FormulaFamily) => void) => void
   readonly setFormulaFamilyStructuralSourceTransform: (
     familyId: number,

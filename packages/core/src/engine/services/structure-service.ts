@@ -252,7 +252,8 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
         argsForImpact.changedDefinedNames.size > 0 ||
         argsForImpact.changedTableNames.size > 0 ||
         argsForImpact.transform.kind === 'delete' ||
-        argsForImpact.transform.axis !== 'column'
+        argsForImpact.transform.axis !== 'column' ||
+        !args.canUseFormulaFamilyIndex()
       ) {
         return false
       }
@@ -692,7 +693,10 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
           const sheetName = op.sheetName
           const targetSheetId = args.state.workbook.getSheet(sheetName)?.id
 
-          clearPivotOutputsForSheet(args, sheetName)
+          const hasPivots = args.state.workbook.hasPivots()
+          if (hasPivots) {
+            clearPivotOutputsForSheet(args, sheetName)
+          }
           const changedDefinedNames = rewriteDefinedNamesForStructuralTransform(args, sheetName, transform)
           const { changedTableNames } = rewriteWorkbookMetadataForStructuralTransform(args, sheetName, transform)
           const impactedFormulas = collectStructuralFormulaImpacts({
@@ -731,6 +735,31 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
           }
 
           args.state.workbook.applyPlannedStructuralTransaction(transaction)
+
+          const hasNoFormulaStructuralWork =
+            impactedFormulas.formulaCellIndices.length === 0 &&
+            impactedFormulas.rebindCellIndices.length === 0 &&
+            impactedFormulas.precomputedChangedInputCellIndices.length === 0 &&
+            impactedFormulas.precomputedDirectAggregateValueCellIndices.length === 0 &&
+            impactedFormulas.directAggregateRetargetCellIndices.length === 0
+          const hasSheetSpillMetadata = args.state.workbook.listSpills().some((spill) => spill.sheetName === sheetName)
+          if (
+            hasNoFormulaStructuralWork &&
+            transaction.removedCellIndices.length === 0 &&
+            changedDefinedNames.size === 0 &&
+            changedTableNames.size === 0 &&
+            !hasPivots &&
+            !hasSheetSpillMetadata
+          ) {
+            return {
+              transaction,
+              changedCellIndices: [],
+              precomputedChangedInputCellIndices: [],
+              formulaCellIndices: [],
+              topologyChanged: false,
+              graphRefreshRequired: false,
+            }
+          }
 
           const structuralRangeDependencies = collectStructuralRangeDependencies(args, impactedFormulas.formulaCellIndices)
 

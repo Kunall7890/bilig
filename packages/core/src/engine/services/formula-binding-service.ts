@@ -58,6 +58,7 @@ import { installFreshFormulaBindingNow } from './formula-binding-install.js'
 import { createFormulaBindingSheetRenameHandler } from './formula-binding-sheet-rename.js'
 import { createFormulaBindingRebinds } from './formula-binding-rebind.js'
 import { rebuildDeferredFormulaFamilyIndex } from './formula-family-index-rebuild.js'
+import { materializeDeferredFormulaFamilyRunMembers, type DeferredInitialFormulaFamilyRun } from './formula-initialization-family-runs.js'
 import { canRetainUnmanagedCompiledPlan, formulaBindingErrorMessage, makeUnmanagedCompiledPlan } from './formula-binding-plan-helpers.js'
 import { normalizeFormulaBindingLookupCompileMode } from './formula-binding-lookup-mode.js'
 import { primeFormulaBindingLookupCandidates } from './formula-binding-lookup-primer.js'
@@ -84,28 +85,73 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
   const formulaSheetIndex = createFormulaBindingSheetIndex()
   const formulaFamilyShapeKeyCache: FormulaBindingFamilyShapeKeyCache = new Map()
   let formulaFamilyIndexNeedsRebuild = false
-  const { recordFormulaInstanceNow, registerFormulaFamilyNow } = createFormulaBindingInstanceTracker({
+  let deferredFormulaFamilyIndexRuns: readonly DeferredInitialFormulaFamilyRun[] | undefined
+  const { recordFormulaInstanceNow, registerFormulaFamilyNow: registerFormulaFamilyInStoreNow } = createFormulaBindingInstanceTracker({
     serviceArgs: args,
     formulaFamilyShapeKeyCache,
   })
+
+  const registerFormulaFamilyNow = (cellIndex: number, formula: RuntimeFormula, ownerPosition?: FormulaOwnerPosition): void => {
+    if (formulaFamilyIndexNeedsRebuild) {
+      deferredFormulaFamilyIndexRuns = undefined
+      return
+    }
+    registerFormulaFamilyInStoreNow(cellIndex, formula, ownerPosition)
+  }
 
   const clearFormulaBookkeepingNow = (): void => {
     resolvedCompiledCache.clear()
     formulaMemberCounts.clear()
     formulaSheetIndex.clear()
     formulaFamilyShapeKeyCache.clear()
+    deferredFormulaFamilyIndexRuns = undefined
     formulaFamilyIndexNeedsRebuild = false
+  }
+
+  const registerDeferredFormulaFamilyIndexRunsNow = (runs: readonly DeferredInitialFormulaFamilyRun[]): void => {
+    args.formulaFamilies.clear()
+    formulaFamilyShapeKeyCache.clear()
+    runs.forEach((run) => {
+      const step = run.cellIndices.length <= 1 ? 1 : run.step
+      if (
+        run.ordered &&
+        step > 0 &&
+        args.formulaFamilies.registerFreshUniformRun({
+          sheetId: run.sheetId,
+          templateId: run.templateId,
+          shapeKey: run.shapeKey,
+          axis: run.axis,
+          fixedIndex: run.fixedIndex,
+          start: run.start,
+          step,
+          cellIndices: run.cellIndices,
+        })
+      ) {
+        return
+      }
+      args.formulaFamilies.registerFormulaRun({
+        sheetId: run.sheetId,
+        templateId: run.templateId,
+        shapeKey: run.shapeKey,
+        members: materializeDeferredFormulaFamilyRunMembers(run),
+      })
+    })
   }
 
   const ensureFormulaFamilyIndexNow = (): void => {
     if (!formulaFamilyIndexNeedsRebuild) {
       return
     }
-    rebuildDeferredFormulaFamilyIndex({
-      state: args.state,
-      store: args.formulaFamilies,
-      shapeKeyCache: formulaFamilyShapeKeyCache,
-    })
+    if (deferredFormulaFamilyIndexRuns) {
+      registerDeferredFormulaFamilyIndexRunsNow(deferredFormulaFamilyIndexRuns)
+      deferredFormulaFamilyIndexRuns = undefined
+    } else {
+      rebuildDeferredFormulaFamilyIndex({
+        state: args.state,
+        store: args.formulaFamilies,
+        shapeKeyCache: formulaFamilyShapeKeyCache,
+      })
+    }
     formulaFamilyIndexNeedsRebuild = false
   }
 
@@ -529,6 +575,9 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     })
 
   const clearFormulaNow = (cellIndex: number): boolean => {
+    if (formulaFamilyIndexNeedsRebuild) {
+      deferredFormulaFamilyIndexRuns = undefined
+    }
     return clearFormulaBindingNow({
       serviceArgs: args,
       formulaMemberCounts,
@@ -899,6 +948,12 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     clearFormulaBookkeepingNow,
     deferFormulaFamilyIndexRebuildNow() {
       formulaFamilyShapeKeyCache.clear()
+      deferredFormulaFamilyIndexRuns = undefined
+      formulaFamilyIndexNeedsRebuild = true
+    },
+    deferFormulaFamilyIndexRunsNow(runs) {
+      formulaFamilyShapeKeyCache.clear()
+      deferredFormulaFamilyIndexRuns = [...runs]
       formulaFamilyIndexNeedsRebuild = true
     },
     deferFormulaInstanceTableRebuildNow() {},
@@ -925,6 +980,12 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     countFormulaFamilySheetMembersNow(sheetId) {
       ensureFormulaFamilyIndexNow()
       return args.formulaFamilies.countSheetMembers(sheetId)
+    },
+    canUseFormulaFamilyIndexNow() {
+      return !formulaFamilyIndexNeedsRebuild || deferredFormulaFamilyIndexRuns !== undefined
+    },
+    isFormulaFamilyIndexReadyNow() {
+      return !formulaFamilyIndexNeedsRebuild
     },
     forEachFormulaFamilyNow(fn) {
       ensureFormulaFamilyIndexNow()

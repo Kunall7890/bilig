@@ -26,9 +26,22 @@ export interface WorkbookUnsupportedFormulaDependencySnapshot {
   address: string
   formula: string
   importedFormula: string
+  linkedWorkbooks: WorkbookExternalWorkbookReferenceSnapshot[]
+  cachedValuesUsed: boolean
+  cachedFormulaValuePreserved: boolean
+  cachedExternalReferenceValuesUsed: boolean
   resolvedExternalReferenceCount: number
   unresolvedExternalReferenceCount: number
   reason: string
+}
+
+export interface WorkbookExternalWorkbookReferenceSnapshot {
+  bookIndex: number
+  packagePath?: string
+  target?: string
+  targetMode?: string
+  workbookName?: string
+  sheetNames?: string[]
 }
 
 export interface WorkbookUnsupportedPivotSnapshot {

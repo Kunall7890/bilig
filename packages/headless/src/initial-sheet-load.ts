@@ -2,7 +2,6 @@ import {
   CellFlags,
   loadDenseLiteralSheetIntoEmptySheet,
   loadLiteralSheetIntoEmptySheet,
-  makeLogicalCellKey,
   type EngineFormulaSourceRef,
   type LiteralSheetLoadInspection,
   type SheetRecord,
@@ -62,17 +61,15 @@ interface FreshInitialResidentIdentity {
 }
 
 interface FreshInitialCellPageInternals {
-  readonly cells?: Map<string, number>
+  readonly setDeferred?: (location: FreshInitialCellIdentity, cellIndex: number) => void
 }
 
 interface FreshInitialCellIdentityInternals {
-  readonly identities?: Map<number, FreshInitialCellIdentity>
+  readonly setParts?: (cellIndex: number, sheetId: number, rowId: string, colId: string) => void
 }
 
 interface FreshInitialResidentCellInternals {
-  readonly byCell?: Map<number, FreshInitialResidentIdentity>
-  readonly byRow?: Map<string, Set<number>>
-  readonly byColumn?: Map<string, Set<number>>
+  readonly addDeferred?: (cellIndex: number, identity: FreshInitialResidentIdentity) => void
 }
 
 interface FreshInitialLogicalSheetInternals {
@@ -214,55 +211,21 @@ export function prepareInitialMixedSheetLoad(args: {
 function createFreshInitialCellAttacher(sheet: SheetRecord): FreshInitialCellAttacher {
   const logicalCandidate: unknown = sheet.logical
   const logical = isFreshInitialLogicalSheetInternals(logicalCandidate) ? logicalCandidate : undefined
-  const cells = logical?.cellPages?.cells
-  const identities = logical?.cellIdentities?.identities
-  const residentByCell = logical?.residentCells?.byCell
-  const residentByRow = logical?.residentCells?.byRow
-  const residentByColumn = logical?.residentCells?.byColumn
-  if (!cells || !identities || !residentByCell || !residentByRow || !residentByColumn) {
+  const setDeferredCellPage = logical?.cellPages?.setDeferred?.bind(logical.cellPages)
+  const setCellIdentityParts = logical?.cellIdentities?.setParts?.bind(logical.cellIdentities)
+  const addDeferredResidentCell = logical?.residentCells?.addDeferred?.bind(logical.residentCells)
+  if (!setDeferredCellPage || !setCellIdentityParts || !addDeferredResidentCell) {
     return (row, col, cellIndex, rowId, colId) => {
       sheet.logical.setNewVisibleCellWithAxisIds(row, col, cellIndex, rowId, colId)
       sheet.grid.set(row, col, cellIndex)
     }
   }
 
-  let lastRowId: string | undefined
-  let lastRowSet: Set<number> | undefined
-  const columnSets = new Map<string, Set<number>>()
   const setGridCell = sheet.grid.createRowMajorSetter()
-  const ensureResidentColumnSet = (id: string): Set<number> => {
-    const cached = columnSets.get(id)
-    if (cached) {
-      return cached
-    }
-    let stored = residentByColumn.get(id)
-    if (!stored) {
-      stored = new Set<number>()
-      residentByColumn.set(id, stored)
-    }
-    columnSets.set(id, stored)
-    return stored
-  }
-  const ensureResidentRowSet = (id: string): Set<number> => {
-    if (lastRowId === id && lastRowSet) {
-      return lastRowSet
-    }
-    let stored = residentByRow.get(id)
-    if (!stored) {
-      stored = new Set<number>()
-      residentByRow.set(id, stored)
-    }
-    lastRowId = id
-    lastRowSet = stored
-    return stored
-  }
-
   return (row, col, cellIndex, rowId, colId) => {
-    cells.set(makeLogicalCellKey(sheet.id, rowId, colId), cellIndex)
-    identities.set(cellIndex, { sheetId: sheet.id, rowId, colId })
-    residentByCell.set(cellIndex, { rowId, colId })
-    ensureResidentRowSet(rowId).add(cellIndex)
-    ensureResidentColumnSet(colId).add(cellIndex)
+    setDeferredCellPage({ sheetId: sheet.id, rowId, colId }, cellIndex)
+    setCellIdentityParts(cellIndex, sheet.id, rowId, colId)
+    addDeferredResidentCell(cellIndex, { rowId, colId })
     setGridCell(row, col, cellIndex)
   }
 }

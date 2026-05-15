@@ -134,6 +134,28 @@ It answers this narrower question:
 That is helpful for triage and regression reduction. It is not enough to claim
 Excel accuracy.
 
+## Public Corpus Timing Budgets
+
+The public workbook corpus verifier records `elapsedMs`, `phaseTimings`, and
+isolated worker `peakRssBytes` on each scorecard case. Use those fields to keep
+slow real workbooks visible in the JSON artifact, not only in a progress log.
+
+The regression budget for
+`workbook-364f955dd990c3d4`
+(`command-manning-summary-as-of-21-mar-2025.xlsx`, 394 KB, 60,738 cells, 2,219
+formula cells) is 30 seconds for the current headless verification path. Enable
+the optional focused test with:
+
+```sh
+BILIG_COMMAND_MANNING_MANIFEST=/path/to/manifest-business-recent.json \
+BILIG_COMMAND_MANNING_CACHE_DIR=/path/to/recent-workbook-corpus \
+pnpm exec vitest run scripts/__tests__/public-workbook-corpus.test.ts -t command-manning
+```
+
+The scorecard phase split identifies whether time is spent in cache reads,
+footprint inspection, XLSX import, formula oracle comparison, round-trip, or
+structural smoke work before changing runtime code.
+
 ## Checked-in fixture result
 
 The current checked-in reduction corpus returns:

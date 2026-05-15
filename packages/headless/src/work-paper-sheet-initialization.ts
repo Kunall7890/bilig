@@ -9,7 +9,13 @@ import {
   workbookSnapshotSheetHasDynamicSpillFormula,
   type WorkPaperSheetInspection,
 } from './work-paper-sheet-inspection.js'
-import type { SerializedWorkPaperNamedExpression, WorkPaperConfig, WorkPaperSheetDimensions, WorkPaperSheets } from './work-paper-types.js'
+import type {
+  SerializedWorkPaperNamedExpression,
+  WorkPaperConfig,
+  WorkPaperSheet,
+  WorkPaperSheetDimensions,
+  WorkPaperSheets,
+} from './work-paper-types.js'
 
 export function initializeWorkPaperFromSheets(args: {
   readonly engine: SpreadsheetEngine
@@ -30,8 +36,35 @@ export function initializeWorkPaperFromSheets(args: {
   readonly clearHistoryStacks: () => void
   readonly resetChangeTrackingCaches: () => void
 }): void {
-  const sheetEntries = Object.entries(args.sheets)
-  const runtimeSnapshot = args.namedExpressions.length === 0 && !args.hasFunctionAliases() ? readRuntimeSnapshot(args.sheets) : undefined
+  initializeWorkPaperFromSheetEntries({
+    ...args,
+    sheetEntries: Object.entries(args.sheets),
+    runtimeSnapshot: args.namedExpressions.length === 0 && !args.hasFunctionAliases() ? readRuntimeSnapshot(args.sheets) : undefined,
+  })
+}
+
+export function initializeWorkPaperFromSheetEntries(args: {
+  readonly engine: SpreadsheetEngine
+  readonly config: WorkPaperConfig
+  readonly sheetEntries: readonly (readonly [string, WorkPaperSheet])[]
+  readonly runtimeSnapshot?: ReturnType<typeof readRuntimeSnapshot>
+  readonly namedExpressions: readonly SerializedWorkPaperNamedExpression[]
+  readonly hasNamedExpressions: () => boolean
+  readonly hasFunctionAliases: () => boolean
+  readonly withEngineEventCaptureDisabled: (callback: () => void) => void
+  readonly upsertNamedExpression: (expression: SerializedWorkPaperNamedExpression, options: { duringInitialization: boolean }) => void
+  readonly rewriteFormulaForStorage: (formula: string, sheetId: number) => string
+  readonly requireSheetId: (name: string) => number
+  readonly cacheInitializedSheetDimensions: (
+    sheetId: number,
+    dimensions: WorkPaperSheetDimensions,
+    options?: { readonly mayResizeDynamically?: boolean },
+  ) => void
+  readonly clearHistoryStacks: () => void
+  readonly resetChangeTrackingCaches: () => void
+}): void {
+  const sheetEntries = args.sheetEntries
+  const runtimeSnapshot = args.runtimeSnapshot
   const runtimeSnapshotMatchesSheets = runtimeSnapshot !== undefined && runtimeSnapshotMatchesSheetEntries(sheetEntries, runtimeSnapshot)
   const runtimeSnapshotSheetsByName = runtimeSnapshotMatchesSheets
     ? new Map(runtimeSnapshot.sheets.map((sheet) => [sheet.name, sheet] as const))

@@ -18,11 +18,13 @@ import type {
   WorkbookPivotArtifactsSnapshot,
   WorkbookPivotSnapshot,
   WorkbookSheetPivotArtifactsSnapshot,
+  WorkbookExternalWorkbookReferenceSnapshot,
   WorkbookUnsupportedFormulaDependencySnapshot,
   WorkbookUnsupportedPivotSnapshot,
 } from './workbook-pivot-types.js'
 export type {
   PivotAggregation,
+  WorkbookExternalWorkbookReferenceSnapshot,
   WorkbookPivotArtifactsSnapshot,
   WorkbookPivotPackagePartSnapshot,
   WorkbookPivotSnapshot,
@@ -879,6 +881,7 @@ export interface WorkbookMetadataSnapshot {
   tables?: WorkbookTableSnapshot[]
   spills?: WorkbookSpillSnapshot[]
   pivots?: WorkbookPivotSnapshot[]
+  externalWorkbookReferences?: WorkbookExternalWorkbookReferenceSnapshot[]
   unsupportedFormulaDependencies?: WorkbookUnsupportedFormulaDependencySnapshot[]
   unsupportedPivots?: WorkbookUnsupportedPivotSnapshot[]
   pivotArtifacts?: WorkbookPivotArtifactsSnapshot

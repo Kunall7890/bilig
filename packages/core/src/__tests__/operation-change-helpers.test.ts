@@ -46,6 +46,10 @@ describe('operation change helpers', () => {
     expect(Array.from(mergeChangedCellIndices([1], [1]))).toEqual([1])
     expect(Array.from(mergeChangedCellIndices([1], [2]))).toEqual([1, 2])
     expect(Array.from(mergeChangedCellIndices([1, 2], [2, 3]))).toEqual([1, 2, 3])
+    expect(Array.from(mergeChangedCellIndices([1], Uint32Array.from([2, 3, 4])))).toEqual([1, 2, 3, 4])
+    expect(Array.from(mergeChangedCellIndices([1], Uint32Array.from([2, 1, 4])))).toEqual([1, 2, 4])
+    expect(Array.from(mergeChangedCellIndices(Uint32Array.from([1, 2, 3]), [4]))).toEqual([1, 2, 3, 4])
+    expect(Array.from(mergeChangedCellIndices(Uint32Array.from([1, 2, 3]), [2]))).toEqual([1, 2, 3])
   })
 
   it('reverses changed cell index arrays without mutating the input', () => {

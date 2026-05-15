@@ -489,6 +489,7 @@ export function createEngineServiceRuntime(args: {
     collectFormulaCellsOwnedBySheet: (sheetName) => binding.collectFormulaCellsOwnedBySheetNow(sheetName),
     forEachFormulaCellOwnedBySheet: (sheetName, fn) => binding.forEachFormulaCellOwnedBySheetNow(sheetName, fn),
     countFormulaSheetMembers: (sheetId) => binding.countFormulaSheetMembersNow(sheetId),
+    canUseFormulaFamilyIndex: () => binding.canUseFormulaFamilyIndexNow(),
     forEachFormulaFamily: (fn) => binding.forEachFormulaFamilyNow(fn),
     setFormulaFamilyStructuralSourceTransform: (familyId, transform) =>
       binding.setFormulaFamilyStructuralSourceTransformNow(familyId, transform),
@@ -622,6 +623,7 @@ export function createEngineServiceRuntime(args: {
     },
     registerFreshFormulaFamilyRun: (run) => formulaFamilies.registerFreshUniformRun(run),
     deferFormulaFamilyIndexRebuild: () => binding.deferFormulaFamilyIndexRebuildNow(),
+    deferFormulaFamilyIndexRuns: (runs) => binding.deferFormulaFamilyIndexRunsNow(runs),
     deferFormulaInstanceTableRebuild: () => binding.deferFormulaInstanceTableRebuildNow(),
     compileTemplateFormula: (source, row, col) => formulaTemplates.resolveForCell(source, row, col),
     clearTemplateFormulaCache: () => formulaTemplates.clear(),

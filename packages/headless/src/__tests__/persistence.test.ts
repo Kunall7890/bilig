@@ -64,6 +64,29 @@ describe('WorkPaper persistence helpers', () => {
     })
   })
 
+  it('preserves imported sheet names that end with spaces during document restore', () => {
+    const workbook = WorkPaper.buildFromSheets(
+      {
+        'DFFH ': [[1, '=LocalRate+A1']],
+      },
+      { useColumnIndex: true },
+      [{ name: 'LocalRate', expression: '=7', scope: 1 }],
+    )
+
+    const document = exportWorkPaperDocument(workbook)
+    const restored = createWorkPaperFromDocument(parseWorkPaperDocument(serializeWorkPaperDocument(document)))
+    const restoredSheetId = restored.getSheetId('DFFH ')
+
+    expect(restored.getSheetNames()).toEqual(['DFFH '])
+    expect(restoredSheetId).toBe(1)
+    expect(restored.getSheetId('DFFH')).toBeUndefined()
+    expect(restored.getAllNamedExpressionsSerialized()).toEqual(workbook.getAllNamedExpressionsSerialized())
+    expect(restored.getCellValue({ sheet: restoredSheetId!, row: 0, col: 1 })).toEqual({
+      tag: ValueTag.Number,
+      value: 8,
+    })
+  })
+
   it('exports config only from the documented JSON-safe subset', () => {
     const config = pickPersistableWorkPaperConfig({
       calculationSettings: { iterate: true, iterateCount: 50, iterateDelta: '0.001' },

@@ -3,14 +3,16 @@ import { createHash } from 'node:crypto'
 import * as XLSX from 'xlsx'
 
 import { importXlsx } from '../packages/excel-import/src/index.js'
+import { readImportedExternalWorkbookReferences } from '../packages/excel-import/src/xlsx-external-references.js'
 import { readXlsxZipEntries } from '../packages/excel-import/src/xlsx-zip.js'
 import { ErrorCode, ValueTag } from '../packages/protocol/src/enums.js'
-import type { CellValue, WorkbookSnapshot } from '../packages/protocol/src/types.js'
+import type { CellValue, WorkbookExternalWorkbookReferenceSnapshot, WorkbookSnapshot } from '../packages/protocol/src/types.js'
 import type { FormulaOracle, PublicWorkbookCorpusCase, PublicWorkbookFeatureCounts } from './public-workbook-corpus-types.ts'
 
 export interface WorkbookFootprint {
   readonly featureCounts: PublicWorkbookFeatureCounts
   readonly workbookMetadata: PublicWorkbookCorpusCase['workbookMetadata']
+  readonly externalWorkbookReferences: readonly WorkbookExternalWorkbookReferenceSnapshot[]
 }
 
 type WorkbookSheetUsedRange = NonNullable<PublicWorkbookCorpusCase['workbookMetadata']['dimensions'][number]['usedRange']>
@@ -101,6 +103,7 @@ export function inspectWorkbookFootprint(bytes: Uint8Array, fileName: string): W
   featureCounts.sheetCount = workbook.SheetNames.length
   featureCounts.definedNameCount = Array.isArray(workbook.Workbook?.Names) ? workbook.Workbook.Names.length : 0
   featureCounts.pivotCount = countRawPivotTableParts(bytes)
+  const externalWorkbookReferences = [...readImportedExternalWorkbookReferences(bytes).values()]
   for (const sheetName of workbook.SheetNames) {
     const sheet = workbook.Sheets[sheetName]
     let rowCount = 0
@@ -132,6 +135,7 @@ export function inspectWorkbookFootprint(bytes: Uint8Array, fileName: string): W
       sheetNames: workbook.SheetNames,
       dimensions,
     },
+    externalWorkbookReferences,
   }
 }
 

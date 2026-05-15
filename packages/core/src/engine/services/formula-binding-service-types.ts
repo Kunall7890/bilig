@@ -17,6 +17,7 @@ import type { StructuralTransaction } from '../structural-transaction.js'
 import type { EngineFormulaBindingError } from '../errors.js'
 import type { EngineCompiledPlanService } from './compiled-plan-service.js'
 import type { ExactColumnIndexService } from './exact-column-index-service.js'
+import type { DeferredInitialFormulaFamilyRun } from './formula-initialization-family-runs.js'
 import type { FormulaBindingReverseEdgeState } from './formula-binding-reverse-edges.js'
 import type { SortedColumnSearchService } from './sorted-column-search-service.js'
 
@@ -85,6 +86,7 @@ export interface EngineFormulaBindingService {
   readonly invalidateFormulaNow: (cellIndex: number) => void
   readonly clearFormulaBookkeepingNow: () => void
   readonly deferFormulaFamilyIndexRebuildNow: () => void
+  readonly deferFormulaFamilyIndexRunsNow: (runs: readonly DeferredInitialFormulaFamilyRun[]) => void
   readonly deferFormulaInstanceTableRebuildNow: () => void
   readonly exportFormulaInstancesNow: () => FormulaInstanceSnapshot[]
   readonly refreshRangeDependenciesNow: (rangeIndices: readonly number[]) => void
@@ -96,6 +98,8 @@ export interface EngineFormulaBindingService {
   readonly forEachFormulaCellOwnedBySheetNow: (sheetName: string, fn: (cellIndex: number) => void) => void
   readonly countFormulaSheetMembersNow: (sheetId: number) => number
   readonly countFormulaFamilySheetMembersNow: (sheetId: number) => number
+  readonly canUseFormulaFamilyIndexNow: () => boolean
+  readonly isFormulaFamilyIndexReadyNow: () => boolean
   readonly forEachFormulaFamilyNow: (fn: (family: FormulaFamily) => void) => void
   readonly setFormulaFamilyStructuralSourceTransformNow: (familyId: number, transform: FormulaFamilyStructuralSourceTransform) => void
   readonly getFormulaFamilyStructuralSourceTransformNow: (cellIndex: number) => FormulaFamilyStructuralSourceTransform | undefined

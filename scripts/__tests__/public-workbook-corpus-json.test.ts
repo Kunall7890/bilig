@@ -18,6 +18,17 @@ describe('public workbook corpus JSON parsing', () => {
       },
       status: 'passed',
       passed: true,
+      elapsedMs: 27,
+      peakRssBytes: 123456,
+      phaseTimings: [
+        { phase: 'read-cache', elapsedMs: 1 },
+        { phase: 'import-xlsx', elapsedMs: 26 },
+      ],
+      externalWorkbookReferences: {
+        linkedWorkbookCount: 1,
+        formulaDependencyCount: 2,
+        cachedValueDependencyCount: 1,
+      },
       featureCounts: {
         sheetCount: 1,
         cellCount: 1,
@@ -66,5 +77,16 @@ describe('public workbook corpus JSON parsing', () => {
 
     expect(parsed.workbookMetadata.sheetNames).toEqual([' '])
     expect(parsed.workbookMetadata.dimensions[0]?.sheetName).toBe(' ')
+    expect(parsed.elapsedMs).toBe(27)
+    expect(parsed.peakRssBytes).toBe(123456)
+    expect(parsed.phaseTimings).toEqual([
+      { phase: 'read-cache', elapsedMs: 1 },
+      { phase: 'import-xlsx', elapsedMs: 26 },
+    ])
+    expect(parsed.externalWorkbookReferences).toEqual({
+      linkedWorkbookCount: 1,
+      formulaDependencyCount: 2,
+      cachedValueDependencyCount: 1,
+    })
   })
 })

@@ -90,7 +90,7 @@ function buildExternalLinkCacheWorkbook(): Uint8Array {
     [
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
       '<externalLink xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
-      '<externalBook>',
+      '<externalBook r:id="rId1">',
       '<sheetNames><sheetName val="External Data"/></sheetNames>',
       '<sheetDataSet><sheetData sheetId="0">',
       '<row r="1"><cell r="A1"><v>2</v></cell></row>',
@@ -99,6 +99,11 @@ function buildExternalLinkCacheWorkbook(): Uint8Array {
       '</externalBook>',
       '</externalLink>',
     ].join(''),
+  )
+  zip['xl/externalLinks/_rels/externalLink5.xml.rels'] = strToU8(
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/externalLinkPath" Target="file:///tmp/source.xlsx" TargetMode="External"/>' +
+      '</Relationships>',
   )
   return zipSync(zip)
 }
@@ -134,7 +139,7 @@ function buildExternalGetPivotDataLinkCacheWorkbook(): Uint8Array {
     [
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
       '<externalLink xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
-      '<externalBook>',
+      '<externalBook r:id="rId1">',
       '<sheetNames><sheetName val="External Pivot"/></sheetNames>',
       '<sheetDataSet><sheetData sheetId="0">',
       '<row r="3"><cell r="G3" t="str"><v>Row Labels</v></cell></row>',
@@ -142,6 +147,11 @@ function buildExternalGetPivotDataLinkCacheWorkbook(): Uint8Array {
       '</externalBook>',
       '</externalLink>',
     ].join(''),
+  )
+  zip['xl/externalLinks/_rels/externalLink5.xml.rels'] = strToU8(
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/externalLinkPath" Target="file:///tmp/pivot-source.xlsx" TargetMode="External"/>' +
+      '</Relationships>',
   )
   return zipSync(zip)
 }
@@ -388,6 +398,16 @@ describe('excel import', () => {
 
     expect(formulaCell?.formula).toBe('2+3')
     expect(imported.warnings).toEqual([externalWorkbookReferencesWarning])
+    expect(imported.snapshot.workbook.metadata?.externalWorkbookReferences).toEqual([
+      {
+        bookIndex: 1,
+        packagePath: 'xl/externalLinks/externalLink5.xml',
+        target: 'file:///tmp/source.xlsx',
+        targetMode: 'External',
+        workbookName: 'source.xlsx',
+        sheetNames: ['External Data'],
+      },
+    ])
     expect(imported.snapshot.workbook.metadata?.unsupportedFormulaDependencies).toEqual([
       {
         kind: 'external-workbook-reference',
@@ -395,6 +415,19 @@ describe('excel import', () => {
         address: 'A1',
         formula: "'[1]External Data'!A1+'[1]External Data'!A2",
         importedFormula: '2+3',
+        linkedWorkbooks: [
+          {
+            bookIndex: 1,
+            packagePath: 'xl/externalLinks/externalLink5.xml',
+            target: 'file:///tmp/source.xlsx',
+            targetMode: 'External',
+            workbookName: 'source.xlsx',
+            sheetNames: ['External Data'],
+          },
+        ],
+        cachedValuesUsed: true,
+        cachedFormulaValuePreserved: true,
+        cachedExternalReferenceValuesUsed: true,
         resolvedExternalReferenceCount: 2,
         unresolvedExternalReferenceCount: 0,
         reason:
@@ -417,6 +450,16 @@ describe('excel import', () => {
     expect(formulaCell?.formula).toBe('GETPIVOTDATA("Amount",\'[1]External Pivot\'!$G$3,"Region","East")')
     expect(formulaCell?.value).toBe(15)
     expect(imported.warnings).toContain(externalWorkbookReferencesWarning)
+    expect(imported.snapshot.workbook.metadata?.externalWorkbookReferences).toEqual([
+      {
+        bookIndex: 1,
+        packagePath: 'xl/externalLinks/externalLink5.xml',
+        target: 'file:///tmp/pivot-source.xlsx',
+        targetMode: 'External',
+        workbookName: 'pivot-source.xlsx',
+        sheetNames: ['External Pivot'],
+      },
+    ])
     expect(imported.snapshot.workbook.metadata?.unsupportedFormulaDependencies).toEqual([
       expect.objectContaining({
         kind: 'external-workbook-reference',
@@ -424,6 +467,19 @@ describe('excel import', () => {
         address: 'A1',
         formula: 'GETPIVOTDATA("Amount",\'[1]External Pivot\'!$G$3,"Region","East")',
         importedFormula: 'GETPIVOTDATA("Amount",\'[1]External Pivot\'!$G$3,"Region","East")',
+        linkedWorkbooks: [
+          {
+            bookIndex: 1,
+            packagePath: 'xl/externalLinks/externalLink5.xml',
+            target: 'file:///tmp/pivot-source.xlsx',
+            targetMode: 'External',
+            workbookName: 'pivot-source.xlsx',
+            sheetNames: ['External Pivot'],
+          },
+        ],
+        cachedValuesUsed: true,
+        cachedFormulaValuePreserved: true,
+        cachedExternalReferenceValuesUsed: false,
         resolvedExternalReferenceCount: 0,
         unresolvedExternalReferenceCount: 0,
       }),
