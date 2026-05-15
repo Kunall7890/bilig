@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import {
   PRODUCT_HEADER_HEIGHT,
+  PRIMARY_MODIFIER,
   createTestDocumentId,
   getProductColumnLeft,
   getProductColumnWidth,
@@ -83,6 +84,140 @@ test('web app keeps a user click selection after opening from a deep cell URL', 
   await expect.poll(() => page.evaluate(() => new URL(window.location.href).searchParams.get('cell') ?? '')).not.toBe('D53')
 })
 
+test('web app keeps dense accounting-sheet text payloads complete in the TypeGPU layer', async ({ page, context }, testInfo) => {
+  const documentId = createTestDocumentId('playwright-dense-visible-payload')
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  await page.setViewportSize({ width: 1166, height: 820 })
+  await page.goto(`/?document=${encodeURIComponent(documentId)}&sheet=Sheet1&cell=A1`)
+  await waitForWorkbookReady(page)
+
+  const grid = page.getByTestId('sheet-grid')
+  const formulaInput = page.getByTestId('formula-input')
+  const nameBox = page.getByTestId('name-box')
+
+  await page.evaluate((clipboardText) => navigator.clipboard.writeText(clipboardText), createDenseAccountingGridClipboardText())
+  await clickVisibleGridBodySlot(page, 0, 0)
+  await grid.press(`${PRIMARY_MODIFIER}+V`)
+
+  await nameBox.fill('B34')
+  await nameBox.press('Enter')
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B34')
+  await expect(nameBox).toHaveValue('B34')
+  await expect(formulaInput).toHaveValue('Annual software subscription')
+  await expect(page.getByTestId('sheet-grid')).toHaveCSS('font-family', /Arial/)
+  await expect
+    .poll(readRendererSurfaceState(page), {
+      message: 'dense accounting sheet should render through the live TypeGPU layer, not a fallback or text overlay',
+      timeout: 5_000,
+    })
+    .toMatchObject({
+      fallbackMounted: false,
+      textOverlayMounted: false,
+      typeGpuMode: 'typegpu-v3',
+      typeGpuOpacity: '1',
+    })
+  await expect
+    .poll(readTypeGpuTextRunCount(page), {
+      message: 'visible body tiles must carry dense text payloads; a blank successful frame is a visual regression',
+      timeout: 5_000,
+    })
+    .toBeGreaterThan(40)
+
+  const selectedCellTextPixels = await pollDarkInteriorPixelsInCell(page, 1, 33, (pixels) => pixels > 8)
+  if (selectedCellTextPixels <= 8 && shouldAllowHeadlessWebGpuScreenshotGap()) {
+    testInfo.annotations.push({
+      description:
+        'Local headless Chromium did not composite the WebGPU text into page.screenshot; TypeGPU text-run proof covers this visual path.',
+      type: 'visual-proof-limited',
+    })
+  } else {
+    expect(selectedCellTextPixels, 'B34 should visibly paint its text, not only expose formula-bar readback').toBeGreaterThan(8)
+  }
+})
+
+function createDenseAccountingGridClipboardText(): string {
+  return Array.from({ length: 48 }, (_, rowIndex) => {
+    const rowNumber = rowIndex + 1
+    if (rowNumber === 1) {
+      return ['Prepaid Expense Template', '', '', '', '', '', '', ''].join('\t')
+    }
+    if (rowNumber === 2) {
+      return ['As of date', '2026-04-30', '', 'Purpose', 'Track prepaid assets and amortization', '', '', ''].join('\t')
+    }
+    if (rowNumber === 3) {
+      return ['How to use', 'Enter/edit yellow input cells in the register', '', '', '', '', '', ''].join('\t')
+    }
+    if (rowNumber === 4) {
+      return ['Summary', 'Total Prepaid', 'Expense Recognized', 'Remaining Prepaid', 'Monthly Expense', '', '', ''].join('\t')
+    }
+    if (rowNumber === 5) {
+      return ['All register rows', '54600', '13600', '41000', '4000', '', '', ''].join('\t')
+    }
+    if (rowNumber === 7) {
+      return ['Item ID', 'Description', 'Vendor', 'Prepaid Asset Account', 'Expense Account', 'Start Date', 'End Date', 'Total Cost'].join(
+        '\t',
+      )
+    }
+    if (rowNumber >= 8 && rowNumber <= 13) {
+      const descriptions = [
+        'General liability insurance',
+        'Annual software subscription',
+        'Quarterly office rent',
+        'Support contract',
+        'Equipment service',
+        'Enter description',
+      ]
+      const vendors = ['Acme Insurance', 'SaaS Co', 'Landlord Co', 'Cloud Support', 'Service Co', 'Enter vendor']
+      const index = rowNumber - 8
+      return [
+        `P-00${index + 1}`,
+        descriptions[index] ?? '',
+        vendors[index] ?? '',
+        'Prepaid Asset',
+        'Expense Account',
+        '2026-01-01',
+        '2026-12-31',
+        '12000',
+      ].join('\t')
+    }
+    if (rowNumber === 15) {
+      return ['Amortization Schedule Examples', '', '', '', '', '', '', ''].join('\t')
+    }
+    if (rowNumber === 16) {
+      return [
+        'Item ID',
+        'Description',
+        'Period',
+        'Period Label',
+        'Opening Balance',
+        'Monthly Expense',
+        'Ending Balance',
+        'Debit Account',
+      ].join('\t')
+    }
+    if (rowNumber >= 17) {
+      const period = rowNumber - 16
+      const itemId = period <= 12 ? 'P-001' : period <= 24 ? 'P-002' : 'P-003'
+      const description =
+        itemId === 'P-002' ? 'Annual software subscription' : itemId === 'P-003' ? 'Quarterly office rent' : 'General liability insurance'
+      const itemPeriod = ((period - 1) % 12) + 1
+      const opening = itemId === 'P-002' ? Math.max(0, 26000 - itemPeriod * 2000) : Math.max(0, 13000 - itemPeriod * 1000)
+      const monthly = itemId === 'P-002' ? 2000 : 1000
+      return [
+        itemId,
+        description,
+        String(itemPeriod),
+        `Month ${itemPeriod}`,
+        String(opening),
+        String(monthly),
+        String(Math.max(0, opening - monthly)),
+        'Software Expense',
+      ].join('\t')
+    }
+    return ['', '', '', '', '', '', '', ''].join('\t')
+  }).join('\n')
+}
+
 async function pollDarkInteriorPixelsInCell(
   page: Page,
   columnIndex: number,
@@ -164,6 +299,17 @@ function readRendererSurfaceState(page: Page): () => Promise<{
         typeGpuMode: typeGpu instanceof HTMLCanvasElement ? typeGpu.getAttribute('data-renderer-mode') : null,
         typeGpuOpacity: typeGpu instanceof HTMLElement ? getComputedStyle(typeGpu).opacity : null,
       }
+    })
+}
+
+function readTypeGpuTextRunCount(page: Page): () => Promise<number> {
+  return async () =>
+    await page.evaluate(() => {
+      const typeGpu = document.querySelector('[data-testid="grid-pane-renderer"]')
+      if (!(typeGpu instanceof HTMLElement) || typeGpu.getAttribute('data-v3-frame-proof-status') !== 'presented') {
+        return 0
+      }
+      return Number(typeGpu.getAttribute('data-v3-text-run-count') ?? '0')
     })
 }
 
