@@ -90,6 +90,7 @@ export function CellEditorOverlay({
   } | null>(null)
   const caretWriteSequenceRef = useRef(0)
   const targetSelectionRef = useRef(targetSelection)
+  const draftValueRef = useRef(value)
   const [isCompleting, setIsCompleting] = useState(false)
   const [draftValue, setDraftValue] = useState(value)
   const MAX_EDITOR_HEIGHT = 220
@@ -131,7 +132,6 @@ export function CellEditorOverlay({
     pendingParentSyncRef.current = window.setTimeout(() => {
       pendingParentSyncRef.current = null
       const syncedValue = pendingParentSyncValueRef.current
-      setDraftValue(syncedValue)
       onChange(syncedValue)
     }, PARENT_SYNC_DEBOUNCE_MS)
   }
@@ -187,6 +187,10 @@ export function CellEditorOverlay({
   useEffect(() => cancelPendingBlurCommit, [])
   useEffect(() => cancelPendingParentSync, [])
 
+  useEffect(() => {
+    draftValueRef.current = draftValue
+  }, [draftValue])
+
   useLayoutEffect(() => {
     const restore = pendingSelectionRestoreRef.current
     if (!restore) {
@@ -203,18 +207,24 @@ export function CellEditorOverlay({
   }, [draftValue])
 
   useEffect(() => {
-    cancelPendingParentSync()
     const input = inputRef.current
+    const targetChanged = targetSelectionRef.current.address !== targetAddress || targetSelectionRef.current.sheetName !== targetSheetName
+    targetSelectionRef.current = {
+      address: targetAddress,
+      sheetName: targetSheetName,
+    }
+    const localValue = input?.value ?? draftValueRef.current
+    const editorHasFocusedDraft = input && document.activeElement === input && localValue !== value
+    if (!targetChanged && editorHasFocusedDraft) {
+      return
+    }
+    cancelPendingParentSync()
     if (input && document.activeElement === input) {
       pendingSelectionRestoreRef.current = {
         direction: input.selectionDirection ?? 'none',
         end: input.selectionEnd ?? input.value.length,
         start: input.selectionStart ?? input.value.length,
       }
-    }
-    targetSelectionRef.current = {
-      address: targetAddress,
-      sheetName: targetSheetName,
     }
     pendingParentSyncValueRef.current = value
     setDraftValue(value)

@@ -354,6 +354,50 @@ function LaggyContextHarness() {
   )
 }
 
+function RapidSelectionContextHarness() {
+  const [row, setRow] = useState(1)
+  const previewCommandBundle = useCallback(async () => createPreviewSummary(), [])
+  const getContext = useCallback(
+    () => ({
+      selection: {
+        sheetName: 'Sheet1',
+        address: `A${row}`,
+      },
+      viewport: {
+        rowStart: row - 1,
+        rowEnd: row + 9,
+        colStart: 0,
+        colEnd: 5,
+      },
+    }),
+    [row],
+  )
+
+  const { agentPanel } = useWorkbookAgentPane({
+    currentUserId: 'alex@example.com',
+    documentId: 'doc-1',
+    enabled: true,
+    getContext,
+    activeContextLabel: `Sheet1!A${row}`,
+    previewCommandBundle,
+  })
+
+  return (
+    <div>
+      <button
+        data-testid="advance-selection-context"
+        type="button"
+        onClick={() => {
+          setRow((current) => current + 1)
+        }}
+      >
+        {row}
+      </button>
+      {agentPanel}
+    </div>
+  )
+}
+
 function VolatileRenderedContextHarness() {
   const [renderCount, setRenderCount] = useState(0)
   const previewCommandBundle = useCallback(async () => createPreviewSummary(), [])
@@ -2395,6 +2439,104 @@ describe('workbook agent pane', () => {
     await act(async () => {
       root.unmount()
     })
+  })
+
+  it('keeps workbook context sync single-flight when selection changes faster than the backend responds', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    window.sessionStorage.setItem(
+      'bilig:workbook-agent:doc-1',
+      JSON.stringify({
+        threadId: 'thr-1',
+      }),
+    )
+    const contextResponses: Array<() => void> = []
+    const fetchSpy = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = requestUrl(input)
+      if (url.endsWith('/chat/threads/thr-1') && requestMethod(init) === 'GET') {
+        return Promise.resolve(
+          new Response(JSON.stringify(createSnapshot({ threadId: 'thr-1' })), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
+        )
+      }
+      if (url.endsWith('/chat/threads/thr-1/context') && requestMethod(init) === 'POST') {
+        return new Promise<Response>((resolve) => {
+          contextResponses.push(() => {
+            resolve(
+              new Response(JSON.stringify({ ok: true }), {
+                status: 200,
+                headers: { 'content-type': 'application/json' },
+              }),
+            )
+          })
+        })
+      }
+      return Promise.reject(new Error(`Unexpected fetch to ${url}`))
+    })
+    vi.stubGlobal('fetch', fetchSpy)
+
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+    const contextCalls = () =>
+      fetchSpy.mock.calls.filter(
+        ([input, init]) => requestUrl(input).endsWith('/chat/threads/thr-1/context') && requestMethod(init) === 'POST',
+      )
+
+    const advanceSelection = async () => {
+      await act(async () => {
+        host.querySelector("[data-testid='advance-selection-context']")?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      })
+      await act(async () => {
+        await Promise.resolve()
+        await new Promise((resolve) => setTimeout(resolve, 200))
+      })
+    }
+
+    try {
+      await act(async () => {
+        root.render(<RapidSelectionContextHarness />)
+      })
+
+      await act(async () => {
+        await Promise.resolve()
+        await new Promise((resolve) => setTimeout(resolve, 200))
+      })
+
+      expect(contextCalls()).toHaveLength(1)
+
+      await advanceSelection()
+      await advanceSelection()
+      await advanceSelection()
+
+      expect(contextCalls()).toHaveLength(1)
+
+      await act(async () => {
+        contextResponses[0]?.()
+        await Promise.resolve()
+        await new Promise((resolve) => setTimeout(resolve, 200))
+      })
+
+      expect(contextCalls()).toHaveLength(2)
+      expect(requestBody(contextCalls()[1]?.[1])).toMatchObject({
+        context: {
+          selection: {
+            sheetName: 'Sheet1',
+            address: 'A4',
+          },
+        },
+      })
+
+      await act(async () => {
+        contextResponses[1]?.()
+        await Promise.resolve()
+      })
+    } finally {
+      await act(async () => {
+        root.unmount()
+      })
+    }
   })
 
   it('does not resync workbook context only because the rendered capture timestamp changes', async () => {

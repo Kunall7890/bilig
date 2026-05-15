@@ -307,6 +307,76 @@ describe('CellEditorOverlay', () => {
     }
   })
 
+  it('ignores stale same-cell parent values while the focused editor has a newer draft', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    vi.useFakeTimers()
+    const onChange = vi.fn()
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+    let setParentValue: ((next: string) => void) | null = null
+
+    function StaleParentHarness() {
+      const [parentValue, setValue] = useState('')
+      setParentValue = setValue
+      return (
+        <CellEditorOverlay
+          label="Sheet1!B2"
+          targetSelection={makeTargetSelection()}
+          onCancel={() => {}}
+          onChange={onChange}
+          onCommit={() => {}}
+          resolvedValue=""
+          value={parentValue}
+        />
+      )
+    }
+
+    try {
+      await act(async () => {
+        root.render(<StaleParentHarness />)
+      })
+
+      const textarea = host.querySelector<HTMLTextAreaElement>("[data-testid='cell-editor-input']")
+      expect(textarea).not.toBeNull()
+      if (!textarea) {
+        throw new Error('Expected mounted cell editor input')
+      }
+
+      await act(async () => {
+        textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true }))
+        textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'b', bubbles: true, cancelable: true }))
+        textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'c', bubbles: true, cancelable: true }))
+      })
+
+      expect(textarea.value).toBe('abc')
+      expect(textarea.selectionStart).toBe(3)
+
+      await act(async () => {
+        setParentValue?.('a')
+      })
+
+      expect(textarea.value).toBe('abc')
+      expect(textarea.selectionStart).toBe(3)
+      expect(onChange).not.toHaveBeenCalled()
+
+      await act(async () => {
+        vi.advanceTimersByTime(250)
+      })
+
+      expect(textarea.value).toBe('abc')
+      expect(textarea.selectionStart).toBe(3)
+      expect(onChange).toHaveBeenCalledTimes(1)
+      expect(onChange).toHaveBeenLastCalledWith('abc')
+    } finally {
+      await act(async () => {
+        root.unmount()
+      })
+      vi.useRealTimers()
+    }
+  })
+
   it('commits local draft text without forcing a parent sync first', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 

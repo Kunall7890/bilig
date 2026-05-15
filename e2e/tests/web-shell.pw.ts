@@ -884,6 +884,51 @@ test('web app commits in-cell string edits when clicking away', async ({ page })
   await expect(resolvedValue).toHaveText('abcdef')
 })
 
+test('web app keeps delayed in-cell typing anchored and exits cleanly on click-away', async ({ page }) => {
+  await page.keyboard.up(PRIMARY_MODIFIER)
+  await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-delayed-click-away-edit'))}`)
+  await waitForWorkbookReady(page)
+
+  const grid = page.getByTestId('sheet-grid')
+  const formulaInput = page.getByTestId('formula-input')
+  const cellEditor = page.getByTestId('cell-editor-input')
+  const renderer = page.getByTestId('grid-pane-renderer')
+
+  await clickProductCell(page, 2, 11)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C12')
+  await grid.press('a')
+  await expect(cellEditor).toBeVisible()
+  await expect(cellEditor).toHaveValue('a')
+  await expect
+    .poll(async () => await cellEditor.evaluate((input) => (input instanceof HTMLTextAreaElement ? input.selectionStart : -1)))
+    .toBe(1)
+
+  await page.waitForTimeout(300)
+  await cellEditor.press('s')
+  await expect(cellEditor).toHaveValue('as')
+  await expect
+    .poll(async () => await cellEditor.evaluate((input) => (input instanceof HTMLTextAreaElement ? input.selectionStart : -1)))
+    .toBe(2)
+
+  await page.waitForTimeout(300)
+  await cellEditor.press('d')
+  await cellEditor.press('f')
+  await expect(cellEditor).toHaveValue('asdf')
+  await expect
+    .poll(async () => await cellEditor.evaluate((input) => (input instanceof HTMLTextAreaElement ? input.selectionStart : -1)))
+    .toBe(4)
+  await expect.poll(async () => Number((await renderer.getAttribute('data-v3-header-pane-count')) ?? '0')).toBeGreaterThan(0)
+
+  await clickProductCell(page, 3, 11)
+
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!D12')
+  await expect(cellEditor).toHaveCount(0)
+  await expect.poll(async () => Number((await renderer.getAttribute('data-v3-header-pane-count')) ?? '0')).toBeGreaterThan(0)
+
+  await clickProductCell(page, 2, 11)
+  await expect(formulaInput).toHaveValue('asdf')
+})
+
 test('web app drags a selected range by its border with a grab cursor', async ({ page }) => {
   await gotoWorkbookShell(page, `/?document=${encodeURIComponent(createTestDocumentId('range-border-drag'))}`)
   await waitForWorkbookReady(page)
