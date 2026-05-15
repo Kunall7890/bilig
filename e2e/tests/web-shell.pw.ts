@@ -841,6 +841,30 @@ test('web app focuses the name box from the Go To keyboard shortcut', async ({ p
   await expect(nameBox).toHaveValue('C12')
 })
 
+test('web app supports Google Sheets-style shortcut help and sheet switching keys', async ({ page }) => {
+  const documentId = createTestDocumentId('playwright-google-sheets-shortcut-parity')
+  await page.goto(`/?document=${encodeURIComponent(documentId)}&sheet=Sheet1&cell=C22`)
+  await waitForWorkbookReady(page)
+
+  const grid = page.getByTestId('sheet-grid')
+  await page.getByTestId('workbook-sheet-add').click()
+  await expect(page.getByTestId('workbook-sheet-tab-Sheet2')).toBeVisible()
+
+  await page.goto(`/?document=${encodeURIComponent(documentId)}&sheet=Sheet1&cell=C22`)
+  await waitForWorkbookReady(page)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C22')
+
+  await grid.press('Alt+ArrowDown')
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet2!C22')
+
+  await grid.press('Alt+ArrowUp')
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C22')
+
+  await grid.press(`${PRIMARY_MODIFIER}+/`)
+  await expect(page.getByTestId('workbook-shortcut-dialog')).toBeVisible()
+  await expect(page.getByTestId('workbook-shortcut-search')).toBeFocused()
+})
+
 test('web app commits in-cell string edits when clicking away', async ({ page }) => {
   await page.keyboard.up(PRIMARY_MODIFIER)
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-click-away-edit'))}`)
@@ -1108,6 +1132,26 @@ test('web app expands the active range with repeated shift arrows', async ({ pag
 
   await grid.press('Shift+ArrowDown')
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C5:E6')
+})
+
+test('web app collapses the selected range before typing into the cell editor', async ({ page }) => {
+  await page.goto('/')
+  await waitForWorkbookReady(page)
+
+  const grid = page.getByTestId('sheet-grid')
+  const nameBox = page.getByTestId('name-box')
+  await clickProductCell(page, 2, 4)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C5')
+
+  await grid.press('Shift+ArrowRight')
+  await grid.press('Shift+ArrowRight')
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C5:E5')
+
+  await grid.press('a')
+
+  await expect(page.getByTestId('cell-editor-input')).toHaveValue('a')
+  await expect(nameBox).toHaveValue('C5')
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C5')
 })
 
 test('web app expands the active range with shift-click', async ({ page }) => {

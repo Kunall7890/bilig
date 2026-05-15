@@ -125,8 +125,9 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
     renderState.gridSelection.rows.length === 0 &&
     renderState.selectionRange?.width === 1 &&
     renderState.selectionRange.height === 1
-  const displayGridSelection =
-    renderState.isFillHandleDragging || renderState.isRangeMoveDragging || renderState.activeHeaderDrag
+  const displayGridSelection = props.isEditingCell
+    ? committedCellSelection
+    : renderState.isFillHandleDragging || renderState.isRangeMoveDragging || renderState.activeHeaderDrag
       ? renderState.gridSelection
       : renderSelectionIsSingleCell
         ? committedCellSelection
@@ -202,6 +203,7 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
         selectedCell: [selectedCellCol, selectedCellRow],
         selectionRange: displaySelectionRange,
         showFillHandle:
+          !props.isEditingCell &&
           displaySelectionRange !== null &&
           displayGridSelection.columns.length === 0 &&
           displayGridSelection.rows.length === 0 &&
@@ -221,6 +223,7 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
       hoverCell,
       isRangeMoveDragging,
       previewRects,
+      props.isEditingCell,
       resizeGuideColumn,
       resizeGuideColumnWidth,
       resizeGuideRow,
@@ -316,6 +319,7 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
           getCellBounds={renderState.getCellLocalBounds}
           hidden={
             renderState.hostElement === null ||
+            props.isEditingCell ||
             !displaySelectionRange ||
             displayGridSelection.columns.length > 0 ||
             displayGridSelection.rows.length > 0 ||

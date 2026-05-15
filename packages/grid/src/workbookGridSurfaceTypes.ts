@@ -32,7 +32,7 @@ export interface WorkbookGridSurfaceProps {
   onExternalSelectionSync?: ((selection: GridSelectionSnapshot) => void) | undefined
   onSelectionLabelChange?: ((label: string) => void) | undefined
   getCellEditorSeed?: ((sheetName: string, address: string) => string | undefined) | undefined
-  onBeginEdit(this: void, seed?: string, selectionBehavior?: EditSelectionBehavior): void
+  onBeginEdit(this: void, seed?: string, selectionBehavior?: EditSelectionBehavior, targetSelection?: EditTargetSelection): void
   onEditorChange(this: void, next: string): void
   onCommitEdit(this: void, movement?: EditMovement, valueOverride?: string, targetSelectionOverride?: EditTargetSelection): void
   onCancelEdit(this: void): void

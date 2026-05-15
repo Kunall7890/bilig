@@ -19,13 +19,16 @@ export function useWorkbookShortcutDialog() {
 
   useEffect(() => {
     const handleWindowKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || isTextEntryTarget(event.target)) {
+      if (event.defaultPrevented || event.altKey || isTextEntryTarget(event.target)) {
         return
       }
-      if (event.key !== '?') {
+      const isQuestionMarkShortcut = event.key === '?' && !event.ctrlKey && !event.metaKey
+      const isPrimarySlashShortcut = event.key === '/' && (event.ctrlKey || event.metaKey) && !event.shiftKey
+      if (!isQuestionMarkShortcut && !isPrimarySlashShortcut) {
         return
       }
       event.preventDefault()
+      event.stopPropagation()
       setIsOpen(true)
     }
 

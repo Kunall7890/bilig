@@ -372,15 +372,32 @@ export function useWorkerWorkbookInteractionState(input: {
   )
 
   const beginEditing = useCallback(
-    (seed?: string, selectionBehavior: EditSelectionBehavior = 'select-all', mode: Exclude<EditingMode, 'idle'> = 'cell') => {
+    (
+      seed?: string,
+      selectionBehavior: EditSelectionBehavior = 'select-all',
+      mode: Exclude<EditingMode, 'idle'> = 'cell',
+      targetSelectionOverride?: EditTargetSelection,
+    ) => {
       if (!writesAllowed) {
         return
       }
       editSessionRef.current += 1
       pendingEditCommitSessionRef.current = null
       pendingEditCommitMovementAppliedRef.current = false
-      const nextEditorValue = seed ?? toEditorValue(getLiveSelectedCell())
-      const nextTarget = selectionRef.current
+      const previousSelection = selectionRef.current
+      const nextTarget = targetSelectionOverride ?? previousSelection
+      const targetChanged = previousSelection.sheetName !== nextTarget.sheetName || previousSelection.address !== nextTarget.address
+      const nextSelectionSnapshot = createSingleCellSelectionSnapshot(nextTarget)
+      selectionSnapshotRef.current = nextSelectionSnapshot
+      selectionRangeRef.current = selectionSnapshotToRangeRef(nextSelectionSnapshot)
+      setSelectionSnapshot(nextSelectionSnapshot)
+      pendingExternalSelectionRef.current = null
+      selectionRef.current = nextTarget
+      if (targetChanged) {
+        onSelectionSheetChanged?.(nextTarget, previousSelection)
+        sendSelectionChanged(nextTarget)
+      }
+      const nextEditorValue = seed ?? toEditorValue(getLiveSelectedCell(nextTarget))
       editorBaseSnapshotRef.current = cloneLiveSelectedCell(nextTarget)
       setEditorConflict(null)
       editorValueRef.current = nextEditorValue
@@ -390,7 +407,7 @@ export function useWorkerWorkbookInteractionState(input: {
       editingModeRef.current = mode
       setEditingMode(mode)
     },
-    [cloneLiveSelectedCell, getLiveSelectedCell, writesAllowed],
+    [cloneLiveSelectedCell, getLiveSelectedCell, onSelectionSheetChanged, sendSelectionChanged, writesAllowed],
   )
 
   const applyParsedInput = useCallback(

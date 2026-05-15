@@ -8,6 +8,7 @@ import { getWorkbookScrollPerfCollector } from './perf/workbook-scroll-perf.js'
 import { readSelectionFromUrl, subscribeSelectionUrlChanges } from './selection-persistence.js'
 import { WorkbookToastRegion } from './WorkbookToastRegion.js'
 import { useWorkbookImportPane } from './use-workbook-import-pane.js'
+import { useWorkbookSheetKeyboardShortcuts } from './use-workbook-sheet-keyboard-shortcuts.js'
 import { useWorkbookShortcutDialog } from './use-workbook-shortcut-dialog.js'
 import { useWorkerWorkbookAppState } from './use-worker-workbook-app-state.js'
 
@@ -244,6 +245,14 @@ function WorkerWorkbookAppInner({
     return subscribeSelectionUrlChanges(syncSelectionFromUrl)
   }, [syncSelectionFromUrl])
 
+  useWorkbookSheetKeyboardShortcuts({
+    address: visibleSelection.address,
+    enabled: app.workbookReady && Boolean(app.workerHandle),
+    onSelectSheet: app.selectAddress,
+    sheetName: visibleSelection.sheetName,
+    sheetNames: app.sheetNames,
+  })
+
   return (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-[var(--wb-app-bg)] text-[var(--wb-text)]">
       {showFollowerPersistenceBanner ? (
@@ -344,7 +353,9 @@ function WorkerWorkbookAppInner({
                     }
                   })()
                 }}
-                onBeginEdit={app.beginEditing}
+                onBeginEdit={(seed, selectionBehavior, targetSelection) =>
+                  app.beginEditing(seed, selectionBehavior, 'cell', targetSelection)
+                }
                 onBeginFormulaEdit={(seed?: string) => app.beginEditing(seed, 'select-all', 'formula')}
                 onCancelEdit={app.cancelEditor}
                 onClearCell={app.clearSelectedCell}

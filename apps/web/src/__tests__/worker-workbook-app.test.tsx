@@ -1062,4 +1062,57 @@ describe('WorkerWorkbookApp', () => {
       root.unmount()
     })
   })
+
+  it('switches sheets from Google Sheets-style alt arrow shortcuts without leaving the current address', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const selectAddress = vi.fn()
+    useWorkerWorkbookAppState.mockReturnValue(
+      createReadyWorkbookAppState({
+        selectAddress,
+        sheetIdsByName: { Sheet1: 1, Sheet2: 2, Sheet3: 3 },
+        sheetNames: ['Sheet1', 'Sheet2', 'Sheet3'],
+        sheetOrdinalsByName: { Sheet1: 0, Sheet2: 1, Sheet3: 2 },
+        selection: { sheetName: 'Sheet2', address: 'C22' },
+        selectionSnapshot: createCellSelectionSnapshot('Sheet2', 'C22'),
+        selectedCell: { sheetName: 'Sheet2', address: 'C22' },
+        visibleSelectedCell: { sheetName: 'Sheet2', address: 'C22' },
+        visibleSelection: { sheetName: 'Sheet2', address: 'C22' },
+      }),
+    )
+
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+
+    try {
+      await act(async () => {
+        root.render(
+          <WorkerWorkbookApp
+            config={{
+              currentUserId: 'guest:test',
+              defaultDocumentId: 'doc-1',
+              persistState: true,
+              zeroCacheUrl: 'http://127.0.0.1:4848',
+            }}
+            connectionState={{ name: 'connected' }}
+          />,
+        )
+      })
+
+      await act(async () => {
+        window.dispatchEvent(new KeyboardEvent('keydown', { altKey: true, bubbles: true, cancelable: true, key: 'ArrowDown' }))
+      })
+      expect(selectAddress).toHaveBeenLastCalledWith('Sheet3', 'C22')
+
+      await act(async () => {
+        window.dispatchEvent(new KeyboardEvent('keydown', { altKey: true, bubbles: true, cancelable: true, key: 'ArrowUp' }))
+      })
+      expect(selectAddress).toHaveBeenLastCalledWith('Sheet1', 'C22')
+    } finally {
+      await act(async () => {
+        root.unmount()
+      })
+    }
+  })
 })

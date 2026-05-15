@@ -8,6 +8,7 @@ import { WorkbookSelectionStatus } from './WorkbookSelectionStatus.js'
 import { WorkbookSheetTabs } from './WorkbookSheetTabs.js'
 import {
   WorkbookGridSurface,
+  type EditTargetSelection,
   type EditMovement,
   type EditSelectionBehavior,
   type GridSelectionSnapshot,
@@ -35,7 +36,7 @@ interface WorkbookViewProps {
   onExternalSelectionSync?: ((selection: GridSelectionSnapshot) => void) | undefined
   onAddressCommit(this: void, addr: string): boolean
   getCellEditorSeed?: ((sheetName: string, address: string) => string | undefined) | undefined
-  onBeginEdit(this: void, seed?: string, selectionBehavior?: EditSelectionBehavior): void
+  onBeginEdit(this: void, seed?: string, selectionBehavior?: EditSelectionBehavior, targetSelection?: EditTargetSelection): void
   onBeginFormulaEdit(this: void, seed?: string): void
   onEditorChange(this: void, next: string): void
   onCommitEdit(this: void, movement?: EditMovement, valueOverride?: string): void

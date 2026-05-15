@@ -143,6 +143,28 @@ describe('workbook shortcut dialog', () => {
     })
   })
 
+  it('opens from the Google Sheets-style primary slash shortcut', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+
+    await act(async () => {
+      root.render(<ShortcutDialogHarness />)
+    })
+
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: '/', metaKey: true }))
+    })
+
+    expect(document.querySelector("[data-testid='workbook-shortcut-dialog']")).not.toBeNull()
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
   it('does not open from question-mark while typing in an input', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -173,12 +195,14 @@ describe('workbook shortcut dialog', () => {
     expect(getWorkbookShortcutLabel('undo', 'Win32')).toBe('Ctrl+Z')
     expect(getWorkbookShortcutLabel('clear-selection', 'Win32')).toBe('Delete / Backspace')
     expect(getWorkbookShortcutLabel('clear-formatting', 'Win32')).toBe('Ctrl+\\')
+    expect(getWorkbookShortcutLabel('toggle-shortcuts', 'Win32')).toBe('Ctrl+/')
   })
 
   it('splits shortcuts into readable keycap parts', () => {
     expect(getWorkbookShortcutParts('undo', 'MacIntel')).toEqual(['⌘', 'Z'])
     expect(getWorkbookShortcutParts('format-currency', 'MacIntel')).toEqual(['⇧', '⌘', '4'])
     expect(getWorkbookShortcutParts('clear-formatting', 'MacIntel')).toEqual(['⌘', '\\'])
+    expect(getWorkbookShortcutParts('next-sheet', 'MacIntel')).toEqual(['⌥', '↓'])
     expect(getWorkbookShortcutParts('undo', 'Win32')).toEqual(['Ctrl', 'Z'])
   })
 })

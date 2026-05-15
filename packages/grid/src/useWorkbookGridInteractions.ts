@@ -7,7 +7,7 @@ import {
   type FocusEvent as ReactFocusEvent,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react'
-import { formatAddress } from '@bilig/formula'
+import { formatAddress, parseCellAddress } from '@bilig/formula'
 import { flushSync } from 'react-dom'
 import { resetGridPointerInteraction } from './gridInteractionState.js'
 import {
@@ -24,6 +24,7 @@ import {
   toggleWorkbookGridBooleanCell,
 } from './gridInteractionCommands.js'
 import { handleWorkbookGridKeyDownCapture } from './gridKeyboardCapture.js'
+import { createGridSelection } from './gridSelection.js'
 import type { GridSelection, Item } from './gridTypes.js'
 import type { EditMovement, EditSelectionBehavior, WorkbookGridSurfaceProps } from './workbookGridSurfaceTypes.js'
 import { useWorkbookGridContextMenu } from './useWorkbookGridContextMenu.js'
@@ -163,35 +164,6 @@ export function useWorkbookGridInteractions(
       requestAnimationFrame: window.requestAnimationFrame.bind(window),
     })
   }, [focusGrid, inputController, isEditingCell])
-  const beginSelectedEdit = useCallback(
-    (seed?: string, selectionBehavior: EditSelectionBehavior = 'caret-end') => {
-      const address = formatAddress(activeSelectionCell[1], activeSelectionCell[0])
-      beginWorkbookGridEdit({
-        engine,
-        onBeginEdit,
-        sheetName,
-        address,
-        selectedCellSnapshot: null,
-        seed: seed ?? getCellEditorSeed?.(sheetName, address) ?? undefined,
-        selectionBehavior,
-      })
-    },
-    [activeSelectionCell, engine, getCellEditorSeed, onBeginEdit, sheetName],
-  )
-  const beginEditAt = useCallback(
-    (addr: string, seed?: string, selectionBehavior: EditSelectionBehavior = 'caret-end') => {
-      beginWorkbookGridEdit({
-        engine,
-        onBeginEdit,
-        sheetName,
-        address: addr,
-        selectedCellSnapshot: null,
-        seed: seed ?? getCellEditorSeed?.(sheetName, addr),
-        selectionBehavior,
-      })
-    },
-    [engine, getCellEditorSeed, onBeginEdit, sheetName],
-  )
   const commitActiveEdit = useCallback(
     (movement?: EditMovement) => {
       const valueOverride = inputController.syncMountedEditorValue({
@@ -236,6 +208,62 @@ export function useWorkbookGridInteractions(
       onSelectionChange(nextSelectionSnapshot)
     },
     [inputController, onSelectionChange, selectionSnapshot, sheetName],
+  )
+  const collapseSelectionForEditing = useCallback(
+    (cell: Item) => {
+      const currentSelectionCell = gridSelection.current?.cell ?? null
+      const currentSelectionRange = gridSelection.current?.range ?? null
+      const isAlreadySingleCell =
+        gridSelection.columns.length === 0 &&
+        gridSelection.rows.length === 0 &&
+        currentSelectionCell !== null &&
+        currentSelectionCell[0] === cell[0] &&
+        currentSelectionCell[1] === cell[1] &&
+        currentSelectionRange !== null &&
+        currentSelectionRange.x === cell[0] &&
+        currentSelectionRange.y === cell[1] &&
+        currentSelectionRange.width === 1 &&
+        currentSelectionRange.height === 1
+      if (isAlreadySingleCell) {
+        return
+      }
+      const nextSelection = createGridSelection(cell[0], cell[1])
+      setGridSelection(nextSelection)
+      emitSelectionChange(nextSelection)
+    },
+    [emitSelectionChange, gridSelection, setGridSelection],
+  )
+  const beginSelectedEdit = useCallback(
+    (seed?: string, selectionBehavior: EditSelectionBehavior = 'caret-end') => {
+      const address = formatAddress(activeSelectionCell[1], activeSelectionCell[0])
+      collapseSelectionForEditing(activeSelectionCell)
+      beginWorkbookGridEdit({
+        engine,
+        onBeginEdit,
+        sheetName,
+        address,
+        selectedCellSnapshot: null,
+        seed: seed ?? getCellEditorSeed?.(sheetName, address) ?? undefined,
+        selectionBehavior,
+      })
+    },
+    [activeSelectionCell, collapseSelectionForEditing, engine, getCellEditorSeed, onBeginEdit, sheetName],
+  )
+  const beginEditAt = useCallback(
+    (addr: string, seed?: string, selectionBehavior: EditSelectionBehavior = 'caret-end') => {
+      const targetCell = parseCellAddress(addr, sheetName)
+      collapseSelectionForEditing([targetCell.col, targetCell.row])
+      beginWorkbookGridEdit({
+        engine,
+        onBeginEdit,
+        sheetName,
+        address: addr,
+        selectedCellSnapshot: null,
+        seed: seed ?? getCellEditorSeed?.(sheetName, addr),
+        selectionBehavior,
+      })
+    },
+    [collapseSelectionForEditing, engine, getCellEditorSeed, onBeginEdit, sheetName],
   )
   const allowsRangeMove = Boolean(
     selectionRange && gridSelection.columns.length === 0 && gridSelection.rows.length === 0 && !fillPreviewRange && !isFillHandleDragging,

@@ -38,8 +38,8 @@ describe('gridInteractionCommands', () => {
     })
 
     // Assert
-    expect(onBeginEdit).toHaveBeenNthCalledWith(1, 'typed', 'caret-end')
-    expect(onBeginEdit).toHaveBeenNthCalledWith(2, 'from-cell', 'caret-end')
+    expect(onBeginEdit).toHaveBeenNthCalledWith(1, 'typed', 'caret-end', { sheetName: 'Sheet1', address: 'A1' })
+    expect(onBeginEdit).toHaveBeenNthCalledWith(2, 'from-cell', 'caret-end', { sheetName: 'Sheet1', address: 'A1' })
   })
 
   it('should toggle boolean cells and ignore non-boolean cells', () => {

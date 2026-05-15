@@ -185,6 +185,22 @@ const WORKBOOK_SHORTCUTS: readonly WorkbookShortcutEntry[] = [
     keywords: ['name box', 'jump', 'range'],
   },
   {
+    id: 'next-sheet',
+    label: 'Move to next sheet',
+    category: 'Navigation',
+    mac: '⌥↓',
+    windows: 'Alt+Down',
+    keywords: ['tab', 'worksheet'],
+  },
+  {
+    id: 'previous-sheet',
+    label: 'Move to previous sheet',
+    category: 'Navigation',
+    mac: '⌥↑',
+    windows: 'Alt+Up',
+    keywords: ['tab', 'worksheet'],
+  },
+  {
     id: 'jump-row-start',
     label: 'Jump to row start',
     category: 'Navigation',
@@ -224,9 +240,9 @@ const WORKBOOK_SHORTCUTS: readonly WorkbookShortcutEntry[] = [
     id: 'toggle-shortcuts',
     label: 'Show shortcuts',
     category: 'Structure',
-    mac: '?',
-    windows: '?',
-    keywords: ['help', 'keyboard'],
+    mac: '⌘/',
+    windows: 'Ctrl+/',
+    keywords: ['?', 'help', 'keyboard'],
   },
 ] as const
 

@@ -22,7 +22,7 @@ export function beginWorkbookGridEdit(input: {
     selectedCellSnapshot && selectedCellSnapshot.sheetName === sheetName && selectedCellSnapshot.address === address
       ? selectedCellSnapshot
       : engine.getCell(sheetName, address)
-  onBeginEdit(seed ?? cellToEditorSeed(snapshot), selectionBehavior)
+  onBeginEdit(seed ?? cellToEditorSeed(snapshot), selectionBehavior, { sheetName, address })
 }
 
 export function toggleWorkbookGridBooleanCell(input: {
