@@ -5,6 +5,7 @@ import { getGridMetrics } from '../gridMetrics.js'
 import type { GridEngineLike } from '../grid-engine.js'
 import { buildLocalFixedRenderTiles } from '../renderer-v3/local-render-tile-materializer.js'
 import { materializeGridRenderTileV3 } from '../renderer-v3/grid-tile-materializer.js'
+import { GRID_RECT_INSTANCE_FLOAT_COUNT_V3 } from '../renderer-v3/rect-instance-buffer.js'
 import { GRID_TILE_PACKET_V3_MAGIC } from '../renderer-v3/tile-packet-v3.js'
 
 function createCellSnapshot(address: string, value: CellSnapshot['value'], styleId: string | undefined = 'style-1'): CellSnapshot {
@@ -33,6 +34,39 @@ function makeEngine(
       getSheet: () => undefined,
     },
   }
+}
+
+function hasHorizontalBorderAtY(tile: { readonly rectCount: number; readonly rectInstances: Float32Array }, y: number): boolean {
+  return hasBorderMatching(tile, (offset) => {
+    const rectY = tile.rectInstances[offset + 1]
+    const width = tile.rectInstances[offset + 2]
+    const height = tile.rectInstances[offset + 3]
+    return Math.abs(rectY - y) < 0.01 && width > 1 && height <= 1.5
+  })
+}
+
+function hasVerticalBorderAtX(tile: { readonly rectCount: number; readonly rectInstances: Float32Array }, x: number): boolean {
+  return hasBorderMatching(tile, (offset) => {
+    const rectX = tile.rectInstances[offset + 0]
+    const width = tile.rectInstances[offset + 2]
+    const height = tile.rectInstances[offset + 3]
+    return Math.abs(rectX - x) < 0.01 && width <= 1.5 && height > 1
+  })
+}
+
+function hasBorderMatching(
+  tile: { readonly rectCount: number; readonly rectInstances: Float32Array },
+  matches: (offset: number) => boolean,
+): boolean {
+  for (let index = 0; index < tile.rectCount; index += 1) {
+    const offset = index * GRID_RECT_INSTANCE_FLOAT_COUNT_V3
+    const borderAlpha = tile.rectInstances[offset + 11]
+    const instanceKind = tile.rectInstances[offset + 13]
+    if (instanceKind === 1 && borderAlpha > 0 && matches(offset)) {
+      return true
+    }
+  }
+  return false
 }
 
 describe('renderer-v3 grid tile materializer', () => {
@@ -129,6 +163,44 @@ describe('renderer-v3 grid tile materializer', () => {
       GRID_TILE_PACKET_V3_MAGIC,
       GRID_TILE_PACKET_V3_MAGIC,
     ])
+  })
+
+  test('fixed data tiles omit leading gridlines so adjacent tile boundaries do not double paint seams', () => {
+    const gridMetrics = getGridMetrics()
+    const tile = materializeGridRenderTileV3({
+      axisSeqX: 5,
+      axisSeqY: 6,
+      cameraSeq: 7,
+      columnWidths: {},
+      dprBucket: 1,
+      engine: makeEngine({}),
+      freezeSeq: 8,
+      glyphAtlasSeq: 9,
+      gridMetrics,
+      materializedAtSeq: 10,
+      packetSeq: 11,
+      rectSeq: 12,
+      rowHeights: {},
+      sheetId: 3,
+      sheetOrdinal: 1,
+      sheetName: 'Sheet1',
+      sortedColumnWidthOverrides: [],
+      sortedRowHeightOverrides: [],
+      styleSeq: 13,
+      textSeq: 14,
+      valueSeq: 15,
+      viewport: {
+        colEnd: VIEWPORT_TILE_COLUMN_COUNT * 2 - 1,
+        colStart: VIEWPORT_TILE_COLUMN_COUNT,
+        rowEnd: VIEWPORT_TILE_ROW_COUNT * 2 - 1,
+        rowStart: VIEWPORT_TILE_ROW_COUNT,
+      },
+    })
+
+    expect(hasHorizontalBorderAtY(tile, 0)).toBe(false)
+    expect(hasVerticalBorderAtX(tile, 0)).toBe(false)
+    expect(hasHorizontalBorderAtY(tile, gridMetrics.rowHeight - 1)).toBe(true)
+    expect(hasVerticalBorderAtX(tile, gridMetrics.columnWidth - 1)).toBe(true)
   })
 
   test('local fixed tile generation paints the selected-cell snapshot override', () => {

@@ -54,6 +54,11 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     hostRuntime.getFrameProofStatusSnapshot,
     hostRuntime.getFrameProofStatusSnapshot,
   )
+  const hasPresentedFrame = useSyncExternalStore(
+    hostRuntime.subscribeFrameProofStatus,
+    hostRuntime.getHasPresentedFrameSnapshot,
+    hostRuntime.getHasPresentedFrameSnapshot,
+  )
 
   const setCanvasRef = useCallback(
     (canvas: HTMLCanvasElement | null) => {
@@ -111,6 +116,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     backendStatus,
     enableCanvasFallback,
     frameProofStatus,
+    hasPresentedFrame,
     headerPaneCount: headerPanes.length,
     overlayRectCount: overlay?.rectCount ?? 0,
     tilePaneCount: tilePanes.length,
@@ -168,12 +174,16 @@ export function shouldMountWorkbookCanvasProofLayerV3(input: {
   readonly backendStatus: WorkbookPaneSurfaceBackendStatusV3
   readonly enableCanvasFallback?: boolean | undefined
   readonly frameProofStatus?: 'idle' | 'pending' | 'presented' | undefined
+  readonly hasPresentedFrame?: boolean | undefined
   readonly headerPaneCount: number
   readonly overlayRectCount?: number | undefined
   readonly tilePaneCount: number
 }): boolean {
   if (input.enableCanvasFallback || input.backendStatus !== 'ready') {
     return true
+  }
+  if (input.hasPresentedFrame) {
+    return false
   }
   const hasVisiblePaneContent = input.tilePaneCount > 0 || input.headerPaneCount > 0 || (input.overlayRectCount ?? 0) > 0
   return hasVisiblePaneContent && input.frameProofStatus !== 'presented'

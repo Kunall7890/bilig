@@ -42,6 +42,7 @@ interface BuildGridGpuSceneOptions {
   readonly resizeGuideColumn?: number | null
   readonly resizeGuideRow?: number | null
   readonly activeHeaderDrag?: HeaderSelection | null
+  readonly includeLeadingGridLines?: boolean | undefined
 }
 
 const GRID_LINE_COLOR = parseGpuColor(workbookThemeColors.gridBorder)
@@ -81,6 +82,7 @@ export function buildGridGpuScene({
   resizeGuideColumn = null,
   resizeGuideRow = null,
   activeHeaderDrag = null,
+  includeLeadingGridLines = true,
 }: BuildGridGpuSceneOptions): GridGpuScene {
   const fillRects: GridGpuRect[] = []
   const borderRects: GridGpuRect[] = []
@@ -183,7 +185,7 @@ export function buildGridGpuScene({
       })
     }
 
-    pushGridLineRects(borderRects, rect, row, col, visibleMinRow, visibleMinCol)
+    pushGridLineRects(borderRects, rect, row, col, visibleMinRow, visibleMinCol, includeLeadingGridLines)
 
     if (snapshot.value.tag === ValueTag.Boolean) {
       pushBooleanCellRects(fillRects, borderRects, rect, snapshot.value.value)
@@ -390,8 +392,9 @@ function pushGridLineRects(
   col: number,
   visibleMinRow: number,
   visibleMinCol: number,
+  includeLeadingGridLines: boolean,
 ) {
-  if (row === visibleMinRow) {
+  if (includeLeadingGridLines && row === visibleMinRow) {
     borderRects.push({
       x: rect.x,
       y: rect.y,
@@ -400,7 +403,7 @@ function pushGridLineRects(
       color: GRID_LINE_COLOR,
     })
   }
-  if (col === visibleMinCol) {
+  if (includeLeadingGridLines && col === visibleMinCol) {
     borderRects.push({
       x: rect.x,
       y: rect.y,

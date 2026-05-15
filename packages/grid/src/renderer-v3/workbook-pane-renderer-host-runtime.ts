@@ -53,6 +53,7 @@ export class WorkbookPaneRendererHostRuntimeV3 {
   private readonly frameProofListeners = new Set<() => void>()
   private frameProofSignature = ''
   private frameProofStatus: WorkbookPaneFrameProofStatusV3 = 'idle'
+  private hasPresentedFrame = false
   private props: WorkbookPaneRendererHostPropsV3 = EMPTY_HOST_PROPS
   private readonly rendererRuntime: WorkbookPaneRendererRuntimeV3
   private surfaceBackendStatus: WorkbookPaneSurfaceBackendStatusV3
@@ -81,6 +82,7 @@ export class WorkbookPaneRendererHostRuntimeV3 {
 
   readonly getBackendStatusSnapshot = (): WorkbookPaneSurfaceBackendStatusV3 => this.surfaceBackendStatus
   readonly getFrameProofStatusSnapshot = (): WorkbookPaneFrameProofStatusV3 => this.frameProofStatus
+  readonly getHasPresentedFrameSnapshot = (): boolean => this.hasPresentedFrame
 
   readonly subscribeBackendStatus = (listener: () => void): (() => void) => {
     if (this.disposed) {
@@ -175,6 +177,7 @@ export class WorkbookPaneRendererHostRuntimeV3 {
     if (!result.submitted || !this.frameProofSignature) {
       return
     }
+    this.setHasPresentedFrame(true)
     this.setFrameProofStatus('presented')
   }
 
@@ -183,6 +186,14 @@ export class WorkbookPaneRendererHostRuntimeV3 {
       return
     }
     this.frameProofStatus = status
+    this.emitFrameProofStatus()
+  }
+
+  private setHasPresentedFrame(value: boolean): void {
+    if (this.hasPresentedFrame === value) {
+      return
+    }
+    this.hasPresentedFrame = value
     this.emitFrameProofStatus()
   }
 

@@ -167,6 +167,15 @@ describe('WorkbookPaneRendererV3', () => {
     expect(
       shouldMountWorkbookCanvasProofLayerV3({
         backendStatus: 'ready',
+        frameProofStatus: 'pending',
+        hasPresentedFrame: true,
+        headerPaneCount: 1,
+        tilePaneCount: 1,
+      }),
+    ).toBe(false)
+    expect(
+      shouldMountWorkbookCanvasProofLayerV3({
+        backendStatus: 'ready',
         frameProofStatus: 'idle',
         headerPaneCount: 0,
         tilePaneCount: 0,

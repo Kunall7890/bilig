@@ -1,5 +1,5 @@
 import { writeFile } from 'node:fs/promises'
-import { expect, test, type Page, type TestInfo } from '@playwright/test'
+import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test'
 import { ISOLATED_WORKBOOK_PANE_RENDERER_PATH } from '../../apps/web/src/root-route.js'
 import {
   clickProductCell,
@@ -71,6 +71,16 @@ interface DynamicReadbackResult {
   readonly opaquePixelCounts: Record<string, number>
 }
 
+interface RendererPresentationSample {
+  readonly canvasProofLayer: string | null
+  readonly editorInputs: number
+  readonly editorOverlays: number
+  readonly fallbackCanvases: number
+  readonly frameProofStatus: string | null
+  readonly headerPaneCount: number
+  readonly selection: string | null
+}
+
 function isResizeGuidePixel(point: ReadbackPoint): boolean {
   return point.a > 150 && point.g > point.r && point.r < 180 && point.b < 180
 }
@@ -81,6 +91,90 @@ function expectNear(actual: number, expected: number, tolerance: number): void {
 
 async function waitForTypeGpuRenderer(page: Page): Promise<void> {
   await page.waitForSelector('[data-testid="grid-pane-renderer"]', { state: 'attached', timeout: 15_000 })
+}
+
+async function collectRendererPresentationSamplesDuring(
+  page: Page,
+  action: () => Promise<void>,
+  sampleCount = 24,
+): Promise<readonly RendererPresentationSample[]> {
+  const samplesPromise = page.evaluate(async (count) => {
+    const samples: RendererPresentationSample[] = []
+    await new Promise<void>((resolve) => {
+      let index = 0
+      const sampleNextFrame = () => {
+        const canvas = document.querySelector('[data-testid="grid-pane-renderer"]')
+        samples.push({
+          canvasProofLayer: canvas?.getAttribute('data-v3-canvas-proof-layer') ?? null,
+          editorInputs: document.querySelectorAll('[data-testid="cell-editor-input"]').length,
+          editorOverlays: document.querySelectorAll('[data-testid="cell-editor-overlay"]').length,
+          fallbackCanvases: document.querySelectorAll('[data-testid="grid-pane-renderer-fallback"]').length,
+          frameProofStatus: canvas?.getAttribute('data-v3-frame-proof-status') ?? null,
+          headerPaneCount: Number(canvas?.getAttribute('data-v3-header-pane-count') ?? '0'),
+          selection: document.querySelector('[data-testid="status-selection"]')?.textContent ?? null,
+        })
+        index += 1
+        if (index >= count) {
+          resolve()
+          return
+        }
+        requestAnimationFrame(sampleNextFrame)
+      }
+      requestAnimationFrame(sampleNextFrame)
+    })
+    return samples
+  }, sampleCount)
+  await action()
+  return samplesPromise
+}
+
+async function exerciseClickAwayEditCommit(
+  page: Page,
+  input: {
+    readonly address: string
+    readonly awayCol: number
+    readonly awayRow: number
+    readonly awaySelection: string
+    readonly col: number
+    readonly formulaInput: Locator
+    readonly renderer: Locator
+    readonly row: number
+    readonly text: string
+  },
+): Promise<void> {
+  await clickProductCell(page, input.col, input.row)
+  await expect(page.getByTestId('status-selection')).toHaveText(`Sheet1!${input.address}`)
+
+  const firstCharacter = input.text.charAt(0)
+  await page.keyboard.press(firstCharacter)
+
+  const cellEditor = page.getByTestId('cell-editor-input')
+  await expect(cellEditor).toBeVisible()
+  await expect(cellEditor).toHaveValue(firstCharacter)
+  await expect(page.getByTestId('cell-editor-overlay')).toHaveCount(1)
+
+  await page.keyboard.type(input.text.slice(1))
+  await expect(cellEditor).toHaveValue(input.text)
+  await expect
+    .poll(async () => await cellEditor.evaluate((editor) => (editor instanceof HTMLTextAreaElement ? editor.selectionStart : -1)))
+    .toBe(input.text.length)
+
+  const samples = await collectRendererPresentationSamplesDuring(page, () => clickProductCell(page, input.awayCol, input.awayRow))
+  expect(samples.every((sample) => sample.editorInputs <= 1)).toBe(true)
+  expect(samples.every((sample) => sample.editorOverlays <= 1)).toBe(true)
+  expect(samples.every((sample) => sample.headerPaneCount > 0)).toBe(true)
+  expect(samples.every((sample) => sample.fallbackCanvases === 0)).toBe(true)
+  expect(samples.every((sample) => sample.canvasProofLayer !== 'mounted')).toBe(true)
+
+  await expect(page.getByTestId('status-selection')).toHaveText(input.awaySelection)
+  await expect(cellEditor).toHaveCount(0)
+  await expect(page.getByTestId('cell-editor-overlay')).toHaveCount(0)
+  await expect(page.getByTestId('grid-pane-renderer-fallback')).toHaveCount(0)
+
+  await clickProductCell(page, input.col, input.row)
+  await expect(input.formulaInput).toHaveValue(input.text)
+  await expect.poll(async () => await input.renderer.getAttribute('data-v3-frame-proof-status')).toBe('presented')
+  await expect(input.renderer).toHaveAttribute('data-v3-canvas-proof-layer', 'not-mounted')
 }
 
 test('@browser-webgpu isolated workbook pane renderer draws grid content through typegpu', async ({ page }, testInfo) => {
@@ -337,6 +431,44 @@ test('@browser-webgpu @browser-serial main workbook shell keeps row headers visi
     'main-workbook-click-away-edit-row-headers-readback.png',
     'main-workbook-click-away-edit-row-headers-readback',
   )
+})
+
+test('@browser-webgpu @browser-serial main workbook shell keeps the live typegpu layer stable during click-away edit commits', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 960, height: 720 })
+  await gotoWorkbookShell(page, `/?document=${encodeURIComponent(createTestDocumentId('typegpu-click-away-edit-no-proof-blink'))}`)
+  await waitForWorkbookReady(page)
+  await waitForTypeGpuRenderer(page)
+
+  const renderer = page.getByTestId('grid-pane-renderer')
+  await expect.poll(async () => await renderer.getAttribute('data-v3-frame-proof-status')).toBe('presented')
+  await expect(renderer).toHaveAttribute('data-v3-canvas-proof-layer', 'not-mounted')
+  await expect(page.getByTestId('grid-pane-renderer-fallback')).toHaveCount(0)
+
+  const formulaInput = page.getByTestId('formula-input')
+  await exerciseClickAwayEditCommit(page, {
+    address: 'B1',
+    awayCol: 2,
+    awayRow: 0,
+    awaySelection: 'Sheet1!C1',
+    col: 1,
+    formulaInput,
+    renderer,
+    row: 0,
+    text: 'abc',
+  })
+  await exerciseClickAwayEditCommit(page, {
+    address: 'B2',
+    awayCol: 2,
+    awayRow: 1,
+    awaySelection: 'Sheet1!C2',
+    col: 1,
+    formulaInput,
+    renderer,
+    row: 1,
+    text: 'def',
+  })
 })
 
 test('@browser-webgpu @browser-perf main workbook shell keeps resident typegpu content visible while selection moves', async ({

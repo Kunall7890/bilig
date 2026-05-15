@@ -108,6 +108,7 @@ export function materializeGridRenderTileV3(input: MaterializeGridRenderTileInpu
           hostBounds: { left: 0, top: 0 },
           hoveredCell: null,
           hoveredHeader: null,
+          includeLeadingGridLines: false,
           resizeGuideColumn: null,
           resizeGuideRow: null,
           rowHeights: input.rowHeights,
