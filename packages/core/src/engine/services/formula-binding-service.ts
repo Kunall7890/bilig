@@ -58,14 +58,12 @@ import { installFreshFormulaBindingNow } from './formula-binding-install.js'
 import { createFormulaBindingSheetRenameHandler } from './formula-binding-sheet-rename.js'
 import { createFormulaBindingRebinds } from './formula-binding-rebind.js'
 import { rebuildDeferredFormulaFamilyIndex } from './formula-family-index-rebuild.js'
-import type { DeferredInitialFormulaFamilyRun } from './formula-initialization-family-runs.js'
+import { registerDeferredFormulaFamilyIndexRunsNow, type DeferredInitialFormulaFamilyRun } from './formula-initialization-family-runs.js'
 import { canRetainUnmanagedCompiledPlan, formulaBindingErrorMessage, makeUnmanagedCompiledPlan } from './formula-binding-plan-helpers.js'
 import { normalizeFormulaBindingLookupCompileMode } from './formula-binding-lookup-mode.js'
 import { primeFormulaBindingLookupCandidates } from './formula-binding-lookup-primer.js'
 import { directAggregateContainsFormulaOwnerCell } from './formula-binding-direct-aggregate-owner.js'
 import { ensureFormulaBindingDependencyBuildCapacity } from './formula-binding-dependency-build-capacity.js'
-import { registerDeferredFormulaFamilyIndexRunsNow } from './formula-binding-deferred-family-runs.js'
-import { updateVolatileFormulaIndexEntry } from './formula-binding-volatile-index.js'
 import type {
   BindPreparedFormulaOptions,
   CreateEngineFormulaBindingServiceArgs,
@@ -73,13 +71,7 @@ import type {
   FormulaOwnerPosition,
 } from './formula-binding-service-types.js'
 export { formulaBindingServiceTestHooks } from './formula-binding-service-test-hooks.js'
-
-export type {
-  BindPreparedFormulaOptions,
-  CreateEngineFormulaBindingServiceArgs,
-  EngineFormulaBindingService,
-  FormulaOwnerPosition,
-} from './formula-binding-service-types.js'
+export type * from './formula-binding-service-types.js'
 
 export function createEngineFormulaBindingService(args: CreateEngineFormulaBindingServiceArgs): EngineFormulaBindingService {
   const resolvedCompiledCache = new Map<string, ParsedCompiledFormula>()
@@ -131,8 +123,16 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     formulaFamilyIndexNeedsRebuild = false
   }
 
-  const updateVolatileFormulaIndex = (cellIndex: number, formula: RuntimeFormula | undefined): void =>
-    updateVolatileFormulaIndexEntry(args.volatileFormulaCells, cellIndex, formula)
+  const updateVolatileFormulaIndex = (cellIndex: number, formula: RuntimeFormula | undefined): void => {
+    if (!args.volatileFormulaCells) {
+      return
+    }
+    if (formula?.compiled.volatile) {
+      args.volatileFormulaCells.add(cellIndex)
+      return
+    }
+    args.volatileFormulaCells.delete(cellIndex)
+  }
 
   const trackFormulaSheetIndexes = (
     cellIndex: number,
