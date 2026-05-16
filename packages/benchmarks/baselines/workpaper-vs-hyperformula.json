@@ -14,8 +14,8 @@
   "engines": {
     "workpaper": {
       "packageName": "@bilig/headless",
-      "sourcePath": "/Users/gregkonush/github.com/bilig3/packages/headless",
-      "version": "0.16.11"
+      "sourcePath": "/Users/gregkonush/github.com/bilig/packages/headless",
+      "version": "0.16.12"
     },
     "hyperformula": {
       "packageName": "hyperformula",

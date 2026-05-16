@@ -1,7 +1,7 @@
-import { FormulaMode } from '@bilig/protocol'
+import { ErrorCode, FormulaMode, ValueTag, type CellValue } from '@bilig/protocol'
 import { CellFlags } from '../../cell-store.js'
 import { addEngineCounter, type EngineCounters } from '../../perf/engine-counters.js'
-import type { RuntimeDirectScalarDescriptor, U32 } from '../runtime-state.js'
+import type { RuntimeDirectCriteriaDescriptor, RuntimeDirectCriteriaOperand, RuntimeDirectScalarDescriptor, U32 } from '../runtime-state.js'
 import type { DirectFormulaIndexCollection, DirectScalarCurrentOperand } from './direct-formula-index-collection.js'
 import { mergeChangedCellIndices } from './operation-change-helpers.js'
 
@@ -18,7 +18,7 @@ export interface OperationPostRecalcFormula {
     readonly mode?: FormulaMode
   }
   readonly directAggregate: object | undefined
-  readonly directCriteria: object | undefined
+  readonly directCriteria: RuntimeDirectCriteriaDescriptor | undefined
   readonly directScalar: RuntimeDirectScalarDescriptor | undefined
 }
 
@@ -28,6 +28,9 @@ export interface OperationPostRecalcDirectFormulaState {
       readonly flags: {
         readonly [index: number]: number | undefined
       }
+      readonly tags: ArrayLike<ValueTag | undefined>
+      readonly numbers: ArrayLike<number | undefined>
+      readonly errors: ArrayLike<ErrorCode | undefined>
     }
     readonly withBatchedColumnVersionUpdates: (apply: () => void) => void
   }
@@ -81,7 +84,7 @@ export function countOperationPostRecalcDirectFormulaMetric(input: {
   readonly counts: DirectFormulaMetricCounts
 }): void {
   const formula = input.formulas.get(input.cellIndex)
-  if (!formula || (formula.directScalar === undefined && formula.directAggregate === undefined)) {
+  if (!formula || (formula.directScalar === undefined && formula.directAggregate === undefined && formula.directCriteria === undefined)) {
     return
   }
   if (formula.compiled.mode === FormulaMode.WasmFastPath) {
@@ -136,11 +139,13 @@ function applyDirectFormulaFallbacks(args: ApplyPostRecalcDirectFormulaChangesAr
   let postRecalcExtraChanged: number[] | undefined
   let directAggregateDeltaApplicationCount = 0
   let directScalarDeltaApplicationCount = 0
+  const directCriteriaCurrentResults = !args.didRunRecalc ? new Map<string, DirectScalarCurrentOperand>() : undefined
   args.state.workbook.withBatchedColumnVersionUpdates(() => {
     args.collection.forEachIndexed((cellIndex, directIndex) => {
       if (isCycleFormulaCell(args, cellIndex)) {
         return
       }
+      const formula = args.state.formulas.get(cellIndex)
       const currentResult = args.collection.getCurrentResultAt(directIndex)
       if (!args.didRunRecalc && currentResult !== undefined && args.applyDirectFormulaCurrentResult(cellIndex, currentResult)) {
         if (captureChanged) {
@@ -150,7 +155,6 @@ function applyDirectFormulaFallbacks(args: ApplyPostRecalcDirectFormulaChangesAr
       }
       const delta = args.collection.getDeltaAt(directIndex)
       if (!args.didRunRecalc && delta !== undefined && args.applyDirectFormulaNumericDelta(cellIndex, delta)) {
-        const formula = args.state.formulas.get(cellIndex)
         if (formula?.directAggregate !== undefined || formula?.directCriteria !== undefined) {
           directAggregateDeltaApplicationCount += 1
         }
@@ -162,7 +166,6 @@ function applyDirectFormulaFallbacks(args: ApplyPostRecalcDirectFormulaChangesAr
         }
         return
       }
-      const formula = args.state.formulas.get(cellIndex)
       if (
         !args.didRunRecalc &&
         formula?.directScalar !== undefined &&
@@ -175,8 +178,26 @@ function applyDirectFormulaFallbacks(args: ApplyPostRecalcDirectFormulaChangesAr
         }
         return
       }
+      const directCriteriaCurrentResultKey =
+        directCriteriaCurrentResults === undefined || formula === undefined ? undefined : directCriteriaCurrentResultCacheKey(formula)
+      const cachedDirectCriteriaResult =
+        directCriteriaCurrentResultKey === undefined || directCriteriaCurrentResults === undefined
+          ? undefined
+          : directCriteriaCurrentResults.get(directCriteriaCurrentResultKey)
+      if (cachedDirectCriteriaResult !== undefined && args.applyDirectFormulaCurrentResult(cellIndex, cachedDirectCriteriaResult)) {
+        if (captureChanged) {
+          postRecalcChanged[postRecalcChangedCount++] = cellIndex
+        }
+        return
+      }
       args.countPostRecalcDirectFormulaMetric(cellIndex, args.metrics)
       const changedCellIndices = args.evaluateDirectFormula(cellIndex)
+      if (directCriteriaCurrentResultKey !== undefined) {
+        const evaluatedResult = readDirectScalarCurrentOperand(args, cellIndex)
+        if (evaluatedResult !== undefined) {
+          directCriteriaCurrentResults?.set(directCriteriaCurrentResultKey, evaluatedResult)
+        }
+      }
       if (captureChanged) {
         postRecalcChanged[postRecalcChangedCount++] = cellIndex
       }
@@ -201,6 +222,72 @@ function applyDirectFormulaFallbacks(args: ApplyPostRecalcDirectFormulaChangesAr
   return postRecalcExtraChanged && postRecalcExtraChanged.length > 0
     ? mergeChangedCellIndices(args.recalculated, mergeChangedCellIndices(directChanged, postRecalcExtraChanged))
     : mergeChangedCellIndices(args.recalculated, directChanged)
+}
+
+function directCriteriaCurrentResultCacheKey(formula: OperationPostRecalcFormula): string | undefined {
+  const directCriteria = formula.directCriteria
+  if (
+    directCriteria === undefined ||
+    formula.compiled.producesSpill ||
+    directCriteria.aggregateKind === 'first' ||
+    directCriteria.offsetOperand !== undefined ||
+    directCriteria.firstMatchMode !== undefined ||
+    directCriteria.resultTransforms !== undefined
+  ) {
+    return undefined
+  }
+  const aggregateRangeKey = directCriteria.aggregateRange === undefined ? 'none' : directCriteriaRangeKey(directCriteria.aggregateRange)
+  const criteriaPairsKey = directCriteria.criteriaPairs
+    .map((pair) => `${directCriteriaRangeKey(pair.range)}=${directCriteriaOperandKey(pair.criterion)}`)
+    .join('\u0002')
+  return `${directCriteria.aggregateKind}\u0001${aggregateRangeKey}\u0001${criteriaPairsKey}`
+}
+
+function directCriteriaRangeKey(range: RuntimeDirectCriteriaDescriptor['criteriaPairs'][number]['range']): string {
+  return `${range.sheetName}:${range.rowStart}:${range.rowEnd}:${range.col}:${range.length}`
+}
+
+function directCriteriaOperandKey(operand: RuntimeDirectCriteriaOperand): string {
+  switch (operand.kind) {
+    case 'literal':
+      return `literal:${cellValueKey(operand.value)}`
+    case 'cell':
+      return `cell:${operand.cellIndex}`
+    case 'cell-string-concat':
+      return `cell-string-concat:${operand.cellIndex}:${operand.prefix}:${operand.suffix}`
+    case 'cell-month-boundary-string-concat':
+      return `cell-month-boundary-string-concat:${operand.cellIndex}:${operand.prefix}:${operand.suffix}:${operand.offsetMonths}`
+  }
+}
+
+function cellValueKey(value: CellValue): string {
+  switch (value.tag) {
+    case ValueTag.Empty:
+      return 'empty'
+    case ValueTag.Number:
+      return `number:${Object.is(value.value, -0) ? 0 : value.value}`
+    case ValueTag.Boolean:
+      return `boolean:${value.value ? 1 : 0}`
+    case ValueTag.String:
+      return `string:${value.stringId ?? 0}:${value.value}`
+    case ValueTag.Error:
+      return `error:${value.code}`
+  }
+}
+
+function readDirectScalarCurrentOperand(
+  args: Pick<ApplyPostRecalcDirectFormulaChangesArgs, 'state'>,
+  cellIndex: number,
+): DirectScalarCurrentOperand | undefined {
+  const cellStore = args.state.workbook.cellStore
+  const tag = cellStore.tags[cellIndex]
+  if (tag === ValueTag.Number) {
+    return { kind: 'number', value: cellStore.numbers[cellIndex] ?? 0 }
+  }
+  if (tag === ValueTag.Error) {
+    return { kind: 'error', code: cellStore.errors[cellIndex] ?? ErrorCode.None }
+  }
+  return undefined
 }
 
 function isCycleFormulaCell(args: Pick<ApplyPostRecalcDirectFormulaChangesArgs, 'state'>, cellIndex: number): boolean {

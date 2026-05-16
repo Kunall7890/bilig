@@ -11,9 +11,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(headless): trim append formula region work (1c2f1e0c)
 
 ## Internal runtime changes
+
 - docs(headless): add formula workbook proof page (15030c53)
 
 ## 0.16.11
@@ -23,9 +25,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(storage): sanitize local style projections (1662cbe5)
 
 ## Internal runtime changes
+
 - docs(headless): align public evidence with runtime release (7b736fac)
 
 ## 0.16.10
@@ -35,6 +39,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(docs): sync public evidence for headless 0.16.5 (fcdc237b)
 - perf(core): reuse rectangular aggregate templates (48c96ac2)
 - perf(headless): batch serialized formula paste (bad422dd)
@@ -69,6 +74,7 @@ This package is released as part of the aligned bilig library package set.
 - fix(protocol): validate workbook snapshot entries (96d2728a)
 
 ## Internal runtime changes
+
 - docs(growth): add quote approval proof page (42e4444a)
 - refactor(core): isolate operation service test hooks (e8d0980c)
 - docs(growth): surface npm provenance trust path (2a945bda)

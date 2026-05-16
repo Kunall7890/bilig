@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
-import { FormulaMode } from '@bilig/protocol'
+import { FormulaMode, ValueTag, type ErrorCode } from '@bilig/protocol'
 import { createEngineCounters } from '../perf/engine-counters.js'
-import type { RuntimeDirectScalarDescriptor, U32 } from '../engine/runtime-state.js'
+import type { RuntimeDirectCriteriaDescriptor, RuntimeDirectScalarDescriptor, U32 } from '../engine/runtime-state.js'
 import { DirectFormulaIndexCollection } from '../engine/services/direct-formula-index-collection.js'
 import {
   applyPostRecalcDirectFormulaChanges,
@@ -32,6 +32,9 @@ function makeState(formulas: Map<number, OperationPostRecalcFormula> = new Map()
     workbook: {
       cellStore: {
         flags: [],
+        tags: [],
+        numbers: [],
+        errors: [],
       },
       withBatchedColumnVersionUpdates: (apply: () => void): void => apply(),
     },
@@ -153,6 +156,9 @@ describe('operation post-recalc direct formula helpers', () => {
           workbook: {
             cellStore: {
               flags: [],
+              tags: [],
+              numbers: [],
+              errors: [],
             },
             withBatchedColumnVersionUpdates,
           },
@@ -169,6 +175,74 @@ describe('operation post-recalc direct formula helpers', () => {
     expect(withBatchedColumnVersionUpdates).toHaveBeenCalledOnce()
     expect(evaluateDirectFormula).toHaveBeenCalledWith(2)
     expect(evaluateDirectFormula).toHaveBeenCalledWith(3)
+  })
+
+  it('reuses evaluated direct criteria results for copied formula shapes in one post-recalc pass', () => {
+    const collection = new DirectFormulaIndexCollection()
+    collection.add(2)
+    collection.add(3)
+    const directCriteria: RuntimeDirectCriteriaDescriptor = {
+      aggregateKind: 'sum',
+      aggregateRange: {
+        regionId: 2,
+        sheetName: 'Sheet1',
+        rowStart: 0,
+        rowEnd: 31,
+        col: 1,
+        length: 32,
+      },
+      criteriaPairs: [
+        {
+          range: {
+            regionId: 1,
+            sheetName: 'Sheet1',
+            rowStart: 0,
+            rowEnd: 31,
+            col: 0,
+            length: 32,
+          },
+          criterion: { kind: 'cell', cellIndex: 1 },
+        },
+      ],
+    }
+    const formulas = new Map([
+      [2, formula({ directCriteria })],
+      [3, formula({ directCriteria: { ...directCriteria, criteriaPairs: [...directCriteria.criteriaPairs] } })],
+    ])
+    const tags: Array<ValueTag | undefined> = []
+    const numbers: number[] = []
+    const errors: ErrorCode[] = []
+    const evaluateDirectFormula = vi.fn((cellIndex: number) => {
+      tags[cellIndex] = ValueTag.Number
+      numbers[cellIndex] = 42
+      return undefined
+    })
+    const applyDirectFormulaCurrentResult = vi.fn(() => true)
+
+    const changed = applyPostRecalcDirectFormulaChanges(
+      makeArgs({
+        state: {
+          ...makeState(formulas),
+          workbook: {
+            cellStore: {
+              flags: [],
+              tags,
+              numbers,
+              errors,
+            },
+            withBatchedColumnVersionUpdates: (apply: () => void): void => apply(),
+          },
+        },
+        collection,
+        applyDirectFormulaCurrentResult,
+        evaluateDirectFormula,
+      }),
+    )
+
+    expect(Array.from(changed)).toEqual([2, 3])
+    expect(evaluateDirectFormula).toHaveBeenCalledOnce()
+    expect(evaluateDirectFormula).toHaveBeenCalledWith(2)
+    expect(applyDirectFormulaCurrentResult).toHaveBeenCalledWith(3, { kind: 'number', value: 42 })
   })
 
   it('counts aggregate and scalar delta applications on the single-cell delta path', () => {
