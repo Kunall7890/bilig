@@ -21,7 +21,7 @@ inputs and read the calculated result back.
 ## Try the npm package
 
 This starts from an empty directory and uses the published npm package. The
-current checked package version is `@bilig/headless@0.16.21`.
+current checked package version is `@bilig/headless@0.16.22`.
 
 ```sh
 mkdir bilig-headless-eval
@@ -67,11 +67,11 @@ the scalar formula result.
 ## Evidence
 
 The checked benchmark artifact currently records `76/100` mean-latency wins
-against HyperFormula-style comparable workloads, and `73/100` workloads winning
+against HyperFormula-style comparable workloads, and `74/100` workloads winning
 both mean and p95.
 
-The caveat is intentionally visible: `structural-append-formula-rows-small` is slower at
-p95 by `4.813x`. Browser grid rendering is outside this benchmark.
+The caveat is intentionally visible: `named-expression-change` is slower at
+p95 by `3.497x`. Browser grid rendering is outside this benchmark.
 
 Read the benchmark note:
 [what the WorkPaper benchmark proves](what-workpaper-benchmark-proves.md).
@@ -126,8 +126,8 @@ recalculated formula value, serializes WorkPaper JSON, restores it, and checks
 the same output again.
 
 It is not an Excel clone. The current benchmark artifact says 76/100 mean wins
-against HyperFormula-style comparable workloads and 73/100 mean+p95 wins. One
-visible p95 holdout is structural-append-formula-rows-small.
+against HyperFormula-style comparable workloads and `74/100` workloads winning both mean and p95. One
+visible p95 holdout is named-expression-change.
 
 I am looking for concrete misses: formula coverage, XLSX import/export,
 persistence shape, MCP/tool use, or a benchmark that would make you trust or

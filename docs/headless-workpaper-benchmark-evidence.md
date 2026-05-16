@@ -26,10 +26,10 @@ as useful evidence, but they do not satisfy broad coverage alone.
 
 Current checked-in metadata:
 
-- generated at `2026-05-16T19:12:21.371Z`
+- generated at `2026-05-16T19:35:11.748Z`
 - host: macOS `arm64`, Node `v24.3.0`
 - benchmark sampling: `5` measured samples after `2` warmup samples
-- WorkPaper package: `@bilig/headless` `0.16.21`
+- WorkPaper package: `@bilig/headless` `0.16.22`
 - comparison engine: HyperFormula `3.2.0`, local checkout commit
   `9a510a2acb97c3d3490f9e3b9e961a1c4a98b9ad`, GPL-v3 license key
 - scalar formula comparison engine: TrueCalc `0.6.4`, `7` comparable scalar
@@ -51,14 +51,14 @@ current checked-in artifact records `76/100` mean-latency wins:
 | Public  |                 `73` |                `57` |                  `16` |
 | Holdout |                 `27` |                `19` |                   `8` |
 
-The overall directional mean-ratio geomean is `0.6407095527904316`. The overall
-directional p95-ratio geomean is `0.6435717369745618`. Ratios below `1.0` mean
+The overall directional mean-ratio geomean is `0.634761118977474`. The overall
+directional p95-ratio geomean is `0.6421101106819025`. Ratios below `1.0` mean
 WorkPaper is faster for that metric.
 
-The current worst mean row is `structural-append-formula-rows-small`, with a mean ratio of
-`3.933183380930314`. The current worst p95 row is `structural-append-formula-rows-small`,
-with a p95 ratio of `4.81306174189681`. The headless leadership scorecard
-currently records `73/100` workloads winning both
+The current worst mean row is `structural-insert-columns-small`, with a mean ratio of
+`2.7929671426652583`. The current worst p95 row is `named-expression-change`,
+with a p95 ratio of `3.497173652692671`. The headless leadership scorecard
+currently records `74/100` workloads winning both
 mean and p95 against HyperFormula.
 
 It is also not a blanket "fastest against every formula evaluator" claim. The

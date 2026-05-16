@@ -11,9 +11,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(headless): preserve hydrated formula family runs (cc942261)
 
 ## Internal runtime changes
+
 - docs(growth): add xlsx recalculation proof (7f8f8832)
 - test(benchmarks): expand WorkPaper suite to 100 workloads (e70921e7)
 - docs(growth): add xlsx recalculation decision page (45c8251e)

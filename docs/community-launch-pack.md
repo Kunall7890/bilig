@@ -134,7 +134,7 @@ issue pass:
   WorkPaper target for formula, edit/readback, memory, and persistence lanes:
   <https://github.com/zhangming1978/js-spreadsheet-benchmark/issues/1>
 - External open-source directory surface: the Open-Awesome submission for Bilig
-  has a metadata refresh comment with the current `@bilig/headless@0.16.21`
+  has a metadata refresh comment with the current `@bilig/headless@0.16.22`
   package, proof page, benchmark evidence, and non-grid WorkPaper positioning:
   <https://github.com/chenz24/openawesome/issues/2#issuecomment-4467648527>
 - External MCP ranking surface: the best-of-mcp-servers listing pull request is
@@ -368,7 +368,7 @@ Latest conversion snapshot on May 16, 2026:
 - GitHub surface: `23` stars, `16` forks, `17` open issues, and `5` open pull
   requests. The star gap is still `977`; GitHub also reports `0` actual
   repository watchers/subscribers.
-- npm surface: `@bilig/headless@0.16.21`, with `12,568` downloads in the
+- npm surface: `@bilig/headless@0.16.22`, with `12,568` downloads in the
   latest weekly window and `27,753` downloads in the latest monthly window.
 - Traffic surface: GitHub reports `565` views from `189` unique visitors and
   `21,392` clones from `2,641` unique cloners. The strongest referrers are
@@ -713,7 +713,7 @@ It edits an input, reads the recalculated value, saves WorkPaper JSON, restores
 it, and checks the value again.
 
 3/ Benchmark caveat is public too: 76/100 comparable mean-latency rows are faster
-in the checked file, structural-append-formula-rows-small is the visible p95 holdout,
+in the checked file, named-expression-change is the visible p95 holdout,
 and UI rendering is not part of the benchmark.
 
 4/ Question for people who automate spreadsheets from services or agents: what
@@ -751,7 +751,7 @@ https://github.com/proompteng/bilig/blob/main/docs/where-bilig-is-not-excel-comp
 
 The benchmark claim is intentionally narrow: the checked artifact has 76/100
 comparable mean-latency wins against HyperFormula-style workloads,
-structural-append-formula-rows-small is the visible p95 holdout, and UI rendering is
+named-expression-change is the visible p95 holdout, and UI rendering is
 not part of the benchmark.
 
 If you automate spreadsheets from Node, what workflow or formula family would
