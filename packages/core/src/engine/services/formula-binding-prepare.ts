@@ -107,7 +107,7 @@ export function prepareFormulaBindingFromCompiled(args: {
     ? undefined
     : directAggregateCandidate
   const directCriteria =
-    directScalar === undefined && !requiresWorkbookDateSystemJs
+    directScalar === undefined && directAggregate === undefined && !requiresWorkbookDateSystemJs
       ? buildDirectCriteriaDescriptor({
           compiled,
           source: args.source,
@@ -181,7 +181,9 @@ export function prepareFormulaBindingFromCompiled(args: {
   }
 
   const directOnlyRuntimeProgram =
-    (directScalar !== undefined || directCriteria !== undefined) && !compiled.volatile && !compiled.producesSpill
+    (directScalar !== undefined || directAggregate !== undefined || directCriteria !== undefined) &&
+    !compiled.volatile &&
+    !compiled.producesSpill
   const literalStringIds = directOnlyRuntimeProgram ? [] : compiled.symbolicStrings.map((value) => serviceArgs.state.strings.intern(value))
   const runtimeProgram =
     directOnlyRuntimeProgram || compiled.program.length === 0 ? EMPTY_RUNTIME_PROGRAM : new Uint32Array(compiled.program.length)

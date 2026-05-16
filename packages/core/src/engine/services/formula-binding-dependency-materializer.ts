@@ -525,16 +525,14 @@ export function createFormulaBindingDependencyMaterializer(
         return undefined
       }
     }
-    ensureDependencyBuildCapacity(args.state.workbook.cellStore.size + 1, 1, 1, compiled.symbolicRanges.length + 1)
-    args.getSymbolicRangeBindings().fill(UNRESOLVED_WASM_OPERAND, 0, compiled.symbolicRanges.length)
     return {
-      dependencyIndices: args.getDependencyBuildCells().slice(0, 0),
-      dependencyEntities: args.getDependencyBuildEntities().slice(0, 0),
-      rangeDependencies: args.getDependencyBuildRanges().slice(0, 0),
-      graphRangeDependencies: args.getDependencyBuildRanges().slice(0, 0),
-      symbolicRangeIndices: args.getSymbolicRangeBindings(),
-      symbolicRangeCount: compiled.symbolicRanges.length,
-      newRangeIndices: args.getDependencyBuildNewRanges(),
+      dependencyIndices: EMPTY_DEPENDENCY_BUFFER,
+      dependencyEntities: EMPTY_DEPENDENCY_BUFFER,
+      rangeDependencies: EMPTY_DEPENDENCY_BUFFER,
+      graphRangeDependencies: EMPTY_DEPENDENCY_BUFFER,
+      symbolicRangeIndices: EMPTY_DEPENDENCY_BUFFER,
+      symbolicRangeCount: 0,
+      newRangeIndices: EMPTY_DEPENDENCY_BUFFER,
       newRangeCount: 0,
     }
   }
