@@ -188,6 +188,59 @@ describe('workbook-local-store projection', () => {
     }
   })
 
+  it('projects overlay cells with the canonical sheet name after sheet rename', async () => {
+    const sqlite3 = await sqlite3InitModule()
+    const db = new sqlite3.oo1.DB(':memory:', 'c')
+    try {
+      initializeWorkbookLocalStoreSchema(db)
+      writeWorkbookAuthoritativeBase(db, createBase({ sheetId: 7, sheetName: 'Sheet1', value: 11 }))
+
+      const delta: WorkbookLocalAuthoritativeDelta = {
+        replaceAll: false,
+        replacedSheetIds: [7],
+        base: createBase({ sheetId: 7, sheetName: 'Revenue', value: 22 }),
+      }
+      writeWorkbookAuthoritativeDelta(db, delta)
+      writeWorkbookProjectionOverlay(db, {
+        cells: [
+          {
+            sheetId: 7,
+            sheetName: 'Sheet1',
+            address: 'A1',
+            rowNum: 0,
+            colNum: 0,
+            value: { tag: 1, value: 99 },
+            flags: 0,
+            version: 3,
+            input: 99,
+            formula: undefined,
+            format: undefined,
+            styleId: undefined,
+            numberFormatId: undefined,
+          },
+        ],
+        rowAxisEntries: [],
+        columnAxisEntries: [],
+        styles: [],
+      })
+
+      expect(
+        readWorkbookViewportProjection(db, 'Revenue', {
+          rowStart: 0,
+          rowEnd: 0,
+          colStart: 0,
+          colEnd: 0,
+        })?.cells[0]?.snapshot,
+      ).toMatchObject({
+        sheetName: 'Revenue',
+        address: 'A1',
+        value: { tag: 1, value: 99 },
+      })
+    } finally {
+      db.close()
+    }
+  })
+
   it('sanitizes persisted style JSON when reading viewport projections', async () => {
     const sqlite3 = await sqlite3InitModule()
     const db = new sqlite3.oo1.DB(':memory:', 'c')

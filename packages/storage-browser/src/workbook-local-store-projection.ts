@@ -792,7 +792,7 @@ function readWorkbookViewportBase(db: Database, sheetName: string, viewport: Vie
   const cells = readViewportCells(
     db,
     `
-      SELECT render.sheet_name AS sheetName,
+      SELECT ? AS sheetName,
              render.address AS address,
              render.row_num AS rowNum,
              render.col_num AS colNum,
@@ -815,7 +815,7 @@ function readWorkbookViewportBase(db: Database, sheetName: string, viewport: Vie
          AND render.col_num <= ?
        ORDER BY render.row_num ASC, render.col_num ASC
     `,
-    [sheetId, viewport.rowStart, viewport.rowEnd, viewport.colStart, viewport.colEnd],
+    [sheetName, sheetId, viewport.rowStart, viewport.rowEnd, viewport.colStart, viewport.colEnd],
   )
   const styleIds = new Set<string>(['style-0'])
   cells.forEach((cell) => {
@@ -853,7 +853,7 @@ export function readWorkbookViewportProjection(
   const overlayCells = readViewportCells(
     db,
     `
-      SELECT sheet_name AS sheetName,
+      SELECT ? AS sheetName,
              address,
              row_num AS rowNum,
              col_num AS colNum,
@@ -873,7 +873,7 @@ export function readWorkbookViewportProjection(
          AND col_num <= ?
        ORDER BY row_num ASC, col_num ASC
     `,
-    [sheetId, viewport.rowStart, viewport.rowEnd, viewport.colStart, viewport.colEnd],
+    [base.sheetName, sheetId, viewport.rowStart, viewport.rowEnd, viewport.colStart, viewport.colEnd],
   )
   const overlayStyleIds = new Set<string>()
   overlayCells.forEach((cell) => {
