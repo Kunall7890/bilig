@@ -48,4 +48,45 @@ describe('live kernel sync state', () => {
     expect(scratch.getDeferredKernelSyncSeenNow()[3]).toBe(1)
     expect(Array.from(scratch.getPendingKernelSyncNow().slice(0, 1))).toEqual([3])
   })
+
+  it('does not grow bitmap or unrelated recalc scratch buffers for single-cell kernel sync defers', () => {
+    const scratch = createEngineRuntimeScratchService()
+    const deferredSeen = scratch.getDeferredKernelSyncSeenNow()
+    const changedInputSeen = scratch.getChangedInputSeenNow()
+    const changedFormulaSeen = scratch.getChangedFormulaSeenNow()
+    const changedUnionSeen = scratch.getChangedUnionSeenNow()
+    const materializedCells = scratch.getMaterializedCellsNow()
+
+    deferKernelSyncNow({
+      scratch,
+      cellStoreSize: 5001,
+      cellIndices: [5000],
+    })
+
+    expect(scratch.getDeferredKernelSyncSeenNow()).toBe(deferredSeen)
+    expect(scratch.getPendingKernelSyncNow()).toHaveLength(128)
+    expect(scratch.getDeferredKernelSyncCountNow()).toBe(1)
+    expect(scratch.getPendingKernelSyncNow()[0]).toBe(5000)
+    expect(scratch.getChangedInputSeenNow()).toBe(changedInputSeen)
+    expect(scratch.getChangedFormulaSeenNow()).toBe(changedFormulaSeen)
+    expect(scratch.getChangedUnionSeenNow()).toBe(changedUnionSeen)
+    expect(scratch.getMaterializedCellsNow()).toBe(materializedCells)
+  })
+
+  it('grows only kernel sync state for larger deferred batches', () => {
+    const scratch = createEngineRuntimeScratchService()
+    const changedInputSeen = scratch.getChangedInputSeenNow()
+    const deferredCells = Array.from({ length: 200 }, (_, index) => index + 1000)
+
+    deferKernelSyncNow({
+      scratch,
+      cellStoreSize: 1200,
+      cellIndices: deferredCells,
+    })
+
+    expect(scratch.getPendingKernelSyncNow().length).toBeGreaterThanOrEqual(200)
+    expect(scratch.getDeferredKernelSyncSeenNow().length).toBeGreaterThan(1200)
+    expect(scratch.getChangedInputSeenNow()).toBe(changedInputSeen)
+    expect(scratch.getDeferredKernelSyncCountNow()).toBe(200)
+  })
 })
