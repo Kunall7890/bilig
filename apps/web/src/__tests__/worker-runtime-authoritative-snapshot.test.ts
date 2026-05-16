@@ -82,4 +82,20 @@ describe('worker runtime authoritative snapshot projection', () => {
     expect(prepared.projectionOverlayScope).not.toBeNull()
     expect(prepared.shouldMarkPendingMutationsRebased).toBe(true)
   })
+
+  it('rejects malformed restored pending edits before installing a projected authoritative snapshot', async () => {
+    await expect(
+      prepareAuthoritativeSnapshotProjection({
+        documentId: 'reconcile-doc',
+        replicaId: 'browser:test',
+        snapshot: buildSnapshot(5),
+        mode: 'reconcile',
+        pendingMutations: [
+          buildMutation({
+            args: ['Sheet1', 'A1', Number.NaN],
+          }),
+        ],
+      }),
+    ).rejects.toThrow('Invalid pending workbook mutation replay')
+  })
 })

@@ -10,16 +10,19 @@ import {
   isWorkbookStructuralCount,
   isWorkbookStructuralIndex,
   isWorkbookStructuralSize,
-  type PendingWorkbookMutation,
 } from './workbook-sync.js'
 import type { WorkerEngine } from './worker-runtime-support.js'
 
 const MIN_COLUMN_WIDTH = 44
 const MAX_COLUMN_WIDTH = 480
 
-export function applyPendingWorkbookMutationToEngine(engine: WorkerEngine, mutation: PendingWorkbookMutation): void {
+function replayMutationId(value: unknown): string {
+  return typeof value === 'object' && value !== null && 'id' in value && typeof value.id === 'string' ? value.id : '<unknown>'
+}
+
+export function applyPendingWorkbookMutationToEngine(engine: WorkerEngine, mutation: unknown): void {
   if (!isPendingWorkbookMutationInput(mutation)) {
-    return
+    throw new Error(`Invalid pending workbook mutation replay: ${replayMutationId(mutation)}`)
   }
   const { method, args } = mutation
   switch (method) {
