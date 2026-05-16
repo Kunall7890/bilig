@@ -342,11 +342,11 @@ export function CellEditorOverlay({
           font,
           fontSize,
           minHeight: '100%',
-          MozOsxFontSmoothing: 'auto',
-          textRendering: 'auto',
+          MozOsxFontSmoothing: 'grayscale',
+          textRendering: 'optimizeLegibility',
           textAlign,
           textDecorationLine: underline ? 'underline' : undefined,
-          WebkitFontSmoothing: 'auto',
+          WebkitFontSmoothing: 'antialiased',
         }}
         value={draftValue}
         onBlur={commitAfterBlur}
