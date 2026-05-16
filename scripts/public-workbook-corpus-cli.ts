@@ -8,13 +8,17 @@ export function readStringArg(name: string, fallback: string): string {
     const parsed = readArgValueForName(name, arg, index)
     if (parsed !== null) {
       count += 1
-      if (count > 1) {
-        throw new Error(`Expected ${name} to be specified once`)
-      }
+      assertArgSpecifiedOnce(name, count)
       value = parsed
     }
   })
   return value ?? fallback
+}
+
+function assertArgSpecifiedOnce(name: string, count: number): void {
+  if (count > 1) {
+    throw new Error(`Expected ${name} to be specified once`)
+  }
 }
 
 function readArgValueForName(name: string, arg: string, index: number): string | null {
@@ -67,9 +71,7 @@ export function readFlagArg(name: string): boolean {
   process.argv.forEach((arg, index) => {
     if (arg === name) {
       count += 1
-      if (count > 1) {
-        throw new Error(`Expected ${name} to be specified once`)
-      }
+      assertArgSpecifiedOnce(name, count)
       const next = process.argv[index + 1]
       value = next === undefined || next.startsWith('--') ? true : readBooleanArgValue(name, next)
       return
@@ -78,9 +80,7 @@ export function readFlagArg(name: string): boolean {
     const inlinePrefix = `${name}=`
     if (arg.startsWith(inlinePrefix)) {
       count += 1
-      if (count > 1) {
-        throw new Error(`Expected ${name} to be specified once`)
-      }
+      assertArgSpecifiedOnce(name, count)
       const raw = arg.slice(inlinePrefix.length)
       value = readBooleanArgValue(name, raw)
     }
