@@ -439,6 +439,9 @@ pnpm workpaper:xlsx-corpus:check -- /path/to/xlsx-corpus
 - Read the
   [compatibility limits](https://github.com/proompteng/bilig/blob/main/docs/where-bilig-is-not-excel-compatible-yet.md)
   before importing real Excel workbooks.
+- Use the
+  [production adoption checklist](https://github.com/proompteng/bilig/blob/main/docs/production-adoption-checklist-headless-workpaper.md)
+  before promoting a WorkPaper-backed workflow beyond evaluation.
 - For XLSX accuracy audits, use the
   [Excel oracle harness](https://github.com/proompteng/bilig/blob/main/docs/xlsx-corpus-verifier-walkthrough.md#run-the-excel-oracle-harness).
   It separates import success, timeouts, stale cached formula values, and fresh

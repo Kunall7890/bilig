@@ -265,6 +265,7 @@ for (const required of [
   'https://github.com/proompteng/bilig/blob/main/docs/agent-spreadsheet-tool-call-loop.md',
   'https://github.com/proompteng/bilig/blob/main/docs/local-workpaper-benchmark-walkthrough.md',
   'https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md',
+  'https://github.com/proompteng/bilig/blob/main/docs/production-adoption-checklist-headless-workpaper.md',
   'https://github.com/proompteng/bilig/blob/main/docs/hyperformula-alternative-headless-workpaper.md',
   'https://github.com/proompteng/bilig/blob/main/docs/headless-spreadsheet-engine-comparison.md',
   'https://github.com/proompteng/bilig/blob/main/docs/javascript-spreadsheet-library-headless-node.md',

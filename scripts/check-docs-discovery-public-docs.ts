@@ -63,6 +63,7 @@ export async function requireSharedPublicDocsDiscovery(args: {
     'https://github.com/proompteng/bilig/discussions/308',
     'SECURITY.md',
     'SUPPORT.md',
+    'production-adoption-checklist-headless-workpaper',
   ])
   requireDocumentsNotInclude(primaryPublicDocs, [
     '## Current Public Proof',
@@ -108,6 +109,7 @@ export async function requireSharedPublicDocsDiscovery(args: {
       'node-spreadsheet-formula-engine',
       'server-side-spreadsheet-automation-node',
       'google-sheets-api-alternative-node-workpaper',
+      'production-adoption-checklist-headless-workpaper',
       'examples/serverless-workpaper-api',
       'quote-approval-api',
       'node-framework-workpaper-adapters',

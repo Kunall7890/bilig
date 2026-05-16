@@ -23,6 +23,7 @@ export const docsSiteSources = [
   ['node-spreadsheet-formula-engine.html', 'node-spreadsheet-formula-engine.md'],
   ['evaluate-excel-formulas-in-node-typescript.html', 'evaluate-excel-formulas-in-node-typescript.md'],
   ['try-bilig-headless-in-node.html', 'try-bilig-headless-in-node.md'],
+  ['production-adoption-checklist-headless-workpaper.html', 'production-adoption-checklist-headless-workpaper.md'],
   ['workbook-automation-examples-node.html', 'workbook-automation-examples-node.md'],
   ['serverless-workpaper-api-route.html', 'serverless-workpaper-api-route.md'],
   ['node-framework-workpaper-adapters.html', 'node-framework-workpaper-adapters.md'],

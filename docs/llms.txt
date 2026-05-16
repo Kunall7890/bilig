@@ -25,6 +25,7 @@ support policy: https://github.com/proompteng/bilig/blob/main/SUPPORT.md
 - https://proompteng.github.io/bilig/javascript-spreadsheet-library-headless-node.html
 - https://proompteng.github.io/bilig/evaluate-excel-formulas-in-node-typescript.html
 - https://proompteng.github.io/bilig/try-bilig-headless-in-node.html
+- https://proompteng.github.io/bilig/production-adoption-checklist-headless-workpaper.html
 - https://proompteng.github.io/bilig/npm-eval.ts
 - https://proompteng.github.io/bilig/workbook-automation-examples-node.html
 - https://proompteng.github.io/bilig/server-side-spreadsheet-automation-node.html
@@ -63,6 +64,7 @@ support policy: https://github.com/proompteng/bilig/blob/main/SUPPORT.md
 - https://github.com/proompteng/bilig/blob/main/docs/node-spreadsheet-formula-engine.md
 - https://github.com/proompteng/bilig/blob/main/docs/stop-driving-spreadsheets-with-screenshots.md
 - https://github.com/proompteng/bilig/blob/main/docs/evaluate-excel-formulas-in-node-typescript.md
+- https://github.com/proompteng/bilig/blob/main/docs/production-adoption-checklist-headless-workpaper.md
 - https://github.com/proompteng/bilig/blob/main/docs/server-side-spreadsheet-automation-node.md
 - https://github.com/proompteng/bilig/blob/main/docs/google-sheets-api-alternative-node-workpaper.md
 - https://github.com/proompteng/bilig/blob/main/docs/node-service-workpaper-recipe.md

@@ -77,6 +77,7 @@ export function requireHomepageDiscovery(index: string, siteCss: string, product
       'packages/benchmarks/baselines/<wbr />workpaper-vs-hyperformula.json',
       'Benchmark notes',
       'Compatibility gaps',
+      './production-adoption-checklist-headless-workpaper.html',
       'Starter issues',
       'benchmark critique',
       'https://github.com/proompteng/bilig/blob/main/SECURITY.md',
