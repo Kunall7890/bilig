@@ -4,12 +4,7 @@ import { makeCellEntity } from '../../entity-ids.js'
 import type { RuntimeDirectLookupDescriptor, RuntimeDirectScalarDescriptor } from '../runtime-state.js'
 import type { DirectFormulaIndexCollection, DirectScalarCurrentOperand } from './direct-formula-index-collection.js'
 import type { OperationDirectLookupCurrentService } from './operation-direct-lookup-current.js'
-import {
-  directScalarDeltaFromNumbers,
-  directScalarDeltaFromValues,
-  directScalarValueNumber,
-  singleInputAffineDirectScalar,
-} from './direct-scalar-helpers.js'
+import { directScalarDeltaFromNumbers, directScalarDeltaFromValues, directScalarValueNumber } from './direct-scalar-helpers.js'
 
 export interface OperationDirectPostRecalcFormula {
   readonly compiled: {
@@ -419,19 +414,63 @@ export function createOperationDirectPostRecalcMarkers(args: {
       ) {
         return false
       }
-      const affine = singleInputAffineDirectScalar(formula.directScalar, currentCellIndex)
       let formulaOldNumber: number | undefined
       let formulaNewNumber: number | undefined
       let formulaDelta: number | undefined
-      if (affine === null) {
+      const directScalar = formula.directScalar
+      if (directScalar.kind !== 'abs') {
+        const resultOffset = directScalar.resultOffset ?? 0
+        const left = directScalar.left
+        const right = directScalar.right
+        const leftIsInput = left.kind === 'cell' && left.cellIndex === currentCellIndex
+        const rightIsInput = right.kind === 'cell' && right.cellIndex === currentCellIndex
+        if (leftIsInput && right.kind === 'literal-number') {
+          switch (directScalar.operator) {
+            case '+':
+              formulaOldNumber = oldNumber + right.value + resultOffset
+              formulaNewNumber = newNumber + right.value + resultOffset
+              break
+            case '-':
+              formulaOldNumber = oldNumber - right.value + resultOffset
+              formulaNewNumber = newNumber - right.value + resultOffset
+              break
+            case '*':
+              formulaOldNumber = oldNumber * right.value + resultOffset
+              formulaNewNumber = newNumber * right.value + resultOffset
+              break
+            case '/':
+              if (right.value !== 0) {
+                formulaOldNumber = oldNumber / right.value + resultOffset
+                formulaNewNumber = newNumber / right.value + resultOffset
+              }
+              break
+          }
+        } else if (rightIsInput && left.kind === 'literal-number') {
+          switch (directScalar.operator) {
+            case '+':
+              formulaOldNumber = left.value + oldNumber + resultOffset
+              formulaNewNumber = left.value + newNumber + resultOffset
+              break
+            case '-':
+              formulaOldNumber = left.value - oldNumber + resultOffset
+              formulaNewNumber = left.value - newNumber + resultOffset
+              break
+            case '*':
+              formulaOldNumber = left.value * oldNumber + resultOffset
+              formulaNewNumber = left.value * newNumber + resultOffset
+              break
+            case '/':
+              break
+          }
+        }
+      }
+      if (formulaOldNumber === undefined || formulaNewNumber === undefined) {
         formulaOldNumber = args.directScalarCellNumericValue(formulaCellIndex)
-        formulaDelta = tryDirectScalarNumericDeltaFromNumbers(formula.directScalar, currentCellIndex, oldNumber, newNumber)
+        formulaDelta = tryDirectScalarNumericDeltaFromNumbers(directScalar, currentCellIndex, oldNumber, newNumber)
       } else {
         if (args.state.workbook.cellStore.tags[formulaCellIndex] !== ValueTag.Number) {
           return false
         }
-        formulaOldNumber = oldNumber * affine.scale + affine.offset
-        formulaNewNumber = newNumber * affine.scale + affine.offset
         formulaDelta = formulaNewNumber - formulaOldNumber
       }
       if (formulaOldNumber === undefined) {

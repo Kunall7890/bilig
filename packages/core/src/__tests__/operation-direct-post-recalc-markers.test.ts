@@ -28,10 +28,18 @@ function binaryScalar(
   leftCellIndex: number,
   right: { kind: 'cell'; cellIndex: number } | { kind: 'literal-number'; value: number },
 ): RuntimeDirectScalarDescriptor {
+  return binaryScalarWithOperands(operator, { kind: 'cell', cellIndex: leftCellIndex }, right)
+}
+
+function binaryScalarWithOperands(
+  operator: '+' | '-' | '*' | '/',
+  left: { kind: 'cell'; cellIndex: number } | { kind: 'literal-number'; value: number },
+  right: { kind: 'cell'; cellIndex: number } | { kind: 'literal-number'; value: number },
+): RuntimeDirectScalarDescriptor {
   return {
     kind: 'binary',
     operator,
-    left: { kind: 'cell', cellIndex: leftCellIndex },
+    left,
     right,
   }
 }
@@ -150,6 +158,34 @@ describe('operation direct post-recalc markers', () => {
 
     expect(allSkipCalls).toBe(1)
     expect(perCellSkipCalls).toBe(0)
+    expect(collection.hasValidatedScalarDeltaCells()).toBe(true)
+  })
+
+  it('marks right-input affine scalar closures without falling back to graph traversal', () => {
+    const formulas = new Map([
+      [20, formula(binaryScalarWithOperands('-', { kind: 'literal-number', value: 10 }, { kind: 'cell', cellIndex: 10 }))],
+      [30, formula(binaryScalar('*', 20, { kind: 'literal-number', value: 2 }))],
+    ])
+    const markers = createMarkers({
+      formulas,
+      numbers: new Map([
+        [20, 8],
+        [30, 16],
+      ]),
+      singleDependents: new Map([
+        [makeCellEntity(10), 20],
+        [makeCellEntity(20), 30],
+        [makeCellEntity(30), -1],
+      ]),
+    })
+    const collection = new DirectFormulaIndexCollection()
+
+    expect(markers.tryMarkDirectScalarLinearDeltaClosure(10, numberValue(2), numberValue(5), collection)).toBe(true)
+
+    expect(collection.size).toBe(2)
+    expect(collection.getDelta(20)).toBe(-3)
+    expect(collection.getDelta(30)).toBe(-6)
+    expect(collection.hasCompleteScalarDeltas()).toBe(true)
     expect(collection.hasValidatedScalarDeltaCells()).toBe(true)
   })
 
