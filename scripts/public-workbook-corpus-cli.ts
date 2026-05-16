@@ -52,10 +52,10 @@ export function readNumberArg(name: string, fallback: number): number {
 export function readMegabytesArg(name: string, fallbackBytes: number): number {
   const raw = readStringArg(name, String(Math.ceil(fallbackBytes / 1024 / 1024)))
   const parsed = Number(raw)
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    throw new Error(`Expected ${name} to be a positive number of MiB`)
+  if (!/^\d+$/.test(raw) || parsed <= 0 || !Number.isSafeInteger(parsed)) {
+    throw new Error(`Expected ${name} to be a positive integer number of MiB`)
   }
-  return Math.trunc(parsed * 1024 * 1024)
+  return parsed * 1024 * 1024
 }
 
 export function readFlagArg(name: string): boolean {

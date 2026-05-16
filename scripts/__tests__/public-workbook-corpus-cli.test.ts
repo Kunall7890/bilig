@@ -9,6 +9,7 @@ import { buildPublicWorkbookCorpusScorecard, createEmptyPublicWorkbookManifest }
 import {
   formatPublicCorpusStopMarkerPathForMessage,
   readFlagArg,
+  readMegabytesArg,
   readNumberArg,
   readRepeatedStringArg,
   readStringArg,
@@ -118,6 +119,45 @@ describe('public workbook corpus CLI resource guards', () => {
       process.argv = ['bun', corpusScriptPath(), 'fetch', '--limit', '9007199254740993']
 
       expect(() => readNumberArg('--limit', 10)).toThrow('Expected --limit to be a positive integer')
+    } finally {
+      process.argv = originalArgv
+    }
+  })
+
+  it('rejects fractional values for shared MiB arguments', () => {
+    const originalArgv = process.argv
+    try {
+      process.argv = ['bun', corpusScriptPath(), 'fetch', '--fetch-max-rss-mb', '1.5']
+
+      expect(() => readMegabytesArg('--fetch-max-rss-mb', 256 * 1024 * 1024)).toThrow(
+        'Expected --fetch-max-rss-mb to be a positive integer number of MiB',
+      )
+    } finally {
+      process.argv = originalArgv
+    }
+  })
+
+  it('rejects non-decimal values for shared MiB arguments', () => {
+    const originalArgv = process.argv
+    try {
+      process.argv = ['bun', corpusScriptPath(), 'fetch', '--fetch-max-rss-mb', '1e3']
+
+      expect(() => readMegabytesArg('--fetch-max-rss-mb', 256 * 1024 * 1024)).toThrow(
+        'Expected --fetch-max-rss-mb to be a positive integer number of MiB',
+      )
+    } finally {
+      process.argv = originalArgv
+    }
+  })
+
+  it('rejects unsafe integer values for shared MiB arguments', () => {
+    const originalArgv = process.argv
+    try {
+      process.argv = ['bun', corpusScriptPath(), 'fetch', '--fetch-max-rss-mb', '9007199254740993']
+
+      expect(() => readMegabytesArg('--fetch-max-rss-mb', 256 * 1024 * 1024)).toThrow(
+        'Expected --fetch-max-rss-mb to be a positive integer number of MiB',
+      )
     } finally {
       process.argv = originalArgv
     }
@@ -288,7 +328,7 @@ describe('public workbook corpus CLI resource guards', () => {
     )
 
     expect(result.status).not.toBe(0)
-    expect(result.stderr).toContain('Expected --fetch-max-rss-mb to be a positive number of MiB')
+    expect(result.stderr).toContain('Expected --fetch-max-rss-mb to be a positive integer number of MiB')
   })
 
   it('validates the fetch RSS guard limit before running a mutating source fetch', () => {
@@ -318,7 +358,7 @@ describe('public workbook corpus CLI resource guards', () => {
     )
 
     expect(result.status).not.toBe(0)
-    expect(result.stderr).toContain('Expected --fetch-max-rss-mb to be a positive number of MiB')
+    expect(result.stderr).toContain('Expected --fetch-max-rss-mb to be a positive integer number of MiB')
   })
 
   it('refuses broad corpus runs while a stop marker is active', () => {
