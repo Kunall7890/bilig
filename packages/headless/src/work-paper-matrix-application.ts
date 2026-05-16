@@ -121,6 +121,12 @@ export function applyWorkPaperMatrixContents(input: {
     return
   }
 
+  const canApplyFormulaMatrixInOnePass = trailingLiteralRefs.length === 0 && !dimensionImpact.hasDynamicFormula
+  if (canApplyFormulaMatrixInOnePass) {
+    applyPlannedRefs(mergeMatrixMutationRefPhases(leadingRefs, formulaRefs, trailingLiteralRefs), createApplyOptions())
+    return
+  }
+
   const updateSheetDimensionsAfterCellMutationRefs = input.updateSheetDimensionsAfterCellMutationRefs
   const canUpdateDimensionsOnce =
     updateSheetDimensionsAfterCellMutationRefs !== undefined && (phaseSource !== 'local' || input.isEvaluationSuspended?.() !== true)

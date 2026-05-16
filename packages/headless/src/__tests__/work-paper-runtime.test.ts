@@ -2051,22 +2051,33 @@ describe('WorkPaper', () => {
     if (typeof engine !== 'object' || engine === null || typeof Reflect.get(engine, 'resetPerformanceCounters') !== 'function') {
       throw new Error('Expected WorkPaper to expose an engine with performance counters in tests')
     }
+    const applyCellMutationsAt = vi.spyOn(engineApplyCellMutationsTarget(workbook), 'applyCellMutationsAtWithOptions')
 
-    Reflect.apply(Reflect.get(engine, 'resetPerformanceCounters'), engine, [])
-    workbook.batch(() => {
-      workbook.addRows(sheetId, 2, 2)
-      workbook.setCellContents(cell(sheetId, 2, 0), [
-        [5, 6, '=SUM(A3:B3)'],
-        [7, 8, '=SUM(A4:B4)'],
-      ])
-    })
+    try {
+      Reflect.apply(Reflect.get(engine, 'resetPerformanceCounters'), engine, [])
+      workbook.batch(() => {
+        workbook.addRows(sheetId, 2, 2)
+        workbook.setCellContents(cell(sheetId, 2, 0), [
+          [5, 6, '=SUM(A3:B3)'],
+          [7, 8, '=SUM(A4:B4)'],
+        ])
+      })
 
-    const counters = Reflect.apply(Reflect.get(engine, 'getPerformanceCounters'), engine, [])
-    expect(workbook.getCellValue(cell(sheetId, 2, 2))).toEqual({ tag: ValueTag.Number, value: 11 })
-    expect(workbook.getCellValue(cell(sheetId, 3, 2))).toEqual({ tag: ValueTag.Number, value: 15 })
-    expect(counters.topoRepairs).toBe(0)
-    expect(counters.cycleFormulaScans).toBe(0)
-    expect(counters.calcChainFullScans).toBe(0)
+      const counters = Reflect.apply(Reflect.get(engine, 'getPerformanceCounters'), engine, [])
+      expect(workbook.getCellValue(cell(sheetId, 2, 2))).toEqual({ tag: ValueTag.Number, value: 11 })
+      expect(workbook.getCellValue(cell(sheetId, 3, 2))).toEqual({ tag: ValueTag.Number, value: 15 })
+      expect(applyCellMutationsAt).toHaveBeenCalledTimes(1)
+      expect(applyCellMutationsAt.mock.calls[0]?.[1]).toMatchObject({
+        potentialNewCells: 6,
+        reuseRefs: true,
+        source: 'local',
+      })
+      expect(counters.topoRepairs).toBe(0)
+      expect(counters.cycleFormulaScans).toBe(0)
+      expect(counters.calcChainFullScans).toBe(0)
+    } finally {
+      applyCellMutationsAt.mockRestore()
+    }
   })
 
   it('keeps topo repair when an appended formula depends on another formula', () => {

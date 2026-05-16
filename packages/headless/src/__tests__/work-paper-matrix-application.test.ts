@@ -77,6 +77,39 @@ describe('work-paper matrix application', () => {
     ])
   })
 
+  it('applies ordered literal and formula matrices in one pass when no trailing literals are deferred', () => {
+    const applied: Array<{ refs: readonly EngineCellMutationRef[]; options: WorkPaperCellMutationApplyOptions }> = []
+
+    applyWorkPaperMatrixContents({
+      address: { sheet: 1, row: 0, col: 0 },
+      content: [
+        [1, 2, '=A1+B1'],
+        [3, 4, '=A2+B2'],
+      ],
+      flushPendingBatchOps: () => {},
+      applyCellMutationRefs: (refs, options) => {
+        applied.push({ refs, options })
+      },
+      rewriteFormulaForStorage: (formula) => formula,
+    })
+
+    expect(applied).toHaveLength(1)
+    expect(applied[0]?.options).toEqual({
+      potentialNewCells: 6,
+      source: 'local',
+      returnUndoOps: false,
+      reuseRefs: true,
+    })
+    expect(applied[0]?.refs.map((ref) => ref.mutation.kind)).toEqual([
+      'setCellValue',
+      'setCellValue',
+      'setCellValue',
+      'setCellValue',
+      'setCellFormula',
+      'setCellFormula',
+    ])
+  })
+
   it('updates dimensions once after phased formula matrix writes', () => {
     const applied: Array<{ refs: readonly EngineCellMutationRef[]; options: WorkPaperCellMutationApplyOptions }> = []
     const dimensionUpdates: Array<readonly EngineCellMutationRef[]> = []
@@ -132,7 +165,7 @@ describe('work-paper matrix application', () => {
       },
     })
 
-    expect(applied.map((entry) => entry.options.skipDimensionUpdate)).toEqual([undefined, undefined])
+    expect(applied.map((entry) => entry.options.skipDimensionUpdate)).toEqual([undefined])
     expect(dimensionUpdateCount).toBe(0)
   })
 })
