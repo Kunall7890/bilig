@@ -4,10 +4,15 @@ import {
   clearRangeStyleArgsSchema,
   mergeCellsArgsSchema,
   renderCommitArgsSchema,
+  setFreezePaneArgsSchema,
   setRangeNumberFormatArgsSchema,
   setRangeStyleArgsSchema,
+  structuralAxisMutationArgsSchema,
   unmergeCellsArgsSchema,
+  updateColumnMetadataArgsSchema,
+  updateColumnWidthArgsSchema,
   updatePresenceArgsSchema,
+  updateRowMetadataArgsSchema,
 } from '../mutators.js'
 
 const range = {
@@ -68,6 +73,63 @@ describe('zero sync mutator schemas', () => {
 
     expect(mergeCellsArgsSchema.safeParse(payload).success).toBe(true)
     expect(unmergeCellsArgsSchema.safeParse(payload).success).toBe(true)
+  })
+
+  it('rejects unsafe structural mutation integers at the mutator boundary', () => {
+    const unsafe = Number.MAX_SAFE_INTEGER + 1
+
+    expect(
+      structuralAxisMutationArgsSchema.safeParse({
+        documentId: 'doc-1',
+        sheetName: 'Sheet1',
+        start: unsafe,
+        count: 1,
+      }).success,
+    ).toBe(false)
+    expect(
+      structuralAxisMutationArgsSchema.safeParse({
+        documentId: 'doc-1',
+        sheetName: 'Sheet1',
+        start: 0,
+        count: unsafe,
+      }).success,
+    ).toBe(false)
+    expect(
+      setFreezePaneArgsSchema.safeParse({
+        documentId: 'doc-1',
+        sheetName: 'Sheet1',
+        rows: unsafe,
+        cols: 0,
+      }).success,
+    ).toBe(false)
+    expect(
+      updateRowMetadataArgsSchema.safeParse({
+        documentId: 'doc-1',
+        sheetName: 'Sheet1',
+        startRow: 0,
+        count: 1,
+        height: unsafe,
+        hidden: null,
+      }).success,
+    ).toBe(false)
+    expect(
+      updateColumnMetadataArgsSchema.safeParse({
+        documentId: 'doc-1',
+        sheetName: 'Sheet1',
+        startCol: 0,
+        count: 1,
+        width: unsafe,
+        hidden: null,
+      }).success,
+    ).toBe(false)
+    expect(
+      updateColumnWidthArgsSchema.safeParse({
+        documentId: 'doc-1',
+        sheetName: 'Sheet1',
+        columnIndex: 0,
+        width: unsafe,
+      }).success,
+    ).toBe(false)
   })
 
   it('rejects engine batches with malformed workbook ops', () => {

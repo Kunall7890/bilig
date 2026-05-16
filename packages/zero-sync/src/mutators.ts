@@ -19,6 +19,16 @@ import {
 import type { schema } from './schema.js'
 
 const literalInputSchema = z.union([z.number(), z.string(), z.boolean(), z.null()])
+const safeNonNegativeIntegerSchema = z
+  .number()
+  .int()
+  .nonnegative()
+  .refine((value) => Number.isSafeInteger(value), { message: 'Expected safe integer' })
+const safePositiveIntegerSchema = z
+  .number()
+  .int()
+  .positive()
+  .refine((value) => Number.isSafeInteger(value), { message: 'Expected safe integer' })
 
 const cellRangeRefSchema = z.object({
   sheetName: z.string().min(1),
@@ -176,36 +186,36 @@ export const rangeMutationArgsSchema = baseMutationArgsSchema.extend({
 
 export const updateRowMetadataArgsSchema = baseMutationArgsSchema.extend({
   sheetName: z.string().min(1),
-  startRow: z.number().int().nonnegative(),
-  count: z.number().int().positive(),
-  height: z.number().int().positive().nullable(),
+  startRow: safeNonNegativeIntegerSchema,
+  count: safePositiveIntegerSchema,
+  height: safePositiveIntegerSchema.nullable(),
   hidden: z.boolean().nullable(),
 })
 
 export const updateColumnMetadataArgsSchema = baseMutationArgsSchema.extend({
   sheetName: z.string().min(1),
-  startCol: z.number().int().nonnegative(),
-  count: z.number().int().positive(),
-  width: z.number().int().positive().nullable(),
+  startCol: safeNonNegativeIntegerSchema,
+  count: safePositiveIntegerSchema,
+  width: safePositiveIntegerSchema.nullable(),
   hidden: z.boolean().nullable(),
 })
 
 export const updateColumnWidthArgsSchema = baseMutationArgsSchema.extend({
   sheetName: z.string().min(1),
-  columnIndex: z.number().int().nonnegative(),
-  width: z.number().int().positive(),
+  columnIndex: safeNonNegativeIntegerSchema,
+  width: safePositiveIntegerSchema,
 })
 
 export const structuralAxisMutationArgsSchema = baseMutationArgsSchema.extend({
   sheetName: z.string().min(1),
-  start: z.number().int().nonnegative(),
-  count: z.number().int().positive(),
+  start: safeNonNegativeIntegerSchema,
+  count: safePositiveIntegerSchema,
 })
 
 export const setFreezePaneArgsSchema = baseMutationArgsSchema.extend({
   sheetName: z.string().min(1),
-  rows: z.number().int().nonnegative(),
-  cols: z.number().int().nonnegative(),
+  rows: safeNonNegativeIntegerSchema,
+  cols: safeNonNegativeIntegerSchema,
 })
 
 export const mergeCellsArgsSchema = baseMutationArgsSchema.extend({

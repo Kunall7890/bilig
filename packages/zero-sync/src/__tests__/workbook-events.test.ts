@@ -93,6 +93,45 @@ describe('workbook event guards', () => {
     ).toBe(true)
   })
 
+  it('rejects unsafe structural metadata payload numbers', () => {
+    const unsafe = Number.MAX_SAFE_INTEGER + 1
+
+    expect(
+      isWorkbookEventPayload({
+        kind: 'setFreezePane',
+        sheetName: 'Sheet1',
+        rows: unsafe,
+        cols: 0,
+      }),
+    ).toBe(false)
+    expect(
+      isWorkbookEventPayload({
+        kind: 'insertRows',
+        sheetName: 'Sheet1',
+        start: 0,
+        count: unsafe,
+      }),
+    ).toBe(false)
+    expect(
+      isWorkbookEventPayload({
+        kind: 'updateRowMetadata',
+        sheetName: 'Sheet1',
+        startRow: 0,
+        count: 1,
+        height: unsafe,
+        hidden: null,
+      }),
+    ).toBe(false)
+    expect(
+      isWorkbookEventPayload({
+        kind: 'updateColumnWidth',
+        sheetName: 'Sheet1',
+        columnIndex: unsafe,
+        width: 44,
+      }),
+    ).toBe(false)
+  })
+
   it('rejects engine undo bundles with malformed engine ops', () => {
     expect(
       isWorkbookChangeUndoBundle({

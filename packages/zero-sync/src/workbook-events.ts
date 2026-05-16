@@ -208,6 +208,18 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((entry) => typeof entry === 'string')
 }
 
+function isSafeNonNegativeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+}
+
+function isSafePositiveInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
+}
+
+function isNullableSafePositiveInteger(value: unknown): value is number | null {
+  return value === null || isSafePositiveInteger(value)
+}
+
 export function isWorkbookChangeUndoBundle(value: unknown): value is WorkbookChangeUndoBundle {
   if (!isRecord(value) || typeof value['kind'] !== 'string') {
     return false
@@ -250,27 +262,29 @@ export function isWorkbookEventPayload(value: unknown): value is WorkbookEventPa
     case 'deleteRows':
     case 'insertColumns':
     case 'deleteColumns':
-      return typeof value['sheetName'] === 'string' && typeof value['start'] === 'number' && typeof value['count'] === 'number'
+      return typeof value['sheetName'] === 'string' && isSafeNonNegativeInteger(value['start']) && isSafePositiveInteger(value['count'])
     case 'updateRowMetadata':
       return (
         typeof value['sheetName'] === 'string' &&
-        typeof value['startRow'] === 'number' &&
-        typeof value['count'] === 'number' &&
-        (typeof value['height'] === 'number' || value['height'] === null) &&
+        isSafeNonNegativeInteger(value['startRow']) &&
+        isSafePositiveInteger(value['count']) &&
+        isNullableSafePositiveInteger(value['height']) &&
         (typeof value['hidden'] === 'boolean' || value['hidden'] === null)
       )
     case 'updateColumnMetadata':
       return (
         typeof value['sheetName'] === 'string' &&
-        typeof value['startCol'] === 'number' &&
-        typeof value['count'] === 'number' &&
-        (typeof value['width'] === 'number' || value['width'] === null) &&
+        isSafeNonNegativeInteger(value['startCol']) &&
+        isSafePositiveInteger(value['count']) &&
+        isNullableSafePositiveInteger(value['width']) &&
         (typeof value['hidden'] === 'boolean' || value['hidden'] === null)
       )
     case 'updateColumnWidth':
-      return typeof value['sheetName'] === 'string' && typeof value['columnIndex'] === 'number' && typeof value['width'] === 'number'
+      return (
+        typeof value['sheetName'] === 'string' && isSafeNonNegativeInteger(value['columnIndex']) && isSafePositiveInteger(value['width'])
+      )
     case 'setFreezePane':
-      return typeof value['sheetName'] === 'string' && typeof value['rows'] === 'number' && typeof value['cols'] === 'number'
+      return typeof value['sheetName'] === 'string' && isSafeNonNegativeInteger(value['rows']) && isSafeNonNegativeInteger(value['cols'])
     case 'mergeCells':
     case 'unmergeCells':
       return isCellRangeRef(value['range'])
