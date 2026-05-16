@@ -335,6 +335,7 @@ export async function listWorkbookAgentThreadRuns(
             FROM workbook_chat_thread AS thread
             WHERE thread.workbook_id = run.workbook_id
               AND thread.thread_id = run.thread_id
+              AND thread.actor_user_id = run.actor_user_id
               AND thread.scope = 'shared'
           )
         )

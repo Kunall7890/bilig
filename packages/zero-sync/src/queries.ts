@@ -176,7 +176,7 @@ const workbookWorkflowRunByThread = defineUserQuery(workbookThreadArgsSchema, ({
     .where((expression) =>
       expression.or(
         expression.cmp('startedByUserId', ctx.userID),
-        expression.exists('chatThreads', (threadQuery) => threadQuery.where('scope', 'shared')),
+        expression.exists('ownerChatThreads', (threadQuery) => threadQuery.where('scope', 'shared')),
       ),
     )
     .orderBy('updatedAtUnixMs', 'desc'),
@@ -189,7 +189,7 @@ const visibleWorkbookWorkflowRunByThread = defineQuery(workbookThreadViewerArgsS
     .where((expression) =>
       expression.or(
         expression.cmp('startedByUserId', args.currentUserId),
-        expression.exists('chatThreads', (threadQuery) => threadQuery.where('scope', 'shared')),
+        expression.exists('ownerChatThreads', (threadQuery) => threadQuery.where('scope', 'shared')),
       ),
     )
     .orderBy('updatedAtUnixMs', 'desc'),

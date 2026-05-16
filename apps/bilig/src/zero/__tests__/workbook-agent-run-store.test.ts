@@ -331,4 +331,49 @@ describe('workbook-agent-run-store', () => {
       }),
     ])
   })
+
+  it('only treats shared thread rows as visibility grants for the run owner', async () => {
+    const record = {
+      ...createExecutionRecord(),
+      threadId: 'thr-shared',
+      actorUserId: 'alex@example.com',
+    }
+    const queryable = new FakeQueryable([
+      (text, values) =>
+        text.includes('FROM workbook_agent_run AS run') && values?.[1] === 'thr-shared' && values?.[2] === 'casey@example.com'
+          ? [
+              {
+                id: record.id,
+                bundleId: record.bundleId,
+                workbookId: record.documentId,
+                threadId: record.threadId,
+                turnId: record.turnId,
+                actorUserId: record.actorUserId,
+                goalText: record.goalText,
+                planText: record.planText,
+                summary: record.summary,
+                scope: record.scope,
+                riskClass: record.riskClass,
+                acceptedScope: record.acceptedScope,
+                appliedBy: record.appliedBy,
+                baseRevision: record.baseRevision,
+                appliedRevision: record.appliedRevision,
+                createdAtUnixMs: record.createdAtUnixMs,
+                appliedAtUnixMs: record.appliedAtUnixMs,
+                contextJson: record.context,
+                commandsJson: record.commands,
+                previewJson: record.preview,
+              } satisfies QueryResultRow,
+            ]
+          : null,
+    ])
+
+    await listWorkbookAgentThreadRuns(queryable, {
+      documentId: 'doc-1',
+      actorUserId: 'casey@example.com',
+      threadId: 'thr-shared',
+    })
+
+    expect(queryable.calls[0]?.text).toContain('thread.actor_user_id = run.actor_user_id')
+  })
 })

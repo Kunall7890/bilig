@@ -48,6 +48,14 @@ describe('zero sync schema', () => {
         cardinality: 'many',
       },
     ])
+    expect(schema.relationships.workbook_workflow_run.ownerChatThreads).toEqual([
+      {
+        sourceField: ['workbookId', 'threadId', 'startedByUserId'],
+        destField: ['workbookId', 'threadId', 'ownerUserId'],
+        destSchema: 'workbook_chat_thread',
+        cardinality: 'many',
+      },
+    ])
   })
 
   it('relates sheet-owned projection rows through the shared sheet id model', () => {

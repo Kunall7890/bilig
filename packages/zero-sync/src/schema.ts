@@ -190,6 +190,11 @@ const workbookWorkflowRunRelationships = relationships(workbookWorkflowRun, ({ m
     destField: ['workbookId', 'threadId'],
     destSchema: workbookChatThread,
   }),
+  ownerChatThreads: many({
+    sourceField: ['workbookId', 'threadId', 'startedByUserId'],
+    destField: ['workbookId', 'threadId', 'ownerUserId'],
+    destSchema: workbookChatThread,
+  }),
 }))
 
 const cellRelationships = relationships(cells, ({ one }) => ({
