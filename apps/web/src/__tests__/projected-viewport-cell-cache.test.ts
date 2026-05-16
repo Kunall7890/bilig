@@ -218,6 +218,48 @@ describe('ProjectedViewportCellCache', () => {
     expect(listener).not.toHaveBeenCalled()
   })
 
+  it('does not resurrect stale values after an authoritative empty confirmation of an optimistic clear', () => {
+    const cache = new ProjectedViewportCellCache()
+    const listener = vi.fn()
+    cache.subscribeCells('Sheet1', ['D7'], listener)
+    cache.setCellSnapshot({
+      ...snapshot('D7', 'before-delete'),
+      version: 7,
+    })
+    cache.setCellSnapshot({
+      sheetName: 'Sheet1',
+      address: 'D7',
+      value: { tag: ValueTag.Empty },
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+      version: 8,
+    })
+    listener.mockClear()
+
+    expect(
+      cache.setCellSnapshot({
+        sheetName: 'Sheet1',
+        address: 'D7',
+        value: { tag: ValueTag.Empty },
+        flags: 0,
+        version: 0,
+      }),
+    ).toBe(false)
+
+    expect(
+      cache.setCellSnapshot({
+        ...snapshot('D7', 'before-delete'),
+        version: 7,
+      }),
+    ).toBe(false)
+
+    expect(cache.getCell('Sheet1', 'D7')).toMatchObject({
+      value: { tag: ValueTag.Empty },
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+      version: 8,
+    })
+    expect(listener).not.toHaveBeenCalled()
+  })
+
   it('tracks cell subscriptions and exposes sheet grid entries', () => {
     const cache = new ProjectedViewportCellCache()
     const listener = vi.fn()

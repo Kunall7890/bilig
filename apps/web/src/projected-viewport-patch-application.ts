@@ -158,6 +158,7 @@ export function prepareIncomingSnapshot(current: CellSnapshot, incoming: CellSna
   return {
     ...incoming,
     flags: incoming.flags | OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+    version: Math.max(current.version, incoming.version),
   }
 }
 
