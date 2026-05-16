@@ -1,5 +1,5 @@
 import type { Database, SqlValue } from '@sqlite.org/sqlite-wasm'
-import { ValueTag, type CellSnapshot, type CellStyleRecord, type WorkbookAxisEntrySnapshot } from '@bilig/protocol'
+import { sanitizeCellStyleRecord, ValueTag, type CellSnapshot, type CellStyleRecord, type WorkbookAxisEntrySnapshot } from '@bilig/protocol'
 import type {
   WorkbookLocalAuthoritativeDelta,
   WorkbookLocalAuthoritativeBase,
@@ -134,13 +134,7 @@ function parseCellStyleRecord(row: Record<string, SqlValue>): CellStyleRecord | 
   }
   try {
     const parsed = JSON.parse(recordJson) as unknown
-    if (!isRecord(parsed)) {
-      return null
-    }
-    return {
-      ...(parsed as Omit<CellStyleRecord, 'id'>),
-      id,
-    }
+    return sanitizeCellStyleRecord(id, parsed)
   } catch {
     return null
   }
