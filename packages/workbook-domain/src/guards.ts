@@ -533,8 +533,8 @@ function isWorkbookChart(value: unknown): boolean {
     isOptionalString(value['title']) &&
     (value['legendPosition'] === undefined ||
       (typeof value['legendPosition'] === 'string' && CHART_LEGEND_POSITION_VALUES.has(value['legendPosition']))) &&
-    hasFiniteNumber(value, 'rows') &&
-    hasFiniteNumber(value, 'cols')
+    hasSafePositiveInteger(value, 'rows') &&
+    hasSafePositiveInteger(value, 'cols')
   )
 }
 
@@ -545,8 +545,8 @@ function isWorkbookImage(value: unknown): boolean {
     hasString(value, 'sheetName') &&
     hasString(value, 'address') &&
     hasString(value, 'sourceUrl') &&
-    hasFiniteNumber(value, 'rows') &&
-    hasFiniteNumber(value, 'cols') &&
+    hasSafePositiveInteger(value, 'rows') &&
+    hasSafePositiveInteger(value, 'cols') &&
     isOptionalString(value['altText'])
   )
 }
@@ -559,8 +559,8 @@ function isWorkbookShape(value: unknown): boolean {
     hasString(value, 'address') &&
     typeof value['shapeType'] === 'string' &&
     SHAPE_TYPE_VALUES.has(value['shapeType']) &&
-    hasFiniteNumber(value, 'rows') &&
-    hasFiniteNumber(value, 'cols') &&
+    hasSafePositiveInteger(value, 'rows') &&
+    hasSafePositiveInteger(value, 'cols') &&
     isOptionalString(value['text']) &&
     isOptionalString(value['fillColor']) &&
     isOptionalString(value['strokeColor'])
@@ -689,7 +689,10 @@ export function isWorkbookOp(value: unknown): value is WorkbookOp {
       return isWorkbookTableOp(value['table'])
     case 'upsertSpillRange':
       return (
-        hasString(value, 'sheetName') && hasString(value, 'address') && hasFiniteNumber(value, 'rows') && hasFiniteNumber(value, 'cols')
+        hasString(value, 'sheetName') &&
+        hasString(value, 'address') &&
+        hasSafePositiveInteger(value, 'rows') &&
+        hasSafePositiveInteger(value, 'cols')
       )
     case 'deleteSpillRange':
     case 'deletePivotTable':
@@ -703,8 +706,8 @@ export function isWorkbookOp(value: unknown): value is WorkbookOp {
         isStringArray(value['groupBy']) &&
         Array.isArray(value['values']) &&
         value['values'].every((entry) => isWorkbookPivotValue(entry)) &&
-        hasFiniteNumber(value, 'rows') &&
-        hasFiniteNumber(value, 'cols')
+        hasSafePositiveInteger(value, 'rows') &&
+        hasSafePositiveInteger(value, 'cols')
       )
     case 'upsertChart':
       return isWorkbookChart(value['chart'])

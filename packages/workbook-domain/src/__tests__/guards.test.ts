@@ -278,4 +278,42 @@ describe('workbook domain guards', () => {
       }),
     ).toBe(false)
   })
+
+  it('rejects unsafe workbook object footprint dimensions', () => {
+    const range = { sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'B2' }
+    const unsafe = Number.MAX_SAFE_INTEGER + 1
+
+    expect(isEngineOp({ kind: 'upsertSpillRange', sheetName: 'Sheet1', address: 'C1', rows: 0, cols: 1 })).toBe(false)
+    expect(
+      isEngineOp({
+        kind: 'upsertPivotTable',
+        name: 'Pivot1',
+        sheetName: 'Sheet1',
+        address: 'F1',
+        source: range,
+        groupBy: ['Region'],
+        values: [{ sourceColumn: 'Sales', summarizeBy: 'sum' }],
+        rows: unsafe,
+        cols: 2,
+      }),
+    ).toBe(false)
+    expect(
+      isEngineOp({
+        kind: 'upsertChart',
+        chart: { id: 'chart-1', sheetName: 'Sheet1', address: 'J2', source: range, chartType: 'line', rows: 1.5, cols: 8 },
+      }),
+    ).toBe(false)
+    expect(
+      isEngineOp({
+        kind: 'upsertImage',
+        image: { id: 'image-1', sheetName: 'Sheet1', address: 'L2', sourceUrl: 'https://example.com/i.png', rows: 8, cols: unsafe },
+      }),
+    ).toBe(false)
+    expect(
+      isEngineOp({
+        kind: 'upsertShape',
+        shape: { id: 'shape-1', sheetName: 'Sheet1', address: 'M3', shapeType: 'textBox', rows: -1, cols: 6 },
+      }),
+    ).toBe(false)
+  })
 })
