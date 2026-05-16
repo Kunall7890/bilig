@@ -872,6 +872,64 @@ describe('workbook-workflow-run-store', () => {
     ).resolves.toEqual([])
   })
 
+  it('drops workflow runs missing durable step rows once the reload batch has durable step coverage', async () => {
+    const firstRun = createWorkflowRun()
+    const secondRun = {
+      ...createWorkflowRun(),
+      runId: 'workflow-missing-steps',
+      title: 'Missing Durable Steps',
+    }
+    const queryable = createWorkflowRunStoreConnection(
+      [createZeroWorkflowRunRow(firstRun), createZeroWorkflowRunRow(secondRun)],
+      [
+        (text, values) =>
+          text.includes('FROM workbook_workflow_step AS step') && values?.[0] === 'doc-1' && Array.isArray(values?.[1])
+            ? firstRun.steps.map(
+                (step, index) =>
+                  ({
+                    runId: firstRun.runId,
+                    stepId: step.stepId,
+                    stepOrder: index,
+                    label: step.label,
+                    status: step.status,
+                    summary: step.summary,
+                    updatedAtUnixMs: step.updatedAtUnixMs,
+                  }) satisfies QueryResultRow,
+              )
+            : null,
+        (text, values) =>
+          text.includes('FROM workbook_workflow_artifact AS artifact') && values?.[0] === 'doc-1' && Array.isArray(values?.[1])
+            ? [
+                {
+                  runId: firstRun.runId,
+                  kind: firstRun.artifact?.kind,
+                  title: firstRun.artifact?.title,
+                  text: firstRun.artifact?.text,
+                } satisfies QueryResultRow,
+                {
+                  runId: secondRun.runId,
+                  kind: secondRun.artifact?.kind,
+                  title: secondRun.artifact?.title,
+                  text: secondRun.artifact?.text,
+                } satisfies QueryResultRow,
+              ]
+            : null,
+      ],
+    )
+
+    await expect(
+      listWorkbookThreadWorkflowRuns(queryable, {
+        documentId: 'doc-1',
+        actorUserId: 'alex@example.com',
+        threadId: 'thr-1',
+      }),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        runId: firstRun.runId,
+      }),
+    ])
+  })
+
   it('drops workflow runs when durable artifact rows are malformed instead of falling back to legacy artifact json', async () => {
     const run = createWorkflowRun()
     const queryable = createWorkflowRunStoreConnection(
@@ -919,5 +977,59 @@ describe('workbook-workflow-run-store', () => {
         threadId: 'thr-1',
       }),
     ).resolves.toEqual([])
+  })
+
+  it('drops workflow runs missing durable artifact rows once the reload batch has durable artifact coverage', async () => {
+    const firstRun = createWorkflowRun()
+    const secondRun = {
+      ...createWorkflowRun(),
+      runId: 'workflow-missing-artifact',
+      title: 'Missing Durable Artifact',
+    }
+    const queryable = createWorkflowRunStoreConnection(
+      [createZeroWorkflowRunRow(firstRun), createZeroWorkflowRunRow(secondRun)],
+      [
+        (text, values) =>
+          text.includes('FROM workbook_workflow_step AS step') && values?.[0] === 'doc-1' && Array.isArray(values?.[1])
+            ? [firstRun, secondRun].flatMap((run) =>
+                run.steps.map(
+                  (step, index) =>
+                    ({
+                      runId: run.runId,
+                      stepId: step.stepId,
+                      stepOrder: index,
+                      label: step.label,
+                      status: step.status,
+                      summary: step.summary,
+                      updatedAtUnixMs: step.updatedAtUnixMs,
+                    }) satisfies QueryResultRow,
+                ),
+              )
+            : null,
+        (text, values) =>
+          text.includes('FROM workbook_workflow_artifact AS artifact') && values?.[0] === 'doc-1' && Array.isArray(values?.[1])
+            ? [
+                {
+                  runId: firstRun.runId,
+                  kind: firstRun.artifact?.kind,
+                  title: firstRun.artifact?.title,
+                  text: firstRun.artifact?.text,
+                } satisfies QueryResultRow,
+              ]
+            : null,
+      ],
+    )
+
+    await expect(
+      listWorkbookThreadWorkflowRuns(queryable, {
+        documentId: 'doc-1',
+        actorUserId: 'alex@example.com',
+        threadId: 'thr-1',
+      }),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        runId: firstRun.runId,
+      }),
+    ])
   })
 })

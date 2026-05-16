@@ -55,6 +55,16 @@ interface DurableWorkflowArtifact {
   readonly invalid: boolean
 }
 
+interface DurableWorkflowStepRows {
+  readonly byRunId: ReadonlyMap<string, WorkbookAgentWorkflowStep[] | null>
+  readonly hasRows: boolean
+}
+
+interface DurableWorkflowArtifactRows {
+  readonly byRunId: ReadonlyMap<string, DurableWorkflowArtifact>
+  readonly hasRows: boolean
+}
+
 export function createWorkbookWorkflowRunStoreConnection(db: Queryable & ZeroQueryRunner): WorkbookWorkflowRunStoreConnection {
   return {
     query: (text, values) => db.query(text, values),
@@ -269,13 +279,17 @@ function toWorkflowRunRow(row: ZeroWorkbookWorkflowRunRow): WorkbookWorkflowRunR
   }
 }
 
-async function loadDurableWorkflowSteps(
-  db: Queryable,
-  documentId: string,
-  runIds: readonly string[],
-): Promise<Map<string, WorkbookAgentWorkflowStep[] | null>> {
+function rowAdvertisesWorkflowSteps(row: WorkbookWorkflowRunRow): boolean {
+  const steps = normalizeWorkflowSteps(row.stepsJson ?? [])
+  return steps !== null && steps.length > 0
+}
+
+async function loadDurableWorkflowSteps(db: Queryable, documentId: string, runIds: readonly string[]): Promise<DurableWorkflowStepRows> {
   if (runIds.length === 0) {
-    return new Map()
+    return {
+      byRunId: new Map(),
+      hasRows: false,
+    }
   }
   const result = await db.query<WorkbookWorkflowStepRow>(
     `
@@ -313,16 +327,22 @@ async function loadDurableWorkflowSteps(
     }
     stepsByRunId.set(normalized.runId, [normalized.step])
   }
-  return stepsByRunId
+  return {
+    byRunId: stepsByRunId,
+    hasRows: result.rows.length > 0,
+  }
 }
 
 async function loadDurableWorkflowArtifacts(
   db: Queryable,
   documentId: string,
   runIds: readonly string[],
-): Promise<Map<string, DurableWorkflowArtifact>> {
+): Promise<DurableWorkflowArtifactRows> {
   if (runIds.length === 0) {
-    return new Map()
+    return {
+      byRunId: new Map(),
+      hasRows: false,
+    }
   }
   const result = await db.query<WorkbookWorkflowArtifactRow>(
     `
@@ -354,7 +374,10 @@ async function loadDurableWorkflowArtifacts(
       invalid: false,
     })
   }
-  return artifactsByRunId
+  return {
+    byRunId: artifactsByRunId,
+    hasRows: result.rows.length > 0,
+  }
 }
 
 export async function ensureWorkbookWorkflowRunSchema(db: Queryable): Promise<void> {
@@ -604,13 +627,18 @@ export async function listWorkbookThreadWorkflowRuns(
       artifactInvalid?: boolean
     } = {}
     if (runId) {
-      if (durableSteps.has(runId)) {
-        hydrated.steps = durableSteps.get(runId) ?? null
+      if (durableSteps.byRunId.has(runId)) {
+        hydrated.steps = durableSteps.byRunId.get(runId) ?? null
+      } else if (durableSteps.hasRows && rowAdvertisesWorkflowSteps(row)) {
+        hydrated.steps = null
       }
-      const durableArtifact = durableArtifacts.get(runId)
+      const durableArtifact = durableArtifacts.byRunId.get(runId)
       if (durableArtifact) {
         hydrated.artifact = durableArtifact.artifact
         hydrated.artifactInvalid = durableArtifact.invalid
+      } else if (durableArtifacts.hasRows && isMarkdownArtifact(row.artifactJson)) {
+        hydrated.artifact = null
+        hydrated.artifactInvalid = true
       }
     }
     const run = normalizeWorkflowRun(row, hydrated)
