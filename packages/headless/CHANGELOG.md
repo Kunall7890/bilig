@@ -4,6 +4,18 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.16.25
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.16.24
+- Manual override: no
+
+## Fixes
+- perf(headless): skip exact lookup batch recalc (fc6da3f3)
+
+## Internal runtime changes
+- docs(growth): sharpen maintainer launch copy (36f40361)
+
 ## 0.16.24
 
 - Release type: patch
