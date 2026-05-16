@@ -36,6 +36,17 @@ describe('public workbook corpus CLI resource guards', () => {
     }
   })
 
+  it('rejects empty separated values for shared string arguments', () => {
+    const originalArgv = process.argv
+    try {
+      process.argv = ['bun', corpusScriptPath(), 'fetch', '--manifest', '']
+
+      expect(() => readStringArg('--manifest', 'fallback.json')).toThrow('Expected --manifest to have a value')
+    } finally {
+      process.argv = originalArgv
+    }
+  })
+
   it('rejects duplicate shared string arguments', () => {
     const originalArgv = process.argv
     try {
@@ -73,6 +84,17 @@ describe('public workbook corpus CLI resource guards', () => {
     const originalArgv = process.argv
     try {
       process.argv = ['bun', corpusScriptPath(), 'discover', '--query', 'budget', '--query', '--limit', '2']
+
+      expect(() => readRepeatedStringArg('--query')).toThrow('Expected --query to have a value')
+    } finally {
+      process.argv = originalArgv
+    }
+  })
+
+  it('rejects empty separated values for repeated string arguments', () => {
+    const originalArgv = process.argv
+    try {
+      process.argv = ['bun', corpusScriptPath(), 'discover', '--query', '']
 
       expect(() => readRepeatedStringArg('--query')).toThrow('Expected --query to have a value')
     } finally {

@@ -38,7 +38,7 @@ function readArgValueForName(name: string, arg: string, index: number): string |
 
 function readArgValueAt(name: string, index: number): string {
   const next = process.argv[index + 1]
-  if (next === undefined || next.startsWith('--')) {
+  if (next === undefined || !next || next.startsWith('--')) {
     throw new Error(`Expected ${name} to have a value`)
   }
   return next
