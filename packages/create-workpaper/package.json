@@ -1,0 +1,45 @@
+{
+  "name": "create-bilig-workpaper",
+  "version": "0.16.28",
+  "description": "Create a runnable Bilig WorkPaper starter for Node services and agent tools.",
+  "keywords": [
+    "bilig",
+    "create",
+    "formula-engine",
+    "headless-spreadsheet",
+    "nodejs",
+    "spreadsheet-formulas",
+    "typescript",
+    "workbook-api",
+    "workpaper",
+    "xlsx-recalculation"
+  ],
+  "homepage": "https://proompteng.github.io/bilig/",
+  "bugs": {
+    "url": "https://github.com/proompteng/bilig/issues"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/proompteng/bilig.git",
+    "directory": "packages/create-workpaper"
+  },
+  "bin": {
+    "create-bilig-workpaper": "./bin/create-bilig-workpaper.js"
+  },
+  "files": [
+    "bin",
+    "template",
+    "README.md"
+  ],
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "smoke": "node ./bin/create-bilig-workpaper.js --help"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

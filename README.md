@@ -76,6 +76,19 @@ The TypeScript file is maintained in
 The exact byte count can change between package versions; `verified: true` and
 matching `after`/`afterRestore` values are the check.
 
+For a generated project with a route-shaped quote approval API, run:
+
+```sh
+npm create bilig-workpaper@latest pricing-workpaper
+cd pricing-workpaper
+npm install
+npm run smoke
+```
+
+The starter lives in
+[`packages/create-workpaper`](packages/create-workpaper) and is documented in
+[create a Bilig WorkPaper starter](docs/create-bilig-workpaper.md).
+
 If that proof matches a service or agent workflow you maintain, the useful next
 step is concrete feedback: [star or bookmark the repo](https://github.com/proompteng/bilig/stargazers),
 then open or answer one adoption blocker in
@@ -136,9 +149,9 @@ matters.
 
 <!-- headless-package-footprint:start -->
 
-Current checked npm footprint for `@bilig/headless@0.16.27`:
+Current checked npm footprint for `@bilig/headless@0.16.28`:
 
-- Pack dry run: `421 kB` tarball, `2.52 MB` unpacked, `426` package entries.
+- Pack dry run: `422 kB` tarball, `2.52 MB` unpacked, `429` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
   import/export stays behind the `@bilig/headless/xlsx` subpath; MCP is the
   `bilig-workpaper-mcp` binary wrapper.
@@ -150,11 +163,11 @@ Current checked npm footprint for `@bilig/headless@0.16.27`:
 
 ## Published Package Trust
 
-`@bilig/headless@0.16.27` is published with npm registry signatures and SLSA
+`@bilig/headless@0.16.28` is published with npm registry signatures and SLSA
 provenance attestations. Verify the package before adopting it:
 
 ```sh
-npm view @bilig/headless@0.16.27 version dist.attestations dist.signatures --json
+npm view @bilig/headless@0.16.28 version dist.attestations dist.signatures --json
 ```
 
 After installing, npm can verify the current dependency tree:
@@ -174,13 +187,15 @@ and uploaded to GitHub code scanning on every `main` update.
 Use the shortest path that proves the package against a real job.
 
 1. Run the [90-second npm eval](#try-it-in-90-seconds) in a blank project.
-2. Run the flagship
+2. Generate the route-shaped starter:
+   `npm create bilig-workpaper@latest pricing-workpaper`.
+3. Run the flagship
    [serverless WorkPaper API](examples/serverless-workpaper-api) example:
    `npm run quote-approval-api`.
-3. If the workflow starts with an XLSX file, run the
+4. If the workflow starts with an XLSX file, run the
    [XLSX formula recalculation in Node](examples/xlsx-recalculation-node):
    `npm start`.
-4. If an agent needs workbook tools, start with the
+5. If an agent needs workbook tools, start with the
    [MCP server guide](docs/mcp-workpaper-tool-server.md), including the
    copy-paste JSON-RPC transcript for verified write/readback.
 
@@ -327,9 +342,9 @@ It is published in the official MCP Registry as
   It keeps the empty npm-project command, `verified: true` output, benchmark
   caveat, known limits, and feedback ask together.
 - Run `pnpm workpaper:bench:competitive:check`. The checked-in artifact shows
-  [`73/100` comparable WorkPaper mean wins](docs/what-workpaper-benchmark-proves.md)
+  [`74/100` comparable WorkPaper mean wins](docs/what-workpaper-benchmark-proves.md)
   and names the worst p95 holdout:
-  `build-mixed-content` at `2.977x`.
+  `build-mixed-content-large` at `2.933x`.
 - The benchmark card is generated from that artifact:
   [`docs/assets/workpaper-benchmark-card.png`](docs/assets/workpaper-benchmark-card.png).
 - Read the [compatibility limits](docs/where-bilig-is-not-excel-compatible-yet.md)

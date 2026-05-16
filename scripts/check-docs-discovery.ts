@@ -15,6 +15,7 @@ import { requireHomepageDiscovery } from './check-docs-discovery-homepage.ts'
 import { productHuntLaunchAssetFiles, requireGrowthSurfaceDiscovery } from './check-docs-discovery-launch-kit.ts'
 import { getBenchmarkDiscoveryEvidence } from './check-docs-discovery-benchmark-evidence.ts'
 import { llmsExternalSurfaceLinks } from './check-docs-discovery-growth-links.ts'
+import { requireFormulaProofDiscovery } from './check-docs-discovery-proof-pages.ts'
 import { docsSiteSources } from './check-docs-discovery-site-sources.ts'
 import { requireStarterIssueDiscovery } from './check-docs-discovery-starter-issues.ts'
 import { requireTypeScriptFirstPublicSnippets } from './check-docs-discovery-typescript-snippets.ts'
@@ -165,6 +166,7 @@ for (const required of [
   './evaluate-excel-formulas-in-node-typescript.html',
   './try-bilig-headless-in-node.html',
   './quote-approval-workpaper-api.html',
+  './create-bilig-workpaper.html',
   './npm-provenance-package-trust.html',
   './serverless-workpaper-api-route.html',
   './node-framework-workpaper-adapters.html',
@@ -320,49 +322,17 @@ for (const required of agentFrameworkLlmsRequiredLinks) {
   requireIncludes(llms, required, 'docs/llms.txt')
 }
 
-for (const required of [
-  'title: Formula workbooks for Node services and agent tools',
-  'npm install @bilig/headless',
-  'quote-approval-api.ts',
-  '"restoredMatchesAfter": true',
-  'bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --writable',
-  'Use HyperFormula first when you need a mature, broad formula engine',
-  'Use SheetJS or ExcelJS first when the primary job is reading, writing, styling',
-  'Use Google Sheets API first when a shared hosted spreadsheet',
-  `The current checked benchmark artifact records \`${benchmarkEvidence.meanWinHeadline}\` comparable`,
-  benchmarkEvidence.p95HoldoutWorkload,
-  'https://github.com/proompteng/bilig/stargazers',
-  'https://github.com/proompteng/bilig/discussions/new?category=general',
-  'adoption-blocker form',
-] as const) {
-  requireIncludes(formulaWorkbooksProof, required, 'docs/formula-workbooks-node-services-agent-tools.md')
-}
-requireIncludes(readme, 'formula workbooks proof page', 'README.md')
-requireIncludes(readme, 'docs/formula-workbooks-node-services-agent-tools.md', 'README.md')
-requireIncludes(headlessReadme, 'formula workbooks for Node services and agent tools', 'packages/headless/README.md')
-requireIncludes(headlessReadme, 'docs/formula-workbooks-node-services-agent-tools.md', 'packages/headless/README.md')
-requireIncludes(
+requireFormulaProofDiscovery({
+  benchmarkEvidence,
   communityLaunchPack,
-  'https://proompteng.github.io/bilig/formula-workbooks-node-services-agent-tools.html',
-  'docs/community-launch-pack.md',
-)
-requireIncludes(communityLaunchPack, 'Hacker News Submission After The Formula Workbooks Page', 'docs/community-launch-pack.md')
-for (const required of [
-  'title: Show HN: Bilig runs small formula workbooks in Node',
-  '`@bilig/headless@0.16.27`',
-  'curl -fsSLo quickstart.ts https://proompteng.github.io/bilig/npm-eval.ts',
-  '"verified": true',
-  `wins \`${benchmarkEvidence.meanWinHeadline}\` comparable`,
-  `\`${benchmarkEvidence.meanAndP95Headline}\` on both mean and p95`,
-  `\`${benchmarkEvidence.p95HoldoutWorkload}\` is slower at`,
-  'Show HN: Bilig runs small formula workbooks in Node',
-  'https://github.com/proompteng/bilig/stargazers',
-] as const) {
-  requireIncludes(showHnFormulaWorkbooksProof, required, 'docs/show-hn-formula-workbooks-node-services.md')
-}
-requireIncludes(index, './show-hn-formula-workbooks-node-services.html', 'docs/index.html')
-requireIncludes(llms, 'https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html', 'docs/llms.txt')
-requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/show-hn-formula-workbooks-node-services.md', 'docs/llms.txt')
+  formulaWorkbooksProof,
+  headlessReadme,
+  index,
+  llms,
+  readme,
+  requireIncludes,
+  showHnFormulaWorkbooksProof,
+})
 
 for (const required of [
   'title: Fix stale XLSX formula values in Node.js',

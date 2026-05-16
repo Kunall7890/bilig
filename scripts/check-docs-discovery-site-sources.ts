@@ -32,6 +32,7 @@ export const docsSiteSources = [
   ['evaluate-excel-formulas-in-node-typescript.html', 'evaluate-excel-formulas-in-node-typescript.md'],
   ['try-bilig-headless-in-node.html', 'try-bilig-headless-in-node.md'],
   ['quote-approval-workpaper-api.html', 'quote-approval-workpaper-api.md'],
+  ['create-bilig-workpaper.html', 'create-bilig-workpaper.md'],
   ['production-adoption-checklist-headless-workpaper.html', 'production-adoption-checklist-headless-workpaper.md'],
   ['npm-provenance-package-trust.html', 'npm-provenance-package-trust.md'],
   ['workbook-automation-examples-node.html', 'workbook-automation-examples-node.md'],
