@@ -1,7 +1,7 @@
 import { defineQueriesWithType, defineQuery, defineQueryWithType } from '@rocicorp/zero'
 import { z } from 'zod'
 import type { schema } from './schema.js'
-import { safeNonNegativeIntegerSchema } from './integer-schemas.js'
+import { safeNonNegativeIntegerSchema, safePositiveIntegerSchema } from './integer-schemas.js'
 import { zql } from './zql.js'
 
 const defineQueries = defineQueriesWithType<typeof schema>()
@@ -17,15 +17,39 @@ export const workbookThreadArgsSchema = workbookQueryArgsSchema.extend({
 
 const workbookSheetArgsSchema = workbookQueryArgsSchema
   .extend({
-    sheetId: z.string().min(1).optional(),
+    sheetId: safePositiveIntegerSchema.optional(),
     sheetName: z.string().min(1).optional(),
   })
-  .refine((args) => args.sheetId !== undefined || args.sheetName !== undefined, {
-    message: 'sheetId or sheetName is required',
+  .refine((args) => (args.sheetId !== undefined) !== (args.sheetName !== undefined), {
+    message: 'exactly one of sheetId or sheetName is required',
   })
 
-function resolveSheetId(args: z.infer<typeof workbookSheetArgsSchema>): string {
-  return args.sheetId ?? args.sheetName ?? ''
+function scopeCellInputQueryToSheet(args: z.infer<typeof workbookSheetArgsSchema>) {
+  const query = zql.cells.where('workbookId', args.documentId)
+  return args.sheetName !== undefined
+    ? query.where('sheetName', args.sheetName)
+    : query.where((expression) => expression.exists('sheet', (sheetQuery) => sheetQuery.where('sheetId', args.sheetId ?? 0)))
+}
+
+function scopeCellEvalQueryToSheet(args: z.infer<typeof workbookSheetArgsSchema>) {
+  const query = zql.cell_eval.where('workbookId', args.documentId)
+  return args.sheetName !== undefined
+    ? query.where('sheetName', args.sheetName)
+    : query.where((expression) => expression.exists('sheet', (sheetQuery) => sheetQuery.where('sheetId', args.sheetId ?? 0)))
+}
+
+function scopeRowMetadataQueryToSheet(args: z.infer<typeof workbookSheetArgsSchema>) {
+  const query = zql.row_metadata.where('workbookId', args.documentId)
+  return args.sheetName !== undefined
+    ? query.where('sheetName', args.sheetName)
+    : query.where((expression) => expression.exists('sheet', (sheetQuery) => sheetQuery.where('sheetId', args.sheetId ?? 0)))
+}
+
+function scopeColumnMetadataQueryToSheet(args: z.infer<typeof workbookSheetArgsSchema>) {
+  const query = zql.column_metadata.where('workbookId', args.documentId)
+  return args.sheetName !== undefined
+    ? query.where('sheetName', args.sheetName)
+    : query.where((expression) => expression.exists('sheet', (sheetQuery) => sheetQuery.where('sheetId', args.sheetId ?? 0)))
 }
 
 export const workbookCellArgsSchema = workbookSheetArgsSchema.extend({
@@ -68,13 +92,11 @@ const sheetByWorkbook = defineQuery(workbookQueryArgsSchema, ({ args: { document
 )
 
 const cellInputOne = defineQuery(workbookCellArgsSchema, ({ args }) =>
-  zql.cells.where('workbookId', args.documentId).where('sheetName', resolveSheetId(args)).where('address', args.address).one(),
+  scopeCellInputQueryToSheet(args).where('address', args.address).one(),
 )
 
 const cellInputTile = defineQuery(workbookTileArgsSchema, ({ args }) =>
-  zql.cells
-    .where('workbookId', args.documentId)
-    .where('sheetName', resolveSheetId(args))
+  scopeCellInputQueryToSheet(args)
     .where('rowNum', '>=', args.rowStart)
     .where('rowNum', '<=', args.rowEnd)
     .where('colNum', '>=', args.colStart)
@@ -83,14 +105,10 @@ const cellInputTile = defineQuery(workbookTileArgsSchema, ({ args }) =>
     .orderBy('colNum', 'asc'),
 )
 
-const cellEvalOne = defineQuery(workbookCellArgsSchema, ({ args }) =>
-  zql.cell_eval.where('workbookId', args.documentId).where('sheetName', resolveSheetId(args)).where('address', args.address).one(),
-)
+const cellEvalOne = defineQuery(workbookCellArgsSchema, ({ args }) => scopeCellEvalQueryToSheet(args).where('address', args.address).one())
 
 const cellEvalTile = defineQuery(workbookTileArgsSchema, ({ args }) =>
-  zql.cell_eval
-    .where('workbookId', args.documentId)
-    .where('sheetName', resolveSheetId(args))
+  scopeCellEvalQueryToSheet(args)
     .where('rowNum', '>=', args.rowStart)
     .where('rowNum', '<=', args.rowEnd)
     .where('colNum', '>=', args.colStart)
@@ -100,18 +118,14 @@ const cellEvalTile = defineQuery(workbookTileArgsSchema, ({ args }) =>
 )
 
 const sheetRowTile = defineQuery(workbookRowTileArgsSchema, ({ args }) =>
-  zql.row_metadata
-    .where('workbookId', args.documentId)
-    .where('sheetName', resolveSheetId(args))
+  scopeRowMetadataQueryToSheet(args)
     .where('startIndex', '>=', args.rowStart)
     .where('startIndex', '<=', args.rowEnd)
     .orderBy('startIndex', 'asc'),
 )
 
 const sheetColTile = defineQuery(workbookColumnTileArgsSchema, ({ args }) =>
-  zql.column_metadata
-    .where('workbookId', args.documentId)
-    .where('sheetName', resolveSheetId(args))
+  scopeColumnMetadataQueryToSheet(args)
     .where('startIndex', '>=', args.colStart)
     .where('startIndex', '<=', args.colEnd)
     .orderBy('startIndex', 'asc'),

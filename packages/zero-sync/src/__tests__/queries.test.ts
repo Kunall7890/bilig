@@ -13,6 +13,40 @@ describe('zero sync query schemas', () => {
         colEnd: 127,
       }).success,
     ).toBe(true)
+    expect(
+      workbookTileArgsSchema.safeParse({
+        documentId: 'doc-1',
+        sheetId: 7,
+        rowStart: 0,
+        rowEnd: 31,
+        colStart: 0,
+        colEnd: 127,
+      }).success,
+    ).toBe(true)
+  })
+
+  it('rejects ambiguous or fake sheet id routing', () => {
+    expect(
+      workbookTileArgsSchema.safeParse({
+        documentId: 'doc-1',
+        sheetId: '7',
+        rowStart: 0,
+        rowEnd: 31,
+        colStart: 0,
+        colEnd: 127,
+      }).success,
+    ).toBe(false)
+    expect(
+      workbookTileArgsSchema.safeParse({
+        documentId: 'doc-1',
+        sheetId: 7,
+        sheetName: 'Sheet1',
+        rowStart: 0,
+        rowEnd: 31,
+        colStart: 0,
+        colEnd: 127,
+      }).success,
+    ).toBe(false)
   })
 
   it('rejects unsafe workbook tile range integers', () => {

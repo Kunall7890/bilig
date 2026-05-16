@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const storeFns = vi.hoisted(() => ({
   applyAxisMetadataDiff: vi.fn(),
@@ -44,9 +44,48 @@ import {
   ensureWorkbookDocumentExists,
   repairWorkbookSheetIdsForMigration,
 } from '../workbook-migration-store.js'
-import type { Queryable } from '../store.js'
+import type { QueryResultRow, Queryable } from '../store.js'
+
+interface RecordedQuery {
+  readonly text: string
+  readonly values: readonly unknown[] | undefined
+}
+
+class FakeTransactionClient implements Queryable {
+  readonly calls: RecordedQuery[] = []
+  releaseCount = 0
+
+  async query<T extends QueryResultRow = QueryResultRow>(text: string, values?: unknown[]): Promise<{ rows: T[] }> {
+    this.calls.push({ text, values })
+    return { rows: [] }
+  }
+
+  release(): void {
+    this.releaseCount += 1
+  }
+}
+
+class FakeTransactionalQueryable implements Queryable {
+  readonly calls: RecordedQuery[] = []
+  readonly client = new FakeTransactionClient()
+  connectCount = 0
+
+  async query<T extends QueryResultRow = QueryResultRow>(text: string, values?: unknown[]): Promise<{ rows: T[] }> {
+    this.calls.push({ text, values })
+    return { rows: [] as T[] }
+  }
+
+  async connect(): Promise<FakeTransactionClient> {
+    this.connectCount += 1
+    return this.client
+  }
+}
 
 describe('workbook migration store', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('skips projection replacement when the workbook already exists', async () => {
     storeFns.insertWorkbookHeaderIfMissing.mockResolvedValueOnce(false)
     const query = vi.fn()
@@ -57,6 +96,22 @@ describe('workbook migration store', () => {
     expect(storeFns.insertWorkbookHeaderIfMissing).toHaveBeenCalledOnce()
     expect(storeFns.applySheetDiff).not.toHaveBeenCalled()
     expect(query).not.toHaveBeenCalled()
+  })
+
+  it('creates missing workbooks atomically when the queryable supports transactions', async () => {
+    storeFns.insertWorkbookHeaderIfMissing.mockResolvedValueOnce(true)
+    const db = new FakeTransactionalQueryable()
+
+    await ensureWorkbookDocumentExists(db, 'book-1', 'owner-1')
+
+    expect(db.connectCount).toBe(1)
+    expect(db.calls).toEqual([])
+    expect(db.client.releaseCount).toBe(1)
+    expect(db.client.calls[0]?.text).toBe('BEGIN')
+    expect(db.client.calls.at(-1)?.text).toBe('COMMIT')
+    expect(storeFns.insertWorkbookHeaderIfMissing).toHaveBeenCalledWith(db.client, 'book-1', expect.any(Object), expect.any(Object), null)
+    expect(storeFns.applySheetDiff).toHaveBeenCalledWith(db.client, [], expect.any(Array))
+    expect(db.client.calls.some((call) => call.text.includes('DELETE FROM sheets'))).toBe(true)
   })
 
   it('drops the legacy zero-sync schema objects', async () => {
@@ -96,6 +151,46 @@ describe('workbook migration store', () => {
     expect(query).toHaveBeenCalledTimes(3)
     expect(storeFns.upsertWorkbookHeader).not.toHaveBeenCalled()
     expect(storeFns.persistCellEvalRows).not.toHaveBeenCalled()
+  })
+
+  it('serializes projection rebuilds across legacy workbooks on one migration transaction client', async () => {
+    let activeRebuilds = 0
+    let maxActiveRebuilds = 0
+    storeFns.applySheetDiff.mockImplementation(async () => {
+      activeRebuilds += 1
+      maxActiveRebuilds = Math.max(maxActiveRebuilds, activeRebuilds)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      activeRebuilds -= 1
+    })
+    const query = vi.fn(async (text: string) => {
+      if (text.includes('source_projection_version')) {
+        return { rows: [{ id: 'book-1' }, { id: 'book-2' }] }
+      }
+      if (text.includes('to_regclass')) {
+        return { rows: [{ relation: null }] }
+      }
+      if (text.includes('WHERE id = ANY')) {
+        return {
+          rows: ['book-1', 'book-2'].map((id) => ({
+            id,
+            snapshot: null,
+            replica_snapshot: null,
+            head_revision: 0,
+            calculated_revision: 0,
+            owner_user_id: `${id}-owner`,
+            updated_at: '2026-05-16T00:00:00.000Z',
+          })),
+        }
+      }
+      return { rows: [] }
+    })
+    const db: Queryable = { query }
+
+    await backfillWorkbookSourceProjectionVersion(db)
+
+    expect(maxActiveRebuilds).toBe(1)
+    expect(storeFns.applySheetDiff).toHaveBeenCalledTimes(2)
+    expect(storeFns.upsertWorkbookHeader).toHaveBeenCalledTimes(2)
   })
 
   it('rejects invalid workbook revision metadata during projection backfill', async () => {

@@ -29,6 +29,7 @@ import {
 } from './store.js'
 import { persistCellEvalRows } from './workbook-calculation-store.js'
 import { repairWorkbookSheetIds } from './sheet-id-repair.js'
+import { runQueryableTransaction, runSequentially } from './transaction-support.js'
 
 const AUTHORITATIVE_SOURCE_PROJECTION_VERSION = 2
 
@@ -210,11 +211,9 @@ async function rebuildWorkbooksForMigration(
     return
   }
   const rows = await loadWorkbookMigrationRows(db, [...workbookIds])
-  await Promise.all(
-    rows.map(async (row) => {
-      await rebuildWorkbookStateForMigration(db, row, options)
-    }),
-  )
+  await runSequentially(rows, async (row) => {
+    await rebuildWorkbookStateForMigration(db, row, options)
+  })
 }
 
 async function loadLegacyProjectionWorkbookIds(db: Queryable): Promise<Set<string>> {
@@ -239,47 +238,55 @@ async function loadLegacyProjectionWorkbookIds(db: Queryable): Promise<Set<strin
 }
 
 export async function ensureWorkbookDocumentExists(db: Queryable, documentId: string, ownerUserId = 'system'): Promise<void> {
-  const snapshot = createEmptyWorkbookSnapshot(documentId)
-  const updatedAt = nowIso()
-  const projection = buildWorkbookSourceProjection(documentId, snapshot, {
-    revision: 0,
-    calculatedRevision: 0,
-    ownerUserId,
-    updatedBy: ownerUserId,
-    updatedAt,
+  await runQueryableTransaction(db, async (transactionDb) => {
+    const snapshot = createEmptyWorkbookSnapshot(documentId)
+    const updatedAt = nowIso()
+    const projection = buildWorkbookSourceProjection(documentId, snapshot, {
+      revision: 0,
+      calculatedRevision: 0,
+      ownerUserId,
+      updatedBy: ownerUserId,
+      updatedAt,
+    })
+    const inserted = await insertWorkbookHeaderIfMissing(transactionDb, documentId, projection.workbook, snapshot, null)
+    if (!inserted) {
+      return
+    }
+    await replaceWorkbookSourceProjectionForMigration(transactionDb, projection)
   })
-  const inserted = await insertWorkbookHeaderIfMissing(db, documentId, projection.workbook, snapshot, null)
-  if (!inserted) {
-    return
-  }
-  await replaceWorkbookSourceProjectionForMigration(db, projection)
 }
 
 export async function repairWorkbookSheetIdsForMigration(db: Queryable): Promise<void> {
-  await db.query(`UPDATE sheets SET sheet_id = sort_order + 1 WHERE sheet_id IS NULL`)
-  await repairWorkbookSheetIds(db)
+  await runQueryableTransaction(db, async (transactionDb) => {
+    await transactionDb.query(`UPDATE sheets SET sheet_id = sort_order + 1 WHERE sheet_id IS NULL`)
+    await repairWorkbookSheetIds(transactionDb)
+  })
 }
 
 export async function backfillWorkbookSourceProjectionVersion(db: Queryable): Promise<void> {
-  await rebuildWorkbooksForMigration(db, await loadLegacyProjectionWorkbookIds(db), {
-    replaceSourceProjection: true,
-    replaceCellEval: false,
+  await runQueryableTransaction(db, async (transactionDb) => {
+    await rebuildWorkbooksForMigration(transactionDb, await loadLegacyProjectionWorkbookIds(transactionDb), {
+      replaceSourceProjection: true,
+      replaceCellEval: false,
+    })
   })
 }
 
 export async function backfillCellEvalStyleJson(db: Queryable): Promise<void> {
-  const workbookIds = await collectWorkbookIds(
-    db,
-    `
+  await runQueryableTransaction(db, async (transactionDb) => {
+    const workbookIds = await collectWorkbookIds(
+      transactionDb,
+      `
       SELECT DISTINCT workbook_id
       FROM cell_eval
       WHERE style_id IS NOT NULL
         AND style_json IS NULL
     `,
-  )
-  await rebuildWorkbooksForMigration(db, workbookIds, {
-    replaceSourceProjection: false,
-    replaceCellEval: true,
+    )
+    await rebuildWorkbooksForMigration(transactionDb, workbookIds, {
+      replaceSourceProjection: false,
+      replaceCellEval: true,
+    })
   })
 }
 

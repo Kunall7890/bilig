@@ -18,6 +18,7 @@ const workbooks = table('workbooks')
 const sheets = table('sheets')
   .columns({
     workbookId: string().from('workbook_id'),
+    sheetId: number().from('sheet_id'),
     name: string(),
     sortOrder: number().from('sort_order'),
     freezeRows: number().from('freeze_rows'),
@@ -191,6 +192,38 @@ const workbookWorkflowRunRelationships = relationships(workbookWorkflowRun, ({ m
   }),
 }))
 
+const cellRelationships = relationships(cells, ({ one }) => ({
+  sheet: one({
+    sourceField: ['workbookId', 'sheetName'],
+    destField: ['workbookId', 'name'],
+    destSchema: sheets,
+  }),
+}))
+
+const cellEvalRelationships = relationships(cellEval, ({ one }) => ({
+  sheet: one({
+    sourceField: ['workbookId', 'sheetName'],
+    destField: ['workbookId', 'name'],
+    destSchema: sheets,
+  }),
+}))
+
+const rowMetadataRelationships = relationships(rowMetadata, ({ one }) => ({
+  sheet: one({
+    sourceField: ['workbookId', 'sheetName'],
+    destField: ['workbookId', 'name'],
+    destSchema: sheets,
+  }),
+}))
+
+const columnMetadataRelationships = relationships(columnMetadata, ({ one }) => ({
+  sheet: one({
+    sourceField: ['workbookId', 'sheetName'],
+    destField: ['workbookId', 'name'],
+    destSchema: sheets,
+  }),
+}))
+
 export const schema = createSchema({
   tables: [
     workbooks,
@@ -207,8 +240,16 @@ export const schema = createSchema({
     workbookChatThread,
     workbookWorkflowRun,
   ],
-  relationships: [workbookWorkflowRunRelationships],
+  relationships: [
+    workbookWorkflowRunRelationships,
+    cellRelationships,
+    cellEvalRelationships,
+    rowMetadataRelationships,
+    columnMetadataRelationships,
+  ],
 })
+
+export const sheetIdDependentTableNames = ['presence_coarse', 'workbook_change'] as const satisfies readonly (keyof typeof schema.tables)[]
 
 declare module '@rocicorp/zero' {
   interface DefaultTypes {

@@ -26,6 +26,34 @@ class FakeQueryable implements Queryable {
   }
 }
 
+class ConcurrentDetectingQueryable implements Queryable {
+  readonly calls: RecordedQuery[] = []
+  maxActiveUpdates = 0
+  private activeUpdates = 0
+
+  constructor(
+    private readonly responders: readonly ((text: string, values: readonly unknown[] | undefined) => QueryResultRow[] | null)[] = [],
+  ) {}
+
+  async query<T extends QueryResultRow = QueryResultRow>(text: string, values?: unknown[]): Promise<{ rows: T[] }> {
+    this.calls.push({ text, values })
+    const isUpdate = text.includes('UPDATE')
+    if (isUpdate) {
+      this.activeUpdates += 1
+      this.maxActiveUpdates = Math.max(this.maxActiveUpdates, this.activeUpdates)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      this.activeUpdates -= 1
+    }
+    for (const responder of this.responders) {
+      const rows = responder(text, values)
+      if (rows) {
+        return { rows: rows.filter((row): row is T => row !== null) }
+      }
+    }
+    return { rows: [] }
+  }
+}
+
 describe('sheet-id-repair', () => {
   it('preserves unique existing sheet ids and repairs duplicates deterministically', () => {
     const assignments = normalizeWorkbookSheetIdAssignments([
@@ -104,6 +132,45 @@ describe('sheet-id-repair', () => {
       ),
     ).toBe(true)
     expect(queryable.calls.some((call) => call.text.includes('UPDATE workbook_change'))).toBe(false)
+  })
+
+  it('serializes sheet id and dependent-table repair updates', async () => {
+    const queryable = new ConcurrentDetectingQueryable([
+      (text) =>
+        text.includes('FROM sheets')
+          ? [
+              {
+                workbookId: 'doc-1',
+                name: 'Sheet1',
+                sortOrder: 0,
+                sheetId: 2,
+              } satisfies QueryResultRow,
+              {
+                workbookId: 'doc-1',
+                name: 'Sheet2',
+                sortOrder: 1,
+                sheetId: 2,
+              } satisfies QueryResultRow,
+              {
+                workbookId: 'doc-1',
+                name: 'Sheet3',
+                sortOrder: 2,
+                sheetId: null,
+              } satisfies QueryResultRow,
+            ]
+          : null,
+      (text) =>
+        text.includes('FROM pg_tables')
+          ? [{ tableName: 'presence_coarse' } satisfies QueryResultRow, { tableName: 'workbook_change' } satisfies QueryResultRow]
+          : null,
+    ])
+
+    await repairWorkbookSheetIds(queryable)
+
+    expect(queryable.maxActiveUpdates).toBe(1)
+    expect(queryable.calls.filter((call) => call.text.includes('UPDATE sheets'))).toHaveLength(2)
+    expect(queryable.calls.filter((call) => call.text.includes('UPDATE presence_coarse'))).toHaveLength(2)
+    expect(queryable.calls.filter((call) => call.text.includes('UPDATE workbook_change'))).toHaveLength(2)
   })
 
   it('does nothing when sheet ids are already unique', async () => {

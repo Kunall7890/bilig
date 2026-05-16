@@ -1,6 +1,8 @@
+import { sheetIdDependentTableNames } from '@bilig/zero-sync'
 import type { QueryResultRow, Queryable } from './store.js'
+import { runQueryableTransaction, runSequentially } from './transaction-support.js'
 
-const SHEET_ID_DEPENDENT_TABLES = ['presence_coarse', 'workbook_change'] as const
+const SHEET_ID_DEPENDENT_TABLES = sheetIdDependentTableNames
 
 export interface WorkbookSheetIdRow {
   readonly workbookId: string
@@ -118,25 +120,25 @@ async function loadExistingTables(db: Queryable, tableNames: readonly string[]):
 }
 
 export async function repairWorkbookSheetIds(db: Queryable): Promise<void> {
-  const result = await db.query(
-    `
-      SELECT workbook_id AS "workbookId",
-             name,
-             sort_order AS "sortOrder",
-             sheet_id AS "sheetId"
-      FROM sheets
-      ORDER BY workbook_id ASC, sort_order ASC, name ASC
-    `,
-  )
-  const assignments = normalizeWorkbookSheetIdAssignments(readSheetRows(result.rows))
-  const changedAssignments = assignments.filter((assignment) => assignment.previousSheetId !== assignment.nextSheetId)
-  if (changedAssignments.length === 0) {
-    return
-  }
+  await runQueryableTransaction(db, async (transactionDb) => {
+    const result = await transactionDb.query(
+      `
+        SELECT workbook_id AS "workbookId",
+               name,
+               sort_order AS "sortOrder",
+               sheet_id AS "sheetId"
+        FROM sheets
+        ORDER BY workbook_id ASC, sort_order ASC, name ASC
+      `,
+    )
+    const assignments = normalizeWorkbookSheetIdAssignments(readSheetRows(result.rows))
+    const changedAssignments = assignments.filter((assignment) => assignment.previousSheetId !== assignment.nextSheetId)
+    if (changedAssignments.length === 0) {
+      return
+    }
 
-  await Promise.all(
-    changedAssignments.map(async (assignment) => {
-      await db.query(
+    await runSequentially(changedAssignments, async (assignment) => {
+      await transactionDb.query(
         `
           UPDATE sheets
           SET sheet_id = $3
@@ -145,24 +147,23 @@ export async function repairWorkbookSheetIds(db: Queryable): Promise<void> {
         `,
         [assignment.workbookId, assignment.name, assignment.nextSheetId],
       )
-    }),
-  )
+    })
 
-  const existingTables = await loadExistingTables(db, SHEET_ID_DEPENDENT_TABLES)
-  await Promise.all(
-    SHEET_ID_DEPENDENT_TABLES.filter((tableName) => existingTables.has(tableName)).flatMap((tableName) =>
-      changedAssignments.map(async (assignment) => {
-        await db.query(
-          `
-              UPDATE ${tableName}
-              SET sheet_id = $3
-              WHERE workbook_id = $1
-                AND sheet_name = $2
-                AND sheet_id IS DISTINCT FROM $3
-            `,
-          [assignment.workbookId, assignment.name, assignment.nextSheetId],
-        )
-      }),
-    ),
-  )
+    const existingTables = await loadExistingTables(transactionDb, SHEET_ID_DEPENDENT_TABLES)
+    const dependentUpdates = SHEET_ID_DEPENDENT_TABLES.filter((tableName) => existingTables.has(tableName)).flatMap((tableName) =>
+      changedAssignments.map((assignment) => ({ assignment, tableName })),
+    )
+    await runSequentially(dependentUpdates, async ({ assignment, tableName }) => {
+      await transactionDb.query(
+        `
+          UPDATE ${tableName}
+          SET sheet_id = $3
+          WHERE workbook_id = $1
+            AND sheet_name = $2
+            AND sheet_id IS DISTINCT FROM $3
+        `,
+        [assignment.workbookId, assignment.name, assignment.nextSheetId],
+      )
+    })
+  })
 }

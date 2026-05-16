@@ -10,6 +10,7 @@ describe('zero sync schema', () => {
   })
 
   it('exposes the current workbook projection tables', () => {
+    expect(schema.tables.sheets.columns.sheetId.serverName).toBe('sheet_id')
     expect(schema.tables.cells.columns.rowNum.serverName).toBe('row_num')
     expect(schema.tables.cells.columns.styleId.serverName).toBe('style_id')
     expect(schema.tables.cell_eval.columns.calcRevision.serverName).toBe('calc_revision')
@@ -38,6 +39,41 @@ describe('zero sync schema', () => {
         destField: ['workbookId', 'threadId'],
         destSchema: 'workbook_chat_thread',
         cardinality: 'many',
+      },
+    ])
+  })
+
+  it('relates sheet-owned projection rows through the shared sheet id model', () => {
+    expect(schema.relationships.cells.sheet).toEqual([
+      {
+        sourceField: ['workbookId', 'sheetName'],
+        destField: ['workbookId', 'name'],
+        destSchema: 'sheets',
+        cardinality: 'one',
+      },
+    ])
+    expect(schema.relationships.cell_eval.sheet).toEqual([
+      {
+        sourceField: ['workbookId', 'sheetName'],
+        destField: ['workbookId', 'name'],
+        destSchema: 'sheets',
+        cardinality: 'one',
+      },
+    ])
+    expect(schema.relationships.row_metadata.sheet).toEqual([
+      {
+        sourceField: ['workbookId', 'sheetName'],
+        destField: ['workbookId', 'name'],
+        destSchema: 'sheets',
+        cardinality: 'one',
+      },
+    ])
+    expect(schema.relationships.column_metadata.sheet).toEqual([
+      {
+        sourceField: ['workbookId', 'sheetName'],
+        destField: ['workbookId', 'name'],
+        destSchema: 'sheets',
+        cardinality: 'one',
       },
     ])
   })
