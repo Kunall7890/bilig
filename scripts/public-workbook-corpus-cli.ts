@@ -184,7 +184,7 @@ export function readPublicCorpusVerificationBatchLimitArg(
   args: { readonly commandName: string; readonly envVar: string },
 ): number {
   const limit = readNumberArg('--limit', defaultLimit)
-  if (!dryRun && limit > maxInteractiveVerificationBatchLimit && process.env[args.envVar] !== '1') {
+  if (!dryRun && limit > maxInteractiveVerificationBatchLimit && !parseStrictBooleanEnvFlag(process.env[args.envVar], args.envVar, false)) {
     throw new Error(
       `--limit above ${String(
         maxInteractiveVerificationBatchLimit,

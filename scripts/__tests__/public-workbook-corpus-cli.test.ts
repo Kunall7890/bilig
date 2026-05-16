@@ -1147,6 +1147,17 @@ describe('public workbook corpus CLI resource guards', () => {
     expect(result.stderr).toContain('--limit above 20 is disabled for public corpus verify-missing runs')
   })
 
+  it('rejects malformed large verify-missing override values', () => {
+    const result = spawnSync('bun', [corpusScriptPath(), 'verify-missing', '--limit', '21'], {
+      encoding: 'utf8',
+      env: { ...process.env, BILIG_ALLOW_LARGE_PUBLIC_CORPUS_VERIFY_MISSING: 'yes' },
+    })
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain('BILIG_ALLOW_LARGE_PUBLIC_CORPUS_VERIFY_MISSING must be "1", "true", "0", or "false" when set, got yes')
+    expect(result.stderr).not.toContain('at parseStrictBooleanEnvFlag')
+  })
+
   it('refuses large verify-stale tranches unless explicitly enabled', () => {
     const env = { ...process.env }
     delete env.BILIG_ALLOW_LARGE_PUBLIC_CORPUS_VERIFY_STALE
@@ -1158,6 +1169,17 @@ describe('public workbook corpus CLI resource guards', () => {
 
     expect(result.status).not.toBe(0)
     expect(result.stderr).toContain('--limit above 20 is disabled for public corpus verify-stale runs')
+  })
+
+  it('rejects malformed large verify-stale override values', () => {
+    const result = spawnSync('bun', [corpusScriptPath(), 'verify-stale', '--limit', '21'], {
+      encoding: 'utf8',
+      env: { ...process.env, BILIG_ALLOW_LARGE_PUBLIC_CORPUS_VERIFY_STALE: 'yes' },
+    })
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain('BILIG_ALLOW_LARGE_PUBLIC_CORPUS_VERIFY_STALE must be "1", "true", "0", or "false" when set, got yes')
+    expect(result.stderr).not.toContain('at parseStrictBooleanEnvFlag')
   })
 
   it('refuses high-RSS verification on interactive corpus runs', () => {
