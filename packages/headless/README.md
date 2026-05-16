@@ -25,17 +25,17 @@ truth for stale XLSX cached formula values. XLSX import/export is available from
 the `@bilig/headless/xlsx` subpath for services that need workbook ingestion
 around the same WorkPaper model.
 
-## Choose A Proof Path
+## Choose An Evaluation Path
 
-| If you are evaluating... | Start here                                                                                                                                                                               | What should be true before you star, watch, or adopt                                            |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Published npm package    | [90-second Node quickstart](https://proompteng.github.io/bilig/try-bilig-headless-in-node.html)                                                                                          | It edits one input, recalculates, persists JSON, restores, and prints `verified: true`.         |
-| Backend service shape    | [Quote approval WorkPaper API](https://proompteng.github.io/bilig/quote-approval-workpaper-api.html)                                                                                     | A realistic route-style workflow returns formula readback and `restoredMatchesAfter: true`.     |
-| XLSX import/export       | [XLSX formula recalculation example](https://github.com/proompteng/bilig/tree/main/examples/xlsx-recalculation-node)                                                                     | It imports XLSX, edits inputs, recalculates, exports XLSX, reimports, and verifies formulas.    |
-| Agent or MCP tools       | [MCP spreadsheet tool server](https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html)                                                                                         | Tool calls can write an input and return computed readback instead of screenshot claims.        |
-| Public technical review  | [Show HN proof page](https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html)                                                                                    | One shareable page has the npm proof, benchmark caveat, known limits, and adoption-blocker ask. |
-| Trust and performance    | [npm provenance](https://proompteng.github.io/bilig/npm-provenance-package-trust.html) and [benchmark evidence](https://proompteng.github.io/bilig/what-workpaper-benchmark-proves.html) | npm shows SLSA provenance, and benchmark claims match the checked artifact.                     |
-| Almost a fit             | [adoption blocker form](https://github.com/proompteng/bilig/discussions/new?category=general)                                                                                            | Name the formula, import/export, persistence, framework, MCP, package, or benchmark gap.        |
+| If you are evaluating... | Start here                                                                                                                                                                               | What should be true before you star, watch, or adopt                                         |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Published npm package    | [90-second Node quickstart](https://proompteng.github.io/bilig/try-bilig-headless-in-node.html)                                                                                          | It edits one input, recalculates, persists JSON, restores, and prints `verified: true`.      |
+| Backend service shape    | [Quote approval WorkPaper API](https://proompteng.github.io/bilig/quote-approval-workpaper-api.html)                                                                                     | A realistic route-style workflow returns formula readback and `restoredMatchesAfter: true`.  |
+| XLSX import/export       | [XLSX formula recalculation example](https://github.com/proompteng/bilig/tree/main/examples/xlsx-recalculation-node)                                                                     | It imports XLSX, edits inputs, recalculates, exports XLSX, reimports, and verifies formulas. |
+| Agent or MCP tools       | [MCP spreadsheet tool server](https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html)                                                                                         | Tool calls can write an input and return computed readback instead of screenshot claims.     |
+| Public technical review  | [Show HN maintainer note](https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html)                                                                               | One shareable page has the npm check, benchmark caveat, known limits, and feedback ask.      |
+| Trust and performance    | [npm provenance](https://proompteng.github.io/bilig/npm-provenance-package-trust.html) and [benchmark evidence](https://proompteng.github.io/bilig/what-workpaper-benchmark-proves.html) | npm shows SLSA provenance, and benchmark claims match the checked artifact.                  |
+| Almost a fit             | [adoption blocker form](https://github.com/proompteng/bilig/discussions/new?category=general)                                                                                            | Name the formula, import/export, persistence, framework, MCP, package, or benchmark gap.     |
 
 ## Install
 
@@ -485,7 +485,7 @@ pnpm workpaper:xlsx-corpus:check -- /path/to/xlsx-corpus
   It compresses the WorkPaper boundary, MCP file-backed mode, benchmark caveat,
   and alternative-tool guidance into one shareable evaluator path.
 - For HN, Lobsters, Reddit, or newsletter review, use the
-  [Show HN proof page](https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html).
+  [Show HN maintainer note](https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html).
   It keeps the empty npm-project command, `verified: true` output, benchmark
   caveat, known limits, and feedback ask together.
 - Auditing imported Excel files is a separate workflow. Cached formula values

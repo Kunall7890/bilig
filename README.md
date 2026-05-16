@@ -25,14 +25,14 @@ workbook would be ceremony.
 
 Project site: <https://proompteng.github.io/bilig/>
 
-## Choose A Proof Path
+## Choose An Evaluation Path
 
 | If you are evaluating... | Start here | What should be true before you star, watch, or adopt |
 | --- | --- | --- |
 | Published npm package | [90-second Node quickstart](docs/try-bilig-headless-in-node.md) | It edits one input, recalculates, persists JSON, restores, and prints `verified: true`. |
 | Backend service shape | [Quote approval WorkPaper API](docs/quote-approval-workpaper-api.md) | A realistic route-style workflow returns formula readback and `restoredMatchesAfter: true`. |
 | Agent or MCP tools | [MCP spreadsheet tool server](docs/mcp-workpaper-tool-server.md) | Tool calls can write an input and return computed readback instead of screenshot claims. |
-| Public technical review | [Show HN proof page](docs/show-hn-formula-workbooks-node-services.md) | One shareable page has the npm proof, benchmark caveat, known limits, and adoption-blocker ask. |
+| Public technical review | [Show HN maintainer note](docs/show-hn-formula-workbooks-node-services.md) | One shareable page has the npm check, benchmark caveat, known limits, and feedback ask. |
 | Trust and performance | [npm provenance](docs/npm-provenance-package-trust.md) and [benchmark evidence](docs/what-workpaper-benchmark-proves.md) | npm shows SLSA provenance, and benchmark claims match the checked artifact. |
 | Almost a fit | [adoption blocker form](https://github.com/proompteng/bilig/discussions/new?category=general) | Name the formula, import/export, persistence, framework, MCP, package, or benchmark gap. |
 
@@ -319,7 +319,7 @@ It is published in the official MCP Registry as
   It compresses the WorkPaper boundary, MCP file-backed mode, benchmark caveat,
   and alternative-tool guidance into one shareable evaluator path.
 - For HN, Lobsters, Reddit, or newsletter review, use the
-  [Show HN proof page](docs/show-hn-formula-workbooks-node-services.md).
+  [Show HN maintainer note](docs/show-hn-formula-workbooks-node-services.md).
   It keeps the empty npm-project command, `verified: true` output, benchmark
   caveat, known limits, and feedback ask together.
 - Run `pnpm workpaper:bench:competitive:check`. The checked-in artifact shows

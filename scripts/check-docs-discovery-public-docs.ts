@@ -46,7 +46,7 @@ export async function requireSharedPublicDocsDiscovery(args: {
     { path: 'packages/headless/README.md', content: args.headlessReadme },
   ] as const
   requireDocumentsInclude(primaryPublicDocs, [
-    '## Choose A Proof Path',
+    '## Choose An Evaluation Path',
     'If you are evaluating...',
     '90-second Node quickstart',
     'Quote approval WorkPaper API',

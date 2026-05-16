@@ -1,27 +1,27 @@
 ---
-title: Show HN proof for formula workbooks in Node services
+title: Show HN: formula workbooks for Node services
 published: true
-description: A compact launch proof for Bilig: a runnable @bilig/headless npm check, honest benchmark evidence, known limits, and a feedback ask for Hacker News-style evaluators.
+description: A plain maintainer note for Bilig with the npm check, benchmark numbers, limits, and the feedback that would make the project more useful.
 tags: show-hn, typescript, node, spreadsheet, agents
 canonical_url: https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
 image: /assets/github-social-preview.png
 ---
 
-# Show HN proof for formula workbooks in Node services
+# Show HN: formula workbooks for Node services
 
-Bilig is a TypeScript WorkPaper runtime for backend and agent workflows where a
-calculation is easiest to review as cells and formulas, but it needs to run from
-Node instead of from Excel, Google Sheets, or a browser automation script.
+Bilig is a TypeScript WorkPaper runtime for a familiar awkward case: the
+calculation is easiest to review as cells and formulas, but the service needs to
+run it from Node instead of from Excel, Google Sheets, or browser automation.
 
-Use it when code owns the workflow: pricing rules, quote approval, payout
-checks, budget guardrails, import validation, and agent tools that need
-read-after-write proof.
+The fit is narrow on purpose: pricing rules, quote approval, payout checks,
+budget guardrails, import validation, and tool calls that need to change workbook
+inputs and read the calculated result back.
 
-## Run the proof
+## Try the npm package
 
 This starts from an empty directory and uses the published npm package. The
-current checked package proof is `@bilig/headless@0.16.21`.
+current checked package version is `@bilig/headless@0.16.21`.
 
 ```sh
 mkdir bilig-headless-eval
@@ -46,11 +46,11 @@ Expected shape:
 }
 ```
 
-The important line is `"verified": true`: code edited an input cell, the formula
-recalculated, the workbook serialized as WorkPaper JSON, and a restored
-workbook returned the same calculated value.
+The important line is `"verified": true`: the script edited an input cell, read
+the recalculated formula value, serialized the workbook as WorkPaper JSON, and
+restored it with the same calculated output.
 
-## What is different from a formula parser
+## Why not just a formula parser
 
 The useful boundary is not just evaluating `=A1+B1`. A service or agent usually
 needs the whole loop:
@@ -61,8 +61,8 @@ needs the whole loop:
 - persist formulas and values as JSON
 - restore the workbook and prove the same output in CI
 
-That is the reason Bilig exposes a `WorkPaper` object instead of only a scalar
-formula evaluator.
+Bilig exposes a `WorkPaper` object because the workbook state matters as much as
+the scalar formula result.
 
 ## Evidence
 
@@ -87,8 +87,8 @@ Use SheetJS or ExcelJS first when the main job is file reading, writing, or
 styling. Use Google Sheets API first when a shared hosted spreadsheet and human
 collaboration are the product requirement.
 
-Use `@bilig/headless` when a Node service or agent tool owns the workbook state
-and needs formula readback, persistence, and restore proof.
+Use `@bilig/headless` when a Node service or tool owns the workbook state and
+needs formula readback, persistence, and restore checks.
 
 ## If you are evaluating it
 
@@ -96,14 +96,14 @@ The most useful feedback is concrete:
 
 - the workflow you tried
 - the formula or workbook shape that blocked you
-- whether the npm proof worked on your machine
-- the smallest example that would make adoption easier
+- whether the npm check worked on your machine
+- the smallest example that would make you try it in a real service
 
 Open feedback here:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.
 
-If the proof matches a service or agent workflow you want to revisit, star or
-bookmark the repository:
+If this matches a service or tool workflow you want to revisit, star or bookmark
+the repository:
 <https://github.com/proompteng/bilig/stargazers>.
 
 ## Shareable post
@@ -117,18 +117,19 @@ Show HN: Formula workbooks for Node services and agent tools
 Suggested short body:
 
 ```text
-I built Bilig, an open-source TypeScript WorkPaper runtime for cases where
-business logic is easiest to review as spreadsheet cells and formulas, but it
-needs to run in a Node service or agent tool.
+I built Bilig because I kept hitting the same awkward shape: the business rule
+was clearest as a small workbook, but the service needed to run it in Node and
+test the result in CI.
 
-The proof starts from an empty npm project, edits an input cell, reads the
-recalculated formula value, serializes WorkPaper JSON, restores it, and verifies
-the same output.
+The npm check starts from an empty project, edits an input cell, reads the
+recalculated formula value, serializes WorkPaper JSON, restores it, and checks
+the same output again.
 
-It is not a finished Excel clone. The benchmark and caveats are public: 76/100
-mean-latency wins against HyperFormula-style comparable workloads, 73/100
-mean+p95 wins, and structural-append-formula-rows-small is the visible p95 holdout.
+It is not an Excel clone. The current benchmark artifact says 76/100 mean wins
+against HyperFormula-style comparable workloads and 73/100 mean+p95 wins. One
+visible p95 holdout is structural-append-formula-rows-small.
 
-I am looking for concrete adoption blockers: which backend or agent workbook
-workflow would this need to support before you would try it?
+I am looking for concrete misses: formula coverage, XLSX import/export,
+persistence shape, MCP/tool use, or a benchmark that would make you trust or
+reject it faster.
 ```
