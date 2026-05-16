@@ -4,6 +4,19 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.16.27
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.16.26
+- Manual override: no
+
+## Fixes
+- fix: harden recalc completion and structural undo (4c3a9300)
+
+## Internal runtime changes
+- docs(headless): clarify Excel formula compatibility (c552da9b)
+- docs(growth): humanize Show HN copy (62cd354a)
+
 ## 0.16.26
 
 - Release type: patch
