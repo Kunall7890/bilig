@@ -4,6 +4,7 @@ import { ValueTag } from '@bilig/protocol'
 import {
   autofitProjectedColumnWidth,
   normalizeProjectedColumnWidth,
+  normalizeProjectedFreezePaneCount,
   normalizeProjectedRowHeight,
   WorkerRuntimeProjectionCommands,
 } from '../worker-runtime-projection-commands.js'
@@ -32,6 +33,14 @@ describe('worker runtime projection commands', () => {
     expect(() => normalizeProjectedColumnWidth(Number.NaN, 24, 480)).toThrow('Invalid projected column width')
     expect(() => normalizeProjectedColumnWidth(Number.NEGATIVE_INFINITY, 24, 480)).toThrow('Invalid projected column width')
     expect(() => normalizeProjectedColumnWidth(-1, 24, 480)).toThrow('Invalid projected column width')
+  })
+
+  it('rejects invalid freeze pane counts instead of rounding them to a different setting', () => {
+    expect(normalizeProjectedFreezePaneCount(0)).toBe(0)
+    expect(normalizeProjectedFreezePaneCount(2)).toBe(2)
+    expect(() => normalizeProjectedFreezePaneCount(1.5)).toThrow('Invalid projected freeze pane count')
+    expect(() => normalizeProjectedFreezePaneCount(Number.NaN)).toThrow('Invalid projected freeze pane count')
+    expect(() => normalizeProjectedFreezePaneCount(Number.MAX_SAFE_INTEGER + 1)).toThrow('Invalid projected freeze pane count')
   })
 
   it('computes autofit widths from formatted display values and column labels', () => {
@@ -122,6 +131,32 @@ describe('worker runtime projection commands', () => {
     await expect(commands.updateColumnMetadata('Sheet1', 1, 1, Number.POSITIVE_INFINITY, null)).rejects.toThrow(
       'Invalid projected column width',
     )
+    expect(markProjectionDivergedFromLocalStore).not.toHaveBeenCalled()
+    expect(getProjectionEngine).not.toHaveBeenCalled()
+  })
+
+  it('rejects invalid freeze pane counts before marking divergence', async () => {
+    const markProjectionDivergedFromLocalStore = vi.fn()
+    const getProjectionEngine = vi.fn(async () => {
+      throw new Error('Invalid freeze panes must not request the engine')
+    })
+    const commands = new WorkerRuntimeProjectionCommands({
+      markProjectionDivergedFromLocalStore,
+      getProjectionEngine,
+      getCell() {
+        throw new Error('Invalid freeze panes must not read cells')
+      },
+      minColumnWidth: 24,
+      maxColumnWidth: 480,
+      autofitCharWidth: 8,
+      autofitPadding: 12,
+      formatCellDisplayValue(value) {
+        return value.tag === ValueTag.String ? value.value : ''
+      },
+    })
+
+    await expect(commands.setFreezePane('Sheet1', 1.5, 0)).rejects.toThrow('Invalid projected freeze pane count')
+    await expect(commands.setFreezePane('Sheet1', 1, Number.POSITIVE_INFINITY)).rejects.toThrow('Invalid projected freeze pane count')
     expect(markProjectionDivergedFromLocalStore).not.toHaveBeenCalled()
     expect(getProjectionEngine).not.toHaveBeenCalled()
   })

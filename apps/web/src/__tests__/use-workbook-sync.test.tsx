@@ -488,6 +488,7 @@ describe('useWorkbookSync', () => {
     }
 
     await expect(sync.invokeMutation('insertRows', 'Sheet1', Number.NaN, 1)).rejects.toThrow('Invalid insertRows args')
+    await expect(sync.invokeMutation('insertRows', 'Sheet1', Number.MAX_SAFE_INTEGER + 1, 1)).rejects.toThrow('Invalid insertRows args')
     await expect(sync.invokeMutation('updateColumnMetadata', 'Sheet1', 1, 1, Number.POSITIVE_INFINITY, null)).rejects.toThrow(
       'Invalid updateColumnMetadata args',
     )

@@ -8,6 +8,12 @@ function assertFiniteNonNegativeNumber(value: number, message: string): void {
   }
 }
 
+function assertSafeNonNegativeInteger(value: number, message: string): void {
+  if (!Number.isSafeInteger(value) || value < 0) {
+    throw new Error(message)
+  }
+}
+
 export function normalizeProjectedRowHeight(height: number | null): number | null {
   if (height === null) {
     return null
@@ -22,6 +28,11 @@ export function normalizeProjectedColumnWidth(width: number | null, minColumnWid
   }
   assertFiniteNonNegativeNumber(width, 'Invalid projected column width')
   return Math.max(minColumnWidth, Math.min(maxColumnWidth, Math.round(width)))
+}
+
+export function normalizeProjectedFreezePaneCount(count: number): number {
+  assertSafeNonNegativeInteger(count, 'Invalid projected freeze pane count')
+  return count
 }
 
 export function autofitProjectedColumnWidth(args: {
@@ -208,8 +219,10 @@ export class WorkerRuntimeProjectionCommands {
   }
 
   async setFreezePane(sheetName: string, rows: number, cols: number): Promise<void> {
+    const normalizedRows = normalizeProjectedFreezePaneCount(rows)
+    const normalizedCols = normalizeProjectedFreezePaneCount(cols)
     await this.withProjectionMutation((engine) => {
-      engine.setFreezePane(sheetName, Math.max(0, Math.round(rows)), Math.max(0, Math.round(cols)))
+      engine.setFreezePane(sheetName, normalizedRows, normalizedCols)
     })
   }
 
