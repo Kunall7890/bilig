@@ -433,7 +433,7 @@ pnpm workpaper:xlsx-corpus:check -- /path/to/xlsx-corpus
 - Run `pnpm workpaper:bench:competitive:check` from the repository. The
   checked-in artifact shows
   [`48/57` comparable WorkPaper mean wins](https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md)
-  and names the worst p95 holdout: `single-formula-edit-recalc` at `2.682x`.
+  and names the worst p95 holdout: `structural-append-formula-rows` at `3.042x`.
 - The shareable benchmark card is generated from the checked-in artifact:
   [`workpaper-benchmark-card.png`](https://github.com/proompteng/bilig/blob/main/docs/assets/workpaper-benchmark-card.png).
 - Read the

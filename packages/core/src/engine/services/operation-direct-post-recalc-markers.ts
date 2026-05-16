@@ -4,7 +4,12 @@ import { makeCellEntity } from '../../entity-ids.js'
 import type { RuntimeDirectLookupDescriptor, RuntimeDirectScalarDescriptor } from '../runtime-state.js'
 import type { DirectFormulaIndexCollection, DirectScalarCurrentOperand } from './direct-formula-index-collection.js'
 import type { OperationDirectLookupCurrentService } from './operation-direct-lookup-current.js'
-import { directScalarDeltaFromNumbers, directScalarDeltaFromValues, directScalarValueNumber } from './direct-scalar-helpers.js'
+import {
+  directScalarDeltaFromNumbers,
+  directScalarDeltaFromValues,
+  directScalarValueNumber,
+  singleInputAffineDirectScalar,
+} from './direct-scalar-helpers.js'
 
 export interface OperationDirectPostRecalcFormula {
   readonly compiled: {
@@ -22,6 +27,7 @@ export interface OperationDirectPostRecalcMarkerState {
   readonly workbook: {
     readonly cellStore: {
       readonly flags: ArrayLike<number | undefined>
+      readonly tags: ArrayLike<ValueTag | undefined>
       readonly getValue: (cellIndex: number, readString: (stringId: number) => string) => CellValue
     }
   }
@@ -403,12 +409,25 @@ export function createOperationDirectPostRecalcMarkers(args: {
       ) {
         return false
       }
-      const formulaDelta = tryDirectScalarNumericDeltaFromNumbers(formula.directScalar, currentCellIndex, oldNumber, newNumber)
-      if (formulaDelta === undefined) {
+      const affine = singleInputAffineDirectScalar(formula.directScalar, currentCellIndex)
+      let formulaOldNumber: number | undefined
+      let formulaNewNumber: number | undefined
+      let formulaDelta: number | undefined
+      if (affine === null) {
+        formulaOldNumber = args.directScalarCellNumericValue(formulaCellIndex)
+        formulaDelta = tryDirectScalarNumericDeltaFromNumbers(formula.directScalar, currentCellIndex, oldNumber, newNumber)
+      } else {
+        if (args.state.workbook.cellStore.tags[formulaCellIndex] !== ValueTag.Number) {
+          return false
+        }
+        formulaOldNumber = oldNumber * affine.scale + affine.offset
+        formulaNewNumber = newNumber * affine.scale + affine.offset
+        formulaDelta = formulaNewNumber - formulaOldNumber
+      }
+      if (formulaOldNumber === undefined) {
         return false
       }
-      const formulaOldNumber = args.directScalarCellNumericValue(formulaCellIndex)
-      if (formulaOldNumber === undefined) {
+      if (formulaDelta === undefined) {
         return false
       }
       if (canUseValidatedTerminalWrites && !args.canSkipDirectFormulaColumnVersion(formulaCellIndex)) {
@@ -428,7 +447,7 @@ export function createOperationDirectPostRecalcMarkers(args: {
       }
       currentCellIndex = formulaCellIndex
       oldNumber = formulaOldNumber
-      newNumber = formulaOldNumber + formulaDelta
+      newNumber = formulaNewNumber ?? formulaOldNumber + formulaDelta
       closureCount += 1
     }
     if (cellIndices.length === 0) {

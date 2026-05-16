@@ -227,26 +227,30 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     source: string,
   ): void => {
     const formulaEntity = makeCellEntity(cellIndex)
-    const previousDependencies = args.edgeArena.read(existing.dependencyEntities)
+    const previousDependencies = args.edgeArena.readView(existing.dependencyEntities)
     const nextDependencies = prepared.dependencies.dependencyEntities
-    const nextDependencySet = new Set<number>(nextDependencies)
-    const previousDependencySet = new Set<number>(previousDependencies)
+    const dependencyEntitiesChanged = !uint32ArrayEqual(previousDependencies, nextDependencies)
 
-    previousDependencies.forEach((dependencyEntity) => {
-      if (nextDependencySet.has(dependencyEntity)) {
-        return
-      }
-      removeReverseEdge(dependencyEntity, formulaEntity)
-      if (!isRangeEntity(dependencyEntity)) {
-        pruneTrackedDependencyCell(entityPayload(dependencyEntity), cellIndex)
-      }
-    })
-    nextDependencies.forEach((dependencyEntity) => {
-      if (previousDependencySet.has(dependencyEntity)) {
-        return
-      }
-      appendReverseEdge(dependencyEntity, formulaEntity)
-    })
+    if (dependencyEntitiesChanged) {
+      const nextDependencySet = new Set<number>(nextDependencies)
+      const previousDependencySet = new Set<number>(previousDependencies)
+
+      previousDependencies.forEach((dependencyEntity) => {
+        if (nextDependencySet.has(dependencyEntity)) {
+          return
+        }
+        removeReverseEdge(dependencyEntity, formulaEntity)
+        if (!isRangeEntity(dependencyEntity)) {
+          pruneTrackedDependencyCell(entityPayload(dependencyEntity), cellIndex)
+        }
+      })
+      nextDependencies.forEach((dependencyEntity) => {
+        if (previousDependencySet.has(dependencyEntity)) {
+          return
+        }
+        appendReverseEdge(dependencyEntity, formulaEntity)
+      })
+    }
 
     const plan = canRetainUnmanagedCompiledPlan(existing.planId, prepared.plan.compiled, prepared.directScalar)
       ? prepared.plan
@@ -261,7 +265,9 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     existing.compiled = plan.compiled
     existing.plan = plan
     existing.dependencyIndices = prepared.dependencies.dependencyIndices
-    existing.dependencyEntities = args.edgeArena.replace(existing.dependencyEntities, nextDependencies)
+    if (dependencyEntitiesChanged) {
+      existing.dependencyEntities = args.edgeArena.replace(existing.dependencyEntities, nextDependencies)
+    }
     existing.rangeDependencies = prepared.dependencies.rangeDependencies
     existing.graphRangeDependencies = prepared.dependencies.graphRangeDependencies
     existing.runtimeProgram = prepared.runtimeProgram

@@ -58,6 +58,16 @@ function runtimeFormula(engine: SpreadsheetEngine, cellIndex: number): unknown {
   return get.call(formulas, cellIndex)
 }
 
+function columnLabel(col: number): string {
+  let index = col
+  let label = ''
+  do {
+    label = String.fromCharCode(65 + (index % 26)) + label
+    index = Math.floor(index / 26) - 1
+  } while (index >= 0)
+  return label
+}
+
 describe('operation-service dense mutation fast paths', () => {
   it('applies dense row-pair direct scalar batches without general recalculation', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'dense-row-pair-fast-path' })
@@ -381,6 +391,39 @@ describe('operation-service dense mutation fast paths', () => {
 
     engine.setCellValue('Sheet1', 'A13', 99)
     expect(engine.getCellValue('Sheet1', 'E13')).toEqual({ tag: ValueTag.Number, value: 216 })
+  })
+
+  it('replaces same-dependency direct scalar formulas without graph rebuilds', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'same-dependency-formula-replacement-fast-path' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+
+    const downstreamCount = 96
+    engine.setCellValue('Sheet1', 'A1', 1)
+    engine.setCellValue('Sheet1', 'B1', 2)
+    engine.setCellFormula('Sheet1', 'C1', 'A1+B1')
+    for (let col = 3; col <= downstreamCount + 2; col += 1) {
+      engine.setCellFormula('Sheet1', `${columnLabel(col)}1`, `${columnLabel(col - 1)}1+1`)
+    }
+
+    engine.resetPerformanceCounters()
+    engine.setCellFormula('Sheet1', 'C1', 'A1*B1')
+
+    expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(engine.getCellValue('Sheet1', `${columnLabel(downstreamCount + 2)}1`)).toEqual({
+      tag: ValueTag.Number,
+      value: downstreamCount + 2,
+    })
+    expect(engine.getLastMetrics()).toMatchObject({
+      dirtyFormulaCount: 0,
+      jsFormulaCount: 0,
+      wasmFormulaCount: 1,
+    })
+    expect(engine.getPerformanceCounters().directScalarDeltaApplications).toBe(downstreamCount)
+    expect(engine.getPerformanceCounters().directScalarDeltaOnlyRecalcSkips).toBe(1)
+    expect(engine.getPerformanceCounters().topoRebuilds).toBe(0)
+    expect(engine.getPerformanceCounters().topoRepairs).toBe(0)
+    expect(engine.getPerformanceCounters().regionQueryIndexBuilds).toBe(0)
   })
 
   it('handles dense lookup-only numeric column coordinate batches', async () => {
