@@ -66,6 +66,8 @@ export interface TrackedEngineEvent {
   changedCellIndicesSortedDisjoint: boolean
   firstChangedCellIndex?: number
   lastChangedCellIndex?: number
+  trustedPhysicalSheetId?: number
+  trustedSortedSliceSplit?: number
   hasInvalidatedRanges: boolean
   hasInvalidatedRows: boolean
   hasInvalidatedColumns: boolean
@@ -81,6 +83,8 @@ interface CapturedChangedCellIndices {
   readonly sortedDisjoint: boolean
   readonly firstChangedCellIndex?: number
   readonly lastChangedCellIndex?: number
+  readonly trustedPhysicalSheetId?: number
+  readonly trustedSortedSliceSplit?: number
 }
 
 function buildCapturedChangedCellIndices(
@@ -125,6 +129,34 @@ function hasTrustedPhysicalSplitMetadata(changedCellIndices: CoreTrackedEngineEv
   )
 }
 
+function readTrustedPhysicalSplitMetadata(changedCellIndices: CoreTrackedEngineEvent['changedCellIndices']):
+  | {
+      readonly trustedPhysicalSheetId: number
+      readonly trustedSortedSliceSplit: number
+    }
+  | undefined {
+  if (!(changedCellIndices instanceof Uint32Array)) {
+    return undefined
+  }
+  const trustedPhysicalSheetId = Reflect.get(changedCellIndices, TRUSTED_TRACKED_PHYSICAL_SHEET_ID_PROPERTY)
+  const trustedSortedSliceSplit = Reflect.get(changedCellIndices, TRUSTED_TRACKED_PHYSICAL_SORTED_SPLIT_PROPERTY)
+  if (
+    typeof trustedPhysicalSheetId !== 'number' ||
+    !Number.isInteger(trustedPhysicalSheetId) ||
+    trustedPhysicalSheetId < 0 ||
+    typeof trustedSortedSliceSplit !== 'number' ||
+    !Number.isInteger(trustedSortedSliceSplit) ||
+    trustedSortedSliceSplit <= 0 ||
+    trustedSortedSliceSplit >= changedCellIndices.length
+  ) {
+    return undefined
+  }
+  return {
+    trustedPhysicalSheetId,
+    trustedSortedSliceSplit,
+  }
+}
+
 function captureChangedCellIndices(
   changedCellIndices: CoreTrackedEngineEvent['changedCellIndices'],
   cloneChangedCellIndices: boolean,
@@ -153,10 +185,12 @@ function captureChangedCellIndices(
     }
   }
   if (!cloneChangedCellIndices && borrowChangedCellIndexViews && hasTrustedPhysicalSplitMetadata(changedCellIndices)) {
+    const trusted = readTrustedPhysicalSplitMetadata(changedCellIndices)
     return {
       changedCellIndices,
       sortedDisjoint: true,
       ...(length === 0 ? {} : { firstChangedCellIndex: changedCellIndices[0], lastChangedCellIndex: changedCellIndices[length - 1] }),
+      ...(trusted === undefined ? {} : trusted),
     }
   }
   let sortedDisjoint = true
@@ -265,6 +299,12 @@ export function captureTrackedEngineEvent(
       ...(capturedChangedCellIndices.lastChangedCellIndex === undefined
         ? {}
         : { lastChangedCellIndex: capturedChangedCellIndices.lastChangedCellIndex }),
+      ...(capturedChangedCellIndices.trustedPhysicalSheetId === undefined
+        ? {}
+        : { trustedPhysicalSheetId: capturedChangedCellIndices.trustedPhysicalSheetId }),
+      ...(capturedChangedCellIndices.trustedSortedSliceSplit === undefined
+        ? {}
+        : { trustedSortedSliceSplit: capturedChangedCellIndices.trustedSortedSliceSplit }),
       hasInvalidatedRanges: false,
       hasInvalidatedRows: false,
       hasInvalidatedColumns: false,
@@ -284,6 +324,12 @@ export function captureTrackedEngineEvent(
     ...(capturedChangedCellIndices.lastChangedCellIndex === undefined
       ? {}
       : { lastChangedCellIndex: capturedChangedCellIndices.lastChangedCellIndex }),
+    ...(capturedChangedCellIndices.trustedPhysicalSheetId === undefined
+      ? {}
+      : { trustedPhysicalSheetId: capturedChangedCellIndices.trustedPhysicalSheetId }),
+    ...(capturedChangedCellIndices.trustedSortedSliceSplit === undefined
+      ? {}
+      : { trustedSortedSliceSplit: capturedChangedCellIndices.trustedSortedSliceSplit }),
     hasInvalidatedRanges: event.invalidatedRanges.length > 0 || hasPatchKind(event, TRACKED_RANGE_INVALIDATION_PATCH_KIND),
     hasInvalidatedRows: event.invalidatedRows.length > 0 || hasPatchKind(event, TRACKED_ROW_INVALIDATION_PATCH_KIND),
     hasInvalidatedColumns: event.invalidatedColumns.length > 0 || hasPatchKind(event, TRACKED_COLUMN_INVALIDATION_PATCH_KIND),

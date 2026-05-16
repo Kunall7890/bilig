@@ -43,6 +43,8 @@ export function createOperationDirectPostRecalcMarkers(args: {
   readonly state: OperationDirectPostRecalcMarkerState
   readonly getSingleEntityDependent: (entityId: number) => number
   readonly getEntityDependents: (entityId: number) => Uint32Array
+  readonly getSingleCellDependent?: (cellIndex: number) => number
+  readonly getCellDependents?: (cellIndex: number) => Uint32Array
   readonly hasNoCellDependents: (cellIndex: number) => boolean
   readonly canSkipDirectFormulaColumnVersion: (cellIndex: number) => boolean
   readonly readDirectScalarCellNumber: (cellIndex: number) => number | undefined
@@ -57,6 +59,12 @@ export function createOperationDirectPostRecalcMarkers(args: {
   >
   readonly scalarDeltaClosureLimit: number
 }) {
+  const getSingleCellDependent =
+    args.getSingleCellDependent ?? ((cellIndex: number): number => args.getSingleEntityDependent(makeCellEntity(cellIndex)))
+
+  const getCellDependents =
+    args.getCellDependents ?? ((cellIndex: number): Uint32Array => args.getEntityDependents(makeCellEntity(cellIndex)))
+
   const tryDirectScalarNumericDelta = (
     directScalar: RuntimeDirectScalarDescriptor,
     changedCellIndex: number,
@@ -105,7 +113,7 @@ export function createOperationDirectPostRecalcMarkers(args: {
     approximateLookupValue: number | undefined,
     postRecalcDirectFormulaIndices: DirectFormulaIndexCollection,
   ): boolean => {
-    const singleDependent = args.getSingleEntityDependent(makeCellEntity(cellIndex))
+    const singleDependent = getSingleCellDependent(cellIndex)
     if (singleDependent === -1) {
       return true
     }
@@ -125,7 +133,7 @@ export function createOperationDirectPostRecalcMarkers(args: {
       return true
     }
 
-    const dependents = args.getEntityDependents(makeCellEntity(cellIndex))
+    const dependents = getCellDependents(cellIndex)
     for (let index = 0; index < dependents.length; index += 1) {
       const formulaCellIndex = dependents[index]!
       if (!canUseDirectFormulaPostRecalc(formulaCellIndex)) {
@@ -162,7 +170,7 @@ export function createOperationDirectPostRecalcMarkers(args: {
     oldValue?: CellValue,
     newValue?: CellValue,
   ): boolean => {
-    const singleDependent = args.getSingleEntityDependent(makeCellEntity(cellIndex))
+    const singleDependent = getSingleCellDependent(cellIndex)
     if (singleDependent === -1) {
       return true
     }
@@ -202,7 +210,7 @@ export function createOperationDirectPostRecalcMarkers(args: {
       postRecalcDirectFormulaIndices.add(singleDependent)
       return true
     }
-    const dependents = args.getEntityDependents(makeCellEntity(cellIndex))
+    const dependents = getCellDependents(cellIndex)
     for (let index = 0; index < dependents.length; index += 1) {
       if (!canUseDirectFormulaPostRecalc(dependents[index]!)) {
         return false
@@ -291,7 +299,7 @@ export function createOperationDirectPostRecalcMarkers(args: {
     exactLookupValue?: number,
     approximateLookupValue?: number,
   ): boolean => {
-    const singleDependent = args.getSingleEntityDependent(makeCellEntity(cellIndex))
+    const singleDependent = getSingleCellDependent(cellIndex)
     if (singleDependent === -1) {
       return true
     }
@@ -320,7 +328,7 @@ export function createOperationDirectPostRecalcMarkers(args: {
       return true
     }
 
-    const dependents = args.getEntityDependents(makeCellEntity(cellIndex))
+    const dependents = getCellDependents(cellIndex)
     if (dependents.length === 0) {
       return true
     }
@@ -389,7 +397,7 @@ export function createOperationDirectPostRecalcMarkers(args: {
       if (closureCount > args.scalarDeltaClosureLimit) {
         return false
       }
-      const formulaCellIndex = args.getSingleEntityDependent(makeCellEntity(currentCellIndex))
+      const formulaCellIndex = getSingleCellDependent(currentCellIndex)
       if (formulaCellIndex === -1) {
         break
       }
@@ -470,11 +478,11 @@ export function createOperationDirectPostRecalcMarkers(args: {
     newValue: CellValue,
     postRecalcDirectFormulaIndices: DirectFormulaIndexCollection,
   ): void => {
-    const rootDependent = args.getSingleEntityDependent(makeCellEntity(rootCellIndex))
+    const rootDependent = getSingleCellDependent(rootCellIndex)
     if (rootDependent < 0 || postRecalcDirectFormulaIndices.hasDelta(rootDependent)) {
       return
     }
-    if (args.getSingleEntityDependent(makeCellEntity(rootDependent)) === -1) {
+    if (getSingleCellDependent(rootDependent) === -1) {
       return
     }
     if (tryMarkDirectScalarLinearDeltaClosure(rootCellIndex, oldValue, newValue, postRecalcDirectFormulaIndices)) {
@@ -490,7 +498,7 @@ export function createOperationDirectPostRecalcMarkers(args: {
         return
       }
       const current = pending[cursor]!
-      const dependents = args.getEntityDependents(makeCellEntity(current.cellIndex))
+      const dependents = getCellDependents(current.cellIndex)
       for (let index = 0; index < dependents.length; index += 1) {
         const formulaCellIndex = dependents[index]!
         if (visited.has(formulaCellIndex)) {

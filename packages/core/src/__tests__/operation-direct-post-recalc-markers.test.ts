@@ -43,10 +43,15 @@ function createMarkers(input: {
   readonly entityDependents?: Map<number, Uint32Array>
   readonly canSkipDirectFormulaColumnVersion?: (cellIndex: number) => boolean
 }) {
+  const tags: ValueTag[] = []
+  input.numbers.forEach((_value, cellIndex) => {
+    tags[cellIndex] = ValueTag.Number
+  })
   const state: MarkerArgs['state'] = {
     workbook: {
       cellStore: {
         flags: [],
+        tags,
         getValue: (cellIndex: number) => numberValue(input.numbers.get(cellIndex) ?? 0),
       },
     },

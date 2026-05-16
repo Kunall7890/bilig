@@ -183,6 +183,8 @@ export interface CreateEngineOperationServiceArgs {
   readonly setBatchMutationDepth: (next: number) => void
   readonly getEntityDependents: (entityId: number) => Uint32Array
   readonly getSingleEntityDependent: (entityId: number) => number
+  readonly getCellDependents?: (cellIndex: number) => Uint32Array
+  readonly getSingleCellDependent?: (cellIndex: number) => number
   readonly collectFormulaDependents: (entityId: number) => Uint32Array
   readonly hasRegionFormulaSubscriptionsForColumn: (sheetName: string, col: number) => boolean
   readonly hasRegionFormulaSubscriptionsForColumnAt?: (sheetId: number, col: number) => boolean

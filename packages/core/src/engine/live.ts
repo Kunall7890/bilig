@@ -724,6 +724,8 @@ export function createEngineServiceRuntime(args: {
     prepareRegionQueryIndices: () => regionGraph.prepareQueryIndices(),
     getEntityDependents: (entityId) => traversal.getEntityDependentsNow(entityId),
     getSingleEntityDependent: (entityId) => traversal.getSingleEntityDependentNow(entityId),
+    getCellDependents: (cellIndex) => traversal.getCellDependentsNow(cellIndex),
+    getSingleCellDependent: (cellIndex) => traversal.getSingleCellDependentNow(cellIndex),
     collectFormulaDependents: (entityId) => traversal.collectFormulaDependentsNow(entityId),
     noteExactLookupLiteralWrite: (request) => exactLookup.recordLiteralWrite(request),
     noteAggregateLiteralWrite: (request) => aggregateStateStore.noteLiteralWrite(request),

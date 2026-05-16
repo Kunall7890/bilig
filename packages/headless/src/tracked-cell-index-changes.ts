@@ -44,6 +44,8 @@ export interface TrackedIndexChangeSource {
   readonly changedCellIndicesSortedDisjoint?: boolean
   readonly firstChangedCellIndex?: number
   readonly lastChangedCellIndex?: number
+  readonly trustedPhysicalSheetId?: number
+  readonly trustedSortedSliceSplit?: number
   readonly patches?: readonly unknown[]
   readonly hasInvalidatedRanges?: boolean
   readonly hasInvalidatedRows?: boolean
@@ -66,6 +68,17 @@ function withSourceExplicitChangedCount(
   explicitChangedCount: number | undefined,
 ): TrackedIndexMaterializationOptions {
   return explicitChangedCount === undefined ? options : { ...options, explicitChangedCount }
+}
+
+function withTrackedSourceOptions(
+  options: TrackedIndexMaterializationOptions,
+  source: TrackedIndexChangeSource,
+): TrackedIndexMaterializationOptions {
+  return {
+    ...withSourceExplicitChangedCount(options, source.explicitChangedCount),
+    ...(source.trustedPhysicalSheetId === undefined ? {} : { trustedPhysicalSheetId: source.trustedPhysicalSheetId }),
+    ...(source.trustedSortedSliceSplit === undefined ? {} : { trustedSortedSliceSplit: source.trustedSortedSliceSplit }),
+  }
 }
 
 export function materializeTrackedIndexChangesWithMetadata(
@@ -347,6 +360,21 @@ export function materializeTrackedIndexChangeSourcesWithMetadata(
       return null
     }
   }
+  if (options.lazy === true && cellChangeSources.length === 1) {
+    const source = cellChangeSources[0]!
+    if (source.trustedPhysicalSheetId !== undefined) {
+      const materialized = materializeTrackedIndexChangesWithMetadata(
+        engine,
+        source.changedCellIndices,
+        withTrackedSourceOptions(options, source),
+      )
+      return {
+        changes: materialized.changes,
+        ordered: materialized.ordered,
+        usedSortedDisjointFastPath: true,
+      }
+    }
+  }
   const lazySameSheetChanges = tryCreateLazySameSheetTrackedSourceChanges(engine, cellChangeSources, {
     deferLazyDetach: options.deferLazyDetach === true,
     preferLazyPublicChanges: options.lazy === true,
@@ -359,7 +387,7 @@ export function materializeTrackedIndexChangeSourcesWithMetadata(
     const materialized = materializeTrackedIndexChangesWithMetadata(
       engine,
       source.changedCellIndices,
-      withSourceExplicitChangedCount(options, source.explicitChangedCount),
+      withTrackedSourceOptions(options, source),
     )
     return {
       changes: materialized.changes,
@@ -395,7 +423,7 @@ export function materializeTrackedIndexChangeSourcesWithMetadata(
     const materialized = materializeTrackedIndexChangesWithMetadata(
       engine,
       source.changedCellIndices,
-      withSourceExplicitChangedCount(options, source.explicitChangedCount),
+      withTrackedSourceOptions(options, source),
     )
     materializedSources[sourceIndex] = materialized
     if (!materialized.ordered) {
@@ -446,11 +474,7 @@ function materializeTrackedIndexChangeSourcesGeneric(
     const source = sources[sourceIndex]!
     const materialized =
       materializedSources[sourceIndex] ??
-      materializeTrackedIndexChangesWithMetadata(
-        engine,
-        source.changedCellIndices,
-        withSourceExplicitChangedCount(options, source.explicitChangedCount),
-      )
+      materializeTrackedIndexChangesWithMetadata(engine, source.changedCellIndices, withTrackedSourceOptions(options, source))
     for (let changeIndex = 0; changeIndex < materialized.changes.length; changeIndex += 1) {
       const change = materialized.changes[changeIndex]!
       const key = makeCellKey(change.address.sheet, change.address.row, change.address.col)

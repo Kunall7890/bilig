@@ -324,6 +324,8 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
     state: args.state,
     getSingleEntityDependent: args.getSingleEntityDependent,
     getEntityDependents: args.getEntityDependents,
+    ...(args.getSingleCellDependent === undefined ? {} : { getSingleCellDependent: args.getSingleCellDependent }),
+    ...(args.getCellDependents === undefined ? {} : { getCellDependents: args.getCellDependents }),
     hasNoCellDependents,
     canSkipDirectFormulaColumnVersion: canSkipFormulaColumnVersion,
     readDirectScalarCellNumber,

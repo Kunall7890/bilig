@@ -370,6 +370,51 @@ describe('materializeTrackedIndexChanges', () => {
     expect(result?.changes && hasDeferredTrackedIndexChanges(result.changes)).toBe(false)
   })
 
+  it('trusts preserved physical split metadata for lazy single-source changes', () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'tracked-index-trusted-lazy-source' })
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 1)
+    engine.setCellValue('Sheet1', 'B1', 2)
+    engine.setCellValue('Sheet1', 'C1', 3)
+    engine.setCellValue('Sheet1', 'D1', 4)
+
+    const sheetId = engine.workbook.getSheet('Sheet1')?.id
+    const a1 = engine.workbook.getCellIndex('Sheet1', 'A1')
+    const b1 = engine.workbook.getCellIndex('Sheet1', 'B1')
+    const c1 = engine.workbook.getCellIndex('Sheet1', 'C1')
+    const d1 = engine.workbook.getCellIndex('Sheet1', 'D1')
+    expect(sheetId).toBeDefined()
+    expect(a1).toBeDefined()
+    expect(b1).toBeDefined()
+    expect(c1).toBeDefined()
+    expect(d1).toBeDefined()
+
+    const result = materializeTrackedIndexChangeSourcesWithMetadata(
+      engine,
+      [
+        {
+          changedCellIndices: Uint32Array.of(c1, d1, a1, b1),
+          changedCellIndicesSortedDisjoint: true,
+          firstChangedCellIndex: c1,
+          lastChangedCellIndex: b1,
+          trustedPhysicalSheetId: sheetId,
+          trustedSortedSliceSplit: 2,
+        },
+      ],
+      { lazy: true },
+    )
+
+    expect(result).not.toBeNull()
+    expect(result?.usedSortedDisjointFastPath).toBe(true)
+    expect(result?.changes && hasDeferredTrackedIndexChanges(result.changes)).toBe(true)
+    expect(result?.changes.map((change) => [change.a1, change.newValue])).toEqual([
+      ['A1', { tag: ValueTag.Number, value: 1 }],
+      ['B1', { tag: ValueTag.Number, value: 2 }],
+      ['C1', { tag: ValueTag.Number, value: 3 }],
+      ['D1', { tag: ValueTag.Number, value: 4 }],
+    ])
+  })
+
   it('ignores no-cell structural invalidation sources when materializing cell changes lazily', () => {
     const rowCount = 300
     const engine = new SpreadsheetEngine({ workbookName: 'tracked-index-sources-lazy-after-rows' })

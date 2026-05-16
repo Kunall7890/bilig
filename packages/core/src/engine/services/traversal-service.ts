@@ -28,6 +28,8 @@ export interface EngineTraversalService {
   ) => Effect.Effect<void, EngineTraversalError>
   readonly getEntityDependentsNow: (entityId: number) => Uint32Array
   readonly getSingleEntityDependentNow: (entityId: number) => number
+  readonly getCellDependentsNow: (cellIndex: number) => Uint32Array
+  readonly getSingleCellDependentNow: (cellIndex: number) => number
   readonly collectFormulaDependentsNow: (entityId: number) => Uint32Array
   readonly forEachFormulaDependencyCellNow: (cellIndex: number, fn: (dependencyCellIndex: number) => void) => void
   readonly forEachSheetCellNow: (sheetId: number, fn: (cellIndex: number, row: number, col: number) => void) => void
@@ -115,6 +117,20 @@ export function createEngineTraversalService(args: {
 
   const getEntityDependentsNow = (entityId: number): Uint32Array =>
     args.edgeArena.readView(getReverseEdgeSlice(entityId) ?? args.edgeArena.empty())
+
+  const getCellDependentsNow = (cellIndex: number): Uint32Array =>
+    args.edgeArena.readView(args.reverseState.reverseCellEdges[cellIndex] ?? args.edgeArena.empty())
+
+  const getSingleCellDependentNow = (cellIndex: number): number => {
+    const slice = args.reverseState.reverseCellEdges[cellIndex]
+    if (!slice || slice.len === 0 || slice.ptr < 0) {
+      return NO_ENTITY_DEPENDENT
+    }
+    if (slice.len !== 1) {
+      return MULTIPLE_ENTITY_DEPENDENTS
+    }
+    return args.edgeArena.valueAt(slice, 0)
+  }
 
   const getSingleEntityDependentNow = (entityId: number): number => {
     const slice = getReverseEdgeSlice(entityId)
@@ -426,6 +442,8 @@ export function createEngineTraversalService(args: {
     },
     getEntityDependentsNow,
     getSingleEntityDependentNow,
+    getCellDependentsNow,
+    getSingleCellDependentNow,
     collectFormulaDependentsNow,
     forEachFormulaDependencyCellNow,
     forEachSheetCellNow,

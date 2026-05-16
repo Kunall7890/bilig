@@ -130,6 +130,8 @@ describe('captureTrackedEngineEvent', () => {
     expect(tracked.changedCellIndicesSortedDisjoint).toBe(true)
     expect(tracked.firstChangedCellIndex).toBe(2)
     expect(tracked.lastChangedCellIndex).toBe(3)
+    expect(tracked.trustedPhysicalSheetId).toBe(1)
+    expect(tracked.trustedSortedSliceSplit).toBe(2)
   })
 
   it('omits empty patch arrays from tracked events', () => {
