@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.14.28
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.14.27
+- Manual override: no
+
+## Fixes
+- perf(headless): streamline direct aggregate binding (91424682)
+
 ## 0.14.27
 
 - Release type: patch
