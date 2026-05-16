@@ -24,6 +24,7 @@ import {
   makeExistingNumericMutationResult,
   tagTrustedPhysicalTrackedChanges,
 } from './operation-change-helpers.js'
+import { recordKernelSyncOnlyLiteralChange } from './operation-kernel-sync-only-literal-change.js'
 import { tryApplySinglePostRecalcDirectFormula, type DirectFormulaMetricCounts } from './operation-post-recalc-direct-formulas.js'
 
 const DIRECT_RANGE_POST_RECALC_LIMIT = 16_384
@@ -307,22 +308,13 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
       }
       const cellIndex = args.state.workbook.ensureCellAt(ref.sheetId, mutation.row, mutation.col).cellIndex
       writeNumericLiteralToExistingCell(cellIndex, mutation.value)
-      deferSingleCellKernelSync(cellIndex)
-      const lastMetrics = makeSingleLiteralSkipMetrics()
-      args.state.setLastMetrics(lastMetrics)
-      addEngineCounter(args.state.counters, 'kernelSyncOnlyRecalcSkips')
-      if (hasTrackedEventListeners) {
-        args.state.events.emitTracked({
-          kind: 'batch',
-          invalidation: 'cells',
-          changedCellIndices: Uint32Array.of(cellIndex),
-          invalidatedRanges: [],
-          invalidatedRows: [],
-          invalidatedColumns: [],
-          metrics: lastMetrics,
-          explicitChangedCount: 1,
-        })
-      }
+      recordKernelSyncOnlyLiteralChange({
+        state: args.state,
+        cellIndex,
+        deferSingleCellKernelSync,
+        makeSingleLiteralSkipMetrics,
+        emitTracked: hasTrackedEventListeners,
+      })
       return true
     }
     if (existingIndex === -1 || !canFastPathLiteralOverwrite(existingIndex)) {
@@ -440,22 +432,13 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
         if (needsSortedPatch && !patchedLookupOwners.sorted) {
           args.invalidateSortedLookupColumn({ sheetName, col: mutation.col })
         }
-        addEngineCounter(args.state.counters, 'kernelSyncOnlyRecalcSkips')
-        deferSingleCellKernelSync(existingIndex)
-        const lastMetrics = makeSingleLiteralSkipMetrics()
-        args.state.setLastMetrics(lastMetrics)
-        if (hasTrackedEventListeners) {
-          args.state.events.emitTracked({
-            kind: 'batch',
-            invalidation: 'cells',
-            changedCellIndices: Uint32Array.of(existingIndex),
-            invalidatedRanges: [],
-            invalidatedRows: [],
-            invalidatedColumns: [],
-            metrics: lastMetrics,
-            explicitChangedCount: 1,
-          })
-        }
+        recordKernelSyncOnlyLiteralChange({
+          state: args.state,
+          cellIndex: existingIndex,
+          deferSingleCellKernelSync,
+          makeSingleLiteralSkipMetrics,
+          emitTracked: hasTrackedEventListeners,
+        })
         return true
       }
       if (
@@ -814,23 +797,13 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
             columnVersion: currentColumnVersion,
           }
         }
-        addEngineCounter(args.state.counters, 'kernelSyncOnlyRecalcSkips')
-        deferSingleCellKernelSync(existingIndex)
-        const lastMetrics = makeSingleLiteralSkipMetrics()
-        args.state.setLastMetrics(lastMetrics)
-        const changedCellIndices = Uint32Array.of(existingIndex)
-        if (hasTrackedEventListeners) {
-          args.state.events.emitTracked({
-            kind: 'batch',
-            invalidation: 'cells',
-            changedCellIndices,
-            invalidatedRanges: [],
-            invalidatedRows: [],
-            invalidatedColumns: [],
-            metrics: lastMetrics,
-            explicitChangedCount: 1,
-          })
-        }
+        const { changedCellIndices } = recordKernelSyncOnlyLiteralChange({
+          state: args.state,
+          cellIndex: existingIndex,
+          deferSingleCellKernelSync,
+          makeSingleLiteralSkipMetrics,
+          emitTracked: hasTrackedEventListeners,
+        })
         return makeExistingNumericMutationResult(changedCellIndices, 1)
       }
     }

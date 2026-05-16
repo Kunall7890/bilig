@@ -658,6 +658,12 @@ describe('EngineOperationService metadata and object batches', () => {
       expect.objectContaining({
         changedCellIndices: new Uint32Array([cellIndex!]),
         explicitChangedCount: 1,
+        metrics: expect.objectContaining({
+          changedInputCount: 1,
+          dirtyFormulaCount: 0,
+          wasmFormulaCount: 0,
+          jsFormulaCount: 0,
+        }),
       }),
     )
     unsubscribe()
