@@ -307,7 +307,7 @@ It is published in the official MCP Registry as
   and alternative-tool guidance into one shareable evaluator path.
 - Run `pnpm workpaper:bench:competitive:check`. The checked-in artifact shows
   [`46/57` comparable WorkPaper mean wins](docs/what-workpaper-benchmark-proves.md)
-  and names the worst p95 holdout: `lookup-with-column-index` at `4.264x` (`4.26x` rounded).
+  and names the worst p95 holdout: `lookup-with-column-index` at `4.39x` (`4.39x` rounded).
 - The benchmark card is generated from that artifact:
   [`docs/assets/workpaper-benchmark-card.png`](docs/assets/workpaper-benchmark-card.png).
 - Read the [compatibility limits](docs/where-bilig-is-not-excel-compatible-yet.md)

@@ -131,7 +131,10 @@ export function applyWorkPaperMatrixContents(input: {
     return
   }
 
-  const canApplyFormulaMatrixInOnePass = trailingLiteralRefs.length === 0 && !dimensionImpact.hasDynamicFormula
+  const canApplyFormulaMatrixInOnePass =
+    trailingLiteralRefs.length === 0 &&
+    !dimensionImpact.hasDynamicFormula &&
+    !canApplyLeadingRefsThroughFreshNumericFastPath(leadingRefs, leadingPotentialNewCells)
   if (canApplyFormulaMatrixInOnePass) {
     const mergedRefs = mergeMatrixMutationRefPhases(leadingRefs, formulaRefs, trailingLiteralRefs)
     const applyOptions = createApplyOptions()
@@ -176,4 +179,22 @@ function mergeMatrixMutationRefPhases(
     return trailingLiteralRefs
   }
   return [...leadingRefs, ...formulaRefs, ...trailingLiteralRefs]
+}
+
+function canApplyLeadingRefsThroughFreshNumericFastPath(
+  leadingRefs: readonly EngineCellMutationRef[],
+  leadingPotentialNewCells: number,
+): boolean {
+  if (leadingRefs.length < 32 || leadingPotentialNewCells !== leadingRefs.length) {
+    return false
+  }
+  return leadingRefs.every((ref) => {
+    const mutation = ref.mutation
+    return (
+      ref.cellIndex === undefined &&
+      mutation.kind === 'setCellValue' &&
+      typeof mutation.value === 'number' &&
+      !Object.is(mutation.value, -0)
+    )
+  })
 }

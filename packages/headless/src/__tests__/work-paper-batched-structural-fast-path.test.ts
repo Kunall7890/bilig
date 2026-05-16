@@ -21,6 +21,10 @@ interface TestEngineRuntimeSupport {
   clearOwnedSpillNow(...args: unknown[]): unknown
 }
 
+interface TestEngineCellMutationApplySupport {
+  applyCellMutationsAtWithOptions(...args: unknown[]): unknown
+}
+
 function hasSheetDimensionCacheUpdater(value: unknown): value is TestSheetDimensionCache {
   return (
     typeof value === 'object' &&
@@ -32,6 +36,10 @@ function hasSheetDimensionCacheUpdater(value: unknown): value is TestSheetDimens
 
 function hasClearOwnedSpill(value: unknown): value is TestEngineRuntimeSupport {
   return typeof value === 'object' && value !== null && typeof Reflect.get(value, 'clearOwnedSpillNow') === 'function'
+}
+
+function hasCellMutationApplySupport(value: unknown): value is TestEngineCellMutationApplySupport {
+  return typeof value === 'object' && value !== null && typeof Reflect.get(value, 'applyCellMutationsAtWithOptions') === 'function'
 }
 
 function isCellChangeArray(changes: WorkPaperChange[]): changes is Extract<WorkPaperChange, { kind: 'cell' }>[] {
@@ -142,6 +150,12 @@ describe('work paper batched structural fast path', () => {
     })
     const sheetId = workbook.getSheetId('Data')!
     const appendCount = 96
+    const engine: unknown = Reflect.get(workbook, 'engine')
+    if (!hasCellMutationApplySupport(engine)) {
+      throw new Error('Expected WorkPaper to expose cell mutation application in tests')
+    }
+    const applyCellMutations = vi.spyOn(engine, 'applyCellMutationsAtWithOptions')
+    const dimensionUpdates = trackSheetDimensionCacheUpdates(workbook)
     const rows = Array.from({ length: appendCount }, (_, index) => {
       const rowNumber = index + 3
       return [rowNumber, rowNumber * 2, `=SUM(A${rowNumber}:B${rowNumber})`]
@@ -167,11 +181,26 @@ describe('work paper batched structural fast path', () => {
       a1: `C${appendCount + 2}`,
       newValue: { tag: ValueTag.Number, value: (appendCount + 2) * 3 },
     })
+    expect(applyCellMutations).toHaveBeenCalledTimes(2)
+    expect(applyCellMutations.mock.calls[0]?.[0]).toHaveLength(appendCount * 2)
+    expect(applyCellMutations.mock.calls[0]?.[1]).toMatchObject({
+      potentialNewCells: appendCount * 2,
+    })
+    expect(applyCellMutations.mock.calls[1]?.[0]).toHaveLength(appendCount)
+    expect(applyCellMutations.mock.calls[1]?.[1]).toMatchObject({
+      potentialNewCells: appendCount,
+    })
+    expect(dimensionUpdates.matrixImpactCount).toBe(1)
+    expect(dimensionUpdates.refScanCount).toBe(0)
     expect(workbook.getPerformanceCounters()).toMatchObject({
       calcChainFullScans: 0,
       directAggregateScanEvaluations: 0,
+      directFormulaKernelSyncOnlyRecalcSkips: 1,
+      kernelSyncOnlyRecalcSkips: 1,
       regionQueryIndexBuilds: 0,
       topoRepairs: 0,
     })
+    applyCellMutations.mockRestore()
+    dimensionUpdates.restore()
   })
 })

@@ -17,15 +17,15 @@ scoped lead with visible holdouts, not a blanket fastest-engine claim:
 | Lane    | Comparable Workloads | WorkPaper Mean Wins | HyperFormula Mean Wins |
 | ------- | -------------------: | ------------------: | ---------------------: |
 | Overall |                 `57` |                `46` |                  `11` |
-| Public  |                 `40` |                `34` |                   `6` |
-| Holdout |                 `17` |                `12` |                    `5` |
+| Public  |                 `40` |                `33` |                   `7` |
+| Holdout |                 `17` |                `13` |                    `4` |
 
 The artifact is
 [`packages/benchmarks/baselines/workpaper-vs-hyperformula.json`](../packages/benchmarks/baselines/workpaper-vs-hyperformula.json),
-generated at `2026-05-16T16:19:20.646Z`.
+generated at `2026-05-16T16:32:08.120Z`.
 
-The overall directional mean-ratio geomean is `0.6145869620237`, and the
-overall directional p95-ratio geomean is `0.6284424019124781`. Ratios below
+The overall directional mean-ratio geomean is `0.6220656206288111`, and the
+overall directional p95-ratio geomean is `0.6375488247509379`. Ratios below
 `1.0` mean WorkPaper is faster on that metric.
 
 ## What It Proves
@@ -56,7 +56,7 @@ HyperFormula.
 It does not prove that every p95 row is faster. The current headless leadership
 scorecard records `45/57` workloads winning both mean and p95. The worst p95
 holdout is `lookup-with-column-index`, where the current WorkPaper-to-HyperFormula
-p95 ratio is `4.264296511586994`. The honest claim is `46/57` mean wins plus an
+p95 ratio is `4.390108217591891`. The honest claim is `46/57` mean wins plus an
 overall p95 geomean lead, not "faster on every row."
 
 It does not prove that browser-grid rendering, import/export, collaboration, or
