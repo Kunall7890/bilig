@@ -92,13 +92,35 @@ export function normalizeBaseUrl(value: string): string {
 }
 
 export function resolveServerRuntimeConfig(env: Record<string, string | undefined>): ServerRuntimeConfig {
-  const browserAppBaseUrl = env['BILIG_WEB_APP_BASE_URL']?.trim()
-  const corsOrigin = env['BILIG_CORS_ORIGIN']?.trim()
+  const browserAppBaseUrl = parseOptionalHttpUrl(env['BILIG_WEB_APP_BASE_URL'], 'BILIG_WEB_APP_BASE_URL')
+  const corsOrigin = parseOptionalHttpUrl(env['BILIG_CORS_ORIGIN'], 'BILIG_CORS_ORIGIN')
 
   return {
     ...(browserAppBaseUrl ? { browserAppBaseUrl } : {}),
     ...(corsOrigin ? { corsOrigin } : {}),
   }
+}
+
+function parseOptionalHttpUrl(value: string | undefined, name: string): string | undefined {
+  if (value === undefined) {
+    return undefined
+  }
+  const trimmed = value.trim()
+  if (trimmed.length === 0) {
+    return undefined
+  }
+
+  let parsed: URL
+  try {
+    parsed = new URL(trimmed)
+  } catch {
+    throw new Error(`${name} must be an absolute http(s) URL, got ${value}`)
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error(`${name} must be an absolute http(s) URL, got ${value}`)
+  }
+
+  return trimmed
 }
 
 export function resolveRequestBaseUrl(request: BasicRequestLike, fallbackHost: string): string {

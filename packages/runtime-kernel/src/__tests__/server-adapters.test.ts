@@ -22,6 +22,15 @@ describe('runtime-kernel server adapters', () => {
     })
   })
 
+  it.each([
+    ['BILIG_WEB_APP_BASE_URL', '/relative'],
+    ['BILIG_WEB_APP_BASE_URL', 'file:///tmp/app'],
+    ['BILIG_CORS_ORIGIN', 'origin.example.com'],
+    ['BILIG_CORS_ORIGIN', 'ftp://origin.example.com'],
+  ])('rejects malformed runtime URL config %s=%s', (name, value) => {
+    expect(() => resolveServerRuntimeConfig({ [name]: value })).toThrow(`${name} must be an absolute http(s) URL`)
+  })
+
   it('creates guest runtime sessions', () => {
     expect(createGuestRuntimeSession('guest:test')).toEqual({
       authToken: 'guest:test',
