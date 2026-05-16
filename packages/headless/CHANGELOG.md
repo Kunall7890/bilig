@@ -4,6 +4,21 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.16.22
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.16.21
+- Manual override: no
+
+## Fixes
+- perf(headless): preserve hydrated formula family runs (cc942261)
+
+## Internal runtime changes
+- docs(growth): add xlsx recalculation proof (7f8f8832)
+- test(benchmarks): expand WorkPaper suite to 100 workloads (e70921e7)
+- docs(growth): add xlsx recalculation decision page (45c8251e)
+- docs(growth): add xlsx-calc alternative page (50dc2885)
+
 ## 0.16.21
 
 - Release type: patch
