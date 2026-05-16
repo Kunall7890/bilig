@@ -224,6 +224,57 @@ describe('WorkbookMetadataService', () => {
     })
   })
 
+  it('anchors filter and sort ranges to the owning sheet argument', () => {
+    const service = createService()
+    const staleRange = {
+      sheetName: 'StaleSheet',
+      startAddress: 'c4',
+      endAddress: 'a1',
+    }
+
+    expect(Effect.runSync(service.setFilter('Sheet1', { ...staleRange, criteria: [{ columnOffset: 1, hiddenButton: true }] }))).toEqual({
+      sheetName: 'Sheet1',
+      range: {
+        sheetName: 'Sheet1',
+        startAddress: 'A1',
+        endAddress: 'C4',
+        criteria: [{ columnOffset: 1, hiddenButton: true }],
+      },
+    })
+    expect(Effect.runSync(service.setSort('Sheet1', staleRange, [{ keyAddress: 'B1', direction: 'desc' }]))).toEqual({
+      sheetName: 'Sheet1',
+      range: {
+        sheetName: 'Sheet1',
+        startAddress: 'A1',
+        endAddress: 'C4',
+      },
+      keys: [{ keyAddress: 'B1', direction: 'desc' }],
+    })
+
+    expect(Effect.runSync(service.listFilters('Sheet1'))).toEqual([
+      {
+        sheetName: 'Sheet1',
+        range: {
+          sheetName: 'Sheet1',
+          startAddress: 'A1',
+          endAddress: 'C4',
+          criteria: [{ columnOffset: 1, hiddenButton: true }],
+        },
+      },
+    ])
+    expect(Effect.runSync(service.listSorts('Sheet1'))).toEqual([
+      {
+        sheetName: 'Sheet1',
+        range: {
+          sheetName: 'Sheet1',
+          startAddress: 'A1',
+          endAddress: 'C4',
+        },
+        keys: [{ keyAddress: 'B1', direction: 'desc' }],
+      },
+    ])
+  })
+
   it('clones and normalizes comment threads and notes on write and read', () => {
     const service = createService()
     const threadInput = {

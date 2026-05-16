@@ -24,12 +24,10 @@ import {
   conditionalFormatKey,
   dataValidationKey,
   deleteRecordsBySheet,
-  filterKey,
   mergeRangeKey,
   noteKey,
   rangeProtectionKey,
   rekeyRecords,
-  sortKey,
   spillKey,
   tableKey,
 } from './workbook-metadata-records.js'
@@ -54,22 +52,25 @@ import {
   shapeKey,
   type WorkbookDataValidationRecord,
   type WorkbookDefinedNameRecord,
-  type WorkbookFilterRecord,
   type WorkbookFreezePaneRecord,
   type WorkbookMetadataRecord,
   type WorkbookPivotRecord,
-  type WorkbookSortRecord,
   type WorkbookShapeRecord,
   type WorkbookSpillRecord,
 } from './workbook-metadata-types.js'
 import type { WorkbookMetadataService } from './workbook-metadata-service-contract.js'
 import { canonicalMergeRangeRef, isSingleCellMergeRange, rangeContainsAddress, rangesIntersect } from './workbook-merge-records.js'
+import { assertMergeRangesDoNotOverlap, metadataEffect, renameDataValidationSourceSheet } from './workbook-metadata-service-helpers.js'
 import {
-  assertMergeRangesDoNotOverlap,
-  canonicalWorkbookFilterRange,
-  metadataEffect,
-  renameDataValidationSourceSheet,
-} from './workbook-metadata-service-helpers.js'
+  deleteWorkbookFilterRecord,
+  deleteWorkbookSortRecord,
+  getWorkbookFilterRecord,
+  getWorkbookSortRecord,
+  listWorkbookFilterRecords,
+  listWorkbookSortRecords,
+  setWorkbookFilterRecord,
+  setWorkbookSortRecord,
+} from './workbook-metadata-sheet-range-records.js'
 import {
   getWorkbookPropertyRecord,
   getWorkbookProtectionRecord,
@@ -495,58 +496,28 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
       return metadataEffect('Failed to clear sheet protection metadata', () => metadata.sheetProtections.delete(sheetName))
     },
     setFilter(sheetName, range) {
-      return metadataEffect('Failed to set filter metadata', () => {
-        const storedRange = canonicalWorkbookFilterRange(range)
-        const record: WorkbookFilterRecord = { sheetName, range: storedRange }
-        metadata.filters.set(filterKey(sheetName, storedRange), record)
-        return cloneFilterRecord(record)
-      })
+      return metadataEffect('Failed to set filter metadata', () => setWorkbookFilterRecord(metadata, sheetName, range))
     },
     getFilter(sheetName, range) {
-      return metadataEffect('Failed to get filter metadata', () => {
-        const record = metadata.filters.get(filterKey(sheetName, range))
-        return record ? cloneFilterRecord(record) : undefined
-      })
+      return metadataEffect('Failed to get filter metadata', () => getWorkbookFilterRecord(metadata, sheetName, range))
     },
     deleteFilter(sheetName, range) {
-      return metadataEffect('Failed to delete filter metadata', () => metadata.filters.delete(filterKey(sheetName, range)))
+      return metadataEffect('Failed to delete filter metadata', () => deleteWorkbookFilterRecord(metadata, sheetName, range))
     },
     listFilters(sheetName) {
-      return metadataEffect('Failed to list filter metadata', () =>
-        [...metadata.filters.values()]
-          .filter((record) => record.sheetName === sheetName)
-          .toSorted((left, right) => filterKey(left.sheetName, left.range).localeCompare(filterKey(right.sheetName, right.range)))
-          .map(cloneFilterRecord),
-      )
+      return metadataEffect('Failed to list filter metadata', () => listWorkbookFilterRecords(metadata, sheetName))
     },
     setSort(sheetName, range, keys) {
-      return metadataEffect('Failed to set sort metadata', () => {
-        const storedRange = canonicalWorkbookRangeRef(range)
-        const record: WorkbookSortRecord = {
-          sheetName,
-          range: storedRange,
-          keys: keys.map(cloneSortKeyRecord),
-        }
-        metadata.sorts.set(sortKey(sheetName, storedRange), record)
-        return cloneSortRecord(record)
-      })
+      return metadataEffect('Failed to set sort metadata', () => setWorkbookSortRecord(metadata, sheetName, range, keys))
     },
     getSort(sheetName, range) {
-      return metadataEffect('Failed to get sort metadata', () => {
-        const record = metadata.sorts.get(sortKey(sheetName, range))
-        return record ? cloneSortRecord(record) : undefined
-      })
+      return metadataEffect('Failed to get sort metadata', () => getWorkbookSortRecord(metadata, sheetName, range))
     },
     deleteSort(sheetName, range) {
-      return metadataEffect('Failed to delete sort metadata', () => metadata.sorts.delete(sortKey(sheetName, range)))
+      return metadataEffect('Failed to delete sort metadata', () => deleteWorkbookSortRecord(metadata, sheetName, range))
     },
     listSorts(sheetName) {
-      return metadataEffect('Failed to list sort metadata', () =>
-        [...metadata.sorts.values()]
-          .filter((record) => record.sheetName === sheetName)
-          .toSorted((left, right) => sortKey(left.sheetName, left.range).localeCompare(sortKey(right.sheetName, right.range)))
-          .map(cloneSortRecord),
-      )
+      return metadataEffect('Failed to list sort metadata', () => listWorkbookSortRecords(metadata, sheetName))
     },
     setDataValidation(record) {
       return metadataEffect('Failed to set data validation metadata', () => {

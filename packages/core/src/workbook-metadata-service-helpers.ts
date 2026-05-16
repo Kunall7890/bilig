@@ -1,4 +1,5 @@
 import { Effect } from 'effect'
+import type { CellRangeRef } from '@bilig/protocol'
 import { parseCellAddress } from '@bilig/formula'
 import { cloneDataValidationRecord } from './workbook-metadata-records.js'
 import type { WorkbookDataValidationRecord, WorkbookFilterRecord, WorkbookMergeRangeRecord } from './workbook-metadata-types.js'
@@ -48,6 +49,20 @@ export function canonicalWorkbookFilterRange(range: WorkbookFilterRecord['range'
   const normalized = canonicalWorkbookRangeRef(range)
   const criteria = range.criteria?.length ? structuredClone(range.criteria) : undefined
   return criteria ? { ...normalized, criteria } : normalized
+}
+
+export function canonicalWorkbookRangeOnSheet(sheetName: string, range: CellRangeRef): CellRangeRef {
+  return canonicalWorkbookRangeRef({ ...range, sheetName })
+}
+
+export function canonicalWorkbookFilterRangeOnSheet(
+  sheetName: string,
+  range: WorkbookFilterRecord['range'],
+): WorkbookFilterRecord['range'] {
+  return {
+    ...canonicalWorkbookFilterRange({ ...range, sheetName }),
+    sheetName,
+  }
 }
 
 export function metadataEffect<Success>(message: string, run: () => Success): Effect.Effect<Success, WorkbookMetadataError> {
