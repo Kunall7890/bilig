@@ -15,9 +15,9 @@ const postgresService = 'postgres'
 const zeroCacheService = 'zero-cache-local'
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const webAppDir = resolve(repoRoot, 'apps/web')
-const preferredAppPort = Number.parseInt(process.env['PORT'] ?? process.env['BILIG_SYNC_SERVER_PORT'] ?? '4321', 10)
+const preferredAppPort = resolvePreferredPort(process.env['PORT'] ?? process.env['BILIG_SYNC_SERVER_PORT'], 4321)
 const preferredPostgresPort = resolvePreferredPort(process.env['BILIG_DEV_POSTGRES_PORT'], 55432)
-const preferredWebPort = Number.parseInt(process.env['BILIG_WEB_DEV_PORT'] ?? '5173', 10)
+const preferredWebPort = resolvePreferredPort(process.env['BILIG_WEB_DEV_PORT'], 5173)
 const configuredZeroProxyUpstream = process.env['BILIG_ZERO_PROXY_UPSTREAM']
 const disableCompose = process.env['BILIG_DEV_DISABLE_COMPOSE'] === '1'
 const webServerMode = process.env['BILIG_DEV_WEB_SERVER_MODE'] === 'preview' ? 'preview' : 'dev'

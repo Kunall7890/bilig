@@ -1,5 +1,5 @@
 export function resolvePreferredPort(configuredPort: string | undefined, fallbackPort: number): number {
-  return Number.parseInt(configuredPort ?? String(fallbackPort), 10)
+  return parseTcpPort(configuredPort ?? String(fallbackPort))
 }
 
 export function resolvePreferredZeroPort(
@@ -7,10 +7,8 @@ export function resolvePreferredZeroPort(
   configuredZeroProxyUpstream: string | undefined,
   fallbackPort: number,
 ): number {
-  return Number.parseInt(
-    configuredZeroPort ?? (configuredZeroProxyUpstream ? new URL(configuredZeroProxyUpstream).port : undefined) ?? String(fallbackPort),
-    10,
-  )
+  const upstreamPort = configuredZeroProxyUpstream ? new URL(configuredZeroProxyUpstream).port || undefined : undefined
+  return parseTcpPort(configuredZeroPort ?? upstreamPort ?? String(fallbackPort))
 }
 
 export async function resolveRequestedOrAvailablePort(options: {
@@ -53,4 +51,15 @@ async function findAvailablePort(
     return candidate
   }
   return findAvailablePort(startPort, remainingOffsets, label, canUseRequestedPort, offset + 1)
+}
+
+function parseTcpPort(value: string): number {
+  if (!/^(?:[1-9]\d*)$/u.test(value)) {
+    throw new Error(`Expected a decimal TCP port, got ${value}`)
+  }
+  const parsed = Number(value)
+  if (!Number.isSafeInteger(parsed) || parsed > 65_535) {
+    throw new Error(`Expected a TCP port between 1 and 65535, got ${value}`)
+  }
+  return parsed
 }

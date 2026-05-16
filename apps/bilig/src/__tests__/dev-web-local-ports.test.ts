@@ -15,6 +15,12 @@ describe('resolvePreferredPort', () => {
   it('falls back to the default port', () => {
     expect(resolvePreferredPort(undefined, 55432)).toBe(55432)
   })
+
+  it('rejects malformed configured ports instead of truncating them', () => {
+    expect(() => resolvePreferredPort('55432abc', 5432)).toThrow('Expected a decimal TCP port, got 55432abc')
+    expect(() => resolvePreferredPort('0', 5432)).toThrow('Expected a decimal TCP port, got 0')
+    expect(() => resolvePreferredPort('70000', 5432)).toThrow('Expected a TCP port between 1 and 65535, got 70000')
+  })
 })
 
 describe('resolvePreferredZeroPort', () => {
@@ -28,6 +34,10 @@ describe('resolvePreferredZeroPort', () => {
 
   it('falls back to the default port when nothing is configured', () => {
     expect(resolvePreferredZeroPort(undefined, undefined, 4848)).toBe(4848)
+  })
+
+  it('falls back to the default port when the configured upstream URL has no explicit port', () => {
+    expect(resolvePreferredZeroPort(undefined, 'https://zero.example.test', 4848)).toBe(4848)
   })
 })
 
