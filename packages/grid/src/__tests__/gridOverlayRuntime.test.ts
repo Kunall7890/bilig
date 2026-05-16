@@ -29,6 +29,51 @@ describe('renderer-v3 overlay runtime', () => {
     expect(Array.from(batch.instances.slice(0, 5))).toEqual([0, 10, 12, 100, 20])
   })
 
+  it('packs malformed overlay colors as finite fallback channels', () => {
+    const batch = packOverlayBatchV3({
+      axisSeqX: 3,
+      axisSeqY: 4,
+      cameraSeq: 2,
+      instances: [
+        {
+          color: '#not-real',
+          height: 20,
+          kind: 'selection',
+          width: 100,
+          x: 10,
+          y: 12,
+        },
+      ],
+      seq: 1,
+    })
+
+    expect(Array.from(batch.instances.slice(5, 8))).toEqual([0, 0, 0])
+    expect(Array.from(batch.instances).every(Number.isFinite)).toBe(true)
+  })
+
+  it('accepts rgba overlay colors through the shared grid parser', () => {
+    const batch = packOverlayBatchV3({
+      axisSeqX: 3,
+      axisSeqY: 4,
+      cameraSeq: 2,
+      instances: [
+        {
+          color: 'rgba(51, 102, 153, 0.5)',
+          height: 20,
+          kind: 'selection',
+          width: 100,
+          x: 10,
+          y: 12,
+        },
+      ],
+      seq: 1,
+    })
+
+    expect(batch.instances[5]).toBeCloseTo(0x33 / 255)
+    expect(batch.instances[6]).toBeCloseTo(0x66 / 255)
+    expect(batch.instances[7]).toBeCloseTo(0x99 / 255)
+  })
+
   it('updates overlay batches without touching data tile state', () => {
     const runtime = new GridOverlayRuntime()
 

@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'vitest'
-import { resolveTextClipRect, resolveTextDecorationRects, resolveTextLineLayouts } from '../renderer-v3/line-text-layout.js'
+import {
+  parseTextCssColor,
+  resolveTextClipRect,
+  resolveTextDecorationRects,
+  resolveTextLineLayouts,
+} from '../renderer-v3/line-text-layout.js'
 import type { GlyphAtlasEntry } from '../renderer-v3/typegpu-atlas-manager.js'
 
 const atlas = {
@@ -26,6 +31,13 @@ const atlas = {
 }
 
 describe('gridTextLayout', () => {
+  test('parses text colors without leaking NaN channels', () => {
+    expect(parseTextCssColor('#336699cc')).toEqual([0x33 / 255, 0x66 / 255, 0x99 / 255, 0xcc / 255])
+    expect(parseTextCssColor('#zzzzzz')).toEqual([0, 0, 0, 1])
+    expect(parseTextCssColor('#1')).toEqual([0, 0, 0, 1])
+    expect(parseTextCssColor('rgba(255, nope, 0, wat)').every(Number.isFinite)).toBe(true)
+  })
+
   test('resolves right-aligned single-line text', () => {
     const lines = resolveTextLineLayouts(
       {

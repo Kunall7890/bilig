@@ -1,3 +1,5 @@
+import { parseGridCssColor } from '../gridColorParser.js'
+
 export type OverlayKindV3 = 'selection' | 'activeCell' | 'fillHandle' | 'resizeGuide' | 'hover' | 'remoteCursor' | 'frozenSeparator'
 
 export interface OverlayInstanceV3 {
@@ -70,12 +72,6 @@ export function packOverlayBatchV3(input: {
 }
 
 function parseColor(color: string): { r: number; g: number; b: number } {
-  if (!/^#[0-9a-fA-F]{6}$/.test(color)) {
-    return { b: 0, g: 0, r: 0 }
-  }
-  return {
-    b: Number.parseInt(color.slice(5, 7), 16) / 255,
-    g: Number.parseInt(color.slice(3, 5), 16) / 255,
-    r: Number.parseInt(color.slice(1, 3), 16) / 255,
-  }
+  const parsed = parseGridCssColor(color)
+  return { b: parsed.b, g: parsed.g, r: parsed.r }
 }

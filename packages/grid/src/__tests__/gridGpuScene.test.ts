@@ -69,6 +69,13 @@ describe('gridGpuScene', () => {
     })
   })
 
+  test('keeps malformed colors finite and falls back to black', () => {
+    expect(parseGpuColor('#zzzzzz')).toEqual({ r: 0, g: 0, b: 0, a: 1 })
+    expect(parseGpuColor('#12')).toEqual({ r: 0, g: 0, b: 0, a: 1 })
+    expect(parseGpuColor('rgba(255, nope, 0, wat)')).toEqual({ r: 1, g: 0, b: 0, a: 0 })
+    expect(Object.values(parseGpuColor('not-a-color')).every(Number.isFinite)).toBe(true)
+  })
+
   test('builds fill rects and solid border rects from visible cells', () => {
     const engine = makeEngine({
       'style-1': {

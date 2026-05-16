@@ -1,4 +1,5 @@
 import type { GlyphAtlasEntry } from './typegpu-atlas-manager.js'
+import { gridColorToTuple, parseGridCssColor } from '../gridColorParser.js'
 import { WORKBOOK_DEFAULT_FONT_SIZE, WORKBOOK_FONT_SANS, workbookFontPointSizeToCssPx } from '../workbookTheme.js'
 
 export interface TextLayoutRun {
@@ -59,25 +60,7 @@ export function parseTextFontSize(font: string): number {
 }
 
 export function parseTextCssColor(color: string): readonly [number, number, number, number] {
-  if (color.startsWith('#')) {
-    const hex = color.slice(1)
-    if (hex.length === 3) {
-      return [parseInt(hex[0]! + hex[0], 16) / 255, parseInt(hex[1]! + hex[1], 16) / 255, parseInt(hex[2]! + hex[2], 16) / 255, 1.0]
-    }
-    return [
-      parseInt(hex.slice(0, 2), 16) / 255,
-      parseInt(hex.slice(2, 4), 16) / 255,
-      parseInt(hex.slice(4, 6), 16) / 255,
-      hex.length === 8 ? parseInt(hex.slice(6, 8), 16) / 255 : 1.0,
-    ]
-  }
-  if (color.startsWith('rgba')) {
-    const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/)
-    if (match) {
-      return [Number(match[1]) / 255, Number(match[2]) / 255, Number(match[3]) / 255, match[4] ? Number(match[4]) : 1.0]
-    }
-  }
-  return [0, 0, 0, 1]
+  return gridColorToTuple(parseGridCssColor(color))
 }
 
 export function resolveTextLineLayouts(run: TextLayoutRun, atlas: GlyphAtlasLike): ResolvedTextLineLayout[] {
