@@ -486,6 +486,8 @@ pnpm workpaper:xlsx-corpus:check -- /path/to/xlsx-corpus
 
 If the sanity check matches a problem you have, star or bookmark the project:
 <https://github.com/proompteng/bilig/stargazers>.
+If it almost matches but a gap blocks adoption, use the adoption blocker form:
+<https://github.com/proompteng/bilig/discussions/new?category=general>.
 
 ## Production Status
 

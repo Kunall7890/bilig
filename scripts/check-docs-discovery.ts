@@ -57,6 +57,7 @@ const [
   ideasDiscussionTemplate,
   qaDiscussionTemplate,
   showAndTellDiscussionTemplate,
+  generalDiscussionTemplate,
   pullRequestTemplate,
   dominanceScorecard,
 ] = await Promise.all([
@@ -84,6 +85,7 @@ const [
   readFile(join(repoRoot, '.github', 'DISCUSSION_TEMPLATE', 'ideas.yml'), 'utf8'),
   readFile(join(repoRoot, '.github', 'DISCUSSION_TEMPLATE', 'q-a.yml'), 'utf8'),
   readFile(join(repoRoot, '.github', 'DISCUSSION_TEMPLATE', 'show-and-tell.yml'), 'utf8'),
+  readFile(join(repoRoot, '.github', 'DISCUSSION_TEMPLATE', 'general.yml'), 'utf8'),
   readFile(join(repoRoot, '.github', 'PULL_REQUEST_TEMPLATE.md'), 'utf8'),
   readFile(join(repoRoot, 'packages', 'benchmarks', 'baselines', 'bilig-dominance-scorecard.json'), 'utf8'),
 ])
@@ -155,6 +157,7 @@ for (const required of [
   './javascript-spreadsheet-library-headless-node.html',
   './hyperformula-alternative-headless-workpaper.html',
   'https://github.com/proompteng/bilig/stargazers',
+  'https://github.com/proompteng/bilig/discussions/new?category=general',
 ]) {
   requireIncludes(index, required, 'docs/index.html')
 }
@@ -310,6 +313,8 @@ for (const required of [
   'The current checked benchmark artifact records `47/57` comparable',
   'structural-delete-rows',
   'https://github.com/proompteng/bilig/stargazers',
+  'https://github.com/proompteng/bilig/discussions/new?category=general',
+  'adoption-blocker form',
 ] as const) {
   requireIncludes(formulaWorkbooksProof, required, 'docs/formula-workbooks-node-services-agent-tools.md')
 }
@@ -339,6 +344,7 @@ await requireSharedPublicDocsDiscovery({
   ideasDiscussionTemplate,
   qaDiscussionTemplate,
   showAndTellDiscussionTemplate,
+  generalDiscussionTemplate,
   excelImportReadme,
   publicApi,
 })

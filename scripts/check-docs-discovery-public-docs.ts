@@ -23,6 +23,7 @@ export async function requireSharedPublicDocsDiscovery(args: {
   readonly ideasDiscussionTemplate: string
   readonly qaDiscussionTemplate: string
   readonly showAndTellDiscussionTemplate: string
+  readonly generalDiscussionTemplate: string
   readonly excelImportReadme: string
   readonly publicApi: string
 }): Promise<void> {
@@ -92,6 +93,20 @@ export async function requireSharedPublicDocsDiscovery(args: {
       { path: '.github/DISCUSSION_TEMPLATE/show-and-tell.yml', content: args.showAndTellDiscussionTemplate },
     ],
     ['workbook-automation-examples-node'],
+  )
+
+  requireDocumentsInclude(
+    [
+      { path: 'README.md', content: args.readme },
+      { path: 'packages/headless/README.md', content: args.headlessReadme },
+      { path: 'docs/index.html', content: args.index },
+      { path: 'docs/llms.txt', content: args.llms },
+    ],
+    ['https://github.com/proompteng/bilig/discussions/new?category=general', 'adoption blocker'],
+  )
+  requireDocumentsInclude(
+    [{ path: '.github/DISCUSSION_TEMPLATE/general.yml', content: args.generalDiscussionTemplate }],
+    ['adoption blocker', 'What proof would unblock you?'],
   )
 
   const issueTemplateDocs = [

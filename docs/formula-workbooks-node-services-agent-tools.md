@@ -138,3 +138,10 @@ the compatibility page before importing real workbooks.
 
 If this matches a backend or agent workflow you are evaluating, star the repo as
 a bookmark: <https://github.com/proompteng/bilig/stargazers>.
+
+If it does not match yet, use the adoption-blocker form instead of a vague
+comment:
+<https://github.com/proompteng/bilig/discussions/new?category=general>. The
+most useful feedback names the workflow, blocker type, proof already tried, and
+the smallest example, benchmark, or compatibility note that would unblock a
+real trial.
