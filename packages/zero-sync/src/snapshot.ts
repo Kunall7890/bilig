@@ -144,7 +144,26 @@ function parseWorkbookProperties(entries: unknown[]): WorkbookPropertySnapshot[]
 }
 
 function isWorkbookDefinedNameValueSnapshot(value: unknown): value is WorkbookDefinedNameValueSnapshot {
-  return value === null || typeof value === 'number' || typeof value === 'string' || typeof value === 'boolean' || isRecord(value)
+  if (isLiteralInput(value)) {
+    return true
+  }
+  if (!isRecord(value) || typeof value['kind'] !== 'string') {
+    return false
+  }
+  switch (value['kind']) {
+    case 'scalar':
+      return isLiteralInput(value['value'])
+    case 'cell-ref':
+      return typeof value['sheetName'] === 'string' && typeof value['address'] === 'string'
+    case 'range-ref':
+      return typeof value['sheetName'] === 'string' && typeof value['startAddress'] === 'string' && typeof value['endAddress'] === 'string'
+    case 'structured-ref':
+      return typeof value['tableName'] === 'string' && typeof value['columnName'] === 'string'
+    case 'formula':
+      return typeof value['formula'] === 'string'
+    default:
+      return false
+  }
 }
 
 function parseDefinedNames(entries: unknown[]): WorkbookDefinedNameSnapshot[] {

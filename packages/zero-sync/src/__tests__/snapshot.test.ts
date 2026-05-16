@@ -244,4 +244,30 @@ describe('projectWorkbookToSnapshot', () => {
     expect(projected?.sheets[0]?.metadata?.styleRanges).toBeUndefined()
     expect(projected?.sheets[0]?.metadata?.formatRanges).toBeUndefined()
   })
+
+  it('drops malformed defined-name values', () => {
+    const projected = projectWorkbookToSnapshot(
+      {
+        id: 'doc-1',
+        name: 'Projected Book',
+        definedNames: [
+          { name: 'Rate', value: 0.12 },
+          { name: 'Scalar', value: { kind: 'scalar', value: 'ok' } },
+          { name: 'Cell', value: { kind: 'cell-ref', sheetName: 'Sheet1', address: 'A1' } },
+          { name: 'BadNumber', value: Number.NaN },
+          { name: 'BadScalar', value: { kind: 'scalar', value: Number.POSITIVE_INFINITY } },
+          { name: 'BadObject', value: { kind: 'range-ref', sheetName: 'Sheet1', startAddress: 'A1' } },
+          { name: 'ArbitraryObject', value: { formula: 'A1' } },
+        ],
+        sheets: [],
+      },
+      'doc-1',
+    )
+
+    expect(projected?.workbook.metadata?.definedNames).toEqual([
+      { name: 'Rate', value: 0.12 },
+      { name: 'Scalar', value: { kind: 'scalar', value: 'ok' } },
+      { name: 'Cell', value: { kind: 'cell-ref', sheetName: 'Sheet1', address: 'A1' } },
+    ])
+  })
 })
