@@ -171,11 +171,11 @@ export async function runPendingZeroDataMigrations(
 }
 
 export function resolveRunDataMigrationsOnBoot(env: Record<string, string | undefined> = process.env): boolean {
-  return parseBooleanEnv(env['BILIG_RUN_DATA_MIGRATIONS_ON_BOOT'])
+  return parseBooleanEnv(env['BILIG_RUN_DATA_MIGRATIONS_ON_BOOT'], 'BILIG_RUN_DATA_MIGRATIONS_ON_BOOT')
 }
 
 export function resolveAllowPendingCleanupMigrations(env: Record<string, string | undefined> = process.env): boolean {
-  return parseBooleanEnv(env['BILIG_ALLOW_PENDING_CLEANUP_MIGRATIONS'])
+  return parseBooleanEnv(env['BILIG_ALLOW_PENDING_CLEANUP_MIGRATIONS'], 'BILIG_ALLOW_PENDING_CLEANUP_MIGRATIONS')
 }
 
 function resolveZeroDataMigrationCodeVersion(env: Record<string, string | undefined> = process.env): string {
@@ -258,10 +258,16 @@ function formatPendingZeroDataMigrationMessage(status: ZeroDataMigrationStatus):
   return `Pending Zero data migrations. Run bun scripts/run-zero-data-migrations.ts before starting bilig${detail}.`
 }
 
-function parseBooleanEnv(value: string | undefined): boolean {
-  if (!value) {
+function parseBooleanEnv(value: string | undefined, name: string): boolean {
+  if (value === undefined || value.length === 0) {
     return false
   }
   const normalized = value.trim().toLowerCase()
-  return normalized === '1' || normalized === 'true' || normalized === 'yes'
+  if (normalized === '1' || normalized === 'true' || normalized === 'yes') {
+    return true
+  }
+  if (normalized === '0' || normalized === 'false' || normalized === 'no') {
+    return false
+  }
+  throw new Error(`${name} must be a boolean value, got ${value}`)
 }
