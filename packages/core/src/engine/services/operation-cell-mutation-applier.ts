@@ -20,7 +20,11 @@ import type { OperationDirectRangeDependentService } from './operation-direct-ra
 import type { DirectFormulaMetricCounts } from './operation-post-recalc-direct-formulas.js'
 import { finalizeOperationRecalcAndEvents } from './operation-recalc-finalizer.js'
 import type { CreateEngineOperationServiceArgs, MutationSource } from './operation-service-types.js'
-import { analyzeFreshDirectAggregateFormula, bindFreshTemplateFormula } from './operation-fresh-direct-aggregate.js'
+import {
+  analyzeFreshDirectAggregateFormula,
+  bindFreshTemplateFormula,
+  markFreshDirectAggregateInputsCovered,
+} from './operation-fresh-direct-aggregate.js'
 
 type OperationCellMutationSource = Exclude<MutationSource, 'remote'>
 type OperationCellDirectFormulaCallbacks = Parameters<typeof finalizeOperationRecalcAndEvents>[0]['directFormulaCallbacks']
@@ -553,7 +557,15 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
                   freshDirectFormulaResult !== undefined
                     ? (() => {
                         postRecalcDirectFormulaIndices.addCurrentResult(cellIndex, freshDirectFormulaResult)
-                        return applyDirectFormulaCurrentResult(cellIndex, freshDirectFormulaResult)
+                        const applied = applyDirectFormulaCurrentResult(cellIndex, freshDirectFormulaResult)
+                        if (applied) {
+                          markFreshDirectAggregateInputsCovered(args, {
+                            formulaCellIndex: cellIndex,
+                            formula: runtimeFormula,
+                            postRecalcDirectFormulaIndices,
+                          })
+                        }
+                        return applied
                       })()
                     : canSkipTopoRepair && args.evaluateDirectFormula(cellIndex) !== undefined
                 const handledFormulaReplacementAsDirectDelta =

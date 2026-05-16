@@ -1,6 +1,6 @@
 import { ErrorCode, ValueTag } from '@bilig/protocol'
 import type { EngineCellMutationAt } from '../../cell-mutations-at.js'
-import type { DirectScalarCurrentOperand } from './direct-formula-index-collection.js'
+import type { DirectFormulaIndexCollection, DirectScalarCurrentOperand } from './direct-formula-index-collection.js'
 import type { RuntimeDirectAggregateDescriptor, RuntimeFormula } from '../runtime-state.js'
 import type { CreateEngineOperationServiceArgs } from './operation-service-types.js'
 
@@ -97,6 +97,33 @@ export function tryEvaluateFreshDirectAggregateCurrentResult(
     return { kind: 'number', value: result.value + directAggregate.resultOffset }
   }
   return result
+}
+
+export function markFreshDirectAggregateInputsCovered(
+  args: CreateEngineOperationServiceArgs,
+  input: {
+    readonly formulaCellIndex: number
+    readonly formula: RuntimeFormula | undefined
+    readonly postRecalcDirectFormulaIndices: DirectFormulaIndexCollection
+  },
+): void {
+  const directAggregate = input.formula?.directAggregate
+  if (directAggregate === undefined) {
+    return
+  }
+  const aggregateSheet = args.state.workbook.getSheet(directAggregate.sheetName)
+  if (!aggregateSheet) {
+    return
+  }
+  for (let col = directAggregate.col; col <= directAggregate.colEnd; col += 1) {
+    for (let row = directAggregate.rowStart; row <= directAggregate.rowEnd; row += 1) {
+      const memberCellIndex =
+        aggregateSheet.structureVersion === 1 ? aggregateSheet.grid.getPhysical(row, col) : aggregateSheet.grid.get(row, col)
+      if (memberCellIndex !== -1 && memberCellIndex !== input.formulaCellIndex) {
+        input.postRecalcDirectFormulaIndices.markDirectRangeInputCovered(memberCellIndex)
+      }
+    }
+  }
 }
 
 export function bindFreshTemplateFormula(

@@ -31,7 +31,9 @@ export class DirectFormulaIndexCollection {
   private currentResults: DirectScalarCurrentOperand[] | undefined
   private currentResultAssigned: boolean[] | undefined
   private directFormulaCoveredInputCellIndices: number[] | undefined
+  private directFormulaCoveredInputCellSet: Set<number> | undefined
   private directRangeCoveredInputCellIndices: number[] | undefined
+  private directRangeCoveredInputCellSet: Set<number> | undefined
   private deltaCount = 0
   private scalarDeltaCount = 0
   private constantDelta: number | undefined
@@ -310,6 +312,10 @@ export class DirectFormulaIndexCollection {
   }
 
   markDirectRangeInputCovered(cellIndex: number): void {
+    if (this.directRangeCoveredInputCellSet) {
+      this.directRangeCoveredInputCellSet.add(cellIndex)
+      return
+    }
     const covered = (this.directRangeCoveredInputCellIndices ??= [])
     for (let index = 0; index < covered.length; index += 1) {
       if (covered[index] === cellIndex) {
@@ -317,9 +323,15 @@ export class DirectFormulaIndexCollection {
       }
     }
     covered.push(cellIndex)
+    if (covered.length > 16) {
+      this.directRangeCoveredInputCellSet = new Set(covered)
+    }
   }
 
   hasCoveredDirectRangeInput(cellIndex: number): boolean {
+    if (this.directRangeCoveredInputCellSet) {
+      return this.directRangeCoveredInputCellSet.has(cellIndex)
+    }
     const covered = this.directRangeCoveredInputCellIndices
     if (!covered) {
       return false
@@ -333,6 +345,10 @@ export class DirectFormulaIndexCollection {
   }
 
   markDirectFormulaInputCovered(cellIndex: number): void {
+    if (this.directFormulaCoveredInputCellSet) {
+      this.directFormulaCoveredInputCellSet.add(cellIndex)
+      return
+    }
     const covered = (this.directFormulaCoveredInputCellIndices ??= [])
     for (let index = 0; index < covered.length; index += 1) {
       if (covered[index] === cellIndex) {
@@ -340,9 +356,15 @@ export class DirectFormulaIndexCollection {
       }
     }
     covered.push(cellIndex)
+    if (covered.length > 16) {
+      this.directFormulaCoveredInputCellSet = new Set(covered)
+    }
   }
 
   hasCoveredDirectFormulaInput(cellIndex: number): boolean {
+    if (this.directFormulaCoveredInputCellSet) {
+      return this.directFormulaCoveredInputCellSet.has(cellIndex)
+    }
     const covered = this.directFormulaCoveredInputCellIndices
     if (!covered) {
       return false

@@ -142,7 +142,6 @@ describe('work paper batched structural fast path', () => {
     })
     const sheetId = workbook.getSheetId('Data')!
     const appendCount = 96
-    const inputCols = 2
     const rows = Array.from({ length: appendCount }, (_, index) => {
       const rowNumber = index + 3
       return [rowNumber, rowNumber * 2, `=SUM(A${rowNumber}:B${rowNumber})`]
@@ -171,7 +170,7 @@ describe('work paper batched structural fast path', () => {
     expect(workbook.getPerformanceCounters()).toMatchObject({
       calcChainFullScans: 0,
       directAggregateScanEvaluations: 0,
-      regionQueryIndexBuilds: inputCols,
+      regionQueryIndexBuilds: 0,
       topoRepairs: 0,
     })
   })

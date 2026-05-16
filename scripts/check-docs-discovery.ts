@@ -310,7 +310,7 @@ for (const required of [
   'Use HyperFormula first when you need a mature, broad formula engine',
   'Use SheetJS or ExcelJS first when the primary job is reading, writing, styling',
   'Use Google Sheets API first when a shared hosted spreadsheet',
-  'The current checked benchmark artifact records `47/57` comparable',
+  'The current checked benchmark artifact records `45/57` comparable',
   'structural-delete-rows',
   'https://github.com/proompteng/bilig/stargazers',
   'https://github.com/proompteng/bilig/discussions/new?category=general',
