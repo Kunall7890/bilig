@@ -44,7 +44,7 @@ describe('web preview build gate', () => {
     const devSource = readFileSync(resolve(repoRoot, 'scripts/run-dev-web-local.ts'), 'utf8')
     const ciSource = readFileSync(resolve(repoRoot, 'scripts/run-ci.ts'), 'utf8')
 
-    expect(devSource).toContain("process.env['BILIG_DEV_APP_RUNTIME_BUILD'] === '0'")
+    expect(devSource).toContain('resolveDevAppRuntimeBuildEnabled')
     expect(ciSource).toContain("pnpm('app runtime dependency build', '--filter', '@bilig/app^...', 'run', 'build')")
     expect(ciSource).toContain("BILIG_DEV_APP_RUNTIME_BUILD: '0'")
   })
@@ -63,6 +63,7 @@ describe('web preview build gate', () => {
 
     expect(source).toContain("pnpm('browser web bundle build', '--filter', '@bilig/web', 'build:bundle')")
     expect(source).toContain("BILIG_DEV_WEB_PREVIEW_BUILD: '0'")
+    expect(readFileSync(resolve(repoRoot, 'scripts/run-dev-web-local.ts'), 'utf8')).toContain('resolveDevWebPreviewBuildEnabled')
   })
 
   it('declares a checked-in favicon so Browser QA starts without missing-asset noise', () => {

@@ -6,7 +6,14 @@ import net from 'node:net'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { resolveDevAppServerMode, resolveDevWebServerMode } from './dev-web-local-config.js'
+import {
+  resolveDevAppRuntimeBuildEnabled,
+  resolveDevAppServerMode,
+  resolveDevCleanupCompose,
+  resolveDevDisableCompose,
+  resolveDevWebPreviewBuildEnabled,
+  resolveDevWebServerMode,
+} from './dev-web-local-config.js'
 import { canUsePort, resolvePreferredPort, resolvePreferredZeroPort, resolveRequestedOrAvailablePort } from './dev-web-local-ports.js'
 import { ensureWasmKernelArtifact } from './ensure-wasm-kernel.js'
 
@@ -20,14 +27,14 @@ const preferredAppPort = resolvePreferredPort(process.env['PORT'] ?? process.env
 const preferredPostgresPort = resolvePreferredPort(process.env['BILIG_DEV_POSTGRES_PORT'], 55432)
 const preferredWebPort = resolvePreferredPort(process.env['BILIG_WEB_DEV_PORT'], 5173)
 const configuredZeroProxyUpstream = process.env['BILIG_ZERO_PROXY_UPSTREAM']
-const disableCompose = process.env['BILIG_DEV_DISABLE_COMPOSE'] === '1'
+const disableCompose = resolveDevBooleanOrExit(resolveDevDisableCompose)
 const webServerMode = resolveDevWebServerModeOrExit()
 const appServerMode = resolveDevAppServerModeOrExit()
-const skipAppRuntimeBuild = process.env['BILIG_DEV_APP_RUNTIME_BUILD'] === '0'
-const skipPreviewBuild = process.env['BILIG_DEV_WEB_PREVIEW_BUILD'] === '0'
+const skipAppRuntimeBuild = !resolveDevBooleanOrExit(resolveDevAppRuntimeBuildEnabled)
+const skipPreviewBuild = !resolveDevBooleanOrExit(resolveDevWebPreviewBuildEnabled)
 const preferredZeroPort = resolvePreferredZeroPort(process.env['BILIG_DEV_ZERO_PORT'], configuredZeroProxyUpstream, 4848)
 const composePublishedHost = resolveComposePublishedHost()
-const cleanupCompose = process.env['BILIG_DEV_CLEANUP_COMPOSE'] === 'true'
+const cleanupCompose = resolveDevBooleanOrExit(resolveDevCleanupCompose)
 const readyFile = process.env['BILIG_DEV_READY_FILE']
 const localProcessProbeTimeoutMs = 1_000
 let resolvedAppPort = String(preferredAppPort)
@@ -46,6 +53,15 @@ function resolveDevWebServerModeOrExit(): ReturnType<typeof resolveDevWebServerM
 function resolveDevAppServerModeOrExit(): ReturnType<typeof resolveDevAppServerMode> {
   try {
     return resolveDevAppServerMode(process.env)
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error))
+    process.exit(1)
+  }
+}
+
+function resolveDevBooleanOrExit(resolveValue: (env: NodeJS.ProcessEnv) => boolean): boolean {
+  try {
+    return resolveValue(process.env)
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error))
     process.exit(1)
