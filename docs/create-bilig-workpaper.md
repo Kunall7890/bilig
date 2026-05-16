@@ -1,7 +1,7 @@
 ---
 title: Create a Bilig WorkPaper starter
 published: true
-description: Create a runnable quote approval WorkPaper API from a blank directory with one npm create command.
+description: Track the create-bilig-workpaper starter package and use the maintained quote approval WorkPaper API example while npm package creation is being finalized.
 tags: typescript, node, spreadsheet, formulas, opensource
 canonical_url: https://proompteng.github.io/bilig/create-bilig-workpaper.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
@@ -12,12 +12,28 @@ image: /assets/github-social-preview.png
 
 Use this path when you want a runnable project instead of a pasted snippet.
 
+The starter package is being prepared as `create-bilig-workpaper`, exposed by
+`npm create bilig-workpaper@latest`. Until that package is visible on npm, use
+the maintained flagship example below; it exercises the same quote approval
+WorkPaper API shape against the published `@bilig/headless` package.
+
 The starter creates a quote approval API with `@bilig/headless`. It writes
 quote inputs through an API-style handler, recalculates workbook formulas,
 persists the WorkPaper as JSON, restores it, and verifies that the restored
 formula output still matches the live result.
 
 ## Run It
+
+Current published-package path:
+
+```sh
+git clone --depth 1 https://github.com/proompteng/bilig.git
+cd bilig/examples/serverless-workpaper-api
+npm install
+npm run smoke
+```
+
+Prepared generated-project path:
 
 ```sh
 npm create bilig-workpaper@latest pricing-workpaper

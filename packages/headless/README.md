@@ -45,16 +45,18 @@ Requires Node `22+` and ESM imports.
 npm install @bilig/headless
 ```
 
-For a generated project with a route-shaped quote approval API:
+For a route-shaped quote approval API today:
 
 ```sh
-npm create bilig-workpaper@latest pricing-workpaper
-cd pricing-workpaper
+git clone --depth 1 https://github.com/proompteng/bilig.git
+cd bilig/examples/serverless-workpaper-api
 npm install
 npm run smoke
 ```
 
-That starter is documented at
+The generated-project command is being prepared as
+`npm create bilig-workpaper@latest pricing-workpaper`. The publish gate is
+documented at
 <https://proompteng.github.io/bilig/create-bilig-workpaper.html>.
 
 <!-- headless-package-footprint:start -->

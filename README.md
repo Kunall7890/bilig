@@ -76,18 +76,19 @@ The TypeScript file is maintained in
 The exact byte count can change between package versions; `verified: true` and
 matching `after`/`afterRestore` values are the check.
 
-For a generated project with a route-shaped quote approval API, run:
+For a route-shaped quote approval API today, run the maintained example:
 
 ```sh
-npm create bilig-workpaper@latest pricing-workpaper
-cd pricing-workpaper
+git clone --depth 1 https://github.com/proompteng/bilig.git
+cd bilig/examples/serverless-workpaper-api
 npm install
 npm run smoke
 ```
 
-The starter lives in
-[`packages/create-workpaper`](packages/create-workpaper) and is documented in
-[create a Bilig WorkPaper starter](docs/create-bilig-workpaper.md).
+The generated-project path is being prepared as
+`npm create bilig-workpaper@latest pricing-workpaper`. The package source lives
+in [`packages/create-workpaper`](packages/create-workpaper), and the publish
+gate is documented in [create a Bilig WorkPaper starter](docs/create-bilig-workpaper.md).
 
 If that proof matches a service or agent workflow you maintain, the useful next
 step is concrete feedback: [star or bookmark the repo](https://github.com/proompteng/bilig/stargazers),
@@ -187,15 +188,13 @@ and uploaded to GitHub code scanning on every `main` update.
 Use the shortest path that proves the package against a real job.
 
 1. Run the [90-second npm eval](#try-it-in-90-seconds) in a blank project.
-2. Generate the route-shaped starter:
-   `npm create bilig-workpaper@latest pricing-workpaper`.
-3. Run the flagship
+2. Run the flagship
    [serverless WorkPaper API](examples/serverless-workpaper-api) example:
    `npm run quote-approval-api`.
-4. If the workflow starts with an XLSX file, run the
+3. If the workflow starts with an XLSX file, run the
    [XLSX formula recalculation in Node](examples/xlsx-recalculation-node):
    `npm start`.
-5. If an agent needs workbook tools, start with the
+4. If an agent needs workbook tools, start with the
    [MCP server guide](docs/mcp-workpaper-tool-server.md), including the
    copy-paste JSON-RPC transcript for verified write/readback.
 
