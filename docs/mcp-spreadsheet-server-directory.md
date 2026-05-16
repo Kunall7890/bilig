@@ -114,7 +114,7 @@ A useful result includes:
 Latest checked result on May 16, 2026: the official Registry API returned one
 latest Bilig WorkPaper entry and marked `@bilig/headless@0.16.2` as the latest
 server package. The refresh was published by the repository workflow run at
-<https://github.com/proompteng/bilig/actions/runs/25955213169>.
+<https://github.com/proompteng/bilig/actions/runs/25956395253>.
 
 The package itself carries the matching `mcpName` field. That is the ownership
 signal the registry uses for npm package validation.

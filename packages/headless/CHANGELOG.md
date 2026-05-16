@@ -11,6 +11,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(core): anchor sheet range metadata (077bfbe1)
 
 ## 0.16.1
@@ -20,6 +21,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(headless): template-bind fresh append formulas (b6ec9a28)
 - fix(web): drop stale assistant context retries (194eefa9)
 - perf(headless): skip unchanged aggregate retargets on tail append (73c1e4e5)
@@ -39,6 +41,7 @@ This package is released as part of the aligned bilig library package set.
 - fix(ci): skip stale runtime release plans (0addaa62)
 
 ## Internal runtime changes
+
 - docs(headless): gate cold-start package footprint (18b52b2c)
 - docs(headless): refresh package footprint (b0ea64d0)
 - refactor: address workbook technical debt (67a282c7)

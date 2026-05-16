@@ -49,7 +49,7 @@ current checked-in artifact records `48/57` mean-latency wins:
 | ------- | -------------------: | ------------------: | ---------------------: |
 | Overall |                 `57` |                `48` |                    `9` |
 | Public  |                 `40` |                `35` |                    `5` |
-| Holdout |                 `17` |                 `13` |                    `4` |
+| Holdout |                 `17` |                `13` |                    `4` |
 
 The overall directional mean-ratio geomean is `0.6120192926696242`. The overall
 directional p95-ratio geomean is `0.6042529504573382`. Ratios below `1.0` mean

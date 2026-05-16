@@ -531,7 +531,7 @@ for (const required of [
   'https://www.pulsemcp.com/servers?search=bilig&q=bilig',
   'https://github.com/proompteng/bilig/issues/384',
   'marked `@bilig/headless@0.16.2` as the latest',
-  'https://github.com/proompteng/bilig/actions/runs/25955213169',
+  'https://github.com/proompteng/bilig/actions/runs/25956395253',
   'read_workpaper_summary',
   'set_workpaper_input_cell',
 ]) {

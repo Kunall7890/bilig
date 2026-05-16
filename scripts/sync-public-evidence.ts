@@ -104,6 +104,18 @@ function requireIncludes(haystack: string, needle: string, context: string): voi
   }
 }
 
+function requireBenchmarkTableRow(content: string, lane: string, comparableCount: number, workpaperWins: number, context: string): void {
+  const pattern = new RegExp(
+    `\\| ${lane}\\s+\\|\\s+\`${comparableCount.toString()}\`\\s+\\|\\s+\`${workpaperWins.toString()}\`\\s+\\|`,
+    'u',
+  )
+  if (!pattern.test(content)) {
+    throw new Error(
+      `${context} is missing ${lane} benchmark row for ${comparableCount.toString()} comparable workloads and ${workpaperWins.toString()} WorkPaper wins`,
+    )
+  }
+}
+
 function requireNotIncludes(haystack: string, needle: string, context: string): void {
   if (haystack.includes(needle)) {
     throw new Error(`${context} must not include stale public evidence token ${needle}`)
@@ -318,21 +330,9 @@ async function assertPublicSurfaces(evidence: PublicEvidence): Promise<void> {
     ['docs/headless-workpaper-benchmark-evidence.md', benchmarkEvidence],
   ] as const) {
     requireIncludes(content, `\`${meanHeadline}\` mean-latency wins`, path)
-    requireIncludes(
-      content,
-      `| Overall |                 \`${overall.comparableCount.toString()}\` |                \`${overall.workpaperWins.toString()}\` |`,
-      path,
-    )
-    requireIncludes(
-      content,
-      `| Public  |                 \`${publicLane.comparableCount.toString()}\` |                \`${publicLane.workpaperWins.toString()}\` |`,
-      path,
-    )
-    requireIncludes(
-      content,
-      `| Holdout |                 \`${holdout.comparableCount.toString()}\` |                 \`${holdout.workpaperWins.toString()}\` |`,
-      path,
-    )
+    requireBenchmarkTableRow(content, 'Overall', overall.comparableCount, overall.workpaperWins, path)
+    requireBenchmarkTableRow(content, 'Public', publicLane.comparableCount, publicLane.workpaperWins, path)
+    requireBenchmarkTableRow(content, 'Holdout', holdout.comparableCount, holdout.workpaperWins, path)
     requireIncludes(content, `generated at \`${benchmark.generatedAt}\``, path)
     requireIncludes(content, `\`${overall.directionalMeanRatioGeomean.toString()}\``, path)
     requireIncludes(content, `\`${overall.directionalP95RatioGeomean.toString()}\``, path)

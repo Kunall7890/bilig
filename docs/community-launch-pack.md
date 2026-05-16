@@ -381,8 +381,44 @@ Latest conversion snapshot on May 16, 2026:
   community growth snapshot so visitors can inspect the current public signals.
 - MCP registry action: the official MCP Registry was refreshed to
   `@bilig/headless@0.16.2` with workflow run
-  <https://github.com/proompteng/bilig/actions/runs/25955213169>. Live API
+  <https://github.com/proompteng/bilig/actions/runs/25956395253>. Live API
   verification marked `0.16.2` as the latest Bilig WorkPaper server package.
+
+Latest star-spike research on May 16, 2026:
+
+- GitHub stargazer timestamps show that the jump was concentrated from May 7
+  through May 11, 2026: 3 stars on May 7, 6 on May 8, 1 on May 10, and 9 on
+  May 11, after only two earlier April stars.
+- GitHub traffic confirms the same window as the strongest visitor window:
+  May 7 had `125` views from `64` unique visitors, and May 8 had `122` views
+  from `42` unique visitors.
+- The current traffic referrer list says the most useful external channels are
+  Hacker News (`51` views / `36` uniques), X/t.co (`29` / `24`), the docs site
+  (`16` / `10`), Google (`16` / `2`), Kagi (`7` / `7`), Reddit (`6` / `4`),
+  and goodfirstissues.com (`6` / `3`).
+- HN Algolia shows two relevant submissions on May 7:
+  <https://news.ycombinator.com/item?id=48045427> at `2` points / `0`
+  comments and <https://news.ycombinator.com/item?id=48052832> at `3` points
+  / `0` comments. The lesson is not that HN discussion worked; it is that even
+  small HN exposure sent qualified evaluators.
+- The Reddit r/coolgithubprojects post had no public comments in the current
+  page snapshot:
+  <https://www.reddit.com/r/coolgithubprojects/comments/1t6jo3s/i_built_a_headless_spreadsheet_engine_for_node/>.
+  Treat it as weak awareness until it creates comments, referrers, issues, or
+  discussion replies.
+- The replicable pattern is: narrow technical audience, single proof URL,
+  concrete feedback ask, public npm package, and immediate README/docs
+  conversion. The next loop should make the HN/X/MCP follow-up about one
+  adoption blocker, not a general launch.
+- Research alignment: GitHub's Open Source Guide says users become
+  contributors because the project solves a problem for them, recommends one
+  focal home URL, and warns against spamming broad communities. GitHub traffic
+  docs confirm the referrer and popular-content data is a 14-day, UTC-based
+  signal, so each distribution push needs a before/after snapshot.
+- Trust alignment: OpenSSF Scorecard frames CI, branch protection, token
+  permissions, package publishing, and maintenance as machine-checkable trust
+  surfaces. Public red CI from stale runtime-package workflows is therefore a
+  growth problem, not just an engineering nuisance.
 
 Latest contributor-funnel action on May 14, 2026:
 
