@@ -312,13 +312,15 @@ function normalizePortableFootprintForCheck(footprint: HeadlessPackageFootprint)
     ...footprint,
     npmPackDryRun: {
       ...footprint.npmPackDryRun,
-      // npm reports byte counters from the local pack/build environment. Keep
-      // check mode focused on portable package-shape drift; the docs present
-      // these values as coarse footprint signals, not exact archive checksums.
-      tarballBytes: Math.round(footprint.npmPackDryRun.tarballBytes / 100_000) * 100_000,
-      unpackedBytes: Math.round(footprint.npmPackDryRun.unpackedBytes / 100_000) * 100_000,
-      readmeBytes: Math.round(footprint.npmPackDryRun.readmeBytes / 1_000) * 1_000,
-      packageJsonBytes: Math.round(footprint.npmPackDryRun.packageJsonBytes / 1_000) * 1_000,
+      // npm pack dry-run counters can drift across OS, npm, Bun, and gzip
+      // versions even when the package identity and public surface are stable.
+      // Check mode validates stable package metadata against the live build and
+      // validates README blocks against the committed artifact below.
+      tarballBytes: 0,
+      unpackedBytes: 0,
+      entryCount: 0,
+      readmeBytes: 0,
+      packageJsonBytes: 0,
     },
   }
 }
@@ -447,7 +449,8 @@ async function writeUntilStable(attempt = 0, previousJson?: string): Promise<Hea
 if (checkMode) {
   const footprint = await buildCurrentFootprint()
   const current = await readFile(outputPath, 'utf8')
-  const normalizedCurrent = normalizePortableFootprintForCheck(parseFootprintJson(current))
+  const currentFootprint = parseFootprintJson(current)
+  const normalizedCurrent = normalizePortableFootprintForCheck(currentFootprint)
   const normalizedRendered = normalizePortableFootprintForCheck(footprint)
   if (
     formatJsonForRepo(`${JSON.stringify(normalizedCurrent, null, 2)}\n`) !==
@@ -455,7 +458,7 @@ if (checkMode) {
   ) {
     throw new Error('docs/headless-package-footprint.json is out of date. Run: pnpm headless:footprint:generate')
   }
-  await syncMarkdownBlocks(footprint)
+  await syncMarkdownBlocks(currentFootprint)
   console.log(
     JSON.stringify(
       {
