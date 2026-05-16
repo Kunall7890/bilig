@@ -470,24 +470,6 @@ function computeBinaryScalarResult(opcode: i32, leftTag: u8, leftValue: f64, rig
   binaryResultValue = binaryNumeric(opcode, left, right)
 }
 
-function writeConcatenatedString(slot: i32, leftTag: u8, leftValue: f64, rightTag: u8, rightValue: f64): void {
-  const leftText = scalarText(leftTag, leftValue)
-  const rightText = scalarText(rightTag, rightValue)
-  if (leftText == null || rightText == null) {
-    writeScalar(slot, <u8>ValueTag.Error, ErrorCode.Value)
-    return
-  }
-  const outputIndex = allocateOutputString(leftText.length + rightText.length)
-  let offset = 0
-  for (let index = 0; index < leftText.length; index++) {
-    writeOutputStringData(outputIndex, offset++, <u16>leftText.charCodeAt(index))
-  }
-  for (let index = 0; index < rightText.length; index++) {
-    writeOutputStringData(outputIndex, offset++, <u16>rightText.charCodeAt(index))
-  }
-  writeScalar(slot, <u8>ValueTag.String, encodeOutputStringId(outputIndex))
-}
-
 export function init(cellCapacity: i32, formulaCapacity: i32, constantCapacity: i32, rangeCapacity: i32, memberCapacity: i32): void {
   ensureCellCapacity(cellCapacity)
   ensureFormulaCapacity(formulaCapacity)
