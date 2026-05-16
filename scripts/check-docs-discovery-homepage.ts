@@ -72,7 +72,7 @@ export function requireHomepageDiscovery(index: string, siteCss: string, product
       '41 of 57 comparable mean-latency rows are faster in the checked file.',
       'The structural append row is slower at p95.',
       'rendering is not part of this benchmark.',
-      '<code>7.29x</code>',
+      '<code>10.722x</code>',
       'structural-append-formula-rows is slower at p95:',
       'UI rendering, Excel file compatibility, and workbook shapes this suite does not cover.',
       'packages/benchmarks/baselines/<wbr />workpaper-vs-hyperformula.json',

@@ -54,7 +54,7 @@ interface WorkPaperMcpToolCallResult {
   isError: false
 }
 
-type WorkPaperMcpJsonRpcResponse = JsonRpcSuccess<WorkPaperMcpToolsListResult | WorkPaperMcpToolCallResult>
+type WorkPaperMcpJsonRpcResponse = JsonRpcSuccess<unknown>
 
 interface WorkPaperMcpToolServer {
   capabilities: WorkPaperMcpCapabilities
@@ -502,11 +502,11 @@ function requireToolCallResponse(
   }
 }
 
-function isToolsListResult(result: WorkPaperMcpToolsListResult | WorkPaperMcpToolCallResult): result is WorkPaperMcpToolsListResult {
+function isToolsListResult(result: unknown): result is WorkPaperMcpToolsListResult {
   return isRecord(result) && Array.isArray(result['tools'])
 }
 
-function isToolCallResult(result: WorkPaperMcpToolsListResult | WorkPaperMcpToolCallResult): result is WorkPaperMcpToolCallResult {
+function isToolCallResult(result: unknown): result is WorkPaperMcpToolCallResult {
   return isRecord(result) && Array.isArray(result['content']) && result['isError'] === false && isRecord(result['structuredContent'])
 }
 

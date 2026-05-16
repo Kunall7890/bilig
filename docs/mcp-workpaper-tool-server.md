@@ -40,11 +40,24 @@ printf '%s\n' \
   npm run --silent agent:mcp-stdio
 ```
 
-The npm package also exposes the same demo server as `bilig-workpaper-mcp`:
+The npm package exposes the demo server as `bilig-workpaper-mcp` by default:
 
 ```sh
 npm exec --package @bilig/headless -- bilig-workpaper-mcp
 ```
+
+For a real agent workflow, point the same binary at a persisted WorkPaper JSON
+document:
+
+```sh
+npm exec --package @bilig/headless -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --writable
+```
+
+File-backed mode loads `./pricing.workpaper.json`, exposes `list_sheets`,
+`read_range`, `read_cell`, `set_cell_contents`, `get_cell_display_value`,
+`export_workpaper_document`, and `validate_formula`, then writes the updated
+WorkPaper JSON back to the same file after `set_cell_contents` when `--writable`
+is present. Omit `--writable` for read-only inspection.
 
 The package carries `mcpName: io.github.proompteng/bilig-workpaper` and a
 matching `server.json`. It is published in the official MCP Registry as
@@ -131,11 +144,20 @@ The script implements two JSON-RPC methods shaped around the MCP tool model:
 - `tools/call` invokes the requested WorkPaper tool and returns text content
   plus structured formula readback.
 
+The packaged binary has two tool sets:
+
+- default demo mode: `read_workpaper_summary` and `set_workpaper_input_cell`
+- file-backed mode: `list_sheets`, `read_range`, `read_cell`,
+  `set_cell_contents`, `get_cell_display_value`, `export_workpaper_document`,
+  and `validate_formula`
+
 The annotations are explicit for directory reviewers and cautious MCP clients:
 `read_workpaper_summary` is read-only, idempotent, and closed-world.
 `set_workpaper_input_cell` mutates the local WorkPaper state, is idempotent for
 the same cell/value arguments, and is closed-world rather than a network or
 filesystem tool.
+In file-backed mode, `set_cell_contents` is annotated as destructive only when
+the server starts with `--writable`.
 
 ### MCP Stdio Troubleshooting
 

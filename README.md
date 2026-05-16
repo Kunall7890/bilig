@@ -115,9 +115,9 @@ matters.
 
 <!-- headless-package-footprint:start -->
 
-Current checked npm footprint for `@bilig/headless@0.14.28`:
+Current checked npm footprint for `@bilig/headless@0.14.29`:
 
-- Pack dry run: `411 kB` tarball, `2.44 MB` unpacked, `408` package entries.
+- Pack dry run: `415 kB` tarball, `2.48 MB` unpacked, `411` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
   import/export stays behind the `@bilig/headless/xlsx` subpath; MCP is the
   `bilig-workpaper-mcp` binary wrapper.
@@ -223,7 +223,14 @@ The package also ships the MCP stdio binary:
 
 ```sh
 npm exec --package @bilig/headless -- bilig-workpaper-mcp
+npm exec --package @bilig/headless -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --writable
 ```
+
+Without `--workpaper`, the binary starts the built-in demo workbook. With
+`--workpaper`, it loads your persisted WorkPaper JSON and exposes
+`list_sheets`, `read_range`, `read_cell`, `set_cell_contents`,
+`get_cell_display_value`, `export_workpaper_document`, and `validate_formula`;
+`--writable` persists `set_cell_contents` edits back to the same file.
 
 It is published in the official MCP Registry as
 `io.github.proompteng/bilig-workpaper`:
@@ -236,7 +243,7 @@ It is published in the official MCP Registry as
 - Run `pnpm workpaper:bench:competitive:check`. The checked-in artifact shows
   [`41/57` comparable WorkPaper mean wins](docs/what-workpaper-benchmark-proves.md)
   and names the worst p95 holdout: `structural-append-formula-rows` at
-  `7.29x`.
+  `10.722x`.
 - The benchmark card is generated from that artifact:
   [`docs/assets/workpaper-benchmark-card.png`](docs/assets/workpaper-benchmark-card.png).
 - Read the [compatibility limits](docs/where-bilig-is-not-excel-compatible-yet.md)

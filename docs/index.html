@@ -397,11 +397,11 @@ function readNumber(cell: unknown): number {
                 <span>bilig-workpaper-mcp</span>
                 <span>stdio</span>
               </div>
-              <pre><code>$ npm exec --package @bilig/headless -- bilig-workpaper-mcp
+              <pre><code>$ npm exec --package @bilig/headless -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --writable
 <span class="ok">ok</span> tools/list
-<span class="ok">ok</span> tools/call read_workpaper_summary
-<span class="ok">ok</span> tools/call set_workpaper_input_cell
-<span class="ok">ok</span> formulas persisted after restore</code></pre>
+<span class="ok">ok</span> tools/call read_range
+<span class="ok">ok</span> tools/call set_cell_contents
+<span class="ok">ok</span> WorkPaper JSON persisted to file</code></pre>
             </div>
           </div>
         </div>
@@ -448,7 +448,7 @@ function readNumber(cell: unknown): number {
                 </div>
                 <div class="proof-fact">
                   <dt>Caveat</dt>
-                  <dd>structural-append-formula-rows is slower at p95: <code>7.29x</code>.</dd>
+                  <dd>structural-append-formula-rows is slower at p95: <code>10.722x</code>.</dd>
                 </div>
                 <div class="proof-fact">
                   <dt>Out of scope</dt>

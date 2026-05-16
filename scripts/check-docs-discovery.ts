@@ -325,7 +325,7 @@ for (const [path, content] of [
   requireIncludes(content, 'verifies the dependent formula result.', path)
   requireIncludes(content, 'pnpm workpaper:bench:competitive:check', path)
   requireIncludes(content, 'structural-append-formula-rows', path)
-  requireIncludes(content, '7.29x', path)
+  requireIncludes(content, '10.722x', path)
   requireIncludes(content, 'compatibility limits', path)
   requireIncludes(content, 'Excel oracle harness', path)
   requireIncludes(content, 'stale cached formula values', path)
@@ -564,6 +564,17 @@ requireIncludes(
 requireIncludes(mcpWorkPaperToolServerDoc, 'npm run agent:mcp-tools', 'docs/mcp-workpaper-tool-server.md')
 requireIncludes(mcpWorkPaperToolServerDoc, 'npm run --silent agent:mcp-stdio', 'docs/mcp-workpaper-tool-server.md')
 requireIncludes(mcpWorkPaperToolServerDoc, 'npm exec --package @bilig/headless -- bilig-workpaper-mcp', 'docs/mcp-workpaper-tool-server.md')
+requireIncludes(
+  mcpWorkPaperToolServerDoc,
+  'npm exec --package @bilig/headless -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --writable',
+  'docs/mcp-workpaper-tool-server.md',
+)
+requireIncludes(mcpWorkPaperToolServerDoc, '`list_sheets`, `read_range`, `read_cell`', 'docs/mcp-workpaper-tool-server.md')
+requireIncludes(
+  mcpWorkPaperToolServerDoc,
+  'WorkPaper JSON back to the same file after `set_cell_contents`',
+  'docs/mcp-workpaper-tool-server.md',
+)
 requireIncludes(mcpWorkPaperToolServerDoc, 'io.github.proompteng/bilig-workpaper', 'docs/mcp-workpaper-tool-server.md')
 requireIncludes(
   mcpWorkPaperToolServerDoc,
@@ -927,6 +938,10 @@ await requireServerlessWorkPaperApiDiscovery({
 })
 requireIncludes(headlessPackageManifest, '"mcpName": "io.github.proompteng/bilig-workpaper"', 'packages/headless/package.json')
 requireIncludes(headlessPackageManifest, '"bilig-workpaper-mcp": "./dist/work-paper-mcp-stdio-bin.js"', 'packages/headless/package.json')
+requireIncludes(headlessReadme, 'bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --writable', 'packages/headless/README.md')
+requireIncludes(headlessReadme, '`set_cell_contents` edits back to the same file', 'packages/headless/README.md')
+requireIncludes(readme, 'bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --writable', 'README.md')
+requireIncludes(readme, '`export_workpaper_document`, and `validate_formula`', 'README.md')
 requireIncludes(headlessServerJson, '"name": "io.github.proompteng/bilig-workpaper"', 'packages/headless/server.json')
 requireIncludes(headlessServerJson, '"identifier": "@bilig/headless"', 'packages/headless/server.json')
 requireIncludes(headlessReadme, 'npm run invoice-totals', 'packages/headless/README.md')
