@@ -233,6 +233,14 @@ function readFiniteNumber(record: Record<string, unknown>, key: string, context:
   return value
 }
 
+function readBoolean(record: Record<string, unknown>, key: string, context: string): boolean {
+  const value = record[key]
+  if (typeof value !== 'boolean') {
+    throw new Error(`${context}.${key} must be a boolean`)
+  }
+  return value
+}
+
 function assertPositioning(manifest: PackageManifest): void {
   if (manifest.description !== requiredDescription) {
     throw new Error(`packages/headless/package.json description must be: ${requiredDescription}`)
@@ -294,6 +302,62 @@ function buildFootprint(manifest: PackageManifest, pack: PackResult): HeadlessPa
       workload: 'main import plus two-sheet revenue WorkPaper readback',
       maxElapsedMs: coldStartProbeMaxElapsedMs,
       expectedDisplayValue: '24000',
+      importsXlsxSubpath: false,
+    },
+  }
+}
+
+function normalizePortableFootprintForCheck(footprint: HeadlessPackageFootprint): HeadlessPackageFootprint {
+  return {
+    ...footprint,
+    npmPackDryRun: {
+      ...footprint.npmPackDryRun,
+      tarballBytes: Math.round(footprint.npmPackDryRun.tarballBytes / 1_000) * 1_000,
+      unpackedBytes: Math.round(footprint.npmPackDryRun.unpackedBytes / 10_000) * 10_000,
+    },
+  }
+}
+
+function parseFootprintJson(source: string): HeadlessPackageFootprint {
+  const parsed: unknown = JSON.parse(source)
+  const record = asRecord(parsed, 'docs/headless-package-footprint.json')
+  const packageRecord = asRecord(record['package'], 'docs/headless-package-footprint.json.package')
+  const packRecord = asRecord(record['npmPackDryRun'], 'docs/headless-package-footprint.json.npmPackDryRun')
+  const coldStartRecord = asRecord(record['coldStartProbe'], 'docs/headless-package-footprint.json.coldStartProbe')
+  const schemaVersion = readFiniteNumber(record, 'schemaVersion', 'docs/headless-package-footprint.json')
+  if (schemaVersion !== 1) {
+    throw new Error('docs/headless-package-footprint.json.schemaVersion must be 1')
+  }
+  const runtime = readString(coldStartRecord, 'runtime', 'docs/headless-package-footprint.json.coldStartProbe')
+  if (runtime !== 'node') {
+    throw new Error('docs/headless-package-footprint.json.coldStartProbe.runtime must be node')
+  }
+  return {
+    schemaVersion: 1,
+    package: {
+      name: readString(packageRecord, 'name', 'docs/headless-package-footprint.json.package'),
+      version: readString(packageRecord, 'version', 'docs/headless-package-footprint.json.package'),
+      description: readString(packageRecord, 'description', 'docs/headless-package-footprint.json.package'),
+      nodeEngine: readString(packageRecord, 'nodeEngine', 'docs/headless-package-footprint.json.package'),
+      keywordCount: readFiniteNumber(packageRecord, 'keywordCount', 'docs/headless-package-footprint.json.package'),
+      keywords: readStringArray(packageRecord, 'keywords', 'docs/headless-package-footprint.json.package'),
+      dependencyNames: readStringArray(packageRecord, 'dependencyNames', 'docs/headless-package-footprint.json.package'),
+      hasXlsxSubpath: readBoolean(packageRecord, 'hasXlsxSubpath', 'docs/headless-package-footprint.json.package'),
+      hasMcpBinary: readBoolean(packageRecord, 'hasMcpBinary', 'docs/headless-package-footprint.json.package'),
+    },
+    npmPackDryRun: {
+      tarballBytes: readFiniteNumber(packRecord, 'tarballBytes', 'docs/headless-package-footprint.json.npmPackDryRun'),
+      unpackedBytes: readFiniteNumber(packRecord, 'unpackedBytes', 'docs/headless-package-footprint.json.npmPackDryRun'),
+      entryCount: readFiniteNumber(packRecord, 'entryCount', 'docs/headless-package-footprint.json.npmPackDryRun'),
+      readmeBytes: readFiniteNumber(packRecord, 'readmeBytes', 'docs/headless-package-footprint.json.npmPackDryRun'),
+      packageJsonBytes: readFiniteNumber(packRecord, 'packageJsonBytes', 'docs/headless-package-footprint.json.npmPackDryRun'),
+    },
+    coldStartProbe: {
+      runtime: 'node',
+      entrypoint: readString(coldStartRecord, 'entrypoint', 'docs/headless-package-footprint.json.coldStartProbe'),
+      workload: readString(coldStartRecord, 'workload', 'docs/headless-package-footprint.json.coldStartProbe'),
+      maxElapsedMs: readFiniteNumber(coldStartRecord, 'maxElapsedMs', 'docs/headless-package-footprint.json.coldStartProbe'),
+      expectedDisplayValue: readString(coldStartRecord, 'expectedDisplayValue', 'docs/headless-package-footprint.json.coldStartProbe'),
       importsXlsxSubpath: false,
     },
   }
@@ -377,9 +441,13 @@ async function writeUntilStable(attempt = 0, previousJson?: string): Promise<Hea
 
 if (checkMode) {
   const footprint = await buildCurrentFootprint()
-  const renderedJson = formatJsonForRepo(`${JSON.stringify(footprint, null, 2)}\n`)
   const current = await readFile(outputPath, 'utf8')
-  if (current !== renderedJson) {
+  const normalizedCurrent = normalizePortableFootprintForCheck(parseFootprintJson(current))
+  const normalizedRendered = normalizePortableFootprintForCheck(footprint)
+  if (
+    formatJsonForRepo(`${JSON.stringify(normalizedCurrent, null, 2)}\n`) !==
+    formatJsonForRepo(`${JSON.stringify(normalizedRendered, null, 2)}\n`)
+  ) {
     throw new Error('docs/headless-package-footprint.json is out of date. Run: pnpm headless:footprint:generate')
   }
   await syncMarkdownBlocks(footprint)
