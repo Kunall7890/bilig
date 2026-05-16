@@ -237,12 +237,13 @@ function reconcileSelection(selection: WorkerRuntimeSelection, sheetNames: reado
   }
 }
 
-function parseSnapshotRevisionHeader(value: string | null): number | null {
-  if (!value) {
+export function parseSnapshotRevisionHeader(value: string | null): number | null {
+  const trimmed = value?.trim()
+  if (!trimmed || !/^(0|[1-9]\d*)$/u.test(trimmed)) {
     return null
   }
-  const parsed = Number.parseInt(value, 10)
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null
+  const parsed = Number(trimmed)
+  return Number.isSafeInteger(parsed) ? parsed : null
 }
 
 async function loadLatestWorkbookSnapshot(documentId: string, fetchImpl: typeof fetch): Promise<LatestWorkbookSnapshot | null> {
