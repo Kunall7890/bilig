@@ -4,7 +4,6 @@ import { unzipSync, type Unzipped } from 'fflate'
 import { parseCsv, parseCsvCellInput, resolveCsvParseOptions, type CsvParseOptions } from '@bilig/core'
 import type {
   CellStyleRecord,
-  LiteralInput,
   WorkbookCommentThreadSnapshot,
   WorkbookLegacyCommentVmlSnapshot,
   WorkbookMetadataSnapshot,
@@ -58,7 +57,6 @@ import {
   normalizeCsvSheetName,
   normalizeWorkbookName,
   toDisplayText,
-  toLiteralInput,
   type ImportedWorkbookSheetPreview,
 } from './workbook-import-helpers.js'
 import {
@@ -91,6 +89,7 @@ import {
   volatileFormulasWarning,
   workbookDefinedNamesReferenceExternalWorkbook,
 } from './xlsx-import-warnings.js'
+import { compareCellAddresses, readImportedLiteralCellValue, readImportedNumberFormat } from './xlsx-import-cell-values.js'
 import { createPreservedVbaProjectPayload, type PreservedVbaProjectCodeNames } from './xlsx-macros.js'
 import { worksheetCellAt, worksheetCellEntries, worksheetCellEntriesAtAddresses } from './xlsx-worksheet-cells.js'
 import { readImportedWorksheetTextValues } from './xlsx-worksheet-text-values.js'
@@ -119,16 +118,6 @@ export {
 export type { ExcelWorkbookImportContentType, WorkbookImportContentType } from './workbook-import-content-types.js'
 
 const largeWorkbookStyleCandidateThreshold = 100_000
-const legacyExcelErrorTextByCode = new Map<number, string>([
-  [0, '#NULL!'],
-  [7, '#DIV/0!'],
-  [15, '#VALUE!'],
-  [23, '#REF!'],
-  [29, '#NAME?'],
-  [36, '#NUM!'],
-  [42, '#N/A'],
-  [43, '#GETTING_DATA'],
-])
 
 export interface ImportedWorkbook {
   snapshot: WorkbookSnapshot
@@ -155,17 +144,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
-function readImportedNumberFormat(value: unknown): string | undefined {
-  if (typeof value !== 'string') {
-    return undefined
-  }
-  const trimmed = value.trim()
-  if (trimmed.length === 0 || trimmed === 'General') {
-    return undefined
-  }
-  return trimmed
-}
-
 function toUint8Array(value: unknown): Uint8Array | null {
   if (value instanceof Uint8Array) {
     return new Uint8Array(value)
@@ -182,38 +160,6 @@ function readNonEmptyString(value: unknown): string | undefined {
   }
   const trimmed = value.trim()
   return trimmed.length > 0 ? trimmed : undefined
-}
-
-function readImportedLiteralCellValue(cell: Record<string, unknown>): LiteralInput | undefined {
-  if (cell['t'] === 'e') {
-    if (Object.hasOwn(cell, 'w')) {
-      const displayText = toLiteralInput(cell['w'])
-      if (typeof displayText === 'string' && displayText.startsWith('#')) {
-        return displayText
-      }
-    }
-    if (!Object.hasOwn(cell, 'v')) {
-      return undefined
-    }
-    const errorCode = cell['v']
-    if (errorCode === undefined || errorCode === null) {
-      return undefined
-    }
-    if (typeof errorCode === 'number') {
-      return legacyExcelErrorTextByCode.get(errorCode) ?? '#ERROR!'
-    }
-    if (typeof errorCode === 'string' && errorCode.startsWith('#')) {
-      return errorCode
-    }
-    return '#ERROR!'
-  }
-  return toLiteralInput(cell['v'])
-}
-
-function compareCellAddresses(left: string, right: string): number {
-  const leftCell = XLSX.utils.decode_cell(left)
-  const rightCell = XLSX.utils.decode_cell(right)
-  return leftCell.r - rightCell.r || leftCell.c - rightCell.c
 }
 
 function addCandidateAddress(addressesBySheet: Map<string, Set<string>>, sheetName: string, address: string): boolean {
