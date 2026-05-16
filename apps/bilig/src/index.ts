@@ -7,17 +7,14 @@ import { createInProcessWorksheetExecutor } from './workbook-runtime/worksheet-e
 import { createZeroSyncService } from './zero/service.js'
 import { createWorkbookAgentService } from './codex-app/workbook-agent-service.js'
 import { logError } from './runtime-logger.js'
+import { resolveBiligAppRuntimeConfig } from './app-runtime-config.js'
 
 async function main() {
-  const host = process.env['HOST'] ?? '0.0.0.0'
-  const appPort = Number.parseInt(process.env['PORT'] ?? '4321', 10)
-  const publicServerUrl = process.env['BILIG_PUBLIC_SERVER_URL'] ?? `http://127.0.0.1:${appPort}`
-  const browserAppBaseUrl = process.env['BILIG_WEB_APP_BASE_URL'] ?? publicServerUrl
-  const maxImportBytes = Number.parseInt(process.env['BILIG_AGENT_IMPORT_MAX_BYTES'] ?? '', 10)
+  const { host, appPort, publicServerUrl, browserAppBaseUrl, maxImportBytes } = resolveBiligAppRuntimeConfig()
   const worksheetHostSessionManager = new LocalWorkbookSessionManager({
     publicServerUrl,
     browserAppBaseUrl,
-    ...(Number.isFinite(maxImportBytes) ? { maxImportBytes } : {}),
+    ...(maxImportBytes !== undefined ? { maxImportBytes } : {}),
   })
   const worksheetHostDocumentService = new LocalDocumentSupervisor(worksheetHostSessionManager)
 
@@ -32,7 +29,7 @@ async function main() {
     {
       publicServerUrl,
       browserAppBaseUrl,
-      ...(Number.isFinite(maxImportBytes) ? { maxImportBytes } : {}),
+      ...(maxImportBytes !== undefined ? { maxImportBytes } : {}),
     },
   )
   const documentService = new SyncDocumentSupervisor(sessionManager)
