@@ -7,7 +7,7 @@ import {
 } from '@bilig/zero-sync'
 import { buildWorkbookChangeDescriptor, type WorkbookChangeDescriptor } from './workbook-change-descriptor.js'
 import type { QueryResultRow, Queryable } from './store.js'
-import { parseNullableInteger } from './store-support.js'
+import { parseNonNegativeInteger, parsePositiveInteger } from './store-support.js'
 import { resolveWorkbookSheetRef } from './workbook-sheet-ref.js'
 import { selectLatestRedoableWorkbookChangeRevision, selectLatestUndoableWorkbookChangeRevision } from './workbook-history-selector.js'
 
@@ -411,8 +411,8 @@ export async function backfillWorkbookChanges(db: Queryable): Promise<void> {
   )
 
   const inserts = result.rows.flatMap((row) => {
-    const revision = parseNullableInteger(row.revision)
-    const createdAtUnixMs = parseNullableInteger(row.createdAtUnixMs)
+    const revision = parsePositiveInteger(row.revision)
+    const createdAtUnixMs = parseNonNegativeInteger(row.createdAtUnixMs)
     if (
       typeof row.workbookId !== 'string' ||
       typeof row.actorUserId !== 'string' ||

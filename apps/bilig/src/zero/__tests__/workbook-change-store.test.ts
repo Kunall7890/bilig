@@ -450,6 +450,33 @@ describe('workbook-change-store', () => {
     ])
   })
 
+  it('skips invalid authoritative event revisions during workbook_change backfill', async () => {
+    const queryable = new FakeQueryable([
+      (text) =>
+        text.includes('FROM workbook_event AS event')
+          ? [
+              {
+                workbookId: 'doc-1',
+                revision: -1,
+                actorUserId: 'sam@example.com',
+                clientMutationId: 'mutation-negative',
+                payload: {
+                  kind: 'setCellFormula',
+                  sheetName: 'Sheet1',
+                  address: 'D5',
+                  formula: '=SUM(A1:A4)',
+                },
+                createdAtUnixMs: 987_654,
+              } satisfies QueryResultRow,
+            ]
+          : null,
+    ])
+
+    await backfillWorkbookChanges(queryable)
+
+    expect(queryable.calls.some((call) => call.text.includes('INSERT INTO workbook_change'))).toBe(false)
+  })
+
   it('summarizes restoreVersion events as named workbook restores', () => {
     expect(
       buildWorkbookChangeDescriptor({

@@ -26,7 +26,7 @@ import {
   isRowMetadataEventPayload,
   isStyleRangeEventPayload,
   nowIso,
-  parseInteger,
+  parsePositiveInteger,
 } from './store-support.js'
 import {
   applyAxisMetadataDiff,
@@ -116,13 +116,14 @@ export async function loadAppliedWorkbookClientMutation(
     [documentId, clientMutationId],
   )
   const row = result.rows[0]
-  if (!row || !isWorkbookEventPayload(row.txn_json)) {
+  const eventRevision = row ? parsePositiveInteger(row.revision) : null
+  if (!row || eventRevision === null || !isWorkbookEventPayload(row.txn_json)) {
     return null
   }
   return {
     documentId,
     clientMutationId,
-    revision: parseInteger(row.revision),
+    revision: eventRevision,
     payload: row.txn_json,
     createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : (row.created_at ?? ''),
   }

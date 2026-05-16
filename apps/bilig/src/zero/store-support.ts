@@ -84,6 +84,16 @@ export function parseNullableInteger(value: unknown): number | null {
   return null
 }
 
+export function parsePositiveInteger(value: unknown): number | null {
+  const parsed = parseNullableInteger(value)
+  return parsed !== null && parsed > 0 ? parsed : null
+}
+
+export function parseNonNegativeInteger(value: unknown): number | null {
+  const parsed = parseNullableInteger(value)
+  return parsed !== null && parsed >= 0 ? parsed : null
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }

@@ -26,8 +26,8 @@ import {
   definedNameSignature,
   normalizeRangeBounds,
   numberFormatSignature,
-  parseInteger,
   parseJsonKey,
+  parsePositiveInteger,
   sheetSignature,
   styleSignature,
   workbookMetadataSignature,
@@ -153,17 +153,18 @@ export async function loadWorkbookEventRecordsAfter(
     `,
     [documentId, revision],
   )
-  return result.rows.flatMap((row) =>
-    parseInteger(row.revision) > revision && isWorkbookEventPayload(row.txn_json)
+  return result.rows.flatMap((row) => {
+    const rowRevision = parsePositiveInteger(row.revision)
+    return rowRevision !== null && rowRevision > revision && isWorkbookEventPayload(row.txn_json)
       ? [
           {
-            revision: parseInteger(row.revision),
+            revision: rowRevision,
             clientMutationId: row.client_mutation_id,
             payload: row.txn_json,
           } satisfies AuthoritativeWorkbookEventRecord,
         ]
-      : [],
-  )
+      : []
+  })
 }
 
 export async function upsertWorkbookHeader(

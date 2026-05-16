@@ -242,4 +242,25 @@ describe('workbook mutation store', () => {
     })
     expect(query).toHaveBeenCalledWith(expect.stringContaining('client_mutation_id = $2'), ['book-1', 'book-1:pending:9'])
   })
+
+  it('drops applied client mutations with invalid authoritative event revisions', async () => {
+    const payload = {
+      kind: 'setCellValue',
+      sheetName: 'Sheet1',
+      address: 'A1',
+      value: 17,
+    }
+    const query = vi.fn().mockResolvedValue({
+      rows: [
+        {
+          revision: 0,
+          txn_json: payload,
+          created_at: '2026-05-16T12:00:00.000Z',
+        },
+      ],
+    })
+    const db: Queryable = { query }
+
+    await expect(loadAppliedWorkbookClientMutation(db, 'book-1', 'book-1:pending:0')).resolves.toBeNull()
+  })
 })

@@ -9,7 +9,9 @@ import {
   parseCellStyleRecord,
   parseCheckpointPayload,
   parseInteger,
+  parseNonNegativeInteger,
   parseNullableInteger,
+  parsePositiveInteger,
 } from '../store-support.js'
 
 describe('store support helpers', () => {
@@ -171,5 +173,17 @@ describe('store support helpers', () => {
     expect(parseNullableInteger('12abc')).toBeNull()
     expect(parseNullableInteger('1.5')).toBeNull()
     expect(parseNullableInteger(String(Number.MAX_SAFE_INTEGER + 1))).toBeNull()
+  })
+
+  it('parses positive and non-negative integer fields by domain', () => {
+    expect(parsePositiveInteger(1)).toBe(1)
+    expect(parsePositiveInteger('7')).toBe(7)
+    expect(parsePositiveInteger(0)).toBeNull()
+    expect(parsePositiveInteger(-1)).toBeNull()
+    expect(parsePositiveInteger('1.5')).toBeNull()
+    expect(parseNonNegativeInteger(0)).toBe(0)
+    expect(parseNonNegativeInteger('9')).toBe(9)
+    expect(parseNonNegativeInteger(-1)).toBeNull()
+    expect(parseNonNegativeInteger(Number.MAX_SAFE_INTEGER + 1)).toBeNull()
   })
 })
