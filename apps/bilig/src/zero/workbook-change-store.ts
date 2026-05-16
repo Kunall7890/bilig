@@ -1,16 +1,19 @@
 import {
   isWorkbookChangeUndoBundle,
   isWorkbookEventPayload,
+  normalizeWorkbookChangeRange,
   type WorkbookChangeUndoBundle,
+  type WorkbookChangeRange,
   type WorkbookEventPayload,
 } from '@bilig/zero-sync'
-import { buildWorkbookChangeDescriptor, type WorkbookChangeDescriptor, type WorkbookChangeRange } from './workbook-change-descriptor.js'
+import { buildWorkbookChangeDescriptor, type WorkbookChangeDescriptor } from './workbook-change-descriptor.js'
 import type { QueryResultRow, Queryable } from './store.js'
 import { parseNullableInteger } from './store-support.js'
 import { resolveWorkbookSheetRef } from './workbook-sheet-ref.js'
 import { selectLatestRedoableWorkbookChangeRevision, selectLatestUndoableWorkbookChangeRevision } from './workbook-history-selector.js'
 
-export { buildWorkbookChangeDescriptor, type WorkbookChangeDescriptor, type WorkbookChangeRange } from './workbook-change-descriptor.js'
+export type { WorkbookChangeRange } from '@bilig/zero-sync'
+export { buildWorkbookChangeDescriptor, type WorkbookChangeDescriptor } from './workbook-change-descriptor.js'
 
 export interface AppendWorkbookChangeInput {
   readonly documentId: string
@@ -72,27 +75,6 @@ interface WorkbookChangeSelectRow extends QueryResultRow {
   readonly revertedByRevision?: unknown
   readonly revertsRevision?: unknown
   readonly createdAtUnixMs?: unknown
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
-
-function normalizeWorkbookChangeRange(value: unknown): WorkbookChangeRange | null {
-  if (!isRecord(value)) {
-    return null
-  }
-  const sheetName = value['sheetName']
-  const startAddress = value['startAddress']
-  const endAddress = value['endAddress']
-  if (typeof sheetName !== 'string' || typeof startAddress !== 'string' || typeof endAddress !== 'string') {
-    return null
-  }
-  return {
-    sheetName,
-    startAddress,
-    endAddress,
-  }
 }
 
 function normalizeWorkbookChangeRecord(row: WorkbookChangeSelectRow): WorkbookChangeRecord | null {

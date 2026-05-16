@@ -1,16 +1,12 @@
 import {
   deriveWorkbookActorHistoryState,
   isWorkbookChangeUndoBundle,
+  normalizeWorkbookChangeRange,
   workbookHistoryRangesOverlap,
   type WorkbookChangeUndoBundle,
+  type WorkbookChangeRange,
 } from '@bilig/zero-sync'
 import { formatWorkbookCollaboratorLabel } from './workbook-presence-model.js'
-
-export interface WorkbookChangeRange {
-  readonly sheetName: string
-  readonly startAddress: string
-  readonly endAddress: string
-}
 
 export interface WorkbookChangeRow {
   readonly revision: number
@@ -55,23 +51,6 @@ export interface WorkbookHistoryState {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
-}
-
-function normalizeWorkbookChangeRange(value: unknown): WorkbookChangeRange | null {
-  if (!isRecord(value)) {
-    return null
-  }
-  const sheetName = value['sheetName']
-  const startAddress = value['startAddress']
-  const endAddress = value['endAddress']
-  if (typeof sheetName !== 'string' || typeof startAddress !== 'string' || typeof endAddress !== 'string') {
-    return null
-  }
-  return {
-    sheetName,
-    startAddress,
-    endAddress,
-  }
 }
 
 function normalizeWorkbookChangeRow(value: unknown): WorkbookChangeRow | null {

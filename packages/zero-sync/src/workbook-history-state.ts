@@ -1,11 +1,9 @@
 import type { WorkbookChangeUndoBundle } from './workbook-events.js'
 import { parseCellAddress } from '@bilig/formula'
+import type { WorkbookChangeRange, WorkbookChangeRangeScope } from './workbook-change-range.js'
+import { normalizeWorkbookChangeRange } from './workbook-change-range.js'
 
-export interface WorkbookHistoryRange {
-  readonly sheetName: string
-  readonly startAddress: string
-  readonly endAddress: string
-}
+export type WorkbookHistoryRange = WorkbookChangeRange
 
 export interface WorkbookHistoryRangeSource {
   readonly sheetName?: string | null | undefined
@@ -45,6 +43,7 @@ interface NormalizedWorkbookHistoryRange {
   readonly endRow: number
   readonly startCol: number
   readonly endCol: number
+  readonly scope: WorkbookChangeRangeScope
 }
 
 function pushUnique(stack: readonly HistoryStackEntry[], entry: HistoryStackEntry): HistoryStackEntry[] {
@@ -69,10 +68,12 @@ function removeOverlappingEntries(
 
 function normalizeWorkbookHistoryRange(source: WorkbookHistoryRangeSource): NormalizedWorkbookHistoryRange | null {
   const range =
-    source.rangeJson ??
+    normalizeWorkbookChangeRange(source.rangeJson) ??
     (source.sheetName && source.anchorAddress
       ? { sheetName: source.sheetName, startAddress: source.anchorAddress, endAddress: source.anchorAddress }
-      : null)
+      : source.sheetName
+        ? { sheetName: source.sheetName, startAddress: 'A1', endAddress: 'A1', scope: 'sheet' as const }
+        : null)
   if (!range) {
     return null
   }
@@ -85,6 +86,7 @@ function normalizeWorkbookHistoryRange(source: WorkbookHistoryRangeSource): Norm
       endRow: Math.max(start.row, end.row),
       startCol: Math.min(start.col, end.col),
       endCol: Math.max(start.col, end.col),
+      scope: range.scope ?? 'cells',
     }
   } catch {
     return null
@@ -95,13 +97,25 @@ function rangesOverlap(left: NormalizedWorkbookHistoryRange | null, right: Norma
   if (!left || !right) {
     return true
   }
-  return (
-    left.sheetName === right.sheetName &&
-    left.startRow <= right.endRow &&
-    left.endRow >= right.startRow &&
-    left.startCol <= right.endCol &&
-    left.endCol >= right.startCol
-  )
+  if (left.sheetName !== right.sheetName) {
+    return false
+  }
+  if (left.scope === 'sheet' || right.scope === 'sheet') {
+    return true
+  }
+  if (left.scope === 'rows' && right.scope === 'columns') {
+    return true
+  }
+  if (left.scope === 'columns' && right.scope === 'rows') {
+    return true
+  }
+  if (left.scope === 'rows' || right.scope === 'rows') {
+    return left.startRow <= right.endRow && left.endRow >= right.startRow
+  }
+  if (left.scope === 'columns' || right.scope === 'columns') {
+    return left.startCol <= right.endCol && left.endCol >= right.startCol
+  }
+  return left.startRow <= right.endRow && left.endRow >= right.startRow && left.startCol <= right.endCol && left.endCol >= right.startCol
 }
 
 export function workbookHistoryRangesOverlap(left: WorkbookHistoryRangeSource, right: WorkbookHistoryRangeSource): boolean {

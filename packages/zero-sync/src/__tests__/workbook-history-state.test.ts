@@ -62,6 +62,71 @@ describe('deriveWorkbookActorHistoryState', () => {
     expect(state.redoRevision).toBe(62)
   })
 
+  it('treats row-scoped history as overlapping cells outside column A on the same rows', () => {
+    const state = deriveWorkbookActorHistoryState({
+      actorUserId: 'alex@example.com',
+      rows: [
+        historyRow({ revision: 71, eventKind: 'setCellValue', address: 'B3' }),
+        historyRow({
+          revision: 72,
+          actorUserId: 'morgan@example.com',
+          eventKind: 'insertRows',
+          address: 'A3',
+          rangeJson: { sheetName: 'Sheet1', startAddress: 'A3', endAddress: 'A4', scope: 'rows' },
+        }),
+      ],
+    })
+
+    expect(state.canUndo).toBe(false)
+    expect(state.undoStack).toEqual([])
+  })
+
+  it('treats column-scoped history as overlapping cells below row one in the same columns', () => {
+    const state = deriveWorkbookActorHistoryState({
+      actorUserId: 'alex@example.com',
+      rows: [
+        historyRow({ revision: 81, eventKind: 'setCellValue', address: 'C9' }),
+        historyRow({
+          revision: 82,
+          actorUserId: 'morgan@example.com',
+          eventKind: 'deleteColumns',
+          address: 'C1',
+          rangeJson: { sheetName: 'Sheet1', startAddress: 'C1', endAddress: 'D1', scope: 'columns' },
+        }),
+      ],
+    })
+
+    expect(state.canUndo).toBe(false)
+    expect(state.undoStack).toEqual([])
+  })
+
+  it('keeps structural changes disjoint across row intervals and sheets', () => {
+    const state = deriveWorkbookActorHistoryState({
+      actorUserId: 'alex@example.com',
+      rows: [
+        historyRow({ revision: 91, eventKind: 'setCellValue', address: 'B3' }),
+        historyRow({
+          revision: 92,
+          actorUserId: 'morgan@example.com',
+          eventKind: 'insertRows',
+          address: 'A8',
+          rangeJson: { sheetName: 'Sheet1', startAddress: 'A8', endAddress: 'A9', scope: 'rows' },
+        }),
+        historyRow({
+          revision: 93,
+          actorUserId: 'morgan@example.com',
+          eventKind: 'insertRows',
+          address: 'A3',
+          sheetName: 'Sheet2',
+          rangeJson: { sheetName: 'Sheet2', startAddress: 'A3', endAddress: 'A4', scope: 'rows' },
+        }),
+      ],
+    })
+
+    expect(state.canUndo).toBe(true)
+    expect(state.undoRevision).toBe(91)
+  })
+
   it('preserves older redo entries after a newer redo is applied', () => {
     const state = deriveWorkbookActorHistoryState({
       actorUserId: 'alex@example.com',
@@ -238,9 +303,17 @@ function historyRow(input: {
   readonly eventKind: string
   readonly actorUserId?: string
   readonly address: string
+  readonly sheetName?: string
+  readonly rangeJson?: {
+    readonly sheetName: string
+    readonly startAddress: string
+    readonly endAddress: string
+    readonly scope?: 'cells' | 'rows' | 'columns' | 'sheet'
+  }
   readonly revertedByRevision?: number | null
   readonly revertsRevision?: number | null
 }) {
+  const sheetName = input.sheetName ?? 'Sheet1'
   return {
     revision: input.revision,
     actorUserId: input.actorUserId ?? 'alex@example.com',
@@ -248,10 +321,10 @@ function historyRow(input: {
     undoBundleJson: { kind: 'engineOps', ops: [] },
     revertedByRevision: input.revertedByRevision ?? null,
     revertsRevision: input.revertsRevision ?? null,
-    sheetName: 'Sheet1',
+    sheetName,
     anchorAddress: input.address,
-    rangeJson: {
-      sheetName: 'Sheet1',
+    rangeJson: input.rangeJson ?? {
+      sheetName,
       startAddress: input.address,
       endAddress: input.address,
     },

@@ -40,6 +40,12 @@ export { loadRuntimeConfig, parseRuntimeConfig, type BiligRuntimeConfig } from '
 export { schema } from './schema.js'
 export { createEmptyWorkbookSnapshot, projectWorkbookToSnapshot } from './snapshot.js'
 export {
+  isWorkbookChangeRangeScope,
+  normalizeWorkbookChangeRange,
+  type WorkbookChangeRange,
+  type WorkbookChangeRangeScope,
+} from './workbook-change-range.js'
+export {
   deriveWorkbookActorHistoryState,
   workbookHistoryRangesOverlap,
   type WorkbookActorHistoryState,

@@ -69,6 +69,97 @@ describe('workbook-change-store', () => {
     })
   })
 
+  it('marks structural row and column descriptors with Zero range scope', () => {
+    expect(
+      buildWorkbookChangeDescriptor({
+        kind: 'insertRows',
+        sheetName: 'Sheet1',
+        start: 2,
+        count: 2,
+      }),
+    ).toMatchObject({
+      eventKind: 'insertRows',
+      anchorAddress: 'A3',
+      range: {
+        sheetName: 'Sheet1',
+        startAddress: 'A3',
+        endAddress: 'A4',
+        scope: 'rows',
+      },
+    })
+
+    expect(
+      buildWorkbookChangeDescriptor({
+        kind: 'deleteColumns',
+        sheetName: 'Sheet1',
+        start: 1,
+        count: 2,
+      }),
+    ).toMatchObject({
+      eventKind: 'deleteColumns',
+      anchorAddress: 'B1',
+      range: {
+        sheetName: 'Sheet1',
+        startAddress: 'B1',
+        endAddress: 'C1',
+        scope: 'columns',
+      },
+    })
+  })
+
+  it('keeps multi-sheet render commits conservative instead of lying about one sheet range', () => {
+    expect(
+      buildWorkbookChangeDescriptor({
+        kind: 'renderCommit',
+        ops: [
+          { kind: 'upsertCell', sheetName: 'Sheet1', addr: 'A1', value: 1 },
+          { kind: 'upsertCell', sheetName: 'Sheet2', addr: 'B2', value: 2 },
+        ],
+      }),
+    ).toEqual({
+      eventKind: 'renderCommit',
+      summary: 'Updated 2 cells across 2 sheets',
+      sheetName: null,
+      anchorAddress: null,
+      range: null,
+    })
+  })
+
+  it('preserves persisted structural range scope from the shared Zero model', async () => {
+    const queryable = new FakeQueryable([
+      (text) =>
+        text.includes('FROM workbook_change')
+          ? [
+              {
+                revision: 16,
+                actorUserId: 'alex@example.com',
+                clientMutationId: 'mutation-16',
+                eventKind: 'deleteColumns',
+                summary: 'Deleted columns B:C on Sheet1',
+                sheetId: 1,
+                sheetName: 'Sheet1',
+                anchorAddress: 'B1',
+                rangeJson: { sheetName: 'Sheet1', startAddress: 'B1', endAddress: 'C1', scope: 'columns' },
+                undoBundleJson: null,
+                revertedByRevision: null,
+                revertsRevision: null,
+                createdAtUnixMs: 124_500,
+              } satisfies QueryResultRow,
+            ]
+          : null,
+    ])
+
+    await expect(loadWorkbookChange(queryable, 'doc-1', 16)).resolves.toMatchObject({
+      revision: 16,
+      range: {
+        sheetName: 'Sheet1',
+        startAddress: 'B1',
+        endAddress: 'C1',
+        scope: 'columns',
+      },
+    })
+  })
+
   it('records workbook changes with resolved sheet ids and serialized ranges', async () => {
     const queryable = new FakeQueryable([
       (text) => (text.includes('FROM sheets') ? [{ sheetId: 4, sheetName: 'Sheet1' } satisfies QueryResultRow] : null),
@@ -312,6 +403,7 @@ describe('workbook-change-store', () => {
         sheetName: 'Sheet1',
         startAddress: 'A3',
         endAddress: 'A4',
+        scope: 'rows',
       },
     })
 
@@ -331,6 +423,7 @@ describe('workbook-change-store', () => {
         sheetName: 'Sheet1',
         startAddress: 'A1',
         endAddress: 'A1',
+        scope: 'sheet',
       },
     })
 
@@ -350,6 +443,7 @@ describe('workbook-change-store', () => {
         sheetName: 'Sheet1',
         startAddress: 'A3',
         endAddress: 'A4',
+        scope: 'rows',
       },
     })
 
@@ -369,6 +463,7 @@ describe('workbook-change-store', () => {
         sheetName: 'Sheet1',
         startAddress: 'B1',
         endAddress: 'C1',
+        scope: 'columns',
       },
     })
 

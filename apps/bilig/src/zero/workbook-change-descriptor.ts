@@ -1,12 +1,6 @@
 import { formatAddress, parseCellAddress } from '@bilig/formula'
 import type { CellRangeRef } from '@bilig/protocol'
-import type { WorkbookEventPayload } from '@bilig/zero-sync'
-
-export interface WorkbookChangeRange {
-  readonly sheetName: string
-  readonly startAddress: string
-  readonly endAddress: string
-}
+import { isWorkbookChangeRangeScope, type WorkbookChangeRange, type WorkbookEventPayload } from '@bilig/zero-sync'
 
 export interface WorkbookChangeDescriptor {
   readonly eventKind: WorkbookEventPayload['kind']
@@ -30,10 +24,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function normalizeRange(range: CellRangeRef): WorkbookChangeRange {
   const start = parseCellAddress(range.startAddress, range.sheetName)
   const end = parseCellAddress(range.endAddress, range.sheetName)
+  const scope = isRecord(range) && isWorkbookChangeRangeScope(range['scope']) ? range['scope'] : undefined
   return {
     sheetName: range.sheetName,
     startAddress: formatAddress(Math.min(start.row, end.row), Math.min(start.col, end.col)),
     endAddress: formatAddress(Math.max(start.row, end.row), Math.max(start.col, end.col)),
+    ...(scope && scope !== 'cells' ? { scope } : {}),
   }
 }
 
@@ -82,6 +78,25 @@ function rangeFromAddresses(sheetName: string, addresses: readonly string[]): Wo
 }
 
 function summarizeCommitCellOps(ops: readonly CommitCellOpDescriptor[]): WorkbookChangeDescriptor {
+  const sheetNames = new Set(ops.map((op) => op.sheetName))
+  if (sheetNames.size > 1) {
+    const allUpserts = ops.every((op) => op.kind === 'upsertCell')
+    const allDeletes = ops.every((op) => op.kind === 'deleteCell')
+    const allFormulas = ops.every((op) => op.kind === 'upsertCell' && typeof op.formula === 'string')
+    return {
+      eventKind: 'renderCommit',
+      summary: allFormulas
+        ? `Filled ${ops.length} formulas across ${sheetNames.size} sheets`
+        : allUpserts
+          ? `Updated ${ops.length} cells across ${sheetNames.size} sheets`
+          : allDeletes
+            ? `Cleared ${ops.length} cells across ${sheetNames.size} sheets`
+            : `Changed ${ops.length} cells across ${sheetNames.size} sheets`,
+      sheetName: null,
+      anchorAddress: null,
+      range: null,
+    }
+  }
   const range = rangeFromAddresses(
     ops[0]!.sheetName,
     ops.map((op) => op.address),
@@ -161,6 +176,7 @@ function summarizeRenderCommit(payload: Extract<WorkbookEventPayload, { kind: 'r
           sheetName: op.name,
           startAddress: 'A1',
           endAddress: 'A1',
+          scope: 'sheet',
         },
       }
     }
@@ -174,6 +190,7 @@ function summarizeRenderCommit(payload: Extract<WorkbookEventPayload, { kind: 'r
           sheetName: op.newName,
           startAddress: 'A1',
           endAddress: 'A1',
+          scope: 'sheet',
         },
       }
     }
@@ -291,6 +308,7 @@ export function buildWorkbookChangeDescriptor(payload: WorkbookEventPayload): Wo
           sheetName: payload.sheetName,
           startAddress: anchorAddress,
           endAddress: formatAddress(payload.start + payload.count - 1, 0),
+          scope: 'rows',
         },
       }
     }
@@ -305,6 +323,7 @@ export function buildWorkbookChangeDescriptor(payload: WorkbookEventPayload): Wo
           sheetName: payload.sheetName,
           startAddress: anchorAddress,
           endAddress: formatAddress(payload.start + payload.count - 1, 0),
+          scope: 'rows',
         },
       }
     }
@@ -319,6 +338,7 @@ export function buildWorkbookChangeDescriptor(payload: WorkbookEventPayload): Wo
           sheetName: payload.sheetName,
           startAddress: anchorAddress,
           endAddress: formatAddress(0, payload.start + payload.count - 1),
+          scope: 'columns',
         },
       }
     }
@@ -333,6 +353,7 @@ export function buildWorkbookChangeDescriptor(payload: WorkbookEventPayload): Wo
           sheetName: payload.sheetName,
           startAddress: anchorAddress,
           endAddress: formatAddress(0, payload.start + payload.count - 1),
+          scope: 'columns',
         },
       }
     }
@@ -347,6 +368,7 @@ export function buildWorkbookChangeDescriptor(payload: WorkbookEventPayload): Wo
           sheetName: payload.sheetName,
           startAddress: anchorAddress,
           endAddress: formatAddress(payload.startRow + payload.count - 1, 0),
+          scope: 'rows',
         },
       }
     }
@@ -361,6 +383,7 @@ export function buildWorkbookChangeDescriptor(payload: WorkbookEventPayload): Wo
           sheetName: payload.sheetName,
           startAddress: anchorAddress,
           endAddress: formatAddress(0, payload.startCol + payload.count - 1),
+          scope: 'columns',
         },
       }
     }
@@ -371,7 +394,7 @@ export function buildWorkbookChangeDescriptor(payload: WorkbookEventPayload): Wo
         summary: `Resized column ${columnLabel(payload.columnIndex)} on ${payload.sheetName}`,
         sheetName: payload.sheetName,
         anchorAddress,
-        range: { sheetName: payload.sheetName, startAddress: anchorAddress, endAddress: anchorAddress },
+        range: { sheetName: payload.sheetName, startAddress: anchorAddress, endAddress: anchorAddress, scope: 'columns' },
       }
     }
     case 'setFreezePane':
@@ -383,7 +406,7 @@ export function buildWorkbookChangeDescriptor(payload: WorkbookEventPayload): Wo
             : `Set freeze panes on ${payload.sheetName}`,
         sheetName: payload.sheetName,
         anchorAddress: 'A1',
-        range: { sheetName: payload.sheetName, startAddress: 'A1', endAddress: 'A1' },
+        range: { sheetName: payload.sheetName, startAddress: 'A1', endAddress: 'A1', scope: 'sheet' },
       }
     case 'mergeCells': {
       const range = normalizeRange(payload.range)
@@ -456,7 +479,9 @@ export function buildWorkbookChangeDescriptor(payload: WorkbookEventPayload): Wo
         range:
           payload.sheetName && payload.address
             ? { sheetName: payload.sheetName, startAddress: payload.address, endAddress: payload.address }
-            : null,
+            : payload.sheetName
+              ? { sheetName: payload.sheetName, startAddress: 'A1', endAddress: 'A1', scope: 'sheet' }
+              : null,
       }
     case 'revertChange':
       return {

@@ -524,6 +524,67 @@ describe('workbook changes', () => {
     })
   })
 
+  it('uses structural Zero range scope when hiding stale undo and revert actions', async () => {
+    const changes = createMockZeroChangeHarness([
+      {
+        revision: 61,
+        actorUserId: 'morgan@example.com',
+        clientMutationId: 'mutation-61',
+        eventKind: 'insertRows',
+        summary: 'Inserted rows 3:4 on Sheet1',
+        sheetId: 1,
+        sheetName: 'Sheet1',
+        anchorAddress: 'A3',
+        rangeJson: { sheetName: 'Sheet1', startAddress: 'A3', endAddress: 'A4', scope: 'rows' },
+        undoBundleJson: null,
+        revertedByRevision: null,
+        revertsRevision: null,
+        createdAt: Date.parse('2026-04-06T13:41:00.000Z'),
+      },
+      {
+        revision: 60,
+        actorUserId: 'alex@example.com',
+        clientMutationId: 'mutation-60',
+        eventKind: 'setCellValue',
+        summary: 'Updated Sheet1!B3',
+        sheetId: 1,
+        sheetName: 'Sheet1',
+        anchorAddress: 'B3',
+        rangeJson: { sheetName: 'Sheet1', startAddress: 'B3', endAddress: 'B3' },
+        undoBundleJson: {
+          kind: 'engineOps',
+          ops: [{ kind: 'clearCell', sheetName: 'Sheet1', address: 'B3' }],
+        },
+        revertedByRevision: null,
+        revertsRevision: null,
+        createdAt: Date.parse('2026-04-06T13:40:00.000Z'),
+      },
+    ])
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+
+    await act(async () => {
+      root.render(
+        <ChangesHarness
+          currentUserId="alex@example.com"
+          documentId="doc-1"
+          enabled
+          onJump={() => {}}
+          sheetNames={['Sheet1']}
+          zero={changes.zero}
+        />,
+      )
+    })
+
+    expect(host.querySelector("[data-testid='workbook-can-undo']")?.textContent).toBe('false')
+    expect(host.querySelector("[data-testid='workbook-change-revert']")).toBeNull()
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
   it('queues an undo shortcut while a workbook mutation is waiting for authoritative history', async () => {
     const changes = createMockZeroChangeHarness([])
     const host = document.createElement('div')

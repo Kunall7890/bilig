@@ -384,6 +384,48 @@ describe('server mutator client mutation idempotency', () => {
     expect(commitMutation).not.toHaveBeenCalled()
     expect(mutationStoreFns.persistWorkbookMutation).not.toHaveBeenCalled()
   })
+
+  it('rejects explicit revert when a later structural row change overlaps the target cell', async () => {
+    const db = createQueryable()
+    const { commitMutation, loadRuntime, runtimeManager } = createRuntimeManagerHarness()
+    changeStoreFns.loadWorkbookChange.mockResolvedValueOnce(
+      createWorkbookChangeRecord({
+        revision: 5,
+        summary: 'Set B3',
+        sheetName: 'Sheet1',
+        anchorAddress: 'B3',
+        range: { sheetName: 'Sheet1', startAddress: 'B3', endAddress: 'B3' },
+      }),
+    )
+    changeStoreFns.listWorkbookChangesAfterRevision.mockResolvedValueOnce([
+      createWorkbookChangeRecord({
+        revision: 6,
+        summary: 'Inserted rows 3:4',
+        sheetName: 'Sheet1',
+        anchorAddress: 'A3',
+        actorUserId: 'morgan@example.com',
+        eventKind: 'insertRows',
+        range: { sheetName: 'Sheet1', startAddress: 'A3', endAddress: 'A4', scope: 'rows' },
+      }),
+    ])
+
+    await expect(
+      handleServerMutator(
+        createServerTransaction(db),
+        'workbook.revertChange',
+        {
+          documentId: 'doc-1',
+          clientMutationId: 'doc-1:pending:15',
+          revision: 5,
+        },
+        runtimeManager,
+      ),
+    ).rejects.toThrow('Workbook change cannot be safely reverted after overlapping r6')
+
+    expect(loadRuntime).not.toHaveBeenCalled()
+    expect(commitMutation).not.toHaveBeenCalled()
+    expect(mutationStoreFns.persistWorkbookMutation).not.toHaveBeenCalled()
+  })
 })
 
 function createQueryable(): Queryable {
@@ -409,6 +451,7 @@ function createWorkbookChangeRecord(input: {
   readonly revertedByRevision?: number | null
   readonly revertsRevision?: number | null
   readonly eventKind?: WorkbookChangeRecord['eventKind']
+  readonly range?: WorkbookChangeRecord['range']
 }): WorkbookChangeRecord {
   return {
     revision: input.revision,
@@ -419,7 +462,7 @@ function createWorkbookChangeRecord(input: {
     sheetId: 1,
     sheetName: input.sheetName ?? null,
     anchorAddress: input.anchorAddress ?? null,
-    range: null,
+    range: input.range ?? null,
     undoBundle: {
       kind: 'engineOps',
       ops: [],
