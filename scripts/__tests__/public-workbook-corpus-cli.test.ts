@@ -478,6 +478,25 @@ describe('public workbook corpus CLI resource guards', () => {
     expect(result.stderr).toContain('public-workbook-corpus fetch is disabled while the public corpus stop marker is active')
   })
 
+  it('rejects malformed stop-marker override environment values', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-cli-stop-marker-malformed-'))
+    const stopMarkerPath = join(dir, 'stop.md')
+    writeFileSync(stopMarkerPath, '# stop\n')
+
+    const result = spawnSync(
+      'bun',
+      [corpusScriptPath(), 'fetch', '--corpus-run-stop-marker', stopMarkerPath, '--allow-active-stop-marker'],
+      {
+        encoding: 'utf8',
+        env: { ...process.env, BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE: 'yes' },
+      },
+    )
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain('BILIG_ALLOW_PUBLIC_CORPUS_STOP_MARKER_OVERRIDE must be "1", "true", "0", or "false" when set, got yes')
+    expect(result.stderr).not.toContain('at parseStrictBooleanEnvFlag')
+  })
+
   it('refuses checkpoint-updating artifact verification while a stop marker is active', () => {
     const dir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-cli-verify-artifact-stop-marker-'))
     const stopMarkerPath = join(dir, 'stop.md')

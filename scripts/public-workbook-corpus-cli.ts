@@ -124,8 +124,10 @@ export function assertPublicCorpusRunNotStopped(args: { readonly commandName: st
   if (!existsSync(args.stopMarkerPath)) {
     return
   }
-  if (readFlagArg(publicCorpusStopMarkerOverrideFlag) && process.env[publicCorpusStopMarkerOverrideEnvVar] === '1') {
-    return
+  if (readFlagArg(publicCorpusStopMarkerOverrideFlag)) {
+    if (parseStrictBooleanEnvFlag(process.env[publicCorpusStopMarkerOverrideEnvVar], publicCorpusStopMarkerOverrideEnvVar, false)) {
+      return
+    }
   }
   throw new Error(
     `${args.commandName} is disabled while the public corpus stop marker is active: ${formatPublicCorpusStopMarkerPathForMessage(
