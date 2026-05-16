@@ -30,4 +30,15 @@ describe('zero sync schema', () => {
     expect(schema.tables.workbook_chat_thread.columns.reviewQueueItemCount.serverName).toBe('review_queue_item_count')
     expect(schema.tables.workbook_chat_thread.columns.latestEntryText.serverName).toBe('latest_entry_text')
   })
+
+  it('relates workflow runs to chat thread visibility rows', () => {
+    expect(schema.relationships.workbook_workflow_run.chatThreads).toEqual([
+      {
+        sourceField: ['workbookId', 'threadId'],
+        destField: ['workbookId', 'threadId'],
+        destSchema: 'workbook_chat_thread',
+        cardinality: 'many',
+      },
+    ])
+  })
 })

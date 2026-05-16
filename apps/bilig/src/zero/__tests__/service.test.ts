@@ -35,6 +35,10 @@ vi.mock('../db.js', () => ({
   resolveZeroDatabaseUrl: () => 'postgres://example.test/bilig',
   createZeroPool: () => deps.pool,
   createZeroDbProvider: () => ({}),
+  createWorkbookRuntimeStoreConnection: () => ({
+    query: deps.pool.query,
+    run: vi.fn(async () => undefined),
+  }),
 }))
 
 vi.mock('../zero-schema-store.js', () => ({

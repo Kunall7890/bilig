@@ -1,4 +1,4 @@
-import { boolean, createSchema, json, number, string, table } from '@rocicorp/zero'
+import { boolean, createSchema, json, number, relationships, string, table } from '@rocicorp/zero'
 
 const workbooks = table('workbooks')
   .columns({
@@ -183,6 +183,14 @@ const workbookWorkflowRun = table('workbook_workflow_run')
   })
   .primaryKey('runId')
 
+const workbookWorkflowRunRelationships = relationships(workbookWorkflowRun, ({ many }) => ({
+  chatThreads: many({
+    sourceField: ['workbookId', 'threadId'],
+    destField: ['workbookId', 'threadId'],
+    destSchema: workbookChatThread,
+  }),
+}))
+
 export const schema = createSchema({
   tables: [
     workbooks,
@@ -199,7 +207,7 @@ export const schema = createSchema({
     workbookChatThread,
     workbookWorkflowRun,
   ],
-  relationships: [],
+  relationships: [workbookWorkflowRunRelationships],
 })
 
 declare module '@rocicorp/zero' {

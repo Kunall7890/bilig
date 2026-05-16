@@ -140,8 +140,17 @@ const workbookChatThreadByWorkbook = defineUserQuery(workbookQueryArgsSchema, ({
     .orderBy('updatedAtUnixMs', 'desc'),
 )
 
-const workbookWorkflowRunByThread = defineQuery(workbookThreadArgsSchema, ({ args }) =>
-  zql.workbook_workflow_run.where('workbookId', args.documentId).where('threadId', args.threadId).orderBy('updatedAtUnixMs', 'desc'),
+const workbookWorkflowRunByThread = defineUserQuery(workbookThreadArgsSchema, ({ args, ctx }) =>
+  zql.workbook_workflow_run
+    .where('workbookId', args.documentId)
+    .where('threadId', args.threadId)
+    .where((expression) =>
+      expression.or(
+        expression.cmp('startedByUserId', ctx.userID),
+        expression.exists('chatThreads', (threadQuery) => threadQuery.where('scope', 'shared')),
+      ),
+    )
+    .orderBy('updatedAtUnixMs', 'desc'),
 )
 
 export const queries = defineQueries({
