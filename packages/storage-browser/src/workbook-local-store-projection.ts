@@ -1,5 +1,13 @@
 import type { Database, SqlValue } from '@sqlite.org/sqlite-wasm'
-import { sanitizeCellStyleRecord, ValueTag, type CellSnapshot, type CellStyleRecord, type WorkbookAxisEntrySnapshot } from '@bilig/protocol'
+import {
+  ErrorCode,
+  sanitizeCellStyleRecord,
+  ValueTag,
+  type CellSnapshot,
+  type CellStyleRecord,
+  type LiteralInput,
+  type WorkbookAxisEntrySnapshot,
+} from '@bilig/protocol'
 import type {
   WorkbookLocalAuthoritativeDelta,
   WorkbookLocalAuthoritativeBase,
@@ -19,27 +27,53 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
+function isSafeNonNegativeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value)
+}
+
+function isLiteralInput(value: unknown): value is LiteralInput {
+  return value === null || typeof value === 'boolean' || typeof value === 'string' || isFiniteNumber(value)
+}
+
+function isErrorCode(value: unknown): value is ErrorCode {
+  return (
+    value === ErrorCode.None ||
+    value === ErrorCode.Div0 ||
+    value === ErrorCode.Ref ||
+    value === ErrorCode.Value ||
+    value === ErrorCode.Name ||
+    value === ErrorCode.NA ||
+    value === ErrorCode.Cycle ||
+    value === ErrorCode.Spill ||
+    value === ErrorCode.Blocked
+  )
+}
+
 function parseCellSnapshotValue(value: unknown): CellSnapshot['value'] | null {
-  if (!isRecord(value) || typeof value['tag'] !== 'number') {
+  if (!isRecord(value)) {
     return null
   }
   switch (value['tag']) {
-    case 0:
+    case ValueTag.Empty:
       return { tag: ValueTag.Empty }
-    case 1:
-      return typeof value['value'] === 'number' ? { tag: ValueTag.Number, value: value['value'] } : null
-    case 2:
+    case ValueTag.Number:
+      return isFiniteNumber(value['value']) ? { tag: ValueTag.Number, value: value['value'] } : null
+    case ValueTag.Boolean:
       return typeof value['value'] === 'boolean' ? { tag: ValueTag.Boolean, value: value['value'] } : null
-    case 3:
-      return typeof value['value'] === 'string'
+    case ValueTag.String:
+      return typeof value['value'] === 'string' && isSafeNonNegativeInteger(value['stringId'])
         ? {
             tag: ValueTag.String,
             value: value['value'],
-            stringId: typeof value['stringId'] === 'number' ? value['stringId'] : 0,
+            stringId: value['stringId'],
           }
         : null
-    case 4:
-      return typeof value['code'] === 'number' ? { tag: ValueTag.Error, code: value['code'] } : null
+    case ValueTag.Error:
+      return isErrorCode(value['code']) ? { tag: ValueTag.Error, code: value['code'] } : null
     default:
       return null
   }
@@ -56,11 +90,11 @@ function parseViewportCellFromRow(row: Record<string, SqlValue>): WorkbookLocalV
   if (
     typeof address !== 'string' ||
     typeof sheetName !== 'string' ||
-    typeof rowNum !== 'number' ||
-    typeof colNum !== 'number' ||
+    !isSafeNonNegativeInteger(rowNum) ||
+    !isSafeNonNegativeInteger(colNum) ||
     typeof valueJson !== 'string' ||
-    typeof flags !== 'number' ||
-    typeof version !== 'number'
+    !isSafeNonNegativeInteger(flags) ||
+    !isSafeNonNegativeInteger(version)
   ) {
     return null
   }
@@ -79,7 +113,7 @@ function parseViewportCellFromRow(row: Record<string, SqlValue>): WorkbookLocalV
     const inputJson = row['inputJson']
     if (typeof inputJson === 'string') {
       const parsedInput = JSON.parse(inputJson) as unknown
-      if (parsedInput === null || typeof parsedInput === 'boolean' || typeof parsedInput === 'number' || typeof parsedInput === 'string') {
+      if (isLiteralInput(parsedInput)) {
         snapshot.input = parsedInput
       }
     }

@@ -246,6 +246,79 @@ describe('workbook-local-store projection', () => {
     }
   })
 
+  it('drops malformed persisted viewport cells and sanitizes parsed input values', async () => {
+    const sqlite3 = await sqlite3InitModule()
+    const db = new sqlite3.oo1.DB(':memory:', 'c')
+    try {
+      initializeWorkbookLocalStoreSchema(db)
+      writeWorkbookAuthoritativeBase(db, createBase({ sheetId: 7, sheetName: 'Sheet1', value: 11 }))
+
+      const insertRender = db.prepare(
+        `
+          INSERT INTO authoritative_cell_render (
+            sheet_id,
+            sheet_name,
+            address,
+            row_num,
+            col_num,
+            value_json,
+            flags,
+            version
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+      )
+      const insertInput = db.prepare(
+        `
+          INSERT INTO authoritative_cell_input (
+            sheet_id,
+            sheet_name,
+            address,
+            row_num,
+            col_num,
+            input_json
+          )
+          VALUES (?, ?, ?, ?, ?, ?)
+        `,
+      )
+      try {
+        insertRender.bind([7, 'Sheet1', 'B1', 0, 1, '{"tag":1,"value":1e999}', 0, 1])
+        insertRender.step()
+        insertRender.reset()
+        insertRender.bind([7, 'Sheet1', 'C1', 0, 2, '{"tag":3,"value":"bad","stringId":1.5}', 0, 1])
+        insertRender.step()
+        insertRender.reset()
+        insertRender.bind([7, 'Sheet1', 'D1', 0.5, 3, '{"tag":1,"value":44}', 0, 1])
+        insertRender.step()
+        insertRender.reset()
+        insertRender.bind([7, 'Sheet1', 'E1', 0, 4, '{"tag":1,"value":55}', 0, 1])
+        insertRender.step()
+
+        insertInput.bind([7, 'Sheet1', 'E1', 0, 4, '1e999'])
+        insertInput.step()
+      } finally {
+        insertRender.finalize()
+        insertInput.finalize()
+      }
+
+      const projected = readWorkbookViewportProjection(db, 'Sheet1', {
+        rowStart: 0,
+        rowEnd: 1,
+        colStart: 0,
+        colEnd: 4,
+      })
+
+      expect(projected?.cells.map((cell) => cell.snapshot.address)).toEqual(['A1', 'E1'])
+      expect(projected?.cells.find((cell) => cell.snapshot.address === 'E1')?.snapshot).toMatchObject({
+        address: 'E1',
+        value: { tag: 1, value: 55 },
+      })
+      expect(projected?.cells.find((cell) => cell.snapshot.address === 'E1')?.snapshot.input).toBeUndefined()
+    } finally {
+      db.close()
+    }
+  })
+
   it('normalizes delta child rows to the canonical parent sheet name for each sheet id', async () => {
     const sqlite3 = await sqlite3InitModule()
     const db = new sqlite3.oo1.DB(':memory:', 'c')
