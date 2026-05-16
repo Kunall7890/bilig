@@ -5,6 +5,8 @@ import { stringifyWorkbookAgentContextSyncKey } from './workbook-agent-pane-help
 
 const AGENT_CONTEXT_SYNC_DEBOUNCE_MS = 150
 const AGENT_CONTEXT_SYNC_MIN_INTERVAL_MS = 750
+const AGENT_CONTEXT_SYNC_FAILURE_RETRY_INITIAL_MS = 2_000
+const AGENT_CONTEXT_SYNC_FAILURE_RETRY_MAX_MS = 15_000
 
 interface WorkbookAgentContextSyncClient {
   syncThreadContext(threadId: string, context: WorkbookAgentUiContext): Promise<void>
@@ -34,7 +36,9 @@ export function useWorkbookAgentContextSync(input: {
   const hasSyncedContextRef = useRef(false)
   const contextSyncInFlightRef = useRef(false)
   const contextSyncGenerationRef = useRef(0)
+  const contextSyncFailureCountRef = useRef(0)
   const lastContextSyncAtRef = useRef(0)
+  const nextContextSyncRetryAtRef = useRef(0)
   const pendingContextSyncTimeoutRef = useRef<number | null>(null)
   const pendingContextSyncRef = useRef<{
     readonly context: WorkbookAgentUiContext
@@ -59,8 +63,15 @@ export function useWorkbookAgentContextSync(input: {
     lastContextKeyRef.current = ''
     lastImmediateContextKeyRef.current = ''
     hasSyncedContextRef.current = false
+    contextSyncFailureCountRef.current = 0
     lastContextSyncAtRef.current = 0
+    nextContextSyncRetryAtRef.current = 0
   }, [clearPendingContextSync])
+
+  const resolveContextSyncDelay = useCallback((baseDelayMs: number) => {
+    const retryDelayMs = Math.max(0, nextContextSyncRetryAtRef.current - window.performance.now())
+    return Math.max(baseDelayMs, retryDelayMs)
+  }, [])
 
   const isPendingContextSyncCurrent = useCallback(
     (pending: NonNullable<typeof pendingContextSyncRef.current>) =>
@@ -88,22 +99,33 @@ export function useWorkbookAgentContextSync(input: {
           lastContextKeyRef.current = pending.key
           lastImmediateContextKeyRef.current = pending.immediateKey
           hasSyncedContextRef.current = true
+          contextSyncFailureCountRef.current = 0
+          nextContextSyncRetryAtRef.current = 0
         }
       } catch (syncError) {
         logDebug('Failed to sync agent context update', { documentId: input.documentId, error: syncError })
         if (isPendingContextSyncCurrent(pending)) {
+          const failureCount = contextSyncFailureCountRef.current + 1
+          contextSyncFailureCountRef.current = failureCount
+          const retryDelayMs = Math.min(
+            AGENT_CONTEXT_SYNC_FAILURE_RETRY_MAX_MS,
+            AGENT_CONTEXT_SYNC_FAILURE_RETRY_INITIAL_MS * 2 ** Math.max(0, failureCount - 1),
+          )
+          nextContextSyncRetryAtRef.current = window.performance.now() + retryDelayMs
           pendingContextSyncRef.current ??= pending
         }
       } finally {
         contextSyncInFlightRef.current = false
         if (pendingContextSyncRef.current !== null && pendingContextSyncTimeoutRef.current === null) {
           const elapsedSinceLastSync = window.performance.now() - lastContextSyncAtRef.current
-          const delayMs = Math.max(AGENT_CONTEXT_SYNC_DEBOUNCE_MS, AGENT_CONTEXT_SYNC_MIN_INTERVAL_MS - elapsedSinceLastSync)
+          const delayMs = resolveContextSyncDelay(
+            Math.max(AGENT_CONTEXT_SYNC_DEBOUNCE_MS, AGENT_CONTEXT_SYNC_MIN_INTERVAL_MS - elapsedSinceLastSync),
+          )
           pendingContextSyncTimeoutRef.current = window.setTimeout(flushPendingContextSync, delayMs)
         }
       }
     })()
-  }, [input.client, input.documentId, isPendingContextSyncCurrent])
+  }, [input.client, input.documentId, isPendingContextSyncCurrent, resolveContextSyncDelay])
 
   const scheduleContextSync = useCallback(() => {
     const activeSession = input.sessionRef.current
@@ -126,14 +148,24 @@ export function useWorkbookAgentContextSync(input: {
     }
     const shouldPrioritizeSync = !hasSyncedContextRef.current || lastImmediateContextKeyRef.current !== nextImmediateContextKey
     const elapsedSinceLastSync = window.performance.now() - lastContextSyncAtRef.current
-    const delayMs = shouldPrioritizeSync
-      ? AGENT_CONTEXT_SYNC_DEBOUNCE_MS
-      : Math.max(AGENT_CONTEXT_SYNC_DEBOUNCE_MS, AGENT_CONTEXT_SYNC_MIN_INTERVAL_MS - elapsedSinceLastSync)
+    const delayMs = resolveContextSyncDelay(
+      shouldPrioritizeSync
+        ? AGENT_CONTEXT_SYNC_DEBOUNCE_MS
+        : Math.max(AGENT_CONTEXT_SYNC_DEBOUNCE_MS, AGENT_CONTEXT_SYNC_MIN_INTERVAL_MS - elapsedSinceLastSync),
+    )
     if (pendingContextSyncTimeoutRef.current !== null) {
       window.clearTimeout(pendingContextSyncTimeoutRef.current)
     }
     pendingContextSyncTimeoutRef.current = window.setTimeout(flushPendingContextSync, delayMs)
-  }, [clearPendingContextSync, flushPendingContextSync, input.enabled, input.getContextRef, input.sessionRef, input.snapshot])
+  }, [
+    clearPendingContextSync,
+    flushPendingContextSync,
+    input.enabled,
+    input.getContextRef,
+    input.sessionRef,
+    input.snapshot,
+    resolveContextSyncDelay,
+  ])
 
   return {
     clearPendingContextSync,

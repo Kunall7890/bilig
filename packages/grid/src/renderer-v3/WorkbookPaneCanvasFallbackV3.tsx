@@ -34,6 +34,7 @@ export interface CanvasTextRunContext {
 export interface WorkbookPaneCanvasFallbackV3Props {
   readonly active: boolean
   readonly cameraStore?: GridCameraStore | null | undefined
+  readonly drawText?: boolean | undefined
   readonly geometry: GridGeometrySnapshot | null
   readonly headerPanes: readonly GridHeaderPaneState[]
   readonly host: HTMLDivElement | null
@@ -127,21 +128,27 @@ export function drawTextRuns(context: CanvasTextRunContext, textRuns: readonly T
   }
 }
 
-function drawPane(context: CanvasRenderingContext2D, pane: FallbackPane, scrollSnapshot: WorkbookGridScrollSnapshot): void {
+function drawPane(
+  context: CanvasRenderingContext2D,
+  pane: FallbackPane,
+  scrollSnapshot: WorkbookGridScrollSnapshot,
+  drawText: boolean,
+): void {
   if (pane.frame.width <= 0 || pane.frame.height <= 0) {
     return
   }
   const offset = resolvePaneRenderOffset(pane, scrollSnapshot)
   const rectInstances = 'tile' in pane ? pane.tile.rectInstances : pane.rectInstances
   const rectCount = 'tile' in pane ? pane.tile.rectCount : pane.rectCount
-  const textRuns = 'tile' in pane ? pane.tile.textRuns : pane.textRuns
   context.save()
   context.beginPath()
   context.rect(pane.frame.x, pane.frame.y, pane.frame.width, pane.frame.height)
   context.clip()
   context.translate(pane.frame.x + offset.x, pane.frame.y + offset.y)
   drawRectInstances(context, rectInstances, rectCount)
-  drawTextRuns(context, textRuns)
+  if (drawText) {
+    drawTextRuns(context, 'tile' in pane ? pane.tile.textRuns : pane.textRuns)
+  }
   context.restore()
 }
 
@@ -184,6 +191,7 @@ export function resolveWorkbookPaneCanvasFallbackFrame(input: {
 export const WorkbookPaneCanvasFallbackV3 = memo(function WorkbookPaneCanvasFallbackV3({
   active,
   cameraStore,
+  drawText = true,
   geometry,
   headerPanes,
   host,
@@ -227,10 +235,10 @@ export const WorkbookPaneCanvasFallbackV3 = memo(function WorkbookPaneCanvasFall
       scrollTransformStore,
       tilePanes,
     })
-    tilePanes.forEach((pane) => drawPane(context, pane, frame.scrollSnapshot))
-    headerPanes.forEach((pane) => drawPane(context, pane, frame.scrollSnapshot))
+    tilePanes.forEach((pane) => drawPane(context, pane, frame.scrollSnapshot, drawText))
+    headerPanes.forEach((pane) => drawPane(context, pane, frame.scrollSnapshot, drawText))
     drawOverlay(context, frame.overlay)
-  }, [active, cameraStore, geometry, headerPanes, host, overlay, overlayBuilder, scrollTransformStore, tilePanes])
+  }, [active, cameraStore, drawText, geometry, headerPanes, host, overlay, overlayBuilder, scrollTransformStore, tilePanes])
 
   useEffect(() => {
     if (!active || !host) {
@@ -272,6 +280,7 @@ export const WorkbookPaneCanvasFallbackV3 = memo(function WorkbookPaneCanvasFall
       data-pane-renderer="workbook-pane-renderer-v3-fallback"
       data-renderer-mode="canvas2d-v3-fallback"
       data-testid="grid-pane-renderer-fallback"
+      data-v3-draw-text={drawText ? 'true' : 'false'}
       data-v3-header-pane-count={headerPanes.length}
       data-v3-header-text-run-count={headerPanes.reduce((total, pane) => total + pane.textRuns.length, 0)}
       data-v3-text-run-count={tilePanes.reduce((total, pane) => total + pane.tile.textRuns.length, 0)}

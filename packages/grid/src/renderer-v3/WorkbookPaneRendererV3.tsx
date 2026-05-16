@@ -67,6 +67,10 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     },
     [hostRuntime],
   )
+  const headerTextRunCount = headerPanes.reduce((total, pane) => total + pane.textRuns.length, 0)
+  const tileTextRunCount = tilePanes.reduce((total, pane) => total + pane.tile.textRuns.length, 0)
+  const hasNativeTextRuns = headerTextRunCount + tileTextRunCount > 0
+  const showNativeTextLayer = active && hasNativeTextRuns
   const showCanvasFallback = shouldMountWorkbookCanvasProofLayerV3({
     backendStatus,
     enableCanvasFallback,
@@ -77,7 +81,6 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     tilePaneCount: tilePanes.length,
   })
   const showTypeGpuCanvas = backendStatus !== 'unavailable'
-  const showNativeTextLayer = showTypeGpuCanvas && backendStatus === 'ready' && !showCanvasFallback
 
   useLayoutEffect(() => {
     hostRuntime.updateProps({
@@ -132,8 +135,6 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
   const tileSceneCameraSeq = resolveWorkbookPaneTileSceneCameraSeqV3(tilePanes)
   const visibleRenderRevision = frameProofStatus === 'presented' ? tileSceneRevision : null
   const visibleRenderCameraSeq = frameProofStatus === 'presented' ? tileSceneCameraSeq : null
-  const headerTextRunCount = headerPanes.reduce((total, pane) => total + pane.textRuns.length, 0)
-  const tileTextRunCount = tilePanes.reduce((total, pane) => total + pane.tile.textRuns.length, 0)
 
   return (
     <>
@@ -141,6 +142,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
         <WorkbookPaneCanvasFallbackV3
           active={active}
           cameraStore={cameraStore}
+          drawText={!showNativeTextLayer}
           geometry={geometry}
           headerPanes={headerPanes}
           host={host}
@@ -161,6 +163,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           data-v3-body-world-x={geometry?.camera.bodyWorldX ?? 0}
           data-v3-body-world-y={geometry?.camera.bodyWorldY ?? 0}
           data-v3-canvas-proof-layer={showCanvasFallback ? 'mounted' : 'not-mounted'}
+          data-v3-draw-text={showNativeTextLayer ? 'false' : 'true'}
           data-v3-frame-proof-status={frameProofStatus}
           data-v3-header-pane-count={headerPanes.length}
           data-v3-header-text-run-count={headerTextRunCount}

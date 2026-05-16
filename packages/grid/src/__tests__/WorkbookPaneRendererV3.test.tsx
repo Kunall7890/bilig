@@ -63,6 +63,37 @@ function createTilePane(rowStart = 0): WorkbookRenderTilePaneState {
   }
 }
 
+function createTextTilePane(rowStart = 0): WorkbookRenderTilePaneState {
+  const pane = createTilePane(rowStart)
+  return {
+    ...pane,
+    tile: {
+      ...pane.tile,
+      textCount: 1,
+      textRuns: [
+        {
+          align: 'left',
+          clipHeight: 18,
+          clipWidth: 80,
+          clipX: 4,
+          clipY: 4,
+          color: '#1f2933',
+          font: '400 14.667px Arial, "Helvetica Neue", Helvetica, sans-serif',
+          fontSize: 14.667,
+          height: 22,
+          strike: false,
+          text: 'Expense Recognized',
+          underline: false,
+          width: 104,
+          wrap: false,
+          x: 104,
+          y: 88,
+        },
+      ],
+    },
+  }
+}
+
 describe('WorkbookPaneRendererV3', () => {
   const originalResizeObserver = globalThis.ResizeObserver
 
@@ -141,6 +172,32 @@ describe('WorkbookPaneRendererV3', () => {
     const fallbackCanvas = host.querySelector('[data-testid="grid-pane-renderer-fallback"]')
     expect(fallbackCanvas).toBeInstanceOf(HTMLCanvasElement)
     expect(fallbackCanvas?.getAttribute('data-renderer-mode')).toBe('canvas2d-v3-fallback')
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  test('keeps workbook text on the native DOM layer while the Canvas2D fallback is mounted', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    const host = document.createElement('div')
+    Object.defineProperty(host, 'clientWidth', { configurable: true, value: 640 })
+    Object.defineProperty(host, 'clientHeight', { configurable: true, value: 360 })
+    const root = createRoot(host)
+    const rendererHost = document.createElement('div')
+    Object.defineProperty(rendererHost, 'clientWidth', { configurable: true, value: 640 })
+    Object.defineProperty(rendererHost, 'clientHeight', { configurable: true, value: 360 })
+    host.appendChild(rendererHost)
+
+    await act(async () => {
+      root.render(<WorkbookPaneRendererV3 active host={rendererHost} geometry={null} tilePanes={[createTextTilePane()]} />)
+    })
+
+    const fallbackCanvas = host.querySelector('[data-testid="grid-pane-renderer-fallback"]')
+    const nativeTextLayer = host.querySelector('[data-testid="grid-native-text-layer"]')
+    expect(fallbackCanvas).toBeInstanceOf(HTMLCanvasElement)
+    expect(fallbackCanvas?.getAttribute('data-v3-draw-text')).toBe('false')
+    expect(nativeTextLayer?.textContent).toContain('Expense Recognized')
 
     await act(async () => {
       root.unmount()

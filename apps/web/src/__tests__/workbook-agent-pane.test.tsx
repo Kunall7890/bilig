@@ -2697,6 +2697,13 @@ describe('workbook agent pane', () => {
         await new Promise((resolve) => setTimeout(resolve, 900))
       })
 
+      expect(contextCalls()).toHaveLength(1)
+
+      await act(async () => {
+        await Promise.resolve()
+        await new Promise((resolve) => setTimeout(resolve, 1_300))
+      })
+
       expect(contextCalls()).toHaveLength(2)
       expect(requestBody(contextCalls()[1]?.[1])).toMatchObject({
         context: {
