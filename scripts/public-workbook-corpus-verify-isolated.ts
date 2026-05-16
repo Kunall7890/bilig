@@ -16,6 +16,8 @@ import type { PublicWorkbookArtifact, PublicWorkbookCorpusCase } from './public-
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
 const publicWorkbookCorpusScriptPath = fileURLToPath(new URL('./public-workbook-corpus.ts', import.meta.url))
 const noop = (): void => undefined
+const codexWorktreeRepoPathPattern =
+  /\/Users\/[^/\s]+\/\.codex\/worktrees\/[^/\s]+\/[^/\s]+(?=\/(?:apps|docs|e2e|examples|packages|scripts)\b)/gu
 
 export const verificationWorkerPhasePrefix = 'bilig-public-workbook-verify-phase='
 
@@ -168,6 +170,7 @@ export function compactVerificationWorkerOutput(value: string): string | null {
     .filter((line) => !line.startsWith(verificationWorkerPhasePrefix))
     .join('\n')
     .replaceAll(rootDir, '<repo>')
+    .replace(codexWorktreeRepoPathPattern, '<repo>')
     .replace(/\s+/gu, ' ')
     .trim()
   return compacted.length > 0 ? compacted.slice(0, 1_000) : null
