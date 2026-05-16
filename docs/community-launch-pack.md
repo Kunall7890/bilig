@@ -133,6 +133,10 @@ issue pass:
   project now has a scoped issue for adding `@bilig/headless` as a headless
   WorkPaper target for formula, edit/readback, memory, and persistence lanes:
   <https://github.com/zhangming1978/js-spreadsheet-benchmark/issues/1>
+- External open-source directory surface: the Open-Awesome submission for Bilig
+  has a metadata refresh comment with the current `@bilig/headless@0.16.19`
+  package, proof page, benchmark evidence, and non-grid WorkPaper positioning:
+  <https://github.com/chenz24/openawesome/issues/2#issuecomment-4467648527>
 - External MCP ranking surface: the best-of-mcp-servers listing pull request is
   open, mergeable, and passing `yamllint` with the `@bilig/headless` npm
   package attached to the `proompteng/bilig` project entry:

@@ -333,6 +333,7 @@ requireIncludes(
 requireIncludes(communityLaunchPack, 'Hacker News Submission After The Formula Workbooks Page', 'docs/community-launch-pack.md')
 for (const required of [
   'title: Show HN proof for formula workbooks in Node services',
+  '`@bilig/headless@0.16.19`',
   'curl -fsSLo quickstart.ts https://proompteng.github.io/bilig/npm-eval.ts',
   '"verified": true',
   '`49/57` mean-latency wins',

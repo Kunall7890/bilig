@@ -20,7 +20,8 @@ read-after-write proof.
 
 ## Run the proof
 
-This starts from an empty directory and uses the published npm package:
+This starts from an empty directory and uses the published npm package. The
+current checked package proof is `@bilig/headless@0.16.19`.
 
 ```sh
 mkdir bilig-headless-eval
