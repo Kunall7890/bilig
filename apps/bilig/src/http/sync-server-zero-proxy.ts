@@ -2,6 +2,31 @@ import type { FastifyInstance } from 'fastify'
 import httpProxy from '@fastify/http-proxy'
 import { createErrorEnvelope } from '@bilig/runtime-kernel'
 
+const ZERO_PROXY_UPSTREAM_ENV = 'BILIG_ZERO_PROXY_UPSTREAM'
+
+export function resolveZeroProxyUpstream(env: Record<string, string | undefined> = process.env): string | undefined {
+  const value = env[ZERO_PROXY_UPSTREAM_ENV]
+  if (value === undefined) {
+    return undefined
+  }
+  const trimmed = value.trim()
+  if (trimmed.length === 0) {
+    return undefined
+  }
+
+  let url: URL
+  try {
+    url = new URL(trimmed)
+  } catch {
+    throw new Error(`${ZERO_PROXY_UPSTREAM_ENV} must be an absolute http(s) URL, got ${value}`)
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    throw new Error(`${ZERO_PROXY_UPSTREAM_ENV} must be an absolute http(s) URL, got ${value}`)
+  }
+
+  return trimmed
+}
+
 function resolveZeroKeepaliveUrl(upstream: string): URL {
   const url = new URL(upstream)
   url.pathname = '/keepalive'

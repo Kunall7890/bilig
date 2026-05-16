@@ -9,7 +9,7 @@ import { registerWorkbookAgentRoutes } from './workbook-agent-routes.js'
 import { registerSyncServerRuntimeRoutes } from './sync-server-runtime-routes.js'
 import { applySyncServerSecurityHeaders } from './sync-server-security-headers.js'
 import { resolveSyncServerWebDistRoot, registerSyncServerSpaRoutes } from './sync-server-spa.js'
-import { registerSyncServerZeroProxyRoutes } from './sync-server-zero-proxy.js'
+import { registerSyncServerZeroProxyRoutes, resolveZeroProxyUpstream } from './sync-server-zero-proxy.js'
 import type { WorksheetExecutor } from '../workbook-runtime/worksheet-executor.js'
 import type { ZeroSyncService } from '../zero/service.js'
 import type { WorkbookAgentService } from '../codex-app/workbook-agent-service.js'
@@ -26,7 +26,7 @@ export interface SyncServerOptions {
 export function createSyncServer(options: SyncServerOptions = {}) {
   const runtimeConfig = resolveServerRuntimeConfig(process.env)
   const webDistRoot = resolveSyncServerWebDistRoot()
-  const zeroProxyUpstream = process.env['BILIG_ZERO_PROXY_UPSTREAM']?.trim()
+  const zeroProxyUpstream = resolveZeroProxyUpstream(process.env)
   const sessionManager = options.sessionManager ?? new DocumentSessionManager(undefined, undefined, options.worksheetExecutor ?? null)
   const documentService = options.documentService ?? new SyncDocumentSupervisor(sessionManager)
   const zeroSyncService = options.zeroSyncService
