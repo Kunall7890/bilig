@@ -93,11 +93,16 @@ export function isExecutionPolicy(value: unknown): value is WorkbookAgentExecuti
 }
 
 export function parseNumericValue(value: unknown): number | null {
-  return parseNullableInteger(value)
+  const parsed = parseNullableInteger(value)
+  return parsed !== null && parsed >= 0 ? parsed : null
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
+}
+
+function isSafeNonNegativeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
 }
 
 export function normalizeTimelineToolName(toolName: string | null): string | null {
@@ -118,10 +123,12 @@ export function isWorkbookAgentUiContext(value: unknown): value is WorkbookAgent
         typeof value['selection']['range']['startAddress'] === 'string' &&
         typeof value['selection']['range']['endAddress'] === 'string')) &&
     isRecord(value['viewport']) &&
-    typeof value['viewport']['rowStart'] === 'number' &&
-    typeof value['viewport']['rowEnd'] === 'number' &&
-    typeof value['viewport']['colStart'] === 'number' &&
-    typeof value['viewport']['colEnd'] === 'number'
+    isSafeNonNegativeInteger(value['viewport']['rowStart']) &&
+    isSafeNonNegativeInteger(value['viewport']['rowEnd']) &&
+    isSafeNonNegativeInteger(value['viewport']['colStart']) &&
+    isSafeNonNegativeInteger(value['viewport']['colEnd']) &&
+    value['viewport']['rowEnd'] >= value['viewport']['rowStart'] &&
+    value['viewport']['colEnd'] >= value['viewport']['colStart']
   )
 }
 
@@ -163,7 +170,7 @@ function isTimelineCitation(value: unknown): value is WorkbookAgentTimelineCitat
       typeof value['startAddress'] === 'string' &&
       typeof value['endAddress'] === 'string' &&
       (value['role'] === 'target' || value['role'] === 'source')) ||
-    (isRecord(value) && value['kind'] === 'revision' && typeof value['revision'] === 'number')
+    (isRecord(value) && value['kind'] === 'revision' && isSafeNonNegativeInteger(value['revision']))
   )
 }
 
