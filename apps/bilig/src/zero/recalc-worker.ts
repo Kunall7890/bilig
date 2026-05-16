@@ -1,7 +1,7 @@
 import type { WorkbookRuntimeManager } from '../workbook-runtime/runtime-manager.js'
 import { materializeCellEvalProjection } from './projection.js'
 import { leaseNextRecalcJob, markRecalcJobCompleted, markRecalcJobFailed, markRecalcJobSuperseded } from './recalc-job-store.js'
-import { shouldPersistWorkbookCheckpointRevision, type Queryable } from './store.js'
+import { shouldPersistWorkbookCheckpointRevision, type Queryable, type WorkbookRuntimeStoreConnection } from './store.js'
 import { loadWorkbookRuntimeMetadata } from './workbook-runtime-store.js'
 
 const IDLE_POLL_MS = 250
@@ -14,6 +14,7 @@ export class ZeroRecalcWorker {
 
   constructor(
     private readonly db: Queryable,
+    private readonly runtimeStore: WorkbookRuntimeStoreConnection,
     private readonly runtimeManager: WorkbookRuntimeManager,
     private readonly workerId = `bilig-recalc:${process.pid}:${Math.random().toString(36).slice(2)}`,
   ) {}
@@ -65,13 +66,13 @@ export class ZeroRecalcWorker {
 
     try {
       await this.runtimeManager.runExclusive(lease.workbookId, async () => {
-        const metadata = await loadWorkbookRuntimeMetadata(this.db, lease.workbookId)
+        const metadata = await loadWorkbookRuntimeMetadata(this.runtimeStore, lease.workbookId)
         if (metadata.headRevision !== lease.toRevision) {
           await markRecalcJobSuperseded(this.db, lease)
           return
         }
 
-        const runtime = await this.runtimeManager.loadRuntime(this.db, lease.workbookId, metadata)
+        const runtime = await this.runtimeManager.loadRuntime(this.runtimeStore, lease.workbookId, metadata)
         const changedCellIndices = lease.dirtyRegions
           ? runtime.engine.recalculateDirty(lease.dirtyRegions)
           : runtime.engine.recalculateNow()

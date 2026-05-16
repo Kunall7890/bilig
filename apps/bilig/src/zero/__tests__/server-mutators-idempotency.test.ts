@@ -484,6 +484,7 @@ function createQueryable(): Queryable {
 
 function createServerTransaction(db: Queryable): unknown {
   return {
+    run: vi.fn(async () => undefined),
     dbTransaction: {
       wrappedTransaction: db,
     },

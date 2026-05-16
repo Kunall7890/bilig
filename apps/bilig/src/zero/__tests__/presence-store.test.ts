@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { WorkbookRuntimeManager } from '../../workbook-runtime/runtime-manager.js'
 import { handleServerMutator } from '../server-mutators.js'
 import { resolveWorkbookPresenceSheetRef, upsertWorkbookPresence, type UpsertWorkbookPresenceInput } from '../presence-store.js'
@@ -108,6 +108,7 @@ describe('presence-store', () => {
 
     await handleServerMutator(
       {
+        run: vi.fn(async () => undefined),
         dbTransaction: {
           wrappedTransaction: queryable,
         },
@@ -150,6 +151,7 @@ describe('presence-store', () => {
 
     await handleServerMutator(
       {
+        run: vi.fn(async () => undefined),
         dbTransaction: {
           wrappedTransaction: queryable,
         },

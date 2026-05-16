@@ -3,7 +3,7 @@ import { parseCellAddress } from '@bilig/formula'
 import type { WorkbookSnapshot } from '@bilig/protocol'
 import { buildWorkbookSourceProjection, type AxisMetadataSourceRow, type CellSourceRow } from '../zero/projection.js'
 import type {
-  Queryable,
+  WorkbookRuntimeStoreConnection,
   WorkbookProjectionCommit,
   WorkbookProjectionState,
   WorkbookRuntimeMetadata,
@@ -19,8 +19,8 @@ export interface WorkbookRuntime extends WorkbookProjectionState {
 export interface WorkbookRuntimeManagerOptions {
   maxEntries?: number
   now?: () => number
-  loadMetadata?: (db: Queryable, documentId: string) => Promise<WorkbookRuntimeMetadata>
-  loadState?: (db: Queryable, documentId: string) => Promise<WorkbookRuntimeState>
+  loadMetadata?: (db: WorkbookRuntimeStoreConnection, documentId: string) => Promise<WorkbookRuntimeMetadata>
+  loadState?: (db: WorkbookRuntimeStoreConnection, documentId: string) => Promise<WorkbookRuntimeState>
   createEngine?: (
     documentId: string,
     snapshot: WorkbookSnapshot,
@@ -90,7 +90,7 @@ export class WorkbookRuntimeManager {
     }
   }
 
-  async loadRuntime(db: Queryable, documentId: string, metadata?: WorkbookRuntimeMetadata): Promise<WorkbookRuntime> {
+  async loadRuntime(db: WorkbookRuntimeStoreConnection, documentId: string, metadata?: WorkbookRuntimeMetadata): Promise<WorkbookRuntime> {
     const nextMetadata = metadata ?? (await this.loadMetadata(db, documentId))
     const cached = this.sessions.get(documentId)
     if (cached && cached.headRevision === nextMetadata.headRevision) {

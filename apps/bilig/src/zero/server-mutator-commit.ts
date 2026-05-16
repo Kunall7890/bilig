@@ -4,7 +4,7 @@ import type { EngineOp } from '@bilig/workbook-domain'
 import type { WorkbookChangeUndoBundle, WorkbookEventPayload } from '@bilig/zero-sync'
 import type { SessionIdentity } from '../http/session.js'
 import type { WorkbookRuntimeManager } from '../workbook-runtime/runtime-manager.js'
-import type { Queryable } from './store.js'
+import type { Queryable, WorkbookRuntimeStoreConnection, ZeroQueryRunner } from './store.js'
 import { acquireWorkbookMutationLock } from './workbook-runtime-store.js'
 import {
   loadAppliedWorkbookClientMutation,
@@ -13,21 +13,34 @@ import {
 } from './workbook-mutation-store.js'
 import type { WorkbookChangeRange } from './workbook-change-store.js'
 
-export interface ServerTransactionLike {
+export interface ServerTransactionLike extends ZeroQueryRunner {
   dbTransaction: {
     wrappedTransaction: Queryable
   }
 }
 
 export function requireServerTransaction(tx: unknown): ServerTransactionLike {
-  if (!isRecord(tx) || !isRecord(tx['dbTransaction']) || !isQueryable(tx['dbTransaction']['wrappedTransaction'])) {
+  if (
+    !isRecord(tx) ||
+    !isZeroQueryRunner(tx) ||
+    !isRecord(tx['dbTransaction']) ||
+    !isQueryable(tx['dbTransaction']['wrappedTransaction'])
+  ) {
     throw new Error('Expected a server-side Zero transaction')
   }
 
   return {
+    run: (query, options) => tx.run(query, options),
     dbTransaction: {
       wrappedTransaction: tx['dbTransaction']['wrappedTransaction'],
     },
+  }
+}
+
+function runtimeStoreFromServerTransaction(tx: ServerTransactionLike): WorkbookRuntimeStoreConnection {
+  return {
+    query: (text, values) => tx.dbTransaction.wrappedTransaction.query(text, values),
+    run: (query, options) => tx.run(query, options),
   }
 }
 
@@ -64,6 +77,7 @@ export async function commitWorkbookMutation(
 ) {
   return await runtimeManager.runExclusive(documentId, async () => {
     const db = tx.dbTransaction.wrappedTransaction
+    const runtimeStore = runtimeStoreFromServerTransaction(tx)
     await acquireWorkbookMutationLock(db, documentId)
     const appliedClientMutation = await loadAppliedWorkbookClientMutation(db, documentId, clientMutationId)
     if (appliedClientMutation) {
@@ -74,7 +88,7 @@ export async function commitWorkbookMutation(
         updatedAt: appliedClientMutation.createdAt,
       }
     }
-    const state = await runtimeManager.loadRuntime(db, documentId)
+    const state = await runtimeManager.loadRuntime(runtimeStore, documentId)
     try {
       const undoBundle = mutate(state.engine)
       const ownerUserId = resolveOwnerUserId(state, session)
@@ -127,6 +141,7 @@ export async function commitWorkbookHistoryMutation(input: {
   const { clientMutationId, documentId, eventKind, replayMatches, resolveTargetChange, runtimeManager, serverTx, session } = input
   await runtimeManager.runExclusive(documentId, async () => {
     const db = serverTx.dbTransaction.wrappedTransaction
+    const runtimeStore = runtimeStoreFromServerTransaction(serverTx)
     await acquireWorkbookMutationLock(db, documentId)
     const appliedClientMutation = await loadAppliedWorkbookClientMutation(db, documentId, clientMutationId)
     if (appliedClientMutation) {
@@ -135,7 +150,7 @@ export async function commitWorkbookHistoryMutation(input: {
     }
     const targetChange = await resolveTargetChange(db)
     const eventPayload = buildWorkbookHistoryEventPayload(eventKind, targetChange)
-    const state = await runtimeManager.loadRuntime(db, documentId)
+    const state = await runtimeManager.loadRuntime(runtimeStore, documentId)
     try {
       const undoBundle = applyWorkbookChangeUndoBundle(state.engine, targetChange.undoBundle)
       const ownerUserId = resolveOwnerUserId(state, session)
@@ -167,6 +182,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isQueryable(value: unknown): value is Queryable {
   return isRecord(value) && typeof value['query'] === 'function'
+}
+
+function isZeroQueryRunner(value: unknown): value is ZeroQueryRunner {
+  return isRecord(value) && typeof value['run'] === 'function'
 }
 
 function resolveOwnerUserId(state: { ownerUserId: string }, session?: SessionIdentity): string {

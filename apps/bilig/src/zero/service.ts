@@ -21,10 +21,11 @@ import {
 import type { SessionIdentity } from '../http/session.js'
 import { resolveSessionIdentity } from '../http/session.js'
 import { WorkbookRuntimeManager, type WorkbookRuntime } from '../workbook-runtime/runtime-manager.js'
-import { createZeroDbProvider, createZeroPool, resolveZeroDatabaseUrl } from './db.js'
+import { createWorkbookRuntimeStoreConnection, createZeroDbProvider, createZeroPool, resolveZeroDatabaseUrl } from './db.js'
 import { handleServerMutator } from './server-mutators.js'
 import { ZeroRecalcWorker } from './recalc-worker.js'
 import { loadWorkbookEventRecordsAfter } from './store.js'
+import type { WorkbookRuntimeStoreConnection } from './store.js'
 import { applyWorkbookAgentCommandBundleWithUndoCapture } from './workbook-agent-apply.js'
 import {
   assertZeroDataMigrationsReady,
@@ -226,14 +227,16 @@ class EnabledZeroSyncService implements ZeroSyncService {
   readonly enabled = true
   private readonly pool: ReturnType<typeof createZeroPool>
   private readonly dbProvider
+  private readonly runtimeStore: WorkbookRuntimeStoreConnection
   private readonly runtimeManager: WorkbookRuntimeManager
   private readonly recalcWorker: ZeroRecalcWorker
 
   constructor(connectionString: string) {
     this.pool = createZeroPool(connectionString)
     this.dbProvider = createZeroDbProvider(connectionString)
+    this.runtimeStore = createWorkbookRuntimeStoreConnection(this.pool, this.dbProvider)
     this.runtimeManager = new WorkbookRuntimeManager()
-    this.recalcWorker = new ZeroRecalcWorker(this.pool, this.runtimeManager)
+    this.recalcWorker = new ZeroRecalcWorker(this.pool, this.runtimeStore, this.runtimeManager)
   }
 
   async initialize(): Promise<void> {
@@ -307,7 +310,7 @@ class EnabledZeroSyncService implements ZeroSyncService {
 
   async inspectWorkbook<T>(documentId: string, task: (runtime: WorkbookRuntime) => Promise<T> | T): Promise<T> {
     return await this.runtimeManager.runExclusive(documentId, async () => {
-      const runtime = await this.runtimeManager.loadRuntime(this.pool, documentId)
+      const runtime = await this.runtimeManager.loadRuntime(this.runtimeStore, documentId)
       return await task(runtime)
     })
   }
@@ -316,8 +319,10 @@ class EnabledZeroSyncService implements ZeroSyncService {
     const client = await this.pool.connect()
     try {
       await client.query('BEGIN')
+      const transactionDbProvider = createZeroDbProvider(client)
       await handleServerMutator(
         {
+          run: transactionDbProvider.run.bind(transactionDbProvider),
           dbTransaction: {
             wrappedTransaction: client,
           },
@@ -348,7 +353,8 @@ class EnabledZeroSyncService implements ZeroSyncService {
         await client.query('BEGIN')
         try {
           await acquireWorkbookMutationLock(client, documentId)
-          const state = await this.runtimeManager.loadRuntime(client, documentId)
+          const transactionRuntimeStore = createWorkbookRuntimeStoreConnection(client, createZeroDbProvider(client))
+          const state = await this.runtimeManager.loadRuntime(transactionRuntimeStore, documentId)
           if (state.headRevision !== bundle.baseRevision) {
             throw createWorkbookAgentServiceError({
               code: 'WORKBOOK_AGENT_PREVIEW_STALE',
@@ -483,16 +489,16 @@ class EnabledZeroSyncService implements ZeroSyncService {
   }
 
   async getWorkbookHeadRevision(documentId: string): Promise<number> {
-    const metadata = await loadWorkbookRuntimeMetadata(this.pool, documentId)
+    const metadata = await loadWorkbookRuntimeMetadata(this.runtimeStore, documentId)
     return metadata.headRevision
   }
 
   async loadLatestWorkbookSnapshot(documentId: string): Promise<{ revision: number; snapshot: WorkbookSnapshot } | null> {
-    const metadata = await loadWorkbookRuntimeMetadata(this.pool, documentId)
+    const metadata = await loadWorkbookRuntimeMetadata(this.runtimeStore, documentId)
     if (metadata.headRevision === 0) {
       return null
     }
-    const state = await loadWorkbookState(this.pool, documentId)
+    const state = await loadWorkbookState(this.runtimeStore, documentId)
     return {
       revision: state.headRevision,
       snapshot: state.snapshot,
@@ -500,7 +506,7 @@ class EnabledZeroSyncService implements ZeroSyncService {
   }
 
   async loadAuthoritativeEvents(documentId: string, afterRevision: number): Promise<AuthoritativeWorkbookEventBatch> {
-    const metadata = await loadWorkbookRuntimeMetadata(this.pool, documentId)
+    const metadata = await loadWorkbookRuntimeMetadata(this.runtimeStore, documentId)
     const events = metadata.headRevision > afterRevision ? await loadWorkbookEventRecordsAfter(this.pool, documentId, afterRevision) : []
     return {
       afterRevision,

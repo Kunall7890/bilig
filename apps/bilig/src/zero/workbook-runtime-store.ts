@@ -1,13 +1,77 @@
 import { SpreadsheetEngine, type EngineReplicaSnapshot } from '@bilig/core'
 import { isWorkbookSnapshot, type WorkbookSnapshot } from '@bilig/protocol'
-import { applyWorkbookEvent } from '@bilig/zero-sync'
-import { parseCheckpointPayload, parseCheckpointReplicaState, parseInteger } from './store-support.js'
-import { loadWorkbookEventRecordsAfter, type Queryable, type WorkbookRuntimeMetadata, type WorkbookRuntimeState } from './store.js'
+import { applyWorkbookEvent, zql } from '@bilig/zero-sync'
+import type { Row } from '@rocicorp/zero'
+import { parseCheckpointPayload, parseCheckpointReplicaState, parsePositiveInteger } from './store-support.js'
+import {
+  loadWorkbookEventRecordsAfter,
+  type Queryable,
+  type WorkbookRuntimeMetadata,
+  type WorkbookRuntimeState,
+  type WorkbookRuntimeStoreConnection,
+} from './store.js'
 
 interface WorkbookCheckpointRecord {
   revision: number
   checkpointPayload: WorkbookSnapshot
   replicaState: EngineReplicaSnapshot | null
+}
+
+type ZeroWorkbookRow = Row['workbooks']
+
+interface InlineWorkbookCheckpointRecord {
+  checkpointPayload: WorkbookSnapshot | null
+  replicaState: EngineReplicaSnapshot | null
+}
+
+function isSafeNonNegativeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+}
+
+function parseWorkbookRuntimeMetadata(row: ZeroWorkbookRow | undefined, documentId: string): WorkbookRuntimeMetadata {
+  if (!row) {
+    return {
+      headRevision: 0,
+      calculatedRevision: 0,
+      ownerUserId: 'system',
+    }
+  }
+
+  if (!isSafeNonNegativeInteger(row.headRevision)) {
+    throw new Error(`Invalid Zero workbook head revision for ${documentId}`)
+  }
+  if (!isSafeNonNegativeInteger(row.calculatedRevision)) {
+    throw new Error(`Invalid Zero workbook calculated revision for ${documentId}`)
+  }
+  if (row.calculatedRevision > row.headRevision) {
+    throw new Error(`Invalid Zero workbook revision order for ${documentId}`)
+  }
+  if (row.ownerUserId.trim() === '') {
+    throw new Error(`Invalid Zero workbook owner for ${documentId}`)
+  }
+
+  return {
+    headRevision: row.headRevision,
+    calculatedRevision: row.calculatedRevision,
+    ownerUserId: row.ownerUserId,
+  }
+}
+
+async function loadZeroWorkbookMetadata(db: WorkbookRuntimeStoreConnection, documentId: string): Promise<WorkbookRuntimeMetadata> {
+  const row = await db.run(zql.workbooks.where('id', documentId).one())
+  return parseWorkbookRuntimeMetadata(row, documentId)
+}
+
+async function loadInlineWorkbookCheckpoint(db: Queryable, documentId: string): Promise<InlineWorkbookCheckpointRecord> {
+  const result = await db.query<{
+    snapshot: unknown
+    replica_snapshot: unknown
+  }>(`SELECT snapshot, replica_snapshot FROM workbooks WHERE id = $1 LIMIT 1`, [documentId])
+  const row = result.rows[0]
+  return {
+    checkpointPayload: isWorkbookSnapshot(row?.snapshot) ? row.snapshot : null,
+    replicaState: parseCheckpointReplicaState(row?.replica_snapshot),
+  }
 }
 
 async function loadLatestWorkbookCheckpoint(db: Queryable, documentId: string): Promise<WorkbookCheckpointRecord | null> {
@@ -30,29 +94,24 @@ async function loadLatestWorkbookCheckpoint(db: Queryable, documentId: string): 
   if (!row || !isWorkbookSnapshot(row.payload)) {
     return null
   }
+  const revision = parsePositiveInteger(row.revision)
+  if (revision === null) {
+    return null
+  }
   return {
-    revision: parseInteger(row.revision),
+    revision,
     checkpointPayload: row.payload,
     replicaState: parseCheckpointReplicaState(row.replica_snapshot),
   }
 }
 
-export async function loadWorkbookState(db: Queryable, documentId: string): Promise<WorkbookRuntimeState> {
-  const result = await db.query<{
-    snapshot: unknown
-    replica_snapshot: unknown
-    head_revision: number | string | null
-    calculated_revision: number | string | null
-    owner_user_id: string | null
-  }>(`SELECT snapshot, replica_snapshot, head_revision, calculated_revision, owner_user_id FROM workbooks WHERE id = $1 LIMIT 1`, [
+export async function loadWorkbookState(db: WorkbookRuntimeStoreConnection, documentId: string): Promise<WorkbookRuntimeState> {
+  const metadata = await loadZeroWorkbookMetadata(db, documentId)
+  const { checkpointPayload: inlineCheckpointPayload, replicaState: inlineReplicaState } = await loadInlineWorkbookCheckpoint(
+    db,
     documentId,
-  ])
-  const row = result.rows[0]
-  const headRevision = parseInteger(row?.head_revision)
-  const calculatedRevision = parseInteger(row?.calculated_revision)
-  const ownerUserId = row?.owner_user_id ?? 'system'
-  const inlineCheckpointPayload = isWorkbookSnapshot(row?.snapshot) ? row.snapshot : null
-  const inlineReplicaState = parseCheckpointReplicaState(row?.replica_snapshot)
+  )
+  const { headRevision, calculatedRevision, ownerUserId } = metadata
 
   if (inlineCheckpointPayload) {
     return {
@@ -102,18 +161,11 @@ export async function loadWorkbookState(db: Queryable, documentId: string): Prom
   }
 }
 
-export async function loadWorkbookRuntimeMetadata(db: Queryable, documentId: string): Promise<WorkbookRuntimeMetadata> {
-  const result = await db.query<{
-    head_revision: number | string | null
-    calculated_revision: number | string | null
-    owner_user_id: string | null
-  }>(`SELECT head_revision, calculated_revision, owner_user_id FROM workbooks WHERE id = $1 LIMIT 1`, [documentId])
-  const row = result.rows[0]
-  return {
-    headRevision: parseInteger(row?.head_revision),
-    calculatedRevision: parseInteger(row?.calculated_revision),
-    ownerUserId: row?.owner_user_id ?? 'system',
-  }
+export async function loadWorkbookRuntimeMetadata(
+  db: WorkbookRuntimeStoreConnection,
+  documentId: string,
+): Promise<WorkbookRuntimeMetadata> {
+  return await loadZeroWorkbookMetadata(db, documentId)
 }
 
 export async function acquireWorkbookMutationLock(db: Queryable, documentId: string): Promise<void> {

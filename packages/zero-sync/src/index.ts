@@ -38,6 +38,7 @@ export {
 } from './queries.js'
 export { loadRuntimeConfig, parseRuntimeConfig, type BiligRuntimeConfig } from './runtime-config.js'
 export { schema } from './schema.js'
+export { zql } from './zql.js'
 export { createEmptyWorkbookSnapshot, projectWorkbookToSnapshot } from './snapshot.js'
 export {
   isWorkbookChangeRange,

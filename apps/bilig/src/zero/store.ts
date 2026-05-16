@@ -1,8 +1,10 @@
 import type { EngineReplicaSnapshot, SpreadsheetEngine } from '@bilig/core'
 import type { CellRangeRef, WorkbookSnapshot } from '@bilig/protocol'
+import type { HumanReadable, Query, RunOptions } from '@rocicorp/zero'
 import {
   type AuthoritativeWorkbookEventRecord,
   isWorkbookEventPayload,
+  type schema as zeroSchema,
   type WorkbookChangeUndoBundle,
   type WorkbookEventPayload,
 } from '@bilig/zero-sync'
@@ -40,6 +42,15 @@ export interface QueryResultRow {
 export interface Queryable {
   query<T extends QueryResultRow = QueryResultRow>(text: string, values?: unknown[]): Promise<{ rows: T[] }>
 }
+
+export interface ZeroQueryRunner {
+  run<TTable extends keyof typeof zeroSchema.tables, TReturn>(
+    query: Query<TTable, typeof zeroSchema, TReturn>,
+    options?: RunOptions,
+  ): Promise<HumanReadable<TReturn>>
+}
+
+export interface WorkbookRuntimeStoreConnection extends Queryable, ZeroQueryRunner {}
 
 export interface WorkbookRuntimeState {
   snapshot: WorkbookSnapshot

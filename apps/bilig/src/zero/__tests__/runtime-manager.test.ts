@@ -3,11 +3,14 @@ import { ValueTag } from '@bilig/protocol'
 import { describe, expect, it } from 'vitest'
 import { WorkbookRuntimeManager } from '../../workbook-runtime/runtime-manager.js'
 import { buildWorkbookSourceProjectionFromEngine } from '../projection.js'
-import type { Queryable, WorkbookRuntimeMetadata, WorkbookRuntimeState } from '../store.js'
+import type { WorkbookRuntimeMetadata, WorkbookRuntimeState, WorkbookRuntimeStoreConnection } from '../store.js'
 
-const noopDb: Queryable = {
+const noopDb: WorkbookRuntimeStoreConnection = {
   async query() {
     return { rows: [] }
+  },
+  async run() {
+    return undefined
   },
 }
 
