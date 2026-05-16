@@ -18,8 +18,8 @@ describe('bilig app runtime config', () => {
     const config = resolveBiligAppRuntimeConfig({
       HOST: '127.0.0.1',
       PORT: '4567',
-      BILIG_PUBLIC_SERVER_URL: 'https://api.example.test',
-      BILIG_WEB_APP_BASE_URL: 'https://workbooks.example.test',
+      BILIG_PUBLIC_SERVER_URL: ' https://api.example.test ',
+      BILIG_WEB_APP_BASE_URL: ' https://workbooks.example.test ',
       BILIG_AGENT_IMPORT_MAX_BYTES: '1048576',
     })
 
@@ -40,5 +40,16 @@ describe('bilig app runtime config', () => {
     expect(() => resolveBiligAppRuntimeConfig({ BILIG_AGENT_IMPORT_MAX_BYTES: maxImportBytes })).toThrow(
       /BILIG_AGENT_IMPORT_MAX_BYTES must be/u,
     )
+  })
+
+  it.each([
+    ['BILIG_PUBLIC_SERVER_URL', ''],
+    ['BILIG_PUBLIC_SERVER_URL', '/relative'],
+    ['BILIG_PUBLIC_SERVER_URL', 'ftp://api.example.test'],
+    ['BILIG_WEB_APP_BASE_URL', '   '],
+    ['BILIG_WEB_APP_BASE_URL', 'workbooks.example.test'],
+    ['BILIG_WEB_APP_BASE_URL', 'file:///tmp/app'],
+  ])('rejects malformed %s=%s', (name, value) => {
+    expect(() => resolveBiligAppRuntimeConfig({ [name]: value })).toThrow(`${name} must be an absolute http(s) URL`)
   })
 })
