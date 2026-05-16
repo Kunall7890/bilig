@@ -9,10 +9,19 @@ import {
 } from './workbook-agent-codex-runtime.js'
 import type { CodexAppServerClientOptions, CodexAppServerTransport } from './codex-app-server-client.js'
 import type { WorkbookAgentFeatureFlags } from './workbook-agent-feature-flags.js'
+import { parsePositiveIntegerEnv } from './workbook-agent-env.js'
 import type { WorkbookAgentObservabilitySnapshot } from './workbook-agent-session-registry.js'
 
-const DEFAULT_MAX_ACTIVE_TURNS_PER_USER = parsePositiveIntegerEnv(process.env['BILIG_CODEX_MAX_ACTIVE_TURNS_PER_USER'], 4)
-const DEFAULT_MAX_ACTIVE_TURNS_PER_DOCUMENT = parsePositiveIntegerEnv(process.env['BILIG_CODEX_MAX_ACTIVE_TURNS_PER_DOCUMENT'], 16)
+const DEFAULT_MAX_ACTIVE_TURNS_PER_USER = parsePositiveIntegerEnv(
+  process.env['BILIG_CODEX_MAX_ACTIVE_TURNS_PER_USER'],
+  4,
+  'BILIG_CODEX_MAX_ACTIVE_TURNS_PER_USER',
+)
+const DEFAULT_MAX_ACTIVE_TURNS_PER_DOCUMENT = parsePositiveIntegerEnv(
+  process.env['BILIG_CODEX_MAX_ACTIVE_TURNS_PER_DOCUMENT'],
+  16,
+  'BILIG_CODEX_MAX_ACTIVE_TURNS_PER_DOCUMENT',
+)
 
 export interface WorkbookAgentService {
   readonly enabled: boolean
@@ -101,12 +110,4 @@ export function resolveWorkbookAgentServiceLimits(options: EnabledWorkbookAgentS
     maxActiveTurnsPerUser: options.maxActiveTurnsPerUser ?? DEFAULT_MAX_ACTIVE_TURNS_PER_USER,
     maxActiveTurnsPerDocument: options.maxActiveTurnsPerDocument ?? DEFAULT_MAX_ACTIVE_TURNS_PER_DOCUMENT,
   }
-}
-
-function parsePositiveIntegerEnv(value: string | undefined, fallback: number): number {
-  if (!value) {
-    return fallback
-  }
-  const parsed = Number.parseInt(value, 10)
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
 }

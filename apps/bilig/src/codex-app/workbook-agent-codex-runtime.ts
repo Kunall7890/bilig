@@ -15,14 +15,7 @@ import { createWorkbookAgentDynamicToolHandler } from './workbook-agent-dynamic-
 import type { WorkbookAgentThreadState } from './workbook-agent-service-shared.js'
 import { workbookAgentDynamicToolSpecs, type WorkbookAgentStartWorkflowRequest } from './workbook-agent-tools.js'
 import { createWorkbookAgentBaseInstructions, createWorkbookAgentDeveloperInstructions } from './workbook-agent-session-model.js'
-
-function parsePositiveIntegerEnv(value: string | undefined, fallback: number): number {
-  if (!value) {
-    return fallback
-  }
-  const parsed = Number.parseInt(value, 10)
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
-}
+import { parsePositiveIntegerEnv } from './workbook-agent-env.js'
 
 const DEFAULT_MODEL = process.env['BILIG_CODEX_MODEL']?.trim() || 'gpt-5.5'
 const CODEX_APP_SERVER_ARGS = [
@@ -48,12 +41,17 @@ const WORKBOOK_AGENT_CODEX_THREAD_CONFIG = {
   },
 } as const satisfies CodexAppServerThreadConfig
 
-export const DEFAULT_MAX_CODEX_CLIENTS = parsePositiveIntegerEnv(process.env['BILIG_CODEX_MAX_CLIENTS'], 4)
+export const DEFAULT_MAX_CODEX_CLIENTS = parsePositiveIntegerEnv(process.env['BILIG_CODEX_MAX_CLIENTS'], 4, 'BILIG_CODEX_MAX_CLIENTS')
 export const DEFAULT_MAX_CODEX_CONCURRENT_TURNS_PER_CLIENT = parsePositiveIntegerEnv(
   process.env['BILIG_CODEX_MAX_CONCURRENT_TURNS_PER_CLIENT'],
   1,
+  'BILIG_CODEX_MAX_CONCURRENT_TURNS_PER_CLIENT',
 )
-export const DEFAULT_MAX_CODEX_QUEUED_TURNS_PER_CLIENT = parsePositiveIntegerEnv(process.env['BILIG_CODEX_MAX_QUEUED_TURNS_PER_CLIENT'], 8)
+export const DEFAULT_MAX_CODEX_QUEUED_TURNS_PER_CLIENT = parsePositiveIntegerEnv(
+  process.env['BILIG_CODEX_MAX_QUEUED_TURNS_PER_CLIENT'],
+  8,
+  'BILIG_CODEX_MAX_QUEUED_TURNS_PER_CLIENT',
+)
 
 export interface WorkbookAgentCodexRuntimeOptions {
   readonly zeroSyncService: ZeroSyncService
