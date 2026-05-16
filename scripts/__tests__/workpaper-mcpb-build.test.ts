@@ -86,4 +86,14 @@ describe('WorkPaper MCPB builder', () => {
       mcpbPackage: '@anthropic-ai/mcpb@2.1.2',
     })
   })
+
+  it('rejects blank MCPB CLI values before building the bundle', () => {
+    expect(() => parseWorkPaperMcpbCliArgs(['--output', '   '])).toThrow('--output requires a value')
+  })
+
+  it('rejects duplicate MCPB CLI values instead of silently overriding build targets', () => {
+    expect(() => parseWorkPaperMcpbCliArgs(['--package-version', '0.13.27', '--package-version', '0.13.28'])).toThrow(
+      'Duplicate argument: --package-version',
+    )
+  })
 })

@@ -210,26 +210,31 @@ export function parseWorkPaperMcpbCliArgs(argv: readonly string[]): WorkPaperMcp
     }
 
     if (arg === '--extension-dir') {
+      assertUniqueOption(options, 'extensionDir', arg)
       options.extensionDir = requiredValue(argv, index, arg)
       index += 1
       continue
     }
     if (arg === '--output') {
+      assertUniqueOption(options, 'outputPath', arg)
       options.outputPath = requiredValue(argv, index, arg)
       index += 1
       continue
     }
     if (arg === '--package-version') {
+      assertUniqueOption(options, 'packageVersion', arg)
       options.packageVersion = requiredValue(argv, index, arg)
       index += 1
       continue
     }
     if (arg === '--icon') {
+      assertUniqueOption(options, 'iconPath', arg)
       options.iconPath = requiredValue(argv, index, arg)
       index += 1
       continue
     }
     if (arg === '--mcpb-package') {
+      assertUniqueOption(options, 'mcpbPackage', arg)
       options.mcpbPackage = requiredValue(argv, index, arg)
       index += 1
       continue
@@ -280,10 +285,16 @@ export async function resolveBuildOptions(cliOptions: WorkPaperMcpbCliOptions): 
 
 function requiredValue(argv: readonly string[], index: number, flag: string): string {
   const value = argv[index + 1]
-  if (value === undefined || value.startsWith('--')) {
+  if (value === undefined || value.trim().length === 0 || value.startsWith('--')) {
     throw new Error(`${flag} requires a value`)
   }
   return value
+}
+
+function assertUniqueOption(options: Partial<WorkPaperMcpbCliOptions>, key: keyof WorkPaperMcpbCliOptions, flag: string): void {
+  if (Object.hasOwn(options, key)) {
+    throw new Error(`Duplicate argument: ${flag}`)
+  }
 }
 
 function jsonWithTrailingNewline(value: unknown): string {
