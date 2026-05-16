@@ -4,6 +4,21 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.16.26
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.16.25
+- Manual override: no
+
+## Fixes
+- perf(headless): fast path literal fanout payloads (def91ef6)
+
+## Internal runtime changes
+- docs(growth): refresh public evidence for 0.16.25 (5d8efa02)
+- docs(growth): tighten maintainer note and trust checks (6fbe664d)
+- docs(growth): cover ExcelJS shared formula recalculation (ccf23559)
+- docs(growth): target Excel calculation engine searches (b4517b13)
+
 ## 0.16.25
 
 - Release type: patch
