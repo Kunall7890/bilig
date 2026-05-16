@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 import { buildPublicWorkbookCorpusScorecard, createEmptyPublicWorkbookManifest } from '../public-workbook-corpus.ts'
-import { formatPublicCorpusStopMarkerPathForMessage } from '../public-workbook-corpus-cli.ts'
+import { formatPublicCorpusStopMarkerPathForMessage, readRepeatedStringArg, readStringArg } from '../public-workbook-corpus-cli.ts'
 import { asRecord } from '../public-workbook-corpus-json.ts'
 import { buildPublicWorkbookCorpusResumePlan, validatePublicWorkbookCorpusResumePlan } from '../public-workbook-corpus-resume-plan.ts'
 import { publicWorkbookImportWarningClassifierEvidence } from '../public-workbook-corpus-evidence.ts'
@@ -18,6 +18,28 @@ import {
 import type { PublicWorkbookArtifact, PublicWorkbookCorpusCase, PublicWorkbookManifest } from '../public-workbook-corpus-types.ts'
 
 describe('public workbook corpus CLI resource guards', () => {
+  it('rejects missing values for shared string arguments', () => {
+    const originalArgv = process.argv
+    try {
+      process.argv = ['bun', corpusScriptPath(), 'fetch', '--manifest', '--dry-run']
+
+      expect(() => readStringArg('--manifest', 'fallback.json')).toThrow('Expected --manifest to have a value')
+    } finally {
+      process.argv = originalArgv
+    }
+  })
+
+  it('rejects missing values for repeated string arguments', () => {
+    const originalArgv = process.argv
+    try {
+      process.argv = ['bun', corpusScriptPath(), 'discover', '--query', 'budget', '--query', '--limit', '2']
+
+      expect(() => readRepeatedStringArg('--query')).toThrow('Expected --query to have a value')
+    } finally {
+      process.argv = originalArgv
+    }
+  })
+
   it('refuses to reinitialize an existing manifest unless forced', () => {
     const dir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-cli-init-existing-'))
     const manifestPath = join(dir, 'manifest.json')

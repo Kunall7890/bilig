@@ -4,11 +4,19 @@ import { isAbsolute, relative, resolve } from 'node:path'
 export function readStringArg(name: string, fallback: string): string {
   let value: string | null = null
   process.argv.forEach((arg, index) => {
-    if (arg === name && process.argv[index + 1] !== undefined) {
-      value = process.argv[index + 1]
+    if (arg === name) {
+      value = readArgValueAt(name, index)
     }
   })
   return value ?? fallback
+}
+
+function readArgValueAt(name: string, index: number): string {
+  const next = process.argv[index + 1]
+  if (next === undefined || next.startsWith('--')) {
+    throw new Error(`Expected ${name} to have a value`)
+  }
+  return next
 }
 
 export function readNumberArg(name: string, fallback: number): number {
@@ -132,8 +140,8 @@ export function readFetchRunArgs(defaults: { readonly batchSize: number; readonl
 export function readRepeatedStringArg(name: string): string[] {
   const values: string[] = []
   process.argv.forEach((arg, index) => {
-    if (arg === name && process.argv[index + 1]) {
-      values.push(process.argv[index + 1])
+    if (arg === name) {
+      values.push(readArgValueAt(name, index))
     }
   })
   return values
