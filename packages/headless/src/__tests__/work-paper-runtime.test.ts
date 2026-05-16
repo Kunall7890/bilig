@@ -2000,6 +2000,60 @@ describe('WorkPaper', () => {
     expect(workbook.getCellSerialized(cell(sheetId, 0, 1))).toBe(1)
   })
 
+  it('skips topo repair when appending independent direct aggregate formula rows', () => {
+    const workbook = WorkPaper.buildFromSheets({
+      Data: [
+        [1, 2, '=SUM(A1:B1)'],
+        [3, 4, '=SUM(A2:B2)'],
+      ],
+    })
+    const sheetId = workbook.getSheetId('Data')!
+    const engine = Reflect.get(workbook, 'engine')
+    if (typeof engine !== 'object' || engine === null || typeof Reflect.get(engine, 'resetPerformanceCounters') !== 'function') {
+      throw new Error('Expected WorkPaper to expose an engine with performance counters in tests')
+    }
+
+    Reflect.apply(Reflect.get(engine, 'resetPerformanceCounters'), engine, [])
+    workbook.batch(() => {
+      workbook.addRows(sheetId, 2, 2)
+      workbook.setCellContents(cell(sheetId, 2, 0), [
+        [5, 6, '=SUM(A3:B3)'],
+        [7, 8, '=SUM(A4:B4)'],
+      ])
+    })
+
+    const counters = Reflect.apply(Reflect.get(engine, 'getPerformanceCounters'), engine, [])
+    expect(workbook.getCellValue(cell(sheetId, 2, 2))).toEqual({ tag: ValueTag.Number, value: 11 })
+    expect(workbook.getCellValue(cell(sheetId, 3, 2))).toEqual({ tag: ValueTag.Number, value: 15 })
+    expect(counters.topoRepairs).toBe(0)
+    expect(counters.cycleFormulaScans).toBe(0)
+    expect(counters.calcChainFullScans).toBe(0)
+  })
+
+  it('keeps topo repair when an appended formula depends on another formula', () => {
+    const workbook = WorkPaper.buildFromSheets({
+      Data: [
+        [1, '=A1+1'],
+        [3, 4],
+      ],
+    })
+    const sheetId = workbook.getSheetId('Data')!
+    const engine = Reflect.get(workbook, 'engine')
+    if (typeof engine !== 'object' || engine === null || typeof Reflect.get(engine, 'resetPerformanceCounters') !== 'function') {
+      throw new Error('Expected WorkPaper to expose an engine with performance counters in tests')
+    }
+
+    Reflect.apply(Reflect.get(engine, 'resetPerformanceCounters'), engine, [])
+    workbook.batch(() => {
+      workbook.addRows(sheetId, 2, 1)
+      workbook.setCellContents(cell(sheetId, 2, 0), [[5, '=B1+1']])
+    })
+
+    const counters = Reflect.apply(Reflect.get(engine, 'getPerformanceCounters'), engine, [])
+    expect(workbook.getCellValue(cell(sheetId, 2, 1))).toEqual({ tag: ValueTag.Number, value: 3 })
+    expect(counters.topoRepairs).toBe(1)
+  })
+
   it('uses HyperFormula-like optional returns for missing lookups and formula grids', () => {
     const workbook = WorkPaper.buildFromArray([[1, '=A1+1']])
     const sheetId = workbook.getSheetId('Sheet1')!

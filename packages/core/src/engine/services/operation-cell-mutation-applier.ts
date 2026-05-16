@@ -19,6 +19,7 @@ import type { OperationLookupPlanner } from './operation-lookup-planner.js'
 import type { OperationDirectRangeDependentService } from './operation-direct-range-dependents.js'
 import type { DirectFormulaMetricCounts } from './operation-post-recalc-direct-formulas.js'
 import { finalizeOperationRecalcAndEvents } from './operation-recalc-finalizer.js'
+import type { RuntimeFormula } from '../runtime-state.js'
 import type { CreateEngineOperationServiceArgs, MutationSource } from './operation-service-types.js'
 
 type OperationCellMutationSource = Exclude<MutationSource, 'remote'>
@@ -28,6 +29,8 @@ type OperationCellChangedInputsNeedRegionQueryIndices = Parameters<
   typeof finalizeOperationRecalcAndEvents
 >[0]['changedInputsNeedRegionQueryIndices']
 type OperationCellCycleInputMarker = Parameters<typeof finalizeOperationRecalcAndEvents>[0]['markCycleMemberInputsChanged']
+
+const DIRECT_AGGREGATE_TOPO_SKIP_SCAN_LIMIT = 4096
 
 interface CreateOperationCellMutationApplierArgs {
   readonly serviceArgs: CreateEngineOperationServiceArgs
@@ -196,6 +199,37 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
       const reboundCount = formulaChangedCount
       formulaChangedCount = rebindDynamicFormulaDependents(cellIndex, formulaChangedCount)
       topologyChanged = topologyChanged || formulaChangedCount !== reboundCount
+    }
+    const canSkipTopoRepairForFreshDirectAggregate = (
+      priorHadFormula: boolean,
+      formulaCellIndex: number,
+      formula: RuntimeFormula | undefined,
+    ): boolean => {
+      const directAggregate = formula?.directAggregate
+      if (
+        priorHadFormula ||
+        formula === undefined ||
+        directAggregate === undefined ||
+        formula.dependencyIndices.length !== 0 ||
+        formula.rangeDependencies.length !== 0 ||
+        formula.graphRangeDependencies.length !== 0 ||
+        directAggregate.length > DIRECT_AGGREGATE_TOPO_SKIP_SCAN_LIMIT
+      ) {
+        return false
+      }
+      const aggregateSheet = args.state.workbook.getSheet(directAggregate.sheetName)
+      if (!aggregateSheet) {
+        return false
+      }
+      for (let row = directAggregate.rowStart; row <= directAggregate.rowEnd; row += 1) {
+        for (let col = directAggregate.col; col <= directAggregate.colEnd; col += 1) {
+          const dependencyCellIndex = aggregateSheet.grid.getPhysical(row, col)
+          if (dependencyCellIndex !== -1 && dependencyCellIndex !== formulaCellIndex && args.state.formulas.has(dependencyCellIndex)) {
+            return false
+          }
+        }
+      }
+      return true
     }
     const reservedNewCells = potentialNewCells ?? refs.length
     args.state.workbook.cellStore.ensureCapacity(args.state.workbook.cellStore.size + reservedNewCells)
@@ -516,6 +550,7 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
               const compileStarted = isRestore ? 0 : performance.now()
               try {
                 const changedTopology = args.bindFormula(cellIndex, sheetName, mutation.formula)
+                const runtimeFormula = args.state.formulas.get(cellIndex)
                 if (hasAggregateDependents) {
                   args.invalidateAggregateColumn({ sheetName, col: mutation.col })
                 }
@@ -524,6 +559,8 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
                 }
                 clearTrackedColumnDependencyFlagCache()
                 changedInputCount = args.markInputChanged(cellIndex, changedInputCount)
+                const canSkipTopoRepair = canSkipTopoRepairForFreshDirectAggregate(priorHadFormula, cellIndex, runtimeFormula)
+                const evaluatedFreshDirectFormula = canSkipTopoRepair && args.evaluateDirectFormula(cellIndex) !== undefined
                 const handledFormulaReplacementAsDirectDelta =
                   priorHadFormula &&
                   !hasExactLookupDependents &&
@@ -537,9 +574,11 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
                     postRecalcDirectFormulaMetrics,
                   })
                 if (!handledFormulaReplacementAsDirectDelta) {
-                  formulaChangedCount = args.markFormulaChanged(cellIndex, formulaChangedCount)
+                  if (!evaluatedFreshDirectFormula) {
+                    formulaChangedCount = args.markFormulaChanged(cellIndex, formulaChangedCount)
+                  }
                 }
-                topologyChanged = topologyChanged || changedTopology
+                topologyChanged = topologyChanged || (changedTopology && !canSkipTopoRepair)
                 const aggregateDependents = hasAggregateDependents
                   ? collectAffectedDirectRangeDependents({
                       sheetName,

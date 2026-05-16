@@ -99,7 +99,16 @@ export function applyWorkPaperMatrixContents(input: {
   if (options.skipNulls !== undefined) {
     planInput.skipNulls = options.skipNulls
   }
-  const { leadingRefs, formulaRefs, refs, potentialNewCells, trailingLiteralRefs } = buildMatrixMutationPlan(planInput)
+  const {
+    leadingRefs,
+    leadingPotentialNewCells,
+    formulaRefs,
+    formulaPotentialNewCells,
+    refs,
+    potentialNewCells,
+    trailingLiteralRefs,
+    trailingLiteralPotentialNewCells,
+  } = buildMatrixMutationPlan(planInput)
   if (refs.length === 0) {
     return
   }
@@ -110,9 +119,9 @@ export function applyWorkPaperMatrixContents(input: {
     input.applyCellMutationRefs(phaseRefs, applyOptions)
   }
   const phaseSource = options.captureUndo === false ? 'restore' : 'local'
-  const createApplyOptions = (): WorkPaperCellMutationApplyOptions => {
+  const createApplyOptions = (phasePotentialNewCells = potentialNewCells): WorkPaperCellMutationApplyOptions => {
     const applyOptions: WorkPaperCellMutationApplyOptions = {
-      potentialNewCells,
+      potentialNewCells: phasePotentialNewCells,
       source: phaseSource,
       returnUndoOps: false,
       reuseRefs: true,
@@ -128,7 +137,7 @@ export function applyWorkPaperMatrixContents(input: {
     return
   }
 
-  applyPlannedRefs(leadingRefs, createApplyOptions())
-  applyPlannedRefs(formulaRefs, createApplyOptions())
-  applyPlannedRefs(trailingLiteralRefs, createApplyOptions())
+  applyPlannedRefs(leadingRefs, createApplyOptions(leadingPotentialNewCells))
+  applyPlannedRefs(formulaRefs, createApplyOptions(formulaPotentialNewCells))
+  applyPlannedRefs(trailingLiteralRefs, createApplyOptions(trailingLiteralPotentialNewCells))
 }

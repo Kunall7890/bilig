@@ -13,6 +13,9 @@ describe('buildMatrixMutationPlan', () => {
     })
 
     expect(plan.potentialNewCells).toBe(5)
+    expect(plan.leadingPotentialNewCells).toBe(2)
+    expect(plan.formulaPotentialNewCells).toBe(2)
+    expect(plan.trailingLiteralPotentialNewCells).toBe(1)
     expect(plan.refs).toEqual([
       { sheetId: 1, mutation: { kind: 'setCellValue', row: 0, col: 1, value: 10 } },
       { sheetId: 1, mutation: { kind: 'clearCell', row: 0, col: 2 } },
@@ -35,6 +38,10 @@ describe('buildMatrixMutationPlan', () => {
       rewriteFormula: (formula) => formula.slice(1),
     })
 
+    expect(plan.potentialNewCells).toBe(12)
+    expect(plan.leadingPotentialNewCells).toBe(6)
+    expect(plan.formulaPotentialNewCells).toBe(2)
+    expect(plan.trailingLiteralPotentialNewCells).toBe(4)
     expect(plan.leadingRefs).toEqual([
       { sheetId: 1, mutation: { kind: 'setCellValue', row: 0, col: 0, value: 1 } },
       { sheetId: 1, mutation: { kind: 'setCellValue', row: 0, col: 2, value: 'top' } },

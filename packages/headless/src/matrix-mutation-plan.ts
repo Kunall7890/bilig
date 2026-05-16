@@ -7,10 +7,13 @@ export type MatrixMutationRef = EngineCellMutationRef
 
 export interface MatrixMutationPlan {
   leadingRefs: MatrixMutationRef[]
+  leadingPotentialNewCells: number
   formulaRefs: MatrixMutationRef[]
+  formulaPotentialNewCells: number
   refs: MatrixMutationRef[]
   potentialNewCells: number
   trailingLiteralRefs: MatrixMutationRef[]
+  trailingLiteralPotentialNewCells: number
 }
 
 interface BuildMatrixMutationPlanArgs {
@@ -29,7 +32,10 @@ export function buildMatrixMutationPlan(args: BuildMatrixMutationPlanArgs): Matr
   const leadingRefs: MatrixMutationRef[] = []
   const formulaRefs: MatrixMutationRef[] = []
   const trailingLiteralRefs: MatrixMutationRef[] = []
+  let leadingPotentialNewCells = 0
+  let formulaPotentialNewCells = 0
   let potentialNewCells = 0
+  let trailingLiteralPotentialNewCells = 0
   const earliestFormulaRowByColumn = new Map<number, number>()
 
   args.content.forEach((row, rowOffset) => {
@@ -76,6 +82,7 @@ export function buildMatrixMutationPlan(args: BuildMatrixMutationPlanArgs): Matr
       potentialNewCells += 1
 
       if (isFormulaContent(raw)) {
+        formulaPotentialNewCells += 1
         formulaRefs.push({
           sheetId: args.target.sheet,
           mutation: {
@@ -98,8 +105,10 @@ export function buildMatrixMutationPlan(args: BuildMatrixMutationPlanArgs): Matr
         },
       } satisfies MatrixMutationRef
       if (shouldDeferLiteral(address, destination.row, destination.col)) {
+        trailingLiteralPotentialNewCells += 1
         trailingLiteralRefs.push(ref)
       } else {
+        leadingPotentialNewCells += 1
         leadingRefs.push(ref)
       }
     })
@@ -107,9 +116,12 @@ export function buildMatrixMutationPlan(args: BuildMatrixMutationPlanArgs): Matr
 
   return {
     leadingRefs,
+    leadingPotentialNewCells,
     formulaRefs,
+    formulaPotentialNewCells,
     refs: [...leadingRefs, ...formulaRefs, ...trailingLiteralRefs],
     potentialNewCells,
     trailingLiteralRefs,
+    trailingLiteralPotentialNewCells,
   }
 }
