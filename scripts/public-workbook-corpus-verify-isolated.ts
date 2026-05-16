@@ -3,6 +3,7 @@ import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { parsePublicWorkbookCorpusCase } from './public-workbook-corpus-json.ts'
+import { compactRepoLocalPaths } from './public-workbook-corpus-output.ts'
 import { formatByteSize, startChildRssWatchdog, terminateChildProcess } from './public-workbook-corpus-process.ts'
 import { unsupportedRssLimitCase } from './public-workbook-corpus-resource-limits.ts'
 import {
@@ -16,8 +17,6 @@ import type { PublicWorkbookArtifact, PublicWorkbookCorpusCase } from './public-
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
 const publicWorkbookCorpusScriptPath = fileURLToPath(new URL('./public-workbook-corpus.ts', import.meta.url))
 const noop = (): void => undefined
-const codexWorktreeRepoPathPattern =
-  /\/Users\/[^/\s]+\/\.codex\/worktrees\/[^/\s]+\/[^/\s]+(?=\/(?:apps|docs|e2e|examples|packages|scripts)\b)/gu
 
 export const verificationWorkerPhasePrefix = 'bilig-public-workbook-verify-phase='
 
@@ -165,14 +164,11 @@ export function verifyCachedWorkbookArtifactIsolated(args: {
 }
 
 export function compactVerificationWorkerOutput(value: string): string | null {
-  const compacted = value
+  const withoutPhaseMarkers = value
     .split(/\r?\n/u)
     .filter((line) => !line.startsWith(verificationWorkerPhasePrefix))
     .join('\n')
-    .replaceAll(rootDir, '<repo>')
-    .replace(codexWorktreeRepoPathPattern, '<repo>')
-    .replace(/\s+/gu, ' ')
-    .trim()
+  const compacted = compactRepoLocalPaths(withoutPhaseMarkers, rootDir).replace(/\s+/gu, ' ').trim()
   return compacted.length > 0 ? compacted.slice(0, 1_000) : null
 }
 

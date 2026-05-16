@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 
 import { asRecord, readString, spreadsheetExtension, validatePublicWorkbookManifest } from './public-workbook-corpus-json.ts'
 import { fetchBodyBytesWithTimeout } from './public-workbook-corpus-http.ts'
+import { compactRepoLocalPaths } from './public-workbook-corpus-output.ts'
 import { formatByteSize, startChildRssWatchdog, terminateChildProcess } from './public-workbook-corpus-process.ts'
 import type {
   FetchCorpusArgs,
@@ -595,6 +596,6 @@ async function mapWithConcurrency<T, R>(
 }
 
 function compactProcessOutput(value: string): string | null {
-  const compacted = value.replaceAll(rootDir, '<repo>').replace(/\s+/gu, ' ').trim()
+  const compacted = compactRepoLocalPaths(value, rootDir).replace(/\s+/gu, ' ').trim()
   return compacted.length > 0 ? compacted.slice(0, 1_000) : null
 }
