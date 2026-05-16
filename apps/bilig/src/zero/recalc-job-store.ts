@@ -4,6 +4,7 @@ import type { DirtyRegion } from '@bilig/zero-sync'
 import type { CellEvalRow } from './projection.js'
 import { isDirtyRegion, parseNonNegativeInteger, parsePositiveInteger } from './store-support.js'
 import { shouldPersistWorkbookCheckpointRevision, type Queryable, type QueryResultRow } from './store.js'
+import { runQueryableTransaction } from './transaction-support.js'
 import { persistCellEvalDiff, persistCellEvalIncremental, persistWorkbookCheckpoint } from './workbook-calculation-store.js'
 
 const RECALC_LEASE_MS = 30_000
@@ -116,48 +117,53 @@ export async function markRecalcJobCompleted(
   replicaSnapshot: EngineReplicaSnapshot | null,
   isIncremental = false,
 ): Promise<boolean> {
-  const revisionResult = await db.query<{ head_revision: number | string | null }>(
-    `SELECT head_revision FROM workbooks WHERE id = $1 LIMIT 1`,
-    [lease.workbookId],
-  )
-  const headRevision = parsePositiveInteger(revisionResult.rows[0]?.head_revision)
-  if (headRevision === null) {
-    throw new Error(`Invalid workbook head revision while completing recalc job ${lease.id}`)
-  }
-  if (headRevision !== lease.toRevision) {
-    await markRecalcJobSuperseded(db, lease)
-    return false
-  }
+  let completed = false
+  await runQueryableTransaction(db, async (transactionDb) => {
+    const revisionResult = await transactionDb.query<{ head_revision: number | string | null }>(
+      `SELECT head_revision FROM workbooks WHERE id = $1 LIMIT 1`,
+      [lease.workbookId],
+    )
+    const headRevision = parsePositiveInteger(revisionResult.rows[0]?.head_revision)
+    if (headRevision === null) {
+      throw new Error(`Invalid workbook head revision while completing recalc job ${lease.id}`)
+    }
+    if (headRevision !== lease.toRevision) {
+      await markRecalcJobSuperseded(transactionDb, lease)
+      completed = false
+      return
+    }
 
-  if (isIncremental) {
-    await persistCellEvalIncremental(db, lease.workbookId, nextRows)
-  } else {
-    await persistCellEvalDiff(db, lease.workbookId, nextRows)
-  }
-  await db.query(
-    `
-      UPDATE workbooks
-      SET calculated_revision = $2
-      WHERE id = $1 AND head_revision = $2
-    `,
-    [lease.workbookId, lease.toRevision],
-  )
-  await db.query(
-    `
-      UPDATE recalc_job
-      SET status = 'completed',
-          lease_until = NULL,
-          lease_owner = NULL,
-          updated_at = NOW()
-      WHERE id = $1
-    `,
-    [lease.id],
-  )
+    if (isIncremental) {
+      await persistCellEvalIncremental(transactionDb, lease.workbookId, nextRows)
+    } else {
+      await persistCellEvalDiff(transactionDb, lease.workbookId, nextRows)
+    }
+    await transactionDb.query(
+      `
+        UPDATE workbooks
+        SET calculated_revision = $2
+        WHERE id = $1 AND head_revision = $2
+      `,
+      [lease.workbookId, lease.toRevision],
+    )
+    await transactionDb.query(
+      `
+        UPDATE recalc_job
+        SET status = 'completed',
+            lease_until = NULL,
+            lease_owner = NULL,
+            updated_at = NOW()
+        WHERE id = $1
+      `,
+      [lease.id],
+    )
 
-  if (shouldPersistWorkbookCheckpointRevision(lease.toRevision) && snapshot) {
-    await persistWorkbookCheckpoint(db, lease.workbookId, lease.toRevision, snapshot, replicaSnapshot)
-  }
-  return true
+    if (shouldPersistWorkbookCheckpointRevision(lease.toRevision) && snapshot) {
+      await persistWorkbookCheckpoint(transactionDb, lease.workbookId, lease.toRevision, snapshot, replicaSnapshot)
+    }
+    completed = true
+  })
+  return completed
 }
 
 export async function markRecalcJobSuperseded(db: Queryable, lease: RecalcJobLease): Promise<void> {

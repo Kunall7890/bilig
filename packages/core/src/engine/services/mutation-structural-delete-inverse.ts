@@ -152,6 +152,36 @@ function canRestoreDirectAggregateThroughStructuralInverse(args: {
   )
 }
 
+function directFormulaRangeTouchesStructuralDeleteSpan(
+  formula: RuntimeFormula,
+  sheetName: string,
+  axis: 'row' | 'column',
+  start: number,
+  count: number,
+): boolean {
+  const deleteEnd = start + count - 1
+  const aggregate = formula.directAggregate
+  if (aggregate?.sheetName === sheetName) {
+    return axis === 'row'
+      ? aggregate.rowStart <= deleteEnd && aggregate.rowEnd >= start
+      : aggregate.col <= deleteEnd && aggregate.colEnd >= start
+  }
+  const criteria = formula.directCriteria
+  if (!criteria) {
+    return false
+  }
+  const directCriteriaRanges = [
+    ...(criteria.aggregateRange ? [criteria.aggregateRange] : []),
+    ...criteria.criteriaPairs.map((pair) => pair.range),
+  ]
+  return directCriteriaRanges.some((range) => {
+    if (range.sheetName !== sheetName) {
+      return false
+    }
+    return axis === 'row' ? range.rowStart <= deleteEnd && range.rowEnd >= start : range.col >= start && range.col <= deleteEnd
+  })
+}
+
 export function createMutationStructuralDeleteInverseHelpers(
   args: MutationStructuralDeleteInverseRuntime,
 ): MutationStructuralDeleteInverseHelpers {
@@ -201,11 +231,12 @@ export function createMutationStructuralDeleteInverseHelpers(
           dependencyTouchesStructuralDeleteSpan(dependency, ownerSheetName, sheetName, axis, start),
         )
       }
+      const directFormulaRangeAffected = directFormulaRangeTouchesStructuralDeleteSpan(formula, sheetName, axis, start, count)
       const metadataSensitive =
         formula.compiled.symbolicNames.length > 0 ||
         formula.compiled.symbolicTables.length > 0 ||
         formula.compiled.symbolicSpills.length > 0
-      if (!ownerPositionAffected && !dependencyPositionAffected && !metadataSensitive) {
+      if (!ownerPositionAffected && !dependencyPositionAffected && !directFormulaRangeAffected && !metadataSensitive) {
         return
       }
       captured.push({

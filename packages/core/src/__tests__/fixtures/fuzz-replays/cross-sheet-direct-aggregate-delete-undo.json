@@ -1,0 +1,45 @@
+{
+  "name": "cross-sheet-direct-aggregate-delete-undo",
+  "seed": "cross-sheet-graph",
+  "steps": [
+    {
+      "command": {
+        "kind": "insertRows",
+        "start": 0,
+        "count": 1
+      }
+    },
+    {
+      "command": {
+        "kind": "deleteRows",
+        "start": 3,
+        "count": 1
+      }
+    },
+    {
+      "command": {
+        "kind": "insertRows",
+        "start": 0,
+        "count": 1
+      }
+    },
+    {
+      "command": {
+        "kind": "undo"
+      }
+    },
+    {
+      "command": {
+        "kind": "undo"
+      }
+    },
+    {
+      "command": {
+        "kind": "undo"
+      },
+      "expect": {
+        "kind": "seed"
+      }
+    }
+  ]
+}

@@ -19,7 +19,47 @@ vi.mock('../workbook-calculation-store.js', () => ({
 }))
 
 import { leaseNextRecalcJob, markRecalcJobCompleted, markRecalcJobFailed } from '../recalc-job-store.js'
-import type { Queryable } from '../store.js'
+import type { Queryable, QueryResultRow } from '../store.js'
+
+function typedRows<T extends QueryResultRow>(rows: readonly QueryResultRow[]): T[] {
+  return rows.filter((row): row is T => row !== null)
+}
+
+class FakeTransactionClient implements Queryable {
+  readonly calls: { text: string; values: readonly unknown[] | undefined }[] = []
+  releaseCount = 0
+
+  async query<T extends QueryResultRow = QueryResultRow>(text: string, values?: unknown[]): Promise<{ rows: T[] }> {
+    this.calls.push({ text, values })
+    if (text.includes('SELECT head_revision')) {
+      return { rows: typedRows<T>([{ head_revision: 64 }]) }
+    }
+    return { rows: [] }
+  }
+
+  release(): void {
+    this.releaseCount += 1
+  }
+}
+
+class FakeTransactionalQueryable implements Queryable {
+  readonly calls: { text: string; values: readonly unknown[] | undefined }[] = []
+  readonly client = new FakeTransactionClient()
+  connectCount = 0
+
+  async query<T extends QueryResultRow = QueryResultRow>(text: string, values?: unknown[]): Promise<{ rows: T[] }> {
+    this.calls.push({ text, values })
+    if (text.includes('SELECT head_revision')) {
+      return { rows: typedRows<T>([{ head_revision: 64 }]) }
+    }
+    return { rows: [] as T[] }
+  }
+
+  async connect(): Promise<FakeTransactionClient> {
+    this.connectCount += 1
+    return this.client
+  }
+}
 
 describe('recalc job store', () => {
   beforeEach(() => {
@@ -125,6 +165,39 @@ describe('recalc job store', () => {
     expect(storeFns.persistCellEvalIncremental).toHaveBeenCalledWith(db, 'book-1', [])
     expect(storeFns.persistCellEvalDiff).not.toHaveBeenCalled()
     expect(storeFns.persistWorkbookCheckpoint).toHaveBeenCalledWith(db, 'book-1', 64, snapshot, null)
+  })
+
+  it('rolls back the whole recalc completion when checkpoint persistence fails', async () => {
+    const db = new FakeTransactionalQueryable()
+    const snapshot = createEmptyWorkbookSnapshot('book-1')
+    storeFns.persistWorkbookCheckpoint.mockRejectedValueOnce(new Error('checkpoint failed'))
+
+    await expect(
+      markRecalcJobCompleted(
+        db,
+        {
+          id: 'job-1',
+          workbookId: 'book-1',
+          fromRevision: 1,
+          toRevision: 64,
+          dirtyRegions: null,
+          attempts: 1,
+        },
+        [],
+        snapshot,
+        null,
+        true,
+      ),
+    ).rejects.toThrow('checkpoint failed')
+
+    expect(db.connectCount).toBe(1)
+    expect(db.calls).toEqual([])
+    expect(db.client.releaseCount).toBe(1)
+    expect(db.client.calls[0]?.text).toBe('BEGIN')
+    expect(db.client.calls.at(-1)?.text).toBe('ROLLBACK')
+    expect(db.client.calls.some((call) => call.text === 'COMMIT')).toBe(false)
+    expect(storeFns.persistCellEvalIncremental).toHaveBeenCalledWith(db.client, 'book-1', [])
+    expect(storeFns.persistWorkbookCheckpoint).toHaveBeenCalledWith(db.client, 'book-1', 64, snapshot, null)
   })
 
   it('rejects invalid workbook head revisions before persisting recalc output', async () => {
