@@ -1,5 +1,6 @@
 import { BuiltinId, FormulaMode, Opcode, type FormulaRecord } from '@bilig/protocol'
 import type { CompiledFormula, FormulaNode, JsPlanInstruction, ParsedCellReferenceInfo, ParsedDependencyReference } from '@bilig/formula'
+import { parseA1RowIndex } from './a1-row-number.js'
 
 const SIMPLE_DIRECT_BINARY_RE = /^([A-Za-z]+)([1-9][0-9]*)([+\-*/])(?:([A-Za-z]+)([1-9][0-9]*)|(\d+(?:\.\d+)?))(?:\+(\d+(?:\.\d+)?))?$/
 const SIMPLE_DIRECT_ABS_RE = /^ABS\s*\(\s*([A-Za-z]+)([1-9][0-9]*)\s*\)$/i
@@ -74,11 +75,15 @@ function operatorOpcode(operator: SimpleDirectBinaryOperator): Opcode {
   }
 }
 
-function parsedCellRef(column: string, rowText: string): ParsedCellReferenceInfo {
+function parsedCellRef(column: string, rowText: string): ParsedCellReferenceInfo | undefined {
   const normalizedColumn = column.toUpperCase()
+  const row = parseA1RowIndex(rowText)
+  if (row === undefined) {
+    return undefined
+  }
   return {
     address: `${normalizedColumn}${rowText}`,
-    row: Number.parseInt(rowText, 10) - 1,
+    row,
     col: columnToIndex(normalizedColumn),
     rowAbsolute: false,
     colAbsolute: false,
@@ -174,6 +179,9 @@ function parsedTranslatedSourceRef(
   const row = baseRef.rowAbsolute ? baseRow : baseRow + rowDelta
   const col = baseRef.colAbsolute ? baseCol : baseCol + colDelta
   const parsed = parsedCellRef(column, rowText)
+  if (!parsed) {
+    return undefined
+  }
   if (parsed.row !== row || parsed.col !== col) {
     return undefined
   }
@@ -368,6 +376,9 @@ export function tryCompileSimpleDirectScalarFormula(source: string): CompiledFor
   const absMatch = SIMPLE_DIRECT_ABS_RE.exec(trimmed)
   if (absMatch) {
     const ref = parsedCellRef(absMatch[1]!, absMatch[2]!)
+    if (!ref) {
+      return undefined
+    }
     const ast: FormulaNode = {
       kind: 'CallExpr',
       callee: 'ABS',
@@ -433,7 +444,13 @@ export function tryCompileSimpleDirectScalarFormula(source: string): CompiledFor
   const opcode = operatorOpcode(operator)
 
   const leftRef = parsedCellRef(match[1]!, match[2]!)
+  if (!leftRef) {
+    return undefined
+  }
   const rightRef = match[4] !== undefined ? parsedCellRef(match[4], match[5]!) : undefined
+  if (match[4] !== undefined && !rightRef) {
+    return undefined
+  }
   const rightNumber = rightRef === undefined ? Number.parseFloat(match[6]!) : undefined
   if (rightRef === undefined && !Number.isFinite(rightNumber)) {
     return undefined

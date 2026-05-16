@@ -104,4 +104,11 @@ describe('tryCompileSimpleDirectAggregateFormula', () => {
     expect(tryCompileSimpleDirectAggregateFormula('SUM(Jan:Mar!B2)')).toBeUndefined()
     expect(tryCompileSimpleDirectAggregateFormula("SUM('Jan 2026':'Mar 2026'!B2:C2)")).toBeUndefined()
   })
+
+  it('rejects unsafe integer row references on the direct compiler fast path', () => {
+    const unsafeRow = String(Number.MAX_SAFE_INTEGER + 1)
+
+    expect(tryCompileSimpleDirectAggregateFormula(`SUM(A1:A${unsafeRow})`)).toBeUndefined()
+    expect(tryCompileSimpleDirectAggregateFormula(`SUM(A${unsafeRow}:A${unsafeRow})`)).toBeUndefined()
+  })
 })

@@ -9,6 +9,7 @@ import {
   type StructuralAxisTransform,
 } from '@bilig/formula'
 import { mapStructuralAxisIndex } from '../engine-structural-utils.js'
+import { parseA1RowIndex } from './a1-row-number.js'
 import type { FormulaInstanceSnapshot } from './formula-instance-table.js'
 import type { FormulaTemplateSnapshot } from './template-bank.js'
 
@@ -137,7 +138,11 @@ function translateSimpleReferenceSource(source: string, rowDelta: number, colDel
     SIMPLE_REFERENCE_TOKEN_RE,
     (token: string, prefix: string, colAbsolute: string, columnText: string, rowAbsolute: string, rowText: string) => {
       const sourceCol = columnToIndex(columnText)
-      const sourceRow = Number.parseInt(rowText, 10) - 1
+      const sourceRow = parseA1RowIndex(rowText)
+      if (sourceRow === undefined) {
+        failed = true
+        return token
+      }
       const nextCol = colAbsolute === '$' ? sourceCol : sourceCol + colDelta
       const nextRow = rowAbsolute === '$' ? sourceRow : sourceRow + rowDelta
       if (nextCol < 0 || nextRow < 0) {

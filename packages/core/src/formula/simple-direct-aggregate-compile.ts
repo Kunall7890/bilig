@@ -8,6 +8,7 @@ import {
   type ParsedDependencyReference,
   type ParsedRangeReferenceInfo,
 } from '@bilig/formula'
+import { parseA1RowNumber } from './a1-row-number.js'
 
 const SIMPLE_DIRECT_AGGREGATE_RE =
   /^(?<callee>SUM|AVERAGE|AVG|COUNT|MIN|MAX)\s*\(\s*(?<range>[^(),]+:[^(),]+)\s*\)(?:\s*\+\s*(?<offset>[+-]?(?:\d+|\d*\.\d+)))?$/i
@@ -46,7 +47,7 @@ function columnToIndex(column: string): number {
   return value - 1
 }
 
-function tryParseSimpleColumnRange(rawRange: string): SimpleColumnRangeInfo | undefined {
+function tryParseSimpleColumnRange(rawRange: string): SimpleColumnRangeInfo | null | undefined {
   const match = SIMPLE_COLUMN_RANGE_RE.exec(rawRange)
   if (!match) {
     return undefined
@@ -58,8 +59,11 @@ function tryParseSimpleColumnRange(rawRange: string): SimpleColumnRangeInfo | un
   if (endCol < startCol) {
     return undefined
   }
-  const startRowNumber = Number.parseInt(match[2]!, 10)
-  const endRowNumber = Number.parseInt(match[4]!, 10)
+  const startRowNumber = parseA1RowNumber(match[2]!)
+  const endRowNumber = parseA1RowNumber(match[4]!)
+  if (startRowNumber === undefined || endRowNumber === undefined) {
+    return null
+  }
   if (endRowNumber < startRowNumber) {
     return undefined
   }
@@ -93,6 +97,9 @@ export function tryCompileSimpleDirectAggregateFormula(source: string): Compiled
 
   const rawRange = match.groups['range']!.trim()
   const fastRange = tryParseSimpleColumnRange(rawRange)
+  if (fastRange === null) {
+    return undefined
+  }
   let rangeInfo: SimpleColumnRangeInfo
   if (fastRange) {
     rangeInfo = fastRange
