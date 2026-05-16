@@ -12,23 +12,23 @@
       "ai-sdk",
       "bilig",
       "excel",
+      "excel-formulas",
       "formula",
       "formula-engine",
       "formula-evaluation",
       "headless-spreadsheet",
       "headless-workbook",
       "hyperformula",
-      "json-persistence",
       "mcp",
       "model-context-protocol",
       "node",
       "nodejs",
+      "spreadsheet-engine",
       "spreadsheet-formulas",
       "typescript",
       "vercel-ai-sdk",
       "workbook",
       "workbook-api",
-      "workbook-state",
       "workpaper",
       "xlsx"
     ],
@@ -37,11 +37,11 @@
     "hasMcpBinary": true
   },
   "npmPackDryRun": {
-    "tarballBytes": 419854,
-    "unpackedBytes": 2509296,
-    "entryCount": 426,
-    "readmeBytes": 31516,
-    "packageJsonBytes": 2032
+    "tarballBytes": 420492,
+    "unpackedBytes": 2511897,
+    "entryCount": 429,
+    "readmeBytes": 31736,
+    "packageJsonBytes": 2034
   },
   "coldStartProbe": {
     "runtime": "node",

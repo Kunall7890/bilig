@@ -41,13 +41,14 @@ const requiredDescription = 'Formula WorkPaper runtime for Node.js services and 
 const requiredKeywords = [
   'workpaper',
   'workbook-api',
+  'excel-formulas',
   'formula-engine',
+  'spreadsheet-engine',
   'spreadsheet-formulas',
   'node',
   'typescript',
   'agent-tools',
   'mcp',
-  'json-persistence',
   'xlsx',
 ] as const
 const forbiddenDescriptionFragments = [

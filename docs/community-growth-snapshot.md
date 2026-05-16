@@ -1,6 +1,6 @@
 # Community Growth Snapshot
 
-Captured at: `2026-05-16T14:52:42.158Z`
+Captured at: `2026-05-16T14:56:13.307Z`
 
 This snapshot tracks the public signals for the `@bilig/headless` growth loop: GitHub conversion, npm demand, contributor on-ramp health, discussion activity, and traffic quality.
 
@@ -12,7 +12,7 @@ This snapshot tracks the public signals for the `@bilig/headless` growth loop: G
 - Watchers: 0
 - Open issues: 17
 - Default branch: `main`
-- Topics: `agent-tools`, `ai-agents`, `coding-agents`, `formula-engine`, `headless-spreadsheet`, `headless-workbook`, `json-persistence`, `mcp`, `model-context-protocol`, `nodejs`, `serverless`, `spreadsheet`, `spreadsheet-api`, `spreadsheet-automation`, `spreadsheet-formulas`, `typescript`, `vercel-ai-sdk`, `workbook-api`, `workbook-automation`, `xlsx`
+- Topics: `agent-tools`, `ai-agents`, `coding-agents`, `excel-formulas`, `formula-engine`, `headless-spreadsheet`, `headless-workbook`, `mcp`, `model-context-protocol`, `nodejs`, `spreadsheet`, `spreadsheet-api`, `spreadsheet-automation`, `spreadsheet-engine`, `spreadsheet-formulas`, `typescript`, `vercel-ai-sdk`, `workbook-api`, `workbook-automation`, `xlsx`
 
 ## npm
 
