@@ -1074,6 +1074,44 @@ describe('EngineMutationService', () => {
     expect(engine.getPerformanceCounters().structuralUndoCapturedCells).toBe(1)
   })
 
+  it('defers structural delete formula undo op materialization until undo replay', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'undo-rows-lazy-formula-ops' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setRangeValues({ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A3' }, [[1], [2], [3]])
+    engine.setCellFormula('Sheet1', 'B3', 'A1+A3')
+
+    engine.resetPerformanceCounters()
+    engine.deleteRows('Sheet1', 1, 1)
+
+    expect(engine.getPerformanceCounters().structuralUndoCapturedFormulas).toBe(0)
+
+    expect(engine.undo()).toBe(true)
+
+    expect(engine.getCell('Sheet1', 'B3')).toMatchObject({ formula: 'A1+A3' })
+    expect(engine.getCellValue('Sheet1', 'B3')).toEqual({ tag: ValueTag.Number, value: 4 })
+    expect(engine.getPerformanceCounters().structuralUndoCapturedFormulas).toBeGreaterThan(0)
+  })
+
+  it('restores direct aggregate formulas through structural inverse without redundant formula undo records', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'undo-rows-direct-aggregate-structural-inverse' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setRangeValues({ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A3' }, [[1], [2], [3]])
+    engine.setCellFormula('Sheet1', 'B3', 'SUM(A1:A3)')
+
+    engine.resetPerformanceCounters()
+    engine.deleteRows('Sheet1', 1, 1)
+
+    expect(engine.getPerformanceCounters().structuralUndoCapturedFormulas).toBe(0)
+
+    expect(engine.undo()).toBe(true)
+
+    expect(engine.getCell('Sheet1', 'B3')).toMatchObject({ formula: 'SUM(A1:A3)' })
+    expect(engine.getCellValue('Sheet1', 'B3')).toEqual({ tag: ValueTag.Number, value: 6 })
+    expect(engine.getPerformanceCounters().structuralUndoCapturedFormulas).toBe(0)
+  })
+
   it('does not snapshot unaffected cross-sheet formulas left of a deleted column span', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'undo-columns-formula-narrow' })
     await engine.ready()

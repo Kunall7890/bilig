@@ -119,9 +119,9 @@ and needs formula readback, persistence, and restore proof.
 
 ## Evidence and limits
 
-The current checked benchmark artifact records `47/57` comparable
+The current checked benchmark artifact records `45/57` comparable
 mean-latency wins against HyperFormula-style workloads. The caveat is public:
-`structural-delete-rows` is slower at p95 by `3.885x`, and browser UI
+`structural-delete-rows` is slower at p95 by `3.489x`, and browser UI
 rendering is outside the benchmark.
 
 This page does not claim full Excel compatibility. It does not claim chart,

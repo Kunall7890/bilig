@@ -1,18 +1,24 @@
 import { ValueTag, type CellSnapshot } from '@bilig/protocol'
+import { renameFormulaSheetReferences, rewriteFormulaForStructuralTransform } from '@bilig/formula'
 import type { EngineOp } from '@bilig/workbook-domain'
 import { CellFlags } from '../../cell-store.js'
-import { structuralTransformForOp } from '../../engine-structural-utils.js'
+import { mapStructuralAxisIndex, mapStructuralAxisInterval, structuralTransformForOp } from '../../engine-structural-utils.js'
 import { sheetMetadataToOps } from '../../engine-snapshot-utils.js'
 import type { WorkbookStore } from '../../workbook-store.js'
 import { addEngineCounter } from '../../perf/engine-counters.js'
-import type { EngineRuntimeState, RuntimeFormula, RuntimeStructuralFormulaSourceTransform, TransactionRecord } from '../runtime-state.js'
+import type {
+  EngineRuntimeState,
+  RuntimeFormula,
+  RuntimeSheetRenameFormulaSourceTransform,
+  RuntimeStructuralFormulaSourceTransform,
+  TransactionRecord,
+} from '../runtime-state.js'
 import { getRuntimeFormulaSource } from '../runtime-formula-source.js'
 import {
   dependencyTouchesStructuralDeleteSpan,
   structuralDeletedCellUndoRecordToOps,
   structuralFormulaUndoRecordToOp,
   type StructuralDeletedCellUndoRecord,
-  type StructuralFormulaUndoRecord,
 } from './mutation-structural-undo-records.js'
 import { captureStructuralWorkbookMetadataOps, clearStructuralSheetMetadataOps } from './mutation-structural-metadata-ops.js'
 
@@ -27,11 +33,117 @@ interface MutationStructuralDeleteInverseRuntime {
 
 export interface MutationStructuralDeleteInverseHelpers {
   readonly captureFormulaCellStateForStructuralUndo: (sheetName: string, axis: 'row' | 'column', start: number, count: number) => EngineOp[]
-  readonly buildStructuralDeleteInverseRecord: (op: Extract<EngineOp, { kind: 'deleteRows' | 'deleteColumns' }>) => TransactionRecord
+  readonly buildStructuralDeleteInverseRecord: (
+    op: Extract<EngineOp, { kind: 'deleteRows' | 'deleteColumns' }>,
+    options?: { readonly includeStandaloneFormulaUndoOps?: boolean },
+  ) => TransactionRecord
 }
 
 function captureRuntimeFormulaSource(args: MutationStructuralDeleteInverseRuntime, cellIndex: number, formula: RuntimeFormula): string {
   return getRuntimeFormulaSource(formula, args.getFormulaFamilyStructuralSourceTransform?.(cellIndex))
+}
+
+interface CapturedRuntimeFormulaSource {
+  readonly source: string
+  readonly structuralSourceTransform?: RuntimeStructuralFormulaSourceTransform
+  readonly inheritedStructuralSourceTransform?: RuntimeStructuralFormulaSourceTransform
+  readonly sourceRenameTransforms?: readonly RuntimeSheetRenameFormulaSourceTransform[]
+}
+
+interface StructuralFormulaUndoCapture {
+  readonly sheetName: string
+  readonly row: number
+  readonly col: number
+  readonly source: CapturedRuntimeFormulaSource
+}
+
+function cloneStructuralSourceTransform(
+  transform: RuntimeStructuralFormulaSourceTransform | undefined,
+): RuntimeStructuralFormulaSourceTransform | undefined {
+  if (!transform) {
+    return undefined
+  }
+  return {
+    ownerSheetName: transform.ownerSheetName,
+    targetSheetName: transform.targetSheetName,
+    transform: { ...transform.transform },
+    preservesValue: transform.preservesValue,
+  }
+}
+
+function captureRuntimeFormulaSourceHandle(
+  args: MutationStructuralDeleteInverseRuntime,
+  cellIndex: number,
+  formula: RuntimeFormula,
+): CapturedRuntimeFormulaSource {
+  const ownStructuralSourceTransform = cloneStructuralSourceTransform(formula.structuralSourceTransform)
+  const captured: CapturedRuntimeFormulaSource = {
+    source: formula.source,
+  }
+  const withOwnTransform =
+    ownStructuralSourceTransform === undefined ? captured : { ...captured, structuralSourceTransform: ownStructuralSourceTransform }
+  const withRenameTransforms =
+    formula.sourceRenameTransforms === undefined
+      ? withOwnTransform
+      : { ...withOwnTransform, sourceRenameTransforms: formula.sourceRenameTransforms.map((transform) => ({ ...transform })) }
+  if (ownStructuralSourceTransform !== undefined) {
+    return withRenameTransforms
+  }
+  const inheritedStructuralSourceTransform = cloneStructuralSourceTransform(args.getFormulaFamilyStructuralSourceTransform?.(cellIndex))
+  return inheritedStructuralSourceTransform === undefined
+    ? withRenameTransforms
+    : { ...withRenameTransforms, inheritedStructuralSourceTransform }
+}
+
+function materializeRuntimeFormulaSource(captured: CapturedRuntimeFormulaSource): string {
+  let source = captured.source
+  captured.sourceRenameTransforms?.forEach((transform) => {
+    source = renameFormulaSheetReferences(source, transform.oldSheetName, transform.newSheetName)
+  })
+  const deferred = captured.structuralSourceTransform ?? captured.inheritedStructuralSourceTransform
+  if (!deferred) {
+    return source
+  }
+  return rewriteFormulaForStructuralTransform(source, deferred.ownerSheetName, deferred.targetSheetName, deferred.transform)
+}
+
+function structuralFormulaUndoCaptureToOp(capture: StructuralFormulaUndoCapture): EngineOp {
+  return structuralFormulaUndoRecordToOp({
+    sheetName: capture.sheetName,
+    row: capture.row,
+    col: capture.col,
+    formula: materializeRuntimeFormulaSource(capture.source),
+  })
+}
+
+function canRestoreDirectAggregateThroughStructuralInverse(args: {
+  readonly formula: RuntimeFormula
+  readonly ownerSheetName: string
+  readonly ownerAxisIndex: number | undefined
+  readonly sheetName: string
+  readonly axis: 'row' | 'column'
+  readonly start: number
+  readonly count: number
+}): boolean {
+  if (args.axis !== 'row' || args.ownerSheetName !== args.sheetName || args.ownerAxisIndex === undefined) {
+    return false
+  }
+  const directAggregate = args.formula.directAggregate
+  if (
+    !directAggregate ||
+    directAggregate.sheetName !== args.sheetName ||
+    directAggregate.aggregateKind !== 'sum' ||
+    args.formula.compiled.symbolicNames.length > 0 ||
+    args.formula.compiled.symbolicTables.length > 0 ||
+    args.formula.compiled.symbolicSpills.length > 0
+  ) {
+    return false
+  }
+  const transform = { kind: 'delete' as const, axis: 'row' as const, start: args.start, count: args.count }
+  return (
+    mapStructuralAxisIndex(args.ownerAxisIndex, transform) !== undefined &&
+    mapStructuralAxisInterval(directAggregate.rowStart, directAggregate.rowEnd, transform) !== undefined
+  )
 }
 
 export function createMutationStructuralDeleteInverseHelpers(
@@ -42,8 +154,9 @@ export function createMutationStructuralDeleteInverseHelpers(
     axis: 'row' | 'column',
     start: number,
     count: number,
-  ): StructuralFormulaUndoRecord[] => {
-    const captured: StructuralFormulaUndoRecord[] = []
+    options: { readonly skipRedundantDirectAggregateCaptures?: boolean } = {},
+  ): StructuralFormulaUndoCapture[] => {
+    const captured: StructuralFormulaUndoCapture[] = []
     args.state.formulas.forEach((formula, cellIndex) => {
       const ownerSheetId = args.state.workbook.cellStore.sheetIds[cellIndex]
       if (ownerSheetId === undefined) {
@@ -71,18 +184,32 @@ export function createMutationStructuralDeleteInverseHelpers(
       if (!ownerPositionAffected && !dependencyPositionAffected && !metadataSensitive) {
         return
       }
+      if (
+        options.skipRedundantDirectAggregateCaptures === true &&
+        canRestoreDirectAggregateThroughStructuralInverse({
+          formula,
+          ownerSheetName,
+          ownerAxisIndex: axisIndex,
+          sheetName,
+          axis,
+          start,
+          count,
+        })
+      ) {
+        return
+      }
       captured.push({
         sheetName: ownerSheetName,
         row: ownerPosition?.row ?? 0,
         col: ownerPosition?.col ?? 0,
-        formula: captureRuntimeFormulaSource(args, cellIndex, formula),
+        source: captureRuntimeFormulaSourceHandle(args, cellIndex, formula),
       })
     })
     return captured
   }
 
   const captureFormulaCellStateForStructuralUndo = (sheetName: string, axis: 'row' | 'column', start: number, count: number): EngineOp[] =>
-    captureFormulaCellRecordsForStructuralUndo(sheetName, axis, start, count).map(structuralFormulaUndoRecordToOp)
+    captureFormulaCellRecordsForStructuralUndo(sheetName, axis, start, count).map(structuralFormulaUndoCaptureToOp)
 
   const captureDeletedCellUndoRecord = (
     cellIndex: number,
@@ -186,7 +313,7 @@ export function createMutationStructuralDeleteInverseHelpers(
     prefixOpsBeforeDeletedCells: readonly EngineOp[],
     deletedCellRecords: readonly StructuralDeletedCellUndoRecord[],
     prefixOpsAfterDeletedCells: readonly EngineOp[],
-    formulaRecords: readonly StructuralFormulaUndoRecord[],
+    formulaRecords: readonly StructuralFormulaUndoCapture[],
     potentialNewCells: number,
   ): TransactionRecord => {
     const record: { kind: 'ops'; ops: EngineOp[]; potentialNewCells?: number } = {
@@ -196,11 +323,14 @@ export function createMutationStructuralDeleteInverseHelpers(
           if (deletedCellRecords.length > 0) {
             addEngineCounter(args.state.counters, 'structuralUndoCapturedCells', deletedCellRecords.length)
           }
+          if (formulaRecords.length > 0) {
+            addEngineCounter(args.state.counters, 'structuralUndoCapturedFormulas', formulaRecords.length)
+          }
           cachedOps = [
             ...prefixOpsBeforeDeletedCells,
             ...deletedCellRecords.flatMap((deletedRecord) => structuralDeletedCellUndoRecordToOps(deletedRecord, args.toCellStateOps)),
             ...prefixOpsAfterDeletedCells,
-            ...formulaRecords.map(structuralFormulaUndoRecordToOp),
+            ...formulaRecords.map(structuralFormulaUndoCaptureToOp),
           ]
         }
         return cachedOps
@@ -211,7 +341,10 @@ export function createMutationStructuralDeleteInverseHelpers(
     return record
   }
 
-  const buildStructuralDeleteInverseRecord = (op: Extract<EngineOp, { kind: 'deleteRows' | 'deleteColumns' }>): TransactionRecord => {
+  const buildStructuralDeleteInverseRecord = (
+    op: Extract<EngineOp, { kind: 'deleteRows' | 'deleteColumns' }>,
+    options: { readonly includeStandaloneFormulaUndoOps?: boolean } = {},
+  ): TransactionRecord => {
     const axis = op.kind === 'deleteRows' ? 'row' : 'column'
     const entries =
       axis === 'row'
@@ -243,7 +376,9 @@ export function createMutationStructuralDeleteInverseHelpers(
       prefixOpsBeforeDeletedCells,
       deletedCellRecords,
       prefixOpsAfterDeletedCells,
-      captureFormulaCellRecordsForStructuralUndo(op.sheetName, axis, op.start, op.count),
+      captureFormulaCellRecordsForStructuralUndo(op.sheetName, axis, op.start, op.count, {
+        skipRedundantDirectAggregateCaptures: options.includeStandaloneFormulaUndoOps !== true,
+      }),
       1,
     )
   }

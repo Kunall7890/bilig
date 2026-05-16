@@ -313,9 +313,9 @@ export function createEngineMutationService(args: {
     return inverseOps
   }
 
-  const buildInverseRecord = (ops: readonly EngineOp[]): TransactionRecord => {
+  const buildInverseRecord = (ops: readonly EngineOp[], includeStandaloneFormulaUndoOps: boolean): TransactionRecord => {
     if (ops.length === 1 && (ops[0]?.kind === 'deleteRows' || ops[0]?.kind === 'deleteColumns')) {
-      return buildStructuralDeleteInverseRecord(ops[0])
+      return buildStructuralDeleteInverseRecord(ops[0], { includeStandaloneFormulaUndoOps })
     }
     return { kind: 'ops', ops: buildInverseOps(ops), potentialNewCells: ops.length }
   }
@@ -491,7 +491,7 @@ export function createEngineMutationService(args: {
         options.returnUndoOps !== false,
         options.reuseForwardOps !== true,
       ) ?? tryBuildFastMutationHistory(fastHistoryArgs)
-    const inverse: TransactionRecord = fastHistory?.inverse ?? buildInverseRecord(ops)
+    const inverse: TransactionRecord = fastHistory?.inverse ?? buildInverseRecord(ops, options.returnUndoOps !== false)
     applyForward(forward)
     if (args.state.getTransactionReplayDepth() === 0) {
       args.state.undoStack.push({
