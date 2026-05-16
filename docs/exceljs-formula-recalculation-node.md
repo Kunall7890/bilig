@@ -33,6 +33,21 @@ can preserve those records, and some libraries let you supply the cached result
 yourself. That does not mean the library recalculated the dependency graph
 after a service changed an input cell.
 
+A common ExcelJS trap looks like this:
+
+```ts
+workbook.calcProperties.fullCalcOnLoad = true
+worksheet.getCell('A1').value = 15
+
+console.log(worksheet.getCell('C1').value)
+// { formula: 'A1+B1', result: 20 }
+```
+
+If `C1` originally cached `20`, setting `fullCalcOnLoad` does not make
+`worksheet.getCell('C1').value` become `25` inside the same Node.js process.
+That flag tells a spreadsheet application to recalculate when it opens the
+file. It is a file instruction, not an in-process calculation engine.
+
 The difference matters in production:
 
 1. A user changes a discount, quantity, tax rate, or threshold.
