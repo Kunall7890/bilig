@@ -294,13 +294,14 @@ describe('workbook typegpu backend v3 tile path', () => {
       },
     } satisfies TypeGpuAtlasResourceArtifacts
     const atlasCanvas = document.createElement('canvas')
+    const getContext = vi.fn(() => ({
+      getImageData: vi.fn(() => ({
+        data: new Uint8ClampedArray(1024 * 1024 * 4),
+      })),
+    }))
     Object.defineProperty(atlasCanvas, 'getContext', {
       configurable: true,
-      value: vi.fn(() => ({
-        getImageData: vi.fn(() => ({
-          data: new Uint8ClampedArray(1024 * 1024 * 4),
-        })),
-      })),
+      value: getContext,
     })
     const atlas = {
       drainDirtyPages: vi.fn(() => []),
@@ -311,6 +312,7 @@ describe('workbook typegpu backend v3 tile path', () => {
 
     syncTypeGpuAtlasResources(artifacts, atlas)
 
+    expect(getContext).toHaveBeenCalledWith('2d', { willReadFrequently: true })
     expect(createTexture).toHaveBeenCalledWith({
       format: 'rgba8unorm',
       size: [1024, 1024],

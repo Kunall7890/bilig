@@ -92,7 +92,7 @@ export function markMutationSubmittedInJournal(args: {
     mutationJournalEntries: args.mutationJournalEntries,
     id: args.id,
     update: (mutation) => {
-      if (mutation.status === 'submitted') {
+      if (mutation.status === 'submitted' || mutation.status === 'acked') {
         return mutation
       }
       return Effect.runSync(markPendingWorkbookMutationSubmitted(mutation, args.submittedAtUnixMs))
@@ -112,7 +112,12 @@ export function recordMutationAttemptInJournal(args: {
   return updateMutation({
     mutationJournalEntries: args.mutationJournalEntries,
     id: args.id,
-    update: (mutation) => Effect.runSync(recordPendingWorkbookMutationAttempt(mutation, args.attemptedAtUnixMs)),
+    update: (mutation) => {
+      if (mutation.status === 'acked') {
+        return mutation
+      }
+      return Effect.runSync(recordPendingWorkbookMutationAttempt(mutation, args.attemptedAtUnixMs))
+    },
   })
 }
 

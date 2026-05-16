@@ -147,4 +147,27 @@ describe('worker runtime mutation actions', () => {
     expect(acked?.updatedMutation.status).toBe('acked')
     expect(acked?.pendingMutations).toEqual([])
   })
+
+  it('ignores stale submit and attempt requests after authoritative ack', () => {
+    const acked = createMutation({
+      status: 'acked',
+      ackedAtUnixMs: 220,
+    })
+
+    const submitted = markMutationSubmittedInJournal({
+      mutationJournalEntries: [acked],
+      id: acked.id,
+      submittedAtUnixMs: 240,
+    })
+    expect(submitted?.updatedMutation).toEqual(acked)
+    expect(submitted?.pendingMutations).toEqual([])
+
+    const attempted = recordMutationAttemptInJournal({
+      mutationJournalEntries: [acked],
+      id: acked.id,
+      attemptedAtUnixMs: 260,
+    })
+    expect(attempted?.updatedMutation).toEqual(acked)
+    expect(attempted?.pendingMutations).toEqual([])
+  })
 })
