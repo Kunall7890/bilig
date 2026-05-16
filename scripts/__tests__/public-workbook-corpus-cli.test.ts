@@ -81,6 +81,18 @@ describe('public workbook corpus CLI resource guards', () => {
     })
   })
 
+  it('rejects blank separated values for repeated string arguments', () => {
+    withProcessArgv(['bun', corpusScriptPath(), 'discover', '--query', '   '], () => {
+      expect(() => readRepeatedStringArg('--query')).toThrow('Expected --query to have a value')
+    })
+  })
+
+  it('rejects blank inline repeated string arguments', () => {
+    withProcessArgv(['bun', corpusScriptPath(), 'discover', '--query=   '], () => {
+      expect(() => readRepeatedStringArg('--query')).toThrow('Expected --query to have a value')
+    })
+  })
+
   it('reads inline repeated string arguments', () => {
     const queries = withProcessArgv(['bun', corpusScriptPath(), 'discover', '--query=budget', '--query=forecast'], () =>
       readRepeatedStringArg('--query'),
