@@ -5,6 +5,7 @@ import {
   backfillCellEvalStyleJson,
   backfillWorkbookSourceProjectionVersion,
   dropLegacyZeroSyncSchemaObjects,
+  enforceWorkbookSheetIdInvariant,
   enforceWorkbookEventClientMutationIdUniqueness,
   repairWorkbookSheetIdsForMigration,
 } from './workbook-migration-store.js'
@@ -46,6 +47,11 @@ export const zeroDataMigrations = [
     name: 'sheet-id-repair',
     classification: 'required',
     run: repairWorkbookSheetIdsForMigration,
+  },
+  {
+    name: 'sheet-id-invariant-enforcement',
+    classification: 'required',
+    run: enforceWorkbookSheetIdInvariant,
   },
   {
     name: 'workbook-source-projection-v2-backfill',

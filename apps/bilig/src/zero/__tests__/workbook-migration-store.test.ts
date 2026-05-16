@@ -40,6 +40,7 @@ import {
   backfillCellEvalStyleJson,
   backfillWorkbookSourceProjectionVersion,
   dropLegacyZeroSyncSchemaObjects,
+  enforceWorkbookSheetIdInvariant,
   enforceWorkbookEventClientMutationIdUniqueness,
   ensureWorkbookDocumentExists,
   repairWorkbookSheetIdsForMigration,
@@ -128,14 +129,29 @@ describe('workbook migration store', () => {
     ])
   })
 
-  it('repairs sheet ids after backfilling missing sort-order ids', async () => {
+  it('repairs sheet ids without blind sort-order backfills that can violate uniqueness', async () => {
     const query = vi.fn().mockResolvedValue({ rows: [] })
     const db: Queryable = { query }
 
     await repairWorkbookSheetIdsForMigration(db)
 
-    expect(query).toHaveBeenCalledWith(`UPDATE sheets SET sheet_id = sort_order + 1 WHERE sheet_id IS NULL`)
     expect(storeFns.repairWorkbookSheetIds).toHaveBeenCalledWith(db)
+    expect(query).not.toHaveBeenCalledWith(`UPDATE sheets SET sheet_id = sort_order + 1 WHERE sheet_id IS NULL`)
+  })
+
+  it('repairs and enforces the shared non-null positive sheet id invariant', async () => {
+    const db = new FakeTransactionalQueryable()
+
+    await enforceWorkbookSheetIdInvariant(db)
+
+    expect(storeFns.repairWorkbookSheetIds).toHaveBeenCalledWith(db.client)
+    expect(db.client.calls.map((call) => call.text)).toEqual([
+      'BEGIN',
+      `ALTER TABLE sheets ALTER COLUMN sheet_id SET NOT NULL`,
+      expect.stringContaining('ADD CONSTRAINT sheets_sheet_id_positive_chk CHECK (sheet_id > 0)'),
+      'COMMIT',
+    ])
+    expect(db.client.releaseCount).toBe(1)
   })
 
   it('returns early from projection backfill when no legacy workbook ids are found', async () => {

@@ -258,8 +258,23 @@ export async function ensureWorkbookDocumentExists(db: Queryable, documentId: st
 
 export async function repairWorkbookSheetIdsForMigration(db: Queryable): Promise<void> {
   await runQueryableTransaction(db, async (transactionDb) => {
-    await transactionDb.query(`UPDATE sheets SET sheet_id = sort_order + 1 WHERE sheet_id IS NULL`)
     await repairWorkbookSheetIds(transactionDb)
+  })
+}
+
+export async function enforceWorkbookSheetIdInvariant(db: Queryable): Promise<void> {
+  await runQueryableTransaction(db, async (transactionDb) => {
+    await repairWorkbookSheetIds(transactionDb)
+    await transactionDb.query(`ALTER TABLE sheets ALTER COLUMN sheet_id SET NOT NULL`)
+    await transactionDb.query(`
+      DO $$
+      BEGIN
+        ALTER TABLE sheets
+          ADD CONSTRAINT sheets_sheet_id_positive_chk CHECK (sheet_id > 0);
+      EXCEPTION
+        WHEN duplicate_object THEN NULL;
+      END $$;
+    `)
   })
 }
 
