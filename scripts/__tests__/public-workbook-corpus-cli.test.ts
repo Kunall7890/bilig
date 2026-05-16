@@ -113,6 +113,18 @@ describe('public workbook corpus CLI resource guards', () => {
     }
   })
 
+  it('reads separated boolean flag values', () => {
+    const originalArgv = process.argv
+    try {
+      process.argv = ['bun', corpusScriptPath(), 'fetch', '--dry-run', 'false', '--list', 'true']
+
+      expect(readFlagArg('--dry-run')).toBe(false)
+      expect(readFlagArg('--list')).toBe(true)
+    } finally {
+      process.argv = originalArgv
+    }
+  })
+
   it('rejects malformed inline boolean flag values', () => {
     const originalArgv = process.argv
     try {

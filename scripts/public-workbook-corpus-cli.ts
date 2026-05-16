@@ -61,13 +61,14 @@ export function readMegabytesArg(name: string, fallbackBytes: number): number {
 export function readFlagArg(name: string): boolean {
   let value = false
   let count = 0
-  process.argv.forEach((arg) => {
+  process.argv.forEach((arg, index) => {
     if (arg === name) {
       count += 1
       if (count > 1) {
         throw new Error(`Expected ${name} to be specified once`)
       }
-      value = true
+      const next = process.argv[index + 1]
+      value = next === 'true' || next === 'false' ? readBooleanArgValue(name, next) : true
       return
     }
 
@@ -78,18 +79,20 @@ export function readFlagArg(name: string): boolean {
         throw new Error(`Expected ${name} to be specified once`)
       }
       const raw = arg.slice(inlinePrefix.length)
-      if (raw === 'true') {
-        value = true
-        return
-      }
-      if (raw === 'false') {
-        value = false
-        return
-      }
-      throw new Error(`Expected ${name} to be true or false`)
+      value = readBooleanArgValue(name, raw)
     }
   })
   return value
+}
+
+function readBooleanArgValue(name: string, raw: string): boolean {
+  if (raw === 'true') {
+    return true
+  }
+  if (raw === 'false') {
+    return false
+  }
+  throw new Error(`Expected ${name} to be true or false`)
 }
 
 export function readDebugOnlyFlagArg(name: string, envVar: string, reason: string): boolean {
