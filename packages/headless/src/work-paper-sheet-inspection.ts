@@ -138,7 +138,7 @@ export function inspectSheetWithinLimits(sheetName: string, sheet: WorkPaperShee
       if (typeof cell === 'string' && cellHasFormulaPrefix(cell)) {
         formulaCellCount += 1
         hasFormula = true
-        hasDynamicSpillFormula ||= formulaMayResizeDynamically(cell)
+        hasDynamicSpillFormula ||= workPaperFormulaMayResizeDynamically(cell)
       }
     }
     if (rowHasMaterializedCell) {
@@ -170,7 +170,7 @@ export function workPaperSheetHasDynamicSpillFormula(sheet: WorkPaperSheet): boo
     }
     for (let colIndex = 0; colIndex < row.length; colIndex += 1) {
       const cell = row[colIndex]
-      if (typeof cell === 'string' && cellHasFormulaPrefix(cell) && formulaMayResizeDynamically(cell)) {
+      if (typeof cell === 'string' && cellHasFormulaPrefix(cell) && workPaperFormulaMayResizeDynamically(cell)) {
         return true
       }
     }
@@ -179,7 +179,7 @@ export function workPaperSheetHasDynamicSpillFormula(sheet: WorkPaperSheet): boo
 }
 
 export function workbookSnapshotSheetHasDynamicSpillFormula(snapshotSheet: WorkbookSnapshot['sheets'][number]): boolean {
-  return snapshotSheet.cells.some((cell) => typeof cell.formula === 'string' && formulaMayResizeDynamically(cell.formula))
+  return snapshotSheet.cells.some((cell) => typeof cell.formula === 'string' && workPaperFormulaMayResizeDynamically(cell.formula))
 }
 
 export function cellHasFormulaPrefix(value: string): boolean {
@@ -193,7 +193,7 @@ export function cellHasFormulaPrefix(value: string): boolean {
   return value.trimStart().charCodeAt(0) === 61
 }
 
-function formulaMayResizeDynamically(value: string): boolean {
+export function workPaperFormulaMayResizeDynamically(value: string): boolean {
   const formula = stripFormulaPrefix(value)
   if (isDefinitelyScalarFormulaShape(formula)) {
     return false

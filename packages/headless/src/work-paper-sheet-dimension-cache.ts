@@ -1,4 +1,5 @@
 import type { EngineCellMutationRef } from '@bilig/core'
+import { workPaperFormulaMayResizeDynamically } from './work-paper-sheet-inspection.js'
 import type { WorkPaperSheetDimensions } from './work-paper-types.js'
 import type { WorkPaperAxisIntervalEditMode, WorkPaperAxisKind } from './work-paper-axis-helpers.js'
 
@@ -93,7 +94,7 @@ export class WorkPaperSheetDimensionCache {
         continue
       }
       const mutation = ref.mutation
-      if (mutation.kind === 'setCellFormula') {
+      if (mutation.kind === 'setCellFormula' && workPaperFormulaMayResizeDynamically(mutation.formula)) {
         this.spillSheetIds = null
         this.invalidate(ref.sheetId)
         continue

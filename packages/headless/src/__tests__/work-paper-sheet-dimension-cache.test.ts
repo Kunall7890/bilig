@@ -77,12 +77,20 @@ describe('WorkPaperSheetDimensionCache', () => {
     expect(cache.get(1)).toEqual({ width: 3, height: 3 })
   })
 
-  it('invalidates formulas and known spill sheets', () => {
+  it('expands scalar formulas and invalidates dynamic formulas and known spill sheets', () => {
     const cache = new WorkPaperSheetDimensionCache(engineWithSpills(['Sheet2']))
     cache.cache(1, { width: 3, height: 3 })
     cache.cache(2, { width: 3, height: 3 })
 
     cache.updateAfterCellMutationRefs([{ sheetId: 1, mutation: { kind: 'setCellFormula', row: 0, col: 0, formula: '=A1' } }])
+    expect(cache.get(1)).toEqual({ width: 3, height: 3 })
+
+    cache.updateAfterCellMutationRefs([{ sheetId: 1, mutation: { kind: 'setCellFormula', row: 4, col: 3, formula: '=SUM(A5:C5)' } }])
+    expect(cache.get(1)).toEqual({ width: 4, height: 5 })
+
+    cache.updateAfterCellMutationRefs([
+      { sheetId: 1, mutation: { kind: 'setCellFormula', row: 0, col: 0, formula: '=FILTER(A1:A3,A1:A3>1)' } },
+    ])
     cache.updateAfterCellMutationRefs([{ sheetId: 2, mutation: { kind: 'setCellValue', row: 0, col: 0, value: 1 } }])
 
     expect(cache.get(1)).toBeUndefined()

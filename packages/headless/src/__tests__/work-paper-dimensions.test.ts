@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { ValueTag } from '@bilig/protocol'
 
 import { WorkPaper, type WorkPaperCellAddress } from '../index.js'
@@ -7,7 +7,50 @@ function cell(sheet: number, row: number, col: number): WorkPaperCellAddress {
   return { sheet, row, col }
 }
 
+interface TestSheetDimensionCache {
+  scan(...args: unknown[]): unknown
+}
+
+function hasDimensionScanner(value: unknown): value is TestSheetDimensionCache {
+  return typeof value === 'object' && value !== null && typeof Reflect.get(value, 'scan') === 'function'
+}
+
+function trackDimensionScans(workbook: WorkPaper): { readonly count: number; restore: () => void } {
+  const cache: unknown = Reflect.get(workbook, 'sheetDimensionCache')
+  if (!hasDimensionScanner(cache)) {
+    throw new Error('Expected WorkPaper to expose a sheet dimension cache in tests')
+  }
+  const spy = vi.spyOn(cache, 'scan')
+  return {
+    get count() {
+      return spy.mock.calls.length
+    },
+    restore: () => {
+      spy.mockRestore()
+    },
+  }
+}
+
 describe('WorkPaper sheet dimensions', () => {
+  it('keeps scalar formula appends on the incremental dimension path', () => {
+    const workbook = WorkPaper.buildFromArray([[1, 2, '=SUM(A1:B1)']])
+    const sheetId = workbook.getSheetId('Sheet1')!
+    expect(workbook.getSheetDimensions(sheetId)).toEqual({ width: 3, height: 1 })
+    const scans = trackDimensionScans(workbook)
+
+    try {
+      workbook.batch(() => {
+        workbook.addRows(sheetId, 1, 1)
+        workbook.setCellContents(cell(sheetId, 1, 0), [[3, 4, '=SUM(A2:B2)']])
+      })
+
+      expect(workbook.getSheetDimensions(sheetId)).toEqual({ width: 3, height: 2 })
+      expect(scans.count).toBe(0)
+    } finally {
+      scans.restore()
+    }
+  })
+
   it('keeps dynamic spill sheet dimensions fresh after dependency edits grow the spill', () => {
     const workbook = WorkPaper.buildFromSheets({
       Data: [[1], [0], [3]],
