@@ -653,6 +653,7 @@ When the sanity check passes, these are the next useful pages.
   [headless spreadsheet engine for Node services and agents](https://github.com/proompteng/bilig/blob/main/docs/headless-spreadsheet-engine-node-services-agents.md),
   [XLSX formula recalculation in Node.js](https://github.com/proompteng/bilig/blob/main/docs/xlsx-formula-recalculation-node.md),
   [Excel file as a Node calculation engine](https://github.com/proompteng/bilig/blob/main/docs/excel-file-calculation-engine-node.md),
+  [stale XLSX formula cache in Node.js](https://github.com/proompteng/bilig/blob/main/docs/stale-xlsx-formula-cache-node.md),
   [Microsoft Graph Excel recalculation in Node.js](https://github.com/proompteng/bilig/blob/main/docs/microsoft-graph-excel-recalculation-node.md),
   [xlsx-calc alternative for Node workbook recalculation](https://github.com/proompteng/bilig/blob/main/docs/xlsx-calc-alternative-node-workbook-recalculation.md),
   [ExcelJS formula recalculation in Node.js](https://github.com/proompteng/bilig/blob/main/docs/exceljs-formula-recalculation-node.md),

@@ -109,6 +109,7 @@ if (typeof parsedHeadlessPackageVersion !== 'string') {
 }
 const headlessPackageVersion = parsedHeadlessPackageVersion
 const xlsxFormulaRecalculationNode = await readFile(join(docsRoot, 'xlsx-formula-recalculation-node.md'), 'utf8')
+const staleXlsxFormulaCacheNode = await readFile(join(docsRoot, 'stale-xlsx-formula-cache-node.md'), 'utf8')
 const microsoftGraphExcelRecalculationNode = await readFile(join(docsRoot, 'microsoft-graph-excel-recalculation-node.md'), 'utf8')
 const formulaWorkbooksProof = await readFile(join(docsRoot, 'formula-workbooks-node-services-agent-tools.md'), 'utf8')
 const showHnFormulaWorkbooksProof = await readFile(join(docsRoot, 'show-hn-formula-workbooks-node-services.md'), 'utf8')
@@ -153,6 +154,7 @@ for (const required of [
   './formula-workbooks-node-services-agent-tools.html',
   './agent-workpaper-tool-calling-recipe.html',
   './xlsx-formula-recalculation-node.html',
+  './stale-xlsx-formula-cache-node.html',
   './microsoft-graph-excel-recalculation-node.html',
   './vercel-ai-sdk-langchain-spreadsheet-tool.html',
   './mcp-workpaper-tool-server.html',
@@ -354,8 +356,8 @@ for (const required of [
   '`@bilig/headless@0.16.25`',
   'curl -fsSLo quickstart.ts https://proompteng.github.io/bilig/npm-eval.ts',
   '"verified": true',
-  `\`${benchmarkEvidence.meanWinHeadline}\` mean-latency wins`,
-  `\`${benchmarkEvidence.meanAndP95Headline}\` workloads winning`,
+  `wins \`${benchmarkEvidence.meanWinHeadline}\` comparable`,
+  `\`${benchmarkEvidence.meanAndP95Headline}\` on both mean and p95`,
   `\`${benchmarkEvidence.p95HoldoutWorkload}\` is slower at`,
   'Show HN: Bilig runs small formula workbooks in Node',
   'https://github.com/proompteng/bilig/stargazers',
@@ -365,6 +367,21 @@ for (const required of [
 requireIncludes(index, './show-hn-formula-workbooks-node-services.html', 'docs/index.html')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/show-hn-formula-workbooks-node-services.md', 'docs/llms.txt')
+
+for (const required of [
+  'title: Fix stale XLSX formula values in Node.js',
+  'An `.xlsx` can store both the formula text',
+  'Run a formula runtime before reading',
+  '`@bilig/headless` when the service can own the workbook state locally',
+  'https://github.com/proompteng/bilig/stargazers',
+] as const) {
+  requireIncludes(staleXlsxFormulaCacheNode, required, 'docs/stale-xlsx-formula-cache-node.md')
+}
+requireIncludes(index, './stale-xlsx-formula-cache-node.html', 'docs/index.html')
+requireIncludes(readme, 'docs/stale-xlsx-formula-cache-node.md', 'README.md')
+requireIncludes(headlessReadme, 'docs/stale-xlsx-formula-cache-node.md', 'packages/headless/README.md')
+requireIncludes(llms, 'https://proompteng.github.io/bilig/stale-xlsx-formula-cache-node.html', 'docs/llms.txt')
+requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/stale-xlsx-formula-cache-node.md', 'docs/llms.txt')
 
 for (const required of [
   'title: Microsoft Graph Excel recalculation vs local Node WorkPaper',

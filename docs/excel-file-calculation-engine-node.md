@@ -122,6 +122,7 @@ not a backend calculation engine.
 ## Related
 
 - [XLSX formula recalculation in Node.js](xlsx-formula-recalculation-node.md)
+- [Stale XLSX formula cache in Node.js](stale-xlsx-formula-cache-node.md)
 - [Microsoft Graph Excel recalculation in Node.js](microsoft-graph-excel-recalculation-node.md)
 - [xlsx-calc alternative for Node workbook recalculation](xlsx-calc-alternative-node-workbook-recalculation.md)
 - [ExcelJS formula recalculation in Node.js](exceljs-formula-recalculation-node.md)

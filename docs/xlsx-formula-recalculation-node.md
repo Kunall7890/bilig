@@ -135,6 +135,7 @@ XLSX boundary around the parts it owns.
 
 - [Runnable XLSX recalculation example](https://github.com/proompteng/bilig/tree/main/examples/xlsx-recalculation-node)
 - [Excel file as a calculation engine in Node.js](excel-file-calculation-engine-node.md)
+- [Stale XLSX formula cache in Node.js](stale-xlsx-formula-cache-node.md)
 - [ExcelJS formula recalculation in Node.js](exceljs-formula-recalculation-node.md)
 - [ExcelJS shared formulas and Node.js recalculation](exceljs-shared-formula-recalculation-node.md)
 - [SheetJS and ExcelJS boundary](sheetjs-exceljs-alternative-formula-workbook-api.md)
