@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 
 import { createWorkPaperFromDocument, exportWorkPaperDocument, parseWorkPaperDocument, serializeWorkPaperDocument } from '../persistence.js'
 import { createFileBackedWorkPaperMcpToolServer } from '../work-paper-mcp-file-server.js'
+import { parseWorkPaperMcpStdioCliArgs, workPaperMcpStdioHelpText } from '../work-paper-mcp-stdio-cli.js'
 import {
   assertWorkPaperMcpDemoOutput,
   buildDemoWorkPaper,
@@ -15,6 +16,24 @@ import {
 } from '../work-paper-mcp-server.js'
 
 describe('WorkPaper MCP server', () => {
+  it('parses stdio bin CLI options without starting the server', () => {
+    expect(parseWorkPaperMcpStdioCliArgs(['--workpaper', 'pricing.workpaper.json', '--writable'])).toEqual({
+      help: false,
+      writable: true,
+      workpaperPath: 'pricing.workpaper.json',
+    })
+    expect(parseWorkPaperMcpStdioCliArgs(['--help'])).toEqual({
+      help: true,
+      writable: false,
+    })
+    expect(workPaperMcpStdioHelpText()).toContain('Usage: bilig-workpaper-mcp')
+  })
+
+  it('rejects malformed stdio bin workpaper paths before opening files', () => {
+    expect(() => parseWorkPaperMcpStdioCliArgs(['--workpaper', '   '])).toThrow('--workpaper requires a path')
+    expect(() => parseWorkPaperMcpStdioCliArgs(['--workpaper', '--writable'])).toThrow('--workpaper requires a path')
+  })
+
   it('starts the stdio bin and exposes the expected tools', async () => {
     const binPath = fileURLToPath(new URL('../work-paper-mcp-stdio-bin.ts', import.meta.url))
     const child = spawn(process.execPath, ['--import', 'tsx', binPath], {
