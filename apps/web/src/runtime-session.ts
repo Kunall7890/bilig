@@ -46,6 +46,7 @@ export interface CreateWorkerRuntimeSessionInput {
   readonly documentId: string
   readonly replicaId: string
   readonly persistState: boolean
+  readonly authoritativeSyncEnabled?: boolean
   readonly initialSelection: WorkerRuntimeSelection
   readonly perfSession?: WorkbookPerfSession
   readonly zero?: ZeroWorkbookSyncSource
@@ -282,6 +283,7 @@ export async function createWorkerRuntimeSessionController(
   const viewportStore = new ProjectedViewportStore(client)
   const handle: WorkerHandle = { viewportStore }
   const fetchImpl = input.fetchImpl ?? fetch
+  const authoritativeSyncEnabled = input.authoritativeSyncEnabled ?? true
   let currentSelection = input.initialSelection
   let currentRuntimeState = createInitialRuntimeState(input.documentId)
   viewportStore.setKnownSheets(currentRuntimeState.sheetNames)
@@ -422,7 +424,7 @@ export async function createWorkerRuntimeSessionController(
   }
 
   const runAuthoritativeRefresh = async (): Promise<void> => {
-    if (disposed) {
+    if (disposed || !authoritativeSyncEnabled) {
       return
     }
     const eventBatch = await loadAuthoritativeEventBatch(input.documentId, currentAuthoritativeRevision, fetchImpl)
@@ -456,6 +458,9 @@ export async function createWorkerRuntimeSessionController(
   }
 
   const refreshAuthoritativeEventsNow = async (targetRevision: number | null): Promise<void> => {
+    if (!authoritativeSyncEnabled) {
+      return
+    }
     if (targetRevision !== null) {
       requestedAuthoritativeRevision = Math.max(requestedAuthoritativeRevision, targetRevision)
     }
@@ -483,7 +488,7 @@ export async function createWorkerRuntimeSessionController(
   }
 
   const runAuthoritativeRebase = async (): Promise<void> => {
-    if (disposed) {
+    if (disposed || !authoritativeSyncEnabled) {
       return
     }
     const targetRevision = requestedAuthoritativeRevision
@@ -569,7 +574,7 @@ export async function createWorkerRuntimeSessionController(
     const requiresAuthoritativeSnapshot = !bootstrap.restoredFromPersistence || bootstrap.requiresAuthoritativeHydrate
     const shouldRefreshCleanAuthoritativeState = activePendingMutationCount === 0
 
-    if (requiresAuthoritativeSnapshot || shouldRefreshCleanAuthoritativeState) {
+    if (authoritativeSyncEnabled && (requiresAuthoritativeSnapshot || shouldRefreshCleanAuthoritativeState)) {
       publishPhase('syncing')
       let latestSnapshot: LatestWorkbookSnapshot | null = null
       try {

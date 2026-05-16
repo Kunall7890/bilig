@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { loadRuntimeSession, type BiligRuntimeSession } from '../session.js'
+import { createLocalOnlyRuntimeSession, loadRuntimeSession, type BiligRuntimeSession } from '../session.js'
 
 const jsonResponse = (body: unknown) =>
   new Response(JSON.stringify(body), {
@@ -11,6 +11,16 @@ const jsonResponse = (body: unknown) =>
 const failingFetchImpl = async () => new Response('forbidden', { status: 403 })
 
 describe('loadRuntimeSession', () => {
+  test('creates a local-only guest session for standalone web development', () => {
+    expect(createLocalOnlyRuntimeSession('guest:local-dev')).toEqual<BiligRuntimeSession>({
+      authToken: 'guest:local-dev',
+      userId: 'guest:local-dev',
+      roles: ['editor'],
+      isAuthenticated: false,
+      authSource: 'guest',
+    })
+  })
+
   test('uses the server-provided auth token when present', async () => {
     const response = {
       authToken: 'token-123',

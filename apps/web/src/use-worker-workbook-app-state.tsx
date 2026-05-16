@@ -86,6 +86,7 @@ export function useWorkerWorkbookAppState(input: {
       documentId,
       replicaId,
       persistState: runtimeConfig.persistState,
+      authoritativeSyncEnabled: zeroConfigured,
       perfSession,
       connectionStateName: connectionState.name,
       ...(zero ? { zero } : {}),

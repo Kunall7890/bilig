@@ -5,6 +5,16 @@ import { decodeWithSchema, HttpError, runPromise, TransportError } from '@bilig/
 
 export type { BiligRuntimeSession }
 
+export function createLocalOnlyRuntimeSession(userId = 'local:user'): BiligRuntimeSession {
+  return {
+    authToken: userId,
+    userId,
+    roles: ['editor'],
+    isAuthenticated: false,
+    authSource: 'guest',
+  }
+}
+
 function loadRuntimeSessionEffect(
   fetchImpl: typeof fetch = fetch,
 ): Effect.Effect<BiligRuntimeSession, DecodeError | HttpError | TransportError> {

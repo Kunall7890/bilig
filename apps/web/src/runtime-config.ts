@@ -7,6 +7,16 @@ export interface RuntimeConfig {
   workbookAgentEnabled: boolean
 }
 
+export function createLocalOnlyRuntimeConfig(currentUserId = 'local:user'): BiligRuntimeConfig {
+  return {
+    zeroCacheUrl: '/zero',
+    defaultDocumentId: 'local-workbook',
+    persistState: true,
+    currentUserId,
+    workbookAgentEnabled: false,
+  }
+}
+
 export function normalizeRuntimeConfigUserId<T extends { currentUserId: string }>(
   config: T,
   session: {
@@ -22,14 +32,26 @@ export function normalizeRuntimeConfigUserId<T extends { currentUserId: string }
   }
 }
 
+function resolvePersistState(configuredPersistState: boolean, searchParams: URLSearchParams): boolean {
+  const explicitPersistState = searchParams.get('persist')
+  if (explicitPersistState === '0' || explicitPersistState === 'false') {
+    return false
+  }
+  if (explicitPersistState === '1' || explicitPersistState === 'true') {
+    return true
+  }
+  return configuredPersistState
+}
+
 export function resolveRuntimeConfig(config: BiligRuntimeConfig): RuntimeConfig {
   const searchParams = typeof window === 'undefined' ? new URLSearchParams() : new URLSearchParams(window.location.search)
   const explicitDocumentId = searchParams.get('document')
+  const persistState = resolvePersistState(config.persistState, searchParams)
 
   if (explicitDocumentId) {
     return {
       documentId: explicitDocumentId,
-      persistState: true,
+      persistState,
       currentUserId: config.currentUserId,
       workbookAgentEnabled: config.workbookAgentEnabled === true,
     }
@@ -37,8 +59,16 @@ export function resolveRuntimeConfig(config: BiligRuntimeConfig): RuntimeConfig 
 
   return {
     documentId: config.defaultDocumentId,
-    persistState: config.persistState,
+    persistState,
     currentUserId: config.currentUserId,
     workbookAgentEnabled: config.workbookAgentEnabled === true,
   }
+}
+
+export function resolveRemoteSyncEnabled(env: { readonly DEV?: boolean; readonly VITE_BILIG_REMOTE_SYNC?: string | undefined }): boolean {
+  const configured = env.VITE_BILIG_REMOTE_SYNC
+  if (configured !== undefined) {
+    return configured !== '0'
+  }
+  return env.DEV !== true
 }

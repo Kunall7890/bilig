@@ -277,6 +277,48 @@ test('web app supports type-to-replace and Enter or Tab commit movement', async 
   await expect(nameBox).toHaveValue('A2', { timeout: 15_000 })
 })
 
+test('@browser-ci web app keeps click-away commits and keyboard clears stable', async ({ page }) => {
+  const documentId = createTestDocumentId('playwright-click-away-clear')
+  await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=D7`)
+  await waitForWorkbookReady(page)
+
+  const formulaInput = page.getByTestId('formula-input')
+  const resolvedValue = page.getByTestId('formula-resolved-value')
+  const cellEditor = page.getByTestId('cell-editor-input')
+
+  await clickProductCell(page, 3, 6)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!D7')
+  await page.keyboard.type('stable-proof')
+  await expect(cellEditor).toBeVisible()
+  await expect(cellEditor).toHaveValue('stable-proof')
+  await clickProductCell(page, 4, 6)
+  await expect(cellEditor).toBeHidden()
+
+  await clickProductCell(page, 3, 6)
+  await expect(formulaInput).toHaveValue('stable-proof')
+  await page.keyboard.press('Delete')
+  await expect(formulaInput).toHaveValue('')
+  await clickProductCell(page, 4, 6)
+  await clickProductCell(page, 3, 6)
+  await expect(formulaInput).toHaveValue('')
+  await expect(resolvedValue).toHaveText('∅')
+
+  await page.keyboard.type('backspace-proof')
+  await expect(cellEditor).toBeVisible()
+  await expect(cellEditor).toHaveValue('backspace-proof')
+  await clickProductCell(page, 4, 6)
+  await expect(cellEditor).toBeHidden()
+
+  await clickProductCell(page, 3, 6)
+  await expect(formulaInput).toHaveValue('backspace-proof')
+  await page.keyboard.press('Backspace')
+  await expect(formulaInput).toHaveValue('')
+  await clickProductCell(page, 4, 6)
+  await clickProductCell(page, 3, 6)
+  await expect(formulaInput).toHaveValue('')
+  await expect(resolvedValue).toHaveText('∅')
+})
+
 test('web app preserves Alt+Enter multiline edits across commit, formula bar, and reopen', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-alt-enter-multiline-edit')
   await page.goto(`/?document=${encodeURIComponent(documentId)}&sheet=Sheet1&cell=A1`)

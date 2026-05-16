@@ -1,6 +1,11 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { normalizeRuntimeConfigUserId, resolveRuntimeConfig } from '../runtime-config'
+import {
+  createLocalOnlyRuntimeConfig,
+  normalizeRuntimeConfigUserId,
+  resolveRemoteSyncEnabled,
+  resolveRuntimeConfig,
+} from '../runtime-config'
 import { resolveZeroCacheUrl } from '../zero-connection'
 
 const BASE_CONFIG = {
@@ -24,6 +29,15 @@ describe('resolveRuntimeConfig', () => {
       currentUserId: 'guest:test',
       persistState: true,
       workbookAgentEnabled: false,
+    })
+  })
+
+  it('allows explicit document sessions to opt out of local persistence for browser QA', () => {
+    window.history.replaceState({}, '', '/?document=visual-smoke&persist=0')
+
+    expect(resolveRuntimeConfig(BASE_CONFIG)).toMatchObject({
+      documentId: 'visual-smoke',
+      persistState: false,
     })
   })
 
@@ -55,5 +69,22 @@ describe('resolveRuntimeConfig', () => {
       ...BASE_CONFIG,
       currentUserId: 'guest:session-user',
     })
+  })
+
+  it('creates a local-only runtime config for standalone web development', () => {
+    expect(createLocalOnlyRuntimeConfig('guest:local-dev')).toEqual({
+      zeroCacheUrl: '/zero',
+      defaultDocumentId: 'local-workbook',
+      persistState: true,
+      currentUserId: 'guest:local-dev',
+      workbookAgentEnabled: false,
+    })
+  })
+
+  it('defaults standalone Vite dev to local-only mode while preserving explicit and production remote sync', () => {
+    expect(resolveRemoteSyncEnabled({ DEV: true })).toBe(false)
+    expect(resolveRemoteSyncEnabled({ DEV: true, VITE_BILIG_REMOTE_SYNC: '1' })).toBe(true)
+    expect(resolveRemoteSyncEnabled({ DEV: true, VITE_BILIG_REMOTE_SYNC: '0' })).toBe(false)
+    expect(resolveRemoteSyncEnabled({ DEV: false })).toBe(true)
   })
 })

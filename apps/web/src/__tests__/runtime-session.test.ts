@@ -495,6 +495,47 @@ describe('createWorkerRuntimeSessionController', () => {
     controller.dispose()
   })
 
+  it('boots a local-only worker session without probing authoritative snapshot APIs', async () => {
+    const runtime = new WorkbookWorkerRuntime({
+      localStoreFactory: createMemoryLocalStoreFactory(),
+    })
+    const fetchImpl = vi.fn(async () => {
+      throw new Error('Local-only runtime should not fetch authoritative snapshots')
+    })
+    const phases: string[] = []
+
+    const controller = await createWorkerRuntimeSessionController(
+      {
+        documentId: 'standalone-local-doc',
+        replicaId: 'browser:test',
+        persistState: true,
+        authoritativeSyncEnabled: false,
+        initialSelection: { sheetName: 'Sheet1', address: 'D7' },
+        createWorker: () => createMockWorkerPort(runtime),
+        fetchImpl,
+      },
+      {
+        onRuntimeState() {},
+        onSelection() {},
+        onError(message) {
+          throw new Error(message)
+        },
+        onPhase(phase) {
+          phases.push(phase)
+        },
+      },
+    )
+
+    expect(fetchImpl).not.toHaveBeenCalled()
+    expect(phases).toEqual(['hydratingLocal', 'steady'])
+    expect(controller.selection).toEqual({ sheetName: 'Sheet1', address: 'D7' })
+    expect(controller.handle.viewportStore.getCell('Sheet1', 'D7').value).toEqual({
+      tag: ValueTag.Empty,
+    })
+
+    controller.dispose()
+  })
+
   it('normalizes worker sheet names from structured sheet identities before publishing runtime state', async () => {
     const staleRuntimeState = {
       workbookName: 'phase0-doc',

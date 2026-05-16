@@ -6,9 +6,15 @@ import { createBootstrapMachine } from '@bilig/actors'
 import { loadRuntimeConfig, mutators, schema } from '@bilig/zero-sync'
 import type { RuntimeSession } from '@bilig/contracts'
 import { App } from './App.js'
-import { normalizeRuntimeConfigUserId, resolveRuntimeConfig, type RuntimeConfig } from './runtime-config'
+import {
+  createLocalOnlyRuntimeConfig,
+  normalizeRuntimeConfigUserId,
+  resolveRemoteSyncEnabled,
+  resolveRuntimeConfig,
+  type RuntimeConfig,
+} from './runtime-config'
 import { resolveWebEntryRoute } from './root-route.js'
-import { loadRuntimeSession } from './session'
+import { createLocalOnlyRuntimeSession, loadRuntimeSession } from './session'
 import { resolveZeroCacheUrl, ZERO_CONNECT_MAX_HEADER_LENGTH } from './zero-connection'
 import type { ZeroConnectionState } from './worker-workbook-app-model.js'
 import type { BiligRuntimeConfig } from '@bilig/zero-sync'
@@ -22,7 +28,7 @@ const IsolatedWorkbookPaneRendererRoute = lazy(async () => {
 
 const root = ReactDOM.createRoot(document.getElementById('root')!)
 const entryRoute = resolveWebEntryRoute(window.location.pathname)
-const remoteSyncEnabled = import.meta.env['VITE_BILIG_REMOTE_SYNC'] !== '0'
+const remoteSyncEnabled = resolveRemoteSyncEnabled(import.meta.env)
 const LOCAL_ONLY_CONNECTION_STATE: ZeroConnectionState = {
   name: 'closed',
   reason: 'Remote sync disabled for this environment',
@@ -98,13 +104,20 @@ function BootstrapRoot() {
   const actorRef = useActorRef(bootstrapMachine, {
     input: {
       loadConfig: async () => {
+        if (!remoteSyncEnabled) {
+          const rawConfig = createLocalOnlyRuntimeConfig()
+          return {
+            rawConfig,
+            runtimeConfig: resolveRuntimeConfig(rawConfig),
+          } satisfies BootstrapConfig
+        }
         const rawConfig = await loadRuntimeConfig()
         return {
           rawConfig,
           runtimeConfig: resolveRuntimeConfig(rawConfig),
         } satisfies BootstrapConfig
       },
-      loadSession: async () => await loadRuntimeSession(),
+      loadSession: async () => (remoteSyncEnabled ? await loadRuntimeSession() : createLocalOnlyRuntimeSession()),
     },
   })
   const snapshot = useSelector(actorRef, (value) => value)
