@@ -31,6 +31,7 @@ describe('WorkPaper HyperFormula snapshot parity', () => {
       [
         readFileSync(new URL('../work-paper-runtime.ts', import.meta.url), 'utf8'),
         readFileSync(new URL('../work-paper-runtime-surface.ts', import.meta.url), 'utf8'),
+        readFileSync(new URL('../work-paper-runtime-metadata-surface.ts', import.meta.url), 'utf8'),
         readFileSync(new URL('../work-paper-public-surface.ts', import.meta.url), 'utf8'),
         readFileSync(new URL('../work-paper-capability-surface.ts', import.meta.url), 'utf8'),
       ].join('\n'),

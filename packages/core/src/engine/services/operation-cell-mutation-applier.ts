@@ -524,6 +524,7 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
                   !isRestore &&
                   existingIndex === undefined &&
                   !priorHadFormula &&
+                  args.state.workbook.metadata.definedNames.size === 0 &&
                   args.bindPreparedFormula !== undefined &&
                   args.compileTemplateFormula !== undefined
                 const changedTopology = canAssumeFreshFormula
