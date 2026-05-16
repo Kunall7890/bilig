@@ -24,13 +24,18 @@ import { isPendingWorkbookMutationReadyForSubmission } from './workbook-mutation
 import {
   assert,
   canAttemptRemoteSync,
-  isMutationErrorResult,
   parsedEditorInputMatchesSnapshot,
   toErrorMessage,
   type ParsedEditorInput,
   type ZeroConnectionState,
 } from './worker-workbook-app-model.js'
 import { createOptimisticCellSnapshot, createSupersedingCellSnapshot, evaluateOptimisticFormula } from './workbook-optimistic-cell.js'
+import {
+  observeZeroMutationResult,
+  waitForZeroMutationObserver,
+  type ZeroMutationObserverFailure,
+  type ZeroMutationObserverOutcome,
+} from './workbook-zero-mutation-observer.js'
 
 interface ZeroMutationSource {
   mutate(mutation: unknown): unknown
@@ -47,10 +52,6 @@ type ViewportAxisSizeMutationOptions = {
   deferPersistence?: boolean
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
-
 function deferViewportAxisSizeFrame(): Promise<void> {
   return new Promise((resolve) => {
     if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
@@ -59,14 +60,6 @@ function deferViewportAxisSizeFrame(): Promise<void> {
     }
     setTimeout(resolve, 0)
   })
-}
-
-function observeZeroMutationResult(result: unknown): Promise<unknown> | null {
-  if (!isRecord(result)) {
-    return null
-  }
-  const observer = result['server'] ?? result['client']
-  return observer instanceof Promise ? observer : null
 }
 
 function parsedCellInputForMutation(
@@ -220,26 +213,20 @@ export function useWorkbookSync(input: {
   )
 
   const runZeroMutation = useCallback(
-    async (mutation: PendingWorkbookMutation): Promise<{ ok: true } | { ok: false; retryable: boolean; error: Error }> => {
+    async (
+      mutation: PendingWorkbookMutation,
+      onLateFailure?: (failure: ZeroMutationObserverFailure) => void,
+    ): Promise<ZeroMutationObserverOutcome> => {
       try {
         const result = zeroRef.current.mutate(buildZeroWorkbookMutation(documentId, mutation))
         const observerResult = observeZeroMutationResult(result)
         if (!observerResult) {
           return { ok: true }
         }
-        const remoteResult = await observerResult
-        if (!isMutationErrorResult(remoteResult)) {
-          return { ok: true }
-        }
-        const details =
-          remoteResult.error.type === 'app' && remoteResult.error.details !== undefined
-            ? ` (${JSON.stringify(remoteResult.error.details)})`
-            : ''
-        return {
-          ok: false,
-          retryable: remoteResult.error.type === 'zero',
-          error: new Error(`${remoteResult.error.message}${details}`),
-        }
+        return await waitForZeroMutationObserver({
+          observer: observerResult,
+          ...(onLateFailure ? { onLateFailure } : {}),
+        })
       } catch (error) {
         return {
           ok: false,
@@ -269,7 +256,18 @@ export function useWorkbookSync(input: {
 
       await runtimeController.invoke('recordPendingMutationAttempt', mutation.id)
       scheduleAuthoritativeRefreshProbes()
-      const remoteResult = await runZeroMutation(mutation)
+      const remoteResult = await runZeroMutation(mutation, (failure) => {
+        void (async () => {
+          try {
+            const currentPendingMutations = await listPendingMutations()
+            if (currentPendingMutations.some((pendingMutation) => pendingMutation.id === mutation.id)) {
+              await runtimeController.invoke('markPendingMutationFailed', mutation.id, failure.error.message)
+            }
+          } catch (error) {
+            reportRuntimeError(error)
+          }
+        })()
+      })
       if (!remoteResult.ok) {
         if (!remoteResult.retryable) {
           await runtimeController.invoke('markPendingMutationFailed', mutation.id, remoteResult.error.message)
@@ -283,7 +281,7 @@ export function useWorkbookSync(input: {
     }
 
     await drainBatch(await listPendingMutations())
-  }, [connectionStateRef, listPendingMutations, runZeroMutation, runtimeController, scheduleAuthoritativeRefreshProbes])
+  }, [connectionStateRef, listPendingMutations, reportRuntimeError, runZeroMutation, runtimeController, scheduleAuthoritativeRefreshProbes])
 
   const drainPendingMutations = useCallback(async (): Promise<void> => {
     try {

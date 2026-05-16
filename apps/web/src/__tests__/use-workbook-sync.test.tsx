@@ -204,6 +204,122 @@ describe('useWorkbookSync', () => {
     })
   })
 
+  it('does not let an unsettled Zero server observer block later pending mutations', async () => {
+    vi.useFakeTimers()
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    let sync: ReturnType<typeof useWorkbookSync> | null = null
+    let nextSeq = 1
+    let mutateCallCount = 0
+    const pendingMutations: PendingWorkbookMutation[] = []
+    const reportRuntimeError = vi.fn()
+    const runtimeController = {
+      invoke: vi.fn(async (method: string, input?: unknown) => {
+        switch (method) {
+          case 'enqueuePendingMutation': {
+            if (!isPendingMutationInput(input)) {
+              throw new Error('Expected pending mutation input')
+            }
+            const mutation: PendingWorkbookMutation = {
+              ...createPendingMutation(),
+              id: `pending-${nextSeq}`,
+              localSeq: nextSeq,
+              method: input.method,
+              args: input.args,
+            }
+            nextSeq += 1
+            pendingMutations.push(mutation)
+            return mutation
+          }
+          case 'listPendingMutations':
+            return pendingMutations.map((mutation) => ({ ...mutation, args: [...mutation.args] }))
+          case 'recordPendingMutationAttempt': {
+            const mutation = pendingMutations.find((entry) => entry.id === input)
+            if (mutation) {
+              Object.assign(mutation, {
+                attemptCount: mutation.attemptCount + 1,
+                lastAttemptedAtUnixMs: mutation.localSeq + 10,
+              })
+            }
+            return undefined
+          }
+          case 'markPendingMutationSubmitted': {
+            const mutation = pendingMutations.find((entry) => entry.id === input)
+            if (mutation) {
+              Object.assign(mutation, {
+                status: 'submitted',
+                submittedAtUnixMs: mutation.localSeq + 20,
+              })
+            }
+            return undefined
+          }
+          case 'refreshAuthoritativeEvents':
+            return undefined
+          default:
+            throw new Error(`Unexpected runtime invoke: ${method}`)
+        }
+      }),
+    }
+
+    function Harness() {
+      sync = useWorkbookSync({
+        documentId: 'doc-1',
+        connectionStateName: 'connected',
+        connectionStateRef: { current: 'connected' },
+        runtimeController,
+        workerHandleRef: { current: null },
+        zeroRef: {
+          current: {
+            mutate() {
+              mutateCallCount += 1
+              return mutateCallCount === 1
+                ? {
+                    server: new Promise(() => {}),
+                  }
+                : undefined
+            },
+          },
+        },
+        reportRuntimeError,
+      })
+      return null
+    }
+
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+
+    await act(async () => {
+      root.render(<Harness />)
+    })
+    if (!sync) {
+      throw new Error('Expected useWorkbookSync harness to initialize')
+    }
+    const activeSync = sync
+
+    await act(async () => {
+      await activeSync.invokeMutation('setCellValue', 'Sheet1', 'A1', 'first')
+    })
+    await vi.waitFor(() => {
+      expect(runtimeController.invoke).toHaveBeenCalledWith('recordPendingMutationAttempt', 'pending-1')
+    })
+
+    await act(async () => {
+      await activeSync.invokeMutation('setCellValue', 'Sheet1', 'A2', 'second')
+      await vi.advanceTimersByTimeAsync(10_000)
+    })
+
+    await vi.waitFor(() => {
+      expect(runtimeController.invoke).toHaveBeenCalledWith('markPendingMutationSubmitted', 'pending-1')
+      expect(runtimeController.invoke).toHaveBeenCalledWith('recordPendingMutationAttempt', 'pending-2')
+    })
+    expect(reportRuntimeError).not.toHaveBeenCalled()
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
   it('persists deferred axis resizes once while avoiding stale viewport store writes', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
     const frames = installAnimationFrameQueue()
