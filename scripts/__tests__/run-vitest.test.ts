@@ -30,6 +30,22 @@ describe('run-vitest wrapper arguments', () => {
     ).toEqual(['--run', '--maxWorkers', '3'])
   })
 
+  it('ignores malformed CI worker limit overrides instead of forwarding them', () => {
+    expect(
+      buildVitestArgs(['--run'], {
+        BILIG_CI_PROFILE: 'fast',
+        BILIG_VITEST_MAX_WORKERS: '3abc',
+      }),
+    ).toEqual(['--run', '--maxWorkers', '1'])
+
+    expect(
+      buildVitestArgs(['--run'], {
+        BILIG_CI_PROFILE: 'fast',
+        BILIG_VITEST_MAX_WORKERS: '0',
+      }),
+    ).toEqual(['--run', '--maxWorkers', '1'])
+  })
+
   it('splits large CI run file lists into serial batches', () => {
     const files = Array.from({ length: 7 }, (_, index) => `test-${index + 1}.test.ts`)
 

@@ -14,7 +14,7 @@ export function buildVitestArgs(args: readonly string[], env: NodeJS.ProcessEnv 
   if (!env['BILIG_CI_PROFILE'] || hasArg(args, '--maxWorkers')) {
     return [...args]
   }
-  return [...args, '--maxWorkers', env['BILIG_VITEST_MAX_WORKERS'] ?? '1']
+  return [...args, '--maxWorkers', String(readPositiveInt(env['BILIG_VITEST_MAX_WORKERS']) ?? 1)]
 }
 
 export function buildVitestArgBatches(args: readonly string[], env: NodeJS.ProcessEnv = process.env): string[][] {
