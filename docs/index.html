@@ -439,11 +439,12 @@ function readNumber(cell: unknown): number {
               <div class="proof-result">
                 <div class="proof-metric">
                   <span class="proof-label">comparable mean rows</span>
-                  <strong>76/100</strong>
+                  <strong>75/100</strong>
                 </div>
                 <p>
-                  76 of 100 comparable mean-latency rows are faster in the checked file. named-expression-change is slower at p95:
-                  <code>3.497x</code>. Browser UI rendering is not part of this benchmark.
+                  75 of 100 comparable mean-latency rows are faster in the checked file. lookup-with-column-index-after-batch-write is
+                  slower at p95:
+                  <code>10.986x</code>. Browser UI rendering is not part of this benchmark.
                 </p>
               </div>
 
@@ -460,7 +461,7 @@ function readNumber(cell: unknown): number {
                 </div>
                 <div class="proof-fact">
                   <dt>Caveat</dt>
-                  <dd>named-expression-change is slower at p95: <code>3.497x</code>.</dd>
+                  <dd>lookup-with-column-index-after-batch-write is slower at p95: <code>10.986x</code>.</dd>
                 </div>
                 <div class="proof-fact">
                   <dt>Out of scope</dt>

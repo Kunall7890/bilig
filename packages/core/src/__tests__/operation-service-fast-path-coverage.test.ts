@@ -321,10 +321,12 @@ describe('operation-service dense mutation fast paths', () => {
       }
     }
 
+    const ensureCellAt = vi.spyOn(engine.workbook, 'ensureCellAt')
     engine.resetPerformanceCounters()
     const undoOps = engine.applyCellMutationsAt(refs, refs.length)
 
     expect(undoOps).not.toBeNull()
+    expect(ensureCellAt).not.toHaveBeenCalled()
     expect(engine.getCellValue('Sheet1', 'A13')).toEqual({ tag: ValueTag.Number, value: 2 })
     expect(engine.getCellValue('Sheet1', 'D20')).toEqual({ tag: ValueTag.Number, value: 40 })
     expect(engine.getCellValue('Sheet1', 'E12')).toEqual({ tag: ValueTag.Number, value: 120 })
@@ -337,6 +339,7 @@ describe('operation-service dense mutation fast paths', () => {
     expect(engine.getPerformanceCounters().kernelSyncOnlyRecalcSkips).toBe(1)
     expect(engine.getPerformanceCounters().regionQueryIndexBuilds).toBe(0)
     expect(engine.getPerformanceCounters().directAggregateScanEvaluations).toBe(0)
+    ensureCellAt.mockRestore()
   })
 
   it('stores fresh row aggregate formula results without aggregate scans', async () => {

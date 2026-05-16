@@ -95,13 +95,18 @@ export function createOperationFreshRectangularLiteralBatchFastPath(args: Operat
     let changedInputCount = 0
     let explicitChangedCount = 0
     args.setBatchMutationDepth(args.getBatchMutationDepth() + 1)
+    const ensureRowId = args.state.workbook.createLogicalAxisIdEnsurer(rectangle.sheetId, 'row')
+    const ensureColId = args.state.workbook.createLogicalAxisIdEnsurer(rectangle.sheetId, 'column')
+    const columnIds = Array.from({ length: rectangle.colCount }, (_, colOffset) => ensureColId(rectangle.firstCol + colOffset))
     try {
       let valueIndex = 0
       for (let rowOffset = 0; rowOffset < rectangle.rowCount; rowOffset += 1) {
         const row = rectangle.firstRow + rowOffset
+        const rowId = ensureRowId(row)
         for (let colOffset = 0; colOffset < rectangle.colCount; colOffset += 1) {
           const col = rectangle.firstCol + colOffset
-          const cellIndex = args.state.workbook.ensureCellAt(rectangle.sheetId, row, col).cellIndex
+          const cellIndex = args.state.workbook.cellStore.allocate(rectangle.sheetId, row, col)
+          args.state.workbook.attachAllocatedCellWithLogicalAxisIds(rectangle.sheetId, row, col, cellIndex, rowId, columnIds[colOffset]!)
           args.writeNumericLiteralToCellStore(cellIndex, rectangle.values[valueIndex]!)
           changedInputCount = args.markInputChanged(cellIndex, changedInputCount)
           if (requiresChangedSet) {
@@ -193,7 +198,10 @@ function collectFreshDenseNumericRectangle(
       currentWidth = 1
       rowOffset += 1
     }
-    if (sheet.grid.getPhysical(mutation.row, mutation.col) !== -1) {
+    if (
+      sheet.grid.getPhysical(mutation.row, mutation.col) !== -1 ||
+      sheet.logical.getVisibleCell(mutation.row, mutation.col) !== undefined
+    ) {
       return null
     }
     values[refIndex] = mutation.value

@@ -613,7 +613,7 @@ something.
 
 ### 2. Turn Benchmarks Into A Distribution Loop
 
-The `76/100` WorkPaper mean-win claim should become small, quotable artifacts:
+The `75/100` WorkPaper mean-win claim should become small, quotable artifacts:
 
 - one chart image for X, Bluesky, LinkedIn, and README embeds:
   [`docs/assets/workpaper-benchmark-card.png`](assets/workpaper-benchmark-card.png)
@@ -712,8 +712,8 @@ https://github.com/proompteng/bilig#try-it-in-90-seconds
 It edits an input, reads the recalculated value, saves WorkPaper JSON, restores
 it, and checks the value again.
 
-3/ Benchmark caveat is public too: 76/100 comparable mean-latency rows are faster
-in the checked file, named-expression-change is the visible p95 holdout,
+3/ Benchmark caveat is public too: 75/100 comparable mean-latency rows are faster
+in the checked file, lookup-with-column-index-after-batch-write is the visible p95 holdout,
 and UI rendering is not part of the benchmark.
 
 4/ Question for people who automate spreadsheets from services or agents: what
@@ -749,9 +749,9 @@ logic but opening a browser grid is the wrong runtime boundary. It is not an
 Excel clone, and the compatibility limits are documented:
 https://github.com/proompteng/bilig/blob/main/docs/where-bilig-is-not-excel-compatible-yet.md
 
-The benchmark claim is intentionally narrow: the checked artifact has 76/100
+The benchmark claim is intentionally narrow: the checked artifact has 75/100
 comparable mean-latency wins against HyperFormula-style workloads,
-named-expression-change is the visible p95 holdout, and UI rendering is
+lookup-with-column-index-after-batch-write is the visible p95 holdout, and UI rendering is
 not part of the benchmark.
 
 If you automate spreadsheets from Node, what workflow or formula family would
