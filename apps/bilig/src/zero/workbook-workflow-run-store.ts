@@ -14,6 +14,16 @@ export interface WorkbookWorkflowRunStoreConnection extends Queryable {
     readonly actorUserId: string
     readonly threadId: string
   }): Promise<readonly ZeroWorkbookWorkflowRunRow[]>
+  listWorkbookWorkflowStepRows(input: {
+    readonly documentId: string
+    readonly actorUserId: string
+    readonly threadId: string
+  }): Promise<readonly QueryResultRow[]>
+  listWorkbookWorkflowArtifactRows(input: {
+    readonly documentId: string
+    readonly actorUserId: string
+    readonly threadId: string
+  }): Promise<readonly QueryResultRow[]>
 }
 
 interface WorkbookWorkflowRunRow extends QueryResultRow {
@@ -70,6 +80,10 @@ export function createWorkbookWorkflowRunStoreConnection(db: Queryable & ZeroQue
     query: (text, values) => db.query(text, values),
     listWorkbookWorkflowRunRows: ({ actorUserId, documentId, threadId }) =>
       db.run(queries.workbookWorkflowRun.byThread.fn({ args: { documentId, threadId }, ctx: { userID: actorUserId } })),
+    listWorkbookWorkflowStepRows: ({ actorUserId, documentId, threadId }) =>
+      db.run(queries.workbookWorkflowStep.byThread.fn({ args: { documentId, threadId }, ctx: { userID: actorUserId } })),
+    listWorkbookWorkflowArtifactRows: ({ actorUserId, documentId, threadId }) =>
+      db.run(queries.workbookWorkflowArtifact.byThread.fn({ args: { documentId, threadId }, ctx: { userID: actorUserId } })),
   }
 }
 
@@ -279,42 +293,49 @@ function toWorkflowRunRow(row: ZeroWorkbookWorkflowRunRow): WorkbookWorkflowRunR
   }
 }
 
+function toWorkflowStepRow(row: QueryResultRow): WorkbookWorkflowStepRow {
+  return {
+    runId: row['runId'],
+    stepId: row['stepId'],
+    stepOrder: row['stepOrder'],
+    label: row['label'],
+    status: row['status'],
+    summary: row['summary'],
+    updatedAtUnixMs: row['updatedAtUnixMs'],
+  }
+}
+
+function toWorkflowArtifactRow(row: QueryResultRow): WorkbookWorkflowArtifactRow {
+  return {
+    runId: row['runId'],
+    kind: row['kind'],
+    title: row['title'],
+    text: row['text'],
+  }
+}
+
 function rowAdvertisesWorkflowSteps(row: WorkbookWorkflowRunRow): boolean {
   const steps = normalizeWorkflowSteps(row.stepsJson ?? [])
   return steps !== null && steps.length > 0
 }
 
-async function loadDurableWorkflowSteps(db: Queryable, documentId: string, runIds: readonly string[]): Promise<DurableWorkflowStepRows> {
-  if (runIds.length === 0) {
+function loadDurableWorkflowSteps(rows: readonly QueryResultRow[], runIds: ReadonlySet<string>): DurableWorkflowStepRows {
+  if (runIds.size === 0) {
     return {
       byRunId: new Map(),
       hasRows: false,
     }
   }
-  const result = await db.query<WorkbookWorkflowStepRow>(
-    `
-      SELECT
-        step.run_id AS "runId",
-        step.step_id AS "stepId",
-        step.step_order AS "stepOrder",
-        step.label AS "label",
-        step.status AS "status",
-        step.summary AS "summary",
-        step.updated_at_unix_ms AS "updatedAtUnixMs"
-      FROM workbook_workflow_step AS step
-      WHERE step.workbook_id = $1
-        AND step.run_id = ANY($2::text[])
-      ORDER BY step.run_id ASC, step.step_order ASC
-    `,
-    [documentId, runIds],
-  )
   const stepsByRunId = new Map<string, WorkbookAgentWorkflowStep[] | null>()
-  for (const row of result.rows) {
-    const normalized = normalizeWorkflowStepRow(row)
+  for (const row of rows) {
+    const normalized = normalizeWorkflowStepRow(toWorkflowStepRow(row))
     if (!normalized) {
-      if (typeof row.runId === 'string') {
-        stepsByRunId.set(row.runId, null)
+      if (typeof row['runId'] === 'string') {
+        stepsByRunId.set(row['runId'], null)
       }
+      continue
+    }
+    if (!runIds.has(normalized.runId)) {
       continue
     }
     if (stepsByRunId.get(normalized.runId) === null) {
@@ -329,44 +350,30 @@ async function loadDurableWorkflowSteps(db: Queryable, documentId: string, runId
   }
   return {
     byRunId: stepsByRunId,
-    hasRows: result.rows.length > 0,
+    hasRows: rows.length > 0,
   }
 }
 
-async function loadDurableWorkflowArtifacts(
-  db: Queryable,
-  documentId: string,
-  runIds: readonly string[],
-): Promise<DurableWorkflowArtifactRows> {
-  if (runIds.length === 0) {
+function loadDurableWorkflowArtifacts(rows: readonly QueryResultRow[], runIds: ReadonlySet<string>): DurableWorkflowArtifactRows {
+  if (runIds.size === 0) {
     return {
       byRunId: new Map(),
       hasRows: false,
     }
   }
-  const result = await db.query<WorkbookWorkflowArtifactRow>(
-    `
-      SELECT
-        artifact.run_id AS "runId",
-        artifact.kind AS "kind",
-        artifact.title AS "title",
-        artifact.text AS "text"
-      FROM workbook_workflow_artifact AS artifact
-      WHERE artifact.workbook_id = $1
-        AND artifact.run_id = ANY($2::text[])
-    `,
-    [documentId, runIds],
-  )
   const artifactsByRunId = new Map<string, DurableWorkflowArtifact>()
-  for (const row of result.rows) {
-    const normalized = normalizeWorkflowArtifactRow(row)
+  for (const row of rows) {
+    const normalized = normalizeWorkflowArtifactRow(toWorkflowArtifactRow(row))
     if (!normalized) {
-      if (typeof row.runId === 'string') {
-        artifactsByRunId.set(row.runId, {
+      if (typeof row['runId'] === 'string') {
+        artifactsByRunId.set(row['runId'], {
           artifact: null,
           invalid: true,
         })
       }
+      continue
+    }
+    if (!runIds.has(normalized.runId)) {
       continue
     }
     artifactsByRunId.set(normalized.runId, {
@@ -376,7 +383,7 @@ async function loadDurableWorkflowArtifacts(
   }
   return {
     byRunId: artifactsByRunId,
-    hasRows: result.rows.length > 0,
+    hasRows: rows.length > 0,
   }
 }
 
@@ -615,10 +622,10 @@ export async function listWorkbookThreadWorkflowRuns(
 ): Promise<WorkbookAgentWorkflowRun[]> {
   const rows = (await db.listWorkbookWorkflowRunRows(input)).slice(0, input.limit ?? 20).map(toWorkflowRunRow)
   const runIds = rows.flatMap((row) => (typeof row.runId === 'string' ? [row.runId] : []))
-  const [durableSteps, durableArtifacts] = await Promise.all([
-    loadDurableWorkflowSteps(db, input.documentId, runIds),
-    loadDurableWorkflowArtifacts(db, input.documentId, runIds),
-  ])
+  const selectedRunIds = new Set(runIds)
+  const [stepRows, artifactRows] = await Promise.all([db.listWorkbookWorkflowStepRows(input), db.listWorkbookWorkflowArtifactRows(input)])
+  const durableSteps = loadDurableWorkflowSteps(stepRows, selectedRunIds)
+  const durableArtifacts = loadDurableWorkflowArtifacts(artifactRows, selectedRunIds)
   return rows.flatMap((row) => {
     const runId = typeof row.runId === 'string' ? row.runId : null
     const hydrated: {

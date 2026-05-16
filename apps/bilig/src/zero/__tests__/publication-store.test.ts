@@ -95,6 +95,8 @@ describe('publication-store', () => {
     expect(query.text).toContain(`public."workbook_chat_thread"`)
     expect(query.text).toContain(`public."workbook_agent_run"`)
     expect(query.text).toContain(`public."workbook_workflow_run"`)
+    expect(query.text).toContain(`public."workbook_workflow_step"`)
+    expect(query.text).toContain(`public."workbook_workflow_artifact"`)
     expect(query.text).not.toContain(`public."workbooks"`)
     expect(query.text).not.toContain(`public."defined_names"`)
   })

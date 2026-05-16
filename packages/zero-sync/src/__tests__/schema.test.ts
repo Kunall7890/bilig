@@ -8,6 +8,8 @@ describe('zero sync schema', () => {
     expect(zeroSchemaServerColumnNamesByTable.cell_styles).toEqual(['workbook_id', 'style_id', 'record_json', 'hash', 'created_at'])
     expect(zeroSchemaColumnNamesByTable.workbook_agent_run).toEqual(Object.keys(schema.tables.workbook_agent_run.columns))
     expect(zeroSchemaColumnNamesByTable.workbook_workflow_run).toEqual(Object.keys(schema.tables.workbook_workflow_run.columns))
+    expect(zeroSchemaColumnNamesByTable.workbook_workflow_step).toEqual(Object.keys(schema.tables.workbook_workflow_step.columns))
+    expect(zeroSchemaColumnNamesByTable.workbook_workflow_artifact).toEqual(Object.keys(schema.tables.workbook_workflow_artifact.columns))
   })
 
   it('maps workbooks.updated_at as a numeric timestamp', () => {
@@ -66,6 +68,25 @@ describe('zero sync schema', () => {
         destField: ['workbookId', 'threadId', 'ownerUserId'],
         destSchema: 'workbook_chat_thread',
         cardinality: 'many',
+      },
+    ])
+  })
+
+  it('relates workflow child rows to their parent run visibility model', () => {
+    expect(schema.relationships.workbook_workflow_step.workflowRun).toEqual([
+      {
+        sourceField: ['runId'],
+        destField: ['runId'],
+        destSchema: 'workbook_workflow_run',
+        cardinality: 'one',
+      },
+    ])
+    expect(schema.relationships.workbook_workflow_artifact.workflowRun).toEqual([
+      {
+        sourceField: ['runId'],
+        destField: ['runId'],
+        destSchema: 'workbook_workflow_run',
+        cardinality: 'one',
       },
     ])
   })

@@ -209,6 +209,30 @@ const workbookWorkflowRun = table('workbook_workflow_run')
   })
   .primaryKey('runId')
 
+const workbookWorkflowStep = table('workbook_workflow_step')
+  .columns({
+    workbookId: string().from('workbook_id'),
+    runId: string().from('run_id'),
+    stepId: string().from('step_id'),
+    stepOrder: number().from('step_order'),
+    label: string(),
+    status: string<'pending' | 'running' | 'completed' | 'failed' | 'cancelled'>(),
+    summary: string(),
+    updatedAtUnixMs: number().from('updated_at_unix_ms'),
+  })
+  .primaryKey('runId', 'stepId')
+
+const workbookWorkflowArtifact = table('workbook_workflow_artifact')
+  .columns({
+    runId: string().from('run_id'),
+    workbookId: string().from('workbook_id'),
+    kind: string<'markdown'>(),
+    title: string(),
+    text: string(),
+    updatedAtUnixMs: number().from('updated_at_unix_ms'),
+  })
+  .primaryKey('runId')
+
 const workbookAgentRunRelationships = relationships(workbookAgentRun, ({ many }) => ({
   ownerChatThreads: many({
     sourceField: ['workbookId', 'threadId', 'actorUserId'],
@@ -227,6 +251,22 @@ const workbookWorkflowRunRelationships = relationships(workbookWorkflowRun, ({ m
     sourceField: ['workbookId', 'threadId', 'startedByUserId'],
     destField: ['workbookId', 'threadId', 'ownerUserId'],
     destSchema: workbookChatThread,
+  }),
+}))
+
+const workbookWorkflowStepRelationships = relationships(workbookWorkflowStep, ({ one }) => ({
+  workflowRun: one({
+    sourceField: ['runId'],
+    destField: ['runId'],
+    destSchema: workbookWorkflowRun,
+  }),
+}))
+
+const workbookWorkflowArtifactRelationships = relationships(workbookWorkflowArtifact, ({ one }) => ({
+  workflowRun: one({
+    sourceField: ['runId'],
+    destField: ['runId'],
+    destSchema: workbookWorkflowRun,
   }),
 }))
 
@@ -278,10 +318,14 @@ export const schema = createSchema({
     workbookChatThread,
     workbookAgentRun,
     workbookWorkflowRun,
+    workbookWorkflowStep,
+    workbookWorkflowArtifact,
   ],
   relationships: [
     workbookAgentRunRelationships,
     workbookWorkflowRunRelationships,
+    workbookWorkflowStepRelationships,
+    workbookWorkflowArtifactRelationships,
     cellRelationships,
     cellEvalRelationships,
     rowMetadataRelationships,

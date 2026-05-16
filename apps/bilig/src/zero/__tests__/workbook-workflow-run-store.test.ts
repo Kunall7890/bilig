@@ -8,6 +8,8 @@ import type { QueryResultRow, Queryable } from '../store.js'
 import type { Row } from '@rocicorp/zero'
 
 type ZeroWorkflowRunRow = Row['workbook_workflow_run']
+type ZeroWorkflowStepRow = Row['workbook_workflow_step']
+type ZeroWorkflowArtifactRow = Row['workbook_workflow_artifact']
 
 interface RecordedQuery {
   readonly text: string
@@ -152,6 +154,10 @@ function createZeroWorkflowRunRow(
 function createWorkflowRunStoreConnection(
   workflowRows: readonly ZeroWorkflowRunRow[],
   responders: readonly ((text: string, values: readonly unknown[] | undefined) => QueryResultRow[] | null)[] = [],
+  childRows: {
+    readonly stepRows?: readonly QueryResultRow[]
+    readonly artifactRows?: readonly QueryResultRow[]
+  } = {},
 ) {
   const queryable = new FakeQueryable(responders)
   const workflowRunInputs: {
@@ -159,13 +165,64 @@ function createWorkflowRunStoreConnection(
     readonly actorUserId: string
     readonly threadId: string
   }[] = []
+  const workflowStepInputs: {
+    readonly documentId: string
+    readonly actorUserId: string
+    readonly threadId: string
+  }[] = []
+  const workflowArtifactInputs: {
+    readonly documentId: string
+    readonly actorUserId: string
+    readonly threadId: string
+  }[] = []
   return Object.assign(queryable, {
     workflowRunInputs,
+    workflowStepInputs,
+    workflowArtifactInputs,
     async listWorkbookWorkflowRunRows(input: { readonly documentId: string; readonly actorUserId: string; readonly threadId: string }) {
       workflowRunInputs.push(input)
       return workflowRows
     },
+    async listWorkbookWorkflowStepRows(input: { readonly documentId: string; readonly actorUserId: string; readonly threadId: string }) {
+      workflowStepInputs.push(input)
+      return childRows.stepRows ?? []
+    },
+    async listWorkbookWorkflowArtifactRows(input: {
+      readonly documentId: string
+      readonly actorUserId: string
+      readonly threadId: string
+    }) {
+      workflowArtifactInputs.push(input)
+      return childRows.artifactRows ?? []
+    },
   })
+}
+
+function createZeroWorkflowStepRows(run: ReturnType<typeof createWorkflowRun>): ZeroWorkflowStepRow[] {
+  return run.steps.map((step, index) => ({
+    workbookId: 'doc-1',
+    runId: run.runId,
+    stepId: step.stepId,
+    stepOrder: index,
+    label: step.label,
+    status: step.status,
+    summary: step.summary,
+    updatedAtUnixMs: step.updatedAtUnixMs,
+  }))
+}
+
+function createZeroWorkflowArtifactRow(run: ReturnType<typeof createWorkflowRun>): ZeroWorkflowArtifactRow {
+  if (!run.artifact) {
+    throw new Error('Expected workflow run artifact')
+  }
+  return {
+    runId: run.runId,
+    workbookId: 'doc-1',
+    kind: run.artifact.kind,
+    title: run.artifact.title,
+    text: run.artifact.text,
+    updatedAtUnixMs: run.updatedAtUnixMs,
+  }
 }
 
 describe('workbook-workflow-run-store', () => {
@@ -343,37 +400,10 @@ describe('workbook-workflow-run-store', () => {
 
   it('loads visible workflow run rows through the shared Zero query model', async () => {
     const run = createWorkflowRun()
-    const queryable = createWorkflowRunStoreConnection(
-      [createZeroWorkflowRunRow(run)],
-      [
-        (text, values) =>
-          text.includes('FROM workbook_workflow_step AS step') && values?.[0] === 'doc-1' && Array.isArray(values?.[1])
-            ? run.steps.map(
-                (step, index) =>
-                  ({
-                    runId: run.runId,
-                    stepId: step.stepId,
-                    stepOrder: index,
-                    label: step.label,
-                    status: step.status,
-                    summary: step.summary,
-                    updatedAtUnixMs: step.updatedAtUnixMs,
-                  }) satisfies QueryResultRow,
-              )
-            : null,
-        (text, values) =>
-          text.includes('FROM workbook_workflow_artifact AS artifact') && values?.[0] === 'doc-1' && Array.isArray(values?.[1])
-            ? [
-                {
-                  runId: run.runId,
-                  kind: run.artifact?.kind,
-                  title: run.artifact?.title,
-                  text: run.artifact?.text,
-                } satisfies QueryResultRow,
-              ]
-            : null,
-      ],
-    )
+    const queryable = createWorkflowRunStoreConnection([createZeroWorkflowRunRow(run)], [], {
+      stepRows: createZeroWorkflowStepRows(run),
+      artifactRows: [createZeroWorkflowArtifactRow(run)],
+    })
 
     const runs = await listWorkbookThreadWorkflowRuns(queryable, {
       documentId: 'doc-1',
@@ -382,7 +412,11 @@ describe('workbook-workflow-run-store', () => {
     })
 
     expect(queryable.workflowRunInputs).toEqual([{ documentId: 'doc-1', actorUserId: 'casey@example.com', threadId: 'thr-1' }])
+    expect(queryable.workflowStepInputs).toEqual([{ documentId: 'doc-1', actorUserId: 'casey@example.com', threadId: 'thr-1' }])
+    expect(queryable.workflowArtifactInputs).toEqual([{ documentId: 'doc-1', actorUserId: 'casey@example.com', threadId: 'thr-1' }])
     expect(queryable.calls.some((call) => call.text.includes('FROM workbook_workflow_run AS run'))).toBe(false)
+    expect(queryable.calls.some((call) => call.text.includes('FROM workbook_workflow_step AS step'))).toBe(false)
+    expect(queryable.calls.some((call) => call.text.includes('FROM workbook_workflow_artifact AS artifact'))).toBe(false)
     expect(runs).toEqual([
       expect.objectContaining({
         runId: 'workflow-1',
@@ -822,46 +856,20 @@ describe('workbook-workflow-run-store', () => {
 
   it('drops workflow runs when durable step rows are malformed instead of falling back to legacy step json', async () => {
     const run = createWorkflowRun()
-    const queryable = createWorkflowRunStoreConnection(
-      [createZeroWorkflowRunRow(run)],
-      [
-        (text, values) =>
-          text.includes('FROM workbook_workflow_run AS run') && values?.[1] === 'thr-1'
-            ? [
-                {
-                  runId: run.runId,
-                  workbookId: 'doc-1',
-                  threadId: run.threadId,
-                  actorUserId: run.startedByUserId,
-                  workflowTemplate: run.workflowTemplate,
-                  title: run.title,
-                  summary: run.summary,
-                  status: run.status,
-                  createdAtUnixMs: run.createdAtUnixMs,
-                  updatedAtUnixMs: run.updatedAtUnixMs,
-                  completedAtUnixMs: run.completedAtUnixMs,
-                  errorMessage: run.errorMessage,
-                  stepsJson: run.steps,
-                  artifactJson: run.artifact,
-                } satisfies QueryResultRow,
-              ]
-            : null,
-        (text, values) =>
-          text.includes('FROM workbook_workflow_step AS step') && values?.[0] === 'doc-1' && Array.isArray(values?.[1])
-            ? [
-                {
-                  runId: run.runId,
-                  stepId: 'bad-step',
-                  stepOrder: -1,
-                  label: 'Bad step',
-                  status: 'completed',
-                  summary: 'Should invalidate the run.',
-                  updatedAtUnixMs: 120,
-                } satisfies QueryResultRow,
-              ]
-            : null,
+    const queryable = createWorkflowRunStoreConnection([createZeroWorkflowRunRow(run)], [], {
+      stepRows: [
+        {
+          workbookId: 'doc-1',
+          runId: run.runId,
+          stepId: 'bad-step',
+          stepOrder: -1,
+          label: 'Bad step',
+          status: 'completed',
+          summary: 'Should invalidate the run.',
+          updatedAtUnixMs: 120,
+        },
       ],
-    )
+    })
 
     await expect(
       listWorkbookThreadWorkflowRuns(queryable, {
@@ -879,43 +887,10 @@ describe('workbook-workflow-run-store', () => {
       runId: 'workflow-missing-steps',
       title: 'Missing Durable Steps',
     }
-    const queryable = createWorkflowRunStoreConnection(
-      [createZeroWorkflowRunRow(firstRun), createZeroWorkflowRunRow(secondRun)],
-      [
-        (text, values) =>
-          text.includes('FROM workbook_workflow_step AS step') && values?.[0] === 'doc-1' && Array.isArray(values?.[1])
-            ? firstRun.steps.map(
-                (step, index) =>
-                  ({
-                    runId: firstRun.runId,
-                    stepId: step.stepId,
-                    stepOrder: index,
-                    label: step.label,
-                    status: step.status,
-                    summary: step.summary,
-                    updatedAtUnixMs: step.updatedAtUnixMs,
-                  }) satisfies QueryResultRow,
-              )
-            : null,
-        (text, values) =>
-          text.includes('FROM workbook_workflow_artifact AS artifact') && values?.[0] === 'doc-1' && Array.isArray(values?.[1])
-            ? [
-                {
-                  runId: firstRun.runId,
-                  kind: firstRun.artifact?.kind,
-                  title: firstRun.artifact?.title,
-                  text: firstRun.artifact?.text,
-                } satisfies QueryResultRow,
-                {
-                  runId: secondRun.runId,
-                  kind: secondRun.artifact?.kind,
-                  title: secondRun.artifact?.title,
-                  text: secondRun.artifact?.text,
-                } satisfies QueryResultRow,
-              ]
-            : null,
-      ],
-    )
+    const queryable = createWorkflowRunStoreConnection([createZeroWorkflowRunRow(firstRun), createZeroWorkflowRunRow(secondRun)], [], {
+      stepRows: createZeroWorkflowStepRows(firstRun),
+      artifactRows: [createZeroWorkflowArtifactRow(firstRun), createZeroWorkflowArtifactRow(secondRun)],
+    })
 
     await expect(
       listWorkbookThreadWorkflowRuns(queryable, {
@@ -932,43 +907,18 @@ describe('workbook-workflow-run-store', () => {
 
   it('drops workflow runs when durable artifact rows are malformed instead of falling back to legacy artifact json', async () => {
     const run = createWorkflowRun()
-    const queryable = createWorkflowRunStoreConnection(
-      [createZeroWorkflowRunRow(run)],
-      [
-        (text, values) =>
-          text.includes('FROM workbook_workflow_run AS run') && values?.[1] === 'thr-1'
-            ? [
-                {
-                  runId: run.runId,
-                  workbookId: 'doc-1',
-                  threadId: run.threadId,
-                  actorUserId: run.startedByUserId,
-                  workflowTemplate: run.workflowTemplate,
-                  title: run.title,
-                  summary: run.summary,
-                  status: run.status,
-                  createdAtUnixMs: run.createdAtUnixMs,
-                  updatedAtUnixMs: run.updatedAtUnixMs,
-                  completedAtUnixMs: run.completedAtUnixMs,
-                  errorMessage: run.errorMessage,
-                  stepsJson: run.steps,
-                  artifactJson: run.artifact,
-                } satisfies QueryResultRow,
-              ]
-            : null,
-        (text, values) =>
-          text.includes('FROM workbook_workflow_artifact AS artifact') && values?.[0] === 'doc-1' && Array.isArray(values?.[1])
-            ? [
-                {
-                  runId: run.runId,
-                  kind: 'markdown',
-                  title: null,
-                  text: run.artifact?.text,
-                } satisfies QueryResultRow,
-              ]
-            : null,
+    const queryable = createWorkflowRunStoreConnection([createZeroWorkflowRunRow(run)], [], {
+      artifactRows: [
+        {
+          runId: run.runId,
+          workbookId: 'doc-1',
+          kind: 'markdown',
+          title: null,
+          text: run.artifact?.text,
+          updatedAtUnixMs: run.updatedAtUnixMs,
+        },
       ],
-    )
+    })
 
     await expect(
       listWorkbookThreadWorkflowRuns(queryable, {
@@ -986,39 +936,10 @@ describe('workbook-workflow-run-store', () => {
       runId: 'workflow-missing-artifact',
       title: 'Missing Durable Artifact',
     }
-    const queryable = createWorkflowRunStoreConnection(
-      [createZeroWorkflowRunRow(firstRun), createZeroWorkflowRunRow(secondRun)],
-      [
-        (text, values) =>
-          text.includes('FROM workbook_workflow_step AS step') && values?.[0] === 'doc-1' && Array.isArray(values?.[1])
-            ? [firstRun, secondRun].flatMap((run) =>
-                run.steps.map(
-                  (step, index) =>
-                    ({
-                      runId: run.runId,
-                      stepId: step.stepId,
-                      stepOrder: index,
-                      label: step.label,
-                      status: step.status,
-                      summary: step.summary,
-                      updatedAtUnixMs: step.updatedAtUnixMs,
-                    }) satisfies QueryResultRow,
-                ),
-              )
-            : null,
-        (text, values) =>
-          text.includes('FROM workbook_workflow_artifact AS artifact') && values?.[0] === 'doc-1' && Array.isArray(values?.[1])
-            ? [
-                {
-                  runId: firstRun.runId,
-                  kind: firstRun.artifact?.kind,
-                  title: firstRun.artifact?.title,
-                  text: firstRun.artifact?.text,
-                } satisfies QueryResultRow,
-              ]
-            : null,
-      ],
-    )
+    const queryable = createWorkflowRunStoreConnection([createZeroWorkflowRunRow(firstRun), createZeroWorkflowRunRow(secondRun)], [], {
+      stepRows: [...createZeroWorkflowStepRows(firstRun), ...createZeroWorkflowStepRows(secondRun)],
+      artifactRows: [createZeroWorkflowArtifactRow(firstRun)],
+    })
 
     await expect(
       listWorkbookThreadWorkflowRuns(queryable, {

@@ -195,6 +195,39 @@ const visibleWorkbookWorkflowRunByThread = defineQuery(workbookThreadViewerArgsS
     .orderBy('updatedAtUnixMs', 'desc'),
 )
 
+const workbookWorkflowStepByThread = defineUserQuery(workbookThreadArgsSchema, ({ args, ctx }) =>
+  zql.workbook_workflow_step
+    .where('workbookId', args.documentId)
+    .where((expression) =>
+      expression.exists('workflowRun', (runQuery) =>
+        runQuery.where('threadId', args.threadId).where((runExpression) =>
+          runExpression.or(
+            runExpression.cmp('startedByUserId', ctx.userID),
+            runExpression.exists('ownerChatThreads', (threadQuery) => threadQuery.where('scope', 'shared')),
+          ),
+        ),
+      ),
+    )
+    .orderBy('runId', 'asc')
+    .orderBy('stepOrder', 'asc'),
+)
+
+const workbookWorkflowArtifactByThread = defineUserQuery(workbookThreadArgsSchema, ({ args, ctx }) =>
+  zql.workbook_workflow_artifact
+    .where('workbookId', args.documentId)
+    .where((expression) =>
+      expression.exists('workflowRun', (runQuery) =>
+        runQuery.where('threadId', args.threadId).where((runExpression) =>
+          runExpression.or(
+            runExpression.cmp('startedByUserId', ctx.userID),
+            runExpression.exists('ownerChatThreads', (threadQuery) => threadQuery.where('scope', 'shared')),
+          ),
+        ),
+      ),
+    )
+    .orderBy('runId', 'asc'),
+)
+
 const workbookAgentRunByWorkbook = defineUserQuery(workbookQueryArgsSchema, ({ args: { documentId }, ctx }) =>
   zql.workbook_agent_run.where('workbookId', documentId).where('actorUserId', ctx.userID).orderBy('appliedAtUnixMs', 'desc'),
 )
@@ -300,6 +333,12 @@ export const queries = defineQueries({
   workbookWorkflowRun: {
     byThread: workbookWorkflowRunByThread,
     visibleByThread: visibleWorkbookWorkflowRunByThread,
+  },
+  workbookWorkflowStep: {
+    byThread: workbookWorkflowStepByThread,
+  },
+  workbookWorkflowArtifact: {
+    byThread: workbookWorkflowArtifactByThread,
   },
   workbookAgentWorkflowRun: {
     byThread: workbookWorkflowRunByThread,
