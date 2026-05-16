@@ -845,7 +845,7 @@ function resolveSuiteOptions(options: ComparativeBenchmarkSuiteOptions): Require
   }
 }
 
-function parseExpandedBenchmarkCliOptions(args: readonly string[]): ComparativeBenchmarkSuiteOptions {
+export function parseExpandedBenchmarkCliOptions(args: readonly string[]): ComparativeBenchmarkSuiteOptions {
   const options: ComparativeBenchmarkSuiteOptions = {}
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index]!
@@ -854,7 +854,7 @@ function parseExpandedBenchmarkCliOptions(args: readonly string[]): ComparativeB
       if (raw === undefined) {
         throw new Error('Missing value for --sample-count')
       }
-      options.sampleCount = Number.parseInt(raw, 10)
+      options.sampleCount = parsePositiveDecimalInteger(raw, '--sample-count')
       index += 1
       continue
     }
@@ -863,9 +863,30 @@ function parseExpandedBenchmarkCliOptions(args: readonly string[]): ComparativeB
       if (raw === undefined) {
         throw new Error('Missing value for --warmup-count')
       }
-      options.warmupCount = Number.parseInt(raw, 10)
+      options.warmupCount = parseNonNegativeDecimalInteger(raw, '--warmup-count')
       index += 1
+      continue
     }
+    throw new Error(`Unknown expanded benchmark argument: ${arg}`)
   }
   return options
+}
+
+function parsePositiveDecimalInteger(value: string, option: string): number {
+  const parsed = parseNonNegativeDecimalInteger(value, option)
+  if (parsed < 1) {
+    throw new Error(`${option} expects a positive integer, got ${value}`)
+  }
+  return parsed
+}
+
+function parseNonNegativeDecimalInteger(value: string, option: string): number {
+  if (!/^(?:0|[1-9]\d*)$/u.test(value)) {
+    throw new Error(`${option} expects a non-negative integer, got ${value}`)
+  }
+  const parsed = Number(value)
+  if (!Number.isSafeInteger(parsed)) {
+    throw new Error(`${option} expects a safe integer, got ${value}`)
+  }
+  return parsed
 }

@@ -6,6 +6,7 @@ import { ENGINE_COUNTER_KEYS } from '../../../core/src/perf/engine-counters.js'
 import {
   EXPANDED_COMPARATIVE_WORKLOADS,
   buildExpandedComparativeBenchmarkReport,
+  parseExpandedBenchmarkCliOptions,
   type ExpandedComparativeBenchmarkResult,
   type ExpandedComparativeBenchmarkWorkload,
 } from '../benchmark-workpaper-vs-hyperformula-expanded.js'
@@ -360,6 +361,27 @@ describe('expanded comparative benchmark workloads', () => {
         },
       },
     })
+  })
+
+  it('parses expanded benchmark CLI sample controls strictly', () => {
+    expect(parseExpandedBenchmarkCliOptions(['--sample-count', '5', '--warmup-count', '0'])).toEqual({
+      sampleCount: 5,
+      warmupCount: 0,
+    })
+  })
+
+  it('rejects malformed expanded benchmark CLI sample controls', () => {
+    expect(() => parseExpandedBenchmarkCliOptions(['--sample-count', '1.5'])).toThrow(
+      '--sample-count expects a non-negative integer, got 1.5',
+    )
+    expect(() => parseExpandedBenchmarkCliOptions(['--sample-count', '0'])).toThrow('--sample-count expects a positive integer, got 0')
+    expect(() => parseExpandedBenchmarkCliOptions(['--warmup-count', '3abc'])).toThrow(
+      '--warmup-count expects a non-negative integer, got 3abc',
+    )
+  })
+
+  it('rejects unknown expanded benchmark CLI arguments', () => {
+    expect(() => parseExpandedBenchmarkCliOptions(['--samples', '5'])).toThrow('Unknown expanded benchmark argument: --samples')
   })
 
   it('emits engine counters for additional WorkPaper structural workload helpers', () => {
