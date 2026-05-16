@@ -89,8 +89,22 @@ function getPaneTextRuns(pane: TextLayerPane): readonly TextQuadRun[] {
 }
 
 function resolveNativeTextRunKey(pane: TextLayerPane, run: TextQuadRun): string {
+  const paneRevision =
+    'tile' in pane
+      ? [
+          pane.paneId,
+          pane.tile.tileId,
+          pane.tile.lastBatchId,
+          pane.tile.lastCameraSeq,
+          pane.tile.version.values,
+          pane.tile.version.text,
+          pane.tile.version.styles,
+        ].join(':')
+      : pane.paneId
   return [
-    pane.paneId,
+    paneRevision,
+    run.row ?? '',
+    run.col ?? '',
     run.text,
     run.x,
     run.y,

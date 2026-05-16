@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import type { GridGeometrySnapshot } from '../gridGeometry.js'
 import type { GridHeaderPaneState } from '../gridHeaderPanes.js'
 import type { GridCameraStore } from '../runtime/gridCameraStore.js'
@@ -239,6 +239,13 @@ export const WorkbookPaneCanvasFallbackV3 = memo(function WorkbookPaneCanvasFall
     headerPanes.forEach((pane) => drawPane(context, pane, frame.scrollSnapshot, drawText))
     drawOverlay(context, frame.overlay)
   }, [active, cameraStore, drawText, geometry, headerPanes, host, overlay, overlayBuilder, scrollTransformStore, tilePanes])
+
+  useLayoutEffect(() => {
+    if (!active || !host) {
+      return
+    }
+    draw()
+  }, [active, draw, host])
 
   useEffect(() => {
     if (!active || !host) {

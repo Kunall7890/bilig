@@ -1,9 +1,13 @@
-import { describe, expect, test, vi } from 'vitest'
+// @vitest-environment jsdom
+import { act, createElement } from 'react'
+import { createRoot } from 'react-dom/client'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { createGridAxisWorldIndex } from '../gridAxisWorldIndex.js'
 import { createGridGeometrySnapshotFromAxes } from '../gridGeometry.js'
 import { getGridMetrics } from '../gridMetrics.js'
 import { GridCameraStore } from '../runtime/gridCameraStore.js'
 import {
+  WorkbookPaneCanvasFallbackV3,
   drawTextRuns,
   resolveWorkbookPaneCanvasFallbackFrame,
   type CanvasTextRunContext,
@@ -13,6 +17,8 @@ import type { GridRenderTile } from '../renderer-v3/render-tile-source.js'
 import type { WorkbookRenderTilePaneState } from '../renderer-v3/render-tile-pane-state.js'
 import { WorkbookGridScrollStore } from '../workbookGridScrollStore.js'
 import { WORKBOOK_FONT_SANS } from '../workbookTheme.js'
+
+const canvasGetContextDescriptor = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, 'getContext')
 
 function createCanvasContextMock(): {
   readonly context: CanvasTextRunContext
@@ -97,7 +103,48 @@ function createBodyPane(rowStart = 0): WorkbookRenderTilePaneState {
   }
 }
 
+function createTextBodyPane(): WorkbookRenderTilePaneState {
+  const pane = createBodyPane()
+  return {
+    ...pane,
+    tile: {
+      ...pane.tile,
+      textCount: 1,
+      textRuns: [
+        {
+          align: 'left',
+          clipHeight: 20,
+          clipWidth: 120,
+          clipX: 0,
+          clipY: 0,
+          color: '#111827',
+          col: 1,
+          font: '400 14px Arial, sans-serif',
+          fontSize: 14,
+          height: 24,
+          row: 1,
+          strike: false,
+          text: 'stale canvas text',
+          underline: false,
+          width: 120,
+          wrap: false,
+          x: 104,
+          y: 24,
+        },
+      ],
+    },
+  }
+}
+
 describe('WorkbookPaneCanvasFallbackV3', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    if (canvasGetContextDescriptor) {
+      Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', canvasGetContextDescriptor)
+    }
+    document.body.innerHTML = ''
+  })
+
   test('clips long text without using canvas maxWidth font compression', () => {
     const { context, fillText } = createCanvasContextMock()
 
@@ -227,6 +274,89 @@ describe('WorkbookPaneCanvasFallbackV3', () => {
     expect(frame.overlay?.cameraSeq).toBe(liveGeometry.camera.seq)
     expect(frame.scrollSnapshot.renderTy).toBe(0)
     expect(overlayBuilder).toHaveBeenCalledWith(liveGeometry)
+  })
+
+  test('clears stale fallback text synchronously when native text takes ownership', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    const host = document.createElement('div')
+    Object.defineProperty(host, 'clientWidth', { configurable: true, value: 480 })
+    Object.defineProperty(host, 'clientHeight', { configurable: true, value: 240 })
+    document.body.appendChild(host)
+
+    const fillText = vi.fn()
+    const clearRect = vi.fn()
+    const context = {
+      beginPath: vi.fn(),
+      clearRect,
+      clip: vi.fn(),
+      fillRect: vi.fn(),
+      fillStyle: '',
+      fillText,
+      font: '',
+      lineTo: vi.fn(),
+      lineWidth: 1,
+      measureText: vi.fn(() => ({ width: 120 })),
+      moveTo: vi.fn(),
+      rect: vi.fn(),
+      restore: vi.fn(),
+      save: vi.fn(),
+      setTransform: vi.fn(),
+      stroke: vi.fn(),
+      strokeStyle: '',
+      textAlign: 'left' as CanvasTextAlign,
+      textBaseline: 'middle' as CanvasTextBaseline,
+      translate: vi.fn(),
+    }
+    Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
+      configurable: true,
+      value: vi.fn(() => context),
+    })
+    vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(1)
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => undefined)
+
+    const root = createRoot(host)
+    const pane = createTextBodyPane()
+    await act(async () => {
+      root.render(
+        createElement(WorkbookPaneCanvasFallbackV3, {
+          active: true,
+          drawText: true,
+          geometry: null,
+          headerPanes: [],
+          host,
+          overlay: null,
+          scrollTransformStore: null,
+          tilePanes: [pane],
+        }),
+      )
+    })
+
+    expect(clearRect).toHaveBeenCalled()
+    expect(fillText).toHaveBeenCalledWith('stale canvas text', 110, 36)
+    fillText.mockClear()
+    clearRect.mockClear()
+
+    await act(async () => {
+      root.render(
+        createElement(WorkbookPaneCanvasFallbackV3, {
+          active: true,
+          drawText: false,
+          geometry: null,
+          headerPanes: [],
+          host,
+          overlay: null,
+          scrollTransformStore: null,
+          tilePanes: [pane],
+        }),
+      )
+    })
+
+    expect(clearRect).toHaveBeenCalled()
+    expect(fillText).not.toHaveBeenCalled()
+
+    await act(async () => {
+      root.unmount()
+    })
   })
 
   test('prefers fresher geometry props over stale live camera store snapshots', () => {

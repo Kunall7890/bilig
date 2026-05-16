@@ -15,6 +15,8 @@ import { WORKBOOK_FONT_SANS } from '../workbookTheme.js'
 
 export interface TextQuadRun {
   readonly text: string
+  readonly row?: number | undefined
+  readonly col?: number | undefined
   readonly x: number
   readonly y: number
   readonly width?: number
