@@ -1,7 +1,7 @@
 # bilig
 
-> headless spreadsheet engine for node services, workbook automation, and
-> formula-backed business workflows.
+> formula WorkPaper runtime for node services, agent tools, workbook
+> automation, and formula-backed business workflows.
 
 site: https://proompteng.github.io/bilig/
 repository: https://github.com/proompteng/bilig
@@ -16,6 +16,7 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
 
 - https://proompteng.github.io/bilig/
 - https://proompteng.github.io/bilig/stop-driving-spreadsheets-with-screenshots.html
+- https://proompteng.github.io/bilig/formula-workbooks-node-services-agent-tools.html
 - https://proompteng.github.io/bilig/headless-spreadsheet-engine-node-services-agents.html
 - https://proompteng.github.io/bilig/exceljs-formula-recalculation-node.html
 - https://dev.to/gregkonush/why-agents-need-workbook-apis-instead-of-spreadsheet-screenshots-3d61
@@ -153,6 +154,9 @@ npm run agent:verify
 - headless spreadsheet engine for Node services and agents:
   https://proompteng.github.io/bilig/headless-spreadsheet-engine-node-services-agents.html
   https://github.com/proompteng/bilig/blob/main/docs/headless-spreadsheet-engine-node-services-agents.md
+- formula workbooks for Node services and agent tools:
+  https://proompteng.github.io/bilig/formula-workbooks-node-services-agent-tools.html
+  https://github.com/proompteng/bilig/blob/main/docs/formula-workbooks-node-services-agent-tools.md
 - screenshot automation boundary:
   https://proompteng.github.io/bilig/stop-driving-spreadsheets-with-screenshots.html
   https://github.com/proompteng/bilig/blob/main/docs/stop-driving-spreadsheets-with-screenshots.md

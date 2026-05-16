@@ -35,7 +35,7 @@ npm install @bilig/headless
 
 <!-- headless-package-footprint:start -->
 
-Current checked npm footprint for `@bilig/headless@0.16.10`:
+Current checked npm footprint for `@bilig/headless@0.16.11`:
 
 - Pack dry run: `420 kB` tarball, `2.51 MB` unpacked, `429` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
@@ -49,11 +49,11 @@ Current checked npm footprint for `@bilig/headless@0.16.10`:
 
 ## Published Package Trust
 
-`@bilig/headless@0.16.10` is published with npm registry signatures and SLSA
+`@bilig/headless@0.16.11` is published with npm registry signatures and SLSA
 provenance attestations. Check the package before adopting it in a service:
 
 ```sh
-npm view @bilig/headless@0.16.10 version dist.attestations dist.signatures --json
+npm view @bilig/headless@0.16.11 version dist.attestations dist.signatures --json
 npm audit signatures
 ```
 
@@ -458,13 +458,17 @@ pnpm workpaper:xlsx-corpus:check -- /path/to/xlsx-corpus
   It starts from an empty Node directory, downloads one maintained TypeScript
   route smoke, writes quote inputs, recalculates an approval decision, persists
   JSON, and verifies restored readback.
+- For a shorter public decision page, read
+  [formula workbooks for Node services and agent tools](https://github.com/proompteng/bilig/blob/main/docs/formula-workbooks-node-services-agent-tools.md).
+  It compresses the WorkPaper boundary, MCP file-backed mode, benchmark caveat,
+  and alternative-tool guidance into one shareable evaluator path.
 - Auditing imported Excel files is a separate workflow. Cached formula values
   embedded in `.xlsx` files are useful for triage, but Bilig accuracy claims
   should be checked against a fresh Microsoft Excel recalculation.
 - Run `pnpm workpaper:bench:competitive:check` from the repository. The
   checked-in artifact shows
-  [`48/57` comparable WorkPaper mean wins](https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md)
-  and names the worst p95 holdout: `structural-append-formula-rows` at `4.339x`.
+  [`47/57` comparable WorkPaper mean wins](https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md)
+  and names the worst p95 holdout: `structural-append-formula-rows` at `3.414x`.
 - The shareable benchmark card is generated from the checked-in artifact:
   [`workpaper-benchmark-card.png`](https://github.com/proompteng/bilig/blob/main/docs/assets/workpaper-benchmark-card.png).
 - Read the
@@ -615,6 +619,7 @@ When the sanity check passes, these are the next useful pages.
   [Node spreadsheet formula engine](https://github.com/proompteng/bilig/blob/main/docs/node-spreadsheet-formula-engine.md),
   [Google Sheets API boundary](https://github.com/proompteng/bilig/blob/main/docs/google-sheets-api-alternative-node-workpaper.md),
   [docs/javascript-spreadsheet-library-headless-node.md](https://github.com/proompteng/bilig/blob/main/docs/javascript-spreadsheet-library-headless-node.md),
+  [formula workbooks for Node services and agent tools](https://github.com/proompteng/bilig/blob/main/docs/formula-workbooks-node-services-agent-tools.md),
   [headless spreadsheet engine for Node services and agents](https://github.com/proompteng/bilig/blob/main/docs/headless-spreadsheet-engine-node-services-agents.md),
   [ExcelJS formula recalculation in Node.js](https://github.com/proompteng/bilig/blob/main/docs/exceljs-formula-recalculation-node.md),
   [docs/sheetjs-exceljs-alternative-formula-workbook-api.md](https://github.com/proompteng/bilig/blob/main/docs/sheetjs-exceljs-alternative-formula-workbook-api.md),

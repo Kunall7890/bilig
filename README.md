@@ -118,7 +118,7 @@ matters.
 
 <!-- headless-package-footprint:start -->
 
-Current checked npm footprint for `@bilig/headless@0.16.10`:
+Current checked npm footprint for `@bilig/headless@0.16.11`:
 
 - Pack dry run: `420 kB` tarball, `2.51 MB` unpacked, `429` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
@@ -132,11 +132,11 @@ Current checked npm footprint for `@bilig/headless@0.16.10`:
 
 ## Published Package Trust
 
-`@bilig/headless@0.16.10` is published with npm registry signatures and SLSA
+`@bilig/headless@0.16.11` is published with npm registry signatures and SLSA
 provenance attestations. Verify the package before adopting it:
 
 ```sh
-npm view @bilig/headless@0.16.10 version dist.attestations dist.signatures --json
+npm view @bilig/headless@0.16.11 version dist.attestations dist.signatures --json
 ```
 
 After installing, npm can verify the current dependency tree:
@@ -169,6 +169,7 @@ For comparison and integration details, use the
 [screenshot automation boundary](docs/stop-driving-spreadsheets-with-screenshots.md),
 [Google Sheets API boundary](docs/google-sheets-api-alternative-node-workpaper.md),
 [workbook automation examples](docs/workbook-automation-examples-node.md),
+the [formula workbooks proof page](docs/formula-workbooks-node-services-agent-tools.md),
 the [Node spreadsheet formula engine guide](docs/node-spreadsheet-formula-engine.md),
 [server-side spreadsheet automation](docs/server-side-spreadsheet-automation-node.md),
 [framework adapters](docs/node-framework-workpaper-adapters.md),
@@ -283,9 +284,13 @@ It is published in the official MCP Registry as
   It starts from an empty Node directory, downloads one maintained TypeScript
   route smoke, writes quote inputs, recalculates an approval decision, persists
   JSON, and verifies restored readback.
+- For a shorter public decision page, read
+  [formula workbooks for Node services and agent tools](docs/formula-workbooks-node-services-agent-tools.md).
+  It compresses the WorkPaper boundary, MCP file-backed mode, benchmark caveat,
+  and alternative-tool guidance into one shareable evaluator path.
 - Run `pnpm workpaper:bench:competitive:check`. The checked-in artifact shows
-  [`48/57` comparable WorkPaper mean wins](docs/what-workpaper-benchmark-proves.md)
-  and names the worst p95 holdout: `structural-append-formula-rows` at `4.339x`.
+  [`47/57` comparable WorkPaper mean wins](docs/what-workpaper-benchmark-proves.md)
+  and names the worst p95 holdout: `structural-append-formula-rows` at `3.414x`.
 - The benchmark card is generated from that artifact:
   [`docs/assets/workpaper-benchmark-card.png`](docs/assets/workpaper-benchmark-card.png).
 - Read the [compatibility limits](docs/where-bilig-is-not-excel-compatible-yet.md)

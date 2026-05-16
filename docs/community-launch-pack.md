@@ -359,7 +359,7 @@ Latest conversion snapshot on May 16, 2026:
 
 - GitHub surface: `23` stars, `16` forks, `116` open issues, and `5` open
   pull requests. The star gap is still `977`.
-- npm surface: `@bilig/headless@0.16.10`, with `12,568` downloads in the
+- npm surface: `@bilig/headless@0.16.11`, with `12,568` downloads in the
   latest weekly window and `27,080` downloads in the latest monthly window.
 - Traffic surface: GitHub reports `528` views from `178` unique visitors and
   `21,402` clones from `2,534` unique cloners. The strongest referrers are
@@ -586,7 +586,7 @@ something.
 
 ### 2. Turn Benchmarks Into A Distribution Loop
 
-The `48/57` WorkPaper mean-win claim should become small, quotable artifacts:
+The `47/57` WorkPaper mean-win claim should become small, quotable artifacts:
 
 - one chart image for X, Bluesky, LinkedIn, and README embeds:
   [`docs/assets/workpaper-benchmark-card.png`](assets/workpaper-benchmark-card.png)
@@ -685,7 +685,7 @@ https://github.com/proompteng/bilig#try-it-in-90-seconds
 It edits an input, reads the recalculated value, saves WorkPaper JSON, restores
 it, and checks the value again.
 
-3/ Benchmark caveat is public too: 48/57 comparable mean-latency rows are faster
+3/ Benchmark caveat is public too: 47/57 comparable mean-latency rows are faster
 in the checked file, single-formula-edit-recalc is the visible p95 holdout,
 and UI rendering is not part of the benchmark.
 
@@ -722,7 +722,7 @@ logic but opening a browser grid is the wrong runtime boundary. It is not an
 Excel clone, and the compatibility limits are documented:
 https://github.com/proompteng/bilig/blob/main/docs/where-bilig-is-not-excel-compatible-yet.md
 
-The benchmark claim is intentionally narrow: the checked artifact has 48/57
+The benchmark claim is intentionally narrow: the checked artifact has 47/57
 comparable mean-latency wins against HyperFormula-style workloads,
 single-formula-edit-recalc is the visible p95 holdout, and UI rendering is
 not part of the benchmark.
@@ -748,7 +748,7 @@ If you have used HyperFormula, ExcelJS, or SheetJS for this kind of automation:
 what would block you from trying a WorkPaper-style API?
 ```
 
-### Hacker News Submission After The Quote Approval Page
+### Hacker News Submission After The Formula Workbooks Page
 
 Use this only when the linked page is live and the submitter is ready to answer
 technical questions in the thread.
@@ -762,13 +762,15 @@ Show HN: Formula workbooks for Node services
 URL:
 
 ```text
-https://proompteng.github.io/bilig/quote-approval-workpaper-api.html
+https://proompteng.github.io/bilig/formula-workbooks-node-services-agent-tools.html
 ```
 
 First comment:
 
 ```text
-I maintain this project. The linked page is the shortest production-shaped way to judge it: it starts from an empty Node directory, installs @bilig/headless from npm, downloads one maintained TypeScript route smoke, writes quote inputs, recalculates net revenue / gross margin / approval decision, serializes the WorkPaper JSON, restores it, and checks restoredMatchesAfter.
+I maintain this project. The linked page is the shortest decision page after the earlier Show HN: it starts with a production-shaped quote approval smoke, but also spells out the WorkPaper boundary, MCP file-backed mode, benchmark caveat, and when HyperFormula / SheetJS / ExcelJS / Google Sheets API are better fits.
+
+The runnable proof starts from an empty Node directory, installs @bilig/headless from npm, downloads one maintained TypeScript route smoke, writes quote inputs, recalculates net revenue / gross margin / approval decision, serializes the WorkPaper JSON, restores it, and checks restoredMatchesAfter.
 
 The package is aimed at backend and agent workflows where spreadsheet formulas are business logic but opening a browser grid is the wrong boundary. It is not a full Excel clone, and the compatibility gaps are documented publicly.
 

@@ -94,6 +94,7 @@ const [headlessSpreadsheetEngineComparison, sheetjsExceljsAlternativeFormulaWork
     readFile(join(docsRoot, 'sheetjs-exceljs-alternative-formula-workbook-api.md'), 'utf8'),
     readFile(join(docsRoot, 'hyperformula-alternative-headless-workpaper.md'), 'utf8'),
   ])
+const formulaWorkbooksProof = await readFile(join(docsRoot, 'formula-workbooks-node-services-agent-tools.md'), 'utf8')
 const googleSheetsApiBoundaryDoc = await readFile(join(docsRoot, 'google-sheets-api-alternative-node-workpaper.md'), 'utf8')
 
 requireHomepageDiscovery(index, siteCss, productCss)
@@ -129,6 +130,7 @@ requireIncludes(index, '"@type": "FAQPage"', 'docs/index.html')
 for (const required of [
   './why-agents-need-workbook-apis.html',
   './stop-driving-spreadsheets-with-screenshots.html',
+  './formula-workbooks-node-services-agent-tools.html',
   './agent-workpaper-tool-calling-recipe.html',
   './vercel-ai-sdk-langchain-spreadsheet-tool.html',
   './mcp-workpaper-tool-server.html',
@@ -213,6 +215,8 @@ for (const required of [
   'https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-records-input',
   'https://proompteng.github.io/bilig/why-agents-need-workbook-apis.html',
   'https://proompteng.github.io/bilig/stop-driving-spreadsheets-with-screenshots.html',
+  'https://proompteng.github.io/bilig/formula-workbooks-node-services-agent-tools.html',
+  'https://github.com/proompteng/bilig/blob/main/docs/formula-workbooks-node-services-agent-tools.md',
   'https://proompteng.github.io/bilig/try-bilig-headless-in-node.html',
   'https://proompteng.github.io/bilig/quote-approval-workpaper-api.html',
   'https://github.com/proompteng/bilig/blob/main/docs/quote-approval-workpaper-api.md',
@@ -293,6 +297,32 @@ for (const required of [
 for (const required of agentFrameworkLlmsRequiredLinks) {
   requireIncludes(llms, required, 'docs/llms.txt')
 }
+
+for (const required of [
+  'title: Formula workbooks for Node services and agent tools',
+  'npm install @bilig/headless',
+  'quote-approval-api.ts',
+  '"restoredMatchesAfter": true',
+  'bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --writable',
+  'Use HyperFormula first when you need a mature, broad formula engine',
+  'Use SheetJS or ExcelJS first when the primary job is reading, writing, styling',
+  'Use Google Sheets API first when a shared hosted spreadsheet',
+  'The current checked benchmark artifact records `47/57` comparable',
+  'structural-append-formula-rows',
+  'https://github.com/proompteng/bilig/stargazers',
+] as const) {
+  requireIncludes(formulaWorkbooksProof, required, 'docs/formula-workbooks-node-services-agent-tools.md')
+}
+requireIncludes(readme, 'formula workbooks proof page', 'README.md')
+requireIncludes(readme, 'docs/formula-workbooks-node-services-agent-tools.md', 'README.md')
+requireIncludes(headlessReadme, 'formula workbooks for Node services and agent tools', 'packages/headless/README.md')
+requireIncludes(headlessReadme, 'docs/formula-workbooks-node-services-agent-tools.md', 'packages/headless/README.md')
+requireIncludes(
+  communityLaunchPack,
+  'https://proompteng.github.io/bilig/formula-workbooks-node-services-agent-tools.html',
+  'docs/community-launch-pack.md',
+)
+requireIncludes(communityLaunchPack, 'Hacker News Submission After The Formula Workbooks Page', 'docs/community-launch-pack.md')
 
 await requireSharedPublicDocsDiscovery({
   docsRoot,
@@ -416,7 +446,7 @@ requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/google
 const npmProvenancePackageTrustDoc = await readFile(join(docsRoot, 'npm-provenance-package-trust.md'), 'utf8')
 for (const required of [
   'title: Verify npm provenance for @bilig/headless',
-  'npm view @bilig/headless@0.16.10 version dist.attestations dist.signatures --json',
+  'npm view @bilig/headless@0.16.11 version dist.attestations dist.signatures --json',
   'npm audit signatures',
   'dist.attestations.provenance.predicateType',
   'npm publish ... --provenance',
