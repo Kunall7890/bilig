@@ -2609,6 +2609,81 @@ describe('workbook agent pane', () => {
     }
   })
 
+  it('retries workbook context sync after a failed server response without marking stale context as synced', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    window.sessionStorage.setItem(
+      'bilig:workbook-agent:doc-1',
+      JSON.stringify({
+        threadId: 'thr-1',
+      }),
+    )
+    let contextAttempts = 0
+    const fetchSpy = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = requestUrl(input)
+      if (url.endsWith('/chat/threads/thr-1') && requestMethod(init) === 'GET') {
+        return new Response(JSON.stringify(createSnapshot({ threadId: 'thr-1' })), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      }
+      if (url.endsWith('/chat/threads/thr-1/context') && requestMethod(init) === 'POST') {
+        contextAttempts += 1
+        if (contextAttempts === 1) {
+          return new Response(JSON.stringify({ message: 'temporary context failure' }), {
+            status: 503,
+            headers: { 'content-type': 'application/json' },
+          })
+        }
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      }
+      throw new Error(`Unexpected fetch to ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchSpy)
+
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+    const contextCalls = () =>
+      fetchSpy.mock.calls.filter(
+        ([input, init]) => requestUrl(input).endsWith('/chat/threads/thr-1/context') && requestMethod(init) === 'POST',
+      )
+
+    try {
+      await act(async () => {
+        root.render(<RapidSelectionContextHarness />)
+      })
+
+      await act(async () => {
+        await Promise.resolve()
+        await new Promise((resolve) => setTimeout(resolve, 220))
+      })
+
+      expect(contextCalls()).toHaveLength(1)
+
+      await act(async () => {
+        await Promise.resolve()
+        await new Promise((resolve) => setTimeout(resolve, 900))
+      })
+
+      expect(contextCalls()).toHaveLength(2)
+      expect(requestBody(contextCalls()[1]?.[1])).toMatchObject({
+        context: {
+          selection: {
+            sheetName: 'Sheet1',
+            address: 'A1',
+          },
+        },
+      })
+    } finally {
+      await act(async () => {
+        root.unmount()
+      })
+    }
+  })
+
   it('does not resync workbook context only because the rendered capture timestamp changes', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
     window.sessionStorage.setItem(

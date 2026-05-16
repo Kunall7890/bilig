@@ -33,6 +33,20 @@ async function fetchJson(input: RequestInfo | URL, init?: RequestInit): Promise<
   return payload
 }
 
+async function fetchOk(input: RequestInfo | URL, init?: RequestInit): Promise<void> {
+  const response = init ? await fetch(input, init) : await fetch(input)
+  if (response.ok) {
+    return
+  }
+  let payload: unknown = null
+  try {
+    payload = await response.json()
+  } catch {
+    payload = null
+  }
+  throw new Error(resolvePayloadMessage(payload, `Workbook agent request failed with status ${response.status}`))
+}
+
 function threadListUrl(documentId: string): string {
   return `/v2/documents/${encodeURIComponent(documentId)}/chat/threads`
 }
@@ -73,7 +87,7 @@ export function createWorkbookAgentClient(documentId: string) {
       return decodeThreadSnapshot(await fetchJson(threadUrl(documentId, threadId)))
     },
     async syncThreadContext(threadId: string, context: WorkbookAgentUiContext): Promise<void> {
-      await fetch(`${threadUrl(documentId, threadId)}/context`, {
+      await fetchOk(`${threadUrl(documentId, threadId)}/context`, {
         method: 'POST',
         headers: JSON_HEADERS,
         body: JSON.stringify({

@@ -90,4 +90,20 @@ describe('workbook agent client', () => {
     const client = createWorkbookAgentClient('doc-1')
     await expect(client.sendPrompt('thr-1', 'Continue working', createContext())).rejects.toThrow('Prompt rejected by server')
   })
+
+  it('rejects failed context sync responses instead of treating them as synced', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ message: 'Context rejected by server' }), {
+            status: 503,
+            headers: { 'content-type': 'application/json' },
+          }),
+      ),
+    )
+
+    const client = createWorkbookAgentClient('doc-1')
+    await expect(client.syncThreadContext('thr-1', createContext())).rejects.toThrow('Context rejected by server')
+  })
 })

@@ -70,20 +70,23 @@ export function useWorkbookAgentContextSync(input: {
       return
     }
     pendingContextSyncRef.current = null
-    lastContextKeyRef.current = pending.key
-    lastImmediateContextKeyRef.current = pending.immediateKey
-    hasSyncedContextRef.current = true
     lastContextSyncAtRef.current = window.performance.now()
     contextSyncInFlightRef.current = true
     void (async () => {
       try {
         await input.client.syncThreadContext(pending.threadId, pending.context)
+        lastContextKeyRef.current = pending.key
+        lastImmediateContextKeyRef.current = pending.immediateKey
+        hasSyncedContextRef.current = true
       } catch (syncError) {
         logDebug('Failed to sync agent context update', { documentId: input.documentId, error: syncError })
+        pendingContextSyncRef.current ??= pending
       } finally {
         contextSyncInFlightRef.current = false
         if (pendingContextSyncRef.current !== null && pendingContextSyncTimeoutRef.current === null) {
-          pendingContextSyncTimeoutRef.current = window.setTimeout(flushPendingContextSync, AGENT_CONTEXT_SYNC_DEBOUNCE_MS)
+          const elapsedSinceLastSync = window.performance.now() - lastContextSyncAtRef.current
+          const delayMs = Math.max(AGENT_CONTEXT_SYNC_DEBOUNCE_MS, AGENT_CONTEXT_SYNC_MIN_INTERVAL_MS - elapsedSinceLastSync)
+          pendingContextSyncTimeoutRef.current = window.setTimeout(flushPendingContextSync, delayMs)
         }
       }
     })()
