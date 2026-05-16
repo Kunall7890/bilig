@@ -68,10 +68,11 @@ export function emitOperationChangedEvents(access: OperationEventAccess, args: E
     invalidatedColumns: args.invalidatedColumns,
   } satisfies Parameters<typeof access.captureChangedPatches>[1]
   const shouldCapturePatches =
-    patchRequest.invalidation !== 'cells' ||
-    patchRequest.invalidatedRanges.length > 0 ||
-    patchRequest.invalidatedRows.length > 0 ||
-    patchRequest.invalidatedColumns.length > 0
+    args.changed.length > 0 &&
+    (patchRequest.invalidation !== 'cells' ||
+      patchRequest.invalidatedRanges.length > 0 ||
+      patchRequest.invalidatedRows.length > 0 ||
+      patchRequest.invalidatedColumns.length > 0)
   const patches = shouldCapturePatches ? access.captureChangedPatches(args.changed, patchRequest) : undefined
   access.state.events.emitTracked({
     kind: 'batch',

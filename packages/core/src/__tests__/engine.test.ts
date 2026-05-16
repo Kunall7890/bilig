@@ -6513,6 +6513,30 @@ describe('SpreadsheetEngine', () => {
     unsubscribe()
   })
 
+  it('keeps tracked structural no-value-change events lightweight', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'tracked-structural-no-value-change' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 1)
+    engine.setCellValue('Sheet1', 'B1', 2)
+    engine.setCellFormula('Sheet1', 'C1', '=A1+B1')
+    engine.setCellFormula('Sheet1', 'D1', '=C1*2')
+
+    const events: EngineEvent[] = []
+    const unsubscribe = engine.events.subscribeTracked((event) => {
+      events.push(event)
+    })
+
+    engine.insertColumns('Sheet1', 1, 1)
+
+    const event = events.at(-1)
+    expect(event?.changedCellIndices).toHaveLength(0)
+    expect(event?.invalidatedColumns).toEqual([{ sheetName: 'Sheet1', startIndex: 1, endIndex: 1 }])
+    expect(event?.patches).toBeUndefined()
+    expect(engine.getCellValue('Sheet1', 'E1')).toEqual({ tag: ValueTag.Number, value: 6 })
+    unsubscribe()
+  })
+
   it('emits large structural column invalidations without flooding changed cell payloads for deletes', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'structural-delete-column-event' })
     await engine.ready()
