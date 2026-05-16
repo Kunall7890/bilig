@@ -149,7 +149,7 @@ matters.
 
 <!-- headless-package-footprint:start -->
 
-Current checked npm footprint for `@bilig/headless@0.16.28`:
+Current checked npm footprint for `@bilig/headless@0.17.0`:
 
 - Pack dry run: `422 kB` tarball, `2.52 MB` unpacked, `429` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
@@ -163,11 +163,11 @@ Current checked npm footprint for `@bilig/headless@0.16.28`:
 
 ## Published Package Trust
 
-`@bilig/headless@0.16.28` is published with npm registry signatures and SLSA
+`@bilig/headless@0.17.0` is published with npm registry signatures and SLSA
 provenance attestations. Verify the package before adopting it:
 
 ```sh
-npm view @bilig/headless@0.16.28 version dist.attestations dist.signatures --json
+npm view @bilig/headless@0.17.0 version dist.attestations dist.signatures --json
 ```
 
 After installing, npm can verify the current dependency tree:
@@ -342,9 +342,9 @@ It is published in the official MCP Registry as
   It keeps the empty npm-project command, `verified: true` output, benchmark
   caveat, known limits, and feedback ask together.
 - Run `pnpm workpaper:bench:competitive:check`. The checked-in artifact shows
-  [`74/100` comparable WorkPaper mean wins](docs/what-workpaper-benchmark-proves.md)
+  [`73/100` comparable WorkPaper mean wins](docs/what-workpaper-benchmark-proves.md)
   and names the worst p95 holdout:
-  `build-mixed-content-large` at `2.933x`.
+  `structural-insert-columns` at `7.841x`.
 - The benchmark card is generated from that artifact:
   [`docs/assets/workpaper-benchmark-card.png`](docs/assets/workpaper-benchmark-card.png).
 - Read the [compatibility limits](docs/where-bilig-is-not-excel-compatible-yet.md)

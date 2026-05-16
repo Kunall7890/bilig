@@ -59,7 +59,7 @@ That starter is documented at
 
 <!-- headless-package-footprint:start -->
 
-Current checked npm footprint for `@bilig/headless@0.16.28`:
+Current checked npm footprint for `@bilig/headless@0.17.0`:
 
 - Pack dry run: `422 kB` tarball, `2.52 MB` unpacked, `429` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
@@ -73,11 +73,11 @@ Current checked npm footprint for `@bilig/headless@0.16.28`:
 
 ## Published Package Trust
 
-`@bilig/headless@0.16.28` is published with npm registry signatures and SLSA
+`@bilig/headless@0.17.0` is published with npm registry signatures and SLSA
 provenance attestations. Check the package before adopting it in a service:
 
 ```sh
-npm view @bilig/headless@0.16.28 version dist.attestations dist.signatures --json
+npm view @bilig/headless@0.17.0 version dist.attestations dist.signatures --json
 npm audit signatures
 ```
 
@@ -505,9 +505,9 @@ pnpm workpaper:xlsx-corpus:check -- /path/to/xlsx-corpus
   should be checked against a fresh Microsoft Excel recalculation.
 - Run `pnpm workpaper:bench:competitive:check` from the repository. The
   checked-in artifact shows
-  [`74/100` comparable WorkPaper mean wins](https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md)
+  [`73/100` comparable WorkPaper mean wins](https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md)
   and names the worst p95 holdout:
-  `build-mixed-content-large` at `2.933x`.
+  `structural-insert-columns` at `7.841x`.
 - The shareable benchmark card is generated from the checked-in artifact:
   [`workpaper-benchmark-card.png`](https://github.com/proompteng/bilig/blob/main/docs/assets/workpaper-benchmark-card.png).
 - Read the

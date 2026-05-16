@@ -119,6 +119,8 @@
     "public:evidence:check": "bun scripts/sync-public-evidence.ts --check",
     "headless:footprint:generate": "bun scripts/sync-headless-package-footprint.ts",
     "headless:footprint:check": "bun scripts/sync-headless-package-footprint.ts --check",
+    "create-workpaper:check": "bun scripts/check-create-workpaper-package.ts",
+    "create-workpaper:published:check": "bun scripts/check-create-workpaper-package.ts --require-published",
     "docs:launch-assets:generate": "tsx scripts/render-launch-assets.ts",
     "docs:launch-assets:check": "tsx scripts/render-launch-assets.ts --check",
     "docs:launch-demo:generate": "tsx scripts/render-launch-demo.ts",
