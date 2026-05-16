@@ -59,6 +59,7 @@ import {
 import type { WorkbookAgentThreadSummary, WorkbookAgentWorkflowRun } from '@bilig/contracts'
 import { createWorkbookAgentServiceError } from '../workbook-agent-errors.js'
 import {
+  createWorkbookWorkflowRunStoreConnection,
   ensureWorkbookWorkflowRunSchema,
   listWorkbookThreadWorkflowRuns,
   upsertWorkbookWorkflowRun,
@@ -480,7 +481,7 @@ class EnabledZeroSyncService implements ZeroSyncService {
     threadId: string,
     limit?: number,
   ): Promise<WorkbookAgentWorkflowRun[]> {
-    return await listWorkbookThreadWorkflowRuns(this.pool, {
+    return await listWorkbookThreadWorkflowRuns(createWorkbookWorkflowRunStoreConnection(this.runtimeStore), {
       documentId,
       actorUserId,
       threadId,

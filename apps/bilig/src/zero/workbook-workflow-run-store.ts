@@ -1,8 +1,20 @@
 import type { WorkbookAgentWorkflowArtifact, WorkbookAgentWorkflowRun, WorkbookAgentWorkflowStep } from '@bilig/contracts'
+import { queries } from '@bilig/zero-sync'
+import type { Row } from '@rocicorp/zero'
 import { addColumnIfMissing, ensureDefaultedNotNullColumn } from './schema-upgrade.js'
-import type { QueryResultRow, Queryable } from './store.js'
+import type { QueryResultRow, Queryable, ZeroQueryRunner } from './store.js'
 import { parseNonNegativeInteger } from './store-support.js'
 import { runQueryableTransaction, runSequentially } from './transaction-support.js'
+
+type ZeroWorkbookWorkflowRunRow = Row['workbook_workflow_run']
+
+export interface WorkbookWorkflowRunStoreConnection extends Queryable {
+  listWorkbookWorkflowRunRows(input: {
+    readonly documentId: string
+    readonly actorUserId: string
+    readonly threadId: string
+  }): Promise<readonly ZeroWorkbookWorkflowRunRow[]>
+}
 
 interface WorkbookWorkflowRunRow extends QueryResultRow {
   readonly runId?: unknown
@@ -41,6 +53,14 @@ interface WorkbookWorkflowArtifactRow extends QueryResultRow {
 interface DurableWorkflowArtifact {
   readonly artifact: WorkbookAgentWorkflowArtifact | null
   readonly invalid: boolean
+}
+
+export function createWorkbookWorkflowRunStoreConnection(db: Queryable & ZeroQueryRunner): WorkbookWorkflowRunStoreConnection {
+  return {
+    query: (text, values) => db.query(text, values),
+    listWorkbookWorkflowRunRows: ({ actorUserId, documentId, threadId }) =>
+      db.run(queries.workbookWorkflowRun.byThread.fn({ args: { documentId, threadId }, ctx: { userID: actorUserId } })),
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -227,6 +247,25 @@ function normalizeWorkflowRun(
     errorMessage: typeof row.errorMessage === 'string' ? row.errorMessage : null,
     steps,
     artifact,
+  }
+}
+
+function toWorkflowRunRow(row: ZeroWorkbookWorkflowRunRow): WorkbookWorkflowRunRow {
+  return {
+    runId: row.runId,
+    workbookId: row.workbookId,
+    threadId: row.threadId,
+    actorUserId: row.startedByUserId,
+    workflowTemplate: row.workflowTemplate,
+    title: row.title,
+    summary: row.summary,
+    status: row.status,
+    createdAtUnixMs: row.createdAtUnixMs,
+    updatedAtUnixMs: row.updatedAtUnixMs,
+    completedAtUnixMs: row.completedAtUnixMs,
+    errorMessage: row.errorMessage,
+    stepsJson: row.steps,
+    artifactJson: row.artifact,
   }
 }
 
@@ -543,7 +582,7 @@ async function persistWorkbookWorkflowRun(
 }
 
 export async function listWorkbookThreadWorkflowRuns(
-  db: Queryable,
+  db: WorkbookWorkflowRunStoreConnection,
   input: {
     documentId: string
     actorUserId: string
@@ -551,47 +590,13 @@ export async function listWorkbookThreadWorkflowRuns(
     limit?: number
   },
 ): Promise<WorkbookAgentWorkflowRun[]> {
-  const result = await db.query<WorkbookWorkflowRunRow>(
-    `
-      SELECT
-        run.run_id AS "runId",
-        run.workbook_id AS "workbookId",
-        run.thread_id AS "threadId",
-        run.actor_user_id AS "actorUserId",
-        run.workflow_template AS "workflowTemplate",
-        run.title AS "title",
-        run.summary AS "summary",
-        run.status AS "status",
-        run.created_at_unix_ms AS "createdAtUnixMs",
-        run.updated_at_unix_ms AS "updatedAtUnixMs",
-        run.completed_at_unix_ms AS "completedAtUnixMs",
-        run.error_message AS "errorMessage",
-        run.steps_json AS "stepsJson",
-        run.artifact_json AS "artifactJson"
-      FROM workbook_workflow_run AS run
-      WHERE run.workbook_id = $1
-        AND run.thread_id = $2
-        AND (
-          run.actor_user_id = $3
-          OR EXISTS (
-            SELECT 1
-            FROM workbook_chat_thread AS thread
-            WHERE thread.workbook_id = run.workbook_id
-              AND thread.thread_id = run.thread_id
-              AND thread.scope = 'shared'
-          )
-        )
-      ORDER BY run.updated_at_unix_ms DESC, run.run_id DESC
-      LIMIT $4
-    `,
-    [input.documentId, input.threadId, input.actorUserId, input.limit ?? 20],
-  )
-  const runIds = result.rows.flatMap((row) => (typeof row.runId === 'string' ? [row.runId] : []))
+  const rows = (await db.listWorkbookWorkflowRunRows(input)).slice(0, input.limit ?? 20).map(toWorkflowRunRow)
+  const runIds = rows.flatMap((row) => (typeof row.runId === 'string' ? [row.runId] : []))
   const [durableSteps, durableArtifacts] = await Promise.all([
     loadDurableWorkflowSteps(db, input.documentId, runIds),
     loadDurableWorkflowArtifacts(db, input.documentId, runIds),
   ])
-  return result.rows.flatMap((row) => {
+  return rows.flatMap((row) => {
     const runId = typeof row.runId === 'string' ? row.runId : null
     const hydrated: {
       steps?: WorkbookAgentWorkflowStep[] | null
