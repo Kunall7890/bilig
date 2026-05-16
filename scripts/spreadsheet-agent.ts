@@ -14,68 +14,21 @@ import type {
   LiteralInput,
   WorkbookPivotValueSnapshot,
 } from '../packages/protocol/src/index.ts'
+import {
+  isSpreadsheetAgentCommandName,
+  parseSpreadsheetAgentCliOptions,
+  spreadsheetAgentUsageText,
+  type SpreadsheetAgentCliOptions,
+  type SpreadsheetAgentCommandName,
+} from './spreadsheet-agent-cli.ts'
 
 const [, , command, ...argv] = process.argv
 
-type CommandName =
-  | 'read-range'
-  | 'write-cell'
-  | 'write-range'
-  | 'set-formula'
-  | 'set-formulas'
-  | 'set-range-style'
-  | 'clear-range-style'
-  | 'set-range-number-format'
-  | 'clear-range-number-format'
-  | 'clear-range'
-  | 'create-pivot'
-  | 'batch'
-  | 'get-metrics'
-  | 'export-snapshot'
-
-type CliOptions = Record<string, string>
+type CliOptions = SpreadsheetAgentCliOptions
 type SuccessAgentResponse = Exclude<AgentResponse, { kind: 'error' }>
 
 function printUsage(): void {
-  console.log(`Usage:
-  bun scripts/spreadsheet-agent.ts read-range --range Sheet1!A1:B2 [--server URL] [--document ID] [--replica ID]
-  bun scripts/spreadsheet-agent.ts write-cell --sheet Sheet1 --addr A1 --value 42 [--server URL] [--document ID] [--replica ID]
-  bun scripts/spreadsheet-agent.ts write-range --range Sheet1!A1:B2 --values '[[1,2],[3,4]]'
-  bun scripts/spreadsheet-agent.ts set-formula --sheet Sheet1 --addr B1 --formula 'SUM(A1:A10)'
-  bun scripts/spreadsheet-agent.ts set-formulas --range Sheet1!B1:B2 --formulas '[["A1*2"],["A2*2"]]'
-  bun scripts/spreadsheet-agent.ts set-range-style --range Sheet1!A1:C3 --patch '{"fill":{"backgroundColor":"#fff59d"},"font":{"family":"Georgia"}}'
-  bun scripts/spreadsheet-agent.ts clear-range-style --range Sheet1!A1:C3 [--fields '["backgroundColor"]']
-  bun scripts/spreadsheet-agent.ts set-range-number-format --range Sheet1!B2:B10 --format '{"kind":"accounting","currency":"USD","decimals":2}'
-  bun scripts/spreadsheet-agent.ts clear-range-number-format --range Sheet1!B2:B10
-  bun scripts/spreadsheet-agent.ts clear-range --range Sheet1!A1:B2
-  bun scripts/spreadsheet-agent.ts create-pivot --name MyPivot --sheet Sheet1 --addr D1 --source Sheet2!A1:C100 --group '["Category"]' --values '[{"sourceColumn":"Amount","summarizeBy":"sum"}]'
-  bun scripts/spreadsheet-agent.ts batch --requests @ops.json [--server URL] [--document ID] [--replica ID]
-  bun scripts/spreadsheet-agent.ts get-metrics
-  bun scripts/spreadsheet-agent.ts export-snapshot
-
-JSON-heavy flags such as --values, --formulas, --group, --requests, and --value accept:
-  inline JSON     '[["a","b"]]'
-  @file.json      load JSON from a file
-  @-              read JSON from stdin
-`)
-}
-
-function parseArgs(args: readonly string[]): CliOptions {
-  const options: CliOptions = {}
-  for (let index = 0; index < args.length; index += 1) {
-    const token = args[index]
-    if (!token?.startsWith('--')) {
-      throw new Error(`Unexpected argument: ${token ?? ''}`)
-    }
-    const key = token.slice(2)
-    const value = args[index + 1]
-    if (!value || value.startsWith('--')) {
-      throw new Error(`Missing value for --${key}`)
-    }
-    options[key] = value
-    index += 1
-  }
-  return options
+  console.log(spreadsheetAgentUsageText())
 }
 
 function normalizeBaseUrl(value: string): string {
@@ -491,7 +444,11 @@ async function sendFrame(serverBaseUrl: string, frame: AgentFrame): Promise<Succ
   return nextFrame.response
 }
 
-async function runCommand(commandName: CommandName, options: CliOptions & { server: string }, sessionId: string): Promise<unknown> {
+async function runCommand(
+  commandName: SpreadsheetAgentCommandName,
+  options: CliOptions & { server: string },
+  sessionId: string,
+): Promise<unknown> {
   switch (commandName) {
     case 'read-range':
       return sendFrame(options.server, {
@@ -802,35 +759,16 @@ async function runBatchRequests(
   return runBatchRequests(requests, options, sessionId, index + 1, responses)
 }
 
-function isCommandName(value: string): value is CommandName {
-  return [
-    'read-range',
-    'write-cell',
-    'write-range',
-    'set-formula',
-    'set-formulas',
-    'set-range-style',
-    'clear-range-style',
-    'set-range-number-format',
-    'clear-range-number-format',
-    'clear-range',
-    'create-pivot',
-    'batch',
-    'get-metrics',
-    'export-snapshot',
-  ].includes(value)
-}
-
 async function main(): Promise<void> {
   if (!command || command === '--help' || command === 'help') {
     printUsage()
     return
   }
-  if (!isCommandName(command)) {
+  if (!isSpreadsheetAgentCommandName(command)) {
     throw new Error(`Unsupported command: ${command}`)
   }
 
-  const options = parseArgs(argv)
+  const options = parseSpreadsheetAgentCliOptions(argv)
   const server = options.server ?? process.env.BILIG_AGENT_SERVER_URL ?? 'http://127.0.0.1:4321'
   const documentId = options.document ?? process.env.BILIG_DOCUMENT_ID ?? 'bilig-demo'
   const replicaId = options.replica ?? `codex:${Date.now()}`
