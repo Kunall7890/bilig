@@ -39,6 +39,7 @@ describe('headless package workflow', () => {
     expect(source).toContain('allow_new_packages')
     expect(source).toContain('ALLOW_NEW_NPM_PACKAGES')
     expect(source).toContain('bun scripts/sync-runtime-release-metadata.ts')
+    expect(source).toContain('.release-please-manifest.json')
     expect(source).toContain('runner needs runtime d.ts outputs rebuilt after the version sync')
     expect(source).toContain("group: runtime-packages-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.sha }}")
     expect(source).toContain('cancel-in-progress: false')

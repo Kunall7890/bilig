@@ -3,14 +3,14 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>bilig - Headless spreadsheet engine for Node services</title>
+    <title>bilig - Formula Workbooks for Node Services</title>
     <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg" />
     <link rel="canonical" href="https://proompteng.github.io/bilig/" />
     <link rel="sitemap" type="application/xml" href="https://proompteng.github.io/bilig/sitemap.xml" />
     <link rel="alternate" type="text/plain" href="https://proompteng.github.io/bilig/llms.txt" title="llms.txt" />
     <meta
       name="description"
-      content="bilig is a headless spreadsheet engine for Node services and agents. Edit cells, recalculate, and save WorkPaper JSON."
+      content="bilig runs formula workbooks inside Node services and agent tools. Edit cells, recalculate, verify readback, and save WorkPaper JSON."
     />
     <meta
       name="keywords"
@@ -19,7 +19,7 @@
     <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta name="theme-color" content="#151713" />
     <meta property="og:site_name" content="bilig" />
-    <meta property="og:title" content="bilig - Headless spreadsheet engine for Node services" />
+    <meta property="og:title" content="bilig - Formula Workbooks for Node Services" />
     <meta
       property="og:description"
       content="Edit cells, recalculate formulas, and save WorkPaper JSON from Node.js services or agent tools."
@@ -31,7 +31,7 @@
     <meta property="og:image:width" content="1280" />
     <meta property="og:image:height" content="640" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="bilig - Headless spreadsheet engine for Node services" />
+    <meta name="twitter:title" content="bilig - Formula Workbooks for Node Services" />
     <meta
       name="twitter:description"
       content="Edit cells, recalculate formulas, and save WorkPaper JSON from Node.js services or agent tools."
@@ -43,7 +43,7 @@
         "@context": "https://schema.org",
         "@type": "SoftwareSourceCode",
         "name": "bilig",
-        "description": "TypeScript headless spreadsheet engine for Node.js services and agent tools.",
+        "description": "TypeScript formula workbook runtime for Node.js services and agent tools.",
         "codeRepository": "https://github.com/proompteng/bilig",
         "license": "https://github.com/proompteng/bilig/blob/main/LICENSE",
         "programmingLanguage": "TypeScript",
@@ -149,8 +149,8 @@
       <div class="wrap hero-inner">
         <div class="hero-copy">
           <p class="eyebrow">Workbook runtime</p>
-          <h1 id="hero-title" class="hero-title">Headless spreadsheet engine for Node services and agents.</h1>
-          <p class="hero-subtitle">Edit cells. Recalculate. Save JSON.</p>
+          <h1 id="hero-title" class="hero-title">Formula workbooks for Node services and agent tools.</h1>
+          <p class="hero-subtitle">Edit cells. Recalculate. Verify readback. Save JSON.</p>
           <div class="install-command" aria-label="Install command">
             <span class="mono">$</span>
             <code>npm i @bilig/headless</code>
@@ -432,11 +432,11 @@ function readNumber(cell: unknown): number {
               <div class="proof-result">
                 <div class="proof-metric">
                   <span class="proof-label">comparable mean rows</span>
-                  <strong>49/57</strong>
+                  <strong>48/57</strong>
                 </div>
                 <p>
-                  49 of 57 comparable mean-latency rows are faster in the checked file. structural-append-formula-rows is slower at p95:
-                  <code>1.809x</code>. Browser UI rendering is not part of this benchmark.
+                  48 of 57 comparable mean-latency rows are faster in the checked file. structural-append-formula-rows is slower at p95:
+                  <code>4.339x</code>. Browser UI rendering is not part of this benchmark.
                 </p>
               </div>
 
@@ -453,7 +453,7 @@ function readNumber(cell: unknown): number {
                 </div>
                 <div class="proof-fact">
                   <dt>Caveat</dt>
-                  <dd>structural-append-formula-rows is slower at p95: <code>1.809x</code>.</dd>
+                  <dd>structural-append-formula-rows is slower at p95: <code>4.339x</code>.</dd>
                 </div>
                 <div class="proof-fact">
                   <dt>Out of scope</dt>

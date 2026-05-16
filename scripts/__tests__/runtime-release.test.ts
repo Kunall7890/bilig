@@ -229,4 +229,11 @@ describe('runtime release helpers', () => {
     expect(source).toContain('manifest.version !== targetVersion')
     expect(source).not.toContain('manifest.version = targetVersion')
   })
+
+  it('keeps release-please manifest version in the runtime release sync path', () => {
+    const source = readFileSync(resolve(repoRoot, 'scripts/sync-runtime-package-versions.ts'), 'utf8')
+
+    expect(source).toContain("manifest['packages/headless'] = version")
+    expect(source).toContain('syncReleasePleaseManifestVersion')
+  })
 })

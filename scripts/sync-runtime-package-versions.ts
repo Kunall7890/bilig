@@ -33,12 +33,23 @@ export function syncRuntimePackageVersions(options: SyncRuntimePackageVersionsOp
     }
   }
 
+  syncReleasePleaseManifestVersion(options.rootDir, version, updatedFiles)
   syncHeadlessMcpServerVersion(options.rootDir, version, updatedFiles)
 
   return {
     version,
     updatedFiles,
     updatedPackages: runtimePackages.map((runtimePackage) => runtimePackage.name),
+  }
+}
+
+function syncReleasePleaseManifestVersion(rootDir: string, version: string, updatedFiles: string[]): void {
+  const manifestPath = join(rootDir, '.release-please-manifest.json')
+  const manifest = readJsonRecord(manifestPath)
+  manifest['packages/headless'] = version
+
+  if (writeJsonIfChanged(manifestPath, manifest)) {
+    updatedFiles.push(manifestPath)
   }
 }
 

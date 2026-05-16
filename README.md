@@ -9,7 +9,7 @@
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/proompteng/bilig/badge)](https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-**Headless spreadsheet engine for Node services and agents.**
+**Formula workbooks for Node services and agent tools.**
 
 Use [`@bilig/headless`](https://www.npmjs.com/package/@bilig/headless) when a
 calculation is easiest to review as cells and formulas, but it has to run in a
@@ -118,9 +118,9 @@ matters.
 
 <!-- headless-package-footprint:start -->
 
-Current checked npm footprint for `@bilig/headless@0.16.9`:
+Current checked npm footprint for `@bilig/headless@0.16.10`:
 
-- Pack dry run: `420 kB` tarball, `2.50 MB` unpacked, `429` package entries.
+- Pack dry run: `420 kB` tarball, `2.51 MB` unpacked, `429` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
   import/export stays behind the `@bilig/headless/xlsx` subpath; MCP is the
   `bilig-workpaper-mcp` binary wrapper.
@@ -132,11 +132,11 @@ Current checked npm footprint for `@bilig/headless@0.16.9`:
 
 ## Published Package Trust
 
-`@bilig/headless@0.16.9` is published with npm registry signatures and SLSA
+`@bilig/headless@0.16.10` is published with npm registry signatures and SLSA
 provenance attestations. Verify the package before adopting it:
 
 ```sh
-npm view @bilig/headless@0.16.9 version dist.attestations dist.signatures --json
+npm view @bilig/headless@0.16.10 version dist.attestations dist.signatures --json
 ```
 
 After installing, npm can verify the current dependency tree:
@@ -284,8 +284,8 @@ It is published in the official MCP Registry as
   route smoke, writes quote inputs, recalculates an approval decision, persists
   JSON, and verifies restored readback.
 - Run `pnpm workpaper:bench:competitive:check`. The checked-in artifact shows
-  [`49/57` comparable WorkPaper mean wins](docs/what-workpaper-benchmark-proves.md)
-  and names the worst p95 holdout: `structural-append-formula-rows` at `1.809x`.
+  [`48/57` comparable WorkPaper mean wins](docs/what-workpaper-benchmark-proves.md)
+  and names the worst p95 holdout: `structural-append-formula-rows` at `4.339x`.
 - The benchmark card is generated from that artifact:
   [`docs/assets/workpaper-benchmark-card.png`](docs/assets/workpaper-benchmark-card.png).
 - Read the [compatibility limits](docs/where-bilig-is-not-excel-compatible-yet.md)

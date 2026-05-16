@@ -359,7 +359,7 @@ Latest conversion snapshot on May 16, 2026:
 
 - GitHub surface: `23` stars, `16` forks, `116` open issues, and `5` open
   pull requests. The star gap is still `977`.
-- npm surface: `@bilig/headless@0.16.9`, with `14,980` downloads in the
+- npm surface: `@bilig/headless@0.16.10`, with `12,568` downloads in the
   latest weekly window and `27,080` downloads in the latest monthly window.
 - Traffic surface: GitHub reports `528` views from `178` unique visitors and
   `21,402` clones from `2,534` unique cloners. The strongest referrers are
@@ -586,7 +586,7 @@ something.
 
 ### 2. Turn Benchmarks Into A Distribution Loop
 
-The `49/57` WorkPaper mean-win claim should become small, quotable artifacts:
+The `48/57` WorkPaper mean-win claim should become small, quotable artifacts:
 
 - one chart image for X, Bluesky, LinkedIn, and README embeds:
   [`docs/assets/workpaper-benchmark-card.png`](assets/workpaper-benchmark-card.png)
@@ -685,7 +685,7 @@ https://github.com/proompteng/bilig#try-it-in-90-seconds
 It edits an input, reads the recalculated value, saves WorkPaper JSON, restores
 it, and checks the value again.
 
-3/ Benchmark caveat is public too: 49/57 comparable mean-latency rows are faster
+3/ Benchmark caveat is public too: 48/57 comparable mean-latency rows are faster
 in the checked file, single-formula-edit-recalc is the visible p95 holdout,
 and UI rendering is not part of the benchmark.
 
@@ -722,7 +722,7 @@ logic but opening a browser grid is the wrong runtime boundary. It is not an
 Excel clone, and the compatibility limits are documented:
 https://github.com/proompteng/bilig/blob/main/docs/where-bilig-is-not-excel-compatible-yet.md
 
-The benchmark claim is intentionally narrow: the checked artifact has 49/57
+The benchmark claim is intentionally narrow: the checked artifact has 48/57
 comparable mean-latency wins against HyperFormula-style workloads,
 single-formula-edit-recalc is the visible p95 holdout, and UI rendering is
 not part of the benchmark.
