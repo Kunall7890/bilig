@@ -34,13 +34,16 @@ export function normalizeRuntimeConfigUserId<T extends { currentUserId: string }
 
 function resolvePersistState(configuredPersistState: boolean, searchParams: URLSearchParams): boolean {
   const explicitPersistState = searchParams.get('persist')
+  if (explicitPersistState === null || explicitPersistState.length === 0) {
+    return configuredPersistState
+  }
   if (explicitPersistState === '0' || explicitPersistState === 'false') {
     return false
   }
   if (explicitPersistState === '1' || explicitPersistState === 'true') {
     return true
   }
-  return configuredPersistState
+  throw new Error(`persist query parameter must be "1", "true", "0", or "false" when set, got ${explicitPersistState}`)
 }
 
 export function resolveRuntimeConfig(config: BiligRuntimeConfig): RuntimeConfig {

@@ -41,6 +41,14 @@ describe('resolveRuntimeConfig', () => {
     })
   })
 
+  it('rejects malformed persistence query overrides instead of silently using defaults', () => {
+    window.history.replaceState({}, '', '/?document=visual-smoke&persist=yes')
+
+    expect(() => resolveRuntimeConfig(BASE_CONFIG)).toThrow(
+      'persist query parameter must be "1", "true", "0", or "false" when set, got yes',
+    )
+  })
+
   it('passes through the assistant availability flag from the app runtime config', () => {
     expect(resolveRuntimeConfig({ ...BASE_CONFIG, workbookAgentEnabled: true })).toMatchObject({
       workbookAgentEnabled: true,
