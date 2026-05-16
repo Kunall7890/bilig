@@ -274,6 +274,8 @@ for (const required of [
   'https://github.com/proompteng/bilig/blob/main/docs/formula-edge-groupby-spill-fixture.md',
   'https://github.com/proompteng/bilig/blob/main/docs/new-contributor-guide.md',
   'https://github.com/proompteng/bilig/blob/main/docs/starter-issues.md',
+  'https://github.com/proompteng/bilig/blob/main/SECURITY.md',
+  'https://github.com/proompteng/bilig/blob/main/SUPPORT.md',
   'https://github.com/proompteng/bilig/issues?q=is%3Aissue%20state%3Aopen%20label%3Afirst-timers-only',
 ]) {
   requireIncludes(llms, required, 'docs/llms.txt')

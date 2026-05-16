@@ -79,6 +79,8 @@ export function requireHomepageDiscovery(index: string, siteCss: string, product
       'Compatibility gaps',
       'Starter issues',
       'benchmark critique',
+      'https://github.com/proompteng/bilig/blob/main/SECURITY.md',
+      'https://github.com/proompteng/bilig/blob/main/SUPPORT.md',
       'Pick the path that matches the job.',
       'Try the package, put it behind a service route, expose it as an agent tool',
       'Take a starter issue that improves the examples.',

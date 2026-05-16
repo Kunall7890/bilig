@@ -393,6 +393,18 @@ If this is your first contribution to `bilig`, use the
 [`first-timers-only`](https://github.com/proompteng/bilig/issues?q=is%3Aissue%20state%3Aopen%20label%3Afirst-timers-only)
 filter.
 
+## Security And Support
+
+Read [SECURITY.md](SECURITY.md) before sharing vulnerability details, private
+workbook data, tokens, credentials, or exploit reproductions. Security reports
+should use GitHub private vulnerability reporting when available, or
+<security@proompteng.ai> when the private flow is not visible.
+
+Use [SUPPORT.md](SUPPORT.md) for the fastest public support path. Good reports
+include the package version, Node version, OS, exact formula or workbook input,
+expected value, actual value, and the smallest command or script that reproduces
+the issue.
+
 ## CI
 
 Forgejo Actions is the primary CI surface via

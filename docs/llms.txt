@@ -8,6 +8,8 @@ repository: https://github.com/proompteng/bilig
 npm package: https://www.npmjs.com/package/@bilig/headless
 license: mit
 language: typescript
+security policy: https://github.com/proompteng/bilig/blob/main/SECURITY.md
+support policy: https://github.com/proompteng/bilig/blob/main/SUPPORT.md
 
 ## best entry points
 
@@ -54,6 +56,8 @@ language: typescript
 - https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#subscription-mrr-forecast
 - https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api
 - https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api#framework-adapters
+- https://github.com/proompteng/bilig/blob/main/SECURITY.md
+- https://github.com/proompteng/bilig/blob/main/SUPPORT.md
 - https://github.com/proompteng/bilig/discussions
 - https://github.com/proompteng/bilig/discussions/157
 - https://github.com/proompteng/bilig/blob/main/docs/node-spreadsheet-formula-engine.md

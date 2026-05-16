@@ -61,6 +61,8 @@ export async function requireSharedPublicDocsDiscovery(args: {
     'stale cached formula values',
     'https://github.com/proompteng/bilig/discussions/307',
     'https://github.com/proompteng/bilig/discussions/308',
+    'SECURITY.md',
+    'SUPPORT.md',
   ])
   requireDocumentsNotInclude(primaryPublicDocs, [
     '## Current Public Proof',
