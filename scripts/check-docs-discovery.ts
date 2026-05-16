@@ -131,8 +131,6 @@ for (const required of [
   './headless-spreadsheet-engine-comparison.html',
   './javascript-spreadsheet-library-headless-node.html',
   './hyperformula-alternative-headless-workpaper.html',
-  './product-hunt-launch-kit.html',
-  './community-growth-snapshot.html',
   'https://github.com/proompteng/bilig/stargazers',
 ]) {
   requireIncludes(index, required, 'docs/index.html')
@@ -277,8 +275,6 @@ for (const required of [
   'https://github.com/proompteng/bilig/blob/main/docs/formula-edge-groupby-spill-fixture.md',
   'https://github.com/proompteng/bilig/blob/main/docs/new-contributor-guide.md',
   'https://github.com/proompteng/bilig/blob/main/docs/starter-issues.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/community-launch-pack.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/community-growth-snapshot.md',
   'https://github.com/proompteng/bilig/issues?q=is%3Aissue%20state%3Aopen%20label%3Afirst-timers-only',
 ]) {
   requireIncludes(llms, required, 'docs/llms.txt')
@@ -310,7 +306,6 @@ for (const [path, content] of [
   requireIncludes(content, 'serializeWorkPaperDocument(', path)
   requireIncludes(content, 'exportWorkPaperDocument(workbook, { includeConfig: true })', path)
   requireIncludes(content, '## Proof You Can Reproduce', path)
-  requireIncludes(content, 'https://proompteng.github.io/bilig/community-growth-snapshot.html', path)
   requireIncludes(content, 'https://github.com/proompteng/bilig/stargazers', path)
   requireIncludes(content, 'above edits one input', path)
   requireIncludes(content, 'verifies the dependent formula result.', path)
@@ -320,7 +315,6 @@ for (const [path, content] of [
   requireIncludes(content, 'compatibility limits', path)
   requireIncludes(content, 'Excel oracle harness', path)
   requireIncludes(content, 'stale cached formula values', path)
-  requireIncludes(content, 'stars, npm downloads, starter issues, Discussions, traffic, and clones.', path)
   requireIncludes(content, 'https://github.com/proompteng/bilig/discussions/307', path)
   requireIncludes(content, 'https://github.com/proompteng/bilig/discussions/308', path)
   requireNotIncludes(content, '## Current Public Proof', path)

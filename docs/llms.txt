@@ -52,9 +52,6 @@ language: typescript
 - https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api
 - https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api#framework-adapters
 - https://github.com/proompteng/bilig/blob/main/docs/dev-to-workbook-apis-post.md
-- https://github.com/proompteng/bilig/blob/main/docs/community-growth-snapshot.md
-- https://proompteng.github.io/bilig/product-hunt-launch-kit.html
-- https://github.com/proompteng/bilig/blob/main/docs/product-hunt-launch-kit.md
 - https://github.com/proompteng/bilig/discussions
 - https://github.com/proompteng/bilig/discussions/157
 - https://github.com/proompteng/bilig/blob/main/docs/node-spreadsheet-formula-engine.md
@@ -331,18 +328,6 @@ npm run agent:verify
   https://agentndx.ai/browse?q=bilig
 - older agent API shape discussion:
   https://github.com/proompteng/bilig/discussions/115
-- community launch and growth pack:
-  https://github.com/proompteng/bilig/blob/main/docs/community-launch-pack.md
-- Product Hunt launch kit:
-  https://proompteng.github.io/bilig/product-hunt-launch-kit.html
-  https://github.com/proompteng/bilig/blob/main/docs/product-hunt-launch-kit.md
-  https://github.com/proompteng/bilig/blob/main/docs/assets/product-hunt-thumbnail.png
-  https://github.com/proompteng/bilig/blob/main/docs/assets/product-hunt-gallery-01-workbook-api.png
-  https://github.com/proompteng/bilig/blob/main/docs/assets/product-hunt-gallery-02-agent-readback.png
-  https://github.com/proompteng/bilig/blob/main/docs/assets/product-hunt-gallery-03-node-service.png
-  https://github.com/proompteng/bilig/blob/main/docs/assets/product-hunt-demo.webm
-- latest community growth snapshot:
-  https://github.com/proompteng/bilig/blob/main/docs/community-growth-snapshot.md
 - published dev article source:
   https://github.com/proompteng/bilig/blob/main/docs/dev-to-workbook-apis-post.md
 
@@ -359,8 +344,6 @@ including its p95 caveat.
   https://github.com/proompteng/bilig/blob/main/docs/new-contributor-guide.md
 - starter issues:
   https://github.com/proompteng/bilig/blob/main/docs/starter-issues.md
-- community growth snapshot:
-  https://github.com/proompteng/bilig/blob/main/docs/community-growth-snapshot.md
 - current starter queue snapshot: see docs/starter-issues.md for the maintained
   open first-timers-only issue list.
 - current first patch shortlist: see docs/starter-issues.md#start-here-this-week

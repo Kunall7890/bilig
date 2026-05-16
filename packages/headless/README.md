@@ -416,9 +416,6 @@ pnpm workpaper:xlsx-corpus:check -- /path/to/xlsx-corpus
   [Excel oracle harness](https://github.com/proompteng/bilig/blob/main/docs/xlsx-corpus-verifier-walkthrough.md#run-the-excel-oracle-harness).
   It separates import success, timeouts, stale cached formula values, and fresh
   Microsoft Excel recalculation results.
-- Track public signals in the
-  [growth snapshot](https://proompteng.github.io/bilig/community-growth-snapshot.html):
-  stars, npm downloads, starter issues, Discussions, traffic, and clones.
 - Open benchmark critique lives in
   [Discussion 340](https://github.com/proompteng/bilig/discussions/340).
 

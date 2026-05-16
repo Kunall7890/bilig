@@ -1,9 +1,8 @@
 ---
 title: Product Hunt launch kit for bilig
-published: true
-description: Public launch copy, assets, proof points, and first-comment text for introducing @bilig/headless as a TypeScript WorkPaper runtime for Node services and agents.
+published: false
+description: Internal launch copy, assets, proof points, and first-comment text for introducing @bilig/headless as a TypeScript WorkPaper runtime for Node services and agents.
 tags: producthunt, launch, typescript, node, spreadsheet, agents
-canonical_url: https://proompteng.github.io/bilig/product-hunt-launch-kit.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/product-hunt-thumbnail.png
 image: /assets/product-hunt-thumbnail.png
 ---

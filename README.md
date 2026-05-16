@@ -231,9 +231,6 @@ It is published in the official MCP Registry as
   [Excel oracle harness](docs/xlsx-corpus-verifier-walkthrough.md#run-the-excel-oracle-harness).
   It separates import success, timeouts, stale cached formula values, and fresh
   Microsoft Excel recalculation results.
-- Track public signals in the
-  [growth snapshot](https://proompteng.github.io/bilig/community-growth-snapshot.html):
-  stars, npm downloads, starter issues, Discussions, traffic, and clones.
 - The WorkPaper MCP server is listed in the
   [official MCP Registry](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper)
   and on [Glama](https://glama.ai/mcp/servers/proompteng/bilig). The

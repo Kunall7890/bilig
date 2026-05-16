@@ -56,11 +56,5 @@ export function requireGrowthSurfaceDiscovery(
   for (const required of llmsExternalSurfaceLinks) {
     requireIncludes(llms, required, 'docs/llms.txt')
   }
-  for (const required of [
-    'https://proompteng.github.io/bilig/product-hunt-launch-kit.html',
-    'https://github.com/proompteng/bilig/blob/main/docs/product-hunt-launch-kit.md',
-  ] as const) {
-    requireIncludes(llms, required, 'docs/llms.txt')
-  }
   requireProductHuntLaunchKitDiscovery(productHuntLaunchKit, requireIncludes)
 }
