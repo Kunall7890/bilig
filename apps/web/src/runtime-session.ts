@@ -147,6 +147,14 @@ function isInstallAuthoritativeSnapshotInput(value: unknown): value is InstallAu
   )
 }
 
+async function parseJsonResponse(response: Response, context: string): Promise<unknown> {
+  try {
+    return JSON.parse(await response.text()) as unknown
+  } catch {
+    throw new Error(`${context} response returned malformed JSON`)
+  }
+}
+
 async function loadAuthoritativeEventBatch(
   documentId: string,
   afterRevision: number,
@@ -161,7 +169,7 @@ async function loadAuthoritativeEventBatch(
   if (!response.ok) {
     throw new Error(`Failed to load authoritative events (${response.status})`)
   }
-  const parsed: unknown = JSON.parse(await response.text())
+  const parsed = await parseJsonResponse(response, 'Authoritative events')
   if (!isAuthoritativeWorkbookEventBatch(parsed)) {
     throw new Error('Authoritative event payload does not match the expected schema')
   }
@@ -259,7 +267,7 @@ async function loadLatestWorkbookSnapshot(documentId: string, fetchImpl: typeof 
   if (!response.ok) {
     throw new Error(`Failed to load workbook snapshot (${response.status})`)
   }
-  const parsed: unknown = JSON.parse(await response.text())
+  const parsed = await parseJsonResponse(response, 'Workbook snapshot')
   if (!isWorkbookSnapshot(parsed)) {
     throw new Error('Workbook snapshot payload does not match the expected schema')
   }

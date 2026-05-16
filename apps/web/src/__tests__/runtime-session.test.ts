@@ -495,6 +495,80 @@ describe('createWorkerRuntimeSessionController', () => {
     controller.dispose()
   })
 
+  it('surfaces malformed authoritative snapshot JSON during bootstrap', async () => {
+    const runtime = new WorkbookWorkerRuntime({
+      localStoreFactory: createMemoryLocalStoreFactory(),
+    })
+    await expect(
+      createWorkerRuntimeSessionController(
+        {
+          documentId: 'phase0-doc',
+          replicaId: 'browser:test',
+          persistState: false,
+          initialSelection: { sheetName: 'Sheet1', address: 'A1' },
+          createWorker: () => createMockWorkerPort(runtime),
+          fetchImpl: vi.fn(async () => {
+            return new Response('{', {
+              status: 200,
+              headers: {
+                'content-type': 'application/vnd.bilig.workbook+json',
+              },
+            })
+          }),
+        },
+        {
+          onRuntimeState() {},
+          onSelection() {},
+          onError(message) {
+            throw new Error(message)
+          },
+        },
+      ),
+    ).rejects.toThrow('Workbook snapshot response returned malformed JSON')
+  })
+
+  it('surfaces malformed authoritative event JSON during refresh', async () => {
+    const runtime = new WorkbookWorkerRuntime({
+      localStoreFactory: createMemoryLocalStoreFactory(),
+    })
+    const errors: string[] = []
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(
+        new Response('{', {
+          status: 200,
+          headers: {
+            'content-type': 'application/json',
+          },
+        }),
+      )
+
+    const controller = await createWorkerRuntimeSessionController(
+      {
+        documentId: 'phase0-doc',
+        replicaId: 'browser:test',
+        persistState: false,
+        initialSelection: { sheetName: 'Sheet1', address: 'A1' },
+        createWorker: () => createMockWorkerPort(runtime),
+        fetchImpl,
+      },
+      {
+        onRuntimeState() {},
+        onSelection() {},
+        onError(message) {
+          errors.push(message)
+        },
+      },
+    )
+
+    await expect(controller.invoke('refreshAuthoritativeEvents', 1)).rejects.toThrow(
+      'Authoritative events response returned malformed JSON',
+    )
+    expect(errors).toEqual(['Authoritative events response returned malformed JSON'])
+    controller.dispose()
+  })
+
   it('boots a local-only worker session without probing authoritative snapshot APIs', async () => {
     const runtime = new WorkbookWorkerRuntime({
       localStoreFactory: createMemoryLocalStoreFactory(),
