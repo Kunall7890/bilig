@@ -12,9 +12,18 @@ import {
   parseNonNegativeInteger,
 } from './store-support.js'
 import type { Queryable, QueryResultRow } from './store.js'
+import { runSequentially } from './transaction-support.js'
 
 const WORKBOOK_CHECKPOINT_FORMAT = 'json-v1'
 const WORKBOOK_CHECKPOINT_RETENTION = 5
+
+type CalculationWriteTask = () => Promise<unknown>
+
+async function runCalculationWriteTasks(tasks: readonly CalculationWriteTask[]): Promise<void> {
+  await runSequentially(tasks, async (task) => {
+    await task()
+  })
+}
 
 interface CellEvalSelectRow extends QueryResultRow {
   readonly workbook_id?: unknown
@@ -106,15 +115,15 @@ export async function persistCellEvalRows(
   nextRows: readonly CellEvalRow[],
 ): Promise<void> {
   const diff = diffProjectionRows(previousRows, nextRows, sourceProjectionKeys.cellEval, cellEvalSignature)
-  const tasks: Promise<unknown>[] = []
+  const tasks: CalculationWriteTask[] = []
   for (const key of diff.deletes) {
     const [, sheetName, address] = parseJsonKey(key)
-    tasks.push(
+    tasks.push(() =>
       db.query(`DELETE FROM cell_eval WHERE workbook_id = $1 AND sheet_name = $2 AND address = $3`, [documentId, sheetName, address]),
     )
   }
   for (const row of diff.upserts) {
-    tasks.push(
+    tasks.push(() =>
       db.query(
         `
         INSERT INTO cell_eval (
@@ -167,13 +176,13 @@ export async function persistCellEvalRows(
       ),
     )
   }
-  await Promise.all(tasks)
+  await runCalculationWriteTasks(tasks)
 }
 
 export async function persistCellEvalIncremental(db: Queryable, _documentId: string, rows: readonly CellEvalRow[]): Promise<void> {
-  const tasks: Promise<unknown>[] = []
+  const tasks: CalculationWriteTask[] = []
   for (const row of rows) {
-    tasks.push(
+    tasks.push(() =>
       db.query(
         `
         INSERT INTO cell_eval (
@@ -226,7 +235,7 @@ export async function persistCellEvalIncremental(db: Queryable, _documentId: str
       ),
     )
   }
-  await Promise.all(tasks)
+  await runCalculationWriteTasks(tasks)
 }
 
 export async function persistCellEvalDiff(db: Queryable, documentId: string, nextRows: readonly CellEvalRow[]): Promise<void> {
