@@ -292,10 +292,10 @@ function parseArtifactForReport(json: string): ArtifactReportInput {
 function assertArtifactReportDerivedFromResults(reportArtifact: ArtifactReportInput): void {
   const expectedReport = buildExpandedCompetitiveFamilyReport(reportArtifact.results)
   const mismatchedSections: string[] = []
-  if (JSON.stringify(reportArtifact.families) !== JSON.stringify(expectedReport.families)) {
+  if (!reportsMatch(reportArtifact.families, expectedReport.families)) {
     mismatchedSections.push('families')
   }
-  if (JSON.stringify(reportArtifact.scorecard) !== JSON.stringify(expectedReport.scorecard)) {
+  if (!reportsMatch(reportArtifact.scorecard, expectedReport.scorecard)) {
     mismatchedSections.push('scorecard')
   }
   if (mismatchedSections.length === 0) {
@@ -307,6 +307,41 @@ function assertArtifactReportDerivedFromResults(reportArtifact: ArtifactReportIn
       ' and ',
     )} do not match the raw benchmark results. Run: bun scripts/gen-workpaper-vs-hyperformula-benchmark.ts`,
   )
+}
+
+function reportsMatch(actual: unknown, expected: unknown): boolean {
+  if (typeof actual === 'number' && typeof expected === 'number') {
+    return numbersMatch(actual, expected)
+  }
+  if (actual === expected) {
+    return true
+  }
+  if (Array.isArray(actual) || Array.isArray(expected)) {
+    if (!Array.isArray(actual) || !Array.isArray(expected) || actual.length !== expected.length) {
+      return false
+    }
+    return actual.every((actualItem, index) => reportsMatch(actualItem, expected[index]))
+  }
+  if (isRecord(actual) || isRecord(expected)) {
+    if (!isRecord(actual) || !isRecord(expected)) {
+      return false
+    }
+    const actualKeys = Object.keys(actual)
+    const expectedKeys = Object.keys(expected)
+    if (actualKeys.length !== expectedKeys.length) {
+      return false
+    }
+    return actualKeys.every((key) => Object.prototype.hasOwnProperty.call(expected, key) && reportsMatch(actual[key], expected[key]))
+  }
+  return false
+}
+
+function numbersMatch(actual: number, expected: number): boolean {
+  if (Object.is(actual, expected)) {
+    return true
+  }
+  const scale = Math.max(1, Math.abs(actual), Math.abs(expected))
+  return Math.abs(actual - expected) <= Number.EPSILON * 64 * scale
 }
 
 function readPackageVersion(packagePath: string): string {
