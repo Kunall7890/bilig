@@ -248,10 +248,6 @@ describe('WorkbookToolbar', () => {
         event: { key: 'r', metaKey: true, shiftKey: true },
         calls: [['setRangeStyle', selectionRange, { alignment: { horizontal: 'right' } }]],
       },
-      {
-        event: { code: 'Backslash', key: '\\', metaKey: true },
-        calls: [['clearRangeStyle', selectionRange, undefined]],
-      },
     ]
 
     for (const shortcutCase of shortcutCases) {
@@ -262,6 +258,17 @@ describe('WorkbookToolbar', () => {
       })
       expect(invokeMutation.mock.calls).toEqual(shortcutCase.calls)
     }
+
+    invokeMutation.mockClear()
+    await act(async () => {
+      const event = dispatchWorkbookShortcut({ code: 'Backslash', key: '\\', metaKey: true })
+      expect(event.defaultPrevented).toBe(true)
+      await Promise.resolve()
+    })
+    expect(invokeMutation.mock.calls).toEqual([
+      ['clearRangeStyle', selectionRange, undefined],
+      ['clearRangeNumberFormat', selectionRange],
+    ])
 
     invokeMutation.mockClear()
     await act(async () => {
@@ -1074,6 +1081,49 @@ describe('WorkbookToolbar', () => {
     await act(async () => {
       await Promise.all(pendingMutations)
     })
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it('marks the border menu active when the selected cell has borders', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const invokeMutation = vi.fn(async () => {})
+    const selectionRangeRef: MutableRefObject<CellRangeRef> = {
+      current: {
+        sheetName: 'Sheet1',
+        startAddress: 'A1',
+        endAddress: 'A1',
+      },
+    }
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+
+    await act(async () => {
+      root.render(
+        <ToolbarHookHarness
+          invokeMutation={invokeMutation}
+          selectedStyle={{
+            id: 'style-bordered',
+            borders: {
+              top: {
+                color: '#111827',
+                style: 'solid',
+                weight: 'thin',
+              },
+            },
+          }}
+          selectionRangeRef={selectionRangeRef}
+        />,
+      )
+    })
+
+    const borderTrigger = host.querySelector("[aria-label='Borders']")
+    expect(borderTrigger?.getAttribute('aria-pressed')).toBe('true')
+    expect(borderTrigger?.className).toContain('bg-[var(--wb-accent-soft)]')
 
     await act(async () => {
       root.unmount()

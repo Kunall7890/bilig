@@ -1059,6 +1059,43 @@ test('web app applies core formatting shortcuts from the keyboard', async ({ pag
   await expect(page.getByLabel('Underline')).not.toHaveClass(/bg-\[var\(--wb-accent-soft\)\]/)
 })
 
+test('web app applies advertised number and border formatting shortcuts from the keyboard', async ({ page }) => {
+  const documentId = createTestDocumentId('playwright-advanced-formatting-shortcuts')
+  await page.goto(`/?document=${encodeURIComponent(documentId)}`)
+  await waitForWorkbookReady(page)
+
+  const grid = page.getByTestId('sheet-grid')
+  const formulaInput = page.getByTestId('formula-input')
+  const numberFormat = page.getByRole('combobox', { name: 'Number format', exact: true })
+  const borders = page.getByRole('button', { name: 'Borders', exact: true })
+
+  await clickProductCell(page, 0, 0)
+  await formulaInput.fill('1234')
+  await formulaInput.press('Enter')
+  await clickProductCell(page, 0, 0)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!A1')
+  await expect(page.getByTestId('formula-resolved-value')).toHaveText('1234')
+
+  await grid.press(`${PRIMARY_MODIFIER}+Shift+1`)
+  await expect(numberFormat).toHaveAttribute('data-current-value', 'number')
+
+  await grid.press(`${PRIMARY_MODIFIER}+Shift+4`)
+  await expect(numberFormat).toHaveAttribute('data-current-value', 'currency')
+
+  await grid.press(`${PRIMARY_MODIFIER}+Shift+5`)
+  await expect(numberFormat).toHaveAttribute('data-current-value', 'percent')
+
+  await grid.press(`${PRIMARY_MODIFIER}+Shift+7`)
+  await expect(borders).toHaveAttribute('aria-pressed', 'true')
+  await expect(borders).toHaveClass(/bg-\[var\(--wb-accent-soft\)\]/)
+
+  await page.keyboard.down(PRIMARY_MODIFIER)
+  await page.keyboard.press('Backslash')
+  await page.keyboard.up(PRIMARY_MODIFIER)
+  await expect(numberFormat).toHaveAttribute('data-current-value', 'general')
+  await expect(borders).toHaveAttribute('aria-pressed', 'false')
+})
+
 test('web app keeps formatting shortcuts active after toolbar focus without letting delete keys clear cells', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-toolbar-focus-shortcut-scope')
   await page.goto(`/?document=${encodeURIComponent(documentId)}`)

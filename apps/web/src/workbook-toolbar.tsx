@@ -154,6 +154,7 @@ export interface WorkbookToolbarProps {
   currentNumberFormatKind: string
   selectedFontSize: string
   isBoldActive: boolean
+  isBorderActive?: boolean
   isItalicActive: boolean
   isUnderlineActive: boolean
   currentFillColor: string
@@ -198,6 +199,7 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
   currentNumberFormatKind,
   selectedFontSize,
   isBoldActive,
+  isBorderActive = false,
   isItalicActive,
   isUnderlineActive,
   currentFillColor,
@@ -537,7 +539,8 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
                 <Popover.Trigger
                   aria-label="Borders"
                   aria-haspopup="menu"
-                  className={cn(toolbarButtonClass(), 'gap-1 px-1.5')}
+                  aria-pressed={isBorderActive}
+                  className={cn(toolbarButtonClass({ active: isBorderActive }), 'gap-1 px-1.5')}
                   disabled={!writesAllowed}
                   title="Borders"
                   type="button"

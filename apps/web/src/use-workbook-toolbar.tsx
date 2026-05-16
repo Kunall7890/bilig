@@ -123,6 +123,11 @@ function selectedStyleMatchesPatch(selectedStyle: CellStyleRecord | undefined, p
   )
 }
 
+function hasAnyBorder(style: CellStyleRecord | undefined): boolean {
+  const borders = style?.borders
+  return Boolean(borders?.top || borders?.right || borders?.bottom || borders?.left)
+}
+
 export interface WorkbookStatusPresentation {
   readonly modeLabel: string
   readonly syncLabel: string
@@ -322,6 +327,7 @@ export function useWorkbookToolbar(input: {
   const isUnderlineActive = activeSelectedStyle?.font?.underline === true
   const horizontalAlignment = activeSelectedStyle?.alignment?.horizontal ?? null
   const isWrapActive = activeSelectedStyle?.alignment?.wrap === true
+  const isBorderActive = hasAnyBorder(activeSelectedStyle)
   const selectedRangeBounds = getNormalizedRangeBounds(selectionRangeRef.current)
   const canMergeSelection =
     selectedRangeBounds.startRow !== selectedRangeBounds.endRow || selectedRangeBounds.startCol !== selectedRangeBounds.endCol
@@ -381,7 +387,12 @@ export function useWorkbookToolbar(input: {
 
   const clearRangeStyleFields = useCallback(
     async (fields?: CellStyleField[]) => {
-      await invokeMutation('clearRangeStyle', selectionRangeRef.current, fields)
+      const range = selectionRangeRef.current
+      await invokeMutation('clearRangeStyle', range, fields)
+      if (fields !== undefined) {
+        return
+      }
+      await invokeMutation('clearRangeNumberFormat', range)
     },
     [invokeMutation, selectionRangeRef],
   )
@@ -420,60 +431,64 @@ export function useWorkbookToolbar(input: {
     async (preset: BorderPreset) => {
       const selectionRange = selectionRangeRef.current
       const { sheetName, startRow, endRow, startCol, endCol } = getNormalizedRangeBounds(selectionRange)
-      const applyBorders = async (range: CellRangeRef, borders: NonNullable<CellStylePatch['borders']>) => {
-        await invokeMutation('setRangeStyle', range, { borders })
+      const borderMutations: Array<readonly [CellRangeRef, CellStylePatch]> = []
+      const queueBorders = (range: CellRangeRef, borders: NonNullable<CellStylePatch['borders']>) => {
+        borderMutations.push([range, { borders }])
       }
-      const applyRowBorder = async (rowStart: number, rowEnd: number, side: 'top' | 'bottom') => {
+      const queueRowBorder = (rowStart: number, rowEnd: number, side: 'top' | 'bottom') => {
         if (rowStart > rowEnd) {
           return
         }
-        await applyBorders(createRangeRef(sheetName, rowStart, startCol, rowEnd, endCol), {
+        queueBorders(createRangeRef(sheetName, rowStart, startCol, rowEnd, endCol), {
           [side]: DEFAULT_BORDER_SIDE,
         })
       }
-      const applyColumnBorder = async (colStart: number, colEnd: number, side: 'left' | 'right') => {
+      const queueColumnBorder = (colStart: number, colEnd: number, side: 'left' | 'right') => {
         if (colStart > colEnd) {
           return
         }
-        await applyBorders(createRangeRef(sheetName, startRow, colStart, endRow, colEnd), {
+        queueBorders(createRangeRef(sheetName, startRow, colStart, endRow, colEnd), {
           [side]: DEFAULT_BORDER_SIDE,
         })
       }
 
-      await invokeMutation('clearRangeStyle', selectionRange, [...BORDER_CLEAR_FIELDS])
-
       switch (preset) {
         case 'clear':
-          return
+          break
         case 'all':
-          await applyRowBorder(startRow, endRow, 'top')
-          await applyColumnBorder(startCol, endCol, 'left')
-          await applyRowBorder(endRow, endRow, 'bottom')
-          await applyColumnBorder(endCol, endCol, 'right')
-          return
+          queueRowBorder(startRow, endRow, 'top')
+          queueColumnBorder(startCol, endCol, 'left')
+          queueRowBorder(endRow, endRow, 'bottom')
+          queueColumnBorder(endCol, endCol, 'right')
+          break
         case 'outer':
-          await applyRowBorder(startRow, startRow, 'top')
-          await applyRowBorder(endRow, endRow, 'bottom')
-          await applyColumnBorder(startCol, startCol, 'left')
-          await applyColumnBorder(endCol, endCol, 'right')
-          return
+          queueRowBorder(startRow, startRow, 'top')
+          queueRowBorder(endRow, endRow, 'bottom')
+          queueColumnBorder(startCol, startCol, 'left')
+          queueColumnBorder(endCol, endCol, 'right')
+          break
         case 'left':
-          await applyColumnBorder(startCol, startCol, 'left')
-          return
+          queueColumnBorder(startCol, startCol, 'left')
+          break
         case 'top':
-          await applyRowBorder(startRow, startRow, 'top')
-          return
+          queueRowBorder(startRow, startRow, 'top')
+          break
         case 'right':
-          await applyColumnBorder(endCol, endCol, 'right')
-          return
+          queueColumnBorder(endCol, endCol, 'right')
+          break
         case 'bottom':
-          await applyRowBorder(endRow, endRow, 'bottom')
-          return
+          queueRowBorder(endRow, endRow, 'bottom')
+          break
         default: {
           const exhaustive: never = preset
           return exhaustive
         }
       }
+
+      await Promise.all([
+        invokeMutation('clearRangeStyle', selectionRange, [...BORDER_CLEAR_FIELDS]),
+        ...borderMutations.map(([range, patch]) => invokeMutation('setRangeStyle', range, patch)),
+      ])
     },
     [invokeMutation, selectionRangeRef],
   )
@@ -697,6 +712,7 @@ export function useWorkbookToolbar(input: {
         currentTextColor={currentTextColor}
         horizontalAlignment={horizontalAlignment}
         isBoldActive={isBoldActive}
+        isBorderActive={isBorderActive}
         isItalicActive={isItalicActive}
         isUnderlineActive={isUnderlineActive}
         isWrapActive={isWrapActive}
@@ -789,6 +805,7 @@ export function useWorkbookToolbar(input: {
       currentTextColor,
       horizontalAlignment,
       isBoldActive,
+      isBorderActive,
       isItalicActive,
       isUnderlineActive,
       isWrapActive,
