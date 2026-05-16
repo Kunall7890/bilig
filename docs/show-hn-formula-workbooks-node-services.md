@@ -1,7 +1,7 @@
 ---
 title: Show HN: Bilig runs small formula workbooks in Node
 published: true
-description: A maintainer note for Bilig with the npm check, benchmark numbers, limits, and the feedback that would make the project more useful.
+description: A plain maintainer note for Bilig with the npm check, benchmark artifact, limits, and concrete feedback ask.
 tags: show-hn, typescript, node, spreadsheet, agents
 canonical_url: https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
@@ -10,19 +10,21 @@ image: /assets/github-social-preview.png
 
 # Show HN: Bilig runs small formula workbooks in Node
 
-Bilig came out of a very plain problem: people like reviewing pricing rules,
-payout checks, and import validators in spreadsheet form, but the code path
-still has to run on a server.
+I built Bilig because I kept running into the same awkward gap: the business
+logic was easiest to discuss as cells and formulas, but the actual service
+could not depend on a person opening a spreadsheet app.
 
-I did not want another service that drives Excel through clicks and then trusts
-a screenshot. I wanted a small object model that can load a workbook, change a
-few inputs, recalculate formulas, read the result, and save the same workbook
-state as JSON.
+The use cases are not glamorous: quote checks, payout rules, import validators,
+small revenue models. Somebody wants to review the formulas. The backend still
+needs to write inputs, recalculate, read the answer, and keep a durable record
+of exactly what ran.
+
+That is the narrow thing Bilig is trying to do.
 
 ## Try the npm package
 
-This starts from an empty directory and uses the published npm package. The
-current checked package version is `@bilig/headless@0.16.25`.
+This starts from an empty directory and uses the published package. The current
+checked version is `@bilig/headless@0.16.25`.
 
 ```sh
 mkdir bilig-headless-eval
@@ -47,64 +49,64 @@ Expected shape:
 }
 ```
 
-The important line is `"verified": true`. The script changed an input cell,
-read the recalculated formula value, saved WorkPaper JSON, restored it, and got
-the same calculated output again.
+The interesting line is `"verified": true`. The script changes an input cell,
+reads a recalculated value, serializes the WorkPaper JSON, restores it, and
+gets the same calculated value again.
 
-## The part I care about
+## What this is
 
-Evaluating `=A1+B1` is table stakes. The useful part is the whole loop:
+Bilig is a small workbook-state API for Node. The point is the full loop, not
+just `=A1+B1`:
 
-- put typed inputs into stable cells
-- recalculate dependent formulas after edits
-- read computed values back from the same workbook state
+- write typed inputs into known cells
+- recalculate dependent formulas
+- read calculated values back from the same state
 - save formulas and values as JSON
-- restore the workbook in CI and prove the answer did not change
+- restore the workbook later and check the answer again
 
-Bilig exposes a `WorkPaper` object because the workbook state has to be part
-of the contract, not an image someone eyeballed after the fact.
+The API is built around a `WorkPaper` object because I want the workbook state
+to be the artifact under test. A screenshot is not enough for this kind of
+workflow.
 
 ## Current numbers
 
-The checked benchmark artifact currently records `78/100` mean-latency wins
-against HyperFormula-style comparable workloads, and `74/100` workloads winning
+The checked benchmark artifact currently records `78/100` mean-latency wins on
+HyperFormula-style comparable workloads, with `74/100` workloads winning on
 both mean and p95.
 
-The caveat is visible on purpose:
-`single-formula-edit-recalc` is slower at p95 by `2.608x`.
+The caveat matters: `single-formula-edit-recalc` is slower at p95 by `2.608x`.
 Browser grid rendering is not part of this benchmark.
 
 Read the benchmark note:
 [what the WorkPaper benchmark proves](what-workpaper-benchmark-proves.md).
 
-## Stuff it does not do
+## What this is not
 
 Bilig is not a finished Excel clone. It does not claim full Excel formula
 parity, chart fidelity, macro execution, collaborative editing, or
 faster p95 on every workload.
 
-Use HyperFormula first when you primarily need a mature broad formula engine.
-Use SheetJS or ExcelJS first when the main job is file reading, writing, or
-styling. Use Google Sheets API first when a shared hosted spreadsheet and human
-collaboration are the product requirement.
+If you mainly need a mature broad formula engine, start with HyperFormula. If
+the problem is XLSX reading, writing, or styling, start with SheetJS or ExcelJS.
+If the product is a shared hosted spreadsheet, use Google Sheets.
 
 Use `@bilig/headless` when your Node code owns the workbook state and needs
 formula readback, persistence, and restore checks.
 
 ## What would help
 
-The most useful feedback is concrete:
+The feedback I care about is the kind that would make you reject it quickly:
 
-- the workflow you tried
-- the formula or workbook shape that blocked you
-- whether the npm check worked on your machine
-- the smallest example that would make you consider it for a real service
+- a formula family that is missing
+- a workbook shape that breaks the model
+- a Node runtime or deployment target where the package is annoying
+- an API shape that makes this hard to wire into a real service
+- a benchmark you would want before trusting it
 
 Open feedback here:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.
 
-If this matches a service workflow you want to revisit later, star or bookmark
-the repository:
+If this is a problem you might come back to, star or bookmark the repository:
 <https://github.com/proompteng/bilig/stargazers>.
 
 ## Shareable post
@@ -118,26 +120,23 @@ Show HN: Bilig runs small formula workbooks in Node
 Suggested short body:
 
 ```text
-I maintain Bilig.
+I maintain Bilig. It is a small Node library for running formula-backed
+workbook state without opening Excel or Google Sheets.
 
-The use case is boring but real: sometimes a pricing rule, payout check, or
-import validator is easiest to review as cells and formulas, but the production
-path still has to run in Node.
+The use case is fairly boring: quote checks, payout rules, import validators,
+small revenue models. People want to review those rules as cells and formulas,
+but the service still needs a real API path: write inputs, recalculate, read
+the result, save the state, and restore it later.
 
-I did not want a worker clicking around Excel or Google Sheets and then trusting
-a screenshot. Bilig gives you a WorkPaper object instead: write inputs,
-recalculate, read values back, save JSON, restore it, and check the same answer
-again.
+Bilig exposes that as a WorkPaper object. The quick npm check starts from an
+empty directory and proves the loop with the published package.
 
-The npm check starts from an empty directory and proves that loop with the
-published package.
+It is not an Excel clone. It does not run macros, preserve every XLSX artifact,
+or claim full Excel compatibility. The current benchmark artifact says 78/100
+mean wins on HyperFormula-style comparable workloads, and the p95 misses are
+called out on the page.
 
-It is not an Excel clone. It will not run macros or preserve every weird XLSX
-artifact. The current benchmark artifact says 78/100 mean wins against
-HyperFormula-style comparable workloads, with the p95 misses called out instead
-of hidden.
-
-I am looking for blunt rejection reasons from people who have shipped
-spreadsheet-backed services: missing formulas, XLSX cases, API shape, or the
-benchmark that would make you trust or reject it quickly.
+I am looking for rejection reasons from people who have shipped spreadsheet-ish
+backend workflows: missing formulas, XLSX cases, API shape, runtime constraints,
+or the benchmark that would make you trust or reject it faster.
 ```

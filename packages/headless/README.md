@@ -61,11 +61,11 @@ Current checked npm footprint for `@bilig/headless@0.16.25`:
 
 ## Published Package Trust
 
-`@bilig/headless@0.16.22` is published with npm registry signatures and SLSA
+`@bilig/headless@0.16.25` is published with npm registry signatures and SLSA
 provenance attestations. Check the package before adopting it in a service:
 
 ```sh
-npm view @bilig/headless@0.16.22 version dist.attestations dist.signatures --json
+npm view @bilig/headless@0.16.25 version dist.attestations dist.signatures --json
 npm audit signatures
 ```
 

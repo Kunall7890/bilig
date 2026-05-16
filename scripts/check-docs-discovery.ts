@@ -99,6 +99,15 @@ const [headlessSpreadsheetEngineComparison, sheetjsExceljsAlternativeFormulaWork
     readFile(join(docsRoot, 'sheetjs-exceljs-alternative-formula-workbook-api.md'), 'utf8'),
     readFile(join(docsRoot, 'hyperformula-alternative-headless-workpaper.md'), 'utf8'),
   ])
+const parsedHeadlessPackage: unknown = JSON.parse(headlessPackageJson)
+const parsedHeadlessPackageVersion =
+  typeof parsedHeadlessPackage === 'object' && parsedHeadlessPackage !== null && !Array.isArray(parsedHeadlessPackage)
+    ? Reflect.get(parsedHeadlessPackage, 'version')
+    : undefined
+if (typeof parsedHeadlessPackageVersion !== 'string') {
+  throw new Error('packages/headless/package.json is missing a string version')
+}
+const headlessPackageVersion = parsedHeadlessPackageVersion
 const xlsxFormulaRecalculationNode = await readFile(join(docsRoot, 'xlsx-formula-recalculation-node.md'), 'utf8')
 const formulaWorkbooksProof = await readFile(join(docsRoot, 'formula-workbooks-node-services-agent-tools.md'), 'utf8')
 const showHnFormulaWorkbooksProof = await readFile(join(docsRoot, 'show-hn-formula-workbooks-node-services.md'), 'utf8')
@@ -478,7 +487,7 @@ requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/google
 const npmProvenancePackageTrustDoc = await readFile(join(docsRoot, 'npm-provenance-package-trust.md'), 'utf8')
 for (const required of [
   'title: Verify npm provenance for @bilig/headless',
-  'npm view @bilig/headless@0.16.25 version dist.attestations dist.signatures --json',
+  `npm view @bilig/headless@${headlessPackageVersion} version dist.attestations dist.signatures --json`,
   'npm audit signatures',
   'dist.attestations.provenance.predicateType',
   'npm publish ... --provenance',
@@ -490,9 +499,17 @@ for (const required of [
 ] as const) {
   requireIncludes(npmProvenancePackageTrustDoc, required, 'docs/npm-provenance-package-trust.md')
 }
+requireIncludes(readme, `@bilig/headless@${headlessPackageVersion}`, 'README.md')
+requireIncludes(readme, `npm view @bilig/headless@${headlessPackageVersion} version dist.attestations dist.signatures --json`, 'README.md')
 requireIncludes(readme, 'npm provenance and package trust', 'README.md')
 requireIncludes(readme, 'https://api.scorecard.dev/projects/github.com/proompteng/bilig/badge', 'README.md')
 requireIncludes(readme, 'uploaded to GitHub code scanning on every `main` update', 'README.md')
+requireIncludes(headlessReadme, `@bilig/headless@${headlessPackageVersion}`, 'packages/headless/README.md')
+requireIncludes(
+  headlessReadme,
+  `npm view @bilig/headless@${headlessPackageVersion} version dist.attestations dist.signatures --json`,
+  'packages/headless/README.md',
+)
 requireIncludes(headlessReadme, 'npm provenance and package trust guide', 'packages/headless/README.md')
 requireIncludes(headlessReadme, 'https://api.scorecard.dev/projects/github.com/proompteng/bilig/badge', 'packages/headless/README.md')
 requireIncludes(headlessReadme, 'uploaded to GitHub code scanning on every `main` update', 'packages/headless/README.md')
