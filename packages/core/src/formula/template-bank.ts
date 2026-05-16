@@ -61,6 +61,7 @@ interface FormulaTemplateSourceKey {
 }
 
 const SIMPLE_ROW_RELATIVE_BINARY_RE = /^=?([A-Z]+)([1-9]\d*)([+\-*/])(?:([A-Z]+)([1-9]\d*)|(\d+(?:\.\d+)?))(?:\+(\d+(?:\.\d+)?))?$/
+const SIMPLE_DIRECT_AGGREGATE_TEMPLATE_RE = /^=?(SUM|AVERAGE|AVG|COUNT|MIN|MAX)\s*\(\s*([A-Z]+)([1-9]\d*):([A-Z]+)([1-9]\d*)\s*\)$/i
 
 function relativeCellToken(columnText: string, rowText: string, ownerRow: number, ownerCol: number): string | undefined {
   const row = Number(rowText) - 1
@@ -105,6 +106,53 @@ function tryBuildSimpleRowRelativeBinaryTemplateKey(source: string, ownerRow: nu
   }
   const offset = match[7] === undefined ? '' : `|tok:plus:"+"|tok:number:"${match[7]}"`
   return `${left}|${operator}|${right}${offset}|eof`
+}
+
+function tryBuildSimpleDirectAggregateTemplateKey(source: string, ownerRow: number, ownerCol: number): string | undefined {
+  const match = SIMPLE_DIRECT_AGGREGATE_TEMPLATE_RE.exec(source)
+  if (!match) {
+    return undefined
+  }
+  const aggregateKind = directAggregateTemplateKind(match[1]!)
+  const startCol = columnToIndex(match[2]!)
+  const startRow = Number(match[3]!) - 1
+  const endCol = columnToIndex(match[4]!)
+  const endRow = Number(match[5]!) - 1
+  if (startCol < 0 || endCol < startCol || endRow < startRow) {
+    return undefined
+  }
+  if (startCol === endCol && startRow === 0 && endRow === ownerRow) {
+    return `anchored-prefix-aggregate:${aggregateKind}:c${startCol - ownerCol}`
+  }
+  if (startCol === endCol) {
+    return ['relative-aggregate', aggregateKind, `c${startCol - ownerCol}`, `s${startRow - ownerRow}`, `e${endRow - ownerRow}`].join(':')
+  }
+  return [
+    'relative-aggregate-rect',
+    aggregateKind,
+    `c${startCol - ownerCol}`,
+    `ce${endCol - ownerCol}`,
+    `s${startRow - ownerRow}`,
+    `e${endRow - ownerRow}`,
+  ].join(':')
+}
+
+function directAggregateTemplateKind(callee: string): 'sum' | 'average' | 'count' | 'min' | 'max' {
+  switch (callee.toUpperCase()) {
+    case 'SUM':
+      return 'sum'
+    case 'AVERAGE':
+    case 'AVG':
+      return 'average'
+    case 'COUNT':
+      return 'count'
+    case 'MIN':
+      return 'min'
+    case 'MAX':
+      return 'max'
+    default:
+      throw new Error(`Unsupported aggregate template callee: ${callee}`)
+  }
 }
 
 function translateTemplate(compiled: CompiledFormula, rowDelta: number, colDelta: number, source: string): CompiledFormula {
@@ -199,6 +247,13 @@ function resolveTemplateSourceKey(source: string, ownerRow: number, ownerCol: nu
     return {
       compiled: undefined,
       templateKey: simpleRowRelativeBinaryKey,
+    }
+  }
+  const simpleDirectAggregateKey = tryBuildSimpleDirectAggregateTemplateKey(source, ownerRow, ownerCol)
+  if (simpleDirectAggregateKey !== undefined) {
+    return {
+      compiled: undefined,
+      templateKey: simpleDirectAggregateKey,
     }
   }
   const aggregateTemplate = tryMatchAggregateTemplate(source, ownerRow, ownerCol)

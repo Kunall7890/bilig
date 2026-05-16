@@ -4,6 +4,7 @@ import {
   tryMatchInitialSimpleRowRelativeBinaryTemplateShape,
 } from '../formula/initial-simple-direct-scalar-template.js'
 import { createTemplateBank } from '../formula/template-bank.js'
+import { createEngineCounters } from '../perf/engine-counters.js'
 
 describe('TemplateBank', () => {
   it('returns stored snapshots by id and reports missing ids as undefined', () => {
@@ -48,6 +49,33 @@ describe('TemplateBank', () => {
     expect(translatedMultiply.compiled.symbolicRefs).toEqual(['E3'])
     expect(translatedMultiply.compiled.parsedDeps).toEqual([
       { kind: 'cell', address: 'E3', row: 2, col: 4, rowAbsolute: false, colAbsolute: false },
+    ])
+  })
+
+  it('reuses row-relative rectangular aggregate template families without reparsing every row', () => {
+    const counters = createEngineCounters()
+    const bank = createTemplateBank({ counters })
+
+    const first = bank.resolve('SUM(A1:F1)', 0, 6)
+    const second = bank.resolve('SUM(A2:F2)', 1, 6)
+    const third = bank.resolve('SUM(A3:F3)', 2, 6)
+
+    expect(second.templateId).toBe(first.templateId)
+    expect(third.templateId).toBe(first.templateId)
+    expect(counters.formulasParsed).toBe(1)
+    expect(second.compiled.symbolicRanges).toEqual(['A2:F2'])
+    expect(second.compiled.parsedSymbolicRanges).toEqual([
+      {
+        kind: 'range',
+        refKind: 'cells',
+        address: 'A2:F2',
+        startAddress: 'A2',
+        endAddress: 'F2',
+        startRow: 1,
+        endRow: 1,
+        startCol: 0,
+        endCol: 5,
+      },
     ])
   })
 
