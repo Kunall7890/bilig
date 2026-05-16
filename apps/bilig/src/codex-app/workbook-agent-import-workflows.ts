@@ -16,13 +16,15 @@ import {
   type FormulaFillRecommendation,
   type NumberFormatRecommendation,
 } from './workbook-agent-import-workflow-markdown.js'
+import {
+  createEmptyImportWorkflowResult,
+  type ImportWorkflowExecutionResult,
+  type ImportWorkflowTemplate,
+} from './workbook-agent-import-empty-results.js'
 import { throwIfWorkflowCancelled } from './workbook-agent-workflow-abort.js'
 
-type ImportWorkflowTemplate =
-  | 'normalizeCurrentSheetHeaders'
-  | 'normalizeCurrentSheetNumberFormats'
-  | 'normalizeCurrentSheetWhitespace'
-  | 'fillCurrentSheetFormulasDown'
+export type { ImportWorkflowExecutionResult, ImportWorkflowTemplate } from './workbook-agent-import-empty-results.js'
+
 type SnapshotSheet = WorkbookSnapshot['sheets'][number]
 type SnapshotCell = SnapshotSheet['cells'][number]
 
@@ -37,26 +39,10 @@ interface ImportWorkflowStepPlan {
   readonly pendingSummary: string
 }
 
-interface ImportWorkflowStepResult {
-  readonly stepId: string
-  readonly label: string
-  readonly summary: string
-}
-
 interface ImportWorkflowTemplateMetadata {
   readonly title: string
   readonly runningSummary: string
   readonly stepPlans: readonly ImportWorkflowStepPlan[]
-}
-
-export interface ImportWorkflowExecutionResult {
-  readonly title: string
-  readonly summary: string
-  readonly artifact: WorkbookAgentWorkflowArtifact
-  readonly citations: readonly WorkbookAgentTimelineCitation[]
-  readonly steps: readonly ImportWorkflowStepResult[]
-  readonly commands?: readonly WorkbookAgentCommand[]
-  readonly goalText?: string
 }
 
 interface SheetExtents {
@@ -364,14 +350,10 @@ export async function executeImportWorkflow(input: {
   readonly workflowInput?: ImportWorkflowExecutionInput | null
   readonly signal?: AbortSignal
 }): Promise<ImportWorkflowExecutionResult | null> {
-  if (
-    input.workflowTemplate !== 'normalizeCurrentSheetHeaders' &&
-    input.workflowTemplate !== 'normalizeCurrentSheetNumberFormats' &&
-    input.workflowTemplate !== 'normalizeCurrentSheetWhitespace' &&
-    input.workflowTemplate !== 'fillCurrentSheetFormulasDown'
-  ) {
+  if (!isImportWorkflowTemplate(input.workflowTemplate)) {
     return null
   }
+  const workflowTemplate = input.workflowTemplate
   const sheetName = resolveWorkflowSheetName({
     ...(input.workflowInput !== undefined ? { workflowInput: input.workflowInput } : {}),
     ...(input.context !== undefined ? { context: input.context } : {}),
@@ -389,151 +371,14 @@ export async function executeImportWorkflow(input: {
       throw new Error(`Sheet ${sheetName} was not found in the workbook.`)
     }
     if (sheet.cells.length === 0) {
-      if (input.workflowTemplate === 'normalizeCurrentSheetHeaders') {
-        return {
-          title: 'Normalize Current Sheet Headers',
-          summary: `${sheetName} is empty, so there were no headers to normalize.`,
-          artifact: {
-            kind: 'markdown',
-            title: 'Header Normalization Preview',
-            text: [
-              '## Header Normalization Preview',
-              '',
-              `Sheet: ${sheetName}`,
-              '',
-              'No header changes were needed because the sheet is empty.',
-            ].join('\n'),
-          },
-          citations: [],
-          steps: [
-            {
-              stepId: 'inspect-header-row',
-              label: 'Inspect header row',
-              summary: `Loaded ${sheetName} and found no populated cells.`,
-            },
-            {
-              stepId: 'stage-header-normalization',
-              label: 'Stage header normalization',
-              summary: 'Sheet is empty. Header normalization change count: 0.',
-            },
-            {
-              stepId: 'draft-header-report',
-              label: 'Draft header report',
-              summary: 'Prepared the durable empty-sheet header report for the thread.',
-            },
-          ],
-        } satisfies ImportWorkflowExecutionResult
-      }
-      if (input.workflowTemplate === 'normalizeCurrentSheetWhitespace') {
-        return {
-          title: 'Normalize Current Sheet Whitespace',
-          summary: `${sheetName} is empty, so there were no text cells to normalize.`,
-          artifact: {
-            kind: 'markdown',
-            title: 'Whitespace Normalization Preview',
-            text: [
-              '## Whitespace Normalization Preview',
-              '',
-              `Sheet: ${sheetName}`,
-              '',
-              'No whitespace changes were needed because the sheet is empty.',
-            ].join('\n'),
-          },
-          citations: [],
-          steps: [
-            {
-              stepId: 'inspect-text-cells',
-              label: 'Inspect text cells',
-              summary: `Loaded ${sheetName} and found no populated cells.`,
-            },
-            {
-              stepId: 'stage-whitespace-normalization',
-              label: 'Stage whitespace normalization',
-              summary: 'Sheet is empty. Whitespace normalization change count: 0.',
-            },
-            {
-              stepId: 'draft-whitespace-report',
-              label: 'Draft whitespace report',
-              summary: 'Prepared the durable empty-sheet whitespace report for the thread.',
-            },
-          ],
-        } satisfies ImportWorkflowExecutionResult
-      }
-      if (input.workflowTemplate === 'fillCurrentSheetFormulasDown') {
-        return {
-          title: 'Fill Current Sheet Formulas Down',
-          summary: `${sheetName} is empty, so there were no formula gaps to fill.`,
-          artifact: {
-            kind: 'markdown',
-            title: 'Formula Fill-Down Preview',
-            text: [
-              '## Formula Fill-Down Preview',
-              '',
-              `Sheet: ${sheetName}`,
-              '',
-              'No fill-down changes were needed because the sheet is empty.',
-            ].join('\n'),
-          },
-          citations: [],
-          steps: [
-            {
-              stepId: 'inspect-formula-columns',
-              label: 'Inspect formula columns',
-              summary: `Loaded ${sheetName} and found no populated cells.`,
-            },
-            {
-              stepId: 'stage-formula-fill',
-              label: 'Stage formula fill-down',
-              summary: 'Sheet is empty. Formula fill-down change count: 0.',
-            },
-            {
-              stepId: 'draft-formula-fill-report',
-              label: 'Draft formula fill-down report',
-              summary: 'Prepared the durable empty-sheet formula fill-down report for the thread.',
-            },
-          ],
-        } satisfies ImportWorkflowExecutionResult
-      }
-      return {
-        title: 'Normalize Current Sheet Number Formats',
-        summary: `${sheetName} is empty, so there were no numeric cells to format.`,
-        artifact: {
-          kind: 'markdown',
-          title: 'Number Format Normalization Preview',
-          text: [
-            '## Number Format Normalization Preview',
-            '',
-            `Sheet: ${sheetName}`,
-            '',
-            'No number-format changes were needed because the sheet is empty.',
-          ].join('\n'),
-        },
-        citations: [],
-        steps: [
-          {
-            stepId: 'inspect-number-columns',
-            label: 'Inspect numeric columns',
-            summary: `Loaded ${sheetName} and found no populated cells.`,
-          },
-          {
-            stepId: 'stage-number-formats',
-            label: 'Stage number formats',
-            summary: 'Sheet is empty. Number-format change count: 0.',
-          },
-          {
-            stepId: 'draft-number-format-report',
-            label: 'Draft number-format report',
-            summary: 'Prepared the durable empty-sheet number-format report for the thread.',
-          },
-        ],
-      } satisfies ImportWorkflowExecutionResult
+      return createEmptyImportWorkflowResult(workflowTemplate, sheetName)
     }
 
     const { headerRow, dataStartRow, minCol, maxCol, maxRow, cellByAddress } = inspectSheetExtents(sheet)
     const headerStartAddress = formatAddress(headerRow, minCol)
     const headerEndAddress = formatAddress(headerRow, maxCol)
 
-    if (input.workflowTemplate === 'normalizeCurrentSheetNumberFormats') {
+    if (workflowTemplate === 'normalizeCurrentSheetNumberFormats') {
       const recommendations: NumberFormatRecommendation[] = []
       for (let col = minCol; col <= maxCol; col += 1) {
         const headerAddress = formatAddress(headerRow, col)
@@ -634,7 +479,7 @@ export async function executeImportWorkflow(input: {
       } satisfies ImportWorkflowExecutionResult
     }
 
-    if (input.workflowTemplate === 'normalizeCurrentSheetWhitespace') {
+    if (workflowTemplate === 'normalizeCurrentSheetWhitespace') {
       const rowValues: WorkbookAgentWriteCellInput[][] = []
       const changes: Array<{
         readonly address: string
@@ -727,7 +572,7 @@ export async function executeImportWorkflow(input: {
       } satisfies ImportWorkflowExecutionResult
     }
 
-    if (input.workflowTemplate === 'fillCurrentSheetFormulasDown') {
+    if (workflowTemplate === 'fillCurrentSheetFormulasDown') {
       const recommendations: FormulaFillRecommendation[] = []
       for (let col = minCol; col <= maxCol; col += 1) {
         const headerCell = cellByAddress.get(formatAddress(headerRow, col))
