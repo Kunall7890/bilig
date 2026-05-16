@@ -11,8 +11,6 @@ import type {
   WorkbookAgentPreviewSummary,
 } from '@bilig/agent-api'
 import {
-  createWorkbookAgentCommandBundle,
-  decodeWorkbookAgentPreviewSummary,
   isWorkbookAgentBundleAutoApplyEligible,
   resolveWorkbookAgentBundleExecutionPolicyInput,
   toWorkbookAgentCommandBundle,
@@ -51,7 +49,6 @@ import {
   createWorkbookAgentThreadStartInput,
 } from './workbook-agent-codex-runtime.js'
 import {
-  createWorkbookAgentReviewQueueItem,
   createWorkbookAgentDismissReviewEntry,
   getCurrentWorkbookAgentReviewItem,
   replaceCurrentWorkbookAgentReviewItem,
@@ -66,7 +63,6 @@ import {
   isMutatingWorkflowTemplate,
   normalizeExecutionPolicy,
   type WorkbookAgentThreadState,
-  toContextRef,
   upsertEntry,
 } from './workbook-agent-service-shared.js'
 import { updateWorkbookAgentDurableUiContextFromUser } from './workbook-agent-service-context.js'
@@ -93,6 +89,7 @@ import {
   buildWorkbookAgentAuthoritativePreview,
   finalizeWorkbookAgentPrivateTurnBundle,
 } from './workbook-agent-service-application.js'
+import { applyWorkbookAgentReviewItem, replayWorkbookAgentExecutionRecord } from './workbook-agent-service-review-actions.js'
 
 export type { EnabledWorkbookAgentServiceOptions, WorkbookAgentService } from './workbook-agent-service-options.js'
 
@@ -268,6 +265,28 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
       },
       input,
     )
+  }
+
+  private createReviewActionContext() {
+    return {
+      now: this.now,
+      getWorkbookHeadRevision: async (documentId: string) => await this.zeroSyncService.getWorkbookHeadRevision(documentId),
+      buildAuthoritativePreview: async (documentId: string, bundle: WorkbookAgentCommandBundle) =>
+        await this.buildAuthoritativePreview(documentId, bundle),
+      applyCommandBundleForSessionState: async (input: {
+        sessionState: WorkbookAgentThreadState
+        commandBundle: WorkbookAgentCommandBundle
+        actorUserId: string
+        appliedBy: WorkbookAgentAppliedBy
+        commandIndexes?: readonly number[] | null | undefined
+        preview: WorkbookAgentPreviewSummary
+      }) => await this.applyCommandBundleForSessionState(input),
+      shouldApplyToolBundleImmediately: (sessionState: WorkbookAgentThreadState, bundle: WorkbookAgentCommandBundle) =>
+        this.shouldApplyToolBundleImmediately(sessionState, bundle),
+      persistSessionState: async (sessionState: WorkbookAgentThreadState) => await this.persistSessionState(sessionState),
+      emitSnapshot: (threadId: string) => this.sessionRegistry.emitSnapshot(threadId),
+      touchSession: (sessionState: WorkbookAgentThreadState) => this.sessionRegistry.touch(sessionState),
+    }
   }
 
   getObservabilitySnapshot(): WorkbookAgentObservabilitySnapshot {
@@ -626,30 +645,15 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
     preview: unknown
   }): Promise<WorkbookAgentThreadSnapshot> {
     const sessionState = this.getOwnedSession(input.documentId, input.threadId, input.session.userID)
-    const reviewItem = requireWorkbookAgentReviewItem({
-      reviewItem: getCurrentWorkbookAgentReviewItem(sessionState),
-      reviewItemId: input.reviewItemId,
-      notFoundMessage: 'Workbook agent change set was not found.',
-    })
-    const preview = decodeWorkbookAgentPreviewSummary(input.preview)
-    if (!preview) {
-      throw createWorkbookAgentServiceError({
-        code: 'WORKBOOK_AGENT_PREVIEW_REQUIRED',
-        message: 'Workbook preview details are required before applying this change set.',
-        statusCode: 400,
-        retryable: false,
-      })
-    }
-    await this.applyCommandBundleForSessionState({
+    await applyWorkbookAgentReviewItem({
+      context: this.createReviewActionContext(),
       sessionState,
-      commandBundle: toWorkbookAgentCommandBundle(reviewItem),
+      reviewItemId: input.reviewItemId,
       actorUserId: input.session.userID,
       appliedBy: input.appliedBy,
       commandIndexes: input.commandIndexes,
-      preview,
+      preview: input.preview,
     })
-    await this.persistSessionState(sessionState)
-    this.sessionRegistry.emitSnapshot(sessionState.threadId)
     return buildSnapshot(sessionState)
   }
 
@@ -722,61 +726,13 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
     session: SessionIdentity
   }): Promise<WorkbookAgentThreadSnapshot> {
     const sessionState = this.getOwnedSession(input.documentId, input.threadId, input.session.userID)
-    const record = sessionState.durable.executionRecords.find((entry) => entry.id === input.recordId)
-    if (!record) {
-      throw createWorkbookAgentServiceError({
-        code: 'WORKBOOK_AGENT_RUN_NOT_FOUND',
-        message: 'Workbook agent execution record not found',
-        statusCode: 404,
-        retryable: false,
-      })
-    }
-    const baseRevision = await this.zeroSyncService.getWorkbookHeadRevision(input.documentId)
-    const replayedBundle = createWorkbookAgentCommandBundle({
+    await replayWorkbookAgentExecutionRecord({
+      context: this.createReviewActionContext(),
+      sessionState,
       documentId: input.documentId,
-      threadId: sessionState.threadId,
-      turnId: `replay:${record.id}:${String(this.now())}`,
-      goalText: record.goalText,
-      baseRevision,
-      context: toContextRef(sessionState.durable.context) ?? record.context,
-      commands: record.commands,
-      now: this.now(),
+      recordId: input.recordId,
+      actorUserId: input.session.userID,
     })
-    if (this.shouldApplyToolBundleImmediately(sessionState, replayedBundle)) {
-      const preview = await this.buildAuthoritativePreview(input.documentId, replayedBundle)
-      await this.applyCommandBundleForSessionState({
-        sessionState,
-        commandBundle: replayedBundle,
-        actorUserId: input.session.userID,
-        appliedBy: 'auto',
-        preview,
-      })
-      await this.persistSessionState(sessionState)
-      this.sessionRegistry.emitSnapshot(sessionState.threadId)
-      return buildSnapshot(sessionState)
-    }
-    if (sessionState.scope === 'private') {
-      throw createWorkbookAgentServiceError({
-        code: 'WORKBOOK_AGENT_PRIVATE_EXECUTION_BLOCKED',
-        message:
-          'Private workbook threads execute replayed changes directly and do not queue review items under the current execution policy.',
-        statusCode: 409,
-        retryable: false,
-      })
-    }
-    replaceCurrentWorkbookAgentReviewItem(sessionState, createWorkbookAgentReviewQueueItem({ sessionState, bundle: replayedBundle }))
-    sessionState.durable.entries = upsertEntry(
-      sessionState.durable.entries,
-      createSystemEntry(
-        `system-replay:${record.id}:${String(this.now())}`,
-        replayedBundle.turnId,
-        `Prepared workbook review item from a prior execution: ${replayedBundle.summary}`,
-        createBundleRangeCitations(replayedBundle),
-      ),
-    )
-    this.sessionRegistry.touch(sessionState)
-    await this.persistSessionState(sessionState)
-    this.sessionRegistry.emitSnapshot(sessionState.threadId)
     return buildSnapshot(sessionState)
   }
 
