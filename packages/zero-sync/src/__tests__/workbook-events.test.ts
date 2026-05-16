@@ -30,6 +30,33 @@ describe('workbook event guards', () => {
     ).toBe(false)
   })
 
+  it('rejects setCellValue payloads with non-literal values', () => {
+    expect(
+      isWorkbookEventPayload({
+        kind: 'setCellValue',
+        sheetName: 'Sheet1',
+        address: 'A1',
+        value: 'ready',
+      }),
+    ).toBe(true)
+    expect(
+      isWorkbookEventPayload({
+        kind: 'setCellValue',
+        sheetName: 'Sheet1',
+        address: 'A1',
+        value: Number.NaN,
+      }),
+    ).toBe(false)
+    expect(
+      isWorkbookEventPayload({
+        kind: 'setCellValue',
+        sheetName: 'Sheet1',
+        address: 'A1',
+        value: { tag: 'not-literal' },
+      }),
+    ).toBe(false)
+  })
+
   it('accepts structural metadata payloads', () => {
     expect(
       isWorkbookEventPayload({

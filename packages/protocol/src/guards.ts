@@ -20,7 +20,7 @@ function isCellValueTag(value: unknown): value is ValueTag {
 }
 
 export function isLiteralInput(value: unknown): value is LiteralInput {
-  return value === null || typeof value === 'boolean' || typeof value === 'number' || typeof value === 'string'
+  return value === null || typeof value === 'boolean' || typeof value === 'string' || (typeof value === 'number' && Number.isFinite(value))
 }
 
 export function isCellRangeRef(value: unknown): value is CellRangeRef {

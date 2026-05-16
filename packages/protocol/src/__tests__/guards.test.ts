@@ -67,6 +67,8 @@ describe('protocol guards', () => {
   it('accepts literal inputs and cell range refs with the shipped shapes', () => {
     expect(isLiteralInput(null)).toBe(true)
     expect(isLiteralInput('text')).toBe(true)
+    expect(isLiteralInput(12.5)).toBe(true)
+    expect(isLiteralInput(true)).toBe(true)
     expect(
       isCellRangeRef({
         sheetName: 'Sheet1',
@@ -74,6 +76,13 @@ describe('protocol guards', () => {
         endAddress: 'B2',
       }),
     ).toBe(true)
+  })
+
+  it('rejects malformed literal inputs', () => {
+    expect(isLiteralInput(Number.NaN)).toBe(false)
+    expect(isLiteralInput(Number.POSITIVE_INFINITY)).toBe(false)
+    expect(isLiteralInput({ value: 1 })).toBe(false)
+    expect(isLiteralInput(undefined)).toBe(false)
   })
 
   it('rejects malformed cell range refs', () => {

@@ -1,5 +1,5 @@
 import type { CellNumberFormatInput, CellRangeRef, CellStyleField, CellStylePatch, LiteralInput, WorkbookSnapshot } from '@bilig/protocol'
-import { isCellRangeRef, isWorkbookSnapshot } from '@bilig/protocol'
+import { isCellRangeRef, isLiteralInput, isWorkbookSnapshot } from '@bilig/protocol'
 import { parseCellAddress } from '@bilig/formula'
 import { applyWorkbookAgentCommandBundle, isWorkbookAgentCommandBundle, type WorkbookAgentCommandBundle } from '@bilig/agent-api'
 import { isCommitOps, type CommitOp, type SpreadsheetEngine } from '@bilig/core'
@@ -245,7 +245,7 @@ export function isWorkbookEventPayload(value: unknown): value is WorkbookEventPa
     case 'applyAgentCommandBundle':
       return isWorkbookAgentCommandBundle(value['bundle'])
     case 'setCellValue':
-      return typeof value['sheetName'] === 'string' && typeof value['address'] === 'string' && value['value'] !== undefined
+      return typeof value['sheetName'] === 'string' && typeof value['address'] === 'string' && isLiteralInput(value['value'])
     case 'setCellFormula':
       return typeof value['sheetName'] === 'string' && typeof value['address'] === 'string' && typeof value['formula'] === 'string'
     case 'clearCell':
