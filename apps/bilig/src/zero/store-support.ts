@@ -351,6 +351,16 @@ export function parseCellStyleRecord(value: unknown): CellStyleRecord | null {
       record.borders = nextBorders
     }
   }
+  if (isRecord(value['protection'])) {
+    const protection = value['protection']
+    const nextProtection = {
+      ...(typeof protection['locked'] === 'boolean' ? { locked: protection['locked'] } : {}),
+      ...(typeof protection['hidden'] === 'boolean' ? { hidden: protection['hidden'] } : {}),
+    }
+    if (Object.keys(nextProtection).length > 0) {
+      record.protection = nextProtection
+    }
+  }
   return record
 }
 

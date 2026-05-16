@@ -100,6 +100,7 @@ describe('store support helpers', () => {
         id: 'style-1',
         font: { family: 'Aptos', size: 12, bold: true, color: 17 },
         alignment: { horizontal: 'center', wrap: true, indent: 'x', textRotation: Number.POSITIVE_INFINITY },
+        protection: { locked: true, hidden: false, mode: 'ignored' },
         borders: {
           top: { style: 'solid', weight: 'thin', color: '#111' },
           left: { style: 'invalid', weight: 'thin', color: '#222' },
@@ -112,6 +113,7 @@ describe('store support helpers', () => {
       borders: {
         top: { style: 'solid', weight: 'thin', color: '#111' },
       },
+      protection: { locked: true, hidden: false },
     })
 
     expect(
