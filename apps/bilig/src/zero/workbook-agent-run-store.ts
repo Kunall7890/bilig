@@ -6,7 +6,7 @@ import {
   type WorkbookAgentExecutionRecord,
 } from '@bilig/agent-api'
 import type { QueryResultRow, Queryable } from './store.js'
-import { parseNullableInteger } from './store-support.js'
+import { parseNonNegativeInteger } from './store-support.js'
 
 interface WorkbookAgentRunRow extends QueryResultRow {
   readonly id?: unknown
@@ -40,10 +40,10 @@ function parseCommands(value: unknown): WorkbookAgentCommand[] | null {
 }
 
 function normalizeExecutionRecord(row: WorkbookAgentRunRow): WorkbookAgentExecutionRecord | null {
-  const baseRevision = parseNullableInteger(row.baseRevision)
-  const appliedRevision = parseNullableInteger(row.appliedRevision)
-  const createdAtUnixMs = parseNullableInteger(row.createdAtUnixMs)
-  const appliedAtUnixMs = parseNullableInteger(row.appliedAtUnixMs)
+  const baseRevision = parseNonNegativeInteger(row.baseRevision)
+  const appliedRevision = parseNonNegativeInteger(row.appliedRevision)
+  const createdAtUnixMs = parseNonNegativeInteger(row.createdAtUnixMs)
+  const appliedAtUnixMs = parseNonNegativeInteger(row.appliedAtUnixMs)
   const commands = parseCommands(row.commandsJson)
   if (
     typeof row.id !== 'string' ||
@@ -62,6 +62,8 @@ function normalizeExecutionRecord(row: WorkbookAgentRunRow): WorkbookAgentExecut
     appliedRevision === null ||
     createdAtUnixMs === null ||
     appliedAtUnixMs === null ||
+    appliedRevision < baseRevision ||
+    appliedAtUnixMs < createdAtUnixMs ||
     commands === null
   ) {
     return null

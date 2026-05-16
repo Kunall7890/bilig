@@ -133,6 +133,79 @@ describe('workbook-agent-run-store', () => {
     ])
   })
 
+  it('drops execution rows with impossible revision or timestamp ordering', async () => {
+    const valid = createExecutionRecord()
+    const queryable = new FakeQueryable([
+      (text) =>
+        text.includes('FROM workbook_agent_run')
+          ? [
+              {
+                id: 'run-bad-revision',
+                bundleId: 'bundle-bad',
+                workbookId: 'doc-1',
+                threadId: 'thr-1',
+                turnId: 'turn-1',
+                actorUserId: 'alex@example.com',
+                goalText: 'Bad revision row',
+                planText: null,
+                summary: 'Should not hydrate',
+                scope: 'sheet',
+                riskClass: 'medium',
+                acceptedScope: 'partial',
+                appliedBy: 'user',
+                baseRevision: 9,
+                appliedRevision: 8,
+                createdAtUnixMs: 100,
+                appliedAtUnixMs: 200,
+                contextJson: null,
+                commandsJson: valid.commands,
+                previewJson: null,
+              } satisfies QueryResultRow,
+              {
+                ...valid,
+                workbookId: valid.documentId,
+                contextJson: valid.context,
+                commandsJson: valid.commands,
+                previewJson: valid.preview,
+                baseRevision: valid.baseRevision,
+                appliedRevision: valid.appliedRevision,
+                createdAtUnixMs: valid.createdAtUnixMs,
+                appliedAtUnixMs: valid.appliedAtUnixMs,
+              } satisfies QueryResultRow,
+              {
+                id: 'run-bad-time',
+                bundleId: 'bundle-bad-time',
+                workbookId: 'doc-1',
+                threadId: 'thr-1',
+                turnId: 'turn-1',
+                actorUserId: 'alex@example.com',
+                goalText: 'Bad timestamp row',
+                planText: null,
+                summary: 'Should not hydrate',
+                scope: 'sheet',
+                riskClass: 'medium',
+                acceptedScope: 'partial',
+                appliedBy: 'user',
+                baseRevision: 3,
+                appliedRevision: 4,
+                createdAtUnixMs: 300,
+                appliedAtUnixMs: 200,
+                contextJson: null,
+                commandsJson: valid.commands,
+                previewJson: null,
+              } satisfies QueryResultRow,
+            ]
+          : null,
+    ])
+
+    const records = await listWorkbookAgentRuns(queryable, {
+      documentId: 'doc-1',
+      actorUserId: 'alex@example.com',
+    })
+
+    expect(records.map((record) => record.id)).toEqual(['run-1'])
+  })
+
   it('loads shared thread execution records for collaborator viewers', async () => {
     const record = {
       ...createExecutionRecord(),

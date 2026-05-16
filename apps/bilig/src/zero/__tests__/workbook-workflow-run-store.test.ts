@@ -448,4 +448,88 @@ describe('workbook-workflow-run-store', () => {
       }),
     ])
   })
+
+  it('drops workflow runs with impossible run timestamp ordering', async () => {
+    const run = createWorkflowRun()
+    const queryable = new FakeQueryable([
+      (text, values) =>
+        text.includes('FROM workbook_workflow_run AS run') && values?.[1] === 'thr-1'
+          ? [
+              {
+                runId: 'workflow-bad-time',
+                workbookId: 'doc-1',
+                threadId: run.threadId,
+                actorUserId: run.startedByUserId,
+                workflowTemplate: run.workflowTemplate,
+                title: run.title,
+                summary: run.summary,
+                status: run.status,
+                createdAtUnixMs: 200,
+                updatedAtUnixMs: 100,
+                completedAtUnixMs: run.completedAtUnixMs,
+                errorMessage: run.errorMessage,
+                stepsJson: run.steps,
+                artifactJson: run.artifact,
+              } satisfies QueryResultRow,
+            ]
+          : null,
+    ])
+
+    await expect(
+      listWorkbookThreadWorkflowRuns(queryable, {
+        documentId: 'doc-1',
+        actorUserId: 'alex@example.com',
+        threadId: 'thr-1',
+      }),
+    ).resolves.toEqual([])
+  })
+
+  it('drops workflow runs when durable step rows are malformed instead of falling back to legacy step json', async () => {
+    const run = createWorkflowRun()
+    const queryable = new FakeQueryable([
+      (text, values) =>
+        text.includes('FROM workbook_workflow_run AS run') && values?.[1] === 'thr-1'
+          ? [
+              {
+                runId: run.runId,
+                workbookId: 'doc-1',
+                threadId: run.threadId,
+                actorUserId: run.startedByUserId,
+                workflowTemplate: run.workflowTemplate,
+                title: run.title,
+                summary: run.summary,
+                status: run.status,
+                createdAtUnixMs: run.createdAtUnixMs,
+                updatedAtUnixMs: run.updatedAtUnixMs,
+                completedAtUnixMs: run.completedAtUnixMs,
+                errorMessage: run.errorMessage,
+                stepsJson: run.steps,
+                artifactJson: run.artifact,
+              } satisfies QueryResultRow,
+            ]
+          : null,
+      (text, values) =>
+        text.includes('FROM workbook_workflow_step AS step') && values?.[0] === 'doc-1' && Array.isArray(values?.[1])
+          ? [
+              {
+                runId: run.runId,
+                stepId: 'bad-step',
+                stepOrder: -1,
+                label: 'Bad step',
+                status: 'completed',
+                summary: 'Should invalidate the run.',
+                updatedAtUnixMs: 120,
+              } satisfies QueryResultRow,
+            ]
+          : null,
+    ])
+
+    await expect(
+      listWorkbookThreadWorkflowRuns(queryable, {
+        documentId: 'doc-1',
+        actorUserId: 'alex@example.com',
+        threadId: 'thr-1',
+      }),
+    ).resolves.toEqual([])
+  })
 })

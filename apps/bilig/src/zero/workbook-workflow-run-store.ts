@@ -1,6 +1,6 @@
 import type { WorkbookAgentWorkflowArtifact, WorkbookAgentWorkflowRun, WorkbookAgentWorkflowStep } from '@bilig/contracts'
 import type { QueryResultRow, Queryable } from './store.js'
-import { parseNullableInteger } from './store-support.js'
+import { parseNonNegativeInteger } from './store-support.js'
 
 interface WorkbookWorkflowRunRow extends QueryResultRow {
   readonly runId?: unknown
@@ -36,16 +36,19 @@ interface WorkbookWorkflowArtifactRow extends QueryResultRow {
   readonly text?: unknown
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
 function isMarkdownArtifact(value: unknown): value is WorkbookAgentWorkflowArtifact {
   return (
-    typeof value === 'object' &&
-    value !== null &&
+    isRecord(value) &&
     'kind' in value &&
-    value.kind === 'markdown' &&
+    value['kind'] === 'markdown' &&
     'title' in value &&
-    typeof value.title === 'string' &&
+    typeof value['title'] === 'string' &&
     'text' in value &&
-    typeof value.text === 'string'
+    typeof value['text'] === 'string'
   )
 }
 
@@ -82,19 +85,19 @@ function isWorkflowStepStatus(value: unknown): value is WorkbookAgentWorkflowSte
 }
 
 function isWorkflowStep(value: unknown): value is WorkbookAgentWorkflowStep {
+  const updatedAtUnixMs = isRecord(value) ? parseNonNegativeInteger(value['updatedAtUnixMs']) : null
   return (
-    typeof value === 'object' &&
-    value !== null &&
+    isRecord(value) &&
     'stepId' in value &&
-    typeof value.stepId === 'string' &&
+    typeof value['stepId'] === 'string' &&
     'label' in value &&
-    typeof value.label === 'string' &&
+    typeof value['label'] === 'string' &&
     'status' in value &&
-    isWorkflowStepStatus(value.status) &&
+    isWorkflowStepStatus(value['status']) &&
     'summary' in value &&
-    typeof value.summary === 'string' &&
+    typeof value['summary'] === 'string' &&
     'updatedAtUnixMs' in value &&
-    parseNullableInteger(value.updatedAtUnixMs) !== null
+    updatedAtUnixMs !== null
   )
 }
 
@@ -102,13 +105,21 @@ function normalizeWorkflowSteps(value: unknown): WorkbookAgentWorkflowStep[] | n
   if (!Array.isArray(value) || !value.every((entry) => isWorkflowStep(entry))) {
     return null
   }
-  return value.map((entry) => ({
-    stepId: entry.stepId,
-    label: entry.label,
-    status: entry.status,
-    summary: entry.summary,
-    updatedAtUnixMs: parseNullableInteger(entry.updatedAtUnixMs) ?? 0,
-  }))
+  const steps: WorkbookAgentWorkflowStep[] = []
+  for (const entry of value) {
+    const updatedAtUnixMs = parseNonNegativeInteger(entry.updatedAtUnixMs)
+    if (updatedAtUnixMs === null) {
+      return null
+    }
+    steps.push({
+      stepId: entry.stepId,
+      label: entry.label,
+      status: entry.status,
+      summary: entry.summary,
+      updatedAtUnixMs,
+    })
+  }
+  return steps
 }
 
 function normalizeWorkflowStepRow(row: WorkbookWorkflowStepRow): {
@@ -116,8 +127,8 @@ function normalizeWorkflowStepRow(row: WorkbookWorkflowStepRow): {
   readonly step: WorkbookAgentWorkflowStep
   readonly stepOrder: number
 } | null {
-  const updatedAtUnixMs = parseNullableInteger(row.updatedAtUnixMs)
-  const stepOrder = parseNullableInteger(row.stepOrder)
+  const updatedAtUnixMs = parseNonNegativeInteger(row.updatedAtUnixMs)
+  const stepOrder = parseNonNegativeInteger(row.stepOrder)
   if (
     typeof row.runId !== 'string' ||
     typeof row.stepId !== 'string' ||
@@ -167,12 +178,12 @@ function normalizeWorkflowRun(
     readonly artifact?: WorkbookAgentWorkflowArtifact | null
   } = {},
 ): WorkbookAgentWorkflowRun | null {
-  const createdAtUnixMs = parseNullableInteger(row.createdAtUnixMs)
-  const updatedAtUnixMs = parseNullableInteger(row.updatedAtUnixMs)
+  const createdAtUnixMs = parseNonNegativeInteger(row.createdAtUnixMs)
+  const updatedAtUnixMs = parseNonNegativeInteger(row.updatedAtUnixMs)
   const completedAtUnixMs =
-    row.completedAtUnixMs === null || row.completedAtUnixMs === undefined ? null : parseNullableInteger(row.completedAtUnixMs)
+    row.completedAtUnixMs === null || row.completedAtUnixMs === undefined ? null : parseNonNegativeInteger(row.completedAtUnixMs)
   const fallbackSteps = normalizeWorkflowSteps(row.stepsJson ?? [])
-  const steps = hydrated.steps ?? fallbackSteps
+  const steps = 'steps' in hydrated ? hydrated.steps : fallbackSteps
   const artifact = hydrated.artifact ?? (isMarkdownArtifact(row.artifactJson) ? row.artifactJson : null)
   if (
     typeof row.runId !== 'string' ||
@@ -185,6 +196,8 @@ function normalizeWorkflowRun(
     createdAtUnixMs === null ||
     updatedAtUnixMs === null ||
     completedAtUnixMs === undefined ||
+    updatedAtUnixMs < createdAtUnixMs ||
+    (completedAtUnixMs !== null && completedAtUnixMs < createdAtUnixMs) ||
     steps === null ||
     (row.errorMessage !== null && row.errorMessage !== undefined && typeof row.errorMessage !== 'string') ||
     (artifact !== null && !isMarkdownArtifact(artifact))
@@ -212,7 +225,7 @@ async function loadDurableWorkflowSteps(
   db: Queryable,
   documentId: string,
   runIds: readonly string[],
-): Promise<Map<string, WorkbookAgentWorkflowStep[]>> {
+): Promise<Map<string, WorkbookAgentWorkflowStep[] | null>> {
   if (runIds.length === 0) {
     return new Map()
   }
@@ -233,10 +246,16 @@ async function loadDurableWorkflowSteps(
     `,
     [documentId, runIds],
   )
-  const stepsByRunId = new Map<string, WorkbookAgentWorkflowStep[]>()
+  const stepsByRunId = new Map<string, WorkbookAgentWorkflowStep[] | null>()
   for (const row of result.rows) {
     const normalized = normalizeWorkflowStepRow(row)
     if (!normalized) {
+      if (typeof row.runId === 'string') {
+        stepsByRunId.set(row.runId, null)
+      }
+      continue
+    }
+    if (stepsByRunId.get(normalized.runId) === null) {
       continue
     }
     const steps = stepsByRunId.get(normalized.runId)
@@ -527,9 +546,8 @@ export async function listWorkbookThreadWorkflowRuns(
       artifact?: WorkbookAgentWorkflowArtifact | null
     } = {}
     if (runId) {
-      const steps = durableSteps.get(runId)
-      if (steps) {
-        hydrated.steps = steps
+      if (durableSteps.has(runId)) {
+        hydrated.steps = durableSteps.get(runId) ?? null
       }
       const artifact = durableArtifacts.get(runId)
       if (artifact) {
