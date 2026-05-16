@@ -43,6 +43,7 @@ const upstreamServers: TestServer[] = []
 
 afterEach(async () => {
   delete process.env['BILIG_ZERO_PROXY_UPSTREAM']
+  delete process.env['BILIG_PERSIST_STATE']
   await Promise.all(upstreamServers.splice(0).map((server) => server.close()))
 })
 
@@ -362,6 +363,35 @@ describe('sync-server cross-origin isolation', () => {
     } finally {
       await app.close()
     }
+  })
+})
+
+describe('sync-server runtime config', () => {
+  it('resolves explicit persist-state controls for the browser runtime', async () => {
+    process.env['BILIG_PERSIST_STATE'] = 'false'
+    const { app } = createSyncServer({ logger: false })
+
+    try {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/runtime-config.json',
+      })
+
+      expect(response.statusCode).toBe(200)
+      expect(response.json()).toMatchObject({
+        persistState: false,
+      })
+    } finally {
+      await app.close()
+    }
+  })
+
+  it('rejects ambiguous persist-state controls before serving runtime config', () => {
+    process.env['BILIG_PERSIST_STATE'] = ' FALSE '
+
+    expect(() => createSyncServer({ logger: false })).toThrow(
+      'BILIG_PERSIST_STATE must be "1", "true", "0", or "false" when set, got  FALSE ',
+    )
   })
 })
 

@@ -6,18 +6,17 @@ import type { BiligRuntimeConfig } from '@bilig/zero-sync'
 import type { WorkbookAgentService } from '../codex-app/workbook-agent-service.js'
 import { resolveRequestSession, resolveSessionIdentity } from './session.js'
 
-function resolveBooleanEnv(value: string | undefined, fallback: boolean): boolean {
-  const normalized = value?.trim().toLowerCase()
-  if (!normalized) {
+function resolveBooleanEnv(value: string | undefined, fallback: boolean, name: string): boolean {
+  if (value === undefined || value.length === 0) {
     return fallback
   }
-  if (normalized === 'true' || normalized === '1') {
+  if (value === 'true' || value === '1') {
     return true
   }
-  if (normalized === 'false' || normalized === '0') {
+  if (value === 'false' || value === '0') {
     return false
   }
-  throw new Error(`Invalid boolean environment value: ${value}`)
+  throw new Error(`${name} must be "1", "true", "0", or "false" when set, got ${value}`)
 }
 
 function resolveWebRuntimeConfig(env: Record<string, string | undefined>): Omit<BiligRuntimeConfig, 'currentUserId'> {
@@ -27,7 +26,7 @@ function resolveWebRuntimeConfig(env: Record<string, string | undefined>): Omit<
   return {
     zeroCacheUrl,
     defaultDocumentId,
-    persistState: resolveBooleanEnv(env['BILIG_PERSIST_STATE'], true),
+    persistState: resolveBooleanEnv(env['BILIG_PERSIST_STATE'], true, 'BILIG_PERSIST_STATE'),
   }
 }
 
