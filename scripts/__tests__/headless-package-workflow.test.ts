@@ -44,6 +44,7 @@ describe('headless package workflow', () => {
     expect(source).toContain('cancel-in-progress: false')
     expect(source).toContain('reason=stale workflow SHA; newer main exists')
     expect(source).toContain('git push origin HEAD:main')
+    expect(source).toContain('git rebase origin/main')
     expect(source).toContain('git push github HEAD:main')
     expect(source).toContain('GitHub main reached release metadata SHA during push')
     expect(source).toContain('git tag -a "${TAG_NAME}" -m "Libraries v${TARGET_VERSION}" HEAD')
