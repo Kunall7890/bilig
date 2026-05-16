@@ -5,15 +5,31 @@ export function readStringArg(name: string, fallback: string): string {
   let value: string | null = null
   let count = 0
   process.argv.forEach((arg, index) => {
-    if (arg === name) {
+    const parsed = readArgValueForName(name, arg, index)
+    if (parsed !== null) {
       count += 1
       if (count > 1) {
         throw new Error(`Expected ${name} to be specified once`)
       }
-      value = readArgValueAt(name, index)
+      value = parsed
     }
   })
   return value ?? fallback
+}
+
+function readArgValueForName(name: string, arg: string, index: number): string | null {
+  if (arg === name) {
+    return readArgValueAt(name, index)
+  }
+  const inlinePrefix = `${name}=`
+  if (arg.startsWith(inlinePrefix)) {
+    const value = arg.slice(inlinePrefix.length)
+    if (!value) {
+      throw new Error(`Expected ${name} to have a value`)
+    }
+    return value
+  }
+  return null
 }
 
 function readArgValueAt(name: string, index: number): string {
@@ -145,8 +161,9 @@ export function readFetchRunArgs(defaults: { readonly batchSize: number; readonl
 export function readRepeatedStringArg(name: string): string[] {
   const values: string[] = []
   process.argv.forEach((arg, index) => {
-    if (arg === name) {
-      values.push(readArgValueAt(name, index))
+    const parsed = readArgValueForName(name, arg, index)
+    if (parsed !== null) {
+      values.push(parsed)
     }
   })
   return values
