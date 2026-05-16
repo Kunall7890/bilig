@@ -206,7 +206,7 @@ function isBroadCorpusSweep(paths: readonly string[]): boolean {
 
 function requiredArgValue(argv: readonly string[], index: number, option: string): string {
   const value = argv[index + 1]
-  if (value === undefined || value.startsWith('-')) {
+  if (value === undefined || value.trim().length === 0 || value.startsWith('-')) {
     throw new CliUsageError(`Missing value for ${option}\n\n${usageText()}`, 2)
   }
   return value

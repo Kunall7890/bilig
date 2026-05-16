@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 import * as XLSX from 'xlsx'
 
 import { runWorkPaperXlsxCorpus, runWorkPaperXlsxCorpusInChildProcesses } from '../check-workpaper-xlsx-corpus.ts'
-import { parseWorkPaperXlsxCorpusCliArgs } from '../workpaper-xlsx-corpus-cli.ts'
+import { parseWorkPaperXlsxCorpusCliArgs, parseWorkPaperXlsxCorpusInternalCliArgs } from '../workpaper-xlsx-corpus-cli.ts'
 
 describe('WorkPaper XLSX corpus verifier', () => {
   it('keeps a checked-in XLSX compatibility corpus green', () => {
@@ -150,6 +150,16 @@ describe('WorkPaper XLSX corpus verifier', () => {
   it('rejects non-decimal min-match-rate CLI values', () => {
     expect(() => parseWorkPaperXlsxCorpusCliArgs(['--min-match-rate', '1e-1', checkedInCorpusFile()])).toThrow(
       '--min-match-rate expects a number between 0 and 1, got 1e-1',
+    )
+  })
+
+  it('rejects blank string option values', () => {
+    expect(() => parseWorkPaperXlsxCorpusCliArgs(['--json-out', '   ', checkedInCorpusFile()])).toThrow('Missing value for --json-out')
+  })
+
+  it('rejects blank internal file option values', () => {
+    expect(() => parseWorkPaperXlsxCorpusInternalCliArgs(['--internal-check-file-json', '   '])).toThrow(
+      'Missing value for --internal-check-file-json',
     )
   })
 
