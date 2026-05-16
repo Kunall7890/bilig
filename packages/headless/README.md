@@ -493,9 +493,9 @@ pnpm workpaper:xlsx-corpus:check -- /path/to/xlsx-corpus
   should be checked against a fresh Microsoft Excel recalculation.
 - Run `pnpm workpaper:bench:competitive:check` from the repository. The
   checked-in artifact shows
-  [`78/100` comparable WorkPaper mean wins](https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md)
+  [`72/100` comparable WorkPaper mean wins](https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md)
   and names the worst p95 holdout:
-  `single-formula-edit-recalc` at `2.608x`.
+  `lookup-text-exact` at `22.992x`.
 - The shareable benchmark card is generated from the checked-in artifact:
   [`workpaper-benchmark-card.png`](https://github.com/proompteng/bilig/blob/main/docs/assets/workpaper-benchmark-card.png).
 - Read the

@@ -1,6 +1,6 @@
 # Community Growth Snapshot
 
-Captured at: `2026-05-16T15:03:25.320Z`
+Captured at: `2026-05-16T21:33:52.928Z`
 
 This snapshot tracks the public signals for the `@bilig/headless` growth loop: GitHub conversion, npm demand, contributor on-ramp health, discussion activity, and traffic quality.
 
@@ -12,13 +12,13 @@ This snapshot tracks the public signals for the `@bilig/headless` growth loop: G
 - Watchers: 0
 - Open issues: 17
 - Default branch: `main`
-- Topics: `agent-tools`, `ai-agents`, `coding-agents`, `excel-formulas`, `formula-engine`, `headless-spreadsheet`, `headless-workbook`, `mcp`, `model-context-protocol`, `nodejs`, `spreadsheet`, `spreadsheet-api`, `spreadsheet-automation`, `spreadsheet-engine`, `spreadsheet-formulas`, `typescript`, `vercel-ai-sdk`, `workbook-api`, `workbook-automation`, `xlsx`
+- Topics: `agent-tools`, `ai-agents`, `excel-formulas`, `formula-engine`, `headless-spreadsheet`, `headless-workbook`, `mcp`, `model-context-protocol`, `nodejs`, `spreadsheet`, `spreadsheet-api`, `spreadsheet-automation`, `spreadsheet-engine`, `spreadsheet-formulas`, `typescript`, `vercel-ai-sdk`, `workbook-api`, `workbook-automation`, `xlsx`, `xlsx-recalculation`
 
 ## npm
 
-- Package: `@bilig/headless@0.16.24`
+- Package: `@bilig/headless@0.16.26`
 - License: `MIT`
-- Modified: `2026-05-16T15:00:11.922Z`
+- Modified: `2026-05-16T21:24:44.575Z`
 - Downloads last week: 12,568 (2026-05-09 to 2026-05-15)
 - Downloads last month: 27,753 (2026-04-16 to 2026-05-15)
 
@@ -29,16 +29,16 @@ This snapshot tracks the public signals for the `@bilig/headless` growth loop: G
 - Documentation starter issues: 6
 - Non-documentation starter issues: 9
 - Open help wanted issues: 15
-- Open pull requests: 5
+- Open pull requests: 3
 - External open issues: 0
-- External open pull requests: 5
+- External open pull requests: 3
 - External issues opened in the last 7 days: 6
 - External pull requests opened in the last 7 days: 42
 
 ## Discussions
 
 - Total discussions: 13
-- #270 [Show and tell: try @bilig/headless from npm in an empty Node project](https://github.com/proompteng/bilig/discussions/270) (Show and tell, 1 comment)
+- #270 [Show and tell: try @bilig/headless from npm in an empty Node project](https://github.com/proompteng/bilig/discussions/270) (Show and tell, 2 comments)
 - #157 [Which Node workbook automation workflow should @bilig/headless prove next?](https://github.com/proompteng/bilig/discussions/157) (Ideas, 10 comments)
 - #382 [How should headless spreadsheet engines handle stale XLSX cached values?](https://github.com/proompteng/bilig/discussions/382) (Ideas, 2 comments)
 - #230 [Show and tell: MCP spreadsheet tool server for WorkPaper agents](https://github.com/proompteng/bilig/discussions/230) (Show and tell, 5 comments)
