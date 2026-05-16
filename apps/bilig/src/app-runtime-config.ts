@@ -7,7 +7,7 @@ export interface BiligAppRuntimeConfig {
 }
 
 export function resolveBiligAppRuntimeConfig(env: Readonly<Record<string, string | undefined>> = process.env): BiligAppRuntimeConfig {
-  const host = env['HOST'] ?? '0.0.0.0'
+  const host = parseHost(env['HOST'])
   const appPort = parseTcpPort(env['PORT'] ?? '4321', 'PORT')
   const publicServerUrl = parseOptionalHttpUrl(env['BILIG_PUBLIC_SERVER_URL'], `http://127.0.0.1:${appPort}`, 'BILIG_PUBLIC_SERVER_URL')
   const browserAppBaseUrl = parseOptionalHttpUrl(env['BILIG_WEB_APP_BASE_URL'], publicServerUrl, 'BILIG_WEB_APP_BASE_URL')
@@ -20,6 +20,19 @@ export function resolveBiligAppRuntimeConfig(env: Readonly<Record<string, string
     browserAppBaseUrl,
     ...(maxImportBytes !== undefined ? { maxImportBytes } : {}),
   }
+}
+
+function parseHost(value: string | undefined): string {
+  if (value === undefined) {
+    return '0.0.0.0'
+  }
+
+  const trimmed = value.trim()
+  if (trimmed.length === 0) {
+    throw new Error(`HOST must be a non-empty hostname or IP address, got ${value}`)
+  }
+
+  return trimmed
 }
 
 function parseOptionalHttpUrl(value: string | undefined, fallback: string, name: string): string {

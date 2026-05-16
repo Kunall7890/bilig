@@ -16,7 +16,7 @@ describe('bilig app runtime config', () => {
 
   it('preserves explicit runtime configuration', () => {
     const config = resolveBiligAppRuntimeConfig({
-      HOST: '127.0.0.1',
+      HOST: ' 127.0.0.1 ',
       PORT: '4567',
       BILIG_PUBLIC_SERVER_URL: ' https://api.example.test ',
       BILIG_WEB_APP_BASE_URL: ' https://workbooks.example.test ',
@@ -30,6 +30,10 @@ describe('bilig app runtime config', () => {
       browserAppBaseUrl: 'https://workbooks.example.test',
       maxImportBytes: 1_048_576,
     })
+  })
+
+  it.each(['', '   '])('rejects malformed HOST=%s', (host) => {
+    expect(() => resolveBiligAppRuntimeConfig({ HOST: host })).toThrow('HOST must be a non-empty hostname or IP address')
   })
 
   it.each(['4321abc', '0', '70000', '-1', ''])('rejects malformed PORT=%s', (port) => {
