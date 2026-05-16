@@ -85,7 +85,6 @@ export function createOperationDirectPostRecalcMarkers(args: {
     const formula = args.state.formulas.get(formulaCellIndex)
     return (
       formula !== undefined &&
-      (formula.directScalar === undefined || !formula.compiled.deps.some((dependency) => dependency.includes('!'))) &&
       (formula.directLookup !== undefined ||
         formula.directAggregate !== undefined ||
         formula.directScalar !== undefined ||

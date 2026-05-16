@@ -449,8 +449,7 @@ export function createFormulaBindingDependencyMaterializer(
       compiled.symbolicRanges.length !== 0 ||
       compiled.symbolicNames.length !== 0 ||
       compiled.symbolicTables.length !== 0 ||
-      compiled.symbolicSpills.length !== 0 ||
-      compiled.parsedSymbolicRefs?.some((ref) => ref.sheetName !== undefined || ref.explicitSheet === true) === true
+      compiled.symbolicSpills.length !== 0
     ) {
       return undefined
     }

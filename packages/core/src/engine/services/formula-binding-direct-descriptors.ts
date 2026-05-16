@@ -758,7 +758,7 @@ export function buildDirectAggregateDescriptor(args: {
   const directAggregateCandidate = args.compiled.directAggregateCandidate
   if (directAggregateCandidate) {
     const rangeInfo = args.compiled.parsedSymbolicRanges?.[directAggregateCandidate.symbolicRangeIndex]
-    if (rangeInfo && rangeInfo.refKind === 'cells' && (rangeInfo.sheetName === undefined || rangeInfo.sheetName === args.ownerSheetName)) {
+    if (rangeInfo && rangeInfo.refKind === 'cells') {
       const sheetName = rangeInfo.sheetName ?? args.ownerSheetName
       return buildDescriptor({
         sheetName,
@@ -784,9 +784,6 @@ export function buildDirectAggregateDescriptor(args: {
   }
   const rangeNode = node.args[0]
   if (!rangeNode || rangeNode.kind !== 'RangeRef' || rangeNode.refKind !== 'cells' || rangeNode.sheetEndName !== undefined) {
-    return undefined
-  }
-  if (rangeNode.sheetName !== undefined && rangeNode.sheetName !== args.ownerSheetName) {
     return undefined
   }
   const parsedRange = parseRangeAddress(`${rangeNode.start}:${rangeNode.end}`, rangeNode.sheetName ?? args.ownerSheetName)
