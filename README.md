@@ -127,6 +127,24 @@ Current checked npm footprint for `@bilig/headless@0.16.5`:
 - Runtime: Node `>=24.0.0`; Node 22 support waits for release CI coverage.
 <!-- headless-package-footprint:end -->
 
+## Published Package Trust
+
+`@bilig/headless@0.16.5` is published with npm registry signatures and SLSA
+provenance attestations. Verify the package before adopting it:
+
+```sh
+npm view @bilig/headless@0.16.5 version dist.attestations dist.signatures --json
+```
+
+After installing, npm can verify the current dependency tree:
+
+```sh
+npm audit signatures
+```
+
+The current package trust path is documented in
+[npm provenance and package trust](docs/npm-provenance-package-trust.md).
+
 ## Start Here
 
 Use the shortest path that proves the package against a real job.
@@ -152,6 +170,7 @@ the [MCP server guide](docs/mcp-workpaper-tool-server.md),
 [MCP directory status](docs/mcp-spreadsheet-server-directory.md),
 [MCP client setup](docs/mcp-client-setup.md),
 [Claude Desktop MCPB bundle](docs/claude-desktop-mcpb-workpaper.md),
+[npm provenance and package trust](docs/npm-provenance-package-trust.md),
 [JavaScript library comparison](docs/javascript-spreadsheet-library-headless-node.md),
 [headless spreadsheet engine for Node services and agents](docs/headless-spreadsheet-engine-node-services-agents.md),
 [ExcelJS formula recalculation in Node.js](docs/exceljs-formula-recalculation-node.md),

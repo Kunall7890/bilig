@@ -25,6 +25,7 @@ export const docsSiteSources = [
   ['try-bilig-headless-in-node.html', 'try-bilig-headless-in-node.md'],
   ['quote-approval-workpaper-api.html', 'quote-approval-workpaper-api.md'],
   ['production-adoption-checklist-headless-workpaper.html', 'production-adoption-checklist-headless-workpaper.md'],
+  ['npm-provenance-package-trust.html', 'npm-provenance-package-trust.md'],
   ['workbook-automation-examples-node.html', 'workbook-automation-examples-node.md'],
   ['serverless-workpaper-api-route.html', 'serverless-workpaper-api-route.md'],
   ['node-framework-workpaper-adapters.html', 'node-framework-workpaper-adapters.md'],

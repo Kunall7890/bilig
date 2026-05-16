@@ -143,6 +143,8 @@ tool-calling, start with
 
 Before upgrading a production workflow:
 
+- verify npm package provenance and registry signatures with
+  [`npm-provenance-package-trust.md`](npm-provenance-package-trust.md)
 - read the package changelog
 - rerun your workflow fixture on the new package version
 - rerun restore-after-save proof against existing saved documents

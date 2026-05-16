@@ -26,6 +26,7 @@ support policy: https://github.com/proompteng/bilig/blob/main/SUPPORT.md
 - https://proompteng.github.io/bilig/evaluate-excel-formulas-in-node-typescript.html
 - https://proompteng.github.io/bilig/try-bilig-headless-in-node.html
 - https://proompteng.github.io/bilig/production-adoption-checklist-headless-workpaper.html
+- https://proompteng.github.io/bilig/npm-provenance-package-trust.html
 - https://proompteng.github.io/bilig/npm-eval.ts
 - https://proompteng.github.io/bilig/workbook-automation-examples-node.html
 - https://proompteng.github.io/bilig/server-side-spreadsheet-automation-node.html
@@ -65,6 +66,7 @@ support policy: https://github.com/proompteng/bilig/blob/main/SUPPORT.md
 - https://github.com/proompteng/bilig/blob/main/docs/stop-driving-spreadsheets-with-screenshots.md
 - https://github.com/proompteng/bilig/blob/main/docs/evaluate-excel-formulas-in-node-typescript.md
 - https://github.com/proompteng/bilig/blob/main/docs/production-adoption-checklist-headless-workpaper.md
+- https://github.com/proompteng/bilig/blob/main/docs/npm-provenance-package-trust.md
 - https://github.com/proompteng/bilig/blob/main/docs/server-side-spreadsheet-automation-node.md
 - https://github.com/proompteng/bilig/blob/main/docs/google-sheets-api-alternative-node-workpaper.md
 - https://github.com/proompteng/bilig/blob/main/docs/node-service-workpaper-recipe.md
@@ -135,6 +137,11 @@ npm run agent:verify
   examples/serverless-workpaper-api/quote-approval-api.ts and verifies
   decisionChanged, formulasPersisted, inputPersisted, restoredMatchesAfter, and
   verified from the published npm package.
+- npm provenance and package trust:
+  https://proompteng.github.io/bilig/npm-provenance-package-trust.html
+  https://github.com/proompteng/bilig/blob/main/docs/npm-provenance-package-trust.md
+  verifies @bilig/headless registry signatures, SLSA provenance attestations,
+  and the release workflow path before production adoption.
 - benchmark share card:
   https://github.com/proompteng/bilig/blob/main/docs/assets/workpaper-benchmark-card.png
 - hyperformula comparison:

@@ -45,6 +45,21 @@ Current checked npm footprint for `@bilig/headless@0.16.5`:
 - Runtime: Node `>=24.0.0`; Node 22 support waits for release CI coverage.
 <!-- headless-package-footprint:end -->
 
+## Published Package Trust
+
+`@bilig/headless@0.16.5` is published with npm registry signatures and SLSA
+provenance attestations. Check the package before adopting it in a service:
+
+```sh
+npm view @bilig/headless@0.16.5 version dist.attestations dist.signatures --json
+npm audit signatures
+```
+
+The release workflow uses GitHub Actions OIDC and publishes runtime packages
+with `npm publish --provenance`. The public verification path is documented in
+the
+[npm provenance and package trust guide](https://proompteng.github.io/bilig/npm-provenance-package-trust.html).
+
 For a clean copy-paste run, use the
 [Node quickstart](https://proompteng.github.io/bilig/try-bilig-headless-in-node.html).
 If you are choosing between formula engines, read the

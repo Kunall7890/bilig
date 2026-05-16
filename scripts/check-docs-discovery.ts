@@ -141,6 +141,7 @@ for (const required of [
   './evaluate-excel-formulas-in-node-typescript.html',
   './try-bilig-headless-in-node.html',
   './quote-approval-workpaper-api.html',
+  './npm-provenance-package-trust.html',
   './serverless-workpaper-api-route.html',
   './node-framework-workpaper-adapters.html',
   './persisting-formula-backed-workpaper-documents-in-node.html',
@@ -269,6 +270,8 @@ for (const required of [
   'https://github.com/proompteng/bilig/blob/main/docs/local-workpaper-benchmark-walkthrough.md',
   'https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md',
   'https://github.com/proompteng/bilig/blob/main/docs/production-adoption-checklist-headless-workpaper.md',
+  'https://proompteng.github.io/bilig/npm-provenance-package-trust.html',
+  'https://github.com/proompteng/bilig/blob/main/docs/npm-provenance-package-trust.md',
   'https://github.com/proompteng/bilig/blob/main/docs/hyperformula-alternative-headless-workpaper.md',
   'https://github.com/proompteng/bilig/blob/main/docs/headless-spreadsheet-engine-comparison.md',
   'https://github.com/proompteng/bilig/blob/main/docs/javascript-spreadsheet-library-headless-node.md',
@@ -406,6 +409,25 @@ requireIncludes(headlessReadme, 'Google Sheets API boundary', 'packages/headless
 requireIncludes(index, './google-sheets-api-alternative-node-workpaper.html', 'docs/index.html')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/google-sheets-api-alternative-node-workpaper.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/google-sheets-api-alternative-node-workpaper.md', 'docs/llms.txt')
+
+const npmProvenancePackageTrustDoc = await readFile(join(docsRoot, 'npm-provenance-package-trust.md'), 'utf8')
+for (const required of [
+  'title: Verify npm provenance for @bilig/headless',
+  'npm view @bilig/headless@0.16.5 version dist.attestations dist.signatures --json',
+  'npm audit signatures',
+  'dist.attestations.provenance.predicateType',
+  'npm publish ... --provenance',
+  'https://docs.npmjs.com/trusted-publishers/',
+  'https://docs.npmjs.com/viewing-package-provenance/',
+  'https://scorecard.dev/',
+] as const) {
+  requireIncludes(npmProvenancePackageTrustDoc, required, 'docs/npm-provenance-package-trust.md')
+}
+requireIncludes(readme, 'npm provenance and package trust', 'README.md')
+requireIncludes(headlessReadme, 'npm provenance and package trust guide', 'packages/headless/README.md')
+requireIncludes(index, './npm-provenance-package-trust.html', 'docs/index.html')
+requireIncludes(llms, 'https://proompteng.github.io/bilig/npm-provenance-package-trust.html', 'docs/llms.txt')
+requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/npm-provenance-package-trust.md', 'docs/llms.txt')
 
 requireXlsxCorpusVerifierDiscovery(await readFile(join(docsRoot, 'xlsx-corpus-verifier-walkthrough.md'), 'utf8'))
 requireIncludes(index, './xlsx-corpus-verifier-walkthrough.html', 'docs/index.html')
