@@ -28,6 +28,14 @@ function asNumber(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined
 }
 
+function asSafeNonNegativeInteger(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : undefined
+}
+
+function asSafePositiveInteger(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? value : undefined
+}
+
 function asBoolean(value: unknown): boolean | undefined {
   return typeof value === 'boolean' ? value : undefined
 }
@@ -77,8 +85,8 @@ function parseAxisMetadata(entries: unknown[]): WorkbookAxisMetadataSnapshot[] {
       if (!isRecord(entry)) {
         return null
       }
-      const start = asNumber(entry['startIndex'])
-      const count = asNumber(entry['count'])
+      const start = asSafeNonNegativeInteger(entry['startIndex'])
+      const count = asSafePositiveInteger(entry['count'])
       if (start === undefined || count === undefined) {
         return null
       }
@@ -200,8 +208,8 @@ function parseFreezePane(
   freezeCols: unknown,
   fallback?: WorkbookFreezePaneSnapshot,
 ): WorkbookFreezePaneSnapshot | undefined {
-  const rows = asNumber(freezeRows)
-  const cols = asNumber(freezeCols)
+  const rows = asSafeNonNegativeInteger(freezeRows)
+  const cols = asSafeNonNegativeInteger(freezeCols)
   if ((rows ?? 0) > 0 || (cols ?? 0) > 0) {
     return {
       rows: rows ?? 0,
@@ -217,12 +225,20 @@ function parseStyleRanges(entries: unknown[]): SheetStyleRangeSnapshot[] {
       if (!isRecord(entry)) {
         return null
       }
-      const startRow = asNumber(entry['startRow'])
-      const endRow = asNumber(entry['endRow'])
-      const startCol = asNumber(entry['startCol'])
-      const endCol = asNumber(entry['endCol'])
+      const startRow = asSafeNonNegativeInteger(entry['startRow'])
+      const endRow = asSafeNonNegativeInteger(entry['endRow'])
+      const startCol = asSafeNonNegativeInteger(entry['startCol'])
+      const endCol = asSafeNonNegativeInteger(entry['endCol'])
       const styleId = asString(entry['styleId'])
-      if (startRow === undefined || endRow === undefined || startCol === undefined || endCol === undefined || !styleId) {
+      if (
+        startRow === undefined ||
+        endRow === undefined ||
+        startCol === undefined ||
+        endCol === undefined ||
+        endRow < startRow ||
+        endCol < startCol ||
+        !styleId
+      ) {
         return null
       }
       return {
@@ -243,12 +259,20 @@ function parseFormatRanges(entries: unknown[]): SheetFormatRangeSnapshot[] {
       if (!isRecord(entry)) {
         return null
       }
-      const startRow = asNumber(entry['startRow'])
-      const endRow = asNumber(entry['endRow'])
-      const startCol = asNumber(entry['startCol'])
-      const endCol = asNumber(entry['endCol'])
+      const startRow = asSafeNonNegativeInteger(entry['startRow'])
+      const endRow = asSafeNonNegativeInteger(entry['endRow'])
+      const startCol = asSafeNonNegativeInteger(entry['startCol'])
+      const endCol = asSafeNonNegativeInteger(entry['endCol'])
       const formatId = asString(entry['formatId'])
-      if (startRow === undefined || endRow === undefined || startCol === undefined || endCol === undefined || !formatId) {
+      if (
+        startRow === undefined ||
+        endRow === undefined ||
+        startCol === undefined ||
+        endCol === undefined ||
+        endRow < startRow ||
+        endCol < startCol ||
+        !formatId
+      ) {
         return null
       }
       return {

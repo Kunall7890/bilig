@@ -208,4 +208,40 @@ describe('projectWorkbookToSnapshot', () => {
     expect(projected?.sheets[0]?.metadata?.rowMetadata).toEqual([{ start: 0, count: 1, size: 28, styleIndex: 7, customFormat: true }])
     expect(projected?.sheets[0]?.metadata?.columnMetadata).toEqual([{ start: 0, count: 1, size: 144, styleIndex: 9, customFormat: true }])
   })
+
+  it('drops unsafe projected sheet metadata bounds', () => {
+    const projected = projectWorkbookToSnapshot(
+      {
+        id: 'doc-1',
+        name: 'Projected Book',
+        sheets: [
+          {
+            name: 'Sheet1',
+            sortOrder: 0,
+            freezeRows: 1.5,
+            freezeCols: Number.MAX_SAFE_INTEGER + 1,
+            cells: [],
+            rowMetadata: [
+              { startIndex: 0, count: 1, size: 28 },
+              { startIndex: -1, count: 1, size: 30 },
+              { startIndex: 2, count: 0, size: 30 },
+            ],
+            columnMetadata: [{ startIndex: 0, count: Number.MAX_SAFE_INTEGER + 1, size: 144 }],
+            styleRanges: [
+              { startRow: 2, endRow: 1, startCol: 0, endCol: 0, styleId: 'style-1' },
+              { startRow: 0, endRow: 0, startCol: 1.5, endCol: 2, styleId: 'style-1' },
+            ],
+            formatRanges: [{ startRow: 0, endRow: 0, startCol: 2, endCol: 1, formatId: 'fmt-1' }],
+          },
+        ],
+      },
+      'doc-1',
+    )
+
+    expect(projected?.sheets[0]?.metadata?.freezePane).toBeUndefined()
+    expect(projected?.sheets[0]?.metadata?.rowMetadata).toEqual([{ start: 0, count: 1, size: 28 }])
+    expect(projected?.sheets[0]?.metadata?.columnMetadata).toBeUndefined()
+    expect(projected?.sheets[0]?.metadata?.styleRanges).toBeUndefined()
+    expect(projected?.sheets[0]?.metadata?.formatRanges).toBeUndefined()
+  })
 })
