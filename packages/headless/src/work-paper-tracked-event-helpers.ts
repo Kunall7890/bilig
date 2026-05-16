@@ -298,7 +298,6 @@ export function tryBuildDirectSingleLiteralTrackedChange(input: {
     event.invalidation === 'full' ||
     event.patches !== undefined ||
     event.changedCellIndices.length < 1 ||
-    event.changedCellIndices.length > 2 ||
     event.changedCellIndices[0] !== expected.cellIndex ||
     event.hasInvalidatedRanges ||
     event.hasInvalidatedRows ||
@@ -315,6 +314,42 @@ export function tryBuildDirectSingleLiteralTrackedChange(input: {
   }
   if (event.changedCellIndices.length === 1) {
     return [literalChange]
+  }
+  if (event.changedCellIndices.length > 2) {
+    if (!expected.isPhysicalSheet) {
+      return null
+    }
+    const changes: WorkPaperCellChange[] = []
+    changes.length = event.changedCellIndices.length
+    changes[0] = literalChange
+    let previousRow = expected.address.row
+    let previousCol = expected.address.col
+    for (let index = 1; index < event.changedCellIndices.length; index += 1) {
+      const formulaCellIndex = event.changedCellIndices[index]!
+      if (cellStore.sheetIds[formulaCellIndex] !== expected.address.sheet) {
+        return null
+      }
+      const formulaRow = cellStore.rows[formulaCellIndex]
+      const formulaCol = cellStore.cols[formulaCellIndex]
+      if (
+        formulaRow === undefined ||
+        formulaCol === undefined ||
+        formulaRow < previousRow ||
+        (formulaRow === previousRow && formulaCol < previousCol)
+      ) {
+        return null
+      }
+      changes[index] = {
+        kind: 'cell',
+        address: { sheet: expected.address.sheet, row: formulaRow, col: formulaCol },
+        sheetName: expected.sheetName,
+        a1: trackedA1(formulaRow, formulaCol),
+        newValue: readTrackedRuntimeCellValue(cellStore, formulaCellIndex, strings),
+      }
+      previousRow = formulaRow
+      previousCol = formulaCol
+    }
+    return changes
   }
   const formulaCellIndex = event.changedCellIndices[1]!
   if (cellStore.sheetIds[formulaCellIndex] !== expected.address.sheet || !expected.isPhysicalSheet) {

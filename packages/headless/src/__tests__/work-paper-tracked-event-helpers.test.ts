@@ -306,6 +306,47 @@ describe('work paper tracked event helpers', () => {
     ])
   })
 
+  it('builds direct single-literal fanout changes when dependents are already in sheet order', () => {
+    const changes = tryBuildDirectSingleLiteralTrackedChange({
+      events: [trackedEvent({ changedCellIndices: Uint32Array.of(4, 8, 9, 10) })],
+      expected: {
+        address: { sheet: 1, row: 2, col: 1 },
+        cellIndex: 4,
+        isPhysicalSheet: true,
+        sheetName: 'Sheet1',
+        value: 9,
+      },
+      cellStore: addressedCellStore({
+        sheetIds: [0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1],
+        rows: [0, 0, 0, 0, 2, 0, 0, 0, 3, 3, 4],
+        cols: [0, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0],
+        tags: [
+          ValueTag.Empty,
+          ValueTag.Empty,
+          ValueTag.Empty,
+          ValueTag.Empty,
+          ValueTag.Number,
+          ValueTag.Empty,
+          ValueTag.Empty,
+          ValueTag.Empty,
+          ValueTag.Number,
+          ValueTag.Number,
+          ValueTag.Number,
+        ],
+        numbers: [0, 0, 0, 0, 9, 0, 0, 0, 18, 27, 36],
+      }),
+      strings: { get: String },
+      trackedA1: (row, col) => `R${row}C${col}`,
+    })
+
+    expect(changes?.map((change) => (change.kind === 'cell' ? [change.a1, change.newValue] : []))).toEqual([
+      ['R2C1', { tag: ValueTag.Number, value: 9 }],
+      ['R3C1', { tag: ValueTag.Number, value: 18 }],
+      ['R3C2', { tag: ValueTag.Number, value: 27 }],
+      ['R4C0', { tag: ValueTag.Number, value: 36 }],
+    ])
+  })
+
   it('builds direct existing-numeric tracked changes and delegates ordering when needed', () => {
     const ordered = tryBuildDirectExistingNumericTrackedChanges({
       result: {
