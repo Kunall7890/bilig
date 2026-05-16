@@ -165,6 +165,31 @@ const workbookChatThread = table('workbook_chat_thread')
   })
   .primaryKey('workbookId', 'threadId', 'ownerUserId')
 
+const workbookAgentRun = table('workbook_agent_run')
+  .columns({
+    id: string(),
+    bundleId: string().from('bundle_id'),
+    workbookId: string().from('workbook_id'),
+    threadId: string().from('thread_id'),
+    turnId: string().from('turn_id'),
+    actorUserId: string().from('actor_user_id'),
+    goalText: string().from('goal_text'),
+    planText: string().from('plan_text').optional(),
+    summary: string(),
+    scope: string<'selection' | 'sheet' | 'workbook'>(),
+    riskClass: string<'low' | 'medium' | 'high'>().from('risk_class'),
+    acceptedScope: string<'full' | 'partial'>().from('accepted_scope'),
+    appliedBy: string<'user' | 'auto'>().from('applied_by'),
+    baseRevision: number().from('base_revision'),
+    appliedRevision: number().from('applied_revision'),
+    createdAtUnixMs: number().from('created_at_unix_ms'),
+    appliedAtUnixMs: number().from('applied_at_unix_ms'),
+    context: json().from('context_json').optional(),
+    commands: json().from('commands_json'),
+    preview: json().from('preview_json').optional(),
+  })
+  .primaryKey('id')
+
 const workbookWorkflowRun = table('workbook_workflow_run')
   .columns({
     runId: string().from('run_id'),
@@ -183,6 +208,14 @@ const workbookWorkflowRun = table('workbook_workflow_run')
     artifact: json().from('artifact_json').optional(),
   })
   .primaryKey('runId')
+
+const workbookAgentRunRelationships = relationships(workbookAgentRun, ({ many }) => ({
+  ownerChatThreads: many({
+    sourceField: ['workbookId', 'threadId', 'actorUserId'],
+    destField: ['workbookId', 'threadId', 'ownerUserId'],
+    destSchema: workbookChatThread,
+  }),
+}))
 
 const workbookWorkflowRunRelationships = relationships(workbookWorkflowRun, ({ many }) => ({
   chatThreads: many({
@@ -243,9 +276,11 @@ export const schema = createSchema({
     presenceCoarse,
     workbookChange,
     workbookChatThread,
+    workbookAgentRun,
     workbookWorkflowRun,
   ],
   relationships: [
+    workbookAgentRunRelationships,
     workbookWorkflowRunRelationships,
     cellRelationships,
     cellEvalRelationships,

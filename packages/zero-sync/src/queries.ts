@@ -195,6 +195,36 @@ const visibleWorkbookWorkflowRunByThread = defineQuery(workbookThreadViewerArgsS
     .orderBy('updatedAtUnixMs', 'desc'),
 )
 
+const workbookAgentRunByWorkbook = defineUserQuery(workbookQueryArgsSchema, ({ args: { documentId }, ctx }) =>
+  zql.workbook_agent_run.where('workbookId', documentId).where('actorUserId', ctx.userID).orderBy('appliedAtUnixMs', 'desc'),
+)
+
+const workbookAgentRunByThread = defineUserQuery(workbookThreadArgsSchema, ({ args, ctx }) =>
+  zql.workbook_agent_run
+    .where('workbookId', args.documentId)
+    .where('threadId', args.threadId)
+    .where((expression) =>
+      expression.or(
+        expression.cmp('actorUserId', ctx.userID),
+        expression.exists('ownerChatThreads', (threadQuery) => threadQuery.where('scope', 'shared')),
+      ),
+    )
+    .orderBy('appliedAtUnixMs', 'desc'),
+)
+
+const visibleWorkbookAgentRunByThread = defineQuery(workbookThreadViewerArgsSchema, ({ args }) =>
+  zql.workbook_agent_run
+    .where('workbookId', args.documentId)
+    .where('threadId', args.threadId)
+    .where((expression) =>
+      expression.or(
+        expression.cmp('actorUserId', args.currentUserId),
+        expression.exists('ownerChatThreads', (threadQuery) => threadQuery.where('scope', 'shared')),
+      ),
+    )
+    .orderBy('appliedAtUnixMs', 'desc'),
+)
+
 export const queries = defineQueries({
   workbook: {
     get: workbookGet,
@@ -261,6 +291,11 @@ export const queries = defineQueries({
   workbookAgentThread: {
     byWorkbook: workbookChatThreadByWorkbook,
     visibleByWorkbook: visibleWorkbookChatThreadByWorkbook,
+  },
+  workbookAgentRun: {
+    byWorkbook: workbookAgentRunByWorkbook,
+    byThread: workbookAgentRunByThread,
+    visibleByThread: visibleWorkbookAgentRunByThread,
   },
   workbookWorkflowRun: {
     byThread: workbookWorkflowRunByThread,

@@ -6,6 +6,7 @@ describe('zero sync schema', () => {
     expect(zeroSchemaTableNames).toEqual(Object.keys(schema.tables))
     expect(zeroSchemaColumnNamesByTable.workbooks).toEqual(Object.keys(schema.tables.workbooks.columns))
     expect(zeroSchemaServerColumnNamesByTable.cell_styles).toEqual(['workbook_id', 'style_id', 'record_json', 'hash', 'created_at'])
+    expect(zeroSchemaColumnNamesByTable.workbook_agent_run).toEqual(Object.keys(schema.tables.workbook_agent_run.columns))
     expect(zeroSchemaColumnNamesByTable.workbook_workflow_run).toEqual(Object.keys(schema.tables.workbook_workflow_run.columns))
   })
 
@@ -37,6 +38,17 @@ describe('zero sync schema', () => {
     expect(schema.tables.workbook_chat_thread.columns.ownerUserId.serverName).toBe('actor_user_id')
     expect(schema.tables.workbook_chat_thread.columns.reviewQueueItemCount.serverName).toBe('review_queue_item_count')
     expect(schema.tables.workbook_chat_thread.columns.latestEntryText.serverName).toBe('latest_entry_text')
+  })
+
+  it('relates applied agent runs to chat thread visibility rows', () => {
+    expect(schema.relationships.workbook_agent_run.ownerChatThreads).toEqual([
+      {
+        sourceField: ['workbookId', 'threadId', 'actorUserId'],
+        destField: ['workbookId', 'threadId', 'ownerUserId'],
+        destSchema: 'workbook_chat_thread',
+        cardinality: 'many',
+      },
+    ])
   })
 
   it('relates workflow runs to chat thread visibility rows', () => {

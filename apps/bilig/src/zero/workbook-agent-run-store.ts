@@ -5,9 +5,21 @@ import {
   type WorkbookAgentCommand,
   type WorkbookAgentExecutionRecord,
 } from '@bilig/agent-api'
+import { queries } from '@bilig/zero-sync'
+import type { Row } from '@rocicorp/zero'
 import { addDefaultedColumnIfMissing, enforceDefaultedNotNullColumn } from './schema-upgrade.js'
-import type { QueryResultRow, Queryable } from './store.js'
+import type { QueryResultRow, Queryable, ZeroQueryRunner } from './store.js'
 import { parseNonNegativeInteger } from './store-support.js'
+
+type ZeroWorkbookAgentRunRow = Row['workbook_agent_run']
+
+export interface WorkbookAgentRunStoreConnection extends Queryable {
+  listWorkbookAgentRunRows(input: {
+    readonly documentId: string
+    readonly actorUserId: string
+    readonly threadId?: string
+  }): Promise<readonly ZeroWorkbookAgentRunRow[]>
+}
 
 interface WorkbookAgentRunRow extends QueryResultRow {
   readonly id?: unknown
@@ -30,6 +42,41 @@ interface WorkbookAgentRunRow extends QueryResultRow {
   readonly contextJson?: unknown
   readonly commandsJson?: unknown
   readonly previewJson?: unknown
+}
+
+export function createWorkbookAgentRunStoreConnection(db: Queryable & ZeroQueryRunner): WorkbookAgentRunStoreConnection {
+  return {
+    query: (text, values) => db.query(text, values),
+    listWorkbookAgentRunRows: ({ actorUserId, documentId, threadId }) =>
+      threadId === undefined
+        ? db.run(queries.workbookAgentRun.byWorkbook.fn({ args: { documentId }, ctx: { userID: actorUserId } }))
+        : db.run(queries.workbookAgentRun.byThread.fn({ args: { documentId, threadId }, ctx: { userID: actorUserId } })),
+  }
+}
+
+function toAgentRunRow(row: ZeroWorkbookAgentRunRow): WorkbookAgentRunRow {
+  return {
+    id: row.id,
+    bundleId: row.bundleId,
+    workbookId: row.workbookId,
+    threadId: row.threadId,
+    turnId: row.turnId,
+    actorUserId: row.actorUserId,
+    goalText: row.goalText,
+    planText: row.planText,
+    summary: row.summary,
+    scope: row.scope,
+    riskClass: row.riskClass,
+    acceptedScope: row.acceptedScope,
+    appliedBy: row.appliedBy,
+    baseRevision: row.baseRevision,
+    appliedRevision: row.appliedRevision,
+    createdAtUnixMs: row.createdAtUnixMs,
+    appliedAtUnixMs: row.appliedAtUnixMs,
+    contextJson: row.context,
+    commandsJson: row.commands,
+    previewJson: row.preview,
+  }
 }
 
 function parseCommands(value: unknown): WorkbookAgentCommand[] | null {
@@ -250,51 +297,22 @@ export async function appendWorkbookAgentRun(db: Queryable, record: WorkbookAgen
 }
 
 export async function listWorkbookAgentRuns(
-  db: Queryable,
+  db: WorkbookAgentRunStoreConnection,
   input: {
     documentId: string
     actorUserId: string
     limit?: number
   },
 ): Promise<WorkbookAgentExecutionRecord[]> {
-  const result = await db.query<WorkbookAgentRunRow>(
-    `
-      SELECT
-        id AS "id",
-        bundle_id AS "bundleId",
-        workbook_id AS "workbookId",
-        thread_id AS "threadId",
-        turn_id AS "turnId",
-        actor_user_id AS "actorUserId",
-        goal_text AS "goalText",
-        plan_text AS "planText",
-        summary AS "summary",
-        scope AS "scope",
-        risk_class AS "riskClass",
-        accepted_scope AS "acceptedScope",
-        applied_by AS "appliedBy",
-        base_revision AS "baseRevision",
-        applied_revision AS "appliedRevision",
-        created_at_unix_ms AS "createdAtUnixMs",
-        applied_at_unix_ms AS "appliedAtUnixMs",
-        context_json AS "contextJson",
-        commands_json AS "commandsJson",
-        preview_json AS "previewJson"
-      FROM workbook_agent_run
-      WHERE workbook_id = $1 AND actor_user_id = $2
-      ORDER BY applied_at_unix_ms DESC
-      LIMIT $3
-    `,
-    [input.documentId, input.actorUserId, input.limit ?? 20],
-  )
-  return result.rows.flatMap((row) => {
+  const rows = (await db.listWorkbookAgentRunRows(input)).slice(0, input.limit ?? 20).map(toAgentRunRow)
+  return rows.flatMap((row) => {
     const record = normalizeExecutionRecord(row)
     return record ? [record] : []
   })
 }
 
 export async function listWorkbookAgentThreadRuns(
-  db: Queryable,
+  db: WorkbookAgentRunStoreConnection,
   input: {
     documentId: string
     actorUserId: string
@@ -302,49 +320,8 @@ export async function listWorkbookAgentThreadRuns(
     limit?: number
   },
 ): Promise<WorkbookAgentExecutionRecord[]> {
-  const result = await db.query<WorkbookAgentRunRow>(
-    `
-      SELECT
-        run.id AS "id",
-        run.bundle_id AS "bundleId",
-        run.workbook_id AS "workbookId",
-        run.thread_id AS "threadId",
-        run.turn_id AS "turnId",
-        run.actor_user_id AS "actorUserId",
-        run.goal_text AS "goalText",
-        run.plan_text AS "planText",
-        run.summary AS "summary",
-        run.scope AS "scope",
-        run.risk_class AS "riskClass",
-        run.accepted_scope AS "acceptedScope",
-        run.applied_by AS "appliedBy",
-        run.base_revision AS "baseRevision",
-        run.applied_revision AS "appliedRevision",
-        run.created_at_unix_ms AS "createdAtUnixMs",
-        run.applied_at_unix_ms AS "appliedAtUnixMs",
-        run.context_json AS "contextJson",
-        run.commands_json AS "commandsJson",
-        run.preview_json AS "previewJson"
-      FROM workbook_agent_run AS run
-      WHERE run.workbook_id = $1
-        AND run.thread_id = $2
-        AND (
-          run.actor_user_id = $3
-          OR EXISTS (
-            SELECT 1
-            FROM workbook_chat_thread AS thread
-            WHERE thread.workbook_id = run.workbook_id
-              AND thread.thread_id = run.thread_id
-              AND thread.actor_user_id = run.actor_user_id
-              AND thread.scope = 'shared'
-          )
-        )
-      ORDER BY run.applied_at_unix_ms DESC
-      LIMIT $4
-    `,
-    [input.documentId, input.threadId, input.actorUserId, input.limit ?? 20],
-  )
-  return result.rows.flatMap((row) => {
+  const rows = (await db.listWorkbookAgentRunRows(input)).slice(0, input.limit ?? 20).map(toAgentRunRow)
+  return rows.flatMap((row) => {
     const record = normalizeExecutionRecord(row)
     return record ? [record] : []
   })

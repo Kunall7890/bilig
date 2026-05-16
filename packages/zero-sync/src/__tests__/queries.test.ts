@@ -143,5 +143,14 @@ describe('zero sync query schemas', () => {
         }),
       ),
     ).not.toThrow()
+    expect(() =>
+      executeQueryRequestWithoutContext(
+        queries.workbookAgentRun.visibleByThread({
+          documentId: 'doc-1',
+          threadId: 'thr-1',
+          currentUserId: 'alex@example.com',
+        }),
+      ),
+    ).not.toThrow()
   })
 })

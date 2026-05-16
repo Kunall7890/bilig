@@ -6,6 +6,7 @@ import {
   listWorkbookAgentRuns,
 } from '../workbook-agent-run-store.js'
 import type { QueryResultRow, Queryable } from '../store.js'
+import type { Row } from '@rocicorp/zero'
 
 interface RecordedQuery {
   readonly text: string
@@ -30,6 +31,32 @@ class FakeQueryable implements Queryable {
       }
     }
     return { rows: [] }
+  }
+}
+
+type ZeroAgentRunRow = Row['workbook_agent_run']
+
+class FakeAgentRunConnection extends FakeQueryable {
+  readonly zeroRunInputs: {
+    readonly documentId: string
+    readonly actorUserId: string
+    readonly threadId?: string
+  }[] = []
+
+  constructor(
+    responders: readonly ((text: string, values: readonly unknown[] | undefined) => QueryResultRow[] | null)[] = [],
+    private readonly runRows: readonly ZeroAgentRunRow[] = [],
+  ) {
+    super(responders)
+  }
+
+  async listWorkbookAgentRunRows(input: {
+    readonly documentId: string
+    readonly actorUserId: string
+    readonly threadId?: string
+  }): Promise<readonly ZeroAgentRunRow[]> {
+    this.zeroRunInputs.push(input)
+    return this.runRows
   }
 }
 
@@ -114,41 +141,41 @@ describe('workbook-agent-run-store', () => {
 
   it('loads partial execution records from stored rows', async () => {
     const record = createExecutionRecord()
-    const queryable = new FakeQueryable([
-      (text) =>
-        text.includes('FROM workbook_agent_run')
-          ? [
-              {
-                id: record.id,
-                bundleId: record.bundleId,
-                workbookId: record.documentId,
-                threadId: record.threadId,
-                turnId: record.turnId,
-                actorUserId: record.actorUserId,
-                goalText: record.goalText,
-                planText: record.planText,
-                summary: record.summary,
-                scope: record.scope,
-                riskClass: record.riskClass,
-                acceptedScope: record.acceptedScope,
-                appliedBy: record.appliedBy,
-                baseRevision: record.baseRevision,
-                appliedRevision: record.appliedRevision,
-                createdAtUnixMs: record.createdAtUnixMs,
-                appliedAtUnixMs: record.appliedAtUnixMs,
-                contextJson: record.context,
-                commandsJson: record.commands,
-                previewJson: record.preview,
-              } satisfies QueryResultRow,
-            ]
-          : null,
-    ])
+    const queryable = new FakeAgentRunConnection(
+      [],
+      [
+        {
+          id: record.id,
+          bundleId: record.bundleId,
+          workbookId: record.documentId,
+          threadId: record.threadId,
+          turnId: record.turnId,
+          actorUserId: record.actorUserId,
+          goalText: record.goalText,
+          planText: record.planText,
+          summary: record.summary,
+          scope: record.scope,
+          riskClass: record.riskClass,
+          acceptedScope: record.acceptedScope,
+          appliedBy: record.appliedBy,
+          baseRevision: record.baseRevision,
+          appliedRevision: record.appliedRevision,
+          createdAtUnixMs: record.createdAtUnixMs,
+          appliedAtUnixMs: record.appliedAtUnixMs,
+          context: record.context,
+          commands: record.commands,
+          preview: record.preview,
+        },
+      ],
+    )
 
     const records = await listWorkbookAgentRuns(queryable, {
       documentId: 'doc-1',
       actorUserId: 'alex@example.com',
     })
 
+    expect(queryable.zeroRunInputs).toEqual([{ documentId: 'doc-1', actorUserId: 'alex@example.com' }])
+    expect(queryable.calls.some((call) => call.text.includes('FROM workbook_agent_run'))).toBe(false)
     expect(records).toEqual([
       expect.objectContaining({
         acceptedScope: 'partial',
@@ -164,37 +191,35 @@ describe('workbook-agent-run-store', () => {
     ])
   })
 
-  it('hydrates legacy execution rows without bundle ids using the run id as the stable bundle id', async () => {
+  it('hydrates execution rows from the shared Zero model', async () => {
     const record = createExecutionRecord()
-    const queryable = new FakeQueryable([
-      (text) =>
-        text.includes('FROM workbook_agent_run')
-          ? [
-              {
-                id: record.id,
-                bundleId: null,
-                workbookId: record.documentId,
-                threadId: record.threadId,
-                turnId: record.turnId,
-                actorUserId: record.actorUserId,
-                goalText: record.goalText,
-                planText: record.planText,
-                summary: record.summary,
-                scope: record.scope,
-                riskClass: record.riskClass,
-                acceptedScope: 'full',
-                appliedBy: 'user',
-                baseRevision: record.baseRevision,
-                appliedRevision: record.appliedRevision,
-                createdAtUnixMs: record.createdAtUnixMs,
-                appliedAtUnixMs: record.appliedAtUnixMs,
-                contextJson: record.context,
-                commandsJson: record.commands,
-                previewJson: record.preview,
-              } satisfies QueryResultRow,
-            ]
-          : null,
-    ])
+    const queryable = new FakeAgentRunConnection(
+      [],
+      [
+        {
+          id: record.id,
+          bundleId: record.bundleId,
+          workbookId: record.documentId,
+          threadId: record.threadId,
+          turnId: record.turnId,
+          actorUserId: record.actorUserId,
+          goalText: record.goalText,
+          planText: record.planText,
+          summary: record.summary,
+          scope: record.scope,
+          riskClass: record.riskClass,
+          acceptedScope: 'full',
+          appliedBy: 'user',
+          baseRevision: record.baseRevision,
+          appliedRevision: record.appliedRevision,
+          createdAtUnixMs: record.createdAtUnixMs,
+          appliedAtUnixMs: record.appliedAtUnixMs,
+          context: record.context,
+          commands: record.commands,
+          preview: record.preview,
+        },
+      ],
+    )
 
     const records = await listWorkbookAgentRuns(queryable, {
       documentId: 'doc-1',
@@ -204,75 +229,84 @@ describe('workbook-agent-run-store', () => {
     expect(records).toEqual([
       expect.objectContaining({
         id: record.id,
-        bundleId: record.id,
+        bundleId: record.bundleId,
       }),
     ])
   })
 
   it('drops execution rows with impossible revision or timestamp ordering', async () => {
     const valid = createExecutionRecord()
-    const queryable = new FakeQueryable([
-      (text) =>
-        text.includes('FROM workbook_agent_run')
-          ? [
-              {
-                id: 'run-bad-revision',
-                bundleId: 'bundle-bad',
-                workbookId: 'doc-1',
-                threadId: 'thr-1',
-                turnId: 'turn-1',
-                actorUserId: 'alex@example.com',
-                goalText: 'Bad revision row',
-                planText: null,
-                summary: 'Should not hydrate',
-                scope: 'sheet',
-                riskClass: 'medium',
-                acceptedScope: 'partial',
-                appliedBy: 'user',
-                baseRevision: 9,
-                appliedRevision: 8,
-                createdAtUnixMs: 100,
-                appliedAtUnixMs: 200,
-                contextJson: null,
-                commandsJson: valid.commands,
-                previewJson: null,
-              } satisfies QueryResultRow,
-              {
-                ...valid,
-                workbookId: valid.documentId,
-                contextJson: valid.context,
-                commandsJson: valid.commands,
-                previewJson: valid.preview,
-                baseRevision: valid.baseRevision,
-                appliedRevision: valid.appliedRevision,
-                createdAtUnixMs: valid.createdAtUnixMs,
-                appliedAtUnixMs: valid.appliedAtUnixMs,
-              } satisfies QueryResultRow,
-              {
-                id: 'run-bad-time',
-                bundleId: 'bundle-bad-time',
-                workbookId: 'doc-1',
-                threadId: 'thr-1',
-                turnId: 'turn-1',
-                actorUserId: 'alex@example.com',
-                goalText: 'Bad timestamp row',
-                planText: null,
-                summary: 'Should not hydrate',
-                scope: 'sheet',
-                riskClass: 'medium',
-                acceptedScope: 'partial',
-                appliedBy: 'user',
-                baseRevision: 3,
-                appliedRevision: 4,
-                createdAtUnixMs: 300,
-                appliedAtUnixMs: 200,
-                contextJson: null,
-                commandsJson: valid.commands,
-                previewJson: null,
-              } satisfies QueryResultRow,
-            ]
-          : null,
-    ])
+    const queryable = new FakeAgentRunConnection(
+      [],
+      [
+        {
+          id: 'run-bad-revision',
+          bundleId: 'bundle-bad',
+          workbookId: 'doc-1',
+          threadId: 'thr-1',
+          turnId: 'turn-1',
+          actorUserId: 'alex@example.com',
+          goalText: 'Bad revision row',
+          planText: null,
+          summary: 'Should not hydrate',
+          scope: 'sheet',
+          riskClass: 'medium',
+          acceptedScope: 'partial',
+          appliedBy: 'user',
+          baseRevision: 9,
+          appliedRevision: 8,
+          createdAtUnixMs: 100,
+          appliedAtUnixMs: 200,
+          context: null,
+          commands: valid.commands,
+          preview: null,
+        },
+        {
+          id: valid.id,
+          bundleId: valid.bundleId,
+          workbookId: valid.documentId,
+          threadId: valid.threadId,
+          turnId: valid.turnId,
+          actorUserId: valid.actorUserId,
+          goalText: valid.goalText,
+          planText: valid.planText,
+          summary: valid.summary,
+          scope: valid.scope,
+          riskClass: valid.riskClass,
+          acceptedScope: valid.acceptedScope,
+          appliedBy: valid.appliedBy,
+          baseRevision: valid.baseRevision,
+          appliedRevision: valid.appliedRevision,
+          createdAtUnixMs: valid.createdAtUnixMs,
+          appliedAtUnixMs: valid.appliedAtUnixMs,
+          context: valid.context,
+          commands: valid.commands,
+          preview: valid.preview,
+        },
+        {
+          id: 'run-bad-time',
+          bundleId: 'bundle-bad-time',
+          workbookId: 'doc-1',
+          threadId: 'thr-1',
+          turnId: 'turn-1',
+          actorUserId: 'alex@example.com',
+          goalText: 'Bad timestamp row',
+          planText: null,
+          summary: 'Should not hydrate',
+          scope: 'sheet',
+          riskClass: 'medium',
+          acceptedScope: 'partial',
+          appliedBy: 'user',
+          baseRevision: 3,
+          appliedRevision: 4,
+          createdAtUnixMs: 300,
+          appliedAtUnixMs: 200,
+          context: null,
+          commands: valid.commands,
+          preview: null,
+        },
+      ],
+    )
 
     const records = await listWorkbookAgentRuns(queryable, {
       documentId: 'doc-1',
@@ -288,35 +322,33 @@ describe('workbook-agent-run-store', () => {
       threadId: 'thr-shared',
       actorUserId: 'alex@example.com',
     }
-    const queryable = new FakeQueryable([
-      (text, values) =>
-        text.includes('FROM workbook_agent_run AS run') && values?.[1] === 'thr-shared' && values?.[2] === 'casey@example.com'
-          ? [
-              {
-                id: record.id,
-                bundleId: record.bundleId,
-                workbookId: record.documentId,
-                threadId: record.threadId,
-                turnId: record.turnId,
-                actorUserId: record.actorUserId,
-                goalText: record.goalText,
-                planText: record.planText,
-                summary: record.summary,
-                scope: record.scope,
-                riskClass: record.riskClass,
-                acceptedScope: record.acceptedScope,
-                appliedBy: record.appliedBy,
-                baseRevision: record.baseRevision,
-                appliedRevision: record.appliedRevision,
-                createdAtUnixMs: record.createdAtUnixMs,
-                appliedAtUnixMs: record.appliedAtUnixMs,
-                contextJson: record.context,
-                commandsJson: record.commands,
-                previewJson: record.preview,
-              } satisfies QueryResultRow,
-            ]
-          : null,
-    ])
+    const queryable = new FakeAgentRunConnection(
+      [],
+      [
+        {
+          id: record.id,
+          bundleId: record.bundleId,
+          workbookId: record.documentId,
+          threadId: record.threadId,
+          turnId: record.turnId,
+          actorUserId: record.actorUserId,
+          goalText: record.goalText,
+          planText: record.planText,
+          summary: record.summary,
+          scope: record.scope,
+          riskClass: record.riskClass,
+          acceptedScope: record.acceptedScope,
+          appliedBy: record.appliedBy,
+          baseRevision: record.baseRevision,
+          appliedRevision: record.appliedRevision,
+          createdAtUnixMs: record.createdAtUnixMs,
+          appliedAtUnixMs: record.appliedAtUnixMs,
+          context: record.context,
+          commands: record.commands,
+          preview: record.preview,
+        },
+      ],
+    )
 
     const records = await listWorkbookAgentThreadRuns(queryable, {
       documentId: 'doc-1',
@@ -324,6 +356,8 @@ describe('workbook-agent-run-store', () => {
       threadId: 'thr-shared',
     })
 
+    expect(queryable.zeroRunInputs).toEqual([{ documentId: 'doc-1', actorUserId: 'casey@example.com', threadId: 'thr-shared' }])
+    expect(queryable.calls.some((call) => call.text.includes('FROM workbook_agent_run AS run'))).toBe(false)
     expect(records).toEqual([
       expect.objectContaining({
         threadId: 'thr-shared',
@@ -332,41 +366,8 @@ describe('workbook-agent-run-store', () => {
     ])
   })
 
-  it('only treats shared thread rows as visibility grants for the run owner', async () => {
-    const record = {
-      ...createExecutionRecord(),
-      threadId: 'thr-shared',
-      actorUserId: 'alex@example.com',
-    }
-    const queryable = new FakeQueryable([
-      (text, values) =>
-        text.includes('FROM workbook_agent_run AS run') && values?.[1] === 'thr-shared' && values?.[2] === 'casey@example.com'
-          ? [
-              {
-                id: record.id,
-                bundleId: record.bundleId,
-                workbookId: record.documentId,
-                threadId: record.threadId,
-                turnId: record.turnId,
-                actorUserId: record.actorUserId,
-                goalText: record.goalText,
-                planText: record.planText,
-                summary: record.summary,
-                scope: record.scope,
-                riskClass: record.riskClass,
-                acceptedScope: record.acceptedScope,
-                appliedBy: record.appliedBy,
-                baseRevision: record.baseRevision,
-                appliedRevision: record.appliedRevision,
-                createdAtUnixMs: record.createdAtUnixMs,
-                appliedAtUnixMs: record.appliedAtUnixMs,
-                contextJson: record.context,
-                commandsJson: record.commands,
-                previewJson: record.preview,
-              } satisfies QueryResultRow,
-            ]
-          : null,
-    ])
+  it('delegates shared thread visibility to the owner-bound Zero query', async () => {
+    const queryable = new FakeAgentRunConnection()
 
     await listWorkbookAgentThreadRuns(queryable, {
       documentId: 'doc-1',
@@ -374,6 +375,7 @@ describe('workbook-agent-run-store', () => {
       threadId: 'thr-shared',
     })
 
-    expect(queryable.calls[0]?.text).toContain('thread.actor_user_id = run.actor_user_id')
+    expect(queryable.zeroRunInputs).toEqual([{ documentId: 'doc-1', actorUserId: 'casey@example.com', threadId: 'thr-shared' }])
+    expect(queryable.calls.some((call) => call.text.includes('workbook_chat_thread'))).toBe(false)
   })
 })

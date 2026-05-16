@@ -44,6 +44,7 @@ import { ensureWorkbookChangeSchema, listWorkbookChanges, type WorkbookChangeRec
 import { ensureZeroSyncSchema } from './zero-schema-store.js'
 import {
   appendWorkbookAgentRun,
+  createWorkbookAgentRunStoreConnection,
   ensureWorkbookAgentRunSchema,
   listWorkbookAgentThreadRuns,
   listWorkbookAgentRuns,
@@ -420,7 +421,7 @@ class EnabledZeroSyncService implements ZeroSyncService {
   }
 
   async listWorkbookAgentRuns(documentId: string, actorUserId: string, limit = 20): Promise<WorkbookAgentExecutionRecord[]> {
-    return await listWorkbookAgentRuns(this.pool, {
+    return await listWorkbookAgentRuns(createWorkbookAgentRunStoreConnection(this.runtimeStore), {
       documentId,
       actorUserId,
       limit,
@@ -440,7 +441,7 @@ class EnabledZeroSyncService implements ZeroSyncService {
     threadId: string,
     limit?: number,
   ): Promise<WorkbookAgentExecutionRecord[]> {
-    return await listWorkbookAgentThreadRuns(this.pool, {
+    return await listWorkbookAgentThreadRuns(createWorkbookAgentRunStoreConnection(this.runtimeStore), {
       documentId,
       actorUserId,
       threadId,
