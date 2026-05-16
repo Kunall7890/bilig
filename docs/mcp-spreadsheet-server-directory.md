@@ -42,23 +42,23 @@ network service to answer `tools/list` and `tools/call`.
 
 ## Directory Status
 
-| Directory                       | Status                             | Link                                                                                                  |
-| ------------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Official MCP Registry           | Live                               | <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper> |
-| Glama                           | Live                               | <https://glama.ai/mcp/servers/proompteng/bilig>                                                       |
-| mcp.so                          | Submitted for maintainer review    | <https://github.com/chatmcp/mcpso/issues/2295>                                                        |
-| Cline MCP Marketplace           | Submitted for maintainer review    | <https://github.com/cline/mcp-marketplace/issues/1557>                                                |
-| mcpserver.cc                    | Submitted for maintainer review    | <https://mcpserver.cc/en?q=bilig>                                                                     |
-| AgentNDX                        | Submitted for review               | <https://agentndx.ai/browse?q=bilig>                                                                  |
-| YuzeHao2023 Awesome MCP Servers | Submitted for maintainer review    | <https://github.com/YuzeHao2023/Awesome-MCP-Servers/pull/244>                                         |
-| ToolSDK MCP Registry            | Submitted for maintainer review    | <https://github.com/toolsdk-ai/toolsdk-mcp-registry/pull/309>                                         |
-| Ever Works MCP data             | Submitted for maintainer review    | <https://github.com/ever-works/awesome-mcp-servers-data/pull/4>                                       |
-| mcpserve.com                    | Submitted for maintainer review    | <https://github.com/jmstfv/mcpserve/pull/19>                                                          |
+| Directory                       | Status                                       | Link                                                                                                  |
+| ------------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Official MCP Registry           | Live                                         | <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper> |
+| Glama                           | Live                                         | <https://glama.ai/mcp/servers/proompteng/bilig>                                                       |
+| mcp.so                          | Submitted for maintainer review              | <https://github.com/chatmcp/mcpso/issues/2295>                                                        |
+| Cline MCP Marketplace           | Submitted for maintainer review              | <https://github.com/cline/mcp-marketplace/issues/1557>                                                |
+| mcpserver.cc                    | Submitted for maintainer review              | <https://mcpserver.cc/en?q=bilig>                                                                     |
+| AgentNDX                        | Submitted for review                         | <https://agentndx.ai/browse?q=bilig>                                                                  |
+| YuzeHao2023 Awesome MCP Servers | Submitted for maintainer review              | <https://github.com/YuzeHao2023/Awesome-MCP-Servers/pull/244>                                         |
+| ToolSDK MCP Registry            | Submitted for maintainer review              | <https://github.com/toolsdk-ai/toolsdk-mcp-registry/pull/309>                                         |
+| Ever Works MCP data             | Submitted for maintainer review              | <https://github.com/ever-works/awesome-mcp-servers-data/pull/4>                                       |
+| mcpserve.com                    | Submitted for maintainer review              | <https://github.com/jmstfv/mcpserve/pull/19>                                                          |
 | PulseMCP                        | Not indexed in public search on May 14, 2026 | <https://www.pulsemcp.com/servers?search=bilig&q=bilig>                                               |
 
 PulseMCP says server listings are ingested from the official MCP Registry daily
 and processed weekly. The Bilig WorkPaper registry entry is already live at
-`@bilig/headless@0.14.9`, so PulseMCP absence is a directory-ingest delay, not a
+`@bilig/headless@0.14.26`, so PulseMCP absence is a directory-ingest delay, not a
 missing package or server metadata problem. Starter issue
 [#384](https://github.com/proompteng/bilig/issues/384) tracks the next public
 verification pass.
@@ -111,10 +111,10 @@ A useful result includes:
 - `transport.type: stdio`
 - `repository.url: https://github.com/proompteng/bilig`
 
-Latest checked result on May 14, 2026: the official Registry API returned 12
-matching Bilig WorkPaper entries and marked `@bilig/headless@0.14.9` as the
+Latest checked result on May 16, 2026: the official Registry API returned 13
+matching Bilig WorkPaper entries and marked `@bilig/headless@0.14.26` as the
 latest server package. The refresh was published by the repository workflow run
-at <https://github.com/proompteng/bilig/actions/runs/25882165865>.
+at <https://github.com/proompteng/bilig/actions/runs/25949339848>.
 
 The package itself carries the matching `mcpName` field. That is the ownership
 signal the registry uses for npm package validation.

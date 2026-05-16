@@ -11,9 +11,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(headless): expand competitive workbook benchmarks (9f63cbc7)
 
 ## Internal runtime changes
+
 - ci(release): tolerate github mirror race (204afce8)
 
 ## 0.14.25

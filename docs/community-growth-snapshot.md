@@ -1,6 +1,6 @@
 # Community Growth Snapshot
 
-Captured at: `2026-05-15T03:46:10Z`
+Captured at: `2026-05-16T01:31:17.003Z`
 
 This snapshot tracks the public signals for the `@bilig/headless` growth loop: GitHub conversion, npm demand, contributor on-ramp health, discussion activity, and traffic quality.
 
@@ -8,18 +8,18 @@ This snapshot tracks the public signals for the `@bilig/headless` growth loop: G
 
 - Repository: [proompteng/bilig](https://github.com/proompteng/bilig)
 - Stars: 23 / 1,000 (977 remaining)
-- Forks: 14
+- Forks: 16
 - Watchers: 0
-- Open issues: 117
+- Open issues: 116
 - Default branch: `main`
 
 ## npm
 
-- Package: `@bilig/headless@0.14.12`
+- Package: `@bilig/headless@0.14.26`
 - License: `MIT`
-- Modified: `2026-05-15T00:14:30.890Z`
-- Downloads last week: 15,592 (2026-05-06 to 2026-05-12)
-- Downloads last month: 23,240 (2026-04-13 to 2026-05-12)
+- Modified: `2026-05-15T05:03:20.955Z`
+- Downloads last week: 14,980 (2026-05-08 to 2026-05-14)
+- Downloads last month: 27,080 (2026-04-15 to 2026-05-14)
 
 ## Contributor Funnel
 
@@ -28,11 +28,11 @@ This snapshot tracks the public signals for the `@bilig/headless` growth loop: G
 - Documentation starter issues: 105
 - Non-documentation starter issues: 10
 - Open help wanted issues: 116
-- Open pull requests: 1
+- Open pull requests: 5
 - External open issues: 0
-- External open pull requests: 1
+- External open pull requests: 5
 - External issues opened in the last 7 days: 6
-- External pull requests opened in the last 7 days: 33
+- External pull requests opened in the last 7 days: 34
 
 ## Discussions
 
@@ -45,10 +45,10 @@ This snapshot tracks the public signals for the `@bilig/headless` growth loop: G
 
 ## Traffic
 
-- Views: 507 from 174 unique visitors
-- Clones: 20,066 from 2,270 unique cloners
-- Top referrers: github.com (72/22), news.ycombinator.com (51/36), t.co (29/24), proompteng.github.io (16/10), Google (16/2)
-- Top paths: /proompteng/bilig (226/153), /proompteng/bilig/issues (29/6), /proompteng/bilig/pulls (15/7), /proompteng/bilig/tree/main/examples/headless-workpaper (11/7), /proompteng/bilig/commits/main (10/1)
+- Views: 528 from 178 unique visitors
+- Clones: 21,402 from 2,534 unique cloners
+- Top referrers: github.com (77/25), news.ycombinator.com (51/36), t.co (29/24), proompteng.github.io (16/10), Google (16/2)
+- Top paths: /proompteng/bilig (233/155), /proompteng/bilig/issues (30/6), /proompteng/bilig/pulls (15/7), /proompteng/bilig/tree/main/examples/headless-workpaper (12/7), /proompteng/bilig/commits/main (11/1)
 
 ## Read This Snapshot
 

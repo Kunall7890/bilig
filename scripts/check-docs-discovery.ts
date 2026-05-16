@@ -132,6 +132,8 @@ for (const required of [
   './javascript-spreadsheet-library-headless-node.html',
   './hyperformula-alternative-headless-workpaper.html',
   './product-hunt-launch-kit.html',
+  './community-growth-snapshot.html',
+  'https://github.com/proompteng/bilig/stargazers',
 ]) {
   requireIncludes(index, required, 'docs/index.html')
 }
@@ -600,8 +602,8 @@ for (const required of [
   'Not indexed in public search on May 14, 2026',
   'https://www.pulsemcp.com/servers?search=bilig&q=bilig',
   'https://github.com/proompteng/bilig/issues/384',
-  'marked `@bilig/headless@0.14.9` as the',
-  'https://github.com/proompteng/bilig/actions/runs/25882165865',
+  'marked `@bilig/headless@0.14.26` as the',
+  'https://github.com/proompteng/bilig/actions/runs/25949339848',
   'read_workpaper_summary',
   'set_workpaper_input_cell',
 ]) {

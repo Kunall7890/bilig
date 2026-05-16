@@ -386,6 +386,29 @@ Latest conversion-feedback action on May 14, 2026:
   gaps:
   <https://github.com/proompteng/bilig/discussions/157#discussioncomment-16920401>
 
+Latest conversion snapshot on May 16, 2026:
+
+- GitHub surface: `23` stars, `16` forks, `116` open issues, and `5` open
+  pull requests. The star gap is still `977`.
+- npm surface: `@bilig/headless@0.14.26`, with `14,980` downloads in the
+  latest weekly window and `27,080` downloads in the latest monthly window.
+- Traffic surface: GitHub reports `528` views from `178` unique visitors and
+  `21,402` clones from `2,534` unique cloners. The strongest referrers are
+  GitHub, Hacker News, X, the project site, Google, Kagi, Reddit, and
+  goodfirstissues.com.
+- Funnel read: cloning and npm demand are much stronger than stars. The public
+  ask should stay concrete: try the npm smoke test, compare the compatibility
+  limits, star/bookmark only if the workflow is relevant, and tell us what
+  blocked a real adoption decision.
+- Site conversion action: the homepage final action now links directly to the
+  star page beside npm install and GitHub, and the docs index links to the live
+  community growth snapshot so visitors can inspect the current public signals.
+- MCP registry action: the official MCP Registry was refreshed to
+  `@bilig/headless@0.14.26` with workflow run
+  <https://github.com/proompteng/bilig/actions/runs/25949339848>. Live API
+  verification returned `13` Bilig WorkPaper entries and marked `0.14.26` as
+  latest.
+
 Latest contributor-funnel action on May 14, 2026:
 
 - GitHub traffic shows people checking the issue queue, but the repository had
