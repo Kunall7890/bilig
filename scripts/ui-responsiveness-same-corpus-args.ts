@@ -77,10 +77,7 @@ export function parseEmitXlsxArgs(argv: readonly string[]): EmitXlsxArgs | null 
   if (emitIndex === -1) {
     return null
   }
-  const targetDirectory = argv[emitIndex + 1]
-  if (!targetDirectory) {
-    throw new Error('Missing directory after --emit-xlsx')
-  }
+  const targetDirectory = requiredArgumentValue(argv, emitIndex, 'Missing directory after --emit-xlsx')
   return {
     check: argv.includes('--check'),
     corpusId: parseCorpusId(argumentValue(argv, '--corpus') ?? defaultCorpusId),
@@ -93,10 +90,7 @@ export function parseSaveStorageStateArgs(argv: readonly string[]): SaveStorageS
   if (saveIndex === -1) {
     return null
   }
-  const targetPath = argv[saveIndex + 1]
-  if (!targetPath) {
-    throw new Error('Missing file path after --save-storage-state')
-  }
+  const targetPath = requiredArgumentValue(argv, saveIndex, 'Missing file path after --save-storage-state')
   const product = parseSameCorpusProduct(argumentValue(argv, '--auth-product') ?? 'google-sheets')
   const authUrl = argumentValue(argv, '--auth-url') ?? authUrlFromProductArgs(argv, product)
   if (!authUrl) {
@@ -202,9 +196,13 @@ function argumentValue(argv: readonly string[], name: string): string | null {
   if (index === -1) {
     return null
   }
+  return requiredArgumentValue(argv, index, `Missing value after ${name}`)
+}
+
+function requiredArgumentValue(argv: readonly string[], index: number, message: string): string {
   const value = argv[index + 1]
-  if (!value) {
-    throw new Error(`Missing value after ${name}`)
+  if (value === undefined || value.trim().length === 0 || value.startsWith('-')) {
+    throw new Error(message)
   }
   return value
 }

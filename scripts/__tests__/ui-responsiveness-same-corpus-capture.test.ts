@@ -99,6 +99,12 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     expect(() => parseCaptureArgs(['--output', 'tmp/ui-capture.json'])).toThrow('Missing required arguments.')
   })
 
+  it('rejects blank capture argument values', () => {
+    expect(() =>
+      parseCaptureArgs(['--output', '   ', '--google-sheets-url', 'https://docs.google.com/spreadsheets/d/sheet-id/edit']),
+    ).toThrow('Missing value after --output')
+  })
+
   it('parses incumbent-only same-corpus preflight options', () => {
     const args = parsePreflightArgs([
       '--preflight',
@@ -162,6 +168,10 @@ describe('same-corpus UI responsiveness capture CLI', () => {
       corpusId: 'wide-mixed-250k',
     })
     expect(args?.targetDirectory.endsWith('/packages/benchmarks/baselines/ui-same-corpus')).toBe(true)
+  })
+
+  it('rejects XLSX emission mode when the next flag would be consumed as the directory', () => {
+    expect(() => parseEmitXlsxArgs(['--emit-xlsx', '--check'])).toThrow('Missing directory after --emit-xlsx')
   })
 
   it('builds deterministic literal-cell fingerprints for same-corpus verification', () => {
@@ -377,6 +387,18 @@ describe('same-corpus UI responsiveness capture CLI', () => {
 
   it('requires an auth URL in storage-state bootstrap mode', () => {
     expect(() => parseSaveStorageStateArgs(['--save-storage-state', 'tmp/state.json'])).toThrow('Missing auth URL.')
+  })
+
+  it('rejects storage-state bootstrap mode when the next flag would be consumed as the output path', () => {
+    expect(() =>
+      parseSaveStorageStateArgs([
+        '--save-storage-state',
+        '--auth-product',
+        'google-sheets',
+        '--google-sheets-url',
+        'https://docs.google.com/spreadsheets/d/sheet-id/edit',
+      ]),
+    ).toThrow('Missing file path after --save-storage-state')
   })
 
   it('blocks Playwright-backed capture modes while the local resource guard is active', () => {
