@@ -1,6 +1,5 @@
-import { spawn } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { HyperFormula, type CellValue as HyperFormulaCellValue, type RawCellContent } from 'hyperformula'
 
@@ -18,7 +17,7 @@ import {
 } from '../packages/excel-import/src/index.js'
 import { ValueTag } from '../packages/protocol/src/enums.js'
 import type { CellValue, LiteralInput, WorkbookSnapshot } from '../packages/protocol/src/types.js'
-import { parsePublicWorkbookCorpusCase, validatePublicWorkbookManifest } from './public-workbook-corpus-json.ts'
+import { validatePublicWorkbookManifest } from './public-workbook-corpus-json.ts'
 import {
   hasImportWarningUnsupportedClassifications,
   hasFormulaOracleCacheUnsupportedClassifications,
@@ -30,29 +29,27 @@ import {
   publicWorkbookResourceLimitClassifierEvidence,
 } from './public-workbook-corpus-evidence.ts'
 import { inspectWorkbookFootprintIsolated, type PublicWorkbookCorpusWorkerOptions } from './public-workbook-corpus-footprint.ts'
-import { formatByteSize, startChildRssWatchdog, terminateChildProcess } from './public-workbook-corpus-process.ts'
 import {
   importResourceLimitPreflight,
   roundTripResourceLimitPreflight,
   structuralSmokeResourceLimitPreflight,
   unsupportedPreflightResourceLimitCase,
   unsupportedResourceLimitCase,
-  unsupportedRssLimitCase,
 } from './public-workbook-corpus-resource-limits.ts'
 import { roundTripSemanticsDigest } from './public-workbook-corpus-roundtrip.ts'
 import { buildPublicWorkbookCorpusScorecardFromCases } from './public-workbook-corpus-scorecard.ts'
 import { indexReusablePublicWorkbookCorpusCases } from './public-workbook-corpus-verify-checkpoint.ts'
+import { artifactBaseEvidence, failedCase } from './public-workbook-corpus-verify-cases.ts'
+import { verifyCachedWorkbookArtifactIsolated } from './public-workbook-corpus-verify-isolated.ts'
 import { summarizeExternalWorkbookReferences, unsupportedWorkbookMetadataEvidence } from './public-workbook-corpus-external-links.ts'
 import {
   startVerificationRuntimeMetrics,
   timeVerificationPhase,
-  withPeakRssBytes,
   withVerificationRuntimeMetrics,
 } from './public-workbook-corpus-verification-metrics.ts'
 import {
   cellValuesMatchOracle,
   countWorkbookFeatures,
-  emptyFeatureCounts,
   extractFormulaOracles,
   formatCellValue,
   inspectWorkbookFootprint,
@@ -72,15 +69,15 @@ import type {
   PublicWorkbookValidationSummary,
 } from './public-workbook-corpus-types.ts'
 
+export { verifyCachedWorkbookArtifactIsolated } from './public-workbook-corpus-verify-isolated.ts'
+
 declare const Bun:
   | {
       gc(force?: boolean): void
     }
   | undefined
 
-const rootDir = resolve(new URL('..', import.meta.url).pathname)
 const publicWorkbookCorpusScriptPath = fileURLToPath(new URL('./public-workbook-corpus.ts', import.meta.url))
-const noop = (): void => undefined
 
 export const defaultVerifyTimeoutMs = 180_000
 export const defaultVerifyConcurrency = 1
@@ -95,7 +92,6 @@ export const rawPivotPartUnsupportedClassification = 'xlsx.pivots.rawPartNotSema
 export const externalPivotCacheUnsupportedClassification = 'xlsx.pivots.externalCacheNotSemanticallyImported'
 export const staleFormulaCacheUnsupportedClassification = 'xlsx.publicCorpus.formulaOracleCache:independentRecalcMatched'
 export const externalLinkTransitiveFormulaUnsupportedClassification = 'xlsx.externalLinks.transitiveFormulaDependenciesUnsupported'
-const verificationWorkerPhasePrefix = 'bilig-public-workbook-verify-phase='
 
 interface FormulaOracleMismatchDetail {
   readonly sheetName: string
@@ -170,149 +166,6 @@ export async function buildPublicWorkbookCorpusScorecard(args: BuildScorecardArg
     manifest: args.manifest,
     generatedAt: args.generatedAt,
     cases,
-  })
-}
-
-export function verifyCachedWorkbookArtifactIsolated(args: {
-  readonly artifact: PublicWorkbookArtifact
-  readonly cacheDir: string
-  readonly manifestPath: string
-  readonly runStructuralSmoke: boolean
-  readonly timeoutMs: number
-  readonly maxRssBytes: number
-  readonly maxCellCount: number
-  readonly rssCheckIntervalMs?: number
-}): Promise<PublicWorkbookCorpusCase> {
-  const baseEvidence = artifactBaseEvidence(args.artifact)
-  const runtimeMetrics = startVerificationRuntimeMetrics()
-  return new Promise<PublicWorkbookCorpusCase>((resolvePromise) => {
-    const childArgs = [
-      publicWorkbookCorpusScriptPath,
-      'verify-artifact-worker',
-      '--manifest',
-      args.manifestPath,
-      '--cache-dir',
-      args.cacheDir,
-      '--artifact-id',
-      args.artifact.id,
-      '--verify-max-rss-mb',
-      String(Math.ceil(args.maxRssBytes / 1024 / 1024)),
-      '--verify-max-cells',
-      String(args.maxCellCount),
-      ...(args.runStructuralSmoke ? ['--structural-smoke'] : []),
-    ]
-    const child = spawn(process.execPath, childArgs, {
-      detached: true,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    })
-    let stdout = ''
-    let stderr = ''
-    let stderrRemainder = ''
-    let latestWorkerPhase = 'startup'
-    let peakRssBytes = 0
-    let timer: ReturnType<typeof setTimeout>
-    let stopRssWatchdog = noop
-    const finish = createOneShotResolver(resolvePromise, () => {
-      clearTimeout(timer)
-      stopRssWatchdog()
-    })
-    const terminateChild = (signal: 'SIGTERM' | 'SIGKILL'): void => {
-      terminateChildProcess(child, signal, { processGroup: true })
-    }
-    stopRssWatchdog = startChildRssWatchdog(child, {
-      maxRssBytes: args.maxRssBytes,
-      intervalMs: args.rssCheckIntervalMs,
-      onSample: (rssBytes) => {
-        peakRssBytes = Math.max(peakRssBytes, rssBytes)
-      },
-      onLimitExceeded: (rssBytes) => {
-        terminateChild('SIGTERM')
-        const forceKillTimer = setTimeout(() => terminateChild('SIGKILL'), 5_000)
-        forceKillTimer.unref()
-        finish(
-          withVerificationRuntimeMetrics(
-            unsupportedRssLimitCase(args.artifact, baseEvidence, rssBytes, args.maxRssBytes, [
-              `rss-limit-phase=${latestWorkerPhase}`,
-              `peak-rss=${formatByteSize(Math.max(peakRssBytes, rssBytes))}`,
-              'The workbook was isolated in a subprocess so the corpus verification run could continue.',
-            ]),
-            runtimeMetrics,
-            Math.max(peakRssBytes, rssBytes),
-          ),
-        )
-      },
-    })
-    timer = setTimeout(() => {
-      terminateChild('SIGTERM')
-      const forceKillTimer = setTimeout(() => terminateChild('SIGKILL'), 5_000)
-      forceKillTimer.unref()
-      finish(
-        withVerificationRuntimeMetrics(
-          failedCase(args.artifact, 'error', baseEvidence, [
-            `Verification timed out after ${String(args.timeoutMs)}ms`,
-            'The workbook was isolated in a subprocess so the corpus verification run could continue.',
-          ]),
-          runtimeMetrics,
-          peakRssBytes,
-        ),
-      )
-    }, args.timeoutMs)
-    child.stdout.setEncoding('utf8')
-    child.stderr.setEncoding('utf8')
-    child.stdout.on('data', (chunk: string) => {
-      stdout += chunk
-    })
-    child.stderr.on('data', (chunk: string) => {
-      stderr += chunk
-      const lines = `${stderrRemainder}${chunk}`.split(/\r?\n/u)
-      stderrRemainder = lines.pop() ?? ''
-      for (const line of lines) {
-        if (line.startsWith(verificationWorkerPhasePrefix)) {
-          latestWorkerPhase = line.slice(verificationWorkerPhasePrefix.length)
-        }
-      }
-    })
-    child.on('error', (error) => {
-      finish(
-        withVerificationRuntimeMetrics(
-          failedCase(args.artifact, 'error', baseEvidence, [`Verification subprocess failed to start: ${error.message}`]),
-          runtimeMetrics,
-          peakRssBytes,
-        ),
-      )
-    })
-    child.on('close', (code, signal) => {
-      if (code !== 0) {
-        const failureDetails = compactProcessOutput(stderr || stdout)
-        finish(
-          withVerificationRuntimeMetrics(
-            failedCase(args.artifact, 'error', baseEvidence, [
-              `Verification subprocess exited with ${signal ? `signal ${signal}` : `code ${String(code)}`}`,
-              ...(failureDetails ? [failureDetails] : []),
-            ]),
-            runtimeMetrics,
-            peakRssBytes,
-          ),
-        )
-        return
-      }
-      try {
-        const parsed: unknown = JSON.parse(stdout)
-        finish(withPeakRssBytes(parsePublicWorkbookCorpusCase(parsed), peakRssBytes))
-      } catch (error) {
-        const details = compactProcessOutput(stderr || stdout)
-        finish(
-          withVerificationRuntimeMetrics(
-            failedCase(args.artifact, 'error', baseEvidence, [
-              `Verification subprocess returned invalid JSON: ${error instanceof Error ? error.message : String(error)}`,
-              ...(details ? [details] : []),
-            ]),
-            runtimeMetrics,
-            peakRssBytes,
-          ),
-        )
-      }
-    })
   })
 }
 
@@ -503,27 +356,6 @@ export function capVerifyMaxRssBytes(value: number): number {
   return normalizedValue
 }
 
-function createOneShotResolver<T>(resolveValue: (value: T) => void, cleanup: () => void): (value: T) => void {
-  let settled = false
-  return (value) => {
-    if (settled) {
-      return
-    }
-    settled = true
-    cleanup()
-    resolveValue(value)
-  }
-}
-
-function artifactBaseEvidence(artifact: PublicWorkbookArtifact): string[] {
-  return [
-    `source=${artifact.sourceUrl}`,
-    `license=${artifact.license.title}`,
-    `sha256=${artifact.sha256}`,
-    ...(artifact.topicEvidence ?? []).map((entry) => `topic=${entry}`),
-  ]
-}
-
 async function validateFormulaOracles(
   snapshot: WorkbookSnapshot,
   bytes: Uint8Array,
@@ -653,37 +485,6 @@ function validationEvidence(validation: PublicWorkbookValidationSummary): string
     evidence.push('Structural smoke operations failed')
   }
   return evidence
-}
-
-function failedCase(
-  artifact: PublicWorkbookArtifact,
-  status: 'failed' | 'error',
-  evidence: readonly string[],
-  errors: readonly string[],
-): PublicWorkbookCorpusCase {
-  return {
-    id: artifact.id,
-    sourceId: artifact.sourceId,
-    sourceUrl: artifact.sourceUrl,
-    fileName: artifact.fileName,
-    sha256: artifact.sha256,
-    byteSize: artifact.byteSize,
-    license: artifact.license,
-    status,
-    passed: false,
-    featureCounts: emptyFeatureCounts(),
-    workbookMetadata: { workbookName: artifact.fileName, sheetNames: [], dimensions: [] },
-    validation: {
-      importPassed: false,
-      formulaOraclePassed: false,
-      formulaOracleComparisons: 0,
-      formulaOracleMismatches: [],
-      roundTripPassed: false,
-      structuralSmokePassed: null,
-    },
-    unsupportedFeatureClassifications: [],
-    evidence: [...evidence, ...errors],
-  }
 }
 
 async function compareFormulaOracles(
@@ -943,15 +744,4 @@ async function mapWithConcurrency<T, R>(
   }
   await Promise.all(Array.from({ length: workerCount }, () => runNext()))
   return results
-}
-
-function compactProcessOutput(value: string): string | null {
-  const compacted = value
-    .split(/\r?\n/u)
-    .filter((line) => !line.startsWith(verificationWorkerPhasePrefix))
-    .join('\n')
-    .replaceAll(rootDir, '<repo>')
-    .replace(/\s+/gu, ' ')
-    .trim()
-  return compacted.length > 0 ? compacted.slice(0, 1_000) : null
 }

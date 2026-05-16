@@ -44,6 +44,7 @@ import {
   staleFormulaCacheUnsupportedClassification,
   verifyCachedWorkbookArtifact,
 } from '../public-workbook-corpus-verify.ts'
+import { compactVerificationWorkerOutput, verificationWorkerPhasePrefix } from '../public-workbook-corpus-verify-isolated.ts'
 import { writeFingerprintArtifactWorkerResult } from '../public-workbook-corpus-worker-commands.ts'
 
 const spawnMock = vi.hoisted(() => vi.fn())
@@ -2059,6 +2060,19 @@ describe('public workbook corpus', () => {
         'The workbook was isolated in a subprocess so the corpus verification run could continue.',
       ]),
     )
+  })
+
+  it('compacts isolated verification subprocess output without phase markers', () => {
+    expect(
+      compactVerificationWorkerOutput(
+        [
+          `${verificationWorkerPhasePrefix}import-xlsx`,
+          'Error: failed to parse shared strings',
+          '    at /Users/gregkonush/.codex/worktrees/7232/bilig/packages/excel-import/src/index.ts:1',
+          `${verificationWorkerPhasePrefix}round-trip`,
+        ].join('\n'),
+      ),
+    ).toBe('Error: failed to parse shared strings at <repo>/packages/excel-import/src/index.ts:1')
   })
 
   it('kills isolated verification workers that exceed the RSS limit', async () => {

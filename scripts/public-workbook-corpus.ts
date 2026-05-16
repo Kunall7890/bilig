@@ -32,6 +32,7 @@ import {
   runPublicWorkbookCorpusVerifyMissingCommand,
   runPublicWorkbookCorpusVerifyStaleCommand,
 } from './public-workbook-corpus-verify-slices.ts'
+import { verificationWorkerPhasePrefix } from './public-workbook-corpus-verify-isolated.ts'
 import {
   readReusablePublicWorkbookCorpusCases,
   upsertPublicWorkbookCorpusVerificationCheckpoint,
@@ -651,7 +652,7 @@ async function main(): Promise<void> {
           maxRssBytes: verifyMaxRssBytes,
           rssCheckIntervalMs: defaultSelfRssCheckIntervalMs,
           onPhase: (phase) => {
-            process.stderr.write(`bilig-public-workbook-verify-phase=${phase}\n`)
+            process.stderr.write(`${verificationWorkerPhasePrefix}${phase}\n`)
           },
         },
       )
