@@ -1,3 +1,15 @@
+export type FuzzMode = 'default' | 'main' | 'nightly' | 'replay'
+
+export function parseFuzzMode(value: string | undefined): FuzzMode {
+  if (value === undefined || value === 'default') {
+    return 'default'
+  }
+  if (value === 'main' || value === 'nightly' || value === 'replay') {
+    return value
+  }
+  throw new Error(`Fuzz mode must be "default", "main", "nightly", or "replay", got ${value}`)
+}
+
 export function resolveVitestFuzzMaxWorkers(availableWorkers: number): number {
   if (!Number.isFinite(availableWorkers) || availableWorkers <= 0) {
     return 1

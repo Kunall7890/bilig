@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { buildVitestFuzzCommand, resolveVitestFuzzMaxWorkers } from '../run-fuzz-config.js'
+import { buildVitestFuzzCommand, parseFuzzMode, resolveVitestFuzzMaxWorkers } from '../run-fuzz-config.js'
 
 describe('run fuzz config', () => {
+  it('resolves explicit fuzz modes without silently downgrading unknown values', () => {
+    expect(parseFuzzMode(undefined)).toBe('default')
+    expect(parseFuzzMode('default')).toBe('default')
+    expect(parseFuzzMode('main')).toBe('main')
+    expect(parseFuzzMode('nightly')).toBe('nightly')
+    expect(parseFuzzMode('replay')).toBe('replay')
+    expect(() => parseFuzzMode('mainn')).toThrow('Fuzz mode must be "default", "main", "nightly", or "replay", got mainn')
+  })
+
   it('caps vitest fuzz workers to a conservative subset of host parallelism', () => {
     expect(resolveVitestFuzzMaxWorkers(1)).toBe(1)
     expect(resolveVitestFuzzMaxWorkers(2)).toBe(1)

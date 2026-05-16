@@ -3,16 +3,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { availableParallelism } from 'node:os'
 import { join, resolve } from 'node:path'
-import { buildVitestFuzzCommand } from './run-fuzz-config.js'
-
-type FuzzMode = 'default' | 'main' | 'nightly' | 'replay'
-
-function parseMode(value: string | undefined): FuzzMode {
-  if (value === 'main' || value === 'nightly' || value === 'replay') {
-    return value
-  }
-  return 'default'
-}
+import { buildVitestFuzzCommand, parseFuzzMode, type FuzzMode } from './run-fuzz-config.js'
 
 function runCommand(command: string[], extraEnv: Record<string, string>): void {
   const result = Bun.spawnSync(command, {
@@ -70,7 +61,7 @@ function parseReplayKind(filePath: string): string | null {
 }
 
 const args = process.argv.slice(2)
-const mode = parseMode(args[0])
+const mode = parseFuzzModeOrExit(args[0])
 const replayFixture = mode === 'replay' ? args.slice(1).find((value) => value !== '--') : undefined
 
 if (mode === 'replay' && !replayFixture) {
@@ -120,4 +111,13 @@ function walkFuzzFiles(root: string): string[] {
   }
 
   return files
+}
+
+function parseFuzzModeOrExit(value: string | undefined): FuzzMode {
+  try {
+    return parseFuzzMode(value)
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error))
+    process.exit(1)
+  }
 }
