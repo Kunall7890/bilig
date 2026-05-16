@@ -5,6 +5,12 @@ Checkout: `37c02d7f279d21cb6e987f2ff055d9d89cf7487a` at prompt creation
 Oracle request: `https://chatgpt.com/c/69f18c28-44b8-83e8-bd3a-eb2228c71843`
 Source package uploaded to oracle: `/tmp/bilig3-oracle/bilig3-workpaper-source-37c02d7f.zip`
 
+> **Historical note:** This dated oracle plan preserves the benchmark state and
+> implementation priorities from its capture window. For current benchmark
+> evidence, use `docs/headless-workpaper-benchmark-evidence.md`,
+> `docs/what-workpaper-benchmark-proves.md`, and
+> `packages/benchmarks/baselines/workpaper-vs-hyperformula.json`.
+
 ## Status
 
 The source zip and benchmark request were submitted to the oracle on

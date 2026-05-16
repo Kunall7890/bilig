@@ -4,6 +4,12 @@ Date: `2026-04-18`
 
 Status: `design capture, partially implemented and reconciled with current expanded benchmark`
 
+> **Historical note:** This dated design preserves the benchmark state and
+> implementation priorities from its capture window. For current benchmark
+> evidence, use `docs/headless-workpaper-benchmark-evidence.md`,
+> `docs/what-workpaper-benchmark-proves.md`, and
+> `packages/benchmarks/baselines/workpaper-vs-hyperformula.json`.
+
 Related documents:
 
 - `/Users/gregkonush/github.com/bilig2/docs/workpaper-ultra-performance-engine-architecture-2026-04-12.md`

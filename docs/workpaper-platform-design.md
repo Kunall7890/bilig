@@ -166,8 +166,9 @@ The current state is therefore:
 - stronger feature coverage in selected areas such as dynamic arrays and structured references: shipped
 - workload-specific competitive benchmark evidence against HyperFormula: shipped
 - on the checked-in expanded comparable benchmark, WorkPaper currently wins
-  `46/46` scorecard-eligible comparable workloads, including `8/8` holdout; the
-  closest current WorkPaper win is `build-mixed-content`
+  `78/100` scorecard-eligible comparable mean workloads and `74/100`
+  mean+p95 workloads; the current worst p95 row is
+  `structural-insert-columns-small`
 - top-level dominance scorecard: shipped at
   `packages/benchmarks/baselines/bilig-dominance-scorecard.json`
 - blanket `10x` superiority claim: still disallowed without direct Google

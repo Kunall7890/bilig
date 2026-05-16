@@ -6,6 +6,12 @@ Input archive: `/private/tmp/codex-share/bilig2-codebase-da133b5a-oracle.zip`
 Repo snapshot: `/Users/gregkonush/github.com/bilig2`, `main` at `da133b5a`
 Status: `captured oracle design memo for execution planning`
 
+> **Historical note:** This dated oracle memo preserves the benchmark state and
+> implementation priorities from its capture window. For current benchmark
+> evidence, use `docs/headless-workpaper-benchmark-evidence.md`,
+> `docs/what-workpaper-benchmark-proves.md`, and
+> `packages/benchmarks/baselines/workpaper-vs-hyperformula.json`.
+
 This document preserves the full oracle response captured from ChatGPT 5.4 Pro
 after it reviewed the attached codebase archive and the structural/symbolic
 ownership design docs. The text below the separator is the copied oracle memo.

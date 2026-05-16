@@ -11,7 +11,7 @@ import {
   type WorkPaperXlsxCalcBenchmarkResult,
   type WorkPaperXlsxCalcScorecard,
 } from '../packages/benchmarks/src/benchmark-workpaper-vs-xlsx-calc.ts'
-import { readJsonObject } from './json-scorecard-helpers.ts'
+import { objectField, readJsonObject, stringField } from './json-scorecard-helpers.ts'
 import { formatJsonForRepo } from './scorecard-format.ts'
 import { deriveWorkPaperXlsxCalcScorecard, parseWorkPaperXlsxCalcArtifact } from './workpaper-vs-xlsx-calc-artifact.ts'
 
@@ -50,13 +50,18 @@ const outputPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'workpap
 const isCheckMode = process.argv.slice(2).includes('--check')
 const sampleCount = DEFAULT_COMPETITIVE_SAMPLE_COUNT
 const warmupCount = DEFAULT_COMPETITIVE_WARMUP_COUNT
+const workpaperSourcePath = 'packages/headless'
+const xlsxCalcSourcePath = 'packages/benchmarks/node_modules/xlsx-calc'
 
 if (isCheckMode) {
   if (!existsSync(outputPath)) {
     throw new Error('WorkPaper vs xlsx-calc benchmark artifact is missing. Run: pnpm workpaper:bench:xlsx-calc:generate')
   }
 
-  const artifact = parseWorkPaperXlsxCalcArtifact(readJsonObject(outputPath))
+  const rawArtifact = readJsonObject(outputPath)
+  assertEngineSourcePath(rawArtifact, 'workpaper', workpaperSourcePath)
+  assertEngineSourcePath(rawArtifact, 'xlsxCalc', xlsxCalcSourcePath)
+  const artifact = parseWorkPaperXlsxCalcArtifact(rawArtifact)
   const actualWorkloads = artifact.results.map((result) => result.workload)
   if (JSON.stringify(actualWorkloads) !== JSON.stringify([...WORKPAPER_XLSX_CALC_WORKLOADS])) {
     throw new Error('WorkPaper vs xlsx-calc benchmark workload coverage is out of date. Run: pnpm workpaper:bench:xlsx-calc:generate')
@@ -103,13 +108,13 @@ const artifact: WorkPaperVsXlsxCalcBenchmarkArtifact = {
   engines: {
     workpaper: {
       packageName: '@bilig/headless',
-      sourcePath: join(rootDir, 'packages', 'headless'),
+      sourcePath: workpaperSourcePath,
       version: readPackageVersion(join(rootDir, 'packages', 'headless', 'package.json')),
     },
     xlsxCalc: {
       coverageTier: 'workbook-wide',
       packageName: 'xlsx-calc',
-      sourcePath: join(rootDir, 'packages', 'benchmarks', 'node_modules', 'xlsx-calc'),
+      sourcePath: xlsxCalcSourcePath,
       version: readPackageVersion(join(rootDir, 'packages', 'benchmarks', 'node_modules', 'xlsx-calc', 'package.json')),
     },
   },
@@ -132,6 +137,16 @@ console.log(
     2,
   ),
 )
+
+function assertEngineSourcePath(artifactRecord: Record<string, unknown>, engineName: string, expectedSourcePath: string): void {
+  const engine = objectField(objectField(artifactRecord, 'engines'), engineName)
+  const actualSourcePath = stringField(engine, 'sourcePath')
+  if (actualSourcePath !== expectedSourcePath) {
+    throw new Error(
+      `WorkPaper vs xlsx-calc ${engineName} sourcePath is stale. Expected ${expectedSourcePath}, got ${actualSourcePath}. Run: pnpm workpaper:bench:xlsx-calc:generate`,
+    )
+  }
+}
 
 function readPackageVersion(packagePath: string): string {
   const parsed: unknown = JSON.parse(readFileSync(packagePath, 'utf8'))

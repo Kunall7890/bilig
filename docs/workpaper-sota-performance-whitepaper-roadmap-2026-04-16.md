@@ -4,6 +4,12 @@ Date: `2026-04-16`
 
 Status: `planning docs aligned to current source state`
 
+> **Historical note:** This dated roadmap preserves the benchmark state and
+> implementation priorities from its capture window. For current benchmark
+> evidence, use `docs/headless-workpaper-benchmark-evidence.md`,
+> `docs/what-workpaper-benchmark-proves.md`, and
+> `packages/benchmarks/baselines/workpaper-vs-hyperformula.json`.
+
 Related documents:
 
 - `/Users/gregkonush/github.com/bilig2/docs/workpaper-ultra-performance-engine-architecture-2026-04-12.md`

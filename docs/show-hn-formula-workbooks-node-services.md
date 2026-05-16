@@ -1,5 +1,5 @@
 ---
-title: Show HN: Bilig runs small formula workbooks in Node
+title: "Show HN: Bilig runs small formula workbooks in Node"
 published: true
 description: A plain maintainer note for Bilig with the npm check, benchmark artifact, limits, and concrete feedback ask.
 tags: show-hn, typescript, node, spreadsheet, agents

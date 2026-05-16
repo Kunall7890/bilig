@@ -11,7 +11,7 @@ import {
   type WorkPaperTrueCalcScalarBenchmarkResult,
   type WorkPaperTrueCalcScalarScorecard,
 } from '../packages/benchmarks/src/benchmark-workpaper-vs-truecalc.ts'
-import { readJsonObject } from './json-scorecard-helpers.ts'
+import { objectField, readJsonObject, stringField } from './json-scorecard-helpers.ts'
 import { formatJsonForRepo } from './scorecard-format.ts'
 import { deriveWorkPaperTrueCalcScalarScorecard, parseWorkPaperTrueCalcScalarArtifact } from './workpaper-vs-truecalc-artifact.ts'
 
@@ -50,13 +50,18 @@ const outputPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'workpap
 const isCheckMode = process.argv.slice(2).includes('--check')
 const sampleCount = DEFAULT_COMPETITIVE_SAMPLE_COUNT
 const warmupCount = DEFAULT_COMPETITIVE_WARMUP_COUNT
+const workpaperSourcePath = 'packages/headless'
+const truecalcSourcePath = 'packages/benchmarks/node_modules/@truecalc/core'
 
 if (isCheckMode) {
   if (!existsSync(outputPath)) {
     throw new Error('WorkPaper vs TrueCalc benchmark artifact is missing. Run: pnpm workpaper:bench:truecalc:generate')
   }
 
-  const artifact = parseWorkPaperTrueCalcScalarArtifact(readJsonObject(outputPath))
+  const rawArtifact = readJsonObject(outputPath)
+  assertEngineSourcePath(rawArtifact, 'workpaper', workpaperSourcePath)
+  assertEngineSourcePath(rawArtifact, 'truecalc', truecalcSourcePath)
+  const artifact = parseWorkPaperTrueCalcScalarArtifact(rawArtifact)
   const actualWorkloads = artifact.results.map((result) => result.workload)
   if (JSON.stringify(actualWorkloads) !== JSON.stringify([...TRUECALC_SCALAR_WORKLOADS])) {
     throw new Error('WorkPaper vs TrueCalc benchmark workload coverage is out of date. Run: pnpm workpaper:bench:truecalc:generate')
@@ -103,13 +108,13 @@ const artifact: WorkPaperVsTrueCalcScalarBenchmarkArtifact = {
   engines: {
     workpaper: {
       packageName: '@bilig/headless',
-      sourcePath: join(rootDir, 'packages', 'headless'),
+      sourcePath: workpaperSourcePath,
       version: readPackageVersion(join(rootDir, 'packages', 'headless', 'package.json')),
     },
     truecalc: {
       coverageTier: 'scalar-formula',
       packageName: '@truecalc/core',
-      sourcePath: join(rootDir, 'packages', 'benchmarks', 'node_modules', '@truecalc', 'core'),
+      sourcePath: truecalcSourcePath,
       version: readPackageVersion(join(rootDir, 'packages', 'benchmarks', 'node_modules', '@truecalc', 'core', 'package.json')),
     },
   },
@@ -132,6 +137,16 @@ console.log(
     2,
   ),
 )
+
+function assertEngineSourcePath(artifactRecord: Record<string, unknown>, engineName: string, expectedSourcePath: string): void {
+  const engine = objectField(objectField(artifactRecord, 'engines'), engineName)
+  const actualSourcePath = stringField(engine, 'sourcePath')
+  if (actualSourcePath !== expectedSourcePath) {
+    throw new Error(
+      `WorkPaper vs TrueCalc ${engineName} sourcePath is stale. Expected ${expectedSourcePath}, got ${actualSourcePath}. Run: pnpm workpaper:bench:truecalc:generate`,
+    )
+  }
+}
 
 function readPackageVersion(packagePath: string): string {
   const parsed: unknown = JSON.parse(readFileSync(packagePath, 'utf8'))

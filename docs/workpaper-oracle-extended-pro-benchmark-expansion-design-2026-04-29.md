@@ -7,6 +7,12 @@ Prompt checkout: `37c02d7f279d21cb6e987f2ff055d9d89cf7487a`
 Current checkout branch during validation: `main`
 Current baseline artifact: `packages/benchmarks/baselines/workpaper-vs-hyperformula.json`
 
+> **Historical note:** This dated oracle design preserves the benchmark state
+> and implementation priorities from its capture window. For current benchmark
+> evidence, use `docs/headless-workpaper-benchmark-evidence.md`,
+> `docs/what-workpaper-benchmark-proves.md`, and
+> `packages/benchmarks/baselines/workpaper-vs-hyperformula.json`.
+
 ## Validated Oracle Plan
 
 The first-prompt oracle response was extracted through the Browser Use in-app

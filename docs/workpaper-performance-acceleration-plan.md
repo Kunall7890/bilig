@@ -26,15 +26,15 @@ Current checkpoint on `main`:
 - literal-only workbook initialization now hydrates directly into fresh core workbook storage
   instead of paying restore-style op execution overhead
 - the checked-in competitive artifact now shows:
-  - Overall scorecard: WorkPaper `46/46`
-  - Public lane: WorkPaper `38/38`
-  - Holdout lane: WorkPaper `8/8`
-  - current HyperFormula mean-red rows: none
-  - closest mean and p95 WorkPaper win: `build-mixed-content`
+  - Overall scorecard: WorkPaper `78/100` mean wins and `74/100` mean+p95 wins
+  - Public lane: WorkPaper `59/73` mean wins
+  - Holdout lane: WorkPaper `19/27` mean wins
+  - current HyperFormula mean-win rows: `22/100`
+  - worst p95 WorkPaper row: `structural-insert-columns-small`
 
 So the remaining performance gap is no longer “lookup is completely fake” or
-“recalculation is broadly red.” The remaining gap is no longer a HyperFormula
-scorecard loss; it is turning broad wins into durable larger-margin wins and
+“recalculation is broadly red.” The remaining gap is turning current mean wins
+into durable mean+p95 wins, closing named HyperFormula mean-win rows, and
 keeping the new top-level dominance scorecard honest about the much larger
 Google Sheets / Microsoft Excel objective.
 
@@ -96,7 +96,7 @@ Current closest WorkPaper wins:
 
 The repo now also tracks the broader active goal in
 `packages/benchmarks/baselines/bilig-dominance-scorecard.json`. That scorecard
-explicitly keeps the blanket `10x` claim disallowed: only two comparable
+explicitly keeps the blanket `10x` claim disallowed: only four comparable
 HyperFormula workloads are currently `10x` wins on both mean and p95, and there
 is not yet direct generated evidence against Google Sheets or Microsoft Excel.
 
@@ -557,9 +557,10 @@ it is not a stable production regression.
 
 Acceptance:
 
-- WorkPaper remains `46/46` on scorecard-eligible comparable mean winners
-- public lane remains visible and stays `38/38`
-- holdout lane remains `8/8`
+- WorkPaper improves from the current `78/100` scorecard-eligible comparable
+  mean winners without reducing benchmark coverage
+- public lane remains visible and improves from the current `59/73` mean wins
+- holdout lane remains visible and improves from the current `19/27` mean wins
 - closest wins gain margin without changing benchmark sampling or verification
 - top-level dominance scorecard remains current and blocks blanket `10x`
   language until direct Sheets / Excel evidence exists

@@ -4,6 +4,12 @@ Date: `2026-04-13`
 
 Status: `captured prior-art notes, reconciled with current expanded benchmark`
 
+> **Historical note:** This dated note preserves the benchmark state and
+> implementation priorities from its capture window. For current benchmark
+> evidence, use `docs/headless-workpaper-benchmark-evidence.md`,
+> `docs/what-workpaper-benchmark-proves.md`, and
+> `packages/benchmarks/baselines/workpaper-vs-hyperformula.json`.
+
 ## Purpose
 
 This note records the concrete HyperFormula patterns that still matter for the remaining WorkPaper

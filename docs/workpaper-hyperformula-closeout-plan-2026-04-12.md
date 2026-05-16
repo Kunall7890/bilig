@@ -4,6 +4,12 @@ Date: `2026-04-12`
 
 Commit baseline: `ef63195` (`perf(core): tighten benchmark hot paths`)
 
+> **Historical note:** This dated plan preserves the benchmark state and
+> implementation priorities from its capture window. For current benchmark
+> evidence, use `docs/headless-workpaper-benchmark-evidence.md`,
+> `docs/what-workpaper-benchmark-proves.md`, and
+> `packages/benchmarks/baselines/workpaper-vs-hyperformula.json`.
+
 ## Purpose
 
 This document is the narrow design plan for the next engine pass needed to beat HyperFormula on

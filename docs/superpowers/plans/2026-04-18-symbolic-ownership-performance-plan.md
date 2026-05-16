@@ -1,5 +1,11 @@
 # Symbolic Ownership Performance Implementation Plan
 
+> **Historical note:** This dated plan preserves the benchmark state and
+> implementation priorities from its capture window. For current benchmark
+> evidence, use `docs/headless-workpaper-benchmark-evidence.md`,
+> `docs/what-workpaper-benchmark-proves.md`, and
+> `packages/benchmarks/baselines/workpaper-vs-hyperformula.json`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace the current remap and rematerialize ownership model with symbolic owners that can move `bilig` from narrow benchmark wins to broad performance leadership against HyperFormula.

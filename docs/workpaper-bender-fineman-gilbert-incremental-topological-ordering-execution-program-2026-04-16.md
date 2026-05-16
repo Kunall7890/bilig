@@ -4,6 +4,12 @@ Date: `2026-04-16`
 
 Status: `deferred until prerequisites exist`
 
+> **Historical note:** This dated execution program preserves the benchmark state
+> and implementation priorities from its capture window. For current benchmark
+> evidence, use `docs/headless-workpaper-benchmark-evidence.md`,
+> `docs/what-workpaper-benchmark-proves.md`, and
+> `packages/benchmarks/baselines/workpaper-vs-hyperformula.json`.
+
 Design document:
 
 - `/Users/gregkonush/github.com/bilig2/docs/workpaper-bender-fineman-gilbert-incremental-topological-ordering-design-2026-04-16.md`

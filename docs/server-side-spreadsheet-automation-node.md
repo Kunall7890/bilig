@@ -1,7 +1,7 @@
 ---
 title: Server-side spreadsheet automation in Node.js
 published: true
-description: Automate spreadsheet formulas inside Node services with @bilig/headless: edit inputs, read calculated cells, and persist WorkPaper JSON without a browser grid.
+description: "Automate spreadsheet formulas inside Node services with @bilig/headless: edit inputs, read calculated cells, and persist WorkPaper JSON without a browser grid."
 tags: typescript, node, spreadsheet, automation, opensource
 canonical_url: https://proompteng.github.io/bilig/server-side-spreadsheet-automation-node.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png

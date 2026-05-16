@@ -4,6 +4,12 @@ Date: `2026-04-18`
 
 Status: `design capture, not implemented`
 
+> **Historical note:** This dated oracle design preserves the benchmark state
+> and implementation priorities from its capture window. For current benchmark
+> evidence, use `docs/headless-workpaper-benchmark-evidence.md`,
+> `docs/what-workpaper-benchmark-proves.md`, and
+> `packages/benchmarks/baselines/workpaper-vs-hyperformula.json`.
+
 Source:
 
 - Captured from the focused `ChatGPT` macOS app thread on `GPT-5.4 Pro`

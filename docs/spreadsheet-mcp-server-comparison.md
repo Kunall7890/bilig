@@ -1,7 +1,7 @@
 ---
 title: Spreadsheet MCP server comparison
 published: true
-description: Compare spreadsheet MCP server choices for agents: Excel file tools, Google Sheets tools, read-only workbook inspection, and Bilig WorkPaper formula readback.
+description: "Compare spreadsheet MCP server choices for agents: Excel file tools, Google Sheets tools, read-only workbook inspection, and Bilig WorkPaper formula readback."
 tags: mcp, model context protocol, spreadsheet, excel, agents
 canonical_url: https://proompteng.github.io/bilig/spreadsheet-mcp-server-comparison.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png

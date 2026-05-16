@@ -330,6 +330,7 @@ requireFormulaProofDiscovery({
   communityLaunchPack,
   formulaWorkbooksProof,
   headlessReadme,
+  headlessPackageVersion,
   index,
   llms,
   readme,
@@ -726,7 +727,7 @@ for (const required of [
 ]) {
   requireIncludes(claudeDesktopMcpbDoc, required, 'docs/claude-desktop-mcpb-workpaper.md')
 }
-requireGrowthSurfaceDiscovery(communityLaunchPack, llms, productHuntLaunchKit, requireIncludes)
+requireGrowthSurfaceDiscovery(communityLaunchPack, headlessPackageVersion, llms, productHuntLaunchKit, requireIncludes)
 requireNotIncludes(llms, '## launch and feedback', 'docs/llms.txt')
 requireNotIncludes(llms, 'conversion-feedback comment after npm download and clone traffic review', 'docs/llms.txt')
 requireNotIncludes(llms, 'published dev article source', 'docs/llms.txt')

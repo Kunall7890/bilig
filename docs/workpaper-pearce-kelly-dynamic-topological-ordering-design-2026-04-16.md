@@ -4,6 +4,12 @@ Date: `2026-04-16`
 
 Status: `proposed`
 
+> **Historical note:** This dated design preserves the benchmark state and
+> implementation priorities from its capture window. For current benchmark
+> evidence, use `docs/headless-workpaper-benchmark-evidence.md`,
+> `docs/what-workpaper-benchmark-proves.md`, and
+> `packages/benchmarks/baselines/workpaper-vs-hyperformula.json`.
+
 Primary source:
 
 - `/Users/gregkonush/Downloads/pearce-kelly-dynamic-topological-sort.pdf`

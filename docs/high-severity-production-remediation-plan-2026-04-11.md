@@ -17,6 +17,10 @@ Scope is intentionally limited to the audit's highest-risk findings:
 
 This plan is based on tracked `main` as of `5bbc2b0`.
 
+**Historical note:** this dated plan preserves absolute links from the older
+local `bilig3` checkout that produced the audit. Treat those links as provenance
+for the 2026-04-11 snapshot, not as current repository paths.
+
 It aligns with, but is stricter than:
 
 - [next-iteration-production-plan-2026-04-10.md](/Users/gregkonush/github.com/bilig3/docs/next-iteration-production-plan-2026-04-10.md)

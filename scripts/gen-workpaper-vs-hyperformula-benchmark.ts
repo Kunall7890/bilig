@@ -82,6 +82,7 @@ const rootDir = resolve(new URL('..', import.meta.url).pathname)
 const outputPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'workpaper-vs-hyperformula.json')
 const localHyperFormulaRoot = '/Users/gregkonush/github.com/hyperformula'
 const isCheckMode = process.argv.slice(2).includes('--check')
+const workpaperSourcePath = 'packages/headless'
 
 const sampleCount = DEFAULT_COMPETITIVE_SAMPLE_COUNT
 const warmupCount = DEFAULT_COMPETITIVE_WARMUP_COUNT
@@ -92,6 +93,7 @@ if (isCheckMode) {
   }
 
   const artifactJson = readFileSync(outputPath, 'utf8')
+  assertEngineSourcePath(parseJsonRecord(artifactJson), 'workpaper', workpaperSourcePath)
   const existing = parseArtifactForShape(artifactJson)
   const actualShape = normalizeArtifactShape(existing)
   const actualWorkloads = actualShape.workloads.map((workload) => workload.workload)
@@ -154,7 +156,7 @@ const artifact: ExpandedCompetitiveBenchmarkArtifact = {
   engines: {
     workpaper: {
       packageName: '@bilig/headless',
-      sourcePath: join(rootDir, 'packages', 'headless'),
+      sourcePath: workpaperSourcePath,
       version: workpaperVersion,
     },
     hyperformula: hyperformulaMetadata,
@@ -307,6 +309,27 @@ function assertArtifactReportDerivedFromResults(reportArtifact: ArtifactReportIn
       ' and ',
     )} do not match the raw benchmark results. Run: bun scripts/gen-workpaper-vs-hyperformula-benchmark.ts`,
   )
+}
+
+function assertEngineSourcePath(artifactRecord: Record<string, unknown>, engineName: string, expectedSourcePath: string): void {
+  const engines = recordField(artifactRecord, 'engines')
+  const engine = recordField(engines, engineName)
+  const actualSourcePath = engine.sourcePath
+  if (actualSourcePath !== expectedSourcePath) {
+    throw new Error(
+      `WorkPaper competitive benchmark ${engineName} sourcePath is stale. Expected ${expectedSourcePath}, got ${String(
+        actualSourcePath,
+      )}. Run: bun scripts/gen-workpaper-vs-hyperformula-benchmark.ts`,
+    )
+  }
+}
+
+function recordField(value: Record<string, unknown>, field: string): Record<string, unknown> {
+  const child = value[field]
+  if (!isRecord(child)) {
+    throw new Error(`Expected ${field} to be an object`)
+  }
+  return child
 }
 
 function reportsMatch(actual: unknown, expected: unknown): boolean {

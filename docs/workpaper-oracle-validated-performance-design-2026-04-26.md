@@ -4,6 +4,12 @@ Date: `2026-04-26`
 Oracle thread: `https://chatgpt.com/c/69ed8169-1d94-83e8-bfc2-a34c22558617`
 Local validation commit before implementation: `d7cbd690c3710e15e1735c0971d4f97eda9fbf72`
 
+> **Historical note:** This dated oracle design preserves the benchmark state
+> and implementation priorities from its capture window. For current benchmark
+> evidence, use `docs/headless-workpaper-benchmark-evidence.md`,
+> `docs/what-workpaper-benchmark-proves.md`, and
+> `packages/benchmarks/baselines/workpaper-vs-hyperformula.json`.
+
 ## Oracle Capture
 
 The oracle response was complete and usable. It analyzed the attached

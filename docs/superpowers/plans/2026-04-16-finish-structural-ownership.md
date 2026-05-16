@@ -1,5 +1,11 @@
 # Structural Ownership Finish Implementation Plan
 
+> **Historical note:** This dated implementation plan preserves the benchmark
+> state and priorities from its capture window. For current benchmark evidence,
+> use `docs/headless-workpaper-benchmark-evidence.md`,
+> `docs/what-workpaper-benchmark-proves.md`, and
+> `packages/benchmarks/baselines/workpaper-vs-hyperformula.json`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Finish structural ownership end to end so row and column insert, delete, and move flow through one authoritative structural transaction, eliminate the remaining broad remap and rebuild paths, and flip the structural benchmark family against HyperFormula without breaking undo, replica parity, or snapshot/export semantics.

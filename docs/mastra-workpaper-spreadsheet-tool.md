@@ -1,7 +1,7 @@
 ---
 title: Mastra WorkPaper spreadsheet tool
 published: true
-description: Use @bilig/headless as the workbook logic behind a Mastra createTool: read a range, write one input, and return formula readback.
+description: "Use @bilig/headless as the workbook logic behind a Mastra createTool: read a range, write one input, and return formula readback."
 tags: mastra, createTool, spreadsheet, workpaper, typescript
 canonical_url: https://proompteng.github.io/bilig/mastra-workpaper-spreadsheet-tool.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png

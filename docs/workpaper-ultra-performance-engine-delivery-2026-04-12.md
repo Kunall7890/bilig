@@ -4,6 +4,12 @@ Date: `2026-04-12`
 
 Status: `execution-grade, revised against current broader benchmark reality on main`
 
+> **Historical note:** This dated plan preserves the benchmark state and
+> implementation priorities from its capture window. For current benchmark
+> evidence, use `docs/headless-workpaper-benchmark-evidence.md`,
+> `docs/what-workpaper-benchmark-proves.md`, and
+> `packages/benchmarks/baselines/workpaper-vs-hyperformula.json`.
+
 Related documents:
 
 - `/Users/gregkonush/github.com/bilig2/docs/workpaper-ultra-performance-engine-architecture-2026-04-12.md`
