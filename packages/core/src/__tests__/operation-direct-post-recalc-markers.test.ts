@@ -105,6 +105,7 @@ describe('operation direct post-recalc markers', () => {
     expect(markers.tryMarkDirectScalarLinearDeltaClosure(10, numberValue(2), numberValue(5), collection)).toBe(true)
 
     expect(collection.size).toBe(2)
+    expect(collection.getCellIndicesForRead()).toBeInstanceOf(Uint32Array)
     expect(collection.getDelta(20)).toBe(3)
     expect(collection.getDelta(30)).toBe(3)
     expect(collection.hasCompleteScalarDeltas()).toBe(true)

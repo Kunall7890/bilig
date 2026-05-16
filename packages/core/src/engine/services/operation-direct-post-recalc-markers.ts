@@ -389,7 +389,7 @@ export function createOperationDirectPostRecalcMarkers(args: {
     let oldNumber = oldRootNumber
     let newNumber = newRootNumber
     let closureCount = 0
-    const cellIndices: number[] = []
+    let cellIndices = new Uint32Array(Math.min(128, Math.max(1, args.scalarDeltaClosureLimit + 1)))
     let deltas: number[] | undefined
     let commonDelta: number | undefined
     let canUseValidatedTerminalWrites = true
@@ -445,11 +445,16 @@ export function createOperationDirectPostRecalcMarkers(args: {
         commonDelta = formulaDelta
       } else if (!Object.is(commonDelta, formulaDelta) && deltas === undefined) {
         deltas = []
-        for (let index = 0; index < cellIndices.length; index += 1) {
+        for (let index = 0; index < closureCount; index += 1) {
           deltas[index] = commonDelta
         }
       }
-      cellIndices.push(formulaCellIndex)
+      if (closureCount >= cellIndices.length) {
+        const nextCellIndices = new Uint32Array(cellIndices.length * 2)
+        nextCellIndices.set(cellIndices)
+        cellIndices = nextCellIndices
+      }
+      cellIndices[closureCount] = formulaCellIndex
       if (deltas) {
         deltas.push(formulaDelta)
       }
@@ -458,13 +463,14 @@ export function createOperationDirectPostRecalcMarkers(args: {
       newNumber = formulaNewNumber ?? formulaOldNumber + formulaDelta
       closureCount += 1
     }
-    if (cellIndices.length === 0) {
+    if (closureCount === 0) {
       return false
     }
+    const closureCellIndices = cellIndices.subarray(0, closureCount)
     if (deltas) {
-      postRecalcDirectFormulaIndices.appendDeltas(cellIndices, deltas, 'scalar')
+      postRecalcDirectFormulaIndices.appendDeltas(closureCellIndices, deltas, 'scalar')
     } else if (commonDelta !== undefined) {
-      postRecalcDirectFormulaIndices.appendConstantDelta(cellIndices, commonDelta, 'scalar')
+      postRecalcDirectFormulaIndices.appendConstantDelta(closureCellIndices, commonDelta, 'scalar')
     }
     if (canUseValidatedTerminalWrites) {
       postRecalcDirectFormulaIndices.markScalarDeltaCellsValidated()

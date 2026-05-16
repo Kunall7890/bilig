@@ -119,15 +119,16 @@ export function createOperationDirectFormulaDeltas(args: {
       return undefined
     }
     const cellStore = args.state.workbook.cellStore
-    const changed = captureChanged ? new Uint32Array(collection.size) : EMPTY_CHANGED_CELLS
     const hasValidatedTerminalWrites = collection.hasValidatedScalarDeltaCells()
     if (constantDelta !== undefined && hasValidatedTerminalWrites) {
       const cellIndices = collection.getCellIndicesForRead()
+      const changed = captureChanged
+        ? cellIndices instanceof Uint32Array
+          ? cellIndices
+          : Uint32Array.from(cellIndices)
+        : EMPTY_CHANGED_CELLS
       for (let index = 0; index < cellIndices.length; index += 1) {
         const cellIndex = cellIndices[index]!
-        if (captureChanged) {
-          changed[index] = cellIndex
-        }
         const flags = cellStore.flags[cellIndex] ?? 0
         if ((flags & (CellFlags.SpillChild | CellFlags.PivotOutput)) !== 0) {
           cellStore.flags[cellIndex] = flags & ~(CellFlags.SpillChild | CellFlags.PivotOutput)
@@ -144,6 +145,7 @@ export function createOperationDirectFormulaDeltas(args: {
       addEngineCounter(args.state.counters, 'directScalarDeltaApplications', collection.size)
       return changed
     }
+    const changed = captureChanged ? new Uint32Array(collection.size) : EMPTY_CHANGED_CELLS
     let canUseTerminalFormulaWrites = hasValidatedTerminalWrites
     if (!hasValidatedTerminalWrites) {
       canUseTerminalFormulaWrites = true

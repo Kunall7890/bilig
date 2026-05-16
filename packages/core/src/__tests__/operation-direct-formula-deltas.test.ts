@@ -103,13 +103,15 @@ describe('createOperationDirectFormulaDeltas', () => {
     })
 
     const collection = new DirectFormulaIndexCollection()
-    collection.appendConstantDelta(Uint32Array.of(first, second), 4, 'scalar')
+    const directScalarCells = Uint32Array.of(first, second)
+    collection.appendConstantDelta(directScalarCells, 4, 'scalar')
     collection.markScalarDeltaCellsValidated()
 
     // Act
     const changed = helpers.tryApplyDirectScalarDeltas(collection)
 
     // Assert
+    expect(changed).toBe(directScalarCells)
     expect(Array.from(changed ?? [])).toEqual([first, second])
     expect(workbook.cellStore.numbers[first]).toBe(6)
     expect(workbook.cellStore.numbers[second]).toBe(12)
