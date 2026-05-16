@@ -4,6 +4,18 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.16.18
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.16.17
+- Manual override: no
+
+## Fixes
+- perf(headless): split fresh matrix literals before formulas (6a3eb7d7)
+
+## Internal runtime changes
+- chore(growth): refresh public evidence for 0.16.17 (bc14e116)
+
 ## 0.16.17
 
 - Release type: patch
