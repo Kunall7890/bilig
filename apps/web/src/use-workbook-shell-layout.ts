@@ -37,6 +37,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function clampWorkbookSidePanelWidth(width: number): number {
+  if (!Number.isFinite(width)) {
+    return DEFAULT_WORKBOOK_SIDE_PANEL_WIDTH
+  }
   const viewportWidth = typeof window === 'undefined' ? null : window.innerWidth
   const viewportAwareMax =
     viewportWidth && Number.isFinite(viewportWidth)

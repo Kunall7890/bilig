@@ -22,6 +22,7 @@ function ShellLayoutHarness(props: { documentId: string; defaultOpen?: boolean; 
       <button data-testid="toggle-assistant" type="button" onClick={() => layout.toggleSidePanel('assistant')} />
       <button data-testid="toggle-changes" type="button" onClick={() => layout.toggleSidePanel('changes')} />
       <button data-testid="set-width" type="button" onClick={() => layout.setSidePanelWidth(416)} />
+      <button data-testid="set-invalid-width" type="button" onClick={() => layout.setSidePanelWidth(Number.NaN)} />
     </div>
   )
 }
@@ -132,6 +133,41 @@ describe('workbook shell layout', () => {
 
     await act(async () => {
       secondRoot.unmount()
+    })
+  })
+
+  it('falls back to the default width for invalid width updates', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+
+    await act(async () => {
+      root.render(<ShellLayoutHarness documentId="doc-invalid-width" />)
+    })
+
+    const state = host.querySelector("[data-testid='shell-layout-state']")
+
+    await act(async () => {
+      host.querySelector("[data-testid='set-width']")?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    expect(state?.getAttribute('data-width')).toBe('416')
+
+    await act(async () => {
+      host.querySelector("[data-testid='set-invalid-width']")?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    expect(state?.getAttribute('data-width')).toBe(String(DEFAULT_WORKBOOK_SIDE_PANEL_WIDTH))
+    expect(window.localStorage.getItem('bilig:workbook-shell-layout:doc-invalid-width')).toBe(
+      JSON.stringify({
+        sidePanelOpen: false,
+        sidePanelWidth: DEFAULT_WORKBOOK_SIDE_PANEL_WIDTH,
+      }),
+    )
+
+    await act(async () => {
+      root.unmount()
     })
   })
 
