@@ -1484,6 +1484,8 @@ describe('GridRenderTilePaneRuntime', () => {
       textCount: 1,
       textRuns: [
         {
+          col: 0,
+          row: 0,
           text: 'stale remote text',
           x: 0,
           y: 0,
@@ -1510,7 +1512,7 @@ describe('GridRenderTilePaneRuntime', () => {
         renderTileSource: renderTileSource.source,
       }),
     )
-    expect(initial.residentBodyPane?.tile.textRuns[0]?.text).toBe('stale remote text')
+    expect(initial.residentBodyPane?.tile.textRuns.some((run) => run.text === 'stale remote text')).toBe(false)
 
     runtime.connectWorkbookDeltaDamage(
       {

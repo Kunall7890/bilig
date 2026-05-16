@@ -86,10 +86,36 @@ function tileVisibleTextNeedsLocalRefresh(
     readonly visibleRowStart: number
   },
 ): boolean {
+  if (tile.textRuns.length !== tile.textCount) {
+    return true
+  }
+
   const textRunsByCell = new Map<string, string>()
   for (const run of tile.textRuns) {
-    if (run.text.length > 0) {
-      textRunsByCell.set(`${run.row}:${run.col}`, run.text)
+    if (run.text.length === 0) {
+      continue
+    }
+    const row = run.row
+    const col = run.col
+    if (
+      !Number.isInteger(row) ||
+      !Number.isInteger(col) ||
+      row === undefined ||
+      col === undefined ||
+      row < tile.bounds.rowStart ||
+      row > tile.bounds.rowEnd ||
+      col < tile.bounds.colStart ||
+      col > tile.bounds.colEnd
+    ) {
+      return true
+    }
+    if (
+      row >= visibleBounds.visibleRowStart &&
+      row <= visibleBounds.visibleRowEnd &&
+      col >= visibleBounds.visibleColStart &&
+      col <= visibleBounds.visibleColEnd
+    ) {
+      textRunsByCell.set(`${row}:${col}`, run.text)
     }
   }
 
