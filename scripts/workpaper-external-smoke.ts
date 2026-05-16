@@ -28,13 +28,14 @@ import {
 } from './workpaper-external-smoke-parsers.ts'
 import { writeXlsxImportScript } from './workpaper-external-smoke-fixtures.ts'
 import { parseNodeMcpStdioErrorOutput } from './workpaper-external-smoke-mcp-parsers.ts'
+import { resolveKeepWorkpaperSmokeStage } from './workpaper-external-smoke-config.ts'
 
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
 const packDir = join(rootDir, 'build', 'npm-packages-runtime-smoke')
 const headlessExampleDir = join(rootDir, 'examples', 'headless-workpaper')
+const keepStage = resolveKeepStageOrExit()
 const stageDir = mkdtempSync(join(tmpdir(), 'bilig-workpaper-external-smoke-'))
 const textDecoder = new TextDecoder()
-const keepStage = process.env.KEEP_WORKPAPER_SMOKE_STAGE === 'true'
 
 const runtimePackages = loadRuntimePackages(rootDir)
 const alignedVersion = assertAlignedVersions(runtimePackages)
@@ -66,6 +67,15 @@ try {
 } finally {
   if (!keepStage) {
     rmSync(stageDir, { recursive: true, force: true })
+  }
+}
+
+function resolveKeepStageOrExit(): boolean {
+  try {
+    return resolveKeepWorkpaperSmokeStage(process.env)
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error))
+    process.exit(1)
   }
 }
 
