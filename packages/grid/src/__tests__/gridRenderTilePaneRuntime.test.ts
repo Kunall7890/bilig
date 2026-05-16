@@ -1755,6 +1755,83 @@ describe('GridRenderTilePaneRuntime', () => {
     expect(host.tiles.dirtyTiles.getUnconsumedMask(warmTileId)).toBe(0)
   })
 
+  it('localizes dirty warm preload tiles before stale remote text can be staged', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const [visibleTileId, warmTileId] = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 255, colStart: 0, rowEnd: 31, rowStart: 0 },
+    })
+    if (visibleTileId === undefined || warmTileId === undefined) {
+      throw new Error('Expected visible and warm render tile keys for the test viewport')
+    }
+    const staleWarmTile: GridRenderTile = {
+      ...createRenderTile(warmTileId),
+      bounds: { colEnd: 255, colStart: 128, rowEnd: 31, rowStart: 0 },
+      coord: {
+        colTile: 1,
+        dprBucket: 1,
+        paneKind: 'body',
+        rowTile: 0,
+        sheetId: 7,
+        sheetOrdinal: 7,
+      },
+      textCount: 1,
+      textRuns: [
+        {
+          align: 'left',
+          clipHeight: 20,
+          clipWidth: 80,
+          clipX: 0,
+          clipY: 0,
+          color: '#000000',
+          col: 128,
+          font: '12px sans-serif',
+          fontSize: 12,
+          height: 20,
+          row: 0,
+          strike: false,
+          text: 'stale warm remote text',
+          underline: false,
+          width: 80,
+          wrap: false,
+          x: 0,
+          y: 0,
+        },
+      ],
+    }
+    const renderTileSource = createRenderTileSource([createRenderTile(visibleTileId), staleWarmTile])
+    host.tiles.applyWorkbookDelta(
+      createWorkbookDeltaBatch({
+        dirty: {
+          axisX: new Uint32Array([128, 128, DirtyMaskV3.AxisX | DirtyMaskV3.Text | DirtyMaskV3.Rect]),
+          axisY: new Uint32Array(),
+          cellRanges: new Uint32Array(),
+        },
+      }),
+      { dprBucket: 1 },
+    )
+
+    const state = runtime.resolve(
+      createInput({
+        engine: LOCAL_EMPTY_ENGINE,
+        gridRuntimeHost: host,
+        renderTileSource,
+        renderTileViewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+        residentViewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+        visibleViewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+      }),
+    )
+
+    const warmPreloadPane = state.preloadDataPanes.find((pane) => pane.tile.tileId === warmTileId)
+    expect(warmPreloadPane).toBeDefined()
+    expect(warmPreloadPane?.tile).not.toBe(staleWarmTile)
+    expect(warmPreloadPane?.tile.textRuns.some((run) => run.text === 'stale warm remote text')).toBe(false)
+    expect(warmPreloadPane?.tile.dirtyLocalCols).toEqual(new Uint32Array([0, 127]))
+    expect(host.tiles.dirtyTiles.getUnconsumedMask(warmTileId)).not.toBe(0)
+  })
+
   it('preserves dirty spans when local fallback has no remote render tile source', () => {
     const runtime = new GridRenderTilePaneRuntime()
     const host = createHost()

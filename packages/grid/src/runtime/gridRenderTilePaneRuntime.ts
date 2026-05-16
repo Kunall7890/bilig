@@ -589,6 +589,13 @@ export class GridRenderTilePaneRuntime {
       if (!tile || !matchesRenderTileSheetIdentity(tile.coord, { sheetId: input.sheetId, sheetOrdinal })) {
         continue
       }
+      if (input.gridRuntimeHost.tiles.dirtyTiles.getUnconsumedMask(tileKey) !== 0 || !hasCompleteRenderTileGrid(tile)) {
+        const localTile = this.buildLocalPreloadTile(input, tileKey, tile)
+        if (localTile) {
+          tiles.push(localTile)
+        }
+        continue
+      }
       tiles.push(tile)
     }
     if (tiles.length === 0) {
@@ -622,6 +629,36 @@ export class GridRenderTilePaneRuntime {
       tiles,
       visibleViewport: input.visibleViewport,
     })
+  }
+
+  private buildLocalPreloadTile(
+    input: GridRenderTilePaneRuntimeInput,
+    tileKey: TileKey53,
+    baseTile: GridRenderTile,
+  ): GridRenderTile | null {
+    const localTiles = buildLocalFixedRenderTiles({
+      cameraSeq: input.gridRuntimeHost.snapshot().camera.seq,
+      columnWidths: input.columnWidths,
+      dirtySpansForTile: (tileId) => input.gridRuntimeHost.tiles.dirtyTiles.getSpans(tileId),
+      dprBucket: input.dprBucket,
+      editingCell: input.editingCell ?? null,
+      engine: input.engine,
+      freezeSeq: input.gridRuntimeHost.snapshot().freezeSeq,
+      generation: input.sceneRevision,
+      gridMetrics: input.gridMetrics,
+      reuseStaticGridRectsByTileId: hasCompleteRenderTileGrid(baseTile) ? new Map([[tileKey, baseTile]]) : undefined,
+      rowHeights: input.rowHeights,
+      selectedCell: input.selectedCell,
+      selectedCellSnapshot: input.selectedCellSnapshot,
+      sheetId: input.sheetId ?? 0,
+      sheetOrdinal: resolveGridRenderTileInputSheetOrdinal(input),
+      sheetName: input.sheetName,
+      sortedColumnWidthOverrides: input.sortedColumnWidthOverrides,
+      sortedRowHeightOverrides: input.sortedRowHeightOverrides,
+      tileKeys: [tileKey],
+      viewport: baseTile.bounds,
+    })
+    return localTiles[0] ?? null
   }
 
   private upsertHostTile(input: GridRenderTilePaneRuntimeInput, tile: GridRenderTile): void {

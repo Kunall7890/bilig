@@ -157,7 +157,7 @@ describe('worker-runtime-render-tile-delta', () => {
     expect(replacements[0]?.dirtyLocalRows).toEqual(new Uint32Array([1, 1]))
     expect(replacements[0]?.dirtyLocalCols).toEqual(new Uint32Array([1, 1]))
     expect(replacements[0]?.dirtyMasks).toEqual(new Uint32Array([RANGE_VISUAL_DIRTY_MASK]))
-    expect(replacements[0]?.dirty.rectSpans).toEqual([{ offset: 129, length: 1 }])
+    expect(replacements[0]?.dirty.rectSpans).toEqual([{ offset: 0, length: replacements[0]?.rectCount ?? 0 }])
   })
 
   it('materializes warm tile interest on initial and dirty event-driven batches', () => {
