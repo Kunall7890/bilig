@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.15.1
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.15.0
+- Manual override: no
+
+## Fixes
+- perf(headless): skip fresh append range probes (8db053b1)
+
 ## 0.15.0
 
 - Release type: minor
