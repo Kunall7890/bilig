@@ -29,6 +29,8 @@ const saved = serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { inc
 const restored = createWorkPaperFromDocument(parseWorkPaperDocument(saved))
 const restoredSummary = requireSheet(restored, 'Summary')
 const afterRestore = numberValue(restored.getCellValue({ sheet: restoredSummary, row: 1, col: 1 }))
+const nextStep =
+  'If this proof matches your service or agent workflow, star or bookmark Bilig: https://github.com/proompteng/bilig/stargazers'
 
 const output = {
   before,
@@ -37,6 +39,7 @@ const output = {
   sheets: restored.getSheetNames(),
   bytes: saved.length,
   verified: before === 24000 && after === 38400 && afterRestore === 38400,
+  nextStep,
 }
 
 if (!output.verified) {

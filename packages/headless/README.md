@@ -136,7 +136,8 @@ Expected output:
   "afterRestore": 38400,
   "sheets": ["Inputs", "Summary"],
   "bytes": 1000,
-  "verified": true
+  "verified": true,
+  "nextStep": "If this proof matches your service or agent workflow, star or bookmark Bilig: https://github.com/proompteng/bilig/stargazers"
 }
 ```
 
