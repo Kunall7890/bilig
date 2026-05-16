@@ -209,6 +209,90 @@ describe('projectWorkbookToSnapshot', () => {
     expect(projected?.sheets[0]?.metadata?.columnMetadata).toEqual([{ start: 0, count: 1, size: 144, styleIndex: 9, customFormat: true }])
   })
 
+  it('sanitizes projected style records from persisted JSON', () => {
+    const projected = projectWorkbookToSnapshot(
+      {
+        id: 'doc-1',
+        name: 'Projected Book',
+        styles: [
+          {
+            id: 'style-1',
+            recordJSON: {
+              fill: { backgroundColor: '#ffee00' },
+              font: {
+                family: 'Inter',
+                size: 13,
+                bold: true,
+                underline: false,
+                color: '#111111',
+                shadow: true,
+              },
+              alignment: {
+                horizontal: 'right',
+                vertical: 'middle',
+                indent: 2,
+                textRotation: 45,
+                wrap: true,
+                fake: 'ignored',
+              },
+              borders: {
+                top: { style: 'solid', weight: 'thin', color: '#333333' },
+                bottom: { style: 'wave', weight: 'thin', color: '#333333' },
+              },
+              protection: { locked: true, hidden: false },
+              arbitrary: { trusted: false },
+            },
+          },
+          {
+            id: 'style-unsafe',
+            recordJSON: {
+              fill: { backgroundColor: 42 },
+              font: { size: Number.NaN, bold: 'yes' },
+              alignment: { horizontal: 'diagonal', readingOrder: Number.POSITIVE_INFINITY },
+              protection: { locked: 1 },
+            },
+          },
+          {
+            id: '',
+            recordJSON: { fill: { backgroundColor: '#000000' } },
+          },
+          {
+            id: 'style-non-object',
+            recordJSON: null,
+          },
+        ],
+        sheets: [],
+      },
+      'doc-1',
+    )
+
+    expect(projected?.workbook.metadata?.styles).toEqual([
+      {
+        id: 'style-1',
+        fill: { backgroundColor: '#ffee00' },
+        font: {
+          family: 'Inter',
+          size: 13,
+          bold: true,
+          underline: false,
+          color: '#111111',
+        },
+        alignment: {
+          horizontal: 'right',
+          vertical: 'middle',
+          indent: 2,
+          textRotation: 45,
+          wrap: true,
+        },
+        borders: {
+          top: { style: 'solid', weight: 'thin', color: '#333333' },
+        },
+        protection: { locked: true, hidden: false },
+      },
+      { id: 'style-unsafe' },
+    ])
+  })
+
   it('drops unsafe projected sheet metadata bounds', () => {
     const projected = projectWorkbookToSnapshot(
       {
