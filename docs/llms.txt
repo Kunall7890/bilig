@@ -128,6 +128,13 @@ npm run agent:verify
 
 - benchmark explainer:
   https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md
+- quote approval WorkPaper API proof:
+  https://proompteng.github.io/bilig/quote-approval-workpaper-api.html
+  https://github.com/proompteng/bilig/blob/main/docs/quote-approval-workpaper-api.md
+  downloads one maintained TypeScript route smoke from
+  examples/serverless-workpaper-api/quote-approval-api.ts and verifies
+  decisionChanged, formulasPersisted, inputPersisted, restoredMatchesAfter, and
+  verified from the published npm package.
 - benchmark share card:
   https://github.com/proompteng/bilig/blob/main/docs/assets/workpaper-benchmark-card.png
 - hyperformula comparison:

@@ -740,7 +740,7 @@ If you have used HyperFormula, ExcelJS, or SheetJS for this kind of automation:
 what would block you from trying a WorkPaper-style API?
 ```
 
-### Hacker News Submission After The Try-It Page
+### Hacker News Submission After The Quote Approval Page
 
 Use this only when the linked page is live and the submitter is ready to answer
 technical questions in the thread.
@@ -748,23 +748,23 @@ technical questions in the thread.
 Title:
 
 ```text
-Show HN: bilig, a headless spreadsheet engine for Node services
+Show HN: Formula workbooks for Node services
 ```
 
 URL:
 
 ```text
-https://proompteng.github.io/bilig/try-bilig-headless-in-node.html
+https://proompteng.github.io/bilig/quote-approval-workpaper-api.html
 ```
 
 First comment:
 
 ```text
-I maintain this project. The linked page is the shortest way to judge it: it starts from an empty Node directory, installs @bilig/headless from npm, builds a two-sheet WorkPaper, edits an input cell, reads the recalculated value, serializes the workbook as JSON, restores it, and checks the value again.
+I maintain this project. The linked page is the shortest production-shaped way to judge it: it starts from an empty Node directory, installs @bilig/headless from npm, downloads one maintained TypeScript route smoke, writes quote inputs, recalculates net revenue / gross margin / approval decision, serializes the WorkPaper JSON, restores it, and checks restoredMatchesAfter.
 
 The package is aimed at backend and agent workflows where spreadsheet formulas are business logic but opening a browser grid is the wrong boundary. It is not a full Excel clone, and the compatibility gaps are documented publicly.
 
-Useful feedback would be specific: which formula families, import/export paths, or persistence shapes would block you from trying a headless workbook engine in a real service?
+Useful feedback would be specific: which formula families, import/export paths, persistence shapes, or framework boundaries would block you from trying a headless workbook engine in a real service?
 ```
 
 ### Reddit / Community Post

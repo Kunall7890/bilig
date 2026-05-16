@@ -427,6 +427,11 @@ pnpm workpaper:xlsx-corpus:check -- /path/to/xlsx-corpus
 
 - The clean TypeScript sanity check above edits one input, restores the saved
   JSON document, and verifies the dependent formula result.
+- For a production-shaped evaluator path, run the
+  [quote approval WorkPaper API proof](https://github.com/proompteng/bilig/blob/main/docs/quote-approval-workpaper-api.md).
+  It starts from an empty Node directory, downloads one maintained TypeScript
+  route smoke, writes quote inputs, recalculates an approval decision, persists
+  JSON, and verifies restored readback.
 - Auditing imported Excel files is a separate workflow. Cached formula values
   embedded in `.xlsx` files are useful for triage, but Bilig accuracy claims
   should be checked against a fresh Microsoft Excel recalculation.
