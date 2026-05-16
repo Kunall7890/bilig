@@ -1471,12 +1471,12 @@ test('web app keeps delete keys scoped to the in-cell editor while editing', asy
 
   await editor.press('Backspace')
   await expect(editor).toHaveValue('abc')
-  expect(await formulaInput.evaluate((input) => (input instanceof HTMLInputElement ? input.value : ''))).toBe('abc')
+  await expect(formulaInput).toHaveValue('abc')
 
   await editor.press('Home')
   await editor.press('Delete')
   await expect(editor).toHaveValue('bc')
-  expect(await formulaInput.evaluate((input) => (input instanceof HTMLInputElement ? input.value : ''))).toBe('bc')
+  await expect(formulaInput).toHaveValue('bc')
 
   await editor.press('Enter')
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C4')

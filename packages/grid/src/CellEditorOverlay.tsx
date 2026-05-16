@@ -84,6 +84,11 @@ export function CellEditorOverlay({
     readonly end: number
     readonly start: number
   } | null>(null)
+  const pendingKeyboardSelectionRef = useRef<{
+    readonly direction: 'backward' | 'forward' | 'none'
+    readonly end: number
+    readonly start: number
+  } | null>(null)
   const caretWriteSequenceRef = useRef(0)
   const targetSelectionRef = useRef(targetSelection)
   const draftValueRef = useRef(value)
@@ -111,6 +116,7 @@ export function CellEditorOverlay({
     if (selection) {
       pendingSelectionRestoreRef.current = selection
     }
+    draftValueRef.current = nextValue
     setDraftValue(nextValue)
     onChange(nextValue)
   }
@@ -138,23 +144,32 @@ export function CellEditorOverlay({
     overlayRef.current?.style.setProperty('pointer-events', 'none')
   }
 
+  const readCurrentDraftValue = () => {
+    const input = inputRef.current
+    if (!input) {
+      return draftValueRef.current
+    }
+    return pendingKeyboardSelectionRef.current ? draftValueRef.current : input.value
+  }
+
   const insertTextAtSelection = (input: HTMLTextAreaElement, text: string) => {
-    const currentValue = input.value
-    const selectionStart = input.selectionStart ?? currentValue.length
-    const selectionEnd = input.selectionEnd ?? currentValue.length
+    const pendingSelection = pendingKeyboardSelectionRef.current
+    const currentValue = pendingSelection ? draftValueRef.current : input.value
+    const selectionStart = Math.min(pendingSelection?.start ?? input.selectionStart ?? currentValue.length, currentValue.length)
+    const selectionEnd = Math.min(pendingSelection?.end ?? input.selectionEnd ?? currentValue.length, currentValue.length)
     const nextValue = `${currentValue.slice(0, selectionStart)}${text}${currentValue.slice(selectionEnd)}`
     const caretPosition = selectionStart + text.length
-    input.value = nextValue
-    updateDraftValue(nextValue, {
+    const nextSelection = {
       direction: 'none',
       end: caretPosition,
       start: caretPosition,
-    })
-    input.setSelectionRange(caretPosition, caretPosition)
+    } as const
+    pendingKeyboardSelectionRef.current = nextSelection
+    updateDraftValue(nextValue, nextSelection)
     caretWriteSequenceRef.current += 1
     const sequence = caretWriteSequenceRef.current
     window.requestAnimationFrame(() => {
-      if (caretWriteSequenceRef.current !== sequence) {
+      if (caretWriteSequenceRef.current !== sequence || document.activeElement !== input) {
         return
       }
       inputRef.current?.setSelectionRange(caretPosition, caretPosition)
@@ -192,6 +207,7 @@ export function CellEditorOverlay({
       return
     }
     pendingSelectionRestoreRef.current = null
+    pendingKeyboardSelectionRef.current = null
     const input = inputRef.current
     if (!input || document.activeElement !== input) {
       return
@@ -238,7 +254,7 @@ export function CellEditorOverlay({
     if (movement) {
       cancelPendingBlurCommit()
     }
-    const nextValue = inputRef.current?.value ?? draftValue
+    const nextValue = readCurrentDraftValue()
     if (completionRef.current !== 'idle') {
       if (movement && completionRef.current === 'commit') {
         onCommit(movement, nextValue, targetSelectionRef.current)
@@ -254,7 +270,7 @@ export function CellEditorOverlay({
     if (!blurArmedRef.current || completionRef.current !== 'idle' || pendingBlurCommitRef.current !== null) {
       return
     }
-    const nextValue = inputRef.current?.value ?? draftValue
+    const nextValue = readCurrentDraftValue()
     const nextTargetSelection = targetSelectionRef.current
     beginCompletion('commit')
     pendingBlurCommitRef.current = window.requestAnimationFrame(() => {
