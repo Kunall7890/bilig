@@ -34,6 +34,7 @@ import {
   styleSignature,
   workbookMetadataSignature,
 } from './store-support.js'
+import { runSequentially } from './transaction-support.js'
 
 export interface QueryResultRow {
   [key: string]: unknown
@@ -140,6 +141,14 @@ export interface PersistWorkbookMutationResult {
 
 const WORKBOOK_CHECKPOINT_INTERVAL = 64
 const AUTHORITATIVE_SOURCE_PROJECTION_VERSION = 2
+
+type ProjectionWriteTask = () => Promise<unknown>
+
+async function runProjectionWriteTasks(tasks: readonly ProjectionWriteTask[]): Promise<void> {
+  await runSequentially(tasks, async (task) => {
+    await task()
+  })
+}
 
 export function shouldPersistWorkbookCheckpointRevision(revision: number): boolean {
   return revision === 1 || revision % WORKBOOK_CHECKPOINT_INTERVAL === 0
@@ -286,16 +295,16 @@ export async function applySheetDiff(
 ): Promise<void> {
   const diff = diffProjectionRows(previousRows, nextRows, sourceProjectionKeys.sheet, sheetSignature)
   const workbookId = nextRows[0]?.workbookId ?? previousRows[0]?.workbookId
-  const tasks: Promise<unknown>[] = []
+  const tasks: ProjectionWriteTask[] = []
   for (const key of diff.deletes) {
     const [, sheetId] = parseJsonKey(key)
     if (typeof sheetId !== 'number') {
       continue
     }
-    tasks.push(db.query(`DELETE FROM sheets WHERE workbook_id = $1 AND sheet_id = $2`, [workbookId, sheetId]))
+    tasks.push(() => db.query(`DELETE FROM sheets WHERE workbook_id = $1 AND sheet_id = $2`, [workbookId, sheetId]))
   }
   for (const row of diff.upserts) {
-    tasks.push(
+    tasks.push(() =>
       db.query(
         `
         INSERT INTO sheets (
@@ -320,7 +329,7 @@ export async function applySheetDiff(
       ),
     )
   }
-  await Promise.all(tasks)
+  await runProjectionWriteTasks(tasks)
 }
 
 export async function applyCellDiff(
@@ -330,13 +339,15 @@ export async function applyCellDiff(
 ): Promise<void> {
   const diff = diffProjectionRows(previousRows, nextRows, sourceProjectionKeys.cell, cellSignature)
   const workbookId = nextRows[0]?.workbookId ?? previousRows[0]?.workbookId
-  const tasks: Promise<unknown>[] = []
+  const tasks: ProjectionWriteTask[] = []
   for (const key of diff.deletes) {
     const [, sheetName, address] = parseJsonKey(key)
-    tasks.push(db.query(`DELETE FROM cells WHERE workbook_id = $1 AND sheet_name = $2 AND address = $3`, [workbookId, sheetName, address]))
+    tasks.push(() =>
+      db.query(`DELETE FROM cells WHERE workbook_id = $1 AND sheet_name = $2 AND address = $3`, [workbookId, sheetName, address]),
+    )
   }
   for (const row of diff.upserts) {
-    tasks.push(
+    tasks.push(() =>
       db.query(
         `
         INSERT INTO cells (
@@ -386,7 +397,7 @@ export async function applyCellDiff(
       ),
     )
   }
-  await Promise.all(tasks)
+  await runProjectionWriteTasks(tasks)
 }
 
 export async function persistCellSourceRange(
@@ -421,10 +432,10 @@ export async function applyAxisMetadataDiff(
 ): Promise<void> {
   const diff = diffProjectionRows(previousRows, nextRows, sourceProjectionKeys.axisMetadata, axisSignature)
   const workbookId = nextRows[0]?.workbookId ?? previousRows[0]?.workbookId
-  const tasks: Promise<unknown>[] = []
+  const tasks: ProjectionWriteTask[] = []
   for (const key of diff.deletes) {
     const [, sheetName, startIndex] = parseJsonKey(key)
-    tasks.push(
+    tasks.push(() =>
       db.query(`DELETE FROM ${tableName} WHERE workbook_id = $1 AND sheet_name = $2 AND start_index = $3`, [
         workbookId,
         sheetName,
@@ -433,7 +444,7 @@ export async function applyAxisMetadataDiff(
     )
   }
   for (const row of diff.upserts) {
-    tasks.push(
+    tasks.push(() =>
       db.query(
         `
         INSERT INTO ${tableName} (
@@ -459,7 +470,7 @@ export async function applyAxisMetadataDiff(
       ),
     )
   }
-  await Promise.all(tasks)
+  await runProjectionWriteTasks(tasks)
 }
 
 export async function applyDefinedNameDiff(
@@ -469,13 +480,13 @@ export async function applyDefinedNameDiff(
 ): Promise<void> {
   const diff = diffProjectionRows(previousRows, nextRows, sourceProjectionKeys.definedName, definedNameSignature)
   const workbookId = nextRows[0]?.workbookId ?? previousRows[0]?.workbookId
-  const tasks: Promise<unknown>[] = []
+  const tasks: ProjectionWriteTask[] = []
   for (const key of diff.deletes) {
     const [, name] = parseJsonKey(key)
-    tasks.push(db.query(`DELETE FROM defined_names WHERE workbook_id = $1 AND name = $2`, [workbookId, name]))
+    tasks.push(() => db.query(`DELETE FROM defined_names WHERE workbook_id = $1 AND name = $2`, [workbookId, name]))
   }
   for (const row of diff.upserts) {
-    tasks.push(
+    tasks.push(() =>
       db.query(
         `
         INSERT INTO defined_names (workbook_id, name, value)
@@ -487,7 +498,7 @@ export async function applyDefinedNameDiff(
       ),
     )
   }
-  await Promise.all(tasks)
+  await runProjectionWriteTasks(tasks)
 }
 
 export async function applyWorkbookMetadataDiff(
@@ -497,13 +508,13 @@ export async function applyWorkbookMetadataDiff(
 ): Promise<void> {
   const diff = diffProjectionRows(previousRows, nextRows, sourceProjectionKeys.workbookMetadata, workbookMetadataSignature)
   const workbookId = nextRows[0]?.workbookId ?? previousRows[0]?.workbookId
-  const tasks: Promise<unknown>[] = []
+  const tasks: ProjectionWriteTask[] = []
   for (const key of diff.deletes) {
     const [, metadataKey] = parseJsonKey(key)
-    tasks.push(db.query(`DELETE FROM workbook_metadata WHERE workbook_id = $1 AND key = $2`, [workbookId, metadataKey]))
+    tasks.push(() => db.query(`DELETE FROM workbook_metadata WHERE workbook_id = $1 AND key = $2`, [workbookId, metadataKey]))
   }
   for (const row of diff.upserts) {
-    tasks.push(
+    tasks.push(() =>
       db.query(
         `
         INSERT INTO workbook_metadata (workbook_id, key, value)
@@ -515,7 +526,7 @@ export async function applyWorkbookMetadataDiff(
       ),
     )
   }
-  await Promise.all(tasks)
+  await runProjectionWriteTasks(tasks)
 }
 
 export async function applyCalculationSettings(db: Queryable, projection: WorkbookSourceProjection['calculationSettings']): Promise<void> {
@@ -539,13 +550,13 @@ export async function applyStyleDiff(
 ): Promise<void> {
   const diff = diffProjectionRows(previousRows, nextRows, sourceProjectionKeys.style, styleSignature)
   const workbookId = nextRows[0]?.workbookId ?? previousRows[0]?.workbookId
-  const tasks: Promise<unknown>[] = []
+  const tasks: ProjectionWriteTask[] = []
   for (const key of diff.deletes) {
     const [, styleId] = parseJsonKey(key)
-    tasks.push(db.query(`DELETE FROM cell_styles WHERE workbook_id = $1 AND style_id = $2`, [workbookId, styleId]))
+    tasks.push(() => db.query(`DELETE FROM cell_styles WHERE workbook_id = $1 AND style_id = $2`, [workbookId, styleId]))
   }
   for (const row of diff.upserts) {
-    tasks.push(
+    tasks.push(() =>
       db.query(
         `
         INSERT INTO cell_styles (workbook_id, style_id, record_json, hash, created_at)
@@ -559,7 +570,7 @@ export async function applyStyleDiff(
       ),
     )
   }
-  await Promise.all(tasks)
+  await runProjectionWriteTasks(tasks)
 }
 
 export async function applyNumberFormatDiff(
@@ -569,13 +580,13 @@ export async function applyNumberFormatDiff(
 ): Promise<void> {
   const diff = diffProjectionRows(previousRows, nextRows, sourceProjectionKeys.numberFormat, numberFormatSignature)
   const workbookId = nextRows[0]?.workbookId ?? previousRows[0]?.workbookId
-  const tasks: Promise<unknown>[] = []
+  const tasks: ProjectionWriteTask[] = []
   for (const key of diff.deletes) {
     const [, formatId] = parseJsonKey(key)
-    tasks.push(db.query(`DELETE FROM cell_number_formats WHERE workbook_id = $1 AND format_id = $2`, [workbookId, formatId]))
+    tasks.push(() => db.query(`DELETE FROM cell_number_formats WHERE workbook_id = $1 AND format_id = $2`, [workbookId, formatId]))
   }
   for (const row of diff.upserts) {
-    tasks.push(
+    tasks.push(() =>
       db.query(
         `
         INSERT INTO cell_number_formats (workbook_id, format_id, code, kind, created_at)
@@ -589,7 +600,7 @@ export async function applyNumberFormatDiff(
       ),
     )
   }
-  await Promise.all(tasks)
+  await runProjectionWriteTasks(tasks)
 }
 
 export async function applySourceProjectionDiff(
