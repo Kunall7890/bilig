@@ -1,6 +1,6 @@
 # Community Growth Snapshot
 
-Captured at: `2026-05-16T09:26:51.271Z`
+Captured at: `2026-05-16T09:32:45.576Z`
 
 This snapshot tracks the public signals for the `@bilig/headless` growth loop: GitHub conversion, npm demand, contributor on-ramp health, discussion activity, and traffic quality.
 
@@ -10,7 +10,7 @@ This snapshot tracks the public signals for the `@bilig/headless` growth loop: G
 - Stars: 23 / 1,000 (977 remaining)
 - Forks: 16
 - Watchers: 0
-- Open issues: 116
+- Open issues: 17
 - Default branch: `main`
 - Topics: `agent-tools`, `ai-agents`, `coding-agents`, `formula-engine`, `headless-spreadsheet`, `headless-workbook`, `json-persistence`, `mcp`, `model-context-protocol`, `nodejs`, `serverless`, `spreadsheet`, `spreadsheet-api`, `spreadsheet-automation`, `spreadsheet-formulas`, `typescript`, `vercel-ai-sdk`, `workbook-api`, `workbook-automation`, `xlsx`
 
