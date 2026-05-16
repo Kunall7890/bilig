@@ -5,6 +5,7 @@
 [![GitHub](https://img.shields.io/badge/GitHub-proompteng%2Fbilig-blue)](https://github.com/proompteng/bilig)
 [![GitHub Repo stars](https://img.shields.io/github/stars/proompteng/bilig?style=social)](https://github.com/proompteng/bilig/stargazers)
 [![MCP server score](https://glama.ai/mcp/servers/proompteng/bilig/badges/score.svg)](https://glama.ai/mcp/servers/proompteng/bilig)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/proompteng/bilig/badge)](https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/proompteng/bilig/blob/main/LICENSE)
 
 `@bilig/headless` is a workbook runtime for Node.js services and agent tools.
@@ -59,6 +60,9 @@ The release workflow uses GitHub Actions OIDC and publishes runtime packages
 with `npm publish --provenance`. The public verification path is documented in
 the
 [npm provenance and package trust guide](https://proompteng.github.io/bilig/npm-provenance-package-trust.html).
+Repository security posture is tracked by
+[OpenSSF Scorecard](https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig)
+and uploaded to GitHub code scanning on every `main` update.
 
 For a clean copy-paste run, use the
 [Node quickstart](https://proompteng.github.io/bilig/try-bilig-headless-in-node.html).

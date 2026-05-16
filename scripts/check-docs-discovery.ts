@@ -283,6 +283,7 @@ for (const required of [
   'https://github.com/proompteng/bilig/blob/main/docs/starter-issues.md',
   'https://github.com/proompteng/bilig/blob/main/SECURITY.md',
   'https://github.com/proompteng/bilig/blob/main/SUPPORT.md',
+  'https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig',
   'https://github.com/proompteng/bilig/issues?q=is%3Aissue%20state%3Aopen%20label%3Afirst-timers-only',
 ]) {
   requireIncludes(llms, required, 'docs/llms.txt')
@@ -420,14 +421,21 @@ for (const required of [
   'https://docs.npmjs.com/trusted-publishers/',
   'https://docs.npmjs.com/viewing-package-provenance/',
   'https://scorecard.dev/',
+  'official OpenSSF Scorecard action',
+  'uploaded as SARIF to GitHub code',
 ] as const) {
   requireIncludes(npmProvenancePackageTrustDoc, required, 'docs/npm-provenance-package-trust.md')
 }
 requireIncludes(readme, 'npm provenance and package trust', 'README.md')
+requireIncludes(readme, 'https://api.scorecard.dev/projects/github.com/proompteng/bilig/badge', 'README.md')
+requireIncludes(readme, 'uploaded to GitHub code scanning on every `main` update', 'README.md')
 requireIncludes(headlessReadme, 'npm provenance and package trust guide', 'packages/headless/README.md')
+requireIncludes(headlessReadme, 'https://api.scorecard.dev/projects/github.com/proompteng/bilig/badge', 'packages/headless/README.md')
+requireIncludes(headlessReadme, 'uploaded to GitHub code scanning on every `main` update', 'packages/headless/README.md')
 requireIncludes(index, './npm-provenance-package-trust.html', 'docs/index.html')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/npm-provenance-package-trust.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/npm-provenance-package-trust.md', 'docs/llms.txt')
+await requireFile(join(repoRoot, '.github', 'workflows', 'scorecard.yml'))
 
 requireXlsxCorpusVerifierDiscovery(await readFile(join(docsRoot, 'xlsx-corpus-verifier-walkthrough.md'), 'utf8'))
 requireIncludes(index, './xlsx-corpus-verifier-walkthrough.html', 'docs/index.html')

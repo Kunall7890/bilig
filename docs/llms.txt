@@ -10,6 +10,7 @@ license: mit
 language: typescript
 security policy: https://github.com/proompteng/bilig/blob/main/SECURITY.md
 support policy: https://github.com/proompteng/bilig/blob/main/SUPPORT.md
+openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
 
 ## best entry points
 
@@ -27,6 +28,7 @@ support policy: https://github.com/proompteng/bilig/blob/main/SUPPORT.md
 - https://proompteng.github.io/bilig/try-bilig-headless-in-node.html
 - https://proompteng.github.io/bilig/production-adoption-checklist-headless-workpaper.html
 - https://proompteng.github.io/bilig/npm-provenance-package-trust.html
+- https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
 - https://proompteng.github.io/bilig/npm-eval.ts
 - https://proompteng.github.io/bilig/workbook-automation-examples-node.html
 - https://proompteng.github.io/bilig/server-side-spreadsheet-automation-node.html

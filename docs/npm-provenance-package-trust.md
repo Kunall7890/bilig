@@ -74,6 +74,12 @@ dependency risk:
 
 - <https://scorecard.dev/>
 
+This repository runs the official OpenSSF Scorecard action on every `main`
+update and on a weekly schedule. Results are published to the public Scorecard
+API, exposed through the README badge, and uploaded as SARIF to GitHub code
+scanning so dependency evaluators can inspect repository posture separately
+from npm package provenance.
+
 ## What This Does Not Prove
 
 Package provenance does not prove that a workbook workflow is correct, complete,
