@@ -319,6 +319,7 @@ jobs:
           git fetch --force github main
 
       - name: Validate Forgejo and GitHub branch alignment
+        id: release_alignment
         run: |
           set -euo pipefail
 
@@ -330,12 +331,40 @@ jobs:
           echo "Workflow SHA: ${GITHUB_SHA}"
 
           test "${origin_sha}" = "${github_sha}"
-          test "${origin_sha}" = "${GITHUB_SHA}"
+
+          if [[ "${origin_sha}" != "${GITHUB_SHA}" ]]; then
+            echo "current=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### runtime release planning skipped"
+              echo
+              echo "A newer main commit exists, so this stale workflow run will not plan or publish runtime packages."
+              echo
+              echo "- workflow SHA: ${GITHUB_SHA}"
+              echo "- current main: ${origin_sha}"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          echo "current=true" >> "$GITHUB_OUTPUT"
 
       - name: Plan runtime release
         id: planner
         run: |
           set -euo pipefail
+
+          if [[ "${RELEASE_ALIGNMENT_CURRENT}" != "true" ]]; then
+            echo "release_needed=false" >> "$GITHUB_OUTPUT"
+            echo "bootstrap_required=false" >> "$GITHUB_OUTPUT"
+            echo "manual_override=false" >> "$GITHUB_OUTPUT"
+            echo "release_type=none" >> "$GITHUB_OUTPUT"
+            echo "reason=stale workflow SHA; newer main exists" >> "$GITHUB_OUTPUT"
+            echo "manifest_version=" >> "$GITHUB_OUTPUT"
+            echo "published_version=" >> "$GITHUB_OUTPUT"
+            echo "last_tag=" >> "$GITHUB_OUTPUT"
+            echo "target_version=" >> "$GITHUB_OUTPUT"
+            echo "tag_name=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
           mkdir -p build
           if [[ -n "${PLANNER_ARGS}" ]]; then
@@ -350,6 +379,7 @@ jobs:
             --notes-file build/runtime-release-notes.md \
             --github-output "$GITHUB_OUTPUT"
         env:
+          RELEASE_ALIGNMENT_CURRENT: ${{ steps.release_alignment.outputs.current }}
           PLANNER_ARGS: ${{ steps.release_meta.outputs.planner_args }}
 
   publish_release:
