@@ -1,4 +1,5 @@
 import type { WorkbookAgentWorkflowArtifact, WorkbookAgentWorkflowRun, WorkbookAgentWorkflowStep } from '@bilig/contracts'
+import { ensureDefaultedNotNullColumn } from './schema-upgrade.js'
 import type { QueryResultRow, Queryable } from './store.js'
 import { parseNonNegativeInteger } from './store-support.js'
 import { runQueryableTransaction, runSequentially } from './transaction-support.js'
@@ -359,10 +360,12 @@ export async function ensureWorkbookWorkflowRunSchema(db: Queryable): Promise<vo
       updated_at_unix_ms BIGINT NOT NULL
     )
   `)
-  await db.query(`
-    ALTER TABLE workbook_workflow_run
-      ADD COLUMN IF NOT EXISTS steps_json JSONB NOT NULL DEFAULT '[]'::jsonb
-  `)
+  await ensureDefaultedNotNullColumn(db, {
+    tableName: 'workbook_workflow_run',
+    columnName: 'steps_json',
+    dataType: 'JSONB',
+    defaultSql: "'[]'::jsonb",
+  })
   await db.query(`
     ALTER TABLE workbook_workflow_run
       ADD COLUMN IF NOT EXISTS artifact_json JSONB
@@ -380,8 +383,14 @@ export async function ensureWorkbookWorkflowRunSchema(db: Queryable): Promise<vo
   `)
   await db.query(`
     ALTER TABLE workbook_workflow_artifact
-      ADD COLUMN IF NOT EXISTS updated_at_unix_ms BIGINT NOT NULL DEFAULT 0
+      ALTER COLUMN workbook_id SET NOT NULL
   `)
+  await ensureDefaultedNotNullColumn(db, {
+    tableName: 'workbook_workflow_artifact',
+    columnName: 'updated_at_unix_ms',
+    dataType: 'BIGINT',
+    defaultSql: '0',
+  })
   await db.query(`
     CREATE INDEX IF NOT EXISTS workbook_workflow_run_thread_updated_idx
       ON workbook_workflow_run (workbook_id, thread_id, updated_at_unix_ms DESC)

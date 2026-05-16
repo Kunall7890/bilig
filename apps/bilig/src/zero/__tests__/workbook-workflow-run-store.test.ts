@@ -118,6 +118,19 @@ describe('workbook-workflow-run-store', () => {
     expect(artifactColumnIndex).toBeGreaterThan(stepsColumnIndex)
   })
 
+  it('backfills and enforces workflow run step snapshots on legacy schemas', async () => {
+    const queryable = new FakeQueryable()
+
+    await ensureWorkbookWorkflowRunSchema(queryable)
+
+    const stepsBackfillIndex = queryable.calls.findIndex(
+      (call) => call.text.includes('UPDATE workbook_workflow_run') && call.text.includes("SET steps_json = '[]'::jsonb"),
+    )
+    const stepsNotNullIndex = queryable.calls.findIndex((call) => call.text.includes('ALTER COLUMN steps_json SET NOT NULL'))
+    expect(stepsBackfillIndex).toBeGreaterThan(-1)
+    expect(stepsNotNullIndex).toBeGreaterThan(stepsBackfillIndex)
+  })
+
   it('backfills legacy durable artifact ownership before indexing workflow artifacts', async () => {
     const queryable = new FakeQueryable()
 
@@ -139,6 +152,28 @@ describe('workbook-workflow-run-store', () => {
     expect(backfillIndex).toBeGreaterThan(workbookColumnIndex)
     expect(updatedAtColumnIndex).toBeGreaterThan(backfillIndex)
     expect(artifactIndex).toBeGreaterThan(updatedAtColumnIndex)
+  })
+
+  it('enforces durable artifact ownership and timestamps before indexing workflow artifacts', async () => {
+    const queryable = new FakeQueryable()
+
+    await ensureWorkbookWorkflowRunSchema(queryable)
+
+    const ownershipBackfillIndex = queryable.calls.findIndex(
+      (call) =>
+        call.text.includes('UPDATE workbook_workflow_artifact AS artifact') && call.text.includes('SET workbook_id = run.workbook_id'),
+    )
+    const ownershipNotNullIndex = queryable.calls.findIndex((call) => call.text.includes('ALTER COLUMN workbook_id SET NOT NULL'))
+    const timestampBackfillIndex = queryable.calls.findIndex(
+      (call) => call.text.includes('UPDATE workbook_workflow_artifact') && call.text.includes('SET updated_at_unix_ms = 0'),
+    )
+    const timestampNotNullIndex = queryable.calls.findIndex((call) => call.text.includes('ALTER COLUMN updated_at_unix_ms SET NOT NULL'))
+    const artifactIndex = queryable.calls.findIndex((call) => call.text.includes('workbook_workflow_artifact_run_idx'))
+    expect(ownershipBackfillIndex).toBeGreaterThan(-1)
+    expect(ownershipNotNullIndex).toBeGreaterThan(ownershipBackfillIndex)
+    expect(timestampBackfillIndex).toBeGreaterThan(-1)
+    expect(timestampNotNullIndex).toBeGreaterThan(timestampBackfillIndex)
+    expect(artifactIndex).toBeGreaterThan(timestampNotNullIndex)
   })
 
   it('persists workflow artifacts in durable rows', async () => {

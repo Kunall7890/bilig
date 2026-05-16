@@ -290,6 +290,29 @@ describe('workbook-chat-thread-store', () => {
     expect(reconcileQuery).toContain('IS DISTINCT FROM thread_stats.latest_entry_text')
   })
 
+  it('backfills and enforces thread summary counters on legacy schemas', async () => {
+    const queryable = new FakeQueryable()
+
+    await ensureWorkbookChatThreadSchema(queryable)
+
+    const entryCountBackfillIndex = queryable.calls.findIndex(
+      (call) => call.text.includes('UPDATE workbook_chat_thread AS thread') && call.text.includes('entry_count = thread_stats.entry_count'),
+    )
+    const entryCountNotNullIndex = queryable.calls.findIndex((call) => call.text.includes('ALTER COLUMN entry_count SET NOT NULL'))
+    const reviewCountBackfillIndex = queryable.calls.findIndex(
+      (call) =>
+        call.text.includes('UPDATE workbook_chat_thread AS thread') &&
+        call.text.includes('review_queue_item_count = thread_stats.review_queue_item_count'),
+    )
+    const reviewCountNotNullIndex = queryable.calls.findIndex((call) =>
+      call.text.includes('ALTER COLUMN review_queue_item_count SET NOT NULL'),
+    )
+    expect(entryCountBackfillIndex).toBeGreaterThan(-1)
+    expect(entryCountNotNullIndex).toBeGreaterThan(entryCountBackfillIndex)
+    expect(reviewCountBackfillIndex).toBeGreaterThan(-1)
+    expect(reviewCountNotNullIndex).toBeGreaterThan(reviewCountBackfillIndex)
+  })
+
   it('persists thread metadata, timeline items, and review queue rows', async () => {
     const queryable = new FakeQueryable()
     const state = createThreadState()

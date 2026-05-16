@@ -5,6 +5,7 @@ import {
   type WorkbookAgentCommand,
   type WorkbookAgentExecutionRecord,
 } from '@bilig/agent-api'
+import { addDefaultedColumnIfMissing, enforceDefaultedNotNullColumn } from './schema-upgrade.js'
 import type { QueryResultRow, Queryable } from './store.js'
 import { parseNonNegativeInteger } from './store-support.js'
 
@@ -131,36 +132,42 @@ export async function ensureWorkbookAgentRunSchema(db: Queryable): Promise<void>
     ALTER TABLE workbook_agent_run
       ALTER COLUMN bundle_id SET NOT NULL;
   `)
-  await db.query(`
-    ALTER TABLE workbook_agent_run
-      ADD COLUMN IF NOT EXISTS accepted_scope TEXT NOT NULL DEFAULT 'full';
-  `)
+  await addDefaultedColumnIfMissing(db, {
+    tableName: 'workbook_agent_run',
+    columnName: 'accepted_scope',
+    dataType: 'TEXT',
+    defaultSql: "'full'",
+  })
   await db.query(`
     UPDATE workbook_agent_run
     SET accepted_scope = 'full'
     WHERE accepted_scope IS NULL
        OR accepted_scope NOT IN ('full', 'partial');
   `)
-  await db.query(`
-    ALTER TABLE workbook_agent_run
-      ALTER COLUMN accepted_scope SET DEFAULT 'full',
-      ALTER COLUMN accepted_scope SET NOT NULL;
-  `)
-  await db.query(`
-    ALTER TABLE workbook_agent_run
-      ADD COLUMN IF NOT EXISTS applied_by TEXT NOT NULL DEFAULT 'user';
-  `)
+  await enforceDefaultedNotNullColumn(db, {
+    tableName: 'workbook_agent_run',
+    columnName: 'accepted_scope',
+    dataType: 'TEXT',
+    defaultSql: "'full'",
+  })
+  await addDefaultedColumnIfMissing(db, {
+    tableName: 'workbook_agent_run',
+    columnName: 'applied_by',
+    dataType: 'TEXT',
+    defaultSql: "'user'",
+  })
   await db.query(`
     UPDATE workbook_agent_run
     SET applied_by = 'user'
     WHERE applied_by IS NULL
        OR applied_by NOT IN ('user', 'auto');
   `)
-  await db.query(`
-    ALTER TABLE workbook_agent_run
-      ALTER COLUMN applied_by SET DEFAULT 'user',
-      ALTER COLUMN applied_by SET NOT NULL;
-  `)
+  await enforceDefaultedNotNullColumn(db, {
+    tableName: 'workbook_agent_run',
+    columnName: 'applied_by',
+    dataType: 'TEXT',
+    defaultSql: "'user'",
+  })
   await db.query(`
     CREATE INDEX IF NOT EXISTS workbook_agent_run_workbook_actor_applied_idx
       ON workbook_agent_run (workbook_id, actor_user_id, applied_at_unix_ms DESC)

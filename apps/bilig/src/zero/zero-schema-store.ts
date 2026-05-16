@@ -1,28 +1,5 @@
 import type { Queryable } from './store.js'
-
-interface DefaultedNotNullColumn {
-  readonly tableName: string
-  readonly columnName: string
-  readonly dataType: string
-  readonly defaultSql: string
-}
-
-async function ensureDefaultedNotNullColumn(db: Queryable, column: DefaultedNotNullColumn): Promise<void> {
-  await db.query(`
-    ALTER TABLE ${column.tableName}
-      ADD COLUMN IF NOT EXISTS ${column.columnName} ${column.dataType} DEFAULT ${column.defaultSql};
-  `)
-  await db.query(`
-    UPDATE ${column.tableName}
-    SET ${column.columnName} = ${column.defaultSql}
-    WHERE ${column.columnName} IS NULL;
-  `)
-  await db.query(`
-    ALTER TABLE ${column.tableName}
-      ALTER COLUMN ${column.columnName} SET DEFAULT ${column.defaultSql},
-      ALTER COLUMN ${column.columnName} SET NOT NULL;
-  `)
-}
+import { ensureDefaultedNotNullColumn } from './schema-upgrade.js'
 
 export async function ensureZeroSyncSchema(db: Queryable): Promise<void> {
   await db.query(`

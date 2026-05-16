@@ -6,6 +6,7 @@ import type {
   WorkbookAgentUiContext,
 } from '@bilig/contracts'
 import { queries } from '@bilig/zero-sync'
+import { addDefaultedColumnIfMissing, enforceDefaultedNotNullColumn } from './schema-upgrade.js'
 import type { Queryable, ZeroQueryRunner } from './store.js'
 import { runQueryableTransaction, runSequentially } from './transaction-support.js'
 import {
@@ -148,14 +149,18 @@ export async function ensureWorkbookChatThreadSchema(db: Queryable): Promise<voi
     ALTER TABLE workbook_chat_thread
       ALTER COLUMN execution_policy SET NOT NULL;
   `)
-  await db.query(`
-    ALTER TABLE workbook_chat_thread
-      ADD COLUMN IF NOT EXISTS entry_count BIGINT NOT NULL DEFAULT 0;
-  `)
-  await db.query(`
-    ALTER TABLE workbook_chat_thread
-      ADD COLUMN IF NOT EXISTS review_queue_item_count BIGINT NOT NULL DEFAULT 0;
-  `)
+  await addDefaultedColumnIfMissing(db, {
+    tableName: 'workbook_chat_thread',
+    columnName: 'entry_count',
+    dataType: 'BIGINT',
+    defaultSql: '0',
+  })
+  await addDefaultedColumnIfMissing(db, {
+    tableName: 'workbook_chat_thread',
+    columnName: 'review_queue_item_count',
+    dataType: 'BIGINT',
+    defaultSql: '0',
+  })
   await db.query(`
     ALTER TABLE workbook_chat_thread
       ADD COLUMN IF NOT EXISTS latest_entry_text TEXT;
@@ -227,6 +232,18 @@ export async function ensureWorkbookChatThreadSchema(db: Queryable): Promise<voi
     )
   `)
   await reconcileWorkbookChatThreadSummaryColumns(db)
+  await enforceDefaultedNotNullColumn(db, {
+    tableName: 'workbook_chat_thread',
+    columnName: 'entry_count',
+    dataType: 'BIGINT',
+    defaultSql: '0',
+  })
+  await enforceDefaultedNotNullColumn(db, {
+    tableName: 'workbook_chat_thread',
+    columnName: 'review_queue_item_count',
+    dataType: 'BIGINT',
+    defaultSql: '0',
+  })
   await db.query(`
     CREATE INDEX IF NOT EXISTS workbook_chat_thread_document_actor_updated_idx
       ON workbook_chat_thread (workbook_id, actor_user_id, updated_at_unix_ms DESC)
