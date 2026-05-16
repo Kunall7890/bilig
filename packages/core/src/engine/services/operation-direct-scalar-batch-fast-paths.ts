@@ -18,6 +18,7 @@ import { reverseUint32Array, tagTrustedPhysicalTrackedChanges } from './operatio
 import { emitCellMutationFastPathBatchResult } from './operation-fast-path-batch-result.js'
 import { createOperationDirectAggregateRectangularBatchFastPath } from './operation-direct-aggregate-rectangular-batch-fast-path.js'
 import { createOperationFreshRectangularLiteralBatchFastPath } from './operation-fresh-rectangular-literal-batch-fast-path.js'
+import { DirectScalarPhysicalSliceTracker } from './operation-direct-scalar-physical-slice-tracker.js'
 import { createOperationDirectScalarRowPairBatchFastPaths } from './operation-direct-scalar-row-pair-batch-fast-paths.js'
 
 const EMPTY_CHANGED_CELLS = new Uint32Array(0)
@@ -703,38 +704,7 @@ export function createOperationDirectScalarBatchFastPaths(args: OperationDirectS
     const formulaCellIndices: number[] = []
     const formulaSeen = new Set<number>()
     let canUseNumericInputWrites = true
-    let trustedPhysicalSheetId: number | undefined
-    let canTrustPhysicalTrackedSlices = true
-    let previousInputRow = -1
-    let previousInputCol = -1
-    let previousFormulaRow = -1
-    let previousFormulaCol = -1
-    const notePhysicalSliceCell = (sheetId: number, row: number, col: number, previous: 'input' | 'formula'): void => {
-      if (!canTrustPhysicalTrackedSlices) {
-        return
-      }
-      if (trustedPhysicalSheetId === undefined) {
-        trustedPhysicalSheetId = sheetId
-      } else if (trustedPhysicalSheetId !== sheetId) {
-        canTrustPhysicalTrackedSlices = false
-        return
-      }
-      if (previous === 'input') {
-        if (row < previousInputRow || (row === previousInputRow && col < previousInputCol)) {
-          canTrustPhysicalTrackedSlices = false
-          return
-        }
-        previousInputRow = row
-        previousInputCol = col
-        return
-      }
-      if (row < previousFormulaRow || (row === previousFormulaRow && col < previousFormulaCol)) {
-        canTrustPhysicalTrackedSlices = false
-        return
-      }
-      previousFormulaRow = row
-      previousFormulaCol = col
-    }
+    const physicalSliceTracker = new DirectScalarPhysicalSliceTracker()
     const trackedColumnDependencyFlagsBySheet = new Map<number, Map<number, boolean>>()
     const hasTrackedColumnDependencies = (sheetId: number, col: number): boolean => {
       let flagsByColumn = trackedColumnDependencyFlagsBySheet.get(sheetId)
@@ -782,7 +752,7 @@ export function createOperationDirectScalarBatchFastPaths(args: OperationDirectS
       if (existingIndex === -1 || !canFastPathLiteralOverwrite(existingIndex) || pendingNumbers.has(existingIndex)) {
         return false
       }
-      notePhysicalSliceCell(ref.sheetId, mutation.row, mutation.col, 'input')
+      physicalSliceTracker.noteCell(ref.sheetId, mutation.row, mutation.col, 'input')
       if (hasTrackedColumnDependencies(ref.sheetId, mutation.col)) {
         return false
       }
@@ -805,9 +775,14 @@ export function createOperationDirectScalarBatchFastPaths(args: OperationDirectS
           const formulaSheetId = cellStore.sheetIds[formulaCellIndex]
           const formulaSheet = formulaSheetId === undefined ? undefined : args.state.workbook.getSheetById(formulaSheetId)
           if (formulaSheetId === undefined || (formulaSheet && formulaSheet.structureVersion !== 1)) {
-            canTrustPhysicalTrackedSlices = false
+            physicalSliceTracker.markUntrusted()
           } else {
-            notePhysicalSliceCell(formulaSheetId, cellStore.rows[formulaCellIndex] ?? 0, cellStore.cols[formulaCellIndex] ?? 0, 'formula')
+            physicalSliceTracker.noteCell(
+              formulaSheetId,
+              cellStore.rows[formulaCellIndex] ?? 0,
+              cellStore.cols[formulaCellIndex] ?? 0,
+              'formula',
+            )
           }
         }
       }
@@ -905,14 +880,10 @@ export function createOperationDirectScalarBatchFastPaths(args: OperationDirectS
     addEngineCounter(args.state.counters, 'directScalarDeltaOnlyRecalcSkips')
 
     const changed = requiresChangedSet ? args.composeDisjointEventChanges(formulaChanged, explicitChangedCount) : EMPTY_CHANGED_CELLS
-    if (
-      hasTrackedEventListeners &&
-      requiresChangedSet &&
-      canTrustPhysicalTrackedSlices &&
-      trustedPhysicalSheetId !== undefined &&
-      explicitChangedCount > 0 &&
-      explicitChangedCount < changed.length
-    ) {
+    const trustedPhysicalSheetId = hasTrackedEventListeners
+      ? physicalSliceTracker.getTrustedSheetIdForTrackedChanges(explicitChangedCount, changed.length)
+      : undefined
+    if (requiresChangedSet && trustedPhysicalSheetId !== undefined) {
       tagTrustedPhysicalTrackedChanges(changed, trustedPhysicalSheetId, explicitChangedCount)
     }
     emitCellMutationFastPathBatchResult({
