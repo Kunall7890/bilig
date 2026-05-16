@@ -1,6 +1,7 @@
 import { isEngineReplicaSnapshot, type EngineReplicaSnapshot } from '@bilig/core'
 import { parseCellAddress } from '@bilig/formula'
 import {
+  ErrorCode,
   isWorkbookSnapshot,
   ValueTag,
   type CellBorderStyle,
@@ -89,6 +90,16 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isSafeNonNegativeInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+}
+
+function isCellValueTag(value: unknown): value is ValueTag {
+  return (
+    value === ValueTag.Empty ||
+    value === ValueTag.Number ||
+    value === ValueTag.Boolean ||
+    value === ValueTag.String ||
+    value === ValueTag.Error
+  )
 }
 
 export function isDirtyRegion(value: unknown): value is DirtyRegion {
@@ -239,24 +250,34 @@ export function parseJsonKey(key: string): unknown[] {
 }
 
 function isCellValue(value: unknown): value is CellValue {
-  if (!isRecord(value) || typeof value['tag'] !== 'number') {
+  if (!isRecord(value) || !isCellValueTag(value['tag'])) {
     return false
   }
   const tag = value['tag']
-  if (tag === 0) {
+  if (tag === ValueTag.Empty) {
     return true
   }
-  if (tag === 1) {
-    return typeof value['value'] === 'number'
+  if (tag === ValueTag.Number) {
+    return typeof value['value'] === 'number' && Number.isFinite(value['value'])
   }
-  if (tag === 2) {
+  if (tag === ValueTag.Boolean) {
     return typeof value['value'] === 'boolean'
   }
-  if (tag === 3) {
-    return typeof value['value'] === 'string'
+  if (tag === ValueTag.String) {
+    return typeof value['value'] === 'string' && isSafeNonNegativeInteger(value['stringId'])
   }
-  if (tag === 4) {
-    return typeof value['code'] === 'number'
+  if (tag === ValueTag.Error) {
+    return (
+      value['code'] === ErrorCode.None ||
+      value['code'] === ErrorCode.Div0 ||
+      value['code'] === ErrorCode.Ref ||
+      value['code'] === ErrorCode.Value ||
+      value['code'] === ErrorCode.Name ||
+      value['code'] === ErrorCode.NA ||
+      value['code'] === ErrorCode.Cycle ||
+      value['code'] === ErrorCode.Spill ||
+      value['code'] === ErrorCode.Blocked
+    )
   }
   return false
 }

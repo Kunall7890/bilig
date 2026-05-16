@@ -1,9 +1,11 @@
+import { ErrorCode, ValueTag } from '@bilig/protocol'
 import { describe, expect, it } from 'vitest'
 import {
   createEmptyWorkbookSnapshot,
   eventRequiresRecalc,
   isDirtyRegion,
   normalizeRangeBounds,
+  parseCellEvalValue,
   parseCellStyleRecord,
   parseCheckpointPayload,
   parseInteger,
@@ -68,6 +70,28 @@ describe('store support helpers', () => {
         colEnd: 1,
       }),
     ).toBe(false)
+  })
+
+  it('rejects malformed persisted cell values', () => {
+    expect(parseCellEvalValue({ tag: ValueTag.Number, value: 42.5 })).toEqual({ tag: ValueTag.Number, value: 42.5 })
+    expect(parseCellEvalValue({ tag: ValueTag.String, value: 'ready', stringId: 0 })).toEqual({
+      tag: ValueTag.String,
+      value: 'ready',
+      stringId: 0,
+    })
+    expect(parseCellEvalValue({ tag: ValueTag.Error, code: ErrorCode.Value })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Value,
+    })
+
+    expect(parseCellEvalValue({ tag: ValueTag.Number, value: Number.NaN })).toEqual({ tag: ValueTag.Empty })
+    expect(parseCellEvalValue({ tag: ValueTag.Number, value: Number.POSITIVE_INFINITY })).toEqual({ tag: ValueTag.Empty })
+    expect(parseCellEvalValue({ tag: ValueTag.String, value: 'missing-id' })).toEqual({ tag: ValueTag.Empty })
+    expect(parseCellEvalValue({ tag: ValueTag.String, value: 'unsafe-id', stringId: Number.MAX_SAFE_INTEGER + 1 })).toEqual({
+      tag: ValueTag.Empty,
+    })
+    expect(parseCellEvalValue({ tag: ValueTag.Error, code: 99 })).toEqual({ tag: ValueTag.Empty })
+    expect(parseCellEvalValue({ tag: ValueTag.Error, code: 1.5 })).toEqual({ tag: ValueTag.Empty })
   })
 
   it('keeps style records but drops invalid nested fields', () => {
