@@ -245,4 +245,17 @@ describe('workbook domain guards', () => {
       }),
     ).toBe(false)
   })
+
+  it('rejects unsafe engine batch clock counters', () => {
+    const validBatch = {
+      id: 'batch-1',
+      replicaId: 'replica-1',
+      clock: { counter: 4 },
+      ops: [{ kind: 'upsertWorkbook', name: 'Book' }],
+    }
+
+    expect(isEngineOpBatch({ ...validBatch, clock: { counter: 1.5 } })).toBe(false)
+    expect(isEngineOpBatch({ ...validBatch, clock: { counter: -1 } })).toBe(false)
+    expect(isEngineOpBatch({ ...validBatch, clock: { counter: Number.MAX_SAFE_INTEGER + 1 } })).toBe(false)
+  })
 })

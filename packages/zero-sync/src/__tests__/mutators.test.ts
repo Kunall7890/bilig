@@ -4,6 +4,7 @@ import {
   clearRangeStyleArgsSchema,
   mergeCellsArgsSchema,
   renderCommitArgsSchema,
+  revertWorkbookChangeArgsSchema,
   setFreezePaneArgsSchema,
   setRangeNumberFormatArgsSchema,
   setRangeStyleArgsSchema,
@@ -144,6 +145,28 @@ describe('zero sync mutator schemas', () => {
     })
 
     expect(result.success).toBe(false)
+  })
+
+  it('rejects unsafe sequence counters and revisions', () => {
+    const unsafe = Number.MAX_SAFE_INTEGER + 1
+
+    expect(
+      applyBatchArgsSchema.safeParse({
+        documentId: 'doc-1',
+        batch: {
+          id: 'batch-1',
+          replicaId: 'replica-1',
+          clock: { counter: unsafe },
+          ops: [{ kind: 'upsertWorkbook', name: 'Book' }],
+        },
+      }).success,
+    ).toBe(false)
+    expect(
+      revertWorkbookChangeArgsSchema.safeParse({
+        documentId: 'doc-1',
+        revision: unsafe,
+      }).success,
+    ).toBe(false)
   })
 
   it('rejects render commits with malformed commit ops', () => {

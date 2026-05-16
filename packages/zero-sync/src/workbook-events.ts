@@ -310,7 +310,7 @@ export function isWorkbookEventPayload(value: unknown): value is WorkbookEventPa
     case 'revertChange':
     case 'redoChange':
       return (
-        typeof value['targetRevision'] === 'number' &&
+        isSafePositiveInteger(value['targetRevision']) &&
         typeof value['targetSummary'] === 'string' &&
         (value['sheetName'] === undefined || typeof value['sheetName'] === 'string') &&
         (value['address'] === undefined || typeof value['address'] === 'string') &&
@@ -325,7 +325,7 @@ export function isWorkbookEventPayload(value: unknown): value is WorkbookEventPa
 export function isAuthoritativeWorkbookEventRecord(value: unknown): value is AuthoritativeWorkbookEventRecord {
   return (
     isRecord(value) &&
-    typeof value['revision'] === 'number' &&
+    isSafePositiveInteger(value['revision']) &&
     (typeof value['clientMutationId'] === 'string' || value['clientMutationId'] === null) &&
     isWorkbookEventPayload(value['payload'])
   )
@@ -334,9 +334,9 @@ export function isAuthoritativeWorkbookEventRecord(value: unknown): value is Aut
 export function isAuthoritativeWorkbookEventBatch(value: unknown): value is AuthoritativeWorkbookEventBatch {
   return (
     isRecord(value) &&
-    typeof value['afterRevision'] === 'number' &&
-    typeof value['headRevision'] === 'number' &&
-    typeof value['calculatedRevision'] === 'number' &&
+    isSafeNonNegativeInteger(value['afterRevision']) &&
+    isSafeNonNegativeInteger(value['headRevision']) &&
+    isSafeNonNegativeInteger(value['calculatedRevision']) &&
     Array.isArray(value['events']) &&
     value['events'].every((event) => isAuthoritativeWorkbookEventRecord(event))
   )

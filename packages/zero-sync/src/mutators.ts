@@ -130,7 +130,7 @@ const engineOpBatchSchema = z
     id: z.string().min(1),
     replicaId: z.string().min(1),
     clock: z.object({
-      counter: z.number().int().nonnegative(),
+      counter: safeNonNegativeIntegerSchema,
     }),
     ops: z.array(jsonValueSchema),
   })
@@ -250,7 +250,7 @@ export const updatePresenceArgsSchema = baseMutationArgsSchema.extend({
 })
 
 export const revertWorkbookChangeArgsSchema = baseMutationArgsSchema.extend({
-  revision: z.number().int().positive(),
+  revision: safePositiveIntegerSchema,
 })
 
 export const undoLatestWorkbookChangeArgsSchema = baseMutationArgsSchema

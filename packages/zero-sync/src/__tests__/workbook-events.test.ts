@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { isWorkbookChangeUndoBundle, isWorkbookEventPayload } from '../workbook-events.js'
+import {
+  isAuthoritativeWorkbookEventBatch,
+  isAuthoritativeWorkbookEventRecord,
+  isWorkbookChangeUndoBundle,
+  isWorkbookEventPayload,
+} from '../workbook-events.js'
 
 describe('workbook event guards', () => {
   it('accepts applyBatch payloads with a valid engine op batch', () => {
@@ -128,6 +133,53 @@ describe('workbook event guards', () => {
         sheetName: 'Sheet1',
         columnIndex: unsafe,
         width: 44,
+      }),
+    ).toBe(false)
+  })
+
+  it('rejects unsafe event sequence numbers', () => {
+    const unsafe = Number.MAX_SAFE_INTEGER + 1
+
+    expect(
+      isWorkbookEventPayload({
+        kind: 'redoChange',
+        targetRevision: unsafe,
+        targetSummary: 'Updated Sheet1!A1',
+        appliedBundle: {
+          kind: 'engineOps',
+          ops: [{ kind: 'setCellValue', sheetName: 'Sheet1', address: 'A1', value: 1 }],
+        },
+      }),
+    ).toBe(false)
+    expect(
+      isWorkbookEventPayload({
+        kind: 'applyBatch',
+        batch: {
+          id: 'batch-1',
+          replicaId: 'replica-1',
+          clock: { counter: unsafe },
+          ops: [{ kind: 'upsertWorkbook', name: 'Book' }],
+        },
+      }),
+    ).toBe(false)
+    expect(
+      isAuthoritativeWorkbookEventRecord({
+        revision: unsafe,
+        clientMutationId: null,
+        payload: {
+          kind: 'setCellValue',
+          sheetName: 'Sheet1',
+          address: 'A1',
+          value: 1,
+        },
+      }),
+    ).toBe(false)
+    expect(
+      isAuthoritativeWorkbookEventBatch({
+        afterRevision: 0,
+        headRevision: unsafe,
+        calculatedRevision: unsafe,
+        events: [],
       }),
     ).toBe(false)
   })

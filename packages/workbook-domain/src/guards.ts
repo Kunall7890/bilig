@@ -29,6 +29,10 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value)
 }
 
+function isSafeNonNegativeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+}
+
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((entry) => typeof entry === 'string')
 }
@@ -63,6 +67,10 @@ function hasString(value: Record<string, unknown>, key: string): boolean {
 
 function hasFiniteNumber(value: Record<string, unknown>, key: string): boolean {
   return isFiniteNumber(value[key])
+}
+
+function hasSafeNonNegativeInteger(value: Record<string, unknown>, key: string): boolean {
+  return isSafeNonNegativeInteger(value[key])
 }
 
 function isWorkbookAxisEntry(value: unknown): boolean {
@@ -717,7 +725,7 @@ export function isEngineOpBatch(value: unknown): value is EngineOpBatch {
     hasString(value, 'id') &&
     hasString(value, 'replicaId') &&
     isRecord(value['clock']) &&
-    hasFiniteNumber(value['clock'], 'counter') &&
+    hasSafeNonNegativeInteger(value['clock'], 'counter') &&
     isEngineOps(value['ops'])
   )
 }
