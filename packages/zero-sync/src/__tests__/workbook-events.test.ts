@@ -6,6 +6,19 @@ import {
   isWorkbookEventPayload,
 } from '../workbook-events.js'
 
+function buildAuthoritativeCellEvent(revision: number) {
+  return {
+    revision,
+    clientMutationId: null,
+    payload: {
+      kind: 'setCellValue',
+      sheetName: 'Sheet1',
+      address: 'A1',
+      value: revision,
+    },
+  }
+}
+
 describe('workbook event guards', () => {
   it('accepts applyBatch payloads with a valid engine op batch', () => {
     expect(
@@ -251,6 +264,41 @@ describe('workbook event guards', () => {
         events: [],
       }),
     ).toBe(false)
+  })
+
+  it('rejects authoritative event batches with revision gaps or impossible cursors', () => {
+    expect(
+      isAuthoritativeWorkbookEventBatch({
+        afterRevision: 2,
+        headRevision: 4,
+        calculatedRevision: 4,
+        events: [buildAuthoritativeCellEvent(4)],
+      }),
+    ).toBe(false)
+    expect(
+      isAuthoritativeWorkbookEventBatch({
+        afterRevision: 4,
+        headRevision: 3,
+        calculatedRevision: 3,
+        events: [],
+      }),
+    ).toBe(false)
+    expect(
+      isAuthoritativeWorkbookEventBatch({
+        afterRevision: 2,
+        headRevision: 3,
+        calculatedRevision: 4,
+        events: [buildAuthoritativeCellEvent(3)],
+      }),
+    ).toBe(false)
+    expect(
+      isAuthoritativeWorkbookEventBatch({
+        afterRevision: 2,
+        headRevision: 4,
+        calculatedRevision: 4,
+        events: [buildAuthoritativeCellEvent(3), buildAuthoritativeCellEvent(4)],
+      }),
+    ).toBe(true)
   })
 
   it('rejects engine undo bundles with malformed engine ops', () => {

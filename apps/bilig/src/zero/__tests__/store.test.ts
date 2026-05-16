@@ -47,7 +47,7 @@ function createCellSourceRow(address: string, value: unknown): CellSourceRow {
 }
 
 describe('zero store event replay', () => {
-  it('drops workbook_event rows with invalid replay revisions', async () => {
+  it('rejects workbook_event rows with invalid replay revisions', async () => {
     const validPayload = {
       kind: 'setCellValue',
       sheetName: 'Sheet1',
@@ -77,13 +77,34 @@ describe('zero store event replay', () => {
       },
     ])
 
-    await expect(loadWorkbookEventRecordsAfter(db, 'book-1', 1)).resolves.toEqual([
+    await expect(loadWorkbookEventRecordsAfter(db, 'book-1', 1)).rejects.toThrow(
+      'Invalid workbook_event revision while replaying book-1 after r1',
+    )
+  })
+
+  it('rejects non-contiguous workbook_event replay rows', async () => {
+    const validPayload = {
+      kind: 'setCellValue',
+      sheetName: 'Sheet1',
+      address: 'A1',
+      value: 1,
+    }
+    const db = new FakeQueryable([
+      {
+        revision: 2,
+        client_mutation_id: 'mutation-2',
+        txn_json: validPayload,
+      },
       {
         revision: 4,
-        clientMutationId: 'mutation-4',
-        payload: validPayload,
+        client_mutation_id: 'mutation-4',
+        txn_json: validPayload,
       },
     ])
+
+    await expect(loadWorkbookEventRecordsAfter(db, 'book-1', 1)).rejects.toThrow(
+      'Non-contiguous workbook_event revision while replaying book-1 after r1: expected r3, got r4',
+    )
   })
 })
 

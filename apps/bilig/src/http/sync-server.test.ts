@@ -499,6 +499,16 @@ describe('sync-server authoritative events', () => {
                   value: 42,
                 },
               },
+              {
+                revision: 6,
+                clientMutationId: 'doc-1:pending:6',
+                payload: {
+                  kind: 'setCellValue',
+                  sheetName: 'Sheet1',
+                  address: 'B1',
+                  value: 84,
+                },
+              },
             ],
           }
         },
@@ -526,6 +536,16 @@ describe('sync-server authoritative events', () => {
               sheetName: 'Sheet1',
               address: 'A1',
               value: 42,
+            },
+          },
+          {
+            revision: 6,
+            clientMutationId: 'doc-1:pending:6',
+            payload: {
+              kind: 'setCellValue',
+              sheetName: 'Sheet1',
+              address: 'B1',
+              value: 84,
             },
           },
         ],

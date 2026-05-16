@@ -272,18 +272,32 @@ export async function loadWorkbookEventRecordsAfter(
     `,
     [documentId, revision],
   )
-  return result.rows.flatMap((row) => {
+  const events: AuthoritativeWorkbookEventRecord[] = []
+  let expectedRevision = revision + 1
+  result.rows.forEach((row) => {
     const rowRevision = parsePositiveInteger(row.revision)
-    return rowRevision !== null && rowRevision > revision && isWorkbookEventPayload(row.txn_json)
-      ? [
-          {
-            revision: rowRevision,
-            clientMutationId: row.client_mutation_id,
-            payload: row.txn_json,
-          } satisfies AuthoritativeWorkbookEventRecord,
-        ]
-      : []
+    if (rowRevision === null || rowRevision <= revision) {
+      throw new Error(`Invalid workbook_event revision while replaying ${documentId} after r${String(revision)}`)
+    }
+    if (rowRevision !== expectedRevision) {
+      throw new Error(
+        `Non-contiguous workbook_event revision while replaying ${documentId} after r${String(revision)}: expected r${String(expectedRevision)}, got r${String(rowRevision)}`,
+      )
+    }
+    if (!isWorkbookEventPayload(row.txn_json)) {
+      throw new Error(`Invalid workbook_event payload while replaying ${documentId} at r${String(rowRevision)}`)
+    }
+    if (row.client_mutation_id !== null && typeof row.client_mutation_id !== 'string') {
+      throw new Error(`Invalid workbook_event client mutation id while replaying ${documentId} at r${String(rowRevision)}`)
+    }
+    events.push({
+      revision: rowRevision,
+      clientMutationId: row.client_mutation_id,
+      payload: row.txn_json,
+    })
+    expectedRevision += 1
   })
+  return events
 }
 
 export async function upsertWorkbookHeader(

@@ -371,14 +371,39 @@ export function isAuthoritativeWorkbookEventRecord(value: unknown): value is Aut
 }
 
 export function isAuthoritativeWorkbookEventBatch(value: unknown): value is AuthoritativeWorkbookEventBatch {
-  return (
-    isRecord(value) &&
-    isSafeNonNegativeInteger(value['afterRevision']) &&
-    isSafeNonNegativeInteger(value['headRevision']) &&
-    isSafeNonNegativeInteger(value['calculatedRevision']) &&
-    Array.isArray(value['events']) &&
-    value['events'].every((event) => isAuthoritativeWorkbookEventRecord(event))
-  )
+  if (
+    !isRecord(value) ||
+    !isSafeNonNegativeInteger(value['afterRevision']) ||
+    !isSafeNonNegativeInteger(value['headRevision']) ||
+    !isSafeNonNegativeInteger(value['calculatedRevision']) ||
+    !Array.isArray(value['events']) ||
+    !value['events'].every((event) => isAuthoritativeWorkbookEventRecord(event))
+  ) {
+    return false
+  }
+  return hasContiguousAuthoritativeEventRevisions({
+    afterRevision: value['afterRevision'],
+    headRevision: value['headRevision'],
+    calculatedRevision: value['calculatedRevision'],
+    events: value['events'],
+  })
+}
+
+function hasContiguousAuthoritativeEventRevisions(batch: AuthoritativeWorkbookEventBatch): boolean {
+  if (batch.afterRevision > batch.headRevision || batch.calculatedRevision > batch.headRevision) {
+    return false
+  }
+  if (batch.events.length === 0) {
+    return batch.afterRevision === batch.headRevision
+  }
+  let expectedRevision = batch.afterRevision + 1
+  for (const event of batch.events) {
+    if (event.revision !== expectedRevision) {
+      return false
+    }
+    expectedRevision += 1
+  }
+  return batch.events.at(-1)?.revision === batch.headRevision
 }
 
 function singleCellRegion(sheetName: string, address: string): DirtyRegion {

@@ -23,6 +23,25 @@ const deps = vi.hoisted(() => {
     runtimeClose: vi.fn(async () => undefined),
     handleQueryRequest: vi.fn(),
     handleMutateRequest: vi.fn(),
+    loadWorkbookEventRecordsAfter: vi.fn(async () => []),
+    loadWorkbookRuntimeMetadata: vi.fn(async () => ({
+      headRevision: 0,
+      calculatedRevision: 0,
+      ownerUserId: 'system',
+    })),
+    loadWorkbookState: vi.fn(async () => ({
+      snapshot: {
+        version: 1,
+        workbook: {
+          name: 'book-1',
+        },
+        sheets: [],
+      },
+      replicaSnapshot: null,
+      headRevision: 0,
+      calculatedRevision: 0,
+      ownerUserId: 'system',
+    })),
   }
 })
 
@@ -111,7 +130,7 @@ vi.mock('../server-mutators.js', () => ({
 }))
 
 vi.mock('../store.js', () => ({
-  loadWorkbookEventRecordsAfter: vi.fn(async () => []),
+  loadWorkbookEventRecordsAfter: deps.loadWorkbookEventRecordsAfter,
 }))
 
 vi.mock('../workbook-mutation-store.js', () => ({
@@ -122,29 +141,32 @@ vi.mock('../workbook-mutation-store.js', () => ({
 
 vi.mock('../workbook-runtime-store.js', () => ({
   acquireWorkbookMutationLock: vi.fn(async () => undefined),
-  loadWorkbookRuntimeMetadata: vi.fn(async () => ({
-    headRevision: 0,
-    calculatedRevision: 0,
-    ownerUserId: 'system',
-  })),
-  loadWorkbookState: vi.fn(async () => ({
-    snapshot: {
-      version: 1,
-      workbook: {
-        name: 'book-1',
-      },
-      sheets: [],
-    },
-    replicaSnapshot: null,
-    headRevision: 0,
-    calculatedRevision: 0,
-    ownerUserId: 'system',
-  })),
+  loadWorkbookRuntimeMetadata: deps.loadWorkbookRuntimeMetadata,
+  loadWorkbookState: deps.loadWorkbookState,
 }))
 
 describe('zero sync service startup', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    deps.loadWorkbookEventRecordsAfter.mockResolvedValue([])
+    deps.loadWorkbookRuntimeMetadata.mockResolvedValue({
+      headRevision: 0,
+      calculatedRevision: 0,
+      ownerUserId: 'system',
+    })
+    deps.loadWorkbookState.mockResolvedValue({
+      snapshot: {
+        version: 1,
+        workbook: {
+          name: 'book-1',
+        },
+        sheets: [],
+      },
+      replicaSnapshot: null,
+      headRevision: 0,
+      calculatedRevision: 0,
+      ownerUserId: 'system',
+    })
     delete process.env['BILIG_RUN_DATA_MIGRATIONS_ON_BOOT']
     delete process.env['BILIG_ALLOW_PENDING_CLEANUP_MIGRATIONS']
   })
@@ -236,5 +258,29 @@ describe('zero sync service startup', () => {
       }),
     ).rejects.toThrow('request protocol must be "http" or "https", got ftp')
     expect(deps.handleMutateRequest).not.toHaveBeenCalled()
+  })
+
+  it('rejects authoritative event batches that do not cover the advertised head revision', async () => {
+    deps.loadWorkbookRuntimeMetadata.mockResolvedValueOnce({
+      headRevision: 3,
+      calculatedRevision: 3,
+      ownerUserId: 'system',
+    })
+    deps.loadWorkbookEventRecordsAfter.mockResolvedValueOnce([
+      {
+        revision: 3,
+        clientMutationId: null,
+        payload: {
+          kind: 'setCellValue',
+          sheetName: 'Sheet1',
+          address: 'A1',
+          value: 3,
+        },
+      },
+    ])
+    const { createZeroSyncService } = await import('../service.js')
+    const service = createZeroSyncService()
+
+    await expect(service.loadAuthoritativeEvents('book-1', 1)).rejects.toThrow('Invalid authoritative workbook event batch for book-1')
   })
 })

@@ -3,6 +3,7 @@ import type { WorkbookSnapshot } from '@bilig/protocol'
 import { resolveRequestBaseUrl } from '@bilig/runtime-kernel'
 import {
   type AuthoritativeWorkbookEventBatch,
+  isAuthoritativeWorkbookEventBatch,
   queries,
   schema,
   workbookCellArgsSchema,
@@ -514,12 +515,18 @@ class EnabledZeroSyncService implements ZeroSyncService {
   async loadAuthoritativeEvents(documentId: string, afterRevision: number): Promise<AuthoritativeWorkbookEventBatch> {
     const metadata = await loadWorkbookRuntimeMetadata(this.runtimeStore, documentId)
     const events = metadata.headRevision > afterRevision ? await loadWorkbookEventRecordsAfter(this.pool, documentId, afterRevision) : []
-    return {
+    const eventBatch = {
       afterRevision,
       headRevision: metadata.headRevision,
       calculatedRevision: metadata.calculatedRevision,
       events,
     }
+    if (!isAuthoritativeWorkbookEventBatch(eventBatch)) {
+      throw new Error(
+        `Invalid authoritative workbook event batch for ${documentId}: expected contiguous events from r${String(afterRevision + 1)} through r${String(metadata.headRevision)}`,
+      )
+    }
+    return eventBatch
   }
 }
 
