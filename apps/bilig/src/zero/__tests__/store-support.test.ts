@@ -99,7 +99,7 @@ describe('store support helpers', () => {
       parseCellStyleRecord({
         id: 'style-1',
         font: { family: 'Aptos', size: 12, bold: true, color: 17 },
-        alignment: { horizontal: 'center', wrap: true, indent: 'x' },
+        alignment: { horizontal: 'center', wrap: true, indent: 'x', textRotation: Number.POSITIVE_INFINITY },
         borders: {
           top: { style: 'solid', weight: 'thin', color: '#111' },
           left: { style: 'invalid', weight: 'thin', color: '#222' },
@@ -112,6 +112,18 @@ describe('store support helpers', () => {
       borders: {
         top: { style: 'solid', weight: 'thin', color: '#111' },
       },
+    })
+
+    expect(
+      parseCellStyleRecord({
+        id: 'style-2',
+        font: { size: Number.NaN, italic: true },
+        alignment: { indent: 2, readingOrder: Number.NEGATIVE_INFINITY, textRotation: 45 },
+      }),
+    ).toEqual({
+      id: 'style-2',
+      font: { italic: true },
+      alignment: { indent: 2, textRotation: 45 },
     })
   })
 

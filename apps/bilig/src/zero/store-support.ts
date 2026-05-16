@@ -92,6 +92,10 @@ function isSafeNonNegativeInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
 }
 
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value)
+}
+
 function isCellValueTag(value: unknown): value is ValueTag {
   return (
     value === ValueTag.Empty ||
@@ -301,7 +305,7 @@ export function parseCellStyleRecord(value: unknown): CellStyleRecord | null {
     const font = value['font']
     record.font = {
       ...(typeof font['family'] === 'string' ? { family: font['family'] } : {}),
-      ...(typeof font['size'] === 'number' ? { size: font['size'] } : {}),
+      ...(isFiniteNumber(font['size']) ? { size: font['size'] } : {}),
       ...(typeof font['bold'] === 'boolean' ? { bold: font['bold'] } : {}),
       ...(typeof font['italic'] === 'boolean' ? { italic: font['italic'] } : {}),
       ...(typeof font['underline'] === 'boolean' ? { underline: font['underline'] } : {}),
@@ -317,10 +321,10 @@ export function parseCellStyleRecord(value: unknown): CellStyleRecord | null {
       ...(isCellHorizontalAlignment(alignment['horizontal']) ? { horizontal: alignment['horizontal'] } : {}),
       ...(isCellVerticalAlignment(alignment['vertical']) ? { vertical: alignment['vertical'] } : {}),
       ...(typeof alignment['wrap'] === 'boolean' ? { wrap: alignment['wrap'] } : {}),
-      ...(typeof alignment['indent'] === 'number' ? { indent: alignment['indent'] } : {}),
+      ...(isFiniteNumber(alignment['indent']) ? { indent: alignment['indent'] } : {}),
       ...(typeof alignment['shrinkToFit'] === 'boolean' ? { shrinkToFit: alignment['shrinkToFit'] } : {}),
-      ...(typeof alignment['readingOrder'] === 'number' ? { readingOrder: alignment['readingOrder'] } : {}),
-      ...(typeof alignment['textRotation'] === 'number' ? { textRotation: alignment['textRotation'] } : {}),
+      ...(isFiniteNumber(alignment['readingOrder']) ? { readingOrder: alignment['readingOrder'] } : {}),
+      ...(isFiniteNumber(alignment['textRotation']) ? { textRotation: alignment['textRotation'] } : {}),
       ...(typeof alignment['justifyLastLine'] === 'boolean' ? { justifyLastLine: alignment['justifyLastLine'] } : {}),
     }
     if (Object.keys(nextAlignment).length > 0) {
