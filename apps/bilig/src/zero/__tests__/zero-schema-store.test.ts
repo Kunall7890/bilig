@@ -115,6 +115,29 @@ describe('zero schema store', () => {
     expect(query.mock.calls.some(([text]) => String(text).includes('INSERT INTO workbook_snapshot'))).toBe(false)
   })
 
+  it('adds workbook event replay columns for legacy authoritative event tables', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [] })
+    const db: Queryable = { query }
+
+    await ensureZeroSyncSchema(db)
+
+    const calls = query.mock.calls.map(([text]) => String(text))
+    const clientMutationColumnIndex = calls.findIndex(
+      (text) => text.includes('ALTER TABLE workbook_event') && text.includes('ADD COLUMN IF NOT EXISTS client_mutation_id'),
+    )
+    const createdAtBackfillIndex = calls.findIndex(
+      (text) => text.includes('UPDATE workbook_event') && text.includes('SET created_at = NOW()'),
+    )
+    const createdAtNotNullIndex = calls.findIndex(
+      (text) => text.includes('ALTER TABLE workbook_event') && text.includes('ALTER COLUMN created_at SET NOT NULL'),
+    )
+    const eventIndex = calls.findIndex((text) => text.includes('workbook_event_workbook_created_idx'))
+    expect(clientMutationColumnIndex).toBeGreaterThan(-1)
+    expect(createdAtBackfillIndex).toBeGreaterThan(-1)
+    expect(createdAtNotNullIndex).toBeGreaterThan(createdAtBackfillIndex)
+    expect(eventIndex).toBeGreaterThan(createdAtNotNullIndex)
+  })
+
   it('bootstraps every shared Zero schema table and column', async () => {
     const query = vi.fn().mockResolvedValue({ rows: [] })
     const db: Queryable = { query }

@@ -1,5 +1,5 @@
 import type { Queryable } from './store.js'
-import { ensureDefaultedNotNullColumn } from './schema-upgrade.js'
+import { addColumnIfMissing, ensureDefaultedNotNullColumn } from './schema-upgrade.js'
 
 export async function ensureZeroSyncSchema(db: Queryable): Promise<void> {
   await db.query(`
@@ -262,6 +262,13 @@ export async function ensureZeroSyncSchema(db: Queryable): Promise<void> {
       PRIMARY KEY (workbook_id, revision)
     );
   `)
+  await addColumnIfMissing(db, { tableName: 'workbook_event', columnName: 'client_mutation_id', dataType: 'TEXT' })
+  await ensureDefaultedNotNullColumn(db, {
+    tableName: 'workbook_event',
+    columnName: 'created_at',
+    dataType: 'TIMESTAMPTZ',
+    defaultSql: 'NOW()',
+  })
   await db.query(`
     CREATE TABLE IF NOT EXISTS recalc_job (
       id TEXT PRIMARY KEY,
