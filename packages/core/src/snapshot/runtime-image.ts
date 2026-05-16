@@ -536,65 +536,80 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
   const hydratedPreparedFormulaRefs: HydratedPreparedRuntimeFormulaRef[] = []
   const previousOnSetValue = args.workbook.cellStore.onSetValue
   args.workbook.cellStore.onSetValue = null
-  try {
-    orderedSheets.forEach((sheet) => {
-      args.checkEvaluationBudget?.()
-      const sheetRecord = args.workbook.getSheet(sheet.name)
-      if (!sheetRecord) {
-        throw new Error(`Missing runtime restore sheet: ${sheet.name}`)
-      }
-      const sheetId = sheetRecord.id
-      const sheetCoords = sheetCellsByName.get(sheet.name)
-      const rowIds: string[] = []
-      const colIds: string[] = []
-      const ensureRowId = args.workbook.createLogicalAxisIdEnsurer(sheetId, 'row')
-      const ensureColId = args.workbook.createLogicalAxisIdEnsurer(sheetId, 'column')
-      const attachFreshCell = createFreshRuntimeCellAttacher(args.workbook, sheetRecord)
-      const formulaSpan = formulaSpansBySheet.get(sheet.name)
-      let formulaInstanceIndex = formulaSpan?.start ?? 0
-      const formulaInstanceEnd = formulaSpan?.end ?? formulaInstanceIndex
-      let literalColumns: WrittenColumnTracker | undefined
-      for (let index = 0; index < sheet.cells.length; index += 1) {
+  args.workbook.withBatchedColumnVersionUpdates(() => {
+    try {
+      orderedSheets.forEach((sheet) => {
         args.checkEvaluationBudget?.()
-        const cell = sheet.cells[index]!
-        const coords = sheetCoords?.[index] ?? readRestoredCellCoordinates(sheet.name, cell)
-        while (
-          formulaInstanceIndex < formulaInstanceEnd &&
-          compareFormulaInstanceToCoordinate(args.runtimeImage.formulaInstances[formulaInstanceIndex]!, coords) < 0
-        ) {
+        const sheetRecord = args.workbook.getSheet(sheet.name)
+        if (!sheetRecord) {
+          throw new Error(`Missing runtime restore sheet: ${sheet.name}`)
+        }
+        const sheetId = sheetRecord.id
+        const sheetCoords = sheetCellsByName.get(sheet.name)
+        const rowIds: string[] = []
+        const colIds: string[] = []
+        const ensureRowId = args.workbook.createLogicalAxisIdEnsurer(sheetId, 'row')
+        const ensureColId = args.workbook.createLogicalAxisIdEnsurer(sheetId, 'column')
+        const attachFreshCell = createFreshRuntimeCellAttacher(args.workbook, sheetRecord)
+        const formulaSpan = formulaSpansBySheet.get(sheet.name)
+        let formulaInstanceIndex = formulaSpan?.start ?? 0
+        const formulaInstanceEnd = formulaSpan?.end ?? formulaInstanceIndex
+        let literalColumns: WrittenColumnTracker | undefined
+        for (let index = 0; index < sheet.cells.length; index += 1) {
           args.checkEvaluationBudget?.()
-          formulaInstanceIndex += 1
-        }
-        const candidateFormula =
-          formulaInstanceIndex < formulaInstanceEnd ? args.runtimeImage.formulaInstances[formulaInstanceIndex] : undefined
-        const restoredFormula =
-          candidateFormula && compareFormulaInstanceToCoordinate(candidateFormula, coords) === 0 ? candidateFormula : undefined
-        const cellIndex = args.workbook.cellStore.allocateReserved(sheetId, coords.row, coords.col)
-        const rowId = (rowIds[coords.row] ??= ensureRowId(coords.row))
-        const colId = (colIds[coords.col] ??= ensureColId(coords.col))
-        attachFreshCell(coords.row, coords.col, cellIndex, rowId, colId)
-        if (cell.formula === undefined && restoredFormula === undefined) {
-          writeLiteralToCellStore(args.workbook.cellStore, cellIndex, cell.value ?? null, args.strings)
-          literalColumns ??= createWrittenColumnTracker()
-          markWrittenColumn(literalColumns, coords.col)
-          if (cell.value === null) {
-            args.workbook.cellStore.flags[cellIndex] = (args.workbook.cellStore.flags[cellIndex] ?? 0) | CellFlags.AuthoredBlank
+          const cell = sheet.cells[index]!
+          const coords = sheetCoords?.[index] ?? readRestoredCellCoordinates(sheet.name, cell)
+          while (
+            formulaInstanceIndex < formulaInstanceEnd &&
+            compareFormulaInstanceToCoordinate(args.runtimeImage.formulaInstances[formulaInstanceIndex]!, coords) < 0
+          ) {
+            args.checkEvaluationBudget?.()
+            formulaInstanceIndex += 1
           }
-        }
-        if (cell.format !== undefined) {
-          args.workbook.setCellFormat(cellIndex, cell.format)
-        }
-        if (restoredFormula) {
-          const cachedValue = formulaValueIndexAligned
-            ? args.runtimeImage.formulaValues[formulaInstanceIndex]?.value
-            : formulaValuesByAddress?.get(sheet.name)?.get(toFormulaInstanceKey(coords.row, coords.col))
-          const template =
-            restoredFormula.templateId !== undefined && args.resolveTemplateById
-              ? args.resolveTemplateById(restoredFormula.templateId, restoredFormula.source, coords.row, coords.col)
-              : undefined
-          if (args.initializeHydratedPreparedCellFormulasAt && cachedValue !== undefined) {
-            if (template && !template.compiled.volatile && !template.compiled.producesSpill) {
-              hydratedPreparedFormulaRefs.push({
+          const candidateFormula =
+            formulaInstanceIndex < formulaInstanceEnd ? args.runtimeImage.formulaInstances[formulaInstanceIndex] : undefined
+          const restoredFormula =
+            candidateFormula && compareFormulaInstanceToCoordinate(candidateFormula, coords) === 0 ? candidateFormula : undefined
+          const cellIndex = args.workbook.cellStore.allocateReserved(sheetId, coords.row, coords.col)
+          const rowId = (rowIds[coords.row] ??= ensureRowId(coords.row))
+          const colId = (colIds[coords.col] ??= ensureColId(coords.col))
+          attachFreshCell(coords.row, coords.col, cellIndex, rowId, colId)
+          if (cell.formula === undefined && restoredFormula === undefined) {
+            writeLiteralToCellStore(args.workbook.cellStore, cellIndex, cell.value ?? null, args.strings)
+            literalColumns ??= createWrittenColumnTracker()
+            markWrittenColumn(literalColumns, coords.col)
+            if (cell.value === null) {
+              args.workbook.cellStore.flags[cellIndex] = (args.workbook.cellStore.flags[cellIndex] ?? 0) | CellFlags.AuthoredBlank
+            }
+          }
+          if (cell.format !== undefined) {
+            args.workbook.setCellFormat(cellIndex, cell.format)
+          }
+          if (restoredFormula) {
+            const cachedValue = formulaValueIndexAligned
+              ? args.runtimeImage.formulaValues[formulaInstanceIndex]?.value
+              : formulaValuesByAddress?.get(sheet.name)?.get(toFormulaInstanceKey(coords.row, coords.col))
+            const template =
+              restoredFormula.templateId !== undefined && args.resolveTemplateById
+                ? args.resolveTemplateById(restoredFormula.templateId, restoredFormula.source, coords.row, coords.col)
+                : undefined
+            if (args.initializeHydratedPreparedCellFormulasAt && cachedValue !== undefined) {
+              if (template && !template.compiled.volatile && !template.compiled.producesSpill) {
+                hydratedPreparedFormulaRefs.push({
+                  sheetId,
+                  row: coords.row,
+                  col: coords.col,
+                  cellIndex,
+                  source: restoredFormula.source,
+                  compiled: template.compiled,
+                  templateId: template.templateId,
+                  value: cachedValue,
+                })
+                continue
+              }
+            }
+            if (template && args.initializePreparedCellFormulasAt) {
+              preparedFormulaRefs.push({
                 sheetId,
                 row: coords.row,
                 col: coords.col,
@@ -602,53 +617,40 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
                 source: restoredFormula.source,
                 compiled: template.compiled,
                 templateId: template.templateId,
-                value: cachedValue,
               })
               continue
             }
-          }
-          if (template && args.initializePreparedCellFormulasAt) {
-            preparedFormulaRefs.push({
+            formulaRefs.push({
               sheetId,
-              row: coords.row,
-              col: coords.col,
               cellIndex,
-              source: restoredFormula.source,
-              compiled: template.compiled,
-              templateId: template.templateId,
+              mutation: {
+                kind: 'setCellFormula',
+                row: coords.row,
+                col: coords.col,
+                formula: restoredFormula.source,
+              },
             })
-            continue
+          } else if (cell.formula !== undefined) {
+            formulaRefs.push({
+              sheetId,
+              cellIndex,
+              mutation: {
+                kind: 'setCellFormula',
+                row: coords.row,
+                col: coords.col,
+                formula: cell.formula,
+              },
+            })
           }
-          formulaRefs.push({
-            sheetId,
-            cellIndex,
-            mutation: {
-              kind: 'setCellFormula',
-              row: coords.row,
-              col: coords.col,
-              formula: restoredFormula.source,
-            },
-          })
-        } else if (cell.formula !== undefined) {
-          formulaRefs.push({
-            sheetId,
-            cellIndex,
-            mutation: {
-              kind: 'setCellFormula',
-              row: coords.row,
-              col: coords.col,
-              formula: cell.formula,
-            },
-          })
         }
-      }
-      if (literalColumns && literalColumns.count > 0) {
-        args.workbook.notifyColumnsWritten(sheetId, materializeWrittenColumns(literalColumns))
-      }
-    })
-  } finally {
-    args.workbook.cellStore.onSetValue = previousOnSetValue
-  }
+        if (literalColumns && literalColumns.count > 0) {
+          args.workbook.notifyColumnsWritten(sheetId, materializeWrittenColumns(literalColumns))
+        }
+      })
+    } finally {
+      args.workbook.cellStore.onSetValue = previousOnSetValue
+    }
+  })
 
   if (hydratedPreparedFormulaRefs.length > 0 && args.initializeHydratedPreparedCellFormulasAt) {
     args.checkEvaluationBudget?.()

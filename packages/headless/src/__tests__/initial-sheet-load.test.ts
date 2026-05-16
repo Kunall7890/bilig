@@ -294,6 +294,59 @@ describe('initial mixed sheet load', () => {
     })
   })
 
+  it('restores compatible runtime snapshots with batched column version notifications', () => {
+    const source = WorkPaper.buildFromSheets({
+      Bench: [
+        [1, 2, '=A1+B1'],
+        [2, 4, '=A2+B2'],
+      ],
+    })
+    const serialized = source.getAllSheetsSerialized()
+    source.dispose()
+    const batchImpl: unknown = Reflect.get(WorkbookStore.prototype, 'withBatchedColumnVersionUpdates')
+    const notifyImpl: unknown = Reflect.get(WorkbookStore.prototype, 'notifyColumnsWritten')
+    if (typeof batchImpl !== 'function' || typeof notifyImpl !== 'function') {
+      throw new Error('Expected WorkbookStore column-version methods in test')
+    }
+    let batchDepth = 0
+    let notifyCount = 0
+    let unbatchedNotifyCount = 0
+    const batchSpy = vi
+      .spyOn(WorkbookStore.prototype, 'withBatchedColumnVersionUpdates')
+      .mockImplementation(function (this: WorkbookStore, execute) {
+        batchDepth += 1
+        try {
+          return Reflect.apply(batchImpl, this, [execute])
+        } finally {
+          batchDepth -= 1
+        }
+      })
+    const notifySpy = vi
+      .spyOn(WorkbookStore.prototype, 'notifyColumnsWritten')
+      .mockImplementation(function (this: WorkbookStore, sheetId, columns) {
+        notifyCount += 1
+        if (batchDepth === 0) {
+          unbatchedNotifyCount += 1
+        }
+        return Reflect.apply(notifyImpl, this, [sheetId, columns])
+      })
+    try {
+      const rebuilt = WorkPaper.buildFromSheets(serialized)
+      const sheetId = rebuilt.getSheetId('Bench')!
+
+      expect(rebuilt.getCellValue({ sheet: sheetId, row: 1, col: 2 })).toEqual({
+        tag: ValueTag.Number,
+        value: 6,
+      })
+      expect(notifyCount).toBeGreaterThan(0)
+      expect(unbatchedNotifyCount).toBe(0)
+      rebuilt.dispose()
+    } finally {
+      notifySpy.mockRestore()
+      batchSpy.mockRestore()
+    }
+  })
+
   it('restores value-only snapshots with dense column metadata without per-range metadata writes', () => {
     const setColumnMetadataSpy = vi.spyOn(WorkbookStore.prototype, 'setColumnMetadata')
     try {
