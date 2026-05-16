@@ -5,11 +5,10 @@ import {
   applyWorkPaperSerializedMatrix,
   type WorkPaperCellMutationApplyOptions,
 } from '../work-paper-matrix-application.js'
-import type { RawCellContent, WorkPaperCellAddress } from '../work-paper-types.js'
 
 describe('work-paper matrix application', () => {
-  it('applies serialized clipboard formulas through raw content translation', () => {
-    const rawWrites: Array<{ address: WorkPaperCellAddress; content: RawCellContent }> = []
+  it('applies serialized clipboard formulas through one translated matrix mutation batch', () => {
+    const applied: Array<{ refs: readonly EngineCellMutationRef[]; options: WorkPaperCellMutationApplyOptions }> = []
     let flushCount = 0
 
     applyWorkPaperSerializedMatrix({
@@ -20,18 +19,26 @@ describe('work-paper matrix application', () => {
         flushCount += 1
       },
       applyRawContent: (address, content) => {
-        rawWrites.push({ address, content })
+        throw new Error(`Serialized formula paste should not write ${address.row}:${address.col} cell-by-cell: ${String(content)}`)
       },
-      applyCellMutationRefs: () => {
-        throw new Error('Formula clipboard content should use raw writes')
+      applyCellMutationRefs: (refs, options) => {
+        applied.push({ refs, options })
       },
       rewriteFormulaForStorage: (formula) => formula,
     })
 
     expect(flushCount).toBe(1)
-    expect(rawWrites).toEqual([
-      { address: { sheet: 1, row: 2, col: 1 }, content: '=B3' },
-      { address: { sheet: 1, row: 2, col: 2 }, content: 4 },
+    expect(applied).toHaveLength(1)
+    expect(applied[0]?.options).toEqual({
+      captureUndo: true,
+      potentialNewCells: 2,
+      source: 'local',
+      returnUndoOps: false,
+      reuseRefs: true,
+    })
+    expect(applied[0]?.refs).toEqual([
+      { sheetId: 1, mutation: { kind: 'setCellValue', row: 2, col: 2, value: 4 } },
+      { sheetId: 1, mutation: { kind: 'setCellFormula', row: 2, col: 1, formula: 'B3' } },
     ])
   })
 

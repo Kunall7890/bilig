@@ -1,7 +1,7 @@
 import type { EngineCellMutationRef } from '@bilig/core'
 import { translateFormulaReferences } from '@bilig/formula'
 import { buildMatrixMutationPlan, type MatrixMutationDimensionImpact } from './matrix-mutation-plan.js'
-import { matrixContainsFormulaContent, stripLeadingEquals } from './work-paper-runtime-helpers.js'
+import { stripLeadingEquals } from './work-paper-runtime-helpers.js'
 import type { RawCellContent, WorkPaperCellAddress, WorkPaperSheet } from './work-paper-types.js'
 
 export interface WorkPaperCellMutationApplyOptions {
@@ -32,28 +32,6 @@ export function applyWorkPaperSerializedMatrix(input: {
 }): void {
   const { serialized, sourceAnchor, targetLeftCorner } = input
   input.flushPendingBatchOps()
-  if (matrixContainsFormulaContent(serialized)) {
-    serialized.forEach((row, rowOffset) => {
-      row.forEach((raw, columnOffset) => {
-        const destination = {
-          sheet: targetLeftCorner.sheet,
-          row: targetLeftCorner.row + rowOffset,
-          col: targetLeftCorner.col + columnOffset,
-        }
-        let nextValue = raw
-        if (typeof raw === 'string' && raw.startsWith('=')) {
-          nextValue = `=${translateFormulaReferences(
-            raw.slice(1),
-            destination.row - (sourceAnchor.row + rowOffset),
-            destination.col - (sourceAnchor.col + columnOffset),
-          )}`
-        }
-        input.applyRawContent(destination, nextValue)
-      })
-    })
-    return
-  }
-
   const { refs, potentialNewCells } = buildMatrixMutationPlan({
     target: targetLeftCorner,
     content: serialized,
