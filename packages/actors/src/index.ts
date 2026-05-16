@@ -4,6 +4,9 @@ interface BootstrapContext<Config, Session> {
   readonly config: Config | null
   readonly session: Session | null
   readonly error: string | null
+  readonly autoRetryAttempt: number
+  readonly autoRetryDelayMs: number
+  readonly maxAutoRetryAttempts: number
   readonly shouldLoadSession: boolean
   readonly loadConfig: () => Promise<Config>
   readonly loadSession: (config: Config) => Promise<Session>
@@ -13,6 +16,8 @@ interface BootstrapContext<Config, Session> {
 export interface BootstrapMachineInput<Config, Session> {
   readonly loadConfig: () => Promise<Config>
   readonly loadSession: (config: Config) => Promise<Session>
+  readonly autoRetryDelayMs?: number | undefined
+  readonly maxAutoRetryAttempts?: number | undefined
   readonly shouldLoadSession?: (config: Config) => boolean
 }
 
@@ -51,6 +56,9 @@ export function createBootstrapMachine<Config, Session>() {
       loadConfig: loadConfigActor,
       loadSession: loadSessionActor,
     },
+    delays: {
+      autoRetryDelay: ({ context }: { context: BootstrapContext<Config, Session> }) => context.autoRetryDelayMs,
+    },
   }).createMachine({
     id: 'bootstrap',
     initial: 'loadingConfig',
@@ -58,6 +66,9 @@ export function createBootstrapMachine<Config, Session>() {
       config: null,
       session: null,
       error: null,
+      autoRetryAttempt: 0,
+      autoRetryDelayMs: normalizeNonNegativeFiniteInteger(input.autoRetryDelayMs, 750),
+      maxAutoRetryAttempts: normalizeNonNegativeFiniteInteger(input.maxAutoRetryAttempts, 0),
       shouldLoadSession: true,
       loadConfig: input.loadConfig,
       loadSession: input.loadSession,
@@ -79,12 +90,22 @@ export function createBootstrapMachine<Config, Session>() {
               error: () => null,
             }),
           },
-          onError: {
-            target: 'failed',
-            actions: assign({
-              error: ({ event }) => (event.error instanceof Error ? event.error.message : String(event.error)),
-            }),
-          },
+          onError: [
+            {
+              guard: ({ context }) => context.autoRetryAttempt < context.maxAutoRetryAttempts,
+              target: 'retrying',
+              actions: assign({
+                autoRetryAttempt: ({ context }) => context.autoRetryAttempt + 1,
+                error: ({ event }) => (event.error instanceof Error ? event.error.message : String(event.error)),
+              }),
+            },
+            {
+              target: 'failed',
+              actions: assign({
+                error: ({ event }) => (event.error instanceof Error ? event.error.message : String(event.error)),
+              }),
+            },
+          ],
         },
       },
       decideSession: {
@@ -111,15 +132,33 @@ export function createBootstrapMachine<Config, Session>() {
           onDone: {
             target: 'ready',
             actions: assign({
+              autoRetryAttempt: () => 0,
               session: ({ event }) => event.output,
               error: () => null,
             }),
           },
-          onError: {
-            target: 'failed',
-            actions: assign({
-              error: ({ event }) => (event.error instanceof Error ? event.error.message : String(event.error)),
-            }),
+          onError: [
+            {
+              guard: ({ context }) => context.autoRetryAttempt < context.maxAutoRetryAttempts,
+              target: 'retrying',
+              actions: assign({
+                autoRetryAttempt: ({ context }) => context.autoRetryAttempt + 1,
+                error: ({ event }) => (event.error instanceof Error ? event.error.message : String(event.error)),
+              }),
+            },
+            {
+              target: 'failed',
+              actions: assign({
+                error: ({ event }) => (event.error instanceof Error ? event.error.message : String(event.error)),
+              }),
+            },
+          ],
+        },
+      },
+      retrying: {
+        after: {
+          autoRetryDelay: {
+            target: 'loadingConfig',
           },
         },
       },
@@ -134,6 +173,7 @@ export function createBootstrapMachine<Config, Session>() {
               config: () => null,
               session: () => null,
               error: () => null,
+              autoRetryAttempt: () => 0,
               shouldLoadSession: () => true,
             }),
           },
@@ -141,6 +181,16 @@ export function createBootstrapMachine<Config, Session>() {
       },
     },
   })
+}
+
+function normalizeNonNegativeFiniteInteger(value: number | undefined, fallback: number): number {
+  if (value === undefined) {
+    return fallback
+  }
+  if (!Number.isFinite(value) || value < 0) {
+    return fallback
+  }
+  return Math.floor(value)
 }
 
 interface DocumentSupervisorContext {

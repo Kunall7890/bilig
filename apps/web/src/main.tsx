@@ -103,6 +103,8 @@ function BootstrapShell() {
 function BootstrapRoot() {
   const actorRef = useActorRef(bootstrapMachine, {
     input: {
+      autoRetryDelayMs: 750,
+      maxAutoRetryAttempts: remoteSyncEnabled ? 3 : 0,
       loadConfig: async () => {
         if (!remoteSyncEnabled) {
           const rawConfig = createLocalOnlyRuntimeConfig()
