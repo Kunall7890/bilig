@@ -9,13 +9,13 @@ export interface RangeBounds {
 }
 
 export function getRangeBounds(range: CellRangeRef): RangeBounds {
-  const [startColPart, startRowPart] = splitAddress(range.startAddress)
-  const [endColPart, endRowPart] = splitAddress(range.endAddress)
+  const [startColPart, startRow] = splitAddress(range.startAddress)
+  const [endColPart, endRow] = splitAddress(range.endAddress)
   return {
     startCol: decodeColumn(startColPart),
     endCol: decodeColumn(endColPart),
-    startRow: Number.parseInt(startRowPart, 10),
-    endRow: Number.parseInt(endRowPart, 10),
+    startRow,
+    endRow,
   }
 }
 
@@ -37,12 +37,23 @@ export function iterateRange(range: CellRangeRef): string[] {
   return iterateRangeBounds(getRangeBounds(range))
 }
 
-function splitAddress(address: string): [string, string] {
+function splitAddress(address: string): [string, number] {
   const match = /^([A-Z]+)(\d+)$/i.exec(address.trim())
   if (!match) {
     throw new Error(`Invalid cell address: ${address}`)
   }
-  return [match[1]!.toUpperCase(), match[2]!]
+  return [match[1]!.toUpperCase(), decodeRow(match[2]!)]
+}
+
+function decodeRow(rowText: string): number {
+  if (!/^(?:[1-9]\d*)$/u.test(rowText)) {
+    throw new Error(`Invalid cell row: ${rowText}`)
+  }
+  const row = Number(rowText)
+  if (!Number.isSafeInteger(row)) {
+    throw new Error(`Invalid cell row: ${rowText}`)
+  }
+  return row
 }
 
 function decodeColumn(column: string): number {

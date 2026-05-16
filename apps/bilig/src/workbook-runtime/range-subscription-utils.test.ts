@@ -89,4 +89,8 @@ describe('range-subscription-utils', () => {
       }),
     ).toEqual(['B4', 'C4', 'B5', 'C5'])
   })
+
+  it.each(['A0', 'A01', `A${Number.MAX_SAFE_INTEGER + 1}`, 'A1.5', 'A-1'])('rejects invalid row address %s', (startAddress) => {
+    expect(() => getRangeBounds({ sheetName: 'Sheet1', startAddress, endAddress: 'B2' })).toThrow(/Invalid cell (address|row)/)
+  })
 })
