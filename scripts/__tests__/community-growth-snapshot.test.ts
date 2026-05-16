@@ -105,6 +105,7 @@ describe('community growth snapshot', () => {
           subscribers_count: 0,
           open_issues_count: 39,
           default_branch: 'main',
+          topics: ['spreadsheet', 'typescript'],
         })
       }
 
@@ -215,6 +216,7 @@ describe('community growth snapshot', () => {
           subscribers_count: 1,
           open_issues_count: 29,
           default_branch: 'main',
+          topics: ['headless-spreadsheet', 'typescript'],
         })
       }
 
@@ -453,6 +455,7 @@ describe('community growth snapshot', () => {
           subscribers_count: 0,
           open_issues_count: 39,
           default_branch: 'main',
+          topics: ['spreadsheet', 'formula-engine'],
         })
       }
 
@@ -640,6 +643,7 @@ describe('community growth snapshot', () => {
         watcherCount: 1,
         openIssueCount: 29,
         defaultBranch: 'main',
+        topics: ['headless-spreadsheet', 'typescript'],
       },
       npm: {
         name: '@bilig/headless',
@@ -717,6 +721,7 @@ describe('community growth snapshot', () => {
 
     expect(markdown).toContain('# Community Growth Snapshot')
     expect(markdown).toContain('- Stars: 24 / 1,000 (976 remaining)')
+    expect(markdown).toContain('- Topics: `headless-spreadsheet`, `typescript`')
     expect(markdown).toContain('- Downloads last week: 13,427 (2026-05-05 to 2026-05-11)')
     expect(markdown).toContain('- Open good first issues: 22')
     expect(markdown).toContain('- Non-documentation starter issues: 2')

@@ -21,6 +21,7 @@ export interface GitHubRepoGrowthMetrics {
   readonly watcherCount: number
   readonly openIssueCount: number
   readonly defaultBranch: string
+  readonly topics: readonly string[]
 }
 
 export interface NpmPackageGrowthMetrics {
@@ -331,6 +332,7 @@ async function collectGitHubGraphqlJson(
 
 function parseGitHubRepoMetrics(value: unknown): GitHubRepoGrowthMetrics {
   const repo = asRecord(value, 'GitHub repository')
+  const topics = Array.isArray(repo.topics) ? repo.topics.filter((topic): topic is string => typeof topic === 'string') : []
 
   return {
     fullName: stringField(repo, 'full_name', 'GitHub repository'),
@@ -341,6 +343,7 @@ function parseGitHubRepoMetrics(value: unknown): GitHubRepoGrowthMetrics {
     watcherCount: numberField(repo, 'subscribers_count', 'GitHub repository'),
     openIssueCount: numberField(repo, 'open_issues_count', 'GitHub repository'),
     defaultBranch: stringField(repo, 'default_branch', 'GitHub repository'),
+    topics,
   }
 }
 
@@ -834,6 +837,7 @@ export function renderCommunityGrowthSnapshotMarkdown(snapshot: CommunityGrowthS
     `- Watchers: ${formatCount(snapshot.github.watcherCount)}`,
     `- Open issues: ${formatCount(snapshot.github.openIssueCount)}`,
     `- Default branch: \`${snapshot.github.defaultBranch}\``,
+    `- Topics: ${snapshot.github.topics.map((topic) => `\`${topic}\``).join(', ') || 'none'}`,
     '',
     '## npm',
     '',
