@@ -312,7 +312,10 @@ function normalizePortableFootprintForCheck(footprint: HeadlessPackageFootprint)
     ...footprint,
     npmPackDryRun: {
       ...footprint.npmPackDryRun,
-      tarballBytes: Math.round(footprint.npmPackDryRun.tarballBytes / 1_000) * 1_000,
+      // npm reports compressed tarball bytes, which can drift slightly across
+      // platform/toolchain gzip implementations. The public docs present this
+      // as a coarse package-size signal, not an exact archive checksum.
+      tarballBytes: Math.round(footprint.npmPackDryRun.tarballBytes / 10_000) * 10_000,
       unpackedBytes: Math.round(footprint.npmPackDryRun.unpackedBytes / 10_000) * 10_000,
     },
   }
