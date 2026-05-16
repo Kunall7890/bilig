@@ -135,7 +135,7 @@ describe('translation coverage edges', () => {
     expect(buildRelativeFormulaTemplateKeyFromAst({ kind: 'BooleanLiteral', value: false }, 0, 0)).toBe('b:0')
     expect(buildRelativeFormulaTemplateKeyFromAst({ kind: 'StringLiteral', value: 'text' }, 0, 0)).toBe('s:"text"')
     expect(buildRelativeFormulaTemplateKeyFromAst({ kind: 'ErrorLiteral', code: ErrorCode.Ref }, 0, 0)).toBe(`e:${ErrorCode.Ref}`)
-    expect(buildRelativeFormulaTemplateKeyFromAst({ kind: 'NameRef', name: 'Rate' }, 0, 0)).toBe('name:Rate')
+    expect(buildRelativeFormulaTemplateKeyFromAst({ kind: 'NameRef', name: 'Rate' }, 0, 0)).toBe('name:.:Rate')
     expect(buildRelativeFormulaTemplateKeyFromAst({ kind: 'StructuredRef', tableName: 'Sales', columnName: 'Amount' }, 0, 0)).toBe(
       'table:Sales[Amount]',
     )
@@ -151,7 +151,7 @@ describe('translation coverage edges', () => {
     )
     expect(
       buildRelativeFormulaTemplateKeyFromAst({ kind: 'UnaryExpr', operator: '-', argument: { kind: 'NameRef', name: 'Rate' } }, 0, 0),
-    ).toBe('unary:-:name:Rate')
+    ).toBe('unary:-:name:.:Rate')
     expect(
       buildRelativeFormulaTemplateKeyFromAst(
         {
@@ -165,7 +165,7 @@ describe('translation coverage edges', () => {
         0,
         0,
       ),
-    ).toBe('invoke:name:Fn:n:1|b:0')
+    ).toBe('invoke:name:.:Fn:n:1|b:0')
   })
 
   it('translates manual compiled formulas through metadata fallback and nested lambda plan branches', () => {

@@ -34,7 +34,7 @@ describe('WorkPaper INDEX/MATCH direct path', () => {
     expect(workbook.getCellValue(cell(sheetId, 0, 4))).toEqual({ tag: ValueTag.Number, value: 990 })
     expect(workbook.getStats().lastMetrics).toMatchObject({
       dirtyFormulaCount: 0,
-      jsFormulaCount: 0,
+      jsFormulaCount: 1,
       wasmFormulaCount: 0,
     })
     expect(workbook.getPerformanceCounters()).toMatchObject({
@@ -79,7 +79,7 @@ describe('WorkPaper INDEX/MATCH direct path', () => {
     expect(workbook.getCellValue(cell(sheetId, 0, 4))).toEqual({ tag: ValueTag.Number, value: 2_000 })
     expect(workbook.getStats().lastMetrics).toMatchObject({
       dirtyFormulaCount: 0,
-      jsFormulaCount: 0,
+      jsFormulaCount: 1,
       wasmFormulaCount: 0,
     })
 
@@ -90,7 +90,7 @@ describe('WorkPaper INDEX/MATCH direct path', () => {
     expect(workbook.getCellValue(cell(sheetId, 0, 4))).toEqual({ tag: ValueTag.Number, value: 2_000 })
     expect(workbook.getStats().lastMetrics).toMatchObject({
       dirtyFormulaCount: 0,
-      jsFormulaCount: 0,
+      jsFormulaCount: 1,
       wasmFormulaCount: 0,
     })
 
@@ -127,7 +127,7 @@ describe('WorkPaper INDEX reference direct path', () => {
     expect(workbook.getStats().lastMetrics).toMatchObject({
       dirtyFormulaCount: 0,
       jsFormulaCount: 0,
-      wasmFormulaCount: 0,
+      wasmFormulaCount: 1,
     })
     expect(workbook.getPerformanceCounters()).toMatchObject({
       cycleFormulaScans: 0,

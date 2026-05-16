@@ -13,7 +13,7 @@ describe('translateCompiledFormulaWithoutAst', () => {
 
     expect(canTranslateCompiledFormulaWithoutAst(simple)).toBe(true)
     expect(canTranslateCompiledFormulaWithoutAst(jsOnly)).toBe(true)
-    expect(canTranslateCompiledFormulaWithoutAst(directAggregate)).toBe(false)
+    expect(canTranslateCompiledFormulaWithoutAst(directAggregate)).toBe(true)
     expect(canTranslateCompiledFormulaWithoutAst(rangeWithoutAggregate)).toBe(false)
     expect(canTranslateCompiledFormulaWithoutAst(lookup)).toBe(false)
   })

@@ -140,6 +140,12 @@ function canRestoreDirectAggregateThroughStructuralInverse(args: {
     return false
   }
   const transform = { kind: 'delete' as const, axis: 'row' as const, start: args.start, count: args.count }
+  const deleteEnd = args.start + args.count - 1
+  const deleteOverlapsAggregate = directAggregate.rowStart <= deleteEnd && directAggregate.rowEnd >= args.start
+  const deleteTouchesAggregateBoundary = directAggregate.rowStart >= args.start || directAggregate.rowEnd <= deleteEnd
+  if (deleteOverlapsAggregate && deleteTouchesAggregateBoundary) {
+    return false
+  }
   return (
     mapStructuralAxisIndex(args.ownerAxisIndex, transform) !== undefined &&
     mapStructuralAxisInterval(directAggregate.rowStart, directAggregate.rowEnd, transform) !== undefined

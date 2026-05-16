@@ -305,7 +305,7 @@ describe('js evaluator coverage edges', () => {
         ],
         context,
       ),
-    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    ).toEqual({ tag: ValueTag.Boolean, value: false })
 
     expect(
       evaluatePlan(

@@ -13,13 +13,13 @@
   "summary": {
     "allCommittedFormulaSemanticsCovered": true,
     "canonicalFormulaFixtureCount": 300,
-    "workbookSemanticsFixtureCount": 10,
+    "workbookSemanticsFixtureCount": 11,
     "executableStableFormulaFixtureCount": 297,
     "deterministicVolatileFixtureCount": 3,
-    "executableWorkbookSemanticsFixtureCount": 10,
+    "executableWorkbookSemanticsFixtureCount": 11,
     "dateTimeEdgeFixtureCount": 62,
     "coveredCanonicalFixtureCount": 300,
-    "coveredWorkbookSemanticsFixtureCount": 10,
+    "coveredWorkbookSemanticsFixtureCount": 11,
     "coveredFamilies": [
       "aggregation",
       "arithmetic",
@@ -351,6 +351,7 @@
       "arithmetic:cross-sheet-multiply",
       "arithmetic:missing-sheet-ref-error",
       "lookup-reference:multiple-operations-basic",
+      "lookup-reference:xlookup-advanced-return-modes",
       "names:defined-name-case-insensitive",
       "names:defined-name-missing",
       "names:defined-name-multi-scalar-pack"

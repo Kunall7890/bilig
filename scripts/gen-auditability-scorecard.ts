@@ -224,10 +224,10 @@ function buildAuthoritativeAgentApplyGuardControl(): AuditabilityControl {
 
 function buildWorkbookHistoryRevertRedoControl(): AuditabilityControl {
   const rows = [
-    historyRow(10, 'owner@example.com', 'applyAgentCommandBundle', null, null),
-    historyRow(11, 'collaborator@example.com', 'applyAgentCommandBundle', null, null),
-    historyRow(12, 'owner@example.com', 'applyAgentCommandBundle', 13, null),
-    historyRow(13, 'owner@example.com', 'revertChange', null, 12),
+    historyRow(10, 'owner@example.com', 'applyAgentCommandBundle', null, null, 'A1'),
+    historyRow(11, 'collaborator@example.com', 'applyAgentCommandBundle', null, null, 'C1'),
+    historyRow(12, 'owner@example.com', 'applyAgentCommandBundle', 13, null, 'B1'),
+    historyRow(13, 'owner@example.com', 'revertChange', null, 12, 'B1'),
   ]
   const revertedState = deriveWorkbookActorHistoryState({
     actorUserId: 'owner@example.com',
@@ -235,7 +235,7 @@ function buildWorkbookHistoryRevertRedoControl(): AuditabilityControl {
   })
   const redoneState = deriveWorkbookActorHistoryState({
     actorUserId: 'owner@example.com',
-    rows: [...rows, historyRow(14, 'owner@example.com', 'redoChange', null, 13)],
+    rows: [...rows, historyRow(14, 'owner@example.com', 'redoChange', null, 13, 'B1')],
   })
   const revertStackPassed =
     revertedState.canUndo &&
@@ -492,6 +492,7 @@ function historyRow(
   eventKind: string,
   revertedByRevision: number | null,
   revertsRevision: number | null,
+  anchorAddress: string,
 ) {
   return {
     revision,
@@ -500,6 +501,8 @@ function historyRow(
     undoBundleJson: { kind: 'engineOps', ops: [] },
     revertedByRevision,
     revertsRevision,
+    sheetName: 'Sheet1',
+    anchorAddress,
   } as const
 }
 

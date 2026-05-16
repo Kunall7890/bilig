@@ -3919,7 +3919,7 @@ describe('SpreadsheetEngine', () => {
 
     engine.setCellValue('Sheet2', 'B1', 3)
     expect(engine.getCellValue('Sheet1', 'A1')).toEqual({ tag: ValueTag.Number, value: 6 })
-    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
+    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 0, jsFormulaCount: 0 })
   })
 
   it('rebinds bounded cross-sheet ranges from #REF! back onto the wasm path when a sheet appears', async () => {
@@ -3943,7 +3943,7 @@ describe('SpreadsheetEngine', () => {
     engine.setCellValue('Sheet2', 'A2', 3)
 
     expect(engine.getCellValue('Sheet1', 'A1')).toEqual({ tag: ValueTag.Number, value: 5 })
-    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
+    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 0, jsFormulaCount: 0 })
   })
 
   it('rebinds formulas to #REF! when a referenced sheet is deleted', async () => {

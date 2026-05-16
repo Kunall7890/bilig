@@ -561,6 +561,29 @@ describe('engine correctness', () => {
     expect(engine.getCell(sheetName, 'E3').formula).toBe('SUM(A1:B2)')
   })
 
+  it('restores direct aggregate formula sources after delete-row undo overlaps the aggregate range', async () => {
+    const engine = new SpreadsheetEngine({
+      workbookName: 'correctness-structural-direct-aggregate-delete-row-undo',
+      replicaId: 'correctness-structural-direct-aggregate-delete-row-undo',
+    })
+    await engine.ready()
+    engine.createSheet(sheetName)
+    engine.setRangeValues({ sheetName, startAddress: 'A1', endAddress: 'B2' }, [
+      [4, 2],
+      [3, 7],
+    ])
+    engine.setCellFormula(sheetName, 'E3', 'SUM(A1:B2)')
+
+    const initialSnapshot = engine.exportSnapshot()
+
+    engine.deleteRows(sheetName, 0, 1)
+    expect(engine.getCell(sheetName, 'E2').formula).toBe('SUM(A1:B1)')
+
+    expect(engine.undo()).toBe(true)
+    expect(engine.exportSnapshot()).toEqual(initialSnapshot)
+    expect(engine.getCell(sheetName, 'E3').formula).toBe('SUM(A1:B2)')
+  })
+
   it('materializes deferred structural formula sources before consecutive axis edits', async () => {
     const initialSnapshot = await createEngineSeedSnapshot('formula-graph', 'correctness-consecutive-structural-formula-source')
     const engine = new SpreadsheetEngine({

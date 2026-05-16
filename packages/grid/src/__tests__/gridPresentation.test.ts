@@ -67,6 +67,7 @@ describe('gridPresentation', () => {
       position: 'fixed',
       top: 96,
       width: 104,
+      zIndex: 40,
     })
   })
 })

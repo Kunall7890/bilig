@@ -66,12 +66,12 @@ the scalar formula result.
 
 ## Evidence
 
-The checked benchmark artifact currently records `75/100` mean-latency wins
-against HyperFormula-style comparable workloads, and `74/100` workloads winning
+The checked benchmark artifact currently records `79/100` mean-latency wins
+against HyperFormula-style comparable workloads, and `75/100` workloads winning
 both mean and p95.
 
 The caveat is intentionally visible.
-`lookup-with-column-index-after-batch-write` is slower at p95 by `10.986x`.
+`structural-insert-columns-small` is slower at p95 by `2.516x`.
 Browser grid rendering is outside this benchmark.
 
 Read the benchmark note:
@@ -126,9 +126,9 @@ The npm check starts from an empty project, edits an input cell, reads the
 recalculated formula value, serializes WorkPaper JSON, restores it, and checks
 the same output again.
 
-It is not an Excel clone. The current benchmark artifact says 75/100 mean wins
-against HyperFormula-style comparable workloads and `74/100` workloads winning both mean and p95. One
-visible p95 holdout is lookup-with-column-index-after-batch-write.
+It is not an Excel clone. The current benchmark artifact says 79/100 mean wins
+against HyperFormula-style comparable workloads and `75/100` workloads winning both mean and p95. One
+visible p95 holdout is structural-insert-columns-small.
 
 I am looking for concrete misses: formula coverage, XLSX import/export,
 persistence shape, MCP/tool use, or a benchmark that would make you trust or

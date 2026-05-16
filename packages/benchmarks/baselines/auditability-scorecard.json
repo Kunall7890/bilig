@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "suite": "auditability-posture",
-  "generatedAt": "2026-05-06T14:16:41.182Z",
+  "generatedAt": "2026-05-16T19:51:28.245Z",
   "source": {
     "artifactGenerator": "scripts/gen-auditability-scorecard.ts",
     "previewImplementation": "packages/agent-api/src/workbook-agent-preview.ts",

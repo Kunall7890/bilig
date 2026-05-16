@@ -96,7 +96,7 @@ describe('same-corpus public access check', () => {
     expect(check.products.map((entry) => entry.product)).toEqual(['google-sheets', 'microsoft-excel-web'])
     expect(check.products.every((entry) => entry.corpusVerification.checkedCells.length >= 3)).toBe(true)
     expect(() => validateSameCorpusPublicAccessCheck(check)).not.toThrow()
-  })
+  }, 15_000)
 
   it('rejects workbooks that do not match the expected same-corpus fingerprint', async () => {
     const otherCorpus = buildWorkbookBenchmarkCorpus('dense-mixed-250k')

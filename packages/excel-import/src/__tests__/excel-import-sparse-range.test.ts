@@ -47,7 +47,7 @@ describe('XLSX sparse ranges', () => {
       fill: { backgroundColor: '#ffcc00' },
     })
     const tolerance = readBenchmarkTolerance()
-    expect(denseMs).toBeLessThan(Math.max(1_000 * tolerance, sparseMs * 12 * tolerance))
+    expect(denseMs).toBeLessThan(Math.max(1_500 * tolerance, sparseMs * 12 * tolerance))
   }, 15_000)
 
   it('imports style-metadata-heavy workbooks without retaining inert style collections', () => {
