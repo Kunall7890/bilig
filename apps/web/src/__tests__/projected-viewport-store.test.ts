@@ -166,10 +166,28 @@ describe('ProjectedViewportStore', () => {
 
     expect(cache.getRenderRevisionSnapshot()).toEqual({
       authoritativeRevision: 17,
+      localRevision: 0,
       projectedRevision: 23,
       tileSceneCameraSeq: null,
       tileSceneRevision: null,
     })
+  })
+
+  it('increments the local render revision for optimistic cell snapshots', () => {
+    const cache = new ProjectedViewportStore()
+
+    expect(cache.getRenderRevisionSnapshot().localRevision).toBe(0)
+
+    cache.setCellSnapshot({
+      sheetName: 'Sheet1',
+      address: 'D5',
+      flags: 0,
+      input: 'local',
+      value: { tag: ValueTag.String, value: 'local', stringId: 0 },
+      version: 1,
+    })
+
+    expect(cache.getRenderRevisionSnapshot().localRevision).toBe(1)
   })
 
   it('accepts partial reset-empty patches that clear newer local input after structural deletes', () => {

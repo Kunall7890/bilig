@@ -71,7 +71,7 @@ export function createSheetScopedRangePair(
   }
 }
 
-function applyOptimisticMoveRange(
+export function applyOptimisticMoveRange(
   viewportStore: OptimisticViewportStore | null,
   source: CellRangeRef,
   target: CellRangeRef,
@@ -105,6 +105,7 @@ function applyOptimisticMoveRange(
         ...sourceSnapshot,
         sheetName: target.sheetName,
         address: targetAddress,
+        flags: sourceSnapshot.flags | OPTIMISTIC_CELL_SNAPSHOT_FLAG,
         version: Math.max(sourceSnapshot.version, targetSnapshot.version) + 1,
       }
       rollbackVersion = Math.max(rollbackVersion, nextSourceSnapshot.version, nextTargetSnapshot.version)

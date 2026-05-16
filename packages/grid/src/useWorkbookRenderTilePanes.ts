@@ -81,6 +81,14 @@ export function useWorkbookRenderTilePanes(input: {
     () => gridRuntimeHost.snapshotRenderTileBridgeState(),
     () => gridRuntimeHost.snapshotRenderTileBridgeState(),
   )
+  const renderRevisionSnapshot = engine.getRenderRevisionSnapshot?.()
+  const renderRevisionKey = [
+    renderRevisionSnapshot?.authoritativeRevision ?? 'none',
+    renderRevisionSnapshot?.localRevision ?? 'none',
+    renderRevisionSnapshot?.projectedRevision ?? 'none',
+    renderRevisionSnapshot?.tileSceneRevision ?? 'none',
+    renderRevisionSnapshot?.tileSceneCameraSeq ?? 'none',
+  ].join(':')
 
   useEffect(() => {
     return () => {
@@ -91,6 +99,7 @@ export function useWorkbookRenderTilePanes(input: {
   const state = useMemo<WorkbookRenderTilePanesState & { readonly needsLocalCellInvalidation: boolean }>(() => {
     void renderTileBridgeState.renderTileRevision
     void renderTileBridgeState.localFallbackRevision
+    void renderRevisionKey
     return gridRuntimeHost.resolveRenderTilePanes({
       columnWidths,
       dprBucket,
@@ -134,6 +143,7 @@ export function useWorkbookRenderTilePanes(input: {
     hostClientWidth,
     hostElement,
     renderTileBridgeState,
+    renderRevisionKey,
     renderTileSource,
     renderTileViewport,
     residentViewport,

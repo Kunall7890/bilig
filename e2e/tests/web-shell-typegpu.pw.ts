@@ -71,6 +71,21 @@ interface DynamicReadbackResult {
   readonly opaquePixelCounts: Record<string, number>
 }
 
+interface NativeTextExpectation {
+  readonly name: string
+  readonly text: string
+  readonly exact?: boolean | undefined
+}
+
+interface NativeTextLayerInspection {
+  readonly gridAttrs: Record<string, string>
+  readonly matches: Record<string, boolean>
+  readonly rendererAttrs: Record<string, string>
+  readonly rowHeaderRunCount: number
+  readonly sampleTexts: readonly string[]
+  readonly visibleRunCount: number
+}
+
 interface RendererPresentationSample {
   readonly canvasProofLayer: string | null
   readonly editorInputs: number
@@ -203,9 +218,18 @@ test('@browser-webgpu isolated workbook pane renderer draws grid content through
   expect(summary?.points.selectionBorder.a ?? 0).toBeGreaterThan(150)
   expect(summary?.points.selectionBorder.g ?? 0).toBeGreaterThan(summary?.points.selectionBorder.r ?? 0)
   expect(summary?.points.bodyWhite).toMatchObject({ r: 255, g: 255, b: 255, a: 255 })
-  expect(summary?.darkPixelCounts.header).toBeGreaterThan(15)
-  expect(summary?.darkPixelCounts.body).toBeGreaterThan(20)
-  expect(summary?.darkPixelCounts.number).toBeGreaterThan(40)
+  const textRuns = await waitForVisibleNativeTextRuns(
+    page,
+    [
+      { name: 'header', text: 'Region', exact: true },
+      { name: 'body', text: 'North', exact: true },
+      { name: 'number', text: '168', exact: true },
+    ],
+    (runs) => runs.matches.header && runs.matches.body && runs.matches.number,
+  )
+  expect(textRuns.matches.header).toBe(true)
+  expect(textRuns.matches.body).toBe(true)
+  expect(textRuns.matches.number).toBe(true)
 
   await saveReadbackArtifact(page, testInfo, 'isolated-pane-renderer-readback.png', 'isolated-pane-renderer-readback')
 })
@@ -266,15 +290,20 @@ test('@browser-webgpu @browser-serial main workbook shell grid renders and updat
   } as const
 
   const initialReadback = await waitForReadback(page, initialProbe, (result) => {
-    return result.darkPixelCounts.columnHeaderText > 10 && result.darkPixelCounts.rowHeaderText > 5
+    return result.opaquePixelCounts.columnHeaderText > 100 && result.opaquePixelCounts.rowHeaderText > 100
+  })
+  const initialTextRuns = await waitForVisibleNativeTextRuns(page, [{ name: 'columnHeaderA', text: 'A', exact: true }], (runs) => {
+    return runs.matches.columnHeaderA && runs.rowHeaderRunCount > 5
   })
 
   expect(initialReadback.hasGpu).toBe(true)
   expect(initialReadback.width).toBeGreaterThan(400)
   expect(initialReadback.height).toBeGreaterThan(250)
   expect(initialReadback.points.bodyBlank).toMatchObject({ r: 0, g: 0, b: 0, a: 0 })
-  expect(initialReadback.darkPixelCounts.columnHeaderText).toBeGreaterThan(10)
-  expect(initialReadback.darkPixelCounts.rowHeaderText).toBeGreaterThan(5)
+  expect(initialReadback.opaquePixelCounts.columnHeaderText).toBeGreaterThan(100)
+  expect(initialReadback.opaquePixelCounts.rowHeaderText).toBeGreaterThan(100)
+  expect(initialTextRuns.matches.columnHeaderA).toBe(true)
+  expect(initialTextRuns.rowHeaderRunCount).toBeGreaterThan(5)
 
   await clickProductCell(page, 2, 3)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C4')
@@ -298,9 +327,11 @@ test('@browser-webgpu @browser-serial main workbook shell grid renders and updat
     ],
   } as const
 
-  const valueReadback = await waitForReadback(page, valueProbe, (result) => {
-    return result.darkPixelCounts.c4ValueText > 0
+  const valueReadback = await inspectGpuReadback(page, valueProbe)
+  const valueTextRuns = await waitForVisibleNativeTextRuns(page, [{ name: 'c4ValueText', text: '123', exact: true }], (runs) => {
+    return runs.matches.c4ValueText
   })
+  expect(valueTextRuns.matches.c4ValueText).toBe(true)
 
   await clickProductCell(page, 1, 1)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2')
@@ -365,7 +396,9 @@ test('@browser-webgpu @browser-serial main workbook shell keeps row headers visi
       },
     ],
   } as const
-  const initialReadback = await waitForReadback(page, rowHeaderProbe, (result) => result.darkPixelCounts.rowHeaderText > 20)
+  const initialReadback = await waitForReadback(page, rowHeaderProbe, (result) => result.opaquePixelCounts.rowHeaderText > 1_000)
+  const initialRowHeaderRuns = await waitForVisibleNativeTextRuns(page, [], (runs) => runs.rowHeaderRunCount > 20)
+  expect(initialRowHeaderRuns.rowHeaderRunCount).toBeGreaterThan(20)
 
   await clickProductCell(page, 1, 24)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B25')
@@ -397,6 +430,12 @@ test('@browser-webgpu @browser-serial main workbook shell keeps row headers visi
   await expect(cellEditor).toHaveCount(0)
   await waitForReadbackSequence(page, initialReadback.sequence)
 
+  await clickProductCell(page, 1, 24)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B25')
+  await expect(page.getByLabel('Formula')).toHaveValue('abcdef')
+  await clickProductCell(page, 3, 25)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!D26')
+
   const committedProbe = {
     points: [],
     regions: [
@@ -416,14 +455,14 @@ test('@browser-webgpu @browser-serial main workbook shell keeps row headers visi
       },
     ],
   } as const
-  const committedReadback = await waitForReadback(
-    page,
-    committedProbe,
-    (result) => result.darkPixelCounts.rowHeaderText > 20 && result.darkPixelCounts.b25Text > 5,
-  )
+  const committedReadback = await waitForReadback(page, committedProbe, (result) => result.opaquePixelCounts.rowHeaderText > 1_000)
+  const committedTextRuns = await waitForVisibleNativeTextRuns(page, [{ name: 'b25Text', text: 'abcdef', exact: true }], (runs) => {
+    return runs.rowHeaderRunCount > 20 && runs.matches.b25Text
+  })
 
-  expect(committedReadback.darkPixelCounts.rowHeaderText).toBeGreaterThan(20)
-  expect(committedReadback.darkPixelCounts.b25Text).toBeGreaterThan(5)
+  expect(committedReadback.opaquePixelCounts.rowHeaderText).toBeGreaterThan(1_000)
+  expect(committedTextRuns.rowHeaderRunCount).toBeGreaterThan(20)
+  expect(committedTextRuns.matches.b25Text).toBe(true)
 
   await saveReadbackArtifact(
     page,
@@ -504,8 +543,13 @@ test('@browser-webgpu @browser-perf main workbook shell keeps resident typegpu c
 
   const initialReadback = await waitForReadback(page, probe, (result) => {
     return (
-      result.darkPixelCounts.columnHeaderText > 10 && result.darkPixelCounts.rowHeaderText > 5 && result.opaquePixelCounts.bodyGrid > 400
+      result.opaquePixelCounts.columnHeaderText > 100 &&
+      result.opaquePixelCounts.rowHeaderText > 100 &&
+      result.opaquePixelCounts.bodyGrid > 400
     )
+  })
+  await waitForVisibleNativeTextRuns(page, [{ name: 'columnHeaderA', text: 'A', exact: true }], (runs) => {
+    return runs.matches.columnHeaderA && runs.rowHeaderRunCount > 5
   })
   await warmStartWorkbookScrollPerf(page, 'typegpu-selection-overlay-only')
   await settleWorkbookScrollPerf(page, 16)
@@ -537,10 +581,15 @@ test('@browser-webgpu @browser-perf main workbook shell keeps resident typegpu c
 
   expect(selectionFrames.length).toBe(4)
   for (const frame of selectionFrames) {
-    expect(frame.darkPixelCounts.columnHeaderText).toBeGreaterThan(10)
-    expect(frame.darkPixelCounts.rowHeaderText).toBeGreaterThan(5)
+    expect(frame.opaquePixelCounts.columnHeaderText).toBeGreaterThan(100)
+    expect(frame.opaquePixelCounts.rowHeaderText).toBeGreaterThan(100)
     expect(frame.opaquePixelCounts.bodyGrid).toBeGreaterThan(400)
   }
+  const finalSelectionTextRuns = await waitForVisibleNativeTextRuns(page, [{ name: 'columnHeaderA', text: 'A', exact: true }], (runs) => {
+    return runs.matches.columnHeaderA && runs.rowHeaderRunCount > 5
+  })
+  expect(finalSelectionTextRuns.matches.columnHeaderA).toBe(true)
+  expect(finalSelectionTextRuns.rowHeaderRunCount).toBeGreaterThan(5)
   expect(perfReport).not.toBeNull()
   expect(perfReport?.counters.headerPaneBuilds).toBeLessThanOrEqual(1)
   expect(perfReport?.counters.typeGpuBufferAllocations).toBe(0)
@@ -584,9 +633,11 @@ test('@browser-webgpu @browser-perf main workbook shell keeps header labels and 
         { name: 'bodyText', x0: 70, y0: 48, x1: 280, y1: 120 },
       ],
     },
-    (result) =>
-      result.darkPixelCounts.columnHeaderText > 10 && result.darkPixelCounts.rowHeaderText > 5 && result.darkPixelCounts.bodyText > 20,
+    (result) => result.opaquePixelCounts.columnHeaderText > 100 && result.opaquePixelCounts.rowHeaderText > 100,
   )
+  await waitForVisibleNativeTextRuns(page, [{ name: 'columnHeaderA', text: 'A', exact: true }], (runs) => {
+    return runs.matches.columnHeaderA && runs.rowHeaderRunCount > 5 && runs.visibleRunCount > 20
+  })
 
   await page.getByTestId('grid-scroll-viewport').evaluate((viewport) => {
     if (!(viewport instanceof HTMLDivElement)) {
@@ -608,14 +659,17 @@ test('@browser-webgpu @browser-perf main workbook shell keeps header labels and 
         { name: 'bodyText', x0: 70, y0: 48, x1: 280, y1: 120 },
       ],
     },
-    (result) =>
-      result.darkPixelCounts.columnHeaderText > 10 && result.darkPixelCounts.rowHeaderText > 5 && result.darkPixelCounts.bodyText > 20,
+    (result) => result.opaquePixelCounts.columnHeaderText > 100 && result.opaquePixelCounts.rowHeaderText > 100,
   )
+  const scrolledTextRuns = await waitForVisibleNativeTextRuns(page, [{ name: 'columnHeader', text: 'E', exact: true }], (runs) => {
+    return runs.rowHeaderRunCount > 5 && runs.visibleRunCount > 20
+  })
 
   expect(scrolledReadback.sequence).toBeGreaterThan(initialReadback.sequence)
-  expect(scrolledReadback.darkPixelCounts.columnHeaderText).toBeGreaterThan(10)
-  expect(scrolledReadback.darkPixelCounts.rowHeaderText).toBeGreaterThan(5)
-  expect(scrolledReadback.darkPixelCounts.bodyText).toBeGreaterThan(20)
+  expect(scrolledReadback.opaquePixelCounts.columnHeaderText).toBeGreaterThan(100)
+  expect(scrolledReadback.opaquePixelCounts.rowHeaderText).toBeGreaterThan(100)
+  expect(scrolledTextRuns.rowHeaderRunCount).toBeGreaterThan(5)
+  expect(scrolledTextRuns.visibleRunCount).toBeGreaterThan(20)
 
   await saveReadbackArtifact(page, testInfo, 'main-workbook-grid-scrolled-readback.png', 'main-workbook-grid-scrolled-readback')
 })
@@ -1005,13 +1059,16 @@ test('@browser-webgpu @browser-perf main workbook shell keeps typegpu content vi
         { name: 'bodyText', x0: PRODUCT_ROW_MARKER_WIDTH, y0: PRODUCT_HEADER_HEIGHT, x1: 420, y1: 240 },
       ],
     },
-    (result) =>
-      result.darkPixelCounts.columnHeaderText > 10 && result.darkPixelCounts.rowHeaderText > 5 && result.darkPixelCounts.bodyText > 20,
+    (result) => result.opaquePixelCounts.columnHeaderText > 100 && result.opaquePixelCounts.rowHeaderText > 100,
   )
+  const hoverScrollTextRuns = await waitForVisibleNativeTextRuns(page, [], (runs) => {
+    return runs.rowHeaderRunCount > 5 && runs.visibleRunCount > 20
+  })
 
-  expect(readback.darkPixelCounts.columnHeaderText).toBeGreaterThan(10)
-  expect(readback.darkPixelCounts.rowHeaderText).toBeGreaterThan(5)
-  expect(readback.darkPixelCounts.bodyText).toBeGreaterThan(20)
+  expect(readback.opaquePixelCounts.columnHeaderText).toBeGreaterThan(100)
+  expect(readback.opaquePixelCounts.rowHeaderText).toBeGreaterThan(100)
+  expect(hoverScrollTextRuns.rowHeaderRunCount).toBeGreaterThan(5)
+  expect(hoverScrollTextRuns.visibleRunCount).toBeGreaterThan(20)
 
   await saveReadbackArtifact(page, testInfo, 'main-workbook-grid-hover-scroll-readback.png', 'main-workbook-grid-hover-scroll-readback')
 })
@@ -1074,9 +1131,11 @@ test('@browser-webgpu @browser-perf main workbook shell keeps typegpu text visib
   )
 
   expect(readback.darkPixelCounts.canvasDark).toBeGreaterThan(200)
-  expect(
-    readback.darkPixelCounts.columnHeaderText + readback.darkPixelCounts.rowHeaderText + readback.darkPixelCounts.bodyText,
-  ).toBeGreaterThan(20)
+  const tileBoundaryTextRuns = await waitForVisibleNativeTextRuns(page, [], (runs) => {
+    return runs.rowHeaderRunCount > 5 && runs.visibleRunCount > 20
+  })
+  expect(tileBoundaryTextRuns.rowHeaderRunCount).toBeGreaterThan(5)
+  expect(tileBoundaryTextRuns.visibleRunCount).toBeGreaterThan(20)
   expect(readback.points.blankBody.a).toBeGreaterThanOrEqual(0)
 
   await saveReadbackArtifact(
@@ -1514,6 +1573,90 @@ async function inspectGpuReadback(
 
   expect(result.ready).toBe(true)
   return result
+}
+
+async function inspectVisibleNativeTextRuns(
+  page: Page,
+  textExpectations: readonly NativeTextExpectation[],
+): Promise<NativeTextLayerInspection> {
+  return await page.evaluate(
+    (payload) => {
+      const textLayer = document.querySelector('[data-testid="grid-native-text-layer"]')
+      const sheetGrid = document.querySelector('[data-testid="sheet-grid"]')
+      const renderer = document.querySelector('[data-testid="grid-pane-renderer"]')
+      const { rowHeaderWidth } = payload
+      const viewportElement = textLayer instanceof HTMLElement ? textLayer : sheetGrid instanceof HTMLElement ? sheetGrid : null
+      const viewportRect = viewportElement?.getBoundingClientRect() ?? null
+      const runs = [...document.querySelectorAll('[data-native-text-run]')].flatMap((node) => {
+        const rect = node.getBoundingClientRect()
+        if (
+          !viewportRect ||
+          rect.right <= viewportRect.left ||
+          rect.left >= viewportRect.right ||
+          rect.bottom <= viewportRect.top ||
+          rect.top >= viewportRect.bottom
+        ) {
+          return []
+        }
+        return [
+          {
+            relativeLeft: rect.left - viewportRect.left,
+            text: node.textContent ?? '',
+          },
+        ]
+      })
+      return {
+        gridAttrs: Object.fromEntries(
+          [...(sheetGrid?.attributes ?? [])]
+            .filter((attribute) => attribute.name.includes('render') || attribute.name.includes('revision'))
+            .map((attribute) => [attribute.name, attribute.value]),
+        ),
+        matches: Object.fromEntries(
+          payload.textExpectations.map((expectation) => [
+            expectation.name,
+            runs.some((run) => (expectation.exact ? run.text === expectation.text : run.text.includes(expectation.text))),
+          ]),
+        ),
+        rendererAttrs: Object.fromEntries(
+          [...(renderer?.attributes ?? [])]
+            .filter((attribute) => attribute.name.includes('v3'))
+            .map((attribute) => [attribute.name, attribute.value]),
+        ),
+        rowHeaderRunCount: runs.filter((run) => run.relativeLeft >= 0 && run.relativeLeft < rowHeaderWidth && /^\d+$/.test(run.text))
+          .length,
+        sampleTexts: runs.map((run) => run.text).slice(0, 120),
+        visibleRunCount: runs.length,
+      }
+    },
+    { textExpectations, rowHeaderWidth: PRODUCT_ROW_MARKER_WIDTH },
+  )
+}
+
+async function waitForVisibleNativeTextRuns(
+  page: Page,
+  expectations: readonly NativeTextExpectation[],
+  predicate: (runs: NativeTextLayerInspection) => boolean,
+): Promise<NativeTextLayerInspection> {
+  let lastResult: NativeTextLayerInspection | null = null
+  try {
+    await expect
+      .poll(
+        async () => {
+          lastResult = await inspectVisibleNativeTextRuns(page, expectations)
+          return predicate(lastResult)
+        },
+        { timeout: 10_000 },
+      )
+      .toBe(true)
+  } catch (error) {
+    throw new Error(`${error instanceof Error ? error.message : String(error)}\nLast native text runs: ${JSON.stringify(lastResult)}`, {
+      cause: error,
+    })
+  }
+  if (!lastResult) {
+    throw new Error('expected native text run result')
+  }
+  return lastResult
 }
 
 async function waitForReadback(

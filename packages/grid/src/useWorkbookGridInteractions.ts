@@ -274,23 +274,28 @@ export function useWorkbookGridInteractions(
       applyGridClipboardValues({
         internalClipboardRef,
         onCopyRange,
+        onMoveRange,
         onPaste,
         sheetName,
         target,
         values,
       })
     },
-    [internalClipboardRef, onCopyRange, onPaste, sheetName],
+    [internalClipboardRef, onCopyRange, onMoveRange, onPaste, sheetName],
   )
-  const captureInternalClipboardSelection = useCallback(() => {
-    return captureGridClipboardSelection({
-      engine,
-      getCellEditorSeed,
-      gridSelection: getCurrentGridSelection(),
-      internalClipboardRef,
-      sheetName,
-    })
-  }, [engine, getCellEditorSeed, getCurrentGridSelection, internalClipboardRef, sheetName])
+  const captureInternalClipboardSelection = useCallback(
+    (operation?: 'copy' | 'cut') => {
+      return captureGridClipboardSelection({
+        engine,
+        getCellEditorSeed,
+        gridSelection: getCurrentGridSelection(),
+        internalClipboardRef,
+        operation: operation ?? 'copy',
+        sheetName,
+      })
+    },
+    [engine, getCellEditorSeed, getCurrentGridSelection, internalClipboardRef, sheetName],
+  )
   const { handleGridKey } = useWorkbookGridKeyboardHandler({
     applyClipboardValues,
     beginSelectedEdit,
@@ -429,6 +434,14 @@ export function useWorkbookGridInteractions(
         captureInternalClipboardSelection,
         event,
         internalClipboardRef,
+      })
+    },
+    handleHostCutCapture: (event: ReactClipboardEvent<HTMLDivElement>) => {
+      handleGridCopyCapture({
+        captureInternalClipboardSelection,
+        event,
+        internalClipboardRef,
+        operation: 'cut',
       })
     },
     handleHostFocus: (event: ReactFocusEvent<HTMLDivElement>) => {

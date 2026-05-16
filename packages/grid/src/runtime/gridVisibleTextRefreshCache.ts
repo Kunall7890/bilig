@@ -97,10 +97,8 @@ function tileVisibleTextNeedsLocalRefresh(
     for (let col = visibleBounds.visibleColStart; col <= visibleBounds.visibleColEnd; col += 1) {
       const snapshot = input.engine.getCell(input.sheetName, formatAddress(row, col))
       const renderCell = snapshotToRenderCell(snapshot, input.engine.getCellStyle(snapshot.styleId))
-      if (renderCell.displayText.length === 0) {
-        continue
-      }
-      if (textRunsByCell.get(`${row}:${col}`) !== renderCell.displayText) {
+      const visibleTileText = textRunsByCell.get(`${row}:${col}`) ?? ''
+      if (visibleTileText !== renderCell.displayText) {
         return true
       }
     }
@@ -115,6 +113,7 @@ function resolveRenderRevisionKey(engine: GridEngineLike): string {
   }
   return [
     revision.authoritativeRevision ?? 'none',
+    revision.localRevision ?? 'none',
     revision.projectedRevision,
     revision.tileSceneRevision ?? 'none',
     revision.tileSceneCameraSeq ?? 'none',

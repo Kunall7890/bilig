@@ -89,7 +89,7 @@ export function shouldKeepCurrentSnapshot(
     if (incomingConfirmsOptimisticSnapshot(current, incoming)) {
       return false
     }
-    return isResetEmptySnapshot(incoming) && current.version > incoming.version
+    return current.version > incoming.version
   }
 
   const incomingIsResetEmptySnapshot = isResetEmptySnapshot(incoming)

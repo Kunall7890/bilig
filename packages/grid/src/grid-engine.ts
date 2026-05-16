@@ -14,6 +14,7 @@ export interface GridWorkbookLike {
 
 export interface GridRenderRevisionSnapshot {
   readonly authoritativeRevision: number | null
+  readonly localRevision?: number | undefined
   readonly projectedRevision: number
   readonly tileSceneCameraSeq: number | null
   readonly tileSceneRevision: number | null

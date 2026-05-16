@@ -53,6 +53,7 @@ interface SelectedCellLike {
 interface ApplyGridClipboardValuesOptions {
   internalClipboardRef: MutableRefObject<InternalClipboardRange | null>
   onCopyRange(this: void, sourceStartAddr: string, sourceEndAddr: string, targetStartAddr: string, targetEndAddr: string): void
+  onMoveRange(this: void, sourceStartAddr: string, sourceEndAddr: string, targetStartAddr: string, targetEndAddr: string): void
   onPaste(this: void, sheetName: string, addr: string, values: readonly (readonly string[])[]): void
   sheetName: string
   target: Item
@@ -64,13 +65,14 @@ interface CaptureGridClipboardSelectionOptions {
   getCellEditorSeed?: ((sheetName: string, address: string) => string | undefined) | undefined
   gridSelection: GridSelection
   internalClipboardRef: MutableRefObject<InternalClipboardRange | null>
+  operation?: InternalClipboardRange['operation']
   sheetName: string
 }
 
 interface HandleGridKeyOptions {
   applyClipboardValues(this: void, target: Item, values: readonly (readonly string[])[]): void
   beginSelectedEdit(this: void, seed?: string, selectionBehavior?: EditSelectionBehavior): void
-  captureInternalClipboardSelection(this: void): InternalClipboardRange | null
+  captureInternalClipboardSelection(this: void, operation?: InternalClipboardRange['operation']): InternalClipboardRange | null
   editorValue: string
   event: GridKeyboardEventLike
   gridSelection: GridSelection
@@ -102,9 +104,10 @@ interface HandleGridPasteCaptureOptions {
 }
 
 interface HandleGridCopyCaptureOptions {
-  captureInternalClipboardSelection(this: void): InternalClipboardRange | null
+  captureInternalClipboardSelection(this: void, operation?: InternalClipboardRange['operation']): InternalClipboardRange | null
   event: GridClipboardEventLike
   internalClipboardRef: MutableRefObject<InternalClipboardRange | null>
+  operation?: InternalClipboardRange['operation']
 }
 
 function isEditableElement(element: EventTarget | null): element is HTMLElement {
@@ -142,6 +145,7 @@ function hasOpenModalDialog(): boolean {
 export function applyGridClipboardValues({
   internalClipboardRef,
   onCopyRange,
+  onMoveRange,
   onPaste,
   sheetName,
   target,
@@ -156,12 +160,14 @@ export function applyGridClipboardValues({
     if (!internalClipboard) {
       return
     }
-    onCopyRange(
-      internalClipboard.sourceStartAddress,
-      internalClipboard.sourceEndAddress,
-      formatAddress(target[1], target[0]),
-      formatAddress(target[1] + internalClipboard.rowCount - 1, target[0] + internalClipboard.colCount - 1),
-    )
+    const targetStartAddress = formatAddress(target[1], target[0])
+    const targetEndAddress = formatAddress(target[1] + internalClipboard.rowCount - 1, target[0] + internalClipboard.colCount - 1)
+    if (internalClipboard.operation === 'cut') {
+      onMoveRange(internalClipboard.sourceStartAddress, internalClipboard.sourceEndAddress, targetStartAddress, targetEndAddress)
+      internalClipboardRef.current = null
+    } else {
+      onCopyRange(internalClipboard.sourceStartAddress, internalClipboard.sourceEndAddress, targetStartAddress, targetEndAddress)
+    }
     return
   }
 
@@ -173,6 +179,7 @@ export function captureGridClipboardSelection({
   getCellEditorSeed,
   gridSelection,
   internalClipboardRef,
+  operation = 'copy',
   sheetName,
 }: CaptureGridClipboardSelectionOptions): InternalClipboardRange | null {
   const range = gridSelection.current?.range
@@ -188,8 +195,32 @@ export function captureGridClipboardSelection({
     }),
   )
 
-  internalClipboardRef.current = buildInternalClipboardRange(range, values)
+  internalClipboardRef.current = buildInternalClipboardRange(range, values, operation)
   return internalClipboardRef.current
+}
+
+function writeClipboardPlainTextFromKeyboard(
+  clipboard: InternalClipboardRange | null,
+  pendingClipboardCopySequenceRef: MutableRefObject<number>,
+): void {
+  if (!clipboard || typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
+    return
+  }
+  pendingClipboardCopySequenceRef.current += 1
+  const sequence = pendingClipboardCopySequenceRef.current
+  void (async () => {
+    try {
+      await navigator.clipboard.writeText(clipboard.plainText)
+    } catch {
+      if (pendingClipboardCopySequenceRef.current === sequence) {
+        pendingClipboardCopySequenceRef.current = 0
+      }
+      return
+    }
+    if (pendingClipboardCopySequenceRef.current === sequence) {
+      pendingClipboardCopySequenceRef.current = 0
+    }
+  })()
 }
 
 export function handleGridKey({
@@ -289,29 +320,13 @@ export function handleGridKey({
       onClearCell(selectionToSnapshot(gridSelection, sheetName, formatAddress(selectedCell.row, selectedCell.col)))
       return
     case 'clipboard-copy': {
-      const clipboard = captureInternalClipboardSelection()
-      if (clipboard && typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-        pendingClipboardCopySequenceRef.current += 1
-        const sequence = pendingClipboardCopySequenceRef.current
-        void (async () => {
-          try {
-            await navigator.clipboard.writeText(clipboard.plainText)
-          } catch {
-            if (pendingClipboardCopySequenceRef.current === sequence) {
-              pendingClipboardCopySequenceRef.current = 0
-            }
-            return
-          }
-          if (pendingClipboardCopySequenceRef.current === sequence) {
-            pendingClipboardCopySequenceRef.current = 0
-          }
-        })()
-      }
+      writeClipboardPlainTextFromKeyboard(captureInternalClipboardSelection('copy'), pendingClipboardCopySequenceRef)
       return
     }
-    case 'clipboard-cut':
-      captureInternalClipboardSelection()
+    case 'clipboard-cut': {
+      writeClipboardPlainTextFromKeyboard(captureInternalClipboardSelection('cut'), pendingClipboardCopySequenceRef)
       return
+    }
     case 'clipboard-paste': {
       pendingKeyboardPasteSequenceRef.current += 1
       const sequence = pendingKeyboardPasteSequenceRef.current
@@ -372,8 +387,9 @@ export function handleGridCopyCapture({
   captureInternalClipboardSelection,
   event,
   internalClipboardRef,
+  operation = 'copy',
 }: HandleGridCopyCaptureOptions): void {
-  captureInternalClipboardSelection()
+  captureInternalClipboardSelection(operation)
   if (!event.clipboardData) {
     return
   }

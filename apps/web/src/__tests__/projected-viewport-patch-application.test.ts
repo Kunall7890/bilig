@@ -442,6 +442,125 @@ describe('applyProjectedViewportPatch', () => {
     })
   })
 
+  it('keeps optimistic clear snapshots when lagging non-empty patches arrive', () => {
+    const state = createPatchState()
+    state.cellSnapshots.set('Sheet1!B2', {
+      sheetName: 'Sheet1',
+      address: 'B2',
+      value: { tag: ValueTag.Empty },
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+      version: 8,
+    })
+    state.cellKeysBySheet.set('Sheet1', new Set(['Sheet1!B2']))
+
+    applyProjectedViewportPatch({
+      state,
+      patch: {
+        version: 9,
+        full: false,
+        freezeRows: 0,
+        freezeCols: 0,
+        viewport: {
+          sheetName: 'Sheet1',
+          rowStart: 1,
+          rowEnd: 1,
+          colStart: 1,
+          colEnd: 1,
+        },
+        metrics: TEST_METRICS,
+        styles: [],
+        cells: [
+          {
+            row: 1,
+            col: 1,
+            snapshot: {
+              sheetName: 'Sheet1',
+              address: 'B2',
+              input: 'before-delete',
+              value: { tag: ValueTag.String, value: 'before-delete', stringId: 1 },
+              flags: 0,
+              version: 7,
+            },
+            displayText: 'before-delete',
+            copyText: 'before-delete',
+            editorText: 'before-delete',
+            formatId: 0,
+            styleId: 'style-0',
+          },
+        ],
+        columns: [],
+        rows: [],
+      },
+    })
+
+    expect(state.cellSnapshots.get('Sheet1!B2')).toMatchObject({
+      value: { tag: ValueTag.Empty },
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+      version: 8,
+    })
+  })
+
+  it('accepts newer non-empty patches over optimistic clears', () => {
+    const state = createPatchState()
+    state.cellSnapshots.set('Sheet1!B2', {
+      sheetName: 'Sheet1',
+      address: 'B2',
+      value: { tag: ValueTag.Empty },
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+      version: 8,
+    })
+    state.cellKeysBySheet.set('Sheet1', new Set(['Sheet1!B2']))
+
+    applyProjectedViewportPatch({
+      state,
+      patch: {
+        version: 9,
+        full: false,
+        freezeRows: 0,
+        freezeCols: 0,
+        viewport: {
+          sheetName: 'Sheet1',
+          rowStart: 1,
+          rowEnd: 1,
+          colStart: 1,
+          colEnd: 1,
+        },
+        metrics: TEST_METRICS,
+        styles: [],
+        cells: [
+          {
+            row: 1,
+            col: 1,
+            snapshot: {
+              sheetName: 'Sheet1',
+              address: 'B2',
+              input: 'new-authoritative-value',
+              value: { tag: ValueTag.String, value: 'new-authoritative-value', stringId: 1 },
+              flags: 0,
+              version: 9,
+            },
+            displayText: 'new-authoritative-value',
+            copyText: 'new-authoritative-value',
+            editorText: 'new-authoritative-value',
+            formatId: 0,
+            styleId: 'style-0',
+          },
+        ],
+        columns: [],
+        rows: [],
+      },
+    })
+
+    expect(state.cellSnapshots.get('Sheet1!B2')).toEqual({
+      sheetName: 'Sheet1',
+      address: 'B2',
+      input: 'new-authoritative-value',
+      value: { tag: ValueTag.String, value: 'new-authoritative-value', stringId: 1 },
+      flags: 0,
+      version: 9,
+    })
+  })
+
   it('keeps optimistic invalid-formula errors when lagging reset-empty patches arrive', () => {
     const state = createPatchState()
     state.cellSnapshots.set('Sheet1!B2', {

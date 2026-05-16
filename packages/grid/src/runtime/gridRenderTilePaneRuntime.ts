@@ -762,7 +762,14 @@ export class GridRenderTilePaneRuntime {
       const shouldLocalizeDirty = (options.localizeDirtyVisibleTiles ?? true) && isDirty
       const shouldLocalizeSelectedCellText =
         selectedCellTileKey === tileKey && tileSelectedTextNeedsLocalRefresh(tile, input.selectedCell, input.selectedCellSnapshot)
-      const shouldLocalizeVisibleText = visibleTileKeys.has(tileKey) && this.visibleTextRefreshCache.needsLocalRefresh(tileKey, tile, input)
+      const shouldLocalizeVisibleText =
+        visibleTileKeys.has(tileKey) &&
+        this.visibleTextRefreshCache.needsLocalRefresh(tileKey, tile, {
+          engine: input.engine,
+          sceneRevision: input.sceneRevision,
+          sheetName: input.sheetName,
+          visibleViewport: input.residentViewport,
+        })
       const shouldLocalizeEditingCellText = editingCellTileKey === tileKey
       if (
         shouldLocalizeDirty ||

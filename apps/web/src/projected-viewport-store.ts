@@ -45,6 +45,7 @@ export class ProjectedViewportStore implements GridEngineLike {
   private readonly mergeRangesBySheet = new Map<string, Map<string, WorkbookMergeRangeSnapshot>>()
   private lastBatchId = 0
   private lastAuthoritativeRevision: number | null = null
+  private localRevision = 0
   private localWorkbookDeltaSeq = 0
 
   readonly workbook = {
@@ -195,6 +196,7 @@ export class ProjectedViewportStore implements GridEngineLike {
   getRenderRevisionSnapshot(): GridRenderRevisionSnapshot {
     return {
       authoritativeRevision: this.lastAuthoritativeRevision,
+      localRevision: this.localRevision,
       projectedRevision: this.lastBatchId,
       tileSceneCameraSeq: this.tileSceneStore?.getLastCameraSeq() ?? null,
       tileSceneRevision: this.tileSceneStore?.getLastBatchId() ?? null,
@@ -203,12 +205,15 @@ export class ProjectedViewportStore implements GridEngineLike {
 
   setCellSnapshot(snapshot: CellSnapshot, options: { force?: boolean } = {}): void {
     if (this.cellCache.setCellSnapshot(snapshot, options)) {
+      this.localRevision += 1
       this.emitLocalCellSnapshotDelta(snapshot)
     }
   }
 
   clearOptimisticCellFlagsForSheet(sheetName: string): void {
-    this.cellCache.clearOptimisticCellFlagsForSheet(sheetName)
+    if (this.cellCache.clearOptimisticCellFlagsForSheet(sheetName)) {
+      this.localRevision += 1
+    }
   }
 
   setColumnWidth(sheetName: string, columnIndex: number, width: number): void {

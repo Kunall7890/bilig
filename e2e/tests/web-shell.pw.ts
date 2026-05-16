@@ -896,6 +896,63 @@ test.describe('@clipboard-global web app clipboard flows', () => {
     await expect(formulaInput).toHaveValue('=D3*2')
     await expect(resolvedValue).toHaveText('8')
   })
+
+  test('web app moves rectangular ranges with the cut keyboard shortcut', async ({ page, context }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+    const documentId = createTestDocumentId('playwright-clipboard-cut-move')
+    await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0`)
+    await waitForWorkbookReady(page)
+
+    const grid = page.getByTestId('sheet-grid')
+    const nameBox = page.getByTestId('name-box')
+    const formulaInput = page.getByTestId('formula-input')
+    const resolvedValue = page.getByTestId('formula-resolved-value')
+
+    const writeFormulaBarCell = async (address: string, value: string) => {
+      await nameBox.fill(address)
+      await expect(nameBox).toHaveValue(address)
+      await nameBox.press('Enter')
+      await expect(page.getByTestId('status-selection')).toHaveText(`Sheet1!${address}`)
+      await formulaInput.fill(value)
+      await expect(formulaInput).toHaveValue(value)
+      await formulaInput.press('Enter')
+      await nameBox.fill(address)
+      await expect(nameBox).toHaveValue(address)
+      await nameBox.press('Enter')
+      await expect(page.getByTestId('status-selection')).toHaveText(`Sheet1!${address}`)
+      await expect(formulaInput).toHaveValue(value)
+      await expect(resolvedValue).toHaveText(value)
+    }
+
+    const expectCellValue = async (address: string, value: string, resolved = value) => {
+      await nameBox.fill(address)
+      await nameBox.press('Enter')
+      await expect(formulaInput).toHaveValue(value)
+      await expect(resolvedValue).toHaveText(resolved)
+    }
+
+    await writeFormulaBarCell('B2', 'cut-a')
+    await writeFormulaBarCell('C2', 'cut-b')
+    await writeFormulaBarCell('B3', 'cut-c')
+    await writeFormulaBarCell('C3', 'cut-d')
+
+    await dragProductBodySelection(page, 1, 1, 2, 2)
+    await grid.press(`${PRIMARY_MODIFIER}+X`)
+    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe('cut-a\tcut-b\ncut-c\tcut-d')
+
+    await clickProductCell(page, 4, 4)
+    await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!E5')
+    await grid.press(`${PRIMARY_MODIFIER}+V`)
+
+    await expectCellValue('E5', 'cut-a')
+    await expectCellValue('F5', 'cut-b')
+    await expectCellValue('E6', 'cut-c')
+    await expectCellValue('F6', 'cut-d')
+    await expectCellValue('B2', '', '∅')
+    await expectCellValue('C2', '', '∅')
+    await expectCellValue('B3', '', '∅')
+    await expectCellValue('C3', '', '∅')
+  })
 })
 
 test('web app supports product-shell column resize', async ({ page }) => {

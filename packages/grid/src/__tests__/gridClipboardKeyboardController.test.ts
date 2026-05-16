@@ -215,12 +215,14 @@ describe('gridClipboardKeyboardController', () => {
 
   test('routes external clipboard data through paste operations', () => {
     const onCopyRange = vi.fn()
+    const onMoveRange = vi.fn()
     const onPaste = vi.fn()
     const internalClipboardRef = { current: null }
 
     applyGridClipboardValues({
       internalClipboardRef,
       onCopyRange,
+      onMoveRange,
       onPaste,
       sheetName: 'Sheet1',
       target: [2, 3],
@@ -228,14 +230,17 @@ describe('gridClipboardKeyboardController', () => {
     })
 
     expect(onCopyRange).not.toHaveBeenCalled()
+    expect(onMoveRange).not.toHaveBeenCalled()
     expect(onPaste).toHaveBeenCalledWith('Sheet1', 'C4', [['A', 'B']])
   })
 
   test('routes matching internal clipboard data through copy-range operations', () => {
     const onCopyRange = vi.fn()
+    const onMoveRange = vi.fn()
     const onPaste = vi.fn()
     const internalClipboardRef = {
       current: {
+        operation: 'copy' as const,
         sourceStartAddress: 'A1',
         sourceEndAddress: 'B2',
         signature: 'A\u001fB\u001eC\u001fD',
@@ -248,6 +253,7 @@ describe('gridClipboardKeyboardController', () => {
     applyGridClipboardValues({
       internalClipboardRef,
       onCopyRange,
+      onMoveRange,
       onPaste,
       sheetName: 'Sheet1',
       target: [3, 4],
@@ -258,7 +264,43 @@ describe('gridClipboardKeyboardController', () => {
     })
 
     expect(onCopyRange).toHaveBeenCalledWith('A1', 'B2', 'D5', 'E6')
+    expect(onMoveRange).not.toHaveBeenCalled()
     expect(onPaste).not.toHaveBeenCalled()
+  })
+
+  test('routes matching cut clipboard data through move-range operations and consumes the cut', () => {
+    const onCopyRange = vi.fn()
+    const onMoveRange = vi.fn()
+    const onPaste = vi.fn()
+    const internalClipboardRef = {
+      current: {
+        operation: 'cut' as const,
+        sourceStartAddress: 'A1',
+        sourceEndAddress: 'B2',
+        signature: 'A\u001fB\u001eC\u001fD',
+        plainText: 'A\tB\nC\tD',
+        rowCount: 2,
+        colCount: 2,
+      },
+    }
+
+    applyGridClipboardValues({
+      internalClipboardRef,
+      onCopyRange,
+      onMoveRange,
+      onPaste,
+      sheetName: 'Sheet1',
+      target: [3, 4],
+      values: [
+        ['A', 'B'],
+        ['C', 'D'],
+      ],
+    })
+
+    expect(onMoveRange).toHaveBeenCalledWith('A1', 'B2', 'D5', 'E6')
+    expect(onCopyRange).not.toHaveBeenCalled()
+    expect(onPaste).not.toHaveBeenCalled()
+    expect(internalClipboardRef.current).toBeNull()
   })
 
   test('captures the selected grid range into an internal clipboard payload', () => {
@@ -284,6 +326,7 @@ describe('gridClipboardKeyboardController', () => {
     })
 
     expect(clipboard).toEqual({
+      operation: 'copy',
       sourceStartAddress: 'A1',
       sourceEndAddress: 'B2',
       signature: 'alpha\u001fbeta\u001egamma\u001fdelta',
@@ -334,6 +377,7 @@ describe('gridClipboardKeyboardController', () => {
     const applyClipboardValues = vi.fn()
     const internalClipboardRef = {
       current: {
+        operation: 'copy' as const,
         sourceStartAddress: 'B2',
         sourceEndAddress: 'C3',
         signature: '3\u001f=B2*2\u001e4\u001f=B3*2',
@@ -380,6 +424,44 @@ describe('gridClipboardKeyboardController', () => {
         ['4', '=B3*2'],
       ],
     )
+  })
+
+  test('captures keyboard cut intent instead of downgrading it to copy', () => {
+    const captureInternalClipboardSelection = vi.fn()
+    const preventDefault = vi.fn()
+
+    handleGridKey({
+      applyClipboardValues: vi.fn(),
+      beginSelectedEdit: vi.fn(),
+      captureInternalClipboardSelection,
+      editorValue: '',
+      event: {
+        key: 'x',
+        ctrlKey: true,
+        metaKey: false,
+        altKey: false,
+        preventDefault,
+      },
+      gridSelection: createGridSelection(1, 1),
+      internalClipboardRef: { current: null },
+      isSelectedCellBoolean: () => false,
+      isEditingCell: false,
+      onCancelEdit: vi.fn(),
+      onClearCell: vi.fn(),
+      onCommitEdit: vi.fn(),
+      onEditorChange: vi.fn(),
+      onSelectionChange: vi.fn(),
+      pendingClipboardCopySequenceRef: { current: 0 },
+      pendingKeyboardPasteSequenceRef: { current: 0 },
+      pendingTypeSeedRef: { current: null },
+      selectedCell: { col: 1, row: 1 },
+      setGridSelection: vi.fn(),
+      suppressNextNativePasteRef: { current: false },
+      toggleSelectedBooleanCell: vi.fn(),
+    })
+
+    expect(preventDefault).toHaveBeenCalled()
+    expect(captureInternalClipboardSelection).toHaveBeenCalledWith('cut')
   })
 
   test('applies parsed paste payloads to the active selection and clears pending keyboard paste state', () => {

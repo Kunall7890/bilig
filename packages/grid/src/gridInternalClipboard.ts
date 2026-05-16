@@ -3,6 +3,7 @@ import type { Rectangle } from './gridTypes.js'
 import { serializeClipboardMatrix, serializeClipboardPlainText } from './gridClipboard.js'
 
 export interface InternalClipboardRange {
+  operation: 'copy' | 'cut'
   sourceStartAddress: string
   sourceEndAddress: string
   signature: string
@@ -11,8 +12,13 @@ export interface InternalClipboardRange {
   colCount: number
 }
 
-export function buildInternalClipboardRange(range: Rectangle, values: readonly (readonly string[])[]): InternalClipboardRange {
+export function buildInternalClipboardRange(
+  range: Rectangle,
+  values: readonly (readonly string[])[],
+  operation: InternalClipboardRange['operation'] = 'copy',
+): InternalClipboardRange {
   return {
+    operation,
     sourceStartAddress: formatAddress(range.y, range.x),
     sourceEndAddress: formatAddress(range.y + range.height - 1, range.x + range.width - 1),
     signature: serializeClipboardMatrix(values),

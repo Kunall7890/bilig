@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { formatAddress } from '@bilig/formula'
 import { ValueTag, type CellSnapshot } from '@bilig/protocol'
 import type { GridEngineLike } from '../grid-engine.js'
 import { getGridMetrics } from '../gridMetrics.js'
@@ -865,6 +866,57 @@ describe('GridRenderTilePaneRuntime', () => {
     expect(state.tileReadiness.misses).toEqual([])
   })
 
+  it('rebuilds visible remote tiles when deleted local text makes remote text stale', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const tileId = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+    })[0]
+    if (tileId === undefined) {
+      throw new Error('Expected a visible render tile key for the test viewport')
+    }
+    const staleRemoteTile: GridRenderTile = {
+      ...createRenderTile(tileId),
+      textCount: 1,
+      textRuns: [
+        {
+          align: 'left',
+          clipHeight: 20,
+          clipWidth: 120,
+          clipX: 100,
+          clipY: 80,
+          color: '#000000',
+          col: 1,
+          font: '12px sans-serif',
+          fontSize: 12,
+          height: 20,
+          row: 4,
+          strike: false,
+          text: 'deleted value',
+          underline: false,
+          width: 120,
+          wrap: false,
+          x: 100,
+          y: 80,
+        },
+      ],
+    }
+
+    const state = runtime.resolve(
+      createInput({
+        engine: LOCAL_EMPTY_ENGINE,
+        gridRuntimeHost: host,
+        renderTileSource: createRenderTileSource([staleRemoteTile]),
+        visibleViewport: { colEnd: 10, colStart: 0, rowEnd: 10, rowStart: 0 },
+      }),
+    )
+
+    expect(state.residentBodyPane?.tile).not.toBe(staleRemoteTile)
+    expect(state.residentBodyPane?.tile.textRuns.some((run) => run.text === 'deleted value')).toBe(false)
+  })
+
   it('requires coherent sheet id and ordinal for remote tiles when both are known', () => {
     const runtime = new GridRenderTilePaneRuntime()
     const host = createHost()
@@ -1579,11 +1631,19 @@ describe('GridRenderTilePaneRuntime', () => {
       ],
     }
     const renderTileSource = createRenderTileSource([createRenderTile(dirtyTileId), cleanRemoteTile])
+    const cleanRemoteTextAddress = formatAddress(0, 128)
+    const cleanRemoteEngine: GridEngineLike = {
+      ...LOCAL_EMPTY_ENGINE,
+      getCell: (_sheetName, address) =>
+        address === cleanRemoteTextAddress
+          ? createStringCellSnapshot(cleanRemoteTextAddress, 'clean remote text')
+          : createEmptyCellSnapshot(address),
+    }
 
     host.tiles.applyWorkbookDelta(createWorkbookDeltaBatch(), { dprBucket: 1 })
     const fallback = runtime.resolve(
       createInput({
-        engine: LOCAL_EMPTY_ENGINE,
+        engine: cleanRemoteEngine,
         forceLocalTiles: true,
         gridRuntimeHost: host,
         renderTileSource,
@@ -1943,6 +2003,124 @@ describe('GridRenderTilePaneRuntime', () => {
 
     expect(refreshed.residentBodyPane?.tile).not.toBe(staleRemoteTile)
     expect(refreshed.residentBodyPane?.tile.textRuns.some((run) => run.row === 0 && run.col === 0 && run.text === visibleText)).toBe(true)
+  })
+
+  it('rechecks visible remote tile text when the local workbook revision changes', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const tileId = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+    })[0]
+    if (tileId === undefined) {
+      throw new Error('Expected a visible render tile key for the test viewport')
+    }
+    const remoteTile = createRenderTile(tileId)
+    let localRevision = 0
+    let visibleText = ''
+    let getCellCallCount = 0
+    const engineWithLocalVisibleText: GridEngineLike = {
+      getCell: (_sheetName, address) => {
+        getCellCallCount += 1
+        return address === 'B25' && visibleText ? createStringCellSnapshot('B25', visibleText) : createEmptyCellSnapshot(address)
+      },
+      getCellStyle: () => undefined,
+      getRenderRevisionSnapshot: () => ({
+        authoritativeRevision: 1,
+        localRevision,
+        projectedRevision: 1,
+        tileSceneCameraSeq: null,
+        tileSceneRevision: null,
+      }),
+      subscribeCells: () => () => {},
+      workbook: {
+        getSheet: () => undefined,
+      },
+    }
+    const renderTileSource = createRenderTileSource([remoteTile])
+
+    const initial = runtime.resolve(
+      createInput({
+        engine: engineWithLocalVisibleText,
+        gridRuntimeHost: host,
+        renderTileSource,
+        visibleViewport: { colEnd: 10, colStart: 0, rowEnd: 30, rowStart: 0 },
+      }),
+    )
+    const callsAfterInitialResolve = getCellCallCount
+    expect(initial.residentBodyPane?.tile).toBe(remoteTile)
+
+    runtime.resolve(
+      createInput({
+        engine: engineWithLocalVisibleText,
+        gridRuntimeHost: host,
+        renderTileSource,
+        visibleViewport: { colEnd: 10, colStart: 0, rowEnd: 30, rowStart: 0 },
+      }),
+    )
+    expect(getCellCallCount).toBe(callsAfterInitialResolve)
+
+    localRevision = 1
+    visibleText = 'abcdef'
+
+    const refreshed = runtime.resolve(
+      createInput({
+        engine: engineWithLocalVisibleText,
+        gridRuntimeHost: host,
+        renderTileSource,
+        visibleViewport: { colEnd: 10, colStart: 0, rowEnd: 30, rowStart: 0 },
+      }),
+    )
+
+    expect(refreshed.residentBodyPane?.tile).not.toBe(remoteTile)
+    expect(refreshed.residentBodyPane?.tile.textRuns.some((run) => run.row === 24 && run.col === 1 && run.text === visibleText)).toBe(true)
+  })
+
+  it('checks resident rendered rows for local text even when the logical visible window is shorter', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const tileId = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+    })[0]
+    if (tileId === undefined) {
+      throw new Error('Expected a visible render tile key for the test viewport')
+    }
+    const remoteTile = createRenderTile(tileId)
+    const engineWithResidentText: GridEngineLike = {
+      getCell: (_sheetName, address) =>
+        address === 'B25' ? createStringCellSnapshot('B25', 'click-away text') : createEmptyCellSnapshot(address),
+      getCellStyle: () => undefined,
+      getRenderRevisionSnapshot: () => ({
+        authoritativeRevision: 1,
+        localRevision: 1,
+        projectedRevision: 1,
+        tileSceneCameraSeq: 1,
+        tileSceneRevision: 1,
+      }),
+      subscribeCells: () => () => {},
+      workbook: {
+        getSheet: () => undefined,
+      },
+    }
+    const renderTileSource = createRenderTileSource([remoteTile])
+
+    const refreshed = runtime.resolve(
+      createInput({
+        engine: engineWithResidentText,
+        gridRuntimeHost: host,
+        renderTileSource,
+        residentViewport: { colEnd: 10, colStart: 0, rowEnd: 30, rowStart: 0 },
+        visibleViewport: { colEnd: 10, colStart: 0, rowEnd: 10, rowStart: 0 },
+      }),
+    )
+
+    expect(refreshed.residentBodyPane?.tile).not.toBe(remoteTile)
+    expect(refreshed.residentBodyPane?.tile.textRuns.some((run) => run.row === 24 && run.col === 1 && run.text === 'click-away text')).toBe(
+      true,
+    )
   })
 
   it('reuses remote static rect buffers for text-only local dirty tiles', () => {

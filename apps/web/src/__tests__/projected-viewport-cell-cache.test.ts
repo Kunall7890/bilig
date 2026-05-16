@@ -151,6 +151,73 @@ describe('ProjectedViewportCellCache', () => {
     expect(cache.clearOptimisticCellFlagsForSheet('Sheet1')).toBe(false)
   })
 
+  it('keeps optimistic clears when lagging non-empty snapshots arrive', () => {
+    const cache = new ProjectedViewportCellCache()
+    const listener = vi.fn()
+    cache.subscribeCells('Sheet1', ['D7'], listener)
+    cache.setCellSnapshot({
+      ...snapshot('D7', 'before-delete'),
+      version: 7,
+    })
+    cache.setCellSnapshot({
+      sheetName: 'Sheet1',
+      address: 'D7',
+      value: { tag: ValueTag.Empty },
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+      version: 8,
+    })
+    listener.mockClear()
+
+    expect(
+      cache.setCellSnapshot({
+        ...snapshot('D7', 'before-delete'),
+        version: 7,
+      }),
+    ).toBe(false)
+
+    expect(cache.getCell('Sheet1', 'D7')).toMatchObject({
+      value: { tag: ValueTag.Empty },
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+      version: 8,
+    })
+    expect(listener).not.toHaveBeenCalled()
+  })
+
+  it('keeps optimistic clears when forced selection hydration is stale', () => {
+    const cache = new ProjectedViewportCellCache()
+    const listener = vi.fn()
+    cache.subscribeCells('Sheet1', ['D7'], listener)
+    cache.setCellSnapshot({
+      ...snapshot('D7', 'before-delete'),
+      version: 7,
+    })
+    cache.setCellSnapshot({
+      sheetName: 'Sheet1',
+      address: 'D7',
+      value: { tag: ValueTag.Empty },
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+      version: 8,
+    })
+    listener.mockClear()
+
+    expect(
+      cache.setCellSnapshot(
+        {
+          ...snapshot('D7', 'before-delete'),
+          version: 7,
+        },
+        { force: true },
+      ),
+    ).toBe(false)
+
+    expect(cache.getCell('Sheet1', 'D7')).toMatchObject({
+      value: { tag: ValueTag.Empty },
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+      version: 8,
+    })
+    expect(listener).not.toHaveBeenCalled()
+  })
+
   it('tracks cell subscriptions and exposes sheet grid entries', () => {
     const cache = new ProjectedViewportCellCache()
     const listener = vi.fn()

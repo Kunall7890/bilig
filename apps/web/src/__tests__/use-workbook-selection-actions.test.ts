@@ -5,9 +5,11 @@ import {
   applyOptimisticCommitOps,
   applyOptimisticCopyRange,
   applyOptimisticFillRange,
+  applyOptimisticMoveRange,
   buildPasteCommitOps,
   createSheetScopedRangePair,
 } from '../use-workbook-selection-actions.js'
+import { OPTIMISTIC_CELL_SNAPSHOT_FLAG } from '../workbook-optimistic-cell-flags.js'
 
 function emptyCell(sheetName: string, address: string): CellSnapshot {
   return {
@@ -163,6 +165,57 @@ describe('use workbook selection action helpers', () => {
       sheetName: 'Sheet1',
       value: { tag: ValueTag.Empty },
       version: 4,
+    })
+  })
+
+  it('marks moved target cells optimistic so stale patches cannot erase them', () => {
+    const cells = new Map<string, CellSnapshot>([
+      [
+        'Sheet1:B2',
+        { ...emptyCell('Sheet1', 'B2'), input: 'left', value: { tag: ValueTag.String, value: 'left', stringId: 1 }, version: 3 },
+      ],
+      [
+        'Sheet1:C2',
+        { ...emptyCell('Sheet1', 'C2'), input: 'right', value: { tag: ValueTag.String, value: 'right', stringId: 2 }, version: 4 },
+      ],
+    ])
+    const viewportStore = {
+      getCell(sheetName: string, address: string) {
+        return cells.get(`${sheetName}:${address}`) ?? emptyCell(sheetName, address)
+      },
+      setCellSnapshot(snapshot: CellSnapshot) {
+        cells.set(`${snapshot.sheetName}:${snapshot.address}`, snapshot)
+      },
+    }
+
+    const rollback = applyOptimisticMoveRange(
+      viewportStore,
+      { sheetName: 'Sheet1', startAddress: 'B2', endAddress: 'C2' },
+      { sheetName: 'Sheet1', startAddress: 'E5', endAddress: 'F5' },
+    )
+
+    expect(rollback).toEqual(expect.any(Function))
+    expect(cells.get('Sheet1:B2')).toMatchObject({
+      value: { tag: ValueTag.Empty },
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+      version: 4,
+    })
+    expect(cells.get('Sheet1:C2')).toMatchObject({
+      value: { tag: ValueTag.Empty },
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+      version: 5,
+    })
+    expect(cells.get('Sheet1:E5')).toMatchObject({
+      input: 'left',
+      value: { tag: ValueTag.String, value: 'left', stringId: 1 },
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+      version: 4,
+    })
+    expect(cells.get('Sheet1:F5')).toMatchObject({
+      input: 'right',
+      value: { tag: ValueTag.String, value: 'right', stringId: 2 },
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+      version: 5,
     })
   })
 

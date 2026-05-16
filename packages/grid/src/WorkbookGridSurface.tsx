@@ -242,6 +242,7 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
         data-default-column-width={renderState.gridMetrics.columnWidth}
         data-default-row-height={renderState.gridMetrics.rowHeight}
         data-render-authoritative-revision={renderRevisionSnapshot?.authoritativeRevision ?? ''}
+        data-render-local-revision={renderRevisionSnapshot?.localRevision ?? ''}
         data-render-projected-revision={renderRevisionSnapshot?.projectedRevision ?? ''}
         data-render-tile-scene-camera-seq={renderRevisionSnapshot?.tileSceneCameraSeq ?? ''}
         data-render-tile-scene-revision={renderRevisionSnapshot?.tileSceneRevision ?? ''}
@@ -259,6 +260,7 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
         onKeyDownCapture={interactions.handleHostKeyDownCapture}
         onClickCapture={interactions.handleHostClickCapture}
         onCopyCapture={interactions.handleHostCopyCapture}
+        onCutCapture={interactions.handleHostCutCapture}
         onContextMenuCapture={interactions.handleHostContextMenuCapture}
         onPasteCapture={interactions.handleHostPasteCapture}
         onKeyDown={interactions.handleHostKeyDown}
