@@ -36,7 +36,7 @@ export function assertLocalCiResourceGuardAllowsRun(
   env: Readonly<Record<string, string | undefined>> = process.env,
   options: LocalCiResourceGuardOptions = {},
 ): void {
-  if (env[localCiResourceGuardOverrideEnv] === '1') {
+  if (readLocalCiResourceGuardOverride(env)) {
     return
   }
 
@@ -53,6 +53,17 @@ export function assertLocalCiResourceGuardAllowsRun(
       `Set ${localCiResourceGuardOverrideEnv}=1 only for an intentional broad run after confirming host capacity.`,
     ].join('\n'),
   )
+}
+
+function readLocalCiResourceGuardOverride(env: Readonly<Record<string, string | undefined>>): boolean {
+  const value = env[localCiResourceGuardOverrideEnv]
+  if (value === undefined || value.length === 0) {
+    return false
+  }
+  if (value === '1') {
+    return true
+  }
+  throw new Error(`${localCiResourceGuardOverrideEnv} must be "1" when set, got ${value}`)
 }
 
 function isActiveGuardMarker(filePath: string): boolean {

@@ -70,6 +70,14 @@ describe('local CI resource guard', () => {
     expect(() => assertLocalCiResourceGuardAllowsRun(rootDir, { [localCiResourceGuardOverrideEnv]: '1' })).not.toThrow()
   })
 
+  it('rejects malformed local guard override values instead of ignoring them', () => {
+    const rootDir = mkdtempSync(join(tmpdir(), 'bilig-ci-guard-bad-override-'))
+
+    expect(() => assertLocalCiResourceGuardAllowsRun(rootDir, { [localCiResourceGuardOverrideEnv]: 'true' })).toThrow(
+      `${localCiResourceGuardOverrideEnv} must be "1" when set, got true`,
+    )
+  })
+
   it('ignores inactive guard-like files', () => {
     const rootDir = mkdtempSync(join(tmpdir(), 'bilig-ci-guard-inactive-'))
     const coordinationDir = join(rootDir, '.agent-coordination')
