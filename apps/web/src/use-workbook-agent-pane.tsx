@@ -7,15 +7,13 @@ import {
   type WorkbookAgentPreviewSummary,
   type WorkbookAgentReviewQueueItem,
 } from '@bilig/agent-api'
-import {
-  WorkbookAgentStreamEventSchema,
-  decodeUnknownSync,
-  type WorkbookAgentThreadSnapshot,
-  type WorkbookAgentTimelineEntry,
-  type WorkbookAgentThreadScope,
-  type WorkbookAgentThreadSummary,
-  type WorkbookAgentUiContext,
-  type WorkbookAgentWorkflowRun,
+import type {
+  WorkbookAgentThreadSnapshot,
+  WorkbookAgentTimelineEntry,
+  WorkbookAgentThreadScope,
+  WorkbookAgentThreadSummary,
+  WorkbookAgentUiContext,
+  WorkbookAgentWorkflowRun,
 } from '@bilig/contracts'
 import { createWorkbookPerfSession } from './perf/workbook-perf.js'
 import { WorkbookAgentPanel } from './WorkbookAgentPanel.js'
@@ -49,28 +47,9 @@ import {
   formatWorkbookAgentContextLabel,
   normalizeWorkbookAgentErrorMessage,
   readAppliedRevision,
-  readMessageEventData,
   stringifyWorkbookAgentContextSyncKey,
 } from './workbook-agent-pane-helpers.js'
-import { updateSnapshotFromTextDelta, updateSnapshotFromToolOutputDelta } from './workbook-agent-stream-state.js'
-
-function decodeWorkbookAgentStreamEventPayload(payloadText: string) {
-  let payload: unknown
-  try {
-    payload = JSON.parse(payloadText) as unknown
-  } catch {
-    throw new Error('Assistant stream returned malformed event data.')
-  }
-  try {
-    return decodeUnknownSync(WorkbookAgentStreamEventSchema, payload)
-  } catch {
-    throw new Error('Assistant stream returned invalid event data.')
-  }
-}
-
-interface WorkbookAgentLiveSession {
-  threadId: string
-}
+import { useWorkbookAgentStream, type WorkbookAgentLiveSession } from './workbook-agent-stream.js'
 
 export function useWorkbookAgentPane(input: {
   readonly currentUserId: string
@@ -111,8 +90,6 @@ export function useWorkbookAgentPane(input: {
   const [threadScope, setThreadScope] = useState<WorkbookAgentThreadScope>('private')
   const previewRequestKeyRef = useRef<string | null>(null)
   const sessionRef = useRef<WorkbookAgentLiveSession | null>(null)
-  const eventSourceRef = useRef<EventSource | null>(null)
-  const recoveringStreamRef = useRef(false)
   const lastAppliedSnapshotContextKeyRef = useRef<string>('')
   const lastRequestedAuthoritativeRevisionRef = useRef(0)
   const lastDraftKeyRef = useRef<string | null>(null)
@@ -321,11 +298,6 @@ export function useWorkbookAgentPane(input: {
     sharedReviewStatus === 'pending' &&
     !isApplyingReviewItem
 
-  const closeStream = useCallback(() => {
-    eventSourceRef.current?.close()
-    eventSourceRef.current = null
-  }, [])
-
   const persistSessionSnapshot = useCallback(
     (nextSnapshot: WorkbookAgentThreadSnapshot) => {
       setSnapshot(nextSnapshot)
@@ -357,68 +329,15 @@ export function useWorkbookAgentPane(input: {
     [documentId],
   )
 
-  const connectStream = useCallback(
-    (threadId: string) => {
-      closeStream()
-      const source = new EventSource(client.threadEventsUrl(threadId))
-      source.addEventListener('message', (message) => {
-        try {
-          const payloadText = readMessageEventData(message)
-          if (payloadText === null) {
-            return
-          }
-          const event = decodeWorkbookAgentStreamEventPayload(payloadText)
-          if (event.type === 'snapshot') {
-            recoveringStreamRef.current = false
-            persistSessionSnapshot(event.snapshot)
-            setError(null)
-            return
-          }
-          setSnapshot((current: WorkbookAgentThreadSnapshot | null) =>
-            event.type === 'entryTextDelta'
-              ? updateSnapshotFromTextDelta(current, event)
-              : updateSnapshotFromToolOutputDelta(current, event),
-          )
-          if (event.type === 'entryTextDelta' && event.entryKind === 'assistant') {
-            perfSession.markFirstAssistantDeltaVisible?.()
-          }
-        } catch (nextError) {
-          setError(nextError instanceof Error ? nextError.message : String(nextError))
-        }
-      })
-      source.addEventListener('error', () => {
-        if (eventSourceRef.current === source) {
-          source.close()
-          eventSourceRef.current = null
-        }
-        if (recoveringStreamRef.current) {
-          return
-        }
-        const storedSession = sessionRef.current
-        if (!storedSession) {
-          setError('Assistant stream disconnected.')
-          return
-        }
-        recoveringStreamRef.current = true
-        setError(null)
-        void (async () => {
-          try {
-            setIsLoading(true)
-            const nextSnapshot = await client.loadThreadSnapshot(storedSession.threadId)
-            persistSessionSnapshot(nextSnapshot)
-            connectStream(nextSnapshot.threadId)
-          } catch (nextError) {
-            recoveringStreamRef.current = false
-            setError(nextError instanceof Error ? nextError.message : String(nextError))
-          } finally {
-            setIsLoading(false)
-          }
-        })()
-      })
-      eventSourceRef.current = source
-    },
-    [client, closeStream, perfSession, persistSessionSnapshot],
-  )
+  const { closeStream, connectStream, resetRecoveringStream } = useWorkbookAgentStream({
+    client,
+    perfSession,
+    persistSessionSnapshot,
+    sessionRef,
+    setError,
+    setIsLoading,
+    setSnapshot,
+  })
 
   const ensureSession = useCallback(async (): Promise<WorkbookAgentLiveSession> => {
     if (!apiEnabled) {
@@ -563,7 +482,7 @@ export function useWorkbookAgentPane(input: {
       closeStream()
       resetContextSync()
       sessionRef.current = null
-      recoveringStreamRef.current = false
+      resetRecoveringStream()
       setFetchedThreadSummaries([])
       setSnapshot(null)
       setIsLoading(false)
@@ -637,6 +556,7 @@ export function useWorkbookAgentPane(input: {
     persistSessionSnapshot,
     apiEnabled,
     resetContextSync,
+    resetRecoveringStream,
     usesLiveThreadSummaries,
   ])
 
@@ -663,14 +583,14 @@ export function useWorkbookAgentPane(input: {
   const startNewThread = useCallback(() => {
     closeStream()
     clearStoredSession(documentId)
-    recoveringStreamRef.current = false
+    resetRecoveringStream()
     sessionRef.current = null
     setSnapshot(null)
     setPendingUserPrompt(null)
     setPreview(null)
     setSelectedCommandIndexes([])
     setError(null)
-  }, [closeStream, documentId])
+  }, [closeStream, documentId, resetRecoveringStream])
 
   useEffect(() => {
     if (!showAssistantProgress || !syncAuthoritativeRevision) {
