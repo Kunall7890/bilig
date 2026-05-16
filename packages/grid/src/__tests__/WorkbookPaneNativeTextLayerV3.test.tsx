@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
 import { describe, expect, test } from 'vitest'
-import { resolveNativeTextRunInnerStyleV3, resolveNativeTextRunOuterStyleV3 } from '../renderer-v3/WorkbookPaneNativeTextLayerV3.js'
+import {
+  resolveNativeTextRunInnerStyleV3,
+  resolveNativeTextRunOuterStyleV3,
+  resolveNativeTextRunVisibleClipV3,
+} from '../renderer-v3/WorkbookPaneNativeTextLayerV3.js'
 import type { TextQuadRun } from '../renderer-v3/line-text-quad-buffer.js'
 import type { WorkbookRenderTilePaneState } from '../renderer-v3/render-tile-pane-state.js'
 
@@ -80,5 +84,47 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
       whiteSpace: 'pre',
       WebkitFontSmoothing: 'auto',
     })
+  })
+
+  test('clips long spill text to the visible pane frame', () => {
+    const pane = createPane()
+    const run = createRun({
+      clipWidth: 13_000,
+      clipX: 152,
+      width: 13_000,
+      x: 152,
+    })
+    const visibleClip = resolveNativeTextRunVisibleClipV3({
+      dpr: 1,
+      pane,
+      run,
+      scrollSnapshot: { tx: 0, ty: 0 },
+    })
+
+    expect(visibleClip).toMatchObject({
+      innerLeft: 0,
+      innerWidth: 168,
+      outerLeft: 198,
+      outerWidth: 168,
+    })
+    expect(resolveNativeTextRunOuterStyleV3({ dpr: 1, pane, run, scrollSnapshot: { tx: 0, ty: 0 }, visibleClip })).toMatchObject({
+      left: 198,
+      width: 168,
+    })
+    expect(resolveNativeTextRunInnerStyleV3({ dpr: 1, run, visibleClip })).toMatchObject({
+      left: 0,
+      width: 168,
+    })
+  })
+
+  test('drops spill text runs that do not intersect the pane frame', () => {
+    expect(
+      resolveNativeTextRunVisibleClipV3({
+        dpr: 1,
+        pane: createPane(),
+        run: createRun({ clipWidth: 400, clipX: 400, width: 400, x: 400 }),
+        scrollSnapshot: { tx: 0, ty: 0 },
+      }),
+    ).toBeNull()
   })
 })

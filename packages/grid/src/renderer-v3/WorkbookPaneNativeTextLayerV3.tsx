@@ -10,6 +10,17 @@ import { resolveTypeGpuV3DrawScrollSnapshot } from './workbook-pane-renderer-run
 
 type TextLayerPane = GridHeaderPaneState | WorkbookRenderTilePaneState
 
+interface NativeTextRunVisibleClipV3 {
+  readonly outerHeight: number
+  readonly outerLeft: number
+  readonly outerTop: number
+  readonly outerWidth: number
+  readonly innerHeight: number
+  readonly innerLeft: number
+  readonly innerTop: number
+  readonly innerWidth: number
+}
+
 export interface WorkbookPaneNativeTextLayerV3Props {
   readonly active: boolean
   readonly cameraStore?: GridCameraStore | null | undefined
@@ -101,12 +112,12 @@ function snapCssPixel(value: number, dpr: number): number {
   return Math.round(value * dpr) / dpr
 }
 
-export function resolveNativeTextRunOuterStyleV3(input: {
+export function resolveNativeTextRunVisibleClipV3(input: {
   readonly pane: TextLayerPane
   readonly run: TextQuadRun
   readonly scrollSnapshot: WorkbookGridScrollSnapshot
   readonly dpr?: number | undefined
-}): CSSProperties {
+}): NativeTextRunVisibleClipV3 | null {
   const dpr = input.dpr ?? getDevicePixelRatio()
   const offset = resolvePaneRenderOffset(input.pane, input.scrollSnapshot)
   const width = input.run.width ?? 0
@@ -115,22 +126,75 @@ export function resolveNativeTextRunOuterStyleV3(input: {
   const clipY = input.run.clipY ?? input.run.y
   const clipWidth = input.run.clipWidth ?? width
   const clipHeight = input.run.clipHeight ?? height
+  const clipLeft = input.pane.frame.x + offset.x + clipX
+  const clipTop = input.pane.frame.y + offset.y + clipY
+  const clipRight = clipLeft + clipWidth
+  const clipBottom = clipTop + clipHeight
+  const paneLeft = input.pane.frame.x
+  const paneTop = input.pane.frame.y
+  const paneRight = paneLeft + input.pane.frame.width
+  const paneBottom = paneTop + input.pane.frame.height
+  const visibleLeft = Math.max(clipLeft, paneLeft)
+  const visibleTop = Math.max(clipTop, paneTop)
+  const visibleRight = Math.min(clipRight, paneRight)
+  const visibleBottom = Math.min(clipBottom, paneBottom)
+  if (visibleRight <= visibleLeft || visibleBottom <= visibleTop) {
+    return null
+  }
+
+  const contentLeft = input.pane.frame.x + offset.x + input.run.x
+  const contentTop = input.pane.frame.y + offset.y + input.run.y
+  const outerLeft = snapCssPixel(visibleLeft, dpr)
+  const outerTop = snapCssPixel(visibleTop, dpr)
+  const outerRight = snapCssPixel(visibleRight, dpr)
+  const outerBottom = snapCssPixel(visibleBottom, dpr)
+  const innerRight = Math.min(contentLeft + width, visibleRight)
+  const innerBottom = Math.min(contentTop + height, visibleBottom)
+
   return {
-    height: clipHeight,
-    left: snapCssPixel(input.pane.frame.x + offset.x + clipX, dpr),
-    overflow: 'hidden',
-    position: 'absolute',
-    top: snapCssPixel(input.pane.frame.y + offset.y + clipY, dpr),
-    width: clipWidth,
+    innerHeight: Math.max(0, snapCssPixel(innerBottom - contentTop, dpr)),
+    innerLeft: snapCssPixel(contentLeft - visibleLeft, dpr),
+    innerTop: snapCssPixel(contentTop - visibleTop, dpr),
+    innerWidth: Math.max(0, snapCssPixel(innerRight - contentLeft, dpr)),
+    outerHeight: Math.max(0, outerBottom - outerTop),
+    outerLeft,
+    outerTop,
+    outerWidth: Math.max(0, outerRight - outerLeft),
   }
 }
 
-export function resolveNativeTextRunInnerStyleV3(input: { readonly run: TextQuadRun; readonly dpr?: number | undefined }): CSSProperties {
+export function resolveNativeTextRunOuterStyleV3(input: {
+  readonly pane: TextLayerPane
+  readonly run: TextQuadRun
+  readonly scrollSnapshot: WorkbookGridScrollSnapshot
+  readonly dpr?: number | undefined
+  readonly visibleClip?: NativeTextRunVisibleClipV3 | null | undefined
+}): CSSProperties {
+  const visibleClip = input.visibleClip ?? resolveNativeTextRunVisibleClipV3(input)
+  if (!visibleClip) {
+    return { display: 'none' }
+  }
+  return {
+    height: visibleClip.outerHeight,
+    left: visibleClip.outerLeft,
+    overflow: 'hidden',
+    position: 'absolute',
+    top: visibleClip.outerTop,
+    width: visibleClip.outerWidth,
+  }
+}
+
+export function resolveNativeTextRunInnerStyleV3(input: {
+  readonly run: TextQuadRun
+  readonly dpr?: number | undefined
+  readonly visibleClip?: NativeTextRunVisibleClipV3 | null | undefined
+}): CSSProperties {
   const dpr = input.dpr ?? getDevicePixelRatio()
   const width = input.run.width ?? 0
   const height = input.run.height ?? 0
   const clipX = input.run.clipX ?? input.run.x
   const clipY = input.run.clipY ?? input.run.y
+  const visibleClip = input.visibleClip ?? null
   const justifyContent = input.run.align === 'right' ? 'flex-end' : input.run.align === 'center' ? 'center' : 'flex-start'
   return {
     alignItems: input.run.wrap ? 'flex-start' : 'center',
@@ -139,9 +203,9 @@ export function resolveNativeTextRunInnerStyleV3(input: { readonly run: TextQuad
     display: 'flex',
     font: getDefaultFont(input.run),
     fontKerning: 'normal',
-    height,
+    height: visibleClip?.innerHeight ?? height,
     justifyContent,
-    left: snapCssPixel(input.run.x - clipX, dpr),
+    left: visibleClip?.innerLeft ?? snapCssPixel(input.run.x - clipX, dpr),
     lineHeight: 1.2,
     overflow: 'hidden',
     paddingLeft: 6,
@@ -150,9 +214,9 @@ export function resolveNativeTextRunInnerStyleV3(input: { readonly run: TextQuad
     textAlign: input.run.align ?? 'left',
     textDecorationLine: input.run.underline ? 'underline' : input.run.strike ? 'line-through' : undefined,
     textRendering: 'auto',
-    top: snapCssPixel(input.run.y - clipY, dpr),
+    top: visibleClip?.innerTop ?? snapCssPixel(input.run.y - clipY, dpr),
     whiteSpace: input.run.wrap ? 'pre-wrap' : 'pre',
-    width,
+    width: visibleClip?.innerWidth ?? width,
     WebkitFontSmoothing: 'auto',
   }
 }
@@ -187,7 +251,29 @@ export const WorkbookPaneNativeTextLayerV3 = memo(function WorkbookPaneNativeTex
   )
   const panes = useMemo<readonly TextLayerPane[]>(() => [...tilePanes, ...headerPanes], [headerPanes, tilePanes])
   const dpr = getDevicePixelRatio()
-  const textRunCount = panes.reduce((total, pane) => total + getPaneTextRuns(pane).length, 0)
+  const renderedRuns = useMemo(
+    () =>
+      active
+        ? panes.flatMap((pane) => {
+            if (!isPaneDrawVisible(pane)) {
+              return []
+            }
+            return getPaneTextRuns(pane).flatMap((run) => {
+              const width = run.width ?? 0
+              const height = run.height ?? 0
+              const clipWidth = run.clipWidth ?? width
+              const clipHeight = run.clipHeight ?? height
+              if (!run.text || clipWidth <= 0 || clipHeight <= 0) {
+                return []
+              }
+              const visibleClip = resolveNativeTextRunVisibleClipV3({ dpr, pane, run, scrollSnapshot: drawScrollSnapshot })
+              return visibleClip ? [{ pane, run, visibleClip }] : []
+            })
+          })
+        : [],
+    [active, dpr, drawScrollSnapshot, panes],
+  )
+  const textRunCount = renderedRuns.length
 
   if (!active || textRunCount === 0) {
     return null
@@ -202,29 +288,15 @@ export const WorkbookPaneNativeTextLayerV3 = memo(function WorkbookPaneNativeTex
       data-testid="grid-native-text-layer"
       style={{ contain: 'strict' }}
     >
-      {panes.flatMap((pane) => {
-        if (!isPaneDrawVisible(pane)) {
-          return []
-        }
-        return getPaneTextRuns(pane).flatMap((run) => {
-          const width = run.width ?? 0
-          const height = run.height ?? 0
-          const clipWidth = run.clipWidth ?? width
-          const clipHeight = run.clipHeight ?? height
-          if (!run.text || clipWidth <= 0 || clipHeight <= 0) {
-            return []
-          }
-          return (
-            <div
-              data-native-text-run=""
-              key={resolveNativeTextRunKey(pane, run)}
-              style={resolveNativeTextRunOuterStyleV3({ dpr, pane, run, scrollSnapshot: drawScrollSnapshot })}
-            >
-              <div style={resolveNativeTextRunInnerStyleV3({ dpr, run })}>{run.text}</div>
-            </div>
-          )
-        })
-      })}
+      {renderedRuns.map(({ pane, run, visibleClip }) => (
+        <div
+          data-native-text-run=""
+          key={resolveNativeTextRunKey(pane, run)}
+          style={resolveNativeTextRunOuterStyleV3({ dpr, pane, run, scrollSnapshot: drawScrollSnapshot, visibleClip })}
+        >
+          <div style={resolveNativeTextRunInnerStyleV3({ dpr, run, visibleClip })}>{run.text}</div>
+        </div>
+      ))}
     </div>
   )
 })

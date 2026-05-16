@@ -125,6 +125,15 @@ test('web app keeps dense accounting-sheet text payloads complete in the TypeGPU
       timeout: 5_000,
     })
     .toBeGreaterThan(40)
+  await expect
+    .poll(readNativeTextRunGeometryHealth(page), {
+      message: 'native text runs must be clipped to the visible pane instead of creating huge offscreen DOM boxes',
+      timeout: 5_000,
+    })
+    .toMatchObject({
+      nativeRunCountMatchesDom: true,
+      visibleOversizedRuns: 0,
+    })
 
   const selectedCellTextPixels = await pollDarkInteriorPixelsInCell(page, 1, 33, (pixels) => pixels > 8)
   if (selectedCellTextPixels <= 8 && shouldAllowHeadlessWebGpuScreenshotGap()) {
@@ -336,6 +345,57 @@ function readTypeGpuTextRunCount(page: Page): () => Promise<number> {
         return 0
       }
       return Number(typeGpu.getAttribute('data-v3-text-run-count') ?? '0')
+    })
+}
+
+function readNativeTextRunGeometryHealth(page: Page): () => Promise<{
+  readonly gridWidth: number
+  readonly maxVisibleRunWidth: number
+  readonly nativeRunCountMatchesDom: boolean
+  readonly visibleOversizedRuns: number
+}> {
+  return async () =>
+    await page.evaluate(() => {
+      const grid = document.querySelector('[data-testid="sheet-grid"]')
+      const gridRect = grid instanceof HTMLElement ? grid.getBoundingClientRect() : null
+      if (!gridRect) {
+        return {
+          gridWidth: 0,
+          maxVisibleRunWidth: 0,
+          nativeRunCountMatchesDom: false,
+          visibleOversizedRuns: 0,
+        }
+      }
+      const nativeTextLayer = document.querySelector('[data-testid="grid-native-text-layer"]')
+      const mountedTextRuns = document.querySelectorAll('[data-native-text-run]').length
+      const declaredTextRuns =
+        nativeTextLayer instanceof HTMLElement ? Number(nativeTextLayer.getAttribute('data-v3-native-text-run-count') ?? '-1') : -1
+      let maxVisibleRunWidth = 0
+      let visibleOversizedRuns = 0
+      for (const outer of document.querySelectorAll('[data-native-text-run]')) {
+        const outerRect = outer.getBoundingClientRect()
+        const visible =
+          outerRect.right > gridRect.left &&
+          outerRect.left < gridRect.right &&
+          outerRect.bottom > gridRect.top &&
+          outerRect.top < gridRect.bottom
+        if (!visible) {
+          continue
+        }
+        const inner = outer.firstElementChild
+        const innerRect = inner instanceof HTMLElement ? inner.getBoundingClientRect() : outerRect
+        const runWidth = Math.max(outerRect.width, innerRect.width)
+        maxVisibleRunWidth = Math.max(maxVisibleRunWidth, runWidth)
+        if (runWidth > gridRect.width + 1) {
+          visibleOversizedRuns += 1
+        }
+      }
+      return {
+        gridWidth: gridRect.width,
+        maxVisibleRunWidth,
+        nativeRunCountMatchesDom: declaredTextRuns === mountedTextRuns,
+        visibleOversizedRuns,
+      }
     })
 }
 
