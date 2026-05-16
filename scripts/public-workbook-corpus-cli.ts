@@ -71,7 +71,7 @@ export function readFlagArg(name: string): boolean {
         throw new Error(`Expected ${name} to be specified once`)
       }
       const next = process.argv[index + 1]
-      value = next === 'true' || next === 'false' ? readBooleanArgValue(name, next) : true
+      value = next === undefined || next.startsWith('--') ? true : readBooleanArgValue(name, next)
       return
     }
 
