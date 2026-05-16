@@ -54,6 +54,7 @@ export interface RegionGraph {
   readonly prepareQueryIndices: () => void
   readonly collectFormulaDependentsForCell: (sheetId: number, row: number, col: number) => Uint32Array
   readonly collectSingleFormulaDependentForCell: (sheetId: number, row: number, col: number) => number
+  readonly hasFormulaSubscriptions: () => boolean
   readonly hasFormulaSubscriptionsForColumn: (sheetId: number, col: number) => boolean
   readonly reset: () => void
 }
@@ -668,6 +669,9 @@ export function createRegionGraph(args: {
     },
     hasFormulaSubscriptionsForColumn(sheetId, col) {
       return (columnSubscriptions.get(columnKey(sheetId, col))?.regionIds.size ?? 0) > 0
+    },
+    hasFormulaSubscriptions() {
+      return formulaRegions.size > 0
     },
     reset() {
       regionSubscribers.clear()

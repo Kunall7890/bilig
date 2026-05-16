@@ -29,9 +29,11 @@ describe('RegionGraph', () => {
     })
 
     expect(same).toBe(first)
+    expect(regionGraph.hasFormulaSubscriptions()).toBe(false)
 
     regionGraph.replaceFormulaSubscriptions(10, [first])
     regionGraph.replaceFormulaSubscriptions(20, [overlapping])
+    expect(regionGraph.hasFormulaSubscriptions()).toBe(true)
 
     expect([...regionGraph.collectFormulaDependentsForCell(sheet.id, 0, 0)]).toEqual([10])
     expect(regionGraph.collectSingleFormulaDependentForCell(sheet.id, 0, 0)).toBe(10)
@@ -44,6 +46,8 @@ describe('RegionGraph', () => {
     regionGraph.clearFormulaSubscriptions(10)
     expect([...regionGraph.collectFormulaDependentsForCell(sheet.id, 2, 0)]).toEqual([20])
     expect(regionGraph.collectSingleFormulaDependentForCell(sheet.id, 2, 0)).toBe(20)
+    regionGraph.clearFormulaSubscriptions(20)
+    expect(regionGraph.hasFormulaSubscriptions()).toBe(false)
   })
 
   it('can prepare query indices eagerly before the first point lookup', () => {

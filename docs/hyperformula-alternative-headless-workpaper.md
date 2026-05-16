@@ -30,15 +30,15 @@ For the broader engine choice, start with the
 
 ## Comparison Surface
 
-| Question | HyperFormula | `@bilig/headless` |
-| --- | --- | --- |
-| Primary shape | Headless spreadsheet formula engine | Headless WorkPaper workbook facade |
-| Runtime target | Browser or Node.js | Node services, tests, agents, and local runtime automation |
-| License posture | GPLv3 or commercial license | MIT |
-| API orientation | Spreadsheet-engine instance with formula evaluation and workbook operations | WorkPaper object with formula evaluation, structural edits, persistence helpers, history, and readback |
-| Agent workflow fit | Possible, but the project is not specifically packaged around agent writeback proofs | First-class evaluation path includes an agent writeback demo with persistence and restored readback |
-| Benchmark claim in this repo | External comparison target | Checked-in WorkPaper-vs-HyperFormula artifact records `46/57` mean wins on scorecard-eligible comparable workloads |
-| Caveat | Strong default engine, with its own licensing and integration model | Not a finished Excel clone and not full Excel formula parity |
+| Question                     | HyperFormula                                                                         | `@bilig/headless`                                                                                                  |
+| ---------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| Primary shape                | Headless spreadsheet formula engine                                                  | Headless WorkPaper workbook facade                                                                                 |
+| Runtime target               | Browser or Node.js                                                                   | Node services, tests, agents, and local runtime automation                                                         |
+| License posture              | GPLv3 or commercial license                                                          | MIT                                                                                                                |
+| API orientation              | Spreadsheet-engine instance with formula evaluation and workbook operations          | WorkPaper object with formula evaluation, structural edits, persistence helpers, history, and readback             |
+| Agent workflow fit           | Possible, but the project is not specifically packaged around agent writeback proofs | First-class evaluation path includes an agent writeback demo with persistence and restored readback                |
+| Benchmark claim in this repo | External comparison target                                                           | Checked-in WorkPaper-vs-HyperFormula artifact records `47/57` mean wins on scorecard-eligible comparable workloads |
+| Caveat                       | Strong default engine, with its own licensing and integration model                  | Not a finished Excel clone and not full Excel formula parity                                                       |
 
 ## What The Benchmark Says
 
@@ -52,9 +52,9 @@ The short benchmark explainer is:
 
 The current public claim is narrow:
 
-- `46/57` mean-latency wins on scorecard-eligible comparable workloads
+- `47/57` mean-latency wins on scorecard-eligible comparable workloads
 - `34/40` public-lane mean wins
-- `12/17` holdout-lane mean wins
+- `13/17` holdout-lane mean wins
 - an overall p95 geomean lead
 - one named p95 caveat that remains visible instead of hidden
 

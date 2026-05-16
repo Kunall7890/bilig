@@ -7,6 +7,7 @@ export interface OperationColumnDependencyTrackerService {
   readonly hasTrackedSortedLookupDependents: (sheetId: number, col: number) => boolean
   readonly hasTrackedDirectRangeDependents: (sheetId: number, col: number) => boolean
   readonly hasTrackedColumnDependents: (sheetId: number, col: number) => boolean
+  readonly hasTrackedColumnDependentsAnywhere: () => boolean
   readonly hasNoCellDependents: (cellIndex: number) => boolean
 }
 
@@ -34,6 +35,7 @@ export function createOperationColumnDependencyTrackerService(args: {
   }
   readonly hasRegionFormulaSubscriptionsForColumn: (sheetName: string, col: number) => boolean
   readonly hasRegionFormulaSubscriptionsForColumnAt?: ((sheetId: number, col: number) => boolean) | undefined
+  readonly hasRegionFormulaSubscriptions?: (() => boolean) | undefined
 }): OperationColumnDependencyTrackerService {
   const hasTrackedExactLookupDependents = (sheetId: number, col: number): boolean => {
     const exactLookupEdges = args.reverseState.reverseExactLookupColumnEdges
@@ -70,6 +72,15 @@ export function createOperationColumnDependencyTrackerService(args: {
     hasTrackedSortedLookupDependents(sheetId, col) ||
     hasTrackedDirectRangeDependents(sheetId, col)
 
+  const hasTrackedColumnDependentsAnywhere = (): boolean => {
+    return (
+      args.reverseState.reverseExactLookupColumnEdges.size > 0 ||
+      args.reverseState.reverseSortedLookupColumnEdges.size > 0 ||
+      args.reverseState.reverseAggregateColumnEdges.size > 0 ||
+      (args.hasRegionFormulaSubscriptions?.() ?? true)
+    )
+  }
+
   const hasNoCellDependents = (cellIndex: number): boolean => {
     const slice = args.reverseState.reverseCellEdges[cellIndex]
     return slice === undefined || slice.len === 0 || slice.ptr < 0
@@ -80,6 +91,7 @@ export function createOperationColumnDependencyTrackerService(args: {
     hasTrackedSortedLookupDependents,
     hasTrackedDirectRangeDependents,
     hasTrackedColumnDependents,
+    hasTrackedColumnDependentsAnywhere,
     hasNoCellDependents,
   }
 }

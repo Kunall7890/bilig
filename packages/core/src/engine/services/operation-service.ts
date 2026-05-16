@@ -267,12 +267,14 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
     hasTrackedSortedLookupDependents,
     hasTrackedDirectRangeDependents,
     hasTrackedColumnDependents,
+    hasTrackedColumnDependentsAnywhere,
     hasNoCellDependents,
   } = createOperationColumnDependencyTrackerService({
     reverseState: args.reverseState,
     workbook: args.state.workbook,
     hasRegionFormulaSubscriptionsForColumn: args.hasRegionFormulaSubscriptionsForColumn,
     hasRegionFormulaSubscriptionsForColumnAt: args.hasRegionFormulaSubscriptionsForColumnAt,
+    hasRegionFormulaSubscriptions: args.hasRegionFormulaSubscriptions,
   })
 
   const {
@@ -339,6 +341,9 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
   }
 
   const canSkipFormulaColumnVersion = (cellIndex: number): boolean => {
+    if (!hasTrackedColumnDependentsAnywhere()) {
+      return true
+    }
     return canSkipOperationFormulaColumnVersion({
       workbook: args.state.workbook,
       cellIndex,

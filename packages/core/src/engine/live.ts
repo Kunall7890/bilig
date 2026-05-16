@@ -658,6 +658,7 @@ export function createEngineServiceRuntime(args: {
       return sheet ? regionGraph.hasFormulaSubscriptionsForColumn(sheet.id, col) : false
     },
     hasRegionFormulaSubscriptionsForColumnAt: (sheetId, col) => regionGraph.hasFormulaSubscriptionsForColumn(sheetId, col),
+    hasRegionFormulaSubscriptions: () => regionGraph.hasFormulaSubscriptions(),
     collectRegionFormulaDependentsForCell: (sheetName, row, col) => {
       const sheet = args.state.workbook.getSheet(sheetName)
       return sheet ? regionGraph.collectFormulaDependentsForCell(sheet.id, row, col) : new Uint32Array()

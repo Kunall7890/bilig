@@ -13,6 +13,7 @@ function createTracker(
     aggregate?: boolean
     regionAt?: boolean | undefined
     regionByName?: boolean
+    regionAny?: boolean
     cellSlice?: { ptr: number; len: number; cap: number }
   } = {},
 ) {
@@ -40,6 +41,7 @@ function createTracker(
     },
     hasRegionFormulaSubscriptionsForColumnAt: () => request.regionAt,
     hasRegionFormulaSubscriptionsForColumn: () => request.regionByName ?? false,
+    hasRegionFormulaSubscriptions: () => request.regionAny ?? false,
   })
 }
 
@@ -51,6 +53,14 @@ describe('operation column dependency tracker', () => {
     expect(createTracker({ regionAt: true }).hasTrackedDirectRangeDependents(7, 3)).toBe(true)
     expect(createTracker({ regionAt: undefined, regionByName: true }).hasTrackedDirectRangeDependents(7, 3)).toBe(true)
     expect(createTracker().hasTrackedColumnDependents(7, 3)).toBe(false)
+  })
+
+  it('detects whether any tracked column dependencies exist globally', () => {
+    expect(createTracker().hasTrackedColumnDependentsAnywhere()).toBe(false)
+    expect(createTracker({ exact: true }).hasTrackedColumnDependentsAnywhere()).toBe(true)
+    expect(createTracker({ sorted: true }).hasTrackedColumnDependentsAnywhere()).toBe(true)
+    expect(createTracker({ aggregate: true }).hasTrackedColumnDependentsAnywhere()).toBe(true)
+    expect(createTracker({ regionAny: true }).hasTrackedColumnDependentsAnywhere()).toBe(true)
   })
 
   it('treats missing and empty cell edge slices as no dependents', () => {
