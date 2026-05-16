@@ -3,7 +3,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
-import { resolveCiProfile } from '../run-ci-config.ts'
+import { resolveCiProfile, resolveCiSkipBrowserGates } from '../run-ci-config.ts'
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 
@@ -16,6 +16,17 @@ describe('run-ci', () => {
 
   it('rejects malformed CI profiles instead of silently downgrading gates', () => {
     expect(() => resolveCiProfile({ BILIG_CI_PROFILE: 'ful' })).toThrow('BILIG_CI_PROFILE must be "fast" or "full", got ful')
+  })
+
+  it('resolves the browser gate skip flag strictly', () => {
+    expect(resolveCiSkipBrowserGates({})).toBe(false)
+    expect(resolveCiSkipBrowserGates({ BILIG_CI_SKIP_BROWSER: '1' })).toBe(true)
+    expect(resolveCiSkipBrowserGates({ BILIG_CI_SKIP_BROWSER: 'true' })).toBe(true)
+    expect(resolveCiSkipBrowserGates({ BILIG_CI_SKIP_BROWSER: '0' })).toBe(false)
+    expect(resolveCiSkipBrowserGates({ BILIG_CI_SKIP_BROWSER: 'false' })).toBe(false)
+    expect(() => resolveCiSkipBrowserGates({ BILIG_CI_SKIP_BROWSER: 'yes' })).toThrow(
+      'BILIG_CI_SKIP_BROWSER must be "1", "true", "0", or "false" when set, got yes',
+    )
   })
 
   it('serializes generated checks and avoids pnpm for direct preflight gates', () => {
