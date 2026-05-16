@@ -22,9 +22,13 @@ import {
   planPublicWorkbookCorpusFetch,
 } from './public-workbook-corpus-fetch.ts'
 import { withPublicWorkbookCorpusCacheLock } from './public-workbook-corpus-lock.ts'
-import { indexPublicWorkbookCorpusCases, publicWorkbookCorpusCaseMatchesArtifact } from './public-workbook-corpus-missing.ts'
 import { addPublicWorkbookLinkSourceFromInput, readPublicWorkbookLinkInput } from './public-workbook-corpus-link-input.ts'
 import { defaultSelfRssCheckIntervalMs, startSelfRssGuard } from './public-workbook-corpus-process.ts'
+import {
+  existingScorecardGeneratedAt,
+  selectManifestArtifactsWithRecordedCases,
+  selectRecordedCasesInManifestOrder,
+} from './public-workbook-corpus-recorded-cases.ts'
 import { buildPublicWorkbookCorpusScorecardFromCases, validatePublicWorkbookCorpusScorecard } from './public-workbook-corpus-scorecard.ts'
 import { writePublicWorkbookCorpusCheck, writePublicWorkbookCorpusStatus } from './public-workbook-corpus-status.ts'
 import { defaultFinancialWorkbookQueries } from './public-workbook-corpus-topics.ts'
@@ -45,7 +49,6 @@ import {
   writeFootprintWorkerResult,
 } from './public-workbook-corpus-worker-commands.ts'
 import type {
-  PublicWorkbookArtifact,
   PublicWorkbookCorpusCase,
   PublicWorkbookCorpusFetchCheckpointProgress,
   PublicWorkbookManifest,
@@ -826,50 +829,6 @@ async function main(): Promise<void> {
     return
   }
   throw new Error(`Unknown public workbook corpus command: ${command}`)
-}
-
-function selectManifestArtifactsWithRecordedCases(
-  manifest: PublicWorkbookManifest,
-  recordedCases: readonly PublicWorkbookCorpusCase[],
-): PublicWorkbookManifest {
-  return {
-    ...manifest,
-    artifacts: selectRecordedArtifactsInManifestOrder(manifest.artifacts, recordedCases),
-  }
-}
-
-function existingScorecardGeneratedAt(scorecardPath: string): string | undefined {
-  if (!existsSync(scorecardPath)) {
-    return undefined
-  }
-  const parsed: unknown = JSON.parse(readFileSync(scorecardPath, 'utf8'))
-  if (typeof parsed !== 'object' || parsed === null) {
-    return undefined
-  }
-  const generatedAt = Reflect.get(parsed, 'generatedAt')
-  return typeof generatedAt === 'string' && generatedAt.trim().length > 0 ? generatedAt : undefined
-}
-
-function selectRecordedArtifactsInManifestOrder(
-  artifacts: readonly PublicWorkbookArtifact[],
-  recordedCases: readonly PublicWorkbookCorpusCase[],
-): PublicWorkbookArtifact[] {
-  const casesById = indexPublicWorkbookCorpusCases(recordedCases)
-  return artifacts.filter((artifact) => {
-    const recordedCase = casesById.get(artifact.id)
-    return recordedCase?.passed === true && publicWorkbookCorpusCaseMatchesArtifact(recordedCase, artifact)
-  })
-}
-
-function selectRecordedCasesInManifestOrder(
-  artifacts: readonly PublicWorkbookArtifact[],
-  recordedCases: readonly PublicWorkbookCorpusCase[],
-): PublicWorkbookCorpusCase[] {
-  const casesById = indexPublicWorkbookCorpusCases(recordedCases)
-  return artifacts.flatMap((artifact) => {
-    const recordedCase = casesById.get(artifact.id)
-    return recordedCase?.passed === true && publicWorkbookCorpusCaseMatchesArtifact(recordedCase, artifact) ? [recordedCase] : []
-  })
 }
 
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
