@@ -3,6 +3,7 @@ import { ValueTag } from '@bilig/protocol'
 import {
   createMemoryWorkbookLocalStoreFactory,
   type WorkbookLocalAuthoritativeBase,
+  type WorkbookLocalAuthoritativeDelta,
   type WorkbookLocalMutationRecord,
   type WorkbookLocalProjectionOverlay,
 } from '../index.js'
@@ -72,6 +73,14 @@ function createOverlay(value: number): WorkbookLocalProjectionOverlay {
     rowAxisEntries: [],
     columnAxisEntries: [],
     styles: [],
+  }
+}
+
+function createDelta(value: number): WorkbookLocalAuthoritativeDelta {
+  return {
+    replaceAll: true,
+    replacedSheetIds: [],
+    base: createBase(value),
   }
 }
 
@@ -164,6 +173,47 @@ describe('memory workbook local store', () => {
     const reopened = await factory.open('memory-doc')
     await expect(reopened.listPendingMutations()).resolves.toEqual([])
     await expect(reopened.listMutationJournalEntries()).resolves.toEqual([acked])
+  })
+
+  it('acks absorbed pending mutations while ingesting authoritative deltas', async () => {
+    const factory = createMemoryWorkbookLocalStoreFactory()
+    const store = await factory.open('memory-doc')
+    const failed = createMutation({
+      submittedAtUnixMs: 120,
+      lastAttemptedAtUnixMs: 130,
+      failedAtUnixMs: 140,
+      attemptCount: 2,
+      failureMessage: 'transient apply failure',
+      status: 'failed',
+    })
+
+    await store.appendPendingMutation(failed)
+    await store.ingestAuthoritativeDelta({
+      state: {
+        snapshot: { version: 1, workbook: { name: 'memory-doc' }, sheets: [] },
+        replica: { replica: { id: 'seed', clock: 1 }, entityVersions: [], sheetDeleteVersions: [] },
+        authoritativeRevision: 8,
+        appliedPendingLocalSeq: failed.localSeq,
+      },
+      authoritativeDelta: createDelta(19),
+      projectionOverlay: createOverlay(19),
+      removePendingMutationIds: [failed.id],
+    })
+
+    await expect(store.listPendingMutations()).resolves.toEqual([])
+    await expect(store.listMutationJournalEntries()).resolves.toEqual([
+      {
+        ...failed,
+        ackedAtUnixMs: expect.any(Number),
+        failedAtUnixMs: null,
+        failureMessage: null,
+        status: 'acked',
+      },
+    ])
+    await expect(store.loadState()).resolves.toMatchObject({
+      authoritativeRevision: 8,
+      appliedPendingLocalSeq: failed.localSeq,
+    })
   })
 
   it('rejects unsafe runtime sequence numbers before writing local state', async () => {

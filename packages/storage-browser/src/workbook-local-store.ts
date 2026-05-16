@@ -12,6 +12,9 @@ import {
   writeWorkbookProjectionOverlay,
 } from './workbook-local-store-projection.js'
 import { initializeWorkbookLocalStoreSchema } from './workbook-local-store-schema.js'
+import { WorkbookLocalMutationJournalStore, type WorkbookLocalMutationRecord } from './workbook-local-mutation-journal-store.js'
+
+export type { WorkbookLocalMutationRecord } from './workbook-local-mutation-journal-store.js'
 
 const WORKBOOK_VFS_NAME = 'bilig-opfs-sahpool'
 const WORKBOOK_VFS_DIRECTORY = '/bilig/workbooks'
@@ -42,23 +45,6 @@ export interface WorkbookBootstrapState {
   readonly materializedCellCount: number
   readonly authoritativeRevision: number
   readonly appliedPendingLocalSeq: number
-}
-
-export interface WorkbookLocalMutationRecord {
-  readonly id: string
-  readonly localSeq: number
-  readonly baseRevision: number
-  readonly method: string
-  readonly args: unknown[]
-  readonly enqueuedAtUnixMs: number
-  readonly submittedAtUnixMs: number | null
-  readonly lastAttemptedAtUnixMs: number | null
-  readonly ackedAtUnixMs: number | null
-  readonly rebasedAtUnixMs: number | null
-  readonly failedAtUnixMs: number | null
-  readonly attemptCount: number
-  readonly failureMessage: string | null
-  readonly status: 'local' | 'submitted' | 'acked' | 'rebased' | 'failed'
 }
 
 export interface WorkbookLocalStore {
@@ -108,10 +94,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isSafeNonNegativeInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
-}
-
-function isSafeNullableUnixMs(value: unknown): value is number | null {
-  return value === null || isSafeNonNegativeInteger(value)
 }
 
 function supportsWorkerOpfs(): boolean {
@@ -307,48 +289,6 @@ function parseWorkbookBootstrapState(value: unknown): WorkbookBootstrapState | n
   }
 }
 
-function parseWorkbookLocalMutationRecord(value: unknown): WorkbookLocalMutationRecord | null {
-  if (
-    !isRecord(value) ||
-    typeof value['id'] !== 'string' ||
-    !isSafeNonNegativeInteger(value['localSeq']) ||
-    !isSafeNonNegativeInteger(value['baseRevision']) ||
-    typeof value['method'] !== 'string' ||
-    !Array.isArray(value['args']) ||
-    !isSafeNonNegativeInteger(value['enqueuedAtUnixMs']) ||
-    !isSafeNullableUnixMs(value['submittedAtUnixMs']) ||
-    !isSafeNullableUnixMs(value['lastAttemptedAtUnixMs']) ||
-    !isSafeNullableUnixMs(value['ackedAtUnixMs']) ||
-    !isSafeNullableUnixMs(value['rebasedAtUnixMs']) ||
-    !isSafeNullableUnixMs(value['failedAtUnixMs']) ||
-    !isSafeNonNegativeInteger(value['attemptCount']) ||
-    (value['failureMessage'] !== null && typeof value['failureMessage'] !== 'string') ||
-    (value['status'] !== 'local' &&
-      value['status'] !== 'submitted' &&
-      value['status'] !== 'acked' &&
-      value['status'] !== 'rebased' &&
-      value['status'] !== 'failed')
-  ) {
-    return null
-  }
-  return {
-    id: value['id'],
-    localSeq: value['localSeq'],
-    baseRevision: value['baseRevision'],
-    method: value['method'],
-    args: [...value['args']],
-    enqueuedAtUnixMs: value['enqueuedAtUnixMs'],
-    submittedAtUnixMs: value['submittedAtUnixMs'] ?? null,
-    lastAttemptedAtUnixMs: value['lastAttemptedAtUnixMs'] ?? null,
-    ackedAtUnixMs: value['ackedAtUnixMs'] ?? null,
-    rebasedAtUnixMs: value['rebasedAtUnixMs'] ?? null,
-    failedAtUnixMs: value['failedAtUnixMs'] ?? null,
-    attemptCount: value['attemptCount'],
-    failureMessage: value['failureMessage'] ?? null,
-    status: value['status'],
-  }
-}
-
 function readSingleObjectRow(db: Database, sql: string, bind?: readonly SqlValue[]): Record<string, SqlValue> | null {
   const statement = db.prepare(sql)
   try {
@@ -367,12 +307,6 @@ function readSingleObjectRow(db: Database, sql: string, bind?: readonly SqlValue
 function assertWorkbookStoredState(value: WorkbookStoredState): void {
   if (!parseWorkbookStoredState(value)) {
     throw new TypeError('Invalid workbook runtime state')
-  }
-}
-
-function assertWorkbookLocalMutationRecord(value: WorkbookLocalMutationRecord): void {
-  if (!parseWorkbookLocalMutationRecord(value)) {
-    throw new TypeError('Invalid workbook local mutation record')
   }
 }
 
@@ -429,11 +363,15 @@ function extractWorkbookName(snapshot: unknown): string | null {
 }
 
 class SqliteWorkbookLocalStore implements WorkbookLocalStore {
+  private readonly mutationJournal: WorkbookLocalMutationJournalStore
+
   constructor(
     private readonly db: Database,
     private readonly defaultWorkbookName: string,
     private readonly closeDbOnClose = true,
-  ) {}
+  ) {
+    this.mutationJournal = new WorkbookLocalMutationJournalStore(db)
+  }
 
   async loadBootstrapState(): Promise<WorkbookBootstrapState | null> {
     const row = readSingleObjectRow(
@@ -571,26 +509,7 @@ class SqliteWorkbookLocalStore implements WorkbookLocalStore {
     assertWorkbookStoredState(input.state)
     this.db.transaction((db) => {
       if ((input.removePendingMutationIds?.length ?? 0) > 0) {
-        const ackPendingMutation = db.prepare(
-          `
-            UPDATE pending_op
-               SET status = 'acked',
-                   acked_at_ms = ?,
-                   failed_at_ms = NULL,
-                   failure_message = NULL
-             WHERE op_id = ?
-          `,
-        )
-        const ackedAtUnixMs = Date.now()
-        try {
-          input.removePendingMutationIds?.forEach((id) => {
-            ackPendingMutation.bind([ackedAtUnixMs, id])
-            ackPendingMutation.step()
-            ackPendingMutation.reset()
-          })
-        } finally {
-          ackPendingMutation.finalize()
-        }
+        this.mutationJournal.ackPendingMutations(input.removePendingMutationIds ?? [], Date.now())
       }
       writeWorkbookAuthoritativeDelta(db, input.authoritativeDelta)
       writeWorkbookProjectionOverlay(db, input.projectionOverlay)
@@ -629,167 +548,23 @@ class SqliteWorkbookLocalStore implements WorkbookLocalStore {
   }
 
   async listPendingMutations(): Promise<WorkbookLocalMutationRecord[]> {
-    return this.readMutationRows(
-      `
-        SELECT op_id AS id,
-               local_seq AS localSeq,
-               base_revision AS baseRevision,
-               method,
-               args_json AS argsJson,
-               enqueued_at_ms AS enqueuedAtUnixMs,
-               submitted_at_ms AS submittedAtUnixMs,
-               last_attempted_at_ms AS lastAttemptedAtUnixMs,
-               acked_at_ms AS ackedAtUnixMs,
-               rebased_at_ms AS rebasedAtUnixMs,
-               failed_at_ms AS failedAtUnixMs,
-               attempt_count AS attemptCount,
-               failure_message AS failureMessage,
-               status
-          FROM pending_op
-         WHERE status != 'acked'
-         ORDER BY local_seq ASC
-      `,
-    )
+    return this.mutationJournal.listPendingMutations()
   }
 
   async listMutationJournalEntries(): Promise<WorkbookLocalMutationRecord[]> {
-    return this.readMutationRows(
-      `
-        SELECT op_id AS id,
-               local_seq AS localSeq,
-               base_revision AS baseRevision,
-               method,
-               args_json AS argsJson,
-               enqueued_at_ms AS enqueuedAtUnixMs,
-               submitted_at_ms AS submittedAtUnixMs,
-               last_attempted_at_ms AS lastAttemptedAtUnixMs,
-               acked_at_ms AS ackedAtUnixMs,
-               rebased_at_ms AS rebasedAtUnixMs,
-               failed_at_ms AS failedAtUnixMs,
-               attempt_count AS attemptCount,
-               failure_message AS failureMessage,
-               status
-          FROM pending_op
-         ORDER BY local_seq ASC
-      `,
-    )
-  }
-
-  private readMutationRows(sql: string): WorkbookLocalMutationRecord[] {
-    const rows: Record<string, SqlValue>[] = []
-    const statement = this.db.prepare(sql)
-    try {
-      while (statement.step()) {
-        rows.push(statement.get({}))
-      }
-    } finally {
-      statement.finalize()
-    }
-    return rows.flatMap((row) => {
-      const argsJson = row['argsJson']
-      if (typeof argsJson !== 'string') {
-        return []
-      }
-      try {
-        const parsed = parseWorkbookLocalMutationRecord({
-          ...row,
-          args: JSON.parse(argsJson) as unknown,
-        })
-        return parsed ? [parsed] : []
-      } catch {
-        return []
-      }
-    })
+    return this.mutationJournal.listMutationJournalEntries()
   }
 
   async appendPendingMutation(mutation: WorkbookLocalMutationRecord): Promise<void> {
-    assertWorkbookLocalMutationRecord(mutation)
-    this.db.transaction((db) => {
-      db.exec(
-        `
-          INSERT INTO pending_op (
-            op_id,
-            local_seq,
-            base_revision,
-            method,
-            args_json,
-            enqueued_at_ms,
-            submitted_at_ms,
-            last_attempted_at_ms,
-            acked_at_ms,
-            rebased_at_ms,
-            failed_at_ms,
-            attempt_count,
-            failure_message,
-            status
-          )
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `,
-        {
-          bind: [
-            mutation.id,
-            mutation.localSeq,
-            mutation.baseRevision,
-            mutation.method,
-            JSON.stringify(mutation.args),
-            mutation.enqueuedAtUnixMs,
-            mutation.submittedAtUnixMs,
-            mutation.lastAttemptedAtUnixMs,
-            mutation.ackedAtUnixMs,
-            mutation.rebasedAtUnixMs,
-            mutation.failedAtUnixMs,
-            mutation.attemptCount,
-            mutation.failureMessage,
-            mutation.status,
-          ],
-        },
-      )
-    })
+    this.mutationJournal.appendPendingMutation(mutation)
   }
 
   async updatePendingMutation(mutation: WorkbookLocalMutationRecord): Promise<void> {
-    assertWorkbookLocalMutationRecord(mutation)
-    this.db.exec(
-      `
-        UPDATE pending_op
-           SET base_revision = ?,
-               method = ?,
-               args_json = ?,
-               enqueued_at_ms = ?,
-               submitted_at_ms = ?,
-               last_attempted_at_ms = ?,
-               acked_at_ms = ?,
-               rebased_at_ms = ?,
-               failed_at_ms = ?,
-               attempt_count = ?,
-               failure_message = ?,
-               status = ?
-         WHERE op_id = ?
-      `,
-      {
-        bind: [
-          mutation.baseRevision,
-          mutation.method,
-          JSON.stringify(mutation.args),
-          mutation.enqueuedAtUnixMs,
-          mutation.submittedAtUnixMs,
-          mutation.lastAttemptedAtUnixMs,
-          mutation.ackedAtUnixMs,
-          mutation.rebasedAtUnixMs,
-          mutation.failedAtUnixMs,
-          mutation.attemptCount,
-          mutation.failureMessage,
-          mutation.status,
-          mutation.id,
-        ],
-      },
-    )
+    this.mutationJournal.updatePendingMutation(mutation)
   }
 
   async removePendingMutation(id: string): Promise<void> {
-    this.db.exec('DELETE FROM pending_op WHERE op_id = ?', {
-      bind: [id],
-    })
+    this.mutationJournal.removePendingMutation(id)
   }
 
   readViewportProjection(
