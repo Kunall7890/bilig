@@ -174,6 +174,9 @@ If this boundary saves you a Google Sheets automation spike, star the repository
 so the next backend developer can find it:
 <https://github.com/proompteng/bilig/stargazers>.
 
+If it almost matches but a gap blocks adoption, use the adoption blocker form:
+<https://github.com/proompteng/bilig/discussions/new?category=general>.
+
 ## Sources
 
 - Google Sheets API overview:

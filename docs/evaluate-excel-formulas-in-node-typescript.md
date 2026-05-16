@@ -171,3 +171,6 @@ and assert the same value after restore.
 If this is the shape of formula automation you were looking for, star the repo
 so the package is easier to find later:
 <https://github.com/proompteng/bilig/stargazers>.
+
+If it almost matches but a gap blocks adoption, use the adoption blocker form:
+<https://github.com/proompteng/bilig/discussions/new?category=general>.

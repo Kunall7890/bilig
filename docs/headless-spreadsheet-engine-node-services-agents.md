@@ -148,3 +148,6 @@ when the boundary is not obvious.
 
 If this matches a backend or agent workflow you are evaluating, star the repo as
 a bookmark: <https://github.com/proompteng/bilig/stargazers>.
+
+If it almost matches but a gap blocks adoption, use the adoption blocker form:
+<https://github.com/proompteng/bilig/discussions/new?category=general>.

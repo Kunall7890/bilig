@@ -138,3 +138,6 @@ If one of these workflows is close to a real system you are building, use the
 to ask for the next example. If the package saves you a workbook automation
 spike, star the repo so it is easier to find later:
 <https://github.com/proompteng/bilig/stargazers>.
+
+If it almost matches but a gap blocks adoption, use the adoption blocker form:
+<https://github.com/proompteng/bilig/discussions/new?category=general>.

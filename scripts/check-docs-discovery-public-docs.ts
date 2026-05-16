@@ -105,6 +105,26 @@ export async function requireSharedPublicDocsDiscovery(args: {
     ['https://github.com/proompteng/bilig/discussions/new?category=general', 'adoption blocker'],
   )
   requireDocumentsInclude(
+    await Promise.all(
+      [
+        'try-bilig-headless-in-node.md',
+        'quote-approval-workpaper-api.md',
+        'workbook-automation-examples-node.md',
+        'vercel-ai-sdk-langchain-spreadsheet-tool.md',
+        'mcp-workpaper-tool-server.md',
+        'evaluate-excel-formulas-in-node-typescript.md',
+        'google-sheets-api-alternative-node-workpaper.md',
+        'headless-spreadsheet-engine-node-services-agents.md',
+        'node-spreadsheet-formula-engine.md',
+        'server-side-spreadsheet-automation-node.md',
+      ].map(async (name) => ({
+        path: `docs/${name}`,
+        content: await readFile(join(args.docsRoot, name), 'utf8'),
+      })),
+    ),
+    ['https://github.com/proompteng/bilig/discussions/new?category=general', 'adoption blocker'],
+  )
+  requireDocumentsInclude(
     [{ path: '.github/DISCUSSION_TEMPLATE/general.yml', content: args.generalDiscussionTemplate }],
     ['adoption blocker', 'What proof would unblock you?'],
   )

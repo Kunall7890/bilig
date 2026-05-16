@@ -164,3 +164,6 @@ Then inspect the focused examples:
 If this package saves you a workbook automation spike, star the repository so
 the project is easier for the next backend developer to find:
 <https://github.com/proompteng/bilig/stargazers>.
+
+If it almost matches but a gap blocks adoption, use the adoption blocker form:
+<https://github.com/proompteng/bilig/discussions/new?category=general>.

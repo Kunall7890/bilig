@@ -116,3 +116,6 @@ compatibility pages before adopting it.
 If the quickstart matches a backend or agent workflow you are building, star the
 repo so the package is easier to find later:
 <https://github.com/proompteng/bilig/stargazers>.
+
+If it almost matches but a gap blocks adoption, use the adoption blocker form:
+<https://github.com/proompteng/bilig/discussions/new?category=general>.

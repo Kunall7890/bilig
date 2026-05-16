@@ -269,3 +269,6 @@ Start with the adapter command above. If it saves you an agent-tooling spike,
 star the repository so the next person searching for spreadsheet tools can
 find it:
 <https://github.com/proompteng/bilig/stargazers>.
+
+If it almost matches but a gap blocks adoption, use the adoption blocker form:
+<https://github.com/proompteng/bilig/discussions/new?category=general>.
