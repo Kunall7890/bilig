@@ -3719,9 +3719,10 @@ describe('wasm kernel', () => {
       [encodePushNumber(0), encodePushRange(0), encodeCall(BUILTIN.RANK, 2), encodeRet()],
       [encodePushNumber(0), encodePushRange(0), encodeCall(BUILTIN.RANK_EQ, 2), encodeRet()],
       [encodePushNumber(0), encodePushRange(0), encodeCall(BUILTIN.RANK_AVG, 2), encodeRet()],
+      [encodePushNumber(0), encodePushRange(0), encodePushNumber(1), encodeCall(BUILTIN.RANK_EQ, 3), encodeRet()],
     ])
-    const constants = packConstants([[20], [20], [20]])
-    const outputCells = Uint32Array.from([cellIndex(1, 0, width), cellIndex(1, 1, width), cellIndex(1, 2, width)])
+    const constants = packConstants([[20], [20], [20], [30, 1]])
+    const outputCells = Uint32Array.from([cellIndex(1, 0, width), cellIndex(1, 1, width), cellIndex(1, 2, width), cellIndex(1, 3, width)])
     kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, outputCells)
     kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
     kernel.evalBatch(outputCells)
@@ -3732,6 +3733,7 @@ describe('wasm kernel', () => {
     expect(numbers[cellIndex(1, 0, width)]).toBe(2)
     expect(numbers[cellIndex(1, 1, width)]).toBe(2)
     expect(numbers[cellIndex(1, 2, width)]).toBe(2.5)
+    expect(numbers[cellIndex(1, 3, width)]).toBe(4)
   })
 
   it('evaluates order-statistics helpers on the wasm path', async () => {
