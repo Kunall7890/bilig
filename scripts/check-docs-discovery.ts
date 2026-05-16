@@ -340,7 +340,7 @@ requireIncludes(
 requireIncludes(communityLaunchPack, 'Hacker News Submission After The Formula Workbooks Page', 'docs/community-launch-pack.md')
 for (const required of [
   'title: Show HN: Bilig runs small formula workbooks in Node',
-  '`@bilig/headless@0.16.24`',
+  '`@bilig/headless@0.16.25`',
   'curl -fsSLo quickstart.ts https://proompteng.github.io/bilig/npm-eval.ts',
   '"verified": true',
   `\`${benchmarkEvidence.meanWinHeadline}\` mean-latency wins`,
@@ -478,7 +478,7 @@ requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/google
 const npmProvenancePackageTrustDoc = await readFile(join(docsRoot, 'npm-provenance-package-trust.md'), 'utf8')
 for (const required of [
   'title: Verify npm provenance for @bilig/headless',
-  'npm view @bilig/headless@0.16.24 version dist.attestations dist.signatures --json',
+  'npm view @bilig/headless@0.16.25 version dist.attestations dist.signatures --json',
   'npm audit signatures',
   'dist.attestations.provenance.predicateType',
   'npm publish ... --provenance',

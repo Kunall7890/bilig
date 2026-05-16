@@ -22,7 +22,7 @@ state as JSON.
 ## Try the npm package
 
 This starts from an empty directory and uses the published npm package. The
-current checked package version is `@bilig/headless@0.16.24`.
+current checked package version is `@bilig/headless@0.16.25`.
 
 ```sh
 mkdir bilig-headless-eval
@@ -66,12 +66,12 @@ of the contract, not an image someone eyeballed after the fact.
 
 ## Current numbers
 
-The checked benchmark artifact currently records `76/100` mean-latency wins
-against HyperFormula-style comparable workloads, and `75/100` workloads winning
+The checked benchmark artifact currently records `78/100` mean-latency wins
+against HyperFormula-style comparable workloads, and `74/100` workloads winning
 both mean and p95.
 
 The caveat is visible on purpose:
-`lookup-approximate-sorted-large` is slower at p95 by `2.626x`.
+`single-formula-edit-recalc` is slower at p95 by `2.608x`.
 Browser grid rendering is not part of this benchmark.
 
 Read the benchmark note:
@@ -133,7 +133,7 @@ The npm check starts from an empty directory and proves that loop with the
 published package.
 
 It is not an Excel clone. It will not run macros or preserve every weird XLSX
-artifact. The current benchmark artifact says 76/100 mean wins against
+artifact. The current benchmark artifact says 78/100 mean wins against
 HyperFormula-style comparable workloads, with the p95 misses called out instead
 of hidden.
 
