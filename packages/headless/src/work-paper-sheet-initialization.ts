@@ -3,6 +3,7 @@ import {
   readRuntimeSnapshot,
   type EngineFormulaSourceRef,
   type EngineFormulaSourceRefs,
+  type EngineFormulaSourceRefTable,
   type SpreadsheetEngine,
 } from '@bilig/core'
 import type { WorkbookSnapshot } from '@bilig/protocol'
@@ -226,28 +227,66 @@ function inspectWorkPaperInitialSheets(args: {
   return inspectedSheets
 }
 
+class CombinedInitialFormulaSourceRefs implements EngineFormulaSourceRefTable {
+  private readonly chunks: EngineFormulaSourceRefs[]
+  private readonly starts: number[]
+  private lastChunkIndex = 0
+
+  length: number
+
+  constructor(first: EngineFormulaSourceRefs, second: EngineFormulaSourceRefs) {
+    this.chunks = [first, second]
+    this.starts = [0, first.length]
+    this.length = first.length + second.length
+  }
+
+  append(next: EngineFormulaSourceRefs): void {
+    this.starts.push(this.length)
+    this.chunks.push(next)
+    this.length += next.length
+  }
+
+  at(index: number) {
+    if (index < 0 || index >= this.length) {
+      throw new RangeError(`Initial formula ref index out of bounds: ${index.toString()}`)
+    }
+    const cached = this.tryReadFromChunk(this.lastChunkIndex, index)
+    if (cached !== undefined) {
+      return cached
+    }
+    for (
+      let chunkIndex = index >= this.starts[this.lastChunkIndex]! ? this.lastChunkIndex + 1 : 0;
+      chunkIndex < this.chunks.length;
+      chunkIndex += 1
+    ) {
+      const ref = this.tryReadFromChunk(chunkIndex, index)
+      if (ref !== undefined) {
+        return ref
+      }
+    }
+    throw new RangeError(`Initial formula ref index out of bounds: ${index.toString()}`)
+  }
+
+  private tryReadFromChunk(chunkIndex: number, index: number) {
+    const chunk = this.chunks[chunkIndex]
+    const start = this.starts[chunkIndex]
+    if (chunk === undefined || start === undefined || index < start || index >= start + chunk.length) {
+      return undefined
+    }
+    this.lastChunkIndex = chunkIndex
+    return readInitialFormulaRef(chunk, index - start)
+  }
+}
+
 function appendInitialFormulaRefs(existing: EngineFormulaSourceRefs | undefined, next: EngineFormulaSourceRefs): EngineFormulaSourceRefs {
   if (existing === undefined) {
     return next
   }
-  const merged = materializeInitialFormulaRefs(existing)
-  const startIndex = merged.length
-  merged.length = startIndex + next.length
-  for (let refIndex = 0; refIndex < next.length; refIndex += 1) {
-    merged[startIndex + refIndex] = cloneInitialFormulaRef(readInitialFormulaRef(next, refIndex))
+  if (existing instanceof CombinedInitialFormulaSourceRefs) {
+    existing.append(next)
+    return existing
   }
-  return merged
-}
-
-function materializeInitialFormulaRefs(refs: EngineFormulaSourceRefs): EngineFormulaSourceRef[] {
-  if (Array.isArray(refs)) {
-    return refs
-  }
-  const materialized = Array<EngineFormulaSourceRef>(refs.length)
-  for (let index = 0; index < refs.length; index += 1) {
-    materialized[index] = cloneInitialFormulaRef(readInitialFormulaRef(refs, index))
-  }
-  return materialized
+  return new CombinedInitialFormulaSourceRefs(existing, next)
 }
 
 function readInitialFormulaRef(refs: EngineFormulaSourceRefs, index: number): EngineFormulaSourceRef {
@@ -255,14 +294,4 @@ function readInitialFormulaRef(refs: EngineFormulaSourceRefs, index: number): En
     return refs[index]!
   }
   return refs.at(index)!
-}
-
-function cloneInitialFormulaRef(ref: EngineFormulaSourceRef): EngineFormulaSourceRef {
-  return {
-    sheetId: ref.sheetId,
-    row: ref.row,
-    col: ref.col,
-    source: ref.source,
-    ...(ref.cellIndex !== undefined ? { cellIndex: ref.cellIndex } : {}),
-  }
 }

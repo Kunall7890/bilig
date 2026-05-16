@@ -111,8 +111,14 @@ describe('initial mixed sheet load', () => {
       const refs = initSpy.mock.calls[0]?.[0] ?? []
 
       expect(refs).toHaveLength(4)
-      expect(Array.isArray(refs)).toBe(true)
+      expect(Array.isArray(refs)).toBe(false)
       expect(Array.from({ length: refs.length }, (_, index) => refs.at(index)?.source)).toEqual(['A1+B1', 'A2+B2', 'A1+B1', 'A2+B2'])
+      expect(Array.from({ length: refs.length }, (_, index) => typeof refs.at(index)?.cellIndex)).toEqual([
+        'number',
+        'number',
+        'number',
+        'number',
+      ])
       expect(workbook.getCellValue({ sheet: northId, row: 1, col: 2 })).toEqual({
         tag: ValueTag.Number,
         value: 22,
