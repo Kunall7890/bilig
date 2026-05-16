@@ -69,6 +69,9 @@ concurrency:
   group: runtime-packages-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.ref }}
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   verify:
     name: verify-runtime-packages
@@ -306,10 +309,12 @@ jobs:
             planner_args="${planner_args:+${planner_args} }--dry-run"
           fi
 
-          echo "npm_tag=$npm_tag_input" >> "$GITHUB_OUTPUT"
-          echo "dry_run=$dry_run_value" >> "$GITHUB_OUTPUT"
-          echo "allow_new_packages=$allow_new_packages_value" >> "$GITHUB_OUTPUT"
-          echo "planner_args=$planner_args" >> "$GITHUB_OUTPUT"
+          {
+            echo "npm_tag=$npm_tag_input"
+            echo "dry_run=$dry_run_value"
+            echo "allow_new_packages=$allow_new_packages_value"
+            echo "planner_args=$planner_args"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Configure canonical release remotes
         env:
@@ -369,16 +374,18 @@ jobs:
           set -euo pipefail
 
           if [[ "${RELEASE_ALIGNMENT_CURRENT}" != "true" ]]; then
-            echo "release_needed=false" >> "$GITHUB_OUTPUT"
-            echo "bootstrap_required=false" >> "$GITHUB_OUTPUT"
-            echo "manual_override=false" >> "$GITHUB_OUTPUT"
-            echo "release_type=none" >> "$GITHUB_OUTPUT"
-            echo "reason=stale workflow SHA; newer main exists" >> "$GITHUB_OUTPUT"
-            echo "manifest_version=" >> "$GITHUB_OUTPUT"
-            echo "published_version=" >> "$GITHUB_OUTPUT"
-            echo "last_tag=" >> "$GITHUB_OUTPUT"
-            echo "target_version=" >> "$GITHUB_OUTPUT"
-            echo "tag_name=" >> "$GITHUB_OUTPUT"
+            {
+              echo "release_needed=false"
+              echo "bootstrap_required=false"
+              echo "manual_override=false"
+              echo "release_type=none"
+              echo "reason=stale workflow SHA; newer main exists"
+              echo "manifest_version="
+              echo "published_version="
+              echo "last_tag="
+              echo "target_version="
+              echo "tag_name="
+            } >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
