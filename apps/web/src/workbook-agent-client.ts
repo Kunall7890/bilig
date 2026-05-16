@@ -66,8 +66,20 @@ function threadUrl(documentId: string, threadId: string): string {
   return `${threadListUrl(documentId)}/${encodeURIComponent(threadId)}`
 }
 
+function decodeThreadSummaries(payload: unknown): readonly WorkbookAgentThreadSummary[] {
+  try {
+    return decodeUnknownSync(WorkbookAgentThreadSummaryListSchema, payload)
+  } catch {
+    throw new Error('Workbook agent request returned invalid thread summaries')
+  }
+}
+
 function decodeThreadSnapshot(payload: unknown): WorkbookAgentThreadSnapshot {
-  return decodeUnknownSync(WorkbookAgentThreadSnapshotSchema, payload)
+  try {
+    return decodeUnknownSync(WorkbookAgentThreadSnapshotSchema, payload)
+  } catch {
+    throw new Error('Workbook agent request returned invalid thread snapshot')
+  }
 }
 
 function createSessionBody(context: WorkbookAgentUiContext, scope: WorkbookAgentThreadScope) {
@@ -83,7 +95,7 @@ export function createWorkbookAgentClient(documentId: string) {
       return `${threadUrl(documentId, threadId)}/events`
     },
     async loadThreadSummaries(): Promise<readonly WorkbookAgentThreadSummary[]> {
-      return decodeUnknownSync(WorkbookAgentThreadSummaryListSchema, await fetchJson(threadListUrl(documentId)))
+      return decodeThreadSummaries(await fetchJson(threadListUrl(documentId)))
     },
     async createSession(context: WorkbookAgentUiContext, scope: WorkbookAgentThreadScope): Promise<WorkbookAgentThreadSnapshot> {
       return decodeThreadSnapshot(

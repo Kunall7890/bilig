@@ -125,6 +125,27 @@ describe('workbook agent client', () => {
     await expect(client.loadThreadSnapshot('thr-1')).rejects.toThrow('Workbook agent request returned malformed JSON')
   })
 
+  it('surfaces invalid successful response shapes with stable copy', async () => {
+    const fetchSpy = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+      if (url.endsWith('/chat/threads')) {
+        return new Response(JSON.stringify([{ threadId: 'thr-1' }]), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      }
+      return new Response(JSON.stringify({ documentId: 'doc-1' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    })
+    vi.stubGlobal('fetch', fetchSpy)
+
+    const client = createWorkbookAgentClient('doc-1')
+    await expect(client.loadThreadSummaries()).rejects.toThrow('Workbook agent request returned invalid thread summaries')
+    await expect(client.loadThreadSnapshot('thr-1')).rejects.toThrow('Workbook agent request returned invalid thread snapshot')
+  })
+
   it('rejects failed context sync responses instead of treating them as synced', async () => {
     vi.stubGlobal(
       'fetch',
