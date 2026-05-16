@@ -127,6 +127,25 @@ describe('deriveWorkbookActorHistoryState', () => {
     expect(state.undoRevision).toBe(91)
   })
 
+  it('treats malformed structural scope as unknown and invalidates stale history conservatively', () => {
+    const state = deriveWorkbookActorHistoryState({
+      actorUserId: 'alex@example.com',
+      rows: [
+        historyRow({ revision: 96, eventKind: 'setCellValue', address: 'Z99' }),
+        historyRow({
+          revision: 97,
+          actorUserId: 'morgan@example.com',
+          eventKind: 'insertRows',
+          address: 'A3',
+          rangeJson: { sheetName: 'Sheet1', startAddress: 'A3', endAddress: 'A4', scope: 'row-band' },
+        }),
+      ],
+    })
+
+    expect(state.canUndo).toBe(false)
+    expect(state.undoStack).toEqual([])
+  })
+
   it('preserves older redo entries after a newer redo is applied', () => {
     const state = deriveWorkbookActorHistoryState({
       actorUserId: 'alex@example.com',
@@ -308,7 +327,7 @@ function historyRow(input: {
     readonly sheetName: string
     readonly startAddress: string
     readonly endAddress: string
-    readonly scope?: 'cells' | 'rows' | 'columns' | 'sheet'
+    readonly scope?: string
   }
   readonly revertedByRevision?: number | null
   readonly revertsRevision?: number | null

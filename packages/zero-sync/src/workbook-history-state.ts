@@ -68,12 +68,13 @@ function removeOverlappingEntries(
 
 function normalizeWorkbookHistoryRange(source: WorkbookHistoryRangeSource): NormalizedWorkbookHistoryRange | null {
   const range =
-    normalizeWorkbookChangeRange(source.rangeJson) ??
-    (source.sheetName && source.anchorAddress
-      ? { sheetName: source.sheetName, startAddress: source.anchorAddress, endAddress: source.anchorAddress }
-      : source.sheetName
-        ? { sheetName: source.sheetName, startAddress: 'A1', endAddress: 'A1', scope: 'sheet' as const }
-        : null)
+    source.rangeJson === undefined || source.rangeJson === null
+      ? source.sheetName && source.anchorAddress
+        ? { sheetName: source.sheetName, startAddress: source.anchorAddress, endAddress: source.anchorAddress }
+        : source.sheetName
+          ? { sheetName: source.sheetName, startAddress: 'A1', endAddress: 'A1', scope: 'sheet' as const }
+          : null
+      : normalizeWorkbookChangeRange(source.rangeJson)
   if (!range) {
     return null
   }

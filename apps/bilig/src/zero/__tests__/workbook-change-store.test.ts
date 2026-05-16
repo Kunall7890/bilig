@@ -160,6 +160,38 @@ describe('workbook-change-store', () => {
     })
   })
 
+  it('drops malformed persisted range scope so history conflict checks stay conservative', async () => {
+    const queryable = new FakeQueryable([
+      (text) =>
+        text.includes('FROM workbook_change')
+          ? [
+              {
+                revision: 17,
+                actorUserId: 'alex@example.com',
+                clientMutationId: 'mutation-17',
+                eventKind: 'insertRows',
+                summary: 'Inserted rows 3:4 on Sheet1',
+                sheetId: 1,
+                sheetName: 'Sheet1',
+                anchorAddress: 'A3',
+                rangeJson: { sheetName: 'Sheet1', startAddress: 'A3', endAddress: 'A4', scope: 'row-band' },
+                undoBundleJson: null,
+                revertedByRevision: null,
+                revertsRevision: null,
+                createdAtUnixMs: 124_600,
+              } satisfies QueryResultRow,
+            ]
+          : null,
+    ])
+
+    await expect(loadWorkbookChange(queryable, 'doc-1', 17)).resolves.toMatchObject({
+      revision: 17,
+      sheetName: 'Sheet1',
+      anchorAddress: 'A3',
+      range: null,
+    })
+  })
+
   it('records workbook changes with resolved sheet ids and serialized ranges', async () => {
     const queryable = new FakeQueryable([
       (text) => (text.includes('FROM sheets') ? [{ sheetId: 4, sheetName: 'Sheet1' } satisfies QueryResultRow] : null),

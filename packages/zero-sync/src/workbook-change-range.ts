@@ -26,6 +26,9 @@ export function normalizeWorkbookChangeRange(value: unknown): WorkbookChangeRang
     return null
   }
   const scope = value['scope']
+  if (scope !== undefined && !isWorkbookChangeRangeScope(scope)) {
+    return null
+  }
   return {
     sheetName,
     startAddress,
@@ -35,9 +38,5 @@ export function normalizeWorkbookChangeRange(value: unknown): WorkbookChangeRang
 }
 
 export function isWorkbookChangeRange(value: unknown): value is WorkbookChangeRange {
-  if (!isRecord(value)) {
-    return false
-  }
-  const scope = value['scope']
-  return normalizeWorkbookChangeRange(value) !== null && (scope === undefined || isWorkbookChangeRangeScope(scope))
+  return normalizeWorkbookChangeRange(value) !== null
 }
