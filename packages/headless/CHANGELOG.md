@@ -4,6 +4,18 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.16.28
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.16.27
+- Manual override: no
+
+## Fixes
+- perf(headless): skip scalar formula dependency rebinding (20a5dea9)
+
+## Internal runtime changes
+- docs(growth): refresh public evidence (8f800b72)
+
 ## 0.16.27
 
 - Release type: patch
