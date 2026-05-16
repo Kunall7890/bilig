@@ -188,6 +188,11 @@ npm run agent:verify
   covers backend routes that write request inputs into an XLSX workbook,
   recalculate formulas, read output cells, and verify the exported workbook
   boundary.
+- Microsoft Graph Excel recalculation in Node.js:
+  https://proompteng.github.io/bilig/microsoft-graph-excel-recalculation-node.html
+  https://github.com/proompteng/bilig/blob/main/docs/microsoft-graph-excel-recalculation-node.md
+  separates exact Excel Online calculation through Microsoft Graph from local
+  WorkPaper-owned formula readback, JSON persistence, and restore tests.
 - ExcelJS shared formulas and Node.js recalculation:
   https://proompteng.github.io/bilig/exceljs-shared-formula-recalculation-node.html
   https://github.com/proompteng/bilig/blob/main/docs/exceljs-shared-formula-recalculation-node.md

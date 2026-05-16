@@ -109,6 +109,7 @@ if (typeof parsedHeadlessPackageVersion !== 'string') {
 }
 const headlessPackageVersion = parsedHeadlessPackageVersion
 const xlsxFormulaRecalculationNode = await readFile(join(docsRoot, 'xlsx-formula-recalculation-node.md'), 'utf8')
+const microsoftGraphExcelRecalculationNode = await readFile(join(docsRoot, 'microsoft-graph-excel-recalculation-node.md'), 'utf8')
 const formulaWorkbooksProof = await readFile(join(docsRoot, 'formula-workbooks-node-services-agent-tools.md'), 'utf8')
 const showHnFormulaWorkbooksProof = await readFile(join(docsRoot, 'show-hn-formula-workbooks-node-services.md'), 'utf8')
 const googleSheetsApiBoundaryDoc = await readFile(join(docsRoot, 'google-sheets-api-alternative-node-workpaper.md'), 'utf8')
@@ -152,6 +153,7 @@ for (const required of [
   './formula-workbooks-node-services-agent-tools.html',
   './agent-workpaper-tool-calling-recipe.html',
   './xlsx-formula-recalculation-node.html',
+  './microsoft-graph-excel-recalculation-node.html',
   './vercel-ai-sdk-langchain-spreadsheet-tool.html',
   './mcp-workpaper-tool-server.html',
   './mcp-spreadsheet-server-directory.html',
@@ -363,6 +365,23 @@ for (const required of [
 requireIncludes(index, './show-hn-formula-workbooks-node-services.html', 'docs/index.html')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/show-hn-formula-workbooks-node-services.md', 'docs/llms.txt')
+
+for (const required of [
+  'title: Microsoft Graph Excel recalculation vs local Node WorkPaper',
+  'POST /me/drive/items/{id}/workbook/application/calculate',
+  'Files.ReadWrite',
+  'application permissions are not supported for that API',
+  'Use `@bilig/headless` when the workbook is service-owned state',
+  'https://learn.microsoft.com/en-us/graph/api/workbookapplication-calculate',
+  'https://github.com/proompteng/bilig/stargazers',
+] as const) {
+  requireIncludes(microsoftGraphExcelRecalculationNode, required, 'docs/microsoft-graph-excel-recalculation-node.md')
+}
+requireIncludes(index, './microsoft-graph-excel-recalculation-node.html', 'docs/index.html')
+requireIncludes(readme, 'docs/microsoft-graph-excel-recalculation-node.md', 'README.md')
+requireIncludes(headlessReadme, 'docs/microsoft-graph-excel-recalculation-node.md', 'packages/headless/README.md')
+requireIncludes(llms, 'https://proompteng.github.io/bilig/microsoft-graph-excel-recalculation-node.html', 'docs/llms.txt')
+requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/microsoft-graph-excel-recalculation-node.md', 'docs/llms.txt')
 
 await requireSharedPublicDocsDiscovery({
   docsRoot,
