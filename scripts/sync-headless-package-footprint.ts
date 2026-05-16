@@ -49,6 +49,8 @@ const requiredKeywords = [
   'typescript',
   'agent-tools',
   'mcp',
+  'mcp-server',
+  'spreadsheet-mcp',
   'xlsx',
 ] as const
 const forbiddenDescriptionFragments = [
