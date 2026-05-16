@@ -63,6 +63,7 @@ import { primeFormulaBindingLookupCandidates } from './formula-binding-lookup-pr
 import { directAggregateContainsFormulaOwnerCell } from './formula-binding-direct-aggregate-owner.js'
 import { ensureFormulaBindingDependencyBuildCapacity } from './formula-binding-dependency-build-capacity.js'
 import { createFormulaBindingRangeDependencyUpdater } from './formula-binding-range-dependencies.js'
+import { clearFormulaRuntimeFlags, markFormulaCellBound } from './formula-binding-cell-flags.js'
 import type {
   BindPreparedFormulaOptions,
   CreateEngineFormulaBindingServiceArgs,
@@ -273,13 +274,7 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     existing.directScalar = prepared.directScalar
     existing.directCriteria = undefined
     updateVolatileFormulaIndex(cellIndex, existing)
-    args.state.workbook.cellStore.flags[cellIndex] =
-      ((args.state.workbook.cellStore.flags[cellIndex] ?? 0) & ~(CellFlags.SpillChild | CellFlags.PivotOutput)) | CellFlags.HasFormula
-    if (existing.compiled.mode === FormulaMode.JsOnly) {
-      args.state.workbook.cellStore.flags[cellIndex] = (args.state.workbook.cellStore.flags[cellIndex] ?? 0) | CellFlags.JsOnly
-    } else {
-      args.state.workbook.cellStore.flags[cellIndex] = (args.state.workbook.cellStore.flags[cellIndex] ?? 0) & ~CellFlags.JsOnly
-    }
+    markFormulaCellBound(args.state.workbook.cellStore, cellIndex, existing.compiled.mode)
     if (prepared.compiled.mode === FormulaMode.WasmFastPath && prepared.runtimeProgram.length > 0) {
       args.scheduleWasmProgramSync()
     }
@@ -383,13 +378,7 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
         )
       }
     }
-    args.state.workbook.cellStore.flags[cellIndex] =
-      ((args.state.workbook.cellStore.flags[cellIndex] ?? 0) & ~(CellFlags.SpillChild | CellFlags.PivotOutput)) | CellFlags.HasFormula
-    if (compiled.mode === FormulaMode.JsOnly) {
-      args.state.workbook.cellStore.flags[cellIndex] = (args.state.workbook.cellStore.flags[cellIndex] ?? 0) | CellFlags.JsOnly
-    } else {
-      args.state.workbook.cellStore.flags[cellIndex] = (args.state.workbook.cellStore.flags[cellIndex] ?? 0) & ~CellFlags.JsOnly
-    }
+    markFormulaCellBound(args.state.workbook.cellStore, cellIndex, compiled.mode)
     recordFormulaInstanceNow(cellIndex, source, nextTemplateId, ownerPosition)
     registerFormulaFamilyNow(cellIndex, existing)
     if (shouldRefreshSheetIndexes) {
@@ -556,13 +545,7 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
       existing.directScalar = prepared.directScalar
       existing.directCriteria = prepared.directCriteria
       updateVolatileFormulaIndex(cellIndex, existing)
-      args.state.workbook.cellStore.flags[cellIndex] =
-        ((args.state.workbook.cellStore.flags[cellIndex] ?? 0) & ~(CellFlags.SpillChild | CellFlags.PivotOutput)) | CellFlags.HasFormula
-      if (existing.compiled.mode === FormulaMode.JsOnly) {
-        args.state.workbook.cellStore.flags[cellIndex] = (args.state.workbook.cellStore.flags[cellIndex] ?? 0) | CellFlags.JsOnly
-      } else {
-        args.state.workbook.cellStore.flags[cellIndex] = (args.state.workbook.cellStore.flags[cellIndex] ?? 0) & ~CellFlags.JsOnly
-      }
+      markFormulaCellBound(args.state.workbook.cellStore, cellIndex, existing.compiled.mode)
       if (prepared.compiled.mode === FormulaMode.WasmFastPath && prepared.runtimeProgram.length > 0) {
         args.scheduleWasmProgramSync()
       }
@@ -693,9 +676,7 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
   const invalidateFormulaNow = (cellIndex: number): void => {
     clearFormulaNow(cellIndex)
     args.state.workbook.cellStore.setValue(cellIndex, errorValue(ErrorCode.Value))
-    args.state.workbook.cellStore.flags[cellIndex] =
-      (args.state.workbook.cellStore.flags[cellIndex] ?? 0) &
-      ~(CellFlags.HasFormula | CellFlags.JsOnly | CellFlags.InCycle | CellFlags.SpillChild | CellFlags.PivotOutput)
+    clearFormulaRuntimeFlags(args.state.workbook.cellStore, cellIndex)
   }
 
   const { rebindFormulaCellsNow, rebindTrackedDependentsNow, rebindFormulasForSheetNow } = createFormulaBindingRebinds({

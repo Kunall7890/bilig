@@ -1,5 +1,4 @@
 import { FormulaMode } from '@bilig/protocol'
-import { CellFlags } from '../../cell-store.js'
 import { makeCellEntity, makeExactLookupColumnEntity, makeRangeEntity, makeSortedLookupColumnEntity } from '../../entity-ids.js'
 import { spillDependencyKeyFromRef, tableDependencyKey } from '../../engine-metadata-utils.js'
 import type { RuntimeFormula } from '../runtime-state.js'
@@ -17,6 +16,7 @@ import type {
   CreateEngineFormulaBindingServiceArgs,
   FormulaOwnerPosition,
 } from './formula-binding-service-types.js'
+import { markFormulaCellBound } from './formula-binding-cell-flags.js'
 
 export function installFreshFormulaBindingNow(args: {
   readonly serviceArgs: CreateEngineFormulaBindingServiceArgs
@@ -90,16 +90,7 @@ export function installFreshFormulaBindingNow(args: {
   if (sheetId !== undefined) {
     args.formulaMemberCounts.increment(sheetId, col)
   }
-  serviceArgs.state.workbook.cellStore.flags[args.cellIndex] =
-    ((serviceArgs.state.workbook.cellStore.flags[args.cellIndex] ?? 0) & ~(CellFlags.SpillChild | CellFlags.PivotOutput)) |
-    CellFlags.HasFormula
-  if (runtimeFormula.compiled.mode === FormulaMode.JsOnly) {
-    serviceArgs.state.workbook.cellStore.flags[args.cellIndex] =
-      (serviceArgs.state.workbook.cellStore.flags[args.cellIndex] ?? 0) | CellFlags.JsOnly
-  } else {
-    serviceArgs.state.workbook.cellStore.flags[args.cellIndex] =
-      (serviceArgs.state.workbook.cellStore.flags[args.cellIndex] ?? 0) & ~CellFlags.JsOnly
-  }
+  markFormulaCellBound(serviceArgs.state.workbook.cellStore, args.cellIndex, runtimeFormula.compiled.mode)
   if (args.options?.deferFormulaInstanceRegistration !== true) {
     args.recordFormulaInstanceNow(args.cellIndex, args.source, args.prepared.templateId, physicalOwnerPosition)
   }

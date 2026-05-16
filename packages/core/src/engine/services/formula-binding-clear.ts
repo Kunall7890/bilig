@@ -1,5 +1,4 @@
 import type { CompiledFormula } from '@bilig/formula'
-import { CellFlags } from '../../cell-store.js'
 import type { EdgeSlice } from '../../edge-arena.js'
 import {
   entityPayload,
@@ -20,6 +19,7 @@ import {
 import { normalizeDefinedName } from '../../workbook-store.js'
 import type { FormulaBindingMemberCounts } from './formula-binding-member-counts.js'
 import type { CreateEngineFormulaBindingServiceArgs } from './formula-binding-service-types.js'
+import { clearFormulaRuntimeFlags } from './formula-binding-cell-flags.js'
 
 export function clearFormulaBindingNow(args: {
   readonly serviceArgs: CreateEngineFormulaBindingServiceArgs
@@ -120,9 +120,7 @@ export function clearFormulaBindingNow(args: {
   serviceArgs.formulaFamilies.unregisterFormula(args.cellIndex)
   args.updateVolatileFormulaIndex(args.cellIndex, undefined)
   serviceArgs.state.formulas.delete(args.cellIndex)
-  serviceArgs.state.workbook.cellStore.flags[args.cellIndex] =
-    (serviceArgs.state.workbook.cellStore.flags[args.cellIndex] ?? 0) &
-    ~(CellFlags.HasFormula | CellFlags.JsOnly | CellFlags.InCycle | CellFlags.SpillChild | CellFlags.PivotOutput)
+  clearFormulaRuntimeFlags(serviceArgs.state.workbook.cellStore, args.cellIndex)
   if (needsWasmProgramSync) {
     serviceArgs.scheduleWasmProgramSync()
   }
