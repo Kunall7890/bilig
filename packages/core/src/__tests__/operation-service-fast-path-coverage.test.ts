@@ -393,6 +393,63 @@ describe('operation-service dense mutation fast paths', () => {
     expect(engine.getCellValue('Sheet1', 'E13')).toEqual({ tag: ValueTag.Number, value: 216 })
   })
 
+  it('keeps combined appended row aggregates out of the dirty recalc path', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'combined-fresh-row-aggregate-formula-results' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+
+    const existingRows = 12
+    const appendRows = 8
+    const inputCols = 4
+    for (let row = 1; row <= existingRows; row += 1) {
+      for (let col = 0; col < inputCols; col += 1) {
+        engine.setCellValue('Sheet1', `${String.fromCharCode(65 + col)}${row}`, row * (col + 1))
+      }
+      engine.setCellFormula('Sheet1', `E${row}`, `SUM(A${row}:D${row})`)
+    }
+    engine.insertRows('Sheet1', existingRows, appendRows)
+
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+    const refs: EngineCellMutationRef[] = []
+    for (let row = 0; row < appendRows; row += 1) {
+      const rowIndex = existingRows + row
+      const rowNumber = rowIndex + 1
+      for (let col = 0; col < inputCols; col += 1) {
+        refs.push({
+          sheetId,
+          mutation: { kind: 'setCellValue', row: rowIndex, col, value: rowNumber * (col + 1) },
+        })
+      }
+      refs.push({
+        sheetId,
+        mutation: { kind: 'setCellFormula', row: rowIndex, col: inputCols, formula: `SUM(A${rowNumber}:D${rowNumber})` },
+      })
+    }
+
+    engine.resetPerformanceCounters()
+    engine.applyCellMutationsAt(refs, refs.length)
+
+    expect(engine.getCellValue('Sheet1', 'E13')).toEqual({ tag: ValueTag.Number, value: 130 })
+    expect(engine.getCellValue('Sheet1', 'E20')).toEqual({ tag: ValueTag.Number, value: 200 })
+    expect(engine.getLastMetrics()).toMatchObject({
+      changedInputCount: appendRows * (inputCols + 1),
+      dirtyFormulaCount: 0,
+      jsFormulaCount: 0,
+      wasmFormulaCount: 0,
+    })
+    expect(engine.getPerformanceCounters()).toMatchObject({
+      calcChainFullScans: 0,
+      directAggregateScanCells: 0,
+      directAggregateScanEvaluations: 0,
+      directFormulaKernelSyncOnlyRecalcSkips: 1,
+      formulasBound: 0,
+      topoRepairs: 0,
+    })
+
+    engine.setCellValue('Sheet1', 'A13', 99)
+    expect(engine.getCellValue('Sheet1', 'E13')).toEqual({ tag: ValueTag.Number, value: 216 })
+  })
+
   it('replaces same-dependency direct scalar formulas without graph rebuilds', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'same-dependency-formula-replacement-fast-path' })
     await engine.ready()

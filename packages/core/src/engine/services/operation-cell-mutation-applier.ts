@@ -556,7 +556,10 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
                 const freshDirectFormulaResult = freshDirectAggregateAnalysis.currentResult
                 const evaluatedFreshDirectFormula =
                   freshDirectFormulaResult !== undefined
-                    ? applyDirectFormulaCurrentResult(cellIndex, freshDirectFormulaResult)
+                    ? (() => {
+                        postRecalcDirectFormulaIndices.addCurrentResult(cellIndex, freshDirectFormulaResult)
+                        return applyDirectFormulaCurrentResult(cellIndex, freshDirectFormulaResult)
+                      })()
                     : canSkipTopoRepair && args.evaluateDirectFormula(cellIndex) !== undefined
                 const handledFormulaReplacementAsDirectDelta =
                   priorHadFormula &&
