@@ -23,6 +23,8 @@ interface ViewportBounds {
   readonly colEnd: number
 }
 
+let savepointCounter = 0
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
@@ -205,6 +207,24 @@ function clearWorkbookProjectionTables(db: Database): void {
   db.exec('DELETE FROM projection_overlay_row_axis')
   db.exec('DELETE FROM projection_overlay_column_axis')
   db.exec('DELETE FROM projection_overlay_style')
+}
+
+function runInSavepoint<T>(db: Database, work: () => T): T {
+  savepointCounter += 1
+  const savepointName = `workbook_local_projection_${savepointCounter}`
+  db.exec(`SAVEPOINT ${savepointName}`)
+  try {
+    const result = work()
+    db.exec(`RELEASE SAVEPOINT ${savepointName}`)
+    return result
+  } catch (error) {
+    try {
+      db.exec(`ROLLBACK TO SAVEPOINT ${savepointName}`)
+    } finally {
+      db.exec(`RELEASE SAVEPOINT ${savepointName}`)
+    }
+    throw error
+  }
 }
 
 function replaceAuthoritativeStyles(db: Database, styles: readonly CellStyleRecord[]): void {
@@ -489,38 +509,43 @@ function deleteAuthoritativeSheets(db: Database, sheetIds: readonly number[]): v
 }
 
 export function writeWorkbookAuthoritativeBase(db: Database, base: WorkbookLocalAuthoritativeBase): void {
-  db.exec('DELETE FROM authoritative_cell_input')
-  db.exec('DELETE FROM authoritative_cell_render')
-  db.exec('DELETE FROM authoritative_row_axis')
-  db.exec('DELETE FROM authoritative_column_axis')
-  db.exec('DELETE FROM authoritative_style')
-  db.exec('DELETE FROM authoritative_sheet')
-  insertWorkbookAuthoritativeBaseRows(db, base)
-  replaceAuthoritativeStyles(db, base.styles)
+  runInSavepoint(db, () => {
+    db.exec('DELETE FROM authoritative_cell_input')
+    db.exec('DELETE FROM authoritative_cell_render')
+    db.exec('DELETE FROM authoritative_row_axis')
+    db.exec('DELETE FROM authoritative_column_axis')
+    db.exec('DELETE FROM authoritative_style')
+    db.exec('DELETE FROM authoritative_sheet')
+    insertWorkbookAuthoritativeBaseRows(db, base)
+    replaceAuthoritativeStyles(db, base.styles)
+  })
 }
 
 export function writeWorkbookAuthoritativeDelta(db: Database, delta: WorkbookLocalAuthoritativeDelta): void {
-  if (delta.replaceAll) {
-    writeWorkbookAuthoritativeBase(db, delta.base)
-    return
-  }
-  deleteAuthoritativeSheetData(db, delta.replacedSheetIds)
-  const referencedSheets = collectCanonicalAuthoritativeSheets(delta.base)
-  upsertAuthoritativeSheets(db, referencedSheets)
-  insertWorkbookAuthoritativeBaseRows(db, delta.base, false)
-  const persistedSheetIds = new Set(referencedSheets.map((sheet) => sheet.sheetId))
-  deleteAuthoritativeSheets(
-    db,
-    delta.replacedSheetIds.filter((sheetId) => !persistedSheetIds.has(sheetId)),
-  )
-  replaceAuthoritativeStyles(db, delta.base.styles)
+  runInSavepoint(db, () => {
+    if (delta.replaceAll) {
+      writeWorkbookAuthoritativeBase(db, delta.base)
+      return
+    }
+    deleteAuthoritativeSheetData(db, delta.replacedSheetIds)
+    const referencedSheets = collectCanonicalAuthoritativeSheets(delta.base)
+    upsertAuthoritativeSheets(db, referencedSheets)
+    insertWorkbookAuthoritativeBaseRows(db, delta.base, false)
+    const persistedSheetIds = new Set(referencedSheets.map((sheet) => sheet.sheetId))
+    deleteAuthoritativeSheets(
+      db,
+      delta.replacedSheetIds.filter((sheetId) => !persistedSheetIds.has(sheetId)),
+    )
+    replaceAuthoritativeStyles(db, delta.base.styles)
+  })
 }
 
 export function writeWorkbookProjectionOverlay(db: Database, overlay: WorkbookLocalProjectionOverlay): void {
-  clearWorkbookProjectionTables(db)
+  runInSavepoint(db, () => {
+    clearWorkbookProjectionTables(db)
 
-  const insertCell = db.prepare(
-    `
+    const insertCell = db.prepare(
+      `
       INSERT INTO projection_overlay_cell (
         sheet_id,
         sheet_name,
@@ -538,10 +563,10 @@ export function writeWorkbookProjectionOverlay(db: Database, overlay: WorkbookLo
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
-  )
-  const insertAxis = (tableName: 'projection_overlay_row_axis' | 'projection_overlay_column_axis') =>
-    db.prepare(
-      `
+    )
+    const insertAxis = (tableName: 'projection_overlay_row_axis' | 'projection_overlay_column_axis') =>
+      db.prepare(
+        `
         INSERT INTO ${tableName} (
           sheet_id,
           sheet_name,
@@ -552,70 +577,71 @@ export function writeWorkbookProjectionOverlay(db: Database, overlay: WorkbookLo
         )
         VALUES (?, ?, ?, ?, ?, ?)
       `,
-    )
-  const insertStyle = db.prepare(
-    `
+      )
+    const insertStyle = db.prepare(
+      `
       INSERT INTO projection_overlay_style (style_id, record_json)
       VALUES (?, ?)
     `,
-  )
-  const insertRowAxis = insertAxis('projection_overlay_row_axis')
-  const insertColumnAxis = insertAxis('projection_overlay_column_axis')
-  try {
-    for (const cell of overlay.cells) {
-      insertCell.bind([
-        cell.sheetId,
-        cell.sheetName,
-        cell.address,
-        cell.rowNum,
-        cell.colNum,
-        JSON.stringify(cell.value),
-        cell.flags,
-        cell.version,
-        cell.input === undefined ? null : JSON.stringify(cell.input),
-        cell.formula ?? null,
-        cell.format ?? null,
-        cell.styleId ?? null,
-        cell.numberFormatId ?? null,
-      ])
-      insertCell.step()
-      insertCell.reset()
+    )
+    const insertRowAxis = insertAxis('projection_overlay_row_axis')
+    const insertColumnAxis = insertAxis('projection_overlay_column_axis')
+    try {
+      for (const cell of overlay.cells) {
+        insertCell.bind([
+          cell.sheetId,
+          cell.sheetName,
+          cell.address,
+          cell.rowNum,
+          cell.colNum,
+          JSON.stringify(cell.value),
+          cell.flags,
+          cell.version,
+          cell.input === undefined ? null : JSON.stringify(cell.input),
+          cell.formula ?? null,
+          cell.format ?? null,
+          cell.styleId ?? null,
+          cell.numberFormatId ?? null,
+        ])
+        insertCell.step()
+        insertCell.reset()
+      }
+      for (const axis of overlay.rowAxisEntries) {
+        insertRowAxis.bind([
+          axis.sheetId,
+          axis.sheetName,
+          axis.entry.index,
+          axis.entry.id,
+          axis.entry.size ?? null,
+          axis.entry.hidden ?? null,
+        ])
+        insertRowAxis.step()
+        insertRowAxis.reset()
+      }
+      for (const axis of overlay.columnAxisEntries) {
+        insertColumnAxis.bind([
+          axis.sheetId,
+          axis.sheetName,
+          axis.entry.index,
+          axis.entry.id,
+          axis.entry.size ?? null,
+          axis.entry.hidden ?? null,
+        ])
+        insertColumnAxis.step()
+        insertColumnAxis.reset()
+      }
+      for (const style of overlay.styles) {
+        insertStyle.bind([style.id, JSON.stringify(style)])
+        insertStyle.step()
+        insertStyle.reset()
+      }
+    } finally {
+      insertCell.finalize()
+      insertRowAxis.finalize()
+      insertColumnAxis.finalize()
+      insertStyle.finalize()
     }
-    for (const axis of overlay.rowAxisEntries) {
-      insertRowAxis.bind([
-        axis.sheetId,
-        axis.sheetName,
-        axis.entry.index,
-        axis.entry.id,
-        axis.entry.size ?? null,
-        axis.entry.hidden ?? null,
-      ])
-      insertRowAxis.step()
-      insertRowAxis.reset()
-    }
-    for (const axis of overlay.columnAxisEntries) {
-      insertColumnAxis.bind([
-        axis.sheetId,
-        axis.sheetName,
-        axis.entry.index,
-        axis.entry.id,
-        axis.entry.size ?? null,
-        axis.entry.hidden ?? null,
-      ])
-      insertColumnAxis.step()
-      insertColumnAxis.reset()
-    }
-    for (const style of overlay.styles) {
-      insertStyle.bind([style.id, JSON.stringify(style)])
-      insertStyle.step()
-      insertStyle.reset()
-    }
-  } finally {
-    insertCell.finalize()
-    insertRowAxis.finalize()
-    insertColumnAxis.finalize()
-    insertStyle.finalize()
-  }
+  })
 }
 
 function readViewportCells(db: Database, sql: string, bind: readonly SqlValue[]): WorkbookLocalViewportCell[] {

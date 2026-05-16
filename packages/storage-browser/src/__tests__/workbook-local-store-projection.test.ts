@@ -188,6 +188,102 @@ describe('workbook-local-store projection', () => {
     }
   })
 
+  it('rolls back authoritative delta writes when sheet upsert fails', async () => {
+    const sqlite3 = await sqlite3InitModule()
+    const db = new sqlite3.oo1.DB(':memory:', 'c')
+    try {
+      initializeWorkbookLocalStoreSchema(db)
+      writeWorkbookAuthoritativeBase(db, {
+        sheets: [
+          { sheetId: 7, name: 'Revenue', sortOrder: 0, freezeRows: 0, freezeCols: 0 },
+          { sheetId: 8, name: 'Costs', sortOrder: 1, freezeRows: 0, freezeCols: 0 },
+        ],
+        cellInputs: [
+          { sheetId: 7, sheetName: 'Revenue', address: 'A1', rowNum: 0, colNum: 0, input: 11, formula: undefined, format: undefined },
+          { sheetId: 8, sheetName: 'Costs', address: 'A1', rowNum: 0, colNum: 0, input: 33, formula: undefined, format: undefined },
+        ],
+        cellRenders: [
+          {
+            sheetId: 7,
+            sheetName: 'Revenue',
+            address: 'A1',
+            rowNum: 0,
+            colNum: 0,
+            value: { tag: 1, value: 11 },
+            flags: 0,
+            version: 1,
+            styleId: undefined,
+            numberFormatId: undefined,
+          },
+          {
+            sheetId: 8,
+            sheetName: 'Costs',
+            address: 'A1',
+            rowNum: 0,
+            colNum: 0,
+            value: { tag: 1, value: 33 },
+            flags: 0,
+            version: 1,
+            styleId: undefined,
+            numberFormatId: undefined,
+          },
+        ],
+        rowAxisEntries: [],
+        columnAxisEntries: [],
+        styles: [],
+      })
+
+      expect(() =>
+        writeWorkbookAuthoritativeDelta(db, {
+          replaceAll: false,
+          replacedSheetIds: [7],
+          base: {
+            sheets: [{ sheetId: 7, name: 'Costs', sortOrder: 0, freezeRows: 0, freezeCols: 0 }],
+            cellInputs: [
+              { sheetId: 7, sheetName: 'Costs', address: 'A1', rowNum: 0, colNum: 0, input: 99, formula: undefined, format: undefined },
+            ],
+            cellRenders: [
+              {
+                sheetId: 7,
+                sheetName: 'Costs',
+                address: 'A1',
+                rowNum: 0,
+                colNum: 0,
+                value: { tag: 1, value: 99 },
+                flags: 0,
+                version: 2,
+                styleId: undefined,
+                numberFormatId: undefined,
+              },
+            ],
+            rowAxisEntries: [],
+            columnAxisEntries: [],
+            styles: [],
+          },
+        }),
+      ).toThrow()
+
+      expect(
+        readWorkbookViewportProjection(db, 'Revenue', {
+          rowStart: 0,
+          rowEnd: 0,
+          colStart: 0,
+          colEnd: 0,
+        })?.cells[0]?.snapshot.value,
+      ).toEqual({ tag: 1, value: 11 })
+      expect(
+        readWorkbookViewportProjection(db, 'Costs', {
+          rowStart: 0,
+          rowEnd: 0,
+          colStart: 0,
+          colEnd: 0,
+        })?.cells[0]?.snapshot.value,
+      ).toEqual({ tag: 1, value: 33 })
+    } finally {
+      db.close()
+    }
+  })
+
   it('projects overlay cells with the canonical sheet name after sheet rename', async () => {
     const sqlite3 = await sqlite3InitModule()
     const db = new sqlite3.oo1.DB(':memory:', 'c')
