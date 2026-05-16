@@ -270,4 +270,45 @@ describe('projectWorkbookToSnapshot', () => {
       { name: 'Cell', value: { kind: 'cell-ref', sheetName: 'Sheet1', address: 'A1' } },
     ])
   })
+
+  it('drops unsafe projected sheet and cell coordinates', () => {
+    const projected = projectWorkbookToSnapshot(
+      {
+        id: 'doc-1',
+        name: 'Projected Book',
+        recalcEpoch: 2.5,
+        sheets: [
+          {
+            id: Number.MAX_SAFE_INTEGER + 1,
+            name: 'BadOrder',
+            sortOrder: 1.5,
+            cells: [{ rowNum: 0, colNum: 0, inputValue: 'ignored' }],
+          },
+          {
+            id: 2,
+            name: 'Sheet1',
+            sortOrder: 0,
+            cells: [
+              { rowNum: 1, colNum: 2, inputValue: 'kept' },
+              { rowNum: -1, colNum: 0, inputValue: 'dropped' },
+              { rowNum: 0.5, colNum: 0, inputValue: 'dropped' },
+            ],
+            rowMetadata: [{ startIndex: 0, count: 1, size: -10 }],
+          },
+        ],
+      },
+      'doc-1',
+    )
+
+    expect(projected?.workbook.metadata?.volatileContext).toBeUndefined()
+    expect(projected?.sheets).toEqual([
+      {
+        id: 2,
+        name: 'Sheet1',
+        order: 0,
+        cells: [{ address: 'C2', value: 'kept' }],
+        metadata: { rowMetadata: [{ start: 0, count: 1 }] },
+      },
+    ])
+  })
 })

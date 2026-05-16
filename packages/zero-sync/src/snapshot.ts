@@ -24,8 +24,8 @@ function asString(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined
 }
 
-function asNumber(value: unknown): number | undefined {
-  return typeof value === 'number' && Number.isFinite(value) ? value : undefined
+function asNonNegativeNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined
 }
 
 function asSafeNonNegativeInteger(value: unknown): number | undefined {
@@ -94,7 +94,7 @@ function parseAxisMetadata(entries: unknown[]): WorkbookAxisMetadataSnapshot[] {
         start,
         count,
       }
-      const size = asNumber(entry['size'])
+      const size = asNonNegativeNumber(entry['size'])
       const hiddenFlag = asBoolean(entry['hidden'])
       if (size !== undefined) {
         next.size = size
@@ -417,8 +417,8 @@ export function projectWorkbookToSnapshot(value: unknown, documentId: string) {
   const compatibilityMode = asString(value['compatibilityMode'])
   const recalcEpoch =
     calculationSettingsRecord?.['recalcEpoch'] !== undefined
-      ? asNumber(calculationSettingsRecord['recalcEpoch'])
-      : asNumber(value['recalcEpoch'])
+      ? asSafeNonNegativeInteger(calculationSettingsRecord['recalcEpoch'])
+      : asSafeNonNegativeInteger(value['recalcEpoch'])
 
   const fallbackSheets = new Map(baseSnapshot.sheets.map((sheet) => [sheet.name, sheet]))
   const projectedSheets = asArray(value['sheets'])
@@ -427,7 +427,7 @@ export function projectWorkbookToSnapshot(value: unknown, documentId: string) {
         return null
       }
       const sheetName = asString(sheetEntry['name'])
-      const sortOrder = asNumber(sheetEntry['sortOrder'])
+      const sortOrder = asSafeNonNegativeInteger(sheetEntry['sortOrder'])
       if (!sheetName || sortOrder === undefined) {
         return null
       }
@@ -438,11 +438,10 @@ export function projectWorkbookToSnapshot(value: unknown, documentId: string) {
             return null
           }
           const explicitFormatId = asString(cellEntry['explicitFormatId'])
+          const rowNum = asSafeNonNegativeInteger(cellEntry['rowNum'])
+          const colNum = asSafeNonNegativeInteger(cellEntry['colNum'])
           const address =
-            asString(cellEntry['address']) ??
-            (asNumber(cellEntry['rowNum']) !== undefined && asNumber(cellEntry['colNum']) !== undefined
-              ? formatAddress(asNumber(cellEntry['rowNum']) ?? 0, asNumber(cellEntry['colNum']) ?? 0)
-              : undefined)
+            asString(cellEntry['address']) ?? (rowNum !== undefined && colNum !== undefined ? formatAddress(rowNum, colNum) : undefined)
           if (!address) {
             return null
           }
@@ -473,7 +472,7 @@ export function projectWorkbookToSnapshot(value: unknown, documentId: string) {
         fallbackSheet?.metadata,
       )
 
-      const id = asNumber(sheetEntry['id']) ?? fallbackSheet?.id
+      const id = asSafeNonNegativeInteger(sheetEntry['id']) ?? fallbackSheet?.id
       const nextSheet: WorkbookSnapshot['sheets'][number] = metadata
         ? { name: sheetName, order: sortOrder, metadata, cells }
         : { name: sheetName, order: sortOrder, cells }
