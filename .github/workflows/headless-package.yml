@@ -6,64 +6,64 @@ on:
       - main
   pull_request:
     paths:
-      - "packages/headless/**"
-      - "packages/core/**"
-      - "packages/formula/**"
-      - "packages/protocol/**"
-      - "packages/workbook-domain/**"
-      - "packages/wasm-kernel/**"
-      - "packages/excel-import/**"
-      - "packages/benchmarks/**"
-      - "packages/headless/CHANGELOG.md"
-      - "docs/public-api.md"
-      - "docs/runtime-semantic-release-program-2026-04-16.md"
-      - "package.json"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
-      - "scripts/check-package-publish.ts"
-      - "scripts/check-runtime-commit-policy.ts"
-      - "scripts/gen-formula-dominance-snapshot.ts"
-      - "scripts/gen-workpaper-benchmark-baseline.ts"
-      - "scripts/gen-workpaper-hyperformula-audit.ts"
-      - "scripts/gen-workpaper-vs-hyperformula-benchmark.ts"
-      - "scripts/gen-workpaper-vs-hyperformula-expanded-benchmark.ts"
-      - "scripts/next-runtime-release-version.ts"
-      - "scripts/plan-runtime-release.ts"
-      - "scripts/check-runtime-npm-provisioning.ts"
-      - "scripts/publish-runtime-package-set.ts"
-      - "scripts/runtime-package-set.ts"
-      - "scripts/runtime-release.ts"
-      - "scripts/sync-runtime-package-versions.ts"
-      - "scripts/sync-runtime-release-metadata.ts"
-      - "scripts/workpaper-external-smoke.ts"
-      - "scripts/workpaper-surface-contract.ts"
-      - "tsconfig.base.json"
-      - "tsconfig.json"
-      - "tsconfig.workspace-paths.json"
-      - "workspace-resolution.generated.json"
-      - ".github/workflows/headless-package.yml"
+      - 'packages/headless/**'
+      - 'packages/core/**'
+      - 'packages/formula/**'
+      - 'packages/protocol/**'
+      - 'packages/workbook-domain/**'
+      - 'packages/wasm-kernel/**'
+      - 'packages/excel-import/**'
+      - 'packages/benchmarks/**'
+      - 'packages/headless/CHANGELOG.md'
+      - 'docs/public-api.md'
+      - 'docs/runtime-semantic-release-program-2026-04-16.md'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'scripts/check-package-publish.ts'
+      - 'scripts/check-runtime-commit-policy.ts'
+      - 'scripts/gen-formula-dominance-snapshot.ts'
+      - 'scripts/gen-workpaper-benchmark-baseline.ts'
+      - 'scripts/gen-workpaper-hyperformula-audit.ts'
+      - 'scripts/gen-workpaper-vs-hyperformula-benchmark.ts'
+      - 'scripts/gen-workpaper-vs-hyperformula-expanded-benchmark.ts'
+      - 'scripts/next-runtime-release-version.ts'
+      - 'scripts/plan-runtime-release.ts'
+      - 'scripts/check-runtime-npm-provisioning.ts'
+      - 'scripts/publish-runtime-package-set.ts'
+      - 'scripts/runtime-package-set.ts'
+      - 'scripts/runtime-release.ts'
+      - 'scripts/sync-runtime-package-versions.ts'
+      - 'scripts/sync-runtime-release-metadata.ts'
+      - 'scripts/workpaper-external-smoke.ts'
+      - 'scripts/workpaper-surface-contract.ts'
+      - 'tsconfig.base.json'
+      - 'tsconfig.json'
+      - 'tsconfig.workspace-paths.json'
+      - 'workspace-resolution.generated.json'
+      - '.github/workflows/headless-package.yml'
   workflow_dispatch:
     inputs:
       npm_tag:
-        description: "npm dist-tag (latest, beta, next, etc.)"
+        description: 'npm dist-tag (latest, beta, next, etc.)'
         type: string
         required: false
         default: latest
       dry_run:
-        description: "Run npm publish in dry-run mode instead of releasing"
+        description: 'Run npm publish in dry-run mode instead of releasing'
         type: boolean
         required: false
         default: false
       allow_new_packages:
-        description: "Attempt first-time npm package creation when the package name is not already provisioned"
+        description: 'Attempt first-time npm package creation when the package name is not already provisioned'
         type: boolean
         required: false
         default: false
       target_version:
-        description: "Optional explicit runtime package version to release"
+        description: 'Optional explicit runtime package version to release'
         type: string
         required: false
-        default: ""
+        default: ''
 
 concurrency:
   group: runtime-packages-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.ref }}
@@ -81,12 +81,12 @@ jobs:
       - name: Set up Node.js 24
         uses: actions/setup-node@v6
         with:
-          node-version: "24.11.1"
+          node-version: '24.11.1'
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.3.10"
+          bun-version: '1.3.10'
 
       - name: Enable Corepack
         run: |
@@ -223,12 +223,12 @@ jobs:
       - name: Set up Node.js 24
         uses: actions/setup-node@v6
         with:
-          node-version: "24.11.1"
+          node-version: '24.11.1'
 
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.3.10"
+          bun-version: '1.3.10'
 
       - name: Enable Corepack
         run: |
@@ -372,7 +372,7 @@ jobs:
       - name: Set up Node.js 24
         uses: actions/setup-node@v6
         with:
-          node-version: "24.11.1"
+          node-version: '24.11.1'
           registry-url: https://registry.npmjs.org
 
       - name: Ensure npm supports trusted publishing
@@ -414,7 +414,7 @@ jobs:
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.3.10"
+          bun-version: '1.3.10'
 
       - name: Enable Corepack
         run: |
@@ -548,9 +548,14 @@ jobs:
           fi
 
           # The release metadata commit runs repository git hooks. Type-aware lint
-          # resolves @bilig/protocol through package exports, so a clean runner
-          # needs protocol dist built after the version sync and before pushing.
+          # resolves workspace packages through package exports, so a clean
+          # runner needs runtime d.ts outputs rebuilt after the version sync and
+          # before pushing.
           pnpm --filter @bilig/protocol build
+          pnpm --filter @bilig/workbook-domain build
+          pnpm --filter @bilig/wasm-kernel build
+          pnpm --filter @bilig/formula build
+          pnpm --filter @bilig/core build
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

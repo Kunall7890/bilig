@@ -39,6 +39,7 @@ describe('headless package workflow', () => {
     expect(source).toContain('allow_new_packages')
     expect(source).toContain('ALLOW_NEW_NPM_PACKAGES')
     expect(source).toContain('bun scripts/sync-runtime-release-metadata.ts')
+    expect(source).toContain('runner needs runtime d.ts outputs rebuilt after the version sync')
     expect(source).toContain('git push origin HEAD:main')
     expect(source).toContain('git push github HEAD:main')
     expect(source).toContain('GitHub main reached release metadata SHA during push')
