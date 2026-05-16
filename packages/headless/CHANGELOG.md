@@ -4,6 +4,93 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.16.9
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.16.5
+- Manual override: no
+
+## Fixes
+
+- fix(docs): sync public evidence for headless 0.16.5 (fcdc237b)
+- perf(core): reuse rectangular aggregate templates (48c96ac2)
+- perf(headless): batch serialized formula paste (bad422dd)
+- fix(grid): stabilize table clears and metadata (86c5747e)
+- fix(headless): support Node 22 runtime installs (3ef59ac4)
+- perf(headless): preserve direct scalar formula bindings (dfc18a00)
+- perf(headless): reduce matrix plan allocation (a252c443)
+- fix(headless): validate workpaper mcp cli args (7f7a4300)
+- perf(core): fast-translate aggregate templates (c27455c2)
+- perf(core): reduce region subscription key churn (3c97533e)
+- fix(test): share strict bench tolerance parsing (120ad96b)
+- fix(smoke): validate workpaper stage flag (9159f541)
+- perf(headless): speed tracked formula edits (3694f5da)
+- perf(core): reduce kernel sync defer allocation (67956ff1)
+- fix(release): validate publish env flags (81dc392f)
+- perf(core): reuse direct scalar closure indices (c4ce54d9)
+- perf(core): skip exact uniform lookup owner binding (22f8e13b)
+- perf(core): skip empty tracked invalidation patches (6d9eaed0)
+- fix(core): reject unsafe direct formula rows (e3d914e8)
+- fix(core): guard unsafe template row keys (c88ff52b)
+- perf(headless): keep initial formula refs compact (efe03036)
+
+## Internal runtime changes
+
+- docs(growth): add quote approval proof page (42e4444a)
+- refactor(core): isolate operation service test hooks (e8d0980c)
+- docs(growth): surface npm provenance trust path (2a945bda)
+- ci(security): publish openssf scorecard results (f6c80a2b)
+- ci(security): add codeql and dependabot (b1c8541f)
+- ci(security): constrain workflow token permissions (e830185d)
+- ci(security): pin workflow and image dependencies (42b111ff)
+- docs(growth): add proof-time bookmark path (234117c7)
+- docs(mcp): add runnable stdio transcript smoke (e43dffff)
+- chore(release): prepare runtime libraries 0.16.6 (32f4f64f)
+- chore(release): prepare runtime libraries 0.16.7 (e61bc460)
+
+## 0.16.8
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.16.5
+- Manual override: no
+
+## Fixes
+
+- fix(docs): sync public evidence for headless 0.16.5 (fcdc237b)
+- perf(core): reuse rectangular aggregate templates (48c96ac2)
+- perf(headless): batch serialized formula paste (bad422dd)
+- fix(grid): stabilize table clears and metadata (86c5747e)
+- fix(headless): support Node 22 runtime installs (3ef59ac4)
+- perf(headless): preserve direct scalar formula bindings (dfc18a00)
+- perf(headless): reduce matrix plan allocation (a252c443)
+- fix(headless): validate workpaper mcp cli args (7f7a4300)
+- perf(core): fast-translate aggregate templates (c27455c2)
+- perf(core): reduce region subscription key churn (3c97533e)
+- fix(test): share strict bench tolerance parsing (120ad96b)
+- fix(smoke): validate workpaper stage flag (9159f541)
+- perf(headless): speed tracked formula edits (3694f5da)
+- perf(core): reduce kernel sync defer allocation (67956ff1)
+- fix(release): validate publish env flags (81dc392f)
+- perf(core): reuse direct scalar closure indices (c4ce54d9)
+- perf(core): skip exact uniform lookup owner binding (22f8e13b)
+- perf(core): skip empty tracked invalidation patches (6d9eaed0)
+- fix(core): reject unsafe direct formula rows (e3d914e8)
+- fix(core): guard unsafe template row keys (c88ff52b)
+
+## Internal runtime changes
+
+- docs(growth): add quote approval proof page (42e4444a)
+- refactor(core): isolate operation service test hooks (e8d0980c)
+- docs(growth): surface npm provenance trust path (2a945bda)
+- ci(security): publish openssf scorecard results (f6c80a2b)
+- ci(security): add codeql and dependabot (b1c8541f)
+- ci(security): constrain workflow token permissions (e830185d)
+- ci(security): pin workflow and image dependencies (42b111ff)
+- docs(growth): add proof-time bookmark path (234117c7)
+- docs(mcp): add runnable stdio transcript smoke (e43dffff)
+- chore(release): prepare runtime libraries 0.16.6 (32f4f64f)
+- chore(release): prepare runtime libraries 0.16.7 (e61bc460)
+
 ## 0.16.7
 
 - Release type: patch
