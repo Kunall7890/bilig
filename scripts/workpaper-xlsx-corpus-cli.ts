@@ -3,6 +3,7 @@ import { extname, join, resolve } from 'node:path'
 
 import { assertPublicCorpusRunNotStopped, publicCorpusStopMarkerOverrideFlag } from './public-workbook-corpus-cli.ts'
 import type { WorkPaperXlsxCorpusOptions } from './check-workpaper-xlsx-corpus-types.ts'
+import { parseStrictBooleanEnvFlag } from './strict-env.js'
 
 export interface WorkPaperXlsxCorpusCliOptions extends WorkPaperXlsxCorpusOptions {
   readonly isolateFiles: boolean
@@ -75,7 +76,7 @@ export function parseWorkPaperXlsxCorpusCliArgs(argv: readonly string[]): WorkPa
         index += 1
         break
       case '--no-isolate':
-        if (process.env['BILIG_ALLOW_UNISOLATED_XLSX_CORPUS'] !== '1') {
+        if (!resolveAllowUnisolatedXlsxCorpusOrThrow(process.env)) {
           throw new CliUsageError(
             '--no-isolate is disabled for corpus CLI runs because it can retain workbook memory across large corpora. Set BILIG_ALLOW_UNISOLATED_XLSX_CORPUS=1 only for a single-file debugger run.',
             2,
@@ -111,6 +112,18 @@ export function parseWorkPaperXlsxCorpusCliArgs(argv: readonly string[]): WorkPa
     stopMarkerPath,
     evaluationTimeoutMs,
     mismatchSampleLimit,
+  }
+}
+
+export function resolveAllowUnisolatedXlsxCorpus(env: Readonly<Record<string, string | undefined>>): boolean {
+  return parseStrictBooleanEnvFlag(env['BILIG_ALLOW_UNISOLATED_XLSX_CORPUS'], 'BILIG_ALLOW_UNISOLATED_XLSX_CORPUS', false)
+}
+
+function resolveAllowUnisolatedXlsxCorpusOrThrow(env: Readonly<Record<string, string | undefined>>): boolean {
+  try {
+    return resolveAllowUnisolatedXlsxCorpus(env)
+  } catch (error) {
+    throw new CliUsageError(error instanceof Error ? error.message : String(error), 2)
   }
 }
 

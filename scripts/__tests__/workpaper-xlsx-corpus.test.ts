@@ -7,7 +7,11 @@ import { describe, expect, it } from 'vitest'
 import * as XLSX from 'xlsx'
 
 import { runWorkPaperXlsxCorpus, runWorkPaperXlsxCorpusInChildProcesses } from '../check-workpaper-xlsx-corpus.ts'
-import { parseWorkPaperXlsxCorpusCliArgs, parseWorkPaperXlsxCorpusInternalCliArgs } from '../workpaper-xlsx-corpus-cli.ts'
+import {
+  parseWorkPaperXlsxCorpusCliArgs,
+  parseWorkPaperXlsxCorpusInternalCliArgs,
+  resolveAllowUnisolatedXlsxCorpus,
+} from '../workpaper-xlsx-corpus-cli.ts'
 
 describe('WorkPaper XLSX corpus verifier', () => {
   it('keeps a checked-in XLSX compatibility corpus green', () => {
@@ -113,6 +117,27 @@ describe('WorkPaper XLSX corpus verifier', () => {
 
     expect(result.status).toBe(2)
     expect(result.stderr).toContain('--no-isolate is disabled for corpus CLI runs')
+  })
+
+  it('rejects malformed unisolated corpus override values', () => {
+    expect(resolveAllowUnisolatedXlsxCorpus({})).toBe(false)
+    expect(resolveAllowUnisolatedXlsxCorpus({ BILIG_ALLOW_UNISOLATED_XLSX_CORPUS: '1' })).toBe(true)
+    expect(resolveAllowUnisolatedXlsxCorpus({ BILIG_ALLOW_UNISOLATED_XLSX_CORPUS: 'true' })).toBe(true)
+    expect(resolveAllowUnisolatedXlsxCorpus({ BILIG_ALLOW_UNISOLATED_XLSX_CORPUS: '0' })).toBe(false)
+    expect(resolveAllowUnisolatedXlsxCorpus({ BILIG_ALLOW_UNISOLATED_XLSX_CORPUS: 'false' })).toBe(false)
+    expect(() => resolveAllowUnisolatedXlsxCorpus({ BILIG_ALLOW_UNISOLATED_XLSX_CORPUS: 'yes' })).toThrow(
+      'BILIG_ALLOW_UNISOLATED_XLSX_CORPUS must be "1", "true", "0", or "false" when set, got yes',
+    )
+  })
+
+  it('fails malformed unisolated CLI override values before running corpus checks', () => {
+    const result = spawnSync('bun', [checkerScriptPath(), '--no-isolate', checkedInCorpusDir()], {
+      encoding: 'utf8',
+      env: { ...process.env, BILIG_ALLOW_UNISOLATED_XLSX_CORPUS: 'yes' },
+    })
+
+    expect(result.status).toBe(2)
+    expect(result.stderr).toContain('BILIG_ALLOW_UNISOLATED_XLSX_CORPUS must be "1", "true", "0", or "false" when set, got yes')
   })
 
   it('refuses unisolated CLI directory sweeps even with the debug escape hatch', () => {
