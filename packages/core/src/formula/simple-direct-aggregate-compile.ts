@@ -1,5 +1,6 @@
 import { FormulaMode, type FormulaRecord } from '@bilig/protocol'
 import {
+  formatAddress,
   parseRangeAddress,
   type CompiledFormula,
   type DirectAggregateCandidate,
@@ -193,5 +194,81 @@ export function tryCompileSimpleDirectAggregateFormula(source: string): Compiled
     symbolicRanges: [rangeInfo.address],
     parsedSymbolicRanges: [parsedRangeInfo],
     symbolicStrings: EMPTY_STRINGS,
+  }
+}
+
+export function translateSimpleDirectAggregateFormula(
+  compiled: CompiledFormula,
+  rowDelta: number,
+  colDelta: number,
+  source: string,
+): CompiledFormula | undefined {
+  const candidate = compiled.directAggregateCandidate
+  const range = compiled.parsedSymbolicRanges?.[candidate?.symbolicRangeIndex ?? -1]
+  if (
+    candidate === undefined ||
+    range === undefined ||
+    compiled.parsedSymbolicRanges?.length !== 1 ||
+    compiled.symbolicRanges.length !== 1 ||
+    (compiled.parsedSymbolicRefs?.length ?? 0) !== 0 ||
+    compiled.symbolicRefs.length !== 0 ||
+    range.kind !== 'range' ||
+    range.refKind !== 'cells' ||
+    range.sheetName !== undefined
+  ) {
+    return undefined
+  }
+  const startRow = range.startRow + rowDelta
+  const endRow = range.endRow + rowDelta
+  const startCol = range.startCol + colDelta
+  const endCol = range.endCol + colDelta
+  if (startRow < 0 || endRow < startRow || startCol < 0 || endCol < startCol) {
+    return undefined
+  }
+
+  const startAddress = formatAddress(startRow, startCol)
+  const endAddress = formatAddress(endRow, endCol)
+  const address = `${startAddress}:${endAddress}`
+  const translatedRange: ParsedRangeReferenceInfo = {
+    ...range,
+    address,
+    startAddress,
+    endAddress,
+    startRow,
+    endRow,
+    startCol,
+    endCol,
+  }
+  const rangeNode: FormulaNode = {
+    kind: 'RangeRef',
+    refKind: 'cells',
+    start: startAddress,
+    end: endAddress,
+  }
+  const aggregateNode: FormulaNode = {
+    kind: 'CallExpr',
+    callee: candidate.callee,
+    args: [rangeNode],
+  }
+  const ast: FormulaNode =
+    candidate.resultOffset === undefined
+      ? aggregateNode
+      : {
+          kind: 'BinaryExpr',
+          operator: '+',
+          left: aggregateNode,
+          right: { kind: 'NumberLiteral', value: candidate.resultOffset },
+        }
+
+  return {
+    ...compiled,
+    source,
+    ast,
+    optimizedAst: ast,
+    astMatchesSource: false,
+    deps: [address],
+    parsedDeps: [translatedRange satisfies ParsedDependencyReference],
+    symbolicRanges: [address],
+    parsedSymbolicRanges: [translatedRange],
   }
 }

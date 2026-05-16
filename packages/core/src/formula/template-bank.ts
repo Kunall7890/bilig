@@ -10,7 +10,7 @@ import {
   type CompiledFormula,
 } from '@bilig/formula'
 import { addEngineCounter, type EngineCounters } from '../perf/engine-counters.js'
-import { tryCompileSimpleDirectAggregateFormula } from './simple-direct-aggregate-compile.js'
+import { translateSimpleDirectAggregateFormula, tryCompileSimpleDirectAggregateFormula } from './simple-direct-aggregate-compile.js'
 import { translateSimpleDirectScalarFormula, tryCompileSimpleDirectScalarFormula } from './simple-direct-scalar-compile.js'
 
 export interface FormulaTemplateSnapshot {
@@ -159,6 +159,10 @@ function translateTemplate(compiled: CompiledFormula, rowDelta: number, colDelta
   const translatedSimpleScalar = translateSimpleDirectScalarFormula(compiled, rowDelta, colDelta, source)
   if (translatedSimpleScalar) {
     return translatedSimpleScalar
+  }
+  const translatedSimpleAggregate = translateSimpleDirectAggregateFormula(compiled, rowDelta, colDelta, source)
+  if (translatedSimpleAggregate) {
+    return translatedSimpleAggregate
   }
   return (
     canTranslateCompiledFormulaWithoutAst(compiled)

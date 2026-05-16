@@ -98,4 +98,22 @@ describe('buildMatrixMutationPlan', () => {
     expect(plan.formulaRefs).toHaveLength(1)
     expect(plan.trailingLiteralRefs).toHaveLength(1)
   })
+
+  it('tracks matrix dimension impact across ragged rows, formulas, and skipped blanks', () => {
+    const plan = buildMatrixMutationPlan({
+      target: { sheet: 7, row: 10, col: 3 },
+      content: [[null, 1], ['=SEQUENCE(2)', null, 3], [], [null]],
+      skipNulls: true,
+      rewriteFormula: (formula) => formula.slice(1),
+    })
+
+    expect(plan.dimensionImpact).toEqual({
+      hasDynamicFormula: true,
+      maxClearCol: -1,
+      maxClearRow: -1,
+      maxSetCol: 5,
+      maxSetRow: 11,
+      sheetId: 7,
+    })
+  })
 })

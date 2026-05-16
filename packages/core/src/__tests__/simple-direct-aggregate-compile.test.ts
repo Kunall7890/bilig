@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { tryCompileSimpleDirectAggregateFormula } from '../formula/simple-direct-aggregate-compile.js'
+import {
+  translateSimpleDirectAggregateFormula,
+  tryCompileSimpleDirectAggregateFormula,
+} from '../formula/simple-direct-aggregate-compile.js'
 
 describe('tryCompileSimpleDirectAggregateFormula', () => {
   it('normalizes same-column aggregate ranges on the direct compiler fast path', () => {
@@ -59,6 +62,37 @@ describe('tryCompileSimpleDirectAggregateFormula', () => {
       operator: '+',
     })
     expect(compiled?.symbolicRanges).toEqual(['A1:A32'])
+  })
+
+  it('translates direct aggregate ranges without reparsing the formula AST', () => {
+    const compiled = tryCompileSimpleDirectAggregateFormula('SUM(A1:F1)')
+    if (!compiled) {
+      throw new Error('expected direct aggregate compilation')
+    }
+
+    const translated = translateSimpleDirectAggregateFormula(compiled, 750, 0, 'SUM(A751:F751)')
+
+    expect(translated?.source).toBe('SUM(A751:F751)')
+    expect(translated?.directAggregateCandidate).toBe(compiled.directAggregateCandidate)
+    expect(translated?.symbolicRanges).toEqual(['A751:F751'])
+    expect(translated?.parsedDeps).toEqual([
+      {
+        kind: 'range',
+        refKind: 'cells',
+        address: 'A751:F751',
+        startAddress: 'A751',
+        endAddress: 'F751',
+        startRow: 750,
+        endRow: 750,
+        startCol: 0,
+        endCol: 5,
+      },
+    ])
+    expect(translated?.optimizedAst).toEqual({
+      kind: 'CallExpr',
+      callee: 'SUM',
+      args: [{ kind: 'RangeRef', refKind: 'cells', start: 'A751', end: 'F751' }],
+    })
   })
 
   it('leaves unsupported direct aggregate ranges on the fallback path', () => {
