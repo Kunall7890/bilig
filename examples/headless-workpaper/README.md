@@ -12,6 +12,12 @@ npm install
 npm start
 ```
 
+If you arrived from HN, search, or an agent-tool shortlist and only want to
+verify the published npm package before cloning the repo, use the
+[90-second npm-only check](../../docs/workbook-automation-examples-node.md#90-second-npm-only-check).
+It runs in an empty directory and proves edit, recalculation, JSON persistence,
+restore, and computed readback.
+
 Expected output:
 
 ```json

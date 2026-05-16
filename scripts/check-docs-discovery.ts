@@ -698,6 +698,14 @@ for (const [path, content] of [
   requireIncludes(content, 'image: /assets/github-social-preview.png', path)
 }
 
+const workbookAutomationExamplesDoc = await readFile(join(docsRoot, 'workbook-automation-examples-node.md'), 'utf8')
+requireIncludes(workbookAutomationExamplesDoc, '## 90-second npm-only check', 'docs/workbook-automation-examples-node.md')
+requireIncludes(
+  workbookAutomationExamplesDoc,
+  'curl -fsSLo quickstart.ts https://proompteng.github.io/bilig/npm-eval.ts',
+  'docs/workbook-automation-examples-node.md',
+)
+
 requireIncludes(issueTemplateConfig, 'https://github.com/proompteng/bilig/discussions/213', '.github/ISSUE_TEMPLATE/config.yml')
 requireIncludes(
   pullRequestTemplate,
@@ -818,6 +826,7 @@ await requireFile(join(repoRoot, 'examples', 'headless-workpaper', 'agent-framew
 await requireFile(join(repoRoot, 'examples', 'headless-workpaper', 'mcp-tool-server.ts'))
 await requireFile(join(repoRoot, 'examples', 'headless-workpaper', 'mcp-stdio-server.ts'))
 requireDocumentedScriptsExist(headlessExampleReadme, headlessExamplePackage, 'examples/headless-workpaper/README.md')
+requireIncludes(headlessExampleReadme, '90-second npm-only check', 'examples/headless-workpaper/README.md')
 requireIncludes(headlessExampleReadme, 'npm run invoice-totals', 'examples/headless-workpaper/README.md')
 requireIncludes(headlessExampleReadme, '## Invoice Totals', 'examples/headless-workpaper/README.md')
 requireIncludes(headlessExampleReadme, 'npm run csv-shaped', 'examples/headless-workpaper/README.md')

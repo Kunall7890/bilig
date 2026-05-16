@@ -17,6 +17,28 @@ prints `verified: true` after the expected checks pass.
 
 The examples use the published `@bilig/headless` package from npm.
 
+## 90-second npm-only check
+
+If you are evaluating from search, HN, or an agent-tool shortlist, start here
+before cloning the repository. This checks the published npm package in an
+empty directory, edits an input cell, recalculates formulas, persists the
+WorkPaper JSON, restores it, and prints `verified: true`.
+
+```sh
+mkdir bilig-headless-eval
+cd bilig-headless-eval
+npm init -y
+npm pkg set type=module
+npm install @bilig/headless
+npm install -D tsx typescript @types/node
+curl -fsSLo quickstart.ts https://proompteng.github.io/bilig/npm-eval.ts
+npx tsx quickstart.ts
+```
+
+Use the clone path below when you want the full workflow set: invoice totals,
+budget variance, MRR forecast, quote approval, fulfillment capacity, agent
+tool-call readback, and MCP transcript checks.
+
 ## Clone and run
 
 ```sh
