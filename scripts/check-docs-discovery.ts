@@ -4,7 +4,6 @@ import { fileURLToPath } from 'node:url'
 import { agentFrameworkDocRequirements, agentFrameworkLlmsRequiredLinks } from './check-docs-discovery-agent-pages.ts'
 import { requireAiSdkDiscovery } from './check-docs-discovery-ai-sdk.ts'
 import {
-  extractSitemapUrls,
   requireDocumentedScriptsExist,
   requireFile,
   requireIncludes,
@@ -13,6 +12,7 @@ import {
   requirePackageKeywords,
   requirePublishedSource,
 } from './check-docs-discovery-core.ts'
+import { requireSitemapPublishedSources } from './check-docs-discovery-sitemap.ts'
 import { requireHomepageDiscovery } from './check-docs-discovery-homepage.ts'
 import { productHuntLaunchAssetFiles, requireGrowthSurfaceDiscovery } from './check-docs-discovery-launch-kit.ts'
 import { llmsExternalSurfaceLinks } from './check-docs-discovery-growth-links.ts'
@@ -155,24 +155,12 @@ requireIncludes(robots, 'User-agent: *', 'docs/robots.txt')
 requireIncludes(robots, 'Allow: /', 'docs/robots.txt')
 requireIncludes(robots, `Sitemap: ${siteRoot}sitemap.xml`, 'docs/robots.txt')
 
-const actualSitemapUrls = extractSitemapUrls(sitemap)
-if (actualSitemapUrls.length !== expectedSitemapUrls.length) {
-  throw new Error(`sitemap has ${String(actualSitemapUrls.length)} urls, expected ${String(expectedSitemapUrls.length)}`)
-}
-
-const sourceFilesToVerify: string[] = []
-
-for (const expectedUrl of expectedSitemapUrls) {
-  if (!actualSitemapUrls.includes(expectedUrl)) {
-    throw new Error(`sitemap is missing ${expectedUrl}`)
-  }
-
-  const sourceFile = sourceFilesByUrl.get(expectedUrl)
-  if (sourceFile === undefined) {
-    throw new Error(`no source file mapping for ${expectedUrl}`)
-  }
-  sourceFilesToVerify.push(sourceFile)
-}
+const { actualSitemapUrls, sourceFilesToVerify } = requireSitemapPublishedSources({
+  expectedSitemapUrls,
+  sitemap,
+  siteRoot,
+  sourceFilesByUrl,
+})
 
 await Promise.all(sourceFilesToVerify.map((sourceFile) => requirePublishedSource(join(docsRoot, sourceFile))))
 await Promise.all(
@@ -209,12 +197,6 @@ await Promise.all(
     'fonts/ibm-plex-sans-condensed-700.woff2',
   ].map((sourceFile) => requireFile(join(docsRoot, 'assets', sourceFile))),
 )
-
-for (const url of actualSitemapUrls) {
-  if (!url.startsWith(siteRoot)) {
-    throw new Error(`sitemap url is outside ${siteRoot}: ${url}`)
-  }
-}
 
 for (const required of [
   'repository: https://github.com/proompteng/bilig',
