@@ -1,3 +1,13 @@
+export function resolveBrowserTestCiMode(value: string | undefined): boolean {
+  if (value === undefined || value.length === 0 || value === '0' || value === 'false') {
+    return false
+  }
+  if (value === '1' || value === 'true') {
+    return true
+  }
+  throw new Error(`CI must be "1", "true", "0", or "false" when set, got ${value}`)
+}
+
 export function resolveBrowserTestTimeoutMs(value: string | undefined, fallbackMs: number): number {
   if (value === undefined || value.length === 0) {
     return fallbackMs

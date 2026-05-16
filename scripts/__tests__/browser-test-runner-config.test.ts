@@ -1,8 +1,18 @@
 import { describe, expect, it } from 'vitest'
 
-import { resolveBrowserTestConfiguredPort, resolveBrowserTestTimeoutMs } from '../browser-test-runner-config.ts'
+import { resolveBrowserTestCiMode, resolveBrowserTestConfiguredPort, resolveBrowserTestTimeoutMs } from '../browser-test-runner-config.ts'
 
 describe('browser test runner config', () => {
+  it('parses CI mode explicitly for browser runner behavior', () => {
+    expect(resolveBrowserTestCiMode(undefined)).toBe(false)
+    expect(resolveBrowserTestCiMode('')).toBe(false)
+    expect(resolveBrowserTestCiMode('0')).toBe(false)
+    expect(resolveBrowserTestCiMode('false')).toBe(false)
+    expect(resolveBrowserTestCiMode('1')).toBe(true)
+    expect(resolveBrowserTestCiMode('true')).toBe(true)
+    expect(() => resolveBrowserTestCiMode('treu')).toThrow('CI must be "1", "true", "0", or "false" when set, got treu')
+  })
+
   it('parses decimal startup timeouts without truncating malformed values', () => {
     expect(resolveBrowserTestTimeoutMs('120000', 300000)).toBe(120000)
     expect(resolveBrowserTestTimeoutMs('120000ms', 300000)).toBe(300000)

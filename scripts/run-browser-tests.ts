@@ -5,7 +5,7 @@ import net from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { spawnSync as nodeSpawnSync } from 'node:child_process'
-import { resolveBrowserTestConfiguredPort, resolveBrowserTestTimeoutMs } from './browser-test-runner-config.js'
+import { resolveBrowserTestCiMode, resolveBrowserTestConfiguredPort, resolveBrowserTestTimeoutMs } from './browser-test-runner-config.js'
 import { resolveBrowserLocalWebMode, resolveBrowserStack } from './browser-stack-config.js'
 import { resolveBrowserTestPhases, type BrowserTestPhase } from './browser-test-phases.js'
 
@@ -13,7 +13,7 @@ const textDecoder = new TextDecoder()
 const repoRoot = process.cwd()
 const playwrightArgs = process.argv.slice(2)
 const normalizedBrowserStack = resolveBrowserStackOrExit()
-const isCi = process.env['CI'] === '1' || process.env['CI'] === 'true'
+const isCi = resolveBrowserTestCiModeOrExit()
 type ComposeInvocation = {
   label: string
   command: string[]
@@ -33,6 +33,15 @@ let composeInvocationLogged = false
 function resolveBrowserStackOrExit(): ReturnType<typeof resolveBrowserStack> {
   try {
     return resolveBrowserStack(process.env)
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error))
+    process.exit(1)
+  }
+}
+
+function resolveBrowserTestCiModeOrExit(): boolean {
+  try {
+    return resolveBrowserTestCiMode(process.env['CI'])
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error))
     process.exit(1)
