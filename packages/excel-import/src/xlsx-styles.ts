@@ -28,6 +28,7 @@ import {
   readXmlOptionalBooleanAttribute,
   readXmlPositiveIntegerAttribute,
 } from './xlsx-style-xml.js'
+import { asArray, isRecord, normalizeRgbColor, numberValue, recordChild, stringValue, toArgbColor } from './xlsx-style-values.js'
 import { readImportedWorkbookThemeArtifact } from './xlsx-theme-artifacts.js'
 import { workbookSheetPathEntries } from './xlsx-workbook-sheet-paths.js'
 import { getZipText as getZipEntryText, readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
@@ -63,37 +64,6 @@ const xmlParser = new XMLParser({
 // XLSX can encode whole-sheet visual defaults as one <col min="1" max="16384"> range.
 // Preserve bounded column metadata, but do not expand broad defaults into snapshot state.
 const maxExpandedColumnMetadataEntries = 2_048
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
-
-function asArray(value: unknown): unknown[] {
-  if (value === undefined || value === null) {
-    return []
-  }
-  return Array.isArray(value) ? value : [value]
-}
-
-function stringValue(value: unknown): string | null {
-  return typeof value === 'string' ? value : null
-}
-
-function numberValue(value: unknown): number | null {
-  if (typeof value !== 'string' || value.trim().length === 0) {
-    return null
-  }
-  const number = Number(value)
-  return Number.isFinite(number) ? number : null
-}
-
-function recordChild(value: unknown, key: string): Record<string, unknown> | null {
-  if (!isRecord(value)) {
-    return null
-  }
-  const child = value[key]
-  return isRecord(child) ? child : null
-}
 
 function normalizeZipPath(path: string): string {
   return path.replace(/^\/+/, '')
@@ -143,25 +113,6 @@ function workbookStylePath(workbook: XLSX.WorkBook): string | null {
   }
   const firstStylePath = asArray(directory['styles']).find((entry) => typeof entry === 'string')
   return typeof firstStylePath === 'string' ? firstStylePath : null
-}
-
-function normalizeRgbColor(value: unknown): string | null {
-  if (typeof value !== 'string') {
-    return null
-  }
-  const normalized = value.trim().replace(/^#/, '')
-  if (/^[0-9a-fA-F]{6}$/.test(normalized)) {
-    return `#${normalized.toLowerCase()}`
-  }
-  if (/^[0-9a-fA-F]{8}$/.test(normalized)) {
-    return `#${normalized.slice(2).toLowerCase()}`
-  }
-  return null
-}
-
-function toArgbColor(value: string): string | null {
-  const normalized = normalizeRgbColor(value)
-  return normalized ? `FF${normalized.slice(1).toUpperCase()}` : null
 }
 
 function readColorRecord(value: unknown): string | null {
