@@ -202,6 +202,7 @@ the [MCP server guide](docs/mcp-workpaper-tool-server.md),
 [npm provenance and package trust](docs/npm-provenance-package-trust.md),
 [JavaScript library comparison](docs/javascript-spreadsheet-library-headless-node.md),
 [headless spreadsheet engine for Node services and agents](docs/headless-spreadsheet-engine-node-services-agents.md),
+[XLSX formula recalculation in Node.js](docs/xlsx-formula-recalculation-node.md),
 [ExcelJS formula recalculation in Node.js](docs/exceljs-formula-recalculation-node.md),
 [SheetJS/ExcelJS boundary](docs/sheetjs-exceljs-alternative-formula-workbook-api.md),
 and [headless engine comparison](docs/headless-spreadsheet-engine-comparison.md).
@@ -310,7 +311,8 @@ It is published in the official MCP Registry as
   [`examples/xlsx-recalculation-node`](examples/xlsx-recalculation-node). It
   imports a generated XLSX pricing workbook, edits input cells, reads the
   recalculated approval decision, exports XLSX, reimports it, and verifies the
-  formulas survived the round trip.
+  formulas survived the round trip. The public decision page is
+  [XLSX formula recalculation in Node.js](docs/xlsx-formula-recalculation-node.md).
 - For a shorter public decision page, read
   [formula workbooks for Node services and agent tools](docs/formula-workbooks-node-services-agent-tools.md).
   It compresses the WorkPaper boundary, MCP file-backed mode, benchmark caveat,

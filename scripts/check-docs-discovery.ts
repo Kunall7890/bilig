@@ -98,6 +98,7 @@ const [headlessSpreadsheetEngineComparison, sheetjsExceljsAlternativeFormulaWork
     readFile(join(docsRoot, 'sheetjs-exceljs-alternative-formula-workbook-api.md'), 'utf8'),
     readFile(join(docsRoot, 'hyperformula-alternative-headless-workpaper.md'), 'utf8'),
   ])
+const xlsxFormulaRecalculationNode = await readFile(join(docsRoot, 'xlsx-formula-recalculation-node.md'), 'utf8')
 const formulaWorkbooksProof = await readFile(join(docsRoot, 'formula-workbooks-node-services-agent-tools.md'), 'utf8')
 const showHnFormulaWorkbooksProof = await readFile(join(docsRoot, 'show-hn-formula-workbooks-node-services.md'), 'utf8')
 const googleSheetsApiBoundaryDoc = await readFile(join(docsRoot, 'google-sheets-api-alternative-node-workpaper.md'), 'utf8')
@@ -139,6 +140,7 @@ for (const required of [
   './show-hn-formula-workbooks-node-services.html',
   './formula-workbooks-node-services-agent-tools.html',
   './agent-workpaper-tool-calling-recipe.html',
+  './xlsx-formula-recalculation-node.html',
   './vercel-ai-sdk-langchain-spreadsheet-tool.html',
   './mcp-workpaper-tool-server.html',
   './mcp-spreadsheet-server-directory.html',
@@ -493,9 +495,14 @@ requireIncludes(headlessReadme, 'npm provenance and package trust guide', 'packa
 requireIncludes(headlessReadme, 'https://api.scorecard.dev/projects/github.com/proompteng/bilig/badge', 'packages/headless/README.md')
 requireIncludes(headlessReadme, 'uploaded to GitHub code scanning on every `main` update', 'packages/headless/README.md')
 requireIncludes(readme, 'examples/xlsx-recalculation-node', 'README.md')
+requireIncludes(readme, 'docs/xlsx-formula-recalculation-node.md', 'README.md')
 requireIncludes(headlessReadme, 'examples/xlsx-recalculation-node', 'packages/headless/README.md')
+requireIncludes(headlessReadme, 'docs/xlsx-formula-recalculation-node.md', 'packages/headless/README.md')
 requireIncludes(index, 'examples/xlsx-recalculation-node', 'docs/index.html')
+requireIncludes(index, './xlsx-formula-recalculation-node.html', 'docs/index.html')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/tree/main/examples/xlsx-recalculation-node', 'docs/llms.txt')
+requireIncludes(llms, 'https://proompteng.github.io/bilig/xlsx-formula-recalculation-node.html', 'docs/llms.txt')
+requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/xlsx-formula-recalculation-node.md', 'docs/llms.txt')
 requireIncludes(index, './npm-provenance-package-trust.html', 'docs/index.html')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/npm-provenance-package-trust.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/npm-provenance-package-trust.md', 'docs/llms.txt')
@@ -763,6 +770,20 @@ for (const [path, content] of [
     '[headless spreadsheet engine use-case chooser](headless-spreadsheet-engine-comparison.md#use-case-chooser)',
     path,
   )
+}
+
+for (const required of [
+  'title: XLSX formula recalculation in Node.js',
+  'canonical_url: https://proompteng.github.io/bilig/xlsx-formula-recalculation-node.html',
+  'cd bilig/examples/xlsx-recalculation-node',
+  '"exportedReimportMatchesAfter": true',
+  '"formulasSurvivedXlsxRoundTrip": true',
+  'import { exportXlsx, importXlsx } from "@bilig/headless/xlsx";',
+  'Use ExcelJS or SheetJS first when the job is workbook-file manipulation',
+  'Use `@bilig/headless` when the Node process must own the recalculated answer',
+  'star the repository',
+] as const) {
+  requireIncludes(xlsxFormulaRecalculationNode, required, 'docs/xlsx-formula-recalculation-node.md')
 }
 
 for (const required of [
