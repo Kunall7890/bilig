@@ -527,6 +527,72 @@ describe('operation-service dense mutation fast paths', () => {
     unsubscribeGeneral()
   })
 
+  it('skips exact lookup-only numeric batches with one cached numeric dependent plan', async () => {
+    const rowCount = 80
+    const engine = new SpreadsheetEngine({ workbookName: 'dense-exact-lookup-batch-plan', useColumnIndex: true })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+
+    for (let row = 1; row <= rowCount; row += 1) {
+      engine.setCellValue('Sheet1', `A${row}`, row)
+    }
+    engine.setCellValue('Sheet1', 'D1', Math.floor(rowCount / 2))
+    engine.setCellFormula('Sheet1', 'E1', `MATCH(D1,A1:A${rowCount},0)`)
+
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+    const refs: EngineCellMutationRef[] = []
+    for (let row = rowCount - 1; row >= rowCount - 40; row -= 1) {
+      refs.push({
+        sheetId,
+        cellIndex: engine.workbook.getCellIndex('Sheet1', `A${row + 1}`),
+        mutation: { kind: 'setCellValue', row, col: 0, value: row + 1_000 },
+      })
+    }
+
+    engine.resetPerformanceCounters()
+    const applied = operationHook<[readonly EngineCellMutationRef[], null, number], boolean>(
+      engine,
+      'tryApplyLookupOnlyNumericColumnLiteralBatch',
+    )(refs, null, 0)
+
+    expect(applied).toBe(true)
+    expect(engine.getCellValue('Sheet1', 'E1')).toEqual({ tag: ValueTag.Number, value: Math.floor(rowCount / 2) })
+    expect(engine.getLastMetrics()).toMatchObject({ dirtyFormulaCount: 0, jsFormulaCount: 0, wasmFormulaCount: 0 })
+    expect(engine.getPerformanceCounters().kernelSyncOnlyRecalcSkips).toBe(1)
+  })
+
+  it('rejects exact lookup-only numeric batches when a write can change the match', async () => {
+    const rowCount = 80
+    const engine = new SpreadsheetEngine({ workbookName: 'dense-exact-lookup-batch-plan-hit', useColumnIndex: true })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+
+    for (let row = 1; row <= rowCount; row += 1) {
+      engine.setCellValue('Sheet1', `A${row}`, row)
+    }
+    engine.setCellValue('Sheet1', 'D1', Math.floor(rowCount / 2))
+    engine.setCellFormula('Sheet1', 'E1', `MATCH(D1,A1:A${rowCount},0)`)
+
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+    const refs: EngineCellMutationRef[] = []
+    for (let row = rowCount - 1; row >= rowCount - 41; row -= 1) {
+      refs.push({
+        sheetId,
+        cellIndex: engine.workbook.getCellIndex('Sheet1', `A${row + 1}`),
+        mutation: { kind: 'setCellValue', row, col: 0, value: row + 1_000 },
+      })
+    }
+
+    const applied = operationHook<[readonly EngineCellMutationRef[], null, number], boolean>(
+      engine,
+      'tryApplyLookupOnlyNumericColumnLiteralBatch',
+    )(refs, null, 0)
+
+    expect(applied).toBe(false)
+    expect(engine.getCellValue('Sheet1', `A${Math.floor(rowCount / 2)}`)).toEqual({ tag: ValueTag.Number, value: Math.floor(rowCount / 2) })
+    expect(engine.getCellValue('Sheet1', 'E1')).toEqual({ tag: ValueTag.Number, value: Math.floor(rowCount / 2) })
+  })
+
   it('applies trusted existing numeric aggregate mutations through the narrow fast path', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'trusted-existing-aggregate-fast-path' })
     await engine.ready()

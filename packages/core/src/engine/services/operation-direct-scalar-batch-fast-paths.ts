@@ -14,6 +14,12 @@ import {
   singleInputAffineDirectScalar,
 } from './direct-scalar-helpers.js'
 import { PendingNumericCellValues, type DirectScalarCurrentOperand } from './direct-formula-index-collection.js'
+import {
+  type ExactLookupBatchSkipPlan,
+  exactLookupBatchOldNumeric,
+  exactLookupBatchWriteHandled,
+  prepareExactLookupBatchSkipPlan,
+} from './operation-exact-lookup-batch-skip-plan.js'
 import { reverseUint32Array, tagTrustedPhysicalTrackedChanges } from './operation-change-helpers.js'
 import { emitCellMutationFastPathBatchResult } from './operation-fast-path-batch-result.js'
 import { createOperationDirectAggregateRectangularBatchFastPath } from './operation-direct-aggregate-rectangular-batch-fast-path.js'
@@ -545,6 +551,15 @@ export function createOperationDirectScalarBatchFastPaths(args: OperationDirectS
     if (!hasExactLookupDependents && !hasSortedLookupDependents) {
       return false
     }
+    const exactSkipPlan = hasExactLookupDependents
+      ? prepareExactLookupBatchSkipPlan({
+          col: firstMutation.col,
+          formulas: args.state.formulas,
+          getSingleEntityDependent: args.getSingleEntityDependent,
+          readNumericValue: directScalarCellNumericValue,
+          sheetId: firstRef.sheetId,
+        })
+      : ({ kind: 'all' } satisfies ExactLookupBatchSkipPlan)
 
     const inputCellIndices = new Uint32Array(refs.length)
     const inputNumericValues = new Float64Array(refs.length)
@@ -579,13 +594,18 @@ export function createOperationDirectScalarBatchFastPaths(args: OperationDirectS
       if (existingIndex === -1 || !canFastPathLiteralOverwrite(existingIndex)) {
         return false
       }
-      const oldNumber = directScalarCellNumericValue(existingIndex)
+      const plannedOldNumber = exactLookupBatchOldNumeric(exactSkipPlan, mutation.row)
+      const oldNumber =
+        plannedOldNumber !== undefined && !hasSortedLookupDependents ? plannedOldNumber : directScalarCellNumericValue(existingIndex)
       if (oldNumber === undefined) {
         return false
       }
       if (
-        hasExactLookupDependents &&
-        !planExactLookupNumericColumnWrite(firstRef.sheetId, firstMutation.col, mutation.row, oldNumber, mutation.value).handled
+        !(
+          exactLookupBatchWriteHandled(exactSkipPlan, mutation.row, oldNumber, mutation.value) ||
+          (exactSkipPlan.kind === 'fallback' &&
+            planExactLookupNumericColumnWrite(firstRef.sheetId, firstMutation.col, mutation.row, oldNumber, mutation.value).handled)
+        )
       ) {
         return false
       }
