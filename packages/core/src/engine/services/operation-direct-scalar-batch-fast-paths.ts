@@ -555,6 +555,7 @@ export function createOperationDirectScalarBatchFastPaths(args: OperationDirectS
       ? prepareExactLookupBatchSkipPlan({
           col: firstMutation.col,
           formulas: args.state.formulas,
+          getEntityDependents: args.getEntityDependents,
           getSingleEntityDependent: args.getSingleEntityDependent,
           readNumericValue: directScalarCellNumericValue,
           sheetId: firstRef.sheetId,
