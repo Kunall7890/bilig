@@ -602,6 +602,7 @@ export class WorkPaper extends WorkPaperRuntimeSurface {
       applyCellMutationRefs: (refs, applyOptions) => this.applyCellMutationRefs(refs, applyOptions),
       rewriteFormulaForStorage: (formula, ownerSheetId) => this.rewriteFormulaForStorage(formula, ownerSheetId),
       updateSheetDimensionsAfterCellMutationRefs: (refs) => this.updateSheetDimensionsAfterCellMutationRefs(refs),
+      updateSheetDimensionsAfterMatrixMutationImpact: (impact) => this.sheetDimensionCache.updateAfterMatrixMutationImpact(impact),
     })
   }
 

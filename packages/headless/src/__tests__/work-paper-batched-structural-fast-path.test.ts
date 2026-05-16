@@ -13,6 +13,7 @@ function hasCaptureVisibilitySnapshot(value: unknown): value is WorkPaper & { ca
 
 interface TestSheetDimensionCache {
   updateAfterCellMutationRefs(...args: unknown[]): unknown
+  updateAfterMatrixMutationImpact(...args: unknown[]): unknown
 }
 
 interface TestEngineRuntimeSupport {
@@ -20,25 +21,39 @@ interface TestEngineRuntimeSupport {
 }
 
 function hasSheetDimensionCacheUpdater(value: unknown): value is TestSheetDimensionCache {
-  return typeof value === 'object' && value !== null && typeof Reflect.get(value, 'updateAfterCellMutationRefs') === 'function'
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof Reflect.get(value, 'updateAfterCellMutationRefs') === 'function' &&
+    typeof Reflect.get(value, 'updateAfterMatrixMutationImpact') === 'function'
+  )
 }
 
 function hasClearOwnedSpill(value: unknown): value is TestEngineRuntimeSupport {
   return typeof value === 'object' && value !== null && typeof Reflect.get(value, 'clearOwnedSpillNow') === 'function'
 }
 
-function trackSheetDimensionCacheUpdates(workbook: WorkPaper): { readonly count: number; restore: () => void } {
+function trackSheetDimensionCacheUpdates(workbook: WorkPaper): {
+  readonly matrixImpactCount: number
+  readonly refScanCount: number
+  restore: () => void
+} {
   const cache: unknown = Reflect.get(workbook, 'sheetDimensionCache')
   if (!hasSheetDimensionCacheUpdater(cache)) {
     throw new Error('Expected WorkPaper to expose a sheet dimension cache in tests')
   }
-  const spy = vi.spyOn(cache, 'updateAfterCellMutationRefs')
+  const refScanSpy = vi.spyOn(cache, 'updateAfterCellMutationRefs')
+  const matrixImpactSpy = vi.spyOn(cache, 'updateAfterMatrixMutationImpact')
   return {
-    get count() {
-      return spy.mock.calls.length
+    get matrixImpactCount() {
+      return matrixImpactSpy.mock.calls.length
+    },
+    get refScanCount() {
+      return refScanSpy.mock.calls.length
     },
     restore: () => {
-      spy.mockRestore()
+      matrixImpactSpy.mockRestore()
+      refScanSpy.mockRestore()
     },
   }
 }
@@ -91,7 +106,8 @@ describe('work paper batched structural fast path', () => {
           ]),
         ).toEqual([])
       })
-      expect(dimensionUpdates.count).toBe(1)
+      expect(dimensionUpdates.matrixImpactCount).toBe(1)
+      expect(dimensionUpdates.refScanCount).toBe(0)
       expect(spillOwnerClears.count).toBe(0)
     } finally {
       spillOwnerClears.restore()

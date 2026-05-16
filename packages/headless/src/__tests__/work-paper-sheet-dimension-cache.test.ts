@@ -97,6 +97,70 @@ describe('WorkPaperSheetDimensionCache', () => {
     expect(cache.get(2)).toBeUndefined()
   })
 
+  it('updates dimensions directly from matrix mutation impact', () => {
+    const cache = new WorkPaperSheetDimensionCache(engineWithSpills())
+    cache.cache(1, { width: 2, height: 2 })
+
+    cache.updateAfterMatrixMutationImpact({
+      hasDynamicFormula: false,
+      maxClearCol: -1,
+      maxClearRow: -1,
+      maxSetCol: 4,
+      maxSetRow: 5,
+      sheetId: 1,
+    })
+
+    expect(cache.get(1)).toEqual({ width: 5, height: 6 })
+
+    cache.updateAfterMatrixMutationImpact({
+      hasDynamicFormula: false,
+      maxClearCol: 1,
+      maxClearRow: 1,
+      maxSetCol: -1,
+      maxSetRow: -1,
+      sheetId: 1,
+    })
+
+    expect(cache.get(1)).toEqual({ width: 5, height: 6 })
+
+    cache.updateAfterMatrixMutationImpact({
+      hasDynamicFormula: false,
+      maxClearCol: 4,
+      maxClearRow: 0,
+      maxSetCol: -1,
+      maxSetRow: -1,
+      sheetId: 1,
+    })
+
+    expect(cache.get(1)).toBeUndefined()
+  })
+
+  it('invalidates matrix mutations with dynamic formulas or known spill sheets', () => {
+    const cache = new WorkPaperSheetDimensionCache(engineWithSpills(['Sheet2']))
+    cache.cache(1, { width: 2, height: 2 })
+    cache.cache(2, { width: 2, height: 2 })
+
+    cache.updateAfterMatrixMutationImpact({
+      hasDynamicFormula: true,
+      maxClearCol: -1,
+      maxClearRow: -1,
+      maxSetCol: 0,
+      maxSetRow: 0,
+      sheetId: 1,
+    })
+    cache.updateAfterMatrixMutationImpact({
+      hasDynamicFormula: false,
+      maxClearCol: -1,
+      maxClearRow: -1,
+      maxSetCol: 0,
+      maxSetRow: 0,
+      sheetId: 2,
+    })
+
+    expect(cache.get(1)).toBeUndefined()
+    expect(cache.get(2)).toBeUndefined()
+  })
+
   it('clears dimensions and refreshes spill knowledge on invalidateAll', () => {
     const spills: string[] = ['Sheet1']
     const cache = new WorkPaperSheetDimensionCache(engineWithSpills(spills))

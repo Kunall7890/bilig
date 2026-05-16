@@ -1,10 +1,12 @@
 import type { EngineCellMutationRef } from '@bilig/core'
 import { isBlankRawCellContent } from './work-paper-runtime-helpers.js'
+import { workPaperFormulaMayResizeDynamically } from './work-paper-sheet-inspection.js'
 import type { WorkPaperCellAddress, WorkPaperSheet, RawCellContent } from './work-paper-types.js'
 
 export type MatrixMutationRef = EngineCellMutationRef
 
 export interface MatrixMutationPlan {
+  dimensionImpact: MatrixMutationDimensionImpact
   leadingRefs: MatrixMutationRef[]
   leadingPotentialNewCells: number
   formulaRefs: MatrixMutationRef[]
@@ -14,6 +16,15 @@ export interface MatrixMutationPlan {
   potentialNewCells: number
   trailingLiteralRefs: MatrixMutationRef[]
   trailingLiteralPotentialNewCells: number
+}
+
+export interface MatrixMutationDimensionImpact {
+  hasDynamicFormula: boolean
+  maxClearCol: number
+  maxClearRow: number
+  maxSetCol: number
+  maxSetRow: number
+  sheetId: number
 }
 
 interface BuildMatrixMutationPlanArgs {
@@ -37,10 +48,15 @@ export function buildMatrixMutationPlan(args: BuildMatrixMutationPlanArgs): Matr
   let formulaPotentialNewCells = 0
   let potentialNewCells = 0
   let trailingLiteralPotentialNewCells = 0
-  const earliestFormulaRowByColumn = new Map<number, number>()
+  let hasDynamicFormula = false
+  let maxClearCol = -1
+  let maxClearRow = -1
+  let maxSetCol = -1
+  let maxSetRow = -1
+  const earliestFormulaRowByColumn: number[] = []
 
   const shouldDeferLiteral = (row: number, col: number): boolean => {
-    const earliestFormulaRow = earliestFormulaRowByColumn.get(col)
+    const earliestFormulaRow = earliestFormulaRowByColumn[col]
     return earliestFormulaRow !== undefined && row > earliestFormulaRow
   }
 
@@ -59,6 +75,8 @@ export function buildMatrixMutationPlan(args: BuildMatrixMutationPlanArgs): Matr
 
       if (isBlankRawCellContent(raw)) {
         if (!args.skipNulls) {
+          maxClearRow = Math.max(maxClearRow, destination.row)
+          maxClearCol = Math.max(maxClearCol, destination.col)
           const ref = {
             sheetId: args.target.sheet,
             mutation: { kind: 'clearCell', row: destination.row, col: destination.col },
@@ -73,12 +91,16 @@ export function buildMatrixMutationPlan(args: BuildMatrixMutationPlanArgs): Matr
       }
 
       potentialNewCells += 1
+      maxSetRow = Math.max(maxSetRow, destination.row)
+      maxSetCol = Math.max(maxSetCol, destination.col)
 
       if (isFormulaContent(raw)) {
         formulaPotentialNewCells += 1
-        const earliestFormulaRow = earliestFormulaRowByColumn.get(destination.col)
+        const rewrittenFormula = args.rewriteFormula(raw, destination, rowOffset, columnOffset)
+        hasDynamicFormula ||= workPaperFormulaMayResizeDynamically(rewrittenFormula)
+        const earliestFormulaRow = earliestFormulaRowByColumn[destination.col]
         if (earliestFormulaRow === undefined || destination.row < earliestFormulaRow) {
-          earliestFormulaRowByColumn.set(destination.col, destination.row)
+          earliestFormulaRowByColumn[destination.col] = destination.row
         }
         formulaRefs.push({
           sheetId: args.target.sheet,
@@ -86,7 +108,7 @@ export function buildMatrixMutationPlan(args: BuildMatrixMutationPlanArgs): Matr
             kind: 'setCellFormula',
             row: destination.row,
             col: destination.col,
-            formula: args.rewriteFormula(raw, destination, rowOffset, columnOffset),
+            formula: rewrittenFormula,
           },
         })
         return
@@ -112,6 +134,14 @@ export function buildMatrixMutationPlan(args: BuildMatrixMutationPlanArgs): Matr
   })
 
   return {
+    dimensionImpact: {
+      hasDynamicFormula,
+      maxClearCol,
+      maxClearRow,
+      maxSetCol,
+      maxSetRow,
+      sheetId: args.target.sheet,
+    },
     leadingRefs,
     leadingPotentialNewCells,
     formulaRefs,

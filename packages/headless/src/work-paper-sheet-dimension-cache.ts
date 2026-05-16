@@ -2,6 +2,7 @@ import type { EngineCellMutationRef } from '@bilig/core'
 import { workPaperFormulaMayResizeDynamically } from './work-paper-sheet-inspection.js'
 import type { WorkPaperSheetDimensions } from './work-paper-types.js'
 import type { WorkPaperAxisIntervalEditMode, WorkPaperAxisKind } from './work-paper-axis-helpers.js'
+import type { MatrixMutationDimensionImpact } from './matrix-mutation-plan.js'
 
 export interface WorkPaperSheetDimensionEngine {
   readonly workbook: {
@@ -108,6 +109,28 @@ export class WorkPaperSheetDimensionCache {
         continue
       }
       this.expand(ref.sheetId, mutation.row, mutation.col)
+    }
+  }
+
+  updateAfterMatrixMutationImpact(impact: MatrixMutationDimensionImpact): void {
+    const cached = this.dimensions.get(impact.sheetId)
+    if (!cached) {
+      return
+    }
+    if (impact.hasDynamicFormula || this.sheetHasSpills(impact.sheetId)) {
+      this.invalidate(impact.sheetId)
+      return
+    }
+    if (
+      (impact.maxClearRow >= 0 && impact.maxClearRow + 1 >= cached.height) ||
+      (impact.maxClearCol >= 0 && impact.maxClearCol + 1 >= cached.width)
+    ) {
+      this.invalidate(impact.sheetId)
+      return
+    }
+    if (impact.maxSetRow >= 0) {
+      cached.height = Math.max(cached.height, impact.maxSetRow + 1)
+      cached.width = Math.max(cached.width, impact.maxSetCol + 1)
     }
   }
 

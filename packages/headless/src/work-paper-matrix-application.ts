@@ -1,6 +1,6 @@
 import type { EngineCellMutationRef } from '@bilig/core'
 import { translateFormulaReferences } from '@bilig/formula'
-import { buildMatrixMutationPlan } from './matrix-mutation-plan.js'
+import { buildMatrixMutationPlan, type MatrixMutationDimensionImpact } from './matrix-mutation-plan.js'
 import { matrixContainsFormulaContent, stripLeadingEquals } from './work-paper-runtime-helpers.js'
 import type { RawCellContent, WorkPaperCellAddress, WorkPaperSheet } from './work-paper-types.js'
 
@@ -88,6 +88,7 @@ export function applyWorkPaperMatrixContents(input: {
   readonly options?: WorkPaperMatrixApplyOptions
   readonly rewriteFormulaForStorage: (formula: string, ownerSheetId: number) => string
   readonly updateSheetDimensionsAfterCellMutationRefs?: (refs: readonly EngineCellMutationRef[]) => void
+  readonly updateSheetDimensionsAfterMatrixMutationImpact?: (impact: MatrixMutationDimensionImpact) => void
 }): void {
   const options = input.options ?? {}
   input.flushPendingBatchOps()
@@ -109,6 +110,7 @@ export function applyWorkPaperMatrixContents(input: {
     formulaRefs,
     formulaPotentialNewCells,
     refCount,
+    dimensionImpact,
     potentialNewCells,
     trailingLiteralRefs,
     trailingLiteralPotentialNewCells,
@@ -156,7 +158,11 @@ export function applyWorkPaperMatrixContents(input: {
   applyPlannedRefs(formulaRefs, createPhasedApplyOptions(formulaPotentialNewCells))
   applyPlannedRefs(trailingLiteralRefs, createPhasedApplyOptions(trailingLiteralPotentialNewCells))
   if (canUpdateDimensionsOnce) {
-    updateSheetDimensionsAfterCellMutationRefs(mergeMatrixMutationRefPhases(leadingRefs, formulaRefs, trailingLiteralRefs))
+    if (input.updateSheetDimensionsAfterMatrixMutationImpact) {
+      input.updateSheetDimensionsAfterMatrixMutationImpact(dimensionImpact)
+    } else {
+      updateSheetDimensionsAfterCellMutationRefs(mergeMatrixMutationRefPhases(leadingRefs, formulaRefs, trailingLiteralRefs))
+    }
   }
 }
 
