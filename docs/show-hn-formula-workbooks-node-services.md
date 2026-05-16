@@ -10,13 +10,14 @@ image: /assets/github-social-preview.png
 
 # Show HN: Bilig runs small formula workbooks in Node
 
-I built Bilig for one boring case I kept running into: a pricing rule, payout
-check, or import validator is easier to review as cells and formulas, but the
-production code still has to run in Node.
+Bilig came out of a very plain problem: people like reviewing pricing rules,
+payout checks, and import validators in spreadsheet form, but the code path
+still has to run on a server.
 
-I do not want a service clicking around Excel or Google Sheets. I want it to
-load a workbook-shaped object, write a few input cells, recalculate, read the
-answer back, and save the state as JSON.
+I did not want another service that drives Excel through clicks and then trusts
+a screenshot. I wanted a small object model that can load a workbook, change a
+few inputs, recalculate formulas, read the result, and save the same workbook
+state as JSON.
 
 ## Try the npm package
 
@@ -50,9 +51,9 @@ The important line is `"verified": true`. The script changed an input cell,
 read the recalculated formula value, saved WorkPaper JSON, restored it, and got
 the same calculated output again.
 
-## Why this is not just a formula parser
+## The part I care about
 
-Evaluating `=A1+B1` is not the hard part. The useful loop is:
+Evaluating `=A1+B1` is table stakes. The useful part is the whole loop:
 
 - put typed inputs into stable cells
 - recalculate dependent formulas after edits
@@ -60,10 +61,10 @@ Evaluating `=A1+B1` is not the hard part. The useful loop is:
 - save formulas and values as JSON
 - restore the workbook in CI and prove the answer did not change
 
-Bilig exposes a `WorkPaper` object because the workbook state is part of the
-contract.
+Bilig exposes a `WorkPaper` object because the workbook state has to be part
+of the contract, not an image someone eyeballed after the fact.
 
-## Evidence
+## Current numbers
 
 The checked benchmark artifact currently records `76/100` mean-latency wins
 against HyperFormula-style comparable workloads, and `75/100` workloads winning
@@ -76,7 +77,7 @@ Browser grid rendering is not part of this benchmark.
 Read the benchmark note:
 [what the WorkPaper benchmark proves](what-workpaper-benchmark-proves.md).
 
-## What it is not
+## Stuff it does not do
 
 Bilig is not a finished Excel clone. It does not claim full Excel formula
 parity, chart fidelity, macro execution, collaborative editing, or
@@ -87,10 +88,10 @@ Use SheetJS or ExcelJS first when the main job is file reading, writing, or
 styling. Use Google Sheets API first when a shared hosted spreadsheet and human
 collaboration are the product requirement.
 
-Use `@bilig/headless` when your Node code owns the workbook state and
-needs formula readback, persistence, and restore checks.
+Use `@bilig/headless` when your Node code owns the workbook state and needs
+formula readback, persistence, and restore checks.
 
-## If you are evaluating it
+## What would help
 
 The most useful feedback is concrete:
 
@@ -119,19 +120,24 @@ Suggested short body:
 ```text
 I maintain Bilig.
 
-The use case is narrow: a pricing rule, payout check, or import validator is
-easiest to review as cells and formulas, but the production path has to run in
-Node.
+The use case is boring but real: sometimes a pricing rule, payout check, or
+import validator is easiest to review as cells and formulas, but the production
+path still has to run in Node.
 
-The npm check starts from an empty project, edits one input cell, reads the
-recalculated value, saves WorkPaper JSON, restores it, and checks the same value
+I did not want a worker clicking around Excel or Google Sheets and then trusting
+a screenshot. Bilig gives you a WorkPaper object instead: write inputs,
+recalculate, read values back, save JSON, restore it, and check the same answer
 again.
+
+The npm check starts from an empty directory and proves that loop with the
+published package.
 
 It is not an Excel clone. It will not run macros or preserve every weird XLSX
 artifact. The current benchmark artifact says 76/100 mean wins against
-HyperFormula-style comparable workloads, with the p95 misses called out.
+HyperFormula-style comparable workloads, with the p95 misses called out instead
+of hidden.
 
-I am looking for blunt feedback from people who have shipped spreadsheet-backed
-services: missing formulas, XLSX cases, API shape, or a benchmark that would
-make you reject this quickly.
+I am looking for blunt rejection reasons from people who have shipped
+spreadsheet-backed services: missing formulas, XLSX cases, API shape, or the
+benchmark that would make you trust or reject it quickly.
 ```

@@ -703,21 +703,25 @@ contributor onboarding into public marketing:
 ### X / Bluesky Thread
 
 ```text
-1/ I maintain @bilig/headless, a TypeScript WorkPaper runtime for Node services
-and coding agents that need spreadsheet formulas without driving a browser grid.
+1/ I am working on @bilig/headless.
+
+It is for the boring spreadsheet cases that end up in backend code anyway:
+pricing rules, payout checks, quote calculators, import validators.
 
 2/ The shortest eval now starts from an empty npm project:
 https://github.com/proompteng/bilig#try-it-in-90-seconds
 
-It edits an input, reads the recalculated value, saves WorkPaper JSON, restores
-it, and checks the value again.
+It edits an input cell, reads the recalculated value, saves WorkPaper JSON,
+restores it, and checks the value again.
 
-3/ Benchmark caveat is public too: 76/100 comparable mean-latency rows are faster
-in the checked file, lookup-approximate-sorted-large is the visible p95 holdout,
-and UI rendering is not part of the benchmark.
+3/ Current benchmark artifact: 76/100 comparable mean-latency rows are faster
+than the HyperFormula-style baseline.
 
-4/ Question for people who automate spreadsheets from services or agents: what
-workflow would you need to see before trying a new headless workbook engine?
+The ugly part is public too: lookup-approximate-sorted-large is the visible p95
+holdout, and UI rendering is not part of that benchmark.
+
+4/ If you have shipped spreadsheet automation from Node, what would make you
+reject this library in five minutes?
 ```
 
 ### Short Evidence-Led Post
@@ -727,35 +731,37 @@ spreadsheet automation, or headless formula engines. Do not post it unchanged
 to every channel.
 
 ```text
-I maintain Bilig, an open-source TypeScript workbook runtime. The public npm
-package is @bilig/headless.
+I maintain Bilig. The public npm package is @bilig/headless.
 
-The quickest way to judge it now starts from an empty directory:
+It exists because I do not want backend jobs or coding agents clicking around a
+spreadsheet UI and then treating a screenshot as proof.
+
+The quickest way to judge the package starts from an empty directory:
 
 1. npm install @bilig/headless
 2. download the maintained eval.ts file
 3. run it with tsx
 4. inspect the before/after/afterRestore output
 
-The example builds a formula-backed workbook, edits an input, reads the
-dependent formula result, serializes the workbook as WorkPaper JSON, restores
-it, and checks that the restored value still matches.
+The example builds a small formula workbook, edits an input, reads the dependent
+formula result, serializes WorkPaper JSON, restores it, and checks that the
+restored value still matches.
 
 Repo quickstart:
 https://github.com/proompteng/bilig#try-it-in-90-seconds
 
-This is for backend and agent workflows where workbook formulas are business
-logic but opening a browser grid is the wrong runtime boundary. It is not an
-Excel clone, and the compatibility limits are documented:
+This is not an Excel clone. It is for the smaller case where workbook formulas
+are service logic and the code path needs readback plus persisted state.
+
+Compatibility limits are documented:
 https://github.com/proompteng/bilig/blob/main/docs/where-bilig-is-not-excel-compatible-yet.md
 
-The benchmark claim is intentionally narrow: the checked artifact has 76/100
-comparable mean-latency wins against HyperFormula-style workloads,
-lookup-approximate-sorted-large is the visible p95 holdout, and UI rendering is
-not part of the benchmark.
+The benchmark claim is intentionally narrow: 76/100 comparable mean-latency wins
+against HyperFormula-style workloads, lookup-approximate-sorted-large is the
+visible p95 holdout, and UI rendering is not part of the benchmark.
 
-If you automate spreadsheets from Node, what workflow or formula family would
-make or break a real trial?
+If you automate spreadsheets from Node, what would make you reject this API
+quickly?
 ```
 
 ### Hacker News Follow-Up Comment
@@ -768,7 +774,8 @@ Follow-up after the Show HN: I am looking for rejection reasons, not "nice
 project".
 
 The package is for Node code that needs to change workbook inputs, recalculate,
-read the result, and save the workbook-shaped state as JSON.
+read the result, and save the workbook-shaped state as JSON. No browser grid in
+the runtime path.
 
 If you have shipped something with HyperFormula, ExcelJS, SheetJS, or the Google
 Sheets API: what would make you reject this API quickly?
@@ -798,7 +805,7 @@ Optional response comment, only after the thread is visibly live or someone asks
 for details:
 
 ```text
-I maintain this project. The linked page is the shorter decision page after the
+I maintain this project. The linked page is the shorter version after the
 earlier Show HN.
 
 The runnable proof starts from an empty Node directory, installs
@@ -807,12 +814,11 @@ approval decision, saves WorkPaper JSON, restores it, and checks the same result
 again.
 
 The package is for backend workflows where spreadsheet formulas are business
-logic but opening a browser grid is the wrong boundary. It is not a full Excel
-clone, and the compatibility gaps are public.
+logic but opening a browser grid is the wrong runtime boundary. It is not a full
+Excel clone, and the compatibility gaps are public.
 
 Useful feedback would be specific: missing formula families, import/export
-cases, persistence shape, or any API choice that would make you reject it for a
-real service.
+cases, persistence shape, or any API choice that would make you reject it.
 ```
 
 ### JavaScript Weekly / Node Weekly Editorial Pitch
@@ -862,16 +868,15 @@ I am looking for feedback from people who automate spreadsheets from Node.
 Project: @bilig/headless
 Repo: https://github.com/proompteng/bilig
 
-It is a TypeScript headless workbook engine for services and coding agents:
-formula evaluation, structural row/column edits, range reads, JSON persistence,
-and verification after writes.
+It is a TypeScript workbook runtime: formula evaluation, structural row/column
+edits, range reads, JSON persistence, and verification after writes.
 
 The docs include a quick npm-only smoke test and benchmark evidence against
 HyperFormula-style workloads. It is early infrastructure, not a complete Excel
 clone.
 
-What I am trying to learn: which workflows or formulas would make or break this
-for real use?
+What I am trying to learn: which workflows, formulas, or file cases would make
+you reject this quickly?
 ```
 
 ### GitHub Discussion Prompt
