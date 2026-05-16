@@ -41,6 +41,10 @@ export async function acceptPersistedSnapshotChunk(
     return
   }
   decodeWorkbookSnapshotBytes(snapshot)
+  const latestSnapshot = await persistence.snapshots.latest(snapshot.documentId)
+  if (latestSnapshot && snapshot.cursor <= latestSnapshot.cursor) {
+    return
+  }
   await persistence.snapshots.put({
     documentId: snapshot.documentId,
     snapshotId: snapshot.snapshotId,

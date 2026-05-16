@@ -94,6 +94,9 @@ export function acceptLocalSnapshotChunk<SessionState extends LocalSnapshotSessi
   if (!assembled) {
     return
   }
+  if (assembled.documentId !== session.documentId || assembled.cursor <= session.cursor) {
+    return
+  }
 
   const snapshot = decodeWorkbookSnapshotBytes(assembled)
   const publication = createSnapshotPublicationFromBytes(assembled)
