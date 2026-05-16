@@ -75,6 +75,7 @@ export function syncWorkbookTypeGpuSurfaceV3(input: {
 
 export function drawWorkbookTypeGpuTileFrameV3(input: {
   readonly backend: WorkbookTypeGpuBackendV3
+  readonly drawText?: boolean | undefined
   readonly headerPanes?: readonly GridHeaderPaneState[] | undefined
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
   readonly preloadTilePanes?: readonly WorkbookRenderTilePaneState[] | undefined
@@ -123,6 +124,7 @@ export function drawWorkbookTypeGpuTileFrameV3(input: {
   })
   syncTypeGpuAtlasResources(input.backend.artifacts, input.backend.atlas)
   const drawPanes = resolveTypeGpuDrawTilePanesV3({
+    drawText: input.drawText ?? true,
     onTileMiss: (tileKey) => noteTypeGpuTileMiss(String(tileKey)),
     panes: input.tilePanes,
     residency: input.backend.tileResidency,
@@ -130,6 +132,7 @@ export function drawWorkbookTypeGpuTileFrameV3(input: {
   })
   return drawTypeGpuTilePanesV3({
     artifacts: input.backend.artifacts,
+    drawText: input.drawText ?? true,
     headerPanes,
     layerResources: input.backend.layerResources,
     overlay: input.overlay ?? null,
@@ -205,6 +208,7 @@ export function syncRenderTileResidencyFromPanesV3(input: {
 }
 
 export function resolveTypeGpuDrawTilePanesV3(input: {
+  readonly drawText?: boolean | undefined
   readonly panes: readonly WorkbookRenderTilePaneState[]
   readonly residency: TileResidencyV3<GridRenderTile, null>
   readonly tileResources: Pick<TypeGpuTileResourceCacheV3, 'peekContent'>
@@ -213,7 +217,7 @@ export function resolveTypeGpuDrawTilePanesV3(input: {
   return input.panes.map((pane) => {
     const entry = input.residency.getExact(pane.tile.tileId)
     const exact = input.tileResources.peekContent(resolveWorkbookTileContentBufferKeyV3(pane))
-    if (entry?.packet && exact && isTileContentDrawReady(exact, pane)) {
+    if (entry?.packet && exact && isTileContentDrawReady(exact, pane, input.drawText ?? true)) {
       return { ...pane, tile: entry.packet }
     }
     input.onTileMiss?.(pane.tile.tileId)
@@ -221,11 +225,12 @@ export function resolveTypeGpuDrawTilePanesV3(input: {
   })
 }
 
-function isTileContentDrawReady(entry: TypeGpuTileContentResourceEntryV3, pane: WorkbookRenderTilePaneState): boolean {
+function isTileContentDrawReady(entry: TypeGpuTileContentResourceEntryV3, pane: WorkbookRenderTilePaneState, drawText: boolean): boolean {
   const tile = pane.tile
   const rectReady = tile.rectCount === 0 ? entry.rectRevisionKey !== null : entry.rectHandle !== null && entry.rectCount >= tile.rectCount
-  const textReady =
-    tile.textCount === 0
+  const textReady = !drawText
+    ? true
+    : tile.textCount === 0
       ? entry.textRevisionKey !== null
       : entry.textHandle !== null && entry.textRevisionKey !== null && entry.textCount > 0
   return rectReady && textReady

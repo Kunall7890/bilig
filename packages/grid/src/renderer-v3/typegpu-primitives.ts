@@ -1,12 +1,10 @@
 import typegpuCore, {
   d,
-  type SampledFlag,
   type TgpuBindGroup,
   type TgpuBuffer,
   type TgpuFixedSampler,
   type TgpuRenderPipeline,
   type TgpuRoot,
-  type TgpuTexture,
   type TgpuUniform,
   type VertexFlag,
 } from 'typegpu'
@@ -213,11 +211,11 @@ export type RectInstanceVertexBuffer = TypeGpuVertexBuffer<RectInstanceSchemaArr
 export type TextInstanceVertexBuffer = TypeGpuVertexBuffer<TextInstanceSchemaArray>
 export type SurfaceUniformBuffer = TgpuUniform<typeof surfaceUniformSchema>
 
-type AtlasTexture = TgpuTexture & SampledFlag
+type AtlasTexture = GPUTexture
 
 export interface TypeGpuAtlasResourceArtifacts {
   readonly root: Pick<TgpuRoot, 'createTexture' | 'unwrap'>
-  readonly device: Pick<GPUDevice, 'queue'>
+  readonly device: Pick<GPUDevice, 'createTexture' | 'queue'>
   atlasTexture: AtlasTexture | null
   atlasVersion: number
   atlasWidth: number
@@ -486,7 +484,7 @@ export function syncTypeGpuAtlasResources(
 
   if (needsTexture) {
     artifacts.atlasTexture?.destroy()
-    artifacts.atlasTexture = createAtlasTexture(artifacts.root, nextSize.width, nextSize.height)
+    artifacts.atlasTexture = createAtlasTexture(artifacts.device, nextSize.width, nextSize.height)
     artifacts.atlasWidth = nextSize.width
     artifacts.atlasHeight = nextSize.height
     atlas.drainDirtyPages?.()
@@ -510,13 +508,16 @@ export function syncTypeGpuAtlasResources(
   artifacts.atlasVersion = nextVersion
 }
 
-function createAtlasTexture(root: TypeGpuAtlasResourceArtifacts['root'], width: number, height: number): AtlasTexture {
-  return root
-    .createTexture({
-      format: 'rgba8unorm',
-      size: [width, height],
-    })
-    .$usage('sampled', 'render') as AtlasTexture
+const TEXT_ATLAS_TEXTURE_USAGE_COPY_DST = 0x02
+const TEXT_ATLAS_TEXTURE_USAGE_BINDING = 0x04
+const TEXT_ATLAS_TEXTURE_USAGE_RENDER_ATTACHMENT = 0x10
+
+function createAtlasTexture(device: Pick<GPUDevice, 'createTexture'>, width: number, height: number): AtlasTexture {
+  return device.createTexture({
+    format: 'rgba8unorm',
+    size: [width, height],
+    usage: TEXT_ATLAS_TEXTURE_USAGE_COPY_DST | TEXT_ATLAS_TEXTURE_USAGE_BINDING | TEXT_ATLAS_TEXTURE_USAGE_RENDER_ATTACHMENT,
+  })
 }
 
 function uploadFullAtlasTexture(
@@ -528,18 +529,14 @@ function uploadFullAtlasTexture(
   if (!artifacts.atlasTexture || width <= 0 || height <= 0) {
     return
   }
-  const texture = artifacts.root.unwrap(artifacts.atlasTexture)
-  artifacts.device.queue.copyExternalImageToTexture(
-    { source: atlasCanvas },
-    {
-      origin: { x: 0, y: 0 },
-      texture,
-    },
-    {
-      height,
-      width,
-    },
-  )
+  writeAtlasCanvasRegionToTexture({
+    artifacts,
+    atlasCanvas,
+    height,
+    width,
+    x: 0,
+    y: 0,
+  })
 }
 
 function uploadAtlasDirtyPages(
@@ -550,25 +547,48 @@ function uploadAtlasDirtyPages(
   if (!artifacts.atlasTexture) {
     return
   }
-  const texture = artifacts.root.unwrap(artifacts.atlasTexture)
   let uploadBytes = 0
   for (const page of dirtyPages) {
-    artifacts.device.queue.copyExternalImageToTexture(
-      {
-        origin: { x: page.x, y: page.y },
-        source: atlasCanvas,
-      },
-      {
-        origin: { x: page.x, y: page.y },
-        texture,
-      },
-      {
-        height: page.height,
-        width: page.width,
-      },
-    )
+    writeAtlasCanvasRegionToTexture({
+      artifacts,
+      atlasCanvas,
+      height: page.height,
+      width: page.width,
+      x: page.x,
+      y: page.y,
+    })
     uploadBytes += page.byteSize
   }
   noteTypeGpuAtlasDirtyPageUpload(uploadBytes, dirtyPages.length)
   noteTypeGpuAtlasUpload(uploadBytes)
+}
+
+function writeAtlasCanvasRegionToTexture(input: {
+  readonly artifacts: TypeGpuAtlasResourceArtifacts
+  readonly atlasCanvas: HTMLCanvasElement | OffscreenCanvas
+  readonly x: number
+  readonly y: number
+  readonly width: number
+  readonly height: number
+}): void {
+  const context = input.atlasCanvas.getContext('2d')
+  if (!context || !input.artifacts.atlasTexture || input.width <= 0 || input.height <= 0) {
+    return
+  }
+  const imageData = context.getImageData(input.x, input.y, input.width, input.height)
+  input.artifacts.device.queue.writeTexture(
+    {
+      origin: { x: input.x, y: input.y },
+      texture: input.artifacts.atlasTexture,
+    },
+    imageData.data,
+    {
+      bytesPerRow: input.width * 4,
+      rowsPerImage: input.height,
+    },
+    {
+      height: input.height,
+      width: input.width,
+    },
+  )
 }

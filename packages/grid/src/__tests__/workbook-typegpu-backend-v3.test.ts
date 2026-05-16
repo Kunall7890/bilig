@@ -261,13 +261,9 @@ describe('workbook typegpu backend v3 tile path', () => {
     expect(onTileMiss).toHaveBeenCalledWith(tile.tileId)
   })
 
-  test('uploads full V3 atlas refreshes through the native WebGPU copy path', () => {
+  test('uploads full V3 atlas refreshes into a COPY_DST WebGPU texture', () => {
     const copyExternalImageToTexture = vi.fn()
-    const atlasTexture = {
-      createView: vi.fn(),
-      destroy: vi.fn(),
-      write: vi.fn(),
-    }
+    const writeTexture = vi.fn()
     const rawTexture = {
       createView: vi.fn(),
       depthOrArrayLayers: 1,
@@ -279,17 +275,17 @@ describe('workbook typegpu backend v3 tile path', () => {
       usage: 0,
       width: 1,
     } satisfies GPUTexture
-    const createTexture = vi.fn(() => ({
-      $usage: vi.fn(() => atlasTexture),
-    }))
+    const createTexture = vi.fn(() => rawTexture)
     const artifacts = {
       atlasHeight: 0,
       atlasTexture: null,
       atlasVersion: -1,
       atlasWidth: 0,
       device: {
+        createTexture,
         queue: {
           copyExternalImageToTexture,
+          writeTexture,
         },
       },
       root: {
@@ -298,6 +294,14 @@ describe('workbook typegpu backend v3 tile path', () => {
       },
     } satisfies TypeGpuAtlasResourceArtifacts
     const atlasCanvas = document.createElement('canvas')
+    Object.defineProperty(atlasCanvas, 'getContext', {
+      configurable: true,
+      value: vi.fn(() => ({
+        getImageData: vi.fn(() => ({
+          data: new Uint8ClampedArray(1024 * 1024 * 4),
+        })),
+      })),
+    })
     const atlas = {
       drainDirtyPages: vi.fn(() => []),
       getCanvas: () => atlasCanvas,
@@ -307,15 +311,21 @@ describe('workbook typegpu backend v3 tile path', () => {
 
     syncTypeGpuAtlasResources(artifacts, atlas)
 
-    expect(createTexture).toHaveBeenCalled()
-    expect(atlasTexture.write).not.toHaveBeenCalled()
-    expect(copyExternalImageToTexture).toHaveBeenCalledWith(
-      {
-        source: atlasCanvas,
-      },
+    expect(createTexture).toHaveBeenCalledWith({
+      format: 'rgba8unorm',
+      size: [1024, 1024],
+      usage: 22,
+    })
+    expect(copyExternalImageToTexture).not.toHaveBeenCalled()
+    expect(writeTexture).toHaveBeenCalledWith(
       {
         origin: { x: 0, y: 0 },
         texture: rawTexture,
+      },
+      expect.any(Uint8ClampedArray),
+      {
+        bytesPerRow: 1024 * 4,
+        rowsPerImage: 1024,
       },
       {
         height: 1024,
@@ -327,11 +337,7 @@ describe('workbook typegpu backend v3 tile path', () => {
 
   test('uploads V3 atlas dirty pages without rewriting the whole atlas texture', () => {
     const copyExternalImageToTexture = vi.fn()
-    const atlasTexture = {
-      createView: vi.fn(),
-      destroy: vi.fn(),
-      write: vi.fn(),
-    }
+    const writeTexture = vi.fn()
     const rawTexture = {
       createView: vi.fn(),
       depthOrArrayLayers: 1,
@@ -345,12 +351,14 @@ describe('workbook typegpu backend v3 tile path', () => {
     } satisfies GPUTexture
     const artifacts = {
       atlasHeight: 1024,
-      atlasTexture,
+      atlasTexture: rawTexture,
       atlasVersion: 1,
       atlasWidth: 1024,
       device: {
+        createTexture: vi.fn(),
         queue: {
           copyExternalImageToTexture,
+          writeTexture,
         },
       },
       root: {
@@ -359,6 +367,14 @@ describe('workbook typegpu backend v3 tile path', () => {
       },
     } satisfies TypeGpuAtlasResourceArtifacts
     const atlasCanvas = document.createElement('canvas')
+    Object.defineProperty(atlasCanvas, 'getContext', {
+      configurable: true,
+      value: vi.fn(() => ({
+        getImageData: vi.fn(() => ({
+          data: new Uint8ClampedArray(128 * 256 * 4),
+        })),
+      })),
+    })
     const atlas = {
       drainDirtyPages: vi.fn(() => [
         {
@@ -378,15 +394,16 @@ describe('workbook typegpu backend v3 tile path', () => {
     syncTypeGpuAtlasResources(artifacts, atlas)
 
     expect(atlas.drainDirtyPages).toHaveBeenCalled()
-    expect(atlasTexture.write).not.toHaveBeenCalled()
-    expect(copyExternalImageToTexture).toHaveBeenCalledWith(
-      {
-        origin: { x: 512, y: 0 },
-        source: atlasCanvas,
-      },
+    expect(copyExternalImageToTexture).not.toHaveBeenCalled()
+    expect(writeTexture).toHaveBeenCalledWith(
       {
         origin: { x: 512, y: 0 },
         texture: rawTexture,
+      },
+      expect.any(Uint8ClampedArray),
+      {
+        bytesPerRow: 128 * 4,
+        rowsPerImage: 256,
       },
       {
         height: 256,

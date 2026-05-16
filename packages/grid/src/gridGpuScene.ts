@@ -177,10 +177,10 @@ export function buildGridGpuScene({
 
     if (style?.fill?.backgroundColor) {
       fillRects.push({
-        x: rect.x + 1,
-        y: rect.y + 1,
-        width: Math.max(0, rect.width - 2),
-        height: Math.max(0, rect.height - 2),
+        x: rect.x,
+        y: rect.y,
+        width: rect.width,
+        height: rect.height,
         color: parseGpuColor(style.fill.backgroundColor),
       })
     }

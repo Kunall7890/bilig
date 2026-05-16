@@ -119,6 +119,16 @@ describe('typegpu tile render pass readiness', () => {
     expect(hasCompleteTypeGpuBodyTileContentV3({ tilePanes: [pane], tileResources })).toBe(false)
   })
 
+  test('allows native text layer frames to draw while GPU text resources are absent', () => {
+    const tileResources = new TypeGpuTileResourceCacheV3()
+    const pane = createPane('body', createRenderTile(101, { rectCount: 1, textCount: 1 }))
+    const content = tileResources.getContent(resolveWorkbookTileContentBufferKeyV3(pane))
+    content.rectCount = 1
+    Reflect.set(content, 'rectHandle', createHandle('rectInstances'))
+
+    expect(hasCompleteTypeGpuBodyTileContentV3({ drawText: false, tilePanes: [pane], tileResources })).toBe(true)
+  })
+
   test('blocks drawing body panes whose content entry has no drawable instances', () => {
     const tileResources = new TypeGpuTileResourceCacheV3()
     const pane = createPane('body:0:1')

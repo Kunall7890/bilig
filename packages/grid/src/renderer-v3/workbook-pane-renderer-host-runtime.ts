@@ -16,6 +16,7 @@ import {
 export interface WorkbookPaneRendererHostPropsV3 {
   readonly active: boolean
   readonly cameraStore: GridCameraStore | null
+  readonly drawText: boolean
   readonly geometry: GridGeometrySnapshot | null
   readonly headerPanes: readonly GridHeaderPaneState[]
   readonly host: HTMLDivElement | null
@@ -36,6 +37,7 @@ export type WorkbookPaneFrameProofStatusV3 = 'idle' | 'pending' | 'presented'
 const EMPTY_HOST_PROPS: WorkbookPaneRendererHostPropsV3 = Object.freeze({
   active: false,
   cameraStore: null,
+  drawText: true,
   geometry: null,
   headerPanes: [],
   host: null,
@@ -149,6 +151,7 @@ export class WorkbookPaneRendererHostRuntimeV3 {
       active: this.props.active,
       backend: this.surfaceSnapshot.backend,
       cameraStore: this.props.cameraStore,
+      drawText: this.props.drawText,
       geometry: this.props.geometry,
       headerPanes: this.props.headerPanes,
       overlay: this.props.overlay,

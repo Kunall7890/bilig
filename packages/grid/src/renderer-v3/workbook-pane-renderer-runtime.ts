@@ -19,6 +19,7 @@ export interface WorkbookPaneRendererRuntimeStateV3 {
   readonly active: boolean
   readonly backend: unknown
   readonly cameraStore: GridCameraStore | null
+  readonly drawText: boolean
   readonly geometry: GridGeometrySnapshot | null
   readonly headerPanes: readonly GridHeaderPaneState[]
   readonly overlay: DynamicGridOverlayBatchV3 | null
@@ -32,6 +33,7 @@ export interface WorkbookPaneRendererRuntimeStateV3 {
 
 export interface WorkbookPaneFrameInputV3 {
   readonly backend: unknown
+  readonly drawText?: boolean | undefined
   readonly headerPanes?: readonly GridHeaderPaneState[] | undefined
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
   readonly preloadTilePanes?: readonly WorkbookRenderTilePaneState[] | undefined
@@ -73,6 +75,7 @@ const EMPTY_RUNTIME_STATE: WorkbookPaneRendererRuntimeStateV3 = Object.freeze({
   active: false,
   backend: null,
   cameraStore: null,
+  drawText: true,
   geometry: null,
   headerPanes: [],
   overlay: null,
@@ -103,6 +106,7 @@ function drawWorkbookPaneFrameV3(input: WorkbookPaneFrameInputV3): boolean {
   }
   return drawWorkbookTypeGpuTileFrameV3({
     backend: input.backend,
+    drawText: input.drawText ?? true,
     headerPanes: input.headerPanes,
     overlay: input.overlay,
     preloadTilePanes: input.preloadTilePanes,
@@ -201,6 +205,7 @@ export class WorkbookPaneRendererRuntimeV3 {
     const submitted =
       this.drawFrame({
         backend: state.backend,
+        drawText: state.drawText,
         headerPanes: state.headerPanes,
         overlay: overlayBatch ?? null,
         preloadTilePanes: state.preloadTilePanes,

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { ValueTag, type CellSnapshot } from '@bilig/protocol'
 import type { GridEngineLike } from '../grid-engine.js'
 import { measureWorkbookColumnAutofit, type WorkbookColumnTextMeasurer } from '../useWorkbookColumnAutofit.js'
+import { WORKBOOK_DEFAULT_FONT_SIZE, workbookFontPointSizeToCssPx } from '../workbookTheme.js'
 
 function createSnapshot(address: string, value: string): CellSnapshot {
   return {
@@ -39,7 +40,7 @@ describe('measureWorkbookColumnAutofit', () => {
     expect(
       measureWorkbookColumnAutofit({
         columnIndex: 2,
-        editorFontSize: '12px',
+        editorFontSize: `${workbookFontPointSizeToCssPx(WORKBOOK_DEFAULT_FONT_SIZE)}px`,
         engine,
         freezeRows: 0,
         getCellEditorSeed: (_sheetName, address) => (address === 'C2' ? 'optimistic wider value' : undefined),

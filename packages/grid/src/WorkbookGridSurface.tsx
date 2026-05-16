@@ -9,7 +9,7 @@ import { buildDynamicGridOverlayBatchV3 } from './renderer-v3/dynamic-overlay-ba
 import { resolveResizeGuideColumn, resolveResizeGuideRow } from './useGridResizeState.js'
 import { useWorkbookGridInteractions } from './useWorkbookGridInteractions.js'
 import { useWorkbookGridRenderState } from './useWorkbookGridRenderState.js'
-import { WORKBOOK_FONT_SANS } from './workbookTheme.js'
+import { WORKBOOK_DEFAULT_FONT_SIZE, WORKBOOK_FONT_SANS, workbookFontPointSizeToCssPx } from './workbookTheme.js'
 import type { WorkbookGridSurfaceProps } from './workbookGridSurfaceTypes.js'
 export { hasSelectionTargetChanged } from './workbookGridViewport.js'
 export type {
@@ -249,7 +249,12 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
         data-testid="sheet-grid"
         aria-label={`${props.sheetName} worksheet grid`}
         role="grid"
-        style={{ cursor: renderState.hoverState.cursor, fontFamily: WORKBOOK_FONT_SANS }}
+        style={{
+          cursor: renderState.hoverState.cursor,
+          fontFamily: WORKBOOK_FONT_SANS,
+          fontSize: workbookFontPointSizeToCssPx(WORKBOOK_DEFAULT_FONT_SIZE),
+          lineHeight: 1.2,
+        }}
         onFocus={interactions.handleHostFocus}
         onKeyDownCapture={interactions.handleHostKeyDownCapture}
         onClickCapture={interactions.handleHostClickCapture}

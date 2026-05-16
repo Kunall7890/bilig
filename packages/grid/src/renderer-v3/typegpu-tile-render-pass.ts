@@ -33,6 +33,7 @@ export interface TypeGpuTileDrawSurface {
 }
 
 export function hasCompleteTypeGpuBodyTileContentV3(input: {
+  readonly drawText?: boolean | undefined
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
   readonly tileResources: Pick<TypeGpuTileResourceCacheV3, 'peekContent'>
 }): boolean {
@@ -55,7 +56,7 @@ export function hasCompleteTypeGpuBodyTileContentV3(input: {
     }
     if (
       (pane.tile.rectCount > 0 && (!content.rectHandle || content.rectCount < pane.tile.rectCount)) ||
-      (pane.tile.textCount > 0 && (!content.textHandle || content.textCount === 0))
+      ((input.drawText ?? true) && pane.tile.textCount > 0 && (!content.textHandle || content.textCount === 0))
     ) {
       return false
     }
@@ -69,6 +70,7 @@ function isPaneDrawVisible(pane: WorkbookRenderTilePaneState | GridHeaderPaneSta
 
 export function drawTypeGpuTilePanesV3(input: {
   readonly artifacts: TypeGpuRendererArtifacts
+  readonly drawText?: boolean | undefined
   readonly layerResources: TypeGpuLayerResourceCacheV3
   readonly tileResources: TypeGpuTileResourceCacheV3
   readonly headerPanes?: readonly GridHeaderPaneState[] | undefined
@@ -125,7 +127,7 @@ export function drawTypeGpuTilePanesV3(input: {
       noteTypeGpuDrawCall(1)
     }
 
-    if (content.textCount > 0 && content.textHandle && placement.textBindGroup) {
+    if ((input.drawText ?? true) && content.textCount > 0 && content.textHandle && placement.textBindGroup) {
       const textRenderer = input.artifacts.textPipeline.with(pass).with(placement.textBindGroup)
       textRenderer
         .with(WORKBOOK_UNIT_QUAD_LAYOUT, input.artifacts.quadBuffer)
@@ -138,6 +140,7 @@ export function drawTypeGpuTilePanesV3(input: {
 
   drawTypeGpuHeaderPanes({
     artifacts: input.artifacts,
+    drawText: input.drawText ?? true,
     headerPanes: input.headerPanes ?? [],
     layerResources: input.layerResources,
     pass,
@@ -212,6 +215,7 @@ function drawTypeGpuOverlay(input: {
 
 function drawTypeGpuHeaderPanes(input: {
   readonly artifacts: TypeGpuRendererArtifacts
+  readonly drawText: boolean
   readonly headerPanes: readonly GridHeaderPaneState[]
   readonly layerResources: TypeGpuLayerResourceCacheV3
   readonly pass: GPURenderPassEncoder
@@ -249,7 +253,7 @@ function drawTypeGpuHeaderPanes(input: {
       noteTypeGpuDrawCall(1)
     }
 
-    if (paneCache.textCount > 0 && paneCache.textHandle && paneCache.textBindGroup) {
+    if (input.drawText && paneCache.textCount > 0 && paneCache.textHandle && paneCache.textBindGroup) {
       const textRenderer = input.artifacts.textPipeline.with(input.pass).with(paneCache.textBindGroup)
       textRenderer
         .with(WORKBOOK_UNIT_QUAD_LAYOUT, input.artifacts.quadBuffer)

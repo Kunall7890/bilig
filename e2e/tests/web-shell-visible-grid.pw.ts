@@ -10,6 +10,8 @@ import {
   waitForWorkbookReady,
 } from './web-shell-helpers.js'
 
+const DEFAULT_WORKBOOK_CSS_FONT_SIZE = '14.667px'
+
 test('web app paints deep querystring-selected cell content in the visible grid', async ({ page }, testInfo) => {
   const documentId = createTestDocumentId('playwright-visible-deep-cell')
   await page.setViewportSize({ width: 1166, height: 820 })
@@ -31,7 +33,7 @@ test('web app paints deep querystring-selected cell content in the visible grid'
     })
     .toMatchObject({
       fallbackMounted: false,
-      textOverlayMounted: false,
+      textOverlayMounted: true,
       typeGpuMode: 'typegpu-v3',
       typeGpuOpacity: '1',
     })
@@ -105,14 +107,15 @@ test('web app keeps dense accounting-sheet text payloads complete in the TypeGPU
   await expect(nameBox).toHaveValue('B34')
   await expect(formulaInput).toHaveValue('Annual software subscription')
   await expect(page.getByTestId('sheet-grid')).toHaveCSS('font-family', /Arial/)
+  await expect(page.getByTestId('sheet-grid')).toHaveCSS('font-size', DEFAULT_WORKBOOK_CSS_FONT_SIZE)
   await expect
     .poll(readRendererSurfaceState(page), {
-      message: 'dense accounting sheet should render through the live TypeGPU layer, not a fallback or text overlay',
+      message: 'dense accounting sheet should render through TypeGPU plus the native text layer, not the fallback canvas',
       timeout: 5_000,
     })
     .toMatchObject({
       fallbackMounted: false,
-      textOverlayMounted: false,
+      textOverlayMounted: true,
       typeGpuMode: 'typegpu-v3',
       typeGpuOpacity: '1',
     })
@@ -292,7 +295,7 @@ function readRendererSurfaceState(page: Page): () => Promise<{
     await page.evaluate(() => {
       const typeGpu = document.querySelector('[data-testid="grid-pane-renderer"]')
       const fallback = document.querySelector('[data-testid="grid-pane-renderer-fallback"]')
-      const textOverlay = document.querySelector('[data-testid="grid-pane-text-overlay"]')
+      const textOverlay = document.querySelector('[data-testid="grid-native-text-layer"]')
       return {
         fallbackMounted: fallback instanceof HTMLCanvasElement,
         textOverlayMounted: textOverlay instanceof HTMLElement,

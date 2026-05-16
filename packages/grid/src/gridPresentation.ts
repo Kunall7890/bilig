@@ -1,7 +1,7 @@
 import type { RenderCellSnapshot } from './gridCells.js'
 import { isNumericEditorSeed } from './gridKeyboard.js'
 import type { Rectangle } from './gridTypes.js'
-import { WORKBOOK_FONT_SANS, workbookThemeColors } from './workbookTheme.js'
+import { WORKBOOK_DEFAULT_FONT_SIZE, WORKBOOK_FONT_SANS, workbookFontPointSizeToCssPx, workbookThemeColors } from './workbookTheme.js'
 
 export interface GridEditorPresentation {
   readonly backgroundColor: string
@@ -58,7 +58,7 @@ export function getGridTheme(options?: { gpuSurfaceEnabled?: boolean; textSurfac
     cellHorizontalPadding: 8,
     cellVerticalPadding: 4,
     drilldownBorder: workbookThemeColors.border,
-    editorFontSize: '12px',
+    editorFontSize: `${workbookFontPointSizeToCssPx(WORKBOOK_DEFAULT_FONT_SIZE)}px`,
     fontFamily,
     headerFontStyle: `600 11px ${fontFamily}`,
     horizontalBorderColor: workbookThemeColors.gridBorder,

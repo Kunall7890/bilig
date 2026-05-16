@@ -5,7 +5,7 @@ import { createRoot } from 'react-dom/client'
 import type * as ReactDom from 'react-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CellEditorOverlay } from '../CellEditorOverlay.js'
-import { WORKBOOK_DEFAULT_FONT_SIZE } from '../workbookTheme.js'
+import { WORKBOOK_DEFAULT_FONT_SIZE, workbookFontPointSizeToCssPx } from '../workbookTheme.js'
 
 vi.mock('react-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof ReactDom>()
@@ -105,7 +105,7 @@ describe('CellEditorOverlay', () => {
     })
 
     const textarea = host.querySelector<HTMLTextAreaElement>("[data-testid='cell-editor-input']")
-    expect(textarea?.style.fontSize).toBe(`${WORKBOOK_DEFAULT_FONT_SIZE}px`)
+    expect(textarea?.style.fontSize).toBe(`${workbookFontPointSizeToCssPx(WORKBOOK_DEFAULT_FONT_SIZE)}px`)
     expect(textarea?.getAttribute('class')).toContain('py-[3px]')
     expect(textarea?.getAttribute('class')).toContain('leading-[1.2]')
 

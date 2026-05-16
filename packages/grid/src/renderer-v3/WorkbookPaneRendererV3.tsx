@@ -8,6 +8,7 @@ export { TYPEGPU_V3_ACTIVE_RESOURCE_DEFER_MS, GridDrawSchedulerV3, shouldDeferTy
 export { resolveTypeGpuV3DrawScrollSnapshot } from './workbook-pane-renderer-runtime.js'
 import type { DynamicGridOverlayBatchV3 } from './dynamic-overlay-batch.js'
 import type { WorkbookRenderTilePaneState } from './render-tile-pane-state.js'
+import { WorkbookPaneNativeTextLayerV3 } from './WorkbookPaneNativeTextLayerV3.js'
 import { WorkbookPaneRendererHostRuntimeV3 } from './workbook-pane-renderer-host-runtime.js'
 import type { WorkbookPaneSurfaceBackendStatusV3 } from './workbook-pane-surface-runtime.js'
 
@@ -66,10 +67,23 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     },
     [hostRuntime],
   )
+  const showCanvasFallback = shouldMountWorkbookCanvasProofLayerV3({
+    backendStatus,
+    enableCanvasFallback,
+    frameProofStatus,
+    hasPresentedFrame,
+    headerPaneCount: headerPanes.length,
+    overlayRectCount: overlay?.rectCount ?? 0,
+    tilePaneCount: tilePanes.length,
+  })
+  const showTypeGpuCanvas = backendStatus !== 'unavailable'
+  const showNativeTextLayer = showTypeGpuCanvas && backendStatus === 'ready' && !showCanvasFallback
+
   useLayoutEffect(() => {
     hostRuntime.updateProps({
       active,
       cameraStore,
+      drawText: !showNativeTextLayer,
       geometry,
       headerPanes,
       host,
@@ -90,6 +104,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     overlayBuilder,
     preloadTilePanes,
     scrollTransformStore,
+    showNativeTextLayer,
     tilePanes,
   ])
 
@@ -112,16 +127,6 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
   if (!active || !host) {
     return null
   }
-  const showCanvasFallback = shouldMountWorkbookCanvasProofLayerV3({
-    backendStatus,
-    enableCanvasFallback,
-    frameProofStatus,
-    hasPresentedFrame,
-    headerPaneCount: headerPanes.length,
-    overlayRectCount: overlay?.rectCount ?? 0,
-    tilePaneCount: tilePanes.length,
-  })
-  const showTypeGpuCanvas = backendStatus !== 'unavailable'
   const typeGpuCanvasOpacity = showCanvasFallback ? 0 : 1
   const tileSceneRevision = resolveWorkbookPaneTileSceneRevisionV3(tilePanes)
   const tileSceneCameraSeq = resolveWorkbookPaneTileSceneCameraSeqV3(tilePanes)
@@ -168,6 +173,16 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           data-v3-visible-render-revision={visibleRenderRevision ?? ''}
           ref={setCanvasRef}
           style={{ backgroundColor: 'transparent', contain: 'strict', height: '100%', opacity: typeGpuCanvasOpacity, width: '100%' }}
+        />
+      ) : null}
+      {showNativeTextLayer ? (
+        <WorkbookPaneNativeTextLayerV3
+          active={active}
+          cameraStore={cameraStore}
+          geometry={geometry}
+          headerPanes={headerPanes}
+          scrollTransformStore={scrollTransformStore}
+          tilePanes={tilePanes}
         />
       ) : null}
     </>

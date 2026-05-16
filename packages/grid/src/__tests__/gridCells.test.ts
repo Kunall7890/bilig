@@ -1,7 +1,9 @@
 import { describe, expect, test } from 'vitest'
 import { ErrorCode, ValueTag, type CellSnapshot, type CellStyleRecord } from '@bilig/protocol'
 import { GridCellKind, cellStyleToThemeOverride, cellToEditorSeed, snapshotToGridCell, snapshotToRenderCell } from '../gridCells.js'
-import { WORKBOOK_DEFAULT_FONT_SIZE, WORKBOOK_FONT_SANS } from '../workbookTheme.js'
+import { WORKBOOK_DEFAULT_FONT_SIZE, WORKBOOK_FONT_SANS, workbookFontPointSizeToCssPx } from '../workbookTheme.js'
+
+const DEFAULT_CSS_FONT_SIZE = workbookFontPointSizeToCssPx(WORKBOOK_DEFAULT_FONT_SIZE)
 
 function makeSnapshot(overrides: Partial<CellSnapshot>): CellSnapshot {
   const snapshot: CellSnapshot = {
@@ -66,10 +68,10 @@ describe('gridCells', () => {
       align: 'center',
       wrap: true,
       color: '#123456',
-      fontSize: 15,
+      fontSize: workbookFontPointSizeToCssPx(15),
       underline: true,
     })
-    expect(renderCell.font).toBe(`italic 400 15px ${WORKBOOK_FONT_SANS}`)
+    expect(renderCell.font).toBe(`italic 400 ${workbookFontPointSizeToCssPx(15)}px ${WORKBOOK_FONT_SANS}`)
 
     expect(snapshotToRenderCell(makeSnapshot({ value: { tag: ValueTag.Boolean, value: false } }))).toMatchObject({
       kind: 'boolean',
@@ -80,8 +82,8 @@ describe('gridCells', () => {
 
   test('uses the workbook default font size for unstyled cells', () => {
     expect(snapshotToRenderCell(makeSnapshot({ value: { tag: ValueTag.String, value: 'plain' } }))).toMatchObject({
-      font: `400 ${WORKBOOK_DEFAULT_FONT_SIZE}px ${WORKBOOK_FONT_SANS}`,
-      fontSize: WORKBOOK_DEFAULT_FONT_SIZE,
+      font: `400 ${DEFAULT_CSS_FONT_SIZE}px ${WORKBOOK_FONT_SANS}`,
+      fontSize: DEFAULT_CSS_FONT_SIZE,
     })
   })
 
@@ -101,7 +103,7 @@ describe('gridCells', () => {
 
     expect(cellStyleToThemeOverride(fontAndFillStyle)).toEqual({
       textDark: '#202124',
-      baseFontStyle: '400 12px',
+      baseFontStyle: `400 ${workbookFontPointSizeToCssPx(12)}px`,
       fontFamily: `"Fira Sans", ${WORKBOOK_FONT_SANS}`,
     })
   })
@@ -117,10 +119,10 @@ describe('gridCells', () => {
     }
 
     expect(snapshotToRenderCell(makeSnapshot({ value: { tag: ValueTag.String, value: 'hello' } }), aptosStyle).font).toBe(
-      `400 11px ${WORKBOOK_FONT_SANS}`,
+      `400 ${DEFAULT_CSS_FONT_SIZE}px ${WORKBOOK_FONT_SANS}`,
     )
     expect(cellStyleToThemeOverride(calibriStyle)).toEqual({
-      baseFontStyle: '400 11px',
+      baseFontStyle: `400 ${DEFAULT_CSS_FONT_SIZE}px`,
       fontFamily: WORKBOOK_FONT_SANS,
     })
   })

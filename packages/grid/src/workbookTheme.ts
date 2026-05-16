@@ -1,5 +1,10 @@
 export const WORKBOOK_FONT_SANS = 'Arial, "Helvetica Neue", Helvetica, "Segoe UI", sans-serif'
 export const WORKBOOK_DEFAULT_FONT_SIZE = 11
+export const WORKBOOK_FONT_POINT_TO_CSS_PX = 4 / 3
+
+export function workbookFontPointSizeToCssPx(pointSize: number): number {
+  return Number((Math.max(1, pointSize) * WORKBOOK_FONT_POINT_TO_CSS_PX).toFixed(3))
+}
 
 export const workbookThemeColors = {
   accent: '#21563a',

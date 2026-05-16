@@ -93,10 +93,10 @@ describe('gridGpuScene', () => {
     })
 
     expect(scene.fillRects).toContainEqual({
-      x: 11,
-      y: 21,
-      width: 88,
-      height: 20,
+      x: 10,
+      y: 20,
+      width: 90,
+      height: 22,
       color: { r: 1, g: 0, b: 0, a: 1 },
     })
     expect(scene.borderRects).toContainEqual({
@@ -152,10 +152,10 @@ describe('gridGpuScene', () => {
 
     const mergedFill = scene.fillRects.find((rect) => rect.color.r === 1 && rect.color.g === 0 && rect.color.b === 0)
     expect(mergedFill).toMatchObject({
-      x: 11,
-      y: 21,
-      width: 178,
-      height: 20,
+      x: 10,
+      y: 20,
+      width: 180,
+      height: 22,
     })
   })
 
