@@ -67,8 +67,14 @@ export function resolveRuntimeConfig(config: BiligRuntimeConfig): RuntimeConfig 
 
 export function resolveRemoteSyncEnabled(env: { readonly DEV?: boolean; readonly VITE_BILIG_REMOTE_SYNC?: string | undefined }): boolean {
   const configured = env.VITE_BILIG_REMOTE_SYNC
-  if (configured !== undefined) {
-    return configured !== '0'
+  if (configured === undefined || configured.length === 0) {
+    return env.DEV !== true
   }
-  return env.DEV !== true
+  if (configured === '1' || configured === 'true') {
+    return true
+  }
+  if (configured === '0' || configured === 'false') {
+    return false
+  }
+  throw new Error(`VITE_BILIG_REMOTE_SYNC must be "1", "true", "0", or "false" when set, got ${configured}`)
 }

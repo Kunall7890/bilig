@@ -83,8 +83,14 @@ describe('resolveRuntimeConfig', () => {
 
   it('defaults standalone Vite dev to local-only mode while preserving explicit and production remote sync', () => {
     expect(resolveRemoteSyncEnabled({ DEV: true })).toBe(false)
+    expect(resolveRemoteSyncEnabled({ DEV: true, VITE_BILIG_REMOTE_SYNC: '' })).toBe(false)
     expect(resolveRemoteSyncEnabled({ DEV: true, VITE_BILIG_REMOTE_SYNC: '1' })).toBe(true)
+    expect(resolveRemoteSyncEnabled({ DEV: true, VITE_BILIG_REMOTE_SYNC: 'true' })).toBe(true)
     expect(resolveRemoteSyncEnabled({ DEV: true, VITE_BILIG_REMOTE_SYNC: '0' })).toBe(false)
+    expect(resolveRemoteSyncEnabled({ DEV: true, VITE_BILIG_REMOTE_SYNC: 'false' })).toBe(false)
     expect(resolveRemoteSyncEnabled({ DEV: false })).toBe(true)
+    expect(() => resolveRemoteSyncEnabled({ DEV: true, VITE_BILIG_REMOTE_SYNC: 'yes' })).toThrow(
+      'VITE_BILIG_REMOTE_SYNC must be "1", "true", "0", or "false" when set, got yes',
+    )
   })
 })
