@@ -10,7 +10,7 @@ import {
 } from '@bilig/core'
 import { ErrorCode, ValueTag } from '@bilig/protocol'
 import { isBlankRawCellContent } from './work-paper-runtime-helpers.js'
-import type { WorkPaperSheet } from './work-paper-types.js'
+import type { RawCellContent, WorkPaperSheet } from './work-paper-types.js'
 
 export interface InitialSheetMaterializationInspection extends LiteralSheetLoadInspection {
   readonly formulaCellCount?: number
@@ -188,7 +188,6 @@ export function prepareInitialMixedSheetLoad(args: {
     cellStore.ensureCapacity(cellStore.size + potentialCellCount)
   }
   const writtenColumns = new Uint8Array(maxColumnCount)
-  const rowIds: string[] = []
   const colIds: string[] = []
   const ensureRowId = args.engine.workbook.createLogicalAxisIdEnsurer(args.sheetId, 'row')
   const ensureColumnId = args.engine.workbook.createLogicalAxisIdEnsurer(args.sheetId, 'column')
@@ -199,55 +198,60 @@ export function prepareInitialMixedSheetLoad(args: {
   cellStore.onSetValue = null
   try {
     args.engine.workbook.withBatchedColumnVersionUpdates(() => {
-      for (let rowIndex = 0; rowIndex < args.content.length; rowIndex += 1) {
-        const row = args.content[rowIndex]!
-        let rowId = rowIds[rowIndex]
-        for (let colIndex = 0; colIndex < row.length; colIndex += 1) {
-          const raw = row[colIndex]!
-          if (typeof raw === 'string') {
-            const formula = readInitialFormulaSource(raw)
-            if (formula !== undefined) {
-              const cellIndex = cellStore.allocateReserved(args.sheetId, rowIndex, colIndex)
-              const materializedRowId = rowId ?? ensureRowId(rowIndex)
-              rowId = materializedRowId
-              rowIds[rowIndex] = materializedRowId
-              const colId = (colIds[colIndex] ??= ensureColumnId(colIndex))
-              attachFreshCell(rowIndex, colIndex, cellIndex, materializedRowId, colId)
-              formulaRefs.push(args.sheetId, cellIndex, rowIndex, colIndex, args.rewriteFormula(formula, rowIndex, colIndex))
+      if (isDenseInitialMixedSheet(args.content, potentialCellCount, maxColumnCount)) {
+        for (let rowIndex = 0; rowIndex < args.content.length; rowIndex += 1) {
+          const row = args.content[rowIndex]!
+          const rowId = ensureRowId(rowIndex)
+          for (let colIndex = 0; colIndex < row.length; colIndex += 1) {
+            const raw = row[colIndex]!
+            const cellIndex = cellStore.allocateReserved(args.sheetId, rowIndex, colIndex)
+            const colId = (colIds[colIndex] ??= ensureColumnId(colIndex))
+            attachFreshCell(rowIndex, colIndex, cellIndex, rowId, colId)
+            if (typeof raw === 'string') {
+              const formula = readInitialFormulaSource(raw)
+              if (formula !== undefined) {
+                formulaRefs.push(args.sheetId, cellIndex, rowIndex, colIndex, args.rewriteFormula(formula, rowIndex, colIndex))
+                continue
+              }
+            }
+            if (writtenColumns[colIndex] === 0) {
+              writtenColumns[colIndex] = 1
+              writtenColumnCount += 1
+            }
+            writeInitialLiteralCell(cellStore, args.engine.strings, cellIndex, raw)
+          }
+        }
+      } else {
+        for (let rowIndex = 0; rowIndex < args.content.length; rowIndex += 1) {
+          const row = args.content[rowIndex]!
+          let rowId: string | undefined
+          for (let colIndex = 0; colIndex < row.length; colIndex += 1) {
+            const raw = row[colIndex]!
+            if (typeof raw === 'string') {
+              const formula = readInitialFormulaSource(raw)
+              if (formula !== undefined) {
+                const cellIndex = cellStore.allocateReserved(args.sheetId, rowIndex, colIndex)
+                const materializedRowId = rowId ?? ensureRowId(rowIndex)
+                rowId = materializedRowId
+                const colId = (colIds[colIndex] ??= ensureColumnId(colIndex))
+                attachFreshCell(rowIndex, colIndex, cellIndex, materializedRowId, colId)
+                formulaRefs.push(args.sheetId, cellIndex, rowIndex, colIndex, args.rewriteFormula(formula, rowIndex, colIndex))
+                continue
+              }
+            }
+            if (isBlankRawCellContent(raw)) {
               continue
             }
-          }
-          if (isBlankRawCellContent(raw)) {
-            continue
-          }
-          const cellIndex = cellStore.allocateReserved(args.sheetId, rowIndex, colIndex)
-          if (writtenColumns[colIndex] === 0) {
-            writtenColumns[colIndex] = 1
-            writtenColumnCount += 1
-          }
-          cellStore.flags[cellIndex] = CellFlags.Materialized
-          cellStore.formulaIds[cellIndex] = 0
-          cellStore.errors[cellIndex] = ErrorCode.None
-          cellStore.versions[cellIndex] = 1
-          cellStore.topoRanks[cellIndex] = 0
-          cellStore.cycleGroupIds[cellIndex] = -1
-          const materializedRowId = rowId ?? ensureRowId(rowIndex)
-          rowId = materializedRowId
-          rowIds[rowIndex] = materializedRowId
-          const colId = (colIds[colIndex] ??= ensureColumnId(colIndex))
-          attachFreshCell(rowIndex, colIndex, cellIndex, materializedRowId, colId)
-          if (typeof raw === 'number') {
-            cellStore.tags[cellIndex] = ValueTag.Number
-            cellStore.numbers[cellIndex] = raw
-            cellStore.stringIds[cellIndex] = 0
-          } else if (typeof raw === 'boolean') {
-            cellStore.tags[cellIndex] = ValueTag.Boolean
-            cellStore.numbers[cellIndex] = raw ? 1 : 0
-            cellStore.stringIds[cellIndex] = 0
-          } else {
-            cellStore.tags[cellIndex] = ValueTag.String
-            cellStore.numbers[cellIndex] = 0
-            cellStore.stringIds[cellIndex] = args.engine.strings.intern(raw)
+            const cellIndex = cellStore.allocateReserved(args.sheetId, rowIndex, colIndex)
+            if (writtenColumns[colIndex] === 0) {
+              writtenColumns[colIndex] = 1
+              writtenColumnCount += 1
+            }
+            const materializedRowId = rowId ?? ensureRowId(rowIndex)
+            rowId = materializedRowId
+            const colId = (colIds[colIndex] ??= ensureColumnId(colIndex))
+            attachFreshCell(rowIndex, colIndex, cellIndex, materializedRowId, colId)
+            writeInitialLiteralCell(cellStore, args.engine.strings, cellIndex, raw)
           }
         }
       }
@@ -287,6 +291,10 @@ function createFreshInitialCellAttacher(sheet: SheetRecord): FreshInitialCellAtt
   }
 }
 
+function isDenseInitialMixedSheet(content: WorkPaperSheet, materializedCellCount: number, maxColumnCount: number): boolean {
+  return maxColumnCount > 0 && materializedCellCount === content.length * maxColumnCount
+}
+
 function readInitialFormulaSource(raw: string): string | undefined {
   const first = raw.charCodeAt(0)
   if (first === 61) {
@@ -309,6 +317,40 @@ function materializeWrittenColumns(writtenColumns: Uint8Array, count: number): U
     }
   }
   return columns
+}
+
+function writeInitialLiteralCell(
+  cellStore: SpreadsheetEngine['workbook']['cellStore'],
+  strings: { intern(value: string): number },
+  cellIndex: number,
+  raw: RawCellContent,
+): void {
+  cellStore.flags[cellIndex] = CellFlags.Materialized
+  cellStore.formulaIds[cellIndex] = 0
+  cellStore.errors[cellIndex] = ErrorCode.None
+  cellStore.versions[cellIndex] = 1
+  cellStore.topoRanks[cellIndex] = 0
+  cellStore.cycleGroupIds[cellIndex] = -1
+  if (raw === null) {
+    cellStore.flags[cellIndex] |= CellFlags.AuthoredBlank
+    cellStore.tags[cellIndex] = ValueTag.Empty
+    cellStore.numbers[cellIndex] = 0
+    cellStore.stringIds[cellIndex] = 0
+    return
+  }
+  if (typeof raw === 'number') {
+    cellStore.tags[cellIndex] = ValueTag.Number
+    cellStore.numbers[cellIndex] = raw
+    cellStore.stringIds[cellIndex] = 0
+  } else if (typeof raw === 'boolean') {
+    cellStore.tags[cellIndex] = ValueTag.Boolean
+    cellStore.numbers[cellIndex] = raw ? 1 : 0
+    cellStore.stringIds[cellIndex] = 0
+  } else {
+    cellStore.tags[cellIndex] = ValueTag.String
+    cellStore.numbers[cellIndex] = 0
+    cellStore.stringIds[cellIndex] = strings.intern(raw)
+  }
 }
 
 export function loadInitialMixedSheet(args: {
