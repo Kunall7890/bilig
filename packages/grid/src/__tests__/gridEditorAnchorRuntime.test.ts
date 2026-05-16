@@ -102,6 +102,7 @@ describe('GridEditorAnchorRuntime', () => {
       position: 'fixed',
       top: 230,
       width: 104,
+      zIndex: 40,
     })
   })
 })

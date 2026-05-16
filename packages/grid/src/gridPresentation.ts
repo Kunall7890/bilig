@@ -21,6 +21,7 @@ export function getOverlayStyle(isEditingCell: boolean, overlayBounds: Rectangle
     position: 'fixed' as const,
     top: overlayBounds.y,
     width: overlayBounds.width,
+    zIndex: 40,
   }
 }
 

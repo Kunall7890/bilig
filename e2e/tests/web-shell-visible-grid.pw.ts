@@ -138,6 +138,29 @@ test('web app keeps dense accounting-sheet text payloads complete in the TypeGPU
   }
 })
 
+test('web app keeps the live cell editor above the native grid text layer', async ({ page }) => {
+  const documentId = createTestDocumentId('playwright-editor-native-text-z-order')
+  await page.setViewportSize({ width: 1166, height: 820 })
+  await page.goto(`/?document=${encodeURIComponent(documentId)}&sheet=Sheet1&cell=A1`)
+  await waitForWorkbookReady(page)
+
+  await clickVisibleGridBodySlot(page, 1, 1)
+  await page.keyboard.type('editor-z-order')
+
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2')
+  await expect(page.getByTestId('cell-editor-input')).toHaveValue('editor-z-order')
+  await expect
+    .poll(readEditorLayerState(page), {
+      message: 'the active editor must sit above native rendered text to prevent double-text artifacts while typing or clicking away',
+      timeout: 5_000,
+    })
+    .toMatchObject({
+      editorAboveNativeText: true,
+      editorMounted: true,
+      nativeTextLayerMounted: true,
+    })
+})
+
 function createDenseAccountingGridClipboardText(): string {
   return Array.from({ length: 48 }, (_, rowIndex) => {
     const rowNumber = rowIndex + 1
@@ -313,6 +336,26 @@ function readTypeGpuTextRunCount(page: Page): () => Promise<number> {
         return 0
       }
       return Number(typeGpu.getAttribute('data-v3-text-run-count') ?? '0')
+    })
+}
+
+function readEditorLayerState(page: Page): () => Promise<{
+  readonly editorAboveNativeText: boolean
+  readonly editorMounted: boolean
+  readonly nativeTextLayerMounted: boolean
+}> {
+  return async () =>
+    await page.evaluate(() => {
+      const editor = document.querySelector('[data-testid="cell-editor-overlay"]')
+      const nativeTextLayer = document.querySelector('[data-testid="grid-native-text-layer"]')
+      const editorZIndex = editor instanceof HTMLElement ? Number(getComputedStyle(editor).zIndex) : Number.NaN
+      const nativeTextLayerZIndex = nativeTextLayer instanceof HTMLElement ? Number(getComputedStyle(nativeTextLayer).zIndex) : Number.NaN
+      return {
+        editorAboveNativeText:
+          Number.isFinite(editorZIndex) && Number.isFinite(nativeTextLayerZIndex) && editorZIndex > nativeTextLayerZIndex,
+        editorMounted: editor instanceof HTMLElement,
+        nativeTextLayerMounted: nativeTextLayer instanceof HTMLElement,
+      }
     })
 }
 
