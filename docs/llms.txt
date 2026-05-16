@@ -22,7 +22,6 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
 - https://proompteng.github.io/bilig/xlsx-formula-recalculation-node.html
 - https://proompteng.github.io/bilig/xlsx-calc-alternative-node-workbook-recalculation.html
 - https://proompteng.github.io/bilig/exceljs-formula-recalculation-node.html
-- https://dev.to/gregkonush/why-agents-need-workbook-apis-instead-of-spreadsheet-screenshots-3d61
 - https://github.com/proompteng/bilig/tree/main/packages/headless#readme
 - https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper
 - https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/npm-eval.ts

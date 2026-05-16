@@ -494,6 +494,11 @@ Latest technical-content action on May 14, 2026:
 - Public pages:
   <https://proompteng.github.io/bilig/why-agents-need-workbook-apis.html> and
   <https://github.com/proompteng/bilig/blob/main/docs/dev-to-workbook-apis-post.md>.
+- Do not route new evaluator traffic to the older public DEV copy until it is
+  edited by the article owner. A Dia check on May 16, 2026 found that public
+  article still showing stale `46/46` benchmark evidence while the current
+  checked package evidence is `@bilig/headless@0.16.24`, `76/100` comparable
+  mean wins, and `75/100` mean+p95 wins.
 
 Latest search-intent boundary action on May 14, 2026:
 
