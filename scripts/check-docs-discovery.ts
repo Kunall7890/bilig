@@ -97,6 +97,7 @@ const [headlessSpreadsheetEngineComparison, sheetjsExceljsAlternativeFormulaWork
     readFile(join(docsRoot, 'hyperformula-alternative-headless-workpaper.md'), 'utf8'),
   ])
 const formulaWorkbooksProof = await readFile(join(docsRoot, 'formula-workbooks-node-services-agent-tools.md'), 'utf8')
+const showHnFormulaWorkbooksProof = await readFile(join(docsRoot, 'show-hn-formula-workbooks-node-services.md'), 'utf8')
 const googleSheetsApiBoundaryDoc = await readFile(join(docsRoot, 'google-sheets-api-alternative-node-workpaper.md'), 'utf8')
 
 requireHomepageDiscovery(index, siteCss, productCss)
@@ -133,6 +134,7 @@ requireIncludes(index, '"@type": "FAQPage"', 'docs/index.html')
 for (const required of [
   './why-agents-need-workbook-apis.html',
   './stop-driving-spreadsheets-with-screenshots.html',
+  './show-hn-formula-workbooks-node-services.html',
   './formula-workbooks-node-services-agent-tools.html',
   './agent-workpaper-tool-calling-recipe.html',
   './vercel-ai-sdk-langchain-spreadsheet-tool.html',
@@ -329,6 +331,21 @@ requireIncludes(
   'docs/community-launch-pack.md',
 )
 requireIncludes(communityLaunchPack, 'Hacker News Submission After The Formula Workbooks Page', 'docs/community-launch-pack.md')
+for (const required of [
+  'title: Show HN proof for formula workbooks in Node services',
+  'curl -fsSLo quickstart.ts https://proompteng.github.io/bilig/npm-eval.ts',
+  '"verified": true',
+  '`46/57` mean-latency wins',
+  '`45/57` workloads winning',
+  '`lookup-with-column-index` is slower at',
+  'Show HN: Formula workbooks for Node services and agent tools',
+  'https://github.com/proompteng/bilig/stargazers',
+] as const) {
+  requireIncludes(showHnFormulaWorkbooksProof, required, 'docs/show-hn-formula-workbooks-node-services.md')
+}
+requireIncludes(index, './show-hn-formula-workbooks-node-services.html', 'docs/index.html')
+requireIncludes(llms, 'https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html', 'docs/llms.txt')
+requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/show-hn-formula-workbooks-node-services.md', 'docs/llms.txt')
 
 await requireSharedPublicDocsDiscovery({
   docsRoot,
