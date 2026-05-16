@@ -4,6 +4,20 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.16.14
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.16.13
+- Manual override: no
+
+## Fixes
+- perf(core): skip region probes for fresh aggregate rows (9762dc68)
+
+## Internal runtime changes
+- docs(growth): refresh public release evidence (feba38f4)
+- docs(growth): surface adoption blocker intake (d983476a)
+- docs(growth): add release watch path (0b7080d1)
+
 ## 0.16.13
 
 - Release type: patch
