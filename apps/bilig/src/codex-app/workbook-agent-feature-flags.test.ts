@@ -34,6 +34,14 @@ describe('workbook agent feature flags', () => {
     )
   })
 
+  it('rejects malformed boolean feature flags instead of silently using defaults', () => {
+    expect(() =>
+      resolveWorkbookAgentFeatureFlags({
+        BILIG_AGENT_AUTO_APPLY_LOW_RISK_ENABLED: 'treu',
+      } as NodeJS.ProcessEnv),
+    ).toThrow('BILIG_AGENT_AUTO_APPLY_LOW_RISK_ENABLED must be a boolean value, got treu')
+  })
+
   it('checks rollout allowlists by user or document', () => {
     expect(
       isWorkbookAgentRolloutAllowed(

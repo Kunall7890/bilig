@@ -13,8 +13,8 @@ export interface WorkbookAgentFeatureFlags {
   readonly allowlistedDocumentIds: readonly string[]
 }
 
-function parseBooleanEnv(value: string | undefined, fallback: boolean): boolean {
-  if (!value) {
+function parseBooleanEnv(value: string | undefined, fallback: boolean, name: string): boolean {
+  if (value === undefined || value.length === 0) {
     return fallback
   }
   const normalized = value.trim().toLowerCase()
@@ -24,7 +24,7 @@ function parseBooleanEnv(value: string | undefined, fallback: boolean): boolean 
   if (normalized === 'false' || normalized === '0' || normalized === 'no' || normalized === 'off') {
     return false
   }
-  return fallback
+  throw new Error(`${name} must be a boolean value, got ${value}`)
 }
 
 function parseCsvEnv(value: string | undefined): string[] {
@@ -39,14 +39,30 @@ function parseCsvEnv(value: string | undefined): string[] {
 
 export function resolveWorkbookAgentFeatureFlags(env: NodeJS.ProcessEnv = process.env): WorkbookAgentFeatureFlags {
   return {
-    sharedThreadsEnabled: parseBooleanEnv(env['BILIG_AGENT_SHARED_THREADS_ENABLED'], true),
-    workflowRunnerEnabled: parseBooleanEnv(env['BILIG_AGENT_WORKFLOW_RUNNER_ENABLED'], true),
-    autoApplyLowRiskEnabled: parseBooleanEnv(env['BILIG_AGENT_AUTO_APPLY_LOW_RISK_ENABLED'], true),
-    formulaWorkflowFamilyEnabled: parseBooleanEnv(env['BILIG_AGENT_FORMULA_WORKFLOWS_ENABLED'], true),
-    formattingWorkflowFamilyEnabled: parseBooleanEnv(env['BILIG_AGENT_FORMATTING_WORKFLOWS_ENABLED'], true),
-    importWorkflowFamilyEnabled: parseBooleanEnv(env['BILIG_AGENT_IMPORT_WORKFLOWS_ENABLED'], true),
-    rollupWorkflowFamilyEnabled: parseBooleanEnv(env['BILIG_AGENT_ROLLUP_WORKFLOWS_ENABLED'], true),
-    structuralWorkflowFamilyEnabled: parseBooleanEnv(env['BILIG_AGENT_STRUCTURAL_WORKFLOWS_ENABLED'], true),
+    sharedThreadsEnabled: parseBooleanEnv(env['BILIG_AGENT_SHARED_THREADS_ENABLED'], true, 'BILIG_AGENT_SHARED_THREADS_ENABLED'),
+    workflowRunnerEnabled: parseBooleanEnv(env['BILIG_AGENT_WORKFLOW_RUNNER_ENABLED'], true, 'BILIG_AGENT_WORKFLOW_RUNNER_ENABLED'),
+    autoApplyLowRiskEnabled: parseBooleanEnv(
+      env['BILIG_AGENT_AUTO_APPLY_LOW_RISK_ENABLED'],
+      true,
+      'BILIG_AGENT_AUTO_APPLY_LOW_RISK_ENABLED',
+    ),
+    formulaWorkflowFamilyEnabled: parseBooleanEnv(
+      env['BILIG_AGENT_FORMULA_WORKFLOWS_ENABLED'],
+      true,
+      'BILIG_AGENT_FORMULA_WORKFLOWS_ENABLED',
+    ),
+    formattingWorkflowFamilyEnabled: parseBooleanEnv(
+      env['BILIG_AGENT_FORMATTING_WORKFLOWS_ENABLED'],
+      true,
+      'BILIG_AGENT_FORMATTING_WORKFLOWS_ENABLED',
+    ),
+    importWorkflowFamilyEnabled: parseBooleanEnv(env['BILIG_AGENT_IMPORT_WORKFLOWS_ENABLED'], true, 'BILIG_AGENT_IMPORT_WORKFLOWS_ENABLED'),
+    rollupWorkflowFamilyEnabled: parseBooleanEnv(env['BILIG_AGENT_ROLLUP_WORKFLOWS_ENABLED'], true, 'BILIG_AGENT_ROLLUP_WORKFLOWS_ENABLED'),
+    structuralWorkflowFamilyEnabled: parseBooleanEnv(
+      env['BILIG_AGENT_STRUCTURAL_WORKFLOWS_ENABLED'],
+      true,
+      'BILIG_AGENT_STRUCTURAL_WORKFLOWS_ENABLED',
+    ),
     allowlistedUserIds: parseCsvEnv(env['BILIG_AGENT_ALLOWLIST_USERS']),
     allowlistedDocumentIds: parseCsvEnv(env['BILIG_AGENT_ALLOWLIST_DOCUMENTS']),
   }
