@@ -79,6 +79,24 @@ function initialReadNumberLiteral(source: string, start: number): { readonly tex
   return next === start ? undefined : { text: source.slice(start, next), next }
 }
 
+function initialReadRowLiteralSuffix(
+  source: string,
+  start: number,
+  ownerRow: number,
+): { readonly token: string; readonly next: number } | undefined {
+  if (source.charCodeAt(start) !== 43) {
+    return undefined
+  }
+  const row = initialReadRowNumber(source, start + 1)
+  if (!row || row.row !== ownerRow + 1) {
+    return undefined
+  }
+  return {
+    token: '+r0',
+    next: row.next,
+  }
+}
+
 function initialReadRelativeCellToken(
   source: string,
   start: number,
@@ -111,10 +129,21 @@ export function tryBuildInitialSimpleRowRelativeBinaryTemplateKey(source: string
   index += 1
   const rightCell = initialReadRelativeCellToken(source, index, ownerRow, ownerCol)
   if (rightCell) {
-    return rightCell.next === source.length ? `${left.token}${operator}${rightCell.token}` : undefined
+    if (rightCell.next === source.length) {
+      return `${left.token}${operator}${rightCell.token}`
+    }
+    const suffix = initialReadRowLiteralSuffix(source, rightCell.next, ownerRow)
+    return suffix && suffix.next === source.length ? `${left.token}${operator}${rightCell.token}${suffix.token}` : undefined
   }
   const rightNumber = initialReadNumberLiteral(source, index)
-  return rightNumber && rightNumber.next === source.length ? `${left.token}${operator}n${rightNumber.text}` : undefined
+  if (!rightNumber) {
+    return undefined
+  }
+  if (rightNumber.next === source.length) {
+    return `${left.token}${operator}n${rightNumber.text}`
+  }
+  const suffix = initialReadRowLiteralSuffix(source, rightNumber.next, ownerRow)
+  return suffix && suffix.next === source.length ? `${left.token}${operator}n${rightNumber.text}${suffix.token}` : undefined
 }
 
 export function tryBuildInitialPrefixSumTemplateKey(

@@ -134,8 +134,10 @@ issue pass:
   WorkPaper target for formula, edit/readback, memory, and persistence lanes:
   <https://github.com/zhangming1978/js-spreadsheet-benchmark/issues/1>
 - External open-source directory surface: the Open-Awesome submission for Bilig
-  has a metadata refresh comment with the current `@bilig/headless@0.17.0`
-  package, proof page, benchmark evidence, and non-grid WorkPaper positioning:
+  has a metadata refresh comment with the current `@bilig/headless@0.17.1`
+  package, proof page, benchmark evidence, and non-grid WorkPaper positioning;
+  the prior `@bilig/headless@0.17.0` proof remains part of the launch-history
+  trail:
   <https://github.com/chenz24/openawesome/issues/2#issuecomment-4467648527>
 - External MCP ranking surface: the best-of-mcp-servers listing pull request is
   open, mergeable, and passing `yamllint` with the `@bilig/headless` npm
@@ -368,7 +370,7 @@ Latest conversion snapshot on May 16, 2026:
 - GitHub surface: `23` stars, `16` forks, `17` open issues, and `5` open pull
   requests. The star gap is still `977`; GitHub also reports `0` actual
   repository watchers/subscribers.
-- npm surface: `@bilig/headless@0.17.0`, with `12,568` downloads in the
+- npm surface: `@bilig/headless@0.17.1`, with `12,568` downloads in the
   latest weekly window and `27,753` downloads in the latest monthly window.
 - Traffic surface: GitHub reports `565` views from `189` unique visitors and
   `21,392` clones from `2,641` unique cloners. The strongest referrers are
@@ -497,8 +499,8 @@ Latest technical-content action on May 14, 2026:
 - Do not route new evaluator traffic to the older public DEV copy until it is
   edited by the article owner. A Dia check on May 16, 2026 found that public
   article still showing stale `46/46` benchmark evidence while the current
-  checked package evidence is `@bilig/headless@0.17.0`, `73/100` comparable
-  mean wins, and `67/100` mean+p95 wins.
+  checked package evidence is `@bilig/headless@0.17.1`, `78/100` comparable
+  mean wins, and `74/100` mean+p95 wins.
 
 Latest search-intent boundary action on May 14, 2026:
 
@@ -618,7 +620,7 @@ something.
 
 ### 2. Turn Benchmarks Into A Distribution Loop
 
-The `73/100` WorkPaper mean-win claim should become small, quotable artifacts:
+The `78/100` WorkPaper mean-win claim should become small, quotable artifacts:
 
 - one chart image for X, Bluesky, LinkedIn, and README embeds:
   [`docs/assets/workpaper-benchmark-card.png`](assets/workpaper-benchmark-card.png)
@@ -719,7 +721,7 @@ https://github.com/proompteng/bilig#try-it-in-90-seconds
 It edits an input cell, reads the recalculated value, saves WorkPaper JSON,
 restores it, and checks the value again.
 
-3/ Current benchmark artifact: 73/100 comparable mean-latency rows are faster
+3/ Current benchmark artifact: 78/100 comparable mean-latency rows are faster
 than the HyperFormula-style baseline.
 
 The ugly part is public too: build-mixed-content is the visible p95
@@ -761,7 +763,7 @@ are service logic and the code path needs readback plus persisted state.
 Compatibility limits are documented:
 https://github.com/proompteng/bilig/blob/main/docs/where-bilig-is-not-excel-compatible-yet.md
 
-The benchmark claim is intentionally narrow: 73/100 comparable mean-latency wins
+The benchmark claim is intentionally narrow: 78/100 comparable mean-latency wins
 against HyperFormula-style workloads, build-mixed-content is the
 visible p95 holdout, and UI rendering is not part of the benchmark.
 

@@ -234,6 +234,12 @@ function translatedRefsFromSource(
   return right ? [left, right] : undefined
 }
 
+function simpleDirectSourceHasResultOffset(source: string): boolean {
+  const trimmedSource = source.trim()
+  const trimmed = trimmedSource.startsWith('=') ? trimmedSource.slice(1).trim() : trimmedSource
+  return SIMPLE_DIRECT_BINARY_RE.exec(trimmed)?.[7] !== undefined
+}
+
 function translatedCompiledFormula(
   compiled: CompiledFormula,
   source: string,
@@ -353,6 +359,12 @@ export function translateSimpleDirectScalarFormula(
   if (sourceRefs) {
     const sourceSymbolicRefs = sourceRefs.map((ref) => ref.address)
     const sourceParsedDeps = sourceRefs.map(parsedCellDependency)
+    if (isSimpleDirectScalarOffsetAst(compiled.optimizedAst) && simpleDirectSourceHasResultOffset(source)) {
+      const sourceCompiled = tryCompileSimpleDirectScalarFormula(source)
+      if (sourceCompiled) {
+        return translatedCompiledFormula({ ...sourceCompiled, id: compiled.id }, source, sourceSymbolicRefs, sourceParsedDeps, sourceRefs)
+      }
+    }
     return translatedCompiledFormula(compiled, source, sourceSymbolicRefs, sourceParsedDeps, sourceRefs)
   }
   const translatedRefs: ParsedCellReferenceInfo[] = []

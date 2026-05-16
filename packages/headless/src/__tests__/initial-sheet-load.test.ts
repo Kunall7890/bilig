@@ -62,6 +62,37 @@ describe('initial mixed sheet load', () => {
     }
   })
 
+  it('normalizes row-template formulas with row-literal offsets during mixed-sheet initialization', () => {
+    const compileSpy = vi.spyOn(formula, 'compileFormulaAst')
+    const parseSpy = vi.spyOn(formula, 'parseFormula')
+    try {
+      const workbook = WorkPaper.buildFromSheets({
+        Bench: [
+          [1, 2, '=A1+B1+1', '=C1*2+1'],
+          [2, 4, '=A2+B2+2', '=C2*2+2'],
+          [3, 6, '=A3+B3+3', '=C3*2+3'],
+        ],
+      })
+      const sheetId = workbook.getSheetId('Bench')!
+
+      expect(workbook.getCellValue({ sheet: sheetId, row: 0, col: 2 })).toEqual({
+        tag: ValueTag.Number,
+        value: 4,
+      })
+      expect(workbook.getCellValue({ sheet: sheetId, row: 2, col: 3 })).toEqual({
+        tag: ValueTag.Number,
+        value: 27,
+      })
+      expect(workbook.getPerformanceCounters().formulasParsed).toBe(2)
+      expect(workbook.getPerformanceCounters().directFormulaInitialEvaluations).toBe(6)
+      expect(compileSpy).not.toHaveBeenCalled()
+      expect(parseSpy).not.toHaveBeenCalled()
+    } finally {
+      compileSpy.mockRestore()
+      parseSpy.mockRestore()
+    }
+  })
+
   it('preserves large hydrated formula families for structural column inserts', () => {
     const rowCount = 3_000
     const workbook = WorkPaper.buildFromSheets({

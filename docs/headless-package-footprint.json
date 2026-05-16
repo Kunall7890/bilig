@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "package": {
     "name": "@bilig/headless",
-    "version": "0.17.0",
+    "version": "0.17.1",
     "description": "Formula WorkPaper runtime for Node.js services and agent tools with JSON persistence and formula readback.",
     "nodeEngine": ">=22.0.0",
     "keywordCount": 24,
@@ -26,8 +26,8 @@
       "spreadsheet-mcp",
       "typescript",
       "vercel-ai-sdk",
-      "workbook-automation",
       "workbook-api",
+      "workbook-automation",
       "workpaper",
       "xlsx",
       "xlsx-recalculation"
@@ -37,11 +37,11 @@
     "hasMcpBinary": true
   },
   "npmPackDryRun": {
-    "tarballBytes": 422423,
-    "unpackedBytes": 2524463,
-    "entryCount": 429,
-    "readmeBytes": 36753,
-    "packageJsonBytes": 2044
+    "tarballBytes": 421771,
+    "unpackedBytes": 2522373,
+    "entryCount": 426,
+    "readmeBytes": 37001,
+    "packageJsonBytes": 2085
   },
   "coldStartProbe": {
     "runtime": "node",

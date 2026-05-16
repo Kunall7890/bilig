@@ -119,9 +119,9 @@ and needs formula readback, persistence, and restore proof.
 
 ## Evidence and limits
 
-The current checked benchmark artifact records `73/100` comparable
+The current checked benchmark artifact records `78/100` comparable
 mean-latency wins against HyperFormula-style workloads. The caveat is public:
-`structural-insert-columns` is slower at p95 by `7.841x`, and
+`structural-insert-columns-small` is slower at p95 by `124.051x`, and
 browser UI rendering is outside the benchmark.
 
 This page does not claim full Excel compatibility. It does not claim chart,
