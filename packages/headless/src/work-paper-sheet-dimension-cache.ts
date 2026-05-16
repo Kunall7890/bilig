@@ -73,9 +73,14 @@ export class WorkPaperSheetDimensionCache {
     if (refs.length === 1) {
       const ref = refs[0]
       const mutation = ref?.mutation
-      if (ref && mutation && mutation.kind !== 'setCellFormula') {
+      if (ref && mutation) {
         const cached = this.dimensions.get(ref.sheetId)
         if (!cached) {
+          return
+        }
+        if (mutation.kind === 'setCellFormula' && workPaperFormulaMayResizeDynamically(mutation.formula)) {
+          this.spillSheetIds = null
+          this.invalidate(ref.sheetId)
           return
         }
         const noKnownSpills = this.spillSheetIds !== null && !this.spillSheetIds.has(ref.sheetId)

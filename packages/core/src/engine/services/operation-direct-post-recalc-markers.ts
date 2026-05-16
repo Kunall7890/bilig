@@ -46,6 +46,7 @@ export function createOperationDirectPostRecalcMarkers(args: {
   readonly getSingleCellDependent?: (cellIndex: number) => number
   readonly getCellDependents?: (cellIndex: number) => Uint32Array
   readonly hasNoCellDependents: (cellIndex: number) => boolean
+  readonly canSkipAllDirectFormulaColumnVersions?: () => boolean
   readonly canSkipDirectFormulaColumnVersion: (cellIndex: number) => boolean
   readonly readDirectScalarCellNumber: (cellIndex: number) => number | undefined
   readonly directScalarCellNumericValue: (cellIndex: number) => number | undefined
@@ -393,6 +394,7 @@ export function createOperationDirectPostRecalcMarkers(args: {
     let deltas: number[] | undefined
     let commonDelta: number | undefined
     let canUseValidatedTerminalWrites = true
+    const canSkipAllDirectFormulaColumnVersions = args.canSkipAllDirectFormulaColumnVersions?.() === true
     for (;;) {
       if (closureCount > args.scalarDeltaClosureLimit) {
         return false
@@ -438,7 +440,11 @@ export function createOperationDirectPostRecalcMarkers(args: {
       if (formulaDelta === undefined) {
         return false
       }
-      if (canUseValidatedTerminalWrites && !args.canSkipDirectFormulaColumnVersion(formulaCellIndex)) {
+      if (
+        canUseValidatedTerminalWrites &&
+        !canSkipAllDirectFormulaColumnVersions &&
+        !args.canSkipDirectFormulaColumnVersion(formulaCellIndex)
+      ) {
         canUseValidatedTerminalWrites = false
       }
       if (commonDelta === undefined) {

@@ -127,20 +127,27 @@ export function createOperationDirectFormulaDeltas(args: {
           ? cellIndices
           : Uint32Array.from(cellIndices)
         : EMPTY_CHANGED_CELLS
+      const flags = cellStore.flags
+      const numbers = cellStore.numbers
+      const versions = cellStore.versions
+      const stringIds = cellStore.stringIds
+      const errors = cellStore.errors
+      const formulaOutputFlags = CellFlags.SpillChild | CellFlags.PivotOutput
+      const clearFormulaOutputFlags = ~formulaOutputFlags
       for (let index = 0; index < cellIndices.length; index += 1) {
         const cellIndex = cellIndices[index]!
-        const flags = cellStore.flags[cellIndex] ?? 0
-        if ((flags & (CellFlags.SpillChild | CellFlags.PivotOutput)) !== 0) {
-          cellStore.flags[cellIndex] = flags & ~(CellFlags.SpillChild | CellFlags.PivotOutput)
+        const currentFlags = flags[cellIndex] ?? 0
+        if ((currentFlags & formulaOutputFlags) !== 0) {
+          flags[cellIndex] = currentFlags & clearFormulaOutputFlags
         }
-        cellStore.numbers[cellIndex] = (cellStore.numbers[cellIndex] ?? 0) + constantDelta
-        if ((cellStore.stringIds[cellIndex] ?? 0) !== 0) {
-          cellStore.stringIds[cellIndex] = 0
+        numbers[cellIndex] = (numbers[cellIndex] ?? 0) + constantDelta
+        if (stringIds[cellIndex] !== 0) {
+          stringIds[cellIndex] = 0
         }
-        if ((cellStore.errors[cellIndex] ?? 0) !== 0) {
-          cellStore.errors[cellIndex] = 0
+        if (errors[cellIndex] !== 0) {
+          errors[cellIndex] = 0
         }
-        cellStore.versions[cellIndex] = (cellStore.versions[cellIndex] ?? 0) + 1
+        versions[cellIndex] = (versions[cellIndex] ?? 0) + 1
       }
       addEngineCounter(args.state.counters, 'directScalarDeltaApplications', collection.size)
       return changed

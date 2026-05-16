@@ -41,6 +41,7 @@ function createMarkers(input: {
   readonly numbers: Map<number, number>
   readonly singleDependents: Map<number, number>
   readonly entityDependents?: Map<number, Uint32Array>
+  readonly canSkipAllDirectFormulaColumnVersions?: () => boolean
   readonly canSkipDirectFormulaColumnVersion?: (cellIndex: number) => boolean
 }) {
   const tags: ValueTag[] = []
@@ -68,6 +69,7 @@ function createMarkers(input: {
     getSingleEntityDependent: (entityId) => input.singleDependents.get(entityId) ?? -1,
     getEntityDependents: (entityId) => input.entityDependents?.get(entityId) ?? new Uint32Array(),
     hasNoCellDependents: () => true,
+    canSkipAllDirectFormulaColumnVersions: input.canSkipAllDirectFormulaColumnVersions,
     canSkipDirectFormulaColumnVersion: input.canSkipDirectFormulaColumnVersion ?? (() => true),
     readDirectScalarCellNumber: (cellIndex) => input.numbers.get(cellIndex) ?? 0,
     directScalarCellNumericValue: (cellIndex) => input.numbers.get(cellIndex),
@@ -109,6 +111,45 @@ describe('operation direct post-recalc markers', () => {
     expect(collection.getDelta(20)).toBe(3)
     expect(collection.getDelta(30)).toBe(3)
     expect(collection.hasCompleteScalarDeltas()).toBe(true)
+    expect(collection.hasValidatedScalarDeltaCells()).toBe(true)
+  })
+
+  it('uses the all-column-version skip gate for linear scalar closures', () => {
+    let perCellSkipCalls = 0
+    let allSkipCalls = 0
+    const formulas = new Map([
+      [20, formula(binaryScalar('+', 10, { kind: 'literal-number', value: 1 }))],
+      [30, formula(binaryScalar('+', 20, { kind: 'literal-number', value: 2 }))],
+      [40, formula(binaryScalar('+', 30, { kind: 'literal-number', value: 3 }))],
+    ])
+    const markers = createMarkers({
+      formulas,
+      numbers: new Map([
+        [20, 3],
+        [30, 5],
+        [40, 8],
+      ]),
+      singleDependents: new Map([
+        [makeCellEntity(10), 20],
+        [makeCellEntity(20), 30],
+        [makeCellEntity(30), 40],
+        [makeCellEntity(40), -1],
+      ]),
+      canSkipAllDirectFormulaColumnVersions: () => {
+        allSkipCalls += 1
+        return true
+      },
+      canSkipDirectFormulaColumnVersion: () => {
+        perCellSkipCalls += 1
+        return false
+      },
+    })
+    const collection = new DirectFormulaIndexCollection()
+
+    expect(markers.tryMarkDirectScalarLinearDeltaClosure(10, numberValue(2), numberValue(5), collection)).toBe(true)
+
+    expect(allSkipCalls).toBe(1)
+    expect(perCellSkipCalls).toBe(0)
     expect(collection.hasValidatedScalarDeltaCells()).toBe(true)
   })
 
