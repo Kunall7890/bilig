@@ -175,7 +175,7 @@ for (const expectedUrl of expectedSitemapUrls) {
 
 await Promise.all(sourceFilesToVerify.map((sourceFile) => requirePublishedSource(join(docsRoot, sourceFile))))
 await Promise.all(
-  ['README.md', 'package.json', 'route.ts', 'smoke.ts'].map((sourceFile) =>
+  ['README.md', 'package.json', 'quote-approval-api.ts', 'route.ts', 'smoke.ts'].map((sourceFile) =>
     requireFile(join(repoRoot, 'examples', 'serverless-workpaper-api', sourceFile)),
   ),
 )
@@ -325,7 +325,7 @@ for (const [path, content] of [
   requireIncludes(content, 'verifies the dependent formula result.', path)
   requireIncludes(content, 'pnpm workpaper:bench:competitive:check', path)
   requireIncludes(content, 'structural-append-formula-rows', path)
-  requireIncludes(content, '6.804x', path)
+  requireIncludes(content, '5.397x', path)
   requireIncludes(content, 'compatibility limits', path)
   requireIncludes(content, 'Excel oracle harness', path)
   requireIncludes(content, 'stale cached formula values', path)
@@ -723,6 +723,7 @@ for (const [path, content] of [
   requireIncludes(content, 'server-side-spreadsheet-automation-node', path)
   requireIncludes(content, 'google-sheets-api-alternative-node-workpaper', path)
   requireIncludes(content, 'examples/serverless-workpaper-api', path)
+  requireIncludes(content, 'quote-approval-api', path)
   requireIncludes(content, 'node-framework-workpaper-adapters', path)
   requireIncludes(content, 'mcp-spreadsheet-server-directory', path)
 }

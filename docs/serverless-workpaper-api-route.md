@@ -21,6 +21,57 @@ For a copyable Next.js App Router boundary, the same example ships a runnable
 shared WorkPaper handler. For a plain Vercel Function boundary, use
 `npm run vercel-function` or the example-level `npm run test` proof.
 
+For the most production-shaped evaluator path, run `npm run quote-approval-api`
+inside `examples/serverless-workpaper-api`. It accepts quote input JSON, writes
+`Inputs!B2:B6`, recalculates the quote approval formulas, persists the WorkPaper
+JSON, reloads it, and returns `restoredMatchesAfter: true`.
+
+## Quote Approval API Smoke
+
+Run this first when you want to see a service-style approval workflow instead
+of a toy arithmetic workbook:
+
+```sh
+cd examples/serverless-workpaper-api
+npm install
+npm run quote-approval-api
+```
+
+The smoke writes quote inputs into the workbook:
+
+```json
+{
+  "units": "Inputs!B2",
+  "listPrice": "Inputs!B3",
+  "discount": "Inputs!B4",
+  "unitCost": "Inputs!B5",
+  "minimumMargin": "Inputs!B6"
+}
+```
+
+Expected proof:
+
+```json
+{
+  "before": {
+    "netRevenue": 43200,
+    "grossMargin": 0.2963,
+    "decision": "review"
+  },
+  "after": {
+    "netRevenue": 45600,
+    "grossMargin": 0.3333,
+    "decision": "approved"
+  },
+  "checks": {
+    "decisionChanged": true,
+    "formulasPersisted": true,
+    "inputPersisted": true,
+    "restoredMatchesAfter": true
+  }
+}
+```
+
 ## Setup
 
 ```sh

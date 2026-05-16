@@ -350,7 +350,7 @@ function readNumber(cell: unknown): number {
               <a class="path-link" href="./serverless-workpaper-api-route.html">
                 <span>route</span>
                 <strong>Serverless WorkPaper API route</strong>
-                <em>The same edit-read-save loop inside a deployable endpoint.</em>
+                <em>Start with quote approval: write Inputs!B2:B6, recalc formulas, persist JSON, reload proof.</em>
               </a>
               <a class="path-link" href="./node-framework-workpaper-adapters.html">
                 <span>frameworks</span>
@@ -427,10 +427,10 @@ function readNumber(cell: unknown): number {
               <div class="proof-result">
                 <div class="proof-metric">
                   <span class="proof-label">comparable mean rows</span>
-                  <strong>41/57</strong>
+                  <strong>42/57</strong>
                 </div>
                 <p>
-                  41 of 57 comparable mean-latency rows are faster in the checked file. The structural append row is slower at p95. Browser
+                  42 of 57 comparable mean-latency rows are faster in the checked file. The structural append row is slower at p95. Browser
                   UI rendering is not part of this benchmark.
                 </p>
               </div>
@@ -448,7 +448,7 @@ function readNumber(cell: unknown): number {
                 </div>
                 <div class="proof-fact">
                   <dt>Caveat</dt>
-                  <dd>structural-append-formula-rows is slower at p95: <code>6.804x</code>.</dd>
+                  <dd>structural-append-formula-rows is slower at p95: <code>5.397x</code>.</dd>
                 </div>
                 <div class="proof-fact">
                   <dt>Out of scope</dt>
@@ -584,6 +584,11 @@ function readNumber(cell: unknown): number {
                 <li><a href="./building-a-revenue-model-with-headless-workpaper.html">build a revenue model</a></li>
                 <li>
                   <a href="https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api">serverless API route example</a>
+                </li>
+                <li>
+                  <a href="https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api#quote-approval-api-smoke"
+                    >quote-approval-api smoke</a
+                  >
                 </li>
                 <li>
                   <a href="https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api#persistence-adapters"

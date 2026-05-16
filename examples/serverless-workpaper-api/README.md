@@ -8,16 +8,71 @@ The route accepts revenue records, writes them into a WorkPaper workbook,
 calculates summary formulas, persists the workbook as JSON, and returns
 computed values that prove the write took effect.
 
+Start with the quote approval smoke when you want the production-shaped proof:
+input JSON writes workbook input cells, formulas recalculate, the WorkPaper JSON
+is persisted, and a restored workbook returns the same approved/review decision.
+
 Run it outside the monorepo with the published package:
 
 ```sh
 npm install
 npm run test
+npm run quote-approval-api
 npm run next-route-handler
 npm run next-server-action
 npm run next-server-action-formdata
 npm run framework-adapters
 npm run persistence-adapters
+```
+
+## Quote Approval API Smoke
+
+Run this first when you want a compact service workflow instead of a toy
+arithmetic workbook:
+
+```sh
+npm run quote-approval-api
+```
+
+Expected quote approval output:
+
+```json
+{
+  "route": "Quote approval WorkPaper API",
+  "inputCells": {
+    "units": "Inputs!B2",
+    "listPrice": "Inputs!B3",
+    "discount": "Inputs!B4",
+    "unitCost": "Inputs!B5",
+    "minimumMargin": "Inputs!B6"
+  },
+  "before": {
+    "netRevenue": 43200,
+    "grossMargin": 0.2963,
+    "decision": "review"
+  },
+  "edit": {
+    "input": {
+      "units": 40,
+      "listPrice": 1200,
+      "discount": 0.05,
+      "unitCost": 760,
+      "minimumMargin": 0.3
+    },
+    "after": {
+      "netRevenue": 45600,
+      "grossMargin": 0.3333,
+      "decision": "approved"
+    },
+    "checks": {
+      "decisionChanged": true,
+      "formulasPersisted": true,
+      "inputPersisted": true,
+      "restoredMatchesAfter": true
+    }
+  },
+  "verified": true
+}
 ```
 
 Expected smoke output:

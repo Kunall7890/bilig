@@ -33,9 +33,9 @@ npm install @bilig/headless
 
 <!-- headless-package-footprint:start -->
 
-Current checked npm footprint for `@bilig/headless@0.15.0`:
+Current checked npm footprint for `@bilig/headless@0.15.1`:
 
-- Pack dry run: `415 kB` tarball, `2.47 MB` unpacked, `408` package entries.
+- Pack dry run: `415 kB` tarball, `2.48 MB` unpacked, `411` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
   import/export stays behind the `@bilig/headless/xlsx` subpath; MCP is the
   `bilig-workpaper-mcp` binary wrapper.
@@ -302,6 +302,7 @@ For HTTP and serverless examples, start with
 ```sh
 cd examples/serverless-workpaper-api
 npm install
+npm run quote-approval-api
 npm run next-route-handler
 npm run next-server-action
 npm run next-server-action-formdata
@@ -309,8 +310,13 @@ npm run framework-adapters
 npm run persistence-adapters
 ```
 
+Start with `npm run quote-approval-api` when you want the production-shaped
+proof: input JSON writes `Inputs!B2:B6`, formulas recalculate, the WorkPaper
+JSON is persisted, and a restored workbook returns the same approval decision.
+
 Useful anchors:
 
+- [quote approval API smoke](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api#quote-approval-api-smoke)
 - [Next.js App Router smoke](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api#nextjs-app-router-smoke)
 - [Next.js Server Action smoke](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api#nextjs-server-action-smoke)
 - [Next.js Server Action FormData smoke](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api#nextjs-server-action-formdata-smoke)
@@ -423,9 +429,9 @@ pnpm workpaper:xlsx-corpus:check -- /path/to/xlsx-corpus
   should be checked against a fresh Microsoft Excel recalculation.
 - Run `pnpm workpaper:bench:competitive:check` from the repository. The
   checked-in artifact shows
-  [`41/57` comparable WorkPaper mean wins](https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md)
+  [`42/57` comparable WorkPaper mean wins](https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md)
   and names the worst p95 holdout: `structural-append-formula-rows` at
-  `6.804x`.
+  `5.397x`.
 - The shareable benchmark card is generated from the checked-in artifact:
   [`workpaper-benchmark-card.png`](https://github.com/proompteng/bilig/blob/main/docs/assets/workpaper-benchmark-card.png).
 - Read the
