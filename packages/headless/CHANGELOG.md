@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.16.24
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.16.23
+- Manual override: no
+
+## Fixes
+- fix(core): restore aggregate formulas after row delete undo (376211e4)
+
 ## 0.16.23
 
 - Release type: patch
