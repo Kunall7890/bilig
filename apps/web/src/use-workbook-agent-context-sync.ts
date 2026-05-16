@@ -33,16 +33,19 @@ export function useWorkbookAgentContextSync(input: {
   const lastImmediateContextKeyRef = useRef<string>('')
   const hasSyncedContextRef = useRef(false)
   const contextSyncInFlightRef = useRef(false)
+  const contextSyncGenerationRef = useRef(0)
   const lastContextSyncAtRef = useRef(0)
   const pendingContextSyncTimeoutRef = useRef<number | null>(null)
   const pendingContextSyncRef = useRef<{
     readonly context: WorkbookAgentUiContext
+    readonly generation: number
     readonly key: string
     readonly immediateKey: string
     readonly threadId: string
   } | null>(null)
 
   const clearPendingContextSync = useCallback(() => {
+    contextSyncGenerationRef.current += 1
     const pendingTimeout = pendingContextSyncTimeoutRef.current
     if (pendingTimeout !== null) {
       window.clearTimeout(pendingTimeout)
@@ -59,10 +62,16 @@ export function useWorkbookAgentContextSync(input: {
     lastContextSyncAtRef.current = 0
   }, [clearPendingContextSync])
 
+  const isPendingContextSyncCurrent = useCallback(
+    (pending: NonNullable<typeof pendingContextSyncRef.current>) =>
+      pending.generation === contextSyncGenerationRef.current && input.sessionRef.current?.threadId === pending.threadId,
+    [input.sessionRef],
+  )
+
   const flushPendingContextSync = useCallback(() => {
     const pending = pendingContextSyncRef.current
     pendingContextSyncTimeoutRef.current = null
-    if (!pending || lastContextKeyRef.current === pending.key) {
+    if (!pending || !isPendingContextSyncCurrent(pending) || lastContextKeyRef.current === pending.key) {
       pendingContextSyncRef.current = null
       return
     }
@@ -75,12 +84,16 @@ export function useWorkbookAgentContextSync(input: {
     void (async () => {
       try {
         await input.client.syncThreadContext(pending.threadId, pending.context)
-        lastContextKeyRef.current = pending.key
-        lastImmediateContextKeyRef.current = pending.immediateKey
-        hasSyncedContextRef.current = true
+        if (isPendingContextSyncCurrent(pending)) {
+          lastContextKeyRef.current = pending.key
+          lastImmediateContextKeyRef.current = pending.immediateKey
+          hasSyncedContextRef.current = true
+        }
       } catch (syncError) {
         logDebug('Failed to sync agent context update', { documentId: input.documentId, error: syncError })
-        pendingContextSyncRef.current ??= pending
+        if (isPendingContextSyncCurrent(pending)) {
+          pendingContextSyncRef.current ??= pending
+        }
       } finally {
         contextSyncInFlightRef.current = false
         if (pendingContextSyncRef.current !== null && pendingContextSyncTimeoutRef.current === null) {
@@ -90,7 +103,7 @@ export function useWorkbookAgentContextSync(input: {
         }
       }
     })()
-  }, [input.client, input.documentId])
+  }, [input.client, input.documentId, isPendingContextSyncCurrent])
 
   const scheduleContextSync = useCallback(() => {
     const activeSession = input.sessionRef.current
@@ -106,6 +119,7 @@ export function useWorkbookAgentContextSync(input: {
     }
     pendingContextSyncRef.current = {
       context: nextContext,
+      generation: contextSyncGenerationRef.current,
       key: nextContextKey,
       immediateKey: nextImmediateContextKey,
       threadId: activeSession.threadId,
