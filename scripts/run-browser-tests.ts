@@ -5,6 +5,7 @@ import net from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { spawnSync as nodeSpawnSync } from 'node:child_process'
+import { resolveBrowserTestConfiguredPort, resolveBrowserTestTimeoutMs } from './browser-test-runner-config.js'
 import { resolveBrowserLocalWebMode } from './browser-stack-config.js'
 import { resolveBrowserTestPhases, type BrowserTestPhase } from './browser-test-phases.js'
 
@@ -193,26 +194,13 @@ if (normalizedBrowserStack === 'compose' && !compose && !isCi) {
 }
 const composeFile = process.env['BILIG_E2E_COMPOSE_FILE'] ?? 'compose.yaml'
 const composeProject = process.env['BILIG_E2E_COMPOSE_PROJECT'] ?? `bilig-e2e-${Date.now()}`
-const composeStartupTimeoutMs = resolveTimeoutMs(process.env['BILIG_E2E_STARTUP_TIMEOUT_MS'], isCi ? 300_000 : 120_000)
+const composeStartupTimeoutMs = resolveBrowserTestTimeoutMs(process.env['BILIG_E2E_STARTUP_TIMEOUT_MS'], isCi ? 300_000 : 120_000)
 const LOCAL_STACK_STARTUP_ATTEMPTS = 3
 const LOCAL_STACK_STABILITY_GRACE_MS = 1_000
 const LOCAL_PLAYWRIGHT_PHASE_ATTEMPTS = 2
 
 const PREVIEW_PORTS = [4179, 4180]
 const allocatedPreviewPorts = new Set<number>()
-
-function resolveTimeoutMs(value: string | undefined, fallbackMs: number): number {
-  if (!value) {
-    return fallbackMs
-  }
-
-  const parsed = Number.parseInt(value, 10)
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return fallbackMs
-  }
-
-  return parsed
-}
 
 function parsePidList(output: string): number[] {
   if (!output) {
@@ -383,9 +371,9 @@ async function reservePort(port: number): Promise<number | null> {
   })
 }
 
-async function resolvePort(envValue: string | undefined, preferredPort: number): Promise<string> {
+async function resolvePort(envValue: string | undefined, preferredPort: number, label: string): Promise<string> {
   if (envValue) {
-    return envValue
+    return resolveBrowserTestConfiguredPort(envValue, label)
   }
 
   const preferred = await reservePort(preferredPort)
@@ -413,10 +401,10 @@ let e2ePortGeneration = 0
 async function resolveE2ePortAllocation(freshLocalBlock: boolean): Promise<E2ePortAllocation> {
   const offset = freshLocalBlock ? (e2ePortGeneration += 1) * 50 : 0
   const allocation = {
-    webPort: await resolvePort(process.env['BILIG_E2E_WEB_PORT'], 4180 + offset),
-    syncServerPort: await resolvePort(process.env['BILIG_E2E_SYNC_SERVER_PORT'], 54422 + offset),
-    zeroPort: await resolvePort(process.env['BILIG_E2E_ZERO_PORT'], 54849 + offset),
-    postgresPort: await resolvePort(process.env['BILIG_E2E_POSTGRES_PORT'], 55433 + offset),
+    webPort: await resolvePort(process.env['BILIG_E2E_WEB_PORT'], 4180 + offset, 'BILIG_E2E_WEB_PORT'),
+    syncServerPort: await resolvePort(process.env['BILIG_E2E_SYNC_SERVER_PORT'], 54422 + offset, 'BILIG_E2E_SYNC_SERVER_PORT'),
+    zeroPort: await resolvePort(process.env['BILIG_E2E_ZERO_PORT'], 54849 + offset, 'BILIG_E2E_ZERO_PORT'),
+    postgresPort: await resolvePort(process.env['BILIG_E2E_POSTGRES_PORT'], 55433 + offset, 'BILIG_E2E_POSTGRES_PORT'),
   }
   allocatedPreviewPorts.add(Number.parseInt(allocation.webPort, 10))
   allocatedPreviewPorts.add(Number.parseInt(allocation.syncServerPort, 10))
