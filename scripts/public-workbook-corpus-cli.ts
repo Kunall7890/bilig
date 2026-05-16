@@ -3,8 +3,13 @@ import { isAbsolute, relative, resolve } from 'node:path'
 
 export function readStringArg(name: string, fallback: string): string {
   let value: string | null = null
+  let count = 0
   process.argv.forEach((arg, index) => {
     if (arg === name) {
+      count += 1
+      if (count > 1) {
+        throw new Error(`Expected ${name} to be specified once`)
+      }
       value = readArgValueAt(name, index)
     }
   })

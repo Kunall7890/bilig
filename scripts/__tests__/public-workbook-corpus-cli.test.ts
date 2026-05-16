@@ -34,6 +34,17 @@ describe('public workbook corpus CLI resource guards', () => {
     }
   })
 
+  it('rejects duplicate shared string arguments', () => {
+    const originalArgv = process.argv
+    try {
+      process.argv = ['bun', corpusScriptPath(), 'fetch', '--manifest', 'first.json', '--manifest', 'second.json']
+
+      expect(() => readStringArg('--manifest', 'fallback.json')).toThrow('Expected --manifest to be specified once')
+    } finally {
+      process.argv = originalArgv
+    }
+  })
+
   it('rejects missing values for repeated string arguments', () => {
     const originalArgv = process.argv
     try {
