@@ -262,6 +262,21 @@ describe('datetime builtins', () => {
         { tag: ValueTag.Number, value: sundaySerial },
       ),
     ).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(
+      datetimeBuiltins['NETWORKDAYS.INTL'](
+        { tag: ValueTag.Number, value: tuesdaySerial },
+        { tag: ValueTag.Number, value: fridaySerial },
+        { tag: ValueTag.Number, value: 7 },
+        { tag: ValueTag.Number, value: sundaySerial },
+      ),
+    ).toEqual({ tag: ValueTag.Number, value: -2 })
+    expect(
+      datetimeBuiltins['NETWORKDAYS.INTL'](
+        { tag: ValueTag.Number, value: fridaySerial },
+        { tag: ValueTag.Number, value: tuesdaySerial },
+        { tag: ValueTag.String, value: ' 0000110 ', stringId: 3 },
+      ),
+    ).toEqual({ tag: ValueTag.Number, value: 3 })
 
     expect(
       datetimeBuiltins['WORKDAY.INTL'](
@@ -274,7 +289,7 @@ describe('datetime builtins', () => {
       datetimeBuiltins['NETWORKDAYS.INTL'](
         { tag: ValueTag.Number, value: fridaySerial },
         { tag: ValueTag.Number, value: tuesdaySerial },
-        { tag: ValueTag.String, value: '1111111', stringId: 3 },
+        { tag: ValueTag.String, value: '1111111', stringId: 4 },
       ),
     ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
   })
