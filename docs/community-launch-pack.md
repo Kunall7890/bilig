@@ -376,6 +376,14 @@ Latest conversion snapshot on May 16, 2026:
 - Feedback surface: discussion `#157` keeps the conversion ask in one place for
   people who tried or considered the package and stopped:
   <https://github.com/proompteng/bilig/discussions/157#discussioncomment-16920401>
+- Latest proof-page feedback action: the quote approval WorkPaper API proof is
+  now live at
+  <https://proompteng.github.io/bilig/quote-approval-workpaper-api.html> and
+  posted back into discussion `#157` at
+  <https://github.com/proompteng/bilig/discussions/157#discussioncomment-16938925>.
+  The ask is deliberately concrete: if the service-shaped smoke is close but
+  not adoptable, identify whether formula coverage, XLSX import/export,
+  persistence, framework boundary, or agent/tool readback blocks the trial.
 - Site conversion action: the homepage final action now links directly to the
   star page beside npm install and GitHub, and the docs index links to the live
   community growth snapshot so visitors can inspect the current public signals.

@@ -1,6 +1,6 @@
 # Community Growth Snapshot
 
-Captured at: `2026-05-16T08:54:36.899Z`
+Captured at: `2026-05-16T09:02:26.099Z`
 
 This snapshot tracks the public signals for the `@bilig/headless` growth loop: GitHub conversion, npm demand, contributor on-ramp health, discussion activity, and traffic quality.
 
@@ -37,7 +37,7 @@ This snapshot tracks the public signals for the `@bilig/headless` growth loop: G
 ## Discussions
 
 - Total discussions: 13
-- #157 [Which Node workbook automation workflow should @bilig/headless prove next?](https://github.com/proompteng/bilig/discussions/157) (Ideas, 9 comments)
+- #157 [Which Node workbook automation workflow should @bilig/headless prove next?](https://github.com/proompteng/bilig/discussions/157) (Ideas, 10 comments)
 - #382 [How should headless spreadsheet engines handle stale XLSX cached values?](https://github.com/proompteng/bilig/discussions/382) (Ideas, 2 comments)
 - #230 [Show and tell: MCP spreadsheet tool server for WorkPaper agents](https://github.com/proompteng/bilig/discussions/230) (Show and tell, 5 comments)
 - #335 [Show and tell: OpenAI Responses tool calls for WorkPaper spreadsheets](https://github.com/proompteng/bilig/discussions/335) (Show and tell, 2 comments)
