@@ -11,6 +11,7 @@ const projectionFns = vi.hoisted(() => ({
   buildWorkbookSourceProjectionFromEngine: vi.fn(),
   buildWorkbookStyleRowsFromEngine: vi.fn(),
   materializeCellEvalProjection: vi.fn(),
+  materializeCellEvalRangeProjection: vi.fn(),
 }))
 
 const storeFns = vi.hoisted(() => ({
@@ -39,6 +40,7 @@ vi.mock('../projection.js', () => ({
   buildWorkbookSourceProjectionFromEngine: projectionFns.buildWorkbookSourceProjectionFromEngine,
   buildWorkbookStyleRowsFromEngine: projectionFns.buildWorkbookStyleRowsFromEngine,
   materializeCellEvalProjection: projectionFns.materializeCellEvalProjection,
+  materializeCellEvalRangeProjection: projectionFns.materializeCellEvalRangeProjection,
 }))
 
 vi.mock('../store.js', () => ({
@@ -173,6 +175,7 @@ describe('workbook mutation store', () => {
       },
     ])
     projectionFns.materializeCellEvalProjection.mockReturnValue([])
+    projectionFns.materializeCellEvalRangeProjection.mockReturnValue([])
   })
 
   it('queues recalculation work for value mutations', async () => {
@@ -211,6 +214,8 @@ describe('workbook mutation store', () => {
     expect(result.recalcJobId).toBeNull()
     expect(storeFns.applyStyleDiff).toHaveBeenCalledOnce()
     expect(storeFns.persistCellSourceRange).toHaveBeenCalledOnce()
+    expect(projectionFns.materializeCellEvalProjection).not.toHaveBeenCalled()
+    expect(projectionFns.materializeCellEvalRangeProjection).toHaveBeenCalledOnce()
     expect(query.mock.calls.some(([sql]) => typeof sql === 'string' && sql.includes('INSERT INTO recalc_job'))).toBe(false)
   })
 

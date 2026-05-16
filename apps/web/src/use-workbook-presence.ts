@@ -5,6 +5,7 @@ import {
   normalizeWorkbookPresenceRows,
   selectActiveWorkbookCollaborators,
   WORKBOOK_PRESENCE_HEARTBEAT_MS,
+  WORKBOOK_PRESENCE_SELECTION_PUBLISH_MS,
   WORKBOOK_PRESENCE_STALE_TICK_MS,
   type WorkbookCollaboratorPresence,
 } from './workbook-presence-model.js'
@@ -64,27 +65,52 @@ export function useWorkbookPresence(input: {
   const [presenceRows, setPresenceRows] = useState([] as readonly ReturnType<typeof normalizeWorkbookPresenceRows>[number][])
   const [now, setNow] = useState(() => Date.now())
   const latestSelectionRef = useRef(selection)
+  const lastPresencePublishedAtRef = useRef(0)
+  const pendingPresencePublishTimeoutRef = useRef<number | null>(null)
 
   latestSelectionRef.current = selection
 
-  const publishPresence = useCallback(() => {
-    if (!enabled) {
+  const clearPendingPresencePublish = useCallback(() => {
+    if (pendingPresencePublishTimeoutRef.current === null) {
       return
     }
-    const presenceArgs: UpdatePresenceArgs = {
-      documentId,
-      sessionId,
-      presenceClientId: currentPresenceClientId,
-      sheetName: latestSelectionRef.current.sheetName,
-      address: latestSelectionRef.current.address,
-      selection: latestSelectionRef.current,
-    }
-    observeZeroMutationResult(zero.mutate(mutators.workbook.updatePresence(presenceArgs)))
-  }, [currentPresenceClientId, documentId, enabled, sessionId, zero])
+    window.clearTimeout(pendingPresencePublishTimeoutRef.current)
+    pendingPresencePublishTimeoutRef.current = null
+  }, [])
+
+  const publishPresence = useCallback(
+    (publishedAt = Date.now()) => {
+      if (!enabled) {
+        return
+      }
+      const presenceArgs: UpdatePresenceArgs = {
+        documentId,
+        sessionId,
+        presenceClientId: currentPresenceClientId,
+        sheetName: latestSelectionRef.current.sheetName,
+        address: latestSelectionRef.current.address,
+        selection: latestSelectionRef.current,
+      }
+      observeZeroMutationResult(zero.mutate(mutators.workbook.updatePresence(presenceArgs)))
+      lastPresencePublishedAtRef.current = publishedAt
+    },
+    [currentPresenceClientId, documentId, enabled, sessionId, zero],
+  )
+
+  const publishPresenceNow = useCallback(() => {
+    clearPendingPresencePublish()
+    publishPresence(Date.now())
+  }, [clearPendingPresencePublish, publishPresence])
+
+  useEffect(() => {
+    lastPresencePublishedAtRef.current = 0
+    clearPendingPresencePublish()
+  }, [clearPendingPresencePublish, currentPresenceClientId, documentId, sessionId])
 
   useEffect(() => {
     if (!enabled) {
       setPresenceRows([])
+      clearPendingPresencePublish()
       return
     }
     const view = zero.materialize(queries.presenceCoarse.byWorkbook({ documentId }))
@@ -103,26 +129,40 @@ export function useWorkbookPresence(input: {
       cleanup()
       view.destroy()
     }
-  }, [documentId, enabled, zero])
+  }, [clearPendingPresencePublish, documentId, enabled, zero])
 
   useEffect(() => {
     if (!enabled) {
+      clearPendingPresencePublish()
       return
     }
     const intervalId = window.setInterval(() => {
-      publishPresence()
+      publishPresenceNow()
     }, WORKBOOK_PRESENCE_HEARTBEAT_MS)
     return () => {
       window.clearInterval(intervalId)
     }
-  }, [enabled, publishPresence])
+  }, [clearPendingPresencePublish, enabled, publishPresenceNow])
 
   useEffect(() => {
     if (!enabled) {
+      clearPendingPresencePublish()
       return
     }
-    publishPresence()
-  }, [enabled, publishPresence, selection.address, selection.sheetName])
+    const publishedAt = lastPresencePublishedAtRef.current
+    const currentTime = Date.now()
+    const elapsedMs = currentTime - publishedAt
+    if (publishedAt === 0 || elapsedMs >= WORKBOOK_PRESENCE_SELECTION_PUBLISH_MS) {
+      publishPresenceNow()
+      return
+    }
+    clearPendingPresencePublish()
+    pendingPresencePublishTimeoutRef.current = window.setTimeout(() => {
+      pendingPresencePublishTimeoutRef.current = null
+      publishPresence(Date.now())
+    }, WORKBOOK_PRESENCE_SELECTION_PUBLISH_MS - elapsedMs)
+    return clearPendingPresencePublish
+  }, [clearPendingPresencePublish, enabled, publishPresence, publishPresenceNow, selection.address, selection.sheetName])
 
   useEffect(() => {
     if (!enabled) {

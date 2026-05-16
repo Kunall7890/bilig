@@ -91,10 +91,11 @@ describe('workbook calculation store', () => {
     ])
 
     expect(db.maxActiveQueries).toBe(1)
-    expect(db.calls).toHaveLength(3)
+    expect(db.calls).toHaveLength(2)
     expect(db.calls[0]).toContain('FROM cell_eval')
     expect(db.calls[1]).toContain('INSERT INTO cell_eval')
-    expect(db.calls[2]).toContain('INSERT INTO cell_eval')
+    expect(db.calls[1]).toContain('VALUES ($1')
+    expect(db.calls[1]).toContain('($15')
   })
 
   it('serializes incremental cell_eval writes from recalc jobs', async () => {
@@ -106,7 +107,9 @@ describe('workbook calculation store', () => {
     ])
 
     expect(db.maxActiveQueries).toBe(1)
-    expect(db.calls).toHaveLength(2)
+    expect(db.calls).toHaveLength(1)
     expect(db.calls.every((call) => call.includes('INSERT INTO cell_eval'))).toBe(true)
+    expect(db.calls[0]).toContain('VALUES ($1')
+    expect(db.calls[0]).toContain('($15')
   })
 })

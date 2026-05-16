@@ -16,6 +16,7 @@ import { runSequentially } from './transaction-support.js'
 
 const WORKBOOK_CHECKPOINT_FORMAT = 'json-v1'
 const WORKBOOK_CHECKPOINT_RETENTION = 5
+const MAX_CELL_EVAL_ROWS_PER_BATCH = 750
 
 type CalculationWriteTask = () => Promise<unknown>
 
@@ -23,6 +24,14 @@ async function runCalculationWriteTasks(tasks: readonly CalculationWriteTask[]):
   await runSequentially(tasks, async (task) => {
     await task()
   })
+}
+
+function chunkRows<Row>(rows: readonly Row[], size: number): readonly Row[][] {
+  const chunks: Row[][] = []
+  for (let index = 0; index < rows.length; index += size) {
+    chunks.push(rows.slice(index, index + size))
+  }
+  return chunks
 }
 
 interface CellEvalSelectRow extends QueryResultRow {
@@ -108,6 +117,99 @@ async function loadCellEvalRows(db: Queryable, documentId: string): Promise<Cell
   return result.rows.map((row) => normalizeCellEvalRow(row, documentId))
 }
 
+async function deleteCellEvalRows(db: Queryable, documentId: string, keys: readonly string[]): Promise<void> {
+  if (keys.length === 0) {
+    return
+  }
+  const rows = keys.flatMap((key) => {
+    const [, sheetName, address] = parseJsonKey(key)
+    return typeof sheetName === 'string' && typeof address === 'string' ? [{ sheetName, address }] : []
+  })
+  const tasks = chunkRows(rows, MAX_CELL_EVAL_ROWS_PER_BATCH).map((chunk) => {
+    const valuesSql = chunk
+      .map((_row, index) => {
+        const base = 2 + index * 2
+        return `($${base}::text, $${base + 1}::text)`
+      })
+      .join(', ')
+    return () =>
+      db.query(
+        `
+          DELETE FROM cell_eval
+          USING (VALUES ${valuesSql}) AS deleted(sheet_name, address)
+          WHERE cell_eval.workbook_id = $1
+            AND cell_eval.sheet_name = deleted.sheet_name
+            AND cell_eval.address = deleted.address
+        `,
+        [documentId, ...chunk.flatMap((row) => [row.sheetName, row.address])],
+      )
+  })
+  await runCalculationWriteTasks(tasks)
+}
+
+async function upsertCellEvalRows(db: Queryable, rows: readonly CellEvalRow[]): Promise<void> {
+  const tasks = chunkRows(rows, MAX_CELL_EVAL_ROWS_PER_BATCH).map((chunk) => {
+    const valuesSql = chunk
+      .map((_row, index) => {
+        const base = 1 + index * 14
+        return `($${base}, $${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}::jsonb, $${base + 6}, $${base + 7}, $${base + 8}, $${base + 9}::jsonb, $${base + 10}, $${base + 11}, $${base + 12}, $${base + 13}::timestamptz)`
+      })
+      .join(', ')
+    return () =>
+      db.query(
+        `
+          INSERT INTO cell_eval (
+            workbook_id,
+            sheet_name,
+            address,
+            row_num,
+            col_num,
+            value,
+            flags,
+            version,
+            style_id,
+            style_json,
+            format_id,
+            format_code,
+            calc_revision,
+            updated_at
+          )
+          VALUES ${valuesSql}
+          ON CONFLICT (workbook_id, sheet_name, address)
+          DO UPDATE SET
+            row_num = EXCLUDED.row_num,
+            col_num = EXCLUDED.col_num,
+            value = EXCLUDED.value,
+            flags = EXCLUDED.flags,
+            version = EXCLUDED.version,
+            style_id = EXCLUDED.style_id,
+            style_json = EXCLUDED.style_json,
+            format_id = EXCLUDED.format_id,
+            format_code = EXCLUDED.format_code,
+            calc_revision = EXCLUDED.calc_revision,
+            updated_at = EXCLUDED.updated_at
+        `,
+        chunk.flatMap((row) => [
+          row.workbookId,
+          row.sheetName,
+          row.address,
+          row.rowNum,
+          row.colNum,
+          JSON.stringify(row.value),
+          row.flags,
+          row.version,
+          row.styleId,
+          JSON.stringify(row.styleJson),
+          row.formatId,
+          row.formatCode,
+          row.calcRevision,
+          row.updatedAt,
+        ]),
+      )
+  })
+  await runCalculationWriteTasks(tasks)
+}
+
 export async function persistCellEvalRows(
   db: Queryable,
   documentId: string,
@@ -115,127 +217,12 @@ export async function persistCellEvalRows(
   nextRows: readonly CellEvalRow[],
 ): Promise<void> {
   const diff = diffProjectionRows(previousRows, nextRows, sourceProjectionKeys.cellEval, cellEvalSignature)
-  const tasks: CalculationWriteTask[] = []
-  for (const key of diff.deletes) {
-    const [, sheetName, address] = parseJsonKey(key)
-    tasks.push(() =>
-      db.query(`DELETE FROM cell_eval WHERE workbook_id = $1 AND sheet_name = $2 AND address = $3`, [documentId, sheetName, address]),
-    )
-  }
-  for (const row of diff.upserts) {
-    tasks.push(() =>
-      db.query(
-        `
-        INSERT INTO cell_eval (
-          workbook_id,
-          sheet_name,
-          address,
-          row_num,
-          col_num,
-          value,
-          flags,
-          version,
-          style_id,
-          style_json,
-          format_id,
-          format_code,
-          calc_revision,
-          updated_at
-        )
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10::jsonb, $11, $12, $13, $14::timestamptz)
-        ON CONFLICT (workbook_id, sheet_name, address)
-        DO UPDATE SET
-          row_num = EXCLUDED.row_num,
-          col_num = EXCLUDED.col_num,
-          value = EXCLUDED.value,
-          flags = EXCLUDED.flags,
-          version = EXCLUDED.version,
-          style_id = EXCLUDED.style_id,
-          style_json = EXCLUDED.style_json,
-          format_id = EXCLUDED.format_id,
-          format_code = EXCLUDED.format_code,
-          calc_revision = EXCLUDED.calc_revision,
-          updated_at = EXCLUDED.updated_at
-      `,
-        [
-          row.workbookId,
-          row.sheetName,
-          row.address,
-          row.rowNum,
-          row.colNum,
-          JSON.stringify(row.value),
-          row.flags,
-          row.version,
-          row.styleId,
-          JSON.stringify(row.styleJson),
-          row.formatId,
-          row.formatCode,
-          row.calcRevision,
-          row.updatedAt,
-        ],
-      ),
-    )
-  }
-  await runCalculationWriteTasks(tasks)
+  await deleteCellEvalRows(db, documentId, diff.deletes)
+  await upsertCellEvalRows(db, diff.upserts)
 }
 
 export async function persistCellEvalIncremental(db: Queryable, _documentId: string, rows: readonly CellEvalRow[]): Promise<void> {
-  const tasks: CalculationWriteTask[] = []
-  for (const row of rows) {
-    tasks.push(() =>
-      db.query(
-        `
-        INSERT INTO cell_eval (
-          workbook_id,
-          sheet_name,
-          address,
-          row_num,
-          col_num,
-          value,
-          flags,
-          version,
-          style_id,
-          style_json,
-          format_id,
-          format_code,
-          calc_revision,
-          updated_at
-        )
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10::jsonb, $11, $12, $13, $14::timestamptz)
-        ON CONFLICT (workbook_id, sheet_name, address)
-        DO UPDATE SET
-          row_num = EXCLUDED.row_num,
-          col_num = EXCLUDED.col_num,
-          value = EXCLUDED.value,
-          flags = EXCLUDED.flags,
-          version = EXCLUDED.version,
-          style_id = EXCLUDED.style_id,
-          style_json = EXCLUDED.style_json,
-          format_id = EXCLUDED.format_id,
-          format_code = EXCLUDED.format_code,
-          calc_revision = EXCLUDED.calc_revision,
-          updated_at = EXCLUDED.updated_at
-      `,
-        [
-          row.workbookId,
-          row.sheetName,
-          row.address,
-          row.rowNum,
-          row.colNum,
-          JSON.stringify(row.value),
-          row.flags,
-          row.version,
-          row.styleId,
-          JSON.stringify(row.styleJson),
-          row.formatId,
-          row.formatCode,
-          row.calcRevision,
-          row.updatedAt,
-        ],
-      ),
-    )
-  }
-  await runCalculationWriteTasks(tasks)
+  await upsertCellEvalRows(db, rows)
 }
 
 export async function persistCellEvalDiff(db: Queryable, documentId: string, nextRows: readonly CellEvalRow[]): Promise<void> {

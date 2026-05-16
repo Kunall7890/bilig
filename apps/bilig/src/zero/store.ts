@@ -141,6 +141,7 @@ export interface PersistWorkbookMutationResult {
 
 const WORKBOOK_CHECKPOINT_INTERVAL = 64
 const AUTHORITATIVE_SOURCE_PROJECTION_VERSION = 2
+const MAX_CELL_DIFF_ROWS_PER_BATCH = 1_000
 
 type ProjectionWriteTask = () => Promise<unknown>
 
@@ -148,6 +149,104 @@ async function runProjectionWriteTasks(tasks: readonly ProjectionWriteTask[]): P
   await runSequentially(tasks, async (task) => {
     await task()
   })
+}
+
+function chunkRows<Row>(rows: readonly Row[], size: number): readonly Row[][] {
+  const chunks: Row[][] = []
+  for (let index = 0; index < rows.length; index += size) {
+    chunks.push(rows.slice(index, index + size))
+  }
+  return chunks
+}
+
+async function deleteCellRows(db: Queryable, workbookId: string | undefined, keys: readonly string[]): Promise<void> {
+  if (!workbookId || keys.length === 0) {
+    return
+  }
+  const rows = keys.flatMap((key) => {
+    const [, sheetName, address] = parseJsonKey(key)
+    return typeof sheetName === 'string' && typeof address === 'string' ? [{ sheetName, address }] : []
+  })
+  const tasks = chunkRows(rows, MAX_CELL_DIFF_ROWS_PER_BATCH).map((chunk) => {
+    const valuesSql = chunk
+      .map((_row, index) => {
+        const base = 2 + index * 2
+        return `($${base}::text, $${base + 1}::text)`
+      })
+      .join(', ')
+    return () =>
+      db.query(
+        `
+          DELETE FROM cells
+          USING (VALUES ${valuesSql}) AS deleted(sheet_name, address)
+          WHERE cells.workbook_id = $1
+            AND cells.sheet_name = deleted.sheet_name
+            AND cells.address = deleted.address
+        `,
+        [workbookId, ...chunk.flatMap((row) => [row.sheetName, row.address])],
+      )
+  })
+  await runProjectionWriteTasks(tasks)
+}
+
+async function upsertCellRows(db: Queryable, rows: readonly CellSourceRow[]): Promise<void> {
+  const tasks = chunkRows(rows, MAX_CELL_DIFF_ROWS_PER_BATCH).map((chunk) => {
+    const valuesSql = chunk
+      .map((_row, index) => {
+        const base = 1 + index * 13
+        return `($${base}, $${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}::jsonb, $${base + 6}, $${base + 7}, $${base + 8}, $${base + 9}, $${base + 10}, $${base + 11}, $${base + 12}::timestamptz)`
+      })
+      .join(', ')
+    return () =>
+      db.query(
+        `
+          INSERT INTO cells (
+            workbook_id,
+            sheet_name,
+            address,
+            row_num,
+            col_num,
+            input_value,
+            formula,
+            format,
+            style_id,
+            explicit_format_id,
+            source_revision,
+            updated_by,
+            updated_at
+          )
+          VALUES ${valuesSql}
+          ON CONFLICT (workbook_id, sheet_name, address)
+          DO UPDATE SET
+            row_num = EXCLUDED.row_num,
+            col_num = EXCLUDED.col_num,
+            input_value = EXCLUDED.input_value,
+            formula = EXCLUDED.formula,
+            format = EXCLUDED.format,
+            style_id = EXCLUDED.style_id,
+            explicit_format_id = EXCLUDED.explicit_format_id,
+            source_revision = EXCLUDED.source_revision,
+            updated_by = EXCLUDED.updated_by,
+            updated_at = EXCLUDED.updated_at
+        `,
+        chunk.flatMap((row) => [
+          row.workbookId,
+          row.sheetName,
+          row.address,
+          row.rowNum,
+          row.colNum,
+          JSON.stringify(row.inputValue ?? null),
+          row.formula,
+          row.format,
+          row.styleId,
+          row.explicitFormatId,
+          row.sourceRevision,
+          row.updatedBy,
+          row.updatedAt,
+        ]),
+      )
+  })
+  await runProjectionWriteTasks(tasks)
 }
 
 export function shouldPersistWorkbookCheckpointRevision(revision: number): boolean {
@@ -339,65 +438,8 @@ export async function applyCellDiff(
 ): Promise<void> {
   const diff = diffProjectionRows(previousRows, nextRows, sourceProjectionKeys.cell, cellSignature)
   const workbookId = nextRows[0]?.workbookId ?? previousRows[0]?.workbookId
-  const tasks: ProjectionWriteTask[] = []
-  for (const key of diff.deletes) {
-    const [, sheetName, address] = parseJsonKey(key)
-    tasks.push(() =>
-      db.query(`DELETE FROM cells WHERE workbook_id = $1 AND sheet_name = $2 AND address = $3`, [workbookId, sheetName, address]),
-    )
-  }
-  for (const row of diff.upserts) {
-    tasks.push(() =>
-      db.query(
-        `
-        INSERT INTO cells (
-          workbook_id,
-          sheet_name,
-          address,
-          row_num,
-          col_num,
-          input_value,
-          formula,
-          format,
-          style_id,
-          explicit_format_id,
-          source_revision,
-          updated_by,
-          updated_at
-        )
-        VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10, $11, $12, $13::timestamptz)
-        ON CONFLICT (workbook_id, sheet_name, address)
-        DO UPDATE SET
-          row_num = EXCLUDED.row_num,
-          col_num = EXCLUDED.col_num,
-          input_value = EXCLUDED.input_value,
-          formula = EXCLUDED.formula,
-          format = EXCLUDED.format,
-          style_id = EXCLUDED.style_id,
-          explicit_format_id = EXCLUDED.explicit_format_id,
-          source_revision = EXCLUDED.source_revision,
-          updated_by = EXCLUDED.updated_by,
-          updated_at = EXCLUDED.updated_at
-      `,
-        [
-          row.workbookId,
-          row.sheetName,
-          row.address,
-          row.rowNum,
-          row.colNum,
-          JSON.stringify(row.inputValue ?? null),
-          row.formula,
-          row.format,
-          row.styleId,
-          row.explicitFormatId,
-          row.sourceRevision,
-          row.updatedBy,
-          row.updatedAt,
-        ],
-      ),
-    )
-  }
-  await runProjectionWriteTasks(tasks)
+  await deleteCellRows(db, workbookId, diff.deletes)
+  await upsertCellRows(db, diff.upserts)
 }
 
 export async function persistCellSourceRange(

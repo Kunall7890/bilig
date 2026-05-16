@@ -4,7 +4,11 @@ import { createRoot } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { WorkbookPresenceBar } from '../WorkbookPresenceBar.js'
 import { useWorkbookPresence } from '../use-workbook-presence.js'
-import { WORKBOOK_PRESENCE_HEARTBEAT_MS, WORKBOOK_PRESENCE_STALE_AFTER_MS } from '../workbook-presence-model.js'
+import {
+  WORKBOOK_PRESENCE_HEARTBEAT_MS,
+  WORKBOOK_PRESENCE_SELECTION_PUBLISH_MS,
+  WORKBOOK_PRESENCE_STALE_AFTER_MS,
+} from '../workbook-presence-model.js'
 
 interface MockZeroPresenceHarness {
   readonly mutateCalls: unknown[]
@@ -372,6 +376,105 @@ describe('workbook presence', () => {
     expect(chips).toHaveLength(1)
     expect(chips[0]?.textContent).toContain('Casey')
     expect(host.textContent).not.toContain('Guest FEED')
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it('coalesces rapid selection presence updates', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-04-06T12:00:00.000Z'))
+
+    const presence = createMockZeroPresenceHarness([])
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+
+    await act(async () => {
+      root.render(
+        <PresenceHarness
+          documentId="doc-1"
+          currentUserId="me@example.com"
+          presenceClientId="presence:self"
+          enabled
+          selection={{ sheetName: 'Sheet1', address: 'A1' }}
+          sessionId="doc-1:browser:self"
+          sheetNames={['Sheet1']}
+          zero={presence.zero}
+          onJump={() => {}}
+        />,
+      )
+    })
+
+    expect(presence.mutateCalls).toHaveLength(1)
+
+    await act(async () => {
+      root.render(
+        <PresenceHarness
+          documentId="doc-1"
+          currentUserId="me@example.com"
+          presenceClientId="presence:self"
+          enabled
+          selection={{ sheetName: 'Sheet1', address: 'B2' }}
+          sessionId="doc-1:browser:self"
+          sheetNames={['Sheet1']}
+          zero={presence.zero}
+          onJump={() => {}}
+        />,
+      )
+      root.render(
+        <PresenceHarness
+          documentId="doc-1"
+          currentUserId="me@example.com"
+          presenceClientId="presence:self"
+          enabled
+          selection={{ sheetName: 'Sheet1', address: 'C3' }}
+          sessionId="doc-1:browser:self"
+          sheetNames={['Sheet1']}
+          zero={presence.zero}
+          onJump={() => {}}
+        />,
+      )
+      root.render(
+        <PresenceHarness
+          documentId="doc-1"
+          currentUserId="me@example.com"
+          presenceClientId="presence:self"
+          enabled
+          selection={{ sheetName: 'Sheet1', address: 'D4' }}
+          sessionId="doc-1:browser:self"
+          sheetNames={['Sheet1']}
+          zero={presence.zero}
+          onJump={() => {}}
+        />,
+      )
+    })
+
+    expect(presence.mutateCalls).toHaveLength(1)
+
+    await act(async () => {
+      vi.advanceTimersByTime(WORKBOOK_PRESENCE_SELECTION_PUBLISH_MS - 1)
+    })
+
+    expect(presence.mutateCalls).toHaveLength(1)
+
+    await act(async () => {
+      vi.advanceTimersByTime(1)
+      await Promise.resolve()
+    })
+
+    expect(presence.mutateCalls).toHaveLength(2)
+    expect(presence.mutateCalls[1]).toMatchObject({
+      args: {
+        sheetName: 'Sheet1',
+        address: 'D4',
+        selection: {
+          sheetName: 'Sheet1',
+          address: 'D4',
+        },
+      },
+    })
 
     await act(async () => {
       root.unmount()

@@ -126,6 +126,28 @@ function createQueryHandler<TArgs>(
   }
 }
 
+const ZERO_QUERY_LOOKUP: Record<string, QueryHandler> = {
+  'workbook.get': createQueryHandler(workbookQueryArgsSchema, queries.workbook.get.fn),
+  'sheet.byWorkbook': createQueryHandler(workbookQueryArgsSchema, queries.sheet.byWorkbook.fn),
+  'cellInput.one': createQueryHandler(workbookCellArgsSchema, queries.cellInput.one.fn),
+  'cellInput.tile': createQueryHandler(workbookTileArgsSchema, queries.cellInput.tile.fn),
+  'cellEval.one': createQueryHandler(workbookCellArgsSchema, queries.cellEval.one.fn),
+  'cellEval.tile': createQueryHandler(workbookTileArgsSchema, queries.cellEval.tile.fn),
+  'cellRender.tile': createQueryHandler(workbookTileArgsSchema, queries.cellRender.tile.fn),
+  'sheetRow.tile': createQueryHandler(workbookRowTileArgsSchema, queries.sheetRow.tile.fn),
+  'sheetCol.tile': createQueryHandler(workbookColumnTileArgsSchema, queries.sheetCol.tile.fn),
+  'cellStyle.byWorkbook': createQueryHandler(workbookQueryArgsSchema, queries.cellStyle.byWorkbook.fn),
+  'numberFormat.byWorkbook': createQueryHandler(workbookQueryArgsSchema, queries.numberFormat.byWorkbook.fn),
+  'presenceCoarse.byWorkbook': createQueryHandler(workbookQueryArgsSchema, queries.presenceCoarse.byWorkbook.fn),
+  'presence.byWorkbook': createQueryHandler(workbookQueryArgsSchema, queries.presence.byWorkbook.fn),
+  'workbookChange.byWorkbook': createQueryHandler(workbookQueryArgsSchema, queries.workbookChange.byWorkbook.fn),
+  'workbookChanges.byWorkbook': createQueryHandler(workbookQueryArgsSchema, queries.workbookChanges.byWorkbook.fn),
+  'workbookChatThread.byWorkbook': createQueryHandler(workbookQueryArgsSchema, queries.workbookChatThread.byWorkbook.fn),
+  'workbookAgentThread.byWorkbook': createQueryHandler(workbookQueryArgsSchema, queries.workbookAgentThread.byWorkbook.fn),
+  'workbookWorkflowRun.byThread': createQueryHandler(workbookThreadArgsSchema, queries.workbookWorkflowRun.byThread.fn),
+  'workbookAgentWorkflowRun.byThread': createQueryHandler(workbookThreadArgsSchema, queries.workbookAgentWorkflowRun.byThread.fn),
+}
+
 function fastifyRequestToWebRequest(request: ZeroSyncRequestLike): Request {
   const origin = resolveRequestBaseUrl(request, 'localhost')
   const headers = new Headers()
@@ -267,31 +289,9 @@ class EnabledZeroSyncService implements ZeroSyncService {
 
   async handleQuery(request: ZeroSyncRequestLike): Promise<unknown> {
     const session = resolveSessionIdentity(request)
-    const queryLookup: Record<string, QueryHandler> = {
-      'workbook.get': createQueryHandler(workbookQueryArgsSchema, queries.workbook.get.fn),
-      'sheet.byWorkbook': createQueryHandler(workbookQueryArgsSchema, queries.sheet.byWorkbook.fn),
-      'cellInput.one': createQueryHandler(workbookCellArgsSchema, queries.cellInput.one.fn),
-      'cellInput.tile': createQueryHandler(workbookTileArgsSchema, queries.cellInput.tile.fn),
-      'cellEval.one': createQueryHandler(workbookCellArgsSchema, queries.cellEval.one.fn),
-      'cellEval.tile': createQueryHandler(workbookTileArgsSchema, queries.cellEval.tile.fn),
-      'cellRender.tile': createQueryHandler(workbookTileArgsSchema, queries.cellRender.tile.fn),
-      'sheetRow.tile': createQueryHandler(workbookRowTileArgsSchema, queries.sheetRow.tile.fn),
-      'sheetCol.tile': createQueryHandler(workbookColumnTileArgsSchema, queries.sheetCol.tile.fn),
-      'cellStyle.byWorkbook': createQueryHandler(workbookQueryArgsSchema, queries.cellStyle.byWorkbook.fn),
-      'numberFormat.byWorkbook': createQueryHandler(workbookQueryArgsSchema, queries.numberFormat.byWorkbook.fn),
-      'presenceCoarse.byWorkbook': createQueryHandler(workbookQueryArgsSchema, queries.presenceCoarse.byWorkbook.fn),
-      'presence.byWorkbook': createQueryHandler(workbookQueryArgsSchema, queries.presence.byWorkbook.fn),
-      'workbookChange.byWorkbook': createQueryHandler(workbookQueryArgsSchema, queries.workbookChange.byWorkbook.fn),
-      'workbookChanges.byWorkbook': createQueryHandler(workbookQueryArgsSchema, queries.workbookChanges.byWorkbook.fn),
-      'workbookChatThread.byWorkbook': createQueryHandler(workbookQueryArgsSchema, queries.workbookChatThread.byWorkbook.fn),
-      'workbookAgentThread.byWorkbook': createQueryHandler(workbookQueryArgsSchema, queries.workbookAgentThread.byWorkbook.fn),
-      'workbookWorkflowRun.byThread': createQueryHandler(workbookThreadArgsSchema, queries.workbookWorkflowRun.byThread.fn),
-      'workbookAgentWorkflowRun.byThread': createQueryHandler(workbookThreadArgsSchema, queries.workbookAgentWorkflowRun.byThread.fn),
-    }
-
     return await handleQueryRequest(
       (name, args) => {
-        const query = queryLookup[name]
+        const query = ZERO_QUERY_LOOKUP[name]
         if (!query) {
           throw new Error(`Unknown Zero query: ${name}`)
         }

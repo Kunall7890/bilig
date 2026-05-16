@@ -94,9 +94,10 @@ describe('zero projection writes', () => {
     await applyCellDiff(db, [createCellSourceRow('A1', 1)], [createCellSourceRow('B1', 2), createCellSourceRow('C1', 3)])
 
     expect(db.maxActiveQueries).toBe(1)
-    expect(db.calls).toHaveLength(3)
+    expect(db.calls).toHaveLength(2)
     expect(db.calls[0]).toContain('DELETE FROM cells')
     expect(db.calls[1]).toContain('INSERT INTO cells')
-    expect(db.calls[2]).toContain('INSERT INTO cells')
+    expect(db.calls[1]).toContain('VALUES ($1')
+    expect(db.calls[1]).toContain('($14')
   })
 })

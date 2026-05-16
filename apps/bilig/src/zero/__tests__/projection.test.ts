@@ -8,6 +8,7 @@ import {
   buildWorkbookSourceProjectionFromEngine,
   diffProjectionRows,
   materializeCellEvalProjection,
+  materializeCellEvalRangeProjection,
   sourceProjectionKeys,
 } from '../projection.js'
 
@@ -128,6 +129,28 @@ describe('projection helpers', () => {
         formatCode: expect.any(String),
       }),
     )
+  })
+
+  it('materializes only the requested cell_eval range for formatting-only projection updates', async () => {
+    const engine = new SpreadsheetEngine({
+      workbookName: 'doc-1',
+      replicaId: 'projection-range-test',
+    })
+    await engine.ready()
+    engine.setCellValue('Sheet1', 'A1', 7)
+    engine.setCellValue('Sheet1', 'Z100', 99)
+    engine.setRangeStyle({ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'D4' }, { fill: { backgroundColor: '#abcdef' } })
+    engine.setRangeNumberFormat({ sheetName: 'Sheet1', startAddress: 'B2', endAddress: 'E5' }, { kind: 'number', code: '$#,##0.00' })
+
+    const rows = materializeCellEvalRangeProjection(engine, 'doc-1', 11, '2026-03-28T10:03:00.000Z', {
+      sheetName: 'Sheet1',
+      startAddress: 'B2',
+      endAddress: 'C3',
+    })
+
+    expect(rows.map((row) => row.address).toSorted()).toEqual(['B2', 'B3', 'C2', 'C3'])
+    expect(rows.every((row) => row.sheetName === 'Sheet1' && row.calcRevision === 11)).toBe(true)
+    expect(rows.every((row) => row.styleId !== null && row.formatId !== null)).toBe(true)
   })
 
   it('flattens style and format ranges into sparse source cell rows', async () => {

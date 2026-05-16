@@ -294,9 +294,13 @@ describe('workbook-chat-thread-store', () => {
     const indexIndex = queryable.calls.findIndex((call) =>
       call.text.includes('CREATE INDEX IF NOT EXISTS workbook_chat_thread_document_actor_updated_idx'),
     )
+    const sharedScopeIndexIndex = queryable.calls.findIndex((call) =>
+      call.text.includes('CREATE INDEX IF NOT EXISTS workbook_chat_thread_document_scope_updated_idx'),
+    )
     expect(reviewTableIndex).toBeGreaterThanOrEqual(0)
     expect(reconcileIndex).toBeGreaterThan(reviewTableIndex)
     expect(indexIndex).toBeGreaterThan(reconcileIndex)
+    expect(sharedScopeIndexIndex).toBeGreaterThan(indexIndex)
 
     const reconcileQuery = queryable.calls[reconcileIndex]?.text ?? ''
     expect(reconcileQuery).toContain('FROM workbook_chat_item')

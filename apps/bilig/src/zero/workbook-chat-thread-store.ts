@@ -268,6 +268,10 @@ export async function ensureWorkbookChatThreadSchema(db: Queryable): Promise<voi
       ON workbook_chat_thread (workbook_id, actor_user_id, updated_at_unix_ms DESC)
   `)
   await db.query(`
+    CREATE INDEX IF NOT EXISTS workbook_chat_thread_document_scope_updated_idx
+      ON workbook_chat_thread (workbook_id, scope, updated_at_unix_ms DESC)
+  `)
+  await db.query(`
     CREATE INDEX IF NOT EXISTS workbook_chat_tool_call_thread_order_idx
       ON workbook_chat_tool_call (workbook_id, thread_id, actor_user_id, sort_order ASC)
   `)

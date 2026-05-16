@@ -480,6 +480,24 @@ function normalizeRangeBounds(
   }
 }
 
+function intersectRangeBounds(
+  left: { rowStart: number; rowEnd: number; colStart: number; colEnd: number },
+  right: { rowStart: number; rowEnd: number; colStart: number; colEnd: number },
+): { rowStart: number; rowEnd: number; colStart: number; colEnd: number } | null {
+  const rowStart = Math.max(left.rowStart, right.rowStart)
+  const rowEnd = Math.min(left.rowEnd, right.rowEnd)
+  const colStart = Math.max(left.colStart, right.colStart)
+  const colEnd = Math.min(left.colEnd, right.colEnd)
+  return rowStart <= rowEnd && colStart <= colEnd
+    ? {
+        rowStart,
+        rowEnd,
+        colStart,
+        colEnd,
+      }
+    : null
+}
+
 function addressWithinBounds(
   row: number,
   col: number,
@@ -548,11 +566,12 @@ export function buildSheetCellSourceRows(
 
   for (const entry of sheet.metadata?.styleRanges ?? []) {
     const rangeBounds = normalizeRangeBounds(sheetName, entry.range.startAddress, entry.range.endAddress)
-    for (let row = rangeBounds.rowStart; row <= rangeBounds.rowEnd; row += 1) {
-      for (let col = rangeBounds.colStart; col <= rangeBounds.colEnd; col += 1) {
-        if (!addressWithinBounds(row, col, bounds)) {
-          continue
-        }
+    const clippedBounds = bounds ? intersectRangeBounds(rangeBounds, bounds) : rangeBounds
+    if (!clippedBounds) {
+      continue
+    }
+    for (let row = clippedBounds.rowStart; row <= clippedBounds.rowEnd; row += 1) {
+      for (let col = clippedBounds.colStart; col <= clippedBounds.colEnd; col += 1) {
         upsertCellSourceRow(rows, documentId, sheetName, row, col, options).styleId = entry.styleId
       }
     }
@@ -560,12 +579,13 @@ export function buildSheetCellSourceRows(
 
   for (const entry of sheet.metadata?.formatRanges ?? []) {
     const rangeBounds = normalizeRangeBounds(sheetName, entry.range.startAddress, entry.range.endAddress)
+    const clippedBounds = bounds ? intersectRangeBounds(rangeBounds, bounds) : rangeBounds
+    if (!clippedBounds) {
+      continue
+    }
     const formatCode = formatCodeById.get(entry.formatId) ?? null
-    for (let row = rangeBounds.rowStart; row <= rangeBounds.rowEnd; row += 1) {
-      for (let col = rangeBounds.colStart; col <= rangeBounds.colEnd; col += 1) {
-        if (!addressWithinBounds(row, col, bounds)) {
-          continue
-        }
+    for (let row = clippedBounds.rowStart; row <= clippedBounds.rowEnd; row += 1) {
+      for (let col = clippedBounds.colStart; col <= clippedBounds.colEnd; col += 1) {
         const sourceRow = upsertCellSourceRow(rows, documentId, sheetName, row, col, options)
         sourceRow.explicitFormatId = entry.formatId
         sourceRow.format = formatCode
@@ -611,11 +631,12 @@ export function buildSheetCellSourceRowsFromEngine(
 
   for (const entry of engine.workbook.listStyleRanges(sheetName)) {
     const rangeBounds = normalizeRangeBounds(sheetName, entry.range.startAddress, entry.range.endAddress)
-    for (let row = rangeBounds.rowStart; row <= rangeBounds.rowEnd; row += 1) {
-      for (let col = rangeBounds.colStart; col <= rangeBounds.colEnd; col += 1) {
-        if (!addressWithinBounds(row, col, bounds)) {
-          continue
-        }
+    const clippedBounds = bounds ? intersectRangeBounds(rangeBounds, bounds) : rangeBounds
+    if (!clippedBounds) {
+      continue
+    }
+    for (let row = clippedBounds.rowStart; row <= clippedBounds.rowEnd; row += 1) {
+      for (let col = clippedBounds.colStart; col <= clippedBounds.colEnd; col += 1) {
         upsertCellSourceRow(rows, documentId, sheetName, row, col, options).styleId = entry.styleId
       }
     }
@@ -623,12 +644,13 @@ export function buildSheetCellSourceRowsFromEngine(
 
   for (const entry of engine.workbook.listFormatRanges(sheetName)) {
     const rangeBounds = normalizeRangeBounds(sheetName, entry.range.startAddress, entry.range.endAddress)
+    const clippedBounds = bounds ? intersectRangeBounds(rangeBounds, bounds) : rangeBounds
+    if (!clippedBounds) {
+      continue
+    }
     const formatCode = engine.workbook.getCellNumberFormat(entry.formatId)?.code ?? null
-    for (let row = rangeBounds.rowStart; row <= rangeBounds.rowEnd; row += 1) {
-      for (let col = rangeBounds.colStart; col <= rangeBounds.colEnd; col += 1) {
-        if (!addressWithinBounds(row, col, bounds)) {
-          continue
-        }
+    for (let row = clippedBounds.rowStart; row <= clippedBounds.rowEnd; row += 1) {
+      for (let col = clippedBounds.colStart; col <= clippedBounds.colEnd; col += 1) {
         const sourceRow = upsertCellSourceRow(rows, documentId, sheetName, row, col, options)
         sourceRow.explicitFormatId = entry.formatId
         sourceRow.format = formatCode
@@ -778,107 +800,7 @@ export function buildWorkbookSourceProjectionFromEngine(
   }
 }
 
-export function materializeCellEvalProjection(
-  engine: SpreadsheetEngine,
-  documentId: string,
-  revision: number,
-  updatedAt: string,
-  changedCellIndices?: readonly number[],
-): CellEvalRow[] {
-  const entries: CellEvalRow[] = []
-
-  if (changedCellIndices) {
-    for (let i = 0; i < changedCellIndices.length; i += 1) {
-      const cellIndex = changedCellIndices[i]!
-      const qualifiedAddress = engine.workbook.getQualifiedAddress(cellIndex)
-      const separatorIndex = qualifiedAddress.lastIndexOf('!')
-      if (separatorIndex <= 0 || separatorIndex >= qualifiedAddress.length - 1) {
-        continue
-      }
-      const sheetName = qualifiedAddress.slice(0, separatorIndex)
-      const address = qualifiedAddress.slice(separatorIndex + 1)
-      const { row, col } = parseCellAddress(address, sheetName)
-      const cell = engine.getCell(sheetName, address)
-      entries.push({
-        workbookId: documentId,
-        sheetName,
-        address,
-        rowNum: row,
-        colNum: col,
-        value: cell.value,
-        flags: cell.flags,
-        version: cell.version,
-        styleId: cell.styleId ?? null,
-        styleJson: engine.getCellStyle(cell.styleId) ?? null,
-        formatId: cell.numberFormatId ?? null,
-        formatCode: cell.format ?? null,
-        calcRevision: revision,
-        updatedAt,
-      })
-    }
-    return entries
-  }
-
-  for (const sheet of engine.workbook.sheetsByName.values()) {
-    const addresses = new Set<string>()
-    sheet.grid.forEachCellEntry((_cellIndex, row, col) => {
-      const address = formatAddress(row, col)
-      addresses.add(address)
-    })
-
-    for (const range of engine.workbook.listStyleRanges(sheet.name)) {
-      const start = parseCellAddress(range.range.startAddress, sheet.name)
-      const end = parseCellAddress(range.range.endAddress, sheet.name)
-      for (let row = start.row; row <= end.row; row += 1) {
-        for (let col = start.col; col <= end.col; col += 1) {
-          addresses.add(formatAddress(row, col))
-        }
-      }
-    }
-
-    for (const range of engine.workbook.listFormatRanges(sheet.name)) {
-      const start = parseCellAddress(range.range.startAddress, sheet.name)
-      const end = parseCellAddress(range.range.endAddress, sheet.name)
-      for (let row = start.row; row <= end.row; row += 1) {
-        for (let col = start.col; col <= end.col; col += 1) {
-          addresses.add(formatAddress(row, col))
-        }
-      }
-    }
-
-    for (const address of addresses) {
-      const { row, col } = parseCellAddress(address, sheet.name)
-      const cell = engine.getCell(sheet.name, address)
-      if (
-        cell.value.tag === ValueTag.Empty &&
-        cell.flags === 0 &&
-        cell.styleId === undefined &&
-        cell.numberFormatId === undefined &&
-        cell.format === undefined
-      ) {
-        continue
-      }
-      entries.push({
-        workbookId: documentId,
-        sheetName: sheet.name,
-        address,
-        rowNum: row,
-        colNum: col,
-        value: cell.value,
-        flags: cell.flags,
-        version: cell.version,
-        styleId: cell.styleId ?? null,
-        styleJson: engine.getCellStyle(cell.styleId) ?? null,
-        formatId: cell.numberFormatId ?? null,
-        formatCode: cell.format ?? null,
-        calcRevision: revision,
-        updatedAt,
-      })
-    }
-  }
-
-  return entries
-}
+export { materializeCellEvalProjection, materializeCellEvalRangeProjection } from './projection-cell-eval.js'
 
 export const sourceProjectionKeys = {
   sheet: (row: SheetSourceRow) => JSON.stringify([row.workbookId, row.sheetId]),

@@ -1,11 +1,11 @@
 import { SpreadsheetEngine, type EngineReplicaSnapshot } from '@bilig/core'
 import { isWorkbookSnapshot, type WorkbookSnapshot } from '@bilig/protocol'
-import { applyWorkbookEvent, zql } from '@bilig/zero-sync'
-import type { Row } from '@rocicorp/zero'
-import { parseCheckpointPayload, parseCheckpointReplicaState, parsePositiveInteger } from './store-support.js'
+import { applyWorkbookEvent } from '@bilig/zero-sync'
+import { parseCheckpointPayload, parseCheckpointReplicaState, parseNonNegativeInteger, parsePositiveInteger } from './store-support.js'
 import {
   loadWorkbookEventRecordsAfter,
   type Queryable,
+  type QueryResultRow,
   type WorkbookRuntimeMetadata,
   type WorkbookRuntimeState,
   type WorkbookRuntimeStoreConnection,
@@ -17,18 +17,18 @@ interface WorkbookCheckpointRecord {
   replicaState: EngineReplicaSnapshot | null
 }
 
-type ZeroWorkbookRow = Row['workbooks']
-
 interface InlineWorkbookCheckpointRecord {
   checkpointPayload: WorkbookSnapshot | null
   replicaState: EngineReplicaSnapshot | null
 }
 
-function isSafeNonNegativeInteger(value: unknown): value is number {
-  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+interface WorkbookMetadataRow extends QueryResultRow {
+  head_revision?: unknown
+  calculated_revision?: unknown
+  owner_user_id?: unknown
 }
 
-function parseWorkbookRuntimeMetadata(row: ZeroWorkbookRow | undefined, documentId: string): WorkbookRuntimeMetadata {
+function parseWorkbookRuntimeMetadata(row: WorkbookMetadataRow | undefined, documentId: string): WorkbookRuntimeMetadata {
   if (!row) {
     return {
       headRevision: 0,
@@ -37,29 +37,39 @@ function parseWorkbookRuntimeMetadata(row: ZeroWorkbookRow | undefined, document
     }
   }
 
-  if (!isSafeNonNegativeInteger(row.headRevision)) {
+  const headRevision = parseNonNegativeInteger(row.head_revision)
+  const calculatedRevision = parseNonNegativeInteger(row.calculated_revision)
+  if (headRevision === null) {
     throw new Error(`Invalid Zero workbook head revision for ${documentId}`)
   }
-  if (!isSafeNonNegativeInteger(row.calculatedRevision)) {
+  if (calculatedRevision === null) {
     throw new Error(`Invalid Zero workbook calculated revision for ${documentId}`)
   }
-  if (row.calculatedRevision > row.headRevision) {
+  if (calculatedRevision > headRevision) {
     throw new Error(`Invalid Zero workbook revision order for ${documentId}`)
   }
-  if (row.ownerUserId.trim() === '') {
+  if (typeof row.owner_user_id !== 'string' || row.owner_user_id.trim() === '') {
     throw new Error(`Invalid Zero workbook owner for ${documentId}`)
   }
 
   return {
-    headRevision: row.headRevision,
-    calculatedRevision: row.calculatedRevision,
-    ownerUserId: row.ownerUserId,
+    headRevision,
+    calculatedRevision,
+    ownerUserId: row.owner_user_id,
   }
 }
 
 async function loadZeroWorkbookMetadata(db: WorkbookRuntimeStoreConnection, documentId: string): Promise<WorkbookRuntimeMetadata> {
-  const row = await db.run(zql.workbooks.where('id', documentId).one())
-  return parseWorkbookRuntimeMetadata(row, documentId)
+  const result = await db.query<WorkbookMetadataRow>(
+    `
+      SELECT head_revision, calculated_revision, owner_user_id
+      FROM workbooks
+      WHERE id = $1
+      LIMIT 1
+    `,
+    [documentId],
+  )
+  return parseWorkbookRuntimeMetadata(result.rows[0], documentId)
 }
 
 async function loadInlineWorkbookCheckpoint(db: Queryable, documentId: string): Promise<InlineWorkbookCheckpointRecord> {

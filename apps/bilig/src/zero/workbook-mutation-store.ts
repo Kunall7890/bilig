@@ -9,7 +9,7 @@ import {
   buildWorkbookNumberFormatRowsFromEngine,
   buildWorkbookSourceProjectionFromEngine,
   buildWorkbookStyleRowsFromEngine,
-  materializeCellEvalProjection,
+  materializeCellEvalRangeProjection,
 } from './projection.js'
 import {
   deriveDirtyRegions,
@@ -240,7 +240,13 @@ export async function persistWorkbookMutation(
       db,
       documentId,
       options.eventPayload.range,
-      materializeCellEvalProjection(options.nextEngine, documentId, nextProjectionOptions.calculatedRevision, updatedAt),
+      materializeCellEvalRangeProjection(
+        options.nextEngine,
+        documentId,
+        nextProjectionOptions.calculatedRevision,
+        updatedAt,
+        options.eventPayload.range,
+      ),
     )
     projectionCommit = {
       kind: 'cell-range',
@@ -266,7 +272,13 @@ export async function persistWorkbookMutation(
       db,
       documentId,
       options.eventPayload.range,
-      materializeCellEvalProjection(options.nextEngine, documentId, nextProjectionOptions.calculatedRevision, updatedAt),
+      materializeCellEvalRangeProjection(
+        options.nextEngine,
+        documentId,
+        nextProjectionOptions.calculatedRevision,
+        updatedAt,
+        options.eventPayload.range,
+      ),
     )
     projectionCommit = {
       kind: 'cell-range',
