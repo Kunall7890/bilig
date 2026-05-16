@@ -1,3 +1,5 @@
+import { parseStrictBooleanEnvFlag } from './strict-env.js'
+
 export type FuzzMode = 'default' | 'main' | 'nightly' | 'replay'
 
 export function parseFuzzMode(value: string | undefined): FuzzMode {
@@ -19,4 +21,8 @@ export function resolveVitestFuzzMaxWorkers(availableWorkers: number): number {
 
 export function buildVitestFuzzCommand(files: readonly string[], availableWorkers: number): string[] {
   return ['pnpm', 'exec', 'vitest', 'run', ...files, '--maxWorkers', String(resolveVitestFuzzMaxWorkers(availableWorkers))]
+}
+
+export function resolveSkipBrowserFuzz(env: { BILIG_FUZZ_SKIP_BROWSER?: string | undefined }): boolean {
+  return parseStrictBooleanEnvFlag(env.BILIG_FUZZ_SKIP_BROWSER, 'BILIG_FUZZ_SKIP_BROWSER', false)
 }

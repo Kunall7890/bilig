@@ -3,7 +3,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { availableParallelism } from 'node:os'
 import { join, resolve } from 'node:path'
-import { buildVitestFuzzCommand, parseFuzzMode, type FuzzMode } from './run-fuzz-config.js'
+import { buildVitestFuzzCommand, parseFuzzMode, resolveSkipBrowserFuzz, type FuzzMode } from './run-fuzz-config.js'
 
 function runCommand(command: string[], extraEnv: Record<string, string>): void {
   const result = Bun.spawnSync(command, {
@@ -76,7 +76,7 @@ const env = {
   BILIG_FUZZ_CAPTURE: '1',
   ...(resolvedReplayFixture ? { BILIG_FUZZ_REPLAY: resolvedReplayFixture } : {}),
 }
-const skipBrowserFuzz = process.env['BILIG_FUZZ_SKIP_BROWSER'] === '1'
+const skipBrowserFuzz = resolveSkipBrowserFuzzOrExit()
 
 const vitestFuzzFiles = selectVitestFuzzFiles(mode, listVitestFuzzFiles())
 runCommand(buildVitestFuzzCommand(vitestFuzzFiles, availableParallelism()), env)
@@ -116,6 +116,15 @@ function walkFuzzFiles(root: string): string[] {
 function parseFuzzModeOrExit(value: string | undefined): FuzzMode {
   try {
     return parseFuzzMode(value)
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error))
+    process.exit(1)
+  }
+}
+
+function resolveSkipBrowserFuzzOrExit(): boolean {
+  try {
+    return resolveSkipBrowserFuzz(process.env)
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error))
     process.exit(1)

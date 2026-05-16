@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildVitestFuzzCommand, parseFuzzMode, resolveVitestFuzzMaxWorkers } from '../run-fuzz-config.js'
+import { buildVitestFuzzCommand, parseFuzzMode, resolveSkipBrowserFuzz, resolveVitestFuzzMaxWorkers } from '../run-fuzz-config.js'
 
 describe('run fuzz config', () => {
   it('resolves explicit fuzz modes without silently downgrading unknown values', () => {
@@ -29,5 +29,16 @@ describe('run fuzz config', () => {
       '--maxWorkers',
       '2',
     ])
+  })
+
+  it('resolves the browser fuzz skip flag strictly', () => {
+    expect(resolveSkipBrowserFuzz({})).toBe(false)
+    expect(resolveSkipBrowserFuzz({ BILIG_FUZZ_SKIP_BROWSER: '1' })).toBe(true)
+    expect(resolveSkipBrowserFuzz({ BILIG_FUZZ_SKIP_BROWSER: 'true' })).toBe(true)
+    expect(resolveSkipBrowserFuzz({ BILIG_FUZZ_SKIP_BROWSER: '0' })).toBe(false)
+    expect(resolveSkipBrowserFuzz({ BILIG_FUZZ_SKIP_BROWSER: 'false' })).toBe(false)
+    expect(() => resolveSkipBrowserFuzz({ BILIG_FUZZ_SKIP_BROWSER: 'yes' })).toThrow(
+      'BILIG_FUZZ_SKIP_BROWSER must be "1", "true", "0", or "false" when set, got yes',
+    )
   })
 })
