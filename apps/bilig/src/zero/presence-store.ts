@@ -1,5 +1,6 @@
 import type { Queryable } from './store.js'
 import { resolveWorkbookSheetRef, type WorkbookSheetRef as WorkbookPresenceSheetRef } from './workbook-sheet-ref.js'
+import { addColumnIfMissing } from './schema-upgrade.js'
 
 export interface UpsertWorkbookPresenceInput {
   readonly documentId: string
@@ -29,7 +30,11 @@ export async function ensureWorkbookPresenceSchema(db: Queryable): Promise<void>
   `)
   await db.query(`CREATE INDEX IF NOT EXISTS presence_coarse_workbook_updated_idx ON presence_coarse(workbook_id, updated_at DESC);`)
   await db.query(`CREATE INDEX IF NOT EXISTS presence_coarse_updated_idx ON presence_coarse(updated_at);`)
-  await db.query(`ALTER TABLE presence_coarse ADD COLUMN IF NOT EXISTS presence_client_id TEXT;`)
+  await addColumnIfMissing(db, { tableName: 'presence_coarse', columnName: 'presence_client_id', dataType: 'TEXT' })
+  await addColumnIfMissing(db, { tableName: 'presence_coarse', columnName: 'sheet_id', dataType: 'INTEGER' })
+  await addColumnIfMissing(db, { tableName: 'presence_coarse', columnName: 'sheet_name', dataType: 'TEXT' })
+  await addColumnIfMissing(db, { tableName: 'presence_coarse', columnName: 'address', dataType: 'TEXT' })
+  await addColumnIfMissing(db, { tableName: 'presence_coarse', columnName: 'selection_json', dataType: 'JSONB' })
 }
 
 export async function resolveWorkbookPresenceSheetRef(

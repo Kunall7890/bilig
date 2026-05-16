@@ -1,5 +1,5 @@
 import type { WorkbookAgentWorkflowArtifact, WorkbookAgentWorkflowRun, WorkbookAgentWorkflowStep } from '@bilig/contracts'
-import { ensureDefaultedNotNullColumn } from './schema-upgrade.js'
+import { addColumnIfMissing, ensureDefaultedNotNullColumn } from './schema-upgrade.js'
 import type { QueryResultRow, Queryable } from './store.js'
 import { parseNonNegativeInteger } from './store-support.js'
 import { runQueryableTransaction, runSequentially } from './transaction-support.js'
@@ -366,10 +366,9 @@ export async function ensureWorkbookWorkflowRunSchema(db: Queryable): Promise<vo
     dataType: 'JSONB',
     defaultSql: "'[]'::jsonb",
   })
-  await db.query(`
-    ALTER TABLE workbook_workflow_run
-      ADD COLUMN IF NOT EXISTS artifact_json JSONB
-  `)
+  await addColumnIfMissing(db, { tableName: 'workbook_workflow_run', columnName: 'completed_at_unix_ms', dataType: 'BIGINT' })
+  await addColumnIfMissing(db, { tableName: 'workbook_workflow_run', columnName: 'error_message', dataType: 'TEXT' })
+  await addColumnIfMissing(db, { tableName: 'workbook_workflow_run', columnName: 'artifact_json', dataType: 'JSONB' })
   await db.query(`
     ALTER TABLE workbook_workflow_artifact
       ADD COLUMN IF NOT EXISTS workbook_id TEXT

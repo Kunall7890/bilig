@@ -3,6 +3,7 @@ import {
   appendWorkbookChange,
   backfillWorkbookChanges,
   buildWorkbookChangeDescriptor,
+  ensureWorkbookChangeSchema,
   listWorkbookChangesAfterRevision,
   listWorkbookChanges,
   loadLatestRedoableWorkbookChange,
@@ -95,6 +96,18 @@ function latestQuery(queryable: FakeQueryable): RecordedQuery {
 }
 
 describe('workbook-change-store', () => {
+  it('adds the client mutation id column for legacy history tables', async () => {
+    const queryable = new FakeQueryable()
+
+    await ensureWorkbookChangeSchema(queryable)
+
+    expect(
+      queryable.calls.some(
+        (call) => call.text.includes('ALTER TABLE workbook_change') && call.text.includes('ADD COLUMN IF NOT EXISTS client_mutation_id'),
+      ),
+    ).toBe(true)
+  })
+
   it('summarizes renderCommit cell bundles as authoritative range changes', () => {
     expect(
       buildWorkbookChangeDescriptor({

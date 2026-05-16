@@ -118,6 +118,20 @@ describe('workbook-workflow-run-store', () => {
     expect(artifactColumnIndex).toBeGreaterThan(stepsColumnIndex)
   })
 
+  it('adds nullable workflow completion columns for legacy run rows', async () => {
+    const queryable = new FakeQueryable()
+
+    await ensureWorkbookWorkflowRunSchema(queryable)
+
+    for (const column of ['completed_at_unix_ms', 'error_message', 'artifact_json']) {
+      expect(
+        queryable.calls.some(
+          (call) => call.text.includes('ALTER TABLE workbook_workflow_run') && call.text.includes(`ADD COLUMN IF NOT EXISTS ${column}`),
+        ),
+      ).toBe(true)
+    }
+  })
+
   it('backfills and enforces workflow run step snapshots on legacy schemas', async () => {
     const queryable = new FakeQueryable()
 

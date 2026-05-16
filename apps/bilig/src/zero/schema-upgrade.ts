@@ -7,6 +7,19 @@ export interface DefaultedColumn {
   readonly defaultSql: string
 }
 
+export interface NullableColumn {
+  readonly tableName: string
+  readonly columnName: string
+  readonly dataType: string
+}
+
+export async function addColumnIfMissing(db: Queryable, column: NullableColumn): Promise<void> {
+  await db.query(`
+    ALTER TABLE ${column.tableName}
+      ADD COLUMN IF NOT EXISTS ${column.columnName} ${column.dataType};
+  `)
+}
+
 export async function addDefaultedColumnIfMissing(db: Queryable, column: DefaultedColumn): Promise<void> {
   await db.query(`
     ALTER TABLE ${column.tableName}

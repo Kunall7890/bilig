@@ -11,6 +11,7 @@ import { parseNonNegativeInteger, parsePositiveInteger } from './store-support.j
 import { resolveWorkbookSheetRef } from './workbook-sheet-ref.js'
 import { selectLatestRedoableWorkbookChangeRevision, selectLatestUndoableWorkbookChangeRevision } from './workbook-history-selector.js'
 import { runQueryableTransaction, runSequentially } from './transaction-support.js'
+import { addColumnIfMissing } from './schema-upgrade.js'
 
 export type { WorkbookChangeRange } from '@bilig/zero-sync'
 export { buildWorkbookChangeDescriptor, type WorkbookChangeDescriptor } from './workbook-change-descriptor.js'
@@ -202,6 +203,11 @@ export async function ensureWorkbookChangeSchema(db: Queryable): Promise<void> {
       PRIMARY KEY (workbook_id, revision)
     );
   `)
+  await addColumnIfMissing(db, { tableName: 'workbook_change', columnName: 'client_mutation_id', dataType: 'TEXT' })
+  await addColumnIfMissing(db, { tableName: 'workbook_change', columnName: 'sheet_id', dataType: 'INTEGER' })
+  await addColumnIfMissing(db, { tableName: 'workbook_change', columnName: 'sheet_name', dataType: 'TEXT' })
+  await addColumnIfMissing(db, { tableName: 'workbook_change', columnName: 'anchor_address', dataType: 'TEXT' })
+  await addColumnIfMissing(db, { tableName: 'workbook_change', columnName: 'range_json', dataType: 'JSONB' })
   await db.query(`ALTER TABLE workbook_change ADD COLUMN IF NOT EXISTS undo_bundle_json JSONB;`)
   await db.query(`ALTER TABLE workbook_change ADD COLUMN IF NOT EXISTS reverted_by_revision BIGINT;`)
   await db.query(`ALTER TABLE workbook_change ADD COLUMN IF NOT EXISTS reverts_revision BIGINT;`)
