@@ -76,17 +76,30 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
 
   test('uses explicit native browser font rendering styles for visible workbook text', () => {
     expect(resolveNativeTextRunInnerStyleV3({ dpr: 2, run: createRun({ align: 'right', underline: true }) })).toMatchObject({
-      alignItems: 'center',
       color: '#1f2933',
+      display: 'block',
       fontFamily: 'Arial, sans-serif',
       fontSize: 14.667,
       fontStyle: 'normal',
       fontWeight: 400,
-      justifyContent: 'flex-end',
+      height: 17.5,
+      lineHeight: '17.5px',
       textDecorationLine: 'underline',
       textRendering: 'auto',
+      textAlign: 'right',
+      top: -1.5,
       whiteSpace: 'pre',
       WebkitFontSmoothing: 'auto',
+    })
+  })
+
+  test('keeps wrapped text top-aligned while non-wrapped text uses a snapped line box', () => {
+    expect(resolveNativeTextRunInnerStyleV3({ dpr: 2, run: createRun({ wrap: true }) })).toMatchObject({
+      display: 'block',
+      height: 22,
+      lineHeight: '17.5px',
+      top: -4,
+      whiteSpace: 'pre-wrap',
     })
   })
 

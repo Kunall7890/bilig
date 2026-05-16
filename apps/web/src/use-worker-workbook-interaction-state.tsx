@@ -580,8 +580,13 @@ export function useWorkerWorkbookInteractionState(input: {
       const previousSelection = selectionRef.current
       const previousRange = selectionRangeRef.current
       const wasEditing = editingModeRef.current !== 'idle'
+      if (wasEditing) {
+        commitEditor(undefined, undefined, editorTargetRef.current)
+        if (editingModeRef.current !== 'idle') {
+          return
+        }
+      }
       if (
-        !wasEditing &&
         previousSelection.sheetName === sheetName &&
         previousSelection.address === address &&
         previousRange.sheetName === sheetName &&
@@ -593,10 +598,6 @@ export function useWorkerWorkbookInteractionState(input: {
         }
         return
       }
-      if (wasEditing) {
-        editingModeRef.current = 'idle'
-        setEditingMode('idle')
-      }
       const nextSelection = { sheetName, address }
       selectionSnapshotRef.current = nextSelectionSnapshot
       selectionRangeRef.current = selectionSnapshotToRangeRef(nextSelectionSnapshot)
@@ -606,13 +607,11 @@ export function useWorkerWorkbookInteractionState(input: {
         onSelectionSheetChanged?.(nextSelection, previousSelection)
       }
       selectionRef.current = nextSelection
-      if (!wasEditing) {
-        editorTargetRef.current = nextSelection
-        setEditorConflict((current) => (current === null ? current : null))
-      }
+      editorTargetRef.current = nextSelection
+      setEditorConflict((current) => (current === null ? current : null))
       sendSelectionChanged(nextSelection)
     },
-    [onSelectionSheetChanged, sendSelectionChanged],
+    [commitEditor, onSelectionSheetChanged, sendSelectionChanged],
   )
 
   const selectAddress = useCallback(

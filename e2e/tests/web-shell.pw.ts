@@ -139,6 +139,19 @@ async function clickProductSelectedCellTopBorder(page: Parameters<typeof test>[0
   )
 }
 
+async function nativeTextRunsInclude(page: Parameters<typeof test>[0]['page'], text: string): Promise<boolean> {
+  return await page.evaluate(
+    (needle) => Array.from(document.querySelectorAll('[data-native-text-run]')).some((run) => run.textContent?.includes(needle) ?? false),
+    text,
+  )
+}
+
+async function textControlValue(locator: Locator): Promise<string> {
+  return await locator.evaluate((control) =>
+    control instanceof HTMLInputElement || control instanceof HTMLTextAreaElement ? control.value : '',
+  )
+}
+
 async function dragProductSelectionBorder(
   page: Parameters<typeof test>[0]['page'],
   startColumn: number,
@@ -907,7 +920,7 @@ test('web app commits in-cell string edits when clicking away', async ({ page })
   await page.keyboard.press('a')
   await expect(cellEditor).toBeVisible()
   await expect(cellEditor).toHaveValue('a')
-  expect(await formulaInput.evaluate((input) => (input instanceof HTMLInputElement ? input.value : ''))).toBe('a')
+  expect(await textControlValue(formulaInput)).toBe('a')
   await expect
     .poll(async () => await cellEditor.evaluate((input) => (input instanceof HTMLTextAreaElement ? input.selectionStart : -1)))
     .toBe(1)
@@ -919,7 +932,7 @@ test('web app commits in-cell string edits when clicking away', async ({ page })
     const nextText = `${previousText}${character}`
     await cellEditor.press(character)
     await expect(cellEditor).toHaveValue(nextText)
-    expect(await formulaInput.evaluate((input) => (input instanceof HTMLInputElement ? input.value : ''))).toBe(nextText)
+    expect(await textControlValue(formulaInput)).toBe(nextText)
     await expect
       .poll(async () => await cellEditor.evaluate((input) => (input instanceof HTMLTextAreaElement ? input.selectionStart : -1)))
       .toBe(nextText.length)
@@ -936,6 +949,33 @@ test('web app commits in-cell string edits when clicking away', async ({ page })
   await expect(resolvedValue).toHaveText('abcdef')
 })
 
+test('web app commits a cleared formula bar draft when clicking away', async ({ page }) => {
+  const staleText = 'formula-clear-click-away'
+  await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-formula-clear-click-away'))}`)
+  await waitForWorkbookReady(page)
+
+  const formulaInput = page.getByTestId('formula-input')
+
+  await clickProductCell(page, 3, 6)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!D7')
+  await formulaInput.fill(staleText)
+  await formulaInput.press('Enter')
+  await expect(formulaInput).toHaveValue(staleText)
+  await expect.poll(() => nativeTextRunsInclude(page, staleText)).toBe(true)
+
+  await formulaInput.fill('')
+  await expect(formulaInput).toHaveValue('')
+  await clickProductCell(page, 4, 6)
+
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!E7')
+  await expect(formulaInput).toHaveValue('')
+  await expect.poll(() => nativeTextRunsInclude(page, staleText)).toBe(false)
+
+  await clickProductCell(page, 3, 6)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!D7')
+  await expect(formulaInput).toHaveValue('')
+})
+
 test('web app keeps delayed in-cell typing anchored and exits cleanly on click-away', async ({ page }) => {
   await page.keyboard.up(PRIMARY_MODIFIER)
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-delayed-click-away-edit'))}`)
@@ -950,7 +990,7 @@ test('web app keeps delayed in-cell typing anchored and exits cleanly on click-a
   await page.keyboard.press('a')
   await expect(cellEditor).toBeVisible()
   await expect(cellEditor).toHaveValue('a')
-  expect(await formulaInput.evaluate((input) => (input instanceof HTMLInputElement ? input.value : ''))).toBe('a')
+  expect(await textControlValue(formulaInput)).toBe('a')
   await expect
     .poll(async () => await cellEditor.evaluate((input) => (input instanceof HTMLTextAreaElement ? input.selectionStart : -1)))
     .toBe(1)
@@ -958,7 +998,7 @@ test('web app keeps delayed in-cell typing anchored and exits cleanly on click-a
   await page.waitForTimeout(300)
   await cellEditor.press('s')
   await expect(cellEditor).toHaveValue('as')
-  expect(await formulaInput.evaluate((input) => (input instanceof HTMLInputElement ? input.value : ''))).toBe('as')
+  expect(await textControlValue(formulaInput)).toBe('as')
   await expect
     .poll(async () => await cellEditor.evaluate((input) => (input instanceof HTMLTextAreaElement ? input.selectionStart : -1)))
     .toBe(2)
@@ -967,7 +1007,7 @@ test('web app keeps delayed in-cell typing anchored and exits cleanly on click-a
   await cellEditor.press('d')
   await cellEditor.press('f')
   await expect(cellEditor).toHaveValue('asdf')
-  expect(await formulaInput.evaluate((input) => (input instanceof HTMLInputElement ? input.value : ''))).toBe('asdf')
+  expect(await textControlValue(formulaInput)).toBe('asdf')
   await expect
     .poll(async () => await cellEditor.evaluate((input) => (input instanceof HTMLTextAreaElement ? input.selectionStart : -1)))
     .toBe(4)

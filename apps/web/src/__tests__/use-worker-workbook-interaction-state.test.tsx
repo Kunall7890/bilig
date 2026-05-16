@@ -144,6 +144,50 @@ describe('useWorkerWorkbookInteractionState', () => {
     })
   })
 
+  it('commits a cleared formula bar draft before applying a click-away selection', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const selectedCell = stringCell('Sheet1', 'A1', 'stale')
+    const workerHandle = {
+      viewportStore: createViewportStoreMapStub([selectedCell, stringCell('Sheet1', 'B1', 'next')]),
+    }
+    const invokeMutation = vi.fn(async () => undefined)
+    const sendSelectionChanged = vi.fn()
+    const harness = mountHarness()
+    let captured: ReturnType<typeof useWorkerWorkbookInteractionState> | null = null
+
+    await harness.render({
+      documentId: 'doc-1',
+      selection: { sheetName: 'Sheet1', address: 'A1' },
+      selectedCell,
+      workerHandle,
+      invokeMutation,
+      sendSelectionChanged,
+      capture: (value) => {
+        captured = value
+      },
+    })
+    if (!captured) {
+      throw new Error('Expected interaction state capture')
+    }
+
+    await act(async () => {
+      captured?.handleEditorChange('')
+      captured?.handleSelectionChange(singleCellSnapshot('Sheet1', 'B1'))
+      await Promise.resolve()
+    })
+
+    expect(invokeMutation).toHaveBeenCalledWith('clearCell', 'Sheet1', 'A1')
+    expect(workerHandle.viewportStore.getCell('Sheet1', 'A1').value).toEqual({ tag: ValueTag.Empty })
+    expect(captured?.selectionRef.current).toEqual({ sheetName: 'Sheet1', address: 'B1' })
+    expect(captured?.visibleEditorValue).toBe('next')
+    expect(sendSelectionChanged).toHaveBeenCalledWith({ sheetName: 'Sheet1', address: 'B1' })
+
+    await act(async () => {
+      harness.root.unmount()
+    })
+  })
+
   it('commits a formula bar value override even before editing state catches up', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 

@@ -141,6 +141,19 @@ function snapCssPixel(value: number, dpr: number): number {
   return Math.round(value * dpr) / dpr
 }
 
+function resolveNativeTextLineBoxV3(input: { readonly run: TextQuadRun; readonly dpr: number }): {
+  readonly height: number
+  readonly topInset: number
+} {
+  const fontStyle = resolveNativeTextRunFontStyleV3(input.run)
+  const contentHeight = input.run.height ?? 0
+  const lineHeight = snapCssPixel(fontStyle.fontSize * 1.2, input.dpr)
+  return {
+    height: lineHeight,
+    topInset: snapCssPixel(Math.max(0, (contentHeight - lineHeight) / 2), input.dpr),
+  }
+}
+
 export function resolveNativeTextRunVisibleClipV3(input: {
   readonly pane: TextLayerPane
   readonly run: TextQuadRun
@@ -225,21 +238,21 @@ export function resolveNativeTextRunInnerStyleV3(input: {
   const clipY = input.run.clipY ?? input.run.y
   const visibleClip = input.visibleClip ?? null
   const fontStyle = resolveNativeTextRunFontStyleV3(input.run)
-  const justifyContent = input.run.align === 'right' ? 'flex-end' : input.run.align === 'center' ? 'center' : 'flex-start'
+  const lineBox = resolveNativeTextLineBoxV3({ dpr, run: input.run })
+  const baseTop = visibleClip?.innerTop ?? snapCssPixel(input.run.y - clipY, dpr)
+  const textTop = input.run.wrap ? baseTop : snapCssPixel(baseTop + lineBox.topInset, dpr)
   return {
-    alignItems: input.run.wrap ? 'flex-start' : 'center',
     boxSizing: 'border-box',
     color: input.run.color ?? '#111827',
-    display: 'flex',
+    display: 'block',
     fontFamily: fontStyle.fontFamily,
     fontSize: fontStyle.fontSize,
     fontStyle: fontStyle.fontStyle,
     fontKerning: 'normal',
     fontWeight: fontStyle.fontWeight,
-    height: visibleClip?.innerHeight ?? height,
-    justifyContent,
+    height: input.run.wrap ? (visibleClip?.innerHeight ?? height) : lineBox.height,
     left: visibleClip?.innerLeft ?? snapCssPixel(input.run.x - clipX, dpr),
-    lineHeight: 1.2,
+    lineHeight: `${lineBox.height}px`,
     overflow: 'hidden',
     paddingLeft: 6,
     paddingRight: 6,
@@ -248,7 +261,7 @@ export function resolveNativeTextRunInnerStyleV3(input: {
     textDecorationLine: input.run.underline ? 'underline' : input.run.strike ? 'line-through' : undefined,
     MozOsxFontSmoothing: 'auto',
     textRendering: 'auto',
-    top: visibleClip?.innerTop ?? snapCssPixel(input.run.y - clipY, dpr),
+    top: textTop,
     whiteSpace: input.run.wrap ? 'pre-wrap' : 'pre',
     width: visibleClip?.innerWidth ?? width,
     WebkitFontSmoothing: 'auto',
