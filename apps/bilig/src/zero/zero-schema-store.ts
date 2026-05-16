@@ -285,6 +285,28 @@ export async function ensureZeroSyncSchema(db: Queryable): Promise<void> {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `)
+  await addColumnIfMissing(db, { tableName: 'recalc_job', columnName: 'dirty_regions_json', dataType: 'JSONB' })
+  await ensureDefaultedNotNullColumn(db, {
+    tableName: 'recalc_job',
+    columnName: 'attempts',
+    dataType: 'INTEGER',
+    defaultSql: '0',
+  })
+  await addColumnIfMissing(db, { tableName: 'recalc_job', columnName: 'lease_until', dataType: 'TIMESTAMPTZ' })
+  await addColumnIfMissing(db, { tableName: 'recalc_job', columnName: 'lease_owner', dataType: 'TEXT' })
+  await addColumnIfMissing(db, { tableName: 'recalc_job', columnName: 'last_error', dataType: 'TEXT' })
+  await ensureDefaultedNotNullColumn(db, {
+    tableName: 'recalc_job',
+    columnName: 'created_at',
+    dataType: 'TIMESTAMPTZ',
+    defaultSql: 'NOW()',
+  })
+  await ensureDefaultedNotNullColumn(db, {
+    tableName: 'recalc_job',
+    columnName: 'updated_at',
+    dataType: 'TIMESTAMPTZ',
+    defaultSql: 'NOW()',
+  })
 
   await db.query(`
     CREATE TABLE IF NOT EXISTS workbook_snapshot (

@@ -138,6 +138,32 @@ describe('zero schema store', () => {
     expect(eventIndex).toBeGreaterThan(createdAtNotNullIndex)
   })
 
+  it('adds recalc job lease columns before indexing legacy recalc queues', async () => {
+    const query = vi.fn().mockResolvedValue({ rows: [] })
+    const db: Queryable = { query }
+
+    await ensureZeroSyncSchema(db)
+
+    const calls = query.mock.calls.map(([text]) => String(text))
+    for (const column of ['dirty_regions_json', 'lease_until', 'lease_owner', 'last_error']) {
+      expect(calls.some((text) => text.includes('ALTER TABLE recalc_job') && text.includes(`ADD COLUMN IF NOT EXISTS ${column}`))).toBe(
+        true,
+      )
+    }
+    const attemptsBackfillIndex = calls.findIndex((text) => text.includes('UPDATE recalc_job') && text.includes('SET attempts = 0'))
+    const attemptsNotNullIndex = calls.findIndex(
+      (text) => text.includes('ALTER TABLE recalc_job') && text.includes('ALTER COLUMN attempts SET NOT NULL'),
+    )
+    const createdAtBackfillIndex = calls.findIndex((text) => text.includes('UPDATE recalc_job') && text.includes('SET created_at = NOW()'))
+    const updatedAtBackfillIndex = calls.findIndex((text) => text.includes('UPDATE recalc_job') && text.includes('SET updated_at = NOW()'))
+    const recalcIndex = calls.findIndex((text) => text.includes('recalc_job_status_lease_created_idx'))
+    expect(attemptsBackfillIndex).toBeGreaterThan(-1)
+    expect(attemptsNotNullIndex).toBeGreaterThan(attemptsBackfillIndex)
+    expect(createdAtBackfillIndex).toBeGreaterThan(-1)
+    expect(updatedAtBackfillIndex).toBeGreaterThan(-1)
+    expect(recalcIndex).toBeGreaterThan(updatedAtBackfillIndex)
+  })
+
   it('bootstraps every shared Zero schema table and column', async () => {
     const query = vi.fn().mockResolvedValue({ rows: [] })
     const db: Queryable = { query }
