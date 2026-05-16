@@ -239,6 +239,51 @@ describe('operation-service dense mutation fast paths', () => {
     expect(engine.getPerformanceCounters().directAggregateScanEvaluations).toBe(0)
   })
 
+  it('applies fresh dense rectangular numeric batches below aggregate ranges without region queries', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'fresh-dense-rectangular-fast-path' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+
+    const existingRows = 12
+    const appendRows = 8
+    const inputCols = 4
+    for (let row = 1; row <= existingRows; row += 1) {
+      for (let col = 0; col < inputCols; col += 1) {
+        engine.setCellValue('Sheet1', `${String.fromCharCode(65 + col)}${row}`, row * (col + 1))
+      }
+      engine.setCellFormula('Sheet1', `E${row}`, `SUM(A${row}:D${row})`)
+    }
+    engine.insertRows('Sheet1', existingRows, appendRows)
+
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+    const refs: EngineCellMutationRef[] = []
+    for (let row = 0; row < appendRows; row += 1) {
+      for (let col = 0; col < inputCols; col += 1) {
+        refs.push({
+          sheetId,
+          mutation: { kind: 'setCellValue', row: existingRows + row, col, value: (row + 1) * (col + 2) },
+        })
+      }
+    }
+
+    engine.resetPerformanceCounters()
+    const undoOps = engine.applyCellMutationsAt(refs, refs.length)
+
+    expect(undoOps).not.toBeNull()
+    expect(engine.getCellValue('Sheet1', 'A13')).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(engine.getCellValue('Sheet1', 'D20')).toEqual({ tag: ValueTag.Number, value: 40 })
+    expect(engine.getCellValue('Sheet1', 'E12')).toEqual({ tag: ValueTag.Number, value: 120 })
+    expect(engine.getLastMetrics()).toMatchObject({
+      changedInputCount: appendRows * inputCols,
+      dirtyFormulaCount: 0,
+      jsFormulaCount: 0,
+      wasmFormulaCount: 0,
+    })
+    expect(engine.getPerformanceCounters().kernelSyncOnlyRecalcSkips).toBe(1)
+    expect(engine.getPerformanceCounters().regionQueryIndexBuilds).toBe(0)
+    expect(engine.getPerformanceCounters().directAggregateScanEvaluations).toBe(0)
+  })
+
   it('handles dense lookup-only numeric column coordinate batches', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'dense-lookup-fast-path', useColumnIndex: true })
     await engine.ready()

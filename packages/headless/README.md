@@ -33,9 +33,9 @@ npm install @bilig/headless
 
 <!-- headless-package-footprint:start -->
 
-Current checked npm footprint for `@bilig/headless@0.14.29`:
+Current checked npm footprint for `@bilig/headless@0.15.0`:
 
-- Pack dry run: `415 kB` tarball, `2.48 MB` unpacked, `411` package entries.
+- Pack dry run: `415 kB` tarball, `2.47 MB` unpacked, `408` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
   import/export stays behind the `@bilig/headless/xlsx` subpath; MCP is the
   `bilig-workpaper-mcp` binary wrapper.
@@ -425,7 +425,7 @@ pnpm workpaper:xlsx-corpus:check -- /path/to/xlsx-corpus
   checked-in artifact shows
   [`41/57` comparable WorkPaper mean wins](https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md)
   and names the worst p95 holdout: `structural-append-formula-rows` at
-  `10.722x`.
+  `6.804x`.
 - The shareable benchmark card is generated from the checked-in artifact:
   [`workpaper-benchmark-card.png`](https://github.com/proompteng/bilig/blob/main/docs/assets/workpaper-benchmark-card.png).
 - Read the

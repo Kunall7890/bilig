@@ -17,6 +17,7 @@ import { PendingNumericCellValues, type DirectScalarCurrentOperand } from './dir
 import { reverseUint32Array, tagTrustedPhysicalTrackedChanges } from './operation-change-helpers.js'
 import { emitCellMutationFastPathBatchResult } from './operation-fast-path-batch-result.js'
 import { createOperationDirectAggregateRectangularBatchFastPath } from './operation-direct-aggregate-rectangular-batch-fast-path.js'
+import { createOperationFreshRectangularLiteralBatchFastPath } from './operation-fresh-rectangular-literal-batch-fast-path.js'
 import { createOperationDirectScalarRowPairBatchFastPaths } from './operation-direct-scalar-row-pair-batch-fast-paths.js'
 
 const EMPTY_CHANGED_CELLS = new Uint32Array(0)
@@ -26,6 +27,7 @@ type MutationSource = 'local' | 'restore' | 'undo' | 'redo'
 type FastPathState = Pick<
   EngineRuntimeState,
   | 'workbook'
+  | 'ranges'
   | 'strings'
   | 'events'
   | 'formulas'
@@ -110,6 +112,11 @@ export function createOperationDirectScalarBatchFastPaths(args: OperationDirectS
     potentialNewCells?: number,
   ) => boolean
   readonly tryApplyDenseRectangularDirectAggregateLiteralBatch: (
+    refs: readonly EngineCellMutationRef[],
+    batch: EngineOpBatch | null,
+    potentialNewCells?: number,
+  ) => boolean
+  readonly tryApplyFreshDenseRectangularNumericLiteralBatch: (
     refs: readonly EngineCellMutationRef[],
     batch: EngineOpBatch | null,
     potentialNewCells?: number,
@@ -496,6 +503,25 @@ export function createOperationDirectScalarBatchFastPaths(args: OperationDirectS
     captureChangedCells: args.captureChangedCells,
   })
 
+  const { tryApplyFreshDenseRectangularNumericLiteralBatch } = createOperationFreshRectangularLiteralBatchFastPath({
+    state: args.state,
+    emitBatch,
+    hasTrackedExactLookupDependents,
+    hasTrackedSortedLookupDependents,
+    writeNumericLiteralToCellStore,
+    materializeDeferredStructuralFormulaSources: args.materializeDeferredStructuralFormulaSources,
+    beginMutationCollection: args.beginMutationCollection,
+    ensureRecalcScratchCapacity: args.ensureRecalcScratchCapacity,
+    resetMaterializedCellScratch: args.resetMaterializedCellScratch,
+    getBatchMutationDepth: args.getBatchMutationDepth,
+    setBatchMutationDepth: args.setBatchMutationDepth,
+    markInputChanged: args.markInputChanged,
+    markExplicitChanged: args.markExplicitChanged,
+    getChangedInputBuffer: args.getChangedInputBuffer,
+    deferKernelSync: args.deferKernelSync,
+    captureChangedCells: args.captureChangedCells,
+  })
+
   const tryApplyLookupOnlyNumericColumnLiteralBatch = (
     refs: readonly EngineCellMutationRef[],
     batch: EngineOpBatch | null,
@@ -650,6 +676,9 @@ export function createOperationDirectScalarBatchFastPaths(args: OperationDirectS
       return false
     }
     if (tryApplyLookupOnlyNumericColumnLiteralBatch(refs, batch, potentialNewCells)) {
+      return true
+    }
+    if (tryApplyFreshDenseRectangularNumericLiteralBatch(refs, batch, potentialNewCells)) {
       return true
     }
     if (tryApplyDenseRectangularDirectAggregateLiteralBatch(refs, batch, potentialNewCells)) {
@@ -906,5 +935,6 @@ export function createOperationDirectScalarBatchFastPaths(args: OperationDirectS
     tryApplyDenseRowPairDirectScalarLiteralBatch,
     tryApplyLookupOnlyNumericColumnLiteralBatch,
     tryApplyDenseRectangularDirectAggregateLiteralBatch,
+    tryApplyFreshDenseRectangularNumericLiteralBatch,
   }
 }

@@ -370,6 +370,49 @@ describe('materializeTrackedIndexChanges', () => {
     expect(result?.changes && hasDeferredTrackedIndexChanges(result.changes)).toBe(false)
   })
 
+  it('ignores no-cell structural invalidation sources when materializing cell changes lazily', () => {
+    const rowCount = 300
+    const engine = new SpreadsheetEngine({ workbookName: 'tracked-index-sources-lazy-after-rows' })
+    engine.createSheet('Sheet1')
+
+    const changedCellIndices = new Uint32Array(rowCount)
+    for (let row = 0; row < rowCount; row += 1) {
+      const a1 = `A${row + 1}`
+      engine.setCellValue('Sheet1', a1, row + 1)
+      const cellIndex = engine.workbook.getCellIndex('Sheet1', a1)
+      expect(cellIndex).toBeDefined()
+      changedCellIndices[row] = cellIndex!
+    }
+
+    const result = materializeTrackedIndexChangeSourcesWithMetadata(
+      engine,
+      [
+        {
+          changedCellIndices: new Uint32Array(0),
+          changedCellIndicesSortedDisjoint: true,
+          patches: [{ kind: 'row-invalidation', sheetName: 'Sheet1', startIndex: rowCount, endIndex: rowCount + 4 }],
+          hasInvalidatedRows: true,
+        },
+        {
+          changedCellIndices,
+          changedCellIndicesSortedDisjoint: true,
+          firstChangedCellIndex: changedCellIndices[0],
+          lastChangedCellIndex: changedCellIndices[rowCount - 1],
+        },
+      ],
+      { lazy: true },
+    )
+
+    expect(result).not.toBeNull()
+    expect(result?.usedSortedDisjointFastPath).toBe(true)
+    expect(result?.changes).toHaveLength(rowCount)
+    expect(result?.changes && hasDeferredTrackedIndexChanges(result.changes)).toBe(true)
+    expect(result?.changes[rowCount - 1]).toMatchObject({
+      a1: `A${rowCount}`,
+      newValue: { tag: ValueTag.Number, value: rowCount },
+    })
+  })
+
   it('falls back to ordered latest-cell semantics for overlapping tracked event sources', () => {
     const engine = new SpreadsheetEngine({ workbookName: 'tracked-index-sources-overlap' })
     engine.createSheet('Sheet1')

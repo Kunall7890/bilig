@@ -631,6 +631,7 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
     tryApplyDenseRowPairDirectScalarLiteralBatch,
     tryApplyLookupOnlyNumericColumnLiteralBatch,
     tryApplyDenseRectangularDirectAggregateLiteralBatch,
+    tryApplyFreshDenseRectangularNumericLiteralBatch,
   } = createOperationDirectScalarBatchFastPaths({
     state: args.state,
     emitBatch,
@@ -853,6 +854,7 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
         tryApplyDenseRowPairDirectScalarLiteralBatch,
         tryApplyLookupOnlyNumericColumnLiteralBatch,
         tryApplyDenseRectangularDirectAggregateLiteralBatch,
+        tryApplyFreshDenseRectangularNumericLiteralBatch,
         tryApplySingleExistingDirectLiteralMutation,
         tryApplySingleDirectAggregateLiteralMutationFastPath,
         tryApplySingleDirectFormulaLiteralMutationWithoutEvents,

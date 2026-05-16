@@ -332,10 +332,11 @@ export function materializeTrackedIndexChangeSourcesWithMetadata(
   sources: readonly TrackedIndexChangeSource[],
   options: TrackedIndexMaterializationOptions = {},
 ): MaterializedTrackedIndexChangeSources | null {
-  if (sources.length === 0) {
+  const cellChangeSources = sources.filter(sourceHasCellChanges)
+  if (cellChangeSources.length === 0) {
     return { changes: [], ordered: true, usedSortedDisjointFastPath: true }
   }
-  for (const source of sources) {
+  for (const source of cellChangeSources) {
     if (
       source.invalidation === 'full' ||
       (source.patches !== undefined && source.patches.length > 0) ||
@@ -346,15 +347,15 @@ export function materializeTrackedIndexChangeSourcesWithMetadata(
       return null
     }
   }
-  const lazySameSheetChanges = tryCreateLazySameSheetTrackedSourceChanges(engine, sources, {
+  const lazySameSheetChanges = tryCreateLazySameSheetTrackedSourceChanges(engine, cellChangeSources, {
     deferLazyDetach: options.deferLazyDetach === true,
     preferLazyPublicChanges: options.lazy === true,
   })
   if (lazySameSheetChanges) {
     return lazySameSheetChanges
   }
-  if (sources.length === 1) {
-    const source = sources[0]!
+  if (cellChangeSources.length === 1) {
+    const source = cellChangeSources[0]!
     const materialized = materializeTrackedIndexChangesWithMetadata(
       engine,
       source.changedCellIndices,
@@ -363,18 +364,21 @@ export function materializeTrackedIndexChangeSourcesWithMetadata(
     return {
       changes: materialized.changes,
       ordered: materialized.ordered,
-      usedSortedDisjointFastPath: materialized.ordered && trackedSourceHasSortedDisjointIndices(sources[0]!),
+      usedSortedDisjointFastPath: materialized.ordered && trackedSourceHasSortedDisjointIndices(source),
     }
   }
 
-  const materializedSources = Array.from({ length: sources.length }, () => undefined as MaterializedTrackedIndexChanges | undefined)
+  const materializedSources = Array.from(
+    { length: cellChangeSources.length },
+    () => undefined as MaterializedTrackedIndexChanges | undefined,
+  )
   const sheetOrders = sheetOrderLookup(engine)
   const fastChanges: WorkPaperCellChange[] = []
   let previousNumericCellIndex = -1
   let previousPublicChange: WorkPaperCellChange | undefined
   let canUseSortedDisjointFastPath = true
-  for (let sourceIndex = 0; sourceIndex < sources.length; sourceIndex += 1) {
-    const source = sources[sourceIndex]!
+  for (let sourceIndex = 0; sourceIndex < cellChangeSources.length; sourceIndex += 1) {
+    const source = cellChangeSources[sourceIndex]!
     if (!trackedSourceHasSortedDisjointIndices(source)) {
       canUseSortedDisjointFastPath = false
       break
@@ -417,7 +421,14 @@ export function materializeTrackedIndexChangeSourcesWithMetadata(
   if (canUseSortedDisjointFastPath) {
     return { changes: fastChanges, ordered: true, usedSortedDisjointFastPath: true }
   }
-  return materializeTrackedIndexChangeSourcesGeneric(engine, sources, materializedSources, options, sheetOrders)
+  return materializeTrackedIndexChangeSourcesGeneric(engine, cellChangeSources, materializedSources, options, sheetOrders)
+}
+
+function sourceHasCellChanges(source: TrackedIndexChangeSource): boolean {
+  return (
+    source.changedCellIndices.length > 0 ||
+    source.patches?.some((patch) => typeof patch === 'object' && patch !== null && Reflect.get(patch, 'kind') === 'cell') === true
+  )
 }
 
 type TrackedCellStore = SpreadsheetEngine['workbook']['cellStore']

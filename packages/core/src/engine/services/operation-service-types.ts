@@ -74,6 +74,7 @@ export interface CreateEngineOperationServiceArgs {
   readonly state: Pick<
     EngineRuntimeState,
     | 'workbook'
+    | 'ranges'
     | 'strings'
     | 'wasm'
     | 'events'

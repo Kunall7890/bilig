@@ -11,6 +11,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(headless): add file-backed workpaper mcp mode (b51992fb)
 
 ## 0.14.29
@@ -20,9 +21,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(headless): fast path rectangular row sums (fe9a70b1)
 
 ## Internal runtime changes
+
 - docs(headless): compress package positioning (f86a6b3e)
 
 ## 0.14.28
