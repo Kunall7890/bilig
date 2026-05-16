@@ -106,6 +106,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
+function isSafeNonNegativeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+}
+
+function isSafeNullableUnixMs(value: unknown): value is number | null {
+  return value === null || isSafeNonNegativeInteger(value)
+}
+
 function supportsWorkerOpfs(): boolean {
   const scope = globalThis as typeof globalThis & {
     navigator?: Navigator
@@ -263,8 +271,8 @@ function toWorkbookLocalStoreUnavailableError(documentId: string | null, cause?:
 function parseWorkbookStoredState(value: unknown): WorkbookStoredState | null {
   if (
     !isRecord(value) ||
-    typeof value['authoritativeRevision'] !== 'number' ||
-    typeof value['appliedPendingLocalSeq'] !== 'number' ||
+    !isSafeNonNegativeInteger(value['authoritativeRevision']) ||
+    !isSafeNonNegativeInteger(value['appliedPendingLocalSeq']) ||
     !isRecord(value['snapshot']) ||
     !isRecord(value['replica'])
   ) {
@@ -284,9 +292,9 @@ function parseWorkbookBootstrapState(value: unknown): WorkbookBootstrapState | n
     typeof value['workbookName'] !== 'string' ||
     !Array.isArray(value['sheetNames']) ||
     !value['sheetNames'].every((sheetName) => typeof sheetName === 'string') ||
-    typeof value['materializedCellCount'] !== 'number' ||
-    typeof value['authoritativeRevision'] !== 'number' ||
-    typeof value['appliedPendingLocalSeq'] !== 'number'
+    !isSafeNonNegativeInteger(value['materializedCellCount']) ||
+    !isSafeNonNegativeInteger(value['authoritativeRevision']) ||
+    !isSafeNonNegativeInteger(value['appliedPendingLocalSeq'])
   ) {
     return null
   }
@@ -303,17 +311,17 @@ function parseWorkbookLocalMutationRecord(value: unknown): WorkbookLocalMutation
   if (
     !isRecord(value) ||
     typeof value['id'] !== 'string' ||
-    typeof value['localSeq'] !== 'number' ||
-    typeof value['baseRevision'] !== 'number' ||
+    !isSafeNonNegativeInteger(value['localSeq']) ||
+    !isSafeNonNegativeInteger(value['baseRevision']) ||
     typeof value['method'] !== 'string' ||
     !Array.isArray(value['args']) ||
-    typeof value['enqueuedAtUnixMs'] !== 'number' ||
-    (value['submittedAtUnixMs'] !== null && typeof value['submittedAtUnixMs'] !== 'number') ||
-    (value['lastAttemptedAtUnixMs'] !== null && typeof value['lastAttemptedAtUnixMs'] !== 'number') ||
-    (value['ackedAtUnixMs'] !== null && typeof value['ackedAtUnixMs'] !== 'number') ||
-    (value['rebasedAtUnixMs'] !== null && typeof value['rebasedAtUnixMs'] !== 'number') ||
-    (value['failedAtUnixMs'] !== null && typeof value['failedAtUnixMs'] !== 'number') ||
-    typeof value['attemptCount'] !== 'number' ||
+    !isSafeNonNegativeInteger(value['enqueuedAtUnixMs']) ||
+    !isSafeNullableUnixMs(value['submittedAtUnixMs']) ||
+    !isSafeNullableUnixMs(value['lastAttemptedAtUnixMs']) ||
+    !isSafeNullableUnixMs(value['ackedAtUnixMs']) ||
+    !isSafeNullableUnixMs(value['rebasedAtUnixMs']) ||
+    !isSafeNullableUnixMs(value['failedAtUnixMs']) ||
+    !isSafeNonNegativeInteger(value['attemptCount']) ||
     (value['failureMessage'] !== null && typeof value['failureMessage'] !== 'string') ||
     (value['status'] !== 'local' &&
       value['status'] !== 'submitted' &&
@@ -353,6 +361,18 @@ function readSingleObjectRow(db: Database, sql: string, bind?: readonly SqlValue
     return statement.get({})
   } finally {
     statement.finalize()
+  }
+}
+
+function assertWorkbookStoredState(value: WorkbookStoredState): void {
+  if (!parseWorkbookStoredState(value)) {
+    throw new TypeError('Invalid workbook runtime state')
+  }
+}
+
+function assertWorkbookLocalMutationRecord(value: WorkbookLocalMutationRecord): void {
+  if (!parseWorkbookLocalMutationRecord(value)) {
+    throw new TypeError('Invalid workbook local mutation record')
   }
 }
 
@@ -504,6 +524,7 @@ class SqliteWorkbookLocalStore implements WorkbookLocalStore {
     readonly authoritativeBase: WorkbookLocalAuthoritativeBase
     readonly projectionOverlay: WorkbookLocalProjectionOverlay
   }): Promise<void> {
+    assertWorkbookStoredState(input.state)
     this.db.transaction((db) => {
       writeWorkbookAuthoritativeBase(db, input.authoritativeBase)
       writeWorkbookProjectionOverlay(db, input.projectionOverlay)
@@ -547,6 +568,7 @@ class SqliteWorkbookLocalStore implements WorkbookLocalStore {
     readonly projectionOverlay: WorkbookLocalProjectionOverlay
     readonly removePendingMutationIds?: readonly string[]
   }): Promise<void> {
+    assertWorkbookStoredState(input.state)
     this.db.transaction((db) => {
       if ((input.removePendingMutationIds?.length ?? 0) > 0) {
         const ackPendingMutation = db.prepare(
@@ -681,6 +703,7 @@ class SqliteWorkbookLocalStore implements WorkbookLocalStore {
   }
 
   async appendPendingMutation(mutation: WorkbookLocalMutationRecord): Promise<void> {
+    assertWorkbookLocalMutationRecord(mutation)
     this.db.transaction((db) => {
       db.exec(
         `
@@ -725,6 +748,7 @@ class SqliteWorkbookLocalStore implements WorkbookLocalStore {
   }
 
   async updatePendingMutation(mutation: WorkbookLocalMutationRecord): Promise<void> {
+    assertWorkbookLocalMutationRecord(mutation)
     this.db.exec(
       `
         UPDATE pending_op

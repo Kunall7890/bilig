@@ -165,4 +165,46 @@ describe('memory workbook local store', () => {
     await expect(reopened.listPendingMutations()).resolves.toEqual([])
     await expect(reopened.listMutationJournalEntries()).resolves.toEqual([acked])
   })
+
+  it('rejects unsafe runtime sequence numbers before writing local state', async () => {
+    const factory = createMemoryWorkbookLocalStoreFactory()
+    const store = await factory.open('memory-doc')
+
+    await expect(
+      store.persistProjectionState({
+        state: {
+          snapshot: { version: 1, workbook: { name: 'memory-doc' }, sheets: [] },
+          replica: { replica: { id: 'seed', clock: 0 }, entityVersions: [], sheetDeleteVersions: [] },
+          authoritativeRevision: Number.MAX_SAFE_INTEGER + 1,
+          appliedPendingLocalSeq: 3,
+        },
+        authoritativeBase: createBase(11),
+        projectionOverlay: createOverlay(17),
+      }),
+    ).rejects.toThrow('Invalid workbook runtime state')
+
+    await expect(store.loadState()).resolves.toBeNull()
+    expect(
+      store.readViewportProjection('Sheet1', {
+        rowStart: 0,
+        rowEnd: 0,
+        colStart: 0,
+        colEnd: 0,
+      }),
+    ).toBeNull()
+  })
+
+  it('rejects unsafe pending mutation counters before writing the journal', async () => {
+    const factory = createMemoryWorkbookLocalStoreFactory()
+    const store = await factory.open('memory-doc')
+
+    await expect(store.appendPendingMutation(createMutation({ localSeq: Number.MAX_SAFE_INTEGER + 1 }))).rejects.toThrow(
+      'Invalid workbook local mutation record',
+    )
+    await expect(store.appendPendingMutation(createMutation({ attemptCount: Number.NaN }))).rejects.toThrow(
+      'Invalid workbook local mutation record',
+    )
+
+    await expect(store.listMutationJournalEntries()).resolves.toEqual([])
+  })
 })
