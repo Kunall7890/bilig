@@ -13,19 +13,26 @@ import type {
   WorkbookAgentToolStatus,
   WorkbookAgentUiContext,
 } from '@bilig/contracts'
+import type { Row } from '@rocicorp/zero'
 import type { QueryResultRow } from './store.js'
 import { parseNullableInteger } from './store-support.js'
 
 export type WorkbookChatThreadScope = 'private' | 'shared'
+export type ZeroWorkbookChatThreadRow = Row['workbook_chat_thread']
 
-export interface WorkbookChatThreadRow extends QueryResultRow {
-  readonly workbookId?: unknown
-  readonly threadId?: unknown
-  readonly actorUserId?: unknown
-  readonly scope?: unknown
+export interface NormalizedWorkbookChatThreadModel {
+  readonly workbookId: string
+  readonly threadId: string
+  readonly actorUserId: string
+  readonly scope: WorkbookChatThreadScope
+  readonly updatedAtUnixMs: number
+  readonly entryCount: number
+  readonly latestEntryText: string | null
+}
+
+export interface WorkbookChatThreadPrivateRow extends QueryResultRow {
   readonly executionPolicy?: unknown
   readonly contextJson?: unknown
-  readonly updatedAtUnixMs?: unknown
 }
 
 export interface WorkbookChatItemRow extends QueryResultRow {
@@ -79,13 +86,7 @@ export interface WorkbookReviewQueueItemRow extends QueryResultRow {
 }
 
 export interface WorkbookChatThreadSummaryRow extends QueryResultRow {
-  readonly threadId?: unknown
-  readonly scope?: unknown
-  readonly ownerUserId?: unknown
-  readonly updatedAtUnixMs?: unknown
-  readonly entryCount?: unknown
   readonly reviewQueueItemCount?: unknown
-  readonly latestEntryText?: unknown
 }
 
 export function isExecutionPolicy(value: unknown): value is WorkbookAgentExecutionPolicy {
@@ -306,29 +307,47 @@ export function normalizeReviewQueueItem(row: WorkbookReviewQueueItemRow): Workb
   return isWorkbookAgentReviewQueueItem(reviewItem) ? reviewItem : null
 }
 
-export function normalizeThreadSummary(row: WorkbookChatThreadSummaryRow): WorkbookAgentThreadSummary | null {
+export function normalizeZeroWorkbookChatThread(row: ZeroWorkbookChatThreadRow): NormalizedWorkbookChatThreadModel | null {
   const updatedAtUnixMs = parseNumericValue(row.updatedAtUnixMs)
   const entryCount = parseNumericValue(row.entryCount)
-  const reviewQueueItemCount = parseNumericValue(row.reviewQueueItemCount)
   if (
+    typeof row.workbookId !== 'string' ||
     typeof row.threadId !== 'string' ||
-    (row.scope !== 'private' && row.scope !== 'shared') ||
     typeof row.ownerUserId !== 'string' ||
+    (row.scope !== 'private' && row.scope !== 'shared') ||
     updatedAtUnixMs === null ||
     entryCount === null ||
-    reviewQueueItemCount === null ||
     (row.latestEntryText !== null && row.latestEntryText !== undefined && typeof row.latestEntryText !== 'string')
   ) {
     return null
   }
   return {
+    workbookId: row.workbookId,
     threadId: row.threadId,
+    actorUserId: row.ownerUserId,
     scope: row.scope,
-    ownerUserId: row.ownerUserId,
     updatedAtUnixMs,
     entryCount,
-    reviewQueueItemCount,
     latestEntryText: typeof row.latestEntryText === 'string' ? row.latestEntryText : null,
+  }
+}
+
+export function normalizeThreadSummary(
+  row: NormalizedWorkbookChatThreadModel,
+  reviewCounts: WorkbookChatThreadSummaryRow = {},
+): WorkbookAgentThreadSummary | null {
+  const reviewQueueItemCount = parseNumericValue(reviewCounts.reviewQueueItemCount ?? 0)
+  if (reviewQueueItemCount === null) {
+    return null
+  }
+  return {
+    threadId: row.threadId,
+    scope: row.scope,
+    ownerUserId: row.actorUserId,
+    updatedAtUnixMs: row.updatedAtUnixMs,
+    entryCount: row.entryCount,
+    reviewQueueItemCount,
+    latestEntryText: row.latestEntryText,
   }
 }
 

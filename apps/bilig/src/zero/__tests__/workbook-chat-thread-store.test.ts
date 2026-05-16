@@ -4,19 +4,23 @@ import {
   listWorkbookAgentThreadSummaries,
   loadWorkbookAgentThreadState,
   saveWorkbookAgentThreadState,
+  type WorkbookChatThreadStoreConnection,
 } from '../workbook-chat-thread-store.js'
 import type { QueryResultRow, Queryable } from '../store.js'
+import type { ZeroWorkbookChatThreadRow } from '../workbook-chat-thread-normalizers.js'
 
 interface RecordedQuery {
   readonly text: string
   readonly values: readonly unknown[] | undefined
 }
 
-class FakeQueryable implements Queryable {
+class FakeQueryable implements Queryable, WorkbookChatThreadStoreConnection {
   readonly calls: RecordedQuery[] = []
+  readonly zeroThreadDocumentIds: string[] = []
 
   constructor(
     private readonly responders: readonly ((text: string, values: readonly unknown[] | undefined) => QueryResultRow[] | null)[] = [],
+    private readonly runRows: readonly ZeroWorkbookChatThreadRow[] = [],
   ) {}
 
   async query<T extends QueryResultRow = QueryResultRow>(text: string, values?: unknown[]): Promise<{ rows: T[] }> {
@@ -30,6 +34,11 @@ class FakeQueryable implements Queryable {
       }
     }
     return { rows: [] }
+  }
+
+  async listWorkbookChatThreadRows(documentId: string): Promise<readonly ZeroWorkbookChatThreadRow[]> {
+    this.zeroThreadDocumentIds.push(documentId)
+    return this.runRows
   }
 }
 
@@ -180,6 +189,18 @@ function createReviewQueueItemRow(state: ReturnType<typeof createThreadState>) {
   })) satisfies QueryResultRow[]
 }
 
+function createZeroThreadRow(state: ReturnType<typeof createThreadState>): ZeroWorkbookChatThreadRow {
+  return {
+    workbookId: state.documentId,
+    threadId: state.threadId,
+    ownerUserId: state.actorUserId,
+    scope: state.scope,
+    updatedAtUnixMs: state.updatedAtUnixMs,
+    entryCount: state.entries.length,
+    latestEntryText: 'Review item queued',
+  }
+}
+
 describe('workbook-chat-thread-store', () => {
   it('creates the review-queue schema without legacy pending-bundle compatibility paths', async () => {
     const queryable = new FakeQueryable()
@@ -265,55 +286,58 @@ describe('workbook-chat-thread-store', () => {
 
   it('loads a durable thread snapshot with entries and review queue items', async () => {
     const state = createThreadState()
-    const queryable = new FakeQueryable([
-      (text) =>
-        text.includes('FROM workbook_chat_thread')
-          ? [
-              {
-                workbookId: state.documentId,
-                threadId: state.threadId,
-                actorUserId: state.actorUserId,
-                scope: state.scope,
-                executionPolicy: state.executionPolicy,
-                contextJson: state.context,
-                updatedAtUnixMs: state.updatedAtUnixMs,
-              } satisfies QueryResultRow,
-            ]
-          : null,
-      (text) =>
-        text.includes('FROM workbook_chat_item')
-          ? state.entries.map((entry, index) => ({
-              entryId: entry.id,
-              turnId: entry.turnId,
-              kind: entry.kind,
-              text: entry.text,
-              phase: entry.phase,
-              toolName: entry.id === 'tool-call-1' ? 'bilig_read_workbook' : entry.toolName,
-              toolStatus: entry.toolStatus,
-              argumentsText: entry.argumentsText,
-              outputText: entry.outputText,
-              success: entry.success,
-              citationsJson: entry.citations,
-              sortOrder: index,
-            }))
-          : null,
-      (text) =>
-        text.includes('FROM workbook_chat_tool_call')
-          ? state.entries
-              .filter((entry) => entry.kind === 'tool')
-              .map((entry, index) => ({
+    const queryable = new FakeQueryable(
+      [
+        (text) =>
+          text.includes('FROM workbook_chat_thread')
+            ? [
+                {
+                  workbookId: state.documentId,
+                  threadId: state.threadId,
+                  actorUserId: state.actorUserId,
+                  scope: state.scope,
+                  executionPolicy: state.executionPolicy,
+                  contextJson: state.context,
+                  updatedAtUnixMs: state.updatedAtUnixMs,
+                } satisfies QueryResultRow,
+              ]
+            : null,
+        (text) =>
+          text.includes('FROM workbook_chat_item')
+            ? state.entries.map((entry, index) => ({
                 entryId: entry.id,
                 turnId: entry.turnId,
+                kind: entry.kind,
+                text: entry.text,
+                phase: entry.phase,
                 toolName: entry.id === 'tool-call-1' ? 'bilig_read_workbook' : entry.toolName,
                 toolStatus: entry.toolStatus,
                 argumentsText: entry.argumentsText,
                 outputText: entry.outputText,
                 success: entry.success,
+                citationsJson: entry.citations,
                 sortOrder: index,
               }))
-          : null,
-      (text) => (text.includes('FROM workbook_review_queue_item') ? createReviewQueueItemRow(state) : null),
-    ])
+            : null,
+        (text) =>
+          text.includes('FROM workbook_chat_tool_call')
+            ? state.entries
+                .filter((entry) => entry.kind === 'tool')
+                .map((entry, index) => ({
+                  entryId: entry.id,
+                  turnId: entry.turnId,
+                  toolName: entry.id === 'tool-call-1' ? 'bilig_read_workbook' : entry.toolName,
+                  toolStatus: entry.toolStatus,
+                  argumentsText: entry.argumentsText,
+                  outputText: entry.outputText,
+                  success: entry.success,
+                  sortOrder: index,
+                }))
+            : null,
+        (text) => (text.includes('FROM workbook_review_queue_item') ? createReviewQueueItemRow(state) : null),
+      ],
+      [createZeroThreadRow(state)],
+    )
 
     const loaded = await loadWorkbookAgentThreadState(queryable, {
       documentId: 'doc-1',
@@ -332,56 +356,59 @@ describe('workbook-chat-thread-store', () => {
       scope: 'shared' as const,
       executionPolicy: 'ownerReview' as const,
     }
-    const queryable = new FakeQueryable([
-      (text, values) =>
-        text.includes('FROM workbook_chat_thread') && values?.[2] === 'casey@example.com'
-          ? [
-              {
-                workbookId: state.documentId,
-                threadId: state.threadId,
-                actorUserId: state.actorUserId,
-                scope: state.scope,
-                executionPolicy: state.executionPolicy,
-                contextJson: state.context,
-                updatedAtUnixMs: state.updatedAtUnixMs,
-              } satisfies QueryResultRow,
-            ]
-          : null,
-      (text, values) =>
-        text.includes('FROM workbook_chat_item') && values?.[2] === 'alex@example.com'
-          ? state.entries.map((entry, index) => ({
-              entryId: entry.id,
-              turnId: entry.turnId,
-              kind: entry.kind,
-              text: entry.text,
-              phase: entry.phase,
-              toolName: entry.toolName,
-              toolStatus: entry.toolStatus,
-              argumentsText: entry.argumentsText,
-              outputText: entry.outputText,
-              success: entry.success,
-              citationsJson: entry.citations,
-              sortOrder: index,
-            }))
-          : null,
-      (text, values) =>
-        text.includes('FROM workbook_chat_tool_call') && values?.[2] === 'alex@example.com'
-          ? state.entries
-              .filter((entry) => entry.kind === 'tool')
-              .map((entry, index) => ({
+    const queryable = new FakeQueryable(
+      [
+        (text, values) =>
+          text.includes('FROM workbook_chat_thread') && values?.[2] === 'alex@example.com'
+            ? [
+                {
+                  workbookId: state.documentId,
+                  threadId: state.threadId,
+                  actorUserId: state.actorUserId,
+                  scope: state.scope,
+                  executionPolicy: state.executionPolicy,
+                  contextJson: state.context,
+                  updatedAtUnixMs: state.updatedAtUnixMs,
+                } satisfies QueryResultRow,
+              ]
+            : null,
+        (text, values) =>
+          text.includes('FROM workbook_chat_item') && values?.[2] === 'alex@example.com'
+            ? state.entries.map((entry, index) => ({
                 entryId: entry.id,
                 turnId: entry.turnId,
+                kind: entry.kind,
+                text: entry.text,
+                phase: entry.phase,
                 toolName: entry.toolName,
                 toolStatus: entry.toolStatus,
                 argumentsText: entry.argumentsText,
                 outputText: entry.outputText,
                 success: entry.success,
+                citationsJson: entry.citations,
                 sortOrder: index,
               }))
-          : null,
-      (text, values) =>
-        text.includes('FROM workbook_review_queue_item') && values?.[2] === 'alex@example.com' ? createReviewQueueItemRow(state) : null,
-    ])
+            : null,
+        (text, values) =>
+          text.includes('FROM workbook_chat_tool_call') && values?.[2] === 'alex@example.com'
+            ? state.entries
+                .filter((entry) => entry.kind === 'tool')
+                .map((entry, index) => ({
+                  entryId: entry.id,
+                  turnId: entry.turnId,
+                  toolName: entry.toolName,
+                  toolStatus: entry.toolStatus,
+                  argumentsText: entry.argumentsText,
+                  outputText: entry.outputText,
+                  success: entry.success,
+                  sortOrder: index,
+                }))
+            : null,
+        (text, values) =>
+          text.includes('FROM workbook_review_queue_item') && values?.[2] === 'alex@example.com' ? createReviewQueueItemRow(state) : null,
+      ],
+      [createZeroThreadRow(state)],
+    )
 
     const loaded = await loadWorkbookAgentThreadState(queryable, {
       documentId: 'doc-1',
@@ -395,55 +422,58 @@ describe('workbook-chat-thread-store', () => {
   it('hydrates tool call state from dedicated durable tool call rows', async () => {
     const state = createThreadState()
     const toolEntry = state.entries.find((entry) => entry.id === 'tool-call-1')
-    const queryable = new FakeQueryable([
-      (text) =>
-        text.includes('FROM workbook_chat_thread')
-          ? [
-              {
-                workbookId: state.documentId,
-                threadId: state.threadId,
-                actorUserId: state.actorUserId,
-                scope: state.scope,
-                executionPolicy: state.executionPolicy,
-                contextJson: state.context,
-                updatedAtUnixMs: state.updatedAtUnixMs,
-              } satisfies QueryResultRow,
-            ]
-          : null,
-      (text) =>
-        text.includes('FROM workbook_chat_item')
-          ? state.entries.map((entry, index) => ({
-              entryId: entry.id,
-              turnId: entry.turnId,
-              kind: entry.kind,
-              text: entry.text,
-              phase: entry.phase,
-              toolName: entry.id === 'tool-call-1' ? null : entry.toolName,
-              toolStatus: entry.id === 'tool-call-1' ? null : entry.toolStatus,
-              argumentsText: entry.id === 'tool-call-1' ? null : entry.argumentsText,
-              outputText: entry.id === 'tool-call-1' ? null : entry.outputText,
-              success: entry.id === 'tool-call-1' ? null : entry.success,
-              citationsJson: entry.citations,
-              sortOrder: index,
-            }))
-          : null,
-      (text) =>
-        text.includes('FROM workbook_chat_tool_call') && toolEntry
-          ? [
-              {
-                entryId: toolEntry.id,
-                turnId: toolEntry.turnId,
-                toolName: toolEntry.toolName,
-                toolStatus: toolEntry.toolStatus,
-                argumentsText: toolEntry.argumentsText,
-                outputText: toolEntry.outputText,
-                success: toolEntry.success,
-                sortOrder: 1,
-              } satisfies QueryResultRow,
-            ]
-          : null,
-      (text) => (text.includes('FROM workbook_review_queue_item') ? createReviewQueueItemRow(state) : null),
-    ])
+    const queryable = new FakeQueryable(
+      [
+        (text) =>
+          text.includes('FROM workbook_chat_thread')
+            ? [
+                {
+                  workbookId: state.documentId,
+                  threadId: state.threadId,
+                  actorUserId: state.actorUserId,
+                  scope: state.scope,
+                  executionPolicy: state.executionPolicy,
+                  contextJson: state.context,
+                  updatedAtUnixMs: state.updatedAtUnixMs,
+                } satisfies QueryResultRow,
+              ]
+            : null,
+        (text) =>
+          text.includes('FROM workbook_chat_item')
+            ? state.entries.map((entry, index) => ({
+                entryId: entry.id,
+                turnId: entry.turnId,
+                kind: entry.kind,
+                text: entry.text,
+                phase: entry.phase,
+                toolName: entry.id === 'tool-call-1' ? null : entry.toolName,
+                toolStatus: entry.id === 'tool-call-1' ? null : entry.toolStatus,
+                argumentsText: entry.id === 'tool-call-1' ? null : entry.argumentsText,
+                outputText: entry.id === 'tool-call-1' ? null : entry.outputText,
+                success: entry.id === 'tool-call-1' ? null : entry.success,
+                citationsJson: entry.citations,
+                sortOrder: index,
+              }))
+            : null,
+        (text) =>
+          text.includes('FROM workbook_chat_tool_call') && toolEntry
+            ? [
+                {
+                  entryId: toolEntry.id,
+                  turnId: toolEntry.turnId,
+                  toolName: toolEntry.toolName,
+                  toolStatus: toolEntry.toolStatus,
+                  argumentsText: toolEntry.argumentsText,
+                  outputText: toolEntry.outputText,
+                  success: toolEntry.success,
+                  sortOrder: 1,
+                } satisfies QueryResultRow,
+              ]
+            : null,
+        (text) => (text.includes('FROM workbook_review_queue_item') ? createReviewQueueItemRow(state) : null),
+      ],
+      [createZeroThreadRow(state)],
+    )
 
     const loaded = await loadWorkbookAgentThreadState(queryable, {
       documentId: 'doc-1',
@@ -455,31 +485,40 @@ describe('workbook-chat-thread-store', () => {
   })
 
   it('lists durable thread summaries ordered by most recent activity', async () => {
-    const queryable = new FakeQueryable([
-      (text) =>
-        text.includes('ROW_NUMBER() OVER')
-          ? [
-              {
-                threadId: 'thr-2',
-                scope: 'shared',
-                ownerUserId: 'alex@example.com',
-                updatedAtUnixMs: 200,
-                entryCount: 3,
-                reviewQueueItemCount: 0,
-                latestEntryText: 'Applied shared cleanup at revision r7',
-              } satisfies QueryResultRow,
-              {
-                threadId: 'thr-1',
-                scope: 'private',
-                ownerUserId: 'alex@example.com',
-                updatedAtUnixMs: 100,
-                entryCount: 1,
-                reviewQueueItemCount: 1,
-                latestEntryText: 'Review item queued',
-              } satisfies QueryResultRow,
-            ]
-          : null,
-    ])
+    const queryable = new FakeQueryable(
+      [
+        (text) =>
+          text.includes('FROM workbook_review_queue_item')
+            ? [
+                {
+                  threadId: 'thr-1',
+                  actorUserId: 'alex@example.com',
+                  reviewQueueItemCount: 1,
+                } satisfies QueryResultRow,
+              ]
+            : null,
+      ],
+      [
+        {
+          workbookId: 'doc-1',
+          threadId: 'thr-2',
+          ownerUserId: 'alex@example.com',
+          scope: 'shared',
+          updatedAtUnixMs: 200,
+          entryCount: 3,
+          latestEntryText: 'Applied shared cleanup at revision r7',
+        },
+        {
+          workbookId: 'doc-1',
+          threadId: 'thr-1',
+          ownerUserId: 'alex@example.com',
+          scope: 'private',
+          updatedAtUnixMs: 100,
+          entryCount: 1,
+          latestEntryText: 'Review item queued',
+        },
+      ],
+    )
 
     const summaries = await listWorkbookAgentThreadSummaries(queryable, {
       documentId: 'doc-1',
@@ -509,22 +548,20 @@ describe('workbook-chat-thread-store', () => {
   })
 
   it('includes collaborator-owned shared threads in the summary query', async () => {
-    const queryable = new FakeQueryable([
-      (text) =>
-        text.includes("thread.scope = 'shared'")
-          ? [
-              {
-                threadId: 'thr-shared',
-                scope: 'shared',
-                ownerUserId: 'alex@example.com',
-                updatedAtUnixMs: 300,
-                entryCount: 2,
-                reviewQueueItemCount: 0,
-                latestEntryText: 'Applied shared cleanup at revision r9',
-              } satisfies QueryResultRow,
-            ]
-          : null,
-    ])
+    const queryable = new FakeQueryable(
+      [],
+      [
+        {
+          workbookId: 'doc-1',
+          threadId: 'thr-shared',
+          ownerUserId: 'alex@example.com',
+          scope: 'shared',
+          updatedAtUnixMs: 300,
+          entryCount: 2,
+          latestEntryText: 'Applied shared cleanup at revision r9',
+        },
+      ],
+    )
 
     const summaries = await listWorkbookAgentThreadSummaries(queryable, {
       documentId: 'doc-1',
@@ -542,6 +579,6 @@ describe('workbook-chat-thread-store', () => {
         latestEntryText: 'Applied shared cleanup at revision r9',
       },
     ])
-    expect(queryable.calls.at(-1)?.text).toContain("AND (thread.actor_user_id = $2 OR thread.scope = 'shared')")
+    expect(queryable.zeroThreadDocumentIds).toEqual(['doc-1'])
   })
 })

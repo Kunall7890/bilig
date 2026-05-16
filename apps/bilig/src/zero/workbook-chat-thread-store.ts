@@ -5,24 +5,27 @@ import type {
   WorkbookAgentTimelineEntry,
   WorkbookAgentUiContext,
 } from '@bilig/contracts'
-import type { Queryable } from './store.js'
+import { zql } from '@bilig/zero-sync'
+import type { Queryable, ZeroQueryRunner } from './store.js'
 import {
   defaultExecutionPolicyForScope,
   hasToolCallState,
   isExecutionPolicy,
   isWorkbookAgentUiContext,
+  normalizeZeroWorkbookChatThread,
   normalizeReviewQueueItem,
   normalizeThreadSummary,
   normalizeTimelineEntry,
   normalizeTimelineToolName,
   normalizeToolCallRow,
-  parseNumericValue,
   type WorkbookChatItemRow,
-  type WorkbookChatThreadRow,
+  type NormalizedWorkbookChatThreadModel,
+  type WorkbookChatThreadPrivateRow,
   type WorkbookChatThreadScope,
   type WorkbookChatThreadSummaryRow,
   type WorkbookChatToolCallRow,
   type WorkbookReviewQueueItemRow,
+  type ZeroWorkbookChatThreadRow,
 } from './workbook-chat-thread-normalizers.js'
 
 export type { WorkbookChatThreadScope } from './workbook-chat-thread-normalizers.js'
@@ -39,6 +42,18 @@ export interface WorkbookAgentThreadStateRecord {
   readonly updatedAtUnixMs: number
 }
 
+export interface WorkbookChatThreadStoreConnection extends Queryable {
+  listWorkbookChatThreadRows(documentId: string): Promise<readonly ZeroWorkbookChatThreadRow[]>
+}
+
+export function createWorkbookChatThreadStoreConnection(db: Queryable & ZeroQueryRunner): WorkbookChatThreadStoreConnection {
+  return {
+    query: (text, values) => db.query(text, values),
+    listWorkbookChatThreadRows: (documentId) =>
+      db.run(zql.workbook_chat_thread.where('workbookId', documentId).orderBy('updatedAtUnixMs', 'desc')),
+  }
+}
+
 function dedupeTimelineEntries(entries: readonly WorkbookAgentTimelineEntry[]): WorkbookAgentTimelineEntry[] {
   const deduped: WorkbookAgentTimelineEntry[] = []
   const indexById = new Map<string, number>()
@@ -52,6 +67,46 @@ function dedupeTimelineEntries(entries: readonly WorkbookAgentTimelineEntry[]): 
     deduped[existingIndex] = entry
   }
   return deduped
+}
+
+async function loadZeroWorkbookChatThreads(
+  db: WorkbookChatThreadStoreConnection,
+  documentId: string,
+): Promise<NormalizedWorkbookChatThreadModel[]> {
+  const rows = await db.listWorkbookChatThreadRows(documentId)
+  return rows.flatMap((row) => {
+    const normalized = normalizeZeroWorkbookChatThread(row)
+    return normalized ? [normalized] : []
+  })
+}
+
+function isVisibleThreadForActor(thread: NormalizedWorkbookChatThreadModel, actorUserId: string): boolean {
+  return thread.actorUserId === actorUserId || thread.scope === 'shared'
+}
+
+function compareThreadVisibilityPreference(actorUserId: string) {
+  return (left: NormalizedWorkbookChatThreadModel, right: NormalizedWorkbookChatThreadModel): number => {
+    const leftActorRank = left.actorUserId === actorUserId ? 0 : 1
+    const rightActorRank = right.actorUserId === actorUserId ? 0 : 1
+    if (leftActorRank !== rightActorRank) {
+      return leftActorRank - rightActorRank
+    }
+    return right.updatedAtUnixMs - left.updatedAtUnixMs
+  }
+}
+
+function selectVisibleThread(
+  threads: readonly NormalizedWorkbookChatThreadModel[],
+  input: {
+    readonly threadId: string
+    readonly actorUserId: string
+  },
+): NormalizedWorkbookChatThreadModel | null {
+  return (
+    threads
+      .filter((thread) => thread.threadId === input.threadId && isVisibleThreadForActor(thread, input.actorUserId))
+      .toSorted(compareThreadVisibilityPreference(input.actorUserId))[0] ?? null
+  )
 }
 
 export async function ensureWorkbookChatThreadSchema(db: Queryable): Promise<void> {
@@ -397,52 +452,34 @@ export async function saveWorkbookAgentThreadState(db: Queryable, record: Workbo
 }
 
 export async function loadWorkbookAgentThreadState(
-  db: Queryable,
+  db: WorkbookChatThreadStoreConnection,
   input: {
     documentId: string
     threadId: string
     actorUserId: string
   },
 ): Promise<WorkbookAgentThreadStateRecord | null> {
-  const threadResult = await db.query<WorkbookChatThreadRow>(
+  const thread = selectVisibleThread(await loadZeroWorkbookChatThreads(db, input.documentId), input)
+  if (!thread) {
+    return null
+  }
+  const privateThreadResult = await db.query<WorkbookChatThreadPrivateRow>(
     `
       SELECT
-        workbook_id AS "workbookId",
-        thread_id AS "threadId",
-        actor_user_id AS "actorUserId",
-        scope AS "scope",
         execution_policy AS "executionPolicy",
-        context_json AS "contextJson",
-        updated_at_unix_ms AS "updatedAtUnixMs"
+        context_json AS "contextJson"
       FROM workbook_chat_thread
       WHERE workbook_id = $1
         AND thread_id = $2
-        AND (actor_user_id = $3 OR scope = 'shared')
-      ORDER BY
-        CASE WHEN actor_user_id = $3 THEN 0 ELSE 1 END ASC,
-        updated_at_unix_ms DESC
+        AND actor_user_id = $3
       LIMIT 1
     `,
-    [input.documentId, input.threadId, input.actorUserId],
+    [thread.workbookId, thread.threadId, thread.actorUserId],
   )
-  const thread = threadResult.rows[0]
-  const updatedAtUnixMs = parseNumericValue(thread?.updatedAtUnixMs)
-  const executionPolicy = isExecutionPolicy(thread?.executionPolicy)
-    ? thread.executionPolicy
-    : thread?.scope === 'private' || thread?.scope === 'shared'
-      ? defaultExecutionPolicyForScope(thread.scope)
-      : null
-  if (
-    !thread ||
-    typeof thread.workbookId !== 'string' ||
-    typeof thread.threadId !== 'string' ||
-    typeof thread.actorUserId !== 'string' ||
-    (thread.scope !== 'private' && thread.scope !== 'shared') ||
-    updatedAtUnixMs === null ||
-    executionPolicy === null
-  ) {
-    return null
-  }
+  const privateThread = privateThreadResult.rows[0] ?? {}
+  const executionPolicy = isExecutionPolicy(privateThread.executionPolicy)
+    ? privateThread.executionPolicy
+    : defaultExecutionPolicyForScope(thread.scope)
   const [itemResult, toolCallResult, reviewQueueItemResult] = await Promise.all([
     db.query<WorkbookChatItemRow>(
       `
@@ -537,83 +574,55 @@ export async function loadWorkbookAgentThreadState(
     actorUserId: thread.actorUserId,
     scope: thread.scope,
     executionPolicy,
-    context: isWorkbookAgentUiContext(thread.contextJson) ? thread.contextJson : null,
+    context: isWorkbookAgentUiContext(privateThread.contextJson) ? privateThread.contextJson : null,
     entries,
     reviewQueueItems,
-    updatedAtUnixMs,
+    updatedAtUnixMs: thread.updatedAtUnixMs,
   }
 }
 
 export async function listWorkbookAgentThreadSummaries(
-  db: Queryable,
+  db: WorkbookChatThreadStoreConnection,
   input: {
     documentId: string
     actorUserId: string
   },
 ): Promise<WorkbookAgentThreadSummary[]> {
-  const result = await db.query<WorkbookChatThreadSummaryRow>(
+  const visibleThreadsByThreadId = new Map<string, NormalizedWorkbookChatThreadModel>()
+  for (const thread of await loadZeroWorkbookChatThreads(db, input.documentId)) {
+    if (!isVisibleThreadForActor(thread, input.actorUserId)) {
+      continue
+    }
+    const existing = visibleThreadsByThreadId.get(thread.threadId)
+    if (!existing || compareThreadVisibilityPreference(input.actorUserId)(thread, existing) < 0) {
+      visibleThreadsByThreadId.set(thread.threadId, thread)
+    }
+  }
+  const visibleThreads = [...visibleThreadsByThreadId.values()].toSorted((left, right) => right.updatedAtUnixMs - left.updatedAtUnixMs)
+  if (visibleThreads.length === 0) {
+    return []
+  }
+  const reviewCountResult = await db.query<WorkbookChatThreadSummaryRow & { readonly threadId?: unknown; readonly actorUserId?: unknown }>(
     `
       SELECT
-        thread.thread_id AS "threadId",
-        thread.scope AS "scope",
-        thread.actor_user_id AS "ownerUserId",
-        thread.updated_at_unix_ms AS "updatedAtUnixMs",
-        COALESCE(item_counts.entry_count, 0) AS "entryCount",
-        COALESCE(review_counts.review_queue_item_count, 0) AS "reviewQueueItemCount",
-        latest_item.text AS "latestEntryText"
-      FROM (
-        SELECT ranked.workbook_id, ranked.thread_id, ranked.actor_user_id, ranked.scope, ranked.updated_at_unix_ms
-        FROM (
-          SELECT
-            workbook_id,
-            thread_id,
-            actor_user_id,
-            scope,
-            updated_at_unix_ms,
-            ROW_NUMBER() OVER (
-              PARTITION BY thread_id
-              ORDER BY
-                CASE WHEN actor_user_id = $2 THEN 0 ELSE 1 END ASC,
-                updated_at_unix_ms DESC
-            ) AS row_rank
-          FROM workbook_chat_thread
-          WHERE workbook_id = $1
-            AND (actor_user_id = $2 OR scope = 'shared')
-        ) AS ranked
-        WHERE ranked.row_rank = 1
-      ) AS thread
-      LEFT JOIN (
-        SELECT workbook_id, thread_id, actor_user_id, COUNT(*)::integer AS entry_count
-        FROM workbook_chat_item
-        GROUP BY workbook_id, thread_id, actor_user_id
-      ) AS item_counts
-        ON item_counts.workbook_id = thread.workbook_id
-       AND item_counts.thread_id = thread.thread_id
-       AND item_counts.actor_user_id = thread.actor_user_id
-      LEFT JOIN (
-        SELECT workbook_id, thread_id, actor_user_id, COUNT(*)::integer AS review_queue_item_count
-        FROM workbook_review_queue_item
-        GROUP BY workbook_id, thread_id, actor_user_id
-      ) AS review_counts
-        ON review_counts.workbook_id = thread.workbook_id
-       AND review_counts.thread_id = thread.thread_id
-       AND review_counts.actor_user_id = thread.actor_user_id
-      LEFT JOIN LATERAL (
-        SELECT text
-        FROM workbook_chat_item
-        WHERE workbook_id = thread.workbook_id
-          AND thread_id = thread.thread_id
-          AND actor_user_id = thread.actor_user_id
-          AND text IS NOT NULL
-        ORDER BY sort_order DESC
-        LIMIT 1
-      ) AS latest_item
-        ON TRUE
-      WHERE thread.workbook_id = $1
-        AND (thread.actor_user_id = $2 OR thread.scope = 'shared')
-      ORDER BY thread.updated_at_unix_ms DESC
+        thread_id AS "threadId",
+        actor_user_id AS "actorUserId",
+        COUNT(*)::integer AS "reviewQueueItemCount"
+      FROM workbook_review_queue_item
+      WHERE workbook_id = $1
+        AND (actor_user_id = ANY($2::text[]))
+      GROUP BY thread_id, actor_user_id
     `,
-    [input.documentId, input.actorUserId],
+    [input.documentId, [...new Set(visibleThreads.map((thread) => thread.actorUserId))]],
   )
-  return result.rows.map((row) => normalizeThreadSummary(row)).filter((row): row is WorkbookAgentThreadSummary => row !== null)
+  const reviewCountsByThreadKey = new Map(
+    reviewCountResult.rows.flatMap((row) =>
+      typeof row.threadId === 'string' && typeof row.actorUserId === 'string'
+        ? [[`${row.threadId}\u0000${row.actorUserId}`, row] as const]
+        : [],
+    ),
+  )
+  return visibleThreads
+    .map((thread) => normalizeThreadSummary(thread, reviewCountsByThreadKey.get(`${thread.threadId}\u0000${thread.actorUserId}`)))
+    .filter((row): row is WorkbookAgentThreadSummary => row !== null)
 }

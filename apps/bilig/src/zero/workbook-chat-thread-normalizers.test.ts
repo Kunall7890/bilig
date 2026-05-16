@@ -3,6 +3,7 @@ import {
   isWorkbookAgentUiContext,
   normalizeThreadSummary,
   normalizeTimelineEntry,
+  normalizeZeroWorkbookChatThread,
   parseNumericValue,
 } from './workbook-chat-thread-normalizers.js'
 
@@ -23,24 +24,27 @@ describe('workbook-chat-thread-normalizers', () => {
 
   it('rejects summaries with malformed numeric fields', () => {
     expect(
-      normalizeThreadSummary({
-        threadId: 'thr-1',
-        scope: 'private',
-        ownerUserId: 'alex@example.com',
-        updatedAtUnixMs: '200x',
-        entryCount: '3',
-        reviewQueueItemCount: '0',
-        latestEntryText: 'Done',
-      }),
+      normalizeThreadSummary(
+        {
+          workbookId: 'doc-1',
+          threadId: 'thr-1',
+          scope: 'private',
+          actorUserId: 'alex@example.com',
+          updatedAtUnixMs: 200,
+          entryCount: 3,
+          latestEntryText: 'Done',
+        },
+        { reviewQueueItemCount: '0x' },
+      ),
     ).toBeNull()
     expect(
-      normalizeThreadSummary({
+      normalizeZeroWorkbookChatThread({
+        workbookId: 'doc-1',
         threadId: 'thr-1',
         scope: 'private',
         ownerUserId: 'alex@example.com',
-        updatedAtUnixMs: '200',
-        entryCount: '-1',
-        reviewQueueItemCount: '0',
+        updatedAtUnixMs: 200,
+        entryCount: -1,
         latestEntryText: 'Done',
       }),
     ).toBeNull()

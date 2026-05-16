@@ -47,6 +47,7 @@ import {
   listWorkbookAgentRuns,
 } from './workbook-agent-run-store.js'
 import {
+  createWorkbookChatThreadStoreConnection,
   ensureWorkbookChatThreadSchema,
   listWorkbookAgentThreadSummaries,
   loadWorkbookAgentThreadState,
@@ -445,7 +446,7 @@ class EnabledZeroSyncService implements ZeroSyncService {
   }
 
   async listWorkbookAgentThreadSummaries(documentId: string, actorUserId: string): Promise<WorkbookAgentThreadSummary[]> {
-    return await listWorkbookAgentThreadSummaries(this.pool, {
+    return await listWorkbookAgentThreadSummaries(createWorkbookChatThreadStoreConnection(this.runtimeStore), {
       documentId,
       actorUserId,
     })
@@ -456,7 +457,7 @@ class EnabledZeroSyncService implements ZeroSyncService {
     actorUserId: string,
     threadId: string,
   ): Promise<WorkbookAgentThreadStateRecord | null> {
-    return await loadWorkbookAgentThreadState(this.pool, {
+    return await loadWorkbookAgentThreadState(createWorkbookChatThreadStoreConnection(this.runtimeStore), {
       documentId,
       actorUserId,
       threadId,
