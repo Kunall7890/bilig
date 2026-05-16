@@ -355,59 +355,34 @@ Postgres/Redis/object-storage adapter pass:
   active feedback loops visible beside stars, npm demand, contributor
   queue health, and traffic.
 
-Latest README conversion snapshot on May 14, 2026:
-
-- GitHub surface: `23` stars, `13` forks, `106` open issues, and `106` open
-  `good first issue`, `first-timers-only`, and `help wanted` issues.
-- npm surface: `@bilig/headless@0.14.5`, with `15,592` downloads last week and
-  `23,240` downloads in the last 30 days.
-- README and npm README conversion surface: both now put the empty-directory
-  npm evaluation before fit tables, proof notes, and navigation links. The
-  first visible command path installs `@bilig/headless`, runs the maintained
-  TypeScript evaluation, edits an input, verifies the dependent formula, saves
-  the WorkPaper JSON document, restores it, and checks the value again.
-- Feedback surface: discussion `#340` now has a maintainer update tying the
-  homepage proof rewrite to the benchmark caveat and asking which missing
-  workload would change a real adoption decision:
-  <https://github.com/proompteng/bilig/discussions/340#discussioncomment-16915578>
-
-Latest conversion-feedback action on May 14, 2026:
-
-- Live demand signal: `@bilig/headless@0.14.5` has `15,592` npm downloads in
-  the latest weekly window, and GitHub traffic reports `20,066` clones from
-  `2,270` unique cloners.
-- Lagging conversion signal: the repository still has `23` GitHub stars, so
-  the next public ask is about what blocks a real trial instead of asking for
-  empty stars.
-- Feedback surface: discussion `#157` now has a maintainer update asking
-  people who tried or considered the package what made them stop, with prompts
-  for missing formulas, XLSX expectations, framework examples, benchmark
-  shape, persistence API shape, MCP read/write contracts, and README first-90s
-  gaps:
-  <https://github.com/proompteng/bilig/discussions/157#discussioncomment-16920401>
-
 Latest conversion snapshot on May 16, 2026:
 
 - GitHub surface: `23` stars, `16` forks, `116` open issues, and `5` open
   pull requests. The star gap is still `977`.
-- npm surface: `@bilig/headless@0.14.26`, with `14,980` downloads in the
+- npm surface: `@bilig/headless@0.16.0`, with `14,980` downloads in the
   latest weekly window and `27,080` downloads in the latest monthly window.
 - Traffic surface: GitHub reports `528` views from `178` unique visitors and
   `21,402` clones from `2,534` unique cloners. The strongest referrers are
   GitHub, Hacker News, X, the project site, Google, Kagi, Reddit, and
   goodfirstissues.com.
+- Contributor-funnel action: the public issue queue now has `9` open
+  `good first issue`, `first-timers-only`, and `help wanted` starter issues,
+  all non-documentation tasks. Documentation-only starter labels were removed
+  from the evaluator path.
 - Funnel read: cloning and npm demand are much stronger than stars. The public
   ask should stay concrete: try the npm smoke test, compare the compatibility
   limits, star/bookmark only if the workflow is relevant, and tell us what
   blocked a real adoption decision.
+- Feedback surface: discussion `#157` keeps the conversion ask in one place for
+  people who tried or considered the package and stopped:
+  <https://github.com/proompteng/bilig/discussions/157#discussioncomment-16920401>
 - Site conversion action: the homepage final action now links directly to the
   star page beside npm install and GitHub, and the docs index links to the live
   community growth snapshot so visitors can inspect the current public signals.
 - MCP registry action: the official MCP Registry was refreshed to
-  `@bilig/headless@0.14.26` with workflow run
-  <https://github.com/proompteng/bilig/actions/runs/25949339848>. Live API
-  verification returned `13` Bilig WorkPaper entries and marked `0.14.26` as
-  latest.
+  `@bilig/headless@0.16.0` with workflow run
+  <https://github.com/proompteng/bilig/actions/runs/25955213169>. Live API
+  verification marked `0.16.0` as the latest Bilig WorkPaper server package.
 
 Latest contributor-funnel action on May 14, 2026:
 
@@ -567,7 +542,7 @@ something.
 
 ### 2. Turn Benchmarks Into A Distribution Loop
 
-The `46/46` WorkPaper mean-win claim should become small, quotable artifacts:
+The `48/57` WorkPaper mean-win claim should become small, quotable artifacts:
 
 - one chart image for X, Bluesky, LinkedIn, and README embeds:
   [`docs/assets/workpaper-benchmark-card.png`](assets/workpaper-benchmark-card.png)
@@ -666,9 +641,9 @@ https://github.com/proompteng/bilig#try-it-in-90-seconds
 It edits an input, reads the recalculated value, saves WorkPaper JSON, restores
 it, and checks the value again.
 
-3/ Benchmark caveat is public too: 46/46 comparable mean-latency rows are faster
-in the checked file, one duplicate-lookup p95 row is slower, and UI rendering is
-not part of the benchmark.
+3/ Benchmark caveat is public too: 48/57 comparable mean-latency rows are faster
+in the checked file, structural-append-formula-rows is the visible p95 holdout,
+and UI rendering is not part of the benchmark.
 
 4/ Question for people who automate spreadsheets from services or agents: what
 workflow would you need to see before trying a new headless workbook engine?
@@ -703,9 +678,10 @@ logic but opening a browser grid is the wrong runtime boundary. It is not an
 Excel clone, and the compatibility limits are documented:
 https://github.com/proompteng/bilig/blob/main/docs/where-bilig-is-not-excel-compatible-yet.md
 
-The benchmark claim is intentionally narrow: the checked artifact has 46/46
-comparable mean-latency wins against HyperFormula-style workloads, one duplicate
-lookup p95 row is slower, and UI rendering is not part of the benchmark.
+The benchmark claim is intentionally narrow: the checked artifact has 48/57
+comparable mean-latency wins against HyperFormula-style workloads,
+structural-append-formula-rows is the visible p95 holdout, and UI rendering is
+not part of the benchmark.
 
 If you automate spreadsheets from Node, what workflow or formula family would
 make or break a real trial?
