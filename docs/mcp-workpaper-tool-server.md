@@ -139,6 +139,12 @@ File-backed mode loads `./pricing.workpaper.json`, exposes `list_sheets`,
 WorkPaper JSON back to the same file after `set_cell_contents` when `--writable`
 is present. Omit `--writable` for read-only inspection.
 
+Every file-backed tool includes an MCP `outputSchema`, parameter descriptions,
+and safety annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`,
+and `openWorldHint`). That is deliberate: directory scanners and coding agents
+should be able to pick the workbook read, write, display, export, or formula
+validation tool without treating the description as a vague demo.
+
 Use the maintained file-backed transcript when a directory reviewer or agent
 builder needs proof that the packaged binary mutates a real WorkPaper JSON file:
 

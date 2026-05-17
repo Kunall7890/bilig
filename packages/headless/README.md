@@ -28,6 +28,11 @@ The npm tarball also includes `AGENTS.md` so coding agents inspecting
 `node_modules/@bilig/headless` can find the write/read/persist loop without
 leaving the package.
 
+The `bilig-workpaper-mcp` binary exposes file-backed WorkPaper tools with
+explicit parameter descriptions, `outputSchema` metadata, and MCP safety
+annotations, so clients and directories can see which calls read, write,
+persist, or validate workbook state before an agent invokes them.
+
 This package is not a browser grid, desktop Excel automation, or a source of
 truth for stale XLSX cached formula values. XLSX import/export is available from
 the `@bilig/headless/xlsx` subpath for services that need workbook ingestion

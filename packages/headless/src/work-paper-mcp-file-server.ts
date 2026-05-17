@@ -61,6 +61,7 @@ interface WorkPaperMcpToolDefinition {
   title: string
   description: string
   inputSchema: JsonObject
+  outputSchema: JsonObject
   annotations: WorkPaperMcpToolAnnotations
 }
 
@@ -148,25 +149,80 @@ function createFileBackedToolDefinitions(writable: boolean): WorkPaperMcpToolDef
     {
       name: 'list_sheets',
       title: 'List WorkPaper Sheets',
-      description: 'List sheets and their current used dimensions.',
+      description:
+        'Discover sheet names and used dimensions before reading or editing a WorkPaper. Returns metadata only; use read_range or read_cell for values.',
       inputSchema: emptySchema(),
+      outputSchema: {
+        type: 'object',
+        required: ['writable', 'sheets'],
+        properties: {
+          sourcePath: {
+            type: 'string',
+            description: 'Absolute JSON file path when the server was started with --workpaper.',
+          },
+          writable: {
+            type: 'boolean',
+            description: 'Whether set_cell_contents persists edits back to the source JSON file.',
+          },
+          sheets: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['id', 'name', 'dimensions'],
+              properties: {
+                id: {
+                  type: 'number',
+                },
+                name: {
+                  type: 'string',
+                },
+                dimensions: {
+                  type: 'object',
+                  description: 'Current used rows and columns for the sheet.',
+                },
+              },
+            },
+          },
+        },
+        additionalProperties: false,
+      },
       annotations: readOnlyAnnotation('List WorkPaper Sheets'),
     },
     {
       name: 'read_range',
       title: 'Read WorkPaper Range',
-      description: 'Read evaluated values and serialized cell contents for a WorkPaper range.',
+      description:
+        'Read calculated values plus serialized formulas/inputs for an A1 range. Use for audit readback after edits; use read_cell for one address.',
       inputSchema: {
         type: 'object',
         required: ['range'],
         properties: {
           range: {
             type: 'string',
-            description: 'A1 range. Include a sheet name or pass sheetName separately.',
+            description: 'A1 range such as Summary!A1:B5. If omitted from the range, pass sheetName separately.',
           },
           sheetName: {
             type: 'string',
-            description: 'Default sheet name when range omits a sheet name.',
+            description: 'Default sheet name when range omits a sheet name, for example Summary.',
+          },
+        },
+        additionalProperties: false,
+      },
+      outputSchema: {
+        type: 'object',
+        required: ['range', 'values', 'serialized'],
+        properties: {
+          range: {
+            type: 'string',
+            description: 'Canonical A1 range including the sheet name.',
+          },
+          values: {
+            type: 'array',
+            description: 'Two-dimensional array of evaluated cell values.',
+          },
+          serialized: {
+            type: 'array',
+            description: 'Two-dimensional array of raw serialized cell contents, including formulas.',
           },
         },
         additionalProperties: false,
@@ -176,29 +232,77 @@ function createFileBackedToolDefinitions(writable: boolean): WorkPaperMcpToolDef
     {
       name: 'read_cell',
       title: 'Read WorkPaper Cell',
-      description: 'Read one cell with evaluated value, display value, formula, and serialized content.',
+      description:
+        'Read one cell with calculated value, display text, formula text, and serialized content. Use after set_cell_contents to verify readback.',
       inputSchema: cellAddressSchema(['sheetName', 'address']),
+      outputSchema: cellReadOutputSchema(),
       annotations: readOnlyAnnotation('Read WorkPaper Cell'),
     },
     {
       name: 'set_cell_contents',
       title: 'Set WorkPaper Cell Contents',
       description: writable
-        ? 'Set one cell, recalculate dependents, and persist the updated WorkPaper JSON file.'
-        : 'Set one cell in memory. Start with --writable to persist the updated WorkPaper JSON file.',
+        ? 'Write raw content to one cell, recalculate dependents, atomically persist the WorkPaper JSON file, and return before/after/restored readback.'
+        : 'Write raw content to one cell and recalculate dependents in memory only. Start with --writable when the edit should persist to JSON.',
       inputSchema: {
         type: 'object',
         required: ['sheetName', 'address', 'value'],
         properties: {
           sheetName: {
             type: 'string',
+            description: 'Existing sheet name, for example Inputs.',
           },
           address: {
             type: 'string',
+            description: 'Single A1 cell address such as B3. Ranges are not accepted.',
           },
           value: {
             type: ['string', 'number', 'boolean', 'null'],
-            description: 'Raw cell content. Formula strings must start with =.',
+            description: 'Raw cell content. Formula strings must start with =; plain strings are stored as literals.',
+          },
+        },
+        additionalProperties: false,
+      },
+      outputSchema: {
+        type: 'object',
+        required: ['editedCell', 'before', 'after', 'restored', 'persistence', 'checks'],
+        properties: {
+          editedCell: {
+            type: 'string',
+            description: 'Canonical sheet-qualified address that was edited.',
+          },
+          before: cellReadOutputSchema(),
+          after: cellReadOutputSchema(),
+          restored: cellReadOutputSchema(),
+          persistence: {
+            type: 'object',
+            required: ['persisted', 'serializedBytes'],
+            properties: {
+              persisted: {
+                type: 'boolean',
+              },
+              path: {
+                type: 'string',
+              },
+              serializedBytes: {
+                type: 'number',
+              },
+            },
+          },
+          checks: {
+            type: 'object',
+            required: ['persisted', 'restoredMatchesAfter', 'previousSerialized', 'newSerialized'],
+            properties: {
+              persisted: {
+                type: 'boolean',
+              },
+              restoredMatchesAfter: {
+                type: 'boolean',
+                description: 'True when exported and re-imported JSON preserves the edited cell readback.',
+              },
+              previousSerialized: rawCellContentSchema(),
+              newSerialized: rawCellContentSchema(),
+            },
           },
         },
         additionalProperties: false,
@@ -214,20 +318,53 @@ function createFileBackedToolDefinitions(writable: boolean): WorkPaperMcpToolDef
     {
       name: 'get_cell_display_value',
       title: 'Get WorkPaper Cell Display Value',
-      description: 'Return the formatted display value for one cell.',
+      description:
+        'Return the formatted display string for one cell. Use when an agent needs what a user would see, not the raw numeric value.',
       inputSchema: cellAddressSchema(['sheetName', 'address']),
+      outputSchema: {
+        type: 'object',
+        required: ['address', 'displayValue'],
+        properties: {
+          address: {
+            type: 'string',
+          },
+          displayValue: {
+            type: 'string',
+          },
+        },
+        additionalProperties: false,
+      },
       annotations: readOnlyAnnotation('Get WorkPaper Cell Display Value'),
     },
     {
       name: 'export_workpaper_document',
       title: 'Export WorkPaper Document',
-      description: 'Export the current WorkPaper JSON document.',
+      description:
+        'Export the current WorkPaper JSON document for persistence, review, or handoff to another agent. Does not write files by itself.',
       inputSchema: {
         type: 'object',
         properties: {
           includeConfig: {
             type: 'boolean',
             default: true,
+            description: 'Include workbook configuration metadata in the exported JSON. Defaults to true.',
+          },
+        },
+        additionalProperties: false,
+      },
+      outputSchema: {
+        type: 'object',
+        required: ['document', 'serializedBytes'],
+        properties: {
+          sourcePath: {
+            type: 'string',
+          },
+          document: {
+            type: 'object',
+            description: 'Persisted WorkPaper JSON document.',
+          },
+          serializedBytes: {
+            type: 'number',
           },
         },
         additionalProperties: false,
@@ -237,14 +374,28 @@ function createFileBackedToolDefinitions(writable: boolean): WorkPaperMcpToolDef
     {
       name: 'validate_formula',
       title: 'Validate WorkPaper Formula',
-      description: 'Validate formula syntax using the WorkPaper formula parser.',
+      description:
+        'Validate formula syntax with the WorkPaper parser before writing it to a cell. This checks syntax only; use set_cell_contents plus readback to evaluate.',
       inputSchema: {
         type: 'object',
         required: ['formula'],
         properties: {
           formula: {
             type: 'string',
-            description: 'Formula string, including the leading =.',
+            description: 'Formula string including the leading =, for example =SUM(Inputs!B2:B4).',
+          },
+        },
+        additionalProperties: false,
+      },
+      outputSchema: {
+        type: 'object',
+        required: ['formula', 'valid'],
+        properties: {
+          formula: {
+            type: 'string',
+          },
+          valid: {
+            type: 'boolean',
           },
         },
         additionalProperties: false,
@@ -367,7 +518,7 @@ function readCell(workbook: WorkPaper, address: WorkPaperCellAddress): JsonObjec
     address: workbook.simpleCellAddressToString(address, { includeSheetName: true }),
     value,
     serialized: workbook.getCellSerialized(address),
-    formula: workbook.getCellFormula(address),
+    formula: workbook.getCellFormula(address) ?? null,
     displayValue: formatCellDisplayValue(value, format),
   }
 }
@@ -498,12 +649,47 @@ function cellAddressSchema(required: string[]): JsonObject {
     properties: {
       sheetName: {
         type: 'string',
+        description: 'Existing sheet name.',
       },
       address: {
         type: 'string',
+        description: 'Single A1 cell address such as B3.',
       },
     },
     additionalProperties: false,
+  }
+}
+
+function cellReadOutputSchema(): JsonObject {
+  return {
+    type: 'object',
+    required: ['address', 'value', 'serialized', 'formula', 'displayValue'],
+    properties: {
+      address: {
+        type: 'string',
+        description: 'Canonical sheet-qualified A1 address.',
+      },
+      value: {
+        description: 'Calculated cell value.',
+      },
+      serialized: rawCellContentSchema(),
+      formula: {
+        type: ['string', 'null'],
+        description: 'Formula text without losing the original calculated value context, or null for literal cells.',
+      },
+      displayValue: {
+        type: 'string',
+        description: 'Formatted value as a user would see it.',
+      },
+    },
+    additionalProperties: false,
+  }
+}
+
+function rawCellContentSchema(): JsonObject {
+  return {
+    type: ['string', 'number', 'boolean', 'null'],
+    description: 'Raw serialized cell content; formulas are strings that start with =.',
   }
 }
 

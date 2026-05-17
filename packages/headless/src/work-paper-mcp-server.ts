@@ -30,6 +30,7 @@ interface WorkPaperMcpToolDefinition {
   title: string
   description: string
   inputSchema: JsonObject
+  outputSchema: JsonObject
   annotations: WorkPaperMcpToolAnnotations
 }
 
@@ -175,14 +176,33 @@ function createWorkPaperMcpToolServer(workbook: WorkPaper): WorkPaperMcpToolServ
     {
       name: 'read_workpaper_summary',
       title: 'Read WorkPaper Summary',
-      description: 'Read computed WorkPaper summary values for a small range.',
+      description:
+        'Read calculated demo WorkPaper summary values and serialized formula contents. Use this read-only tool to verify workbook formulas without opening Excel.',
       inputSchema: {
         type: 'object',
         properties: {
           range: {
             type: 'string',
-            description: 'A1 range with an optional sheet name.',
+            description: 'A1 range with an optional sheet name. Defaults to Summary!A1:B5.',
             default: 'Summary!A1:B5',
+          },
+        },
+        additionalProperties: false,
+      },
+      outputSchema: {
+        type: 'object',
+        required: ['range', 'values', 'serialized'],
+        properties: {
+          range: {
+            type: 'string',
+          },
+          values: {
+            type: 'array',
+            description: 'Two-dimensional array of calculated values.',
+          },
+          serialized: {
+            type: 'array',
+            description: 'Two-dimensional array of serialized literals and formulas.',
           },
         },
         additionalProperties: false,
@@ -198,7 +218,8 @@ function createWorkPaperMcpToolServer(workbook: WorkPaper): WorkPaperMcpToolServ
     {
       name: 'set_workpaper_input_cell',
       title: 'Set WorkPaper Input Cell',
-      description: 'Set one validated WorkPaper input cell and return formula readback.',
+      description:
+        'Set one demo Inputs cell, recalculate dependent formulas, then return before/after/restored readback. Use only for the packaged demo workbook.',
       inputSchema: {
         type: 'object',
         required: ['sheetName', 'address', 'value'],
@@ -206,13 +227,68 @@ function createWorkPaperMcpToolServer(workbook: WorkPaper): WorkPaperMcpToolServ
           sheetName: {
             type: 'string',
             const: 'Inputs',
+            description: 'Must be Inputs for the packaged demo workbook.',
           },
           address: {
             type: 'string',
-            description: 'A1 cell address in the Inputs sheet.',
+            description: 'Single A1 cell address in the Inputs sheet, for example B3.',
           },
           value: {
             type: ['string', 'number', 'boolean', 'null'],
+            description: 'Raw replacement value. Formula strings must start with =.',
+          },
+        },
+        additionalProperties: false,
+      },
+      outputSchema: {
+        type: 'object',
+        required: ['editedCell', 'before', 'after', 'restored', 'formulaContracts', 'checks'],
+        properties: {
+          editedCell: {
+            type: 'string',
+          },
+          before: workPaperSummaryOutputSchema(),
+          after: workPaperSummaryOutputSchema(),
+          restored: workPaperSummaryOutputSchema(),
+          formulaContracts: {
+            type: 'object',
+            required: ['expectedCustomers', 'expectedArr', 'expansionArr', 'targetGap'],
+            properties: {
+              expectedCustomers: {
+                type: 'string',
+              },
+              expectedArr: {
+                type: 'string',
+              },
+              expansionArr: {
+                type: 'string',
+              },
+              targetGap: {
+                type: 'string',
+              },
+            },
+            additionalProperties: false,
+          },
+          checks: {
+            type: 'object',
+            required: ['previousValue', 'newValue', 'formulasPersisted', 'restoredMatchesAfter', 'expectedArrChanged', 'serializedBytes'],
+            properties: {
+              previousValue: rawCellContentSchema(),
+              newValue: rawCellContentSchema(),
+              formulasPersisted: {
+                type: 'boolean',
+              },
+              restoredMatchesAfter: {
+                type: 'boolean',
+              },
+              expectedArrChanged: {
+                type: 'boolean',
+              },
+              serializedBytes: {
+                type: 'number',
+              },
+            },
+            additionalProperties: false,
           },
         },
         additionalProperties: false,
@@ -455,6 +531,35 @@ function readFormula(workpaper: WorkPaper, sheet: number, row: number, col: numb
     throw new Error(`Expected ${label} to be a formula`)
   }
   return formula
+}
+
+function workPaperSummaryOutputSchema(): JsonObject {
+  return {
+    type: 'object',
+    required: ['expectedCustomers', 'expectedArr', 'expansionArr', 'targetGap'],
+    properties: {
+      expectedCustomers: {
+        type: 'number',
+      },
+      expectedArr: {
+        type: 'number',
+      },
+      expansionArr: {
+        type: 'number',
+      },
+      targetGap: {
+        type: 'number',
+      },
+    },
+    additionalProperties: false,
+  }
+}
+
+function rawCellContentSchema(): JsonObject {
+  return {
+    type: ['string', 'number', 'boolean', 'null'],
+    description: 'Raw serialized cell content; formulas are strings that start with =.',
+  }
 }
 
 function serializeWorkbook(workpaper: WorkPaper): string {

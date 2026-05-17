@@ -116,6 +116,9 @@ describe('WorkPaper MCP server', () => {
     expect(output.listResponse.result.tools).toEqual([
       expect.objectContaining({
         title: 'Read WorkPaper Summary',
+        outputSchema: expect.objectContaining({
+          required: ['range', 'values', 'serialized'],
+        }),
         annotations: {
           title: 'Read WorkPaper Summary',
           readOnlyHint: true,
@@ -126,6 +129,9 @@ describe('WorkPaper MCP server', () => {
       }),
       expect.objectContaining({
         title: 'Set WorkPaper Input Cell',
+        outputSchema: expect.objectContaining({
+          required: ['editedCell', 'before', 'after', 'restored', 'formulaContracts', 'checks'],
+        }),
         annotations: {
           title: 'Set WorkPaper Input Cell',
           readOnlyHint: false,
@@ -197,6 +203,17 @@ describe('WorkPaper MCP server', () => {
       'export_workpaper_document',
       'validate_formula',
     ])
+    expect(readToolOutputSchemaRequired(tools.result, 'list_sheets')).toEqual(['writable', 'sheets'])
+    expect(readToolOutputSchemaRequired(tools.result, 'read_cell')).toEqual(['address', 'value', 'serialized', 'formula', 'displayValue'])
+    expect(readToolOutputSchemaRequired(tools.result, 'set_cell_contents')).toEqual([
+      'editedCell',
+      'before',
+      'after',
+      'restored',
+      'persistence',
+      'checks',
+    ])
+    expect(readToolOutputSchemaRequired(tools.result, 'validate_formula')).toEqual(['formula', 'valid'])
 
     const read = server.handleJsonRpc({
       jsonrpc: '2.0',
@@ -422,6 +439,28 @@ function readToolNames(value: unknown): string[] {
       throw new Error(`Expected MCP tool definition, received ${JSON.stringify(tool)}`)
     }
     return tool['name']
+  })
+}
+
+function readToolOutputSchemaRequired(value: unknown, toolName: string): string[] {
+  if (!isRecord(value) || !Array.isArray(value['tools'])) {
+    throw new Error(`Expected tools/list result, received ${JSON.stringify(value)}`)
+  }
+
+  const tool = value['tools'].find((candidate) => isRecord(candidate) && candidate['name'] === toolName)
+  if (!isRecord(tool)) {
+    throw new Error(`Expected ${toolName} tool definition, received ${JSON.stringify(value)}`)
+  }
+
+  const outputSchema = tool['outputSchema']
+  if (!isRecord(outputSchema) || !Array.isArray(outputSchema['required'])) {
+    throw new Error(`Expected ${toolName} output schema, received ${JSON.stringify(tool)}`)
+  }
+  return outputSchema['required'].map((item) => {
+    if (typeof item !== 'string') {
+      throw new Error(`Expected ${toolName} output required item to be a string, received ${JSON.stringify(item)}`)
+    }
+    return item
   })
 }
 
