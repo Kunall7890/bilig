@@ -139,6 +139,15 @@ export function useWorkbookAgentContextSync(input: {
     if (lastContextKeyRef.current === nextContextKey) {
       return
     }
+    const pendingContextSync = pendingContextSyncRef.current
+    if (
+      pendingContextSync &&
+      isPendingContextSyncCurrent(pendingContextSync) &&
+      pendingContextSync.key === nextContextKey &&
+      pendingContextSync.immediateKey === nextImmediateContextKey
+    ) {
+      return
+    }
     pendingContextSyncRef.current = {
       context: nextContext,
       generation: contextSyncGenerationRef.current,
@@ -164,6 +173,7 @@ export function useWorkbookAgentContextSync(input: {
     input.getContextRef,
     input.sessionRef,
     input.snapshot,
+    isPendingContextSyncCurrent,
     resolveContextSyncDelay,
   ])
 

@@ -126,4 +126,71 @@ describe('useWorkbookAgentContextSync', () => {
       })
     }
   })
+
+  it('does not keep pushing the first context sync back when the same context is scheduled repeatedly', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    vi.useFakeTimers()
+
+    const syncThreadContext = vi.fn(async () => {})
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+
+    function Harness() {
+      const [renderCount, setRenderCount] = useState(0)
+      const contextRef = useRef(createContext('A1'))
+      const sessionRef = useRef({ threadId: 'thr-1' })
+      const getContextRef = useRef(() => contextRef.current)
+      const snapshot = useMemo(createSnapshot, [])
+      const { scheduleContextSync } = useWorkbookAgentContextSync({
+        client: { syncThreadContext },
+        documentId: 'doc-1',
+        enabled: true,
+        getContextRef,
+        sessionRef,
+        snapshot,
+      })
+
+      useEffect(() => {
+        scheduleContextSync()
+      })
+
+      return (
+        <button data-testid="rerender" type="button" onClick={() => setRenderCount((current) => current + 1)}>
+          {renderCount}
+        </button>
+      )
+    }
+
+    try {
+      await act(async () => {
+        root.render(<Harness />)
+      })
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(100)
+      })
+
+      await act(async () => {
+        const button = host.querySelector<HTMLButtonElement>("[data-testid='rerender']")
+        button?.click()
+        button?.click()
+        button?.click()
+      })
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(60)
+      })
+
+      expect(syncThreadContext).toHaveBeenCalledTimes(1)
+      expect(syncThreadContext).toHaveBeenLastCalledWith(
+        'thr-1',
+        expect.objectContaining({ selection: { sheetName: 'Sheet1', address: 'A1' } }),
+      )
+    } finally {
+      await act(async () => {
+        root.unmount()
+      })
+    }
+  })
 })

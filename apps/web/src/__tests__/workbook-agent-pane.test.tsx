@@ -2992,7 +2992,7 @@ describe('workbook agent pane', () => {
     }
   })
 
-  it('coalesces rapid rendered context changes instead of flooding context sync requests', async () => {
+  it('does not resync workbook context only because rendered proof revisions change', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
     window.sessionStorage.setItem(
       'bilig:workbook-agent:doc-1',
@@ -3058,11 +3058,11 @@ describe('workbook agent pane', () => {
         await new Promise((resolve) => setTimeout(resolve, 900))
       })
 
-      expect(contextCalls()).toHaveLength(2)
-      expect(requestBody(contextCalls()[1]?.[1])).toMatchObject({
+      expect(contextCalls()).toHaveLength(1)
+      expect(requestBody(contextCalls()[0]?.[1])).toMatchObject({
         context: {
           rendered: {
-            capturedRevision: 12,
+            capturedRevision: 7,
           },
         },
       })

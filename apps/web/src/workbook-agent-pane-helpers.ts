@@ -56,7 +56,6 @@ export function stringifyWorkbookAgentContextSyncKey(context: WorkbookAgentUiCon
       rendered === undefined
         ? null
         : {
-            capturedRevision: rendered.capturedRevision ?? null,
             selection: normalizeRenderedRangeForContextSyncKey(rendered.selection),
             visibleRange: normalizeRenderedRangeForContextSyncKey(rendered.visibleRange),
           },
