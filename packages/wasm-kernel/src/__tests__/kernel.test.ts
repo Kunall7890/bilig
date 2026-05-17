@@ -3100,6 +3100,59 @@ describe('wasm kernel', () => {
     ])
   })
 
+  it('evaluates metadata and ARRAYTOTEXT over dynamic array results on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(24, 8, 1, 4, 16)
+    kernel.uploadStrings(Uint32Array.from([0, 0, 1]), Uint32Array.from([0, 1, 1]), asciiCodes('xy'))
+    kernel.writeCells(
+      new Uint8Array([
+        ValueTag.Number,
+        ValueTag.String,
+        ValueTag.Number,
+        ValueTag.Boolean,
+        ValueTag.Empty,
+        ValueTag.String,
+        ...Array.from({ length: 18 }, () => ValueTag.Empty),
+      ]),
+      new Float64Array([1, 0, 3, 1, 0, 0, ...Array.from({ length: 18 }, () => 0)]),
+      new Uint32Array([0, 1, 0, 0, 0, 2, ...Array.from({ length: 18 }, () => 0)]),
+      new Uint16Array(24),
+    )
+    kernel.uploadRangeMembers(Uint32Array.from([0, 1, 2, 3, 4, 5]), Uint32Array.from([0]), Uint32Array.from([6]))
+    kernel.uploadRangeShapes(Uint32Array.from([2]), Uint32Array.from([3]))
+
+    const takeArrayProgram = [encodePushRange(0), encodePushNumber(0), encodePushNumber(1), encodeCall(BUILTIN.TAKE, 3)]
+    const packed = packPrograms([
+      [...takeArrayProgram, encodeCall(BUILTIN.ROWS, 1), encodeRet()],
+      [...takeArrayProgram, encodeCall(BUILTIN.COLUMNS, 1), encodeRet()],
+      [...takeArrayProgram, encodeCall(BUILTIN.ARRAYTOTEXT, 1), encodeRet()],
+      [...takeArrayProgram, encodePushNumber(2), encodeCall(BUILTIN.ARRAYTOTEXT, 2), encodeRet()],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from([cellIndex(3, 0, width), cellIndex(3, 1, width), cellIndex(3, 2, width), cellIndex(3, 3, width)]),
+    )
+    const constants = packConstants([
+      [2, 2],
+      [2, 2],
+      [2, 2],
+      [2, 2, 1],
+    ])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from([cellIndex(3, 0, width), cellIndex(3, 1, width), cellIndex(3, 2, width), cellIndex(3, 3, width)]))
+
+    expect(kernel.readTags()[cellIndex(3, 0, width)]).toBe(ValueTag.Number)
+    expect(kernel.readNumbers()[cellIndex(3, 0, width)]).toBe(2)
+    expect(kernel.readTags()[cellIndex(3, 1, width)]).toBe(ValueTag.Number)
+    expect(kernel.readNumbers()[cellIndex(3, 1, width)]).toBe(2)
+    expect(kernel.readTags()[cellIndex(3, 2, width)]).toBe(ValueTag.String)
+    expect(kernel.readTags()[cellIndex(3, 3, width)]).toBe(ValueTag.String)
+    expect(kernel.readOutputStrings()).toEqual(['1\tx;TRUE\t', '{1, "x";TRUE, }'])
+  })
+
   it('evaluates RAND from the uploaded recalc random sequence on the wasm path', async () => {
     const kernel = await createKernel()
     kernel.init(4, 4, 1, 1, 1)

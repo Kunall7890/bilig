@@ -17,6 +17,10 @@ import {
 } from './result-io'
 import { allocateSpillArrayResult, writeSpillArrayValue } from './vm'
 
+function isCellRangeLike(kind: u8): bool {
+  return kind == STACK_KIND_RANGE || kind == STACK_KIND_ARRAY
+}
+
 export function tryApplyArrayInfoBuiltin(
   builtinId: i32,
   argc: i32,
@@ -49,7 +53,7 @@ export function tryApplyArrayInfoBuiltin(
   }
 
   if (builtinId == BuiltinId.Arraytotext && (argc == 1 || argc == 2)) {
-    if (kindStack[base] != STACK_KIND_SCALAR && kindStack[base] != STACK_KIND_RANGE) {
+    if (kindStack[base] != STACK_KIND_SCALAR && !isCellRangeLike(kindStack[base])) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
     let format = 0
@@ -82,9 +86,11 @@ export function tryApplyArrayInfoBuiltin(
       }
       text += cellText
     } else {
-      const rangeIndex = rangeIndexStack[base]
-      const rowCount = <i32>rangeRowCounts[rangeIndex]
-      const colCount = <i32>rangeColCounts[rangeIndex]
+      const rowCount = inputRowsFromSlot(base, kindStack, rangeIndexStack, rangeRowCounts)
+      const colCount = inputColsFromSlot(base, kindStack, rangeIndexStack, rangeColCounts)
+      if (rowCount <= 0 || colCount <= 0 || rowCount == i32.MIN_VALUE || colCount == i32.MIN_VALUE) {
+        return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+      }
       for (let row = 0; row < rowCount; row += 1) {
         if (row > 0) {
           text += ';'
@@ -93,22 +99,41 @@ export function tryApplyArrayInfoBuiltin(
           if (col > 0) {
             text += strict ? ', ' : '\t'
           }
-          const memberIndex = rangeMemberAt(rangeIndex, row, col, rangeOffsets, rangeLengths, rangeRowCounts, rangeColCounts, rangeMembers)
-          if (memberIndex == 0xffffffff) {
-            return writeResult(
+          const cellText = arrayToTextCell(
+            inputCellTag(
               base,
-              STACK_KIND_SCALAR,
-              <u8>ValueTag.Error,
-              ErrorCode.Value,
-              rangeIndexStack,
+              row,
+              col,
+              kindStack,
               valueStack,
               tagStack,
+              rangeIndexStack,
+              rangeOffsets,
+              rangeLengths,
+              rangeRowCounts,
+              rangeColCounts,
+              rangeMembers,
+              cellTags,
+              cellNumbers,
+            ),
+            inputCellScalarValue(
+              base,
+              row,
+              col,
               kindStack,
-            )
-          }
-          const cellText = arrayToTextCell(
-            cellTags[memberIndex],
-            memberScalarValue(memberIndex, cellTags, cellNumbers, cellStringIds, cellErrors),
+              valueStack,
+              tagStack,
+              rangeIndexStack,
+              rangeOffsets,
+              rangeLengths,
+              rangeRowCounts,
+              rangeColCounts,
+              rangeMembers,
+              cellTags,
+              cellNumbers,
+              cellStringIds,
+              cellErrors,
+            ),
             strict,
             stringOffsets,
             stringLengths,
@@ -140,35 +165,25 @@ export function tryApplyArrayInfoBuiltin(
   }
 
   if (builtinId == BuiltinId.Columns && argc == 1) {
-    if (kindStack[base] != STACK_KIND_RANGE) {
+    if (!isCellRangeLike(kindStack[base])) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    return writeResult(
-      base,
-      STACK_KIND_SCALAR,
-      <u8>ValueTag.Number,
-      rangeColCounts[rangeIndexStack[base]],
-      rangeIndexStack,
-      valueStack,
-      tagStack,
-      kindStack,
-    )
+    const cols = inputColsFromSlot(base, kindStack, rangeIndexStack, rangeColCounts)
+    if (cols <= 0 || cols == i32.MIN_VALUE) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, cols, rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
   if (builtinId == BuiltinId.Rows && argc == 1) {
-    if (kindStack[base] != STACK_KIND_RANGE) {
+    if (!isCellRangeLike(kindStack[base])) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    return writeResult(
-      base,
-      STACK_KIND_SCALAR,
-      <u8>ValueTag.Number,
-      rangeRowCounts[rangeIndexStack[base]],
-      rangeIndexStack,
-      valueStack,
-      tagStack,
-      kindStack,
-    )
+    const rows = inputRowsFromSlot(base, kindStack, rangeIndexStack, rangeRowCounts)
+    if (rows <= 0 || rows == i32.MIN_VALUE) {
+      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, rows, rangeIndexStack, valueStack, tagStack, kindStack)
   }
 
   if (builtinId == BuiltinId.Transpose && argc == 1) {
