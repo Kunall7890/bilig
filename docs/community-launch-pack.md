@@ -231,6 +231,9 @@ issue pass:
   with a single production-ready server-list entry for Bilig WorkPaper and
   maintainer-review evidence in the PR body:
   <https://github.com/mctrinh/awesome-mcp-servers/pull/46>
+- External MCP directory surface: MCPRepository has a live Bilig listing with
+  the GitHub repository description mirrored as MCP server copy:
+  <https://mcprepository.com/proompteng/bilig>
 - External MCP marketplace surface: the Cline MCP Marketplace server submission
   issue is open with the GitHub repository, 400px logo, public npm command, and
   verified `tools/list` plus `set_workpaper_input_cell` readback proof:

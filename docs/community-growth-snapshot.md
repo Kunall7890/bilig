@@ -1,6 +1,6 @@
 # Community Growth Snapshot
 
-Captured at: `2026-05-17T10:03:28.765Z`
+Captured at: `2026-05-17T10:40:09.757Z`
 
 This snapshot tracks the public signals for the `@bilig/headless` growth loop: GitHub conversion, npm demand, contributor on-ramp health, discussion activity, and traffic quality.
 
@@ -12,13 +12,13 @@ This snapshot tracks the public signals for the `@bilig/headless` growth loop: G
 - Watchers: 0
 - Open issues: 17
 - Default branch: `main`
-- Topics: `agent-tools`, `excel-formulas`, `formula-engine`, `headless-spreadsheet`, `headless-workbook`, `mcp`, `mcp-server`, `model-context-protocol`, `nodejs`, `spreadsheet`, `spreadsheet-api`, `spreadsheet-automation`, `spreadsheet-engine`, `spreadsheet-formulas`, `typescript`, `vercel-ai-sdk`, `workbook-api`, `workbook-automation`, `xlsx`, `xlsx-recalculation`
+- Topics: `agent-tools`, `excel-formulas`, `formula-engine`, `formula-recalculation`, `headless-spreadsheet`, `headless-workbook`, `mcp`, `mcp-server`, `model-context-protocol`, `nodejs`, `spreadsheet`, `spreadsheet-api`, `spreadsheet-automation`, `spreadsheet-engine`, `spreadsheet-formulas`, `typescript`, `workbook-api`, `workbook-automation`, `xlsx`, `xlsx-recalculation`
 
 ## npm
 
-- Package: `@bilig/headless@0.18.22`
+- Package: `@bilig/headless@0.18.23`
 - License: `MIT`
-- Modified: `2026-05-17T10:01:55.001Z`
+- Modified: `2026-05-17T10:26:27.012Z`
 - Downloads last week: 17,235 (2026-05-10 to 2026-05-16)
 - Downloads last month: 32,535 (2026-04-17 to 2026-05-16)
 

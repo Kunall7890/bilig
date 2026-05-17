@@ -34,6 +34,7 @@ export function communityLaunchPackRequiredLinks(): readonly string[] {
     'https://github.com/jmstfv/mcpserve/pull/19',
     'https://github.com/MCPFind/mcp-find/pull/37',
     'https://github.com/mctrinh/awesome-mcp-servers/pull/46',
+    'https://mcprepository.com/proompteng/bilig',
     'Latest conversion snapshot on May 17, 2026',
     '`@bilig/headless`',
     '28,427` clones from `3,596` unique cloners',
@@ -56,4 +57,5 @@ export const llmsExternalSurfaceLinks = [
   'https://github.com/jmstfv/mcpserve/pull/19',
   'https://github.com/MCPFind/mcp-find/pull/37',
   'https://github.com/mctrinh/awesome-mcp-servers/pull/46',
+  'https://mcprepository.com/proompteng/bilig',
 ] as const

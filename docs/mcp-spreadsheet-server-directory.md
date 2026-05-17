@@ -88,6 +88,7 @@ crawlers that probe those well-known variants.
 | mcpserve.com                    | Submitted for maintainer review              | <https://github.com/jmstfv/mcpserve/pull/19>                                                          |
 | MCPFind                         | Submitted for maintainer review              | <https://github.com/MCPFind/mcp-find/pull/37>                                                         |
 | mctrinh Awesome MCP Servers     | Submitted for maintainer review              | <https://github.com/mctrinh/awesome-mcp-servers/pull/46>                                              |
+| MCPRepository                   | Live                                         | <https://mcprepository.com/proompteng/bilig>                                                          |
 | PulseMCP                        | Not indexed in public search on May 14, 2026 | <https://www.pulsemcp.com/servers?search=bilig&q=bilig>                                               |
 
 PulseMCP says server listings are ingested from the official MCP Registry daily
@@ -139,6 +140,12 @@ The mctrinh Awesome MCP Servers pull request was opened on May 17, 2026 as a
 single-line `Bilig WorkPaper` addition in the production-ready servers list. The
 PR body links the public repo, npm package, MCP docs/transcript, and official
 registry name.
+
+MCPRepository search returns a live Bilig page at
+<https://mcprepository.com/proompteng/bilig>. The page title is
+`bilig - MCP Server`, and its description mirrors the GitHub repository
+positioning: formula WorkPaper runtime for Node.js services and agent tools with
+cell edits, recalculation, readback, and JSON persistence.
 
 ## Verify The Registry Entry
 

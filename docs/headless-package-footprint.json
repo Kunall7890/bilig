@@ -13,6 +13,7 @@
       "formula",
       "formula-engine",
       "formula-evaluation",
+      "formula-recalculation",
       "headless-spreadsheet",
       "hyperformula",
       "mcp",
@@ -26,7 +27,6 @@
       "spreadsheet-formulas",
       "spreadsheet-mcp",
       "typescript",
-      "vercel-ai-sdk",
       "workbook-api",
       "workpaper",
       "xlsx",
@@ -37,11 +37,11 @@
     "hasMcpBinary": true
   },
   "npmPackDryRun": {
-    "tarballBytes": 424372,
-    "unpackedBytes": 2536856,
-    "entryCount": 426,
+    "tarballBytes": 425077,
+    "unpackedBytes": 2539243,
+    "entryCount": 429,
     "readmeBytes": 39721,
-    "packageJsonBytes": 2074
+    "packageJsonBytes": 2082
   },
   "coldStartProbe": {
     "runtime": "node",
