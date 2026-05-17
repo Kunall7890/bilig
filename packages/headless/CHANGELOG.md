@@ -11,9 +11,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(core): fuse fresh aggregate matrix writes (1c6bf730)
 
 ## Internal runtime changes
+
 - docs(growth): sync published package evidence (e6e7d288)
 - refactor(wasm): centralize lookup candidate comparison (572a091d)
 - refactor(core): split formula binding controllers (7c23dca2)
