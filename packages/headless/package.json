@@ -6,6 +6,7 @@
     "agent-tools",
     "excel",
     "excel-formulas",
+    "formula",
     "formula-engine",
     "formula-evaluation",
     "headless-spreadsheet",
@@ -15,6 +16,7 @@
     "mcp-spreadsheet",
     "model-context-protocol",
     "node",
+    "recalculation",
     "spreadsheet-automation",
     "spreadsheet-engine",
     "spreadsheet-formulas",
@@ -23,7 +25,8 @@
     "vercel-ai-sdk",
     "workbook-api",
     "workpaper",
-    "xlsx"
+    "xlsx",
+    "xlsx-formula"
   ],
   "homepage": "https://proompteng.github.io/bilig/",
   "bugs": {

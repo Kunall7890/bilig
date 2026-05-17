@@ -5,11 +5,12 @@
     "version": "0.18.11",
     "description": "Formula WorkPaper runtime for Node.js services and agent tools with JSON persistence and formula readback.",
     "nodeEngine": ">=22.0.0",
-    "keywordCount": 21,
+    "keywordCount": 24,
     "keywords": [
       "agent-tools",
       "excel",
       "excel-formulas",
+      "formula",
       "formula-engine",
       "formula-evaluation",
       "headless-spreadsheet",
@@ -19,6 +20,7 @@
       "mcp-spreadsheet",
       "model-context-protocol",
       "node",
+      "recalculation",
       "spreadsheet-automation",
       "spreadsheet-engine",
       "spreadsheet-formulas",
@@ -27,18 +29,19 @@
       "vercel-ai-sdk",
       "workbook-api",
       "workpaper",
-      "xlsx"
+      "xlsx",
+      "xlsx-formula"
     ],
     "dependencyNames": ["@bilig/core", "@bilig/formula", "@bilig/protocol", "fast-xml-parser", "fflate", "xlsx", "xlsx-js-style"],
     "hasXlsxSubpath": true,
     "hasMcpBinary": true
   },
   "npmPackDryRun": {
-    "tarballBytes": 422636,
-    "unpackedBytes": 2528110,
-    "entryCount": 426,
+    "tarballBytes": 423360,
+    "unpackedBytes": 2530545,
+    "entryCount": 429,
     "readmeBytes": 38977,
-    "packageJsonBytes": 2018
+    "packageJsonBytes": 2074
   },
   "coldStartProbe": {
     "runtime": "node",
