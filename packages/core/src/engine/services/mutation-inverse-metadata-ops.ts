@@ -396,7 +396,7 @@ export function buildMutationMetadataInverseOps(workbook: WorkbookStore, op: Eng
       return undefined
     default: {
       const exhaustive: never = op
-      return exhaustive
+      throw new Error(`Unhandled metadata inverse operation: ${String((exhaustive as { kind?: unknown }).kind)}`)
     }
   }
 }

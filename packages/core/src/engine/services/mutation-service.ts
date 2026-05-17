@@ -1,8 +1,6 @@
 import { Effect } from 'effect'
 import type { EngineOp, EngineOpBatch } from '@bilig/workbook-domain'
 import type { CellRangeRef, CellSnapshot } from '@bilig/protocol'
-import { structuralTransformForOp } from '../../engine-structural-utils.js'
-import { sheetMetadataToOps } from '../../engine-snapshot-utils.js'
 import { createBatch } from '../../replica-state.js'
 import type { WorkbookStore } from '../../workbook-store.js'
 import {
@@ -34,31 +32,13 @@ import {
 import { normalizeRenderCommitOps } from './mutation-render-commit-normalizer.js'
 import { inverseMutationStructuralInsertOp, isMutationStructuralInsertOp } from './mutation-cell-content-helpers.js'
 import { createMutationCellRestoreHistoryHelpers, tryMutationCellRefsFromOps } from './mutation-cell-restore-history.js'
-import { captureStructuralWorkbookMetadataOps, clearStructuralSheetMetadataOps } from './mutation-structural-metadata-ops.js'
-import { buildMutationMetadataInverseOps } from './mutation-inverse-metadata-ops.js'
 import { createMutationStructuralDeleteInverseHelpers } from './mutation-structural-delete-inverse.js'
 import type { EngineMutationService } from './mutation-service-types.js'
 import { tryExecuteMutationRenderCommitFastPath } from './mutation-render-commit-fast-path.js'
 import { createMutationRangeOperations } from './mutation-range-operations.js'
+import { createMutationCoreInverseOps } from './mutation-core-inverse-ops.js'
 
 export type { EngineMutationService } from './mutation-service-types.js'
-
-type MutationServiceCapturedInverseKind = 'deleteSheet' | 'deleteRows' | 'deleteColumns' | 'setCellValue' | 'setCellFormula' | 'clearCell'
-
-type MutationServiceCapturedInverseOp = Extract<EngineOp, { kind: MutationServiceCapturedInverseKind }>
-
-const mutationServiceCapturedInverseKinds: ReadonlySet<EngineOp['kind']> = new Set([
-  'deleteSheet',
-  'deleteRows',
-  'deleteColumns',
-  'setCellValue',
-  'setCellFormula',
-  'clearCell',
-])
-
-function isMutationServiceCapturedInverseOp(op: EngineOp): op is MutationServiceCapturedInverseOp {
-  return mutationServiceCapturedInverseKinds.has(op.kind)
-}
 
 export function createEngineMutationService(args: {
   readonly state: Pick<
@@ -146,6 +126,14 @@ export function createEngineMutationService(args: {
       ? { getFormulaFamilyStructuralSourceTransform: args.getFormulaFamilyStructuralSourceTransform }
       : {}),
   })
+  const { buildInverseOps } = createMutationCoreInverseOps({
+    workbook: args.state.workbook,
+    captureSheetCellState: args.captureSheetCellState,
+    captureRowRangeCellState: args.captureRowRangeCellState,
+    captureColumnRangeCellState: args.captureColumnRangeCellState,
+    restoreCellOps: args.restoreCellOps,
+    captureFormulaCellStateForStructuralUndo,
+  })
 
   const tryBuildSingleCellOpHistoryWithoutSnapshot = (
     ops: readonly EngineOp[],
@@ -174,148 +162,6 @@ export function createEngineMutationService(args: {
 
   const tryCellMutationRefsFromOps = (ops: readonly EngineOp[]): EngineCellMutationRef[] | null =>
     tryMutationCellRefsFromOps(args.state.workbook, ops)
-
-  const inverseOpsFor = (op: EngineOp): EngineOp[] => {
-    const metadataInverseOps = buildMutationMetadataInverseOps(args.state.workbook, op)
-    if (metadataInverseOps !== undefined) {
-      return metadataInverseOps
-    }
-    if (!isMutationServiceCapturedInverseOp(op)) {
-      throw new Error(`Unhandled inverse operation: ${op.kind}`)
-    }
-
-    switch (op.kind) {
-      case 'deleteSheet': {
-        const sheet = args.state.workbook.getSheet(op.name)
-        if (!sheet) {
-          return []
-        }
-        const restoredOps: EngineOp[] = [{ kind: 'upsertSheet', name: sheet.name, order: sheet.order }]
-        restoredOps.push(...sheetMetadataToOps(args.state.workbook, sheet.name))
-        args.state.workbook
-          .listTables()
-          .filter((table) => table.sheetName === sheet.name)
-          .forEach((table) => {
-            restoredOps.push({
-              kind: 'upsertTable',
-              table: structuredClone(table),
-            })
-          })
-        args.state.workbook
-          .listSpills()
-          .filter((spill) => spill.sheetName === sheet.name)
-          .forEach((spill) => {
-            restoredOps.push({
-              kind: 'upsertSpillRange',
-              sheetName: spill.sheetName,
-              address: spill.address,
-              rows: spill.rows,
-              cols: spill.cols,
-            })
-          })
-        args.state.workbook
-          .listPivots()
-          .filter((pivot) => pivot.sheetName === sheet.name)
-          .forEach((pivot) => {
-            restoredOps.push({
-              kind: 'upsertPivotTable',
-              name: pivot.name,
-              sheetName: pivot.sheetName,
-              address: pivot.address,
-              source: { ...pivot.source },
-              groupBy: [...pivot.groupBy],
-              values: pivot.values.map((value) => Object.assign({}, value)),
-              rows: pivot.rows,
-              cols: pivot.cols,
-            })
-          })
-        args.state.workbook
-          .listCharts()
-          .filter((chart) => chart.sheetName === sheet.name || chart.source.sheetName === sheet.name)
-          .forEach((chart) => {
-            restoredOps.push({
-              kind: 'upsertChart',
-              chart: structuredClone(chart),
-            })
-          })
-        args.state.workbook
-          .listImages()
-          .filter((image) => image.sheetName === sheet.name)
-          .forEach((image) => {
-            restoredOps.push({
-              kind: 'upsertImage',
-              image: structuredClone(image),
-            })
-          })
-        args.state.workbook
-          .listShapes()
-          .filter((shape) => shape.sheetName === sheet.name)
-          .forEach((shape) => {
-            restoredOps.push({
-              kind: 'upsertShape',
-              shape: structuredClone(shape),
-            })
-          })
-        restoredOps.push(...args.captureSheetCellState(sheet.name))
-        return restoredOps
-      }
-      case 'deleteRows': {
-        const entries = args.state.workbook.snapshotRowAxisEntries(op.sheetName, op.start, op.count)
-        const transform = structuralTransformForOp(op)
-        return [
-          ...clearStructuralSheetMetadataOps(args.state.workbook, op.sheetName, transform),
-          {
-            kind: 'insertRows',
-            sheetName: op.sheetName,
-            start: op.start,
-            count: op.count,
-            entries,
-          },
-          ...sheetMetadataToOps(args.state.workbook, op.sheetName, { includeAxisEntries: false }),
-          ...args.captureRowRangeCellState(op.sheetName, op.start, op.count),
-          ...captureFormulaCellStateForStructuralUndo(op.sheetName, 'row', op.start, op.count),
-          ...captureStructuralWorkbookMetadataOps(args.state.workbook),
-        ]
-      }
-      case 'deleteColumns': {
-        const entries = args.state.workbook.snapshotColumnAxisEntries(op.sheetName, op.start, op.count)
-        const transform = structuralTransformForOp(op)
-        return [
-          ...clearStructuralSheetMetadataOps(args.state.workbook, op.sheetName, transform),
-          {
-            kind: 'insertColumns',
-            sheetName: op.sheetName,
-            start: op.start,
-            count: op.count,
-            entries,
-          },
-          ...sheetMetadataToOps(args.state.workbook, op.sheetName, { includeAxisEntries: false }),
-          ...args.captureColumnRangeCellState(op.sheetName, op.start, op.count),
-          ...captureFormulaCellStateForStructuralUndo(op.sheetName, 'column', op.start, op.count),
-          ...captureStructuralWorkbookMetadataOps(args.state.workbook),
-        ]
-      }
-      case 'setCellValue':
-      case 'setCellFormula':
-      case 'clearCell':
-        return args.restoreCellOps(op.sheetName, op.address)
-      default: {
-        const exhaustive: never = op
-        return exhaustive
-      }
-    }
-  }
-
-  const buildInverseOps = (ops: readonly EngineOp[]): EngineOp[] => {
-    const inverseOps: EngineOp[] = []
-    for (let index = ops.length - 1; index >= 0; index -= 1) {
-      const op = ops[index]
-      if (op !== undefined) {
-        inverseOps.push(...inverseOpsFor(op))
-      }
-    }
-    return inverseOps
-  }
 
   const buildInverseRecord = (ops: readonly EngineOp[], includeStandaloneFormulaUndoOps: boolean): TransactionRecord => {
     if (ops.length === 1 && (ops[0]?.kind === 'deleteRows' || ops[0]?.kind === 'deleteColumns')) {
