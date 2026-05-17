@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.18.12
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.18.11
+- Manual override: no
+
+## Fixes
+- fix(headless): improve npm discovery metadata (f15da89d)
+
 ## 0.18.11
 
 - Release type: patch
