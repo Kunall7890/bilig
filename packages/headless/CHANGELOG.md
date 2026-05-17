@@ -4,6 +4,19 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.18.10
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.18.9
+- Manual override: no
+
+## Fixes
+- fix(headless): refresh npm evaluator copy (bf35ad7d)
+
+## Internal runtime changes
+- chore(docs): refresh runtime evidence for 0.18.9 (56cd815e)
+- docs(growth): add plain-language bilig fit guide (207f8484)
+
 ## 0.18.9
 
 - Release type: patch
