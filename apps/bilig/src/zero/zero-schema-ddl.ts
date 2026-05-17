@@ -17,6 +17,7 @@ interface ZeroSchemaTable {
 interface ZeroColumnDdlOverride {
   readonly dataType?: string
   readonly defaultSql?: string
+  readonly constraintSql?: string
 }
 
 interface ZeroTableDdlOptions {
@@ -86,7 +87,8 @@ export function createZeroSchemaTableSql(tableName: string, options: ZeroTableDd
     const sqlType = override?.dataType ?? columnDataType(column.type)
     const defaultSql = override?.defaultSql === undefined ? '' : ` DEFAULT ${override.defaultSql}`
     const notNull = column.optional || primaryKeyColumns.has(columnName) ? '' : ' NOT NULL'
-    return `      ${sqlName} ${sqlType}${notNull}${defaultSql}`
+    const constraintSql = override?.constraintSql === undefined ? '' : ` ${override.constraintSql}`
+    return `      ${sqlName} ${sqlType}${notNull}${defaultSql}${constraintSql}`
   })
   const primaryKeyLine = `      PRIMARY KEY (${tableSchema.primaryKey.map((columnName) => quoteSqlIdentifier(serverColumnName(columnName, requireZeroColumn(tableName, columnName, tableSchema.columns)))).join(', ')})`
   return `

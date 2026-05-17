@@ -12,6 +12,7 @@ import { resolveWorkbookSheetRef } from './workbook-sheet-ref.js'
 import { selectLatestRedoableWorkbookChangeRevision, selectLatestUndoableWorkbookChangeRevision } from './workbook-history-selector.js'
 import { runQueryableTransaction, runSequentially } from './transaction-support.js'
 import { addColumnIfMissing } from './schema-upgrade.js'
+import { ensureZeroSchemaTable } from './zero-schema-ddl.js'
 
 export type { WorkbookChangeRange } from '@bilig/zero-sync'
 export { buildWorkbookChangeDescriptor, type WorkbookChangeDescriptor } from './workbook-change-descriptor.js'
@@ -184,25 +185,12 @@ async function markWorkbookChangeReverted(
 }
 
 export async function ensureWorkbookChangeSchema(db: Queryable): Promise<void> {
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS workbook_change (
-      workbook_id TEXT NOT NULL REFERENCES workbooks(id) ON DELETE CASCADE,
-      revision BIGINT NOT NULL,
-      actor_user_id TEXT NOT NULL,
-      client_mutation_id TEXT,
-      event_kind TEXT NOT NULL,
-      summary TEXT NOT NULL,
-      sheet_id INTEGER,
-      sheet_name TEXT,
-      anchor_address TEXT,
-      range_json JSONB,
-      undo_bundle_json JSONB,
-      reverted_by_revision BIGINT,
-      reverts_revision BIGINT,
-      created_at BIGINT NOT NULL,
-      PRIMARY KEY (workbook_id, revision)
-    );
-  `)
+  await ensureZeroSchemaTable(db, 'workbook_change', {
+    columnOverrides: {
+      workbookId: { constraintSql: 'REFERENCES workbooks(id) ON DELETE CASCADE' },
+      sheetId: { dataType: 'INTEGER' },
+    },
+  })
   await addColumnIfMissing(db, { tableName: 'workbook_change', columnName: 'client_mutation_id', dataType: 'TEXT' })
   await addColumnIfMissing(db, { tableName: 'workbook_change', columnName: 'sheet_id', dataType: 'INTEGER' })
   await addColumnIfMissing(db, { tableName: 'workbook_change', columnName: 'sheet_name', dataType: 'TEXT' })

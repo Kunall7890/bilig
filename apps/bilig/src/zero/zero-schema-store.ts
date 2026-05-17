@@ -1,15 +1,28 @@
 import type { Queryable } from './store.js'
 import { addColumnIfMissing, ensureDefaultedNotNullColumn } from './schema-upgrade.js'
+import { ensureZeroSchemaTable } from './zero-schema-ddl.js'
+
+const workbookReferenceConstraint = 'REFERENCES workbooks(id) ON DELETE CASCADE'
 
 export async function ensureZeroSyncSchema(db: Queryable): Promise<void> {
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS workbooks (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      snapshot JSONB NOT NULL,
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-  `)
+  await ensureZeroSchemaTable(db, 'workbooks', {
+    columnOverrides: {
+      ownerUserId: { defaultSql: "'system'" },
+      headRevision: { defaultSql: '0' },
+      calculatedRevision: { defaultSql: '0' },
+      calcMode: { defaultSql: "'automatic'" },
+      compatibilityMode: { defaultSql: "'excel-modern'" },
+      recalcEpoch: { defaultSql: '0' },
+      createdAt: { dataType: 'TIMESTAMPTZ', defaultSql: 'NOW()' },
+      updatedAt: { dataType: 'TIMESTAMPTZ', defaultSql: 'NOW()' },
+    },
+  })
+  await ensureDefaultedNotNullColumn(db, {
+    tableName: 'workbooks',
+    columnName: 'snapshot',
+    dataType: 'JSONB',
+    defaultSql: "'null'::jsonb",
+  })
   await ensureDefaultedNotNullColumn(db, {
     tableName: 'workbooks',
     columnName: 'owner_user_id',
@@ -60,15 +73,17 @@ export async function ensureZeroSyncSchema(db: Queryable): Promise<void> {
     defaultSql: 'NOW()',
   })
 
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS sheets (
-      workbook_id TEXT NOT NULL REFERENCES workbooks(id) ON DELETE CASCADE,
-      sheet_id INTEGER,
-      name TEXT NOT NULL,
-      sort_order INTEGER NOT NULL,
-      PRIMARY KEY (workbook_id, name)
-    );
-  `)
+  await ensureZeroSchemaTable(db, 'sheets', {
+    columnOverrides: {
+      workbookId: { constraintSql: workbookReferenceConstraint },
+      sheetId: { dataType: 'INTEGER' },
+      sortOrder: { dataType: 'INTEGER' },
+      freezeRows: { dataType: 'INTEGER', defaultSql: '0' },
+      freezeCols: { dataType: 'INTEGER', defaultSql: '0' },
+      createdAt: { dataType: 'TIMESTAMPTZ', defaultSql: 'NOW()' },
+      updatedAt: { dataType: 'TIMESTAMPTZ', defaultSql: 'NOW()' },
+    },
+  })
   await db.query(`ALTER TABLE sheets ADD COLUMN IF NOT EXISTS sheet_id INTEGER;`)
   await ensureDefaultedNotNullColumn(db, {
     tableName: 'sheets',
@@ -95,17 +110,16 @@ export async function ensureZeroSyncSchema(db: Queryable): Promise<void> {
     defaultSql: 'NOW()',
   })
 
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS cells (
-      workbook_id TEXT NOT NULL REFERENCES workbooks(id) ON DELETE CASCADE,
-      sheet_name TEXT NOT NULL,
-      address TEXT NOT NULL,
-      input_value JSONB,
-      formula TEXT,
-      format TEXT,
-      PRIMARY KEY (workbook_id, sheet_name, address)
-    );
-  `)
+  await ensureZeroSchemaTable(db, 'cells', {
+    columnOverrides: {
+      workbookId: { constraintSql: workbookReferenceConstraint },
+      rowNum: { dataType: 'INTEGER' },
+      colNum: { dataType: 'INTEGER' },
+      sourceRevision: { defaultSql: '0' },
+      updatedBy: { defaultSql: "'system'" },
+      updatedAt: { dataType: 'TIMESTAMPTZ', defaultSql: 'NOW()' },
+    },
+  })
   await db.query(`ALTER TABLE cells ADD COLUMN IF NOT EXISTS row_num INTEGER;`)
   await db.query(`ALTER TABLE cells ADD COLUMN IF NOT EXISTS col_num INTEGER;`)
   await db.query(`ALTER TABLE cells ADD COLUMN IF NOT EXISTS style_id TEXT;`)
@@ -129,17 +143,17 @@ export async function ensureZeroSyncSchema(db: Queryable): Promise<void> {
     defaultSql: 'NOW()',
   })
 
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS cell_eval (
-      workbook_id TEXT NOT NULL REFERENCES workbooks(id) ON DELETE CASCADE,
-      sheet_name TEXT NOT NULL,
-      address TEXT NOT NULL,
-      value JSONB NOT NULL,
-      flags INTEGER NOT NULL,
-      version INTEGER NOT NULL,
-      PRIMARY KEY (workbook_id, sheet_name, address)
-    );
-  `)
+  await ensureZeroSchemaTable(db, 'cell_eval', {
+    columnOverrides: {
+      workbookId: { constraintSql: workbookReferenceConstraint },
+      rowNum: { dataType: 'INTEGER' },
+      colNum: { dataType: 'INTEGER' },
+      flags: { dataType: 'INTEGER' },
+      version: { dataType: 'INTEGER' },
+      calcRevision: { defaultSql: '0' },
+      updatedAt: { dataType: 'TIMESTAMPTZ', defaultSql: 'NOW()' },
+    },
+  })
   await db.query(`ALTER TABLE cell_eval ADD COLUMN IF NOT EXISTS row_num INTEGER;`)
   await db.query(`ALTER TABLE cell_eval ADD COLUMN IF NOT EXISTS col_num INTEGER;`)
   await db.query(`ALTER TABLE cell_eval ADD COLUMN IF NOT EXISTS style_id TEXT;`)
@@ -159,17 +173,16 @@ export async function ensureZeroSyncSchema(db: Queryable): Promise<void> {
     defaultSql: 'NOW()',
   })
 
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS row_metadata (
-      workbook_id TEXT NOT NULL REFERENCES workbooks(id) ON DELETE CASCADE,
-      sheet_name TEXT NOT NULL,
-      start_index INTEGER NOT NULL,
-      count INTEGER NOT NULL,
-      size INTEGER,
-      hidden BOOLEAN,
-      PRIMARY KEY (workbook_id, sheet_name, start_index)
-    );
-  `)
+  await ensureZeroSchemaTable(db, 'row_metadata', {
+    columnOverrides: {
+      workbookId: { constraintSql: workbookReferenceConstraint },
+      startIndex: { dataType: 'INTEGER' },
+      count: { dataType: 'INTEGER' },
+      size: { dataType: 'INTEGER' },
+      sourceRevision: { defaultSql: '0' },
+      updatedAt: { dataType: 'TIMESTAMPTZ', defaultSql: 'NOW()' },
+    },
+  })
   await ensureDefaultedNotNullColumn(db, {
     tableName: 'row_metadata',
     columnName: 'source_revision',
@@ -183,17 +196,16 @@ export async function ensureZeroSyncSchema(db: Queryable): Promise<void> {
     defaultSql: 'NOW()',
   })
 
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS column_metadata (
-      workbook_id TEXT NOT NULL REFERENCES workbooks(id) ON DELETE CASCADE,
-      sheet_name TEXT NOT NULL,
-      start_index INTEGER NOT NULL,
-      count INTEGER NOT NULL,
-      size INTEGER,
-      hidden BOOLEAN,
-      PRIMARY KEY (workbook_id, sheet_name, start_index)
-    );
-  `)
+  await ensureZeroSchemaTable(db, 'column_metadata', {
+    columnOverrides: {
+      workbookId: { constraintSql: workbookReferenceConstraint },
+      startIndex: { dataType: 'INTEGER' },
+      count: { dataType: 'INTEGER' },
+      size: { dataType: 'INTEGER' },
+      sourceRevision: { defaultSql: '0' },
+      updatedAt: { dataType: 'TIMESTAMPTZ', defaultSql: 'NOW()' },
+    },
+  })
   await ensureDefaultedNotNullColumn(db, {
     tableName: 'column_metadata',
     columnName: 'source_revision',
@@ -207,14 +219,11 @@ export async function ensureZeroSyncSchema(db: Queryable): Promise<void> {
     defaultSql: 'NOW()',
   })
 
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS defined_names (
-      workbook_id TEXT NOT NULL REFERENCES workbooks(id) ON DELETE CASCADE,
-      name TEXT NOT NULL,
-      value JSONB NOT NULL,
-      PRIMARY KEY (workbook_id, name)
-    );
-  `)
+  await ensureZeroSchemaTable(db, 'defined_names', {
+    columnOverrides: {
+      workbookId: { constraintSql: workbookReferenceConstraint },
+    },
+  })
   await db.query(`
     CREATE TABLE IF NOT EXISTS workbook_metadata (
       workbook_id TEXT NOT NULL REFERENCES workbooks(id) ON DELETE CASCADE,
@@ -231,26 +240,18 @@ export async function ensureZeroSyncSchema(db: Queryable): Promise<void> {
     );
   `)
 
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS cell_styles (
-      workbook_id TEXT NOT NULL REFERENCES workbooks(id) ON DELETE CASCADE,
-      style_id TEXT NOT NULL,
-      record_json JSONB NOT NULL,
-      hash TEXT NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      PRIMARY KEY (workbook_id, style_id)
-    );
-  `)
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS cell_number_formats (
-      workbook_id TEXT NOT NULL REFERENCES workbooks(id) ON DELETE CASCADE,
-      format_id TEXT NOT NULL,
-      code TEXT NOT NULL,
-      kind TEXT NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      PRIMARY KEY (workbook_id, format_id)
-    );
-  `)
+  await ensureZeroSchemaTable(db, 'cell_styles', {
+    columnOverrides: {
+      workbookId: { constraintSql: workbookReferenceConstraint },
+      createdAt: { dataType: 'TIMESTAMPTZ', defaultSql: 'NOW()' },
+    },
+  })
+  await ensureZeroSchemaTable(db, 'cell_number_formats', {
+    columnOverrides: {
+      workbookId: { constraintSql: workbookReferenceConstraint },
+      createdAt: { dataType: 'TIMESTAMPTZ', defaultSql: 'NOW()' },
+    },
+  })
   await db.query(`
     CREATE TABLE IF NOT EXISTS workbook_event (
       workbook_id TEXT NOT NULL REFERENCES workbooks(id) ON DELETE CASCADE,

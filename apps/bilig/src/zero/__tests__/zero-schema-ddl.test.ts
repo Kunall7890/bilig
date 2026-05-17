@@ -44,6 +44,24 @@ describe('zero schema DDL', () => {
     expect(sql).toContain('review_queue_item_count BIGINT NOT NULL DEFAULT 0')
   })
 
+  it('keeps app database constraints explicit while deriving columns from Zero', () => {
+    const sql = normalizedSql(
+      createZeroSchemaTableSql('cells', {
+        columnOverrides: {
+          workbookId: { constraintSql: 'REFERENCES workbooks(id) ON DELETE CASCADE' },
+          rowNum: { dataType: 'INTEGER' },
+          colNum: { dataType: 'INTEGER' },
+          updatedAt: { dataType: 'TIMESTAMPTZ', defaultSql: 'NOW()' },
+        },
+      }),
+    )
+
+    expect(sql).toContain('workbook_id TEXT REFERENCES workbooks(id) ON DELETE CASCADE')
+    expect(sql).toContain('row_num INTEGER NOT NULL')
+    expect(sql).toContain('col_num INTEGER NOT NULL')
+    expect(sql).toContain('updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()')
+  })
+
   it('rejects stale table and override names instead of silently generating drifted DDL', () => {
     expect(() => createZeroSchemaTableSql('missing_table')).toThrow('Unknown Zero schema table: missing_table')
     expect(() =>

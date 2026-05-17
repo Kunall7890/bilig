@@ -1,6 +1,7 @@
 import type { Queryable } from './store.js'
 import { resolveWorkbookSheetRef, type WorkbookSheetRef as WorkbookPresenceSheetRef } from './workbook-sheet-ref.js'
 import { addColumnIfMissing } from './schema-upgrade.js'
+import { ensureZeroSchemaTable } from './zero-schema-ddl.js'
 
 export interface UpsertWorkbookPresenceInput {
   readonly documentId: string
@@ -14,20 +15,12 @@ export interface UpsertWorkbookPresenceInput {
 }
 
 export async function ensureWorkbookPresenceSchema(db: Queryable): Promise<void> {
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS presence_coarse (
-        workbook_id TEXT NOT NULL REFERENCES workbooks(id) ON DELETE CASCADE,
-        session_id TEXT NOT NULL,
-        user_id TEXT NOT NULL,
-        presence_client_id TEXT,
-        sheet_id INTEGER,
-        sheet_name TEXT,
-        address TEXT,
-        selection_json JSONB,
-      updated_at BIGINT NOT NULL,
-      PRIMARY KEY (workbook_id, session_id)
-    );
-  `)
+  await ensureZeroSchemaTable(db, 'presence_coarse', {
+    columnOverrides: {
+      workbookId: { constraintSql: 'REFERENCES workbooks(id) ON DELETE CASCADE' },
+      sheetId: { dataType: 'INTEGER' },
+    },
+  })
   await db.query(`CREATE INDEX IF NOT EXISTS presence_coarse_workbook_updated_idx ON presence_coarse(workbook_id, updated_at DESC);`)
   await db.query(`CREATE INDEX IF NOT EXISTS presence_coarse_updated_idx ON presence_coarse(updated_at);`)
   await addColumnIfMissing(db, { tableName: 'presence_coarse', columnName: 'presence_client_id', dataType: 'TEXT' })
