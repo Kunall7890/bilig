@@ -155,6 +155,8 @@ for (const required of [
   './agent-workpaper-tool-calling-recipe.html',
   './xlsx-formula-recalculation-node.html',
   './stale-xlsx-formula-cache-node.html',
+  './xlsx-template-formula-recalculation-node.html',
+  './xlsx-populate-formula-result-node.html',
   './microsoft-graph-excel-recalculation-node.html',
   './vercel-ai-sdk-langchain-spreadsheet-tool.html',
   './mcp-workpaper-tool-server.html',
@@ -294,6 +296,8 @@ for (const required of [
   'https://github.com/proompteng/bilig/blob/main/docs/formula-bug-clinic.md',
   'https://github.com/proompteng/bilig/blob/main/docs/formula-clinic-report.ts',
   'https://github.com/proompteng/bilig/blob/main/docs/submit-workbook-fixture.md',
+  'https://github.com/proompteng/bilig/blob/main/docs/xlsx-template-formula-recalculation-node.md',
+  'https://github.com/proompteng/bilig/blob/main/docs/xlsx-populate-formula-result-node.md',
   'https://github.com/proompteng/bilig/blob/main/docs/csv-shaped-workpaper-input-recipe.md',
   'https://github.com/proompteng/bilig/blob/main/docs/unsupported-formula-troubleshooting-recipe.md',
   'https://github.com/proompteng/bilig/blob/main/docs/agent-workpaper-tool-calling-recipe.md',
@@ -537,6 +541,8 @@ requireIncludes(index, 'examples/xlsx-recalculation-node', 'docs/index.html')
 requireIncludes(index, './xlsx-formula-recalculation-node.html', 'docs/index.html')
 requireIncludes(index, './excel-file-calculation-engine-node.html', 'docs/index.html')
 requireIncludes(index, './exceljs-shared-formula-recalculation-node.html', 'docs/index.html')
+requireIncludes(index, './xlsx-template-formula-recalculation-node.html', 'docs/index.html')
+requireIncludes(index, './xlsx-populate-formula-result-node.html', 'docs/index.html')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/tree/main/examples/xlsx-recalculation-node', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/xlsx-formula-recalculation-node.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/xlsx-formula-recalculation-node.md', 'docs/llms.txt')
@@ -546,6 +552,12 @@ requireIncludes(llms, 'covers backend routes that write request inputs into an X
 requireIncludes(llms, 'https://proompteng.github.io/bilig/exceljs-shared-formula-recalculation-node.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/exceljs-shared-formula-recalculation-node.md', 'docs/llms.txt')
 requireIncludes(llms, 'documents the XLSX shared-formula expansion path', 'docs/llms.txt')
+requireIncludes(llms, 'https://proompteng.github.io/bilig/xlsx-template-formula-recalculation-node.html', 'docs/llms.txt')
+requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/xlsx-template-formula-recalculation-node.md', 'docs/llms.txt')
+requireIncludes(llms, 'template substitution -> formula runtime -> verified readback', 'docs/llms.txt')
+requireIncludes(llms, 'https://proompteng.github.io/bilig/xlsx-populate-formula-result-node.html', 'docs/llms.txt')
+requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/xlsx-populate-formula-result-node.md', 'docs/llms.txt')
+requireIncludes(llms, 'separates formula serialization from recalculation', 'docs/llms.txt')
 requireIncludes(index, './npm-provenance-package-trust.html', 'docs/index.html')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/npm-provenance-package-trust.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/npm-provenance-package-trust.md', 'docs/llms.txt')
