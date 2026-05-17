@@ -1,5 +1,7 @@
 import { Schema } from 'effect'
 
+export { stringifyWorkbookAgentUiContextSemanticKey } from './workbook-agent-context-key.js'
+
 export const AuthSourceSchema = Schema.Literal('header', 'cookie', 'guest')
 export type AuthSource = Schema.Schema.Type<typeof AuthSourceSchema>
 

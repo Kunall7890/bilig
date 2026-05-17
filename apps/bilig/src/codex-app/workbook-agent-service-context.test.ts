@@ -3,12 +3,9 @@ import type { WorkbookAgentCommand } from '@bilig/agent-api'
 import type { WorkbookAgentUiContext } from '@bilig/contracts'
 import { ValueTag } from '@bilig/protocol'
 import type { WorkbookAgentThreadState } from './workbook-agent-service-shared.js'
-import {
-  areWorkbookAgentUiContextsSemanticallyEqual,
-  applyWorkbookAgentStructuralContextHints,
-  stripRenderedWorkbookAgentContext,
-  updateWorkbookAgentDurableUiContextFromUser,
-} from './workbook-agent-service-context.js'
+import { updateWorkbookAgentDurableUiContextFromUser } from './workbook-agent-durable-context-sync.js'
+import { applyWorkbookAgentStructuralContextHints, stripRenderedWorkbookAgentContext } from './workbook-agent-structural-context-hints.js'
+import { areWorkbookAgentUiContextsSemanticallyEqual } from './workbook-agent-ui-context-semantic-key.js'
 
 function createContext(overrides: Partial<WorkbookAgentUiContext> = {}): WorkbookAgentUiContext {
   return {
@@ -107,6 +104,21 @@ function createRenderedContext(value: string, overrides: Partial<NonNullable<Wor
   })
 }
 
+function createRenderedRange(value: string, stringId: number): NonNullable<WorkbookAgentUiContext['rendered']>['visibleRange'] {
+  return {
+    range: {
+      sheetName: 'Revenue',
+      startAddress: 'B2',
+      endAddress: 'B2',
+    },
+    rowCount: 1,
+    columnCount: 1,
+    cellCount: 1,
+    truncated: false,
+    rows: [[createRenderedCell(value, stringId)]],
+  }
+}
+
 describe('workbook agent service context helpers', () => {
   it('strips rendered context while preserving selection and viewport', () => {
     expect(stripRenderedWorkbookAgentContext(createContext())).toEqual({
@@ -200,18 +212,30 @@ describe('workbook agent service context helpers', () => {
       capturedAtUnixMs: 900,
       capturedRevision: 12,
       batchId: 45,
-      visibleRange: {
-        range: {
-          sheetName: 'Revenue',
-          startAddress: 'B2',
-          endAddress: 'B2',
-        },
-        rowCount: 1,
-        columnCount: 1,
-        cellCount: 1,
-        truncated: false,
-        rows: [[createRenderedCell('stable value', 99)]],
-      },
+      visibleRange: createRenderedRange('stable value', 99),
+    })
+
+    expect(areWorkbookAgentUiContextsSemanticallyEqual(durableContext, nextContext)).toBe(true)
+    expect(
+      updateWorkbookAgentDurableUiContextFromUser({
+        sessionState,
+        context: nextContext,
+        userId: 'alex@example.com',
+      }),
+    ).toBe(false)
+    expect(sessionState.durable.context).toBe(durableContext)
+    expect(sessionState.live.turnContextByTurn.get('turn-1')).toBe(durableContext)
+  })
+
+  it('does not update durable context for rendered selection string-id churn', () => {
+    const durableContext = createRenderedContext('stable value', {
+      selection: createRenderedRange('selected value', 1),
+    })
+    const sessionState = createThreadState(durableContext)
+    sessionState.live.turnContextByTurn.set('turn-1', durableContext)
+    const nextContext = createRenderedContext('stable value', {
+      selection: createRenderedRange('selected value', 99),
+      visibleRange: createRenderedRange('stable value', 101),
     })
 
     expect(areWorkbookAgentUiContextsSemanticallyEqual(durableContext, nextContext)).toBe(true)

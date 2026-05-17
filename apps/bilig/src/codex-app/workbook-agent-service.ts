@@ -65,7 +65,7 @@ import {
   type WorkbookAgentThreadState,
   upsertEntry,
 } from './workbook-agent-service-shared.js'
-import { updateWorkbookAgentDurableUiContextFromUser } from './workbook-agent-service-context.js'
+import { updateWorkbookAgentDurableUiContextFromUser } from './workbook-agent-durable-context-sync.js'
 import {
   assertWorkbookAgentSessionAccessPolicy,
   assertWorkbookAgentSharedThreadAccess,

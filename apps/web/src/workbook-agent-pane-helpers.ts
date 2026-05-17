@@ -1,37 +1,7 @@
-import type { WorkbookAgentUiContext } from '@bilig/contracts'
-import { ValueTag } from '@bilig/protocol'
+import { stringifyWorkbookAgentUiContextSemanticKey, type WorkbookAgentUiContext } from '@bilig/contracts'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
-}
-
-type RenderedContext = NonNullable<WorkbookAgentUiContext['rendered']>
-type RenderedRange = RenderedContext['visibleRange']
-
-function normalizeRenderedValueForContextSyncKey(value: unknown): unknown {
-  if (!isRecord(value) || value['tag'] !== ValueTag.String) {
-    return value
-  }
-  return {
-    tag: value['tag'],
-    value: value['value'],
-    stringId: 0,
-  }
-}
-
-function normalizeRenderedRangeForContextSyncKey(range: RenderedRange): RenderedRange {
-  if (range === null) {
-    return null
-  }
-  return {
-    ...range,
-    rows: range.rows.map((row) =>
-      row.map((cell) => ({
-        ...cell,
-        value: normalizeRenderedValueForContextSyncKey(cell.value),
-      })),
-    ),
-  }
 }
 
 export function readMessageEventData(event: Event): string | null {
@@ -48,18 +18,7 @@ export function formatWorkbookAgentContextLabel(context: WorkbookAgentUiContext)
 }
 
 export function stringifyWorkbookAgentContextSyncKey(context: WorkbookAgentUiContext): string {
-  const rendered = context.rendered
-  return JSON.stringify({
-    selection: context.selection,
-    viewport: context.viewport,
-    rendered:
-      rendered === undefined
-        ? null
-        : {
-            selection: normalizeRenderedRangeForContextSyncKey(rendered.selection),
-            visibleRange: normalizeRenderedRangeForContextSyncKey(rendered.visibleRange),
-          },
-  })
+  return stringifyWorkbookAgentUiContextSemanticKey(context)
 }
 
 export function readAppliedRevision(record: unknown): number | null {

@@ -25,7 +25,7 @@ import {
 import { normalizeWorkbookAgentUiContext } from './workbook-agent-inspection.js'
 import { createWorkbookAgentReviewQueueItem, replaceCurrentWorkbookAgentReviewItem } from './workbook-agent-review-transitions.js'
 import { createSystemEntry } from './workbook-agent-session-model.js'
-import { applyWorkbookAgentStructuralContextHints } from './workbook-agent-service-context.js'
+import { applyWorkbookAgentStructuralContextHints } from './workbook-agent-structural-context-hints.js'
 import { cloneUiContext, type WorkbookAgentThreadState, upsertEntry } from './workbook-agent-service-shared.js'
 
 interface WorkbookAgentBundleApplicationContext {

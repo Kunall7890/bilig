@@ -6,7 +6,9 @@ import {
   RuntimeSessionSchema,
   WorkbookAgentTimelineEntrySchema,
   WorkbookAgentThreadSummarySchema,
+  stringifyWorkbookAgentUiContextSemanticKey,
   WorkbookAgentWorkflowRunSchema,
+  type WorkbookAgentUiContext,
 } from '../index.js'
 
 describe('@bilig/contracts', () => {
@@ -507,4 +509,102 @@ describe('@bilig/contracts', () => {
     expect(decoded.status).toBe('cancelled')
     expect(decoded.steps[0]?.status).toBe('cancelled')
   })
+
+  it('builds stable workbook agent context keys across rendered capture metadata churn', () => {
+    const firstContext = createRenderedWorkbookAgentContext({
+      value: 'stable value',
+      stringId: 1,
+      capturedAtUnixMs: 100,
+      capturedRevision: 3,
+      batchId: 1,
+    })
+    const nextContext = createRenderedWorkbookAgentContext({
+      value: 'stable value',
+      stringId: 99,
+      capturedAtUnixMs: 900,
+      capturedRevision: 12,
+      batchId: 45,
+    })
+
+    expect(stringifyWorkbookAgentUiContextSemanticKey(firstContext)).toBe(stringifyWorkbookAgentUiContextSemanticKey(nextContext))
+  })
+
+  it('changes workbook agent context keys when rendered visible cell content changes', () => {
+    const beforeContext = createRenderedWorkbookAgentContext({
+      value: 'before',
+      stringId: 1,
+      capturedAtUnixMs: 100,
+      capturedRevision: 3,
+      batchId: 1,
+    })
+    const afterContext = createRenderedWorkbookAgentContext({
+      value: 'after',
+      stringId: 1,
+      capturedAtUnixMs: 100,
+      capturedRevision: 3,
+      batchId: 1,
+    })
+
+    expect(stringifyWorkbookAgentUiContextSemanticKey(beforeContext)).not.toBe(stringifyWorkbookAgentUiContextSemanticKey(afterContext))
+  })
 })
+
+function createRenderedWorkbookAgentContext(input: {
+  readonly value: string
+  readonly stringId: number
+  readonly capturedAtUnixMs: number
+  readonly capturedRevision: number
+  readonly batchId: number
+}): WorkbookAgentUiContext {
+  return {
+    selection: {
+      sheetName: 'Revenue',
+      address: 'B2',
+      range: {
+        startAddress: 'B2',
+        endAddress: 'B2',
+      },
+    },
+    viewport: {
+      rowStart: 0,
+      rowEnd: 20,
+      colStart: 0,
+      colEnd: 10,
+    },
+    rendered: {
+      capturedAtUnixMs: input.capturedAtUnixMs,
+      capturedRevision: input.capturedRevision,
+      batchId: input.batchId,
+      selection: null,
+      visibleRange: {
+        range: {
+          sheetName: 'Revenue',
+          startAddress: 'B2',
+          endAddress: 'B2',
+        },
+        rowCount: 1,
+        columnCount: 1,
+        cellCount: 1,
+        truncated: false,
+        rows: [
+          [
+            {
+              address: 'B2',
+              input: input.value,
+              value: {
+                tag: 3,
+                value: input.value,
+                stringId: input.stringId,
+              },
+              formula: null,
+              displayFormat: null,
+              styleId: null,
+              numberFormatId: null,
+              style: null,
+            },
+          ],
+        ],
+      },
+    },
+  }
+}
