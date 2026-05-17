@@ -348,6 +348,7 @@ MCP examples:
 ```sh
 npm exec --package @bilig/headless -- bilig-workpaper-mcp
 npm exec --package @bilig/headless -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --writable
+docker build --target bilig-workpaper-mcp -t bilig-workpaper-mcp:local .
 ```
 
 Default mode starts the built-in demo workbook. File-backed mode loads a
@@ -355,6 +356,9 @@ persisted WorkPaper JSON document and exposes `list_sheets`, `read_range`,
 `read_cell`, `set_cell_contents`, `get_cell_display_value`,
 `export_workpaper_document`, and `validate_formula`; `--writable` persists
 `set_cell_contents` edits back to the same file.
+
+The Docker target exists for MCP directory introspection and starts the same
+stdio server from the published npm package without building the Bilig web app.
 
 The package metadata includes
 `mcpName: io.github.proompteng/bilig-workpaper`, and the server is listed in the

@@ -13,6 +13,20 @@ COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
 
 RUN corepack enable
 
+FROM node:24-bookworm-slim@sha256:24dc26ef1e3c3690f27ebc4136c9c186c3133b25563ae4d7f0692e4d1fe5db0e AS bilig-workpaper-mcp
+
+ARG BILIG_HEADLESS_VERSION=latest
+ENV NODE_ENV="production"
+
+LABEL io.modelcontextprotocol.server.name="io.github.proompteng/bilig-workpaper"
+LABEL org.opencontainers.image.source="https://github.com/proompteng/bilig"
+LABEL org.opencontainers.image.description="Bilig WorkPaper stdio MCP server for formula-backed workbook readback and verified edits."
+
+RUN npm install -g "@bilig/headless@${BILIG_HEADLESS_VERSION}" \
+  && npm cache clean --force
+
+ENTRYPOINT ["bilig-workpaper-mcp"]
+
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json tsconfig.json tsconfig.workspace-paths.json ./

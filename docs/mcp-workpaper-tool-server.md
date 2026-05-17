@@ -150,6 +150,28 @@ bilig-workpaper-mcp --workpaper pricing.workpaper.json --writable`, lists the
 file-backed tool surface, writes `Inputs!B3`, persists the JSON file, reads
 `Summary!B3`, and asserts that the recalculated value is `96000`.
 
+## Docker Target For Directory Introspection
+
+MCP directories such as Glama need to start the server and run `tools/list`
+without cloning the monorepo or building the web app. The root Dockerfile keeps
+the production web image as `--target bilig-runtime` and adds a separate MCP
+target for directory scanners:
+
+```sh
+docker build --target bilig-workpaper-mcp -t bilig-workpaper-mcp:local .
+printf '%s\n' \
+  '{"jsonrpc":"2.0","id":1,"method":"initialize"}' \
+  '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' |
+  docker run --rm -i bilig-workpaper-mcp:local
+```
+
+The target installs `@bilig/headless` from npm and starts
+`bilig-workpaper-mcp` over stdio. It also carries the OCI label
+`io.modelcontextprotocol.server.name=io.github.proompteng/bilig-workpaper`, so
+registry and directory tooling can match the container target to the official
+MCP Registry name.
+
 The package carries `mcpName: io.github.proompteng/bilig-workpaper` and a
 matching `server.json`. It is published in the official MCP Registry as
 `io.github.proompteng/bilig-workpaper`:

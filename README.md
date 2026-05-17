@@ -325,6 +325,7 @@ The package also ships the MCP stdio binary:
 ```sh
 npm exec --package @bilig/headless -- bilig-workpaper-mcp
 npm exec --package @bilig/headless -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --writable
+docker build --target bilig-workpaper-mcp -t bilig-workpaper-mcp:local .
 ```
 
 Without `--workpaper`, the binary starts the built-in demo workbook. With

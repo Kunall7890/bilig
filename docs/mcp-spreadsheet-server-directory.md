@@ -40,6 +40,23 @@ Package metadata:
 The server is local-first stdio. It does not need a hosted Bilig account or a
 network service to answer `tools/list` and `tools/call`.
 
+For directory scanners that need a containerized start command, the root
+Dockerfile exposes a dedicated MCP target without changing the production app
+image:
+
+```sh
+docker build --target bilig-workpaper-mcp -t bilig-workpaper-mcp:local .
+printf '%s\n' \
+  '{"jsonrpc":"2.0","id":1,"method":"initialize"}' \
+  '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' |
+  docker run --rm -i bilig-workpaper-mcp:local
+```
+
+The target starts `bilig-workpaper-mcp` from the published npm package and
+labels the image with
+`io.modelcontextprotocol.server.name=io.github.proompteng/bilig-workpaper`.
+
 ## Directory Status
 
 | Directory                       | Status                                       | Link                                                                                                  |
