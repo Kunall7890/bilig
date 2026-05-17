@@ -4,6 +4,19 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.18.4
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.18.3
+- Manual override: no
+
+## Fixes
+- perf(headless): skip no-value structural reductions (2457cd77)
+
+## Internal runtime changes
+- chore(release): refresh headless public evidence (f3cc500e)
+- docs(growth): add formula bug clinic (878b31db)
+
 ## 0.18.3
 
 - Release type: patch
