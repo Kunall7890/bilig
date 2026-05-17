@@ -4,6 +4,18 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.18.28
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.18.27
+- Manual override: yes
+
+## Internal runtime changes
+- refactor(core): unify lookup write planning (e3037d00)
+- docs(growth): refresh v0.18.27 registry evidence (80a124e3)
+- docs(growth): add headless agent handbook (564846bb)
+- docs(headless): publish agent package notes (3544d8c5)
+
 ## 0.18.27
 
 - Release type: patch
