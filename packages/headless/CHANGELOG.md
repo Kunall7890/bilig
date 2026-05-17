@@ -4,6 +4,16 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.18.11
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.18.10
+- Manual override: no
+
+## Fixes
+- fix(release): sync npm evidence after version bumps (da5a9fb2)
+- fix(release): build before footprint sync (f293c629)
+
 ## 0.18.10
 
 - Release type: patch
