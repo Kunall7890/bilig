@@ -253,4 +253,5 @@ export interface WorkbookDownloadResult {
   readonly sha256: string | null
   readonly workbookFingerprint: string | null
   readonly error: string | null
+  readonly retryableFailure?: boolean
 }

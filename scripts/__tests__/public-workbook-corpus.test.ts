@@ -1507,6 +1507,140 @@ describe('public workbook corpus', () => {
     ])
   })
 
+  it('keeps retryable rate-limited sources available for resumed fetches', async () => {
+    const cacheDir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-fetch-rate-limit-retry-'))
+    const workbookBytes = buildWorkbookBytes('RateLimitRecovered')
+    const fetchMock = vi
+      .fn<() => Promise<Response>>()
+      .mockResolvedValueOnce(new Response('rate limited', { status: 429 }))
+      .mockResolvedValueOnce(
+        new Response(workbookBytes, {
+          headers: {
+            'content-length': String(workbookBytes.byteLength),
+          },
+        }),
+      )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const license = {
+      spdxId: 'CC-BY-4.0',
+      title: 'Creative Commons Attribution 4.0 International',
+      evidenceUrl: 'https://creativecommons.org/licenses/by/4.0/',
+    }
+    const manifest: PublicWorkbookManifest = {
+      ...createEmptyPublicWorkbookManifest('2026-05-07T00:00:00.000Z'),
+      sources: [
+        {
+          id: 'source-rate-limited',
+          kind: 'direct-url',
+          sourceUrl: 'https://example.com/rate-limited.xlsx',
+          downloadUrl: 'https://example.com/rate-limited.xlsx',
+          fileName: 'rate-limited.xlsx',
+          discoveredAt: '2026-05-07T00:00:00.000Z',
+          license,
+        },
+      ],
+    }
+    const progress: PublicWorkbookCorpusFetchCheckpointProgress[] = []
+
+    const firstFetch = await fetchPublicWorkbookArtifacts({
+      manifest,
+      cacheDir,
+      limit: 1,
+      fetchedAt: '2026-05-07T01:00:00.000Z',
+      fetchBatchSize: 1,
+      onArtifactsCommitted: (_checkpointManifest, checkpointProgress) => progress.push(checkpointProgress),
+    })
+    const secondFetch = await fetchPublicWorkbookArtifacts({
+      manifest: firstFetch,
+      cacheDir,
+      limit: 1,
+      fetchedAt: '2026-05-07T02:00:00.000Z',
+      fetchBatchSize: 1,
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(firstFetch.artifacts).toHaveLength(0)
+    expect(firstFetch.fetchState?.exhaustedSourceIds).toBeUndefined()
+    expect(progress).toEqual([
+      {
+        artifactCount: 0,
+        exhaustedSourceCount: 0,
+        committedArtifactCount: 0,
+        exhaustedSourceDelta: 0,
+        failedSourceCount: 1,
+        duplicateHashSourceCount: 0,
+        duplicateFingerprintSourceCount: 0,
+        failedSourceSamples: [
+          {
+            sourceId: 'source-rate-limited',
+            fileName: 'rate-limited.xlsx',
+            error: 'Unable to download https://example.com/rate-limited.xlsx: HTTP 429',
+          },
+        ],
+      },
+    ])
+    expect(secondFetch.artifacts.map((artifact) => artifact.sourceId)).toEqual(['source-rate-limited'])
+    expect(secondFetch.fetchState?.exhaustedSourceIds).toEqual(['source-rate-limited'])
+  })
+
+  it('keeps retryable socket failures available for resumed fetches', async () => {
+    const cacheDir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-fetch-socket-retry-'))
+    const workbookBytes = buildWorkbookBytes('SocketRecovered')
+    const fetchMock = vi
+      .fn<() => Promise<Response>>()
+      .mockRejectedValueOnce(Object.assign(new TypeError('fetch failed'), { cause: { code: 'UND_ERR_SOCKET' } }))
+      .mockResolvedValueOnce(
+        new Response(workbookBytes, {
+          headers: {
+            'content-length': String(workbookBytes.byteLength),
+          },
+        }),
+      )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const license = {
+      spdxId: 'CC-BY-4.0',
+      title: 'Creative Commons Attribution 4.0 International',
+      evidenceUrl: 'https://creativecommons.org/licenses/by/4.0/',
+    }
+    const manifest: PublicWorkbookManifest = {
+      ...createEmptyPublicWorkbookManifest('2026-05-07T00:00:00.000Z'),
+      sources: [
+        {
+          id: 'source-socket-failure',
+          kind: 'direct-url',
+          sourceUrl: 'https://example.com/socket-failure.xlsx',
+          downloadUrl: 'https://example.com/socket-failure.xlsx',
+          fileName: 'socket-failure.xlsx',
+          discoveredAt: '2026-05-07T00:00:00.000Z',
+          license,
+        },
+      ],
+    }
+
+    const firstFetch = await fetchPublicWorkbookArtifacts({
+      manifest,
+      cacheDir,
+      limit: 1,
+      fetchedAt: '2026-05-07T01:00:00.000Z',
+      fetchBatchSize: 1,
+    })
+    const secondFetch = await fetchPublicWorkbookArtifacts({
+      manifest: firstFetch,
+      cacheDir,
+      limit: 1,
+      fetchedAt: '2026-05-07T02:00:00.000Z',
+      fetchBatchSize: 1,
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(firstFetch.artifacts).toHaveLength(0)
+    expect(firstFetch.fetchState?.exhaustedSourceIds).toBeUndefined()
+    expect(secondFetch.artifacts.map((artifact) => artifact.sourceId)).toEqual(['source-socket-failure'])
+    expect(secondFetch.fetchState?.exhaustedSourceIds).toEqual(['source-socket-failure'])
+  })
+
   it('fetches multi-batch corpus tranches without retaining prior batch results', async () => {
     const cacheDir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-fetch-iterative-'))
     const gcMock = vi.fn()

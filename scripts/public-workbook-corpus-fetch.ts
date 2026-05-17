@@ -29,6 +29,18 @@ export const defaultFetchMaxRssBytes = 1536 * 1024 * 1024
 export const defaultFingerprintTimeoutMs = 180_000
 export const defaultFingerprintMaxRssBytes = 1024 * 1024 * 1024
 const noop = (): void => undefined
+const retryableNetworkErrorCodes = new Set([
+  'EAI_AGAIN',
+  'ECONNREFUSED',
+  'ECONNRESET',
+  'EHOSTUNREACH',
+  'ENETUNREACH',
+  'ETIMEDOUT',
+  'UND_ERR_BODY_TIMEOUT',
+  'UND_ERR_CONNECT_TIMEOUT',
+  'UND_ERR_HEADERS_TIMEOUT',
+  'UND_ERR_SOCKET',
+])
 
 export interface PublicWorkbookCorpusFetchPlan {
   readonly targetArtifactCount: number
@@ -200,7 +212,7 @@ async function fetchArtifactsFromCandidateSources(args: {
             error: result.error ?? 'download result was missing workbook bytes, hash, or fingerprint',
           })
         }
-        if (!args.exhaustedSourceIds.has(result.source.id)) {
+        if (result.retryableFailure !== true && !args.exhaustedSourceIds.has(result.source.id)) {
           args.exhaustedSourceIds.add(result.source.id)
           exhaustedSourceCount += 1
         }
@@ -250,7 +262,7 @@ async function fetchArtifactsFromCandidateSources(args: {
       }
       committedArtifactCount += 1
     }
-    if (committedArtifactCount > 0 || exhaustedSourceCount > 0) {
+    if (committedArtifactCount > 0 || exhaustedSourceCount > 0 || failedSourceCount > 0) {
       // oxlint-disable-next-line eslint(no-await-in-loop) -- Checkpoint each bounded batch before continuing the long corpus fetch.
       await args.onArtifactsCommitted?.(
         {
@@ -378,8 +390,55 @@ async function downloadWorkbookCandidate(
       sha256: null,
       workbookFingerprint: null,
       error: error instanceof Error ? error.message : String(error),
+      retryableFailure: isRetryableWorkbookDownloadError(error),
     }
   }
+}
+
+class WorkbookDownloadHttpError extends Error {
+  constructor(
+    url: string,
+    readonly status: number,
+  ) {
+    super(`Unable to download ${url}: HTTP ${String(status)}`)
+    this.name = 'WorkbookDownloadHttpError'
+  }
+}
+
+function isRetryableWorkbookDownloadError(error: unknown): boolean {
+  if (error instanceof WorkbookDownloadHttpError) {
+    return error.status === 408 || error.status === 425 || error.status === 429 || error.status >= 500
+  }
+  return isRequestTimeoutError(error) || hasRetryableNetworkCause(error)
+}
+
+function isRequestTimeoutError(error: unknown): boolean {
+  return error instanceof Error && /^Request timed out after \d+ms$/u.test(error.message)
+}
+
+function hasRetryableNetworkCause(error: unknown, seen = new Set<object>()): boolean {
+  if (error === null || typeof error !== 'object') {
+    return false
+  }
+  if (seen.has(error)) {
+    return false
+  }
+  seen.add(error)
+  const code = readOwnProperty(error, 'code')
+  if (typeof code === 'string' && retryableNetworkErrorCodes.has(code)) {
+    return true
+  }
+  const cause = readOwnProperty(error, 'cause')
+  if (hasRetryableNetworkCause(cause, seen)) {
+    return true
+  }
+  const errors = readOwnProperty(error, 'errors')
+  return Array.isArray(errors) && errors.some((nestedError) => hasRetryableNetworkCause(nestedError, seen))
+}
+
+function readOwnProperty(value: object, key: string): unknown {
+  const descriptor = Object.getOwnPropertyDescriptor(value, key)
+  return descriptor && 'value' in descriptor ? descriptor.value : undefined
 }
 
 function fingerprintWorkbookBytesIsolated(
@@ -562,7 +621,7 @@ async function downloadWorkbookBytes(url: string, maxBytes: number, timeoutMs: n
       maxBytesLabel: 'Workbook',
       validateResponse: (response) => {
         if (!response.ok) {
-          throw new Error(`Unable to download ${url}: HTTP ${String(response.status)}`)
+          throw new WorkbookDownloadHttpError(url, response.status)
         }
         const contentLength = Number(response.headers.get('content-length') ?? '0')
         if (contentLength > maxBytes) {
