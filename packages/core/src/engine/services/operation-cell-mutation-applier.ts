@@ -190,6 +190,9 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
     const hasWatchedCellListeners = args.state.events.hasCellListeners()
     const requiresChangedSet = hasGeneralEventListeners || hasTrackedEventListeners || hasWatchedCellListeners
     const trackExplicitChanges = !isRestore && requiresChangedSet
+    const batchMayNeedFreshAggregateInputCoverage = refs.some(
+      (ref) => ref.mutation.kind === 'setCellValue' || ref.mutation.kind === 'clearCell',
+    )
     let hadCycleMembersBefore: boolean | undefined
     const hadCycleMembersBeforeNow = (): boolean => (hadCycleMembersBefore ??= hasCycleMembersNow())
     const rebindValueSensitiveFormulaDependents = (cellIndex: number): void => {
@@ -558,7 +561,7 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
                     ? (() => {
                         postRecalcDirectFormulaIndices.addCurrentResult(cellIndex, freshDirectFormulaResult)
                         const applied = applyDirectFormulaCurrentResult(cellIndex, freshDirectFormulaResult)
-                        if (applied) {
+                        if (applied && batchMayNeedFreshAggregateInputCoverage) {
                           markFreshDirectAggregateInputsCovered(args, {
                             formulaCellIndex: cellIndex,
                             formula: runtimeFormula,

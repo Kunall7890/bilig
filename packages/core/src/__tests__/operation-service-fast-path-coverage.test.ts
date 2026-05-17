@@ -6,6 +6,7 @@ import type {
   EngineExistingNumericCellMutationResult,
 } from '../cell-mutations-at.js'
 import { SpreadsheetEngine } from '../engine.js'
+import { DirectFormulaIndexCollection } from '../engine/services/direct-formula-index-collection.js'
 
 function existingNumericMutationFastPath(
   engine: SpreadsheetEngine,
@@ -394,6 +395,59 @@ describe('operation-service dense mutation fast paths', () => {
 
     engine.setCellValue('Sheet1', 'A13', 99)
     expect(engine.getCellValue('Sheet1', 'E13')).toEqual({ tag: ValueTag.Number, value: 216 })
+  })
+
+  it('does not mark direct aggregate inputs covered for formula-only fresh aggregate batches', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'formula-only-fresh-row-aggregate-coverage' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+
+    const existingRows = 12
+    const appendRows = 8
+    const inputCols = 4
+    for (let row = 1; row <= existingRows; row += 1) {
+      for (let col = 0; col < inputCols; col += 1) {
+        engine.setCellValue('Sheet1', `${String.fromCharCode(65 + col)}${row}`, row * (col + 1))
+      }
+      engine.setCellFormula('Sheet1', `E${row}`, `SUM(A${row}:D${row})`)
+    }
+    engine.insertRows('Sheet1', existingRows, appendRows)
+
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+    const valueRefs: EngineCellMutationRef[] = []
+    const formulaRefs: EngineCellMutationRef[] = []
+    for (let row = 0; row < appendRows; row += 1) {
+      const rowIndex = existingRows + row
+      const rowNumber = rowIndex + 1
+      for (let col = 0; col < inputCols; col += 1) {
+        valueRefs.push({
+          sheetId,
+          mutation: { kind: 'setCellValue', row: rowIndex, col, value: rowNumber * (col + 1) },
+        })
+      }
+      formulaRefs.push({
+        sheetId,
+        mutation: { kind: 'setCellFormula', row: rowIndex, col: inputCols, formula: `SUM(A${rowNumber}:D${rowNumber})` },
+      })
+    }
+
+    engine.applyCellMutationsAt(valueRefs, valueRefs.length)
+    engine.resetPerformanceCounters()
+    const markCovered = vi.spyOn(DirectFormulaIndexCollection.prototype, 'markDirectRangeInputCovered')
+    try {
+      engine.applyCellMutationsAt(formulaRefs, formulaRefs.length)
+      expect(markCovered).not.toHaveBeenCalled()
+    } finally {
+      markCovered.mockRestore()
+    }
+    expect(engine.getCellValue('Sheet1', 'E13')).toEqual({ tag: ValueTag.Number, value: 130 })
+    expect(engine.getCellValue('Sheet1', 'E20')).toEqual({ tag: ValueTag.Number, value: 200 })
+    expect(engine.getLastMetrics()).toMatchObject({
+      dirtyFormulaCount: 0,
+      jsFormulaCount: 0,
+      wasmFormulaCount: 0,
+    })
+    expect(engine.getPerformanceCounters().directAggregateScanEvaluations).toBe(0)
   })
 
   it('keeps combined appended row aggregates out of the dirty recalc path', async () => {
