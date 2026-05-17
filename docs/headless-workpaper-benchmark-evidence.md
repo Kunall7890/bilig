@@ -26,10 +26,10 @@ as useful evidence, but they do not satisfy broad coverage alone.
 
 Current checked-in metadata:
 
-- generated at `2026-05-17T08:34:05.460Z`
+- generated at `2026-05-17T09:17:04.702Z`
 - host: macOS `arm64`, Node `v24.14.0`
 - benchmark sampling: `5` measured samples after `2` warmup samples
-- WorkPaper package: `@bilig/headless` `0.18.15`
+- WorkPaper package: `@bilig/headless` `0.18.20`
 - comparison engine: HyperFormula `3.2.0`, local checkout commit
   `9a510a2acb97c3d3490f9e3b9e961a1c4a98b9ad`, GPL-v3 license key
 - scalar formula comparison engine: TrueCalc `0.6.4`, `7` comparable scalar
@@ -48,17 +48,16 @@ current checked-in artifact records `81/100` mean-latency wins:
 | Lane    | Comparable Workloads | WorkPaper Mean Wins | HyperFormula Mean Wins |
 | ------- | -------------------: | ------------------: | ---------------------: |
 | Overall |                `100` |                `81` |                   `19` |
-| Public  |                 `73` |                `62` |                   `11` |
-| Holdout |                 `27` |                `19` |                    `8` |
+| Public  |                 `73` |                `61` |                   `12` |
+| Holdout |                 `27` |                `20` |                    `7` |
 
-The overall directional mean-ratio geomean is `0.5937944158304002`. The overall
-directional p95-ratio geomean is `0.6036873396754268`. Ratios below `1.0` mean
+The overall directional mean-ratio geomean is `0.6222588113409996`. The overall
+directional p95-ratio geomean is `0.6322044687961874`. Ratios below `1.0` mean
 WorkPaper is faster for that metric.
 
-The current worst mean row is `structural-append-formula-rows-small`, with a
-mean ratio of `1.689195160283006`. The current worst p95 row is
-`lookup-approximate-duplicates`, with a p95 ratio of
-`1.7410504531945592`. The
+The current worst mean row is `structural-append-formula-rows`, with a mean
+ratio of `2.041329449618645`. The current worst p95 row is
+`structural-append-formula-rows`, with a p95 ratio of `4.605272974200288`. The
 headless leadership scorecard
 currently records `77/100` workloads winning both
 mean and p95 against HyperFormula.

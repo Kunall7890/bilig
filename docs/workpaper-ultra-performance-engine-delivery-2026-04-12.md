@@ -63,7 +63,7 @@ regression in the current expanded artifact:
 
 - all `8/8` holdout rows, including `build-parser-cache-unique-formulas`,
   `sheet-rename-dependencies`, `named-expression-change`, and
-  `lookup-approximate-duplicates`
+  `structural-append-formula-rows-small`
 - aggregate rows that were previously noisy, including
   `aggregate-overlapping-sliding-window`
 - steady-state exact and approximate lookup rows

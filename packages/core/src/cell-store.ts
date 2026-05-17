@@ -85,6 +85,10 @@ export class CellStore {
   }
 
   allocateDenseRowMajorReserved(sheetId: number, rowCount: number, colCount: number): number {
+    return this.allocateDenseRowMajorAtReserved(sheetId, 0, rowCount, 0, colCount)
+  }
+
+  allocateDenseRowMajorAtReserved(sheetId: number, rowStart: number, rowCount: number, colStart: number, colCount: number): number {
     const count = rowCount * colCount
     const firstIndex = this.size
     if (count <= 0) {
@@ -98,13 +102,32 @@ export class CellStore {
     this.errors.fill(ErrorCode.None, firstIndex, firstIndex + count)
     this.flags.fill(CellFlags.Materialized, firstIndex, firstIndex + count)
 
-    let cellIndex = firstIndex
     for (let row = 0; row < rowCount; row += 1) {
+      const rowBase = firstIndex + row * colCount
+      this.rows.fill(rowStart + row, rowBase, rowBase + colCount)
       for (let col = 0; col < colCount; col += 1) {
-        this.rows[cellIndex] = row
-        this.cols[cellIndex] = col
-        cellIndex += 1
+        this.cols[rowBase + col] = colStart + col
       }
+    }
+    return firstIndex
+  }
+
+  allocateDenseSingleColumnReserved(sheetId: number, rowStart: number, rowCount: number, col: number): number {
+    const firstIndex = this.size
+    if (rowCount <= 0) {
+      return firstIndex
+    }
+    this.ensureCapacity(firstIndex + rowCount)
+    this.size = firstIndex + rowCount
+
+    this.sheetIds.fill(sheetId, firstIndex, firstIndex + rowCount)
+    this.cols.fill(col, firstIndex, firstIndex + rowCount)
+    this.tags.fill(ValueTag.Empty, firstIndex, firstIndex + rowCount)
+    this.errors.fill(ErrorCode.None, firstIndex, firstIndex + rowCount)
+    this.flags.fill(CellFlags.Materialized, firstIndex, firstIndex + rowCount)
+
+    for (let offset = 0; offset < rowCount; offset += 1) {
+      this.rows[firstIndex + offset] = rowStart + offset
     }
     return firstIndex
   }

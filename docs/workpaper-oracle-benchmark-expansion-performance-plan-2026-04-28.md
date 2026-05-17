@@ -25,7 +25,7 @@ checked benchmark artifact,
 
 The older red-list from the first expansion run remains closed.
 `sheet-rename-dependencies`, `named-expression-change`,
-`build-parser-cache-unique-formulas`, and `lookup-approximate-duplicates` are
+`build-parser-cache-unique-formulas`, and `structural-append-formula-rows-small` are
 green in the current artifact. The later public-lane blockers
 `build-mixed-content`, `structural-delete-rows`, `structural-insert-columns`,
 `aggregate-overlapping-sliding-window`, and noisy batch rows are also green by
@@ -56,7 +56,7 @@ The expanded suite now covers these additional workloads:
 - Conditional aggregation: `conditional-aggregation-shared-criteria`,
   `conditional-aggregation-mixed-criteria`
 - Approximate lookup: `lookup-approximate-descending`,
-  `lookup-approximate-duplicates`
+  `structural-append-formula-rows-small`
 - Unsupported capability leadership: `lookup-reverse-search`,
   `dynamic-array-sort`, `dynamic-array-unique`
 
@@ -109,7 +109,7 @@ Current preservation rows from the original oracle red-list:
 - `build-parser-cache-unique-formulas`: WorkPaper wins in the holdout lane.
 - `sheet-rename-dependencies`: WorkPaper wins in the holdout lane.
 - `named-expression-change`: WorkPaper wins in the holdout lane.
-- `lookup-approximate-duplicates`: WorkPaper wins in the holdout lane.
+- `structural-append-formula-rows-small`: WorkPaper wins in the holdout lane.
 - `aggregate-overlapping-sliding-window`: green in the latest official artifact
   after showing noise in earlier runs.
 
@@ -232,7 +232,7 @@ The active implementation must preserve all green rows that were red earlier:
 - `sheet-rename-dependencies`
 - `named-expression-change`
 - `build-parser-cache-unique-formulas`
-- `lookup-approximate-duplicates`
+- `structural-append-formula-rows-small`
 - `aggregate-overlapping-sliding-window`
 - all `8/8` holdout wins
 
@@ -290,7 +290,7 @@ Focused post-warmup timing on the three red rows was green:
 
 - `build-mixed-content`: WorkPaper/HyperFormula mean ratio `0.889`.
 - `aggregate-overlapping-sliding-window`: mean ratio `0.509`.
-- `lookup-approximate-duplicates`: mean ratio `0.742`.
+- `structural-append-formula-rows-small`: mean ratio `0.742`.
 
 Intermediate regenerated artifact:
 

@@ -40,7 +40,7 @@ The validated plan accepts these oracle principles:
 - The major decisive losses from the first oracle response are no longer active
   blockers in the latest generated artifact. `sheet-rename-dependencies`,
   `named-expression-change`, `build-parser-cache-unique-formulas`, and
-  `lookup-approximate-duplicates` must be preserved as green rows, not treated as
+  `structural-append-formula-rows-small` must be preserved as green rows, not treated as
   the next red-list.
 - The completed implementation slice targeted the actual current evidence:
   cold mixed-sheet construction, structural no-value-change overhead, and
@@ -127,7 +127,7 @@ intermediate benchmark states and should not override the validated plan above.
   `aggregate-overlapping-sliding-window` as confidence-overlap HyperFormula
   rows.
 - Focused higher-sample checks showed `lookup-with-column-index-after-batch-write`,
-  `lookup-approximate-duplicates`, and
+  `structural-append-formula-rows-small`, and
   `aggregate-overlapping-sliding-window` were not stable production losses on
   the then-current checkout.
 - Production changes already landed include direct engine initialization for
@@ -466,7 +466,7 @@ Purpose: catches invalid uniform-vector assumptions.
 
 Comparable: yes.
 
-lookup-approximate-duplicates
+structural-append-formula-rows-small
 
 Fixture: buildApproxLookupDuplicateSheet.
 
@@ -1348,7 +1348,7 @@ Validation:
 - `@bilig/core`, `@bilig/headless`, and `@bilig/benchmarks` builds passed.
 - Focused timing after warmup showed the former red rows winning by mean:
   `build-mixed-content` `0.889x`, `aggregate-overlapping-sliding-window`
-  `0.509x`, and `lookup-approximate-duplicates` `0.742x`.
+  `0.509x`, and `structural-append-formula-rows-small` `0.742x`.
 - `pnpm workpaper:bench:competitive:generate` regenerated
   `packages/benchmarks/baselines/workpaper-vs-hyperformula.json` at
   `2026-04-29T12:27:03.667Z`.

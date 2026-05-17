@@ -121,7 +121,7 @@ and needs formula readback, persistence, and restore proof.
 
 The current checked benchmark artifact records `81/100` comparable
 mean-latency wins against HyperFormula-style workloads. The caveat is public:
-`lookup-approximate-duplicates` is slower at p95 by `1.741x`, and
+`structural-append-formula-rows` is slower at p95 by `4.605x`, and
 browser UI rendering is outside the benchmark.
 
 This page does not claim full Excel compatibility. It does not claim chart,

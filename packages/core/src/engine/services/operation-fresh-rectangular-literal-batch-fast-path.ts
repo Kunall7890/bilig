@@ -3,6 +3,7 @@ import type { EngineOpBatch } from '@bilig/workbook-domain'
 import type { EngineCellMutationRef } from '../../cell-mutations-at.js'
 import { addEngineCounter } from '../../perf/engine-counters.js'
 import { markBatchApplied } from '../../replica-state.js'
+import type { SheetRecord } from '../../workbook-store.js'
 import type {
   EngineRuntimeState,
   RuntimeDirectAggregateDescriptor,
@@ -54,6 +55,8 @@ interface FreshNumericRectangle {
   readonly values: Float64Array
 }
 
+type FreshNumericCellAttacher = (row: number, col: number, cellIndex: number, rowId: string, colId: string) => void
+
 const EMPTY_CHANGED_CELLS = new Uint32Array(0)
 
 export function createOperationFreshRectangularLiteralBatchFastPath(args: OperationFreshRectangularLiteralBatchFastPathArgs): {
@@ -84,7 +87,6 @@ export function createOperationFreshRectangularLiteralBatchFastPath(args: Operat
 
     args.materializeDeferredStructuralFormulaSources()
     args.beginMutationCollection()
-    args.state.workbook.cellStore.ensureCapacity(args.state.workbook.cellStore.size + refs.length)
     args.ensureRecalcScratchCapacity(args.state.workbook.cellStore.size + refs.length + 1)
     args.resetMaterializedCellScratch(refs.length)
 
@@ -98,6 +100,14 @@ export function createOperationFreshRectangularLiteralBatchFastPath(args: Operat
     const ensureRowId = args.state.workbook.createLogicalAxisIdEnsurer(rectangle.sheetId, 'row')
     const ensureColId = args.state.workbook.createLogicalAxisIdEnsurer(rectangle.sheetId, 'column')
     const columnIds = Array.from({ length: rectangle.colCount }, (_, colOffset) => ensureColId(rectangle.firstCol + colOffset))
+    const attachFreshCell = createFreshNumericCellAttacher(rectangle.sheet)
+    const firstCellIndex = args.state.workbook.cellStore.allocateDenseRowMajorAtReserved(
+      rectangle.sheetId,
+      rectangle.firstRow,
+      rectangle.rowCount,
+      rectangle.firstCol,
+      rectangle.colCount,
+    )
     try {
       let valueIndex = 0
       for (let rowOffset = 0; rowOffset < rectangle.rowCount; rowOffset += 1) {
@@ -105,8 +115,8 @@ export function createOperationFreshRectangularLiteralBatchFastPath(args: Operat
         const rowId = ensureRowId(row)
         for (let colOffset = 0; colOffset < rectangle.colCount; colOffset += 1) {
           const col = rectangle.firstCol + colOffset
-          const cellIndex = args.state.workbook.cellStore.allocate(rectangle.sheetId, row, col)
-          args.state.workbook.attachAllocatedCellWithLogicalAxisIds(rectangle.sheetId, row, col, cellIndex, rowId, columnIds[colOffset]!)
+          const cellIndex = firstCellIndex + rowOffset * rectangle.colCount + colOffset
+          attachFreshCell(row, col, cellIndex, rowId, columnIds[colOffset]!)
           args.writeNumericLiteralToCellStore(cellIndex, rectangle.values[valueIndex]!)
           changedInputCount = args.markInputChanged(cellIndex, changedInputCount)
           if (requiresChangedSet) {
@@ -216,6 +226,15 @@ function collectFreshDenseNumericRectangle(
     return null
   }
   return { sheet, sheetId: firstRef.sheetId, firstRow, rowCount, firstCol, colCount, values }
+}
+
+function createFreshNumericCellAttacher(sheet: SheetRecord): FreshNumericCellAttacher {
+  const attachFreshVisibleCell = sheet.logical.setFreshVisibleCellWithAxisIdsDeferred.bind(sheet.logical)
+  const setGridCell = sheet.grid.createRowMajorSetter()
+  return (row, col, cellIndex, rowId, colId) => {
+    attachFreshVisibleCell(row, col, cellIndex, rowId, colId)
+    setGridCell(row, col, cellIndex)
+  }
 }
 
 function rectangleOverlapsFormulaDependencies(

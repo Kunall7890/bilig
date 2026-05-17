@@ -367,7 +367,7 @@ It is published in the official MCP Registry as
 - Run `pnpm workpaper:bench:competitive:check`. The checked-in artifact shows
   [`81/100` comparable WorkPaper mean wins](docs/what-workpaper-benchmark-proves.md)
   and names the worst p95 holdout:
-  `lookup-approximate-duplicates` at `1.741x`.
+  `structural-append-formula-rows` at `4.605x`.
 - The benchmark card is generated from that artifact:
   [`docs/assets/workpaper-benchmark-card.png`](docs/assets/workpaper-benchmark-card.png).
 - Read the [compatibility limits](docs/where-bilig-is-not-excel-compatible-yet.md)

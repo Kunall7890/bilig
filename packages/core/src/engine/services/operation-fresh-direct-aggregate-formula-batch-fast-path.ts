@@ -4,6 +4,7 @@ import { formatAddress } from '@bilig/formula'
 import type { EngineCellMutationRef } from '../../cell-mutations-at.js'
 import { addEngineCounter } from '../../perf/engine-counters.js'
 import { batchOpOrder, markBatchApplied, type OpOrder } from '../../replica-state.js'
+import type { SheetRecord } from '../../workbook-store.js'
 import type { EngineRuntimeState, U32 } from '../runtime-state.js'
 import type { DirectScalarCurrentOperand } from './direct-formula-index-collection.js'
 import { emitCellMutationFastPathBatchResult } from './operation-fast-path-batch-result.js'
@@ -39,6 +40,13 @@ interface FreshDirectAggregateFormulaEntry {
   readonly templateId: number
   readonly result: DirectScalarCurrentOperand
 }
+
+interface ContiguousSingleColumnFormulaBatch {
+  readonly rowStart: number
+  readonly col: number
+}
+
+type FreshFormulaCellAttacher = (row: number, col: number, cellIndex: number, rowId: string, colId: string) => void
 
 export interface OperationFreshDirectAggregateFormulaBatchFastPathArgs {
   readonly state: FastPathState
@@ -101,7 +109,6 @@ export function createOperationFreshDirectAggregateFormulaBatchFastPath(args: Op
 
     args.materializeDeferredStructuralFormulaSources()
     args.beginMutationCollection()
-    args.state.workbook.cellStore.ensureCapacity(args.state.workbook.cellStore.size + refs.length)
     args.ensureRecalcScratchCapacity(args.state.workbook.cellStore.size + refs.length + 1)
     args.resetMaterializedCellScratch(refs.length)
 
@@ -120,6 +127,20 @@ export function createOperationFreshDirectAggregateFormulaBatchFastPath(args: Op
       }
       return cached
     }
+    const contiguousBatch = getContiguousSingleColumnFormulaBatch(entries)
+    const firstContiguousCellIndex =
+      contiguousBatch === undefined
+        ? undefined
+        : args.state.workbook.cellStore.allocateDenseSingleColumnReserved(
+            firstRef.sheetId,
+            contiguousBatch.rowStart,
+            entries.length,
+            contiguousBatch.col,
+          )
+    if (firstContiguousCellIndex === undefined) {
+      args.state.workbook.cellStore.ensureCapacity(args.state.workbook.cellStore.size + refs.length)
+    }
+    const attachFreshCell = createFreshFormulaCellAttacher(sheet)
     let changedInputCount = 0
     let explicitChangedCount = 0
     args.setBatchMutationDepth(args.getBatchMutationDepth() + 1)
@@ -127,15 +148,11 @@ export function createOperationFreshDirectAggregateFormulaBatchFastPath(args: Op
       args.state.workbook.withBatchedColumnVersionUpdates(() => {
         for (let index = 0; index < entries.length; index += 1) {
           const entry = entries[index]!
-          const cellIndex = args.state.workbook.cellStore.allocate(firstRef.sheetId, entry.row, entry.col)
-          args.state.workbook.attachAllocatedCellWithLogicalAxisIds(
-            firstRef.sheetId,
-            entry.row,
-            entry.col,
-            cellIndex,
-            ensureRowId(entry.row),
-            colId(entry.col),
-          )
+          const cellIndex =
+            firstContiguousCellIndex === undefined
+              ? args.state.workbook.cellStore.allocateReserved(firstRef.sheetId, entry.row, entry.col)
+              : firstContiguousCellIndex + index
+          attachFreshCell(entry.row, entry.col, cellIndex, ensureRowId(entry.row), colId(entry.col))
           args.bindPreparedFormula(cellIndex, sheet.name, entry.source, entry.compiled, entry.templateId, {
             assumeFreshFormula: true,
           })
@@ -174,6 +191,31 @@ export function createOperationFreshDirectAggregateFormulaBatchFastPath(args: Op
   }
 
   return { tryApplyFreshDirectAggregateFormulaBatch }
+}
+
+function getContiguousSingleColumnFormulaBatch(
+  entries: readonly FreshDirectAggregateFormulaEntry[],
+): ContiguousSingleColumnFormulaBatch | undefined {
+  const first = entries[0]
+  if (first === undefined) {
+    return undefined
+  }
+  for (let index = 1; index < entries.length; index += 1) {
+    const entry = entries[index]!
+    if (entry.col !== first.col || entry.row !== first.row + index) {
+      return undefined
+    }
+  }
+  return { rowStart: first.row, col: first.col }
+}
+
+function createFreshFormulaCellAttacher(sheet: SheetRecord): FreshFormulaCellAttacher {
+  const attachFreshVisibleCell = sheet.logical.setFreshVisibleCellWithAxisIdsDeferred.bind(sheet.logical)
+  const setGridCell = sheet.grid.createRowMajorSetter()
+  return (row, col, cellIndex, rowId, colId) => {
+    attachFreshVisibleCell(row, col, cellIndex, rowId, colId)
+    setGridCell(row, col, cellIndex)
+  }
 }
 
 function collectFreshDirectAggregateFormulaEntries(

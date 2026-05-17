@@ -88,7 +88,7 @@ are now green in the current artifact or no longer drive implementation order:
 - `conditional-aggregation-mixed-criteria`
 - `sheet-rename-dependencies`
 - `named-expression-change`
-- `lookup-approximate-duplicates`
+- `structural-append-formula-rows-small`
 
 The architecture only matters insofar as it removes the remaining production
 costs without turning current greens red.
@@ -159,7 +159,7 @@ Delivered effect:
 
 - `lookup-with-column-index` is green
 - `lookup-no-column-index` is green
-- `lookup-approximate-duplicates` is green
+- `structural-append-formula-rows-small` is green
 - `lookup-with-column-index-after-batch-write` is green
 
 Not yet complete:

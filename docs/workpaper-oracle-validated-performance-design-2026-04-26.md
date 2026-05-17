@@ -59,7 +59,7 @@ Rows from this document that are now green and must be preserved:
 
 - `aggregate-overlapping-sliding-window`
 - `lookup-approximate-sorted`
-- `lookup-approximate-duplicates`
+- `structural-append-formula-rows-small`
 - `build-mixed-content` in focused higher-sample checks, though the official
   five-sample artifact still has it as a small confidence-overlap mean red
 

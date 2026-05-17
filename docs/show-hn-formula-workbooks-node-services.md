@@ -76,8 +76,8 @@ The checked benchmark artifact currently says Bilig wins `81/100` comparable
 workloads on mean latency against the HyperFormula-style baseline. It wins
 `77/100` on both mean and p95.
 
-The miss is not hidden: `lookup-approximate-duplicates` is slower at p95 by
-`1.741x`. Browser grid rendering is not part of this benchmark.
+The miss is not hidden: `structural-append-formula-rows` is slower at p95 by
+`4.605x`. Browser grid rendering is not part of this benchmark.
 
 Read the benchmark note:
 [what the WorkPaper benchmark proves](what-workpaper-benchmark-proves.md).

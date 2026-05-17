@@ -341,7 +341,7 @@ Purpose: catches invalid uniform-vector assumptions.
 
 Comparable: yes.
 
-lookup-approximate-duplicates
+structural-append-formula-rows-small
 
 Fixture: buildApproxLookupDuplicateSheet.
 
