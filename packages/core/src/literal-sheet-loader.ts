@@ -16,6 +16,7 @@ function isFreshLiteralLogicalSheetInternals(value: unknown): value is FreshLite
 export interface LiteralSheetLoadInspection {
   readonly materializedCellCount: number
   readonly maxColumnCount: number
+  readonly allMaterializedCellsAreNumbers?: boolean
 }
 
 type LiteralSheetCellInput = LiteralInput | undefined
@@ -125,6 +126,10 @@ export function loadDenseLiteralSheetIntoEmptySheet(
     return 0
   }
 
+  if (inspection?.allMaterializedCellsAreNumbers === true) {
+    return loadDenseNumericLiteralSheetIntoEmptySheet(workbook, sheet, sheetId, content, maxColumnCount)
+  }
+
   const cellStore = workbook.cellStore
   const firstCellIndex = cellStore.allocateDenseRowMajorReserved(sheetId, content.length, maxColumnCount)
   const writtenColumns = materializeDenseWrittenColumns(maxColumnCount)
@@ -157,6 +162,56 @@ export function loadDenseLiteralSheetIntoEmptySheet(
   }
 
   return literalCount
+}
+
+function loadDenseNumericLiteralSheetIntoEmptySheet(
+  workbook: WorkbookStore,
+  sheet: SheetRecord,
+  sheetId: number,
+  content: readonly (readonly LiteralSheetCellInput[])[],
+  colCount: number,
+): number {
+  const rowCount = content.length
+  const cellCount = rowCount * colCount
+  const cellStore = workbook.cellStore
+  const firstCellIndex = cellStore.allocateDenseRowMajorReserved(sheetId, rowCount, colCount)
+  const writtenColumns = materializeDenseWrittenColumns(colCount)
+  const ensureRowId = workbook.createLogicalAxisIdEnsurer(sheetId, 'row')
+  const ensureColumnId = workbook.createLogicalAxisIdEnsurer(sheetId, 'column')
+  const attachFreshCell = createFreshLiteralCellAttacher(workbook, sheet)
+  const colIds = Array.from({ length: colCount }, (_value, colIndex) => ensureColumnId(colIndex))
+  const previousOnSetValue = cellStore.onSetValue
+  cellStore.onSetValue = null
+  try {
+    cellStore.tags.fill(ValueTag.Number, firstCellIndex, firstCellIndex + cellCount)
+    cellStore.stringIds.fill(0, firstCellIndex, firstCellIndex + cellCount)
+    cellStore.errors.fill(ErrorCode.None, firstCellIndex, firstCellIndex + cellCount)
+    cellStore.formulaIds.fill(0, firstCellIndex, firstCellIndex + cellCount)
+    cellStore.versions.fill(1, firstCellIndex, firstCellIndex + cellCount)
+    cellStore.flags.fill(CellFlags.Materialized, firstCellIndex, firstCellIndex + cellCount)
+    cellStore.topoRanks.fill(0, firstCellIndex, firstCellIndex + cellCount)
+    cellStore.cycleGroupIds.fill(-1, firstCellIndex, firstCellIndex + cellCount)
+    for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
+      const row = content[rowIndex]!
+      const rowId = ensureRowId(rowIndex)
+      const rowBase = firstCellIndex + rowIndex * colCount
+      for (let colIndex = 0; colIndex < colCount; colIndex += 1) {
+        const cellIndex = rowBase + colIndex
+        const raw = row[colIndex]
+        if (typeof raw !== 'number') {
+          throw new Error('Dense numeric literal sheet inspection does not match sheet content')
+        }
+        attachFreshCell(rowIndex, colIndex, cellIndex, rowId, colIds[colIndex]!)
+        cellStore.numbers[cellIndex] = raw
+      }
+    }
+    if (writtenColumns.length > 0) {
+      workbook.notifyColumnsWritten(sheetId, writtenColumns)
+    }
+  } finally {
+    cellStore.onSetValue = previousOnSetValue
+  }
+  return cellCount
 }
 
 function materializeDenseWrittenColumns(count: number): Uint32Array {

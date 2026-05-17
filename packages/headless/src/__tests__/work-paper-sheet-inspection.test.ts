@@ -41,6 +41,7 @@ describe('work paper sheet inspection', () => {
       materializedCellCount: 3,
       maxColumnCount: 3,
       formulaCellCount: 1,
+      allMaterializedCellsAreNumbers: false,
     })
   })
 
@@ -60,11 +61,30 @@ describe('work paper sheet inspection', () => {
         materializedCellCount: 12,
         maxColumnCount: 4,
         formulaCellCount: 6,
+        allMaterializedCellsAreNumbers: false,
       })
       expect(compileSpy).not.toHaveBeenCalled()
     } finally {
       compileSpy.mockRestore()
     }
+  })
+
+  it('marks fully numeric materialized sheets for numeric dense initialization', () => {
+    expect(
+      inspectSheetWithinLimits(
+        'Sheet1',
+        [
+          [1, 2, 3],
+          [4, 5, 6],
+        ],
+        {},
+      ),
+    ).toMatchObject({
+      hasFormula: false,
+      materializedCellCount: 6,
+      maxColumnCount: 3,
+      allMaterializedCellsAreNumbers: true,
+    })
   })
 
   it('keeps dynamic array formulas on compiler-backed spill inspection', () => {

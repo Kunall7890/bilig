@@ -24,6 +24,7 @@ export interface WorkPaperSheetInspection {
   readonly materializedCellCount: number
   readonly maxColumnCount: number
   readonly formulaCellCount: number
+  readonly allMaterializedCellsAreNumbers: boolean
 }
 
 export interface WorkPaperRuntimeSnapshotSheetList {
@@ -120,6 +121,7 @@ export function inspectSheetWithinLimits(sheetName: string, sheet: WorkPaperShee
   let formulaCellCount = 0
   let hasFormula = false
   let hasDynamicSpillFormula = false
+  let allMaterializedCellsAreNumbers = true
   for (let rowIndex = 0; rowIndex < sheet.length; rowIndex += 1) {
     const row = sheet[rowIndex]
     if (!Array.isArray(row)) {
@@ -134,6 +136,7 @@ export function inspectSheetWithinLimits(sheetName: string, sheet: WorkPaperShee
         materializedCellCount += 1
         rowHasMaterializedCell = true
         lastMaterializedCol = colIndex
+        allMaterializedCellsAreNumbers &&= typeof cell === 'number'
       }
       if (typeof cell === 'string' && cellHasFormulaPrefix(cell)) {
         formulaCellCount += 1
@@ -159,6 +162,7 @@ export function inspectSheetWithinLimits(sheetName: string, sheet: WorkPaperShee
     materializedCellCount,
     maxColumnCount,
     formulaCellCount,
+    allMaterializedCellsAreNumbers,
   }
 }
 

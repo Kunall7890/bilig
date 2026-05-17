@@ -129,6 +129,37 @@ describe('loadLiteralSheetIntoEmptySheet', () => {
     allocateReserved.mockRestore()
   })
 
+  it('uses numeric dense inspection metadata to hydrate number rectangles without stale cell fields', () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'literal-dense-numeric-load' })
+    engine.workbook.createSheet('Sheet1')
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+    engine.workbook.cellStore.stringIds[0] = 99
+    engine.workbook.cellStore.formulaIds[0] = 77
+
+    const loaded = loadDenseLiteralSheetIntoEmptySheet(
+      engine.workbook,
+      engine.strings,
+      sheetId,
+      [
+        [1, 2],
+        [3, 4],
+      ],
+      {
+        materializedCellCount: 4,
+        maxColumnCount: 2,
+        allMaterializedCellsAreNumbers: true,
+      },
+    )
+
+    expect(loaded).toBe(4)
+    expect(Array.from(engine.workbook.cellStore.tags.slice(0, 4))).toEqual(Array(4).fill(ValueTag.Number))
+    expect(Array.from(engine.workbook.cellStore.stringIds.slice(0, 4))).toEqual([0, 0, 0, 0])
+    expect(Array.from(engine.workbook.cellStore.formulaIds.slice(0, 4))).toEqual([0, 0, 0, 0])
+    expect(Array.from(engine.workbook.cellStore.versions.slice(0, 4))).toEqual([1, 1, 1, 1])
+    expect(engine.getCellValue('Sheet1', 'B2')).toEqual({ tag: ValueTag.Number, value: 4 })
+    expect(engine.workbook.getCellIndex('Sheet1', 'B2')).toBe(3)
+  })
+
   it('materializes ragged dense literal sheets as full rectangles without orphan cells', () => {
     const engine = new SpreadsheetEngine({ workbookName: 'literal-dense-ragged-load' })
     engine.workbook.createSheet('Sheet1')

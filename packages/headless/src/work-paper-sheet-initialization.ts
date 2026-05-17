@@ -220,6 +220,7 @@ function inspectWorkPaperInitialSheets(args: {
             materializedCellCount: runtimeSheetCells?.cellCount ?? 0,
             maxColumnCount: dimensions.width,
             formulaCellCount: 0,
+            allMaterializedCellsAreNumbers: false,
           }
         })()
       : inspectSheetWithinLimits(sheetName, sheet, args.config)
