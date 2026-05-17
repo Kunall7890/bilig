@@ -397,6 +397,34 @@ describe('ProjectedViewportCellCache', () => {
     unsubscribeCell()
   })
 
+  it('keeps duplicate active viewport subscriptions pinned until the final unsubscribe', () => {
+    const cache = new ProjectedViewportCellCache({ maxCachedCellsPerSheet: 5 })
+    const viewport = {
+      rowStart: 0,
+      rowEnd: 1,
+      colStart: 0,
+      colEnd: 9,
+    }
+    const firstUntrackViewport = cache.trackViewport('Sheet1', viewport)
+    const secondUntrackViewport = cache.trackViewport('Sheet1', viewport)
+
+    for (let row = 0; row <= 1; row += 1) {
+      for (let col = 0; col < 10; col += 1) {
+        cache.setCellSnapshot(snapshot(`${columnLabel(col)}${row + 1}`, row * 10 + col))
+      }
+    }
+
+    expect(countSheetCells(cache, 'Sheet1')).toBe(20)
+
+    firstUntrackViewport()
+
+    expect(countSheetCells(cache, 'Sheet1')).toBe(20)
+
+    secondUntrackViewport()
+
+    expect(countSheetCells(cache, 'Sheet1')).toBe(5)
+  })
+
   it('falls back to the default cache cap when misconfigured', () => {
     const cache = new ProjectedViewportCellCache({ maxCachedCellsPerSheet: 0 })
 

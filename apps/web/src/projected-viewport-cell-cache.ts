@@ -47,6 +47,7 @@ export class ProjectedViewportCellCache {
   private readonly knownSheets = new Set<string>()
   private readonly activeViewportKeysBySheet = new Map<string, Set<string>>()
   private readonly activeViewports = new Map<string, Viewport>()
+  private readonly activeViewportRefCounts = new Map<string, number>()
   private readonly cellAccessTicks = new Map<string, number>()
   private nextCellAccessTick = 1
 
@@ -257,10 +258,22 @@ export class ProjectedViewportCellCache {
   trackViewport(sheetName: string, viewport: Viewport): () => void {
     const viewportKey = `${sheetName}:${viewport.rowStart}:${viewport.rowEnd}:${viewport.colStart}:${viewport.colEnd}`
     this.activeViewports.set(viewportKey, viewport)
+    this.activeViewportRefCounts.set(viewportKey, (this.activeViewportRefCounts.get(viewportKey) ?? 0) + 1)
     const sheetViewportKeys = this.activeViewportKeysBySheet.get(sheetName) ?? new Set<string>()
     sheetViewportKeys.add(viewportKey)
     this.activeViewportKeysBySheet.set(sheetName, sheetViewportKeys)
+    let disposed = false
     return () => {
+      if (disposed) {
+        return
+      }
+      disposed = true
+      const nextRefCount = (this.activeViewportRefCounts.get(viewportKey) ?? 0) - 1
+      if (nextRefCount > 0) {
+        this.activeViewportRefCounts.set(viewportKey, nextRefCount)
+        return
+      }
+      this.activeViewportRefCounts.delete(viewportKey)
       this.activeViewports.delete(viewportKey)
       const nextSheetViewportKeys = this.activeViewportKeysBySheet.get(sheetName)
       nextSheetViewportKeys?.delete(viewportKey)
@@ -351,7 +364,10 @@ export class ProjectedViewportCellCache {
     })
     this.cellKeysBySheet.delete(sheetName)
     const viewportKeys = this.activeViewportKeysBySheet.get(sheetName)
-    viewportKeys?.forEach((key) => this.activeViewports.delete(key))
+    viewportKeys?.forEach((key) => {
+      this.activeViewports.delete(key)
+      this.activeViewportRefCounts.delete(key)
+    })
     this.activeViewportKeysBySheet.delete(sheetName)
   }
 
