@@ -2454,6 +2454,130 @@ describe('wasm kernel', () => {
     expect(kernel.readStringIds()[cellIndex(4, 5, width)]).toBe(5)
   })
 
+  it('evaluates lookup functions over dynamic arrays and multi-cell XLOOKUP returns on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(40, 8, 4, 4, 20)
+    kernel.writeCells(
+      new Uint8Array([
+        ValueTag.Number,
+        ValueTag.Number,
+        ValueTag.Number,
+        0,
+        0,
+        0,
+        0,
+        0,
+        ValueTag.Number,
+        ValueTag.Number,
+        ValueTag.Number,
+        0,
+        0,
+        0,
+        0,
+        0,
+        ValueTag.Number,
+        ValueTag.Number,
+        ValueTag.Number,
+        0,
+        0,
+        0,
+        0,
+        0,
+        ...Array.from({ length: 16 }, () => ValueTag.Empty),
+      ]),
+      new Float64Array([
+        1,
+        10,
+        100,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        20,
+        200,
+        0,
+        0,
+        0,
+        0,
+        0,
+        3,
+        30,
+        300,
+        0,
+        0,
+        0,
+        0,
+        0,
+        ...Array.from({ length: 16 }, () => 0),
+      ]),
+      new Uint32Array(40),
+      new Uint16Array(40),
+    )
+    kernel.uploadRangeMembers(
+      Uint32Array.from([
+        cellIndex(0, 0, width),
+        cellIndex(1, 0, width),
+        cellIndex(2, 0, width),
+        cellIndex(0, 1, width),
+        cellIndex(0, 2, width),
+        cellIndex(1, 1, width),
+        cellIndex(1, 2, width),
+        cellIndex(2, 1, width),
+        cellIndex(2, 2, width),
+        cellIndex(0, 0, width),
+        cellIndex(0, 1, width),
+        cellIndex(0, 2, width),
+        cellIndex(1, 0, width),
+        cellIndex(1, 1, width),
+        cellIndex(1, 2, width),
+        cellIndex(2, 0, width),
+        cellIndex(2, 1, width),
+        cellIndex(2, 2, width),
+      ]),
+      Uint32Array.from([0, 3, 9, 12]),
+      Uint32Array.from([3, 6, 3, 6]),
+    )
+    kernel.uploadRangeShapes(Uint32Array.from([3, 3, 1, 2]), Uint32Array.from([1, 2, 3, 3]))
+
+    const takeLookupVector = [encodePushRange(0), encodePushNumber(1), encodeCall(BUILTIN.TAKE, 2)]
+    const takeReturnTable = [encodePushRange(1), encodePushNumber(1), encodeCall(BUILTIN.TAKE, 2)]
+    const packed = packPrograms([
+      [encodePushNumber(0), ...takeLookupVector, encodePushNumber(2), encodeCall(BUILTIN.MATCH, 3), encodeRet()],
+      [encodePushNumber(0), ...takeLookupVector, encodePushNumber(2), encodeCall(BUILTIN.XMATCH, 3), encodeRet()],
+      [encodePushNumber(0), ...takeLookupVector, ...takeReturnTable, encodeCall(BUILTIN.XLOOKUP, 3), encodeRet()],
+      [encodePushNumber(0), encodePushRange(2), encodePushRange(3), encodeCall(BUILTIN.XLOOKUP, 3), encodeRet()],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from([cellIndex(3, 0, width), cellIndex(3, 1, width), cellIndex(3, 2, width), cellIndex(3, 5, width)]),
+    )
+    const constants = packConstants([[2, 3, 0], [3, 3, 0], [2, 3, 3], [10]])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from([cellIndex(3, 0, width), cellIndex(3, 1, width), cellIndex(3, 2, width), cellIndex(3, 5, width)]))
+
+    expect(kernel.readTags()[cellIndex(3, 0, width)]).toBe(ValueTag.Number)
+    expect(kernel.readNumbers()[cellIndex(3, 0, width)]).toBe(2)
+    expect(kernel.readTags()[cellIndex(3, 1, width)]).toBe(ValueTag.Number)
+    expect(kernel.readNumbers()[cellIndex(3, 1, width)]).toBe(3)
+    expect(readSpillValues(kernel, cellIndex(3, 2, width), [])).toEqual([
+      { tag: ValueTag.Number, value: 20 },
+      { tag: ValueTag.Number, value: 200 },
+    ])
+    expect(kernel.readSpillRows()[cellIndex(3, 2, width)]).toBe(1)
+    expect(kernel.readSpillCols()[cellIndex(3, 2, width)]).toBe(2)
+    expect(readSpillValues(kernel, cellIndex(3, 5, width), [])).toEqual([
+      { tag: ValueTag.Number, value: 20 },
+      { tag: ValueTag.Number, value: 30 },
+    ])
+    expect(kernel.readSpillRows()[cellIndex(3, 5, width)]).toBe(2)
+    expect(kernel.readSpillCols()[cellIndex(3, 5, width)]).toBe(1)
+  })
+
   it('evaluates LOOKUP, AREAS, ARRAYTOTEXT, COLUMNS, and ROWS on the wasm path', async () => {
     const kernel = await createKernel()
     const width = 8
