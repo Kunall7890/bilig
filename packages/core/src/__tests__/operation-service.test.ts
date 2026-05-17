@@ -654,6 +654,27 @@ describe('EngineOperationService', () => {
     expect(engine.getPerformanceCounters().lookupOwnerBuilds).toBe(0)
   })
 
+  it('keeps approximate lookup owners warm after cell-ref sorted tail writes', async () => {
+    const rowCount = 64
+    const engine = new SpreadsheetEngine({ workbookName: 'operation-approximate-lookup-tail-cell-ref-owner' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    const sheet = engine.workbook.getSheet('Sheet1')
+    expect(sheet).toBeDefined()
+    for (let row = 1; row <= rowCount; row += 1) {
+      engine.setCellValue('Sheet1', `A${row}`, row)
+    }
+    engine.setCellValue('Sheet1', 'D1', Math.floor(rowCount / 2) + 0.5)
+    engine.setCellFormula('Sheet1', 'E1', `MATCH(D1,A1:A${rowCount},1)`)
+
+    engine.setCellValueAt(sheet!.id, rowCount - 1, 0, rowCount + 1)
+    engine.resetPerformanceCounters()
+    engine.setCellValueAt(sheet!.id, 0, 3, rowCount - 0.5)
+
+    expect(engine.getCellValue('Sheet1', 'E1')).toEqual({ tag: ValueTag.Number, value: rowCount - 1 })
+    expect(engine.getPerformanceCounters().lookupOwnerBuilds).toBe(0)
+  })
+
   it('keeps approximate uniform lookup tail writes correct for later operand edits', async () => {
     const rowCount = 64
     const engine = new SpreadsheetEngine({ workbookName: 'operation-approximate-lookup-tail-patch' })

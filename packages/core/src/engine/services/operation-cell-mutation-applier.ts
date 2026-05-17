@@ -49,8 +49,8 @@ interface CreateOperationCellMutationApplierArgs {
   readonly hasTrackedExactLookupDependents: OperationColumnDependencyTrackerService['hasTrackedExactLookupDependents']
   readonly hasTrackedSortedLookupDependents: OperationColumnDependencyTrackerService['hasTrackedSortedLookupDependents']
   readonly hasTrackedDirectRangeDependents: OperationColumnDependencyTrackerService['hasTrackedDirectRangeDependents']
-  readonly canSkipExactLookupNumericColumnWrite: OperationLookupPlanner['canSkipExactLookupNumericColumnWrite']
-  readonly canSkipApproximateLookupNumericColumnWrite: OperationLookupPlanner['canSkipApproximateLookupNumericColumnWrite']
+  readonly planExactLookupNumericColumnWrite: OperationLookupPlanner['planExactLookupNumericColumnWrite']
+  readonly planApproximateLookupNumericColumnWrite: OperationLookupPlanner['planApproximateLookupNumericColumnWrite']
   readonly noteExactLookupLiteralWriteWhenDirty: OperationLookupDirtyMarkerService['noteExactLookupLiteralWriteWhenDirty']
   readonly noteSortedLookupLiteralWriteWhenDirty: OperationLookupDirtyMarkerService['noteSortedLookupLiteralWriteWhenDirty']
   readonly markAffectedDirectRangeDependents: OperationDirectRangeDependentService['markAffectedDirectRangeDependents']
@@ -113,8 +113,8 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
     hasTrackedExactLookupDependents,
     hasTrackedSortedLookupDependents,
     hasTrackedDirectRangeDependents,
-    canSkipExactLookupNumericColumnWrite,
-    canSkipApproximateLookupNumericColumnWrite,
+    planExactLookupNumericColumnWrite,
+    planApproximateLookupNumericColumnWrite,
     noteExactLookupLiteralWriteWhenDirty,
     noteSortedLookupLiteralWriteWhenDirty,
     markAffectedDirectRangeDependents,
@@ -275,8 +275,8 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
                 readCellValueForLookup,
                 readApproximateNumericValueForLookup,
                 readExactNumericValueForLookup,
-                canSkipExactLookupNumericColumnWrite,
-                canSkipApproximateLookupNumericColumnWrite,
+                planExactLookupNumericColumnWrite,
+                planApproximateLookupNumericColumnWrite,
                 rebindValueSensitiveFormulaDependents: (cellIndex, counts) => {
                   const reboundCount = counts.formulaChangedCount
                   const nextFormulaChangedCount = rebindDynamicFormulaDependents(cellIndex, counts.formulaChangedCount)

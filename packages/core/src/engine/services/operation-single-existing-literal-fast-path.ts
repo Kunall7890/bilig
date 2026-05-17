@@ -25,6 +25,8 @@ import {
   tagTrustedPhysicalTrackedChanges,
 } from './operation-change-helpers.js'
 import { recordKernelSyncOnlyLiteralChange } from './operation-kernel-sync-only-literal-change.js'
+import type { OperationLookupPlanner } from './operation-lookup-planner.js'
+import { applyOperationLookupNumericWriteTailPatches, planOperationLookupNumericWrites } from './operation-lookup-write-plans.js'
 import { tryApplySinglePostRecalcDirectFormula, type DirectFormulaMetricCounts } from './operation-post-recalc-direct-formulas.js'
 
 const DIRECT_RANGE_POST_RECALC_LIMIT = 16_384
@@ -36,20 +38,6 @@ type SingleExistingLiteralState = Pick<
   EngineRuntimeState,
   'workbook' | 'strings' | 'events' | 'formulas' | 'counters' | 'trackReplicaVersions' | 'getLastMetrics' | 'setLastMetrics'
 >
-
-interface LookupTailPatchTarget {
-  tailPatch?: {
-    row: number
-    oldNumeric: number
-    newNumeric: number
-    columnVersion: number
-  }
-}
-
-interface LookupWritePlan {
-  readonly handled: boolean
-  readonly tailPatchTarget?: LookupTailPatchTarget
-}
 
 interface OperationSingleExistingLiteralFastPathArgs {
   readonly state: SingleExistingLiteralState
@@ -119,21 +107,8 @@ interface OperationSingleExistingLiteralFastPathArgs {
     readonly value: LiteralInput
     readonly hasTrackedEventListeners: boolean
   }) => EngineExistingNumericCellMutationResult | null
-  readonly planExactLookupNumericColumnWrite: (
-    sheetId: number,
-    col: number,
-    row: number,
-    oldValue: number,
-    newValue: number,
-  ) => LookupWritePlan
-  readonly planApproximateLookupNumericColumnWrite: (
-    sheetId: number,
-    sheetName: string,
-    col: number,
-    row: number,
-    oldValue: number,
-    newValue: number,
-  ) => LookupWritePlan
+  readonly planExactLookupNumericColumnWrite: OperationLookupPlanner['planExactLookupNumericColumnWrite']
+  readonly planApproximateLookupNumericColumnWrite: OperationLookupPlanner['planApproximateLookupNumericColumnWrite']
   readonly patchUniformLookupTailWrites: (request: {
     readonly sheetId: number
     readonly col: number
@@ -366,23 +341,26 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
     const newExactLookupNumber = hasExactLookupDependents && mutationIsNumber ? newNumber : undefined
     const oldApproximateLookupNumber = hasSortedLookupDependents ? oldNumber : undefined
     const newApproximateLookupNumber = hasSortedLookupDependents ? newNumber : undefined
-    const exactLookupWritePlan =
-      hasExactLookupDependents && oldExactLookupNumber !== undefined && newExactLookupNumber !== undefined
-        ? planExactLookupNumericColumnWrite(ref.sheetId, mutation.col, mutation.row, oldExactLookupNumber, newExactLookupNumber)
-        : { handled: false }
-    const sortedLookupWritePlan =
-      hasSortedLookupDependents && oldApproximateLookupNumber !== undefined && newApproximateLookupNumber !== undefined
-        ? planApproximateLookupNumericColumnWrite(
-            ref.sheetId,
-            sheetName,
-            mutation.col,
-            mutation.row,
-            oldApproximateLookupNumber,
-            newApproximateLookupNumber,
-          )
-        : { handled: false }
-    const exactLookupDependentsHandled = hasExactLookupDependents && exactLookupWritePlan.handled
-    const sortedLookupDependentsHandled = hasSortedLookupDependents && sortedLookupWritePlan.handled
+    const lookupWritePlans = planOperationLookupNumericWrites({
+      isRestore: false,
+      hasAggregateDependents,
+      hasExactLookupDependents,
+      hasSortedLookupDependents,
+      sheetId: ref.sheetId,
+      sheetName,
+      row: mutation.row,
+      col: mutation.col,
+      oldExactLookupNumber,
+      newExactLookupNumber,
+      oldApproximateLookupNumber,
+      newApproximateLookupNumber,
+      planner: {
+        planExactLookupNumericColumnWrite,
+        planApproximateLookupNumericColumnWrite,
+      },
+    })
+    const exactLookupDependentsHandled = hasExactLookupDependents && lookupWritePlans.exactHandled
+    const sortedLookupDependentsHandled = hasSortedLookupDependents && lookupWritePlans.sortedHandled
     if ((hasExactLookupDependents && !exactLookupDependentsHandled) || (hasSortedLookupDependents && !sortedLookupDependentsHandled)) {
       return false
     }
@@ -393,27 +371,17 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
     if (!hasAggregateDependents && (hasExactLookupDependents || hasSortedLookupDependents) && singleExistingCellDependent === -1) {
       if (canUseNumericLookupWriteFastPath) {
         writeNumericLiteralToExistingCell(existingIndex, newNumber)
-        const currentColumnVersion = sheet.columnVersions[mutation.col] ?? 0
-        if (exactLookupWritePlan.tailPatchTarget !== undefined) {
-          exactLookupWritePlan.tailPatchTarget.tailPatch = {
-            row: mutation.row,
-            oldNumeric: oldNumber,
-            newNumeric: newNumber,
-            columnVersion: currentColumnVersion,
-          }
-        }
-        if (sortedLookupWritePlan.tailPatchTarget !== undefined) {
-          sortedLookupWritePlan.tailPatchTarget.tailPatch = {
-            row: mutation.row,
-            oldNumeric: oldNumber,
-            newNumeric: newNumber,
-            columnVersion: currentColumnVersion,
-          }
-        }
-        const needsExactPatch =
-          hasExactLookupDependents && exactLookupDependentsHandled && exactLookupWritePlan.tailPatchTarget === undefined
-        const needsSortedPatch =
-          hasSortedLookupDependents && sortedLookupDependentsHandled && sortedLookupWritePlan.tailPatchTarget === undefined
+        const columnVersionAfterWrite = sheet.columnVersions[mutation.col] ?? 0
+        const patchedLookupTailTargets = applyOperationLookupNumericWriteTailPatches(lookupWritePlans, {
+          row: mutation.row,
+          oldExactLookupNumber,
+          newExactLookupNumber,
+          oldApproximateLookupNumber,
+          newApproximateLookupNumber,
+          columnVersionAfterWrite,
+        })
+        const needsExactPatch = hasExactLookupDependents && exactLookupDependentsHandled && !patchedLookupTailTargets.exact
+        const needsSortedPatch = hasSortedLookupDependents && sortedLookupDependentsHandled && !patchedLookupTailTargets.sorted
         const patchedLookupOwners =
           needsExactPatch || needsSortedPatch
             ? patchUniformLookupTailWrites({
@@ -767,36 +735,43 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
       }
     }
     if (!hasAggregateDependents && (hasExactLookupDependents || hasSortedLookupDependents) && singleExistingCellDependent === -1) {
-      const exactLookupWritePlan = hasExactLookupDependents
-        ? planExactLookupNumericColumnWrite(request.sheetId, request.col, request.row, oldNumber, request.value)
-        : { handled: true }
-      const sortedLookupWritePlan = hasSortedLookupDependents
-        ? planApproximateLookupNumericColumnWrite(request.sheetId, sheetName, request.col, request.row, oldNumber, request.value)
-        : { handled: true }
+      const lookupWritePlans = planOperationLookupNumericWrites({
+        isRestore: false,
+        hasAggregateDependents,
+        hasExactLookupDependents,
+        hasSortedLookupDependents,
+        sheetId: request.sheetId,
+        sheetName,
+        row: request.row,
+        col: request.col,
+        oldExactLookupNumber: hasExactLookupDependents ? oldNumber : undefined,
+        newExactLookupNumber: hasExactLookupDependents ? request.value : undefined,
+        oldApproximateLookupNumber: hasSortedLookupDependents ? oldNumber : undefined,
+        newApproximateLookupNumber: hasSortedLookupDependents ? request.value : undefined,
+        planner: {
+          planExactLookupNumericColumnWrite,
+          planApproximateLookupNumericColumnWrite,
+        },
+      })
       if (
-        exactLookupWritePlan.handled &&
-        sortedLookupWritePlan.handled &&
-        (exactLookupWritePlan.tailPatchTarget === undefined || exactLookupWritePlan.tailPatchTarget.tailPatch === undefined) &&
-        (sortedLookupWritePlan.tailPatchTarget === undefined || sortedLookupWritePlan.tailPatchTarget.tailPatch === undefined)
+        (!hasExactLookupDependents || lookupWritePlans.exactHandled) &&
+        (!hasSortedLookupDependents || lookupWritePlans.sortedHandled) &&
+        (lookupWritePlans.exact === undefined ||
+          lookupWritePlans.exact.tailPatchTarget === undefined ||
+          lookupWritePlans.exact.tailPatchTarget.tailPatch === undefined) &&
+        (lookupWritePlans.sorted === undefined ||
+          lookupWritePlans.sorted.tailPatchTarget === undefined ||
+          lookupWritePlans.sorted.tailPatchTarget.tailPatch === undefined)
       ) {
         writeNumericLiteralToExistingCell(existingIndex, request.value)
-        const currentColumnVersion = sheet.columnVersions[request.col] ?? 0
-        if (exactLookupWritePlan.tailPatchTarget !== undefined) {
-          exactLookupWritePlan.tailPatchTarget.tailPatch = {
-            row: request.row,
-            oldNumeric: oldNumber,
-            newNumeric: request.value,
-            columnVersion: currentColumnVersion,
-          }
-        }
-        if (sortedLookupWritePlan.tailPatchTarget !== undefined) {
-          sortedLookupWritePlan.tailPatchTarget.tailPatch = {
-            row: request.row,
-            oldNumeric: oldNumber,
-            newNumeric: request.value,
-            columnVersion: currentColumnVersion,
-          }
-        }
+        applyOperationLookupNumericWriteTailPatches(lookupWritePlans, {
+          row: request.row,
+          oldExactLookupNumber: hasExactLookupDependents ? oldNumber : undefined,
+          newExactLookupNumber: hasExactLookupDependents ? request.value : undefined,
+          oldApproximateLookupNumber: hasSortedLookupDependents ? oldNumber : undefined,
+          newApproximateLookupNumber: hasSortedLookupDependents ? request.value : undefined,
+          columnVersionAfterWrite: sheet.columnVersions[request.col] ?? 0,
+        })
         const { changedCellIndices } = recordKernelSyncOnlyLiteralChange({
           state: args.state,
           cellIndex: existingIndex,

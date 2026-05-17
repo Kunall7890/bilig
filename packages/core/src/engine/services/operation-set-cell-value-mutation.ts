@@ -10,6 +10,8 @@ import { directScalarLiteralNumericValue } from './direct-scalar-helpers.js'
 import type { OperationTrackedColumnDependencyFlags } from './operation-column-dependency-tracker.js'
 import type { OperationLookupAccess } from './operation-lookup-access.js'
 import type { ExactLookupImpactCaches } from './operation-lookup-dirty-markers.js'
+import type { OperationLookupPlanner } from './operation-lookup-planner.js'
+import { applyOperationLookupNumericWriteTailPatches, planOperationLookupNumericWrites } from './operation-lookup-write-plans.js'
 import type { CreateEngineOperationServiceArgs } from './operation-service-types.js'
 
 type SetCellValueMutation = Extract<EngineCellMutationRef['mutation'], { kind: 'setCellValue' }>
@@ -39,15 +41,8 @@ interface ApplySetCellValueMutationArgs extends SetCellValueMutationCounts {
   readonly readCellValueForLookup: OperationLookupAccess['readCellValueForLookup']
   readonly readApproximateNumericValueForLookup: OperationLookupAccess['readApproximateNumericValueForLookup']
   readonly readExactNumericValueForLookup: OperationLookupAccess['readExactNumericValueForLookup']
-  readonly canSkipExactLookupNumericColumnWrite: (sheetId: number, col: number, row: number, oldValue: number, newValue: number) => boolean
-  readonly canSkipApproximateLookupNumericColumnWrite: (
-    sheetId: number,
-    sheetName: string,
-    col: number,
-    row: number,
-    oldValue: number,
-    newValue: number,
-  ) => boolean
+  readonly planExactLookupNumericColumnWrite: OperationLookupPlanner['planExactLookupNumericColumnWrite']
+  readonly planApproximateLookupNumericColumnWrite: OperationLookupPlanner['planApproximateLookupNumericColumnWrite']
   readonly rebindValueSensitiveFormulaDependents: (cellIndex: number, counts: SetCellValueMutationCounts) => SetCellValueMutationCounts
   readonly markPostRecalcDirectFormulaDependents: (
     cellIndex: number,
@@ -164,32 +159,27 @@ export function applySetCellValueMutation(request: ApplySetCellValueMutationArgs
     canFastOverwriteExisting && hasSortedLookupDependents ? request.readApproximateNumericValueForLookup(existingIndex) : undefined
   const newApproximateLookupNumber =
     hasSortedLookupDependents || needsDirectLookupNumericValue ? directScalarLiteralNumericValue(mutation.value) : undefined
-  const exactLookupDependentsHandled =
-    !isRestore &&
-    hasExactLookupDependents &&
-    !hasAggregateDependents &&
-    oldExactLookupNumber !== undefined &&
-    newExactLookupNumber !== undefined &&
-    request.canSkipExactLookupNumericColumnWrite(sheetId, mutation.col, mutation.row, oldExactLookupNumber, newExactLookupNumber)
-  const sortedLookupDependentsHandled =
-    !isRestore &&
-    hasSortedLookupDependents &&
-    oldApproximateLookupNumber !== undefined &&
-    newApproximateLookupNumber !== undefined &&
-    request.canSkipApproximateLookupNumericColumnWrite(
-      sheetId,
-      sheetName,
-      mutation.col,
-      mutation.row,
-      oldApproximateLookupNumber,
-      newApproximateLookupNumber,
-    )
-  const needsLookupValueRead =
-    hasAggregateDependents ||
-    (hasExactLookupDependents && !exactLookupDependentsHandled) ||
-    (hasSortedLookupDependents && !sortedLookupDependentsHandled)
-  const needsLookupOwnerInvalidation =
-    (hasExactLookupDependents && exactLookupDependentsHandled) || (hasSortedLookupDependents && sortedLookupDependentsHandled)
+  const lookupWritePlans = planOperationLookupNumericWrites({
+    isRestore,
+    hasAggregateDependents,
+    hasExactLookupDependents,
+    hasSortedLookupDependents,
+    sheetId,
+    sheetName,
+    row: mutation.row,
+    col: mutation.col,
+    oldExactLookupNumber,
+    newExactLookupNumber,
+    oldApproximateLookupNumber,
+    newApproximateLookupNumber,
+    planner: {
+      planExactLookupNumericColumnWrite: request.planExactLookupNumericColumnWrite,
+      planApproximateLookupNumericColumnWrite: request.planApproximateLookupNumericColumnWrite,
+    },
+  })
+  const exactLookupDependentsHandled = lookupWritePlans.exactHandled
+  const sortedLookupDependentsHandled = lookupWritePlans.sortedHandled
+  const needsLookupValueRead = lookupWritePlans.needsLookupValueRead
   let directDependentsHandled = false
   if (!isRestore && canFastOverwriteExisting) {
     const oldNumber = request.directScalarCellNumericValue(existingIndex)
@@ -296,10 +286,21 @@ export function applySetCellValueMutation(request: ApplySetCellValueMutationArgs
   if (canFastOverwriteExisting) {
     writeLiteralToCellStore(args.state.workbook.cellStore, existingIndex, mutation.value, args.state.strings)
     args.state.workbook.notifyCellValueWritten(existingIndex)
+    if (lookupWritePlans.handledLookupDependents) {
+      const columnVersionAfterWrite = (args.state.workbook.getSheetById(sheetId)?.columnVersions[mutation.col] ?? 0) + 1
+      applyOperationLookupNumericWriteTailPatches(lookupWritePlans, {
+        row: mutation.row,
+        oldExactLookupNumber,
+        newExactLookupNumber,
+        oldApproximateLookupNumber,
+        newApproximateLookupNumber,
+        columnVersionAfterWrite,
+      })
+    }
     if (!isRestore) {
       rebindValueSensitiveDependents(existingIndex)
     }
-    if (needsLookupOwnerInvalidation) {
+    if (lookupWritePlans.handledLookupDependents) {
       request.queueHandledLookupInvalidation(
         sheetId,
         sheetName,

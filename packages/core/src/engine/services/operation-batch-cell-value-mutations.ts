@@ -15,11 +15,8 @@ import { directScalarLiteralNumericValue } from './direct-scalar-helpers.js'
 import type { DirectFormulaIndexCollection } from './direct-formula-index-collection.js'
 import { cellTouchesOperationPivotSource } from './operation-pivot-source-helpers.js'
 import type { ExactLookupImpactCaches } from './operation-lookup-dirty-markers.js'
-import {
-  applyLookupNumericColumnWriteTailPatch,
-  type LookupNumericColumnWritePlan,
-  type OperationLookupPlanner,
-} from './operation-lookup-planner.js'
+import type { OperationLookupPlanner } from './operation-lookup-planner.js'
+import { applyOperationLookupNumericWriteTailPatches, planOperationLookupNumericWrites } from './operation-lookup-write-plans.js'
 import type { CreateEngineOperationServiceArgs, MutationSource } from './operation-service-types.js'
 
 type BatchSetCellValueOp = Extract<EngineOp, { kind: 'setCellValue' }>
@@ -125,24 +122,6 @@ interface ApplyBatchClearCellOpArgs extends BatchCellValueMutationBaseArgs {
   readonly normalizeHistoryDependencyPlaceholder: (cellIndex: number, source: MutationSource) => void
 }
 
-function patchLookupWritePlanTail(
-  plan: LookupNumericColumnWritePlan | undefined,
-  row: number,
-  oldNumeric: number | undefined,
-  newNumeric: number | undefined,
-  columnVersion: number,
-): void {
-  if (oldNumeric === undefined || newNumeric === undefined) {
-    return
-  }
-  applyLookupNumericColumnWriteTailPatch(plan, {
-    row,
-    oldNumeric,
-    newNumeric,
-    columnVersion,
-  })
-}
-
 export function applyBatchSetCellValueOp(request: ApplyBatchSetCellValueOpArgs): BatchCellValueMutationCounts {
   const args = request.serviceArgs
   const { op, preparedCellAddress } = request
@@ -176,31 +155,29 @@ export function applyBatchSetCellValueOp(request: ApplyBatchSetCellValueOpArgs):
   const newExactLookupNumber = hasExactLookupDependents ? exactLookupLiteralNumericValue(op.value) : undefined
   const oldApproximateLookupNumber = hasSortedLookupDependents ? normalizeApproximateNumericValue(prior.value) : undefined
   const newApproximateLookupNumber = hasSortedLookupDependents ? directScalarLiteralNumericValue(op.value) : undefined
-  const exactLookupWritePlan =
-    !request.isRestore &&
-    sheetId !== undefined &&
-    !hasAggregateDependents &&
-    oldExactLookupNumber !== undefined &&
-    newExactLookupNumber !== undefined
-      ? request.planExactLookupNumericColumnWrite(sheetId, parsedAddress.col, parsedAddress.row, oldExactLookupNumber, newExactLookupNumber)
-      : undefined
-  const sortedLookupWritePlan =
-    !request.isRestore &&
-    sheetId !== undefined &&
-    !hasAggregateDependents &&
-    oldApproximateLookupNumber !== undefined &&
-    newApproximateLookupNumber !== undefined
-      ? request.planApproximateLookupNumericColumnWrite(
+  const lookupWritePlans =
+    sheetId === undefined
+      ? undefined
+      : planOperationLookupNumericWrites({
+          isRestore: request.isRestore,
+          hasAggregateDependents,
+          hasExactLookupDependents,
+          hasSortedLookupDependents,
           sheetId,
-          op.sheetName,
-          parsedAddress.col,
-          parsedAddress.row,
+          sheetName: op.sheetName,
+          row: parsedAddress.row,
+          col: parsedAddress.col,
+          oldExactLookupNumber,
+          newExactLookupNumber,
           oldApproximateLookupNumber,
           newApproximateLookupNumber,
-        )
-      : undefined
-  const exactLookupDependentsHandled = exactLookupWritePlan?.handled === true
-  const sortedLookupDependentsHandled = sortedLookupWritePlan?.handled === true
+          planner: {
+            planExactLookupNumericColumnWrite: request.planExactLookupNumericColumnWrite,
+            planApproximateLookupNumericColumnWrite: request.planApproximateLookupNumericColumnWrite,
+          },
+        })
+  const exactLookupDependentsHandled = lookupWritePlans?.exactHandled === true
+  const sortedLookupDependentsHandled = lookupWritePlans?.sortedHandled === true
   if (!request.isRestore) {
     if (op.value === null && (existingIndex === undefined || request.isNullLiteralWriteNoOp(existingIndex))) {
       return { changedInputCount, formulaChangedCount, explicitChangedCount, topologyChanged, refreshAllPivots }
@@ -225,16 +202,16 @@ export function applyBatchSetCellValueOp(request: ApplyBatchSetCellValueOpArgs):
     args.state.workbook.cellStore.flags[cellIndex] = (args.state.workbook.cellStore.flags[cellIndex] ?? 0) | CellFlags.AuthoredBlank
   }
   args.state.workbook.notifyCellValueWritten(cellIndex)
-  if (request.allowLookupTailPatch && (exactLookupDependentsHandled || sortedLookupDependentsHandled)) {
-    const currentColumnVersion = sheet?.columnVersions[parsedAddress.col] ?? 0
-    patchLookupWritePlanTail(exactLookupWritePlan, parsedAddress.row, oldExactLookupNumber, newExactLookupNumber, currentColumnVersion)
-    patchLookupWritePlanTail(
-      sortedLookupWritePlan,
-      parsedAddress.row,
+  if (request.allowLookupTailPatch && lookupWritePlans?.handledLookupDependents === true) {
+    const columnVersionAfterWrite = sheet?.columnVersions[parsedAddress.col] ?? 0
+    applyOperationLookupNumericWriteTailPatches(lookupWritePlans, {
+      row: parsedAddress.row,
+      oldExactLookupNumber,
+      newExactLookupNumber,
       oldApproximateLookupNumber,
       newApproximateLookupNumber,
-      currentColumnVersion,
-    )
+      columnVersionAfterWrite,
+    })
   }
   if (!request.isRestore) {
     ;({ changedInputCount, formulaChangedCount, explicitChangedCount, topologyChanged, refreshAllPivots } =
