@@ -59,7 +59,7 @@ describe('projected viewport fuzz', () => {
               const snapshot = snapshotFromAction(action)
               const key = cellKey(snapshot.sheetName, snapshot.address)
               const previous = expectedCells.get(key)
-              if (!previous || snapshot.version >= previous.version) {
+              if (!previous || shouldAcceptExpectedCellSnapshot(previous, snapshot)) {
                 expectedCells.set(key, snapshot)
               }
               return
@@ -188,6 +188,20 @@ function toCellValue(value: number | boolean | string | null): CellSnapshot['val
     return { tag: ValueTag.Boolean, value }
   }
   return { tag: ValueTag.String, value, stringId: 0 }
+}
+
+function shouldAcceptExpectedCellSnapshot(current: CellSnapshot, incoming: CellSnapshot): boolean {
+  if (current.version > incoming.version) {
+    return false
+  }
+  if (current.version === incoming.version && isClearCellSnapshot(current) && !isClearCellSnapshot(incoming)) {
+    return false
+  }
+  return true
+}
+
+function isClearCellSnapshot(snapshot: CellSnapshot): boolean {
+  return snapshot.formula === undefined && snapshot.input === undefined && snapshot.value.tag === ValueTag.Empty
 }
 
 function addressFor(row: number, col: number): string {
