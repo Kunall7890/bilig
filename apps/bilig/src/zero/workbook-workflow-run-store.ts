@@ -39,8 +39,6 @@ interface WorkbookWorkflowRunRow extends QueryResultRow {
   readonly updatedAtUnixMs?: unknown
   readonly completedAtUnixMs?: unknown
   readonly errorMessage?: unknown
-  readonly stepsJson?: unknown
-  readonly artifactJson?: unknown
 }
 
 interface WorkbookWorkflowStepRow extends QueryResultRow {
@@ -67,12 +65,10 @@ interface DurableWorkflowArtifact {
 
 interface DurableWorkflowStepRows {
   readonly byRunId: ReadonlyMap<string, WorkbookAgentWorkflowStep[] | null>
-  readonly hasRows: boolean
 }
 
 interface DurableWorkflowArtifactRows {
   readonly byRunId: ReadonlyMap<string, DurableWorkflowArtifact>
-  readonly hasRows: boolean
 }
 
 export function createWorkbookWorkflowRunStoreConnection(db: Queryable & ZeroQueryRunner): WorkbookWorkflowRunStoreConnection {
@@ -135,44 +131,6 @@ function isWorkflowStepStatus(value: unknown): value is WorkbookAgentWorkflowSte
   return value === 'pending' || value === 'running' || value === 'completed' || value === 'failed' || value === 'cancelled'
 }
 
-function isWorkflowStep(value: unknown): value is WorkbookAgentWorkflowStep {
-  const updatedAtUnixMs = isRecord(value) ? parseNonNegativeInteger(value['updatedAtUnixMs']) : null
-  return (
-    isRecord(value) &&
-    'stepId' in value &&
-    typeof value['stepId'] === 'string' &&
-    'label' in value &&
-    typeof value['label'] === 'string' &&
-    'status' in value &&
-    isWorkflowStepStatus(value['status']) &&
-    'summary' in value &&
-    typeof value['summary'] === 'string' &&
-    'updatedAtUnixMs' in value &&
-    updatedAtUnixMs !== null
-  )
-}
-
-function normalizeWorkflowSteps(value: unknown): WorkbookAgentWorkflowStep[] | null {
-  if (!Array.isArray(value) || !value.every((entry) => isWorkflowStep(entry))) {
-    return null
-  }
-  const steps: WorkbookAgentWorkflowStep[] = []
-  for (const entry of value) {
-    const updatedAtUnixMs = parseNonNegativeInteger(entry.updatedAtUnixMs)
-    if (updatedAtUnixMs === null) {
-      return null
-    }
-    steps.push({
-      stepId: entry.stepId,
-      label: entry.label,
-      status: entry.status,
-      summary: entry.summary,
-      updatedAtUnixMs,
-    })
-  }
-  return steps
-}
-
 function normalizeWorkflowStepRow(row: WorkbookWorkflowStepRow): {
   readonly runId: string
   readonly step: WorkbookAgentWorkflowStep
@@ -225,18 +183,16 @@ function normalizeWorkflowArtifactRow(row: WorkbookWorkflowArtifactRow): {
 function normalizeWorkflowRun(
   row: WorkbookWorkflowRunRow,
   hydrated: {
-    readonly steps?: WorkbookAgentWorkflowStep[] | null
-    readonly artifact?: WorkbookAgentWorkflowArtifact | null
+    readonly steps: WorkbookAgentWorkflowStep[] | null
+    readonly artifact: WorkbookAgentWorkflowArtifact | null
     readonly artifactInvalid?: boolean
-  } = {},
+  },
 ): WorkbookAgentWorkflowRun | null {
   const createdAtUnixMs = parseNonNegativeInteger(row.createdAtUnixMs)
   const updatedAtUnixMs = parseNonNegativeInteger(row.updatedAtUnixMs)
   const completedAtUnixMs =
     row.completedAtUnixMs === null || row.completedAtUnixMs === undefined ? null : parseNonNegativeInteger(row.completedAtUnixMs)
-  const fallbackSteps = normalizeWorkflowSteps(row.stepsJson ?? [])
-  const steps = 'steps' in hydrated ? hydrated.steps : fallbackSteps
-  const artifact = 'artifact' in hydrated ? (hydrated.artifact ?? null) : isMarkdownArtifact(row.artifactJson) ? row.artifactJson : null
+  const { artifact, steps } = hydrated
   if (
     typeof row.runId !== 'string' ||
     typeof row.threadId !== 'string' ||
@@ -288,8 +244,6 @@ function toWorkflowRunRow(row: ZeroWorkbookWorkflowRunRow): WorkbookWorkflowRunR
     updatedAtUnixMs: row.updatedAtUnixMs,
     completedAtUnixMs: row.completedAtUnixMs,
     errorMessage: row.errorMessage,
-    stepsJson: row.steps,
-    artifactJson: row.artifact,
   }
 }
 
@@ -314,16 +268,10 @@ function toWorkflowArtifactRow(row: QueryResultRow): WorkbookWorkflowArtifactRow
   }
 }
 
-function rowAdvertisesWorkflowSteps(row: WorkbookWorkflowRunRow): boolean {
-  const steps = normalizeWorkflowSteps(row.stepsJson ?? [])
-  return steps !== null && steps.length > 0
-}
-
 function loadDurableWorkflowSteps(rows: readonly QueryResultRow[], runIds: ReadonlySet<string>): DurableWorkflowStepRows {
   if (runIds.size === 0) {
     return {
       byRunId: new Map(),
-      hasRows: false,
     }
   }
   const stepsByRunId = new Map<string, WorkbookAgentWorkflowStep[] | null>()
@@ -350,7 +298,6 @@ function loadDurableWorkflowSteps(rows: readonly QueryResultRow[], runIds: Reado
   }
   return {
     byRunId: stepsByRunId,
-    hasRows: rows.length > 0,
   }
 }
 
@@ -358,7 +305,6 @@ function loadDurableWorkflowArtifacts(rows: readonly QueryResultRow[], runIds: R
   if (runIds.size === 0) {
     return {
       byRunId: new Map(),
-      hasRows: false,
     }
   }
   const artifactsByRunId = new Map<string, DurableWorkflowArtifact>()
@@ -383,7 +329,6 @@ function loadDurableWorkflowArtifacts(rows: readonly QueryResultRow[], runIds: R
   }
   return {
     byRunId: artifactsByRunId,
-    hasRows: rows.length > 0,
   }
 }
 
@@ -460,6 +405,60 @@ export async function ensureWorkbookWorkflowRunSchema(db: Queryable): Promise<vo
     defaultSql: '0',
   })
   await db.query(`
+    INSERT INTO workbook_workflow_step (
+      workbook_id,
+      run_id,
+      step_id,
+      step_order,
+      label,
+      status,
+      summary,
+      updated_at_unix_ms
+    )
+    SELECT
+      run.workbook_id,
+      run.run_id,
+      step_item.step->>'stepId',
+      (step_item.ordinality - 1)::integer,
+      step_item.step->>'label',
+      step_item.step->>'status',
+      step_item.step->>'summary',
+      (step_item.step->>'updatedAtUnixMs')::bigint
+    FROM workbook_workflow_run AS run
+    CROSS JOIN LATERAL jsonb_array_elements(
+      CASE WHEN jsonb_typeof(run.steps_json) = 'array' THEN run.steps_json ELSE '[]'::jsonb END
+    ) WITH ORDINALITY AS step_item(step, ordinality)
+    WHERE jsonb_typeof(run.steps_json) = 'array'
+      AND step_item.step->>'stepId' IS NOT NULL
+      AND step_item.step->>'label' IS NOT NULL
+      AND step_item.step->>'status' IN ('pending', 'running', 'completed', 'failed', 'cancelled')
+      AND step_item.step->>'summary' IS NOT NULL
+      AND step_item.step->>'updatedAtUnixMs' ~ '^[0-9]+$'
+    ON CONFLICT (run_id, step_id) DO NOTHING
+  `)
+  await db.query(`
+    INSERT INTO workbook_workflow_artifact (
+      run_id,
+      workbook_id,
+      kind,
+      title,
+      text,
+      updated_at_unix_ms
+    )
+    SELECT
+      run.run_id,
+      run.workbook_id,
+      'markdown',
+      run.artifact_json->>'title',
+      run.artifact_json->>'text',
+      run.updated_at_unix_ms
+    FROM workbook_workflow_run AS run
+    WHERE run.artifact_json->>'kind' = 'markdown'
+      AND run.artifact_json->>'title' IS NOT NULL
+      AND run.artifact_json->>'text' IS NOT NULL
+    ON CONFLICT (run_id) DO NOTHING
+  `)
+  await db.query(`
     CREATE INDEX IF NOT EXISTS workbook_workflow_run_thread_updated_idx
       ON workbook_workflow_run (workbook_id, thread_id, updated_at_unix_ms DESC)
   `)
@@ -506,12 +505,10 @@ async function persistWorkbookWorkflowRun(
         created_at_unix_ms,
         updated_at_unix_ms,
         completed_at_unix_ms,
-        error_message,
-        steps_json,
-        artifact_json
+        error_message
       )
       VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, $14::jsonb
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
       )
       ON CONFLICT (run_id)
       DO UPDATE SET
@@ -525,9 +522,7 @@ async function persistWorkbookWorkflowRun(
         created_at_unix_ms = EXCLUDED.created_at_unix_ms,
         updated_at_unix_ms = EXCLUDED.updated_at_unix_ms,
         completed_at_unix_ms = EXCLUDED.completed_at_unix_ms,
-        error_message = EXCLUDED.error_message,
-        steps_json = EXCLUDED.steps_json,
-        artifact_json = EXCLUDED.artifact_json
+        error_message = EXCLUDED.error_message
     `,
     [
       input.run.runId,
@@ -542,8 +537,6 @@ async function persistWorkbookWorkflowRun(
       input.run.updatedAtUnixMs,
       input.run.completedAtUnixMs,
       input.run.errorMessage,
-      JSON.stringify(input.run.steps),
-      JSON.stringify(input.run.artifact),
     ],
   )
   await db.query(
@@ -629,23 +622,19 @@ export async function listWorkbookThreadWorkflowRuns(
   return rows.flatMap((row) => {
     const runId = typeof row.runId === 'string' ? row.runId : null
     const hydrated: {
-      steps?: WorkbookAgentWorkflowStep[] | null
-      artifact?: WorkbookAgentWorkflowArtifact | null
+      steps: WorkbookAgentWorkflowStep[] | null
+      artifact: WorkbookAgentWorkflowArtifact | null
       artifactInvalid?: boolean
-    } = {}
+    } = {
+      steps: null,
+      artifact: null,
+    }
     if (runId) {
-      if (durableSteps.byRunId.has(runId)) {
-        hydrated.steps = durableSteps.byRunId.get(runId) ?? null
-      } else if (durableSteps.hasRows && rowAdvertisesWorkflowSteps(row)) {
-        hydrated.steps = null
-      }
+      hydrated.steps = durableSteps.byRunId.get(runId) ?? null
       const durableArtifact = durableArtifacts.byRunId.get(runId)
       if (durableArtifact) {
         hydrated.artifact = durableArtifact.artifact
         hydrated.artifactInvalid = durableArtifact.invalid
-      } else if (durableArtifacts.hasRows && isMarkdownArtifact(row.artifactJson)) {
-        hydrated.artifact = null
-        hydrated.artifactInvalid = true
       }
     }
     const run = normalizeWorkflowRun(row, hydrated)

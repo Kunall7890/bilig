@@ -47,6 +47,13 @@ describe('zero sync schema', () => {
     expect(schema.tables.workbook_chat_thread.columns.latestEntryText.serverName).toBe('latest_entry_text')
   })
 
+  it('keeps workflow child state out of the parent run sync model', () => {
+    expect('steps' in schema.tables.workbook_workflow_run.columns).toBe(false)
+    expect('artifact' in schema.tables.workbook_workflow_run.columns).toBe(false)
+    expect('steps_json' in zeroSchemaServerColumnNamesByTable.workbook_workflow_run).toBe(false)
+    expect('artifact_json' in zeroSchemaServerColumnNamesByTable.workbook_workflow_run).toBe(false)
+  })
+
   it('relates durable chat child rows to their parent thread visibility model', () => {
     for (const tableName of ['workbook_chat_item', 'workbook_chat_tool_call', 'workbook_review_queue_item'] as const) {
       expect(schema.relationships[tableName].thread).toEqual([

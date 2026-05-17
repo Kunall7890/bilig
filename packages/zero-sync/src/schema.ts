@@ -268,8 +268,6 @@ const workbookWorkflowRun = table('workbook_workflow_run')
     updatedAtUnixMs: number().from('updated_at_unix_ms'),
     completedAtUnixMs: number().from('completed_at_unix_ms').optional(),
     errorMessage: string().from('error_message').optional(),
-    steps: json().from('steps_json'),
-    artifact: json().from('artifact_json').optional(),
   })
   .primaryKey('runId')
 

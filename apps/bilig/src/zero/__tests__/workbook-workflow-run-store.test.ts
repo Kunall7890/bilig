@@ -318,13 +318,42 @@ describe('workbook-workflow-run-store', () => {
     })
 
     const insertQuery = queryable.calls.find((call) => call.text.includes('INSERT INTO workbook_workflow_run'))
-    expect(insertQuery?.values?.[12]).toBe(JSON.stringify(createWorkflowRun().steps))
-    expect(insertQuery?.values?.[13]).toBe(JSON.stringify(createWorkflowRun().artifact))
+    expect(insertQuery?.text).not.toContain('steps_json')
+    expect(insertQuery?.text).not.toContain('artifact_json')
+    expect(insertQuery?.values).not.toContain(JSON.stringify(createWorkflowRun().steps))
+    expect(insertQuery?.values).not.toContain(JSON.stringify(createWorkflowRun().artifact))
     expect(queryable.calls.find((call) => call.text.includes('DELETE FROM workbook_workflow_step'))).toBeDefined()
     expect(queryable.calls.filter((call) => call.text.includes('INSERT INTO workbook_workflow_step'))).toHaveLength(
       createWorkflowRun().steps.length,
     )
     expect(queryable.calls.find((call) => call.text.includes('INSERT INTO workbook_workflow_artifact'))).toBeDefined()
+  })
+
+  it('backfills durable child rows from legacy workflow snapshots before removing their authority', async () => {
+    const queryable = new FakeQueryable()
+
+    await ensureWorkbookWorkflowRunSchema(queryable)
+
+    const stepTableIndex = queryable.calls.findIndex((call) => call.text.includes('CREATE TABLE IF NOT EXISTS workbook_workflow_step'))
+    const artifactTableIndex = queryable.calls.findIndex((call) =>
+      call.text.includes('CREATE TABLE IF NOT EXISTS workbook_workflow_artifact'),
+    )
+    const stepBackfillIndex = queryable.calls.findIndex(
+      (call) =>
+        call.text.includes('jsonb_array_elements') &&
+        call.text.includes('run.steps_json') &&
+        call.text.includes('INSERT INTO workbook_workflow_step'),
+    )
+    const artifactBackfillIndex = queryable.calls.findIndex(
+      (call) =>
+        call.text.includes('INSERT INTO workbook_workflow_artifact') &&
+        call.text.includes("run.artifact_json->>'title'") &&
+        call.text.includes("run.artifact_json->>'text'"),
+    )
+    expect(stepTableIndex).toBeGreaterThan(-1)
+    expect(artifactTableIndex).toBeGreaterThan(stepTableIndex)
+    expect(stepBackfillIndex).toBeGreaterThan(artifactTableIndex)
+    expect(artifactBackfillIndex).toBeGreaterThan(stepBackfillIndex)
   })
 
   it('replaces durable workflow steps by global run id before inserting the latest snapshot', async () => {
@@ -430,58 +459,10 @@ describe('workbook-workflow-run-store', () => {
 
   it('loads shared workflow runs for collaborator viewers', async () => {
     const run = createWorkflowRun()
-    const queryable = createWorkflowRunStoreConnection(
-      [createZeroWorkflowRunRow(run)],
-      [
-        (text, values) =>
-          text.includes('FROM workbook_workflow_run AS run') && values?.[1] === 'thr-1' && values?.[2] === 'casey@example.com'
-            ? [
-                {
-                  runId: run.runId,
-                  workbookId: 'doc-1',
-                  threadId: run.threadId,
-                  actorUserId: run.startedByUserId,
-                  workflowTemplate: run.workflowTemplate,
-                  title: run.title,
-                  summary: run.summary,
-                  status: run.status,
-                  createdAtUnixMs: run.createdAtUnixMs,
-                  updatedAtUnixMs: run.updatedAtUnixMs,
-                  completedAtUnixMs: run.completedAtUnixMs,
-                  errorMessage: run.errorMessage,
-                  stepsJson: run.steps,
-                  artifactJson: run.artifact,
-                } satisfies QueryResultRow,
-              ]
-            : null,
-        (text, values) =>
-          text.includes('FROM workbook_workflow_step AS step') && values?.[0] === 'doc-1' && Array.isArray(values?.[1])
-            ? run.steps.map(
-                (step, index) =>
-                  ({
-                    runId: run.runId,
-                    stepId: step.stepId,
-                    stepOrder: index,
-                    label: step.label,
-                    status: step.status,
-                    summary: step.summary,
-                    updatedAtUnixMs: step.updatedAtUnixMs,
-                  }) satisfies QueryResultRow,
-              )
-            : null,
-        (text, values) =>
-          text.includes('FROM workbook_workflow_artifact AS artifact') && values?.[0] === 'doc-1' && Array.isArray(values?.[1])
-            ? [
-                {
-                  runId: run.runId,
-                  kind: run.artifact?.kind,
-                  title: run.artifact?.title,
-                  text: run.artifact?.text,
-                } satisfies QueryResultRow,
-              ]
-            : null,
-      ],
-    )
+    const queryable = createWorkflowRunStoreConnection([createZeroWorkflowRunRow(run)], [], {
+      stepRows: createZeroWorkflowStepRows(run),
+      artifactRows: [createZeroWorkflowArtifactRow(run)],
+    })
 
     const runs = await listWorkbookThreadWorkflowRuns(queryable, {
       documentId: 'doc-1',
@@ -538,58 +519,10 @@ describe('workbook-workflow-run-store', () => {
         text: '## Hide Row Preview',
       },
     }
-    const queryable = createWorkflowRunStoreConnection(
-      [createZeroWorkflowRunRow(run)],
-      [
-        (text, values) =>
-          text.includes('FROM workbook_workflow_run AS run') && values?.[1] === 'thr-1' && values?.[2] === 'alex@example.com'
-            ? [
-                {
-                  runId: run.runId,
-                  workbookId: 'doc-1',
-                  threadId: run.threadId,
-                  actorUserId: run.startedByUserId,
-                  workflowTemplate: run.workflowTemplate,
-                  title: run.title,
-                  summary: run.summary,
-                  status: run.status,
-                  createdAtUnixMs: run.createdAtUnixMs,
-                  updatedAtUnixMs: run.updatedAtUnixMs,
-                  completedAtUnixMs: run.completedAtUnixMs,
-                  errorMessage: run.errorMessage,
-                  stepsJson: run.steps,
-                  artifactJson: run.artifact,
-                } satisfies QueryResultRow,
-              ]
-            : null,
-        (text, values) =>
-          text.includes('FROM workbook_workflow_step AS step') && values?.[0] === 'doc-1' && Array.isArray(values?.[1])
-            ? run.steps.map(
-                (step, index) =>
-                  ({
-                    runId: run.runId,
-                    stepId: step.stepId,
-                    stepOrder: index,
-                    label: step.label,
-                    status: step.status,
-                    summary: step.summary,
-                    updatedAtUnixMs: step.updatedAtUnixMs,
-                  }) satisfies QueryResultRow,
-              )
-            : null,
-        (text, values) =>
-          text.includes('FROM workbook_workflow_artifact AS artifact') && values?.[0] === 'doc-1' && Array.isArray(values?.[1])
-            ? [
-                {
-                  runId: run.runId,
-                  kind: run.artifact?.kind,
-                  title: run.artifact?.title,
-                  text: run.artifact?.text,
-                } satisfies QueryResultRow,
-              ]
-            : null,
-      ],
-    )
+    const queryable = createWorkflowRunStoreConnection([createZeroWorkflowRunRow(run)], [], {
+      stepRows: createZeroWorkflowStepRows(run),
+      artifactRows: [createZeroWorkflowArtifactRow(run)],
+    })
 
     const runs = await listWorkbookThreadWorkflowRuns(queryable, {
       documentId: 'doc-1',
@@ -630,32 +563,10 @@ describe('workbook-workflow-run-store', () => {
         text: '## Number Format Normalization Preview',
       },
     }
-    const queryable = createWorkflowRunStoreConnection(
-      [createZeroWorkflowRunRow(run)],
-      [
-        (text, values) =>
-          text.includes('FROM workbook_workflow_run AS run') && values?.[1] === 'thr-1' && values?.[2] === 'alex@example.com'
-            ? [
-                {
-                  runId: run.runId,
-                  workbookId: 'doc-1',
-                  threadId: run.threadId,
-                  actorUserId: run.startedByUserId,
-                  workflowTemplate: run.workflowTemplate,
-                  title: run.title,
-                  summary: run.summary,
-                  status: run.status,
-                  createdAtUnixMs: run.createdAtUnixMs,
-                  updatedAtUnixMs: run.updatedAtUnixMs,
-                  completedAtUnixMs: run.completedAtUnixMs,
-                  errorMessage: run.errorMessage,
-                  stepsJson: run.steps,
-                  artifactJson: run.artifact,
-                } satisfies QueryResultRow,
-              ]
-            : null,
-      ],
-    )
+    const queryable = createWorkflowRunStoreConnection([createZeroWorkflowRunRow(run)], [], {
+      stepRows: createZeroWorkflowStepRows(run),
+      artifactRows: [createZeroWorkflowArtifactRow(run)],
+    })
 
     const runs = await listWorkbookThreadWorkflowRuns(queryable, {
       documentId: 'doc-1',
@@ -684,32 +595,10 @@ describe('workbook-workflow-run-store', () => {
         text: '## Highlighted Numeric Outliers',
       },
     }
-    const queryable = createWorkflowRunStoreConnection(
-      [createZeroWorkflowRunRow(run)],
-      [
-        (text, values) =>
-          text.includes('FROM workbook_workflow_run AS run') && values?.[1] === 'thr-1' && values?.[2] === 'alex@example.com'
-            ? [
-                {
-                  runId: run.runId,
-                  workbookId: 'doc-1',
-                  threadId: run.threadId,
-                  actorUserId: run.startedByUserId,
-                  workflowTemplate: run.workflowTemplate,
-                  title: run.title,
-                  summary: run.summary,
-                  status: run.status,
-                  createdAtUnixMs: run.createdAtUnixMs,
-                  updatedAtUnixMs: run.updatedAtUnixMs,
-                  completedAtUnixMs: run.completedAtUnixMs,
-                  errorMessage: run.errorMessage,
-                  stepsJson: run.steps,
-                  artifactJson: run.artifact,
-                } satisfies QueryResultRow,
-              ]
-            : null,
-      ],
-    )
+    const queryable = createWorkflowRunStoreConnection([createZeroWorkflowRunRow(run)], [], {
+      stepRows: createZeroWorkflowStepRows(run),
+      artifactRows: [createZeroWorkflowArtifactRow(run)],
+    })
 
     const runs = await listWorkbookThreadWorkflowRuns(queryable, {
       documentId: 'doc-1',
@@ -744,49 +633,10 @@ describe('workbook-workflow-run-store', () => {
       ],
       artifact: null,
     }
-    const queryable = createWorkflowRunStoreConnection(
-      [createZeroWorkflowRunRow(run)],
-      [
-        (text, values) =>
-          text.includes('FROM workbook_workflow_run AS run') && values?.[1] === 'thr-1' && values?.[2] === 'alex@example.com'
-            ? [
-                {
-                  runId: run.runId,
-                  workbookId: 'doc-1',
-                  threadId: run.threadId,
-                  actorUserId: run.startedByUserId,
-                  workflowTemplate: run.workflowTemplate,
-                  title: run.title,
-                  summary: run.summary,
-                  status: run.status,
-                  createdAtUnixMs: run.createdAtUnixMs,
-                  updatedAtUnixMs: run.updatedAtUnixMs,
-                  completedAtUnixMs: run.completedAtUnixMs,
-                  errorMessage: run.errorMessage,
-                  stepsJson: run.steps,
-                  artifactJson: run.artifact,
-                } satisfies QueryResultRow,
-              ]
-            : null,
-        (text, values) =>
-          text.includes('FROM workbook_workflow_step AS step') && values?.[0] === 'doc-1' && Array.isArray(values?.[1])
-            ? run.steps.map(
-                (step, index) =>
-                  ({
-                    runId: run.runId,
-                    stepId: step.stepId,
-                    stepOrder: index,
-                    label: step.label,
-                    status: step.status,
-                    summary: step.summary,
-                    updatedAtUnixMs: step.updatedAtUnixMs,
-                  }) satisfies QueryResultRow,
-              )
-            : null,
-        (text, values) =>
-          text.includes('FROM workbook_workflow_artifact AS artifact') && values?.[0] === 'doc-1' && Array.isArray(values?.[1]) ? [] : null,
-      ],
-    )
+    const queryable = createWorkflowRunStoreConnection([createZeroWorkflowRunRow(run)], [], {
+      stepRows: createZeroWorkflowStepRows(run),
+      artifactRows: [],
+    })
 
     const runs = await listWorkbookThreadWorkflowRuns(queryable, {
       documentId: 'doc-1',
@@ -929,7 +779,7 @@ describe('workbook-workflow-run-store', () => {
     ).resolves.toEqual([])
   })
 
-  it('drops workflow runs missing durable artifact rows once the reload batch has durable artifact coverage', async () => {
+  it('loads workflow runs without durable artifact rows as artifact-free runs', async () => {
     const firstRun = createWorkflowRun()
     const secondRun = {
       ...createWorkflowRun(),
@@ -950,6 +800,10 @@ describe('workbook-workflow-run-store', () => {
     ).resolves.toEqual([
       expect.objectContaining({
         runId: firstRun.runId,
+      }),
+      expect.objectContaining({
+        artifact: null,
+        runId: secondRun.runId,
       }),
     ])
   })
