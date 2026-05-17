@@ -18,6 +18,11 @@ import {
   discoverRecentComplexCkanQueries,
 } from './public-workbook-corpus-discovery.ts'
 import {
+  defaultRecentComplexGithubQueries,
+  defaultRecentComplexGithubRepositoryQueries,
+  discoverRecentComplexGithubQueries,
+} from './public-workbook-corpus-github.ts'
+import {
   defaultDownloadTimeoutMs,
   defaultFetchBatchSize,
   defaultFetchConcurrency,
@@ -100,6 +105,7 @@ export {
   buildPublicWorkbookCorpusScorecard,
   createEmptyPublicWorkbookManifest,
   discoverCkanWorkbookSources,
+  discoverRecentComplexGithubQueries,
   formatPublicWorkbookCorpusVerifyArtifactCommand,
   parsePublicWorkbookCorpusScorecardJson,
   parsePublicWorkbookManifestJson,
@@ -356,6 +362,32 @@ async function main(): Promise<void> {
         queries: queries.length > 0 ? queries : defaultRecentComplexWorkbookQueries,
         limit: readNumberArg('--limit', targetWorkbookCount),
         rowsPerRequest,
+        onQueryDiscovered: (partialManifest) => {
+          writeJson(manifestPath, partialManifest, 'public-workbook-corpus-manifest')
+        },
+      })
+      writeJson(manifestPath, manifest, 'public-workbook-corpus-manifest')
+    })
+    return
+  }
+  if (command === 'discover-recent-complex-github') {
+    const skipCodeSearch = readFlagArg('--skip-code-search')
+    const queries = skipCodeSearch ? [] : readRepeatedStringArg('--query')
+    const repositoryQueries = readRepeatedStringArg('--repo-query')
+    assertPublicCorpusRunNotStopped({
+      commandName: 'public-workbook-corpus discover-recent-complex-github',
+      stopMarkerPath: corpusRunStopMarkerPath,
+    })
+    await withPublicWorkbookCorpusCacheLock(cacheDir, 'discover-recent-complex-github', async () => {
+      const manifest = await discoverRecentComplexGithubQueries({
+        manifest: readOrCreateManifest(manifestPath, targetWorkbookCount),
+        queries: skipCodeSearch ? [] : queries.length > 0 ? queries : defaultRecentComplexGithubQueries,
+        repositoryQueries: repositoryQueries.length > 0 ? repositoryQueries : defaultRecentComplexGithubRepositoryQueries,
+        limit: readNumberArg('--limit', targetWorkbookCount),
+        perPage: readNumberArg('--per-page', 50),
+        maxPagesPerQuery: readNumberArg('--max-pages-per-query', 2),
+        maxRepositoriesPerQuery: readNumberArg('--max-repositories-per-query', 20),
+        githubToken: process.env['GITHUB_TOKEN'] ?? process.env['GH_TOKEN'] ?? null,
         onQueryDiscovered: (partialManifest) => {
           writeJson(manifestPath, partialManifest, 'public-workbook-corpus-manifest')
         },

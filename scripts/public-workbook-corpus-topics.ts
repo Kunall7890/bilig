@@ -135,7 +135,10 @@ export function financialWorkbookTopicEvidence(candidate: FinancialTopicSourceCa
 }
 
 export function recentWorkbookDateEvidence(candidate: FinancialTopicSourceCandidate): string[] {
-  const fields = collectRecentWorkbookDateFields(candidate)
+  return recentWorkbookDateEvidenceForFields(collectRecentWorkbookDateFields(candidate))
+}
+
+export function recentWorkbookDateEvidenceForFields(fields: readonly { readonly name: string; readonly value: string }[]): string[] {
   const evidence: string[] = []
   const seen = new Set<string>()
   for (const field of fields) {
