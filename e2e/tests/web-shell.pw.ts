@@ -987,6 +987,54 @@ test.describe('@clipboard-global web app clipboard flows', () => {
     await expect(resolvedValue).toHaveText('8')
   })
 
+  test('web app pastes copied formulas as resolved values with paste-values-only', async ({ page, context }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+    const documentId = createTestDocumentId('playwright-paste-values-only')
+    await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0`)
+    await waitForWorkbookReady(page)
+
+    const grid = page.getByTestId('sheet-grid')
+    const nameBox = page.getByTestId('name-box')
+    const formulaInput = page.getByTestId('formula-input')
+    const resolvedValue = page.getByTestId('formula-resolved-value')
+
+    const writeFormulaBarCell = async (address: string, value: string, resolved = value) => {
+      await nameBox.fill(address)
+      await nameBox.press('Enter')
+      await formulaInput.fill(value)
+      await formulaInput.press('Enter')
+      await nameBox.fill(address)
+      await nameBox.press('Enter')
+      await expect(formulaInput).toHaveValue(value)
+      await expect(resolvedValue).toHaveText(resolved)
+    }
+
+    const expectCellValue = async (address: string, value: string, resolved = value) => {
+      await nameBox.fill(address)
+      await nameBox.press('Enter')
+      await expect(formulaInput).toHaveValue(value)
+      await expect(resolvedValue).toHaveText(resolved)
+    }
+
+    await writeFormulaBarCell('B2', '3')
+    await writeFormulaBarCell('B3', '4')
+    await writeFormulaBarCell('C2', '=B2*2', '6')
+    await writeFormulaBarCell('C3', '=B3*2', '8')
+
+    await dragProductBodySelection(page, 1, 1, 2, 2)
+    await grid.press(`${PRIMARY_MODIFIER}+C`)
+    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe('3\t=B2*2\n4\t=B3*2')
+
+    await clickProductCell(page, 3, 1)
+    await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!D2')
+    await grid.press(`${PRIMARY_MODIFIER}+Shift+V`)
+
+    await expectCellValue('D2', '3')
+    await expectCellValue('E2', '6')
+    await expectCellValue('D3', '4')
+    await expectCellValue('E3', '8')
+  })
+
   test('web app moves rectangular ranges with the cut keyboard shortcut', async ({ page, context }) => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write'])
     const documentId = createTestDocumentId('playwright-clipboard-cut-move')

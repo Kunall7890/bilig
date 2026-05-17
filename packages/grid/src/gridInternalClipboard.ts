@@ -8,6 +8,7 @@ export interface InternalClipboardRange {
   sourceEndAddress: string
   signature: string
   plainText: string
+  valuesOnlyPlainText: string
   rowCount: number
   colCount: number
 }
@@ -16,6 +17,7 @@ export function buildInternalClipboardRange(
   range: Rectangle,
   values: readonly (readonly string[])[],
   operation: InternalClipboardRange['operation'] = 'copy',
+  valuesOnlyValues: readonly (readonly string[])[] = values,
 ): InternalClipboardRange {
   return {
     operation,
@@ -23,6 +25,7 @@ export function buildInternalClipboardRange(
     sourceEndAddress: formatAddress(range.y + range.height - 1, range.x + range.width - 1),
     signature: serializeClipboardMatrix(values),
     plainText: serializeClipboardPlainText(values),
+    valuesOnlyPlainText: serializeClipboardPlainText(valuesOnlyValues),
     rowCount: range.height,
     colCount: range.width,
   }

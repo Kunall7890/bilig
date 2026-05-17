@@ -29,7 +29,7 @@ export type GridKeyAction =
   | { kind: 'clear-cell'; pendingTypeSeed: null }
   | { kind: 'clipboard-copy' }
   | { kind: 'clipboard-cut' }
-  | { kind: 'clipboard-paste'; target: Item }
+  | { kind: 'clipboard-paste'; target: Item; valuesOnly: boolean }
   | { kind: 'fill-range'; source: Rectangle; target: Rectangle }
   | { kind: 'handled' }
   | { kind: 'select-row'; row: number; col: number }
@@ -281,7 +281,7 @@ export function resolveGridKeyAction(options: ResolveGridKeyActionOptions): Grid
       return { kind: 'clipboard-cut' }
     }
     if (normalizedKey === 'v') {
-      return { kind: 'clipboard-paste', target: activeCell }
+      return { kind: 'clipboard-paste', target: activeCell, valuesOnly: event.shiftKey === true }
     }
   }
 

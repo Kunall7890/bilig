@@ -82,6 +82,14 @@ const WORKBOOK_SHORTCUTS: readonly WorkbookShortcutEntry[] = [
     windows: 'Ctrl+V',
   },
   {
+    id: 'paste-values-only',
+    label: 'Paste values only',
+    category: 'Editing',
+    mac: '⇧⌘V',
+    windows: 'Ctrl+Shift+V',
+    keywords: ['paste special', 'values only'],
+  },
+  {
     id: 'fill-down',
     label: 'Fill down',
     category: 'Editing',

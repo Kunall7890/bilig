@@ -114,7 +114,11 @@ export function createDeferredBeginEditScheduler(input: {
 }
 
 export function useWorkbookGridKeyboardHandler(input: {
-  applyClipboardValues: (target: readonly [number, number], values: readonly (readonly string[])[]) => void
+  applyClipboardValues: (
+    target: readonly [number, number],
+    values: readonly (readonly string[])[],
+    options?: { readonly pasteValuesOnly?: boolean | undefined },
+  ) => void
   beginSelectedEdit: (seed?: string, selectionBehavior?: 'select-all' | 'caret-end') => void
   captureInternalClipboardSelection: () => InternalClipboardRange | null
   editorValue: string

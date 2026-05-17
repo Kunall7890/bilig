@@ -28,9 +28,24 @@ function createCellSnapshot(address: string, input: string): CellSnapshot {
   }
 }
 
-function createEngine(cells: Record<string, string>): GridEngineLike {
+function createFormulaSnapshot(address: string, formula: string, value: number): CellSnapshot {
   return {
-    getCell: (_sheetName, address) => createCellSnapshot(address, cells[address] ?? ''),
+    sheetName: 'Sheet1',
+    address,
+    formula,
+    input: null,
+    value: { tag: ValueTag.Number, value },
+    flags: 0,
+    version: 0,
+  }
+}
+
+function createEngine(cells: Record<string, string | CellSnapshot>): GridEngineLike {
+  return {
+    getCell: (_sheetName, address) => {
+      const cell = cells[address]
+      return typeof cell === 'object' ? cell : createCellSnapshot(address, cell ?? '')
+    },
     getCellStyle: () => undefined,
     subscribeCells: () => () => {},
     workbook: {
@@ -247,6 +262,7 @@ describe('gridClipboardKeyboardController', () => {
         sourceEndAddress: 'B2',
         signature: 'A\u001fB\u001eC\u001fD',
         plainText: 'A\tB\nC\tD',
+        valuesOnlyPlainText: 'A\tB\nC\tD',
         rowCount: 2,
         colCount: 2,
       },
@@ -270,6 +286,39 @@ describe('gridClipboardKeyboardController', () => {
     expect(onPaste).not.toHaveBeenCalled()
   })
 
+  test('routes values-only paste through plain paste even when it matches an internal copied range', () => {
+    const onCopyRange = vi.fn()
+    const onMoveRange = vi.fn()
+    const onPaste = vi.fn()
+    const internalClipboardRef = {
+      current: {
+        operation: 'copy' as const,
+        sourceStartAddress: 'B2',
+        sourceEndAddress: 'C2',
+        signature: '3\u001f=B2*2',
+        plainText: '3\t=B2*2',
+        valuesOnlyPlainText: '3\t6',
+        rowCount: 1,
+        colCount: 2,
+      },
+    }
+
+    applyGridClipboardValues({
+      internalClipboardRef,
+      onCopyRange,
+      onMoveRange,
+      onPaste,
+      pasteValuesOnly: true,
+      sheetName: 'Sheet1',
+      target: [3, 1],
+      values: [['3', '6']],
+    })
+
+    expect(onCopyRange).not.toHaveBeenCalled()
+    expect(onMoveRange).not.toHaveBeenCalled()
+    expect(onPaste).toHaveBeenCalledWith('Sheet1', 'D2', [['3', '6']])
+  })
+
   test('routes matching cut clipboard data through move-range operations and consumes the cut', () => {
     const onCopyRange = vi.fn()
     const onMoveRange = vi.fn()
@@ -281,6 +330,7 @@ describe('gridClipboardKeyboardController', () => {
         sourceEndAddress: 'B2',
         signature: 'A\u001fB\u001eC\u001fD',
         plainText: 'A\tB\nC\tD',
+        valuesOnlyPlainText: 'A\tB\nC\tD',
         rowCount: 2,
         colCount: 2,
       },
@@ -333,10 +383,35 @@ describe('gridClipboardKeyboardController', () => {
       sourceEndAddress: 'B2',
       signature: 'alpha\u001fbeta\u001egamma\u001fdelta',
       plainText: 'alpha\tbeta\ngamma\tdelta',
+      valuesOnlyPlainText: 'alpha\tbeta\ngamma\tdelta',
       rowCount: 2,
       colCount: 2,
     })
     expect(internalClipboardRef.current).toEqual(clipboard)
+  })
+
+  test('captures formula text separately from resolved values for paste-values-only', () => {
+    const internalClipboardRef = { current: null }
+
+    const clipboard = captureGridClipboardSelection({
+      engine: createEngine({
+        B2: createCellSnapshot('B2', '3'),
+        C2: createFormulaSnapshot('C2', 'B2*2', 6),
+      }),
+      gridSelection: {
+        ...createGridSelection(1, 1),
+        current: {
+          cell: [1, 1],
+          range: { x: 1, y: 1, width: 2, height: 1 },
+          rangeStack: [],
+        },
+      },
+      internalClipboardRef,
+      sheetName: 'Sheet1',
+    })
+
+    expect(clipboard?.plainText).toBe('3\t=B2*2')
+    expect(clipboard?.valuesOnlyPlainText).toBe('3\t6')
   })
 
   test('captures optimistic editor seeds before the engine snapshot catches up', () => {
@@ -384,6 +459,7 @@ describe('gridClipboardKeyboardController', () => {
         sourceEndAddress: 'C3',
         signature: '3\u001f=B2*2\u001e4\u001f=B3*2',
         plainText: '3\t=B2*2\n4\t=B3*2',
+        valuesOnlyPlainText: '3\t6\n4\t8',
         rowCount: 2,
         colCount: 2,
       },
@@ -426,6 +502,64 @@ describe('gridClipboardKeyboardController', () => {
         ['3', '=B2*2'],
         ['4', '=B3*2'],
       ],
+      { pasteValuesOnly: false },
+    )
+  })
+
+  test('pastes resolved values from the internal clipboard for the paste-values-only shortcut', () => {
+    const applyClipboardValues = vi.fn()
+    const internalClipboardRef = {
+      current: {
+        operation: 'copy' as const,
+        sourceStartAddress: 'B2',
+        sourceEndAddress: 'C3',
+        signature: '3\u001f=B2*2\u001e4\u001f=B3*2',
+        plainText: '3\t=B2*2\n4\t=B3*2',
+        valuesOnlyPlainText: '3\t6\n4\t8',
+        rowCount: 2,
+        colCount: 2,
+      },
+    }
+
+    handleGridKey({
+      applyClipboardValues,
+      beginSelectedEdit: vi.fn(),
+      captureInternalClipboardSelection: vi.fn(),
+      editorValue: '',
+      event: {
+        key: 'v',
+        ctrlKey: true,
+        metaKey: false,
+        altKey: false,
+        shiftKey: true,
+        preventDefault: vi.fn(),
+      },
+      gridSelection: createGridSelection(3, 1),
+      internalClipboardRef,
+      isSelectedCellBoolean: () => false,
+      isEditingCell: false,
+      onCancelEdit: vi.fn(),
+      onClearCell: vi.fn(),
+      onCommitEdit: vi.fn(),
+      onEditorChange: vi.fn(),
+      onFillRange: vi.fn(),
+      onSelectionChange: vi.fn(),
+      pendingClipboardCopySequenceRef: { current: 1 },
+      pendingKeyboardPasteSequenceRef: { current: 0 },
+      pendingTypeSeedRef: { current: null },
+      selectedCell: { col: 3, row: 1 },
+      setGridSelection: vi.fn(),
+      suppressNextNativePasteRef: { current: false },
+      toggleSelectedBooleanCell: vi.fn(),
+    })
+
+    expect(applyClipboardValues).toHaveBeenCalledWith(
+      [3, 1],
+      [
+        ['3', '6'],
+        ['4', '8'],
+      ],
+      { pasteValuesOnly: true },
     )
   })
 

@@ -270,12 +270,13 @@ export function useWorkbookGridInteractions(
   )
   const getCurrentGridSelection = useCallback(() => gridRuntimeHost.interactionOverlays.snapshot().gridSelection, [gridRuntimeHost])
   const applyClipboardValues = useCallback(
-    (target: Item, values: readonly (readonly string[])[]) => {
+    (target: Item, values: readonly (readonly string[])[], options?: { readonly pasteValuesOnly?: boolean | undefined }) => {
       applyGridClipboardValues({
         internalClipboardRef,
         onCopyRange,
         onMoveRange,
         onPaste,
+        pasteValuesOnly: options?.pasteValuesOnly,
         sheetName,
         target,
         values,

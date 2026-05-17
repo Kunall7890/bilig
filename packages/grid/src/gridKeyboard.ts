@@ -3,6 +3,7 @@ interface GridKeyboardModifierState {
   ctrlKey: boolean
   key: string
   metaKey: boolean
+  shiftKey?: boolean
 }
 
 export function isPrintableKey(event: GridKeyboardModifierState): boolean {

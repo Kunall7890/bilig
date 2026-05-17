@@ -268,7 +268,20 @@ describe('gridKeyActions', () => {
         currentSelectionCell: [3, 2],
         currentRangeAnchor: [1, 1],
       }),
-    ).toEqual({ kind: 'clipboard-paste', target: [3, 2] })
+    ).toEqual({ kind: 'clipboard-paste', target: [3, 2], valuesOnly: false })
+
+    expect(
+      resolveGridKeyAction({
+        event: { key: 'v', ctrlKey: true, metaKey: false, altKey: false, shiftKey: true },
+        isEditingCell: false,
+        editorValue: '',
+        editorInputFocused: false,
+        pendingTypeSeed: null,
+        selectedCell: [1, 1],
+        currentSelectionCell: [3, 2],
+        currentRangeAnchor: [1, 1],
+      }),
+    ).toEqual({ kind: 'clipboard-paste', target: [3, 2], valuesOnly: true })
 
     expect(
       resolveGridKeyAction({

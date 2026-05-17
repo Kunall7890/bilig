@@ -10,7 +10,7 @@ import {
 } from './gridSelection.js'
 import type { GridSelection, GridSelectionSnapshot, Item } from './gridTypes.js'
 import { parseClipboardContent, parseClipboardPlainText } from './gridClipboard.js'
-import { cellToEditorSeed } from './gridCells.js'
+import { cellToEditorSeed, snapshotToRenderCell } from './gridCells.js'
 import {
   isClipboardShortcut,
   isClearCellKey,
@@ -57,6 +57,7 @@ interface ApplyGridClipboardValuesOptions {
   onCopyRange(this: void, sourceStartAddr: string, sourceEndAddr: string, targetStartAddr: string, targetEndAddr: string): void
   onMoveRange(this: void, sourceStartAddr: string, sourceEndAddr: string, targetStartAddr: string, targetEndAddr: string): void
   onPaste(this: void, sheetName: string, addr: string, values: readonly (readonly string[])[]): void
+  pasteValuesOnly?: boolean | undefined
   sheetName: string
   target: Item
   values: readonly (readonly string[])[]
@@ -71,8 +72,12 @@ interface CaptureGridClipboardSelectionOptions {
   sheetName: string
 }
 
+interface ApplyClipboardValuesOptions {
+  readonly pasteValuesOnly?: boolean | undefined
+}
+
 interface HandleGridKeyOptions {
-  applyClipboardValues(this: void, target: Item, values: readonly (readonly string[])[]): void
+  applyClipboardValues(this: void, target: Item, values: readonly (readonly string[])[], options?: ApplyClipboardValuesOptions): void
   beginSelectedEdit(this: void, seed?: string, selectionBehavior?: EditSelectionBehavior): void
   captureInternalClipboardSelection(this: void, operation?: InternalClipboardRange['operation']): InternalClipboardRange | null
   editorValue: string
@@ -150,6 +155,7 @@ export function applyGridClipboardValues({
   onCopyRange,
   onMoveRange,
   onPaste,
+  pasteValuesOnly = false,
   sheetName,
   target,
   values,
@@ -159,7 +165,7 @@ export function applyGridClipboardValues({
   }
 
   const internalClipboard = internalClipboardRef.current
-  if (matchesInternalClipboardPaste(internalClipboard, values)) {
+  if (!pasteValuesOnly && matchesInternalClipboardPaste(internalClipboard, values)) {
     if (!internalClipboard) {
       return
     }
@@ -177,6 +183,21 @@ export function applyGridClipboardValues({
   onPaste(sheetName, formatAddress(target[1], target[0]), values)
 }
 
+function resolveKeyboardClipboardValues(clipboard: InternalClipboardRange, pasteValuesOnly: boolean): readonly (readonly string[])[] {
+  return parseClipboardPlainText(pasteValuesOnly ? clipboard.valuesOnlyPlainText : clipboard.plainText)
+}
+
+function resolveSystemClipboardValues(
+  rawText: string,
+  internalClipboard: InternalClipboardRange | null,
+  pasteValuesOnly: boolean,
+): readonly (readonly string[])[] {
+  if (pasteValuesOnly && internalClipboard && rawText === internalClipboard.plainText) {
+    return parseClipboardPlainText(internalClipboard.valuesOnlyPlainText)
+  }
+  return parseClipboardPlainText(rawText)
+}
+
 export function captureGridClipboardSelection({
   engine,
   getCellEditorSeed,
@@ -191,14 +212,29 @@ export function captureGridClipboardSelection({
     return null
   }
 
-  const values = Array.from({ length: range.height }, (_rowEntry, rowOffset) =>
-    Array.from({ length: range.width }, (_colEntry, colOffset) => {
-      const address = formatAddress(range.y + rowOffset, range.x + colOffset)
-      return getCellEditorSeed?.(sheetName, address) ?? cellToEditorSeed(engine.getCell(sheetName, address))
-    }),
-  )
+  const values: string[][] = []
+  const valuesOnly: string[][] = []
 
-  internalClipboardRef.current = buildInternalClipboardRange(range, values, operation)
+  for (let rowOffset = 0; rowOffset < range.height; rowOffset += 1) {
+    const rowValues: string[] = []
+    const rowValuesOnly: string[] = []
+    for (let colOffset = 0; colOffset < range.width; colOffset += 1) {
+      const address = formatAddress(range.y + rowOffset, range.x + colOffset)
+      const editorSeed = getCellEditorSeed?.(sheetName, address)
+      if (editorSeed !== undefined) {
+        rowValues.push(editorSeed)
+        rowValuesOnly.push(editorSeed)
+        continue
+      }
+      const snapshot = engine.getCell(sheetName, address)
+      rowValues.push(cellToEditorSeed(snapshot))
+      rowValuesOnly.push(snapshotToRenderCell(snapshot, engine.getCellStyle(snapshot.styleId)).displayText)
+    }
+    values.push(rowValues)
+    valuesOnly.push(rowValuesOnly)
+  }
+
+  internalClipboardRef.current = buildInternalClipboardRange(range, values, operation, valuesOnly)
   return internalClipboardRef.current
 }
 
@@ -339,7 +375,9 @@ export function handleGridKey({
           return
         }
         pendingKeyboardPasteSequenceRef.current = 0
-        applyClipboardValues(action.target, parseClipboardPlainText(internalClipboardRef.current.plainText))
+        applyClipboardValues(action.target, resolveKeyboardClipboardValues(internalClipboardRef.current, action.valuesOnly), {
+          pasteValuesOnly: action.valuesOnly,
+        })
         suppressNextNativePasteRef.current = true
         return
       }
@@ -351,8 +389,8 @@ export function handleGridKey({
               return
             }
             pendingKeyboardPasteSequenceRef.current = 0
-            const values = parseClipboardPlainText(rawText)
-            applyClipboardValues(action.target, values)
+            const values = resolveSystemClipboardValues(rawText, internalClipboardRef.current, action.valuesOnly)
+            applyClipboardValues(action.target, values, { pasteValuesOnly: action.valuesOnly })
             suppressNextNativePasteRef.current = true
           } catch {
             if (pendingKeyboardPasteSequenceRef.current === sequence) {
