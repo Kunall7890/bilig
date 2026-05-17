@@ -10,6 +10,15 @@ export type ProjectedViewportPatchApplied = Pick<
   ProjectedViewportPatchApplicationResult,
   'damage' | 'axisChanged' | 'columnsChanged' | 'rowsChanged' | 'freezeChanged' | 'mergesChanged'
 >
+const EMPTY_PATCH_APPLIED: ProjectedViewportPatchApplied = Object.freeze({
+  damage: Object.freeze([]),
+  axisChanged: false,
+  columnsChanged: false,
+  rowsChanged: false,
+  freezeChanged: false,
+  mergesChanged: false,
+})
+
 interface ProjectedViewportSubscriptionOptions {
   readonly initialPatch?: 'full' | 'none'
 }
@@ -21,6 +30,7 @@ export class ProjectedViewportPatchCoordinator {
       cellCache: ProjectedViewportCellCache
       axisStore: ProjectedViewportAxisStore
       mergeRangesBySheet: Map<string, Map<string, WorkbookMergeRangeSnapshot>>
+      shouldApplyViewportPatch?: ((patch: ViewportPatch) => boolean) | undefined
       onViewportPatchApplied?:
         | ((patch: ViewportPatch, result: ProjectedViewportPatchApplied, options: ProjectedViewportSubscriptionOptions) => void)
         | undefined
@@ -101,6 +111,9 @@ export class ProjectedViewportPatchCoordinator {
   }
 
   applyViewportPatchDetailed(patch: ViewportPatch): ProjectedViewportPatchApplied {
+    if (this.options.shouldApplyViewportPatch?.(patch) === false) {
+      return EMPTY_PATCH_APPLIED
+    }
     const result = applyProjectedViewportPatch({
       state: {
         ...this.options.cellCache.getPatchState(),

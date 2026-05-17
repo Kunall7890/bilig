@@ -174,6 +174,94 @@ describe('ProjectedViewportStore', () => {
     })
   })
 
+  it('rejects stale authoritative viewport patches before they regress rendered cells, axes, or proof revisions', () => {
+    const cache = new ProjectedViewportStore()
+
+    cache.applyViewportPatch({
+      ...createPatch(),
+      authoritativeRevision: 17,
+      metrics: {
+        ...TEST_METRICS,
+        batchId: 23,
+      },
+      columns: [{ index: 0, size: 93, hidden: true }],
+      rows: [{ index: 0, size: 44, hidden: true }],
+      cells: [
+        {
+          row: 4,
+          col: 3,
+          snapshot: {
+            sheetName: 'Sheet1',
+            address: 'D5',
+            value: { tag: ValueTag.String, value: 'fresh', stringId: 1 },
+            input: 'fresh',
+            flags: 0,
+            version: 17,
+          },
+          displayText: 'fresh',
+          copyText: 'fresh',
+          editorText: 'fresh',
+          formatId: 0,
+          styleId: 'style-0',
+        },
+      ],
+    })
+
+    const staleDamage = cache.applyViewportPatch({
+      ...createPatch(),
+      authoritativeRevision: 12,
+      metrics: {
+        ...TEST_METRICS,
+        batchId: 18,
+      },
+      freezeRows: 4,
+      freezeCols: 3,
+      columns: [{ index: 0, size: 68, hidden: false }],
+      rows: [{ index: 0, size: 30, hidden: false }],
+      cells: [
+        {
+          row: 4,
+          col: 3,
+          snapshot: {
+            sheetName: 'Sheet1',
+            address: 'D5',
+            value: { tag: ValueTag.String, value: 'stale', stringId: 2 },
+            input: 'stale',
+            flags: 0,
+            version: 99,
+          },
+          displayText: 'stale',
+          copyText: 'stale',
+          editorText: 'stale',
+          formatId: 0,
+          styleId: 'style-0',
+        },
+      ],
+    })
+
+    expect(staleDamage).toEqual([])
+    expect(cache.getCell('Sheet1', 'D5')).toMatchObject({
+      value: { tag: ValueTag.String, value: 'fresh', stringId: 1 },
+      input: 'fresh',
+      version: 17,
+    })
+    expect(cache.getColumnWidths('Sheet1')[0]).toBe(0)
+    expect(cache.getColumnSizes('Sheet1')[0]).toBe(93)
+    expect(cache.getHiddenColumns('Sheet1')[0]).toBe(true)
+    expect(cache.getRowHeights('Sheet1')[0]).toBe(0)
+    expect(cache.getRowSizes('Sheet1')[0]).toBe(44)
+    expect(cache.getHiddenRows('Sheet1')[0]).toBe(true)
+    expect(cache.getFreezeRows('Sheet1')).toBe(0)
+    expect(cache.getFreezeCols('Sheet1')).toBe(0)
+    expect(cache.getRenderRevisionSnapshot()).toEqual({
+      authoritativeRevision: 17,
+      localRevision: 0,
+      projectedRevision: 23,
+      tileSceneCameraSeq: null,
+      tileSceneRevision: null,
+    })
+  })
+
   it('increments the local render revision for optimistic cell snapshots', () => {
     const cache = new ProjectedViewportStore()
 

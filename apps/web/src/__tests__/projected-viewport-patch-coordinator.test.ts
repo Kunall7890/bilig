@@ -169,6 +169,52 @@ describe('ProjectedViewportPatchCoordinator', () => {
     vi.useRealTimers()
   })
 
+  it('lets the store-level revision gate reject stale subscription patches before mutation or notification', async () => {
+    vi.useFakeTimers()
+    const stalePatch: ViewportPatch = {
+      ...createPatch(),
+      version: 1,
+      authoritativeRevision: 8,
+      metrics: { ...TEST_METRICS, batchId: 8 },
+    }
+    const patches: ((bytes: Uint8Array) => void)[] = []
+    const subscribeViewportPatches = vi.fn((_viewport, listener: (bytes: Uint8Array) => void) => {
+      patches.push(listener)
+      return () => undefined
+    })
+    const cellCache = new ProjectedViewportCellCache()
+    const axisStore = new ProjectedViewportAxisStore()
+    const coordinator = new ProjectedViewportPatchCoordinator({
+      client: {
+        invoke: async () => undefined,
+        ready: async () => undefined,
+        subscribe: () => () => undefined,
+        subscribeBatches: () => () => undefined,
+        subscribeViewportPatches,
+        dispose: () => undefined,
+      },
+      cellCache,
+      axisStore,
+      mergeRangesBySheet: new Map(),
+      shouldApplyViewportPatch: () => false,
+    })
+    const listener = vi.fn()
+
+    const unsubscribe = coordinator.subscribeViewport('Sheet1', { rowStart: 0, rowEnd: 2, colStart: 0, colEnd: 2 }, listener, {
+      initialPatch: 'none',
+    })
+
+    patches[0]?.(encodeViewportPatch(stalePatch))
+    await vi.runAllTimersAsync()
+
+    expect(cellCache.peekCell('Sheet1', 'A1')).toBeUndefined()
+    expect(axisStore.getColumnWidths('Sheet1')[0]).toBeUndefined()
+    expect(listener).not.toHaveBeenCalled()
+
+    unsubscribe()
+    vi.useRealTimers()
+  })
+
   it('coalesces repeated patch notifications into a single frame callback', async () => {
     vi.useFakeTimers()
     const patches: ((bytes: Uint8Array) => void)[] = []

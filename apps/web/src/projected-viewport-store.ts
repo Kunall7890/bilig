@@ -24,6 +24,7 @@ import type { ProjectedRenderTile, ProjectedTileSceneChange, ProjectedTileSceneS
 import { getWorkbookScrollPerfCollector } from './perf/workbook-scroll-perf.js'
 import { normalizeWorkbookMergeRange } from './worker-runtime-support.js'
 import { buildLocalAxisWorkbookDelta, buildLocalCellSnapshotWorkbookDelta } from './projected-workbook-local-delta.js'
+import { ProjectedViewportPatchRevisionGate } from './projected-viewport-patch-revision-gate.js'
 
 export interface ProjectedViewportStoreOptions {
   readonly maxCachedCellsPerSheet?: number
@@ -36,13 +37,12 @@ export class ProjectedViewportStore implements GridEngineLike {
   private readonly cellCache: ProjectedViewportCellCache
   private readonly axisStore: ProjectedViewportAxisStore
   private readonly patchCoordinator: ProjectedViewportPatchCoordinator
+  private readonly patchRevisionGate = new ProjectedViewportPatchRevisionGate()
   private tileSceneStore: ProjectedTileSceneStore | null = null
   private readonly localWorkbookDeltaListeners = new Set<(batch: WorkbookDeltaBatchV3) => void>()
   private readonly sheetIdentitiesByName = new Map<string, SheetIdentity>()
   private readonly sheetChannelListeners = new Map<string, Map<SheetViewportChannel, Set<() => void>>>()
   private readonly mergeRangesBySheet = new Map<string, Map<string, WorkbookMergeRangeSnapshot>>()
-  private lastBatchId = 0
-  private lastAuthoritativeRevision: number | null = null
   private localRevision = 0
   private localWorkbookDeltaSeq = 0
 
@@ -67,6 +67,7 @@ export class ProjectedViewportStore implements GridEngineLike {
       axisStore: this.axisStore,
       mergeRangesBySheet: this.mergeRangesBySheet,
       ...(client ? { client } : {}),
+      shouldApplyViewportPatch: (patch) => this.patchRevisionGate.shouldApplyViewportPatch(patch),
       onViewportPatchApplied: (patch, result) => this.handleViewportPatchApplied(patch, result),
     })
   }
@@ -184,18 +185,18 @@ export class ProjectedViewportStore implements GridEngineLike {
   }
 
   getLastMetrics(): Pick<NonNullable<ViewportPatch['metrics']>, 'batchId'> {
-    return { batchId: this.lastBatchId }
+    return { batchId: this.patchRevisionGate.getLastBatchId() }
   }
 
   getLastAuthoritativeRevision(): number | null {
-    return this.lastAuthoritativeRevision
+    return this.patchRevisionGate.getLastAuthoritativeRevision()
   }
 
   getRenderRevisionSnapshot(): GridRenderRevisionSnapshot {
     return {
-      authoritativeRevision: this.lastAuthoritativeRevision,
+      authoritativeRevision: this.patchRevisionGate.getLastAuthoritativeRevision(),
       localRevision: this.localRevision,
-      projectedRevision: this.lastBatchId,
+      projectedRevision: this.patchRevisionGate.getLastBatchId(),
       tileSceneCameraSeq: this.tileSceneStore?.getLastCameraSeq() ?? null,
       tileSceneRevision: this.tileSceneStore?.getLastBatchId() ?? null,
     }
@@ -419,14 +420,7 @@ export class ProjectedViewportStore implements GridEngineLike {
   }
 
   private handleViewportPatchApplied(patch: ViewportPatch, result: ProjectedViewportPatchApplied): void {
-    const batchId = patch.metrics?.batchId
-    if (Number.isInteger(batchId) && batchId >= 0) {
-      this.lastBatchId = batchId
-    }
-    const authoritativeRevision = patch.authoritativeRevision
-    if (typeof authoritativeRevision === 'number' && Number.isInteger(authoritativeRevision) && authoritativeRevision >= 0) {
-      this.lastAuthoritativeRevision = authoritativeRevision
-    }
+    this.patchRevisionGate.noteAppliedViewportPatch(patch)
     const channels: SheetViewportChannel[] = []
     if (result.columnsChanged) {
       channels.push('columnWidths', 'hiddenColumns')
@@ -522,14 +516,16 @@ export class ProjectedViewportStore implements GridEngineLike {
   }
 
   private nextLocalWorkbookDeltaSeq(): number {
-    this.localWorkbookDeltaSeq = Math.max(this.localWorkbookDeltaSeq, this.lastBatchId, this.lastAuthoritativeRevision ?? 0)
+    this.localWorkbookDeltaSeq = Math.max(
+      this.localWorkbookDeltaSeq,
+      this.patchRevisionGate.getLastBatchId(),
+      this.patchRevisionGate.getLastAuthoritativeRevision() ?? 0,
+    )
     return ++this.localWorkbookDeltaSeq
   }
 
   private noteObservedBatchId(batchId: number): void {
-    if (Number.isInteger(batchId) && batchId >= 0) {
-      this.lastBatchId = Math.max(this.lastBatchId, batchId)
-    }
+    this.patchRevisionGate.noteObservedBatchId(batchId)
   }
 }
 
