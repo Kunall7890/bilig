@@ -49,7 +49,7 @@ export const DEFAULT_CONFIG: Readonly<WorkPaperConfig> = Object.freeze({
   thousandSeparator: ',',
   timeFormats: [],
   useArrayArithmetic: true,
-  useColumnIndex: false,
+  useColumnIndex: true,
   useStats: true,
   undoLimit: 100,
   useRegularExpressions: true,

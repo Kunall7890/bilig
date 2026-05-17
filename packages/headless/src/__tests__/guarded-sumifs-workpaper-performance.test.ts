@@ -124,5 +124,6 @@ describe('guarded SUMIFS workpaper performance', () => {
 
     expectNumber(cellValue(workbook, 'Summary', 1, 1), 0)
     expectNumber(cellValue(workbook, 'Summary', 2, 1), 0)
+    expect(workbook.getConfig().useColumnIndex).toBe(true)
   }, 8_000)
 })

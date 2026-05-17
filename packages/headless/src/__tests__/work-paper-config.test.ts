@@ -156,6 +156,7 @@ describe('work paper config helpers', () => {
   })
 
   it('keeps runtime config and public error allowlists visible', () => {
+    expect(DEFAULT_CONFIG.useColumnIndex).toBe(true)
     expect(WORKPAPER_CONFIG_KEYS).toContain('calculationSettings')
     expect(WORKPAPER_CONFIG_KEYS).toContain('functionPlugins')
     expect(WORKPAPER_CONFIG_KEYS).toContain('maxRows')

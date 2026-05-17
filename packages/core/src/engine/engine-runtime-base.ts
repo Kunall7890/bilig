@@ -97,7 +97,7 @@ export abstract class SpreadsheetEngineRuntimeBase {
     this.workbook = new WorkbookStore(options.workbookName ?? 'Workbook', this.performanceCounters)
     this.formulas = new FormulaTable(this.workbook.cellStore)
     this.replicaState = createReplicaState(options.replicaId ?? 'local')
-    this.useColumnIndexEnabled = options.useColumnIndex ?? false
+    this.useColumnIndexEnabled = options.useColumnIndex ?? true
     this.evaluationTimeoutMs = options.evaluationTimeoutMs
     this.state = createEngineRuntimeState({
       workbook: this.workbook,
