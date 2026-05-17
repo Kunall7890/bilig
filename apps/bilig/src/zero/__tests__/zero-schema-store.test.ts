@@ -1,9 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { zeroSchemaServerColumnNamesByTable } from '@bilig/zero-sync'
-import { ensureWorkbookChangeSchema } from '../workbook-change-store.js'
-import { ensureWorkbookChatThreadSchema } from '../workbook-chat-thread-store.js'
-import { ensureWorkbookPresenceSchema } from '../presence-store.js'
-import { ensureWorkbookWorkflowRunSchema } from '../workbook-workflow-run-store.js'
+import { ensureZeroServiceSchema } from '../schema-bootstrap.js'
 import { ensureZeroSyncSchema } from '../zero-schema-store.js'
 import type { Queryable } from '../store.js'
 
@@ -168,11 +165,7 @@ describe('zero schema store', () => {
     const query = vi.fn().mockResolvedValue({ rows: [] })
     const db: Queryable = { query }
 
-    await ensureZeroSyncSchema(db)
-    await ensureWorkbookPresenceSchema(db)
-    await ensureWorkbookChangeSchema(db)
-    await ensureWorkbookChatThreadSchema(db)
-    await ensureWorkbookWorkflowRunSchema(db)
+    await ensureZeroServiceSchema(db)
 
     const columnsByTable = collectBootstrappedColumns(query.mock.calls.map(([text]) => String(text)))
     expect([...columnsByTable.keys()].toSorted()).toEqual(expect.arrayContaining(Object.keys(zeroSchemaServerColumnNamesByTable)))

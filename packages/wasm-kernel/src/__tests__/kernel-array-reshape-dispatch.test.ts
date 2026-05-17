@@ -10,6 +10,10 @@ function encodePushNumber(constantIndex: number): number {
   return (Opcode.PushNumber << 24) | constantIndex
 }
 
+function encodePushBoolean(value: boolean): number {
+  return (Opcode.PushBoolean << 24) | (value ? 1 : 0)
+}
+
 function encodePushRange(rangeIndex: number): number {
   return (Opcode.PushRange << 24) | rangeIndex
 }
@@ -83,15 +87,16 @@ describe('wasm kernel array reshape dispatch', () => {
       [encodePushRange(0), encodeCall(BuiltinId.Torow, 1), encodeRet()],
       [encodePushRange(0), encodePushNumber(0), encodeCall(BuiltinId.Wraprows, 2), encodeRet()],
       [encodePushRange(0), encodePushNumber(0), encodeCall(BuiltinId.Wrapcols, 2), encodeRet()],
+      [encodePushRange(0), encodePushNumber(1), encodePushBoolean(true), encodeCall(BuiltinId.Tocol, 3), encodeRet()],
     ])
-    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, Uint32Array.from([8, 9, 10, 11]))
-    kernel.uploadConstants(new Float64Array([2]), new Uint32Array([0, 0, 0, 0]), new Uint32Array([1, 1, 1, 1]))
-    kernel.evalBatch(Uint32Array.from([8, 9, 10, 11]))
+    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, Uint32Array.from([8, 9, 10, 11, 12]))
+    kernel.uploadConstants(new Float64Array([2, 0]), new Uint32Array([0, 0]), new Uint32Array([1, 1]))
+    kernel.evalBatch(Uint32Array.from([8, 9, 10, 11, 12]))
 
     expect(kernel.readTags()[8]).toBe(ValueTag.Number)
     expect(kernel.readSpillRows()[8]).toBe(6)
     expect(kernel.readSpillCols()[8]).toBe(1)
-    expect(readSpillNumbers(kernel, 8)).toEqual([1, 4, 2, 5, 3, 6])
+    expect(readSpillNumbers(kernel, 8)).toEqual([1, 2, 3, 4, 5, 6])
 
     expect(kernel.readTags()[9]).toBe(ValueTag.Number)
     expect(kernel.readSpillRows()[9]).toBe(1)
@@ -106,7 +111,12 @@ describe('wasm kernel array reshape dispatch', () => {
     expect(kernel.readTags()[11]).toBe(ValueTag.Number)
     expect(kernel.readSpillRows()[11]).toBe(2)
     expect(kernel.readSpillCols()[11]).toBe(3)
-    expect(readSpillNumbers(kernel, 11)).toEqual([1, 2, 3, 4, 5, 6])
+    expect(readSpillNumbers(kernel, 11)).toEqual([1, 3, 5, 2, 4, 6])
+
+    expect(kernel.readTags()[12]).toBe(ValueTag.Number)
+    expect(kernel.readSpillRows()[12]).toBe(6)
+    expect(kernel.readSpillCols()[12]).toBe(1)
+    expect(readSpillNumbers(kernel, 12)).toEqual([1, 4, 2, 5, 3, 6])
   })
 
   it('preserves reshape argument validation errors', async () => {
@@ -122,11 +132,11 @@ describe('wasm kernel array reshape dispatch', () => {
     kernel.uploadRangeShapes(Uint32Array.from([2]), Uint32Array.from([2]))
 
     const packed = packPrograms([
-      [encodePushRange(0), encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Tocol, 3), encodeRet()],
+      [encodePushRange(0), encodePushNumber(0), encodePushBoolean(false), encodeCall(BuiltinId.Tocol, 3), encodeRet()],
       [encodePushRange(0), encodePushNumber(1), encodeCall(BuiltinId.Wraprows, 2), encodeRet()],
     ])
     kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, Uint32Array.from([6, 7]))
-    kernel.uploadConstants(new Float64Array([2, 0]), new Uint32Array([0, 0]), new Uint32Array([1, 1]))
+    kernel.uploadConstants(new Float64Array([4, 0]), new Uint32Array([0, 0]), new Uint32Array([1, 1]))
     kernel.evalBatch(Uint32Array.from([6, 7]))
 
     expect(kernel.readTags()[6]).toBe(ValueTag.Error)

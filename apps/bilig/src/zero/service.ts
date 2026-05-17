@@ -38,20 +38,17 @@ import {
 } from './data-migration-runner.js'
 import { persistWorkbookMutation } from './workbook-mutation-store.js'
 import { acquireWorkbookMutationLock, loadWorkbookRuntimeMetadata, loadWorkbookState } from './workbook-runtime-store.js'
-import { ensureWorkbookPresenceSchema } from './presence-store.js'
 import { ensureZeroPublication } from './publication-store.js'
-import { ensureWorkbookChangeSchema, listWorkbookChanges, type WorkbookChangeRecord } from './workbook-change-store.js'
-import { ensureZeroSyncSchema } from './zero-schema-store.js'
+import { listWorkbookChanges, type WorkbookChangeRecord } from './workbook-change-store.js'
+import { ensureZeroServiceSchema } from './schema-bootstrap.js'
 import {
   appendWorkbookAgentRun,
   createWorkbookAgentRunStoreConnection,
-  ensureWorkbookAgentRunSchema,
   listWorkbookAgentThreadRuns,
   listWorkbookAgentRuns,
 } from './workbook-agent-run-store.js'
 import {
   createWorkbookChatThreadStoreConnection,
-  ensureWorkbookChatThreadSchema,
   listWorkbookAgentThreadSummaries,
   loadWorkbookAgentThreadState,
   saveWorkbookAgentThreadState,
@@ -61,7 +58,6 @@ import type { WorkbookAgentThreadSummary, WorkbookAgentWorkflowRun } from '@bili
 import { createWorkbookAgentServiceError } from '../workbook-agent-errors.js'
 import {
   createWorkbookWorkflowRunStoreConnection,
-  ensureWorkbookWorkflowRunSchema,
   listWorkbookThreadWorkflowRuns,
   upsertWorkbookWorkflowRun,
 } from './workbook-workflow-run-store.js'
@@ -267,12 +263,7 @@ class EnabledZeroSyncService implements ZeroSyncService {
   }
 
   async initialize(): Promise<void> {
-    await ensureZeroSyncSchema(this.pool)
-    await ensureWorkbookPresenceSchema(this.pool)
-    await ensureWorkbookChangeSchema(this.pool)
-    await ensureWorkbookAgentRunSchema(this.pool)
-    await ensureWorkbookChatThreadSchema(this.pool)
-    await ensureWorkbookWorkflowRunSchema(this.pool)
+    await ensureZeroServiceSchema(this.pool)
     await ensureZeroPublication(this.pool)
     await ensureZeroDataMigrationSchema(this.pool)
     if (resolveRunDataMigrationsOnBoot()) {
