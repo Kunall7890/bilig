@@ -57,6 +57,7 @@ export function useWorkbookAgentPane(input: {
   readonly enabled: boolean
   readonly apiEnabled?: boolean
   readonly getContext: () => WorkbookAgentUiContext
+  readonly contextVersion?: number | string
   readonly applyContext?: (context: WorkbookAgentUiContext) => void
   readonly previewCommandBundle: (bundle: WorkbookAgentCommandBundle) => Promise<WorkbookAgentPreviewSummary>
   readonly syncAuthoritativeRevision?: (revision: number) => Promise<void> | void
@@ -70,6 +71,7 @@ export function useWorkbookAgentPane(input: {
     enabled,
     apiEnabled = true,
     getContext,
+    contextVersion,
     applyContext,
     previewCommandBundle,
     syncAuthoritativeRevision,
@@ -609,8 +611,18 @@ export function useWorkbookAgentPane(input: {
   }, [showAssistantProgress, syncAuthoritativeRevision])
 
   useEffect(() => {
+    if (contextVersion !== undefined) {
+      return
+    }
     scheduleContextSync()
   })
+
+  useEffect(() => {
+    if (contextVersion === undefined) {
+      return
+    }
+    scheduleContextSync()
+  }, [activeContextLabel, contextVersion, enabled, scheduleContextSync, snapshot?.threadId])
 
   useEffect(() => {
     return () => {

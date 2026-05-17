@@ -117,7 +117,7 @@ export function useWorkerWorkbookAgentContext(input: {
   runtimeControllerRef: MutableRefObject<Pick<WorkerRuntimeSessionController, 'subscribeViewport'> | null>
 }) {
   const { selection, selectionRangeRef, selectionSnapshotRef, selectionRef, workerHandleRef, runtimeControllerRef } = input
-  const [, setRenderedAgentContextVersion] = useState(0)
+  const [renderedAgentContextVersion, setRenderedAgentContextVersion] = useState(0)
   const visibleViewportRef = useRef<Viewport>(selectionViewport(selection))
   const visibleViewportSubscriptionRef = useRef<{
     readonly cleanup: () => void
@@ -216,6 +216,7 @@ export function useWorkerWorkbookAgentContext(input: {
   }, [])
 
   return {
+    agentContextVersion: `${selection.sheetName}:${selection.address}:${renderedAgentContextVersion}`,
     getAgentContext,
     handleVisibleViewportChange,
     resetVisibleViewportForSheet,

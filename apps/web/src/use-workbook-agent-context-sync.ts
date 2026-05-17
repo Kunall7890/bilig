@@ -31,6 +31,8 @@ export function useWorkbookAgentContextSync(input: {
   readonly sessionRef: MutableRefObject<WorkbookAgentContextSyncSession | null>
   readonly snapshot: WorkbookAgentThreadSnapshot | null
 }) {
+  const enabledRef = useRef(input.enabled)
+  const snapshotRef = useRef(input.snapshot)
   const lastContextKeyRef = useRef<string>('')
   const lastImmediateContextKeyRef = useRef<string>('')
   const hasSyncedContextRef = useRef(false)
@@ -47,6 +49,8 @@ export function useWorkbookAgentContextSync(input: {
     readonly immediateKey: string
     readonly threadId: string
   } | null>(null)
+  enabledRef.current = input.enabled
+  snapshotRef.current = input.snapshot
 
   const clearPendingContextSync = useCallback(() => {
     contextSyncGenerationRef.current += 1
@@ -129,7 +133,7 @@ export function useWorkbookAgentContextSync(input: {
 
   const scheduleContextSync = useCallback(() => {
     const activeSession = input.sessionRef.current
-    if (!input.enabled || !input.snapshot || !activeSession) {
+    if (!enabledRef.current || !snapshotRef.current || !activeSession) {
       clearPendingContextSync()
       return
     }
@@ -169,10 +173,8 @@ export function useWorkbookAgentContextSync(input: {
   }, [
     clearPendingContextSync,
     flushPendingContextSync,
-    input.enabled,
     input.getContextRef,
     input.sessionRef,
-    input.snapshot,
     isPendingContextSyncCurrent,
     resolveContextSyncDelay,
   ])
