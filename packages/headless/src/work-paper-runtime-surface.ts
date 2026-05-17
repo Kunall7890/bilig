@@ -637,6 +637,19 @@ export abstract class WorkPaperRuntimeSurface extends WorkPaperRuntimeMetadataSu
           return tinyChanges
         }
       }
+      if (
+        options.preferLazyPublicChanges &&
+        event.invalidation !== 'full' &&
+        event.patches === undefined &&
+        !event.hasInvalidatedRanges &&
+        !event.hasInvalidatedRows &&
+        !event.hasInvalidatedColumns
+      ) {
+        const materialized = this.materializeTrackedEventChanges(event, true)
+        if (materialized.canReusePublicChanges && materialized.ordered) {
+          return materialized.changes
+        }
+      }
     }
     const fastPath = this.computeCellChangesFromTrackedEvents(new Map(), events, false, options)
     if (!fastPath) {

@@ -11,9 +11,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(core): correct direct formula replacement metrics (f702ceaa)
 
 ## Internal runtime changes
+
 - docs(growth): add agent xlsx recalculation page (ba9c766e)
 
 ## 0.18.6
@@ -23,9 +25,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(grid): harden visual fidelity and stale clears (9c604a80)
 
 ## Internal runtime changes
+
 - docs(growth): add runnable xlsx proof (a3308f5d)
 
 ## 0.18.5
@@ -35,9 +39,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(core): skip formula-only aggregate input coverage (772c2cf7)
 
 ## Internal runtime changes
+
 - docs(growth): add formula clinic report script (7de01748)
 
 ## 0.18.4
@@ -47,9 +53,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(headless): skip no-value structural reductions (2457cd77)
 
 ## Internal runtime changes
+
 - chore(release): refresh headless public evidence (f3cc500e)
 - docs(growth): add formula bug clinic (878b31db)
 
@@ -60,6 +68,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(core): defer cold structural formula families (b48b0c21)
 
 ## 0.18.2
@@ -69,6 +78,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(wasm-kernel): align dynamic array semantics (0710cd42)
 
 ## 0.18.1
@@ -78,6 +88,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(formula): align flatten array semantics (5d7725b3)
 
 ## 0.18.0
@@ -87,9 +98,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(community): add workbook fixture submission path (73798e44)
 
 ## Fixes
+
 - perf(headless): cache row-literal formula templates (ddbfad3a)
 - fix(formula): preserve ref errors in headless corpus (06549cf5)
 - perf(headless): defer tail-append change detachment (cd286a0d)
@@ -103,6 +116,7 @@ This package is released as part of the aligned bilig library package set.
 - fix(formula): pad ragged stack arrays (56aa2acb)
 
 ## Internal runtime changes
+
 - docs(evidence): align documentation with current artifacts (96fd0a54)
 - docs(community): link workbook fixture discussion (2b1ec511)
 - docs(mcp): sharpen formula recalculation positioning (b7099696)
@@ -115,10 +129,12 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(headless): fast path dense mixed sheet loads (66e8d5e4)
 - perf(headless): batch runtime snapshot column restores (d242a0f2)
 
 ## Internal runtime changes
+
 - ci(create-workpaper): add npm publish gate (b24127b6)
 - docs(create-workpaper): avoid unpublished starter command (9435acfd)
 - docs(mcp): compare spreadsheet server choices (223a182f)
@@ -131,6 +147,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(create-workpaper): add one-command starter (bef96b48)
 
 ## 0.16.28
@@ -140,9 +157,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(headless): skip scalar formula dependency rebinding (20a5dea9)
 
 ## Internal runtime changes
+
 - docs(growth): refresh public evidence (8f800b72)
 
 ## 0.16.27
@@ -152,9 +171,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix: harden recalc completion and structural undo (4c3a9300)
 
 ## Internal runtime changes
+
 - docs(headless): clarify Excel formula compatibility (c552da9b)
 - docs(growth): humanize Show HN copy (62cd354a)
 
@@ -165,9 +186,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(headless): fast path literal fanout payloads (def91ef6)
 
 ## Internal runtime changes
+
 - docs(growth): refresh public evidence for 0.16.25 (5d8efa02)
 - docs(growth): tighten maintainer note and trust checks (6fbe664d)
 - docs(growth): cover ExcelJS shared formula recalculation (ccf23559)
@@ -180,9 +203,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(headless): skip exact lookup batch recalc (fc6da3f3)
 
 ## Internal runtime changes
+
 - docs(growth): sharpen maintainer launch copy (36f40361)
 
 ## 0.16.24
@@ -192,6 +217,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(core): restore aggregate formulas after row delete undo (376211e4)
 
 ## 0.16.23
@@ -201,9 +227,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(headless): speed up dense fresh cell allocation (4cd88da8)
 
 ## Internal runtime changes
+
 - refactor(web): remove browser sqlite storage (031da20d)
 - docs(growth): make show hn copy less generic (61044fd9)
 - chore(release): refresh public evidence for 0.16.22 (185d2059)

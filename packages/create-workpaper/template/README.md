@@ -1,4 +1,4 @@
-# __PROJECT_NAME__
+# `__PROJECT_NAME__`
 
 Formula-backed quote approval API built with `@bilig/headless`.
 

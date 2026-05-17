@@ -18,6 +18,17 @@ function cell(sheet: number, row: number, col: number): WorkPaperCellAddress {
   return { sheet, row, col }
 }
 
+function columnLabel(index: number): string {
+  let value = index + 1
+  let label = ''
+  while (value > 0) {
+    const remainder = (value - 1) % 26
+    label = String.fromCharCode(65 + remainder) + label
+    value = Math.floor((value - 1) / 26)
+  }
+  return label
+}
+
 function hasCaptureVisibilitySnapshot(value: unknown): value is WorkPaper & { captureVisibilitySnapshot: () => unknown } {
   return typeof Reflect.get(value, 'captureVisibilitySnapshot') === 'function'
 }
@@ -521,6 +532,35 @@ describe('WorkPaper', () => {
       },
     ])
     expect(workbook.getPerformanceCounters().changedCellPayloadsBuilt).toBe(0)
+  })
+
+  it('returns large physical formula replacement changes lazily without the generic tracked reducer', () => {
+    const downstreamCount = 64
+    const row: unknown[] = [1, 2, '=A1+B1']
+    for (let offset = 1; offset <= downstreamCount; offset += 1) {
+      const col = 2 + offset
+      row.push(`=${columnLabel(col - 1)}1+1`)
+    }
+    const workbook = WorkPaper.buildFromSheets({ Bench: [row] })
+    const sheetId = workbook.getSheetId('Bench')!
+    const trackedReducer = trackComputeCellChangesFromTrackedEvents(workbook)
+
+    try {
+      workbook.resetPerformanceCounters()
+      const changes = workbook.setCellContents(cell(sheetId, 0, 2), '=A1*B1')
+
+      expect(changes).toHaveLength(downstreamCount + 1)
+      expect(hasDeferredTrackedIndexChanges(changes)).toBe(true)
+      expect(trackedReducer.count).toBe(0)
+      expect(workbook.getPerformanceCounters().changedCellPayloadsBuilt).toBe(0)
+      expect(workbook.getPerformanceCounters().directScalarDeltaApplications).toBe(downstreamCount)
+      expect(workbook.getCellValue(cell(sheetId, 0, downstreamCount + 2))).toEqual({
+        tag: ValueTag.Number,
+        value: downstreamCount + 2,
+      })
+    } finally {
+      trackedReducer.restore()
+    }
   })
 
   it('materializes no-listener tiny tracked changes eagerly without stale later writes', () => {
