@@ -5,7 +5,7 @@ import {
   type WorkbookAgentCommandBundle,
   type WorkbookAgentPreviewSummary,
 } from '@bilig/agent-api'
-import type { EngineOpBatch } from '@bilig/workbook-domain'
+import type { EngineOpBatch } from '@bilig/workbook'
 import type { AuthoritativeWorkbookEventRecord } from '@bilig/zero-sync'
 import {
   type CellRangeRef,

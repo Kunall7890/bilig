@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { decodeFrame, encodeFrame } from '@bilig/binary-protocol'
-import type { EngineOpBatch } from '@bilig/workbook-domain'
+import type { EngineOpBatch } from '@bilig/workbook'
 import { createHttpSyncRelay } from '../sync-relay.js'
 
 describe('sync relay', () => {

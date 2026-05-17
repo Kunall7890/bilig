@@ -1,7 +1,7 @@
 import type { CellValue, WorkbookDefinedNameValueSnapshot } from '@bilig/protocol'
 import { ErrorCode, ValueTag } from '@bilig/protocol'
 import type { FormulaNode } from '@bilig/formula'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import { CellFlags } from '../cell-store.js'
 import type { FormulaTable } from '../formula-table.js'
 import { cloneDefinedNameValue } from '../workbook-metadata-records.js'

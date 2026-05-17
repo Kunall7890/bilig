@@ -1,6 +1,6 @@
 import type { Effect } from 'effect'
 import type { CompiledFormula } from '@bilig/formula'
-import type { EngineOp, EngineOpBatch } from '@bilig/workbook-domain'
+import type { EngineOp, EngineOpBatch } from '@bilig/workbook'
 import type { CellRangeRef, CellValue, EngineChangedCell, SelectionState } from '@bilig/protocol'
 import type { EdgeSlice } from '../../edge-arena.js'
 import type { FormulaTemplateResolution } from '../../formula/template-bank.js'

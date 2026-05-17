@@ -14,7 +14,7 @@ import {
 } from '@bilig/protocol'
 import type { CsvParseOptions } from './csv.js'
 import { formatAddress } from '@bilig/formula'
-import type { EngineOp, EngineOpBatch } from '@bilig/workbook-domain'
+import type { EngineOp, EngineOpBatch } from '@bilig/workbook'
 import type {
   EngineCellMutationRef,
   EngineExistingLiteralCellMutationRef,

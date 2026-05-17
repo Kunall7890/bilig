@@ -1,4 +1,4 @@
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import { structuralTransformForOp } from '../../engine-structural-utils.js'
 import { sheetMetadataToOps } from '../../engine-snapshot-utils.js'
 import type { WorkbookStore } from '../../workbook-store.js'

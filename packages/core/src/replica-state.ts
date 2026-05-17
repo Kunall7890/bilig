@@ -1,4 +1,4 @@
-import type { Clock as WorkbookDomainClock, EngineOp, EngineOpBatch, OpId, ReplicaId } from '@bilig/workbook-domain'
+import type { Clock as WorkbookDomainClock, EngineOp, EngineOpBatch, OpId, ReplicaId } from '@bilig/workbook'
 
 type Clock = WorkbookDomainClock
 

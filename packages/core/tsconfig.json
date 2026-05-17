@@ -12,7 +12,7 @@
       "path": "../formula"
     },
     {
-      "path": "../workbook-domain"
+      "path": "../workbook"
     },
     {
       "path": "../wasm-kernel"

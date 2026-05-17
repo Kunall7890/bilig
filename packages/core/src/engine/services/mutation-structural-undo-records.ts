@@ -1,6 +1,6 @@
 import { formatAddress, parseCellAddress, parseRangeAddress } from '@bilig/formula'
 import type { CellSnapshot } from '@bilig/protocol'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 
 export interface StructuralFormulaUndoRecord {
   readonly sheetName: string

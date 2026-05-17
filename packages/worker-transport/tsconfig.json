@@ -9,7 +9,7 @@
       "path": "../protocol"
     },
     {
-      "path": "../workbook-domain"
+      "path": "../workbook"
     },
     {
       "path": "../binary-protocol"

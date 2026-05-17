@@ -7,7 +7,7 @@
     { "path": "./packages/runtime-kernel" },
     { "path": "./packages/actors" },
     { "path": "./packages/formula" },
-    { "path": "./packages/workbook-domain" },
+    { "path": "./packages/workbook" },
     { "path": "./packages/binary-protocol" },
     { "path": "./packages/agent-api" },
     { "path": "./packages/storage-server" },

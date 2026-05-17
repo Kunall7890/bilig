@@ -8,7 +8,7 @@
       "@bilig/core": ["../core/src/index.ts"],
       "@bilig/formula": ["../formula/src/index.ts"],
       "@bilig/protocol": ["../protocol/src/index.ts"],
-      "@bilig/workbook-domain": ["../workbook-domain/src/index.ts"]
+      "@bilig/workbook": ["../workbook/src/index.ts"]
     }
   },
   "references": [
@@ -25,7 +25,7 @@
       "path": "../formula"
     },
     {
-      "path": "../workbook-domain"
+      "path": "../workbook"
     }
   ],
   "include": ["src/**/*"],

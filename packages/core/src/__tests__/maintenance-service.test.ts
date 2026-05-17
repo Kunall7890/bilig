@@ -1,7 +1,7 @@
 import { Effect } from 'effect'
 import { describe, expect, it } from 'vitest'
 import type { CompiledFormula } from '@bilig/formula'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import { EdgeArena } from '../edge-arena.js'
 import { SpreadsheetEngine } from '../engine.js'
 import { createInitialRecalcMetrics } from '../engine/runtime-state.js'

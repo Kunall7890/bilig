@@ -1,4 +1,4 @@
-import type { EngineOpBatch } from '@bilig/workbook-domain'
+import type { EngineOpBatch } from '@bilig/workbook'
 import type { CellRangeRef, EngineEvent } from '@bilig/protocol'
 import { batchOpOrder, compareOpOrder, markBatchApplied } from '../../replica-state.js'
 import { calculationSettingsEqual, normalizeWorkbookCalculationSettings } from '../../engine-metadata-utils.js'

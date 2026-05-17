@@ -1,5 +1,5 @@
 import { parseCellAddress } from '@bilig/formula'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import type { CommitOp, PreparedCellAddress } from '../runtime-state.js'
 
 export interface NormalizedRenderCommitOps {

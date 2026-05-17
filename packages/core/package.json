@@ -48,7 +48,7 @@
     "@bilig/formula": "workspace:*",
     "@bilig/protocol": "workspace:*",
     "@bilig/wasm-kernel": "workspace:*",
-    "@bilig/workbook-domain": "workspace:*",
+    "@bilig/workbook": "workspace:*",
     "effect": "3.21.0"
   },
   "engines": {

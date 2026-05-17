@@ -1,5 +1,5 @@
 import { formatAddress } from '@bilig/formula'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import {
   cellMutationRefToEngineOp,
   type EngineCellMutationAt,

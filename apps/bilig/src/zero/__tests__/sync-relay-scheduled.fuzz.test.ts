@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import * as fc from 'fast-check'
 import { decodeFrame, encodeFrame, type ProtocolFrame } from '@bilig/binary-protocol'
-import type { EngineOpBatch } from '@bilig/workbook-domain'
+import type { EngineOpBatch } from '@bilig/workbook'
 import { runScheduledProperty } from '@bilig/test-fuzz'
 import { createHttpSyncRelay } from '../sync-relay.js'
 

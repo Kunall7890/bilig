@@ -1,5 +1,5 @@
 import { ValueTag, type CellSnapshot } from '@bilig/protocol'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import { CellFlags } from '../../cell-store.js'
 import { makeCellKey, type WorkbookStore } from '../../workbook-store.js'
 import type { PreparedCellAddress, TransactionRecord } from '../runtime-state.js'

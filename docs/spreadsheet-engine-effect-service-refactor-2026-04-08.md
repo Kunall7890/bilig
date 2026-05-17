@@ -86,7 +86,7 @@ The result is predictable:
 - rewriting formula evaluation internals into Effect for style
 - wrapping per-cell or per-edge compute in Effect
 - changing workbook semantic behavior as part of the refactor
-- changing the public op model in `@bilig/workbook-domain`
+- changing the public op model in `@bilig/workbook`
 - changing snapshot formats during the structural cleanup
 - replacing `SpreadsheetEngine` with actor-per-cell or service-per-cell models
 

@@ -1,7 +1,7 @@
 import { Effect } from 'effect'
 import { describe, expect, it, vi } from 'vitest'
 import { ErrorCode, ValueTag } from '@bilig/protocol'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import { cellMutationRefToEngineOp, type EngineCellMutationRef } from '../cell-mutations-at.js'
 import { createBatch } from '../replica-state.js'
 import { SpreadsheetEngine } from '../engine.js'

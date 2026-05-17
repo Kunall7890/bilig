@@ -7,6 +7,9 @@
   "references": [
     {
       "path": "../protocol"
+    },
+    {
+      "path": "../formula"
     }
   ],
   "include": ["src/**/*"],

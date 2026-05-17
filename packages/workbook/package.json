@@ -1,14 +1,15 @@
 {
-  "name": "@bilig/workbook-domain",
+  "name": "@bilig/workbook",
   "version": "0.40.43",
-  "description": "Transport-neutral workbook domain ops and batch types for bilig.",
+  "description": "Agent-first workbook model API and transport-neutral workbook operation language for bilig.",
   "keywords": [
+    "agent-first",
     "bilig",
-    "domain",
+    "models",
     "spreadsheet",
     "workbook"
   ],
-  "homepage": "https://github.com/proompteng/bilig/tree/main/packages/workbook-domain#readme",
+  "homepage": "https://github.com/proompteng/bilig/tree/main/packages/workbook#readme",
   "bugs": {
     "url": "https://github.com/proompteng/bilig/issues"
   },
@@ -16,7 +17,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/proompteng/bilig.git",
-    "directory": "packages/workbook-domain"
+    "directory": "packages/workbook"
   },
   "files": [
     "dist",
@@ -37,9 +38,11 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -b tsconfig.json",
+    "test": "cd ../.. && tsx scripts/run-vitest.ts --run packages/workbook/src/__tests__/guards.test.ts packages/workbook/src/__tests__/model-api.test.ts"
   },
   "dependencies": {
+    "@bilig/formula": "workspace:*",
     "@bilig/protocol": "workspace:*"
   },
   "engines": {

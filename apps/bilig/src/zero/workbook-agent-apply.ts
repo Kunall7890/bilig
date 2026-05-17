@@ -19,7 +19,7 @@ import {
   type WorkbookAgentCommand,
   type WorkbookAgentCommandBundle,
 } from '@bilig/agent-api'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import type { WorkbookChangeUndoBundle } from '@bilig/zero-sync'
 
 function normalizeFormula(formula: string): string {

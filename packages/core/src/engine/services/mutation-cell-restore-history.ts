@@ -1,6 +1,6 @@
 import { formatAddress, parseCellAddress } from '@bilig/formula'
 import { ValueTag, type CellSnapshot, type LiteralInput } from '@bilig/protocol'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import { CellFlags } from '../../cell-store.js'
 import { cellMutationRefToEngineOp, type EngineCellMutationRef } from '../../cell-mutations-at.js'
 import type { WorkbookStore } from '../../workbook-store.js'

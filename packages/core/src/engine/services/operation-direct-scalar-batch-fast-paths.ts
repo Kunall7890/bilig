@@ -1,5 +1,5 @@
 import type { EngineChangedCell } from '@bilig/protocol'
-import type { EngineOpBatch } from '@bilig/workbook-domain'
+import type { EngineOpBatch } from '@bilig/workbook'
 import type { EngineCellMutationRef } from '../../cell-mutations-at.js'
 import { CellFlags } from '../../cell-store.js'
 import { writeLiteralToCellStore } from '../../engine-value-utils.js'

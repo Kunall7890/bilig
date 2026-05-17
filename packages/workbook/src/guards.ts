@@ -1,5 +1,5 @@
 import { isCellRangeRef, isLiteralInput } from '@bilig/protocol'
-import type { EngineOp, EngineOpBatch, WorkbookOp } from './index.js'
+import type { EngineOp, EngineOpBatch, WorkbookOp } from './ops.js'
 
 const HORIZONTAL_ALIGNMENT_VALUES = new Set(['general', 'left', 'center', 'right', 'fill', 'justify', 'centerContinuous', 'distributed'])
 const VERTICAL_ALIGNMENT_VALUES = new Set(['top', 'middle', 'bottom', 'justify', 'distributed'])

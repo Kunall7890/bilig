@@ -1,5 +1,5 @@
 import type { EngineChangedCell } from '@bilig/protocol'
-import type { EngineOpBatch } from '@bilig/workbook-domain'
+import type { EngineOpBatch } from '@bilig/workbook'
 import type { EngineCellMutationRef } from '../../cell-mutations-at.js'
 import { addEngineCounter } from '../../perf/engine-counters.js'
 import { markBatchApplied } from '../../replica-state.js'

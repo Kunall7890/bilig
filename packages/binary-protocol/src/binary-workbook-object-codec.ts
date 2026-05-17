@@ -18,7 +18,7 @@ import type {
   WorkbookSheetProtectionSnapshot,
   WorkbookValidationListSourceSnapshot,
 } from '@bilig/protocol'
-import type { WorkbookTableOp } from '@bilig/workbook-domain'
+import type { WorkbookTableOp } from '@bilig/workbook'
 import { BinaryProtocolError, type BinaryReader, type BinaryWriter } from './binary-io.js'
 import {
   assertNever,

@@ -1,5 +1,5 @@
 import { ValueTag, type CellValue } from '@bilig/protocol'
-import type { EngineOpBatch } from '@bilig/workbook-domain'
+import type { EngineOpBatch } from '@bilig/workbook'
 import type {
   EngineCellMutationRef,
   EngineExistingLiteralCellMutationRef,

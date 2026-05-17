@@ -1,4 +1,4 @@
-import type { EngineOpBatch } from '@bilig/workbook-domain'
+import type { EngineOpBatch } from '@bilig/workbook'
 import { ErrorCode, ValueTag } from '@bilig/protocol'
 import type { EngineCellMutationRef } from '../../cell-mutations-at.js'
 import { CellFlags } from '../../cell-store.js'

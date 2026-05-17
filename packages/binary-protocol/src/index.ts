@@ -1,4 +1,4 @@
-import type { EngineOpBatch } from '@bilig/workbook-domain'
+import type { EngineOpBatch } from '@bilig/workbook'
 import { BinaryProtocolError, BinaryReader, BinaryWriter } from './binary-io.js'
 import { decodeBatch, encodeBatch } from './binary-engine-op-codec.js'
 import { assertNever } from './binary-value-codec.js'

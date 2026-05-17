@@ -1,4 +1,4 @@
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import { cloneCellStyleRecord } from '../../engine-style-utils.js'
 import { restoreFormatRangeOps, restoreStyleRangeOps } from '../../engine-range-format-ops.js'
 import type { WorkbookStore } from '../../workbook-store.js'

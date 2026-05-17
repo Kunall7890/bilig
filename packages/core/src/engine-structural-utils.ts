@@ -1,5 +1,5 @@
 import type { StructuralAxisTransform } from '@bilig/formula'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 
 export function structuralTransformForOp(
   op: Extract<

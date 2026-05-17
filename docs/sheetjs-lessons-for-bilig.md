@@ -285,7 +285,7 @@ It is not the right core abstraction for `bilig`’s live workbook engine.
 
 1. Build a fixture-driven multiformat import/export program.
 2. Add explicit lossiness reports for export targets.
-3. Separate codec-specific normalization from workbook-domain semantics more aggressively.
+3. Separate codec-specific normalization from workbook semantics more aggressively.
 
 ### Long term
 

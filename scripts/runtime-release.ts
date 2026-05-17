@@ -4,7 +4,7 @@ export const RUNTIME_RELEASE_TAG_PREFIX = 'libraries-v'
 
 export const RUNTIME_PACKAGE_CONTENT_PATH_PATTERNS = [
   'packages/protocol/**',
-  'packages/workbook-domain/**',
+  'packages/workbook/**',
   'packages/wasm-kernel/**',
   'packages/formula/**',
   'packages/core/**',

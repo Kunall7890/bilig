@@ -103,7 +103,7 @@ const codeSplittingGroups = [
         '/packages/grid/',
         '/packages/renderer/',
         '/packages/worker-transport/',
-        '/packages/workbook-domain/',
+        '/packages/workbook/',
         '/apps/web/src/WorkerWorkbookApp.tsx',
         '/apps/web/src/projected-viewport-store.ts',
         '/apps/web/src/worker-runtime.ts',

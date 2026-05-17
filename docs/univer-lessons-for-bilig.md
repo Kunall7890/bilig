@@ -150,7 +150,7 @@ Especially for:
 - number formatting UI vs number formatting engine
 - comments/notes
 - tables and pivots
-- render-only concerns vs workbook-domain concerns
+- render-only concerns vs workbook concerns
 
 ### B. Treat rendering as a first-class engine
 

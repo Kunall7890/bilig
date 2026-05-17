@@ -1,5 +1,5 @@
 import type { EngineEvent } from '@bilig/protocol'
-import type { EngineOpBatch } from '@bilig/workbook-domain'
+import type { EngineOpBatch } from '@bilig/workbook'
 import type { RenderTileDeltaSubscription } from './render-tile-delta.js'
 import type { ViewportPatchSubscription } from './viewport-patch.js'
 

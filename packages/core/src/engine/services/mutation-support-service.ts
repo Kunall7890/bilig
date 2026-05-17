@@ -1,7 +1,7 @@
 import { Effect } from 'effect'
 import { ErrorCode, MAX_COLS, MAX_ROWS, ValueTag, type CellValue, type SelectionState } from '@bilig/protocol'
 import { formatAddress, parseCellAddress } from '@bilig/formula'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import { CellFlags } from '../../cell-store.js'
 import type { EdgeArena, EdgeSlice } from '../../edge-arena.js'
 import { entityPayload, isRangeEntity, makeCellEntity, makeRangeEntity } from '../../entity-ids.js'

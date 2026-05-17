@@ -8,7 +8,7 @@ import {
   type CellStyleRecord,
 } from '@bilig/protocol'
 import { formatAddress, parseCellAddress } from '@bilig/formula'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import { intersectRangeBounds, normalizeRange } from './engine-range-utils.js'
 import { applyStylePatch, clearStyleFields, cloneCellStyleRecord, normalizeCellStylePatch } from './engine-style-utils.js'
 import { WorkbookStore } from './workbook-store.js'

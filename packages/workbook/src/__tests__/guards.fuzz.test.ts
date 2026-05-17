@@ -9,10 +9,10 @@ type GuardedOp = Extract<
   { kind: 'upsertWorkbook' } | { kind: 'upsertSheet' } | { kind: 'setCellValue' } | { kind: 'setCellFormula' } | { kind: 'clearCell' }
 >
 
-describe('workbook domain guard fuzz', () => {
+describe('workbook guard fuzz', () => {
   it('should accept generated valid engine ops and batches from the supported subset', async () => {
     await runProperty({
-      suite: 'workbook-domain/guards/valid-subset',
+      suite: 'workbook/guards/valid-subset',
       arbitrary: fc.record({
         op: engineOpArbitrary,
         batch: engineOpBatchArbitrary,
@@ -26,7 +26,7 @@ describe('workbook domain guard fuzz', () => {
 
   it('should reject corrupted ops and batches from the same subset', async () => {
     await runProperty({
-      suite: 'workbook-domain/guards/reject-corruption',
+      suite: 'workbook/guards/reject-corruption',
       arbitrary: fc.record({
         op: engineOpArbitrary,
         batch: engineOpBatchArbitrary,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ErrorCode, ValueTag, type CellRangeRef } from '@bilig/protocol'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import { operationServiceTestHooks } from '../engine/services/operation-service.js'
 import type {
   RuntimeDirectCriteriaDescriptor,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import { WorkbookStore } from '../workbook-store.js'
 import {
   cloneTransactionRecordOps,

@@ -107,9 +107,9 @@
     "packageDir": "packages/wasm-kernel",
     "sourceEntry": "packages/wasm-kernel/src/index.ts"
   },
-  "@bilig/workbook-domain": {
-    "packageDir": "packages/workbook-domain",
-    "sourceEntry": "packages/workbook-domain/src/index.ts"
+  "@bilig/workbook": {
+    "packageDir": "packages/workbook",
+    "sourceEntry": "packages/workbook/src/index.ts"
   },
   "@bilig/worker-transport": {
     "packageDir": "packages/worker-transport",

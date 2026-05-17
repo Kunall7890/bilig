@@ -21,7 +21,7 @@ package boundaries; not every package name is provisioned on npm yet.
 - `@bilig/excel-import`
 - `@bilig/formula`
 - `@bilig/wasm-kernel`
-- `@bilig/workbook-domain`
+- `@bilig/workbook`
 - `@bilig/renderer`
 - `@bilig/grid`
 - `@bilig/binary-protocol`
@@ -39,6 +39,26 @@ package boundaries; not every package name is provisioned on npm yet.
 - `<Cell addr="..." value={...} />`
 - `<Cell addr="..." formula="..." />`
 - `<Cell addr="..." format="..." />`
+
+## Agent-first workbook surface
+
+`@bilig/workbook` is the generic public package for consumer-defined workbook
+models. It does not ship business-model templates and does not depend on
+`@bilig/core`, `@bilig/headless`, `@bilig/agent-api`, `zod`, or `effect`.
+
+It exposes:
+
+- `defineModel`
+- `buildWorkbookActionPlan`
+- `formula`
+- `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` through the model workbook context
+- `WorkbookModel`, `WorkbookAction`, `WorkbookRunResult`, and `WorkbookCheckResult`
+- the existing low-level operation language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, and `EngineOpBatch`
+
+The package builds portable workbook intent and concrete low-level ops when the
+target is already known. Formula helpers use `@bilig/formula` for parsing and
+normalization. Actual calculation and authoritative execution stay in
+`@bilig/core` and `apps/bilig`.
 
 ## Core engine surface
 

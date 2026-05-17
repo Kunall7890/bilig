@@ -15,7 +15,7 @@ import type {
   WorkbookCalculationMode,
   WorkbookDefinedNameValueSnapshot,
 } from '@bilig/protocol'
-import type { WorkbookSortDirection, WorkbookSortKey } from '@bilig/workbook-domain'
+import type { WorkbookSortDirection, WorkbookSortKey } from '@bilig/workbook'
 import { BinaryProtocolError, type BinaryReader, type BinaryWriter } from './binary-io.js'
 
 type LiteralTag = 0 | 1 | 2 | 3

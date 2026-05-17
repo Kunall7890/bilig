@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import * as fc from 'fast-check'
-import type { EngineOpBatch } from '@bilig/workbook-domain'
+import type { EngineOpBatch } from '@bilig/workbook'
 import type { WorkbookSnapshot } from '@bilig/protocol'
 import { SpreadsheetEngine } from '../engine.js'
 import { runProperty } from '@bilig/test-fuzz'

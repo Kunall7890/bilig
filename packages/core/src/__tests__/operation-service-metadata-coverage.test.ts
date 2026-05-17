@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ValueTag } from '@bilig/protocol'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import { SpreadsheetEngine } from '../engine.js'
 
 const protectedRange = {

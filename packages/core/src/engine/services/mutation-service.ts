@@ -1,5 +1,5 @@
 import { Effect } from 'effect'
-import type { EngineOp, EngineOpBatch } from '@bilig/workbook-domain'
+import type { EngineOp, EngineOpBatch } from '@bilig/workbook'
 import type { CellRangeRef, CellSnapshot } from '@bilig/protocol'
 import { createBatch } from '../../replica-state.js'
 import type { WorkbookStore } from '../../workbook-store.js'

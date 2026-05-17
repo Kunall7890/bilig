@@ -1,7 +1,7 @@
 import { Effect } from 'effect'
 import { formatAddress } from '@bilig/formula'
 import { ValueTag, type CellRangeRef, type CellSnapshot, type LiteralInput } from '@bilig/protocol'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import { parseCsv, parseCsvCellInput, resolveCsvParseOptions, type CsvParseOptions } from '../../csv.js'
 import { normalizeRange } from '../../engine-range-utils.js'
 import { WorkbookStore } from '../../workbook-store.js'

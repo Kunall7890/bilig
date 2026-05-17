@@ -1,7 +1,7 @@
 import { Effect } from 'effect'
 import { describe, expect, it } from 'vitest'
 import { ValueTag, type CellSnapshot } from '@bilig/protocol'
-import type { EngineOpBatch } from '@bilig/workbook-domain'
+import type { EngineOpBatch } from '@bilig/workbook'
 import { createReplicaState } from '../replica-state.js'
 import { SpreadsheetEngine } from '../engine.js'
 import { createEngineMutationService } from '../engine/services/mutation-service.js'

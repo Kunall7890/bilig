@@ -1,5 +1,5 @@
 import { parseCellAddress } from '@bilig/formula'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import type { CellValue } from '@bilig/protocol'
 import { CellFlags } from '../../cell-store.js'
 import { emptyValue, literalToValue, writeLiteralToCellStore } from '../../engine-value-utils.js'

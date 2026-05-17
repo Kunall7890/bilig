@@ -20,7 +20,7 @@
     "@bilig/protocol": "workspace:*",
     "@bilig/runtime-kernel": "workspace:*",
     "@bilig/storage-server": "workspace:*",
-    "@bilig/workbook-domain": "workspace:*",
+    "@bilig/workbook": "workspace:*",
     "@bilig/zero-sync": "workspace:*",
     "@fastify/http-proxy": "^11.4.4",
     "@fastify/static": "^9.1.3",

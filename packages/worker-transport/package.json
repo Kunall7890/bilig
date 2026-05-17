@@ -43,7 +43,7 @@
   "dependencies": {
     "@bilig/binary-protocol": "workspace:*",
     "@bilig/protocol": "workspace:*",
-    "@bilig/workbook-domain": "workspace:*"
+    "@bilig/workbook": "workspace:*"
   },
   "engines": {
     "node": ">=24.0.0"

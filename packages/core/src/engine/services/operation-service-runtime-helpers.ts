@@ -1,4 +1,4 @@
-import type { EngineOpBatch } from '@bilig/workbook-domain'
+import type { EngineOpBatch } from '@bilig/workbook'
 import type { EngineEvent, LiteralInput } from '@bilig/protocol'
 import type { SheetRecord } from '../../workbook-store.js'
 import type { EngineRuntimeState, U32 } from '../runtime-state.js'

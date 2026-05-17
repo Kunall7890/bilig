@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import { createMutationCoreInverseOps } from '../engine/services/mutation-core-inverse-ops.js'
 import { WorkbookStore } from '../workbook-store.js'
 

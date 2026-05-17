@@ -10,7 +10,7 @@ import type {
   WorkbookSnapshot,
 } from '@bilig/protocol'
 import type { CompiledFormula, StructuralAxisTransform } from '@bilig/formula'
-import type { EngineOp, EngineOpBatch } from '@bilig/workbook-domain'
+import type { EngineOp, EngineOpBatch } from '@bilig/workbook'
 import type { OpOrder, ReplicaSnapshot, ReplicaState, ReplicaVersionSnapshot } from '../replica-state.js'
 import type { EdgeSlice } from '../edge-arena.js'
 import type { EngineEventBus } from '../events.js'

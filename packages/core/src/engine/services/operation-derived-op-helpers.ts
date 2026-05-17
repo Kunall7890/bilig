@@ -1,4 +1,4 @@
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import { spillDependencyKey } from '../../engine-metadata-utils.js'
 import { batchOpOrder, createBatch, type OpOrder, type ReplicaState } from '../../replica-state.js'
 import type { WorkbookPivotRecord, WorkbookSpillRecord } from '../../workbook-store.js'
