@@ -40,7 +40,7 @@ on:
         required: false
         default: false
       allow_new_package:
-        description: 'Attempt first-time package creation when @bilig/create-workpaper is not provisioned yet'
+        description: 'Deprecated: package creation is handled by trusted publishing when configured'
         type: boolean
         required: false
         default: false
@@ -116,7 +116,6 @@ jobs:
     env:
       NPM_DIST_TAG: ${{ github.event.inputs.npm_tag || 'latest' }}
       DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
-      ALLOW_NEW_PACKAGE: ${{ github.event.inputs.allow_new_package || 'false' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
@@ -147,7 +146,6 @@ jobs:
           package_version="$(node -p "require('./packages/create-workpaper/package.json').version")"
           npm_tag="${NPM_DIST_TAG:-latest}"
           dry_run="${DRY_RUN:-false}"
-          allow_new="${ALLOW_NEW_PACKAGE:-false}"
 
           published_version="$(npm view "${package_name}@${package_version}" version --json 2>/dev/null || true)"
           if [ "$published_version" = "\"${package_version}\"" ]; then
@@ -161,15 +159,6 @@ jobs:
               exit 0
             fi
             npm dist-tag add "${package_name}@${package_version}" "$npm_tag"
-            exit 0
-          fi
-
-          if [ "$allow_new" != "true" ] && [ "$dry_run" != "true" ]; then
-            {
-              echo "@bilig/create-workpaper is not published yet."
-              echo "Configure npm trusted publishing for this workflow, then run workflow_dispatch with allow_new_package=true."
-            } >> "$GITHUB_STEP_SUMMARY"
-            echo "Skipping first-time publish until allow_new_package=true is explicitly set."
             exit 0
           fi
 

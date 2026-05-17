@@ -19,8 +19,8 @@ describe('@bilig/create-workpaper package workflow', () => {
     expect(source).toContain('id-token: write')
     expect(source).toContain('publish_args=(./packages/create-workpaper --tag "$npm_tag" --access public --provenance)')
     expect(source).toContain('npm publish "${publish_args[@]}"')
-    expect(source).toContain('allow_new_package')
-    expect(source).toContain('@bilig/create-workpaper is not published yet')
+    expect(source).toContain('Deprecated: package creation is handled by trusted publishing when configured')
+    expect(source).not.toContain('Skipping first-time publish')
   })
 
   it('keeps create-workpaper package files in the repository', () => {

@@ -88,7 +88,7 @@ npm install
 npm run smoke
 ```
 
-The generated-project path is being prepared as
+For a generated project from a blank directory, run
 `npm create @bilig/workpaper@latest pricing-workpaper` through the
 `@bilig/create-workpaper` package. The package source lives in
 [`packages/create-workpaper`](packages/create-workpaper), and the publish gate
