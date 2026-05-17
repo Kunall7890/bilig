@@ -93,15 +93,8 @@ export class WorkbookRuntimeManager {
   async loadRuntime(db: WorkbookRuntimeStoreConnection, documentId: string, metadata?: WorkbookRuntimeMetadata): Promise<WorkbookRuntime> {
     const nextMetadata = metadata ?? (await this.loadMetadata(db, documentId))
     const cached = this.sessions.get(documentId)
-    if (cached && cached.headRevision === nextMetadata.headRevision) {
-      cached.calculatedRevision = nextMetadata.calculatedRevision
-      cached.ownerUserId = nextMetadata.ownerUserId
-      cached.projection.workbook = {
-        ...cached.projection.workbook,
-        headRevision: nextMetadata.headRevision,
-        calculatedRevision: nextMetadata.calculatedRevision,
-        ownerUserId: nextMetadata.ownerUserId,
-      }
+    if (cached && runtimeSessionMatchesMetadata(cached, nextMetadata)) {
+      refreshRuntimeSessionMetadata(cached, nextMetadata)
       this.touchSession(cached)
       return cached
     }
@@ -255,6 +248,20 @@ export class WorkbookRuntimeManager {
       return
     }
     this.busyDocuments.delete(documentId)
+  }
+}
+
+function runtimeSessionMatchesMetadata(session: WorkbookRuntime, metadata: WorkbookRuntimeMetadata): boolean {
+  return session.headRevision === metadata.headRevision && session.calculatedRevision === metadata.calculatedRevision
+}
+
+function refreshRuntimeSessionMetadata(session: WorkbookRuntime, metadata: WorkbookRuntimeMetadata): void {
+  session.ownerUserId = metadata.ownerUserId
+  session.projection.workbook = {
+    ...session.projection.workbook,
+    headRevision: metadata.headRevision,
+    calculatedRevision: metadata.calculatedRevision,
+    ownerUserId: metadata.ownerUserId,
   }
 }
 

@@ -30,6 +30,16 @@ async function createRuntimeState(workbookName: string, mutate?: (engine: Spread
   }
 }
 
+function withRuntimeMetadata(
+  state: WorkbookRuntimeState,
+  metadata: Partial<Pick<WorkbookRuntimeState, 'headRevision' | 'calculatedRevision' | 'ownerUserId'>>,
+): WorkbookRuntimeState {
+  return {
+    ...state,
+    ...metadata,
+  }
+}
+
 describe('WorkbookRuntimeManager', () => {
   it('reuses a warm runtime while the workbook revision stays current', async () => {
     let metadata: WorkbookRuntimeMetadata = {
@@ -133,6 +143,58 @@ describe('WorkbookRuntimeManager', () => {
     expect(reloaded.engine.getCell('Sheet1', 'B2').value).toEqual({
       tag: ValueTag.Number,
       value: 9,
+    })
+  })
+
+  it('reloads from durable state when only the calculated revision advances', async () => {
+    let metadata: WorkbookRuntimeMetadata = {
+      headRevision: 3,
+      calculatedRevision: 2,
+      ownerUserId: 'owner-1',
+    }
+    let state = withRuntimeMetadata(
+      await createRuntimeState('doc-calc', (engine) => {
+        engine.setCellValue('Sheet1', 'A1', 'before-recalc')
+      }),
+      metadata,
+    )
+    let loadStateCalls = 0
+
+    const manager = new WorkbookRuntimeManager({
+      loadMetadata: async () => metadata,
+      loadState: async () => {
+        loadStateCalls += 1
+        return state
+      },
+    })
+
+    const first = await manager.loadRuntime(noopDb, 'doc-calc')
+    expect(first.engine.getCell('Sheet1', 'A1').value).toEqual({
+      stringId: expect.any(Number),
+      tag: ValueTag.String,
+      value: 'before-recalc',
+    })
+
+    metadata = {
+      headRevision: 3,
+      calculatedRevision: 3,
+      ownerUserId: 'owner-1',
+    }
+    state = withRuntimeMetadata(
+      await createRuntimeState('doc-calc', (engine) => {
+        engine.setCellValue('Sheet1', 'A1', 'after-recalc')
+      }),
+      metadata,
+    )
+
+    const reloaded = await manager.loadRuntime(noopDb, 'doc-calc')
+
+    expect(reloaded).not.toBe(first)
+    expect(loadStateCalls).toBe(2)
+    expect(reloaded.engine.getCell('Sheet1', 'A1').value).toEqual({
+      stringId: expect.any(Number),
+      tag: ValueTag.String,
+      value: 'after-recalc',
     })
   })
 
