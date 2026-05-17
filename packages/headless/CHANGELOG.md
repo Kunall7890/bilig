@@ -4,6 +4,18 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.19.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.18.29
+- Manual override: no
+
+## Features
+- feat(headless): add mcp output schemas (d9528032)
+
+## Internal runtime changes
+- docs(growth): refresh mcp registry evidence (71eef9cf)
+
 ## 0.18.29
 
 - Release type: patch
