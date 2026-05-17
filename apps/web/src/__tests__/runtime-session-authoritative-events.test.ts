@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createWorkerEngineHost } from '@bilig/worker-transport'
 import { ValueTag, type CellSnapshot } from '@bilig/protocol'
+import { createEmptyWorkbookSnapshot } from '@bilig/zero-sync'
 import { createWorkerRuntimeSessionController, type WorkerRuntimeSessionController } from '../runtime-session.js'
 import type { WorkbookWorkerStateSnapshot } from '../worker-runtime.js'
 import { OPTIMISTIC_CELL_SNAPSHOT_FLAG } from '../workbook-optimistic-cell-flags.js'
@@ -36,6 +37,26 @@ function runtimeState(overrides: Partial<WorkbookWorkerStateSnapshot> = {}): Wor
     },
     localPersistenceMode: 'ephemeral',
     ...overrides,
+  }
+}
+
+class FakeRevisionLiveView {
+  readonly listeners = new Set<(value: unknown) => void>()
+  destroy = vi.fn()
+
+  constructor(readonly data: unknown) {}
+
+  addListener(listener: (value: unknown) => void): () => void {
+    this.listeners.add(listener)
+    return () => {
+      this.listeners.delete(listener)
+    }
+  }
+
+  emit(value: unknown): void {
+    this.listeners.forEach((listener) => {
+      listener(value)
+    })
   }
 }
 
@@ -178,6 +199,109 @@ describe('worker runtime session authoritative event loading', () => {
     })
     expect(applyAuthoritativeEvents).not.toHaveBeenCalled()
     expect(onError).toHaveBeenCalledWith('Authoritative event payload does not match the expected schema')
+  })
+
+  it('refreshes a same-head authoritative snapshot when calculation catches up', async () => {
+    channel = new MessageChannel()
+    const revisionView = new FakeRevisionLiveView({
+      headRevision: 5,
+      calculatedRevision: 4,
+    })
+    const installAuthoritativeSnapshot = vi.fn((input: { authoritativeRevision: number }) =>
+      runtimeState({
+        authoritativeRevision: input.authoritativeRevision,
+        pendingMutationSummary: {
+          activeCount: 0,
+          failedCount: 0,
+          firstFailed: null,
+        },
+      }),
+    )
+    host = createWorkerEngineHost(
+      {
+        async bootstrap() {
+          return {
+            runtimeState: runtimeState({
+              authoritativeRevision: 0,
+              pendingMutationSummary: {
+                activeCount: 0,
+                failedCount: 0,
+                firstFailed: null,
+              },
+            }),
+            restoredFromPersistence: true,
+            requiresAuthoritativeHydrate: false,
+            localPersistenceMode: 'ephemeral',
+          }
+        },
+        getAuthoritativeRevision() {
+          return 0
+        },
+        getCell(sheetName: string, address: string) {
+          return {
+            sheetName,
+            address,
+            value: { tag: ValueTag.Empty },
+            flags: 0,
+            version: 0,
+          }
+        },
+        installAuthoritativeSnapshot,
+        subscribeViewportPatches() {
+          return () => undefined
+        },
+      },
+      channel.port1,
+    )
+    const fetchImpl = vi.fn(async () => {
+      return new Response(JSON.stringify(createEmptyWorkbookSnapshot('doc-1')), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+          'x-bilig-snapshot-cursor': '5',
+        },
+      })
+    })
+
+    controller = await createWorkerRuntimeSessionController(
+      {
+        documentId: 'doc-1',
+        replicaId: 'browser:test',
+        persistState: false,
+        fetchImpl,
+        zero: {
+          materialize: vi.fn(() => revisionView),
+        },
+        initialSelection: { sheetName: 'Sheet1', address: 'A1' },
+        createWorker: () => channel!.port2,
+      },
+      {
+        onRuntimeState: vi.fn(),
+        onSelection: vi.fn(),
+        onError: vi.fn(),
+      },
+    )
+
+    await vi.waitFor(() => {
+      expect(installAuthoritativeSnapshot).toHaveBeenCalledTimes(1)
+    })
+    expect(installAuthoritativeSnapshot.mock.calls[0]?.[0]).toMatchObject({
+      authoritativeRevision: 5,
+      mode: 'bootstrap',
+    })
+
+    revisionView.emit({
+      headRevision: 5,
+      calculatedRevision: 5,
+    })
+
+    await vi.waitFor(() => {
+      expect(installAuthoritativeSnapshot).toHaveBeenCalledTimes(2)
+    })
+    expect(installAuthoritativeSnapshot.mock.calls[1]?.[0]).toMatchObject({
+      authoritativeRevision: 5,
+      mode: 'reconcile',
+    })
   })
 
   it('hydrates the selected cell after local undo supersedes an optimistic clear', async () => {

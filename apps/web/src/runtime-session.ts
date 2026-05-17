@@ -313,7 +313,9 @@ export async function createWorkerRuntimeSessionController(
   let disposed = false
   let bootstrapped = false
   let currentAuthoritativeRevision = 0
+  let currentCalculatedRevision = 0
   let requestedAuthoritativeRevision = 0
+  let requestedCalculatedRevision = 0
   let pendingRevisionState: WorkbookRevisionState | null = null
   let rebaseQueue = Promise.resolve()
   let selectionViewportCleanup = EMPTY_UNSUBSCRIBE
@@ -351,6 +353,22 @@ export async function createWorkerRuntimeSessionController(
     viewportStore.setSheetIdentities(runtimeStateWithRevision.sheets ?? [])
     callbacks.onRuntimeState(runtimeStateWithRevision)
     return runtimeStateWithRevision
+  }
+
+  const calculatedRevisionForSnapshot = (snapshotRevision: number): number => {
+    if (pendingRevisionState?.headRevision === snapshotRevision) {
+      return pendingRevisionState.calculatedRevision
+    }
+    return snapshotRevision
+  }
+
+  const noteAuthoritativeStateInstalled = (headRevision: number, calculatedRevision: number): void => {
+    currentAuthoritativeRevision = Math.max(currentAuthoritativeRevision, headRevision)
+    if (headRevision === currentAuthoritativeRevision) {
+      currentCalculatedRevision = Math.max(currentCalculatedRevision, Math.min(calculatedRevision, headRevision))
+    }
+    requestedAuthoritativeRevision = Math.max(requestedAuthoritativeRevision, currentAuthoritativeRevision)
+    requestedCalculatedRevision = Math.max(requestedCalculatedRevision, currentCalculatedRevision)
   }
 
   const subscribeProjectedViewport = (
@@ -473,8 +491,7 @@ export async function createWorkerRuntimeSessionController(
       eventBatch.events,
       eventBatch.headRevision,
     )
-    currentAuthoritativeRevision = eventBatch.headRevision
-    requestedAuthoritativeRevision = Math.max(requestedAuthoritativeRevision, currentAuthoritativeRevision)
+    noteAuthoritativeStateInstalled(eventBatch.headRevision, eventBatch.calculatedRevision)
     const publishedRuntimeState = publishRuntimeState(runtimeState)
     input.perfSession?.markFirstAuthoritativePatchVisible()
     await syncSelectionAfterRuntimeState(publishedRuntimeState)
@@ -522,6 +539,7 @@ export async function createWorkerRuntimeSessionController(
     }
     if (targetRevision !== null) {
       requestedAuthoritativeRevision = Math.max(requestedAuthoritativeRevision, targetRevision)
+      requestedCalculatedRevision = Math.max(requestedCalculatedRevision, targetRevision)
     }
     const previousRebaseQueue = rebaseQueue
     rebaseQueue = (async () => {
@@ -551,17 +569,23 @@ export async function createWorkerRuntimeSessionController(
       return
     }
     const targetRevision = requestedAuthoritativeRevision
-    if (targetRevision <= currentAuthoritativeRevision) {
+    const targetCalculatedRevision = requestedCalculatedRevision
+    const needsNewHeadRevision = targetRevision > currentAuthoritativeRevision
+    const needsSameHeadCalculatedRefresh =
+      targetRevision === currentAuthoritativeRevision && targetCalculatedRevision > currentCalculatedRevision
+    if (!needsNewHeadRevision && !needsSameHeadCalculatedRefresh) {
       return
     }
-    const eventBatch = await loadAuthoritativeEventBatch(input.documentId, currentAuthoritativeRevision, fetchImpl)
-    if (
-      eventBatch.events.length > 0 &&
-      eventBatch.headRevision >= targetRevision &&
-      eventBatch.headRevision > currentAuthoritativeRevision
-    ) {
-      if (await applyAuthoritativeEventBatch(eventBatch)) {
-        return runAuthoritativeRebase()
+    if (needsNewHeadRevision) {
+      const eventBatch = await loadAuthoritativeEventBatch(input.documentId, currentAuthoritativeRevision, fetchImpl)
+      if (
+        eventBatch.events.length > 0 &&
+        eventBatch.headRevision >= targetRevision &&
+        eventBatch.headRevision > currentAuthoritativeRevision
+      ) {
+        if (await applyAuthoritativeEventBatch(eventBatch)) {
+          return runAuthoritativeRebase()
+        }
       }
     }
     publishPhase('recovering')
@@ -570,7 +594,12 @@ export async function createWorkerRuntimeSessionController(
       throw new Error('Authoritative workbook snapshot was not available for rebase')
     }
     const snapshotRevision = latestSnapshot.revision ?? targetRevision
-    if (latestSnapshot.revision !== null && snapshotRevision <= currentAuthoritativeRevision) {
+    const snapshotCalculatedRevision = calculatedRevisionForSnapshot(snapshotRevision)
+    if (
+      latestSnapshot.revision !== null &&
+      (snapshotRevision < currentAuthoritativeRevision ||
+        (snapshotRevision === currentAuthoritativeRevision && snapshotCalculatedRevision <= currentCalculatedRevision))
+    ) {
       throw new Error('Authoritative workbook snapshot was not newer than the current runtime state')
     }
     const runtimeState = await invokeWorkerMethod(client, 'installAuthoritativeSnapshot', isWorkbookWorkerStateSnapshot, {
@@ -578,8 +607,7 @@ export async function createWorkerRuntimeSessionController(
       authoritativeRevision: snapshotRevision,
       mode: 'reconcile',
     } satisfies InstallAuthoritativeSnapshotInput)
-    currentAuthoritativeRevision = snapshotRevision
-    requestedAuthoritativeRevision = Math.max(requestedAuthoritativeRevision, currentAuthoritativeRevision)
+    noteAuthoritativeStateInstalled(snapshotRevision, snapshotCalculatedRevision)
     const publishedRuntimeState = publishRuntimeState(runtimeState)
     await syncSelectionAfterRuntimeState(publishedRuntimeState)
     await persistMutationJournal()
@@ -590,11 +618,13 @@ export async function createWorkerRuntimeSessionController(
     if (
       revisionState === null ||
       revisionState.calculatedRevision < revisionState.headRevision ||
-      revisionState.headRevision <= currentAuthoritativeRevision
+      revisionState.headRevision < currentAuthoritativeRevision ||
+      (revisionState.headRevision === currentAuthoritativeRevision && revisionState.calculatedRevision <= currentCalculatedRevision)
     ) {
       return
     }
     requestedAuthoritativeRevision = Math.max(requestedAuthoritativeRevision, revisionState.headRevision)
+    requestedCalculatedRevision = Math.max(requestedCalculatedRevision, revisionState.calculatedRevision)
     const previousRebaseQueue = rebaseQueue
     rebaseQueue = (async () => {
       await previousRebaseQueue.catch(() => undefined)
@@ -635,6 +665,8 @@ export async function createWorkerRuntimeSessionController(
     input.perfSession?.noteBootstrapResult(bootstrap)
     currentAuthoritativeRevision = await invokeWorkerMethod(client, 'getAuthoritativeRevision', isNonNegativeInteger)
     requestedAuthoritativeRevision = currentAuthoritativeRevision
+    currentCalculatedRevision = currentAuthoritativeRevision
+    requestedCalculatedRevision = currentCalculatedRevision
 
     const activePendingMutationCount = bootstrapRuntimeState.pendingMutationSummary?.activeCount ?? 0
     const requiresAuthoritativeSnapshot = !bootstrap.restoredFromPersistence || bootstrap.requiresAuthoritativeHydrate
@@ -655,13 +687,13 @@ export async function createWorkerRuntimeSessionController(
         const snapshotRevision = latestSnapshot.revision ?? currentAuthoritativeRevision
         const shouldInstallSnapshot = latestSnapshot.revision === null || snapshotRevision >= currentAuthoritativeRevision
         if (shouldInstallSnapshot) {
+          const snapshotCalculatedRevision = calculatedRevisionForSnapshot(snapshotRevision)
           const hydratedState = await invokeWorkerMethod(client, 'installAuthoritativeSnapshot', isWorkbookWorkerStateSnapshot, {
             snapshot: latestSnapshot.snapshot,
             authoritativeRevision: snapshotRevision,
             mode: 'bootstrap',
           } satisfies InstallAuthoritativeSnapshotInput)
-          currentAuthoritativeRevision = Math.max(currentAuthoritativeRevision, snapshotRevision)
-          requestedAuthoritativeRevision = Math.max(requestedAuthoritativeRevision, currentAuthoritativeRevision)
+          noteAuthoritativeStateInstalled(snapshotRevision, snapshotCalculatedRevision)
           publishRuntimeState(hydratedState)
           input.perfSession?.markFirstAuthoritativePatchVisible()
         }
