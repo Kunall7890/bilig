@@ -113,8 +113,25 @@ function splitFormatSections(format: string): string[] {
   return sections
 }
 
-function stripFormatDecorations(section: string): string {
-  let output = ''
+interface FormatFragment {
+  text: string
+  active: boolean
+}
+
+function appendFormatFragment(fragments: FormatFragment[], text: string, active: boolean): void {
+  if (text === '') {
+    return
+  }
+  const previous = fragments.at(-1)
+  if (previous?.active === active) {
+    previous.text += text
+    return
+  }
+  fragments.push({ text, active })
+}
+
+function collectFormatFragments(section: string): FormatFragment[] {
+  const fragments: FormatFragment[] = []
   let inQuotes = false
   for (let index = 0; index < section.length; index += 1) {
     const char = section[index]!
@@ -122,7 +139,7 @@ function stripFormatDecorations(section: string): string {
       if (char === '"') {
         inQuotes = false
       } else {
-        output += char
+        appendFormatFragment(fragments, char, false)
       }
       continue
     }
@@ -131,12 +148,12 @@ function stripFormatDecorations(section: string): string {
       continue
     }
     if (char === '\\') {
-      output += section[index + 1] ?? ''
+      appendFormatFragment(fragments, section[index + 1] ?? '', false)
       index += 1
       continue
     }
     if (char === '_') {
-      output += ' '
+      appendFormatFragment(fragments, ' ', false)
       index += 1
       continue
     }
@@ -152,9 +169,22 @@ function stripFormatDecorations(section: string): string {
       index = end
       continue
     }
-    output += char
+    appendFormatFragment(fragments, char, true)
   }
-  return output
+  return fragments
+}
+
+function stripFormatDecorations(section: string): string {
+  return collectFormatFragments(section)
+    .map((fragment) => fragment.text)
+    .join('')
+}
+
+function activeFormatCodeText(section: string): string {
+  return collectFormatFragments(section)
+    .filter((fragment) => fragment.active)
+    .map((fragment) => fragment.text)
+    .join('')
 }
 
 function formatThousandsText(integerPart: string): string {
@@ -190,8 +220,10 @@ function excelSecondOfDay(serial: number): number | undefined {
 }
 
 function isDateTimeFormat(section: string): boolean {
-  const cleaned = stripFormatDecorations(section).toUpperCase()
-  return cleaned.includes('AM/PM') || cleaned.includes('A/P') || /[YDSH]/.test(cleaned) || /(^|[^0#?])M+([^0#?]|$)/.test(cleaned)
+  const activeCode = activeFormatCodeText(section).toUpperCase()
+  return (
+    activeCode.includes('AM/PM') || activeCode.includes('A/P') || /[YDSH]/.test(activeCode) || /(^|[^0#?])M+([^0#?]|$)/.test(activeCode)
+  )
 }
 
 function isTextFormat(section: string): boolean {
@@ -234,37 +266,42 @@ interface DateTimeToken {
 }
 
 function tokenizeDateTimeFormat(section: string): DateTimeToken[] {
-  const cleaned = stripFormatDecorations(section)
   const tokens: DateTimeToken[] = []
-  let index = 0
-  while (index < cleaned.length) {
-    const remainder = cleaned.slice(index)
-    const upperRemainder = remainder.toUpperCase()
-    if (upperRemainder.startsWith('AM/PM')) {
-      tokens.push({ kind: 'ampm', text: cleaned.slice(index, index + 5) })
-      index += 5
+  for (const fragment of collectFormatFragments(section)) {
+    if (!fragment.active) {
+      tokens.push({ kind: 'literal', text: fragment.text })
       continue
     }
-    if (upperRemainder.startsWith('A/P')) {
-      tokens.push({ kind: 'ampm', text: cleaned.slice(index, index + 3) })
-      index += 3
-      continue
-    }
-    const char = cleaned[index]!
-    const lower = char.toLowerCase()
-    if ('ymdhms'.includes(lower)) {
-      let end = index + 1
-      while (end < cleaned.length && cleaned[end]!.toLowerCase() === lower) {
-        end += 1
+    let index = 0
+    while (index < fragment.text.length) {
+      const remainder = fragment.text.slice(index)
+      const upperRemainder = remainder.toUpperCase()
+      if (upperRemainder.startsWith('AM/PM')) {
+        tokens.push({ kind: 'ampm', text: fragment.text.slice(index, index + 5) })
+        index += 5
+        continue
       }
-      const tokenText = cleaned.slice(index, end)
-      const baseKind = lower === 'y' ? 'year' : lower === 'd' ? 'day' : lower === 'h' ? 'hour' : lower === 's' ? 'second' : 'month'
-      tokens.push({ kind: baseKind, text: tokenText })
-      index = end
-      continue
+      if (upperRemainder.startsWith('A/P')) {
+        tokens.push({ kind: 'ampm', text: fragment.text.slice(index, index + 3) })
+        index += 3
+        continue
+      }
+      const char = fragment.text[index]!
+      const lower = char.toLowerCase()
+      if ('ymdhms'.includes(lower)) {
+        let end = index + 1
+        while (end < fragment.text.length && fragment.text[end]!.toLowerCase() === lower) {
+          end += 1
+        }
+        const tokenText = fragment.text.slice(index, end)
+        const baseKind = lower === 'y' ? 'year' : lower === 'd' ? 'day' : lower === 'h' ? 'hour' : lower === 's' ? 'second' : 'month'
+        tokens.push({ kind: baseKind, text: tokenText })
+        index = end
+        continue
+      }
+      tokens.push({ kind: 'literal', text: char })
+      index += 1
     }
-    tokens.push({ kind: 'literal', text: char })
-    index += 1
   }
   return tokens.map((token, tokenIndex, allTokens) => {
     if (token.kind !== 'month') {

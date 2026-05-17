@@ -48,6 +48,10 @@ describe('text format builtins', () => {
     expect(TEXT(number(-12), text('"abc"'))).toEqual(text('-abc'))
     expect(TEXT(number(0), text('0.0;[Red]-0.0;"zero"'))).toEqual(text('zero'))
     expect(TEXT(number(7), text('_)*x[Blue]000"kg"'))).toEqual(text(' 007kg'))
+    expect(TEXT(number(7), text('0 "seconds"'))).toEqual(text('7 seconds'))
+    expect(TEXT(number(7), text('"year" 0'))).toEqual(text('year 7'))
+    expect(TEXT(number(45356), text('"year" 0'))).toEqual(text('year 45356'))
+    expect(TEXT(number(12), text('0\\s'))).toEqual(text('12s'))
     expect(TEXT(text('alpha'), text('"literal"'))).toEqual(text('literal'))
     expect(TEXT(text('alpha'), text('0.0;[Red]-0.0;"zero";prefix @ suffix'))).toEqual(text('prefix alpha suffix'))
 
