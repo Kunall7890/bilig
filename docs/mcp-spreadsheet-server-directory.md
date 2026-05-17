@@ -62,12 +62,17 @@ That makes `tools/list` expose `list_sheets`, `read_range`, `read_cell`,
 `set_cell_contents`, `get_cell_display_value`, `export_workpaper_document`, and
 `validate_formula` during registry introspection.
 
+For indexers that cannot execute containers, the docs site also serves a static
+MCP server card with the same tool catalog:
+<https://proompteng.github.io/bilig/.well-known/mcp/server-card.json>.
+
 ## Directory Status
 
 | Directory                       | Status                                       | Link                                                                                                  |
 | ------------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Official MCP Registry           | Live                                         | <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper> |
-| Glama                           | Live                                         | <https://glama.ai/mcp/servers/proompteng/bilig>                                                       |
+| Official MCP Registry           | Live, freshness lag under review             | <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper> |
+| Static MCP server card          | Live after next Pages deploy                 | <https://proompteng.github.io/bilig/.well-known/mcp/server-card.json>                                 |
+| Glama                           | Live, tool indexing pending                  | <https://glama.ai/mcp/servers/proompteng/bilig>                                                       |
 | mcp.so                          | Submitted for maintainer review              | <https://github.com/chatmcp/mcpso/issues/2295>                                                        |
 | Cline MCP Marketplace           | Submitted for maintainer review              | <https://github.com/cline/mcp-marketplace/issues/1557>                                                |
 | mcpserver.cc                    | Submitted for maintainer review              | <https://mcpserver.cc/en?q=bilig>                                                                     |
@@ -79,11 +84,17 @@ That makes `tools/list` expose `list_sheets`, `read_range`, `read_cell`,
 | PulseMCP                        | Not indexed in public search on May 14, 2026 | <https://www.pulsemcp.com/servers?search=bilig&q=bilig>                                               |
 
 PulseMCP says server listings are ingested from the official MCP Registry daily
-and processed weekly. The Bilig WorkPaper registry entry is already live for
-the current `@bilig/headless` package line, so PulseMCP absence is a directory-ingest delay, not a
-missing package or server metadata problem. Starter issue
+and processed weekly. The Bilig WorkPaper registry entry is live, but the public
+Registry API currently returns historical entries rather than a fresh latest
+entry for the npm package. Treat PulseMCP absence as pending until the Registry
+freshness lag is resolved. Starter issue
 [#384](https://github.com/proompteng/bilig/issues/384) tracks the next public
 verification pass.
+
+Glama lists Bilig WorkPaper publicly, but its API still reports an empty
+`tools` array. Directory submissions that depend on Glama should point scanners
+at the root Dockerfile target or at the npm stdio command below until Glama
+re-indexes the file-backed tool surface.
 
 The `mcpserver.cc` submission was accepted for review on May 13, 2026 with
 submission UUID `bcdce4e1-3b05-4be2-b611-2a2abb8baf79`. Search still returned no
@@ -133,9 +144,12 @@ A useful result includes:
 - `transport.type: stdio`
 - `repository.url: https://github.com/proompteng/bilig`
 
-Latest checked result on May 16, 2026: the official Registry API returned one
-latest Bilig WorkPaper entry for the `@bilig/headless` server package line. The
-last documented refresh was published by the repository workflow run at
+Latest checked result on May 17, 2026: npm latest is `@bilig/headless@0.18.20`,
+while the official Registry API search returns multiple historical Bilig
+WorkPaper entries and no current `isLatest` entry in the response. That means
+the npm install path is the freshest machine-checkable source until the Registry
+refresh catches up. The last documented refresh attempt was published by the
+repository workflow run at
 <https://github.com/proompteng/bilig/actions/runs/25956395253>.
 
 The package itself carries the matching `mcpName` field. That is the ownership
@@ -151,7 +165,7 @@ npm install
 npm run agent:mcp-tools
 ```
 
-For the packaged stdio server:
+For the default packaged stdio demo server:
 
 ```sh
 printf '%s\n' \
@@ -161,7 +175,7 @@ printf '%s\n' \
   npm run --silent agent:mcp-stdio
 ```
 
-The tool list includes:
+The demo tool list includes:
 
 - `read_workpaper_summary`
 - `set_workpaper_input_cell`
@@ -169,6 +183,21 @@ The tool list includes:
 The write path edits one input cell, recalculates dependent formulas, and
 returns structured readback. That is the behavior a directory listing should
 describe; Bilig is not a generic spreadsheet screenshot tool.
+
+For directory scanners and production client configs, prefer file-backed mode:
+
+```sh
+printf '%s\n' \
+  '{"jsonrpc":"2.0","id":1,"method":"initialize"}' \
+  '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' |
+  npm exec --package @bilig/headless -- \
+    bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --writable
+```
+
+That mode exposes `list_sheets`, `read_range`, `read_cell`,
+`set_cell_contents`, `get_cell_display_value`, `export_workpaper_document`, and
+`validate_formula`.
 
 ## Short Listing Copy
 

@@ -177,6 +177,13 @@ It also carries the OCI label
 registry and directory tooling can match the container target to the official
 MCP Registry name.
 
+For crawlers that cannot run Docker or stdio, the docs site also publishes a
+static MCP server card at
+`https://proompteng.github.io/bilig/.well-known/mcp/server-card.json`. The card
+lists the same `list_sheets`, `read_range`, `read_cell`, `set_cell_contents`,
+`get_cell_display_value`, `export_workpaper_document`, and `validate_formula`
+tools without requiring account auth or a live server connection.
+
 The package carries `mcpName: io.github.proompteng/bilig-workpaper` and a
 matching `server.json`. It is published in the official MCP Registry as
 `io.github.proompteng/bilig-workpaper`:

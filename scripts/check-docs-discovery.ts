@@ -608,6 +608,7 @@ await requireFile(join(repoRoot, '.github', 'workflows', 'scorecard.yml'))
 requireXlsxCorpusVerifierDiscovery(await readFile(join(docsRoot, 'xlsx-corpus-verifier-walkthrough.md'), 'utf8'))
 requireIncludes(index, './xlsx-corpus-verifier-walkthrough.html', 'docs/index.html')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/xlsx-corpus-verifier-walkthrough.html', 'docs/llms.txt')
+requireIncludes(llms, 'https://proompteng.github.io/bilig/.well-known/mcp/server-card.json', 'docs/llms.txt')
 
 const [
   whyAgentsDoc,
@@ -618,6 +619,7 @@ const [
   mcpClientSetupDoc,
   claudeDesktopMcpbDoc,
   agentToolCallLoopDoc,
+  mcpServerCard,
 ] = await Promise.all([
   readFile(join(docsRoot, 'why-agents-need-workbook-apis.md'), 'utf8'),
   readFile(join(docsRoot, 'agent-workpaper-tool-calling-recipe.md'), 'utf8'),
@@ -627,7 +629,34 @@ const [
   readFile(join(docsRoot, 'mcp-client-setup.md'), 'utf8'),
   readFile(join(docsRoot, 'claude-desktop-mcpb-workpaper.md'), 'utf8'),
   readFile(join(docsRoot, 'agent-spreadsheet-tool-call-loop.md'), 'utf8'),
+  readFile(join(docsRoot, '.well-known', 'mcp', 'server-card.json'), 'utf8'),
 ])
+await requireFile(join(docsRoot, '.nojekyll'))
+const parsedMcpServerCard: unknown = JSON.parse(mcpServerCard)
+if (typeof parsedMcpServerCard !== 'object' || parsedMcpServerCard === null || Array.isArray(parsedMcpServerCard)) {
+  throw new Error('docs/.well-known/mcp/server-card.json must be a JSON object')
+}
+const mcpServerCardTools = Reflect.get(parsedMcpServerCard, 'tools')
+if (
+  !Array.isArray(mcpServerCardTools) ||
+  !mcpServerCardTools.every((tool) => typeof tool === 'object' && tool !== null && typeof Reflect.get(tool, 'name') === 'string')
+) {
+  throw new Error('docs/.well-known/mcp/server-card.json must define named tools')
+}
+const mcpServerCardToolNames = new Set(mcpServerCardTools.map((tool) => Reflect.get(tool, 'name')))
+for (const requiredTool of [
+  'list_sheets',
+  'read_range',
+  'read_cell',
+  'set_cell_contents',
+  'get_cell_display_value',
+  'export_workpaper_document',
+  'validate_formula',
+]) {
+  if (!mcpServerCardToolNames.has(requiredTool)) {
+    throw new Error(`docs/.well-known/mcp/server-card.json is missing ${requiredTool}`)
+  }
+}
 requireIncludes(
   whyAgentsDoc,
   'description: Why coding agents should edit workbook formulas through a Node.js WorkPaper API',
@@ -703,6 +732,11 @@ requireIncludes(mcpWorkPaperToolServerDoc, '/workpaper/pricing.workpaper.json', 
 requireIncludes(mcpWorkPaperToolServerDoc, '`validate_formula`', 'docs/mcp-workpaper-tool-server.md')
 requireIncludes(
   mcpWorkPaperToolServerDoc,
+  'https://proompteng.github.io/bilig/.well-known/mcp/server-card.json',
+  'docs/mcp-workpaper-tool-server.md',
+)
+requireIncludes(
+  mcpWorkPaperToolServerDoc,
   'https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper',
   'docs/mcp-workpaper-tool-server.md',
 )
@@ -739,6 +773,8 @@ for (const required of [
   'io.github.proompteng/bilig-workpaper',
   'https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper',
   'https://glama.ai/mcp/servers/proompteng/bilig',
+  'https://proompteng.github.io/bilig/.well-known/mcp/server-card.json',
+  'Static MCP server card',
   'https://github.com/chatmcp/mcpso/issues/2295',
   'https://github.com/cline/mcp-marketplace/issues/1557',
   'https://mcpserver.cc/en?q=bilig',
@@ -749,13 +785,19 @@ for (const required of [
   'https://github.com/toolsdk-ai/toolsdk-mcp-registry/pull/309',
   'https://github.com/ever-works/awesome-mcp-servers-data/pull/4',
   'https://github.com/jmstfv/mcpserve/pull/19',
+  'Live, freshness lag under review',
+  'Live, tool indexing pending',
   'Not indexed in public search on May 14, 2026',
   'https://www.pulsemcp.com/servers?search=bilig&q=bilig',
   'https://github.com/proompteng/bilig/issues/384',
-  'official Registry API returned one\nlatest Bilig WorkPaper entry for the `@bilig/headless` server package line',
+  'Registry API currently returns historical entries rather than a fresh latest\nentry for the npm package',
+  'Glama lists Bilig WorkPaper publicly, but its API still reports an empty\n`tools` array',
+  'npm latest is `@bilig/headless@0.18.20`',
+  'no current `isLatest` entry',
   'https://github.com/proompteng/bilig/actions/runs/25956395253',
   'read_workpaper_summary',
   'set_workpaper_input_cell',
+  'file-backed mode',
   '/workpaper/pricing.workpaper.json',
   'set_cell_contents',
   'validate_formula',

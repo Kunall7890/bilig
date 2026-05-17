@@ -383,7 +383,7 @@ It is published in the official MCP Registry as
   [official MCP Registry](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper)
   and on [Glama](https://glama.ai/mcp/servers/proompteng/bilig). The
   [directory status page](docs/mcp-spreadsheet-server-directory.md) keeps the
-  npm command and directory evidence in one place.
+  npm command, static MCP server card, and directory evidence in one place.
 - Public feedback threads:
   [workflow questions](https://github.com/proompteng/bilig/discussions/157),
   [service examples](https://github.com/proompteng/bilig/discussions/213),
