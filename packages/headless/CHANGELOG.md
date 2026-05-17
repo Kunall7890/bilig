@@ -4,6 +4,16 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.18.19
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.18.18
+- Manual override: no
+
+## Fixes
+- fix(headless): materialize dense load rectangles safely (82e77db5)
+- fix(zero): centralize schema bootstrap (ace3ec96)
+
 ## 0.18.18
 
 - Release type: patch
