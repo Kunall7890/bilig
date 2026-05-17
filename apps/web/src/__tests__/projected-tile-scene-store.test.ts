@@ -7,6 +7,7 @@ import {
 } from '@bilig/worker-transport'
 import { ValueTag } from '@bilig/protocol'
 import { DirtyMaskV3 } from '../../../../packages/grid/src/renderer-v3/tile-damage-index.js'
+import { OPTIMISTIC_CELL_SNAPSHOT_FLAG } from '../workbook-optimistic-cell-flags.js'
 import { ProjectedTileSceneStore } from '../projected-tile-scene-store.js'
 import { ProjectedViewportStore } from '../projected-viewport-store.js'
 
@@ -317,6 +318,62 @@ describe('ProjectedViewportStore render delta source bridge', () => {
         sheetOrdinal: 3,
         source: 'localOptimistic',
         valueSeq: 12,
+      }),
+    )
+
+    unsubscribe()
+  })
+
+  it('publishes deltas from the accepted projected snapshot after optimistic normalization', () => {
+    const store = new ProjectedViewportStore({
+      subscribeRenderTileDeltas: () => () => undefined,
+      subscribeViewportPatches: () => () => undefined,
+      subscribeWorkbookDeltas: () => () => undefined,
+    })
+    const listener = vi.fn()
+
+    store.subscribeRenderTileDeltas(
+      {
+        sheetId: 7,
+        sheetName: 'Sheet1',
+        sheetOrdinal: 3,
+        rowStart: 0,
+        rowEnd: 31,
+        colStart: 0,
+        colEnd: 63,
+      },
+      () => undefined,
+    )
+    store.setCellSnapshot({
+      address: 'B2',
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+      formula: '1+1',
+      input: '=1+1',
+      sheetName: 'Sheet1',
+      value: { tag: ValueTag.Number, value: 2 },
+      version: 8,
+    })
+
+    const unsubscribe = store.subscribeWorkbookDeltas(listener)
+    store.setCellSnapshot({
+      address: 'B2',
+      flags: 0,
+      formula: '1+1',
+      input: '=1+1',
+      sheetName: 'Sheet1',
+      value: { tag: ValueTag.Number, value: 3 },
+      version: 7,
+    })
+
+    expect(store.getCell('Sheet1', 'B2')).toMatchObject({
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+      version: 8,
+    })
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({
+        calcSeq: 8,
+        styleSeq: 8,
+        valueSeq: 8,
       }),
     )
 

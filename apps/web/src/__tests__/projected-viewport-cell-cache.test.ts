@@ -115,6 +115,39 @@ describe('ProjectedViewportCellCache', () => {
     expect(cache.getCell('Sheet1', 'C1').value).toEqual({ tag: ValueTag.Empty })
   })
 
+  it('returns the accepted normalized snapshot from cell writes', () => {
+    const cache = new ProjectedViewportCellCache()
+    cache.setCellSnapshot({
+      sheetName: 'Sheet1',
+      address: 'B2',
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+      formula: '1+1',
+      input: '=1+1',
+      value: { tag: ValueTag.Number, value: 2 },
+      version: 8,
+    })
+
+    const result = cache.writeCellSnapshot({
+      sheetName: 'Sheet1',
+      address: 'B2',
+      flags: 0,
+      formula: '1+1',
+      input: '=1+1',
+      value: { tag: ValueTag.Number, value: 3 },
+      version: 7,
+    })
+
+    expect(result).toMatchObject({
+      acceptedSnapshot: {
+        flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+        value: { tag: ValueTag.Number, value: 3 },
+        version: 8,
+      },
+      changed: true,
+    })
+    expect(cache.getCell('Sheet1', 'B2')).toMatchObject(result.acceptedSnapshot ?? {})
+  })
+
   it('allows explicit history hydration to replace an optimistic clear tombstone', () => {
     const cache = new ProjectedViewportCellCache()
     const listener = vi.fn()

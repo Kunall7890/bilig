@@ -22,8 +22,8 @@ import { DEFAULT_MAX_CACHED_CELLS_PER_SHEET, ProjectedViewportCellCache } from '
 import { ProjectedViewportPatchCoordinator, type ProjectedViewportPatchApplied } from './projected-viewport-patch-coordinator.js'
 import type { ProjectedRenderTile, ProjectedTileSceneChange, ProjectedTileSceneStore } from './projected-tile-scene-store.js'
 import { getWorkbookScrollPerfCollector } from './perf/workbook-scroll-perf.js'
-import { DirtyMaskV3 } from '../../../packages/grid/src/renderer-v3/tile-damage-index.js'
 import { normalizeWorkbookMergeRange } from './worker-runtime-support.js'
+import { buildLocalAxisWorkbookDelta, buildLocalCellSnapshotWorkbookDelta } from './projected-workbook-local-delta.js'
 
 export interface ProjectedViewportStoreOptions {
   readonly maxCachedCellsPerSheet?: number
@@ -31,8 +31,6 @@ export interface ProjectedViewportStoreOptions {
 type CellItem = readonly [number, number]
 type SheetViewportChannel = 'columnWidths' | 'rowHeights' | 'hiddenColumns' | 'hiddenRows' | 'freeze' | 'merges'
 type SheetIdentity = { readonly sheetId: number; readonly sheetOrdinal: number }
-const LOCAL_AXIS_X_DIRTY_MASK = DirtyMaskV3.AxisX | DirtyMaskV3.Text | DirtyMaskV3.Rect
-const LOCAL_AXIS_Y_DIRTY_MASK = DirtyMaskV3.AxisY | DirtyMaskV3.Text | DirtyMaskV3.Rect
 export class ProjectedViewportStore implements GridEngineLike {
   private readonly options: ProjectedViewportStoreOptions
   private readonly cellCache: ProjectedViewportCellCache
@@ -207,9 +205,10 @@ export class ProjectedViewportStore implements GridEngineLike {
     snapshot: CellSnapshot,
     options: { force?: boolean; forceOptimistic?: boolean; allowOptimisticClearResurrection?: boolean } = {},
   ): void {
-    if (this.cellCache.setCellSnapshot(snapshot, options)) {
+    const result = this.cellCache.writeCellSnapshot(snapshot, options)
+    if (result.changed && result.acceptedSnapshot) {
       this.localRevision += 1
-      this.emitLocalCellSnapshotDelta(snapshot)
+      this.emitLocalCellSnapshotDelta(result.acceptedSnapshot)
     }
   }
 
@@ -485,28 +484,8 @@ export class ProjectedViewportStore implements GridEngineLike {
     if (!identity) {
       return
     }
-    const parsed = parseCellAddress(snapshot.address, snapshot.sheetName)
-    const valueSeq = Math.max(0, snapshot.version)
     const seq = this.nextLocalWorkbookDeltaSeq()
-    const batch: WorkbookDeltaBatchV3 = {
-      axisSeqX: 0,
-      axisSeqY: 0,
-      calcSeq: valueSeq,
-      dirty: {
-        axisX: new Uint32Array(),
-        axisY: new Uint32Array(),
-        cellRanges: new Uint32Array([parsed.row, parsed.row, parsed.col, parsed.col, resolveCellSnapshotDirtyMask(snapshot)]),
-      },
-      freezeSeq: 0,
-      magic: 'bilig.workbook.delta.v3',
-      seq,
-      sheetId: identity.sheetId,
-      sheetOrdinal: identity.sheetOrdinal,
-      source: 'localOptimistic',
-      styleSeq: valueSeq,
-      valueSeq,
-      version: 1,
-    }
+    const batch = buildLocalCellSnapshotWorkbookDelta({ identity, seq, snapshot })
     this.localWorkbookDeltaListeners.forEach((listener) => {
       listener(batch)
     })
@@ -525,32 +504,13 @@ export class ProjectedViewportStore implements GridEngineLike {
     if (this.localWorkbookDeltaListeners.size === 0) {
       return
     }
-    const axisIndex = axis === 'column' ? clampAxisIndex(index, MAX_COLS) : clampAxisIndex(index, MAX_ROWS)
     const startedAt = nowMs()
     const identity = this.resolveSheetIdentity(sheetName)
     if (!identity) {
       return
     }
     const seq = this.nextLocalWorkbookDeltaSeq()
-    const batch: WorkbookDeltaBatchV3 = {
-      axisSeqX: axis === 'column' ? seq : 0,
-      axisSeqY: axis === 'row' ? seq : 0,
-      calcSeq: seq,
-      dirty: {
-        axisX: axis === 'column' ? new Uint32Array([axisIndex, axisIndex, LOCAL_AXIS_X_DIRTY_MASK]) : new Uint32Array(),
-        axisY: axis === 'row' ? new Uint32Array([axisIndex, axisIndex, LOCAL_AXIS_Y_DIRTY_MASK]) : new Uint32Array(),
-        cellRanges: new Uint32Array(),
-      },
-      freezeSeq: 0,
-      magic: 'bilig.workbook.delta.v3',
-      seq,
-      sheetId: identity.sheetId,
-      sheetOrdinal: identity.sheetOrdinal,
-      source: 'localOptimistic',
-      styleSeq: seq,
-      valueSeq: seq,
-      version: 1,
-    }
+    const batch = buildLocalAxisWorkbookDelta({ axis, identity, index, seq })
     this.localWorkbookDeltaListeners.forEach((listener) => {
       listener(batch)
     })
@@ -577,13 +537,6 @@ function nowMs(): number {
   return typeof performance === 'undefined' ? Date.now() : performance.now()
 }
 
-function clampAxisIndex(index: number, axisLength: number): number {
-  if (!Number.isFinite(index)) {
-    return 0
-  }
-  return Math.max(0, Math.min(axisLength - 1, Math.trunc(index)))
-}
-
 function assertValidProjectedAxisMutation(axis: 'column' | 'row', index: number, size: number | undefined): void {
   const axisLength = axis === 'column' ? MAX_COLS : MAX_ROWS
   if (!Number.isInteger(index) || index < 0 || index >= axisLength) {
@@ -592,14 +545,6 @@ function assertValidProjectedAxisMutation(axis: 'column' | 'row', index: number,
   if (size !== undefined && (!Number.isFinite(size) || size < 0)) {
     throw new Error(`Invalid projected ${axis} size: ${size}`)
   }
-}
-
-function resolveCellSnapshotDirtyMask(snapshot: CellSnapshot): number {
-  const styleDirty =
-    snapshot.styleId !== undefined || snapshot.format !== undefined || snapshot.numberFormatId !== undefined
-      ? DirtyMaskV3.Style | DirtyMaskV3.Rect
-      : 0
-  return DirtyMaskV3.Value | DirtyMaskV3.Text | styleDirty
 }
 
 function buildAxisEntries(

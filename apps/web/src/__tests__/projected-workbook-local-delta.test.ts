@@ -1,0 +1,71 @@
+import { describe, expect, it } from 'vitest'
+import { ValueTag } from '@bilig/protocol'
+import { DirtyMaskV3 } from '../../../../packages/grid/src/renderer-v3/tile-damage-index.js'
+import { buildLocalAxisWorkbookDelta, buildLocalCellSnapshotWorkbookDelta } from '../projected-workbook-local-delta.js'
+
+const identity = {
+  sheetId: 7,
+  sheetOrdinal: 3,
+}
+
+describe('projected workbook local delta builders', () => {
+  it('builds cell deltas from the accepted snapshot version and visual shape', () => {
+    const batch = buildLocalCellSnapshotWorkbookDelta({
+      identity,
+      seq: 44,
+      snapshot: {
+        address: 'B2',
+        flags: 0,
+        sheetName: 'Sheet1',
+        styleId: 'accent',
+        value: { tag: ValueTag.Number, value: 17 },
+        version: 12,
+      },
+    })
+
+    expect(batch).toMatchObject({
+      calcSeq: 12,
+      seq: 44,
+      sheetId: 7,
+      sheetOrdinal: 3,
+      source: 'localOptimistic',
+      styleSeq: 12,
+      valueSeq: 12,
+    })
+    expect(batch.dirty.cellRanges).toEqual(
+      new Uint32Array([1, 1, 1, 1, DirtyMaskV3.Value | DirtyMaskV3.Text | DirtyMaskV3.Style | DirtyMaskV3.Rect]),
+    )
+  })
+
+  it('builds axis deltas with isolated axis damage and clamped indices', () => {
+    const columnBatch = buildLocalAxisWorkbookDelta({
+      axis: 'column',
+      identity,
+      index: 2,
+      seq: 45,
+    })
+    const rowBatch = buildLocalAxisWorkbookDelta({
+      axis: 'row',
+      identity,
+      index: 4,
+      seq: 46,
+    })
+
+    expect(columnBatch).toMatchObject({
+      axisSeqX: 45,
+      axisSeqY: 0,
+      calcSeq: 45,
+      source: 'localOptimistic',
+    })
+    expect(columnBatch.dirty.axisX).toEqual(new Uint32Array([2, 2, DirtyMaskV3.AxisX | DirtyMaskV3.Text | DirtyMaskV3.Rect]))
+    expect(columnBatch.dirty.axisY).toEqual(new Uint32Array())
+    expect(rowBatch).toMatchObject({
+      axisSeqX: 0,
+      axisSeqY: 46,
+      calcSeq: 46,
+      source: 'localOptimistic',
+    })
+    expect(rowBatch.dirty.axisX).toEqual(new Uint32Array())
+    expect(rowBatch.dirty.axisY).toEqual(new Uint32Array([4, 4, DirtyMaskV3.AxisY | DirtyMaskV3.Text | DirtyMaskV3.Rect]))
+  })
+})

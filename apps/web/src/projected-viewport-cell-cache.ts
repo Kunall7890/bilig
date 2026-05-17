@@ -22,6 +22,11 @@ interface CellSubscription {
   listener: () => void
 }
 
+export interface ProjectedViewportCellSnapshotWriteResult {
+  readonly acceptedSnapshot: CellSnapshot | null
+  readonly changed: boolean
+}
+
 function normalizeMaxCachedCellsPerSheet(rawMaxCachedCellsPerSheet: number | undefined): number {
   if (typeof rawMaxCachedCellsPerSheet !== 'number' || !Number.isFinite(rawMaxCachedCellsPerSheet) || rawMaxCachedCellsPerSheet < 1) {
     return DEFAULT_MAX_CACHED_CELLS_PER_SHEET
@@ -153,12 +158,19 @@ export class ProjectedViewportCellCache {
     snapshot: CellSnapshot,
     options: { force?: boolean; forceOptimistic?: boolean; allowOptimisticClearResurrection?: boolean } = {},
   ): boolean {
+    return this.writeCellSnapshot(snapshot, options).changed
+  }
+
+  writeCellSnapshot(
+    snapshot: CellSnapshot,
+    options: { force?: boolean; forceOptimistic?: boolean; allowOptimisticClearResurrection?: boolean } = {},
+  ): ProjectedViewportCellSnapshotWriteResult {
     const key = `${snapshot.sheetName}!${snapshot.address}`
     const current = this.cellSnapshots.get(key)
     const incoming = current ? prepareIncomingSnapshot(current, snapshot) : snapshot
     if (!current && isResetEmptySnapshot(snapshot)) {
       this.knownSheets.add(snapshot.sheetName)
-      return false
+      return { acceptedSnapshot: null, changed: false }
     }
     if (current) {
       const forcedOptimisticClearHydration =
@@ -172,17 +184,17 @@ export class ProjectedViewportCellCache {
         !isClearCellSnapshot(incoming) &&
         current.version >= incoming.version
       ) {
-        return false
+        return { acceptedSnapshot: current, changed: false }
       }
       const shouldProtectCurrent =
         isOptimisticCellSnapshot(current) && isOptimisticClearResurrection(current, incoming) && !forcedOptimisticClearHydration
           ? true
           : options.force !== true || ((current.flags & OPTIMISTIC_CELL_SNAPSHOT_FLAG) !== 0 && options.forceOptimistic !== true)
       if (shouldProtectCurrent && shouldKeepCurrentSnapshot(current, incoming, { allowResetEmptyOverride: false })) {
-        return false
+        return { acceptedSnapshot: current, changed: false }
       }
       if (cellSnapshotSignature(current) === cellSnapshotSignature(incoming)) {
-        return false
+        return { acceptedSnapshot: current, changed: false }
       }
     }
     this.knownSheets.add(snapshot.sheetName)
@@ -191,7 +203,7 @@ export class ProjectedViewportCellCache {
     this.sheetCellKeys(snapshot.sheetName).add(key)
     this.notifyCellSubscriptions(new Set([key]))
     this.emitChange()
-    return true
+    return { acceptedSnapshot: incoming, changed: true }
   }
 
   clearOptimisticCellFlagsForSheet(sheetName: string): boolean {
