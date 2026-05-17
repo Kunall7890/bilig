@@ -3,6 +3,7 @@ import { EdgeArena } from '../edge-arena.js'
 import { entityPayload, makeCellEntity, makeExactLookupColumnEntity, makeRangeEntity, makeSortedLookupColumnEntity } from '../entity-ids.js'
 import {
   appendFormulaBindingReverseEdge,
+  appendKnownUniqueFormulaBindingReverseEdge,
   getFormulaBindingReverseEdgeSlice,
   removeFormulaBindingReverseEdge,
   setFormulaBindingReverseEdgeSlice,
@@ -60,6 +61,17 @@ describe('formula binding reverse edges', () => {
     setFormulaBindingReverseEdgeSlice(state, makeSortedLookupColumnEntity(2, 8), slice)
     setFormulaBindingReverseEdgeSlice(state, makeSortedLookupColumnEntity(2, 8), edgeArena.empty())
     expect(getFormulaBindingReverseEdgeSlice(state, makeSortedLookupColumnEntity(2, 8))).toBeUndefined()
+  })
+
+  it('appends caller-proven unique fresh formula edges without de-duplicating', () => {
+    const edgeArena = new EdgeArena()
+    const state = createReverseState()
+    const cellEntity = makeCellEntity(2)
+
+    appendKnownUniqueFormulaBindingReverseEdge(state, edgeArena, cellEntity, 20)
+    appendKnownUniqueFormulaBindingReverseEdge(state, edgeArena, cellEntity, 20)
+
+    expect(edgeArena.read(getFormulaBindingReverseEdgeSlice(state, cellEntity)!)).toEqual(Uint32Array.from([20, 20]))
   })
 
   it('syncs range dependency edges by removing stale sources and appending new sources', () => {

@@ -22,6 +22,7 @@ export function installFreshFormulaBindingNow(args: {
   readonly serviceArgs: CreateEngineFormulaBindingServiceArgs
   readonly formulaMemberCounts: FormulaBindingMemberCounts
   readonly appendReverseEdge: (entityId: number, dependentEntityId: number) => void
+  readonly appendKnownUniqueReverseEdge: (entityId: number, dependentEntityId: number) => void
   readonly appendDefinedNameReverseEdge: (name: string, dependentCellIndex: number) => void
   readonly trackFormulaSheetIndexes: (cellIndex: number, ownerSheetName: string, compiled: RuntimeFormula['compiled']) => void
   readonly updateVolatileFormulaIndex: (cellIndex: number, formula: RuntimeFormula | undefined) => void
@@ -107,9 +108,7 @@ export function installFreshFormulaBindingNow(args: {
     }
   }
   const formulaEntity = makeCellEntity(args.cellIndex)
-  for (let index = 0; index < args.prepared.dependencies.dependencyEntities.length; index += 1) {
-    args.appendReverseEdge(args.prepared.dependencies.dependencyEntities[index]!, formulaEntity)
-  }
+  appendFreshFormulaDependencyReverseEdges(args.prepared.dependencies.dependencyEntities, formulaEntity, args.appendKnownUniqueReverseEdge)
   runtimeFormula.compiled.symbolicNames.forEach((name) => {
     args.appendDefinedNameReverseEdge(name, args.cellIndex)
   })
@@ -133,7 +132,7 @@ export function installFreshFormulaBindingNow(args: {
       const lookupEntity = lookupInfo.isExact
         ? makeExactLookupColumnEntity(lookupSheet.id, lookupInfo.col)
         : makeSortedLookupColumnEntity(lookupSheet.id, lookupInfo.col)
-      args.appendReverseEdge(lookupEntity, formulaEntity)
+      args.appendKnownUniqueReverseEdge(lookupEntity, formulaEntity)
     }
   }
   const directCriteriaAggregate = directCriteriaAggregateColumn(args.prepared.directCriteria)
@@ -161,4 +160,37 @@ export function installFreshFormulaBindingNow(args: {
     args.prepared.indexedExactLookupCandidates,
     args.prepared.directApproximateLookupCandidates,
   )
+}
+
+function appendFreshFormulaDependencyReverseEdges(
+  dependencyEntities: Uint32Array,
+  formulaEntity: number,
+  appendKnownUniqueReverseEdge: (entityId: number, dependentEntityId: number) => void,
+): void {
+  let largerSeen: Set<number> | undefined
+  for (let index = 0; index < dependencyEntities.length; index += 1) {
+    const dependencyEntity = dependencyEntities[index]!
+    if (largerSeen) {
+      if (largerSeen.has(dependencyEntity)) {
+        continue
+      }
+      largerSeen.add(dependencyEntity)
+      appendKnownUniqueReverseEdge(dependencyEntity, formulaEntity)
+      continue
+    }
+    let seen = false
+    for (let previousIndex = 0; previousIndex < index; previousIndex += 1) {
+      if (dependencyEntities[previousIndex] === dependencyEntity) {
+        seen = true
+        break
+      }
+    }
+    if (seen) {
+      continue
+    }
+    if (index === 8 && dependencyEntities.length > 12) {
+      largerSeen = new Set(dependencyEntities.subarray(0, index + 1))
+    }
+    appendKnownUniqueReverseEdge(dependencyEntity, formulaEntity)
+  }
 }

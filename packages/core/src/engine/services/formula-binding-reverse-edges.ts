@@ -60,6 +60,16 @@ export function appendFormulaBindingReverseEdge(
   setFormulaBindingReverseEdgeSlice(state, entityId, edgeArena.appendUnique(slice, dependentEntityId))
 }
 
+export function appendKnownUniqueFormulaBindingReverseEdge(
+  state: FormulaBindingReverseEdgeState,
+  edgeArena: EdgeArena,
+  entityId: number,
+  dependentEntityId: number,
+): void {
+  const slice = getFormulaBindingReverseEdgeSlice(state, entityId) ?? edgeArena.empty()
+  setFormulaBindingReverseEdgeSlice(state, entityId, edgeArena.appendKnownUnique(slice, dependentEntityId))
+}
+
 export function removeFormulaBindingReverseEdge(
   state: FormulaBindingReverseEdgeState,
   edgeArena: EdgeArena,

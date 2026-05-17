@@ -5,7 +5,9 @@ import { compileFormula } from '@bilig/formula'
 import { SpreadsheetEngine } from '../engine.js'
 import { EngineFormulaBindingError } from '../engine/errors.js'
 import type { EngineCellMutationRef } from '../cell-mutations-at.js'
+import { makeCellEntity } from '../entity-ids.js'
 import { formulaBindingServiceTestHooks, type EngineFormulaBindingService } from '../engine/services/formula-binding-service.js'
+import { getFormulaBindingReverseEdgeSlice, type FormulaBindingReverseEdgeState } from '../engine/services/formula-binding-reverse-edges.js'
 import type { FormulaFamilyStore } from '../formula/formula-family-store.js'
 
 type DirectLookupTestDescriptor = NonNullable<Parameters<typeof formulaBindingServiceTestHooks.directLookupStructureEqual>[0]>
@@ -19,6 +21,10 @@ type DirectAggregateRewriteRegionGraph = Parameters<
   typeof formulaBindingServiceTestHooks.rewriteDirectAggregateDescriptorForStructuralTransform
 >[0]['regionGraph']
 type FormulaNodeTestValue = NonNullable<Parameters<typeof formulaBindingServiceTestHooks.staticIntegerValue>[0]>
+
+interface TestEdgeArena {
+  read(slice: { ptr: number; len: number; cap: number }): Uint32Array
+}
 
 function isEngineFormulaBindingService(value: unknown): value is EngineFormulaBindingService {
   if (typeof value !== 'object' || value === null) {
@@ -38,6 +44,10 @@ function isFormulaFamilyStore(value: unknown): value is FormulaFamilyStore {
     typeof Reflect.get(value, 'getStats') === 'function' &&
     typeof Reflect.get(value, 'listFamilies') === 'function'
   )
+}
+
+function isTestEdgeArena(value: unknown): value is TestEdgeArena {
+  return typeof value === 'object' && value !== null && typeof Reflect.get(value, 'read') === 'function'
 }
 
 function getBindingService(engine: SpreadsheetEngine): EngineFormulaBindingService {
@@ -83,6 +93,25 @@ function readRuntimeTemplateId(engine: SpreadsheetEngine, cellIndex: number): nu
   const formula = readRuntimeFormula(engine, cellIndex)
   const templateId = typeof formula === 'object' && formula !== null ? Reflect.get(formula, 'templateId') : undefined
   return typeof templateId === 'number' ? templateId : undefined
+}
+
+function readReverseDependents(engine: SpreadsheetEngine, dependencyCellIndex: number): number[] {
+  const reverseState = {
+    reverseCellEdges: Reflect.get(engine, 'reverseCellEdges'),
+    reverseRangeEdges: Reflect.get(engine, 'reverseRangeEdges'),
+    reverseDefinedNameEdges: Reflect.get(engine, 'reverseDefinedNameEdges'),
+    reverseTableEdges: Reflect.get(engine, 'reverseTableEdges'),
+    reverseSpillEdges: Reflect.get(engine, 'reverseSpillEdges'),
+    reverseAggregateColumnEdges: Reflect.get(engine, 'reverseAggregateColumnEdges'),
+    reverseExactLookupColumnEdges: Reflect.get(engine, 'reverseExactLookupColumnEdges'),
+    reverseSortedLookupColumnEdges: Reflect.get(engine, 'reverseSortedLookupColumnEdges'),
+  } as FormulaBindingReverseEdgeState
+  const edgeArena = Reflect.get(engine, 'edgeArena')
+  if (!isTestEdgeArena(edgeArena)) {
+    throw new TypeError('Expected engine edge arena')
+  }
+  const slice = getFormulaBindingReverseEdgeSlice(reverseState, makeCellEntity(dependencyCellIndex))
+  return slice ? [...edgeArena.read(slice)] : []
 }
 
 function binaryScalar(left: DirectScalarTestOperand, right: DirectScalarTestOperand): DirectScalarTestDescriptor {
@@ -376,6 +405,19 @@ describe('EngineFormulaBindingService', () => {
 
     expect(engine.getCell('Sheet1', 'B1').formula).toBeUndefined()
     expect(engine.getDependencies('Sheet1', 'A1').directDependents).toEqual([])
+  })
+
+  it('keeps one reverse edge for repeated references inside a fresh formula', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'binding-repeated-fresh-reference' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 3)
+    engine.setCellFormula('Sheet1', 'B1', 'A1+A1')
+
+    const inputIndex = engine.workbook.getCellIndex('Sheet1', 'A1')!
+    const formulaIndex = engine.workbook.getCellIndex('Sheet1', 'B1')!
+
+    expect(readReverseDependents(engine, inputIndex)).toEqual([formulaIndex])
   })
 
   it('clears direct lookup and criteria formula indexes through the service', async () => {

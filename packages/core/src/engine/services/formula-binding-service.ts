@@ -38,6 +38,7 @@ import {
 } from './formula-binding-direct-descriptors.js'
 import {
   appendFormulaBindingReverseEdge,
+  appendKnownUniqueFormulaBindingReverseEdge,
   getFormulaBindingReverseEdgeSlice,
   removeFormulaBindingReverseEdge,
   setFormulaBindingReverseEdgeSlice,
@@ -180,6 +181,10 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
 
   const appendReverseEdge = (entityId: number, dependentEntityId: number): void => {
     appendFormulaBindingReverseEdge(args.reverseState, args.edgeArena, entityId, dependentEntityId)
+  }
+
+  const appendKnownUniqueReverseEdge = (entityId: number, dependentEntityId: number): void => {
+    appendKnownUniqueFormulaBindingReverseEdge(args.reverseState, args.edgeArena, entityId, dependentEntityId)
   }
 
   const removeReverseEdge = (entityId: number, dependentEntityId: number): void => {
@@ -662,6 +667,7 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
       serviceArgs: args,
       formulaMemberCounts,
       appendReverseEdge,
+      appendKnownUniqueReverseEdge,
       appendDefinedNameReverseEdge,
       trackFormulaSheetIndexes,
       updateVolatileFormulaIndex,

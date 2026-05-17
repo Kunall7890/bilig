@@ -64,7 +64,7 @@ The generated-project command is being prepared as
 
 Current checked npm footprint for `@bilig/headless@0.17.1`:
 
-- Pack dry run: `423 kB` tarball, `2.53 MB` unpacked, `429` package entries.
+- Pack dry run: `422 kB` tarball, `2.53 MB` unpacked, `426` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
   import/export stays behind the `@bilig/headless/xlsx` subpath; MCP is the
   `bilig-workpaper-mcp` binary wrapper.
