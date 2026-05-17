@@ -4,6 +4,23 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.18.24
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.18.23
+- Manual override: no
+
+## Fixes
+- perf(core): bulk-restore dense runtime images (afe392dd)
+- fix(core): coalesce fragmented style rectangles (46041b3d)
+
+## Internal runtime changes
+- refactor(core): split direct scalar column fast paths (ca0da009)
+- refactor(core): isolate structural formula impacts (3d91bbb2)
+- docs(growth): refresh discovery conversion evidence (96fab221)
+- docs(growth): add mcprepository listing evidence (eedc7c42)
+- refactor(formula): isolate binder dependencies (36718d95)
+
 ## 0.18.23
 
 - Release type: patch
