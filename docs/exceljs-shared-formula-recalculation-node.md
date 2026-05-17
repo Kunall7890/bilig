@@ -115,7 +115,10 @@ For the smaller package-only recalculation check, use the
 [ExcelJS formula recalculation guide](exceljs-formula-recalculation-node.md).
 
 If you have a reduced shared-formula workbook that still fails this path, send
-it as a public fixture:
+it through the formula bug clinic:
+<https://proompteng.github.io/bilig/formula-bug-clinic.html>.
+
+When the reduced case is ready, open it as a public fixture:
 <https://github.com/proompteng/bilig/issues/new?template=workbook_fixture.yml>.
 
 ## Boundary

@@ -36,7 +36,8 @@ around the same WorkPaper model.
 | Public technical review  | [Show HN maintainer note](https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html)                                                                               | One shareable page has the npm check, benchmark caveat, known limits, and feedback ask.      |
 | Trust and performance    | [npm provenance](https://proompteng.github.io/bilig/npm-provenance-package-trust.html) and [benchmark evidence](https://proompteng.github.io/bilig/what-workpaper-benchmark-proves.html) | npm shows SLSA provenance, and benchmark claims match the checked artifact.                  |
 | Almost a fit             | [adoption blocker form](https://github.com/proompteng/bilig/discussions/new?category=general)                                                                                            | Name the formula, import/export, persistence, framework, MCP, package, or benchmark gap.     |
-| Real workbook blocked    | [submit a workbook fixture](https://proompteng.github.io/bilig/submit-workbook-fixture.html)                                                                                             | Share a reduced public case that can become a test, example, or corpus fixture.              |
+| Formula or XLSX bug      | [formula bug clinic](https://proompteng.github.io/bilig/formula-bug-clinic.html)                                                                                                         | Share a reduced public case that can become a test, example, corpus fixture, or docs proof.  |
+| Real workbook blocked    | [submit a workbook fixture](https://proompteng.github.io/bilig/submit-workbook-fixture.html)                                                                                             | Use the structured form when a reduced workbook is ready.                                    |
 
 ## Install
 

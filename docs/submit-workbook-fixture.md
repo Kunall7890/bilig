@@ -4,7 +4,9 @@ Status: public path for turning evaluator blockers into tests, examples, and
 docs
 
 Use this when Bilig is close to useful for your workbook, service, or agent
-workflow, but a real case is missing from the public proof set.
+workflow, but a real case is missing from the public proof set. If you are not
+sure how to reduce the case yet, start with the
+[formula bug clinic](formula-bug-clinic.md).
 
 The best reports are small enough to review and specific enough to become one
 of these artifacts:
@@ -22,6 +24,10 @@ Open the fixture form:
 If you want to discuss the shape before opening a fixture issue, use the public
 fixture discussion:
 <https://github.com/proompteng/bilig/discussions/414>.
+
+Common clinic cases include stale cached XLSX formula values, ExcelJS shared
+formulas that need expansion before recalculation, unsupported formula families,
+and agent-tool workflows that cannot prove read-after-write calculation.
 
 ## What To Send
 

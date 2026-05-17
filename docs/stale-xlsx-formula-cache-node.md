@@ -108,6 +108,7 @@ For a real service, keep the boundary boring:
 - [xlsx-calc alternative for Node workbook recalculation](xlsx-calc-alternative-node-workbook-recalculation.md)
 - [ExcelJS formula recalculation in Node.js](exceljs-formula-recalculation-node.md)
 - [Compatibility limits](where-bilig-is-not-excel-compatible-yet.md)
+- [Formula bug clinic](formula-bug-clinic.md)
 
 If this saved you from trusting a stale cached formula value, star or bookmark
 the repo:

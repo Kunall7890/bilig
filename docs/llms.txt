@@ -35,6 +35,7 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
 - https://proompteng.github.io/bilig/create-bilig-workpaper.html
 - https://proompteng.github.io/bilig/production-adoption-checklist-headless-workpaper.html
 - https://proompteng.github.io/bilig/npm-provenance-package-trust.html
+- https://proompteng.github.io/bilig/formula-bug-clinic.html
 - https://proompteng.github.io/bilig/submit-workbook-fixture.html
 - https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
 - https://proompteng.github.io/bilig/npm-eval.ts
@@ -203,6 +204,13 @@ npm run agent:verify
   https://github.com/proompteng/bilig/blob/main/docs/stale-xlsx-formula-cache-node.md
   explains why Node XLSX readers can return old cached formula values after
   input edits and when the backend needs a real formula runtime before readback.
+- formula bug clinic:
+  https://proompteng.github.io/bilig/formula-bug-clinic.html
+  https://github.com/proompteng/bilig/blob/main/docs/formula-bug-clinic.md
+  asks users to reduce stale cached XLSX values, ExcelJS shared-formula
+  failures, unsupported formulas, WorkPaper restore mismatches, and agent
+  readback blockers into public fixtures that can become tests, examples, or
+  docs proof.
 - Microsoft Graph Excel recalculation in Node.js:
   https://proompteng.github.io/bilig/microsoft-graph-excel-recalculation-node.html
   https://github.com/proompteng/bilig/blob/main/docs/microsoft-graph-excel-recalculation-node.md
