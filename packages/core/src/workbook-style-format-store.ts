@@ -306,35 +306,20 @@ function coalesceWorkbookRangeRecords<RecordType extends { range: CellRangeRef }
       return left.end.col - right.end.col
     })
 
-  const merged: Array<{ record: RecordType; startRow: number; endRow: number; startCol: number; endCol: number }> = []
-  sorted.forEach(({ record, start, end }) => {
+  type MergeEntry = {
+    record: RecordType
+    startRow: number
+    endRow: number
+    startCol: number
+    endCol: number
+  }
+
+  const entries: MergeEntry[] = sorted.map(({ record, start, end }) => {
     const startRow = Math.min(start.row, end.row)
     const endRow = Math.max(start.row, end.row)
     const startCol = Math.min(start.col, end.col)
     const endCol = Math.max(start.col, end.col)
-    const previous = merged[merged.length - 1]
-    if (
-      previous &&
-      canMerge(previous.record, record) &&
-      previous.record.range.sheetName === record.range.sheetName &&
-      ((previous.startCol === startCol && previous.endCol === endCol && startRow <= previous.endRow + 1) ||
-        (previous.startRow === startRow && previous.endRow === endRow && startCol <= previous.endCol + 1))
-    ) {
-      previous.startRow = Math.min(previous.startRow, startRow)
-      previous.endRow = Math.max(previous.endRow, endRow)
-      previous.startCol = Math.min(previous.startCol, startCol)
-      previous.endCol = Math.max(previous.endCol, endCol)
-      previous.record = cloneRecord(
-        {
-          sheetName: record.range.sheetName,
-          startAddress: formatAddress(previous.startRow, previous.startCol),
-          endAddress: formatAddress(previous.endRow, previous.endCol),
-        },
-        previous.record,
-      )
-      return
-    }
-    merged.push({
+    return {
       record: cloneRecord(
         {
           sheetName: record.range.sheetName,
@@ -347,8 +332,100 @@ function coalesceWorkbookRangeRecords<RecordType extends { range: CellRangeRef }
       endRow,
       startCol,
       endCol,
-    })
+    }
   })
 
+  let merged = entries
+  let changed = true
+  while (changed) {
+    changed = false
+    const next: MergeEntry[] = []
+    for (const entry of merged) {
+      const mergeIndex = next.findIndex((candidate) => canMergeRangeEntries(candidate, entry, canMerge))
+      if (mergeIndex === -1) {
+        next.push(entry)
+        continue
+      }
+      next[mergeIndex] = mergeRangeEntries(next[mergeIndex]!, entry, cloneRecord)
+      changed = true
+    }
+    merged = next.toSorted(
+      (left, right) =>
+        left.record.range.sheetName.localeCompare(right.record.range.sheetName) ||
+        left.startRow - right.startRow ||
+        left.startCol - right.startCol ||
+        left.endRow - right.endRow ||
+        left.endCol - right.endCol,
+    )
+  }
+
   return merged.map(({ record }) => record)
+}
+
+function canMergeRangeEntries<RecordType extends { range: CellRangeRef }>(
+  left: {
+    record: RecordType
+    startRow: number
+    endRow: number
+    startCol: number
+    endCol: number
+  },
+  right: {
+    record: RecordType
+    startRow: number
+    endRow: number
+    startCol: number
+    endCol: number
+  },
+  canMerge: (left: RecordType, right: RecordType) => boolean,
+): boolean {
+  return (
+    canMerge(left.record, right.record) &&
+    left.record.range.sheetName === right.record.range.sheetName &&
+    ((left.startCol === right.startCol && left.endCol === right.endCol && right.startRow <= left.endRow + 1) ||
+      (left.startRow === right.startRow && left.endRow === right.endRow && right.startCol <= left.endCol + 1))
+  )
+}
+
+function mergeRangeEntries<RecordType extends { range: CellRangeRef }>(
+  left: {
+    record: RecordType
+    startRow: number
+    endRow: number
+    startCol: number
+    endCol: number
+  },
+  right: {
+    record: RecordType
+    startRow: number
+    endRow: number
+    startCol: number
+    endCol: number
+  },
+  cloneRecord: (range: CellRangeRef, record: RecordType) => RecordType,
+): {
+  record: RecordType
+  startRow: number
+  endRow: number
+  startCol: number
+  endCol: number
+} {
+  const startRow = Math.min(left.startRow, right.startRow)
+  const endRow = Math.max(left.endRow, right.endRow)
+  const startCol = Math.min(left.startCol, right.startCol)
+  const endCol = Math.max(left.endCol, right.endCol)
+  return {
+    record: cloneRecord(
+      {
+        sheetName: left.record.range.sheetName,
+        startAddress: formatAddress(startRow, startCol),
+        endAddress: formatAddress(endRow, endCol),
+      },
+      left.record,
+    ),
+    startRow,
+    endRow,
+    startCol,
+    endCol,
+  }
 }

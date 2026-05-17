@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  coalesceStyleRanges,
   getCellNumberFormat,
   getCellStyle,
   getRangeFormatId,
@@ -78,5 +79,32 @@ describe('workbook style format store', () => {
 
     expect(getStyleId(sheet, 0, 0, 'style-0')).toBe('style-a')
     expect(getRangeFormatId(sheet, 0, 0, 'format-0')).toBe('format-a')
+  })
+
+  it('coalesces fragmented style tiles that form a full rectangle', () => {
+    const sheet = {
+      styleRanges: [
+        {
+          range: { sheetName: 'Sheet1', startAddress: 'B3', endAddress: 'C3' },
+          styleId: 'style-a',
+        },
+        {
+          range: { sheetName: 'Sheet1', startAddress: 'B4', endAddress: 'B4' },
+          styleId: 'style-a',
+        },
+        {
+          range: { sheetName: 'Sheet1', startAddress: 'C4', endAddress: 'C4' },
+          styleId: 'style-a',
+        },
+      ],
+      formatRanges: [],
+    }
+
+    expect(coalesceStyleRanges(sheet)).toEqual([
+      {
+        range: { sheetName: 'Sheet1', startAddress: 'B3', endAddress: 'C4' },
+        styleId: 'style-a',
+      },
+    ])
   })
 })

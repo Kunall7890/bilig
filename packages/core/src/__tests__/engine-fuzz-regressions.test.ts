@@ -10,6 +10,33 @@ import {
 } from './engine-fuzz-helpers.js'
 
 describe('engine fuzz regressions', () => {
+  it('keeps coalesced style history aligned before structural row inserts', async () => {
+    const seedSnapshot = await createEngineSeedSnapshot('sparse-format', 'style-history-row-insert-regression')
+    const engine = new SpreadsheetEngine({
+      workbookName: seedSnapshot.workbook.name,
+      replicaId: 'style-history-row-insert-regression',
+    })
+    await engine.ready()
+    engine.importSnapshot(structuredClone(seedSnapshot))
+
+    const actions: CoreAction[] = [
+      {
+        kind: 'style',
+        range: { sheetName: 'Sheet1', startAddress: 'B3', endAddress: 'C4' },
+        patch: { fill: { backgroundColor: '#dbeafe' } },
+      },
+      { kind: 'insertRows', start: 3, count: 1 },
+    ]
+
+    engine.setRangeStyle(actions[0].range, actions[0].patch)
+    engine.setRangeStyle({ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }, { fill: { backgroundColor: '#dbeafe' } })
+    expect(engine.undo()).toBe(true)
+    engine.insertRows('Sheet1', 3, 1)
+
+    const expected = await exportReplaySnapshot(seedSnapshot, actions)
+    expect(normalizeSnapshotForSemanticComparison(engine.exportSnapshot())).toEqual(normalizeSnapshotForSemanticComparison(expected))
+  })
+
   it('does not mutate source cells when moveRange is blocked by protection', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'move-protection-regression' })
     await engine.ready()
