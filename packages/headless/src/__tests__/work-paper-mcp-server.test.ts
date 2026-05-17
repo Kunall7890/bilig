@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { createWorkPaperFromDocument, exportWorkPaperDocument, parseWorkPaperDocument, serializeWorkPaperDocument } from '../persistence.js'
+import { WORKPAPER_VERSION } from '../work-paper-version.js'
 import { createFileBackedWorkPaperMcpToolServer } from '../work-paper-mcp-file-server.js'
 import { parseWorkPaperMcpStdioCliArgs, workPaperMcpStdioHelpText } from '../work-paper-mcp-stdio-cli.js'
 import {
@@ -94,6 +95,10 @@ describe('WorkPaper MCP server', () => {
           tools: {
             listChanged: false,
           },
+        },
+        serverInfo: {
+          name: 'bilig-headless-workpaper',
+          version: WORKPAPER_VERSION,
         },
       },
     })

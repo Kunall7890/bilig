@@ -1,4 +1,5 @@
 import { buildDemoWorkPaper, createWorkPaperMcpToolServer, type WorkPaperMcpToolServer } from './work-paper-mcp-server.js'
+import { WORKPAPER_VERSION } from './work-paper-version.js'
 import type { WorkPaper } from './work-paper.js'
 import type { Readable, Writable } from 'node:stream'
 
@@ -16,7 +17,7 @@ function runDemoWorkPaperMcpStdioServer(options: WorkPaperMcpStdioOptions = {}):
   const output = options.output ?? process.stdout
   const server = options.server ?? createWorkPaperMcpToolServer(options.workbook ?? buildDemoWorkPaper())
   const serverName = options.serverName ?? 'bilig-headless-workpaper'
-  const serverVersion = options.serverVersion ?? '0.1.0'
+  const serverVersion = options.serverVersion ?? WORKPAPER_VERSION
   let inputBuffer = ''
 
   input.setEncoding('utf8')
