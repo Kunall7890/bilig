@@ -137,8 +137,8 @@ function formulaValuesAreAligned(
   return true
 }
 
-function compareFormulaInstanceToCoordinate(record: FormulaInstanceSnapshot, coords: RuntimeImageCellCoordinateSnapshot): number {
-  return record.row - coords.row || record.col - coords.col
+function compareFormulaInstanceToRowCol(record: FormulaInstanceSnapshot, row: number, col: number): number {
+  return record.row - row || record.col - col
 }
 
 interface RuntimeFormulaSheetSpan {
@@ -191,6 +191,11 @@ interface FreshRuntimeLogicalSheetInternals {
 }
 
 type FreshRuntimeCellAttacher = (row: number, col: number, cellIndex: number, rowId: string, colId: string) => void
+
+interface DenseRuntimeSheetRestorePlan {
+  readonly width: number
+  readonly height: number
+}
 
 class RestoredFormulaSourceRefTable implements EngineFormulaSourceRefTable {
   readonly sheetIds: Uint32Array
@@ -309,10 +314,42 @@ function createFreshRuntimeCellAttacher(workbook: WorkbookStore, sheet: SheetRec
     }
   }
 
+  const setGridCell = sheet.grid.createRowMajorSetter()
+
   return (row, col, cellIndex, rowId, colId) => {
     attachFreshVisibleCell(row, col, cellIndex, rowId, colId)
-    sheet.grid.set(row, col, cellIndex)
+    setGridCell(row, col, cellIndex)
   }
+}
+
+function getDenseRuntimeSheetRestorePlan(
+  sheet: WorkbookSnapshot['sheets'][number],
+  sheetCells: RuntimeImageSheetCellsSnapshot | undefined,
+): DenseRuntimeSheetRestorePlan | undefined {
+  const dimensions = sheetCells?.dimensions
+  if (!dimensions) {
+    return undefined
+  }
+  const { width, height } = dimensions
+  const cellCount = sheetCells.cellCount ?? sheetCells.coords.length
+  if (
+    !Number.isInteger(width) ||
+    !Number.isInteger(height) ||
+    width <= 0 ||
+    height <= 0 ||
+    cellCount !== sheet.cells.length ||
+    sheetCells.coords.length !== sheet.cells.length ||
+    width * height !== sheet.cells.length
+  ) {
+    return undefined
+  }
+  for (let index = 0; index < sheetCells.coords.length; index += 1) {
+    const coords = sheetCells.coords[index]!
+    if (coords.row !== Math.floor(index / width) || coords.col !== index % width) {
+      return undefined
+    }
+  }
+  return { width, height }
 }
 
 function restoreLiteralCell(
@@ -502,8 +539,8 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
   }
   args.checkEvaluationBudget?.()
   const formulaSpansBySheet = buildRuntimeFormulaSheetSpans(args.runtimeImage.formulaInstances)
-  const sheetCellsByName = new Map<string, readonly RuntimeImageCellCoordinateSnapshot[]>(
-    (args.runtimeImage.sheetCells ?? []).map((record) => [record.sheetName, record.coords]),
+  const sheetCellsByName = new Map<string, RuntimeImageSheetCellsSnapshot>(
+    (args.runtimeImage.sheetCells ?? []).map((record) => [record.sheetName, record]),
   )
   const totalCellCount = orderedSheets.reduce((sum, sheet) => sum + sheet.cells.length, 0)
   if (totalCellCount > 0) {
@@ -525,7 +562,8 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
           throw new Error(`Missing runtime restore sheet: ${sheet.name}`)
         }
         const sheetId = sheetRecord.id
-        const sheetCoords = sheetCellsByName.get(sheet.name)
+        const sheetCellSnapshot = sheetCellsByName.get(sheet.name)
+        const sheetCoords = sheetCellSnapshot?.coords
         const rowIds: string[] = []
         const colIds: string[] = []
         const ensureRowId = args.workbook.createLogicalAxisIdEnsurer(sheetId, 'row')
@@ -535,13 +573,11 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
         let formulaInstanceIndex = formulaSpan?.start ?? 0
         const formulaInstanceEnd = formulaSpan?.end ?? formulaInstanceIndex
         let literalColumns: WrittenColumnTracker | undefined
-        for (let index = 0; index < sheet.cells.length; index += 1) {
-          args.checkEvaluationBudget?.()
-          const cell = sheet.cells[index]!
-          const coords = sheetCoords?.[index] ?? readRestoredCellCoordinates(sheet.name, cell)
+
+        const restoreRuntimeCell = (cell: WorkbookSnapshotCell, row: number, col: number, cellIndex: number): void => {
           while (
             formulaInstanceIndex < formulaInstanceEnd &&
-            compareFormulaInstanceToCoordinate(args.runtimeImage.formulaInstances[formulaInstanceIndex]!, coords) < 0
+            compareFormulaInstanceToRowCol(args.runtimeImage.formulaInstances[formulaInstanceIndex]!, row, col) < 0
           ) {
             args.checkEvaluationBudget?.()
             formulaInstanceIndex += 1
@@ -549,15 +585,11 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
           const candidateFormula =
             formulaInstanceIndex < formulaInstanceEnd ? args.runtimeImage.formulaInstances[formulaInstanceIndex] : undefined
           const restoredFormula =
-            candidateFormula && compareFormulaInstanceToCoordinate(candidateFormula, coords) === 0 ? candidateFormula : undefined
-          const cellIndex = args.workbook.cellStore.allocateReserved(sheetId, coords.row, coords.col)
-          const rowId = (rowIds[coords.row] ??= ensureRowId(coords.row))
-          const colId = (colIds[coords.col] ??= ensureColId(coords.col))
-          attachFreshCell(coords.row, coords.col, cellIndex, rowId, colId)
+            candidateFormula && compareFormulaInstanceToRowCol(candidateFormula, row, col) === 0 ? candidateFormula : undefined
           if (cell.formula === undefined && restoredFormula === undefined) {
             writeLiteralToCellStore(args.workbook.cellStore, cellIndex, cell.value ?? null, args.strings)
             literalColumns ??= createWrittenColumnTracker()
-            markWrittenColumn(literalColumns, coords.col)
+            markWrittenColumn(literalColumns, col)
             if (cell.value === null) {
               args.workbook.cellStore.flags[cellIndex] = (args.workbook.cellStore.flags[cellIndex] ?? 0) | CellFlags.AuthoredBlank
             }
@@ -568,45 +600,45 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
           if (restoredFormula) {
             const cachedValue = formulaValueIndexAligned
               ? args.runtimeImage.formulaValues[formulaInstanceIndex]?.value
-              : formulaValuesByAddress?.get(sheet.name)?.get(toFormulaInstanceKey(coords.row, coords.col))
+              : formulaValuesByAddress?.get(sheet.name)?.get(toFormulaInstanceKey(row, col))
             const template =
               restoredFormula.templateId !== undefined && args.resolveTemplateById
-                ? args.resolveTemplateById(restoredFormula.templateId, restoredFormula.source, coords.row, coords.col)
+                ? args.resolveTemplateById(restoredFormula.templateId, restoredFormula.source, row, col)
                 : undefined
             if (args.initializeHydratedPreparedCellFormulasAt && cachedValue !== undefined) {
               if (template && !template.compiled.volatile && !template.compiled.producesSpill) {
                 hydratedPreparedFormulaRefs.push({
                   sheetId,
-                  row: coords.row,
-                  col: coords.col,
+                  row,
+                  col,
                   cellIndex,
                   source: restoredFormula.source,
                   compiled: template.compiled,
                   templateId: template.templateId,
                   value: cachedValue,
                 })
-                continue
+                return
               }
             }
             if (template && args.initializePreparedCellFormulasAt) {
               preparedFormulaRefs.push({
                 sheetId,
-                row: coords.row,
-                col: coords.col,
+                row,
+                col,
                 cellIndex,
                 source: restoredFormula.source,
                 compiled: template.compiled,
                 templateId: template.templateId,
               })
-              continue
+              return
             }
             formulaRefs.push({
               sheetId,
               cellIndex,
               mutation: {
                 kind: 'setCellFormula',
-                row: coords.row,
-                col: coords.col,
+                row,
+                col,
                 formula: restoredFormula.source,
               },
             })
@@ -616,11 +648,47 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
               cellIndex,
               mutation: {
                 kind: 'setCellFormula',
-                row: coords.row,
-                col: coords.col,
+                row,
+                col,
                 formula: cell.formula,
               },
             })
+          }
+        }
+
+        const denseRestorePlan = getDenseRuntimeSheetRestorePlan(sheet, sheetCellSnapshot)
+        if (denseRestorePlan) {
+          const firstCellIndex = args.workbook.cellStore.allocateDenseRowMajorAtReserved(
+            sheetId,
+            0,
+            denseRestorePlan.height,
+            0,
+            denseRestorePlan.width,
+          )
+          for (let col = 0; col < denseRestorePlan.width; col += 1) {
+            colIds[col] = ensureColId(col)
+          }
+          let index = 0
+          for (let row = 0; row < denseRestorePlan.height; row += 1) {
+            args.checkEvaluationBudget?.()
+            const rowId = (rowIds[row] ??= ensureRowId(row))
+            for (let col = 0; col < denseRestorePlan.width; col += 1) {
+              const cellIndex = firstCellIndex + index
+              attachFreshCell(row, col, cellIndex, rowId, colIds[col]!)
+              restoreRuntimeCell(sheet.cells[index]!, row, col, cellIndex)
+              index += 1
+            }
+          }
+        } else {
+          for (let index = 0; index < sheet.cells.length; index += 1) {
+            args.checkEvaluationBudget?.()
+            const cell = sheet.cells[index]!
+            const coords = sheetCoords?.[index] ?? readRestoredCellCoordinates(sheet.name, cell)
+            const cellIndex = args.workbook.cellStore.allocateReserved(sheetId, coords.row, coords.col)
+            const rowId = (rowIds[coords.row] ??= ensureRowId(coords.row))
+            const colId = (colIds[coords.col] ??= ensureColId(coords.col))
+            attachFreshCell(coords.row, coords.col, cellIndex, rowId, colId)
+            restoreRuntimeCell(cell, coords.row, coords.col, cellIndex)
           }
         }
         if (literalColumns && literalColumns.count > 0) {

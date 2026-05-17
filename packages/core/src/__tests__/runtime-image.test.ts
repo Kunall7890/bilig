@@ -1,7 +1,8 @@
 import { compileFormulaAst, parseFormula } from '@bilig/formula'
 import { ValueTag, type WorkbookSnapshot } from '@bilig/protocol'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { EngineFormulaSourceRefs } from '../cell-mutations-at.js'
+import { CellFlags } from '../cell-store.js'
 import { restoreWorkbookFromRuntimeImage, restoreWorkbookFromSnapshot } from '../snapshot/runtime-image.js'
 import { StringPool } from '../string-pool.js'
 import { WorkbookStore } from '../workbook-store.js'
@@ -183,6 +184,105 @@ describe('restoreWorkbookFromRuntimeImage', () => {
         },
       },
     ])
+  })
+
+  it('bulk-allocates dense row-major runtime-image sheets during restore', () => {
+    const workbook = new WorkbookStore('runtime-image-dense-restore')
+    const allocateDenseRowMajorAtReserved = vi.spyOn(workbook.cellStore, 'allocateDenseRowMajorAtReserved')
+    const allocateReserved = vi.spyOn(workbook.cellStore, 'allocateReserved')
+    const plainCalls: Array<{ mutation: { col: number; formula: string; kind: string; row: number }; sheetId: number }> = []
+    const snapshot: WorkbookSnapshot = {
+      version: 1,
+      workbook: { name: 'runtime-image-dense-restore' },
+      sheets: [
+        {
+          id: 1,
+          name: 'Sheet1',
+          order: 0,
+          cells: [
+            { address: 'A1', value: 1 },
+            { address: 'B1', value: 2 },
+            { address: 'C1', formula: 'A1+B1' },
+            { address: 'A2', value: 3 },
+            { address: 'B2', value: null },
+            { address: 'C2', formula: 'A2+1' },
+          ],
+        },
+      ],
+    }
+
+    restoreWorkbookFromRuntimeImage({
+      snapshot,
+      runtimeImage: {
+        version: 1,
+        templateBank: [],
+        formulaInstances: [
+          { cellIndex: 3, sheetName: 'Sheet1', row: 0, col: 2, source: 'A1+B1' },
+          { cellIndex: 6, sheetName: 'Sheet1', row: 1, col: 2, source: 'A2+1' },
+        ],
+        formulaValues: [],
+        sheetCells: [
+          {
+            sheetName: 'Sheet1',
+            cellCount: 6,
+            dimensions: { width: 3, height: 2 },
+            coords: [
+              { row: 0, col: 0 },
+              { row: 0, col: 1 },
+              { row: 0, col: 2 },
+              { row: 1, col: 0 },
+              { row: 1, col: 1 },
+              { row: 1, col: 2 },
+            ],
+          },
+        ],
+      },
+      workbook,
+      strings: new StringPool(),
+      resetWorkbook: () => {},
+      hydrateTemplateBank: () => {},
+      initializeCellFormulasAt: (refs) => {
+        plainCalls.push(...refs)
+      },
+    })
+
+    expect(allocateDenseRowMajorAtReserved).toHaveBeenCalledWith(1, 0, 2, 0, 3)
+    expect(allocateReserved).not.toHaveBeenCalled()
+    const sheet = workbook.getSheet('Sheet1')
+    expect(sheet).toBeDefined()
+    const a1 = sheet!.grid.get(0, 0)
+    const b2 = sheet!.grid.get(1, 1)
+    const c1 = sheet!.grid.get(0, 2)
+    const c2 = sheet!.grid.get(1, 2)
+    expect(workbook.cellStore.tags[a1]).toBe(ValueTag.Number)
+    expect(workbook.cellStore.numbers[a1]).toBe(1)
+    expect(workbook.cellStore.tags[b2]).toBe(ValueTag.Empty)
+    expect(workbook.cellStore.flags[b2] & CellFlags.AuthoredBlank).not.toBe(0)
+    expect(plainCalls).toEqual([
+      {
+        sheetId: 1,
+        cellIndex: c1,
+        mutation: {
+          kind: 'setCellFormula',
+          row: 0,
+          col: 2,
+          formula: 'A1+B1',
+        },
+      },
+      {
+        sheetId: 1,
+        cellIndex: c2,
+        mutation: {
+          kind: 'setCellFormula',
+          row: 1,
+          col: 2,
+          formula: 'A2+1',
+        },
+      },
+    ])
+
+    allocateDenseRowMajorAtReserved.mockRestore()
+    allocateReserved.mockRestore()
   })
 
   it('falls back to address-matched runtime formula values when value order is not aligned', () => {
