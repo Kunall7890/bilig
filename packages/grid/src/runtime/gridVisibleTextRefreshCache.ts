@@ -115,7 +115,11 @@ function tileVisibleTextNeedsLocalRefresh(
       col >= visibleBounds.visibleColStart &&
       col <= visibleBounds.visibleColEnd
     ) {
-      textRunsByCell.set(`${row}:${col}`, run.text)
+      const key = `${row}:${col}`
+      if (textRunsByCell.has(key)) {
+        return true
+      }
+      textRunsByCell.set(key, run.text)
     }
   }
 

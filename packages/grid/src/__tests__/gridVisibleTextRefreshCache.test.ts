@@ -31,6 +31,16 @@ describe('GridVisibleTextRefreshCache', () => {
     expect(cache.needsLocalRefresh(tile.tileId, tile, createInput({ engine: createEngine({ A1: 'A1' }) }))).toBe(true)
   })
 
+  it('rejects duplicate visible text runs for the same cell instead of allowing double text artifacts', () => {
+    const cache = new GridVisibleTextRefreshCache()
+    const tile = createTile({
+      textCount: 2,
+      textRuns: [createTextRun({ col: 0, row: 0, text: 'A1' }), createTextRun({ col: 0, row: 0, text: 'A1' })],
+    })
+
+    expect(cache.needsLocalRefresh(tile.tileId, tile, createInput({ engine: createEngine({ A1: 'A1' }) }))).toBe(true)
+  })
+
   it('accepts remote text only when the visible cell text matches the workbook state', () => {
     const cache = new GridVisibleTextRefreshCache()
     const tile = createTile({
