@@ -12,6 +12,7 @@ import {
 } from './public-workbook-corpus-json.ts'
 import {
   defaultCkanPortalBases,
+  defaultRecentComplexCkanPortalBases,
   discoverCkanWorkbookSources,
   discoverFinancialCkanQueries,
   discoverRecentComplexCkanQueries,
@@ -171,6 +172,31 @@ async function main(): Promise<void> {
     })
     return
   }
+  if (command === 'retarget') {
+    await withPublicWorkbookCorpusCacheLock(cacheDir, 'retarget', async () => {
+      if (!existsSync(manifestPath)) {
+        throw new Error(`Public workbook corpus manifest does not exist at ${formatCommandPath(manifestPath)}`)
+      }
+      const manifest = readManifest(manifestPath)
+      if (targetWorkbookCount < manifest.artifacts.length) {
+        throw new Error(
+          `Cannot set target workbook count below cached artifact count: ${String(targetWorkbookCount)} < ${String(
+            manifest.artifacts.length,
+          )}`,
+        )
+      }
+      writeJson(
+        manifestPath,
+        {
+          ...manifest,
+          targetWorkbookCount,
+          generatedAt: new Date().toISOString(),
+        },
+        'public-workbook-corpus-manifest',
+      )
+    })
+    return
+  }
   if (command === 'link-plan') {
     const linkInput = readPublicWorkbookLinkInput(command)
     const manifest = readOrCreateManifest(manifestPath, targetWorkbookCount)
@@ -326,7 +352,7 @@ async function main(): Promise<void> {
     await withPublicWorkbookCorpusCacheLock(cacheDir, 'discover-recent-complex-ckan', async () => {
       const manifest = await discoverRecentComplexCkanQueries({
         manifest: readOrCreateManifest(manifestPath, targetWorkbookCount),
-        portalBases: readRepeatedStringArg('--portal').length > 0 ? readRepeatedStringArg('--portal') : defaultCkanPortalBases,
+        portalBases: readRepeatedStringArg('--portal').length > 0 ? readRepeatedStringArg('--portal') : defaultRecentComplexCkanPortalBases,
         queries: queries.length > 0 ? queries : defaultRecentComplexWorkbookQueries,
         limit: readNumberArg('--limit', targetWorkbookCount),
         rowsPerRequest,

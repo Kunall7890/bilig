@@ -245,6 +245,65 @@ describe('public workbook corpus CLI resource guards', () => {
     })
   })
 
+  it('retargets an existing manifest without dropping sources or artifacts', () => {
+    const artifactA = workbookArtifact('workbook-a')
+    const artifactB = workbookArtifact('workbook-b')
+    const dir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-cli-retarget-'))
+    const manifestPath = join(dir, 'manifest.json')
+    const manifest = {
+      ...manifestWithArtifacts([artifactA, artifactB]),
+      targetWorkbookCount: 2,
+      artifacts: [artifactA],
+      fetchState: { exhaustedSourceIds: [artifactB.sourceId] },
+    }
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
+
+    const result = spawnSync(
+      'bun',
+      [corpusScriptPath(), 'retarget', '--manifest', manifestPath, '--cache-dir', dir, '--target-workbook-count', '5'],
+      {
+        encoding: 'utf8',
+      },
+    )
+    const retargetedManifest: unknown = JSON.parse(readFileSync(manifestPath, 'utf8'))
+
+    expect(result.status).toBe(0)
+    expect(retargetedManifest).toMatchObject({
+      targetWorkbookCount: 5,
+      sources: manifest.sources,
+      artifacts: [artifactA],
+      fetchState: { exhaustedSourceIds: [artifactB.sourceId] },
+    })
+  })
+
+  it('refuses to retarget below already cached artifacts', () => {
+    const artifactA = workbookArtifact('workbook-a')
+    const artifactB = workbookArtifact('workbook-b')
+    const dir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-cli-retarget-below-cache-'))
+    const manifestPath = join(dir, 'manifest.json')
+    const manifest = {
+      ...manifestWithArtifacts([artifactA, artifactB]),
+      targetWorkbookCount: 2,
+    }
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
+
+    const result = spawnSync(
+      'bun',
+      [corpusScriptPath(), 'retarget', '--manifest', manifestPath, '--cache-dir', dir, '--target-workbook-count', '1'],
+      {
+        encoding: 'utf8',
+      },
+    )
+    const manifestAfterBlockedRetarget: unknown = JSON.parse(readFileSync(manifestPath, 'utf8'))
+
+    expect(result.status).not.toBe(0)
+    expect(result.stderr).toContain('Cannot set target workbook count below cached artifact count: 1 < 2')
+    expect(manifestAfterBlockedRetarget).toMatchObject({
+      targetWorkbookCount: 2,
+      artifacts: [artifactA, artifactB],
+    })
+  })
+
   it('refuses in-process verification unless explicitly enabled for debugging', () => {
     const env = { ...process.env }
     delete env.BILIG_ALLOW_IN_PROCESS_PUBLIC_CORPUS_VERIFY

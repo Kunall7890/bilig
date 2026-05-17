@@ -125,6 +125,7 @@ describe('public workbook recent complex headless corpus gate', () => {
 
     expect(summary).toMatchObject({
       targetWorkbookCount: 1,
+      manifestTargetWorkbookCount: 1,
       publicPassingRecentComplexCount: 1,
       endToEndPassingWorkbookCount: 1,
       remainingToTarget: 0,
@@ -137,10 +138,88 @@ describe('public workbook recent complex headless corpus gate', () => {
     const scripts = readPackageScripts()
 
     expect(scripts['public-workbook-corpus:recent-complex:plan']).toBe('bun scripts/public-workbook-corpus-recent-complex.ts plan')
+    expect(scripts['public-workbook-corpus:retarget-recent-complex']).toContain('public-workbook-corpus.ts retarget')
     expect(scripts['public-workbook-corpus:discover-recent-complex']).toContain('discover-recent-complex-ckan')
+    expect(scripts['public-workbook-corpus:discover-recent-complex-hdx']).toContain('https://data.humdata.org/api/3/action')
     expect(scripts['public-workbook-corpus:fetch-recent-complex']).toContain('--fetch-batch-size 2')
     expect(scripts['public-workbook-corpus:headless-recent-complex']).toContain('public-workbook-corpus-recent-complex.ts headless')
     expect(scripts['public-workbook-corpus:check-recent-complex']).toContain('--require-target')
+  })
+
+  it('reports when the manifest target must be expanded before fetching more artifacts', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-recent-complex-retarget-'))
+    const cacheDir = join(dir, 'cache')
+    const manifestPath = join(dir, 'manifest.json')
+    const scorecardPath = join(dir, 'scorecard.json')
+    const headlessScorecardPath = join(dir, 'headless-scorecard.json')
+    const selectedArtifact = recentArtifact('recent-complex')
+    const manifest = {
+      ...createEmptyPublicWorkbookManifest('2026-05-07T00:00:00.000Z', 1),
+      artifacts: [selectedArtifact],
+      sources: [sourceFor(selectedArtifact)],
+    }
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
+    writeFileSync(scorecardPath, `${JSON.stringify(scorecardFor([passedCase(selectedArtifact)]), null, 2)}\n`)
+
+    const summary = buildPublicWorkbookCorpusRecentComplexSummary({
+      cacheDir,
+      childTimeoutMs: 31_000,
+      corpusRunStopMarkerPath: join(dir, 'missing-stop.md'),
+      generatedAt: '2026-05-08T00:00:00.000Z',
+      headlessScorecardPath,
+      manifestPath,
+      maxFileBytes: 50 * 1024 * 1024,
+      minComplexityScore: 5,
+      minFormulaCells: 10,
+      scorecardPath,
+      targetWorkbookCount: 2,
+      timeoutMs: 30_000,
+    })
+
+    expect(summary.manifestTargetWorkbookCount).toBe(1)
+    expect(summary.commands.retarget).toContain('public-workbook-corpus.ts retarget')
+    expect(summary.commands.retarget).toContain('--target-workbook-count 2')
+    expect(summary.commands.discoverHdx).toContain('https://data.humdata.org/api/3/action')
+    expect(summary.commands.discoverHdx).toContain('--query 2025')
+    expect(summary.commands.discoverHdx).toContain('--query 2026')
+    expect(validatePublicWorkbookCorpusRecentComplexSummary(summary)).toContain(
+      'manifest target workbook count is below the recent complex target',
+    )
+  })
+
+  it('does not suggest retargeting below the cached artifact count', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-recent-complex-safe-retarget-'))
+    const cacheDir = join(dir, 'cache')
+    const manifestPath = join(dir, 'manifest.json')
+    const scorecardPath = join(dir, 'scorecard.json')
+    const headlessScorecardPath = join(dir, 'headless-scorecard.json')
+    const artifactA = recentArtifact('recent-complex-a')
+    const artifactB = recentArtifact('recent-complex-b')
+    const manifest = {
+      ...createEmptyPublicWorkbookManifest('2026-05-07T00:00:00.000Z', 3),
+      artifacts: [artifactA, artifactB],
+      sources: [sourceFor(artifactA), sourceFor(artifactB)],
+    }
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
+    writeFileSync(scorecardPath, `${JSON.stringify(scorecardFor([passedCase(artifactA), passedCase(artifactB)]), null, 2)}\n`)
+
+    const summary = buildPublicWorkbookCorpusRecentComplexSummary({
+      cacheDir,
+      childTimeoutMs: 31_000,
+      corpusRunStopMarkerPath: join(dir, 'missing-stop.md'),
+      generatedAt: '2026-05-08T00:00:00.000Z',
+      headlessScorecardPath,
+      manifestPath,
+      maxFileBytes: 50 * 1024 * 1024,
+      minComplexityScore: 5,
+      minFormulaCells: 10,
+      scorecardPath,
+      targetWorkbookCount: 1,
+      timeoutMs: 30_000,
+    })
+
+    expect(summary.commands.retarget).toContain('--target-workbook-count 2')
+    expect(summary.commands.retarget).not.toContain('--target-workbook-count 1')
   })
 })
 

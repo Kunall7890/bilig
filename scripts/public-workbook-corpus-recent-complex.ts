@@ -24,6 +24,7 @@ export interface PublicWorkbookCorpusRecentComplexSummary {
   readonly suite: 'public-workbook-corpus-recent-complex-headless'
   readonly generatedAt: string
   readonly targetWorkbookCount: number
+  readonly manifestTargetWorkbookCount: number | null
   readonly manifestArtifactCount: number
   readonly publicScorecardCaseCount: number
   readonly recentArtifactCount: number
@@ -39,7 +40,9 @@ export interface PublicWorkbookCorpusRecentComplexSummary {
   readonly samplePassingArtifactIds: readonly string[]
   readonly sampleMissingHeadlessArtifactIds: readonly string[]
   readonly commands: {
+    readonly retarget: string
     readonly discover: string
+    readonly discoverHdx: string
     readonly fetch: string
     readonly publicVerify: string
     readonly headlessVerify: string
@@ -218,6 +221,7 @@ export function buildPublicWorkbookCorpusRecentComplexSummary(args: RecentComple
     suite: 'public-workbook-corpus-recent-complex-headless',
     generatedAt: args.generatedAt,
     targetWorkbookCount: args.targetWorkbookCount,
+    manifestTargetWorkbookCount: manifest?.targetWorkbookCount ?? null,
     manifestArtifactCount: artifacts.length,
     publicScorecardCaseCount: scorecard?.cases.length ?? 0,
     recentArtifactCount: artifacts.filter(hasRecentWorkbookEvidence).length,
@@ -240,7 +244,7 @@ export function buildPublicWorkbookCorpusRecentComplexSummary(args: RecentComple
       .filter((entry) => !isPassingHeadlessResult(entry.headless))
       .slice(0, 20)
       .map((entry) => entry.candidate.artifact.id),
-    commands: recentComplexCommands(args),
+    commands: recentComplexCommands(args, { minimumManifestTargetWorkbookCount: artifacts.length }),
   }
 }
 
@@ -258,6 +262,9 @@ export function validatePublicWorkbookCorpusRecentComplexSummary(
   }
   if (summary.endToEndPassingWorkbookCount > summary.publicPassingRecentComplexCount) {
     findings.push('end-to-end passing workbook count exceeds public passing recent complex count')
+  }
+  if (summary.manifestTargetWorkbookCount !== null && summary.manifestTargetWorkbookCount < summary.targetWorkbookCount) {
+    findings.push('manifest target workbook count is below the recent complex target')
   }
   if (summary.remainingToTarget !== Math.max(0, summary.targetWorkbookCount - summary.endToEndPassingWorkbookCount)) {
     findings.push('remaining target count is stale')
@@ -399,7 +406,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
-function recentComplexCommands(args: RecentComplexArgs): PublicWorkbookCorpusRecentComplexSummary['commands'] {
+function recentComplexCommands(
+  args: RecentComplexArgs,
+  options: { readonly minimumManifestTargetWorkbookCount?: number } = {},
+): PublicWorkbookCorpusRecentComplexSummary['commands'] {
+  const retargetWorkbookCount = Math.max(args.targetWorkbookCount, options.minimumManifestTargetWorkbookCount ?? 0)
   const sharedArgs = [
     '--manifest',
     formatCommandPath(args.manifestPath),
@@ -420,6 +431,17 @@ function recentComplexCommands(args: RecentComplexArgs): PublicWorkbookCorpusRec
     String(args.minComplexityScore),
   ]
   return {
+    retarget: formatShellCommand([
+      'bun',
+      'scripts/public-workbook-corpus.ts',
+      'retarget',
+      '--manifest',
+      formatCommandPath(args.manifestPath),
+      '--cache-dir',
+      formatCommandPath(args.cacheDir),
+      '--target-workbook-count',
+      String(retargetWorkbookCount),
+    ]),
     discover: formatShellCommand([
       'bun',
       'scripts/public-workbook-corpus.ts',
@@ -427,6 +449,20 @@ function recentComplexCommands(args: RecentComplexArgs): PublicWorkbookCorpusRec
       ...sharedArgs,
       '--limit',
       String(args.targetWorkbookCount * 5),
+    ]),
+    discoverHdx: formatShellCommand([
+      'bun',
+      'scripts/public-workbook-corpus.ts',
+      'discover-recent-complex-ckan',
+      ...sharedArgs,
+      '--limit',
+      String(args.targetWorkbookCount * 5),
+      '--portal',
+      'https://data.humdata.org/api/3/action',
+      '--query',
+      '2025',
+      '--query',
+      '2026',
     ]),
     fetch: formatShellCommand([
       'bun',
