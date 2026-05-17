@@ -181,14 +181,10 @@ describe('work paper batched structural fast path', () => {
       a1: `C${appendCount + 2}`,
       newValue: { tag: ValueTag.Number, value: (appendCount + 2) * 3 },
     })
-    expect(applyCellMutations).toHaveBeenCalledTimes(2)
-    expect(applyCellMutations.mock.calls[0]?.[0]).toHaveLength(appendCount * 2)
+    expect(applyCellMutations).toHaveBeenCalledTimes(1)
+    expect(applyCellMutations.mock.calls[0]?.[0]).toHaveLength(appendCount * 3)
     expect(applyCellMutations.mock.calls[0]?.[1]).toMatchObject({
-      potentialNewCells: appendCount * 2,
-    })
-    expect(applyCellMutations.mock.calls[1]?.[0]).toHaveLength(appendCount)
-    expect(applyCellMutations.mock.calls[1]?.[1]).toMatchObject({
-      potentialNewCells: appendCount,
+      potentialNewCells: appendCount * 3,
     })
     expect(dimensionUpdates.matrixImpactCount).toBe(1)
     expect(dimensionUpdates.refScanCount).toBe(0)

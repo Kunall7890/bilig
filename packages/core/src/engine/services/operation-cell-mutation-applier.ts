@@ -184,6 +184,9 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
     if (tryApplySingleExistingDirectLiteralMutation(refs, batch, source)) {
       return
     }
+    if (freshDirectAggregateFormulaBatchFastPath?.tryApplyFreshDirectAggregateFormulaMatrixBatch(refs, batch, source, potentialNewCells)) {
+      return
+    }
     if (tryApplyCoalescedDirectScalarLiteralBatch(refs, batch, source, potentialNewCells)) {
       return
     }
