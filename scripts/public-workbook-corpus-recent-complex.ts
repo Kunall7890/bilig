@@ -26,6 +26,8 @@ export interface PublicWorkbookCorpusRecentComplexSummary {
   readonly targetWorkbookCount: number
   readonly manifestTargetWorkbookCount: number | null
   readonly manifestArtifactCount: number
+  readonly recommendedManifestTargetWorkbookCount: number
+  readonly recommendedFetchArtifactLimit: number
   readonly publicScorecardCaseCount: number
   readonly recentArtifactCount: number
   readonly publicPassingRecentComplexCount: number
@@ -244,7 +246,11 @@ export function buildPublicWorkbookCorpusRecentComplexSummary(args: RecentComple
       .filter((entry) => !isPassingHeadlessResult(entry.headless))
       .slice(0, 20)
       .map((entry) => entry.candidate.artifact.id),
-    commands: recentComplexCommands(args, { minimumManifestTargetWorkbookCount: artifacts.length }),
+    recommendedManifestTargetWorkbookCount: recommendedManifestTargetWorkbookCount(args, manifest, artifacts.length),
+    recommendedFetchArtifactLimit: recommendedFetchArtifactLimit(args, manifest, artifacts.length),
+    commands: recentComplexCommands(args, {
+      minimumManifestTargetWorkbookCount: recommendedManifestTargetWorkbookCount(args, manifest, artifacts.length),
+    }),
   }
 }
 
@@ -411,6 +417,7 @@ function recentComplexCommands(
   options: { readonly minimumManifestTargetWorkbookCount?: number } = {},
 ): PublicWorkbookCorpusRecentComplexSummary['commands'] {
   const retargetWorkbookCount = Math.max(args.targetWorkbookCount, options.minimumManifestTargetWorkbookCount ?? 0)
+  const fetchArtifactLimit = Math.max(args.targetWorkbookCount, options.minimumManifestTargetWorkbookCount ?? 0)
   const sharedArgs = [
     '--manifest',
     formatCommandPath(args.manifestPath),
@@ -470,7 +477,7 @@ function recentComplexCommands(
       'fetch',
       ...sharedArgs,
       '--limit',
-      String(args.targetWorkbookCount),
+      String(fetchArtifactLimit),
       '--fetch-batch-size',
       '2',
       '--max-bytes',
@@ -489,6 +496,22 @@ function recentComplexCommands(
     headlessVerify: formatShellCommand(['bun', 'scripts/public-workbook-corpus-recent-complex.ts', 'headless', ...checkArgs]),
     check: formatShellCommand(['bun', 'scripts/public-workbook-corpus-recent-complex.ts', 'check', ...checkArgs, '--require-target']),
   }
+}
+
+function recommendedManifestTargetWorkbookCount(
+  args: RecentComplexArgs,
+  manifest: ReturnType<typeof readManifestIfExists>,
+  artifactCount: number,
+): number {
+  return Math.max(args.targetWorkbookCount, manifest?.targetWorkbookCount ?? 0, artifactCount)
+}
+
+function recommendedFetchArtifactLimit(
+  args: RecentComplexArgs,
+  manifest: ReturnType<typeof readManifestIfExists>,
+  artifactCount: number,
+): number {
+  return recommendedManifestTargetWorkbookCount(args, manifest, artifactCount)
 }
 
 function formatShellCommand(parts: readonly string[]): string {

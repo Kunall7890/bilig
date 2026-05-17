@@ -163,6 +163,7 @@ describe('public workbook recent complex headless corpus gate', () => {
     expect(scripts['public-workbook-corpus:discover-recent-complex']).toContain('discover-recent-complex-ckan')
     expect(scripts['public-workbook-corpus:discover-recent-complex-hdx']).toContain('https://data.humdata.org/api/3/action')
     expect(scripts['public-workbook-corpus:fetch-recent-complex']).toContain('--fetch-batch-size 2')
+    expect(scripts['public-workbook-corpus:fetch-recent-complex']).toContain('--limit 5000')
     expect(scripts['public-workbook-corpus:headless-recent-complex']).toContain('public-workbook-corpus-recent-complex.ts headless')
     expect(scripts['public-workbook-corpus:check-recent-complex']).toContain('--require-target')
   })
@@ -208,7 +209,7 @@ describe('public workbook recent complex headless corpus gate', () => {
     )
   })
 
-  it('does not suggest retargeting below the cached artifact count', () => {
+  it('does not suggest retargeting or fetching below the current manifest target', () => {
     const dir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-recent-complex-safe-retarget-'))
     const cacheDir = join(dir, 'cache')
     const manifestPath = join(dir, 'manifest.json')
@@ -239,8 +240,12 @@ describe('public workbook recent complex headless corpus gate', () => {
       timeoutMs: 30_000,
     })
 
-    expect(summary.commands.retarget).toContain('--target-workbook-count 2')
+    expect(summary.recommendedManifestTargetWorkbookCount).toBe(3)
+    expect(summary.recommendedFetchArtifactLimit).toBe(3)
+    expect(summary.commands.retarget).toContain('--target-workbook-count 3')
     expect(summary.commands.retarget).not.toContain('--target-workbook-count 1')
+    expect(summary.commands.fetch).toContain('--limit 3')
+    expect(summary.commands.fetch).not.toContain('--limit 1')
   })
 })
 
