@@ -337,6 +337,10 @@ MCP examples:
   `set_workpaper_input_cell` call, then asserts formula readback and JSON
   persistence:
   <https://github.com/proompteng/bilig/blob/main/docs/mcp-workpaper-tool-server.md#copy-paste-json-rpc-transcript>.
+- `NODE_NO_WARNINGS=1 npm run --silent agent:mcp-file-transcript` runs the
+  packaged `bilig-workpaper-mcp --workpaper` file-backed mode, persists an
+  input edit to WorkPaper JSON, and verifies a recalculated cell:
+  <https://github.com/proompteng/bilig/blob/main/docs/mcp-workpaper-tool-server.md#copy-paste-json-rpc-transcript>.
 - `npm run agent:mcp-stdio` runs the same handlers over newline-delimited
   stdio.
 - The package ships a stdio binary:

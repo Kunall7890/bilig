@@ -7,6 +7,7 @@
     "agent:ai-sdk-generate-text": "node --disable-warning=DEP0205 --import tsx ai-sdk-generate-text-tool-smoke.ts",
     "agent:ai-sdk-stream-text": "node --disable-warning=DEP0205 --import tsx ai-sdk-stream-text-tool-smoke.ts",
     "agent:framework-adapters": "node --disable-warning=DEP0205 --import tsx agent-framework-adapters.ts",
+    "agent:mcp-file-transcript": "node --disable-warning=DEP0205 --import tsx file-backed-mcp-stdio-transcript.ts",
     "agent:mcp-stdio": "node --disable-warning=DEP0205 --import tsx mcp-stdio-server.ts",
     "agent:mcp-transcript": "node --disable-warning=DEP0205 --import tsx mcp-stdio-transcript.ts",
     "agent:mcp-tools": "node --disable-warning=DEP0205 --import tsx mcp-tool-server.ts",

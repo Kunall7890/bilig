@@ -60,6 +60,7 @@ job you are evaluating:
 | Does the package work from npm?            | `npm run npm-eval`                | You want the smallest install/edit/recalculate/restore proof.                 |
 | Can an agent safely write workbook inputs? | `npm run agent:tool-call`         | You need before/after computed readback and persisted restore verification.   |
 | Can MCP drive a real WorkPaper tool loop?  | `npm run agent:mcp-transcript`    | You want a JSON-RPC transcript for list tools, set input, and read output.    |
+| Can MCP edit a saved WorkPaper JSON file?  | `npm run agent:mcp-file-transcript` | You want proof that the packaged binary writes a real file-backed workbook. |
 | Does this fit framework/server code?       | `npm run agent:framework-adapters` | You want wrapper shapes for AI SDK, LangChain, Mastra, LlamaIndex, and more.  |
 
 If none of those paths answers your question, open a
@@ -79,6 +80,7 @@ expected formula family, persistence requirement, or import/export constraint.
 | Agent framework adapters | `npm run agent:framework-adapters`   | TypeScript wrappers for AI SDK, LangChain, Mastra, LlamaIndex.TS, LangGraph.js, CopilotKit, Cloudflare Agents, and CrewAI |
 | MCP tool server shape    | `npm run agent:mcp-tools`            | `tools/list`, `tools/call`, verified edits                                                                        |
 | MCP stdio transcript     | `npm run agent:mcp-transcript`       | starts stdio server, sends JSON-RPC, parses verified write/readback                                               |
+| MCP file transcript      | `npm run agent:mcp-file-transcript`  | runs the packaged binary with `--workpaper`, persists an edit, and verifies recalculated readback                  |
 | MCP stdio server         | `npm run agent:mcp-stdio`            | newline-delimited JSON-RPC over stdin/stdout                                                                      |
 | npm package eval         | `npm run npm-eval`                   | the same `.ts` file used by the npm-only smoke test                                                               |
 | Agent writeback check    | `npm run agent:verify`               | exact input edits and formula preservation                                                                        |

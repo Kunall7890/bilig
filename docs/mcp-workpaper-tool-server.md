@@ -136,6 +136,20 @@ File-backed mode loads `./pricing.workpaper.json`, exposes `list_sheets`,
 WorkPaper JSON back to the same file after `set_cell_contents` when `--writable`
 is present. Omit `--writable` for read-only inspection.
 
+Use the maintained file-backed transcript when a directory reviewer or agent
+builder needs proof that the packaged binary mutates a real WorkPaper JSON file:
+
+```sh
+cd examples/headless-workpaper
+npm install
+NODE_NO_WARNINGS=1 npm run --silent agent:mcp-file-transcript
+```
+
+A passing run starts `npm exec --package @bilig/headless@latest --
+bilig-workpaper-mcp --workpaper pricing.workpaper.json --writable`, lists the
+file-backed tool surface, writes `Inputs!B3`, persists the JSON file, reads
+`Summary!B3`, and asserts that the recalculated value is `96000`.
+
 The package carries `mcpName: io.github.proompteng/bilig-workpaper` and a
 matching `server.json`. It is published in the official MCP Registry as
 `io.github.proompteng/bilig-workpaper`:
