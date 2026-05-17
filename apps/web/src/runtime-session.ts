@@ -301,7 +301,11 @@ export async function createWorkerRuntimeSessionController(
   const handle: WorkerHandle = { viewportStore }
   const fetchImpl = input.fetchImpl ?? fetch
   const authoritativeSyncEnabled = input.authoritativeSyncEnabled ?? true
-  const restoredMutationJournal = input.persistState ? loadPersistedWorkbookMutationJournal(input.documentId) : null
+  const mutationJournalScope = {
+    documentId: input.documentId,
+    replicaId: input.replicaId,
+  }
+  const restoredMutationJournal = input.persistState ? loadPersistedWorkbookMutationJournal(mutationJournalScope) : null
   let currentSelection = input.initialSelection
   let currentRuntimeState = createInitialRuntimeState(input.documentId)
   viewportStore.setKnownSheets(currentRuntimeState.sheetNames)
@@ -450,7 +454,7 @@ export async function createWorkerRuntimeSessionController(
       return
     }
     const entries = await invokeWorkerMethod(client, 'listMutationJournalEntries', isPendingWorkbookMutationList)
-    persistWorkbookMutationJournal(input.documentId, entries)
+    persistWorkbookMutationJournal(mutationJournalScope, entries)
   }
 
   const applyAuthoritativeEventBatch = async (eventBatch: AuthoritativeWorkbookEventBatch): Promise<boolean> => {

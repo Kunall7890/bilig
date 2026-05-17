@@ -19,6 +19,7 @@ import { getWorkbookScrollPerfCollector } from './perf/workbook-scroll-perf.js'
 import { registerRuntimeDisposalHandlers } from './runtime-disposal-handlers.js'
 import { isInstallBenchmarkCorpusResult } from './benchmark-corpus-result.js'
 import { loadOrCreateWorkbookPresenceClientId } from './workbook-presence-client.js'
+import { loadOrCreateWorkbookReplicaId } from './workbook-replica-client.js'
 import { useWorkerWorkbookAgentContext } from './use-worker-workbook-agent-context.js'
 import { useWorkerWorkbookGridState } from './use-worker-workbook-grid-state.js'
 import { useWorkerWorkbookInteractionState } from './use-worker-workbook-interaction-state.js'
@@ -91,7 +92,10 @@ export function useWorkerWorkbookAppState(input: {
       } satisfies LocalOnlyZeroSource),
     [zero],
   )
-  const replicaId = useMemo(() => `browser:${Math.random().toString(36).slice(2)}`, [])
+  const replicaId = useMemo(
+    () => loadOrCreateWorkbookReplicaId(documentId, runtimeConfig.currentUserId),
+    [documentId, runtimeConfig.currentUserId],
+  )
   const presenceClientId = useMemo(() => loadOrCreateWorkbookPresenceClientId(), [])
   const initialSelection = useMemo(() => loadPersistedSelection(documentId), [documentId])
   const perfSession = useMemo(() => createWorkbookPerfSession({ documentId }), [documentId])

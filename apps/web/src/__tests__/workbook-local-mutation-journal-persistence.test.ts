@@ -2,6 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { PendingWorkbookMutation } from '../workbook-sync.js'
 import { loadPersistedWorkbookMutationJournal, persistWorkbookMutationJournal } from '../workbook-local-mutation-journal-persistence.js'
 
+const scope = {
+  documentId: 'doc-1',
+  replicaId: 'browser:test',
+}
+
 function createStorage() {
   const values = new Map<string, string>()
   const removeItem = vi.fn((key: string) => {
@@ -26,7 +31,7 @@ function createStorage() {
 
 function mutation(overrides: Partial<PendingWorkbookMutation> = {}): PendingWorkbookMutation {
   return {
-    id: 'doc-1:pending:1',
+    id: 'doc-1:browser:test:pending:1',
     localSeq: 1,
     baseRevision: 0,
     method: 'clearCell',
@@ -60,38 +65,56 @@ describe('workbook local mutation journal persistence', () => {
   })
 
   it('persists active mutations and restores the next local sequence', () => {
-    persistWorkbookMutationJournal('doc-1', [
-      mutation({ id: 'doc-1:pending:7', localSeq: 7 }),
-      mutation({ id: 'doc-1:pending:8', localSeq: 8, status: 'acked', ackedAtUnixMs: 300 }),
+    persistWorkbookMutationJournal(scope, [
+      mutation({ id: 'doc-1:browser:test:pending:7', localSeq: 7 }),
+      mutation({ id: 'doc-1:browser:test:pending:8', localSeq: 8, status: 'acked', ackedAtUnixMs: 300 }),
     ])
 
-    const restored = loadPersistedWorkbookMutationJournal('doc-1')
+    const restored = loadPersistedWorkbookMutationJournal(scope)
 
     expect(restored).toEqual({
-      mutationJournalEntries: [mutation({ id: 'doc-1:pending:7', localSeq: 7 })],
+      mutationJournalEntries: [mutation({ id: 'doc-1:browser:test:pending:7', localSeq: 7 })],
       nextPendingMutationSeq: 9,
     })
   })
 
-  it('keeps the next local sequence after every mutation is acknowledged', () => {
-    persistWorkbookMutationJournal('doc-1', [mutation({ status: 'acked', ackedAtUnixMs: 300 })])
+  it('does not restore another replica journal for the same document', () => {
+    persistWorkbookMutationJournal(scope, [mutation({ id: 'doc-1:browser:test:pending:7', localSeq: 7 })])
 
-    expect(loadPersistedWorkbookMutationJournal('doc-1')).toEqual({
+    expect(loadPersistedWorkbookMutationJournal({ documentId: 'doc-1', replicaId: 'browser:other' })).toBeNull()
+  })
+
+  it('does not let another replica advance this replica mutation sequence', () => {
+    persistWorkbookMutationJournal(scope, [
+      mutation({ id: 'doc-1:browser:test:pending:3', localSeq: 3, status: 'acked', ackedAtUnixMs: 300 }),
+      mutation({ id: 'doc-1:browser:other:pending:99', localSeq: 99 }),
+    ])
+
+    expect(loadPersistedWorkbookMutationJournal(scope)).toEqual({
+      mutationJournalEntries: [],
+      nextPendingMutationSeq: 4,
+    })
+  })
+
+  it('keeps the next local sequence after every mutation is acknowledged', () => {
+    persistWorkbookMutationJournal(scope, [mutation({ status: 'acked', ackedAtUnixMs: 300 })])
+
+    expect(loadPersistedWorkbookMutationJournal(scope)).toEqual({
       mutationJournalEntries: [],
       nextPendingMutationSeq: 2,
     })
-    expect(removeItem).not.toHaveBeenCalled()
-  })
-
-  it('clears empty journals that have no mutation high-water mark', () => {
-    persistWorkbookMutationJournal('doc-1', [])
-
-    expect(loadPersistedWorkbookMutationJournal('doc-1')).toBeNull()
     expect(removeItem).toHaveBeenCalledWith('bilig:workbook-local-mutation-journal:doc-1')
   })
 
+  it('clears empty journals that have no mutation high-water mark', () => {
+    persistWorkbookMutationJournal(scope, [])
+
+    expect(loadPersistedWorkbookMutationJournal(scope)).toBeNull()
+    expect(removeItem).toHaveBeenCalledWith('bilig:workbook-local-mutation-journal:doc-1:browser%3Atest')
+  })
+
   it('restores in-flight submitted mutations as retryable local mutations after reload', () => {
-    persistWorkbookMutationJournal('doc-1', [
+    persistWorkbookMutationJournal(scope, [
       mutation({
         status: 'submitted',
         submittedAtUnixMs: 220,
@@ -100,7 +123,7 @@ describe('workbook local mutation journal persistence', () => {
       }),
     ])
 
-    expect(loadPersistedWorkbookMutationJournal('doc-1')).toEqual({
+    expect(loadPersistedWorkbookMutationJournal(scope)).toEqual({
       mutationJournalEntries: [
         mutation({
           status: 'local',
@@ -114,7 +137,7 @@ describe('workbook local mutation journal persistence', () => {
   })
 
   it('restores in-flight submitted rebased mutations as retryable rebased mutations after reload', () => {
-    persistWorkbookMutationJournal('doc-1', [
+    persistWorkbookMutationJournal(scope, [
       mutation({
         status: 'submitted',
         submittedAtUnixMs: 220,
@@ -124,7 +147,7 @@ describe('workbook local mutation journal persistence', () => {
       }),
     ])
 
-    expect(loadPersistedWorkbookMutationJournal('doc-1')).toEqual({
+    expect(loadPersistedWorkbookMutationJournal(scope)).toEqual({
       mutationJournalEntries: [
         mutation({
           status: 'rebased',
@@ -139,9 +162,28 @@ describe('workbook local mutation journal persistence', () => {
   })
 
   it('drops corrupt stored journals instead of replaying unknown edits', () => {
-    storage.setItem('bilig:workbook-local-mutation-journal:doc-1', '{"version":1,"documentId":"doc-1","mutationJournalEntries":[{}]}')
+    storage.setItem(
+      'bilig:workbook-local-mutation-journal:doc-1:browser%3Atest',
+      '{"version":1,"documentId":"doc-1","replicaId":"browser:test","mutationJournalEntries":[{}]}',
+    )
 
-    expect(loadPersistedWorkbookMutationJournal('doc-1')).toBeNull()
+    expect(loadPersistedWorkbookMutationJournal(scope)).toBeNull()
+    expect(removeItem).toHaveBeenCalledWith('bilig:workbook-local-mutation-journal:doc-1:browser%3Atest')
+  })
+
+  it('removes legacy document-only journals instead of replaying unscoped edits', () => {
+    storage.setItem(
+      'bilig:workbook-local-mutation-journal:doc-1',
+      JSON.stringify({
+        version: 1,
+        documentId: 'doc-1',
+        savedAtUnixMs: 100,
+        mutationJournalEntries: [mutation()],
+        nextPendingMutationSeq: 2,
+      }),
+    )
+
+    expect(loadPersistedWorkbookMutationJournal(scope)).toBeNull()
     expect(removeItem).toHaveBeenCalledWith('bilig:workbook-local-mutation-journal:doc-1')
   })
 })

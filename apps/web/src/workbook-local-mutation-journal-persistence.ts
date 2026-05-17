@@ -4,6 +4,11 @@ import { isPendingWorkbookMutationList, type PendingWorkbookMutation } from './w
 const STORAGE_VERSION = 1
 const STORAGE_KEY_PREFIX = 'bilig:workbook-local-mutation-journal:'
 
+export interface WorkbookMutationJournalPersistenceScope {
+  readonly documentId: string
+  readonly replicaId: string
+}
+
 export interface PersistedWorkbookMutationJournal {
   readonly mutationJournalEntries: readonly PendingWorkbookMutation[]
   readonly nextPendingMutationSeq: number
@@ -12,6 +17,7 @@ export interface PersistedWorkbookMutationJournal {
 interface StoredWorkbookMutationJournal extends PersistedWorkbookMutationJournal {
   readonly version: typeof STORAGE_VERSION
   readonly documentId: string
+  readonly replicaId: string
   readonly savedAtUnixMs: number
 }
 
@@ -23,7 +29,11 @@ function isSafePositiveInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
 }
 
-function storageKey(documentId: string): string {
+function storageKey(scope: WorkbookMutationJournalPersistenceScope): string {
+  return `${STORAGE_KEY_PREFIX}${encodeURIComponent(scope.documentId)}:${encodeURIComponent(scope.replicaId)}`
+}
+
+function legacyStorageKey(documentId: string): string {
   return `${STORAGE_KEY_PREFIX}${encodeURIComponent(documentId)}`
 }
 
@@ -32,8 +42,22 @@ function resolveLocalStorage(): Storage | null {
   return candidate ?? null
 }
 
-function activeJournalEntries(entries: readonly PendingWorkbookMutation[]): PendingWorkbookMutation[] {
-  return entries.filter((mutation) => mutation.status !== 'acked').map(normalizeRestoredPendingWorkbookMutation)
+function belongsToReplica(scope: WorkbookMutationJournalPersistenceScope, mutation: PendingWorkbookMutation): boolean {
+  return mutation.id.startsWith(`${scope.documentId}:${scope.replicaId}:pending:`)
+}
+
+function replicaJournalEntries(
+  scope: WorkbookMutationJournalPersistenceScope,
+  entries: readonly PendingWorkbookMutation[],
+): PendingWorkbookMutation[] {
+  return entries.filter((mutation) => belongsToReplica(scope, mutation)).map(normalizeRestoredPendingWorkbookMutation)
+}
+
+function activeJournalEntries(
+  scope: WorkbookMutationJournalPersistenceScope,
+  entries: readonly PendingWorkbookMutation[],
+): PendingWorkbookMutation[] {
+  return replicaJournalEntries(scope, entries).filter((mutation) => mutation.status !== 'acked')
 }
 
 function nextMutationSeq(entries: readonly PendingWorkbookMutation[]): number {
@@ -41,16 +65,17 @@ function nextMutationSeq(entries: readonly PendingWorkbookMutation[]): number {
   return maxSeq + 1
 }
 
-function parseStoredJournal(documentId: string, value: unknown): PersistedWorkbookMutationJournal | null {
+function parseStoredJournal(scope: WorkbookMutationJournalPersistenceScope, value: unknown): PersistedWorkbookMutationJournal | null {
   if (
     !isRecord(value) ||
     value['version'] !== STORAGE_VERSION ||
-    value['documentId'] !== documentId ||
+    value['documentId'] !== scope.documentId ||
+    value['replicaId'] !== scope.replicaId ||
     !isPendingWorkbookMutationList(value['mutationJournalEntries'])
   ) {
     return null
   }
-  const entries = activeJournalEntries(value['mutationJournalEntries'])
+  const entries = activeJournalEntries(scope, value['mutationJournalEntries'])
   const restoredNextSeq = isSafePositiveInteger(value['nextPendingMutationSeq']) ? value['nextPendingMutationSeq'] : 1
   if (entries.length === 0 && restoredNextSeq <= 1) {
     return null
@@ -61,49 +86,65 @@ function parseStoredJournal(documentId: string, value: unknown): PersistedWorkbo
   }
 }
 
-export function loadPersistedWorkbookMutationJournal(documentId: string): PersistedWorkbookMutationJournal | null {
+function removeStorageItem(storage: Storage, key: string): void {
+  try {
+    storage.removeItem(key)
+  } catch {
+    // Storage may be unavailable or quota-restricted; persistence is best effort.
+  }
+}
+
+export function loadPersistedWorkbookMutationJournal(
+  scope: WorkbookMutationJournalPersistenceScope,
+): PersistedWorkbookMutationJournal | null {
   const storage = resolveLocalStorage()
   if (!storage) {
     return null
   }
-  const key = storageKey(documentId)
+  const legacyKey = legacyStorageKey(scope.documentId)
+  const key = storageKey(scope)
   try {
+    if (storage.getItem(legacyKey) !== null) {
+      removeStorageItem(storage, legacyKey)
+    }
     const raw = storage.getItem(key)
     if (!raw) {
       return null
     }
-    const parsed = parseStoredJournal(documentId, JSON.parse(raw) as unknown)
+    const parsed = parseStoredJournal(scope, JSON.parse(raw) as unknown)
     if (!parsed) {
-      storage.removeItem(key)
+      removeStorageItem(storage, key)
       return null
     }
     return parsed
   } catch {
-    try {
-      storage.removeItem(key)
-    } catch {
-      // Storage may be unavailable or quota-restricted; persistence is best effort.
-    }
+    removeStorageItem(storage, key)
     return null
   }
 }
 
-export function persistWorkbookMutationJournal(documentId: string, entries: readonly PendingWorkbookMutation[]): void {
+export function persistWorkbookMutationJournal(
+  scope: WorkbookMutationJournalPersistenceScope,
+  entries: readonly PendingWorkbookMutation[],
+): void {
   const storage = resolveLocalStorage()
   if (!storage) {
     return
   }
-  const key = storageKey(documentId)
-  const activeEntries = activeJournalEntries(entries)
-  const nextPendingMutationSeq = nextMutationSeq(entries)
+  const key = storageKey(scope)
+  const scopedEntries = replicaJournalEntries(scope, entries)
+  const activeEntries = scopedEntries.filter((mutation) => mutation.status !== 'acked')
+  const nextPendingMutationSeq = nextMutationSeq(scopedEntries)
   try {
+    removeStorageItem(storage, legacyStorageKey(scope.documentId))
     if (activeEntries.length === 0 && nextPendingMutationSeq <= 1) {
       storage.removeItem(key)
       return
     }
     const stored: StoredWorkbookMutationJournal = {
       version: STORAGE_VERSION,
-      documentId,
+      documentId: scope.documentId,
+      replicaId: scope.replicaId,
       savedAtUnixMs: Date.now(),
       mutationJournalEntries: activeEntries,
       nextPendingMutationSeq,
