@@ -109,6 +109,7 @@ export interface EngineFormulaBindingService {
   readonly forEachFormulaFamilyNow: (fn: (family: FormulaFamily) => void) => void
   readonly setFormulaFamilyStructuralSourceTransformNow: (familyId: number, transform: FormulaFamilyStructuralSourceTransform) => void
   readonly getFormulaFamilyStructuralSourceTransformNow: (cellIndex: number) => FormulaFamilyStructuralSourceTransform | undefined
+  readonly hasFormulaFamilyStructuralSourceTransformsNow: () => boolean
   readonly consumeFormulaFamilyStructuralSourceTransformsNow: () => FormulaFamilyStructuralSourceTransformEntry[]
   readonly collectFormulaCellsOwnedBySheetNow: (sheetName: string) => readonly number[]
   readonly collectFormulaCellsReferencingSheetNow: (sheetName: string) => readonly number[]

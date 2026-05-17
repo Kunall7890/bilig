@@ -83,6 +83,7 @@ export function createEngineMutationService(args: {
   readonly restoreCellOps: (sheetName: string, address: string) => EngineOp[]
   readonly getCellByIndex: (cellIndex: number) => CellSnapshot
   readonly getFormulaFamilyStructuralSourceTransform?: (cellIndex: number) => RuntimeStructuralFormulaSourceTransform | undefined
+  readonly hasFormulaFamilyStructuralSourceTransforms?: () => boolean
   readonly readRangeCells: (range: CellRangeRef) => CellSnapshot[][]
   readonly toCellStateOps: (
     sheetName: string,
@@ -132,6 +133,9 @@ export function createEngineMutationService(args: {
     getCellByIndex: args.getCellByIndex,
     ...(args.getFormulaFamilyStructuralSourceTransform
       ? { getFormulaFamilyStructuralSourceTransform: args.getFormulaFamilyStructuralSourceTransform }
+      : {}),
+    ...(args.hasFormulaFamilyStructuralSourceTransforms
+      ? { hasFormulaFamilyStructuralSourceTransforms: args.hasFormulaFamilyStructuralSourceTransforms }
       : {}),
   })
   const { captureFormulaCellStateForStructuralUndo, buildStructuralDeleteInverseRecord } = createMutationStructuralDeleteInverseHelpers({

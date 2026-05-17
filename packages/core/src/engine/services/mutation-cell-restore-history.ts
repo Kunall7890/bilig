@@ -27,6 +27,7 @@ export interface MutationCellRestoreHistoryRuntime {
   readonly formulas: MutationFormulaStore
   readonly getCellByIndex: (cellIndex: number) => CellSnapshot
   readonly getFormulaFamilyStructuralSourceTransform?: (cellIndex: number) => RuntimeStructuralFormulaSourceTransform | undefined
+  readonly hasFormulaFamilyStructuralSourceTransforms?: () => boolean
 }
 
 export interface MutationCellRestoreHistoryHelpers {
@@ -47,8 +48,14 @@ export interface MutationCellRestoreHistoryHelpers {
 }
 
 export function createMutationCellRestoreHistoryHelpers(args: MutationCellRestoreHistoryRuntime): MutationCellRestoreHistoryHelpers {
-  const captureRuntimeFormulaSource = (cellIndex: number, formula: RuntimeFormula): string =>
-    getRuntimeFormulaSource(formula, args.getFormulaFamilyStructuralSourceTransform?.(cellIndex))
+  const captureRuntimeFormulaSource = (cellIndex: number, formula: RuntimeFormula): string => {
+    if (formula.structuralSourceTransform !== undefined) {
+      return getRuntimeFormulaSource(formula)
+    }
+    const inheritedTransform =
+      args.hasFormulaFamilyStructuralSourceTransforms?.() === true ? args.getFormulaFamilyStructuralSourceTransform?.(cellIndex) : undefined
+    return getRuntimeFormulaSource(formula, inheritedTransform)
+  }
 
   const restoreCellOpFromRef = (ref: EngineCellMutationRef): EngineOp => {
     const sheet = args.workbook.getSheetById(ref.sheetId)

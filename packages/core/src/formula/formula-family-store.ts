@@ -105,6 +105,7 @@ export interface FormulaFamilyStore {
   readonly forEachFamily: (fn: (family: FormulaFamily) => void) => void
   readonly setStructuralSourceTransform: (familyId: FormulaFamilyId, transform: FormulaFamilyStructuralSourceTransform) => void
   readonly getStructuralSourceTransform: (cellIndex: number) => FormulaFamilyStructuralSourceTransform | undefined
+  readonly hasStructuralSourceTransforms: () => boolean
   readonly consumeStructuralSourceTransforms: () => FormulaFamilyStructuralSourceTransformEntry[]
   readonly getStats: () => FormulaFamilyStats
   readonly listFamilies: () => FormulaFamily[]
@@ -606,6 +607,9 @@ export function createFormulaFamilyStore(): FormulaFamilyStore {
     getStructuralSourceTransform(cellIndex) {
       const membership = getMembershipRecord(cellIndex)
       return membership ? structuralSourceTransforms.get(membership.familyId) : undefined
+    },
+    hasStructuralSourceTransforms() {
+      return structuralSourceTransforms.size > 0
     },
     consumeStructuralSourceTransforms() {
       const entries: FormulaFamilyStructuralSourceTransformEntry[] = []

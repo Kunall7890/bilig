@@ -166,6 +166,7 @@ interface EngineFormulaBindingTarget {
   runtime: {
     binding: {
       forEachFormulaFamilyNow: (fn: (...args: unknown[]) => void) => void
+      isFormulaFamilyIndexReadyNow: () => boolean
     }
   }
 }
@@ -182,7 +183,12 @@ function isEngineWorkbookTarget(value: unknown): value is EngineWorkbookTarget {
 function isEngineFormulaBindingTarget(value: unknown): value is EngineFormulaBindingTarget {
   const runtime = typeof value === 'object' && value !== null ? Reflect.get(value, 'runtime') : undefined
   const binding = typeof runtime === 'object' && runtime !== null ? Reflect.get(runtime, 'binding') : undefined
-  return typeof binding === 'object' && binding !== null && typeof Reflect.get(binding, 'forEachFormulaFamilyNow') === 'function'
+  return (
+    typeof binding === 'object' &&
+    binding !== null &&
+    typeof Reflect.get(binding, 'forEachFormulaFamilyNow') === 'function' &&
+    typeof Reflect.get(binding, 'isFormulaFamilyIndexReadyNow') === 'function'
+  )
 }
 
 function engineApplyCellMutationsTarget(workbook: WorkPaper): EngineApplyCellMutationsTarget {
@@ -561,6 +567,31 @@ describe('WorkPaper', () => {
     } finally {
       trackedReducer.restore()
     }
+  })
+
+  it('keeps formula-family indexing lazy when undo-capturing ordinary formula replacements', () => {
+    const downstreamCount = 64
+    const row: unknown[] = [1, 2, '=A1+B1']
+    for (let offset = 1; offset <= downstreamCount; offset += 1) {
+      const col = 2 + offset
+      row.push(`=${columnLabel(col - 1)}1+1`)
+    }
+    const workbook = WorkPaper.buildFromSheets({ Bench: [row] })
+    const sheetId = workbook.getSheetId('Bench')!
+    const binding = engineFormulaBindingTarget(workbook)
+
+    expect(binding.isFormulaFamilyIndexReadyNow()).toBe(false)
+
+    workbook.setCellContents(cell(sheetId, 0, 2), '=A1*B1')
+
+    expect(binding.isFormulaFamilyIndexReadyNow()).toBe(false)
+    expect(workbook.getCellFormula(cell(sheetId, 0, 2))).toBe('=A1*B1')
+    expect(workbook.getCellValue(cell(sheetId, 0, downstreamCount + 2))).toEqual({
+      tag: ValueTag.Number,
+      value: downstreamCount + 2,
+    })
+    expect(workbook.undo()).toHaveLength(downstreamCount + 1)
+    expect(workbook.getCellFormula(cell(sheetId, 0, 2))).toBe('=A1+B1')
   })
 
   it('materializes no-listener tiny tracked changes eagerly without stale later writes', () => {

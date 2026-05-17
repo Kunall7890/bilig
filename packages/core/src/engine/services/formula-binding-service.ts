@@ -929,8 +929,22 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
       args.formulaFamilies.setStructuralSourceTransform(familyId, transform)
     },
     getFormulaFamilyStructuralSourceTransformNow(cellIndex) {
+      if (
+        formulaFamilyIndexNeedsRebuild &&
+        deferredFormulaFamilyIndexRuns !== undefined &&
+        !args.formulaFamilies.hasStructuralSourceTransforms() &&
+        deferredFormulaFamilyStructuralSourceTransforms === undefined
+      ) {
+        return undefined
+      }
       ensureFormulaFamilyIndexNow()
       return args.formulaFamilies.getStructuralSourceTransform(cellIndex)
+    },
+    hasFormulaFamilyStructuralSourceTransformsNow() {
+      return (
+        args.formulaFamilies.hasStructuralSourceTransforms() ||
+        (deferredFormulaFamilyStructuralSourceTransforms !== undefined && deferredFormulaFamilyStructuralSourceTransforms.size > 0)
+      )
     },
     consumeFormulaFamilyStructuralSourceTransformsNow() {
       ensureFormulaFamilyIndexNow()
