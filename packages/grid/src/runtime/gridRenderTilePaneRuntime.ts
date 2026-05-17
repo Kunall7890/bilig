@@ -186,6 +186,7 @@ export class GridRenderTilePaneRuntime {
   private workbookDeltaConnection: RuntimeConnection<WorkbookDeltaConnectionIdentity> | null = null
   private localInvalidationConnection: RuntimeConnection<LocalInvalidationConnectionIdentity> | null = null
   private readonly visibleTextRefreshCache = new GridVisibleTextRefreshCache()
+  private forceLocalTilesUntilRenderBatchId: number | null = null
 
   resolve(input: GridRenderTilePaneRuntimeInput): GridRenderTilePaneRuntimeState {
     if (!input.hostReady) {
@@ -240,10 +241,16 @@ export class GridRenderTilePaneRuntime {
     }
   }
 
-  noteRenderTileDelta(): GridRenderTilePaneBridgeState {
+  noteRenderTileDelta(input: { readonly batchId?: number | null | undefined } = {}): GridRenderTilePaneBridgeState {
     const previous = this.bridgeState
+    const renderBatchId = normalizeNonNegativeInteger(input.batchId)
+    const remoteBatchCaughtUp =
+      this.forceLocalTilesUntilRenderBatchId === null || (renderBatchId !== null && renderBatchId >= this.forceLocalTilesUntilRenderBatchId)
+    if (previous.forceLocalTiles && remoteBatchCaughtUp) {
+      this.forceLocalTilesUntilRenderBatchId = null
+    }
     this.bridgeState = {
-      forceLocalTiles: false,
+      forceLocalTiles: previous.forceLocalTiles && !remoteBatchCaughtUp,
       localFallbackRevision: previous.localFallbackRevision,
       renderTileRevision: previous.renderTileRevision + 1,
     }
@@ -251,9 +258,15 @@ export class GridRenderTilePaneRuntime {
     return this.bridgeState
   }
 
-  noteWorkbookDeltaDamage(input: { readonly forceLocalTiles?: boolean | undefined } = {}): GridRenderTilePaneBridgeState {
+  noteWorkbookDeltaDamage(
+    input: { readonly forceLocalTiles?: boolean | undefined; readonly sequence?: number | undefined } = {},
+  ): GridRenderTilePaneBridgeState {
     const previous = this.bridgeState
     const forceLocalTiles = input.forceLocalTiles ?? false
+    const forceUntilBatchId = forceLocalTiles ? normalizeNonNegativeInteger(input.sequence) : null
+    if (forceLocalTiles && forceUntilBatchId !== null) {
+      this.forceLocalTilesUntilRenderBatchId = Math.max(this.forceLocalTilesUntilRenderBatchId ?? 0, forceUntilBatchId)
+    }
     this.bridgeState = {
       forceLocalTiles,
       localFallbackRevision: forceLocalTiles ? previous.localFallbackRevision + 1 : previous.localFallbackRevision,
@@ -355,6 +368,7 @@ export class GridRenderTilePaneRuntime {
       }
       this.noteWorkbookDeltaDamage({
         forceLocalTiles: shouldForceLocalTilesForWorkbookDelta(batch),
+        sequence: batch.seq,
       })
       listener?.(batch)
     })
@@ -398,7 +412,7 @@ export class GridRenderTilePaneRuntime {
         if (change) {
           this.applyRenderTileSceneChange(input, change)
         }
-        this.noteRenderTileDelta()
+        this.noteRenderTileDelta({ batchId: change?.batchId })
         listener?.(change)
       },
     )
@@ -691,7 +705,7 @@ export class GridRenderTilePaneRuntime {
 
   private resolveTiles(input: GridRenderTilePaneRuntimeInput): GridRenderTileResolution | null {
     if (input.forceLocalTiles) {
-      return this.buildLocalTiles(input, { mergeCleanRemoteTiles: true })
+      return this.buildLocalTiles(input, { mergeCleanRemoteTiles: this.forceLocalTilesUntilRenderBatchId === null })
     }
 
     if (input.renderTileSource && input.sheetId !== undefined) {
@@ -882,6 +896,10 @@ export class GridRenderTilePaneRuntime {
       listener()
     })
   }
+}
+
+function normalizeNonNegativeInteger(value: number | null | undefined): number | null {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : null
 }
 
 export function getGridRenderTilePaneRuntime(current: unknown): GridRenderTilePaneRuntime {

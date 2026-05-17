@@ -155,6 +155,8 @@ function createCapturingRenderTileSource(): {
 function createMutableRenderTileSource(tiles: readonly GridRenderTile[] = []): {
   readonly source: GridRenderTileSource
   readonly emit: (change: {
+    readonly batchId?: number | undefined
+    readonly cameraSeq?: number | undefined
     readonly changedTileIds?: readonly number[] | undefined
     readonly invalidatedTileIds?: readonly number[] | undefined
   }) => void
@@ -167,8 +169,8 @@ function createMutableRenderTileSource(tiles: readonly GridRenderTile[] = []): {
   return {
     emit: (change) =>
       listener?.({
-        batchId: 2,
-        cameraSeq: 3,
+        batchId: change.batchId ?? 2,
+        cameraSeq: change.cameraSeq ?? 3,
         changedTileIds: change.changedTileIds ?? [],
         invalidatedTileIds: change.invalidatedTileIds ?? [],
         structural: false,
@@ -216,6 +218,8 @@ function createMutableWorkbookDeltaRenderTileSource(tiles: readonly GridRenderTi
   readonly source: GridRenderTileSource
   readonly emitWorkbookDelta: (batch: WorkbookDeltaBatchLikeV3) => void
   readonly emitRenderTileDelta: (change: {
+    readonly batchId?: number | undefined
+    readonly cameraSeq?: number | undefined
     readonly changedTileIds?: readonly number[] | undefined
     readonly invalidatedTileIds?: readonly number[] | undefined
   }) => void
@@ -1630,6 +1634,134 @@ describe('GridRenderTilePaneRuntime', () => {
       renderTileRevision: 2,
     })
     expect(refreshed.residentBodyPane?.tile.textRuns).toEqual([])
+  })
+
+  it('keeps local tiles through stale render tile deltas until the renderer batch catches up', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const tileId = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+    })[0]
+    if (tileId === undefined) {
+      throw new Error('Expected a visible render tile key')
+    }
+    const staleRemoteTile: GridRenderTile = {
+      ...createRenderTile(tileId),
+      lastBatchId: 9,
+      lastCameraSeq: 9,
+      textCount: 1,
+      textRuns: [
+        {
+          col: 0,
+          row: 0,
+          text: 'deleted text from stale tile',
+          x: 0,
+          y: 0,
+          width: 140,
+          height: 20,
+          clipX: 0,
+          clipY: 0,
+          clipWidth: 140,
+          clipHeight: 20,
+          font: '12px sans-serif',
+          fontSize: 12,
+          color: '#000000',
+          underline: false,
+          strike: false,
+        },
+      ],
+      version: {
+        axisX: 9,
+        axisY: 9,
+        freeze: 0,
+        styles: 9,
+        text: 9,
+        values: 9,
+      },
+    }
+    const renderTileSource = createMutableWorkbookDeltaRenderTileSource([staleRemoteTile])
+
+    runtime.connectWorkbookDeltaDamage(
+      {
+        dprBucket: 1,
+        gridRuntimeHost: host,
+        renderTileSource: renderTileSource.source,
+        sheetId: 7,
+      },
+      () => undefined,
+    )
+    runtime.connectRenderTileDeltas(
+      {
+        dprBucket: 1,
+        gridRuntimeHost: host,
+        renderTileSource: renderTileSource.source,
+        renderTileViewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+        sheetId: 7,
+        sheetName: 'Sheet1',
+      },
+      () => undefined,
+    )
+
+    renderTileSource.emitWorkbookDelta({
+      ...createWorkbookDeltaBatch({ seq: 10 }),
+      source: 'localOptimistic',
+    })
+    expect(runtime.snapshotBridgeState()).toEqual({
+      forceLocalTiles: true,
+      localFallbackRevision: 1,
+      renderTileRevision: 1,
+    })
+
+    renderTileSource.setTile(staleRemoteTile)
+    renderTileSource.emitRenderTileDelta({ batchId: 9, cameraSeq: 9, changedTileIds: [tileId] })
+
+    expect(runtime.snapshotBridgeState()).toEqual({
+      forceLocalTiles: true,
+      localFallbackRevision: 1,
+      renderTileRevision: 2,
+    })
+    const staleDeltaState = runtime.resolve(
+      createInput({
+        engine: LOCAL_EMPTY_ENGINE,
+        forceLocalTiles: runtime.snapshotBridgeState().forceLocalTiles,
+        gridRuntimeHost: host,
+        renderTileSource: renderTileSource.source,
+      }),
+    )
+    expect(staleDeltaState.residentBodyPane?.tile.textRuns.some((run) => run.text === 'deleted text from stale tile')).toBe(false)
+    expect(staleDeltaState.residentBodyPane?.tile.textRuns).toEqual([])
+
+    const freshRemoteTile: GridRenderTile = {
+      ...staleRemoteTile,
+      lastBatchId: 10,
+      lastCameraSeq: 10,
+      textCount: 0,
+      textRuns: [],
+      version: {
+        ...staleRemoteTile.version,
+        text: 10,
+        values: 10,
+      },
+    }
+    renderTileSource.setTile(freshRemoteTile)
+    renderTileSource.emitRenderTileDelta({ batchId: 10, cameraSeq: 10, changedTileIds: [tileId] })
+
+    expect(runtime.snapshotBridgeState()).toEqual({
+      forceLocalTiles: false,
+      localFallbackRevision: 1,
+      renderTileRevision: 3,
+    })
+    const caughtUpState = runtime.resolve(
+      createInput({
+        engine: LOCAL_EMPTY_ENGINE,
+        forceLocalTiles: runtime.snapshotBridgeState().forceLocalTiles,
+        gridRuntimeHost: host,
+        renderTileSource: renderTileSource.source,
+      }),
+    )
+    expect(caughtUpState.residentBodyPane?.tile.textRuns).toEqual([])
   })
 
   it('keeps clean remote tiles resident when local fallback only needs dirty tiles', () => {

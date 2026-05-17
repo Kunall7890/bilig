@@ -43,7 +43,8 @@ describe('dynamic overlay batch v3', () => {
     expect(overlay.surfaceSize).toEqual({ height: 220, width: 520 })
     expect(readOverlayRects(overlay)).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ x: 146, y: 44, width: 150, height: 30 }),
+        expect.objectContaining({ x: 146, y: 44, width: 150, height: 1 }),
+        expect.objectContaining({ x: 146, y: 44, width: 1, height: 30 }),
         expect.objectContaining({ x: 290, y: 68, width: 12, height: 12 }),
         expect.objectContaining({ x: 297, y: 75, width: 98, height: 18 }),
       ]),

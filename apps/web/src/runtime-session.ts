@@ -88,6 +88,9 @@ const EMPTY_METRICS: RecalcMetrics = {
 }
 const EMPTY_UNSUBSCRIBE = () => {}
 const BACKGROUND_RUNTIME_STATE_REFRESH_DELAY_MS = 96
+const AUTHORITATIVE_BACKSTOP_VISIBLE_INTERVAL_MS = 2_000
+const AUTHORITATIVE_BACKSTOP_HIDDEN_INTERVAL_MS = 30_000
+const AUTHORITATIVE_REFRESH_CHANNEL_PREFIX = 'bilig:workbook-authoritative-refresh:'
 const MUTATION_JOURNAL_METHODS = new Set([
   'enqueuePendingMutation',
   'recordPendingMutationAttempt',
@@ -235,6 +238,13 @@ function sameSelection(left: WorkerRuntimeSelection, right: WorkerRuntimeSelecti
   return left.sheetName === right.sheetName && left.address === right.address
 }
 
+function resolveAuthoritativeBackstopIntervalMs(): number {
+  if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+    return AUTHORITATIVE_BACKSTOP_HIDDEN_INTERVAL_MS
+  }
+  return AUTHORITATIVE_BACKSTOP_VISIBLE_INTERVAL_MS
+}
+
 interface LatestWorkbookSnapshot {
   readonly snapshot: WorkbookSnapshot
   readonly revision: number | null
@@ -291,6 +301,10 @@ function createWorkbookWorker(): WorkerSessionPort {
   }) as WorkerSessionPort
 }
 
+function disposeZeroWorkbookRevisionSync(sync: ZeroWorkbookRevisionSync | null): void {
+  sync?.dispose()
+}
+
 export async function createWorkerRuntimeSessionController(
   input: CreateWorkerRuntimeSessionInput,
   callbacks: WorkerRuntimeSessionCallbacks,
@@ -321,18 +335,25 @@ export async function createWorkerRuntimeSessionController(
   let selectionViewportCleanup = EMPTY_UNSUBSCRIBE
   let currentPhase: WorkerRuntimeSessionPhase = 'hydratingLocal'
   let runtimeStateRefreshTimer: ReturnType<typeof setTimeout> | null = null
-  const liveSync = input.zero
-    ? new ZeroWorkbookRevisionSync({
-        zero: input.zero,
-        documentId: input.documentId,
-        onRevisionState(revisionState) {
-          pendingRevisionState = revisionState
-          if (bootstrapped) {
-            queueAuthoritativeRebase(revisionState)
-          }
-        },
-      })
-    : null
+  let authoritativeBackstopTimer: ReturnType<typeof setTimeout> | null = null
+  let authoritativeBackstopInFlight = false
+  let authoritativeRefreshChannel: BroadcastChannel | null = null
+  let liveSync: ZeroWorkbookRevisionSync | null = null
+  const startLiveSync = (): void => {
+    if (!input.zero || liveSync) {
+      return
+    }
+    liveSync = new ZeroWorkbookRevisionSync({
+      zero: input.zero,
+      documentId: input.documentId,
+      onRevisionState(revisionState) {
+        pendingRevisionState = revisionState
+        if (bootstrapped) {
+          queueAuthoritativeRebase(revisionState)
+        }
+      },
+    })
+  }
 
   const publishPhase = (phase: WorkerRuntimeSessionPhase) => {
     if (currentPhase === phase) {
@@ -492,6 +513,7 @@ export async function createWorkerRuntimeSessionController(
       eventBatch.headRevision,
     )
     noteAuthoritativeStateInstalled(eventBatch.headRevision, eventBatch.calculatedRevision)
+    broadcastAuthoritativeRefresh(eventBatch.headRevision)
     const publishedRuntimeState = publishRuntimeState(runtimeState)
     input.perfSession?.markFirstAuthoritativePatchVisible()
     await syncSelectionAfterRuntimeState(publishedRuntimeState)
@@ -531,6 +553,96 @@ export async function createWorkerRuntimeSessionController(
         }
       }
     })()
+  }
+
+  const runAuthoritativeBackstopRefresh = async (): Promise<void> => {
+    if (disposed || !authoritativeSyncEnabled) {
+      return
+    }
+    const previousRebaseQueue = rebaseQueue
+    rebaseQueue = (async () => {
+      await previousRebaseQueue.catch(() => undefined)
+      try {
+        await runAuthoritativeRefresh()
+        await runAuthoritativeRebase()
+      } catch (error) {
+        if (!disposed) {
+          callbacks.onError(toErrorMessage(error))
+        }
+      }
+    })()
+    await rebaseQueue.catch(() => undefined)
+  }
+
+  const clearAuthoritativeBackstop = (): void => {
+    if (authoritativeBackstopTimer) {
+      clearTimeout(authoritativeBackstopTimer)
+      authoritativeBackstopTimer = null
+    }
+  }
+
+  const pokeAuthoritativeBackstop = (delayMs = 0): void => {
+    clearAuthoritativeBackstop()
+    scheduleAuthoritativeBackstop(delayMs)
+  }
+
+  const scheduleAuthoritativeBackstop = (delayMs = resolveAuthoritativeBackstopIntervalMs()): void => {
+    if (!authoritativeSyncEnabled || disposed || authoritativeBackstopTimer) {
+      return
+    }
+    authoritativeBackstopTimer = setTimeout(() => {
+      authoritativeBackstopTimer = null
+      if (disposed || !authoritativeSyncEnabled) {
+        return
+      }
+      if (authoritativeBackstopInFlight) {
+        scheduleAuthoritativeBackstop()
+        return
+      }
+      authoritativeBackstopInFlight = true
+      void (async () => {
+        try {
+          await runAuthoritativeBackstopRefresh()
+        } finally {
+          authoritativeBackstopInFlight = false
+          scheduleAuthoritativeBackstop()
+        }
+      })()
+    }, delayMs)
+  }
+
+  const broadcastAuthoritativeRefresh = (headRevision: number | null): void => {
+    authoritativeRefreshChannel?.postMessage({
+      type: 'authoritative-refresh',
+      headRevision,
+    })
+  }
+
+  const startAuthoritativeRefreshChannel = (): void => {
+    if (!authoritativeSyncEnabled || authoritativeRefreshChannel || typeof BroadcastChannel === 'undefined') {
+      return
+    }
+    const channel = new BroadcastChannel(`${AUTHORITATIVE_REFRESH_CHANNEL_PREFIX}${input.documentId}`)
+    channel.addEventListener('message', (event: MessageEvent<unknown>) => {
+      if (disposed || !isRecord(event.data) || event.data['type'] !== 'authoritative-refresh') {
+        return
+      }
+      const headRevision = isNonNegativeInteger(event.data['headRevision']) ? event.data['headRevision'] : null
+      if (headRevision !== null && headRevision <= currentAuthoritativeRevision) {
+        return
+      }
+      if (headRevision !== null) {
+        requestedAuthoritativeRevision = Math.max(requestedAuthoritativeRevision, headRevision)
+        requestedCalculatedRevision = Math.max(requestedCalculatedRevision, headRevision)
+      }
+      pokeAuthoritativeBackstop()
+    })
+    authoritativeRefreshChannel = channel
+  }
+
+  const closeAuthoritativeRefreshChannel = (): void => {
+    authoritativeRefreshChannel?.close()
+    authoritativeRefreshChannel = null
   }
 
   const refreshAuthoritativeEventsNow = async (targetRevision: number | null): Promise<void> => {
@@ -683,6 +795,7 @@ export async function createWorkerRuntimeSessionController(
         }
         callbacks.onError(toErrorMessage(error))
       }
+      startLiveSync()
       if (latestSnapshot) {
         const snapshotRevision = latestSnapshot.revision ?? currentAuthoritativeRevision
         const shouldInstallSnapshot = latestSnapshot.revision === null || snapshotRevision >= currentAuthoritativeRevision
@@ -700,15 +813,20 @@ export async function createWorkerRuntimeSessionController(
       }
     }
 
+    startLiveSync()
     bootstrapped = true
     publishPhase('steady')
     if (pendingRevisionState) {
       queueAuthoritativeRebase(pendingRevisionState)
     }
+    startAuthoritativeRefreshChannel()
+    scheduleAuthoritativeBackstop(0)
     await applySelection(reconcileSelection(currentSelection, currentRuntimeState.sheetNames))
     input.perfSession?.markFirstSelectionVisible()
   } catch (error) {
-    liveSync?.dispose()
+    clearAuthoritativeBackstop()
+    closeAuthoritativeRefreshChannel()
+    disposeZeroWorkbookRevisionSync(liveSync)
     client.dispose()
     workerPort.terminate?.()
     throw error
@@ -753,6 +871,7 @@ export async function createWorkerRuntimeSessionController(
         } else if (method === 'markPendingMutationSubmitted') {
           queueRuntimeStateRefresh()
           queueAuthoritativeRefresh()
+          broadcastAuthoritativeRefresh(null)
         } else if (method === 'markPendingMutationFailed' || method === 'retryPendingMutation') {
           await refreshRuntimeState()
         }
@@ -800,9 +919,11 @@ export async function createWorkerRuntimeSessionController(
         clearTimeout(runtimeStateRefreshTimer)
         runtimeStateRefreshTimer = null
       }
+      clearAuthoritativeBackstop()
+      closeAuthoritativeRefreshChannel()
       selectionViewportCleanup()
       selectionViewportCleanup = EMPTY_UNSUBSCRIBE
-      liveSync?.dispose()
+      disposeZeroWorkbookRevisionSync(liveSync)
       client.dispose()
       workerPort.terminate?.()
     },

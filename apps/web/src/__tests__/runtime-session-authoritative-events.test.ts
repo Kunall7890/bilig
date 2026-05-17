@@ -201,6 +201,201 @@ describe('worker runtime session authoritative event loading', () => {
     expect(onError).toHaveBeenCalledWith('Authoritative event payload does not match the expected schema')
   })
 
+  it('subscribes to live zero revisions only after authoritative snapshot bootstrap', async () => {
+    channel = new MessageChannel()
+    const calls: string[] = []
+    const revisionView = new FakeRevisionLiveView({
+      headRevision: 0,
+      calculatedRevision: 0,
+    })
+    host = createWorkerEngineHost(
+      {
+        async bootstrap() {
+          calls.push('worker-bootstrap')
+          return {
+            runtimeState: runtimeState({
+              authoritativeRevision: 0,
+              pendingMutationSummary: {
+                activeCount: 0,
+                failedCount: 0,
+                firstFailed: null,
+              },
+            }),
+            restoredFromPersistence: false,
+            requiresAuthoritativeHydrate: true,
+            localPersistenceMode: 'ephemeral',
+          }
+        },
+        getAuthoritativeRevision() {
+          return 0
+        },
+        getCell(sheetName: string, address: string) {
+          return {
+            sheetName,
+            address,
+            value: { tag: ValueTag.Empty },
+            flags: 0,
+            version: 0,
+          }
+        },
+        subscribeViewportPatches() {
+          return () => undefined
+        },
+      },
+      channel.port1,
+    )
+    const fetchImpl = vi.fn(async (url: string) => {
+      calls.push(`fetch:${url}`)
+      return new Response(null, { status: 204 })
+    })
+    const zero = {
+      materialize: vi.fn(() => {
+        calls.push('zero-materialize')
+        return revisionView
+      }),
+    }
+
+    controller = await createWorkerRuntimeSessionController(
+      {
+        documentId: 'doc-1',
+        replicaId: 'browser:test',
+        persistState: false,
+        fetchImpl,
+        zero,
+        initialSelection: { sheetName: 'Sheet1', address: 'A1' },
+        createWorker: () => channel!.port2,
+      },
+      {
+        onRuntimeState: vi.fn(),
+        onSelection: vi.fn(),
+        onError: vi.fn(),
+      },
+    )
+
+    expect(fetchImpl).toHaveBeenCalledWith('/v2/documents/doc-1/snapshot/latest', {
+      headers: {
+        accept: 'application/json, application/vnd.bilig.workbook+json',
+      },
+      cache: 'no-store',
+    })
+    expect(zero.materialize).toHaveBeenCalledOnce()
+    expect(calls.indexOf('fetch:/v2/documents/doc-1/snapshot/latest')).toBeGreaterThanOrEqual(0)
+    expect(calls.indexOf('fetch:/v2/documents/doc-1/snapshot/latest')).toBeLessThan(calls.indexOf('zero-materialize'))
+  })
+
+  it('polls authoritative events after bootstrap when the live revision callback misses an update', async () => {
+    channel = new MessageChannel()
+    let authoritativeRevision = 0
+    const applyAuthoritativeEvents = vi.fn((events: unknown[], headRevision: number) => {
+      authoritativeRevision = headRevision
+      expect(events).toHaveLength(1)
+      return runtimeState({
+        authoritativeRevision: headRevision,
+        pendingMutationSummary: {
+          activeCount: 0,
+          failedCount: 0,
+          firstFailed: null,
+        },
+      })
+    })
+    host = createWorkerEngineHost(
+      {
+        async bootstrap() {
+          return {
+            runtimeState: runtimeState({
+              authoritativeRevision: 0,
+              pendingMutationSummary: {
+                activeCount: 0,
+                failedCount: 0,
+                firstFailed: null,
+              },
+            }),
+            restoredFromPersistence: true,
+            requiresAuthoritativeHydrate: false,
+            localPersistenceMode: 'ephemeral',
+          }
+        },
+        getAuthoritativeRevision() {
+          return authoritativeRevision
+        },
+        getCell(sheetName: string, address: string) {
+          return {
+            sheetName,
+            address,
+            value: { tag: ValueTag.Empty },
+            flags: 0,
+            version: 0,
+          }
+        },
+        applyAuthoritativeEvents,
+        subscribeViewportPatches() {
+          return () => undefined
+        },
+      },
+      channel.port1,
+    )
+    const fetchImpl = vi.fn(async (url: string) => {
+      if (url.endsWith('/snapshot/latest')) {
+        return new Response(null, { status: 204 })
+      }
+      return new Response(
+        JSON.stringify({
+          afterRevision: authoritativeRevision,
+          headRevision: authoritativeRevision === 0 ? 1 : authoritativeRevision,
+          calculatedRevision: authoritativeRevision === 0 ? 1 : authoritativeRevision,
+          events:
+            authoritativeRevision === 0
+              ? [
+                  {
+                    revision: 1,
+                    clientMutationId: null,
+                    payload: {
+                      kind: 'setCellValue',
+                      sheetName: 'Sheet1',
+                      address: 'B2',
+                      value: 'remote',
+                    },
+                  },
+                ]
+              : [],
+        }),
+        {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        },
+      )
+    })
+
+    controller = await createWorkerRuntimeSessionController(
+      {
+        documentId: 'doc-1',
+        replicaId: 'browser:test',
+        persistState: false,
+        fetchImpl,
+        initialSelection: { sheetName: 'Sheet1', address: 'A1' },
+        createWorker: () => channel!.port2,
+      },
+      {
+        onRuntimeState: vi.fn(),
+        onSelection: vi.fn(),
+        onError: vi.fn(),
+      },
+    )
+
+    await vi.waitFor(
+      () => {
+        expect(applyAuthoritativeEvents).toHaveBeenCalledTimes(1)
+      },
+      { timeout: 2_000 },
+    )
+    expect(fetchImpl).toHaveBeenCalledWith('/v2/documents/doc-1/events?afterRevision=0', {
+      headers: {
+        accept: 'application/json',
+      },
+      cache: 'no-store',
+    })
+  })
+
   it('refreshes a same-head authoritative snapshot when calculation catches up', async () => {
     channel = new MessageChannel()
     const revisionView = new FakeRevisionLiveView({

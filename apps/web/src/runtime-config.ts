@@ -1,4 +1,4 @@
-import type { BiligRuntimeConfig } from '@bilig/zero-sync'
+import type { BiligRuntimeConfig, BiligZeroQueryContext } from '@bilig/zero-sync'
 
 export interface RuntimeConfig {
   documentId: string
@@ -29,6 +29,12 @@ export function normalizeRuntimeConfigUserId<T extends { currentUserId: string }
   return {
     ...config,
     currentUserId: session.userId,
+  }
+}
+
+export function createZeroQueryContext(session: { readonly userId: string }): BiligZeroQueryContext {
+  return {
+    userID: session.userId,
   }
 }
 

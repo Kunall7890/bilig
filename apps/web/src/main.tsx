@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react'
+import React, { Suspense, lazy, useMemo } from 'react'
 import ReactDOM from 'react-dom/client'
 import { useActorRef, useSelector } from '@xstate/react'
 import { ZeroProvider } from '@rocicorp/zero/react'
@@ -8,6 +8,7 @@ import type { RuntimeSession } from '@bilig/contracts'
 import { App } from './App.js'
 import {
   createLocalOnlyRuntimeConfig,
+  createZeroQueryContext,
   normalizeRuntimeConfigUserId,
   resolveRemoteSyncEnabled,
   resolveRuntimeConfig,
@@ -39,6 +40,31 @@ interface BootstrapConfig {
 }
 
 const bootstrapMachine = createBootstrapMachine<BootstrapConfig, RuntimeSession>()
+
+interface RemoteSyncAppProps {
+  readonly appConfig: BiligRuntimeConfig
+  readonly rawConfig: BiligRuntimeConfig
+  readonly session: RuntimeSession
+}
+
+function RemoteSyncApp({ appConfig, rawConfig, session }: RemoteSyncAppProps) {
+  const { authToken, userId } = session
+  const zeroQueryContext = useMemo(() => createZeroQueryContext({ userId }), [userId])
+
+  return (
+    <ZeroProvider
+      cacheURL={resolveZeroCacheUrl(rawConfig.zeroCacheUrl)}
+      auth={authToken}
+      context={zeroQueryContext}
+      userID={userId}
+      schema={schema}
+      mutators={mutators}
+      maxHeaderLength={ZERO_CONNECT_MAX_HEADER_LENGTH}
+    >
+      <App config={appConfig} />
+    </ZeroProvider>
+  )
+}
 
 function BootstrapShell() {
   return (
@@ -164,18 +190,7 @@ function BootstrapRoot() {
     return <App config={appConfig} connectionState={LOCAL_ONLY_CONNECTION_STATE} />
   }
 
-  return (
-    <ZeroProvider
-      cacheURL={resolveZeroCacheUrl(config.rawConfig.zeroCacheUrl)}
-      auth={session.authToken}
-      userID={session.userId}
-      schema={schema}
-      mutators={mutators}
-      maxHeaderLength={ZERO_CONNECT_MAX_HEADER_LENGTH}
-    >
-      <App config={appConfig} />
-    </ZeroProvider>
-  )
+  return <RemoteSyncApp appConfig={appConfig} rawConfig={config.rawConfig} session={session} />
 }
 
 root.render(

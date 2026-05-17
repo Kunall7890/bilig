@@ -39,6 +39,7 @@ export {
 export { executeZeroQueryTransform, zeroQueryTransformNames } from './query-transforms.js'
 export { loadRuntimeConfig, parseRuntimeConfig, type BiligRuntimeConfig } from './runtime-config.js'
 export {
+  type BiligZeroQueryContext,
   schema,
   sheetIdDependentTableNames,
   zeroSchemaColumnNamesByTable,

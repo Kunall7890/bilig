@@ -212,9 +212,7 @@ export function buildGridGpuScene({
 
   if (selectionOutlineRange) {
     pushSelectionRects({
-      allowHandle: gridSelection.columns.length === 0 && gridSelection.rows.length === 0,
       borderRects,
-      fillRects,
       getCellBounds,
       hostBounds,
       selectionRange: selectionOutlineRange,
@@ -429,10 +427,7 @@ function pushGridLineRects(
 }
 
 function pushSelectionRects(options: {
-  allowHandle: boolean
   borderRects: GridGpuRect[]
-  fillColor?: GridGpuColor
-  fillRects: GridGpuRect[]
   getCellBounds: (col: number, row: number) => Rectangle | undefined
   hostBounds: Pick<DOMRect, 'left' | 'top'>
   outlineColor?: GridGpuColor
@@ -443,10 +438,7 @@ function pushSelectionRects(options: {
   visibleMinRow: number
 }) {
   const {
-    allowHandle,
     borderRects,
-    fillColor = SELECTION_FILL_COLOR,
-    fillRects,
     getCellBounds,
     hostBounds,
     outlineColor = SELECTION_OUTLINE_COLOR,
@@ -476,18 +468,11 @@ function pushSelectionRects(options: {
     width: endBounds.x + endBounds.width - startBounds.x,
     height: endBounds.y + endBounds.height - startBounds.y,
   }
-  if (selectionRange.width > 1 || selectionRange.height > 1) {
-    fillRects.push({
-      x: selectionRect.x + 1,
-      y: selectionRect.y + 1,
-      width: Math.max(0, selectionRect.width - 2),
-      height: Math.max(0, selectionRect.height - 2),
-      color: fillColor,
-    })
-  }
 
-  // Sheets-style range outlines read as a single-pixel stroke, with the fill
-  // starting just inside the border so underlying content stays legible.
+  // Keep regular body selections as stroke-only. Cell background fills are
+  // authoritative spreadsheet content and must remain visually exact while the
+  // range is selected; row/column slice selections still use their own body
+  // affordance through the axis selection path.
   const outlineThickness = 1
   borderRects.push(
     {
@@ -519,10 +504,6 @@ function pushSelectionRects(options: {
       color: outlineColor,
     },
   )
-
-  if (!allowHandle) {
-    return
-  }
 }
 
 function pushBooleanCellRects(

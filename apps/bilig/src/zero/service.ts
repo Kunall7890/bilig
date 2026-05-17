@@ -35,6 +35,7 @@ import { acquireWorkbookMutationLock, loadWorkbookRuntimeMetadata, loadWorkbookS
 import { ensureZeroPublication } from './publication-store.js'
 import { listWorkbookChanges, type WorkbookChangeRecord } from './workbook-change-store.js'
 import { ensureZeroServiceSchema } from './schema-bootstrap.js'
+import { ensureWorkbookDocumentExists } from './workbook-migration-store.js'
 import {
   appendWorkbookAgentRun,
   createWorkbookAgentRunStoreConnection,
@@ -101,6 +102,7 @@ export interface ZeroSyncService {
   ): Promise<WorkbookAgentWorkflowRun[]>
   upsertWorkbookWorkflowRun(documentId: string, run: WorkbookAgentWorkflowRun): Promise<void>
   getWorkbookHeadRevision(documentId: string): Promise<number>
+  ensureWorkbookDocument?(documentId: string, ownerUserId?: string): Promise<void>
   loadLatestWorkbookSnapshot?(documentId: string): Promise<{ revision: number; snapshot: WorkbookSnapshot } | null>
   loadAuthoritativeEvents(documentId: string, afterRevision: number): Promise<AuthoritativeWorkbookEventBatch>
 }
@@ -443,6 +445,10 @@ class EnabledZeroSyncService implements ZeroSyncService {
   async getWorkbookHeadRevision(documentId: string): Promise<number> {
     const metadata = await loadWorkbookRuntimeMetadata(this.runtimeStore, documentId)
     return metadata.headRevision
+  }
+
+  async ensureWorkbookDocument(documentId: string, ownerUserId = 'system'): Promise<void> {
+    await ensureWorkbookDocumentExists(this.pool, documentId, ownerUserId)
   }
 
   async loadLatestWorkbookSnapshot(documentId: string): Promise<{ revision: number; snapshot: WorkbookSnapshot } | null> {

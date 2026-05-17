@@ -422,6 +422,7 @@ describe('sync-server snapshots', () => {
   })
 
   it('falls back to the authoritative zero workbook snapshot when the live session has no snapshot', async () => {
+    const calls: string[] = []
     const snapshot: WorkbookSnapshot = {
       version: 1,
       workbook: {
@@ -450,7 +451,11 @@ describe('sync-server snapshots', () => {
         },
       }),
       zeroSyncService: createZeroSyncStub({
+        async ensureWorkbookDocument(documentId, ownerUserId) {
+          calls.push(`ensure:${documentId}:${ownerUserId ?? ''}`)
+        },
         async loadLatestWorkbookSnapshot(documentId) {
+          calls.push(`load:${documentId}`)
           expect(documentId).toBe('doc-1')
           return {
             revision: 451,
@@ -464,12 +469,16 @@ describe('sync-server snapshots', () => {
       const response = await app.inject({
         method: 'GET',
         url: '/v2/documents/doc-1/snapshot/latest',
+        headers: {
+          'x-bilig-user-id': 'owner-1',
+        },
       })
 
       expect(response.statusCode).toBe(200)
       expect(response.headers['x-bilig-snapshot-cursor']).toBe('451')
       expect(response.headers['content-type']).toContain('application/vnd.bilig.workbook+json')
       expect(JSON.parse(response.body)).toEqual(snapshot)
+      expect(calls).toEqual(['ensure:doc-1:owner-1', 'load:doc-1'])
     } finally {
       await app.close()
     }
@@ -478,10 +487,15 @@ describe('sync-server snapshots', () => {
 
 describe('sync-server authoritative events', () => {
   it('returns authoritative workbook events from the zero sync service', async () => {
+    const calls: string[] = []
     const { app } = createSyncServer({
       logger: false,
       zeroSyncService: createZeroSyncStub({
+        async ensureWorkbookDocument(documentId, ownerUserId) {
+          calls.push(`ensure:${documentId}:${ownerUserId ?? ''}`)
+        },
         async loadAuthoritativeEvents(documentId, afterRevision) {
+          calls.push(`events:${documentId}:${String(afterRevision)}`)
           expect(documentId).toBe('doc-1')
           expect(afterRevision).toBe(4)
           return {
@@ -519,6 +533,9 @@ describe('sync-server authoritative events', () => {
       const response = await app.inject({
         method: 'GET',
         url: '/v2/documents/doc-1/events?afterRevision=4',
+        headers: {
+          'x-bilig-user-id': 'owner-1',
+        },
       })
 
       expect(response.statusCode).toBe(200)
@@ -550,6 +567,7 @@ describe('sync-server authoritative events', () => {
           },
         ],
       })
+      expect(calls).toEqual(['ensure:doc-1:owner-1', 'events:doc-1:4'])
     } finally {
       await app.close()
     }

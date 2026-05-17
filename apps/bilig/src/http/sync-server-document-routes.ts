@@ -36,7 +36,12 @@ export function registerSyncServerDocumentRoutes(
         return Buffer.from(snapshot.bytes)
       }
 
-      const zeroSnapshot = zeroSyncService?.enabled ? await zeroSyncService.loadLatestWorkbookSnapshot?.(request.params.documentId) : null
+      let zeroSnapshot = null
+      if (zeroSyncService?.enabled) {
+        const session = resolveSessionIdentity(request, reply)
+        await zeroSyncService.ensureWorkbookDocument?.(request.params.documentId, session.userID)
+        zeroSnapshot = await zeroSyncService.loadLatestWorkbookSnapshot?.(request.params.documentId)
+      }
       if (!zeroSnapshot) {
         reply.code(204)
         return reply.send()
@@ -67,6 +72,8 @@ export function registerSyncServerDocumentRoutes(
         reply.code(400)
         return createErrorEnvelope('INVALID_AFTER_REVISION', 'afterRevision must be a non-negative integer', false)
       }
+      const session = resolveSessionIdentity(request, reply)
+      await zeroSyncService.ensureWorkbookDocument?.(request.params.documentId, session.userID)
       reply.header('cache-control', 'no-store')
       return await zeroSyncService.loadAuthoritativeEvents(request.params.documentId, afterRevision)
     },

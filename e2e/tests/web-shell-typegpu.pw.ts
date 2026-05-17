@@ -4,6 +4,7 @@ import { ISOLATED_WORKBOOK_PANE_RENDERER_PATH } from '../../apps/web/src/root-ro
 import {
   clickProductCell,
   createTestDocumentId,
+  dragProductBodySelection,
   gotoWorkbookShell,
   pickToolbarPresetColor,
   PRODUCT_COLUMN_WIDTH,
@@ -69,6 +70,26 @@ interface DynamicReadbackResult {
   readonly points: Record<string, ReadbackPoint>
   readonly darkPixelCounts: Record<string, number>
   readonly opaquePixelCounts: Record<string, number>
+}
+
+function selectedRangeFillProbe(columnIndex: number, rowIndex: number): ReadbackInspectorPoint {
+  return {
+    name: `${columnIndex}:${rowIndex}`,
+    x: PRODUCT_ROW_MARKER_WIDTH + PRODUCT_COLUMN_WIDTH * columnIndex + Math.floor(PRODUCT_COLUMN_WIDTH / 2),
+    y: PRODUCT_HEADER_HEIGHT + PRODUCT_ROW_HEIGHT * rowIndex + Math.floor(PRODUCT_ROW_HEIGHT / 2),
+  }
+}
+
+function allReadbackPointsMatch(result: DynamicReadbackResult, predicate: (point: ReadbackPoint) => boolean): boolean {
+  return Object.values(result.points).every(predicate)
+}
+
+function isCornflowerBlueFill(point: ReadbackPoint): boolean {
+  return point.a === 255 && point.b > 215 && point.g > 175 && point.r > 135 && point.b > point.g && point.g > point.r
+}
+
+function isThemeGreenFill(point: ReadbackPoint): boolean {
+  return point.a === 255 && point.g > 135 && point.r < 95 && point.b < 125 && point.g > point.r + 55 && point.g > point.b + 35
 }
 
 interface NativeTextExpectation {
@@ -1027,6 +1048,63 @@ test('@browser-webgpu @browser-deep main workbook shell refreshes typegpu reside
   expect(styledReadback.points.cellFill.g).toBeGreaterThan(styledReadback.points.cellFill.r)
 
   await saveReadbackArtifact(page, testInfo, 'main-workbook-grid-style-refresh-readback.png', 'main-workbook-grid-style-refresh-readback')
+})
+
+test('@browser-webgpu @browser-deep selected range fill changes stay visually authoritative while selected', async ({ page }, testInfo) => {
+  const points = [
+    { ...selectedRangeFillProbe(1, 1), name: 'topLeft' },
+    { ...selectedRangeFillProbe(2, 4), name: 'middle' },
+    { ...selectedRangeFillProbe(3, 8), name: 'bottomRight' },
+  ]
+
+  await page.setViewportSize({ width: 960, height: 720 })
+  await installTypeGpuReadbackHarness(page)
+  await gotoWorkbookShell(page, `/?document=${encodeURIComponent(createTestDocumentId('typegpu-selected-fill-refresh'))}`)
+  await waitForWorkbookReady(page)
+  await waitForTypeGpuRenderer(page)
+  await page.waitForFunction(
+    () =>
+      Boolean(
+        (window as Window & { __biligGpuReadbackInspector?: { readonly isReady: () => boolean } }).__biligGpuReadbackInspector?.isReady(),
+      ),
+    undefined,
+    { timeout: 15_000 },
+  )
+
+  await dragProductBodySelection(page, 1, 1, 3, 8)
+  await expect(page.getByTestId('status-selection')).toContainText('!B2:D9')
+  await pickToolbarPresetColor(page, 'Fill color', 'light cornflower blue 2')
+  const blueReadback = await waitForReadback(
+    page,
+    {
+      points,
+      regions: [],
+    },
+    (result) => allReadbackPointsMatch(result, isCornflowerBlueFill),
+  )
+
+  await expect(page.getByTestId('status-selection')).toContainText('!B2:D9')
+  await pickToolbarPresetColor(page, 'Fill color', 'theme green')
+  const greenReadback = await waitForReadback(
+    page,
+    {
+      points,
+      regions: [],
+    },
+    (result) => result.sequence > blueReadback.sequence && allReadbackPointsMatch(result, isThemeGreenFill),
+  )
+
+  for (const [name, point] of Object.entries(greenReadback.points)) {
+    expect(point.g, `${name} green channel`).toBeGreaterThan(point.b)
+    expect(point.g, `${name} green channel`).toBeGreaterThan(point.r)
+  }
+
+  await saveReadbackArtifact(
+    page,
+    testInfo,
+    'main-workbook-grid-selected-fill-refresh-readback.png',
+    'main-workbook-grid-selected-fill-refresh-readback',
+  )
 })
 
 test('@browser-webgpu @browser-perf main workbook shell keeps typegpu content visible after hover-driven scroll', async ({

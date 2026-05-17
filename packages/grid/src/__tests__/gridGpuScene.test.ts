@@ -194,7 +194,7 @@ describe('gridGpuScene', () => {
     expect(scene.borderRects.filter((rect) => rect.height === 1).length).toBeGreaterThanOrEqual(2)
   })
 
-  test('adds GPU selection fill and outline for the active range', () => {
+  test('adds GPU selection outline without masking active range fills', () => {
     const scene = buildGridGpuScene({
       engine: makeEngine({}),
       columnWidths: {},
@@ -221,13 +221,15 @@ describe('gridGpuScene', () => {
       }),
     })
 
-    expect(scene.fillRects).toContainEqual({
-      x: 101,
-      y: 49,
-      width: 198,
-      height: 70,
-      color: SELECTION_FILL_COLOR,
-    })
+    expect(scene.fillRects).not.toContainEqual(
+      expect.objectContaining({
+        x: 101,
+        y: 49,
+        width: 198,
+        height: 70,
+        color: SELECTION_FILL_COLOR,
+      }),
+    )
     expect(scene.borderRects).toContainEqual({
       x: 100,
       y: 48,

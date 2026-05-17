@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   createLocalOnlyRuntimeConfig,
+  createZeroQueryContext,
   normalizeRuntimeConfigUserId,
   resolveRemoteSyncEnabled,
   resolveRuntimeConfig,
@@ -76,6 +77,12 @@ describe('resolveRuntimeConfig', () => {
     ).toEqual({
       ...BASE_CONFIG,
       currentUserId: 'guest:session-user',
+    })
+  })
+
+  it('builds the Zero query context from the resolved runtime session user', () => {
+    expect(createZeroQueryContext({ userId: 'guest:session-user' })).toEqual({
+      userID: 'guest:session-user',
     })
   })
 

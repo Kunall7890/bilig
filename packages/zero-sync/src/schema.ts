@@ -440,8 +440,13 @@ export const zeroSchemaServerColumnNamesByTable: Readonly<Record<string, readonl
 
 export const sheetIdDependentTableNames = ['presence_coarse', 'workbook_change'] as const satisfies readonly (keyof typeof schema.tables)[]
 
+export interface BiligZeroQueryContext {
+  readonly userID: string
+}
+
 declare module '@rocicorp/zero' {
   interface DefaultTypes {
     schema: typeof schema
+    context: BiligZeroQueryContext
   }
 }

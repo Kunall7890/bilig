@@ -225,7 +225,7 @@ describe('useWorkerWorkbookInteractionState', () => {
     })
   })
 
-  it('commits an empty formula bar override even when the edit base is stale', async () => {
+  it('surfaces a compare conflict for formula bar commits when the active edit base is stale', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
     const selectedCell = stringCell('Sheet1', 'A1', '')
@@ -257,8 +257,12 @@ describe('useWorkerWorkbookInteractionState', () => {
       await Promise.resolve()
     })
 
-    expect(invokeMutation).toHaveBeenCalledWith('clearCell', 'Sheet1', 'A1')
-    expect(workerHandle.viewportStore.getCell('Sheet1', 'A1').value).toEqual({ tag: ValueTag.Empty })
+    expect(invokeMutation).not.toHaveBeenCalled()
+    expect(captured?.editorConflictBanner).toBeTruthy()
+    expect(workerHandle.viewportStore.getCell('Sheet1', 'A1')).toMatchObject({
+      input: 'stale value',
+      value: { tag: ValueTag.String, value: 'stale value' },
+    })
 
     await act(async () => {
       harness.root.unmount()

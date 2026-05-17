@@ -460,8 +460,7 @@ export function useWorkerWorkbookInteractionState(input: {
       pendingEditCommitSessionRef.current = commitSessionId
       pendingEditCommitMovementAppliedRef.current = false
       const parsed = parseEditorInput(nextValue)
-      const isFreshFormulaBarValueOverride = valueOverride !== undefined && editingModeRef.current === 'formula'
-      const isFreshValueOverride = valueOverride !== undefined && (editingModeRef.current === 'idle' || isFreshFormulaBarValueOverride)
+      const isFreshValueOverride = valueOverride !== undefined && editingModeRef.current === 'idle'
       const baseSnapshot = editorBaseSnapshotRef.current
       const liveSnapshot = cloneLiveSelectedCell(targetSelection)
       const baseMatchesTarget = baseSnapshot.sheetName === targetSelection.sheetName && baseSnapshot.address === targetSelection.address
