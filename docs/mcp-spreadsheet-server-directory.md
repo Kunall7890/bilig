@@ -71,7 +71,7 @@ MCP server card with the same tool catalog:
 | Directory                       | Status                                       | Link                                                                                                  |
 | ------------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | Official MCP Registry           | Live, freshness lag under review             | <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper> |
-| Static MCP server card          | Live after next Pages deploy                 | <https://proompteng.github.io/bilig/.well-known/mcp/server-card.json>                                 |
+| Static MCP server card          | Live                                         | <https://proompteng.github.io/bilig/.well-known/mcp/server-card.json>                                 |
 | Glama                           | Live, tool indexing pending                  | <https://glama.ai/mcp/servers/proompteng/bilig>                                                       |
 | mcp.so                          | Submitted for maintainer review              | <https://github.com/chatmcp/mcpso/issues/2295>                                                        |
 | Cline MCP Marketplace           | Submitted for maintainer review              | <https://github.com/cline/mcp-marketplace/issues/1557>                                                |

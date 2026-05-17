@@ -437,7 +437,9 @@ requireXlsxCorpusVerifierDiscovery(xlsxCorpusVerifierWalkthrough)
 requireIncludes(index, './xlsx-corpus-verifier-walkthrough.html', 'docs/index.html')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/xlsx-corpus-verifier-walkthrough.html', 'docs/llms.txt')
 
-await requireFile(join(docsRoot, '.nojekyll'))
+const jekyllConfig = await readFile(join(docsRoot, '_config.yml'), 'utf8')
+requireIncludes(jekyllConfig, 'include:', 'docs/_config.yml')
+requireIncludes(jekyllConfig, '  - .well-known', 'docs/_config.yml')
 const parsedMcpServerCard: unknown = JSON.parse(mcpServerCard)
 if (typeof parsedMcpServerCard !== 'object' || parsedMcpServerCard === null || Array.isArray(parsedMcpServerCard)) {
   throw new Error('docs/.well-known/mcp/server-card.json must be a JSON object')
