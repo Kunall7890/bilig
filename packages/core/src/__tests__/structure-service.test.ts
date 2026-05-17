@@ -493,6 +493,31 @@ describe('EngineStructureService', () => {
     expect(engine.getPerformanceCounters().structuralFormulaImpactCandidates).toBe(0)
   })
 
+  it('subtracts multi-row direct aggregate delete contributions before retargeting preserved formulas', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'structure-delete-row-aggregate-mixed-contributions' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setRangeValues({ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A7' }, [[10], [true], ['ignored'], [5], [null], [8], [3]])
+    engine.setCellFormula('Sheet1', 'B8', 'SUM(A1:A7)')
+
+    engine.resetPerformanceCounters()
+    const result = Effect.runSync(
+      getStructureService(engine).applyStructuralAxisOp({
+        kind: 'deleteRows',
+        sheetName: 'Sheet1',
+        start: 1,
+        count: 3,
+      }),
+    )
+
+    expect(result.graphRefreshRequired).toBe(false)
+    expect(result.formulaCellIndices).toEqual([])
+    expect(engine.getCell('Sheet1', 'B5').formula).toBe('SUM(A1:A4)')
+    expect(engine.getCellValue('Sheet1', 'B5')).toEqual({ tag: ValueTag.Number, value: 21 })
+    expect(engine.getPerformanceCounters().wasmFullUploads).toBe(0)
+    expect(engine.getPerformanceCounters().structuralFormulaImpactCandidates).toBe(0)
+  })
+
   it('does not scan cycle state for literal-only structural deletes', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'structure-delete-literal-column' })
     await engine.ready()
