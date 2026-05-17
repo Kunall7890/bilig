@@ -1,6 +1,5 @@
 import { readFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { join } from 'node:path'
 import { agentFrameworkDocRequirements, agentFrameworkLlmsRequiredLinks } from './check-docs-discovery-agent-pages.ts'
 import {
   requireFile,
@@ -10,29 +9,28 @@ import {
   requirePackageKeywords,
   requirePublishedSource,
 } from './check-docs-discovery-core.ts'
+import { loadDocsDiscoveryContext } from './check-docs-discovery-context.ts'
 import { requireSitemapPublishedSources } from './check-docs-discovery-sitemap.ts'
 import { requireHomepageDiscovery } from './check-docs-discovery-homepage.ts'
 import { productHuntLaunchAssetFiles, requireGrowthSurfaceDiscovery } from './check-docs-discovery-launch-kit.ts'
-import { getBenchmarkDiscoveryEvidence } from './check-docs-discovery-benchmark-evidence.ts'
 import { llmsExternalSurfaceLinks } from './check-docs-discovery-growth-links.ts'
 import { requireFormulaProofDiscovery } from './check-docs-discovery-proof-pages.ts'
-import { docsSiteSources } from './check-docs-discovery-site-sources.ts'
 import { requireStarterIssueDiscovery } from './check-docs-discovery-starter-issues.ts'
 import { requireTypeScriptFirstPublicSnippets } from './check-docs-discovery-typescript-snippets.ts'
 import { requireXlsxCorpusVerifierDiscovery } from './check-docs-discovery-xlsx-verifier.ts'
 import { requireXlsxCalcAlternativeDiscovery } from './check-docs-discovery-xlsx-calc.ts'
 import { requireSharedPublicDocsDiscovery } from './check-docs-discovery-public-docs.ts'
 import { requireHeadlessExampleDiscovery } from './check-docs-discovery-headless-examples.ts'
+import { homepageRequiredLinks, llmsRequiredLinks } from './check-docs-discovery-public-link-manifest.ts'
 
-const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
-const docsRoot = join(repoRoot, 'docs')
-const siteRoot = 'https://proompteng.github.io/bilig/'
-
-const expectedSitemapUrls = docsSiteSources.map(([urlPath]) => `${siteRoot}${urlPath}`)
-const sourceFilesByUrl = new Map<string, string>(docsSiteSources.map(([urlPath, sourceFile]) => [`${siteRoot}${urlPath}`, sourceFile]))
-const benchmarkEvidence = getBenchmarkDiscoveryEvidence()
-
-const [
+const {
+  repoRoot,
+  docsRoot,
+  siteRoot,
+  expectedSitemapUrls,
+  sourceFilesByUrl,
+  benchmarkEvidence,
+  headlessPackageVersion,
   readme,
   contributing,
   rootPackageJson,
@@ -61,62 +59,34 @@ const [
   generalDiscussionTemplate,
   pullRequestTemplate,
   dominanceScorecard,
-] = await Promise.all([
-  readFile(join(repoRoot, 'README.md'), 'utf8'),
-  readFile(join(repoRoot, 'CONTRIBUTING.md'), 'utf8'),
-  readFile(join(repoRoot, 'package.json'), 'utf8'),
-  readFile(join(docsRoot, 'index.html'), 'utf8'),
-  readFile(join(docsRoot, 'assets', 'site.css'), 'utf8'),
-  readFile(join(docsRoot, 'assets', 'product-demo.css'), 'utf8'),
-  readFile(join(docsRoot, 'robots.txt'), 'utf8'),
-  readFile(join(docsRoot, 'sitemap.xml'), 'utf8'),
-  readFile(join(docsRoot, 'llms.txt'), 'utf8'),
-  readFile(join(docsRoot, 'community-launch-pack.md'), 'utf8'),
-  readFile(join(docsRoot, 'product-hunt-launch-kit.md'), 'utf8'),
-  readFile(join(docsRoot, 'starter-issues.md'), 'utf8'),
-  readFile(join(docsRoot, 'new-contributor-guide.md'), 'utf8'),
-  readFile(join(repoRoot, 'packages', 'headless', 'package.json'), 'utf8'),
-  readFile(join(repoRoot, 'examples', 'headless-workpaper', 'package.json'), 'utf8'),
-  readFile(join(repoRoot, 'packages', 'headless', 'README.md'), 'utf8'),
-  readFile(join(repoRoot, 'packages', 'excel-import', 'README.md'), 'utf8'),
-  readFile(join(repoRoot, 'Dockerfile'), 'utf8'),
-  readFile(join(docsRoot, 'public-api.md'), 'utf8'),
-  readFile(join(repoRoot, '.github', 'ISSUE_TEMPLATE', 'config.yml'), 'utf8'),
-  readFile(join(repoRoot, '.github', 'ISSUE_TEMPLATE.md'), 'utf8'),
-  readFile(join(repoRoot, '.github', 'ISSUE_TEMPLATE', 'feature_request.yml'), 'utf8'),
-  readFile(join(repoRoot, '.github', 'DISCUSSION_TEMPLATE', 'ideas.yml'), 'utf8'),
-  readFile(join(repoRoot, '.github', 'DISCUSSION_TEMPLATE', 'q-a.yml'), 'utf8'),
-  readFile(join(repoRoot, '.github', 'DISCUSSION_TEMPLATE', 'show-and-tell.yml'), 'utf8'),
-  readFile(join(repoRoot, '.github', 'DISCUSSION_TEMPLATE', 'general.yml'), 'utf8'),
-  readFile(join(repoRoot, '.github', 'PULL_REQUEST_TEMPLATE.md'), 'utf8'),
-  readFile(join(repoRoot, 'packages', 'benchmarks', 'baselines', 'bilig-dominance-scorecard.json'), 'utf8'),
-])
-
-const [headlessSpreadsheetEngineComparison, sheetjsExceljsAlternativeFormulaWorkbookApi, hyperformulaAlternativeHeadlessWorkpaper] =
-  await Promise.all([
-    readFile(join(docsRoot, 'headless-spreadsheet-engine-comparison.md'), 'utf8'),
-    readFile(join(docsRoot, 'sheetjs-exceljs-alternative-formula-workbook-api.md'), 'utf8'),
-    readFile(join(docsRoot, 'hyperformula-alternative-headless-workpaper.md'), 'utf8'),
-  ])
-const parsedHeadlessPackage: unknown = JSON.parse(headlessPackageJson)
-const parsedHeadlessPackageVersion =
-  typeof parsedHeadlessPackage === 'object' && parsedHeadlessPackage !== null && !Array.isArray(parsedHeadlessPackage)
-    ? Reflect.get(parsedHeadlessPackage, 'version')
-    : undefined
-if (typeof parsedHeadlessPackageVersion !== 'string') {
-  throw new Error('packages/headless/package.json is missing a string version')
-}
-const headlessPackageVersion = parsedHeadlessPackageVersion
-const xlsxFormulaRecalculationNode = await readFile(join(docsRoot, 'xlsx-formula-recalculation-node.md'), 'utf8')
-const agentXlsxFormulaRecalculationWithoutLibreOffice = await readFile(
-  join(docsRoot, 'agent-xlsx-formula-recalculation-without-libreoffice.md'),
-  'utf8',
-)
-const staleXlsxFormulaCacheNode = await readFile(join(docsRoot, 'stale-xlsx-formula-cache-node.md'), 'utf8')
-const microsoftGraphExcelRecalculationNode = await readFile(join(docsRoot, 'microsoft-graph-excel-recalculation-node.md'), 'utf8')
-const formulaWorkbooksProof = await readFile(join(docsRoot, 'formula-workbooks-node-services-agent-tools.md'), 'utf8')
-const showHnFormulaWorkbooksProof = await readFile(join(docsRoot, 'show-hn-formula-workbooks-node-services.md'), 'utf8')
-const googleSheetsApiBoundaryDoc = await readFile(join(docsRoot, 'google-sheets-api-alternative-node-workpaper.md'), 'utf8')
+  headlessSpreadsheetEngineComparison,
+  sheetjsExceljsAlternativeFormulaWorkbookApi,
+  hyperformulaAlternativeHeadlessWorkpaper,
+  xlsxFormulaRecalculationNode,
+  agentXlsxFormulaRecalculationWithoutLibreOffice,
+  staleXlsxFormulaCacheNode,
+  microsoftGraphExcelRecalculationNode,
+  formulaWorkbooksProof,
+  showHnFormulaWorkbooksProof,
+  googleSheetsApiBoundaryDoc,
+  npmProvenancePackageTrustDoc,
+  xlsxCorpusVerifierWalkthrough,
+  whyAgentsDoc,
+  agentToolCallingDoc,
+  aiSdkLangChainDoc,
+  mcpWorkPaperToolServerDoc,
+  mcpSpreadsheetServerDirectoryDoc,
+  mcpClientSetupDoc,
+  claudeDesktopMcpbDoc,
+  agentToolCallLoopDoc,
+  mcpServerCard,
+  workbookAutomationExamplesDoc,
+  serverSideSpreadsheetAutomationNode,
+  nodeFrameworkWorkpaperAdaptersDoc,
+  devToWorkbookApisPost,
+  evaluateExcelFormulasInNodeTypescript,
+  nodeSpreadsheetFormulaEngine,
+} = await loadDocsDiscoveryContext()
 
 requireHomepageDiscovery(index, siteCss, productCss)
 await requireXlsxCalcAlternativeDiscovery(docsRoot)
@@ -153,50 +123,7 @@ requirePackageKeywords(
 requireIncludes(index, '"downloadUrl": "https://www.npmjs.com/package/@bilig/headless"', 'docs/index.html')
 requireIncludes(index, '"applicationCategory": "DeveloperApplication"', 'docs/index.html')
 requireIncludes(index, '"@type": "FAQPage"', 'docs/index.html')
-for (const required of [
-  './why-use-bilig.html',
-  './why-agents-need-workbook-apis.html',
-  './stop-driving-spreadsheets-with-screenshots.html',
-  './show-hn-formula-workbooks-node-services.html',
-  './formula-workbooks-node-services-agent-tools.html',
-  './agent-workpaper-tool-calling-recipe.html',
-  './xlsx-formula-recalculation-node.html',
-  './xlsx-recalculation-proof.html',
-  './xlsx-recalculation-proof.ts',
-  './agent-xlsx-formula-recalculation-without-libreoffice.html',
-  './stale-xlsx-formula-cache-node.html',
-  './xlsx-template-formula-recalculation-node.html',
-  './xlsx-populate-formula-result-node.html',
-  './microsoft-graph-excel-recalculation-node.html',
-  './vercel-ai-sdk-langchain-spreadsheet-tool.html',
-  './mcp-workpaper-tool-server.html',
-  './mcp-spreadsheet-server-directory.html',
-  './mcp-client-setup.html',
-  './claude-desktop-mcpb-workpaper.html',
-  './agent-spreadsheet-tool-call-loop.html',
-  './node-service-workpaper-recipe.html',
-  './server-side-spreadsheet-automation-node.html',
-  './google-sheets-api-alternative-node-workpaper.html',
-  './node-spreadsheet-formula-engine.html',
-  './evaluate-excel-formulas-in-node-typescript.html',
-  './try-bilig-headless-in-node.html',
-  './quote-approval-workpaper-api.html',
-  './create-bilig-workpaper.html',
-  './npm-provenance-package-trust.html',
-  './formula-bug-clinic.html',
-  './formula-clinic-report.ts',
-  './submit-workbook-fixture.html',
-  './serverless-workpaper-api-route.html',
-  './node-framework-workpaper-adapters.html',
-  './persisting-formula-backed-workpaper-documents-in-node.html',
-  'examples/serverless-workpaper-api#persistence-adapters',
-  './building-a-revenue-model-with-headless-workpaper.html',
-  './headless-spreadsheet-engine-comparison.html',
-  './javascript-spreadsheet-library-headless-node.html',
-  './hyperformula-alternative-headless-workpaper.html',
-  'https://github.com/proompteng/bilig/stargazers',
-  'https://github.com/proompteng/bilig/discussions/new?category=general',
-]) {
+for (const required of homepageRequiredLinks) {
   requireIncludes(index, required, 'docs/index.html')
 }
 
@@ -247,101 +174,7 @@ await Promise.all(
   ].map((sourceFile) => requireFile(join(docsRoot, 'assets', sourceFile))),
 )
 
-for (const required of [
-  'repository: https://github.com/proompteng/bilig',
-  'npm package: https://www.npmjs.com/package/@bilig/headless',
-  'npm run agent:tool-call',
-  'npm run agent:framework-adapters',
-  'npm run agent:verify',
-  'https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-records-input',
-  'https://proompteng.github.io/bilig/why-agents-need-workbook-apis.html',
-  'https://proompteng.github.io/bilig/why-use-bilig.html',
-  'https://github.com/proompteng/bilig/blob/main/docs/why-use-bilig.md',
-  'https://proompteng.github.io/bilig/stop-driving-spreadsheets-with-screenshots.html',
-  'https://proompteng.github.io/bilig/formula-workbooks-node-services-agent-tools.html',
-  'https://github.com/proompteng/bilig/blob/main/docs/formula-workbooks-node-services-agent-tools.md',
-  'https://proompteng.github.io/bilig/try-bilig-headless-in-node.html',
-  'https://proompteng.github.io/bilig/quote-approval-workpaper-api.html',
-  'https://github.com/proompteng/bilig/blob/main/docs/quote-approval-workpaper-api.md',
-  'https://proompteng.github.io/bilig/vercel-ai-sdk-langchain-spreadsheet-tool.html',
-  'https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html',
-  'https://proompteng.github.io/bilig/mcp-spreadsheet-server-directory.html',
-  'https://proompteng.github.io/bilig/mcp-client-setup.html',
-  'https://proompteng.github.io/bilig/claude-desktop-mcpb-workpaper.html',
-  'https://github.com/proompteng/bilig/blob/main/docs/claude-desktop-mcpb-workpaper.md',
-  'https://proompteng.github.io/bilig/agent-workpaper-tool-calling-recipe.html',
-  'https://proompteng.github.io/bilig/agent-spreadsheet-tool-call-loop.html',
-  'https://proompteng.github.io/bilig/node-service-workpaper-recipe.html',
-  'https://proompteng.github.io/bilig/server-side-spreadsheet-automation-node.html',
-  'https://proompteng.github.io/bilig/google-sheets-api-alternative-node-workpaper.html',
-  'https://proompteng.github.io/bilig/serverless-workpaper-api-route.html',
-  'https://proompteng.github.io/bilig/node-framework-workpaper-adapters.html',
-  'https://proompteng.github.io/bilig/workbook-automation-examples-node.html',
-  'https://github.com/proompteng/bilig/blob/main/docs/workbook-automation-examples-node.md',
-  'https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#invoice-totals',
-  'https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#budget-variance-alerts',
-  'https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#fulfillment-capacity-plan',
-  'https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#quote-approval-threshold',
-  'https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#subscription-mrr-forecast',
-  'https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api',
-  'https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api#framework-adapters',
-  'https://github.com/proompteng/bilig/tree/main/examples/xlsx-recalculation-node',
-  'https://github.com/proompteng/bilig/discussions',
-  'https://github.com/proompteng/bilig/discussions/157',
-  'https://github.com/proompteng/bilig/discussions/167',
-  'https://github.com/proompteng/bilig/discussions/230',
-  'https://github.com/proompteng/bilig/discussions/270',
-  'https://github.com/proompteng/bilig/discussions/307',
-  'https://github.com/proompteng/bilig/discussions/308',
-  'https://github.com/proompteng/bilig/discussions/335',
-  'https://github.com/proompteng/bilig/discussions/115',
-  'https://proompteng.github.io/bilig/node-spreadsheet-formula-engine.html',
-  'https://proompteng.github.io/bilig/evaluate-excel-formulas-in-node-typescript.html',
-  'https://github.com/proompteng/bilig/blob/main/docs/node-spreadsheet-formula-engine.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/stop-driving-spreadsheets-with-screenshots.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/evaluate-excel-formulas-in-node-typescript.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/server-side-spreadsheet-automation-node.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/google-sheets-api-alternative-node-workpaper.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/node-service-workpaper-recipe.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/serverless-workpaper-api-route.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/node-framework-workpaper-adapters.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/formula-bug-clinic.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/formula-clinic-report.ts',
-  'https://github.com/proompteng/bilig/blob/main/docs/submit-workbook-fixture.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/xlsx-template-formula-recalculation-node.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/xlsx-populate-formula-result-node.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/xlsx-recalculation-proof.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/csv-shaped-workpaper-input-recipe.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/unsupported-formula-troubleshooting-recipe.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/agent-workpaper-tool-calling-recipe.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/vercel-ai-sdk-langchain-spreadsheet-tool.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/mcp-workpaper-tool-server.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/mcp-spreadsheet-server-directory.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/mcp-client-setup.md',
-  'pnpm mcpb:workpaper:build',
-  'https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/mcp-tool-server.ts',
-  'https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/mcp-stdio-server.ts',
-  'https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/agent-framework-adapters.ts',
-  'https://github.com/proompteng/bilig/blob/main/docs/agent-spreadsheet-tool-call-loop.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/local-workpaper-benchmark-walkthrough.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/production-adoption-checklist-headless-workpaper.md',
-  'https://proompteng.github.io/bilig/npm-provenance-package-trust.html',
-  'https://github.com/proompteng/bilig/blob/main/docs/npm-provenance-package-trust.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/hyperformula-alternative-headless-workpaper.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/headless-spreadsheet-engine-comparison.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/javascript-spreadsheet-library-headless-node.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/sheetjs-exceljs-alternative-formula-workbook-api.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/where-bilig-is-not-excel-compatible-yet.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/formula-edge-sumifs-paired-criteria-fixture.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/formula-edge-groupby-spill-fixture.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/new-contributor-guide.md',
-  'https://github.com/proompteng/bilig/blob/main/docs/starter-issues.md',
-  'https://github.com/proompteng/bilig/blob/main/SECURITY.md',
-  'https://github.com/proompteng/bilig/blob/main/SUPPORT.md',
-  'https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig',
-  'https://github.com/proompteng/bilig/issues?q=is%3Aissue%20state%3Aopen%20label%3Afirst-timers-only',
-]) {
+for (const required of llmsRequiredLinks) {
   requireIncludes(llms, required, 'docs/llms.txt')
 }
 for (const required of agentFrameworkLlmsRequiredLinks) {
@@ -488,15 +321,11 @@ requireNotIncludes(llms, 'https://github.com/proompteng/bilig/issues/272', 'docs
 requireNotIncludes(llms, 'https://github.com/proompteng/bilig/issues/277', 'docs/llms.txt')
 requireNotIncludes(llms, 'https://github.com/proompteng/bilig/issues/281', 'docs/llms.txt')
 requireIncludes(
-  await readFile(join(docsRoot, 'evaluate-excel-formulas-in-node-typescript.md'), 'utf8'),
+  evaluateExcelFormulasInNodeTypescript,
   'npx tsx eval-node-formulas.ts',
   'docs/evaluate-excel-formulas-in-node-typescript.md',
 )
-requireIncludes(
-  await readFile(join(docsRoot, 'server-side-spreadsheet-automation-node.md'), 'utf8'),
-  'npx tsx eval.ts',
-  'docs/server-side-spreadsheet-automation-node.md',
-)
+requireIncludes(serverSideSpreadsheetAutomationNode, 'npx tsx eval.ts', 'docs/server-side-spreadsheet-automation-node.md')
 for (const required of [
   'title: Google Sheets API alternative for local Node workbook execution',
   'That is the boundary. `bilig` is not trying to replace Google Sheets.',
@@ -514,7 +343,6 @@ requireIncludes(index, './google-sheets-api-alternative-node-workpaper.html', 'd
 requireIncludes(llms, 'https://proompteng.github.io/bilig/google-sheets-api-alternative-node-workpaper.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/google-sheets-api-alternative-node-workpaper.md', 'docs/llms.txt')
 
-const npmProvenancePackageTrustDoc = await readFile(join(docsRoot, 'npm-provenance-package-trust.md'), 'utf8')
 for (const required of [
   'title: Verify npm provenance for @bilig/headless',
   'npm view @bilig/headless@latest version dist.attestations dist.signatures --json',
@@ -605,32 +433,10 @@ requireIncludes(llms, 'https://proompteng.github.io/bilig/npm-provenance-package
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/npm-provenance-package-trust.md', 'docs/llms.txt')
 await requireFile(join(repoRoot, '.github', 'workflows', 'scorecard.yml'))
 
-requireXlsxCorpusVerifierDiscovery(await readFile(join(docsRoot, 'xlsx-corpus-verifier-walkthrough.md'), 'utf8'))
+requireXlsxCorpusVerifierDiscovery(xlsxCorpusVerifierWalkthrough)
 requireIncludes(index, './xlsx-corpus-verifier-walkthrough.html', 'docs/index.html')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/xlsx-corpus-verifier-walkthrough.html', 'docs/llms.txt')
-requireIncludes(llms, 'https://proompteng.github.io/bilig/.well-known/mcp/server-card.json', 'docs/llms.txt')
 
-const [
-  whyAgentsDoc,
-  agentToolCallingDoc,
-  aiSdkLangChainDoc,
-  mcpWorkPaperToolServerDoc,
-  mcpSpreadsheetServerDirectoryDoc,
-  mcpClientSetupDoc,
-  claudeDesktopMcpbDoc,
-  agentToolCallLoopDoc,
-  mcpServerCard,
-] = await Promise.all([
-  readFile(join(docsRoot, 'why-agents-need-workbook-apis.md'), 'utf8'),
-  readFile(join(docsRoot, 'agent-workpaper-tool-calling-recipe.md'), 'utf8'),
-  readFile(join(docsRoot, 'vercel-ai-sdk-langchain-spreadsheet-tool.md'), 'utf8'),
-  readFile(join(docsRoot, 'mcp-workpaper-tool-server.md'), 'utf8'),
-  readFile(join(docsRoot, 'mcp-spreadsheet-server-directory.md'), 'utf8'),
-  readFile(join(docsRoot, 'mcp-client-setup.md'), 'utf8'),
-  readFile(join(docsRoot, 'claude-desktop-mcpb-workpaper.md'), 'utf8'),
-  readFile(join(docsRoot, 'agent-spreadsheet-tool-call-loop.md'), 'utf8'),
-  readFile(join(docsRoot, '.well-known', 'mcp', 'server-card.json'), 'utf8'),
-])
 await requireFile(join(docsRoot, '.nojekyll'))
 const parsedMcpServerCard: unknown = JSON.parse(mcpServerCard)
 if (typeof parsedMcpServerCard !== 'object' || parsedMcpServerCard === null || Array.isArray(parsedMcpServerCard)) {
@@ -876,16 +682,15 @@ for (const [path, content] of [
   ['docs/mcp-client-setup.md', mcpClientSetupDoc],
   ['docs/claude-desktop-mcpb-workpaper.md', claudeDesktopMcpbDoc],
   ['docs/agent-spreadsheet-tool-call-loop.md', agentToolCallLoopDoc],
-  ['docs/workbook-automation-examples-node.md', await readFile(join(docsRoot, 'workbook-automation-examples-node.md'), 'utf8')],
-  ['docs/server-side-spreadsheet-automation-node.md', await readFile(join(docsRoot, 'server-side-spreadsheet-automation-node.md'), 'utf8')],
+  ['docs/workbook-automation-examples-node.md', workbookAutomationExamplesDoc],
+  ['docs/server-side-spreadsheet-automation-node.md', serverSideSpreadsheetAutomationNode],
   ['docs/google-sheets-api-alternative-node-workpaper.md', googleSheetsApiBoundaryDoc],
-  ['docs/node-framework-workpaper-adapters.md', await readFile(join(docsRoot, 'node-framework-workpaper-adapters.md'), 'utf8')],
-  ['docs/dev-to-workbook-apis-post.md', await readFile(join(docsRoot, 'dev-to-workbook-apis-post.md'), 'utf8')],
+  ['docs/node-framework-workpaper-adapters.md', nodeFrameworkWorkpaperAdaptersDoc],
+  ['docs/dev-to-workbook-apis-post.md', devToWorkbookApisPost],
 ] as const) {
   requireIncludes(content, 'image: /assets/github-social-preview.png', path)
 }
 
-const workbookAutomationExamplesDoc = await readFile(join(docsRoot, 'workbook-automation-examples-node.md'), 'utf8')
 requireIncludes(workbookAutomationExamplesDoc, '## 90-second npm-only check', 'docs/workbook-automation-examples-node.md')
 requireIncludes(
   workbookAutomationExamplesDoc,
@@ -956,11 +761,7 @@ for (const required of [
   requireIncludes(sheetjsExceljsAlternativeFormulaWorkbookApi, required, 'docs/sheetjs-exceljs-alternative-formula-workbook-api.md')
 }
 
-requireIncludes(
-  await readFile(join(docsRoot, 'node-spreadsheet-formula-engine.md'), 'utf8'),
-  'cat > formula-engine-smoke.ts',
-  'docs/node-spreadsheet-formula-engine.md',
-)
+requireIncludes(nodeSpreadsheetFormulaEngine, 'cat > formula-engine-smoke.ts', 'docs/node-spreadsheet-formula-engine.md')
 
 const discussionDocs = {
   readme: ['README.md', readme],

@@ -11,6 +11,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(mcp): expose file-backed tools to directory scanners (352bccb9)
 
 ## 0.18.19
@@ -20,6 +21,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(headless): materialize dense load rectangles safely (82e77db5)
 - fix(zero): centralize schema bootstrap (ace3ec96)
 
@@ -30,11 +32,13 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(wasm-kernel): support array sumproduct operands (5db44f40)
 - fix(wasm-kernel): vectorize unary negation (5f6a5a6c)
 - perf(headless): accelerate dense initialization and fresh aggregate formulas (ca1114e0)
 
 ## Internal runtime changes
+
 - docs(mcp): add directory scanner docker target (b134572d)
 
 ## 0.18.17
@@ -44,9 +48,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(wasm-kernel): align criteria aggregate array semantics (92c71f48)
 
 ## Internal runtime changes
+
 - docs(mcp): add file-backed transcript proof (5c554c46)
 
 ## 0.18.16
@@ -56,6 +62,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(wasm-kernel): align table lookup array semantics (224bfd85)
 
 ## 0.18.15
@@ -65,6 +72,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(wasm-kernel): align lookup array semantics (ae9b4ba5)
 
 ## 0.18.14
@@ -74,6 +82,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(wasm-kernel): support array metadata fast paths (f3d7ad3a)
 
 ## 0.18.13
@@ -83,6 +92,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(wasm-kernel): preserve dynamic array cell values (018d4535)
 
 ## 0.18.12
@@ -92,6 +102,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(headless): improve npm discovery metadata (f15da89d)
 
 ## 0.18.11
@@ -101,6 +112,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(release): sync npm evidence after version bumps (da5a9fb2)
 - fix(release): build before footprint sync (f293c629)
 
