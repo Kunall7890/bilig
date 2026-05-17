@@ -5,6 +5,7 @@ import { ValueTag } from '@bilig/protocol'
 import type { ViewportPatch } from '@bilig/worker-transport'
 import { runProperty } from '@bilig/test-fuzz'
 import { PRODUCT_COLUMN_WIDTH, PRODUCT_ROW_HEIGHT } from '@bilig/grid'
+import { isClearCellSnapshot } from '../projected-viewport-cell-snapshot-policy.js'
 import { ProjectedViewportStore } from '../projected-viewport-store.js'
 
 type ViewportAction =
@@ -198,10 +199,6 @@ function shouldAcceptExpectedCellSnapshot(current: CellSnapshot, incoming: CellS
     return false
   }
   return true
-}
-
-function isClearCellSnapshot(snapshot: CellSnapshot): boolean {
-  return snapshot.formula === undefined && snapshot.input === undefined && snapshot.value.tag === ValueTag.Empty
 }
 
 function addressFor(row: number, col: number): string {

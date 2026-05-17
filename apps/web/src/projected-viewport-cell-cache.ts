@@ -3,10 +3,14 @@ import { ValueTag, type CellRangeRef, type CellSnapshot, type CellStyleRecord, t
 import { selectProjectedViewportKeysToEvict } from './projected-viewport-cache-pruning.js'
 import {
   cellSnapshotSignature,
+  isClearCellSnapshot,
+  isOptimisticCellSnapshot,
+  isOptimisticClearResurrection,
+  isResetEmptySnapshot,
   prepareIncomingSnapshot,
   shouldKeepCurrentSnapshot,
-  type ProjectedViewportPatchApplicationResult,
-} from './projected-viewport-patch-application.js'
+} from './projected-viewport-cell-snapshot-policy.js'
+import type { ProjectedViewportPatchApplicationResult } from './projected-viewport-patch-application.js'
 import { OPTIMISTIC_CELL_SNAPSHOT_FLAG } from './workbook-optimistic-cell-flags.js'
 
 const DEFAULT_STYLE_ID = 'style-0'
@@ -23,19 +27,6 @@ function normalizeMaxCachedCellsPerSheet(rawMaxCachedCellsPerSheet: number | und
     return DEFAULT_MAX_CACHED_CELLS_PER_SHEET
   }
   return Math.floor(rawMaxCachedCellsPerSheet)
-}
-
-function isResetEmptySnapshot(snapshot: CellSnapshot): boolean {
-  return (
-    snapshot.value.tag === ValueTag.Empty &&
-    snapshot.version === 0 &&
-    snapshot.flags === 0 &&
-    snapshot.formula === undefined &&
-    snapshot.input === undefined &&
-    snapshot.format === undefined &&
-    snapshot.styleId === undefined &&
-    snapshot.numberFormatId === undefined
-  )
 }
 
 export class ProjectedViewportCellCache {
@@ -184,9 +175,7 @@ export class ProjectedViewportCellCache {
         return false
       }
       const shouldProtectCurrent =
-        (current.flags & OPTIMISTIC_CELL_SNAPSHOT_FLAG) !== 0 &&
-        isOptimisticClearResurrection(current, incoming) &&
-        !forcedOptimisticClearHydration
+        isOptimisticCellSnapshot(current) && isOptimisticClearResurrection(current, incoming) && !forcedOptimisticClearHydration
           ? true
           : options.force !== true || ((current.flags & OPTIMISTIC_CELL_SNAPSHOT_FLAG) !== 0 && options.forceOptimistic !== true)
       if (shouldProtectCurrent && shouldKeepCurrentSnapshot(current, incoming, { allowResetEmptyOverride: false })) {
@@ -417,12 +406,4 @@ export class ProjectedViewportCellCache {
       version: 0,
     }
   }
-}
-
-function isClearCellSnapshot(snapshot: CellSnapshot): boolean {
-  return snapshot.formula === undefined && snapshot.input === undefined && snapshot.value.tag === ValueTag.Empty
-}
-
-function isOptimisticClearResurrection(current: CellSnapshot, incoming: CellSnapshot): boolean {
-  return isClearCellSnapshot(current) && !isClearCellSnapshot(incoming)
 }
