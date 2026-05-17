@@ -13,6 +13,7 @@ on:
       - 'packages/workbook-domain/**'
       - 'packages/wasm-kernel/**'
       - 'packages/excel-import/**'
+      - 'packages/create-workpaper/**'
       - 'packages/benchmarks/**'
       - 'packages/headless/CHANGELOG.md'
       - 'docs/public-api.md'
@@ -30,6 +31,7 @@ on:
       - 'scripts/next-runtime-release-version.ts'
       - 'scripts/plan-runtime-release.ts'
       - 'scripts/check-runtime-npm-provisioning.ts'
+      - 'scripts/check-create-workpaper-package.ts'
       - 'scripts/publish-runtime-package-set.ts'
       - 'scripts/runtime-package-set.ts'
       - 'scripts/runtime-release.ts'
@@ -199,6 +201,7 @@ jobs:
             packages/core
             packages/excel-import
             packages/headless
+            packages/create-workpaper
           )
 
           for package_dir in "${package_dirs[@]}"; do
@@ -550,6 +553,7 @@ jobs:
             'packages/core/package.json',
             'packages/excel-import/package.json',
             'packages/headless/package.json',
+            'packages/create-workpaper/package.json',
           ];
           const packages = packagePaths.map((packagePath) =>
             JSON.parse(fs.readFileSync(packagePath, 'utf8')),
@@ -590,6 +594,7 @@ jobs:
             packages/core/package.json
             packages/excel-import/package.json
             packages/headless/package.json
+            packages/create-workpaper/package.json
             packages/headless/server.json
             packages/headless/CHANGELOG.md
           )

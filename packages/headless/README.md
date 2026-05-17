@@ -64,7 +64,7 @@ The generated-project command is being prepared as
 
 <!-- headless-package-footprint:start -->
 
-Current checked npm footprint for `@bilig/headless@0.18.6`:
+Current checked npm footprint for `@bilig/headless@0.18.8`:
 
 - Pack dry run: `423 kB` tarball, `2.53 MB` unpacked, `429` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
@@ -78,11 +78,11 @@ Current checked npm footprint for `@bilig/headless@0.18.6`:
 
 ## Published Package Trust
 
-`@bilig/headless@0.18.6` is published with npm registry signatures and SLSA
+`@bilig/headless@0.18.8` is published with npm registry signatures and SLSA
 provenance attestations. Check the package before adopting it in a service:
 
 ```sh
-npm view @bilig/headless@0.18.6 version dist.attestations dist.signatures --json
+npm view @bilig/headless@0.18.8 version dist.attestations dist.signatures --json
 npm audit signatures
 ```
 

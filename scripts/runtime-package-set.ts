@@ -9,6 +9,7 @@ export const RUNTIME_PACKAGE_DIRS = [
   'packages/core',
   'packages/excel-import',
   'packages/headless',
+  'packages/create-workpaper',
 ] as const
 
 export type RuntimePackageDir = (typeof RUNTIME_PACKAGE_DIRS)[number]
@@ -20,6 +21,7 @@ export const RUNTIME_NPM_PACKAGE_DIRS = [
   'packages/formula',
   'packages/core',
   'packages/headless',
+  'packages/create-workpaper',
 ] as const satisfies readonly RuntimePackageDir[]
 
 export interface RuntimePackageManifest {

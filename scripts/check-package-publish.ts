@@ -94,19 +94,10 @@ function runTextCommand(command, args, options = {}) {
 }
 
 function validateManifestShape(packageLabel, manifest, failureMessages) {
-  const requiredFields = [
-    'name',
-    'version',
-    'description',
-    'license',
-    'repository',
-    'homepage',
-    'bugs',
-    'main',
-    'types',
-    'exports',
-    'files',
-  ]
+  const requiredFields =
+    packageLabel === '@bilig/create-workpaper'
+      ? ['name', 'version', 'description', 'license', 'repository', 'homepage', 'bugs', 'bin', 'files']
+      : ['name', 'version', 'description', 'license', 'repository', 'homepage', 'bugs', 'main', 'types', 'exports', 'files']
   for (const field of requiredFields) {
     if (!(field in manifest)) {
       failureMessages.push(`${packageLabel}: missing required manifest field "${field}"`)

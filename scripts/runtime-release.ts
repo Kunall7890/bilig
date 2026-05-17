@@ -10,6 +10,7 @@ export const RUNTIME_PACKAGE_CONTENT_PATH_PATTERNS = [
   'packages/core/**',
   'packages/excel-import/**',
   'packages/headless/**',
+  'packages/create-workpaper/**',
 ] as const
 
 export const RUNTIME_AFFECTING_PATH_PATTERNS = [

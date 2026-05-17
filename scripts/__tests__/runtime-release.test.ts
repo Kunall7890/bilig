@@ -190,6 +190,13 @@ describe('runtime release helpers', () => {
     expect(RUNTIME_NPM_PACKAGE_DIRS).toContain('packages/headless')
   })
 
+  it('publishes the create-workpaper starter through the common runtime workflow', () => {
+    expect(RUNTIME_PACKAGE_DIRS).toContain('packages/create-workpaper')
+    expect(RUNTIME_NPM_PACKAGE_DIRS).toContain('packages/create-workpaper')
+    expect(isRuntimeAffectingPath('packages/create-workpaper/package.json')).toBe(true)
+    expect(isRuntimePackageContentPath('packages/create-workpaper/bin/create-bilig-workpaper.js')).toBe(true)
+  })
+
   it('publishes XLSX import/export through the headless package subpath', () => {
     const manifest = JSON.parse(readFileSync(resolve(repoRoot, 'packages/headless/package.json'), 'utf8'))
 

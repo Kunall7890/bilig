@@ -33,9 +33,13 @@ describe('headless package workflow', () => {
     const source = readFileSync(resolve(repoRoot, '.github/workflows/headless-package.yml'), 'utf8')
 
     expect(source).toMatch(/['"]packages\/excel-import\/\*\*['"]/)
+    expect(source).toMatch(/['"]packages\/create-workpaper\/\*\*['"]/)
     expect(source).toContain('pnpm --filter @bilig/excel-import build')
     expect(source).toContain('packages/excel-import/package.json')
     expect(source).toContain('packages/excel-import')
+    expect(source).toContain('packages/create-workpaper/package.json')
+    expect(source).toContain('packages/create-workpaper')
+    expect(source).toContain('scripts/check-create-workpaper-package.ts')
     expect(source).toContain('allow_new_packages')
     expect(source).toContain('ALLOW_NEW_NPM_PACKAGES')
     expect(source).toContain('bun scripts/sync-runtime-release-metadata.ts')
