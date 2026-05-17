@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type MutableRefObject } from 'react'
+import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react'
 import { flushSync } from 'react-dom'
 import { PRODUCT_COLUMN_WIDTH, PRODUCT_ROW_HEIGHT } from '@bilig/grid'
 import type { WorkerHandle, WorkerRuntimeSessionController } from './runtime-session.js'
@@ -140,6 +140,7 @@ export function useWorkbookSync(input: {
   const localMutationQueueRef = useRef<Promise<void>>(Promise.resolve())
   const syncQueueRef = useRef<Promise<void>>(Promise.resolve())
   const authoritativeRefreshTimerRefs = useRef<Array<ReturnType<typeof setTimeout>>>([])
+  const [localMutationInFlightCount, setLocalMutationInFlightCount] = useState(0)
 
   useEffect(() => {
     return () => {
@@ -174,6 +175,24 @@ export function useWorkbookSync(input: {
     } finally {
       releaseQueue()
     }
+  }, [])
+
+  const trackLocalMutationTask = useCallback(async <T>(task: () => Promise<T>): Promise<T> => {
+    const taskPromise = task()
+    const previousTask = localMutationQueueRef.current
+    localMutationQueueRef.current = (async () => {
+      try {
+        await previousTask
+      } catch {
+        // Keep later local history operations ordered even after a failed local mutation.
+      }
+      try {
+        await taskPromise
+      } catch {
+        // The caller receives the original failure through taskPromise.
+      }
+    })()
+    return await taskPromise
   }, [])
 
   const scheduleAuthoritativeRefreshProbes = useCallback(() => {
@@ -423,15 +442,21 @@ export function useWorkbookSync(input: {
           throw new Error('Unsupported workbook mutation')
       }
 
-      const rollbackOptimisticCell = applyOptimisticCellMutation(workerHandleRef.current?.viewportStore, mutation)
+      let rollbackOptimisticCell: (() => void) | null = null
+      flushSync(() => {
+        setLocalMutationInFlightCount((count) => count + 1)
+      })
       try {
-        await enqueuePendingMutation(mutation)
+        rollbackOptimisticCell = applyOptimisticCellMutation(workerHandleRef.current?.viewportStore, mutation)
+        await trackLocalMutationTask(() => enqueuePendingMutation(mutation))
         if (canAttemptRemoteSync(connectionStateRef.current)) {
           scheduleAuthoritativeRefreshProbes()
         }
       } catch (error) {
         rollbackOptimisticCell?.()
         throw error
+      } finally {
+        setLocalMutationInFlightCount((count) => Math.max(0, count - 1))
       }
       void (async () => {
         try {
@@ -453,6 +478,7 @@ export function useWorkbookSync(input: {
       runSerializedSyncTask,
       runtimeController,
       scheduleAuthoritativeRefreshProbes,
+      trackLocalMutationTask,
       workerHandleRef,
     ],
   )
@@ -589,12 +615,29 @@ export function useWorkbookSync(input: {
     [connectionStateRef, drainPendingMutationsLocked, runSerializedLocalMutationTask, runSerializedSyncTask, runtimeController],
   )
 
+  const undoLocalChange = useCallback(async (): Promise<void> => {
+    if (!runtimeController) {
+      throw new Error('Workbook runtime is not ready')
+    }
+    await runSerializedLocalMutationTask(() => runtimeController.invoke('undoLocalChange'))
+  }, [runSerializedLocalMutationTask, runtimeController])
+
+  const redoLocalChange = useCallback(async (): Promise<void> => {
+    if (!runtimeController) {
+      throw new Error('Workbook runtime is not ready')
+    }
+    await runSerializedLocalMutationTask(() => runtimeController.invoke('redoLocalChange'))
+  }, [runSerializedLocalMutationTask, runtimeController])
+
   return {
     invokeMutation,
     invokeColumnWidthMutation,
     invokeColumnVisibilityMutation,
     invokeRowHeightMutation,
     invokeRowVisibilityMutation,
+    hasLocalMutationInFlight: localMutationInFlightCount > 0,
+    redoLocalChange,
     retryPendingMutation,
+    undoLocalChange,
   }
 }

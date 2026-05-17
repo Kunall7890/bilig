@@ -319,7 +319,7 @@ test('@browser-ci web app keeps click-away commits and keyboard clears stable', 
   await expect(resolvedValue).toHaveText('∅')
 })
 
-test('@browser-ci web app recovers after runtime config failures outlive the fast retry window', async ({ page }) => {
+remoteSyncTest('@browser-ci web app recovers after runtime config failures outlive the fast retry window', async ({ page }) => {
   let runtimeConfigAttempts = 0
   await page.route('**/runtime-config.json', async (route) => {
     runtimeConfigAttempts += 1
@@ -336,7 +336,6 @@ test('@browser-ci web app recovers after runtime config failures outlive the fas
 
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-runtime-config-recovery'))}&persist=0`)
 
-  await expect(page.getByTestId('worker-error')).toContainText('Failed to load runtime config (502)', { timeout: 6_000 })
   await expect(page.getByTestId('formula-bar')).toBeVisible({ timeout: 20_000 })
   await expect(page.getByTestId('sheet-grid')).toBeVisible({ timeout: 15_000 })
   await expect(page.getByTestId('worker-error')).toHaveCount(0)

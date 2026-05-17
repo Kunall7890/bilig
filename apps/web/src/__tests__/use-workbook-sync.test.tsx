@@ -512,7 +512,7 @@ describe('useWorkbookSync', () => {
     })
   })
 
-  it('does not hold a rapid follow-up clear behind a still-settling local enqueue', async () => {
+  it('keeps rapid follow-up clears visible while queueing local persistence', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
     let resolveFirstMutation: ((mutation: PendingWorkbookMutation) => void) | null = null
     const firstMutation = new Promise<PendingWorkbookMutation>((resolve) => {
@@ -520,6 +520,12 @@ describe('useWorkbookSync', () => {
     })
     let nextSeq = 1
     let sync: ReturnType<typeof useWorkbookSync> | null = null
+    const viewportStore = new ProjectedViewportStore()
+    const workerHandleRef: { current: WorkerHandle | null } = {
+      current: {
+        viewportStore,
+      },
+    }
     const runtimeController = {
       invoke: vi.fn((method: string, input?: unknown) => {
         if (method !== 'enqueuePendingMutation') {
@@ -546,7 +552,7 @@ describe('useWorkbookSync', () => {
         connectionStateName: 'disconnected',
         connectionStateRef: { current: 'disconnected' },
         runtimeController,
-        workerHandleRef: { current: null },
+        workerHandleRef,
         zeroRef: {
           current: {
             mutate() {
@@ -570,38 +576,145 @@ describe('useWorkbookSync', () => {
     }
     const activeSync = sync
 
-    void activeSync.invokeMutation('setCellValue', 'Sheet1', 'D10', 'stale')
+    let firstPersisted!: Promise<void>
+    await act(async () => {
+      firstPersisted = activeSync.invokeMutation('setCellValue', 'Sheet1', 'D10', 'stale')
+      await Promise.resolve()
+    })
     await vi.waitFor(() => {
       expect(runtimeController.invoke).toHaveBeenCalledWith('enqueuePendingMutation', {
         method: 'setCellValue',
         args: ['Sheet1', 'D10', 'stale'],
       })
     })
+    expect(viewportStore.getCell('Sheet1', 'D10')).toMatchObject({
+      input: 'stale',
+      value: { tag: ValueTag.String, value: 'stale' },
+    })
 
-    void activeSync.invokeMutation('clearRange', {
+    const clearRange = {
       sheetName: 'Sheet1',
       startAddress: 'D10',
       endAddress: 'D10',
+    }
+    let clearPersisted!: Promise<void>
+    await act(async () => {
+      clearPersisted = activeSync.invokeMutation('clearRange', clearRange)
+      await Promise.resolve()
     })
+    const clearedOptimisticCell = viewportStore.getCell('Sheet1', 'D10')
+    expect(clearedOptimisticCell).toMatchObject({
+      value: { tag: ValueTag.Empty },
+    })
+    expect('input' in clearedOptimisticCell).toBe(false)
     await vi.waitFor(() => {
       expect(runtimeController.invoke).toHaveBeenCalledWith('enqueuePendingMutation', {
         method: 'clearRange',
-        args: [
-          {
-            sheetName: 'Sheet1',
-            startAddress: 'D10',
-            endAddress: 'D10',
-          },
-        ],
+        args: [clearRange],
       })
     })
+    expect(runtimeController.invoke).toHaveBeenCalledTimes(2)
+
+    await act(async () => {
+      resolveFirstMutation?.({
+        ...createPendingMutation(),
+        id: 'pending-1',
+        localSeq: 1,
+        args: ['Sheet1', 'D10', 'stale'],
+      })
+      await firstPersisted
+      await clearPersisted
+    })
+    const clearedCell = viewportStore.getCell('Sheet1', 'D10')
+    expect(clearedCell).toMatchObject({
+      value: { tag: ValueTag.Empty },
+    })
+    expect('input' in clearedCell).toBe(false)
+    expect(runtimeController.invoke).toHaveBeenCalledWith('enqueuePendingMutation', {
+      method: 'clearRange',
+      args: [clearRange],
+    })
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it('queues local undo behind a still-pending local mutation enqueue', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    let resolveFirstMutation: ((mutation: PendingWorkbookMutation) => void) | null = null
+    const firstMutation = new Promise<PendingWorkbookMutation>((resolve) => {
+      resolveFirstMutation = resolve
+    })
+    let sync: ReturnType<typeof useWorkbookSync> | null = null
+    const runtimeController = {
+      invoke: vi.fn((method: string, input?: unknown) => {
+        if (method === 'enqueuePendingMutation') {
+          if (!isPendingMutationInput(input)) {
+            throw new Error('Expected pending mutation input')
+          }
+          return firstMutation
+        }
+        if (method === 'undoLocalChange') {
+          return Promise.resolve(true)
+        }
+        throw new Error(`Unexpected runtime invoke: ${method}`)
+      }),
+    }
+
+    function Harness() {
+      sync = useWorkbookSync({
+        documentId: 'doc-1',
+        connectionStateName: 'closed',
+        connectionStateRef: { current: 'closed' },
+        runtimeController,
+        workerHandleRef: { current: null },
+        zeroRef: {
+          current: {
+            mutate() {
+              throw new Error('Local undo queue test should not attempt remote sync')
+            },
+          },
+        },
+        reportRuntimeError: vi.fn(),
+      })
+      return null
+    }
+
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+    await act(async () => {
+      root.render(<Harness />)
+    })
+    if (!sync) {
+      throw new Error('Expected useWorkbookSync harness to initialize')
+    }
+    const activeSync = sync
+
+    const firstPersisted = activeSync.invokeMutation('setCellValue', 'Sheet1', 'D12', 'delete-undo-redo')
+    await vi.waitFor(() => {
+      expect(runtimeController.invoke).toHaveBeenCalledWith('enqueuePendingMutation', {
+        method: 'setCellValue',
+        args: ['Sheet1', 'D12', 'delete-undo-redo'],
+      })
+    })
+
+    const undoApplied = activeSync.undoLocalChange()
+    await Promise.resolve()
+    expect(runtimeController.invoke).not.toHaveBeenCalledWith('undoLocalChange')
 
     resolveFirstMutation?.({
       ...createPendingMutation(),
       id: 'pending-1',
       localSeq: 1,
-      args: ['Sheet1', 'D10', 'stale'],
+      args: ['Sheet1', 'D12', 'delete-undo-redo'],
     })
+    await firstPersisted
+    await undoApplied
+
+    const invokedMethods = runtimeController.invoke.mock.calls.map(([method]) => method)
+    expect(invokedMethods).toEqual(['enqueuePendingMutation', 'undoLocalChange'])
 
     await act(async () => {
       root.unmount()

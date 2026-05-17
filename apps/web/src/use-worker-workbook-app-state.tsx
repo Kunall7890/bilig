@@ -182,12 +182,15 @@ export function useWorkerWorkbookAppState(input: {
     runtimeActorRef.send({ type: 'error.clear' })
   }, [runtimeActorRef])
   const {
+    hasLocalMutationInFlight,
     invokeMutation: invokeWorkbookMutation,
     invokeColumnVisibilityMutation,
     invokeColumnWidthMutation,
     invokeRowHeightMutation,
     invokeRowVisibilityMutation,
+    redoLocalChange,
     retryPendingMutation,
+    undoLocalChange,
   } = useWorkbookSync({
     documentId,
     connectionStateName: connectionState.name,
@@ -396,31 +399,25 @@ export function useWorkerWorkbookAppState(input: {
     canRedo: false,
   }
   const undoLocalLatestChange = useCallback(() => {
-    if (!runtimeController) {
-      return
-    }
     void (async () => {
       try {
-        await runtimeController.invoke('undoLocalChange')
+        await undoLocalChange()
       } catch (error) {
         reportRuntimeError(error)
       }
     })()
-  }, [reportRuntimeError, runtimeController])
+  }, [reportRuntimeError, undoLocalChange])
   const redoLocalLatestChange = useCallback(() => {
-    if (!runtimeController) {
-      return
-    }
     void (async () => {
       try {
-        await runtimeController.invoke('redoLocalChange')
+        await redoLocalChange()
       } catch (error) {
         reportRuntimeError(error)
       }
     })()
-  }, [reportRuntimeError, runtimeController])
-  const canUndo = zeroConfigured ? remoteCanUndo : localHistoryState.canUndo
-  const canRedo = zeroConfigured ? remoteCanRedo : localHistoryState.canRedo
+  }, [redoLocalChange, reportRuntimeError])
+  const canUndo = zeroConfigured ? remoteCanUndo : !hasLocalMutationInFlight && localHistoryState.canUndo
+  const canRedo = zeroConfigured ? remoteCanRedo : !hasLocalMutationInFlight && localHistoryState.canRedo
   const undoLatestChange = zeroConfigured ? undoRemoteLatestChange : undoLocalLatestChange
   const redoLatestChange = zeroConfigured ? redoRemoteLatestChange : redoLocalLatestChange
 

@@ -367,7 +367,11 @@ export async function createWorkerRuntimeSessionController(
 
   const hydrateSelectionCell = async (
     selection: WorkerRuntimeSelection,
-    options: { readonly force?: boolean; readonly forceOptimistic?: boolean } = {},
+    options: {
+      readonly force?: boolean
+      readonly forceOptimistic?: boolean
+      readonly allowOptimisticClearResurrection?: boolean
+    } = {},
   ): Promise<CellSnapshot> => {
     const snapshot = await loadSelectionCellSnapshot(selection)
     const nextSnapshot = snapshot ?? emptyCellSnapshot(selection)
@@ -376,6 +380,7 @@ export async function createWorkerRuntimeSessionController(
         options.force === true ||
         shouldForceSelectionHydration(viewportStore.peekCell(selection.sheetName, selection.address), nextSnapshot),
       forceOptimistic: options.forceOptimistic === true,
+      allowOptimisticClearResurrection: options.allowOptimisticClearResurrection === true,
     })
     updateSelectionViewport(selection)
     return nextSnapshot
@@ -391,13 +396,14 @@ export async function createWorkerRuntimeSessionController(
     return await invokeWorkerMethod(client, 'getCell', isCellSnapshot, selection.sheetName, selection.address)
   }
 
-  const refreshRuntimeState = async (): Promise<void> => {
+  const refreshRuntimeState = async (): Promise<WorkbookWorkerStateSnapshot> => {
     const runtimeState = await invokeWorkerMethod(client, 'getRuntimeState', isWorkbookWorkerStateSnapshot)
     const publishedRuntimeState = publishRuntimeState(runtimeState)
     const reconciledSelection = reconcileSelection(currentSelection, publishedRuntimeState.sheetNames)
     if (reconciledSelection.sheetName !== currentSelection.sheetName || reconciledSelection.address !== currentSelection.address) {
       await applySelection(reconciledSelection)
     }
+    return publishedRuntimeState
   }
 
   const queueRuntimeStateRefresh = (): void => {
@@ -418,7 +424,14 @@ export async function createWorkerRuntimeSessionController(
     }, BACKGROUND_RUNTIME_STATE_REFRESH_DELAY_MS)
   }
 
-  const syncSelectionAfterRuntimeState = async (runtimeState: WorkbookWorkerStateSnapshot): Promise<void> => {
+  const syncSelectionAfterRuntimeState = async (
+    runtimeState: WorkbookWorkerStateSnapshot,
+    options: {
+      readonly force?: boolean
+      readonly forceOptimistic?: boolean
+      readonly allowOptimisticClearResurrection?: boolean
+    } = {},
+  ): Promise<void> => {
     const reconciledSelection = reconcileSelection(currentSelection, runtimeState.sheetNames)
     if (reconciledSelection.sheetName !== currentSelection.sheetName || reconciledSelection.address !== currentSelection.address) {
       await applySelection(reconciledSelection)
@@ -426,8 +439,9 @@ export async function createWorkerRuntimeSessionController(
     }
     const hasActivePendingMutation = (runtimeState.pendingMutationSummary?.activeCount ?? 0) > 0
     await hydrateSelectionCell(reconciledSelection, {
-      force: !hasActivePendingMutation,
-      forceOptimistic: !hasActivePendingMutation,
+      force: options.force === true || !hasActivePendingMutation,
+      forceOptimistic: options.forceOptimistic === true || !hasActivePendingMutation,
+      allowOptimisticClearResurrection: options.allowOptimisticClearResurrection === true,
     })
   }
 
@@ -706,13 +720,14 @@ export async function createWorkerRuntimeSessionController(
         } else if (method === 'markPendingMutationFailed' || method === 'retryPendingMutation') {
           await refreshRuntimeState()
         }
-        if (
-          method === 'renderCommit' ||
-          method === 'undoLocalChange' ||
-          method === 'redoLocalChange' ||
-          method === 'installAuthoritativeSnapshot' ||
-          method === 'installBenchmarkCorpus'
-        ) {
+        if (method === 'renderCommit' || method === 'undoLocalChange' || method === 'redoLocalChange') {
+          const publishedRuntimeState = await refreshRuntimeState()
+          await syncSelectionAfterRuntimeState(publishedRuntimeState, {
+            force: true,
+            forceOptimistic: true,
+            allowOptimisticClearResurrection: true,
+          })
+        } else if (method === 'installAuthoritativeSnapshot' || method === 'installBenchmarkCorpus') {
           await refreshRuntimeState()
         }
         return result

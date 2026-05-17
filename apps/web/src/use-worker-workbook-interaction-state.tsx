@@ -503,10 +503,11 @@ export function useWorkerWorkbookInteractionState(input: {
         optimisticResult?.resolvedValue ?? resolveDetachedOptimisticValue(targetSelection, selectedCell, parsed),
       )
       bumpOptimisticSeedRevision((revision) => revision + 1)
+      const mutationTask = applyParsedInput(targetSelection.sheetName, targetSelection.address, parsed)
       finishEditingAtSelection(nextSelection)
       void (async () => {
         try {
-          await applyParsedInput(targetSelection.sheetName, targetSelection.address, parsed)
+          await mutationTask
           if (editSessionRef.current !== commitSessionId) {
             return
           }

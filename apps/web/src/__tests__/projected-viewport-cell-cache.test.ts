@@ -115,6 +115,41 @@ describe('ProjectedViewportCellCache', () => {
     expect(cache.getCell('Sheet1', 'C1').value).toEqual({ tag: ValueTag.Empty })
   })
 
+  it('allows explicit history hydration to replace an optimistic clear tombstone', () => {
+    const cache = new ProjectedViewportCellCache()
+    const listener = vi.fn()
+    cache.subscribeCells('Sheet1', ['D12'], listener)
+    cache.setCellSnapshot({
+      ...snapshot('D12', 'before-delete'),
+      version: 7,
+    })
+    cache.setCellSnapshot({
+      sheetName: 'Sheet1',
+      address: 'D12',
+      value: { tag: ValueTag.Empty },
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+      version: 8,
+    })
+    listener.mockClear()
+
+    expect(
+      cache.setCellSnapshot(
+        {
+          ...snapshot('D12', 'before-delete'),
+          version: 7,
+        },
+        { force: true, forceOptimistic: true, allowOptimisticClearResurrection: true },
+      ),
+    ).toBe(true)
+
+    expect(cache.getCell('Sheet1', 'D12')).toMatchObject({
+      value: { tag: ValueTag.String, value: 'before-delete', stringId: 1 },
+      flags: 0,
+      version: 7,
+    })
+    expect(listener).toHaveBeenCalledTimes(1)
+  })
+
   it('clears optimistic protection flags for one sheet before structural mutations', () => {
     const cache = new ProjectedViewportCellCache()
     const sheet1Listener = vi.fn()

@@ -158,7 +158,10 @@ export class ProjectedViewportCellCache {
     return this.cellStyles.get(styleId) ?? this.cellStyles.get(DEFAULT_STYLE_ID)
   }
 
-  setCellSnapshot(snapshot: CellSnapshot, options: { force?: boolean; forceOptimistic?: boolean } = {}): boolean {
+  setCellSnapshot(
+    snapshot: CellSnapshot,
+    options: { force?: boolean; forceOptimistic?: boolean; allowOptimisticClearResurrection?: boolean } = {},
+  ): boolean {
     const key = `${snapshot.sheetName}!${snapshot.address}`
     const current = this.cellSnapshots.get(key)
     const incoming = current ? prepareIncomingSnapshot(current, snapshot) : snapshot
@@ -167,11 +170,23 @@ export class ProjectedViewportCellCache {
       return false
     }
     if (current) {
-      if (isClearCellSnapshot(current) && !isClearCellSnapshot(incoming) && current.version >= incoming.version) {
+      const forcedOptimisticClearHydration =
+        options.force === true &&
+        options.forceOptimistic === true &&
+        options.allowOptimisticClearResurrection === true &&
+        (current.flags & OPTIMISTIC_CELL_SNAPSHOT_FLAG) !== 0
+      if (
+        !forcedOptimisticClearHydration &&
+        isClearCellSnapshot(current) &&
+        !isClearCellSnapshot(incoming) &&
+        current.version >= incoming.version
+      ) {
         return false
       }
       const shouldProtectCurrent =
-        (current.flags & OPTIMISTIC_CELL_SNAPSHOT_FLAG) !== 0 && isOptimisticClearResurrection(current, incoming)
+        (current.flags & OPTIMISTIC_CELL_SNAPSHOT_FLAG) !== 0 &&
+        isOptimisticClearResurrection(current, incoming) &&
+        !forcedOptimisticClearHydration
           ? true
           : options.force !== true || ((current.flags & OPTIMISTIC_CELL_SNAPSHOT_FLAG) !== 0 && options.forceOptimistic !== true)
       if (shouldProtectCurrent && shouldKeepCurrentSnapshot(current, incoming, { allowResetEmptyOverride: false })) {

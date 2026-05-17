@@ -497,11 +497,12 @@ export function useWorkbookSelectionActions(input: {
         supersedeOptimisticCellSeedsForRange?.(range),
         replaceOptimisticCellSeed?.(range.sheetName, activeAddress, ''),
       )
+      const mutationTask = invokeMutation('clearRange', range)
       resetEditingState('')
       resetEditorConflictTracking()
       void (async () => {
         try {
-          await invokeMutation('clearRange', range)
+          await mutationTask
         } catch (error) {
           rollbackOptimisticClear?.()
           rollbackOptimisticSeeds?.()
