@@ -239,13 +239,57 @@ describe('zero sync service startup', () => {
     })
   })
 
-  it('serves workbook agent visible Zero queries with the authenticated session user', async () => {
+  it('serves every exported Zero query alias through the monolith transform registry', async () => {
     deps.handleQueryRequest.mockImplementationOnce(async (executeQuery: (name: string, args: unknown) => unknown) => {
-      expect(() => executeQuery('workbookAgentThread.visibleByWorkbook', { documentId: 'doc-1' })).not.toThrow()
-      expect(() => executeQuery('workbookChatThread.visibleByWorkbook', { documentId: 'doc-1' })).not.toThrow()
-      expect(() => executeQuery('workbookWorkflowRun.visibleByThread', { documentId: 'doc-1', threadId: 'thr-1' })).not.toThrow()
-      expect(() => executeQuery('workbookAgentWorkflowRun.visibleByThread', { documentId: 'doc-1', threadId: 'thr-1' })).not.toThrow()
-      expect(() => executeQuery('workbookAgentRun.visibleByThread', { documentId: 'doc-1', threadId: 'thr-1' })).not.toThrow()
+      const workbookArgs = { documentId: 'doc-1' }
+      const workbookCellArgs = { ...workbookArgs, sheetName: 'Sheet1', address: 'A1' }
+      const workbookTileArgs = { ...workbookArgs, sheetName: 'Sheet1', rowStart: 0, rowEnd: 2, colStart: 0, colEnd: 2 }
+      const workbookRowTileArgs = { ...workbookArgs, sheetName: 'Sheet1', rowStart: 0, rowEnd: 2 }
+      const workbookColumnTileArgs = { ...workbookArgs, sheetName: 'Sheet1', colStart: 0, colEnd: 2 }
+      const workbookThreadArgs = { ...workbookArgs, threadId: 'thr-1' }
+      const queryRequests: ReadonlyArray<readonly [string, unknown]> = [
+        ['workbook.get', workbookArgs],
+        ['workbooks.get', workbookArgs],
+        ['sheet.byWorkbook', workbookArgs],
+        ['sheets.byWorkbook', workbookArgs],
+        ['cellInput.one', workbookCellArgs],
+        ['cellInput.tile', workbookTileArgs],
+        ['cells.one', workbookCellArgs],
+        ['cells.tile', workbookTileArgs],
+        ['cellEval.one', workbookCellArgs],
+        ['cellEval.tile', workbookTileArgs],
+        ['cellRender.one', workbookCellArgs],
+        ['cellRender.tile', workbookTileArgs],
+        ['sheetRow.tile', workbookRowTileArgs],
+        ['rowMetadata.tile', workbookRowTileArgs],
+        ['sheetCol.tile', workbookColumnTileArgs],
+        ['columnMetadata.tile', workbookColumnTileArgs],
+        ['cellStyle.byWorkbook', workbookArgs],
+        ['numberFormat.byWorkbook', workbookArgs],
+        ['presenceCoarse.byWorkbook', workbookArgs],
+        ['presence.byWorkbook', workbookArgs],
+        ['workbookChange.byWorkbook', workbookArgs],
+        ['workbookChanges.byWorkbook', workbookArgs],
+        ['workbookChatThread.byWorkbook', workbookArgs],
+        ['workbookChatThread.visibleByWorkbook', workbookArgs],
+        ['workbookChatItem.byThread', workbookThreadArgs],
+        ['workbookChatToolCall.byThread', workbookThreadArgs],
+        ['workbookReviewQueueItem.byThread', workbookThreadArgs],
+        ['workbookAgentThread.byWorkbook', workbookArgs],
+        ['workbookAgentThread.visibleByWorkbook', workbookArgs],
+        ['workbookAgentRun.byWorkbook', workbookArgs],
+        ['workbookAgentRun.byThread', workbookThreadArgs],
+        ['workbookAgentRun.visibleByThread', workbookThreadArgs],
+        ['workbookWorkflowRun.byThread', workbookThreadArgs],
+        ['workbookWorkflowRun.visibleByThread', workbookThreadArgs],
+        ['workbookWorkflowStep.byThread', workbookThreadArgs],
+        ['workbookWorkflowArtifact.byThread', workbookThreadArgs],
+        ['workbookAgentWorkflowRun.byThread', workbookThreadArgs],
+        ['workbookAgentWorkflowRun.visibleByThread', workbookThreadArgs],
+      ]
+      for (const [name, args] of queryRequests) {
+        expect(() => executeQuery(name, args), name).not.toThrow()
+      }
       return { ok: true }
     })
     const { createZeroSyncService } = await import('../service.js')
