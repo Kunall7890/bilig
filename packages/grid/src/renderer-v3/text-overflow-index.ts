@@ -123,8 +123,8 @@ export class TextOverflowIndexV3 {
         source.sheetOrdinal === sheetOrdinal &&
         source.row >= viewport.rowStart &&
         source.row <= viewport.rowEnd &&
-        source.col >= viewport.colStart &&
-        source.col <= viewport.colEnd
+        source.col <= viewport.colEnd &&
+        source.spillColEnd >= viewport.colStart
       ) {
         ids.push(id)
       }

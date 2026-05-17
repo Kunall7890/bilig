@@ -44,6 +44,62 @@ describe('TextOverflowIndexV3', () => {
     expect(dependencies).toEqual([])
   })
 
+  test('clears inbound spill records when the replaced tile no longer contains the spill run', () => {
+    const index = new TextOverflowIndexV3()
+    index.updateSpill({ sheetOrdinal: 2, row: 4, col: 120, spillColEnd: 135 })
+
+    index.replaceTileRuns({
+      sheetOrdinal: 2,
+      textRuns: [],
+      viewport: { rowStart: 0, rowEnd: 31, colStart: 128, colEnd: 255 },
+    })
+
+    const dependencies: string[] = []
+    index.markDependenciesForCell({ sheetOrdinal: 2, row: 4, col: 130 }, (source) => {
+      dependencies.push(`${source.row}:${source.col}:${source.spillColEnd}`)
+    })
+
+    expect(dependencies).toEqual([])
+  })
+
+  test('keeps inbound spill records when the replaced tile still carries the spill run', () => {
+    const index = new TextOverflowIndexV3()
+    index.updateSpill({ sheetOrdinal: 2, row: 4, col: 120, spillColEnd: 135 })
+
+    index.replaceTileRuns({
+      sheetOrdinal: 2,
+      textRuns: [
+        {
+          clipHeight: 20,
+          clipWidth: 200,
+          clipX: 0,
+          clipY: 0,
+          col: 120,
+          color: '#111827',
+          font: '400 12px Arial',
+          fontSize: 12,
+          height: 20,
+          row: 4,
+          spillColEnd: 135,
+          strike: false,
+          text: 'spills into current tile',
+          underline: false,
+          width: 600,
+          x: -800,
+          y: 88,
+        },
+      ],
+      viewport: { rowStart: 0, rowEnd: 31, colStart: 128, colEnd: 255 },
+    })
+
+    const dependencies: string[] = []
+    index.markDependenciesForCell({ sheetOrdinal: 2, row: 4, col: 130 }, (source) => {
+      dependencies.push(`${source.row}:${source.col}:${source.spillColEnd}`)
+    })
+
+    expect(dependencies).toEqual(['4:120:135'])
+  })
+
   test('marks column dependencies for resize invalidation without unrelated rows', () => {
     const index = new TextOverflowIndexV3()
     index.updateSpill({ sheetOrdinal: 2, row: 4, col: 1, spillColEnd: 6 })
