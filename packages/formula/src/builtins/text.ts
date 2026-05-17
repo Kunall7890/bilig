@@ -1,7 +1,15 @@
 import { ErrorCode, ValueTag, formatGeneralNumberValue, type CellValue } from '@bilig/protocol'
 import { createBlockedBuiltinMap, textPlaceholderBuiltinNames } from './placeholder.js'
+import {
+  bytePositionToCharPosition,
+  charPositionToBytePosition,
+  createTextByteBuiltins,
+  findSubBytes,
+  utf8Bytes,
+} from './text-byte-builtins.js'
 import { createTextCoreBuiltins } from './text-core-builtins.js'
 import { createTextFormatBuiltins } from './text-format-builtins.js'
+import { createTextScalarBuiltins } from './text-scalar-builtins.js'
 import { createTextSearchBuiltins } from './text-search-builtins.js'
 import type { ExcelDateSystem } from './excel-date.js'
 import { parseNumericText } from '../numeric-text.js'
@@ -42,85 +50,6 @@ function coerceText(value: CellValue): string {
     case ValueTag.Error:
       return ''
   }
-}
-
-const utf8Encoder = new TextEncoder()
-const utf8Decoder = new TextDecoder()
-
-function utf8Bytes(value: string): Uint8Array {
-  return utf8Encoder.encode(value)
-}
-
-function utf8Text(bytes: Uint8Array): string {
-  return utf8Decoder.decode(bytes)
-}
-
-function findSubBytes(haystack: Uint8Array, needle: Uint8Array, start: number): number {
-  if (needle.length === 0) {
-    return Math.max(0, Math.min(start, haystack.length))
-  }
-
-  for (let index = start; index + needle.length <= haystack.length; index += 1) {
-    let match = true
-    for (let offset = 0; offset < needle.length; offset += 1) {
-      if (haystack[index + offset] !== needle[offset]) {
-        match = false
-        break
-      }
-    }
-    if (match) {
-      return index
-    }
-  }
-  return -1
-}
-
-function leftBytes(text: string, byteCount: number): string {
-  const bytes = utf8Bytes(text)
-  const normalizedCount = Math.max(0, Math.min(byteCount, bytes.length))
-  return utf8Text(bytes.slice(0, normalizedCount))
-}
-
-function rightBytes(text: string, byteCount: number): string {
-  const bytes = utf8Bytes(text)
-  const normalizedCount = Math.max(0, Math.min(byteCount, bytes.length))
-  return utf8Text(bytes.slice(bytes.length - normalizedCount))
-}
-
-function midBytes(text: string, start: number, byteCount: number): string {
-  const bytes = utf8Bytes(text)
-  if (byteCount <= 0) {
-    return ''
-  }
-
-  const zeroBasedStart = Math.max(0, start - 1)
-  const zeroBasedEnd = Math.min(bytes.length, zeroBasedStart + byteCount)
-  if (zeroBasedStart >= bytes.length) {
-    return ''
-  }
-  return utf8Text(bytes.slice(zeroBasedStart, zeroBasedEnd))
-}
-
-function replaceBytes(text: string, start: number, byteCount: number, replacement: string): string {
-  const bytes = utf8Bytes(text)
-  const replacementBytes = utf8Bytes(replacement)
-  const zeroBasedStart = Math.max(0, start - 1)
-  if (zeroBasedStart >= bytes.length) {
-    return text
-  }
-  const zeroBasedEnd = Math.min(bytes.length, zeroBasedStart + Math.max(0, byteCount))
-  return utf8Text(new Uint8Array([...bytes.slice(0, zeroBasedStart), ...replacementBytes, ...bytes.slice(zeroBasedEnd)]))
-}
-
-function bytePositionToCharPosition(text: string, startByte: number): number {
-  if (startByte <= 1) {
-    return 1
-  }
-  return utf8Text(utf8Bytes(text).slice(0, startByte - 1)).length + 1
-}
-
-function charPositionToBytePosition(text: string, charPosition: number): number {
-  return utf8Bytes(text.slice(0, Math.max(0, charPosition - 1))).length + 1
 }
 
 function coerceNumber(value: CellValue): number | undefined {
@@ -315,21 +244,6 @@ function createReptBuiltin(): TextBuiltin {
   }
 }
 
-function charCodeFromArgument(value: CellValue | undefined): number | CellValue {
-  if (value === undefined) {
-    return error(ErrorCode.Value)
-  }
-  const code = coerceNumber(value)
-  if (code === undefined) {
-    return error(ErrorCode.Value)
-  }
-  const integerCode = Math.trunc(code)
-  if (!Number.isFinite(integerCode) || integerCode < 1 || integerCode > 255) {
-    return error(ErrorCode.Value)
-  }
-  return integerCode
-}
-
 const textPlaceholderBuiltins = createBlockedBuiltinMap(textPlaceholderBuiltinNames)
 
 export function createTextBuiltins(options: { readonly dateSystem?: ExcelDateSystem } = {}): Record<string, TextBuiltin> {
@@ -369,6 +283,23 @@ export function createTextBuiltins(options: { readonly dateSystem?: ExcelDateSys
     bytePositionToCharPosition,
     charPositionToBytePosition,
   })
+  const textScalarBuiltins = createTextScalarBuiltins({
+    error,
+    stringResult,
+    numberResult,
+    firstError,
+    coerceText,
+    coerceNumber,
+    isErrorValue,
+  })
+  const textByteBuiltins = createTextByteBuiltins({
+    error,
+    stringResult,
+    firstError,
+    coerceText,
+    coerceLength,
+    isErrorValue,
+  })
 
   return {
     LEN: (...args) => {
@@ -393,53 +324,7 @@ export function createTextBuiltins(options: { readonly dateSystem?: ExcelDateSys
       }
       return numberResult(utf8Bytes(coerceText(value)).length)
     },
-    CHAR: (...args) => {
-      const [codeValue] = args
-      const codePoint = charCodeFromArgument(codeValue)
-      if (isErrorValue(codePoint)) {
-        return codePoint
-      }
-      return stringResult(String.fromCodePoint(codePoint))
-    },
-    CODE: (...args) => {
-      const [textValue] = args
-      if (textValue === undefined) {
-        return error(ErrorCode.Value)
-      }
-      const text = coerceText(textValue)
-      if (text.length === 0) {
-        return error(ErrorCode.Value)
-      }
-      const codePoint = text.codePointAt(0)
-      return codePoint === undefined ? error(ErrorCode.Value) : numberResult(codePoint)
-    },
-    UNICODE: (...args) => {
-      const [textValue] = args
-      if (textValue === undefined) {
-        return error(ErrorCode.Value)
-      }
-      const text = coerceText(textValue)
-      if (text.length === 0) {
-        return error(ErrorCode.Value)
-      }
-      const codePoint = text.codePointAt(0)
-      return codePoint === undefined ? error(ErrorCode.Value) : numberResult(codePoint)
-    },
-    UNICHAR: (...args) => {
-      const [codeValue] = args
-      if (codeValue === undefined) {
-        return error(ErrorCode.Value)
-      }
-      const code = coerceNumber(codeValue)
-      if (code === undefined) {
-        return error(ErrorCode.Value)
-      }
-      const integerCode = Math.trunc(code)
-      if (!Number.isFinite(integerCode) || integerCode < 0 || integerCode > 0x10ffff) {
-        return error(ErrorCode.Value)
-      }
-      return stringResult(String.fromCodePoint(integerCode))
-    },
+    ...textScalarBuiltins,
     ...textCoreBuiltins,
     ...textFormatBuiltins,
     ...textSearchBuiltins,
@@ -505,75 +390,8 @@ export function createTextBuiltins(options: { readonly dateSystem?: ExcelDateSys
       }
       return stringResult(encodeURI(coerceText(value)))
     },
-    LEFTB: (...args) => {
-      const existingError = firstError(args)
-      if (existingError) {
-        return existingError
-      }
-      const [textValue, countValue] = args
-      if (textValue === undefined) {
-        return error(ErrorCode.Value)
-      }
-      const count = coerceLength(countValue, 1)
-      if (isErrorValue(count)) {
-        return count
-      }
-      return stringResult(leftBytes(coerceText(textValue), count))
-    },
-    MIDB: (...args) => {
-      const existingError = firstError(args)
-      if (existingError) {
-        return existingError
-      }
-      const [textValue, startValue, countValue] = args
-      if (textValue === undefined || startValue === undefined || countValue === undefined) {
-        return error(ErrorCode.Value)
-      }
-      const start = coercePositiveStart(startValue, 1)
-      if (isErrorValue(start)) {
-        return start
-      }
-      const count = coerceLength(countValue, 0)
-      if (isErrorValue(count)) {
-        return count
-      }
-      return stringResult(midBytes(coerceText(textValue), start, count))
-    },
-    RIGHTB: (...args) => {
-      const existingError = firstError(args)
-      if (existingError) {
-        return existingError
-      }
-      const [textValue, countValue] = args
-      if (textValue === undefined) {
-        return error(ErrorCode.Value)
-      }
-      const count = coerceLength(countValue, 1)
-      if (isErrorValue(count)) {
-        return count
-      }
-      return stringResult(rightBytes(coerceText(textValue), count))
-    },
+    ...textByteBuiltins,
     REPLACE: createReplaceBuiltin(),
-    REPLACEB: (...args) => {
-      const existingError = firstError(args)
-      if (existingError) {
-        return existingError
-      }
-      const [textValue, startValue, countValue, replacementValue] = args
-      if (textValue === undefined || startValue === undefined || countValue === undefined || replacementValue === undefined) {
-        return error(ErrorCode.Value)
-      }
-      const start = coercePositiveStart(startValue, 1)
-      if (isErrorValue(start)) {
-        return start
-      }
-      const count = coerceLength(countValue, 0)
-      if (isErrorValue(count)) {
-        return count
-      }
-      return stringResult(replaceBytes(coerceText(textValue), start, count, coerceText(replacementValue)))
-    },
     SUBSTITUTE: createSubstituteBuiltin(),
     REPT: createReptBuiltin(),
     ...textPlaceholderBuiltins,

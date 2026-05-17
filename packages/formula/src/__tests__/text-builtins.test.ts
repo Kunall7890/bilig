@@ -254,6 +254,18 @@ describe('text builtins', () => {
     })
   })
 
+  it('propagates scalar text errors and rejects invalid UNICHAR code points', () => {
+    expect(getTextBuiltin('CHAR')?.(err(ErrorCode.Ref))).toEqual(err(ErrorCode.Ref))
+    expect(getTextBuiltin('CODE')?.(err(ErrorCode.Name))).toEqual(err(ErrorCode.Name))
+    expect(getTextBuiltin('UNICODE')?.(err(ErrorCode.Ref))).toEqual(err(ErrorCode.Ref))
+    expect(getTextBuiltin('UNICHAR')?.(err(ErrorCode.Name))).toEqual(err(ErrorCode.Name))
+
+    expect(getTextBuiltin('UNICHAR')?.(number(0))).toEqual(valueError())
+    expect(getTextBuiltin('UNICHAR')?.(number(0xd800))).toEqual(err(ErrorCode.NA))
+    expect(getTextBuiltin('UNICHAR')?.(number(0xdfff))).toEqual(err(ErrorCode.NA))
+    expect(getTextBuiltin('UNICHAR')?.(number(0x110000))).toEqual(valueError())
+  })
+
   it('supports ASC, JIS, and DBCS width conversions', () => {
     expect(getTextBuiltin('ASC')?.(text('ＡＢＣ　１２３'))).toEqual(text('ABC 123'))
     expect(getTextBuiltin('ASC')?.(text('ガギグゲゴ'))).toEqual(text('ｶﾞｷﾞｸﾞｹﾞｺﾞ'))
