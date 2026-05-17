@@ -8,17 +8,17 @@
     "keywordCount": 24,
     "keywords": [
       "agent-tools",
-      "bilig",
       "excel",
       "excel-formulas",
+      "excel-recalculation",
       "formula-engine",
-      "formula-evaluation",
+      "formula-recalculation",
       "headless-spreadsheet",
-      "headless-workbook",
       "hyperformula",
       "mcp",
       "mcp-server",
-      "model-context-protocol",
+      "mcp-spreadsheet",
+      "mcp-spreadsheet-server",
       "node",
       "spreadsheet-automation",
       "spreadsheet-engine",
@@ -27,9 +27,9 @@
       "typescript",
       "vercel-ai-sdk",
       "workbook-api",
-      "workbook-automation",
       "workpaper",
       "xlsx",
+      "xlsx-formula-recalculation",
       "xlsx-recalculation"
     ],
     "dependencyNames": ["@bilig/core", "@bilig/formula", "@bilig/protocol", "fast-xml-parser", "fflate", "xlsx", "xlsx-js-style"],
@@ -37,11 +37,11 @@
     "hasMcpBinary": true
   },
   "npmPackDryRun": {
-    "tarballBytes": 421771,
-    "unpackedBytes": 2522373,
-    "entryCount": 426,
-    "readmeBytes": 37001,
-    "packageJsonBytes": 2085
+    "tarballBytes": 422847,
+    "unpackedBytes": 2527826,
+    "entryCount": 429,
+    "readmeBytes": 37625,
+    "packageJsonBytes": 2107
   },
   "coldStartProbe": {
     "runtime": "node",
