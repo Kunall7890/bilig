@@ -4,6 +4,18 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.18.23
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.18.22
+- Manual override: no
+
+## Fixes
+- perf(headless): fast-load dense numeric sheets (526723d4)
+
+## Internal runtime changes
+- chore(release): format headless changelog (55dc9215)
+
 ## 0.18.22
 
 - Release type: patch
