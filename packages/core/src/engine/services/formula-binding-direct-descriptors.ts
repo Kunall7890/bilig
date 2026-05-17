@@ -684,7 +684,7 @@ export function buildDirectAggregateDescriptor(args: {
       })
     }
   }
-  const node = args.compiled.optimizedAst
+  const node = directAggregateDescriptorNode(args.compiled)
   if (node.kind !== 'CallExpr' || node.args.length !== 1) {
     return undefined
   }
@@ -716,6 +716,17 @@ export function buildDirectAggregateDescriptor(args: {
     aggregateKind:
       callee === 'SUM' ? 'sum' : callee === 'COUNT' ? 'count' : callee === 'MIN' ? 'min' : callee === 'MAX' ? 'max' : 'average',
   })
+}
+
+function directAggregateDescriptorNode(compiled: ParsedCompiledFormula): FormulaNode {
+  if (compiled.astMatchesSource === false) {
+    try {
+      return parseFormula(compiled.source)
+    } catch {
+      return compiled.optimizedAst
+    }
+  }
+  return compiled.optimizedAst
 }
 
 export function buildDirectLookupDescriptor(args: {

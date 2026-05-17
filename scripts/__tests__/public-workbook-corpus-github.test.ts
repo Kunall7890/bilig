@@ -172,6 +172,95 @@ describe('public workbook corpus GitHub discovery', () => {
       expect.arrayContaining(['recent-2026:github.path', expect.stringMatching(/^github-repo-query:/u)]),
     )
   })
+
+  it('uses per-workbook GitHub commit dates as recent evidence when paths do not carry years', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL) => {
+        const url = String(input)
+        if (url.startsWith('https://api.github.com/search/repositories')) {
+          return jsonResponse({
+            items: [
+              {
+                full_name: 'acme/finance-models',
+                html_url: 'https://github.com/acme/finance-models',
+                default_branch: 'main',
+              },
+            ],
+          })
+        }
+        if (url === 'https://api.github.com/repos/acme/finance-models/license') {
+          return jsonResponse({
+            license: {
+              spdx_id: 'MIT',
+              name: 'MIT License',
+            },
+            html_url: 'https://github.com/acme/finance-models/blob/main/LICENSE',
+          })
+        }
+        if (url === 'https://api.github.com/repos/acme/finance-models/git/trees/main?recursive=1') {
+          return jsonResponse({
+            tree: [
+              {
+                type: 'blob',
+                path: 'models/dcf-model.xlsx',
+              },
+              {
+                type: 'blob',
+                path: 'exports/raw-data.xlsx',
+              },
+            ],
+          })
+        }
+        if (url.startsWith('https://api.github.com/repos/acme/finance-models/commits?') && url.includes('path=models%2Fdcf-model.xlsx')) {
+          return jsonResponse([
+            {
+              commit: {
+                committer: {
+                  date: '2026-04-30T12:00:00Z',
+                },
+              },
+            },
+          ])
+        }
+        if (url.startsWith('https://api.github.com/repos/acme/finance-models/commits?') && url.includes('path=exports%2Fraw-data.xlsx')) {
+          return jsonResponse([
+            {
+              commit: {
+                committer: {
+                  date: '2024-12-31T12:00:00Z',
+                },
+              },
+            },
+          ])
+        }
+        throw new Error(`Unexpected GitHub API request: ${url}`)
+      }),
+    )
+
+    const manifest = await discoverRecentComplexGithubQueries({
+      manifest: createEmptyPublicWorkbookManifest('2026-05-17T00:00:00.000Z', 500),
+      queries: [],
+      repositoryQueries: ['financial model excel license:mit'],
+      limit: 500,
+      perPage: 25,
+      maxPagesPerQuery: 1,
+      maxRepositoriesPerQuery: 5,
+      githubToken: 'ghs_test',
+      discoveredAt: '2026-05-17T00:00:00.000Z',
+    })
+
+    validatePublicWorkbookManifest(manifest)
+    expect(manifest.sources).toHaveLength(1)
+    expect(manifest.sources[0]).toMatchObject({
+      sourceUrl: 'https://github.com/acme/finance-models/blob/main/models/dcf-model.xlsx',
+      downloadUrl: 'https://raw.githubusercontent.com/acme/finance-models/main/models/dcf-model.xlsx',
+      fileName: 'dcf-model.xlsx',
+    })
+    expect(manifest.sources[0]?.topicEvidence).toEqual(
+      expect.arrayContaining(['recent-2026:github.commitDate', expect.stringMatching(/^github-repo-query:/u)]),
+    )
+  })
 })
 
 function githubSearchItem(args: { readonly repo: string; readonly path: string; readonly name: string }): Record<string, unknown> {

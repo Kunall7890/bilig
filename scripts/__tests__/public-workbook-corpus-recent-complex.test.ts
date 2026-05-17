@@ -121,6 +121,7 @@ describe('public workbook recent complex headless corpus gate', () => {
           mismatches: [],
           skippedByReason: {
             'missing-cached-result': 0,
+            'stale-cached-name-error': 0,
             'unsupported-cached-result-type': 0,
             'volatile-or-environment-dependent-formula': 0,
           },

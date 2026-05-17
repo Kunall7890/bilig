@@ -39,6 +39,17 @@ export const defaultRecentComplexGithubQueries = [
 ] as const
 
 export const defaultRecentComplexGithubRepositoryQueries = [
+  'excel financial modeling license:mit',
+  'financial model excel license:mit',
+  'project finance excel license:mit',
+  'financial forecast excel license:mit',
+  'dcf excel model license:mit',
+  'budget model excel license:mit',
+  'valuation model excel license:mit',
+  'excel financial modeling license:apache-2.0',
+  'financial model excel license:apache-2.0',
+  'project finance excel license:apache-2.0',
+  'dcf excel model license:apache-2.0',
   '2026 xlsx license:mit',
   '2026 excel license:mit',
   '2026 workbook license:mit',
@@ -52,6 +63,8 @@ export const defaultRecentComplexGithubRepositoryQueries = [
   '2025 xlsx license:apache-2.0',
   '2025 excel license:apache-2.0',
 ] as const
+
+const maxGithubWorkbookPathsPerRepository = 50
 
 interface DiscoverGithubWorkbookSourcesArgs {
   readonly manifest: PublicWorkbookManifest
@@ -69,6 +82,11 @@ interface DiscoverGithubWorkbookSourcesArgs {
 interface GithubCodeSearchPage {
   readonly query: string
   readonly items: readonly Record<string, unknown>[]
+}
+
+interface GithubWorkbookPathCandidate {
+  readonly path: string
+  readonly fileName: string
 }
 
 export async function discoverRecentComplexGithubQueries(args: DiscoverGithubWorkbookSourcesArgs): Promise<PublicWorkbookManifest> {
@@ -341,44 +359,73 @@ async function readGithubRepositoryWorkbookSources(args: {
     return []
   }
   const treeEntries = await readGithubRepositoryTree(repositoryFullName, defaultBranch, args.githubToken)
-  const sources: PublicWorkbookSource[] = []
-  for (const entry of treeEntries) {
-    if (sources.length >= args.remainingSourceSlots) {
-      break
-    }
-    const path = readString(entry, 'path')
-    const type = readString(entry, 'type')
-    const fileName = path ? fileNameFromPath(path) : null
-    if (type !== 'blob' || !path || !fileName || !isSpreadsheetFileName(fileName)) {
-      continue
-    }
-    const encodedPath = encodeGithubPath(path)
-    const downloadUrl = `https://raw.githubusercontent.com/${repositoryFullName}/${encodeURIComponent(defaultBranch)}/${encodedPath}`
-    const sourceUrl = `${repositoryHtmlUrl}/blob/${encodeURIComponent(defaultBranch)}/${encodedPath}`
-    const topicEvidence = [
-      ...recentWorkbookDateEvidenceForFields([
-        { name: 'github.path', value: path },
-        { name: 'sourceUrl', value: sourceUrl },
-        { name: 'downloadUrl', value: downloadUrl },
-        { name: 'fileName', value: fileName },
-      ]),
-      `github-repo-query:${stableId(args.query)}`,
-    ]
-    if (!topicEvidence.some((evidence) => evidence.startsWith('recent-2025:') || evidence.startsWith('recent-2026:'))) {
-      continue
-    }
-    sources.push({
-      id: `github-${stableId(`${repositoryFullName}:${path}:${downloadUrl}`)}`,
-      kind: 'github-contents',
-      sourceUrl,
-      downloadUrl,
-      fileName,
-      discoveredAt: args.discoveredAt,
-      license,
-      topicEvidence,
+  const candidates = treeEntries
+    .flatMap((entry) => {
+      const path = readString(entry, 'path')
+      const type = readString(entry, 'type')
+      const fileName = path ? fileNameFromPath(path) : null
+      if (type !== 'blob' || !path || !fileName || !isSpreadsheetFileName(fileName)) {
+        return []
+      }
+      return [{ path, fileName }]
     })
+    .toSorted((left, right) => rankGithubWorkbookPath(right.path) - rankGithubWorkbookPath(left.path))
+    .slice(0, Math.min(args.remainingSourceSlots, maxGithubWorkbookPathsPerRepository))
+  const sources = await mapWithConcurrency(candidates, 4, (candidate) =>
+    readGithubRepositoryWorkbookSource({
+      ...args,
+      repositoryFullName,
+      repositoryHtmlUrl,
+      defaultBranch,
+      license,
+      candidate,
+    }),
+  )
+  return sources.flatMap((source) => (source ? [source] : []))
+}
+
+async function readGithubRepositoryWorkbookSource(args: {
+  readonly repositoryFullName: string
+  readonly repositoryHtmlUrl: string
+  readonly defaultBranch: string
+  readonly license: PublicWorkbookLicenseEvidence
+  readonly candidate: GithubWorkbookPathCandidate
+  readonly query: string
+  readonly discoveredAt: string
+  readonly githubToken?: string | null
+}): Promise<PublicWorkbookSource | null> {
+  const { path, fileName } = args.candidate
+  const encodedPath = encodeGithubPath(path)
+  const downloadUrl = `https://raw.githubusercontent.com/${args.repositoryFullName}/${encodeURIComponent(args.defaultBranch)}/${encodedPath}`
+  const sourceUrl = `${args.repositoryHtmlUrl}/blob/${encodeURIComponent(args.defaultBranch)}/${encodedPath}`
+  const dateFields = [
+    { name: 'github.path', value: path },
+    { name: 'sourceUrl', value: sourceUrl },
+    { name: 'downloadUrl', value: downloadUrl },
+    { name: 'fileName', value: fileName },
+  ]
+  const pathDateEvidence = recentWorkbookDateEvidenceForFields(dateFields)
+  const commitDate =
+    pathDateEvidence.length > 0
+      ? null
+      : await readGithubPathLatestCommitDate(args.repositoryFullName, args.defaultBranch, path, args.githubToken)
+  const topicEvidence = [
+    ...recentWorkbookDateEvidenceForFields(commitDate ? [...dateFields, { name: 'github.commitDate', value: commitDate }] : dateFields),
+    `github-repo-query:${stableId(args.query)}`,
+  ]
+  if (!topicEvidence.some((evidence) => evidence.startsWith('recent-2025:') || evidence.startsWith('recent-2026:'))) {
+    return null
   }
-  return sources
+  return {
+    id: `github-${stableId(`${args.repositoryFullName}:${path}:${downloadUrl}`)}`,
+    kind: 'github-contents',
+    sourceUrl,
+    downloadUrl,
+    fileName,
+    discoveredAt: args.discoveredAt,
+    license: args.license,
+    topicEvidence,
+  }
 }
 
 async function readGithubRepositoryTree(
@@ -396,6 +443,31 @@ async function readGithubRepositoryTree(
     })
   } catch {
     return []
+  }
+}
+
+async function readGithubPathLatestCommitDate(
+  repositoryFullName: string,
+  defaultBranch: string,
+  path: string,
+  githubToken?: string | null,
+): Promise<string | null> {
+  try {
+    const url = new URL(`https://api.github.com/repos/${repositoryFullName}/commits`)
+    url.searchParams.set('path', path)
+    url.searchParams.set('per_page', '1')
+    url.searchParams.set('sha', defaultBranch)
+    const commits = await fetchGithubJson(url, githubToken)
+    if (!Array.isArray(commits)) {
+      return null
+    }
+    const firstCommit = asRecordOrNull(commits[0])
+    const commit = firstCommit ? asRecordOrNull(firstCommit['commit']) : null
+    const committer = commit ? asRecordOrNull(commit['committer']) : null
+    const author = commit ? asRecordOrNull(commit['author']) : null
+    return (committer ? readString(committer, 'date') : null) ?? (author ? readString(author, 'date') : null)
+  } catch {
+    return null
   }
 }
 
@@ -464,6 +536,27 @@ async function fetchGithubJson(url: URL, githubToken?: string | null): Promise<u
 function fileNameFromPath(path: string): string | null {
   const fileName = path.split('/').at(-1)
   return fileName && fileName.trim().length > 0 ? fileName : null
+}
+
+function rankGithubWorkbookPath(path: string): number {
+  const normalized = path.toLowerCase()
+  let score = 0
+  if (/\b202[56]\b/u.test(normalized)) {
+    score += 40
+  }
+  if (/\b(financial|finance|model|modelling|modeling|forecast|projection|budget|valuation|dcf|proforma|pro-forma)\b/u.test(normalized)) {
+    score += 30
+  }
+  if (/\b(lambda|formula|calculator|scenario|sensitivity|cohort|cash[-_ ]?flow|irr|npv)\b/u.test(normalized)) {
+    score += 20
+  }
+  if (/\b(template|sample|example|case|chapter|exercise)\b/u.test(normalized)) {
+    score += 10
+  }
+  if (/\b(raw|export|output|results|dataset|data)\b/u.test(normalized)) {
+    score -= 10
+  }
+  return score
 }
 
 function encodeGithubPath(path: string): string {

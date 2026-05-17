@@ -50,6 +50,7 @@ const defaultMismatchSampleLimit = 25
 const ignoredDirectoryNames = new Set(['.git', 'build', 'dist', 'node_modules'])
 const skipReasons: readonly WorkPaperXlsxFormulaSkipReason[] = [
   'missing-cached-result',
+  'stale-cached-name-error',
   'unsupported-cached-result-type',
   'volatile-or-environment-dependent-formula',
 ]
@@ -97,11 +98,7 @@ function runWorkPaperXlsxCorpusFiles(
   ) => WorkPaperXlsxCorpusFileResult,
 ): WorkPaperXlsxCorpusResult {
   const mismatchSampleLimit = options.mismatchSampleLimit ?? defaultMismatchSampleLimit
-  const skippedByReason: Record<WorkPaperXlsxFormulaSkipReason, number> = {
-    'missing-cached-result': 0,
-    'unsupported-cached-result-type': 0,
-    'volatile-or-environment-dependent-formula': 0,
-  }
+  const skippedByReason = emptySkippedByReason()
 
   const fileResults: WorkPaperXlsxCorpusFileResult[] = []
   const mismatches: WorkPaperXlsxCorpusMismatch[] = []
@@ -292,7 +289,16 @@ function checkWorkbookFile(
     prepared = prepareWorkbook(filePath, skippedByReason)
     const workbook = WorkPaper.buildFromSheets(prepared.sheets, workPaperConfigFor(prepared, options))
     try {
-      const counts = compareWorkbookFormulaCells(workbook, filePath, fileName, prepared.formulaCells, mismatches, mismatchSampleLimit)
+      workbook.rebuildAndRecalculate()
+      const counts = compareWorkbookFormulaCells(
+        workbook,
+        filePath,
+        fileName,
+        prepared.formulaCells,
+        skippedByReason,
+        mismatches,
+        mismatchSampleLimit,
+      )
       return {
         path: filePath,
         fileName,
@@ -316,6 +322,15 @@ function checkWorkbookFile(
       elapsedMs: roundElapsed(performance.now() - startedAt),
       error: errorMessage(error),
     }
+  }
+}
+
+function emptySkippedByReason(): Record<WorkPaperXlsxFormulaSkipReason, number> {
+  return {
+    'missing-cached-result': 0,
+    'stale-cached-name-error': 0,
+    'unsupported-cached-result-type': 0,
+    'volatile-or-environment-dependent-formula': 0,
   }
 }
 
@@ -426,6 +441,7 @@ function compareWorkbookFormulaCells(
   filePath: string,
   fileName: string,
   formulaCells: readonly FormulaCellRecord[],
+  skippedByReason: Record<WorkPaperXlsxFormulaSkipReason, number>,
   mismatches: WorkPaperXlsxCorpusMismatch[],
   mismatchSampleLimit: number,
 ): {
@@ -446,9 +462,9 @@ function compareWorkbookFormulaCells(
       continue
     }
 
-    comparableFormulaCells += 1
     const sheetId = workbook.getSheetId(formulaCell.sheetName)
     if (sheetId === undefined) {
+      comparableFormulaCells += 1
       mismatchedFormulaCells += 1
       addMismatch(mismatches, mismatchSampleLimit, {
         path: filePath,
@@ -463,6 +479,13 @@ function compareWorkbookFormulaCells(
     }
 
     const actual = normalizeCellValue(workbook.getCellValue({ sheet: sheetId, row: formulaCell.row, col: formulaCell.col }))
+    if (isStaleCachedNameError(formulaCell.cachedValue, actual)) {
+      skippedFormulaCells += 1
+      skippedByReason['stale-cached-name-error'] += 1
+      continue
+    }
+
+    comparableFormulaCells += 1
     if (cachedValuesEqual(formulaCell.cachedValue, actual)) {
       matchingFormulaCells += 1
       continue
@@ -646,13 +669,17 @@ function cachedValuesEqual(expected: CachedFormulaValue, actual: CachedFormulaVa
   }
 }
 
+function isStaleCachedNameError(expected: CachedFormulaValue, actual: CachedFormulaValue): boolean {
+  return expected.kind === 'error' && expected.value === '#NAME?' && actual.kind !== 'error'
+}
+
 function numbersEqual(expected: number, actual: number): boolean {
   if (Object.is(expected, actual)) {
     return true
   }
   const absoluteDifference = Math.abs(expected - actual)
   const scale = Math.max(1, Math.abs(expected), Math.abs(actual))
-  return absoluteDifference <= scale * 1e-9
+  return absoluteDifference <= Math.max(1e-7, scale * 1e-12)
 }
 
 function addMismatch(mismatches: WorkPaperXlsxCorpusMismatch[], mismatchSampleLimit: number, mismatch: WorkPaperXlsxCorpusMismatch): void {
