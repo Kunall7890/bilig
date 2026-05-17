@@ -53,6 +53,7 @@ function createThreadState(context: WorkbookAgentUiContext | null): WorkbookAgen
       activeTurnId: 'turn-1',
       status: 'idle',
       lastError: null,
+      authorizedUserIds: new Set(['alex@example.com']),
       stagedPrivateBundleByTurn: new Map(),
       optimisticUserEntryIdByTurn: new Map(),
       promptByTurn: new Map(),

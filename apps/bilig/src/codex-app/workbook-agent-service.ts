@@ -337,6 +337,7 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
       const sharedSession = this.tryGetSessionByThreadId(parsed.threadId)
       if (sharedSession) {
         const accessibleSession = this.requireOwnedSession(sharedSession, input.documentId, input.session.userID)
+        await this.authorizeSharedSessionForUser(accessibleSession, input.documentId, input.session.userID)
         let contextChanged = false
         if (parsed.context) {
           contextChanged = updateWorkbookAgentDurableUiContextFromUser({
@@ -408,6 +409,7 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
       sessionBootstrapError,
       now: this.now(),
     })
+    sessionState.live.authorizedUserIds.add(input.session.userID)
     const bootstrapRecovery = planWorkbookAgentBootstrapReviewRecovery({
       sessionState,
       rolloutAllowed: this.isRolloutAllowed(input.documentId, input.session.userID),
@@ -450,7 +452,7 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
     body: unknown
   }): Promise<WorkbookAgentThreadSnapshot> {
     const parsed = updateContextBodySchema.parse(input.body)
-    const sessionState = this.getOwnedSession(input.documentId, input.threadId, input.session.userID)
+    const sessionState = await this.getAuthorizedSession(input.documentId, input.threadId, input.session.userID)
     const contextChanged = updateWorkbookAgentDurableUiContextFromUser({
       sessionState,
       context: parsed.context,
@@ -471,7 +473,7 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
     body: unknown
   }): Promise<WorkbookAgentThreadSnapshot> {
     const parsed = startTurnBodySchema.parse(input.body)
-    const sessionState = this.getOwnedSession(input.documentId, input.threadId, input.session.userID)
+    const sessionState = await this.getAuthorizedSession(input.documentId, input.threadId, input.session.userID)
     if (sessionState.live.activeTurnId) {
       throw createWorkbookAgentServiceError({
         code: 'WORKBOOK_AGENT_TURN_ALREADY_RUNNING',
@@ -538,7 +540,7 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
     body: unknown
   }): Promise<WorkbookAgentThreadSnapshot> {
     const parsed = startWorkflowBodySchema.parse(input.body)
-    const sessionState = this.getOwnedSession(input.documentId, input.threadId, input.session.userID)
+    const sessionState = await this.getAuthorizedSession(input.documentId, input.threadId, input.session.userID)
     if (!this.featureFlags.workflowRunnerEnabled) {
       throw createWorkbookAgentServiceError({
         code: 'WORKBOOK_AGENT_WORKFLOW_RUNNER_DISABLED',
@@ -603,7 +605,7 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
     runId: string
     session: SessionIdentity
   }): Promise<WorkbookAgentThreadSnapshot> {
-    const sessionState = this.getOwnedSession(input.documentId, input.threadId, input.session.userID)
+    const sessionState = await this.getAuthorizedSession(input.documentId, input.threadId, input.session.userID)
     const runningWorkflow = sessionState.durable.workflowRuns.find((run) => run.runId === input.runId)
     if (!runningWorkflow) {
       throw createWorkbookAgentServiceError({
@@ -632,7 +634,7 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
   }
 
   async interruptTurn(input: { documentId: string; threadId: string; session: SessionIdentity }): Promise<WorkbookAgentThreadSnapshot> {
-    const sessionState = this.getOwnedSession(input.documentId, input.threadId, input.session.userID)
+    const sessionState = await this.getAuthorizedSession(input.documentId, input.threadId, input.session.userID)
     const codexClient = await this.codexRuntime.getClient()
     await codexClient.turnInterrupt(sessionState.threadId)
     return buildSnapshot(sessionState)
@@ -647,7 +649,7 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
     commandIndexes?: readonly number[] | null
     preview: unknown
   }): Promise<WorkbookAgentThreadSnapshot> {
-    const sessionState = this.getOwnedSession(input.documentId, input.threadId, input.session.userID)
+    const sessionState = await this.getAuthorizedSession(input.documentId, input.threadId, input.session.userID)
     await applyWorkbookAgentReviewItem({
       context: this.createReviewActionContext(),
       sessionState,
@@ -668,7 +670,7 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
     body: unknown
   }): Promise<WorkbookAgentThreadSnapshot> {
     const parsed = reviewReviewItemBodySchema.parse(input.body)
-    const sessionState = this.getOwnedSession(input.documentId, input.threadId, input.session.userID)
+    const sessionState = await this.getAuthorizedSession(input.documentId, input.threadId, input.session.userID)
     const reviewItem = requireWorkbookAgentReviewItem({
       reviewItem: getCurrentWorkbookAgentReviewItem(sessionState),
       reviewItemId: input.reviewItemId,
@@ -705,7 +707,7 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
     reviewItemId: string
     session: SessionIdentity
   }): Promise<WorkbookAgentThreadSnapshot> {
-    const sessionState = this.getOwnedSession(input.documentId, input.threadId, input.session.userID)
+    const sessionState = await this.getAuthorizedSession(input.documentId, input.threadId, input.session.userID)
     const reviewItem = requireWorkbookAgentReviewItem({
       reviewItem: getCurrentWorkbookAgentReviewItem(sessionState),
       reviewItemId: input.reviewItemId,
@@ -728,7 +730,7 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
     recordId: string
     session: SessionIdentity
   }): Promise<WorkbookAgentThreadSnapshot> {
-    const sessionState = this.getOwnedSession(input.documentId, input.threadId, input.session.userID)
+    const sessionState = await this.getAuthorizedSession(input.documentId, input.threadId, input.session.userID)
     await replayWorkbookAgentExecutionRecord({
       context: this.createReviewActionContext(),
       sessionState,
@@ -751,6 +753,7 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
 
   getSnapshot(input: { documentId: string; threadId: string; session: SessionIdentity }): WorkbookAgentThreadSnapshot {
     const sessionState = this.getOwnedSession(input.documentId, input.threadId, input.session.userID)
+    this.assertSharedSessionAlreadyAuthorized(sessionState, input.session.userID)
     this.sessionRegistry.touch(sessionState)
     return buildSnapshot(sessionState)
   }
@@ -786,6 +789,12 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
     return this.requireOwnedSession(sessionState, documentId, userId)
   }
 
+  private async getAuthorizedSession(documentId: string, threadId: string, userId: string): Promise<WorkbookAgentThreadState> {
+    const sessionState = this.getOwnedSession(documentId, threadId, userId)
+    await this.authorizeSharedSessionForUser(sessionState, documentId, userId)
+    return sessionState
+  }
+
   private requireOwnedSession(sessionState: WorkbookAgentThreadState, documentId: string, userId: string): WorkbookAgentThreadState {
     if (sessionState.documentId !== documentId) {
       throw createWorkbookAgentServiceError({
@@ -810,6 +819,38 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
       userId,
     })
     return sessionState
+  }
+
+  private assertSharedSessionAlreadyAuthorized(sessionState: WorkbookAgentThreadState, userId: string): void {
+    if (sessionState.scope !== 'shared' || sessionState.live.authorizedUserIds.has(userId)) {
+      return
+    }
+    throw createWorkbookAgentServiceError({
+      code: 'WORKBOOK_AGENT_THREAD_NOT_FOUND',
+      message: 'Workbook agent thread not found',
+      statusCode: 404,
+      retryable: false,
+    })
+  }
+
+  private async authorizeSharedSessionForUser(sessionState: WorkbookAgentThreadState, documentId: string, userId: string): Promise<void> {
+    if (sessionState.scope !== 'shared' || sessionState.live.authorizedUserIds.has(userId)) {
+      return
+    }
+    const durableThreadSession = await this.threadRepository.loadThreadState({
+      documentId,
+      actorUserId: userId,
+      threadId: sessionState.threadId,
+    })
+    if (durableThreadSession.threadState?.scope !== 'shared') {
+      throw createWorkbookAgentServiceError({
+        code: 'WORKBOOK_AGENT_THREAD_NOT_FOUND',
+        message: 'Workbook agent thread not found',
+        statusCode: 404,
+        retryable: false,
+      })
+    }
+    sessionState.live.authorizedUserIds.add(userId)
   }
 
   private getSessionByThreadId(threadId: string): WorkbookAgentThreadState {

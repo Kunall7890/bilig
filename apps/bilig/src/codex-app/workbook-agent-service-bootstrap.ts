@@ -81,6 +81,9 @@ export function createWorkbookAgentBootstrappedSessionState(input: {
       activeTurnId: input.liveThread?.turns.findLast((turn) => turn.status === 'inProgress')?.id ?? null,
       status: resolveWorkbookAgentBootstrapStatus(input.liveThread),
       lastError: resolveWorkbookAgentBootstrapErrorMessage(input.liveThread, input.sessionBootstrapError),
+      authorizedUserIds: new Set(
+        [input.userId, durableThreadState?.actorUserId].filter((userId): userId is string => typeof userId === 'string'),
+      ),
       stagedPrivateBundleByTurn: new Map(),
       optimisticUserEntryIdByTurn: new Map(),
       promptByTurn: new Map(),

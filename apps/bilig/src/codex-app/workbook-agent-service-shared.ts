@@ -24,6 +24,7 @@ export interface WorkbookAgentThreadLiveState {
   activeTurnId: string | null
   status: WorkbookAgentThreadSnapshot['status']
   lastError: string | null
+  authorizedUserIds: Set<string>
   stagedPrivateBundleByTurn: Map<string, WorkbookAgentCommandBundle>
   optimisticUserEntryIdByTurn: Map<string, string>
   promptByTurn: Map<string, string>

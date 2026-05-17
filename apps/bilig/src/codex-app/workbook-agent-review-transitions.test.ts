@@ -30,6 +30,7 @@ function createSessionState(): WorkbookAgentThreadState {
       activeTurnId: null,
       status: 'idle',
       lastError: null,
+      authorizedUserIds: new Set(['alex@example.com']),
       stagedPrivateBundleByTurn: new Map(),
       optimisticUserEntryIdByTurn: new Map(),
       promptByTurn: new Map(),

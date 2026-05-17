@@ -35,6 +35,7 @@ function createSession(input: {
       activeTurnId,
       status: input.status ?? 'idle',
       lastError: null,
+      authorizedUserIds: new Set([input.userId ?? 'alex@example.com']),
       stagedPrivateBundleByTurn: new Map(),
       optimisticUserEntryIdByTurn: new Map(),
       promptByTurn: new Map(),

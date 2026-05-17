@@ -1078,6 +1078,105 @@ describe('workbook agent service', () => {
     }
   })
 
+  it('revalidates live shared thread visibility before granting a new user access', async () => {
+    const fakeCodex = new FakeCodexTransport()
+    const loadWorkbookAgentThreadState = vi.fn(async (_documentId: string, actorUserId: string, _threadId: string) =>
+      actorUserId === 'alex@example.com'
+        ? {
+            documentId: 'doc-1',
+            threadId: 'thr-test',
+            actorUserId: 'alex@example.com',
+            scope: 'shared' as const,
+            executionPolicy: 'ownerReview' as const,
+            context: null,
+            entries: [],
+            reviewQueueItems: [],
+            updatedAtUnixMs: 100,
+          }
+        : null,
+    )
+    const saveWorkbookAgentThreadState = vi.fn(async () => undefined)
+    const service = createWorkbookAgentService(
+      createZeroSyncStub({
+        loadWorkbookAgentThreadState,
+        saveWorkbookAgentThreadState,
+      }),
+      {
+        codexClientFactory: (_options: CodexAppServerClientOptions): CodexAppServerTransport => fakeCodex,
+        featureFlags: {
+          sharedThreadsEnabled: true,
+        },
+      },
+    )
+
+    try {
+      const snapshot = await service.createSession({
+        documentId: 'doc-1',
+        session: {
+          userID: 'alex@example.com',
+          roles: ['editor'],
+        },
+        body: {
+          scope: 'shared',
+        },
+      })
+
+      await expect(
+        service.createSession({
+          documentId: 'doc-1',
+          session: {
+            userID: 'mallory@example.com',
+            roles: ['editor'],
+          },
+          body: {
+            threadId: snapshot.threadId,
+            context: {
+              selection: {
+                sheetName: 'Sheet1',
+                address: 'Z99',
+              },
+              viewport: {
+                rowStart: 0,
+                rowEnd: 20,
+                colStart: 0,
+                colEnd: 10,
+              },
+            },
+          },
+        }),
+      ).rejects.toMatchObject({
+        code: 'WORKBOOK_AGENT_THREAD_NOT_FOUND',
+        statusCode: 404,
+      })
+
+      expect(loadWorkbookAgentThreadState).toHaveBeenCalledWith('doc-1', 'mallory@example.com', snapshot.threadId)
+      expect(
+        service.getSnapshot({
+          documentId: 'doc-1',
+          threadId: snapshot.threadId,
+          session: { userID: 'alex@example.com', roles: ['editor'] },
+        }).context,
+      ).not.toEqual(
+        expect.objectContaining({
+          selection: expect.objectContaining({
+            address: 'Z99',
+          }),
+        }),
+      )
+      expect(saveWorkbookAgentThreadState).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          context: expect.objectContaining({
+            selection: expect.objectContaining({
+              address: 'Z99',
+            }),
+          }),
+        }),
+      )
+    } finally {
+      await service.close()
+    }
+  })
+
   it('limits shared threads to the rollout allowlist', async () => {
     const fakeCodex = new FakeCodexTransport()
     const service = createWorkbookAgentService(createZeroSyncStub(), {
