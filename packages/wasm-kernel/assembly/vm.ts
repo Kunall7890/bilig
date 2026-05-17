@@ -800,8 +800,39 @@ function evalProgram(cellIndex: i32, formulaIndex: i32): void {
     }
 
     if (opcode == Opcode.Neg) {
-      if (kindStack[sp - 1] == STACK_KIND_RANGE) {
-        writeScalar(sp - 1, <u8>ValueTag.Error, ErrorCode.Value)
+      const operandKind = kindStack[sp - 1]
+      if (operandKind == STACK_KIND_RANGE || operandKind == STACK_KIND_ARRAY) {
+        const rows = slotRows(sp - 1)
+        const cols = slotCols(sp - 1)
+        if (rows == i32.MIN_VALUE || cols == i32.MIN_VALUE) {
+          writeScalar(sp - 1, <u8>ValueTag.Error, ErrorCode.Ref)
+          continue
+        }
+        const arrayIndex = allocateSpillArrayResult(rows, cols)
+        let outputOffset = 0
+        for (let row = 0; row < rows; row++) {
+          for (let col = 0; col < cols; col++) {
+            const tag = slotCellTag(sp - 1, row, col)
+            const value = slotCellValue(sp - 1, row, col)
+            if (tag == ValueTag.Error) {
+              writeSpillArrayValue(arrayIndex, outputOffset, <u8>ValueTag.Error, value)
+            } else {
+              const numeric = arithmeticNumber(tag, value)
+              if (isNaN(numeric)) {
+                writeSpillArrayValue(arrayIndex, outputOffset, <u8>ValueTag.Error, ErrorCode.Value)
+              } else {
+                writeSpillArrayValue(arrayIndex, outputOffset, <u8>ValueTag.Number, -numeric)
+              }
+            }
+            outputOffset += 1
+          }
+        }
+        registerTrackedArrayShape(arrayIndex, rows, cols)
+        kindStack[sp - 1] = STACK_KIND_ARRAY
+        rangeIndexStack[sp - 1] = arrayIndex
+        tagStack[sp - 1] = ValueTag.Empty
+        valueStack[sp - 1] = 0
+        blankReferenceStack[sp - 1] = 0
         continue
       }
       if (tagStack[sp - 1] == ValueTag.Error) {
