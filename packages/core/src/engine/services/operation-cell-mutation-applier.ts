@@ -1,4 +1,3 @@
-import { formatAddress } from '@bilig/formula'
 import type { EngineOpBatch } from '@bilig/workbook-domain'
 import type { CellValue } from '@bilig/protocol'
 import type { EngineCellMutationRef } from '../../cell-mutations-at.js'
@@ -16,14 +15,10 @@ import type { OperationDirectRangeDependentService } from './operation-direct-ra
 import type { DirectFormulaMetricCounts } from './operation-post-recalc-direct-formulas.js'
 import { finalizeOperationRecalcAndEvents } from './operation-recalc-finalizer.js'
 import type { CreateEngineOperationServiceArgs, MutationSource } from './operation-service-types.js'
-import {
-  analyzeFreshDirectAggregateFormula,
-  bindFreshTemplateFormula,
-  markFreshDirectAggregateInputsCovered,
-} from './operation-fresh-direct-aggregate.js'
 import { createOperationFreshDirectAggregateFormulaBatchFastPath } from './operation-fresh-direct-aggregate-formula-batch-fast-path.js'
 import { applyClearCellMutation } from './operation-clear-cell-mutation.js'
 import { applySetCellValueMutation } from './operation-set-cell-value-mutation.js'
+import { applySetCellFormulaMutation } from './operation-set-cell-formula-mutation.js'
 
 type OperationCellMutationSource = Exclude<MutationSource, 'remote'>
 type OperationCellDirectFormulaCallbacks = Parameters<typeof finalizeOperationRecalcAndEvents>[0]['directFormulaCallbacks']
@@ -306,129 +301,35 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
             }
             case 'setCellFormula': {
               const sheetName = sheetNameResolver.resolve(sheetId)
-              const { hasExactLookupDependents, hasSortedLookupDependents, hasAggregateDependents } = trackedColumnDependencyFlags.resolve(
+              const formulaResult = applySetCellFormulaMutation({
+                serviceArgs: args,
                 sheetId,
-                mutation.col,
-              )
-              if (hasExactLookupDependents) {
-                args.invalidateExactLookupColumn({ sheetName, col: mutation.col })
-              }
-              if (hasSortedLookupDependents) {
-                args.invalidateSortedLookupColumn({ sheetName, col: mutation.col })
-              }
-              if (!isRestore && existingIndex !== undefined) {
-                changedInputCount = args.markPivotRootsChanged(args.clearPivotForCell(existingIndex), changedInputCount)
-              }
-              const cellIndex = args.state.workbook.ensureCellAt(sheetId, mutation.row, mutation.col).cellIndex
-              if (!isRestore && existingIndex !== undefined) {
-                changedInputCount = args.markSpillRootsChanged(args.clearOwnedSpill(cellIndex), changedInputCount)
-              }
-              const priorHadFormula = args.state.formulas.get(cellIndex) !== undefined
-              const oldFormulaNumber = !isRestore && priorHadFormula ? readExactNumericValueForLookup(cellIndex) : undefined
-              const compileStarted = isRestore ? 0 : performance.now()
-              try {
-                const priorDirectScalarFormula = args.state.formulas.get(cellIndex)?.directScalar !== undefined
-                const canRewriteFormulaPreservingBinding =
-                  !isRestore &&
-                  priorDirectScalarFormula &&
-                  !hasExactLookupDependents &&
-                  !hasSortedLookupDependents &&
-                  !hasAggregateDependents &&
-                  args.rewriteFormulaSourcePreservingBinding !== undefined
-                const canAssumeFreshFormula =
-                  !isRestore &&
-                  existingIndex === undefined &&
-                  !priorHadFormula &&
-                  args.state.workbook.metadata.definedNames.size === 0 &&
-                  args.bindPreparedFormula !== undefined &&
-                  args.compileTemplateFormula !== undefined
-                const changedTopology = canRewriteFormulaPreservingBinding
-                  ? args.rewriteFormulaSourcePreservingBinding(cellIndex, sheetName, mutation.formula)
-                    ? false
-                    : args.bindFormula(cellIndex, sheetName, mutation.formula)
-                  : canAssumeFreshFormula
-                    ? bindFreshTemplateFormula(args, cellIndex, sheetName, mutation)
-                    : args.bindFormula(cellIndex, sheetName, mutation.formula)
-                const runtimeFormula = args.state.formulas.get(cellIndex)
-                if (hasAggregateDependents) {
-                  args.invalidateAggregateColumn({ sheetName, col: mutation.col })
-                }
-                if (!isRestore) {
-                  compileMs += performance.now() - compileStarted
-                }
-                clearTrackedColumnDependencyFlagCache()
-                changedInputCount = args.markInputChanged(cellIndex, changedInputCount)
-                const freshDirectAggregateAnalysis = analyzeFreshDirectAggregateFormula(args, {
-                  priorHadFormula,
-                  formulaCellIndex: cellIndex,
-                  formula: runtimeFormula,
-                })
-                const canSkipTopoRepair = freshDirectAggregateAnalysis.canSkipTopoRepair
-                const freshDirectFormulaResult = freshDirectAggregateAnalysis.currentResult
-                const evaluatedFreshDirectFormula =
-                  freshDirectFormulaResult !== undefined
-                    ? (() => {
-                        postRecalcDirectFormulaIndices.addCurrentResult(cellIndex, freshDirectFormulaResult)
-                        const applied = applyDirectFormulaCurrentResult(cellIndex, freshDirectFormulaResult)
-                        if (applied && batchMayNeedFreshAggregateInputCoverage) {
-                          markFreshDirectAggregateInputsCovered(args, {
-                            formulaCellIndex: cellIndex,
-                            formula: runtimeFormula,
-                            postRecalcDirectFormulaIndices,
-                          })
-                        }
-                        return applied
-                      })()
-                    : canSkipTopoRepair && args.evaluateDirectFormula(cellIndex) !== undefined
-                const handledFormulaReplacementAsDirectDelta =
-                  priorHadFormula &&
-                  !hasExactLookupDependents &&
-                  !hasSortedLookupDependents &&
-                  !hasAggregateDependents &&
-                  tryApplyFormulaReplacementAsDirectScalarDeltaRoot({
-                    cellIndex,
-                    oldNumber: oldFormulaNumber,
-                    changedTopology,
-                    postRecalcDirectFormulaIndices,
-                  })
-                if (!handledFormulaReplacementAsDirectDelta) {
-                  if (!evaluatedFreshDirectFormula) {
-                    formulaChangedCount = args.markFormulaChanged(cellIndex, formulaChangedCount)
-                  }
-                }
-                topologyChanged = topologyChanged || (changedTopology && !canSkipTopoRepair)
-                const aggregateDependents = hasAggregateDependents
-                  ? collectAffectedDirectRangeDependents({
-                      sheetName,
-                      row: mutation.row,
-                      col: mutation.col,
-                    }).filter((candidate) => candidate !== cellIndex)
-                  : []
-                if (aggregateDependents.length > 0) {
-                  formulaChangedCount = args.rebindFormulaCells(aggregateDependents, formulaChangedCount)
-                  for (let index = 0; index < aggregateDependents.length; index += 1) {
-                    postRecalcDirectFormulaIndices.add(aggregateDependents[index]!)
-                    formulaChangedCount = args.markFormulaChanged(aggregateDependents[index]!, formulaChangedCount)
-                    changedInputCount = args.markInputChanged(aggregateDependents[index]!, changedInputCount)
-                  }
-                  topologyChanged = true
-                }
-              } catch {
-                if (!isRestore) {
-                  compileMs += performance.now() - compileStarted
-                }
-                const removedFormula = args.removeFormula(cellIndex)
-                topologyChanged = removedFormula || topologyChanged
-                clearTrackedColumnDependencyFlagCache()
-                args.setInvalidFormulaValue(cellIndex)
-                changedInputCount = args.markInputChanged(cellIndex, changedInputCount)
-              }
-              if (trackExplicitChanges) {
-                explicitChangedCount = args.markExplicitChanged(cellIndex, explicitChangedCount)
-              }
-              if (!isRestore && args.state.trackReplicaVersions) {
-                setCellEntityVersion(sheetName, formatAddress(mutation.row, mutation.col), order!)
-              }
+                sheetName,
+                mutation,
+                existingIndex,
+                isRestore,
+                trackExplicitChanges,
+                order,
+                changedInputCount,
+                formulaChangedCount,
+                explicitChangedCount,
+                topologyChanged,
+                compileMs,
+                dependencyFlags: trackedColumnDependencyFlags.resolve(sheetId, mutation.col),
+                batchMayNeedFreshAggregateInputCoverage,
+                postRecalcDirectFormulaIndices,
+                setCellEntityVersion,
+                readExactNumericValueForLookup,
+                clearTrackedColumnDependencyFlagCache,
+                applyDirectFormulaCurrentResult,
+                tryApplyFormulaReplacementAsDirectScalarDeltaRoot,
+                collectAffectedDirectRangeDependents,
+              })
+              changedInputCount = formulaResult.changedInputCount
+              formulaChangedCount = formulaResult.formulaChangedCount
+              explicitChangedCount = formulaResult.explicitChangedCount
+              topologyChanged = formulaResult.topologyChanged
+              compileMs = formulaResult.compileMs
               break
             }
             case 'clearCell': {
