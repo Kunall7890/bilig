@@ -1,4 +1,4 @@
-import type { CommitOp, EngineReplicaSnapshot, SpreadsheetEngine } from '@bilig/core'
+import type { CommitOp, SpreadsheetEngine } from '@bilig/core'
 import {
   buildWorkbookAgentPreview,
   isWorkbookAgentCommandBundle,
@@ -22,13 +22,6 @@ import {
 import type { RenderTileDeltaSubscription, ViewportPatch, ViewportPatchSubscription } from '@bilig/worker-transport'
 import { isPendingWorkbookMutationList, type PendingWorkbookMutation, type PendingWorkbookMutationInput } from './workbook-sync.js'
 import { WorkerRuntimeMutationJournal } from './worker-runtime-mutation-journal.js'
-import {
-  ensureAuthoritativeEngine,
-  installAuthoritativeEngineState,
-  installRestoredAuthoritativeState,
-  rebuildProjectionEngine,
-  resolveAuthoritativeStateInput,
-} from './worker-runtime-engine-access.js'
 import { acquireProjectionEngine } from './worker-runtime-projection-engine.js'
 import { WorkerRuntimeProjectionCommands } from './worker-runtime-projection-commands.js'
 import { createProjectionEngineFromState } from './worker-runtime-engine-state.js'
@@ -41,6 +34,7 @@ import type {
 } from './worker-runtime-state.js'
 import { WorkerRuntimeStateCoordinator } from './worker-runtime-state-coordinator.js'
 import { WorkerRuntimeSnapshotCaches } from './worker-runtime-snapshot-caches.js'
+import { WorkerRuntimeAuthoritativeStateCoordinator } from './worker-runtime-authoritative-state-coordinator.js'
 import { WorkerRuntimeWorkbookDeltaPublisher } from './worker-runtime-delta-publisher.js'
 import { applyWorkerRuntimeLocalHistoryChange } from './worker-runtime-local-history.js'
 import { WorkerRuntimeRenderTileDeltaPublisher } from './worker-runtime-render-tile-subscription.js'
@@ -80,19 +74,22 @@ export class WorkbookWorkerRuntime {
   private engine: (SpreadsheetEngine & WorkerEngine) | null = null
   private projectionEnginePromise: Promise<SpreadsheetEngine & WorkerEngine> | null = null
   private projectionBuildVersion = 0
-  private authoritativeEngine: SpreadsheetEngine | null = null
-  private authoritativeStateSource: 'none' | 'memory' = 'none'
   private bootstrapOptions: WorkbookWorkerBootstrapOptions | null = null
   private engineSubscription: (() => void) | null = null
-  private authoritativeRevision = 0
   private projectionOverlayScope: ProjectionOverlayScope | null = null
   private readonly workbookDeltaPublisher = new WorkerRuntimeWorkbookDeltaPublisher()
   private readonly renderTileDeltaPublisher = new WorkerRuntimeRenderTileDeltaPublisher()
   private readonly snapshotCaches = new WorkerRuntimeSnapshotCaches()
+  private readonly authoritativeState = new WorkerRuntimeAuthoritativeStateCoordinator({
+    snapshotCaches: this.snapshotCaches,
+    getDocumentId: () => this.requireBootstrapOptions().documentId,
+    getReplicaId: () => this.requireBootstrapOptions().replicaId,
+    listPendingMutations: () => this.mutationJournal.listPendingMutations(),
+  })
   private readonly viewportPatchPublisher = new WorkerViewportPatchPublisher({
     buildPatch: (state, event, metrics, authoritativeRevision, sheetImpact) =>
       this.buildViewportPatch(state, event, metrics, authoritativeRevision, sheetImpact),
-    getAuthoritativeRevision: () => this.authoritativeRevision,
+    getAuthoritativeRevision: () => this.authoritativeState.getRevision(),
     getCurrentMetrics: () => this.getCurrentMetrics(),
     getProjectionEngine: () => this.requireEngine(),
     hasProjectionEngine: () => this.engine !== null,
@@ -110,13 +107,13 @@ export class WorkbookWorkerRuntime {
   private readonly mutationJournal: WorkerRuntimeMutationJournal = new WorkerRuntimeMutationJournal({
     getDocumentId: () => this.requireBootstrapOptions().documentId,
     getClientMutationScope: () => this.requireBootstrapOptions().replicaId,
-    getAuthoritativeRevision: () => this.authoritativeRevision,
+    getAuthoritativeRevision: () => this.authoritativeState.getRevision(),
     getProjectionEngine: () => this.getProjectionEngine(),
     invalidateProjectionCache: () => this.invalidateProjectionCache(),
   })
   private readonly stateCoordinator = new WorkerRuntimeStateCoordinator({
     getEngine: () => this.engine,
-    getAuthoritativeRevision: () => this.authoritativeRevision,
+    getAuthoritativeRevision: () => this.authoritativeState.getRevision(),
     buildPendingMutationSummary: () => this.mutationJournal.buildPendingMutationSummary(),
   })
 
@@ -134,7 +131,7 @@ export class WorkbookWorkerRuntime {
     this.snapshotCaches.reset()
     this.mutationJournal.reset()
     this.projectionOverlayScope = null
-    this.authoritativeRevision = 0
+    this.authoritativeState.reset()
     const restoredJournalEntries = isPendingWorkbookMutationList(options.mutationJournalEntries) ? options.mutationJournalEntries : []
     if (
       restoredJournalEntries.length > 0 ||
@@ -175,7 +172,7 @@ export class WorkbookWorkerRuntime {
   }
 
   getAuthoritativeRevision(): number {
-    return this.authoritativeRevision
+    return this.authoritativeState.getRevision()
   }
 
   async installAuthoritativeSnapshot(input: InstallAuthoritativeSnapshotInput): Promise<WorkbookWorkerStateSnapshot> {
@@ -208,7 +205,7 @@ export class WorkbookWorkerRuntime {
     this.projectionBuildVersion += 1
     this.projectionEnginePromise = null
     const options = this.requireBootstrapOptions()
-    this.authoritativeRevision = mode === 'bootstrap' ? Math.max(this.authoritativeRevision, authoritativeRevision) : authoritativeRevision
+    this.authoritativeState.acceptSnapshotRevision(authoritativeRevision, mode)
 
     const prepared = await prepareAuthoritativeSnapshotProjection({
       documentId: options.documentId,
@@ -217,11 +214,7 @@ export class WorkbookWorkerRuntime {
       mode,
       pendingMutations: this.mutationJournal.listPendingMutations(),
     })
-    if (prepared.authoritativeEngine) {
-      this.installAuthoritativeEngine(prepared.authoritativeEngine, prepared.authoritativeSnapshot, prepared.authoritativeReplica)
-    } else {
-      this.installRestoredAuthoritativeState(prepared.authoritativeSnapshot, prepared.authoritativeReplica)
-    }
+    this.authoritativeState.installPreparedState(prepared)
     if (prepared.shouldMarkPendingMutationsRebased) {
       await this.markRemainingJournalMutationsRebased()
     }
@@ -248,8 +241,8 @@ export class WorkbookWorkerRuntime {
     const authoritativeEngine = await this.getAuthoritativeEngine()
     const { absorbedMutationIds } = applyAuthoritativeWorkbookEvents(authoritativeEngine, events)
     this.mutationJournal.ackAbsorbedMutations(absorbedMutationIds)
-    this.authoritativeRevision = Math.max(this.authoritativeRevision, authoritativeRevision)
-    this.snapshotCaches.invalidateAuthoritativeState()
+    this.authoritativeState.acceptEventRevision(authoritativeRevision)
+    this.authoritativeState.invalidateCachedState()
     const { engine, overlayScope } = await this.rebuildProjectionEngine()
     if (events.length > 0 && this.mutationJournal.getPendingMutationCount() > 0) {
       await this.markRemainingJournalMutationsRebased()
@@ -475,10 +468,8 @@ export class WorkbookWorkerRuntime {
     this.snapshotCaches.reset()
     this.workbookDeltaPublisher.reset()
     this.renderTileDeltaPublisher.reset()
-    this.authoritativeStateSource = 'none'
-    this.authoritativeRevision = 0
+    this.authoritativeState.reset()
     this.projectionOverlayScope = null
-    this.authoritativeEngine = null
     this.engine = null
   }
 
@@ -526,57 +517,15 @@ export class WorkbookWorkerRuntime {
     )
   }
 
-  private async getAuthoritativeStateInput(): Promise<{
-    snapshot: WorkbookSnapshot | null
-    replica: EngineReplicaSnapshot | null
-  }> {
-    return await resolveAuthoritativeStateInput({
-      authoritativeStateSource: this.authoritativeStateSource,
-      snapshotCaches: this.snapshotCaches,
-      authoritativeEngine: this.authoritativeEngine,
-    })
-  }
-
-  private installAuthoritativeEngine(
-    engine: SpreadsheetEngine,
-    snapshot: WorkbookSnapshot | null,
-    replica: EngineReplicaSnapshot | null,
-  ): void {
-    this.authoritativeStateSource = 'memory'
-    this.authoritativeEngine = engine
-    installAuthoritativeEngineState(this.snapshotCaches, engine, snapshot, replica)
-  }
-
-  private installRestoredAuthoritativeState(snapshot: WorkbookSnapshot | null, replica: EngineReplicaSnapshot | null): void {
-    this.authoritativeStateSource = 'memory'
-    this.authoritativeEngine = null
-    installRestoredAuthoritativeState(this.snapshotCaches, snapshot, replica)
-  }
-
   private async getAuthoritativeEngine(): Promise<SpreadsheetEngine> {
-    const options = this.requireBootstrapOptions()
-    const engine = await ensureAuthoritativeEngine({
-      authoritativeEngine: this.authoritativeEngine,
-      documentId: options.documentId,
-      replicaId: options.replicaId,
-      snapshotCaches: this.snapshotCaches,
-      resolveAuthoritativeStateInput: () => this.getAuthoritativeStateInput(),
-    })
-    this.authoritativeEngine = engine
-    return engine
+    return await this.authoritativeState.getEngine()
   }
 
   private async rebuildProjectionEngine(): Promise<{
     engine: SpreadsheetEngine
     overlayScope: ProjectionOverlayScope | null
   }> {
-    const options = this.requireBootstrapOptions()
-    return await rebuildProjectionEngine({
-      documentId: options.documentId,
-      replicaId: options.replicaId,
-      pendingMutations: this.mutationJournal.listPendingMutations(),
-      resolveAuthoritativeStateInput: () => this.getAuthoritativeStateInput(),
-    })
+    return await this.authoritativeState.rebuildProjectionEngine()
   }
 
   private async getProjectionEngine(): Promise<SpreadsheetEngine & WorkerEngine> {
@@ -633,7 +582,7 @@ export class WorkbookWorkerRuntime {
     state: ViewportSubscriptionState,
     event: EngineEvent | null,
     metrics: RecalcMetrics = this.getCurrentMetrics(),
-    authoritativeRevision: number = this.authoritativeRevision,
+    authoritativeRevision: number = this.authoritativeState.getRevision(),
     sheetImpact: SheetViewportImpact | null = null,
   ): ViewportPatch {
     return this.viewportPatchPublisher.buildPatch(state, event, metrics, authoritativeRevision, sheetImpact)
