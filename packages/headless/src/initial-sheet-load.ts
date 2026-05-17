@@ -51,6 +51,8 @@ export interface PreparedInitialMixedSheetLoad {
 }
 
 interface FreshInitialLogicalSheetInternals {
+  readonly deferVisibleCellPageRebuild?: () => void
+  readonly setFreshVisibleCellIdentityWithAxisIdsDeferred?: (cellIndex: number, rowId: string, colId: string) => void
   readonly setFreshVisibleCellWithAxisIdsDeferred?: (row: number, col: number, cellIndex: number, rowId: string, colId: string) => void
 }
 
@@ -175,6 +177,7 @@ export function prepareInitialMixedSheetLoad(args: {
     args.engine.workbook.withBatchedColumnVersionUpdates(() => {
       if (isDenseInitialMixedSheet(args.content, potentialCellCount, maxColumnCount)) {
         const firstCellIndex = cellStore.allocateDenseRowMajorReserved(args.sheetId, args.content.length, maxColumnCount)
+        initializeDenseInitialMixedCellFields(cellStore, firstCellIndex, potentialCellCount)
         for (let rowIndex = 0; rowIndex < args.content.length; rowIndex += 1) {
           const row = args.content[rowIndex]!
           const rowId = ensureRowId(rowIndex)
@@ -194,7 +197,7 @@ export function prepareInitialMixedSheetLoad(args: {
               writtenColumns[colIndex] = 1
               writtenColumnCount += 1
             }
-            writeInitialLiteralCell(cellStore, args.engine.strings, cellIndex, raw)
+            writeDenseInitialLiteralCell(cellStore, args.engine.strings, cellIndex, raw)
           }
         }
       } else {
@@ -245,9 +248,30 @@ export function prepareInitialMixedSheetLoad(args: {
   }
 }
 
+function initializeDenseInitialMixedCellFields(
+  cellStore: SpreadsheetEngine['workbook']['cellStore'],
+  firstCellIndex: number,
+  cellCount: number,
+): void {
+  const end = firstCellIndex + cellCount
+  cellStore.formulaIds.fill(0, firstCellIndex, end)
+  cellStore.versions.fill(0, firstCellIndex, end)
+  cellStore.topoRanks.fill(0, firstCellIndex, end)
+  cellStore.cycleGroupIds.fill(-1, firstCellIndex, end)
+}
+
 function createFreshInitialCellAttacher(sheet: SheetRecord): FreshInitialCellAttacher {
   const logicalCandidate: unknown = sheet.logical
   const logical = isFreshInitialLogicalSheetInternals(logicalCandidate) ? logicalCandidate : undefined
+  const attachFreshVisibleCellIdentity = logical?.setFreshVisibleCellIdentityWithAxisIdsDeferred?.bind(logical)
+  if (attachFreshVisibleCellIdentity) {
+    logical?.deferVisibleCellPageRebuild?.()
+    const setGridCell = sheet.grid.createRowMajorSetter()
+    return (row, col, cellIndex, rowId, colId) => {
+      attachFreshVisibleCellIdentity(cellIndex, rowId, colId)
+      setGridCell(row, col, cellIndex)
+    }
+  }
   const attachFreshVisibleCell = logical?.setFreshVisibleCellWithAxisIdsDeferred?.bind(logical)
   if (!attachFreshVisibleCell) {
     return (row, col, cellIndex, rowId, colId) => {
@@ -289,6 +313,35 @@ function materializeWrittenColumns(writtenColumns: Uint8Array, count: number): U
     }
   }
   return columns
+}
+
+function writeDenseInitialLiteralCell(
+  cellStore: SpreadsheetEngine['workbook']['cellStore'],
+  strings: { intern(value: string): number },
+  cellIndex: number,
+  raw: RawCellContent | undefined,
+): void {
+  cellStore.versions[cellIndex] = 1
+  if (raw === null || raw === undefined) {
+    cellStore.flags[cellIndex] = (cellStore.flags[cellIndex] ?? 0) | CellFlags.AuthoredBlank
+    cellStore.tags[cellIndex] = ValueTag.Empty
+    cellStore.numbers[cellIndex] = 0
+    cellStore.stringIds[cellIndex] = 0
+    return
+  }
+  if (typeof raw === 'number') {
+    cellStore.tags[cellIndex] = ValueTag.Number
+    cellStore.numbers[cellIndex] = raw
+    cellStore.stringIds[cellIndex] = 0
+  } else if (typeof raw === 'boolean') {
+    cellStore.tags[cellIndex] = ValueTag.Boolean
+    cellStore.numbers[cellIndex] = raw ? 1 : 0
+    cellStore.stringIds[cellIndex] = 0
+  } else {
+    cellStore.tags[cellIndex] = ValueTag.String
+    cellStore.numbers[cellIndex] = 0
+    cellStore.stringIds[cellIndex] = strings.intern(raw)
+  }
 }
 
 function writeInitialLiteralCell(

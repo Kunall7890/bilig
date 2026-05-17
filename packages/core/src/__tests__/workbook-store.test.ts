@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { MAX_COLS, ValueTag, createCellNumberFormatRecord } from '@bilig/protocol'
 import type { StructuralAxisTransform } from '@bilig/formula'
 import { writeLiteralToCellStore } from '../engine-value-utils.js'
 import { createEngineCounters } from '../perf/engine-counters.js'
 import { StringPool } from '../string-pool.js'
+import { LogicalSheetStore } from '../storage/logical-sheet-store.js'
 import { WorkbookStore } from '../workbook-store.js'
 
 function hasStructuralAxisTransform(value: unknown): value is {
@@ -71,6 +72,19 @@ describe('WorkbookStore', () => {
     workbook.insertColumns('Sheet1', 0, 1)
 
     expect(workbook.getCellPosition(cellIndex)).toEqual({ sheetId: 1, row: 1, col: 2 })
+  })
+
+  it('reuses physical-grid cells without logical position lookups before structural edits', () => {
+    const workbook = new WorkbookStore('cell-record-physical-fast-path')
+    const sheet = workbook.createSheet('Sheet1')
+    const cellIndex = workbook.ensureCellRecord('Sheet1', 'B2').cellIndex
+    const logicalPositionSpy = vi.spyOn(LogicalSheetStore.prototype, 'getCellVisiblePosition')
+    try {
+      expect(workbook.ensureCellAt(sheet.id, 1, 1)).toEqual({ cellIndex, created: false })
+      expect(logicalPositionSpy).not.toHaveBeenCalled()
+    } finally {
+      logicalPositionSpy.mockRestore()
+    }
   })
 
   it('keeps logical cell lookups stable when metadata materializes structural axis entries', () => {

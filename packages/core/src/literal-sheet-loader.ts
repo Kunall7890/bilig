@@ -4,6 +4,8 @@ import type { SheetRecord, WorkbookStore } from './workbook-store.js'
 import { CellFlags } from './cell-store.js'
 
 interface FreshLiteralLogicalSheetInternals {
+  readonly deferVisibleCellPageRebuild?: () => void
+  readonly setFreshVisibleCellIdentityWithAxisIdsDeferred?: (cellIndex: number, rowId: string, colId: string) => void
   readonly setFreshVisibleCellWithAxisIdsDeferred?: (row: number, col: number, cellIndex: number, rowId: string, colId: string) => void
 }
 
@@ -225,6 +227,15 @@ function materializeDenseWrittenColumns(count: number): Uint32Array {
 function createFreshLiteralCellAttacher(workbook: WorkbookStore, sheet: SheetRecord): FreshLiteralCellAttacher {
   const logicalCandidate: unknown = sheet.logical
   const logical = isFreshLiteralLogicalSheetInternals(logicalCandidate) ? logicalCandidate : undefined
+  const attachFreshVisibleCellIdentity = logical?.setFreshVisibleCellIdentityWithAxisIdsDeferred?.bind(logical)
+  if (attachFreshVisibleCellIdentity) {
+    logical?.deferVisibleCellPageRebuild?.()
+    const setGridCell = sheet.grid.createRowMajorSetter()
+    return (row, col, cellIndex, rowId, colId) => {
+      attachFreshVisibleCellIdentity(cellIndex, rowId, colId)
+      setGridCell(row, col, cellIndex)
+    }
+  }
   const attachFreshVisibleCell = logical?.setFreshVisibleCellWithAxisIdsDeferred?.bind(logical)
   if (!attachFreshVisibleCell) {
     return (row, col, cellIndex, rowId, colId) => {

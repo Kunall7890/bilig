@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import * as formula from '@bilig/formula'
 import { CellFlags, CellStore, readRuntimeImage, readRuntimeSnapshot, SpreadsheetEngine, WorkbookStore } from '@bilig/core'
-import { ValueTag, type WorkbookSnapshot } from '@bilig/protocol'
+import { ErrorCode, ValueTag, type WorkbookSnapshot } from '@bilig/protocol'
 import { WorkPaper } from '../index.js'
 import { prepareInitialMixedSheetLoad } from '../initial-sheet-load.js'
 import { WorkPaperSheetSizeLimitExceededError } from '../work-paper-errors.js'
@@ -198,6 +198,46 @@ describe('initial mixed sheet load', () => {
     expect(b2Index).toBe(3)
     expect(engine.workbook.cellStore.flags[b2Index!] & CellFlags.AuthoredBlank).toBe(CellFlags.AuthoredBlank)
     expect(Array.from(engine.workbook.getSheet('Bench')!.columnVersions.slice(0, 2))).toEqual([1, 1])
+  })
+
+  it('bulk-clears dense mixed-sheet cell state before writing literals and formula refs', () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'initial-mixed-dense-state-load' })
+    engine.workbook.createSheet('Bench')
+    const sheetId = engine.workbook.getSheet('Bench')!.id
+    const cellStore = engine.workbook.cellStore
+    cellStore.formulaIds.fill(77, 0, 4)
+    cellStore.versions.fill(9, 0, 4)
+    cellStore.topoRanks.fill(8, 0, 4)
+    cellStore.cycleGroupIds.fill(7, 0, 4)
+    cellStore.errors.fill(ErrorCode.Name, 0, 4)
+
+    const prepared = prepareInitialMixedSheetLoad({
+      engine,
+      sheetId,
+      content: [[1, 'label', '=A1+1', true]],
+      rewriteFormula: (source) => source,
+      inspection: {
+        materializedCellCount: 4,
+        maxColumnCount: 4,
+        formulaCellCount: 1,
+      },
+    })
+
+    expect(prepared.formulaRefs.length).toBe(1)
+    expect(prepared.formulaRefs.at(0).cellIndex).toBe(2)
+    expect(engine.getCellValue('Bench', 'A1')).toEqual({ tag: ValueTag.Number, value: 1 })
+    expect(engine.getCellValue('Bench', 'B1')).toMatchObject({ tag: ValueTag.String, value: 'label' })
+    expect(engine.getCellValue('Bench', 'C1')).toEqual({ tag: ValueTag.Empty })
+    expect(engine.getCellValue('Bench', 'D1')).toEqual({ tag: ValueTag.Boolean, value: true })
+    expect(Array.from(cellStore.formulaIds.slice(0, 4))).toEqual([0, 0, 0, 0])
+    expect(Array.from(cellStore.errors.slice(0, 4))).toEqual([ErrorCode.None, ErrorCode.None, ErrorCode.None, ErrorCode.None])
+    expect(Array.from(cellStore.versions.slice(0, 4))).toEqual([1, 1, 0, 1])
+    expect(Array.from(cellStore.topoRanks.slice(0, 4))).toEqual([0, 0, 0, 0])
+    expect(Array.from(cellStore.cycleGroupIds.slice(0, 4))).toEqual([-1, -1, -1, -1])
+
+    engine.initializeFormulaSourcesAtNow(prepared.formulaRefs, prepared.potentialNewCells)
+
+    expect(engine.getCellValue('Bench', 'C1')).toEqual({ tag: ValueTag.Number, value: 2 })
   })
 
   it('merges compact initial formula refs across multiple mixed sheets', () => {

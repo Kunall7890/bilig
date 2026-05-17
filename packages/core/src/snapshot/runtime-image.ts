@@ -187,6 +187,8 @@ interface WrittenColumnTracker {
 }
 
 interface FreshRuntimeLogicalSheetInternals {
+  readonly deferVisibleCellPageRebuild?: () => void
+  readonly setFreshVisibleCellIdentityWithAxisIdsDeferred?: (cellIndex: number, rowId: string, colId: string) => void
   readonly setFreshVisibleCellWithAxisIdsDeferred?: (row: number, col: number, cellIndex: number, rowId: string, colId: string) => void
 }
 
@@ -307,6 +309,15 @@ function materializeWrittenColumns(tracker: WrittenColumnTracker): Uint32Array {
 function createFreshRuntimeCellAttacher(workbook: WorkbookStore, sheet: SheetRecord): FreshRuntimeCellAttacher {
   const logicalCandidate: unknown = sheet.logical
   const logical = isFreshRuntimeLogicalSheetInternals(logicalCandidate) ? logicalCandidate : undefined
+  const attachFreshVisibleCellIdentity = logical?.setFreshVisibleCellIdentityWithAxisIdsDeferred?.bind(logical)
+  if (attachFreshVisibleCellIdentity) {
+    logical?.deferVisibleCellPageRebuild?.()
+    const setGridCell = sheet.grid.createRowMajorSetter()
+    return (row, col, cellIndex, rowId, colId) => {
+      attachFreshVisibleCellIdentity(cellIndex, rowId, colId)
+      setGridCell(row, col, cellIndex)
+    }
+  }
   const attachFreshVisibleCell = logical?.setFreshVisibleCellWithAxisIdsDeferred?.bind(logical)
   if (!attachFreshVisibleCell) {
     return (row, col, cellIndex, rowId, colId) => {

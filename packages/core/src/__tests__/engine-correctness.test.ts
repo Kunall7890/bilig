@@ -271,6 +271,32 @@ describe('engine correctness', () => {
     expect(engine.exportSnapshot()).toEqual(initialSnapshot)
   })
 
+  it('replays explicit blanks after styled cell value undo and redo', async () => {
+    const initialSnapshot = await createBaselineSnapshot('correctness-redo-explicit-blank')
+    const engine = new SpreadsheetEngine({
+      workbookName: 'correctness-redo-explicit-blank',
+      replicaId: 'correctness-redo-explicit-blank',
+    })
+    await engine.ready()
+    engine.importSnapshot(initialSnapshot)
+
+    engine.setRangeStyle({ sheetName, startAddress: 'A1', endAddress: 'A1' }, { fill: { backgroundColor: '#dbeafe' } })
+    engine.setRangeNumberFormat({ sheetName, startAddress: 'A1', endAddress: 'A1' }, '0.00')
+    engine.setRangeValues({ sheetName, startAddress: 'A1', endAddress: 'A1' }, [[false]])
+    engine.setRangeValues({ sheetName, startAddress: 'A1', endAddress: 'A1' }, [[null]])
+
+    const finalSnapshot = engine.exportSnapshot()
+    expect(finalSnapshot.sheets[0]?.cells).toEqual([{ address: 'A1', value: null }])
+
+    const undoCount = undoAll(engine, 16)
+    expect(undoCount).toBeGreaterThan(0)
+    expect(engine.exportSnapshot()).toEqual(initialSnapshot)
+
+    const redoCount = redoAll(engine, undoCount + 2)
+    expect(redoCount).toBe(undoCount)
+    expect(engine.exportSnapshot()).toEqual(finalSnapshot)
+  })
+
   it('replays inserted column identities exactly across undo and redo', async () => {
     const initialSnapshot = await createBaselineSnapshot('correctness-redo-column-identity')
     const engine = new SpreadsheetEngine({

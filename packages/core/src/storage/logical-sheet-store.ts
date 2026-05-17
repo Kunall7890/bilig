@@ -136,6 +136,15 @@ export class LogicalSheetStore {
     return resolved
   }
 
+  deferVisibleCellPageRebuild(): void {
+    this.cellPages.deferRebuild()
+  }
+
+  setFreshVisibleCellIdentityWithAxisIdsDeferred(cellIndex: number, rowId: string, colId: string): void {
+    this.cellIdentities.setParts(cellIndex, this.sheetId, rowId, colId)
+    this.residentCells.addDeferredParts(cellIndex, rowId, colId)
+  }
+
   private setVisibleCellInternal(
     row: number,
     col: number,
@@ -238,6 +247,15 @@ export class LogicalSheetStore {
   getCellIdentity(cellIndex: number): CellAxisIdentity | undefined {
     const identity = this.cellIdentities.get(cellIndex)
     return identity?.sheetId === this.sheetId ? identity : undefined
+  }
+
+  cellIdentityMatchesVisiblePosition(cellIndex: number, row: number, col: number): boolean {
+    const identity = this.cellIdentities.get(cellIndex)
+    return (
+      identity?.sheetId === this.sheetId &&
+      this.axisMap.getId('row', row) === identity.rowId &&
+      this.axisMap.getId('column', col) === identity.colId
+    )
   }
 
   listResidentCellIndices(axis: AxisKind, axisIds: readonly string[]): number[] {

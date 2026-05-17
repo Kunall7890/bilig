@@ -40,8 +40,12 @@ export class WorkbookCellRecordStore {
     }
     const physicalCellIndex = sheet.structureVersion === 1 ? sheet.grid.getPhysical(row, col) : -1
     if (physicalCellIndex !== -1) {
-      const position = sheet.logical.getCellVisiblePosition(physicalCellIndex)
-      if (position?.row === row && position.col === col) {
+      if (
+        sheet.logical.cellIdentityMatchesVisiblePosition(physicalCellIndex, row, col) &&
+        this.options.cellStore.sheetIds[physicalCellIndex] === sheetId &&
+        this.options.cellStore.rows[physicalCellIndex] === row &&
+        this.options.cellStore.cols[physicalCellIndex] === col
+      ) {
         return { cellIndex: physicalCellIndex, created: false }
       }
     }
@@ -97,11 +101,39 @@ export class WorkbookCellRecordStore {
     const sheet = this.options.getSheet(sheetName)
     if (!sheet) return undefined
     const parsed = parseCellAddress(address, sheetName)
+    if (sheet.structureVersion === 1) {
+      const physicalCellIndex = sheet.grid.getPhysical(parsed.row, parsed.col)
+      if (
+        physicalCellIndex !== -1 &&
+        sheet.logical.cellIdentityMatchesVisiblePosition(physicalCellIndex, parsed.row, parsed.col) &&
+        this.options.cellStore.sheetIds[physicalCellIndex] === sheet.id &&
+        this.options.cellStore.rows[physicalCellIndex] === parsed.row &&
+        this.options.cellStore.cols[physicalCellIndex] === parsed.col
+      ) {
+        return physicalCellIndex
+      }
+    }
     return sheet.logical.getVisibleCell(parsed.row, parsed.col)
   }
 
   getCellIndexAt(sheetId: number, row: number, col: number): number | undefined {
-    return this.options.getSheetById(sheetId)?.logical.getVisibleCell(row, col)
+    const sheet = this.options.getSheetById(sheetId)
+    if (!sheet) {
+      return undefined
+    }
+    if (sheet.structureVersion === 1) {
+      const physicalCellIndex = sheet.grid.getPhysical(row, col)
+      if (
+        physicalCellIndex !== -1 &&
+        sheet.logical.cellIdentityMatchesVisiblePosition(physicalCellIndex, row, col) &&
+        this.options.cellStore.sheetIds[physicalCellIndex] === sheetId &&
+        this.options.cellStore.rows[physicalCellIndex] === row &&
+        this.options.cellStore.cols[physicalCellIndex] === col
+      ) {
+        return physicalCellIndex
+      }
+    }
+    return sheet.logical.getVisibleCell(row, col)
   }
 
   getAddress(index: number): string {

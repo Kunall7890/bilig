@@ -44,7 +44,11 @@ export function createWorkbookSheetRecord(args: {
     new CellPageStore(
       new Map<string, number>(),
       (location) => makeLogicalCellKey(location.sheetId, location.rowId, location.colId),
-      undefined,
+      (callback) => {
+        cellIdentities.forEach((identity, cellIndex) => {
+          callback(identity, cellIndex)
+        })
+      },
       makeLogicalCellKey,
     ),
     cellIdentities,

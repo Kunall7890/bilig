@@ -229,10 +229,11 @@ function collectFreshDenseNumericRectangle(
 }
 
 function createFreshNumericCellAttacher(sheet: SheetRecord): FreshNumericCellAttacher {
-  const attachFreshVisibleCell = sheet.logical.setFreshVisibleCellWithAxisIdsDeferred.bind(sheet.logical)
+  const attachFreshVisibleCellIdentity = sheet.logical.setFreshVisibleCellIdentityWithAxisIdsDeferred.bind(sheet.logical)
+  sheet.logical.deferVisibleCellPageRebuild()
   const setGridCell = sheet.grid.createRowMajorSetter()
   return (row, col, cellIndex, rowId, colId) => {
-    attachFreshVisibleCell(row, col, cellIndex, rowId, colId)
+    attachFreshVisibleCellIdentity(cellIndex, rowId, colId)
     setGridCell(row, col, cellIndex)
   }
 }
