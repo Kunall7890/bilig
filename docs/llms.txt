@@ -15,6 +15,7 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
 ## best entry points
 
 - https://proompteng.github.io/bilig/
+- https://proompteng.github.io/bilig/why-use-bilig.html
 - https://proompteng.github.io/bilig/stop-driving-spreadsheets-with-screenshots.html
 - https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html
 - https://proompteng.github.io/bilig/formula-workbooks-node-services-agent-tools.html
@@ -101,6 +102,7 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
 - https://github.com/proompteng/bilig/blob/main/docs/local-workpaper-benchmark-walkthrough.md
 - https://github.com/proompteng/bilig/blob/main/docs/headless-spreadsheet-engine-comparison.md
 - https://github.com/proompteng/bilig/blob/main/docs/javascript-spreadsheet-library-headless-node.md
+- https://github.com/proompteng/bilig/blob/main/docs/why-use-bilig.md
 - https://github.com/proompteng/bilig/blob/main/docs/sheetjs-exceljs-alternative-formula-workbook-api.md
 - https://github.com/proompteng/bilig/discussions/115
 
@@ -160,9 +162,8 @@ npm run agent:verify
 - create a Bilig WorkPaper starter:
   https://proompteng.github.io/bilig/create-bilig-workpaper.html
   https://github.com/proompteng/bilig/blob/main/docs/create-bilig-workpaper.md
-  tracks the @bilig/create-workpaper starter package and points evaluators to the
-  maintained serverless WorkPaper API example until the npm create path is
-  publicly published.
+  tracks the published @bilig/create-workpaper starter package and points
+  evaluators to the maintained serverless WorkPaper API shape.
 - npm provenance and package trust:
   https://proompteng.github.io/bilig/npm-provenance-package-trust.html
   https://github.com/proompteng/bilig/blob/main/docs/npm-provenance-package-trust.md

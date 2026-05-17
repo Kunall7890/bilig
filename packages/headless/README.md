@@ -29,6 +29,7 @@ around the same WorkPaper model.
 
 | If you are evaluating... | Start here                                                                                                                                                                               | What should be true before you star, watch, or adopt                                         |
 | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Basic fit                | [Why use Bilig?](https://proompteng.github.io/bilig/why-use-bilig.html)                                                                                                                  | The problem is workbook-shaped business logic that needs API readback and persistence.       |
 | Published npm package    | [90-second Node quickstart](https://proompteng.github.io/bilig/try-bilig-headless-in-node.html)                                                                                          | It edits one input, recalculates, persists JSON, restores, and prints `verified: true`.      |
 | Backend service shape    | [Quote approval WorkPaper API](https://proompteng.github.io/bilig/quote-approval-workpaper-api.html)                                                                                     | A realistic route-style workflow returns formula readback and `restoredMatchesAfter: true`.  |
 | XLSX import/export       | [XLSX formula recalculation example](https://github.com/proompteng/bilig/tree/main/examples/xlsx-recalculation-node)                                                                     | It imports XLSX, edits inputs, recalculates, exports XLSX, reimports, and verifies formulas. |
@@ -57,9 +58,13 @@ npm install
 npm run smoke
 ```
 
-The generated-project command is being prepared as
-`npm create @bilig/workpaper@latest pricing-workpaper` through
-`@bilig/create-workpaper`. The publish gate is documented at
+For a generated starter project:
+
+```sh
+npm create @bilig/workpaper@latest pricing-workpaper
+```
+
+That command is published through `@bilig/create-workpaper`. The publish gate is documented at
 <https://proompteng.github.io/bilig/create-bilig-workpaper.html>.
 
 <!-- headless-package-footprint:start -->
@@ -96,6 +101,8 @@ and uploaded to GitHub code scanning on every `main` update.
 
 For a clean copy-paste run, use the
 [Node quickstart](https://proompteng.github.io/bilig/try-bilig-headless-in-node.html).
+For the shortest explanation of when the package is worth using, start with
+[Why use Bilig?](https://proompteng.github.io/bilig/why-use-bilig.html).
 If you are choosing between formula engines, read the
 [TypeScript guide for evaluating Excel formulas in Node.js](https://proompteng.github.io/bilig/evaluate-excel-formulas-in-node-typescript.html)
 and the

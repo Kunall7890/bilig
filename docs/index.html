@@ -112,6 +112,14 @@
           },
           {
             "@type": "Question",
+            "name": "Why use Bilig?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Use Bilig when spreadsheet-shaped business logic needs to run inside Node code with cell writes, formula readback, JSON persistence, and restore proof."
+            }
+          },
+          {
+            "@type": "Question",
             "name": "When should I try bilig instead of ExcelJS, SheetJS, or HyperFormula?",
             "acceptedAnswer": {
               "@type": "Answer",
@@ -334,6 +342,11 @@ function readNumber(cell: unknown): number {
 
           <div class="path-grid">
             <div class="link-stack" aria-label="Integration paths">
+              <a class="path-link" href="./why-use-bilig.html">
+                <span>fit</span>
+                <strong>Why use Bilig?</strong>
+                <em>Use it when spreadsheet logic needs API readback, tests, persistence, and agent-readable proof.</em>
+              </a>
               <a class="path-link" href="./node-service-workpaper-recipe.html">
                 <span>service</span>
                 <strong>Node service WorkPaper recipe</strong>
@@ -677,6 +690,7 @@ function readNumber(cell: unknown): number {
             <div class="docs-column">
               <h3>Decide</h3>
               <ul>
+                <li><a href="./why-use-bilig.html">why use Bilig?</a></li>
                 <li><a href="./stop-driving-spreadsheets-with-screenshots.html">screenshots vs workbook APIs</a></li>
                 <li><a href="./show-hn-formula-workbooks-node-services.html">Show HN formula workbook proof</a></li>
                 <li>

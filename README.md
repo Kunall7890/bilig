@@ -29,6 +29,7 @@ Project site: <https://proompteng.github.io/bilig/>
 
 | If you are evaluating... | Start here                                                                                                               | What should be true before you star, watch, or adopt                                        |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| Basic fit                | [Why use Bilig?](docs/why-use-bilig.md)                                                                                  | The problem is workbook-shaped business logic that needs API readback and persistence.       |
 | Published npm package    | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                                                          | It edits one input, recalculates, persists JSON, restores, and prints `verified: true`.     |
 | Backend service shape    | [Quote approval WorkPaper API](docs/quote-approval-workpaper-api.md)                                                     | A realistic route-style workflow returns formula readback and `restoredMatchesAfter: true`. |
 | Agent or MCP tools       | [MCP spreadsheet tool server](docs/mcp-workpaper-tool-server.md)                                                         | Tool calls can write an input and return computed readback instead of screenshot claims.    |
@@ -213,6 +214,7 @@ Use the shortest path that proves the package against a real job.
 The rest of the docs are an index, not a prerequisite.
 
 For comparison and integration details, use the
+[plain-language fit guide](docs/why-use-bilig.md),
 [screenshot automation boundary](docs/stop-driving-spreadsheets-with-screenshots.md),
 [Google Sheets API boundary](docs/google-sheets-api-alternative-node-workpaper.md),
 [workbook automation examples](docs/workbook-automation-examples-node.md),

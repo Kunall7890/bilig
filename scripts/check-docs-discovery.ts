@@ -152,6 +152,7 @@ requireIncludes(index, '"downloadUrl": "https://www.npmjs.com/package/@bilig/hea
 requireIncludes(index, '"applicationCategory": "DeveloperApplication"', 'docs/index.html')
 requireIncludes(index, '"@type": "FAQPage"', 'docs/index.html')
 for (const required of [
+  './why-use-bilig.html',
   './why-agents-need-workbook-apis.html',
   './stop-driving-spreadsheets-with-screenshots.html',
   './show-hn-formula-workbooks-node-services.html',
@@ -252,6 +253,8 @@ for (const required of [
   'npm run agent:verify',
   'https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-records-input',
   'https://proompteng.github.io/bilig/why-agents-need-workbook-apis.html',
+  'https://proompteng.github.io/bilig/why-use-bilig.html',
+  'https://github.com/proompteng/bilig/blob/main/docs/why-use-bilig.md',
   'https://proompteng.github.io/bilig/stop-driving-spreadsheets-with-screenshots.html',
   'https://proompteng.github.io/bilig/formula-workbooks-node-services-agent-tools.html',
   'https://github.com/proompteng/bilig/blob/main/docs/formula-workbooks-node-services-agent-tools.md',
@@ -409,6 +412,8 @@ await requireSharedPublicDocsDiscovery({
 })
 
 requireIncludes(readme, 'acceptance commands for first patches.', 'README.md')
+requireIncludes(readme, 'docs/why-use-bilig.md', 'README.md')
+requireIncludes(headlessReadme, 'https://proompteng.github.io/bilig/why-use-bilig.html', 'packages/headless/README.md')
 requireIncludes(headlessReadme, '## Stay Connected', 'packages/headless/README.md')
 requireIncludes(headlessReadme, '## More Guides', 'packages/headless/README.md')
 requireIncludes(headlessReadme, 'Pick a scoped first patch:', 'packages/headless/README.md')

@@ -11,9 +11,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(runtime): align starter package version (d8c0770c)
 
 ## Internal runtime changes
+
 - ci(runtime): publish starter in common package workflow (580b9741)
 
 ## 0.18.8
@@ -23,6 +25,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(headless): bypass reducer for lazy formula edits (771ebbda)
 
 ## 0.18.7
