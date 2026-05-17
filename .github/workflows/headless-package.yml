@@ -586,7 +586,6 @@ jobs:
             --notes-file build/runtime-release-notes.md
 
           bun scripts/sync-public-evidence.ts
-          bun scripts/sync-headless-package-footprint.ts
 
           release_paths=(
             .release-please-manifest.json
@@ -625,6 +624,8 @@ jobs:
           pnpm --filter @bilig/wasm-kernel build
           pnpm --filter @bilig/formula build
           pnpm --filter @bilig/core build
+
+          bun scripts/sync-headless-package-footprint.ts
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
