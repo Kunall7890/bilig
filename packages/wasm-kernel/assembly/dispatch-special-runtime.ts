@@ -1,8 +1,9 @@
 import { BuiltinId, ErrorCode, ValueTag } from './protocol'
 import { collectDateCellRangeSeriesFromSlot, collectNumericCellRangeSeriesFromSlot, sampleCollectionErrorCode } from './statistics-tests'
 import { hasPositiveAndNegativeSeries, mirrCalc, solvePeriodicCashflowRateCalc, solveXirrCalc, xnpvCalc } from './cashflows'
-import { STACK_KIND_RANGE, STACK_KIND_SCALAR, writeResult } from './result-io'
-import { toNumberExact, toNumberOrZero } from './operands'
+import { STACK_KIND_SCALAR, writeResult } from './result-io'
+import { toNumberExact } from './operands'
+import { isRangeLikeSlot, rangeLikeSlotLength, rangeLikeSlotNumberOrZero } from './range-like-slot'
 import { nextVolatileRandomValue, readVolatileNowSerial } from './vm'
 
 function writeValueError(
@@ -219,14 +220,19 @@ export function tryApplySpecialRuntimeBuiltin(
     if (argc == 0) {
       return writeValueError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const firstRangeIndex = rangeIndexStack[base]
-    if (kindStack[base] != STACK_KIND_RANGE) {
+    if (!isRangeLikeSlot(kindStack[base])) {
       return writeValueError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    const expectedLength = <i32>rangeLengths[firstRangeIndex]
+    const expectedLength = rangeLikeSlotLength(base, kindStack, rangeIndexStack, rangeRowCounts, rangeColCounts)
+    if (expectedLength == i32.MIN_VALUE) {
+      return writeValueError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
     for (let index = 0; index < argc; index++) {
       const slot = base + index
-      if (kindStack[slot] != STACK_KIND_RANGE || <i32>rangeLengths[rangeIndexStack[slot]] != expectedLength) {
+      if (
+        !isRangeLikeSlot(kindStack[slot]) ||
+        rangeLikeSlotLength(slot, kindStack, rangeIndexStack, rangeRowCounts, rangeColCounts) != expectedLength
+      ) {
         return writeValueError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
       }
     }
@@ -235,9 +241,23 @@ export function tryApplySpecialRuntimeBuiltin(
     for (let row = 0; row < expectedLength; row++) {
       let product = 1.0
       for (let index = 0; index < argc; index++) {
-        const rangeIndex = rangeIndexStack[base + index]
-        const memberIndex = rangeMembers[rangeOffsets[rangeIndex] + row]
-        product *= toNumberOrZero(cellTags[memberIndex], cellNumbers[memberIndex])
+        product *= rangeLikeSlotNumberOrZero(
+          base + index,
+          row,
+          kindStack,
+          valueStack,
+          tagStack,
+          rangeIndexStack,
+          rangeOffsets,
+          rangeLengths,
+          rangeRowCounts,
+          rangeColCounts,
+          rangeMembers,
+          cellTags,
+          cellNumbers,
+          cellStringIds,
+          cellErrors,
+        )
       }
       sum += product
     }

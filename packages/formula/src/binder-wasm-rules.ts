@@ -2,6 +2,7 @@ import { MAX_WASM_RANGE_CELLS } from '@bilig/protocol'
 import type { FormulaNode } from './ast.js'
 import { parseRangeAddress } from './addressing.js'
 import { isWasmSafeBuiltinArity } from './binder-wasm-arity.js'
+import { producesSpillResult } from './compiler-analysis.js'
 export { isWasmSafeBuiltinArity } from './binder-wasm-arity.js'
 
 const RANGE_SAFE_BUILTINS = new Set([
@@ -260,6 +261,15 @@ export function isWasmSafeBuiltinArgs(callee: string, args: readonly FormulaNode
   const argc = args.length
   const isScalarArg = (arg: FormulaNode): boolean => deps.isWasmSafe(arg)
   const isCellRangeArg = (arg: FormulaNode): boolean => deps.isWasmSafe(arg, true) && isCellRangeNode(arg)
+  const isCellRangeLikeArg = (arg: FormulaNode): boolean => {
+    if (isCellRangeArg(arg)) {
+      return true
+    }
+    if (arg.kind === 'RangeRef') {
+      return false
+    }
+    return deps.isWasmSafe(arg, true) && producesSpillResult(arg)
+  }
   const isCellVectorArg = (arg: FormulaNode): boolean => deps.isWasmSafe(arg, true) && isCellVectorNode(arg)
   const isCellOrScalarArg = (arg: FormulaNode): boolean => isCellVectorArg(arg) || isScalarArg(arg)
   const isNativeSequenceArg = (arg: FormulaNode): boolean =>
@@ -303,12 +313,12 @@ export function isWasmSafeBuiltinArgs(callee: string, args: readonly FormulaNode
     }
     case 'COUNTIF':
     case 'USE.THE.COUNTIF':
-      return args.length === 2 && isCellRangeArg(args[0]!) && isScalarArg(args[1]!)
+      return args.length === 2 && isCellRangeLikeArg(args[0]!) && isScalarArg(args[1]!)
     case 'COUNTIFS':
       if (args.length === 0 || args.length % 2 !== 0) {
         return false
       }
-      return args.every((arg, index) => (index % 2 === 0 ? isCellRangeArg(arg) : isScalarArg(arg)))
+      return args.every((arg, index) => (index % 2 === 0 ? isCellRangeLikeArg(arg) : isScalarArg(arg)))
     case 'DAVERAGE':
     case 'DCOUNT':
     case 'DCOUNTA':
@@ -339,18 +349,18 @@ export function isWasmSafeBuiltinArgs(callee: string, args: readonly FormulaNode
       if (args.length !== 2 && args.length !== 3) {
         return false
       }
-      return isCellRangeArg(args[0]!) && isScalarArg(args[1]!) && (args.length === 2 || isCellRangeArg(args[2]!))
+      return isCellRangeLikeArg(args[0]!) && isScalarArg(args[1]!) && (args.length === 2 || isCellRangeLikeArg(args[2]!))
     case 'SUMIFS':
     case 'AVERAGEIFS':
       if (args.length < 3 || args.length % 2 === 0) {
         return false
       }
-      if (!isCellRangeArg(args[0]!)) {
+      if (!isCellRangeLikeArg(args[0]!)) {
         return false
       }
-      return args.slice(1).every((arg, index) => (index % 2 === 0 ? isCellRangeArg(arg) : isScalarArg(arg)))
+      return args.slice(1).every((arg, index) => (index % 2 === 0 ? isCellRangeLikeArg(arg) : isScalarArg(arg)))
     case 'SUMPRODUCT':
-      return args.length >= 1 && args.every((arg) => isCellRangeArg(arg))
+      return args.length >= 1 && args.every((arg) => isCellRangeLikeArg(arg))
     case 'MATCH':
       return (
         (args.length === 2 || args.length === 3) &&

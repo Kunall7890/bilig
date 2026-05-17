@@ -1,29 +1,38 @@
-import { matchesCriteriaValue } from './criteria'
-import {
-  isRangeLikeSlot,
-  rangeLikeSlotLength,
-  rangeLikeSlotNumberOnlyOrNaN,
-  rangeLikeSlotNumberOrNaN,
-  rangeLikeSlotNumberOrZero,
-  rangeLikeSlotTagAt,
-  rangeLikeSlotValueAt,
-} from './range-like-slot'
+import { inputCellScalarValue, inputCellTag, inputColsFromSlot, inputRowsFromSlot } from './operands'
+import { toNumberOrNaN, toNumberOrZero } from './operands'
+import { ValueTag } from './protocol'
+import { STACK_KIND_ARRAY, STACK_KIND_RANGE } from './result-io'
 
-export function isCriteriaRangeSlot(kind: u8): bool {
-  return isRangeLikeSlot(kind)
+export function isRangeLikeSlot(kind: u8): bool {
+  return kind == STACK_KIND_RANGE || kind == STACK_KIND_ARRAY
 }
 
-export function criteriaSlotLength(
+export function rangeLikeSlotLength(
   slot: i32,
   kindStack: Uint8Array,
   rangeIndexStack: Uint32Array,
   rangeRowCounts: Uint32Array,
   rangeColCounts: Uint32Array,
 ): i32 {
-  return rangeLikeSlotLength(slot, kindStack, rangeIndexStack, rangeRowCounts, rangeColCounts)
+  if (!isRangeLikeSlot(kindStack[slot])) {
+    return i32.MIN_VALUE
+  }
+  const rows = inputRowsFromSlot(slot, kindStack, rangeIndexStack, rangeRowCounts)
+  const cols = inputColsFromSlot(slot, kindStack, rangeIndexStack, rangeColCounts)
+  return rows > 0 && cols > 0 ? rows * cols : i32.MIN_VALUE
 }
 
-export function criteriaSlotTagAt(
+function rangeLikeSlotRow(slot: i32, offset: i32, kindStack: Uint8Array, rangeIndexStack: Uint32Array, rangeColCounts: Uint32Array): i32 {
+  const cols = inputColsFromSlot(slot, kindStack, rangeIndexStack, rangeColCounts)
+  return cols > 0 ? offset / cols : i32.MIN_VALUE
+}
+
+function rangeLikeSlotCol(slot: i32, offset: i32, kindStack: Uint8Array, rangeIndexStack: Uint32Array, rangeColCounts: Uint32Array): i32 {
+  const cols = inputColsFromSlot(slot, kindStack, rangeIndexStack, rangeColCounts)
+  return cols > 0 ? offset % cols : i32.MIN_VALUE
+}
+
+export function rangeLikeSlotTagAt(
   slot: i32,
   offset: i32,
   kindStack: Uint8Array,
@@ -38,9 +47,10 @@ export function criteriaSlotTagAt(
   cellTags: Uint8Array,
   cellNumbers: Float64Array,
 ): u8 {
-  return rangeLikeSlotTagAt(
+  return inputCellTag(
     slot,
-    offset,
+    rangeLikeSlotRow(slot, offset, kindStack, rangeIndexStack, rangeColCounts),
+    rangeLikeSlotCol(slot, offset, kindStack, rangeIndexStack, rangeColCounts),
     kindStack,
     valueStack,
     tagStack,
@@ -55,7 +65,7 @@ export function criteriaSlotTagAt(
   )
 }
 
-export function criteriaSlotValueAt(
+export function rangeLikeSlotValueAt(
   slot: i32,
   offset: i32,
   kindStack: Uint8Array,
@@ -72,9 +82,10 @@ export function criteriaSlotValueAt(
   cellStringIds: Uint32Array,
   cellErrors: Uint16Array,
 ): f64 {
-  return rangeLikeSlotValueAt(
+  return inputCellScalarValue(
     slot,
-    offset,
+    rangeLikeSlotRow(slot, offset, kindStack, rangeIndexStack, rangeColCounts),
+    rangeLikeSlotCol(slot, offset, kindStack, rangeIndexStack, rangeColCounts),
     kindStack,
     valueStack,
     tagStack,
@@ -91,11 +102,9 @@ export function criteriaSlotValueAt(
   )
 }
 
-export function criteriaSlotMatches(
+export function rangeLikeSlotNumberOrZero(
   slot: i32,
   offset: i32,
-  criteriaTag: u8,
-  criteriaValue: f64,
   kindStack: Uint8Array,
   valueStack: Float64Array,
   tagStack: Uint8Array,
@@ -109,15 +118,9 @@ export function criteriaSlotMatches(
   cellNumbers: Float64Array,
   cellStringIds: Uint32Array,
   cellErrors: Uint16Array,
-  stringOffsets: Uint32Array,
-  stringLengths: Uint32Array,
-  stringData: Uint16Array,
-  outputStringOffsets: Uint32Array,
-  outputStringLengths: Uint32Array,
-  outputStringData: Uint16Array,
-): bool {
-  return matchesCriteriaValue(
-    criteriaSlotTagAt(
+): f64 {
+  return toNumberOrZero(
+    rangeLikeSlotTagAt(
       slot,
       offset,
       kindStack,
@@ -132,7 +135,7 @@ export function criteriaSlotMatches(
       cellTags,
       cellNumbers,
     ),
-    criteriaSlotValueAt(
+    rangeLikeSlotValueAt(
       slot,
       offset,
       kindStack,
@@ -149,18 +152,10 @@ export function criteriaSlotMatches(
       cellStringIds,
       cellErrors,
     ),
-    criteriaTag,
-    criteriaValue,
-    stringOffsets,
-    stringLengths,
-    stringData,
-    outputStringOffsets,
-    outputStringLengths,
-    outputStringData,
   )
 }
 
-export function criteriaSlotNumberOrZero(
+export function rangeLikeSlotNumberOrNaN(
   slot: i32,
   offset: i32,
   kindStack: Uint8Array,
@@ -177,7 +172,60 @@ export function criteriaSlotNumberOrZero(
   cellStringIds: Uint32Array,
   cellErrors: Uint16Array,
 ): f64 {
-  return rangeLikeSlotNumberOrZero(
+  return toNumberOrNaN(
+    rangeLikeSlotTagAt(
+      slot,
+      offset,
+      kindStack,
+      valueStack,
+      tagStack,
+      rangeIndexStack,
+      rangeOffsets,
+      rangeLengths,
+      rangeRowCounts,
+      rangeColCounts,
+      rangeMembers,
+      cellTags,
+      cellNumbers,
+    ),
+    rangeLikeSlotValueAt(
+      slot,
+      offset,
+      kindStack,
+      valueStack,
+      tagStack,
+      rangeIndexStack,
+      rangeOffsets,
+      rangeLengths,
+      rangeRowCounts,
+      rangeColCounts,
+      rangeMembers,
+      cellTags,
+      cellNumbers,
+      cellStringIds,
+      cellErrors,
+    ),
+  )
+}
+
+export function rangeLikeSlotNumberOnlyOrNaN(
+  slot: i32,
+  offset: i32,
+  kindStack: Uint8Array,
+  valueStack: Float64Array,
+  tagStack: Uint8Array,
+  rangeIndexStack: Uint32Array,
+  rangeOffsets: Uint32Array,
+  rangeLengths: Uint32Array,
+  rangeRowCounts: Uint32Array,
+  rangeColCounts: Uint32Array,
+  rangeMembers: Uint32Array,
+  cellTags: Uint8Array,
+  cellNumbers: Float64Array,
+  cellStringIds: Uint32Array,
+  cellErrors: Uint16Array,
+): f64 {
+  const tag = rangeLikeSlotTagAt(
     slot,
     offset,
     kindStack,
@@ -191,65 +239,11 @@ export function criteriaSlotNumberOrZero(
     rangeMembers,
     cellTags,
     cellNumbers,
-    cellStringIds,
-    cellErrors,
   )
-}
-
-export function criteriaSlotNumberOrNaN(
-  slot: i32,
-  offset: i32,
-  kindStack: Uint8Array,
-  valueStack: Float64Array,
-  tagStack: Uint8Array,
-  rangeIndexStack: Uint32Array,
-  rangeOffsets: Uint32Array,
-  rangeLengths: Uint32Array,
-  rangeRowCounts: Uint32Array,
-  rangeColCounts: Uint32Array,
-  rangeMembers: Uint32Array,
-  cellTags: Uint8Array,
-  cellNumbers: Float64Array,
-  cellStringIds: Uint32Array,
-  cellErrors: Uint16Array,
-): f64 {
-  return rangeLikeSlotNumberOrNaN(
-    slot,
-    offset,
-    kindStack,
-    valueStack,
-    tagStack,
-    rangeIndexStack,
-    rangeOffsets,
-    rangeLengths,
-    rangeRowCounts,
-    rangeColCounts,
-    rangeMembers,
-    cellTags,
-    cellNumbers,
-    cellStringIds,
-    cellErrors,
-  )
-}
-
-export function criteriaSlotNumberOnlyOrNaN(
-  slot: i32,
-  offset: i32,
-  kindStack: Uint8Array,
-  valueStack: Float64Array,
-  tagStack: Uint8Array,
-  rangeIndexStack: Uint32Array,
-  rangeOffsets: Uint32Array,
-  rangeLengths: Uint32Array,
-  rangeRowCounts: Uint32Array,
-  rangeColCounts: Uint32Array,
-  rangeMembers: Uint32Array,
-  cellTags: Uint8Array,
-  cellNumbers: Float64Array,
-  cellStringIds: Uint32Array,
-  cellErrors: Uint16Array,
-): f64 {
-  return rangeLikeSlotNumberOnlyOrNaN(
+  if (tag != ValueTag.Number) {
+    return NaN
+  }
+  return rangeLikeSlotValueAt(
     slot,
     offset,
     kindStack,

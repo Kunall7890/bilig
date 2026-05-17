@@ -153,6 +153,52 @@ describe('wasm kernel special runtime dispatch', () => {
     expect(kernel.readNumbers()[cellIndex(1, 0, width)]).toBe(32)
   })
 
+  it('evaluates SUMPRODUCT over dynamic array operands on the wasm path', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(24, 4, 1, 1, 4)
+    kernel.writeCells(
+      new Uint8Array([
+        ValueTag.Number,
+        ValueTag.Number,
+        ValueTag.Number,
+        ValueTag.Number,
+        ValueTag.Number,
+        ValueTag.Number,
+        ...Array.from({ length: 18 }, () => ValueTag.Empty),
+      ]),
+      new Float64Array([1, 2, 3, 4, 5, 6, ...Array.from({ length: 18 }, () => 0)]),
+      new Uint32Array(24),
+      new Uint16Array(24),
+    )
+    kernel.uploadRangeMembers(Uint32Array.from([0, 1, 2, 3, 4, 5]), Uint32Array.from([0, 3]), Uint32Array.from([3, 3]))
+    kernel.uploadRangeShapes(Uint32Array.from([3, 3]), Uint32Array.from([1, 1]))
+    kernel.uploadPrograms(
+      new Uint32Array([
+        encodePushRange(0),
+        encodePushNumber(0),
+        encodePushNumber(1),
+        encodeCall(BuiltinId.Take, 3),
+        encodePushRange(1),
+        encodePushNumber(0),
+        encodePushNumber(1),
+        encodeCall(BuiltinId.Take, 3),
+        encodeCall(BuiltinId.Sumproduct, 2),
+        encodeRet(),
+      ]),
+      new Uint32Array([0]),
+      new Uint32Array([10]),
+      Uint32Array.from([cellIndex(1, 0, width)]),
+    )
+    const constants = packConstants([[2, 1]])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+
+    kernel.evalBatch(Uint32Array.from([cellIndex(1, 0, width)]))
+
+    expect(kernel.readTags()[cellIndex(1, 0, width)]).toBe(ValueTag.Number)
+    expect(kernel.readNumbers()[cellIndex(1, 0, width)]).toBe(14)
+  })
+
   it('keeps IRR, MIRR, XNPV, and XIRR on the current finance root path', async () => {
     const kernel = await createKernel()
     const width = 8
