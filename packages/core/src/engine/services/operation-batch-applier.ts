@@ -1,8 +1,6 @@
-import { parseCellAddress } from '@bilig/formula'
 import type { EngineOp, EngineOpBatch } from '@bilig/workbook-domain'
 import { FormulaMode, type CellRangeRef, type CellValue } from '@bilig/protocol'
 import { batchOpOrder, compareOpOrder, markBatchApplied, type OpOrder } from '../../replica-state.js'
-import { CellFlags } from '../../cell-store.js'
 import { calculationSettingsEqual, normalizeWorkbookCalculationSettings, tableDependencyKey } from '../../engine-metadata-utils.js'
 import { normalizeDefinedName } from '../../workbook-store.js'
 import type { PreparedCellAddress } from '../runtime-state.js'
@@ -11,7 +9,6 @@ import { assertNever } from './operation-change-helpers.js'
 import { isScalarOnlyDefinedNameValue } from './defined-name-value-helpers.js'
 import { shouldApplyOp as shouldApplyReplicaOp, type OperationReplicaVersionWriter } from './operation-replica-helpers.js'
 import { assertProtectionAllowsOp as assertProtectionAllowsProtectedOp } from './operation-protection-helpers.js'
-import { cellTouchesOperationPivotSource } from './operation-pivot-source-helpers.js'
 import type { DirectFormulaMetricCounts } from './operation-post-recalc-direct-formulas.js'
 import { applyOperationStructuralMetadataOp } from './operation-structural-metadata-ops.js'
 import { createOperationPreparedCellTracker } from './operation-cell-address-resolver.js'
@@ -21,6 +18,7 @@ import type { OperationColumnDependencyTrackerService } from './operation-column
 import type { OperationDirectRangeDependentService } from './operation-direct-range-dependents.js'
 import { finalizeOperationRecalcAndEvents } from './operation-recalc-finalizer.js'
 import type { CreateEngineOperationServiceArgs, MutationSource } from './operation-service-types.js'
+import { applyBatchSetCellFormulaOp } from './operation-batch-cell-formula-mutations.js'
 import { applyBatchClearCellOp, applyBatchSetCellValueOp } from './operation-batch-cell-value-mutations.js'
 
 type OperationBatchDirectFormulaCallbacks = Parameters<typeof finalizeOperationRecalcAndEvents>[0]['directFormulaCallbacks']
@@ -406,109 +404,37 @@ export function createOperationBatchApplier(input: CreateOperationBatchApplierAr
             break
           }
           case 'setCellFormula': {
-            const parsedAddress = parseCellAddress(op.address, op.sheetName)
-            const sheetId = args.state.workbook.getSheet(op.sheetName)?.id
-            if (
-              !isRestore &&
-              cellTouchesOperationPivotSource({
-                workbook: args.state.workbook,
-                sheetName: op.sheetName,
-                row: parsedAddress.row,
-                col: parsedAddress.col,
-              })
-            ) {
-              refreshAllPivots = true
-            }
-            args.invalidateExactLookupColumn({ sheetName: op.sheetName, col: parsedAddress.col })
-            args.invalidateSortedLookupColumn({ sheetName: op.sheetName, col: parsedAddress.col })
-            if (!isRestore) {
-              const existingIndex = preparedCells.getExistingCellIndex(op.sheetName, op.address, preparedCellAddress)
-              if (existingIndex !== undefined) {
-                changedInputCount = args.markPivotRootsChanged(args.clearPivotForCell(existingIndex), changedInputCount)
-              }
-            }
-            const cellIndex = preparedCells.ensureCellTracked(op.sheetName, op.address, preparedCellAddress)
-            const priorHadFormula = args.state.formulas.get(cellIndex) !== undefined
-            const oldFormulaNumber = !isRestore && priorHadFormula ? readExactNumericValueForLookup(cellIndex) : undefined
-            args.state.workbook.cellStore.flags[cellIndex] =
-              (args.state.workbook.cellStore.flags[cellIndex] ?? 0) & ~CellFlags.AuthoredBlank
-            if (!isRestore) {
-              changedInputCount = args.markSpillRootsChanged(args.clearOwnedSpill(cellIndex), changedInputCount)
-            }
-            const compileStarted = isRestore ? 0 : performance.now()
-            const hasFormulaColumnAggregateDependents = sheetId !== undefined && hasTrackedDirectRangeDependents(sheetId, parsedAddress.col)
-            try {
-              const priorDirectScalarFormula = args.state.formulas.get(cellIndex)?.directScalar !== undefined
-              const canRewriteFormulaPreservingBinding =
-                !isRestore &&
-                priorDirectScalarFormula &&
-                sheetId !== undefined &&
-                !hasTrackedExactLookupDependents(sheetId, parsedAddress.col) &&
-                !hasTrackedSortedLookupDependents(sheetId, parsedAddress.col) &&
-                !hasFormulaColumnAggregateDependents &&
-                args.rewriteFormulaSourcePreservingBinding !== undefined
-              const changedTopology = canRewriteFormulaPreservingBinding
-                ? args.rewriteFormulaSourcePreservingBinding(cellIndex, op.sheetName, op.formula)
-                  ? false
-                  : args.bindFormula(cellIndex, op.sheetName, op.formula)
-                : args.bindFormula(cellIndex, op.sheetName, op.formula)
-              if (hasFormulaColumnAggregateDependents) {
-                args.invalidateAggregateColumn({ sheetName: op.sheetName, col: parsedAddress.col })
-              }
-              clearLookupImpactCaches()
-              if (!isRestore) {
-                compileMs += performance.now() - compileStarted
-              }
-              changedInputCount = args.markInputChanged(cellIndex, changedInputCount)
-              const handledFormulaReplacementAsDirectDelta =
-                priorHadFormula &&
-                sheetId !== undefined &&
-                !hasTrackedExactLookupDependents(sheetId, parsedAddress.col) &&
-                !hasTrackedSortedLookupDependents(sheetId, parsedAddress.col) &&
-                !hasFormulaColumnAggregateDependents &&
-                tryApplyFormulaReplacementAsDirectScalarDeltaRoot({
-                  cellIndex,
-                  oldNumber: oldFormulaNumber,
-                  changedTopology,
-                  postRecalcDirectFormulaIndices,
-                  postRecalcDirectFormulaMetrics,
-                })
-              if (!handledFormulaReplacementAsDirectDelta) {
-                formulaChangedCount = args.markFormulaChanged(cellIndex, formulaChangedCount)
-              }
-              topologyChanged = topologyChanged || changedTopology
-              if (!priorHadFormula) {
-                formulaChangedCount = refreshDependentRangesAndRebindFormulaDependents(cellIndex, formulaChangedCount)
-                topologyChanged = true
-              }
-              const aggregateDependents = hasFormulaColumnAggregateDependents
-                ? collectAffectedDirectRangeDependents({
-                    sheetName: op.sheetName,
-                    row: parsedAddress.row,
-                    col: parsedAddress.col,
-                  }).filter((candidate) => candidate !== cellIndex)
-                : []
-              if (aggregateDependents.length > 0) {
-                formulaChangedCount = args.rebindFormulaCells(aggregateDependents, formulaChangedCount)
-                for (let index = 0; index < aggregateDependents.length; index += 1) {
-                  postRecalcDirectFormulaIndices.add(aggregateDependents[index]!)
-                  formulaChangedCount = args.markFormulaChanged(aggregateDependents[index]!, formulaChangedCount)
-                  changedInputCount = args.markInputChanged(aggregateDependents[index]!, changedInputCount)
-                }
-                topologyChanged = true
-              }
-            } catch {
-              if (!isRestore) {
-                compileMs += performance.now() - compileStarted
-              }
-              topologyChanged = args.removeFormula(cellIndex) || topologyChanged
-              args.setInvalidFormulaValue(cellIndex)
-              changedInputCount = args.markInputChanged(cellIndex, changedInputCount)
-            }
-            if (!isRestore) {
-              explicitChangedCount = args.markExplicitChanged(cellIndex, explicitChangedCount)
-              setEntityVersionForOp(op, order)
-            }
+            const formulaResult = applyBatchSetCellFormulaOp({
+              serviceArgs: args,
+              op,
+              order,
+              isRestore,
+              preparedCellAddress,
+              preparedCells,
+              changedInputCount,
+              formulaChangedCount,
+              explicitChangedCount,
+              topologyChanged,
+              refreshAllPivots,
+              compileMs,
+              postRecalcDirectFormulaIndices,
+              postRecalcDirectFormulaMetrics,
+              setEntityVersionForOp,
+              hasTrackedExactLookupDependents,
+              hasTrackedSortedLookupDependents,
+              hasTrackedDirectRangeDependents,
+              readExactNumericValueForLookup,
+              tryApplyFormulaReplacementAsDirectScalarDeltaRoot,
+              refreshDependentRangesAndRebindFormulaDependents,
+              collectAffectedDirectRangeDependents,
+              clearLookupImpactCaches,
+            })
+            changedInputCount = formulaResult.changedInputCount
+            formulaChangedCount = formulaResult.formulaChangedCount
+            explicitChangedCount = formulaResult.explicitChangedCount
+            topologyChanged = formulaResult.topologyChanged
+            refreshAllPivots = formulaResult.refreshAllPivots
+            compileMs = formulaResult.compileMs
             break
           }
           case 'setCellFormat': {
