@@ -301,10 +301,12 @@ Latest Oak route adapter action on May 14, 2026:
   route shape in the expected output and point contributors at the next
   first-time route task,
   <https://github.com/proompteng/bilig/issues/381>.
-- External MCP directory follow-up: mcpservers.org submission form is staged in
-  Atlas with public project data and category `Development`. The remaining
-  steps are entering a contact email and clicking Submit, both held for
-  action-time confirmation.
+- External MCP directory follow-up: mcpservers.org submission was submitted in
+  Dia on May 17, 2026 with category `Development`, the GitHub repo URL, the
+  verified npm account contact email, and this description: "WorkPaper MCP
+  server for editing formula workbooks, recalculating cells, and persisting
+  JSON-backed workbook state." The form confirmed: "Bilig WorkPaper submitted
+  successfully. You'll receive an email once your submission is approved."
 - External MCP directory follow-up: MCP Server Spot submission form is staged
   in Atlas with public project data, `Development` category, `Tools` feature,
   `Database` icon, Claude Desktop/Cursor/VS Code compatibility, TypeScript,
