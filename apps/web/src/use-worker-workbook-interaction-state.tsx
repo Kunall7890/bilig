@@ -82,6 +82,7 @@ function resolveDetachedOptimisticValue(
 
 export function useWorkerWorkbookInteractionState(input: {
   documentId: string
+  currentUserId: string
   selection: WorkerRuntimeSelection
   selectedCell: CellSnapshot
   workerHandle: WorkerHandle | null | undefined
@@ -94,6 +95,7 @@ export function useWorkerWorkbookInteractionState(input: {
   onSelectionSheetChanged?: (nextSelection: WorkerRuntimeSelection, previousSelection: WorkerRuntimeSelection) => void
 }) {
   const {
+    currentUserId,
     documentId,
     selection,
     selectedCell,
@@ -158,8 +160,8 @@ export function useWorkerWorkbookInteractionState(input: {
   }, [selection])
 
   useEffect(() => {
-    scheduleSelectionPersistence(documentId, selection)
-  }, [documentId, selection])
+    scheduleSelectionPersistence({ documentId, userId: currentUserId }, selection)
+  }, [currentUserId, documentId, selection])
 
   useEffect(() => {
     editorValueRef.current = editorValue

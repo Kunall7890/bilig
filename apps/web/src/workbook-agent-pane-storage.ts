@@ -1,32 +1,34 @@
 import type { WorkbookAgentThreadScope } from '@bilig/contracts'
 import { logDebug } from './runtime-logger.js'
+import {
+  legacyWorkbookDocumentStorageKey,
+  scopedWorkbookStorageKey,
+  type WorkbookBrowserStorageScope,
+} from './workbook-browser-storage-scope.js'
 
 const STORAGE_KEY_PREFIX = 'bilig:workbook-agent:'
 const DRAFT_STORAGE_KEY_PREFIX = 'bilig:workbook-agent-drafts:'
 
-export interface WorkbookAgentPaneStorageScope {
-  readonly documentId: string
-  readonly userId: string
-}
+export type WorkbookAgentPaneStorageScope = WorkbookBrowserStorageScope
 
 export interface StoredWorkbookAgentThreadRef {
   threadId: string
 }
 
 function storageKey(scope: WorkbookAgentPaneStorageScope): string {
-  return `${STORAGE_KEY_PREFIX}${encodeURIComponent(scope.documentId)}:${encodeURIComponent(scope.userId)}`
+  return scopedWorkbookStorageKey(STORAGE_KEY_PREFIX, scope)
 }
 
 function draftStorageKey(scope: WorkbookAgentPaneStorageScope): string {
-  return `${DRAFT_STORAGE_KEY_PREFIX}${encodeURIComponent(scope.documentId)}:${encodeURIComponent(scope.userId)}`
+  return scopedWorkbookStorageKey(DRAFT_STORAGE_KEY_PREFIX, scope)
 }
 
 function legacyStorageKey(documentId: string): string {
-  return `${STORAGE_KEY_PREFIX}${documentId}`
+  return legacyWorkbookDocumentStorageKey(STORAGE_KEY_PREFIX, documentId)
 }
 
 function legacyDraftStorageKey(documentId: string): string {
-  return `${DRAFT_STORAGE_KEY_PREFIX}${documentId}`
+  return legacyWorkbookDocumentStorageKey(DRAFT_STORAGE_KEY_PREFIX, documentId)
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

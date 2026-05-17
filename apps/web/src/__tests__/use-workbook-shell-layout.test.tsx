@@ -453,4 +453,58 @@ describe('workbook shell layout', () => {
       secondRoot.unmount()
     })
   })
+
+  it('encodes document and user scoped layout persistence keys without collisions', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    function ScopedShellLayoutHarness(props: { documentId: string; userId: string }) {
+      const layout = useWorkbookShellLayout({
+        documentId: props.documentId,
+        storageScope: { documentId: props.documentId, userId: props.userId },
+        availableTabs: ['assistant', 'changes'],
+      })
+
+      return (
+        <div data-testid="encoded-shell-layout-state" data-width={String(layout.sidePanelWidth)}>
+          <button data-testid="encoded-toggle-assistant" type="button" onClick={() => layout.toggleSidePanel('assistant')} />
+          <button data-testid="encoded-set-width" type="button" onClick={() => layout.setSidePanelWidth(416)} />
+        </div>
+      )
+    }
+
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+
+    const firstRoot = createRoot(host)
+    await act(async () => {
+      firstRoot.render(<ScopedShellLayoutHarness documentId="doc:4" userId="alex@example.com" />)
+    })
+
+    await act(async () => {
+      host.querySelector("[data-testid='encoded-toggle-assistant']")?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      host.querySelector("[data-testid='encoded-set-width']")?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    await act(async () => {
+      firstRoot.unmount()
+    })
+
+    expect(JSON.parse(window.localStorage.getItem('bilig:workbook-shell-layout:doc%3A4:alex%40example.com') ?? '{}')).toEqual({
+      sidePanelOpen: true,
+      sidePanelTab: 'assistant',
+      sidePanelWidth: 416,
+    })
+
+    const secondRoot = createRoot(host)
+    await act(async () => {
+      secondRoot.render(<ScopedShellLayoutHarness documentId="doc" userId="4:alex@example.com" />)
+    })
+
+    const state = host.querySelector("[data-testid='encoded-shell-layout-state']")
+    expect(state?.getAttribute('data-width')).toBe(String(DEFAULT_WORKBOOK_SIDE_PANEL_WIDTH))
+
+    await act(async () => {
+      secondRoot.unmount()
+    })
+  })
 })

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { scopedWorkbookStorageKey, type WorkbookBrowserStorageScope } from './workbook-browser-storage-scope.js'
 
 const STORAGE_KEY_PREFIX = 'bilig:workbook-shell-layout:'
 
@@ -117,12 +118,13 @@ function persistWorkbookShellLayout(scope: string, layout: WorkbookShellLayoutSt
 export function useWorkbookShellLayout(input: {
   documentId: string
   persistenceKey?: string
+  storageScope?: WorkbookBrowserStorageScope
   availableTabs: readonly string[]
   defaultTab?: string | null
   defaultOpen?: boolean
 }) {
-  const { availableTabs, defaultOpen = false, defaultTab, documentId, persistenceKey } = input
-  const resolvedPersistenceKey = persistenceKey ?? documentId
+  const { availableTabs, defaultOpen = false, defaultTab, documentId, persistenceKey, storageScope } = input
+  const resolvedPersistenceKey = storageScope ? scopedWorkbookStorageKey('', storageScope) : (persistenceKey ?? documentId)
   const resolvedDefaultTab = useMemo(() => {
     if (availableTabs.length === 0) {
       return null

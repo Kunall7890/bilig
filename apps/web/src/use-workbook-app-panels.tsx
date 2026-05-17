@@ -211,7 +211,7 @@ export function useWorkbookAppPanels(input: {
   const { activeSidePanelTab, closeSidePanel, isSidePanelOpen, openSidePanel, setActiveSidePanelTab, setSidePanelWidth, sidePanelWidth } =
     useWorkbookShellLayout({
       documentId,
-      persistenceKey: `${documentId}:${currentUserId}`,
+      storageScope: { documentId, userId: currentUserId },
       availableTabs: visibleSidePanelTabs.map((tab) => tab.value),
       defaultOpen: true,
       defaultTab: 'assistant',

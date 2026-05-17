@@ -8,6 +8,18 @@ import {
   subscribeSelectionUrlChanges,
 } from '../selection-persistence.js'
 
+const alexScope = {
+  documentId: 'book-1',
+  userId: 'alex@example.com',
+}
+const caseyScope = {
+  documentId: 'book-1',
+  userId: 'casey@example.com',
+}
+const alexSelectionStorageKey = 'bilig:selection:book-1:alex%40example.com'
+const caseySelectionStorageKey = 'bilig:selection:book-1:casey%40example.com'
+const legacySelectionStorageKey = 'bilig:selection:book-1'
+
 describe('selection persistence', () => {
   const storage = new Map<string, string>()
   const replaceState = vi.fn()
@@ -50,25 +62,25 @@ describe('selection persistence', () => {
   })
 
   it('falls back to Sheet1!A1 when nothing is stored', () => {
-    expect(loadPersistedSelection('book-1')).toEqual({
+    expect(loadPersistedSelection(alexScope)).toEqual({
       sheetName: 'Sheet1',
       address: 'A1',
     })
-    expect(storage.has('bilig:selection:book-1')).toBe(false)
+    expect(storage.has(alexSelectionStorageKey)).toBe(false)
   })
 
   it('removes corrupt stored selection JSON after falling back', () => {
-    storage.set('bilig:selection:book-1', '{')
+    storage.set(alexSelectionStorageKey, '{')
 
-    expect(loadPersistedSelection('book-1')).toEqual({
+    expect(loadPersistedSelection(alexScope)).toEqual({
       sheetName: 'Sheet1',
       address: 'A1',
     })
-    expect(storage.has('bilig:selection:book-1')).toBe(false)
+    expect(storage.has(alexSelectionStorageKey)).toBe(false)
   })
 
   it('falls back when corrupt stored selection cleanup fails', () => {
-    storage.set('bilig:selection:book-1', '{')
+    storage.set(alexSelectionStorageKey, '{')
     vi.stubGlobal('window', {
       history: {
         replaceState,
@@ -85,43 +97,68 @@ describe('selection persistence', () => {
       location: new URL('https://bilig.test/'),
     })
 
-    expect(loadPersistedSelection('book-1')).toEqual({
+    expect(loadPersistedSelection(alexScope)).toEqual({
       sheetName: 'Sheet1',
       address: 'A1',
     })
-    expect(storage.has('bilig:selection:book-1')).toBe(true)
+    expect(storage.has(alexSelectionStorageKey)).toBe(true)
   })
 
   it('removes syntactically valid stored selections with invalid cell addresses', () => {
-    storage.set('bilig:selection:book-1', JSON.stringify({ sheetName: 'Sheet1', address: 'A0' }))
+    storage.set(alexSelectionStorageKey, JSON.stringify({ sheetName: 'Sheet1', address: 'A0' }))
 
-    expect(loadPersistedSelection('book-1')).toEqual({
+    expect(loadPersistedSelection(alexScope)).toEqual({
       sheetName: 'Sheet1',
       address: 'A1',
     })
-    expect(storage.has('bilig:selection:book-1')).toBe(false)
+    expect(storage.has(alexSelectionStorageKey)).toBe(false)
   })
 
   it('restores the last stored sheet selection for a document', () => {
-    persistSelection('book-1', { sheetName: 'Sheet3', address: 'G22' })
+    persistSelection(alexScope, { sheetName: 'Sheet3', address: 'G22' })
 
-    expect(loadPersistedSelection('book-1')).toEqual({
+    expect(loadPersistedSelection(alexScope)).toEqual({
       sheetName: 'Sheet3',
       address: 'G22',
     })
   })
 
-  it('ignores invalid stored values', () => {
-    storage.set('bilig:selection:book-1', '{"sheetName":"","address":42}')
+  it('does not restore another user selection for the same document', () => {
+    persistSelection(alexScope, { sheetName: 'Sheet3', address: 'G22' })
 
-    expect(loadPersistedSelection('book-1')).toEqual({
+    expect(loadPersistedSelection(caseyScope)).toEqual({
+      sheetName: 'Sheet1',
+      address: 'A1',
+    })
+    expect(storage.get(alexSelectionStorageKey)).toBe(JSON.stringify({ sheetName: 'Sheet3', address: 'G22' }))
+    expect(storage.has(caseySelectionStorageKey)).toBe(false)
+  })
+
+  it('removes legacy document-only selection instead of restoring unscoped state', () => {
+    storage.set(legacySelectionStorageKey, JSON.stringify({ sheetName: 'PrivateSheet', address: 'D4' }))
+
+    expect(loadPersistedSelection(alexScope)).toEqual({
+      sheetName: 'Sheet1',
+      address: 'A1',
+    })
+    expect(storage.has(legacySelectionStorageKey)).toBe(false)
+
+    storage.set(legacySelectionStorageKey, JSON.stringify({ sheetName: 'PrivateSheet', address: 'D4' }))
+    persistSelection(alexScope, { sheetName: 'Sheet2', address: 'C3' })
+    expect(storage.has(legacySelectionStorageKey)).toBe(false)
+  })
+
+  it('ignores invalid stored values', () => {
+    storage.set(alexSelectionStorageKey, '{"sheetName":"","address":42}')
+
+    expect(loadPersistedSelection(alexScope)).toEqual({
       sheetName: 'Sheet1',
       address: 'A1',
     })
   })
 
   it('prefers a URL-backed sheet selection over local storage', () => {
-    storage.set('bilig:selection:book-1', JSON.stringify({ sheetName: 'Sheet3', address: 'G22' }))
+    storage.set(alexSelectionStorageKey, JSON.stringify({ sheetName: 'Sheet3', address: 'G22' }))
     vi.stubGlobal('window', {
       history: {
         replaceState,
@@ -141,14 +178,14 @@ describe('selection persistence', () => {
       location: new URL('https://bilig.test/?sheet=Sheet7'),
     })
 
-    expect(loadPersistedSelection('book-1')).toEqual({
+    expect(loadPersistedSelection(alexScope)).toEqual({
       sheetName: 'Sheet7',
       address: 'A1',
     })
   })
 
   it('reuses the stored address when the URL sheet matches it', () => {
-    storage.set('bilig:selection:book-1', JSON.stringify({ sheetName: 'Sheet7', address: 'G22' }))
+    storage.set(alexSelectionStorageKey, JSON.stringify({ sheetName: 'Sheet7', address: 'G22' }))
     vi.stubGlobal('window', {
       history: {
         replaceState,
@@ -168,19 +205,19 @@ describe('selection persistence', () => {
       location: new URL('https://bilig.test/?sheet=Sheet7'),
     })
 
-    expect(loadPersistedSelection('book-1')).toEqual({
+    expect(loadPersistedSelection(alexScope)).toEqual({
       sheetName: 'Sheet7',
       address: 'G22',
     })
   })
 
   it('writes only the sheet into the URL state', () => {
-    persistSelection('book-1', { sheetName: 'Sheet7', address: 'b12' })
+    persistSelection(alexScope, { sheetName: 'Sheet7', address: 'b12' })
 
     expect(replaceState).toHaveBeenCalledTimes(1)
     const [, , nextUrl] = replaceState.mock.calls[0]
     expect(String(nextUrl)).toBe('https://bilig.test/?sheet=Sheet7&cell=B12')
-    expect(storage.get('bilig:selection:book-1')).toBe(JSON.stringify({ sheetName: 'Sheet7', address: 'B12' }))
+    expect(storage.get(alexSelectionStorageKey)).toBe(JSON.stringify({ sheetName: 'Sheet7', address: 'B12' }))
   })
 
   it('restores a URL-backed cell selection when both sheet and cell are present', () => {
@@ -207,7 +244,7 @@ describe('selection persistence', () => {
       removeEventListener: eventTarget.removeEventListener.bind(eventTarget),
     })
 
-    expect(loadPersistedSelection('book-1')).toEqual({
+    expect(loadPersistedSelection(alexScope)).toEqual({
       sheetName: 'Sheet9',
       address: 'D14',
     })
@@ -247,23 +284,23 @@ describe('selection persistence', () => {
     const listener = vi.fn()
     const unsubscribe = subscribeSelectionUrlChanges(listener)
 
-    persistSelection('book-1', { sheetName: 'Sheet1', address: 'C3' })
+    persistSelection(alexScope, { sheetName: 'Sheet1', address: 'C3' })
 
     expect(listener).toHaveBeenCalledTimes(1)
     unsubscribe()
-    persistSelection('book-1', { sheetName: 'Sheet1', address: 'D4' })
+    persistSelection(alexScope, { sheetName: 'Sheet1', address: 'D4' })
     expect(listener).toHaveBeenCalledTimes(1)
   })
 
   it('coalesces rapid scheduled selection writes into the last selection', () => {
     vi.useFakeTimers()
 
-    scheduleSelectionPersistence('book-1', { sheetName: 'Sheet1', address: 'A1' })
-    scheduleSelectionPersistence('book-1', { sheetName: 'Sheet1', address: 'B1' })
-    scheduleSelectionPersistence('book-1', { sheetName: 'Sheet1', address: 'C1' })
+    scheduleSelectionPersistence(alexScope, { sheetName: 'Sheet1', address: 'A1' })
+    scheduleSelectionPersistence(alexScope, { sheetName: 'Sheet1', address: 'B1' })
+    scheduleSelectionPersistence(alexScope, { sheetName: 'Sheet1', address: 'C1' })
 
     expect(replaceState).not.toHaveBeenCalled()
-    expect(storage.get('bilig:selection:book-1')).toBeUndefined()
+    expect(storage.get(alexSelectionStorageKey)).toBeUndefined()
 
     vi.advanceTimersByTime(119)
     expect(replaceState).not.toHaveBeenCalled()
@@ -272,20 +309,32 @@ describe('selection persistence', () => {
     expect(replaceState).toHaveBeenCalledTimes(1)
     const [, , nextUrl] = replaceState.mock.calls[0]
     expect(String(nextUrl)).toBe('https://bilig.test/?sheet=Sheet1&cell=C1')
-    expect(storage.get('bilig:selection:book-1')).toBe(JSON.stringify({ sheetName: 'Sheet1', address: 'C1' }))
+    expect(storage.get(alexSelectionStorageKey)).toBe(JSON.stringify({ sheetName: 'Sheet1', address: 'C1' }))
   })
 
   it('flushes the latest scheduled selection before an immediate persistence write', () => {
     vi.useFakeTimers()
 
-    scheduleSelectionPersistence('book-1', { sheetName: 'Sheet1', address: 'B2' })
-    persistSelection('book-1', { sheetName: 'Sheet2', address: 'D4' })
+    scheduleSelectionPersistence(alexScope, { sheetName: 'Sheet1', address: 'B2' })
+    persistSelection(alexScope, { sheetName: 'Sheet2', address: 'D4' })
 
     vi.runOnlyPendingTimers()
 
     expect(replaceState).toHaveBeenCalledTimes(1)
     const [, , nextUrl] = replaceState.mock.calls[0]
     expect(String(nextUrl)).toBe('https://bilig.test/?sheet=Sheet2&cell=D4')
-    expect(storage.get('bilig:selection:book-1')).toBe(JSON.stringify({ sheetName: 'Sheet2', address: 'D4' }))
+    expect(storage.get(alexSelectionStorageKey)).toBe(JSON.stringify({ sheetName: 'Sheet2', address: 'D4' }))
+  })
+
+  it('keeps pending scheduled selection writes isolated by user scope', () => {
+    vi.useFakeTimers()
+
+    scheduleSelectionPersistence(alexScope, { sheetName: 'Sheet1', address: 'B2' })
+    scheduleSelectionPersistence(caseyScope, { sheetName: 'Sheet4', address: 'D4' })
+
+    vi.advanceTimersByTime(120)
+
+    expect(storage.get(alexSelectionStorageKey)).toBe(JSON.stringify({ sheetName: 'Sheet1', address: 'B2' }))
+    expect(storage.get(caseySelectionStorageKey)).toBe(JSON.stringify({ sheetName: 'Sheet4', address: 'D4' }))
   })
 })

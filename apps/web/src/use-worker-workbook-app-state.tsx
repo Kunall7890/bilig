@@ -97,7 +97,14 @@ export function useWorkerWorkbookAppState(input: {
     [documentId, runtimeConfig.currentUserId],
   )
   const presenceClientId = useMemo(() => loadOrCreateWorkbookPresenceClientId(), [])
-  const initialSelection = useMemo(() => loadPersistedSelection(documentId), [documentId])
+  const selectionPersistenceScope = useMemo(
+    () => ({
+      documentId,
+      userId: runtimeConfig.currentUserId,
+    }),
+    [documentId, runtimeConfig.currentUserId],
+  )
+  const initialSelection = useMemo(() => loadPersistedSelection(selectionPersistenceScope), [selectionPersistenceScope])
   const perfSession = useMemo(() => createWorkbookPerfSession({ documentId }), [documentId])
 
   useEffect(() => {
@@ -271,6 +278,7 @@ export function useWorkerWorkbookAppState(input: {
     visibleSelection,
   } = useWorkerWorkbookInteractionState({
     documentId,
+    currentUserId: runtimeConfig.currentUserId,
     selection,
     selectedCell,
     workerHandle,

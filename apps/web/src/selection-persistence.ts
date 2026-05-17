@@ -1,5 +1,10 @@
 import { formatAddress, parseCellAddress } from '@bilig/formula'
 import type { WorkerRuntimeSelection } from './runtime-session.js'
+import {
+  legacyWorkbookDocumentStorageKey,
+  scopedWorkbookStorageKey,
+  type WorkbookBrowserStorageScope,
+} from './workbook-browser-storage-scope.js'
 
 const DEFAULT_SELECTION: WorkerRuntimeSelection = {
   sheetName: 'Sheet1',
@@ -11,11 +16,13 @@ const SELECTION_PERSIST_DEBOUNCE_MS = 120
 const SELECTION_URL_CHANGE_EVENT = 'bilig-selection-url-change'
 const SELECTION_HISTORY_STATE_KEY = '__biligSelectionHistoryInstrumentation'
 
-let pendingPersist: {
-  readonly documentId: string
+interface PendingSelectionPersist {
+  readonly scope: SelectionPersistenceScope
   readonly selection: WorkerRuntimeSelection
   readonly timeoutId: ReturnType<typeof globalThis.setTimeout>
-} | null = null
+}
+
+const pendingPersists = new Map<string, PendingSelectionPersist>()
 let flushListenersInstalled = false
 
 interface SelectionHistoryInstrumentation {
@@ -28,8 +35,16 @@ type SelectionHistoryWindow = Window & {
   [SELECTION_HISTORY_STATE_KEY]?: SelectionHistoryInstrumentation | undefined
 }
 
-function storageKey(documentId: string): string {
-  return `bilig:selection:${documentId}`
+export type SelectionPersistenceScope = WorkbookBrowserStorageScope
+
+const SELECTION_STORAGE_KEY_PREFIX = 'bilig:selection:'
+
+function storageKey(scope: SelectionPersistenceScope): string {
+  return scopedWorkbookStorageKey(SELECTION_STORAGE_KEY_PREFIX, scope)
+}
+
+function legacyStorageKey(documentId: string): string {
+  return legacyWorkbookDocumentStorageKey(SELECTION_STORAGE_KEY_PREFIX, documentId)
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -102,12 +117,13 @@ export function readSelectionFromUrl(): WorkerRuntimeSelection | null {
   }
 }
 
-function readStoredSelection(documentId: string): WorkerRuntimeSelection | null {
+function readStoredSelection(scope: SelectionPersistenceScope): WorkerRuntimeSelection | null {
   if (typeof window === 'undefined') {
     return null
   }
-  const key = storageKey(documentId)
+  const key = storageKey(scope)
   try {
+    removeStoredSelection(legacyStorageKey(scope.documentId))
     const raw = window.localStorage.getItem(key)
     if (!raw) {
       return null
@@ -134,8 +150,8 @@ function readStoredSelection(documentId: string): WorkerRuntimeSelection | null 
   }
 }
 
-export function loadPersistedSelection(documentId: string): WorkerRuntimeSelection {
-  const storedSelection = readStoredSelection(documentId)
+export function loadPersistedSelection(scope: SelectionPersistenceScope): WorkerRuntimeSelection {
+  const storedSelection = readStoredSelection(scope)
   const urlSheetSelection = readSheetSelectionFromUrl()
   const urlCellSelection = readCellSelectionFromUrl()
   if (urlSheetSelection) {
@@ -216,18 +232,25 @@ function persistSelectionToUrl(selection: WorkerRuntimeSelection): void {
   window.history.replaceState(window.history.state, '', currentUrl)
 }
 
-function persistNormalizedSelection(documentId: string, normalizedSelection: WorkerRuntimeSelection): void {
+function persistNormalizedSelection(scope: SelectionPersistenceScope, normalizedSelection: WorkerRuntimeSelection): void {
+  removeStoredSelection(legacyStorageKey(scope.documentId))
   persistSelectionToUrl(normalizedSelection)
-  window.localStorage.setItem(storageKey(documentId), JSON.stringify(normalizedSelection))
+  window.localStorage.setItem(storageKey(scope), JSON.stringify(normalizedSelection))
 }
 
-function clearPendingPersist(): void {
+function selectionPersistenceScopesEqual(left: SelectionPersistenceScope, right: SelectionPersistenceScope): boolean {
+  return left.documentId === right.documentId && left.userId === right.userId
+}
+
+function clearPendingPersist(scope: SelectionPersistenceScope): void {
+  const key = storageKey(scope)
+  const pendingPersist = pendingPersists.get(key)
   if (!pendingPersist || typeof window === 'undefined') {
-    pendingPersist = null
+    pendingPersists.delete(key)
     return
   }
   globalThis.clearTimeout(pendingPersist.timeoutId)
-  pendingPersist = null
+  pendingPersists.delete(key)
 }
 
 function installScheduledPersistFlushListeners(): void {
@@ -245,68 +268,73 @@ function installScheduledPersistFlushListeners(): void {
   }
 }
 
-export function persistSelection(documentId: string, selection: WorkerRuntimeSelection): void {
+export function persistSelection(scope: SelectionPersistenceScope, selection: WorkerRuntimeSelection): void {
   if (typeof window === 'undefined') {
     return
   }
   try {
-    clearPendingPersist()
+    clearPendingPersist(scope)
     const normalizedSelection = normalizeSelection(selection.sheetName, selection.address) ?? DEFAULT_SELECTION
-    persistNormalizedSelection(documentId, normalizedSelection)
+    persistNormalizedSelection(scope, normalizedSelection)
   } catch {
     // Ignore storage failures and keep the runtime usable.
   }
 }
 
-export function scheduleSelectionPersistence(documentId: string, selection: WorkerRuntimeSelection): void {
+export function scheduleSelectionPersistence(scope: SelectionPersistenceScope, selection: WorkerRuntimeSelection): void {
   if (typeof window === 'undefined') {
     return
   }
   try {
     installScheduledPersistFlushListeners()
     const normalizedSelection = normalizeSelection(selection.sheetName, selection.address) ?? DEFAULT_SELECTION
+    const key = storageKey(scope)
+    const pendingPersist = pendingPersists.get(key)
     if (
-      pendingPersist?.documentId === documentId &&
+      pendingPersist &&
+      selectionPersistenceScopesEqual(pendingPersist.scope, scope) &&
       pendingPersist.selection.sheetName === normalizedSelection.sheetName &&
       pendingPersist.selection.address === normalizedSelection.address
     ) {
       return
     }
 
-    clearPendingPersist()
+    clearPendingPersist(scope)
     const timeoutId = globalThis.setTimeout(() => {
-      const current = pendingPersist
-      pendingPersist = null
-      if (!current) {
+      const current = pendingPersists.get(key)
+      if (!current || current.timeoutId !== timeoutId) {
         return
       }
+      pendingPersists.delete(key)
       try {
-        persistNormalizedSelection(current.documentId, current.selection)
+        persistNormalizedSelection(current.scope, current.selection)
       } catch {
         // Ignore storage failures and keep the runtime usable.
       }
     }, SELECTION_PERSIST_DEBOUNCE_MS)
-    pendingPersist = {
-      documentId,
+    pendingPersists.set(key, {
+      scope,
       selection: normalizedSelection,
       timeoutId,
-    }
+    })
   } catch {
     // Ignore storage failures and keep the runtime usable.
   }
 }
 
 export function flushScheduledSelectionPersistence(): void {
-  if (!pendingPersist || typeof window === 'undefined') {
-    pendingPersist = null
+  if (pendingPersists.size === 0 || typeof window === 'undefined') {
+    pendingPersists.clear()
     return
   }
-  const current = pendingPersist
-  globalThis.clearTimeout(current.timeoutId)
-  pendingPersist = null
-  try {
-    persistNormalizedSelection(current.documentId, current.selection)
-  } catch {
-    // Ignore storage failures and keep the runtime usable.
+  const pending = [...pendingPersists.values()]
+  pendingPersists.clear()
+  for (const current of pending) {
+    globalThis.clearTimeout(current.timeoutId)
+    try {
+      persistNormalizedSelection(current.scope, current.selection)
+    } catch {
+      // Ignore storage failures and keep the runtime usable.
+    }
   }
 }
