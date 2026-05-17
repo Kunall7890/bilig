@@ -11,9 +11,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(core): defer fresh logical cell indexes (69fa5800)
 
 ## Internal runtime changes
+
 - docs(growth): refresh mcp directory follow-up state (2ba76bb2)
 - refactor(core): isolate clear cell mutation flow (6f49726c)
 - docs(growth): refresh registry evidence for v0.18.24 (97ad0e47)

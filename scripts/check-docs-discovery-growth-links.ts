@@ -48,7 +48,7 @@ export function communityLaunchPackRequiredLinks(): readonly string[] {
     'comment child `48052854` is flagged',
     'JavaScript Weekly / Node Weekly Editorial Pitch',
     'editor@cooperpress.com',
-    'https://github.com/proompteng/bilig/actions/runs/25988807701',
+    'https://github.com/proompteng/bilig/actions/runs/25989289303',
   ] as const
 }
 

@@ -23,13 +23,13 @@ Latest public snapshot on May 8, 2026:
 - Contributor funnel: `18` open `good first issue`, `18` open
   `first-timers-only`, and `18` open `help wanted` issues
 
-Latest execution snapshot on May 13, 2026 at `03:08:58Z`:
+Latest execution snapshot on May 17, 2026 at `11:16:06Z`:
 
-- GitHub surface: public repo, `24` stars, `8` forks, `42` open issues
-- npm surface: `@bilig/headless@0.13.0`, MIT, TypeScript types, npm API
-  downloads: `13,427` last week and `24,931` last month
-- Contributor funnel: `37` open `good first issue`, `37` open
-  `first-timers-only`, and `37` open `help wanted` issues
+- GitHub surface: public repo, `23` stars, `17` forks, `17` open issues
+- npm surface: `@bilig/headless@0.18.25`, MIT, TypeScript types, npm API
+  downloads: `17,235` last week and `32,535` last month
+- Contributor funnel: `15` open `good first issue`, `15` open
+  `first-timers-only`, and `15` open `help wanted` issues
 - Starter funnel refresh: fourteen current first-timer example issues, `#207`
   through `#212` and `#217` through `#223`, cover inventory reorder points,
   accounts receivable aging, usage-based billing tiers, support SLA breach
@@ -53,12 +53,12 @@ Latest execution snapshot on May 13, 2026 at `03:08:58Z`:
 - MCP discovery is live in the official registry as
   `io.github.proompteng/bilig-workpaper`, backed by `@bilig/headless` stdio
   package metadata and the packaged `bilig-workpaper-mcp` binary.
-- External activity: `1` open external issue, `6` open external pull requests,
-  `25` external issues opened in the last seven days, and `24` external pull
+- External activity: `0` open external issues, `0` open external pull requests,
+  `6` external issues opened in the last seven days, and `43` external pull
   requests opened in the last seven days
-- Token-backed traffic: `393` views from `159` unique visitors and `18,287`
-  clones from `1,907` unique cloners; top referrers include GitHub, Hacker
-  News, X, Google, the project site, Kagi, Teams, Reddit, Slack, and LibHunt
+- Token-backed traffic: `602` views from `189` unique visitors and `28,427`
+  clones from `3,596` unique cloners; top referrers include GitHub, Hacker
+  News, X, the project site, and Google
 
 Latest public execution snapshot on May 13, 2026 after the landing-page pass:
 
@@ -76,15 +76,15 @@ Latest public execution snapshot on May 13, 2026 after the landing-page pass:
   developers at the npm-only TypeScript smoke test:
   <https://github.com/proompteng/bilig/discussions/270>
 
-Latest starter-queue execution snapshot on May 13, 2026 after the adapter smoke
-issue pass:
+Latest growth snapshot on May 17, 2026 after the `0.18.25` release and MCP
+registry refresh:
 
-- GitHub surface: `24` stars, `12` forks, `92` open issues, and `0` open pull
+- GitHub surface: `23` stars, `17` forks, `17` open issues, and `0` open pull
   requests.
-- npm surface checked again on May 17, 2026: `@bilig/headless@0.18.24`, with
+- npm surface checked again on May 17, 2026: `@bilig/headless@0.18.25`, with
   `17,235` downloads last week and `32,535` downloads in the last 30 days.
-- Contributor funnel: `89` open `good first issue`, `89` open
-  `first-timers-only`, and `89` open `help wanted` issues.
+- Contributor funnel: `15` open `good first issue`, `15` open
+  `first-timers-only`, and `15` open `help wanted` issues.
 - New starter issues `#272` through `#281` cover NestJS, Express, Supabase Edge
   Functions, Deno Deploy, Next.js Route Handlers, Bun.serve, SvelteKit, Remix,
   Netlify Functions, and Cloudflare D1 WorkPaper smoke examples.
@@ -260,13 +260,13 @@ issue pass:
 - External MCP directory follow-up: PulseMCP still does not return Bilig in
   public search on May 17, 2026, while its API page says server data comes from
   manual submissions, automated crawling, and the Official MCP Registry. The
-  Official Registry now marks `@bilig/headless@0.18.24` as latest, so the next
+  Official Registry now marks `@bilig/headless@0.18.25` as latest, so the next
   PulseMCP move is a concise refresh request only if the listing remains missing
   after its ingest window.
 - External MCP directory follow-up: starter issue `#384` closed after the first
   public PulseMCP verification pass. If the listing remains absent after the
   registry refresh window, reopen a narrower follow-up with the current
-  `@bilig/headless@0.18.24` registry evidence:
+  `@bilig/headless@0.18.25` registry evidence:
   <https://github.com/proompteng/bilig/issues/384>.
 
 Latest TypeScript-example guard action on May 14, 2026:
@@ -429,9 +429,9 @@ Latest conversion snapshot on May 17, 2026:
   star page beside npm install and GitHub, and the docs index links to the live
   community growth snapshot so visitors can inspect the current public signals.
 - MCP registry action: the official MCP Registry refresh was verified for
-  `@bilig/headless@0.18.24` with workflow run
-  <https://github.com/proompteng/bilig/actions/runs/25988807701>. The live API
-  now includes `0.18.24` with `isLatest: true`, so downstream directory
+  `@bilig/headless@0.18.25` with workflow run
+  <https://github.com/proompteng/bilig/actions/runs/25989289303>. The live API
+  now includes `0.18.25` with `isLatest: true`, so downstream directory
   verification should be rerun after each runtime package release.
 
 Latest star-spike research on May 16, 2026:
