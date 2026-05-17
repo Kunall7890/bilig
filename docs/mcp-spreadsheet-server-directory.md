@@ -77,7 +77,7 @@ crawlers that probe those well-known variants.
 | Official MCP Registry           | Live, current npm version indexed            | <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper> |
 | Static MCP server card          | Live                                         | <https://proompteng.github.io/bilig/.well-known/mcp/server-card.json>                                 |
 | Static MCP discovery aliases    | Live                                         | <https://proompteng.github.io/bilig/.well-known/mcp.json>                                             |
-| Glama                           | Live, tool indexing pending                  | <https://glama.ai/mcp/servers/proompteng/bilig>                                                       |
+| Glama                           | Live, installability and tool indexing pending | <https://glama.ai/mcp/servers/proompteng/bilig>                                                       |
 | mcp.so                          | Submitted for maintainer review              | <https://github.com/chatmcp/mcpso/issues/2295>                                                        |
 | Cline MCP Marketplace           | Submitted for maintainer review              | <https://github.com/cline/mcp-marketplace/issues/1557>                                                |
 | mcpserver.cc                    | Submitted for maintainer review              | <https://mcpserver.cc/en?q=bilig>                                                                     |
@@ -89,20 +89,24 @@ crawlers that probe those well-known variants.
 | MCPFind                         | Submitted for maintainer review              | <https://github.com/MCPFind/mcp-find/pull/37>                                                         |
 | mctrinh Awesome MCP Servers     | Submitted for maintainer review              | <https://github.com/mctrinh/awesome-mcp-servers/pull/46>                                              |
 | MCPRepository                   | Live                                         | <https://mcprepository.com/proompteng/bilig>                                                          |
-| PulseMCP                        | Not indexed in public search on May 14, 2026 | <https://www.pulsemcp.com/servers?search=bilig&q=bilig>                                               |
+| PulseMCP                        | Still not indexed in public search on May 17, 2026 | <https://www.pulsemcp.com/servers?search=bilig&q=bilig>                                               |
 
 PulseMCP says server listings are ingested from the official MCP Registry daily
 and processed weekly. The Bilig WorkPaper registry entry is live, and the public
 Registry API now includes the current `@bilig/headless@0.18.23` package version.
 The current entry is marked `isLatest: true`, so treat PulseMCP absence as a
 downstream directory refresh lag rather than an upstream registry lag. Starter
-issue [#384](https://github.com/proompteng/bilig/issues/384) tracks the next
-public verification pass.
+issue [#384](https://github.com/proompteng/bilig/issues/384) captured the first
+public verification pass and is now closed; reopen a narrower follow-up only if
+PulseMCP remains missing after the official registry refresh window.
 
-Glama lists Bilig WorkPaper publicly, but its API still reports an empty
-`tools` array. Directory submissions that depend on Glama should point scanners
-at the root Dockerfile target or at the npm stdio command below until Glama
-re-indexes the file-backed tool surface.
+Glama lists Bilig WorkPaper publicly in search with TypeScript, Developer
+Tools, Workplace & Productivity, and Remote attributes. Its public API still
+reports `tools: 0`, `package: null`, and no installability, and the server page
+says unclaimed servers have limited discoverability. The repository already
+ships `glama.json` with maintainer `gregkonush`; the next directory action is to
+claim the Glama listing or request a re-index so the `@bilig/headless` package
+and file-backed tool surface become installable in Glama.
 
 The `mcpserver.cc` submission was accepted for review on May 13, 2026 with
 submission UUID `bcdce4e1-3b05-4be2-b611-2a2abb8baf79`. Search still returned no

@@ -11,10 +11,12 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(core): bulk-restore dense runtime images (afe392dd)
 - fix(core): coalesce fragmented style rectangles (46041b3d)
 
 ## Internal runtime changes
+
 - refactor(core): split direct scalar column fast paths (ca0da009)
 - refactor(core): isolate structural formula impacts (3d91bbb2)
 - docs(growth): refresh discovery conversion evidence (96fab221)

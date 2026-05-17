@@ -80,8 +80,8 @@ issue pass:
 
 - GitHub surface: `24` stars, `12` forks, `92` open issues, and `0` open pull
   requests.
-- npm surface: `@bilig/headless@0.14.1`, with `15,592` downloads last week
-  and `23,240` downloads in the last 30 days.
+- npm surface checked again on May 17, 2026: `@bilig/headless@0.18.23`, with
+  `17,235` downloads last week and `32,535` downloads in the last 30 days.
 - Contributor funnel: `89` open `good first issue`, `89` open
   `first-timers-only`, and `89` open `help wanted` issues.
 - New starter issues `#272` through `#281` cover NestJS, Express, Supabase Edge
@@ -234,6 +234,14 @@ issue pass:
 - External MCP directory surface: MCPRepository has a live Bilig listing with
   the GitHub repository description mirrored as MCP server copy:
   <https://mcprepository.com/proompteng/bilig>
+- External MCP directory follow-up on May 17, 2026: Glama search now returns
+  Bilig WorkPaper with TypeScript, Developer Tools, Workplace & Productivity,
+  and Remote attributes, but the API still returns `tools: 0`, `package: null`,
+  and no installability. The server page also says unclaimed servers have
+  limited discoverability. The repo already has `glama.json` with maintainer
+  `gregkonush`, so the next action is claiming the Glama listing or asking for a
+  re-index of the `@bilig/headless` package/tool surface:
+  <https://glama.ai/mcp/servers/proompteng/bilig>
 - External MCP marketplace surface: the Cline MCP Marketplace server submission
   issue is open with the GitHub repository, 400px logo, public npm command, and
   verified `tools/list` plus `set_workpaper_input_cell` readback proof:
@@ -248,14 +256,16 @@ issue pass:
   search for `bilig` returned `0` results before submission, so the listing is
   pending review:
   <https://agentndx.ai/browse?q=bilig>
-- External MCP directory follow-up: PulseMCP currently returns `0` results for
-  `bilig` in Atlas, and its submit page says server submissions are ingested
-  from the official MCP Registry. The next action is to let the fresh official
-  registry entry propagate, then email `hello@pulsemcp.com` only if it remains
-  missing after the daily ingest window.
-- External MCP directory follow-up: starter issue `#384` now gives a
-  first-time contributor a small public verification task for PulseMCP indexing
-  after the official MCP Registry refresh to `@bilig/headless@0.14.9`:
+- External MCP directory follow-up: PulseMCP still does not return Bilig in
+  public search on May 17, 2026, while its API page says server data comes from
+  manual submissions, automated crawling, and the Official MCP Registry. The
+  Official Registry now marks `@bilig/headless@0.18.23` as latest, so the next
+  PulseMCP move is a concise refresh request only if the listing remains missing
+  after its ingest window.
+- External MCP directory follow-up: starter issue `#384` closed after the first
+  public PulseMCP verification pass. If the listing remains absent after the
+  registry refresh window, reopen a narrower follow-up with the current
+  `@bilig/headless@0.18.23` registry evidence:
   <https://github.com/proompteng/bilig/issues/384>.
 
 Latest TypeScript-example guard action on May 14, 2026:
