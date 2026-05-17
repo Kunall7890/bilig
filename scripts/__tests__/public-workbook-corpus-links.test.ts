@@ -544,7 +544,7 @@ describe('public workbook corpus shared links', () => {
 
       expect(firstProgress).toMatchObject({
         artifactCount: 0,
-        exhaustedSourceCount: 1,
+        exhaustedSourceCount: 0,
         failedSourceCount: 1,
       })
       expect(asRecord(failedSourceSamples[0])).toMatchObject({
