@@ -123,6 +123,9 @@ export function shouldKeepCurrentSnapshot(
     }
     return true
   }
+  if (current.version === incoming.version && isClearCellSnapshot(current) && !isClearCellSnapshot(incoming)) {
+    return true
+  }
   if (current.version < incoming.version) {
     return false
   }

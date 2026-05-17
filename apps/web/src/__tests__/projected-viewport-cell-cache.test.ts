@@ -327,6 +327,36 @@ describe('ProjectedViewportCellCache', () => {
     expect(listener).toHaveBeenCalledTimes(1)
   })
 
+  it('does not let same-version stale content resurrect a confirmed clear', () => {
+    const cache = new ProjectedViewportCellCache()
+    const listener = vi.fn()
+    cache.subscribeCells('Sheet1', ['D7'], listener)
+    cache.setCellSnapshot({
+      sheetName: 'Sheet1',
+      address: 'D7',
+      value: { tag: ValueTag.Empty },
+      flags: 0,
+      version: 9,
+    })
+    listener.mockClear()
+
+    expect(
+      cache.setCellSnapshot({
+        ...snapshot('D7', 'same-version-stale-content'),
+        version: 9,
+      }),
+    ).toBe(false)
+
+    expect(cache.getCell('Sheet1', 'D7')).toEqual({
+      sheetName: 'Sheet1',
+      address: 'D7',
+      value: { tag: ValueTag.Empty },
+      flags: 0,
+      version: 9,
+    })
+    expect(listener).not.toHaveBeenCalled()
+  })
+
   it('tracks cell subscriptions and exposes sheet grid entries', () => {
     const cache = new ProjectedViewportCellCache()
     const listener = vi.fn()

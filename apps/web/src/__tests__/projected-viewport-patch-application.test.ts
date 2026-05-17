@@ -661,6 +661,106 @@ describe('applyProjectedViewportPatch', () => {
     })
   })
 
+  it('does not resurrect same-version stale content after a clear is confirmed', () => {
+    const state = createPatchState()
+    state.cellSnapshots.set('Sheet1!B2', {
+      sheetName: 'Sheet1',
+      address: 'B2',
+      value: { tag: ValueTag.Empty },
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+      version: 8,
+    })
+    state.cellKeysBySheet.set('Sheet1', new Set(['Sheet1!B2']))
+
+    applyProjectedViewportPatch({
+      state,
+      patch: {
+        authoritativeRevision: 9,
+        version: 9,
+        full: false,
+        freezeRows: 0,
+        freezeCols: 0,
+        viewport: {
+          sheetName: 'Sheet1',
+          rowStart: 1,
+          rowEnd: 1,
+          colStart: 1,
+          colEnd: 1,
+        },
+        metrics: TEST_METRICS,
+        styles: [],
+        cells: [
+          {
+            row: 1,
+            col: 1,
+            snapshot: {
+              sheetName: 'Sheet1',
+              address: 'B2',
+              value: { tag: ValueTag.Empty },
+              flags: 0,
+              version: 9,
+            },
+            displayText: '',
+            copyText: '',
+            editorText: '',
+            formatId: 0,
+            styleId: 'style-0',
+          },
+        ],
+        columns: [],
+        rows: [],
+      },
+    })
+
+    applyProjectedViewportPatch({
+      state,
+      patch: {
+        version: 9,
+        full: false,
+        freezeRows: 0,
+        freezeCols: 0,
+        viewport: {
+          sheetName: 'Sheet1',
+          rowStart: 1,
+          rowEnd: 1,
+          colStart: 1,
+          colEnd: 1,
+        },
+        metrics: TEST_METRICS,
+        styles: [],
+        cells: [
+          {
+            row: 1,
+            col: 1,
+            snapshot: {
+              sheetName: 'Sheet1',
+              address: 'B2',
+              input: 'same-version-stale-content',
+              value: { tag: ValueTag.String, value: 'same-version-stale-content', stringId: 1 },
+              flags: 0,
+              version: 9,
+            },
+            displayText: 'same-version-stale-content',
+            copyText: 'same-version-stale-content',
+            editorText: 'same-version-stale-content',
+            formatId: 0,
+            styleId: 'style-0',
+          },
+        ],
+        columns: [],
+        rows: [],
+      },
+    })
+
+    expect(state.cellSnapshots.get('Sheet1!B2')).toEqual({
+      sheetName: 'Sheet1',
+      address: 'B2',
+      value: { tag: ValueTag.Empty },
+      flags: 0,
+      version: 9,
+    })
+  })
+
   it('keeps optimistic clears when newer non-empty patches arrive before clear confirmation', () => {
     const state = createPatchState()
     state.cellSnapshots.set('Sheet1!B2', {
