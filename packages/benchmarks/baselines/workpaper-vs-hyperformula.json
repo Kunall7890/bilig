@@ -15,7 +15,7 @@
     "workpaper": {
       "packageName": "@bilig/headless",
       "sourcePath": "packages/headless",
-      "version": "0.18.8"
+      "version": "0.18.9"
     },
     "hyperformula": {
       "packageName": "hyperformula",
