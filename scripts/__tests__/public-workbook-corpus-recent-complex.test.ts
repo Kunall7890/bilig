@@ -13,6 +13,7 @@ import {
   selectRecentComplexWorkbookCandidates,
   validatePublicWorkbookCorpusRecentComplexSummary,
 } from '../public-workbook-corpus-recent-complex.ts'
+import { defaultRecentComplexWorkbookQueries } from '../public-workbook-corpus-topics.ts'
 import type { PublicWorkbookArtifact, PublicWorkbookCorpusCase, PublicWorkbookCorpusScorecard } from '../public-workbook-corpus-types.ts'
 
 describe('public workbook recent complex headless corpus gate', () => {
@@ -166,6 +167,18 @@ describe('public workbook recent complex headless corpus gate', () => {
     expect(scripts['public-workbook-corpus:fetch-recent-complex']).toContain('--limit 5000')
     expect(scripts['public-workbook-corpus:headless-recent-complex']).toContain('public-workbook-corpus-recent-complex.ts headless')
     expect(scripts['public-workbook-corpus:check-recent-complex']).toContain('--require-target')
+  })
+
+  it('prioritizes model and template discovery before broad recent workbook queries', () => {
+    const modelIndex = defaultRecentComplexWorkbookQueries.indexOf('2026 model xlsx')
+    const templateIndex = defaultRecentComplexWorkbookQueries.indexOf('2026 template xlsx')
+    const broadBudgetIndex = defaultRecentComplexWorkbookQueries.indexOf('2026 budget')
+    const broadAccountingIndex = defaultRecentComplexWorkbookQueries.indexOf('2025 accounting')
+
+    expect(modelIndex).toBeGreaterThanOrEqual(0)
+    expect(templateIndex).toBeGreaterThanOrEqual(0)
+    expect(modelIndex).toBeLessThan(broadBudgetIndex)
+    expect(templateIndex).toBeLessThan(broadAccountingIndex)
   })
 
   it('reports when the manifest target must be expanded before fetching more artifacts', () => {
