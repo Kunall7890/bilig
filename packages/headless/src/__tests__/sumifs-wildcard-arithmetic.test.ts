@@ -45,4 +45,27 @@ describe('SUMIFS wildcard arithmetic', () => {
     expectNumber(cellValue(workbook, 'Summary', 0, 1), 951)
     expectNumber(cellValue(workbook, 'Summary', 0, 2), 1900)
   })
+
+  it.each([false, true])('does not match blank or numeric cells for wildcard text criteria with useColumnIndex=%s', (useColumnIndex) => {
+    const workbook = WorkPaper.buildFromSheets(
+      {
+        Data: [
+          ['Value', 'Bucket'],
+          [10, null],
+          [20, 'Agency A'],
+          [30, 42],
+          [40, 'Agency C'],
+          [50, 'Agency B'],
+        ],
+        Summary: [
+          ['', '=SUMIF(Data!B2:B6,"*"&A1&"*",Data!A2:A6)'],
+          ['', '=COUNTIF(Data!B2:B6,"*"&A1&"*")'],
+        ],
+      },
+      { maxRows: 16, maxColumns: 8, useColumnIndex },
+    )
+
+    expectNumber(cellValue(workbook, 'Summary', 0, 1), 110)
+    expectNumber(cellValue(workbook, 'Summary', 1, 1), 3)
+  })
 })

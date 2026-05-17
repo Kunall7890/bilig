@@ -11,6 +11,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(formula): coerce blank indirect references (4805458e)
 
 ## 0.19.0
@@ -20,9 +21,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(headless): add mcp output schemas (d9528032)
 
 ## Internal runtime changes
+
 - docs(growth): refresh mcp registry evidence (71eef9cf)
 
 ## 0.18.29

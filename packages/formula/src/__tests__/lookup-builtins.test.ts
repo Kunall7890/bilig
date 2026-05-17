@@ -55,10 +55,14 @@ describe('lookup builtins', () => {
     const wildcard = compileCriteriaMatcher(text('ap*'))
     expect(matchesCompiledCriteria(text('apple'), wildcard)).toBe(true)
     expect(matchesCompiledCriteria(text('pear'), wildcard)).toBe(false)
+    expect(matchesCompiledCriteria(empty(), wildcard)).toBe(false)
+    expect(matchesCompiledCriteria(num(123), wildcard)).toBe(false)
 
     const negatedWildcard = compileCriteriaMatcher(text('<>ap*'))
     expect(matchesCompiledCriteria(text('apple'), negatedWildcard)).toBe(false)
     expect(matchesCompiledCriteria(text('pear'), negatedWildcard)).toBe(true)
+    expect(matchesCompiledCriteria(empty(), negatedWildcard)).toBe(true)
+    expect(matchesCompiledCriteria(num(123), negatedWildcard)).toBe(true)
 
     const escapedPattern = compileCriteriaMatcher(text('a~*b'))
     expect(escapedPattern.operand).toMatchObject({ tag: ValueTag.String, value: 'a*b' })
@@ -547,6 +551,14 @@ describe('lookup builtins', () => {
         text('>1'),
       ),
     ).toEqual(num(8))
+    expect(
+      SUMIF(
+        cellRange([empty(), text('North'), num(42), text('South')], 4, 1),
+        text('*'),
+        cellRange([num(10), num(20), num(30), num(40)], 4, 1),
+      ),
+    ).toEqual(num(60))
+    expect(COUNTIF(cellRange([empty(), text('North'), num(42), text('South')], 4, 1), text('*'))).toEqual(num(2))
 
     expect(AVERAGEIF(cellRange([num(2), num(4), num(-1), num(6)], 4, 1), text('>0'))).toEqual(num(4))
 

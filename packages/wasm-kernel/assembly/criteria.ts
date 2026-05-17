@@ -193,6 +193,9 @@ export function matchesCriteriaValue(
   if ((operator == CRITERIA_OP_EQ || operator == CRITERIA_OP_NE) && operandText != null) {
     const textPattern = operandText
     if (hasCriteriaWildcardPattern(textPattern)) {
+      if (valueTag != ValueTag.String) {
+        return operator == CRITERIA_OP_NE
+      }
       const valueText = scalarText(
         valueTag,
         valueValue,

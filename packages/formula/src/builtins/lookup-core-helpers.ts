@@ -287,7 +287,7 @@ export function matchesCompiledCriteria(value: CellValue, compiled: CompiledCrit
     return false
   }
   if (compiled.wildcardPattern) {
-    const matches = compiled.wildcardPattern.test(toStringValue(value))
+    const matches = value.tag === ValueTag.String && compiled.wildcardPattern.test(toStringValue(value))
     return compiled.operator === '=' ? matches : !matches
   }
   if (value.tag === ValueTag.Empty && compiled.operand.tag === ValueTag.Number && compiled.operator !== '=' && compiled.operator !== '<>') {

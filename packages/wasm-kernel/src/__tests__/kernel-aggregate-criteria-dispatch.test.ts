@@ -145,6 +145,49 @@ describe('wasm kernel aggregate and criteria dispatch', () => {
     expect(kernel.readNumbers()[cellIndex(2, 2, 4)]).toBe(1)
   })
 
+  it('does not match blank or numeric cells for wildcard text criteria', async () => {
+    const kernel = await createKernel()
+    const strings = packStrings(['*', 'Agency A', 'Agency C', 'Agency B'])
+    kernel.init(24, 3, 3, 2, 8)
+    kernel.uploadStrings(strings.offsets, strings.lengths, strings.data)
+
+    const cellTags = new Uint8Array(24)
+    const cellNumbers = new Float64Array(24)
+    const cellStringIds = new Uint32Array(24)
+    const cellErrors = new Uint16Array(24)
+
+    const amounts = [10, 20, 30, 40, 50]
+    for (let index = 0; index < amounts.length; index += 1) {
+      cellTags[index] = ValueTag.Number
+      cellNumbers[index] = amounts[index]!
+    }
+    cellTags[6] = ValueTag.String
+    cellStringIds[6] = 1
+    cellTags[7] = ValueTag.Number
+    cellNumbers[7] = 42
+    cellTags[8] = ValueTag.String
+    cellStringIds[8] = 2
+    cellTags[9] = ValueTag.String
+    cellStringIds[9] = 3
+
+    kernel.writeCells(cellTags, cellNumbers, cellStringIds, cellErrors)
+    kernel.uploadRangeMembers(Uint32Array.from([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]), Uint32Array.from([0, 5]), Uint32Array.from([5, 5]))
+    kernel.uploadRangeShapes(Uint32Array.from([5, 5]), Uint32Array.from([1, 1]))
+
+    const packed = packPrograms([
+      [encodePushRange(1), encodePushString(0), encodeCall(BuiltinId.Countif, 2), encodeRet()],
+      [encodePushRange(1), encodePushString(0), encodePushRange(0), encodeCall(BuiltinId.Sumif, 3), encodeRet()],
+    ])
+    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, Uint32Array.from([cellIndex(3, 0, 4), cellIndex(3, 1, 4)]))
+    const constants = packConstants([[], []])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+
+    kernel.evalBatch(Uint32Array.from([cellIndex(3, 0, 4), cellIndex(3, 1, 4)]))
+
+    expect(kernel.readNumbers()[cellIndex(3, 0, 4)]).toBe(3)
+    expect(kernel.readNumbers()[cellIndex(3, 1, 4)]).toBe(110)
+  })
+
   it('matches comma-grouped numeric criteria in conditional aggregates', async () => {
     const kernel = await createKernel()
     const width = 8
