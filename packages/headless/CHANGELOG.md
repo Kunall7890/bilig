@@ -4,6 +4,20 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.18.18
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.18.17
+- Manual override: no
+
+## Fixes
+- fix(wasm-kernel): support array sumproduct operands (5db44f40)
+- fix(wasm-kernel): vectorize unary negation (5f6a5a6c)
+- perf(headless): accelerate dense initialization and fresh aggregate formulas (ca1114e0)
+
+## Internal runtime changes
+- docs(mcp): add directory scanner docker target (b134572d)
+
 ## 0.18.17
 
 - Release type: patch
