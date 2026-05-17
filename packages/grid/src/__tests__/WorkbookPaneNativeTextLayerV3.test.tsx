@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
+import { act } from 'react'
+import { createRoot } from 'react-dom/client'
 import { describe, expect, test } from 'vitest'
 import {
+  WorkbookPaneNativeTextLayerV3,
   resolveNativeTextRunFontStyleV3,
   resolveNativeTextRunInnerStyleV3,
   resolveNativeTextRunOuterStyleV3,
@@ -31,7 +34,7 @@ function createRun(overrides: Partial<TextQuadRun> = {}): TextQuadRun {
   }
 }
 
-function createPane(): WorkbookRenderTilePaneState {
+function createPane(run: TextQuadRun = createRun()): WorkbookRenderTilePaneState {
   return {
     contentOffset: { x: 0, y: 0 },
     frame: { height: 240, width: 320, x: 46, y: 24 },
@@ -48,7 +51,7 @@ function createPane(): WorkbookRenderTilePaneState {
       rectInstances: new Float32Array(),
       textCount: 1,
       textMetrics: new Float32Array(),
-      textRuns: [createRun()],
+      textRuns: [run],
       tileId: 1,
       version: { axisX: 1, axisY: 1, freeze: 0, styles: 1, text: 1, values: 1 },
     },
@@ -159,5 +162,50 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
         scrollSnapshot: { tx: 0, ty: 0 },
       }),
     ).toBeNull()
+  })
+
+  test('rerenders snapped native text geometry when device pixel ratio changes', async () => {
+    const originalDevicePixelRatio = Object.getOwnPropertyDescriptor(window, 'devicePixelRatio')
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+    const readRunLeft = () => {
+      const run = host.querySelector<HTMLElement>('[data-native-text-run]')
+      return run?.style.left ?? null
+    }
+
+    try {
+      Object.defineProperty(window, 'devicePixelRatio', { configurable: true, value: 1 })
+
+      await act(async () => {
+        root.render(
+          <WorkbookPaneNativeTextLayerV3
+            active
+            cameraStore={null}
+            geometry={null}
+            headerPanes={[]}
+            scrollTransformStore={null}
+            tilePanes={[createPane(createRun({ clipX: 8.3 }))]}
+          />,
+        )
+      })
+
+      expect(readRunLeft()).toBe('54px')
+
+      Object.defineProperty(window, 'devicePixelRatio', { configurable: true, value: 2 })
+      await act(async () => {
+        window.dispatchEvent(new Event('resize'))
+      })
+
+      expect(readRunLeft()).toBe('54.5px')
+    } finally {
+      await act(async () => {
+        root.unmount()
+      })
+      host.remove()
+      if (originalDevicePixelRatio) {
+        Object.defineProperty(window, 'devicePixelRatio', originalDevicePixelRatio)
+      }
+    }
   })
 })
