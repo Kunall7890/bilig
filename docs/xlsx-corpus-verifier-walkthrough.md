@@ -15,6 +15,9 @@ that saved it. That cached result is convenient for previewing a workbook
 without recalculating it. It is not proof that the formula still returns that
 value.
 
+For example, a stale cached XLSX value can differ from a fresh Excel
+recalculation even when the underlying formula is correct.
+
 That distinction matters when you are evaluating `@bilig/headless` for a Node.js
 service, an agent tool, or a workbook automation job. A stale cache can make a
 correct engine look wrong. It can also make a wrong engine look correct.
