@@ -337,8 +337,9 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
       const sharedSession = this.tryGetSessionByThreadId(parsed.threadId)
       if (sharedSession) {
         const accessibleSession = this.requireOwnedSession(sharedSession, input.documentId, input.session.userID)
+        let contextChanged = false
         if (parsed.context) {
-          updateWorkbookAgentDurableUiContextFromUser({
+          contextChanged = updateWorkbookAgentDurableUiContextFromUser({
             sessionState: accessibleSession,
             context: parsed.context,
             userId: input.session.userID,
@@ -350,7 +351,7 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
             requestedPolicy: parsed.executionPolicy,
           })
         }
-        if (parsed.context || parsed.executionPolicy) {
+        if (contextChanged || parsed.executionPolicy) {
           await this.persistSessionState(accessibleSession)
           this.sessionRegistry.emitSnapshot(accessibleSession.threadId)
         }
@@ -450,14 +451,16 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
   }): Promise<WorkbookAgentThreadSnapshot> {
     const parsed = updateContextBodySchema.parse(input.body)
     const sessionState = this.getOwnedSession(input.documentId, input.threadId, input.session.userID)
-    updateWorkbookAgentDurableUiContextFromUser({
+    const contextChanged = updateWorkbookAgentDurableUiContextFromUser({
       sessionState,
       context: parsed.context,
       userId: input.session.userID,
     })
     this.sessionRegistry.touch(sessionState)
-    await this.persistSessionState(sessionState)
-    this.sessionRegistry.emitSnapshot(sessionState.threadId)
+    if (contextChanged) {
+      await this.persistSessionState(sessionState)
+      this.sessionRegistry.emitSnapshot(sessionState.threadId)
+    }
     return buildSnapshot(sessionState)
   }
 

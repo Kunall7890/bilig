@@ -9,8 +9,9 @@ import {
   type WorkbookAgentCommandBundle,
   type CodexTurn,
 } from '@bilig/agent-api'
-import type { WorkbookAgentThreadSummary } from '@bilig/contracts'
+import type { WorkbookAgentThreadSummary, WorkbookAgentUiContext } from '@bilig/contracts'
 import { SpreadsheetEngine } from '@bilig/core'
+import { ValueTag } from '@bilig/protocol'
 import { describe, expect, it, vi } from 'vitest'
 import type { ZeroSyncService } from '../zero/service.js'
 import { buildWorkbookSourceProjectionFromEngine } from '../zero/projection.js'
@@ -109,6 +110,64 @@ function createPreviewSummary(overrides: Record<string, unknown> = {}) {
       structuralChangeCount: 0,
     },
     ...overrides,
+  }
+}
+
+function createRenderedContextForServiceTest(input: {
+  readonly capturedRevision: number
+  readonly stringId: number
+  readonly value: string
+}): WorkbookAgentUiContext {
+  return {
+    selection: {
+      sheetName: 'Sheet1',
+      address: 'B2',
+      range: {
+        startAddress: 'B2',
+        endAddress: 'B2',
+      },
+    },
+    viewport: {
+      rowStart: 0,
+      rowEnd: 20,
+      colStart: 0,
+      colEnd: 10,
+    },
+    rendered: {
+      capturedAtUnixMs: input.capturedRevision * 100,
+      capturedRevision: input.capturedRevision,
+      batchId: input.capturedRevision,
+      selection: null,
+      visibleRange: {
+        range: {
+          sheetName: 'Sheet1',
+          startAddress: 'B2',
+          endAddress: 'B2',
+        },
+        rowCount: 1,
+        columnCount: 1,
+        cellCount: 1,
+        truncated: false,
+        rows: [
+          [
+            {
+              address: 'B2',
+              input: input.value,
+              value: {
+                tag: ValueTag.String,
+                value: input.value,
+                stringId: input.stringId,
+              },
+              formula: null,
+              displayFormat: null,
+              styleId: null,
+              numberFormatId: null,
+              style: null,
+            },
+          ],
+        ],
+      },
+    },
   }
 }
 
@@ -442,6 +501,94 @@ describe('workbook agent service', () => {
         })
       })
 
+      unsubscribe()
+    } finally {
+      await service.close()
+    }
+  })
+
+  it('does not broadcast duplicate workbook context snapshots for rendered proof metadata churn', async () => {
+    const service = createWorkbookAgentService(createZeroSyncStub(), {
+      codexClientFactory: (): CodexAppServerTransport => new FakeCodexTransport(),
+      maxCodexClients: 1,
+    })
+
+    try {
+      const baseContext = createRenderedContextForServiceTest({
+        capturedRevision: 1,
+        stringId: 1,
+        value: 'same visible text',
+      })
+      const snapshot = await service.createSession({
+        documentId: 'doc-1',
+        session: {
+          userID: 'alex@example.com',
+          roles: ['editor'],
+        },
+        body: {
+          context: baseContext,
+        },
+      })
+      const events: unknown[] = []
+      const unsubscribe = service.subscribe(snapshot.threadId, (event) => {
+        events.push(event)
+      })
+
+      await service.updateContext({
+        documentId: 'doc-1',
+        threadId: snapshot.threadId,
+        session: {
+          userID: 'alex@example.com',
+          roles: ['editor'],
+        },
+        body: {
+          context: createRenderedContextForServiceTest({
+            capturedRevision: 9,
+            stringId: 99,
+            value: 'same visible text',
+          }),
+        },
+      })
+
+      expect(events).toEqual([])
+      expect(
+        service.getSnapshot({
+          documentId: 'doc-1',
+          threadId: snapshot.threadId,
+          session: {
+            userID: 'alex@example.com',
+            roles: ['editor'],
+          },
+        }).context,
+      ).toEqual(baseContext)
+
+      await service.updateContext({
+        documentId: 'doc-1',
+        threadId: snapshot.threadId,
+        session: {
+          userID: 'alex@example.com',
+          roles: ['editor'],
+        },
+        body: {
+          context: createRenderedContextForServiceTest({
+            capturedRevision: 10,
+            stringId: 100,
+            value: 'changed visible text',
+          }),
+        },
+      })
+
+      expect(events).toHaveLength(1)
+      expect(
+        service.getSnapshot({
+          documentId: 'doc-1',
+          threadId: snapshot.threadId,
+          session: {
+            userID: 'alex@example.com',
+            roles: ['editor'],
+          },
+        }).context?.rendered?.visibleRange?.rows[0]?.[0]?.input,
+      ).toBe('changed visible text')
       unsubscribe()
     } finally {
       await service.close()

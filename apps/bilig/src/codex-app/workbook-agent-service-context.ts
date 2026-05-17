@@ -1,5 +1,6 @@
 import type { WorkbookAgentCommand } from '@bilig/agent-api'
 import type { WorkbookAgentUiContext } from '@bilig/contracts'
+import { ValueTag } from '@bilig/protocol'
 import { cloneUiContext, type WorkbookAgentThreadState } from './workbook-agent-service-shared.js'
 
 export function stripRenderedWorkbookAgentContext(context: WorkbookAgentUiContext): WorkbookAgentUiContext {
@@ -69,18 +70,85 @@ export function applyWorkbookAgentStructuralContextHints(
   return structuralContextChanged && nextContext ? stripRenderedWorkbookAgentContext(nextContext) : nextContext
 }
 
+type RenderedContext = NonNullable<WorkbookAgentUiContext['rendered']>
+type RenderedRange = RenderedContext['visibleRange']
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function normalizeRenderedValueForContextKey(value: unknown): unknown {
+  if (!isRecord(value) || value['tag'] !== ValueTag.String) {
+    return value
+  }
+  return {
+    tag: value['tag'],
+    value: value['value'],
+    stringId: 0,
+  }
+}
+
+function normalizeRenderedRangeForContextKey(range: RenderedRange): RenderedRange {
+  if (range === null) {
+    return null
+  }
+  return {
+    ...range,
+    rows: range.rows.map((row) =>
+      row.map((cell) => ({
+        ...cell,
+        value: normalizeRenderedValueForContextKey(cell.value),
+      })),
+    ),
+  }
+}
+
+export function stringifyWorkbookAgentUiContextSemanticKey(context: WorkbookAgentUiContext | null): string {
+  if (context === null) {
+    return 'null'
+  }
+  const rendered = context.rendered
+  return JSON.stringify({
+    selection: context.selection,
+    viewport: context.viewport,
+    rendered:
+      rendered === undefined
+        ? null
+        : {
+            selection: normalizeRenderedRangeForContextKey(rendered.selection),
+            visibleRange: normalizeRenderedRangeForContextKey(rendered.visibleRange),
+          },
+  })
+}
+
+export function areWorkbookAgentUiContextsSemanticallyEqual(
+  left: WorkbookAgentUiContext | null,
+  right: WorkbookAgentUiContext | null,
+): boolean {
+  return stringifyWorkbookAgentUiContextSemanticKey(left) === stringifyWorkbookAgentUiContextSemanticKey(right)
+}
+
 export function updateWorkbookAgentDurableUiContextFromUser(input: {
   readonly sessionState: WorkbookAgentThreadState
   readonly context: WorkbookAgentUiContext
   readonly userId: string
-}): void {
-  input.sessionState.durable.context = cloneUiContext(input.context)
+}): boolean {
+  const nextContext = cloneUiContext(input.context)
+  const durableContextChanged = !areWorkbookAgentUiContextsSemanticallyEqual(input.sessionState.durable.context, nextContext)
   const activeTurnId = input.sessionState.live.activeTurnId
-  if (!activeTurnId) {
-    return
+  const activeTurnActorUserId = activeTurnId ? input.sessionState.live.turnActorUserIdByTurn.get(activeTurnId) : undefined
+  const canUpdateActiveTurnContext =
+    activeTurnId !== null && activeTurnId !== undefined && (activeTurnActorUserId === undefined || activeTurnActorUserId === input.userId)
+  const currentTurnContext = canUpdateActiveTurnContext ? (input.sessionState.live.turnContextByTurn.get(activeTurnId) ?? null) : null
+  const turnContextChanged = canUpdateActiveTurnContext && !areWorkbookAgentUiContextsSemanticallyEqual(currentTurnContext, nextContext)
+  if (!durableContextChanged && !turnContextChanged) {
+    return false
   }
-  const activeTurnActorUserId = input.sessionState.live.turnActorUserIdByTurn.get(activeTurnId)
-  if (activeTurnActorUserId === undefined || activeTurnActorUserId === input.userId) {
+  if (durableContextChanged) {
+    input.sessionState.durable.context = nextContext
+  }
+  if (turnContextChanged) {
     input.sessionState.live.turnContextByTurn.set(activeTurnId, cloneUiContext(input.context))
   }
+  return true
 }

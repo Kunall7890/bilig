@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { WorkbookAgentCommand } from '@bilig/agent-api'
 import type { WorkbookAgentUiContext } from '@bilig/contracts'
+import { ValueTag } from '@bilig/protocol'
 import type { WorkbookAgentThreadState } from './workbook-agent-service-shared.js'
 import {
+  areWorkbookAgentUiContextsSemanticallyEqual,
   applyWorkbookAgentStructuralContextHints,
   stripRenderedWorkbookAgentContext,
   updateWorkbookAgentDurableUiContextFromUser,
@@ -64,6 +66,47 @@ function createThreadState(context: WorkbookAgentUiContext | null): WorkbookAgen
   }
 }
 
+function createRenderedCell(value: string, stringId: number) {
+  return {
+    address: 'B2',
+    input: value,
+    value: {
+      tag: ValueTag.String,
+      value,
+      stringId,
+    },
+    formula: null,
+    displayFormat: null,
+    styleId: null,
+    numberFormatId: null,
+    style: null,
+  }
+}
+
+function createRenderedContext(value: string, overrides: Partial<NonNullable<WorkbookAgentUiContext['rendered']>> = {}) {
+  return createContext({
+    rendered: {
+      capturedAtUnixMs: 100,
+      capturedRevision: 3,
+      batchId: 1,
+      selection: null,
+      visibleRange: {
+        range: {
+          sheetName: 'Revenue',
+          startAddress: 'B2',
+          endAddress: 'B2',
+        },
+        rowCount: 1,
+        columnCount: 1,
+        cellCount: 1,
+        truncated: false,
+        rows: [[createRenderedCell(value, 1)]],
+      },
+      ...overrides,
+    },
+  })
+}
+
 describe('workbook agent service context helpers', () => {
   it('strips rendered context while preserving selection and viewport', () => {
     expect(stripRenderedWorkbookAgentContext(createContext())).toEqual({
@@ -123,11 +166,13 @@ describe('workbook agent service context helpers', () => {
     const sessionState = createThreadState(null)
     const nextContext = createContext({ rendered: undefined })
 
-    updateWorkbookAgentDurableUiContextFromUser({
-      sessionState,
-      context: nextContext,
-      userId: 'alex@example.com',
-    })
+    expect(
+      updateWorkbookAgentDurableUiContextFromUser({
+        sessionState,
+        context: nextContext,
+        userId: 'alex@example.com',
+      }),
+    ).toBe(true)
 
     expect(sessionState.durable.context).toEqual(nextContext)
     expect(sessionState.live.turnContextByTurn.get('turn-1')).toEqual(nextContext)
@@ -135,13 +180,94 @@ describe('workbook agent service context helpers', () => {
     sessionState.live.turnActorUserIdByTurn.set('turn-1', 'casey@example.com')
     const caseyContext = createContext({ selection: { sheetName: 'Sheet2', address: 'A1' } as WorkbookAgentUiContext['selection'] })
 
-    updateWorkbookAgentDurableUiContextFromUser({
-      sessionState,
-      context: caseyContext,
-      userId: 'alex@example.com',
-    })
+    expect(
+      updateWorkbookAgentDurableUiContextFromUser({
+        sessionState,
+        context: caseyContext,
+        userId: 'alex@example.com',
+      }),
+    ).toBe(true)
 
     expect(sessionState.durable.context).toEqual(caseyContext)
     expect(sessionState.live.turnContextByTurn.get('turn-1')).toEqual(nextContext)
+  })
+
+  it('does not update durable context for rendered proof metadata churn', () => {
+    const durableContext = createRenderedContext('stable value')
+    const sessionState = createThreadState(durableContext)
+    sessionState.live.turnContextByTurn.set('turn-1', durableContext)
+    const nextContext = createRenderedContext('stable value', {
+      capturedAtUnixMs: 900,
+      capturedRevision: 12,
+      batchId: 45,
+      visibleRange: {
+        range: {
+          sheetName: 'Revenue',
+          startAddress: 'B2',
+          endAddress: 'B2',
+        },
+        rowCount: 1,
+        columnCount: 1,
+        cellCount: 1,
+        truncated: false,
+        rows: [[createRenderedCell('stable value', 99)]],
+      },
+    })
+
+    expect(areWorkbookAgentUiContextsSemanticallyEqual(durableContext, nextContext)).toBe(true)
+    expect(
+      updateWorkbookAgentDurableUiContextFromUser({
+        sessionState,
+        context: nextContext,
+        userId: 'alex@example.com',
+      }),
+    ).toBe(false)
+    expect(sessionState.durable.context).toBe(durableContext)
+    expect(sessionState.live.turnContextByTurn.get('turn-1')).toBe(durableContext)
+  })
+
+  it('updates durable context when rendered visible cell content changes', () => {
+    const durableContext = createRenderedContext('before')
+    const sessionState = createThreadState(durableContext)
+    sessionState.live.turnContextByTurn.set('turn-1', durableContext)
+    const nextContext = createRenderedContext('after', {
+      capturedAtUnixMs: 900,
+      capturedRevision: 12,
+      batchId: 45,
+    })
+
+    expect(areWorkbookAgentUiContextsSemanticallyEqual(durableContext, nextContext)).toBe(false)
+    expect(
+      updateWorkbookAgentDurableUiContextFromUser({
+        sessionState,
+        context: nextContext,
+        userId: 'alex@example.com',
+      }),
+    ).toBe(true)
+    expect(sessionState.durable.context).toEqual(nextContext)
+    expect(sessionState.live.turnContextByTurn.get('turn-1')).toEqual(nextContext)
+  })
+
+  it('hydrates missing active-turn context even when durable context is already current', () => {
+    const durableContext = createContext({ rendered: undefined })
+    const sessionState = createThreadState(durableContext)
+
+    expect(
+      updateWorkbookAgentDurableUiContextFromUser({
+        sessionState,
+        context: durableContext,
+        userId: 'alex@example.com',
+      }),
+    ).toBe(true)
+    expect(sessionState.durable.context).toBe(durableContext)
+    expect(sessionState.live.turnContextByTurn.get('turn-1')).toEqual(durableContext)
+
+    expect(
+      updateWorkbookAgentDurableUiContextFromUser({
+        sessionState,
+        context: durableContext,
+        userId: 'alex@example.com',
+      }),
+    ).toBe(false)
   })
 })
