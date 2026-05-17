@@ -5,7 +5,14 @@ UI. It builds a small revenue workbook, evaluates formulas, uses a named
 expression in the revenue plan, applies an agent-style edit, persists the
 workbook, restores it, and prints the verified summary.
 
-Run it outside the monorepo with the published package:
+Run it from a cloned checkout:
+
+```sh
+pnpm --dir examples/headless-workpaper install --ignore-workspace
+pnpm --dir examples/headless-workpaper run start
+```
+
+If you copy this example folder outside the monorepo, npm works too:
 
 ```sh
 npm install
@@ -62,6 +69,10 @@ job you are evaluating:
 | Can MCP drive a real WorkPaper tool loop?  | `npm run agent:mcp-transcript`    | You want a JSON-RPC transcript for list tools, set input, and read output.    |
 | Can MCP edit a saved WorkPaper JSON file?  | `npm run agent:mcp-file-transcript` | You want proof that the packaged binary writes a real file-backed workbook. |
 | Does this fit framework/server code?       | `npm run agent:framework-adapters` | You want wrapper shapes for AI SDK, LangChain, Mastra, LlamaIndex, and more.  |
+
+From the repo root, run those scripts as
+`pnpm --dir examples/headless-workpaper run <script>`. Use `npm run <script>`
+only when this folder is outside the monorepo.
 
 If none of those paths answers your question, open a
 [Discussion](https://github.com/proompteng/bilig/discussions/new?category=general)
@@ -613,8 +624,7 @@ Return editedCell, before.expectedArr, after.expectedArr, and checks.
 From a clean checkout, install the example dependencies first:
 
 ```sh
-cd examples/headless-workpaper
-npm install
+pnpm --dir examples/headless-workpaper install --ignore-workspace
 ```
 
 Then point your local MCP client at the stdio entrypoint. Replace the path with

@@ -134,10 +134,10 @@ If the smoke test matches your use case, run the maintained example next:
 
 ```sh
 git clone https://github.com/proompteng/bilig.git
-cd bilig/examples/headless-workpaper
-npm install
-npm start
-npm run agent:verify
+cd bilig
+pnpm --dir examples/headless-workpaper install --ignore-workspace
+pnpm --dir examples/headless-workpaper run start
+pnpm --dir examples/headless-workpaper run agent:verify
 ```
 
 Then inspect the focused examples:

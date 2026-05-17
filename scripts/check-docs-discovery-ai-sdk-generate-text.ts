@@ -57,7 +57,7 @@ export async function requireAiSdkGenerateTextDiscovery({
     ['docs/vercel-ai-sdk-langchain-spreadsheet-tool.md', aiSdkLangChainDoc],
     ['examples/headless-workpaper/README.md', headlessExampleReadme],
   ] as const) {
-    requireIncludes(content, 'npm run agent:ai-sdk-generate-text', path)
+    requireIncludes(content, 'agent:ai-sdk-generate-text', path)
   }
 
   for (const [path, content] of [

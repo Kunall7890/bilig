@@ -83,9 +83,9 @@ Run the maintained JSON-RPC transcript from a clone:
 
 ```sh
 git clone --depth 1 https://github.com/proompteng/bilig.git
-cd bilig/examples/headless-workpaper
-npm install
-NODE_NO_WARNINGS=1 npm run --silent agent:mcp-transcript
+cd bilig
+pnpm --dir examples/headless-workpaper install --ignore-workspace
+pnpm --dir examples/headless-workpaper run agent:mcp-transcript
 ```
 
 The transcript edits `Inputs!B3`, recalculates dependent formulas, serializes

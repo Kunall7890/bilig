@@ -43,13 +43,13 @@ tool-call readback, and MCP transcript checks.
 
 ```sh
 git clone https://github.com/proompteng/bilig.git
-cd bilig/examples/headless-workpaper
-npm install
-npm run invoice-totals
-npm run budget-variance
-npm run subscription-mrr
-npm run quote-approval
-npm run fulfillment-capacity
+cd bilig
+pnpm --dir examples/headless-workpaper install --ignore-workspace
+pnpm --dir examples/headless-workpaper run invoice-totals
+pnpm --dir examples/headless-workpaper run budget-variance
+pnpm --dir examples/headless-workpaper run subscription-mrr
+pnpm --dir examples/headless-workpaper run quote-approval
+pnpm --dir examples/headless-workpaper run fulfillment-capacity
 ```
 
 ## What each example proves

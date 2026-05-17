@@ -27,9 +27,9 @@ Run the dependency-free example from a clean checkout:
 
 ```sh
 git clone https://github.com/proompteng/bilig.git
-cd bilig/examples/headless-workpaper
-npm install
-npm run agent:mcp-tools
+cd bilig
+pnpm --dir examples/headless-workpaper install --ignore-workspace
+pnpm --dir examples/headless-workpaper run agent:mcp-tools
 ```
 
 For a local stdio transport, pipe newline-delimited JSON-RPC requests into the
@@ -49,9 +49,8 @@ Use the maintained transcript smoke when reviewing the server from an MCP
 client, directory submission, or HN-style launch thread:
 
 ```sh
-cd examples/headless-workpaper
-npm install
-NODE_NO_WARNINGS=1 npm run --silent agent:mcp-transcript
+pnpm --dir examples/headless-workpaper install --ignore-workspace
+pnpm --dir examples/headless-workpaper run agent:mcp-transcript
 ```
 
 The script starts the stdio server, sends `initialize`, `tools/list`, and
@@ -149,9 +148,8 @@ Use the maintained file-backed transcript when a directory reviewer or agent
 builder needs proof that the packaged binary mutates a real WorkPaper JSON file:
 
 ```sh
-cd examples/headless-workpaper
-npm install
-NODE_NO_WARNINGS=1 npm run --silent agent:mcp-file-transcript
+pnpm --dir examples/headless-workpaper install --ignore-workspace
+pnpm --dir examples/headless-workpaper run agent:mcp-file-transcript
 ```
 
 A passing run starts `npm exec --package @bilig/headless@latest --

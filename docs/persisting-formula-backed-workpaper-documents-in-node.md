@@ -83,9 +83,8 @@ The focused example is checked in at
 Run it from the example package:
 
 ```sh
-cd examples/headless-workpaper
-npm install
-npm run persistence
+pnpm --dir examples/headless-workpaper install --ignore-workspace
+pnpm --dir examples/headless-workpaper run persistence
 ```
 
 It verifies:
@@ -121,9 +120,8 @@ The service-route example also includes a typed persistence smoke for the
 stores most Node services already use:
 
 ```sh
-cd examples/serverless-workpaper-api
-npm install
-npm run persistence-adapters
+pnpm --dir examples/serverless-workpaper-api install --ignore-workspace
+pnpm --dir examples/serverless-workpaper-api run persistence-adapters
 ```
 
 The source is

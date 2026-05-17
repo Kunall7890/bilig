@@ -57,7 +57,7 @@ export async function requireAiSdkStreamTextDiscovery({
     ['docs/vercel-ai-sdk-langchain-spreadsheet-tool.md', aiSdkLangChainDoc],
     ['examples/headless-workpaper/README.md', headlessExampleReadme],
   ] as const) {
-    requireIncludes(content, 'npm run agent:ai-sdk-stream-text', path)
+    requireIncludes(content, 'agent:ai-sdk-stream-text', path)
   }
 
   for (const [path, content] of [

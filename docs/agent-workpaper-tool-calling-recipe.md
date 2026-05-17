@@ -236,8 +236,7 @@ The maintained repository script for this section is
 [`examples/headless-workpaper/openai-responses-tool-wrapper.ts`](../examples/headless-workpaper/openai-responses-tool-wrapper.ts):
 
 ```sh
-cd examples/headless-workpaper
-npm run agent:openai-responses
+pnpm --dir examples/headless-workpaper run agent:openai-responses
 ```
 
 The official Responses API function-calling flow preserves the model output,
@@ -473,24 +472,21 @@ For a dependency-free runnable version of this shape, use
 [`examples/headless-workpaper/agent-framework-adapters.ts`](../examples/headless-workpaper/agent-framework-adapters.ts):
 
 ```sh
-cd examples/headless-workpaper
-npm run agent:framework-adapters
+pnpm --dir examples/headless-workpaper run agent:framework-adapters
 ```
 
 For the actual AI SDK `generateText()` loop, use
 [`examples/headless-workpaper/ai-sdk-generate-text-tool-smoke.ts`](../examples/headless-workpaper/ai-sdk-generate-text-tool-smoke.ts):
 
 ```sh
-cd examples/headless-workpaper
-npm run agent:ai-sdk-generate-text
+pnpm --dir examples/headless-workpaper run agent:ai-sdk-generate-text
 ```
 
 For the actual AI SDK `streamText()` loop, use
 [`examples/headless-workpaper/ai-sdk-stream-text-tool-smoke.ts`](../examples/headless-workpaper/ai-sdk-stream-text-tool-smoke.ts):
 
 ```sh
-cd examples/headless-workpaper
-npm run agent:ai-sdk-stream-text
+pnpm --dir examples/headless-workpaper run agent:ai-sdk-stream-text
 ```
 
 ## LangChain Tool Wrapper

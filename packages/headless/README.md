@@ -66,9 +66,9 @@ For a route-shaped quote approval API today:
 
 ```sh
 git clone --depth 1 https://github.com/proompteng/bilig.git
-cd bilig/examples/serverless-workpaper-api
-npm install
-npm run smoke
+cd bilig
+pnpm --dir examples/serverless-workpaper-api install --ignore-workspace
+pnpm --dir examples/serverless-workpaper-api run smoke
 ```
 
 For a generated starter project:
@@ -391,18 +391,18 @@ For HTTP and serverless examples, start with
 [`examples/serverless-workpaper-api`](https://github.com/proompteng/bilig/tree/main/examples/serverless-workpaper-api).
 
 ```sh
-cd examples/serverless-workpaper-api
-npm install
-npm run quote-approval-api
-npm run next-route-handler
-npm run next-server-action
-npm run next-server-action-formdata
-npm run framework-adapters
-npm run persistence-adapters
+pnpm --dir examples/serverless-workpaper-api install --ignore-workspace
+pnpm --dir examples/serverless-workpaper-api run quote-approval-api
+pnpm --dir examples/serverless-workpaper-api run next-route-handler
+pnpm --dir examples/serverless-workpaper-api run next-server-action
+pnpm --dir examples/serverless-workpaper-api run next-server-action-formdata
+pnpm --dir examples/serverless-workpaper-api run framework-adapters
+pnpm --dir examples/serverless-workpaper-api run persistence-adapters
 ```
 
-Start with `npm run quote-approval-api` when you want the production-shaped
-proof: input JSON writes `Inputs!B2:B6`, formulas recalculate, the WorkPaper
+Start with `pnpm --dir examples/serverless-workpaper-api run quote-approval-api`
+when you want the production-shaped proof: input JSON writes `Inputs!B2:B6`,
+formulas recalculate, the WorkPaper
 JSON is persisted, and a restored workbook returns the same approval decision.
 
 Useful anchors:

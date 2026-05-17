@@ -55,9 +55,8 @@ For a docs-only or example-only starter issue, run the command named in the
 issue first. That might be a local example command such as:
 
 ```bash
-cd examples/headless-workpaper
-npm install
-npm run snapshot-diff
+pnpm --dir examples/headless-workpaper install --ignore-workspace
+pnpm --dir examples/headless-workpaper run snapshot-diff
 ```
 
 Then run the repo checks that usually cover small documentation and example

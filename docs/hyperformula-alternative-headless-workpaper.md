@@ -84,10 +84,10 @@ Use the maintained example when you want an end-to-end proof:
 
 ```sh
 git clone https://github.com/proompteng/bilig.git
-cd bilig/examples/headless-workpaper
-npm install
-npm start
-npm run agent:verify
+cd bilig
+pnpm --dir examples/headless-workpaper install --ignore-workspace
+pnpm --dir examples/headless-workpaper run start
+pnpm --dir examples/headless-workpaper run agent:verify
 ```
 
 The agent verifier records the assumption cells changed, checks dependent

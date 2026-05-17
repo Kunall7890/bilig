@@ -156,20 +156,18 @@ the computed value, and the proof did not depend on a browser grid.
 Use the maintained examples when the agent is already inside a checkout:
 
 ```sh
-cd examples/headless-workpaper
-npm install
-npm run agent:tool-call
-npm run agent:mcp-file-transcript
-npm run agent:framework-adapters
-npm run agent:verify
+pnpm --dir examples/headless-workpaper install --ignore-workspace
+pnpm --dir examples/headless-workpaper run agent:tool-call
+pnpm --dir examples/headless-workpaper run agent:mcp-file-transcript
+pnpm --dir examples/headless-workpaper run agent:framework-adapters
+pnpm --dir examples/headless-workpaper run agent:verify
 ```
 
 For a route boundary:
 
 ```sh
-cd examples/serverless-workpaper-api
-npm install
-npm run smoke
+pnpm --dir examples/serverless-workpaper-api install --ignore-workspace
+pnpm --dir examples/serverless-workpaper-api run smoke
 ```
 
 ## Output Contract

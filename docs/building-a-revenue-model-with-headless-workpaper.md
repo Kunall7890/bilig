@@ -89,9 +89,8 @@ That is the operational pattern for agents and services:
 From the repository:
 
 ```bash
-cd examples/headless-workpaper
-npm install
-npm run scenarios
+pnpm --dir examples/headless-workpaper install --ignore-workspace
+pnpm --dir examples/headless-workpaper run scenarios
 ```
 
 The expected output includes both the pre-edit and post-edit model:

@@ -94,9 +94,8 @@ pnpm add @bilig/headless
 ```
 
 ```bash
-cd examples/headless-workpaper
-npm install
-npm start
+pnpm --dir examples/headless-workpaper install --ignore-workspace
+pnpm --dir examples/headless-workpaper run start
 ```
 
 ## Shareable Copy

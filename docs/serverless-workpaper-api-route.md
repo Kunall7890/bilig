@@ -32,9 +32,8 @@ Run this first when you want to see a service-style approval workflow instead
 of a toy arithmetic workbook:
 
 ```sh
-cd examples/serverless-workpaper-api
-npm install
-npm run quote-approval-api
+pnpm --dir examples/serverless-workpaper-api install --ignore-workspace
+pnpm --dir examples/serverless-workpaper-api run quote-approval-api
 ```
 
 The smoke writes quote inputs into the workbook:
@@ -355,11 +354,10 @@ runnable example keeps this dependency-free and does not require a running Next
 app for the smoke proof:
 
 ```sh
-cd examples/serverless-workpaper-api
-npm install
-npm run next-route-handler
+pnpm --dir examples/serverless-workpaper-api install --ignore-workspace
+pnpm --dir examples/serverless-workpaper-api run next-route-handler
 # or the focused example test
-npm run test
+pnpm --dir examples/serverless-workpaper-api run test
 ```
 
 The example exports route constants and methods matching an
@@ -437,9 +435,8 @@ from the server-side action instead of posting through an API route. The
 repository example keeps this dependency-free and runnable:
 
 ```sh
-cd examples/serverless-workpaper-api
-npm install
-npm run next-server-action
+pnpm --dir examples/serverless-workpaper-api install --ignore-workspace
+pnpm --dir examples/serverless-workpaper-api run next-server-action
 ```
 
 The example exports small action functions:
@@ -473,9 +470,8 @@ Use the FormData variant when a server-side form should update a WorkPaper
 without a client-side JSON adapter:
 
 ```sh
-cd examples/serverless-workpaper-api
-npm install
-npm run next-server-action-formdata
+pnpm --dir examples/serverless-workpaper-api install --ignore-workspace
+pnpm --dir examples/serverless-workpaper-api run next-server-action-formdata
 ```
 
 The example accepts repeated fields from a form submission:
@@ -504,9 +500,8 @@ Use the validation-error smoke when a Server Action should reject malformed
 form input before it reaches the WorkPaper mutation route:
 
 ```sh
-cd examples/serverless-workpaper-api
-npm install
-npm run next-server-action-validation
+pnpm --dir examples/serverless-workpaper-api install --ignore-workspace
+pnpm --dir examples/serverless-workpaper-api run next-server-action-validation
 ```
 
 The example submits a FormData payload with `customers: "-1"` through the same
@@ -630,9 +625,8 @@ The repository example includes this as a runnable TypeScript smoke so the
 adapter is more than documentation:
 
 ```sh
-cd examples/serverless-workpaper-api
-npm install
-npm run vercel-function
+pnpm --dir examples/serverless-workpaper-api install --ignore-workspace
+pnpm --dir examples/serverless-workpaper-api run vercel-function
 ```
 
 The smoke calls the exported `GET()`, `POST()`, and `default.fetch()` entrypoints,
@@ -641,8 +635,7 @@ recalculated to `totalRevenue: 48600` and the serialized WorkPaper document
 still contains formulas. The example-level acceptance command is:
 
 ```sh
-cd examples/serverless-workpaper-api
-npm run test
+pnpm --dir examples/serverless-workpaper-api run test
 ```
 
 ## Cloudflare Worker Adapter
@@ -1793,6 +1786,6 @@ curl -s -X POST http://localhost:8787/api/workpaper/revenue \
 For a documentation patch in this repository:
 
 ```sh
-cd examples/serverless-workpaper-api && npm run test
+pnpm --dir examples/serverless-workpaper-api run test
 pnpm docs:discovery:check
 ```

@@ -24,9 +24,9 @@ the computed total survives the framework boundary.
 
 ```sh
 git clone https://github.com/proompteng/bilig.git
-cd bilig/examples/serverless-workpaper-api
-npm install
-npm run framework-adapters
+cd bilig
+pnpm --dir examples/serverless-workpaper-api install --ignore-workspace
+pnpm --dir examples/serverless-workpaper-api run framework-adapters
 ```
 
 Expected output:
@@ -159,9 +159,8 @@ can parse JSON, update an input cell, read back a dependent formula, and reload
 the persisted WorkPaper document:
 
 ```sh
-cd examples/serverless-workpaper-api
-npm install
-npm run test
+pnpm --dir examples/serverless-workpaper-api install --ignore-workspace
+pnpm --dir examples/serverless-workpaper-api run test
 ```
 
 The copyable route shape is:

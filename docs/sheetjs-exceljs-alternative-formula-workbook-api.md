@@ -170,10 +170,10 @@ The maintained repository example adds more workflows:
 
 ```sh
 git clone https://github.com/proompteng/bilig.git
-cd bilig/examples/headless-workpaper
-npm install
-npm run agent:tool-call
-npm run agent:verify
+cd bilig
+pnpm --dir examples/headless-workpaper install --ignore-workspace
+pnpm --dir examples/headless-workpaper run agent:tool-call
+pnpm --dir examples/headless-workpaper run agent:verify
 ```
 
 The agent tool-call loop changes input cells, reads dependent formula outputs,

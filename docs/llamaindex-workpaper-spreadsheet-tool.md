@@ -23,9 +23,9 @@ WorkPaper adapter keeps the same pattern: Zod validates the arguments, and
 
 ```sh
 git clone https://github.com/proompteng/bilig.git
-cd bilig/examples/headless-workpaper
-npm install
-npm run agent:framework-adapters
+cd bilig
+pnpm --dir examples/headless-workpaper install --ignore-workspace
+pnpm --dir examples/headless-workpaper run agent:framework-adapters
 ```
 
 The LlamaIndex.TS lane proves the same WorkPaper functions are exposed as

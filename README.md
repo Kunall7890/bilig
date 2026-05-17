@@ -90,9 +90,9 @@ For a route-shaped quote approval API today, run the maintained example:
 
 ```sh
 git clone --depth 1 https://github.com/proompteng/bilig.git
-cd bilig/examples/serverless-workpaper-api
-npm install
-npm run smoke
+cd bilig
+pnpm --dir examples/serverless-workpaper-api install --ignore-workspace
+pnpm --dir examples/serverless-workpaper-api run smoke
 ```
 
 For a generated project from a blank directory, run
@@ -282,19 +282,19 @@ The runnable examples are TypeScript files. Some source imports end in `.js`
 because Node ESM resolves compiled package output that way; the files you edit
 and run are still `.ts`.
 
-From `examples/headless-workpaper`:
+From a cloned checkout:
 
 ```sh
-npm install
-npm start
-npm run json-records
-npm run csv-shaped
-npm run invoice-totals
-npm run budget-variance
-npm run fulfillment-capacity
-npm run quote-approval
-npm run subscription-mrr
-npm run persistence
+pnpm --dir examples/headless-workpaper install --ignore-workspace
+pnpm --dir examples/headless-workpaper run start
+pnpm --dir examples/headless-workpaper run json-records
+pnpm --dir examples/headless-workpaper run csv-shaped
+pnpm --dir examples/headless-workpaper run invoice-totals
+pnpm --dir examples/headless-workpaper run budget-variance
+pnpm --dir examples/headless-workpaper run fulfillment-capacity
+pnpm --dir examples/headless-workpaper run quote-approval
+pnpm --dir examples/headless-workpaper run subscription-mrr
+pnpm --dir examples/headless-workpaper run persistence
 ```
 
 The most useful entry points:
@@ -310,15 +310,15 @@ The most useful entry points:
 For agent tools:
 
 ```sh
-npm run agent:verify
-npm run agent:tool-call
-npm run agent:openai-responses
-npm run agent:ai-sdk-generate-text
-npm run agent:ai-sdk-stream-text
-npm run agent:framework-adapters
-npm run agent:mcp-tools
-npm run agent:mcp-file-transcript
-npm run agent:mcp-stdio
+pnpm --dir examples/headless-workpaper run agent:verify
+pnpm --dir examples/headless-workpaper run agent:tool-call
+pnpm --dir examples/headless-workpaper run agent:openai-responses
+pnpm --dir examples/headless-workpaper run agent:ai-sdk-generate-text
+pnpm --dir examples/headless-workpaper run agent:ai-sdk-stream-text
+pnpm --dir examples/headless-workpaper run agent:framework-adapters
+pnpm --dir examples/headless-workpaper run agent:mcp-tools
+pnpm --dir examples/headless-workpaper run agent:mcp-file-transcript
+pnpm --dir examples/headless-workpaper run agent:mcp-stdio
 ```
 
 The AI SDK example uses

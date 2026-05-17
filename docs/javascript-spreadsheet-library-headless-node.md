@@ -96,14 +96,14 @@ The maintained repo example is the next step:
 
 ```sh
 git clone https://github.com/proompteng/bilig.git
-cd bilig/examples/headless-workpaper
-npm install
-npm start
-npm run agent:verify
+cd bilig
+pnpm --dir examples/headless-workpaper install --ignore-workspace
+pnpm --dir examples/headless-workpaper run start
+pnpm --dir examples/headless-workpaper run agent:verify
 ```
 
-`npm run agent:verify` changes workbook inputs, checks dependent formula
-readback, serializes the document, restores it, and verifies that formulas and
+`agent:verify` changes workbook inputs, checks dependent formula readback,
+serializes the document, restores it, and verifies that formulas and
 values survived the round trip.
 
 ## When not to use bilig

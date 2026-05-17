@@ -525,13 +525,21 @@ requireIncludes(
   'docs/agent-workpaper-tool-calling-recipe.md',
 )
 requireIncludes(agentToolCallingDoc, 'function_call_output', 'docs/agent-workpaper-tool-calling-recipe.md')
-requireIncludes(agentToolCallingDoc, 'npm run agent:framework-adapters', 'docs/agent-workpaper-tool-calling-recipe.md')
+requireIncludes(
+  agentToolCallingDoc,
+  'pnpm --dir examples/headless-workpaper run agent:framework-adapters',
+  'docs/agent-workpaper-tool-calling-recipe.md',
+)
 requireIncludes(
   aiSdkLangChainDoc,
   'description: Wrap @bilig/headless WorkPaper reads, verified edits, formula contracts, and persistence checks as AI SDK, LangChain, Mastra, LlamaIndex.TS, LangGraph.js, CopilotKit, and Cloudflare Agents tools',
   'docs/vercel-ai-sdk-langchain-spreadsheet-tool.md',
 )
-requireIncludes(aiSdkLangChainDoc, 'npm run agent:framework-adapters', 'docs/vercel-ai-sdk-langchain-spreadsheet-tool.md')
+requireIncludes(
+  aiSdkLangChainDoc,
+  'pnpm --dir examples/headless-workpaper run agent:framework-adapters',
+  'docs/vercel-ai-sdk-langchain-spreadsheet-tool.md',
+)
 requireIncludes(aiSdkLangChainDoc, 'Mastra `createTool()`', 'docs/vercel-ai-sdk-langchain-spreadsheet-tool.md')
 requireIncludes(aiSdkLangChainDoc, 'LlamaIndex.TS tools', 'docs/vercel-ai-sdk-langchain-spreadsheet-tool.md')
 requireIncludes(aiSdkLangChainDoc, 'LangGraph.js `ToolNode`', 'docs/vercel-ai-sdk-langchain-spreadsheet-tool.md')
@@ -554,10 +562,18 @@ requireIncludes(
   'description: Expose @bilig/headless workbook reads, verified edits, formula contracts, and persistence checks through MCP-style tools/list and tools/call handlers',
   'docs/mcp-workpaper-tool-server.md',
 )
-requireIncludes(mcpWorkPaperToolServerDoc, 'npm run agent:mcp-tools', 'docs/mcp-workpaper-tool-server.md')
+requireIncludes(
+  mcpWorkPaperToolServerDoc,
+  'pnpm --dir examples/headless-workpaper run agent:mcp-tools',
+  'docs/mcp-workpaper-tool-server.md',
+)
 requireIncludes(mcpWorkPaperToolServerDoc, 'npm run --silent agent:mcp-stdio', 'docs/mcp-workpaper-tool-server.md')
 requireIncludes(mcpWorkPaperToolServerDoc, '## Copy-Paste JSON-RPC Transcript', 'docs/mcp-workpaper-tool-server.md')
-requireIncludes(mcpWorkPaperToolServerDoc, 'NODE_NO_WARNINGS=1 npm run --silent agent:mcp-transcript', 'docs/mcp-workpaper-tool-server.md')
+requireIncludes(
+  mcpWorkPaperToolServerDoc,
+  'pnpm --dir examples/headless-workpaper run agent:mcp-transcript',
+  'docs/mcp-workpaper-tool-server.md',
+)
 requireIncludes(mcpWorkPaperToolServerDoc, '"structuredContent": {', 'docs/mcp-workpaper-tool-server.md')
 requireIncludes(mcpWorkPaperToolServerDoc, '"restoredMatchesAfter": true', 'docs/mcp-workpaper-tool-server.md')
 requireIncludes(

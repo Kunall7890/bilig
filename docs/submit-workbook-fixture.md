@@ -80,9 +80,8 @@ For a service workflow, start from the quote approval example and change only
 the inputs, formulas, or expected response that matter:
 
 ```sh
-cd examples/serverless-workpaper-api
-npm install
-npm run quote-approval-api
+pnpm --dir examples/serverless-workpaper-api install --ignore-workspace
+pnpm --dir examples/serverless-workpaper-api run quote-approval-api
 ```
 
 For an MCP or agent-tool workflow, include the JSON-RPC or tool-call transcript

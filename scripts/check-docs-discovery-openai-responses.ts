@@ -50,7 +50,7 @@ export async function requireOpenAiResponsesDiscovery({
     ['docs/openai-responses-workpaper-tool-call.md', openAiDoc],
     ['examples/headless-workpaper/README.md', headlessExampleReadme],
   ] as const) {
-    requireIncludes(content, 'npm run agent:openai-responses', path)
+    requireIncludes(content, 'agent:openai-responses', path)
   }
 
   for (const [path, content] of [

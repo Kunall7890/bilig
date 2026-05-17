@@ -98,9 +98,9 @@ Then run the route-shaped example:
 
 ```sh
 git clone --depth 1 https://github.com/proompteng/bilig.git
-cd bilig/examples/serverless-workpaper-api
-npm install
-npm run smoke
+cd bilig
+pnpm --dir examples/serverless-workpaper-api install --ignore-workspace
+pnpm --dir examples/serverless-workpaper-api run smoke
 ```
 
 That example is closer to a real service: request-shaped inputs go into cells,

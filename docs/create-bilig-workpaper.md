@@ -36,9 +36,9 @@ Full-repo flagship example:
 
 ```sh
 git clone --depth 1 https://github.com/proompteng/bilig.git
-cd bilig/examples/serverless-workpaper-api
-npm install
-npm run smoke
+cd bilig
+pnpm --dir examples/serverless-workpaper-api install --ignore-workspace
+pnpm --dir examples/serverless-workpaper-api run smoke
 ```
 
 Expected output includes:

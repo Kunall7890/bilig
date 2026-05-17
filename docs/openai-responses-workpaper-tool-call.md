@@ -24,9 +24,9 @@ Run the dependency-light example from a checkout:
 
 ```sh
 git clone https://github.com/proompteng/bilig.git
-cd bilig/examples/headless-workpaper
-npm install
-npm run agent:openai-responses
+cd bilig
+pnpm --dir examples/headless-workpaper install --ignore-workspace
+pnpm --dir examples/headless-workpaper run agent:openai-responses
 ```
 
 The script does not call the OpenAI API. It gives you the application-side code

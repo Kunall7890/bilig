@@ -23,9 +23,8 @@ agent framework around it.
 Run the maintained example from a clean checkout:
 
 ```sh
-cd examples/headless-workpaper
-npm install
-npm run agent:tool-call
+pnpm --dir examples/headless-workpaper install --ignore-workspace
+pnpm --dir examples/headless-workpaper run agent:tool-call
 ```
 
 The example builds a workbook with `Inputs` and `Summary` sheets, then executes

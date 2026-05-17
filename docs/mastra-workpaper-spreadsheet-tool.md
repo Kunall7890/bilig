@@ -23,9 +23,9 @@ name the model sees.
 
 ```sh
 git clone https://github.com/proompteng/bilig.git
-cd bilig/examples/headless-workpaper
-npm install
-npm run agent:framework-adapters
+cd bilig
+pnpm --dir examples/headless-workpaper install --ignore-workspace
+pnpm --dir examples/headless-workpaper run agent:framework-adapters
 ```
 
 The Mastra lane returns tool IDs and a verified write result:

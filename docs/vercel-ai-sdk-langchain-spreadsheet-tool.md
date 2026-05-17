@@ -26,9 +26,9 @@ Run this first if you use the Vercel AI SDK and want to see the complete
 
 ```sh
 git clone https://github.com/proompteng/bilig.git
-cd bilig/examples/headless-workpaper
-npm install
-npm run agent:ai-sdk-generate-text
+cd bilig
+pnpm --dir examples/headless-workpaper install --ignore-workspace
+pnpm --dir examples/headless-workpaper run agent:ai-sdk-generate-text
 ```
 
 The smoke test uses the real `ai` package: `generateText()`, `tool()`,
@@ -67,9 +67,9 @@ Use this command when your agent path streams model output:
 
 ```sh
 git clone https://github.com/proompteng/bilig.git
-cd bilig/examples/headless-workpaper
-npm install
-npm run agent:ai-sdk-stream-text
+cd bilig
+pnpm --dir examples/headless-workpaper install --ignore-workspace
+pnpm --dir examples/headless-workpaper run agent:ai-sdk-stream-text
 ```
 
 The smoke test uses the real `streamText()` API, `tool()` wrappers, and
@@ -109,9 +109,9 @@ Run the dependency-free adapter example from a clean checkout:
 
 ```sh
 git clone https://github.com/proompteng/bilig.git
-cd bilig/examples/headless-workpaper
-npm install
-npm run agent:framework-adapters
+cd bilig
+pnpm --dir examples/headless-workpaper install --ignore-workspace
+pnpm --dir examples/headless-workpaper run agent:framework-adapters
 ```
 
 The script builds the same workbook once per adapter family and exposes the

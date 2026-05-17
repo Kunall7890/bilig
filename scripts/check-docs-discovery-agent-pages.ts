@@ -10,26 +10,42 @@ export const agentFrameworkLlmsRequiredLinks = [
 export const agentFrameworkDocRequirements = [
   {
     path: 'docs/mastra-workpaper-spreadsheet-tool.md',
-    includes: ['Mastra WorkPaper spreadsheet tool', 'createTool', 'npm run agent:framework-adapters'],
+    includes: ['Mastra WorkPaper spreadsheet tool', 'createTool', 'pnpm --dir examples/headless-workpaper run agent:framework-adapters'],
   },
   {
     path: 'docs/llamaindex-workpaper-spreadsheet-tool.md',
-    includes: ['LlamaIndex.TS WorkPaper spreadsheet tool', 'tool(fn, { parameters })', 'npm run agent:framework-adapters'],
+    includes: [
+      'LlamaIndex.TS WorkPaper spreadsheet tool',
+      'tool(fn, { parameters })',
+      'pnpm --dir examples/headless-workpaper run agent:framework-adapters',
+    ],
   },
   {
     path: 'docs/langgraph-workpaper-toolnode-spreadsheet.md',
-    includes: ['LangGraph.js WorkPaper ToolNode spreadsheet tool', 'ToolNode', 'npm run agent:framework-adapters'],
+    includes: [
+      'LangGraph.js WorkPaper ToolNode spreadsheet tool',
+      'ToolNode',
+      'pnpm --dir examples/headless-workpaper run agent:framework-adapters',
+    ],
   },
   {
     path: 'docs/copilotkit-workpaper-spreadsheet-action.md',
-    includes: ['CopilotKit WorkPaper spreadsheet action', 'useCopilotAction', 'npm run agent:framework-adapters'],
+    includes: [
+      'CopilotKit WorkPaper spreadsheet action',
+      'useCopilotAction',
+      'pnpm --dir examples/headless-workpaper run agent:framework-adapters',
+    ],
   },
   {
     path: 'docs/cloudflare-agents-workpaper-spreadsheet-tool.md',
-    includes: ['Cloudflare Agents WorkPaper spreadsheet tool', 'agentTool', 'npm run agent:framework-adapters'],
+    includes: [
+      'Cloudflare Agents WorkPaper spreadsheet tool',
+      'agentTool',
+      'pnpm --dir examples/headless-workpaper run agent:framework-adapters',
+    ],
   },
   {
     path: 'docs/crewai-workpaper-spreadsheet-tool.md',
-    includes: ['CrewAI WorkPaper spreadsheet tool', 'JSON contract', 'npm run agent:framework-adapters'],
+    includes: ['CrewAI WorkPaper spreadsheet tool', 'JSON contract', 'pnpm --dir examples/headless-workpaper run agent:framework-adapters'],
   },
 ] as const

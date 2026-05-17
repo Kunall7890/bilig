@@ -43,24 +43,40 @@ export async function requireServerlessWorkPaperApiDiscovery({
 
   requireIncludes(serverlessExampleReadme, 'npm run next-route-handler', 'examples/serverless-workpaper-api/README.md')
   requireIncludes(serverlessExampleReadme, '## Next.js App Router Smoke', 'examples/serverless-workpaper-api/README.md')
-  requireIncludes(serverlessWorkPaperApiRouteDoc, 'npm run next-route-handler', 'docs/serverless-workpaper-api-route.md')
+  requireIncludes(
+    serverlessWorkPaperApiRouteDoc,
+    'pnpm --dir examples/serverless-workpaper-api run next-route-handler',
+    'docs/serverless-workpaper-api-route.md',
+  )
   requireIncludes(serverlessExampleReadme, 'npm run next-server-action', 'examples/serverless-workpaper-api/README.md')
   requireIncludes(serverlessExampleReadme, '## Next.js Server Action Smoke', 'examples/serverless-workpaper-api/README.md')
-  requireIncludes(serverlessWorkPaperApiRouteDoc, 'npm run next-server-action', 'docs/serverless-workpaper-api-route.md')
+  requireIncludes(
+    serverlessWorkPaperApiRouteDoc,
+    'pnpm --dir examples/serverless-workpaper-api run next-server-action',
+    'docs/serverless-workpaper-api-route.md',
+  )
   requireIncludes(serverlessWorkPaperApiRouteDoc, '## Next.js Server Action Adapter', 'docs/serverless-workpaper-api-route.md')
   requireIncludes(llms, 'Next.js Server Action WorkPaper smoke', 'docs/llms.txt')
   requireIncludes(llms, 'npm run next-server-action', 'docs/llms.txt')
   requireIncludes(readme, 'npm run next-server-action', 'README.md')
   requireIncludes(serverlessExampleReadme, 'npm run next-server-action-formdata', 'examples/serverless-workpaper-api/README.md')
   requireIncludes(serverlessExampleReadme, '## Next.js Server Action FormData Smoke', 'examples/serverless-workpaper-api/README.md')
-  requireIncludes(serverlessWorkPaperApiRouteDoc, 'npm run next-server-action-formdata', 'docs/serverless-workpaper-api-route.md')
+  requireIncludes(
+    serverlessWorkPaperApiRouteDoc,
+    'pnpm --dir examples/serverless-workpaper-api run next-server-action-formdata',
+    'docs/serverless-workpaper-api-route.md',
+  )
   requireIncludes(serverlessWorkPaperApiRouteDoc, '## Next.js Server Action FormData Adapter', 'docs/serverless-workpaper-api-route.md')
   requireIncludes(llms, 'Next.js Server Action FormData WorkPaper smoke', 'docs/llms.txt')
   requireIncludes(llms, 'npm run next-server-action-formdata', 'docs/llms.txt')
   requireIncludes(readme, 'npm run next-server-action-formdata', 'README.md')
   requireIncludes(serverlessExampleReadme, 'npm run next-server-action-validation', 'examples/serverless-workpaper-api/README.md')
   requireIncludes(serverlessExampleReadme, '## Next.js Server Action Validation Smoke', 'examples/serverless-workpaper-api/README.md')
-  requireIncludes(serverlessWorkPaperApiRouteDoc, 'npm run next-server-action-validation', 'docs/serverless-workpaper-api-route.md')
+  requireIncludes(
+    serverlessWorkPaperApiRouteDoc,
+    'pnpm --dir examples/serverless-workpaper-api run next-server-action-validation',
+    'docs/serverless-workpaper-api-route.md',
+  )
   requireIncludes(serverlessWorkPaperApiRouteDoc, '## Next.js Server Action Validation Adapter', 'docs/serverless-workpaper-api-route.md')
   requireIncludes(llms, 'Next.js Server Action validation-error WorkPaper smoke', 'docs/llms.txt')
   requireIncludes(llms, 'npm run next-server-action-validation', 'docs/llms.txt')
@@ -117,7 +133,11 @@ export async function requireServerlessWorkPaperApiDiscovery({
     'examples/serverless-workpaper-api/persistence-adapters.ts',
     'docs/persisting-formula-backed-workpaper-documents-in-node.md',
   )
-  requireIncludes(persistenceDoc, 'npm run persistence-adapters', 'docs/persisting-formula-backed-workpaper-documents-in-node.md')
+  requireIncludes(
+    persistenceDoc,
+    'pnpm --dir examples/serverless-workpaper-api run persistence-adapters',
+    'docs/persisting-formula-backed-workpaper-documents-in-node.md',
+  )
   requireIncludes(persistenceDoc, 'Postgres JSONB', 'docs/persisting-formula-backed-workpaper-documents-in-node.md')
   requireIncludes(persistenceDoc, 'SQLite adapter', 'docs/persisting-formula-backed-workpaper-documents-in-node.md')
   requireIncludes(persistenceDoc, 'XLSX file cache', 'docs/persisting-formula-backed-workpaper-documents-in-node.md')
@@ -155,13 +175,17 @@ export async function requireServerlessWorkPaperApiDiscovery({
     'examples/serverless-workpaper-api/package.json',
   )
 
-  requireIncludes(headlessReadme, 'npm run next-route-handler', 'packages/headless/README.md')
-  requireIncludes(headlessReadme, 'npm run next-server-action', 'packages/headless/README.md')
+  requireIncludes(headlessReadme, 'pnpm --dir examples/serverless-workpaper-api run next-route-handler', 'packages/headless/README.md')
+  requireIncludes(headlessReadme, 'pnpm --dir examples/serverless-workpaper-api run next-server-action', 'packages/headless/README.md')
   requireIncludes(headlessReadme, '#nextjs-server-action-smoke', 'packages/headless/README.md')
-  requireIncludes(headlessReadme, 'npm run next-server-action-formdata', 'packages/headless/README.md')
+  requireIncludes(
+    headlessReadme,
+    'pnpm --dir examples/serverless-workpaper-api run next-server-action-formdata',
+    'packages/headless/README.md',
+  )
   requireIncludes(headlessReadme, '#nextjs-server-action-formdata-smoke', 'packages/headless/README.md')
-  requireIncludes(headlessReadme, 'npm run framework-adapters', 'packages/headless/README.md')
-  requireIncludes(headlessReadme, 'npm run persistence-adapters', 'packages/headless/README.md')
+  requireIncludes(headlessReadme, 'pnpm --dir examples/serverless-workpaper-api run framework-adapters', 'packages/headless/README.md')
+  requireIncludes(headlessReadme, 'pnpm --dir examples/serverless-workpaper-api run persistence-adapters', 'packages/headless/README.md')
   requireIncludes(headlessReadme, '#persistence-adapters', 'packages/headless/README.md')
   requireIncludes(headlessReadme, 'node-framework-workpaper-adapters.html', 'packages/headless/README.md')
 }

@@ -131,11 +131,10 @@ It includes:
 Run the wider proof from a repo checkout:
 
 ```sh
-cd examples/serverless-workpaper-api
-npm install
-npm run test
-npm run framework-adapters
-npm run persistence-adapters
+pnpm --dir examples/serverless-workpaper-api install --ignore-workspace
+pnpm --dir examples/serverless-workpaper-api run test
+pnpm --dir examples/serverless-workpaper-api run framework-adapters
+pnpm --dir examples/serverless-workpaper-api run persistence-adapters
 ```
 
 ## Next Pages
