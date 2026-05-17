@@ -54,6 +54,7 @@ export interface DocsDiscoveryContext {
   readonly npmProvenancePackageTrustDoc: string
   readonly xlsxCorpusVerifierWalkthrough: string
   readonly whyAgentsDoc: string
+  readonly headlessWorkpaperAgentHandbook: string
   readonly agentToolCallingDoc: string
   readonly aiSdkLangChainDoc: string
   readonly mcpWorkPaperToolServerDoc: string
@@ -121,6 +122,7 @@ export async function loadDocsDiscoveryContext(): Promise<DocsDiscoveryContext> 
     npmProvenancePackageTrustDoc,
     xlsxCorpusVerifierWalkthrough,
     whyAgentsDoc,
+    headlessWorkpaperAgentHandbook,
     agentToolCallingDoc,
     aiSdkLangChainDoc,
     mcpWorkPaperToolServerDoc,
@@ -179,6 +181,7 @@ export async function loadDocsDiscoveryContext(): Promise<DocsDiscoveryContext> 
     readFile(join(docsRoot, 'npm-provenance-package-trust.md'), 'utf8'),
     readFile(join(docsRoot, 'xlsx-corpus-verifier-walkthrough.md'), 'utf8'),
     readFile(join(docsRoot, 'why-agents-need-workbook-apis.md'), 'utf8'),
+    readFile(join(docsRoot, 'headless-workpaper-agent-handbook.md'), 'utf8'),
     readFile(join(docsRoot, 'agent-workpaper-tool-calling-recipe.md'), 'utf8'),
     readFile(join(docsRoot, 'vercel-ai-sdk-langchain-spreadsheet-tool.md'), 'utf8'),
     readFile(join(docsRoot, 'mcp-workpaper-tool-server.md'), 'utf8'),
@@ -246,6 +249,7 @@ export async function loadDocsDiscoveryContext(): Promise<DocsDiscoveryContext> 
     npmProvenancePackageTrustDoc,
     xlsxCorpusVerifierWalkthrough,
     whyAgentsDoc,
+    headlessWorkpaperAgentHandbook,
     agentToolCallingDoc,
     aiSdkLangChainDoc,
     mcpWorkPaperToolServerDoc,

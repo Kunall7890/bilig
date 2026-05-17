@@ -18,6 +18,9 @@ for the agent to verify the edit.
 `@bilig/headless` owns the workbook behavior. MCP should stay as the transport
 and discovery layer around ordinary Node functions.
 
+If you need the short agent decision path before the protocol details, start
+with the [headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md).
+
 ## Runnable MCP-Style Example
 
 Run the dependency-free example from a clean checkout:

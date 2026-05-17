@@ -32,7 +32,7 @@ Project site: <https://proompteng.github.io/bilig/>
 | Basic fit                | [Why use Bilig?](docs/why-use-bilig.md)                                                                                  | The problem is workbook-shaped business logic that needs API readback and persistence.      |
 | Published npm package    | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                                                          | It edits one input, recalculates, persists JSON, restores, and prints `verified: true`.     |
 | Backend service shape    | [Quote approval WorkPaper API](docs/quote-approval-workpaper-api.md)                                                     | A realistic route-style workflow returns formula readback and `restoredMatchesAfter: true`. |
-| Agent or MCP tools       | [MCP spreadsheet tool server](docs/mcp-workpaper-tool-server.md)                                                         | Tool calls can write an input and return computed readback instead of screenshot claims.    |
+| Agent or MCP tools       | [Headless WorkPaper agent handbook](docs/headless-workpaper-agent-handbook.md) and [MCP spreadsheet tool server](docs/mcp-workpaper-tool-server.md) | The agent can pick MCP, direct TypeScript, or route tools and prove write/readback/persist. |
 | Agent-owned XLSX files   | [Agent XLSX recalculation without LibreOffice](docs/agent-xlsx-formula-recalculation-without-libreoffice.md)             | A tool can edit XLSX inputs, recalculate, export, reimport, and return `verified: true`.    |
 | Public technical review  | [Show HN maintainer note](docs/show-hn-formula-workbooks-node-services.md)                                               | One shareable page has the npm check, benchmark caveat, known limits, and feedback ask.     |
 | Trust and performance    | [npm provenance](docs/npm-provenance-package-trust.md) and [benchmark evidence](docs/what-workpaper-benchmark-proves.md) | npm shows SLSA provenance, and benchmark claims match the checked artifact.                 |
@@ -200,8 +200,9 @@ Use the shortest path that proves the package against a real job.
    [XLSX formula recalculation in Node](examples/xlsx-recalculation-node):
    `npm start`.
 4. If an agent needs workbook tools, start with the
-   [MCP server guide](docs/mcp-workpaper-tool-server.md), including the
-   copy-paste JSON-RPC transcript for verified write/readback.
+   [headless WorkPaper agent handbook](docs/headless-workpaper-agent-handbook.md),
+   then use the [MCP server guide](docs/mcp-workpaper-tool-server.md) when the
+   caller is an MCP client.
 5. If a real workbook almost works, start with the
    [formula bug clinic](docs/formula-bug-clinic.md). Then submit a
    [reduced public fixture](docs/submit-workbook-fixture.md) so the blocker can
@@ -226,6 +227,7 @@ the [Node spreadsheet formula engine guide](docs/node-spreadsheet-formula-engine
 [workbook fixture submissions](docs/submit-workbook-fixture.md),
 [AI SDK and LangChain tools](docs/vercel-ai-sdk-langchain-spreadsheet-tool.md),
 [CrewAI adapter](docs/crewai-workpaper-spreadsheet-tool.md),
+the [headless WorkPaper agent handbook](docs/headless-workpaper-agent-handbook.md),
 the [MCP server guide](docs/mcp-workpaper-tool-server.md),
 [spreadsheet MCP server comparison](docs/spreadsheet-mcp-server-comparison.md),
 [MCP directory status](docs/mcp-spreadsheet-server-directory.md),

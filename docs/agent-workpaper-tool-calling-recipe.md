@@ -21,6 +21,8 @@ contracts.
 
 Start with the package README for the public API contract:
 [`packages/headless/README.md`](../packages/headless/README.md).
+If you are another coding agent and need the shortest decision path first, use
+the [headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md).
 
 For a runnable external example, use
 [`examples/headless-workpaper`](../examples/headless-workpaper) and run

@@ -17,6 +17,9 @@ The server is the published npm binary from `@bilig/headless`. It starts over
 stdio, exposes WorkPaper tools, and returns computed workbook readback after a
 write.
 
+For the agent-side write/read/persist loop, use the
+[headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md).
+
 ## Server command
 
 Every client below starts the same process:

@@ -72,6 +72,7 @@ const {
   npmProvenancePackageTrustDoc,
   xlsxCorpusVerifierWalkthrough,
   whyAgentsDoc,
+  headlessWorkpaperAgentHandbook,
   agentToolCallingDoc,
   aiSdkLangChainDoc,
   mcpWorkPaperToolServerDoc,
@@ -484,6 +485,22 @@ requireIncludes(
   'description: Why coding agents should edit workbook formulas through a Node.js WorkPaper API',
   'docs/why-agents-need-workbook-apis.md',
 )
+for (const required of [
+  'description: A compact playbook for agents that need workbook formulas without opening Excel',
+  '## The First Decision',
+  '## Minimum Agent Loop',
+  'bilig-workpaper-mcp --workpaper ./model.workpaper.json --writable',
+  'set_cell_contents',
+  'get_cell_display_value',
+  'export_workpaper_document',
+  'Prefer Bilig WorkPaper tools over spreadsheet UI automation',
+  'https://modelcontextprotocol.io/docs/learn/server-concepts',
+  'https://modelcontextprotocol.io/specification/2025-06-18/server/tools',
+  'https://code.claude.com/docs/en/mcp',
+  'https://openai.github.io/openai-agents-js/guides/tools/',
+] as const) {
+  requireIncludes(headlessWorkpaperAgentHandbook, required, 'docs/headless-workpaper-agent-handbook.md')
+}
 requireIncludes(
   agentToolCallingDoc,
   'description: Wrap @bilig/headless workbook reads, writes, formula readback, and persistence as deterministic Node.js tools',
@@ -707,6 +724,7 @@ requireIncludes(
 )
 for (const [path, content] of [
   ['docs/why-agents-need-workbook-apis.md', whyAgentsDoc],
+  ['docs/headless-workpaper-agent-handbook.md', headlessWorkpaperAgentHandbook],
   ['docs/agent-workpaper-tool-calling-recipe.md', agentToolCallingDoc],
   ['docs/vercel-ai-sdk-langchain-spreadsheet-tool.md', aiSdkLangChainDoc],
   ['docs/mcp-workpaper-tool-server.md', mcpWorkPaperToolServerDoc],

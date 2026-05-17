@@ -17,6 +17,7 @@ export const docsSiteSources = [
   ['microsoft-graph-excel-recalculation-node.html', 'microsoft-graph-excel-recalculation-node.md'],
   ['xlsx-calc-alternative-node-workbook-recalculation.html', 'xlsx-calc-alternative-node-workbook-recalculation.md'],
   ['why-agents-need-workbook-apis.html', 'why-agents-need-workbook-apis.md'],
+  ['headless-workpaper-agent-handbook.html', 'headless-workpaper-agent-handbook.md'],
   ['agent-workpaper-tool-calling-recipe.html', 'agent-workpaper-tool-calling-recipe.md'],
   ['openai-responses-workpaper-tool-call.html', 'openai-responses-workpaper-tool-call.md'],
   ['vercel-ai-sdk-langchain-spreadsheet-tool.html', 'vercel-ai-sdk-langchain-spreadsheet-tool.md'],
