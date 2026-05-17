@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.18.14
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.18.13
+- Manual override: no
+
+## Fixes
+- fix(wasm-kernel): support array metadata fast paths (f3d7ad3a)
+
 ## 0.18.13
 
 - Release type: patch
