@@ -50,6 +50,27 @@ describe('public workbook recent complex headless corpus gate', () => {
     expect(recentComplexityScore(complex)).toBeGreaterThanOrEqual(5)
   })
 
+  it('does not count volume-only datasets as complex formula workbooks by default', () => {
+    const formula = passedCase(recentArtifact('recent-formula-complex'), {
+      cellCount: 5_000,
+      formulaCellCount: 1,
+      sheetCount: 4,
+    })
+    const volumeOnly = passedCase(recentArtifact('recent-volume-only'), {
+      cellCount: 100_000,
+      formulaCellCount: 0,
+      sheetCount: 8,
+    })
+    const selected = selectRecentComplexWorkbookCandidates({
+      cacheDir: '/tmp/cache',
+      manifestArtifacts: [recentArtifact('recent-formula-complex'), recentArtifact('recent-volume-only')],
+      scorecard: scorecardFor([formula, volumeOnly]),
+    })
+
+    expect(recentComplexityScore(volumeOnly)).toBeGreaterThanOrEqual(5)
+    expect(selected.map((candidate) => candidate.artifact.id)).toEqual(['recent-formula-complex'])
+  })
+
   it('checks the headless result against the same recent complex artifact set', () => {
     const dir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-recent-complex-'))
     const cacheDir = join(dir, 'cache')

@@ -57,7 +57,7 @@ const defaultScorecardPath = join(defaultCacheDir, 'scorecard.json')
 const defaultHeadlessScorecardPath = join(defaultCacheDir, 'headless-scorecard.json')
 const defaultCorpusRunStopMarkerPath = join(rootDir, '.agent-coordination', '20260507T074946Z-codex-stop-interactive-corpus-runs.md')
 const defaultTargetWorkbookCount = 500
-const defaultMinFormulaCells = 0
+const defaultMinFormulaCells = 1
 const defaultMinComplexityScore = 5
 
 async function main(): Promise<void> {
