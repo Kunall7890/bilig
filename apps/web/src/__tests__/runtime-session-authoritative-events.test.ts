@@ -41,7 +41,7 @@ function runtimeState(overrides: Partial<WorkbookWorkerStateSnapshot> = {}): Wor
 describe('worker runtime session authoritative event loading', () => {
   let channel: MessageChannel | null = null
   let controller: WorkerRuntimeSessionController | null = null
-  let host: ReturnType<typeof createWorkerEngineHost> | null = null
+  let host: { dispose(): void } | null = null
 
   afterEach(() => {
     controller?.dispose()

@@ -33,6 +33,24 @@ For example, a workbook may store one formula for `B2:B3`, while `B3` only says
 "use shared formula 0." A runtime that expects every formula cell to contain
 formula text has to translate the master formula from `B2` to `B3`.
 
+## The public symptom
+
+This shows up in real ExcelJS and formula-engine evaluation threads:
+
+- an ExcelJS user edits workbook inputs from JSON, then finds repeated formulas
+  still appear as the shared master formula instead of row-relative formula
+  text;
+- another user wants to set a formula in Node and read the calculated value
+  immediately, then discovers the package writes formula records but does not
+  calculate them in-process;
+- a HyperFormula user tries to feed an ExcelJS workbook into a runtime and gets
+  blocked on `sharedFormula` cells before recalculation can even start.
+
+Those are not the same bug, but they point at the same backend boundary. A file
+library can preserve the XLSX representation. A service that owns the decision
+also needs a runtime step that expands import-only formula storage details and
+then recalculates after edits.
+
 ## What Bilig does
 
 `@bilig/headless/xlsx` imports XLSX files through the Bilig Excel import layer.
@@ -47,6 +65,22 @@ The implementation is in:
 
 The shared-formula regression test covers an `INDIRECT` formula where the second
 row must become `INDIRECT("'"&A3&"'!A2")`, not a broken reference into `A3`.
+
+## A practical split
+
+Keep ExcelJS in the path when the job is still an XLSX file job:
+
+1. Use ExcelJS to read, write, style, and ship the workbook file.
+2. Import the workbook into a formula runtime only for the state that must be
+   calculated in Node.
+3. Treat shared-formula expansion as part of the import boundary, before
+   service code trusts any calculated output.
+4. Add a regression fixture for the smallest workbook that proves the row or
+   column translation, the input edit, and the readback value.
+
+That split is easier to defend in production than pretending `fullCalcOnLoad`,
+cached formula values, or a later Excel open is equivalent to backend
+calculation.
 
 ## When this is a fit
 
@@ -80,6 +114,10 @@ matches.
 For the smaller package-only recalculation check, use the
 [ExcelJS formula recalculation guide](exceljs-formula-recalculation-node.md).
 
+If you have a reduced shared-formula workbook that still fails this path, send
+it as a public fixture:
+<https://github.com/proompteng/bilig/issues/new?template=workbook_fixture.yml>.
+
 ## Boundary
 
 This is not a claim that Bilig is a drop-in replacement for ExcelJS,
@@ -93,3 +131,11 @@ recalculate, serialize, restore, and test.
 If this is the exact class of bug you are trying to avoid, star or bookmark the
 repository so the next backend developer can find it:
 <https://github.com/proompteng/bilig/stargazers>.
+
+## Sources
+
+- ExcelJS discussion: formulas and shared formulas after JSON-driven workbook
+  edits:
+  <https://github.com/exceljs/exceljs/discussions/2128>
+- HyperFormula discussion: handling `sharedFormula` cells from ExcelJS:
+  <https://github.com/handsontable/hyperformula/discussions/1448>
