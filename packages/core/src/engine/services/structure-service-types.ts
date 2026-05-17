@@ -4,7 +4,7 @@ import type { EngineOp } from '@bilig/workbook-domain'
 import type { EngineCounters } from '../../perf/engine-counters.js'
 import type { RangeRegistry } from '../../range-registry.js'
 import type { FormulaTable } from '../../formula-table.js'
-import type { FormulaFamily } from '../../formula/formula-family-store.js'
+import type { FormulaFamily, FormulaFamilyStructuralSourceTransform } from '../../formula/formula-family-store.js'
 import type { WorkbookPivotRecord, WorkbookStore } from '../../workbook-store.js'
 import type { RuntimeFormula } from '../runtime-state.js'
 import type { StructuralTransaction } from '../structural-transaction.js'
@@ -79,6 +79,11 @@ export interface CreateEngineStructureServiceArgs {
   readonly forEachFormulaCellOwnedBySheet: (sheetName: string, fn: (cellIndex: number) => void) => void
   readonly countFormulaSheetMembers: (sheetId: number) => number
   readonly canUseFormulaFamilyIndex: () => boolean
+  readonly tryDeferFormulaFamilyStructuralSourceTransforms: (
+    sheetId: number,
+    transform: FormulaFamilyStructuralSourceTransform,
+    canDeferCellIndex: (cellIndex: number) => boolean,
+  ) => number | undefined
   readonly forEachFormulaFamily: (fn: (family: FormulaFamily) => void) => void
   readonly setFormulaFamilyStructuralSourceTransform: (
     familyId: number,

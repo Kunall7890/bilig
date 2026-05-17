@@ -101,6 +101,11 @@ export interface EngineFormulaBindingService {
   readonly countFormulaFamilySheetMembersNow: (sheetId: number) => number
   readonly canUseFormulaFamilyIndexNow: () => boolean
   readonly isFormulaFamilyIndexReadyNow: () => boolean
+  readonly tryDeferFormulaFamilyStructuralSourceTransformsNow: (
+    sheetId: number,
+    transform: FormulaFamilyStructuralSourceTransform,
+    canDeferCellIndex: (cellIndex: number) => boolean,
+  ) => number | undefined
   readonly forEachFormulaFamilyNow: (fn: (family: FormulaFamily) => void) => void
   readonly setFormulaFamilyStructuralSourceTransformNow: (familyId: number, transform: FormulaFamilyStructuralSourceTransform) => void
   readonly getFormulaFamilyStructuralSourceTransformNow: (cellIndex: number) => FormulaFamilyStructuralSourceTransform | undefined

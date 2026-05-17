@@ -65,6 +65,7 @@ import { ensureFormulaBindingDependencyBuildCapacity } from './formula-binding-d
 import { createFormulaBindingRangeDependencyUpdater } from './formula-binding-range-dependencies.js'
 import { clearFormulaRuntimeFlags, markFormulaCellBound } from './formula-binding-cell-flags.js'
 import { formulaBindingEffect } from './formula-binding-effect.js'
+import { queueDeferredFormulaFamilyStructuralSourceTransforms } from './formula-binding-deferred-family-transforms.js'
 import type {
   BindPreparedFormulaOptions,
   CreateEngineFormulaBindingServiceArgs,
@@ -81,6 +82,7 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
   const formulaFamilyShapeKeyCache: FormulaBindingFamilyShapeKeyCache = new Map()
   let formulaFamilyIndexNeedsRebuild = false
   let deferredFormulaFamilyIndexRuns: readonly DeferredInitialFormulaFamilyRun[] | undefined
+  let deferredFormulaFamilyStructuralSourceTransforms: Map<number, NonNullable<RuntimeFormula['structuralSourceTransform']>> | undefined
   const { recordFormulaInstanceNow, registerFormulaFamilyNow: registerFormulaFamilyInStoreNow } = createFormulaBindingInstanceTracker({
     serviceArgs: args,
     formulaFamilyShapeKeyCache,
@@ -89,6 +91,7 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
   const registerFormulaFamilyNow = (cellIndex: number, formula: RuntimeFormula, ownerPosition?: FormulaOwnerPosition): void => {
     if (formulaFamilyIndexNeedsRebuild) {
       deferredFormulaFamilyIndexRuns = undefined
+      deferredFormulaFamilyStructuralSourceTransforms = undefined
       return
     }
     registerFormulaFamilyInStoreNow(cellIndex, formula, ownerPosition)
@@ -100,6 +103,7 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     formulaSheetIndex.clear()
     formulaFamilyShapeKeyCache.clear()
     deferredFormulaFamilyIndexRuns = undefined
+    deferredFormulaFamilyStructuralSourceTransforms = undefined
     formulaFamilyIndexNeedsRebuild = false
   }
 
@@ -112,14 +116,19 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
         formulaFamilies: args.formulaFamilies,
         formulaFamilyShapeKeyCache,
         runs: deferredFormulaFamilyIndexRuns,
+        ...(deferredFormulaFamilyStructuralSourceTransforms === undefined
+          ? {}
+          : { structuralSourceTransforms: deferredFormulaFamilyStructuralSourceTransforms }),
       })
       deferredFormulaFamilyIndexRuns = undefined
+      deferredFormulaFamilyStructuralSourceTransforms = undefined
     } else {
       rebuildDeferredFormulaFamilyIndex({
         state: args.state,
         store: args.formulaFamilies,
         shapeKeyCache: formulaFamilyShapeKeyCache,
       })
+      deferredFormulaFamilyStructuralSourceTransforms = undefined
     }
     formulaFamilyIndexNeedsRebuild = false
   }
@@ -853,11 +862,13 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     deferFormulaFamilyIndexRebuildNow() {
       formulaFamilyShapeKeyCache.clear()
       deferredFormulaFamilyIndexRuns = undefined
+      deferredFormulaFamilyStructuralSourceTransforms = undefined
       formulaFamilyIndexNeedsRebuild = true
     },
     deferFormulaFamilyIndexRunsNow(runs) {
       formulaFamilyShapeKeyCache.clear()
       deferredFormulaFamilyIndexRuns = [...runs]
+      deferredFormulaFamilyStructuralSourceTransforms = undefined
       formulaFamilyIndexNeedsRebuild = true
     },
     deferFormulaInstanceTableRebuildNow() {},
@@ -890,6 +901,24 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     },
     isFormulaFamilyIndexReadyNow() {
       return !formulaFamilyIndexNeedsRebuild
+    },
+    tryDeferFormulaFamilyStructuralSourceTransformsNow(sheetId, transform, canDeferCellIndex) {
+      if (!formulaFamilyIndexNeedsRebuild) {
+        return undefined
+      }
+      const result = queueDeferredFormulaFamilyStructuralSourceTransforms({
+        runs: deferredFormulaFamilyIndexRuns,
+        existingTransforms: deferredFormulaFamilyStructuralSourceTransforms,
+        sheetId,
+        transform,
+        ownedFormulaCount: formulaMemberCounts.countSheetMembers(sheetId),
+        canDeferCellIndex,
+      })
+      if (result === undefined) {
+        return undefined
+      }
+      deferredFormulaFamilyStructuralSourceTransforms = result.transforms
+      return result.memberCount
     },
     forEachFormulaFamilyNow(fn) {
       ensureFormulaFamilyIndexNow()

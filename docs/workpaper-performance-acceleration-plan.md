@@ -26,9 +26,9 @@ Current checkpoint on `main`:
 - literal-only workbook initialization now hydrates directly into fresh core workbook storage
   instead of paying restore-style op execution overhead
 - the checked-in competitive artifact now shows:
-  - Overall scorecard: WorkPaper `78/100` mean wins and `74/100` mean+p95 wins
+  - Overall scorecard: WorkPaper `80/100` mean wins and `76/100` mean+p95 wins
   - Public lane: WorkPaper `59/73` mean wins
-  - Holdout lane: WorkPaper `19/27` mean wins
+  - Holdout lane: WorkPaper `21/27` mean wins
   - current HyperFormula mean-win rows: `22/100`
   - worst p95 WorkPaper row: `structural-insert-columns-small`
 
@@ -111,7 +111,7 @@ that are now green or no longer the decision driver:
 - `build-parser-cache-unique-formulas`
 - `sheet-rename-dependencies`
 - `named-expression-change`
-- `lookup-approximate-duplicates`
+- `structural-insert-columns-small`
 
 The live implementation order is now:
 
@@ -557,10 +557,10 @@ it is not a stable production regression.
 
 Acceptance:
 
-- WorkPaper improves from the current `78/100` scorecard-eligible comparable
+- WorkPaper improves from the current `80/100` scorecard-eligible comparable
   mean winners without reducing benchmark coverage
 - public lane remains visible and improves from the current `59/73` mean wins
-- holdout lane remains visible and improves from the current `19/27` mean wins
+- holdout lane remains visible and improves from the current `21/27` mean wins
 - closest wins gain margin without changing benchmark sampling or verification
 - top-level dominance scorecard remains current and blocks blanket `10x`
   language until direct Sheets / Excel evidence exists

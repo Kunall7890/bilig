@@ -1,4 +1,9 @@
-import type { FormulaFamilyMember, FormulaFamilyRunUpsertArgs, FormulaFamilyStore } from '../../formula/formula-family-store.js'
+import type {
+  FormulaFamilyMember,
+  FormulaFamilyRunUpsertArgs,
+  FormulaFamilyStore,
+  FormulaFamilyStructuralSourceTransform,
+} from '../../formula/formula-family-store.js'
 import type { FormulaBindingFamilyShapeKeyCache } from './formula-binding-family-shape-key.js'
 
 export type DeferredInitialFormulaFamilyRun = Omit<FormulaFamilyRunUpsertArgs, 'members'> & {
@@ -25,10 +30,11 @@ export function registerDeferredFormulaFamilyIndexRunsNow(args: {
   readonly formulaFamilies: FormulaFamilyStore
   readonly formulaFamilyShapeKeyCache: FormulaBindingFamilyShapeKeyCache
   readonly runs: readonly DeferredInitialFormulaFamilyRun[]
+  readonly structuralSourceTransforms?: ReadonlyMap<number, FormulaFamilyStructuralSourceTransform>
 }): void {
   args.formulaFamilies.clear()
   args.formulaFamilyShapeKeyCache.clear()
-  args.runs.forEach((run) => {
+  args.runs.forEach((run, runIndex) => {
     const step = run.cellIndices.length <= 1 ? 1 : run.step
     if (
       run.ordered &&
@@ -44,6 +50,13 @@ export function registerDeferredFormulaFamilyIndexRunsNow(args: {
         cellIndices: run.cellIndices,
       })
     ) {
+      const transform = args.structuralSourceTransforms?.get(runIndex)
+      if (transform !== undefined) {
+        const membership = args.formulaFamilies.getMembership(run.cellIndices[0]!)
+        if (membership) {
+          args.formulaFamilies.setStructuralSourceTransform(membership.familyId, transform)
+        }
+      }
       return
     }
     args.formulaFamilies.registerFormulaRun({
@@ -52,5 +65,12 @@ export function registerDeferredFormulaFamilyIndexRunsNow(args: {
       shapeKey: run.shapeKey,
       members: materializeDeferredFormulaFamilyRunMembers(run),
     })
+    const transform = args.structuralSourceTransforms?.get(runIndex)
+    if (transform !== undefined) {
+      const membership = args.formulaFamilies.getMembership(run.cellIndices[0]!)
+      if (membership) {
+        args.formulaFamilies.setStructuralSourceTransform(membership.familyId, transform)
+      }
+    }
   })
 }

@@ -261,6 +261,19 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
       if (ownedFormulaCount === 0) {
         return false
       }
+      const deferredMemberCount = args.tryDeferFormulaFamilyStructuralSourceTransforms(
+        argsForImpact.targetSheetId,
+        ownedPreservingSourceTransform(),
+        (representativeCellIndex) => {
+          const representative = args.state.formulas.get(representativeCellIndex)
+          return representative !== undefined && canDeferSimpleStructuralFormulaSource(args, representative, argsForImpact.transform)
+        },
+      )
+      if (deferredMemberCount !== undefined) {
+        hasDeferredStructuralFormulaSources = true
+        deferredOwnedFormulaFamilyMemberCount = deferredMemberCount
+        return true
+      }
       const familyIds: number[] = []
       let familyMemberCount = 0
       let canDeferFamilies = true

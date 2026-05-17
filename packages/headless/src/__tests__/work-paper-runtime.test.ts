@@ -151,6 +151,14 @@ interface EngineWorkbookTarget {
   }
 }
 
+interface EngineFormulaBindingTarget {
+  runtime: {
+    binding: {
+      forEachFormulaFamilyNow: (fn: (...args: unknown[]) => void) => void
+    }
+  }
+}
+
 function isEngineApplyCellMutationsTarget(value: unknown): value is EngineApplyCellMutationsTarget {
   return typeof value === 'object' && value !== null && typeof Reflect.get(value, 'applyCellMutationsAtWithOptions') === 'function'
 }
@@ -158,6 +166,12 @@ function isEngineApplyCellMutationsTarget(value: unknown): value is EngineApplyC
 function isEngineWorkbookTarget(value: unknown): value is EngineWorkbookTarget {
   const workbook = typeof value === 'object' && value !== null ? Reflect.get(value, 'workbook') : undefined
   return typeof workbook === 'object' && workbook !== null && typeof Reflect.get(workbook, 'getSheetById') === 'function'
+}
+
+function isEngineFormulaBindingTarget(value: unknown): value is EngineFormulaBindingTarget {
+  const runtime = typeof value === 'object' && value !== null ? Reflect.get(value, 'runtime') : undefined
+  const binding = typeof runtime === 'object' && runtime !== null ? Reflect.get(runtime, 'binding') : undefined
+  return typeof binding === 'object' && binding !== null && typeof Reflect.get(binding, 'forEachFormulaFamilyNow') === 'function'
 }
 
 function engineApplyCellMutationsTarget(workbook: WorkPaper): EngineApplyCellMutationsTarget {
@@ -178,6 +192,14 @@ function sheetGridEntryTarget(workbook: WorkPaper, sheetId: number): SheetGridEn
     throw new Error('Expected WorkPaper to expose sheet grid in tests')
   }
   return sheet.grid
+}
+
+function engineFormulaBindingTarget(workbook: WorkPaper): EngineFormulaBindingTarget['runtime']['binding'] {
+  const engine = Reflect.get(workbook, 'engine')
+  if (!isEngineFormulaBindingTarget(engine)) {
+    throw new Error('Expected WorkPaper to expose formula binding service in tests')
+  }
+  return engine.runtime.binding
 }
 
 function readUndoStack(value: unknown): unknown[] | null {
@@ -2231,6 +2253,30 @@ describe('WorkPaper', () => {
     expect(workbook.getCellSerialized(cell(sheetId, 0, 2))).toBe('=A1+B1')
     expect(workbook.getCellSerialized(cell(sheetId, 0, 3))).toBe('=C1*2')
     computeTrackedChanges.restore()
+  })
+
+  it('defers simple formula families on first structural column insert without materializing the family index', () => {
+    const rows = Array.from({ length: 48 }, (_, index) => {
+      const rowNumber = index + 1
+      return [rowNumber, rowNumber * 2, `=A${rowNumber}+B${rowNumber}`, `=C${rowNumber}*2`]
+    })
+    const workbook = WorkPaper.buildFromSheets({ Sheet1: rows })
+    const sheetId = workbook.getSheetId('Sheet1')!
+    const binding = engineFormulaBindingTarget(workbook)
+    const inspectFamilies = vi.spyOn(binding, 'forEachFormulaFamilyNow')
+
+    try {
+      const changes = workbook.addColumns(sheetId, [1, 1])
+
+      expect(changes).toEqual([])
+      expect(inspectFamilies).not.toHaveBeenCalled()
+      expect(workbook.getSheetDimensions(sheetId)).toEqual({ width: 5, height: 48 })
+      expect(workbook.getCellSerialized(cell(sheetId, 47, 3))).toBe('=A48+C48')
+      expect(workbook.getCellSerialized(cell(sheetId, 47, 4))).toBe('=D48*2')
+      expect(workbook.getCellValue(cell(sheetId, 47, 4))).toEqual({ tag: ValueTag.Number, value: 288 })
+    } finally {
+      inspectFamilies.mockRestore()
+    }
   })
 
   it('updates cached dimensions for safe middle column deletes without scanning the grid', () => {

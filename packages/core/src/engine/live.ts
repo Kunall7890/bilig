@@ -464,6 +464,8 @@ export function createEngineServiceRuntime(args: {
     forEachFormulaCellOwnedBySheet: (sheetName, fn) => binding.forEachFormulaCellOwnedBySheetNow(sheetName, fn),
     countFormulaSheetMembers: (sheetId) => binding.countFormulaSheetMembersNow(sheetId),
     canUseFormulaFamilyIndex: () => binding.canUseFormulaFamilyIndexNow(),
+    tryDeferFormulaFamilyStructuralSourceTransforms: (sheetId, transform, canDeferCellIndex) =>
+      binding.tryDeferFormulaFamilyStructuralSourceTransformsNow(sheetId, transform, canDeferCellIndex),
     forEachFormulaFamily: (fn) => binding.forEachFormulaFamilyNow(fn),
     setFormulaFamilyStructuralSourceTransform: (familyId, transform) =>
       binding.setFormulaFamilyStructuralSourceTransformNow(familyId, transform),
