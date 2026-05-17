@@ -102,11 +102,13 @@ PulseMCP remains missing after the official registry refresh window.
 
 Glama lists Bilig WorkPaper publicly in search with TypeScript, Developer
 Tools, Workplace & Productivity, and Remote attributes. Its public API still
-reports `tools: 0`, `package: null`, and no installability, and the server page
-says unclaimed servers have limited discoverability. The repository already
-ships `glama.json` with maintainer `gregkonush`; the next directory action is to
-claim the Glama listing or request a re-index so the `@bilig/headless` package
-and file-backed tool surface become installable in Glama.
+reports `tools: 0`, `package: null`, and no installability. The score page now
+shows the concrete blocker: `No Glama release`. The repository already ships
+`glama.json` with maintainer `gregkonush`, so the next directory action is to
+claim the Glama listing, configure the Dockerfile admin page to use the existing
+`bilig-workpaper-mcp` image target, deploy the build test, and publish a Glama
+release so the `@bilig/headless` package and file-backed tool surface become
+installable in Glama.
 
 The `mcpserver.cc` submission was accepted for review on May 13, 2026 with
 submission UUID `bcdce4e1-3b05-4be2-b611-2a2abb8baf79`. Search still returned no
