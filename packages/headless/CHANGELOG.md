@@ -4,6 +4,18 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.18.17
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.18.16
+- Manual override: no
+
+## Fixes
+- fix(wasm-kernel): align criteria aggregate array semantics (92c71f48)
+
+## Internal runtime changes
+- docs(mcp): add file-backed transcript proof (5c554c46)
+
 ## 0.18.16
 
 - Release type: patch
