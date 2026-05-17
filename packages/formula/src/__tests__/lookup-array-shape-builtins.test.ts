@@ -132,13 +132,42 @@ describe('lookup array-shape builtins', () => {
       cols: 1,
       values: [num(1), num(2), num(3), num(4), num(6)],
     })
+    expect(TOCOL(matrix, num(0))).toEqual({
+      kind: 'array',
+      rows: 6,
+      cols: 1,
+      values: [num(1), num(2), num(3), num(4), empty(), num(6)],
+    })
+    expect(TOCOL(cellRange([num(1), err(ErrorCode.Div0), empty(), num(4)], 2, 2), num(2))).toEqual({
+      kind: 'array',
+      rows: 3,
+      cols: 1,
+      values: [num(1), empty(), num(4)],
+    })
+    expect(TOCOL(cellRange([num(1), err(ErrorCode.Div0), empty(), num(4)], 2, 2), num(3))).toEqual({
+      kind: 'array',
+      rows: 2,
+      cols: 1,
+      values: [num(1), num(4)],
+    })
     expect(TOROW(matrix, num(0), bool(true))).toEqual({
       kind: 'array',
       rows: 1,
       cols: 6,
       values: [num(1), num(4), num(2), empty(), num(3), num(6)],
     })
-    expect(TOCOL(matrix, num(2))).toEqual(err(ErrorCode.Value))
+    expect(TOROW(cellRange([num(1), err(ErrorCode.Div0), empty(), num(4)], 2, 2), num(2))).toEqual({
+      kind: 'array',
+      rows: 1,
+      cols: 3,
+      values: [num(1), empty(), num(4)],
+    })
+    expect(TOROW(cellRange([num(1), err(ErrorCode.Div0), empty(), num(4)], 2, 2), num(3))).toEqual({
+      kind: 'array',
+      rows: 1,
+      cols: 2,
+      values: [num(1), num(4)],
+    })
     expect(TOROW(matrix, num(0), text('bad'))).toEqual(err(ErrorCode.Value))
 
     expect(WRAPROWS(cellRange([num(1), num(2), num(3)], 3, 1), num(2), text('pad'))).toEqual({

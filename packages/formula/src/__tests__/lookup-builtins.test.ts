@@ -6,6 +6,7 @@ const num = (value: number): CellValue => ({ tag: ValueTag.Number, value })
 const text = (value: string): CellValue => ({ tag: ValueTag.String, value, stringId: 0 })
 const bool = (value: boolean): CellValue => ({ tag: ValueTag.Boolean, value })
 const err = (code: ErrorCode): CellValue => ({ tag: ValueTag.Error, code })
+const empty = (): CellValue => ({ tag: ValueTag.Empty })
 
 function cellRange(values: CellValue[], rows: number, cols: number): RangeBuiltinArgument {
   return { kind: 'range', refKind: 'cells', values, rows, cols }
@@ -417,9 +418,9 @@ describe('lookup builtins', () => {
     const TOROW = getLookupBuiltin('TOROW')!
     const matrix = cellRange([num(1), num(2), num(3), num(4)], 2, 2)
 
-    expect(TOCOL(matrix, num(2))).toEqual(err(ErrorCode.Value))
+    expect(TOCOL(matrix, num(4))).toEqual(err(ErrorCode.Value))
     expect(TOCOL(matrix, num(0), text('bad'))).toEqual(err(ErrorCode.Value))
-    expect(TOROW(matrix, num(2))).toEqual(err(ErrorCode.Value))
+    expect(TOROW(matrix, num(4))).toEqual(err(ErrorCode.Value))
     expect(TOROW(matrix, num(0), text('bad'))).toEqual(err(ErrorCode.Value))
   })
 
@@ -831,7 +832,7 @@ describe('lookup builtins', () => {
       kind: 'array',
       rows: 4,
       cols: 1,
-      values: [num(1), num(3), num(2), num(4)],
+      values: [num(1), num(2), num(3), num(4)],
     })
     expect(TOROW(matrix)).toEqual({
       kind: 'array',
@@ -862,6 +863,18 @@ describe('lookup builtins', () => {
     expect(TOCOL(cellRange([num(1), num(2), num(3), num(4)], 2, 2), cellRange([num(1)], 1, 1))).toEqual(err(ErrorCode.Value))
     expect(TOCOL(cellRange([num(1), num(2), num(3), num(4)], 2, 2), err(ErrorCode.Name))).toEqual(err(ErrorCode.Name))
     expect(TOCOL(cellRange([num(1), num(2), num(3), num(4)], 2, 2), num(0), err(ErrorCode.Ref))).toEqual(err(ErrorCode.Ref))
+    expect(TOCOL(cellRange([num(1), empty(), err(ErrorCode.Div0), num(4)], 2, 2), num(2))).toEqual({
+      kind: 'array',
+      rows: 3,
+      cols: 1,
+      values: [num(1), empty(), num(4)],
+    })
+    expect(TOCOL(cellRange([num(1), empty(), err(ErrorCode.Div0), num(4)], 2, 2), num(3))).toEqual({
+      kind: 'array',
+      rows: 2,
+      cols: 1,
+      values: [num(1), num(4)],
+    })
     expect(TOROW(num(1))).toEqual({
       kind: 'array',
       rows: 1,
@@ -872,7 +885,18 @@ describe('lookup builtins', () => {
     expect(TOROW(cellRange([num(1), num(2), num(3), num(4)], 2, 2), cellRange([num(1)], 1, 1))).toEqual(err(ErrorCode.Value))
     expect(TOROW(cellRange([num(1), num(2), num(3), num(4)], 2, 2), err(ErrorCode.Name))).toEqual(err(ErrorCode.Name))
     expect(TOROW(cellRange([num(1), num(2), num(3), num(4)], 2, 2), num(0), err(ErrorCode.Ref))).toEqual(err(ErrorCode.Ref))
-    expect(TOROW(cellRange([num(1), num(2), num(3), num(4)], 2, 2), num(2))).toEqual(err(ErrorCode.Value))
+    expect(TOROW(cellRange([num(1), empty(), err(ErrorCode.Div0), num(4)], 2, 2), num(2))).toEqual({
+      kind: 'array',
+      rows: 1,
+      cols: 3,
+      values: [num(1), empty(), num(4)],
+    })
+    expect(TOROW(cellRange([num(1), empty(), err(ErrorCode.Div0), num(4)], 2, 2), num(3))).toEqual({
+      kind: 'array',
+      rows: 1,
+      cols: 2,
+      values: [num(1), num(4)],
+    })
     expect(TOROW(cellRange([num(1), num(2), num(3), num(4)], 2, 2), num(0), text('bad'))).toEqual(err(ErrorCode.Value))
   })
 

@@ -361,10 +361,10 @@ export const canonicalExpansionFixtures: readonly ExcelFixtureCase[] = [
   fixture(
     'dynamic-array',
     'tocol-basic',
-    'TOCOL flattens a matrix by columns',
+    'TOCOL flattens a matrix by rows by default',
     '=TOCOL(A1:B2)',
     [input('A1', 1), input('B1', 2), input('A2', 3), input('B2', 4)],
-    [output('C1', numberExpected(1)), output('C2', numberExpected(3)), output('C3', numberExpected(2)), output('C4', numberExpected(4))],
+    [output('C1', numberExpected(1)), output('C2', numberExpected(2)), output('C3', numberExpected(3)), output('C4', numberExpected(4))],
   ),
   fixture(
     'dynamic-array',

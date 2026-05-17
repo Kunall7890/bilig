@@ -55,18 +55,34 @@ function resolveOneBasedIndex(value: number | undefined, length: number): number
   return resolved >= 0 && resolved < length ? resolved : undefined
 }
 
+type FlattenIgnoreMode = 0 | 1 | 2 | 3
+
+function toFlattenIgnoreMode(value: number | undefined): FlattenIgnoreMode | undefined {
+  return value === 0 || value === 1 || value === 2 || value === 3 ? value : undefined
+}
+
+function shouldIgnoreFlattenValue(value: CellValue, ignoreMode: FlattenIgnoreMode): boolean {
+  if (value.tag === ValueTag.Empty) {
+    return ignoreMode === 1 || ignoreMode === 3
+  }
+  if (value.tag === ValueTag.Error) {
+    return ignoreMode === 2 || ignoreMode === 3
+  }
+  return false
+}
+
 function flattenValues(
   range: RangeBuiltinArgument,
   scanByCol: boolean,
   getRangeValue: LookupArrayShapeBuiltinDeps['getRangeValue'],
-  ignoreEmpty = false,
+  ignoreMode: FlattenIgnoreMode = 0,
 ): CellValue[] {
   const values: CellValue[] = []
   if (scanByCol) {
     for (let col = 0; col < range.cols; col += 1) {
       for (let row = 0; row < range.rows; row += 1) {
         const value = getRangeValue(range, row, col)
-        if (ignoreEmpty && value.tag === ValueTag.Empty) {
+        if (shouldIgnoreFlattenValue(value, ignoreMode)) {
           continue
         }
         values.push(value)
@@ -77,7 +93,7 @@ function flattenValues(
   for (let row = 0; row < range.rows; row += 1) {
     for (let col = 0; col < range.cols; col += 1) {
       const value = getRangeValue(range, row, col)
-      if (ignoreEmpty && value.tag === ValueTag.Empty) {
+      if (shouldIgnoreFlattenValue(value, ignoreMode)) {
         continue
       }
       values.push(value)
@@ -508,15 +524,15 @@ export function createLookupArrayShapeBuiltins(deps: LookupArrayShapeBuiltinDeps
         }
         return deps.isError(scanByColArg) ? scanByColArg : deps.errorValue(ErrorCode.Value)
       }
-      const ignoreValue = ignoreArg === undefined ? 0 : deps.toInteger(ignoreArg)
-      if (ignoreValue === undefined || ![0, 1].includes(ignoreValue)) {
+      const ignoreMode = toFlattenIgnoreMode(ignoreArg === undefined ? 0 : deps.toInteger(ignoreArg))
+      if (ignoreMode === undefined) {
         return deps.errorValue(ErrorCode.Value)
       }
-      const scanByCol = scanByColArg === undefined ? true : deps.toBoolean(scanByColArg)
+      const scanByCol = scanByColArg === undefined ? false : deps.toBoolean(scanByColArg)
       if (scanByCol === undefined) {
         return deps.errorValue(ErrorCode.Value)
       }
-      const values = flattenValues(array, scanByCol, deps.getRangeValue, ignoreValue === 1)
+      const values = flattenValues(array, scanByCol, deps.getRangeValue, ignoreMode)
       return deps.arrayResult(values, values.length, 1)
     },
     TOROW: (arrayArg, ignoreArg = { tag: ValueTag.Number, value: 0 }, scanByColArg) => {
@@ -533,15 +549,15 @@ export function createLookupArrayShapeBuiltins(deps: LookupArrayShapeBuiltinDeps
         }
         return deps.isError(scanByColArg) ? scanByColArg : deps.errorValue(ErrorCode.Value)
       }
-      const ignoreValue = ignoreArg === undefined ? 0 : deps.toInteger(ignoreArg)
-      if (ignoreValue === undefined || ![0, 1].includes(ignoreValue)) {
+      const ignoreMode = toFlattenIgnoreMode(ignoreArg === undefined ? 0 : deps.toInteger(ignoreArg))
+      if (ignoreMode === undefined) {
         return deps.errorValue(ErrorCode.Value)
       }
       const scanByCol = scanByColArg === undefined ? false : deps.toBoolean(scanByColArg)
       if (scanByCol === undefined) {
         return deps.errorValue(ErrorCode.Value)
       }
-      const values = flattenValues(array, scanByCol, deps.getRangeValue, ignoreValue === 1)
+      const values = flattenValues(array, scanByCol, deps.getRangeValue, ignoreMode)
       return deps.arrayResult(values, 1, values.length)
     },
     WRAPROWS: (arrayArg, wrapCountArg, padWithArg, padByColArg) => {
