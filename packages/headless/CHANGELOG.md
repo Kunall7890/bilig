@@ -4,6 +4,18 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.18.6
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.18.5
+- Manual override: no
+
+## Fixes
+- fix(grid): harden visual fidelity and stale clears (9c604a80)
+
+## Internal runtime changes
+- docs(growth): add runnable xlsx proof (a3308f5d)
+
 ## 0.18.5
 
 - Release type: patch
