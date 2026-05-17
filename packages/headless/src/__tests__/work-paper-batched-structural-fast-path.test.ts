@@ -203,4 +203,35 @@ describe('work paper batched structural fast path', () => {
     applyCellMutations.mockRestore()
     dimensionUpdates.restore()
   })
+
+  it('skips tracked cell change reduction when structural inserts change no values', () => {
+    const workbook = WorkPaper.buildFromSheets({
+      Data: [
+        [1, 2, '=A1+B1'],
+        [3, 4, '=A2+B2'],
+      ],
+    })
+    const sheetId = workbook.getSheetId('Data')!
+    const originalComputeTrackedChanges = Reflect.get(workbook, 'computeTrackedChangesWithoutVisibilityCache')
+    if (typeof originalComputeTrackedChanges !== 'function') {
+      throw new Error('Expected WorkPaper to expose tracked change reduction in tests')
+    }
+    let computeTrackedChangeCalls = 0
+    Reflect.set(workbook, 'computeTrackedChangesWithoutVisibilityCache', (...args: unknown[]) => {
+      computeTrackedChangeCalls += 1
+      return Reflect.apply(originalComputeTrackedChanges, workbook, args)
+    })
+
+    try {
+      const changes = workbook.addColumns(sheetId, 1, 1)
+
+      expect(changes).toEqual([])
+      expect(computeTrackedChangeCalls).toBe(0)
+      expect(workbook.getCellFormula(cell(sheetId, 0, 3))).toBe('=A1+C1')
+      expect(workbook.getCellValue(cell(sheetId, 0, 3))).toEqual({ tag: ValueTag.Number, value: 3 })
+      expect(workbook.getSheetDimensions(sheetId)).toEqual({ width: 4, height: 2 })
+    } finally {
+      Reflect.set(workbook, 'computeTrackedChangesWithoutVisibilityCache', originalComputeTrackedChanges)
+    }
+  })
 })

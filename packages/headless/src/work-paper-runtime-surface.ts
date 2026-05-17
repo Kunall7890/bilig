@@ -680,6 +680,9 @@ export abstract class WorkPaperRuntimeSurface extends WorkPaperRuntimeMetadataSu
       throw new WorkPaperOperationError(this.messageOf(error, 'Mutation failed'))
     }
     const events = this.engineEvents.drain()
+    if (events.length > 0 && events.every(trackedEventHasNoValueChanges)) {
+      return []
+    }
     const directSingleLiteralChanges = tryBuildDirectSingleLiteralTrackedChange({
       events,
       ...(options.singleLiteralChange !== undefined ? { expected: options.singleLiteralChange } : {}),
@@ -721,9 +724,13 @@ export abstract class WorkPaperRuntimeSurface extends WorkPaperRuntimeMetadataSu
       this.mergeUndoHistory(undoStackStart)
     }
     const shouldEmitValuesUpdated = this.emitter.hasListeners('valuesUpdated')
-    const changes = this.computeTrackedChangesWithoutVisibilityCache(this.engineEvents.drain(), {
-      preferLazyPublicChanges: !shouldEmitValuesUpdated,
-    })
+    const events = this.engineEvents.drain()
+    const changes =
+      events.length > 0 && events.every(trackedEventHasNoValueChanges)
+        ? []
+        : this.computeTrackedChangesWithoutVisibilityCache(events, {
+            preferLazyPublicChanges: !shouldEmitValuesUpdated,
+          })
     this.flushQueuedEvents()
     if (changes.length > 0 && shouldEmitValuesUpdated) {
       this.emitter.emitDetailed({ eventName: 'valuesUpdated', payload: { changes } })

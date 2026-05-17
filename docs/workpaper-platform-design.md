@@ -166,7 +166,7 @@ The current state is therefore:
 - stronger feature coverage in selected areas such as dynamic arrays and structured references: shipped
 - workload-specific competitive benchmark evidence against HyperFormula: shipped
 - on the checked-in expanded comparable benchmark, WorkPaper currently wins
-  `80/100` scorecard-eligible comparable mean workloads and `76/100`
+  `81/100` scorecard-eligible comparable mean workloads and `81/100`
   mean+p95 workloads; the current worst p95 row is
   `structural-insert-columns-small`
 - top-level dominance scorecard: shipped at

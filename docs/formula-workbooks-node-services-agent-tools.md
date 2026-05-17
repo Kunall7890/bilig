@@ -119,9 +119,9 @@ and needs formula readback, persistence, and restore proof.
 
 ## Evidence and limits
 
-The current checked benchmark artifact records `80/100` comparable
+The current checked benchmark artifact records `81/100` comparable
 mean-latency wins against HyperFormula-style workloads. The caveat is public:
-`aggregate-overlapping-sliding-window` is slower at p95 by `2.688x`, and
+`single-formula-edit-recalc` is slower at p95 by `1.942x`, and
 browser UI rendering is outside the benchmark.
 
 This page does not claim full Excel compatibility. It does not claim chart,
