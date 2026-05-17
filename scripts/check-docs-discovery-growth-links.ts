@@ -32,6 +32,7 @@ export function communityLaunchPackRequiredLinks(): readonly string[] {
     'https://github.com/MunGell/awesome-for-beginners/pull/2012',
     'https://github.com/ever-works/awesome-mcp-servers-data/pull/4',
     'https://github.com/jmstfv/mcpserve/pull/19',
+    'https://github.com/MCPFind/mcp-find/pull/37',
     'Latest conversion snapshot on May 16, 2026',
     '`@bilig/headless`',
     '21,392` clones from `2,641` unique cloners',
@@ -39,7 +40,7 @@ export function communityLaunchPackRequiredLinks(): readonly string[] {
     'comment child `48052854` is flagged',
     'JavaScript Weekly / Node Weekly Editorial Pitch',
     'editor@cooperpress.com',
-    'https://github.com/proompteng/bilig/actions/runs/25956395253',
+    'https://github.com/proompteng/bilig/actions/runs/25988085519',
   ] as const
 }
 
@@ -52,4 +53,5 @@ export const llmsExternalSurfaceLinks = [
   'https://github.com/MunGell/awesome-for-beginners/pull/2012',
   'https://github.com/ever-works/awesome-mcp-servers-data/pull/4',
   'https://github.com/jmstfv/mcpserve/pull/19',
+  'https://github.com/MCPFind/mcp-find/pull/37',
 ] as const

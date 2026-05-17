@@ -74,7 +74,7 @@ crawlers that probe those well-known variants.
 
 | Directory                       | Status                                       | Link                                                                                                  |
 | ------------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Official MCP Registry           | Live, freshness lag under review             | <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper> |
+| Official MCP Registry           | Live, current npm version indexed            | <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper> |
 | Static MCP server card          | Live                                         | <https://proompteng.github.io/bilig/.well-known/mcp/server-card.json>                                 |
 | Static MCP discovery aliases    | Live                                         | <https://proompteng.github.io/bilig/.well-known/mcp.json>                                             |
 | Glama                           | Live, tool indexing pending                  | <https://glama.ai/mcp/servers/proompteng/bilig>                                                       |
@@ -86,15 +86,16 @@ crawlers that probe those well-known variants.
 | ToolSDK MCP Registry            | Submitted for maintainer review              | <https://github.com/toolsdk-ai/toolsdk-mcp-registry/pull/309>                                         |
 | Ever Works MCP data             | Submitted for maintainer review              | <https://github.com/ever-works/awesome-mcp-servers-data/pull/4>                                       |
 | mcpserve.com                    | Submitted for maintainer review              | <https://github.com/jmstfv/mcpserve/pull/19>                                                          |
+| MCPFind                         | Submitted for maintainer review              | <https://github.com/MCPFind/mcp-find/pull/37>                                                         |
 | PulseMCP                        | Not indexed in public search on May 14, 2026 | <https://www.pulsemcp.com/servers?search=bilig&q=bilig>                                               |
 
 PulseMCP says server listings are ingested from the official MCP Registry daily
-and processed weekly. The Bilig WorkPaper registry entry is live, but the public
-Registry API currently returns historical entries rather than a fresh latest
-entry for the npm package. Treat PulseMCP absence as pending until the Registry
-freshness lag is resolved. Starter issue
-[#384](https://github.com/proompteng/bilig/issues/384) tracks the next public
-verification pass.
+and processed weekly. The Bilig WorkPaper registry entry is live, and the public
+Registry API now includes the current `@bilig/headless@0.18.22` package version.
+The current entry is marked `isLatest: true`, so treat PulseMCP absence as a
+downstream directory refresh lag rather than an upstream registry lag. Starter
+issue [#384](https://github.com/proompteng/bilig/issues/384) tracks the next
+public verification pass.
 
 Glama lists Bilig WorkPaper publicly, but its API still reports an empty
 `tools` array. Directory submissions that depend on Glama should point scanners
@@ -150,11 +151,12 @@ A useful result includes:
 - `repository.url: https://github.com/proompteng/bilig`
 
 Latest checked result on May 17, 2026: npm latest is `@bilig/headless@0.18.22`,
-while the official Registry API search still marks `0.18.14` as the latest Bilig
-WorkPaper entry. That means the npm install path is the freshest
-machine-checkable source until the Registry refresh catches up. The last
-documented refresh attempt was published by the repository workflow run at
-<https://github.com/proompteng/bilig/actions/runs/25956395253>.
+and the official Registry API search now includes Bilig WorkPaper entry version
+`0.18.22` with `isLatest: true`. The API also returns historical entries, so
+consumers should select the latest-marked entry or prefer the npm package
+version when they need a single freshest install coordinate. The last documented
+refresh attempt was published by the repository workflow run at
+<https://github.com/proompteng/bilig/actions/runs/25988085519>.
 
 The package itself carries the matching `mcpName` field. That is the ownership
 signal the registry uses for npm package validation.

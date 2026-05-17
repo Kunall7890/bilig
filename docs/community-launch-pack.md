@@ -222,6 +222,11 @@ issue pass:
   May 17, 2026 with `@bilig/headless@0.18.22`, the static MCP server card,
   current tool names, and the maintained docs/transcript:
   <https://github.com/chatmcp/mcpso/issues/2295#issuecomment-4470239663>
+- External MCP directory surface: MCPFind's public submit page points
+  contributors at `community-servers.yml`, and the Bilig WorkPaper PR is open
+  with a single `@bilig/headless` npm entry plus repo, docs, transcript, and
+  server-card evidence:
+  <https://github.com/MCPFind/mcp-find/pull/37>
 - External MCP marketplace surface: the Cline MCP Marketplace server submission
   issue is open with the GitHub repository, 400px logo, public npm command, and
   verified `tools/list` plus `set_workpaper_input_cell` readback proof:
@@ -405,9 +410,10 @@ Latest conversion snapshot on May 16, 2026:
 - Site conversion action: the homepage final action now links directly to the
   star page beside npm install and GitHub, and the docs index links to the live
   community growth snapshot so visitors can inspect the current public signals.
-- MCP registry action: the official MCP Registry refresh was verified for the
-  `@bilig/headless` package line with workflow run
-  <https://github.com/proompteng/bilig/actions/runs/25956395253>. Live API
+- MCP registry action: the official MCP Registry refresh was verified for
+  `@bilig/headless@0.18.22` with workflow run
+  <https://github.com/proompteng/bilig/actions/runs/25988085519>. The live API
+  now includes `0.18.22` with `isLatest: true`, so downstream directory
   verification should be rerun after each runtime package release.
 
 Latest star-spike research on May 16, 2026:
