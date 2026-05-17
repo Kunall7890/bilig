@@ -6,6 +6,7 @@ import { applyFormulaSuggestion, resolveFormulaAssistState, type FormulaSuggesti
 import { formulaBarRootClass, formulaFieldAddonClass, formulaFieldShellClass, formulaInputClass } from './formula-bar-theme.js'
 import { isGridKeyboardEditableTarget } from './gridClipboardKeyboardController.js'
 import { NameBox } from './NameBox.js'
+import { workbookTextControlProps } from './workbookTextControls.js'
 
 interface FormulaBarProps {
   sheetName: string
@@ -198,6 +199,7 @@ export function FormulaBar({
               ref={inputRef}
               role="combobox"
               rows={1}
+              {...workbookTextControlProps}
               value={value}
               onBlur={(event) => {
                 setIsFormulaFocused(false)

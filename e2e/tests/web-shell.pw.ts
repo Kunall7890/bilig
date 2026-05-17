@@ -387,6 +387,28 @@ test('@browser-ci web app keeps an editor clear after click-away selection', asy
   await expect.poll(() => nativeTextRunsInclude(page, 'ghost-value')).toBe(false)
 })
 
+test('web app keeps formula bar focus when clicking it from an active cell editor', async ({ page }) => {
+  const documentId = createTestDocumentId('playwright-editor-formula-focus-handoff')
+  await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=A1`)
+  await waitForWorkbookReady(page)
+
+  const gridLocator = page.getByTestId('sheet-grid')
+  const formulaInput = page.getByTestId('formula-input')
+  const cellEditor = page.getByTestId('cell-editor-input')
+
+  await clickProductCell(page, 1, 1)
+  await page.keyboard.type('formula-focus-draft')
+  await expect(cellEditor).toBeVisible()
+  await expect(cellEditor).toBeFocused()
+
+  await formulaInput.click()
+
+  await expect(cellEditor).toBeHidden()
+  await expect(formulaInput).toBeFocused()
+  await expect(formulaInput).toHaveValue('formula-focus-draft')
+  await expect(gridLocator).not.toBeFocused()
+})
+
 test('@browser-ci web app gates unmerge on real merged-cell state', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-structure-unmerge-availability')
   await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=A1`)

@@ -8,10 +8,18 @@ import type { VisibleRegionState } from './gridPointer.js'
 import type { GridCameraStore } from './runtime/gridCameraStore.js'
 import type { Rectangle } from './gridTypes.js'
 import type { WorkbookGridScrollStore } from './workbookGridScrollStore.js'
+import { isWorkbookTextControlElement } from './workbookTextControls.js'
 
 export interface WorkbookGridEditorRuntimeState extends WorkbookEditorOverlayAnchorState {
   readonly computeAutofitColumnWidth: (columnIndex: number) => number
   readonly focusGrid: (options?: { readonly force?: boolean }) => void
+}
+
+export function shouldPreserveWorkbookTextControlFocus(activeElement: Element | null, options: { readonly force?: boolean } = {}): boolean {
+  if (options.force) {
+    return false
+  }
+  return isWorkbookTextControlElement(activeElement)
 }
 
 export function useWorkbookGridEditorRuntime(input: {
@@ -74,11 +82,7 @@ export function useWorkbookGridEditorRuntime(input: {
   const focusGrid = useCallback(
     (options?: { readonly force?: boolean }) => {
       const activeElement = typeof document === 'undefined' ? null : document.activeElement
-      if (
-        !options?.force &&
-        (activeElement instanceof HTMLInputElement || activeElement instanceof HTMLTextAreaElement) &&
-        activeElement.dataset['testid'] === 'cell-editor-input'
-      ) {
+      if (shouldPreserveWorkbookTextControlFocus(activeElement, options)) {
         return
       }
 
@@ -94,11 +98,7 @@ export function useWorkbookGridEditorRuntime(input: {
       }
       window.requestAnimationFrame(() => {
         const latestActiveElement = document.activeElement
-        if (
-          !options?.force &&
-          (latestActiveElement instanceof HTMLInputElement || latestActiveElement instanceof HTMLTextAreaElement) &&
-          latestActiveElement.dataset['testid'] === 'cell-editor-input'
-        ) {
+        if (shouldPreserveWorkbookTextControlFocus(latestActiveElement, options)) {
           return
         }
         const latestFocusTarget = focusTargetRef.current ?? hostRef.current

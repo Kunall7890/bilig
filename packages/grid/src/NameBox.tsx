@@ -2,6 +2,7 @@ import { forwardRef, useCallback, useEffect, useId, useRef, useState, type Forwa
 import type { WorkbookDefinedNameSnapshot } from '@bilig/protocol'
 import { resolveNameBoxDisplayValue } from './formulaAssist.js'
 import { formulaInlineMessageClass, formulaStandaloneInputClass } from './formula-bar-theme.js'
+import { workbookTextControlProps } from './workbookTextControls.js'
 
 interface NameBoxProps {
   readonly address: string
@@ -56,6 +57,7 @@ export const NameBox = forwardRef<HTMLInputElement, NameBoxProps>(function NameB
         data-testid="name-box"
         id="name-box-input"
         ref={setInputRef}
+        {...workbookTextControlProps}
         value={inputValue}
         onBlur={() => {
           isDirtyRef.current = false

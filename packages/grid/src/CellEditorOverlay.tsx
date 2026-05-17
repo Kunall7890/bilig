@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import type { EditMovement, EditTargetSelection } from './SheetGridView.js'
 import { WORKBOOK_DEFAULT_FONT_SIZE, workbookFontPointSizeToCssPx } from './workbookTheme.js'
+import { workbookTextControlProps } from './workbookTextControls.js'
 
 function normalizeNumpadKey(key: string, code: string): string | null {
   if (!code.startsWith('Numpad')) {
@@ -337,6 +338,7 @@ export function CellEditorOverlay({
         ref={inputRef}
         readOnly={isCompleting}
         rows={1}
+        {...workbookTextControlProps}
         style={{
           color,
           font,
