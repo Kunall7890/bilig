@@ -56,7 +56,7 @@ const TEXT_WRAP_LINE_HEIGHT = 1.2
 
 export function parseTextFontSize(font: string): number {
   const match = font.match(/(\d+(?:\.\d+)?)px/)
-  return match ? Number(match[1]) : WORKBOOK_DEFAULT_FONT_SIZE
+  return match ? Number(match[1]) : workbookFontPointSizeToCssPx(WORKBOOK_DEFAULT_FONT_SIZE)
 }
 
 export function parseTextCssColor(color: string): readonly [number, number, number, number] {
