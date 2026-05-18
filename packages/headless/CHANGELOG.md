@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.23.3
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.23.2
+- Manual override: no
+
+## Fixes
+- fix(formula): preserve 3d structural range metadata (529cb889)
+
 ## 0.23.2
 
 - Release type: patch
