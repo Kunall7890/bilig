@@ -193,4 +193,160 @@ describe('useWorkbookAgentContextSync', () => {
       })
     }
   })
+
+  it('rate-limits viewport-only context churn after the initial sync', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    vi.useFakeTimers()
+
+    const syncThreadContext = vi.fn(async () => {})
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+
+    function Harness() {
+      const [rowEnd, setRowEnd] = useState(20)
+      const contextRef = useRef({
+        ...createContext('A1'),
+        viewport: {
+          colEnd: 10,
+          colStart: 0,
+          rowEnd,
+          rowStart: 0,
+        },
+      })
+      const sessionRef = useRef({ threadId: 'thr-1' })
+      const getContextRef = useRef(() => contextRef.current)
+      const snapshot = useMemo(createSnapshot, [])
+      contextRef.current = {
+        ...createContext('A1'),
+        viewport: {
+          colEnd: 10,
+          colStart: 0,
+          rowEnd,
+          rowStart: 0,
+        },
+      }
+      const { scheduleContextSync } = useWorkbookAgentContextSync({
+        client: { syncThreadContext },
+        documentId: 'doc-1',
+        enabled: true,
+        getContextRef,
+        sessionRef,
+        snapshot,
+      })
+
+      useEffect(() => {
+        scheduleContextSync()
+      }, [rowEnd, scheduleContextSync])
+
+      return (
+        <button data-testid="viewport" type="button" onClick={() => setRowEnd((current) => current + 1)}>
+          {rowEnd}
+        </button>
+      )
+    }
+
+    try {
+      await act(async () => {
+        root.render(<Harness />)
+      })
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(200)
+      })
+
+      expect(syncThreadContext).toHaveBeenCalledTimes(1)
+
+      await act(async () => {
+        host.querySelector<HTMLButtonElement>("[data-testid='viewport']")?.click()
+      })
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(200)
+      })
+
+      expect(syncThreadContext).toHaveBeenCalledTimes(1)
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(600)
+      })
+
+      expect(syncThreadContext).toHaveBeenCalledTimes(2)
+      expect(syncThreadContext).toHaveBeenLastCalledWith(
+        'thr-1',
+        expect.objectContaining({ viewport: expect.objectContaining({ rowEnd: 21 }) }),
+      )
+    } finally {
+      await act(async () => {
+        root.unmount()
+      })
+    }
+  })
+
+  it('prioritizes selection context updates after an initial sync', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    vi.useFakeTimers()
+
+    const syncThreadContext = vi.fn(async () => {})
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+
+    function Harness() {
+      const [address, setAddress] = useState('A1')
+      const contextRef = useRef(createContext(address))
+      const sessionRef = useRef({ threadId: 'thr-1' })
+      const getContextRef = useRef(() => contextRef.current)
+      const snapshot = useMemo(createSnapshot, [])
+      contextRef.current = createContext(address)
+      const { scheduleContextSync } = useWorkbookAgentContextSync({
+        client: { syncThreadContext },
+        documentId: 'doc-1',
+        enabled: true,
+        getContextRef,
+        sessionRef,
+        snapshot,
+      })
+
+      useEffect(() => {
+        scheduleContextSync()
+      }, [address, scheduleContextSync])
+
+      return (
+        <button data-testid="selection" type="button" onClick={() => setAddress('B2')}>
+          {address}
+        </button>
+      )
+    }
+
+    try {
+      await act(async () => {
+        root.render(<Harness />)
+      })
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(200)
+      })
+
+      expect(syncThreadContext).toHaveBeenCalledTimes(1)
+
+      await act(async () => {
+        host.querySelector<HTMLButtonElement>("[data-testid='selection']")?.click()
+      })
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(160)
+      })
+
+      expect(syncThreadContext).toHaveBeenCalledTimes(2)
+      expect(syncThreadContext).toHaveBeenLastCalledWith(
+        'thr-1',
+        expect.objectContaining({ selection: { sheetName: 'Sheet1', address: 'B2' } }),
+      )
+    } finally {
+      await act(async () => {
+        root.unmount()
+      })
+    }
+  })
 })

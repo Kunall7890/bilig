@@ -16,10 +16,9 @@ interface WorkbookAgentContextSyncSession {
   readonly threadId: string
 }
 
-function stringifyWorkbookAgentImmediateContextKey(context: WorkbookAgentUiContext): string {
+function stringifyWorkbookAgentPriorityContextKey(context: WorkbookAgentUiContext): string {
   return JSON.stringify({
     selection: context.selection,
-    viewport: context.viewport,
   })
 }
 
@@ -34,7 +33,7 @@ export function useWorkbookAgentContextSync(input: {
   const enabledRef = useRef(input.enabled)
   const snapshotRef = useRef(input.snapshot)
   const lastContextKeyRef = useRef<string>('')
-  const lastImmediateContextKeyRef = useRef<string>('')
+  const lastPriorityContextKeyRef = useRef<string>('')
   const hasSyncedContextRef = useRef(false)
   const contextSyncInFlightRef = useRef(false)
   const contextSyncGenerationRef = useRef(0)
@@ -46,7 +45,7 @@ export function useWorkbookAgentContextSync(input: {
     readonly context: WorkbookAgentUiContext
     readonly generation: number
     readonly key: string
-    readonly immediateKey: string
+    readonly priorityKey: string
     readonly threadId: string
   } | null>(null)
   enabledRef.current = input.enabled
@@ -65,7 +64,7 @@ export function useWorkbookAgentContextSync(input: {
   const resetContextSync = useCallback(() => {
     clearPendingContextSync()
     lastContextKeyRef.current = ''
-    lastImmediateContextKeyRef.current = ''
+    lastPriorityContextKeyRef.current = ''
     hasSyncedContextRef.current = false
     contextSyncFailureCountRef.current = 0
     lastContextSyncAtRef.current = 0
@@ -101,7 +100,7 @@ export function useWorkbookAgentContextSync(input: {
         await input.client.syncThreadContext(pending.threadId, pending.context)
         if (isPendingContextSyncCurrent(pending)) {
           lastContextKeyRef.current = pending.key
-          lastImmediateContextKeyRef.current = pending.immediateKey
+          lastPriorityContextKeyRef.current = pending.priorityKey
           hasSyncedContextRef.current = true
           contextSyncFailureCountRef.current = 0
           nextContextSyncRetryAtRef.current = 0
@@ -139,7 +138,7 @@ export function useWorkbookAgentContextSync(input: {
     }
     const nextContext = input.getContextRef.current()
     const nextContextKey = `${activeSession.threadId}:${stringifyWorkbookAgentContextSyncKey(nextContext)}`
-    const nextImmediateContextKey = `${activeSession.threadId}:${stringifyWorkbookAgentImmediateContextKey(nextContext)}`
+    const nextPriorityContextKey = `${activeSession.threadId}:${stringifyWorkbookAgentPriorityContextKey(nextContext)}`
     if (lastContextKeyRef.current === nextContextKey) {
       return
     }
@@ -148,7 +147,7 @@ export function useWorkbookAgentContextSync(input: {
       pendingContextSync &&
       isPendingContextSyncCurrent(pendingContextSync) &&
       pendingContextSync.key === nextContextKey &&
-      pendingContextSync.immediateKey === nextImmediateContextKey
+      pendingContextSync.priorityKey === nextPriorityContextKey
     ) {
       return
     }
@@ -156,10 +155,10 @@ export function useWorkbookAgentContextSync(input: {
       context: nextContext,
       generation: contextSyncGenerationRef.current,
       key: nextContextKey,
-      immediateKey: nextImmediateContextKey,
+      priorityKey: nextPriorityContextKey,
       threadId: activeSession.threadId,
     }
-    const shouldPrioritizeSync = !hasSyncedContextRef.current || lastImmediateContextKeyRef.current !== nextImmediateContextKey
+    const shouldPrioritizeSync = !hasSyncedContextRef.current || lastPriorityContextKeyRef.current !== nextPriorityContextKey
     const elapsedSinceLastSync = window.performance.now() - lastContextSyncAtRef.current
     const delayMs = resolveContextSyncDelay(
       shouldPrioritizeSync
