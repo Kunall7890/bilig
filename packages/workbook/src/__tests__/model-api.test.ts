@@ -4,6 +4,7 @@ import {
   buildWorkbookActionPlan,
   collectWorkbookRefs,
   describePlan,
+  describePlanResult,
   describeRef,
   inspectModel,
   isWorkbookRef,
@@ -337,6 +338,8 @@ describe('@bilig/workbook model api', () => {
 
     expect(planWorkbookAction(model, 'missing')).toEqual({
       status: 'failed',
+      modelName: 'failing-model',
+      actionName: 'missing',
       checks: [],
       errors: [
         {
@@ -348,6 +351,8 @@ describe('@bilig/workbook model api', () => {
 
     expect(planWorkbookAction(model, 'calculate')).toEqual({
       status: 'failed',
+      modelName: 'failing-model',
+      actionName: 'calculate',
       checks: [],
       errors: [
         {
@@ -379,6 +384,8 @@ describe('@bilig/workbook model api', () => {
     const result = planWorkbookAction(model, 'calculate')
     expect(result.status).toBe('failed')
     if (result.status === 'failed') {
+      expect(result.modelName).toBe('checkable-failure-model')
+      expect(result.actionName).toBe('calculate')
       expect(result.checks).toEqual([
         {
           status: 'planned',
@@ -397,5 +404,56 @@ describe('@bilig/workbook model api', () => {
         },
       ])
     }
+  })
+
+  it('describes failed plan results without raw workbook refs', () => {
+    const model = defineModel({
+      name: 'described-failure-model',
+
+      find(workbook) {
+        return {
+          table: workbook.findTable({ name: 'Inputs' }),
+        }
+      },
+
+      checks({ refs, workbook }) {
+        return [workbook.check.exists(refs.table)]
+      },
+
+      actions: {
+        calculate() {
+          throw new Error('missing output target')
+        },
+      },
+    })
+
+    const result = planWorkbookAction(model, 'calculate')
+    const described = describePlanResult(result)
+
+    expect(described).toEqual({
+      status: 'failed',
+      modelName: 'described-failure-model',
+      actionName: 'calculate',
+      errors: [
+        {
+          code: 'action_failed',
+          message: 'missing output target',
+        },
+      ],
+      checks: [
+        {
+          status: 'planned',
+          kind: 'exists',
+          target: {
+            kind: 'table',
+            id: 'table_Inputs',
+            label: 'Inputs',
+            name: 'Inputs',
+          },
+          message: 'Inputs exists',
+        },
+      ],
+    })
+    expect(JSON.parse(JSON.stringify(described))).toEqual(described)
   })
 })

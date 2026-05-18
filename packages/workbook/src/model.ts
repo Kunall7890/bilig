@@ -81,6 +81,8 @@ export type WorkbookActionPlanResult<Refs = unknown> =
     }
   | {
       readonly status: 'failed'
+      readonly modelName: string
+      readonly actionName: string
       readonly errors: readonly WorkbookRunError[]
       readonly checks: readonly WorkbookCheckResult[]
     }
@@ -221,9 +223,17 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
-function failedPlan<Refs>(code: string, message: string, checks: readonly WorkbookCheckResult[] = []): WorkbookActionPlanResult<Refs> {
+function failedPlan<Refs>(
+  modelName: string,
+  actionName: string,
+  code: string,
+  message: string,
+  checks: readonly WorkbookCheckResult[] = [],
+): WorkbookActionPlanResult<Refs> {
   return {
     status: 'failed',
+    modelName,
+    actionName,
     checks,
     errors: [{ code, message }],
   }
@@ -268,6 +278,8 @@ export function planWorkbookAction<Refs, Actions extends WorkbookActionMap<Refs>
   if (action === undefined) {
     return {
       status: 'failed',
+      modelName: model.name,
+      actionName,
       checks: [],
       errors: [actionNotFound(model.name, actionName)],
     }
@@ -282,20 +294,20 @@ export function planWorkbookAction<Refs, Actions extends WorkbookActionMap<Refs>
   try {
     refs = model.find(workbook)
   } catch (error) {
-    return failedPlan<Refs>('find_failed', errorMessage(error), checks)
+    return failedPlan<Refs>(model.name, actionName, 'find_failed', errorMessage(error), checks)
   }
 
   const context: WorkbookActionContext<Refs> = { refs, workbook }
   try {
     pushReturnedChecks(checks, model.checks?.(context))
   } catch (error) {
-    return failedPlan<Refs>('checks_failed', errorMessage(error), checks)
+    return failedPlan<Refs>(model.name, actionName, 'checks_failed', errorMessage(error), checks)
   }
 
   try {
     action(context)
   } catch (error) {
-    return failedPlan<Refs>('action_failed', errorMessage(error), checks)
+    return failedPlan<Refs>(model.name, actionName, 'action_failed', errorMessage(error), checks)
   }
 
   return {

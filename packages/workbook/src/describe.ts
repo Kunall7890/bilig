@@ -9,7 +9,7 @@ import type {
   WorkbookRowsRef,
   WorkbookTableRef,
 } from './find.js'
-import type { WorkbookActionCommand, WorkbookActionPlan } from './model.js'
+import type { WorkbookActionCommand, WorkbookActionPlan, WorkbookActionPlanResult } from './model.js'
 import type { WorkbookOp } from './ops.js'
 import type { WorkbookChangeSummary, WorkbookCheckResult, WorkbookCheckStatus } from './result.js'
 
@@ -104,6 +104,24 @@ export interface WorkbookActionPlanDescription {
   readonly ops: readonly WorkbookOp[]
   readonly changed: readonly WorkbookChangeSummaryDescription[]
   readonly checks: readonly WorkbookCheckResultDescription[]
+}
+
+export type WorkbookActionPlanResultDescription =
+  | {
+      readonly status: 'planned'
+      readonly plan: WorkbookActionPlanDescription
+    }
+  | {
+      readonly status: 'failed'
+      readonly modelName: string
+      readonly actionName: string
+      readonly errors: readonly WorkbookRunErrorDescription[]
+      readonly checks: readonly WorkbookCheckResultDescription[]
+    }
+
+export interface WorkbookRunErrorDescription {
+  readonly code: string
+  readonly message: string
 }
 
 function describeRangeRef(ref: WorkbookRangeRef): WorkbookRangeRefDescription {
@@ -227,5 +245,28 @@ export function describePlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookActi
     ops: [...plan.ops],
     changed: plan.changed.map(describeChange),
     checks: plan.checks.map(describeCheck),
+  }
+}
+
+function describeError(error: WorkbookRunErrorDescription): WorkbookRunErrorDescription {
+  return {
+    code: error.code,
+    message: error.message,
+  }
+}
+
+export function describePlanResult<Refs>(result: WorkbookActionPlanResult<Refs>): WorkbookActionPlanResultDescription {
+  if (result.status === 'planned') {
+    return {
+      status: 'planned',
+      plan: describePlan(result.plan),
+    }
+  }
+  return {
+    status: 'failed',
+    modelName: result.modelName,
+    actionName: result.actionName,
+    errors: result.errors.map(describeError),
+    checks: result.checks.map(describeCheck),
   }
 }

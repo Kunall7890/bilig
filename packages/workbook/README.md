@@ -18,12 +18,14 @@ The public surface stays generic:
 - `collectWorkbookRefs`
 - `describeRef`
 - `describePlan`
+- `describePlanResult`
 - `formula`
 - `WorkbookModel`
 - `WorkbookAction`
 - `WorkbookActionPlanResult`
 - `WorkbookRefDescription`
 - `WorkbookActionPlanDescription`
+- `WorkbookActionPlanResultDescription`
 - `WorkbookRunResult`
 - `WorkbookCheckResult`
 
@@ -54,3 +56,5 @@ Use `describeRef` and `describePlan` when an agent needs JSON-safe intent for
 logs, comparisons, approvals, or runtime handoff. Descriptions keep the same
 generic refs, commands, checks, changes, and ops, but omit consumer-private
 `refs` object shape and helper functions such as `table.column()`.
+Use `describePlanResult` when the same JSON-safe handoff is needed for either
+planned or failed action planning.
