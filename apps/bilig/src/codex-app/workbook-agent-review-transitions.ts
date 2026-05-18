@@ -171,6 +171,14 @@ export function transitionWorkbookAgentSharedReview(input: {
   const bundle = toWorkbookAgentCommandBundle(input.reviewItem)
   const sharedReview =
     normalizeSharedReviewState(bundle, input.sessionState) ?? createPendingSharedReviewState(input.sessionState.storageActorUserId)
+  if (sharedReview.status !== 'pending') {
+    throw createWorkbookAgentServiceError({
+      code: 'WORKBOOK_AGENT_SHARED_REVIEW_ALREADY_DECIDED',
+      message: 'Shared review decisions are final for the current workbook change set.',
+      statusCode: 409,
+      retryable: false,
+    })
+  }
   const isOwnerReviewer = input.sessionState.storageActorUserId === input.reviewerUserId
   const nextSharedReview: WorkbookAgentSharedReviewState = isOwnerReviewer
     ? {

@@ -122,6 +122,37 @@ describe('workbook agent review transitions', () => {
     expect(result.entryText).toContain('pat@example.com shared a ready-to-apply review recommendation')
   })
 
+  it('rejects review updates after the owner has decided the change set', () => {
+    const approvedReviewItem = createReviewItem({
+      sharedReview: {
+        ownerUserId: 'alex@example.com',
+        status: 'approved',
+        decidedByUserId: 'alex@example.com',
+        decidedAtUnixMs: 200,
+        recommendations: [],
+      },
+    })
+
+    expect(() =>
+      transitionWorkbookAgentSharedReview({
+        sessionState: createSessionState(),
+        reviewItem: approvedReviewItem,
+        decision: 'rejected',
+        reviewerUserId: 'pat@example.com',
+        now: 300,
+      }),
+    ).toThrow('Shared review decisions are final for the current workbook change set.')
+    expect(() =>
+      transitionWorkbookAgentSharedReview({
+        sessionState: createSessionState(),
+        reviewItem: approvedReviewItem,
+        decision: 'rejected',
+        reviewerUserId: 'alex@example.com',
+        now: 300,
+      }),
+    ).toThrow('Shared review decisions are final for the current workbook change set.')
+  })
+
   it('reads and replaces the current review item', () => {
     const sessionState = createSessionState()
     const reviewItem = createReviewItem()
