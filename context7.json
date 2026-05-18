@@ -1,0 +1,38 @@
+{
+  "$schema": "https://context7.com/schema/context7.json",
+  "projectTitle": "Bilig WorkPaper",
+  "description": "Formula WorkPaper runtime for Node.js services and agent tools: edit cells, recalculate, verify readback, and persist JSON without spreadsheet UI automation.",
+  "branch": "main",
+  "folders": [
+    "docs",
+    "packages/headless",
+    "examples/headless-workpaper",
+    "examples/serverless-workpaper-api",
+    "examples/xlsx-recalculation-node",
+    "skills"
+  ],
+  "excludeFolders": [
+    "apps",
+    "artifacts",
+    "build",
+    "coverage",
+    "dist",
+    "node_modules",
+    "output",
+    "test-results",
+    ".cache",
+    ".git",
+    ".github",
+    "packages/headless/dist",
+    "packages/headless/fixtures",
+    "packages/headless/node_modules",
+    "packages/headless/src/__tests__"
+  ],
+  "excludeFiles": ["pnpm-lock.yaml", "tsconfig.tsbuildinfo", "workspace-resolution.generated.json"],
+  "rules": [
+    "Use @bilig/headless WorkPaper for service-side formula workflows that need explicit cell edits, recalculation, readback, and JSON persistence.",
+    "Prefer the file-backed bilig-workpaper-mcp server when an agent needs deterministic workbook operations through MCP tools.",
+    "Verify WorkPaper edits with read-before-write, set_cell_contents, calculated readback, and export_workpaper_document before claiming success.",
+    "Do not use Bilig as a replacement for native Excel macros, desktop Office automation, or rich spreadsheet UI formatting."
+  ]
+}
