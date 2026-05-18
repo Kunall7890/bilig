@@ -4,6 +4,18 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.21.1
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.21.0
+- Manual override: no
+
+## Fixes
+- fix(headless): preserve external formula caches (f67ed038)
+
+## Internal runtime changes
+- docs(mcp): promote one-command workpaper init (c0b29802)
+
 ## 0.21.0
 
 - Release type: minor
