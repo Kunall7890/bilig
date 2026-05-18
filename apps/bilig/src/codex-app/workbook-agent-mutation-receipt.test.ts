@@ -37,6 +37,7 @@ function createZeroSyncHarness(
     readonly headRevision?: number
     readonly calculatedRevision?: number
     readonly changes?: readonly WorkbookChangeRecord[]
+    readonly changesError?: Error
   } = {},
 ) {
   const zeroSyncService: ZeroSyncService = {
@@ -75,6 +76,9 @@ function createZeroSyncHarness(
       throw new Error('not used')
     },
     async listWorkbookChanges() {
+      if (options.changesError) {
+        throw options.changesError
+      }
       return [...(options.changes ?? [])]
     },
     async listWorkbookAgentRuns() {
@@ -512,6 +516,134 @@ describe('workbook agent mutation receipt helpers', () => {
       .parse(parsePayload(result))
     expect(payload.mutationReceipt.authoritativeReadback.incompleteReason).toContain('Authoritative readback did not match')
     expect(payload.mutationReceipt.warnings).toContain('Authoritative readback did not match preview expectations.')
+  })
+
+  it('does not report applied when undo proof is missing even if readbacks agree', async () => {
+    const engine = await createEngine()
+    const appliedValue = 'Undo proof required'
+    const command: WorkbookAgentCommand = {
+      kind: 'writeRange',
+      sheetName: 'Sheet1',
+      startAddress: 'B2',
+      values: [[appliedValue]],
+    }
+    const bundle = createBundle(command, 'bundle-missing-undo-proof')
+    applyWorkbookAgentCommandBundleWithUndoCapture(engine, bundle)
+    const { zeroSyncService } = createZeroSyncHarness(engine, {
+      headRevision: 2,
+      calculatedRevision: 2,
+      changes: [],
+    })
+
+    const result = await stageWorkbookAgentCommandResult(
+      {
+        documentId: 'doc-1',
+        session: { userID: 'alex@example.com', roles: ['editor'] },
+        uiContext: createRenderedContext({
+          address: 'B2',
+          value: appliedValue,
+          capturedRevision: 2,
+        }),
+        zeroSyncService,
+        stageCommand: async () => ({
+          bundle,
+          executionRecord: createExecutionRecord({
+            bundle,
+            appliedRevision: 2,
+            afterInput: appliedValue,
+          }),
+        }),
+      },
+      command,
+      'writeRange',
+    )
+
+    const payload = z
+      .object({
+        applied: z.literal(true),
+        status: z.literal('verification_incomplete'),
+        mutationReceipt: z.object({
+          status: z.literal('verification_incomplete'),
+          authoritativeReadback: z.object({
+            requested: z.literal(true),
+            matched: z.literal(true),
+          }),
+          renderedReadback: z.object({
+            requested: z.literal(true),
+            matched: z.literal(true),
+          }),
+          undo: z.object({
+            available: z.literal(false),
+            lookupFailed: z.literal(false),
+            reasonUnavailable: z.string(),
+          }),
+          warnings: z.array(z.string()),
+        }),
+      })
+      .parse(parsePayload(result))
+    expect(payload.mutationReceipt.undo.reasonUnavailable).toContain('No persisted undo metadata')
+    expect(payload.mutationReceipt.warnings).toContain('No persisted undo metadata was returned for the applied revision.')
+  })
+
+  it('surfaces undo history lookup failure instead of treating it as missing metadata', async () => {
+    const engine = await createEngine()
+    const appliedValue = 'History lookup failure'
+    const command: WorkbookAgentCommand = {
+      kind: 'writeRange',
+      sheetName: 'Sheet1',
+      startAddress: 'B2',
+      values: [[appliedValue]],
+    }
+    const bundle = createBundle(command, 'bundle-undo-lookup-failure')
+    applyWorkbookAgentCommandBundleWithUndoCapture(engine, bundle)
+    const { zeroSyncService } = createZeroSyncHarness(engine, {
+      headRevision: 2,
+      calculatedRevision: 2,
+      changesError: new Error('history store unavailable'),
+    })
+
+    const result = await stageWorkbookAgentCommandResult(
+      {
+        documentId: 'doc-1',
+        session: { userID: 'alex@example.com', roles: ['editor'] },
+        uiContext: createRenderedContext({
+          address: 'B2',
+          value: appliedValue,
+          capturedRevision: 2,
+        }),
+        zeroSyncService,
+        stageCommand: async () => ({
+          bundle,
+          executionRecord: createExecutionRecord({
+            bundle,
+            appliedRevision: 2,
+            afterInput: appliedValue,
+          }),
+        }),
+      },
+      command,
+      'writeRange',
+    )
+
+    const payload = z
+      .object({
+        applied: z.literal(true),
+        status: z.literal('verification_incomplete'),
+        mutationReceipt: z.object({
+          status: z.literal('verification_incomplete'),
+          undo: z.object({
+            available: z.literal(false),
+            lookupFailed: z.literal(true),
+            reasonUnavailable: z.string(),
+          }),
+          warnings: z.array(z.string()),
+        }),
+      })
+      .parse(parsePayload(result))
+    expect(payload.mutationReceipt.undo.reasonUnavailable).toBe(
+      'Undo metadata lookup failed for applied revision r2: history store unavailable',
+    )
+    expect(payload.mutationReceipt.warnings).toContain('Undo metadata lookup failed for applied revision r2: history store unavailable')
   })
 
   it('reports applied for format mutations when authoritative and rendered proof agree', async () => {

@@ -57,6 +57,7 @@ export interface WorkbookToolMutationReceipt {
     readonly available: boolean
     readonly token: string | null
     readonly reasonUnavailable: string | null
+    readonly lookupFailed: boolean
   }
   readonly warnings: readonly string[]
 }
@@ -137,6 +138,16 @@ function receiptRanges(bundle: WorkbookAgentCommandBundle): readonly WorkbookAge
     role: range.role,
     kind: commandKind(bundle.commands[0] ?? ({ kind: 'clearRange', range } as WorkbookAgentCommand)),
   }))
+}
+
+function describeUnknownError(error: unknown): string {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message
+  }
+  if (typeof error === 'string' && error.trim().length > 0) {
+    return error
+  }
+  return 'unknown error'
 }
 
 function verificationRanges(bundle: WorkbookAgentCommandBundle): readonly CellRangeRef[] {
@@ -463,21 +474,34 @@ async function resolveUndoStatus(input: {
       available: false,
       token: null,
       reasonUnavailable: 'Workbook mutation has not been applied yet.',
+      lookupFailed: false,
     }
   }
-  const changes = await input.context.zeroSyncService.listWorkbookChanges(input.context.documentId, 25).catch(() => [])
+  let changes: Awaited<ReturnType<ZeroSyncService['listWorkbookChanges']>>
+  try {
+    changes = await input.context.zeroSyncService.listWorkbookChanges(input.context.documentId, 25)
+  } catch (error) {
+    return {
+      available: false,
+      token: null,
+      reasonUnavailable: `Undo metadata lookup failed for applied revision r${String(input.appliedRevision)}: ${describeUnknownError(error)}`,
+      lookupFailed: true,
+    }
+  }
   const matchingChange = changes.find((change) => change.revision === input.appliedRevision) ?? null
   if (matchingChange?.undoBundle) {
     return {
       available: true,
       token: `revision:${String(input.appliedRevision)}`,
       reasonUnavailable: null,
+      lookupFailed: false,
     }
   }
   return {
     available: false,
     token: null,
     reasonUnavailable: 'No persisted undo metadata was returned for the applied revision.',
+    lookupFailed: false,
   }
 }
 
@@ -678,7 +702,8 @@ async function buildMutationReceipt(input: {
     authoritativeReadback.requested &&
     authoritativeReadback.matched === true &&
     renderedReadback.requested &&
-    renderedReadback.matched === true
+    renderedReadback.matched === true &&
+    undo.available
   return {
     toolName: input.toolName,
     status: executionRecord
