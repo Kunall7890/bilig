@@ -47,6 +47,57 @@ export interface WorkbookRowsRef extends WorkbookBaseRef {
 
 export type WorkbookRef = WorkbookRangeRef | WorkbookNameRef | WorkbookTableRef | WorkbookColumnRef | WorkbookRowsRef
 
+const WORKBOOK_REF_KINDS = new Set<string>(['range', 'name', 'table', 'column', 'rows'])
+
+export function isWorkbookRef(value: unknown): value is WorkbookRef {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'kind' in value &&
+    typeof value.kind === 'string' &&
+    WORKBOOK_REF_KINDS.has(value.kind) &&
+    'id' in value &&
+    typeof value.id === 'string' &&
+    'label' in value &&
+    typeof value.label === 'string'
+  )
+}
+
+export function collectWorkbookRefs(value: unknown): readonly WorkbookRef[] {
+  const refs: WorkbookRef[] = []
+  const seenRefs = new Set<string>()
+  const seenObjects = new WeakSet<object>()
+
+  function visit(current: unknown): void {
+    if (current === null || current === undefined || typeof current !== 'object') {
+      return
+    }
+    if (seenObjects.has(current)) {
+      return
+    }
+    seenObjects.add(current)
+
+    if (isWorkbookRef(current)) {
+      const key = `${current.kind}:${current.id}`
+      if (!seenRefs.has(key)) {
+        seenRefs.add(key)
+        refs.push(current)
+      }
+      return
+    }
+
+    if (Array.isArray(current)) {
+      current.forEach(visit)
+      return
+    }
+
+    Object.values(current).forEach(visit)
+  }
+
+  visit(value)
+  return refs
+}
+
 export interface FindTableOptions {
   readonly name?: string
   readonly sheetName?: string

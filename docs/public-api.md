@@ -56,6 +56,7 @@ It exposes:
 - `buildWorkbookActionPlan`
 - `planWorkbookAction`
 - `inspectModel`
+- `collectWorkbookRefs`
 - `formula`
 - `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` through the model workbook context
 - `WorkbookModel`, `WorkbookAction`, `WorkbookActionPlanResult`, `WorkbookRunResult`, and `WorkbookCheckResult`
@@ -70,6 +71,10 @@ Formula helpers keep referenced workbook inputs separate from formula text.
 Planned `writeFormula` commands expose those inputs directly, which lets agents
 inspect dependencies without relying on human UI coordinates or reverse-parsing
 placeholder formula names.
+
+Action plans also expose `refsUsed`, a flat deduped list of workbook refs found
+inside the consumer-defined `refs` object. This keeps custom models generic
+while still letting agents inspect what the model resolved.
 
 ## Core engine surface
 

@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { parseFormula } from '@bilig/formula'
-import { buildWorkbookActionPlan, inspectModel, planWorkbookAction, defineModel, formula } from '../index.js'
+import {
+  buildWorkbookActionPlan,
+  collectWorkbookRefs,
+  inspectModel,
+  isWorkbookRef,
+  planWorkbookAction,
+  defineModel,
+  formula,
+} from '../index.js'
 
 describe('@bilig/workbook model api', () => {
   it('preserves model metadata, refs, checks, commands, and concrete workbook ops', () => {
@@ -35,6 +43,7 @@ describe('@bilig/workbook model api', () => {
     expect(plan.modelName).toBe('custom-model')
     expect(plan.actionName).toBe('calculate')
     expect(plan.refs.table.headers).toEqual(['Base', 'Rate', 'Result'])
+    expect(plan.refsUsed).toEqual([plan.refs.table, plan.refs.base, plan.refs.rate, plan.refs.result])
     expect(plan.commands).toEqual([
       {
         kind: 'writeFormula',
@@ -104,6 +113,62 @@ describe('@bilig/workbook model api', () => {
       formula: 'SUM((Inputs[Amount])*(Inputs[Rate]),Inputs[Amount])',
       inputs: [plan.refs.amount, plan.refs.rate],
     })
+  })
+
+  it('collects workbook refs from arbitrary consumer ref shapes', () => {
+    const model = defineModel({
+      name: 'nested-ref-model',
+
+      find(workbook) {
+        const table = workbook.findTable({ name: 'Inputs' })
+        const amount = table.column('Amount')
+        return {
+          groups: [
+            {
+              table,
+              amount,
+              duplicate: amount,
+            },
+          ],
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'E2' }),
+        }
+      },
+
+      actions: {
+        calculate({ refs, workbook }) {
+          workbook.writeFormula(refs.result, refs.groups[0]?.amount ?? formula.raw('0'))
+        },
+      },
+    })
+
+    const plan = buildWorkbookActionPlan(model, 'calculate')
+
+    expect(collectWorkbookRefs(plan.refs)).toEqual([plan.refs.groups[0]?.table, plan.refs.groups[0]?.amount, plan.refs.result])
+    expect(plan.refsUsed).toEqual([plan.refs.groups[0]?.table, plan.refs.groups[0]?.amount, plan.refs.result])
+    expect(isWorkbookRef(plan.refs.result)).toBe(true)
+  })
+
+  it('collects workbook refs safely from cyclic objects', () => {
+    const model = defineModel({
+      name: 'cyclic-ref-model',
+
+      find(workbook) {
+        const result = workbook.findRange({ sheetName: 'Sheet1', address: 'F2' })
+        const refs: { result: typeof result; self?: unknown } = { result }
+        refs.self = refs
+        return refs
+      },
+
+      actions: {
+        clear({ refs, workbook }) {
+          workbook.clear(refs.result)
+        },
+      },
+    })
+
+    const plan = buildWorkbookActionPlan(model, 'clear')
+
+    expect(plan.refsUsed).toEqual([plan.refs.result])
   })
 
   it('rejects invalid formulas before they become workbook actions', () => {

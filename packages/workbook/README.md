@@ -15,6 +15,7 @@ The public surface stays generic:
 - `buildWorkbookActionPlan`
 - `planWorkbookAction`
 - `inspectModel`
+- `collectWorkbookRefs`
 - `formula`
 - `WorkbookModel`
 - `WorkbookAction`
@@ -40,3 +41,7 @@ Formula expressions also keep their workbook inputs separate from their formula
 text. A planned `writeFormula` command includes both the parseable formula
 string and the generic model refs it used, so an agent can inspect what the
 action depends on without reverse-parsing placeholder names.
+
+Action plans expose `refsUsed`, a flat deduped list of workbook refs found in
+the consumer-defined `refs` object. Use `collectWorkbookRefs` directly when an
+agent needs to inspect refs from any nested consumer shape.

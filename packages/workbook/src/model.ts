@@ -1,6 +1,6 @@
 import type { CellStylePatch, LiteralInput } from '@bilig/protocol'
 import { formula, type WorkbookFormulaOperand } from './formula.js'
-import { createWorkbookFindApi, type WorkbookFindApi, type WorkbookRef } from './find.js'
+import { collectWorkbookRefs, createWorkbookFindApi, type WorkbookFindApi, type WorkbookRef } from './find.js'
 import { createWorkbookCheckApi, type WorkbookCheckApi } from './check.js'
 import type { WorkbookOp } from './ops.js'
 import type { WorkbookChangeSummary, WorkbookCheckResult, WorkbookRunError } from './result.js'
@@ -61,6 +61,7 @@ export interface WorkbookActionPlan<Refs = unknown> {
   readonly modelName: string
   readonly actionName: string
   readonly refs: Refs
+  readonly refsUsed: readonly WorkbookRef[]
   readonly commands: readonly WorkbookActionCommand[]
   readonly ops: readonly WorkbookOp[]
   readonly changed: readonly WorkbookChangeSummary[]
@@ -247,6 +248,7 @@ function createActionPlan<Refs>(
     modelName,
     actionName,
     refs,
+    refsUsed: collectWorkbookRefs(refs),
     commands,
     ops,
     changed: commands.map((command) => ({
