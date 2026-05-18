@@ -3,6 +3,8 @@ import { parseFormula } from '@bilig/formula'
 import {
   buildWorkbookActionPlan,
   collectWorkbookRefs,
+  describePlan,
+  describeRef,
   inspectModel,
   isWorkbookRef,
   planWorkbookAction,
@@ -169,6 +171,111 @@ describe('@bilig/workbook model api', () => {
     const plan = buildWorkbookActionPlan(model, 'clear')
 
     expect(plan.refsUsed).toEqual([plan.refs.result])
+  })
+
+  it('describes plans as JSON-safe agent-readable intent', () => {
+    const model = defineModel({
+      name: 'described-model',
+
+      find(workbook) {
+        const table = workbook.findTable({ name: 'Inputs' })
+        return {
+          table,
+          amount: table.column('Amount'),
+          rate: table.column('Rate'),
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'D2' }),
+        }
+      },
+
+      checks({ refs, workbook }) {
+        return [workbook.check.exists(refs.table)]
+      },
+
+      actions: {
+        calculate({ refs, workbook }) {
+          workbook.writeFormula(refs.result, formula.multiply(refs.amount, refs.rate))
+        },
+      },
+    })
+
+    const plan = buildWorkbookActionPlan(model, 'calculate')
+    const described = describePlan(plan)
+    const tableDescription = described.refsUsed[0]
+    const table = {
+      kind: 'table',
+      id: 'table_Inputs',
+      label: 'Inputs',
+      name: 'Inputs',
+    } as const
+    const amount = {
+      kind: 'column',
+      id: 'table_Inputs_Amount',
+      label: 'Inputs.Amount',
+      table,
+      name: 'Amount',
+    } as const
+    const rate = {
+      kind: 'column',
+      id: 'table_Inputs_Rate',
+      label: 'Inputs.Rate',
+      table,
+      name: 'Rate',
+    } as const
+    const result = {
+      kind: 'range',
+      id: 'range_Sheet1_D2_D2',
+      label: 'Sheet1!D2',
+      range: {
+        sheetName: 'Sheet1',
+        startAddress: 'D2',
+        endAddress: 'D2',
+      },
+    } as const
+
+    expect(describeRef(plan.refs.table)).toEqual(table)
+    expect(tableDescription).toBeDefined()
+    if (tableDescription === undefined) {
+      throw new Error('expected first ref description')
+    }
+    expect('column' in tableDescription).toBe(false)
+    expect(described).toEqual({
+      modelName: 'described-model',
+      actionName: 'calculate',
+      refsUsed: [table, amount, rate, result],
+      commands: [
+        {
+          kind: 'writeFormula',
+          target: result,
+          formula: '(Inputs[Amount])*(Inputs[Rate])',
+          inputs: [amount, rate],
+        },
+      ],
+      ops: [
+        {
+          kind: 'setCellFormula',
+          sheetName: 'Sheet1',
+          address: 'D2',
+          formula: '(Inputs[Amount])*(Inputs[Rate])',
+        },
+      ],
+      changed: [
+        {
+          kind: 'writeFormula',
+          target: result,
+          message: 'Write formula to Sheet1!D2',
+        },
+      ],
+      checks: [
+        {
+          status: 'planned',
+          kind: 'exists',
+          target: table,
+          message: 'Inputs exists',
+        },
+      ],
+    })
+    expect(JSON.parse(JSON.stringify(described))).toEqual(described)
+    expect('refs' in described).toBe(false)
   })
 
   it('rejects invalid formulas before they become workbook actions', () => {

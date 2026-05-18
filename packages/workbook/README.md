@@ -16,10 +16,14 @@ The public surface stays generic:
 - `planWorkbookAction`
 - `inspectModel`
 - `collectWorkbookRefs`
+- `describeRef`
+- `describePlan`
 - `formula`
 - `WorkbookModel`
 - `WorkbookAction`
 - `WorkbookActionPlanResult`
+- `WorkbookRefDescription`
+- `WorkbookActionPlanDescription`
 - `WorkbookRunResult`
 - `WorkbookCheckResult`
 
@@ -45,3 +49,8 @@ action depends on without reverse-parsing placeholder names.
 Action plans expose `refsUsed`, a flat deduped list of workbook refs found in
 the consumer-defined `refs` object. Use `collectWorkbookRefs` directly when an
 agent needs to inspect refs from any nested consumer shape.
+
+Use `describeRef` and `describePlan` when an agent needs JSON-safe intent for
+logs, comparisons, approvals, or runtime handoff. Descriptions keep the same
+generic refs, commands, checks, changes, and ops, but omit consumer-private
+`refs` object shape and helper functions such as `table.column()`.

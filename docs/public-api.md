@@ -57,9 +57,11 @@ It exposes:
 - `planWorkbookAction`
 - `inspectModel`
 - `collectWorkbookRefs`
+- `describeRef`
+- `describePlan`
 - `formula`
 - `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` through the model workbook context
-- `WorkbookModel`, `WorkbookAction`, `WorkbookActionPlanResult`, `WorkbookRunResult`, and `WorkbookCheckResult`
+- `WorkbookModel`, `WorkbookAction`, `WorkbookActionPlanResult`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookRunResult`, and `WorkbookCheckResult`
 - the existing low-level operation language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, and `EngineOpBatch`
 
 The package builds portable workbook intent and concrete low-level ops when the
@@ -75,6 +77,11 @@ placeholder formula names.
 Action plans also expose `refsUsed`, a flat deduped list of workbook refs found
 inside the consumer-defined `refs` object. This keeps custom models generic
 while still letting agents inspect what the model resolved.
+
+For agent logs, approvals, tests, and runtime handoff, `describeRef` and
+`describePlan` produce JSON-safe descriptions of refs and action plans. The
+descriptions preserve generic workbook intent while removing consumer-private
+`refs` object shape and helper methods.
 
 ## Core engine surface
 
