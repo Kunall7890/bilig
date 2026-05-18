@@ -275,8 +275,8 @@ export function rewriteWorkbookMetadataForStructuralTransform(
     const nextAddress =
       pivot.sheetName === sheetName ? rewriteMetadataAddressForStructuralTransform(pivot.address, transform) : pivot.address
     const nextSource =
-      pivot.source.sheetName === sheetName ? rewriteMetadataRangeForStructuralTransform(pivot.source, transform) : pivot.source
-    if (!nextAddress || !nextSource) {
+      pivot.source?.sheetName === sheetName ? rewriteMetadataRangeForStructuralTransform(pivot.source, transform) : pivot.source
+    if (!nextAddress || (pivot.source && !nextSource)) {
       args.clearOwnedPivot(pivot)
       workbook.deletePivot(pivot.sheetName, pivot.address)
       return
@@ -288,7 +288,7 @@ export function rewriteWorkbookMetadataForStructuralTransform(
     workbook.setPivot({
       ...pivot,
       address: nextAddress,
-      source: nextSource,
+      ...(nextSource ? { source: nextSource } : {}),
     })
   })
   workbook.listCharts().forEach((chart) => {

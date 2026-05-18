@@ -14,6 +14,8 @@ interface ImportedWorkbookMetadataInput {
   readonly externalWorkbookReferences?: WorkbookMetadataSnapshot['externalWorkbookReferences']
   readonly unsupportedFormulaDependencies?: WorkbookMetadataSnapshot['unsupportedFormulaDependencies']
   readonly unsupportedPivots?: WorkbookMetadataSnapshot['unsupportedPivots']
+  readonly formulaAudit?: WorkbookMetadataSnapshot['formulaAudit']
+  readonly externalConnections?: WorkbookMetadataSnapshot['externalConnections']
   readonly pivotArtifacts?: WorkbookMetadataSnapshot['pivotArtifacts']
   readonly drawingArtifacts?: WorkbookMetadataSnapshot['drawingArtifacts']
   readonly chartArtifacts?: WorkbookMetadataSnapshot['chartArtifacts']
@@ -44,6 +46,8 @@ export function buildImportedWorkbookMetadata(input: ImportedWorkbookMetadataInp
     ...(input.externalWorkbookReferences ? { externalWorkbookReferences: input.externalWorkbookReferences } : {}),
     ...(input.unsupportedFormulaDependencies ? { unsupportedFormulaDependencies: input.unsupportedFormulaDependencies } : {}),
     ...(input.unsupportedPivots ? { unsupportedPivots: input.unsupportedPivots } : {}),
+    ...(input.formulaAudit ? { formulaAudit: input.formulaAudit } : {}),
+    ...(input.externalConnections ? { externalConnections: input.externalConnections } : {}),
     ...(input.pivotArtifacts ? { pivotArtifacts: input.pivotArtifacts } : {}),
     ...(input.drawingArtifacts ? { drawingArtifacts: input.drawingArtifacts } : {}),
     ...(input.chartArtifacts ? { chartArtifacts: input.chartArtifacts } : {}),

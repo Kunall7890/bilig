@@ -10,12 +10,21 @@ interface SharedFormulaBase {
   readonly formula: string
 }
 
-interface WorksheetFormulaCell {
+export interface WorksheetFormulaCell {
   readonly address: string
   readonly row: number
   readonly column: number
   readonly formulaType: string | null
   readonly sharedIndex: string | null
+  readonly ref: string | null
+  readonly aca: boolean | null
+  readonly bx: boolean | null
+  readonly ca: boolean | null
+  readonly xmlSpace: string | null
+  readonly cellValueType: string | null
+  readonly cachedValueRaw: string | null
+  readonly cachedValue: string | number | boolean | null | undefined
+  readonly rawFormulaXml: string
   readonly formula: string
 }
 
@@ -26,6 +35,7 @@ const formulaElementPattern =
   /<(?:[A-Za-z_][\w.-]*:)?f\b(?:[^>"']|"[^"]*"|'[^']*')*\/>|<((?:[A-Za-z_][\w.-]*:)?f)\b(?:[^>"']|"[^"]*"|'[^']*')*>[\s\S]*?<\/\1>/u
 const formulaOpeningTagPattern = /<(?:[A-Za-z_][\w.-]*:)?f\b(?:[^>"']|"[^"]*"|'[^']*')*(?:\/>|>)/u
 const formulaTextPattern = /<(?:[A-Za-z_][\w.-]*:)?f\b(?:[^>"']|"[^"]*"|'[^']*')*>([\s\S]*?)<\/(?:[A-Za-z_][\w.-]*:)?f>/u
+const valueTextPattern = /<(?:[A-Za-z_][\w.-]*:)?v\b(?:[^>"']|"[^"]*"|'[^']*')*>([\s\S]*?)<\/(?:[A-Za-z_][\w.-]*:)?v>/u
 const cellAddressPattern = /^\$?[A-Za-z]{1,3}\$?[1-9][0-9]*$/u
 
 function readXmlAttribute(xml: string, attributeName: string): string | null {
@@ -82,7 +92,38 @@ function readFormulaText(formulaXml: string): string {
   return decodeXmlText(formulaTextPattern.exec(formulaXml)?.[1] ?? '')
 }
 
-function readWorksheetFormulaCells(sheetXml: string | null): WorksheetFormulaCell[] {
+function readBooleanAttribute(openingTag: string, attributeName: string): boolean | null {
+  const raw = readXmlAttribute(openingTag, attributeName)
+  if (raw === null) {
+    return null
+  }
+  return raw === '1' || raw.toLowerCase() === 'true'
+}
+
+function readCachedValueRaw(cellXml: string): string | null {
+  const raw = valueTextPattern.exec(cellXml)?.[1]
+  return raw === undefined ? null : decodeXmlText(raw)
+}
+
+function readCachedValue(raw: string | null, cellValueType: string | null): string | number | boolean | null | undefined {
+  if (raw === null) {
+    return undefined
+  }
+  const normalizedType = cellValueType?.trim().toLowerCase()
+  if (normalizedType === 'b') {
+    return raw === '1' || raw.toLowerCase() === 'true'
+  }
+  if (normalizedType === 'str' || normalizedType === 's' || normalizedType === 'inlinestr' || normalizedType === 'e') {
+    return raw
+  }
+  const numericValue = Number(raw)
+  if (Number.isFinite(numericValue)) {
+    return numericValue
+  }
+  return raw
+}
+
+export function readWorksheetFormulaCells(sheetXml: string | null): WorksheetFormulaCell[] {
   if (!sheetXml) {
     return []
   }
@@ -101,20 +142,32 @@ function readWorksheetFormulaCells(sheetXml: string | null): WorksheetFormulaCel
       continue
     }
     const decodedAddress = XLSX.utils.decode_cell(address)
+    const formulaType = readXmlAttribute(formulaOpeningTag, 't')
+    const sharedIndex = readXmlAttribute(formulaOpeningTag, 'si')
+    const cellValueType = cellOpeningTag ? readXmlAttribute(cellOpeningTag, 't') : null
+    const cachedValueRaw = readCachedValueRaw(cellXml)
     cells.push({
       address,
       row: decodedAddress.r,
       column: decodedAddress.c,
-      formulaType: readXmlAttribute(formulaOpeningTag, 't'),
-      sharedIndex: readXmlAttribute(formulaOpeningTag, 'si'),
+      formulaType,
+      sharedIndex,
+      ref: readXmlAttribute(formulaOpeningTag, 'ref'),
+      aca: readBooleanAttribute(formulaOpeningTag, 'aca'),
+      bx: readBooleanAttribute(formulaOpeningTag, 'bx'),
+      ca: readBooleanAttribute(formulaOpeningTag, 'ca'),
+      xmlSpace: readXmlAttribute(formulaOpeningTag, 'xml:space'),
+      cellValueType,
+      cachedValueRaw,
+      cachedValue: readCachedValue(cachedValueRaw, cellValueType),
+      rawFormulaXml: formulaXml,
       formula: readFormulaText(formulaXml),
     })
   }
   return cells
 }
 
-function readWorksheetSharedFormulas(sheetXml: string | null): Map<string, string> {
-  const cells = readWorksheetFormulaCells(sheetXml)
+function readWorksheetSharedFormulas(cells: readonly WorksheetFormulaCell[]): Map<string, string> {
   const sharedBases = new Map<string, SharedFormulaBase>()
   const formulas = new Map<string, string>()
 
@@ -148,6 +201,19 @@ function readWorksheetSharedFormulas(sheetXml: string | null): Map<string, strin
   return formulas
 }
 
+export function readWorksheetFormulaCellManifest(sheetXml: string | null): Map<string, WorksheetFormulaCell> {
+  const cells = readWorksheetFormulaCells(sheetXml)
+  const sharedFormulas = readWorksheetSharedFormulas(cells)
+  const manifest = new Map<string, WorksheetFormulaCell>()
+  for (const cell of cells) {
+    manifest.set(cell.address, {
+      ...cell,
+      formula: sharedFormulas.get(cell.address) ?? cell.formula,
+    })
+  }
+  return manifest
+}
+
 export function readImportedWorksheetFormulas(
   zip: XlsxZipEntries,
   sheetNames: readonly string[],
@@ -160,10 +226,34 @@ export function readImportedWorksheetFormulas(
     if (!sheetPath) {
       return
     }
-    const formulas = readWorksheetSharedFormulas(getZipText(zip, sheetPath))
+    const formulas = new Map(
+      [...readWorksheetFormulaCellManifest(getZipText(zip, sheetPath)).entries()]
+        .filter((entry) => entry[1].formula.trim().length > 0)
+        .map((entry) => [entry[0], entry[1].formula]),
+    )
     if (formulas.size > 0) {
       formulasBySheet.set(sheetName, formulas)
     }
   })
   return formulasBySheet
+}
+
+export function readImportedWorksheetFormulaManifests(
+  zip: XlsxZipEntries,
+  sheetNames: readonly string[],
+  sheetPathsByName: ReadonlyMap<string, string>,
+  fallbackSheetPaths: readonly string[],
+): Map<string, Map<string, WorksheetFormulaCell>> {
+  const manifestsBySheet = new Map<string, Map<string, WorksheetFormulaCell>>()
+  sheetNames.forEach((sheetName, index) => {
+    const sheetPath = workbookSheetPath(sheetPathsByName, fallbackSheetPaths, sheetName, index)
+    if (!sheetPath) {
+      return
+    }
+    const manifest = readWorksheetFormulaCellManifest(getZipText(zip, sheetPath))
+    if (manifest.size > 0) {
+      manifestsBySheet.set(sheetName, manifest)
+    }
+  })
+  return manifestsBySheet
 }

@@ -29,6 +29,13 @@ export interface WorkPaperXlsxCorpusResult {
   readonly skippedByReason: Readonly<Record<WorkPaperXlsxFormulaSkipReason, number>>
 }
 
+export interface WorkPaperXlsxCorpusCompatibilitySummary {
+  readonly formulaContextDiagnosticCount: number
+  readonly staleCacheRiskFormulaCount: number
+  readonly externalCacheOnlyPivotCount: number
+  readonly unsupportedRefreshFeatureCount: number
+}
+
 export interface WorkPaperXlsxCorpusSummary {
   readonly totalFiles: number
   readonly filesProcessed: number
@@ -41,6 +48,7 @@ export interface WorkPaperXlsxCorpusSummary {
   readonly mismatchedFormulaCells: number
   readonly skippedFormulaCells: number
   readonly matchRate: number
+  readonly compatibility: WorkPaperXlsxCorpusCompatibilitySummary
   readonly elapsedMs: number
 }
 
@@ -54,6 +62,7 @@ export interface WorkPaperXlsxCorpusFileResult {
   readonly mismatchedFormulaCells: number
   readonly skippedFormulaCells: number
   readonly matchRate: number
+  readonly compatibility: WorkPaperXlsxCorpusCompatibilitySummary
   readonly elapsedMs: number
   readonly error?: string
 }
@@ -81,6 +90,7 @@ export interface FormulaCellRecord {
 export interface PreparedWorkbook {
   readonly sheets: WorkPaperSheets
   readonly formulaCells: readonly FormulaCellRecord[]
+  readonly compatibility: WorkPaperXlsxCorpusCompatibilitySummary
   readonly maxRows: number
   readonly maxColumns: number
 }

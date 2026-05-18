@@ -11,6 +11,79 @@ function numberValue(value: number): CellValue {
 }
 
 describe('materializePivotTable', () => {
+  it('materializes column fields, page filters, and common Excel aggregate variants', () => {
+    const result = materializePivotTable(
+      {
+        groupBy: ['Region'],
+        columnFields: ['Quarter'],
+        filters: [{ sourceColumn: 'Status', includedValues: ['Closed'] }],
+        values: [
+          { sourceColumn: 'Sales', summarizeBy: 'sum' },
+          { sourceColumn: 'Sales', summarizeBy: 'average' },
+          { sourceColumn: 'Units', summarizeBy: 'countNums' },
+          { sourceColumn: 'Sales', summarizeBy: 'min' },
+          { sourceColumn: 'Sales', summarizeBy: 'max' },
+          { sourceColumn: 'Units', summarizeBy: 'product' },
+        ],
+      },
+      [
+        [stringValue('Region'), stringValue('Quarter'), stringValue('Status'), stringValue('Sales'), stringValue('Units')],
+        [stringValue('East'), stringValue('Q1'), stringValue('Closed'), numberValue(10), numberValue(2)],
+        [stringValue('East'), stringValue('Q1'), stringValue('Open'), numberValue(100), numberValue(9)],
+        [stringValue('East'), stringValue('Q1'), stringValue('Closed'), numberValue(20), numberValue(3)],
+        [stringValue('East'), stringValue('Q2'), stringValue('Closed'), numberValue(5), numberValue(4)],
+        [stringValue('West'), stringValue('Q2'), stringValue('Closed'), numberValue(7), numberValue(5)],
+      ],
+    )
+
+    expect(result).toEqual({
+      kind: 'ok',
+      rows: 3,
+      cols: 13,
+      values: [
+        stringValue('Region'),
+        stringValue('Q1 SUM of Sales'),
+        stringValue('Q1 AVERAGE of Sales'),
+        stringValue('Q1 COUNTNUMS of Units'),
+        stringValue('Q1 MIN of Sales'),
+        stringValue('Q1 MAX of Sales'),
+        stringValue('Q1 PRODUCT of Units'),
+        stringValue('Q2 SUM of Sales'),
+        stringValue('Q2 AVERAGE of Sales'),
+        stringValue('Q2 COUNTNUMS of Units'),
+        stringValue('Q2 MIN of Sales'),
+        stringValue('Q2 MAX of Sales'),
+        stringValue('Q2 PRODUCT of Units'),
+        stringValue('East'),
+        numberValue(30),
+        numberValue(15),
+        numberValue(2),
+        numberValue(10),
+        numberValue(20),
+        numberValue(6),
+        numberValue(5),
+        numberValue(5),
+        numberValue(1),
+        numberValue(5),
+        numberValue(5),
+        numberValue(4),
+        stringValue('West'),
+        numberValue(0),
+        numberValue(0),
+        numberValue(0),
+        numberValue(0),
+        numberValue(0),
+        numberValue(0),
+        numberValue(7),
+        numberValue(7),
+        numberValue(1),
+        numberValue(7),
+        numberValue(7),
+        numberValue(5),
+      ],
+    })
+  })
+
   it('groups rows by key columns and accumulates sum and count values', () => {
     const result = materializePivotTable(
       {

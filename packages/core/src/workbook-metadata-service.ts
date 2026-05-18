@@ -162,14 +162,18 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
     )
     rekeyRecords(metadata.spills, (record) => (record.sheetName === oldSheetName ? { ...record, sheetName: newSheetName } : { ...record }))
     rekeyRecords(metadata.pivots, (record) =>
-      record.sheetName === oldSheetName || record.source.sheetName === oldSheetName
+      record.sheetName === oldSheetName || record.source?.sheetName === oldSheetName
         ? {
             ...record,
             sheetName: record.sheetName === oldSheetName ? newSheetName : record.sheetName,
-            source: {
-              ...record.source,
-              sheetName: record.source.sheetName === oldSheetName ? newSheetName : record.source.sheetName,
-            },
+            ...(record.source
+              ? {
+                  source: {
+                    ...record.source,
+                    sheetName: record.source.sheetName === oldSheetName ? newSheetName : record.source.sheetName,
+                  },
+                }
+              : {}),
             groupBy: [...record.groupBy],
             values: record.values.map((value) => ({ ...value })),
           }
@@ -204,7 +208,11 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
     deleteRecordsBySheet(metadata.definedNames, sheetName, (record) => record.scopeSheetName)
     deleteRecordsBySheet(metadata.tables, sheetName, (record) => record.sheetName)
     deleteRecordsBySheet(metadata.spills, sheetName, (record) => record.sheetName)
-    deleteRecordsBySheet(metadata.pivots, sheetName, (record) => record.sheetName)
+    for (const [key, record] of metadata.pivots.entries()) {
+      if (record.sheetName === sheetName || record.source?.sheetName === sheetName) {
+        metadata.pivots.delete(key)
+      }
+    }
     for (const [key, record] of metadata.charts.entries()) {
       if (record.sheetName === sheetName || record.source.sheetName === sheetName) {
         metadata.charts.delete(key)
@@ -749,7 +757,7 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
           address: normalizedAddress,
           groupBy: [...record.groupBy],
           values: record.values.map((value) => ({ ...value })),
-          source: canonicalWorkbookRangeRef(record.source),
+          ...(record.source ? { source: canonicalWorkbookRangeRef(record.source) } : {}),
         }
         metadata.pivots.set(pivotKey(record.sheetName, normalizedAddress), stored)
         return clonePivotRecord(stored)

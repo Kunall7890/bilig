@@ -64,8 +64,11 @@ function captureDeletedSheetInverseOps(
     })
   workbook
     .listPivots()
-    .filter((pivot) => pivot.sheetName === sheet.name)
+    .filter((pivot) => pivot.sheetName === sheet.name && pivot.source)
     .forEach((pivot) => {
+      if (!pivot.source) {
+        return
+      }
       restoredOps.push({
         kind: 'upsertPivotTable',
         name: pivot.name,

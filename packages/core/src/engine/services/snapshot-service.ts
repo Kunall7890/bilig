@@ -25,11 +25,13 @@ function hasNonDefaultCalculationSettings(calculationSettings: WorkbookCalculati
   return (
     calculationSettings.mode !== 'automatic' ||
     calculationSettings.compatibilityMode !== 'excel-modern' ||
+    calculationSettings.calcId !== undefined ||
     calculationSettings.iterate !== undefined ||
     calculationSettings.iterateCount !== undefined ||
     calculationSettings.iterateDelta !== undefined ||
     calculationSettings.fullPrecision === false ||
     calculationSettings.fullCalcOnLoad !== undefined ||
+    calculationSettings.forceFullCalc !== undefined ||
     calculationSettings.concurrentCalc !== undefined ||
     calculationSettings.dateSystem === '1904'
   )
@@ -98,16 +100,7 @@ export function createEngineSnapshotService(args: {
             .listCellNumberFormats()
             .filter((format) => referencedFormatIds.has(format.id))
             .map((format) => Object.assign({}, format))
-          const pivots = args.state.workbook.listPivots().map((pivot) => ({
-            name: pivot.name,
-            sheetName: pivot.sheetName,
-            address: pivot.address,
-            source: { ...pivot.source },
-            groupBy: [...pivot.groupBy],
-            values: pivot.values.map((value) => Object.assign({}, value)),
-            rows: pivot.rows,
-            cols: pivot.cols,
-          }))
+          const pivots = args.state.workbook.listPivots().map((pivot) => structuredClone(pivot))
           const charts = args.state.workbook.listCharts().map((chart) => structuredClone(chart))
           const images = args.state.workbook.listImages().map((image) => structuredClone(image))
           const shapes = args.state.workbook.listShapes().map((shape) => structuredClone(shape))

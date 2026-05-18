@@ -35,6 +35,9 @@ import {
   setZipText,
   spreadsheetNamespace,
 } from './xlsx-pivot-artifacts.js'
+import { defaultDataFieldVerb, subtotalValue } from './xlsx-pivot-aggregate-xml.js'
+import { readCacheFieldSharedItems } from './xlsx-pivot-cache-items.js'
+import { readPivotCacheRecordsForDefinition } from './xlsx-pivot-cache-records.js'
 import { getZipText, readXlsxZipEntries, type XlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 type ZipEntries = XlsxZipEntries
@@ -44,15 +47,25 @@ interface PivotCacheField {
   readonly values: readonly LiteralInput[]
 }
 
+interface ParsedPivotCacheField {
+  readonly name: string
+  readonly sharedItems: readonly LiteralInput[]
+}
+
 interface PivotCacheTable {
   readonly fields: readonly PivotCacheField[]
   readonly rows: readonly (readonly LiteralInput[])[]
 }
 
+type PivotSourceKind = NonNullable<WorkbookPivotSnapshot['sourceKind']>
+
 interface ParsedPivotCache {
   readonly cacheId: number
-  readonly source: CellRangeRef
-  readonly fields: readonly string[]
+  readonly source?: CellRangeRef
+  readonly sourceKind: PivotSourceKind
+  readonly fields: readonly ParsedPivotCacheField[]
+  readonly cachedRecordCount?: number
+  readonly cachedRecords?: readonly (readonly LiteralInput[])[]
 }
 
 export interface ImportedWorkbookPivots {
@@ -87,6 +100,10 @@ function recordChild(value: unknown, key: string): Record<string, unknown> | nul
   }
   const child = value[key]
   return isRecord(child) ? child : null
+}
+
+function stringAttribute(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value : null
 }
 
 function numberAttribute(value: unknown): number | null {
@@ -198,13 +215,17 @@ function fallbackColumnName(index: number): string {
 }
 
 function buildPivotCacheTable(snapshot: WorkbookSnapshot, pivot: WorkbookPivotSnapshot): PivotCacheTable | null {
-  const sourceSheet = snapshot.sheets.find((sheet) => sheet.name === pivot.source.sheetName)
+  if (!pivot.source) {
+    return null
+  }
+  const sourceRange = pivot.source
+  const sourceSheet = snapshot.sheets.find((sheet) => sheet.name === sourceRange.sheetName)
   if (!sourceSheet) {
     return null
   }
   let source: XLSX.Range
   try {
-    source = XLSX.utils.decode_range(`${pivot.source.startAddress}:${pivot.source.endAddress}`)
+    source = XLSX.utils.decode_range(`${sourceRange.startAddress}:${sourceRange.endAddress}`)
   } catch {
     return null
   }
@@ -269,7 +290,7 @@ function buildCacheFieldXml(field: PivotCacheField): string {
 }
 
 function buildPivotCacheDefinitionXml(
-  pivot: WorkbookPivotSnapshot,
+  pivot: WorkbookPivotSnapshot & { source: CellRangeRef },
   cacheTable: PivotCacheTable,
   exportSourceSheetName: string,
   cacheRecordsRelationshipId: string,
@@ -316,6 +337,12 @@ function pivotFieldXml(index: number, fields: readonly string[], pivot: Workbook
   if (pivot.groupBy.includes(fieldName)) {
     return '<pivotField axis="axisRow" showAll="0"><items count="1"><item t="default"/></items></pivotField>'
   }
+  if ((pivot.columnFields ?? []).includes(fieldName)) {
+    return '<pivotField axis="axisCol" showAll="0"><items count="1"><item t="default"/></items></pivotField>'
+  }
+  if ((pivot.pageFields ?? []).some((field) => field.sourceColumn === fieldName)) {
+    return '<pivotField axis="axisPage" showAll="0"><items count="1"><item t="default"/></items></pivotField>'
+  }
   if (pivot.values.some((value) => value.sourceColumn === fieldName)) {
     return '<pivotField dataField="1" showAll="0"/>'
   }
@@ -333,20 +360,33 @@ function buildRowFieldsXml(fieldIndexes: readonly number[]): string {
   ].join('')
 }
 
-function subtotalValue(value: PivotAggregation): string {
-  switch (value) {
-    case 'sum':
-      return 'sum'
-    case 'count':
-      return 'count'
+function buildColumnFieldsXml(fieldIndexes: readonly number[]): string {
+  if (fieldIndexes.length === 0) {
+    return ''
   }
+  return [
+    `<colFields count="${String(fieldIndexes.length)}">`,
+    ...fieldIndexes.map((index) => `<field x="${String(index)}"/>`),
+    '</colFields>',
+  ].join('')
+}
+
+function buildPageFieldsXml(fieldIndexes: readonly number[]): string {
+  if (fieldIndexes.length === 0) {
+    return ''
+  }
+  return [
+    `<pageFields count="${String(fieldIndexes.length)}">`,
+    ...fieldIndexes.map((index) => `<pageField fld="${String(index)}"/>`),
+    '</pageFields>',
+  ].join('')
 }
 
 function defaultDataFieldName(value: WorkbookPivotValueSnapshot): string {
   if (value.outputLabel && value.outputLabel.trim().length > 0) {
     return value.outputLabel.trim()
   }
-  return `${value.summarizeBy === 'sum' ? 'Sum' : 'Count'} of ${value.sourceColumn}`
+  return `${defaultDataFieldVerb(value.summarizeBy)} of ${value.sourceColumn}`
 }
 
 function buildDataFieldsXml(values: readonly WorkbookPivotValueSnapshot[], fieldIndexesByName: ReadonlyMap<string, number>): string {
@@ -374,6 +414,14 @@ function buildPivotTableDefinitionXml(pivot: WorkbookPivotSnapshot, cacheId: num
     const index = fieldIndexesByName.get(fieldName)
     return index === undefined ? [] : [index]
   })
+  const columnFieldIndexes = (pivot.columnFields ?? []).flatMap((fieldName) => {
+    const index = fieldIndexesByName.get(fieldName)
+    return index === undefined ? [] : [index]
+  })
+  const pageFieldIndexes = (pivot.pageFields ?? []).flatMap((field) => {
+    const index = fieldIndexesByName.get(field.sourceColumn)
+    return index === undefined ? [] : [index]
+  })
   return [
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
     `<pivotTableDefinition xmlns="${spreadsheetNamespace}" name="${escapeXml(pivot.name)}" cacheId="${String(
@@ -386,6 +434,8 @@ function buildPivotTableDefinitionXml(pivot: WorkbookPivotSnapshot, cacheId: num
     ...fieldNames.map((_, index) => pivotFieldXml(index, fieldNames, pivot)),
     '</pivotFields>',
     buildRowFieldsXml(rowFieldIndexes),
+    buildColumnFieldsXml(columnFieldIndexes),
+    buildPageFieldsXml(pageFieldIndexes),
     buildDataFieldsXml(pivot.values, fieldIndexesByName),
     '<pivotTableStyleInfo name="PivotStyleLight16" showRowHeaders="1" showColHeaders="1" showRowStripes="0" showColStripes="0" showLastColumn="1"/>',
     '</pivotTableDefinition>',
@@ -428,6 +478,10 @@ export function addExportPivotsToXlsxBytes(
       const sheetRelationships = parseRelationships(getZipText(zip, sheetRelsPath))
 
       sheetPivots.forEach((pivot) => {
+        if (!pivot.source) {
+          return
+        }
+        const sourcefulPivot = { ...pivot, source: pivot.source }
         const cacheTable = buildPivotCacheTable(snapshot, pivot)
         const exportSourceSheetName = exportSheetNamesByOriginalName.get(pivot.source.sheetName) ?? pivot.source.sheetName
         if (!cacheTable || cacheTable.fields.length === 0 || pivot.values.length === 0 || !exportSourceSheetName) {
@@ -454,7 +508,7 @@ export function addExportPivotsToXlsxBytes(
         setZipText(
           zip,
           cacheDefinitionPath,
-          buildPivotCacheDefinitionXml(pivot, cacheTable, exportSourceSheetName, cacheRecordsRelationshipId),
+          buildPivotCacheDefinitionXml(sourcefulPivot, cacheTable, exportSourceSheetName, cacheRecordsRelationshipId),
         )
         setZipText(zip, cacheRecordsPath, buildPivotCacheRecordsXml(cacheTable))
         setZipText(
@@ -526,27 +580,50 @@ function readWorkbookPivotCaches(zip: ZipEntries): Map<number, string> {
 function parsePivotCacheDefinition(
   cacheId: number,
   xml: string,
+  zip: ZipEntries,
+  path: string,
   tablesByName: ReadonlyMap<string, WorkbookTableSnapshot>,
   definedNamesByName: ReadonlyMap<string, WorkbookDefinedNameSnapshot>,
 ): ParsedPivotCache | null {
   const parsed: unknown = xmlParser.parse(xml)
   const definition = recordChild(parsed, 'pivotCacheDefinition')
-  const sourceRecord = recordChild(recordChild(definition, 'cacheSource'), 'worksheetSource')
-  const sheetName = typeof sourceRecord?.['sheet'] === 'string' ? sourceRecord['sheet'] : null
-  const ref = typeof sourceRecord?.['ref'] === 'string' ? sourceRecord['ref'] : null
-  const sourceName = typeof sourceRecord?.['name'] === 'string' ? sourceRecord['name'].trim() : ''
-  const namedSource = sourceName.length > 0 ? sourceRangeForName(sourceName, sheetName, tablesByName, definedNamesByName) : null
-  const source = sheetName && ref ? parseRangeRef(sheetName, ref) : namedSource
-  if (!source) {
-    return null
-  }
+  const cacheSource = recordChild(definition, 'cacheSource')
   const fields = asArray(recordChild(definition, 'cacheFields')?.['cacheField']).flatMap((entry) => {
     if (!isRecord(entry) || typeof entry['name'] !== 'string' || entry['name'].trim().length === 0) {
       return []
     }
-    return [entry['name'].trim()]
+    return [
+      {
+        name: entry['name'].trim(),
+        sharedItems: readCacheFieldSharedItems(entry),
+      },
+    ]
   })
-  return fields.length > 0 ? { cacheId, source, fields } : null
+  const sourceRecord = recordChild(cacheSource, 'worksheetSource')
+  const sheetName = typeof sourceRecord?.['sheet'] === 'string' ? sourceRecord['sheet'] : null
+  const ref = typeof sourceRecord?.['ref'] === 'string' ? sourceRecord['ref'] : null
+  const sourceName = typeof sourceRecord?.['name'] === 'string' ? sourceRecord['name'].trim() : ''
+  const namedSource = sourceName.length > 0 ? sourceRangeForName(sourceName, sheetName, tablesByName, definedNamesByName) : null
+  const worksheetSource = sheetName && ref ? parseRangeRef(sheetName, ref) : null
+  const source = worksheetSource ?? namedSource?.source
+  const sourceType = stringAttribute(cacheSource?.['type'])
+  const cachedRecords = fields.length > 0 ? readPivotCacheRecordsForDefinition(zip, path, fields) : []
+  if (!source && (sourceType !== 'external' || cachedRecords.length === 0)) {
+    return null
+  }
+  const sourceKind =
+    sourceType === 'external' ? 'external-cache-only' : worksheetSource ? 'worksheet' : (namedSource?.sourceKind ?? 'worksheet')
+  const recordCount = numberAttribute(definition?.['recordCount'])
+  return fields.length > 0
+    ? {
+        cacheId,
+        ...(source ? { source } : {}),
+        sourceKind,
+        fields,
+        ...(recordCount !== null ? { cachedRecordCount: recordCount } : {}),
+        ...(cachedRecords.length > 0 ? { cachedRecords } : {}),
+      }
+    : null
 }
 
 function pivotCacheDefinitionSourceType(xml: string): string | null {
@@ -560,14 +637,17 @@ function sourceRangeForName(
   sheetName: string | null,
   tablesByName: ReadonlyMap<string, WorkbookTableSnapshot>,
   definedNamesByName: ReadonlyMap<string, WorkbookDefinedNameSnapshot>,
-): CellRangeRef | null {
+): { readonly source: CellRangeRef; readonly sourceKind: PivotSourceKind } | null {
   const normalizedName = name.toLocaleLowerCase('en-US')
   const table = tablesByName.get(normalizedName)
   if (table) {
     return {
-      sheetName: table.sheetName,
-      startAddress: table.startAddress,
-      endAddress: table.endAddress,
+      source: {
+        sheetName: table.sheetName,
+        startAddress: table.startAddress,
+        endAddress: table.endAddress,
+      },
+      sourceKind: 'table',
     }
   }
   const definedName = sheetName
@@ -586,10 +666,16 @@ function sourceRangeForName(
     typeof value['startAddress'] === 'string' &&
     typeof value['endAddress'] === 'string'
   ) {
-    return { sheetName: value['sheetName'], startAddress: value['startAddress'], endAddress: value['endAddress'] }
+    return {
+      source: { sheetName: value['sheetName'], startAddress: value['startAddress'], endAddress: value['endAddress'] },
+      sourceKind: 'named-range',
+    }
   }
   if (value['kind'] === 'cell-ref' && typeof value['sheetName'] === 'string' && typeof value['address'] === 'string') {
-    return { sheetName: value['sheetName'], startAddress: value['address'], endAddress: value['address'] }
+    return {
+      source: { sheetName: value['sheetName'], startAddress: value['address'], endAddress: value['address'] },
+      sourceKind: 'named-range',
+    }
   }
   return null
 }
@@ -623,15 +709,19 @@ function parsePivotCaches(
     const hasExternalSource = sourceType === 'external'
     hasExternalPivotCaches ||= hasExternalSource
     if (hasExternalSource) {
+      const parsedExternalCache = parsePivotCacheDefinition(cacheId, xml, zip, path, tablesByName, definedNamesByName)
       unsupportedCaches.set(cacheId, {
         kind: 'external-cache',
         cacheId,
         sourceType,
         packagePart: path,
-        reason: 'External pivot cache is preserved as raw XLSX package parts but is not semantically imported.',
+        ...(parsedExternalCache?.cachedRecordCount !== undefined ? { cachedRecordCount: parsedExternalCache.cachedRecordCount } : {}),
+        ...(parsedExternalCache ? { cacheFieldNames: parsedExternalCache.fields.map((field) => field.name), cacheOnly: true } : {}),
+        reason:
+          'External pivot cache is preserved as raw XLSX package parts; cached records are provenance-only unless a semantic source can be resolved.',
       })
     }
-    const parsed = parsePivotCacheDefinition(cacheId, xml, tablesByName, definedNamesByName)
+    const parsed = parsePivotCacheDefinition(cacheId, xml, zip, path, tablesByName, definedNamesByName)
     if (parsed) {
       output.set(cacheId, parsed)
     }
@@ -646,11 +736,91 @@ function aggregationFromSubtotal(value: unknown): PivotAggregation | null {
     case 'sum':
       return 'sum'
     case 'count':
-    case 'countNums':
       return 'count'
+    case 'countNums':
+      return 'countNums'
+    case 'average':
+      return 'average'
+    case 'min':
+      return 'min'
+    case 'max':
+      return 'max'
+    case 'product':
+      return 'product'
     default:
       return null
   }
+}
+
+function cacheFieldName(cache: ParsedPivotCache, index: number | null): string | undefined {
+  return index === null ? undefined : cache.fields[index]?.name
+}
+
+function cacheSharedItem(cache: ParsedPivotCache, fieldIndex: number, itemIndex: number | null): LiteralInput | undefined {
+  if (itemIndex === null) {
+    return undefined
+  }
+  return cache.fields[fieldIndex]?.sharedItems[itemIndex]
+}
+
+function parseFieldNames(definition: Record<string, unknown>, fieldGroupName: string, cache: ParsedPivotCache): string[] {
+  return asArray(recordChild(definition, fieldGroupName)?.['field']).flatMap((entry) => {
+    const index = isRecord(entry) ? numberAttribute(entry['x']) : null
+    const field = cacheFieldName(cache, index)
+    return field ? [field] : []
+  })
+}
+
+function parsePageFields(definition: Record<string, unknown>, cache: ParsedPivotCache): NonNullable<WorkbookPivotSnapshot['pageFields']> {
+  return asArray(recordChild(definition, 'pageFields')?.['pageField']).flatMap((entry) => {
+    if (!isRecord(entry)) {
+      return []
+    }
+    const fieldIndex = numberAttribute(entry['fld'])
+    const sourceColumn = cacheFieldName(cache, fieldIndex)
+    if (!sourceColumn || fieldIndex === null) {
+      return []
+    }
+    const selectedValue = cacheSharedItem(cache, fieldIndex, numberAttribute(entry['item']))
+    return [
+      {
+        sourceColumn,
+        ...(selectedValue !== undefined ? { selectedValue } : {}),
+      },
+    ]
+  })
+}
+
+function parseHiddenItems(definition: Record<string, unknown>, cache: ParsedPivotCache): NonNullable<WorkbookPivotSnapshot['hiddenItems']> {
+  return asArray(recordChild(definition, 'pivotFields')?.['pivotField']).flatMap((fieldEntry, fieldIndex) => {
+    if (!isRecord(fieldEntry)) {
+      return []
+    }
+    const sourceColumn = cache.fields[fieldIndex]?.name
+    if (!sourceColumn) {
+      return []
+    }
+    const values = asArray(recordChild(fieldEntry, 'items')?.['item']).flatMap((item) => {
+      if (!isRecord(item) || stringAttribute(item['h']) !== '1') {
+        return []
+      }
+      const itemIndex = numberAttribute(item['x'])
+      const value = cacheSharedItem(cache, fieldIndex, itemIndex)
+      return value === undefined ? [] : [value]
+    })
+    return values.length > 0 ? [{ sourceColumn, values }] : []
+  })
+}
+
+function parseCalculatedFields(definition: Record<string, unknown>): NonNullable<WorkbookPivotSnapshot['calculatedFields']> {
+  return asArray(recordChild(definition, 'calculatedFields')?.['calculatedField']).flatMap((entry) => {
+    if (!isRecord(entry)) {
+      return []
+    }
+    const name = stringAttribute(entry['name'])
+    const formula = stringAttribute(entry['formula'])
+    return name && formula ? [{ name, formula, clause: '18.10' }] : []
+  })
 }
 
 function parsePivotTableXml(sheetName: string, xml: string, caches: ReadonlyMap<number, ParsedPivotCache>): WorkbookPivotSnapshot | null {
@@ -667,17 +837,17 @@ function parsePivotTableXml(sheetName: string, xml: string, caches: ReadonlyMap<
   if (!location) {
     return null
   }
-  const groupBy = asArray(recordChild(definition, 'rowFields')?.['field']).flatMap((entry) => {
-    const index = isRecord(entry) ? numberAttribute(entry['x']) : null
-    const field = index === null ? undefined : cache.fields[index]
-    return field ? [field] : []
-  })
+  const groupBy = parseFieldNames(definition, 'rowFields', cache)
+  const columnFields = parseFieldNames(definition, 'colFields', cache)
+  const pageFields = parsePageFields(definition, cache)
+  const hiddenItems = parseHiddenItems(definition, cache)
+  const calculatedFields = parseCalculatedFields(definition)
   const values = asArray(recordChild(definition, 'dataFields')?.['dataField']).flatMap((entry) => {
     if (!isRecord(entry)) {
       return []
     }
     const fieldIndex = numberAttribute(entry['fld'])
-    const sourceColumn = fieldIndex === null ? undefined : cache.fields[fieldIndex]
+    const sourceColumn = cacheFieldName(cache, fieldIndex)
     const summarizeBy = aggregationFromSubtotal(entry['subtotal'])
     if (!sourceColumn || !summarizeBy) {
       return []
@@ -702,8 +872,17 @@ function parsePivotTableXml(sheetName: string, xml: string, caches: ReadonlyMap<
     name,
     sheetName,
     address: location.startAddress,
-    source: cache.source,
+    ...(cache.source ? { source: cache.source } : {}),
+    cacheId: cache.cacheId,
+    sourceKind: cache.sourceKind,
+    ...(cache.sourceKind === 'external-cache-only' ? { cacheOnly: true } : {}),
+    cacheFields: cache.fields.map((field) => field.name),
+    ...(cache.cachedRecords ? { cachedRecords: cache.cachedRecords.map((row) => Array.from(row)) } : {}),
     groupBy,
+    ...(columnFields.length > 0 ? { columnFields } : {}),
+    ...(pageFields.length > 0 ? { pageFields } : {}),
+    ...(hiddenItems.length > 0 ? { hiddenItems } : {}),
+    ...(calculatedFields.length > 0 ? { calculatedFields } : {}),
     values,
     rows: Math.max(1, end.r - start.r + 1),
     cols: Math.max(1, end.c - start.c + 1),

@@ -84,6 +84,14 @@ describe('xlsx pivot import', () => {
         name: 'SalesByRegion',
         sheetName: 'Pivot',
         address: 'A1',
+        cacheId: 1,
+        cacheFields: ['Region', 'Sales'],
+        cachedRecords: [
+          ['East', 10],
+          ['West', 7],
+          ['East', 5],
+        ],
+        sourceKind: 'worksheet',
         source: { sheetName: 'Data', startAddress: 'A1', endAddress: 'B4' },
         groupBy: ['Region'],
         values: [{ sourceColumn: 'Sales', summarizeBy: 'sum', outputLabel: 'Sales Total' }],
@@ -173,6 +181,14 @@ describe('xlsx pivot import', () => {
         name: 'SalesByRegion',
         sheetName: 'Pivot',
         address: 'A1',
+        cacheId: 1,
+        cacheFields: ['Region', 'Sales'],
+        cachedRecords: [
+          ['East', 10],
+          ['West', 7],
+          ['East', 5],
+        ],
+        sourceKind: 'table',
         source: { sheetName: 'Data', startAddress: 'A1', endAddress: 'B4' },
         groupBy: ['Region'],
         values: [{ sourceColumn: 'Sales', summarizeBy: 'sum', outputLabel: 'Sales Total' }],
@@ -252,6 +268,14 @@ describe('xlsx pivot import', () => {
         name: 'SalesByRegion',
         sheetName: 'Pivot',
         address: 'A1',
+        cacheId: 1,
+        cacheFields: ['Region', 'Sales'],
+        cachedRecords: [
+          ['East', 10],
+          ['West', 7],
+          ['East', 5],
+        ],
+        sourceKind: 'named-range',
         source: { sheetName: 'Data', startAddress: 'A1', endAddress: 'B4' },
         groupBy: ['Region'],
         values: [{ sourceColumn: 'Sales', summarizeBy: 'sum', outputLabel: 'Sales Total' }],
@@ -335,6 +359,14 @@ describe('xlsx pivot import', () => {
         name: 'SalesByRegion',
         sheetName: 'Pivot',
         address: 'A1',
+        cacheId: 1,
+        cacheFields: ['Region', 'Sales'],
+        cachedRecords: [
+          ['East', 10],
+          ['West', 7],
+          ['East', 5],
+        ],
+        sourceKind: 'named-range',
         source: { sheetName: 'Data', startAddress: 'A1', endAddress: 'B4' },
         groupBy: ['Region'],
         values: [{ sourceColumn: 'Sales', summarizeBy: 'sum', outputLabel: 'Sales Total' }],
@@ -399,6 +431,8 @@ describe('xlsx pivot import', () => {
         '<cacheSource type="external" connectionId="1"/>',
       ),
     )
+    delete zip['xl/pivotCache/_rels/pivotCacheDefinition1.xml.rels']
+    delete zip['xl/pivotCache/pivotCacheRecords1.xml']
 
     const imported = importXlsx(zipSync(zip), 'pivot-external-cache.xlsx')
 

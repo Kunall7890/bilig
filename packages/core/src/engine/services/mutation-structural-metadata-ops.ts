@@ -35,6 +35,9 @@ export function captureStructuralWorkbookMetadataOps(workbook: MutationStructura
     restoredOps.push({ kind: 'upsertSpillRange', sheetName: spill.sheetName, address: spill.address, rows: spill.rows, cols: spill.cols })
   })
   workbook.listPivots().forEach((pivot) => {
+    if (!pivot.source) {
+      return
+    }
     restoredOps.push({
       kind: 'upsertPivotTable',
       name: pivot.name,

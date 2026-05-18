@@ -237,6 +237,51 @@ describe('structured reference XLSX import', () => {
     expect(reexportedTableXml).toMatch(/name="Road show _x000a_visits"/iu)
   })
 
+  it('rewrites Excel total-row structured-reference aliases', () => {
+    const snapshot: WorkbookSnapshot = {
+      version: 1,
+      workbook: {
+        name: 'Structured Totals',
+        metadata: {
+          tables: [
+            {
+              name: 'SalesTable',
+              sheetName: 'Sales',
+              startAddress: 'A1',
+              endAddress: 'B4',
+              columnNames: ['Region', 'Amount'],
+              headerRow: true,
+              totalsRow: true,
+            },
+          ],
+        },
+      },
+      sheets: [
+        {
+          id: 1,
+          name: 'Sales',
+          order: 0,
+          cells: [
+            { address: 'A1', value: 'Region' },
+            { address: 'B1', value: 'Amount' },
+            { address: 'A2', value: 'East' },
+            { address: 'B2', value: 10 },
+            { address: 'A3', value: 'West' },
+            { address: 'B3', value: 7 },
+            { address: 'A4', value: 'Total' },
+            { address: 'B4', value: 17 },
+            { address: 'D2', formula: 'SalesTable[[#Total Row],[Amount]]' },
+          ],
+        },
+      ],
+    }
+
+    const imported = importXlsx(exportXlsx(snapshot), 'structured-total-row.xlsx')
+    const sheet = imported.snapshot.sheets.find((candidate) => candidate.name === 'Sales')
+
+    expect(sheet?.cells.find((cell) => cell.address === 'D2')?.formula).toBe("'Sales'!B4")
+  })
+
   it('preserves lowercase defined names and named ranges used by simulation formulas', async () => {
     const snapshot: WorkbookSnapshot = {
       version: 1,

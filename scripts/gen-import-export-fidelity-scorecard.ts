@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import * as XLSX from 'xlsx'
 
 import { SpreadsheetEngine } from '../packages/core/src/engine.js'
@@ -70,9 +71,12 @@ const coveredFeatureOrder = [
   'xlsx.roundtrip',
   'xlsx.values',
   'xlsx.formulas',
+  'xlsx.formulaAudit.context',
+  'xlsx.formulaAudit.cacheStatus',
   'xlsx.numberFormats',
   'xlsx.workbookProperties',
   'xlsx.calculationSettings',
+  'xlsx.calculationSettings.calcChainDiagnostics',
   'xlsx.definedNames',
   'xlsx.comments',
   'xlsx.styles',
@@ -88,10 +92,13 @@ const coveredFeatureOrder = [
   'xlsx.tables.roundtrip',
   'xlsx.charts.roundtrip',
   'xlsx.pivots.roundtrip',
+  'xlsx.pivots.cacheSemantics',
+  'xlsx.pivots.externalCacheOnlySemantics',
   'xlsx.multiSheet',
   'xlsx.macros.detectedNoExecution',
   'xlsx.macros.payloadRoundtrip',
   'xlsx.macros.codeNameRoundtrip',
+  'xlsx.externalData.provenance',
   'xlsx.runtimeFeaturePolicyWarnings',
   ...externalImportExportComparisonCoveredFeatures,
 ] as const
@@ -132,6 +139,9 @@ export async function buildImportExportFidelityScorecard(generatedAt = new Date(
     runXlsxSnapshotRoundTripTablesCase(),
     runXlsxSnapshotRoundTripChartsCase(),
     runXlsxSnapshotRoundTripPivotsCase(),
+    runXlsxFormulaContextAuditCase(),
+    runXlsxPivotCacheSemanticsCase(),
+    runXlsxExternalDataProvenanceCase(),
     runXlsxMacroPayloadPreservedWithoutExecutionCase(),
     runXlsxRuntimeFeaturePolicyWarningCase(),
     runExternalSheetsExcelImportExportComparisonCase(),
@@ -417,6 +427,175 @@ function runXlsxSnapshotRoundTripPivotsCase(): ImportExportFidelityCase {
     evidence:
       'WorkbookSnapshot exported to XLSX imports back with equivalent Bilig pivot metadata backed by real XLSX pivot table, cache definition, and cache records parts.',
   })
+}
+
+function runXlsxFormulaContextAuditCase(): ImportExportFidelityCase {
+  const imported = importXlsx(createFormulaContextAuditWorkbookBytes(), 'formula-context-audit.xlsx')
+  const audit = imported.snapshot.workbook.metadata?.formulaAudit
+  const worksheetFormula = audit?.formulas.find((entry) => entry.context === 'worksheet-cell' && entry.address === 'B1')
+  const definedNameFormula = audit?.formulas.find((entry) => entry.context === 'defined-name' && entry.name === 'R1C1Name')
+  const calcChain = audit?.calcChain
+  const passed =
+    worksheetFormula?.formula === 'A1*2' &&
+    worksheetFormula.cacheStatus === 'staleRisk' &&
+    definedNameFormula?.formula === 'R1C1' &&
+    audit?.diagnostics.some((diagnostic) => diagnostic.code === 'r1c1-reference') === true &&
+    calcChain?.cells.some((cell) => cell.sheetName === 'Sheet1' && cell.address === 'B1') === true &&
+    imported.snapshot.workbook.metadata?.calculationSettings?.calcId === 191029 &&
+    imported.snapshot.workbook.metadata.calculationSettings.forceFullCalc === true
+
+  return fidelityCase({
+    id: 'xlsx-formula-context-audit',
+    format: 'xlsx',
+    direction: 'import',
+    passed,
+    coveredFeatures: ['xlsx.formulaAudit.context', 'xlsx.formulaAudit.cacheStatus', 'xlsx.calculationSettings.calcChainDiagnostics'],
+    evidence:
+      'XLSX import records worksheet formula context, cached-result trust state, defined-name formula diagnostics, calcId/forceFullCalc metadata, and calc-chain cells.',
+  })
+}
+
+function runXlsxPivotCacheSemanticsCase(): ImportExportFidelityCase {
+  const imported = importXlsx(exportXlsx(createFidelitySnapshot()), 'pivot-cache-semantics.xlsx')
+  const pivot = imported.snapshot.workbook.metadata?.pivots?.find((entry) => entry.name === 'SalesByRegion')
+  const externalCachePivot = importXlsx(createExternalCacheOnlyPivotWorkbookBytes(), 'external-cache-only-pivot.xlsx').snapshot.workbook
+    .metadata?.pivots?.[0]
+  const passed =
+    pivot?.sourceKind === 'worksheet' &&
+    JSON.stringify(pivot.cacheFields) === JSON.stringify(['Region', 'Product', 'Sales', 'Notes']) &&
+    (pivot.cachedRecords?.length ?? 0) === 3 &&
+    pivot.values.some((value) => value.sourceColumn === 'Sales' && value.summarizeBy === 'sum') &&
+    externalCachePivot?.sourceKind === 'external-cache-only' &&
+    externalCachePivot.cacheOnly === true &&
+    JSON.stringify(externalCachePivot.cachedRecords) ===
+      JSON.stringify([
+        ['East', 10],
+        ['West', 7],
+      ])
+
+  return fidelityCase({
+    id: 'xlsx-pivot-cache-semantics',
+    format: 'xlsx',
+    direction: 'import',
+    passed,
+    coveredFeatures: ['xlsx.pivots.cacheSemantics', 'xlsx.pivots.externalCacheOnlySemantics'],
+    evidence:
+      'XLSX import projects pivot cache field names, source kind, cached records, row fields, aggregate metadata, and cache-only external pivots separately from raw pivot part preservation.',
+  })
+}
+
+function runXlsxExternalDataProvenanceCase(): ImportExportFidelityCase {
+  const imported = importXlsx(createExternalDataWorkbookBytes(), 'external-data-provenance.xlsx')
+  const externalConnections = imported.snapshot.workbook.metadata?.externalConnections
+  const passed =
+    externalConnections?.refreshExecution === 'disabled' &&
+    externalConnections.connections.some((connection) => connection.name === 'Sales Query' && connection.sourceKind === 'database') &&
+    externalConnections.externalLinks.some((link) => link.kind === 'external-workbook' && link.target === 'file:///tmp/source.xlsx') &&
+    externalConnections.externalLinks.some((link) => link.kind === 'dde' && link.refreshExecution === 'disabled') &&
+    externalConnections.externalLinks.some((link) => link.kind === 'ole' && link.refreshExecution === 'disabled')
+
+  return fidelityCase({
+    id: 'xlsx-external-data-provenance',
+    format: 'xlsx',
+    direction: 'import',
+    passed,
+    coveredFeatures: ['xlsx.externalData.provenance'],
+    evidence:
+      'XLSX import parses connection, external workbook, DDE, and OLE provenance while leaving all external refresh execution disabled.',
+  })
+}
+
+function createFormulaContextAuditWorkbookBytes(): Uint8Array {
+  const workbook = XLSX.utils.book_new()
+  const sheet = XLSX.utils.aoa_to_sheet([[2, null]])
+  sheet.B1 = { t: 'n', f: 'A1*2', v: 4 }
+  sheet['!ref'] = 'A1:B1'
+  XLSX.utils.book_append_sheet(workbook, sheet, 'Sheet1')
+  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const workbookXml = strFromU8(zip['xl/workbook.xml'] ?? new Uint8Array())
+  const workbookXmlWithCalcPr = /<calcPr\b/u.test(workbookXml)
+    ? workbookXml.replace(/<calcPr\b[^>]*\/>/u, '<calcPr calcId="191029" forceFullCalc="1"/>')
+    : workbookXml.replace('</workbook>', '<calcPr calcId="191029" forceFullCalc="1"/></workbook>')
+  zip['xl/workbook.xml'] = strToU8(
+    workbookXmlWithCalcPr.replace('</sheets>', '</sheets><definedNames><definedName name="R1C1Name">R1C1</definedName></definedNames>'),
+  )
+  zip['xl/calcChain.xml'] = strToU8(
+    [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<calcChain xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><c r="B1" i="1"/></calcChain>',
+    ].join(''),
+  )
+  return zipSync(zip)
+}
+
+function createExternalCacheOnlyPivotWorkbookBytes(): Uint8Array {
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([[]]), 'Pivot')
+  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  zip['xl/workbook.xml'] = strToU8(
+    strFromU8(zip['xl/workbook.xml'] ?? new Uint8Array()).replace(
+      '</sheets>',
+      '</sheets><pivotCaches><pivotCache cacheId="1" r:id="rIdExternalPivotCache"/></pivotCaches>',
+    ),
+  )
+  zip['xl/_rels/workbook.xml.rels'] = strToU8(
+    strFromU8(zip['xl/_rels/workbook.xml.rels'] ?? new Uint8Array()).replace(
+      '</Relationships>',
+      '<Relationship Id="rIdExternalPivotCache" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotCacheDefinition" Target="pivotCache/pivotCacheDefinition1.xml"/></Relationships>',
+    ),
+  )
+  zip['xl/worksheets/sheet1.xml'] = strToU8(
+    strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+      .replace(
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"',
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"',
+      )
+      .replace('</worksheet>', '<pivotTableDefinition r:id="rIdExternalPivot"/></worksheet>'),
+  )
+  zip['xl/worksheets/_rels/sheet1.xml.rels'] = strToU8(
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdExternalPivot" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotTable" Target="../pivotTables/pivotTable1.xml"/></Relationships>',
+  )
+  zip['xl/pivotTables/pivotTable1.xml'] = strToU8(
+    '<pivotTableDefinition xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" name="ExternalSales" cacheId="1"><location ref="A1:B3" firstHeaderRow="1" firstDataRow="2" firstDataCol="1"/><pivotFields count="2"><pivotField axis="axisRow" showAll="0"><items count="1"><item t="default"/></items></pivotField><pivotField dataField="1" showAll="0"/></pivotFields><rowFields count="1"><field x="0"/></rowFields><dataFields count="1"><dataField name="Sales Total" fld="1" subtotal="sum"/></dataFields></pivotTableDefinition>',
+  )
+  zip['xl/pivotCache/pivotCacheDefinition1.xml'] = strToU8(
+    '<pivotCacheDefinition xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:id="rIdRecords" recordCount="2"><cacheSource type="external"/><cacheFields count="2"><cacheField name="Region"><sharedItems count="2"><s v="East"/><s v="West"/></sharedItems></cacheField><cacheField name="Sales"><sharedItems count="2"><n v="10"/><n v="7"/></sharedItems></cacheField></cacheFields></pivotCacheDefinition>',
+  )
+  zip['xl/pivotCache/_rels/pivotCacheDefinition1.xml.rels'] = strToU8(
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdRecords" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotCacheRecords" Target="pivotCacheRecords1.xml"/></Relationships>',
+  )
+  zip['xl/pivotCache/pivotCacheRecords1.xml'] = strToU8(
+    '<pivotCacheRecords xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="2"><r><x v="0"/><x v="0"/></r><r><x v="1"/><x v="1"/></r></pivotCacheRecords>',
+  )
+  return zipSync(zip)
+}
+
+function createExternalDataWorkbookBytes(): Uint8Array {
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['Local'], [1]]), 'Model')
+  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  zip['xl/workbook.xml'] = strToU8(
+    strFromU8(zip['xl/workbook.xml'] ?? new Uint8Array()).replace(
+      '</workbook>',
+      '<externalReferences><externalReference r:id="rIdExternal1"/></externalReferences></workbook>',
+    ),
+  )
+  zip['xl/_rels/workbook.xml.rels'] = strToU8(
+    strFromU8(zip['xl/_rels/workbook.xml.rels'] ?? new Uint8Array()).replace(
+      '</Relationships>',
+      '<Relationship Id="rIdExternal1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/externalLink" Target="externalLinks/externalLink1.xml"/></Relationships>',
+    ),
+  )
+  zip['xl/connections.xml'] = strToU8(
+    '<connections xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><connection id="1" name="Sales Query" type="5" refreshedVersion="8" refreshOnLoad="0"><dbPr connection="Provider=SQLOLEDB;Data Source=example" command="SELECT * FROM Sales" commandType="2"/></connection></connections>',
+  )
+  zip['xl/externalLinks/externalLink1.xml'] = strToU8(
+    '<externalLink xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><externalBook r:id="rId1"><sheetNames><sheetName val="Source"/></sheetNames></externalBook><ddeLink ddeService="cmd" ddeTopic="topic"><ddeItems count="1"><ddeItem name="A1"/></ddeItems></ddeLink><oleLink progId="Word.Document" r:id="rId2"><oleItems count="1"><oleItem name="Document"/></oleItems></oleLink></externalLink>',
+  )
+  zip['xl/externalLinks/_rels/externalLink1.xml.rels'] = strToU8(
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/externalLinkPath" Target="file:///tmp/source.xlsx" TargetMode="External"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/oleObject" Target="file:///tmp/document.docx" TargetMode="External"/></Relationships>',
+  )
+  return zipSync(zip)
 }
 
 function runXlsxMacroPayloadPreservedWithoutExecutionCase(): ImportExportFidelityCase {

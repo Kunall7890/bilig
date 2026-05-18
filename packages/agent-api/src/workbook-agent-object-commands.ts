@@ -393,10 +393,14 @@ export function deriveWorkbookAgentObjectCommandPreviewRanges(command: WorkbookA
       ]
     case 'upsertPivotTable':
       return [
-        {
-          ...normalizeRangeBounds(command.pivot.source),
-          role: 'source',
-        },
+        ...(command.pivot.source
+          ? [
+              {
+                ...normalizeRangeBounds(command.pivot.source),
+                role: 'source' as const,
+              },
+            ]
+          : []),
         {
           ...normalizeRangeBounds(pivotTargetRange(command.pivot)),
           role: 'target',
@@ -442,6 +446,9 @@ export function applyWorkbookAgentObjectCommand(engine: SpreadsheetEngine, comma
       engine.deleteTable(command.name)
       return
     case 'upsertPivotTable':
+      if (!command.pivot.source) {
+        throw new Error('Cannot author a pivot table without a worksheet source range')
+      }
       engine.setPivotTable(command.pivot.sheetName, command.pivot.address, {
         name: command.pivot.name,
         source: command.pivot.source,

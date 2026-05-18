@@ -248,6 +248,10 @@ export function normalizeWorkbookCalculationSettings(
   if (dateSystem !== undefined) {
     normalized.dateSystem = dateSystem
   }
+  const calcId = hasOwnCalculationSetting(settings, 'calcId') ? settings.calcId : base?.calcId
+  if (calcId !== undefined) {
+    normalized.calcId = calcId
+  }
   const iterate = hasOwnCalculationSetting(settings, 'iterate') ? settings.iterate : base?.iterate
   if (iterate !== undefined) {
     normalized.iterate = iterate
@@ -268,6 +272,10 @@ export function normalizeWorkbookCalculationSettings(
   if (fullCalcOnLoad !== undefined) {
     normalized.fullCalcOnLoad = fullCalcOnLoad
   }
+  const forceFullCalc = hasOwnCalculationSetting(settings, 'forceFullCalc') ? settings.forceFullCalc : base?.forceFullCalc
+  if (forceFullCalc !== undefined) {
+    normalized.forceFullCalc = forceFullCalc
+  }
   const concurrentCalc = hasOwnCalculationSetting(settings, 'concurrentCalc') ? settings.concurrentCalc : base?.concurrentCalc
   if (concurrentCalc !== undefined) {
     normalized.concurrentCalc = concurrentCalc
@@ -283,8 +291,10 @@ export function calculationSettingsEqual(left: WorkbookCalculationSettingsSnapsh
     left.iterate === right.iterate &&
     left.iterateCount === right.iterateCount &&
     left.iterateDelta === right.iterateDelta &&
+    left.calcId === right.calcId &&
     left.fullPrecision === right.fullPrecision &&
     left.fullCalcOnLoad === right.fullCalcOnLoad &&
+    left.forceFullCalc === right.forceFullCalc &&
     left.concurrentCalc === right.concurrentCalc
   )
 }

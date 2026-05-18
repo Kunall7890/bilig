@@ -787,6 +787,21 @@ export function encodePivotAggregation(writer: BinaryWriter, agg: PivotAggregati
     case 'count':
       writer.u8(2)
       return
+    case 'countNums':
+      writer.u8(3)
+      return
+    case 'average':
+      writer.u8(4)
+      return
+    case 'min':
+      writer.u8(5)
+      return
+    case 'max':
+      writer.u8(6)
+      return
+    case 'product':
+      writer.u8(7)
+      return
   }
 }
 
@@ -796,6 +811,16 @@ export function decodePivotAggregation(reader: BinaryReader): PivotAggregation {
       return 'sum'
     case 2:
       return 'count'
+    case 3:
+      return 'countNums'
+    case 4:
+      return 'average'
+    case 5:
+      return 'min'
+    case 6:
+      return 'max'
+    case 7:
+      return 'product'
     default:
       throw new BinaryProtocolError('Unknown pivot aggregation tag')
   }

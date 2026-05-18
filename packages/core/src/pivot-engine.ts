@@ -2,12 +2,16 @@ import {
   ErrorCode,
   ValueTag,
   type CellValue,
+  type LiteralInput,
   type PivotAggregation,
   type WorkbookPivotSnapshot,
   type WorkbookPivotValueSnapshot,
 } from '@bilig/protocol'
 
-export type PivotDefinitionInput = Pick<WorkbookPivotSnapshot, 'groupBy' | 'values'>
+export type PivotDefinitionInput = Pick<
+  WorkbookPivotSnapshot,
+  'groupBy' | 'values' | 'columnFields' | 'filters' | 'pageFields' | 'hiddenItems'
+>
 
 export type PivotMaterializationResult =
   | {
@@ -29,9 +33,34 @@ interface MaterializedPivotField extends WorkbookPivotValueSnapshot {
   headerLabel: string
 }
 
+interface MaterializedSourceField {
+  columnIndex: number
+  headerLabel: string
+}
+
+interface MaterializedPivotFilter {
+  field: MaterializedSourceField
+  includedValues?: readonly LiteralInput[]
+  hiddenValues?: readonly LiteralInput[]
+}
+
+interface AggregateState {
+  sum: number
+  count: number
+  numericCount: number
+  min: number
+  max: number
+  product: number
+}
+
+interface ColumnBucket {
+  key: string
+  keyValues: CellValue[]
+}
+
 interface GroupBucket {
   keyValues: CellValue[]
-  aggregates: number[]
+  aggregatesByColumnKey: Map<string, AggregateState[]>
 }
 
 export function materializePivotTable(
@@ -57,60 +86,89 @@ export function materializePivotTable(
     headerLookup.set(normalized, { index: columnIndex, label })
   }
 
-  const groupFields = definition.groupBy.map((fieldName) => {
-    const resolved = headerLookup.get(normalizeHeader(fieldName))
-    return resolved ? { columnIndex: resolved.index, headerLabel: resolved.label } : undefined
-  })
+  const groupFields = resolveSourceFields(definition.groupBy, headerLookup)
   if (groupFields.some((field) => field === undefined)) {
     return pivotConfigError()
   }
-  const materializedGroupFields = groupFields.filter((field): field is { columnIndex: number; headerLabel: string } => field !== undefined)
+  const materializedGroupFields = groupFields.filter((field): field is MaterializedSourceField => field !== undefined)
+
+  const columnFields = resolveSourceFields(definition.columnFields ?? [], headerLookup)
+  if (columnFields.some((field) => field === undefined)) {
+    return pivotConfigError()
+  }
+  const materializedColumnFields = columnFields.filter((field): field is MaterializedSourceField => field !== undefined)
 
   const valueFields = definition.values.map((field) => resolveValueField(field, headerLookup))
   if (valueFields.some((field) => field === undefined)) {
     return pivotConfigError()
   }
   const materializedValueFields = valueFields.filter((field): field is MaterializedPivotField => field !== undefined)
+  const filters = resolvePivotFilters(definition, headerLookup)
+  if (filters === null) {
+    return pivotConfigError()
+  }
 
   const buckets = new Map<string, GroupBucket>()
+  const columnBuckets: ColumnBucket[] = materializedColumnFields.length === 0 ? [{ key: '', keyValues: [] }] : []
+  const seenColumnKeys = new Set(columnBuckets.map((bucket) => bucket.key))
   for (let rowIndex = 1; rowIndex < sourceRows.length; rowIndex += 1) {
     const row = sourceRows[rowIndex] ?? []
+    if (!rowPassesFilters(row, filters)) {
+      continue
+    }
     const keyValues = materializedGroupFields.map((field) => cloneOutputCell(row[field.columnIndex] ?? emptyValue()))
-    const hasObservedValue = hasMeaningfulRowValue(keyValues, materializedValueFields, row)
+    const columnKeyValues = materializedColumnFields.map((field) => cloneOutputCell(row[field.columnIndex] ?? emptyValue()))
+    const hasObservedValue = hasMeaningfulRowValue(keyValues, columnKeyValues, materializedValueFields, row)
     if (!hasObservedValue) {
       continue
     }
     const key = keyValues.map(cellValueKey).join('\u001f')
+    const columnKey = columnKeyValues.map(cellValueKey).join('\u001f')
+    if (!seenColumnKeys.has(columnKey)) {
+      seenColumnKeys.add(columnKey)
+      columnBuckets.push({ key: columnKey, keyValues: columnKeyValues })
+    }
     let bucket = buckets.get(key)
     if (!bucket) {
       bucket = {
         keyValues,
-        aggregates: Array.from({ length: materializedValueFields.length }, () => 0),
+        aggregatesByColumnKey: new Map(),
       }
       buckets.set(key, bucket)
+    }
+    let aggregates = bucket.aggregatesByColumnKey.get(columnKey)
+    if (!aggregates) {
+      aggregates = Array.from({ length: materializedValueFields.length }, () => emptyAggregateState())
+      bucket.aggregatesByColumnKey.set(columnKey, aggregates)
     }
     for (let valueIndex = 0; valueIndex < materializedValueFields.length; valueIndex += 1) {
       const field = materializedValueFields[valueIndex]!
       const cell = row[field.columnIndex] ?? emptyValue()
-      bucket.aggregates[valueIndex] = (bucket.aggregates[valueIndex] ?? 0) + accumulateValue(field.summarizeBy, cell)
+      accumulateValue(aggregates[valueIndex]!, cell)
     }
   }
 
-  const cols = definition.groupBy.length + materializedValueFields.length
+  const cols = definition.groupBy.length + columnBuckets.length * materializedValueFields.length
   const values: CellValue[] = []
   for (let groupIndex = 0; groupIndex < materializedGroupFields.length; groupIndex += 1) {
     values.push(stringValue(materializedGroupFields[groupIndex]!.headerLabel))
   }
-  for (let valueIndex = 0; valueIndex < materializedValueFields.length; valueIndex += 1) {
-    values.push(stringValue(outputLabel(materializedValueFields[valueIndex]!)))
+  for (const columnBucket of columnBuckets) {
+    for (let valueIndex = 0; valueIndex < materializedValueFields.length; valueIndex += 1) {
+      const label = outputLabel(materializedValueFields[valueIndex]!)
+      values.push(stringValue(materializedColumnFields.length === 0 ? label : `${columnBucketLabel(columnBucket)} ${label}`))
+    }
   }
   buckets.forEach((bucket) => {
     bucket.keyValues.forEach((keyValue) => {
       values.push(cloneOutputCell(keyValue))
     })
-    bucket.aggregates.forEach((aggregate) => {
-      values.push(numberValue(aggregate))
-    })
+    for (const columnBucket of columnBuckets) {
+      const aggregates = bucket.aggregatesByColumnKey.get(columnBucket.key)
+      for (let valueIndex = 0; valueIndex < materializedValueFields.length; valueIndex += 1) {
+        values.push(numberValue(finalizeAggregate(materializedValueFields[valueIndex]!.summarizeBy, aggregates?.[valueIndex])))
+      }
+    }
   })
 
   return {
@@ -119,6 +177,16 @@ export function materializePivotTable(
     cols,
     values,
   }
+}
+
+function resolveSourceFields(
+  fieldNames: readonly string[],
+  headerLookup: Map<string, { index: number; label: string }>,
+): (MaterializedSourceField | undefined)[] {
+  return fieldNames.map((fieldName) => {
+    const resolved = headerLookup.get(normalizeHeader(fieldName))
+    return resolved ? { columnIndex: resolved.index, headerLabel: resolved.label } : undefined
+  })
 }
 
 function resolveValueField(
@@ -136,11 +204,100 @@ function resolveValueField(
   }
 }
 
-function accumulateValue(mode: PivotAggregation, value: CellValue): number {
-  if (mode === 'count') {
-    return isEmptyValue(value) ? 0 : 1
+function resolvePivotFilters(
+  definition: PivotDefinitionInput,
+  headerLookup: Map<string, { index: number; label: string }>,
+): MaterializedPivotFilter[] | null {
+  const filters: MaterializedPivotFilter[] = []
+  for (const filter of definition.filters ?? []) {
+    const field = resolveSourceFields([filter.sourceColumn], headerLookup)[0]
+    if (!field) {
+      return null
+    }
+    filters.push({
+      field,
+      ...(filter.includedValues ? { includedValues: filter.includedValues } : {}),
+      ...(filter.hiddenValues ? { hiddenValues: filter.hiddenValues } : {}),
+    })
   }
-  return value.tag === ValueTag.Number ? value.value : 0
+  for (const pageField of definition.pageFields ?? []) {
+    const field = resolveSourceFields([pageField.sourceColumn], headerLookup)[0]
+    if (!field) {
+      return null
+    }
+    filters.push({
+      field,
+      ...(pageField.selectedValue !== undefined ? { includedValues: [pageField.selectedValue] } : {}),
+    })
+  }
+  for (const hiddenItems of definition.hiddenItems ?? []) {
+    const field = resolveSourceFields([hiddenItems.sourceColumn], headerLookup)[0]
+    if (!field) {
+      return null
+    }
+    filters.push({ field, hiddenValues: hiddenItems.values })
+  }
+  return filters
+}
+
+function rowPassesFilters(row: readonly CellValue[], filters: readonly MaterializedPivotFilter[]): boolean {
+  for (const filter of filters) {
+    const value = cellValueToLiteral(row[filter.field.columnIndex] ?? emptyValue())
+    if (filter.includedValues && !filter.includedValues.some((candidate) => literalValuesEqual(candidate, value))) {
+      return false
+    }
+    if (filter.hiddenValues?.some((candidate) => literalValuesEqual(candidate, value))) {
+      return false
+    }
+  }
+  return true
+}
+
+function emptyAggregateState(): AggregateState {
+  return {
+    sum: 0,
+    count: 0,
+    numericCount: 0,
+    min: Number.POSITIVE_INFINITY,
+    max: Number.NEGATIVE_INFINITY,
+    product: 1,
+  }
+}
+
+function accumulateValue(state: AggregateState, value: CellValue): void {
+  if (!isEmptyValue(value)) {
+    state.count += 1
+  }
+  if (value.tag !== ValueTag.Number) {
+    return
+  }
+  state.sum += value.value
+  state.numericCount += 1
+  state.min = Math.min(state.min, value.value)
+  state.max = Math.max(state.max, value.value)
+  state.product *= value.value
+}
+
+function finalizeAggregate(mode: PivotAggregation, state: AggregateState | undefined): number {
+  if (!state) {
+    return 0
+  }
+  switch (mode) {
+    case 'sum':
+      return state.sum
+    case 'count':
+      return state.count
+    case 'countNums':
+      return state.numericCount
+    case 'average':
+      return state.numericCount === 0 ? 0 : state.sum / state.numericCount
+    case 'min':
+      return state.numericCount === 0 ? 0 : state.min
+    case 'max':
+      return state.numericCount === 0 ? 0 : state.max
+    case 'product':
+      return state.numericCount === 0 ? 0 : state.product
+  }
 }
 
 function outputLabel(field: MaterializedPivotField): string {
@@ -153,13 +310,59 @@ function outputLabel(field: MaterializedPivotField): string {
 
 function hasMeaningfulRowValue(
   keyValues: readonly CellValue[],
+  columnKeyValues: readonly CellValue[],
   valueFields: readonly MaterializedPivotField[],
   row: readonly CellValue[],
 ): boolean {
-  if (keyValues.some((value) => !isEmptyValue(value))) {
+  if (keyValues.some((value) => !isEmptyValue(value)) || columnKeyValues.some((value) => !isEmptyValue(value))) {
     return true
   }
   return valueFields.some((field) => !isEmptyValue(row[field.columnIndex] ?? emptyValue()))
+}
+
+function columnBucketLabel(bucket: ColumnBucket): string {
+  const label = bucket.keyValues
+    .map(displayCellValue)
+    .filter((part) => part.length > 0)
+    .join(' / ')
+  return label.length > 0 ? label : '(blank)'
+}
+
+function displayCellValue(value: CellValue): string {
+  switch (value.tag) {
+    case ValueTag.Empty:
+      return ''
+    case ValueTag.Number:
+      return String(value.value)
+    case ValueTag.Boolean:
+      return value.value ? 'TRUE' : 'FALSE'
+    case ValueTag.String:
+      return value.value
+    case ValueTag.Error:
+      return String(value.code)
+  }
+}
+
+function cellValueToLiteral(value: CellValue): LiteralInput {
+  switch (value.tag) {
+    case ValueTag.Empty:
+      return null
+    case ValueTag.Number:
+      return value.value
+    case ValueTag.Boolean:
+      return value.value
+    case ValueTag.String:
+      return value.value
+    case ValueTag.Error:
+      return value.code
+  }
+}
+
+function literalValuesEqual(left: LiteralInput, right: LiteralInput): boolean {
+  if (typeof left === 'number' && typeof right === 'number') {
+    return Object.is(left, right) || left === right
+  }
+  return left === right
 }
 
 function cellValueKey(value: CellValue): string {

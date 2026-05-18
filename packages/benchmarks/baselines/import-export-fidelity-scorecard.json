@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "suite": "import-export-fidelity",
-  "generatedAt": "2026-05-16T08:29:08.588Z",
+  "generatedAt": "2026-05-17T23:49:40.758Z",
   "source": {
     "artifactGenerator": "scripts/gen-import-export-fidelity-scorecard.ts",
     "implementationPackage": "packages/excel-import",
@@ -24,9 +24,12 @@
       "xlsx.roundtrip",
       "xlsx.values",
       "xlsx.formulas",
+      "xlsx.formulaAudit.context",
+      "xlsx.formulaAudit.cacheStatus",
       "xlsx.numberFormats",
       "xlsx.workbookProperties",
       "xlsx.calculationSettings",
+      "xlsx.calculationSettings.calcChainDiagnostics",
       "xlsx.definedNames",
       "xlsx.comments",
       "xlsx.styles",
@@ -42,10 +45,13 @@
       "xlsx.tables.roundtrip",
       "xlsx.charts.roundtrip",
       "xlsx.pivots.roundtrip",
+      "xlsx.pivots.cacheSemantics",
+      "xlsx.pivots.externalCacheOnlySemantics",
       "xlsx.multiSheet",
       "xlsx.macros.detectedNoExecution",
       "xlsx.macros.payloadRoundtrip",
       "xlsx.macros.codeNameRoundtrip",
+      "xlsx.externalData.provenance",
       "xlsx.runtimeFeaturePolicyWarnings",
       "external.googleSheetsImportExportDocs",
       "external.microsoftExcelImportExportDocs",
@@ -209,6 +215,36 @@
       "coveredFeatures": ["xlsx.pivots.roundtrip"],
       "missingFeatures": [],
       "evidence": "WorkbookSnapshot exported to XLSX imports back with equivalent Bilig pivot metadata backed by real XLSX pivot table, cache definition, and cache records parts."
+    },
+    {
+      "id": "xlsx-formula-context-audit",
+      "format": "xlsx",
+      "direction": "import",
+      "required": true,
+      "passed": true,
+      "coveredFeatures": ["xlsx.formulaAudit.context", "xlsx.formulaAudit.cacheStatus", "xlsx.calculationSettings.calcChainDiagnostics"],
+      "missingFeatures": [],
+      "evidence": "XLSX import records worksheet formula context, cached-result trust state, defined-name formula diagnostics, calcId/forceFullCalc metadata, and calc-chain cells."
+    },
+    {
+      "id": "xlsx-pivot-cache-semantics",
+      "format": "xlsx",
+      "direction": "import",
+      "required": true,
+      "passed": true,
+      "coveredFeatures": ["xlsx.pivots.cacheSemantics", "xlsx.pivots.externalCacheOnlySemantics"],
+      "missingFeatures": [],
+      "evidence": "XLSX import projects pivot cache field names, source kind, cached records, row fields, aggregate metadata, and cache-only external pivots separately from raw pivot part preservation."
+    },
+    {
+      "id": "xlsx-external-data-provenance",
+      "format": "xlsx",
+      "direction": "import",
+      "required": true,
+      "passed": true,
+      "coveredFeatures": ["xlsx.externalData.provenance"],
+      "missingFeatures": [],
+      "evidence": "XLSX import parses connection, external workbook, DDE, and OLE provenance while leaving all external refresh execution disabled."
     },
     {
       "id": "xlsx-macro-payload-preserved-without-execution",

@@ -190,12 +190,16 @@ function collectInvariantProblems(snapshot: WorkbookSnapshot): InvariantProblem[
   }
   for (const pivot of snapshot.workbook.metadata?.pivots ?? []) {
     const hasPivotSheet = ensureSheetExists(sheetNames, problems, pivot.sheetName, `Pivot ${pivot.name}`)
-    const hasSourceSheet = ensureSheetExists(sheetNames, problems, pivot.source.sheetName, `Pivot ${pivot.name} source`)
     if (hasPivotSheet) {
       validateAddressRef(problems, pivot.sheetName, pivot.address, `Pivot ${pivot.name}`)
     }
-    if (hasSourceSheet) {
-      validateRangeRef(problems, pivot.source.sheetName, pivot.source, `Pivot ${pivot.name} source`)
+    if (pivot.source !== undefined) {
+      const hasSourceSheet = ensureSheetExists(sheetNames, problems, pivot.source.sheetName, `Pivot ${pivot.name} source`)
+      if (hasSourceSheet) {
+        validateRangeRef(problems, pivot.source.sheetName, pivot.source, `Pivot ${pivot.name} source`)
+      }
+    } else if (pivot.sourceKind !== 'external-cache-only' && pivot.cacheOnly !== true) {
+      addProblem(problems, 'missingPivotSource', `Pivot ${pivot.name} is missing a source range`)
     }
     if (pivot.rows <= 0 || pivot.cols <= 0) {
       addProblem(

@@ -213,7 +213,7 @@ export function hasEngineStructuralDeleteImpact(args: {
       .some(
         (pivot) =>
           (pivot.sheetName === args.sheetName && addressTouchesAxisDelete(args.sheetName, pivot.address, args.axis, args.start)) ||
-          (pivot.source.sheetName === args.sheetName && rangeTouchesAxisDelete(pivot.source, args.axis, args.start)),
+          (pivot.source?.sheetName === args.sheetName && rangeTouchesAxisDelete(pivot.source, args.axis, args.start)),
       )
   ) {
     return true

@@ -56,7 +56,8 @@ export function summarizeCurrentSheetMarkdown(sheet: ReturnType<typeof summarize
     lines.push('- None')
   } else {
     for (const pivot of sheet.pivots) {
-      lines.push(`- ${pivot.name}: ${pivot.address} from ${pivot.source} (${String(pivot.valueCount)} values)`)
+      const source = pivot.source ?? 'cache-only source'
+      lines.push(`- ${pivot.name}: ${pivot.address} from ${source} (${String(pivot.valueCount)} values)`)
     }
   }
   lines.push('', '### Spill Ranges')

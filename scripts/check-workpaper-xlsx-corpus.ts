@@ -10,13 +10,14 @@ import * as XLSX from 'xlsx'
 import { attachRuntimeSnapshot } from '@bilig/core'
 import { importXlsx } from '@bilig/excel-import'
 import { WorkPaper, type WorkPaperConfig, type WorkPaperSheet } from '@bilig/headless'
-import { formatErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
+import { formatErrorCode, ValueTag, type CellValue, type WorkbookSnapshot } from '@bilig/protocol'
 import type {
   CachedFormulaValue,
   CellContent,
   FormulaCellRecord,
   PreparedWorkbook,
   WorkPaperXlsxCorpusFileResult,
+  WorkPaperXlsxCorpusCompatibilitySummary,
   WorkPaperXlsxCorpusMismatch,
   WorkPaperXlsxCorpusOptions,
   WorkPaperXlsxCorpusResult,
@@ -29,6 +30,7 @@ export type {
   WorkPaperXlsxCorpusOptions,
   WorkPaperXlsxCorpusResult,
   WorkPaperXlsxCorpusSummary,
+  WorkPaperXlsxCorpusCompatibilitySummary,
   WorkPaperXlsxFormulaSkipReason,
 } from './check-workpaper-xlsx-corpus-types.ts'
 import { formatByteSize } from './public-workbook-corpus-process.ts'
@@ -117,6 +119,7 @@ function runWorkPaperXlsxCorpusFiles(
       mismatchedFormulaCells: summary.mismatchedFormulaCells + result.mismatchedFormulaCells,
       ok: summary.ok + (result.status === 'ok' ? 1 : 0),
       skippedFormulaCells: summary.skippedFormulaCells + result.skippedFormulaCells,
+      compatibility: addCompatibilitySummaries(summary.compatibility, result.compatibility),
     }),
     {
       failedErrors: 0,
@@ -127,6 +130,7 @@ function runWorkPaperXlsxCorpusFiles(
       mismatchedFormulaCells: 0,
       ok: 0,
       skippedFormulaCells: 0,
+      compatibility: emptyCompatibilitySummary(),
     },
   )
 
@@ -186,6 +190,7 @@ function checkWorkbookFileInChildProcess(
       status,
       ...emptyCounts(0),
       matchRate: 1,
+      compatibility: emptyCompatibilitySummary(),
       elapsedMs: childTimeoutMs,
       error: child.error.message,
     }
@@ -198,6 +203,7 @@ function checkWorkbookFileInChildProcess(
       status: child.signal === 'SIGTERM' || child.signal === 'SIGKILL' ? 'timeout' : 'error',
       ...emptyCounts(0),
       matchRate: 1,
+      compatibility: emptyCompatibilitySummary(),
       elapsedMs: childTimeoutMs,
       error: child.stderr.trim() || child.stdout.trim() || `child process exited with ${String(child.status)}`,
     }
@@ -213,6 +219,7 @@ function checkWorkbookFileInChildProcess(
       status: 'error',
       ...emptyCounts(0),
       matchRate: 1,
+      compatibility: emptyCompatibilitySummary(),
       elapsedMs: childTimeoutMs,
       error: errorMessage(error),
     }
@@ -230,6 +237,7 @@ function checkWorkbookFileInChildProcess(
       status: 'error',
       ...emptyCounts(0),
       matchRate: 1,
+      compatibility: emptyCompatibilitySummary(),
       elapsedMs: 0,
       error: 'child process did not return a file result',
     }
@@ -305,6 +313,7 @@ function checkWorkbookFile(
         status: counts.mismatchedFormulaCells === 0 ? 'ok' : 'mismatched',
         ...counts,
         matchRate: ratio(counts.matchingFormulaCells, counts.comparableFormulaCells),
+        compatibility: prepared.compatibility,
         elapsedMs: roundElapsed(performance.now() - startedAt),
       }
     } finally {
@@ -319,6 +328,7 @@ function checkWorkbookFile(
       status,
       ...counts,
       matchRate: ratio(counts.matchingFormulaCells, counts.comparableFormulaCells),
+      compatibility: prepared?.compatibility ?? emptyCompatibilitySummary(),
       elapsedMs: roundElapsed(performance.now() - startedAt),
       error: errorMessage(error),
     }
@@ -386,10 +396,12 @@ function prepareWorkbook(filePath: string, skippedByReason: Record<WorkPaperXlsx
   }
 
   formulaCells = markVolatileDependentFormulaCells(formulaCells, skippedByReason)
+  const importedSnapshot = importXlsx(workbookBytes, basename(filePath)).snapshot
 
   return {
-    sheets: formulaCells.length === 0 ? sheets : attachRuntimeSnapshot(sheets, importXlsx(workbookBytes, basename(filePath)).snapshot),
+    sheets: formulaCells.length === 0 ? sheets : attachRuntimeSnapshot(sheets, importedSnapshot),
     formulaCells,
+    compatibility: compatibilitySummaryForSnapshot(importedSnapshot),
     maxRows,
     maxColumns,
   }
@@ -570,6 +582,7 @@ function oversizedWorkbookResult(
     status: 'error',
     ...emptyCounts(0),
     matchRate: 1,
+    compatibility: emptyCompatibilitySummary(),
     elapsedMs: roundElapsed(performance.now() - startedAt),
     error: `XLSX file exceeds max file size: ${formatByteSize(fileSizeBytes)} > ${formatByteSize(maxFileBytes)}`,
   }
@@ -685,6 +698,48 @@ function numbersEqual(expected: number, actual: number): boolean {
 function addMismatch(mismatches: WorkPaperXlsxCorpusMismatch[], mismatchSampleLimit: number, mismatch: WorkPaperXlsxCorpusMismatch): void {
   if (mismatches.length < mismatchSampleLimit) {
     mismatches.push(mismatch)
+  }
+}
+
+function emptyCompatibilitySummary(): WorkPaperXlsxCorpusCompatibilitySummary {
+  return {
+    formulaContextDiagnosticCount: 0,
+    staleCacheRiskFormulaCount: 0,
+    externalCacheOnlyPivotCount: 0,
+    unsupportedRefreshFeatureCount: 0,
+  }
+}
+
+function addCompatibilitySummaries(
+  left: WorkPaperXlsxCorpusCompatibilitySummary,
+  right: WorkPaperXlsxCorpusCompatibilitySummary,
+): WorkPaperXlsxCorpusCompatibilitySummary {
+  return {
+    formulaContextDiagnosticCount: left.formulaContextDiagnosticCount + right.formulaContextDiagnosticCount,
+    staleCacheRiskFormulaCount: left.staleCacheRiskFormulaCount + right.staleCacheRiskFormulaCount,
+    externalCacheOnlyPivotCount: left.externalCacheOnlyPivotCount + right.externalCacheOnlyPivotCount,
+    unsupportedRefreshFeatureCount: left.unsupportedRefreshFeatureCount + right.unsupportedRefreshFeatureCount,
+  }
+}
+
+function compatibilitySummaryForSnapshot(snapshot: WorkbookSnapshot): WorkPaperXlsxCorpusCompatibilitySummary {
+  const metadata = snapshot.workbook.metadata
+  const formulaAudit = metadata?.formulaAudit
+  const externalConnections = metadata?.externalConnections
+  const connections = externalConnections?.connections ?? []
+  const externalLinks = externalConnections?.externalLinks ?? []
+  const externalRefreshFeatureCount =
+    connections.filter((connection) => connection.refreshOnLoad === true).length +
+    externalLinks.length +
+    (metadata?.externalWorkbookReferences?.length ?? 0)
+  const externalPivotCount =
+    (metadata?.pivots?.filter((pivot) => pivot.sourceKind === 'external-cache-only' || pivot.cacheOnly === true).length ?? 0) +
+    (metadata?.unsupportedPivots?.filter((pivot) => pivot.kind === 'external-cache' || pivot.sourceType === 'external').length ?? 0)
+  return {
+    formulaContextDiagnosticCount: formulaAudit?.diagnostics?.length ?? 0,
+    staleCacheRiskFormulaCount: formulaAudit?.formulas.filter((formula) => formula.cacheStatus === 'staleRisk').length ?? 0,
+    externalCacheOnlyPivotCount: externalPivotCount,
+    unsupportedRefreshFeatureCount: externalRefreshFeatureCount,
   }
 }
 

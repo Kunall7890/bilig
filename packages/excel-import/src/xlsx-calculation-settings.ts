@@ -84,8 +84,10 @@ function hasSemanticCalculationSettings(settings: WorkbookCalculationSettingsSna
     settings.iterate !== undefined ||
     settings.iterateCount !== undefined ||
     settings.iterateDelta !== undefined ||
+    settings.calcId !== undefined ||
     settings.fullPrecision === false ||
     settings.fullCalcOnLoad !== undefined ||
+    settings.forceFullCalc !== undefined ||
     settings.concurrentCalc !== undefined
   )
 }
@@ -95,6 +97,7 @@ function buildWorkbookCalcPr(settings: WorkbookCalculationSettingsSnapshot): str
     return null
   }
   const attributes = [
+    calcPrAttribute('calcId', Number.isSafeInteger(settings.calcId) ? String(settings.calcId) : undefined),
     calcPrAttribute('calcMode', settings.mode === 'manual' ? 'manual' : undefined),
     calcPrAttribute('fullPrecision', settings.fullPrecision === false ? '0' : undefined),
     calcPrAttribute('iterate', typeof settings.iterate === 'boolean' ? formatBooleanAttribute(settings.iterate) : undefined),
@@ -103,6 +106,10 @@ function buildWorkbookCalcPr(settings: WorkbookCalculationSettingsSnapshot): str
     calcPrAttribute(
       'fullCalcOnLoad',
       typeof settings.fullCalcOnLoad === 'boolean' ? formatBooleanAttribute(settings.fullCalcOnLoad) : undefined,
+    ),
+    calcPrAttribute(
+      'forceFullCalc',
+      typeof settings.forceFullCalc === 'boolean' ? formatBooleanAttribute(settings.forceFullCalc) : undefined,
     ),
     calcPrAttribute(
       'concurrentCalc',
@@ -200,21 +207,25 @@ export function readImportedWorkbookCalculationSettings(source: XlsxZipSource): 
     return undefined
   }
   const mode = calcPr?.['calcMode'] === 'manual' ? 'manual' : 'automatic'
+  const calcId = finiteIntegerAttributeValue(calcPr?.['calcId'])
   const iterate = booleanAttributeValue(calcPr?.['iterate'])
   const iterateCount = finiteIntegerAttributeValue(calcPr?.['iterateCount'])
   const iterateDelta = finiteNumericStringAttributeValue(calcPr?.['iterateDelta'])
   const fullPrecision = booleanAttributeValue(calcPr?.['fullPrecision'])
   const fullCalcOnLoad = booleanAttributeValue(calcPr?.['fullCalcOnLoad'])
+  const forceFullCalc = booleanAttributeValue(calcPr?.['forceFullCalc'])
   const concurrentCalc = booleanAttributeValue(calcPr?.['concurrentCalc'])
   const settings: WorkbookCalculationSettingsSnapshot = {
     mode,
     compatibilityMode: 'excel-modern',
     ...(dateSystem ? { dateSystem } : {}),
+    ...(calcId !== undefined ? { calcId } : {}),
     ...(iterate !== undefined ? { iterate } : {}),
     ...(iterateCount !== undefined ? { iterateCount } : {}),
     ...(iterateDelta !== undefined ? { iterateDelta } : {}),
     ...(fullPrecision === false ? { fullPrecision } : {}),
     ...(fullCalcOnLoad !== undefined ? { fullCalcOnLoad } : {}),
+    ...(forceFullCalc !== undefined ? { forceFullCalc } : {}),
     ...(concurrentCalc !== undefined ? { concurrentCalc } : {}),
   }
   return hasSemanticCalculationSettings(settings) || hasNonDefaultDateSystem(settings) ? settings : undefined

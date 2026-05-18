@@ -16,6 +16,9 @@ export function cellTouchesOperationPivotSource(input: {
     return false
   }
   return input.workbook.listPivots().some((pivot) => {
+    if (!pivot.source) {
+      return false
+    }
     if (pivot.source.sheetName !== input.sheetName) {
       return false
     }

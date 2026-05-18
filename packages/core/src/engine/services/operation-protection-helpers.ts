@@ -18,6 +18,12 @@ interface SourceProtectedRecord {
   readonly source: CellRangeRef
 }
 
+interface PivotProtectedRecord {
+  readonly sheetName: string
+  readonly address: string
+  readonly source?: CellRangeRef
+}
+
 interface AnchorProtectedRecord {
   readonly sheetName: string
   readonly address: string
@@ -28,7 +34,7 @@ export interface OperationProtectionAccess {
   readonly listRangeProtections: (sheetName: string) => readonly RangeProtectedRecord[]
   readonly getConditionalFormat: (id: string) => RangeProtectedRecord | undefined
   readonly getTable: (name: string) => TableProtectedRecord | undefined
-  readonly getPivot: (sheetName: string, address: string) => SourceProtectedRecord | undefined
+  readonly getPivot: (sheetName: string, address: string) => PivotProtectedRecord | undefined
   readonly getChart: (id: string) => SourceProtectedRecord | undefined
   readonly getImage: (id: string) => AnchorProtectedRecord | undefined
   readonly getShape: (id: string) => AnchorProtectedRecord | undefined
@@ -195,7 +201,7 @@ export function assertProtectionAllowsOp(access: OperationProtectionAccess, op: 
       if (
         existing &&
         (sheetHasProtection(access, existing.sheetName) ||
-          rangeIsProtected(access, existing.source) ||
+          (existing.source !== undefined && rangeIsProtected(access, existing.source)) ||
           rangeIsProtected(access, cellRange(existing.sheetName, existing.address)))
       ) {
         throwProtectionBlocked(`pivot at ${op.sheetName}!${op.address} touches protected workbook state`)

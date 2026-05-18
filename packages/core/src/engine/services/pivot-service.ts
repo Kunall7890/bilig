@@ -1,5 +1,5 @@
 import { Effect } from 'effect'
-import { ErrorCode, MAX_COLS, MAX_ROWS, ValueTag, type CellRangeRef, type CellValue } from '@bilig/protocol'
+import { ErrorCode, MAX_COLS, MAX_ROWS, ValueTag, type CellRangeRef, type CellValue, type LiteralInput } from '@bilig/protocol'
 import { formatAddress, parseCellAddress } from '@bilig/formula'
 import type { EngineOp } from '@bilig/workbook-domain'
 import { CellFlags } from '../../cell-store.js'
@@ -59,8 +59,25 @@ export interface EnginePivotService {
 function toPivotDefinition(pivot: WorkbookPivotRecord): PivotDefinitionInput {
   return {
     groupBy: pivot.groupBy,
+    ...(pivot.columnFields ? { columnFields: pivot.columnFields } : {}),
+    ...(pivot.filters ? { filters: pivot.filters } : {}),
+    ...(pivot.pageFields ? { pageFields: pivot.pageFields } : {}),
+    ...(pivot.hiddenItems ? { hiddenItems: pivot.hiddenItems } : {}),
     values: pivot.values,
   }
+}
+
+function literalToPivotCellValue(value: LiteralInput): CellValue {
+  if (value === null) {
+    return emptyValue()
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return { tag: ValueTag.Number, value }
+  }
+  if (typeof value === 'boolean') {
+    return { tag: ValueTag.Boolean, value }
+  }
+  return { tag: ValueTag.String, value: String(value), stringId: 0 }
 }
 
 type VisiblePivotCellReader = (sheetName: string, row: number, col: number) => CellValue
@@ -324,17 +341,21 @@ export function createEnginePivotService(args: {
     }
 
     if (pivot.rows !== rows || pivot.cols !== cols) {
-      args.applyDerivedOp({
-        kind: 'upsertPivotTable',
-        name: pivot.name,
-        sheetName: pivot.sheetName,
-        address: pivot.address,
-        source: { ...pivot.source },
-        groupBy: [...pivot.groupBy],
-        values: pivot.values.map((value) => Object.assign({}, value)),
-        rows,
-        cols,
-      })
+      if (pivot.source) {
+        args.applyDerivedOp({
+          kind: 'upsertPivotTable',
+          name: pivot.name,
+          sheetName: pivot.sheetName,
+          address: pivot.address,
+          source: { ...pivot.source },
+          groupBy: [...pivot.groupBy],
+          values: pivot.values.map((value) => Object.assign({}, value)),
+          rows,
+          cols,
+        })
+      } else {
+        args.state.workbook.setPivot({ ...pivot, rows, cols })
+      }
     }
     return changedCellIndices
   }
@@ -400,6 +421,24 @@ export function createEnginePivotService(args: {
     return rows
   }
 
+  const readPivotCachedRows = (pivot: WorkbookPivotRecord): CellValue[][] | null => {
+    if (!pivot.cacheFields || !pivot.cachedRecords) {
+      return null
+    }
+    return [
+      pivot.cacheFields.map((field) => ({ tag: ValueTag.String, value: field, stringId: 0 })),
+      ...pivot.cachedRecords.map((row) => row.map(literalToPivotCellValue)),
+    ]
+  }
+
+  const readPivotRows = (pivot: WorkbookPivotRecord): CellValue[][] | null => {
+    const cachedRows = readPivotCachedRows(pivot)
+    if (cachedRows) {
+      return cachedRows
+    }
+    return pivot.source ? readPivotSourceRows(pivot.source) : null
+  }
+
   const readVisibleCell = (sheetName: string, row: number, col: number): CellValue => {
     const cellIndex = args.state.workbook.getCellIndex(sheetName, formatAddress(row, col))
     return cellIndex === undefined ? emptyValue() : args.state.workbook.cellStore.getValue(cellIndex, (id) => args.state.strings.get(id))
@@ -407,12 +446,16 @@ export function createEnginePivotService(args: {
 
   const materializePivotNow = (pivot: WorkbookPivotRecord): number[] => {
     const changedCellIndices = clearOwnedPivotNow(pivot)
-    const sourceSheet = args.state.workbook.getSheet(pivot.source.sheetName)
-    if (!sourceSheet) {
+    const sourceRows = readPivotRows(pivot)
+    if (!sourceRows) {
       return writePivotOutput(pivot, 1, 1, [errorValue(ErrorCode.Ref)], changedCellIndices)
     }
 
-    const materialized = materializePivotTable(toPivotDefinition(pivot), readPivotSourceRows(pivot.source))
+    if (pivot.source && !readPivotCachedRows(pivot) && !args.state.workbook.getSheet(pivot.source.sheetName)) {
+      return writePivotOutput(pivot, 1, 1, [errorValue(ErrorCode.Ref)], changedCellIndices)
+    }
+
+    const materialized = materializePivotTable(toPivotDefinition(pivot), sourceRows)
     if (materialized.kind === 'error') {
       return writePivotOutput(pivot, materialized.rows, materialized.cols, materialized.values, changedCellIndices)
     }
@@ -484,7 +527,10 @@ export function createEnginePivotService(args: {
       return visibleFallback()
     }
 
-    const sourceRows = readPivotSourceRows(pivot.source)
+    const sourceRows = readPivotRows(pivot)
+    if (!sourceRows) {
+      return visibleFallback()
+    }
     const headerRow = sourceRows[0]
     if (!headerRow || headerRow.length === 0) {
       return visibleFallback()

@@ -111,6 +111,9 @@ export function createEngineRecalcService(args: {
   readonly forEachFormulaDependencyCell: (cellIndex: number, fn: (dependencyCellIndex: number) => void) => void
 }): EngineRecalcService {
   const shouldRefreshPivot = (pivot: WorkbookPivotRecord, changed: readonly number[] | U32): boolean => {
+    if (!pivot.source || pivot.cacheOnly) {
+      return false
+    }
     const ownerSheet = args.state.workbook.getSheet(pivot.source.sheetName)
     if (!ownerSheet) {
       return true

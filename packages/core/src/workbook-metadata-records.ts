@@ -558,7 +558,7 @@ function isPivotRecord(record: unknown): record is WorkbookPivotRecord {
     typeof record === 'object' &&
     record !== null &&
     'sheetName' in record &&
-    'source' in record &&
+    'values' in record &&
     !('id' in record) &&
     !('chartType' in record)
   )

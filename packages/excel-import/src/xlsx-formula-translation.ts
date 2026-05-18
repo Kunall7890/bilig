@@ -99,6 +99,8 @@ function normalizeStructuredReferenceSection(item: string): StructuredReferenceS
     case '@':
       return 'this-row'
     case '#TOTALS':
+    case '#TOTAL ROW':
+    case '#TOTALS ROW':
       return 'totals'
     default:
       return undefined

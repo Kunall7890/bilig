@@ -1,4 +1,5 @@
 import type {
+  CellRangeRef,
   CellValue,
   ErrorCode,
   LiteralInput,
@@ -364,7 +365,7 @@ export interface SpillMaterialization {
   ownerValue: CellValue
 }
 
-export type PivotTableInput = Omit<WorkbookPivotSnapshot, 'sheetName' | 'address' | 'rows' | 'cols'>
+export type PivotTableInput = Omit<WorkbookPivotSnapshot, 'sheetName' | 'address' | 'rows' | 'cols'> & { source: CellRangeRef }
 
 export interface RecalcVolatileState {
   nowSerial: number

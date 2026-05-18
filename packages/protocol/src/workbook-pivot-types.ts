@@ -1,7 +1,7 @@
 import type { WorkbookPackageRelationshipSnapshot } from './package-artifacts.js'
-import type { CellRangeRef } from './types.js'
+import type { CellRangeRef, LiteralInput } from './types.js'
 
-export type PivotAggregation = 'sum' | 'count'
+export type PivotAggregation = 'sum' | 'count' | 'countNums' | 'average' | 'min' | 'max' | 'product'
 
 export interface WorkbookPivotValueSnapshot {
   sourceColumn: string
@@ -9,12 +9,45 @@ export interface WorkbookPivotValueSnapshot {
   outputLabel?: string
 }
 
+export interface WorkbookPivotFilterSnapshot {
+  sourceColumn: string
+  includedValues?: LiteralInput[]
+  hiddenValues?: LiteralInput[]
+}
+
+export interface WorkbookPivotPageFieldSnapshot {
+  sourceColumn: string
+  selectedValue?: LiteralInput
+}
+
+export interface WorkbookPivotHiddenItemsSnapshot {
+  sourceColumn: string
+  values: LiteralInput[]
+}
+
+export interface WorkbookPivotCalculatedFormulaSnapshot {
+  name: string
+  formula: string
+  clause: '18.10' | '3.2.3.1'
+}
+
 export interface WorkbookPivotSnapshot {
   name: string
   sheetName: string
   address: string
-  source: CellRangeRef
+  source?: CellRangeRef
+  cacheId?: number
+  sourceKind?: 'worksheet' | 'table' | 'named-range' | 'external-cache-only'
   groupBy: string[]
+  columnFields?: string[]
+  pageFields?: WorkbookPivotPageFieldSnapshot[]
+  filters?: WorkbookPivotFilterSnapshot[]
+  hiddenItems?: WorkbookPivotHiddenItemsSnapshot[]
+  calculatedFields?: WorkbookPivotCalculatedFormulaSnapshot[]
+  calculatedItems?: WorkbookPivotCalculatedFormulaSnapshot[]
+  cacheOnly?: boolean
+  cacheFields?: string[]
+  cachedRecords?: LiteralInput[][]
   values: WorkbookPivotValueSnapshot[]
   rows: number
   cols: number
@@ -49,6 +82,9 @@ export interface WorkbookUnsupportedPivotSnapshot {
   reason: string
   cacheId?: number
   sourceType?: string
+  cachedRecordCount?: number
+  cacheFieldNames?: string[]
+  cacheOnly?: boolean
   sheetName?: string
   address?: string
   name?: string

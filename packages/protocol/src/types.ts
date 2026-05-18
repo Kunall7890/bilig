@@ -23,6 +23,8 @@ import type {
   WorkbookUnsupportedFormulaDependencySnapshot,
   WorkbookUnsupportedPivotSnapshot,
 } from './workbook-pivot-types.js'
+import type { WorkbookFormulaAuditSnapshot } from './workbook-formula-audit-types.js'
+import type { WorkbookExternalConnectionsSnapshot } from './workbook-external-connection-types.js'
 export type {
   CellBorderSidePatch,
   CellBorderSideSnapshot,
@@ -63,15 +65,38 @@ export {
 } from './cell-format-types.js'
 export type {
   PivotAggregation,
+  WorkbookPivotCalculatedFormulaSnapshot,
   WorkbookExternalWorkbookReferenceSnapshot,
+  WorkbookPivotFilterSnapshot,
   WorkbookPivotArtifactsSnapshot,
+  WorkbookPivotHiddenItemsSnapshot,
   WorkbookPivotPackagePartSnapshot,
+  WorkbookPivotPageFieldSnapshot,
   WorkbookPivotSnapshot,
   WorkbookPivotValueSnapshot,
   WorkbookSheetPivotArtifactsSnapshot,
   WorkbookUnsupportedFormulaDependencySnapshot,
   WorkbookUnsupportedPivotSnapshot,
 } from './workbook-pivot-types.js'
+export type {
+  WorkbookCalcChainCellSnapshot,
+  WorkbookCalcChainSnapshot,
+  WorkbookFormulaAuditAttributesSnapshot,
+  WorkbookFormulaAuditContext,
+  WorkbookFormulaAuditEntrySnapshot,
+  WorkbookFormulaAuditSnapshot,
+  WorkbookFormulaCacheStatus,
+  WorkbookFormulaDiagnosticSnapshot,
+} from './workbook-formula-audit-types.js'
+export type {
+  WorkbookDdeLinkSnapshot,
+  WorkbookExternalConnectionSnapshot,
+  WorkbookExternalConnectionsSnapshot,
+  WorkbookExternalConnectionSourceKind,
+  WorkbookExternalLinkSnapshot,
+  WorkbookExternalWorkbookLinkSnapshot,
+  WorkbookOleLinkSnapshot,
+} from './workbook-external-connection-types.js'
 
 export type CellIndex = number
 export type FormulaId = number
@@ -448,11 +473,13 @@ export interface WorkbookCalculationSettingsSnapshot {
   mode: WorkbookCalculationMode
   compatibilityMode?: CompatibilityMode
   dateSystem?: WorkbookDateSystem
+  calcId?: number | null
   iterate?: boolean | null
   iterateCount?: number | null
   iterateDelta?: string | null
   fullPrecision?: boolean | null
   fullCalcOnLoad?: boolean | null
+  forceFullCalc?: boolean | null
   concurrentCalc?: boolean | null
 }
 
@@ -778,6 +805,8 @@ export interface WorkbookMetadataSnapshot {
   externalWorkbookReferences?: WorkbookExternalWorkbookReferenceSnapshot[]
   unsupportedFormulaDependencies?: WorkbookUnsupportedFormulaDependencySnapshot[]
   unsupportedPivots?: WorkbookUnsupportedPivotSnapshot[]
+  formulaAudit?: WorkbookFormulaAuditSnapshot
+  externalConnections?: WorkbookExternalConnectionsSnapshot
   pivotArtifacts?: WorkbookPivotArtifactsSnapshot
   drawingArtifacts?: WorkbookDrawingArtifactsSnapshot
   chartArtifacts?: WorkbookDrawingArtifactsSnapshot

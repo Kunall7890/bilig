@@ -129,7 +129,7 @@ export interface WorkbookStructureSheetSummary {
   readonly pivots: readonly {
     readonly name: string
     readonly address: string
-    readonly source: string
+    readonly source: string | null
     readonly groupBy: readonly string[]
     readonly valueCount: number
   }[]
@@ -401,7 +401,7 @@ export function summarizeWorkbookStructure(runtime: WorkbookRuntime): WorkbookSt
         pivots: pivots.map((pivot) => ({
           name: pivot.name,
           address: pivot.address,
-          source: `${pivot.source.sheetName}!${pivot.source.startAddress}:${pivot.source.endAddress}`,
+          source: pivot.source === undefined ? null : `${pivot.source.sheetName}!${pivot.source.startAddress}:${pivot.source.endAddress}`,
           groupBy: [...pivot.groupBy],
           valueCount: pivot.values.length,
         })),

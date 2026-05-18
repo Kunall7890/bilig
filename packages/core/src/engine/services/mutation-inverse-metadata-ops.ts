@@ -312,6 +312,9 @@ export function buildMutationMetadataInverseOps(workbook: WorkbookStore, op: Eng
       if (!existing) {
         return [{ kind: 'deletePivotTable', sheetName: op.sheetName, address: op.address }]
       }
+      if (!existing.source) {
+        return [{ kind: 'deletePivotTable', sheetName: op.sheetName, address: op.address }]
+      }
       return [
         {
           kind: 'upsertPivotTable',
@@ -328,7 +331,7 @@ export function buildMutationMetadataInverseOps(workbook: WorkbookStore, op: Eng
     }
     case 'deletePivotTable': {
       const existing = workbook.getPivot(op.sheetName, op.address)
-      if (!existing) {
+      if (!existing || !existing.source) {
         return []
       }
       return [
