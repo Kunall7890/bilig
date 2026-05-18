@@ -3,7 +3,7 @@ import { formula, type WorkbookFormulaOperand } from './formula.js'
 import { createWorkbookFindApi, type WorkbookFindApi, type WorkbookRef } from './find.js'
 import { createWorkbookCheckApi, type WorkbookCheckApi } from './check.js'
 import type { WorkbookOp } from './ops.js'
-import type { WorkbookChangeSummary, WorkbookCheckResult } from './result.js'
+import type { WorkbookChangeSummary, WorkbookCheckResult, WorkbookRunError } from './result.js'
 
 export type WorkbookActionCommand =
   | {
@@ -66,13 +66,46 @@ export interface WorkbookActionPlan<Refs = unknown> {
   readonly checks: readonly WorkbookCheckResult[]
 }
 
+export interface WorkbookModelInspection {
+  readonly name: string
+  readonly actions: readonly string[]
+  readonly hasChecks: boolean
+}
+
+export type WorkbookActionPlanResult<Refs = unknown> =
+  | {
+      readonly status: 'planned'
+      readonly plan: WorkbookActionPlan<Refs>
+    }
+  | {
+      readonly status: 'failed'
+      readonly errors: readonly WorkbookRunError[]
+      readonly checks: readonly WorkbookCheckResult[]
+    }
+
 export function defineModel<Refs, Actions extends WorkbookActionMap<Refs>>(
   config: WorkbookModelConfig<Refs, Actions>,
 ): WorkbookModel<Refs, Actions> {
   if (config.name.trim() === '') {
     throw new Error('Workbook model name cannot be empty')
   }
+  const actionNames = Object.keys(config.actions)
+  if (actionNames.length === 0) {
+    throw new Error(`Workbook model ${config.name} must define at least one action`)
+  }
+  const emptyActionName = actionNames.find((name) => name.trim() === '')
+  if (emptyActionName !== undefined) {
+    throw new Error(`Workbook model ${config.name} has an empty action name`)
+  }
   return config
+}
+
+export function inspectModel<Refs, Actions extends WorkbookActionMap<Refs>>(model: WorkbookModel<Refs, Actions>): WorkbookModelInspection {
+  return {
+    name: model.name,
+    actions: Object.keys(model.actions).toSorted(),
+    hasChecks: model.checks !== undefined,
+  }
 }
 
 function concreteSingleCell(target: WorkbookRef): { sheetName: string; address: string } | null {
@@ -181,24 +214,35 @@ function pushReturnedChecks(target: WorkbookCheckResult[], returned: readonly Wo
   })
 }
 
-export function buildWorkbookActionPlan<Refs, Actions extends WorkbookActionMap<Refs>, ActionName extends keyof Actions & string>(
-  model: WorkbookModel<Refs, Actions>,
-  actionName: ActionName,
-): WorkbookActionPlan<Refs> {
-  const commands: WorkbookActionCommand[] = []
-  const ops: WorkbookOp[] = []
-  const checks: WorkbookCheckResult[] = []
-  const workbook = createModelWorkbook({ commands, ops, checks })
-  const refs = model.find(workbook)
-  const context: WorkbookActionContext<Refs> = { refs, workbook }
-  pushReturnedChecks(checks, model.checks?.(context))
-  const action = model.actions[actionName]
-  if (action === undefined) {
-    throw new Error(`Workbook model ${model.name} does not define action ${actionName}`)
-  }
-  action(context)
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+function failedPlan<Refs>(code: string, message: string, checks: readonly WorkbookCheckResult[] = []): WorkbookActionPlanResult<Refs> {
   return {
-    modelName: model.name,
+    status: 'failed',
+    checks,
+    errors: [{ code, message }],
+  }
+}
+
+function actionNotFound(modelName: string, actionName: string): WorkbookRunError {
+  return {
+    code: 'action_not_found',
+    message: `Workbook model ${modelName} does not define action ${actionName}`,
+  }
+}
+
+function createActionPlan<Refs>(
+  modelName: string,
+  actionName: string,
+  refs: Refs,
+  commands: readonly WorkbookActionCommand[],
+  ops: readonly WorkbookOp[],
+  checks: readonly WorkbookCheckResult[],
+): WorkbookActionPlan<Refs> {
+  return {
+    modelName,
     actionName,
     refs,
     commands,
@@ -210,4 +254,60 @@ export function buildWorkbookActionPlan<Refs, Actions extends WorkbookActionMap<
     })),
     checks,
   }
+}
+
+export function planWorkbookAction<Refs, Actions extends WorkbookActionMap<Refs>>(
+  model: WorkbookModel<Refs, Actions>,
+  actionName: string,
+): WorkbookActionPlanResult<Refs> {
+  const action: WorkbookAction<Refs> | undefined = model.actions[actionName]
+  if (action === undefined) {
+    return {
+      status: 'failed',
+      checks: [],
+      errors: [actionNotFound(model.name, actionName)],
+    }
+  }
+
+  const commands: WorkbookActionCommand[] = []
+  const ops: WorkbookOp[] = []
+  const checks: WorkbookCheckResult[] = []
+  const workbook = createModelWorkbook({ commands, ops, checks })
+
+  let refs: Refs
+  try {
+    refs = model.find(workbook)
+  } catch (error) {
+    return failedPlan<Refs>('find_failed', errorMessage(error), checks)
+  }
+
+  const context: WorkbookActionContext<Refs> = { refs, workbook }
+  try {
+    pushReturnedChecks(checks, model.checks?.(context))
+  } catch (error) {
+    return failedPlan<Refs>('checks_failed', errorMessage(error), checks)
+  }
+
+  try {
+    action(context)
+  } catch (error) {
+    return failedPlan<Refs>('action_failed', errorMessage(error), checks)
+  }
+
+  return {
+    status: 'planned',
+    plan: createActionPlan(model.name, actionName, refs, commands, ops, checks),
+  }
+}
+
+export function buildWorkbookActionPlan<Refs, Actions extends WorkbookActionMap<Refs>, ActionName extends keyof Actions & string>(
+  model: WorkbookModel<Refs, Actions>,
+  actionName: ActionName,
+): WorkbookActionPlan<Refs> {
+  const result = planWorkbookAction(model, actionName)
+  if (result.status === 'failed') {
+    const [error] = result.errors
+    throw new Error(error?.message ?? `Workbook model ${model.name} failed to plan action ${actionName}`)
+  }
+  return result.plan
 }

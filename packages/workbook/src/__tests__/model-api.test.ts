@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { parseFormula } from '@bilig/formula'
-import { buildWorkbookActionPlan, defineModel, formula } from '../index.js'
+import { buildWorkbookActionPlan, inspectModel, planWorkbookAction, defineModel, formula } from '../index.js'
 
 describe('@bilig/workbook model api', () => {
   it('preserves model metadata, refs, checks, commands, and concrete workbook ops', () => {
@@ -76,5 +76,122 @@ describe('@bilig/workbook model api', () => {
 
   it('rejects invalid formulas before they become workbook actions', () => {
     expect(() => formula.raw('SUM(')).toThrowError()
+  })
+
+  it('rejects models that cannot do anything', () => {
+    expect(() =>
+      defineModel({
+        name: 'empty-model',
+        find() {
+          return {}
+        },
+        actions: {},
+      }),
+    ).toThrowError('Workbook model empty-model must define at least one action')
+  })
+
+  it('describes model actions without running find or actions', () => {
+    const model = defineModel({
+      name: 'inspectable-model',
+      find() {
+        throw new Error('find should not run during inspection')
+      },
+      checks() {
+        throw new Error('checks should not run during inspection')
+      },
+      actions: {
+        calculate() {
+          throw new Error('action should not run during inspection')
+        },
+        reset() {
+          throw new Error('action should not run during inspection')
+        },
+      },
+    })
+
+    expect(inspectModel(model)).toEqual({
+      name: 'inspectable-model',
+      actions: ['calculate', 'reset'],
+      hasChecks: true,
+    })
+  })
+
+  it('returns structured planning failures instead of forcing agents to catch exceptions', () => {
+    const model = defineModel({
+      name: 'failing-model',
+      find(workbook) {
+        return {
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'A1' }),
+        }
+      },
+      actions: {
+        calculate() {
+          throw new Error('formula target was not resolved')
+        },
+      },
+    })
+
+    expect(planWorkbookAction(model, 'missing')).toEqual({
+      status: 'failed',
+      checks: [],
+      errors: [
+        {
+          code: 'action_not_found',
+          message: 'Workbook model failing-model does not define action missing',
+        },
+      ],
+    })
+
+    expect(planWorkbookAction(model, 'calculate')).toEqual({
+      status: 'failed',
+      checks: [],
+      errors: [
+        {
+          code: 'action_failed',
+          message: 'formula target was not resolved',
+        },
+      ],
+    })
+  })
+
+  it('keeps planned checks when action planning fails', () => {
+    const model = defineModel({
+      name: 'checkable-failure-model',
+      find(workbook) {
+        return {
+          table: workbook.findTable({ name: 'Inputs' }),
+        }
+      },
+      checks({ refs, workbook }) {
+        return [workbook.check.exists(refs.table)]
+      },
+      actions: {
+        calculate() {
+          throw new Error('cannot write without a result target')
+        },
+      },
+    })
+
+    const result = planWorkbookAction(model, 'calculate')
+    expect(result.status).toBe('failed')
+    if (result.status === 'failed') {
+      expect(result.checks).toEqual([
+        {
+          status: 'planned',
+          kind: 'exists',
+          target: expect.objectContaining({
+            kind: 'table',
+            name: 'Inputs',
+          }),
+          message: 'Inputs exists',
+        },
+      ])
+      expect(result.errors).toEqual([
+        {
+          code: 'action_failed',
+          message: 'cannot write without a result target',
+        },
+      ])
+    }
   })
 })

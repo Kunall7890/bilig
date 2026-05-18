@@ -46,13 +46,19 @@ package boundaries; not every package name is provisioned on npm yet.
 models. It does not ship business-model templates and does not depend on
 `@bilig/core`, `@bilig/headless`, `@bilig/agent-api`, `zod`, or `effect`.
 
+Build `@bilig/workbook` so an agent would love using it: simple, generic,
+predictable, inspectable, verifiable, and never dependent on hardcoded business
+models or human spreadsheet UI assumptions.
+
 It exposes:
 
 - `defineModel`
 - `buildWorkbookActionPlan`
+- `planWorkbookAction`
+- `inspectModel`
 - `formula`
 - `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` through the model workbook context
-- `WorkbookModel`, `WorkbookAction`, `WorkbookRunResult`, and `WorkbookCheckResult`
+- `WorkbookModel`, `WorkbookAction`, `WorkbookActionPlanResult`, `WorkbookRunResult`, and `WorkbookCheckResult`
 - the existing low-level operation language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, and `EngineOpBatch`
 
 The package builds portable workbook intent and concrete low-level ops when the
