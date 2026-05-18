@@ -229,12 +229,32 @@ export function createWorkbookRowsRef(options: FindRowsOptions): WorkbookRowsRef
   }
 }
 
+export function findTable(options: FindTableOptions): WorkbookTableRef {
+  return createWorkbookTableRef(options)
+}
+
+export function findColumn(options: FindColumnOptions): WorkbookColumnRef {
+  return createWorkbookColumnRef(options)
+}
+
+export function findRange(input: FindRangeInput): WorkbookRangeRef {
+  return createWorkbookRangeRef(input)
+}
+
+export function findName(name: string): WorkbookNameRef {
+  return createWorkbookNameRef(name)
+}
+
+export function findRows(options: FindRowsOptions): WorkbookRowsRef {
+  return createWorkbookRowsRef(options)
+}
+
 export function createWorkbookFindApi(): WorkbookFindApi {
   return {
-    findTable: createWorkbookTableRef,
-    findColumn: createWorkbookColumnRef,
-    findRange: createWorkbookRangeRef,
-    findName: createWorkbookNameRef,
-    findRows: createWorkbookRowsRef,
+    findTable,
+    findColumn,
+    findRange,
+    findName,
+    findRows,
   }
 }

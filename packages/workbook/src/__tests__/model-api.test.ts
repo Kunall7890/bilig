@@ -6,6 +6,11 @@ import {
   describePlan,
   describePlanResult,
   describeRef,
+  findColumn,
+  findName,
+  findRange,
+  findRows,
+  findTable,
   inspectModel,
   isWorkbookRef,
   planWorkbookAction,
@@ -93,6 +98,60 @@ describe('@bilig/workbook model api', () => {
 
     expect(source).toBe('SUM((Sheet1!A1)*(Sheet1!B1),10)')
     parseFormula(source)
+  })
+
+  it('exports simple top-level find helpers for generic refs', () => {
+    const table = findTable({ name: 'Inputs', sheetName: 'Model', headers: ['Amount', 'Rate'] })
+    const amount = findColumn({ table, name: 'Amount' })
+    const amountViaTable = table.column('Amount')
+    const result = findRange({ sheetName: 'Model', address: 'C2' })
+    const namedRate = findName('Rate')
+    const rows = findRows({
+      table,
+      where: {
+        column: 'Status',
+        op: 'eq',
+        value: 'Active',
+      },
+    })
+
+    expect(table).toEqual({
+      kind: 'table',
+      id: 'table_Model_Inputs_Amount_Rate',
+      label: 'Inputs',
+      name: 'Inputs',
+      sheetName: 'Model',
+      headers: ['Amount', 'Rate'],
+      column: expect.any(Function),
+    })
+    expect(amount).toEqual(amountViaTable)
+    expect(result).toEqual({
+      kind: 'range',
+      id: 'range_Model_C2_C2',
+      label: 'Model!C2',
+      range: {
+        sheetName: 'Model',
+        startAddress: 'C2',
+        endAddress: 'C2',
+      },
+    })
+    expect(namedRate).toEqual({
+      kind: 'name',
+      id: 'name_Rate',
+      label: 'Rate',
+      name: 'Rate',
+    })
+    expect(rows).toEqual({
+      kind: 'rows',
+      id: 'table_Model_Inputs_Amount_Rate_Status_eq',
+      label: 'table_Model_Inputs_Amount_Rate rows where Status eq',
+      table,
+      where: {
+        column: 'Status',
+        op: 'eq',
+        value: 'Active',
+      },
+    })
   })
 
   it('tracks formula inputs separately from formula text', () => {
