@@ -102,6 +102,10 @@ interface ThreadContextSyncState {
   pending: PendingContextSync | null
 }
 
+const threadSummaryRequests = new Map<string, Promise<readonly WorkbookAgentThreadSummary[]>>()
+const threadSnapshotRequests = new Map<string, Promise<WorkbookAgentThreadSnapshot>>()
+const contextSyncStates = new Map<string, ThreadContextSyncState>()
+
 function createThreadContextSyncState(): ThreadContextSyncState {
   return {
     inFlight: null,
@@ -114,9 +118,33 @@ function contextSyncKey(threadId: string, context: WorkbookAgentUiContext): stri
   return `${threadId}:${stringifyWorkbookAgentUiContextSemanticKey(context)}`
 }
 
-export function createWorkbookAgentClient(documentId: string) {
-  const contextSyncStates = new Map<string, ThreadContextSyncState>()
+function scopedRequestKey(...parts: readonly string[]): string {
+  return parts.map((part) => encodeURIComponent(part)).join(':')
+}
 
+function loadSingleFlight<K extends string, V>(requests: Map<K, Promise<V>>, key: K, load: () => Promise<V>): Promise<V> {
+  const existing = requests.get(key)
+  if (existing) {
+    return existing
+  }
+  const request = (async () => {
+    try {
+      return await load()
+    } finally {
+      requests.delete(key)
+    }
+  })()
+  requests.set(key, request)
+  return request
+}
+
+export function resetWorkbookAgentClientTransportStateForTests(): void {
+  threadSummaryRequests.clear()
+  threadSnapshotRequests.clear()
+  contextSyncStates.clear()
+}
+
+export function createWorkbookAgentClient(documentId: string) {
   const postThreadContext = async (threadId: string, context: WorkbookAgentUiContext): Promise<void> => {
     await fetchOk(`${threadUrl(documentId, threadId)}/context`, {
       method: 'POST',
@@ -153,10 +181,11 @@ export function createWorkbookAgentClient(documentId: string) {
 
   const enqueueThreadContextSync = (threadId: string, context: WorkbookAgentUiContext): Promise<void> => {
     const key = contextSyncKey(threadId, context)
-    const existingState = contextSyncStates.get(threadId)
+    const stateKey = scopedRequestKey(documentId, threadId)
+    const existingState = contextSyncStates.get(stateKey)
     const state = existingState ?? createThreadContextSyncState()
     if (!existingState) {
-      contextSyncStates.set(threadId, state)
+      contextSyncStates.set(stateKey, state)
     }
     if (state.lastSyncedKey === key) {
       return Promise.resolve()
@@ -196,7 +225,9 @@ export function createWorkbookAgentClient(documentId: string) {
       return `${threadUrl(documentId, threadId)}/events`
     },
     async loadThreadSummaries(): Promise<readonly WorkbookAgentThreadSummary[]> {
-      return decodeThreadSummaries(await fetchJson(threadListUrl(documentId)))
+      return loadSingleFlight(threadSummaryRequests, scopedRequestKey(documentId), async () =>
+        decodeThreadSummaries(await fetchJson(threadListUrl(documentId))),
+      )
     },
     async createSession(context: WorkbookAgentUiContext, scope: WorkbookAgentThreadScope): Promise<WorkbookAgentThreadSnapshot> {
       return decodeThreadSnapshot(
@@ -208,7 +239,9 @@ export function createWorkbookAgentClient(documentId: string) {
       )
     },
     async loadThreadSnapshot(threadId: string): Promise<WorkbookAgentThreadSnapshot> {
-      return decodeThreadSnapshot(await fetchJson(threadUrl(documentId, threadId)))
+      return loadSingleFlight(threadSnapshotRequests, scopedRequestKey(documentId, threadId), async () =>
+        decodeThreadSnapshot(await fetchJson(threadUrl(documentId, threadId))),
+      )
     },
     async syncThreadContext(threadId: string, context: WorkbookAgentUiContext): Promise<void> {
       await enqueueThreadContextSync(threadId, context)

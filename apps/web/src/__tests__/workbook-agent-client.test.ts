@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createWorkbookAgentClient } from '../workbook-agent-client.js'
+import { createWorkbookAgentClient, resetWorkbookAgentClientTransportStateForTests } from '../workbook-agent-client.js'
 
 function requestUrl(input: RequestInfo | URL): string {
   return typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
@@ -64,6 +64,7 @@ function createThreadSummary(overrides: Record<string, unknown> = {}) {
 }
 
 afterEach(() => {
+  resetWorkbookAgentClientTransportStateForTests()
   vi.unstubAllGlobals()
 })
 
@@ -88,6 +89,46 @@ describe('workbook agent client', () => {
     expect(client.threadEventsUrl('thr/1')).toBe('/v2/documents/doc-1/chat/threads/thr%2F1/events')
     await expect(client.loadThreadSummaries()).resolves.toEqual([expect.objectContaining({ threadId: 'thr-1' })])
     await expect(client.loadThreadSnapshot('thr-1')).resolves.toEqual(expect.objectContaining({ threadId: 'thr-1' }))
+  })
+
+  it('coalesces identical thread reads across remounted client instances', async () => {
+    const responseQueue: Array<() => void> = []
+    const fetchSpy = vi.fn((input: RequestInfo | URL) => {
+      const url = requestUrl(input)
+      return new Promise<Response>((resolve) => {
+        responseQueue.push(() => {
+          resolve(
+            new Response(JSON.stringify(url.endsWith('/chat/threads') ? [createThreadSummary()] : createSnapshot()), {
+              status: 200,
+              headers: { 'content-type': 'application/json' },
+            }),
+          )
+        })
+      })
+    })
+    vi.stubGlobal('fetch', fetchSpy)
+
+    const firstClient = createWorkbookAgentClient('doc-1')
+    const remountedClient = createWorkbookAgentClient('doc-1')
+    const firstSummaries = firstClient.loadThreadSummaries()
+    const remountedSummaries = remountedClient.loadThreadSummaries()
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    responseQueue.shift()?.()
+    await expect(Promise.all([firstSummaries, remountedSummaries])).resolves.toEqual([
+      [expect.objectContaining({ threadId: 'thr-1' })],
+      [expect.objectContaining({ threadId: 'thr-1' })],
+    ])
+
+    const firstSnapshot = firstClient.loadThreadSnapshot('thr-1')
+    const remountedSnapshot = remountedClient.loadThreadSnapshot('thr-1')
+
+    expect(fetchSpy).toHaveBeenCalledTimes(2)
+    responseQueue.shift()?.()
+    await expect(Promise.all([firstSnapshot, remountedSnapshot])).resolves.toEqual([
+      expect.objectContaining({ threadId: 'thr-1' }),
+      expect.objectContaining({ threadId: 'thr-1' }),
+    ])
   })
 
   it('surfaces server-provided error messages', async () => {
@@ -229,6 +270,41 @@ describe('workbook agent client', () => {
         },
       },
     })
+  })
+
+  it('shares context sync state across remounted client instances', async () => {
+    const contextResponses: Array<() => void> = []
+    const fetchSpy = vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          contextResponses.push(() => {
+            resolve(
+              new Response(JSON.stringify({ ok: true }), {
+                status: 200,
+                headers: { 'content-type': 'application/json' },
+              }),
+            )
+          })
+        }),
+    )
+    vi.stubGlobal('fetch', fetchSpy)
+
+    const firstClient = createWorkbookAgentClient('doc-1')
+    const remountedClient = createWorkbookAgentClient('doc-1')
+    const firstSync = firstClient.syncThreadContext('thr-1', createContext('A1'))
+    const remountedSync = remountedClient.syncThreadContext('thr-1', createContext('A1'))
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+    contextResponses.shift()?.()
+    await expect(Promise.all([firstSync, remountedSync])).resolves.toEqual([undefined, undefined])
+
+    await expect(remountedClient.syncThreadContext('thr-1', createContext('A1'))).resolves.toBeUndefined()
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+
+    const nextSync = firstClient.syncThreadContext('thr-1', createContext('A2'))
+    expect(fetchSpy).toHaveBeenCalledTimes(2)
+    contextResponses.shift()?.()
+    await expect(nextSync).resolves.toBeUndefined()
   })
 
   it('keeps context sync single-flight and posts only the latest pending context', async () => {

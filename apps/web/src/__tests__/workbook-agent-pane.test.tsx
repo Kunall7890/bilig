@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { isWorkbookAgentCommandBundle, toWorkbookAgentReviewQueueItem, type WorkbookAgentCommandBundle } from '@bilig/agent-api'
 import { ValueTag } from '@bilig/protocol'
 import { WorkbookToastRegion } from '../WorkbookToastRegion.js'
+import { resetWorkbookAgentClientTransportStateForTests } from '../workbook-agent-client.js'
 import { clearWorkbookAgentPreviewCache } from '../workbook-agent-preview-cache.js'
 import { useWorkbookAgentPane } from '../use-workbook-agent-pane.js'
 
@@ -773,6 +774,7 @@ beforeEach(() => {
 afterEach(() => {
   toast.dismiss()
   vi.restoreAllMocks()
+  resetWorkbookAgentClientTransportStateForTests()
   window.sessionStorage.clear()
   clearWorkbookAgentPreviewCache()
   document.body.innerHTML = ''
