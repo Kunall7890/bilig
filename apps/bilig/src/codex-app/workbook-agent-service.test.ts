@@ -2966,6 +2966,141 @@ describe('workbook agent service', () => {
     }
   })
 
+  it('does not apply mutating workflow commands after cancellation during authority handoff', async () => {
+    const fakeCodex = new FakeCodexTransport()
+    const engine = new SpreadsheetEngine({
+      workbookName: 'doc-1',
+      replicaId: 'server:test',
+    })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+
+    let releaseHeadRevision!: () => void
+    const headRevisionBlocked = new Promise<void>((resolve) => {
+      releaseHeadRevision = resolve
+    })
+    let resolveHeadRevisionRequested!: () => void
+    const headRevisionRequested = new Promise<void>((resolve) => {
+      resolveHeadRevisionRequested = resolve
+    })
+    const getWorkbookHeadRevision = vi.fn(async () => {
+      resolveHeadRevisionRequested()
+      await headRevisionBlocked
+      return 7
+    })
+    const upsertWorkflowRunStatuses: WorkbookAgentWorkflowRun['status'][] = []
+    const upsertWorkbookWorkflowRun = vi.fn(async (_documentId: string, run: WorkbookAgentWorkflowRun) => {
+      upsertWorkflowRunStatuses.push(run.status)
+    })
+    const applyAgentCommandBundle = vi.fn(async (_documentId, _bundle, preview) => ({
+      revision: 8,
+      preview,
+    }))
+    const appendWorkbookAgentRun = vi.fn(async () => undefined)
+    const service = createWorkbookAgentService(
+      createZeroSyncStub({
+        async inspectWorkbook<T>(_documentId: string, task: (runtime: WorkbookRuntime) => T | Promise<T>) {
+          const runtime: WorkbookRuntime = {
+            documentId: 'doc-1',
+            engine,
+            projection: buildWorkbookSourceProjectionFromEngine('doc-1', engine, {
+              revision: 1,
+              calculatedRevision: 1,
+              ownerUserId: 'alex@example.com',
+              updatedBy: 'alex@example.com',
+              updatedAt: '2026-04-10T00:00:00.000Z',
+            }),
+            headRevision: 1,
+            calculatedRevision: 1,
+            ownerUserId: 'alex@example.com',
+          }
+          return await task(runtime)
+        },
+        applyAgentCommandBundle,
+        appendWorkbookAgentRun,
+        getWorkbookHeadRevision,
+        upsertWorkbookWorkflowRun,
+      }),
+      {
+        codexClientFactory: (_options: CodexAppServerClientOptions): CodexAppServerTransport => fakeCodex,
+      },
+    )
+
+    try {
+      await service.createSession({
+        documentId: 'doc-1',
+        session: {
+          userID: 'alex@example.com',
+          roles: ['editor'],
+        },
+        body: {},
+      })
+
+      const runningSnapshot = await service.startWorkflow({
+        documentId: 'doc-1',
+        threadId: 'thr-test',
+        session: {
+          userID: 'alex@example.com',
+          roles: ['editor'],
+        },
+        body: {
+          workflowTemplate: 'createSheet',
+          name: 'Forecast',
+        },
+      })
+
+      expect(runningSnapshot.workflowRuns[0]?.status).toBe('running')
+      await headRevisionRequested
+      const runId = runningSnapshot.workflowRuns[0]?.runId
+      if (!runId) {
+        throw new Error('Expected running workflow id')
+      }
+
+      await service.cancelWorkflow({
+        documentId: 'doc-1',
+        threadId: 'thr-test',
+        runId,
+        session: {
+          userID: 'alex@example.com',
+          roles: ['editor'],
+        },
+      })
+      releaseHeadRevision()
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      const finalSnapshot = service.getSnapshot({
+        documentId: 'doc-1',
+        threadId: 'thr-test',
+        session: {
+          userID: 'alex@example.com',
+          roles: ['editor'],
+        },
+      })
+      expect(finalSnapshot.workflowRuns[0]).toEqual(
+        expect.objectContaining({
+          workflowTemplate: 'createSheet',
+          status: 'cancelled',
+          summary: 'Cancelled workflow: Create Sheet',
+          artifact: null,
+        }),
+      )
+      expect(applyAgentCommandBundle).not.toHaveBeenCalled()
+      expect(appendWorkbookAgentRun).not.toHaveBeenCalled()
+      expect(upsertWorkflowRunStatuses).toEqual(['running', 'cancelled'])
+      expect(finalSnapshot.entries).not.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            kind: 'system',
+            text: 'Completed workflow: Create Sheet',
+          }),
+        ]),
+      )
+    } finally {
+      releaseHeadRevision()
+      await service.close()
+    }
+  })
+
   it('applies rename-sheet workflows immediately in private threads', async () => {
     const fakeCodex = new FakeCodexTransport()
     const engine = new SpreadsheetEngine({

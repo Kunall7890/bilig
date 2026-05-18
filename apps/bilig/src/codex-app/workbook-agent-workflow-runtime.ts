@@ -249,8 +249,7 @@ export class WorkbookAgentWorkflowRuntime {
       })
       throwIfWorkflowCancelled(abortController.signal)
 
-      const latestRun = input.sessionState.durable.workflowRuns.find((run) => run.runId === input.runId)
-      if (latestRun?.status === 'cancelled') {
+      if (!this.isWorkflowStillRunning(input, abortController)) {
         return
       }
 
@@ -268,6 +267,9 @@ export class WorkbookAgentWorkflowRuntime {
       }
       if (result.commands && result.commands.length > 0) {
         const baseRevision = await this.options.zeroSyncService.getWorkbookHeadRevision(input.documentId)
+        if (!this.isWorkflowStillRunning(input, abortController)) {
+          return
+        }
         const workflowBundle = attachSharedReviewState(
           createWorkbookAgentCommandBundle({
             documentId: input.documentId,
@@ -282,12 +284,18 @@ export class WorkbookAgentWorkflowRuntime {
           input.sessionState,
         )
         const shouldApplyImmediately = this.options.shouldApplyBundleImmediately(input.sessionState, workflowBundle)
+        if (!this.isWorkflowStillRunning(input, abortController)) {
+          return
+        }
         if (shouldApplyImmediately) {
           const executionRecord = await this.options.applyCommandBundleAutomatically({
             sessionState: input.sessionState,
             actorUserId: input.startedByUserId,
             bundle: workflowBundle,
           })
+          if (!this.isWorkflowStillRunning(input, abortController)) {
+            return
+          }
           if (executionRecord) {
             completedSummary = `Applied workflow: ${executionRecord.summary}`
           }
@@ -298,7 +306,13 @@ export class WorkbookAgentWorkflowRuntime {
             )
           }
           this.options.stageReviewBundle(input.sessionState, input.workflowTurnId, workflowBundle)
+          if (!this.isWorkflowStillRunning(input, abortController)) {
+            return
+          }
         }
+      }
+      if (!this.isWorkflowStillRunning(input, abortController)) {
+        return
       }
       const completedRun: WorkbookAgentWorkflowRun = {
         ...completedRunBase,
@@ -358,5 +372,11 @@ export class WorkbookAgentWorkflowRuntime {
     } finally {
       this.workflowAbortControllers.delete(input.runId)
     }
+  }
+
+  private isWorkflowStillRunning(input: QueuedWorkbookAgentWorkflowRun, abortController: AbortController): boolean {
+    throwIfWorkflowCancelled(abortController.signal)
+    const latestRun = input.sessionState.durable.workflowRuns.find((run) => run.runId === input.runId)
+    return latestRun?.status === 'running'
   }
 }
