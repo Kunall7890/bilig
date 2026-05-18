@@ -15,6 +15,34 @@ import {
   upsertEntry,
 } from './workbook-agent-service-shared.js'
 
+function clearWorkbookAgentLiveTurnState(sessionState: WorkbookAgentThreadState, turnId: string): void {
+  sessionState.live.promptByTurn.delete(turnId)
+  sessionState.live.turnActorUserIdByTurn.delete(turnId)
+  sessionState.live.turnContextByTurn.delete(turnId)
+  sessionState.live.stagedPrivateBundleByTurn.delete(turnId)
+  sessionState.live.optimisticUserEntryIdByTurn.delete(turnId)
+}
+
+function resolveRuntimeErrorTurnId(sessionState: WorkbookAgentThreadState): string | null {
+  if (sessionState.live.activeTurnId) {
+    return sessionState.live.activeTurnId
+  }
+  const liveTurnId =
+    Array.from(
+      new Set([
+        ...sessionState.live.promptByTurn.keys(),
+        ...sessionState.live.turnActorUserIdByTurn.keys(),
+        ...sessionState.live.turnContextByTurn.keys(),
+        ...sessionState.live.stagedPrivateBundleByTurn.keys(),
+        ...sessionState.live.optimisticUserEntryIdByTurn.keys(),
+      ]),
+    ).at(-1) ?? null
+  if (liveTurnId) {
+    return liveTurnId
+  }
+  return sessionState.durable.entries.findLast((entry) => entry.id.startsWith('optimistic-user:'))?.turnId ?? null
+}
+
 export async function routeWorkbookAgentCodexNotification(input: {
   notification: CodexServerNotification
   listSessions: () => readonly WorkbookAgentThreadState[]
@@ -93,10 +121,7 @@ export async function routeWorkbookAgentCodexNotification(input: {
       if (notification.params.turn.error?.message) {
         sessionState.live.lastError = notification.params.turn.error.message
       }
-      sessionState.live.promptByTurn.delete(notification.params.turn.id)
-      sessionState.live.turnActorUserIdByTurn.delete(notification.params.turn.id)
-      sessionState.live.turnContextByTurn.delete(notification.params.turn.id)
-      sessionState.live.stagedPrivateBundleByTurn.delete(notification.params.turn.id)
+      clearWorkbookAgentLiveTurnState(sessionState, notification.params.turn.id)
       await input.persistSessionState(sessionState)
       input.emitSnapshot(sessionState.threadId)
       return
@@ -186,12 +211,17 @@ export async function routeWorkbookAgentCodexNotification(input: {
       const message = normalizeCodexNotificationErrorMessage(input.notification)
       await Promise.all(
         input.listSessions().map(async (sessionState) => {
+          const failedTurnId = resolveRuntimeErrorTurnId(sessionState)
+          if (failedTurnId) {
+            clearWorkbookAgentLiveTurnState(sessionState, failedTurnId)
+          }
+          sessionState.live.activeTurnId = null
           sessionState.live.stagedPrivateBundleByTurn.clear()
           sessionState.live.lastError = message
           sessionState.live.status = 'failed'
           sessionState.durable.entries = upsertEntry(
             sessionState.durable.entries,
-            createSystemEntry(`system-error:${input.now()}`, sessionState.live.activeTurnId, message),
+            createSystemEntry(`system-error:${input.now()}`, failedTurnId, message),
           )
           await input.persistSessionState(sessionState)
           input.emitSnapshot(sessionState.threadId)

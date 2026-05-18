@@ -4308,6 +4308,93 @@ describe('workbook agent service', () => {
     }
   })
 
+  it('releases active turn state after a runtime error so the user can recover with a new turn', async () => {
+    const fakeCodex = new FakeCodexTransport()
+    const service = createWorkbookAgentService(createZeroSyncStub(), {
+      codexClientFactory: (_options: CodexAppServerClientOptions): CodexAppServerTransport => fakeCodex,
+      maxActiveTurnsPerUser: 1,
+      maxActiveTurnsPerDocument: 1,
+    })
+
+    try {
+      const snapshot = await service.createSession({
+        documentId: 'doc-1',
+        session: {
+          userID: 'alex@example.com',
+          roles: ['editor'],
+        },
+        body: {},
+      })
+
+      await service.startTurn({
+        documentId: 'doc-1',
+        threadId: snapshot.threadId,
+        session: {
+          userID: 'alex@example.com',
+          roles: ['editor'],
+        },
+        body: {
+          prompt: 'Inspect Sheet1 before the runtime fails',
+        },
+      })
+
+      fakeCodex.emit({
+        method: 'error',
+        params: {
+          error: {
+            code: -32000,
+            message: 'Codex app-server exited unexpectedly',
+          },
+        },
+      })
+
+      const failed = service.getSnapshot({
+        documentId: 'doc-1',
+        threadId: snapshot.threadId,
+        session: {
+          userID: 'alex@example.com',
+          roles: ['editor'],
+        },
+      })
+      expect(failed.status).toBe('failed')
+      expect(failed.lastError).toBe('Codex app-server exited unexpectedly')
+      expect(failed.entries).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            kind: 'system',
+            turnId: 'turn-1',
+            text: 'Codex app-server exited unexpectedly',
+          }),
+        ]),
+      )
+
+      const recovered = await service.startTurn({
+        documentId: 'doc-1',
+        threadId: snapshot.threadId,
+        session: {
+          userID: 'alex@example.com',
+          roles: ['editor'],
+        },
+        body: {
+          prompt: 'Recover after runtime failure',
+        },
+      })
+
+      expect(recovered.status).toBe('inProgress')
+      expect(recovered.lastError).toBeNull()
+      expect(recovered.entries).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            kind: 'user',
+            text: 'Recover after runtime failure',
+          }),
+        ]),
+      )
+    } finally {
+      await service.close()
+    }
+  })
+
   it('falls back to a stable runtime message when the app-server emits an empty error', async () => {
     const fakeCodex = new FakeCodexTransport()
     const service = createWorkbookAgentService(createZeroSyncStub(), {
