@@ -11,6 +11,7 @@ import {
   planWorkbookAction,
   defineModel,
   formula,
+  verifyPlan,
 } from '../index.js'
 
 describe('@bilig/workbook model api', () => {
@@ -71,6 +72,12 @@ describe('@bilig/workbook model api', () => {
       },
     ])
     expect(plan.checks.map((check) => check.kind)).toEqual(['exists', 'noFormulaErrors', 'noFormulaErrors'])
+    expect(verifyPlan(plan)).toEqual({
+      status: 'valid',
+      modelName: 'custom-model',
+      actionName: 'calculate',
+      issues: [],
+    })
     const [op] = plan.ops
     expect(op?.kind).toBe('setCellFormula')
     if (op?.kind === 'setCellFormula') {
@@ -277,6 +284,101 @@ describe('@bilig/workbook model api', () => {
     })
     expect(JSON.parse(JSON.stringify(described))).toEqual(described)
     expect('refs' in described).toBe(false)
+  })
+
+  it('verifies that planned intent only uses resolved refs', () => {
+    const model = defineModel({
+      name: 'verify-missing-ref-model',
+
+      find(workbook) {
+        return {
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'D2' }),
+        }
+      },
+
+      actions: {
+        calculate({ refs, workbook }) {
+          const hiddenInput = workbook.findRange({ sheetName: 'Sheet1', address: 'B2' })
+          workbook.writeFormula(refs.result, formula.add(hiddenInput, 1))
+        },
+      },
+    })
+
+    const plan = buildWorkbookActionPlan(model, 'calculate')
+
+    expect(verifyPlan(plan)).toEqual({
+      status: 'invalid',
+      modelName: 'verify-missing-ref-model',
+      actionName: 'calculate',
+      issues: [
+        {
+          code: 'formula_input_not_resolved',
+          path: 'commands[0].inputs[0]',
+          ref: {
+            kind: 'range',
+            id: 'range_Sheet1_B2_B2',
+            label: 'Sheet1!B2',
+            range: {
+              sheetName: 'Sheet1',
+              startAddress: 'B2',
+              endAddress: 'B2',
+            },
+          },
+          message: 'Sheet1!B2 is used as a formula input but is missing from refsUsed',
+        },
+      ],
+    })
+  })
+
+  it('verifies parseable formulas and matching concrete ops', () => {
+    const model = defineModel({
+      name: 'verify-broken-plan-model',
+
+      find(workbook) {
+        return {
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'D2' }),
+        }
+      },
+
+      actions: {
+        calculate({ refs, workbook }) {
+          workbook.writeFormula(refs.result, formula.raw('1+1'))
+        },
+      },
+    })
+
+    const plan = buildWorkbookActionPlan(model, 'calculate')
+    const [command] = plan.commands
+    if (command === undefined || command.kind !== 'writeFormula') {
+      throw new Error('expected formula command')
+    }
+    const brokenPlan = {
+      ...plan,
+      commands: [{ ...command, formula: 'SUM(' }],
+      ops: [],
+    }
+
+    expect(verifyPlan(brokenPlan).issues).toEqual([
+      expect.objectContaining({
+        code: 'invalid_formula',
+        path: 'commands[0].formula',
+      }),
+      {
+        code: 'missing_concrete_op',
+        path: 'commands[0]',
+        ref: {
+          kind: 'range',
+          id: 'range_Sheet1_D2_D2',
+          label: 'Sheet1!D2',
+          range: {
+            sheetName: 'Sheet1',
+            startAddress: 'D2',
+            endAddress: 'D2',
+          },
+        },
+        message: 'Sheet1!D2 has no matching concrete workbook op',
+      },
+    ])
   })
 
   it('rejects invalid formulas before they become workbook actions', () => {

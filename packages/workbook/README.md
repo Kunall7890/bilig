@@ -19,6 +19,7 @@ The public surface stays generic:
 - `describeRef`
 - `describePlan`
 - `describePlanResult`
+- `verifyPlan`
 - `formula`
 - `WorkbookModel`
 - `WorkbookAction`
@@ -26,6 +27,8 @@ The public surface stays generic:
 - `WorkbookRefDescription`
 - `WorkbookActionPlanDescription`
 - `WorkbookActionPlanResultDescription`
+- `WorkbookPlanVerification`
+- `WorkbookPlanIssue`
 - `WorkbookRunResult`
 - `WorkbookCheckResult`
 
@@ -58,3 +61,8 @@ generic refs, commands, checks, changes, and ops, but omit consumer-private
 `refs` object shape and helper functions such as `table.column()`.
 Use `describePlanResult` when the same JSON-safe handoff is needed for either
 planned or failed action planning.
+
+Use `verifyPlan` before runtime handoff when an agent needs to prove a planned
+action is internally consistent. It checks for unresolved refs, unparsable
+formulas, duplicate resolved refs, and missing concrete ops for commands that
+already target a known single cell.

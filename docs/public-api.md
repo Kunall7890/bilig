@@ -60,9 +60,10 @@ It exposes:
 - `describeRef`
 - `describePlan`
 - `describePlanResult`
+- `verifyPlan`
 - `formula`
 - `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` through the model workbook context
-- `WorkbookModel`, `WorkbookAction`, `WorkbookActionPlanResult`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookRunResult`, and `WorkbookCheckResult`
+- `WorkbookModel`, `WorkbookAction`, `WorkbookActionPlanResult`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookRunResult`, and `WorkbookCheckResult`
 - the existing low-level operation language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, and `EngineOpBatch`
 
 The package builds portable workbook intent and concrete low-level ops when the
@@ -85,6 +86,11 @@ descriptions preserve generic workbook intent while removing consumer-private
 `refs` object shape and helper methods.
 `describePlanResult` applies the same description layer to either planned or
 failed action planning results.
+
+`verifyPlan` gives agents a runtime-free consistency check before handoff. It
+flags unresolved command targets, unresolved formula inputs, duplicate resolved
+refs, unparsable formulas, and missing concrete ops for commands whose target is
+already known as a single cell.
 
 ## Core engine surface
 
