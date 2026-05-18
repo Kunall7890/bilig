@@ -74,7 +74,7 @@ crawlers that probe those well-known variants.
 
 | Directory                       | Status                                       | Link                                                                                                  |
 | ------------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Official MCP Registry           | Live, current npm version indexed            | <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper> |
+| Official MCP Registry           | Live, `0.20.0` publish workflow succeeded; public API may lag | <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper> |
 | Static MCP server card          | Live                                         | <https://proompteng.github.io/bilig/.well-known/mcp/server-card.json>                                 |
 | Static MCP discovery aliases    | Live                                         | <https://proompteng.github.io/bilig/.well-known/mcp.json>                                             |
 | Glama                           | Live, installability and tool indexing pending | <https://glama.ai/mcp/servers/proompteng/bilig>                                                       |
@@ -92,12 +92,15 @@ crawlers that probe those well-known variants.
 | PulseMCP                        | Still not indexed in public search on May 17, 2026 | <https://www.pulsemcp.com/servers?search=bilig&q=bilig>                                               |
 
 PulseMCP says server listings are ingested from the official MCP Registry daily
-and processed weekly. The Bilig WorkPaper registry entry is live, and the public
-Registry API now includes the current `@bilig/headless@0.19.3` package version.
-The current entry is marked `isLatest: true`, so treat PulseMCP absence as a
-downstream directory refresh lag rather than an upstream registry lag. Starter
-issue [#384](https://github.com/proompteng/bilig/issues/384) captured the first
-public verification pass and is now closed; reopen a narrower follow-up only if
+and processed weekly. The Bilig WorkPaper registry entry is live, and the
+repository's Publish MCP Registry workflow succeeded for
+`@bilig/headless@0.20.0`. The public Registry API can lag after a successful
+publish; the latest observed API result during this pass still marked
+`@bilig/headless@0.19.3` as `isLatest: true`. Treat PulseMCP absence as a
+downstream directory refresh lag unless the official Registry continues to omit
+`0.20.0` after its own refresh window. Starter issue
+[#384](https://github.com/proompteng/bilig/issues/384) captured the first public
+verification pass and is now closed; reopen a narrower follow-up only if
 PulseMCP remains missing after the official registry refresh window.
 
 Glama lists Bilig WorkPaper publicly in search with TypeScript, Developer
@@ -114,11 +117,11 @@ Glama admin config staged on May 17, 2026:
 
 - Node.js version: `24`
 - Build steps:
-  `["mkdir -p /workpaper && cd /workpaper && npm init -y >/dev/null && npm install --omit=dev @bilig/headless@0.19.3","cd /workpaper && node --input-type=module -e \"import { writeFileSync } from 'node:fs'; import { buildDemoWorkPaper, exportWorkPaperDocument, serializeWorkPaperDocument } from '@bilig/headless'; writeFileSync('/workpaper/pricing.workpaper.json', serializeWorkPaperDocument(exportWorkPaperDocument(buildDemoWorkPaper(), { includeConfig: true })));\""]`
+  `["mkdir -p /workpaper && cd /workpaper && npm init -y >/dev/null && npm install --omit=dev @bilig/headless@0.20.0","cd /workpaper && node --input-type=module -e \"import { writeFileSync } from 'node:fs'; import { buildDemoWorkPaper, exportWorkPaperDocument, serializeWorkPaperDocument } from '@bilig/headless'; writeFileSync('/workpaper/pricing.workpaper.json', serializeWorkPaperDocument(exportWorkPaperDocument(buildDemoWorkPaper(), { includeConfig: true })));\""]`
 - CMD arguments:
   `["/workpaper/node_modules/.bin/bilig-workpaper-mcp","--workpaper","/workpaper/pricing.workpaper.json","--writable"]`
 - Local smoke proof: the same npm path installed
-  `@bilig/headless@0.19.3`, started server `bilig-headless-workpaper`, exposed
+  `@bilig/headless@0.20.0`, started server `bilig-headless-workpaper`, exposed
   7 tools, and returned `Summary!B3` with display value `60000`.
 
 The `mcpserver.cc` submission was accepted for review on May 13, 2026 with
@@ -180,13 +183,13 @@ A useful result includes:
 - `transport.type: stdio`
 - `repository.url: https://github.com/proompteng/bilig`
 
-Latest checked result on May 17, 2026: npm latest is `@bilig/headless@0.19.3`,
-and the official Registry API search now includes Bilig WorkPaper entry version
-`0.19.3` with `isLatest: true`. The API also returns historical entries, so
-consumers should select the latest-marked entry or prefer the npm package
-version when they need a single freshest install coordinate. The last documented
-refresh attempt was published by the repository workflow run at
-<https://github.com/proompteng/bilig/actions/runs/26004819833>.
+Latest checked result on May 18, 2026: npm latest is `@bilig/headless@0.20.0`.
+The official Registry publish workflow for `0.20.0` succeeded at
+<https://github.com/proompteng/bilig/actions/runs/26007468036>, while the public
+Registry API search still showed Bilig WorkPaper entry version `0.19.3` with
+`isLatest: true` immediately after the publish. The API also returns historical
+entries, so consumers should select the latest-marked entry or prefer the npm
+package version when they need a single freshest install coordinate.
 
 The package itself carries the matching `mcpName` field. That is the ownership
 signal the registry uses for npm package validation.

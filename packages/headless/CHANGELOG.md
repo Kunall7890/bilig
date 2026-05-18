@@ -11,6 +11,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(import): add Excel formula and pivot semantics (82da4b78)
 
 ## 0.19.3
@@ -20,9 +21,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(formula): support whole-axis xlookup ranges (f8ecaf81)
 
 ## Internal runtime changes
+
 - docs(growth): fix cloned example commands (9b282f6d)
 
 ## 0.19.2
