@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 import { createEmptyPublicWorkbookManifest } from '../public-workbook-corpus-json.ts'
+import { defaultRecentComplexGithubRepositoryQueries } from '../public-workbook-corpus-github.ts'
 import {
   buildPublicWorkbookCorpusRecentComplexSummary,
   hasRecentWorkbookEvidence,
@@ -121,6 +122,7 @@ describe('public workbook recent complex headless corpus gate', () => {
           mismatches: [],
           skippedByReason: {
             'missing-cached-result': 0,
+            'stale-cached-result': 0,
             'stale-cached-name-error': 0,
             'unsupported-cached-result-type': 0,
             'volatile-or-environment-dependent-formula': 0,
@@ -157,6 +159,71 @@ describe('public workbook recent complex headless corpus gate', () => {
     expect(validatePublicWorkbookCorpusRecentComplexSummary(summary, { requireTarget: true })).toEqual([])
   })
 
+  it('does not count a selected workbook as end-to-end passing without comparable headless formulas', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-recent-complex-no-comparable-'))
+    const cacheDir = join(dir, 'cache')
+    const manifestPath = join(dir, 'manifest.json')
+    const scorecardPath = join(dir, 'scorecard.json')
+    const headlessScorecardPath = join(dir, 'headless-scorecard.json')
+    const selectedArtifact = recentArtifact('recent-complex')
+    const manifest = {
+      ...createEmptyPublicWorkbookManifest('2026-05-07T00:00:00.000Z', 1),
+      artifacts: [selectedArtifact],
+      sources: [sourceFor(selectedArtifact)],
+    }
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
+    writeFileSync(scorecardPath, `${JSON.stringify(scorecardFor([passedCase(selectedArtifact)]), null, 2)}\n`)
+    writeFileSync(
+      headlessScorecardPath,
+      `${JSON.stringify(
+        {
+          files: [
+            {
+              comparableFormulaCells: 0,
+              matchRate: 1,
+              mismatchedFormulaCells: 0,
+              path: join(cacheDir, selectedArtifact.cachePath),
+              status: 'ok',
+            },
+          ],
+          mismatches: [],
+          schemaVersion: 1,
+          summary: {
+            failedErrors: 0,
+            failedTimeouts: 0,
+            mismatchedFormulaCells: 0,
+            ok: 1,
+            totalFiles: 1,
+          },
+        },
+        null,
+        2,
+      )}\n`,
+    )
+
+    const summary = buildPublicWorkbookCorpusRecentComplexSummary({
+      cacheDir,
+      childTimeoutMs: 31_000,
+      corpusRunStopMarkerPath: join(dir, 'missing-stop.md'),
+      generatedAt: '2026-05-08T00:00:00.000Z',
+      headlessScorecardPath,
+      manifestPath,
+      maxFileBytes: 50 * 1024 * 1024,
+      minComplexityScore: 5,
+      minFormulaCells: 10,
+      scorecardPath,
+      targetWorkbookCount: 1,
+      timeoutMs: 30_000,
+    })
+
+    expect(summary.endToEndPassingWorkbookCount).toBe(0)
+    expect(summary.sampleMissingHeadlessArtifactIds).toEqual([selectedArtifact.id])
+    expect(validatePublicWorkbookCorpusRecentComplexSummary(summary, { requireTarget: true })).toEqual([
+      'one or more selected recent complex workbooks did not pass headless verification',
+      'end-to-end recent complex headless target not met: 0/1',
+    ])
+  })
+
   it('exposes package scripts for the recent complex corpus lane', () => {
     const scripts = readPackageScripts()
 
@@ -180,6 +247,21 @@ describe('public workbook recent complex headless corpus gate', () => {
     expect(templateIndex).toBeGreaterThanOrEqual(0)
     expect(modelIndex).toBeLessThan(broadBudgetIndex)
     expect(templateIndex).toBeLessThan(broadAccountingIndex)
+  })
+
+  it('includes targeted financial-model repository queries for formula-heavy recent workbooks', () => {
+    expect(defaultRecentComplexGithubRepositoryQueries).toEqual(
+      expect.arrayContaining([
+        '3 statement model excel license:mit',
+        'bond valuation excel license:mit',
+        'financial modeling course excel license:mit',
+        'investment banking excel model license:mit',
+        'm&a valuation excel license:mit',
+        'real estate financial model excel license:mit',
+        'saas financial model excel license:mit',
+        'startup valuation excel license:mit',
+      ]),
+    )
   })
 
   it('reports when the manifest target must be expanded before fetching more artifacts', () => {

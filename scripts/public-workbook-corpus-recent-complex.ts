@@ -255,7 +255,7 @@ export function buildPublicWorkbookCorpusRecentComplexSummary(args: RecentComple
 }
 
 function isPassingHeadlessResult(file: WorkPaperXlsxCorpusResult['files'][number] | undefined): boolean {
-  return file?.status === 'ok' && file.mismatchedFormulaCells === 0 && file.matchRate === 1
+  return file?.status === 'ok' && file.comparableFormulaCells > 0 && file.mismatchedFormulaCells === 0 && file.matchRate === 1
 }
 
 export function validatePublicWorkbookCorpusRecentComplexSummary(

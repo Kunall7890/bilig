@@ -10,7 +10,7 @@ import * as XLSX from 'xlsx'
 import { attachRuntimeSnapshot } from '@bilig/core'
 import { importXlsx } from '@bilig/excel-import'
 import { WorkPaper, type WorkPaperConfig, type WorkPaperSheet } from '@bilig/headless'
-import { formatErrorCode, ValueTag, type CellValue, type WorkbookSnapshot } from '@bilig/protocol'
+import { formatErrorCode, ValueTag, type CellValue, type WorkbookFormulaAuditEntrySnapshot, type WorkbookSnapshot } from '@bilig/protocol'
 import type {
   CachedFormulaValue,
   CellContent,
@@ -52,6 +52,7 @@ const defaultMismatchSampleLimit = 25
 const ignoredDirectoryNames = new Set(['.git', 'build', 'dist', 'node_modules'])
 const skipReasons: readonly WorkPaperXlsxFormulaSkipReason[] = [
   'missing-cached-result',
+  'stale-cached-result',
   'stale-cached-name-error',
   'unsupported-cached-result-type',
   'volatile-or-environment-dependent-formula',
@@ -338,6 +339,7 @@ function checkWorkbookFile(
 function emptySkippedByReason(): Record<WorkPaperXlsxFormulaSkipReason, number> {
   return {
     'missing-cached-result': 0,
+    'stale-cached-result': 0,
     'stale-cached-name-error': 0,
     'unsupported-cached-result-type': 0,
     'volatile-or-environment-dependent-formula': 0,
@@ -395,8 +397,13 @@ function prepareWorkbook(filePath: string, skippedByReason: Record<WorkPaperXlsx
     sheets[sheetName] = rows
   }
 
-  formulaCells = markVolatileDependentFormulaCells(formulaCells, skippedByReason)
   const importedSnapshot = importXlsx(workbookBytes, basename(filePath)).snapshot
+  formulaCells = addFormulaAuditFallbackCells(sheets, formulaCells, importedSnapshot, skippedByReason)
+  formulaCells = markVolatileDependentFormulaCells(formulaCells, skippedByReason)
+  for (const formulaCell of formulaCells) {
+    maxRows = Math.max(maxRows, formulaCell.row + 1)
+    maxColumns = Math.max(maxColumns, formulaCell.col + 1)
+  }
 
   return {
     sheets: formulaCells.length === 0 ? sheets : attachRuntimeSnapshot(sheets, importedSnapshot),
@@ -405,6 +412,104 @@ function prepareWorkbook(filePath: string, skippedByReason: Record<WorkPaperXlsx
     maxRows,
     maxColumns,
   }
+}
+
+function addFormulaAuditFallbackCells(
+  sheets: Record<string, WorkPaperSheet>,
+  formulaCells: FormulaCellRecord[],
+  importedSnapshot: WorkbookSnapshot,
+  skippedByReason: Record<WorkPaperXlsxFormulaSkipReason, number>,
+): FormulaCellRecord[] {
+  const existingFormulaCells = new Set(formulaCells.map((record) => formulaCellRecordKey(record)))
+  for (const auditEntry of importedSnapshot.workbook.metadata?.formulaAudit?.formulas ?? []) {
+    const record = formulaAuditFallbackCellRecord(auditEntry)
+    if (!record || existingFormulaCells.has(formulaCellRecordKey(record))) {
+      continue
+    }
+    ensureSheetCell(sheets, record.sheetName, record.row, record.col, formulaInput(record.formula))
+    existingFormulaCells.add(formulaCellRecordKey(record))
+    formulaCells.push(record)
+    if (record.skipReason) {
+      skippedByReason[record.skipReason] += 1
+    }
+  }
+  return formulaCells
+}
+
+function formulaAuditFallbackCellRecord(auditEntry: WorkbookFormulaAuditEntrySnapshot): FormulaCellRecord | null {
+  if (
+    auditEntry.context !== 'worksheet-cell' ||
+    typeof auditEntry.sheetName !== 'string' ||
+    typeof auditEntry.address !== 'string' ||
+    auditEntry.formula.trim().length === 0
+  ) {
+    return null
+  }
+
+  let decodedAddress: XLSX.CellAddress
+  try {
+    decodedAddress = XLSX.utils.decode_cell(auditEntry.address)
+  } catch {
+    return null
+  }
+
+  const baseRecord = {
+    sheetName: auditEntry.sheetName,
+    address: XLSX.utils.encode_cell(decodedAddress),
+    row: decodedAddress.r,
+    col: decodedAddress.c,
+    formula: auditEntry.formula,
+  }
+
+  if (volatileOrEnvironmentFunctionPattern.test(auditEntry.formula)) {
+    return {
+      ...baseRecord,
+      skipReason: 'volatile-or-environment-dependent-formula',
+    }
+  }
+  if (auditEntry.cacheStatus === 'missing' || auditEntry.cachedValueRaw === '') {
+    return {
+      ...baseRecord,
+      skipReason: 'missing-cached-result',
+    }
+  }
+  if (auditEntry.cacheStatus !== 'trustedCached') {
+    return {
+      ...baseRecord,
+      skipReason: 'stale-cached-result',
+    }
+  }
+
+  const cachedValue = cachedFormulaValueFromAudit(auditEntry)
+  return cachedValue
+    ? {
+        ...baseRecord,
+        cachedValue,
+      }
+    : {
+        ...baseRecord,
+        skipReason: 'unsupported-cached-result-type',
+      }
+}
+
+function ensureSheetCell(sheets: Record<string, WorkPaperSheet>, sheetName: string, row: number, col: number, value: CellContent): void {
+  let sheet = sheets[sheetName]
+  if (!sheet) {
+    sheet = []
+    sheets[sheetName] = sheet
+  }
+  while (sheet.length <= row) {
+    sheet.push([])
+  }
+  const targetRow = sheet[row]
+  while (targetRow.length <= col) {
+    targetRow.push(null)
+  }
+  targetRow[col] = value
+}
+
+function formulaCellRecordKey(record: Pick<FormulaCellRecord, 'sheetName' | 'address'>): string {
+  return `${record.sheetName}!${record.address}`
 }
 
 function formulaCellRecord(
@@ -633,6 +738,26 @@ function cachedFormulaValue(cell: XLSX.CellObject): CachedFormulaValue | null {
   }
   if (typeof cell.v === 'boolean') {
     return { kind: 'boolean', value: cell.v }
+  }
+  return null
+}
+
+function cachedFormulaValueFromAudit(auditEntry: WorkbookFormulaAuditEntrySnapshot): CachedFormulaValue | null {
+  const value = auditEntry.cachedValue
+  if (value === undefined) {
+    return null
+  }
+  if (value === null) {
+    return { kind: 'blank' }
+  }
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? { kind: 'number', value } : null
+  }
+  if (typeof value === 'boolean') {
+    return { kind: 'boolean', value }
+  }
+  if (typeof value === 'string') {
+    return { kind: auditEntry.cellValueType === 'e' ? 'error' : 'string', value }
   }
   return null
 }

@@ -159,6 +159,48 @@ The scorecard phase split identifies whether time is spent in cache reads,
 footprint inspection, XLSX import, formula oracle comparison, round-trip, or
 structural smoke work before changing runtime code.
 
+## Recent Complex Public Corpus
+
+The 2025-2026 recent-complex lane tracks public workbooks separately from the
+checked-in reduction corpus:
+
+```sh
+pnpm public-workbook-corpus:recent-complex:plan
+pnpm public-workbook-corpus:discover-recent-complex-github
+pnpm public-workbook-corpus:fetch-recent-complex
+pnpm public-workbook-corpus:verify-recent-complex
+pnpm public-workbook-corpus:headless-recent-complex
+```
+
+Latest local evidence from May 18, 2026:
+
+```json
+{
+  "targetWorkbookCount": 500,
+  "manifestArtifactCount": 1475,
+  "publicScorecardCaseCount": 1475,
+  "publicPassingRecentComplexCount": 153,
+  "headlessFileCount": 153,
+  "headlessOkFileCount": 153,
+  "headlessComparableFormulaFileCount": 148,
+  "endToEndPassingWorkbookCount": 148,
+  "remainingToTarget": 352,
+  "formulaCells": 108401,
+  "comparableFormulaCells": 105267,
+  "matchingFormulaCells": 105267,
+  "mismatchedFormulaCells": 0,
+  "skippedFormulaCells": 3134
+}
+```
+
+The end-to-end count intentionally requires at least one comparable headless
+formula cell per selected workbook. Workbooks that only produce stale-cache-risk
+formula audit evidence without comparable headless formulas remain useful
+compatibility signals, but they do not count toward the 500-workbook target.
+The verifier also records worksheet formulas found by bilig's XLSX formula audit
+when SheetJS drops empty-cache formula cells, so those files are reported as
+skipped formula coverage instead of being misread as formula-free workbooks.
+
 ## Checked-in fixture result
 
 The current checked-in reduction corpus returns:

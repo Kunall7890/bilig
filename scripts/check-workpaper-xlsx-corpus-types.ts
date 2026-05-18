@@ -11,6 +11,7 @@ export type CachedFormulaValue =
 
 export type WorkPaperXlsxFormulaSkipReason =
   | 'missing-cached-result'
+  | 'stale-cached-result'
   | 'stale-cached-name-error'
   | 'unsupported-cached-result-type'
   | 'volatile-or-environment-dependent-formula'

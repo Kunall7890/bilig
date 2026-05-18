@@ -387,10 +387,40 @@ describe('WorkPaper XLSX corpus verifier', () => {
       expect(result.files[0]?.skippedFormulaCells).toBe(2)
       expect(result.skippedByReason).toEqual({
         'missing-cached-result': 1,
+        'stale-cached-result': 0,
         'stale-cached-name-error': 0,
         'unsupported-cached-result-type': 0,
         'volatile-or-environment-dependent-formula': 1,
       })
+    })
+  })
+
+  it('falls back to formula audit when SheetJS drops empty-cache formulas', () => {
+    withTempCorpus((corpusDir) => {
+      const workbook = XLSX.utils.book_new()
+      const sheet = XLSX.utils.aoa_to_sheet([[1, null]])
+      const emptyCacheFormulaCell: XLSX.CellObject = { t: 'n', f: 'A1+1' }
+      Object.defineProperty(emptyCacheFormulaCell, 'v', { value: '', enumerable: true })
+      sheet.B1 = emptyCacheFormulaCell
+      sheet['!ref'] = 'A1:B1'
+      XLSX.utils.book_append_sheet(workbook, sheet, 'Sheet1')
+      writeWorkbook(join(corpusDir, 'empty-cache-formula.xlsx'), workbook)
+
+      const result = runWorkPaperXlsxCorpus([corpusDir])
+
+      expect(result.summary).toMatchObject({
+        totalFiles: 1,
+        filesProcessed: 1,
+        ok: 1,
+        formulaCells: 1,
+        comparableFormulaCells: 0,
+        matchingFormulaCells: 0,
+        mismatchedFormulaCells: 0,
+        skippedFormulaCells: 1,
+        matchRate: 1,
+      })
+      expect(result.skippedByReason['missing-cached-result']).toBe(1)
+      expect(result.mismatches).toEqual([])
     })
   })
 
@@ -423,6 +453,7 @@ describe('WorkPaper XLSX corpus verifier', () => {
       })
       expect(result.skippedByReason).toEqual({
         'missing-cached-result': 0,
+        'stale-cached-result': 0,
         'stale-cached-name-error': 0,
         'unsupported-cached-result-type': 0,
         'volatile-or-environment-dependent-formula': 3,
