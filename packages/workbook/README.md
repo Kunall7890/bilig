@@ -20,6 +20,7 @@ The public surface stays generic:
 - `describePlan`
 - `describePlanResult`
 - `verifyPlan`
+- `verifyModel`
 - `formula`
 - `WorkbookModel`
 - `WorkbookAction`
@@ -29,6 +30,8 @@ The public surface stays generic:
 - `WorkbookActionPlanResultDescription`
 - `WorkbookPlanVerification`
 - `WorkbookPlanIssue`
+- `WorkbookModelVerification`
+- `WorkbookModelActionVerification`
 - `WorkbookRunResult`
 - `WorkbookCheckResult`
 
@@ -66,3 +69,5 @@ Use `verifyPlan` before runtime handoff when an agent needs to prove a planned
 action is internally consistent. It checks for unresolved refs, unparsable
 formulas, duplicate resolved refs, and missing concrete ops for commands that
 already target a known single cell.
+Use `verifyModel` to plan and verify every action in a consumer-defined model
+with one JSON-safe result.

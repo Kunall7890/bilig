@@ -61,9 +61,10 @@ It exposes:
 - `describePlan`
 - `describePlanResult`
 - `verifyPlan`
+- `verifyModel`
 - `formula`
 - `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` through the model workbook context
-- `WorkbookModel`, `WorkbookAction`, `WorkbookActionPlanResult`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookRunResult`, and `WorkbookCheckResult`
+- `WorkbookModel`, `WorkbookAction`, `WorkbookActionPlanResult`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookRunResult`, and `WorkbookCheckResult`
 - the existing low-level operation language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, and `EngineOpBatch`
 
 The package builds portable workbook intent and concrete low-level ops when the
@@ -91,6 +92,8 @@ failed action planning results.
 flags unresolved command targets, unresolved formula inputs, duplicate resolved
 refs, unparsable formulas, and missing concrete ops for commands whose target is
 already known as a single cell.
+`verifyModel` applies the same planning and verification flow to every action
+in a consumer-defined model, returning one JSON-safe model-level verdict.
 
 ## Core engine surface
 

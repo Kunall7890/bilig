@@ -1,7 +1,14 @@
 import { parseFormula } from '@bilig/formula'
-import { describeRef, type WorkbookRefDescription } from './describe.js'
+import { describePlanResult, describeRef, type WorkbookActionPlanResultDescription, type WorkbookRefDescription } from './describe.js'
 import type { WorkbookRef } from './find.js'
-import type { WorkbookActionCommand, WorkbookActionPlan } from './model.js'
+import {
+  inspectModel,
+  planWorkbookAction,
+  type WorkbookActionCommand,
+  type WorkbookActionMap,
+  type WorkbookActionPlan,
+  type WorkbookModel,
+} from './model.js'
 import type { WorkbookOp } from './ops.js'
 
 type WorkbookConcreteCommandOp = Extract<WorkbookOp, { kind: 'setCellFormula' | 'setCellValue' | 'clearCell' }>
@@ -27,6 +34,18 @@ export interface WorkbookPlanVerification {
   readonly modelName: string
   readonly actionName: string
   readonly issues: readonly WorkbookPlanIssue[]
+}
+
+export interface WorkbookModelActionVerification {
+  readonly actionName: string
+  readonly planning: WorkbookActionPlanResultDescription
+  readonly verification?: WorkbookPlanVerification
+}
+
+export interface WorkbookModelVerification {
+  readonly status: 'valid' | 'invalid'
+  readonly modelName: string
+  readonly actions: readonly WorkbookModelActionVerification[]
 }
 
 function refKey(ref: WorkbookRef): string {
@@ -225,5 +244,31 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
     modelName: plan.modelName,
     actionName: plan.actionName,
     issues,
+  }
+}
+
+export function verifyModel<Refs, Actions extends WorkbookActionMap<Refs>>(model: WorkbookModel<Refs, Actions>): WorkbookModelVerification {
+  const actions = inspectModel(model).actions.map((actionName): WorkbookModelActionVerification => {
+    const planning = planWorkbookAction(model, actionName)
+    const describedPlanning = describePlanResult(planning)
+    if (planning.status === 'failed') {
+      return {
+        actionName,
+        planning: describedPlanning,
+      }
+    }
+    return {
+      actionName,
+      planning: describedPlanning,
+      verification: verifyPlan(planning.plan),
+    }
+  })
+
+  const isValid = actions.every((action) => action.planning.status === 'planned' && action.verification?.status === 'valid')
+
+  return {
+    status: isValid ? 'valid' : 'invalid',
+    modelName: model.name,
+    actions,
   }
 }

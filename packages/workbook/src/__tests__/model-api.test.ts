@@ -11,6 +11,7 @@ import {
   planWorkbookAction,
   defineModel,
   formula,
+  verifyModel,
   verifyPlan,
 } from '../index.js'
 
@@ -379,6 +380,74 @@ describe('@bilig/workbook model api', () => {
         message: 'Sheet1!D2 has no matching concrete workbook op',
       },
     ])
+  })
+
+  it('verifies every model action with JSON-safe planning results', () => {
+    const model = defineModel({
+      name: 'whole-model-verification',
+
+      find(workbook) {
+        return {
+          input: workbook.findRange({ sheetName: 'Sheet1', address: 'A2' }),
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'D2' }),
+        }
+      },
+
+      actions: {
+        calculate({ refs, workbook }) {
+          workbook.writeFormula(refs.result, formula.add(refs.input, 1))
+        },
+        broken({ refs, workbook }) {
+          const hiddenInput = workbook.findRange({ sheetName: 'Sheet1', address: 'B2' })
+          workbook.writeFormula(refs.result, formula.add(hiddenInput, 1))
+        },
+        fail() {
+          throw new Error('missing workbook target')
+        },
+      },
+    })
+
+    const verification = verifyModel(model)
+
+    expect(verification.status).toBe('invalid')
+    expect(verification.modelName).toBe('whole-model-verification')
+    expect(
+      verification.actions.map((action) => ({
+        actionName: action.actionName,
+        planning: action.planning.status,
+        verification: action.verification?.status,
+      })),
+    ).toEqual([
+      {
+        actionName: 'broken',
+        planning: 'planned',
+        verification: 'invalid',
+      },
+      {
+        actionName: 'calculate',
+        planning: 'planned',
+        verification: 'valid',
+      },
+      {
+        actionName: 'fail',
+        planning: 'failed',
+        verification: undefined,
+      },
+    ])
+    expect(verification.actions[0]?.verification?.issues.map((issue) => issue.code)).toEqual(['formula_input_not_resolved'])
+    expect(verification.actions[2]?.planning).toEqual({
+      status: 'failed',
+      modelName: 'whole-model-verification',
+      actionName: 'fail',
+      errors: [
+        {
+          code: 'action_failed',
+          message: 'missing workbook target',
+        },
+      ],
+      checks: [],
+    })
+    expect(JSON.parse(JSON.stringify(verification))).toEqual(verification)
   })
 
   it('rejects invalid formulas before they become workbook actions', () => {
