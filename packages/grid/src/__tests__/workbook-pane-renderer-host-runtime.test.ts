@@ -206,9 +206,59 @@ describe('WorkbookPaneRendererHostRuntimeV3', () => {
     runtime.updateProps({ ...props, tilePanes: [secondPane] })
 
     expect(runtime.getFrameProofStatusSnapshot()).toBe('pending')
-    expect(runtime.getHasPresentedFrameSnapshot()).toBe(false)
+    expect(runtime.getHasPresentedFrameSnapshot()).toBe(true)
 
     animationFrames.flushNextFrame()
+    expect(runtime.getFrameProofStatusSnapshot()).toBe('presented')
+    expect(runtime.getHasPresentedFrameSnapshot()).toBe(true)
+
+    runtime.dispose()
+    animationFrames.restore()
+  })
+
+  test('invalidates the presented-frame proof when text ownership changes', async () => {
+    const animationFrames = installManualAnimationFrames()
+    const backend = {}
+    const drawFrame = vi.fn<WorkbookPaneFrameDrawerV3>(() => true)
+    const runtime = new WorkbookPaneRendererHostRuntimeV3({
+      rendererRuntime: new WorkbookPaneRendererRuntimeV3(drawFrame),
+      surfaceRuntime: new WorkbookPaneSurfaceRuntimeV3({
+        createBackend: vi.fn(async () => backend),
+        createResizeObserver: () => null,
+        syncSurface: vi.fn(),
+      }),
+    })
+    const props = {
+      active: true,
+      cameraStore: null,
+      drawText: true,
+      geometry: null,
+      headerPanes: [],
+      host: createHost(640, 360),
+      overlay: null,
+      overlayBuilder: null,
+      preloadTilePanes: [],
+      renderRevisionSnapshot: null,
+      scrollTransformStore: null,
+      tilePanes: [createDirtyTilePane()],
+    }
+
+    runtime.updateProps(props)
+    runtime.setCanvas(document.createElement('canvas'))
+    await Promise.resolve()
+    animationFrames.flushNextFrame()
+
+    expect(runtime.getFrameProofStatusSnapshot()).toBe('presented')
+    expect(runtime.getHasPresentedFrameSnapshot()).toBe(true)
+    expect(drawFrame.mock.calls.at(-1)?.[0]).toMatchObject({ drawText: true })
+
+    runtime.updateProps({ ...props, drawText: false })
+
+    expect(runtime.getFrameProofStatusSnapshot()).toBe('pending')
+    expect(runtime.getHasPresentedFrameSnapshot()).toBe(true)
+
+    animationFrames.flushNextFrame()
+    expect(drawFrame.mock.calls.at(-1)?.[0]).toMatchObject({ drawText: false })
     expect(runtime.getFrameProofStatusSnapshot()).toBe('presented')
     expect(runtime.getHasPresentedFrameSnapshot()).toBe(true)
 

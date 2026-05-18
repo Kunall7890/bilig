@@ -209,7 +209,6 @@ export class WorkbookPaneRendererHostRuntimeV3 {
       return
     }
     this.frameProofSignature = signature
-    this.setHasPresentedFrame(false)
     this.setFrameProofStatus(signature ? 'pending' : 'idle')
   }
 
@@ -222,11 +221,13 @@ export class WorkbookPaneRendererHostRuntimeV3 {
 }
 
 export function resolveWorkbookPaneFrameProofSignatureV3(props: {
+  readonly drawText?: boolean | undefined
   readonly headerPanes: readonly GridHeaderPaneState[]
   readonly overlay: DynamicGridOverlayBatchV3 | null
   readonly renderRevisionSnapshot?: GridRenderRevisionSnapshot | null | undefined
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
 }): string {
+  const textOwnershipSignature = `drawText:${props.drawText === false ? 'gpu-text-off' : 'gpu-text-on'}`
   const renderRevisionSignature = props.renderRevisionSnapshot
     ? [
         props.renderRevisionSnapshot.authoritativeRevision ?? 'none',
@@ -260,5 +261,5 @@ export function resolveWorkbookPaneFrameProofSignatureV3(props: {
     .map((pane) => [pane.paneId, pane.rectSignature, pane.textSignature, pane.rectCount, pane.textCount].join(':'))
     .join('|')
   const overlaySignature = props.overlay ? `${props.overlay.seq}:${props.overlay.rectCount}` : ''
-  return [tileSignature, headerSignature, overlaySignature, renderRevisionSignature].filter(Boolean).join('#')
+  return [textOwnershipSignature, tileSignature, headerSignature, overlaySignature, renderRevisionSignature].filter(Boolean).join('#')
 }
