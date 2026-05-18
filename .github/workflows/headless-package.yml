@@ -61,6 +61,11 @@ on:
         type: boolean
         required: false
         default: false
+      release_from_github_mirror:
+        description: 'Publish from GitHub main when Forgejo canonical refs are unavailable'
+        type: boolean
+        required: false
+        default: false
       target_version:
         description: 'Optional explicit runtime package version to release'
         type: string
@@ -238,6 +243,7 @@ jobs:
       npm_tag: ${{ steps.release_meta.outputs.npm_tag }}
       dry_run: ${{ steps.release_meta.outputs.dry_run }}
       allow_new_packages: ${{ steps.release_meta.outputs.allow_new_packages }}
+      release_from_github_mirror: ${{ steps.release_meta.outputs.release_from_github_mirror }}
       planner_args: ${{ steps.release_meta.outputs.planner_args }}
     steps:
       - name: Checkout repository
@@ -272,6 +278,7 @@ jobs:
           INPUT_NPM_TAG: ${{ github.event.inputs.npm_tag }}
           INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
           INPUT_ALLOW_NEW_PACKAGES: ${{ github.event.inputs.allow_new_packages }}
+          INPUT_RELEASE_FROM_GITHUB_MIRROR: ${{ github.event.inputs.release_from_github_mirror }}
           INPUT_TARGET_VERSION: ${{ github.event.inputs.target_version }}
         run: |
           set -euo pipefail
@@ -280,10 +287,12 @@ jobs:
             npm_tag_input="latest"
             dry_run_input="false"
             allow_new_packages_input="false"
+            release_from_github_mirror_input="false"
           else
             npm_tag_input="${INPUT_NPM_TAG:-latest}"
             dry_run_input="${INPUT_DRY_RUN:-false}"
             allow_new_packages_input="${INPUT_ALLOW_NEW_PACKAGES:-false}"
+            release_from_github_mirror_input="${INPUT_RELEASE_FROM_GITHUB_MIRROR:-false}"
           fi
 
           case "$dry_run_input" in
@@ -304,6 +313,15 @@ jobs:
               ;;
           esac
 
+          case "$release_from_github_mirror_input" in
+            true|True|TRUE) release_from_github_mirror_value=true ;;
+            false|False|FALSE|"") release_from_github_mirror_value=false ;;
+            *)
+              echo 'release_from_github_mirror input must be true or false' >&2
+              exit 1
+              ;;
+          esac
+
           planner_args=""
           if [[ -n "${INPUT_TARGET_VERSION:-}" ]]; then
             planner_args="--release-as ${INPUT_TARGET_VERSION} --allow-untagged-baseline"
@@ -319,6 +337,7 @@ jobs:
             echo "npm_tag=$npm_tag_input"
             echo "dry_run=$dry_run_value"
             echo "allow_new_packages=$allow_new_packages_value"
+            echo "release_from_github_mirror=$release_from_github_mirror_value"
             echo "planner_args=$planner_args"
           } >> "$GITHUB_OUTPUT"
 
@@ -326,6 +345,7 @@ jobs:
         id: release_remotes
         env:
           FORGEJO_PUSH_URL: ${{ secrets.FORGEJO_PUSH_URL }}
+          RELEASE_FROM_GITHUB_MIRROR: ${{ steps.release_meta.outputs.release_from_github_mirror }}
         run: |
           set -euo pipefail
 
@@ -344,6 +364,34 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
             exit 0
           }
+
+          if [[ "${RELEASE_FROM_GITHUB_MIRROR}" == "true" ]]; then
+            git remote rename origin github
+            git remote add origin "$(git remote get-url github)"
+
+            while read -r tag; do
+              [[ -n "$tag" ]] || continue
+              git tag -d "$tag"
+            done < <(git tag --list 'libraries-v*')
+
+            if ! git fetch --force origin main; then
+              skip_release_planning "GitHub mirror main could not be fetched; runtime release planning skipped after verification"
+            fi
+            if ! git fetch --force origin 'refs/tags/libraries-v*:refs/tags/libraries-v*'; then
+              skip_release_planning "GitHub mirror runtime tags could not be fetched; runtime release planning skipped after verification"
+            fi
+
+            {
+              echo "ready=true"
+              echo "reason="
+            } >> "$GITHUB_OUTPUT"
+            {
+              echo "### runtime release planning using GitHub mirror"
+              echo
+              echo "Forgejo canonical release refs are unavailable; this manual run will plan against GitHub main and GitHub runtime tags."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
 
           if [[ -z "${FORGEJO_PUSH_URL:-}" ]]; then
             skip_release_planning "FORGEJO_PUSH_URL secret is not configured; runtime release planning skipped after verification"
@@ -531,8 +579,29 @@ jobs:
       - name: Configure canonical release remotes
         env:
           FORGEJO_PUSH_URL: ${{ secrets.FORGEJO_PUSH_URL }}
+          RELEASE_FROM_GITHUB_MIRROR: ${{ needs.plan_release.outputs.release_from_github_mirror }}
         run: |
           set -euo pipefail
+
+          if [[ "${RELEASE_FROM_GITHUB_MIRROR}" == "true" ]]; then
+            git remote rename origin github
+            git remote add origin "$(git remote get-url github)"
+
+            while read -r tag; do
+              [[ -n "$tag" ]] || continue
+              git tag -d "$tag"
+            done < <(git tag --list 'libraries-v*')
+
+            git fetch --force origin main
+            git fetch --force origin 'refs/tags/libraries-v*:refs/tags/libraries-v*'
+            git fetch --force github main
+            {
+              echo "### runtime release publishing from GitHub mirror"
+              echo
+              echo "This manual run is using GitHub main and GitHub runtime tags because Forgejo canonical refs are unavailable."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
 
           if [[ -z "${FORGEJO_PUSH_URL:-}" ]]; then
             echo "FORGEJO_PUSH_URL secret is required for runtime publishing" >&2
