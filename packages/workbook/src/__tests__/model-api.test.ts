@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { parseFormula } from '@bilig/formula'
 import {
   buildWorkbookActionPlan,
+  check,
   collectWorkbookRefs,
   describePlan,
   describePlanResult,
@@ -77,7 +78,7 @@ describe('@bilig/workbook model api', () => {
         message: 'Write formula to Sheet1!C2',
       },
     ])
-    expect(plan.checks.map((check) => check.kind)).toEqual(['exists', 'noFormulaErrors', 'noFormulaErrors'])
+    expect(plan.checks.map((plannedCheck) => plannedCheck.kind)).toEqual(['exists', 'noFormulaErrors', 'noFormulaErrors'])
     expect(verifyPlan(plan)).toEqual({
       status: 'valid',
       modelName: 'custom-model',
@@ -151,6 +152,23 @@ describe('@bilig/workbook model api', () => {
         op: 'eq',
         value: 'Active',
       },
+    })
+  })
+
+  it('exports simple top-level check helpers for generic refs', () => {
+    const result = findRange({ sheetName: 'Model', address: 'C2' })
+
+    expect(check.exists(result)).toEqual({
+      status: 'planned',
+      kind: 'exists',
+      target: result,
+      message: 'Model!C2 exists',
+    })
+    expect(check.noFormulaErrors(result)).toEqual({
+      status: 'planned',
+      kind: 'noFormulaErrors',
+      target: result,
+      message: 'Model!C2 has no formula errors',
     })
   })
 

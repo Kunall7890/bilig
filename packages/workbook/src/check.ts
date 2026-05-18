@@ -31,3 +31,5 @@ export function createWorkbookCheckApi(record?: (check: WorkbookCheckResult) => 
     },
   }
 }
+
+export const check: WorkbookCheckApi = createWorkbookCheckApi()

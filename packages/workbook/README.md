@@ -17,6 +17,7 @@ The public surface stays generic:
 - `inspectModel`
 - `collectWorkbookRefs`
 - `findTable`, `findColumn`, `findRange`, `findName`, `findRows`
+- `check`
 - `describeRef`
 - `describePlan`
 - `describePlanResult`
@@ -60,6 +61,8 @@ the consumer-defined `refs` object. Use `collectWorkbookRefs` directly when an
 agent needs to inspect refs from any nested consumer shape.
 Use `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` directly
 when an agent or test needs the same generic refs outside a model callback.
+Use `check.exists(ref)` and `check.noFormulaErrors(ref)` directly when an agent
+or test needs the same generic planned checks outside a model callback.
 
 Use `describeRef` and `describePlan` when an agent needs JSON-safe intent for
 logs, comparisons, approvals, or runtime handoff. Descriptions keep the same

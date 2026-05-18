@@ -58,6 +58,7 @@ It exposes:
 - `inspectModel`
 - `collectWorkbookRefs`
 - `findTable`, `findColumn`, `findRange`, `findName`, and `findRows`
+- `check`
 - `describeRef`
 - `describePlan`
 - `describePlanResult`
@@ -65,6 +66,7 @@ It exposes:
 - `verifyModel`
 - `formula`
 - `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` through the model workbook context and as top-level helpers
+- `check.exists` and `check.noFormulaErrors` through the model workbook context and as top-level helpers
 - `WorkbookModel`, `WorkbookAction`, `WorkbookActionPlanResult`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookRunResult`, and `WorkbookCheckResult`
 - the existing low-level operation language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, and `EngineOpBatch`
 
@@ -83,6 +85,8 @@ inside the consumer-defined `refs` object. This keeps custom models generic
 while still letting agents inspect what the model resolved.
 The same generic refs are available outside model callbacks through top-level
 `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` helpers.
+The same planned checks are available outside model callbacks through top-level
+`check.exists(ref)` and `check.noFormulaErrors(ref)` helpers.
 
 For agent logs, approvals, tests, and runtime handoff, `describeRef` and
 `describePlan` produce JSON-safe descriptions of refs and action plans. The
