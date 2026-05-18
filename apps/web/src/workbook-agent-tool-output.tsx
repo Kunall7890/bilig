@@ -68,6 +68,10 @@ function firstStringItem(value: unknown): string | null {
   return Array.isArray(value) ? (value.find((item): item is string => typeof item === 'string' && item.trim().length > 0) ?? null) : null
 }
 
+function readStringItems(value: unknown): readonly string[] {
+  return Array.isArray(value) ? value.flatMap((item) => (typeof item === 'string' && item.trim().length > 0 ? [item] : [])) : []
+}
+
 function mutationReceiptRecord(parsed: Record<string, unknown>): Record<string, unknown> | null {
   const receipt = parsed['mutationReceipt']
   return isRecord(receipt) ? receipt : null
@@ -85,12 +89,60 @@ function mutationReceiptWarning(parsed: Record<string, unknown>): string | null 
 }
 
 function summarizeMutationReceipt(parsed: Record<string, unknown>): string | null {
+  if (!mutationReceiptRecord(parsed)) {
+    return null
+  }
   const status = mutationReceiptStatus(parsed)
   if (status !== 'verification_incomplete') {
     return null
   }
   const warning = mutationReceiptWarning(parsed)
   return warning ? `Verification incomplete: ${warning}` : 'Verification incomplete'
+}
+
+function verificationReportStatus(parsed: Record<string, unknown>): string | null {
+  if (typeof parsed['verificationComplete'] !== 'boolean') {
+    return null
+  }
+  return typeof parsed['status'] === 'string' ? parsed['status'] : parsed['verificationComplete'] ? 'verified' : 'verification_incomplete'
+}
+
+function formatMissingCheckLabel(check: string): string {
+  switch (check) {
+    case 'formulaIssues':
+      return 'Formula Issues'
+    case 'formulaIssuesClean':
+      return 'Formula Audit Clean'
+    case 'invariants':
+      return 'Invariants'
+    case 'invariantsClean':
+      return 'Invariant Audit Clean'
+    case 'renderedReadback':
+      return 'Rendered Readback'
+    case 'targetRange':
+      return 'Target Range'
+    default:
+      return humanizeKey(check)
+  }
+}
+
+function joinHumanList(items: readonly string[]): string {
+  if (items.length === 0) {
+    return ''
+  }
+  if (items.length === 1) {
+    return items[0]!
+  }
+  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]!}`
+}
+
+function summarizeVerificationReport(parsed: Record<string, unknown>): string | null {
+  const status = verificationReportStatus(parsed)
+  if (status !== 'verification_incomplete') {
+    return null
+  }
+  const missingChecks = readStringItems(parsed['verificationMissingChecks']).map((check) => formatMissingCheckLabel(check).toLowerCase())
+  return missingChecks.length > 0 ? `Verification incomplete: missing ${joinHumanList(missingChecks)} checks` : 'Verification incomplete'
 }
 
 function renderReasonLabel(reason: string): string {
@@ -166,6 +218,10 @@ export function summarizeToolEntry(entry: WorkbookAgentTimelineEntry): string | 
     const mutationSummary = summarizeMutationReceipt(parsed)
     if (mutationSummary) {
       return summarizePlainText(mutationSummary, 96)
+    }
+    const verificationSummary = summarizeVerificationReport(parsed)
+    if (verificationSummary) {
+      return summarizePlainText(verificationSummary, 96)
     }
     if (typeof parsed['summary'] === 'string') {
       return summarizePlainText(parsed['summary'], 96)
@@ -452,6 +508,46 @@ function undoProofLabel(undo: Record<string, unknown> | null): string {
   return undo['lookupFailed'] === true ? 'Lookup failed' : 'Unavailable'
 }
 
+function renderedProofLabel(value: unknown): string {
+  const proofs = Array.isArray(value) ? value.flatMap((proof) => (isRecord(proof) ? [proof] : [])) : []
+  if (proofs.length === 0) {
+    return 'Missing'
+  }
+  if (proofs.every((proof) => proof['matched'] === true)) {
+    return 'Matched'
+  }
+  if (proofs.some((proof) => proof['matched'] === false)) {
+    return 'Mismatch'
+  }
+  return 'Incomplete'
+}
+
+function formulaAuditLabel(value: unknown): string {
+  if (!isRecord(value)) {
+    return 'Missing'
+  }
+  const summary = isRecord(value['summary']) ? value['summary'] : null
+  const count = typeof summary?.['actionableIssueCount'] === 'number' ? summary['actionableIssueCount'] : null
+  if (count === null) {
+    return 'Incomplete'
+  }
+  return count === 0 ? 'Clean' : `${String(count)} actionable ${count === 1 ? 'issue' : 'issues'}`
+}
+
+function invariantAuditLabel(value: unknown): string {
+  if (!isRecord(value)) {
+    return 'Missing'
+  }
+  const summary = isRecord(value['summary']) ? value['summary'] : null
+  if (summary?.['ok'] === true) {
+    return 'Clean'
+  }
+  if (summary?.['ok'] === false) {
+    return 'Problems found'
+  }
+  return 'Incomplete'
+}
+
 function renderMutationReceiptOutput(parsed: Record<string, unknown>) {
   const receipt = mutationReceiptRecord(parsed)
   if (!receipt) {
@@ -525,6 +621,48 @@ function renderMutationReceiptOutput(parsed: Record<string, unknown>) {
   )
 }
 
+function renderVerificationReportOutput(parsed: Record<string, unknown>) {
+  const status = verificationReportStatus(parsed)
+  if (!status) {
+    return null
+  }
+  const missingChecks = readStringItems(parsed['verificationMissingChecks'])
+  const revision = typeof parsed['appliedRevision'] === 'number' ? `r${String(parsed['appliedRevision'])}` : 'Unknown'
+  const facts = [
+    {
+      label: 'Status',
+      value: formatStatusValue(status),
+    },
+    {
+      label: 'Revision',
+      value: revision,
+    },
+    {
+      label: 'Rendered proof',
+      value: renderedProofLabel(parsed['renderedReadback']),
+    },
+    {
+      label: 'Formula audit',
+      value: formulaAuditLabel(parsed['formulaIssues']),
+    },
+    {
+      label: 'Invariant audit',
+      value: invariantAuditLabel(parsed['invariants']),
+    },
+  ]
+  const missingLabels = missingChecks.map(formatMissingCheckLabel)
+  return (
+    <div className={cn(workbookInsetClass(), 'mt-2 px-3 py-3')}>
+      <ToolKeyValueCard
+        facts={facts}
+        pills={missingLabels.length > 0 ? ['Missing checks', ...missingLabels] : []}
+        subtitle={missingLabels.length > 0 ? `Missing checks: ${joinHumanList(missingLabels)}` : null}
+        title={status === 'verification_incomplete' ? 'Verification incomplete' : 'Verification report'}
+      />
+    </div>
+  )
+}
+
 function renderToolSpecificOutput(normalizedToolName: string | null, parsed: unknown) {
   if (!normalizedToolName || !isRecord(parsed)) {
     return null
@@ -533,6 +671,11 @@ function renderToolSpecificOutput(normalizedToolName: string | null, parsed: unk
   const mutationReceiptOutput = renderMutationReceiptOutput(parsed)
   if (mutationReceiptOutput) {
     return mutationReceiptOutput
+  }
+
+  const verificationReportOutput = renderVerificationReportOutput(parsed)
+  if (verificationReportOutput) {
+    return verificationReportOutput
   }
 
   if (normalizedToolName === WORKBOOK_AGENT_TOOL_NAMES.listTables && Array.isArray(parsed['tables'])) {

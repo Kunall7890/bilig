@@ -13,14 +13,14 @@ afterEach(() => {
   document.body.innerHTML = ''
 })
 
-function toolEntry(output: unknown): WorkbookAgentTimelineEntry {
+function toolEntry(output: unknown, toolName = 'write_range'): WorkbookAgentTimelineEntry {
   return {
     id: 'tool-write-1',
     kind: 'tool',
     turnId: 'turn-1',
     text: null,
     phase: null,
-    toolName: 'write_range',
+    toolName,
     toolStatus: 'completed',
     argumentsText: null,
     outputText: JSON.stringify(output),
@@ -96,6 +96,72 @@ describe('workbook agent tool output trust summaries', () => {
     expect(host.textContent).toContain('No browser-rendered context was attached to this tool call.')
     expect(host.textContent).toContain('Undo metadata lookup failed')
     expect(host.textContent).not.toContain('Applied workbook change set at revision r2')
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it('summarizes verification reports with missing proof checks before generic output', () => {
+    const summary = summarizeToolEntry(
+      toolEntry(
+        {
+          status: 'verification_incomplete',
+          verificationComplete: false,
+          verificationMissingChecks: ['formulaIssues', 'invariants'],
+          renderedReadback: [
+            {
+              requested: true,
+              matched: true,
+            },
+          ],
+          formulaIssues: null,
+          invariants: null,
+        },
+        'apply_and_verify',
+      ),
+    )
+
+    expect(summary).toBe('Verification incomplete: missing formula issues and invariants checks')
+  })
+
+  it('renders verification report status and missing checks instead of a generic object card', async () => {
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+
+    await act(async () => {
+      root.render(
+        <StructuredToolOutput
+          outputText={JSON.stringify({
+            status: 'verification_incomplete',
+            verificationComplete: false,
+            verificationMissingChecks: ['formulaIssues', 'invariants'],
+            appliedRevision: 5,
+            renderedReadback: [
+              {
+                requested: true,
+                matched: true,
+                stale: false,
+                incompleteReason: null,
+              },
+            ],
+            formulaIssues: null,
+            invariants: null,
+          })}
+          toolName="apply_and_verify"
+        />,
+      )
+    })
+
+    expect(host.textContent).toContain('Verification incomplete')
+    expect(host.textContent).toContain('Rendered proof')
+    expect(host.textContent).toContain('Formula audit')
+    expect(host.textContent).toContain('Invariant audit')
+    expect(host.textContent).toContain('Missing checks')
+    expect(host.textContent).toContain('Formula Issues')
+    expect(host.textContent).toContain('Invariants')
+    expect(host.textContent).not.toContain('Result')
 
     await act(async () => {
       root.unmount()
