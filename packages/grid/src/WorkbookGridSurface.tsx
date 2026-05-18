@@ -301,6 +301,7 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
           headerPanes={renderState.headerPanes}
           host={renderState.hostElement}
           overlayBuilder={dynamicOverlayBuilder}
+          renderRevisionSnapshot={renderRevisionSnapshot}
           scrollTransformStore={renderState.scrollTransformStore}
           suppressedTextCell={suppressedEditorTextCell}
           tilePanes={renderState.renderTilePanes}

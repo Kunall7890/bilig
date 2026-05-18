@@ -9,6 +9,7 @@ import { GridCameraStore } from '../runtime/gridCameraStore.js'
 import {
   TYPEGPU_V3_ACTIVE_RESOURCE_DEFER_MS,
   WorkbookPaneRendererV3,
+  resolveWorkbookPanePresentedRevisionV3,
   resolveWorkbookPaneTileSceneCameraSeqV3,
   resolveWorkbookPaneTileSceneRevisionV3,
   resolveTypeGpuV3DrawScrollSnapshot,
@@ -204,6 +205,14 @@ describe('WorkbookPaneRendererV3', () => {
     })
   })
 
+  test('exposes visible workbook revisions only after frame proof is presented', () => {
+    expect(resolveWorkbookPanePresentedRevisionV3('presented', 14)).toBe(14)
+    expect(resolveWorkbookPanePresentedRevisionV3('presented', 0)).toBe(0)
+    expect(resolveWorkbookPanePresentedRevisionV3('presented', null)).toBeNull()
+    expect(resolveWorkbookPanePresentedRevisionV3('pending', 14)).toBeNull()
+    expect(resolveWorkbookPanePresentedRevisionV3('idle', 14)).toBeNull()
+  })
+
   test('keeps the Canvas2D proof layer only until TypeGPU reports a visible frame', () => {
     expect(
       shouldMountWorkbookCanvasProofLayerV3({
@@ -308,6 +317,37 @@ describe('WorkbookPaneRendererV3', () => {
     )
     expect(resolveWorkbookPaneFrameProofSignatureV3({ headerPanes: [], overlay: null, tilePanes: [basePane] })).not.toBe(
       resolveWorkbookPaneFrameProofSignatureV3({ headerPanes: [], overlay: null, tilePanes: [changedRectPane] }),
+    )
+  })
+
+  test('includes workbook render revisions in frame proof identity', () => {
+    const basePane = createTilePane()
+    const baseSignature = resolveWorkbookPaneFrameProofSignatureV3({
+      headerPanes: [],
+      overlay: null,
+      renderRevisionSnapshot: {
+        authoritativeRevision: 1,
+        localRevision: 0,
+        projectedRevision: 1,
+        tileSceneCameraSeq: 1,
+        tileSceneRevision: 1,
+      },
+      tilePanes: [basePane],
+    })
+
+    expect(baseSignature).not.toBe(
+      resolveWorkbookPaneFrameProofSignatureV3({
+        headerPanes: [],
+        overlay: null,
+        renderRevisionSnapshot: {
+          authoritativeRevision: 1,
+          localRevision: 0,
+          projectedRevision: 2,
+          tileSceneCameraSeq: 1,
+          tileSceneRevision: 1,
+        },
+        tilePanes: [basePane],
+      }),
     )
   })
 

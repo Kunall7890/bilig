@@ -1,4 +1,5 @@
 import type { GridGeometrySnapshot } from '../gridGeometry.js'
+import type { GridRenderRevisionSnapshot } from '../grid-engine.js'
 import type { GridHeaderPaneState } from '../gridHeaderPanes.js'
 import type { GridCameraStore } from '../runtime/gridCameraStore.js'
 import type { WorkbookGridScrollStore } from '../workbookGridScrollStore.js'
@@ -23,6 +24,7 @@ export interface WorkbookPaneRendererHostPropsV3 {
   readonly overlay: DynamicGridOverlayBatchV3 | null
   readonly overlayBuilder: ((geometry: GridGeometrySnapshot) => DynamicGridOverlayBatchV3 | null | undefined) | null
   readonly preloadTilePanes: readonly WorkbookRenderTilePaneState[]
+  readonly renderRevisionSnapshot: GridRenderRevisionSnapshot | null
   readonly scrollTransformStore: WorkbookGridScrollStore | null
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
 }
@@ -44,6 +46,7 @@ const EMPTY_HOST_PROPS: WorkbookPaneRendererHostPropsV3 = Object.freeze({
   overlay: null,
   overlayBuilder: null,
   preloadTilePanes: [],
+  renderRevisionSnapshot: null,
   scrollTransformStore: null,
   tilePanes: [],
 })
@@ -221,8 +224,18 @@ export class WorkbookPaneRendererHostRuntimeV3 {
 export function resolveWorkbookPaneFrameProofSignatureV3(props: {
   readonly headerPanes: readonly GridHeaderPaneState[]
   readonly overlay: DynamicGridOverlayBatchV3 | null
+  readonly renderRevisionSnapshot?: GridRenderRevisionSnapshot | null | undefined
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
 }): string {
+  const renderRevisionSignature = props.renderRevisionSnapshot
+    ? [
+        props.renderRevisionSnapshot.authoritativeRevision ?? 'none',
+        props.renderRevisionSnapshot.localRevision ?? 'none',
+        props.renderRevisionSnapshot.projectedRevision,
+        props.renderRevisionSnapshot.tileSceneCameraSeq ?? 'none',
+        props.renderRevisionSnapshot.tileSceneRevision ?? 'none',
+      ].join(':')
+    : ''
   const tileSignature = props.tilePanes
     .map((pane) => {
       const tile = pane.tile
@@ -247,5 +260,5 @@ export function resolveWorkbookPaneFrameProofSignatureV3(props: {
     .map((pane) => [pane.paneId, pane.rectSignature, pane.textSignature, pane.rectCount, pane.textCount].join(':'))
     .join('|')
   const overlaySignature = props.overlay ? `${props.overlay.seq}:${props.overlay.rectCount}` : ''
-  return [tileSignature, headerSignature, overlaySignature].filter(Boolean).join('#')
+  return [tileSignature, headerSignature, overlaySignature, renderRevisionSignature].filter(Boolean).join('#')
 }

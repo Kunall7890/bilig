@@ -45,7 +45,9 @@ test('@browser-ci web app paints deep querystring-selected cell content in the v
     })
     .toMatchObject({
       projectedRevisionPresent: true,
+      typeGpuProjectedRevisionMatchesGrid: true,
       tileSceneRevisionPresent: true,
+      visibleProjectedRevisionMatchesGrid: true,
       visibleRenderRevisionPresent: true,
     })
 
@@ -325,8 +327,13 @@ function shouldAllowHeadlessWebGpuScreenshotGap(): boolean {
 }
 
 function readRenderRevisionState(page: Page): () => Promise<{
+  readonly projectedRevision: string
   readonly projectedRevisionPresent: boolean
+  readonly typeGpuProjectedRevision: string
+  readonly typeGpuProjectedRevisionMatchesGrid: boolean
   readonly tileSceneRevisionPresent: boolean
+  readonly visibleProjectedRevision: string
+  readonly visibleProjectedRevisionMatchesGrid: boolean
   readonly visibleRenderRevisionPresent: boolean
 }> {
   return async () =>
@@ -334,11 +341,18 @@ function readRenderRevisionState(page: Page): () => Promise<{
       const grid = document.querySelector('[data-testid="sheet-grid"]')
       const typeGpu = document.querySelector('[data-testid="grid-pane-renderer"]')
       const projectedRevision = grid?.getAttribute('data-render-projected-revision') ?? ''
+      const typeGpuProjectedRevision = typeGpu?.getAttribute('data-v3-projected-render-revision') ?? ''
       const tileSceneRevision = typeGpu?.getAttribute('data-v3-tile-scene-revision') ?? ''
+      const visibleProjectedRevision = typeGpu?.getAttribute('data-v3-visible-projected-render-revision') ?? ''
       const visibleRenderRevision = typeGpu?.getAttribute('data-v3-visible-render-revision') ?? ''
       return {
+        projectedRevision,
         projectedRevisionPresent: projectedRevision.length > 0,
+        typeGpuProjectedRevision,
+        typeGpuProjectedRevisionMatchesGrid: typeGpuProjectedRevision.length > 0 && typeGpuProjectedRevision === projectedRevision,
         tileSceneRevisionPresent: tileSceneRevision.length > 0,
+        visibleProjectedRevision,
+        visibleProjectedRevisionMatchesGrid: visibleProjectedRevision.length > 0 && visibleProjectedRevision === projectedRevision,
         visibleRenderRevisionPresent: visibleRenderRevision.length > 0,
       }
     })

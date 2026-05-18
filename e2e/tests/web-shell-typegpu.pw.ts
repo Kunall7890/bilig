@@ -1145,11 +1145,16 @@ test('@browser-webgpu @browser-deep name-box range fill presents the current fra
   )
   const rendererProof = await page.getByTestId('grid-pane-renderer').evaluate((canvas) => ({
     frameProofStatus: canvas.getAttribute('data-v3-frame-proof-status'),
+    projectedRenderRevision: canvas.getAttribute('data-v3-projected-render-revision'),
     tileSceneRevision: canvas.getAttribute('data-v3-tile-scene-revision'),
+    visibleProjectedRenderRevision: canvas.getAttribute('data-v3-visible-projected-render-revision'),
     visibleRenderRevision: canvas.getAttribute('data-v3-visible-render-revision'),
   }))
+  const gridProjectedRevision = await page.getByTestId('sheet-grid').getAttribute('data-render-projected-revision')
 
   expect(rendererProof.frameProofStatus).toBe('presented')
+  expect(rendererProof.projectedRenderRevision).toBe(gridProjectedRevision)
+  expect(rendererProof.visibleProjectedRenderRevision).toBe(gridProjectedRevision)
   expect(rendererProof.visibleRenderRevision).toBe(rendererProof.tileSceneRevision)
   expect(greenReadback.sequence).toBeGreaterThan(0)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!D4:F8')

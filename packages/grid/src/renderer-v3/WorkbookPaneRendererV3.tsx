@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from 'react'
+import type { GridRenderRevisionSnapshot } from '../grid-engine.js'
 import type { GridGeometrySnapshot } from '../gridGeometry.js'
 import type { GridHeaderPaneState } from '../gridHeaderPanes.js'
 import type { GridCameraStore } from '../runtime/gridCameraStore.js'
@@ -21,6 +22,7 @@ export interface WorkbookPaneRendererV3Props {
   readonly headerPanes?: readonly GridHeaderPaneState[] | undefined
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
   readonly preloadTilePanes?: readonly WorkbookRenderTilePaneState[] | undefined
+  readonly renderRevisionSnapshot?: GridRenderRevisionSnapshot | null | undefined
   readonly overlayBuilder?: ((geometry: GridGeometrySnapshot) => DynamicGridOverlayBatchV3 | null | undefined) | undefined
   readonly overlay?: DynamicGridOverlayBatchV3 | undefined
   readonly scrollTransformStore?: WorkbookGridScrollStore | null
@@ -37,6 +39,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
   overlay,
   overlayBuilder,
   preloadTilePanes = [],
+  renderRevisionSnapshot = null,
   scrollTransformStore = null,
   suppressedTextCell = null,
   tilePanes,
@@ -95,6 +98,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
       overlay: overlay ?? null,
       overlayBuilder: overlayBuilder ?? null,
       preloadTilePanes,
+      renderRevisionSnapshot,
       scrollTransformStore,
       tilePanes,
     })
@@ -108,6 +112,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     overlay,
     overlayBuilder,
     preloadTilePanes,
+    renderRevisionSnapshot,
     scrollTransformStore,
     showNativeTextLayer,
     tilePanes,
@@ -135,8 +140,14 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
   const typeGpuCanvasOpacity = showCanvasFallback ? 0 : 1
   const tileSceneRevision = resolveWorkbookPaneTileSceneRevisionV3(tilePanes)
   const tileSceneCameraSeq = resolveWorkbookPaneTileSceneCameraSeqV3(tilePanes)
-  const visibleRenderRevision = frameProofStatus === 'presented' ? tileSceneRevision : null
-  const visibleRenderCameraSeq = frameProofStatus === 'presented' ? tileSceneCameraSeq : null
+  const visibleRenderRevision = resolveWorkbookPanePresentedRevisionV3(frameProofStatus, tileSceneRevision)
+  const visibleRenderCameraSeq = resolveWorkbookPanePresentedRevisionV3(frameProofStatus, tileSceneCameraSeq)
+  const visibleProjectedRenderRevision = resolveWorkbookPanePresentedRevisionV3(frameProofStatus, renderRevisionSnapshot?.projectedRevision)
+  const visibleLocalRenderRevision = resolveWorkbookPanePresentedRevisionV3(frameProofStatus, renderRevisionSnapshot?.localRevision)
+  const visibleAuthoritativeRenderRevision = resolveWorkbookPanePresentedRevisionV3(
+    frameProofStatus,
+    renderRevisionSnapshot?.authoritativeRevision,
+  )
 
   return (
     <>
@@ -169,11 +180,17 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           data-v3-frame-proof-status={frameProofStatus}
           data-v3-header-pane-count={headerPanes.length}
           data-v3-header-text-run-count={headerTextRunCount}
+          data-v3-authoritative-render-revision={renderRevisionSnapshot?.authoritativeRevision ?? ''}
+          data-v3-local-render-revision={renderRevisionSnapshot?.localRevision ?? ''}
           data-v3-preload-pane-count={preloadTilePanes.length}
+          data-v3-projected-render-revision={renderRevisionSnapshot?.projectedRevision ?? ''}
           data-v3-text-run-count={tileTextRunCount}
           data-v3-tile-scene-camera-seq={tileSceneCameraSeq ?? ''}
           data-v3-tile-scene-revision={tileSceneRevision ?? ''}
           data-v3-tile-pane-count={tilePanes.length}
+          data-v3-visible-authoritative-render-revision={visibleAuthoritativeRenderRevision ?? ''}
+          data-v3-visible-local-render-revision={visibleLocalRenderRevision ?? ''}
+          data-v3-visible-projected-render-revision={visibleProjectedRenderRevision ?? ''}
           data-v3-visible-render-camera-seq={visibleRenderCameraSeq ?? ''}
           data-v3-visible-render-revision={visibleRenderRevision ?? ''}
           ref={setCanvasRef}
@@ -219,6 +236,13 @@ export function shouldMountWorkbookCanvasProofLayerV3(input: {
 
 export function resolveWorkbookPaneTileSceneRevisionV3(tilePanes: readonly WorkbookRenderTilePaneState[]): number | null {
   return maxTilePaneField(tilePanes, (pane) => pane.tile.lastBatchId)
+}
+
+export function resolveWorkbookPanePresentedRevisionV3(
+  frameProofStatus: 'idle' | 'pending' | 'presented',
+  revision: number | null | undefined,
+): number | null {
+  return frameProofStatus === 'presented' && revision !== null && revision !== undefined ? revision : null
 }
 
 export function resolveWorkbookPaneTileSceneCameraSeqV3(tilePanes: readonly WorkbookRenderTilePaneState[]): number | null {
