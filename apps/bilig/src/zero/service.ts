@@ -103,7 +103,9 @@ export interface ZeroSyncService {
   upsertWorkbookWorkflowRun(documentId: string, run: WorkbookAgentWorkflowRun): Promise<void>
   getWorkbookHeadRevision(documentId: string): Promise<number>
   ensureWorkbookDocument?(documentId: string, ownerUserId?: string): Promise<void>
-  loadLatestWorkbookSnapshot?(documentId: string): Promise<{ revision: number; snapshot: WorkbookSnapshot } | null>
+  loadLatestWorkbookSnapshot?(
+    documentId: string,
+  ): Promise<{ revision: number; calculatedRevision: number; snapshot: WorkbookSnapshot } | null>
   loadAuthoritativeEvents(documentId: string, afterRevision: number): Promise<AuthoritativeWorkbookEventBatch>
 }
 
@@ -451,7 +453,9 @@ class EnabledZeroSyncService implements ZeroSyncService {
     await ensureWorkbookDocumentExists(this.pool, documentId, ownerUserId)
   }
 
-  async loadLatestWorkbookSnapshot(documentId: string): Promise<{ revision: number; snapshot: WorkbookSnapshot } | null> {
+  async loadLatestWorkbookSnapshot(
+    documentId: string,
+  ): Promise<{ revision: number; calculatedRevision: number; snapshot: WorkbookSnapshot } | null> {
     const metadata = await loadWorkbookRuntimeMetadata(this.runtimeStore, documentId)
     if (metadata.headRevision === 0) {
       return null
@@ -459,6 +463,7 @@ class EnabledZeroSyncService implements ZeroSyncService {
     const state = await loadWorkbookState(this.runtimeStore, documentId)
     return {
       revision: state.headRevision,
+      calculatedRevision: state.calculatedRevision,
       snapshot: state.snapshot,
     }
   }

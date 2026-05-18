@@ -459,6 +459,7 @@ describe('sync-server snapshots', () => {
           expect(documentId).toBe('doc-1')
           return {
             revision: 451,
+            calculatedRevision: 449,
             snapshot,
           }
         },
@@ -476,6 +477,7 @@ describe('sync-server snapshots', () => {
 
       expect(response.statusCode).toBe(200)
       expect(response.headers['x-bilig-snapshot-cursor']).toBe('451')
+      expect(response.headers['x-bilig-calculated-cursor']).toBe('449')
       expect(response.headers['content-type']).toContain('application/vnd.bilig.workbook+json')
       expect(JSON.parse(response.body)).toEqual(snapshot)
       expect(calls).toEqual(['ensure:doc-1:owner-1', 'load:doc-1'])

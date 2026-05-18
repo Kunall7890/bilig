@@ -7,6 +7,7 @@ export type { AuthoritativeWorkbookEventBatch } from '@bilig/zero-sync'
 export interface LatestWorkbookSnapshot {
   readonly snapshot: WorkbookSnapshot
   readonly revision: number | null
+  readonly calculatedRevision: number | null
 }
 
 export function parseSnapshotRevisionHeader(value: string | null): number | null {
@@ -16,6 +17,14 @@ export function parseSnapshotRevisionHeader(value: string | null): number | null
   }
   const parsed = Number(trimmed)
   return Number.isSafeInteger(parsed) ? parsed : null
+}
+
+export function parseSnapshotCalculatedRevisionHeader(value: string | null, snapshotRevision: number | null): number | null {
+  const calculatedRevision = parseSnapshotRevisionHeader(value)
+  if (calculatedRevision === null || snapshotRevision === null || calculatedRevision > snapshotRevision) {
+    return null
+  }
+  return calculatedRevision
 }
 
 async function parseJsonResponse(response: Response, context: string): Promise<unknown> {
@@ -70,9 +79,11 @@ export async function loadLatestWorkbookSnapshot(input: {
   if (!isWorkbookSnapshot(parsed)) {
     throw new Error('Workbook snapshot payload does not match the expected schema')
   }
+  const revision = parseSnapshotRevisionHeader(response.headers.get('x-bilig-snapshot-cursor'))
   return {
     snapshot: parsed,
-    revision: parseSnapshotRevisionHeader(response.headers.get('x-bilig-snapshot-cursor')),
+    revision,
+    calculatedRevision: parseSnapshotCalculatedRevisionHeader(response.headers.get('x-bilig-calculated-cursor'), revision),
   }
 }
 

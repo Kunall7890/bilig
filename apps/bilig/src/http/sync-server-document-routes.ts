@@ -49,6 +49,7 @@ export function registerSyncServerDocumentRoutes(
 
       reply.header('cache-control', 'no-store')
       reply.header('x-bilig-snapshot-cursor', String(zeroSnapshot.revision))
+      reply.header('x-bilig-calculated-cursor', String(zeroSnapshot.calculatedRevision))
       reply.header('content-type', 'application/vnd.bilig.workbook+json')
       return JSON.stringify(zeroSnapshot.snapshot)
     },

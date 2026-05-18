@@ -5,6 +5,7 @@ import {
   isAuthoritativeSnapshotNewerForRebase,
   loadAuthoritativeEventBatch,
   loadLatestWorkbookSnapshot,
+  parseSnapshotCalculatedRevisionHeader,
   parseSnapshotRevisionHeader,
   shouldApplyAuthoritativeEventBatch,
   shouldInstallBootstrapSnapshot,
@@ -36,7 +37,10 @@ async function mismatchedAuthoritativeEventResponse(): Promise<Response> {
 async function currentAuthoritativeSnapshotResponse(): Promise<Response> {
   return new Response(JSON.stringify(createEmptyWorkbookSnapshot('doc-1')), {
     status: 200,
-    headers: { 'x-bilig-snapshot-cursor': '17' },
+    headers: {
+      'x-bilig-snapshot-cursor': '17',
+      'x-bilig-calculated-cursor': '15',
+    },
   })
 }
 
@@ -70,7 +74,16 @@ describe('runtime session snapshot revision parsing', () => {
       loadLatestWorkbookSnapshot({ documentId: 'doc-1', fetchImpl: currentAuthoritativeSnapshotResponse }),
     ).resolves.toMatchObject({
       revision: 17,
+      calculatedRevision: 15,
     })
+  })
+
+  it('rejects calculated snapshot cursors that are malformed or ahead of the snapshot revision', () => {
+    expect(parseSnapshotCalculatedRevisionHeader('4', 5)).toBe(4)
+    expect(parseSnapshotCalculatedRevisionHeader('5', 5)).toBe(5)
+    expect(parseSnapshotCalculatedRevisionHeader('6', 5)).toBeNull()
+    expect(parseSnapshotCalculatedRevisionHeader('bad', 5)).toBeNull()
+    expect(parseSnapshotCalculatedRevisionHeader('4', null)).toBeNull()
   })
 
   it('keeps authoritative event and snapshot revision planning fail-closed', () => {

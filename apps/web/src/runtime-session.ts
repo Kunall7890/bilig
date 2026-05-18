@@ -650,7 +650,7 @@ export async function createWorkerRuntimeSessionController(
       throw new Error('Authoritative workbook snapshot was not available for rebase')
     }
     const snapshotRevision = latestSnapshot.revision ?? targetRevision
-    const snapshotCalculatedRevision = calculatedRevisionForSnapshot(snapshotRevision)
+    const snapshotCalculatedRevision = latestSnapshot.calculatedRevision ?? calculatedRevisionForSnapshot(snapshotRevision)
     if (
       latestSnapshot.revision !== null &&
       !isAuthoritativeSnapshotNewerForRebase({
@@ -759,7 +759,7 @@ export async function createWorkerRuntimeSessionController(
           currentAuthoritativeRevision,
         })
         if (shouldInstallSnapshot) {
-          const snapshotCalculatedRevision = calculatedRevisionForSnapshot(snapshotRevision)
+          const snapshotCalculatedRevision = latestSnapshot.calculatedRevision ?? calculatedRevisionForSnapshot(snapshotRevision)
           const hydratedState = await invokeWorkerMethod(client, 'installAuthoritativeSnapshot', isWorkbookWorkerStateSnapshot, {
             snapshot: latestSnapshot.snapshot,
             authoritativeRevision: snapshotRevision,
