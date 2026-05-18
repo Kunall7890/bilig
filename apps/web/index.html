@@ -5,10 +5,187 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>bilig</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <style>
+      :root {
+        --wb-app-bg: #f7f7f4;
+        --wb-surface: #ffffff;
+        --wb-surface-subtle: #f3f2ee;
+        --wb-surface-muted: #ece9e1;
+        --wb-border: #ddd8cc;
+        --wb-grid-border: #ddd8cc;
+        --wb-text: #1f2933;
+        --wb-text-muted: #52606d;
+        --wb-radius-control: 6px;
+      }
+
+      html,
+      body,
+      #root {
+        min-height: 100%;
+      }
+
+      body {
+        margin: 0;
+        background: var(--wb-app-bg);
+        color: var(--wb-text);
+        font-family: Arial, 'Helvetica Neue', Helvetica, 'Segoe UI', sans-serif;
+      }
+
+      #initial-workbook-shell {
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        height: 100dvh;
+        min-height: 100vh;
+        overflow: hidden;
+        background: var(--wb-surface);
+      }
+
+      .initial-workbook-toolbar {
+        box-sizing: border-box;
+        display: flex;
+        height: 41px;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: 8px;
+        border-bottom: 1px solid var(--wb-border);
+        background: var(--wb-surface-subtle);
+        padding: 4px 10px;
+      }
+
+      .initial-workbook-pill,
+      .initial-workbook-icon,
+      .initial-workbook-formula-cell,
+      .initial-workbook-tab {
+        box-sizing: border-box;
+        border: 1px solid var(--wb-border);
+        border-radius: var(--wb-radius-control);
+        background: var(--wb-surface);
+      }
+
+      .initial-workbook-pill {
+        height: 32px;
+        width: 128px;
+      }
+
+      .initial-workbook-pill--short {
+        width: 80px;
+      }
+
+      .initial-workbook-icon {
+        height: 28px;
+        width: 28px;
+        background: var(--wb-surface-muted);
+      }
+
+      .initial-workbook-separator {
+        height: 22px;
+        width: 1px;
+        background: var(--wb-border);
+      }
+
+      .initial-workbook-formula {
+        box-sizing: border-box;
+        display: grid;
+        grid-template-columns: 168px 1fr;
+        gap: 8px;
+        height: 45px;
+        flex: 0 0 auto;
+        align-items: center;
+        border-bottom: 1px solid var(--wb-border);
+        background: var(--wb-surface);
+        padding: 6px 10px;
+      }
+
+      .initial-workbook-formula-cell {
+        height: 32px;
+      }
+
+      .initial-workbook-grid {
+        display: grid;
+        flex: 1 1 auto;
+        min-height: 0;
+        grid-template-rows: 24px minmax(0, 1fr);
+        overflow: hidden;
+        background: var(--wb-surface);
+      }
+
+      .initial-workbook-column-header {
+        border-bottom: 1px solid var(--wb-grid-border);
+        background:
+          linear-gradient(to right, var(--wb-border) 1px, transparent 1px) 45px 0 / 104px 100% repeat-x,
+          linear-gradient(to right, var(--wb-surface-subtle), var(--wb-surface-subtle));
+      }
+
+      .initial-workbook-grid-body {
+        display: grid;
+        min-height: 0;
+        grid-template-columns: 46px minmax(0, 1fr);
+      }
+
+      .initial-workbook-row-header {
+        border-right: 1px solid var(--wb-border);
+        background:
+          linear-gradient(to bottom, transparent 21px, var(--wb-grid-border) 21px) 0 0 / 100% 22px repeat-y,
+          linear-gradient(to right, var(--wb-surface-subtle), var(--wb-surface-subtle));
+      }
+
+      .initial-workbook-cells {
+        background:
+          linear-gradient(to right, transparent 103px, var(--wb-grid-border) 103px) 0 0 / 104px 100% repeat-x,
+          linear-gradient(to bottom, transparent 21px, var(--wb-grid-border) 21px) 0 0 / 100% 22px repeat-y,
+          var(--wb-surface);
+      }
+
+      .initial-workbook-tabs {
+        box-sizing: border-box;
+        display: flex;
+        height: 48px;
+        flex: 0 0 auto;
+        align-items: center;
+        gap: 8px;
+        border-top: 1px solid var(--wb-border);
+        background: var(--wb-surface-subtle);
+        padding: 6px 10px;
+      }
+
+      .initial-workbook-tab {
+        height: 32px;
+        width: 74px;
+      }
+    </style>
     <link rel="stylesheet" href="/src/index.css" />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="initial-workbook-shell" data-testid="initial-workbook-shell" aria-hidden="true">
+        <div class="initial-workbook-toolbar">
+          <div class="initial-workbook-pill"></div>
+          <div class="initial-workbook-pill initial-workbook-pill--short"></div>
+          <div class="initial-workbook-icon"></div>
+          <div class="initial-workbook-icon"></div>
+          <div class="initial-workbook-separator"></div>
+          <div class="initial-workbook-icon"></div>
+          <div class="initial-workbook-icon"></div>
+          <div class="initial-workbook-icon"></div>
+        </div>
+        <div class="initial-workbook-formula">
+          <div class="initial-workbook-formula-cell"></div>
+          <div class="initial-workbook-formula-cell"></div>
+        </div>
+        <div class="initial-workbook-grid" data-testid="initial-workbook-grid">
+          <div class="initial-workbook-column-header"></div>
+          <div class="initial-workbook-grid-body">
+            <div class="initial-workbook-row-header"></div>
+            <div class="initial-workbook-cells"></div>
+          </div>
+        </div>
+        <div class="initial-workbook-tabs">
+          <div class="initial-workbook-tab"></div>
+          <div class="initial-workbook-icon"></div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

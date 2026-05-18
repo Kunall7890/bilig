@@ -15,6 +15,33 @@ import {
 
 const DEFAULT_WORKBOOK_CSS_FONT_SIZE = '13.333px'
 
+test('@browser-ci web app paints a workbook skeleton before the app bundle mounts', async ({ page }) => {
+  const documentId = createTestDocumentId('playwright-initial-workbook-shell')
+  await page.setViewportSize({ width: 1166, height: 820 })
+  await page.route('**/*.js', async (route) => {
+    await route.fulfill({
+      body: '',
+      contentType: 'application/javascript',
+      status: 200,
+    })
+  })
+  await page.route('**/src/main.tsx**', async (route) => {
+    await route.fulfill({
+      body: '',
+      contentType: 'application/javascript',
+      status: 200,
+    })
+  })
+  await page.goto(`/?document=${encodeURIComponent(documentId)}&sheet=Sheet1&cell=E6`, { waitUntil: 'domcontentloaded' })
+
+  await expect(page.locator('#initial-workbook-shell')).toBeVisible()
+  await expect(page.getByTestId('initial-workbook-grid')).toBeVisible()
+  expect(
+    await countInitialShellNonBlankPixels(page),
+    'the first paint should show workbook chrome and gridlines instead of a blank page while JavaScript loads',
+  ).toBeGreaterThan(1_000)
+})
+
 test('@browser-ci web app paints deep querystring-selected cell content in the visible grid', async ({ page }, testInfo) => {
   const documentId = createTestDocumentId('playwright-visible-deep-cell')
   await page.setViewportSize({ width: 1166, height: 820 })
@@ -668,6 +695,58 @@ async function countGreenFillPixelsInCell(page: Page, columnIndex: number, rowIn
         }
       }
       return greenPixels
+    },
+    { dataUrl: `data:image/png;base64,${buffer.toString('base64')}` },
+  )
+}
+
+async function countInitialShellNonBlankPixels(page: Page): Promise<number> {
+  const gridLocator = page.getByTestId('initial-workbook-grid')
+  await expect(gridLocator).toBeVisible()
+  const grid = await gridLocator.boundingBox()
+  if (!grid) {
+    throw new Error('initial workbook grid is not visible')
+  }
+
+  const buffer = await page.screenshot({
+    animations: 'disabled',
+    caret: 'hide',
+    clip: {
+      height: Math.min(420, Math.round(grid.height)),
+      width: Math.min(620, Math.round(grid.width)),
+      x: Math.round(grid.x),
+      y: Math.round(grid.y),
+    },
+  })
+
+  return await page.evaluate(
+    async ({ dataUrl }) => {
+      const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const element = new Image()
+        element.addEventListener('load', () => resolve(element), { once: true })
+        element.addEventListener('error', () => reject(new Error('Failed to decode initial shell screenshot')), { once: true })
+        element.src = dataUrl
+      })
+      const canvas = document.createElement('canvas')
+      canvas.width = image.naturalWidth
+      canvas.height = image.naturalHeight
+      const context = canvas.getContext('2d')
+      if (!context) {
+        throw new Error('Missing 2d context for initial shell screenshot analysis')
+      }
+      context.drawImage(image, 0, 0)
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data
+      let nonBlankPixels = 0
+      for (let index = 0; index < pixels.length; index += 4) {
+        const alpha = pixels[index + 3] ?? 0
+        const red = pixels[index] ?? 255
+        const green = pixels[index + 1] ?? 255
+        const blue = pixels[index + 2] ?? 255
+        if (alpha > 220 && (red < 246 || green < 246 || blue < 246)) {
+          nonBlankPixels += 1
+        }
+      }
+      return nonBlankPixels
     },
     { dataUrl: `data:image/png;base64,${buffer.toString('base64')}` },
   )
