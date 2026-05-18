@@ -6,6 +6,7 @@ import {
   toWorkbookAgentReviewQueueItem,
   type CodexDynamicToolCallResult,
   type CodexServerNotification,
+  type CodexThread,
   type WorkbookAgentCommandBundle,
   type CodexTurn,
 } from '@bilig/agent-api'
@@ -31,6 +32,7 @@ class FakeCodexTransport implements CodexAppServerTransport {
   resumeError: unknown = null
   uniqueThreadStart = false
   nextTurn: Promise<CodexTurn> | null = null
+  resumedThread: CodexThread | null = null
   closeCount = 0
 
   async ensureReady() {
@@ -63,6 +65,12 @@ class FakeCodexTransport implements CodexAppServerTransport {
     this.lastThreadResumeInput = input
     if (this.resumeError) {
       throw this.resumeError
+    }
+    if (this.resumedThread) {
+      return {
+        ...this.resumedThread,
+        id: input.threadId,
+      }
     }
     return {
       id: input.threadId,
@@ -5279,6 +5287,100 @@ describe('workbook agent service', () => {
           expect.objectContaining({
             kind: 'system',
             text: 'Recovered durable shared thread history.',
+          }),
+        ]),
+      )
+    } finally {
+      await service.close()
+    }
+  })
+
+  it('recovers a resumed idle thread with stale in-progress turn history so new work is not blocked', async () => {
+    const fakeCodex = new FakeCodexTransport()
+    fakeCodex.resumedThread = {
+      id: 'thr-stale-turn',
+      preview: '',
+      status: { type: 'idle' },
+      turns: [
+        {
+          id: 'turn-stale',
+          status: 'inProgress',
+          items: [],
+          error: null,
+        },
+      ],
+    }
+    const savedThreadStates: WorkbookAgentThreadStateRecord[] = []
+    const zeroSync = createZeroSyncStub({
+      async loadWorkbookAgentThreadState() {
+        return {
+          documentId: 'doc-1',
+          threadId: 'thr-stale-turn',
+          actorUserId: 'alex@example.com',
+          scope: 'private',
+          executionPolicy: 'autoApplyAll',
+          context: null,
+          entries: [],
+          reviewQueueItems: [],
+          updatedAtUnixMs: 100,
+        }
+      },
+      async saveWorkbookAgentThreadState(record) {
+        savedThreadStates.push(structuredClone(record))
+      },
+    })
+    const service = createWorkbookAgentService(zeroSync, {
+      codexClientFactory: (_options: CodexAppServerClientOptions): CodexAppServerTransport => fakeCodex,
+    })
+
+    try {
+      const recovered = await service.createSession({
+        documentId: 'doc-1',
+        session: {
+          userID: 'alex@example.com',
+          roles: ['editor'],
+        },
+        body: {
+          threadId: 'thr-stale-turn',
+        },
+      })
+
+      expect(recovered.status).toBe('idle')
+      expect(recovered.lastError).toBeNull()
+      expect(recovered.entries).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            kind: 'system',
+            text: 'Cleared stale in-progress turn turn-stale after Codex resumed the thread as idle.',
+          }),
+        ]),
+      )
+      expect(savedThreadStates.at(-1)?.entries).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            text: 'Cleared stale in-progress turn turn-stale after Codex resumed the thread as idle.',
+          }),
+        ]),
+      )
+
+      const next = await service.startTurn({
+        documentId: 'doc-1',
+        threadId: recovered.threadId,
+        session: {
+          userID: 'alex@example.com',
+          roles: ['editor'],
+        },
+        body: {
+          prompt: 'Continue after restart',
+        },
+      })
+
+      expect(next.status).toBe('inProgress')
+      expect(next.entries).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            kind: 'user',
+            text: 'Continue after restart',
           }),
         ]),
       )

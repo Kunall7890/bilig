@@ -27,14 +27,38 @@ export interface WorkbookAgentBootstrapWorkflowRecovery {
   readonly entries: WorkbookAgentTimelineEntry[]
 }
 
+function findBootstrapActiveTurn(thread: CodexThread | null): CodexThread['turns'][number] | null {
+  if (!thread) {
+    return null
+  }
+  const activeTurn = thread.turns.findLast((turn) => turn.status === 'inProgress') ?? null
+  if (!activeTurn) {
+    return null
+  }
+  if (thread.status === undefined) {
+    return activeTurn
+  }
+  return thread.status.type === 'active' ? activeTurn : null
+}
+
+function findStaleBootstrapInProgressTurns(thread: CodexThread | null): CodexThread['turns'] {
+  if (!thread || thread.status === undefined || thread.status.type === 'active') {
+    return []
+  }
+  return thread.turns.filter((turn) => turn.status === 'inProgress')
+}
+
 function resolveWorkbookAgentBootstrapStatus(thread: CodexThread | null): WorkbookAgentThreadState['live']['status'] {
   if (!thread) {
+    return 'failed'
+  }
+  if (thread.status?.type === 'systemError' || thread.status?.type === 'notLoaded') {
     return 'failed'
   }
   if (thread.turns.some((turn) => turn.status === 'failed')) {
     return 'failed'
   }
-  if (thread.turns.some((turn) => turn.status === 'inProgress')) {
+  if (findBootstrapActiveTurn(thread)) {
     return 'inProgress'
   }
   return 'idle'
@@ -69,12 +93,20 @@ export function createWorkbookAgentBootstrappedSessionState(input: {
     workflowRuns: input.durableThreadSession.workflowRuns,
     now: input.now,
   })
+  const staleInProgressTurns = findStaleBootstrapInProgressTurns(input.liveThread)
   const resolvedScope = durableThreadState?.scope ?? input.requestedScope ?? 'private'
   const resolvedExecutionPolicy = normalizeExecutionPolicy({
     scope: resolvedScope,
     requestedPolicy: input.requestedExecutionPolicy ?? durableThreadState?.executionPolicy ?? null,
   })
   const codexEntries = input.liveThread ? buildEntriesFromThread(input.liveThread) : []
+  const staleTurnEntries = staleInProgressTurns.map((turn) =>
+    createSystemEntry(
+      `system-turn-bootstrap-recovered:${turn.id}:${String(input.now)}`,
+      turn.id,
+      `Cleared stale in-progress turn ${turn.id} after Codex resumed the thread as ${input.liveThread?.status?.type}.`,
+    ),
+  )
 
   return {
     documentId: input.documentId,
@@ -85,13 +117,13 @@ export function createWorkbookAgentBootstrappedSessionState(input: {
     threadId: input.threadId,
     durable: {
       context: input.requestedContext ?? durableThreadState?.context ?? null,
-      entries: mergeTimelineEntries([...codexEntries, ...workflowRecovery.entries], durableThreadState?.entries ?? []),
+      entries: mergeTimelineEntries([...codexEntries, ...staleTurnEntries, ...workflowRecovery.entries], durableThreadState?.entries ?? []),
       reviewQueueItems: [...(durableThreadState?.reviewQueueItems ?? [])],
       executionRecords: input.durableThreadSession.executionRecords,
       workflowRuns: workflowRecovery.workflowRuns,
     },
     live: {
-      activeTurnId: input.liveThread?.turns.findLast((turn) => turn.status === 'inProgress')?.id ?? null,
+      activeTurnId: findBootstrapActiveTurn(input.liveThread)?.id ?? null,
       status: resolveWorkbookAgentBootstrapStatus(input.liveThread),
       lastError: resolveWorkbookAgentBootstrapErrorMessage(input.liveThread, input.sessionBootstrapError),
       authorizedUserIds: new Set(

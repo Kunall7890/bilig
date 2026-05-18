@@ -63,6 +63,10 @@ function isCodexCommandExecutionStatus(value: unknown): value is 'inProgress' | 
   return value === 'inProgress' || value === 'completed' || value === 'failed'
 }
 
+function isCodexThreadActiveFlag(value: unknown): value is 'waitingOnApproval' | 'waitingOnUserInput' {
+  return value === 'waitingOnApproval' || value === 'waitingOnUserInput'
+}
+
 function isJsonValue(value: unknown): value is ParsedJsonValue {
   if (value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
     return true
@@ -74,6 +78,32 @@ function isJsonValue(value: unknown): value is ParsedJsonValue {
     return false
   }
   return Object.values(value).every((entry) => isJsonValue(entry))
+}
+
+function parseThreadStatus(value: unknown): CodexThread['status'] | null {
+  if (!isRecord(value) || !isString(value['type'])) {
+    return null
+  }
+  switch (value['type']) {
+    case 'notLoaded':
+    case 'idle':
+    case 'systemError':
+      return {
+        type: value['type'],
+      }
+    case 'active': {
+      const activeFlags = value['activeFlags']
+      if (!Array.isArray(activeFlags) || !activeFlags.every((entry) => isCodexThreadActiveFlag(entry))) {
+        return null
+      }
+      return {
+        type: 'active',
+        activeFlags,
+      }
+    }
+    default:
+      return null
+  }
 }
 
 function parseInitializeResponse(value: unknown): CodexInitializeResponse | null {
@@ -359,10 +389,15 @@ function parseThread(value: unknown): CodexThread | null {
     }
     turns.push(turn)
   }
+  const status = value['status'] === undefined ? undefined : parseThreadStatus(value['status'])
+  if (value['status'] !== undefined && !status) {
+    return null
+  }
   return {
     id: value['id'],
     preview: value['preview'],
     turns,
+    ...(status ? { status } : {}),
   }
 }
 
