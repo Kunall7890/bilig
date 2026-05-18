@@ -36,6 +36,7 @@ The public surface stays generic:
 - `WorkbookPlanIssue`
 - `WorkbookModelVerification`
 - `WorkbookModelActionVerification`
+- `WorkbookCustomCheckOptions`
 - `WorkbookRunResult`
 - `WorkbookCheckResult`
 
@@ -67,6 +68,8 @@ when an agent or test needs the same generic refs outside a model callback.
 consumer-defined row selectors do not collapse during dedupe.
 Use `check.exists(ref)` and `check.noFormulaErrors(ref)` directly when an agent
 or test needs the same generic planned checks outside a model callback.
+Use `check.custom({ kind, message, target })` for consumer-defined invariants;
+the package does not need to know what the model means.
 
 Use `describeModel` when an agent needs a JSON-safe manifest of model name,
 action names, and whether model-level checks exist without running `find`,

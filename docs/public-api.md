@@ -67,8 +67,8 @@ It exposes:
 - `verifyModel`
 - `formula`
 - `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` through the model workbook context and as top-level helpers
-- `check.exists` and `check.noFormulaErrors` through the model workbook context and as top-level helpers
-- `WorkbookModel`, `WorkbookAction`, `WorkbookActionPlanResult`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookRunResult`, and `WorkbookCheckResult`
+- `check.exists`, `check.noFormulaErrors`, and `check.custom` through the model workbook context and as top-level helpers
+- `WorkbookModel`, `WorkbookAction`, `WorkbookActionPlanResult`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookCustomCheckOptions`, `WorkbookRunResult`, and `WorkbookCheckResult`
 - the existing low-level operation language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, and `EngineOpBatch`
 
 The package builds portable workbook intent and concrete low-level ops when the
@@ -90,7 +90,10 @@ The same generic refs are available outside model callbacks through top-level
 distinct consumer-defined row predicates remain distinct during agent
 inspection and dedupe.
 The same planned checks are available outside model callbacks through top-level
-`check.exists(ref)` and `check.noFormulaErrors(ref)` helpers.
+`check.exists(ref)`, `check.noFormulaErrors(ref)`, and
+`check.custom({ kind, message, target })` helpers. Custom checks let consumers
+carry their own invariants without adding hardcoded business models to the
+package.
 
 `describeModel` returns a JSON-safe model manifest with the model name, sorted
 action names, and whether model-level checks exist. It does not run `find`,
