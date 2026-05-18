@@ -12,6 +12,7 @@ function AgentContextHarness(props: {
   selectionSnapshot: GridSelectionSnapshot
   capture: (value: ReturnType<typeof useWorkerWorkbookAgentContext>) => void
   subscribeViewport?: (sheetName: string, viewport: { rowStart: number; rowEnd: number; colStart: number; colEnd: number }) => () => void
+  viewportStore?: ReturnType<typeof createViewportStoreStub>
 }) {
   const selectionRangeRef = useRef({
     sheetName: props.selectionSnapshot.sheetName,
@@ -21,22 +22,24 @@ function AgentContextHarness(props: {
   const selectionSnapshotRef = useRef(props.selectionSnapshot)
   const selectionRef = useRef(props.selection)
   const workerHandleRef = useRef({
-    viewportStore: createViewportStoreStub(),
+    viewportStore: props.viewportStore ?? createViewportStoreStub(),
   })
   const runtimeControllerRef = useRef({
     subscribeViewport: props.subscribeViewport ?? vi.fn(() => () => undefined),
   })
+  selectionSnapshotRef.current = props.selectionSnapshot
+  selectionRef.current = props.selection
+  selectionRangeRef.current = {
+    sheetName: props.selectionSnapshot.sheetName,
+    startAddress: props.selectionSnapshot.range.startAddress,
+    endAddress: props.selectionSnapshot.range.endAddress,
+  }
+  runtimeControllerRef.current.subscribeViewport = props.subscribeViewport ?? runtimeControllerRef.current.subscribeViewport
+  workerHandleRef.current.viewportStore = props.viewportStore ?? workerHandleRef.current.viewportStore
 
   useEffect(() => {
-    selectionSnapshotRef.current = props.selectionSnapshot
-    selectionRef.current = props.selection
-    selectionRangeRef.current = {
-      sheetName: props.selectionSnapshot.sheetName,
-      startAddress: props.selectionSnapshot.range.startAddress,
-      endAddress: props.selectionSnapshot.range.endAddress,
-    }
     runtimeControllerRef.current.subscribeViewport = props.subscribeViewport ?? runtimeControllerRef.current.subscribeViewport
-  }, [props.selection, props.selectionSnapshot, props.subscribeViewport])
+  }, [props.selection, props.selectionSnapshot, props.subscribeViewport, props.viewportStore])
 
   const state = useWorkerWorkbookAgentContext({
     selection: props.selection,
@@ -184,6 +187,94 @@ describe('useWorkerWorkbookAgentContext', () => {
       harness.root.unmount()
     })
   })
+
+  it('does not advance the agent context version for rendered metadata churn when visible content is unchanged', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    let viewportListener: (() => void) | null = null
+    const subscribeViewport = vi.fn(
+      (_sheetName: string, _viewport: { rowStart: number; rowEnd: number; colStart: number; colEnd: number }, listener: () => void) => {
+        viewportListener = listener
+        return () => {
+          viewportListener = null
+        }
+      },
+    )
+    const viewportStore = createViewportStoreStub()
+    const harness = mountHarness()
+    const capturedStates: Array<ReturnType<typeof useWorkerWorkbookAgentContext>> = []
+    await harness.render({
+      selection: { sheetName: 'Sheet1', address: 'A1' },
+      selectionSnapshot: createCellSelectionSnapshot('Sheet1', 'A1'),
+      subscribeViewport,
+      viewportStore,
+      capture: (value) => {
+        capturedStates.push(value)
+      },
+    })
+
+    const initialVersion = capturedStates.at(-1)?.agentContextVersion
+    viewportStore.setMetrics(8, 12)
+    await act(async () => {
+      viewportListener?.()
+    })
+
+    expect(capturedStates.at(-1)?.agentContextVersion).toBe(initialVersion)
+
+    viewportStore.setCellValue('Sheet1:A1', 'changed')
+    viewportStore.setMetrics(9, 13)
+    await act(async () => {
+      viewportListener?.()
+    })
+
+    expect(capturedStates.at(-1)?.agentContextVersion).not.toBe(initialVersion)
+
+    await act(async () => {
+      harness.root.unmount()
+    })
+  })
+
+  it('changes the agent context version when a range selection changes without moving the active cell', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const harness = mountHarness()
+    const capturedStates: Array<ReturnType<typeof useWorkerWorkbookAgentContext>> = []
+    const baseSelection = { sheetName: 'Sheet1', address: 'A1' }
+    await harness.render({
+      selection: baseSelection,
+      selectionSnapshot: createCellSelectionSnapshot('Sheet1', 'A1'),
+      capture: (value) => {
+        capturedStates.push(value)
+      },
+    })
+
+    const initialVersion = capturedStates.at(-1)?.agentContextVersion
+    await harness.render({
+      selection: baseSelection,
+      selectionSnapshot: {
+        sheetName: 'Sheet1',
+        address: 'A1',
+        kind: 'range',
+        range: {
+          startAddress: 'A1',
+          endAddress: 'B2',
+        },
+      },
+      capture: (value) => {
+        capturedStates.push(value)
+      },
+    })
+
+    expect(capturedStates.at(-1)?.agentContextVersion).not.toBe(initialVersion)
+    expect(capturedStates.at(-1)?.getAgentContext().selection.range).toEqual({
+      startAddress: 'A1',
+      endAddress: 'B2',
+    })
+
+    await act(async () => {
+      harness.root.unmount()
+    })
+  })
 })
 
 function createCellSelectionSnapshot(sheetName: string, address: string): GridSelectionSnapshot {
@@ -199,13 +290,23 @@ function createCellSelectionSnapshot(sheetName: string, address: string): GridSe
 }
 
 function createViewportStoreStub() {
+  let revision = 7
+  let batchId = 11
+  const cellValues = new Map<string, string>()
   return {
     peekCell(sheetName: string, address: string): CellSnapshot | undefined {
-      return stringCell(sheetName, address, `${sheetName}:${address}`)
+      return stringCell(sheetName, address, cellValues.get(`${sheetName}:${address}`) ?? `${sheetName}:${address}`)
     },
     getCellStyle: vi.fn(() => null),
-    getLastAuthoritativeRevision: vi.fn(() => 7),
-    getLastMetrics: vi.fn(() => ({ batchId: 11 })),
+    getLastAuthoritativeRevision: vi.fn(() => revision),
+    getLastMetrics: vi.fn(() => ({ batchId })),
+    setCellValue(key: string, value: string): void {
+      cellValues.set(key, value)
+    },
+    setMetrics(nextRevision: number, nextBatchId: number): void {
+      revision = nextRevision
+      batchId = nextBatchId
+    },
   }
 }
 

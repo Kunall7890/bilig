@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type MutableRefObject } from 'react'
 import type { GridSelectionSnapshot } from '@bilig/grid'
 import { formatAddress, parseCellAddress } from '@bilig/formula'
-import type { WorkbookAgentRenderedRange, WorkbookAgentUiContext } from '@bilig/contracts'
+import { stringifyWorkbookAgentUiContextSemanticKey, type WorkbookAgentRenderedRange, type WorkbookAgentUiContext } from '@bilig/contracts'
 import { MAX_COLS, MAX_ROWS, VIEWPORT_TILE_COLUMN_COUNT, VIEWPORT_TILE_ROW_COUNT, type CellRangeRef, type Viewport } from '@bilig/protocol'
 import { buildWorkbookAgentContext } from './workbook-agent-context.js'
 import type { ProjectedViewportStore } from './projected-viewport-store.js'
@@ -124,19 +124,49 @@ export function useWorkerWorkbookAgentContext(input: {
     readonly sheetName: string
     readonly viewport: Viewport
   } | null>(null)
-  const lastRenderedAgentContextKeyRef = useRef('')
+  const lastRenderedAgentContextKeyRef = useRef<string | null>(null)
+  const selectedAddress = selection.address
+  const selectedSheetName = selection.sheetName
+  const selectedRangeStartAddress = selectionSnapshotRef.current.range.startAddress
+  const selectedRangeEndAddress = selectionSnapshotRef.current.range.endAddress
+
+  const buildCurrentAgentContext = useCallback((): WorkbookAgentUiContext => {
+    const activeSelection = selectionSnapshotRef.current
+    const activeViewport = visibleViewportRef.current
+    const viewportRange = {
+      sheetName: activeSelection.sheetName,
+      startAddress: formatAddress(activeViewport.rowStart, activeViewport.colStart),
+      endAddress: formatAddress(activeViewport.rowEnd, activeViewport.colEnd),
+    }
+    return buildWorkbookAgentContext({
+      selection: activeSelection,
+      viewport: activeViewport,
+      rendered: {
+        capturedAtUnixMs: Date.now(),
+        capturedRevision: workerHandleRef.current?.viewportStore.getLastAuthoritativeRevision() ?? null,
+        batchId: workerHandleRef.current?.viewportStore.getLastMetrics().batchId ?? null,
+        selection: buildRenderedRangeSnapshot(workerHandleRef.current?.viewportStore, selectionRangeRef.current),
+        visibleRange: buildRenderedRangeSnapshot(workerHandleRef.current?.viewportStore, viewportRange),
+      },
+    })
+  }, [selectionRangeRef, selectionSnapshotRef, workerHandleRef])
+
+  const rememberCurrentRenderedAgentContext = useCallback(() => {
+    lastRenderedAgentContextKeyRef.current = stringifyWorkbookAgentUiContextSemanticKey(buildCurrentAgentContext())
+  }, [buildCurrentAgentContext])
 
   const notifyRenderedAgentContextChanged = useCallback(() => {
-    const viewportStore = workerHandleRef.current?.viewportStore
-    const revision = viewportStore?.getLastAuthoritativeRevision() ?? null
-    const batchId = viewportStore?.getLastMetrics().batchId ?? null
-    const nextKey = `${revision ?? 'none'}:${batchId ?? 'none'}`
+    const nextKey = stringifyWorkbookAgentUiContextSemanticKey(buildCurrentAgentContext())
     if (lastRenderedAgentContextKeyRef.current === nextKey) {
       return
     }
     lastRenderedAgentContextKeyRef.current = nextKey
     setRenderedAgentContextVersion((version) => version + 1)
-  }, [workerHandleRef])
+  }, [buildCurrentAgentContext])
+
+  useLayoutEffect(() => {
+    rememberCurrentRenderedAgentContext()
+  }, [rememberCurrentRenderedAgentContext, selectedAddress, selectedRangeEndAddress, selectedRangeStartAddress, selectedSheetName])
 
   const syncVisibleViewportProjection = useCallback(
     (sheetName: string, viewport: Viewport): void => {
@@ -168,9 +198,6 @@ export function useWorkerWorkbookAgentContext(input: {
     [notifyRenderedAgentContextChanged, runtimeControllerRef],
   )
 
-  const selectedAddress = selection.address
-  const selectedSheetName = selection.sheetName
-
   useLayoutEffect(() => {
     syncVisibleViewportProjection(selectedSheetName, selectionViewport({ address: selectedAddress, sheetName: selectedSheetName }))
   }, [selectedAddress, selectedSheetName, syncVisibleViewportProjection])
@@ -190,33 +217,20 @@ export function useWorkerWorkbookAgentContext(input: {
     [selectionRef, syncVisibleViewportProjection],
   )
 
-  const getAgentContext = useCallback((): WorkbookAgentUiContext => {
-    const activeSelection = selectionSnapshotRef.current
-    const activeViewport = visibleViewportRef.current
-    const viewportRange = {
-      sheetName: activeSelection.sheetName,
-      startAddress: formatAddress(activeViewport.rowStart, activeViewport.colStart),
-      endAddress: formatAddress(activeViewport.rowEnd, activeViewport.colEnd),
-    }
-    return buildWorkbookAgentContext({
-      selection: activeSelection,
-      viewport: activeViewport,
-      rendered: {
-        capturedAtUnixMs: Date.now(),
-        capturedRevision: workerHandleRef.current?.viewportStore.getLastAuthoritativeRevision() ?? null,
-        batchId: workerHandleRef.current?.viewportStore.getLastMetrics().batchId ?? null,
-        selection: buildRenderedRangeSnapshot(workerHandleRef.current?.viewportStore, selectionRangeRef.current),
-        visibleRange: buildRenderedRangeSnapshot(workerHandleRef.current?.viewportStore, viewportRange),
-      },
-    })
-  }, [selectionRangeRef, selectionSnapshotRef, workerHandleRef])
+  const getAgentContext = buildCurrentAgentContext
 
   const resetVisibleViewportForSheet = useCallback((nextSelection: WorkerRuntimeSelection) => {
     visibleViewportRef.current = selectionViewport(nextSelection)
   }, [])
 
   return {
-    agentContextVersion: `${selection.sheetName}:${selection.address}:${renderedAgentContextVersion}`,
+    agentContextVersion: [
+      selectionSnapshotRef.current.sheetName,
+      selectionSnapshotRef.current.address,
+      selectionSnapshotRef.current.range.startAddress,
+      selectionSnapshotRef.current.range.endAddress,
+      renderedAgentContextVersion,
+    ].join(':'),
     getAgentContext,
     handleVisibleViewportChange,
     resetVisibleViewportForSheet,
