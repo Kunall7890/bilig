@@ -1,4 +1,4 @@
-import type { WorkbookAgentThreadSummary } from '@bilig/contracts'
+import type { WorkbookAgentExecutionPolicy, WorkbookAgentThreadSummary } from '@bilig/contracts'
 import { createWorkbookAgentServiceError } from '../workbook-agent-errors.js'
 import { isWorkbookAgentRolloutAllowed, type WorkbookAgentFeatureFlags } from './workbook-agent-feature-flags.js'
 import type { WorkbookAgentThreadState } from './workbook-agent-service-shared.js'
@@ -66,5 +66,23 @@ export function filterWorkbookAgentThreadSummariesByAccessPolicy(input: {
         userId: input.userId,
       })
     )
+  })
+}
+
+export function assertWorkbookAgentExecutionPolicyChangeAllowed(input: {
+  readonly scope: WorkbookAgentThreadState['scope']
+  readonly ownerUserId: string
+  readonly actorUserId: string
+  readonly currentPolicy: WorkbookAgentExecutionPolicy
+  readonly nextPolicy: WorkbookAgentExecutionPolicy
+}): void {
+  if (input.scope !== 'shared' || input.currentPolicy === input.nextPolicy || input.ownerUserId === input.actorUserId) {
+    return
+  }
+  throw createWorkbookAgentServiceError({
+    code: 'WORKBOOK_AGENT_SHARED_POLICY_CHANGE_FORBIDDEN',
+    message: 'Only the shared thread owner can change the workbook assistant execution policy.',
+    statusCode: 409,
+    retryable: false,
   })
 }

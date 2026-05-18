@@ -1232,6 +1232,137 @@ describe('workbook agent service', () => {
     }
   })
 
+  it('prevents collaborators from changing execution policy on live shared threads', async () => {
+    const fakeCodex = new FakeCodexTransport()
+    const saveWorkbookAgentThreadState = vi.fn(async () => undefined)
+    const service = createWorkbookAgentService(
+      createZeroSyncStub({
+        saveWorkbookAgentThreadState,
+        async loadWorkbookAgentThreadState(_documentId, actorUserId, threadId) {
+          return actorUserId === 'casey@example.com'
+            ? {
+                documentId: 'doc-1',
+                threadId,
+                actorUserId: 'alex@example.com',
+                scope: 'shared' as const,
+                executionPolicy: 'ownerReview' as const,
+                context: null,
+                entries: [],
+                reviewQueueItems: [],
+                updatedAtUnixMs: 100,
+              }
+            : null
+        },
+      }),
+      {
+        codexClientFactory: (_options: CodexAppServerClientOptions): CodexAppServerTransport => fakeCodex,
+        featureFlags: {
+          sharedThreadsEnabled: true,
+        },
+      },
+    )
+
+    try {
+      const snapshot = await service.createSession({
+        documentId: 'doc-1',
+        session: {
+          userID: 'alex@example.com',
+          roles: ['editor'],
+        },
+        body: {
+          scope: 'shared',
+          executionPolicy: 'ownerReview',
+        },
+      })
+      saveWorkbookAgentThreadState.mockClear()
+
+      await expect(
+        service.createSession({
+          documentId: 'doc-1',
+          session: {
+            userID: 'casey@example.com',
+            roles: ['editor'],
+          },
+          body: {
+            threadId: snapshot.threadId,
+            executionPolicy: 'autoApplySafe',
+          },
+        }),
+      ).rejects.toMatchObject({
+        code: 'WORKBOOK_AGENT_SHARED_POLICY_CHANGE_FORBIDDEN',
+        statusCode: 409,
+        retryable: false,
+      })
+
+      expect(saveWorkbookAgentThreadState).not.toHaveBeenCalled()
+      expect(
+        service.getSnapshot({
+          documentId: 'doc-1',
+          threadId: snapshot.threadId,
+          session: {
+            userID: 'alex@example.com',
+            roles: ['editor'],
+          },
+        }).executionPolicy,
+      ).toBe('ownerReview')
+    } finally {
+      await service.close()
+    }
+  })
+
+  it('prevents collaborators from changing execution policy while bootstrapping durable shared threads', async () => {
+    const fakeCodex = new FakeCodexTransport()
+    const saveWorkbookAgentThreadState = vi.fn(async () => undefined)
+    const service = createWorkbookAgentService(
+      createZeroSyncStub({
+        saveWorkbookAgentThreadState,
+        async loadWorkbookAgentThreadState(_documentId, _actorUserId, threadId) {
+          return {
+            documentId: 'doc-1',
+            threadId,
+            actorUserId: 'alex@example.com',
+            scope: 'shared' as const,
+            executionPolicy: 'ownerReview' as const,
+            context: null,
+            entries: [],
+            reviewQueueItems: [],
+            updatedAtUnixMs: 100,
+          }
+        },
+      }),
+      {
+        codexClientFactory: (_options: CodexAppServerClientOptions): CodexAppServerTransport => fakeCodex,
+        featureFlags: {
+          sharedThreadsEnabled: true,
+        },
+      },
+    )
+
+    try {
+      await expect(
+        service.createSession({
+          documentId: 'doc-1',
+          session: {
+            userID: 'casey@example.com',
+            roles: ['editor'],
+          },
+          body: {
+            threadId: 'thr-shared',
+            executionPolicy: 'autoApplySafe',
+          },
+        }),
+      ).rejects.toMatchObject({
+        code: 'WORKBOOK_AGENT_SHARED_POLICY_CHANGE_FORBIDDEN',
+        statusCode: 409,
+        retryable: false,
+      })
+
+      expect(saveWorkbookAgentThreadState).not.toHaveBeenCalled()
+    } finally {
+      await service.close()
+    }
+  })
+
   it('limits shared threads to the rollout allowlist', async () => {
     const fakeCodex = new FakeCodexTransport()
     const service = createWorkbookAgentService(createZeroSyncStub(), {

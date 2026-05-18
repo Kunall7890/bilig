@@ -72,6 +72,7 @@ import {
 } from './workbook-agent-service-shared.js'
 import { updateWorkbookAgentDurableUiContextFromUser } from './workbook-agent-durable-context-sync.js'
 import {
+  assertWorkbookAgentExecutionPolicyChangeAllowed,
   assertWorkbookAgentSharedThreadAccess,
   filterWorkbookAgentThreadSummariesByAccessPolicy,
 } from './workbook-agent-service-access-policy.js'
@@ -349,10 +350,18 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
           })
         }
         if (parsed.executionPolicy) {
-          accessibleSession.executionPolicy = normalizeExecutionPolicy({
+          const nextExecutionPolicy = normalizeExecutionPolicy({
             scope: accessibleSession.scope,
             requestedPolicy: parsed.executionPolicy,
           })
+          assertWorkbookAgentExecutionPolicyChangeAllowed({
+            scope: accessibleSession.scope,
+            ownerUserId: accessibleSession.storageActorUserId,
+            actorUserId: input.session.userID,
+            currentPolicy: accessibleSession.executionPolicy,
+            nextPolicy: nextExecutionPolicy,
+          })
+          accessibleSession.executionPolicy = nextExecutionPolicy
         }
         if (contextChanged || parsed.executionPolicy) {
           await this.persistSessionState(accessibleSession)
@@ -394,6 +403,19 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
         userId: input.session.userID,
         disabledCode: 'WORKBOOK_AGENT_SHARED_THREADS_DISABLED',
         rolloutBlockedCode: 'WORKBOOK_AGENT_SHARED_THREADS_ROLLOUT_BLOCKED',
+      })
+    }
+    if (durableThreadState && parsed.executionPolicy) {
+      const nextExecutionPolicy = normalizeExecutionPolicy({
+        scope: durableThreadState.scope,
+        requestedPolicy: parsed.executionPolicy,
+      })
+      assertWorkbookAgentExecutionPolicyChangeAllowed({
+        scope: durableThreadState.scope,
+        ownerUserId: durableThreadState.actorUserId,
+        actorUserId: input.session.userID,
+        currentPolicy: durableThreadState.executionPolicy,
+        nextPolicy: nextExecutionPolicy,
       })
     }
     if (!thread && !durableThreadState) {
