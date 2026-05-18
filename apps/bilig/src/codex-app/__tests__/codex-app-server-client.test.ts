@@ -5,6 +5,17 @@ import { CodexAppServerClient } from '../codex-app-server-client.js'
 
 const fixturePath = fileURLToPath(new URL('./fixtures/fake-codex-app-server.mjs', import.meta.url))
 
+function threadStartInput() {
+  return {
+    model: 'gpt-5.4',
+    approvalPolicy: 'never' as const,
+    sandbox: 'read-only' as const,
+    baseInstructions: 'base',
+    developerInstructions: 'developer',
+    dynamicTools: [],
+  }
+}
+
 describe('Codex app-server client', () => {
   let client: CodexAppServerClient | null = null
 
@@ -171,5 +182,35 @@ describe('Codex app-server client', () => {
         delta: 'Examining staged changes',
       },
     })
+  })
+
+  it('rejects pending requests and restarts after the app-server exits', async () => {
+    client = new CodexAppServerClient({
+      command: process.execPath,
+      args: [fixturePath],
+      env: {
+        BILIG_TEST_EXIT_DURING_TURN_START: '1',
+      },
+      handleDynamicToolCall: async () => ({
+        success: true,
+        contentItems: [],
+      }),
+    })
+
+    const thread = await client.threadStart(threadStartInput())
+
+    await expect(
+      client.turnStart({
+        threadId: thread.id,
+        prompt: 'this request will outlive the process',
+      }),
+    ).rejects.toThrow('Codex app-server exited unexpectedly')
+
+    const resumed = await client.threadResume({
+      threadId: thread.id,
+      baseInstructions: 'base',
+      developerInstructions: 'developer',
+    })
+    expect(resumed.id).toBe(thread.id)
   })
 })

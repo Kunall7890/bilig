@@ -231,6 +231,44 @@ describe('codex-app-server-pool', () => {
     }
   })
 
+  it('rejects queued turns when the pool closes a saturated slot', async () => {
+    let resolveFirstTurn: ((value: CodexTurn) => void) | null = null
+    const firstTurnPromise = new Promise<CodexTurn>((resolve) => {
+      resolveFirstTurn = resolve
+    })
+    const fake = new FakePoolTransport('A')
+    fake.nextTurn = firstTurnPromise
+    const { pool } = createPool({
+      maxClients: 1,
+      maxConcurrentTurnsPerClient: 1,
+      maxQueuedTurnsPerClient: 2,
+      transports: [fake],
+    })
+
+    const thread = await pool.threadStart({
+      model: 'gpt-5.4',
+      approvalPolicy: 'never',
+      sandbox: 'read-only',
+      baseInstructions: 'base',
+      developerInstructions: 'dev',
+      dynamicTools: [],
+    })
+    const firstTurn = pool.turnStart({ threadId: thread.id, prompt: 'first' })
+    const queuedTurn = pool.turnStart({ threadId: thread.id, prompt: 'queued' })
+
+    await Promise.resolve()
+    await pool.close()
+    await expect(queuedTurn).rejects.toThrow('closed before queued turn started')
+
+    resolvePendingTurn(resolveFirstTurn, {
+      id: 'turn-1',
+      status: 'inProgress',
+      items: [],
+      error: null,
+    })
+    await firstTurn
+  })
+
   it('releases and closes idle clients when their threads are evicted', async () => {
     const fake = new FakePoolTransport('A')
     const { pool } = createPool({

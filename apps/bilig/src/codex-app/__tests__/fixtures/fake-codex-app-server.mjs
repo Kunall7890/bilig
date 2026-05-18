@@ -91,6 +91,11 @@ reader.on('line', (line) => {
         },
       },
     })
+    if (process.env.BILIG_TEST_EXIT_AFTER_THREAD_START === '1') {
+      setTimeout(() => {
+        process.exit(17)
+      }, 0)
+    }
     return
   }
   if (message.method === 'thread/resume') {
@@ -107,6 +112,12 @@ reader.on('line', (line) => {
     return
   }
   if (message.method === 'turn/start') {
+    if (process.env.BILIG_TEST_EXIT_DURING_TURN_START === '1') {
+      setTimeout(() => {
+        process.exit(42)
+      }, 0)
+      return
+    }
     if (process.env.BILIG_TEST_EMIT_REASONING_DELTA === '1') {
       write({
         method: 'item/reasoning/textDelta',

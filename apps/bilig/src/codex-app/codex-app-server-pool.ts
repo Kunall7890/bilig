@@ -21,8 +21,13 @@ interface CodexAppServerPoolSlot {
   readonly unsubscribe: () => void
   readonly initializeResponse: CodexInitializeResponse
   activeTurnCount: number
-  readonly waiters: Array<() => void>
+  readonly waiters: CodexAppServerTurnWaiter[]
   closed: boolean
+}
+
+interface CodexAppServerTurnWaiter {
+  readonly resolve: () => void
+  readonly reject: (error: Error) => void
 }
 
 export interface CodexAppServerClientPoolOptions {
@@ -241,10 +246,17 @@ export class CodexAppServerClientPool implements CodexAppServerTransport {
     if (slot.waiters.length >= this.maxQueuedTurnsPerClient) {
       throw new CodexAppServerPoolBackpressureError(`Workbook assistant is saturated for ${threadId}. Retry in a moment.`)
     }
-    await new Promise<void>((resolve) => {
-      slot.waiters.push(() => {
-        slot.activeTurnCount += 1
-        resolve()
+    await new Promise<void>((resolve, reject) => {
+      slot.waiters.push({
+        resolve: () => {
+          if (slot.closed) {
+            reject(new Error(`Codex app-server pool slot ${String(slot.id)} is closed.`))
+            return
+          }
+          slot.activeTurnCount += 1
+          resolve()
+        },
+        reject,
       })
     })
     return () => {
@@ -256,7 +268,7 @@ export class CodexAppServerClientPool implements CodexAppServerTransport {
     slot.activeTurnCount = Math.max(0, slot.activeTurnCount - 1)
     const nextWaiter = slot.waiters.shift()
     if (nextWaiter) {
-      nextWaiter()
+      nextWaiter.resolve()
       return
     }
     if (slot.threadIds.size === 0) {
@@ -275,6 +287,14 @@ export class CodexAppServerClientPool implements CodexAppServerTransport {
     }
     slot.threadIds.clear()
     slot.unsubscribe()
+    this.rejectSlotWaiters(slot, new Error(`Codex app-server pool slot ${String(slot.id)} closed before queued turn started.`))
     await slot.transport.close()
+  }
+
+  private rejectSlotWaiters(slot: CodexAppServerPoolSlot, error: Error): void {
+    const waiters = slot.waiters.splice(0)
+    waiters.forEach((waiter) => {
+      waiter.reject(error)
+    })
   }
 }

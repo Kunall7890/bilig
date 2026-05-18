@@ -232,6 +232,7 @@ export class CodexAppServerClient implements CodexAppServerTransport {
     this.reader?.close()
     this.reader = null
     this.initializePromise = null
+    this.rejectAllPending(new Error('Codex app-server client closed.'))
     if (!activeProcess) {
       return
     }
@@ -259,10 +260,13 @@ export class CodexAppServerClient implements CodexAppServerTransport {
     })
 
     child.once('error', (error) => {
-      this.rejectAllPending(error instanceof Error ? error : new Error(String(error)))
+      this.handleProcessFailure(child, error instanceof Error ? error : new Error(String(error)))
+    })
+    child.stdin.once('error', (error) => {
+      this.handleProcessFailure(child, error instanceof Error ? error : new Error(String(error)))
     })
     child.once('close', (code, signal) => {
-      this.rejectAllPending(new Error(`Codex app-server exited unexpectedly (${signal ?? 'code'}:${String(code ?? 'unknown')})`))
+      this.handleProcessFailure(child, new Error(`Codex app-server exited unexpectedly (${signal ?? 'code'}:${String(code ?? 'unknown')})`))
     })
 
     this.reader = readline.createInterface({ input: child.stdout })
@@ -362,11 +366,16 @@ export class CodexAppServerClient implements CodexAppServerTransport {
         reject,
       })
     })
-    this.write({
-      method,
-      id,
-      params,
-    })
+    try {
+      this.write({
+        method,
+        id,
+        params,
+      })
+    } catch (error) {
+      this.pending.delete(id)
+      throw asError(error, 'Failed to write Codex app-server request')
+    }
     return await response
   }
 
@@ -411,5 +420,16 @@ export class CodexAppServerClient implements CodexAppServerTransport {
     entries.forEach((pending) => {
       pending.reject(error)
     })
+  }
+
+  private handleProcessFailure(child: ChildProcessWithoutNullStreams, error: Error): void {
+    if (this.process !== child) {
+      return
+    }
+    this.process = null
+    this.reader?.close()
+    this.reader = null
+    this.initializePromise = null
+    this.rejectAllPending(error)
   }
 }
