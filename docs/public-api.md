@@ -76,6 +76,11 @@ target is already known. Formula helpers use `@bilig/formula` for parsing and
 normalization. Actual calculation and authoritative execution stay in
 `@bilig/core` and `apps/bilig`.
 
+Known single-cell `workbook.format(ref, { numberFormat })` actions compile to
+concrete `setCellFormat` ops, including `numberFormat: null` for explicit
+format clears. Style patches remain high-level intent until the runtime resolves
+style ids.
+
 Formula helpers keep referenced workbook inputs separate from formula text.
 Planned `writeFormula` commands expose those inputs directly, which lets agents
 inspect dependencies without relying on human UI coordinates or reverse-parsing
@@ -108,9 +113,9 @@ failed action planning results.
 
 `verifyPlan` gives agents a runtime-free consistency check before handoff. It
 flags unresolved command targets, unresolved formula inputs, duplicate resolved
-refs, unparsable formulas, and missing concrete ops for commands whose target is
-already known as a single cell. Custom check targets and supporting refs must
-also resolve through `refsUsed`.
+refs, unparsable formulas, and missing concrete ops for write, clear, and
+number-format commands whose target is already known as a single cell. Custom
+check targets and supporting refs must also resolve through `refsUsed`.
 `verifyModel` applies the same planning and verification flow to every action
 in a consumer-defined model, returning one JSON-safe model-level verdict.
 

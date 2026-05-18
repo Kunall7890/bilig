@@ -21,7 +21,7 @@ export type WorkbookActionCommand =
       readonly kind: 'format'
       readonly target: WorkbookRef
       readonly style?: CellStylePatch
-      readonly numberFormat?: string
+      readonly numberFormat?: string | null
     }
   | {
       readonly kind: 'clear'
@@ -32,7 +32,7 @@ export interface WorkbookModelWorkbook extends WorkbookFindApi {
   readonly check: WorkbookCheckApi
   readonly writeFormula: (target: WorkbookRef, value: WorkbookFormulaOperand) => void
   readonly writeValue: (target: WorkbookRef, value: LiteralInput) => void
-  readonly format: (target: WorkbookRef, options: { readonly style?: CellStylePatch; readonly numberFormat?: string }) => void
+  readonly format: (target: WorkbookRef, options: { readonly style?: CellStylePatch; readonly numberFormat?: string | null }) => void
   readonly clear: (target: WorkbookRef) => void
 }
 
@@ -172,6 +172,14 @@ function createModelWorkbook(input: {
         })
         return
       case 'format':
+        if (command.numberFormat !== undefined) {
+          input.ops.push({
+            kind: 'setCellFormat',
+            sheetName: target.sheetName,
+            address: target.address,
+            format: command.numberFormat,
+          })
+        }
         return
     }
   }

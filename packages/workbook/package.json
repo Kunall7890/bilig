@@ -39,7 +39,7 @@
   },
   "scripts": {
     "build": "tsc -b tsconfig.json",
-    "test": "cd ../.. && tsx scripts/run-vitest.ts --run packages/workbook/src/__tests__/guards.test.ts packages/workbook/src/__tests__/model-api.test.ts packages/workbook/src/__tests__/check-api.test.ts"
+    "test": "cd ../.. && tsx scripts/run-vitest.ts --run packages/workbook/src/__tests__/guards.test.ts packages/workbook/src/__tests__/model-api.test.ts packages/workbook/src/__tests__/check-api.test.ts packages/workbook/src/__tests__/format-api.test.ts"
   },
   "dependencies": {
     "@bilig/formula": "workspace:*",

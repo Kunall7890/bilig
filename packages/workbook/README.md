@@ -59,6 +59,11 @@ text. A planned `writeFormula` command includes both the parseable formula
 string and the generic model refs it used, so an agent can inspect what the
 action depends on without reverse-parsing placeholder names.
 
+Known single-cell `workbook.format(ref, { numberFormat })` actions compile to
+concrete `setCellFormat` ops. Use `numberFormat: null` to plan an explicit
+format clear. Style patches remain high-level intent until the runtime resolves
+style ids.
+
 Action plans expose `refsUsed`, a flat deduped list of workbook refs found in
 the consumer-defined `refs` object. Use `collectWorkbookRefs` directly when an
 agent needs to inspect refs from any nested consumer shape.
@@ -85,8 +90,9 @@ planned or failed action planning.
 
 Use `verifyPlan` before runtime handoff when an agent needs to prove a planned
 action is internally consistent. It checks for unresolved refs, unparsable
-formulas, duplicate resolved refs, and missing concrete ops for commands that
-already target a known single cell. Custom check targets and supporting refs
-must also resolve through the model's `refsUsed` contract.
+formulas, duplicate resolved refs, and missing concrete ops for write, clear,
+and number-format commands that already target a known single cell. Custom check
+targets and supporting refs must also resolve through the model's `refsUsed`
+contract.
 Use `verifyModel` to plan and verify every action in a consumer-defined model
 with one JSON-safe result.

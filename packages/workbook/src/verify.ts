@@ -11,7 +11,7 @@ import {
 } from './model.js'
 import type { WorkbookOp } from './ops.js'
 
-type WorkbookConcreteCommandOp = Extract<WorkbookOp, { kind: 'setCellFormula' | 'setCellValue' | 'clearCell' }>
+type WorkbookConcreteCommandOp = Extract<WorkbookOp, { kind: 'setCellFormula' | 'setCellValue' | 'setCellFormat' | 'clearCell' }>
 
 export type WorkbookPlanIssueCode =
   | 'duplicate_ref'
@@ -106,7 +106,15 @@ function expectedConcreteOp(command: WorkbookActionCommand): WorkbookConcreteCom
         address: target.address,
       }
     case 'format':
-      return null
+      if (command.numberFormat === undefined) {
+        return null
+      }
+      return {
+        kind: 'setCellFormat',
+        sheetName: target.sheetName,
+        address: target.address,
+        format: command.numberFormat,
+      }
   }
 }
 
@@ -128,6 +136,13 @@ function opMatches(expected: WorkbookConcreteCommandOp, actual: WorkbookOp): boo
         actual.sheetName === expected.sheetName &&
         actual.address === expected.address &&
         actual.value === expected.value
+      )
+    case 'setCellFormat':
+      return (
+        actual.kind === 'setCellFormat' &&
+        actual.sheetName === expected.sheetName &&
+        actual.address === expected.address &&
+        actual.format === expected.format
       )
     case 'clearCell':
       return actual.kind === 'clearCell' && actual.sheetName === expected.sheetName && actual.address === expected.address

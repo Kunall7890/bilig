@@ -89,7 +89,7 @@ export type WorkbookActionCommandDescription =
       readonly kind: 'format'
       readonly target: WorkbookRefDescription
       readonly style?: CellStylePatch
-      readonly numberFormat?: string
+      readonly numberFormat?: string | null
     }
   | {
       readonly kind: 'clear'
