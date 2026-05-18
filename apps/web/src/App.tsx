@@ -2,13 +2,23 @@ import { useConnectionState, useZero } from '@rocicorp/zero/react'
 import type { BiligRuntimeConfig } from '@bilig/zero-sync'
 import type { ZeroClient } from './runtime-session.js'
 import { WorkerWorkbookApp } from './WorkerWorkbookApp'
+import { WorkbookAppErrorBoundary } from './WorkbookAppErrorBoundary.js'
 import type { ZeroConnectionState } from './worker-workbook-app-model.js'
 
 export function App(props: { config: BiligRuntimeConfig; connectionState?: ZeroConnectionState; zero?: ZeroClient }) {
+  const resetKey = `${props.config.defaultDocumentId}:${props.config.persistState ? 'persist' : 'memory'}`
   if (props.connectionState) {
-    return <WorkerWorkbookApp config={props.config} connectionState={props.connectionState} {...(props.zero ? { zero: props.zero } : {})} />
+    return (
+      <WorkbookAppErrorBoundary resetKey={resetKey}>
+        <WorkerWorkbookApp config={props.config} connectionState={props.connectionState} {...(props.zero ? { zero: props.zero } : {})} />
+      </WorkbookAppErrorBoundary>
+    )
   }
-  return <ConnectedApp config={props.config} />
+  return (
+    <WorkbookAppErrorBoundary resetKey={resetKey}>
+      <ConnectedApp config={props.config} />
+    </WorkbookAppErrorBoundary>
+  )
 }
 
 function ConnectedApp({ config }: { config: BiligRuntimeConfig }) {
