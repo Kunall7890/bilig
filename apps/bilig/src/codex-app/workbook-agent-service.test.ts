@@ -6430,6 +6430,100 @@ describe('workbook agent service', () => {
     }
   })
 
+  it('prevents collaborators from dismissing pending shared owner-review items', async () => {
+    const saveWorkbookAgentThreadState = vi.fn(async () => undefined)
+    const service = createWorkbookAgentService(
+      createZeroSyncStub({
+        saveWorkbookAgentThreadState,
+        async loadWorkbookAgentThreadState() {
+          return {
+            documentId: 'doc-1',
+            threadId: 'thr-shared',
+            actorUserId: 'alex@example.com',
+            scope: 'shared',
+            executionPolicy: 'ownerReview',
+            context: null,
+            entries: [],
+            reviewQueueItems: [
+              createReviewQueueItem({
+                id: 'bundle-shared-review',
+                documentId: 'doc-1',
+                threadId: 'thr-shared',
+                turnId: 'turn-1',
+                goalText: 'Normalize the workbook',
+                summary: 'Normalize shared workbook structure',
+                scope: 'workbook',
+                riskClass: 'high',
+                baseRevision: 4,
+                createdAtUnixMs: 100,
+                context: null,
+                commands: [
+                  {
+                    kind: 'createSheet',
+                    name: 'Summary',
+                  },
+                ],
+                affectedRanges: [],
+                estimatedAffectedCells: 0,
+                sharedReview: {
+                  ownerUserId: 'alex@example.com',
+                  status: 'pending',
+                  decidedByUserId: null,
+                  decidedAtUnixMs: null,
+                  recommendations: [],
+                },
+              }),
+            ],
+            updatedAtUnixMs: 100,
+          }
+        },
+      }),
+      {
+        codexClientFactory: (_options: CodexAppServerClientOptions): CodexAppServerTransport => new FakeCodexTransport(),
+      },
+    )
+
+    try {
+      const snapshot = await service.createSession({
+        documentId: 'doc-1',
+        session: {
+          userID: 'pat@example.com',
+          roles: ['editor'],
+        },
+        body: {
+          threadId: 'thr-shared',
+        },
+      })
+      saveWorkbookAgentThreadState.mockClear()
+
+      await expect(
+        service.dismissReviewItem({
+          documentId: 'doc-1',
+          threadId: snapshot.threadId,
+          reviewItemId: 'bundle-shared-review',
+          session: {
+            userID: 'pat@example.com',
+            roles: ['editor'],
+          },
+        }),
+      ).rejects.toThrow('Only the shared thread owner can clear a pending owner-review item.')
+
+      expect(saveWorkbookAgentThreadState).not.toHaveBeenCalled()
+      expect(
+        service.getSnapshot({
+          documentId: 'doc-1',
+          threadId: snapshot.threadId,
+          session: {
+            userID: 'pat@example.com',
+            roles: ['editor'],
+          },
+        }).reviewQueueItems,
+      ).toHaveLength(1)
+    } finally {
+      await service.close()
+    }
+  })
+
   it('loads only thread-scoped execution history for private threads', async () => {
     const threadExecutionRecord = {
       id: 'run-private-1',

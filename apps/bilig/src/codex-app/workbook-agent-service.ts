@@ -45,6 +45,7 @@ import {
   createWorkbookAgentThreadStartInput,
 } from './workbook-agent-codex-runtime.js'
 import {
+  assertWorkbookAgentReviewDismissAllowed,
   createWorkbookAgentDismissReviewEntry,
   getCurrentWorkbookAgentReviewItem,
   replaceCurrentWorkbookAgentReviewItem,
@@ -709,6 +710,11 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
       reviewItem: getCurrentWorkbookAgentReviewItem(sessionState),
       reviewItemId: input.reviewItemId,
       notFoundMessage: 'Workbook review item was not found.',
+    })
+    assertWorkbookAgentReviewDismissAllowed({
+      sessionState,
+      reviewItem,
+      actorUserId: input.session.userID,
     })
     replaceCurrentWorkbookAgentReviewItem(sessionState, null)
     sessionState.durable.entries = upsertEntry(

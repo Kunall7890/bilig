@@ -61,6 +61,7 @@ function createPanelProps(snapshot: WorkbookAgentThreadSnapshot): ComponentProps
     currentUserSharedRecommendation: null,
     canFinalizeSharedBundle: false,
     canRecommendSharedBundle: false,
+    canDismissReviewItem: true,
     selectedCommandIndexes: [],
     workflowRuns: [],
     cancellingWorkflowRunId: null,

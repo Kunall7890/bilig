@@ -308,6 +308,7 @@ export function useWorkbookAgentPane(input: {
     sharedReviewOwnerUserId !== currentUserId &&
     sharedReviewStatus === 'pending' &&
     !isApplyingReviewItem
+  const canDismissReviewItem = sharedReviewOwnerUserId === null || sharedReviewOwnerUserId === currentUserId
 
   const persistSessionSnapshot = useCallback(
     (nextSnapshot: WorkbookAgentThreadSnapshot) => {
@@ -747,6 +748,7 @@ export function useWorkbookAgentPane(input: {
         currentUserSharedRecommendation={currentUserSharedRecommendation}
         canFinalizeSharedBundle={canFinalizeSharedBundle}
         canRecommendSharedBundle={canRecommendSharedBundle}
+        canDismissReviewItem={canDismissReviewItem}
         optimisticEntries={optimisticEntries}
         selectedCommandIndexes={normalizedCommandIndexes}
         snapshot={snapshot}
@@ -795,6 +797,7 @@ export function useWorkbookAgentPane(input: {
       activeThreadSummary?.ownerUserId,
       activeResponseTurnId,
       canFinalizeSharedBundle,
+      canDismissReviewItem,
       canRecommendSharedBundle,
       currentUserSharedRecommendation,
       reviewReviewItem,

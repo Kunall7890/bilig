@@ -55,6 +55,7 @@ function renderPanel(overrides: Record<string, unknown> = {}) {
     currentUserSharedRecommendation: null,
     canFinalizeSharedBundle: false,
     canRecommendSharedBundle: false,
+    canDismissReviewItem: true,
     selectedCommandIndexes: [],
     executionRecords: [],
     workflowRuns: [],

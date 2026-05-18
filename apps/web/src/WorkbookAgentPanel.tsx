@@ -419,6 +419,7 @@ function ReviewItemCard(props: {
   readonly currentUserSharedRecommendation: 'approved' | 'rejected' | null
   readonly canFinalizeSharedBundle: boolean
   readonly canRecommendSharedBundle: boolean
+  readonly canDismissReviewItem: boolean
   readonly selectedCommandIndexes: readonly number[]
   readonly isApplyingReviewItem: boolean
   readonly onApply: () => void
@@ -620,7 +621,13 @@ function ReviewItemCard(props: {
         </div>
       ) : null}
       <div className="mt-3 flex items-center justify-end gap-2">
-        <Button className={workbookButtonClass({ tone: 'neutral' })} type="button" onClick={props.onDismiss}>
+        <Button
+          className={workbookButtonClass({ tone: 'neutral' })}
+          data-testid="workbook-agent-dismiss-review-item"
+          disabled={!props.canDismissReviewItem}
+          type="button"
+          onClick={props.onDismiss}
+        >
           Clear
         </Button>
         <Button
@@ -654,6 +661,7 @@ export function WorkbookAgentPanel(props: {
   readonly currentUserSharedRecommendation: 'approved' | 'rejected' | null
   readonly canFinalizeSharedBundle: boolean
   readonly canRecommendSharedBundle: boolean
+  readonly canDismissReviewItem: boolean
   readonly selectedCommandIndexes: readonly number[]
   readonly workflowRuns: readonly WorkbookAgentWorkflowRun[]
   readonly cancellingWorkflowRunId: string | null
@@ -769,6 +777,7 @@ export function WorkbookAgentPanel(props: {
               currentUserSharedRecommendation={props.currentUserSharedRecommendation}
               canFinalizeSharedBundle={props.canFinalizeSharedBundle}
               canRecommendSharedBundle={props.canRecommendSharedBundle}
+              canDismissReviewItem={props.canDismissReviewItem}
               selectedCommandIndexes={props.selectedCommandIndexes}
               isApplyingReviewItem={props.isApplyingReviewItem}
               onApply={props.onApplyReviewItem}

@@ -4242,7 +4242,10 @@ describe('workbook agent pane', () => {
     })
 
     const approveButton = host.querySelector("[data-testid='workbook-agent-review-item-approve']")
+    const clearButton = host.querySelector("[data-testid='workbook-agent-dismiss-review-item']")
     expect(approveButton instanceof HTMLButtonElement).toBe(true)
+    expect(clearButton instanceof HTMLButtonElement).toBe(true)
+    expect(clearButton instanceof HTMLButtonElement ? clearButton.disabled : false).toBe(true)
     expect(host.textContent).toContain('Owner review is in progress with Alex.')
 
     await act(async () => {

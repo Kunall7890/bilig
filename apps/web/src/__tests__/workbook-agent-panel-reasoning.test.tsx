@@ -44,6 +44,7 @@ function renderPanel(entry: {
             activeContextLabel="Sheet1!A1"
             canFinalizeSharedBundle={false}
             canRecommendSharedBundle={false}
+            canDismissReviewItem={true}
             cancellingWorkflowRunId={null}
             currentUserSharedRecommendation={null}
             draft=""

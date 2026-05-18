@@ -80,6 +80,22 @@ export function createWorkbookAgentDismissReviewEntry(input: { readonly reviewIt
   )
 }
 
+export function assertWorkbookAgentReviewDismissAllowed(input: {
+  readonly sessionState: WorkbookAgentThreadState
+  readonly reviewItem: WorkbookAgentReviewQueueItem
+  readonly actorUserId: string
+}): void {
+  if (input.reviewItem.reviewMode !== 'ownerReview' || input.sessionState.storageActorUserId === input.actorUserId) {
+    return
+  }
+  throw createWorkbookAgentServiceError({
+    code: 'WORKBOOK_AGENT_SHARED_APPROVAL_REQUIRED',
+    message: 'Only the shared thread owner can clear a pending owner-review item.',
+    statusCode: 409,
+    retryable: false,
+  })
+}
+
 export function transitionWorkbookAgentSharedReview(input: {
   readonly sessionState: WorkbookAgentThreadState
   readonly reviewItem: WorkbookAgentReviewQueueItem
