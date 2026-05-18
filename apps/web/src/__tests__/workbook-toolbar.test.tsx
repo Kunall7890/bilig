@@ -626,6 +626,22 @@ describe('WorkbookToolbar', () => {
 
     expect(
       deriveWorkbookStatusPresentation({
+        connectionStateName: 'closed',
+        runtimeReady: true,
+        localPersistenceMode: 'ephemeral',
+        pendingMutationSummary: { activeCount: 2, failedCount: 0 },
+        remoteSyncAvailable: false,
+        zeroConfigured: false,
+        zeroHealthReady: false,
+        writesAllowed: true,
+      }),
+    ).toMatchObject({
+      syncLabel: 'Local saved',
+      tone: 'warning',
+    })
+
+    expect(
+      deriveWorkbookStatusPresentation({
         connectionStateName: 'disconnected',
         runtimeReady: true,
         localPersistenceMode: 'ephemeral',
