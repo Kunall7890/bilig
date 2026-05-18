@@ -338,6 +338,27 @@ async function waitForWorkflowStatus(
   })
 }
 
+async function startWorkbookAgentTestTurn(
+  service: WorkbookAgentService,
+  input: {
+    readonly threadId: string
+    readonly userId?: string
+    readonly prompt?: string
+  },
+): Promise<void> {
+  await service.startTurn({
+    documentId: 'doc-1',
+    threadId: input.threadId,
+    session: {
+      userID: input.userId ?? 'alex@example.com',
+      roles: ['editor'],
+    },
+    body: {
+      prompt: input.prompt ?? 'Run workbook tool',
+    },
+  })
+}
+
 describe('workbook agent service', () => {
   it('boots the Codex app-server transport with local workbook skills', async () => {
     const fakeCodex = new FakeCodexTransport()
@@ -1376,6 +1397,9 @@ describe('workbook agent service', () => {
 
       expect(snapshot.scope).toBe('shared')
       expect(snapshot.executionPolicy).toBe('autoApplySafe')
+      await startWorkbookAgentTestTurn(service, {
+        threadId: snapshot.threadId,
+      })
 
       await capturedOptions.current?.handleDynamicToolCall({
         threadId: 'thr-shared',
@@ -3133,13 +3157,16 @@ describe('workbook agent service', () => {
     )
 
     try {
-      await service.createSession({
+      const created = await service.createSession({
         documentId: 'doc-1',
         session: {
           userID: 'alex@example.com',
           roles: ['editor'],
         },
         body: {},
+      })
+      await startWorkbookAgentTestTurn(service, {
+        threadId: created.threadId,
       })
 
       const result = await capturedOptions.current?.handleDynamicToolCall({
@@ -3234,13 +3261,16 @@ describe('workbook agent service', () => {
     )
 
     try {
-      await service.createSession({
+      const created = await service.createSession({
         documentId: 'doc-1',
         session: {
           userID: 'alex@example.com',
           roles: ['editor'],
         },
         body: {},
+      })
+      await startWorkbookAgentTestTurn(service, {
+        threadId: created.threadId,
       })
 
       const result = await capturedOptions.current?.handleDynamicToolCall({
@@ -4582,6 +4612,62 @@ describe('workbook agent service', () => {
     }
   })
 
+  it('rejects dynamic tool calls when no turn currently owns the live session', async () => {
+    const fakeCodex = new FakeCodexTransport()
+    const capturedOptions: { current: CodexAppServerClientOptions | null } = { current: null }
+    const applyAgentCommandBundle = vi.fn(async () => ({
+      revision: 7,
+      preview: createPreviewSummary(),
+    }))
+    const service = createWorkbookAgentService(
+      createZeroSyncStub({
+        applyAgentCommandBundle,
+      }),
+      {
+        codexClientFactory: (options: CodexAppServerClientOptions): CodexAppServerTransport => {
+          capturedOptions.current = options
+          return fakeCodex
+        },
+      },
+    )
+
+    try {
+      const snapshot = await service.createSession({
+        documentId: 'doc-1',
+        session: {
+          userID: 'alex@example.com',
+          roles: ['editor'],
+        },
+        body: {},
+      })
+      const handler = capturedOptions.current?.handleDynamicToolCall
+      if (!handler) {
+        throw new Error('Expected dynamic tool handler to be captured')
+      }
+
+      await expect(
+        handler({
+          threadId: snapshot.threadId,
+          turnId: 'turn-1',
+          callId: 'call-idle-tool',
+          tool: 'bilig_write_range',
+          arguments: {
+            sheetName: 'Sheet1',
+            startAddress: 'B2',
+            values: [[42]],
+          },
+        }),
+      ).rejects.toMatchObject({
+        code: 'WORKBOOK_AGENT_STALE_TOOL_CALL',
+        statusCode: 409,
+        retryable: false,
+      })
+      expect(applyAgentCommandBundle).not.toHaveBeenCalled()
+    } finally {
+      await service.close()
+    }
+  })
+
   it('rejects stale dynamic tool calls for turns that no longer own the live session', async () => {
     const fakeCodex = new FakeCodexTransport()
     const capturedOptions: { current: CodexAppServerClientOptions | null } = { current: null }
@@ -4761,7 +4847,7 @@ describe('workbook agent service', () => {
     )
 
     try {
-      await service.createSession({
+      const snapshot = await service.createSession({
         documentId: 'doc-1',
         session: {
           userID: 'alex@example.com',
@@ -4784,6 +4870,9 @@ describe('workbook agent service', () => {
             },
           },
         },
+      })
+      await startWorkbookAgentTestTurn(service, {
+        threadId: snapshot.threadId,
       })
 
       await capturedOptions.current?.handleDynamicToolCall({
@@ -4909,7 +4998,7 @@ describe('workbook agent service', () => {
     )
 
     try {
-      await service.createSession({
+      const snapshot = await service.createSession({
         documentId: 'doc-1',
         session: {
           userID: 'alex@example.com',
@@ -4932,6 +5021,9 @@ describe('workbook agent service', () => {
             },
           },
         },
+      })
+      await startWorkbookAgentTestTurn(service, {
+        threadId: snapshot.threadId,
       })
 
       await capturedOptions.current?.handleDynamicToolCall({
@@ -5050,7 +5142,7 @@ describe('workbook agent service', () => {
     )
 
     try {
-      await service.createSession({
+      const snapshot = await service.createSession({
         documentId: 'doc-1',
         session: {
           userID: 'alex@example.com',
@@ -5073,6 +5165,9 @@ describe('workbook agent service', () => {
             },
           },
         },
+      })
+      await startWorkbookAgentTestTurn(service, {
+        threadId: snapshot.threadId,
       })
 
       await capturedOptions.current?.handleDynamicToolCall({

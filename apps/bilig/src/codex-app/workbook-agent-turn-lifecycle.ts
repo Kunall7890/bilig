@@ -101,9 +101,6 @@ export function assertWorkbookAgentToolCallOwnsTurn(sessionState: WorkbookAgentT
   if (activeTurnId === turnId) {
     return
   }
-  if (!activeTurnId && sessionState.live.status === 'idle') {
-    return
-  }
   throw createWorkbookAgentServiceError({
     code: 'WORKBOOK_AGENT_STALE_TOOL_CALL',
     message:
