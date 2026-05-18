@@ -60,6 +60,39 @@ function formatScalarValue(value: unknown): string | null {
   return null
 }
 
+function formatStatusValue(value: unknown): string {
+  return typeof value === 'string' && value.length > 0 ? humanizeKey(value) : 'Unknown'
+}
+
+function firstStringItem(value: unknown): string | null {
+  return Array.isArray(value) ? (value.find((item): item is string => typeof item === 'string' && item.trim().length > 0) ?? null) : null
+}
+
+function mutationReceiptRecord(parsed: Record<string, unknown>): Record<string, unknown> | null {
+  const receipt = parsed['mutationReceipt']
+  return isRecord(receipt) ? receipt : null
+}
+
+function mutationReceiptStatus(parsed: Record<string, unknown>): string | null {
+  const receipt = mutationReceiptRecord(parsed)
+  const status = typeof receipt?.['status'] === 'string' ? receipt['status'] : parsed['status']
+  return typeof status === 'string' ? status : null
+}
+
+function mutationReceiptWarning(parsed: Record<string, unknown>): string | null {
+  const receipt = mutationReceiptRecord(parsed)
+  return firstStringItem(receipt?.['warnings']) ?? firstStringItem(parsed['warnings'])
+}
+
+function summarizeMutationReceipt(parsed: Record<string, unknown>): string | null {
+  const status = mutationReceiptStatus(parsed)
+  if (status !== 'verification_incomplete') {
+    return null
+  }
+  const warning = mutationReceiptWarning(parsed)
+  return warning ? `Verification incomplete: ${warning}` : 'Verification incomplete'
+}
+
 function renderReasonLabel(reason: string): string {
   switch (reason) {
     case 'sheet':
@@ -130,6 +163,10 @@ export function summarizeToolEntry(entry: WorkbookAgentTimelineEntry): string | 
   }
   const parsed = safeParseToolOutput(entry.outputText)
   if (isRecord(parsed)) {
+    const mutationSummary = summarizeMutationReceipt(parsed)
+    if (mutationSummary) {
+      return summarizePlainText(mutationSummary, 96)
+    }
     if (typeof parsed['summary'] === 'string') {
       return summarizePlainText(parsed['summary'], 96)
     }
@@ -389,9 +426,113 @@ function renderGetContextOutput(parsed: Record<string, unknown>) {
   )
 }
 
+function proofMatchedLabel(proof: Record<string, unknown> | null): string {
+  if (!proof) {
+    return 'Missing'
+  }
+  if (proof['requested'] === false) {
+    return 'Not requested'
+  }
+  if (proof['matched'] === true) {
+    return 'Matched'
+  }
+  if (proof['matched'] === false) {
+    return 'Mismatch'
+  }
+  return 'Incomplete'
+}
+
+function undoProofLabel(undo: Record<string, unknown> | null): string {
+  if (!undo) {
+    return 'Missing'
+  }
+  if (undo['available'] === true) {
+    return 'Available'
+  }
+  return undo['lookupFailed'] === true ? 'Lookup failed' : 'Unavailable'
+}
+
+function renderMutationReceiptOutput(parsed: Record<string, unknown>) {
+  const receipt = mutationReceiptRecord(parsed)
+  if (!receipt) {
+    return null
+  }
+  const status = mutationReceiptStatus(parsed)
+  const revision = isRecord(receipt['revision']) ? receipt['revision'] : null
+  const authoritativeReadback = isRecord(receipt['authoritativeReadback']) ? receipt['authoritativeReadback'] : null
+  const renderedReadback = isRecord(receipt['renderedReadback']) ? receipt['renderedReadback'] : null
+  const undo = isRecord(receipt['undo']) ? receipt['undo'] : null
+  const warnings = Array.isArray(receipt['warnings'])
+    ? receipt['warnings'].flatMap((warning) => (typeof warning === 'string' && warning.trim().length > 0 ? [warning] : []))
+    : []
+  const facts = [
+    {
+      label: 'Status',
+      value: formatStatusValue(status),
+    },
+    {
+      label: 'Revision',
+      value:
+        typeof revision?.['after'] === 'number'
+          ? `r${String(revision['after'])}`
+          : typeof parsed['revision'] === 'number'
+            ? `r${String(parsed['revision'])}`
+            : 'Unknown',
+    },
+    {
+      label: 'Authoritative proof',
+      value: proofMatchedLabel(authoritativeReadback),
+    },
+    {
+      label: 'Rendered proof',
+      value: proofMatchedLabel(renderedReadback),
+    },
+    {
+      label: 'Undo proof',
+      value: undoProofLabel(undo),
+    },
+  ]
+  const proofReason =
+    [
+      typeof renderedReadback?.['incompleteReason'] === 'string' ? renderedReadback['incompleteReason'] : null,
+      typeof undo?.['reasonUnavailable'] === 'string' ? undo['reasonUnavailable'] : null,
+    ].find((reason): reason is string => reason !== null) ?? null
+
+  return (
+    <div className={cn(workbookInsetClass(), 'mt-2 px-3 py-3')}>
+      <ToolKeyValueCard
+        facts={facts}
+        pills={warnings.length > 0 ? ['Needs verification'] : []}
+        subtitle={proofReason}
+        title={status === 'verification_incomplete' ? 'Verification incomplete' : 'Mutation receipt'}
+      />
+      {warnings.length > 0 ? (
+        <div className="mt-2 flex flex-col gap-1">
+          {warnings.map((warning) => (
+            <div
+              key={warning}
+              className={cn(
+                agentPanelMetaTextClass(),
+                'rounded-[var(--wb-radius-control)] border border-[#ead0d0] bg-[#fff8f8] px-2 py-1.5',
+              )}
+            >
+              {warning}
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 function renderToolSpecificOutput(normalizedToolName: string | null, parsed: unknown) {
   if (!normalizedToolName || !isRecord(parsed)) {
     return null
+  }
+
+  const mutationReceiptOutput = renderMutationReceiptOutput(parsed)
+  if (mutationReceiptOutput) {
+    return mutationReceiptOutput
   }
 
   if (normalizedToolName === WORKBOOK_AGENT_TOOL_NAMES.listTables && Array.isArray(parsed['tables'])) {

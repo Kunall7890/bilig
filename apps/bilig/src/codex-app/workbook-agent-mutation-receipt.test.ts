@@ -646,6 +646,78 @@ describe('workbook agent mutation receipt helpers', () => {
     expect(payload.mutationReceipt.warnings).toContain('Undo metadata lookup failed for applied revision r2: history store unavailable')
   })
 
+  it('does not summarize verification-incomplete execution records as fully applied', async () => {
+    const engine = await createEngine()
+    const appliedValue = 'Needs visible proof'
+    const command: WorkbookAgentCommand = {
+      kind: 'writeRange',
+      sheetName: 'Sheet1',
+      startAddress: 'B2',
+      values: [[appliedValue]],
+    }
+    const bundle = createBundle(command, 'bundle-incomplete-summary')
+    const undoBundle = applyWorkbookAgentCommandBundleWithUndoCapture(engine, bundle)
+    const { zeroSyncService } = createZeroSyncHarness(engine, {
+      headRevision: 2,
+      calculatedRevision: 2,
+      changes: [
+        {
+          revision: 2,
+          actorUserId: 'alex@example.com',
+          clientMutationId: null,
+          eventKind: 'applyAgentCommandBundle',
+          summary: 'Write cells in Sheet1!B2',
+          sheetId: null,
+          sheetName: 'Sheet1',
+          anchorAddress: 'B2',
+          range: {
+            sheetName: 'Sheet1',
+            startAddress: 'B2',
+            endAddress: 'B2',
+          },
+          rangeInvalid: false,
+          undoBundle,
+          revertedByRevision: null,
+          revertsRevision: null,
+          createdAtUnixMs: 2,
+        },
+      ],
+    })
+
+    const result = await stageWorkbookAgentCommandResult(
+      {
+        documentId: 'doc-1',
+        session: { userID: 'alex@example.com', roles: ['editor'] },
+        uiContext: null,
+        zeroSyncService,
+        stageCommand: async () => ({
+          bundle,
+          executionRecord: createExecutionRecord({
+            bundle,
+            appliedRevision: 2,
+            afterInput: appliedValue,
+          }),
+        }),
+      },
+      command,
+      'writeRange',
+    )
+
+    const payload = z
+      .object({
+        status: z.literal('verification_incomplete'),
+        summary: z.string(),
+        mutationReceipt: z.object({
+          status: z.literal('verification_incomplete'),
+          warnings: z.array(z.string()),
+        }),
+      })
+      .parse(parsePayload(result))
+    expect(payload.summary).toContain('Verification incomplete')
+    expect(payload.summary).toContain('No browser-rendered context')
+    expect(payload.summary).not.toContain('Applied workbook change set')
+  })
+
   it('reports applied for format mutations when authoritative and rendered proof agree', async () => {
     const engine = await createEngine()
     const command: WorkbookAgentCommand = {

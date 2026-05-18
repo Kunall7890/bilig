@@ -570,6 +570,18 @@ function asReadonlyRows(rows: readonly unknown[]): readonly (readonly unknown[])
   return rows.filter((row): row is unknown[] => Array.isArray(row))
 }
 
+function buildAppliedMutationSummary(input: {
+  readonly mutationReceipt: WorkbookToolMutationReceipt
+  readonly appliedRevision: number
+  readonly executionSummary: string
+}): string {
+  if (input.mutationReceipt.status === 'applied') {
+    return `Applied workbook change set at revision r${String(input.appliedRevision)}: ${input.executionSummary}`
+  }
+  const primaryWarning = input.mutationReceipt.warnings[0] ?? 'Mutation proof is incomplete.'
+  return `Verification incomplete for workbook change set at revision r${String(input.appliedRevision)}: ${primaryWarning}`
+}
+
 async function buildRenderedReadback(input: {
   readonly context: WorkbookAgentToolStageContext
   readonly appliedRevision: number | null
@@ -753,7 +765,11 @@ export async function stageWorkbookAgentCommandResult(
         queuedForTurnApply: false,
         status: mutationReceipt.status,
         bundleId: bundle.id,
-        summary: `Applied workbook change set at revision r${String(normalized.executionRecord.appliedRevision)}: ${normalized.executionRecord.summary}`,
+        summary: buildAppliedMutationSummary({
+          mutationReceipt,
+          appliedRevision: normalized.executionRecord.appliedRevision,
+          executionSummary: normalized.executionRecord.summary,
+        }),
         revision: normalized.executionRecord.appliedRevision,
         scope: normalized.executionRecord.scope,
         riskClass: normalized.executionRecord.riskClass,
