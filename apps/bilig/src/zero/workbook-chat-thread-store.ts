@@ -117,6 +117,11 @@ function isVisibleThreadForActor(thread: NormalizedWorkbookChatThreadModel, acto
 
 function compareThreadVisibilityPreference(actorUserId: string) {
   return (left: NormalizedWorkbookChatThreadModel, right: NormalizedWorkbookChatThreadModel): number => {
+    const leftScopeRank = left.scope === 'shared' ? 0 : 1
+    const rightScopeRank = right.scope === 'shared' ? 0 : 1
+    if (leftScopeRank !== rightScopeRank) {
+      return leftScopeRank - rightScopeRank
+    }
     const leftActorRank = left.actorUserId === actorUserId ? 0 : 1
     const rightActorRank = right.actorUserId === actorUserId ? 0 : 1
     if (leftActorRank !== rightActorRank) {
@@ -604,11 +609,14 @@ export async function loadWorkbookAgentThreadState(
     threadId: thread.threadId,
     actorUserId: input.actorUserId,
   }
-  const [itemRows, toolCallRows, reviewQueueRows] = await Promise.all([
+  const [visibleItemRows, visibleToolCallRows, visibleReviewQueueRows] = await Promise.all([
     db.listWorkbookChatItemRows(childRowInput),
     db.listWorkbookChatToolCallRows(childRowInput),
     db.listWorkbookReviewQueueItemRows(childRowInput),
   ])
+  const itemRows = visibleItemRows.filter((row) => row['actorUserId'] === thread.actorUserId)
+  const toolCallRows = visibleToolCallRows.filter((row) => row['actorUserId'] === thread.actorUserId)
+  const reviewQueueRows = visibleReviewQueueRows.filter((row) => row['actorUserId'] === thread.actorUserId)
   const toolCallsByEntryId = new Map(
     toolCallRows.flatMap((row) => {
       const normalized = normalizeToolCallRow(toChatToolCallRow(row))

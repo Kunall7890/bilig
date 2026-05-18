@@ -213,7 +213,7 @@ const workbookWorkflowRunByThread = defineUserQuery(workbookThreadArgsSchema, ({
     .where((expression) =>
       expression.or(
         expression.cmp('startedByUserId', ctx.userID),
-        expression.exists('ownerChatThreads', (threadQuery) => threadQuery.where('scope', 'shared')),
+        expression.exists('chatThreads', (threadQuery) => threadQuery.where('scope', 'shared')),
       ),
     )
     .orderBy('updatedAtUnixMs', 'desc'),
@@ -226,7 +226,7 @@ const visibleWorkbookWorkflowRunByThread = defineUserQuery(workbookThreadArgsSch
     .where((expression) =>
       expression.or(
         expression.cmp('startedByUserId', ctx.userID),
-        expression.exists('ownerChatThreads', (threadQuery) => threadQuery.where('scope', 'shared')),
+        expression.exists('chatThreads', (threadQuery) => threadQuery.where('scope', 'shared')),
       ),
     )
     .orderBy('updatedAtUnixMs', 'desc'),
@@ -240,7 +240,7 @@ const workbookWorkflowStepByThread = defineUserQuery(workbookThreadArgsSchema, (
         runQuery.where('threadId', args.threadId).where((runExpression) =>
           runExpression.or(
             runExpression.cmp('startedByUserId', ctx.userID),
-            runExpression.exists('ownerChatThreads', (threadQuery) => threadQuery.where('scope', 'shared')),
+            runExpression.exists('chatThreads', (threadQuery) => threadQuery.where('scope', 'shared')),
           ),
         ),
       ),
@@ -257,7 +257,7 @@ const workbookWorkflowArtifactByThread = defineUserQuery(workbookThreadArgsSchem
         runQuery.where('threadId', args.threadId).where((runExpression) =>
           runExpression.or(
             runExpression.cmp('startedByUserId', ctx.userID),
-            runExpression.exists('ownerChatThreads', (threadQuery) => threadQuery.where('scope', 'shared')),
+            runExpression.exists('chatThreads', (threadQuery) => threadQuery.where('scope', 'shared')),
           ),
         ),
       ),
@@ -276,7 +276,7 @@ const workbookAgentRunByThread = defineUserQuery(workbookThreadArgsSchema, ({ ar
     .where((expression) =>
       expression.or(
         expression.cmp('actorUserId', ctx.userID),
-        expression.exists('ownerChatThreads', (threadQuery) => threadQuery.where('scope', 'shared')),
+        expression.exists('chatThreads', (threadQuery) => threadQuery.where('scope', 'shared')),
       ),
     )
     .orderBy('appliedAtUnixMs', 'desc'),
@@ -289,7 +289,7 @@ const visibleWorkbookAgentRunByThread = defineUserQuery(workbookThreadArgsSchema
     .where((expression) =>
       expression.or(
         expression.cmp('actorUserId', ctx.userID),
-        expression.exists('ownerChatThreads', (threadQuery) => threadQuery.where('scope', 'shared')),
+        expression.exists('chatThreads', (threadQuery) => threadQuery.where('scope', 'shared')),
       ),
     )
     .orderBy('appliedAtUnixMs', 'desc'),

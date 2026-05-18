@@ -585,6 +585,46 @@ describe('workbook-chat-thread-store', () => {
     expect(queryable.calls.some((call) => call.text.includes('FROM workbook_chat_item'))).toBe(false)
   })
 
+  it('hydrates the canonical shared thread when a private row shadows the same thread id', async () => {
+    const sharedState = {
+      ...createThreadState(),
+      threadId: 'thr-collision',
+      actorUserId: 'alex@example.com',
+      scope: 'shared' as const,
+      executionPolicy: 'ownerReview' as const,
+      updatedAtUnixMs: 100,
+    }
+    const privateShadowState = {
+      ...createThreadState(),
+      threadId: 'thr-collision',
+      actorUserId: 'casey@example.com',
+      scope: 'private' as const,
+      executionPolicy: 'autoApplyAll' as const,
+      entries: [
+        {
+          ...createThreadState().entries[0],
+          id: 'casey-private-entry',
+          text: 'casey private shadow',
+        },
+      ],
+      reviewQueueItems: [],
+      updatedAtUnixMs: 900,
+    }
+    const queryable = new FakeQueryable([], [createZeroThreadRow(privateShadowState), createZeroThreadRow(sharedState)], {
+      itemRows: [...createZeroChatItemRows(privateShadowState), ...createZeroChatItemRows(sharedState)],
+      toolCallRows: [...createZeroChatToolCallRows(privateShadowState), ...createZeroChatToolCallRows(sharedState)],
+      reviewQueueRows: [...createZeroReviewQueueRows(privateShadowState), ...createZeroReviewQueueRows(sharedState)],
+    })
+
+    const loaded = await loadWorkbookAgentThreadState(queryable, {
+      documentId: 'doc-1',
+      threadId: 'thr-collision',
+      actorUserId: 'casey@example.com',
+    })
+
+    expect(loaded).toEqual(sharedState)
+  })
+
   it('hydrates tool call state from dedicated durable tool call rows', async () => {
     const state = createThreadState()
     const toolEntry = state.entries.find((entry) => entry.id === 'tool-call-1')
@@ -728,5 +768,51 @@ describe('workbook-chat-thread-store', () => {
       },
     ])
     expect(queryable.zeroThreadInputs).toEqual([{ documentId: 'doc-1', actorUserId: 'casey@example.com' }])
+  })
+
+  it('lists the canonical shared summary instead of a private shadow with the same thread id', async () => {
+    const queryable = new FakeQueryable(
+      [],
+      [
+        {
+          workbookId: 'doc-1',
+          threadId: 'thr-collision',
+          ownerUserId: 'casey@example.com',
+          scope: 'private',
+          updatedAtUnixMs: 900,
+          entryCount: 1,
+          reviewQueueItemCount: 0,
+          latestEntryText: 'casey private shadow',
+        },
+        {
+          workbookId: 'doc-1',
+          threadId: 'thr-collision',
+          ownerUserId: 'alex@example.com',
+          scope: 'shared',
+          executionPolicy: 'ownerReview',
+          updatedAtUnixMs: 100,
+          entryCount: 3,
+          reviewQueueItemCount: 1,
+          latestEntryText: 'Review item queued',
+        },
+      ],
+    )
+
+    const summaries = await listWorkbookAgentThreadSummaries(queryable, {
+      documentId: 'doc-1',
+      actorUserId: 'casey@example.com',
+    })
+
+    expect(summaries).toEqual([
+      {
+        threadId: 'thr-collision',
+        scope: 'shared',
+        ownerUserId: 'alex@example.com',
+        updatedAtUnixMs: 100,
+        entryCount: 3,
+        reviewQueueItemCount: 1,
+        latestEntryText: 'Review item queued',
+      },
+    ])
   })
 })

@@ -296,6 +296,11 @@ const workbookWorkflowArtifact = table('workbook_workflow_artifact')
   .primaryKey('runId')
 
 const workbookAgentRunRelationships = relationships(workbookAgentRun, ({ many }) => ({
+  chatThreads: many({
+    sourceField: ['workbookId', 'threadId'],
+    destField: ['workbookId', 'threadId'],
+    destSchema: workbookChatThread,
+  }),
   ownerChatThreads: many({
     sourceField: ['workbookId', 'threadId', 'actorUserId'],
     destField: ['workbookId', 'threadId', 'ownerUserId'],
