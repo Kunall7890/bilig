@@ -9,6 +9,13 @@ tags:
   - xlsx
   - mcp
   - typescript
+allowed-tools:
+  - Bash
+  - Read
+  - Write
+  - Edit
+  - Grep
+argument-hint: "[workbook file or formula task]"
 ---
 
 # Bilig WorkPaper Agent Skill
