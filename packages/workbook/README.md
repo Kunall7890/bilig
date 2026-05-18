@@ -63,6 +63,8 @@ the consumer-defined `refs` object. Use `collectWorkbookRefs` directly when an
 agent needs to inspect refs from any nested consumer shape.
 Use `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` directly
 when an agent or test needs the same generic refs outside a model callback.
+`findRows` refs include the predicate value in their stable id and label so two
+consumer-defined row selectors do not collapse during dedupe.
 Use `check.exists(ref)` and `check.noFormulaErrors(ref)` directly when an agent
 or test needs the same generic planned checks outside a model callback.
 

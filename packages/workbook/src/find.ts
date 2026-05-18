@@ -147,6 +147,19 @@ function cleanIdPart(value: string): string {
   return cleaned === '' ? 'ref' : cleaned
 }
 
+function literalIdPart(value: LiteralInput): string {
+  const source = JSON.stringify(value) ?? 'null'
+  let encoded = ''
+  for (const char of source) {
+    encoded += /[A-Za-z0-9]/.test(char) ? char : `_${char.charCodeAt(0).toString(16)}`
+  }
+  return cleanIdPart(`${typeof value}_${encoded}`)
+}
+
+function literalLabel(value: LiteralInput): string {
+  return JSON.stringify(value)
+}
+
 function rangeLabel(range: CellRangeRef): string {
   return range.startAddress === range.endAddress
     ? `${range.sheetName}!${range.startAddress}`
@@ -221,8 +234,8 @@ export function createWorkbookRowsRef(options: FindRowsOptions): WorkbookRowsRef
   const owner = options.table?.id ?? options.sheetName ?? 'rows'
   return {
     kind: 'rows',
-    id: cleanIdPart(`${owner}_${options.where.column}_${options.where.op}`),
-    label: `${owner} rows where ${options.where.column} ${options.where.op}`,
+    id: cleanIdPart(`${owner}_${options.where.column}_${options.where.op}_${literalIdPart(options.where.value)}`),
+    label: `${owner} rows where ${options.where.column} ${options.where.op} ${literalLabel(options.where.value)}`,
     ...(options.sheetName !== undefined ? { sheetName: options.sheetName } : {}),
     ...(options.table !== undefined ? { table: options.table } : {}),
     where: options.where,

@@ -86,6 +86,9 @@ inside the consumer-defined `refs` object. This keeps custom models generic
 while still letting agents inspect what the model resolved.
 The same generic refs are available outside model callbacks through top-level
 `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` helpers.
+`findRows` refs include their predicate value in the stable id and label, so
+distinct consumer-defined row predicates remain distinct during agent
+inspection and dedupe.
 The same planned checks are available outside model callbacks through top-level
 `check.exists(ref)` and `check.noFormulaErrors(ref)` helpers.
 

@@ -145,8 +145,8 @@ describe('@bilig/workbook model api', () => {
     })
     expect(rows).toEqual({
       kind: 'rows',
-      id: 'table_Model_Inputs_Amount_Rate_Status_eq',
-      label: 'table_Model_Inputs_Amount_Rate rows where Status eq',
+      id: 'table_Model_Inputs_Amount_Rate_Status_eq_string__22Active_22',
+      label: 'table_Model_Inputs_Amount_Rate rows where Status eq "Active"',
       table,
       where: {
         column: 'Status',
@@ -154,6 +154,32 @@ describe('@bilig/workbook model api', () => {
         value: 'Active',
       },
     })
+  })
+
+  it('keeps row selector refs distinct by predicate value', () => {
+    const table = findTable({ name: 'Inputs' })
+    const activeRows = findRows({
+      table,
+      where: {
+        column: 'Status',
+        op: 'eq',
+        value: 'Active',
+      },
+    })
+    const inactiveRows = findRows({
+      table,
+      where: {
+        column: 'Status',
+        op: 'eq',
+        value: 'Inactive',
+      },
+    })
+
+    expect(activeRows.id).toBe('table_Inputs_Status_eq_string__22Active_22')
+    expect(inactiveRows.id).toBe('table_Inputs_Status_eq_string__22Inactive_22')
+    expect(activeRows.label).toBe('table_Inputs rows where Status eq "Active"')
+    expect(inactiveRows.label).toBe('table_Inputs rows where Status eq "Inactive"')
+    expect(collectWorkbookRefs({ activeRows, inactiveRows })).toEqual([activeRows, inactiveRows])
   })
 
   it('exports simple top-level check helpers for generic refs', () => {
