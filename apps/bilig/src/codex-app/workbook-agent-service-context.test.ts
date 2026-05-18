@@ -205,6 +205,39 @@ describe('workbook agent service context helpers', () => {
     expect(sessionState.live.turnContextByTurn.get('turn-1')).toEqual(nextContext)
   })
 
+  it('does not let collaborators update active turn context when the actor map is missing', () => {
+    const sessionState = createThreadState(null)
+    sessionState.scope = 'shared'
+    sessionState.live.authorizedUserIds.add('casey@example.com')
+    sessionState.live.turnActorUserIdByTurn.delete('turn-1')
+    const ownerContext = createContext({ selection: { sheetName: 'Owner', address: 'B2' } as WorkbookAgentUiContext['selection'] })
+    const collaboratorContext = createContext({
+      selection: { sheetName: 'Collaborator', address: 'C3' } as WorkbookAgentUiContext['selection'],
+    })
+
+    expect(
+      updateWorkbookAgentDurableUiContextFromUser({
+        sessionState,
+        context: collaboratorContext,
+        userId: 'casey@example.com',
+      }),
+    ).toBe(true)
+
+    expect(sessionState.durable.context).toEqual(collaboratorContext)
+    expect(sessionState.live.turnContextByTurn.has('turn-1')).toBe(false)
+
+    expect(
+      updateWorkbookAgentDurableUiContextFromUser({
+        sessionState,
+        context: ownerContext,
+        userId: 'alex@example.com',
+      }),
+    ).toBe(true)
+
+    expect(sessionState.durable.context).toEqual(ownerContext)
+    expect(sessionState.live.turnContextByTurn.get('turn-1')).toEqual(ownerContext)
+  })
+
   it('does not update durable context for rendered proof metadata churn', () => {
     const durableContext = createRenderedContext('stable value')
     const sessionState = createThreadState(durableContext)

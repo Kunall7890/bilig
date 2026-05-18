@@ -75,7 +75,11 @@ import {
   assertWorkbookAgentSharedThreadAccess,
   filterWorkbookAgentThreadSummariesByAccessPolicy,
 } from './workbook-agent-service-access-policy.js'
-import { assertWorkbookAgentTurnQuota } from './workbook-agent-service-session-policy.js'
+import {
+  assertWorkbookAgentTurnQuota,
+  resolveWorkbookAgentActiveTurnActorUserId,
+  resolveWorkbookAgentTurnActorUserId,
+} from './workbook-agent-service-session-policy.js'
 import { WorkbookAgentWorkflowRuntime } from './workbook-agent-workflow-runtime.js'
 import {
   WorkbookAgentSessionRegistry,
@@ -147,7 +151,7 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
       getSessionByThreadId: (threadId) => this.sessionAuthority.getSessionByThreadId(threadId),
       tryGetSessionByThreadId: (threadId) => this.sessionAuthority.tryGetSessionByThreadId(threadId),
       listSessions: () => this.sessionRegistry.listSessions(),
-      resolveTurnActorUserId: (sessionState, turnId) => this.resolveTurnActorUserId(sessionState, turnId),
+      resolveTurnActorUserId: (sessionState, turnId) => resolveWorkbookAgentTurnActorUserId(sessionState, turnId),
       resolveTurnContext: (sessionState, turnId) => this.resolveTurnContext(sessionState, turnId),
       stageReviewBundle: (sessionState, turnId, bundle) =>
         stageWorkbookAgentReviewBundle({
@@ -263,7 +267,7 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
     await finalizeWorkbookAgentPrivateTurnBundle(
       {
         ...this.createBundleApplicationContext(),
-        resolveTurnActorUserId: (sessionState, turnId) => this.resolveTurnActorUserId(sessionState, turnId),
+        resolveTurnActorUserId: (sessionState, turnId) => resolveWorkbookAgentTurnActorUserId(sessionState, turnId),
       },
       input,
     )
@@ -660,7 +664,7 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
         retryable: false,
       })
     }
-    const turnActorUserId = this.resolveTurnActorUserId(sessionState, activeTurnId)
+    const turnActorUserId = resolveWorkbookAgentActiveTurnActorUserId(sessionState)
     if (
       !canInterruptWorkbookAgentTurn({
         scope: sessionState.scope,
@@ -810,10 +814,6 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
     await this.workflowRuntime.close()
     await this.codexRuntime.close()
     this.sessionRegistry.clear()
-  }
-
-  private resolveTurnActorUserId(sessionState: WorkbookAgentThreadState, turnId: string): string {
-    return sessionState.live.turnActorUserIdByTurn.get(turnId) ?? sessionState.userId
   }
 
   private resolveTurnContext(sessionState: WorkbookAgentThreadState, turnId: string) {

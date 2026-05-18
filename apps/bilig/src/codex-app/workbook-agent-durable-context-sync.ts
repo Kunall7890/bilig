@@ -1,6 +1,7 @@
 import type { WorkbookAgentUiContext } from '@bilig/contracts'
 import { areWorkbookAgentUiContextsSemanticallyEqual } from './workbook-agent-ui-context-semantic-key.js'
 import { cloneUiContext, type WorkbookAgentThreadState } from './workbook-agent-service-shared.js'
+import { canUpdateWorkbookAgentActiveTurnContext } from './workbook-agent-service-session-policy.js'
 
 export function updateWorkbookAgentDurableUiContextFromUser(input: {
   readonly sessionState: WorkbookAgentThreadState
@@ -10,10 +11,12 @@ export function updateWorkbookAgentDurableUiContextFromUser(input: {
   const nextContext = cloneUiContext(input.context)
   const durableContextChanged = !areWorkbookAgentUiContextsSemanticallyEqual(input.sessionState.durable.context, nextContext)
   const activeTurnId = input.sessionState.live.activeTurnId
-  const activeTurnActorUserId = activeTurnId ? input.sessionState.live.turnActorUserIdByTurn.get(activeTurnId) : undefined
-  const canUpdateActiveTurnContext =
-    activeTurnId !== null && activeTurnId !== undefined && (activeTurnActorUserId === undefined || activeTurnActorUserId === input.userId)
-  const currentTurnContext = canUpdateActiveTurnContext ? (input.sessionState.live.turnContextByTurn.get(activeTurnId) ?? null) : null
+  const canUpdateActiveTurnContext = canUpdateWorkbookAgentActiveTurnContext({
+    sessionState: input.sessionState,
+    userId: input.userId,
+  })
+  const currentTurnContext =
+    activeTurnId !== null && canUpdateActiveTurnContext ? (input.sessionState.live.turnContextByTurn.get(activeTurnId) ?? null) : null
   const turnContextChanged = canUpdateActiveTurnContext && !areWorkbookAgentUiContextsSemanticallyEqual(currentTurnContext, nextContext)
   if (!durableContextChanged && !turnContextChanged) {
     return false
@@ -21,7 +24,7 @@ export function updateWorkbookAgentDurableUiContextFromUser(input: {
   if (durableContextChanged) {
     input.sessionState.durable.context = nextContext
   }
-  if (turnContextChanged) {
+  if (activeTurnId !== null && turnContextChanged) {
     input.sessionState.live.turnContextByTurn.set(activeTurnId, cloneUiContext(input.context))
   }
   return true

@@ -12,6 +12,8 @@ import type {
   WorkbookAgentUiContext,
   WorkbookAgentWorkflowRun,
 } from '@bilig/contracts'
+import { resolveWorkbookAgentActiveTurnActorUserId } from './workbook-agent-service-session-policy.js'
+
 export interface WorkbookAgentThreadDurableState {
   context: WorkbookAgentUiContext | null
   entries: WorkbookAgentTimelineEntry[]
@@ -118,9 +120,7 @@ export function buildSnapshot(sessionState: WorkbookAgentThreadState): WorkbookA
     executionPolicy: sessionState.executionPolicy,
     status: sessionState.live.status,
     activeTurnId: sessionState.live.activeTurnId,
-    activeTurnActorUserId: sessionState.live.activeTurnId
-      ? (sessionState.live.turnActorUserIdByTurn.get(sessionState.live.activeTurnId) ?? sessionState.userId)
-      : null,
+    activeTurnActorUserId: resolveWorkbookAgentActiveTurnActorUserId(sessionState),
     lastError: sessionState.live.lastError,
     context: sessionState.durable.context ? structuredClone(sessionState.durable.context) : null,
     entries: sessionState.durable.entries.map((entry) => ({ ...entry })),

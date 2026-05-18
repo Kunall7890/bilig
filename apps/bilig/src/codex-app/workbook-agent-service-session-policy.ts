@@ -6,7 +6,18 @@ export function resolveWorkbookAgentActiveTurnActorUserId(sessionState: Workbook
   if (!activeTurnId) {
     return null
   }
-  return sessionState.live.turnActorUserIdByTurn.get(activeTurnId) ?? sessionState.userId
+  return resolveWorkbookAgentTurnActorUserId(sessionState, activeTurnId)
+}
+
+export function resolveWorkbookAgentTurnActorUserId(sessionState: WorkbookAgentThreadState, turnId: string): string {
+  return sessionState.live.turnActorUserIdByTurn.get(turnId) ?? sessionState.userId
+}
+
+export function canUpdateWorkbookAgentActiveTurnContext(input: {
+  readonly sessionState: WorkbookAgentThreadState
+  readonly userId: string
+}): boolean {
+  return resolveWorkbookAgentActiveTurnActorUserId(input.sessionState) === input.userId
 }
 
 export function summarizeWorkbookAgentActiveTurnCounts(

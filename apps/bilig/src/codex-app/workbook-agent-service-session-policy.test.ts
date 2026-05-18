@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { WorkbookAgentThreadState } from './workbook-agent-service-shared.js'
 import {
+  canUpdateWorkbookAgentActiveTurnContext,
   chooseWorkbookAgentEvictionCandidates,
   resolveWorkbookAgentActiveTurnActorUserId,
   summarizeWorkbookAgentActiveTurnCounts,
@@ -62,6 +63,29 @@ describe('workbook agent service session policy', () => {
       ),
     ).toBe('pat@example.com')
     expect(resolveWorkbookAgentActiveTurnActorUserId(createSession({ threadId: 'thr-2' }))).toBeNull()
+  })
+
+  it('falls back missing active turn actor ownership to the session owner', () => {
+    const session = createSession({
+      threadId: 'thr-1',
+      activeTurnId: 'turn-1',
+      turnActorUserId: null,
+      status: 'inProgress',
+    })
+
+    expect(resolveWorkbookAgentActiveTurnActorUserId(session)).toBe('alex@example.com')
+    expect(
+      canUpdateWorkbookAgentActiveTurnContext({
+        sessionState: session,
+        userId: 'alex@example.com',
+      }),
+    ).toBe(true)
+    expect(
+      canUpdateWorkbookAgentActiveTurnContext({
+        sessionState: session,
+        userId: 'casey@example.com',
+      }),
+    ).toBe(false)
   })
 
   it('summarizes active turn counts by user and document', () => {
