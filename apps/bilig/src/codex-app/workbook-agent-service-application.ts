@@ -109,6 +109,22 @@ function replaceAppliedReviewItemIfCurrent(input: {
   replaceCurrentWorkbookAgentReviewItem(input.sessionState, input.nextReviewItem)
 }
 
+function assertManualReviewItemStillCurrent(input: {
+  sessionState: WorkbookAgentThreadState
+  commandBundle: WorkbookAgentCommandBundle
+}): void {
+  const currentReviewItem = getCurrentWorkbookAgentReviewItem(input.sessionState)
+  if (currentReviewItem?.id === input.commandBundle.id) {
+    return
+  }
+  throw createWorkbookAgentServiceError({
+    code: 'WORKBOOK_AGENT_REVIEW_ITEM_NOT_FOUND',
+    message: 'Workbook agent change set was not found.',
+    statusCode: 404,
+    retryable: false,
+  })
+}
+
 export async function applyWorkbookAgentCommandBundleForSessionState(
   context: WorkbookAgentBundleApplicationContext,
   input: {
@@ -204,6 +220,12 @@ export async function applyWorkbookAgentCommandBundleForSessionState(
     documentId: input.sessionState.documentId,
     bundle: selection.acceptedBundle,
   })
+  if (input.appliedBy === 'user') {
+    assertManualReviewItemStillCurrent({
+      sessionState: input.sessionState,
+      commandBundle: input.commandBundle,
+    })
+  }
   const result = await context.zeroSyncService.applyAgentCommandBundle(input.sessionState.documentId, selection.acceptedBundle, preview, {
     userID: input.actorUserId,
     roles: ['editor'],

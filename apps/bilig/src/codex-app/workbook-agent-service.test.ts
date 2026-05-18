@@ -7079,6 +7079,156 @@ describe('workbook agent service', () => {
     }
   })
 
+  it('does not apply a review item dismissed while authoritative preview is building', async () => {
+    const engine = new SpreadsheetEngine({
+      workbookName: 'doc-1',
+      replicaId: 'server:test',
+    })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    let releasePreview!: () => void
+    const previewBlocked = new Promise<void>((resolve) => {
+      releasePreview = resolve
+    })
+    let resolvePreviewStarted!: () => void
+    const previewStarted = new Promise<void>((resolve) => {
+      resolvePreviewStarted = resolve
+    })
+    const inspectWorkbook = async <T>(_documentId: string, task: (runtime: WorkbookRuntime) => T | Promise<T>): Promise<T> => {
+      resolvePreviewStarted()
+      await previewBlocked
+      const runtime: WorkbookRuntime = {
+        documentId: 'doc-1',
+        engine,
+        projection: buildWorkbookSourceProjectionFromEngine('doc-1', engine, {
+          revision: 4,
+          calculatedRevision: 4,
+          ownerUserId: 'alex@example.com',
+          updatedBy: 'alex@example.com',
+          updatedAt: '2026-04-10T00:00:00.000Z',
+        }),
+        headRevision: 4,
+        calculatedRevision: 4,
+        ownerUserId: 'alex@example.com',
+      }
+      return await task(runtime)
+    }
+    const applyAgentCommandBundle = vi.fn(async () => ({
+      revision: 6,
+      preview: createPreviewSummary(),
+    }))
+    const appendWorkbookAgentRun = vi.fn(async () => undefined)
+    const service = createWorkbookAgentService(
+      createZeroSyncStub({
+        applyAgentCommandBundle,
+        appendWorkbookAgentRun,
+        inspectWorkbook,
+        async loadWorkbookAgentThreadState() {
+          return {
+            documentId: 'doc-1',
+            threadId: 'thr-shared',
+            actorUserId: 'alex@example.com',
+            scope: 'shared',
+            executionPolicy: 'ownerReview',
+            context: null,
+            entries: [],
+            reviewQueueItems: [
+              createReviewQueueItem({
+                id: 'bundle-shared-review',
+                documentId: 'doc-1',
+                threadId: 'thr-shared',
+                turnId: 'turn-1',
+                goalText: 'Normalize the workbook',
+                summary: 'Normalize shared workbook structure',
+                scope: 'workbook',
+                riskClass: 'high',
+                baseRevision: 4,
+                createdAtUnixMs: 100,
+                context: null,
+                commands: [
+                  {
+                    kind: 'createSheet',
+                    name: 'Summary',
+                  },
+                ],
+                affectedRanges: [],
+                estimatedAffectedCells: 0,
+                sharedReview: {
+                  ownerUserId: 'alex@example.com',
+                  status: 'approved',
+                  decidedByUserId: 'alex@example.com',
+                  decidedAtUnixMs: 200,
+                  recommendations: [],
+                },
+              }),
+            ],
+            updatedAtUnixMs: 100,
+          }
+        },
+      }),
+      {
+        codexClientFactory: (_options: CodexAppServerClientOptions): CodexAppServerTransport => new FakeCodexTransport(),
+      },
+    )
+
+    try {
+      const snapshot = await service.createSession({
+        documentId: 'doc-1',
+        session: {
+          userID: 'alex@example.com',
+          roles: ['editor'],
+        },
+        body: {
+          threadId: 'thr-shared',
+        },
+      })
+
+      const applyPromise = service.applyReviewItem({
+        documentId: 'doc-1',
+        threadId: snapshot.threadId,
+        reviewItemId: 'bundle-shared-review',
+        session: {
+          userID: 'alex@example.com',
+          roles: ['editor'],
+        },
+        appliedBy: 'user',
+      })
+      await previewStarted
+      const dismissed = await service.dismissReviewItem({
+        documentId: 'doc-1',
+        threadId: snapshot.threadId,
+        reviewItemId: 'bundle-shared-review',
+        session: {
+          userID: 'alex@example.com',
+          roles: ['editor'],
+        },
+      })
+      expect(dismissed.reviewQueueItems).toEqual([])
+      releasePreview()
+
+      await expect(applyPromise).rejects.toMatchObject({
+        code: 'WORKBOOK_AGENT_REVIEW_ITEM_NOT_FOUND',
+        statusCode: 404,
+        retryable: false,
+      })
+      expect(applyAgentCommandBundle).not.toHaveBeenCalled()
+      expect(appendWorkbookAgentRun).not.toHaveBeenCalled()
+      expect(
+        service.getSnapshot({
+          documentId: 'doc-1',
+          threadId: snapshot.threadId,
+          session: {
+            userID: 'alex@example.com',
+            roles: ['editor'],
+          },
+        }).reviewQueueItems,
+      ).toEqual([])
+    } finally {
+      releasePreview()
+      await service.close()
+    }
+  })
+
   it('records collaborator recommendations before owner approval', async () => {
     const service = createWorkbookAgentService(
       createZeroSyncStub({
