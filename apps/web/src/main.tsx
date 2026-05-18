@@ -19,6 +19,7 @@ import { createLocalOnlyRuntimeSession, loadRuntimeSession } from './session'
 import { resolveZeroCacheUrl, ZERO_CONNECT_MAX_HEADER_LENGTH } from './zero-connection'
 import type { ZeroConnectionState } from './worker-workbook-app-model.js'
 import type { BiligRuntimeConfig } from '@bilig/zero-sync'
+import { getOrCreateReactRoot } from './react-root-lifecycle.js'
 
 const IsolatedWorkbookPaneRendererRoute = lazy(async () => {
   const module = await import('./IsolatedWorkbookPaneRendererRoute.js')
@@ -27,7 +28,11 @@ const IsolatedWorkbookPaneRendererRoute = lazy(async () => {
   }
 })
 
-const root = ReactDOM.createRoot(document.getElementById('root')!)
+const root = getOrCreateReactRoot({
+  container: document.getElementById('root')!,
+  createRoot: ReactDOM.createRoot,
+  hot: import.meta.hot,
+})
 const entryRoute = resolveWebEntryRoute(window.location.pathname)
 const remoteSyncEnabled = resolveRemoteSyncEnabled(import.meta.env)
 const LOCAL_ONLY_CONNECTION_STATE: ZeroConnectionState = {

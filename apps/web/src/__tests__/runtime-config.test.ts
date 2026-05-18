@@ -117,6 +117,9 @@ describe('resolveRuntimeConfig', () => {
     window.history.replaceState({}, '', '/?document=visual-smoke&persist=false')
     expect(resolveRemoteSyncEnabled({ DEV: true, VITE_BILIG_REMOTE_SYNC: 'true' })).toBe(false)
 
+    window.history.replaceState({}, '', '/?sheet=Prepaid%20Template&cell=D53&persist=0')
+    expect(resolveRemoteSyncEnabled({ DEV: true, VITE_BILIG_REMOTE_SYNC: '1' })).toBe(false)
+
     window.history.replaceState({}, '', '/?document=visual-smoke&persist=1')
     expect(resolveRemoteSyncEnabled({ DEV: true, VITE_BILIG_REMOTE_SYNC: '1' })).toBe(true)
   })
