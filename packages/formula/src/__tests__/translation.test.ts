@@ -778,6 +778,68 @@ describe('translateFormulaReferences', () => {
     ])
   })
 
+  it('preserves 3D sheet range metadata when rewriting compiled structural ranges', () => {
+    const compiled = compileFormula("SUM('Jan 2026':'Mar 2026'!$B2:C$4)")
+    const rewritten = rewriteCompiledFormulaForStructuralTransform(compiled, 'Summary', 'Jan 2026', {
+      kind: 'insert',
+      axis: 'row',
+      start: 1,
+      count: 2,
+    })
+
+    expect(rewritten.source).toBe("SUM('Jan 2026':'Mar 2026'!$B4:C$6)")
+    expect(rewritten.reusedProgram).toBe(true)
+    expect(rewritten.compiled.deps).toEqual(["'Jan 2026':'Mar 2026'!$B4:C$6"])
+    expect(rewritten.compiled.symbolicRanges).toEqual([])
+    expect(rewritten.compiled.parsedDeps).toEqual([
+      {
+        kind: 'range',
+        refKind: 'cells',
+        address: "'Jan 2026':'Mar 2026'!$B4:C$6",
+        sheetName: 'Jan 2026',
+        sheetEndName: 'Mar 2026',
+        explicitSheet: true,
+        startAddress: 'B4',
+        endAddress: 'C6',
+        startRow: 3,
+        endRow: 5,
+        startCol: 1,
+        endCol: 2,
+        startRowAbsolute: false,
+        endRowAbsolute: true,
+        startColAbsolute: true,
+        endColAbsolute: false,
+      },
+    ])
+    expect(rewritten.compiled.parsedSymbolicRanges).toEqual([])
+    expect(rewritten.compiled.jsPlan).toEqual([
+      {
+        opcode: 'push-range',
+        sheetName: 'Jan 2026',
+        sheetEndName: 'Mar 2026',
+        start: '$B4',
+        end: 'C$6',
+        refKind: 'cells',
+      },
+      {
+        opcode: 'call',
+        callee: 'SUM',
+        argc: 1,
+        argRefs: [
+          {
+            kind: 'range',
+            sheetName: 'Jan 2026',
+            sheetEndName: 'Mar 2026',
+            start: '$B4',
+            end: 'C$6',
+            refKind: 'cells',
+          },
+        ],
+      },
+      { opcode: 'return' },
+    ])
+  })
+
   it('rewrites compiled row ranges for downward moves without recompiling', () => {
     const compiled = compileFormula('SUM(2:3)')
     const rewritten = rewriteCompiledFormulaForStructuralTransform(compiled, 'Sheet1', 'Sheet1', {

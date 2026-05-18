@@ -1,7 +1,7 @@
 import { ErrorCode } from '@bilig/protocol'
 import type { FormulaNode } from './ast.js'
 import type { RangeAddress } from './addressing.js'
-import { formatRangeAddress, parseCellAddress, parseRangeAddress } from './addressing.js'
+import { parseCellAddress, parseRangeAddress } from './addressing.js'
 import {
   compileFormulaAst,
   type CompiledFormula,
@@ -9,6 +9,7 @@ import {
   type ParsedDependencyReference,
   type ParsedRangeReferenceInfo,
 } from './compiler.js'
+import { formatQualifiedRangeReference, parseRawQualifiedRangeReference } from './formula-qualified-range-reference.js'
 import type { JsPlanInstruction, ReferenceOperand } from './js-evaluator.js'
 import { parseFormula } from './parser.js'
 import { serializeFormula } from './formula-serializer.js'
@@ -322,7 +323,7 @@ function rewriteRangeNode(
   targetSheetName: string,
   transform: StructuralAxisTransform,
 ): FormulaNode {
-  if (!targetsSheet(node.sheetName, ownerSheetName, targetSheetName)) {
+  if (!targetsRangeSheet(node.sheetName, node.sheetEndName, ownerSheetName, targetSheetName)) {
     return node
   }
   if ((node.refKind === 'rows' && transform.axis === 'column') || (node.refKind === 'cols' && transform.axis === 'row')) {
@@ -399,16 +400,20 @@ function rewriteParsedRangeReference(
   transform: StructuralAxisTransform,
 ): ParsedRangeReferenceInfo {
   const explicitSheetName = reference.sheetName
-  if (!targetsSheet(explicitSheetName, ownerSheetName, targetSheetName)) {
+  if (!targetsRangeSheet(explicitSheetName, reference.sheetEndName, ownerSheetName, targetSheetName)) {
     return reference
   }
   const nextRange = rewriteRangeAddressForStructuralTransform(
-    parseRangeAddress(formatQualifiedRangeReference(explicitSheetName, reference.startAddress, reference.endAddress)),
+    parseRangeAddress(formatQualifiedRangeReference(undefined, undefined, reference.startAddress, reference.endAddress)),
     transform,
   )
   if (!nextRange) {
     return reference
   }
+  const startAddress = nextRange.start.text
+  const endAddress = nextRange.end.text
+  const formattedStart = formatParsedRangeEndpoint(reference, startAddress, 'start')
+  const formattedEnd = formatParsedRangeEndpoint(reference, endAddress, 'end')
   const bounds =
     nextRange.kind === 'cells'
       ? {
@@ -432,10 +437,10 @@ function rewriteParsedRangeReference(
           }
   return {
     ...reference,
-    address: formatQualifiedRangeReference(explicitSheetName, nextRange.start.text, nextRange.end.text),
+    address: formatQualifiedRangeReference(explicitSheetName, reference.sheetEndName, formattedStart, formattedEnd),
     refKind: nextRange.kind,
-    startAddress: nextRange.start.text,
-    endAddress: nextRange.end.text,
+    startAddress,
+    endAddress,
     ...bounds,
   }
 }
@@ -449,6 +454,70 @@ function rewriteParsedDependencyReference(
   return reference.kind === 'cell'
     ? rewriteParsedCellReference(reference, ownerSheetName, targetSheetName, transform)
     : rewriteParsedRangeReference(reference, ownerSheetName, targetSheetName, transform)
+}
+
+function targetsRangeSheet(
+  sheetName: string | undefined,
+  sheetEndName: string | undefined,
+  ownerSheetName: string,
+  targetSheetName: string,
+): boolean {
+  const startSheetName = sheetName ?? ownerSheetName
+  return startSheetName === targetSheetName || sheetEndName === targetSheetName
+}
+
+function formatParsedRangeEndpoint(reference: ParsedRangeReferenceInfo, address: string, endpoint: 'start' | 'end'): string {
+  if (reference.refKind === 'cells') {
+    const parsed = parseCellReferenceParts(address)
+    if (!parsed) {
+      return address
+    }
+    return formatCellReference(
+      {
+        ...parsed,
+        rowAbsolute: endpoint === 'start' ? (reference.startRowAbsolute ?? false) : (reference.endRowAbsolute ?? false),
+        colAbsolute: endpoint === 'start' ? (reference.startColAbsolute ?? false) : (reference.endColAbsolute ?? false),
+      },
+      parsed.row,
+      parsed.col,
+    )
+  }
+
+  if (reference.refKind === 'rows') {
+    const parsed = parseAxisReferenceParts(address, 'row')
+    return parsed
+      ? formatAxisReference(
+          endpoint === 'start' ? (reference.startRowAbsolute ?? false) : (reference.endRowAbsolute ?? false),
+          parsed.index,
+          'row',
+        )
+      : address
+  }
+
+  const parsed = parseAxisReferenceParts(address, 'column')
+  return parsed
+    ? formatAxisReference(
+        endpoint === 'start' ? (reference.startColAbsolute ?? false) : (reference.endColAbsolute ?? false),
+        parsed.index,
+        'column',
+      )
+    : address
+}
+
+function formatRangeEndpointFromTemplate(refKind: 'cells' | 'rows' | 'cols', template: string, address: string): string {
+  if (refKind === 'cells') {
+    const templateParts = parseCellReferenceParts(template)
+    const addressParts = parseCellReferenceParts(address)
+    return templateParts && addressParts ? formatCellReference(templateParts, addressParts.row, addressParts.col) : address
+  }
+  if (refKind === 'rows') {
+    const templateParts = parseAxisReferenceParts(template, 'row')
+    const addressParts = parseAxisReferenceParts(address, 'row')
+    return templateParts && addressParts ? formatAxisReference(templateParts.absolute, addressParts.index, 'row') : address
+  }
+  const templateParts = parseAxisReferenceParts(template, 'column')
+  const addressParts = parseAxisReferenceParts(address, 'column')
+  return templateParts && addressParts ? formatAxisReference(templateParts.absolute, addressParts.index, 'column') : address
 }
 
 function rewriteQualifiedCellReference(
@@ -487,20 +556,23 @@ function rewriteQualifiedRangeReference(
   targetSheetName: string,
   transform: StructuralAxisTransform,
 ): string {
-  const explicitlyQualified = raw.includes('!')
-  const parsed = parseRangeAddress(raw, ownerSheetName)
-  const sheetName = parsed.sheetName ?? ownerSheetName
-  if (sheetName !== targetSheetName) {
+  const parsed = parseRawQualifiedRangeReference(raw)
+  if (!targetsRangeSheet(parsed.sheetName, parsed.sheetEndName, ownerSheetName, targetSheetName)) {
     return raw
   }
-  const nextRange = rewriteRangeAddressForStructuralTransform(parsed, transform)
+  const nextRange = rewriteRangeAddressForStructuralTransform(
+    parseRangeAddress(formatQualifiedRangeReference(undefined, undefined, parsed.start, parsed.end)),
+    transform,
+  )
   if (!nextRange) {
     return raw
   }
-  if (explicitlyQualified) {
-    return formatRangeAddress(nextRange)
-  }
-  return `${nextRange.start.text}:${nextRange.end.text}`
+  return formatQualifiedRangeReference(
+    parsed.sheetName,
+    parsed.sheetEndName,
+    formatRangeEndpointFromTemplate(parsed.refKind, parsed.start, nextRange.start.text),
+    formatRangeEndpointFromTemplate(parsed.refKind, parsed.end, nextRange.end.text),
+  )
 }
 
 function rewriteRangeAddressForStructuralTransform(range: RangeAddress, transform: StructuralAxisTransform): RangeAddress | undefined {
@@ -510,7 +582,7 @@ function rewriteRangeAddressForStructuralTransform(range: RangeAddress, transfor
       if (!nextRange) {
         return undefined
       }
-      return parseRangeAddress(formatQualifiedRangeReference(range.sheetName, nextRange.startAddress, nextRange.endAddress))
+      return parseRangeAddress(formatQualifiedRangeReference(range.sheetName, undefined, nextRange.startAddress, nextRange.endAddress))
     }
     case 'rows':
       if (transform.axis !== 'row') {
@@ -558,6 +630,7 @@ function rewriteJsPlanInstruction(
     case 'push-range': {
       const nextRange = rewritePlanRangeInstruction(
         instruction.sheetName,
+        instruction.sheetEndName,
         instruction.start,
         instruction.end,
         instruction.refKind,
@@ -571,6 +644,7 @@ function rewriteJsPlanInstruction(
     case 'lookup-approximate-match': {
       const nextRange = rewritePlanRangeInstruction(
         instruction.sheetName,
+        undefined,
         instruction.start,
         instruction.end,
         instruction.refKind,
@@ -581,7 +655,7 @@ function rewriteJsPlanInstruction(
       if (!nextRange) {
         return instruction
       }
-      const parsed = parseRangeAddress(formatQualifiedRangeReference(instruction.sheetName, nextRange.start, nextRange.end))
+      const parsed = parseRangeAddress(formatQualifiedRangeReference(undefined, undefined, nextRange.start, nextRange.end))
       if (parsed.kind !== 'cells') {
         return instruction
       }
@@ -648,6 +722,7 @@ function rewriteReferenceOperand(
       }
       const nextRange = rewritePlanRangeInstruction(
         operand.sheetName,
+        operand.sheetEndName,
         operand.start,
         operand.end,
         operand.refKind,
@@ -678,6 +753,7 @@ function rewriteReferenceOperandAddress(
 
 function rewritePlanRangeInstruction(
   explicitSheetName: string | undefined,
+  explicitSheetEndName: string | undefined,
   start: string,
   end: string,
   refKind: 'cells' | 'rows' | 'cols',
@@ -685,7 +761,7 @@ function rewritePlanRangeInstruction(
   targetSheetName: string,
   transform: StructuralAxisTransform,
 ): { start: string; end: string } | undefined {
-  if ((explicitSheetName ?? ownerSheetName) !== targetSheetName) {
+  if (!targetsRangeSheet(explicitSheetName, explicitSheetEndName, ownerSheetName, targetSheetName)) {
     return undefined
   }
   if (refKind === 'cells') {
@@ -700,7 +776,7 @@ function rewritePlanRangeInstruction(
   if ((refKind === 'rows' && transform.axis !== 'row') || (refKind === 'cols' && transform.axis !== 'column')) {
     return undefined
   }
-  const parsed = parseRangeAddress(formatQualifiedRangeReference(explicitSheetName, start, end))
+  const parsed = parseRangeAddress(formatQualifiedRangeReference(undefined, undefined, start, end))
   const nextRange = rewriteRangeAddressForStructuralTransform(parsed, transform)
   return nextRange
     ? {
@@ -716,9 +792,4 @@ function formatQualifiedCellReference(sheetName: string | undefined, address: st
   }
   const parsed = parseCellAddress(address, sheetName)
   return `${quoteSheetNameIfNeeded(sheetName)}!${parsed.text}`
-}
-
-function formatQualifiedRangeReference(sheetName: string | undefined, start: string, end: string): string {
-  const prefix = sheetName ? `${quoteSheetNameIfNeeded(sheetName)}!` : ''
-  return `${prefix}${start}:${end}`
 }
