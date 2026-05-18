@@ -238,6 +238,10 @@ function createWorkbookWorker(): WorkerSessionPort {
   }) as WorkerSessionPort
 }
 
+function defaultRuntimeSessionFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  return globalThis.fetch(input, init)
+}
+
 function disposeZeroWorkbookRevisionSync(sync: ZeroWorkbookRevisionSync | null): void {
   sync?.dispose()
 }
@@ -250,7 +254,7 @@ export async function createWorkerRuntimeSessionController(
   const client = createWorkerEngineClient({ port: workerPort })
   const viewportStore = new ProjectedViewportStore(client)
   const handle: WorkerHandle = { viewportStore }
-  const fetchImpl = input.fetchImpl ?? fetch
+  const fetchImpl = input.fetchImpl ?? defaultRuntimeSessionFetch
   const authoritativeSyncEnabled = input.authoritativeSyncEnabled ?? true
   const mutationJournalScope = {
     documentId: input.documentId,

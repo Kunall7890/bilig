@@ -22,8 +22,12 @@ async function readProtocolFrame(response: Response): Promise<ProtocolFrame> {
   return decodeFrame(bytes)
 }
 
+function defaultFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  return globalThis.fetch(input, init)
+}
+
 export function createHttpSyncRelay(options: HttpSyncRelayOptions): UpstreamSyncRelay {
-  const fetchImpl = options.fetchImpl ?? fetch
+  const fetchImpl = options.fetchImpl ?? defaultFetch
   const baseUrl = normalizeBaseUrl(options.baseUrl)
   const replicaId = options.replicaId ?? `worksheet-host:${options.documentId}`
   const sessionId = `${options.documentId}:${replicaId}`

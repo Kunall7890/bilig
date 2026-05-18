@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { createLocalOnlyRuntimeSession, loadRuntimeSession, type BiligRuntimeSession } from '../session.js'
 
 const jsonResponse = (body: unknown) =>
@@ -11,6 +11,10 @@ const jsonResponse = (body: unknown) =>
 const failingFetchImpl = async () => new Response('forbidden', { status: 403 })
 
 describe('loadRuntimeSession', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   test('creates a local-only guest session for standalone web development', () => {
     expect(createLocalOnlyRuntimeSession('guest:local-dev')).toEqual<BiligRuntimeSession>({
       authToken: 'guest:local-dev',
@@ -40,6 +44,30 @@ describe('loadRuntimeSession', () => {
       isAuthenticated: true,
       authSource: 'header',
     })
+  })
+
+  test('keeps the browser fetch receiver intact when using the default implementation', async () => {
+    const response = {
+      authToken: 'token-123',
+      userId: 'user-123',
+      roles: ['editor'],
+      isAuthenticated: true,
+      authSource: 'header',
+    }
+    const fetchImpl = vi.fn(async function (this: typeof globalThis, input: RequestInfo | URL, init?: RequestInit) {
+      expect(this).toBe(globalThis)
+      expect(input).toBe('/v2/session')
+      expect(init).toEqual({
+        credentials: 'include',
+        headers: {
+          accept: 'application/json',
+        },
+      })
+      return jsonResponse(response)
+    })
+    vi.stubGlobal('fetch', fetchImpl)
+
+    await expect(loadRuntimeSession()).resolves.toEqual<BiligRuntimeSession>(response)
   })
 
   test('falls back to the resolved user id when auth token is missing', async () => {

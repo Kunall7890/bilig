@@ -70,9 +70,96 @@ describe('worker runtime session authoritative event loading', () => {
     host?.dispose()
     channel?.port1.close()
     channel?.port2.close()
+    vi.unstubAllGlobals()
     channel = null
     controller = null
     host = null
+  })
+
+  it('keeps the browser fetch receiver intact for default authoritative refreshes', async () => {
+    channel = new MessageChannel()
+    const applyAuthoritativeEvents = vi.fn()
+    host = createWorkerEngineHost(
+      {
+        async bootstrap() {
+          return {
+            runtimeState: runtimeState({
+              authoritativeRevision: 0,
+              pendingMutationSummary: {
+                activeCount: 0,
+                failedCount: 0,
+                firstFailed: null,
+              },
+            }),
+            restoredFromPersistence: true,
+            requiresAuthoritativeHydrate: false,
+            localPersistenceMode: 'ephemeral',
+          }
+        },
+        getAuthoritativeRevision() {
+          return 0
+        },
+        getCell(sheetName: string, address: string) {
+          return {
+            sheetName,
+            address,
+            value: { tag: ValueTag.Empty },
+            flags: 0,
+            version: 0,
+          }
+        },
+        applyAuthoritativeEvents,
+      },
+      channel.port1,
+    )
+    const fetchImpl = vi.fn(async function (this: typeof globalThis, input: RequestInfo | URL, init?: RequestInit) {
+      expect(this).toBe(globalThis)
+      expect(input).toBe('/v2/documents/doc-1/events?afterRevision=0')
+      expect(init).toEqual({
+        headers: {
+          accept: 'application/json',
+        },
+        cache: 'no-store',
+      })
+      return new Response(
+        JSON.stringify({
+          afterRevision: 0,
+          headRevision: 0,
+          calculatedRevision: 0,
+          events: [],
+        }),
+        {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        },
+      )
+    })
+    vi.stubGlobal('fetch', fetchImpl)
+
+    controller = await createWorkerRuntimeSessionController(
+      {
+        documentId: 'doc-1',
+        replicaId: 'browser:test',
+        persistState: false,
+        initialSelection: { sheetName: 'Sheet1', address: 'A1' },
+        createWorker: () => channel!.port2,
+      },
+      {
+        onRuntimeState: vi.fn(),
+        onSelection: vi.fn(),
+        onError: vi.fn(),
+      },
+    )
+
+    fetchImpl.mockClear()
+    await expect(controller.invoke('refreshAuthoritativeEvents')).resolves.toEqual(undefined)
+    expect(fetchImpl).toHaveBeenCalledWith('/v2/documents/doc-1/events?afterRevision=0', {
+      headers: {
+        accept: 'application/json',
+      },
+      cache: 'no-store',
+    })
+    expect(applyAuthoritativeEvents).not.toHaveBeenCalled()
   })
 
   it('rejects authoritative event responses whose cursor does not match the requested revision', async () => {

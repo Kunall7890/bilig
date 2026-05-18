@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { loadRuntimeConfig, parseRuntimeConfig } from '../runtime-config.js'
 
 const validConfig = {
@@ -9,6 +9,10 @@ const validConfig = {
 } as const
 
 describe('runtime config', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   it('loads and validates runtime config responses', async () => {
     const fetchImpl = vi.fn<typeof fetch>(async () => {
       return new Response(JSON.stringify(validConfig), {
@@ -21,6 +25,23 @@ describe('runtime config', () => {
     expect(fetchImpl).toHaveBeenCalledWith('/runtime-config.json', {
       headers: { accept: 'application/json' },
     })
+  })
+
+  it('keeps the browser fetch receiver intact when using the default implementation', async () => {
+    const fetchImpl = vi.fn(async function (this: typeof globalThis, input: RequestInfo | URL, init?: RequestInit) {
+      expect(this).toBe(globalThis)
+      expect(input).toBe('/runtime-config.json')
+      expect(init).toEqual({
+        headers: { accept: 'application/json' },
+      })
+      return new Response(JSON.stringify(validConfig), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    })
+    vi.stubGlobal('fetch', fetchImpl)
+
+    await expect(loadRuntimeConfig()).resolves.toEqual(validConfig)
   })
 
   it('surfaces failed runtime config responses with status', async () => {

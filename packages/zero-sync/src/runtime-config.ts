@@ -47,7 +47,11 @@ async function readRuntimeConfigPayload(response: Response): Promise<unknown> {
   }
 }
 
-export async function loadRuntimeConfig(fetchImpl: typeof fetch = fetch): Promise<BiligRuntimeConfig> {
+function defaultRuntimeConfigFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  return globalThis.fetch(input, init)
+}
+
+export async function loadRuntimeConfig(fetchImpl: typeof fetch = defaultRuntimeConfigFetch): Promise<BiligRuntimeConfig> {
   const response = await fetchImpl('/runtime-config.json', {
     headers: {
       accept: 'application/json',

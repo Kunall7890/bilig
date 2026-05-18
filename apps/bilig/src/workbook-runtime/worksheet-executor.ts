@@ -18,9 +18,13 @@ export interface InProcessWorksheetExecutorOptions {
   browserAppBaseUrl?: string
 }
 
+function defaultFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  return globalThis.fetch(input, init)
+}
+
 export function createHttpWorksheetExecutor(options: HttpWorksheetExecutorOptions): WorksheetExecutor {
   const baseUrl = normalizeBaseUrl(options.baseUrl)
-  const fetchImpl = options.fetchImpl ?? fetch
+  const fetchImpl = options.fetchImpl ?? defaultFetch
 
   return {
     async execute(frame) {

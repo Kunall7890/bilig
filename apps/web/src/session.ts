@@ -15,8 +15,12 @@ export function createLocalOnlyRuntimeSession(userId = 'local:user'): BiligRunti
   }
 }
 
+function defaultRuntimeSessionFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  return globalThis.fetch(input, init)
+}
+
 function loadRuntimeSessionEffect(
-  fetchImpl: typeof fetch = fetch,
+  fetchImpl: typeof fetch = defaultRuntimeSessionFetch,
 ): Effect.Effect<BiligRuntimeSession, DecodeError | HttpError | TransportError> {
   return Effect.tryPromise({
     try: () =>
@@ -56,6 +60,6 @@ function loadRuntimeSessionEffect(
   )
 }
 
-export async function loadRuntimeSession(fetchImpl: typeof fetch = fetch): Promise<BiligRuntimeSession> {
+export async function loadRuntimeSession(fetchImpl: typeof fetch = defaultRuntimeSessionFetch): Promise<BiligRuntimeSession> {
   return await runPromise(loadRuntimeSessionEffect(fetchImpl))
 }
