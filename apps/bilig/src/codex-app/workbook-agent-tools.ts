@@ -390,7 +390,7 @@ export async function handleWorkbookAgentToolCall(
           ...(args.includeFormulaIssues !== undefined ? { includeFormulaIssues: args.includeFormulaIssues } : {}),
           ...(args.includeInvariants !== undefined ? { includeInvariants: args.includeInvariants } : {}),
         })
-        const { verificationComplete } = summarizeWorkbookAgentVerificationStatus({
+        const verificationStatus = summarizeWorkbookAgentVerificationStatus({
           renderedReadback: report.renderedReadback,
           formulaIssues: report.formulaIssues,
           invariants: report.invariants,
@@ -399,8 +399,9 @@ export async function handleWorkbookAgentToolCall(
         })
         return textToolResult(
           stringifyJson({
-            status: verificationComplete ? 'verified' : 'verification_incomplete',
-            verificationComplete,
+            status: verificationStatus.verificationComplete ? 'verified' : 'verification_incomplete',
+            verificationComplete: verificationStatus.verificationComplete,
+            verificationMissingChecks: verificationStatus.missingChecks,
             ...report,
           }),
         )
@@ -453,7 +454,7 @@ export async function handleWorkbookAgentToolCall(
           revision: afterRevision,
           ranges: verificationRange,
         })
-        const { verificationComplete } = summarizeWorkbookAgentVerificationStatus({
+        const verificationStatus = summarizeWorkbookAgentVerificationStatus({
           renderedReadback: verification.renderedReadback,
           formulaIssues: verification.formulaIssues,
           invariants: verification.invariants,
@@ -466,8 +467,9 @@ export async function handleWorkbookAgentToolCall(
             applied: true,
             staged: false,
             queuedForTurnApply: false,
-            status: verificationComplete ? 'applied' : 'verification_incomplete',
-            verificationComplete,
+            status: verificationStatus.verificationComplete ? 'applied' : 'verification_incomplete',
+            verificationComplete: verificationStatus.verificationComplete,
+            verificationMissingChecks: verificationStatus.missingChecks,
             revision: {
               before: beforeRevision,
               after: afterRevision,
