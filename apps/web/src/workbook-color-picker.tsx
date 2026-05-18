@@ -28,6 +28,7 @@ interface ColorPaletteButtonProps {
   recentColors: readonly string[]
   shortcut?: string
   swatches: readonly (readonly ColorSwatch[])[]
+  onActionComplete?: (() => void) | undefined
   onReset(this: void): void
   onSelectColor(this: void, color: string, source: 'preset' | 'custom'): void
 }
@@ -47,6 +48,7 @@ export const ColorPaletteButton = memo(function ColorPaletteButton({
   recentColors,
   shortcut,
   swatches,
+  onActionComplete,
   onReset,
   onSelectColor,
 }: ColorPaletteButtonProps) {
@@ -73,8 +75,9 @@ export const ColorPaletteButton = memo(function ColorPaletteButton({
     (color: string, source: 'preset' | 'custom') => {
       onSelectColor(color, source)
       closePalette()
+      onActionComplete?.()
     },
-    [closePalette, onSelectColor],
+    [closePalette, onActionComplete, onSelectColor],
   )
 
   const applyTypedColor = useCallback(() => {
@@ -341,6 +344,7 @@ export const ColorPaletteButton = memo(function ColorPaletteButton({
                 onClick={() => {
                   onReset()
                   closePalette()
+                  onActionComplete?.()
                 }}
                 type="button"
               >

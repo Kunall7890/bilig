@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
 import {
+  clickProductCell,
+  createTestDocumentId,
   expectToolbarColor,
   getBox,
   getToolbarButton,
@@ -407,4 +409,21 @@ test('web app applies preset swatch colors directly from the palette', async ({ 
 
   await pickToolbarPresetColor(page, 'Text color', 'dark blue 1')
   await expectToolbarColor(getToolbarButton(page, 'Text color'), '#3d85c6')
+})
+
+test('@browser-ci web app returns keyboard focus to the grid after toolbar color commands', async ({ page }) => {
+  await page.goto(`/?document=${createTestDocumentId('toolbar-focus-return')}&persist=0&sheet=Sheet1&cell=A1`)
+  await waitForWorkbookReady(page)
+
+  await clickProductCell(page, 0, 0)
+  await pickToolbarPresetColor(page, 'Fill color', 'green')
+  await expectToolbarColor(getToolbarButton(page, 'Fill color'), '#00ff00')
+  await expect
+    .poll(async () => page.evaluate(() => document.activeElement?.getAttribute('data-testid') ?? null), {
+      message: 'workbook grid receives keyboard focus after the toolbar command closes',
+    })
+    .toBe('sheet-grid-focus-target')
+
+  await page.keyboard.press('ArrowRight')
+  await expect(page.getByTestId('name-box')).toHaveValue('B1')
 })

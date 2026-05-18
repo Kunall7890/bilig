@@ -6,6 +6,7 @@ import type { GridEngineLike } from './grid-engine.js'
 import { formatSelectionSnapshotSummary } from './gridSelection.js'
 import { WorkbookSelectionStatus } from './WorkbookSelectionStatus.js'
 import { WorkbookSheetTabs } from './WorkbookSheetTabs.js'
+import { WorkbookGridFocusReturnProvider } from './workbookGridFocusReturn.js'
 import {
   WorkbookGridSurface,
   type EditTargetSelection,
@@ -346,7 +347,9 @@ export function WorkbookView({
     >
       {ribbon ? (
         <Profiler id="workbook-ribbon" onRender={() => noteSurfaceCommit('ribbon')}>
-          <div className="shrink-0 bg-[var(--wb-surface)]">{ribbon}</div>
+          <div className="shrink-0 bg-[var(--wb-surface)]">
+            <WorkbookGridFocusReturnProvider requestGridFocus={requestGridFocus}>{ribbon}</WorkbookGridFocusReturnProvider>
+          </div>
         </Profiler>
       ) : null}
       <div className="relative flex min-h-0 flex-1 bg-[var(--wb-surface)]">

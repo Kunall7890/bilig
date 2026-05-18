@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState, type ReactNode } from 'react'
+import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   Check,
   AlignCenter,
@@ -33,6 +33,7 @@ import {
   BorderRightIcon,
   BorderTopIcon,
 } from '@hugeicons/core-free-icons'
+import { useWorkbookGridFocusReturn } from '@bilig/grid'
 import type { CellHorizontalAlignment } from '@bilig/protocol'
 import { cn } from './cn.js'
 import { GOOGLE_SHEETS_SWATCH_ROWS } from './workbook-colors.js'
@@ -239,6 +240,25 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
   trailingContent,
 }: WorkbookToolbarProps) {
   const { scrollContainerRef, showBackwardCue, showForwardCue } = useToolbarScrollCue()
+  const requestGridFocus = useWorkbookGridFocusReturn()
+  const returnFocusToGridAfterCommand = useCallback(() => {
+    if (!requestGridFocus) {
+      return
+    }
+    const run = () => requestGridFocus()
+    if (typeof window === 'undefined') {
+      run()
+      return
+    }
+    window.setTimeout(run, 0)
+  }, [requestGridFocus])
+  const runGridCommand = useCallback(
+    (command: () => void) => {
+      command()
+      returnFocusToGridAfterCommand()
+    },
+    [returnFocusToGridAfterCommand],
+  )
   const getToolbarScrollStep = () => {
     const scrollContainer = scrollContainerRef.current
     return scrollContainer ? Math.max(96, Math.floor(scrollContainer.clientWidth)) : 96
@@ -303,6 +323,7 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
         onUnhideCurrentColumn()
         break
     }
+    returnFocusToGridAfterCommand()
   }
 
   return (
@@ -329,7 +350,7 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
                   className={toolbarButtonClass({ embedded: true })}
                   disabled={!writesAllowed || !canUndo}
                   title={`Undo (${getWorkbookShortcutLabel('undo')})`}
-                  onClick={onUndo}
+                  onClick={() => runGridCommand(onUndo)}
                 >
                   <Undo2 className={toolbarIconClass()} />
                 </Toolbar.Button>
@@ -338,7 +359,7 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
                   className={toolbarButtonClass({ embedded: true })}
                   disabled={!writesAllowed || !canRedo}
                   title={`Redo (${getWorkbookShortcutLabel('redo')})`}
-                  onClick={onRedo}
+                  onClick={() => runGridCommand(onRedo)}
                 >
                   <Redo2 className={toolbarIconClass()} />
                 </Toolbar.Button>
@@ -354,6 +375,7 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
                 onValueChange={(nextValue: string | null) => {
                   if (typeof nextValue === 'string') {
                     onNumberFormatChange(nextValue)
+                    returnFocusToGridAfterCommand()
                   }
                 }}
               >
@@ -403,6 +425,7 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
                 onValueChange={(nextValue: string | null) => {
                   if (typeof nextValue === 'string') {
                     onFontSizeChange(nextValue)
+                    returnFocusToGridAfterCommand()
                   }
                 }}
               >
@@ -446,7 +469,7 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
                   aria-pressed={isBoldActive}
                   className={toolbarButtonClass({ active: isBoldActive, embedded: true })}
                   title={`Bold (${getWorkbookShortcutLabel('bold')})`}
-                  onClick={onToggleBold}
+                  onClick={() => runGridCommand(onToggleBold)}
                 >
                   <Bold className={toolbarIconClass()} />
                 </Toolbar.Button>
@@ -455,7 +478,7 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
                   aria-pressed={isItalicActive}
                   className={toolbarButtonClass({ active: isItalicActive, embedded: true })}
                   title={`Italic (${getWorkbookShortcutLabel('italic')})`}
-                  onClick={onToggleItalic}
+                  onClick={() => runGridCommand(onToggleItalic)}
                 >
                   <Italic className={toolbarIconClass()} />
                 </Toolbar.Button>
@@ -464,7 +487,7 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
                   aria-pressed={isUnderlineActive}
                   className={toolbarButtonClass({ active: isUnderlineActive, embedded: true })}
                   title={`Underline (${getWorkbookShortcutLabel('underline')})`}
-                  onClick={onToggleUnderline}
+                  onClick={() => runGridCommand(onToggleUnderline)}
                 >
                   <Underline className={toolbarIconClass()} />
                 </Toolbar.Button>
@@ -474,6 +497,7 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
                 currentColor={currentFillColor}
                 customInputLabel="Custom fill color"
                 icon={<PaintBucket className={toolbarIconClass()} />}
+                onActionComplete={returnFocusToGridAfterCommand}
                 onReset={onFillColorReset}
                 onSelectColor={onFillColorSelect}
                 recentColors={recentFillColors}
@@ -484,6 +508,7 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
                 currentColor={currentTextColor}
                 customInputLabel="Custom text color"
                 icon={<Baseline className={toolbarIconClass()} />}
+                onActionComplete={returnFocusToGridAfterCommand}
                 onReset={onTextColorReset}
                 onSelectColor={onTextColorSelect}
                 recentColors={recentTextColors}
@@ -503,7 +528,7 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
                     embedded: true,
                   })}
                   title={`Align left (${getWorkbookShortcutLabel('align-left')})`}
-                  onClick={() => onHorizontalAlignmentChange('left')}
+                  onClick={() => runGridCommand(() => onHorizontalAlignmentChange('left'))}
                 >
                   <AlignLeft className={toolbarIconClass()} />
                 </Toolbar.Button>
@@ -515,7 +540,7 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
                     embedded: true,
                   })}
                   title={`Align center (${getWorkbookShortcutLabel('align-center')})`}
-                  onClick={() => onHorizontalAlignmentChange('center')}
+                  onClick={() => runGridCommand(() => onHorizontalAlignmentChange('center'))}
                 >
                   <AlignCenter className={toolbarIconClass()} />
                 </Toolbar.Button>
@@ -527,7 +552,7 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
                     embedded: true,
                   })}
                   title={`Align right (${getWorkbookShortcutLabel('align-right')})`}
-                  onClick={() => onHorizontalAlignmentChange('right')}
+                  onClick={() => runGridCommand(() => onHorizontalAlignmentChange('right'))}
                 >
                   <AlignRight className={toolbarIconClass()} />
                 </Toolbar.Button>
@@ -567,7 +592,7 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
                             className="inline-flex h-8 items-center gap-2 rounded-md border border-transparent px-2 text-left text-[11px] font-medium text-[var(--color-mauve-900)] outline-none transition-colors hover:bg-[var(--color-mauve-100)] focus-visible:border-[var(--color-mauve-400)] focus-visible:bg-[var(--color-mauve-100)]"
                             title={label}
                             type="button"
-                            onClick={() => onApplyBorderPreset(key)}
+                            onClick={() => runGridCommand(() => onApplyBorderPreset(key))}
                           >
                             <HugeiconsIcon
                               className="shrink-0 text-[var(--color-mauve-700)]"
@@ -642,12 +667,17 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
                 aria-pressed={isWrapActive}
                 className={toolbarButtonClass({ active: isWrapActive })}
                 type="button"
-                onClick={onToggleWrap}
+                onClick={() => runGridCommand(onToggleWrap)}
               >
                 <WrapText className={toolbarIconClass()} />
                 <span className="sr-only">Wrap</span>
               </Toolbar.Button>
-              <Toolbar.Button aria-label="Clear style" className={toolbarButtonClass()} type="button" onClick={onClearStyle}>
+              <Toolbar.Button
+                aria-label="Clear style"
+                className={toolbarButtonClass()}
+                type="button"
+                onClick={() => runGridCommand(onClearStyle)}
+              >
                 <RemoveFormatting className={toolbarIconClass()} />
                 <span className="sr-only">Clear style</span>
               </Toolbar.Button>

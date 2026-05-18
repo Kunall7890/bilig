@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, type MutableRefObject } from 'react'
 import { createRoot } from 'react-dom/client'
+import { WorkbookGridFocusReturnProvider } from '@bilig/grid'
 import { ValueTag, type CellRangeRef, type CellStyleRecord } from '@bilig/protocol'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { getWorkbookShortcutLabel } from '../shortcut-registry.js'
@@ -812,6 +813,100 @@ describe('WorkbookToolbar', () => {
     expect(alignLeftButton?.getAttribute('title')).toBe(`Align left (${getWorkbookShortcutLabel('align-left')})`)
     expect(alignCenterButton?.getAttribute('title')).toBe(`Align center (${getWorkbookShortcutLabel('align-center')})`)
     expect(alignRightButton?.getAttribute('title')).toBe(`Align right (${getWorkbookShortcutLabel('align-right')})`)
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it('returns focus to the workbook grid after formatting commands complete', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const requestGridFocus = vi.fn()
+    const onFillColorSelect = vi.fn()
+    const onToggleBold = vi.fn()
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+    const flushFocusReturn = async () => {
+      await act(async () => {
+        await new Promise((resolve) => window.setTimeout(resolve, 0))
+      })
+    }
+
+    await act(async () => {
+      root.render(
+        <WorkbookGridFocusReturnProvider requestGridFocus={requestGridFocus}>
+          <WorkbookToolbar
+            canHideCurrentColumn={false}
+            canHideCurrentRow={false}
+            canMergeSelection={false}
+            canUnmergeSelection={false}
+            canRedo={false}
+            canUndo={false}
+            canUnhideCurrentColumn={false}
+            canUnhideCurrentRow={false}
+            currentFillColor="#ffffff"
+            currentNumberFormatKind="general"
+            currentTextColor="#111827"
+            horizontalAlignment="left"
+            isBoldActive={false}
+            isItalicActive={false}
+            isUnderlineActive={false}
+            isWrapActive={false}
+            onApplyBorderPreset={() => {}}
+            onClearStyle={() => {}}
+            onFillColorReset={() => {}}
+            onFillColorSelect={onFillColorSelect}
+            onFontSizeChange={() => {}}
+            onHideCurrentColumn={() => {}}
+            onHideCurrentRow={() => {}}
+            onMergeSelectedCells={() => {}}
+            onHorizontalAlignmentChange={() => {}}
+            onNumberFormatChange={() => {}}
+            onRedo={() => {}}
+            onTextColorReset={() => {}}
+            onTextColorSelect={() => {}}
+            onToggleBold={onToggleBold}
+            onToggleItalic={() => {}}
+            onToggleUnderline={() => {}}
+            onToggleWrap={() => {}}
+            onUndo={() => {}}
+            onUnmergeSelectedCells={() => {}}
+            onUnhideCurrentColumn={() => {}}
+            onUnhideCurrentRow={() => {}}
+            recentFillColors={[]}
+            recentTextColors={[]}
+            selectedFontSize="11"
+            writesAllowed
+          />
+        </WorkbookGridFocusReturnProvider>,
+      )
+    })
+
+    await act(async () => {
+      host.querySelector("[aria-label='Bold']")?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    expect(onToggleBold).toHaveBeenCalledTimes(1)
+    expect(requestGridFocus).not.toHaveBeenCalled()
+
+    await flushFocusReturn()
+    expect(requestGridFocus).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      host.querySelector("[aria-label='Fill color']")?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    const greenSwatch = document.querySelector("[aria-label='Fill color green']")
+    expect(greenSwatch).not.toBeNull()
+
+    await act(async () => {
+      greenSwatch?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    expect(onFillColorSelect).toHaveBeenCalledWith('#00ff00', 'preset')
+
+    await flushFocusReturn()
+    expect(requestGridFocus).toHaveBeenCalledTimes(2)
 
     await act(async () => {
       root.unmount()
