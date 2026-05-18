@@ -66,6 +66,11 @@ target is already known. Formula helpers use `@bilig/formula` for parsing and
 normalization. Actual calculation and authoritative execution stay in
 `@bilig/core` and `apps/bilig`.
 
+Formula helpers keep referenced workbook inputs separate from formula text.
+Planned `writeFormula` commands expose those inputs directly, which lets agents
+inspect dependencies without relying on human UI coordinates or reverse-parsing
+placeholder formula names.
+
 ## Core engine surface
 
 The canonical engine surface includes:

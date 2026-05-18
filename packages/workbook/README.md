@@ -35,3 +35,8 @@ Calculation and workbook execution stay in `@bilig/core` and the app runtime.
 Use `planWorkbookAction` when an action name comes from an agent or user input;
 it returns `planned` or structured `failed` results instead of requiring
 exception control flow.
+
+Formula expressions also keep their workbook inputs separate from their formula
+text. A planned `writeFormula` command includes both the parseable formula
+string and the generic model refs it used, so an agent can inspect what the
+action depends on without reverse-parsing placeholder names.

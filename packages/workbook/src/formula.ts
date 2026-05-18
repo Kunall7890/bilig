@@ -5,6 +5,7 @@ import type { WorkbookRef } from './find.js'
 export interface WorkbookFormulaExpression {
   readonly kind: 'formula'
   readonly source: string
+  readonly inputs: readonly WorkbookRef[]
 }
 
 export type WorkbookFormulaOperand = WorkbookFormulaExpression | WorkbookRef | string | number | boolean
@@ -19,10 +20,25 @@ function normalizeFormulaSource(source: string): string {
   return normalized
 }
 
-function createFormulaExpression(source: string): WorkbookFormulaExpression {
+function uniqueRefs(refs: readonly WorkbookRef[]): readonly WorkbookRef[] {
+  const seen = new Set<string>()
+  const unique: WorkbookRef[] = []
+  for (const ref of refs) {
+    const key = `${ref.kind}:${ref.id}`
+    if (seen.has(key)) {
+      continue
+    }
+    seen.add(key)
+    unique.push(ref)
+  }
+  return unique
+}
+
+function createFormulaExpression(source: string, inputs: readonly WorkbookRef[] = []): WorkbookFormulaExpression {
   return {
     kind: 'formula',
     source: normalizeFormulaSource(source),
+    inputs: uniqueRefs(inputs),
   }
 }
 
@@ -87,13 +103,27 @@ function operandSource(operand: WorkbookFormulaOperand): string {
   return operand
 }
 
+function operandInputs(operand: WorkbookFormulaOperand): readonly WorkbookRef[] {
+  if (isFormulaExpression(operand)) {
+    return operand.inputs
+  }
+  if (isWorkbookRef(operand)) {
+    return [operand]
+  }
+  return []
+}
+
+function collectInputs(args: readonly WorkbookFormulaOperand[]): readonly WorkbookRef[] {
+  return uniqueRefs(args.flatMap((arg) => operandInputs(arg)))
+}
+
 function binary(left: WorkbookFormulaOperand, operator: '+' | '-' | '*' | '/', right: WorkbookFormulaOperand): WorkbookFormulaExpression {
-  return createFormulaExpression(`(${operandSource(left)})${operator}(${operandSource(right)})`)
+  return createFormulaExpression(`(${operandSource(left)})${operator}(${operandSource(right)})`, collectInputs([left, right]))
 }
 
 function call(name: string, args: readonly WorkbookFormulaOperand[]): WorkbookFormulaExpression {
   const callee = normalizeFormulaFunctionName(name)
-  return createFormulaExpression(`${callee}(${args.map(operandSource).join(',')})`)
+  return createFormulaExpression(`${callee}(${args.map(operandSource).join(',')})`, collectInputs(args))
 }
 
 export const formula = {
@@ -103,8 +133,11 @@ export const formula = {
   source(expression: WorkbookFormulaOperand): string {
     return normalizeFormulaSource(operandSource(expression))
   },
+  inputs(expression: WorkbookFormulaOperand): readonly WorkbookRef[] {
+    return operandInputs(expression)
+  },
   ref(ref: WorkbookRef): WorkbookFormulaExpression {
-    return createFormulaExpression(refSource(ref))
+    return createFormulaExpression(refSource(ref), [ref])
   },
   text(value: string): WorkbookFormulaExpression {
     return createFormulaExpression(`"${value.replaceAll('"', '""')}"`)

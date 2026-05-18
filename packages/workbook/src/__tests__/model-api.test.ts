@@ -40,6 +40,7 @@ describe('@bilig/workbook model api', () => {
         kind: 'writeFormula',
         target: plan.refs.result,
         formula: '(__bilig_ref_table_Base_Rate_Result_Base)*(__bilig_ref_table_Base_Rate_Result_Rate)',
+        inputs: [plan.refs.base, plan.refs.rate],
       },
     ])
     expect(plan.ops).toEqual([
@@ -72,6 +73,37 @@ describe('@bilig/workbook model api', () => {
 
     expect(source).toBe('SUM((Sheet1!A1)*(Sheet1!B1),10)')
     parseFormula(source)
+  })
+
+  it('tracks formula inputs separately from formula text', () => {
+    const model = defineModel({
+      name: 'formula-input-model',
+
+      find(workbook) {
+        const inputs = workbook.findTable({ name: 'Inputs' })
+        return {
+          amount: inputs.column('Amount'),
+          rate: inputs.column('Rate'),
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'D2' }),
+        }
+      },
+
+      actions: {
+        calculate({ refs, workbook }) {
+          workbook.writeFormula(refs.result, formula.sum(formula.multiply(refs.amount, refs.rate), refs.amount))
+        },
+      },
+    })
+
+    const plan = buildWorkbookActionPlan(model, 'calculate')
+    const [command] = plan.commands
+
+    expect(command).toEqual({
+      kind: 'writeFormula',
+      target: plan.refs.result,
+      formula: 'SUM((Inputs[Amount])*(Inputs[Rate]),Inputs[Amount])',
+      inputs: [plan.refs.amount, plan.refs.rate],
+    })
   })
 
   it('rejects invalid formulas before they become workbook actions', () => {

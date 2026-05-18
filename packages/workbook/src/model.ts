@@ -10,6 +10,7 @@ export type WorkbookActionCommand =
       readonly kind: 'writeFormula'
       readonly target: WorkbookRef
       readonly formula: string
+      readonly inputs: readonly WorkbookRef[]
     }
   | {
       readonly kind: 'writeValue'
@@ -180,6 +181,7 @@ function createModelWorkbook(input: {
         kind: 'writeFormula',
         target,
         formula: formula.source(value),
+        inputs: formula.inputs(value),
       })
     },
     writeValue(target, value) {
