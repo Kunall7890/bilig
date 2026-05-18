@@ -17,8 +17,11 @@ Node service, queue worker, serverless route, test, or coding-agent tool.
 
 It gives you a `WorkPaper`: build sheets, write inputs, recalculate, read the
 cell value, and save the workbook as JSON. No browser grid is involved.
-The published package also carries `AGENTS.md` so coding agents inspecting
-`node_modules/@bilig/headless` can find the write/read/persist loop locally.
+The published package also carries `AGENTS.md` and `SKILL.md` so coding agents
+inspecting `node_modules/@bilig/headless` can find the write/read/persist loop
+locally. The public docs expose the same path through
+[`AGENTS.md`](docs/AGENTS.md), [`skill.md`](docs/skill.md), and
+[`llms-full.txt`](docs/llms-full.txt).
 
 Good fits: pricing rules, budget checks, payout models, import validation, and
 agent tools that need read-after-write proof. Bad fits: manual spreadsheet
@@ -52,6 +55,9 @@ npm exec --package @bilig/headless -- bilig-formula-clinic ./reduced.xlsx --cell
 Handing a spreadsheet task to another coding agent? Start with the
 [agent handoff prompt](docs/headless-workpaper-agent-handbook.md#copy-paste-prompt-for-another-agent)
 before opening Excel, LibreOffice, Google Sheets, or a screenshot UI.
+Agent tools that support skill manifests can start from
+[`skill.md`](docs/skill.md) or the well-known index at
+[`docs/.well-known/agent-skills/index.json`](docs/.well-known/agent-skills/index.json).
 
 <p align="center">
   <img src="docs/assets/github-social-preview.png" alt="bilig headless workbook runtime for formulas in TypeScript" />
@@ -505,13 +511,15 @@ Start with the public package boundary unless the task is explicitly engine
 work.
 
 1. Read `packages/headless/README.md` before touching WorkPaper behavior.
-2. Use public exports from `@bilig/headless`; do not reach into `src/` or
+2. Read `docs/AGENTS.md`, `docs/skill.md`, or `docs/llms-full.txt` when
+   building an agent-facing integration from outside the repo.
+3. Use public exports from `@bilig/headless`; do not reach into `src/` or
    `dist/` when writing consumer examples.
-3. Keep examples TypeScript-first.
-4. Do not call stale XLSX cached formula values an accuracy oracle.
-5. Add focused tests before changing formulas, persistence, range bounds,
+4. Keep examples TypeScript-first.
+5. Do not call stale XLSX cached formula values an accuracy oracle.
+6. Add focused tests before changing formulas, persistence, range bounds,
    config rebuilds, events, row/column moves, or sheet lifecycle.
-6. Run the focused package tests first, then broaden to `pnpm run ci`.
+7. Run the focused package tests first, then broaden to `pnpm run ci`.
 
 ## Contributing
 

@@ -22,6 +22,11 @@ export interface DocsDiscoveryContext {
   readonly robots: string
   readonly sitemap: string
   readonly llms: string
+  readonly llmsFull: string
+  readonly docsAgentNotes: string
+  readonly docsSkill: string
+  readonly agentSkillsIndex: string
+  readonly legacySkillsIndex: string
   readonly communityLaunchPack: string
   readonly productHuntLaunchKit: string
   readonly starterIssues: string
@@ -30,6 +35,7 @@ export interface DocsDiscoveryContext {
   readonly headlessExamplePackageJson: string
   readonly headlessReadme: string
   readonly headlessAgentNotes: string
+  readonly headlessSkillNotes: string
   readonly excelImportReadme: string
   readonly dockerfile: string
   readonly publicApi: string
@@ -91,6 +97,11 @@ export async function loadDocsDiscoveryContext(): Promise<DocsDiscoveryContext> 
     robots,
     sitemap,
     llms,
+    llmsFull,
+    docsAgentNotes,
+    docsSkill,
+    agentSkillsIndex,
+    legacySkillsIndex,
     communityLaunchPack,
     productHuntLaunchKit,
     starterIssues,
@@ -99,6 +110,7 @@ export async function loadDocsDiscoveryContext(): Promise<DocsDiscoveryContext> 
     headlessExamplePackageJson,
     headlessReadme,
     headlessAgentNotes,
+    headlessSkillNotes,
     excelImportReadme,
     dockerfile,
     publicApi,
@@ -151,6 +163,11 @@ export async function loadDocsDiscoveryContext(): Promise<DocsDiscoveryContext> 
     readFile(join(docsRoot, 'robots.txt'), 'utf8'),
     readFile(join(docsRoot, 'sitemap.xml'), 'utf8'),
     readFile(join(docsRoot, 'llms.txt'), 'utf8'),
+    readFile(join(docsRoot, 'llms-full.txt'), 'utf8'),
+    readFile(join(docsRoot, 'AGENTS.md'), 'utf8'),
+    readFile(join(docsRoot, 'skill.md'), 'utf8'),
+    readFile(join(docsRoot, '.well-known', 'agent-skills', 'index.json'), 'utf8'),
+    readFile(join(docsRoot, '.well-known', 'skills', 'index.json'), 'utf8'),
     readFile(join(docsRoot, 'community-launch-pack.md'), 'utf8'),
     readFile(join(docsRoot, 'product-hunt-launch-kit.md'), 'utf8'),
     readFile(join(docsRoot, 'starter-issues.md'), 'utf8'),
@@ -159,6 +176,7 @@ export async function loadDocsDiscoveryContext(): Promise<DocsDiscoveryContext> 
     readFile(join(repoRoot, 'examples', 'headless-workpaper', 'package.json'), 'utf8'),
     readFile(join(repoRoot, 'packages', 'headless', 'README.md'), 'utf8'),
     readFile(join(repoRoot, 'packages', 'headless', 'AGENTS.md'), 'utf8'),
+    readFile(join(repoRoot, 'packages', 'headless', 'SKILL.md'), 'utf8'),
     readFile(join(repoRoot, 'packages', 'excel-import', 'README.md'), 'utf8'),
     readFile(join(repoRoot, 'Dockerfile'), 'utf8'),
     readFile(join(docsRoot, 'public-api.md'), 'utf8'),
@@ -220,6 +238,11 @@ export async function loadDocsDiscoveryContext(): Promise<DocsDiscoveryContext> 
     robots,
     sitemap,
     llms,
+    llmsFull,
+    docsAgentNotes,
+    docsSkill,
+    agentSkillsIndex,
+    legacySkillsIndex,
     communityLaunchPack,
     productHuntLaunchKit,
     starterIssues,
@@ -228,6 +251,7 @@ export async function loadDocsDiscoveryContext(): Promise<DocsDiscoveryContext> 
     headlessExamplePackageJson,
     headlessReadme,
     headlessAgentNotes,
+    headlessSkillNotes,
     excelImportReadme,
     dockerfile,
     publicApi,

@@ -40,6 +40,11 @@ const {
   robots,
   sitemap,
   llms,
+  llmsFull,
+  docsAgentNotes,
+  docsSkill,
+  agentSkillsIndex,
+  legacySkillsIndex,
   communityLaunchPack,
   productHuntLaunchKit,
   starterIssues,
@@ -48,6 +53,7 @@ const {
   headlessExamplePackageJson,
   headlessReadme,
   headlessAgentNotes,
+  headlessSkillNotes,
   excelImportReadme,
   dockerfile,
   publicApi,
@@ -262,6 +268,11 @@ requireIncludes(readme, 'The published package also carries `AGENTS.md`', 'READM
 requireIncludes(readme, 'agent handoff prompt', 'README.md')
 requireIncludes(index, './headless-workpaper-agent-handbook.html">Agent handoff prompt', 'docs/index.html')
 requireIncludes(llms, '## agent handoff prompt', 'docs/llms.txt')
+requireIncludes(llms, 'https://proompteng.github.io/bilig/AGENTS.md', 'docs/llms.txt')
+requireIncludes(llms, 'https://proompteng.github.io/bilig/skill.md', 'docs/llms.txt')
+requireIncludes(llms, 'https://proompteng.github.io/bilig/llms-full.txt', 'docs/llms.txt')
+requireIncludes(llms, 'https://proompteng.github.io/bilig/.well-known/agent-skills/index.json', 'docs/llms.txt')
+requireIncludes(llms, 'https://proompteng.github.io/bilig/.well-known/skills/index.json', 'docs/llms.txt')
 requireIncludes(llms, 'Do not claim success from a write call alone.', 'docs/llms.txt')
 requireIncludes(llms, 'pnpm --dir bilig/examples/headless-workpaper install --ignore-workspace', 'docs/llms.txt')
 requireIncludes(llms, 'pnpm --dir bilig/examples/headless-workpaper run agent:framework-adapters', 'docs/llms.txt')
@@ -270,7 +281,9 @@ requireNotIncludes(llms, 'cd bilig/examples/headless-workpaper', 'docs/llms.txt'
 requireNotIncludes(llms, '\nnpm start\n', 'docs/llms.txt')
 requireIncludes(headlessReadme, 'https://proompteng.github.io/bilig/why-use-bilig.html', 'packages/headless/README.md')
 requireIncludes(headlessReadme, 'The npm tarball also includes `AGENTS.md`', 'packages/headless/README.md')
+requireIncludes(headlessReadme, 'SKILL.md', 'packages/headless/README.md')
 requireIncludes(headlessPackageJson, '"AGENTS.md"', 'packages/headless/package.json')
+requireIncludes(headlessPackageJson, '"SKILL.md"', 'packages/headless/package.json')
 requireIncludes(headlessAgentNotes, '## Handoff prompt', 'packages/headless/AGENTS.md')
 requireIncludes(headlessAgentNotes, 'Do not claim success from a write call alone.', 'packages/headless/AGENTS.md')
 requireIncludes(
@@ -278,6 +291,26 @@ requireIncludes(
   'npm exec --package @bilig/headless -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable',
   'packages/headless/AGENTS.md',
 )
+requireIncludes(headlessSkillNotes, 'name: bilig-workpaper', 'packages/headless/SKILL.md')
+requireIncludes(headlessSkillNotes, 'bilig-formula-clinic ./reduced.xlsx', 'packages/headless/SKILL.md')
+requireIncludes(headlessSkillNotes, 'Do not trigger it for manual spreadsheet editing', 'packages/headless/SKILL.md')
+requireIncludes(docsAgentNotes, '## Discovery Order', 'docs/AGENTS.md')
+requireIncludes(docsAgentNotes, 'Do not claim success from a write call alone.', 'docs/AGENTS.md')
+requireIncludes(docsSkill, 'name: bilig-workpaper', 'docs/skill.md')
+requireIncludes(docsSkill, '## Required Verification', 'docs/skill.md')
+requireIncludes(
+  agentSkillsIndex,
+  'https://proompteng.github.io/bilig/.well-known/agent-skills/bilig-workpaper/SKILL.md',
+  'docs/.well-known/agent-skills/index.json',
+)
+requireIncludes(
+  legacySkillsIndex,
+  'https://proompteng.github.io/bilig/.well-known/skills/bilig-workpaper/SKILL.md',
+  'docs/.well-known/skills/index.json',
+)
+requireIncludes(llmsFull, '## Generated Skill Manifest', 'docs/llms-full.txt')
+requireIncludes(llmsFull, '## Headless WorkPaper Agent Handbook', 'docs/llms-full.txt')
+requireIncludes(llmsFull, 'npm exec --package @bilig/headless -- bilig-workpaper-mcp', 'docs/llms-full.txt')
 requireIncludes(headlessReadme, '## Stay Connected', 'packages/headless/README.md')
 requireIncludes(headlessReadme, '## More Guides', 'packages/headless/README.md')
 requireIncludes(headlessReadme, 'Pick a scoped first patch:', 'packages/headless/README.md')
@@ -696,7 +729,7 @@ for (const required of [
   'https://mcprepository.com/proompteng/bilig',
   'MCPRepository search returns a live Bilig page',
   `Live, \`${headlessPackageVersion}\` indexed; search pagination may show older entries first`,
-  `Live, release \`${headlessPackageVersion}\` created; seven tools indexed with A-grade TDQS`,
+  'Live, release `0.21.1` created; seven tools indexed with A-grade TDQS',
   'Still not indexed in public search on May 17, 2026',
   'https://www.pulsemcp.com/servers?search=bilig&q=bilig',
   'https://github.com/proompteng/bilig/issues/384',
@@ -706,7 +739,7 @@ for (const required of [
   'Glama Dockerfile test build `019e3900-c65c-73b4-b500-e3af43d37d46` succeeded\nand was published as release',
   'seven file-backed tools',
   'A-grade Tool Definition Quality',
-  "Glama's JSON API can lag the HTML listing immediately after a\nrelease",
+  "Glama's JSON API can lag\nthe HTML listing immediately after a release",
   'Node.js version: `24`',
   `@bilig/headless@${headlessPackageVersion}`,
   'CMD arguments',
@@ -716,7 +749,7 @@ for (const required of [
   `npm latest is \`@bilig/headless@${headlessPackageVersion}\``,
   `official Registry publish workflow for \`${headlessPackageVersion}\` succeeded`,
   `Registry API now returns a Bilig WorkPaper entry version \`${headlessPackageVersion}\` with\n\`isLatest: true\` on the cursor page`,
-  'https://github.com/proompteng/bilig/actions/runs/26008585881',
+  'https://github.com/proompteng/bilig/actions/runs/26012433643',
   'read_workpaper_summary',
   'set_workpaper_input_cell',
   'file-backed mode',

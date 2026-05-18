@@ -45,6 +45,7 @@
   "files": [
     "dist",
     "AGENTS.md",
+    "SKILL.md",
     "server.json",
     "README.md",
     "LICENSE"

@@ -24,9 +24,12 @@ value, and save the workbook as JSON.
 Product code gets reviewable workbook-shaped logic without shipping a
 spreadsheet UI. Coding agents get narrow tools such as `readRange` and
 `setInputCell` instead of guessing state from screenshots.
-The npm tarball also includes `AGENTS.md` so coding agents inspecting
-`node_modules/@bilig/headless` can find the write/read/persist loop without
-leaving the package.
+The npm tarball also includes `AGENTS.md` and `SKILL.md` so coding agents
+inspecting `node_modules/@bilig/headless` can find the write/read/persist loop
+without leaving the package. The public docs expose the same path through
+[`AGENTS.md`](https://proompteng.github.io/bilig/AGENTS.md),
+[`skill.md`](https://proompteng.github.io/bilig/skill.md), and
+[`llms-full.txt`](https://proompteng.github.io/bilig/llms-full.txt).
 
 The `bilig-workpaper-mcp` binary exposes file-backed WorkPaper tools with
 explicit parameter descriptions, `outputSchema` metadata, and MCP safety
@@ -664,21 +667,23 @@ this package:
 1. Read this README and the root
    [`README.md`](https://github.com/proompteng/bilig/blob/main/README.md)
    first.
-2. Use public exports from `@bilig/headless`; do not import from `src/`,
+2. Use the packaged `AGENTS.md` or `SKILL.md` when another coding agent needs a
+   portable WorkPaper instruction set.
+3. Use public exports from `@bilig/headless`; do not import from `src/`,
    `dist/internal`, or `@bilig/core` unless the task is package-internal engine
    work.
-3. Use zero-based `{ sheet, row, col }` addresses and resolve sheet ids with
+4. Use zero-based `{ sheet, row, col }` addresses and resolve sheet ids with
    `getSheetId()`.
-4. Use `WorkPaper.buildFromSheets()` for hand-authored fixtures,
+5. Use `WorkPaper.buildFromSheets()` for hand-authored fixtures,
    `WorkPaper.buildFromSnapshot()` for importer-produced snapshots, and
    `exportWorkPaperDocument()` / `createWorkPaperFromDocument()` for persistence
    round trips.
-5. Do not treat embedded XLSX cached formula values as an accuracy oracle.
-6. Add or tighten regression tests before changing config rebuilds, range
+6. Do not treat embedded XLSX cached formula values as an accuracy oracle.
+7. Add or tighten regression tests before changing config rebuilds, range
    bounds, formulas, persistence, events, row/column moves, or sheet lifecycle.
-7. Run focused headless tests before broader gates.
-8. Preserve benchmark definitions and workload sizes.
-9. Document edge-case behavior honestly: tracked formula names are routed, but
+8. Run focused headless tests before broader gates.
+9. Preserve benchmark definitions and workload sizes.
+10. Document edge-case behavior honestly: tracked formula names are routed, but
    arbitrary Excel workbooks, host features, and locale/date argument edges
    still need fixtures before production claims.
 

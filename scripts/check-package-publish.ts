@@ -136,6 +136,7 @@ function validateTarballContents(packageLabel, manifest, tarEntries, failureMess
   }
   if (packageLabel === '@bilig/headless') {
     requiredEntries.add('package/AGENTS.md')
+    requiredEntries.add('package/SKILL.md')
   }
   collectBinTargets(manifest.bin).forEach((target) => requiredEntries.add(`package/${stripDotSlash(target)}`))
 
