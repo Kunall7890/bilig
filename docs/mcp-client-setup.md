@@ -26,7 +26,7 @@ Every client below starts the same process:
 
 ```sh
 npm exec --package @bilig/headless -- bilig-workpaper-mcp
-npm exec --package @bilig/headless -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --writable
+npm exec --package @bilig/headless -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 Quick protocol smoke test:
@@ -43,8 +43,9 @@ printf '%s\n' \
 `set_workpaper_input_cell` in default demo mode. In file-backed mode,
 `tools/list` should include `list_sheets`, `read_range`, `read_cell`,
 `set_cell_contents`, `get_cell_display_value`, `export_workpaper_document`, and
-`validate_formula`; `--writable` persists `set_cell_contents` changes to the
-same WorkPaper JSON file.
+`validate_formula`; `--init-demo-workpaper` creates the demo JSON file when it
+is missing, and `--writable` persists `set_cell_contents` changes to the same
+WorkPaper JSON file.
 
 ## Claude Code
 

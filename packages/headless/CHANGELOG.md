@@ -11,9 +11,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(headless): initialize demo workpaper for mcp (4120d324)
 
 ## Internal runtime changes
+
 - refactor(excel): split pivot export writer (7ef3640a)
 - docs(discovery): track mcp registry publish lag (afd56bce)
 

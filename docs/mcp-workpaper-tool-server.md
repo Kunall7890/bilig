@@ -129,7 +129,7 @@ For a real agent workflow, point the same binary at a persisted WorkPaper JSON
 document:
 
 ```sh
-npm exec --package @bilig/headless -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --writable
+npm exec --package @bilig/headless -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 File-backed mode loads `./pricing.workpaper.json`, exposes `list_sheets`,
@@ -153,7 +153,7 @@ pnpm --dir examples/headless-workpaper run agent:mcp-file-transcript
 ```
 
 A passing run starts `npm exec --package @bilig/headless@latest --
-bilig-workpaper-mcp --workpaper pricing.workpaper.json --writable`, lists the
+bilig-workpaper-mcp --workpaper pricing.workpaper.json --init-demo-workpaper --writable`, lists the
 file-backed tool surface, writes `Inputs!B3`, persists the JSON file, reads
 `Summary!B3`, and asserts that the recalculated value is `96000`.
 
@@ -175,7 +175,7 @@ printf '%s\n' \
 
 The target installs `@bilig/headless` from npm, seeds
 `/workpaper/pricing.workpaper.json`, and starts
-`bilig-workpaper-mcp --workpaper /workpaper/pricing.workpaper.json --writable`
+`bilig-workpaper-mcp --workpaper /workpaper/pricing.workpaper.json --init-demo-workpaper --writable`
 over stdio. That makes directory introspection see the general WorkPaper tools:
 `list_sheets`, `read_range`, `read_cell`, `set_cell_contents`,
 `get_cell_display_value`, `export_workpaper_document`, and `validate_formula`.

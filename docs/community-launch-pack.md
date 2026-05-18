@@ -245,7 +245,7 @@ registry refresh:
   and Remote attributes, but the API still returns `tools: 0`, `package: null`,
   and no installability. The score page now names the blocker as `No Glama release`;
   the repo already has `glama.json` with maintainer `gregkonush`, and the
-  claimed Dockerfile admin page is staged with an npm-backed file-mode config.
+  claimed Dockerfile admin page is prepared with an npm-backed file-mode config.
   The same npm path was smoked locally with `@bilig/headless@0.18.29`, server
   `bilig-headless-workpaper`, 7 file-backed tools, and `Summary!B3` display
   value `60000`. The remaining action is running Glama `Build & Release` so the

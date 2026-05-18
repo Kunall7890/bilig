@@ -94,7 +94,7 @@ The published MCP server can run against a local WorkPaper JSON file:
 
 ```sh
 npm exec --package @bilig/headless -- \
-  bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --writable
+  bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 With `--writable`, `set_cell_contents` persists the updated WorkPaper JSON back

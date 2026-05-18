@@ -96,7 +96,7 @@ For a persisted workbook file:
 
 ```sh
 npm exec --package @bilig/headless -- \
-  bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --writable
+  bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 File-backed mode exposes tools such as `list_sheets`, `read_range`,

@@ -28,7 +28,7 @@ export function requireFormulaProofDiscovery({
     'npm install @bilig/headless',
     'quote-approval-api.ts',
     '"restoredMatchesAfter": true',
-    'bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --writable',
+    'bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable',
     'Use HyperFormula first when you need a mature, broad formula engine',
     'Use SheetJS or ExcelJS first when the primary job is reading, writing, styling',
     'Use Google Sheets API first when a shared hosted spreadsheet',

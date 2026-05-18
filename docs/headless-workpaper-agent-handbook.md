@@ -27,7 +27,7 @@ logic that can run through @bilig/headless. If it is, use WorkPaper state as the
 source of truth.
 
 If you have an MCP client, start with:
-npm exec --package @bilig/headless -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --writable
+npm exec --package @bilig/headless -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 
 If you are writing Node or TypeScript, import @bilig/headless directly. Your
 minimum proof is: read the relevant range, write one small input or formula,
@@ -46,13 +46,13 @@ recalculation state, and persistence proof.
 
 ## The First Decision
 
-| If the agent has... | Use this path | Verification target |
-| --- | --- | --- |
-| an MCP client | `bilig-workpaper-mcp --workpaper ./model.workpaper.json --writable` | `set_cell_contents` followed by `get_cell_display_value` and `export_workpaper_document` |
-| plain Node/TypeScript | `@bilig/headless` directly | `setCellContents()` followed by `getCellDisplayValue()` and serialized restore |
-| an agent SDK | wrap the same TypeScript functions as tools | one mutating tool returns before/after formula readback |
-| a service route | the serverless WorkPaper API example | route response proves inputs, outputs, persistence, and restored values |
-| an `.xlsx` fixture | the XLSX recalculation example | import, edit, recalc, export, reimport, and verify |
+| If the agent has...   | Use this path                                                                             | Verification target                                                                      |
+| --------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| an MCP client         | `bilig-workpaper-mcp --workpaper ./model.workpaper.json --init-demo-workpaper --writable` | `set_cell_contents` followed by `get_cell_display_value` and `export_workpaper_document` |
+| plain Node/TypeScript | `@bilig/headless` directly                                                                | `setCellContents()` followed by `getCellDisplayValue()` and serialized restore           |
+| an agent SDK          | wrap the same TypeScript functions as tools                                               | one mutating tool returns before/after formula readback                                  |
+| a service route       | the serverless WorkPaper API example                                                      | route response proves inputs, outputs, persistence, and restored values                  |
+| an `.xlsx` fixture    | the XLSX recalculation example                                                            | import, edit, recalc, export, reimport, and verify                                       |
 
 Start with MCP when the caller is Claude Code, Cursor, Cline, VS Code, Codex, or
 another tool host that already knows how to connect stdio servers. Start with
@@ -81,7 +81,7 @@ File-backed mode is the useful production shape because it gives the agent real
 state instead of the built-in demo workbook:
 
 ```sh
-npm exec --package @bilig/headless -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --writable
+npm exec --package @bilig/headless -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 Expose the same command from an MCP client config:
@@ -97,6 +97,7 @@ Expose the same command from an MCP client config:
         "bilig-workpaper-mcp",
         "--workpaper",
         "./pricing.workpaper.json",
+        "--init-demo-workpaper",
         "--writable"
       ]
     }
@@ -114,8 +115,10 @@ Expected tools:
 - `export_workpaper_document`
 - `validate_formula`
 
-`--writable` is intentional. Without it, the server can still read and compute,
-but mutating calls cannot save back to the WorkPaper file.
+`--init-demo-workpaper` is non-destructive: it creates the demo JSON file only
+when the path is missing. `--writable` is intentional. Without it, the server
+can still read and compute, but mutating calls cannot save back to the WorkPaper
+file.
 
 ## Copy-Paste Agent Instruction
 

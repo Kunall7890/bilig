@@ -55,7 +55,7 @@ printf '%s\n' \
 
 The target installs `@bilig/headless` from npm, seeds
 `/workpaper/pricing.workpaper.json`, starts
-`bilig-workpaper-mcp --workpaper /workpaper/pricing.workpaper.json --writable`,
+`bilig-workpaper-mcp --workpaper /workpaper/pricing.workpaper.json --init-demo-workpaper --writable`,
 and labels the image with
 `io.modelcontextprotocol.server.name=io.github.proompteng/bilig-workpaper`.
 That makes `tools/list` expose `list_sheets`, `read_range`, `read_cell`,
@@ -74,7 +74,7 @@ crawlers that probe those well-known variants.
 
 | Directory                       | Status                                                                 | Link                                                                                                  |
 | ------------------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Official MCP Registry           | Live, `0.20.0` indexed; search pagination may show older entries first | <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper> |
+| Official MCP Registry           | Live, `0.21.0` indexed; search pagination may show older entries first | <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper> |
 | Static MCP server card          | Live                                                                   | <https://proompteng.github.io/bilig/.well-known/mcp/server-card.json>                                 |
 | Static MCP discovery aliases    | Live                                                                   | <https://proompteng.github.io/bilig/.well-known/mcp.json>                                             |
 | Glama                           | Live, installability and tool indexing pending                         | <https://glama.ai/mcp/servers/proompteng/bilig>                                                       |
@@ -94,11 +94,11 @@ crawlers that probe those well-known variants.
 PulseMCP says server listings are ingested from the official MCP Registry daily
 and processed weekly. The Bilig WorkPaper registry entry is live, and the
 repository's Publish MCP Registry workflow succeeded for
-`@bilig/headless@0.20.0`. The official Registry API now contains a
-`0.20.0` entry marked `isLatest: true`, although the search endpoint can return
+`@bilig/headless@0.21.0`. The official Registry API now contains a
+`0.21.0` entry marked `isLatest: true`, although the search endpoint can return
 historical entries first and expose the freshest entry behind pagination. Treat
 PulseMCP absence as downstream directory refresh lag unless the official
-Registry stops returning the `0.20.0` latest entry after its refresh window.
+Registry stops returning the `0.21.0` latest entry after its refresh window.
 Starter issue
 [#384](https://github.com/proompteng/bilig/issues/384) captured the first public
 verification pass and is now closed; reopen a narrower follow-up only if
@@ -109,21 +109,22 @@ Tools, Workplace & Productivity, and Remote attributes. Its public API still
 reports `tools: 0`, `package: null`, and no installability. The score page now
 shows the concrete blocker: `No Glama release`. The repository already ships
 `glama.json` with maintainer `gregkonush`, and the claimed Glama Dockerfile
-admin page is staged with the npm-backed file-mode config below. The remaining
+admin page is prepared with the npm-backed file-mode config below. The remaining
 directory action is to run `Build & Release` in Glama so the
 `@bilig/headless` package and file-backed tool surface become installable in
 Glama.
 
-Glama admin config staged on May 17, 2026:
+Glama admin config prepared on May 18, 2026:
 
 - Node.js version: `24`
 - Build steps:
-  `["mkdir -p /workpaper && cd /workpaper && npm init -y >/dev/null && npm install --omit=dev @bilig/headless@0.20.0","cd /workpaper && node --input-type=module -e \"import { writeFileSync } from 'node:fs'; import { buildDemoWorkPaper, exportWorkPaperDocument, serializeWorkPaperDocument } from '@bilig/headless'; writeFileSync('/workpaper/pricing.workpaper.json', serializeWorkPaperDocument(exportWorkPaperDocument(buildDemoWorkPaper(), { includeConfig: true })));\""]`
+  `["mkdir -p /workpaper && cd /workpaper && npm init -y >/dev/null && npm install --omit=dev @bilig/headless@0.21.0"]`
 - CMD arguments:
-  `["/workpaper/node_modules/.bin/bilig-workpaper-mcp","--workpaper","/workpaper/pricing.workpaper.json","--writable"]`
+  `["/workpaper/node_modules/.bin/bilig-workpaper-mcp","--workpaper","/workpaper/pricing.workpaper.json","--init-demo-workpaper","--writable"]`
 - Local smoke proof: the same npm path installed
-  `@bilig/headless@0.20.0`, started server `bilig-headless-workpaper`, exposed
-  7 tools, and returned `Summary!B3` with display value `60000`.
+  `@bilig/headless@0.21.0`, initialized `/workpaper/pricing.workpaper.json`,
+  started server `bilig-headless-workpaper`, exposed 7 tools, and returned
+  `Summary!B3` with display value `60000`.
 
 The `mcpserver.cc` submission was accepted for review on May 13, 2026 with
 submission UUID `bcdce4e1-3b05-4be2-b611-2a2abb8baf79`. Search still returned no
@@ -184,10 +185,10 @@ A useful result includes:
 - `transport.type: stdio`
 - `repository.url: https://github.com/proompteng/bilig`
 
-Latest checked result on May 18, 2026: npm latest is `@bilig/headless@0.20.0`.
-The official Registry publish workflow for `0.20.0` succeeded at
-<https://github.com/proompteng/bilig/actions/runs/26007468036>, and the public
-Registry API now returns a Bilig WorkPaper entry version `0.20.0` with
+Latest checked result on May 18, 2026: npm latest is `@bilig/headless@0.21.0`.
+The official Registry publish workflow for `0.21.0` succeeded at
+<https://github.com/proompteng/bilig/actions/runs/26008166576>, and the public
+Registry API now returns a Bilig WorkPaper entry version `0.21.0` with
 `isLatest: true` on the cursor page after the first search page. The API also
 returns historical entries, so consumers should follow pagination, select the
 latest-marked entry, or prefer the npm package version when they need a single
@@ -232,7 +233,7 @@ printf '%s\n' \
   '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
   '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' |
   npm exec --package @bilig/headless -- \
-    bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --writable
+    bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 That mode exposes `list_sheets`, `read_range`, `read_cell`,

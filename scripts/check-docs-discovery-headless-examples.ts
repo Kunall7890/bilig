@@ -107,9 +107,13 @@ export async function requireHeadlessExampleDiscovery({
   })
   requireIncludes(headlessPackageManifest, '"mcpName": "io.github.proompteng/bilig-workpaper"', 'packages/headless/package.json')
   requireIncludes(headlessPackageManifest, '"bilig-workpaper-mcp": "./dist/work-paper-mcp-stdio-bin.js"', 'packages/headless/package.json')
-  requireIncludes(headlessReadme, 'bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --writable', 'packages/headless/README.md')
+  requireIncludes(
+    headlessReadme,
+    'bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable',
+    'packages/headless/README.md',
+  )
   requireIncludes(headlessReadme, '`set_cell_contents` edits back to the same file', 'packages/headless/README.md')
-  requireIncludes(readme, 'bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --writable', 'README.md')
+  requireIncludes(readme, 'bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable', 'README.md')
   requireIncludes(readme, '`export_workpaper_document`, and `validate_formula`', 'README.md')
   requireIncludes(headlessServerJson, '"name": "io.github.proompteng/bilig-workpaper"', 'packages/headless/server.json')
   requireIncludes(headlessServerJson, '"identifier": "@bilig/headless"', 'packages/headless/server.json')
