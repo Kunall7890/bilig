@@ -159,15 +159,14 @@ repository example:
 
 ```sh
 git clone https://github.com/proompteng/bilig.git
-cd bilig/examples/headless-workpaper
-npm install
-npm start
-npm run agent:tool-call
-npm run agent:openai-responses
-npm run agent:ai-sdk-generate-text
-npm run agent:ai-sdk-stream-text
-npm run agent:framework-adapters
-npm run agent:verify
+pnpm --dir bilig/examples/headless-workpaper install --ignore-workspace
+pnpm --dir bilig/examples/headless-workpaper run start
+pnpm --dir bilig/examples/headless-workpaper run agent:tool-call
+pnpm --dir bilig/examples/headless-workpaper run agent:openai-responses
+pnpm --dir bilig/examples/headless-workpaper run agent:ai-sdk-generate-text
+pnpm --dir bilig/examples/headless-workpaper run agent:ai-sdk-stream-text
+pnpm --dir bilig/examples/headless-workpaper run agent:framework-adapters
+pnpm --dir bilig/examples/headless-workpaper run agent:verify
 ```
 
 ## agent handoff
@@ -389,7 +388,7 @@ npm exec --package @bilig/headless -- bilig-workpaper-mcp --workpaper ./pricing.
   https://proompteng.github.io/bilig/agent-workpaper-tool-calling-recipe.html
   https://github.com/proompteng/bilig/blob/main/docs/agent-workpaper-tool-calling-recipe.md
 - OpenAI Responses WorkPaper tool-call recipe:
-  npm run agent:openai-responses
+  pnpm --dir examples/headless-workpaper run agent:openai-responses
   https://proompteng.github.io/bilig/openai-responses-workpaper-tool-call.html
   https://github.com/proompteng/bilig/blob/main/docs/openai-responses-workpaper-tool-call.md
   https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/openai-responses-tool-wrapper.ts
@@ -434,10 +433,10 @@ npm exec --package @bilig/headless -- bilig-workpaper-mcp --workpaper ./pricing.
 - MCP spreadsheet tool server feedback discussion:
   https://github.com/proompteng/bilig/discussions/230
 - runnable MCP-style WorkPaper tool server example:
-  npm run agent:mcp-tools
+  pnpm --dir examples/headless-workpaper run agent:mcp-tools
   https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/mcp-tool-server.ts
 - local MCP stdio WorkPaper tool server example:
-  npm run agent:mcp-stdio
+  pnpm --dir examples/headless-workpaper run agent:mcp-stdio
   https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/mcp-stdio-server.ts
 - packaged MCP stdio WorkPaper server:
   npm exec --package @bilig/headless -- bilig-workpaper-mcp
