@@ -196,4 +196,43 @@ describe('workbook agent service review actions', () => {
     expect(context.persistSessionState).not.toHaveBeenCalled()
     expect(context.emitSnapshot).not.toHaveBeenCalled()
   })
+
+  it('does not persist replay auto-apply when a review item is staged during apply handoff', async () => {
+    const existingReviewBundle = createBundle('bundle-existing-review')
+    const executionRecord = createExecutionRecord()
+    const sessionState = createSessionState({
+      executionRecords: [executionRecord],
+    })
+    const context: WorkbookAgentReviewActionContext = {
+      ...createContext(),
+      shouldApplyToolBundleImmediately: vi.fn(() => true),
+      applyCommandBundleForSessionState: vi.fn(async (applyInput) => {
+        sessionState.durable.reviewQueueItems = [
+          toWorkbookAgentReviewQueueItem({
+            bundle: existingReviewBundle,
+            reviewMode: 'ownerReview',
+            sharedReview: existingReviewBundle.sharedReview ?? null,
+          }),
+        ]
+        applyInput.assertApplyStillAuthorized?.()
+        return createExecutionRecord()
+      }),
+    }
+
+    await expect(
+      replayWorkbookAgentExecutionRecord({
+        context,
+        sessionState,
+        documentId: 'doc-1',
+        recordId: executionRecord.id,
+        actorUserId: 'alex@example.com',
+      }),
+    ).rejects.toThrow('Finish the current workbook review item before replaying another workbook change.')
+
+    expect(sessionState.durable.reviewQueueItems).toHaveLength(1)
+    expect(sessionState.durable.reviewQueueItems[0]?.id).toBe(existingReviewBundle.id)
+    expect(context.applyCommandBundleForSessionState).toHaveBeenCalledTimes(1)
+    expect(context.persistSessionState).not.toHaveBeenCalled()
+    expect(context.emitSnapshot).not.toHaveBeenCalled()
+  })
 })

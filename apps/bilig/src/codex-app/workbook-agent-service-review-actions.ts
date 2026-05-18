@@ -29,6 +29,13 @@ export interface WorkbookAgentReviewActionContext {
   readonly touchSession: (sessionState: WorkbookAgentThreadState) => void
 }
 
+function assertReplayDoesNotRaceReviewQueue(sessionState: WorkbookAgentThreadState): void {
+  assertNoWorkbookAgentReviewItem({
+    sessionState,
+    message: 'Finish the current workbook review item before replaying another workbook change.',
+  })
+}
+
 export async function applyWorkbookAgentReviewItem(input: {
   readonly context: WorkbookAgentReviewActionContext
   readonly sessionState: WorkbookAgentThreadState
@@ -70,15 +77,9 @@ export async function replayWorkbookAgentExecutionRecord(input: {
       retryable: false,
     })
   }
-  assertNoWorkbookAgentReviewItem({
-    sessionState: input.sessionState,
-    message: 'Finish the current workbook review item before replaying another workbook change.',
-  })
+  assertReplayDoesNotRaceReviewQueue(input.sessionState)
   const baseRevision = await input.context.getWorkbookHeadRevision(input.documentId)
-  assertNoWorkbookAgentReviewItem({
-    sessionState: input.sessionState,
-    message: 'Finish the current workbook review item before replaying another workbook change.',
-  })
+  assertReplayDoesNotRaceReviewQueue(input.sessionState)
   const replayedBundle = createWorkbookAgentCommandBundle({
     documentId: input.documentId,
     threadId: input.sessionState.threadId,
@@ -95,6 +96,9 @@ export async function replayWorkbookAgentExecutionRecord(input: {
       commandBundle: replayedBundle,
       actorUserId: input.actorUserId,
       appliedBy: 'auto',
+      assertApplyStillAuthorized: () => {
+        assertReplayDoesNotRaceReviewQueue(input.sessionState)
+      },
     })
     await input.context.persistSessionState(input.sessionState)
     input.context.emitSnapshot(input.sessionState.threadId)
