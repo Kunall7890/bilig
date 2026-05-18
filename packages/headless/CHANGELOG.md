@@ -4,6 +4,22 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.22.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.21.1
+- Manual override: no
+
+## Features
+- feat(headless): ship formula clinic cli (7aef71db)
+
+## Internal runtime changes
+- docs(headless): align package agent notes with mcp init (d837d0ca)
+- ci(runtime): keep mirror package checks green (e4d7fd96)
+- docs(mcp): mark glama release live (f34a7d40)
+- ci(runtime): skip release planning on fetch failure (0b386bcf)
+- ci(runtime): allow mirror release dispatch (1067113d)
+
 ## 0.21.1
 
 - Release type: patch
