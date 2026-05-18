@@ -40,6 +40,8 @@ export interface WorkbookAgentBundleApplicationContext {
   touchSession: (sessionState: WorkbookAgentThreadState) => void
 }
 
+export type WorkbookAgentApplyAuthorityGuard = () => void
+
 export async function buildWorkbookAgentAuthoritativePreview(input: {
   zeroSyncService: ZeroSyncService
   documentId: string
@@ -125,6 +127,21 @@ function assertManualReviewItemStillCurrent(input: {
   })
 }
 
+function assertWorkbookAgentApplyStillAuthorized(input: {
+  sessionState: WorkbookAgentThreadState
+  commandBundle: WorkbookAgentCommandBundle
+  appliedBy: WorkbookAgentAppliedBy
+  assertApplyStillAuthorized?: WorkbookAgentApplyAuthorityGuard | null | undefined
+}): void {
+  input.assertApplyStillAuthorized?.()
+  if (input.appliedBy === 'user') {
+    assertManualReviewItemStillCurrent({
+      sessionState: input.sessionState,
+      commandBundle: input.commandBundle,
+    })
+  }
+}
+
 export async function applyWorkbookAgentCommandBundleForSessionState(
   context: WorkbookAgentBundleApplicationContext,
   input: {
@@ -133,6 +150,7 @@ export async function applyWorkbookAgentCommandBundleForSessionState(
     actorUserId: string
     appliedBy: WorkbookAgentAppliedBy
     commandIndexes?: readonly number[] | null | undefined
+    assertApplyStillAuthorized?: WorkbookAgentApplyAuthorityGuard | null | undefined
   },
 ): Promise<WorkbookAgentExecutionRecord> {
   const selection = splitWorkbookAgentCommandBundle({
@@ -215,17 +233,23 @@ export async function applyWorkbookAgentCommandBundleForSessionState(
       retryable: false,
     })
   }
+  assertWorkbookAgentApplyStillAuthorized({
+    sessionState: input.sessionState,
+    commandBundle: input.commandBundle,
+    appliedBy: input.appliedBy,
+    assertApplyStillAuthorized: input.assertApplyStillAuthorized,
+  })
   const preview = await buildWorkbookAgentAuthoritativePreview({
     zeroSyncService: context.zeroSyncService,
     documentId: input.sessionState.documentId,
     bundle: selection.acceptedBundle,
   })
-  if (input.appliedBy === 'user') {
-    assertManualReviewItemStillCurrent({
-      sessionState: input.sessionState,
-      commandBundle: input.commandBundle,
-    })
-  }
+  assertWorkbookAgentApplyStillAuthorized({
+    sessionState: input.sessionState,
+    commandBundle: input.commandBundle,
+    appliedBy: input.appliedBy,
+    assertApplyStillAuthorized: input.assertApplyStillAuthorized,
+  })
   const result = await context.zeroSyncService.applyAgentCommandBundle(input.sessionState.documentId, selection.acceptedBundle, preview, {
     userID: input.actorUserId,
     roles: ['editor'],
@@ -299,6 +323,7 @@ export async function applyWorkbookAgentToolBundleAutomatically(
     sessionState: WorkbookAgentThreadState
     actorUserId: string
     bundle: WorkbookAgentCommandBundle
+    assertApplyStillAuthorized?: WorkbookAgentApplyAuthorityGuard | null | undefined
   },
 ): Promise<WorkbookAgentExecutionRecord | null> {
   const executionRecord = await applyWorkbookAgentCommandBundleForSessionState(context, {
@@ -306,6 +331,7 @@ export async function applyWorkbookAgentToolBundleAutomatically(
     commandBundle: input.bundle,
     actorUserId: input.actorUserId,
     appliedBy: 'auto',
+    assertApplyStillAuthorized: input.assertApplyStillAuthorized,
   })
   await context.persistSessionState(input.sessionState)
   context.emitSnapshot(input.sessionState.threadId)
@@ -340,6 +366,17 @@ export async function finalizeWorkbookAgentPrivateTurnBundle(
       commandBundle: queuedBundle,
       actorUserId,
       appliedBy: 'auto',
+      assertApplyStillAuthorized: () => {
+        if (input.sessionState.live.activeTurnId === input.turnId) {
+          return
+        }
+        throw createWorkbookAgentServiceError({
+          code: 'WORKBOOK_AGENT_STALE_TURN_APPLY_BLOCKED',
+          message: 'Automatic workbook apply was skipped because the assistant turn no longer owns the session.',
+          statusCode: 409,
+          retryable: false,
+        })
+      },
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)

@@ -71,6 +71,7 @@ export interface WorkbookAgentCodexRuntimeOptions {
     sessionState: WorkbookAgentThreadState
     actorUserId: string
     bundle: WorkbookAgentCommandBundle
+    assertApplyStillAuthorized?: (() => void) | null | undefined
   }) => Promise<WorkbookAgentExecutionRecord | null>
   readonly persistSessionState: (sessionState: WorkbookAgentThreadState) => Promise<void>
   readonly emitSnapshot: (threadId: string) => void

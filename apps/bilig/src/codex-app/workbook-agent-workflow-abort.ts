@@ -1,4 +1,4 @@
-function createWorkflowAbortError(): Error {
+export function createWorkflowAbortError(): Error {
   const error = new Error('Workbook agent workflow cancelled.')
   error.name = 'AbortError'
   return error

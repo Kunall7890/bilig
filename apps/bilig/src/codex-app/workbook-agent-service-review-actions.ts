@@ -21,6 +21,7 @@ export interface WorkbookAgentReviewActionContext {
     actorUserId: string
     appliedBy: WorkbookAgentAppliedBy
     commandIndexes?: readonly number[] | null | undefined
+    assertApplyStillAuthorized?: (() => void) | null | undefined
   }) => Promise<WorkbookAgentExecutionRecord>
   readonly shouldApplyToolBundleImmediately: (sessionState: WorkbookAgentThreadState, bundle: WorkbookAgentCommandBundle) => boolean
   readonly persistSessionState: (sessionState: WorkbookAgentThreadState) => Promise<void>

@@ -241,6 +241,7 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
     actorUserId: string
     appliedBy: WorkbookAgentAppliedBy
     commandIndexes?: readonly number[] | null | undefined
+    assertApplyStillAuthorized?: (() => void) | null | undefined
   }): Promise<WorkbookAgentExecutionRecord> {
     return await applyWorkbookAgentCommandBundleForSessionState(this.createBundleApplicationContext(), input)
   }
@@ -249,6 +250,7 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
     sessionState: WorkbookAgentThreadState
     actorUserId: string
     bundle: WorkbookAgentCommandBundle
+    assertApplyStillAuthorized?: (() => void) | null | undefined
   }): Promise<WorkbookAgentExecutionRecord | null> {
     return await applyWorkbookAgentToolBundleAutomatically(
       {
@@ -285,6 +287,7 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
         actorUserId: string
         appliedBy: WorkbookAgentAppliedBy
         commandIndexes?: readonly number[] | null | undefined
+        assertApplyStillAuthorized?: (() => void) | null | undefined
       }) => await this.applyCommandBundleForSessionState(input),
       shouldApplyToolBundleImmediately: (sessionState: WorkbookAgentThreadState, bundle: WorkbookAgentCommandBundle) =>
         this.shouldApplyToolBundleImmediately(sessionState, bundle),

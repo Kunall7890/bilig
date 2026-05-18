@@ -32,6 +32,7 @@ export function createWorkbookAgentReviewActionContext(input: {
     readonly actorUserId: string
     readonly appliedBy: WorkbookAgentAppliedBy
     readonly commandIndexes?: readonly number[] | null | undefined
+    readonly assertApplyStillAuthorized?: (() => void) | null | undefined
   }) => Promise<WorkbookAgentExecutionRecord>
   readonly shouldApplyToolBundleImmediately: (sessionState: WorkbookAgentThreadState, bundle: WorkbookAgentCommandBundle) => boolean
   readonly persistSessionState: (sessionState: WorkbookAgentThreadState) => Promise<void>

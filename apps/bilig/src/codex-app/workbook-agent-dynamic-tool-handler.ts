@@ -50,6 +50,7 @@ export function createWorkbookAgentDynamicToolHandler(input: {
     sessionState: WorkbookAgentThreadState
     actorUserId: string
     bundle: ReturnType<typeof appendWorkbookAgentCommandToBundle>
+    assertApplyStillAuthorized?: (() => void) | null | undefined
   }) => Promise<WorkbookAgentExecutionRecord | null>
   persistSessionState: (sessionState: WorkbookAgentThreadState) => Promise<void>
   emitSnapshot: (threadId: string) => void
@@ -175,6 +176,7 @@ export function createWorkbookAgentDynamicToolHandler(input: {
               sessionState,
               actorUserId: requestActorUserId,
               bundle,
+              assertApplyStillAuthorized: assertRequestTurnOwnsSession,
             })
             if (executionRecord && hasRenderedContext(requestContext)) {
               requestContext = await waitForRenderedContext(

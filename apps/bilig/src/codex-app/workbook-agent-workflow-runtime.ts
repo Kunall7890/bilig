@@ -12,7 +12,7 @@ import {
   executeWorkbookAgentWorkflow,
   failWorkflowSteps,
 } from './workbook-agent-workflows.js'
-import { isWorkflowAbortError, throwIfWorkflowCancelled } from './workbook-agent-workflow-abort.js'
+import { createWorkflowAbortError, isWorkflowAbortError, throwIfWorkflowCancelled } from './workbook-agent-workflow-abort.js'
 import { createSystemEntry } from './workbook-agent-session-model.js'
 import {
   type QueuedWorkbookAgentWorkflowRun,
@@ -53,6 +53,7 @@ export class WorkbookAgentWorkflowRuntime {
         sessionState: WorkbookAgentThreadState
         actorUserId: string
         bundle: ReturnType<typeof createWorkbookAgentCommandBundle>
+        assertApplyStillAuthorized?: (() => void) | null | undefined
       }) => Promise<WorkbookAgentExecutionRecord | null>
       incrementCounter: (
         counter: 'workflowStartedCount' | 'workflowCompletedCount' | 'workflowFailedCount' | 'workflowCancelledCount',
@@ -292,6 +293,9 @@ export class WorkbookAgentWorkflowRuntime {
             sessionState: input.sessionState,
             actorUserId: input.startedByUserId,
             bundle: workflowBundle,
+            assertApplyStillAuthorized: () => {
+              this.assertWorkflowStillRunning(input, abortController)
+            },
           })
           if (!this.isWorkflowStillRunning(input, abortController)) {
             return
@@ -375,8 +379,16 @@ export class WorkbookAgentWorkflowRuntime {
   }
 
   private isWorkflowStillRunning(input: QueuedWorkbookAgentWorkflowRun, abortController: AbortController): boolean {
+    this.assertWorkflowStillRunning(input, abortController)
+    return true
+  }
+
+  private assertWorkflowStillRunning(input: QueuedWorkbookAgentWorkflowRun, abortController: AbortController): void {
     throwIfWorkflowCancelled(abortController.signal)
     const latestRun = input.sessionState.durable.workflowRuns.find((run) => run.runId === input.runId)
-    return latestRun?.status === 'running'
+    if (latestRun?.status === 'running') {
+      return
+    }
+    throw createWorkflowAbortError()
   }
 }
