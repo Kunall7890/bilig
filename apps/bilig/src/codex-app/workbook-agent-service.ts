@@ -95,6 +95,7 @@ import {
   finalizeWorkbookAgentPrivateTurnBundle,
 } from './workbook-agent-service-application.js'
 import { applyWorkbookAgentReviewItem, replayWorkbookAgentExecutionRecord } from './workbook-agent-service-review-actions.js'
+import { startWorkbookAgentTurn } from './workbook-agent-turn-lifecycle.js'
 
 export type { EnabledWorkbookAgentServiceOptions, WorkbookAgentService } from './workbook-agent-service-options.js'
 
@@ -538,13 +539,13 @@ class EnabledWorkbookAgentService implements WorkbookAgentService {
       success: null,
       citations: [],
     })
-    sessionState.live.optimisticUserEntryIdByTurn.set(turn.id, optimisticEntryId)
-    sessionState.live.promptByTurn.set(turn.id, parsed.prompt)
-    sessionState.live.turnActorUserIdByTurn.set(turn.id, input.session.userID)
-    sessionState.live.turnContextByTurn.set(turn.id, turnContext)
-    sessionState.live.activeTurnId = turn.id
-    sessionState.live.status = 'inProgress'
-    sessionState.live.lastError = null
+    startWorkbookAgentTurn(sessionState, {
+      turnId: turn.id,
+      prompt: parsed.prompt,
+      actorUserId: input.session.userID,
+      context: turnContext,
+      optimisticEntryId,
+    })
     this.sessionRegistry.touch(sessionState)
     await this.persistSessionState(sessionState)
     this.sessionRegistry.emitSnapshot(sessionState.threadId)

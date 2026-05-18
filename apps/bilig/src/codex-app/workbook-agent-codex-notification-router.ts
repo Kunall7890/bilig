@@ -14,34 +14,7 @@ import {
   removeEntry,
   upsertEntry,
 } from './workbook-agent-service-shared.js'
-
-function clearWorkbookAgentLiveTurnState(sessionState: WorkbookAgentThreadState, turnId: string): void {
-  sessionState.live.promptByTurn.delete(turnId)
-  sessionState.live.turnActorUserIdByTurn.delete(turnId)
-  sessionState.live.turnContextByTurn.delete(turnId)
-  sessionState.live.stagedPrivateBundleByTurn.delete(turnId)
-  sessionState.live.optimisticUserEntryIdByTurn.delete(turnId)
-}
-
-function resolveRuntimeErrorTurnId(sessionState: WorkbookAgentThreadState): string | null {
-  if (sessionState.live.activeTurnId) {
-    return sessionState.live.activeTurnId
-  }
-  const liveTurnId =
-    Array.from(
-      new Set([
-        ...sessionState.live.promptByTurn.keys(),
-        ...sessionState.live.turnActorUserIdByTurn.keys(),
-        ...sessionState.live.turnContextByTurn.keys(),
-        ...sessionState.live.stagedPrivateBundleByTurn.keys(),
-        ...sessionState.live.optimisticUserEntryIdByTurn.keys(),
-      ]),
-    ).at(-1) ?? null
-  if (liveTurnId) {
-    return liveTurnId
-  }
-  return sessionState.durable.entries.findLast((entry) => entry.id.startsWith('optimistic-user:'))?.turnId ?? null
-}
+import { completeWorkbookAgentTurn, failWorkbookAgentRuntime, markWorkbookAgentTurnStarted } from './workbook-agent-turn-lifecycle.js'
 
 export async function routeWorkbookAgentCodexNotification(input: {
   notification: CodexServerNotification
@@ -96,9 +69,7 @@ export async function routeWorkbookAgentCodexNotification(input: {
       if (!sessionState) {
         return
       }
-      sessionState.live.activeTurnId = notification.params.turn.id
-      sessionState.live.status = 'inProgress'
-      sessionState.live.lastError = null
+      markWorkbookAgentTurnStarted(sessionState, notification.params.turn.id)
       input.emitSnapshot(sessionState.threadId)
       return
     }
@@ -108,30 +79,16 @@ export async function routeWorkbookAgentCodexNotification(input: {
         return
       }
       const completedTurnId = notification.params.turn.id
-      const completedActiveTurn = sessionState.live.activeTurnId === completedTurnId
-      if (completedActiveTurn) {
-        sessionState.live.activeTurnId = null
-        sessionState.live.status = notification.params.turn.status === 'failed' || sessionState.live.lastError ? 'failed' : 'idle'
-      }
-      if (notification.params.turn.error?.message) {
-        sessionState.live.lastError = notification.params.turn.error.message
-      }
       await input.finalizeCompletedTurn?.(
         sessionState,
         completedTurnId,
         notification.params.turn.status === 'failed' ? 'failed' : 'completed',
       )
-      if (completedActiveTurn) {
-        sessionState.live.status = notification.params.turn.status === 'failed' || sessionState.live.lastError ? 'failed' : 'idle'
-      } else if (sessionState.live.activeTurnId) {
-        sessionState.live.status = 'inProgress'
-      } else {
-        sessionState.live.status = notification.params.turn.status === 'failed' || sessionState.live.lastError ? 'failed' : 'idle'
-      }
-      if (notification.params.turn.error?.message) {
-        sessionState.live.lastError = notification.params.turn.error.message
-      }
-      clearWorkbookAgentLiveTurnState(sessionState, completedTurnId)
+      completeWorkbookAgentTurn(sessionState, {
+        turnId: completedTurnId,
+        status: notification.params.turn.status === 'failed' ? 'failed' : 'completed',
+        errorMessage: notification.params.turn.error?.message ?? null,
+      })
       await input.persistSessionState(sessionState)
       input.emitSnapshot(sessionState.threadId)
       return
@@ -221,14 +178,7 @@ export async function routeWorkbookAgentCodexNotification(input: {
       const message = normalizeCodexNotificationErrorMessage(input.notification)
       await Promise.all(
         input.listSessions().map(async (sessionState) => {
-          const failedTurnId = resolveRuntimeErrorTurnId(sessionState)
-          if (failedTurnId) {
-            clearWorkbookAgentLiveTurnState(sessionState, failedTurnId)
-          }
-          sessionState.live.activeTurnId = null
-          sessionState.live.stagedPrivateBundleByTurn.clear()
-          sessionState.live.lastError = message
-          sessionState.live.status = 'failed'
+          const failedTurnId = failWorkbookAgentRuntime(sessionState, message)
           sessionState.durable.entries = upsertEntry(
             sessionState.durable.entries,
             createSystemEntry(`system-error:${input.now()}`, failedTurnId, message),
