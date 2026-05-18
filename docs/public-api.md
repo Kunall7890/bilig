@@ -91,9 +91,10 @@ distinct consumer-defined row predicates remain distinct during agent
 inspection and dedupe.
 The same planned checks are available outside model callbacks through top-level
 `check.exists(ref)`, `check.noFormulaErrors(ref)`, and
-`check.custom({ kind, message, target })` helpers. Custom checks let consumers
-carry their own invariants without adding hardcoded business models to the
-package.
+`check.custom({ kind, message, target, refs })` helpers. Custom checks let
+consumers carry their own invariants without adding hardcoded business models to
+the package. `target` names the main ref, and `refs` names supporting refs so
+agents can describe and verify the full invariant contract.
 
 `describeModel` returns a JSON-safe model manifest with the model name, sorted
 action names, and whether model-level checks exist. It does not run `find`,
@@ -108,7 +109,8 @@ failed action planning results.
 `verifyPlan` gives agents a runtime-free consistency check before handoff. It
 flags unresolved command targets, unresolved formula inputs, duplicate resolved
 refs, unparsable formulas, and missing concrete ops for commands whose target is
-already known as a single cell.
+already known as a single cell. Custom check targets and supporting refs must
+also resolve through `refsUsed`.
 `verifyModel` applies the same planning and verification flow to every action
 in a consumer-defined model, returning one JSON-safe model-level verdict.
 

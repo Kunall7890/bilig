@@ -106,6 +106,7 @@ export interface WorkbookCheckResultDescription {
   readonly status: WorkbookCheckStatus
   readonly kind: string
   readonly target?: WorkbookRefDescription
+  readonly refs?: readonly WorkbookRefDescription[]
   readonly message: string
 }
 
@@ -251,6 +252,7 @@ function describeCheck(check: WorkbookCheckResult): WorkbookCheckResultDescripti
     status: check.status,
     kind: check.kind,
     ...(check.target !== undefined ? { target: describeRef(check.target) } : {}),
+    ...(check.refs !== undefined ? { refs: check.refs.map(describeRef) } : {}),
     message: check.message,
   }
 }

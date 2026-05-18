@@ -6,6 +6,7 @@ export interface WorkbookCheckResult {
   readonly status: WorkbookCheckStatus
   readonly kind: string
   readonly target?: WorkbookRef
+  readonly refs?: readonly WorkbookRef[]
   readonly message: string
 }
 

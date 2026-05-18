@@ -68,8 +68,10 @@ when an agent or test needs the same generic refs outside a model callback.
 consumer-defined row selectors do not collapse during dedupe.
 Use `check.exists(ref)` and `check.noFormulaErrors(ref)` directly when an agent
 or test needs the same generic planned checks outside a model callback.
-Use `check.custom({ kind, message, target })` for consumer-defined invariants;
-the package does not need to know what the model means.
+Use `check.custom({ kind, message, target, refs })` for consumer-defined
+invariants; the package does not need to know what the model means. `target`
+names the main ref, and `refs` names any supporting refs the invariant depends
+on so agents can describe and verify the full check contract.
 
 Use `describeModel` when an agent needs a JSON-safe manifest of model name,
 action names, and whether model-level checks exist without running `find`,
@@ -84,6 +86,7 @@ planned or failed action planning.
 Use `verifyPlan` before runtime handoff when an agent needs to prove a planned
 action is internally consistent. It checks for unresolved refs, unparsable
 formulas, duplicate resolved refs, and missing concrete ops for commands that
-already target a known single cell.
+already target a known single cell. Custom check targets and supporting refs
+must also resolve through the model's `refsUsed` contract.
 Use `verifyModel` to plan and verify every action in a consumer-defined model
 with one JSON-safe result.

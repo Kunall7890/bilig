@@ -5,6 +5,7 @@ export interface WorkbookCustomCheckOptions {
   readonly kind: string
   readonly message: string
   readonly target?: WorkbookRef
+  readonly refs?: readonly WorkbookRef[]
   readonly status?: WorkbookCheckStatus
 }
 
@@ -33,11 +34,34 @@ function normalizeCheckStatus(status: WorkbookCheckStatus | undefined): Workbook
   throw new Error(`Unsupported workbook check status: ${String(status)}`)
 }
 
+function refKey(ref: WorkbookRef): string {
+  return `${ref.kind}:${ref.id}`
+}
+
+function uniqueRefs(refs: readonly WorkbookRef[] | undefined): readonly WorkbookRef[] | undefined {
+  if (refs === undefined) {
+    return undefined
+  }
+  const seen = new Set<string>()
+  const unique: WorkbookRef[] = []
+  for (const ref of refs) {
+    const key = refKey(ref)
+    if (seen.has(key)) {
+      continue
+    }
+    seen.add(key)
+    unique.push(ref)
+  }
+  return unique.length === 0 ? undefined : unique
+}
+
 export function createWorkbookCustomCheck(options: WorkbookCustomCheckOptions): WorkbookCheckResult {
+  const refs = uniqueRefs(options.refs)
   return {
     status: normalizeCheckStatus(options.status),
     kind: requiredText(options.kind, 'kind'),
     ...(options.target !== undefined ? { target: options.target } : {}),
+    ...(refs !== undefined ? { refs } : {}),
     message: requiredText(options.message, 'message'),
   }
 }

@@ -20,6 +20,7 @@ export type WorkbookPlanIssueCode =
   | 'invalid_formula'
   | 'change_target_not_resolved'
   | 'check_target_not_resolved'
+  | 'check_ref_not_resolved'
   | 'missing_concrete_op'
 
 export interface WorkbookPlanIssue {
@@ -237,6 +238,19 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
         }),
       )
     }
+
+    check.refs?.forEach((ref, refIndex) => {
+      if (!hasRef(ref)) {
+        issues.push(
+          issue({
+            code: 'check_ref_not_resolved',
+            path: `checks[${checkIndex}].refs[${refIndex}]`,
+            ref,
+            message: `${ref.label} appears in checks but is missing from refsUsed`,
+          }),
+        )
+      }
+    })
   })
 
   return {
