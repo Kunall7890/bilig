@@ -9,9 +9,22 @@ import type {
   WorkbookRowsRef,
   WorkbookTableRef,
 } from './find.js'
-import type { WorkbookActionCommand, WorkbookActionPlan, WorkbookActionPlanResult } from './model.js'
+import {
+  inspectModel,
+  type WorkbookActionCommand,
+  type WorkbookActionMap,
+  type WorkbookActionPlan,
+  type WorkbookActionPlanResult,
+  type WorkbookModel,
+} from './model.js'
 import type { WorkbookOp } from './ops.js'
 import type { WorkbookChangeSummary, WorkbookCheckResult, WorkbookCheckStatus } from './result.js'
+
+export interface WorkbookModelDescription {
+  readonly name: string
+  readonly actions: readonly string[]
+  readonly hasChecks: boolean
+}
 
 export interface WorkbookBaseRefDescription {
   readonly kind: WorkbookRefKind
@@ -122,6 +135,12 @@ export type WorkbookActionPlanResultDescription =
 export interface WorkbookRunErrorDescription {
   readonly code: string
   readonly message: string
+}
+
+export function describeModel<Refs, Actions extends WorkbookActionMap<Refs>>(
+  model: WorkbookModel<Refs, Actions>,
+): WorkbookModelDescription {
+  return inspectModel(model)
 }
 
 function describeRangeRef(ref: WorkbookRangeRef): WorkbookRangeRefDescription {

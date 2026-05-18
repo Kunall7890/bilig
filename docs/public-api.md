@@ -59,6 +59,7 @@ It exposes:
 - `collectWorkbookRefs`
 - `findTable`, `findColumn`, `findRange`, `findName`, and `findRows`
 - `check`
+- `describeModel`
 - `describeRef`
 - `describePlan`
 - `describePlanResult`
@@ -67,7 +68,7 @@ It exposes:
 - `formula`
 - `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` through the model workbook context and as top-level helpers
 - `check.exists` and `check.noFormulaErrors` through the model workbook context and as top-level helpers
-- `WorkbookModel`, `WorkbookAction`, `WorkbookActionPlanResult`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookRunResult`, and `WorkbookCheckResult`
+- `WorkbookModel`, `WorkbookAction`, `WorkbookActionPlanResult`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookRunResult`, and `WorkbookCheckResult`
 - the existing low-level operation language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, and `EngineOpBatch`
 
 The package builds portable workbook intent and concrete low-level ops when the
@@ -88,6 +89,9 @@ The same generic refs are available outside model callbacks through top-level
 The same planned checks are available outside model callbacks through top-level
 `check.exists(ref)` and `check.noFormulaErrors(ref)` helpers.
 
+`describeModel` returns a JSON-safe model manifest with the model name, sorted
+action names, and whether model-level checks exist. It does not run `find`,
+checks, or actions.
 For agent logs, approvals, tests, and runtime handoff, `describeRef` and
 `describePlan` produce JSON-safe descriptions of refs and action plans. The
 descriptions preserve generic workbook intent while removing consumer-private

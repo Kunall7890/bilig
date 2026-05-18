@@ -18,6 +18,7 @@ The public surface stays generic:
 - `collectWorkbookRefs`
 - `findTable`, `findColumn`, `findRange`, `findName`, `findRows`
 - `check`
+- `describeModel`
 - `describeRef`
 - `describePlan`
 - `describePlanResult`
@@ -27,6 +28,7 @@ The public surface stays generic:
 - `WorkbookModel`
 - `WorkbookAction`
 - `WorkbookActionPlanResult`
+- `WorkbookModelDescription`
 - `WorkbookRefDescription`
 - `WorkbookActionPlanDescription`
 - `WorkbookActionPlanResultDescription`
@@ -64,6 +66,9 @@ when an agent or test needs the same generic refs outside a model callback.
 Use `check.exists(ref)` and `check.noFormulaErrors(ref)` directly when an agent
 or test needs the same generic planned checks outside a model callback.
 
+Use `describeModel` when an agent needs a JSON-safe manifest of model name,
+action names, and whether model-level checks exist without running `find`,
+checks, or actions.
 Use `describeRef` and `describePlan` when an agent needs JSON-safe intent for
 logs, comparisons, approvals, or runtime handoff. Descriptions keep the same
 generic refs, commands, checks, changes, and ops, but omit consumer-private

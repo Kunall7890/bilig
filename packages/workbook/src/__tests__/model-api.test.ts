@@ -4,6 +4,7 @@ import {
   buildWorkbookActionPlan,
   check,
   collectWorkbookRefs,
+  describeModel,
   describePlan,
   describePlanResult,
   describeRef,
@@ -567,6 +568,35 @@ describe('@bilig/workbook model api', () => {
       actions: ['calculate', 'reset'],
       hasChecks: true,
     })
+  })
+
+  it('describes models as JSON-safe manifests without running model code', () => {
+    const model = defineModel({
+      name: 'described-model-manifest',
+      find() {
+        throw new Error('find should not run during model description')
+      },
+      checks() {
+        throw new Error('checks should not run during model description')
+      },
+      actions: {
+        calculate() {
+          throw new Error('action should not run during model description')
+        },
+        reset() {
+          throw new Error('action should not run during model description')
+        },
+      },
+    })
+
+    const description = describeModel(model)
+
+    expect(description).toEqual({
+      name: 'described-model-manifest',
+      actions: ['calculate', 'reset'],
+      hasChecks: true,
+    })
+    expect(JSON.parse(JSON.stringify(description))).toEqual(description)
   })
 
   it('returns structured planning failures instead of forcing agents to catch exceptions', () => {
