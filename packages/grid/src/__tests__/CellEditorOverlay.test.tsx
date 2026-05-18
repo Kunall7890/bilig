@@ -111,7 +111,7 @@ describe('CellEditorOverlay', () => {
     expect(textarea?.style.letterSpacing).toBe('0px')
     expect(textarea?.style.fontOpticalSizing).toBe('auto')
     expect(textarea?.style.fontSynthesis).toBe('none')
-    expect(textarea?.style.textRendering).toBe('auto')
+    expect(textarea?.style.textRendering).toBe('optimizelegibility')
     expect(textarea?.style.WebkitFontSmoothing ?? '').toBe('')
     expect(textarea?.style.MozOsxFontSmoothing ?? '').toBe('')
     expect(textarea?.getAttribute('class')).toContain('py-[3px]')

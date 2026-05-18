@@ -4,5 +4,5 @@ export const workbookNativeTextQualityStyle = {
   fontKerning: 'normal',
   fontOpticalSizing: 'auto',
   fontSynthesis: 'none',
-  textRendering: 'auto',
+  textRendering: 'optimizeLegibility',
 } satisfies CSSProperties

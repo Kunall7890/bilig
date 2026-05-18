@@ -96,7 +96,7 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
       lineHeight: '17.5px',
       textDecorationLine: 'underline',
       textAlign: 'right',
-      textRendering: 'auto',
+      textRendering: 'optimizeLegibility',
       top: -1.5,
       whiteSpace: 'pre',
     })
