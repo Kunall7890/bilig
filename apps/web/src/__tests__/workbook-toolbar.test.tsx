@@ -561,6 +561,23 @@ describe('WorkbookToolbar', () => {
 
     expect(
       deriveWorkbookStatusPresentation({
+        connectionStateName: 'connected',
+        runtimeReady: true,
+        localPersistenceMode: 'ephemeral',
+        hasLocalMutationInFlight: true,
+        pendingMutationSummary: { activeCount: 0, failedCount: 0 },
+        remoteSyncAvailable: true,
+        zeroConfigured: true,
+        zeroHealthReady: true,
+        writesAllowed: true,
+      }),
+    ).toMatchObject({
+      syncLabel: 'Sync pending',
+      tone: 'warning',
+    })
+
+    expect(
+      deriveWorkbookStatusPresentation({
         connectionStateName: 'connecting',
         runtimeReady: true,
         localPersistenceMode: 'ephemeral',

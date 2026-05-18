@@ -162,6 +162,7 @@ export function deriveWorkbookStatusPresentation(input: {
   zeroConfigured: boolean
   zeroHealthReady: boolean
   writesAllowed: boolean
+  hasLocalMutationInFlight?: boolean
   pendingMutationSummary?:
     | {
         readonly activeCount: number
@@ -180,7 +181,7 @@ export function deriveWorkbookStatusPresentation(input: {
   if (input.failedPendingMutation || (input.pendingMutationSummary?.failedCount ?? 0) > 0) {
     return { modeLabel, syncLabel: 'Sync issue', tone: 'danger' }
   }
-  if ((input.pendingMutationSummary?.activeCount ?? 0) > 0) {
+  if (input.hasLocalMutationInFlight === true || (input.pendingMutationSummary?.activeCount ?? 0) > 0) {
     return { modeLabel, syncLabel: 'Sync pending', tone: 'warning' }
   }
   if (!input.zeroConfigured) {

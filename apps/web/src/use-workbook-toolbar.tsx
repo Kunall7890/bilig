@@ -44,6 +44,7 @@ export function useWorkbookToolbar(input: {
   remoteSyncAvailable: boolean
   zeroConfigured: boolean
   zeroHealthReady: boolean
+  hasLocalMutationInFlight?: boolean
   canUndo: boolean
   canRedo: boolean
   onUndo: () => void
@@ -72,6 +73,7 @@ export function useWorkbookToolbar(input: {
     remoteSyncAvailable,
     zeroConfigured,
     zeroHealthReady,
+    hasLocalMutationInFlight,
     canUndo,
     canRedo,
     onUndo,
@@ -161,6 +163,7 @@ export function useWorkbookToolbar(input: {
     remoteSyncAvailable,
     zeroConfigured,
     zeroHealthReady,
+    hasLocalMutationInFlight: hasLocalMutationInFlight === true,
     writesAllowed,
   })
   const statusModeLabel = statusPresentation.modeLabel

@@ -3,11 +3,13 @@ import {
   PRODUCT_HEADER_HEIGHT,
   PRODUCT_ROW_MARKER_WIDTH,
   PRIMARY_MODIFIER,
+  clickProductCell,
   createTestDocumentId,
   getProductColumnLeft,
   getProductColumnWidth,
   getProductRowHeight,
   getProductRowTop,
+  pickToolbarPresetColor,
   waitForWorkbookReady,
 } from './web-shell-helpers.js'
 
@@ -217,6 +219,77 @@ test('@browser-ci web app keeps the live cell editor above the native grid text 
       declaredRunCountMatchesDom: true,
       rowHeaderRunCountHealthy: true,
     })
+})
+
+test('@browser-ci web app keeps rendered edits, clears, headers, and fills coherent across click-away and reload', async ({ page }) => {
+  const documentId = createTestDocumentId('playwright-rendered-table-stakes')
+  const editedText = 'rendered-table-stakes'
+  await page.setViewportSize({ width: 1166, height: 820 })
+  await page.goto(`/?document=${encodeURIComponent(documentId)}&sheet=Sheet1&cell=A1`)
+  await waitForWorkbookReady(page)
+
+  await clickProductCell(page, 1, 1)
+  await page.keyboard.type(editedText)
+  await expect(page.getByTestId('cell-editor-input')).toHaveValue(editedText)
+  await expect
+    .poll(readEditorLayerState(page, { col: 1, row: 1 }), {
+      message: 'active editor text must replace, not duplicate, the committed native text for that cell',
+      timeout: 5_000,
+    })
+    .toMatchObject({
+      activeCellNativeTextSuppressed: true,
+      editorAboveNativeText: true,
+      editorMounted: true,
+      nativeTextLayerMounted: true,
+    })
+
+  await clickProductCell(page, 2, 1)
+  await expect(page.getByTestId('cell-editor-input')).toHaveCount(0)
+  await expect
+    .poll(readNativeTextLayerStabilityState(page, editedText), {
+      message: 'click-away commit must keep one rendered text run and preserve row header numbers',
+      timeout: 5_000,
+    })
+    .toMatchObject({
+      containsText: true,
+      declaredRunCountMatchesDom: true,
+      duplicateTextRunCount: 1,
+      rowHeaderRunCountHealthy: true,
+    })
+
+  await clickProductCell(page, 1, 1)
+  await page.keyboard.press('Delete')
+  await expect(page.getByTestId('formula-input')).toHaveValue('')
+  await clickProductCell(page, 3, 2)
+  await expect.poll(() => nativeTextRunsInclude(page, editedText)).toBe(false)
+
+  await clickProductCell(page, 4, 5)
+  await pickToolbarPresetColor(page, 'Fill color', 'green')
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!E6')
+  await clickProductCell(page, 6, 7)
+  await expect
+    .poll(() => countGreenFillPixelsInCell(page, 4, 5), {
+      message: 'toolbar fill color must repaint the actual visible grid, not only toolbar state',
+      timeout: 5_000,
+    })
+    .toBeGreaterThan(120)
+
+  await expect
+    .poll(() => page.getByTestId('status-sync').textContent(), {
+      message: 'workbook should finish saving before reload persistence proof',
+      timeout: 15_000,
+    })
+    .toMatch(/^(Saved|Local saved|Local only)$/)
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  await waitForWorkbookReady(page)
+  await clickProductCell(page, 3, 2)
+  await expect.poll(() => nativeTextRunsInclude(page, editedText)).toBe(false)
+  await expect
+    .poll(() => countGreenFillPixelsInCell(page, 4, 5), {
+      message: 'toolbar fill color must survive reload and stay visibly painted',
+      timeout: 5_000,
+    })
+    .toBeGreaterThan(120)
 })
 
 function createDenseAccountingGridClipboardText(): string {
@@ -494,6 +567,7 @@ function readNativeTextLayerStabilityState(
 ): () => Promise<{
   readonly containsText: boolean
   readonly declaredRunCountMatchesDom: boolean
+  readonly duplicateTextRunCount: number
   readonly rowHeaderRunCount: number
   readonly rowHeaderRunCountHealthy: boolean
 }> {
@@ -506,6 +580,7 @@ function readNativeTextLayerStabilityState(
         const textRuns = [...document.querySelectorAll('[data-native-text-run]')]
         const declaredRunCount =
           nativeTextLayer instanceof HTMLElement ? Number(nativeTextLayer.getAttribute('data-v3-native-text-run-count') ?? '-1') : -1
+        const duplicateTextRunCount = textRuns.filter((run) => run.textContent === text).length
         const rowHeaderRunCount = textRuns.filter((run) => {
           if (!gridRect || !/^\d+$/.test(run.textContent ?? '')) {
             return false
@@ -514,14 +589,84 @@ function readNativeTextLayerStabilityState(
           return rect.left >= gridRect.left && rect.right <= gridRect.left + rowMarkerWidth + 1
         }).length
         return {
-          containsText: textRuns.some((run) => run.textContent === text),
+          containsText: duplicateTextRunCount > 0,
           declaredRunCountMatchesDom: declaredRunCount === textRuns.length,
+          duplicateTextRunCount,
           rowHeaderRunCount,
           rowHeaderRunCountHealthy: rowHeaderRunCount >= 10,
         }
       },
       { rowMarkerWidth: PRODUCT_ROW_MARKER_WIDTH, text: expectedText },
     )
+}
+
+async function nativeTextRunsInclude(page: Page, text: string): Promise<boolean> {
+  return await page.evaluate(
+    (needle) => Array.from(document.querySelectorAll('[data-native-text-run]')).some((run) => run.textContent?.includes(needle) ?? false),
+    text,
+  )
+}
+
+async function countGreenFillPixelsInCell(page: Page, columnIndex: number, rowIndex: number): Promise<number> {
+  const gridLocator = page.getByTestId('sheet-grid')
+  await expect(gridLocator).toBeVisible()
+  const grid = await gridLocator.boundingBox()
+  if (!grid) {
+    throw new Error('sheet grid is not visible')
+  }
+
+  const [columnLeft, columnWidth, rowTop, rowHeight, scroll] = await Promise.all([
+    getProductColumnLeft(page, columnIndex),
+    getProductColumnWidth(page, columnIndex),
+    getProductRowTop(page, rowIndex),
+    getProductRowHeight(page, rowIndex),
+    page.getByTestId('grid-scroll-viewport').evaluate((node) => ({
+      scrollLeft: node.scrollLeft,
+      scrollTop: node.scrollTop,
+    })),
+  ])
+  const buffer = await page.screenshot({
+    animations: 'disabled',
+    caret: 'hide',
+    clip: {
+      x: Math.round(grid.x + columnLeft - scroll.scrollLeft + 8),
+      y: Math.round(grid.y + PRODUCT_HEADER_HEIGHT + rowTop - scroll.scrollTop + 5),
+      width: Math.max(1, Math.round(columnWidth - 16)),
+      height: Math.max(1, Math.round(rowHeight - 10)),
+    },
+  })
+
+  return await page.evaluate(
+    async ({ dataUrl }) => {
+      const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const element = new Image()
+        element.addEventListener('load', () => resolve(element), { once: true })
+        element.addEventListener('error', () => reject(new Error('Failed to decode fill screenshot')), { once: true })
+        element.src = dataUrl
+      })
+      const canvas = document.createElement('canvas')
+      canvas.width = image.naturalWidth
+      canvas.height = image.naturalHeight
+      const context = canvas.getContext('2d')
+      if (!context) {
+        throw new Error('Missing 2d context for fill screenshot analysis')
+      }
+      context.drawImage(image, 0, 0)
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data
+      let greenPixels = 0
+      for (let index = 0; index < pixels.length; index += 4) {
+        const alpha = pixels[index + 3] ?? 0
+        const red = pixels[index] ?? 255
+        const green = pixels[index + 1] ?? 0
+        const blue = pixels[index + 2] ?? 255
+        if (alpha > 220 && red < 110 && green > 135 && blue < 120) {
+          greenPixels += 1
+        }
+      }
+      return greenPixels
+    },
+    { dataUrl: `data:image/png;base64,${buffer.toString('base64')}` },
+  )
 }
 
 async function countDarkInteriorPixelsInCell(page: Page, columnIndex: number, rowIndex: number): Promise<number> {

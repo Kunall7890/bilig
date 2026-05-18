@@ -506,6 +506,7 @@ export function useWorkerWorkbookAppState(input: {
     remoteSyncAvailable,
     zeroConfigured,
     zeroHealthReady,
+    hasLocalMutationInFlight,
     canRedo,
     canUndo,
     canHideCurrentColumn: hiddenColumns[selectedPosition.col] !== true,
