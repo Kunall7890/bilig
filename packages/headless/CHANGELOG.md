@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.20.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.19.3
+- Manual override: no
+
+## Features
+- feat(import): add Excel formula and pivot semantics (82da4b78)
+
 ## 0.19.3
 
 - Release type: patch
