@@ -58,6 +58,19 @@ describe('web preview build gate', () => {
     expect(source).toContain('timeout: localProcessProbeTimeoutMs')
   })
 
+  it('keeps probing app health after startup so Browser QA cannot use stale Vite alone', () => {
+    const source = readFileSync(resolve(repoRoot, 'scripts/run-dev-web-local.ts'), 'utf8')
+
+    expect(source).toContain('const runtimeHealthProbeTimeoutMs = 5_000')
+    expect(source).toContain('const runtimeHealthMonitorIntervalMs = 2_000')
+    expect(source).toContain('const runtimeHealthMonitorFailureThreshold = 4')
+    expect(source).toContain('signal: AbortSignal.timeout(runtimeHealthProbeTimeoutMs)')
+    expect(source).toContain('async function monitorHttpHealth(')
+    expect(source).toContain('appHealthMonitor = monitorHttpHealth(appHealthUrl')
+    expect(source).toContain("source: '@bilig/app health'")
+    expect(source).toContain('appHealthMonitor ?? new Promise<never>(() => undefined)')
+  })
+
   it('reuses the fresh CI-built preview bundle during browser tests', () => {
     const source = readFileSync(resolve(repoRoot, 'scripts/run-ci.ts'), 'utf8')
     const devSource = readFileSync(resolve(repoRoot, 'scripts/run-dev-web-local.ts'), 'utf8')

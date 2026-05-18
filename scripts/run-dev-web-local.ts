@@ -39,6 +39,9 @@ const composePublishedHost = resolveComposePublishedHost()
 const cleanupCompose = resolveDevBooleanOrExit(resolveDevCleanupCompose)
 const readyFile = process.env['BILIG_DEV_READY_FILE']
 const localProcessProbeTimeoutMs = 1_000
+const runtimeHealthProbeTimeoutMs = 5_000
+const runtimeHealthMonitorIntervalMs = 2_000
+const runtimeHealthMonitorFailureThreshold = 4
 let resolvedAppPort = String(preferredAppPort)
 let resolvedPostgresPort = String(preferredPostgresPort)
 let resolvedZeroPort = String(preferredZeroPort)
@@ -73,6 +76,11 @@ function resolveDevBooleanOrExit(resolveValue: (env: NodeJS.ProcessEnv) => boole
 interface DevChildProcess {
   readonly exited: Promise<number | null>
   kill(signal?: 'SIGINT' | 'SIGTERM' | number): void
+}
+
+interface DevExitCode {
+  readonly code: number | null
+  readonly source: string
 }
 
 function childStdinMode(): 'ignore' | 'inherit' {
@@ -264,6 +272,45 @@ async function waitForHttp(url: string, timeoutMs = 120_000): Promise<void> {
     }
   }
   return poll('not started')
+}
+
+async function checkHttpHealth(url: string): Promise<boolean> {
+  try {
+    const response = await fetch(url, {
+      signal: AbortSignal.timeout(runtimeHealthProbeTimeoutMs),
+    })
+    return response.ok
+  } catch {
+    return false
+  }
+}
+
+async function monitorHttpHealth(
+  url: string,
+  options: {
+    readonly source: string
+    readonly isShuttingDown: () => boolean
+  },
+): Promise<DevExitCode> {
+  const monitor = async (consecutiveFailures: number): Promise<DevExitCode> => {
+    await Bun.sleep(runtimeHealthMonitorIntervalMs)
+    if (options.isShuttingDown()) {
+      return new Promise<never>(() => undefined)
+    }
+    if (await checkHttpHealth(url)) {
+      return monitor(0)
+    }
+    const nextFailures = consecutiveFailures + 1
+    if (nextFailures >= runtimeHealthMonitorFailureThreshold) {
+      console.error(`${options.source} failed health check ${String(nextFailures)} times at ${url}`)
+      return {
+        code: 1,
+        source: options.source,
+      }
+    }
+    return monitor(nextFailures)
+  }
+  return monitor(0)
 }
 
 async function waitForTcp(host: string, port: number, timeoutMs = 120_000): Promise<void> {
@@ -669,6 +716,7 @@ const appChild = spawnAppDev(String(appPort), publicServerUrl, webAppBaseUrl, {
 let webChild: DevChildProcess | null = null
 
 let shuttingDown = false
+let appHealthMonitor: Promise<DevExitCode> | null = null
 
 function forwardSignal(signal: NodeJS.Signals): void {
   if (shuttingDown) {
@@ -691,6 +739,10 @@ try {
     buildAppRuntimeDependencies()
   }
   await waitForHttp(appHealthUrl)
+  appHealthMonitor = monitorHttpHealth(appHealthUrl, {
+    source: '@bilig/app health',
+    isShuttingDown: () => shuttingDown,
+  })
   if (!disableCompose) {
     runComposeSync(['up', '-d', zeroCacheService])
     await waitForHttp(zeroHealthUrl)
@@ -730,6 +782,7 @@ const exitCode = await Promise.race([
     code,
     source: '@bilig/web',
   })),
+  appHealthMonitor ?? new Promise<never>(() => undefined),
 ])
 
 forwardSignal('SIGTERM')
