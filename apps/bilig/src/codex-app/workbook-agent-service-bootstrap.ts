@@ -222,21 +222,21 @@ export function rebaseWorkbookAgentBootstrapReviewItem(input: {
   readonly fallbackOwnerUserId: string
 }): WorkbookAgentReviewQueueItem {
   const queuedBundle = toWorkbookAgentCommandBundle(input.reviewItem)
-  const migratedBundle =
-    queuedBundle.baseRevision === input.currentRevision
-      ? queuedBundle
-      : createWorkbookAgentCommandBundle({
-          bundleId: queuedBundle.id,
-          documentId: queuedBundle.documentId,
-          threadId: queuedBundle.threadId,
-          turnId: queuedBundle.turnId,
-          goalText: queuedBundle.goalText,
-          baseRevision: input.currentRevision,
-          context: queuedBundle.context,
-          commands: queuedBundle.commands,
-          now: queuedBundle.createdAtUnixMs,
-          sharedReview: queuedBundle.sharedReview ?? null,
-        })
+  const baseRevisionChanged = queuedBundle.baseRevision !== input.currentRevision
+  const migratedBundle = !baseRevisionChanged
+    ? queuedBundle
+    : createWorkbookAgentCommandBundle({
+        bundleId: queuedBundle.id,
+        documentId: queuedBundle.documentId,
+        threadId: queuedBundle.threadId,
+        turnId: queuedBundle.turnId,
+        goalText: queuedBundle.goalText,
+        baseRevision: input.currentRevision,
+        context: queuedBundle.context,
+        commands: queuedBundle.commands,
+        now: queuedBundle.createdAtUnixMs,
+        sharedReview: queuedBundle.sharedReview ?? null,
+      })
   return toWorkbookAgentReviewQueueItem({
     bundle: migratedBundle,
     reviewMode: input.reviewItem.reviewMode,
@@ -244,10 +244,10 @@ export function rebaseWorkbookAgentBootstrapReviewItem(input: {
       input.reviewItem.reviewMode === 'ownerReview'
         ? {
             ownerUserId: input.reviewItem.ownerUserId ?? input.fallbackOwnerUserId,
-            status: input.reviewItem.status,
-            decidedByUserId: input.reviewItem.decidedByUserId,
-            decidedAtUnixMs: input.reviewItem.decidedAtUnixMs,
-            recommendations: [...input.reviewItem.recommendations],
+            status: baseRevisionChanged ? 'pending' : input.reviewItem.status,
+            decidedByUserId: baseRevisionChanged ? null : input.reviewItem.decidedByUserId,
+            decidedAtUnixMs: baseRevisionChanged ? null : input.reviewItem.decidedAtUnixMs,
+            recommendations: baseRevisionChanged ? [] : [...input.reviewItem.recommendations],
           }
         : null,
   })

@@ -287,15 +287,22 @@ describe('workbook agent service bootstrap helpers', () => {
     ).toEqual({ kind: 'none' })
   })
 
-  it('rebases bootstrap review items to the current revision while preserving owner review state', () => {
+  it('preserves owner review state when bootstrapping review items at the same revision', () => {
     const rebased = rebaseWorkbookAgentBootstrapReviewItem({
       reviewItem: createReviewItem({
+        baseRevision: 9,
         sharedReview: {
           ownerUserId: 'alex@example.com',
-          status: 'pending',
-          decidedByUserId: null,
-          decidedAtUnixMs: null,
-          recommendations: [],
+          status: 'approved',
+          decidedByUserId: 'alex@example.com',
+          decidedAtUnixMs: 200,
+          recommendations: [
+            {
+              userId: 'casey@example.com',
+              decision: 'approved',
+              decidedAtUnixMs: 190,
+            },
+          ],
         },
       }),
       currentRevision: 9,
@@ -304,6 +311,47 @@ describe('workbook agent service bootstrap helpers', () => {
 
     expect(rebased.reviewMode).toBe('ownerReview')
     expect(rebased.ownerUserId).toBe('alex@example.com')
+    expect(rebased.status).toBe('approved')
+    expect(rebased.decidedByUserId).toBe('alex@example.com')
+    expect(rebased.decidedAtUnixMs).toBe(200)
+    expect(rebased.recommendations).toEqual([
+      {
+        userId: 'casey@example.com',
+        decision: 'approved',
+        decidedAtUnixMs: 190,
+      },
+    ])
+    expect(toWorkbookAgentCommandBundle(rebased).baseRevision).toBe(9)
+  })
+
+  it('resets owner review decisions when bootstrap review items are rebased to a new revision', () => {
+    const rebased = rebaseWorkbookAgentBootstrapReviewItem({
+      reviewItem: createReviewItem({
+        baseRevision: 4,
+        sharedReview: {
+          ownerUserId: 'alex@example.com',
+          status: 'approved',
+          decidedByUserId: 'alex@example.com',
+          decidedAtUnixMs: 200,
+          recommendations: [
+            {
+              userId: 'casey@example.com',
+              decision: 'approved',
+              decidedAtUnixMs: 190,
+            },
+          ],
+        },
+      }),
+      currentRevision: 9,
+      fallbackOwnerUserId: 'alex@example.com',
+    })
+
+    expect(rebased.reviewMode).toBe('ownerReview')
+    expect(rebased.ownerUserId).toBe('alex@example.com')
+    expect(rebased.status).toBe('pending')
+    expect(rebased.decidedByUserId).toBeNull()
+    expect(rebased.decidedAtUnixMs).toBeNull()
+    expect(rebased.recommendations).toEqual([])
     expect(toWorkbookAgentCommandBundle(rebased).baseRevision).toBe(9)
   })
 
