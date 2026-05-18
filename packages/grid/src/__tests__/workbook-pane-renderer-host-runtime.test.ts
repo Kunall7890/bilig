@@ -159,6 +159,63 @@ describe('WorkbookPaneRendererHostRuntimeV3', () => {
     expect(canvas.height).toBe(0)
   })
 
+  test('invalidates the presented-frame proof when the render signature changes', async () => {
+    const animationFrames = installManualAnimationFrames()
+    const backend = {}
+    const firstPane = createDirtyTilePane()
+    const secondPane = {
+      ...firstPane,
+      tile: {
+        ...firstPane.tile,
+        lastBatchId: 2,
+        version: {
+          ...firstPane.tile.version,
+          styles: 2,
+        },
+      },
+    }
+    const runtime = new WorkbookPaneRendererHostRuntimeV3({
+      rendererRuntime: new WorkbookPaneRendererRuntimeV3(vi.fn<WorkbookPaneFrameDrawerV3>(() => true)),
+      surfaceRuntime: new WorkbookPaneSurfaceRuntimeV3({
+        createBackend: vi.fn(async () => backend),
+        createResizeObserver: () => null,
+        syncSurface: vi.fn(),
+      }),
+    })
+    const props = {
+      active: true,
+      cameraStore: null,
+      geometry: null,
+      headerPanes: [],
+      host: createHost(640, 360),
+      overlay: null,
+      overlayBuilder: null,
+      preloadTilePanes: [],
+      scrollTransformStore: null,
+      tilePanes: [firstPane],
+    }
+
+    runtime.updateProps(props)
+    runtime.setCanvas(document.createElement('canvas'))
+    await Promise.resolve()
+    animationFrames.flushNextFrame()
+
+    expect(runtime.getFrameProofStatusSnapshot()).toBe('presented')
+    expect(runtime.getHasPresentedFrameSnapshot()).toBe(true)
+
+    runtime.updateProps({ ...props, tilePanes: [secondPane] })
+
+    expect(runtime.getFrameProofStatusSnapshot()).toBe('pending')
+    expect(runtime.getHasPresentedFrameSnapshot()).toBe(false)
+
+    animationFrames.flushNextFrame()
+    expect(runtime.getFrameProofStatusSnapshot()).toBe('presented')
+    expect(runtime.getHasPresentedFrameSnapshot()).toBe(true)
+
+    runtime.dispose()
+    animationFrames.restore()
+  })
+
   test('publishes backend status changes for the React shell without callback wiring', async () => {
     const backend = {}
     const runtime = new WorkbookPaneRendererHostRuntimeV3({

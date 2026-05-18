@@ -1,5 +1,4 @@
-export const WORKBOOK_FONT_SANS =
-  'ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, "Helvetica Neue", Helvetica, sans-serif'
+export const WORKBOOK_FONT_SANS = 'Arial, "Helvetica Neue", Helvetica, sans-serif'
 export const WORKBOOK_DEFAULT_FONT_SIZE = 10
 export const WORKBOOK_FONT_POINT_TO_CSS_PX = 4 / 3
 

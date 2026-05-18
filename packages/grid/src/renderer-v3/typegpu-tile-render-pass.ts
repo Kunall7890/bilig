@@ -34,6 +34,7 @@ export interface TypeGpuTileDrawSurface {
 
 export function hasCompleteTypeGpuBodyTileContentV3(input: {
   readonly drawText?: boolean | undefined
+  readonly surface?: TypeGpuTileDrawSurface | undefined
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
   readonly tileResources: Pick<TypeGpuTileResourceCacheV3, 'peekContent'>
 }): boolean {
@@ -45,6 +46,9 @@ export function hasCompleteTypeGpuBodyTileContentV3(input: {
       continue
     }
     if (!isPaneDrawVisible(pane)) {
+      continue
+    }
+    if (input.surface && !resolveClampedScissorRect(pane.frame, input.surface)) {
       continue
     }
     const content = input.tileResources.peekContent(resolveWorkbookTileContentBufferKeyV3(pane))
@@ -163,11 +167,11 @@ export function drawTypeGpuTilePanesV3(input: {
   return true
 }
 
-function hasDrawableTypeGpuBodyPaneFramesV3(input: {
+export function hasDrawableTypeGpuBodyPaneFramesV3(input: {
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
   readonly surface: TypeGpuTileDrawSurface
 }): boolean {
-  let hasBodyPane = false
+  let hasDrawableBodyPane = false
   for (const pane of input.tilePanes) {
     if (pane.paneId !== 'body' && !pane.paneId.startsWith('body:')) {
       continue
@@ -175,12 +179,11 @@ function hasDrawableTypeGpuBodyPaneFramesV3(input: {
     if (!isPaneDrawVisible(pane)) {
       continue
     }
-    hasBodyPane = true
-    if (!resolveClampedScissorRect(pane.frame, input.surface)) {
-      return false
+    if (resolveClampedScissorRect(pane.frame, input.surface)) {
+      hasDrawableBodyPane = true
     }
   }
-  return hasBodyPane
+  return hasDrawableBodyPane
 }
 
 function drawTypeGpuOverlay(input: {

@@ -34,6 +34,7 @@ export interface WorkbookPaneSurfaceRuntimeOptionsV3 {
     | ((input: { readonly backend: object; readonly canvas: HTMLCanvasElement; readonly size: TypeGpuSurfaceSizeV3 }) => void)
     | undefined
   readonly getDevicePixelRatio?: (() => number) | undefined
+  readonly subscribeDevicePixelRatioChange?: ((listener: () => void) => () => void) | undefined
   readonly createResizeObserver?:
     | ((listener: WorkbookPaneSurfaceResizeListenerV3) => WorkbookPaneSurfaceRuntimeResizeObserverV3 | null)
     | undefined
@@ -101,6 +102,70 @@ function defaultDevicePixelRatio(): number {
   return typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1
 }
 
+function subscribeNoop(): () => void {
+  return () => {}
+}
+
+function addResolutionQueryListener(query: MediaQueryList | null, listener: () => void): void {
+  if (!query) {
+    return
+  }
+  if (typeof query.addEventListener === 'function') {
+    query.addEventListener('change', listener)
+    return
+  }
+  const legacyQuery = query as MediaQueryList & { addListener?: (listener: () => void) => void }
+  legacyQuery.addListener?.(listener)
+}
+
+function removeResolutionQueryListener(query: MediaQueryList | null, listener: () => void): void {
+  if (!query) {
+    return
+  }
+  if (typeof query.removeEventListener === 'function') {
+    query.removeEventListener('change', listener)
+    return
+  }
+  const legacyQuery = query as MediaQueryList & { removeListener?: (listener: () => void) => void }
+  legacyQuery.removeListener?.(listener)
+}
+
+function createDefaultDevicePixelRatioSubscription(listener: () => void): () => void {
+  if (typeof window === 'undefined') {
+    return subscribeNoop()
+  }
+
+  let disposed = false
+  let resolutionQuery: MediaQueryList | null = null
+  const handleChange = () => {
+    if (disposed) {
+      return
+    }
+    listener()
+    resetResolutionQuery()
+  }
+  const resetResolutionQuery = () => {
+    if (disposed) {
+      return
+    }
+    removeResolutionQueryListener(resolutionQuery, handleChange)
+    resolutionQuery =
+      typeof window.matchMedia === 'function' ? window.matchMedia(`(resolution: ${Math.max(1, defaultDevicePixelRatio())}dppx)`) : null
+    addResolutionQueryListener(resolutionQuery, handleChange)
+  }
+
+  resetResolutionQuery()
+  window.addEventListener('resize', handleChange)
+  window.visualViewport?.addEventListener('resize', handleChange)
+  return () => {
+    disposed = true
+    removeResolutionQueryListener(resolutionQuery, handleChange)
+    resolutionQuery = null
+    window.removeEventListener('resize', handleChange)
+    window.visualViewport?.removeEventListener('resize', handleChange)
+  }
+}
+
 function createDefaultResizeObserver(listener: WorkbookPaneSurfaceResizeListenerV3): WorkbookPaneSurfaceRuntimeResizeObserverV3 | null {
   if (typeof ResizeObserver === 'undefined') {
     return null
@@ -155,6 +220,7 @@ export class WorkbookPaneSurfaceRuntimeV3 {
   private listener: ((snapshot: WorkbookPaneSurfaceSnapshotV3) => void) | null = null
   private resizeObserver: WorkbookPaneSurfaceRuntimeResizeObserverV3 | null = null
   private snapshot: WorkbookPaneSurfaceSnapshotV3 = EMPTY_WORKBOOK_PANE_SURFACE_SNAPSHOT_V3
+  private unsubscribeDevicePixelRatioChange: (() => void) | null = null
 
   private readonly createBackend: (canvas: HTMLCanvasElement) => Promise<object | null>
   private readonly destroyBackend: (backend: object) => void
@@ -164,6 +230,7 @@ export class WorkbookPaneSurfaceRuntimeV3 {
     readonly size: TypeGpuSurfaceSizeV3
   }) => void
   private readonly getDevicePixelRatio: () => number
+  private readonly subscribeDevicePixelRatioChange: (listener: () => void) => () => void
   private readonly createResizeObserver: (
     listener: WorkbookPaneSurfaceResizeListenerV3,
   ) => WorkbookPaneSurfaceRuntimeResizeObserverV3 | null
@@ -173,6 +240,7 @@ export class WorkbookPaneSurfaceRuntimeV3 {
     this.destroyBackend = options.destroyBackend ?? destroyDefaultBackend
     this.syncSurface = options.syncSurface ?? syncDefaultSurface
     this.getDevicePixelRatio = options.getDevicePixelRatio ?? defaultDevicePixelRatio
+    this.subscribeDevicePixelRatioChange = options.subscribeDevicePixelRatioChange ?? createDefaultDevicePixelRatioSubscription
     this.createResizeObserver = options.createResizeObserver ?? createDefaultResizeObserver
   }
 
@@ -196,9 +264,12 @@ export class WorkbookPaneSurfaceRuntimeV3 {
     }
     this.active = active
     if (!active) {
+      this.stopDevicePixelRatioSubscription()
       this.destroyCurrentBackend('idle')
       return
     }
+    this.startDevicePixelRatioSubscription()
+    this.refreshSurface()
     void this.ensureBackend()
   }
 
@@ -238,6 +309,7 @@ export class WorkbookPaneSurfaceRuntimeV3 {
   dispose(): void {
     this.resizeObserver?.disconnect()
     this.resizeObserver = null
+    this.stopDevicePixelRatioSubscription()
     this.host = null
     this.canvas = null
     this.active = false
@@ -260,6 +332,20 @@ export class WorkbookPaneSurfaceRuntimeV3 {
       surface,
       webGpuReady: this.backend !== null,
     })
+  }
+
+  private startDevicePixelRatioSubscription(): void {
+    if (this.unsubscribeDevicePixelRatioChange) {
+      return
+    }
+    this.unsubscribeDevicePixelRatioChange = this.subscribeDevicePixelRatioChange(() => {
+      this.refreshSurface()
+    })
+  }
+
+  private stopDevicePixelRatioSubscription(): void {
+    this.unsubscribeDevicePixelRatioChange?.()
+    this.unsubscribeDevicePixelRatioChange = null
   }
 
   private async ensureBackend(): Promise<void> {

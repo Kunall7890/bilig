@@ -206,6 +206,7 @@ export class WorkbookPaneRendererHostRuntimeV3 {
       return
     }
     this.frameProofSignature = signature
+    this.setHasPresentedFrame(false)
     this.setFrameProofStatus(signature ? 'pending' : 'idle')
   }
 

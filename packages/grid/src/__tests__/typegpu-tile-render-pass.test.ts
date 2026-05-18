@@ -3,7 +3,7 @@ import type { GpuBufferHandleV3 } from '../renderer-v3/gpu-buffer-arena.js'
 import type { GridRenderTile } from '../renderer-v3/render-tile-source.js'
 import type { WorkbookRenderTilePaneState } from '../renderer-v3/render-tile-pane-state.js'
 import { TypeGpuTileResourceCacheV3, resolveWorkbookTileContentBufferKeyV3 } from '../renderer-v3/typegpu-tile-buffer-pool.js'
-import { hasCompleteTypeGpuBodyTileContentV3 } from '../renderer-v3/typegpu-tile-render-pass.js'
+import { hasCompleteTypeGpuBodyTileContentV3, hasDrawableTypeGpuBodyPaneFramesV3 } from '../renderer-v3/typegpu-tile-render-pass.js'
 
 function createRenderTile(
   tileId = 101,
@@ -150,5 +150,31 @@ describe('typegpu tile render pass readiness', () => {
     tileResources.getContent(resolveWorkbookTileContentBufferKeyV3(hiddenPane))
 
     expect(hasCompleteTypeGpuBodyTileContentV3({ tilePanes: [visiblePane, hiddenPane], tileResources })).toBe(true)
+  })
+
+  test('ignores offscreen resident body panes when the visible frame has complete content', () => {
+    const tileResources = new TypeGpuTileResourceCacheV3()
+    const visiblePane = createPane('body', createRenderTile(101, { rectCount: 1 }))
+    const offscreenPane = {
+      ...createPane('body:offscreen', createRenderTile(102, { rectCount: 1 })),
+      frame: { height: 240, width: 320, x: 800, y: 0 },
+    }
+    const surface = { dpr: 1, height: 360, pixelHeight: 360, pixelWidth: 640, width: 640 }
+    const visibleContent = tileResources.getContent(resolveWorkbookTileContentBufferKeyV3(visiblePane))
+    visibleContent.rectCount = 1
+    Reflect.set(visibleContent, 'rectHandle', createHandle('rectInstances'))
+
+    expect(hasDrawableTypeGpuBodyPaneFramesV3({ surface, tilePanes: [visiblePane, offscreenPane] })).toBe(true)
+    expect(hasCompleteTypeGpuBodyTileContentV3({ surface, tilePanes: [visiblePane, offscreenPane], tileResources })).toBe(true)
+  })
+
+  test('blocks drawing when every visible body pane is outside the surface', () => {
+    const surface = { dpr: 1, height: 360, pixelHeight: 360, pixelWidth: 640, width: 640 }
+    const offscreenPane = {
+      ...createPane('body:offscreen', createRenderTile(102, { rectCount: 1 })),
+      frame: { height: 240, width: 320, x: 800, y: 0 },
+    }
+
+    expect(hasDrawableTypeGpuBodyPaneFramesV3({ surface, tilePanes: [offscreenPane] })).toBe(false)
   })
 })

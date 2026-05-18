@@ -207,10 +207,13 @@ export function shouldMountWorkbookCanvasProofLayerV3(input: {
   if (input.enableCanvasFallback || input.backendStatus !== 'ready') {
     return true
   }
+  const hasVisiblePaneContent = input.tilePaneCount > 0 || input.headerPaneCount > 0 || (input.overlayRectCount ?? 0) > 0
+  if (input.frameProofStatus === 'pending') {
+    return hasVisiblePaneContent
+  }
   if (input.hasPresentedFrame) {
     return false
   }
-  const hasVisiblePaneContent = input.tilePaneCount > 0 || input.headerPaneCount > 0 || (input.overlayRectCount ?? 0) > 0
   return hasVisiblePaneContent && input.frameProofStatus !== 'presented'
 }
 

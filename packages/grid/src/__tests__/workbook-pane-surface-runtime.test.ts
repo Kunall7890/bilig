@@ -155,6 +155,55 @@ describe('WorkbookPaneSurfaceRuntimeV3', () => {
     expect(disconnect).toHaveBeenCalled()
   })
 
+  test('resynchronizes the TypeGPU surface when DPR changes without a host resize', async () => {
+    const backend = { id: 'backend-dpr' }
+    const host = document.createElement('div')
+    const canvas = document.createElement('canvas')
+    defineHostSize(host, 640, 360)
+    let dpr = 1
+    let dprListener: (() => void) | null = null
+    const unsubscribeDpr = vi.fn()
+    const syncSurface = vi.fn()
+    const snapshots: WorkbookPaneSurfaceSnapshotV3[] = []
+    const runtime = new WorkbookPaneSurfaceRuntimeV3({
+      createBackend: vi.fn(async () => backend),
+      createResizeObserver: () => null,
+      getDevicePixelRatio: () => dpr,
+      subscribeDevicePixelRatioChange: (listener) => {
+        dprListener = listener
+        return unsubscribeDpr
+      },
+      syncSurface,
+    })
+
+    runtime.subscribe((snapshot) => snapshots.push(snapshot))
+    runtime.setHost(host)
+    runtime.setActive(true)
+    runtime.setCanvas(canvas)
+    await flushMicrotasks()
+
+    expect(snapshots.at(-1)).toMatchObject({
+      surface: { dpr: 1, height: 360, pixelHeight: 360, pixelWidth: 640, width: 640 },
+      webGpuReady: true,
+    })
+
+    dpr = 2
+    dprListener?.()
+
+    expect(snapshots.at(-1)).toMatchObject({
+      surface: { dpr: 2, height: 360, pixelHeight: 720, pixelWidth: 1280, width: 640 },
+      webGpuReady: true,
+    })
+    expect(syncSurface).toHaveBeenLastCalledWith({
+      backend,
+      canvas,
+      size: expect.objectContaining({ dpr: 2, height: 360, pixelHeight: 720, pixelWidth: 1280, width: 640 }),
+    })
+
+    runtime.setActive(false)
+    expect(unsubscribeDpr).toHaveBeenCalledTimes(1)
+  })
+
   test('destroys a stale async backend that resolves after deactivation', async () => {
     const host = document.createElement('div')
     const canvas = document.createElement('canvas')

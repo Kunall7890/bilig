@@ -1108,6 +1108,59 @@ test('@browser-webgpu @browser-deep selected range fill changes stay visually au
   )
 })
 
+test('@browser-webgpu @browser-deep name-box range fill presents the current frame before success', async ({ page }, testInfo) => {
+  const points = [
+    { ...selectedRangeFillProbe(3, 3), name: 'topLeft' },
+    { ...selectedRangeFillProbe(4, 5), name: 'middle' },
+    { ...selectedRangeFillProbe(5, 7), name: 'bottomRight' },
+  ]
+
+  await page.setViewportSize({ width: 960, height: 720 })
+  await installTypeGpuReadbackHarness(page)
+  await gotoWorkbookShell(page, `/?document=${encodeURIComponent(createTestDocumentId('typegpu-name-box-fill-refresh'))}&persist=0`)
+  await waitForWorkbookReady(page)
+  await waitForTypeGpuRenderer(page)
+  await page.waitForFunction(
+    () =>
+      Boolean(
+        (window as Window & { __biligGpuReadbackInspector?: { readonly isReady: () => boolean } }).__biligGpuReadbackInspector?.isReady(),
+      ),
+    undefined,
+    { timeout: 15_000 },
+  )
+
+  const nameBox = page.getByTestId('name-box')
+  await nameBox.fill('D4:F8')
+  await nameBox.press('Enter')
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!D4:F8')
+
+  await pickToolbarPresetColor(page, 'Fill color', 'theme green')
+  const greenReadback = await waitForReadback(
+    page,
+    {
+      points,
+      regions: [],
+    },
+    (result) => allReadbackPointsMatch(result, isThemeGreenFill),
+  )
+  const rendererProof = await page.getByTestId('grid-pane-renderer').evaluate((canvas) => ({
+    frameProofStatus: canvas.getAttribute('data-v3-frame-proof-status'),
+    tileSceneRevision: canvas.getAttribute('data-v3-tile-scene-revision'),
+    visibleRenderRevision: canvas.getAttribute('data-v3-visible-render-revision'),
+  }))
+
+  expect(rendererProof.frameProofStatus).toBe('presented')
+  expect(rendererProof.visibleRenderRevision).toBe(rendererProof.tileSceneRevision)
+  expect(greenReadback.sequence).toBeGreaterThan(0)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!D4:F8')
+  await saveReadbackArtifact(
+    page,
+    testInfo,
+    'main-workbook-grid-name-box-fill-refresh-readback.png',
+    'main-workbook-grid-name-box-fill-refresh-readback',
+  )
+})
+
 test('@browser-webgpu @browser-deep full-column fill changes repaint visible cells without waiting for sync catch-up', async ({
   page,
 }, testInfo) => {
