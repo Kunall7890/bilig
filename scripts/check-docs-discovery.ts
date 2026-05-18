@@ -80,6 +80,7 @@ const headlessSpreadsheetEngineNodeServicesAgents = await readFile(
   'utf8',
 )
 const spreadsheetMcpServerComparison = await readFile(join(docsRoot, 'spreadsheet-mcp-server-comparison.md'), 'utf8')
+const rootSkillNotes = await readFile(join(repoRoot, 'skills', 'bilig-workpaper', 'SKILL.md'), 'utf8')
 
 requireHomepageDiscovery(index, siteCss, productCss)
 await requireXlsxCalcAlternativeDiscovery(docsRoot)
@@ -278,12 +279,23 @@ requireIncludes(
   'packages/headless/AGENTS.md',
 )
 requireIncludes(headlessSkillNotes, 'name: bilig-workpaper', 'packages/headless/SKILL.md')
-requireIncludes(headlessSkillNotes, 'bilig-formula-clinic ./reduced.xlsx', 'packages/headless/SKILL.md')
+requireIncludes(headlessSkillNotes, '"bilig-formula-clinic", "./reduced.xlsx"', 'packages/headless/SKILL.md')
 requireIncludes(headlessSkillNotes, 'Do not trigger it for manual spreadsheet editing', 'packages/headless/SKILL.md')
+requireIncludes(headlessSkillNotes, '## Command Safety', 'packages/headless/SKILL.md')
+requireIncludes(headlessSkillNotes, 'argument array, not a shell-concatenated string', 'packages/headless/SKILL.md')
+requireNotIncludes(headlessSkillNotes, 'allowed-tools:', 'packages/headless/SKILL.md')
+requireNotIncludes(headlessSkillNotes, 'argument-hint:', 'packages/headless/SKILL.md')
 requireIncludes(docsAgentNotes, '## Discovery Order', 'docs/AGENTS.md')
 requireIncludes(docsAgentNotes, 'Do not claim success from a write call alone.', 'docs/AGENTS.md')
 requireIncludes(docsSkill, 'name: bilig-workpaper', 'docs/skill.md')
 requireIncludes(docsSkill, '## Required Verification', 'docs/skill.md')
+requireIncludes(docsSkill, '## Command Safety', 'docs/skill.md')
+requireNotIncludes(docsSkill, 'allowed-tools:', 'docs/skill.md')
+requireNotIncludes(docsSkill, 'argument-hint:', 'docs/skill.md')
+requireIncludes(rootSkillNotes, '## Command Safety', 'skills/bilig-workpaper/SKILL.md')
+requireIncludes(rootSkillNotes, 'argument array, not a shell-concatenated string', 'skills/bilig-workpaper/SKILL.md')
+requireNotIncludes(rootSkillNotes, 'allowed-tools:', 'skills/bilig-workpaper/SKILL.md')
+requireNotIncludes(rootSkillNotes, 'argument-hint:', 'skills/bilig-workpaper/SKILL.md')
 if (agentJsonRoot !== agentJson) {
   throw new Error('docs/agent.json must match docs/.well-known/agent.json')
 }

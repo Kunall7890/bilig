@@ -9,13 +9,6 @@ tags:
   - workpaper
   - mcp
   - typescript
-allowed-tools:
-  - Bash
-  - Read
-  - Write
-  - Edit
-  - Grep
-argument-hint: "[workbook file, formula task, or MCP setup]"
 ---
 
 # Bilig WorkPaper Agent Skill
@@ -38,12 +31,34 @@ Do not use it for manual spreadsheet editing, Office macros, VBA, pivots,
 charts, COM automation, or exact Excel desktop behavior unless the task is an
 explicit compatibility comparison.
 
+## Command Safety
+
+Do not build shell commands by concatenating user text. Treat the commands below
+as literal templates, validate workbook paths before use, and reject values
+containing newlines, backticks, `$(`, `;`, `&`, `|`, `<`, or `>`. Prefer MCP
+client `command` plus `args` arrays or direct TypeScript calls when inserting
+user-provided paths or cell references.
+
 ## MCP Path
 
-When the agent host supports stdio MCP, start the file-backed WorkPaper server:
+When the agent host supports stdio MCP, start the file-backed WorkPaper server
+with an argument array, not a shell-concatenated string:
 
-```sh
-npm exec --package @bilig/headless@0.23.3 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+```json
+{
+  "command": "npm",
+  "args": [
+    "exec",
+    "--package",
+    "@bilig/headless@0.23.3",
+    "--",
+    "bilig-workpaper-mcp",
+    "--workpaper",
+    "./pricing.workpaper.json",
+    "--init-demo-workpaper",
+    "--writable"
+  ]
+}
 ```
 
 Useful MCP tools:

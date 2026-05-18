@@ -9,13 +9,6 @@ tags:
   - xlsx
   - mcp
   - typescript
-allowed-tools:
-  - Bash
-  - Read
-  - Write
-  - Edit
-  - Grep
-argument-hint: '[workbook file or formula task]'
 ---
 
 # Bilig WorkPaper Agent Skill
@@ -35,12 +28,29 @@ Trigger this skill for tasks involving:
 
 Do not trigger it for manual spreadsheet editing, Office macros, VBA, pivots, charts, COM automation, or exact Excel desktop behavior unless the user explicitly asks to compare Bilig against an Excel oracle.
 
+## Command Safety
+
+Do not build shell commands by concatenating user text. Treat the commands below as literal templates, validate workbook paths before use, and reject values containing newlines, backticks, `$(`, `;`, `&`, `|`, `<`, or `>`. Prefer MCP client `command` plus `args` arrays or direct TypeScript calls when inserting user-provided paths or cell references.
+
 ## First Choice: MCP
 
-Use MCP when the host can run a stdio server:
+Use MCP when the host can run a stdio server. Configure it as an argument array, not a shell-concatenated string:
 
-```sh
-npm exec --package @bilig/headless@0.23.3 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+```json
+{
+  "command": "npm",
+  "args": [
+    "exec",
+    "--package",
+    "@bilig/headless@0.23.3",
+    "--",
+    "bilig-workpaper-mcp",
+    "--workpaper",
+    "./pricing.workpaper.json",
+    "--init-demo-workpaper",
+    "--writable"
+  ]
+}
 ```
 
 The useful file-backed tools are:
@@ -89,10 +99,13 @@ console.log({ revenue, savedBytes: saved.length })
 
 ## XLSX Formula Clinic
 
-When the user has a reduced XLSX formula/import bug, generate a local report:
+When the user has a reduced XLSX formula/import bug, generate a local report through an argument array:
 
-```sh
-npm exec --package @bilig/headless@0.23.3 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+```json
+{
+  "command": "npm",
+  "args": ["exec", "--package", "@bilig/headless@0.23.3", "--", "bilig-formula-clinic", "./reduced.xlsx", "--cells", "Summary!B7,Inputs!B2"]
+}
 ```
 
 The report is local. It does not upload workbook contents. Ask for a reduced public fixture rather than private customer spreadsheets.
