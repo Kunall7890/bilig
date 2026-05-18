@@ -27,7 +27,7 @@ import { addExportExternalLinkArtifactsToXlsxBytes } from './xlsx-external-link-
 import { addExportWorksheetDimensionsToXlsxBytes, applyExportWorksheetDimensionsToWorksheetXml } from './xlsx-dimensions.js'
 import { addExportFiltersToXlsxBytes } from './xlsx-filters.js'
 import { addExportFreezePanesToXlsxBytes } from './xlsx-freeze-panes.js'
-import { addExportPivotsToXlsxBytes } from './xlsx-pivots.js'
+import { addExportPivotsToXlsxBytes } from './xlsx-pivot-export.js'
 import { addExportPrintPageSetupToXlsxBytes } from './xlsx-print-page-setup.js'
 import { addExportProtectedRangesToXlsxBytes } from './xlsx-protected-ranges.js'
 import { addExportRichTextArtifactsToXlsxBytes } from './xlsx-rich-text-artifacts.js'
