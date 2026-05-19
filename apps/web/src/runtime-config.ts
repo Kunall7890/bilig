@@ -6,7 +6,6 @@ export interface RuntimeConfig {
   persistState: boolean
   currentUserId: string
   workbookAgentEnabled: boolean
-  serverUrl?: string
 }
 
 export function createLocalOnlyRuntimeConfig(currentUserId = 'local:user'): BiligRuntimeConfig {
@@ -66,14 +65,12 @@ function normalizeRuntimeServerUrl(value: string | null): string | undefined {
 export function resolveRuntimeConfig(config: BiligRuntimeConfig): RuntimeConfig {
   const searchParams = typeof window === 'undefined' ? new URLSearchParams() : new URLSearchParams(window.location.search)
   const explicitDocumentId = searchParams.get('document')
-  const explicitServerUrl = searchParams.get('server')?.trim()
   const persistState = resolvePersistState(config.persistState, searchParams)
   const serverUrl = normalizeRuntimeServerUrl(searchParams.get('server'))
 
   if (explicitDocumentId) {
     return {
       documentId: explicitDocumentId,
-      ...(explicitServerUrl ? { serverUrl: explicitServerUrl } : {}),
       persistState,
       currentUserId: config.currentUserId,
       workbookAgentEnabled: config.workbookAgentEnabled === true,
