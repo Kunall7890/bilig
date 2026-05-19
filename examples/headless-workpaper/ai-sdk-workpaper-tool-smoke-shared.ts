@@ -121,6 +121,10 @@ export function createAiSdkWorkPaperTools(workpaper = buildWorkbook()) {
   return createAiSdkTools(createWorkPaperTools(workpaper))
 }
 
+export function createWorkPaperToolHandlers(workpaper = buildWorkbook()) {
+  return createWorkPaperTools(workpaper)
+}
+
 export function requireToolOutput(
   toolResults: ReadonlyArray<AiSdkWorkPaperToolResult>,
   toolCallId: string,

@@ -363,6 +363,9 @@ Agent and tool-call examples:
   formula, saved JSON, restored workbook, and formula text.
 - `npm run agent:tool-call` exposes `readRange` and `setInputCell` style tool
   calls with computed before/after readback.
+- `npm run agent:openai-agents-sdk` creates real `@openai/agents` `Agent`
+  and `tool()` objects, then invokes them locally with WorkPaper readback:
+  <https://github.com/proompteng/bilig/blob/main/docs/openai-agents-sdk-workpaper-tool.md>.
 - `npm run agent:openai-responses` shows the
   [OpenAI Responses tool-call loop](https://github.com/proompteng/bilig/blob/main/docs/openai-responses-workpaper-tool-call.md).
 - `npm run agent:ai-sdk-generate-text` uses the real Vercel AI SDK
@@ -765,6 +768,7 @@ When the sanity check passes, these are the next useful pages.
 - Agent and MCP workflows:
   [headless WorkPaper agent handbook](https://github.com/proompteng/bilig/blob/main/docs/headless-workpaper-agent-handbook.md),
   [agent tool-calling recipe](https://github.com/proompteng/bilig/blob/main/docs/agent-workpaper-tool-calling-recipe.md),
+  [OpenAI Agents SDK guide](https://github.com/proompteng/bilig/blob/main/docs/openai-agents-sdk-workpaper-tool.md),
   [OpenAI Responses guide](https://github.com/proompteng/bilig/blob/main/docs/openai-responses-workpaper-tool-call.md),
   [AI SDK, LangChain, and agent framework guide](https://github.com/proompteng/bilig/blob/main/docs/vercel-ai-sdk-langchain-spreadsheet-tool.md),
   [MCP server guide](https://github.com/proompteng/bilig/blob/main/docs/mcp-workpaper-tool-server.md),

@@ -430,6 +430,11 @@ const llmsFullSources = [
     url: `${repositoryUrl}/blob/main/docs/agent-workpaper-tool-calling-recipe.md`,
   },
   {
+    title: 'OpenAI Agents SDK WorkPaper Tool',
+    relativePath: 'docs/openai-agents-sdk-workpaper-tool.md',
+    url: `${repositoryUrl}/blob/main/docs/openai-agents-sdk-workpaper-tool.md`,
+  },
+  {
     title: 'MCP WorkPaper Tool Server',
     relativePath: 'docs/mcp-workpaper-tool-server.md',
     url: `${repositoryUrl}/blob/main/docs/mcp-workpaper-tool-server.md`,
@@ -622,6 +627,7 @@ function agentJsonManifest(): string {
         remoteMcpEndpoint,
         remoteMcpServerCard,
         `${siteRoot}/agent-workpaper-tool-calling-recipe.html`,
+        `${siteRoot}/openai-agents-sdk-workpaper-tool.html`,
         `${siteRoot}/node-framework-workpaper-adapters.html`,
         `${siteRoot}/npm-provenance-package-trust.html`,
       ],

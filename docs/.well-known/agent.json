@@ -128,6 +128,7 @@
     "https://bilig.proompteng.ai/mcp",
     "https://bilig.proompteng.ai/.well-known/mcp/server-card.json",
     "https://proompteng.github.io/bilig/agent-workpaper-tool-calling-recipe.html",
+    "https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html",
     "https://proompteng.github.io/bilig/node-framework-workpaper-adapters.html",
     "https://proompteng.github.io/bilig/npm-provenance-package-trust.html"
   ]

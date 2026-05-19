@@ -20,6 +20,7 @@ export const docsSiteSources = [
   ['headless-workpaper-agent-handbook.html', 'headless-workpaper-agent-handbook.md'],
   ['agent-workbook-challenge.html', 'agent-workbook-challenge.md'],
   ['agent-workpaper-tool-calling-recipe.html', 'agent-workpaper-tool-calling-recipe.md'],
+  ['openai-agents-sdk-workpaper-tool.html', 'openai-agents-sdk-workpaper-tool.md'],
   ['openai-responses-workpaper-tool-call.html', 'openai-responses-workpaper-tool-call.md'],
   ['vercel-ai-sdk-langchain-spreadsheet-tool.html', 'vercel-ai-sdk-langchain-spreadsheet-tool.md'],
   ['mastra-workpaper-spreadsheet-tool.html', 'mastra-workpaper-spreadsheet-tool.md'],

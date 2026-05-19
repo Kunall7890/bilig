@@ -11,6 +11,7 @@
     "agent:mcp-stdio": "node --disable-warning=DEP0205 --import tsx mcp-stdio-server.ts",
     "agent:mcp-transcript": "node --disable-warning=DEP0205 --import tsx mcp-stdio-transcript.ts",
     "agent:mcp-tools": "node --disable-warning=DEP0205 --import tsx mcp-tool-server.ts",
+    "agent:openai-agents-sdk": "node --disable-warning=DEP0205 --import tsx openai-agents-sdk-tool-smoke.ts",
     "agent:openai-responses": "node --disable-warning=DEP0205 --import tsx openai-responses-tool-wrapper.ts",
     "agent:tool-call": "node --disable-warning=DEP0205 --import tsx agent-tool-call-loop.ts",
     "agent:verify": "node --disable-warning=DEP0205 --import tsx agent-writeback-verification.ts",
@@ -39,6 +40,7 @@
   },
   "dependencies": {
     "@bilig/headless": "latest",
+    "@openai/agents": "0.11.4",
     "ai": "6.0.182",
     "zod": "4.3.6"
   },

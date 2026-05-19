@@ -263,6 +263,7 @@ the [Node spreadsheet formula engine guide](docs/node-spreadsheet-formula-engine
 [framework adapters](docs/node-framework-workpaper-adapters.md),
 [formula bug clinic](docs/formula-bug-clinic.md),
 [workbook fixture submissions](docs/submit-workbook-fixture.md),
+[OpenAI Agents SDK tools](docs/openai-agents-sdk-workpaper-tool.md),
 [AI SDK and LangChain tools](docs/vercel-ai-sdk-langchain-spreadsheet-tool.md),
 [CrewAI adapter](docs/crewai-workpaper-spreadsheet-tool.md),
 the [headless WorkPaper agent handbook](docs/headless-workpaper-agent-handbook.md),
@@ -294,7 +295,8 @@ Useful deeper examples: [invoice totals](examples/headless-workpaper#invoice-tot
 [MCP tool server shape](examples/headless-workpaper#mcp-tool-server-shape),
 [XLSX formula recalculation in Node](examples/xlsx-recalculation-node),
 and [serverless quote approval](examples/serverless-workpaper-api). Run
-`npm run quote-approval-api`, `npm run agent:framework-adapters`,
+`npm run quote-approval-api`, `npm run agent:openai-agents-sdk`,
+`npm run agent:framework-adapters`,
 `npm run agent:mcp-tools`, `npm run agent:mcp-transcript`,
 `npm run agent:mcp-file-transcript`, `npm run agent:mcp-stdio`, or
 `npm exec --package @bilig/headless@0.27.0 -- bilig-workpaper-mcp` when that is the
@@ -347,6 +349,7 @@ For agent tools:
 ```sh
 pnpm --dir examples/headless-workpaper run agent:verify
 pnpm --dir examples/headless-workpaper run agent:tool-call
+pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk
 pnpm --dir examples/headless-workpaper run agent:openai-responses
 pnpm --dir examples/headless-workpaper run agent:ai-sdk-generate-text
 pnpm --dir examples/headless-workpaper run agent:ai-sdk-stream-text
@@ -358,6 +361,8 @@ pnpm --dir examples/headless-workpaper run agent:mcp-stdio
 
 The AI SDK example uses
 [`ai-sdk-generate-text-tool-smoke.ts`](examples/headless-workpaper/ai-sdk-generate-text-tool-smoke.ts).
+The OpenAI Agents SDK guide is
+[`docs/openai-agents-sdk-workpaper-tool.md`](docs/openai-agents-sdk-workpaper-tool.md).
 The OpenAI Responses guide is
 [`docs/openai-responses-workpaper-tool-call.md`](docs/openai-responses-workpaper-tool-call.md).
 The agent framework guide is

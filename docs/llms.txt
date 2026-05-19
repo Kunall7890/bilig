@@ -86,6 +86,7 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/why-agents-need-workbook-apis.html
 - https://proompteng.github.io/bilig/headless-workpaper-agent-handbook.html
 - https://proompteng.github.io/bilig/agent-workbook-challenge.html
+- https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html
 - https://proompteng.github.io/bilig/vercel-ai-sdk-langchain-spreadsheet-tool.html
 - https://proompteng.github.io/bilig/mastra-workpaper-spreadsheet-tool.html
 - https://proompteng.github.io/bilig/llamaindex-workpaper-spreadsheet-tool.html
@@ -142,6 +143,7 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://github.com/proompteng/bilig/blob/main/docs/headless-workpaper-agent-handbook.md
 - https://github.com/proompteng/bilig/blob/main/docs/agent-workbook-challenge.md
 - https://github.com/proompteng/bilig/blob/main/docs/agent-workpaper-tool-calling-recipe.md
+- https://github.com/proompteng/bilig/blob/main/docs/openai-agents-sdk-workpaper-tool.md
 - https://github.com/proompteng/bilig/blob/main/docs/openai-responses-workpaper-tool-call.md
 - https://github.com/proompteng/bilig/blob/main/docs/mcp-workpaper-tool-server.md
 - https://github.com/proompteng/bilig/blob/main/docs/agent-spreadsheet-tool-call-loop.md
@@ -186,6 +188,7 @@ git clone https://github.com/proompteng/bilig.git
 pnpm --dir bilig/examples/headless-workpaper install --ignore-workspace
 pnpm --dir bilig/examples/headless-workpaper run start
 pnpm --dir bilig/examples/headless-workpaper run agent:tool-call
+pnpm --dir bilig/examples/headless-workpaper run agent:openai-agents-sdk
 pnpm --dir bilig/examples/headless-workpaper run agent:openai-responses
 pnpm --dir bilig/examples/headless-workpaper run agent:ai-sdk-generate-text
 pnpm --dir bilig/examples/headless-workpaper run agent:ai-sdk-stream-text
@@ -412,6 +415,11 @@ npm exec --package @bilig/headless@0.27.0 -- bilig-workpaper-mcp --workpaper ./p
 - workpaper tool-calling recipe for agents:
   https://proompteng.github.io/bilig/agent-workpaper-tool-calling-recipe.html
   https://github.com/proompteng/bilig/blob/main/docs/agent-workpaper-tool-calling-recipe.md
+- OpenAI Agents SDK WorkPaper tools:
+  pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk
+  https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html
+  https://github.com/proompteng/bilig/blob/main/docs/openai-agents-sdk-workpaper-tool.md
+  https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/openai-agents-sdk-tool-smoke.ts
 - OpenAI Responses WorkPaper tool-call recipe:
   pnpm --dir examples/headless-workpaper run agent:openai-responses
   https://proompteng.github.io/bilig/openai-responses-workpaper-tool-call.html

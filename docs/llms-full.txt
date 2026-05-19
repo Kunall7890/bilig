@@ -508,6 +508,7 @@ the [Node spreadsheet formula engine guide](docs/node-spreadsheet-formula-engine
 [framework adapters](docs/node-framework-workpaper-adapters.md),
 [formula bug clinic](docs/formula-bug-clinic.md),
 [workbook fixture submissions](docs/submit-workbook-fixture.md),
+[OpenAI Agents SDK tools](docs/openai-agents-sdk-workpaper-tool.md),
 [AI SDK and LangChain tools](docs/vercel-ai-sdk-langchain-spreadsheet-tool.md),
 [CrewAI adapter](docs/crewai-workpaper-spreadsheet-tool.md),
 the [headless WorkPaper agent handbook](docs/headless-workpaper-agent-handbook.md),
@@ -539,7 +540,8 @@ Useful deeper examples: [invoice totals](examples/headless-workpaper#invoice-tot
 [MCP tool server shape](examples/headless-workpaper#mcp-tool-server-shape),
 [XLSX formula recalculation in Node](examples/xlsx-recalculation-node),
 and [serverless quote approval](examples/serverless-workpaper-api). Run
-`npm run quote-approval-api`, `npm run agent:framework-adapters`,
+`npm run quote-approval-api`, `npm run agent:openai-agents-sdk`,
+`npm run agent:framework-adapters`,
 `npm run agent:mcp-tools`, `npm run agent:mcp-transcript`,
 `npm run agent:mcp-file-transcript`, `npm run agent:mcp-stdio`, or
 `npm exec --package @bilig/headless@0.27.0 -- bilig-workpaper-mcp` when that is the
@@ -592,6 +594,7 @@ For agent tools:
 ```sh
 pnpm --dir examples/headless-workpaper run agent:verify
 pnpm --dir examples/headless-workpaper run agent:tool-call
+pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk
 pnpm --dir examples/headless-workpaper run agent:openai-responses
 pnpm --dir examples/headless-workpaper run agent:ai-sdk-generate-text
 pnpm --dir examples/headless-workpaper run agent:ai-sdk-stream-text
@@ -603,6 +606,8 @@ pnpm --dir examples/headless-workpaper run agent:mcp-stdio
 
 The AI SDK example uses
 [`ai-sdk-generate-text-tool-smoke.ts`](examples/headless-workpaper/ai-sdk-generate-text-tool-smoke.ts).
+The OpenAI Agents SDK guide is
+[`docs/openai-agents-sdk-workpaper-tool.md`](docs/openai-agents-sdk-workpaper-tool.md).
 The OpenAI Responses guide is
 [`docs/openai-responses-workpaper-tool-call.md`](docs/openai-responses-workpaper-tool-call.md).
 The agent framework guide is
@@ -1226,6 +1231,9 @@ Agent and tool-call examples:
   formula, saved JSON, restored workbook, and formula text.
 - `npm run agent:tool-call` exposes `readRange` and `setInputCell` style tool
   calls with computed before/after readback.
+- `npm run agent:openai-agents-sdk` creates real `@openai/agents` `Agent`
+  and `tool()` objects, then invokes them locally with WorkPaper readback:
+  <https://github.com/proompteng/bilig/blob/main/docs/openai-agents-sdk-workpaper-tool.md>.
 - `npm run agent:openai-responses` shows the
   [OpenAI Responses tool-call loop](https://github.com/proompteng/bilig/blob/main/docs/openai-responses-workpaper-tool-call.md).
 - `npm run agent:ai-sdk-generate-text` uses the real Vercel AI SDK
@@ -1628,6 +1636,7 @@ When the sanity check passes, these are the next useful pages.
 - Agent and MCP workflows:
   [headless WorkPaper agent handbook](https://github.com/proompteng/bilig/blob/main/docs/headless-workpaper-agent-handbook.md),
   [agent tool-calling recipe](https://github.com/proompteng/bilig/blob/main/docs/agent-workpaper-tool-calling-recipe.md),
+  [OpenAI Agents SDK guide](https://github.com/proompteng/bilig/blob/main/docs/openai-agents-sdk-workpaper-tool.md),
   [OpenAI Responses guide](https://github.com/proompteng/bilig/blob/main/docs/openai-responses-workpaper-tool-call.md),
   [AI SDK, LangChain, and agent framework guide](https://github.com/proompteng/bilig/blob/main/docs/vercel-ai-sdk-langchain-spreadsheet-tool.md),
   [MCP server guide](https://github.com/proompteng/bilig/blob/main/docs/mcp-workpaper-tool-server.md),
@@ -2289,7 +2298,10 @@ the [headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md).
 
 For a runnable external example, use
 [`examples/headless-workpaper`](../examples/headless-workpaper) and run
-`npm run agent:tool-call`. If your app calls OpenAI Responses directly, run
+`npm run agent:tool-call`. If your app uses the OpenAI Agents SDK, run
+`npm run agent:openai-agents-sdk` and read the
+[OpenAI Agents SDK WorkPaper tool guide](openai-agents-sdk-workpaper-tool.md).
+If your app calls OpenAI Responses directly, run
 `npm run agent:openai-responses` and read the
 [OpenAI Responses WorkPaper tool-call guide](openai-responses-workpaper-tool-call.md).
 For a smaller writeback-only proof, run
@@ -2307,6 +2319,8 @@ calls `streamText()` from `ai`, streams tool-call chunks and final text, and
 keeps the WorkPaper read/write verification in ordinary TypeScript.
 
 If your app calls OpenAI directly, start with the
+[OpenAI Agents SDK tool guide](https://openai.github.io/openai-agents-js/guides/tools/)
+or the
 [Responses API function-calling guide](https://developers.openai.com/api/docs/guides/function-calling)
 and keep the WorkPaper functions below as your application-side tool handlers.
 If this is the path you are trying, use the
@@ -2487,6 +2501,45 @@ summary changed as expected:
 
 `serializedBytes` will vary as the document schema evolves. Treat it as a
 positive persistence check, not a stable snapshot value.
+
+## OpenAI Agents SDK Tool Wrapper
+
+Use this path when your app builds agents with `@openai/agents` and wants the
+WorkPaper functions attached to a real `Agent` as SDK function tools:
+
+```sh
+pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk
+```
+
+The maintained example is
+[`examples/headless-workpaper/openai-agents-sdk-tool-smoke.ts`](../examples/headless-workpaper/openai-agents-sdk-tool-smoke.ts).
+It creates `tool()` definitions for `read_workpaper_summary` and
+`set_workpaper_input_cell`, attaches them to an `Agent`, and invokes them with
+`invokeFunctionTool()` so the smoke remains provider-free.
+
+The dedicated guide is
+[`docs/openai-agents-sdk-workpaper-tool.md`](openai-agents-sdk-workpaper-tool.md).
+It links back to the official OpenAI Agents SDK tool docs:
+<https://openai.github.io/openai-agents-js/guides/tools/>.
+
+Expected proof:
+
+```json
+{
+  "apiShape": "OpenAI Agents SDK Agent -> tool() -> invokeFunctionTool()",
+  "toolNames": ["read_workpaper_summary", "set_workpaper_input_cell"],
+  "writeResult": {
+    "editedCell": "Inputs!B3",
+    "before": { "expectedArr": 60000, "targetGap": -34000 },
+    "after": { "expectedArr": 96000, "targetGap": 5600 },
+    "checks": {
+      "formulasPersisted": true,
+      "restoredMatchesAfter": true,
+      "expectedArrChanged": true
+    }
+  }
+}
+```
 
 ## OpenAI Responses API Tool Wrapper
 
@@ -2833,6 +2886,143 @@ Add tools only after the agent has a repeated need for them:
 
 The same rule holds: every mutating tool should return computed verification
 and enough context for the caller to explain what changed.
+
+---
+
+## OpenAI Agents SDK WorkPaper Tool
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/openai-agents-sdk-workpaper-tool.md
+
+# OpenAI Agents SDK WorkPaper Tools
+
+Use this path when an OpenAI Agents SDK app needs a workbook tool it can call
+from Node without opening Excel, LibreOffice, Google Sheets, or a screenshot UI.
+The agent gets two ordinary function tools:
+
+- `read_workpaper_summary` reads computed WorkPaper values and serialized cells.
+- `set_workpaper_input_cell` writes one validated input cell and returns
+  before/after readback, formula persistence checks, and restored JSON proof.
+
+The maintained smoke script is provider-free by default. It imports
+`Agent`, `tool()`, `RunContext`, and `invokeFunctionTool()` from
+`@openai/agents`, creates a real SDK agent and function tools, then invokes the
+tools locally so the read/write contract can run in CI without an API key:
+
+```sh
+pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk
+```
+
+The OpenAI Agents SDK documents function tools as local functions wrapped with a
+schema through `tool()`, and the same tools can be attached to an `Agent`:
+<https://openai.github.io/openai-agents-js/guides/tools/>.
+
+## Minimal Tool Shape
+
+```ts
+import { Agent, RunContext, invokeFunctionTool, tool } from '@openai/agents'
+import { z } from 'zod'
+import { WorkPaper } from '@bilig/headless'
+
+const workbook = WorkPaper.buildFromSheets({
+  Inputs: [
+    ['Metric', 'Value'],
+    ['Qualified opportunities', 20],
+    ['Win rate', 0.25],
+    ['Average ARR', 12000],
+  ],
+  Summary: [
+    ['Metric', 'Value'],
+    ['Expected ARR', '=Inputs!B2*Inputs!B3*Inputs!B4'],
+  ],
+})
+
+const setWorkPaperInputCell = tool({
+  name: 'set_workpaper_input_cell',
+  description: 'Set one validated WorkPaper input cell and return formula readback.',
+  parameters: z.object({
+    sheetName: z.literal('Inputs'),
+    address: z.string().regex(/^[A-Z]+[1-9][0-9]*$/),
+    value: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+  }),
+  execute: async ({ sheetName, address, value }) => {
+    const sheet = workbook.getSheetId(sheetName)
+    const summarySheet = workbook.getSheetId('Summary')
+    if (sheet === undefined) {
+      throw new Error(`Unknown sheet: ${sheetName}`)
+    }
+    if (summarySheet === undefined) {
+      throw new Error('Summary sheet is missing')
+    }
+    const cell = workbook.simpleCellAddressFromString(address, sheet)
+    const summaryRange = workbook.simpleCellRangeFromString('Summary!A1:B2', summarySheet)
+    if (cell === undefined) {
+      throw new Error(`Invalid cell: ${sheetName}!${address}`)
+    }
+    if (summaryRange === undefined) {
+      throw new Error('Summary range is invalid')
+    }
+
+    const before = workbook.getRangeValues(summaryRange)
+    workbook.setCellContents(cell, value)
+
+    return {
+      editedCell: `${sheetName}!${address}`,
+      before,
+      after: workbook.getRangeValues(summaryRange),
+    }
+  },
+})
+
+const agent = new Agent({
+  name: 'WorkPaper verification agent',
+  instructions: 'Use WorkPaper tools and answer only from computed readback.',
+  tools: [setWorkPaperInputCell],
+})
+
+const result = await invokeFunctionTool({
+  tool: setWorkPaperInputCell,
+  runContext: new RunContext(),
+  input: JSON.stringify({
+    sheetName: 'Inputs',
+    address: 'B3',
+    value: 0.4,
+  }),
+})
+
+console.log(agent.name, result)
+```
+
+For a production adapter, use the full example instead of this short snippet:
+[`examples/headless-workpaper/openai-agents-sdk-tool-smoke.ts`](../examples/headless-workpaper/openai-agents-sdk-tool-smoke.ts).
+It also verifies persisted formulas by exporting a WorkPaper document, restoring
+it, and comparing the computed readback after restore.
+
+## Expected Proof
+
+The smoke output includes this shape:
+
+```json
+{
+  "apiShape": "OpenAI Agents SDK Agent -> tool() -> invokeFunctionTool()",
+  "package": "@openai/agents",
+  "agentName": "WorkPaper verification agent",
+  "toolNames": ["read_workpaper_summary", "set_workpaper_input_cell"],
+  "writeResult": {
+    "editedCell": "Inputs!B3",
+    "before": { "expectedArr": 60000, "targetGap": -34000 },
+    "after": { "expectedArr": 96000, "targetGap": 5600 },
+    "checks": {
+      "formulasPersisted": true,
+      "restoredMatchesAfter": true,
+      "expectedArrChanged": true
+    }
+  }
+}
+```
+
+Keep the workbook mutation closed-world: validate sheet names and A1 addresses,
+write one input at a time, recalculate through WorkPaper, return computed
+readback, and persist only after the verification passes.
 
 ---
 

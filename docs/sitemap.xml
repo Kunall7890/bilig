@@ -127,6 +127,12 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://proompteng.github.io/bilig/openai-responses-workpaper-tool-call.html</loc>
     <lastmod>2026-05-14</lastmod>
     <changefreq>monthly</changefreq>

@@ -68,6 +68,7 @@ job you are evaluating:
 | Can an agent safely write workbook inputs? | `npm run agent:tool-call`         | You need before/after computed readback and persisted restore verification.   |
 | Can MCP drive a real WorkPaper tool loop?  | `npm run agent:mcp-transcript`    | You want a JSON-RPC transcript for list tools, set input, and read output.    |
 | Can MCP edit a saved WorkPaper JSON file?  | `npm run agent:mcp-file-transcript` | You want proof that the packaged binary writes a real file-backed workbook. |
+| Does this fit OpenAI Agents SDK?       | `npm run agent:openai-agents-sdk` | You want real `Agent` and `tool()` objects with provider-free invocation proof. |
 | Does this fit framework/server code?       | `npm run agent:framework-adapters` | You want wrapper shapes for AI SDK, LangChain, Mastra, LlamaIndex, and more.  |
 
 From the repo root, run those scripts as
@@ -85,6 +86,7 @@ expected formula family, persistence requirement, or import/export constraint.
 | ------------------------ | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
 | Quick revenue workbook   | `npm start`                          | formulas, named expressions, persistence                                                                          |
 | Agent tool call loop     | `npm run agent:tool-call`            | read, edit, verify, serialize, restore                                                                            |
+| OpenAI Agents SDK tools  | `npm run agent:openai-agents-sdk`    | real `Agent`, `tool()`, and `invokeFunctionTool()` objects with verified WorkPaper readback                       |
 | OpenAI Responses wrapper | `npm run agent:openai-responses`     | `function_call` dispatch, `function_call_output`, verified WorkPaper readback                                     |
 | AI SDK generateText      | `npm run agent:ai-sdk-generate-text` | real `generateText()` and `tool()` calls with verified WorkPaper readback                                         |
 | AI SDK streamText        | `npm run agent:ai-sdk-stream-text`   | real `streamText()` and streamed tool calls with verified WorkPaper readback                                      |
@@ -203,8 +205,48 @@ restored summary, and serialized byte count.
 For agent frameworks, the
 [`WorkPaper tool-calling recipe`](../../docs/agent-workpaper-tool-calling-recipe.md)
 also links to wrappers that keep the same validation and computed readback
-contract across the OpenAI Responses API, AI SDK, LangChain, Mastra,
-LlamaIndex.TS, LangGraph.js, CopilotKit, Cloudflare Agents, and CrewAI.
+contract across the OpenAI Agents SDK, OpenAI Responses API, AI SDK,
+LangChain, Mastra, LlamaIndex.TS, LangGraph.js, CopilotKit, Cloudflare Agents,
+and CrewAI.
+
+## OpenAI Agents SDK Tool Smoke
+
+Run this when your app uses `@openai/agents` and you want real SDK `Agent`,
+`tool()`, `RunContext`, and `invokeFunctionTool()` objects without making a
+model request:
+
+```sh
+npm run agent:openai-agents-sdk
+```
+
+The script creates a WorkPaper-backed OpenAI Agents SDK agent, invokes the
+function tools locally, and verifies that setting `Inputs!B3 = 0.4` changes the
+computed expected ARR from `60000` to `96000` after JSON persistence restore.
+
+Expected proof:
+
+```json
+{
+  "apiShape": "OpenAI Agents SDK Agent -> tool() -> invokeFunctionTool()",
+  "package": "@openai/agents",
+  "agentName": "WorkPaper verification agent",
+  "toolNames": ["read_workpaper_summary", "set_workpaper_input_cell"],
+  "writeResult": {
+    "editedCell": "Inputs!B3",
+    "before": { "expectedArr": 60000, "targetGap": -34000 },
+    "after": { "expectedArr": 96000, "targetGap": 5600 },
+    "checks": {
+      "formulasPersisted": true,
+      "restoredMatchesAfter": true,
+      "expectedArrChanged": true
+    }
+  }
+}
+```
+
+Use [`openai-agents-sdk-tool-smoke.ts`](openai-agents-sdk-tool-smoke.ts) with
+the [OpenAI Agents SDK guide](../../docs/openai-agents-sdk-workpaper-tool.md)
+when your agent app wants WorkPaper tools directly on an `Agent`.
 
 ## OpenAI Responses Tool Wrapper
 

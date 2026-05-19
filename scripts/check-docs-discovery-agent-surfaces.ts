@@ -59,6 +59,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   const mcpbReleaseChecksumUrl = `${mcpbReleaseAssetUrl}.sha256`
 
   const jekyllConfig = await readFile(join(docsRoot, '_config.yml'), 'utf8')
+  const openAiAgentsSdkDoc = await readFile(join(docsRoot, 'openai-agents-sdk-workpaper-tool.md'), 'utf8')
   requireIncludes(jekyllConfig, 'include:', 'docs/_config.yml')
   requireIncludes(jekyllConfig, '  - .well-known', 'docs/_config.yml')
   if (mcpServerCardMcpJson !== mcpServerCard) {
@@ -204,7 +205,36 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'https://developers.openai.com/api/docs/guides/function-calling',
     'docs/agent-workpaper-tool-calling-recipe.md',
   )
+  requireIncludes(
+    agentToolCallingDoc,
+    'pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk',
+    'docs/agent-workpaper-tool-calling-recipe.md',
+  )
+  requireIncludes(agentToolCallingDoc, 'openai-agents-sdk-workpaper-tool.md', 'docs/agent-workpaper-tool-calling-recipe.md')
   requireIncludes(agentToolCallingDoc, 'function_call_output', 'docs/agent-workpaper-tool-calling-recipe.md')
+  for (const [path, content] of [
+    ['README.md', readme],
+    ['packages/headless/README.md', headlessReadme],
+    ['docs/index.html', index],
+    ['docs/llms.txt', llms],
+    ['docs/agent-workpaper-tool-calling-recipe.md', agentToolCallingDoc],
+    ['examples/headless-workpaper/package.json', headlessExamplePackageJson],
+    ['examples/headless-workpaper/README.md', await readFile(join(repoRoot, 'examples', 'headless-workpaper', 'README.md'), 'utf8')],
+  ] as const) {
+    requireIncludes(content, 'agent:openai-agents-sdk', path)
+  }
+  for (const required of [
+    'title: OpenAI Agents SDK WorkPaper tools',
+    'description: Wrap @bilig/headless workbook reads and verified edits as OpenAI Agents SDK function tools.',
+    'image: /assets/github-social-preview.png',
+    'pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk',
+    'examples/headless-workpaper/openai-agents-sdk-tool-smoke.ts',
+    'https://openai.github.io/openai-agents-js/guides/tools/',
+    'OpenAI Agents SDK Agent -> tool() -> invokeFunctionTool()',
+    'restoredMatchesAfter',
+  ] as const) {
+    requireIncludes(openAiAgentsSdkDoc, required, 'docs/openai-agents-sdk-workpaper-tool.md')
+  }
   requireIncludes(
     agentToolCallingDoc,
     'pnpm --dir examples/headless-workpaper run agent:framework-adapters',
@@ -497,6 +527,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     ['docs/why-agents-need-workbook-apis.md', whyAgentsDoc],
     ['docs/headless-workpaper-agent-handbook.md', headlessWorkpaperAgentHandbook],
     ['docs/agent-workpaper-tool-calling-recipe.md', agentToolCallingDoc],
+    ['docs/openai-agents-sdk-workpaper-tool.md', openAiAgentsSdkDoc],
     ['docs/vercel-ai-sdk-langchain-spreadsheet-tool.md', aiSdkLangChainDoc],
     ['docs/mcp-workpaper-tool-server.md', mcpWorkPaperToolServerDoc],
     ['docs/mcp-spreadsheet-server-directory.md', mcpSpreadsheetServerDirectoryDoc],
