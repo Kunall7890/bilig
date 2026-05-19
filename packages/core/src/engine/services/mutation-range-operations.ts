@@ -42,6 +42,7 @@ interface MutationRangeOperationsRuntime {
     potentialNewCells?: number,
     options?: { readonly returnUndoOps?: boolean },
   ) => Effect.Effect<readonly EngineOp[] | null, EngineMutationError>
+  readonly settleImportedFormulas?: () => void
 }
 
 function mutationRangeErrorMessage(message: string, cause: unknown): string {
@@ -381,6 +382,7 @@ export function createMutationRangeOperations(args: MutationRangeOperationsRunti
           const order = existingSheet?.order ?? args.workbook.sheetsByName.size
           const ops: EngineOp[] = []
           let potentialNewCells = 0
+          let formulaCount = 0
 
           if (existingSheet) {
             ops.push({ kind: 'deleteSheet', name: sheetName })
@@ -397,6 +399,7 @@ export function createMutationRangeOperations(args: MutationRangeOperationsRunti
               if (parsed.formula !== undefined) {
                 ops.push({ kind: 'setCellFormula', sheetName, address, formula: parsed.formula })
                 potentialNewCells += 1
+                formulaCount += 1
                 return
               }
               ops.push({ kind: 'setCellValue', sheetName, address, value: parsed.value ?? null })
@@ -405,6 +408,9 @@ export function createMutationRangeOperations(args: MutationRangeOperationsRunti
           })
 
           Effect.runSync(args.executeLocal(ops, potentialNewCells))
+          if (formulaCount > 0) {
+            args.settleImportedFormulas?.()
+          }
         },
         catch: (cause) =>
           new EngineMutationError({

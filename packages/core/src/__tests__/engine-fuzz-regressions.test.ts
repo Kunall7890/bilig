@@ -651,6 +651,29 @@ describe('engine fuzz regressions', () => {
     })
   })
 
+  it('settles imported range dependents of cycle formulas in one CSV import transaction', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'csv-cycle-dependent-import-regression' })
+    await engine.ready()
+
+    engine.importSheetCsv(
+      'Sheet1',
+      [
+        'text:&.Ape4.n,FALSE,=SUM(A1:D3),FALSE,=SUM(A1:D3)',
+        '=SUM(A1:A1),401015777,TRUE,FALSE,-524808229',
+        '"=IF(A1>0,""text:yes"",""text:no"")",=A1+A1,"=IF(A1>0,""text:yes"",""text:no"")",text:ps<n,text:#',
+      ].join('\n'),
+    )
+
+    expect(engine.getCell('Sheet1', 'C1').value).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Cycle,
+    })
+    expect(engine.getCell('Sheet1', 'E1').value).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Cycle,
+    })
+  })
+
   it('preserves shifted range sum precision after CSV roundtrip import', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'csv-shifted-sum-precision-regression' })
     await engine.ready()

@@ -101,6 +101,7 @@ export function createEngineMutationService(args: {
   readonly applyExistingLiteralCellMutationAtNow?: (
     request: EngineExistingLiteralCellMutationRef,
   ) => EngineExistingNumericCellMutationResult | null
+  readonly settleImportedFormulas?: () => void
   readonly hasExternallyVisibleLocalMutationObservers?: () => boolean
 }): EngineMutationService {
   const emptyBatchOps: EngineOp[] = []
@@ -686,6 +687,7 @@ export function createEngineMutationService(args: {
     readRangeCells: args.readRangeCells,
     toCellStateOps: args.toCellStateOps,
     executeLocal,
+    ...(args.settleImportedFormulas === undefined ? {} : { settleImportedFormulas: args.settleImportedFormulas }),
   })
 
   return {
