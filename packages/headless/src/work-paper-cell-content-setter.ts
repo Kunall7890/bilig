@@ -47,6 +47,7 @@ export interface WorkPaperSetCellContentsRuntime {
     content: RawCellContent,
     cellIndex: number | undefined,
   ) => boolean
+  readonly getCellSerialized: (address: WorkPaperCellAddress) => RawCellContent
   readonly trySetExistingNumericCellContentsWithTrackedFastPath: (args: {
     readonly sheet: SheetRecord
     readonly address: WorkPaperCellAddress
@@ -96,6 +97,13 @@ export function setWorkPaperCellContents(
       throw new WorkPaperOperationError('Cell contents cannot be set')
     }
     const visibleCellIndex = runtime.getVisibleCellIndexInSheet(sheet, address.row, address.col)
+    if (
+      !runtime.isEvaluationSuspended() &&
+      runtime.getBatchDepth() === 0 &&
+      rawCellContentsEqual(runtime.getCellSerialized(address), content)
+    ) {
+      return []
+    }
     if (
       runtime.isEvaluationSuspended() &&
       runtime.enqueueSuspendedLiteralMutation(address.sheet, address.row, address.col, content, visibleCellIndex)
@@ -379,4 +387,8 @@ function applyBulkWorkPaperCellValueRefs(
     return runtime.captureTrackedChangesWithoutVisibilityCache(mutate, {})
   }
   return runtime.captureChanges(mutate)
+}
+
+function rawCellContentsEqual(left: RawCellContent, right: RawCellContent): boolean {
+  return typeof left === 'number' && typeof right === 'number' ? Object.is(left, right) : left === right
 }
