@@ -5,6 +5,8 @@ import {
   MAX_ROWS,
   type CellRangeRef,
   type CellSnapshot,
+  type CellStyleField,
+  type CellStylePatch,
   type CellStyleRecord,
   type Viewport,
   type WorkbookAxisEntrySnapshot,
@@ -38,6 +40,8 @@ interface ProjectedCellSnapshotWriteOptions {
 type CellItem = readonly [number, number]
 type SheetViewportChannel = 'columnWidths' | 'rowHeights' | 'hiddenColumns' | 'hiddenRows' | 'freeze' | 'merges'
 type SheetIdentity = { readonly sheetId: number; readonly sheetOrdinal: number }
+const DEFAULT_STYLE_ID = 'style-0'
+
 export class ProjectedViewportStore implements GridEngineLike {
   private readonly options: ProjectedViewportStoreOptions
   private readonly cellCache: ProjectedViewportCellCache
@@ -149,6 +153,14 @@ export class ProjectedViewportStore implements GridEngineLike {
 
   getCellStyle(styleId: string | undefined): CellStyleRecord | undefined {
     return this.cellCache.getCellStyle(styleId)
+  }
+
+  setRangeStyle(range: CellRangeRef, patch: CellStylePatch): (() => void) | null {
+    return this.applyCachedRangeStyleMutation(range, (baseStyle) => applyProjectedStylePatch(baseStyle, patch))
+  }
+
+  clearRangeStyle(range: CellRangeRef, fields?: readonly CellStyleField[]): (() => void) | null {
+    return this.applyCachedRangeStyleMutation(range, (baseStyle) => clearProjectedStyleFields(baseStyle, fields))
   }
 
   getMergeRange(sheetName: string, address: string): WorkbookMergeRangeSnapshot | undefined {
@@ -530,6 +542,282 @@ export class ProjectedViewportStore implements GridEngineLike {
   private noteObservedBatchId(batchId: number): void {
     this.patchRevisionGate.noteObservedBatchId(batchId)
   }
+
+  private applyCachedRangeStyleMutation(
+    range: CellRangeRef,
+    mutateStyle: (baseStyle: CellStyleRecord) => Omit<CellStyleRecord, 'id'>,
+  ): (() => void) | null {
+    const previousSnapshots: Array<{ readonly existed: boolean; readonly snapshot: CellSnapshot }> = []
+    this.cellCache.forEachCachedOrVisibleCellSnapshotInRange(range, (snapshot) => {
+      const baseStyle = this.cellCache.getCellStyle(snapshot.styleId) ?? { id: DEFAULT_STYLE_ID }
+      const nextStyle = this.internLocalCellStyle(mutateStyle(baseStyle))
+      const nextSnapshot = nextStyle.id === DEFAULT_STYLE_ID ? omitSnapshotStyleId(snapshot) : { ...snapshot, styleId: nextStyle.id }
+      if (snapshotStyleId(snapshot) === snapshotStyleId(nextSnapshot)) {
+        return
+      }
+      previousSnapshots.push({
+        existed: this.cellCache.hasCellSnapshot(snapshot.sheetName, snapshot.address),
+        snapshot: structuredClone(snapshot),
+      })
+      this.setCellSnapshot(nextSnapshot, { force: true, forceOptimistic: true })
+    })
+    if (previousSnapshots.length === 0) {
+      return null
+    }
+    return () => {
+      previousSnapshots.forEach(({ existed, snapshot }) => {
+        this.setCellSnapshot(snapshot, { force: true, forceOptimistic: true })
+        if (!existed) {
+          this.cellCache.deleteCellSnapshot(snapshot.sheetName, snapshot.address)
+        }
+      })
+    }
+  }
+
+  private internLocalCellStyle(style: Omit<CellStyleRecord, 'id'>): CellStyleRecord {
+    const normalized = normalizeProjectedCellStyle(style)
+    const key = projectedCellStyleKey(normalized)
+    const id = key === projectedCellStyleKey({}) ? DEFAULT_STYLE_ID : projectedCellStyleIdForKey(key)
+    const record = { id, ...normalized }
+    this.cellCache.upsertCellStyle(record)
+    return record
+  }
+}
+
+function snapshotStyleId(snapshot: CellSnapshot): string {
+  return snapshot.styleId ?? DEFAULT_STYLE_ID
+}
+
+function omitSnapshotStyleId(snapshot: CellSnapshot): CellSnapshot {
+  if (snapshot.styleId === undefined) {
+    return snapshot
+  }
+  const next = { ...snapshot }
+  delete next.styleId
+  return next
+}
+
+function normalizeProjectedCellStyle(style: Omit<CellStyleRecord, 'id'>): Omit<CellStyleRecord, 'id'> {
+  return {
+    ...(style.fill?.backgroundColor ? { fill: { backgroundColor: style.fill.backgroundColor } } : {}),
+    ...(style.font && Object.keys(style.font).length > 0 ? { font: { ...style.font } } : {}),
+    ...(style.alignment && Object.keys(style.alignment).length > 0 ? { alignment: { ...style.alignment } } : {}),
+    ...(style.borders && Object.keys(style.borders).length > 0
+      ? {
+          borders: {
+            ...(style.borders.top ? { top: { ...style.borders.top } } : {}),
+            ...(style.borders.right ? { right: { ...style.borders.right } } : {}),
+            ...(style.borders.bottom ? { bottom: { ...style.borders.bottom } } : {}),
+            ...(style.borders.left ? { left: { ...style.borders.left } } : {}),
+          },
+        }
+      : {}),
+    ...(style.protection ? { protection: { ...style.protection } } : {}),
+  }
+}
+
+function projectedCellStyleKey(style: Omit<CellStyleRecord, 'id'>): string {
+  return JSON.stringify({
+    alignment: style.alignment ?? null,
+    borders: style.borders ?? null,
+    fill: style.fill?.backgroundColor ?? null,
+    font: style.font ?? null,
+    protection: style.protection ?? null,
+  })
+}
+
+function projectedCellStyleIdForKey(key: string): string {
+  let hash = 2166136261
+  for (let index = 0; index < key.length; index += 1) {
+    hash ^= key.charCodeAt(index)
+    hash = Math.imul(hash, 16777619)
+  }
+  return `style-local-${(hash >>> 0).toString(16)}`
+}
+
+function cloneProjectedStyleWithoutId(style: CellStyleRecord): Omit<CellStyleRecord, 'id'> {
+  return normalizeProjectedCellStyle(style)
+}
+
+function applyProjectedStylePatch(baseStyle: CellStyleRecord, patch: CellStylePatch): Omit<CellStyleRecord, 'id'> {
+  const next = cloneProjectedStyleWithoutId(baseStyle)
+  if (patch.fill === null) {
+    delete next.fill
+  } else if (patch.fill !== undefined) {
+    const backgroundColor = patch.fill.backgroundColor
+    if (backgroundColor === null) {
+      delete next.fill
+    } else if (backgroundColor !== undefined) {
+      next.fill = { backgroundColor }
+    }
+  }
+  if (patch.font === null) {
+    delete next.font
+  } else if (patch.font) {
+    const font = { ...next.font }
+    applyOptionalProjectedField(font, 'family', patch.font.family)
+    applyOptionalProjectedField(font, 'size', patch.font.size)
+    applyOptionalProjectedField(font, 'bold', patch.font.bold)
+    applyOptionalProjectedField(font, 'italic', patch.font.italic)
+    applyOptionalProjectedField(font, 'underline', patch.font.underline)
+    applyOptionalProjectedField(font, 'color', patch.font.color)
+    if (Object.keys(font).length > 0) {
+      next.font = font
+    } else {
+      delete next.font
+    }
+  }
+  if (patch.alignment === null) {
+    delete next.alignment
+  } else if (patch.alignment) {
+    const alignment = { ...next.alignment }
+    applyOptionalProjectedField(alignment, 'horizontal', patch.alignment.horizontal)
+    applyOptionalProjectedField(alignment, 'vertical', patch.alignment.vertical)
+    applyOptionalProjectedField(alignment, 'wrap', patch.alignment.wrap)
+    applyOptionalProjectedField(alignment, 'indent', patch.alignment.indent)
+    applyOptionalProjectedField(alignment, 'shrinkToFit', patch.alignment.shrinkToFit)
+    applyOptionalProjectedField(alignment, 'readingOrder', patch.alignment.readingOrder)
+    applyOptionalProjectedField(alignment, 'textRotation', patch.alignment.textRotation)
+    applyOptionalProjectedField(alignment, 'justifyLastLine', patch.alignment.justifyLastLine)
+    if (Object.keys(alignment).length > 0) {
+      next.alignment = alignment
+    } else {
+      delete next.alignment
+    }
+  }
+  if (patch.borders === null) {
+    delete next.borders
+  } else if (patch.borders) {
+    const borders = { ...next.borders }
+    applyProjectedBorderSidePatch(borders, 'top', patch.borders.top)
+    applyProjectedBorderSidePatch(borders, 'right', patch.borders.right)
+    applyProjectedBorderSidePatch(borders, 'bottom', patch.borders.bottom)
+    applyProjectedBorderSidePatch(borders, 'left', patch.borders.left)
+    if (Object.keys(borders).length > 0) {
+      next.borders = borders
+    } else {
+      delete next.borders
+    }
+  }
+  return normalizeProjectedCellStyle(next)
+}
+
+function applyProjectedBorderSidePatch(
+  borders: NonNullable<CellStyleRecord['borders']>,
+  side: keyof NonNullable<CellStyleRecord['borders']>,
+  patch: NonNullable<CellStylePatch['borders']>['top'] | null | undefined,
+): void {
+  if (patch === undefined) {
+    return
+  }
+  if (patch === null) {
+    delete borders[side]
+    return
+  }
+  const nextSide: Partial<NonNullable<CellStyleRecord['borders']>['top']> = { ...borders[side] }
+  applyOptionalProjectedField(nextSide, 'style', patch.style)
+  applyOptionalProjectedField(nextSide, 'weight', patch.weight)
+  applyOptionalProjectedField(nextSide, 'color', patch.color)
+  if (nextSide.style && nextSide.weight && nextSide.color) {
+    borders[side] = {
+      color: nextSide.color,
+      style: nextSide.style,
+      weight: nextSide.weight,
+    }
+  } else {
+    delete borders[side]
+  }
+}
+
+function clearProjectedStyleFields(baseStyle: CellStyleRecord, fields: readonly CellStyleField[] | undefined): Omit<CellStyleRecord, 'id'> {
+  if (fields === undefined || fields.length === 0) {
+    return {}
+  }
+  const next = cloneProjectedStyleWithoutId(baseStyle)
+  const cleared = new Set(fields)
+  if (cleared.has('backgroundColor')) {
+    delete next.fill
+  }
+  const font = filterProjectedStyleSection(
+    next.font,
+    [
+      ['fontFamily', 'family'],
+      ['fontSize', 'size'],
+      ['fontBold', 'bold'],
+      ['fontItalic', 'italic'],
+      ['fontUnderline', 'underline'],
+      ['fontColor', 'color'],
+    ],
+    cleared,
+  )
+  if (font) {
+    next.font = font
+  } else {
+    delete next.font
+  }
+  const alignment = filterProjectedStyleSection(
+    next.alignment,
+    [
+      ['alignmentHorizontal', 'horizontal'],
+      ['alignmentVertical', 'vertical'],
+      ['alignmentWrap', 'wrap'],
+      ['alignmentIndent', 'indent'],
+      ['alignmentShrinkToFit', 'shrinkToFit'],
+      ['alignmentReadingOrder', 'readingOrder'],
+      ['alignmentTextRotation', 'textRotation'],
+      ['alignmentJustifyLastLine', 'justifyLastLine'],
+    ],
+    cleared,
+  )
+  if (alignment) {
+    next.alignment = alignment
+  } else {
+    delete next.alignment
+  }
+  const borders = filterProjectedStyleSection(
+    next.borders,
+    [
+      ['borderTop', 'top'],
+      ['borderRight', 'right'],
+      ['borderBottom', 'bottom'],
+      ['borderLeft', 'left'],
+    ],
+    cleared,
+  )
+  if (borders) {
+    next.borders = borders
+  } else {
+    delete next.borders
+  }
+  return normalizeProjectedCellStyle(next)
+}
+
+function filterProjectedStyleSection<T extends object>(
+  section: T | undefined,
+  fields: ReadonlyArray<readonly [CellStyleField, keyof T]>,
+  cleared: ReadonlySet<CellStyleField>,
+): T | undefined {
+  if (!section) {
+    return undefined
+  }
+  const nextSection = { ...section }
+  fields.forEach(([field, key]) => {
+    if (cleared.has(field)) {
+      delete nextSection[key]
+    }
+  })
+  return Object.keys(nextSection).length > 0 ? nextSection : undefined
+}
+
+function applyOptionalProjectedField<T extends object, K extends keyof T>(target: T, key: K, value: T[K] | null | undefined): void {
+  if (value === undefined) {
+    return
+  }
+  if (value === null) {
+    delete target[key]
+    return
+  }
+  target[key] = value
 }
 
 function nowMs(): number {

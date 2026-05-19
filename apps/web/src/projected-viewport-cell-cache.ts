@@ -1,4 +1,4 @@
-import { parseCellAddress } from '@bilig/formula'
+import { formatAddress, parseCellAddress } from '@bilig/formula'
 import { ValueTag, type CellRangeRef, type CellSnapshot, type CellStyleRecord, type Viewport } from '@bilig/protocol'
 import { selectProjectedViewportKeysToEvict } from './projected-viewport-cache-pruning.js'
 import {
@@ -123,6 +123,10 @@ export class ProjectedViewportCellCache {
     return snapshot
   }
 
+  hasCellSnapshot(sheetName: string, address: string): boolean {
+    return this.cellSnapshots.has(`${sheetName}!${address}`)
+  }
+
   getCell(sheetName: string, address: string): CellSnapshot {
     return this.peekCell(sheetName, address) ?? this.emptyCellSnapshot(sheetName, address)
   }
@@ -147,6 +151,40 @@ export class ProjectedViewportCellCache {
     })
   }
 
+  forEachCachedOrVisibleCellSnapshotInRange(range: CellRangeRef, listener: (snapshot: CellSnapshot) => void): void {
+    const normalizedRange = normalizeRange(range)
+    const visitedKeys = new Set<string>()
+    const emitSnapshot = (snapshot: CellSnapshot) => {
+      const key = `${snapshot.sheetName}!${snapshot.address}`
+      if (visitedKeys.has(key)) {
+        return
+      }
+      visitedKeys.add(key)
+      listener(snapshot)
+    }
+
+    this.forEachCellSnapshotInRange(range, emitSnapshot)
+    this.activeViewportKeysBySheet.get(range.sheetName)?.forEach((viewportKey) => {
+      const viewport = this.activeViewports.get(viewportKey)
+      if (!viewport) {
+        return
+      }
+      const startRow = Math.max(normalizedRange.startRow, viewport.rowStart)
+      const endRow = Math.min(normalizedRange.endRow, viewport.rowEnd)
+      const startCol = Math.max(normalizedRange.startCol, viewport.colStart)
+      const endCol = Math.min(normalizedRange.endCol, viewport.colEnd)
+      if (startRow > endRow || startCol > endCol) {
+        return
+      }
+      for (let row = startRow; row <= endRow; row += 1) {
+        for (let col = startCol; col <= endCol; col += 1) {
+          const address = formatAddress(row, col)
+          emitSnapshot(this.peekCell(range.sheetName, address) ?? this.emptyCellSnapshot(range.sheetName, address))
+        }
+      }
+    })
+  }
+
   getCellStyle(styleId: string | undefined): CellStyleRecord | undefined {
     if (!styleId) {
       return this.cellStyles.get(DEFAULT_STYLE_ID)
@@ -154,11 +192,31 @@ export class ProjectedViewportCellCache {
     return this.cellStyles.get(styleId) ?? this.cellStyles.get(DEFAULT_STYLE_ID)
   }
 
+  upsertCellStyle(style: CellStyleRecord): void {
+    this.cellStyles.set(style.id, style)
+  }
+
   setCellSnapshot(
     snapshot: CellSnapshot,
     options: { force?: boolean; forceOptimistic?: boolean; allowOptimisticClearResurrection?: boolean } = {},
   ): boolean {
     return this.writeCellSnapshot(snapshot, options).changed
+  }
+
+  deleteCellSnapshot(sheetName: string, address: string): boolean {
+    const key = `${sheetName}!${address}`
+    if (!this.cellSnapshots.delete(key)) {
+      return false
+    }
+    this.cellAccessTicks.delete(key)
+    const sheetCellKeys = this.cellKeysBySheet.get(sheetName)
+    sheetCellKeys?.delete(key)
+    if (sheetCellKeys?.size === 0) {
+      this.cellKeysBySheet.delete(sheetName)
+    }
+    this.notifyCellSubscriptions(new Set([key]))
+    this.emitChange()
+    return true
   }
 
   writeCellSnapshot(
@@ -417,5 +475,21 @@ export class ProjectedViewportCellCache {
       flags: 0,
       version: 0,
     }
+  }
+}
+
+function normalizeRange(range: CellRangeRef): {
+  readonly startRow: number
+  readonly endRow: number
+  readonly startCol: number
+  readonly endCol: number
+} {
+  const start = parseCellAddress(range.startAddress, range.sheetName)
+  const end = parseCellAddress(range.endAddress, range.sheetName)
+  return {
+    startRow: Math.min(start.row, end.row),
+    endRow: Math.max(start.row, end.row),
+    startCol: Math.min(start.col, end.col),
+    endCol: Math.max(start.col, end.col),
   }
 }

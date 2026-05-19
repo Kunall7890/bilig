@@ -37,6 +37,12 @@ import {
   type ZeroMutationObserverOutcome,
 } from './workbook-zero-mutation-observer.js'
 import { applyOptimisticClearRange } from './workbook-optimistic-range.js'
+import {
+  applyOptimisticCommitOps,
+  applyOptimisticCopyRange,
+  applyOptimisticFillRange,
+  applyOptimisticMoveRange,
+} from './use-workbook-selection-actions.js'
 
 interface ZeroMutationSource {
   mutate(mutation: unknown): unknown
@@ -124,6 +130,68 @@ function applyOptimisticCellMutation(
   viewportStore.setCellSnapshot(optimistic)
   return () => {
     viewportStore.setCellSnapshot(createSupersedingCellSnapshot(previous, optimistic.version + 1))
+  }
+}
+
+function applyOptimisticRangeMutation(
+  viewportStore: ViewportStore | null | undefined,
+  mutation: PendingWorkbookMutationInput,
+): (() => void) | null {
+  if (!viewportStore) {
+    return null
+  }
+  if (mutation.method === 'renderCommit') {
+    const [ops] = mutation.args
+    if (isCommitOps(ops)) {
+      return applyOptimisticCommitOps(viewportStore, ops)
+    }
+    return null
+  }
+  if (mutation.method === 'fillRange' || mutation.method === 'copyRange' || mutation.method === 'moveRange') {
+    const [source, target] = mutation.args
+    if (!isCellRangeRef(source) || !isCellRangeRef(target)) {
+      return null
+    }
+    if (mutation.method === 'fillRange') {
+      return applyOptimisticFillRange(viewportStore, source, target)
+    }
+    if (mutation.method === 'copyRange') {
+      return applyOptimisticCopyRange(viewportStore, source, target)
+    }
+    return applyOptimisticMoveRange(viewportStore, source, target)
+  }
+  return null
+}
+
+function applyOptimisticStyleMutation(
+  viewportStore: ViewportStore | null | undefined,
+  mutation: PendingWorkbookMutationInput,
+): (() => void) | null {
+  if (!viewportStore) {
+    return null
+  }
+  if (mutation.method === 'setRangeStyle') {
+    const [range, patch] = mutation.args
+    if (isCellRangeRef(range) && isCellStylePatchValue(patch)) {
+      return viewportStore.setRangeStyle(range, patch)
+    }
+  }
+  if (mutation.method === 'clearRangeStyle') {
+    const [range, fields] = mutation.args
+    if (isCellRangeRef(range) && (fields === undefined || isCellStyleFieldList(fields))) {
+      return viewportStore.clearRangeStyle(range, fields)
+    }
+  }
+  return null
+}
+
+function combineMutationRollbacks(...rollbacks: Array<(() => void) | null>): (() => void) | null {
+  const activeRollbacks = rollbacks.filter((rollback): rollback is () => void => rollback !== null)
+  if (activeRollbacks.length === 0) {
+    return null
+  }
+  return () => {
+    activeRollbacks.toReversed().forEach((rollback) => rollback())
   }
 }
 
@@ -467,12 +535,17 @@ export function useWorkbookSync(input: {
           throw new Error('Unsupported workbook mutation')
       }
 
-      let rollbackOptimisticCell: (() => void) | null = null
+      let rollbackOptimisticMutation: (() => void) | null = null
       flushSync(() => {
         setLocalMutationInFlightCount((count) => count + 1)
       })
       try {
-        rollbackOptimisticCell = applyOptimisticCellMutation(workerHandleRef.current?.viewportStore, mutation)
+        const viewportStore = workerHandleRef.current?.viewportStore
+        rollbackOptimisticMutation = combineMutationRollbacks(
+          applyOptimisticCellMutation(viewportStore, mutation),
+          applyOptimisticRangeMutation(viewportStore, mutation),
+          applyOptimisticStyleMutation(viewportStore, mutation),
+        )
         await trackLocalMutationTask(async () => {
           try {
             await applyOptimisticProjectionMutation(runtimeController, mutation)
@@ -485,7 +558,7 @@ export function useWorkbookSync(input: {
           scheduleAuthoritativeRefreshProbes()
         }
       } catch (error) {
-        rollbackOptimisticCell?.()
+        rollbackOptimisticMutation?.()
         throw error
       } finally {
         setLocalMutationInFlightCount((count) => Math.max(0, count - 1))

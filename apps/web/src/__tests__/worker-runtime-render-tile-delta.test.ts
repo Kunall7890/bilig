@@ -76,6 +76,19 @@ function createRangeInvalidationEvent(startAddress: string, endAddress = startAd
   }
 }
 
+function createChangedCellEvent(cellIndex: number): EngineEvent {
+  return {
+    kind: 'batch',
+    invalidation: 'cells',
+    changedCellIndices: Uint32Array.from([cellIndex]),
+    changedCells: [],
+    invalidatedRanges: [],
+    invalidatedRows: [],
+    invalidatedColumns: [],
+    metrics,
+  }
+}
+
 function createColumnInvalidationEvent(startIndex: number, endIndex = startIndex): EngineEvent {
   return {
     kind: 'batch',
@@ -178,6 +191,41 @@ describe('worker-runtime-render-tile-delta', () => {
     expect(replacement?.kind === 'tileReplace' ? hasOpaqueGreenFillRect(replacement.rectInstances, replacement.rectCount) : false).toBe(
       true,
     )
+  })
+
+  it('treats changed-cell render tile deltas as visual paint damage', () => {
+    const changedEngine = {
+      ...engine,
+      workbook: {
+        ...engine.workbook,
+        cellStore: {
+          sheetIds: Uint16Array.from([7]),
+          rows: Uint32Array.from([5]),
+          cols: Uint16Array.from([4]),
+        },
+      },
+    }
+
+    const batch = buildWorkerRenderTileDeltaBatch({
+      engine: changedEngine,
+      event: createChangedCellEvent(0),
+      generation: 5,
+      subscription: {
+        sheetId: 7,
+        sheetName: 'Sheet1',
+        rowStart: 0,
+        rowEnd: 31,
+        colStart: 0,
+        colEnd: 127,
+        dprBucket: 1,
+        cameraSeq: 18,
+      },
+    })
+    const replacement = batch.mutations.find((mutation) => mutation.kind === 'tileReplace')
+
+    expect(replacement?.kind === 'tileReplace' ? replacement.dirtyLocalRows : null).toEqual(new Uint32Array([5, 5]))
+    expect(replacement?.kind === 'tileReplace' ? replacement.dirtyLocalCols : null).toEqual(new Uint32Array([4, 4]))
+    expect(replacement?.kind === 'tileReplace' ? replacement.dirtyMasks : null).toEqual(new Uint32Array([RANGE_VISUAL_DIRTY_MASK]))
   })
 
   it('materializes only dirty visible tiles for event-driven batches', () => {

@@ -7,6 +7,7 @@ const identity = {
   sheetId: 7,
   sheetOrdinal: 3,
 }
+const LOCAL_CELL_VISUAL_DIRTY_MASK = DirtyMaskV3.Value | DirtyMaskV3.Style | DirtyMaskV3.Text | DirtyMaskV3.Rect | DirtyMaskV3.Border
 
 describe('projected workbook local delta builders', () => {
   it('builds cell deltas from the accepted snapshot version and visual shape', () => {
@@ -32,9 +33,23 @@ describe('projected workbook local delta builders', () => {
       styleSeq: 12,
       valueSeq: 12,
     })
-    expect(batch.dirty.cellRanges).toEqual(
-      new Uint32Array([1, 1, 1, 1, DirtyMaskV3.Value | DirtyMaskV3.Text | DirtyMaskV3.Style | DirtyMaskV3.Rect]),
-    )
+    expect(batch.dirty.cellRanges).toEqual(new Uint32Array([1, 1, 1, 1, LOCAL_CELL_VISUAL_DIRTY_MASK]))
+  })
+
+  it('marks plain local cell writes as full visual damage so moved text cannot retain stale fills', () => {
+    const batch = buildLocalCellSnapshotWorkbookDelta({
+      identity,
+      seq: 47,
+      snapshot: {
+        address: 'C4',
+        flags: 0,
+        sheetName: 'Sheet1',
+        value: { tag: ValueTag.String, stringId: 9, value: 'moved text' },
+        version: 13,
+      },
+    })
+
+    expect(batch.dirty.cellRanges).toEqual(new Uint32Array([3, 3, 2, 2, LOCAL_CELL_VISUAL_DIRTY_MASK]))
   })
 
   it('builds axis deltas with isolated axis damage and clamped indices', () => {

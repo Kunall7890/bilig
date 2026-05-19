@@ -639,6 +639,131 @@ describe('useWorkbookSync', () => {
     })
   })
 
+  it('keeps queued range moves visible while serializing local persistence', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    let resolveFirstMutation: ((mutation: PendingWorkbookMutation) => void) | null = null
+    const firstMutation = new Promise<PendingWorkbookMutation>((resolve) => {
+      resolveFirstMutation = resolve
+    })
+    let nextSeq = 1
+    let sync: ReturnType<typeof useWorkbookSync> | null = null
+    const viewportStore = new ProjectedViewportStore()
+    viewportStore.setCellSnapshot({
+      sheetName: 'Sheet1',
+      address: 'D10',
+      flags: 0,
+      input: 'queued-move-proof',
+      value: { tag: ValueTag.String, value: 'queued-move-proof', stringId: 1 },
+      version: 4,
+    })
+    const workerHandleRef: { current: WorkerHandle | null } = {
+      current: {
+        viewportStore,
+      },
+    }
+    const runtimeController = {
+      invoke: vi.fn((method: string, input?: unknown) => {
+        if (method !== 'enqueuePendingMutation') {
+          throw new Error(`Unexpected runtime invoke: ${method}`)
+        }
+        if (!isPendingMutationInput(input)) {
+          throw new Error('Expected pending mutation input')
+        }
+        const mutation = {
+          ...createPendingMutation(),
+          id: `pending-${nextSeq}`,
+          localSeq: nextSeq,
+          method: input.method,
+          args: input.args,
+        }
+        nextSeq += 1
+        return mutation.localSeq === 1 ? firstMutation : Promise.resolve(mutation)
+      }),
+    }
+
+    function Harness() {
+      sync = useWorkbookSync({
+        documentId: 'doc-1',
+        connectionStateName: 'disconnected',
+        connectionStateRef: { current: 'disconnected' },
+        runtimeController,
+        workerHandleRef,
+        zeroRef: {
+          current: {
+            mutate() {
+              throw new Error('Queued move test should not attempt remote sync while disconnected')
+            },
+          },
+        },
+        reportRuntimeError: vi.fn(),
+      })
+      return null
+    }
+
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+    await act(async () => {
+      root.render(<Harness />)
+    })
+    if (!sync) {
+      throw new Error('Expected useWorkbookSync harness to initialize')
+    }
+    const activeSync = sync
+
+    let firstPersisted!: Promise<void>
+    await act(async () => {
+      firstPersisted = activeSync.invokeMutation('setCellValue', 'Sheet1', 'A1', 'blocker')
+      await Promise.resolve()
+    })
+    await vi.waitFor(() => {
+      expect(runtimeController.invoke).toHaveBeenCalledWith('enqueuePendingMutation', {
+        method: 'setCellValue',
+        args: ['Sheet1', 'A1', 'blocker'],
+      })
+    })
+
+    const source = { sheetName: 'Sheet1', startAddress: 'D10', endAddress: 'D10' }
+    const target = { sheetName: 'Sheet1', startAddress: 'F10', endAddress: 'F10' }
+    let movePersisted!: Promise<void>
+    await act(async () => {
+      movePersisted = activeSync.invokeMutation('moveRange', source, target)
+      await Promise.resolve()
+    })
+
+    expect(viewportStore.getCell('Sheet1', 'D10')).toMatchObject({
+      value: { tag: ValueTag.Empty },
+    })
+    expect(viewportStore.getCell('Sheet1', 'F10')).toMatchObject({
+      input: 'queued-move-proof',
+      value: { tag: ValueTag.String, value: 'queued-move-proof' },
+    })
+    expect(runtimeController.invoke).toHaveBeenCalledTimes(1)
+    expect(runtimeController.invoke).not.toHaveBeenCalledWith('enqueuePendingMutation', {
+      method: 'moveRange',
+      args: [source, target],
+    })
+
+    await act(async () => {
+      resolveFirstMutation?.({
+        ...createPendingMutation(),
+        id: 'pending-1',
+        localSeq: 1,
+        args: ['Sheet1', 'A1', 'blocker'],
+      })
+      await firstPersisted
+      await movePersisted
+    })
+    expect(runtimeController.invoke).toHaveBeenCalledWith('enqueuePendingMutation', {
+      method: 'moveRange',
+      args: [source, target],
+    })
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
   it('applies range style mutations to the projection before journaling waits can delay paint', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
     let sync: ReturnType<typeof useWorkbookSync> | null = null

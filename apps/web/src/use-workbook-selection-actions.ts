@@ -8,12 +8,7 @@ import type { WorkbookMutationMethod } from './workbook-sync.js'
 import { OPTIMISTIC_CELL_SNAPSHOT_FLAG } from './workbook-optimistic-cell-flags.js'
 import { parseEditorInput, parsedEditorInputFromSnapshot, type EditingMode, type ParsedEditorInput } from './worker-workbook-app-model.js'
 import { createOptimisticCellSnapshot, createSupersedingCellSnapshot, evaluateOptimisticFormula } from './workbook-optimistic-cell.js'
-import {
-  applyOptimisticClearRange,
-  createEmptyOptimisticSnapshot,
-  normalizeCellRange,
-  type OptimisticViewportStore,
-} from './workbook-optimistic-range.js'
+import { createEmptyOptimisticSnapshot, normalizeCellRange, type OptimisticViewportStore } from './workbook-optimistic-range.js'
 
 export { applyOptimisticClearRange } from './workbook-optimistic-range.js'
 
@@ -421,7 +416,6 @@ export function useWorkbookSelectionActions(input: {
     setEditorSelectionBehavior,
     setEditorValue,
     supersedeOptimisticCellSeedsForRange,
-    viewportStore,
     writesAllowed,
   } = input
 
@@ -451,12 +445,6 @@ export function useWorkbookSelectionActions(input: {
         targetStartAddr,
         targetEndAddr,
       )
-      const rollbackOptimisticRange =
-        method === 'moveRange'
-          ? applyOptimisticMoveRange(viewportStore ?? null, source, target)
-          : method === 'copyRange'
-            ? applyOptimisticCopyRange(viewportStore ?? null, source, target)
-            : applyOptimisticFillRange(viewportStore ?? null, source, target)
       const rollbackOptimisticSeeds = combineRollbacks(
         method === 'moveRange' ? supersedeOptimisticCellSeedsForRange?.(source) : null,
         supersedeOptimisticCellSeedsForRange?.(target),
@@ -467,7 +455,6 @@ export function useWorkbookSelectionActions(input: {
           resetEditingState()
           resetEditorConflictTracking()
         } catch (error) {
-          rollbackOptimisticRange?.()
           rollbackOptimisticSeeds?.()
           reportRuntimeError(error)
         }
@@ -480,7 +467,6 @@ export function useWorkbookSelectionActions(input: {
       resetEditorConflictTracking,
       selectionRef,
       supersedeOptimisticCellSeedsForRange,
-      viewportStore,
       writesAllowed,
     ],
   )
@@ -491,7 +477,6 @@ export function useWorkbookSelectionActions(input: {
         return
       }
       const range = targetSelectionSnapshot ? gridSelectionSnapshotToRangeRef(targetSelectionSnapshot) : selectionRangeRef.current
-      const rollbackOptimisticClear = applyOptimisticClearRange(viewportStore ?? null, range)
       const activeAddress = targetSelectionSnapshot?.address ?? selectionRef.current.address
       const rollbackOptimisticSeeds = combineRollbacks(
         supersedeOptimisticCellSeedsForRange?.(range),
@@ -504,7 +489,6 @@ export function useWorkbookSelectionActions(input: {
         try {
           await mutationTask
         } catch (error) {
-          rollbackOptimisticClear?.()
           rollbackOptimisticSeeds?.()
           reportRuntimeError(error)
         }
@@ -519,7 +503,6 @@ export function useWorkbookSelectionActions(input: {
       selectionRef,
       replaceOptimisticCellSeed,
       supersedeOptimisticCellSeedsForRange,
-      viewportStore,
       writesAllowed,
     ],
   )
@@ -556,7 +539,6 @@ export function useWorkbookSelectionActions(input: {
       if (ops.length === 0) {
         return
       }
-      const rollbackOptimisticPaste = applyOptimisticCommitOps(viewportStore ?? null, ops)
       const targetRange = createPasteTargetRange(sheetName, startAddr, values)
       const rollbackOptimisticSeeds = targetRange ? (supersedeOptimisticCellSeedsForRange?.(targetRange) ?? null) : null
       void (async () => {
@@ -564,7 +546,6 @@ export function useWorkbookSelectionActions(input: {
           await invokeMutation('renderCommit', ops)
           onPasteApplied?.()
         } catch (error) {
-          rollbackOptimisticPaste?.()
           rollbackOptimisticSeeds?.()
           reportRuntimeError(error)
         }
@@ -579,7 +560,6 @@ export function useWorkbookSelectionActions(input: {
       resetEditingState,
       resetEditorConflictTracking,
       supersedeOptimisticCellSeedsForRange,
-      viewportStore,
       writesAllowed,
     ],
   )

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { SpreadsheetEngine } from '@bilig/core'
 import { getGridMetrics } from '@bilig/grid'
 import { ValueTag, type RecalcMetrics } from '@bilig/protocol'
+import { DirtyMaskV3 } from '../../../../packages/grid/src/renderer-v3/tile-damage-index.js'
 import { GRID_RECT_INSTANCE_FLOAT_COUNT_V3 } from '../../../../packages/grid/src/renderer-v3/rect-instance-buffer.js'
 import { buildLocalFixedRenderTiles } from '../../../../packages/grid/src/renderer-v3/local-render-tile-materializer.js'
 import { encodeViewportPatch, type ViewportPatch, type WorkerEngineClient } from '@bilig/worker-transport'
@@ -21,6 +22,7 @@ const TEST_METRICS: RecalcMetrics = {
   recalcMs: 0,
   compileMs: 0,
 }
+const LOCAL_CELL_VISUAL_DIRTY_MASK = DirtyMaskV3.Value | DirtyMaskV3.Style | DirtyMaskV3.Text | DirtyMaskV3.Rect | DirtyMaskV3.Border
 
 function createPatch(styleId?: string): ViewportPatch {
   return {
@@ -254,6 +256,118 @@ describe('ProjectedViewportStore', () => {
       },
     })
     expect(tiles.some((tile) => hasOpaqueGreenFillRect(tile.rectInstances, tile.rectCount))).toBe(true)
+  })
+
+  it('optimistically styles visible empty cells and publishes full visual tile damage', () => {
+    const cache = new ProjectedViewportStore(createNoopWorkerEngineClient())
+    const deltaListener = vi.fn()
+    cache.setSheetIdentities([{ id: 7, name: 'Sheet1', order: 3 }])
+    const unsubscribeDeltas = cache.subscribeWorkbookDeltas(deltaListener)
+    const unsubscribeViewport = cache.subscribeViewport(
+      'Sheet1',
+      {
+        sheetName: 'Sheet1',
+        rowStart: 0,
+        rowEnd: 12,
+        colStart: 0,
+        colEnd: 12,
+      },
+      () => undefined,
+      { initialPatch: 'none' },
+    )
+
+    const rollback = cache.setRangeStyle(
+      { sheetName: 'Sheet1', startAddress: 'D5', endAddress: 'D5' },
+      { fill: { backgroundColor: '#00ff00' } },
+    )
+
+    expect(rollback).toEqual(expect.any(Function))
+    const styledCell = cache.getCell('Sheet1', 'D5')
+    expect(styledCell.styleId).toMatch(/^style-local-/)
+    expect(cache.getCellStyle(styledCell.styleId)).toEqual({
+      id: styledCell.styleId,
+      fill: { backgroundColor: '#00ff00' },
+    })
+    expect(deltaListener).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dirty: {
+          axisX: new Uint32Array(),
+          axisY: new Uint32Array(),
+          cellRanges: new Uint32Array([4, 4, 3, 3, LOCAL_CELL_VISUAL_DIRTY_MASK]),
+        },
+        source: 'localOptimistic',
+      }),
+    )
+
+    const tiles = buildLocalFixedRenderTiles({
+      cameraSeq: 1,
+      columnWidths: cache.getColumnWidths('Sheet1'),
+      dprBucket: 1,
+      engine: cache,
+      generation: 3,
+      gridMetrics: getGridMetrics(),
+      rowHeights: cache.getRowHeights('Sheet1'),
+      sheetId: 7,
+      sheetOrdinal: 7,
+      sheetName: 'Sheet1',
+      sortedColumnWidthOverrides: [],
+      sortedRowHeightOverrides: [],
+      viewport: {
+        sheetName: 'Sheet1',
+        rowStart: 0,
+        rowEnd: 12,
+        colStart: 0,
+        colEnd: 12,
+      },
+    })
+    expect(tiles.some((tile) => hasOpaqueGreenFillRect(tile.rectInstances, tile.rectCount))).toBe(true)
+
+    deltaListener.mockClear()
+    rollback?.()
+    expect(countSheetCells(cache, 'Sheet1')).toBe(0)
+    expect(deltaListener).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dirty: {
+          axisX: new Uint32Array(),
+          axisY: new Uint32Array(),
+          cellRanges: new Uint32Array([4, 4, 3, 3, LOCAL_CELL_VISUAL_DIRTY_MASK]),
+        },
+        source: 'localOptimistic',
+      }),
+    )
+    unsubscribeViewport()
+    unsubscribeDeltas()
+  })
+
+  it('optimistically styles protected local edit snapshots instead of waiting for worker readback', () => {
+    const cache = new ProjectedViewportStore()
+    cache.setCellSnapshot({
+      sheetName: 'Sheet1',
+      address: 'D5',
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+      input: 'moved-fill-proof',
+      value: { tag: ValueTag.String, value: 'moved-fill-proof', stringId: 0 },
+      version: 4,
+    })
+
+    const rollback = cache.setRangeStyle(
+      { sheetName: 'Sheet1', startAddress: 'D5', endAddress: 'D5' },
+      { fill: { backgroundColor: '#00ff00' } },
+    )
+
+    const styledCell = cache.getCell('Sheet1', 'D5')
+    expect(styledCell).toMatchObject({
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+      input: 'moved-fill-proof',
+      value: { tag: ValueTag.String, value: 'moved-fill-proof' },
+    })
+    expect(cache.getCellStyle(styledCell.styleId)).toEqual({
+      id: styledCell.styleId,
+      fill: { backgroundColor: '#00ff00' },
+    })
+
+    rollback?.()
+    expect(cache.getCell('Sheet1', 'D5').styleId).toBeUndefined()
   })
 
   it('accepts equal-version empty snapshots that clear stale styling', () => {

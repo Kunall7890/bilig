@@ -516,6 +516,136 @@ describe('useWorkerWorkbookInteractionState', () => {
     })
   })
 
+  it('does not retire editor seeds from local optimistic viewport snapshots', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    let viewportCell = stringCell('Sheet1', 'A1', '')
+    const authoritativeCell = stringCell('Sheet1', 'A1', '12')
+    const workerHandle = {
+      viewportStore: {
+        getCell: () => viewportCell,
+        setCellSnapshot: vi.fn((snapshot: CellSnapshot) => {
+          viewportCell = snapshot
+        }),
+      },
+    }
+    const invokeMutation = vi.fn(async () => undefined)
+    const sendSelectionChanged = vi.fn()
+    const harness = mountHarness()
+    let captured: ReturnType<typeof useWorkerWorkbookInteractionState> | null = null
+    const baseProps = {
+      documentId: 'doc-1',
+      selection: { sheetName: 'Sheet1', address: 'A1' },
+      workerHandle,
+      invokeMutation,
+      sendSelectionChanged,
+      capture: (value: ReturnType<typeof useWorkerWorkbookInteractionState>) => {
+        captured = value
+      },
+    }
+
+    await harness.render({
+      ...baseProps,
+      selectedCell: stringCell('Sheet1', 'A1', ''),
+    })
+    if (!captured) {
+      throw new Error('Expected interaction state capture')
+    }
+
+    await act(async () => {
+      captured?.commitEditor(undefined, '12')
+      await Promise.resolve()
+    })
+    expect(workerHandle.viewportStore.setCellSnapshot).toHaveBeenCalled()
+    expect(captured?.getCellEditorSeed('Sheet1', 'A1')).toBe('12')
+
+    await harness.render({
+      ...baseProps,
+      selectedCell: viewportCell,
+    })
+    expect(captured?.getCellEditorSeed('Sheet1', 'A1')).toBe('12')
+
+    viewportCell = authoritativeCell
+    await harness.render({
+      ...baseProps,
+      selectedCell: authoritativeCell,
+    })
+    expect(captured?.getCellEditorSeed('Sheet1', 'A1')).toBeUndefined()
+
+    await act(async () => {
+      harness.root.unmount()
+    })
+  })
+
+  it('retires detached editor seeds after the viewport readback catches up', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    let a1Cell = stringCell('Sheet1', 'A1', '')
+    const b1Cell = stringCell('Sheet1', 'B1', 'next')
+    const workerHandle = {
+      viewportStore: {
+        getCell: (sheetName: string, address: string) => {
+          if (sheetName === 'Sheet1' && address === 'A1') {
+            return a1Cell
+          }
+          if (sheetName === 'Sheet1' && address === 'B1') {
+            return b1Cell
+          }
+          return stringCell(sheetName, address, '')
+        },
+        setCellSnapshot: vi.fn(),
+      },
+    }
+    const invokeMutation = vi.fn(async () => undefined)
+    const sendSelectionChanged = vi.fn()
+    const harness = mountHarness()
+    let captured: ReturnType<typeof useWorkerWorkbookInteractionState> | null = null
+    const baseProps = {
+      documentId: 'doc-1',
+      workerHandle,
+      invokeMutation,
+      sendSelectionChanged,
+      capture: (value: ReturnType<typeof useWorkerWorkbookInteractionState>) => {
+        captured = value
+      },
+    }
+
+    await harness.render({
+      ...baseProps,
+      selection: { sheetName: 'Sheet1', address: 'A1' },
+      selectedCell: a1Cell,
+    })
+    if (!captured) {
+      throw new Error('Expected interaction state capture')
+    }
+
+    await act(async () => {
+      captured?.commitEditor(undefined, '12')
+      await Promise.resolve()
+    })
+    expect(captured?.getCellEditorSeed('Sheet1', 'A1')).toBe('12')
+
+    await act(async () => {
+      captured?.handleSelectionChange(singleCellSnapshot('Sheet1', 'B1'))
+    })
+    expect(captured?.visibleSelection).toEqual({ sheetName: 'Sheet1', address: 'B1' })
+    expect(captured?.getCellEditorSeed('Sheet1', 'A1')).toBe('12')
+
+    a1Cell = stringCell('Sheet1', 'A1', '12')
+    await harness.render({
+      ...baseProps,
+      selection: { sheetName: 'Sheet1', address: 'B1' },
+      selectedCell: b1Cell,
+    })
+
+    expect(captured?.getCellEditorSeed('Sheet1', 'A1')).toBeUndefined()
+    expect(captured?.visibleEditorValue).toBe('next')
+
+    await act(async () => {
+      harness.root.unmount()
+    })
+  })
+
   it('can supersede and restore sheet-wide optimistic seeds around structural edits', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 

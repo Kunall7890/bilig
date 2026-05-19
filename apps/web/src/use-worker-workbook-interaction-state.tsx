@@ -14,6 +14,7 @@ import {
   evaluateOptimisticFormula,
   optimisticCellKey,
 } from './workbook-optimistic-cell.js'
+import { OPTIMISTIC_CELL_SNAPSHOT_FLAG } from './workbook-optimistic-cell-flags.js'
 import type { WorkbookMutationMethod } from './workbook-sync.js'
 import {
   clampSelectionMovement,
@@ -78,6 +79,21 @@ function resolveDetachedOptimisticValue(
       parsed,
     }),
   )
+}
+
+function optimisticCellTargetFromKey(key: string): EditTargetSelection | null {
+  const separatorIndex = key.lastIndexOf(':')
+  if (separatorIndex <= 0 || separatorIndex === key.length - 1) {
+    return null
+  }
+  return {
+    sheetName: key.slice(0, separatorIndex),
+    address: key.slice(separatorIndex + 1),
+  }
+}
+
+function isOptimisticSnapshot(snapshot: CellSnapshot): boolean {
+  return (snapshot.flags & OPTIMISTIC_CELL_SNAPSHOT_FLAG) !== 0
 }
 
 export function useWorkerWorkbookInteractionState(input: {
@@ -350,6 +366,42 @@ export function useWorkerWorkbookInteractionState(input: {
           }
           viewportStore?.setCellSnapshot(createSupersedingCellSnapshot(snapshot, optimistic.version + 1))
         },
+      }
+    },
+    [selectedCell, workerHandleRef],
+  )
+
+  const reconcileOptimisticCellSeeds = useCallback(
+    (visible?: { readonly key: string; readonly cell: CellSnapshot }) => {
+      const active = workerHandleRef.current
+      let removed = false
+
+      for (const [key, seed] of optimisticCellSeedsRef.current) {
+        const target = optimisticCellTargetFromKey(key)
+        if (!target) {
+          continue
+        }
+        const liveCell =
+          visible?.key === key
+            ? visible.cell
+            : active
+              ? active.viewportStore.getCell(target.sheetName, target.address)
+              : selectedCell.sheetName === target.sheetName && selectedCell.address === target.address
+                ? selectedCell
+                : null
+
+        if (!liveCell || isOptimisticSnapshot(liveCell) || seed !== toEditorValue(liveCell)) {
+          continue
+        }
+
+        optimisticCellSeedsRef.current.delete(key)
+        optimisticCellResolvedValuesRef.current.delete(key)
+        optimisticCellSnapshotsRef.current.delete(key)
+        removed = true
+      }
+
+      if (removed) {
+        bumpOptimisticSeedRevision((revision) => revision + 1)
       }
     },
     [selectedCell, workerHandleRef],
@@ -744,17 +796,8 @@ export function useWorkerWorkbookInteractionState(input: {
   const visibleResolvedValue = optimisticCellResolvedValuesRef.current.get(visibleCellKey) ?? toResolvedValue(liveVisibleCell)
 
   useEffect(() => {
-    const optimisticSeed = optimisticCellSeedsRef.current.get(visibleCellKey)
-    if (optimisticSeed === undefined) {
-      return
-    }
-    if (optimisticSeed === toEditorValue(liveVisibleCell)) {
-      optimisticCellSeedsRef.current.delete(visibleCellKey)
-      optimisticCellResolvedValuesRef.current.delete(visibleCellKey)
-      optimisticCellSnapshotsRef.current.delete(visibleCellKey)
-      bumpOptimisticSeedRevision((revision) => revision + 1)
-    }
-  }, [liveVisibleCell, visibleCellKey])
+    reconcileOptimisticCellSeeds({ key: visibleCellKey, cell: liveVisibleCell })
+  }, [liveVisibleCell, reconcileOptimisticCellSeeds, visibleCellKey])
 
   const editorConflictBanner = useWorkbookEditorConflict({
     editingMode,

@@ -323,6 +323,51 @@ test('@browser-ci web app keeps rendered edits, clears, headers, and fills coher
     .toBeGreaterThan(120)
 })
 
+test('@browser-ci web app repaints moved text cells when a background fill is applied', async ({ page, context }) => {
+  const documentId = createTestDocumentId('playwright-moved-cell-fill-repaint')
+  const movedText = 'moved-fill-proof'
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  await page.setViewportSize({ width: 1166, height: 820 })
+  await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=A1`)
+  await waitForWorkbookReady(page)
+
+  await clickProductCell(page, 1, 1)
+  await page.keyboard.type(movedText)
+  await expect(page.getByTestId('cell-editor-input')).toHaveValue(movedText)
+  await page.getByTestId('cell-editor-input').press('Enter')
+  await expect(page.getByTestId('cell-editor-input')).toHaveCount(0)
+
+  await clickProductCell(page, 1, 1)
+  await page.keyboard.press(`${PRIMARY_MODIFIER}+X`)
+  await clickProductCell(page, 3, 3)
+  await page.keyboard.press(`${PRIMARY_MODIFIER}+V`)
+
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!D4')
+  await expect(page.getByTestId('formula-input')).toHaveValue(movedText)
+  await expect
+    .poll(() => nativeTextRunTextAt(page, 1, 1), {
+      message: 'cut source B2 must not leave ghost text in the native text layer',
+      timeout: 5_000,
+    })
+    .toBe('')
+  await expect
+    .poll(() => nativeTextRunTextAt(page, 3, 3), {
+      message: 'paste target D4 must own exactly the moved text before fill is applied',
+      timeout: 5_000,
+    })
+    .toBe(movedText)
+
+  await pickToolbarPresetColor(page, 'Fill color', 'green')
+  await clickProductCell(page, 5, 5)
+  await expect
+    .poll(() => countGreenFillPixelsInCell(page, 3, 3), {
+      message: 'background fill must repaint the actual moved-text cell, not only toolbar or model state',
+      timeout: 5_000,
+    })
+    .toBeGreaterThan(120)
+  await expect.poll(() => nativeTextRunTextAt(page, 3, 3)).toBe(movedText)
+})
+
 function createDenseAccountingGridClipboardText(): string {
   return Array.from({ length: 48 }, (_, rowIndex) => {
     const rowNumber = rowIndex + 1
@@ -635,6 +680,14 @@ async function nativeTextRunsInclude(page: Page, text: string): Promise<boolean>
   return await page.evaluate(
     (needle) => Array.from(document.querySelectorAll('[data-native-text-run]')).some((run) => run.textContent?.includes(needle) ?? false),
     text,
+  )
+}
+
+async function nativeTextRunTextAt(page: Page, columnIndex: number, rowIndex: number): Promise<string> {
+  return await page.evaluate(
+    ({ col, row }) =>
+      document.querySelector(`[data-native-text-run-row="${String(row)}"][data-native-text-run-col="${String(col)}"]`)?.textContent ?? '',
+    { col: columnIndex, row: rowIndex },
   )
 }
 
