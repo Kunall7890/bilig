@@ -12,7 +12,11 @@ import {
 import { addEngineCounter, type EngineCounters } from '../perf/engine-counters.js'
 import { parseA1RowIndex } from './a1-row-number.js'
 import { translateSimpleDirectAggregateFormula, tryCompileSimpleDirectAggregateFormula } from './simple-direct-aggregate-compile.js'
-import { translateSimpleDirectScalarFormula, tryCompileSimpleDirectScalarFormula } from './simple-direct-scalar-compile.js'
+import {
+  translateSimpleDirectScalarFormula,
+  translateTrustedSimpleDirectScalarFormula,
+  tryCompileSimpleDirectScalarFormula,
+} from './simple-direct-scalar-compile.js'
 
 export interface FormulaTemplateSnapshot {
   readonly id: number
@@ -267,6 +271,18 @@ function resolveTrustedTemplateCompiled(
   }
   const rowDelta = ownerRow - template.baseRow
   const colDelta = ownerCol - template.baseCol
+  if (template.templateKey.startsWith('cell:')) {
+    const translated = translateTrustedSimpleDirectScalarFormula(template.compiled, rowDelta, colDelta, source)
+    if (translated) {
+      return translated
+    }
+  }
+  if (template.templateKey.startsWith('relative-aggregate:') || template.templateKey.startsWith('relative-aggregate-rect:')) {
+    const translated = translateSimpleDirectAggregateFormula(template.compiled, rowDelta, colDelta, source)
+    if (translated) {
+      return translated
+    }
+  }
   const directScalarTemplateKey = tryBuildSimpleRowRelativeBinaryTemplateKey(source, ownerRow, ownerCol)
   if (directScalarTemplateKey !== undefined) {
     if (directScalarTemplateKey === template.templateKey) {
