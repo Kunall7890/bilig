@@ -331,6 +331,7 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
         }
       }
       let canAssignTopoInBatch = !hadExistingFormulas
+      let needsFreshTopoRebuild = false
       let nextTopoRank = 0
       let orderedPreparedCellIndices: number[] | undefined = hadExistingFormulas ? [] : undefined
       let orderedPreparedCellCount = 0
@@ -478,10 +479,11 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
           if (runtimeFormula?.directAggregate !== undefined) {
             hasInitialPrefixAggregateCandidates = true
           }
-          if (
-            !runtimeFormula ||
+          const hasPendingDependency =
+            runtimeFormula !== undefined &&
             hasPendingFormulaDependency(runtimeFormula, pendingFormulaCells, (rangeIndex) => args.state.ranges.getMembersView(rangeIndex))
-          ) {
+          if (!runtimeFormula || hasPendingDependency) {
+            needsFreshTopoRebuild ||= hasPendingDependency
             canAssignTopoInBatch = false
           } else {
             args.state.workbook.cellStore.topoRanks[prepared.cellIndex] = nextTopoRank
@@ -576,7 +578,20 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
         args.setBatchMutationDepth(args.getBatchMutationDepth() - 1)
       }
 
-      if (topologyChanged && !(canAssignTopoInBatch && !hadExistingFormulas)) {
+      if (needsFreshTopoRebuild) {
+        args.checkEvaluationBudget()
+        materializeFreshFormulaChangedBuffer()
+        args.prepareRegionQueryIndices()
+        args.rebuildTopoRanks()
+        args.detectCycles()
+        canAssignTopoInBatch = false
+        canUseInitialDirectEvaluation = false
+        args.state.formulas.forEach((_formula, cellIndex) => {
+          if (((args.state.workbook.cellStore.flags[cellIndex] ?? 0) & CellFlags.InCycle) !== 0) {
+            changedInputCount = args.markInputChanged(cellIndex, changedInputCount)
+          }
+        })
+      } else if (topologyChanged && !(canAssignTopoInBatch && !hadExistingFormulas)) {
         args.checkEvaluationBudget()
         materializeFreshFormulaChangedBuffer()
         const repaired =
@@ -775,6 +790,7 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
       }
     }
     let canAssignTopoInBatch = !hadExistingFormulas
+    let needsFreshTopoRebuild = false
     let nextTopoRank = 0
     const shouldDeferFormulaFamilyIndex = !hadExistingFormulas && args.deferFormulaFamilyIndexRebuild !== undefined
     const shouldDeferFormulaInstanceTable =
@@ -829,12 +845,13 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
             valueWriter.writeValueAt(cellIndex, ref.sheetId, ref.col, ref.value)
             if (canAssignTopoInBatch && pendingFormulaCells) {
               const runtimeFormula = args.state.formulas.get(cellIndex)
-              if (
-                !runtimeFormula ||
+              const hasPendingDependency =
+                runtimeFormula !== undefined &&
                 hasPendingFormulaDependency(runtimeFormula, pendingFormulaCells, (rangeIndex) =>
                   args.state.ranges.getMembersView(rangeIndex),
                 )
-              ) {
+              if (!runtimeFormula || hasPendingDependency) {
+                needsFreshTopoRebuild ||= hasPendingDependency
                 canAssignTopoInBatch = false
               } else {
                 args.state.workbook.cellStore.topoRanks[cellIndex] = nextTopoRank
@@ -877,9 +894,10 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
       args.setBatchMutationDepth(args.getBatchMutationDepth() - 1)
     }
 
-    if (topologyChanged && !(canAssignTopoInBatch && !hadExistingFormulas)) {
+    if ((topologyChanged || needsFreshTopoRebuild) && !(canAssignTopoInBatch && !hadExistingFormulas)) {
       args.checkEvaluationBudget()
       const repaired =
+        !needsFreshTopoRebuild &&
         !hadCycleMembersBeforeNow() &&
         refs.length > 0 &&
         args.repairTopoRanks(targetCellIndices.length > 0 ? targetCellIndices : pendingInitialFormulaCellIndices)

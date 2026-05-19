@@ -56,4 +56,24 @@ describe('dynamic array SORT', () => {
 
     workbook.dispose()
   })
+
+  it.each([false, true])('counts blank values returned by UNIQUE with useColumnIndex=%s', (useColumnIndex) => {
+    const workbook = WorkPaper.buildFromSheets(
+      {
+        Data: [
+          ['Type', 'Direct count', 'Unique count'],
+          [null, '=COUNTA(A2:A5)', '=COUNTA(UNIQUE(A2:A5))'],
+          [null, null, null],
+          ['Water', null, null],
+          ['Water', null, null],
+        ] satisfies TestCell[][],
+      },
+      { maxRows: 8, maxColumns: 4, useColumnIndex },
+    )
+
+    expectNumber(cellValue(workbook, 'Data!B2'), 2)
+    expectNumber(cellValue(workbook, 'Data!C2'), 2)
+
+    workbook.dispose()
+  })
 })
