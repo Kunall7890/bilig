@@ -4,6 +4,18 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.25.7
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.25.6
+- Manual override: no
+
+## Fixes
+- perf(core): trust scalar template translation (191bc3af)
+
+## Internal runtime changes
+- docs(discovery): sync headless 0.25.6 references (96a3cbe7)
+
 ## 0.25.6
 
 - Release type: patch
