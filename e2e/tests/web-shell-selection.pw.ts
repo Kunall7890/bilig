@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import {
+  PRIMARY_MODIFIER,
   PRODUCT_COLUMN_WIDTH,
   PRODUCT_HEADER_HEIGHT,
   PRODUCT_ROW_HEIGHT,
@@ -97,6 +98,24 @@ test('web app deletes the selected row range from the header context menu', asyn
 
   await selectAddress(page, 'A3')
   await expect.poll(() => readFormulaValue(page)).toBe('')
+})
+
+test('web app opens the selected row context menu with the keyboard shortcut', async ({ page }) => {
+  const documentId = createTestDocumentId('playwright-keyboard-context-menu')
+  await page.goto(`/?document=${encodeURIComponent(documentId)}`)
+  await waitForWorkbookReady(page)
+
+  await dragProductHeaderSelection(page, 'row', 1, 1)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!2:2')
+
+  await page.keyboard.down(PRIMARY_MODIFIER)
+  await page.keyboard.down('Shift')
+  await page.keyboard.press('Backslash')
+  await page.keyboard.up('Shift')
+  await page.keyboard.up(PRIMARY_MODIFIER)
+
+  await expect(page.getByTestId('grid-context-menu')).toBeVisible()
+  await expect(page.getByTestId('grid-context-action-delete-row')).toBeVisible()
 })
 
 test('web app deletes the selected column range from the header context menu', async ({ page }) => {

@@ -193,6 +193,14 @@ const WORKBOOK_SHORTCUTS: readonly WorkbookShortcutEntry[] = [
     keywords: ['clear style'],
   },
   {
+    id: 'context-menu',
+    label: 'Open context menu',
+    category: 'Structure',
+    mac: '⇧⌘\\',
+    windows: 'Ctrl+Shift+\\',
+    keywords: ['right click', 'row menu', 'column menu'],
+  },
+  {
     id: 'move-selection',
     label: 'Move selection',
     category: 'Navigation',

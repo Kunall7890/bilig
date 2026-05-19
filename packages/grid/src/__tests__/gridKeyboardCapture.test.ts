@@ -25,6 +25,55 @@ describe('gridKeyboardCapture', () => {
     expect(event.stopPropagation).toHaveBeenCalledTimes(1)
   })
 
+  it.each([
+    ['Shift+F10', createKeyboardEvent({ key: 'F10', code: 'F10', shiftKey: true })],
+    ['Ctrl+Shift+Backslash', createKeyboardEvent({ key: '|', code: 'Backslash', ctrlKey: true, shiftKey: true })],
+    ['Meta+Shift+Backslash', createKeyboardEvent({ key: '\\', code: 'Backslash', metaKey: true, shiftKey: true })],
+  ] as const)('should open the header context menu for %s', (_label, event) => {
+    // Arrange
+    const handleGridKey = vi.fn()
+    const openHeaderContextMenuFromKeyboard = vi.fn(() => true)
+    const resetPointerInteraction = vi.fn()
+
+    // Act
+    handleWorkbookGridKeyDownCapture({
+      event,
+      handleGridKey,
+      openHeaderContextMenuFromKeyboard,
+      resetPointerInteraction,
+    })
+
+    // Assert
+    expect(resetPointerInteraction).toHaveBeenCalledTimes(1)
+    expect(openHeaderContextMenuFromKeyboard).toHaveBeenCalledTimes(1)
+    expect(handleGridKey).not.toHaveBeenCalled()
+    expect(event.preventDefault).toHaveBeenCalledTimes(1)
+    expect(event.stopPropagation).toHaveBeenCalledTimes(1)
+  })
+
+  it('should leave modified context-menu-like chords alone when no context menu opens', () => {
+    // Arrange
+    const event = createKeyboardEvent({ key: '|', code: 'Backslash', ctrlKey: true, shiftKey: true })
+    const handleGridKey = vi.fn()
+    const openHeaderContextMenuFromKeyboard = vi.fn(() => false)
+    const resetPointerInteraction = vi.fn()
+
+    // Act
+    handleWorkbookGridKeyDownCapture({
+      event,
+      handleGridKey,
+      openHeaderContextMenuFromKeyboard,
+      resetPointerInteraction,
+    })
+
+    // Assert
+    expect(resetPointerInteraction).toHaveBeenCalledTimes(1)
+    expect(openHeaderContextMenuFromKeyboard).toHaveBeenCalledTimes(1)
+    expect(handleGridKey).not.toHaveBeenCalled()
+    expect(event.preventDefault).not.toHaveBeenCalled()
+    expect(event.stopPropagation).not.toHaveBeenCalled()
+  })
+
   it('should ignore unhandled keys without resetting pointer state', () => {
     // Arrange
     const event = createKeyboardEvent({ key: 'F13', code: 'F13' })
