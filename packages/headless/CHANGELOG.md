@@ -4,6 +4,19 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.32.4
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.32.3
+- Manual override: no
+
+## Fixes
+- fix(formula): align headless error semantics (b1c774a9)
+- fix(core): ignore stale direct formula deltas (4e6bf441)
+
+## Internal runtime changes
+- docs(discovery): sync 0.32.3 agent surfaces (5bdb4132)
+
 ## 0.32.3
 
 - Release type: patch
