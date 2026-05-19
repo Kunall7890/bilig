@@ -51,6 +51,20 @@ function colKey(range: RangeBuiltinArgument, col: number, deps: LookupSortFilter
   return JSON.stringify(values.map(normalizeKeyValue))
 }
 
+function isNumberLike(value: CellValue): boolean {
+  return value.tag === ValueTag.Number || value.tag === ValueTag.Boolean
+}
+
+function compareSortScalars(left: CellValue, right: CellValue, deps: LookupSortFilterBuiltinDeps): number | undefined {
+  if (left.tag === ValueTag.String && isNumberLike(right)) {
+    return 1
+  }
+  if (isNumberLike(left) && right.tag === ValueTag.String) {
+    return -1
+  }
+  return deps.compareScalars(left, right)
+}
+
 export function createLookupSortFilterBuiltins(deps: LookupSortFilterBuiltinDeps): Record<string, LookupBuiltin> {
   return {
     SORT: (arrayArg, sortIndexArg, sortOrderArg = { tag: ValueTag.Number, value: 1 }, byColArg) => {
@@ -89,7 +103,7 @@ export function createLookupSortFilterBuiltins(deps: LookupSortFilterBuiltinDeps
         const values = [...array.values]
         const order: number[] = Array.from({ length: values.length }, (_, index) => index)
         order.sort((left, right) => {
-          const cmp = deps.compareScalars(values[left]!, values[right]!)
+          const cmp = compareSortScalars(values[left]!, values[right]!, deps)
           if (cmp === undefined) {
             sortError = deps.errorValue(ErrorCode.Value)
             return 0
@@ -112,7 +126,7 @@ export function createLookupSortFilterBuiltins(deps: LookupSortFilterBuiltinDeps
         const rowIndex = sortIndex - 1
         const colOrder = Array.from({ length: array.cols }, (_, col) => col)
         colOrder.sort((left, right) => {
-          const cmp = deps.compareScalars(deps.getRangeValue(array, rowIndex, left), deps.getRangeValue(array, rowIndex, right))
+          const cmp = compareSortScalars(deps.getRangeValue(array, rowIndex, left), deps.getRangeValue(array, rowIndex, right), deps)
           if (cmp === undefined) {
             sortError = deps.errorValue(ErrorCode.Value)
             return 0
@@ -136,7 +150,7 @@ export function createLookupSortFilterBuiltins(deps: LookupSortFilterBuiltinDeps
       const columnIndex = sortIndex - 1
       const rowOrder = Array.from({ length: array.rows }, (_, row) => row)
       rowOrder.sort((left, right) => {
-        const cmp = deps.compareScalars(deps.getRangeValue(array, left, columnIndex), deps.getRangeValue(array, right, columnIndex))
+        const cmp = compareSortScalars(deps.getRangeValue(array, left, columnIndex), deps.getRangeValue(array, right, columnIndex), deps)
         if (cmp === undefined) {
           sortError = deps.errorValue(ErrorCode.Value)
           return 0
@@ -210,7 +224,7 @@ export function createLookupSortFilterBuiltins(deps: LookupSortFilterBuiltinDeps
         for (const criterion of criteria) {
           const leftValue = criterion.values.length === 1 ? (criterion.values[0] ?? array.values[0]!) : criterion.values[left]!
           const rightValue = criterion.values.length === 1 ? (criterion.values[0] ?? array.values[0]!) : criterion.values[right]!
-          const cmp = deps.compareScalars(leftValue, rightValue)
+          const cmp = compareSortScalars(leftValue, rightValue, deps)
           if (cmp === undefined) {
             sortError = deps.errorValue(ErrorCode.Value)
             return 0
