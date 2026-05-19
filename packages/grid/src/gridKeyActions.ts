@@ -1,6 +1,6 @@
 import { MAX_COLS, MAX_ROWS } from '@bilig/protocol'
 import { clampCell } from './gridSelection.js'
-import { isClearCellKey, isFillSelectionShortcut, isFillShortcut } from './gridKeyboard.js'
+import { isClearCellKey, isFillSelectionShortcut, isFillShortcut, isScrollActiveCellShortcut } from './gridKeyboard.js'
 import type { Item, Rectangle } from './gridTypes.js'
 
 export type GridEditSelectionBehavior = 'select-all' | 'caret-end'
@@ -32,6 +32,7 @@ export type GridKeyAction =
   | { kind: 'clipboard-cut' }
   | { kind: 'clipboard-paste'; target: Item; valuesOnly: boolean }
   | { kind: 'fill-range'; source: Rectangle; target: Rectangle }
+  | { kind: 'scroll-active-cell' }
   | { kind: 'handled' }
   | { kind: 'select-row'; row: number; col: number }
   | { kind: 'select-column'; row: number; col: number }
@@ -272,6 +273,10 @@ export function resolveGridKeyAction(options: ResolveGridKeyActionOptions): Grid
 
   if (isClearCellKey(event)) {
     return { kind: 'clear-cell', pendingTypeSeed: null }
+  }
+
+  if (isScrollActiveCellShortcut(event)) {
+    return { kind: 'scroll-active-cell' }
   }
 
   if (isFillSelectionShortcut(event)) {

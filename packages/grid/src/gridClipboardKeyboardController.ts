@@ -19,6 +19,7 @@ import {
   isFillShortcut,
   isNavigationShortcut,
   isPrintableKey,
+  isScrollActiveCellShortcut,
   isSheetSelectionShortcut,
   normalizeKeyboardKey,
 } from './gridKeyboard.js'
@@ -93,6 +94,7 @@ interface HandleGridKeyOptions {
   onEditorChange(this: void, next: string): void
   onFillRange(this: void, sourceStartAddr: string, sourceEndAddr: string, targetStartAddr: string, targetEndAddr: string): void
   onSelectionChange(this: void, selection: GridSelection): void
+  scrollActiveCellIntoView(this: void): void
   pendingClipboardCopySequenceRef: MutableRefObject<number>
   pendingKeyboardPasteSequenceRef: MutableRefObject<number>
   pendingTypeSeedRef: MutableRefObject<string | null>
@@ -279,6 +281,7 @@ export function handleGridKey({
   onEditorChange,
   onFillRange,
   onSelectionChange,
+  scrollActiveCellIntoView,
   pendingClipboardCopySequenceRef,
   pendingKeyboardPasteSequenceRef,
   pendingTypeSeedRef,
@@ -374,6 +377,9 @@ export function handleGridKey({
     case 'clear-cell':
       pendingTypeSeedRef.current = action.pendingTypeSeed
       onClearCell(selectionToSnapshot(gridSelection, sheetName, formatAddress(selectedCell.row, selectedCell.col)))
+      return
+    case 'scroll-active-cell':
+      scrollActiveCellIntoView()
       return
     case 'clipboard-copy': {
       writeClipboardPlainTextFromKeyboard(captureInternalClipboardSelection('copy'), pendingClipboardCopySequenceRef)
@@ -562,6 +568,7 @@ function isWorkbookChromeGridShortcut(event: Pick<GridKeyboardEventLike, 'altKey
     isClipboardShortcut(event) ||
     isFillShortcut(event) ||
     isFillSelectionShortcut(event) ||
+    isScrollActiveCellShortcut(event) ||
     isNavigationShortcut(event) ||
     (hasPrimaryModifier && !event.altKey && normalizedKey === 'a') ||
     isSheetSelectionShortcut(event) ||
@@ -578,6 +585,7 @@ export function shouldHandleGridSurfaceKey(
     isClipboardShortcut(event) ||
     isFillShortcut(event) ||
     isFillSelectionShortcut(event) ||
+    isScrollActiveCellShortcut(event) ||
     isNavigationShortcut(event) ||
     isSheetSelectionShortcut(event) ||
     ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 'a') ||

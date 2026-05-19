@@ -226,18 +226,19 @@ export class WorkbookViewportScrollRuntime {
     })
   }
 
-  autoScrollSelectionIntoView(): void {
+  autoScrollSelectionIntoView(options: { readonly force?: boolean; readonly cell?: Item } = {}): void {
     const input = this.input
     const scrollViewport = input?.scrollViewportRef.current
     if (!input || !scrollViewport) {
       return
     }
+    const targetCell = options.cell ?? input.selectedCell
     input.syncRuntimeAxes()
     const axisSnapshot = input.gridRuntimeHost.snapshot()
     const nextAutoScrollSelection = {
       sheetName: input.sheetName,
-      col: input.selectedCell[0],
-      row: input.selectedCell[1],
+      col: targetCell[0],
+      row: targetCell[1],
       freezeCols: input.freezeCols,
       freezeRows: input.freezeRows,
       viewportWidth: scrollViewport.clientWidth,
@@ -245,12 +246,12 @@ export class WorkbookViewportScrollRuntime {
       axisSeqX: axisSnapshot.axisSeqX,
       axisSeqY: axisSnapshot.axisSeqY,
     }
-    if (!hasAutoScrollSelectionTargetChanged(this.autoScrollSelection, nextAutoScrollSelection)) {
+    if (!options.force && !hasAutoScrollSelectionTargetChanged(this.autoScrollSelection, nextAutoScrollSelection)) {
       return
     }
     this.autoScrollSelection = nextAutoScrollSelection
     const nextScrollPosition = input.gridRuntimeHost.resolveScrollForCellIntoView({
-      cell: input.selectedCell,
+      cell: targetCell,
       freezeCols: input.freezeCols,
       freezeRows: input.freezeRows,
       gridMetrics: input.gridMetrics,

@@ -214,7 +214,11 @@ describe('CellEditorOverlay', () => {
     }
   })
 
-  it('renders a textarea editor and keeps Alt+Enter for multiline input instead of committing', async () => {
+  it.each([
+    ['Alt+Enter', { altKey: true }],
+    ['Ctrl+Enter', { ctrlKey: true }],
+    ['Meta+Enter', { metaKey: true }],
+  ] as const)('renders a textarea editor and keeps %s for multiline input instead of committing', async (_label, modifier) => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
     const onChange = vi.fn()
@@ -243,7 +247,7 @@ describe('CellEditorOverlay', () => {
     textarea?.setSelectionRange(textarea.value.length, textarea.value.length)
 
     await act(async () => {
-      textarea?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', altKey: true, bubbles: true }))
+      textarea?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ...modifier, bubbles: true }))
     })
 
     expect(onCommit).not.toHaveBeenCalled()

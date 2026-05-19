@@ -95,6 +95,14 @@ export function isClearCellKey(
   return isDeleteKey(event.key) && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey
 }
 
+export function isScrollActiveCellShortcut(
+  event: GridKeyboardModifierState & {
+    shiftKey?: boolean
+  },
+): boolean {
+  return event.key === 'Backspace' && (event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey
+}
+
 export function isHandledGridKey(
   event: GridKeyboardModifierState & {
     shiftKey?: boolean
@@ -106,6 +114,7 @@ export function isHandledGridKey(
     isClipboardShortcut(event) ||
     isFillShortcut(event) ||
     isFillSelectionShortcut(event) ||
+    isScrollActiveCellShortcut(event) ||
     isNavigationShortcut(event) ||
     (hasPrimaryModifier && !event.altKey && event.key.toLowerCase() === 'a') ||
     isSheetSelectionShortcut(event) ||

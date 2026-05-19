@@ -277,7 +277,16 @@ describe('WorkbookPaneRendererV3', () => {
         headerPaneCount: 1,
         tilePaneCount: 1,
       }),
-    ).toBe(true)
+    ).toBe(false)
+    expect(
+      shouldMountWorkbookCanvasProofLayerV3({
+        backendStatus: 'ready',
+        frameProofStatus: 'pending',
+        hasPresentedVisibleFrame: true,
+        headerPaneCount: 1,
+        tilePaneCount: 1,
+      }),
+    ).toBe(false)
     expect(
       shouldMountWorkbookCanvasProofLayerV3({
         backendStatus: 'ready',
@@ -286,6 +295,22 @@ describe('WorkbookPaneRendererV3', () => {
         tilePaneCount: 0,
       }),
     ).toBe(false)
+    expect(
+      shouldMountWorkbookCanvasProofLayerV3({
+        backendStatus: 'initializing',
+        hasPresentedFrame: true,
+        headerPaneCount: 1,
+        tilePaneCount: 1,
+      }),
+    ).toBe(false)
+    expect(
+      shouldMountWorkbookCanvasProofLayerV3({
+        backendStatus: 'unavailable',
+        hasPresentedFrame: true,
+        headerPaneCount: 1,
+        tilePaneCount: 1,
+      }),
+    ).toBe(true)
     expect(
       shouldMountWorkbookCanvasProofLayerV3({
         backendStatus: 'initializing',

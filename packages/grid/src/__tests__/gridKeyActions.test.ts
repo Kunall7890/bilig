@@ -436,8 +436,6 @@ describe('gridKeyActions', () => {
       { key: 'Delete', ctrlKey: false, metaKey: true, altKey: false },
       { key: 'Delete', ctrlKey: false, metaKey: false, altKey: true },
       { key: 'Delete', ctrlKey: false, metaKey: false, altKey: false, shiftKey: true },
-      { key: 'Backspace', ctrlKey: true, metaKey: false, altKey: false },
-      { key: 'Backspace', ctrlKey: false, metaKey: true, altKey: false },
       { key: 'Backspace', ctrlKey: false, metaKey: false, altKey: true },
       { key: 'Backspace', ctrlKey: false, metaKey: false, altKey: false, shiftKey: true },
     ] as const) {
@@ -453,6 +451,26 @@ describe('gridKeyActions', () => {
           currentRangeAnchor: [1, 1],
         }),
       ).toEqual({ kind: 'none' })
+    }
+  })
+
+  test('routes primary-modified Backspace to scroll the active cell into view without clearing it', () => {
+    for (const event of [
+      { key: 'Backspace', ctrlKey: true, metaKey: false, altKey: false },
+      { key: 'Backspace', ctrlKey: false, metaKey: true, altKey: false },
+    ] as const) {
+      expect(
+        resolveGridKeyAction({
+          event,
+          isEditingCell: false,
+          editorValue: '',
+          editorInputFocused: false,
+          pendingTypeSeed: null,
+          selectedCell: [1, 1],
+          currentSelectionCell: [1, 1],
+          currentRangeAnchor: [1, 1],
+        }),
+      ).toEqual({ kind: 'scroll-active-cell' })
     }
   })
 

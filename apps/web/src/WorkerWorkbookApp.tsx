@@ -290,6 +290,7 @@ function WorkerWorkbookAppInner({
               <WorkbookView
                 ribbon={app.ribbon}
                 editorValue={app.visibleEditorValue}
+                editorTargetSelection={app.editorTargetSelection}
                 editorSelectionBehavior={app.editorSelectionBehavior}
                 engine={app.workerHandle.viewportStore}
                 definedNames={app.definedNames}

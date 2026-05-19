@@ -555,7 +555,7 @@ export function CellEditorOverlay({
             return
           }
           if (event.key === 'Enter') {
-            if (event.altKey) {
+            if (event.altKey || event.ctrlKey || event.metaKey) {
               event.preventDefault()
               insertTextAtSelection(event.currentTarget, '\n')
               return

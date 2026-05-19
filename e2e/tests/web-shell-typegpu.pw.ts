@@ -6,6 +6,8 @@ import {
   createTestDocumentId,
   dragProductBodySelection,
   dragProductHeaderSelection,
+  getProductColumnLeft,
+  getProductColumnWidth,
   gotoWorkbookShell,
   pickToolbarPresetColor,
   PRODUCT_COLUMN_WIDTH,
@@ -109,12 +111,15 @@ interface NativeTextLayerInspection {
 }
 
 interface RendererPresentationSample {
+  readonly backendStatus: string | null
   readonly canvasProofLayer: string | null
   readonly editorInputs: number
   readonly editorOverlays: number
   readonly fallbackCanvases: number
   readonly frameProofStatus: string | null
   readonly headerPaneCount: number
+  readonly hasPresentedFrame: string | null
+  readonly hasPresentedVisibleFrame: string | null
   readonly nativeTextLayerMounted: boolean
   readonly nativeTextRunCount: number
   readonly rowHeaderRunCount: number
@@ -157,12 +162,15 @@ async function collectRendererPresentationSamplesDuring(
             return rect.left >= gridRect.left && rect.right <= gridRect.left + rowMarkerWidth + 1
           }).length
           samples.push({
+            backendStatus: canvas?.getAttribute('data-v3-backend-status') ?? null,
             canvasProofLayer: canvas?.getAttribute('data-v3-canvas-proof-layer') ?? null,
             editorInputs: document.querySelectorAll('[data-testid="cell-editor-input"]').length,
             editorOverlays: document.querySelectorAll('[data-testid="cell-editor-overlay"]').length,
             fallbackCanvases: document.querySelectorAll('[data-testid="grid-pane-renderer-fallback"]').length,
             frameProofStatus: canvas?.getAttribute('data-v3-frame-proof-status') ?? null,
             headerPaneCount: Number(canvas?.getAttribute('data-v3-header-pane-count') ?? '0'),
+            hasPresentedFrame: canvas?.getAttribute('data-v3-has-presented-frame') ?? null,
+            hasPresentedVisibleFrame: canvas?.getAttribute('data-v3-has-presented-visible-frame') ?? null,
             nativeTextLayerMounted: nativeTextLayer instanceof HTMLElement,
             nativeTextRunCount: nativeTextRuns.length,
             rowHeaderRunCount,
@@ -223,8 +231,8 @@ async function exerciseClickAwayEditCommit(
   expect(samples.every((sample) => sample.nativeTextLayerMounted)).toBe(true)
   expect(samples.every((sample) => sample.nativeTextRunCount > 0)).toBe(true)
   expect(samples.every((sample) => sample.rowHeaderRunCount >= 10)).toBe(true)
-  expect(samples.every((sample) => sample.fallbackCanvases === 0)).toBe(true)
-  expect(samples.every((sample) => sample.canvasProofLayer !== 'mounted')).toBe(true)
+  expect(samples.filter((sample) => sample.fallbackCanvases !== 0)).toEqual([])
+  expect(samples.filter((sample) => sample.canvasProofLayer === 'mounted')).toEqual([])
 
   await expect(page.getByTestId('status-selection')).toHaveText(input.awaySelection)
   await expect(cellEditor).toHaveCount(0)
@@ -235,6 +243,29 @@ async function exerciseClickAwayEditCommit(
   await expect(input.formulaInput).toHaveValue(input.text)
   await expect.poll(async () => await input.renderer.getAttribute('data-v3-frame-proof-status')).toBe('presented')
   await expect(input.renderer).toHaveAttribute('data-v3-canvas-proof-layer', 'not-mounted')
+}
+
+async function dragProductSelectedContentLane(page: Page, startColumn: number, startRow: number, targetColumn: number, targetRow: number) {
+  const gridLocator = page.getByTestId('sheet-grid')
+  await expect(gridLocator).toBeVisible()
+  const grid = await gridLocator.boundingBox()
+  if (!grid) {
+    throw new Error('sheet grid is not visible')
+  }
+
+  const startLeft = await getProductColumnLeft(page, startColumn)
+  const startWidth = await getProductColumnWidth(page, startColumn)
+  const sourceX = grid.x + startLeft + Math.min(32, Math.floor(startWidth * 0.35))
+  const sourceY = grid.y + PRODUCT_HEADER_HEIGHT + startRow * PRODUCT_ROW_HEIGHT + Math.floor(PRODUCT_ROW_HEIGHT / 2)
+  const targetLeft = await getProductColumnLeft(page, targetColumn)
+  const targetWidth = await getProductColumnWidth(page, targetColumn)
+  const targetX = grid.x + targetLeft + Math.floor(targetWidth / 2)
+  const targetY = grid.y + PRODUCT_HEADER_HEIGHT + targetRow * PRODUCT_ROW_HEIGHT + Math.floor(PRODUCT_ROW_HEIGHT / 2)
+
+  await page.mouse.move(sourceX, sourceY)
+  await page.mouse.down()
+  await page.mouse.move(targetX, targetY, { steps: 12 })
+  await page.mouse.up()
 }
 
 test('@browser-webgpu isolated workbook pane renderer draws grid content through typegpu', async ({ page }, testInfo) => {
@@ -1105,6 +1136,85 @@ test('@browser-webgpu @browser-deep selected range fill changes stay visually au
     testInfo,
     'main-workbook-grid-selected-fill-refresh-readback.png',
     'main-workbook-grid-selected-fill-refresh-readback',
+  )
+})
+
+test('@browser-webgpu @browser-deep moved content delete preserves selected fill without fallback flashes', async ({ page }, testInfo) => {
+  const movedText = 'move-fill-delete-proof'
+  const points = [
+    { ...selectedRangeFillProbe(1, 1), name: 'topLeft' },
+    { ...selectedRangeFillProbe(2, 4), name: 'middle' },
+    { ...selectedRangeFillProbe(3, 8), name: 'bottomRight' },
+  ]
+
+  await page.setViewportSize({ width: 960, height: 720 })
+  await installTypeGpuReadbackHarness(page)
+  await gotoWorkbookShell(page, `/?document=${encodeURIComponent(createTestDocumentId('typegpu-move-fill-delete-no-flash'))}`)
+  await waitForWorkbookReady(page)
+  await waitForTypeGpuRenderer(page)
+  await page.waitForFunction(
+    () =>
+      Boolean(
+        (window as Window & { __biligGpuReadbackInspector?: { readonly isReady: () => boolean } }).__biligGpuReadbackInspector?.isReady(),
+      ),
+    undefined,
+    { timeout: 15_000 },
+  )
+
+  const formulaInput = page.getByTestId('formula-input')
+  const grid = page.getByTestId('sheet-grid')
+
+  await clickProductCell(page, 1, 1)
+  await formulaInput.fill(movedText)
+  await formulaInput.press('Enter')
+  await expect(formulaInput).toHaveValue(movedText)
+  await dragProductSelectedContentLane(page, 1, 1, 3, 3)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!D4')
+
+  await clickProductCell(page, 1, 1)
+  await expect(formulaInput).toHaveValue('')
+  await clickProductCell(page, 3, 3)
+  await expect(formulaInput).toHaveValue(movedText)
+
+  await dragProductBodySelection(page, 1, 1, 3, 8)
+  await expect(page.getByTestId('status-selection')).toContainText('!B2:D9')
+  await pickToolbarPresetColor(page, 'Fill color', 'theme green')
+  const greenReadback = await waitForReadback(
+    page,
+    {
+      points,
+      regions: [],
+    },
+    (result) => allReadbackPointsMatch(result, isThemeGreenFill),
+  )
+
+  const deleteSamples = await collectRendererPresentationSamplesDuring(page, () => grid.press('Delete'), 30)
+  expect(deleteSamples.filter((sample) => sample.fallbackCanvases !== 0)).toEqual([])
+  expect(deleteSamples.filter((sample) => sample.canvasProofLayer === 'mounted')).toEqual([])
+
+  const afterDeleteReadback = await waitForReadback(
+    page,
+    {
+      points,
+      regions: [],
+    },
+    (result) => result.sequence >= greenReadback.sequence && allReadbackPointsMatch(result, isThemeGreenFill),
+  )
+  expect(afterDeleteReadback.sequence).toBeGreaterThanOrEqual(greenReadback.sequence)
+
+  await clickProductCell(page, 3, 3)
+  await expect(formulaInput).toHaveValue('')
+  await expect
+    .poll(async () =>
+      page.evaluate((text) => [...document.querySelectorAll('[data-native-text-run]')].some((run) => run.textContent === text), movedText),
+    )
+    .toBe(false)
+
+  await saveReadbackArtifact(
+    page,
+    testInfo,
+    'main-workbook-grid-move-fill-delete-no-flash-readback.png',
+    'main-workbook-grid-move-fill-delete-no-flash-readback',
   )
 })
 

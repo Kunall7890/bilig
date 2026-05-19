@@ -136,6 +136,7 @@ export function useWorkbookGridKeyboardHandler(input: {
   onEditorChange: (next: string) => void
   onFillRange: (sourceStartAddr: string, sourceEndAddr: string, targetStartAddr: string, targetEndAddr: string) => void
   onSelectionChange: (selection: GridSelection) => void
+  scrollActiveCellIntoView: () => void
   pendingClipboardCopySequenceRef: MutableRefObject<number>
   pendingKeyboardPasteSequenceRef: MutableRefObject<number>
   pendingTypeSeedRef: MutableRefObject<string | null>
@@ -208,6 +209,7 @@ export function useWorkbookGridKeyboardHandler(input: {
         onEditorChange: input.onEditorChange,
         onFillRange: input.onFillRange,
         onSelectionChange: input.onSelectionChange,
+        scrollActiveCellIntoView: input.scrollActiveCellIntoView,
         pendingClipboardCopySequenceRef: input.pendingClipboardCopySequenceRef,
         pendingKeyboardPasteSequenceRef: input.pendingKeyboardPasteSequenceRef,
         pendingTypeSeedRef: input.pendingTypeSeedRef,

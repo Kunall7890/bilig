@@ -75,6 +75,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     hostRuntime.getPresentedFrameProofSignatureSnapshot,
     hostRuntime.getPresentedFrameProofSignatureSnapshot,
   )
+  const hasPresentedVisibleFrame = presentedFrameProofSignature.length > 0
 
   const setCanvasRef = useCallback(
     (canvas: HTMLCanvasElement | null) => {
@@ -95,7 +96,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     backendStatus,
     enableCanvasFallback,
     frameProofStatus,
-    hasPresentedFrame,
+    hasPresentedVisibleFrame,
     headerPaneCount: headerPanes.length,
     overlayRectCount: overlay?.rectCount ?? 0,
     tilePaneCount: tilePanes.length,
@@ -211,6 +212,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           data-v3-frame-proof-status={frameProofStatus}
           data-v3-frame-proof-signature={frameProofSignature}
           data-v3-has-presented-frame={hasPresentedFrame ? 'true' : 'false'}
+          data-v3-has-presented-visible-frame={hasPresentedVisibleFrame ? 'true' : 'false'}
           data-v3-header-pane-count={headerPanes.length}
           data-v3-header-text-run-count={headerTextRunCount}
           data-v3-authoritative-render-revision={renderRevisionSnapshot?.authoritativeRevision ?? ''}
@@ -251,11 +253,18 @@ export function shouldMountWorkbookCanvasProofLayerV3(input: {
   readonly enableCanvasFallback?: boolean | undefined
   readonly frameProofStatus?: 'idle' | 'pending' | 'presented' | undefined
   readonly hasPresentedFrame?: boolean | undefined
+  readonly hasPresentedVisibleFrame?: boolean | undefined
   readonly headerPaneCount: number
   readonly overlayRectCount?: number | undefined
   readonly tilePaneCount: number
 }): boolean {
-  if (input.enableCanvasFallback || input.backendStatus !== 'ready') {
+  if (input.enableCanvasFallback) {
+    return true
+  }
+  if ((input.hasPresentedVisibleFrame || input.hasPresentedFrame) && input.backendStatus !== 'unavailable') {
+    return false
+  }
+  if (input.backendStatus !== 'ready') {
     return true
   }
   const hasVisiblePaneContent = hasWorkbookPaneVisibleContentV3(input)

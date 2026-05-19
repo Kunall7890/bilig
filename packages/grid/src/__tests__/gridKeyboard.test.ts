@@ -9,6 +9,7 @@ import {
   isNavigationKey,
   isNumericEditorSeed,
   isPrintableKey,
+  isScrollActiveCellShortcut,
   isSheetSelectionShortcut,
   normalizeKeyboardKey,
 } from '../gridKeyboard.js'
@@ -35,6 +36,9 @@ describe('gridKeyboard', () => {
     expect(isFillSelectionShortcut({ altKey: false, ctrlKey: true, key: 'Enter', metaKey: false, shiftKey: false })).toBe(true)
     expect(isFillSelectionShortcut({ altKey: false, ctrlKey: false, key: 'Enter', metaKey: true, shiftKey: false })).toBe(true)
     expect(isFillSelectionShortcut({ altKey: false, ctrlKey: true, key: 'Enter', metaKey: false, shiftKey: true })).toBe(false)
+    expect(isScrollActiveCellShortcut({ altKey: false, ctrlKey: true, key: 'Backspace', metaKey: false })).toBe(true)
+    expect(isScrollActiveCellShortcut({ altKey: false, ctrlKey: false, key: 'Backspace', metaKey: true })).toBe(true)
+    expect(isScrollActiveCellShortcut({ altKey: false, ctrlKey: true, key: 'Delete', metaKey: false })).toBe(false)
     expect(isSheetSelectionShortcut({ altKey: false, ctrlKey: false, key: ' ', metaKey: false, shiftKey: true })).toBe(true)
     expect(isSheetSelectionShortcut({ altKey: false, ctrlKey: true, key: ' ', metaKey: false, shiftKey: false })).toBe(true)
     expect(isSheetSelectionShortcut({ altKey: false, ctrlKey: true, key: ' ', metaKey: false, shiftKey: true })).toBe(true)
@@ -100,7 +104,7 @@ describe('gridKeyboard', () => {
     expect(isClearCellKey({ altKey: false, ctrlKey: false, key: 'Backspace', metaKey: true })).toBe(false)
     expect(isClearCellKey({ altKey: false, ctrlKey: false, key: 'Delete', metaKey: false, shiftKey: true })).toBe(false)
     expect(isHandledGridKey({ altKey: false, ctrlKey: false, key: 'Delete', metaKey: true })).toBe(false)
-    expect(isHandledGridKey({ altKey: false, ctrlKey: false, key: 'Backspace', metaKey: true })).toBe(false)
+    expect(isHandledGridKey({ altKey: false, ctrlKey: false, key: 'Backspace', metaKey: true })).toBe(true)
   })
 
   test('detects numeric editor seeds', () => {

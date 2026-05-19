@@ -41,8 +41,8 @@ const WORKBOOK_SHORTCUTS: readonly WorkbookShortcutEntry[] = [
     id: 'insert-line-break',
     label: 'Insert line break',
     category: 'Editing',
-    mac: '⌥Enter',
-    windows: 'Alt+Enter',
+    mac: '⌥Enter / ⌘Enter',
+    windows: 'Alt+Enter / Ctrl+Enter',
     keywords: ['multiline', 'newline'],
   },
   {

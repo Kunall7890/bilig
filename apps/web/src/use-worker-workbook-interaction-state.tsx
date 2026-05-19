@@ -127,6 +127,7 @@ export function useWorkerWorkbookInteractionState(input: {
 
   const [editorValue, setEditorValue] = useState('')
   const [editorSelectionBehavior, setEditorSelectionBehavior] = useState<EditSelectionBehavior>('select-all')
+  const [editorTargetSelection, setEditorTargetSelection] = useState<EditTargetSelection | null>(null)
   const [editingMode, setEditingMode] = useState<EditingMode>('idle')
   const [editorConflict, setEditorConflict] = useState<WorkbookEditorConflict | null>(null)
   const [selectionSnapshot, setSelectionSnapshot] = useState<GridSelectionSnapshot>(createSingleCellSelectionSnapshot(selection))
@@ -455,6 +456,7 @@ export function useWorkerWorkbookInteractionState(input: {
       editorValueRef.current = nextEditorValue
       setEditorValue(nextEditorValue)
       setEditorSelectionBehavior('select-all')
+      setEditorTargetSelection(null)
       editingModeRef.current = 'idle'
       setEditingMode('idle')
       resetEditorConflictTracking(nextSelection)
@@ -503,6 +505,7 @@ export function useWorkerWorkbookInteractionState(input: {
       setEditorValue(nextEditorValue)
       setEditorSelectionBehavior(selectionBehavior)
       editorTargetRef.current = nextTarget
+      setEditorTargetSelection(nextTarget)
       editingModeRef.current = mode
       setEditingMode(mode)
     },
@@ -616,6 +619,7 @@ export function useWorkerWorkbookInteractionState(input: {
             return
           }
           editingModeRef.current = 'idle'
+          setEditorTargetSelection(null)
           setEditingMode('idle')
           reportRuntimeError(error)
         } finally {
@@ -646,6 +650,7 @@ export function useWorkerWorkbookInteractionState(input: {
     setEditorValue(nextEditorValue)
     setEditorSelectionBehavior('select-all')
     editorTargetRef.current = selectionRef.current
+    setEditorTargetSelection(null)
     editingModeRef.current = 'idle'
     setEditingMode('idle')
     resetEditorConflictTracking()
@@ -761,6 +766,7 @@ export function useWorkerWorkbookInteractionState(input: {
         pendingEditCommitSessionRef.current = null
         pendingEditCommitMovementAppliedRef.current = false
         editorTargetRef.current = nextTarget
+        setEditorTargetSelection(nextTarget)
         editorBaseSnapshotRef.current = cloneLiveSelectedCell(nextTarget)
         setEditorConflict(null)
       }
@@ -817,6 +823,7 @@ export function useWorkerWorkbookInteractionState(input: {
     applyParsedInput,
     reportRuntimeError,
     setEditorSelectionBehavior,
+    setEditorTargetSelection,
     setEditingMode,
   })
 
@@ -828,6 +835,7 @@ export function useWorkerWorkbookInteractionState(input: {
     copySelectionRange,
     editorConflictBanner,
     editorSelectionBehavior,
+    editorTargetSelection,
     fillSelectionRange,
     getCellEditorSeed,
     acknowledgeExternalSelectionSync,

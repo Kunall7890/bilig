@@ -479,8 +479,8 @@ test('@browser-ci web app gates unmerge on real merged-cell state', async ({ pag
   await expect(unmergeButton).toBeDisabled()
 })
 
-test('web app preserves Alt+Enter multiline edits across commit, formula bar, and reopen', async ({ page }) => {
-  const documentId = createTestDocumentId('playwright-alt-enter-multiline-edit')
+test('web app preserves editor multiline shortcuts across commit, formula bar, and reopen', async ({ page }) => {
+  const documentId = createTestDocumentId('playwright-multiline-edit-shortcuts')
   await page.goto(`/?document=${encodeURIComponent(documentId)}&sheet=Sheet1&cell=A1`)
   await waitForWorkbookReady(page)
 
@@ -496,15 +496,18 @@ test('web app preserves Alt+Enter multiline edits across commit, formula bar, an
   await cellEditor.press('Alt+Enter')
   await page.keyboard.type('beta')
   await expect(cellEditor).toHaveValue('alpha\nbeta')
+  await cellEditor.press(`${PRIMARY_MODIFIER}+Enter`)
+  await page.keyboard.type('gamma')
+  await expect(cellEditor).toHaveValue('alpha\nbeta\ngamma')
 
   await cellEditor.press('Enter')
   await expect(cellEditor).toBeHidden()
   await clickProductCell(page, 0, 0)
-  await expect(formulaInput).toHaveValue('alpha\nbeta')
+  await expect(formulaInput).toHaveValue('alpha\nbeta\ngamma')
 
   await page.getByTestId('sheet-grid').press('F2')
   await expect(cellEditor).toBeVisible()
-  await expect(cellEditor).toHaveValue('alpha\nbeta')
+  await expect(cellEditor).toHaveValue('alpha\nbeta\ngamma')
 })
 
 test('web app preserves multi-digit numeric type-to-replace input', async ({ page }) => {
@@ -2130,10 +2133,39 @@ test('web app ignores modified delete keys instead of clearing the grid selectio
     await expect(formulaInput).toHaveValue('keep-modified-delete')
   }
 
-  await assertModifiedDeleteIgnored(`${PRIMARY_MODIFIER}+Backspace`)
   await assertModifiedDeleteIgnored(`${PRIMARY_MODIFIER}+Delete`)
   await assertModifiedDeleteIgnored('Alt+Backspace')
   await assertModifiedDeleteIgnored('Shift+Delete')
+})
+
+test('web app scrolls to the active cell with primary Backspace without clearing it', async ({ page }) => {
+  const documentId = createTestDocumentId('playwright-primary-backspace-scroll-active')
+  await page.goto(`/?document=${encodeURIComponent(documentId)}`)
+  await waitForWorkbookReady(page)
+
+  const grid = page.getByTestId('sheet-grid')
+  const formulaInput = page.getByTestId('formula-input')
+  const scrollViewport = page.getByTestId('grid-scroll-viewport')
+
+  await clickProductCell(page, 2, 2)
+  await formulaInput.fill('scroll-active-keeps-content')
+  await formulaInput.press('Enter')
+  await clickProductCell(page, 2, 2)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C3')
+  await expect(formulaInput).toHaveValue('scroll-active-keeps-content')
+
+  await scrollViewport.evaluate((element) => {
+    element.scrollTop = 2_000
+    element.scrollLeft = 600
+    element.dispatchEvent(new Event('scroll', { bubbles: true }))
+  })
+  await expect.poll(async () => await scrollViewport.evaluate((element) => element.scrollTop)).toBeGreaterThan(1_000)
+
+  await grid.press(`${PRIMARY_MODIFIER}+Backspace`)
+
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C3')
+  await expect(formulaInput).toHaveValue('scroll-active-keeps-content')
+  await expect.poll(async () => await scrollViewport.evaluate((element) => element.scrollTop)).toBeLessThan(200)
 })
 
 for (const key of ['Delete', 'Backspace'] as const) {

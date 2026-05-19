@@ -19,6 +19,16 @@ function createEmptySnapshot(sheetName: string, address: string): CellSnapshot {
   }
 }
 
+function createStringSnapshot(sheetName: string, address: string, text: string, stringId: number): CellSnapshot {
+  return {
+    sheetName,
+    address,
+    value: { tag: ValueTag.String, value: text, stringId },
+    flags: 0,
+    version: 1,
+  }
+}
+
 const engine = {
   workbook: {
     getSheet: () => undefined,
@@ -425,6 +435,75 @@ describe('useWorkbookGridRenderState viewport residency', () => {
     })
 
     expect(latestRenderState?.renderTilePanes.some((pane) => pane.tile.textRuns.some((run) => run.text === cellText))).toBe(true)
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it('keeps editor text suppression pinned to the original edit target after selection moves', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const textByAddress = new Map([
+      ['A1', createStringSnapshot('Sheet1', 'A1', 'selected text', 1)],
+      ['B2', createStringSnapshot('Sheet1', 'B2', 'editor target text', 2)],
+    ])
+    const localEngine = {
+      ...engine,
+      getCell(sheetName: string, address: string): CellSnapshot {
+        return textByAddress.get(address) ?? createEmptySnapshot(sheetName, address)
+      },
+    }
+    let hostElement: HTMLDivElement | null = null
+    let latestRenderState: ReturnType<typeof useWorkbookGridRenderState> | null = null
+
+    function Harness() {
+      const renderState = useWorkbookGridRenderState({
+        engine: localEngine,
+        sheetName: 'Sheet1',
+        selectedAddr: 'A1',
+        selectedCellSnapshot: localEngine.getCell('Sheet1', 'A1'),
+        editorTargetSelection: { sheetName: 'Sheet1', address: 'B2' },
+        editorValue: 'editor target text',
+        isEditingCell: true,
+      })
+      latestRenderState = renderState
+
+      return (
+        <div
+          ref={(node) => {
+            if (node) {
+              Object.defineProperty(node, 'clientWidth', { configurable: true, value: 480 })
+              Object.defineProperty(node, 'clientHeight', { configurable: true, value: 180 })
+            }
+            renderState.handleHostRef(node)
+            hostElement = node
+          }}
+        />
+      )
+    }
+
+    const rootHost = document.createElement('div')
+    document.body.appendChild(rootHost)
+    const root = createRoot(rootHost)
+
+    await act(async () => {
+      root.render(<Harness />)
+    })
+
+    Object.defineProperty(hostElement!, 'clientWidth', { configurable: true, value: 480 })
+    Object.defineProperty(hostElement!, 'clientHeight', { configurable: true, value: 180 })
+
+    await act(async () => {
+      window.dispatchEvent(new Event('resize'))
+      await new Promise((resolve) => window.setTimeout(resolve, 0))
+    })
+
+    const renderedTexts = latestRenderState?.renderTilePanes.flatMap((pane) => pane.tile.textRuns.map((run) => run.text)) ?? []
+    expect(latestRenderState?.selectedCell).toMatchObject({ col: 0, row: 0 })
+    expect(latestRenderState?.editorCell).toMatchObject({ col: 1, row: 1 })
+    expect(renderedTexts).toContain('selected text')
+    expect(renderedTexts).not.toContain('editor target text')
 
     await act(async () => {
       root.unmount()
