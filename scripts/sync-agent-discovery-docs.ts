@@ -11,6 +11,9 @@ const repositoryUrl = 'https://github.com/proompteng/bilig'
 const skillName = 'bilig-workpaper'
 const headlessPackageVersion = parsePackageVersion(await readFile(join(repoRoot, 'packages', 'headless', 'package.json'), 'utf8'))
 const headlessPackageSpec = `@bilig/headless@${headlessPackageVersion}`
+const mcpbReleaseTag = `libraries-v${headlessPackageVersion}`
+const mcpbReleaseAssetUrl = `${repositoryUrl}/releases/download/${mcpbReleaseTag}/bilig-workpaper.mcpb`
+const mcpbReleaseChecksumUrl = `${mcpbReleaseAssetUrl}.sha256`
 const skillTags = ['ai-agents', 'spreadsheet-automation', 'formulas', 'xlsx', 'mcp', 'typescript'] as const
 const mcpPromptNames = ['edit_and_verify_workpaper', 'debug_workpaper_formula'] as const
 const agentNotAFitBoundaries = [
@@ -75,6 +78,11 @@ npm exec --package ${headlessPackageSpec} -- bilig-agent-challenge
 npm exec --package ${headlessPackageSpec} -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 npm exec --package ${headlessPackageSpec} -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 \`\`\`
+
+Claude Desktop users can install the released MCPB bundle from:
+
+- ${mcpbReleaseAssetUrl}
+- ${mcpbReleaseChecksumUrl}
 
 ## Direct TypeScript
 
@@ -160,6 +168,12 @@ Use \`--init-demo-workpaper\` when the path may not exist yet; it creates the de
 WorkPaper JSON only when the file is missing. Use \`--writable\` only when the
 task should persist \`set_cell_contents\` edits back to the same WorkPaper JSON
 file.
+
+Claude Desktop users can skip manual JSON config by installing the released
+MCPB bundle:
+
+- ${mcpbReleaseAssetUrl}
+- ${mcpbReleaseChecksumUrl}
 
 ## Direct TypeScript entrypoint
 
@@ -538,6 +552,14 @@ function agentJsonManifest(): string {
           type: 'mcp-stdio-server',
           docs: `${siteRoot}/mcp-workpaper-tool-server.html`,
           server_card: `${siteRoot}/.well-known/mcp/server-card.json`,
+        },
+        {
+          name: 'claude-desktop-mcpb',
+          type: 'mcpb-desktop-extension',
+          package_version: headlessPackageVersion,
+          download_url: mcpbReleaseAssetUrl,
+          checksum_url: mcpbReleaseChecksumUrl,
+          docs: `${siteRoot}/claude-desktop-mcpb-workpaper.html`,
         },
         {
           name: 'remote-workpaper-mcp-demo',

@@ -441,6 +441,8 @@ For setup details, use the
 [MCP client setup](https://github.com/proompteng/bilig/blob/main/docs/mcp-client-setup.md),
 and
 [Claude Desktop MCPB guide](https://github.com/proompteng/bilig/blob/main/docs/claude-desktop-mcpb-workpaper.md).
+The released Claude Desktop bundle is published at
+<https://github.com/proompteng/bilig/releases/download/libraries-v0.25.3/bilig-workpaper.mcpb>.
 
 ## Service Routes
 
@@ -758,7 +760,8 @@ When the sanity check passes, these are the next useful pages.
   [MCP server guide](https://github.com/proompteng/bilig/blob/main/docs/mcp-workpaper-tool-server.md),
   [MCP directory page](https://github.com/proompteng/bilig/blob/main/docs/mcp-spreadsheet-server-directory.md),
   [MCP client setup](https://github.com/proompteng/bilig/blob/main/docs/mcp-client-setup.md),
-  and [Claude Desktop MCPB bundle](https://github.com/proompteng/bilig/blob/main/docs/claude-desktop-mcpb-workpaper.md).
+  and [Claude Desktop MCPB bundle](https://github.com/proompteng/bilig/blob/main/docs/claude-desktop-mcpb-workpaper.md)
+  ([download](https://github.com/proompteng/bilig/releases/download/libraries-v0.25.3/bilig-workpaper.mcpb)).
 - Choosing the stack:
   [screenshot automation boundary](https://github.com/proompteng/bilig/blob/main/docs/stop-driving-spreadsheets-with-screenshots.md),
   [Node spreadsheet formula engine](https://github.com/proompteng/bilig/blob/main/docs/node-spreadsheet-formula-engine.md),

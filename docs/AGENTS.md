@@ -41,6 +41,11 @@ npm exec --package @bilig/headless@0.25.3 -- bilig-workpaper-mcp --workpaper ./p
 npm exec --package @bilig/headless@0.25.3 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 ```
 
+Claude Desktop users can install the released MCPB bundle from:
+
+- https://github.com/proompteng/bilig/releases/download/libraries-v0.25.3/bilig-workpaper.mcpb
+- https://github.com/proompteng/bilig/releases/download/libraries-v0.25.3/bilig-workpaper.mcpb.sha256
+
 ## Direct TypeScript
 
 Use `WorkPaper.buildFromSheets()` for hand-authored models, `setCellContents()` for edits, `getCellDisplayValue()` for readback, and `exportWorkPaperDocument()` plus `serializeWorkPaperDocument()` for persistence proof.

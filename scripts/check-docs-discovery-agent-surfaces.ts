@@ -55,6 +55,8 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   } = input.context
   const { headlessSpreadsheetEngineNodeServicesAgents, spreadsheetMcpServerComparison } = input
   const headlessPackageSpec = `@bilig/headless@${headlessPackageVersion}`
+  const mcpbReleaseAssetUrl = `https://github.com/proompteng/bilig/releases/download/libraries-v${headlessPackageVersion}/bilig-workpaper.mcpb`
+  const mcpbReleaseChecksumUrl = `${mcpbReleaseAssetUrl}.sha256`
 
   const jekyllConfig = await readFile(join(docsRoot, '_config.yml'), 'utf8')
   requireIncludes(jekyllConfig, 'include:', 'docs/_config.yml')
@@ -398,6 +400,8 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     `"args": ["exec", "--package", "${headlessPackageSpec}", "--", "bilig-workpaper-mcp", "--workpaper", "./pricing.workpaper.json", "--init-demo-workpaper", "--writable"]`,
     `args = ["exec", "--package", "${headlessPackageSpec}", "--", "bilig-workpaper-mcp", "--workpaper", "./pricing.workpaper.json", "--init-demo-workpaper", "--writable"]`,
     'pnpm mcpb:workpaper:build',
+    mcpbReleaseAssetUrl,
+    mcpbReleaseChecksumUrl,
     'claude-desktop-mcpb-workpaper.md',
     'claude mcp add-json bilig-workpaper',
     '.cursor/mcp.json',
@@ -413,7 +417,10 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   }
   requireIncludes(rootPackageJson, '"mcpb:workpaper:build": "tsx scripts/build-workpaper-mcpb.ts"', 'package.json')
   for (const required of [
-    'description: Build a Claude Desktop MCPB bundle for the published @bilig/headless WorkPaper MCP server',
+    'description: Download or reproduce the Claude Desktop MCPB bundle for the published @bilig/headless WorkPaper MCP server',
+    mcpbReleaseAssetUrl,
+    mcpbReleaseChecksumUrl,
+    'Open the downloaded `.mcpb` file with Claude Desktop',
     'pnpm mcpb:workpaper:build',
     'BILIG_HEADLESS_VERSION=$(npm view @bilig/headless version)',
     'pnpm mcpb:workpaper:build -- --package-version "$BILIG_HEADLESS_VERSION"',

@@ -74,6 +74,12 @@ WorkPaper JSON only when the file is missing. Use `--writable` only when the
 task should persist `set_cell_contents` edits back to the same WorkPaper JSON
 file.
 
+Claude Desktop users can skip manual JSON config by installing the released
+MCPB bundle:
+
+- https://github.com/proompteng/bilig/releases/download/libraries-v0.25.3/bilig-workpaper.mcpb
+- https://github.com/proompteng/bilig/releases/download/libraries-v0.25.3/bilig-workpaper.mcpb.sha256
+
 ## Direct TypeScript entrypoint
 
 Use the package API when the workbook logic belongs in a service, queue worker,

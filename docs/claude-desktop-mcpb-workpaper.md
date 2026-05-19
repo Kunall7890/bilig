@@ -1,7 +1,7 @@
 ---
 title: Install Bilig WorkPaper in Claude Desktop with MCPB
 published: true
-description: Build a Claude Desktop MCPB bundle for the published @bilig/headless WorkPaper MCP server and test formula-backed workbook tools locally.
+description: Download or reproduce the Claude Desktop MCPB bundle for the published @bilig/headless WorkPaper MCP server and test formula-backed workbook tools locally.
 tags: claude, mcpb, mcp, spreadsheet, workbook, agents
 canonical_url: https://proompteng.github.io/bilig/claude-desktop-mcpb-workpaper.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
@@ -15,7 +15,30 @@ Use this path when you want a local Claude Desktop bundle instead of editing
 `@bilig/headless` package, runs the WorkPaper MCP stdio server with Node, and
 needs no API key.
 
-## Build the bundle
+## Download the bundle
+
+Use the release asset when you want the shortest install path:
+
+```text
+https://github.com/proompteng/bilig/releases/download/libraries-v0.25.3/bilig-workpaper.mcpb
+```
+
+Checksum:
+
+```text
+2412ad7760fc5edced25ae55962502d343bd5c688d39a0125bb559f5acb39965  bilig-workpaper.mcpb
+```
+
+The matching checksum file is published beside the bundle:
+
+```text
+https://github.com/proompteng/bilig/releases/download/libraries-v0.25.3/bilig-workpaper.mcpb.sha256
+```
+
+Open the downloaded `.mcpb` file with Claude Desktop. Claude should show an
+install dialog for **Bilig WorkPaper**.
+
+## Reproduce from source
 
 From the repository root:
 
@@ -41,7 +64,8 @@ pnpm mcpb:workpaper:build -- --package-version "$BILIG_HEADLESS_VERSION"
 
 ## Install in Claude Desktop
 
-Open the generated file with Claude Desktop:
+Open either the downloaded release asset or the locally generated file with
+Claude Desktop:
 
 ```sh
 open build/mcpb/bilig-workpaper.mcpb

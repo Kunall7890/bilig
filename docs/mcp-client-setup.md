@@ -145,8 +145,19 @@ so you know whether the issue is the client config or the npm server command.
 
 ### Claude Desktop MCPB bundle
 
-If you prefer a local Claude Desktop bundle, build the MCPB package from this
-repository:
+If you prefer a Claude Desktop bundle, download the released MCPB asset:
+
+```text
+https://github.com/proompteng/bilig/releases/download/libraries-v0.25.3/bilig-workpaper.mcpb
+```
+
+The checksum is published beside it:
+
+```text
+https://github.com/proompteng/bilig/releases/download/libraries-v0.25.3/bilig-workpaper.mcpb.sha256
+```
+
+You can also reproduce the same MCPB package from this repository:
 
 ```sh
 pnpm mcpb:workpaper:build

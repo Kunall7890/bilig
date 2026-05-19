@@ -74,6 +74,8 @@ const {
   evaluateExcelFormulasInNodeTypescript,
 } = docsDiscoveryContext
 const headlessPackageSpec = `@bilig/headless@${headlessPackageVersion}`
+const mcpbReleaseAssetUrl = `https://github.com/proompteng/bilig/releases/download/libraries-v${headlessPackageVersion}/bilig-workpaper.mcpb`
+const mcpbReleaseChecksumUrl = `${mcpbReleaseAssetUrl}.sha256`
 
 const headlessSpreadsheetEngineNodeServicesAgents = await readFile(
   join(docsRoot, 'headless-spreadsheet-engine-node-services-agents.md'),
@@ -390,6 +392,20 @@ if (
   )
 ) {
   throw new Error('docs/.well-known/agent.json must advertise the remote MCP demo capability')
+}
+if (
+  !agentJsonCapabilities.some(
+    (capability) =>
+      typeof capability === 'object' &&
+      capability !== null &&
+      Reflect.get(capability, 'name') === 'claude-desktop-mcpb' &&
+      Reflect.get(capability, 'type') === 'mcpb-desktop-extension' &&
+      Reflect.get(capability, 'package_version') === headlessPackageVersion &&
+      Reflect.get(capability, 'download_url') === mcpbReleaseAssetUrl &&
+      Reflect.get(capability, 'checksum_url') === mcpbReleaseChecksumUrl,
+  )
+) {
+  throw new Error('docs/.well-known/agent.json must advertise the Claude Desktop MCPB release asset')
 }
 requireIncludes(
   agentSkillsIndex,

@@ -77,6 +77,14 @@
       "server_card": "https://proompteng.github.io/bilig/.well-known/mcp/server-card.json"
     },
     {
+      "name": "claude-desktop-mcpb",
+      "type": "mcpb-desktop-extension",
+      "package_version": "0.25.3",
+      "download_url": "https://github.com/proompteng/bilig/releases/download/libraries-v0.25.3/bilig-workpaper.mcpb",
+      "checksum_url": "https://github.com/proompteng/bilig/releases/download/libraries-v0.25.3/bilig-workpaper.mcpb.sha256",
+      "docs": "https://proompteng.github.io/bilig/claude-desktop-mcpb-workpaper.html"
+    },
+    {
       "name": "remote-workpaper-mcp-demo",
       "type": "mcp-streamable-http-server",
       "endpoint": "https://bilig.proompteng.ai/mcp",

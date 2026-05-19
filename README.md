@@ -38,7 +38,7 @@ Project site: <https://proompteng.github.io/bilig/>
 | Basic fit                | [Why use Bilig?](docs/why-use-bilig.md)                                                                                                             | The problem is workbook-shaped business logic that needs API readback and persistence.      |
 | Published npm package    | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                                                                                     | It edits one input, recalculates, persists JSON, restores, and prints `verified: true`.     |
 | Backend service shape    | [Quote approval WorkPaper API](docs/quote-approval-workpaper-api.md)                                                                                | A realistic route-style workflow returns formula readback and `restoredMatchesAfter: true`. |
-| Agent or MCP tools       | [Headless WorkPaper agent handbook](docs/headless-workpaper-agent-handbook.md) and [MCP spreadsheet tool server](docs/mcp-workpaper-tool-server.md) | The agent gets a copy-paste handoff prompt, then proves write/readback/persist.             |
+| Agent or MCP tools       | [Headless WorkPaper agent handbook](docs/headless-workpaper-agent-handbook.md), [MCP spreadsheet tool server](docs/mcp-workpaper-tool-server.md), and [Claude Desktop MCPB bundle](docs/claude-desktop-mcpb-workpaper.md) | The agent installs a tool path, gets a copy-paste handoff prompt, then proves write/readback/persist. |
 | Agent-owned XLSX files   | [Agent XLSX recalculation without LibreOffice](docs/agent-xlsx-formula-recalculation-without-libreoffice.md)                                        | A tool can edit XLSX inputs, recalculate, export, reimport, and return `verified: true`.    |
 | Public technical review  | [Show HN maintainer note](docs/show-hn-formula-workbooks-node-services.md)                                                                          | One shareable page has the npm check, benchmark caveat, known limits, and feedback ask.     |
 | Trust and performance    | [npm provenance](docs/npm-provenance-package-trust.md) and [benchmark evidence](docs/what-workpaper-benchmark-proves.md)                            | npm shows SLSA provenance, and benchmark claims match the checked artifact.                 |
@@ -66,6 +66,8 @@ npm exec --package @bilig/headless@0.25.3 -- bilig-agent-challenge
 Agent tools that support skill manifests can start from
 [`skill.md`](docs/skill.md) or the well-known index at
 [`docs/.well-known/agent-skills/index.json`](docs/.well-known/agent-skills/index.json).
+Claude Desktop users can also install the released MCPB bundle directly:
+<https://github.com/proompteng/bilig/releases/download/libraries-v0.25.3/bilig-workpaper.mcpb>.
 If you need a copy-paste eval for another tool host, use the
 [agent workbook challenge](docs/agent-workbook-challenge.md): one input edit,
 one dependent formula readback, one serialized restore, and a `verified: true`
