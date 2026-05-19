@@ -97,6 +97,9 @@ export class ProjectedTileSceneStore {
     for (const mutation of batch.mutations) {
       switch (mutation.kind) {
         case 'tileReplace': {
+          if (this.isStaleTileMutationForResidentTile(mutation.tileId, batch)) {
+            break
+          }
           const tile = {
             tileId: mutation.tileId,
             coord: mutation.coord,
@@ -124,6 +127,9 @@ export class ProjectedTileSceneStore {
           break
         }
         case 'cellRuns': {
+          if (this.isStaleTileMutationForResidentTile(mutation.tileId, batch)) {
+            break
+          }
           this.residency.delete(mutation.tileId)
           this.dirtyTiles.markTile(mutation.tileId, DirtyMaskV3.Value | DirtyMaskV3.Text | DirtyMaskV3.Rect)
           changedTileIds.delete(mutation.tileId)
@@ -131,6 +137,9 @@ export class ProjectedTileSceneStore {
           break
         }
         case 'invalidate':
+          if (this.isStaleTileMutationForResidentTile(mutation.tileId, batch)) {
+            break
+          }
           this.residency.delete(mutation.tileId)
           changedTileIds.delete(mutation.tileId)
           invalidatedTileIds.add(mutation.tileId)
@@ -208,9 +217,17 @@ export class ProjectedTileSceneStore {
   private isStaleBatchForSheet(batch: RenderTileDeltaBatch): boolean {
     const key = projectedSheetIdentityKey(batch)
     const lastSequence = this.lastSequenceBySheetIdentity.get(key)
+    return lastSequence !== undefined && batch.batchId < lastSequence.batchId
+  }
+
+  private isStaleTileMutationForResidentTile(tileId: number, batch: RenderTileDeltaBatch): boolean {
+    const existing = this.residency.getExact(tileId)?.packet
     return (
-      lastSequence !== undefined &&
-      (batch.batchId < lastSequence.batchId || (batch.batchId === lastSequence.batchId && batch.cameraSeq < lastSequence.cameraSeq))
+      existing !== null &&
+      existing !== undefined &&
+      matchesProjectedSheetIdentity(existing.coord, batch) &&
+      batch.batchId === existing.lastBatchId &&
+      batch.cameraSeq < existing.lastCameraSeq
     )
   }
 

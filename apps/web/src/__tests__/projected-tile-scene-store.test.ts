@@ -101,6 +101,16 @@ describe('ProjectedTileSceneStore', () => {
     expect(store.peekTile(101)?.version.values).toBe(2)
   })
 
+  it('accepts same-batch lower-camera replacements for unseen same-sheet tiles', () => {
+    const store = new ProjectedTileSceneStore()
+    store.applyDelta({ ...createBatch(2, [createTileReplace(101, 2)]), cameraSeq: 20 })
+
+    const lowerCameraChange = store.applyDelta({ ...createBatch(2, [createTileReplace(202, 2)]), cameraSeq: 19 })
+
+    expect(lowerCameraChange.changedTileIds).toEqual([202])
+    expect(store.peekTile(202)).toMatchObject({ tileId: 202, lastBatchId: 2, lastCameraSeq: 19 })
+  })
+
   it('does not let one sheet camera sequence suppress another sheet current-batch delta', () => {
     const store = new ProjectedTileSceneStore()
     store.applyDelta({
