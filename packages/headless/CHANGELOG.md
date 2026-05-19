@@ -11,9 +11,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(formula): batch direct scalar recalc natively (ecd34ab9)
 
 ## Internal runtime changes
+
 - docs(discovery): sync 0.32.1 agent surfaces (f297f822)
 
 ## 0.32.1
@@ -23,10 +25,12 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(headless): narrow core startup imports (f3ddf1ab)
 - fix(package): use publishable workpaper package name (478a0039)
 
 ## Internal runtime changes
+
 - docs(discovery): sync 0.32 agent surfaces (eee388d2)
 
 ## 0.32.0

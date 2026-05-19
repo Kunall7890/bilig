@@ -22,7 +22,7 @@ for Excel to calculate later.
 A realistic server-side loop looks like this:
 
 1. Load or generate a pricing, payout, quote, or validation workbook.
-2. Import the workbook through `@bilig/headless/xlsx`.
+2. Pass the bytes to `xlsx-formula-recalc`.
 3. Write request inputs into known cells.
 4. Read the recalculated formula outputs before returning a response.
 5. Export the edited workbook back to `.xlsx`.
@@ -31,6 +31,27 @@ A realistic server-side loop looks like this:
 
 The last step matters. It catches the difference between "the in-memory model
 looked right" and "the workbook artifact still works after the XLSX boundary."
+
+## Install the narrow package
+
+```sh
+npm install xlsx-formula-recalc
+```
+
+For a one-off CLI run without adding it to a project:
+
+```sh
+npx --package xlsx-formula-recalc xlsx-recalc pricing.xlsx \
+  --set Inputs!B2=48 \
+  --set Inputs!B3=1500 \
+  --read Summary!B7 \
+  --out pricing.recalculated.xlsx \
+  --json
+```
+
+The CLI writes the updated workbook and prints the values read after
+recalculation. Cell targets are sheet-qualified A1 references such as
+`Inputs!B2` or `'Pricing Model'!F12`.
 
 ## Run the maintained example
 
@@ -48,9 +69,9 @@ npm start
 ```
 
 The example builds a pricing workbook, exports `pricing-model-source.xlsx`,
-imports it through the `@bilig/headless/xlsx` subpath, changes input cells,
-reads a recalculated approval decision, exports `pricing-model-edited.xlsx`,
-and reimports the edited workbook.
+passes it through `xlsx-formula-recalc`, changes input cells, reads a
+recalculated approval decision, exports `pricing-model-edited.xlsx`, and
+reimports the edited workbook.
 
 Expected output includes:
 
@@ -76,32 +97,24 @@ The source is intentionally small enough to read in one sitting:
 
 ## Minimal API boundary
 
-Use the XLSX subpath at the file boundary and the WorkPaper API for trusted
-calculation state:
+Use the package API at the file boundary when the service needs a recalculated
+answer immediately:
 
 ```ts
 import { readFile, writeFile } from 'node:fs/promises'
-import { WorkPaper } from '@bilig/headless'
-import { exportXlsx, importXlsx } from '@bilig/headless/xlsx'
+import { recalculateXlsx } from 'xlsx-formula-recalc'
 
-const source = await readFile('pricing-model-source.xlsx')
-const imported = importXlsx(source, 'pricing-model-source.xlsx')
-const workbook = WorkPaper.buildFromSnapshot(imported.snapshot)
+const result = recalculateXlsx(await readFile('pricing-model-source.xlsx'), {
+  fileName: 'pricing-model-source.xlsx',
+  edits: [
+    { target: 'Inputs!B2', value: 48 },
+    { target: 'Inputs!B3', value: 1250 },
+  ],
+  reads: ['Summary!B7'],
+})
 
-const inputs = workbook.getSheetId('Inputs')
-const summary = workbook.getSheetId('Summary')
-if (inputs === undefined || summary === undefined) {
-  throw new Error('Expected Inputs and Summary sheets')
-}
-
-workbook.setCellContents({ sheet: inputs, row: 1, col: 1 }, 48)
-workbook.setCellContents({ sheet: inputs, row: 2, col: 1 }, 1250)
-
-const decision = workbook.getCellValue({ sheet: summary, row: 6, col: 1 })
-const edited = exportXlsx(workbook.exportSnapshot())
-await writeFile('pricing-model-edited.xlsx', edited)
-
-console.log({ decision })
+await writeFile('pricing-model-edited.xlsx', result.xlsx)
+console.log({ decision: result.reads['Summary!B7'], warnings: result.warnings })
 ```
 
 In production, keep a narrow adapter around this boundary. Your application
@@ -114,8 +127,10 @@ Use ExcelJS or SheetJS first when the job is workbook-file manipulation:
 styling, rows, sheets, images, tables, streaming writes, or broad spreadsheet
 format interchange.
 
-Use `@bilig/headless` when the Node process must own the recalculated answer
-before it accepts, rejects, queues, or persists a workflow.
+Use `xlsx-formula-recalc` when the Node process must own the recalculated answer
+before it accepts, rejects, queues, or persists a workflow. Use
+`@bilig/headless/xlsx` directly only when you need the lower-level WorkPaper
+snapshot boundary.
 
 Many services should combine the tools: use a file library for presentation
 details and use a formula runtime for the auditable decision path.

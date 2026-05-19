@@ -117,7 +117,10 @@ requirePackageKeywords(
   ],
   'packages/headless/package.json',
 )
-requireIncludes(index, '"downloadUrl": "https://www.npmjs.com/package/@bilig/headless"', 'docs/index.html')
+requireIncludes(index, '"downloadUrl": "https://www.npmjs.com/package/bilig-workpaper"', 'docs/index.html')
+requireIncludes(index, '"https://www.npmjs.com/package/xlsx-formula-recalc"', 'docs/index.html')
+requireIncludes(index, '"https://www.npmjs.com/package/exceljs-formula-recalc"', 'docs/index.html')
+requireIncludes(index, '<h2 id="packages-title">Install the package that matches the job.</h2>', 'docs/index.html')
 requireIncludes(index, '"applicationCategory": "DeveloperApplication"', 'docs/index.html')
 requireIncludes(index, '"@type": "FAQPage"', 'docs/index.html')
 requireIncludes(
@@ -251,7 +254,7 @@ requireIncludes(readme, 'acceptance commands for first patches.', 'README.md')
 requireIncludes(readme, 'docs/why-use-bilig.md', 'README.md')
 requireIncludes(readme, 'The published package also carries `AGENTS.md`', 'README.md')
 requireIncludes(readme, 'agent handoff prompt', 'README.md')
-requireIncludes(index, './headless-workpaper-agent-handbook.html">Agent handoff prompt', 'docs/index.html')
+requireIncludes(index, './headless-workpaper-agent-handbook.html', 'docs/index.html')
 requireIncludes(llms, '## agent handoff prompt', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/AGENTS.md', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/.well-known/agent.json', 'docs/llms.txt')

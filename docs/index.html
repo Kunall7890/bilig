@@ -11,11 +11,11 @@
     <link rel="alternate" type="application/json" href="https://proompteng.github.io/bilig/.well-known/agent.json" title="agent.json" />
     <meta
       name="description"
-      content="bilig runs formula workbooks inside Node services and agent tools. Edit cells, recalculate, verify readback, and save WorkPaper JSON."
+      content="Bilig runs formula workbooks inside Node services. Install bilig-workpaper, xlsx-formula-recalc, or exceljs-formula-recalc for recalculated formula readback in Node."
     />
     <meta
       name="keywords"
-      content="headless spreadsheet engine, Node spreadsheet engine, TypeScript formula engine, spreadsheet engine for agents, workbook automation, HyperFormula alternative, formula evaluation in Node, SQLite spreadsheet persistence, Postgres workbook persistence, serverless spreadsheet API"
+      content="xlsx formula recalculation node, ExcelJS formula recalculation, bilig-workpaper, xlsx-formula-recalc, exceljs-formula-recalc, headless spreadsheet engine, Node spreadsheet engine, TypeScript formula engine, workbook automation, HyperFormula alternative, formula evaluation in Node, serverless spreadsheet API"
     />
     <meta name="robots" content="index, follow, max-image-preview:large" />
     <meta name="theme-color" content="#151713" />
@@ -44,14 +44,14 @@
         "@context": "https://schema.org",
         "@type": "SoftwareSourceCode",
         "name": "bilig",
-        "description": "TypeScript formula workbook runtime for Node.js services and agent tools.",
+        "description": "TypeScript formula workbook runtime for Node.js services, XLSX recalculation, and ExcelJS formula readback.",
         "codeRepository": "https://github.com/proompteng/bilig",
         "license": "https://github.com/proompteng/bilig/blob/main/LICENSE",
         "programmingLanguage": "TypeScript",
         "runtimePlatform": "Node.js 22+",
         "url": "https://proompteng.github.io/bilig/",
-        "downloadUrl": "https://www.npmjs.com/package/@bilig/headless",
-        "installUrl": "https://www.npmjs.com/package/@bilig/headless",
+        "downloadUrl": "https://www.npmjs.com/package/bilig-workpaper",
+        "installUrl": "https://www.npmjs.com/package/bilig-workpaper",
         "applicationCategory": "DeveloperApplication",
         "operatingSystem": "macOS, Linux, Windows",
         "isAccessibleForFree": true,
@@ -59,21 +59,30 @@
         "featureList": [
           "Programmatic workbook creation",
           "Formula evaluation and readback",
+          "XLSX formula recalculation in Node.js",
+          "ExcelJS workbook formula readback",
           "Structural row and column edits",
           "JSON workbook persistence",
-          "MCP stdio server for agent tools",
           "SQLite, Postgres, and object storage persistence recipes",
           "Serverless API route integration",
-          "Agent write verification"
+          "Agent write verification",
+          "MCP stdio server for agent tools"
         ],
         "sameAs": [
           "https://github.com/proompteng/bilig",
+          "https://www.npmjs.com/package/bilig-workpaper",
+          "https://www.npmjs.com/package/xlsx-formula-recalc",
+          "https://www.npmjs.com/package/exceljs-formula-recalc",
           "https://www.npmjs.com/package/@bilig/headless",
           "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper",
           "https://glama.ai/mcp/servers/proompteng/bilig"
         ],
         "keywords": [
           "headless spreadsheet engine",
+          "xlsx formula recalculation node",
+          "ExcelJS formula recalculation",
+          "bilig-workpaper",
+          "xlsx-formula-recalc",
           "Node spreadsheet engine",
           "TypeScript formula engine",
           "spreadsheet engine for agents",
@@ -92,7 +101,7 @@
             "name": "Can I use bilig without the browser app?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Yes. @bilig/headless is published on npm for Node.js scripts, services, and agent tools that need workbook formulas and readback without opening the browser UI."
+              "text": "Yes. Use bilig-workpaper for Node.js scripts and services, xlsx-formula-recalc for XLSX formula recalculation, exceljs-formula-recalc for ExcelJS workflows, or @bilig/headless when you need the full runtime package and agent metadata."
             }
           },
           {
@@ -144,10 +153,11 @@
         </a>
         <nav class="nav" aria-label="Primary">
           <a href="#install">Install</a>
-          <a href="#mcp">MCP</a>
+          <a href="#packages">Packages</a>
+          <a href="./xlsx-formula-recalculation-node.html">XLSX</a>
           <a href="#proof">Benchmark</a>
           <a href="#docs">Docs</a>
-          <a href="https://www.npmjs.com/package/@bilig/headless">npm</a>
+          <a href="https://www.npmjs.com/package/bilig-workpaper">npm</a>
           <a href="https://github.com/proompteng/bilig/stargazers">Star</a>
           <a href="https://github.com/proompteng/bilig">GitHub</a>
         </nav>
@@ -162,12 +172,13 @@
           <p class="hero-subtitle">Edit cells. Recalculate. Verify readback. Save JSON.</p>
           <div class="install-command" aria-label="Install command">
             <span class="mono">$</span>
-            <code>npm i @bilig/headless</code>
+            <code>npm i bilig-workpaper</code>
           </div>
           <div class="hero-actions">
-            <a class="button primary" href="https://www.npmjs.com/package/@bilig/headless">Install from npm</a>
+            <a class="button primary" href="https://www.npmjs.com/package/bilig-workpaper">Install from npm</a>
             <a class="button" href="#install">Open the quickstart</a>
-            <a class="button" href="./headless-workpaper-agent-handbook.html">Agent handoff prompt</a>
+            <a class="button" href="./xlsx-formula-recalculation-node.html">XLSX recalc</a>
+            <a class="button" href="./exceljs-formula-recalculation-node.html">ExcelJS recalc</a>
             <a class="button dark" href="https://github.com/proompteng/bilig">View GitHub</a>
           </div>
         </div>
@@ -198,6 +209,44 @@
     </section>
 
     <main id="main">
+      <section id="packages" class="section" aria-labelledby="packages-title">
+        <div class="wrap">
+          <div class="section-head">
+            <div>
+              <p class="kicker">Package chooser</p>
+              <h2 id="packages-title">Install the package that matches the job.</h2>
+            </div>
+            <p>
+              Start with the narrow npm package for your problem. The full headless runtime is still available when you need lower-level
+              APIs, agent metadata, or the MCP binary.
+            </p>
+          </div>
+
+          <div class="row-list">
+            <a class="path-link" href="https://www.npmjs.com/package/bilig-workpaper">
+              <span>workpaper</span>
+              <strong><code>npm install bilig-workpaper</code></strong>
+              <em>Formula workbook state for Node services, queue workers, route handlers, tests, and agent tools.</em>
+            </a>
+            <a class="path-link" href="https://www.npmjs.com/package/xlsx-formula-recalc">
+              <span>xlsx</span>
+              <strong><code>npm install xlsx-formula-recalc</code></strong>
+              <em>Edit XLSX inputs, recalculate formulas in Node, read proof values, and export the updated workbook.</em>
+            </a>
+            <a class="path-link" href="https://www.npmjs.com/package/exceljs-formula-recalc">
+              <span>exceljs</span>
+              <strong><code>npm install exceljs exceljs-formula-recalc</code></strong>
+              <em>Keep ExcelJS for workbook files and add recalculated formula readback when cached values are stale.</em>
+            </a>
+            <a class="path-link" href="https://www.npmjs.com/package/@bilig/headless">
+              <span>runtime</span>
+              <strong><code>npm install @bilig/headless</code></strong>
+              <em>Use the full runtime package for lower-level subpaths, provenance checks, skill metadata, and MCP tooling.</em>
+            </a>
+          </div>
+        </div>
+      </section>
+
       <section class="section" aria-labelledby="why-title">
         <div class="wrap">
           <div class="section-head">
@@ -258,7 +307,7 @@
 cd bilig-headless-eval
 npm init -y
 npm pkg set type=module
-npm install @bilig/headless
+npm install bilig-workpaper
 npm install -D tsx typescript @types/node
 curl -fsSLo quickstart.ts \
   https://proompteng.github.io/bilig/npm-eval.ts
@@ -287,7 +336,7 @@ npx tsx quickstart.ts</code></pre>
   exportWorkPaperDocument,
   parseWorkPaperDocument,
   serializeWorkPaperDocument,
-} <span class="kw">from</span> <span class="str">"@bilig/headless"</span>;
+} <span class="kw">from</span> <span class="str">"bilig-workpaper"</span>;
 
 const workbook = WorkPaper.buildFromSheets({
   Inputs: [
@@ -619,7 +668,10 @@ $ curl https://bilig.proompteng.ai/mcp -H 'accept: application/json, text/event-
             <div class="docs-column">
               <h3>Run</h3>
               <ul>
-                <li><a href="https://www.npmjs.com/package/@bilig/headless">npm package</a></li>
+                <li><a href="https://www.npmjs.com/package/bilig-workpaper">bilig-workpaper npm package</a></li>
+                <li><a href="https://www.npmjs.com/package/xlsx-formula-recalc">xlsx-formula-recalc npm package</a></li>
+                <li><a href="https://www.npmjs.com/package/exceljs-formula-recalc">exceljs-formula-recalc npm package</a></li>
+                <li><a href="https://www.npmjs.com/package/@bilig/headless">@bilig/headless npm package</a></li>
                 <li><a href="./try-bilig-headless-in-node.html">Node quickstart</a></li>
                 <li><a href="./create-bilig-workpaper.html">starter package status</a></li>
                 <li><a href="https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper">TypeScript examples</a></li>
@@ -821,7 +873,7 @@ $ curl https://bilig.proompteng.ai/mcp -H 'accept: application/json, text/event-
             <p>If the quickstart matches your workflow, star the repo. If it does not, name the blocker.</p>
           </div>
           <div class="final-actions">
-            <a class="button primary" href="https://www.npmjs.com/package/@bilig/headless">Install</a>
+            <a class="button primary" href="https://www.npmjs.com/package/bilig-workpaper">Install</a>
             <a class="button" href="https://github.com/proompteng/bilig/stargazers">Star repo</a>
             <a class="button" href="https://github.com/proompteng/bilig/subscription">Watch releases</a>
             <a class="button" href="https://github.com/proompteng/bilig/discussions/new?category=general">Name blocker</a>

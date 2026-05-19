@@ -5,7 +5,10 @@
 
 site: https://proompteng.github.io/bilig/
 repository: https://github.com/proompteng/bilig
-npm package: https://www.npmjs.com/package/@bilig/headless
+npm workpaper package: https://www.npmjs.com/package/bilig-workpaper
+npm xlsx recalculation package: https://www.npmjs.com/package/xlsx-formula-recalc
+npm ExcelJS recalculation package: https://www.npmjs.com/package/exceljs-formula-recalc
+npm full runtime package: https://www.npmjs.com/package/@bilig/headless
 remote MCP endpoint: https://bilig.proompteng.ai/mcp
 agent instructions: https://proompteng.github.io/bilig/AGENTS.md
 agent discovery manifest: https://proompteng.github.io/bilig/.well-known/agent.json
@@ -19,6 +22,17 @@ language: typescript
 security policy: https://github.com/proompteng/bilig/blob/main/SECURITY.md
 support policy: https://github.com/proompteng/bilig/blob/main/SUPPORT.md
 openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
+
+## package chooser
+
+- Use `bilig-workpaper` for formula workbook state inside a Node service,
+  queue worker, route handler, test, or agent tool.
+- Use `xlsx-formula-recalc` when XLSX inputs changed in Node and formula
+  outputs must be recalculated before returning.
+- Use `exceljs-formula-recalc` when an existing ExcelJS workbook needs fresh
+  formula results instead of stale cached values.
+- Use `@bilig/headless` when the caller needs lower-level WorkPaper subpaths,
+  agent metadata, the MCP binary, or provenance docs.
 
 ## agent handoff prompt
 
@@ -34,6 +48,13 @@ For a reduced XLSX formula/import blocker, generate a local fixture report with:
 
 ```sh
 npm exec --package @bilig/headless@0.32.2 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+```
+
+For direct XLSX recalculation from a project or one-off command:
+
+```sh
+npm install xlsx-formula-recalc
+npx --package xlsx-formula-recalc xlsx-recalc pricing.xlsx --set Inputs!B2=48 --read Summary!B7 --out pricing.recalculated.xlsx --json
 ```
 
 For Node or TypeScript, import `@bilig/headless` directly. Prove the edit by

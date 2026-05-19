@@ -19,7 +19,7 @@ npm install xlsx-formula-recalc
 ## CLI
 
 ```sh
-npx xlsx-formula-recalc pricing.xlsx \
+npx --package xlsx-formula-recalc xlsx-recalc pricing.xlsx \
   --set Inputs!B2=48 \
   --set Inputs!B3=1500 \
   --read Summary!B7 \

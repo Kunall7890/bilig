@@ -247,8 +247,9 @@ Source: https://github.com/proompteng/bilig/blob/main/README.md
 
 [![CI](https://github.com/proompteng/bilig/actions/workflows/ci.yml/badge.svg)](https://github.com/proompteng/bilig/actions/workflows/ci.yml)
 [![GitHub Repo stars](https://img.shields.io/github/stars/proompteng/bilig?style=social)](https://github.com/proompteng/bilig/stargazers)
-[![npm: @bilig/headless](https://img.shields.io/npm/v/@bilig/headless?label=%40bilig%2Fheadless)](https://www.npmjs.com/package/@bilig/headless)
-[![npm weekly downloads](https://img.shields.io/npm/dw/@bilig/headless?label=npm%20downloads)](https://www.npmjs.com/package/@bilig/headless)
+[![npm: bilig-workpaper](https://img.shields.io/npm/v/bilig-workpaper?label=bilig-workpaper)](https://www.npmjs.com/package/bilig-workpaper)
+[![npm: xlsx-formula-recalc](https://img.shields.io/npm/v/xlsx-formula-recalc?label=xlsx-formula-recalc)](https://www.npmjs.com/package/xlsx-formula-recalc)
+[![npm weekly downloads](https://img.shields.io/npm/dw/@bilig/headless?label=%40bilig%2Fheadless%20downloads)](https://www.npmjs.com/package/@bilig/headless)
 [![MCP server score](https://glama.ai/mcp/servers/proompteng/bilig/badges/score.svg)](https://glama.ai/mcp/servers/proompteng/bilig)
 [![CodeQL](https://github.com/proompteng/bilig/actions/workflows/codeql.yml/badge.svg)](https://github.com/proompteng/bilig/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/proompteng/bilig/badge)](https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig)
@@ -256,13 +257,20 @@ Source: https://github.com/proompteng/bilig/blob/main/README.md
 
 **Formula workbooks for Node services and agent tools.**
 
-Use [`bilig-workpaper`](https://www.npmjs.com/package/bilig-workpaper) or
-[`@bilig/headless`](https://www.npmjs.com/package/@bilig/headless) when a
+Use [`bilig-workpaper`](https://www.npmjs.com/package/bilig-workpaper) when a
 calculation is easiest to review as cells and formulas, but it has to run in a
-Node service, queue worker, serverless route, test, or coding-agent tool. The
-unscoped `bilig-workpaper` package re-exports the headless runtime for humans searching npm;
-`@bilig/headless` remains the fully qualified runtime package with bundled
-agent metadata.
+Node service, queue worker, serverless route, test, or coding-agent tool. Use
+[`xlsx-formula-recalc`](https://www.npmjs.com/package/xlsx-formula-recalc) when
+the immediate problem is "I changed XLSX inputs in Node and need the formula
+results now." Use
+[`exceljs-formula-recalc`](https://www.npmjs.com/package/exceljs-formula-recalc)
+when the workbook is already moving through ExcelJS.
+
+The scoped [`@bilig/headless`](https://www.npmjs.com/package/@bilig/headless)
+package remains the fully qualified runtime package with bundled agent
+metadata. The unscoped packages exist so people searching npm for WorkPaper,
+XLSX recalculation, ExcelJS formulas, SheetJS alternatives, or server-side
+spreadsheet formulas land on the narrow install path first.
 
 It gives you a `WorkPaper`: build sheets, write inputs, recalculate, read the
 cell value, and save the workbook as JSON. No browser grid is involved.
@@ -280,12 +288,22 @@ workbook would be ceremony.
 
 Project site: <https://proompteng.github.io/bilig/>
 
+## Which Package Should I Install?
+
+| Problem you have right now | Install | First proof |
+| -------------------------- | ------- | ----------- |
+| Formula workbook state inside a Node service or agent tool | `npm install bilig-workpaper` | [90-second Node quickstart](docs/try-bilig-headless-in-node.md) |
+| XLSX inputs changed in Node; formula outputs must refresh before returning | `npm install xlsx-formula-recalc` | [XLSX formula recalculation in Node.js](docs/xlsx-formula-recalculation-node.md) |
+| Existing ExcelJS workflow needs recalculated values, not stale cached results | `npm install exceljs exceljs-formula-recalc` | [ExcelJS formula recalculation in Node.js](docs/exceljs-formula-recalculation-node.md) |
+| Full runtime package with agent metadata, MCP binary, provenance docs, and lower-level subpaths | `npm install @bilig/headless` | [npm provenance and package trust](docs/npm-provenance-package-trust.md) |
+
 ## Choose An Evaluation Path
 
 | If you are evaluating... | Start here                                                                                                                                                                                                                | What should be true before you star, watch, or adopt                                                  |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | Basic fit                | [Why use Bilig?](docs/why-use-bilig.md)                                                                                                                                                                                   | The problem is workbook-shaped business logic that needs API readback and persistence.                |
-| Published npm package    | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                                                                                                                                                           | It edits one input, recalculates, persists JSON, restores, and prints `verified: true`.               |
+| Published npm package    | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                                                                                                                                                           | `bilig-workpaper` edits one input, recalculates, persists JSON, restores, and prints `verified: true`. |
+| XLSX or ExcelJS recalculation | [XLSX formula recalculation](docs/xlsx-formula-recalculation-node.md) and [ExcelJS formula recalculation](docs/exceljs-formula-recalculation-node.md)                                                                | The package updates inputs, reads recalculated values, and exports or mutates the workbook boundary.  |
 | Backend service shape    | [Quote approval WorkPaper API](docs/quote-approval-workpaper-api.md)                                                                                                                                                      | A realistic route-style workflow returns formula readback and `restoredMatchesAfter: true`.           |
 | Agent or MCP tools       | [Headless WorkPaper agent handbook](docs/headless-workpaper-agent-handbook.md), [MCP spreadsheet tool server](docs/mcp-workpaper-tool-server.md), and [Claude Desktop MCPB bundle](docs/claude-desktop-mcpb-workpaper.md) | The agent installs a tool path, gets a copy-paste handoff prompt, then proves write/readback/persist. |
 | Agent-owned XLSX files   | [Agent XLSX recalculation without LibreOffice](docs/agent-xlsx-formula-recalculation-without-libreoffice.md)                                                                                                              | A tool can edit XLSX inputs, recalculate, export, reimport, and return `verified: true`.              |
@@ -338,7 +356,7 @@ mkdir bilig-headless-eval
 cd bilig-headless-eval
 npm init -y
 npm pkg set type=module
-npm install @bilig/headless
+npm install bilig-workpaper
 npm install -D tsx typescript @types/node
 curl -fsSLo quickstart.ts https://proompteng.github.io/bilig/npm-eval.ts
 npx tsx quickstart.ts
@@ -352,7 +370,7 @@ Expected output:
   "after": 38400,
   "afterRestore": 38400,
   "sheets": ["Inputs", "Summary"],
-  "bytes": 1000,
+  "bytes": 999,
   "verified": true,
   "nextStep": "If this proof matches your service or agent workflow, star or bookmark Bilig: https://github.com/proompteng/bilig/stargazers"
 }
@@ -394,7 +412,7 @@ Most integrations are just this: build a workbook, write an input, read the
 calculated value, and save the workbook state.
 
 ```ts
-import { WorkPaper, exportWorkPaperDocument, serializeWorkPaperDocument } from '@bilig/headless'
+import { WorkPaper, exportWorkPaperDocument, serializeWorkPaperDocument } from 'bilig-workpaper'
 
 const workbook = WorkPaper.buildFromSheets({
   Inputs: [
@@ -3752,7 +3770,7 @@ the next backend developer can find the fixture path:
 
 Source: https://github.com/proompteng/bilig/blob/main/docs/try-bilig-headless-in-node.md
 
-# Try bilig headless spreadsheet engine in Node
+# Try Bilig WorkPaper in Node
 
 This page is for people who want to try the package before reading the whole
 repo. It starts from an empty directory, installs the published npm package,
@@ -3768,7 +3786,7 @@ mkdir bilig-headless-eval
 cd bilig-headless-eval
 npm init -y
 npm pkg set type=module
-npm install @bilig/headless
+npm install bilig-workpaper
 npm install -D tsx typescript @types/node
 curl -fsSLo quickstart.ts https://proompteng.github.io/bilig/npm-eval.ts
 npx tsx quickstart.ts
@@ -3782,7 +3800,7 @@ Expected output:
   "after": 38400,
   "afterRestore": 38400,
   "sheets": ["Inputs", "Summary"],
-  "bytes": 1000,
+  "bytes": 999,
   "verified": true,
   "nextStep": "If this proof matches your service or agent workflow, star or bookmark Bilig: https://github.com/proompteng/bilig/stargazers"
 }
@@ -3819,7 +3837,7 @@ Expected output (same as above; `verified` must be `true`):
   "after": 38400,
   "afterRestore": 38400,
   "sheets": ["Inputs", "Summary"],
-  "bytes": 1000,
+  "bytes": 999,
   "verified": true,
   "nextStep": "If this proof matches your service or agent workflow, star or bookmark Bilig: https://github.com/proompteng/bilig/stargazers"
 }
@@ -3849,7 +3867,8 @@ compatibility pages before adopting it.
 ## Next paths
 
 - [GitHub repository](https://github.com/proompteng/bilig)
-- [npm package](https://www.npmjs.com/package/@bilig/headless)
+- [bilig-workpaper npm package](https://www.npmjs.com/package/bilig-workpaper)
+- [@bilig/headless npm package](https://www.npmjs.com/package/@bilig/headless)
 - [Five Node.js workbook automation examples](workbook-automation-examples-node.md)
 - [Node.js spreadsheet formula engine guide](node-spreadsheet-formula-engine.md)
 - [WorkPaper service recipe](node-service-workpaper-recipe.md)
