@@ -113,7 +113,7 @@ export function parseTimeValueText(input: string): f64 {
 export function parseNumericText(input: string): f64 {
   const text = trimAsciiWhitespace(input)
   if (text.length == 0) {
-    return 0
+    return input.length == 0 ? 0 : NaN
   }
 
   let index = 0

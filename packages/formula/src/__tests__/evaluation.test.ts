@@ -98,6 +98,33 @@ describe('formula builtins and JS evaluator', () => {
     }
   })
 
+  it('does not coerce whitespace-only text to zero in arithmetic expressions', () => {
+    const context = {
+      sheetName: 'Sheet1',
+      resolveCell: (_sheetName: string, address: string): CellValue => {
+        if (address === 'A1') {
+          return { tag: ValueTag.String, value: '  ', stringId: 1 }
+        }
+        if (address === 'A2') {
+          return { tag: ValueTag.String, value: '\u3000', stringId: 2 }
+        }
+        if (address === 'A3') {
+          return { tag: ValueTag.String, value: '', stringId: 3 }
+        }
+        return { tag: ValueTag.Empty }
+      },
+      resolveRange: (): CellValue[] => [],
+    }
+
+    expect(evaluateAst(parseFormula('A1*2'), context)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(evaluateAst(parseFormula('IFERROR(A2*2,"fallback")'), context)).toEqual({
+      tag: ValueTag.String,
+      value: 'fallback',
+      stringId: 0,
+    })
+    expect(evaluateAst(parseFormula('A3*2'), context)).toEqual({ tag: ValueTag.Number, value: 0 })
+  })
+
   it('treats omitted SUM arguments as empty values instead of errors', () => {
     expect(
       evaluateAst(parseFormula('SUM(2,3,)'), {

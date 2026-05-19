@@ -1,3 +1,23 @@
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
+const headlessPackageVersion = readHeadlessPackageVersion()
+const mcpbReleaseAssetUrl = `https://github.com/proompteng/bilig/releases/download/libraries-v${headlessPackageVersion}/bilig-workpaper.mcpb`
+
+function readHeadlessPackageVersion(): string {
+  const parsed: unknown = JSON.parse(readFileSync(join(repoRoot, 'packages', 'headless', 'package.json'), 'utf8'))
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new Error('packages/headless/package.json must be an object')
+  }
+  const version = Reflect.get(parsed, 'version')
+  if (typeof version !== 'string') {
+    throw new Error('packages/headless/package.json must define a string version')
+  }
+  return version
+}
+
 export const homepageRequiredLinks = [
   './why-use-bilig.html',
   './why-agents-need-workbook-apis.html',
@@ -73,8 +93,8 @@ export const llmsRequiredLinks = [
   'https://smithery.ai/servers/gkonushev/bilig-workpaper',
   'https://proompteng.github.io/bilig/claude-desktop-mcpb-workpaper.html',
   'https://github.com/proompteng/bilig/blob/main/docs/claude-desktop-mcpb-workpaper.md',
-  'https://github.com/proompteng/bilig/releases/download/libraries-v0.25.5/bilig-workpaper.mcpb',
-  'https://github.com/proompteng/bilig/releases/download/libraries-v0.25.5/bilig-workpaper.mcpb.sha256',
+  mcpbReleaseAssetUrl,
+  `${mcpbReleaseAssetUrl}.sha256`,
   'https://proompteng.github.io/bilig/agent-workpaper-tool-calling-recipe.html',
   'https://proompteng.github.io/bilig/agent-spreadsheet-tool-call-loop.html',
   'https://github.com/proompteng/bilig/blob/main/docs/headless-workpaper-agent-handbook.md',

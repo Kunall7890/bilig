@@ -4,7 +4,7 @@ import {
   getDateSystemBuiltin,
   isArrayValue,
   normalizeBuiltinLookupName,
-  parseNumericText,
+  parseArithmeticNumericText,
   type CompiledFormula,
   type JsPlanInstruction,
   type ParsedDependencyReference,
@@ -526,8 +526,7 @@ function inlineArithmeticNumberFromCell(state: InlineScalarState, cellIndex: num
   if (tag !== ValueTag.String) {
     return inlineNumberFromCell(state, cellIndex)
   }
-  const trimmed = state.strings.get(cellStore.stringIds[cellIndex] ?? 0).trim()
-  return trimmed === '' ? 0 : parseNumericText(trimmed)
+  return parseArithmeticNumericText(state.strings.get(cellStore.stringIds[cellIndex] ?? 0))
 }
 
 function inlineStringLengthFromCell(state: InlineScalarState, cellIndex: number | undefined): number | undefined {

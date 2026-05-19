@@ -41,11 +41,10 @@ function div0Error(): EvaluationResult {
 
 function toIntegerFunctionNumber(value: CellValue): number | undefined {
   if (value.tag === ValueTag.String) {
-    const trimmed = value.value.trim()
-    if (trimmed.length === 0) {
+    if (value.value === '') {
       return undefined
     }
-    return parseNumericText(trimmed)
+    return parseNumericText(value.value)
   }
   switch (value.tag) {
     case ValueTag.Number:

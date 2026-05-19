@@ -116,6 +116,7 @@ interface MutableHydratedPreparedRuntimeFormulaRef {
   templateId?: number
   cellIndex?: number
   value: CellValue
+  preserveCachedValueOnFullRecalc?: boolean
 }
 
 function toFormulaInstanceKey(row: number, col: number): number {
@@ -272,6 +273,7 @@ class RestoredHydratedPreparedFormulaRefTable implements Iterable<HydratedPrepar
   readonly sources: string[]
   readonly compiled: CompiledFormula[]
   readonly values: CellValue[]
+  readonly preserveCachedValueOnFullRecalc: Uint8Array
   freshFormulaInstances: readonly FormulaInstanceSnapshot[] | undefined
   private reusable: MutableHydratedPreparedRuntimeFormulaRef | undefined
   length = 0
@@ -286,6 +288,7 @@ class RestoredHydratedPreparedFormulaRefTable implements Iterable<HydratedPrepar
     this.sources = []
     this.compiled = []
     this.values = []
+    this.preserveCachedValueOnFullRecalc = new Uint8Array(capacity)
     this.freshFormulaInstances = freshFormulaInstances
   }
 
@@ -299,6 +302,7 @@ class RestoredHydratedPreparedFormulaRefTable implements Iterable<HydratedPrepar
     templateId: number | undefined,
     value: CellValue,
     runtimeImageCellIndex: number,
+    preserveCachedValueOnFullRecalc = false,
   ): void {
     const index = this.length
     if (this.freshFormulaInstances !== undefined && runtimeImageCellIndex !== cellIndex) {
@@ -312,6 +316,7 @@ class RestoredHydratedPreparedFormulaRefTable implements Iterable<HydratedPrepar
     this.sources[index] = source
     this.compiled[index] = compiled
     this.values[index] = value
+    this.preserveCachedValueOnFullRecalc[index] = preserveCachedValueOnFullRecalc ? 1 : 0
     this.length = index + 1
   }
 
@@ -339,6 +344,11 @@ class RestoredHydratedPreparedFormulaRefTable implements Iterable<HydratedPrepar
       reusable.templateId = templateId
     }
     reusable.value = this.values[index]!
+    if (this.preserveCachedValueOnFullRecalc[index] === 1) {
+      reusable.preserveCachedValueOnFullRecalc = true
+    } else {
+      delete reusable.preserveCachedValueOnFullRecalc
+    }
     return reusable
   }
 
@@ -354,6 +364,7 @@ class RestoredHydratedPreparedFormulaRefTable implements Iterable<HydratedPrepar
         compiled: this.compiled[index]!,
         ...(templateId === -1 ? {} : { templateId }),
         value: this.values[index]!,
+        ...(this.preserveCachedValueOnFullRecalc[index] === 1 ? { preserveCachedValueOnFullRecalc: true } : {}),
       }
     }
   }
@@ -711,8 +722,7 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
   const hydratedPreparedFormulaRefs = new RestoredHydratedPreparedFormulaRefTable(totalCellCount, args.runtimeImage.formulaInstances)
   const canHydrateCachedSnapshotFormulaValues = args.initializeHydratedPreparedCellFormulasAt && args.resolveTemplateForCell
   const shouldHydrateIterativeFormulaValues = args.snapshot.workbook.metadata?.calculationSettings?.iterate === true
-  const definedFormulaNames =
-    shouldHydrateIterativeFormulaValues || !canHydrateCachedSnapshotFormulaValues ? undefined : collectDefinedFormulaNames(args.snapshot)
+  const definedFormulaNames = shouldHydrateIterativeFormulaValues ? undefined : collectDefinedFormulaNames(args.snapshot)
   const previousOnSetValue = args.workbook.cellStore.onSetValue
   args.workbook.cellStore.onSetValue = null
   args.workbook.withBatchedColumnVersionUpdates(() => {
@@ -767,6 +777,11 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
             const cachedValue = formulaValueIndexAligned
               ? args.runtimeImage.formulaValues[formulaInstanceIndex]?.value
               : formulaValuesByAddress?.get(sheet.name)?.get(toFormulaInstanceKey(row, col))
+            const shouldPreserveCachedUnsupportedValue =
+              cachedValue !== undefined &&
+              !shouldHydrateIterativeFormulaValues &&
+              definedFormulaNames !== undefined &&
+              formulaShouldPreserveCachedUnsupportedFunctionValueOnFullRecalc(restoredFormula.source, definedFormulaNames)
             const template =
               restoredFormula.templateId !== undefined && args.resolveTemplateById
                 ? args.resolveTemplateById(restoredFormula.templateId, restoredFormula.source, row, col)
@@ -783,6 +798,7 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
                   template.templateId,
                   cachedValue,
                   restoredFormula.cellIndex,
+                  shouldPreserveCachedUnsupportedValue,
                 )
                 return
               }
@@ -819,7 +835,8 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
               canHydrateCachedSnapshotFormulaValues &&
               cell.value !== undefined &&
               !shouldHydrateIterativeFormulaValues &&
-              formulaShouldPreserveCachedUnsupportedFunctionValueOnFullRecalc(cell.formula, definedFormulaNames!)
+              definedFormulaNames !== undefined &&
+              formulaShouldPreserveCachedUnsupportedFunctionValueOnFullRecalc(cell.formula, definedFormulaNames)
             if (
               canHydrateCachedSnapshotFormulaValues &&
               cell.value !== undefined &&
@@ -838,6 +855,7 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
                     template.templateId,
                     literalToValue(cell.value, args.strings),
                     cellIndex,
+                    shouldPreserveCachedUnsupportedValue,
                   )
                   hydratedCachedFormula = true
                 }

@@ -338,7 +338,7 @@ async function readGithubWorkbookSource(args: {
   if (!sourceUrl || !contentsUrl) {
     return null
   }
-  const downloadUrl = await readGithubContentDownloadUrl(contentsUrl, args.githubToken)
+  const downloadUrl = await readGithubContentDownloadUrl(contentsUrl, fileName, args.githubToken)
   if (!downloadUrl) {
     return null
   }
@@ -517,13 +517,35 @@ async function readGithubPathLatestCommitDate(
   }
 }
 
-async function readGithubContentDownloadUrl(contentsUrl: string, githubToken?: string | null): Promise<string | null> {
+async function readGithubContentDownloadUrl(contentsUrl: string, fileName: string, githubToken?: string | null): Promise<string | null> {
   try {
     const content = asRecord(await fetchGithubJson(new URL(contentsUrl), githubToken))
+    if (!githubInlineContentMatchesSpreadsheetContainer(fileName, content)) {
+      return null
+    }
     return readString(content, 'download_url')
   } catch {
     return null
   }
+}
+
+function githubInlineContentMatchesSpreadsheetContainer(fileName: string, content: Record<string, unknown>): boolean {
+  if (!requiresZipContainerMagic(fileName)) {
+    return true
+  }
+  if (readString(content, 'encoding') !== 'base64') {
+    return true
+  }
+  const encodedContent = readString(content, 'content')
+  if (!encodedContent) {
+    return true
+  }
+  const decoded = Buffer.from(encodedContent.replace(/\s+/gu, ''), 'base64')
+  return decoded.length < 2 || (decoded[0] === 0x50 && decoded[1] === 0x4b)
+}
+
+function requiresZipContainerMagic(fileName: string): boolean {
+  return /\.(?:xlsx|xlsm|xltx|xltm|ods)$/iu.test(fileName)
 }
 
 async function readGithubRepositoryLicense(

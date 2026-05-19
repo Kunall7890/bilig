@@ -100,6 +100,73 @@ describe('public workbook corpus GitHub discovery', () => {
     )
   })
 
+  it('rejects GitHub contents search hits whose inline XLSX bytes are text masquerading as spreadsheets', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: string | URL) => {
+        const url = String(input)
+        if (url.startsWith('https://api.github.com/search/code')) {
+          return jsonResponse({
+            items: [
+              githubSearchItem({
+                repo: 'acme/benchmark-files',
+                path: 'fixtures/2026-report.xlsx',
+                name: '2026-report.xlsx',
+              }),
+              githubSearchItem({
+                repo: 'acme/benchmark-files',
+                path: 'fixtures/2026-model.xlsx',
+                name: '2026-model.xlsx',
+              }),
+            ],
+          })
+        }
+        if (url === 'https://api.github.com/repos/acme/benchmark-files/contents/fixtures/2026-report.xlsx') {
+          return jsonResponse({
+            download_url: 'https://raw.githubusercontent.com/acme/benchmark-files/main/fixtures/2026-report.xlsx',
+            encoding: 'base64',
+            content: Buffer.from('# Report saved with a misleading .xlsx extension\n').toString('base64'),
+          })
+        }
+        if (url === 'https://api.github.com/repos/acme/benchmark-files/contents/fixtures/2026-model.xlsx') {
+          return jsonResponse({
+            download_url: 'https://raw.githubusercontent.com/acme/benchmark-files/main/fixtures/2026-model.xlsx',
+            encoding: 'base64',
+            content: Buffer.from([0x50, 0x4b, 0x03, 0x04]).toString('base64'),
+          })
+        }
+        if (url === 'https://api.github.com/repos/acme/benchmark-files/license') {
+          return jsonResponse({
+            license: {
+              spdx_id: 'MIT',
+              name: 'MIT License',
+            },
+            html_url: 'https://github.com/acme/benchmark-files/blob/main/LICENSE',
+          })
+        }
+        throw new Error(`Unexpected GitHub API request: ${url}`)
+      }),
+    )
+
+    const manifest = await discoverGithubWorkbookSources({
+      manifest: createEmptyPublicWorkbookManifest('2026-05-17T00:00:00.000Z', 500),
+      queries: ['2026 report extension:xlsx'],
+      limit: 500,
+      perPage: 25,
+      maxPagesPerQuery: 1,
+      githubToken: 'ghs_test',
+      discoveredAt: '2026-05-17T00:00:00.000Z',
+    })
+
+    validatePublicWorkbookManifest(manifest)
+    expect(manifest.sources).toHaveLength(1)
+    expect(manifest.sources[0]).toMatchObject({
+      sourceUrl: 'https://github.com/acme/benchmark-files/blob/main/fixtures/2026-model.xlsx',
+      downloadUrl: 'https://raw.githubusercontent.com/acme/benchmark-files/main/fixtures/2026-model.xlsx',
+      fileName: '2026-model.xlsx',
+    })
+  })
+
   it('walks licensed repository trees for recent spreadsheet paths', async () => {
     vi.stubGlobal(
       'fetch',

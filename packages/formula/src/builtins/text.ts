@@ -12,7 +12,7 @@ import { createTextFormatBuiltins } from './text-format-builtins.js'
 import { createTextScalarBuiltins } from './text-scalar-builtins.js'
 import { createTextSearchBuiltins } from './text-search-builtins.js'
 import type { ExcelDateSystem } from './excel-date.js'
-import { parseNumericText } from '../numeric-text.js'
+import { parseArithmeticNumericText } from '../numeric-text.js'
 import type { EvaluationResult } from '../runtime-values.js'
 
 export type TextBuiltin = (...args: CellValue[]) => EvaluationResult
@@ -60,13 +60,8 @@ function coerceNumber(value: CellValue): number | undefined {
       return value.value ? 1 : 0
     case ValueTag.Empty:
       return 0
-    case ValueTag.String: {
-      const trimmed = value.value.trim()
-      if (trimmed === '') {
-        return 0
-      }
-      return parseNumericText(trimmed)
-    }
+    case ValueTag.String:
+      return parseArithmeticNumericText(value.value)
     case ValueTag.Error:
       return undefined
   }

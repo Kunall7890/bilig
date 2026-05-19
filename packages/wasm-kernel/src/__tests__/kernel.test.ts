@@ -2053,6 +2053,56 @@ describe('wasm kernel', () => {
     expect(kernel.readNumbers()[cellIndex(1, 4, width)]).toBe(7)
   })
 
+  it('returns #VALUE for whitespace-only text in wasm arithmetic', async () => {
+    const kernel = await createKernel()
+    const width = 8
+    kernel.init(24, 6, 1, 1, 1)
+    kernel.uploadStrings(Uint32Array.from([0, 0, 2, 3, 4]), Uint32Array.from([0, 2, 1, 1, 8]), asciiCodes('  \u30005fallback'))
+    kernel.writeCells(
+      new Uint8Array([ValueTag.String, ValueTag.String, ValueTag.String, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+      new Float64Array(24),
+      new Uint32Array([1, 2, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+      new Uint16Array(24),
+    )
+    const packed = packPrograms([
+      [encodePushCell(0), encodePushNumber(0), encodeBinary(Opcode.Mul), encodeRet()],
+      [encodePushCell(1), encodePushNumber(0), encodeBinary(Opcode.Mul), encodeRet()],
+      [encodePushCell(2), encodePushNumber(0), encodeBinary(Opcode.Mul), encodeRet()],
+      [encodePushString(0), encodePushNumber(0), encodeBinary(Opcode.Mul), encodeRet()],
+      [encodePushCell(1), encodePushNumber(0), encodeBinary(Opcode.Mul), encodePushString(4), encodeCall(BUILTIN.IFERROR, 2), encodeRet()],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from([
+        cellIndex(1, 0, width),
+        cellIndex(1, 1, width),
+        cellIndex(1, 2, width),
+        cellIndex(1, 3, width),
+        cellIndex(1, 4, width),
+      ]),
+    )
+    const constants = packConstants([[2], [2], [2], [2], [2]])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(
+      Uint32Array.from([
+        cellIndex(1, 0, width),
+        cellIndex(1, 1, width),
+        cellIndex(1, 2, width),
+        cellIndex(1, 3, width),
+        cellIndex(1, 4, width),
+      ]),
+    )
+
+    expectErrorCell(kernel, cellIndex(1, 0, width), ErrorCode.Value)
+    expectErrorCell(kernel, cellIndex(1, 1, width), ErrorCode.Value)
+    expectNumberCell(kernel, cellIndex(1, 2, width), 10)
+    expectNumberCell(kernel, cellIndex(1, 3, width), 0)
+    expect(kernel.readTags()[cellIndex(1, 4, width)]).toBe(ValueTag.String)
+    expect(kernel.readStringIds()[cellIndex(1, 4, width)]).toBe(4)
+  })
+
   it('evaluates conditional aggregates and SUMPRODUCT on the wasm path', async () => {
     const kernel = await createKernel()
     const width = 10

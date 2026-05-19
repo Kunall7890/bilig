@@ -1,4 +1,4 @@
-import { parseNumericText, type JsPlanInstruction } from '@bilig/formula'
+import { parseArithmeticNumericText, type JsPlanInstruction } from '@bilig/formula'
 import {
   ErrorCode,
   FormulaMode,
@@ -546,8 +546,7 @@ function inlineArithmeticNumberFromStoredCell(
   if (tag !== ValueTag.String) {
     return inlineNumberFromStoredCell(state, cellIndex)
   }
-  const trimmed = state.strings.get(cellStore.stringIds[cellIndex] ?? 0).trim()
-  return trimmed === '' ? 0 : parseNumericText(trimmed)
+  return parseArithmeticNumericText(state.strings.get(cellStore.stringIds[cellIndex] ?? 0))
 }
 
 function inlineStringLengthFromStoredCell(

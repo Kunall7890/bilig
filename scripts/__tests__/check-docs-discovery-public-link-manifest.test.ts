@@ -25,7 +25,12 @@ describe('docs discovery public link manifest', () => {
     expect(llmsRequiredLinks).toContain('https://proompteng.github.io/bilig/skill.txt')
     expect(llmsRequiredLinks).toContain('https://proompteng.github.io/bilig/llms-full.txt')
     expect(llmsRequiredLinks).toContain('https://proompteng.github.io/bilig/.well-known/agent-skills/index.json')
-    expect(llmsRequiredLinks).toContain('https://github.com/proompteng/bilig/releases/download/libraries-v0.25.5/bilig-workpaper.mcpb')
+    expect(llmsRequiredLinks).toContain('https://smithery.ai/servers/gkonushev/bilig-workpaper')
+    const mcpbReleaseLink = llmsRequiredLinks.find((link) => link.endsWith('/bilig-workpaper.mcpb'))
+    expect(mcpbReleaseLink).toMatch(
+      /^https:\/\/github\.com\/proompteng\/bilig\/releases\/download\/libraries-v\d+\.\d+\.\d+\/bilig-workpaper\.mcpb$/,
+    )
+    expect(llmsRequiredLinks).toContain(`${mcpbReleaseLink}.sha256`)
     expect(llmsRequiredLinks).toContain('https://github.com/proompteng/bilig/blob/main/docs/npm-provenance-package-trust.md')
     expect(duplicateValues(homepageRequiredLinks)).toEqual([])
     expect(duplicateValues(llmsRequiredLinks)).toEqual([])

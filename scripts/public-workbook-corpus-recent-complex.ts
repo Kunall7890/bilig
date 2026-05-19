@@ -169,7 +169,11 @@ export function selectRecentComplexWorkbookCandidates(args: {
       return []
     }
     const complexityScore = recentComplexityScore(corpusCase)
-    if (corpusCase.featureCounts.formulaCellCount < minFormulaCells || complexityScore < minComplexityScore) {
+    if (
+      corpusCase.featureCounts.formulaCellCount < minFormulaCells ||
+      corpusCase.validation.formulaOracleComparisons < minFormulaCells ||
+      complexityScore < minComplexityScore
+    ) {
       return []
     }
     return [

@@ -355,6 +355,88 @@ describe('restoreWorkbookFromRuntimeImage', () => {
     ])
   })
 
+  it('preserves cached unsupported runtime-image fallback formulas through full recalculation', () => {
+    const workbook = new WorkbookStore('runtime-image-snapshot-unsupported-cached-formulas')
+    const hydratedCalls: HydratedPreparedRuntimeFormulaRef[] = []
+    const mutationCalls: unknown[] = []
+    const sourceCalls: unknown[] = []
+    const formula = '_FV(A1,"Industry")'
+    const compiled = compileFormulaAst(formula, parseFormula(formula))
+    const snapshot: WorkbookSnapshot = {
+      version: 1,
+      workbook: { name: 'runtime-image-snapshot-unsupported-cached-formulas' },
+      sheets: [
+        {
+          id: 1,
+          name: 'Sheet1',
+          order: 0,
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: 'ADANIPORTS' },
+            { address: 'B1', row: 0, col: 1, formula, value: 'Transport Infrastructure' },
+          ],
+        },
+      ],
+    }
+
+    restoreWorkbookFromRuntimeImage({
+      snapshot,
+      runtimeImage: {
+        version: 1,
+        templateBank: [],
+        formulaInstances: [],
+        formulaValues: [],
+        sheetCells: [
+          {
+            sheetName: 'Sheet1',
+            coords: [
+              { row: 0, col: 0 },
+              { row: 0, col: 1 },
+            ],
+          },
+        ],
+      },
+      workbook,
+      strings: new StringPool(),
+      resetWorkbook: () => {},
+      hydrateTemplateBank: () => {},
+      resolveTemplateForCell: (source, row, col) => ({
+        templateId: 10,
+        templateKey: 'template:_FV',
+        baseSource: source,
+        compiled,
+        translated: false,
+        rowDelta: row,
+        colDelta: col,
+      }),
+      initializeHydratedPreparedCellFormulasAt: (refs) => {
+        hydratedCalls.push(...collectHydratedPreparedRefs(refs))
+      },
+      initializeFormulaSourcesAt: (refs) => {
+        sourceCalls.push(...collectFormulaSourceRefs(refs))
+      },
+      initializeCellFormulasAt: (refs) => {
+        mutationCalls.push(...refs)
+      },
+    })
+
+    const formulaCellIndex = workbook.getCellIndex('Sheet1', 'B1')
+    expect(formulaCellIndex).toBeDefined()
+    expect(mutationCalls).toEqual([])
+    expect(sourceCalls).toEqual([])
+    expect(hydratedCalls).toEqual([
+      expect.objectContaining({
+        sheetId: 1,
+        cellIndex: formulaCellIndex,
+        row: 0,
+        col: 1,
+        source: formula,
+        templateId: 10,
+        value: { tag: ValueTag.String, value: 'Transport Infrastructure', stringId: expect.any(Number) },
+        preserveCachedValueOnFullRecalc: true,
+      }),
+    ])
+  })
+
   it('bulk-allocates dense row-major runtime-image sheets during restore', () => {
     const workbook = new WorkbookStore('runtime-image-dense-restore')
     const allocateDenseRowMajorAtReserved = vi.spyOn(workbook.cellStore, 'allocateDenseRowMajorAtReserved')

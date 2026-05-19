@@ -187,15 +187,51 @@ describe('EngineFormulaEvaluationService', () => {
     engine.createSheet('Sheet1')
     engine.setCellValue('Sheet1', 'A1', 'text:value')
     engine.setCellFormula('Sheet1', 'B1', 'A1+A1')
+    engine.setCellFormula('Sheet1', 'C1', 'IFERROR(A1*2,"fallback")')
 
     expect(engine.getCellValue('Sheet1', 'B1')).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.Value,
     })
+    expect(engine.getCellValue('Sheet1', 'C1')).toEqual({
+      tag: ValueTag.String,
+      value: 'fallback',
+      stringId: expect.any(Number),
+    })
+
+    engine.setCellValue('Sheet1', 'A1', '  ')
+
+    expect(engine.getCellValue('Sheet1', 'B1')).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Value,
+    })
+    expect(engine.getCellValue('Sheet1', 'C1')).toEqual({
+      tag: ValueTag.String,
+      value: 'fallback',
+      stringId: expect.any(Number),
+    })
+
+    engine.setCellValue('Sheet1', 'A1', '\u3000')
+
+    expect(engine.getCellValue('Sheet1', 'B1')).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Value,
+    })
+    expect(engine.getCellValue('Sheet1', 'C1')).toEqual({
+      tag: ValueTag.String,
+      value: 'fallback',
+      stringId: expect.any(Number),
+    })
+
+    engine.setCellValue('Sheet1', 'A1', '')
+
+    expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 0 })
+    expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 0 })
 
     engine.setCellValue('Sheet1', 'A1', 2)
 
     expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 4 })
+    expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 4 })
   })
 
   it('preserves explicit reference errors through numeric wrappers', async () => {

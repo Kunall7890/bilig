@@ -74,6 +74,35 @@ describe('public workbook recent complex headless corpus gate', () => {
     expect(selected.map((candidate) => candidate.artifact.id)).toEqual(['recent-formula-complex'])
   })
 
+  it('requires formula oracle comparisons before selecting recent formula workbooks', () => {
+    const comparedArtifact = recentArtifact('recent-compared-formula')
+    const cacheOnlyArtifact = recentArtifact('recent-cache-only-formula')
+    const compared = passedCase(comparedArtifact, {
+      cellCount: 5_000,
+      formulaCellCount: 80,
+      sheetCount: 4,
+    })
+    const cacheOnly = {
+      ...passedCase(cacheOnlyArtifact, {
+        cellCount: 5_000,
+        formulaCellCount: 80,
+        sheetCount: 4,
+      }),
+      validation: {
+        ...passedCase(cacheOnlyArtifact).validation,
+        formulaOracleComparisons: 0,
+      },
+    }
+
+    const selected = selectRecentComplexWorkbookCandidates({
+      cacheDir: '/tmp/cache',
+      manifestArtifacts: [comparedArtifact, cacheOnlyArtifact],
+      scorecard: scorecardFor([compared, cacheOnly]),
+    })
+
+    expect(selected.map((candidate) => candidate.artifact.id)).toEqual(['recent-compared-formula'])
+  })
+
   it('checks the headless result against the same recent complex artifact set', () => {
     const dir = mkdtempSync(join(tmpdir(), 'public-workbook-corpus-recent-complex-'))
     const cacheDir = join(dir, 'cache')
