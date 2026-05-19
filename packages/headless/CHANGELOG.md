@@ -4,6 +4,18 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.31.1
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.31.0
+- Manual override: no
+
+## Fixes
+- perf(core): cache runtime restore string ids (87276c1e)
+
+## Internal runtime changes
+- docs(discovery): sync 0.31.0 agent surfaces (03bfead1)
+
 ## 0.31.0
 
 - Release type: minor
