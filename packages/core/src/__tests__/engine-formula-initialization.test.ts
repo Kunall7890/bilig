@@ -466,9 +466,9 @@ describe('SpreadsheetEngine formula initialization', () => {
     })
   })
 
-  it('keeps oversized direct scalar initialization on the JS path', async () => {
-    const rowCount = 1300
-    const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-oversized-value-columns' })
+  it('keeps 3000 direct scalar initialization on the JS path', async () => {
+    const rowCount = 1500
+    const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-3000-js-value-columns' })
     await engine.ready()
     engine.createSheet('Sheet1')
     const sheetId = engine.workbook.getSheet('Sheet1')!.id

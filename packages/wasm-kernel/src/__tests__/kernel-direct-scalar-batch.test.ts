@@ -32,4 +32,31 @@ describe('wasm kernel direct scalar batch', () => {
     expect(outTags[2]).toBe(ValueTag.Error)
     expect(outErrors[2]).toBe(ErrorCode.Value)
   })
+
+  it('writes store-target batches into resident cell arrays', async () => {
+    const kernel = await createKernel()
+    kernel.init(8, 1, 1, 1, 1)
+
+    kernel.evalDirectScalarStoreTargetBatch(
+      Uint32Array.from([2, 3, 4]),
+      Uint8Array.from([1, 3, 1]),
+      Uint32Array.from([0xffffffff, 0, 0xffffffff]),
+      Uint8Array.from([ValueTag.Number, ValueTag.Empty, ValueTag.String]),
+      Float64Array.from([2, 0, 0]),
+      Uint16Array.from([ErrorCode.None, ErrorCode.None, ErrorCode.None]),
+      Uint32Array.from([0xffffffff, 0xffffffff, 0xffffffff]),
+      Uint8Array.from([ValueTag.Number, ValueTag.Number, ValueTag.Number]),
+      Float64Array.from([3, 2, 1]),
+      Uint16Array.from([ErrorCode.None, ErrorCode.None, ErrorCode.None]),
+      Float64Array.from([0, 5, 0]),
+    )
+
+    expect(kernel.readTags()[2]).toBe(ValueTag.Number)
+    expect(kernel.readNumbers()[2]).toBe(5)
+    expect(kernel.readTags()[3]).toBe(ValueTag.Number)
+    expect(kernel.readNumbers()[3]).toBe(15)
+    expect(kernel.readTags()[4]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[4]).toBe(ErrorCode.Value)
+    expect(kernel.readStringIds()[4]).toBe(0)
+  })
 })

@@ -29,7 +29,7 @@ export {
   getSpillResultValueCount,
 } from './vm'
 
-export { evalDirectScalarValueBatch } from './direct-scalar-batch'
+export { evalDirectScalarStoreTargetBatch, evalDirectScalarValueBatch } from './direct-scalar-batch'
 export { evalDenseNumericRowAggregateBatch } from './direct-aggregate-batch'
 export { evalDirectCriteriaMatchedAggregateBatch } from './direct-criteria-aggregate-batch'
 export { evalUniformNumericLookupBatch } from './direct-lookup-batch'

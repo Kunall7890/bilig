@@ -2,6 +2,7 @@ import type * as Fs from 'node:fs'
 import type * as FsPromises from 'node:fs/promises'
 import type * as NodeUrl from 'node:url'
 import { evalDirectCriteriaMatchedAggregateBatchRaw } from './raw-kernel-direct-criteria-aggregate-bridge.js'
+import { evalDirectScalarStoreTargetBatchRaw, evalDirectScalarValueBatchRaw } from './raw-kernel-direct-scalar-bridge.js'
 import { isRawKernelExports, type RawKernelExports } from './raw-kernel-exports.js'
 
 type TypedArrayValue = Uint8Array | Uint16Array | Uint32Array | Float64Array
@@ -64,6 +65,19 @@ export interface SpreadsheetKernel {
     outTags: Uint8Array,
     outNumbers: Float64Array,
     outErrors: Uint16Array,
+  ): void
+  evalDirectScalarStoreTargetBatch(
+    targets: Uint32Array,
+    operators: Uint8Array,
+    leftBatchRefs: Uint32Array,
+    leftTags: Uint8Array,
+    leftValues: Float64Array,
+    leftErrors: Uint16Array,
+    rightBatchRefs: Uint32Array,
+    rightTags: Uint8Array,
+    rightValues: Float64Array,
+    rightErrors: Uint16Array,
+    resultOffsets: Float64Array,
   ): void
   evalDenseNumericRowAggregateBatch(
     aggregateKind: number,
@@ -296,70 +310,6 @@ class RawKernelBridge {
       this.raw.__unpin(numbersPtr)
       this.raw.__unpin(stringIdsPtr)
       this.raw.__unpin(errorsPtr)
-    }
-  }
-
-  evalDirectScalarValueBatch(
-    operators: Uint8Array,
-    leftBatchRefs: Uint32Array,
-    leftTags: Uint8Array,
-    leftValues: Float64Array,
-    leftErrors: Uint16Array,
-    rightBatchRefs: Uint32Array,
-    rightTags: Uint8Array,
-    rightValues: Float64Array,
-    rightErrors: Uint16Array,
-    resultOffsets: Float64Array,
-    outTags: Uint8Array,
-    outNumbers: Float64Array,
-    outErrors: Uint16Array,
-  ): void {
-    const operatorsPtr = this.lowerTypedArray(operators, uint8Spec)
-    const leftBatchRefsPtr = this.lowerTypedArray(leftBatchRefs, uint32Spec)
-    const leftTagsPtr = this.lowerTypedArray(leftTags, uint8Spec)
-    const leftValuesPtr = this.lowerTypedArray(leftValues, float64Spec)
-    const leftErrorsPtr = this.lowerTypedArray(leftErrors, uint16Spec)
-    const rightBatchRefsPtr = this.lowerTypedArray(rightBatchRefs, uint32Spec)
-    const rightTagsPtr = this.lowerTypedArray(rightTags, uint8Spec)
-    const rightValuesPtr = this.lowerTypedArray(rightValues, float64Spec)
-    const rightErrorsPtr = this.lowerTypedArray(rightErrors, uint16Spec)
-    const resultOffsetsPtr = this.lowerTypedArray(resultOffsets, float64Spec)
-    const outTagsPtr = this.lowerTypedArray(outTags, uint8Spec)
-    const outNumbersPtr = this.lowerTypedArray(outNumbers, float64Spec)
-    const outErrorsPtr = this.lowerTypedArray(outErrors, uint16Spec)
-    try {
-      this.raw.evalDirectScalarValueBatch(
-        operatorsPtr,
-        leftBatchRefsPtr,
-        leftTagsPtr,
-        leftValuesPtr,
-        leftErrorsPtr,
-        rightBatchRefsPtr,
-        rightTagsPtr,
-        rightValuesPtr,
-        rightErrorsPtr,
-        resultOffsetsPtr,
-        outTagsPtr,
-        outNumbersPtr,
-        outErrorsPtr,
-      )
-      this.copyLoweredTypedArray(outTagsPtr, outTags, uint8Spec)
-      this.copyLoweredTypedArray(outNumbersPtr, outNumbers, float64Spec)
-      this.copyLoweredTypedArray(outErrorsPtr, outErrors, uint16Spec)
-    } finally {
-      this.raw.__unpin(operatorsPtr)
-      this.raw.__unpin(leftBatchRefsPtr)
-      this.raw.__unpin(leftTagsPtr)
-      this.raw.__unpin(leftValuesPtr)
-      this.raw.__unpin(leftErrorsPtr)
-      this.raw.__unpin(rightBatchRefsPtr)
-      this.raw.__unpin(rightTagsPtr)
-      this.raw.__unpin(rightValuesPtr)
-      this.raw.__unpin(rightErrorsPtr)
-      this.raw.__unpin(resultOffsetsPtr)
-      this.raw.__unpin(outTagsPtr)
-      this.raw.__unpin(outNumbersPtr)
-      this.raw.__unpin(outErrorsPtr)
     }
   }
 
@@ -641,7 +591,8 @@ class KernelHandle implements SpreadsheetKernel {
     outNumbers: Float64Array,
     outErrors: Uint16Array,
   ): void {
-    this.bridge.evalDirectScalarValueBatch(
+    evalDirectScalarValueBatchRaw(
+      this.raw,
       operators,
       leftBatchRefs,
       leftTags,
@@ -656,6 +607,36 @@ class KernelHandle implements SpreadsheetKernel {
       outNumbers,
       outErrors,
     )
+  }
+
+  evalDirectScalarStoreTargetBatch(
+    targets: Uint32Array,
+    operators: Uint8Array,
+    leftBatchRefs: Uint32Array,
+    leftTags: Uint8Array,
+    leftValues: Float64Array,
+    leftErrors: Uint16Array,
+    rightBatchRefs: Uint32Array,
+    rightTags: Uint8Array,
+    rightValues: Float64Array,
+    rightErrors: Uint16Array,
+    resultOffsets: Float64Array,
+  ): void {
+    evalDirectScalarStoreTargetBatchRaw(
+      this.raw,
+      targets,
+      operators,
+      leftBatchRefs,
+      leftTags,
+      leftValues,
+      leftErrors,
+      rightBatchRefs,
+      rightTags,
+      rightValues,
+      rightErrors,
+      resultOffsets,
+    )
+    this.refreshViews()
   }
 
   evalDenseNumericRowAggregateBatch(

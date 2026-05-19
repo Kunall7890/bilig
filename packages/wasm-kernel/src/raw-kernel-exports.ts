@@ -33,6 +33,19 @@ export interface RawKernelExports {
     outNumbers: number,
     outErrors: number,
   ): void
+  evalDirectScalarStoreTargetBatch(
+    targets: number,
+    operators: number,
+    leftBatchRefs: number,
+    leftTags: number,
+    leftValues: number,
+    leftErrors: number,
+    rightBatchRefs: number,
+    rightTags: number,
+    rightValues: number,
+    rightErrors: number,
+    resultOffsets: number,
+  ): void
   evalDenseNumericRowAggregateBatch(
     aggregateKind: number,
     values: number,
@@ -140,6 +153,7 @@ export function isRawKernelExports(value: unknown): value is RawKernelExports {
     'uploadStrings',
     'writeCells',
     'evalDirectScalarValueBatch',
+    'evalDirectScalarStoreTargetBatch',
     'evalDenseNumericRowAggregateBatch',
     'evalDirectCriteriaMatchedAggregateBatch',
     'evalUniformNumericLookupBatch',
