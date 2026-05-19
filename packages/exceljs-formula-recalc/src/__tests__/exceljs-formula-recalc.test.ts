@@ -64,7 +64,7 @@ function readNumber(value: XlsxFormulaCellValue): number {
   throw new Error(`Expected numeric cell value, received ${JSON.stringify(value)}`)
 }
 
-function readExceljsFormulaResult(value: ExcelJS.CellValue | undefined): number {
+function readExceljsFormulaResult(value: unknown): number {
   if (typeof value === 'object' && value !== null && 'result' in value && typeof value.result === 'number') {
     return value.result
   }

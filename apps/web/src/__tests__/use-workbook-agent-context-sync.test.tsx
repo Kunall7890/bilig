@@ -279,7 +279,7 @@ describe('useWorkbookAgentContextSync', () => {
     }
   })
 
-  it('continues syncing passive rendered context during active assistant turns', async () => {
+  it('throttles passive rendered context churn during active assistant turns', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
     vi.useFakeTimers()
 
@@ -348,6 +348,12 @@ describe('useWorkbookAgentContextSync', () => {
 
       await act(async () => {
         await vi.advanceTimersByTimeAsync(800)
+      })
+
+      expect(syncThreadContext).toHaveBeenCalledTimes(1)
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(4_200)
       })
 
       expect(syncThreadContext).toHaveBeenCalledTimes(2)
