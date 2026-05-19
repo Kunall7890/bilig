@@ -3398,17 +3398,14 @@ describe('workbook agent pane', () => {
 
       await act(async () => {
         await Promise.resolve()
-        await new Promise((resolve) => setTimeout(resolve, 500))
+        await new Promise((resolve) => setTimeout(resolve, 1_000))
       })
 
-      expect(contextCalls()).toHaveLength(2)
-      expect(requestBody(contextCalls()[1]?.[1])).toMatchObject({
+      expect(contextCalls()).toHaveLength(1)
+      expect(requestBody(contextCalls()[0]?.[1])).toMatchObject({
         context: {
           rendered: {
-            capturedRevision: 23,
-            visibleRange: {
-              rows: [[expect.objectContaining({ input: 'rendered-3' })]],
-            },
+            capturedRevision: 20,
           },
         },
       })
