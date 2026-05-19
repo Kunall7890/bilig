@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.30.2
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.30.1
+- Manual override: no
+
+## Fixes
+- fix(grid): stabilize editor terminal shortcuts (68e0d32f)
+
 ## 0.30.1
 
 - Release type: patch
