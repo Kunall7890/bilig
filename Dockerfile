@@ -1,6 +1,6 @@
 FROM oven/bun:1.3.10@sha256:b86c67b531d87b4db11470d9b2bd0c519b1976eee6fcd71634e73abfa6230d2e AS bun
 
-FROM node:24-bookworm-slim@sha256:24dc26ef1e3c3690f27ebc4136c9c186c3133b25563ae4d7f0692e4d1fe5db0e AS build
+FROM node:24-bookworm-slim@sha256:24dc26ef1e3c3690f27ebc4136c9c186c3133b25563ae4d7f0692e4d1fe5db0e AS build-base
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="/usr/local/bin:$PNPM_HOME:$PATH"
@@ -15,7 +15,7 @@ RUN corepack enable
 
 FROM node:24-bookworm-slim@sha256:24dc26ef1e3c3690f27ebc4136c9c186c3133b25563ae4d7f0692e4d1fe5db0e AS bilig-workpaper-mcp
 
-ARG BILIG_HEADLESS_VERSION=latest
+ARG BILIG_HEADLESS_VERSION=0.23.3
 ENV NODE_ENV="production"
 WORKDIR /workpaper
 
@@ -29,6 +29,8 @@ RUN npm init -y >/dev/null \
   && npm cache clean --force
 
 ENTRYPOINT ["./node_modules/.bin/bilig-workpaper-mcp", "--workpaper", "/workpaper/pricing.workpaper.json", "--writable"]
+
+FROM build-base AS app-build
 
 WORKDIR /app
 
@@ -47,8 +49,8 @@ ENV NODE_ENV="production"
 
 WORKDIR /app
 
-COPY --from=build /out/bilig /app
-COPY --from=build /app/apps/web/dist /app/public
+COPY --from=app-build /out/bilig /app
+COPY --from=app-build /app/apps/web/dist /app/public
 
 EXPOSE 4321
 
