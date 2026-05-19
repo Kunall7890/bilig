@@ -22,6 +22,7 @@
   "mcp": {
     "server_name": "io.github.proompteng/bilig-workpaper",
     "server_card": "https://proompteng.github.io/bilig/.well-known/mcp/server-card.json",
+    "remote_server_card": "https://bilig.proompteng.ai/.well-known/mcp/server-card.json",
     "manifest": "https://proompteng.github.io/bilig/.well-known/mcp.json",
     "registry_search": "https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper",
     "remote_endpoint": "https://bilig.proompteng.ai/mcp",
@@ -90,6 +91,7 @@
       "type": "mcp-streamable-http-server",
       "endpoint": "https://bilig.proompteng.ai/mcp",
       "alias_endpoint": "https://bilig.proompteng.ai/mcp/workpaper",
+      "server_card": "https://bilig.proompteng.ai/.well-known/mcp/server-card.json",
       "protocol_version": "2025-11-25",
       "authentication_required": false,
       "docs": "https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html#remote-stateless-endpoint"
@@ -124,6 +126,7 @@
     "https://proompteng.github.io/bilig/agent-workbook-challenge.html",
     "https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html",
     "https://bilig.proompteng.ai/mcp",
+    "https://bilig.proompteng.ai/.well-known/mcp/server-card.json",
     "https://proompteng.github.io/bilig/agent-workpaper-tool-calling-recipe.html",
     "https://proompteng.github.io/bilig/node-framework-workpaper-adapters.html",
     "https://proompteng.github.io/bilig/npm-provenance-package-trust.html"

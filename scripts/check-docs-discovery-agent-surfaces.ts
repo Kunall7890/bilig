@@ -297,6 +297,11 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   )
   requireIncludes(
     mcpWorkPaperToolServerDoc,
+    'https://bilig.proompteng.ai/.well-known/mcp/server-card.json',
+    'docs/mcp-workpaper-tool-server.md',
+  )
+  requireIncludes(
+    mcpWorkPaperToolServerDoc,
     'https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper',
     'docs/mcp-workpaper-tool-server.md',
   )
@@ -345,6 +350,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'io.github.proompteng/bilig-workpaper',
     'https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper',
     'https://glama.ai/mcp/servers/proompteng/bilig',
+    'https://bilig.proompteng.ai/.well-known/mcp/server-card.json',
     'https://proompteng.github.io/bilig/.well-known/mcp/server-card.json',
     'https://proompteng.github.io/bilig/.well-known/mcp.json',
     'https://proompteng.github.io/bilig/.well-known/mcp-server-card.json',
@@ -418,6 +424,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'npx -y smithery mcp add gkonushev/bilig-workpaper',
     "npx -y smithery tool call bilig-workpaper list_sheets '{}'",
     'https://bilig.proompteng.ai/mcp',
+    'https://bilig.proompteng.ai/.well-known/mcp/server-card.json',
     'mcp-protocol-version: 2025-11-25',
     '## Persistent file-backed stdio server',
     `npm exec --package ${headlessPackageSpec} -- bilig-workpaper-mcp`,

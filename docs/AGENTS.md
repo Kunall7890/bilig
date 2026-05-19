@@ -10,8 +10,10 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
 4. Start the MCP server or import `@bilig/headless` directly.
 
 Remote MCP clients that support Streamable HTTP can smoke-test the stateless
-demo endpoint at `https://bilig.proompteng.ai/mcp`. Local agents that need writable
-project files should still prefer the file-backed stdio command below.
+demo endpoint at `https://bilig.proompteng.ai/mcp`. Directory scanners that inspect the
+hosted endpoint origin can read the same-origin server card at
+`https://bilig.proompteng.ai/.well-known/mcp/server-card.json`. Local agents that need writable project files should
+still prefer the file-backed stdio command below.
 
 ## Default Decision
 

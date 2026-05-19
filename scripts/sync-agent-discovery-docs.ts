@@ -7,6 +7,7 @@ const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const siteRoot = 'https://proompteng.github.io/bilig'
 const remoteMcpEndpoint = 'https://bilig.proompteng.ai/mcp'
 const remoteMcpAliasEndpoint = 'https://bilig.proompteng.ai/mcp/workpaper'
+const remoteMcpServerCard = 'https://bilig.proompteng.ai/.well-known/mcp/server-card.json'
 const repositoryUrl = 'https://github.com/proompteng/bilig'
 const skillName = 'bilig-workpaper'
 const headlessPackageVersion = parsePackageVersion(await readFile(join(repoRoot, 'packages', 'headless', 'package.json'), 'utf8'))
@@ -48,8 +49,10 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
 4. Start the MCP server or import \`@bilig/headless\` directly.
 
 Remote MCP clients that support Streamable HTTP can smoke-test the stateless
-demo endpoint at \`${remoteMcpEndpoint}\`. Local agents that need writable
-project files should still prefer the file-backed stdio command below.
+demo endpoint at \`${remoteMcpEndpoint}\`. Directory scanners that inspect the
+hosted endpoint origin can read the same-origin server card at
+\`${remoteMcpServerCard}\`. Local agents that need writable project files should
+still prefer the file-backed stdio command below.
 
 ## Default Decision
 
@@ -513,6 +516,7 @@ function agentJsonManifest(): string {
       mcp: {
         server_name: 'io.github.proompteng/bilig-workpaper',
         server_card: `${siteRoot}/.well-known/mcp/server-card.json`,
+        remote_server_card: remoteMcpServerCard,
         manifest: `${siteRoot}/.well-known/mcp.json`,
         registry_search: 'https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper',
         remote_endpoint: remoteMcpEndpoint,
@@ -581,6 +585,7 @@ function agentJsonManifest(): string {
           type: 'mcp-streamable-http-server',
           endpoint: remoteMcpEndpoint,
           alias_endpoint: remoteMcpAliasEndpoint,
+          server_card: remoteMcpServerCard,
           protocol_version: '2025-11-25',
           authentication_required: false,
           docs: `${siteRoot}/mcp-workpaper-tool-server.html#remote-stateless-endpoint`,
@@ -615,6 +620,7 @@ function agentJsonManifest(): string {
         `${siteRoot}/agent-workbook-challenge.html`,
         `${siteRoot}/mcp-workpaper-tool-server.html`,
         remoteMcpEndpoint,
+        remoteMcpServerCard,
         `${siteRoot}/agent-workpaper-tool-calling-recipe.html`,
         `${siteRoot}/node-framework-workpaper-adapters.html`,
         `${siteRoot}/npm-provenance-package-trust.html`,

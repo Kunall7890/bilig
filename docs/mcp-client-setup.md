@@ -58,6 +58,12 @@ curl -fsS https://bilig.proompteng.ai/mcp \
   --data '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"curl","version":"1"}}}' | jq .
 ```
 
+Directory and connector scanners can read the hosted same-origin server card:
+
+```sh
+curl -fsS https://bilig.proompteng.ai/.well-known/mcp/server-card.json | jq '.transport, (.tools | length)'
+```
+
 Use the remote endpoint when the client cannot launch `npm` locally or when you
 only need tool discovery and write/readback proof. It is request-local: it does
 not persist user files and does not issue `MCP-Session-Id`.

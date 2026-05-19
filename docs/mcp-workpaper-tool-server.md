@@ -249,6 +249,12 @@ lists the same `list_sheets`, `read_range`, `read_cell`, `set_cell_contents`,
 tools, plus the WorkPaper resources and prompts, without requiring account auth
 or a live server connection.
 
+The hosted endpoint origin serves the same crawler-friendly card at
+`https://bilig.proompteng.ai/.well-known/mcp/server-card.json`, with
+`streamable-http` transport metadata for `https://bilig.proompteng.ai/mcp`.
+That gives Smithery-style scanners a same-origin metadata path when they start
+from the remote MCP URL rather than the documentation site.
+
 The package carries `mcpName: io.github.proompteng/bilig-workpaper` and a
 matching `server.json`. It is published in the official MCP Registry as
 `io.github.proompteng/bilig-workpaper`:

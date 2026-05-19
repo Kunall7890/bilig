@@ -11,6 +11,11 @@ import {
 } from '@bilig/headless/mcp'
 
 const MCP_ENDPOINTS = ['/mcp', '/mcp/workpaper'] as const
+const MCP_SERVER_CARD_ENDPOINTS = [
+  '/.well-known/mcp/server-card.json',
+  '/.well-known/mcp.json',
+  '/.well-known/mcp-server-card.json',
+] as const
 const MCP_ALLOWED_METHODS = 'POST, GET, DELETE, OPTIONS'
 const DEFAULT_ALLOWED_ORIGINS = ['https://claude.ai', 'https://www.claude.ai', 'https://claude.com', 'https://www.claude.com'] as const
 
@@ -18,11 +23,95 @@ interface WorkPaperMcpRemoteRouteOptions {
   env?: Record<string, string | undefined>
 }
 
+interface JsonRpcSuccess<Result> {
+  jsonrpc: '2.0'
+  id: string | number | null | undefined
+  result: Result
+}
+
 function createRequestServer() {
   return createFileBackedWorkPaperMcpToolServer({
     workbook: buildDemoWorkPaper(),
     writable: false,
   })
+}
+
+function createWorkPaperMcpRemoteServerCard(): Record<string, unknown> {
+  const server = createRequestServer()
+  const tools = readJsonRpcArrayProperty(
+    server.handleJsonRpc({
+      jsonrpc: '2.0',
+      id: 'tools',
+      method: 'tools/list',
+    }),
+    'tools/list',
+    'tools',
+  )
+  const resources = readJsonRpcArrayProperty(
+    server.handleJsonRpc({
+      jsonrpc: '2.0',
+      id: 'resources',
+      method: 'resources/list',
+    }),
+    'resources/list',
+    'resources',
+  )
+  const prompts = readJsonRpcArrayProperty(
+    server.handleJsonRpc({
+      jsonrpc: '2.0',
+      id: 'prompts',
+      method: 'prompts/list',
+    }),
+    'prompts/list',
+    'prompts',
+  )
+
+  return {
+    $schema: 'https://modelcontextprotocol.io/schemas/server-card.schema.json',
+    protocolVersion: WORKPAPER_MCP_PROTOCOL_VERSION,
+    version: WORKPAPER_VERSION,
+    serverInfo: {
+      name: 'Bilig WorkPaper Remote Demo',
+      version: WORKPAPER_VERSION,
+      description:
+        'Stateless hosted WorkPaper MCP demo for workbook reads, input edits, recalculation, formula validation, and JSON proof.',
+    },
+    authentication: {
+      required: false,
+      schemes: [],
+    },
+    capabilities: {
+      tools: true,
+      resources: true,
+      prompts: true,
+    },
+    homepage: 'https://proompteng.github.io/bilig/',
+    repository: 'https://github.com/proompteng/bilig',
+    license: 'MIT',
+    transport: {
+      type: 'streamable-http',
+      url: 'https://bilig.proompteng.ai/mcp',
+      protocolVersion: WORKPAPER_MCP_PROTOCOL_VERSION,
+      stateless: true,
+    },
+    transports: [
+      {
+        type: 'streamable-http',
+        url: 'https://bilig.proompteng.ai/mcp',
+        protocolVersion: WORKPAPER_MCP_PROTOCOL_VERSION,
+        stateless: true,
+      },
+      {
+        type: 'streamable-http',
+        url: 'https://bilig.proompteng.ai/mcp/workpaper',
+        protocolVersion: WORKPAPER_MCP_PROTOCOL_VERSION,
+        stateless: true,
+      },
+    ],
+    tools,
+    resources,
+    prompts,
+  }
 }
 
 function handleWorkPaperMcpPost(request: FastifyRequest<{ Body: unknown }>, reply: FastifyReply, env: Record<string, string | undefined>) {
@@ -71,6 +160,13 @@ function handleWorkPaperMcpOptions(request: FastifyRequest, reply: FastifyReply,
   reply.header('access-control-allow-headers', 'accept, content-type, mcp-protocol-version, mcp-session-id')
   reply.header('access-control-max-age', '600')
   return reply.code(204).send()
+}
+
+function handleWorkPaperMcpServerCard(reply: FastifyReply): Record<string, unknown> {
+  reply.header('access-control-allow-origin', '*')
+  reply.header('cache-control', 'public, max-age=300')
+  reply.header('content-type', 'application/json; charset=utf-8')
+  return createWorkPaperMcpRemoteServerCard()
 }
 
 function handleWorkPaperMcpUnsupportedMethod(request: FastifyRequest, reply: FastifyReply, env: Record<string, string | undefined>) {
@@ -163,8 +259,41 @@ function readSingleHeader(value: string | string[] | undefined): string | undefi
   return Array.isArray(value) ? value[0] : value
 }
 
+function readJsonRpcArrayProperty(response: unknown, method: string, property: string): unknown[] {
+  const result = requireJsonRpcResultObject(response, method)
+  const value = result[property]
+  if (!Array.isArray(value)) {
+    throw new Error(`Expected ${method} JSON-RPC result.${property} array`)
+  }
+  return value
+}
+
+function requireJsonRpcResultObject(response: unknown, method: string): Record<string, unknown> {
+  if (!isJsonRpcSuccess(response) || !isRecord(response.result)) {
+    throw new Error(`Expected ${method} JSON-RPC success object response`)
+  }
+  return response.result
+}
+
+function isJsonRpcSuccess(value: unknown): value is JsonRpcSuccess<unknown> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    (value as { jsonrpc?: unknown }).jsonrpc === '2.0' &&
+    Object.hasOwn(value, 'result')
+  )
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 export function registerWorkPaperMcpRemoteRoutes(app: FastifyInstance, options: WorkPaperMcpRemoteRouteOptions = {}): void {
   const env = options.env ?? process.env
+  for (const endpoint of MCP_SERVER_CARD_ENDPOINTS) {
+    app.get(endpoint, async (_request, reply) => handleWorkPaperMcpServerCard(reply))
+  }
   for (const endpoint of MCP_ENDPOINTS) {
     app.options(endpoint, async (request, reply) => handleWorkPaperMcpOptions(request, reply, env))
     app.get(endpoint, async (request, reply) => handleWorkPaperMcpUnsupportedMethod(request, reply, env))

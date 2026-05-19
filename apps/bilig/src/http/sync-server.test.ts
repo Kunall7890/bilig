@@ -297,6 +297,19 @@ function readMcpTools(responseBody: unknown): unknown[] {
   return tools
 }
 
+function readMcpServerCardToolNames(card: unknown): string[] {
+  const tools = isRecord(card) ? card['tools'] : undefined
+  if (!Array.isArray(tools)) {
+    throw new Error(`Expected MCP server-card tools, received ${JSON.stringify(card)}`)
+  }
+  return tools.map((tool) => {
+    if (!isRecord(tool) || typeof tool['name'] !== 'string') {
+      throw new Error(`Expected MCP server-card tool, received ${JSON.stringify(tool)}`)
+    }
+    return tool['name']
+  })
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -381,6 +394,68 @@ describe('sync-server cross-origin isolation', () => {
 })
 
 describe('sync-server remote WorkPaper MCP', () => {
+  it('serves same-origin MCP server cards for hosted directory scanners', async () => {
+    const { app } = createSyncServer({ logger: false })
+
+    try {
+      const responses = await Promise.all(
+        ['/.well-known/mcp/server-card.json', '/.well-known/mcp.json', '/.well-known/mcp-server-card.json'].map((url) =>
+          app.inject({
+            method: 'GET',
+            url,
+          }),
+        ),
+      )
+
+      for (const response of responses) {
+        expect(response.statusCode).toBe(200)
+        expect(response.headers['content-type']).toContain('application/json')
+        expect(response.headers['access-control-allow-origin']).toBe('*')
+        const card = response.json()
+        expect(card).toMatchObject({
+          protocolVersion: '2025-11-25',
+          serverInfo: {
+            name: 'Bilig WorkPaper Remote Demo',
+            version: expect.any(String),
+          },
+          authentication: {
+            required: false,
+          },
+          transport: {
+            type: 'streamable-http',
+            url: 'https://bilig.proompteng.ai/mcp',
+            stateless: true,
+          },
+        })
+        expect(readMcpServerCardToolNames(card)).toEqual([
+          'list_sheets',
+          'read_range',
+          'read_cell',
+          'set_cell_contents',
+          'get_cell_display_value',
+          'export_workpaper_document',
+          'validate_formula',
+        ])
+        expect(card.resources).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              uri: 'bilig://workpaper/agent-handoff',
+            }),
+          ]),
+        )
+        expect(card.prompts).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              name: 'edit_and_verify_workpaper',
+            }),
+          ]),
+        )
+      }
+    } finally {
+      await app.close()
+    }
+  })
+
   it('initializes a stateless Streamable HTTP MCP endpoint with WorkPaper tools', async () => {
     const { app } = createSyncServer({ logger: false })
 

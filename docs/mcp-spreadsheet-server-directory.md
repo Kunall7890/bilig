@@ -84,12 +84,18 @@ The same card is mirrored at
 <https://proompteng.github.io/bilig/.well-known/mcp-server-card.json> for
 crawlers that probe those well-known variants.
 
+The hosted MCP origin serves remote transport metadata at
+<https://bilig.proompteng.ai/.well-known/mcp/server-card.json>. Use that URL
+for directories that start from `https://bilig.proompteng.ai/mcp` and expect
+same-origin static server-card discovery.
+
 ## Directory Status
 
 | Directory                       | Status                                                                        | Link                                                                                                            |
 | ------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | Official MCP Registry           | Live; `0.27.0` is latest-marked and matches npm                               | <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper&limit=100> |
 | Hosted Streamable HTTP endpoint | App runtime endpoint for JSON-only stateless MCP smoke tests                  | <https://bilig.proompteng.ai/mcp>                                                                               |
+| Hosted MCP server card          | Same-origin server card for Streamable HTTP scanners                          | <https://bilig.proompteng.ai/.well-known/mcp/server-card.json>                                                  |
 | Static MCP server card          | Live                                                                          | <https://proompteng.github.io/bilig/.well-known/mcp/server-card.json>                                           |
 | Static MCP discovery aliases    | Live                                                                          | <https://proompteng.github.io/bilig/.well-known/mcp.json>                                                       |
 | Smithery                        | Live; `smithery mcp add` smoke connected and listed demo workbook sheets      | <https://smithery.ai/servers/gkonushev/bilig-workpaper>                                                         |

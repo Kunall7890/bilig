@@ -22,8 +22,10 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
 4. Start the MCP server or import `@bilig/headless` directly.
 
 Remote MCP clients that support Streamable HTTP can smoke-test the stateless
-demo endpoint at `https://bilig.proompteng.ai/mcp`. Local agents that need writable
-project files should still prefer the file-backed stdio command below.
+demo endpoint at `https://bilig.proompteng.ai/mcp`. Directory scanners that inspect the
+hosted endpoint origin can read the same-origin server card at
+`https://bilig.proompteng.ai/.well-known/mcp/server-card.json`. Local agents that need writable project files should
+still prefer the file-backed stdio command below.
 
 ## Default Decision
 
@@ -3078,6 +3080,12 @@ lists the same `list_sheets`, `read_range`, `read_cell`, `set_cell_contents`,
 `get_cell_display_value`, `export_workpaper_document`, and `validate_formula`
 tools, plus the WorkPaper resources and prompts, without requiring account auth
 or a live server connection.
+
+The hosted endpoint origin serves the same crawler-friendly card at
+`https://bilig.proompteng.ai/.well-known/mcp/server-card.json`, with
+`streamable-http` transport metadata for `https://bilig.proompteng.ai/mcp`.
+That gives Smithery-style scanners a same-origin metadata path when they start
+from the remote MCP URL rather than the documentation site.
 
 The package carries `mcpName: io.github.proompteng/bilig-workpaper` and a
 matching `server.json`. It is published in the official MCP Registry as
