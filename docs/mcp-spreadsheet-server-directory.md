@@ -1,7 +1,7 @@
 ---
 title: MCP spreadsheet server directory status
 published: true
-description: Live directory and install status for the Bilig WorkPaper MCP server, including official Registry metadata, Glama indexing, npm stdio install, and PulseMCP follow-up.
+description: Live directory and install status for the Bilig WorkPaper MCP server, including official Registry metadata, Smithery install, Glama indexing, npm stdio install, and PulseMCP follow-up.
 tags: mcp, model context protocol, spreadsheet, agents, directory
 canonical_url: https://proompteng.github.io/bilig/mcp-spreadsheet-server-directory.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
@@ -22,7 +22,7 @@ Cursor, VS Code, Codex, or another stdio MCP client.
 ## Canonical Package
 
 ```sh
-npm exec --package @bilig/headless@0.25.4 -- bilig-workpaper-mcp
+npm exec --package @bilig/headless@0.25.5 -- bilig-workpaper-mcp
 ```
 
 Package metadata:
@@ -36,6 +36,8 @@ Package metadata:
   <https://proompteng.github.io/bilig/mcp-client-setup.html>
 - Claude Desktop MCPB bundle:
   <https://proompteng.github.io/bilig/claude-desktop-mcpb-workpaper.html>
+- Smithery install:
+  <https://smithery.ai/servers/gkonushev/bilig-workpaper>
 
 The server is local-first stdio. It does not need a hosted Bilig account or a
 network service to answer `tools/list` and `tools/call`.
@@ -90,6 +92,7 @@ crawlers that probe those well-known variants.
 | Hosted Streamable HTTP endpoint | App runtime endpoint for JSON-only stateless MCP smoke tests          | <https://bilig.proompteng.ai/mcp>                                                                               |
 | Static MCP server card          | Live                                                                  | <https://proompteng.github.io/bilig/.well-known/mcp/server-card.json>                                           |
 | Static MCP discovery aliases    | Live                                                                  | <https://proompteng.github.io/bilig/.well-known/mcp.json>                                                       |
+| Smithery                        | Live; `smithery mcp add` smoke connected and listed demo workbook sheets | <https://smithery.ai/servers/gkonushev/bilig-workpaper>                                                        |
 | Glama                           | Live with `Try in Browser`; seven tools indexed with A-grade TDQS     | <https://glama.ai/mcp/servers/proompteng/bilig>                                                                 |
 | mcp.so                          | Submitted for maintainer review; issue body refreshed on May 18       | <https://github.com/chatmcp/mcpso/issues/2295>                                                                  |
 | Cline MCP Marketplace           | Submitted for maintainer review; issue body refreshed on May 18       | <https://github.com/cline/mcp-marketplace/issues/1557>                                                          |
@@ -116,6 +119,20 @@ by editing the existing issue bodies, not by adding more comments. Both now
 point reviewers at the file-backed command with `--init-demo-workpaper
 --writable`, the seven current tools, the official Registry entry, and the
 static MCP server card.
+
+Smithery lists Bilig WorkPaper as `gkonushev/bilig-workpaper` and exposes a
+one-command install path:
+
+```sh
+npx -y smithery mcp add gkonushev/bilig-workpaper
+npx -y smithery tool call bilig-workpaper list_sheets '{}'
+```
+
+Live verification on May 19, 2026 returned a connected Smithery server named
+`bilig-workpaper-remote-demo`, version `0.25.4`, and `list_sheets` returned the
+demo `Inputs` and `Summary` sheets. Smithery's generated remote endpoint is
+<https://bilig-workpaper--gkonushev.run.tools>; use the Smithery page as the
+stable install URL.
 
 Glama lists Bilig WorkPaper publicly with TypeScript, Developer Tools,
 Workplace & Productivity, Remote attributes, `Try in Browser`, and public pages
@@ -185,7 +202,7 @@ A useful result includes:
 - `transport.type: stdio`
 - `repository.url: https://github.com/proompteng/bilig`
 
-Latest checked result on May 19, 2026: npm latest is `@bilig/headless@0.25.4`.
+Latest checked result on May 19, 2026: npm latest is `@bilig/headless@0.25.5`.
 Official Registry search returns Bilig WorkPaper entries, but the latest-marked entry can lag npm.
 The API also returns historical entries, so consumers should follow pagination,
 request a sufficient limit, select the latest-marked entry when available, or
@@ -230,7 +247,7 @@ printf '%s\n' \
   '{"jsonrpc":"2.0","id":1,"method":"initialize"}' \
   '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
   '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' |
-  npm exec --package @bilig/headless@0.25.4 -- \
+  npm exec --package @bilig/headless@0.25.5 -- \
     bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
@@ -258,5 +275,5 @@ verify readback, and persist WorkPaper JSON through the published
 `@bilig/headless` package.
 
 ```sh
-npm exec --package @bilig/headless@0.25.4 -- bilig-workpaper-mcp
+npm exec --package @bilig/headless@0.25.5 -- bilig-workpaper-mcp
 ```

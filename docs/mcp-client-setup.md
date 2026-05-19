@@ -22,6 +22,23 @@ recalculates formulas, and persists edits back to disk.
 For the agent-side write/read/persist loop, use the
 [headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md).
 
+## Smithery install
+
+If your agent host uses Smithery, install the hosted Bilig WorkPaper MCP server
+directly:
+
+```sh
+npx -y smithery mcp add gkonushev/bilig-workpaper
+npx -y smithery tool list bilig-workpaper
+npx -y smithery tool call bilig-workpaper list_sheets '{}'
+```
+
+The Smithery listing is
+<https://smithery.ai/servers/gkonushev/bilig-workpaper>. It points at the same
+request-local hosted MCP demo as the remote smoke endpoint below. Use local
+stdio or the MCPB bundle when the workflow needs a writable project WorkPaper
+file.
+
 ## Remote smoke in 30 seconds
 
 Clients that support Streamable HTTP MCP can use the hosted stateless demo
@@ -53,8 +70,8 @@ For persistent project workflows, use the local stdio config below with
 Every client below starts the same process:
 
 ```sh
-npm exec --package @bilig/headless@0.25.4 -- bilig-workpaper-mcp
-npm exec --package @bilig/headless@0.25.4 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.25.5 -- bilig-workpaper-mcp
+npm exec --package @bilig/headless@0.25.5 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 The first command is demo mode. The client configs below use file-backed mode
@@ -69,7 +86,7 @@ printf '%s\n' \
   '{"jsonrpc":"2.0","id":1,"method":"initialize"}' \
   '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
   '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' |
-  npm exec --package @bilig/headless@0.25.4 -- bilig-workpaper-mcp
+  npm exec --package @bilig/headless@0.25.5 -- bilig-workpaper-mcp
 ```
 
 `tools/list` should include `read_workpaper_summary` and
@@ -92,7 +109,7 @@ project:
 claude mcp add-json bilig-workpaper '{
   "type": "stdio",
   "command": "npm",
-  "args": ["exec", "--package", "@bilig/headless@0.25.4", "--", "bilig-workpaper-mcp", "--workpaper", "./pricing.workpaper.json", "--init-demo-workpaper", "--writable"],
+  "args": ["exec", "--package", "@bilig/headless@0.25.5", "--", "bilig-workpaper-mcp", "--workpaper", "./pricing.workpaper.json", "--init-demo-workpaper", "--writable"],
   "env": {}
 }' --scope project
 ```
@@ -125,7 +142,7 @@ Add the same stdio server to `claude_desktop_config.json`:
       "args": [
         "exec",
         "--package",
-        "@bilig/headless@0.25.4",
+        "@bilig/headless@0.25.5",
         "--",
         "bilig-workpaper-mcp",
         "--workpaper",
@@ -148,13 +165,13 @@ so you know whether the issue is the client config or the npm server command.
 If you prefer a Claude Desktop bundle, download the released MCPB asset:
 
 ```text
-https://github.com/proompteng/bilig/releases/download/libraries-v0.25.4/bilig-workpaper.mcpb
+https://github.com/proompteng/bilig/releases/download/libraries-v0.25.5/bilig-workpaper.mcpb
 ```
 
 The checksum is published beside it:
 
 ```text
-https://github.com/proompteng/bilig/releases/download/libraries-v0.25.4/bilig-workpaper.mcpb.sha256
+https://github.com/proompteng/bilig/releases/download/libraries-v0.25.5/bilig-workpaper.mcpb.sha256
 ```
 
 You can also reproduce the same MCPB package from this repository:
@@ -182,7 +199,7 @@ For a project-local setup, create `.cursor/mcp.json`:
       "args": [
         "exec",
         "--package",
-        "@bilig/headless@0.25.4",
+        "@bilig/headless@0.25.5",
         "--",
         "bilig-workpaper-mcp",
         "--workpaper",
@@ -213,7 +230,7 @@ For GitHub Copilot agent mode in VS Code, add `.vscode/mcp.json`:
       "args": [
         "exec",
         "--package",
-        "@bilig/headless@0.25.4",
+        "@bilig/headless@0.25.5",
         "--",
         "bilig-workpaper-mcp",
         "--workpaper",
@@ -245,7 +262,7 @@ Configure MCP Servers, and add this entry to `cline_mcp_settings.json` under
       "args": [
         "exec",
         "--package",
-        "@bilig/headless@0.25.4",
+        "@bilig/headless@0.25.5",
         "--",
         "bilig-workpaper-mcp",
         "--workpaper",
@@ -279,7 +296,7 @@ For Codex CLI or the Codex IDE extension, add this to `~/.codex/config.toml`:
 ```toml
 [mcp_servers.bilig-workpaper]
 command = "npm"
-args = ["exec", "--package", "@bilig/headless@0.25.4", "--", "bilig-workpaper-mcp", "--workpaper", "./pricing.workpaper.json", "--init-demo-workpaper", "--writable"]
+args = ["exec", "--package", "@bilig/headless@0.25.5", "--", "bilig-workpaper-mcp", "--workpaper", "./pricing.workpaper.json", "--init-demo-workpaper", "--writable"]
 enabled = true
 startup_timeout_sec = 30
 ```
