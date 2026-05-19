@@ -123,7 +123,7 @@ printf '%s\n' \
 The npm package exposes the demo server as `bilig-workpaper-mcp` by default:
 
 ```sh
-npm exec --package @bilig/headless@0.24.0 -- bilig-workpaper-mcp
+npm exec --package @bilig/headless@0.24.1 -- bilig-workpaper-mcp
 ```
 
 ## Remote Stateless Endpoint
@@ -165,7 +165,7 @@ For a real agent workflow, point the same binary at a persisted WorkPaper JSON
 document:
 
 ```sh
-npm exec --package @bilig/headless@0.24.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.24.1 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 File-backed mode loads `./pricing.workpaper.json`, exposes `list_sheets`,
@@ -285,7 +285,7 @@ import { generateText } from 'ai'
 const client = await createMCPClient({
   transport: new Experimental_StdioMCPTransport({
     command: 'npm',
-    args: ['exec', '--package', '@bilig/headless@0.24.0', '--', 'bilig-workpaper-mcp'],
+    args: ['exec', '--package', '@bilig/headless@0.24.1', '--', 'bilig-workpaper-mcp'],
   }),
 })
 
@@ -409,13 +409,13 @@ Expose only the minimum useful surface first:
 
 The official MCP specification describes tool discovery through `tools/list`,
 tool invocation through `tools/call`, input schemas, and tool annotations:
-<https://modelcontextprotocol.io/specification/2025-06-18/server/tools>.
+<https://modelcontextprotocol.io/specification/2025-11-25/server/tools>.
 It also defines server resources through `resources/list` and
 `resources/read`, and reusable prompt templates through `prompts/list` and
 `prompts/get`:
-<https://modelcontextprotocol.io/specification/2025-06-18/server/resources>
+<https://modelcontextprotocol.io/specification/2025-11-25/server/resources>
 and
-<https://modelcontextprotocol.io/specification/2025-06-18/server/prompts>.
+<https://modelcontextprotocol.io/specification/2025-11-25/server/prompts>.
 
 ## Files To Inspect
 

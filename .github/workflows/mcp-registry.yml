@@ -76,8 +76,17 @@ jobs:
           const manifest = JSON.parse(fs.readFileSync("build/mcp-registry/package/package.json", "utf8"));
           const server = JSON.parse(fs.readFileSync("build/mcp-registry/package/server.json", "utf8"));
           server.description = "Formula-backed WorkPaper tools for workbook readback, input edits, and JSON persistence.";
+          server.remotes = [
+            {
+              type: "streamable-http",
+              url: "https://bilig.proompteng.ai/mcp",
+            },
+          ];
           const npmPackage = Array.isArray(server.packages)
             ? server.packages.find((entry) => entry.registryType === "npm" && entry.identifier === manifest.name)
+            : undefined;
+          const remoteServer = Array.isArray(server.remotes)
+            ? server.remotes.find((entry) => entry.type === "streamable-http" && entry.url === "https://bilig.proompteng.ai/mcp")
             : undefined;
 
           const failures = [];
@@ -89,6 +98,7 @@ jobs:
             failures.push(`registry description is too long: ${server.description?.length ?? "missing"}`);
           }
           if (!npmPackage) failures.push("missing npm package entry");
+          if (!remoteServer) failures.push("missing hosted Streamable HTTP remote entry");
           if (npmPackage && npmPackage.version !== manifest.version) {
             failures.push(`npm package version mismatch: ${npmPackage.version} !== ${manifest.version}`);
           }
@@ -105,6 +115,7 @@ jobs:
             mcpName: manifest.mcpName,
             serverVersion: server.version,
             descriptionLength: server.description.length,
+            remote: remoteServer?.url,
           }, null, 2));
           fs.writeFileSync("build/mcp-registry/package/server.json", `${JSON.stringify(server, null, 2)}\n`);
           NODE

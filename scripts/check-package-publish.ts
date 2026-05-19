@@ -181,10 +181,16 @@ function validatePackedMcpMetadata(packageLabel, packedManifest, tarballPath, fa
   const npmPackage = Array.isArray(serverJson.packages)
     ? serverJson.packages.find((entry) => entry?.registryType === 'npm' && entry?.identifier === packedManifest.name)
     : undefined
+  const remoteServer = Array.isArray(serverJson.remotes)
+    ? serverJson.remotes.find((entry) => entry?.type === 'streamable-http' && entry?.url === 'https://bilig.proompteng.ai/mcp')
+    : undefined
   if (!npmPackage) {
     failureMessages.push(`${packageLabel}: server.json must include an npm package entry for ${packedManifest.name}`)
   } else if (npmPackage.version !== packedManifest.version) {
     failureMessages.push(`${packageLabel}: server.json package version must match package.json version`)
+  }
+  if (!remoteServer) {
+    failureMessages.push(`${packageLabel}: server.json must include the hosted Streamable HTTP remote endpoint`)
   }
 }
 

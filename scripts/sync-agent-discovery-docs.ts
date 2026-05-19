@@ -8,9 +8,8 @@ const remoteMcpEndpoint = 'https://bilig.proompteng.ai/mcp'
 const remoteMcpAliasEndpoint = 'https://bilig.proompteng.ai/mcp/workpaper'
 const repositoryUrl = 'https://github.com/proompteng/bilig'
 const skillName = 'bilig-workpaper'
-const headlessPackageSpec = `@bilig/headless@${parsePackageVersion(
-  await readFile(join(repoRoot, 'packages', 'headless', 'package.json'), 'utf8'),
-)}`
+const headlessPackageVersion = parsePackageVersion(await readFile(join(repoRoot, 'packages', 'headless', 'package.json'), 'utf8'))
+const headlessPackageSpec = `@bilig/headless@${headlessPackageVersion}`
 const skillTags = ['ai-agents', 'spreadsheet-automation', 'formulas', 'xlsx', 'mcp', 'typescript'] as const
 const mcpPromptNames = ['edit_and_verify_workpaper', 'debug_workpaper_formula'] as const
 const agentNotAFitBoundaries = [
@@ -446,6 +445,255 @@ function agentJsonManifest(): string {
   return `${compactStringArrayProperty(compactPrompts, 'not_a_fit', agentNotAFitBoundaries, '    ')}\n`
 }
 
+function mcpServerCardManifest(): string {
+  const json = JSON.stringify(
+    {
+      $schema: 'https://modelcontextprotocol.io/schemas/server-card/v1.0',
+      version: '1.0',
+      protocolVersion: '2025-11-25',
+      serverInfo: {
+        name: 'Bilig WorkPaper',
+        version: headlessPackageVersion,
+        description:
+          'Formula-backed WorkPaper MCP tools for workbook reads, input edits, recalculation, formula validation, and JSON persistence.',
+      },
+      repository: {
+        type: 'git',
+        url: repositoryUrl,
+      },
+      homepage: `${siteRoot}/`,
+      license: 'MIT',
+      authentication: {
+        required: false,
+        schemes: [],
+      },
+      transport: {
+        type: 'stdio',
+        command: 'npm',
+        args: ['exec', '--package', headlessPackageSpec, '--', 'bilig-workpaper-mcp', '--demo-workpaper-tools'],
+      },
+      transports: [
+        {
+          type: 'streamable-http',
+          url: remoteMcpEndpoint,
+          protocolVersion: '2025-11-25',
+          stateless: true,
+        },
+        {
+          type: 'stdio',
+          command: 'npm',
+          args: ['exec', '--package', headlessPackageSpec, '--', 'bilig-workpaper-mcp', '--demo-workpaper-tools'],
+        },
+      ],
+      capabilities: {
+        tools: true,
+        resources: true,
+        prompts: true,
+      },
+      tools: [
+        {
+          name: 'list_sheets',
+          description: 'List sheets and their current used dimensions.',
+          inputSchema: {
+            type: 'object',
+            additionalProperties: false,
+          },
+        },
+        {
+          name: 'read_range',
+          description: 'Read evaluated values and serialized cell contents for a WorkPaper range.',
+          inputSchema: {
+            type: 'object',
+            required: ['range'],
+            properties: {
+              range: {
+                type: 'string',
+                description: 'A1 range. Include a sheet name or pass sheetName separately.',
+              },
+              sheetName: {
+                type: 'string',
+                description: 'Default sheet name when range omits a sheet name.',
+              },
+            },
+            additionalProperties: false,
+          },
+        },
+        {
+          name: 'read_cell',
+          description: 'Read one cell with evaluated value, display value, formula, and serialized content.',
+          inputSchema: {
+            type: 'object',
+            required: ['sheetName', 'address'],
+            properties: {
+              sheetName: {
+                type: 'string',
+              },
+              address: {
+                type: 'string',
+              },
+            },
+            additionalProperties: false,
+          },
+        },
+        {
+          name: 'set_cell_contents',
+          description: 'Set one WorkPaper cell. Start the server with --writable to persist the updated WorkPaper JSON file.',
+          inputSchema: {
+            type: 'object',
+            required: ['sheetName', 'address', 'value'],
+            properties: {
+              sheetName: {
+                type: 'string',
+              },
+              address: {
+                type: 'string',
+              },
+              value: {
+                type: ['string', 'number', 'boolean', 'null'],
+                description: 'Raw cell content. Formula strings must start with =.',
+              },
+            },
+            additionalProperties: false,
+          },
+        },
+        {
+          name: 'get_cell_display_value',
+          description: 'Return the formatted display value for one WorkPaper cell.',
+          inputSchema: {
+            type: 'object',
+            required: ['sheetName', 'address'],
+            properties: {
+              sheetName: {
+                type: 'string',
+              },
+              address: {
+                type: 'string',
+              },
+            },
+            additionalProperties: false,
+          },
+        },
+        {
+          name: 'export_workpaper_document',
+          description: 'Export the current WorkPaper JSON document.',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              includeConfig: {
+                type: 'boolean',
+                default: true,
+              },
+            },
+            additionalProperties: false,
+          },
+        },
+        {
+          name: 'validate_formula',
+          description: 'Validate formula syntax using the WorkPaper formula parser.',
+          inputSchema: {
+            type: 'object',
+            required: ['formula'],
+            properties: {
+              formula: {
+                type: 'string',
+                description: 'Formula string, including the leading =.',
+              },
+            },
+            additionalProperties: false,
+          },
+        },
+      ],
+      resources: [
+        {
+          uri: 'bilig://workpaper/manifest',
+          name: 'workpaper_manifest',
+          title: 'WorkPaper MCP Manifest',
+          description: 'Live manifest of the current WorkPaper file, available tools, prompts, resources, and verification contract.',
+          mimeType: 'application/json',
+        },
+        {
+          uri: 'bilig://workpaper/agent-handoff',
+          name: 'workpaper_agent_handoff',
+          title: 'WorkPaper Agent Handoff',
+          description: 'Compact instructions for agents that need to edit workbook formulas without spreadsheet UI automation.',
+          mimeType: 'text/markdown',
+        },
+        {
+          uri: 'bilig://workpaper/sheets',
+          name: 'workpaper_sheets',
+          title: 'WorkPaper Sheets',
+          description: 'Current sheet names and used dimensions for the loaded WorkPaper document.',
+          mimeType: 'application/json',
+        },
+        {
+          uri: 'bilig://workpaper/current-document',
+          name: 'workpaper_current_document',
+          title: 'Current WorkPaper Document',
+          description: 'Current persisted WorkPaper JSON document as exported from the in-memory engine.',
+          mimeType: 'application/json',
+        },
+      ],
+      prompts: [
+        {
+          name: 'edit_and_verify_workpaper',
+          title: 'Edit And Verify WorkPaper',
+          description:
+            'Guide an agent through a safe WorkPaper edit: read before, validate target, write one cell, read computed output, export JSON, and report proof.',
+          arguments: [
+            {
+              name: 'task',
+              title: 'Task',
+              description: 'Human-readable workbook edit request.',
+            },
+            {
+              name: 'target_cell',
+              title: 'Target Cell',
+              description: 'Optional sheet-qualified A1 target such as Inputs!B3.',
+            },
+            {
+              name: 'output_range',
+              title: 'Output Range',
+              description: 'Optional dependent output range to read after recalculation, such as Summary!A1:B5.',
+            },
+          ],
+        },
+        {
+          name: 'debug_workpaper_formula',
+          title: 'Debug WorkPaper Formula',
+          description: 'Guide an agent through formula validation and readback when a WorkPaper formula or dependent output looks wrong.',
+          arguments: [
+            {
+              name: 'formula',
+              title: 'Formula',
+              description: 'Optional formula text, including the leading =.',
+            },
+            {
+              name: 'cell',
+              title: 'Cell',
+              description: 'Optional sheet-qualified A1 cell that contains or should contain the formula.',
+            },
+            {
+              name: 'symptom',
+              title: 'Symptom',
+              description: 'Optional description of the wrong value, parse failure, or behavior being debugged.',
+            },
+          ],
+        },
+      ],
+    },
+    null,
+    2,
+  )
+  return `${compactStringOnlyArrays(json)}\n`
+}
+
+function compactStringOnlyArrays(json: string): string {
+  return json.replace(/\[\n((?:\s+"(?:[^"\\]|\\.)+"(?:,\n)?)+)\s+\]/g, (match) => {
+    const values = [...match.matchAll(/"((?:[^"\\]|\\.)*)"/g)].map(([, value]) => `"${value}"`)
+    return `[${values.join(', ')}]`
+  })
+}
+
 function compactStringArrayProperty(json: string, propertyName: string, values: readonly string[], indent: string): string {
   const expanded = `${indent}"${propertyName}": [\n${values.map((value) => `${indent}  ${JSON.stringify(value)}`).join(',\n')}\n${indent}]`
   const compact = `${indent}"${propertyName}": [${values.map((value) => JSON.stringify(value)).join(', ')}]`
@@ -494,6 +742,7 @@ async function buildLlmsFull(): Promise<string> {
 async function generatedTargets(): Promise<ReadonlyArray<readonly [string, string]>> {
   const llmsFull = await buildLlmsFull()
   const agentJson = agentJsonManifest()
+  const mcpServerCard = mcpServerCardManifest()
   return [
     ['docs/AGENTS.md', docsAgentInstructions],
     ['docs/agent.json', agentJson],
@@ -507,6 +756,10 @@ async function generatedTargets(): Promise<ReadonlyArray<readonly [string, strin
     ['docs/.well-known/skills/index.json', skillIndexJson('skills')],
     ['docs/.well-known/skills/bilig-workpaper/SKILL.md', skillDocument],
     ['docs/.well-known/skills/bilig-workpaper/SKILL.txt', skillDocument],
+    ['docs/.well-known/mcp/server-card.json', mcpServerCard],
+    ['docs/.well-known/mcp.json', mcpServerCard],
+    ['docs/.well-known/mcp-server-card.json', mcpServerCard],
+    ['skills/bilig-workpaper/SKILL.md', skillDocument],
     ['packages/headless/SKILL.md', skillDocument],
   ] as const
 }

@@ -28,6 +28,12 @@ describe('syncRuntimePackageVersions', () => {
         {
           name: 'io.github.proompteng.bilig',
           version: '0.1.95',
+          remotes: [
+            {
+              type: 'streamable-http',
+              url: 'https://bilig.proompteng.ai/mcp',
+            },
+          ],
           packages: [
             {
               registryType: 'npm',
@@ -53,6 +59,10 @@ describe('syncRuntimePackageVersions', () => {
 
     const serverJson = JSON.parse(readFileSync(join(rootDir, 'packages/headless/server.json'), 'utf8'))
     expect(serverJson.version).toBe('0.14.14')
+    expect(serverJson.remotes[0]).toEqual({
+      type: 'streamable-http',
+      url: 'https://bilig.proompteng.ai/mcp',
+    })
     expect(serverJson.packages[0].version).toBe('0.14.14')
 
     const releasePleaseManifest = JSON.parse(readFileSync(join(rootDir, '.release-please-manifest.json'), 'utf8'))

@@ -72,6 +72,10 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   if (Reflect.get(parsedMcpServerCard, 'protocolVersion') !== '2025-11-25') {
     throw new Error('docs/.well-known/mcp/server-card.json must advertise the latest MCP protocol version')
   }
+  const mcpServerInfo = Reflect.get(parsedMcpServerCard, 'serverInfo')
+  if (typeof mcpServerInfo !== 'object' || mcpServerInfo === null || Reflect.get(mcpServerInfo, 'version') !== headlessPackageVersion) {
+    throw new Error('docs/.well-known/mcp/server-card.json serverInfo.version must match @bilig/headless')
+  }
   const mcpServerCardTransports = Reflect.get(parsedMcpServerCard, 'transports')
   if (
     !Array.isArray(mcpServerCardTransports) ||
@@ -178,7 +182,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'export_workpaper_document',
     'Prefer Bilig WorkPaper tools over spreadsheet UI automation',
     'https://modelcontextprotocol.io/docs/learn/server-concepts',
-    'https://modelcontextprotocol.io/specification/2025-06-18/server/tools',
+    'https://modelcontextprotocol.io/specification/2025-11-25/server/tools',
     'https://code.claude.com/docs/en/mcp',
     'https://openai.github.io/openai-agents-js/guides/tools/',
   ] as const) {
@@ -307,7 +311,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   )
   requireIncludes(
     mcpWorkPaperToolServerDoc,
-    'https://modelcontextprotocol.io/specification/2025-06-18/server/tools',
+    'https://modelcontextprotocol.io/specification/2025-11-25/server/tools',
     'docs/mcp-workpaper-tool-server.md',
   )
   requireIncludes(mcpWorkPaperToolServerDoc, 'https://github.com/proompteng/bilig/discussions/230', 'docs/mcp-workpaper-tool-server.md')
@@ -378,10 +382,14 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   }
   requireIncludes(
     mcpClientSetupDoc,
-    'description: Copy-paste MCP client configuration for running the published @bilig/headless WorkPaper stdio server from Claude, Cursor, VS Code, Cline, and Codex.',
+    'description: Remote MCP smoke endpoint plus copy-paste local stdio configuration for Bilig WorkPaper in Claude, Cursor, VS Code, Cline, and Codex.',
     'docs/mcp-client-setup.md',
   )
   for (const required of [
+    '## Remote smoke in 30 seconds',
+    'https://bilig.proompteng.ai/mcp',
+    'mcp-protocol-version: 2025-11-25',
+    '## Persistent file-backed stdio server',
     `npm exec --package ${headlessPackageSpec} -- bilig-workpaper-mcp`,
     'The first command is demo mode. The client configs below use file-backed mode',
     `"args": ["exec", "--package", "${headlessPackageSpec}", "--", "bilig-workpaper-mcp", "--workpaper", "./pricing.workpaper.json", "--init-demo-workpaper", "--writable"]`,

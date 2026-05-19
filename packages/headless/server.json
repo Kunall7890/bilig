@@ -8,6 +8,12 @@
     "url": "https://github.com/proompteng/bilig",
     "source": "github"
   },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://bilig.proompteng.ai/mcp"
+    }
+  ],
   "packages": [
     {
       "registryType": "npm",

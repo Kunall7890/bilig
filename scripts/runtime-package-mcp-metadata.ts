@@ -54,6 +54,10 @@ export function validateStagedMcpServerMetadata(packageName: string, stagedPacka
       `Staged ${packageName} server.json npm package version must match package version: ${String(npmPackage['version'])} !== ${expectedVersion}`,
     )
   }
+
+  if (!findHostedRemoteEntry(serverJson)) {
+    throw new Error(`Staged ${packageName} server.json must include the hosted Streamable HTTP remote endpoint`)
+  }
 }
 
 function shouldValidateMcpMetadata(packageName: string, manifest: Record<string, unknown>): manifest is { name: string; mcpName: string } {
@@ -90,6 +94,17 @@ function findNpmPackageEntry(serverJson: Record<string, unknown>, packageName: s
   }
   return packages.find(
     (entry): entry is Record<string, unknown> => isRecord(entry) && entry['registryType'] === 'npm' && entry['identifier'] === packageName,
+  )
+}
+
+function findHostedRemoteEntry(serverJson: Record<string, unknown>): Record<string, unknown> | undefined {
+  const remotes = serverJson['remotes']
+  if (!Array.isArray(remotes)) {
+    return undefined
+  }
+  return remotes.find(
+    (entry): entry is Record<string, unknown> =>
+      isRecord(entry) && entry['type'] === 'streamable-http' && entry['url'] === 'https://bilig.proompteng.ai/mcp',
   )
 }
 

@@ -75,6 +75,18 @@ describe('runtime package publish validation', () => {
     )
   })
 
+  it('rejects MCP metadata without the hosted remote endpoint', () => {
+    const stagedPackageDir = stageHeadlessPackage({
+      manifestVersion: '9.9.9',
+      includeRemote: false,
+      versionModuleSource: packageManifestVersionModuleSource(),
+    })
+
+    expect(() => validateStagedRuntimePackageVersion('@bilig/headless', stagedPackageDir, '9.9.9')).toThrow(
+      'Staged @bilig/headless server.json must include the hosted Streamable HTTP remote endpoint',
+    )
+  })
+
   it('does not require WorkPaper metadata from other runtime packages', () => {
     expect(() => validateStagedRuntimePackageVersion('@bilig/core', '/missing-package-dir', '9.9.9')).not.toThrow()
   })
@@ -82,6 +94,7 @@ describe('runtime package publish validation', () => {
 
 function stageHeadlessPackage(args: {
   readonly manifestVersion: string
+  readonly includeRemote?: boolean
   readonly serverDescription?: string
   readonly serverVersion?: string
   readonly versionModuleSource: string
@@ -105,6 +118,16 @@ function stageHeadlessPackage(args: {
         name: 'io.github.proompteng/bilig-workpaper',
         description: args.serverDescription ?? 'Formula-backed WorkPaper tools for workbook readback, input edits, and JSON persistence.',
         version: serverVersion,
+        ...(args.includeRemote === false
+          ? {}
+          : {
+              remotes: [
+                {
+                  type: 'streamable-http',
+                  url: 'https://bilig.proompteng.ai/mcp',
+                },
+              ],
+            }),
         packages: [
           {
             registryType: 'npm',
