@@ -22,7 +22,7 @@ Cursor, VS Code, Codex, or another stdio MCP client.
 ## Canonical Package
 
 ```sh
-npm exec --package @bilig/headless@0.25.7 -- bilig-workpaper-mcp
+npm exec --package @bilig/headless@0.26.0 -- bilig-workpaper-mcp
 ```
 
 Package metadata:
@@ -86,28 +86,28 @@ crawlers that probe those well-known variants.
 
 ## Directory Status
 
-| Directory                       | Status                                                                | Link                                                                                                            |
-| ------------------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Official MCP Registry           | Live; `0.25.7` is latest-marked and matches npm                       | <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper&limit=100> |
-| Hosted Streamable HTTP endpoint | App runtime endpoint for JSON-only stateless MCP smoke tests          | <https://bilig.proompteng.ai/mcp>                                                                               |
-| Static MCP server card          | Live                                                                  | <https://proompteng.github.io/bilig/.well-known/mcp/server-card.json>                                           |
-| Static MCP discovery aliases    | Live                                                                  | <https://proompteng.github.io/bilig/.well-known/mcp.json>                                                       |
-| Smithery                        | Live; `smithery mcp add` smoke connected and listed demo workbook sheets | <https://smithery.ai/servers/gkonushev/bilig-workpaper>                                                        |
-| Glama                           | Live with `Try in Browser`; seven tools indexed with A-grade TDQS     | <https://glama.ai/mcp/servers/proompteng/bilig>                                                                 |
-| Docker MCP Registry             | Submitted for maintainer review; source commit and readme refreshed on May 19 | <https://github.com/docker/mcp-registry/pull/3606>                                                     |
-| Goose MCP catalog               | Submitted for maintainer review; catalog command and PR body refreshed on May 19 | <https://github.com/aaif-goose/goose/pull/9315>                                                        |
-| mcp.so                          | Submitted for maintainer review; issue body refreshed on May 19       | <https://github.com/chatmcp/mcpso/issues/2295>                                                                  |
-| Cline MCP Marketplace           | Submitted for maintainer review; issue body refreshed on May 19       | <https://github.com/cline/mcp-marketplace/issues/1557>                                                          |
-| mcpserver.cc                    | Submitted for maintainer review                                       | <https://mcpserver.cc/en?q=bilig>                                                                               |
-| AgentNDX                        | Submitted for review                                                  | <https://agentndx.ai/browse?q=bilig>                                                                            |
-| YuzeHao2023 Awesome MCP Servers | Submitted for maintainer review                                       | <https://github.com/YuzeHao2023/Awesome-MCP-Servers/pull/244>                                                   |
-| ToolSDK MCP Registry            | Submitted for maintainer review                                       | <https://github.com/toolsdk-ai/toolsdk-mcp-registry/pull/309>                                                   |
-| Ever Works MCP data             | Submitted for maintainer review                                       | <https://github.com/ever-works/awesome-mcp-servers-data/pull/4>                                                 |
-| mcpserve.com                    | Submitted for maintainer review                                       | <https://github.com/jmstfv/mcpserve/pull/19>                                                                    |
-| MCPFind                         | Submitted for maintainer review                                       | <https://github.com/MCPFind/mcp-find/pull/37>                                                                   |
-| mctrinh Awesome MCP Servers     | Submitted for maintainer review                                       | <https://github.com/mctrinh/awesome-mcp-servers/pull/46>                                                        |
-| MCPRepository                   | Live                                                                  | <https://mcprepository.com/proompteng/bilig>                                                                    |
-| PulseMCP                        | Live in PulseMCP-backed lookup as `Bilig WorkPaper`                   | <https://www.pulsemcp.com/servers?search=bilig&q=bilig>                                                         |
+| Directory                       | Status                                                                        | Link                                                                                                            |
+| ------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Official MCP Registry           | Live; `0.26.0` is latest-marked and matches npm                               | <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper&limit=100> |
+| Hosted Streamable HTTP endpoint | App runtime endpoint for JSON-only stateless MCP smoke tests                  | <https://bilig.proompteng.ai/mcp>                                                                               |
+| Static MCP server card          | Live                                                                          | <https://proompteng.github.io/bilig/.well-known/mcp/server-card.json>                                           |
+| Static MCP discovery aliases    | Live                                                                          | <https://proompteng.github.io/bilig/.well-known/mcp.json>                                                       |
+| Smithery                        | Live; `smithery mcp add` smoke connected and listed demo workbook sheets      | <https://smithery.ai/servers/gkonushev/bilig-workpaper>                                                         |
+| Glama                           | Live with `Try in Browser`; seven tools indexed with A-grade TDQS             | <https://glama.ai/mcp/servers/proompteng/bilig>                                                                 |
+| Docker MCP Registry             | Submitted for maintainer review; source commit and readme refreshed on May 19 | <https://github.com/docker/mcp-registry/pull/3606>                                                              |
+| Goose MCP catalog               | Closed by maintainer while Goose pauses new MCP server additions              | <https://github.com/aaif-goose/goose/pull/9315>                                                                 |
+| mcp.so                          | Submitted for maintainer review; issue body refreshed on May 19               | <https://github.com/chatmcp/mcpso/issues/2295>                                                                  |
+| Cline MCP Marketplace           | Submitted for maintainer review; issue body refreshed on May 19               | <https://github.com/cline/mcp-marketplace/issues/1557>                                                          |
+| mcpserver.cc                    | Submitted for maintainer review                                               | <https://mcpserver.cc/en?q=bilig>                                                                               |
+| AgentNDX                        | Submitted for review                                                          | <https://agentndx.ai/browse?q=bilig>                                                                            |
+| YuzeHao2023 Awesome MCP Servers | Submitted for maintainer review                                               | <https://github.com/YuzeHao2023/Awesome-MCP-Servers/pull/244>                                                   |
+| ToolSDK MCP Registry            | Submitted for maintainer review                                               | <https://github.com/toolsdk-ai/toolsdk-mcp-registry/pull/309>                                                   |
+| Ever Works MCP data             | Submitted for maintainer review                                               | <https://github.com/ever-works/awesome-mcp-servers-data/pull/4>                                                 |
+| mcpserve.com                    | Submitted for maintainer review                                               | <https://github.com/jmstfv/mcpserve/pull/19>                                                                    |
+| MCPFind                         | Submitted for maintainer review                                               | <https://github.com/MCPFind/mcp-find/pull/37>                                                                   |
+| mctrinh Awesome MCP Servers     | Submitted for maintainer review                                               | <https://github.com/mctrinh/awesome-mcp-servers/pull/46>                                                        |
+| MCPRepository                   | Live                                                                          | <https://mcprepository.com/proompteng/bilig>                                                                    |
+| PulseMCP                        | Live in PulseMCP-backed lookup as `Bilig WorkPaper`                           | <https://www.pulsemcp.com/servers?search=bilig&q=bilig>                                                         |
 
 PulseMCP says server listings are ingested from the official MCP Registry daily
 and processed weekly. Live verification on May 19, 2026 found Bilig WorkPaper
@@ -116,11 +116,14 @@ server there. Starter issue
 [#384](https://github.com/proompteng/bilig/issues/384) captured the first public
 verification pass and should stay closed unless the live listing regresses.
 
-The Docker MCP Registry and Goose MCP catalog pull requests were refreshed on
-May 19, 2026 by updating the existing PR branches and bodies, not by opening
-duplicate submissions. Docker now points at Bilig source commit
-`a1ecdd52cda3d54e0254afce129a9012c5027826`, while Goose now installs
-`@bilig/headless@0.25.7` in its catalog command.
+The Docker MCP Registry pull request was refreshed on May 19, 2026 by updating
+the existing PR body, not by opening a duplicate submission. Docker still points
+at Bilig source commit `a1ecdd52cda3d54e0254afce129a9012c5027826`; the PR body
+now points reviewers at `@bilig/headless@0.26.0` and `libraries-v0.26.0`.
+
+The Goose MCP catalog pull request was closed on May 19, 2026 because Goose is
+paused on adding new MCP servers while it works on a more scalable extensions
+system. Do not resubmit there until maintainers reopen that path.
 
 The mcp.so and Cline MCP Marketplace submissions were refreshed on May 19, 2026
 by editing the existing issue bodies, not by adding more comments. Both now
@@ -210,10 +213,10 @@ A useful result includes:
 - `transport.type: stdio`
 - `repository.url: https://github.com/proompteng/bilig`
 
-Latest checked result on May 19, 2026: npm latest is `@bilig/headless@0.25.7`,
+Latest checked result on May 19, 2026: npm latest is `@bilig/headless@0.26.0`,
 and the official Registry latest-marked entry is
-`io.github.proompteng/bilig-workpaper@0.25.7` with package
-`@bilig/headless@0.25.7` and remote `https://bilig.proompteng.ai/mcp`.
+`io.github.proompteng/bilig-workpaper@0.26.0` with package
+`@bilig/headless@0.26.0` and remote `https://bilig.proompteng.ai/mcp`.
 The API also returns historical entries, so consumers should follow pagination,
 request a sufficient limit, and select the latest-marked entry when they need a
 single freshest install coordinate.
@@ -256,7 +259,7 @@ printf '%s\n' \
   '{"jsonrpc":"2.0","id":1,"method":"initialize"}' \
   '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
   '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' |
-  npm exec --package @bilig/headless@0.25.7 -- \
+  npm exec --package @bilig/headless@0.26.0 -- \
     bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
@@ -284,5 +287,5 @@ verify readback, and persist WorkPaper JSON through the published
 `@bilig/headless` package.
 
 ```sh
-npm exec --package @bilig/headless@0.25.7 -- bilig-workpaper-mcp
+npm exec --package @bilig/headless@0.26.0 -- bilig-workpaper-mcp
 ```
