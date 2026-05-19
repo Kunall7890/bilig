@@ -270,7 +270,7 @@ describe('WorkbookPaneRendererV3', () => {
     expect(resolveWorkbookPanePresentedRevisionV3('idle', 14)).toBeNull()
   })
 
-  test('keeps the Canvas2D proof layer only until TypeGPU reports a visible frame', () => {
+  test('keeps the Canvas2D proof layer until the current TypeGPU frame presents', () => {
     expect(
       shouldMountWorkbookCanvasProofLayerV3({
         backendStatus: 'ready',
@@ -295,7 +295,7 @@ describe('WorkbookPaneRendererV3', () => {
         headerPaneCount: 1,
         tilePaneCount: 1,
       }),
-    ).toBe(false)
+    ).toBe(true)
     expect(
       shouldMountWorkbookCanvasProofLayerV3({
         backendStatus: 'ready',
@@ -304,7 +304,7 @@ describe('WorkbookPaneRendererV3', () => {
         headerPaneCount: 1,
         tilePaneCount: 1,
       }),
-    ).toBe(false)
+    ).toBe(true)
     expect(
       shouldMountWorkbookCanvasProofLayerV3({
         backendStatus: 'ready',
@@ -320,7 +320,7 @@ describe('WorkbookPaneRendererV3', () => {
         headerPaneCount: 1,
         tilePaneCount: 1,
       }),
-    ).toBe(false)
+    ).toBe(true)
     expect(
       shouldMountWorkbookCanvasProofLayerV3({
         backendStatus: 'unavailable',
@@ -336,6 +336,33 @@ describe('WorkbookPaneRendererV3', () => {
         tilePaneCount: 0,
       }),
     ).toBe(true)
+  })
+
+  test('includes surface size and device scale in frame proof identity', () => {
+    const basePane = createTilePane()
+    const baseSignature = resolveWorkbookPaneFrameProofSignatureV3({
+      headerPanes: [],
+      overlay: null,
+      surface: { dpr: 2, height: 360, pixelHeight: 720, pixelWidth: 1280, width: 640 },
+      tilePanes: [basePane],
+    })
+
+    expect(baseSignature).not.toBe(
+      resolveWorkbookPaneFrameProofSignatureV3({
+        headerPanes: [],
+        overlay: null,
+        surface: { dpr: 2, height: 360, pixelHeight: 720, pixelWidth: 1440, width: 720 },
+        tilePanes: [basePane],
+      }),
+    )
+    expect(baseSignature).not.toBe(
+      resolveWorkbookPaneFrameProofSignatureV3({
+        headerPanes: [],
+        overlay: null,
+        surface: { dpr: 1, height: 360, pixelHeight: 360, pixelWidth: 640, width: 640 },
+        tilePanes: [basePane],
+      }),
+    )
   })
 
   test('resolves visible tile-scene revision counters from rendered panes', () => {

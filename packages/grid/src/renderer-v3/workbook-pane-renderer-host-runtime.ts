@@ -6,7 +6,11 @@ import type { WorkbookGridScrollStore } from '../workbookGridScrollStore.js'
 import type { DynamicGridOverlayBatchV3 } from './dynamic-overlay-batch.js'
 import type { WorkbookRenderTilePaneState } from './render-tile-pane-state.js'
 import { resolveGridTextTileRevisionKeyV3 } from './typegpu-tile-resource-revisions.js'
-import { WorkbookPaneRendererRuntimeV3, type WorkbookPaneFrameResultV3 } from './workbook-pane-renderer-runtime.js'
+import {
+  WorkbookPaneRendererRuntimeV3,
+  type TypeGpuSurfaceSizeV3,
+  type WorkbookPaneFrameResultV3,
+} from './workbook-pane-renderer-runtime.js'
 import {
   EMPTY_WORKBOOK_PANE_SURFACE_SNAPSHOT_V3,
   WorkbookPaneSurfaceRuntimeV3,
@@ -74,6 +78,7 @@ export class WorkbookPaneRendererHostRuntimeV3 {
     this.surfaceBackendStatus = this.surfaceRuntime.getSnapshot().backendStatus
     this.unsubscribeSurface = this.surfaceRuntime.subscribe((snapshot) => {
       this.surfaceSnapshot = snapshot
+      this.syncFrameProofSignature(this.props)
       if (this.surfaceBackendStatus !== snapshot.backendStatus) {
         this.surfaceBackendStatus = snapshot.backendStatus
         this.emitBackendStatus()
@@ -217,7 +222,10 @@ export class WorkbookPaneRendererHostRuntimeV3 {
   }
 
   private syncFrameProofSignature(props: WorkbookPaneRendererHostPropsV3): void {
-    const signature = resolveWorkbookPaneFrameProofSignatureV3(props)
+    const signature = resolveWorkbookPaneFrameProofSignatureV3({
+      ...props,
+      surface: this.surfaceSnapshot.surface,
+    })
     if (this.frameProofSignature === signature) {
       return
     }
@@ -246,9 +254,15 @@ export function resolveWorkbookPaneFrameProofSignatureV3(props: {
   readonly headerPanes: readonly GridHeaderPaneState[]
   readonly overlay: DynamicGridOverlayBatchV3 | null
   readonly renderRevisionSnapshot?: GridRenderRevisionSnapshot | null | undefined
+  readonly surface?: TypeGpuSurfaceSizeV3 | null | undefined
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
 }): string {
   const textOwnershipSignature = `drawText:${props.drawText === false ? 'gpu-text-off' : 'gpu-text-on'}`
+  const surfaceSignature = props.surface
+    ? ['surface', props.surface.width, props.surface.height, props.surface.pixelWidth, props.surface.pixelHeight, props.surface.dpr].join(
+        ':',
+      )
+    : ''
   const renderRevisionSignature = props.renderRevisionSnapshot
     ? [
         props.renderRevisionSnapshot.authoritativeRevision ?? 'none',
@@ -294,5 +308,7 @@ export function resolveWorkbookPaneFrameProofSignatureV3(props: {
         props.overlay.rectSignature,
       ].join(':')
     : ''
-  return [textOwnershipSignature, tileSignature, headerSignature, overlaySignature, renderRevisionSignature].filter(Boolean).join('#')
+  return [textOwnershipSignature, surfaceSignature, tileSignature, headerSignature, overlaySignature, renderRevisionSignature]
+    .filter(Boolean)
+    .join('#')
 }

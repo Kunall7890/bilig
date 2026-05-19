@@ -271,6 +271,60 @@ describe('WorkbookPaneRendererHostRuntimeV3', () => {
     animationFrames.restore()
   })
 
+  test('invalidates the presented-frame proof when the surface size changes after presentation', async () => {
+    const animationFrames = installManualAnimationFrames()
+    const backend = {}
+    const drawFrame = vi.fn<WorkbookPaneFrameDrawerV3>(() => true)
+    const runtime = new WorkbookPaneRendererHostRuntimeV3({
+      rendererRuntime: new WorkbookPaneRendererRuntimeV3(drawFrame),
+      surfaceRuntime: new WorkbookPaneSurfaceRuntimeV3({
+        createBackend: vi.fn(async () => backend),
+        createResizeObserver: () => null,
+        getDevicePixelRatio: () => 2,
+        syncSurface: vi.fn(),
+      }),
+    })
+    const props = {
+      active: true,
+      cameraStore: null,
+      drawText: true,
+      geometry: null,
+      headerPanes: [],
+      host: createHost(640, 360),
+      overlay: null,
+      overlayBuilder: null,
+      preloadTilePanes: [],
+      renderRevisionSnapshot: null,
+      scrollTransformStore: null,
+      tilePanes: [createDirtyTilePane()],
+    }
+
+    runtime.updateProps(props)
+    runtime.setCanvas(document.createElement('canvas'))
+    await Promise.resolve()
+    animationFrames.flushNextFrame()
+
+    expect(runtime.getFrameProofStatusSnapshot()).toBe('presented')
+    expect(runtime.getHasPresentedFrameSnapshot()).toBe(true)
+    const firstPresentedSignature = runtime.getPresentedFrameProofSignatureSnapshot()
+    expect(firstPresentedSignature).toContain('surface:640:360:1280:720:2')
+
+    runtime.updateProps({ ...props, host: createHost(720, 360) })
+
+    expect(runtime.getFrameProofStatusSnapshot()).toBe('pending')
+    expect(runtime.getHasPresentedFrameSnapshot()).toBe(false)
+    expect(runtime.getFrameProofSignatureSnapshot()).toContain('surface:720:360:1440:720:2')
+    expect(runtime.getPresentedFrameProofSignatureSnapshot()).toBe(firstPresentedSignature)
+
+    animationFrames.flushNextFrame()
+    expect(runtime.getFrameProofStatusSnapshot()).toBe('presented')
+    expect(runtime.getHasPresentedFrameSnapshot()).toBe(true)
+    expect(runtime.getPresentedFrameProofSignatureSnapshot()).toBe(runtime.getFrameProofSignatureSnapshot())
+
+    runtime.dispose()
+    animationFrames.restore()
+  })
+
   test('publishes backend status changes for the React shell without callback wiring', async () => {
     const backend = {}
     const runtime = new WorkbookPaneRendererHostRuntimeV3({

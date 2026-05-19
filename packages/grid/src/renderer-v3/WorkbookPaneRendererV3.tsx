@@ -261,9 +261,6 @@ export function shouldMountWorkbookCanvasProofLayerV3(input: {
   if (input.enableCanvasFallback) {
     return true
   }
-  if ((input.hasPresentedVisibleFrame || input.hasPresentedFrame) && input.backendStatus !== 'unavailable') {
-    return false
-  }
   if (input.backendStatus !== 'ready') {
     return true
   }
@@ -271,7 +268,13 @@ export function shouldMountWorkbookCanvasProofLayerV3(input: {
   if (input.frameProofStatus === 'pending') {
     return hasVisiblePaneContent
   }
-  return hasVisiblePaneContent && input.frameProofStatus !== 'presented'
+  if (input.frameProofStatus === 'presented') {
+    return false
+  }
+  if (input.hasPresentedVisibleFrame || input.hasPresentedFrame) {
+    return false
+  }
+  return hasVisiblePaneContent
 }
 
 export function hasWorkbookPaneVisibleContentV3(input: {

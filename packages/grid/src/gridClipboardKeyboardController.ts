@@ -15,6 +15,7 @@ import { cellToEditorSeed, snapshotToRenderCell } from './gridCells.js'
 import {
   isClipboardShortcut,
   isClearCellKey,
+  isCurrentRegionSelectionShortcut,
   isFillSelectionShortcut,
   isHandledGridKey,
   isFillShortcut,
@@ -592,6 +593,7 @@ function isWorkbookChromeGridShortcut(event: Pick<GridKeyboardEventLike, 'altKey
     isFillSelectionShortcut(event) ||
     isScrollActiveCellShortcut(event) ||
     isNavigationShortcut(event) ||
+    isCurrentRegionSelectionShortcut(event) ||
     (hasPrimaryModifier && !event.altKey && normalizedKey === 'a') ||
     isSheetSelectionShortcut(event) ||
     (!event.altKey && !hasPrimaryModifier && !event.shiftKey && event.key === 'F2') ||
@@ -609,6 +611,7 @@ export function shouldHandleGridSurfaceKey(
     isFillSelectionShortcut(event) ||
     isScrollActiveCellShortcut(event) ||
     isNavigationShortcut(event) ||
+    isCurrentRegionSelectionShortcut(event) ||
     isSheetSelectionShortcut(event) ||
     ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 'a') ||
     (event.key === 'Enter' && !event.altKey && !event.ctrlKey && !event.metaKey) ||

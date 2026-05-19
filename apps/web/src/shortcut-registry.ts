@@ -261,6 +261,14 @@ const WORKBOOK_SHORTCUTS: readonly WorkbookShortcutEntry[] = [
     windows: 'Ctrl+Space',
   },
   {
+    id: 'select-current-region',
+    label: 'Select current region',
+    category: 'Selection',
+    mac: '⇧⌘*',
+    windows: 'Ctrl+Shift+*',
+    keywords: ['data region', 'table', 'range'],
+  },
+  {
     id: 'select-all',
     label: 'Select all',
     category: 'Selection',

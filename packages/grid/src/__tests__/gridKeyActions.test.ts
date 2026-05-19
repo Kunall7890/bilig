@@ -309,6 +309,20 @@ describe('gridKeyActions', () => {
 
     expect(
       resolveGridKeyAction({
+        event: { key: '*', ctrlKey: true, metaKey: false, altKey: false, shiftKey: true },
+        isEditingCell: false,
+        editorValue: '',
+        editorInputFocused: false,
+        pendingTypeSeed: null,
+        selectedCell: [2, 4],
+        currentSelectionCell: [2, 4],
+        currentRangeAnchor: [2, 4],
+        navigation,
+      }),
+    ).toEqual({ kind: 'select-range', cell: [2, 4], range: { x: 1, y: 2, width: 3, height: 4 } })
+
+    expect(
+      resolveGridKeyAction({
         event: { key: 'a', ctrlKey: true, metaKey: false, altKey: false },
         isEditingCell: false,
         editorValue: '',
@@ -335,6 +349,25 @@ describe('gridKeyActions', () => {
         navigation,
       }),
     ).toEqual({ kind: 'select-all' })
+  })
+
+  test('handles select-current-region without falling through to printable edit when no region exists', () => {
+    expect(
+      resolveGridKeyAction({
+        event: { key: '*', ctrlKey: true, metaKey: false, altKey: false, shiftKey: true },
+        isEditingCell: false,
+        editorValue: '',
+        editorInputFocused: false,
+        pendingTypeSeed: null,
+        selectedCell: [2, 4],
+        currentSelectionCell: [2, 4],
+        currentRangeAnchor: [2, 4],
+        navigation: {
+          resolveCurrentRegion: () => null,
+          resolveDataEdge: () => null,
+        },
+      }),
+    ).toEqual({ kind: 'handled' })
   })
 
   test('moves PageUp and PageDown by the caller-provided visible viewport height', () => {

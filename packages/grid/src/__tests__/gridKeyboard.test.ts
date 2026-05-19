@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 import {
   isClearCellKey,
   isClipboardShortcut,
+  isCurrentRegionSelectionShortcut,
   isDeleteKey,
   isFillSelectionShortcut,
   isFillShortcut,
@@ -43,6 +44,9 @@ describe('gridKeyboard', () => {
     expect(isSheetSelectionShortcut({ altKey: false, ctrlKey: true, key: ' ', metaKey: false, shiftKey: false })).toBe(true)
     expect(isSheetSelectionShortcut({ altKey: false, ctrlKey: true, key: ' ', metaKey: false, shiftKey: true })).toBe(true)
     expect(isSheetSelectionShortcut({ altKey: false, ctrlKey: false, key: ' ', metaKey: false, shiftKey: false })).toBe(false)
+    expect(isCurrentRegionSelectionShortcut({ altKey: false, ctrlKey: true, key: '*', metaKey: false, shiftKey: true })).toBe(true)
+    expect(isCurrentRegionSelectionShortcut({ altKey: false, ctrlKey: false, key: '*', metaKey: true, shiftKey: true })).toBe(true)
+    expect(isCurrentRegionSelectionShortcut({ altKey: false, ctrlKey: true, key: '8', metaKey: false, shiftKey: true })).toBe(false)
     expect(isHandledGridKey({ altKey: false, ctrlKey: false, key: 'F2', metaKey: false })).toBe(true)
     expect(isHandledGridKey({ altKey: false, ctrlKey: false, key: 'Escape', metaKey: false })).toBe(true)
     expect(isHandledGridKey({ altKey: false, ctrlKey: false, key: 'Delete', metaKey: false })).toBe(true)
@@ -69,6 +73,15 @@ describe('gridKeyboard', () => {
         altKey: false,
         ctrlKey: true,
         key: ' ',
+        metaKey: false,
+        shiftKey: true,
+      }),
+    ).toBe(true)
+    expect(
+      isHandledGridKey({
+        altKey: false,
+        ctrlKey: true,
+        key: '*',
         metaKey: false,
         shiftKey: true,
       }),

@@ -1214,7 +1214,10 @@ test('web app supports Google Sheets-style shortcut help and sheet switching key
 
   await grid.press(`${PRIMARY_MODIFIER}+/`)
   await expect(page.getByTestId('workbook-shortcut-dialog')).toBeVisible()
-  await expect(page.getByTestId('workbook-shortcut-search')).toBeFocused()
+  const shortcutSearch = page.getByTestId('workbook-shortcut-search')
+  await expect(shortcutSearch).toBeFocused()
+  await shortcutSearch.fill('current region')
+  await expect(page.getByTestId('workbook-shortcut-entry')).toContainText('Select current region')
 })
 
 test('web app commits in-cell string edits when clicking away', async ({ page }) => {
@@ -1818,6 +1821,10 @@ test('web app uses data-aware current-region and boundary navigation shortcuts',
 
   await clickProductCell(page, 2, 2)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C3')
+  await grid.press(`${PRIMARY_MODIFIER}+Shift+Digit8`)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:D4')
+
+  await clickProductCell(page, 2, 2)
   await grid.press(`${PRIMARY_MODIFIER}+A`)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:D4')
   await grid.press(`${PRIMARY_MODIFIER}+A`)

@@ -1,6 +1,12 @@
 import { MAX_COLS, MAX_ROWS } from '@bilig/protocol'
 import { clampCell } from './gridSelection.js'
-import { isClearCellKey, isFillSelectionShortcut, isFillShortcut, isScrollActiveCellShortcut } from './gridKeyboard.js'
+import {
+  isClearCellKey,
+  isCurrentRegionSelectionShortcut,
+  isFillSelectionShortcut,
+  isFillShortcut,
+  isScrollActiveCellShortcut,
+} from './gridKeyboard.js'
 import type { GridKeyNavigationResolver, GridNavigationDirection } from './gridNavigation.js'
 import type { Item, Rectangle } from './gridTypes.js'
 
@@ -176,6 +182,14 @@ export function resolveGridKeyAction(options: ResolveGridKeyActionOptions): Grid
 
   const hasPrimaryModifier = event.ctrlKey || event.metaKey
   const normalizedKey = event.key.toLowerCase()
+
+  if (isCurrentRegionSelectionShortcut(event)) {
+    const currentRegion = navigation?.resolveCurrentRegion(activeCell) ?? null
+    if (currentRegion) {
+      return { kind: 'select-range', cell: activeCell, range: currentRegion }
+    }
+    return { kind: 'handled' }
+  }
 
   if (hasPrimaryModifier && !event.altKey && normalizedKey === 'a') {
     const currentRegion = navigation?.resolveCurrentRegion(activeCell) ?? null
