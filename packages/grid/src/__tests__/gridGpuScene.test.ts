@@ -67,12 +67,24 @@ describe('gridGpuScene', () => {
       b: 56 / 255,
       a: 0.5,
     })
+    expect(parseGpuColor('rgb(12 34 56 / 50%)')).toEqual({
+      r: 12 / 255,
+      g: 34 / 255,
+      b: 56 / 255,
+      a: 0.5,
+    })
+    expect(parseGpuColor('green')).toEqual({
+      r: 0,
+      g: 128 / 255,
+      b: 0,
+      a: 1,
+    })
   })
 
-  test('keeps malformed colors finite and falls back to black', () => {
+  test('keeps malformed colors finite and falls back as a whole color', () => {
     expect(parseGpuColor('#zzzzzz')).toEqual({ r: 0, g: 0, b: 0, a: 1 })
     expect(parseGpuColor('#12')).toEqual({ r: 0, g: 0, b: 0, a: 1 })
-    expect(parseGpuColor('rgba(255, nope, 0, wat)')).toEqual({ r: 1, g: 0, b: 0, a: 0 })
+    expect(parseGpuColor('rgba(255, nope, 0, wat)')).toEqual({ r: 0, g: 0, b: 0, a: 1 })
     expect(Object.values(parseGpuColor('not-a-color')).every(Number.isFinite)).toBe(true)
   })
 

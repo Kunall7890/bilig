@@ -281,6 +281,18 @@ export function resolveWorkbookPaneFrameProofSignatureV3(props: {
   const headerSignature = props.headerPanes
     .map((pane) => [pane.paneId, pane.rectSignature, pane.textSignature, pane.rectCount, pane.textCount].join(':'))
     .join('|')
-  const overlaySignature = props.overlay ? `${props.overlay.seq}:${props.overlay.rectCount}` : ''
+  const overlaySignature = props.overlay
+    ? [
+        props.overlay.sheetName,
+        props.overlay.seq,
+        props.overlay.cameraSeq,
+        props.overlay.surfaceSize.width,
+        props.overlay.surfaceSize.height,
+        props.overlay.rectCount,
+        props.overlay.fillRectCount,
+        props.overlay.borderRectCount,
+        props.overlay.rectSignature,
+      ].join(':')
+    : ''
   return [textOwnershipSignature, tileSignature, headerSignature, overlaySignature, renderRevisionSignature].filter(Boolean).join('#')
 }

@@ -18,6 +18,7 @@ import {
 } from '../renderer-v3/WorkbookPaneRendererV3.js'
 import { WorkbookPaneCanvasFallbackV3 } from '../renderer-v3/WorkbookPaneCanvasFallbackV3.js'
 import { GridDrawSchedulerV3 } from '../renderer-v3/draw-scheduler.js'
+import type { DynamicGridOverlayBatchV3 } from '../renderer-v3/dynamic-overlay-batch.js'
 import { GridRenderLoop } from '../renderer-v3/gridRenderLoop.js'
 import type { GridRenderTile } from '../renderer-v3/render-tile-source.js'
 import type { WorkbookRenderTilePaneState } from '../renderer-v3/render-tile-pane-state.js'
@@ -93,6 +94,23 @@ function createTextTilePane(rowStart = 0): WorkbookRenderTilePaneState {
         },
       ],
     },
+  }
+}
+
+function createOverlayBatch(overrides: Partial<DynamicGridOverlayBatchV3> = {}): DynamicGridOverlayBatchV3 {
+  return {
+    borderRectCount: 1,
+    cameraSeq: 9,
+    fillRectCount: 1,
+    generatedAt: 1_000,
+    rectCount: 2,
+    rectInstances: new Float32Array(8),
+    rects: new Float32Array(8),
+    rectSignature: 'selection-a1',
+    seq: 9,
+    sheetName: 'Sheet1',
+    surfaceSize: { height: 360, width: 640 },
+    ...overrides,
   }
 }
 
@@ -410,6 +428,39 @@ describe('WorkbookPaneRendererV3', () => {
           tileSceneCameraSeq: 1,
           tileSceneRevision: 1,
         },
+        tilePanes: [basePane],
+      }),
+    )
+  })
+
+  test('includes dynamic overlay payload signatures in frame proof identity', () => {
+    const basePane = createTilePane()
+    const baseOverlay = createOverlayBatch()
+    const movedSelectionSameCamera = createOverlayBatch({
+      rectInstances: new Float32Array([24, 48, 104, 22, 0, 0, 0, 0]),
+      rectSignature: 'selection-b2',
+    })
+    const resizedSurfaceSameRects = createOverlayBatch({
+      surfaceSize: { height: 720, width: 1280 },
+    })
+
+    const baseSignature = resolveWorkbookPaneFrameProofSignatureV3({
+      headerPanes: [],
+      overlay: baseOverlay,
+      tilePanes: [basePane],
+    })
+
+    expect(baseSignature).not.toBe(
+      resolveWorkbookPaneFrameProofSignatureV3({
+        headerPanes: [],
+        overlay: movedSelectionSameCamera,
+        tilePanes: [basePane],
+      }),
+    )
+    expect(baseSignature).not.toBe(
+      resolveWorkbookPaneFrameProofSignatureV3({
+        headerPanes: [],
+        overlay: resizedSurfaceSameRects,
         tilePanes: [basePane],
       }),
     )

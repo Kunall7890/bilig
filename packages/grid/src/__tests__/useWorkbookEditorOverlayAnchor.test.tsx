@@ -132,4 +132,73 @@ describe('useWorkbookEditorOverlayAnchor', () => {
       root.unmount()
     })
   })
+
+  it('unmounts the editor overlay when its target cell is no longer renderable', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const cameraStore = new GridCameraStore()
+    const scrollStore = new WorkbookGridScrollStore()
+    const engine: GridEngineLike = {
+      workbook: {
+        getSheet: () => undefined,
+      },
+      getCell: () => createSnapshot(),
+      getCellStyle: () => undefined,
+      subscribeCells: () => () => undefined,
+    }
+    let setTargetRenderable: ((value: boolean) => void) | null = null
+
+    function Harness() {
+      const [hostElement, setHostElement] = useState<HTMLDivElement | null>(null)
+      const [targetRenderable, setTargetRenderableState] = useState(true)
+      setTargetRenderable = setTargetRenderableState
+      const handleHostRef = useCallback((node: HTMLDivElement | null) => {
+        if (node) {
+          node.getBoundingClientRect = createHostRect
+        }
+        setHostElement(node)
+      }, [])
+      const getLocalBounds = useCallback(
+        () => (targetRenderable ? { height: 24, width: 104, x: 20, y: 30 } : undefined),
+        [targetRenderable],
+      )
+      const state = useWorkbookEditorOverlayAnchor({
+        editorValue: 'draft',
+        engine,
+        getCellLocalBounds: getLocalBounds,
+        gridCameraStore: cameraStore,
+        hostElement,
+        isEditingCell: true,
+        scrollTransformStore: scrollStore,
+        selectedCellSnapshot: createSnapshot(),
+        selectedCol: 1,
+        selectedRow: 1,
+      })
+      return (
+        <div ref={handleHostRef}>{state.overlayStyle ? <div data-testid="cell-editor-overlay" style={state.overlayStyle} /> : null}</div>
+      )
+    }
+
+    const rootHost = document.createElement('div')
+    document.body.appendChild(rootHost)
+    const root = createRoot(rootHost)
+
+    await act(async () => {
+      root.render(<Harness />)
+      await new Promise((resolve) => window.setTimeout(resolve, 0))
+    })
+
+    expect(document.querySelector<HTMLElement>('[data-testid="cell-editor-overlay"]')?.style.left).toBe('120px')
+
+    await act(async () => {
+      setTargetRenderable?.(false)
+      await new Promise((resolve) => window.setTimeout(resolve, 0))
+    })
+
+    expect(document.querySelector('[data-testid="cell-editor-overlay"]')).toBeNull()
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
 })

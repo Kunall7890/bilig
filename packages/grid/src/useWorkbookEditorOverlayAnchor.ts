@@ -51,6 +51,9 @@ export function useWorkbookEditorOverlayAnchor(input: {
         hostElement,
       })
       if (!next) {
+        if (options?.commitReactState !== false) {
+          setOverlayBounds(undefined)
+        }
         return
       }
       if (options?.commitReactState === false) {

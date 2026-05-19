@@ -72,6 +72,44 @@ describe('GridEditorAnchorRuntime', () => {
     expect(overlay?.style.height).toBe('24px')
   })
 
+  it('clears stale overlay bounds when the edited target stops producing a screen rect', () => {
+    const runtime = new GridEditorAnchorRuntime()
+    const cameraStore = new GridCameraStore()
+    const host = document.createElement('div')
+    host.getBoundingClientRect = createHostRect
+    host.innerHTML = '<div data-testid="cell-editor-overlay"></div>'
+    document.body.appendChild(host)
+    const localBounds: Rectangle | undefined = { height: 24, width: 104, x: 20, y: 30 }
+
+    expect(
+      runtime.refreshOverlayBounds({
+        col: 1,
+        getCellLocalBounds: () => localBounds,
+        gridCameraStore: cameraStore,
+        hostElement: host,
+        row: 1,
+      }),
+    ).toEqual({ height: 24, width: 104, x: 120, y: 230 })
+
+    const overlay = host.querySelector<HTMLElement>('[data-testid="cell-editor-overlay"]')
+    expect(overlay?.style.left).toBe('120px')
+
+    const cleared = runtime.refreshOverlayBounds({
+      col: 1,
+      getCellLocalBounds: () => undefined,
+      gridCameraStore: cameraStore,
+      hostElement: host,
+      row: 1,
+    })
+
+    expect(cleared).toBeNull()
+    expect(overlay?.style.display).toBe('none')
+    expect(overlay?.style.left).toBe('-100000px')
+    expect(overlay?.style.top).toBe('-100000px')
+    expect(overlay?.style.width).toBe('0px')
+    expect(overlay?.style.height).toBe('0px')
+  })
+
   it('keeps committed bounds stable when the resolved bounds have not changed', () => {
     const runtime = new GridEditorAnchorRuntime()
     const current: Rectangle = { height: 24, width: 104, x: 120, y: 230 }
