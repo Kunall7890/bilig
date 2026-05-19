@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.32.8
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.32.7
+- Manual override: no
+
+## Fixes
+- perf(formula): add native row-chain scalar init (2ff802d5)
+
 ## 0.32.7
 
 - Release type: patch
