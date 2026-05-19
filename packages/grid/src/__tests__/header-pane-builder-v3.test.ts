@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { getGridMetrics } from '../gridMetrics.js'
 import { buildWorkbookHeaderPaneStatesV3, buildWorkbookHeaderTextSceneV3 } from '../renderer-v3/header-pane-builder.js'
+import { workbookHeaderFontPointSizeToCssPx } from '../workbookTheme.js'
 
 describe('renderer-v3 header pane builder', () => {
   it('builds fixed header labels and panes without engine-backed grid scenes', () => {
@@ -41,7 +42,10 @@ describe('renderer-v3 header pane builder', () => {
       sheetName: 'Sheet1',
     }
 
-    expect(buildWorkbookHeaderTextSceneV3(input).items.map((item) => item.text)).toEqual(['A', 'B', '1', '2'])
+    const textScene = buildWorkbookHeaderTextSceneV3(input)
+    expect(textScene.items.map((item) => item.text)).toEqual(['A', 'B', '1', '2'])
+    expect(textScene.items.every((item) => item.fontSize === workbookHeaderFontPointSizeToCssPx())).toBe(true)
+    expect(textScene.items.every((item) => item.font.includes(`600 ${workbookHeaderFontPointSizeToCssPx()}px`))).toBe(true)
 
     const panes = buildWorkbookHeaderPaneStatesV3(input)
 

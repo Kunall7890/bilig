@@ -11,12 +11,14 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(headless): expand workpaper fast paths (836ac431)
 - fix(core): preserve structural insert entries in sync batches (1ede985b)
 - fix(core): clean up rebased fast paths (aa86ac6f)
 - perf(core): speed trusted template restore (9740a6a2)
 
 ## Internal runtime changes
+
 - refactor(headless): split oversized runtime files (01d09e16)
 - docs(headless): refresh published commands for 0.24.2 (7d1d5fb9)
 - docs(agent): add workbook challenge (7e7cd271)
@@ -30,6 +32,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(mcp): publish hosted endpoint metadata (82595db1)
 
 ## 0.24.1

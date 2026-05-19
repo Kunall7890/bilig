@@ -427,3 +427,29 @@ test('@browser-ci web app returns keyboard focus to the grid after toolbar color
   await page.keyboard.press('ArrowRight')
   await expect(page.getByTestId('name-box')).toHaveValue('B1')
 })
+
+test('@browser-ci web app keeps grid keyboard ownership after direct toolbar formatting commands', async ({ page }) => {
+  await page.goto(`/?document=${createTestDocumentId('toolbar-direct-focus-return')}&persist=0&sheet=Sheet1&cell=A1`)
+  await waitForWorkbookReady(page)
+
+  await clickProductCell(page, 1, 1)
+  await page.getByLabel('Bold').click()
+  await expect
+    .poll(async () => page.evaluate(() => document.activeElement?.getAttribute('data-testid') ?? null), {
+      message: 'direct toolbar buttons must return focus so type-to-replace and delete stay owned by the grid',
+    })
+    .toBe('sheet-grid-focus-target')
+
+  await page.keyboard.type('toolbar-direct-focus')
+  await expect(page.getByTestId('cell-editor-input')).toHaveValue('toolbar-direct-focus')
+  await page.keyboard.press('Enter')
+  await clickProductCell(page, 1, 1)
+  await expect(page.getByTestId('formula-input')).toHaveValue('toolbar-direct-focus')
+
+  await page.getByLabel('Italic').click()
+  await expect
+    .poll(async () => page.evaluate(() => document.activeElement?.getAttribute('data-testid') ?? null))
+    .toBe('sheet-grid-focus-target')
+  await page.keyboard.press('Delete')
+  await expect(page.getByTestId('formula-input')).toHaveValue('')
+})
