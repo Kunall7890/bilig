@@ -107,7 +107,10 @@ describe('XLSX round-trip semantics', () => {
     const imported = importXlsx(exported, 'row-metadata-conditional-format.xlsx')
 
     expect(sheetXml).toContain('<c r="A3"')
-    expect(imported.snapshot.sheets[0]?.cells).toEqual(snapshot.sheets[0]?.cells)
+    expect(imported.snapshot.sheets[0]?.cells).toEqual([
+      { address: 'A3', row: 2, col: 0, value: 'visible data' },
+      { address: 'A5', row: 4, col: 0, value: 'other data' },
+    ])
   })
 
   it('keeps text-formatted strings after formatted blank cells are exported', () => {
@@ -181,8 +184,8 @@ describe('XLSX round-trip semantics', () => {
     const imported = importXlsx(exported, 'namespaced-style-number-format.xlsx')
 
     expect(imported.snapshot.sheets[0]?.cells).toEqual([
-      { address: 'D10', value: 43556, format: 'm/d/yy' },
-      { address: 'E10', value: 7, format: '00' },
+      { address: 'D10', row: 9, col: 3, value: 43556, format: 'm/d/yy' },
+      { address: 'E10', row: 9, col: 4, value: 7, format: '00' },
     ])
   })
 
@@ -217,7 +220,12 @@ describe('XLSX round-trip semantics', () => {
     const imported = importXlsx(exported, 'rich-text-dollar-apostrophe.xlsx')
 
     expect(sharedStringsXml).toContain(`<t>$'000</t>`)
-    expect(imported.snapshot.sheets[0]?.cells.find((cell) => cell.address === 'A1')).toEqual({ address: 'A1', value: "$'000" })
+    expect(imported.snapshot.sheets[0]?.cells.find((cell) => cell.address === 'A1')).toEqual({
+      address: 'A1',
+      row: 0,
+      col: 0,
+      value: "$'000",
+    })
   })
 
   it('keeps earlier text values when duplicate blank cell XML follows them', () => {

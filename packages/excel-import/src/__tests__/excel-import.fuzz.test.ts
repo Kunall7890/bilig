@@ -51,11 +51,11 @@ describe('excel import fuzz', () => {
               case 'empty':
                 return []
               case 'number':
-                return [{ address, value: cell.value }]
+                return [{ address, row: rowIndex, col: colIndex, value: cell.value }]
               case 'text':
-                return [{ address, value: cell.value }]
+                return [{ address, row: rowIndex, col: colIndex, value: cell.value }]
               case 'formula':
-                return [{ address, formula: cell.formula }]
+                return [{ address, row: rowIndex, col: colIndex, formula: cell.formula }]
             }
           }),
         )

@@ -83,7 +83,7 @@ describe('XLSX sheet-name whitespace export', () => {
     expect(rawWorkbook.SheetNames).not.toContain('Sheet1')
     expect(workbookXml).toContain('<sheet name=" "')
     expect(roundTripped.snapshot.sheets[0]?.name).toBe(' ')
-    expect(roundTripped.snapshot.sheets[0]?.cells).toEqual([{ address: 'A1', value: 'Visible data' }])
+    expect(roundTripped.snapshot.sheets[0]?.cells).toEqual([{ address: 'A1', row: 0, col: 0, value: 'Visible data' }])
     expect(roundTripped.snapshot.sheets[0]?.metadata?.merges).toEqual([{ sheetName: ' ', startAddress: 'A3', endAddress: 'B3' }])
   })
 })

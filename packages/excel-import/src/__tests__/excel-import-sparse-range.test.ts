@@ -10,7 +10,7 @@ describe('XLSX sparse ranges', () => {
     const imported = importXlsx(buildBroadSparseWorkbookBytes(), 'broad-sparse.xlsx')
     const sheet = imported.snapshot.sheets[0]
 
-    expect(sheet?.cells).toEqual([{ address: 'XFD512', formula: '40+2', value: 42 }])
+    expect(sheet?.cells).toEqual([{ address: 'XFD512', row: 511, col: 16_383, formula: '40+2', value: 42 }])
     expect(imported.preview.sheets[0]).toMatchObject({
       rowCount: 512,
       columnCount: 16_384,
@@ -31,7 +31,7 @@ describe('XLSX sparse ranges', () => {
     )
     const sheet = imported.snapshot.sheets[0]
 
-    expect(sheet?.cells).toEqual([{ address: 'A1', value: 123 }])
+    expect(sheet?.cells).toEqual([{ address: 'A1', row: 0, col: 0, value: 123 }])
     expect(imported.preview.sheets[0]).toMatchObject({
       rowCount: styledBlankRowCount,
       columnCount: styledBlankColumnCount,
@@ -60,7 +60,7 @@ describe('XLSX sparse ranges', () => {
     const durationMs = performance.now() - start
     const rssDelta = process.memoryUsage().rss - beforeRss
 
-    expect(imported.snapshot.sheets[0]?.cells).toEqual([{ address: 'A1', value: 123 }])
+    expect(imported.snapshot.sheets[0]?.cells).toEqual([{ address: 'A1', row: 0, col: 0, value: 123 }])
     expect(imported.snapshot.workbook.metadata?.styles).toHaveLength(1)
     expect(imported.snapshot.sheets[0]?.metadata?.conditionalFormats).toHaveLength(1)
     expect(durationMs).toBeLessThan(1_500 * readBenchmarkTolerance())
@@ -71,7 +71,7 @@ describe('XLSX sparse ranges', () => {
     const imported = importXlsx(buildWholeWorksheetColumnMetadataWorkbookBytes(), 'whole-column-metadata.xlsx')
     const sheet = imported.snapshot.sheets[0]
 
-    expect(sheet?.cells).toEqual([{ address: 'A3040', value: 1 }])
+    expect(sheet?.cells).toEqual([{ address: 'A3040', row: 3039, col: 0, value: 1 }])
     expect(sheet?.metadata?.columns).toBeUndefined()
     expect(imported.preview.sheets[0]).toMatchObject({
       rowCount: 3_040,

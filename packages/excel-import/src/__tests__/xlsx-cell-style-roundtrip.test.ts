@@ -123,6 +123,8 @@ describe('xlsx cell style roundtrip', () => {
 
     expect(imported.snapshot.sheets[0]?.cells.find((cell) => cell.address === 'B2')).toEqual({
       address: 'B2',
+      row: 1,
+      col: 1,
       format: 'dd/mm/yyyy;@',
     })
     expect(sheetXml).toMatch(/<c\b(?=[^>]*\br="B2")(?=[^>]*\bs="\d+")[^>]*\/>/u)
@@ -137,6 +139,8 @@ describe('xlsx cell style roundtrip', () => {
 
     expect(imported.snapshot.sheets[0]?.cells.find((cell) => cell.address === 'B2')).toEqual({
       address: 'B2',
+      row: 1,
+      col: 1,
       format: 'dd/mm/yyyy;@',
     })
   })
@@ -159,6 +163,8 @@ describe('xlsx cell style roundtrip', () => {
 
     expect(imported.snapshot.sheets[0]?.cells.find((cell) => cell.address === 'A1')).toEqual({
       address: 'A1',
+      row: 0,
+      col: 0,
       value: 'RIS maintenance &#8211; year 5',
     })
   })
@@ -181,6 +187,8 @@ describe('xlsx cell style roundtrip', () => {
 
     expect(imported.snapshot.sheets[0]?.cells.find((cell) => cell.address === 'A1')).toEqual({
       address: 'A1',
+      row: 0,
+      col: 0,
       value: 'Line 1\nLine 2\nLine 3',
     })
   })
