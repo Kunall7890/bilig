@@ -131,6 +131,16 @@ export function scanWorkspaceResolution(rootDir = workspaceRootDir): WorkspaceRe
     ])
     entries.push(...scanWorkspaceExportEntries(packageName, packageDir, packageDirRelative, packageJsonValue))
   }
+  const bundledHeadlessXlsxSource = 'packages/excel-import/src/index.ts'
+  if (existsSync(join(rootDir, bundledHeadlessXlsxSource))) {
+    entries.push([
+      '@bilig/headless/xlsx',
+      {
+        packageDir: 'packages/headless',
+        sourceEntry: bundledHeadlessXlsxSource,
+      },
+    ])
+  }
   return Object.fromEntries(sortedEntries(entries))
 }
 

@@ -529,6 +529,12 @@ importers:
         specifier: workspace:*
         version: link:../workbook-domain
 
+  packages/xlsx-formula-recalc:
+    dependencies:
+      '@bilig/headless':
+        specifier: workspace:*
+        version: link:../headless
+
   packages/zero-sync:
     dependencies:
       '@bilig/agent-api':

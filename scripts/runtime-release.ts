@@ -10,14 +10,13 @@ export const RUNTIME_PACKAGE_CONTENT_PATH_PATTERNS = [
   'packages/core/**',
   'packages/excel-import/**',
   'packages/headless/**',
-  'packages/bilig/**',
+  'packages/xlsx-formula-recalc/**',
   'packages/create-workpaper/**',
 ] as const
 
 export const RUNTIME_AFFECTING_PATH_PATTERNS = [
   ...RUNTIME_PACKAGE_CONTENT_PATH_PATTERNS,
   'scripts/runtime-package-set.ts',
-  'scripts/build-bilig-alias-subpaths.ts',
   'scripts/publish-runtime-package-set.ts',
   'scripts/sync-runtime-package-versions.ts',
   'scripts/sync-runtime-release-metadata.ts',

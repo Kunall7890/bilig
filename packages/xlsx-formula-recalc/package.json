@@ -1,25 +1,28 @@
 {
-  "name": "bilig",
+  "name": "xlsx-formula-recalc",
   "version": "0.29.0",
-  "description": "Formula WorkPaper runtime for Node.js services: edit cells, recalculate formulas, read results, and persist JSON.",
+  "description": "Recalculate XLSX formulas in Node.js without Excel, LibreOffice, or browser automation.",
   "keywords": [
-    "bilig",
     "excel",
     "excel-formulas",
+    "exceljs",
     "formula-engine",
     "formula-recalculation",
-    "headless-spreadsheet",
     "node",
+    "sheetjs",
     "spreadsheet",
-    "spreadsheet-engine",
     "spreadsheet-formulas",
-    "workbook-api",
+    "workbook",
     "workpaper",
     "xlsx",
+    "xlsx-calc",
     "xlsx-formula",
+    "xlsx-formula-recalculation",
+    "xlsx-populate",
+    "xlsx-recalc",
     "xlsx-recalculation"
   ],
-  "homepage": "https://proompteng.github.io/bilig/",
+  "homepage": "https://proompteng.github.io/bilig/xlsx-recalculation-proof.html",
   "bugs": {
     "url": "https://github.com/proompteng/bilig/issues"
   },
@@ -27,7 +30,10 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/proompteng/bilig.git",
-    "directory": "packages/bilig"
+    "directory": "packages/xlsx-formula-recalc"
+  },
+  "bin": {
+    "xlsx-recalc": "./dist/cli.js"
   },
   "files": [
     "dist",
@@ -42,21 +48,14 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    },
-    "./mcp": {
-      "types": "./dist/mcp.d.ts",
-      "import": "./dist/mcp.js"
-    },
-    "./xlsx": {
-      "types": "./dist/xlsx.d.ts",
-      "import": "./dist/xlsx.js"
     }
   },
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "build": "pnpm --dir ../.. --filter @bilig/headless build && rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && bun ../../scripts/build-bilig-alias-subpaths.ts"
+    "build": "pnpm --dir ../.. --filter @bilig/headless build && rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json",
+    "smoke": "node ./dist/cli.js --help"
   },
   "dependencies": {
     "@bilig/headless": "workspace:*"

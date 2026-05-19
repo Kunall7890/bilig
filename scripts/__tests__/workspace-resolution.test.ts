@@ -13,6 +13,10 @@ describe('workspace resolution', () => {
       packageDir: 'packages/formula',
       sourceEntry: 'packages/formula/src/program-arena.ts',
     })
+    expect(resolution['@bilig/headless/xlsx']).toEqual({
+      packageDir: 'packages/headless',
+      sourceEntry: 'packages/excel-import/src/index.ts',
+    })
   })
 
   it('orders Vitest aliases with package subpaths before package roots', async () => {

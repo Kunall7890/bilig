@@ -14,7 +14,7 @@ on:
       - 'packages/wasm-kernel/**'
       - 'packages/excel-import/**'
       - 'packages/create-workpaper/**'
-      - 'packages/bilig/**'
+      - 'packages/xlsx-formula-recalc/**'
       - 'packages/benchmarks/**'
       - 'packages/headless/CHANGELOG.md'
       - 'docs/public-api.md'
@@ -33,7 +33,6 @@ on:
       - 'scripts/plan-runtime-release.ts'
       - 'scripts/check-runtime-npm-provisioning.ts'
       - 'scripts/check-create-workpaper-package.ts'
-      - 'scripts/build-bilig-alias-subpaths.ts'
       - 'scripts/publish-runtime-package-set.ts'
       - 'scripts/runtime-package-set.ts'
       - 'scripts/runtime-release.ts'
@@ -129,7 +128,7 @@ jobs:
           pnpm --filter @bilig/core build
           pnpm --filter @bilig/excel-import build
           pnpm --filter @bilig/headless build
-          pnpm --filter bilig build
+          pnpm --filter xlsx-formula-recalc build
 
       - name: Lint runtime package sources
         run: |
@@ -209,7 +208,7 @@ jobs:
             packages/core
             packages/excel-import
             packages/headless
-            packages/bilig
+            packages/xlsx-formula-recalc
             packages/create-workpaper
           )
 
@@ -654,7 +653,7 @@ jobs:
             'packages/core/package.json',
             'packages/excel-import/package.json',
             'packages/headless/package.json',
-            'packages/bilig/package.json',
+            'packages/xlsx-formula-recalc/package.json',
             'packages/create-workpaper/package.json',
           ];
           const packages = packagePaths.map((packagePath) =>
@@ -701,11 +700,11 @@ jobs:
             packages/core/package.json
             packages/excel-import/package.json
             packages/headless/package.json
-            packages/bilig/package.json
+            packages/xlsx-formula-recalc/package.json
             packages/create-workpaper/package.json
             packages/headless/server.json
             packages/headless/README.md
-            packages/bilig/README.md
+            packages/xlsx-formula-recalc/README.md
             packages/headless/CHANGELOG.md
           )
 
@@ -729,7 +728,7 @@ jobs:
           pnpm --filter @bilig/formula build
           pnpm --filter @bilig/core build
           pnpm --filter @bilig/headless build
-          pnpm --filter bilig build
+          pnpm --filter xlsx-formula-recalc build
 
           bun scripts/sync-headless-package-footprint.ts
 
@@ -793,7 +792,7 @@ jobs:
           pnpm --filter @bilig/core build
           pnpm --filter @bilig/excel-import build
           pnpm --filter @bilig/headless build
-          pnpm --filter bilig build
+          pnpm --filter xlsx-formula-recalc build
 
       - name: Validate publishable runtime package set
         run: |

@@ -59,6 +59,10 @@
     "packageDir": "packages/headless",
     "sourceEntry": "packages/headless/src/mcp.ts"
   },
+  "@bilig/headless/xlsx": {
+    "packageDir": "packages/headless",
+    "sourceEntry": "packages/excel-import/src/index.ts"
+  },
   "@bilig/protocol": {
     "packageDir": "packages/protocol",
     "sourceEntry": "packages/protocol/src/index.ts"
