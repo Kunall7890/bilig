@@ -4,6 +4,19 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.28.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.27.0
+- Manual override: no
+
+## Features
+- feat(agent): add openai agents workpaper tools (cd9bb8d0)
+
+## Internal runtime changes
+- docs(discovery): sync runtime package 0.27.0 (37c6d76a)
+- docs(agent): harden mcp server card schemas (9e7c1c5d)
+
 ## 0.27.0
 
 - Release type: minor
