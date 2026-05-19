@@ -20,9 +20,9 @@ function createContext(address: string): WorkbookAgentUiContext {
   }
 }
 
-function createSnapshot(): WorkbookAgentThreadSnapshot {
+function createSnapshot(status: WorkbookAgentThreadSnapshot['status'] = 'idle'): WorkbookAgentThreadSnapshot {
   return {
-    activeTurnId: null,
+    activeTurnId: status === 'inProgress' ? 'turn-1' : null,
     context: createContext('A1'),
     documentId: 'doc-1',
     entries: [],
@@ -31,7 +31,7 @@ function createSnapshot(): WorkbookAgentThreadSnapshot {
     lastError: null,
     reviewQueueItems: [],
     scope: 'private',
-    status: 'idle',
+    status,
     threadId: 'thr-1',
     workflowRuns: [],
   }
@@ -194,7 +194,7 @@ describe('useWorkbookAgentContextSync', () => {
     }
   })
 
-  it('rate-limits viewport-only context churn after the initial sync', async () => {
+  it('skips idle viewport-only context churn after the initial sync', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
     vi.useFakeTimers()
 
@@ -268,7 +268,86 @@ describe('useWorkbookAgentContextSync', () => {
       expect(syncThreadContext).toHaveBeenCalledTimes(1)
 
       await act(async () => {
-        await vi.advanceTimersByTimeAsync(600)
+        await vi.advanceTimersByTimeAsync(1_000)
+      })
+
+      expect(syncThreadContext).toHaveBeenCalledTimes(1)
+    } finally {
+      await act(async () => {
+        root.unmount()
+      })
+    }
+  })
+
+  it('continues syncing passive rendered context during active assistant turns', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    vi.useFakeTimers()
+
+    const syncThreadContext = vi.fn(async () => {})
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+
+    function Harness() {
+      const [rowEnd, setRowEnd] = useState(20)
+      const contextRef = useRef({
+        ...createContext('A1'),
+        viewport: {
+          colEnd: 10,
+          colStart: 0,
+          rowEnd,
+          rowStart: 0,
+        },
+      })
+      const sessionRef = useRef({ threadId: 'thr-1' })
+      const getContextRef = useRef(() => contextRef.current)
+      const snapshot = useMemo(() => createSnapshot('inProgress'), [])
+      contextRef.current = {
+        ...createContext('A1'),
+        viewport: {
+          colEnd: 10,
+          colStart: 0,
+          rowEnd,
+          rowStart: 0,
+        },
+      }
+      const { scheduleContextSync } = useWorkbookAgentContextSync({
+        client: { syncThreadContext },
+        documentId: 'doc-1',
+        enabled: true,
+        getContextRef,
+        sessionRef,
+        snapshot,
+      })
+
+      useEffect(() => {
+        scheduleContextSync()
+      }, [rowEnd, scheduleContextSync])
+
+      return (
+        <button data-testid="viewport" type="button" onClick={() => setRowEnd((current) => current + 1)}>
+          {rowEnd}
+        </button>
+      )
+    }
+
+    try {
+      await act(async () => {
+        root.render(<Harness />)
+      })
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(200)
+      })
+
+      expect(syncThreadContext).toHaveBeenCalledTimes(1)
+
+      await act(async () => {
+        host.querySelector<HTMLButtonElement>("[data-testid='viewport']")?.click()
+      })
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(800)
       })
 
       expect(syncThreadContext).toHaveBeenCalledTimes(2)

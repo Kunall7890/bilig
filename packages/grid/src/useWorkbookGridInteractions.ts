@@ -307,6 +307,7 @@ export function useWorkbookGridInteractions(
     captureInternalClipboardSelection,
     editorValue,
     engine,
+    getVisibleRegion,
     gridSelection,
     getGridSelection: getCurrentGridSelection,
     hostRef,

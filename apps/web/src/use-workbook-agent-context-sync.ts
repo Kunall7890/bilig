@@ -142,6 +142,11 @@ export function useWorkbookAgentContextSync(input: {
     if (lastContextKeyRef.current === nextContextKey) {
       return
     }
+    const shouldPrioritizeSync = !hasSyncedContextRef.current || lastPriorityContextKeyRef.current !== nextPriorityContextKey
+    if (hasSyncedContextRef.current && !shouldPrioritizeSync && snapshotRef.current.status !== 'inProgress') {
+      lastContextKeyRef.current = nextContextKey
+      return
+    }
     const pendingContextSync = pendingContextSyncRef.current
     if (
       pendingContextSync &&
@@ -158,7 +163,6 @@ export function useWorkbookAgentContextSync(input: {
       priorityKey: nextPriorityContextKey,
       threadId: activeSession.threadId,
     }
-    const shouldPrioritizeSync = !hasSyncedContextRef.current || lastPriorityContextKeyRef.current !== nextPriorityContextKey
     const elapsedSinceLastSync = window.performance.now() - lastContextSyncAtRef.current
     const delayMs = resolveContextSyncDelay(
       shouldPrioritizeSync

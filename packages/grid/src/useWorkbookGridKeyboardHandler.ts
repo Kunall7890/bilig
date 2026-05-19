@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
 import { formatAddress } from '@bilig/formula'
-import type { CellSnapshot } from '@bilig/protocol'
 import {
   getNormalizedGridKeyboardKey,
   handleGridKey as dispatchGridKey,
@@ -11,8 +10,11 @@ import {
   shouldSuppressWorkbookChromeSelectionKeyUp,
   type GridKeyboardEventLike,
 } from './gridClipboardKeyboardController.js'
+import type { GridEngineLike } from './grid-engine.js'
 import { isToggleableBooleanCellSnapshot } from './gridInteractionCommands.js'
 import type { InternalClipboardRange } from './gridInternalClipboard.js'
+import { createGridNavigationResolver } from './gridNavigation.js'
+import type { VisibleRegionState } from './gridPointer.js'
 import type { GridSelection, GridSelectionSnapshot } from './gridTypes.js'
 
 type BeginSelectedEdit = (seed?: string, selectionBehavior?: 'select-all' | 'caret-end') => void
@@ -124,7 +126,8 @@ export function useWorkbookGridKeyboardHandler(input: {
   beginSelectedEdit: (seed?: string, selectionBehavior?: 'select-all' | 'caret-end') => void
   captureInternalClipboardSelection: () => InternalClipboardRange | null
   editorValue: string
-  engine: { getCell(sheetName: string, address: string): CellSnapshot }
+  engine: GridEngineLike
+  getVisibleRegion?: (() => VisibleRegionState) | undefined
   gridSelection: GridSelection
   getGridSelection?: (() => GridSelection) | undefined
   hostRef: MutableRefObject<HTMLDivElement | null>
@@ -186,6 +189,7 @@ export function useWorkbookGridKeyboardHandler(input: {
       }
       const gridSelection = input.getGridSelection?.() ?? input.gridSelection
       const selectedCell = gridSelection.current?.cell ?? [input.selectedCell.col, input.selectedCell.row]
+      const visibleRegion = input.getVisibleRegion?.()
       dispatchGridKey({
         applyClipboardValues: input.applyClipboardValues,
         beginSelectedEdit: (seed, selectionBehavior = 'caret-end') => {
@@ -209,6 +213,11 @@ export function useWorkbookGridKeyboardHandler(input: {
         onEditorChange: input.onEditorChange,
         onFillRange: input.onFillRange,
         onSelectionChange: input.onSelectionChange,
+        navigation: createGridNavigationResolver({
+          engine: input.engine,
+          sheetName: input.sheetName,
+        }),
+        pageJumpRows: visibleRegion ? Math.max(1, visibleRegion.range.height - 1) : null,
         scrollActiveCellIntoView: input.scrollActiveCellIntoView,
         pendingClipboardCopySequenceRef: input.pendingClipboardCopySequenceRef,
         pendingKeyboardPasteSequenceRef: input.pendingKeyboardPasteSequenceRef,

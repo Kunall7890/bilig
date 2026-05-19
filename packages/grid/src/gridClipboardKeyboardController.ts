@@ -3,6 +3,7 @@ import { formatAddress } from '@bilig/formula'
 import {
   createColumnSelection,
   createGridSelection,
+  createRectangleSelectionFromRange,
   createRangeSelection,
   createRowSelection,
   createSheetSelection,
@@ -26,6 +27,7 @@ import {
 import { resolveGridKeyAction } from './gridKeyActions.js'
 import { buildInternalClipboardRange, matchesInternalClipboardPaste, type InternalClipboardRange } from './gridInternalClipboard.js'
 import type { GridEngineLike } from './grid-engine.js'
+import type { GridKeyNavigationResolver } from './gridNavigation.js'
 import type { EditMovement, EditSelectionBehavior } from './SheetGridView.js'
 
 export interface GridKeyboardEventLike {
@@ -94,6 +96,8 @@ interface HandleGridKeyOptions {
   onEditorChange(this: void, next: string): void
   onFillRange(this: void, sourceStartAddr: string, sourceEndAddr: string, targetStartAddr: string, targetEndAddr: string): void
   onSelectionChange(this: void, selection: GridSelection): void
+  navigation?: GridKeyNavigationResolver | null
+  pageJumpRows?: number | null
   scrollActiveCellIntoView(this: void): void
   pendingClipboardCopySequenceRef: MutableRefObject<number>
   pendingKeyboardPasteSequenceRef: MutableRefObject<number>
@@ -281,6 +285,8 @@ export function handleGridKey({
   onEditorChange,
   onFillRange,
   onSelectionChange,
+  navigation,
+  pageJumpRows,
   scrollActiveCellIntoView,
   pendingClipboardCopySequenceRef,
   pendingKeyboardPasteSequenceRef,
@@ -318,6 +324,8 @@ export function handleGridKey({
     currentSelectionCell,
     currentRangeAnchor: currentSelectionCell,
     currentSelectionRange,
+    navigation,
+    pageJumpRows,
   })
 
   if (action.kind === 'none') {
@@ -443,6 +451,20 @@ export function handleGridKey({
     case 'select-column':
       {
         const nextSelection = createColumnSelection(action.col, action.row)
+        setGridSelection(nextSelection)
+        onSelectionChange(nextSelection)
+      }
+      return
+    case 'select-range':
+      {
+        const nextSelection = {
+          ...createRectangleSelectionFromRange(action.range),
+          current: {
+            cell: action.cell,
+            range: { ...action.range },
+            rangeStack: [],
+          },
+        }
         setGridSelection(nextSelection)
         onSelectionChange(nextSelection)
       }

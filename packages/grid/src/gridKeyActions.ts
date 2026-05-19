@@ -1,6 +1,7 @@
 import { MAX_COLS, MAX_ROWS } from '@bilig/protocol'
 import { clampCell } from './gridSelection.js'
 import { isClearCellKey, isFillSelectionShortcut, isFillShortcut, isScrollActiveCellShortcut } from './gridKeyboard.js'
+import type { GridKeyNavigationResolver, GridNavigationDirection } from './gridNavigation.js'
 import type { Item, Rectangle } from './gridTypes.js'
 
 export type GridEditSelectionBehavior = 'select-all' | 'caret-end'
@@ -36,6 +37,7 @@ export type GridKeyAction =
   | { kind: 'handled' }
   | { kind: 'select-row'; row: number; col: number }
   | { kind: 'select-column'; row: number; col: number }
+  | { kind: 'select-range'; cell: Item; range: Rectangle }
   | { kind: 'select-all' }
 
 const PAGE_JUMP_ROWS = 20
@@ -116,6 +118,19 @@ interface ResolveGridKeyActionOptions {
   currentSelectionCell: Item | null
   currentRangeAnchor: Item | null
   currentSelectionRange?: Rectangle | null
+  navigation?: GridKeyNavigationResolver | null | undefined
+  pageJumpRows?: number | null | undefined
+}
+
+function rectanglesEqual(left: Rectangle | null | undefined, right: Rectangle | null | undefined): boolean {
+  return Boolean(left && right && left.x === right.x && left.y === right.y && left.width === right.width && left.height === right.height)
+}
+
+function resolvePageJumpRows(rawPageJumpRows: number | null | undefined): number {
+  if (typeof rawPageJumpRows !== 'number' || !Number.isFinite(rawPageJumpRows)) {
+    return PAGE_JUMP_ROWS
+  }
+  return Math.max(1, Math.floor(rawPageJumpRows))
 }
 
 export function resolveGridKeyAction(options: ResolveGridKeyActionOptions): GridKeyAction {
@@ -129,6 +144,8 @@ export function resolveGridKeyAction(options: ResolveGridKeyActionOptions): Grid
     currentSelectionCell,
     currentRangeAnchor,
     currentSelectionRange,
+    navigation,
+    pageJumpRows,
   } = options
 
   const anchorCell = currentRangeAnchor ?? selectedCell
@@ -161,6 +178,10 @@ export function resolveGridKeyAction(options: ResolveGridKeyActionOptions): Grid
   const normalizedKey = event.key.toLowerCase()
 
   if (hasPrimaryModifier && !event.altKey && normalizedKey === 'a') {
+    const currentRegion = navigation?.resolveCurrentRegion(activeCell) ?? null
+    if (currentRegion && !rectanglesEqual(currentRegion, currentSelectionRange)) {
+      return { kind: 'select-range', cell: activeCell, range: currentRegion }
+    }
     return { kind: 'select-all' }
   }
 
@@ -201,7 +222,8 @@ export function resolveGridKeyAction(options: ResolveGridKeyActionOptions): Grid
   }
 
   if ((event.key === 'PageUp' || event.key === 'PageDown') && !event.altKey) {
-    const nextCell = clampCell([activeCell[0], activeCell[1] + (event.key === 'PageDown' ? PAGE_JUMP_ROWS : -PAGE_JUMP_ROWS)])
+    const jumpRows = resolvePageJumpRows(pageJumpRows)
+    const nextCell = clampCell([activeCell[0], activeCell[1] + (event.key === 'PageDown' ? jumpRows : -jumpRows)])
     if (event.shiftKey) {
       return {
         kind: 'extend-selection',
@@ -253,11 +275,10 @@ export function resolveGridKeyAction(options: ResolveGridKeyActionOptions): Grid
   if ((event.key === 'ArrowUp' || event.key === 'ArrowDown' || event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !event.altKey) {
     const delta: Item =
       event.key === 'ArrowUp' ? [0, -1] : event.key === 'ArrowDown' ? [0, 1] : event.key === 'ArrowLeft' ? [-1, 0] : [1, 0]
+    const direction: GridNavigationDirection =
+      event.key === 'ArrowUp' ? 'up' : event.key === 'ArrowDown' ? 'down' : event.key === 'ArrowLeft' ? 'left' : 'right'
     const nextCell = hasPrimaryModifier
-      ? moveSelectionToEdge(
-          activeCell,
-          event.key === 'ArrowUp' ? 'up' : event.key === 'ArrowDown' ? 'down' : event.key === 'ArrowLeft' ? 'left' : 'right',
-        )
+      ? (navigation?.resolveDataEdge(activeCell, direction) ?? moveSelectionToEdge(activeCell, direction))
       : clampCell([activeCell[0] + delta[0], activeCell[1] + delta[1]])
 
     if (event.shiftKey) {

@@ -75,7 +75,12 @@ function KeyboardHandlerHarness(props: {
     captureInternalClipboardSelection: vi.fn(),
     editorValue: '',
     engine: {
-      getCell: () => ({ value: { tag: ValueTag.String } }),
+      getCell: (_sheetName, address) => createCellSnapshot(address, 'value'),
+      getCellStyle: () => undefined,
+      subscribeCells: () => () => {},
+      workbook: {
+        getSheet: () => undefined,
+      },
     },
     gridSelection: createGridSelection(1, 1),
     getGridSelection: props.getGridSelection,
@@ -856,6 +861,66 @@ describe('gridClipboardKeyboardController', () => {
 
     expect(setGridSelection).toHaveBeenCalledTimes(1)
     expect(onSelectionChange).toHaveBeenCalledTimes(1)
+  })
+
+  test('selects the current data region before falling back to full-sheet select-all', () => {
+    const setGridSelection = vi.fn()
+    const onSelectionChange = vi.fn()
+
+    handleGridKey({
+      applyClipboardValues: vi.fn(),
+      beginSelectedEdit: vi.fn(),
+      captureInternalClipboardSelection: vi.fn(),
+      editorValue: '',
+      event: {
+        key: 'a',
+        ctrlKey: true,
+        metaKey: false,
+        altKey: false,
+        preventDefault: vi.fn(),
+      },
+      gridSelection: createGridSelection(2, 4),
+      internalClipboardRef: { current: null },
+      isSelectedCellBoolean: () => false,
+      isEditingCell: false,
+      navigation: {
+        resolveCurrentRegion: () => ({ x: 1, y: 2, width: 4, height: 6 }),
+        resolveDataEdge: () => null,
+      },
+      onCancelEdit: vi.fn(),
+      onClearCell: vi.fn(),
+      onCommitEdit: vi.fn(),
+      onEditorChange: vi.fn(),
+      onFillRange: vi.fn(),
+      onSelectionChange,
+      scrollActiveCellIntoView: vi.fn(),
+      pendingClipboardCopySequenceRef: { current: 0 },
+      pendingKeyboardPasteSequenceRef: { current: 0 },
+      pendingTypeSeedRef: { current: null },
+      selectedCell: { col: 2, row: 4 },
+      setGridSelection,
+      suppressNextNativePasteRef: { current: false },
+      toggleSelectedBooleanCell: vi.fn(),
+    })
+
+    expect(setGridSelection).toHaveBeenCalledWith({
+      columns: expect.objectContaining({ length: 0 }),
+      current: {
+        cell: [2, 4],
+        range: { x: 1, y: 2, width: 4, height: 6 },
+        rangeStack: [],
+      },
+      rows: expect.objectContaining({ length: 0 }),
+    })
+    expect(onSelectionChange).toHaveBeenCalledWith({
+      columns: expect.objectContaining({ length: 0 }),
+      current: {
+        cell: [2, 4],
+        range: { x: 1, y: 2, width: 4, height: 6 },
+        rangeStack: [],
+      },
+      rows: expect.objectContaining({ length: 0 }),
+    })
   })
 
   test('keeps rectangular range ownership while Enter and Tab move the active cell', () => {

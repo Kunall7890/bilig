@@ -273,6 +273,86 @@ describe('gridKeyActions', () => {
     ).toEqual({ kind: 'select-all' })
   })
 
+  test('uses data-aware navigation resolvers for spreadsheet table-stakes shortcuts', () => {
+    const navigation = {
+      resolveCurrentRegion: () => ({ x: 1, y: 2, width: 3, height: 4 }),
+      resolveDataEdge: (): [number, number] => [2, 9],
+    }
+
+    expect(
+      resolveGridKeyAction({
+        event: { key: 'ArrowDown', ctrlKey: true, metaKey: false, altKey: false },
+        isEditingCell: false,
+        editorValue: '',
+        editorInputFocused: false,
+        pendingTypeSeed: null,
+        selectedCell: [2, 4],
+        currentSelectionCell: [2, 4],
+        currentRangeAnchor: [2, 4],
+        navigation,
+      }),
+    ).toEqual({ kind: 'move-selection', cell: [2, 9] })
+
+    expect(
+      resolveGridKeyAction({
+        event: { key: 'ArrowDown', ctrlKey: true, metaKey: false, altKey: false, shiftKey: true },
+        isEditingCell: false,
+        editorValue: '',
+        editorInputFocused: false,
+        pendingTypeSeed: null,
+        selectedCell: [2, 4],
+        currentSelectionCell: [2, 4],
+        currentRangeAnchor: [1, 4],
+        navigation,
+      }),
+    ).toEqual({ kind: 'extend-selection', anchor: [1, 4], target: [2, 9] })
+
+    expect(
+      resolveGridKeyAction({
+        event: { key: 'a', ctrlKey: true, metaKey: false, altKey: false },
+        isEditingCell: false,
+        editorValue: '',
+        editorInputFocused: false,
+        pendingTypeSeed: null,
+        selectedCell: [2, 4],
+        currentSelectionCell: [2, 4],
+        currentRangeAnchor: [2, 4],
+        navigation,
+      }),
+    ).toEqual({ kind: 'select-range', cell: [2, 4], range: { x: 1, y: 2, width: 3, height: 4 } })
+
+    expect(
+      resolveGridKeyAction({
+        event: { key: 'a', ctrlKey: true, metaKey: false, altKey: false },
+        isEditingCell: false,
+        editorValue: '',
+        editorInputFocused: false,
+        pendingTypeSeed: null,
+        selectedCell: [2, 4],
+        currentSelectionCell: [2, 4],
+        currentRangeAnchor: [2, 4],
+        currentSelectionRange: { x: 1, y: 2, width: 3, height: 4 },
+        navigation,
+      }),
+    ).toEqual({ kind: 'select-all' })
+  })
+
+  test('moves PageUp and PageDown by the caller-provided visible viewport height', () => {
+    expect(
+      resolveGridKeyAction({
+        event: { key: 'PageDown', ctrlKey: false, metaKey: false, altKey: false },
+        isEditingCell: false,
+        editorValue: '',
+        editorInputFocused: false,
+        pendingTypeSeed: null,
+        selectedCell: [2, 4],
+        currentSelectionCell: [2, 4],
+        currentRangeAnchor: [2, 4],
+        pageJumpRows: 31,
+      }),
+    ).toEqual({ kind: 'move-selection', cell: [2, 35] })
+  })
+
   test('extends an existing keyboard range from the active edge', () => {
     expect(
       resolveGridKeyAction({

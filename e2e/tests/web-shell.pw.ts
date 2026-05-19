@@ -1790,6 +1790,48 @@ test('web app supports row, column, and full-sheet selection shortcuts', async (
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!All')
 })
 
+test('web app uses data-aware current-region and boundary navigation shortcuts', async ({ page }) => {
+  const documentId = createTestDocumentId('playwright-data-aware-shortcuts')
+  await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=B2`)
+  await waitForWorkbookReady(page)
+
+  const grid = page.getByTestId('sheet-grid')
+  const formulaInput = page.getByTestId('formula-input')
+  const cells = [
+    [1, 1, 'B2'],
+    [2, 1, 'C2'],
+    [3, 1, 'D2'],
+    [1, 2, 'B3'],
+    [3, 2, 'D3'],
+    [1, 3, 'B4'],
+    [2, 3, 'C4'],
+    [3, 3, 'D4'],
+  ] as const
+
+  await cells.reduce<Promise<void>>(async (previous, [col, row, value]) => {
+    await previous
+    await clickProductCell(page, col, row)
+    await formulaInput.fill(value)
+    await formulaInput.press('Enter')
+    await expect(formulaInput).toHaveValue(value)
+  }, Promise.resolve())
+
+  await clickProductCell(page, 2, 2)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C3')
+  await grid.press(`${PRIMARY_MODIFIER}+A`)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:D4')
+  await grid.press(`${PRIMARY_MODIFIER}+A`)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!All')
+
+  await clickProductCell(page, 1, 1)
+  await grid.press(`${PRIMARY_MODIFIER}+ArrowRight`)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!D2')
+
+  await clickProductCell(page, 1, 1)
+  await grid.press(`${PRIMARY_MODIFIER}+Shift+ArrowDown`)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:B4')
+})
+
 test('web app fills the selected range from the active cell with the fill range shortcut', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-fill-selected-range-shortcut')
   await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=B2`)
