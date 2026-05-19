@@ -385,7 +385,9 @@ export function expectedCsvEdgePreviewRows(spec: CsvEdgeWorkbookSpec): string[][
   return rawRows.map((row) => row.concat(Array.from({ length: width - row.length }, () => '')))
 }
 
-export function expectedCsvEdgeCells(spec: CsvEdgeWorkbookSpec): Array<{ address: string; value?: unknown; formula?: string }> {
+export function expectedCsvEdgeCells(
+  spec: CsvEdgeWorkbookSpec,
+): Array<{ address: string; row: number; col: number; value?: unknown; formula?: string }> {
   const decimalSeparator = resolveExpectedCsvDecimalSeparator(spec)
   return spec.rows.flatMap((row, rowIndex) =>
     row.flatMap((cell, columnIndex) => {
@@ -397,7 +399,7 @@ export function expectedCsvEdgeCells(spec: CsvEdgeWorkbookSpec): Array<{ address
       if (!parsed) {
         return []
       }
-      return [{ address: XLSX.utils.encode_cell({ r: rowIndex, c: columnIndex }), ...parsed }]
+      return [{ address: XLSX.utils.encode_cell({ r: rowIndex, c: columnIndex }), row: rowIndex, col: columnIndex, ...parsed }]
     }),
   )
 }
