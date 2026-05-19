@@ -4,6 +4,18 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.25.5
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.25.4
+- Manual override: no
+
+## Fixes
+- perf(core): skip redundant csv import recalcs (b1254e8a)
+
+## Internal runtime changes
+- docs(discovery): sync headless 0.25.4 references (a73453a9)
+
 ## 0.25.4
 
 - Release type: patch
