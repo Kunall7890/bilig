@@ -78,5 +78,8 @@ describe('syncRuntimePackageVersions', () => {
 })
 
 function packageNameForDir(packageDir: string): string {
+  if (packageDir === 'packages/bilig') {
+    return 'bilig'
+  }
   return `@bilig/${packageDir.split('/').at(-1) ?? packageDir}`
 }

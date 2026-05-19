@@ -11,10 +11,12 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(core): group exact criteria aggregates (6d6a2d0c)
 - perf(excel-import): speed style-only blank stripping (eb8b1f2d)
 
 ## Internal runtime changes
+
 - docs(discovery): sync runtime package 0.28.1 (091ab9fd)
 
 ## 0.28.1
@@ -24,6 +26,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(corpus): expand recent workbook verification (8ae4d8dc)
 
 ## 0.28.0
@@ -33,9 +36,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(agent): add openai agents workpaper tools (cd9bb8d0)
 
 ## Internal runtime changes
+
 - docs(discovery): sync runtime package 0.27.0 (37c6d76a)
 - docs(agent): harden mcp server card schemas (9e7c1c5d)
 

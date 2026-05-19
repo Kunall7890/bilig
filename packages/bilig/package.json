@@ -1,0 +1,67 @@
+{
+  "name": "bilig",
+  "version": "0.28.2",
+  "description": "Formula WorkPaper runtime for Node.js services: edit cells, recalculate formulas, read results, and persist JSON.",
+  "keywords": [
+    "bilig",
+    "excel",
+    "excel-formulas",
+    "formula-engine",
+    "formula-recalculation",
+    "headless-spreadsheet",
+    "node",
+    "spreadsheet",
+    "spreadsheet-engine",
+    "spreadsheet-formulas",
+    "workbook-api",
+    "workpaper",
+    "xlsx",
+    "xlsx-formula",
+    "xlsx-recalculation"
+  ],
+  "homepage": "https://proompteng.github.io/bilig/",
+  "bugs": {
+    "url": "https://github.com/proompteng/bilig/issues"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/proompteng/bilig.git",
+    "directory": "packages/bilig"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./mcp": {
+      "types": "./dist/mcp.d.ts",
+      "import": "./dist/mcp.js"
+    },
+    "./xlsx": {
+      "types": "./dist/xlsx.d.ts",
+      "import": "./dist/xlsx.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "pnpm --dir ../.. --filter @bilig/headless build && rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && bun ../../scripts/build-bilig-alias-subpaths.ts"
+  },
+  "dependencies": {
+    "@bilig/headless": "workspace:*"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
