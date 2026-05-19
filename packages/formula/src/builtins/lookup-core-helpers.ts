@@ -145,6 +145,12 @@ export function compareScalars(left: CellValue, right: CellValue): number | unde
     }
     return normalizedLeft < normalizedRight ? -1 : 1
   }
+  if (left.tag === ValueTag.String && isNumberLike(right)) {
+    return 1
+  }
+  if (isNumberLike(left) && right.tag === ValueTag.String) {
+    return -1
+  }
 
   const leftNum = toNumber(left)
   const rightNum = toNumber(right)
@@ -157,6 +163,10 @@ export function compareScalars(left: CellValue, right: CellValue): number | unde
     return 0
   }
   return normalizedLeft < normalizedRight ? -1 : 1
+}
+
+function isNumberLike(value: CellValue): boolean {
+  return value.tag === ValueTag.Number || value.tag === ValueTag.Boolean
 }
 
 export function requireCellVector(arg: LookupBuiltinArgument): RangeBuiltinArgument | CellValue {

@@ -135,6 +135,31 @@ describe('formula runtime differential fuzz', () => {
   )
 
   it(
+    'keeps SORT text and number ordering in JS and WASM parity after sparse edits',
+    async () => {
+      const engine = new SpreadsheetEngine({
+        workbookName: 'sort-text-number-parity',
+        replicaId: 'sort-text-number-parity',
+      })
+      await engine.ready()
+      seedInventoryDifferentialWorkbook(engine)
+      engine.setCellFormula(sheetName, 'H8', 'SORT(A1:A4)')
+
+      expect(engine.explainCell(sheetName, 'H8').mode).toBe(FormulaMode.WasmFastPath)
+      expect(engine.recalculateDifferential().drift).toEqual([])
+
+      engine.setCellValue(sheetName, 'A1', '')
+
+      expect(engine.recalculateDifferential().drift).toEqual([])
+      expectCellSemantics(engine.getCellValue(sheetName, 'H8'), { tag: ValueTag.Number, value: 2 })
+      expectCellSemantics(engine.getCellValue(sheetName, 'H9'), { tag: ValueTag.Number, value: 3 })
+      expectCellSemantics(engine.getCellValue(sheetName, 'H10'), { tag: ValueTag.Number, value: 4 })
+      expectCellSemantics(engine.getCellValue(sheetName, 'H11'), stringValue(''))
+    },
+    FUZZ_TEST_TIMEOUT_MS,
+  )
+
+  it(
     'keeps generated fast-path formulas in JS and wasm parity',
     async () => {
       await runProperty({

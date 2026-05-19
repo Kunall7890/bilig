@@ -1,9 +1,18 @@
+import { parseArithmeticNumericText } from '@bilig/formula'
 import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 import type { EngineRuntimeState, RuntimeDirectScalarDescriptor, RuntimeDirectScalarOperand } from '../runtime-state.js'
 
 type DirectScalarCellRead = { kind: 'number'; value: number } | { kind: 'error'; code: ErrorCode }
 
-function coerceInitialDirectScalarCell(state: Pick<EngineRuntimeState, 'workbook'>, cellIndex: number): DirectScalarCellRead | undefined {
+function readInitialStringCell(state: Pick<EngineRuntimeState, 'workbook' | 'strings'>, cellIndex: number): string {
+  const stringId = state.workbook.cellStore.stringIds[cellIndex] ?? 0
+  return stringId === 0 ? '' : state.strings.get(stringId)
+}
+
+function coerceInitialDirectScalarCell(
+  state: Pick<EngineRuntimeState, 'workbook' | 'strings'>,
+  cellIndex: number,
+): DirectScalarCellRead | undefined {
   const cellStore = state.workbook.cellStore
   const tag = (cellStore.tags[cellIndex] as ValueTag | undefined) ?? ValueTag.Empty
   switch (tag) {
@@ -15,15 +24,17 @@ function coerceInitialDirectScalarCell(state: Pick<EngineRuntimeState, 'workbook
       return { kind: 'number', value: 0 }
     case ValueTag.Error:
       return { kind: 'error', code: (cellStore.errors[cellIndex] as ErrorCode | undefined) ?? ErrorCode.None }
-    case ValueTag.String:
-      return { kind: 'error', code: ErrorCode.Value }
+    case ValueTag.String: {
+      const numeric = parseArithmeticNumericText(readInitialStringCell(state, cellIndex))
+      return numeric === undefined ? { kind: 'error', code: ErrorCode.Value } : { kind: 'number', value: numeric }
+    }
     default:
       return undefined
   }
 }
 
 function readInitialDirectScalarOperand(
-  state: Pick<EngineRuntimeState, 'workbook'>,
+  state: Pick<EngineRuntimeState, 'workbook' | 'strings'>,
   operand: RuntimeDirectScalarOperand,
 ): DirectScalarCellRead | undefined {
   switch (operand.kind) {
@@ -37,7 +48,7 @@ function readInitialDirectScalarOperand(
 }
 
 export function evaluateInitialDirectScalar(
-  state: Pick<EngineRuntimeState, 'workbook'>,
+  state: Pick<EngineRuntimeState, 'workbook' | 'strings'>,
   directScalar: RuntimeDirectScalarDescriptor,
 ): CellValue | undefined {
   if (directScalar.kind === 'abs') {
@@ -79,7 +90,7 @@ export function evaluateInitialDirectScalar(
   return { tag: ValueTag.Number, value: result + (directScalar.resultOffset ?? 0) }
 }
 
-function coerceInitialDirectScalarNumber(state: Pick<EngineRuntimeState, 'workbook'>, cellIndex: number): number | undefined {
+function coerceInitialDirectScalarNumber(state: Pick<EngineRuntimeState, 'workbook' | 'strings'>, cellIndex: number): number | undefined {
   const cellStore = state.workbook.cellStore
   const tag = (cellStore.tags[cellIndex] as ValueTag | undefined) ?? ValueTag.Empty
   switch (tag) {
@@ -90,6 +101,7 @@ function coerceInitialDirectScalarNumber(state: Pick<EngineRuntimeState, 'workbo
     case ValueTag.Empty:
       return 0
     case ValueTag.String:
+      return parseArithmeticNumericText(readInitialStringCell(state, cellIndex))
     case ValueTag.Error:
       return undefined
     default:
@@ -98,7 +110,7 @@ function coerceInitialDirectScalarNumber(state: Pick<EngineRuntimeState, 'workbo
 }
 
 function readInitialDirectScalarNumberOperand(
-  state: Pick<EngineRuntimeState, 'workbook'>,
+  state: Pick<EngineRuntimeState, 'workbook' | 'strings'>,
   operand: RuntimeDirectScalarOperand,
 ): number | undefined {
   switch (operand.kind) {
@@ -112,7 +124,7 @@ function readInitialDirectScalarNumberOperand(
 }
 
 export function evaluateInitialDirectScalarNumber(
-  state: Pick<EngineRuntimeState, 'workbook'>,
+  state: Pick<EngineRuntimeState, 'workbook' | 'strings'>,
   directScalar: RuntimeDirectScalarDescriptor,
 ): number | undefined {
   if (directScalar.kind === 'abs') {

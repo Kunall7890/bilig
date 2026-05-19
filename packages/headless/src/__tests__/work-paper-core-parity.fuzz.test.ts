@@ -100,6 +100,25 @@ describe('WorkPaper/core parity fuzz', () => {
     await assertRestoredEngineParity(harness)
   })
 
+  it('preserves arithmetic text coercion for direct scalar formulas through WorkPaper save/load', async () => {
+    const assertArithmeticTextCoercionThroughSaveLoad = async (value: string, expected: number): Promise<void> => {
+      const harness = await createParityHarness()
+
+      applyParityAction(harness, { kind: 'set-cell', row: 0, col: 0, value })
+
+      assertCoreParity(harness)
+      expect(harness.workPaper.getCellValue({ sheet: harness.sheetId, row: 5, col: 1 })).toEqual({
+        tag: ValueTag.Number,
+        value: expected,
+      })
+      assertRestoredWorkPaperParity(harness)
+      await assertRestoredEngineParity(harness)
+    }
+
+    await assertArithmeticTextCoercionThroughSaveLoad('', 2)
+    await assertArithmeticTextCoercionThroughSaveLoad('3', 5)
+  })
+
   it('keeps headless WorkPaper edits, structural operations, undo/redo, and save/load in core parity', async () => {
     await runProperty({
       suite: 'headless/core-parity/work-paper-engine-action-sequence',
