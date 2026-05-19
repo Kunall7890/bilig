@@ -4,6 +4,18 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.24.5
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.24.4
+- Manual override: no
+
+## Fixes
+- perf(headless): reduce physical range write lookups (2170ba56)
+
+## Internal runtime changes
+- docs(headless): sync discovery package version (a17e8163)
+
 ## 0.24.4
 
 - Release type: patch
