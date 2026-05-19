@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.24.2
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.24.1
+- Manual override: no
+
+## Fixes
+- fix(mcp): publish hosted endpoint metadata (82595db1)
+
 ## 0.24.1
 
 - Release type: patch
