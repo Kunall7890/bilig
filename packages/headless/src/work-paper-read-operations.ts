@@ -1,8 +1,6 @@
 import type { SpreadsheetEngine, SheetRecord } from '@bilig/core'
 import { ValueTag, type CellRangeRef, type CellSnapshot, type CellValue } from '@bilig/protocol'
-import { compileFormula, formatAddress } from '@bilig/formula'
 import {
-  buildWorkPaperDenseRange,
   collectSerializedWorkPaperSheets,
   collectWorkPaperSheetsByName,
   readWorkPaperSheetRange,
@@ -22,22 +20,28 @@ import type {
   WorkPaperAddressFormatOptions,
   WorkPaperCellAddress,
   WorkPaperCellRange,
+  WorkPaperRangeValueBlock,
   WorkPaperCellType,
   WorkPaperCellValueDetailedType,
   WorkPaperCellValueType,
   WorkPaperSheetDimensions,
 } from './work-paper-types.js'
 import {
+  getVisibleWorkPaperCellIndexInSheet,
   readWorkPaperCellClassification,
   readWorkPaperCellFormula,
+  readWorkPaperCellFormulaByIndex,
   readWorkPaperCellHasSimpleValue,
   readWorkPaperCellHyperlink,
   readWorkPaperCellPartOfArray,
   readWorkPaperCellValue,
   readWorkPaperCellValueDetailedType,
   readWorkPaperCellValueType,
+  readWorkPaperRangeValueBlock,
   readWorkPaperRangeValues,
 } from './work-paper-cell-read.js'
+import { assertRange } from './work-paper-runtime-helpers.js'
+import { workPaperFormulaMayResizeDynamically } from './work-paper-sheet-inspection.js'
 
 export interface WorkPaperReadOperations {
   readonly getCellValue: (address: WorkPaperCellAddress) => CellValue
@@ -45,6 +49,7 @@ export interface WorkPaperReadOperations {
   readonly getCellHyperlink: (address: WorkPaperCellAddress) => string | undefined
   readonly getCellSerialized: (address: WorkPaperCellAddress) => RawCellContent
   readonly getRangeValues: (range: WorkPaperCellRange) => CellValue[][]
+  readonly getRangeValueBlock: (range: WorkPaperCellRange) => WorkPaperRangeValueBlock
   readonly getRangeFormulas: (range: WorkPaperCellRange) => WorkPaperSheetFormulas
   readonly getRangeSerialized: (range: WorkPaperCellRange) => RawCellContent[][]
   readonly getSheetValues: (sheetId: number) => WorkPaperSheetValues
@@ -118,11 +123,30 @@ export function createWorkPaperReadOperations(runtime: WorkPaperReadOperationsRu
     return readWorkPaperRangeValues({ engine: engine(), range, rangeRef: () => runtime.rangeRef(range) })
   }
 
-  const getRangeFormulas = (range: WorkPaperCellRange): WorkPaperSheetFormulas =>
-    buildWorkPaperDenseRange(range, (address) => getCellFormula(address))
+  const getRangeValueBlock = (range: WorkPaperCellRange): WorkPaperRangeValueBlock => {
+    runtime.assertReadable()
+    return readWorkPaperRangeValueBlock({ engine: engine(), range, rangeRef: () => runtime.rangeRef(range) })
+  }
 
-  const getRangeSerialized = (range: WorkPaperCellRange): RawCellContent[][] =>
-    buildWorkPaperDenseRange(range, (address) => getCellSerialized(address))
+  const getRangeFormulas = (range: WorkPaperCellRange): WorkPaperSheetFormulas => {
+    runtime.prepareReadableState()
+    return buildWorkPaperDenseFormulaRange({
+      engine: engine(),
+      range,
+      sheet: runtime.sheetRecord(range.start.sheet),
+      restorePublicFormula: (formula, ownerSheetId) => runtime.restorePublicFormula(formula, ownerSheetId),
+    })
+  }
+
+  const getRangeSerialized = (range: WorkPaperCellRange): RawCellContent[][] => {
+    runtime.prepareReadableState()
+    return buildWorkPaperDenseSerializedRange({
+      engine: engine(),
+      range,
+      sheet: runtime.sheetRecord(range.start.sheet),
+      cellSnapshotToRawContent: (cell, ownerSheetId) => runtime.cellSnapshotToRawContent(cell, ownerSheetId),
+    })
+  }
 
   const getSheetDimensions = (sheetId: number): WorkPaperSheetDimensions => {
     runtime.prepareReadableState()
@@ -167,6 +191,7 @@ export function createWorkPaperReadOperations(runtime: WorkPaperReadOperationsRu
     },
     getCellSerialized,
     getRangeValues,
+    getRangeValueBlock,
     getRangeFormulas,
     getRangeSerialized,
     getSheetValues(sheetId) {
@@ -293,19 +318,72 @@ function scanSheetDimensionsAndDynamicFormula(
   let width = 0
   let height = 0
   let mayResize = false
+  const formulaIds = engine.workbook.cellStore.formulaIds
   sheet.grid.forEachCellEntry((_cellIndex, row, col) => {
     height = Math.max(height, row + 1)
     width = Math.max(width, col + 1)
-    if (!mayResize) {
-      const formula = engine.getCell(sheet.name, formatAddress(row, col)).formula
-      if (formula !== undefined) {
-        try {
-          mayResize = compileFormula(formula).producesSpill
-        } catch {
-          mayResize = true
-        }
+    if (!mayResize && (formulaIds[_cellIndex] ?? 0) !== 0) {
+      const formula = engine.getCellByIndex(_cellIndex).formula
+      if (formula !== undefined && workPaperFormulaMayResizeDynamically(formula)) {
+        mayResize = true
       }
     }
   })
   return { dimensions: { width, height }, mayResizeDynamically: mayResize }
+}
+
+function buildWorkPaperDenseFormulaRange(args: {
+  readonly engine: SpreadsheetEngine
+  readonly range: WorkPaperCellRange
+  readonly sheet: SheetRecord
+  readonly restorePublicFormula: (formula: string, ownerSheetId: number) => string
+}): WorkPaperSheetFormulas {
+  assertRange(args.range)
+  const height = args.range.end.row - args.range.start.row + 1
+  const width = args.range.end.col - args.range.start.col + 1
+  const ownerSheetId = args.range.start.sheet
+  const formulaIds = args.engine.workbook.cellStore.formulaIds
+  const formulas: WorkPaperSheetFormulas = Array.from({ length: height }, () => Array<string | undefined>(width).fill(undefined))
+  for (let rowOffset = 0; rowOffset < height; rowOffset += 1) {
+    const outputRow = formulas[rowOffset]!
+    const row = args.range.start.row + rowOffset
+    for (let colOffset = 0; colOffset < width; colOffset += 1) {
+      const col = args.range.start.col + colOffset
+      const cellIndex = getVisibleWorkPaperCellIndexInSheet(args.sheet, row, col)
+      if (cellIndex !== undefined && (formulaIds[cellIndex] ?? 0) !== 0) {
+        outputRow[colOffset] = readWorkPaperCellFormulaByIndex({
+          engine: args.engine,
+          cellIndex,
+          ownerSheetId,
+          restorePublicFormula: args.restorePublicFormula,
+        })
+      }
+    }
+  }
+  return formulas
+}
+
+function buildWorkPaperDenseSerializedRange(args: {
+  readonly engine: SpreadsheetEngine
+  readonly range: WorkPaperCellRange
+  readonly sheet: SheetRecord
+  readonly cellSnapshotToRawContent: (cell: CellSnapshot, ownerSheetId: number) => RawCellContent
+}): RawCellContent[][] {
+  assertRange(args.range)
+  const height = args.range.end.row - args.range.start.row + 1
+  const width = args.range.end.col - args.range.start.col + 1
+  const ownerSheetId = args.range.start.sheet
+  const serialized: RawCellContent[][] = Array.from({ length: height }, () => Array<RawCellContent>(width).fill(null))
+  for (let rowOffset = 0; rowOffset < height; rowOffset += 1) {
+    const outputRow = serialized[rowOffset]!
+    const row = args.range.start.row + rowOffset
+    for (let colOffset = 0; colOffset < width; colOffset += 1) {
+      const col = args.range.start.col + colOffset
+      const cellIndex = getVisibleWorkPaperCellIndexInSheet(args.sheet, row, col)
+      if (cellIndex !== undefined) {
+        outputRow[colOffset] = args.cellSnapshotToRawContent(args.engine.getCellByIndex(cellIndex), ownerSheetId)
+      }
+    }
+  }
+  return serialized
 }

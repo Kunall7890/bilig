@@ -78,6 +78,85 @@ describe('createOperationDirectFormulaDeltas', () => {
     expect(counters.directScalarDeltaApplications).toBe(1)
   })
 
+  it('should apply same-delta direct formulas through the batch writer', () => {
+    // Arrange
+    const { helpers, sheet, workbook } = createHarness()
+    const first = createCell(workbook, sheet.id, {
+      row: 0,
+      col: 0,
+      value: 11,
+      stringId: 3,
+      error: ErrorCode.NAME,
+      flags: CellFlags.Materialized | CellFlags.SpillChild,
+      version: 4,
+    })
+    const second = createCell(workbook, sheet.id, {
+      row: 1,
+      col: 0,
+      value: 17,
+      stringId: 5,
+      error: ErrorCode.VALUE,
+      flags: CellFlags.Materialized | CellFlags.PivotOutput,
+      version: 7,
+    })
+    const third = createCell(workbook, sheet.id, {
+      row: 2,
+      col: 0,
+      value: 23,
+      version: 2,
+    })
+
+    // Act
+    const applied = workbook.withBatchedColumnVersionUpdates(() =>
+      helpers.applyDirectFormulaNumericDeltaBatch(Uint32Array.of(first, second, third), 6),
+    )
+
+    // Assert
+    expect(applied).toBe(true)
+    expect(workbook.cellStore.numbers[first]).toBe(17)
+    expect(workbook.cellStore.numbers[second]).toBe(23)
+    expect(workbook.cellStore.numbers[third]).toBe(29)
+    expect(workbook.cellStore.stringIds[first]).toBe(0)
+    expect(workbook.cellStore.stringIds[second]).toBe(0)
+    expect(workbook.cellStore.errors[first]).toBe(ErrorCode.None)
+    expect(workbook.cellStore.errors[second]).toBe(ErrorCode.None)
+    expect(workbook.cellStore.flags[first]).toBe(CellFlags.Materialized)
+    expect(workbook.cellStore.flags[second]).toBe(CellFlags.Materialized)
+    expect(workbook.cellStore.versions[first]).toBe(5)
+    expect(workbook.cellStore.versions[second]).toBe(8)
+    expect(workbook.cellStore.versions[third]).toBe(3)
+    expect(sheet.columnVersions[0]).toBe(1)
+  })
+
+  it('should reject batch direct formula deltas without partial writes', () => {
+    // Arrange
+    const { helpers, sheet, workbook } = createHarness()
+    const numeric = createCell(workbook, sheet.id, {
+      row: 0,
+      col: 0,
+      value: 11,
+      version: 4,
+    })
+    const text = createCell(workbook, sheet.id, {
+      row: 1,
+      col: 0,
+      tag: ValueTag.String,
+      stringId: 9,
+      version: 7,
+    })
+
+    // Act
+    const applied = helpers.applyDirectFormulaNumericDeltaBatch(Uint32Array.of(numeric, text), 6)
+
+    // Assert
+    expect(applied).toBe(false)
+    expect(workbook.cellStore.numbers[numeric]).toBe(11)
+    expect(workbook.cellStore.versions[numeric]).toBe(4)
+    expect(workbook.cellStore.stringIds[text]).toBe(9)
+    expect(workbook.cellStore.versions[text]).toBe(7)
+    expect(sheet.columnVersions[0] ?? 0).toBe(0)
+  })
+
   it('should apply validated direct scalar deltas through terminal writes', () => {
     // Arrange
     const { counters, helpers, sheet, workbook } = createHarness({

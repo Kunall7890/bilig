@@ -2,7 +2,7 @@ import { Effect } from 'effect'
 import { describe, expect, it, vi } from 'vitest'
 import { ValueTag } from '@bilig/protocol'
 import { SpreadsheetEngine } from '../engine.js'
-import type { EngineStructureService } from '../engine/services/structure-service.js'
+import type { EngineStructureService, StructuralAxisOp } from '../engine/services/structure-service.js'
 
 interface FormulaBindingServiceForStructureTest {
   readonly collectFormulaCellsReferencingSheetNow: (sheetName: string) => readonly number[]
@@ -51,6 +51,18 @@ function getStructureService(engine: SpreadsheetEngine): EngineStructureService 
   return structure
 }
 
+interface EngineStructureServiceWithSyncPath extends EngineStructureService {
+  readonly materializeDeferredStructuralFormulaSourcesNow: () => void
+  readonly applyStructuralAxisOpNow: (op: StructuralAxisOp) => unknown
+}
+
+function getStructureServiceWithSyncPath(engine: SpreadsheetEngine): EngineStructureServiceWithSyncPath {
+  const structure = getStructureService(engine)
+  expect(Reflect.get(structure, 'materializeDeferredStructuralFormulaSourcesNow')).toBeTypeOf('function')
+  expect(Reflect.get(structure, 'applyStructuralAxisOpNow')).toBeTypeOf('function')
+  return structure as EngineStructureServiceWithSyncPath
+}
+
 function getFormulaBindingService(engine: SpreadsheetEngine): FormulaBindingServiceForStructureTest {
   const runtime = getEngineRuntime(engine)
   const binding = Reflect.get(runtime, 'binding')
@@ -61,6 +73,80 @@ function getFormulaBindingService(engine: SpreadsheetEngine): FormulaBindingServ
 }
 
 describe('EngineStructureService', () => {
+  it('uses the sync structural axis path for local column insert batches', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'structure-sync-column-insert' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 2)
+    engine.setCellValue('Sheet1', 'B1', 3)
+    engine.setCellFormula('Sheet1', 'C1', 'A1+B1')
+
+    const structure = getStructureServiceWithSyncPath(engine)
+    vi.spyOn(structure, 'applyStructuralAxisOp').mockImplementation(() => {
+      throw new Error('Effect structural path should not be used for local column insert batches')
+    })
+    const applyNowSpy = vi.spyOn(structure, 'applyStructuralAxisOpNow')
+
+    engine.insertColumns('Sheet1', 1, 1)
+
+    expect(applyNowSpy).toHaveBeenCalledOnce()
+    expect(engine.getCell('Sheet1', 'D1').formula).toBe('A1+C1')
+    expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Number, value: 5 })
+  })
+
+  it('skips metadata rewrite scans for metadata-free structural column inserts', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'structure-metadata-free-column-insert' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 2)
+    engine.setCellValue('Sheet1', 'B1', 3)
+    engine.setCellFormula('Sheet1', 'C1', 'A1+B1')
+    const workbook = engine.workbook
+    const metadataScans = [
+      'listDefinedNames',
+      'listTables',
+      'listMergeRanges',
+      'listFilters',
+      'listSorts',
+      'listDataValidations',
+      'listConditionalFormats',
+      'listRangeProtections',
+      'listCommentThreads',
+      'listNotes',
+      'listStyleRanges',
+      'listFormatRanges',
+      'getFreezePane',
+      'listPivots',
+      'listCharts',
+      'listImages',
+      'listShapes',
+      'listSpills',
+    ] as const
+    const spies = metadataScans.map((name) => vi.spyOn(workbook, name))
+
+    engine.insertColumns('Sheet1', 1, 1)
+
+    expect(engine.getCell('Sheet1', 'D1').formula).toBe('A1+C1')
+    expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Number, value: 5 })
+    spies.forEach((spy) => {
+      expect(spy).not.toHaveBeenCalled()
+      spy.mockRestore()
+    })
+  })
+
+  it('ignores structural axis edits for missing sheets', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'structure-missing-sheet-edits' })
+    await engine.ready()
+
+    expect(() => engine.insertRows('Missing', 0, 1)).not.toThrow()
+    expect(() => engine.deleteRows('Missing', 0, 1)).not.toThrow()
+    expect(() => engine.moveRows('Missing', 0, 1, 2)).not.toThrow()
+    expect(() => engine.insertColumns('Missing', 0, 1)).not.toThrow()
+    expect(() => engine.deleteColumns('Missing', 0, 1)).not.toThrow()
+    expect(() => engine.moveColumns('Missing', 0, 1, 2)).not.toThrow()
+    expect(engine.exportSnapshot().sheets).toEqual([])
+  })
+
   it('captures sheet cell state in row-major order for undo reconstruction', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'structure-capture' })
     await engine.ready()
@@ -529,6 +615,7 @@ describe('EngineStructureService', () => {
       engine.setCellFormula('Sheet1', `D${row}`, `C${row}*2`)
     }
 
+    const axisLookups = vi.spyOn(engine.workbook, 'getCellAxisIndex')
     engine.resetPerformanceCounters()
     const result = Effect.runSync(
       getStructureService(engine).applyStructuralAxisOp({
@@ -540,7 +627,9 @@ describe('EngineStructureService', () => {
     )
 
     expect(result.graphRefreshRequired).toBe(false)
+    expect(axisLookups.mock.calls.length).toBeLessThanOrEqual(20)
     expect(engine.getPerformanceCounters().cycleFormulaScans).toBe(0)
+    axisLookups.mockRestore()
   })
 
   it('keeps graph refresh enabled when deleting formulas from an active cycle', async () => {

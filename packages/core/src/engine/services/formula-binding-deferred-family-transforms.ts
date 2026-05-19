@@ -13,7 +13,7 @@ export function queueDeferredFormulaFamilyStructuralSourceTransforms(args: {
     return undefined
   }
   let memberCount = 0
-  const runIndexes: number[] = []
+  let transforms: Map<number, FormulaFamilyStructuralSourceTransform> | undefined
   for (let runIndex = 0; runIndex < args.runs.length; runIndex += 1) {
     const run = args.runs[runIndex]!
     if (run.sheetId !== args.sheetId) {
@@ -24,14 +24,11 @@ export function queueDeferredFormulaFamilyStructuralSourceTransforms(args: {
       return undefined
     }
     memberCount += run.cellIndices.length
-    runIndexes.push(runIndex)
+    transforms ??= new Map(args.existingTransforms)
+    transforms.set(runIndex, args.transform)
   }
-  if (runIndexes.length === 0 || memberCount !== args.ownedFormulaCount) {
+  if (transforms === undefined || memberCount !== args.ownedFormulaCount) {
     return undefined
   }
-  const transforms = new Map(args.existingTransforms)
-  runIndexes.forEach((runIndex) => {
-    transforms.set(runIndex, args.transform)
-  })
   return { memberCount, transforms }
 }

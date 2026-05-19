@@ -10,7 +10,7 @@ import {
   parseWorkPaperDocument,
   serializeWorkPaperDocument,
 } from '../index.js'
-import { forceMaterializeTrackedIndexChanges, hasDeferredTrackedIndexChanges } from '../tracked-cell-index-changes.js'
+import { hasDeferredTrackedIndexChanges } from '../tracked-cell-index-changes.js'
 
 const TEST_LANGUAGE_CODE = 'xHF'
 
@@ -594,7 +594,7 @@ describe('WorkPaper', () => {
     expect(workbook.getCellFormula(cell(sheetId, 0, 2))).toBe('=A1+B1')
   })
 
-  it('materializes no-listener tiny tracked changes eagerly without stale later writes', () => {
+  it('returns tiny no-listener compact tracked changes eagerly', () => {
     const workbook = WorkPaper.buildFromSheets({
       Bench: [[1, '=A1*2']],
     })
@@ -605,18 +605,7 @@ describe('WorkPaper', () => {
     expect(changes).toHaveLength(2)
     expectOnlyCellChanges(changes)
     expect(hasDeferredTrackedIndexChanges(changes)).toBe(false)
-
-    workbook.setCellContents(cell(sheetId, 0, 0), 10)
-
-    expect(changes[0]).toMatchObject({
-      a1: 'A1',
-      newValue: { tag: ValueTag.Number, value: 9 },
-    })
-    expect(changes[1]).toMatchObject({
-      a1: 'B1',
-      newValue: { tag: ValueTag.Number, value: 18 },
-    })
-    expect(forceMaterializeTrackedIndexChanges(changes)).toBe(false)
+    expect(changes.map((change) => (change.kind === 'cell' ? `${change.sheetName}!${change.a1}` : ''))).toEqual(['Bench!A1', 'Bench!B1'])
   })
 
   it('keeps valuesUpdated listener payloads eager for tiny tracked changes', () => {
@@ -656,6 +645,11 @@ describe('WorkPaper', () => {
       value: 537,
     })
     expect(workbook.getStats().lastMetrics).toMatchObject({ dirtyFormulaCount: 0, wasmFormulaCount: 0, jsFormulaCount: 0 })
+    expect(workbook.getPerformanceCounters()).toMatchObject({
+      directAggregateDeltaApplications: 1,
+      directAggregateDeltaOnlyRecalcSkips: 1,
+      regionQueryIndexBuilds: 0,
+    })
   })
 
   it('recalculates filter spills that share a dirty range with direct criteria formulas', () => {
@@ -2296,6 +2290,7 @@ describe('WorkPaper', () => {
       ],
     })
     const sheetId = workbook.getSheetId('Sheet1')!
+    const captureTracker = trackCaptureTrackedChangesWithoutVisibilityCache(workbook)
     const computeTrackedChanges = trackComputeCellChangesFromTrackedEvents(workbook)
     const forEachCellEntry = vi.spyOn(sheetGridEntryTarget(workbook, sheetId), 'forEachCellEntry')
 
@@ -2303,6 +2298,7 @@ describe('WorkPaper', () => {
       const changes = workbook.addColumns(sheetId, [1, 1])
 
       expect(changes).toEqual([])
+      expect(captureTracker.count).toBe(0)
       expect(computeTrackedChanges.count).toBe(0)
       expect(workbook.getSheetDimensions(sheetId)).toEqual({ width: 5, height: 3 })
       expect(forEachCellEntry).not.toHaveBeenCalled()
@@ -2316,6 +2312,7 @@ describe('WorkPaper', () => {
       expect(workbook.getCellValue(cell(sheetId, 2, 4))).toEqual({ tag: ValueTag.Number, value: 18 })
     } finally {
       forEachCellEntry.mockRestore()
+      captureTracker.restore()
     }
 
     const undoChanges = workbook.undo()
@@ -2335,17 +2332,20 @@ describe('WorkPaper', () => {
     const sheetId = workbook.getSheetId('Sheet1')!
     const binding = engineFormulaBindingTarget(workbook)
     const inspectFamilies = vi.spyOn(binding, 'forEachFormulaFamilyNow')
+    const scanOwnedFormulas = vi.spyOn(binding, 'forEachFormulaCellOwnedBySheetNow')
 
     try {
       const changes = workbook.addColumns(sheetId, [1, 1])
 
       expect(changes).toEqual([])
       expect(inspectFamilies).not.toHaveBeenCalled()
+      expect(scanOwnedFormulas).not.toHaveBeenCalled()
       expect(workbook.getSheetDimensions(sheetId)).toEqual({ width: 5, height: 48 })
       expect(workbook.getCellSerialized(cell(sheetId, 47, 3))).toBe('=A48+C48')
       expect(workbook.getCellSerialized(cell(sheetId, 47, 4))).toBe('=D48*2')
       expect(workbook.getCellValue(cell(sheetId, 47, 4))).toEqual({ tag: ValueTag.Number, value: 288 })
     } finally {
+      scanOwnedFormulas.mockRestore()
       inspectFamilies.mockRestore()
     }
   })

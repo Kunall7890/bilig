@@ -214,6 +214,42 @@ export class WorkbookStore {
     ensureWorkbookDefaultStyleFormat(this)
   }
 
+  hasStructuralMetadataForSheet(sheetName: string): boolean {
+    const sheet = this.getSheet(sheetName)
+    return (
+      this.metadata.definedNames.size > 0 ||
+      this.metadata.tables.size > 0 ||
+      this.metadata.spills.size > 0 ||
+      this.metadata.pivots.size > 0 ||
+      this.metadata.charts.size > 0 ||
+      this.metadata.images.size > 0 ||
+      this.metadata.shapes.size > 0 ||
+      this.metadata.freezePanes.size > 0 ||
+      this.metadata.merges.size > 0 ||
+      this.metadata.filters.size > 0 ||
+      this.metadata.sorts.size > 0 ||
+      this.metadata.dataValidations.size > 0 ||
+      this.metadata.conditionalFormats.size > 0 ||
+      this.metadata.rangeProtections.size > 0 ||
+      this.metadata.commentThreads.size > 0 ||
+      this.metadata.notes.size > 0 ||
+      (sheet?.styleRanges.length ?? 0) > 0 ||
+      (sheet?.formatRanges.length ?? 0) > 0
+    )
+  }
+
+  hasProtectionMetadataForSheet(sheetName: string): boolean {
+    if (this.metadata.sheetProtections.has(sheetName)) {
+      return true
+    }
+    for (const protection of this.metadata.rangeProtections.values()) {
+      if (protection.range.sheetName === sheetName) {
+        return true
+      }
+    }
+    return false
+  }
+
   createSheet(name: string, order = this.sheetsByName.size, id?: number): SheetRecord {
     return this.sheetRegistry.createSheet(name, order, id)
   }
@@ -224,6 +260,10 @@ export class WorkbookStore {
 
   renameSheet(oldName: string, nextName: string): SheetRecord | undefined {
     return this.sheetRegistry.renameSheet(oldName, nextName)
+  }
+
+  renameSheetById(sheetId: number, trimmedName: string): SheetRecord | undefined {
+    return this.sheetRegistry.renameSheetById(sheetId, trimmedName)
   }
 
   getSheet(name: string): SheetRecord | undefined {
@@ -292,6 +332,10 @@ export class WorkbookStore {
 
   getCellIndexAt(sheetId: number, row: number, col: number): number | undefined {
     return this.cellRecordStore.getCellIndexAt(sheetId, row, col)
+  }
+
+  getFreshCellIndexAt(sheetId: number, row: number, col: number): number | undefined {
+    return this.cellRecordStore.getFreshCellIndexAt(sheetId, row, col)
   }
 
   getSheetNameById(id: number): string {

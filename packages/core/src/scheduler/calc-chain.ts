@@ -4,18 +4,20 @@ import { addEngineCounter, type EngineCounters } from '../perf/engine-counters.j
 
 type U32 = Uint32Array
 
+const INITIAL_CALC_CHAIN_BUFFER_CAPACITY = 16
+
 export interface CalcChainResult {
   orderedFormulaCellIndices: U32
   orderedFormulaCount: number
 }
 
 export class CalcChain {
-  private rankCounts: U32 = new Uint32Array(128)
-  private formulaIds: U32 = new Uint32Array(128)
-  private orderedChain: U32 = new Uint32Array(128)
-  private chainIndexByCell: U32 = new Uint32Array(128)
-  private orderedDirty: U32 = new Uint32Array(128)
-  private dirtySeen: U32 = new Uint32Array(128)
+  private rankCounts: U32 = new Uint32Array(INITIAL_CALC_CHAIN_BUFFER_CAPACITY)
+  private formulaIds: U32 = new Uint32Array(INITIAL_CALC_CHAIN_BUFFER_CAPACITY)
+  private orderedChain: U32 = new Uint32Array(INITIAL_CALC_CHAIN_BUFFER_CAPACITY)
+  private chainIndexByCell: U32 = new Uint32Array(INITIAL_CALC_CHAIN_BUFFER_CAPACITY)
+  private orderedDirty: U32 = new Uint32Array(INITIAL_CALC_CHAIN_BUFFER_CAPACITY)
+  private dirtySeen: U32 = new Uint32Array(INITIAL_CALC_CHAIN_BUFFER_CAPACITY)
   private dirtyEpoch = 1
   private chainFormulaCount = 0
 

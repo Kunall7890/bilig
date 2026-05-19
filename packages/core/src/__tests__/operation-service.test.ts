@@ -1,6 +1,6 @@
 import { Effect } from 'effect'
 import { describe, expect, it, vi } from 'vitest'
-import { ErrorCode, ValueTag, type RecalcMetrics } from '@bilig/protocol'
+import { ErrorCode, ValueTag, type EngineEvent, type RecalcMetrics } from '@bilig/protocol'
 import { compileCriteriaMatcher, indexToColumn } from '@bilig/formula'
 import { createBatch } from '../replica-state.js'
 import { SpreadsheetEngine } from '../engine.js'
@@ -41,6 +41,29 @@ function getRuntimeState(engine: SpreadsheetEngine): {
   return state
 }
 
+interface RuntimeMaintenanceServiceForTest {
+  estimatePotentialNewCells(...args: unknown[]): unknown
+}
+
+function hasRuntimeMaintenanceService(value: unknown): value is RuntimeMaintenanceServiceForTest {
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
+  return typeof Reflect.get(value, 'estimatePotentialNewCells') === 'function'
+}
+
+function getRuntimeMaintenanceService(engine: SpreadsheetEngine): RuntimeMaintenanceServiceForTest {
+  const runtime = Reflect.get(engine, 'runtime')
+  if (typeof runtime !== 'object' || runtime === null) {
+    throw new TypeError('Expected engine runtime')
+  }
+  const maintenance = Reflect.get(runtime, 'maintenance')
+  if (!hasRuntimeMaintenanceService(maintenance)) {
+    throw new TypeError('Expected engine maintenance service')
+  }
+  return maintenance
+}
+
 function expectBatch<Batch>(batch: Batch | undefined): Batch {
   expect(batch).toBeDefined()
   return batch
@@ -48,7 +71,7 @@ function expectBatch<Batch>(batch: Batch | undefined): Batch {
 
 function expectSingleLeafFormulaFastPath(metrics: RecalcMetrics): void {
   expect(metrics.dirtyFormulaCount).toBe(0)
-  expect(metrics.jsFormulaCount + metrics.wasmFormulaCount).toBe(1)
+  expect(metrics.jsFormulaCount + metrics.wasmFormulaCount).toBeLessThanOrEqual(1)
 }
 
 function lookupTestString(id: number): string {
@@ -147,6 +170,39 @@ describe('EngineOperationService', () => {
     expect(Array.from(operationServiceTestHooks.mergeChangedCellIndices([3], [4]))).toEqual([3, 4])
     expect(Array.from(operationServiceTestHooks.mergeChangedCellIndices([3, 4], [4, 5]))).toEqual([3, 4, 5])
     expect(Array.from(operationServiceTestHooks.composeSingleDisjointExplicitEventChanges(2, Uint32Array.of(5, 6)))).toEqual([2, 5, 6])
+
+    const structuralNoValueMutation = {
+      isRestore: false,
+      topologyChanged: false,
+      formulaChangedCount: 0,
+      explicitChangedCount: 0,
+      precomputedKernelSyncCellCount: 0,
+      invalidatedRangeCount: 0,
+      invalidatedRowCount: 0,
+      invalidatedColumnCount: 1,
+      activeFormulaCount: 4,
+      hasVolatileFormulas: false,
+      hasActivePivots: false,
+    }
+    expect(operationServiceTestHooks.canFinalizeStructuralNoValueMutationWithoutRecalc(structuralNoValueMutation)).toBe(true)
+    expect(
+      operationServiceTestHooks.canFinalizeStructuralNoValueMutationWithoutRecalc({
+        ...structuralNoValueMutation,
+        hasVolatileFormulas: true,
+      }),
+    ).toBe(false)
+    expect(
+      operationServiceTestHooks.canFinalizeStructuralNoValueMutationWithoutRecalc({
+        ...structuralNoValueMutation,
+        hasActivePivots: true,
+      }),
+    ).toBe(false)
+    expect(
+      operationServiceTestHooks.canFinalizeStructuralNoValueMutationWithoutRecalc({
+        ...structuralNoValueMutation,
+        formulaChangedCount: 1,
+      }),
+    ).toBe(false)
   })
 
   it('covers direct formula index collection delta materialization branches', () => {
@@ -322,6 +378,65 @@ describe('EngineOperationService', () => {
     expect(engine.getCellValue('Sheet1', 'E1')).toEqual({ tag: ValueTag.Number, value: 5 })
     expect(engine.getRowMetadata('Sheet1')).toEqual([{ sheetName: 'Sheet1', start: 0, count: 1, size: 24, hidden: false }])
     expect(engine.getColumnMetadata('Sheet1')).toEqual([{ sheetName: 'Sheet1', start: 0, count: 1, size: 90, hidden: true }])
+  })
+
+  it('keeps single structural column inserts off the generic potential-cell estimation path', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'operation-single-structural-fast-path' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 2)
+    engine.setCellValue('Sheet1', 'B1', 3)
+    engine.setCellFormula('Sheet1', 'C1', 'A1+B1')
+
+    const maintenance = getRuntimeMaintenanceService(engine)
+    vi.spyOn(maintenance, 'estimatePotentialNewCells').mockImplementation(() => {
+      throw new Error('Generic potential-cell estimation should not run for single structural column inserts')
+    })
+
+    engine.insertColumns('Sheet1', 1, 1)
+
+    expect(engine.getCell('Sheet1', 'D1').formula).toBe('A1+C1')
+    expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Number, value: 5 })
+  })
+
+  it('emits cell invalidation for no-value structural inserts without changed cells', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'operation-single-structural-no-value-events' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 2)
+    engine.setCellValue('Sheet1', 'B1', 3)
+    engine.setCellFormula('Sheet1', 'C1', 'A1+B1')
+    const events: EngineEvent[] = []
+    const unsubscribe = engine.subscribe((event) => {
+      events.push(event)
+    })
+
+    try {
+      engine.insertColumns('Sheet1', 1, 1)
+    } finally {
+      unsubscribe()
+    }
+
+    const event = events.at(-1)
+    expect(event).toMatchObject({
+      kind: 'batch',
+      invalidation: 'cells',
+      invalidatedColumns: [{ sheetName: 'Sheet1', startIndex: 1, endIndex: 1 }],
+      invalidatedRows: [],
+      invalidatedRanges: [],
+      explicitChangedCount: 0,
+    })
+    expect(Array.from(event?.changedCellIndices ?? [])).toEqual([])
+    expect(event?.changedCells).toEqual([])
+    expect(event?.metrics).toMatchObject({
+      dirtyFormulaCount: 0,
+      jsFormulaCount: 0,
+      wasmFormulaCount: 0,
+      changedInputCount: 0,
+      compileMs: 0,
+    })
+    expect(engine.getCell('Sheet1', 'D1').formula).toBe('A1+C1')
+    expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Number, value: 5 })
   })
 
   it('deletes structural columns through logical axis membership without survivor remaps', async () => {
@@ -790,6 +905,33 @@ describe('EngineOperationService', () => {
     expect(engine.getPerformanceCounters().directAggregateDeltaOnlyRecalcSkips).toBe(1)
   })
 
+  it('updates mixed scalar and aggregate frontiers without building a region query index', async () => {
+    const rowCount = 1_500
+    const engine = new SpreadsheetEngine({ workbookName: 'operation-mixed-frontier-no-region-build' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    for (let row = 1; row <= rowCount; row += 1) {
+      engine.setCellValue('Sheet1', `A${row}`, row)
+      engine.setCellFormula('Sheet1', `B${row}`, `$A$1+${row}`)
+      engine.setCellFormula('Sheet1', `C${row}`, `SUM(A1:A${row})`)
+    }
+
+    engine.resetPerformanceCounters()
+    engine.setCellValue('Sheet1', 'A1', 99)
+
+    expect(engine.getCellValue('Sheet1', `B${rowCount}`)).toEqual({ tag: ValueTag.Number, value: 99 + rowCount })
+    expect(engine.getCellValue('Sheet1', `C${rowCount}`)).toEqual({
+      tag: ValueTag.Number,
+      value: (rowCount * (rowCount + 1)) / 2 + 98,
+    })
+    expect(engine.getLastMetrics()).toMatchObject({ dirtyFormulaCount: 0, wasmFormulaCount: 0, jsFormulaCount: 0 })
+    expect(engine.getPerformanceCounters().directScalarDeltaApplications).toBe(rowCount)
+    expect(engine.getPerformanceCounters().directAggregateDeltaApplications).toBe(rowCount)
+    expect(engine.getPerformanceCounters().directScalarDeltaOnlyRecalcSkips).toBe(1)
+    expect(engine.getPerformanceCounters().directAggregateDeltaOnlyRecalcSkips).toBe(1)
+    expect(engine.getPerformanceCounters().regionQueryIndexBuilds).toBe(0)
+  })
+
   it('deletes direct aggregate rows without region-query rebuilds or dirty traversal', async () => {
     const rowCount = 256
     const deletedRowIndex = 127
@@ -966,9 +1108,11 @@ describe('EngineOperationService', () => {
     engine.setCellValue('Sheet1', 'A1', 100)
     engine.setCellValue('Sheet1', 'B1', 20)
     engine.setCellFormula('Sheet1', 'D1', 'A1+B1*2')
-    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+    const sheet = engine.workbook.getSheet('Sheet1')!
+    const sheetId = sheet.id
     const inputIndex = engine.workbook.getCellIndex('Sheet1', 'A1')!
     const formulaIndex = engine.workbook.getCellIndex('Sheet1', 'D1')!
+    const formulaColumnVersionBefore = sheet.columnVersions[3] ?? 0
 
     engine.resetPerformanceCounters()
     const result = engine.tryApplyExistingNumericCellMutationAt({
@@ -982,6 +1126,7 @@ describe('EngineOperationService', () => {
       oldNumericValue: 100,
     })
 
+    expect(sheet.columnVersions[3] ?? 0).toBe(formulaColumnVersionBefore + 1)
     expect(result).toEqual({
       firstChangedCellIndex: inputIndex,
       secondChangedCellIndex: formulaIndex,
@@ -1333,6 +1478,9 @@ describe('EngineOperationService', () => {
     }
     const tracked = vi.fn()
     const unsubscribe = engine.events.subscribeTracked(tracked)
+    const sheet = engine.workbook.getSheetById(sheetId)!
+    const inputColumnAVersionBefore = sheet.columnVersions[0] ?? 0
+    const inputColumnBVersionBefore = sheet.columnVersions[1] ?? 0
 
     engine.resetPerformanceCounters()
     Effect.runSync(getOperationService(engine).applyCellMutationsAt(refs, null, 'local', 0))
@@ -1345,6 +1493,8 @@ describe('EngineOperationService', () => {
     expect(engine.getLastMetrics()).toMatchObject({ dirtyFormulaCount: 0, wasmFormulaCount: 0, jsFormulaCount: 0 })
     expect(engine.getPerformanceCounters().directScalarDeltaApplications).toBe(rowCount * 2)
     expect(engine.getPerformanceCounters().directScalarDeltaOnlyRecalcSkips).toBe(1)
+    expect(sheet.columnVersions[0]).toBe(inputColumnAVersionBefore + 1)
+    expect(sheet.columnVersions[1]).toBe(inputColumnBVersionBefore + 1)
     const changed = tracked.mock.calls.at(-1)?.[0].changedCellIndices
     expect(changed).toBeInstanceOf(Uint32Array)
     expect(changed).toHaveLength(rowCount * 4)

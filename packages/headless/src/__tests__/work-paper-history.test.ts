@@ -152,4 +152,27 @@ describe('work paper history helpers', () => {
       { kind: 'setCellValue', sheetName: 'Sheet1', address: 'A3', value: 6 },
     ])
   })
+
+  it('defers mixed-history op materialization until undo or inspection reads it', () => {
+    const undoStack: WorkPaperHistoryRecord[] = [
+      { forward: { kind: 'single-op', op: { kind: 'a' }, potentialNewCells: 1 }, inverse: { kind: 'single-op', op: { kind: 'undo-a' } } },
+      cellMutationRecord(1, 2, 6),
+    ]
+    let resolveCalls = 0
+
+    mergeWorkPaperUndoHistory(undoStack, 0, () => {
+      resolveCalls += 1
+      return 'Sheet1'
+    })
+
+    expect(resolveCalls).toBe(0)
+    const merged = undoStack[0]
+    expect(merged.forward.kind).toBe('ops')
+    expect(resolveCalls).toBe(0)
+    expect(merged.forward.kind === 'ops' ? merged.forward.ops : []).toEqual([
+      { kind: 'a' },
+      { kind: 'setCellValue', sheetName: 'Sheet1', address: 'A3', value: 6 },
+    ])
+    expect(resolveCalls).toBe(1)
+  })
 })

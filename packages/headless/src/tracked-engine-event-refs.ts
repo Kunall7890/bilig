@@ -112,23 +112,6 @@ function hasPatchKind(event: CoreTrackedEngineEvent, kind: TrackedPatch['kind'])
   return event.patches?.some((patch) => patch.kind === kind) ?? false
 }
 
-function hasTrustedPhysicalSplitMetadata(changedCellIndices: CoreTrackedEngineEvent['changedCellIndices']): boolean {
-  if (!(changedCellIndices instanceof Uint32Array)) {
-    return false
-  }
-  const trustedPhysicalSheetId = Reflect.get(changedCellIndices, TRUSTED_TRACKED_PHYSICAL_SHEET_ID_PROPERTY)
-  const trustedSortedSliceSplit = Reflect.get(changedCellIndices, TRUSTED_TRACKED_PHYSICAL_SORTED_SPLIT_PROPERTY)
-  return (
-    typeof trustedPhysicalSheetId === 'number' &&
-    Number.isInteger(trustedPhysicalSheetId) &&
-    trustedPhysicalSheetId >= 0 &&
-    typeof trustedSortedSliceSplit === 'number' &&
-    Number.isInteger(trustedSortedSliceSplit) &&
-    trustedSortedSliceSplit > 0 &&
-    trustedSortedSliceSplit < changedCellIndices.length
-  )
-}
-
 function readTrustedPhysicalSplitMetadata(changedCellIndices: CoreTrackedEngineEvent['changedCellIndices']):
   | {
       readonly trustedPhysicalSheetId: number
@@ -155,6 +138,17 @@ function readTrustedPhysicalSplitMetadata(changedCellIndices: CoreTrackedEngineE
     trustedPhysicalSheetId,
     trustedSortedSliceSplit,
   }
+}
+
+function copyTrustedPhysicalSplitMetadata(
+  target: Uint32Array,
+  trusted: {
+    readonly trustedPhysicalSheetId: number
+    readonly trustedSortedSliceSplit: number
+  },
+): void {
+  Reflect.set(target, TRUSTED_TRACKED_PHYSICAL_SHEET_ID_PROPERTY, trusted.trustedPhysicalSheetId)
+  Reflect.set(target, TRUSTED_TRACKED_PHYSICAL_SORTED_SPLIT_PROPERTY, trusted.trustedSortedSliceSplit)
 }
 
 function captureChangedCellIndices(
@@ -184,13 +178,23 @@ function captureChangedCellIndices(
       lastChangedCellIndex: last,
     }
   }
-  if (!cloneChangedCellIndices && borrowChangedCellIndexViews && hasTrustedPhysicalSplitMetadata(changedCellIndices)) {
-    const trusted = readTrustedPhysicalSplitMetadata(changedCellIndices)
+  const trustedPhysicalSplit = readTrustedPhysicalSplitMetadata(changedCellIndices)
+  if (trustedPhysicalSplit !== undefined && changedCellIndices instanceof Uint32Array) {
+    const capturedChangedCellIndices =
+      cloneChangedCellIndices || !borrowChangedCellIndexViews ? new Uint32Array(changedCellIndices) : changedCellIndices
+    if (capturedChangedCellIndices !== changedCellIndices) {
+      copyTrustedPhysicalSplitMetadata(capturedChangedCellIndices, trustedPhysicalSplit)
+    }
     return {
-      changedCellIndices,
+      changedCellIndices: capturedChangedCellIndices,
       sortedDisjoint: true,
-      ...(length === 0 ? {} : { firstChangedCellIndex: changedCellIndices[0], lastChangedCellIndex: changedCellIndices[length - 1] }),
-      ...(trusted === undefined ? {} : trusted),
+      ...(length === 0
+        ? {}
+        : {
+            firstChangedCellIndex: capturedChangedCellIndices[0],
+            lastChangedCellIndex: capturedChangedCellIndices[length - 1],
+          }),
+      ...trustedPhysicalSplit,
     }
   }
   let sortedDisjoint = true

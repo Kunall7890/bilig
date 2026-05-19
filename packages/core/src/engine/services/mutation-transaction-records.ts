@@ -4,6 +4,7 @@ import {
   cellMutationRefToEngineOp,
   type EngineCellMutationAt,
   type EngineCellMutationRef,
+  type EngineExistingLiteralCellMutationRef,
   type EngineExistingNumericCellMutationRef,
 } from '../../cell-mutations-at.js'
 import type { WorkbookStore } from '../../workbook-store.js'
@@ -54,6 +55,35 @@ export function createSingleExistingNumericCellMutationTransactionRecord(
 
 export function singleExistingNumericCellMutationRecordToRef(
   record: Extract<TransactionRecord, { kind: 'single-existing-numeric-cell-mutation' }>,
+): EngineCellMutationRef {
+  return singleExistingLiteralCellMutationRecordToRef({
+    kind: 'single-existing-literal-cell-mutation',
+    sheetId: record.sheetId,
+    row: record.row,
+    col: record.col,
+    cellIndex: record.cellIndex,
+    value: record.value,
+    ...(record.potentialNewCells === undefined ? {} : { potentialNewCells: record.potentialNewCells }),
+  })
+}
+
+export function createSingleExistingLiteralCellMutationTransactionRecord(
+  request: EngineExistingLiteralCellMutationRef,
+  potentialNewCells: number,
+): TransactionRecord {
+  return {
+    kind: 'single-existing-literal-cell-mutation',
+    sheetId: request.sheetId,
+    row: request.row,
+    col: request.col,
+    cellIndex: request.cellIndex,
+    value: request.value,
+    potentialNewCells,
+  }
+}
+
+export function singleExistingLiteralCellMutationRecordToRef(
+  record: Extract<TransactionRecord, { kind: 'single-existing-literal-cell-mutation' }>,
 ): EngineCellMutationRef {
   return {
     sheetId: record.sheetId,
@@ -145,6 +175,9 @@ export function transactionRecordOps(workbook: WorkbookStore, record: Transactio
   if (record.kind === 'single-existing-numeric-cell-mutation') {
     return [cellMutationRefToEngineOp(workbook, singleExistingNumericCellMutationRecordToRef(record))]
   }
+  if (record.kind === 'single-existing-literal-cell-mutation') {
+    return [cellMutationRefToEngineOp(workbook, singleExistingLiteralCellMutationRecordToRef(record))]
+  }
   if (record.kind === 'cell-mutations') {
     return record.refs.map((ref) => cellMutationRefToEngineOp(workbook, ref))
   }
@@ -157,6 +190,9 @@ export function cloneTransactionRecordOps(workbook: WorkbookStore, record: Trans
   }
   if (record.kind === 'single-existing-numeric-cell-mutation') {
     return [cellMutationRefToEngineOp(workbook, singleExistingNumericCellMutationRecordToRef(record))]
+  }
+  if (record.kind === 'single-existing-literal-cell-mutation') {
+    return [cellMutationRefToEngineOp(workbook, singleExistingLiteralCellMutationRecordToRef(record))]
   }
   if (record.kind === 'cell-mutations') {
     return record.refs.map((ref) => cellMutationRefToEngineOp(workbook, ref))

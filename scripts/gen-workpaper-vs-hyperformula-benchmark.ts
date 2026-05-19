@@ -10,6 +10,7 @@ import {
 import {
   EXPANDED_COMPARATIVE_WORKLOADS,
   buildExpandedComparativeBenchmarkReport,
+  parseExpandedBenchmarkCliOptions,
   runWorkPaperVsHyperFormulaExpandedBenchmarkSuite,
   type ExpandedComparativeBenchmarkResult,
 } from '../packages/benchmarks/src/benchmark-workpaper-vs-hyperformula-expanded.ts'
@@ -81,11 +82,13 @@ interface ArtifactReportInput {
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
 const outputPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'workpaper-vs-hyperformula.json')
 const localHyperFormulaRoot = '/Users/gregkonush/github.com/hyperformula'
-const isCheckMode = process.argv.slice(2).includes('--check')
+const rawCliArgs = process.argv.slice(2)
+const isCheckMode = rawCliArgs.includes('--check')
+const benchmarkCliOptions = parseExpandedBenchmarkCliOptions(rawCliArgs.filter((arg) => arg !== '--check'))
 const workpaperSourcePath = 'packages/headless'
 
-const sampleCount = DEFAULT_COMPETITIVE_SAMPLE_COUNT
-const warmupCount = DEFAULT_COMPETITIVE_WARMUP_COUNT
+const sampleCount = benchmarkCliOptions.sampleCount ?? DEFAULT_COMPETITIVE_SAMPLE_COUNT
+const warmupCount = benchmarkCliOptions.warmupCount ?? DEFAULT_COMPETITIVE_WARMUP_COUNT
 
 if (isCheckMode) {
   if (!existsSync(outputPath)) {
@@ -194,6 +197,8 @@ function comparableShape(workload: string, fixtureKeys: string[], verificationKe
       workpaperToHyperFormulaP95Ratio: 1,
       maxRelativeNoise: 0,
       confidenceIntervalOverlaps: false,
+      resultConfidence: 'decisive',
+      decisiveFasterEngine: 'workpaper',
       verificationEquivalent: true,
     },
     engines: {

@@ -1,4 +1,4 @@
-import { ValueTag, type CellValue, type EngineEvent, type LiteralInput } from '@bilig/protocol'
+import { ValueTag, type CellValue } from '@bilig/protocol'
 import type { EngineOpBatch } from '@bilig/workbook-domain'
 import type {
   EngineCellMutationRef,
@@ -9,9 +9,8 @@ import type {
 import { writeLiteralToCellStore } from '../../engine-value-utils.js'
 import { isRangeEntity, makeCellEntity } from '../../entity-ids.js'
 import { addEngineCounter } from '../../perf/engine-counters.js'
-import type { EngineRuntimeState, RuntimeDirectScalarDescriptor, U32 } from '../runtime-state.js'
-import type { SheetRecord } from '../../workbook-store.js'
-import { DirectFormulaIndexCollection, type DirectScalarCurrentOperand } from './direct-formula-index-collection.js'
+import type { U32 } from '../runtime-state.js'
+import { DirectFormulaIndexCollection } from './direct-formula-index-collection.js'
 import {
   canEvaluatePostRecalcDirectFormulasWithoutKernel,
   composeSingleDisjointExplicitEventChanges,
@@ -19,169 +18,20 @@ import {
   hasCompleteDirectFormulaDeltas,
 } from './direct-formula-recalc-helpers.js'
 import { directScalarLiteralNumericValue } from './direct-scalar-helpers.js'
+import { hasOperationCompactedRangeDependencies } from './operation-cell-lifecycle-helpers.js'
 import {
   canTrustPhysicalTrackedChangeSplit,
   makeExistingNumericMutationResult,
   tagTrustedPhysicalTrackedChanges,
 } from './operation-change-helpers.js'
 import { recordKernelSyncOnlyLiteralChange } from './operation-kernel-sync-only-literal-change.js'
-import type { OperationLookupPlanner } from './operation-lookup-planner.js'
 import { applyOperationLookupNumericWriteTailPatches, planOperationLookupNumericWrites } from './operation-lookup-write-plans.js'
 import { tryApplySinglePostRecalcDirectFormula, type DirectFormulaMetricCounts } from './operation-post-recalc-direct-formulas.js'
+import type { MutationSource, OperationSingleExistingLiteralFastPathArgs } from './operation-single-existing-literal-fast-path-types.js'
 
 const DIRECT_RANGE_POST_RECALC_LIMIT = 16_384
 const EMPTY_CHANGED_CELLS = new Uint32Array(0)
-
-type MutationSource = 'local' | 'restore' | 'undo' | 'redo'
-
-type SingleExistingLiteralState = Pick<
-  EngineRuntimeState,
-  'workbook' | 'strings' | 'events' | 'formulas' | 'counters' | 'trackReplicaVersions' | 'getLastMetrics' | 'setLastMetrics'
->
-
-interface OperationSingleExistingLiteralFastPathArgs {
-  readonly state: SingleExistingLiteralState
-  readonly hasVolatileFormulas: (() => boolean) | undefined
-  readonly getSingleEntityDependent: (entityId: number) => number
-  readonly noteAggregateLiteralWrite: (request: {
-    readonly sheetName: string
-    readonly row: number
-    readonly col: number
-    readonly oldValue: CellValue
-    readonly newValue: CellValue
-  }) => void
-  readonly evaluateDirectFormula: (cellIndex: number) => readonly number[] | undefined
-  readonly invalidateExactLookupColumn: (request: { readonly sheetName: string; readonly col: number }) => void
-  readonly invalidateSortedLookupColumn: (request: { readonly sheetName: string; readonly col: number }) => void
-  readonly hasTrackedExactLookupDependents: (sheetId: number, col: number) => boolean
-  readonly hasTrackedSortedLookupDependents: (sheetId: number, col: number) => boolean
-  readonly hasTrackedDirectRangeDependents: (sheetId: number, col: number) => boolean
-  readonly canSkipApproximateLookupNewNumericColumnWrite: (sheetId: number, col: number, row: number) => boolean
-  readonly writeNumericLiteralToExistingCell: (cellIndex: number, value: number) => void
-  readonly deferSingleCellKernelSync: (cellIndex: number) => void
-  readonly makeSingleLiteralSkipMetrics: () => EngineEvent['metrics']
-  readonly canFastPathLiteralOverwrite: (cellIndex: number) => boolean
-  readonly directScalarCellNumericValue: (cellIndex: number) => number | undefined
-  readonly tryApplySingleDirectAggregateLiteralMutationFastPath: (request: {
-    readonly existingIndex: number
-    readonly sheetId?: number
-    readonly sheetName: string
-    readonly row: number
-    readonly col: number
-    readonly value: LiteralInput
-    readonly delta: number
-    readonly emitTracked: boolean
-    readonly singleRangeEntityDependent?: number
-  }) => EngineExistingNumericCellMutationResult | null
-  readonly tryApplyTrustedSingleRangeDirectAggregateExistingNumericMutation: (request: {
-    readonly existingIndex: number
-    readonly rangeEntityDependent: number
-    readonly sheet: SheetRecord
-    readonly sheetId: number
-    readonly col: number
-    readonly value: number
-    readonly delta: number
-    readonly hasExactLookupDependents: boolean
-    readonly hasSortedLookupDependents: boolean
-  }) => EngineExistingNumericCellMutationResult | null
-  readonly tryApplyTrustedDirectScalarClosureExistingNumericMutation: (request: {
-    readonly existingIndex: number
-    readonly sheet: SheetRecord
-    readonly sheetId: number
-    readonly col: number
-    readonly value: number
-    readonly oldNumber: number
-    readonly hasTrackedEventListeners: boolean
-  }) => EngineExistingNumericCellMutationResult | null
-  readonly tryApplyTrustedFormulaLeafExistingNumericMutation: (request: {
-    readonly existingIndex: number
-    readonly formulaCellIndex: number
-    readonly sheet: SheetRecord
-    readonly col: number
-    readonly value: number
-    readonly hasTrackedEventListeners: boolean
-  }) => EngineExistingNumericCellMutationResult | null
-  readonly tryApplyFormulaLeafExistingLiteralMutation: (request: {
-    readonly existingIndex: number
-    readonly formulaCellIndex: number
-    readonly value: LiteralInput
-    readonly hasTrackedEventListeners: boolean
-  }) => EngineExistingNumericCellMutationResult | null
-  readonly planExactLookupNumericColumnWrite: OperationLookupPlanner['planExactLookupNumericColumnWrite']
-  readonly planApproximateLookupNumericColumnWrite: OperationLookupPlanner['planApproximateLookupNumericColumnWrite']
-  readonly patchUniformLookupTailWrites: (request: {
-    readonly sheetId: number
-    readonly col: number
-    readonly row: number
-    readonly oldNumeric: number
-    readonly newNumeric: number
-    readonly exact: boolean
-    readonly sorted: boolean
-  }) => { readonly exact: boolean; readonly sorted: boolean }
-  readonly tryApplySingleKernelSyncOnlyLiteralMutationFastPath: (request: {
-    readonly existingIndex: number
-    readonly value: LiteralInput
-    readonly emitTracked: boolean
-  }) => boolean
-  readonly tryApplySingleDirectFormulaLiteralMutationWithoutEvents: (request: {
-    readonly existingIndex: number
-    readonly formulaCellIndex: number
-    readonly value: LiteralInput
-    readonly oldNumber: number
-    readonly newNumber: number
-    readonly exactLookupValue: number | undefined
-    readonly approximateLookupValue: number | undefined
-  }) => boolean
-  readonly tryApplySingleDirectScalarLiteralMutationWithoutEvents: (request: {
-    readonly existingIndex: number
-    readonly value: LiteralInput
-    readonly oldNumber: number
-    readonly newNumber: number
-  }) => boolean
-  readonly tryApplySingleDirectLookupOperandMutationFastPath: (request: {
-    readonly existingIndex: number
-    readonly formulaCellIndex: number
-    readonly value: LiteralInput
-    readonly exactLookupValue: number | undefined
-    readonly approximateLookupValue: number | undefined
-    readonly emitTracked: boolean
-    readonly lookupSheetHint?: SheetRecord | undefined
-    readonly trustedInputSheet?: SheetRecord | undefined
-    readonly trustedInputCol?: number | undefined
-  }) => EngineExistingNumericCellMutationResult | null
-  readonly markPostRecalcDirectScalarNumericDependents: (
-    cellIndex: number,
-    oldNumber: number,
-    newNumber: number,
-    collection: DirectFormulaIndexCollection,
-    exactLookupValue: number | undefined,
-    approximateLookupValue: number | undefined,
-  ) => boolean
-  readonly tryMarkDirectScalarLinearDeltaClosure: (
-    cellIndex: number,
-    oldValue: CellValue,
-    newValue: CellValue,
-    collection: DirectFormulaIndexCollection,
-  ) => boolean
-  readonly collectSingleAffectedDirectRangeDependent: (request: {
-    readonly sheetName: string
-    readonly sheetId?: number
-    readonly row: number
-    readonly col: number
-  }) => number
-  readonly collectAffectedDirectRangeDependents: (request: {
-    readonly sheetName: string
-    readonly row: number
-    readonly col: number
-  }) => readonly number[]
-  readonly applyDirectFormulaCurrentResult: (cellIndex: number, value: DirectScalarCurrentOperand) => boolean
-  readonly applyDirectFormulaNumericDelta: (cellIndex: number, delta: number) => boolean
-  readonly applyDirectScalarCurrentValue: (cellIndex: number, directScalar: RuntimeDirectScalarDescriptor) => boolean
-  readonly tryApplyDirectScalarDeltas: (collection: DirectFormulaIndexCollection, collectChanged?: boolean) => U32 | undefined
-  readonly tryApplyDirectFormulaDeltas: (collection: DirectFormulaIndexCollection, collectChanged?: boolean) => U32 | undefined
-  readonly countPostRecalcDirectFormulaMetric: (cellIndex: number, counts: DirectFormulaMetricCounts) => void
-  readonly hasDynamicFormulaDependents: (cellIndex: number) => boolean
-}
+const FORMULA_LEAF_DEPENDENCY_SCAN_LIMIT = 128
 
 export function createOperationSingleExistingLiteralFastPath(args: OperationSingleExistingLiteralFastPathArgs): {
   readonly tryApplySingleExistingDirectLiteralMutation: (
@@ -207,6 +57,7 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
     canFastPathLiteralOverwrite,
     directScalarCellNumericValue,
     tryApplyTrustedSingleRangeDirectAggregateExistingNumericMutation,
+    tryApplyTrustedColumnDirectAggregateExistingNumericMutation,
     tryApplyTrustedDirectScalarClosureExistingNumericMutation,
     tryApplyTrustedFormulaLeafExistingNumericMutation,
     tryApplyFormulaLeafExistingLiteralMutation,
@@ -217,6 +68,7 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
     tryApplySingleKernelSyncOnlyLiteralMutationFastPath,
     tryApplySingleDirectFormulaLiteralMutationWithoutEvents,
     tryApplySingleDirectScalarLiteralMutationWithoutEvents,
+    tryApplySingleDirectScalarLiteralMutationWithoutEventsAndReturnChanged,
     tryApplySingleDirectLookupOperandMutationFastPath,
     markPostRecalcDirectScalarNumericDependents,
     tryMarkDirectScalarLinearDeltaClosure,
@@ -230,6 +82,104 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
     countPostRecalcDirectFormulaMetric,
     hasDynamicFormulaDependents,
   } = args
+
+  const hasKnownDynamicFormulaDependents = (
+    sheetId: number,
+    row: number,
+    col: number,
+    existingIndex: number,
+    singleExistingCellDependent: number,
+  ): boolean => {
+    if (singleExistingCellDependent === -2) {
+      return hasDynamicFormulaDependents(existingIndex)
+    }
+    if (singleExistingCellDependent >= 0 && !isRangeEntity(singleExistingCellDependent) && args.state.formulas.size === 1) {
+      const formula = args.state.formulas.get(singleExistingCellDependent)
+      return formula !== undefined && hasOperationCompactedRangeDependencies(formula)
+    }
+    const singleRegionFormulaDependent = args.collectSingleRegionFormulaDependentForCellAt?.(sheetId, row, col)
+    if (singleRegionFormulaDependent === undefined || singleRegionFormulaDependent === -2) {
+      return hasDynamicFormulaDependents(existingIndex)
+    }
+
+    let firstFormulaCellIndex = -1
+    let secondFormulaCellIndex = -1
+    const pushFormulaCellIndex = (candidate: number): void => {
+      if (candidate < 0 || isRangeEntity(candidate)) {
+        return
+      }
+      if (firstFormulaCellIndex === -1) {
+        firstFormulaCellIndex = candidate
+        return
+      }
+      if (candidate !== firstFormulaCellIndex) {
+        secondFormulaCellIndex = candidate
+      }
+    }
+
+    pushFormulaCellIndex(singleExistingCellDependent)
+    pushFormulaCellIndex(singleRegionFormulaDependent)
+    if (firstFormulaCellIndex === -1) {
+      return false
+    }
+    const firstFormula = args.state.formulas.get(firstFormulaCellIndex)
+    if (firstFormula !== undefined && hasOperationCompactedRangeDependencies(firstFormula)) {
+      return true
+    }
+    const secondFormula = secondFormulaCellIndex === -1 ? undefined : args.state.formulas.get(secondFormulaCellIndex)
+    return secondFormula !== undefined && hasOperationCompactedRangeDependencies(secondFormula)
+  }
+
+  const collectSingleFormulaLeafRangeDependent = (
+    existingIndex: number,
+    singleExistingCellDependent: number,
+    sheetId: number,
+    sheetName: string,
+    row: number,
+    col: number,
+  ): number => {
+    if (isRangeEntity(singleExistingCellDependent)) {
+      const rangeFormulaDependent = args.getSingleEntityDependent(singleExistingCellDependent)
+      if (rangeFormulaDependent !== -1) {
+        return rangeFormulaDependent
+      }
+    }
+    const indexedSingle =
+      args.collectSingleRegionFormulaDependentForCellAt?.(sheetId, row, col) ??
+      args.collectSingleRegionFormulaDependentForCell(sheetName, row, col)
+    if (indexedSingle >= 0 && !isRangeEntity(indexedSingle)) {
+      return indexedSingle
+    }
+    const dependents = args.collectRegionFormulaDependentsForCell(sheetName, row, col)
+    let singleFormulaCellIndex = -1
+    for (let index = 0; index < dependents.length; index += 1) {
+      const candidate = dependents[index]!
+      if (candidate < 0 || isRangeEntity(candidate)) {
+        continue
+      }
+      if (singleFormulaCellIndex !== -1 && singleFormulaCellIndex !== candidate) {
+        return -2
+      }
+      singleFormulaCellIndex = candidate
+    }
+    if (singleFormulaCellIndex !== -1 || args.state.formulas.size > FORMULA_LEAF_DEPENDENCY_SCAN_LIMIT) {
+      return singleFormulaCellIndex
+    }
+    for (const [formulaCellIndex, formula] of args.state.formulas.entries()) {
+      const dependencyIndices = formula.dependencyIndices
+      for (let index = 0; index < dependencyIndices.length; index += 1) {
+        if (dependencyIndices[index] !== existingIndex) {
+          continue
+        }
+        if (singleFormulaCellIndex !== -1 && singleFormulaCellIndex !== formulaCellIndex) {
+          return -2
+        }
+        singleFormulaCellIndex = formulaCellIndex
+        break
+      }
+    }
+    return singleFormulaCellIndex !== -1 ? singleFormulaCellIndex : indexedSingle === -2 ? -2 : -1
+  }
 
   const tryApplySingleExistingDirectLiteralMutation = (
     refs: readonly EngineCellMutationRef[],
@@ -266,9 +216,10 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
         ? ref.cellIndex
         : sheet.grid.getPhysical(mutation.row, mutation.col)
     const sheetName = sheet.name
-    const hasExactLookupDependents = hasTrackedExactLookupDependents(ref.sheetId, mutation.col)
-    const hasSortedLookupDependents = hasTrackedSortedLookupDependents(ref.sheetId, mutation.col)
-    const hasAggregateDependents = hasTrackedDirectRangeDependents(ref.sheetId, mutation.col)
+    const hasTrackedColumnDependents = args.hasTrackedColumnDependentsAnywhere()
+    const hasExactLookupDependents = hasTrackedColumnDependents && hasTrackedExactLookupDependents(ref.sheetId, mutation.col)
+    const hasSortedLookupDependents = hasTrackedColumnDependents && hasTrackedSortedLookupDependents(ref.sheetId, mutation.col)
+    const hasAggregateDependents = hasTrackedColumnDependents && hasTrackedDirectRangeDependents(ref.sheetId, mutation.col)
     const hasTrackedEventListeners = args.state.events.hasTrackedListeners()
     if (existingIndex === -1) {
       if (
@@ -295,13 +246,28 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
     if (existingIndex === -1 || !canFastPathLiteralOverwrite(existingIndex)) {
       return false
     }
-    if (hasDynamicFormulaDependents(existingIndex)) {
-      return false
-    }
     const singleExistingCellDependent = args.getSingleEntityDependent(makeCellEntity(existingIndex))
     const oldNumber = directScalarCellNumericValue(existingIndex)
     const newNumber = directScalarLiteralNumericValue(mutation.value)
     if (oldNumber === undefined || newNumber === undefined) {
+      if (hasKnownDynamicFormulaDependents(ref.sheetId, mutation.row, mutation.col, existingIndex, singleExistingCellDependent)) {
+        return false
+      }
+      const directLookupResult =
+        !hasAggregateDependents && !hasExactLookupDependents && !hasSortedLookupDependents
+          ? tryApplySingleDirectLookupOperandMutationFastPath({
+              existingIndex,
+              formulaCellIndex: singleExistingCellDependent,
+              value: mutation.value,
+              exactLookupValue: undefined,
+              approximateLookupValue: undefined,
+              emitTracked: hasTrackedEventListeners,
+              lookupSheetHint: sheet,
+            })
+          : null
+      if (directLookupResult) {
+        return true
+      }
       const formulaLeafResult =
         !hasAggregateDependents && !hasExactLookupDependents && !hasSortedLookupDependents
           ? tryApplyFormulaLeafExistingLiteralMutation({
@@ -418,6 +384,10 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
       ) {
         return true
       }
+    }
+
+    if (hasKnownDynamicFormulaDependents(ref.sheetId, mutation.row, mutation.col, existingIndex, singleExistingCellDependent)) {
+      return false
     }
 
     if (!hasTrackedEventListeners && !hasAggregateDependents && !hasExactLookupDependents && !hasSortedLookupDependents) {
@@ -665,9 +635,6 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
     ) {
       return null
     }
-    if (hasDynamicFormulaDependents(existingIndex)) {
-      return null
-    }
     const oldNumber = trustedExistingNumericLiteral
       ? request.oldNumericValue === undefined || Object.is(request.oldNumericValue, -0)
         ? 0
@@ -678,11 +645,14 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
     }
     const sheetName = sheet.name
     const singleExistingCellDependent = args.getSingleEntityDependent(makeCellEntity(existingIndex))
-    let hasExactLookupDependents: boolean | undefined
-    let hasSortedLookupDependents: boolean | undefined
+    const hasTrackedColumnDependents = args.hasTrackedColumnDependentsAnywhere()
+    const hasExactLookupDependents = hasTrackedColumnDependents && hasTrackedExactLookupDependents(request.sheetId, request.col)
+    const hasSortedLookupDependents = hasTrackedColumnDependents && hasTrackedSortedLookupDependents(request.sheetId, request.col)
+    const hasTrackedEventListeners = request.emitTracked !== false && args.state.events.hasTrackedListeners()
+    const hasAggregateDependents =
+      isRangeEntity(singleExistingCellDependent) ||
+      (hasTrackedColumnDependents && hasTrackedDirectRangeDependents(request.sheetId, request.col))
     if (trustedExistingNumericLiteral && request.emitTracked === false && isRangeEntity(singleExistingCellDependent)) {
-      hasExactLookupDependents = hasTrackedExactLookupDependents(request.sheetId, request.col)
-      hasSortedLookupDependents = hasTrackedSortedLookupDependents(request.sheetId, request.col)
       const trustedAggregateResult = tryApplyTrustedSingleRangeDirectAggregateExistingNumericMutation({
         existingIndex,
         rangeEntityDependent: singleExistingCellDependent,
@@ -698,11 +668,49 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
         return trustedAggregateResult
       }
     }
-    hasExactLookupDependents ??= hasTrackedExactLookupDependents(request.sheetId, request.col)
-    hasSortedLookupDependents ??= hasTrackedSortedLookupDependents(request.sheetId, request.col)
-    const hasTrackedEventListeners = request.emitTracked !== false && args.state.events.hasTrackedListeners()
-    const hasAggregateDependents =
-      isRangeEntity(singleExistingCellDependent) || hasTrackedDirectRangeDependents(request.sheetId, request.col)
+    if (
+      trustedExistingNumericLiteral &&
+      request.emitTracked === false &&
+      hasAggregateDependents &&
+      !isRangeEntity(singleExistingCellDependent)
+    ) {
+      const trustedAggregateResult = tryApplyTrustedColumnDirectAggregateExistingNumericMutation({
+        existingIndex,
+        sheet,
+        sheetId: request.sheetId,
+        sheetName,
+        row: request.row,
+        col: request.col,
+        value: request.value,
+        delta: request.value - oldNumber,
+        hasExactLookupDependents,
+        hasSortedLookupDependents,
+      })
+      if (trustedAggregateResult) {
+        return trustedAggregateResult
+      }
+    }
+    const aggregateFastPathResult =
+      hasAggregateDependents &&
+      !hasExactLookupDependents &&
+      !hasSortedLookupDependents &&
+      (singleExistingCellDependent === -1 || isRangeEntity(singleExistingCellDependent))
+        ? tryApplySingleDirectAggregateLiteralMutationFastPath({
+            existingIndex,
+            sheetId: request.sheetId,
+            sheetName,
+            row: request.row,
+            col: request.col,
+            value: request.value,
+            delta: request.value - oldNumber,
+            emitTracked: hasTrackedEventListeners,
+            ...(isRangeEntity(singleExistingCellDependent) ? { singleRangeEntityDependent: singleExistingCellDependent } : {}),
+          })
+        : null
+    if (aggregateFastPathResult) {
+      return aggregateFastPathResult
+    }
+    let triedDirectLookupFastPath = false
     if (
       trustedExistingNumericLiteral &&
       !hasAggregateDependents &&
@@ -710,28 +718,22 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
       !hasSortedLookupDependents &&
       singleExistingCellDependent >= 0
     ) {
-      const scalarClosureResult = tryApplyTrustedDirectScalarClosureExistingNumericMutation({
-        existingIndex,
-        sheet,
-        sheetId: request.sheetId,
-        col: request.col,
-        value: request.value,
-        oldNumber,
-        hasTrackedEventListeners,
-      })
-      if (scalarClosureResult) {
-        return scalarClosureResult
-      }
-      const formulaLeafResult = tryApplyTrustedFormulaLeafExistingNumericMutation({
-        existingIndex,
-        formulaCellIndex: singleExistingCellDependent,
-        sheet,
-        col: request.col,
-        value: request.value,
-        hasTrackedEventListeners,
-      })
-      if (formulaLeafResult) {
-        return formulaLeafResult
+      if (args.state.formulas.get(singleExistingCellDependent)?.directLookup !== undefined) {
+        triedDirectLookupFastPath = true
+        const directLookupFastPathResult = tryApplySingleDirectLookupOperandMutationFastPath({
+          existingIndex,
+          formulaCellIndex: singleExistingCellDependent,
+          value: request.value,
+          exactLookupValue: request.value,
+          approximateLookupValue: request.value,
+          emitTracked: hasTrackedEventListeners,
+          lookupSheetHint: sheet,
+          trustedInputSheet: sheet,
+          trustedInputCol: request.col,
+        })
+        if (directLookupFastPathResult) {
+          return directLookupFastPathResult
+        }
       }
     }
     if (!hasAggregateDependents && (hasExactLookupDependents || hasSortedLookupDependents) && singleExistingCellDependent === -1) {
@@ -782,28 +784,104 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
         return makeExistingNumericMutationResult(changedCellIndices, 1)
       }
     }
-    const aggregateFastPathResult =
-      hasAggregateDependents &&
+    const singleRegionFormulaLeafDependent =
+      !hasExactLookupDependents && !hasSortedLookupDependents
+        ? collectSingleFormulaLeafRangeDependent(
+            existingIndex,
+            singleExistingCellDependent,
+            request.sheetId,
+            sheetName,
+            request.row,
+            request.col,
+          )
+        : -1
+    if (singleRegionFormulaLeafDependent >= 0) {
+      const singleRegionFormula = args.state.formulas.get(singleRegionFormulaLeafDependent)
+      if (
+        singleRegionFormula !== undefined &&
+        singleRegionFormula.directLookup === undefined &&
+        singleRegionFormula.directAggregate === undefined &&
+        singleRegionFormula.directCriteria === undefined &&
+        singleRegionFormula.directScalar === undefined
+      ) {
+        const formulaLeafResult = tryApplyTrustedFormulaLeafExistingNumericMutation({
+          existingIndex,
+          formulaCellIndex: singleRegionFormulaLeafDependent,
+          sheet,
+          col: request.col,
+          value: request.value,
+          oldNumber,
+          hasTrackedEventListeners,
+        })
+        if (formulaLeafResult) {
+          return formulaLeafResult
+        }
+      }
+    }
+    if (hasKnownDynamicFormulaDependents(request.sheetId, request.row, request.col, existingIndex, singleExistingCellDependent)) {
+      return null
+    }
+    if (
+      trustedExistingNumericLiteral &&
+      request.emitTracked === false &&
+      !hasAggregateDependents &&
       !hasExactLookupDependents &&
       !hasSortedLookupDependents &&
-      (singleExistingCellDependent === -1 || isRangeEntity(singleExistingCellDependent))
-        ? tryApplySingleDirectAggregateLiteralMutationFastPath({
-            existingIndex,
-            sheetId: request.sheetId,
-            sheetName,
-            row: request.row,
-            col: request.col,
-            value: request.value,
-            delta: request.value - oldNumber,
-            emitTracked: hasTrackedEventListeners,
-            ...(isRangeEntity(singleExistingCellDependent) ? { singleRangeEntityDependent: singleExistingCellDependent } : {}),
-          })
-        : null
-    if (aggregateFastPathResult) {
-      return aggregateFastPathResult
+      singleExistingCellDependent < -1
+    ) {
+      const recalculated = tryApplySingleDirectScalarLiteralMutationWithoutEventsAndReturnChanged({
+        existingIndex,
+        value: request.value,
+        oldNumber,
+        newNumber: request.value,
+      })
+      if (recalculated !== null) {
+        const changed = composeSingleDisjointExplicitEventChanges(existingIndex, recalculated)
+        if (changed.length > 4 && canTrustPhysicalTrackedChangeSplit(changed, request.sheetId, 1, args.state.workbook)) {
+          tagTrustedPhysicalTrackedChanges(changed, request.sheetId, 1)
+        }
+        return makeExistingNumericMutationResult(changed, 1)
+      }
+    }
+    if (trustedExistingNumericLiteral && !hasExactLookupDependents && !hasSortedLookupDependents && singleExistingCellDependent >= 0) {
+      const singleDependentFormula = args.state.formulas.get(singleExistingCellDependent)
+      if (!hasAggregateDependents && singleDependentFormula?.directScalar !== undefined) {
+        const scalarClosureResult = tryApplyTrustedDirectScalarClosureExistingNumericMutation({
+          existingIndex,
+          sheet,
+          sheetId: request.sheetId,
+          col: request.col,
+          value: request.value,
+          oldNumber,
+          hasTrackedEventListeners,
+        })
+        if (scalarClosureResult) {
+          return scalarClosureResult
+        }
+      }
+      if (
+        singleDependentFormula !== undefined &&
+        singleDependentFormula.directLookup === undefined &&
+        singleDependentFormula.directAggregate === undefined &&
+        singleDependentFormula.directCriteria === undefined &&
+        singleDependentFormula.directScalar === undefined
+      ) {
+        const formulaLeafResult = tryApplyTrustedFormulaLeafExistingNumericMutation({
+          existingIndex,
+          formulaCellIndex: singleExistingCellDependent,
+          sheet,
+          col: request.col,
+          value: request.value,
+          oldNumber,
+          hasTrackedEventListeners,
+        })
+        if (formulaLeafResult) {
+          return formulaLeafResult
+        }
+      }
     }
     const directLookupFastPathResult =
-      !hasAggregateDependents && !hasExactLookupDependents && !hasSortedLookupDependents
+      !triedDirectLookupFastPath && !hasAggregateDependents && !hasExactLookupDependents && !hasSortedLookupDependents
         ? tryApplySingleDirectLookupOperandMutationFastPath({
             existingIndex,
             formulaCellIndex: singleExistingCellDependent,
@@ -851,23 +929,40 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
       cellStore.sheetIds[existingIndex] !== request.sheetId ||
       cellStore.rows[existingIndex] !== request.row ||
       cellStore.cols[existingIndex] !== request.col ||
-      !canFastPathLiteralOverwrite(existingIndex) ||
-      hasDynamicFormulaDependents(existingIndex)
+      !canFastPathLiteralOverwrite(existingIndex)
     ) {
+      return null
+    }
+    const formulaCellIndex = args.getSingleEntityDependent(makeCellEntity(existingIndex))
+    if (hasKnownDynamicFormulaDependents(request.sheetId, request.row, request.col, existingIndex, formulaCellIndex)) {
       return null
     }
     if (
-      hasTrackedDirectRangeDependents(request.sheetId, request.col) ||
-      hasTrackedExactLookupDependents(request.sheetId, request.col) ||
-      hasTrackedSortedLookupDependents(request.sheetId, request.col)
+      args.hasTrackedColumnDependentsAnywhere() &&
+      (hasTrackedDirectRangeDependents(request.sheetId, request.col) ||
+        hasTrackedExactLookupDependents(request.sheetId, request.col) ||
+        hasTrackedSortedLookupDependents(request.sheetId, request.col))
     ) {
       return null
     }
+    const hasTrackedEventListeners = request.emitTracked !== false && args.state.events.hasTrackedListeners()
+    const directLookupResult = tryApplySingleDirectLookupOperandMutationFastPath({
+      existingIndex,
+      formulaCellIndex,
+      value: request.value,
+      exactLookupValue: undefined,
+      approximateLookupValue: undefined,
+      emitTracked: hasTrackedEventListeners,
+      lookupSheetHint: sheet,
+    })
+    if (directLookupResult) {
+      return directLookupResult
+    }
     return tryApplyFormulaLeafExistingLiteralMutation({
       existingIndex,
-      formulaCellIndex: args.getSingleEntityDependent(makeCellEntity(existingIndex)),
+      formulaCellIndex,
       value: request.value,
-      hasTrackedEventListeners: request.emitTracked !== false && args.state.events.hasTrackedListeners(),
+      hasTrackedEventListeners,
     })
   }
 

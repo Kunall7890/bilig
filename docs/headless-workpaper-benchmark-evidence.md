@@ -26,73 +26,72 @@ as useful evidence, but they do not satisfy broad coverage alone.
 
 Current checked-in metadata:
 
-- generated at `2026-05-17T10:57:56.655Z`
-- host: macOS `arm64`, Node `v24.14.0`
+- generated at `2026-05-19T04:08:42.274Z`
 - benchmark sampling: `5` measured samples after `2` warmup samples
-- WorkPaper package: `@bilig/headless` `0.18.23`
+- WorkPaper package: `@bilig/headless` `0.18.25`
 - comparison engine: HyperFormula `3.2.0`, local checkout commit
   `9a510a2acb97c3d3490f9e3b9e961a1c4a98b9ad`, GPL-v3 license key
 - scalar formula comparison engine: TrueCalc `0.6.4`, `7` comparable scalar
   workloads via `@truecalc/core`
-- limited workbook-wide comparison engine: xlsx-calc `0.9.2`, `4` comparable
-  recalculation workloads covering aggregate, exact lookup, approximate lookup,
-  and formula-chain families
+- limited workbook-wide comparison engine: xlsx-calc `0.9.2`, `16` comparable
+  recalculation workloads covering aggregate, aggregate-2d, overlapping-range,
+  exact lookup, approximate lookup, formula-chain, fanout, range-stat, and
+  cross-sheet families
 
 ## What The Claim Is
 
 The current scorecard is not a blanket performance-leadership claim. A fresh
-checked-in run shows WorkPaper leading HyperFormula on most, but not all,
-directly comparable workbook-wide headless spreadsheet-engine workloads. The
-current checked-in artifact records `80/100` mean-latency wins:
+checked-in run shows WorkPaper leading HyperFormula on every directly
+comparable workbook-wide headless spreadsheet-engine mean-latency workload. The
+current checked-in artifact records `100/100` mean-latency wins:
 
 | Lane    | Comparable Workloads | WorkPaper Mean Wins | HyperFormula Mean Wins |
 | ------- | -------------------: | ------------------: | ---------------------: |
-| Overall |                `100` |                `80` |                   `20` |
-| Public  |                 `73` |                `60` |                   `13` |
-| Holdout |                 `27` |                `20` |                    `7` |
+| Overall |                `100` |               `100` |                    `0` |
+| Public  |                 `73` |                `73` |                    `0` |
+| Holdout |                 `27` |                `27` |                    `0` |
 
-The overall directional mean-ratio geomean is `0.5993777001881347`. The overall
-directional p95-ratio geomean is `0.6300932419283433`. Ratios below `1.0` mean
+The overall directional mean-ratio geomean is `0.3251117423911046`. The overall
+directional p95-ratio geomean is `0.33186260703682735`. Ratios below `1.0` mean
 WorkPaper is faster for that metric.
 
-The current worst mean row is `structural-insert-columns-small`, with a mean
-ratio of `2.426484710401164`. The current worst p95 row is
-`structural-insert-columns-small`, with a p95 ratio of
-`4.07505940446473`. The
+The current worst mean row is `structural-insert-columns-small`, with a
+mean ratio of `0.7462622876061227`. The current narrowest p95 win is
+`aggregate-overlapping-sliding-window-wide`, with a p95 ratio of
+`0.945655463200891`. The
 headless leadership scorecard
-currently records `75/100` workloads winning both
+currently records `100/100` workloads winning both
 mean and p95 against HyperFormula.
 
 It is also not a blanket "fastest against every formula evaluator" claim. The
-TrueCalc scalar lane currently reports `0/7` WorkPaper mean+p95 wins, with a
-directional mean-ratio geomean of `6.287444372767648`. That lane is intentionally
-kept in the leadership scorecard as a blocker map, not as marketing copy.
+TrueCalc scalar lane currently reports `7/7` WorkPaper mean+p95 wins, with a
+directional mean-ratio geomean of `0.1836987971377073`. That lane stays in the
+leadership scorecard as limited scalar coverage rather than proof of workbook
+dependency-graph, range, or structural-edit leadership.
 
 The xlsx-calc lane is a direct workbook-wide recalculation comparison for the
 formula families both engines can evaluate equivalently. It currently reports
-`4/4` WorkPaper mean+p95 wins with a directional mean-ratio geomean of
-`0.054627207478311665`, but it covers only `4/100` eligible workload rows, so the
-scorecard treats it as partial coverage rather than proof of blanket leadership.
+`16/16` WorkPaper mean+p95 wins with a directional mean-ratio geomean of
+`0.09196510101241956`, but it covers only the formula families xlsx-calc
+supports equivalently, so the scorecard treats it as workbook-wide-limited
+coverage rather than proof of blanket leadership.
 
-## How To Read The p95 Caveat
+## How To Read The p95 Evidence
 
-The `80/100` count is about mean latency: for each winning comparable workload
+The `100/100` count is about mean latency: for each comparable workload
 row, WorkPaper's average measured time is lower than HyperFormula's average
 measured time. Mean wins are useful because they summarize the normal cost of
-each workload, but they do not prove every slower tail sample has been
-eliminated, and the current scorecard does not yet win every mean row.
+each workload, and the current scorecard also wins every comparable p95 row.
 
 Each p95 row asks a different question: "near the slow end of this workload's
 sample set, which engine was faster?" A single row can lose on p95 even when its
 mean wins, because a small number of slower samples can move the tail without
 moving the average enough to flip the mean result.
 
-The p95 geomean is an aggregate across the per-workload p95 ratios. It can stay
-below `1.0` while one individual p95 row is above `1.0`, because the aggregate
-is balanced by the other p95 rows where WorkPaper has enough margin. Read the
-current result as: WorkPaper leads the overall mean and p95 aggregate, but the
-repo is not claiming "faster on every row" until the mean and p95 holdouts are
-fixed.
+The p95 geomean is an aggregate across the per-workload p95 ratios. Read the
+current result as: WorkPaper leads the overall mean and p95 aggregate and has no
+current comparable p95 holdouts, while future workload families still need to be
+added and checked instead of assumed.
 
 ## What Is Measured
 

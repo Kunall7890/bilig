@@ -16,6 +16,12 @@ function cellRange(values: RangeBuiltinArgument['values'], rows: number, cols: n
 }
 
 describe('lookup exact numeric matching', () => {
+  it('preserves ordinary integer lookup keys exactly', () => {
+    expect(normalizeExactLookupNumber(9_999)).toBe(9_999)
+    expect(normalizeExactLookupNumber(999_999_999_999_999)).toBe(999_999_999_999_999)
+    expect(sameExactLookupNumber(9_999, 9_999)).toBe(true)
+  })
+
   it('matches formula-roundoff decimals using spreadsheet numeric precision', () => {
     expect(normalizeExactLookupNumber(2374.2799999999997)).toBe(2374.28)
     expect(sameExactLookupNumber(2374.2799999999997, 2374.28)).toBe(true)

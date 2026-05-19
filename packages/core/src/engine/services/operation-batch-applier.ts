@@ -1,5 +1,5 @@
 import type { EngineOp, EngineOpBatch } from '@bilig/workbook-domain'
-import { FormulaMode, type CellRangeRef, type CellValue } from '@bilig/protocol'
+import { FormulaMode, type CellRangeRef, type CellValue, type EngineEvent } from '@bilig/protocol'
 import { batchOpOrder, compareOpOrder, markBatchApplied, type OpOrder } from '../../replica-state.js'
 import { calculationSettingsEqual, normalizeWorkbookCalculationSettings, tableDependencyKey } from '../../engine-metadata-utils.js'
 import { normalizeDefinedName } from '../../workbook-store.js'
@@ -17,15 +17,23 @@ import type { OperationLookupPlanner } from './operation-lookup-planner.js'
 import type { ExactLookupImpactCaches, OperationLookupDirtyMarkerService } from './operation-lookup-dirty-markers.js'
 import type { OperationColumnDependencyTrackerService } from './operation-column-dependency-tracker.js'
 import type { OperationDirectRangeDependentService } from './operation-direct-range-dependents.js'
+import { shouldMaterializeOperationChangedCells } from './operation-event-emission.js'
+import { finalizeOperationMutationEvents } from './operation-mutation-event-finalizer.js'
 import { finalizeOperationRecalcAndEvents } from './operation-recalc-finalizer.js'
-import type { CreateEngineOperationServiceArgs, MutationSource } from './operation-service-types.js'
+import { createOperationBatchMetrics } from './operation-batch-metrics.js'
+import type { CreateEngineOperationServiceArgs, MutationSource, StructuralAxisOp } from './operation-service-types.js'
 import { applyBatchSetCellFormulaOp } from './operation-batch-cell-formula-mutations.js'
 import { applyBatchClearCellOp, applyBatchSetCellValueOp } from './operation-batch-cell-value-mutations.js'
+import { canFinalizeStructuralNoValueMutationWithoutRecalc, isStructuralAxisOp } from './operation-structural-no-value-finalization.js'
 
 type OperationBatchDirectFormulaCallbacks = Parameters<typeof finalizeOperationRecalcAndEvents>[0]['directFormulaCallbacks']
 type OperationBatchDirtyTraversalSkip = Parameters<typeof finalizeOperationRecalcAndEvents>[0]['canSkipDirtyTraversalForChangedInputs']
 type OperationBatchCycleInputMarker = Parameters<typeof finalizeOperationRecalcAndEvents>[0]['markCycleMemberInputsChanged']
 type OperationBatchDerivedOp<K extends EngineOp['kind']> = Extract<EngineOp, { kind: K }>
+const EMPTY_INVALIDATED_RANGES: CellRangeRef[] = []
+const EMPTY_INVALIDATED_ROWS: NonNullable<EngineEvent['invalidatedRows']> = []
+const EMPTY_INVALIDATED_COLUMNS: NonNullable<EngineEvent['invalidatedColumns']> = []
+const EMPTY_CELL_INDICES: number[] = []
 
 interface CreateOperationBatchApplierArgs {
   readonly serviceArgs: CreateEngineOperationServiceArgs
@@ -117,14 +125,299 @@ export function createOperationBatchApplier(input: CreateOperationBatchApplierAr
   } = input
   const { setEntityVersionForOp, setSheetDeleteVersion, stores: replicaStores } = input.replicaVersionWriter
 
-  return function applyBatchNow(
+  const tryApplySingleStructuralAxisOpBatchNow = (
+    batch: EngineOpBatch,
+    source: MutationSource,
+    options: { readonly emitTracked?: boolean } | undefined,
+  ): boolean => {
+    if (source === 'remote' || batch.ops.length !== 1) {
+      return false
+    }
+    const op = batch.ops[0]!
+    if (!isStructuralAxisOp(op)) {
+      return false
+    }
+    return tryApplySingleStructuralAxisOpNow(op, source, options, batch)
+  }
+
+  const tryApplySingleStructuralAxisOpNow = (
+    op: StructuralAxisOp,
+    source: MutationSource,
+    options: { readonly emitTracked?: boolean } | undefined,
+    batch?: EngineOpBatch,
+  ): boolean => {
+    if (source === 'remote') {
+      return false
+    }
+    const isRestore = source === 'restore'
+    if (!isRestore && source !== 'undo' && source !== 'redo') {
+      assertProtectionAllowsProtectedOp(args.state.workbook, op)
+    }
+
+    args.setBatchMutationDepth(args.getBatchMutationDepth() + 1)
+
+    let formulaChangedCount = 0
+    let explicitChangedCount = 0
+    let topologyChanged = false
+    let mutationCollectionStarted = false
+    const beginStructuralMutationCollection = (): void => {
+      if (mutationCollectionStarted) {
+        return
+      }
+      args.beginMutationCollection({ ensureScratch: false })
+      args.resetMaterializedCellScratch(0)
+      mutationCollectionStarted = true
+    }
+    const hasGeneralEventListeners = args.state.events.hasListeners()
+    const hasTrackedEventListeners = options?.emitTracked === false ? false : args.state.events.hasTrackedListeners()
+    const hasWatchedCellListeners = args.state.events.hasCellListeners()
+    const shouldCollectInvalidationPayloads = hasGeneralEventListeners || hasTrackedEventListeners || hasWatchedCellListeners
+    const invalidatedRows: EngineEvent['invalidatedRows'] = shouldCollectInvalidationPayloads ? [] : EMPTY_INVALIDATED_ROWS
+    const invalidatedColumns: EngineEvent['invalidatedColumns'] = shouldCollectInvalidationPayloads ? [] : EMPTY_INVALIDATED_COLUMNS
+    let invalidatedRowCount = 0
+    let invalidatedColumnCount = 0
+    let precomputedKernelSyncCellIndices: number[] | undefined
+    let precomputedKernelSyncCellCount = 0
+    let hadCycleMembersBefore: boolean | undefined
+    let finalizedNoValueWithoutEvents = false
+    const hadCycleMembersBeforeNow = (): boolean => (hadCycleMembersBefore ??= hasCycleMembersNow())
+
+    try {
+      const order = batch === undefined ? undefined : batchOpOrder(batch, 0)
+      const structural = args.applyStructuralAxisOp(op)
+      const activeFormulaCount = args.state.formulas.size
+      const canFinalizeNoValueWithoutEvents =
+        !isRestore &&
+        options?.emitTracked === false &&
+        !hasGeneralEventListeners &&
+        !hasTrackedEventListeners &&
+        !hasWatchedCellListeners &&
+        !structural.graphRefreshRequired &&
+        structural.transaction.invalidationSpans.length > 0 &&
+        structural.transaction.removedCellIndices.length === 0 &&
+        structural.precomputedChangedInputCellIndices.length === 0 &&
+        structural.formulaCellIndices.length === 0 &&
+        !args.state.workbook.hasPivots() &&
+        (activeFormulaCount === 0 || args.hasVolatileFormulas?.() === false)
+      if (canFinalizeNoValueWithoutEvents) {
+        if (order !== undefined) {
+          setEntityVersionForOp(op, order)
+        }
+        finalizedNoValueWithoutEvents = true
+      } else {
+        if (
+          structural.transaction.removedCellIndices.length > 0 ||
+          structural.precomputedChangedInputCellIndices.length > 0 ||
+          structural.formulaCellIndices.length > 0
+        ) {
+          beginStructuralMutationCollection()
+          args.ensureRecalcScratchCapacity(args.state.workbook.cellStore.size + 1)
+        }
+        structural.transaction.removedCellIndices.forEach((cellIndex) => {
+          precomputedKernelSyncCellIndices ??= []
+          precomputedKernelSyncCellIndices.push(cellIndex)
+          precomputedKernelSyncCellCount += 1
+        })
+        structural.precomputedChangedInputCellIndices.forEach((cellIndex) => {
+          precomputedKernelSyncCellIndices ??= []
+          precomputedKernelSyncCellIndices.push(cellIndex)
+          precomputedKernelSyncCellCount += 1
+          explicitChangedCount = args.markExplicitChanged(cellIndex, explicitChangedCount)
+        })
+        structural.formulaCellIndices.forEach((cellIndex) => {
+          formulaChangedCount = args.markFormulaChanged(cellIndex, formulaChangedCount)
+        })
+        structural.transaction.invalidationSpans.forEach((invalidation) => {
+          if (invalidation.axis === 'row') {
+            invalidatedRowCount += 1
+            if (shouldCollectInvalidationPayloads) {
+              invalidatedRows.push({
+                sheetName: op.sheetName,
+                startIndex: invalidation.start,
+                endIndex: invalidation.end - 1,
+              })
+            }
+            return
+          }
+          invalidatedColumnCount += 1
+          if (shouldCollectInvalidationPayloads) {
+            invalidatedColumns.push({
+              sheetName: op.sheetName,
+              startIndex: invalidation.start,
+              endIndex: invalidation.end - 1,
+            })
+          }
+        })
+        topologyChanged = structural.graphRefreshRequired
+        if (order !== undefined) {
+          setEntityVersionForOp(op, order)
+        }
+
+        const reboundCount = formulaChangedCount
+        if (mutationCollectionStarted) {
+          formulaChangedCount = args.syncDynamicRanges(formulaChangedCount)
+        }
+        topologyChanged = topologyChanged || formulaChangedCount !== reboundCount
+      }
+    } finally {
+      args.setBatchMutationDepth(args.getBatchMutationDepth() - 1)
+    }
+
+    if (batch !== undefined) {
+      markBatchApplied(args.state.replicaState, batch)
+    }
+    if (finalizedNoValueWithoutEvents) {
+      args.state.setLastMetrics(
+        createOperationBatchMetrics({
+          previousMetrics: args.state.getLastMetrics(),
+          didRunRecalc: false,
+          directFormulaMetrics: {
+            wasmFormulaCount: 0,
+            jsFormulaCount: 0,
+          },
+          changedInputCount: 0,
+          formulaChangedCount: 0,
+          compileMs: 0,
+        }),
+      )
+      if (source === 'local' && batch !== undefined) {
+        void args.state.getSyncClientConnection()?.send(batch)
+        emitBatch(batch)
+      }
+      return true
+    }
+    const activeFormulaCount = args.state.formulas.size
+    const canFinalizeWithoutRecalc = canFinalizeStructuralNoValueMutationWithoutRecalc({
+      isRestore,
+      topologyChanged,
+      formulaChangedCount,
+      explicitChangedCount,
+      precomputedKernelSyncCellCount,
+      invalidatedRangeCount: 0,
+      invalidatedRowCount,
+      invalidatedColumnCount,
+      activeFormulaCount,
+      hasVolatileFormulas: activeFormulaCount > 0 ? args.hasVolatileFormulas?.() : false,
+      hasActivePivots: args.state.workbook.hasPivots(),
+    })
+    if (canFinalizeWithoutRecalc) {
+      if (!hasGeneralEventListeners && !hasTrackedEventListeners && !hasWatchedCellListeners) {
+        args.state.setLastMetrics(
+          createOperationBatchMetrics({
+            previousMetrics: args.state.getLastMetrics(),
+            didRunRecalc: false,
+            directFormulaMetrics: {
+              wasmFormulaCount: 0,
+              jsFormulaCount: 0,
+            },
+            changedInputCount: 0,
+            formulaChangedCount: 0,
+            compileMs: 0,
+          }),
+        )
+        if (source === 'local' && batch !== undefined) {
+          void args.state.getSyncClientConnection()?.send(batch)
+          emitBatch(batch)
+        }
+        return true
+      }
+      finalizeOperationMutationEvents({
+        serviceArgs: args,
+        suppressChangedSet: true,
+        canComposeDisjointEventChanges: false,
+        recalculated: new Uint32Array(),
+        explicitChangedCount: 0,
+        changedInputCount: 0,
+        formulaChangedCount: 0,
+        compileMs: 0,
+        didRunRecalc: false,
+        directFormulaMetrics: {
+          wasmFormulaCount: 0,
+          jsFormulaCount: 0,
+        },
+        invalidation: 'cells',
+        invalidatedRanges: EMPTY_INVALIDATED_RANGES,
+        invalidatedRows,
+        invalidatedColumns,
+        hasGeneralEventListeners,
+        hasTrackedEventListeners,
+        hasWatchedCellListeners,
+        shouldMaterializeChangedCells: (changedLength) =>
+          shouldMaterializeOperationChangedCells({
+            changedLength,
+            hasGeneralEventListeners,
+            invalidation: 'cells',
+            invalidations: {
+              invalidatedRanges: [],
+              invalidatedRows,
+              invalidatedColumns,
+            },
+          }),
+      })
+      if (source === 'local' && batch !== undefined) {
+        void args.state.getSyncClientConnection()?.send(batch)
+        emitBatch(batch)
+      }
+      return true
+    }
+    if (!mutationCollectionStarted) {
+      beginStructuralMutationCollection()
+      args.ensureRecalcScratchCapacity(args.state.workbook.cellStore.size + 1)
+    }
+    finalizeOperationRecalcAndEvents({
+      serviceArgs: args,
+      isRestore,
+      topologyChanged,
+      sheetDeleted: false,
+      structuralInvalidation: false,
+      refreshAllPivots: true,
+      changedInputCount: 0,
+      formulaChangedCount,
+      explicitChangedCount,
+      compileMs: 0,
+      precomputedKernelSyncCellIndices: precomputedKernelSyncCellIndices ?? EMPTY_CELL_INDICES,
+      postRecalcDirectFormulaIndices: new DirectFormulaIndexCollection(),
+      postRecalcDirectFormulaMetrics: {
+        wasmFormulaCount: 0,
+        jsFormulaCount: 0,
+      },
+      lookupHandledInputCellIndices: [],
+      invalidatedRanges: [],
+      invalidatedRows,
+      invalidatedColumns,
+      invalidatedRowCount,
+      invalidatedColumnCount,
+      hadCycleMembersBeforeNow,
+      markCycleMemberInputsChanged,
+      canSkipDirtyTraversalForChangedInputs,
+      directFormulaCallbacks: {
+        applyDirectFormulaCurrentResult,
+        applyDirectFormulaNumericDelta,
+        applyDirectScalarCurrentValue,
+        tryApplyDirectScalarDeltas,
+        tryApplyDirectFormulaDeltas,
+        countPostRecalcDirectFormulaMetric,
+      },
+    })
+    if (source === 'local' && batch !== undefined) {
+      void args.state.getSyncClientConnection()?.send(batch)
+      emitBatch(batch)
+    }
+    return true
+  }
+
+  const applyBatchNow = (
     batch: EngineOpBatch,
     source: MutationSource,
     potentialNewCells?: number,
     preparedCellAddressesByOpIndex?: readonly (PreparedCellAddress | null)[],
-  ): void {
+    options?: { readonly emitTracked?: boolean },
+  ): void => {
     if (preparedCellAddressesByOpIndex && preparedCellAddressesByOpIndex.length !== batch.ops.length) {
       throw new Error('Prepared cell addresses must align with batch operations')
+    }
+    if (preparedCellAddressesByOpIndex === undefined && tryApplySingleStructuralAxisOpBatchNow(batch, source, options)) {
+      return
     }
     const isRestore = source === 'restore'
     args.beginMutationCollection()
@@ -620,6 +913,8 @@ export function createOperationBatchApplier(input: CreateOperationBatchApplierAr
       invalidatedRanges,
       invalidatedRows,
       invalidatedColumns,
+      invalidatedRowCount: invalidatedRows.length,
+      invalidatedColumnCount: invalidatedColumns.length,
       hadCycleMembersBeforeNow,
       markCycleMemberInputsChanged,
       canSkipDirtyTraversalForChangedInputs,
@@ -638,5 +933,12 @@ export function createOperationBatchApplier(input: CreateOperationBatchApplierAr
     } else if (source === 'remote' && args.state.redoStack.length > 0) {
       args.state.redoStack.length = 0
     }
+  }
+
+  return {
+    applyBatchNow,
+    applyLocalSingleStructuralAxisOpWithoutBatchNow(op: StructuralAxisOp, options?: { readonly emitTracked?: boolean }): boolean {
+      return tryApplySingleStructuralAxisOpNow(op, 'local', options)
+    },
   }
 }

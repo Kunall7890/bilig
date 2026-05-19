@@ -1,4 +1,4 @@
-import { WorkPaper } from '../../headless/src/work-paper.js'
+import { WorkPaper, type WorkPaperCellValueUpdate, type WorkPaperSheetCellValueUpdate } from '../../headless/src/work-paper.js'
 import { HYPERFORMULA_LICENSE_KEY } from './benchmark-workpaper-vs-hyperformula.js'
 import {
   address,
@@ -307,6 +307,49 @@ export function measureWorkPaperBatchMultiColumnEditSample(rowCount: number): Be
           workbook.setCellContents(address(sheetId, row, 1), row * 5)
         }
       }),
+    () => ({
+      sampleSumValue: normalizeWorkPaperValue(workbook.getCellValue(address(sheetId, rowCount - 1, 2))),
+      sampleProductValue: normalizeWorkPaperValue(workbook.getCellValue(address(sheetId, rowCount - 1, 3))),
+    }),
+  )
+}
+
+export function measureWorkPaperBulkCellValuesMultiColumnEditSample(rowCount: number): BenchmarkSample {
+  const workbook = WorkPaper.buildFromSheets({ Bench: buildBatchMultiColumnRows(rowCount) })
+  const sheetId = workbook.getSheetId('Bench')!
+  const updates: WorkPaperCellValueUpdate[] = Array.from({ length: rowCount * 2 }, (_value, index) => {
+    const row = Math.floor(index / 2)
+    const col = index % 2
+    return {
+      address: address(sheetId, row, col),
+      value: col === 0 ? row * 3 : row * 5,
+    }
+  })
+  return measureMutationSample(
+    workbook,
+    () => workbook.setCellValues(updates),
+    () => ({
+      sampleSumValue: normalizeWorkPaperValue(workbook.getCellValue(address(sheetId, rowCount - 1, 2))),
+      sampleProductValue: normalizeWorkPaperValue(workbook.getCellValue(address(sheetId, rowCount - 1, 3))),
+    }),
+  )
+}
+
+export function measureWorkPaperBulkSheetCellValuesMultiColumnEditSample(rowCount: number): BenchmarkSample {
+  const workbook = WorkPaper.buildFromSheets({ Bench: buildBatchMultiColumnRows(rowCount) })
+  const sheetId = workbook.getSheetId('Bench')!
+  const updates: WorkPaperSheetCellValueUpdate[] = Array.from({ length: rowCount * 2 }, (_value, index) => {
+    const row = Math.floor(index / 2)
+    const col = index % 2
+    return {
+      row,
+      col,
+      value: col === 0 ? row * 3 : row * 5,
+    }
+  })
+  return measureMutationSample(
+    workbook,
+    () => workbook.setSheetCellValues(sheetId, updates),
     () => ({
       sampleSumValue: normalizeWorkPaperValue(workbook.getCellValue(address(sheetId, rowCount - 1, 2))),
       sampleProductValue: normalizeWorkPaperValue(workbook.getCellValue(address(sheetId, rowCount - 1, 3))),

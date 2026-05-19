@@ -8,7 +8,7 @@ import {
   createWorkPaperNamedExpressionChange,
   type InternalNamedExpression,
 } from './work-paper-named-expression-helpers.js'
-import { makeNamedExpressionKey, matrixValuesEqual, tryEvaluateSimpleNamedExpression } from './work-paper-runtime-helpers.js'
+import { makeNamedExpressionKey, matrixValuesEqual, tryEvaluateSimpleNamedExpression, valuesEqual } from './work-paper-runtime-helpers.js'
 import type { TrackedEngineEvent } from './tracked-engine-event-refs.js'
 import type { RawCellContent, SerializedWorkPaperNamedExpression, WorkPaperCellChange, WorkPaperChange } from './work-paper-types.js'
 
@@ -67,10 +67,11 @@ export function tryCaptureWorkPaperNamedExpressionChangeWithoutSnapshots(
 
   const key = makeNamedExpressionKey(request.existing.publicName, request.existing.scope)
   const cachedBeforeValue = runtime.getCachedNamedExpressionValue(key)
-  const beforeValue = cachedBeforeValue ?? runtime.evaluateNamedExpression(request.existing)
+  const beforeValue =
+    cachedBeforeValue ?? tryEvaluateSimpleNamedExpression(request.existing.expression) ?? runtime.evaluateNamedExpression(request.existing)
   const afterScalarValue = tryEvaluateSimpleNamedExpression(request.expression)
   if (afterScalarValue?.tag === ValueTag.Number && !runtime.hasAnyListeners()) {
-    const directChanges = tryCaptureNumericNamedExpressionChange(runtime, request, key, beforeValue, afterScalarValue.value)
+    const directChanges = tryCaptureNumericNamedExpressionChange(runtime, request, key, beforeValue, afterScalarValue)
     if (directChanges) {
       return directChanges
     }
@@ -116,7 +117,7 @@ function tryCaptureNumericNamedExpressionChange(
   request: WorkPaperNamedExpressionFastPathRequest,
   cacheKey: string,
   beforeValue: NamedExpressionValue,
-  afterValue: number,
+  afterValue: CellValue & { readonly tag: ValueTag.Number },
 ): WorkPaperChange[] | null {
   const record = createInternalNamedExpressionRecord(
     createSerializedWorkPaperNamedExpression({
@@ -128,22 +129,22 @@ function tryCaptureNumericNamedExpressionChange(
   )
   const definedNameSnapshot = runtime.toDefinedNameSnapshot(request.expression, request.scope)
   try {
-    const changedCellIndices = runtime.upsertNumericDefinedNameFast(record.internalName, definedNameSnapshot, afterValue)
+    const changedCellIndices = runtime.upsertNumericDefinedNameFast(record.internalName, definedNameSnapshot, afterValue.value)
     if (changedCellIndices) {
       runtime.setNamedExpressionRecord(makeNamedExpressionKey(record.publicName, record.scope), record)
-      runtime.setCachedNamedExpressionValue(cacheKey, cloneNamedExpressionValue({ tag: ValueTag.Number, value: afterValue }))
+      runtime.setCachedNamedExpressionValue(cacheKey, cloneNamedExpressionValue(afterValue))
       const cellChanges = changedCellIndices
         .map((cellIndex) => runtime.readSingleTrackedCellChange(cellIndex))
         .filter((change): change is WorkPaperCellChange => change !== undefined)
       const orderedCellChanges = cellChanges.length > 1 ? runtime.orderCellChanges(cellChanges, cellChanges.length) : cellChanges
-      return matrixValuesEqual(beforeValue, { tag: ValueTag.Number, value: afterValue })
+      return !Array.isArray(beforeValue) && valuesEqual(beforeValue, afterValue)
         ? orderedCellChanges
         : [
             ...orderedCellChanges,
             createWorkPaperNamedExpressionChange({
               name: record.publicName,
               scope: record.scope,
-              newValue: cloneNamedExpressionValue({ tag: ValueTag.Number, value: afterValue }),
+              newValue: cloneNamedExpressionValue(afterValue),
             }),
           ]
     }

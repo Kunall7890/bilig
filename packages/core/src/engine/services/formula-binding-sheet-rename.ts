@@ -4,7 +4,7 @@ import {
   renameCompiledFormulaSheetReferenceMetadata,
   renameCompiledFormulaSheetReferenceMetadataInPlace,
 } from '@bilig/formula'
-import type { CompiledPlanRecord, RuntimeDirectScalarDescriptor } from '../runtime-state.js'
+import type { CompiledPlanRecord, RuntimeDirectAggregateDescriptor, RuntimeDirectScalarDescriptor } from '../runtime-state.js'
 import {
   canRewriteCompiledPreservingBindings,
   canRewriteCompiledPreservingDirectAggregate,
@@ -12,13 +12,27 @@ import {
 } from './formula-binding-shape-helpers.js'
 import { buildDirectScalarDescriptor } from './formula-binding-direct-scalar.js'
 import { renameDirectAggregateDescriptorSheet, type ParsedCompiledFormula } from './formula-binding-direct-descriptors.js'
-import { appendSheetRenameSourceTransform, directRegionIdsForFormula } from './formula-binding-dependency-helpers.js'
+import { appendSheetRenameSourceTransformRecord, type FormulaBindingSourceRenameTransform } from './formula-binding-dependency-helpers.js'
 import type { FormulaBindingSheetIndex } from './formula-binding-sheet-index.js'
 import type {
   BindPreparedFormulaOptions,
   CreateEngineFormulaBindingServiceArgs,
   FormulaOwnerPosition,
 } from './formula-binding-service-types.js'
+
+function renameDirectAggregateDescriptorSheetForRuntime(args: {
+  readonly descriptor: RuntimeDirectAggregateDescriptor
+  readonly oldSheetName: string
+  readonly newSheetName: string
+}): RuntimeDirectAggregateDescriptor {
+  const previous = args.descriptor
+  const next = renameDirectAggregateDescriptorSheet({
+    descriptor: previous,
+    oldSheetName: args.oldSheetName,
+    newSheetName: args.newSheetName,
+  })
+  return next
+}
 
 export function createFormulaBindingSheetRenameHandler(args: {
   readonly serviceArgs: CreateEngineFormulaBindingServiceArgs
@@ -59,20 +73,19 @@ export function createFormulaBindingSheetRenameHandler(args: {
     let touchedCount = 0
     const movedSheetCells = args.formulaSheetIndex.moveSheetName(oldSheetName, newSheetName)
     if (movedSheetCells.references.size > 0) {
+      const sourceTransform: FormulaBindingSourceRenameTransform = { oldSheetName, newSheetName }
       movedSheetCells.references.forEach((cellIndex) => {
         const formula = args.serviceArgs.state.formulas.get(cellIndex)
         if (!formula) {
           return
         }
-        appendSheetRenameSourceTransform(formula, oldSheetName, newSheetName)
+        appendSheetRenameSourceTransformRecord(formula, sourceTransform)
         if (formula.directAggregate !== undefined) {
-          formula.directAggregate = renameDirectAggregateDescriptorSheet({
+          formula.directAggregate = renameDirectAggregateDescriptorSheetForRuntime({
             descriptor: formula.directAggregate,
             oldSheetName,
             newSheetName,
-            regionGraph: args.serviceArgs.regionGraph,
           })
-          args.serviceArgs.regionGraph.replaceFormulaSubscriptions(cellIndex, directRegionIdsForFormula(formula))
         }
         touchedCount += 1
       })
@@ -81,6 +94,7 @@ export function createFormulaBindingSheetRenameHandler(args: {
   }
 
   const rewriteCellFormulasForSheetRenameNow = (oldSheetName: string, newSheetName: string, formulaChangedCount: number): number => {
+    const sourceTransform: FormulaBindingSourceRenameTransform = { oldSheetName, newSheetName }
     const referencedCandidates = args.formulaSheetIndex.getReferencingSheetSet(oldSheetName)
     const ownerCandidates = args.formulaSheetIndex.getOwnedBySheetSet(oldSheetName)
     const seen: number[] = []
@@ -128,16 +142,14 @@ export function createFormulaBindingSheetRenameHandler(args: {
         const sourceChanged = renameCompiledFormulaSheetReferenceMetadataInPlace(formula.compiled, oldSheetName, newSheetName)
         if (sourceChanged) {
           args.formulaSheetIndex.removeReference(oldSheetName, cellIndex)
-          appendSheetRenameSourceTransform(formula, oldSheetName, newSheetName)
+          appendSheetRenameSourceTransformRecord(formula, sourceTransform)
         }
         if (formula.directAggregate !== undefined) {
-          formula.directAggregate = renameDirectAggregateDescriptorSheet({
+          formula.directAggregate = renameDirectAggregateDescriptorSheetForRuntime({
             descriptor: formula.directAggregate,
             oldSheetName,
             newSheetName,
-            regionGraph: args.serviceArgs.regionGraph,
           })
-          args.serviceArgs.regionGraph.replaceFormulaSubscriptions(cellIndex, directRegionIdsForFormula(formula))
         }
         if (previousOwnerSheetName !== ownerSheetName) {
           args.formulaSheetIndex.appendOwner(ownerSheetName, cellIndex)
@@ -171,11 +183,10 @@ export function createFormulaBindingSheetRenameHandler(args: {
           canRewriteCompiledPreservingDirectScalar(formula, renamedMetadata.compiled))
       if (canPreserveRuntime) {
         const nextDirectAggregate = formula.directAggregate
-          ? renameDirectAggregateDescriptorSheet({
+          ? renameDirectAggregateDescriptorSheetForRuntime({
               descriptor: formula.directAggregate,
               oldSheetName,
               newSheetName,
-              regionGraph: args.serviceArgs.regionGraph,
             })
           : undefined
         const nextDirectScalar =
@@ -201,11 +212,8 @@ export function createFormulaBindingSheetRenameHandler(args: {
           formula.constNumberLength = plan.compiled.constants.length
           formula.directAggregate = nextDirectAggregate
           formula.directScalar = nextDirectScalar
-          appendSheetRenameSourceTransform(formula, oldSheetName, newSheetName)
+          appendSheetRenameSourceTransformRecord(formula, sourceTransform)
           args.trackFormulaSheetIndexes(cellIndex, ownerSheetName, formula.compiled)
-          if (formula.directAggregate !== undefined) {
-            args.serviceArgs.regionGraph.replaceFormulaSubscriptions(cellIndex, directRegionIdsForFormula(formula))
-          }
           return
         }
       }

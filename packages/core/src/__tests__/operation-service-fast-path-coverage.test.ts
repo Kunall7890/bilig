@@ -59,6 +59,29 @@ function runtimeFormula(engine: SpreadsheetEngine, cellIndex: number): unknown {
   return get.call(formulas, cellIndex)
 }
 
+type FormulaScanTable = {
+  readonly forEach: (callback: unknown) => void
+}
+
+function isFormulaScanTable(value: unknown): value is FormulaScanTable {
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
+  return typeof Reflect.get(value, 'forEach') === 'function'
+}
+
+function formulaScanTable(engine: SpreadsheetEngine): FormulaScanTable {
+  const state = Reflect.get(engine, 'state')
+  if (typeof state !== 'object' || state === null) {
+    throw new TypeError('Expected engine state')
+  }
+  const formulas = Reflect.get(state, 'formulas')
+  if (!isFormulaScanTable(formulas)) {
+    throw new TypeError('Expected formula scan table')
+  }
+  return formulas
+}
+
 function columnLabel(col: number): string {
   let index = col
   let label = ''
@@ -680,6 +703,8 @@ describe('operation-service dense mutation fast paths', () => {
     }
 
     const refs = [...valueRefs, ...formulaRefs]
+    const formulas = formulaScanTable(engine)
+    const formulaScan = vi.spyOn(formulas, 'forEach')
     const ensureCellAt = vi.spyOn(engine.workbook, 'ensureCellAt')
     const attachAllocatedCellWithLogicalAxisIds = vi.spyOn(engine.workbook, 'attachAllocatedCellWithLogicalAxisIds')
     const allocateReserved = vi.spyOn(engine.workbook.cellStore, 'allocateReserved')
@@ -711,7 +736,9 @@ describe('operation-service dense mutation fast paths', () => {
         kernelSyncOnlyRecalcSkips: 1,
         topoRepairs: 0,
       })
+      expect(formulaScan).not.toHaveBeenCalled()
     } finally {
+      formulaScan.mockRestore()
       ensureCellAt.mockRestore()
       attachAllocatedCellWithLogicalAxisIds.mockRestore()
       allocateReserved.mockRestore()
@@ -821,6 +848,8 @@ describe('operation-service dense mutation fast paths', () => {
       })
     }
 
+    const sheet = engine.workbook.getSheet('Sheet1')!
+    const columnVersionBefore = sheet.columnVersions[0] ?? 0
     engine.resetPerformanceCounters()
     const applied = operationHook<[readonly EngineCellMutationRef[], null, number], boolean>(
       engine,
@@ -831,6 +860,7 @@ describe('operation-service dense mutation fast paths', () => {
     expect(engine.getCellValue('Sheet1', 'E1')).toEqual({ tag: ValueTag.Number, value: Math.floor(rowCount / 2) })
     expect(engine.getLastMetrics()).toMatchObject({ dirtyFormulaCount: 0, jsFormulaCount: 0, wasmFormulaCount: 0 })
     expect(engine.getPerformanceCounters().kernelSyncOnlyRecalcSkips).toBe(1)
+    expect(sheet.columnVersions[0]).toBe(columnVersionBefore + 1)
   })
 
   it('skips exact lookup-only numeric batches with multiple cached numeric dependent plans', async () => {
@@ -1018,6 +1048,58 @@ describe('operation-service dense mutation fast paths', () => {
     expect(result).not.toBeNull()
     expect(engine.getCellValue('Sheet1', 'A1')).toEqual({ tag: ValueTag.Number, value: 5 })
     expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Number, value: 5 })
+  })
+
+  it('applies non-uniform numeric exact lookup operand mutations without dirty traversal', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'trusted-existing-nonuniform-lookup-fast-path', useColumnIndex: true })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 3)
+    ;[2, 3, 7, 11, 18].forEach((value, index) => {
+      engine.setCellValue('Sheet1', `B${index + 1}`, value)
+    })
+    engine.setCellFormula('Sheet1', 'D1', 'MATCH(A1,B1:B5,0)')
+
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+    const inputIndex = engine.workbook.getCellIndex('Sheet1', 'A1')!
+    const formulaIndex = engine.workbook.getCellIndex('Sheet1', 'D1')!
+    const formula = runtimeFormula(engine, formulaIndex)
+    if (typeof formula !== 'object' || formula === null) {
+      throw new TypeError('Expected runtime formula')
+    }
+    expect(Reflect.get(formula, 'directLookup')).toMatchObject({ kind: 'exact' })
+
+    engine.resetPerformanceCounters()
+    const result = existingNumericMutationFastPath(engine)({
+      sheetId,
+      row: 0,
+      col: 0,
+      cellIndex: inputIndex,
+      value: 11,
+      trustedExistingNumericLiteral: true,
+      oldNumericValue: 3,
+      emitTracked: false,
+    })
+
+    expect(result).toMatchObject({
+      changedCellCount: 2,
+      firstChangedCellIndex: inputIndex,
+      secondChangedCellIndex: formulaIndex,
+      secondChangedNumericValue: 4,
+    })
+    expect(engine.getCellValue('Sheet1', 'A1')).toEqual({ tag: ValueTag.Number, value: 11 })
+    expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Number, value: 4 })
+    expect(engine.getLastMetrics()).toMatchObject({
+      dirtyFormulaCount: 0,
+      jsFormulaCount: 0,
+      wasmFormulaCount: 0,
+    })
+    expect(engine.getPerformanceCounters()).toMatchObject({
+      changedCellPayloadsBuilt: 0,
+      directFormulaKernelSyncOnlyRecalcSkips: 1,
+      formulasBound: 0,
+      topoRepairs: 0,
+    })
   })
 
   it('applies direct formula literal mutations without event plumbing', async () => {

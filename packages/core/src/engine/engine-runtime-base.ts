@@ -27,6 +27,8 @@ import {
 import { createEngineServiceRuntime, runEngineEffect, type EngineServiceRuntime } from './live.js'
 import { EngineEvaluationTimeoutError } from './errors.js'
 
+const INITIAL_ENGINE_WORK_BUFFER_CAPACITY = 16
+
 export abstract class SpreadsheetEngineRuntimeBase {
   protected readonly performanceCounters: EngineCounters = createEngineCounters()
   readonly workbook: WorkbookStore
@@ -69,24 +71,24 @@ export abstract class SpreadsheetEngineRuntimeBase {
   private evaluationBudgetDepth = 0
   private evaluationBudgetStepCount = 0
   private dependencyBuildEpoch = 1
-  private dependencyBuildSeen: U32 = new Uint32Array(128)
-  private dependencyBuildCells: U32 = new Uint32Array(128)
-  private dependencyBuildEntities: U32 = new Uint32Array(128)
-  private dependencyBuildRanges: U32 = new Uint32Array(128)
-  private dependencyBuildNewRanges: U32 = new Uint32Array(128)
-  private symbolicRefBindings: U32 = new Uint32Array(128)
-  private symbolicRangeBindings: U32 = new Uint32Array(128)
-  private wasmProgramTargets: U32 = new Uint32Array(128)
-  private wasmProgramOffsets: U32 = new Uint32Array(128)
-  private wasmProgramLengths: U32 = new Uint32Array(128)
-  private wasmConstantOffsets: U32 = new Uint32Array(128)
-  private wasmConstantLengths: U32 = new Uint32Array(128)
-  private wasmRangeOffsets: U32 = new Uint32Array(128)
-  private wasmRangeLengths: U32 = new Uint32Array(128)
-  private wasmRangeRowCounts: U32 = new Uint32Array(128)
-  private wasmRangeColCounts: U32 = new Uint32Array(128)
-  private topoIndegree: U32 = new Uint32Array(128)
-  private topoQueue: U32 = new Uint32Array(128)
+  private dependencyBuildSeen: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
+  private dependencyBuildCells: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
+  private dependencyBuildEntities: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
+  private dependencyBuildRanges: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
+  private dependencyBuildNewRanges: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
+  private symbolicRefBindings: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
+  private symbolicRangeBindings: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
+  private wasmProgramTargets: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
+  private wasmProgramOffsets: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
+  private wasmProgramLengths: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
+  private wasmConstantOffsets: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
+  private wasmConstantLengths: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
+  private wasmRangeOffsets: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
+  private wasmRangeLengths: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
+  private wasmRangeRowCounts: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
+  private wasmRangeColCounts: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
+  private topoIndegree: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
+  private topoQueue: U32 = new Uint32Array(INITIAL_ENGINE_WORK_BUFFER_CAPACITY)
   protected batchMutationDepth = 0
   private wasmProgramSyncPending = false
   protected lastMetrics: RecalcMetrics = createInitialRecalcMetrics()
@@ -386,9 +388,6 @@ export abstract class SpreadsheetEngineRuntimeBase {
         },
       },
     })
-    if (!this.wasm.initSyncIfPossible()) {
-      void this.wasm.init()
-    }
   }
 
   renameSheetMetadataOnly(oldName: string, newName: string): boolean {
@@ -410,6 +409,36 @@ export abstract class SpreadsheetEngineRuntimeBase {
     if (!renamedSheet) {
       return false
     }
+    this.recordMetadataOnlySheetRename(oldName, trimmedName)
+    return true
+  }
+
+  renameSheetMetadataOnlyById(sheetId: number, newName: string): boolean {
+    const trimmedName = newName.trim()
+    const sheet = this.workbook.getSheetById(sheetId)
+    if (
+      trimmedName.length === 0 ||
+      !sheet ||
+      sheet.name === trimmedName ||
+      this.workbook.getSheet(trimmedName) ||
+      this.syncClientConnection !== null ||
+      this.batchListeners.size > 0 ||
+      this.batchMutationDepth !== 0 ||
+      this.transactionReplayDepth !== 0
+    ) {
+      return false
+    }
+
+    const oldName = sheet.name
+    const renamedSheet = this.workbook.renameSheetById(sheetId, trimmedName)
+    if (!renamedSheet) {
+      return false
+    }
+    this.recordMetadataOnlySheetRename(oldName, trimmedName)
+    return true
+  }
+
+  private recordMetadataOnlySheetRename(oldName: string, trimmedName: string): void {
     const op: EngineOp = { kind: 'renameSheet', oldName, newName: trimmedName }
     if (this.state.trackReplicaVersions) {
       const batch = createBatch(this.replicaState, [op])
@@ -434,7 +463,6 @@ export abstract class SpreadsheetEngineRuntimeBase {
       inverse: { kind: 'single-op', op: { kind: 'renameSheet', oldName: trimmedName, newName: oldName } },
     })
     this.redoStack.length = 0
-    return true
   }
 
   setEvaluationTimeoutMs(timeoutMs: number | undefined): void {
@@ -498,10 +526,14 @@ export abstract class SpreadsheetEngineRuntimeBase {
   abstract exportSnapshot(): WorkbookSnapshot
   abstract importSnapshot(snapshot: WorkbookSnapshot): void
 
-  protected executeLocalTransaction(ops: EngineOp[], potentialNewCells?: number): readonly EngineOp[] | null {
+  protected executeLocalTransaction(
+    ops: EngineOp[],
+    potentialNewCells?: number,
+    options: { readonly emitTracked?: boolean } = {},
+  ): readonly EngineOp[] | null {
     if (ops.length === 0) {
       return null
     }
-    return this.runtime.mutation.executeLocalNow(ops, potentialNewCells, { returnUndoOps: false })
+    return this.runtime.mutation.executeLocalNow(ops, potentialNewCells, { returnUndoOps: false, ...options })
   }
 }

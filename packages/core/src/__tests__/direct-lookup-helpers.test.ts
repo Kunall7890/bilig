@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { ErrorCode, ValueTag } from '@bilig/protocol'
 import type { RuntimeDirectLookupDescriptor } from '../engine/runtime-state.js'
 import {
+  approximateRepeatedUniformLookupNumericResult,
   approximateRepeatedUniformLookupCurrentResult,
   approximateUniformLookupCurrentResult,
   approximateUniformLookupNumericResult,
@@ -114,6 +115,10 @@ describe('direct lookup helpers', () => {
     expect(approximateUniformLookupNumericResult(approximateUniform({ start: 10, step: -1, matchMode: -1 }), 8.8)).toBe(2)
     expect(approximateUniformLookupNumericResult(approximateUniform({ start: 10, step: -1, matchMode: -1 }), 11)).toBeUndefined()
     expect(approximateUniformLookupNumericResult(approximateUniform({ step: 2 }), 4.9)).toBe(2)
+    expect(approximateUniformLookupNumericResult(approximateUniform({ length: 6, repeatedRunLength: 2 }), 2.5)).toBe(4)
+    expect(approximateUniformLookupNumericResult(approximateUniform({ length: 6, repeatedRunLength: 2 }), 0)).toBeUndefined()
+    expect(approximateRepeatedUniformLookupNumericResult(6, 1, 1, 2, 1, 3)).toBe(6)
+    expect(approximateRepeatedUniformLookupNumericResult(5, 5, -1, 2, -1, 3.5)).toBe(4)
     expect(
       approximateUniformLookupNumericResult(
         approximateUniform({ tailPatch: { row: 4, oldNumeric: 5, newNumeric: 9, columnVersion: 4 } }),

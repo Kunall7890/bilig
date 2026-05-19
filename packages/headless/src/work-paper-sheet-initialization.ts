@@ -24,6 +24,9 @@ import type {
   WorkPaperSheets,
 } from './work-paper-types.js'
 
+type RuntimeSnapshot = NonNullable<ReturnType<typeof readRuntimeSnapshot>>
+type RuntimeImage = NonNullable<ReturnType<typeof readRuntimeImage>>
+
 export function initializeWorkPaperFromSheets(args: {
   readonly engine: SpreadsheetEngine
   readonly config: WorkPaperConfig
@@ -76,15 +79,17 @@ export function initializeWorkPaperFromSheetEntries(args: {
   const runtimeSnapshotSheetsByName = runtimeSnapshotMatchesSheets
     ? new Map(runtimeSnapshot.sheets.map((sheet) => [sheet.name, sheet] as const))
     : undefined
-  const runtimeImageSheetCellsByName =
-    runtimeSnapshotMatchesSheets && runtimeSnapshot
-      ? new Map((readRuntimeImage(runtimeSnapshot)?.sheetCells ?? []).map((sheet) => [sheet.sheetName, sheet] as const))
-      : undefined
+  const runtimeImage = runtimeSnapshotMatchesSheets && runtimeSnapshot ? readRuntimeImage(runtimeSnapshot) : undefined
+  const runtimeImageSheetCellsByName = runtimeImage
+    ? new Map((runtimeImage.sheetCells ?? []).map((sheet) => [sheet.sheetName, sheet] as const))
+    : undefined
+  const runtimeImageDynamicSpillSheetsByName = collectRuntimeImageDynamicSpillSheets(runtimeImage)
   const inspectedSheets = inspectWorkPaperInitialSheets({
     sheetEntries,
     config: args.config,
     runtimeSnapshotSheetsByName,
     runtimeImageSheetCellsByName,
+    runtimeImageDynamicSpillSheetsByName,
   })
 
   args.withEngineEventCaptureDisabled(() => {
@@ -154,9 +159,9 @@ export function initializeWorkPaperFromSnapshot(args: {
   readonly clearHistoryStacks: () => void
   readonly resetChangeTrackingCaches: () => void
 }): void {
-  const runtimeImageSheetCellsByName = new Map(
-    (readRuntimeImage(args.snapshot)?.sheetCells ?? []).map((sheet) => [sheet.sheetName, sheet] as const),
-  )
+  const runtimeImage = readRuntimeImage(args.snapshot)
+  const runtimeImageSheetCellsByName = new Map((runtimeImage?.sheetCells ?? []).map((sheet) => [sheet.sheetName, sheet] as const))
+  const runtimeImageDynamicSpillSheetsByName = collectRuntimeImageDynamicSpillSheets(runtimeImage)
   const inspectedSheets = args.snapshot.sheets.map((snapshotSheet) =>
     inspectRuntimeSnapshotSheetDimensionsWithinLimits({
       sheetName: snapshotSheet.name,
@@ -175,7 +180,8 @@ export function initializeWorkPaperFromSnapshot(args: {
       const snapshotSheet = args.snapshot.sheets[index]!
       const sheetId = args.requireSheetId(snapshotSheet.name)
       args.cacheInitializedSheetDimensions(sheetId, inspectedSheets[index]!, {
-        mayResizeDynamically: workbookSnapshotSheetHasDynamicSpillFormula(snapshotSheet),
+        mayResizeDynamically:
+          runtimeImageDynamicSpillSheetsByName?.get(snapshotSheet.name) ?? workbookSnapshotSheetHasDynamicSpillFormula(snapshotSheet),
       })
     }
   })
@@ -193,12 +199,9 @@ function reapplyConfiguredCalculationSettings(engine: SpreadsheetEngine, config:
 function inspectWorkPaperInitialSheets(args: {
   readonly sheetEntries: readonly (readonly [string, WorkPaperSheets[string]])[]
   readonly config: WorkPaperConfig
-  readonly runtimeSnapshotSheetsByName:
-    | ReadonlyMap<string, NonNullable<ReturnType<typeof readRuntimeSnapshot>>['sheets'][number]>
-    | undefined
-  readonly runtimeImageSheetCellsByName:
-    | ReadonlyMap<string, NonNullable<NonNullable<ReturnType<typeof readRuntimeImage>>['sheetCells']>[number]>
-    | undefined
+  readonly runtimeSnapshotSheetsByName: ReadonlyMap<string, RuntimeSnapshot['sheets'][number]> | undefined
+  readonly runtimeImageSheetCellsByName: ReadonlyMap<string, NonNullable<RuntimeImage['sheetCells']>[number]> | undefined
+  readonly runtimeImageDynamicSpillSheetsByName: ReadonlyMap<string, boolean> | undefined
 }): WorkPaperSheetInspection[] {
   const inspectedSheets: WorkPaperSheetInspection[] = []
   for (let index = 0; index < args.sheetEntries.length; index += 1) {
@@ -215,7 +218,8 @@ function inspectWorkPaperInitialSheets(args: {
           })
           return {
             hasFormula: false,
-            hasDynamicSpillFormula: workbookSnapshotSheetHasDynamicSpillFormula(snapshotSheet),
+            hasDynamicSpillFormula:
+              args.runtimeImageDynamicSpillSheetsByName?.get(sheetName) ?? workbookSnapshotSheetHasDynamicSpillFormula(snapshotSheet),
             dimensions,
             materializedCellCount: runtimeSheetCells?.cellCount ?? 0,
             maxColumnCount: dimensions.width,
@@ -226,6 +230,29 @@ function inspectWorkPaperInitialSheets(args: {
       : inspectSheetWithinLimits(sheetName, sheet, args.config)
   }
   return inspectedSheets
+}
+
+function collectRuntimeImageDynamicSpillSheets(runtimeImage: RuntimeImage | undefined): ReadonlyMap<string, boolean> | undefined {
+  if (!runtimeImage) {
+    return undefined
+  }
+  const templateProducesSpillById = new Map(runtimeImage.templateBank.map((template) => [template.id, template.compiled.producesSpill]))
+  const sheetHasDynamicSpill = new Map<string, boolean>()
+  for (const formula of runtimeImage.formulaInstances) {
+    if (formula.templateId === undefined) {
+      return undefined
+    }
+    const producesSpill = templateProducesSpillById.get(formula.templateId)
+    if (producesSpill === undefined) {
+      return undefined
+    }
+    if (producesSpill) {
+      sheetHasDynamicSpill.set(formula.sheetName, true)
+    } else if (!sheetHasDynamicSpill.has(formula.sheetName)) {
+      sheetHasDynamicSpill.set(formula.sheetName, false)
+    }
+  }
+  return sheetHasDynamicSpill
 }
 
 class CombinedInitialFormulaSourceRefs implements EngineFormulaSourceRefTable {

@@ -1,10 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import {
-  DEFAULT_COMPETITIVE_SAMPLE_COUNT,
-  DEFAULT_COMPETITIVE_WARMUP_COUNT,
-} from '../packages/benchmarks/src/benchmark-workpaper-vs-hyperformula.ts'
-import {
   TRUECALC_SCALAR_WORKLOADS,
   buildWorkPaperVsTrueCalcScalarBenchmarkReport,
   runWorkPaperVsTrueCalcScalarBenchmarkSuite,
@@ -48,8 +44,8 @@ interface WorkPaperVsTrueCalcScalarBenchmarkArtifact {
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
 const outputPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'workpaper-vs-truecalc.json')
 const isCheckMode = process.argv.slice(2).includes('--check')
-const sampleCount = DEFAULT_COMPETITIVE_SAMPLE_COUNT
-const warmupCount = DEFAULT_COMPETITIVE_WARMUP_COUNT
+const sampleCount = 40
+const warmupCount = 8
 const workpaperSourcePath = 'packages/headless'
 const truecalcSourcePath = 'packages/benchmarks/node_modules/@truecalc/core'
 

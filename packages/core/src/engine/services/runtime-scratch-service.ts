@@ -3,6 +3,8 @@ import { growUint32 } from '../../engine-buffer-utils.js'
 import type { U32 } from '../runtime-state.js'
 import { EngineRuntimeScratchError } from '../errors.js'
 
+export const INITIAL_RUNTIME_SCRATCH_CAPACITY = 16
+
 function scratchErrorMessage(message: string, cause: unknown): string {
   return cause instanceof Error && cause.message.length > 0 ? cause.message : message
 }
@@ -59,29 +61,29 @@ export interface EngineRuntimeScratchService {
 }
 
 export function createEngineRuntimeScratchService(): EngineRuntimeScratchService {
-  let pendingKernelSync: U32 = new Uint32Array(128)
+  let pendingKernelSync: U32 = new Uint32Array(INITIAL_RUNTIME_SCRATCH_CAPACITY)
   let deferredKernelSyncCount = 0
   let deferredKernelSyncEpoch = 1
-  let deferredKernelSyncSeen: U32 = new Uint32Array(128)
-  let wasmBatch: U32 = new Uint32Array(128)
-  let mutationRoots: U32 = new Uint32Array(128)
+  let deferredKernelSyncSeen: U32 = new Uint32Array(INITIAL_RUNTIME_SCRATCH_CAPACITY)
+  let wasmBatch: U32 = new Uint32Array(INITIAL_RUNTIME_SCRATCH_CAPACITY)
+  let mutationRoots: U32 = new Uint32Array(INITIAL_RUNTIME_SCRATCH_CAPACITY)
   let changedInputEpoch = 1
-  let changedInputSeen: U32 = new Uint32Array(128)
-  let changedInputBuffer: U32 = new Uint32Array(128)
+  let changedInputSeen: U32 = new Uint32Array(INITIAL_RUNTIME_SCRATCH_CAPACITY)
+  let changedInputBuffer: U32 = new Uint32Array(INITIAL_RUNTIME_SCRATCH_CAPACITY)
   let changedFormulaEpoch = 1
-  let changedFormulaSeen: U32 = new Uint32Array(128)
-  let changedFormulaBuffer: U32 = new Uint32Array(128)
+  let changedFormulaSeen: U32 = new Uint32Array(INITIAL_RUNTIME_SCRATCH_CAPACITY)
+  let changedFormulaBuffer: U32 = new Uint32Array(INITIAL_RUNTIME_SCRATCH_CAPACITY)
   let changedUnionEpoch = 1
-  let changedUnionSeen: U32 = new Uint32Array(128)
-  let changedUnion: U32 = new Uint32Array(128)
+  let changedUnionSeen: U32 = new Uint32Array(INITIAL_RUNTIME_SCRATCH_CAPACITY)
+  let changedUnion: U32 = new Uint32Array(INITIAL_RUNTIME_SCRATCH_CAPACITY)
   let materializedCellCount = 0
-  let materializedCells: U32 = new Uint32Array(128)
+  let materializedCells: U32 = new Uint32Array(INITIAL_RUNTIME_SCRATCH_CAPACITY)
   let explicitChangedEpoch = 1
-  let explicitChangedSeen: U32 = new Uint32Array(128)
-  let explicitChangedBuffer: U32 = new Uint32Array(128)
+  let explicitChangedSeen: U32 = new Uint32Array(INITIAL_RUNTIME_SCRATCH_CAPACITY)
+  let explicitChangedBuffer: U32 = new Uint32Array(INITIAL_RUNTIME_SCRATCH_CAPACITY)
   let impactedFormulaEpoch = 1
-  let impactedFormulaSeen: U32 = new Uint32Array(128)
-  let impactedFormulaBuffer: U32 = new Uint32Array(128)
+  let impactedFormulaSeen: U32 = new Uint32Array(INITIAL_RUNTIME_SCRATCH_CAPACITY)
+  let impactedFormulaBuffer: U32 = new Uint32Array(INITIAL_RUNTIME_SCRATCH_CAPACITY)
 
   const ensureRecalcCapacityNow = (size: number): void => {
     if (size > mutationRoots.length) {

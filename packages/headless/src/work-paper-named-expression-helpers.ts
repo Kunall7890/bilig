@@ -201,23 +201,39 @@ export function workPaperNamedExpressionToDefinedNameSnapshot(args: {
   readonly defaultScopeId: number
   readonly rewriteFormulaForStorage: (formula: string, ownerSheetId: number) => string
 }): WorkbookDefinedNameValueSnapshot {
-  if (args.expression === null || typeof args.expression === 'number' || typeof args.expression === 'boolean') {
-    return args.expression
+  const simpleSnapshot = trySimpleWorkPaperNamedExpressionDefinedNameSnapshot(args.expression)
+  if (simpleSnapshot !== undefined) {
+    return simpleSnapshot
   }
   if (typeof args.expression === 'string' && args.expression.trim().startsWith('=')) {
-    const simpleBody = tryReadSimpleScalarFormulaBody(args.expression)
-    if (simpleBody !== undefined && tryEvaluateSimpleScalarFormulaBody(simpleBody) !== undefined) {
-      return {
-        kind: 'formula',
-        formula: `=${simpleBody}`,
-      }
-    }
     return {
       kind: 'formula',
       formula: `=${args.rewriteFormulaForStorage(stripLeadingEquals(args.expression), args.scope ?? args.defaultScopeId)}`,
     }
   }
   return args.expression
+}
+
+export function trySimpleWorkPaperNamedExpressionDefinedNameSnapshot(
+  expression: RawCellContent,
+): WorkbookDefinedNameValueSnapshot | undefined {
+  if (expression === null || typeof expression === 'number' || typeof expression === 'boolean') {
+    return expression
+  }
+  if (typeof expression !== 'string') {
+    return undefined
+  }
+  if (!expression.trim().startsWith('=')) {
+    return expression
+  }
+  const simpleBody = tryReadSimpleScalarFormulaBody(expression)
+  if (simpleBody !== undefined && tryEvaluateSimpleScalarFormulaBody(simpleBody) !== undefined) {
+    return {
+      kind: 'formula',
+      formula: `=${simpleBody}`,
+    }
+  }
+  return undefined
 }
 
 export function evaluateWorkPaperNamedExpression(

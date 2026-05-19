@@ -474,7 +474,7 @@ describe('operation-service internals', () => {
       changedCellCount: 1,
       explicitChangedCount: 1,
     })
-    expect(makeCompactExistingNumericMutationResult(1, 2, 1, 12, { row: 3, col: 4 })).toEqual({
+    expect(makeCompactExistingNumericMutationResult(1, 2, 1, 12, 3, 4)).toEqual({
       firstChangedCellIndex: 1,
       secondChangedCellIndex: 2,
       changedCellCount: 2,

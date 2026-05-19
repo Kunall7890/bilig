@@ -2,7 +2,7 @@ import type { CompiledFormula } from '@bilig/formula'
 import { MAX_COLS } from '@bilig/protocol'
 import type { RuntimeDirectAggregateDescriptor, RuntimeDirectCriteriaDescriptor, RuntimeFormula } from '../runtime-state.js'
 
-type FormulaBindingSourceRenameTransform = {
+export type FormulaBindingSourceRenameTransform = {
   readonly oldSheetName: string
   readonly newSheetName: string
 }
@@ -54,6 +54,10 @@ export function removeTrackedReverseEdge<Key extends string | number>(
 }
 
 export function collectTrackedDependents<Key extends string | number>(registry: Map<Key, Set<number>>, keys: readonly Key[]): number[] {
+  if (keys.length === 1) {
+    const dependents = registry.get(keys[0]!)
+    return dependents === undefined || dependents.size === 0 ? [] : [...dependents]
+  }
   const candidates = new Set<number>()
   keys.forEach((key) => {
     registry.get(key)?.forEach((cellIndex) => {
@@ -83,19 +87,11 @@ export function directRegionIdsForFormula(
         directAggregate: RuntimeDirectAggregateDescriptor | undefined
         directCriteria: RuntimeDirectCriteriaDescriptor | undefined
       },
-): number[] {
-  if (value.directAggregate && !value.directCriteria) {
-    return value.directAggregate.regionIds ? [...value.directAggregate.regionIds] : [value.directAggregate.regionId]
-  }
+): readonly number[] {
   if (!value.directAggregate && !value.directCriteria) {
     return []
   }
   const regionIds = new Set<number>()
-  if (value.directAggregate) {
-    ;(value.directAggregate.regionIds ?? [value.directAggregate.regionId]).forEach((regionId) => {
-      regionIds.add(regionId)
-    })
-  }
   if (value.directCriteria) {
     if (value.directCriteria.aggregateRange) {
       regionIds.add(value.directCriteria.aggregateRange.regionId)
@@ -112,16 +108,204 @@ export function appendSheetRenameSourceTransform(
   oldSheetName: string,
   newSheetName: string,
 ): void {
+  appendSheetRenameSourceTransformRecord(formula, { oldSheetName, newSheetName })
+}
+
+export function appendSheetRenameSourceTransformRecord(
+  formula: FormulaBindingSourceTransformRecord,
+  transform: FormulaBindingSourceRenameTransform,
+): void {
   const transforms = formula.sourceRenameTransforms
   if (transforms) {
-    transforms.push({ oldSheetName, newSheetName })
+    transforms.push(transform)
     return
   }
-  formula.sourceRenameTransforms = [{ oldSheetName, newSheetName }]
+  formula.sourceRenameTransforms = [transform]
 }
 
 export function aggregateColumnDependencyKey(sheetId: number, col: number): number {
   return sheetId * MAX_COLS + col
+}
+
+type FormulaBindingSheetLookup = {
+  getSheet(sheetName: string): { readonly id: number } | undefined
+}
+
+interface DirectAggregateColumnOwnerInterval {
+  readonly formulaCellIndex: number
+  readonly rowStart: number
+  readonly rowEnd: number
+}
+
+interface DirectAggregateColumnOwnerIndex {
+  readonly intervalsByFormulaCellIndex: Map<number, DirectAggregateColumnOwnerInterval>
+  readonly intervalsByRowStart: DirectAggregateColumnOwnerInterval[]
+  readonly prefixMaxRowEnd: number[]
+  readonly unindexedFormulaCellIndices: Set<number>
+  orderedByRowStart: boolean
+  lastRowStart: number
+}
+
+const directAggregateColumnOwnerIndexes = new WeakMap<Set<number>, DirectAggregateColumnOwnerIndex>()
+
+function getOrCreateDirectAggregateColumnOwnerIndex(dependents: Set<number>): DirectAggregateColumnOwnerIndex {
+  let index = directAggregateColumnOwnerIndexes.get(dependents)
+  if (index === undefined) {
+    index = {
+      intervalsByFormulaCellIndex: new Map(),
+      intervalsByRowStart: [],
+      prefixMaxRowEnd: [],
+      unindexedFormulaCellIndices: new Set(),
+      orderedByRowStart: true,
+      lastRowStart: Number.NEGATIVE_INFINITY,
+    }
+    directAggregateColumnOwnerIndexes.set(dependents, index)
+  }
+  return index
+}
+
+function appendDirectAggregateColumnOwnerInterval(
+  dependents: Set<number>,
+  formulaCellIndex: number,
+  directAggregate: RuntimeDirectAggregateDescriptor,
+): void {
+  const index = getOrCreateDirectAggregateColumnOwnerIndex(dependents)
+  const previous = index.intervalsByFormulaCellIndex.get(formulaCellIndex)
+  if (previous !== undefined) {
+    if (previous.rowStart === directAggregate.rowStart && previous.rowEnd === directAggregate.rowEnd) {
+      return
+    }
+    index.intervalsByFormulaCellIndex.delete(formulaCellIndex)
+  }
+  const interval = {
+    formulaCellIndex,
+    rowStart: directAggregate.rowStart,
+    rowEnd: directAggregate.rowEnd,
+  }
+  index.intervalsByFormulaCellIndex.set(formulaCellIndex, interval)
+  index.intervalsByRowStart.push(interval)
+  const previousPrefixMax = index.prefixMaxRowEnd[index.prefixMaxRowEnd.length - 1] ?? Number.NEGATIVE_INFINITY
+  index.prefixMaxRowEnd.push(Math.max(previousPrefixMax, interval.rowEnd))
+  if (interval.rowStart < index.lastRowStart) {
+    index.orderedByRowStart = false
+  }
+  index.lastRowStart = interval.rowStart
+}
+
+function removeDirectAggregateColumnOwnerInterval(dependents: Set<number>, formulaCellIndex: number): void {
+  directAggregateColumnOwnerIndexes.get(dependents)?.intervalsByFormulaCellIndex.delete(formulaCellIndex)
+}
+
+function firstIntervalStartingAfter(intervals: readonly DirectAggregateColumnOwnerInterval[], row: number): number {
+  let low = 0
+  let high = intervals.length
+  while (low < high) {
+    const mid = (low + high) >>> 1
+    if (intervals[mid]!.rowStart <= row) {
+      low = mid + 1
+    } else {
+      high = mid
+    }
+  }
+  return low
+}
+
+export function visitIndexedDirectAggregateColumnDependentsForRow(
+  dependents: Set<number>,
+  row: number,
+  visit: (formulaCellIndex: number) => boolean,
+): boolean {
+  const index = directAggregateColumnOwnerIndexes.get(dependents)
+  if (index === undefined || !index.orderedByRowStart || index.unindexedFormulaCellIndices.size > 0) {
+    return false
+  }
+  const intervals = index.intervalsByRowStart
+  let cursor = firstIntervalStartingAfter(intervals, row) - 1
+  for (; cursor >= 0; cursor -= 1) {
+    if ((index.prefixMaxRowEnd[cursor] ?? Number.NEGATIVE_INFINITY) < row) {
+      break
+    }
+    const interval = intervals[cursor]!
+    const current = index.intervalsByFormulaCellIndex.get(interval.formulaCellIndex)
+    if (current !== interval || interval.rowEnd < row) {
+      continue
+    }
+    if (!visit(interval.formulaCellIndex)) {
+      break
+    }
+  }
+  return true
+}
+
+function forEachDirectAggregateColumnDependencyKey(
+  workbook: FormulaBindingSheetLookup,
+  directAggregate: RuntimeDirectAggregateDescriptor | undefined,
+  visit: (key: number) => void,
+): void {
+  if (directAggregate === undefined) {
+    return
+  }
+  const sheet = workbook.getSheet(directAggregate.sheetName)
+  if (!sheet) {
+    return
+  }
+  for (let col = directAggregate.col; col <= directAggregate.colEnd; col += 1) {
+    visit(aggregateColumnDependencyKey(sheet.id, col))
+  }
+}
+
+export function appendDirectAggregateColumnReverseEdges(
+  registry: Map<number, Set<number>>,
+  workbook: FormulaBindingSheetLookup,
+  directAggregate: RuntimeDirectAggregateDescriptor | undefined,
+  dependentCellIndex: number,
+): void {
+  forEachDirectAggregateColumnDependencyKey(workbook, directAggregate, (key) => {
+    appendTrackedReverseEdge(registry, key, dependentCellIndex)
+    const dependents = registry.get(key)
+    if (dependents !== undefined && directAggregate !== undefined) {
+      appendDirectAggregateColumnOwnerInterval(dependents, dependentCellIndex, directAggregate)
+    }
+  })
+}
+
+export function removeDirectAggregateColumnReverseEdges(
+  registry: Map<number, Set<number>>,
+  workbook: FormulaBindingSheetLookup,
+  directAggregate: RuntimeDirectAggregateDescriptor | undefined,
+  dependentCellIndex: number,
+): void {
+  forEachDirectAggregateColumnDependencyKey(workbook, directAggregate, (key) => {
+    const dependents = registry.get(key)
+    if (dependents !== undefined) {
+      removeDirectAggregateColumnOwnerInterval(dependents, dependentCellIndex)
+    }
+    removeTrackedReverseEdge(registry, key, dependentCellIndex)
+  })
+}
+
+export function appendUnindexedAggregateColumnReverseEdge(
+  registry: Map<number, Set<number>>,
+  key: number,
+  dependentCellIndex: number,
+): void {
+  appendTrackedReverseEdge(registry, key, dependentCellIndex)
+  const dependents = registry.get(key)
+  if (dependents !== undefined) {
+    getOrCreateDirectAggregateColumnOwnerIndex(dependents).unindexedFormulaCellIndices.add(dependentCellIndex)
+  }
+}
+
+export function removeUnindexedAggregateColumnReverseEdge(
+  registry: Map<number, Set<number>>,
+  key: number,
+  dependentCellIndex: number,
+): void {
+  const dependents = registry.get(key)
+  if (dependents !== undefined) {
+    directAggregateColumnOwnerIndexes.get(dependents)?.unindexedFormulaCellIndices.delete(dependentCellIndex)
+  }
+  removeTrackedReverseEdge(registry, key, dependentCellIndex)
 }
 
 export function directCriteriaAggregateColumn(

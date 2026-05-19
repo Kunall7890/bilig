@@ -10,6 +10,7 @@ import {
   evaluateWorkPaperNamedExpression,
   listWorkPaperNamedExpressions,
   serializeWorkPaperNamedExpressions,
+  trySimpleWorkPaperNamedExpressionDefinedNameSnapshot,
   validateWorkPaperNamedExpression,
   workPaperCellSnapshotToRawContent,
   workPaperNamedExpressionToDefinedNameSnapshot,
@@ -164,6 +165,12 @@ describe('work paper named expression helpers', () => {
         rewriteFormulaForStorage: (formula, ownerSheetId) => `stored:${ownerSheetId}:${formula}`,
       }),
     ).toEqual({ kind: 'formula', formula: '=stored:1:SUM($A$1:$A$3)' })
+  })
+
+  it('builds simple scalar defined-name snapshots without scope rewriting', () => {
+    expect(trySimpleWorkPaperNamedExpressionDefinedNameSnapshot('=3')).toEqual({ kind: 'formula', formula: '=3' })
+    expect(trySimpleWorkPaperNamedExpressionDefinedNameSnapshot(' plain ')).toBe(' plain ')
+    expect(trySimpleWorkPaperNamedExpressionDefinedNameSnapshot('=SUM(A1:A3)')).toBeUndefined()
   })
 
   it('lists and serializes public named expressions in stable order', () => {

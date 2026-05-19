@@ -69,6 +69,21 @@ type RebuildValueSnapshot = Map<number, CellValue>
 const FORMULA_REBUILD_VALUE_FLAGS = CellFlags.HasFormula | CellFlags.SpillChild | CellFlags.PivotOutput
 export const EMPTY_NAMED_EXPRESSION_VALUES: NamedExpressionValueSnapshot = new Map()
 
+function shouldPreferLazyPublicChanges(events: readonly TrackedEngineEvent[], shouldEmitValuesUpdated: boolean): boolean {
+  if (!shouldEmitValuesUpdated) {
+    return true
+  }
+  return events.some(
+    (event) =>
+      event.changedCellIndices.length > TINY_TRACKED_CHANGE_LIMIT &&
+      event.invalidation !== 'full' &&
+      event.patches === undefined &&
+      !event.hasInvalidatedRanges &&
+      !event.hasInvalidatedRows &&
+      !event.hasInvalidatedColumns,
+  )
+}
+
 export abstract class WorkPaperRuntimeSurface extends WorkPaperRuntimeMetadataSurface {
   protected abstract readonly namedExpressions: Map<string, InternalNamedExpression>
   protected abstract readonly engineEvents: WorkPaperEngineEventTracker
@@ -88,6 +103,8 @@ export abstract class WorkPaperRuntimeSurface extends WorkPaperRuntimeMetadataSu
   protected abstract suspendedUsesTrackedFastPath: boolean
   protected abstract queuedEvents: QueuedEvent[]
   protected abstract disposed: boolean
+
+  protected abstract ensureEngineEventTracking(): void
 
   protected abstract evaluateNamedExpression(
     expression: InternalNamedExpression,
@@ -121,6 +138,7 @@ export abstract class WorkPaperRuntimeSurface extends WorkPaperRuntimeMetadataSu
       return []
     }
     if (this.canUseTrackedMutationFastPath()) {
+      this.ensureEngineEventTracking()
       const beforeFormulaValues = this.captureFormulaResultValueSnapshot()
       this.engineEvents.drain()
       try {
@@ -132,9 +150,10 @@ export abstract class WorkPaperRuntimeSurface extends WorkPaperRuntimeMetadataSu
         throw new WorkPaperOperationError(this.messageOf(error, 'Recalculation failed'))
       }
       const shouldEmitValuesUpdated = this.emitter.hasListeners('valuesUpdated')
+      const events = this.engineEvents.drain()
       const changes = this.filterUnchangedRebuildChanges(
-        this.computeTrackedChangesWithoutVisibilityCache(this.engineEvents.drain(), {
-          preferLazyPublicChanges: false,
+        this.computeTrackedChangesWithoutVisibilityCache(events, {
+          preferLazyPublicChanges: shouldPreferLazyPublicChanges(events, shouldEmitValuesUpdated),
         }),
         beforeFormulaValues,
       )
@@ -145,6 +164,7 @@ export abstract class WorkPaperRuntimeSurface extends WorkPaperRuntimeMetadataSu
     }
     const beforeVisibility = this.ensureVisibilityCache()
     const beforeNames = this.namedExpressions.size > 0 ? this.ensureNamedExpressionValueCache() : EMPTY_NAMED_EXPRESSION_VALUES
+    this.ensureEngineEventTracking()
     this.engineEvents.drain()
     try {
       this.engine.recalculateNow()
@@ -173,6 +193,7 @@ export abstract class WorkPaperRuntimeSurface extends WorkPaperRuntimeMetadataSu
     if (isOutermost) {
       this.batchUsesTrackedFastPath = this.canUseTrackedMutationFastPath()
       if (this.batchUsesTrackedFastPath) {
+        this.ensureEngineEventTracking()
         this.batchStartVisibility = null
         this.batchStartNamedValues = EMPTY_NAMED_EXPRESSION_VALUES
       } else {
@@ -202,9 +223,10 @@ export abstract class WorkPaperRuntimeSurface extends WorkPaperRuntimeMetadataSu
       return []
     }
     const shouldEmitValuesUpdated = this.emitter.hasListeners('valuesUpdated')
+    const events = this.batchUsesTrackedFastPath ? this.engineEvents.drain() : []
     const changes = this.batchUsesTrackedFastPath
-      ? this.computeTrackedChangesWithoutVisibilityCache(this.engineEvents.drain(), {
-          preferLazyPublicChanges: !shouldEmitValuesUpdated,
+      ? this.computeTrackedChangesWithoutVisibilityCache(events, {
+          preferLazyPublicChanges: shouldPreferLazyPublicChanges(events, shouldEmitValuesUpdated),
         })
       : this.computeChangesAfterMutation(this.batchStartVisibility ?? new Map(), this.batchStartNamedValues ?? new Map())
     this.batchUsesTrackedFastPath = false
@@ -247,6 +269,7 @@ export abstract class WorkPaperRuntimeSurface extends WorkPaperRuntimeMetadataSu
       return []
     }
     if (this.suspendedUsesTrackedFastPath) {
+      this.ensureEngineEventTracking()
       this.engineEvents.withRetainedIndices(() => {
         this.flushSuspendedCellMutations()
       })
@@ -254,9 +277,10 @@ export abstract class WorkPaperRuntimeSurface extends WorkPaperRuntimeMetadataSu
       this.flushSuspendedCellMutations()
     }
     const shouldEmitValuesUpdated = this.emitter.hasListeners('valuesUpdated')
+    const events = this.suspendedUsesTrackedFastPath ? this.engineEvents.drain() : []
     const changes = this.suspendedUsesTrackedFastPath
-      ? this.computeTrackedChangesWithoutVisibilityCache(this.engineEvents.drain(), {
-          preferLazyPublicChanges: !shouldEmitValuesUpdated,
+      ? this.computeTrackedChangesWithoutVisibilityCache(events, {
+          preferLazyPublicChanges: shouldPreferLazyPublicChanges(events, shouldEmitValuesUpdated),
         })
       : this.computeChangesAfterMutation(this.suspendedVisibility ?? new Map(), this.suspendedNamedValues ?? new Map())
     this.evaluationSuspended = false
@@ -676,6 +700,7 @@ export abstract class WorkPaperRuntimeSurface extends WorkPaperRuntimeMetadataSu
     } = {},
   ): WorkPaperChange[] {
     this.assertNotDisposed()
+    this.ensureEngineEventTracking()
     if (this.engineEvents.hasPendingLazyChanges) {
       this.engineEvents.materializePendingLazyChanges(
         options.preservePendingTrackedPositions === undefined ? {} : { preservePositions: options.preservePendingTrackedPositions },
@@ -696,22 +721,28 @@ export abstract class WorkPaperRuntimeSurface extends WorkPaperRuntimeMetadataSu
     if (events.length > 0 && events.every(trackedEventHasNoValueChanges)) {
       return []
     }
-    const directSingleLiteralChanges = tryBuildDirectSingleLiteralTrackedChange({
-      events,
-      ...(options.singleLiteralChange !== undefined ? { expected: options.singleLiteralChange } : {}),
-      cellStore: this.engine.workbook.cellStore,
-      strings: this.engine.strings,
-      trackedA1: (row, col) => this.trackedA1(row, col),
-    })
-    if (directSingleLiteralChanges) {
-      if (directSingleLiteralChanges.length > 0 && this.emitter.hasListeners('valuesUpdated')) {
-        this.emitter.emitDetailed({ eventName: 'valuesUpdated', payload: { changes: directSingleLiteralChanges } })
-      }
-      return directSingleLiteralChanges
-    }
     const shouldEmitValuesUpdated = this.emitter.hasListeners('valuesUpdated')
+    const event = events.length === 1 ? events[0] : undefined
+    const preferLazyPublicChanges = shouldPreferLazyPublicChanges(events, shouldEmitValuesUpdated)
+    const shouldReadDirectSingleLiteralEagerly =
+      event === undefined || event.changedCellIndices.length <= TINY_TRACKED_CHANGE_LIMIT || !preferLazyPublicChanges
+    if (shouldReadDirectSingleLiteralEagerly) {
+      const directSingleLiteralChanges = tryBuildDirectSingleLiteralTrackedChange({
+        events,
+        ...(options.singleLiteralChange !== undefined ? { expected: options.singleLiteralChange } : {}),
+        cellStore: this.engine.workbook.cellStore,
+        strings: this.engine.strings,
+        trackedA1: (row, col) => this.trackedA1(row, col),
+      })
+      if (directSingleLiteralChanges) {
+        if (directSingleLiteralChanges.length > 0 && shouldEmitValuesUpdated) {
+          this.emitter.emitDetailed({ eventName: 'valuesUpdated', payload: { changes: directSingleLiteralChanges } })
+        }
+        return directSingleLiteralChanges
+      }
+    }
     const changes = this.computeTrackedChangesWithoutVisibilityCache(events, {
-      preferLazyPublicChanges: !shouldEmitValuesUpdated,
+      preferLazyPublicChanges,
     })
     if (changes.length > 0 && shouldEmitValuesUpdated) {
       this.emitter.emitDetailed({ eventName: 'valuesUpdated', payload: { changes } })
@@ -726,6 +757,7 @@ export abstract class WorkPaperRuntimeSurface extends WorkPaperRuntimeMetadataSu
       return this.batch(batchOperations)
     }
     this.assertNotDisposed()
+    this.ensureEngineEventTracking()
     const undoStackStart = this.getUndoStack().length
     this.engineEvents.drain()
     this.batchDepth += 1
@@ -742,7 +774,7 @@ export abstract class WorkPaperRuntimeSurface extends WorkPaperRuntimeMetadataSu
       events.length > 0 && events.every(trackedEventHasNoValueChanges)
         ? []
         : this.computeTrackedChangesWithoutVisibilityCache(events, {
-            preferLazyPublicChanges: !shouldEmitValuesUpdated,
+            preferLazyPublicChanges: shouldPreferLazyPublicChanges(events, shouldEmitValuesUpdated),
           })
     this.flushQueuedEvents()
     if (changes.length > 0 && shouldEmitValuesUpdated) {
@@ -800,6 +832,7 @@ export abstract class WorkPaperRuntimeSurface extends WorkPaperRuntimeMetadataSu
     }
     const beforeVisibility = this.ensureVisibilityCache()
     const beforeNames = this.namedExpressions.size > 0 ? this.ensureNamedExpressionValueCache() : EMPTY_NAMED_EXPRESSION_VALUES
+    this.ensureEngineEventTracking()
     this.engineEvents.drain()
     try {
       mutate()

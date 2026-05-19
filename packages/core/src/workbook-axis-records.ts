@@ -141,6 +141,17 @@ export function materializeAxisEntries(
   count: number,
   createEntry: () => WorkbookAxisEntryRecord,
 ): WorkbookAxisEntrySnapshot[] {
+  if (count <= 0) {
+    return []
+  }
+  if (count === 1) {
+    let entry = entries[start]
+    if (!entry) {
+      entry = createEntry()
+      entries[start] = entry
+    }
+    return [makeAxisEntrySnapshot(entry, start)]
+  }
   return materializeAxisEntryRecords(entries, start, count, createEntry).map((entry, offset) =>
     makeAxisEntrySnapshot(entry, start + offset),
   )
@@ -153,6 +164,10 @@ export function snapshotAxisEntriesInRange(
 ): WorkbookAxisEntrySnapshot[] {
   if (count <= 0) {
     return []
+  }
+  if (count === 1) {
+    const entry = entries[start]
+    return entry ? [makeAxisEntrySnapshot(entry, start)] : []
   }
   const snapshots: WorkbookAxisEntrySnapshot[] = []
   for (let offset = 0; offset < count; offset += 1) {
@@ -174,20 +189,51 @@ export function spliceAxisEntries(
   createEntry: () => WorkbookAxisEntryRecord,
   providedSnapshots?: readonly WorkbookAxisEntrySnapshot[],
 ): WorkbookAxisEntrySnapshot[] {
+  if (insertCount === 0 && axisEntries.length <= start) {
+    return []
+  }
+  if (providedSnapshots === undefined && deleteCount === 0 && axisEntries.length < start) {
+    return []
+  }
+  if (axisEntries.length < start) {
+    axisEntries.length = start
+  }
+  if (providedSnapshots === undefined) {
+    if (deleteCount === 0 && insertCount === 1) {
+      axisEntries.splice(start, 0, createEntry())
+      return []
+    }
+    let removed: Array<WorkbookAxisEntryRecord | undefined>
+    if (insertCount === 0) {
+      removed = axisEntries.splice(start, deleteCount)
+    } else if (insertCount === 1) {
+      removed = axisEntries.splice(start, deleteCount, createEntry())
+    } else {
+      const inserted: WorkbookAxisEntryRecord[] = []
+      inserted.length = insertCount
+      for (let index = 0; index < insertCount; index += 1) {
+        inserted[index] = createEntry()
+      }
+      removed = axisEntries.splice(start, deleteCount, ...inserted)
+    }
+    return removed.flatMap((entry, index) => (entry ? [makeAxisEntrySnapshot(entry, start + index)] : []))
+  }
+
+  if (deleteCount === 0 && insertCount === 1 && providedSnapshots.length <= 1) {
+    const provided = providedSnapshots[0]
+    const insertedEntry = provided?.index === start ? makeAxisEntryRecord(provided) : undefined
+    axisEntries.splice(start, 0, insertedEntry)
+    return []
+  }
+
   const providedEntries = new Map<number, WorkbookAxisEntrySnapshot>()
-  providedSnapshots?.forEach((entry) => {
+  providedSnapshots.forEach((entry) => {
     const offset = entry.index - start
     if (offset < 0 || offset >= insertCount) {
       return
     }
     providedEntries.set(offset, entry)
   })
-  if (insertCount === 0 && axisEntries.length <= start) {
-    return []
-  }
-  if (axisEntries.length < start) {
-    axisEntries.length = start
-  }
   const removed = axisEntries.splice(
     start,
     deleteCount,

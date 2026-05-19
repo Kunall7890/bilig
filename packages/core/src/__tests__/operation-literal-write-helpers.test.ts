@@ -11,6 +11,7 @@ import {
   writeFastPathOperationLiteralToExistingCell,
   writeOperationLiteralToExistingCell,
   writeOperationNumericLiteralToExistingCell,
+  writeOperationNumericLiteralToExistingCellWithoutColumnNotify,
   writeTrustedOperationExistingNumericLiteralToCell,
 } from '../engine/services/operation-literal-write-helpers.js'
 
@@ -76,6 +77,27 @@ describe('operation literal write helpers', () => {
     expect(cellStore.numbers[2]).toBe(7)
     expect(cellStore.flags[2] & CellFlags.AuthoredBlank).toBe(0)
     expect(columnVersions[1]).toBe(1)
+  })
+
+  it('writes numeric literals without column notification for externally coalesced batches', () => {
+    const cellStore = createCellStoreWithCells()
+    const notifications: number[] = []
+    cellStore.onSetValue = (cellIndex) => notifications.push(cellIndex)
+    cellStore.flags[1] = CellFlags.AuthoredBlank
+
+    writeOperationNumericLiteralToExistingCellWithoutColumnNotify({
+      cellStore,
+      cellIndex: 1,
+      value: 24,
+    })
+
+    expect(cellStore.tags[1]).toBe(ValueTag.Number)
+    expect(cellStore.errors[1]).toBe(ErrorCode.None)
+    expect(cellStore.stringIds[1]).toBe(0)
+    expect(cellStore.numbers[1]).toBe(24)
+    expect(cellStore.flags[1] & CellFlags.AuthoredBlank).toBe(0)
+    expect(cellStore.versions[1]).toBe(1)
+    expect(notifications).toEqual([])
   })
 
   it('routes fast-path literal writes by value shape and detects shared physical version columns', () => {

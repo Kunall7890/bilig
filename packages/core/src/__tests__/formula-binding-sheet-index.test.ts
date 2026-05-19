@@ -15,6 +15,17 @@ describe('formula binding sheet index', () => {
     expect(index.collectReferencingSheet('Sheet1')).toEqual([9])
   })
 
+  it('trusts complete parsed local dependency metadata without scanning dependency text', () => {
+    const index = createFormulaBindingSheetIndex()
+    index.trackFormula(7, 'Sheet1', {
+      deps: ['Looks!Qualified'],
+      parsedDeps: [{ kind: 'cell', address: 'A1', row: 0, col: 0 }],
+    })
+
+    expect(index.collectOwnedBySheet('Sheet1')).toEqual([7])
+    expect(index.collectReferencingSheet('Looks')).toEqual([])
+  })
+
   it('untracks formulas and removes empty sheet entries', () => {
     const index = createFormulaBindingSheetIndex()
     index.trackFormula(7, 'Sheet1', { deps: ['Sheet2!A1'] })

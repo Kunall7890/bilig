@@ -54,9 +54,10 @@ export function buildStructuralTransaction(input: {
   readonly remappedCells: readonly StructuralRemappedCell[]
 }): StructuralTransaction {
   const scope = structuralScopeForTransform(input.transform)
-  const removedCellIndices = input.remappedCells
-    .filter((entry) => entry.toRow === undefined || entry.toCol === undefined)
-    .map((entry) => entry.cellIndex)
+  const removedCellIndices =
+    input.transform.kind === 'insert'
+      ? []
+      : input.remappedCells.filter((entry) => entry.toRow === undefined || entry.toCol === undefined).map((entry) => entry.cellIndex)
 
   return {
     sheetName: input.sheetName,

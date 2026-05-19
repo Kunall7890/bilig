@@ -1,6 +1,7 @@
 import type { EngineCellMutationRef } from '@bilig/core'
 import { translateFormulaReferences } from '@bilig/formula'
 import { buildMatrixMutationPlan, type MatrixMutationDimensionImpact } from './matrix-mutation-plan.js'
+import { workPaperFormulaMayResizeDynamically } from './work-paper-sheet-inspection.js'
 import { stripLeadingEquals } from './work-paper-runtime-helpers.js'
 import type { RawCellContent, WorkPaperCellAddress, WorkPaperSheet } from './work-paper-types.js'
 
@@ -82,10 +83,46 @@ export function applyWorkPaperMatrixContents(input: {
   if (options.skipNulls !== undefined) {
     planInput.skipNulls = options.skipNulls
   }
+  const phaseSource = options.captureUndo === false ? 'restore' : 'local'
+  const createApplyOptions = (phasePotentialNewCells: number): WorkPaperCellMutationApplyOptions => {
+    const applyOptions: WorkPaperCellMutationApplyOptions = {
+      potentialNewCells: phasePotentialNewCells,
+      source: phaseSource,
+      returnUndoOps: false,
+      reuseRefs: true,
+    }
+    if (options.captureUndo !== undefined) {
+      applyOptions.captureUndo = options.captureUndo
+    }
+    return applyOptions
+  }
+  const updateSheetDimensionsAfterCellMutationRefs = input.updateSheetDimensionsAfterCellMutationRefs
+  const canUpdateDimensionsOnce =
+    updateSheetDimensionsAfterCellMutationRefs !== undefined && (phaseSource !== 'local' || input.isEvaluationSuspended?.() !== true)
+  const updateDimensionsOnce = (refs: readonly EngineCellMutationRef[], impact: MatrixMutationDimensionImpact): void => {
+    if (input.updateSheetDimensionsAfterMatrixMutationImpact) {
+      input.updateSheetDimensionsAfterMatrixMutationImpact(impact)
+    } else {
+      updateSheetDimensionsAfterCellMutationRefs?.(refs)
+    }
+  }
+  const freshNumericFormulaPlan = tryBuildFreshNumericFormulaColumnMatrixPlan(planInput)
+  if (freshNumericFormulaPlan !== undefined) {
+    const applyOptions = createApplyOptions(freshNumericFormulaPlan.potentialNewCells)
+    if (canUpdateDimensionsOnce) {
+      applyOptions.skipDimensionUpdate = true
+    }
+    input.applyCellMutationRefs(freshNumericFormulaPlan.refs, applyOptions)
+    if (canUpdateDimensionsOnce) {
+      updateDimensionsOnce(freshNumericFormulaPlan.refs, freshNumericFormulaPlan.dimensionImpact)
+    }
+    return
+  }
   const {
     leadingRefs,
     leadingFreshNumericRefCount,
     leadingPotentialNewCells,
+    canApplyFreshNumericAggregateMatrixInOnePass,
     formulaRefs,
     formulaPotentialNewCells,
     refCount,
@@ -103,32 +140,9 @@ export function applyWorkPaperMatrixContents(input: {
     }
     input.applyCellMutationRefs(phaseRefs, applyOptions)
   }
-  const phaseSource = options.captureUndo === false ? 'restore' : 'local'
-  const createApplyOptions = (phasePotentialNewCells = potentialNewCells): WorkPaperCellMutationApplyOptions => {
-    const applyOptions: WorkPaperCellMutationApplyOptions = {
-      potentialNewCells: phasePotentialNewCells,
-      source: phaseSource,
-      returnUndoOps: false,
-      reuseRefs: true,
-    }
-    if (options.captureUndo !== undefined) {
-      applyOptions.captureUndo = options.captureUndo
-    }
-    return applyOptions
-  }
-  const updateSheetDimensionsAfterCellMutationRefs = input.updateSheetDimensionsAfterCellMutationRefs
-  const canUpdateDimensionsOnce =
-    updateSheetDimensionsAfterCellMutationRefs !== undefined && (phaseSource !== 'local' || input.isEvaluationSuspended?.() !== true)
-  const updateDimensionsOnce = (refs: readonly EngineCellMutationRef[]): void => {
-    if (input.updateSheetDimensionsAfterMatrixMutationImpact) {
-      input.updateSheetDimensionsAfterMatrixMutationImpact(dimensionImpact)
-    } else {
-      updateSheetDimensionsAfterCellMutationRefs?.(refs)
-    }
-  }
 
   if (formulaRefs.length === 0) {
-    applyPlannedRefs(leadingRefs, createApplyOptions())
+    applyPlannedRefs(leadingRefs, createApplyOptions(potentialNewCells))
     return
   }
 
@@ -136,22 +150,16 @@ export function applyWorkPaperMatrixContents(input: {
     trailingLiteralRefs.length === 0 &&
     !dimensionImpact.hasDynamicFormula &&
     (!canApplyLeadingRefsThroughFreshNumericFastPath(leadingRefs.length, leadingFreshNumericRefCount, leadingPotentialNewCells) ||
-      canApplyFreshNumericAggregateMatrixInOnePass({
-        formulaPotentialNewCells,
-        formulaRefs,
-        leadingFreshNumericRefCount,
-        leadingPotentialNewCells,
-        leadingRefs,
-      }))
+      canApplyFreshNumericAggregateMatrixInOnePass)
   if (canApplyFormulaMatrixInOnePass) {
     const mergedRefs = mergeMatrixMutationRefPhases(leadingRefs, formulaRefs, trailingLiteralRefs)
-    const applyOptions = createApplyOptions()
+    const applyOptions = createApplyOptions(potentialNewCells)
     if (canUpdateDimensionsOnce) {
       applyOptions.skipDimensionUpdate = true
     }
     applyPlannedRefs(mergedRefs, applyOptions)
     if (canUpdateDimensionsOnce) {
-      updateDimensionsOnce(mergedRefs)
+      updateDimensionsOnce(mergedRefs, dimensionImpact)
     }
     return
   }
@@ -168,7 +176,92 @@ export function applyWorkPaperMatrixContents(input: {
   applyPlannedRefs(formulaRefs, createPhasedApplyOptions(formulaPotentialNewCells))
   applyPlannedRefs(trailingLiteralRefs, createPhasedApplyOptions(trailingLiteralPotentialNewCells))
   if (canUpdateDimensionsOnce) {
-    updateDimensionsOnce(mergeMatrixMutationRefPhases(leadingRefs, formulaRefs, trailingLiteralRefs))
+    updateDimensionsOnce(mergeMatrixMutationRefPhases(leadingRefs, formulaRefs, trailingLiteralRefs), dimensionImpact)
+  }
+}
+
+function isFormulaContent(content: RawCellContent): content is string {
+  return typeof content === 'string' && content.trim().startsWith('=')
+}
+
+function tryBuildFreshNumericFormulaColumnMatrixPlan(args: MatrixMutationPlanInput):
+  | {
+      readonly refs: readonly EngineCellMutationRef[]
+      readonly potentialNewCells: number
+      readonly dimensionImpact: MatrixMutationDimensionImpact
+    }
+  | undefined {
+  if (args.deferLiteralAddresses !== undefined || args.skipNulls === true || args.content.length === 0) {
+    return undefined
+  }
+  const firstWidth = args.content[0]?.length ?? 0
+  if (firstWidth < 3) {
+    return undefined
+  }
+  const inputColCount = firstWidth - 1
+  const rowCount = args.content.length
+  const valueCount = rowCount * inputColCount
+  const refs: EngineCellMutationRef[] = []
+  refs.length = valueCount + rowCount
+  let valueCursor = 0
+  let formulaCursor = valueCount
+  for (let rowOffset = 0; rowOffset < rowCount; rowOffset += 1) {
+    const row = args.content[rowOffset]!
+    if (row.length !== firstWidth) {
+      return undefined
+    }
+    const destinationRow = args.target.row + rowOffset
+    for (let columnOffset = 0; columnOffset < inputColCount; columnOffset += 1) {
+      const raw = row[columnOffset]!
+      if (typeof raw !== 'number' || Object.is(raw, -0)) {
+        return undefined
+      }
+      refs[valueCursor] = {
+        sheetId: args.target.sheet,
+        mutation: {
+          kind: 'setCellValue',
+          row: destinationRow,
+          col: args.target.col + columnOffset,
+          value: raw,
+        },
+      }
+      valueCursor += 1
+    }
+    const rawFormula = row[inputColCount]!
+    if (!isFormulaContent(rawFormula)) {
+      return undefined
+    }
+    const destination: WorkPaperCellAddress = {
+      sheet: args.target.sheet,
+      row: destinationRow,
+      col: args.target.col + inputColCount,
+    }
+    const rewrittenFormula = args.rewriteFormula(rawFormula, destination, rowOffset, inputColCount)
+    if (workPaperFormulaMayResizeDynamically(rewrittenFormula)) {
+      return undefined
+    }
+    refs[formulaCursor] = {
+      sheetId: args.target.sheet,
+      mutation: {
+        kind: 'setCellFormula',
+        row: destinationRow,
+        col: destination.col,
+        formula: rewrittenFormula,
+      },
+    }
+    formulaCursor += 1
+  }
+  return {
+    refs,
+    potentialNewCells: refs.length,
+    dimensionImpact: {
+      hasDynamicFormula: false,
+      maxClearCol: -1,
+      maxClearRow: -1,
+      maxSetCol: args.target.col + inputColCount,
+      maxSetRow: args.target.row + rowCount - 1,
+      sheetId: args.target.sheet,
+    },
   }
 }
 
@@ -195,88 +288,4 @@ function canApplyLeadingRefsThroughFreshNumericFastPath(
   leadingPotentialNewCells: number,
 ): boolean {
   return leadingRefCount >= 32 && leadingPotentialNewCells === leadingRefCount && leadingFreshNumericRefCount === leadingRefCount
-}
-
-function canApplyFreshNumericAggregateMatrixInOnePass(input: {
-  readonly formulaPotentialNewCells: number
-  readonly formulaRefs: readonly EngineCellMutationRef[]
-  readonly leadingFreshNumericRefCount: number
-  readonly leadingPotentialNewCells: number
-  readonly leadingRefs: readonly EngineCellMutationRef[]
-}): boolean {
-  if (
-    input.leadingRefs.length < 32 ||
-    input.formulaRefs.length === 0 ||
-    input.leadingPotentialNewCells !== input.leadingRefs.length ||
-    input.leadingFreshNumericRefCount !== input.leadingRefs.length ||
-    input.formulaPotentialNewCells !== input.formulaRefs.length
-  ) {
-    return false
-  }
-  const firstLeading = input.leadingRefs[0]
-  const firstMutation = firstLeading?.mutation
-  if (firstLeading === undefined || firstMutation?.kind !== 'setCellValue' || typeof firstMutation.value !== 'number') {
-    return false
-  }
-  const firstFormula = input.formulaRefs[0]?.mutation
-  if (firstFormula?.kind !== 'setCellFormula') {
-    return false
-  }
-  let currentRow = firstMutation.row
-  let currentWidth = 0
-  let colCount = 0
-  let rowCount = 1
-  for (let index = 0; index < input.leadingRefs.length; index += 1) {
-    const ref = input.leadingRefs[index]!
-    const mutation = ref.mutation
-    if (
-      ref.sheetId !== firstLeading.sheetId ||
-      mutation.kind !== 'setCellValue' ||
-      typeof mutation.value !== 'number' ||
-      Object.is(mutation.value, -0)
-    ) {
-      return false
-    }
-    if (mutation.row === currentRow) {
-      if (mutation.col !== firstMutation.col + currentWidth) {
-        return false
-      }
-      currentWidth += 1
-    } else {
-      if (mutation.row !== currentRow + 1 || mutation.col !== firstMutation.col || currentWidth === 0) {
-        return false
-      }
-      if (colCount === 0) {
-        colCount = currentWidth
-      } else if (currentWidth !== colCount) {
-        return false
-      }
-      currentRow = mutation.row
-      currentWidth = 1
-      rowCount += 1
-    }
-  }
-  if (colCount === 0) {
-    colCount = currentWidth
-  } else if (currentWidth !== colCount) {
-    return false
-  }
-  if (rowCount !== input.formulaRefs.length || colCount < 2 || input.leadingRefs.length !== rowCount * colCount) {
-    return false
-  }
-  const formulaCol = firstMutation.col + colCount
-  for (let index = 0; index < input.formulaRefs.length; index += 1) {
-    const ref = input.formulaRefs[index]!
-    const mutation = ref.mutation
-    if (
-      ref.sheetId !== firstLeading.sheetId ||
-      ref.cellIndex !== undefined ||
-      mutation.kind !== 'setCellFormula' ||
-      mutation.row !== firstMutation.row + index ||
-      mutation.col !== formulaCol
-    ) {
-      return false
-    }
-  }
-  return true
 }

@@ -59,7 +59,7 @@ export function requireFormulaProofDiscovery({
     '"verified": true',
     `wins \`${benchmarkEvidence.meanWinHeadline}\` comparable`,
     `\`${benchmarkEvidence.meanAndP95Headline}\` on both mean and p95`,
-    `\`${benchmarkEvidence.p95HoldoutWorkload}\` is slower at`,
+    `\`${benchmarkEvidence.p95HoldoutWorkload}\` is the narrowest p95`,
     'Show HN: Bilig runs small formula workbooks in Node',
     'https://github.com/proompteng/bilig/stargazers',
   ] as const) {

@@ -35,7 +35,7 @@ interface WorkPaperVsXlsxCalcBenchmarkArtifact {
       readonly version: string
     }
     readonly xlsxCalc: {
-      readonly coverageTier: 'workbook-wide'
+      readonly coverageTier: 'workbook-wide-limited'
       readonly packageName: 'xlsx-calc'
       readonly sourcePath: string
       readonly version: string
@@ -112,7 +112,7 @@ const artifact: WorkPaperVsXlsxCalcBenchmarkArtifact = {
       version: readPackageVersion(join(rootDir, 'packages', 'headless', 'package.json')),
     },
     xlsxCalc: {
-      coverageTier: 'workbook-wide',
+      coverageTier: 'workbook-wide-limited',
       packageName: 'xlsx-calc',
       sourcePath: xlsxCalcSourcePath,
       version: readPackageVersion(join(rootDir, 'packages', 'benchmarks', 'node_modules', 'xlsx-calc', 'package.json')),

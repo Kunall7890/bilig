@@ -1,4 +1,5 @@
 import type { CompiledFormula } from '@bilig/formula'
+import { FormulaMode } from '@bilig/protocol'
 import type { EdgeSlice } from '../../edge-arena.js'
 import {
   entityPayload,
@@ -14,7 +15,9 @@ import {
   aggregateColumnDependencyKey,
   directCriteriaAggregateColumn,
   directLookupColumnInfo,
+  removeDirectAggregateColumnReverseEdges,
   removeTrackedReverseEdge,
+  removeUnindexedAggregateColumnReverseEdge,
 } from './formula-binding-dependency-helpers.js'
 import { normalizeDefinedName } from '../../workbook-store.js'
 import type { FormulaBindingMemberCounts } from './formula-binding-member-counts.js'
@@ -37,7 +40,7 @@ export function clearFormulaBindingNow(args: {
 }): boolean {
   const serviceArgs = args.serviceArgs
   const existing = serviceArgs.state.formulas.get(args.cellIndex)
-  const needsWasmProgramSync = existing !== undefined && existing.directAggregate === undefined
+  const needsWasmProgramSync = existing !== undefined && existing.compiled.mode === FormulaMode.WasmFastPath && existing.programLength > 0
   if (existing) {
     serviceArgs.regionGraph.clearFormulaSubscriptions(args.cellIndex)
     const ownerSheetName = serviceArgs.state.workbook.getSheetNameById(serviceArgs.state.workbook.cellStore.sheetIds[args.cellIndex]!)
@@ -89,13 +92,19 @@ export function clearFormulaBindingNow(args: {
     if (directCriteriaAggregate) {
       const aggregateSheet = serviceArgs.state.workbook.getSheet(directCriteriaAggregate.sheetName)
       if (aggregateSheet) {
-        removeTrackedReverseEdge(
+        removeUnindexedAggregateColumnReverseEdge(
           serviceArgs.reverseState.reverseAggregateColumnEdges,
           aggregateColumnDependencyKey(aggregateSheet.id, directCriteriaAggregate.col),
           args.cellIndex,
         )
       }
     }
+    removeDirectAggregateColumnReverseEdges(
+      serviceArgs.reverseState.reverseAggregateColumnEdges,
+      serviceArgs.state.workbook,
+      existing.directAggregate,
+      args.cellIndex,
+    )
     for (let index = 0; index < existing.rangeDependencies.length; index += 1) {
       const rangeIndex = existing.rangeDependencies[index]!
       const dependencySources = serviceArgs.state.ranges.getDependencySourceEntities(rangeIndex)

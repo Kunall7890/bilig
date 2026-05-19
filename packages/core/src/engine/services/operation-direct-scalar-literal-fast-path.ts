@@ -33,10 +33,17 @@ export function tryApplySingleDirectScalarLiteralMutationWithoutEvents(
   args: OperationDirectScalarLiteralFastPathArgs,
   request: OperationDirectScalarLiteralMutationRequest,
 ): boolean {
+  return tryApplySingleDirectScalarLiteralMutationWithoutEventsAndReturnChanged(args, request) !== null
+}
+
+export function tryApplySingleDirectScalarLiteralMutationWithoutEventsAndReturnChanged(
+  args: OperationDirectScalarLiteralFastPathArgs,
+  request: OperationDirectScalarLiteralMutationRequest,
+): U32 | null {
   const dependencyEntity = makeCellEntity(request.existingIndex)
   const singleDependent = args.getSingleEntityDependent(dependencyEntity)
   if (singleDependent === -1) {
-    return false
+    return null
   }
 
   let singleFormulaCellIndex = -1
@@ -46,7 +53,7 @@ export function tryApplySingleDirectScalarLiteralMutationWithoutEvents(
   } else {
     dependents = args.getEntityDependents(dependencyEntity)
     if (dependents.length === 0) {
-      return false
+      return null
     }
   }
 
@@ -78,15 +85,17 @@ export function tryApplySingleDirectScalarLiteralMutationWithoutEvents(
 
   if (singleFormulaCellIndex >= 0) {
     if (!validateDependent(singleFormulaCellIndex)) {
-      return false
+      return null
     }
   } else {
     for (let index = 0; index < dependents!.length; index += 1) {
       if (!validateDependent(dependents![index]!)) {
-        return false
+        return null
       }
     }
   }
+
+  const changedFormulaIndices = singleFormulaCellIndex >= 0 ? Uint32Array.of(singleFormulaCellIndex) : Uint32Array.from(dependents!)
 
   args.state.workbook.withBatchedColumnVersionUpdates(() => {
     writeLiteralToCellStore(args.state.workbook.cellStore, request.existingIndex, request.value, args.state.strings)
@@ -108,5 +117,5 @@ export function tryApplySingleDirectScalarLiteralMutationWithoutEvents(
   addEngineCounter(args.state.counters, 'directScalarDeltaOnlyRecalcSkips')
   args.deferSingleCellKernelSync(request.existingIndex)
   args.state.setLastMetrics(args.makeSingleLiteralSkipMetrics())
-  return true
+  return changedFormulaIndices
 }

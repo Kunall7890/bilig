@@ -19,9 +19,11 @@ import {
   tagTrustedPhysicalTrackedChanges,
   throwProtectionBlocked,
 } from './operation-change-helpers.js'
+import { canFinalizeStructuralNoValueMutationWithoutRecalc } from './operation-structural-no-value-finalization.js'
 
 export const operationServiceTestHooks = {
   aggregateColumnDependencyKey,
+  canFinalizeStructuralNoValueMutationWithoutRecalc,
   canEvaluatePostRecalcDirectFormulasWithoutKernel,
   cellRange,
   collectTrackedDependents,

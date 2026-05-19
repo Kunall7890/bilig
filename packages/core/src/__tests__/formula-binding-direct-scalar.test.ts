@@ -84,6 +84,39 @@ describe('formula binding direct scalar helpers', () => {
     expect(ensureByCoords).toHaveBeenCalledWith(sheet.id, 2, 2)
   })
 
+  it('reuses existing coordinate-resolved dependency cells before ensuring new ones', () => {
+    const ensureByCoords = vi.fn(() => 44)
+    const getFreshCellIndexAt = vi.fn(() => 77)
+    const getCellIndexAt = vi.fn(() => 88)
+
+    expect(
+      buildDirectScalarDescriptor({
+        compiled: compiled(parseFormula('A1+2'), {
+          astMatchesSource: false,
+          symbolicRefs: ['C3'],
+          parsedSymbolicRefs: [{ kind: 'cell', address: 'C3', sheetName: 'Sheet1', row: 2, col: 2 }],
+        }),
+        ownerSheetName: 'Sheet1',
+        ownerSheetId: 1,
+        workbook: {
+          getSheet: () => ({ id: 1 }),
+          getFreshCellIndexAt,
+          getCellIndexAt,
+        },
+        ensureCellTracked: vi.fn(() => 11),
+        ensureCellTrackedByCoords: ensureByCoords,
+      }),
+    ).toEqual({
+      kind: 'binary',
+      operator: '+',
+      left: { kind: 'cell', cellIndex: 77 },
+      right: { kind: 'literal-number', value: 2 },
+    })
+    expect(getFreshCellIndexAt).toHaveBeenCalledWith(1, 2, 2)
+    expect(getCellIndexAt).not.toHaveBeenCalled()
+    expect(ensureByCoords).not.toHaveBeenCalled()
+  })
+
   it('returns direct scalar error operands for unresolved sheet references', () => {
     expect(
       buildDirectScalarOperand({

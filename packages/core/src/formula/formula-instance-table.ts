@@ -9,6 +9,7 @@ export interface FormulaInstanceSnapshot {
 
 export interface FormulaInstanceTable {
   readonly upsert: (record: FormulaInstanceSnapshot) => void
+  readonly upsertMany: (records: readonly FormulaInstanceSnapshot[]) => void
   readonly get: (cellIndex: number) => FormulaInstanceSnapshot | undefined
   readonly delete: (cellIndex: number) => boolean
   readonly clear: () => void
@@ -26,6 +27,15 @@ export function createFormulaInstanceTable(): FormulaInstanceTable {
         recordCount += 1
       }
       records[record.cellIndex] = record
+    },
+    upsertMany(entries) {
+      for (let index = 0; index < entries.length; index += 1) {
+        const record = entries[index]!
+        if (records[record.cellIndex] === undefined) {
+          recordCount += 1
+        }
+        records[record.cellIndex] = record
+      }
     },
     get(cellIndex) {
       return records[cellIndex]
@@ -61,12 +71,13 @@ export function createFormulaInstanceTable(): FormulaInstanceTable {
     hydrate(entries) {
       records.length = 0
       recordCount = 0
-      entries.forEach((record) => {
+      for (let index = 0; index < entries.length; index += 1) {
+        const record = entries[index]!
         if (records[record.cellIndex] === undefined) {
           recordCount += 1
         }
         records[record.cellIndex] = record
-      })
+      }
     },
   }
 }

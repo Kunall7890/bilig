@@ -1,5 +1,6 @@
 import { ErrorCode, ValueTag } from '@bilig/protocol'
 import { parseNumericText } from '@bilig/formula'
+import type { EngineCellMutationRef } from '../../cell-mutations-at.js'
 import { CellFlags } from '../../cell-store.js'
 import type { EngineRuntimeState, RuntimeDirectScalarDescriptor, RuntimeDirectScalarOperand } from '../runtime-state.js'
 import { directScalarCellNumber, directScalarValueNumber } from './direct-scalar-helpers.js'
@@ -85,6 +86,98 @@ export function createOperationDirectFormulaValues(args: { readonly state: Pick<
     cellStore.tags[cellIndex] = ValueTag.Number
     cellStore.numbers[cellIndex] = value
     cellStore.errors[cellIndex] = ErrorCode.None
+  }
+
+  const applyTerminalDirectFormulaNumericResults = (
+    cellIndices: readonly number[] | Uint32Array,
+    values: ArrayLike<number>,
+    count = cellIndices.length,
+  ): void => {
+    const cellStore = args.state.workbook.cellStore
+    const flags = cellStore.flags
+    const versions = cellStore.versions
+    const stringIds = cellStore.stringIds
+    const tags = cellStore.tags
+    const numbers = cellStore.numbers
+    const errors = cellStore.errors
+    const formulaOutputFlags = CellFlags.SpillChild | CellFlags.PivotOutput
+    const clearFormulaOutputFlags = ~formulaOutputFlags
+    for (let index = 0; index < count; index += 1) {
+      const cellIndex = cellIndices[index]!
+      const currentFlags = flags[cellIndex] ?? 0
+      if ((currentFlags & formulaOutputFlags) !== 0) {
+        flags[cellIndex] = currentFlags & clearFormulaOutputFlags
+      }
+      versions[cellIndex] = (versions[cellIndex] ?? 0) + 1
+      stringIds[cellIndex] = 0
+      tags[cellIndex] = ValueTag.Number
+      numbers[cellIndex] = values[index]!
+      errors[cellIndex] = ErrorCode.None
+    }
+  }
+
+  const applyTerminalDirectFormulaAffineNumericResults = (
+    cellIndices: readonly number[] | Uint32Array,
+    values: ArrayLike<number>,
+    scale: number,
+    offset: number,
+    count = cellIndices.length,
+  ): void => {
+    const cellStore = args.state.workbook.cellStore
+    const flags = cellStore.flags
+    const versions = cellStore.versions
+    const stringIds = cellStore.stringIds
+    const tags = cellStore.tags
+    const numbers = cellStore.numbers
+    const errors = cellStore.errors
+    const formulaOutputFlags = CellFlags.SpillChild | CellFlags.PivotOutput
+    const clearFormulaOutputFlags = ~formulaOutputFlags
+    for (let index = 0; index < count; index += 1) {
+      const cellIndex = cellIndices[index]!
+      const currentFlags = flags[cellIndex] ?? 0
+      if ((currentFlags & formulaOutputFlags) !== 0) {
+        flags[cellIndex] = currentFlags & clearFormulaOutputFlags
+      }
+      versions[cellIndex] = (versions[cellIndex] ?? 0) + 1
+      stringIds[cellIndex] = 0
+      tags[cellIndex] = ValueTag.Number
+      numbers[cellIndex] = values[index]! * scale + offset
+      errors[cellIndex] = ErrorCode.None
+    }
+  }
+
+  const applyTerminalDirectFormulaAffineNumericResultsFromRefs = (
+    cellIndices: readonly number[] | Uint32Array,
+    refs: readonly EngineCellMutationRef[],
+    scale: number,
+    offset: number,
+    count = cellIndices.length,
+  ): void => {
+    const cellStore = args.state.workbook.cellStore
+    const flags = cellStore.flags
+    const versions = cellStore.versions
+    const stringIds = cellStore.stringIds
+    const tags = cellStore.tags
+    const numbers = cellStore.numbers
+    const errors = cellStore.errors
+    const formulaOutputFlags = CellFlags.SpillChild | CellFlags.PivotOutput
+    const clearFormulaOutputFlags = ~formulaOutputFlags
+    for (let index = 0; index < count; index += 1) {
+      const cellIndex = cellIndices[index]!
+      const mutation = refs[index]!.mutation
+      if (mutation.kind !== 'setCellValue' || typeof mutation.value !== 'number') {
+        throw new Error('Expected affine direct scalar batch to contain numeric literal writes')
+      }
+      const currentFlags = flags[cellIndex] ?? 0
+      if ((currentFlags & formulaOutputFlags) !== 0) {
+        flags[cellIndex] = currentFlags & clearFormulaOutputFlags
+      }
+      versions[cellIndex] = (versions[cellIndex] ?? 0) + 1
+      stringIds[cellIndex] = 0
+      tags[cellIndex] = ValueTag.Number
+      numbers[cellIndex] = mutation.value * scale + offset
+      errors[cellIndex] = ErrorCode.None
+    }
   }
 
   const writeNumericLiteralToCellStore = (cellIndex: number, value: number): void => {
@@ -309,6 +402,9 @@ export function createOperationDirectFormulaValues(args: { readonly state: Pick<
     applyDirectFormulaCurrentResult,
     applyDirectFormulaNumericResult,
     applyTerminalDirectFormulaNumericResult,
+    applyTerminalDirectFormulaNumericResults,
+    applyTerminalDirectFormulaAffineNumericResults,
+    applyTerminalDirectFormulaAffineNumericResultsFromRefs,
     writeNumericLiteralToCellStore,
     evaluateDirectScalarCurrentValue,
     applyDirectScalarCurrentValue,

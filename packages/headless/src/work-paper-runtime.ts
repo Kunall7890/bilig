@@ -1,9 +1,11 @@
 import { SpreadsheetEngine, type EngineCellMutationRef, type SheetRecord } from '@bilig/core'
-import { MAX_COLS, MAX_ROWS, type CellSnapshot, type CellValue, type WorkbookSnapshot } from '@bilig/protocol'
+import { MAX_COLS, MAX_ROWS, ValueTag, type CellSnapshot, type CellValue, type WorkbookSnapshot } from '@bilig/protocol'
 import {
   WorkPaperEvaluationTimeoutError,
+  WorkPaperInvalidArgumentsError,
   WorkPaperNamedExpressionDoesNotExistError,
   WorkPaperOperationError,
+  WorkPaperSheetError,
   WorkPaperSheetSizeLimitExceededError,
 } from './work-paper-errors.js'
 import {
@@ -14,8 +16,9 @@ import {
   normalizeConfiguredWorkPaperCalculationSettings,
   validateWorkPaperConfig,
   WORKPAPER_CONFIG_KEYS,
+  WORKPAPER_PUBLIC_ERROR_NAMES,
 } from './work-paper-config.js'
-import { makeNamedExpressionKey } from './work-paper-runtime-helpers.js'
+import { assertRowAndColumn, makeNamedExpressionKey, tryEvaluateSimpleNamedExpression, valuesEqual } from './work-paper-runtime-helpers.js'
 import {
   inspectSheetDimensionsWithinLimits,
   validateSheetWithinLimits,
@@ -24,17 +27,23 @@ import {
 import { WorkPaperSheetDimensionCache } from './work-paper-sheet-dimension-cache.js'
 import type { WorkPaperAxisIntervalEditMode, WorkPaperAxisKind } from './work-paper-axis-helpers.js'
 import {
+  cloneNamedExpressionValue,
   createInternalNamedExpressionRecord,
+  createSerializedWorkPaperNamedExpression,
+  createWorkPaperNamedExpressionChange,
   evaluateWorkPaperNamedExpression,
+  trySimpleWorkPaperNamedExpressionDefinedNameSnapshot,
   validateWorkPaperNamedExpression,
   workPaperCellSnapshotToRawContent,
   workPaperNamedExpressionToDefinedNameSnapshot,
   type InternalNamedExpression,
   type WorkPaperNamedExpressionValueSnapshot,
 } from './work-paper-named-expression-helpers.js'
+import { orderWorkPaperCellChanges } from './change-order.js'
 import type {
   WorkPaperAxisInterval,
   WorkPaperCellAddress,
+  WorkPaperCellChange,
   WorkPaperCellRange,
   WorkPaperChange,
   WorkPaperConfig,
@@ -60,6 +69,7 @@ import { createWorkPaperInternals } from './work-paper-internals.js'
 import {
   ensureWorkPaperCustomAdapterInstalled,
   getAllRegisteredWorkPaperFunctionPlugins,
+  hasRegisteredWorkPaperFunctionPlugins,
   workPaperGlobalCustomFunctions,
 } from './work-paper-static-registry.js'
 import {
@@ -68,11 +78,9 @@ import {
   initializeWorkPaperFromSnapshot,
 } from './work-paper-sheet-initialization.js'
 import { buildWorkPaperRawCellMutation } from './work-paper-literal-mutation-queue.js'
-import { getVisibleWorkPaperCellIndexInSheet } from './work-paper-cell-read.js'
 import { WorkPaperMutationQueues } from './work-paper-mutation-queues.js'
 import { WorkPaperEngineEventTracker } from './work-paper-engine-event-tracker.js'
-import { createWorkPaperRuntimeAdapters } from './work-paper-runtime-adapters.js'
-import { WorkPaperRuntimeSurface } from './work-paper-runtime-surface.js'
+import { WorkPaperRuntimeFastPathBase } from './work-paper-runtime-fast-path-base.js'
 import { cloneWorkPaperHistoryRecords, type WorkPaperHistoryRecord } from './work-paper-history.js'
 
 type NamedExpressionValueSnapshot = WorkPaperNamedExpressionValueSnapshot
@@ -87,6 +95,14 @@ interface WorkPaperTransactionSnapshot {
 }
 
 let nextWorkbookId = 1
+type MetadataRenameEngine = SpreadsheetEngine & {
+  readonly renameSheetMetadataOnlyById?: (sheetId: number, newName: string) => boolean
+}
+
+type WorkPaperStructuralInsertEngine = SpreadsheetEngine & {
+  insertRows(sheetName: string, start: number, count: number, options?: { readonly emitTracked?: boolean }): void
+  insertColumns(sheetName: string, start: number, count: number, options?: { readonly emitTracked?: boolean }): void
+}
 
 function workPaperEvaluationTimeoutErrorFrom(error: unknown): WorkPaperEvaluationTimeoutError | undefined {
   let current: unknown = error
@@ -104,18 +120,18 @@ function workPaperEvaluationTimeoutErrorFrom(error: unknown): WorkPaperEvaluatio
   return undefined
 }
 
-export class WorkPaper extends WorkPaperRuntimeSurface {
+export class WorkPaper extends WorkPaperRuntimeFastPathBase {
   readonly workbookId = nextWorkbookId++
   protected engine: SpreadsheetEngine
   protected readonly emitter = new WorkPaperEmitter()
   protected readonly namedExpressions = new Map<string, InternalNamedExpression>()
   protected readonly functionSnapshot = new Map<string, InternalFunctionBinding>()
   protected readonly functionAliasLookup = new Map<string, InternalFunctionBinding>()
-  private readonly internalFunctionLookup = new Map<string, InternalFunctionBinding>()
-  private readonly workPaperInternals: WorkPaperInternals
+  protected readonly internalFunctionLookup = new Map<string, InternalFunctionBinding>()
+  private workPaperInternalsCache: WorkPaperInternals | undefined
   protected sheetDimensionCache: WorkPaperSheetDimensionCache
   protected config: WorkPaperConfig
-  private clipboard: WorkPaperClipboardPayload | null = null
+  protected clipboard: WorkPaperClipboardPayload | null = null
   protected visibilityCache: VisibilitySnapshot | null = null
   protected namedExpressionValueCache: NamedExpressionValueSnapshot | null = null
   protected sheetRecordsCache: readonly SheetRecord[] | null = null
@@ -130,6 +146,7 @@ export class WorkPaper extends WorkPaperRuntimeSurface {
   protected suspendedUsesTrackedFastPath = false
   protected queuedEvents: QueuedEvent[] = []
   protected readonly engineEvents = new WorkPaperEngineEventTracker()
+  private engineEventsAttached = false
   protected disposed = false
   protected readonly mutationQueues = new WorkPaperMutationQueues({
     applyCellMutationsAtWithOptions: (refs, options) => {
@@ -137,129 +154,33 @@ export class WorkPaper extends WorkPaperRuntimeSurface {
     },
     updateSheetDimensionsAfterCellMutationRefs: (refs) => this.updateSheetDimensionsAfterCellMutationRefs(refs),
   })
-  protected readonly runtimeAdapters = createWorkPaperRuntimeAdapters({
-    getEngine: () => this.engine,
-    getConfig: () => this.config,
-    getBatchDepth: () => this.batchDepth,
-    isEvaluationSuspended: () => this.evaluationSuspended,
-    isTrackedBatchFastPathActive: () => this.batchUsesTrackedFastPath,
-    getNamedExpressionValueCache: () => this.namedExpressionValueCache,
-    getClipboard: () => this.clipboard,
-    setClipboard: (clipboard) => {
-      this.clipboard = clipboard
-    },
-    getNamedExpression: (name, scope) => this.namedExpressions.get(makeNamedExpressionKey(name, scope)),
-    getNamedExpressionValues: () => this.namedExpressions.values(),
-    setNamedExpressionRecord: (key, record) => {
-      this.namedExpressions.set(key, record)
-    },
-    deleteNamedExpressionRecord: (name, scope) => {
-      this.namedExpressions.delete(makeNamedExpressionKey(name, scope))
-    },
-    mutationQueues: this.mutationQueues,
-    engineEvents: this.engineEvents,
-    getSheetDimensionCache: () => this.sheetDimensionCache,
-    emitter: this.emitter,
-    assertNotDisposed: () => this.assertNotDisposed(),
-    assertReadable: () => this.assertReadable(),
-    prepareReadableState: () => this.prepareReadableState(),
-    flushPendingBatchOps: () => this.flushPendingBatchOps(),
-    downgradeTrackedBatchFastPath: () => this.downgradeTrackedBatchFastPath(),
-    sheetRecord: (sheetId) => this.sheetRecord(sheetId),
-    sheetName: (sheetId) => this.sheetName(sheetId),
-    a1: (address) => this.a1(address),
-    trackedA1: (row, col) => this.trackedA1(row, col),
-    rangeRef: (range) => this.rangeRef(range),
-    listSheetRecords: () => this.listSheetRecords(),
-    requireSheetId: (name) => this.requireSheetId(name),
-    restorePublicFormula: (formula, ownerSheetId) => this.restorePublicFormula(formula, ownerSheetId),
-    cellSnapshotToRawContent: (cell, ownerSheetId) => this.cellSnapshotToRawContent(cell, ownerSheetId),
-    canUseMetadataOnlySheetRenameFastPath: () => this.canUseMetadataOnlySheetRenameFastPath(),
-    canUseNamedExpressionChangeFastPath: () => this.canUseNamedExpressionChangeFastPath(),
-    canUseTrackedMutationFastPath: () => this.canUseTrackedMutationFastPath(),
-    canUseTrackedStructuralFastPath: () => this.canUseTrackedStructuralFastPath(),
-    getCapabilityContext: () => this.capabilityContext(),
-    getVisibleCellIndexInSheet: (sheet, row, col) => this.getVisibleCellIndexInSheet(sheet, row, col),
-    enqueueSuspendedLiteralMutation: (sheetId, row, col, content, cellIndex) =>
-      this.enqueueSuspendedLiteralMutation(sheetId, row, col, content, cellIndex),
-    enqueueDeferredBatchLiteral: (sheetId, row, col, content, cellIndex) =>
-      this.enqueueDeferredBatchLiteral(sheetId, row, col, content, cellIndex),
-    rewriteFormulaForStorage: (formula, ownerSheetId) => this.rewriteFormulaForStorage(formula, ownerSheetId),
-    applyCellMutationRefs: (refs, options) => this.applyCellMutationRefs(refs, options),
-    captureTrackedChangesWithoutVisibilityCache: (mutate, options) => this.captureTrackedChangesWithoutVisibilityCache(mutate, options),
-    captureChanges: (event, mutate) => this.captureChanges(event, mutate),
-    computeChangesAfterMutation: (beforeVisibility, beforeNames) => this.computeChangesAfterMutation(beforeVisibility, beforeNames),
-    computeTrackedChangesWithoutVisibilityCache: (events, options) => this.computeTrackedChangesWithoutVisibilityCache(events, options),
-    readSingleTrackedCellChange: (cellIndex) => this.readSingleTrackedCellChange(cellIndex),
-    nextSheetName: () => this.nextSheetName(),
-    isItPossibleToAddSheet: (name) => this.isItPossibleToAddSheet(name),
-    ensureVisibilityCache: () => this.ensureVisibilityCache(),
-    ensureNamedExpressionValueCache: () => this.ensureNamedExpressionValueCache(),
-    clearSheetRecordsCache: () => {
-      this.sheetRecordsCache = null
-    },
-    cacheSheetDimensions: (sheetId, dimensions) => this.sheetDimensionCache.cache(sheetId, dimensions),
-    shouldSuppressEvents: () => this.shouldSuppressEvents(),
-    queueSheetAddedEvent: (payload) => {
-      this.queuedEvents.push({ eventName: 'sheetAdded', payload })
-    },
-    isItPossibleToRemoveSheet: (sheetId) => this.isItPossibleToRemoveSheet(sheetId),
-    isItPossibleToClearSheet: (sheetId) => this.isItPossibleToClearSheet(sheetId),
-    getSheetDimensions: (sheetId) => this.getSheetDimensions(sheetId),
-    isItPossibleToReplaceSheetContent: (sheetId, content) => this.isItPossibleToReplaceSheetContent(sheetId, content),
-    replaceSheetContentInternal: (sheetId, content, options) => this.replaceSheetContentInternal(sheetId, content, options),
-    tryRenameSheetWithoutVisibilitySnapshots: (oldName, newName) => this.tryRenameSheetWithoutVisibilitySnapshots(oldName, newName),
-    evaluateNamedExpression: (expression) => this.evaluateNamedExpression(expression),
-    toDefinedNameSnapshot: (expression, scope) => this.toDefinedNameSnapshot(expression, scope),
-    upsertNamedExpressionInternal: (expression, options) => this.upsertNamedExpressionInternal(expression, options),
-    namedExpressionRecord: (name, scope) => this.namedExpressionRecord(name, scope),
-    validateNamedExpression: (expressionName, expression, scope) => this.validateNamedExpression(expressionName, expression, scope),
-    deleteDefinedName: (internalName) => {
-      this.engine.deleteDefinedName(internalName)
-    },
-    isItPossibleToSetCellContents: (address, content) => this.isItPossibleToSetCellContents(address, content),
-    applyMatrixContents: (address, content) => this.applyMatrixContents(address, content),
-    getRangeSerialized: (range) => this.getRangeSerialized(range),
-    getRangeValues: (range) => this.getRangeValues(range),
-    batch: (operations) => this.batch(operations),
-    setCellContents: (address, content) => this.setCellContents(address, content),
-    applySerializedMatrix: (targetLeftCorner, content, sourceAnchor) => this.applySerializedMatrix(targetLeftCorner, content, sourceAnchor),
-    doesSheetIdExist: (sheetId) => this.engine.workbook.getSheetById(sheetId) !== undefined,
-    hasNamedExpression: (expressionName, scope) => this.namedExpressions.has(makeNamedExpressionKey(expressionName, scope)),
-    canEditAxisIntervals: (axis, mode, sheetId, indexes) => this.canEditAxisIntervals(axis, mode, sheetId, indexes),
-    batchStructuralChanges: (operations) => this.batchStructuralChanges(operations),
-    captureAxisChange: (operations) => this.captureChanges(undefined, operations),
-    applyAxisIntervalEdit: (axis, mode, sheetId, start, amount) => this.applyAxisIntervalEdit(axis, mode, sheetId, start, amount),
-    applyAxisMove: (axis, sheetId, start, count, target) => this.applyAxisMove(axis, sheetId, start, count, target),
-    messageOf: (error, fallback) => this.messageOf(error, fallback),
-  })
-
-  private getVisibleCellIndex(sheetId: number, row: number, col: number): number | undefined {
-    const sheet = this.engine.workbook.getSheetById(sheetId)
-    if (!sheet) {
-      return undefined
-    }
-    return this.getVisibleCellIndexInSheet(sheet, row, col)
-  }
-
-  private getVisibleCellIndexInSheet(sheet: SheetRecord, row: number, col: number): number | undefined {
-    return getVisibleWorkPaperCellIndexInSheet(sheet, row, col)
-  }
-
   private constructor(configInput: WorkPaperConfig = {}) {
     super()
-    ensureWorkPaperCustomAdapterInstalled()
     validateWorkPaperConfig(configInput)
     this.config = {
       ...cloneConfig(DEFAULT_CONFIG),
       ...cloneConfig(configInput),
     }
+    const hasFunctionPlugins = (this.config.functionPlugins?.length ?? 0) > 0 || hasRegisteredWorkPaperFunctionPlugins()
+    if (hasFunctionPlugins) {
+      ensureWorkPaperCustomAdapterInstalled()
+    }
     this.engine = createWorkPaperEngine(this.config)
     this.sheetDimensionCache = new WorkPaperSheetDimensionCache(this.engine)
-    this.sheetDimensionCache.invalidateAll()
-    this.engineEvents.attach(this.engine)
-    this.captureFunctionRegistry()
-    this.workPaperInternals = createWorkPaperInternals({
+    if (hasFunctionPlugins) {
+      this.captureFunctionRegistry()
+    }
+  }
+
+  protected ensureEngineEventTracking(): void {
+    if (!this.engineEventsAttached) {
+      this.engineEvents.attach(this.engine)
+      this.engineEventsAttached = true
+    }
+  }
+
+  get internals(): WorkPaperInternals {
+    this.workPaperInternalsCache ??= createWorkPaperInternals({
       getCellDependents: (reference) => this.getCellDependents(reference),
       getCellPrecedents: (reference) => this.getCellPrecedents(reference),
       getRangeValues: (range) => this.getRangeValues(range),
@@ -279,10 +200,275 @@ export class WorkPaper extends WorkPaperRuntimeSurface {
       validateFormula: (formula) => this.validateFormula(formula),
       getNamedExpressionsFromFormula: (formula) => this.getNamedExpressionsFromFormula(formula),
     })
+    return this.workPaperInternalsCache
   }
 
-  get internals(): WorkPaperInternals {
-    return this.workPaperInternals
+  override renameSheet(sheetId: number, nextName: string): WorkPaperChange[] {
+    const sheet = this.sheetRecord(sheetId)
+    const newName = nextName.trim()
+    if (newName.length === 0) {
+      throw new WorkPaperInvalidArgumentsError('Sheet name must be non-empty')
+    }
+    const existing = this.engine.workbook.getSheet(newName)
+    if (existing && existing.id !== sheetId) {
+      throw new WorkPaperSheetError(`Sheet '${sheetId}' cannot be renamed to '${nextName}'`)
+    }
+
+    const oldName = sheet.name
+    const fastPathChanges = this.tryRenameSheetWithoutRuntimeAdapters(sheet, newName)
+    if (fastPathChanges !== null) {
+      return fastPathChanges
+    }
+
+    return this.captureChanges(
+      {
+        eventName: 'sheetRenamed',
+        payload: {
+          sheetId,
+          oldName,
+          newName,
+        },
+      },
+      () => {
+        this.engine.renameSheet(oldName, newName)
+        this.sheetRecordsCache = null
+      },
+    )
+  }
+
+  override changeNamedExpression(
+    expressionName: string,
+    expression: RawCellContent,
+    scope?: number,
+    options?: Record<string, string | number | boolean>,
+  ): WorkPaperChange[] {
+    if (options === undefined) {
+      const fastPathChanges = this.tryChangeSimpleNumericNamedExpression(expressionName, expression, scope)
+      if (fastPathChanges !== null) {
+        return fastPathChanges
+      }
+    }
+    return super.changeNamedExpression(expressionName, expression, scope, options)
+  }
+
+  override addRows(sheetId: number, start: number, count?: number): WorkPaperChange[]
+  override addRows(sheetId: number, ...indexes: readonly WorkPaperAxisInterval[]): WorkPaperChange[]
+  override addRows(
+    sheetId: number,
+    startOrInterval: number | WorkPaperAxisInterval,
+    countOrInterval?: number | WorkPaperAxisInterval,
+    ...restIntervals: readonly WorkPaperAxisInterval[]
+  ): WorkPaperChange[] {
+    if (
+      typeof startOrInterval === 'number' &&
+      (countOrInterval === undefined || typeof countOrInterval === 'number') &&
+      restIntervals.length === 0
+    ) {
+      return this.addSingleAxisIntervalWithoutRuntimeAdapters('row', sheetId, startOrInterval, countOrInterval ?? 1)
+    }
+    return this.editAxisIntervalsWithoutRuntimeAdapters('row', 'add', sheetId, startOrInterval, countOrInterval, restIntervals)
+  }
+
+  override removeRows(sheetId: number, start: number, count?: number): WorkPaperChange[]
+  override removeRows(sheetId: number, ...indexes: readonly WorkPaperAxisInterval[]): WorkPaperChange[]
+  override removeRows(
+    sheetId: number,
+    startOrInterval: number | WorkPaperAxisInterval,
+    countOrInterval?: number | WorkPaperAxisInterval,
+    ...restIntervals: readonly WorkPaperAxisInterval[]
+  ): WorkPaperChange[] {
+    return this.editAxisIntervalsWithoutRuntimeAdapters('row', 'remove', sheetId, startOrInterval, countOrInterval, restIntervals)
+  }
+
+  override addColumns(sheetId: number, start: number, count?: number): WorkPaperChange[]
+  override addColumns(sheetId: number, ...indexes: readonly WorkPaperAxisInterval[]): WorkPaperChange[]
+  override addColumns(
+    sheetId: number,
+    startOrInterval: number | WorkPaperAxisInterval,
+    countOrInterval?: number | WorkPaperAxisInterval,
+    ...restIntervals: readonly WorkPaperAxisInterval[]
+  ): WorkPaperChange[] {
+    if (
+      typeof startOrInterval === 'number' &&
+      (countOrInterval === undefined || typeof countOrInterval === 'number') &&
+      restIntervals.length === 0
+    ) {
+      return this.addSingleAxisIntervalWithoutRuntimeAdapters('column', sheetId, startOrInterval, countOrInterval ?? 1)
+    }
+    return this.editAxisIntervalsWithoutRuntimeAdapters('column', 'add', sheetId, startOrInterval, countOrInterval, restIntervals)
+  }
+
+  override removeColumns(sheetId: number, start: number, count?: number): WorkPaperChange[]
+  override removeColumns(sheetId: number, ...indexes: readonly WorkPaperAxisInterval[]): WorkPaperChange[]
+  override removeColumns(
+    sheetId: number,
+    startOrInterval: number | WorkPaperAxisInterval,
+    countOrInterval?: number | WorkPaperAxisInterval,
+    ...restIntervals: readonly WorkPaperAxisInterval[]
+  ): WorkPaperChange[] {
+    return this.editAxisIntervalsWithoutRuntimeAdapters('column', 'remove', sheetId, startOrInterval, countOrInterval, restIntervals)
+  }
+
+  private tryChangeSimpleNumericNamedExpression(
+    expressionName: string,
+    expression: RawCellContent,
+    scope: number | undefined,
+  ): WorkPaperChange[] | null {
+    if (!this.canUseNamedExpressionChangeFastPath()) {
+      return null
+    }
+    this.validateNamedExpression(expressionName, expression, scope)
+    const existing = this.namedExpressions.get(makeNamedExpressionKey(expressionName, scope))
+    if (!existing) {
+      return null
+    }
+    const beforeValue = tryEvaluateSimpleNamedExpression(existing.expression)
+    const afterValue = tryEvaluateSimpleNamedExpression(expression)
+    if (beforeValue === undefined || afterValue?.tag !== ValueTag.Number) {
+      return null
+    }
+
+    this.assertNotDisposed()
+    this.engineEvents.materializePendingLazyChanges()
+    this.downgradeTrackedBatchFastPath()
+    if (!this.canUseNamedExpressionChangeFastPath()) {
+      return null
+    }
+
+    const record = createInternalNamedExpressionRecord(
+      createSerializedWorkPaperNamedExpression({
+        name: expressionName,
+        expression,
+        scope,
+        options: undefined,
+      }),
+    )
+    const key = makeNamedExpressionKey(record.publicName, record.scope)
+    try {
+      const changedCellIndices = this.engine.upsertNumericDefinedNameFast(
+        record.internalName,
+        this.toDefinedNameSnapshot(record.expression, record.scope),
+        afterValue.value,
+      )
+      if (changedCellIndices === null) {
+        return null
+      }
+      this.namedExpressions.set(key, record)
+      this.namedExpressionValueCache?.set(key, cloneNamedExpressionValue(afterValue))
+      const cellChanges: WorkPaperCellChange[] = []
+      for (let index = 0; index < changedCellIndices.length; index += 1) {
+        const change = this.readSingleTrackedCellChange(changedCellIndices[index]!)
+        if (change) {
+          cellChanges.push(change)
+        }
+      }
+      const orderedCellChanges =
+        cellChanges.length > 1 ? orderWorkPaperCellChanges(cellChanges, this.listSheetRecords(), cellChanges.length) : cellChanges
+      return valuesEqual(beforeValue, afterValue)
+        ? orderedCellChanges
+        : [
+            ...orderedCellChanges,
+            createWorkPaperNamedExpressionChange({
+              name: record.publicName,
+              scope: record.scope,
+              newValue: cloneNamedExpressionValue(afterValue),
+            }),
+          ]
+    } catch (error) {
+      if (error instanceof Error && WORKPAPER_PUBLIC_ERROR_NAMES.has(error.name)) {
+        throw error
+      }
+      throw new WorkPaperOperationError(this.messageOf(error, 'Mutation failed'))
+    }
+  }
+
+  private addSingleAxisIntervalWithoutRuntimeAdapters(
+    axis: WorkPaperAxisKind,
+    sheetId: number,
+    start: number,
+    amount: number,
+  ): WorkPaperChange[] {
+    this.assertNotDisposed()
+    const sheet = this.sheetRecord(sheetId)
+    const limit = axis === 'row' ? (this.config.maxRows ?? MAX_ROWS) : (this.config.maxColumns ?? MAX_COLS)
+    assertRowAndColumn(start, 'start')
+    assertRowAndColumn(amount, 'count')
+    if (amount <= 0 || start + amount > limit) {
+      throw new WorkPaperOperationError(`${axis === 'row' ? 'Rows' : 'Columns'} cannot be added`)
+    }
+    if (this.batchDepth === 0 && !this.evaluationSuspended && this.visibilityCache === null && this.namedExpressions.size === 0) {
+      if (this.engineEvents.hasPendingLazyChanges) {
+        this.engineEvents.materializePendingLazyChanges()
+      }
+      if (this.engineEvents.hasTrackedEvents) {
+        this.engineEvents.drain()
+      }
+      try {
+        const structuralInsertEngine = this.engine as WorkPaperStructuralInsertEngine
+        if (axis === 'row') {
+          structuralInsertEngine.insertRows(sheet.name, start, amount, { emitTracked: false })
+        } else {
+          structuralInsertEngine.insertColumns(sheet.name, start, amount, { emitTracked: false })
+        }
+        this.sheetDimensionCache.updateAfterAxisIntervalEdit(axis, 'add', sheet.id, start, amount)
+      } catch (error) {
+        if (error instanceof Error && WORKPAPER_PUBLIC_ERROR_NAMES.has(error.name)) {
+          throw error
+        }
+        throw new WorkPaperOperationError(this.messageOf(error, 'Mutation failed'))
+      }
+      return []
+    }
+    if (this.batchUsesTrackedFastPath) {
+      this.applyAxisIntervalEditForSheet(axis, 'add', sheet, start, amount)
+      return []
+    }
+    return this.batchStructuralChanges(() => {
+      this.applyAxisIntervalEditForSheet(axis, 'add', sheet, start, amount)
+    })
+  }
+
+  private tryRenameSheetWithoutRuntimeAdapters(sheet: SheetRecord, newName: string): WorkPaperChange[] | null {
+    if (!this.canUseMetadataOnlySheetRenameFastPath()) {
+      return null
+    }
+    const oldName = sheet.name
+    this.assertNotDisposed()
+    if (this.engineEvents.hasPendingLazyChanges) {
+      this.engineEvents.materializePendingLazyChanges()
+    }
+    if (this.batchUsesTrackedFastPath) {
+      this.downgradeTrackedBatchFastPath()
+    }
+    if (!this.canUseMetadataOnlySheetRenameFastPath()) {
+      return null
+    }
+    if (this.engineEvents.hasTrackedEvents) {
+      this.engineEvents.drain()
+    }
+    try {
+      const metadataRenameEngine = this.engine as MetadataRenameEngine
+      const renamed =
+        metadataRenameEngine.renameSheetMetadataOnlyById?.(sheet.id, newName) ?? this.engine.renameSheetMetadataOnly(oldName, newName)
+      if (renamed) {
+        this.sheetRecordsCache = null
+        this.engineEvents.clearEvents()
+      } else {
+        this.engineEvents.withCaptureDisabled(() => {
+          this.engine.renameSheet(oldName, newName)
+          this.sheetRecordsCache = null
+        })
+      }
+    } catch (error) {
+      if (error instanceof Error && WORKPAPER_PUBLIC_ERROR_NAMES.has(error.name)) {
+        throw error
+      }
+      throw new WorkPaperOperationError(this.messageOf(error, 'Mutation failed'))
+    }
+    if (this.engineEvents.hasTrackedEvents) {
+      this.engineEvents.drain()
+    }
+    return []
   }
 
   static buildEmpty(configInput: WorkPaperConfig = {}, namedExpressions: readonly SerializedWorkPaperNamedExpression[] = []): WorkPaper {
@@ -440,7 +626,7 @@ export class WorkPaper extends WorkPaperRuntimeSurface {
     }
   }
 
-  private canEditAxisIntervals(
+  protected canEditAxisIntervals(
     axis: WorkPaperAxisKind,
     mode: WorkPaperAxisIntervalEditMode,
     sheetId: number,
@@ -452,28 +638,42 @@ export class WorkPaper extends WorkPaperRuntimeSurface {
     return mode === 'add' ? this.isItPossibleToAddColumns(sheetId, ...indexes) : this.isItPossibleToRemoveColumns(sheetId, ...indexes)
   }
 
-  private applyAxisIntervalEdit(
+  protected applyAxisIntervalEdit(
     axis: WorkPaperAxisKind,
     mode: WorkPaperAxisIntervalEditMode,
     sheetId: number,
     start: number,
     amount: number,
+    options: { readonly emitTracked?: boolean } = {},
   ): void {
-    if (axis === 'row') {
-      if (mode === 'add') {
-        this.engine.insertRows(this.sheetName(sheetId), start, amount)
-      } else {
-        this.engine.deleteRows(this.sheetName(sheetId), start, amount)
-      }
-    } else if (mode === 'add') {
-      this.engine.insertColumns(this.sheetName(sheetId), start, amount)
-    } else {
-      this.engine.deleteColumns(this.sheetName(sheetId), start, amount)
-    }
-    this.sheetDimensionCache.updateAfterAxisIntervalEdit(axis, mode, sheetId, start, amount)
+    this.applyAxisIntervalEditForSheet(axis, mode, this.sheetRecord(sheetId), start, amount, options)
   }
 
-  private applyAxisMove(axis: WorkPaperAxisKind, sheetId: number, start: number, count: number, target: number): void {
+  protected applyAxisIntervalEditForSheet(
+    axis: WorkPaperAxisKind,
+    mode: WorkPaperAxisIntervalEditMode,
+    sheet: SheetRecord,
+    start: number,
+    amount: number,
+    options: { readonly emitTracked?: boolean } = {},
+  ): void {
+    const sheetName = sheet.name
+    const structuralInsertEngine = this.engine as WorkPaperStructuralInsertEngine
+    if (axis === 'row') {
+      if (mode === 'add') {
+        structuralInsertEngine.insertRows(sheetName, start, amount, options)
+      } else {
+        this.engine.deleteRows(sheetName, start, amount)
+      }
+    } else if (mode === 'add') {
+      structuralInsertEngine.insertColumns(sheetName, start, amount, options)
+    } else {
+      this.engine.deleteColumns(sheetName, start, amount)
+    }
+    this.sheetDimensionCache.updateAfterAxisIntervalEdit(axis, mode, sheet.id, start, amount)
+  }
+
+  protected applyAxisMove(axis: WorkPaperAxisKind, sheetId: number, start: number, count: number, target: number): void {
     if (axis === 'row') {
       this.engine.moveRows(this.sheetName(sheetId), start, count, target)
     } else {
@@ -506,7 +706,7 @@ export class WorkPaper extends WorkPaperRuntimeSurface {
     this.namedExpressions.clear()
   }
 
-  private applySerializedMatrix(
+  protected applySerializedMatrix(
     targetLeftCorner: WorkPaperCellAddress,
     serialized: RawCellContent[][],
     sourceAnchor: WorkPaperCellAddress,
@@ -584,7 +784,7 @@ export class WorkPaper extends WorkPaperRuntimeSurface {
     redoStack.push(...cloneWorkPaperHistoryRecords(snapshot.redoStack))
   }
 
-  private applyMatrixContents(
+  protected applyMatrixContents(
     address: WorkPaperCellAddress,
     content: WorkPaperSheet,
     options: {
@@ -606,7 +806,7 @@ export class WorkPaper extends WorkPaperRuntimeSurface {
     })
   }
 
-  private replaceSheetContentInternal(sheetId: number, content: WorkPaperSheet, options: { duringInitialization: boolean }): void {
+  protected replaceSheetContentInternal(sheetId: number, content: WorkPaperSheet, options: { duringInitialization: boolean }): void {
     const dimensions = inspectSheetDimensionsWithinLimits(this.sheetName(sheetId), content, this.config)
     replaceWorkPaperSheetContent({
       sheetId,
@@ -779,7 +979,7 @@ export class WorkPaper extends WorkPaperRuntimeSurface {
     }
   }
 
-  private rewriteFormulaForStorage(formula: string, ownerSheetId: number): string {
+  protected rewriteFormulaForStorage(formula: string, ownerSheetId: number): string {
     return rewriteWorkPaperFormulaForStorage({
       formula,
       ownerSheetId,
@@ -790,13 +990,13 @@ export class WorkPaper extends WorkPaperRuntimeSurface {
   }
 
   private replaceEngineForConfig(config: WorkPaperConfig): void {
+    this.engineEvents.detach()
+    this.engineEventsAttached = false
     this.engine = createWorkPaperEngine(config)
     this.sheetDimensionCache = new WorkPaperSheetDimensionCache(this.engine)
-    this.sheetDimensionCache.invalidateAll()
-    this.engineEvents.attach(this.engine)
   }
 
-  private restorePublicFormula(formula: string, ownerSheetId: number): string {
+  protected restorePublicFormula(formula: string, ownerSheetId: number): string {
     return restorePublicWorkPaperFormula({
       formula,
       ownerSheetId,
@@ -805,7 +1005,7 @@ export class WorkPaper extends WorkPaperRuntimeSurface {
     })
   }
 
-  private validateNamedExpression(expressionName: string, expression: RawCellContent, scope?: number): void {
+  protected validateNamedExpression(expressionName: string, expression: RawCellContent, scope?: number): void {
     validateWorkPaperNamedExpression({
       expressionName,
       expression,
@@ -817,7 +1017,7 @@ export class WorkPaper extends WorkPaperRuntimeSurface {
     })
   }
 
-  private upsertNamedExpressionInternal(
+  protected upsertNamedExpressionInternal(
     expression: SerializedWorkPaperNamedExpression,
     options: { duringInitialization: boolean; skipValidation?: boolean },
   ): void {
@@ -832,7 +1032,11 @@ export class WorkPaper extends WorkPaperRuntimeSurface {
     }
   }
 
-  private toDefinedNameSnapshot(expression: RawCellContent, scope?: number) {
+  protected toDefinedNameSnapshot(expression: RawCellContent, scope?: number) {
+    const simpleSnapshot = trySimpleWorkPaperNamedExpressionDefinedNameSnapshot(expression)
+    if (simpleSnapshot !== undefined) {
+      return simpleSnapshot
+    }
     return workPaperNamedExpressionToDefinedNameSnapshot({
       expression,
       ...(scope !== undefined ? { scope } : {}),
@@ -841,7 +1045,7 @@ export class WorkPaper extends WorkPaperRuntimeSurface {
     })
   }
 
-  private namedExpressionRecord(name: string, scope?: number): InternalNamedExpression {
+  protected namedExpressionRecord(name: string, scope?: number): InternalNamedExpression {
     const direct = this.namedExpressions.get(makeNamedExpressionKey(name, scope))
     if (direct) {
       return direct
@@ -853,7 +1057,7 @@ export class WorkPaper extends WorkPaperRuntimeSurface {
     return evaluateWorkPaperNamedExpression(expression, (formula, scope) => this.calculateFormula(formula, scope))
   }
 
-  private cellSnapshotToRawContent(cell: CellSnapshot, ownerSheetId: number): RawCellContent {
+  protected cellSnapshotToRawContent(cell: CellSnapshot, ownerSheetId: number): RawCellContent {
     return workPaperCellSnapshotToRawContent({
       cell,
       ownerSheetId,

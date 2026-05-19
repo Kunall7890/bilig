@@ -1,5 +1,7 @@
 import type {
   FormulaFamily,
+  FormulaFamilyFreshUniformRunRegistrationArgs,
+  FormulaFamilyRunUpsertArgs,
   FormulaFamilyStore,
   FormulaFamilyStructuralSourceTransform,
   FormulaFamilyStructuralSourceTransformEntry,
@@ -13,6 +15,8 @@ import { queueDeferredFormulaFamilyStructuralSourceTransforms } from './formula-
 export interface FormulaBindingFamilyIndexController {
   readonly clearNow: () => void
   readonly registerFormulaFamilyNow: (cellIndex: number, formula: RuntimeFormula, ownerPosition?: FormulaOwnerPosition) => void
+  readonly registerFreshFormulaFamilyRunNow: (run: FormulaFamilyFreshUniformRunRegistrationArgs) => boolean
+  readonly upsertFormulaFamilyRunNow: (run: FormulaFamilyRunUpsertArgs) => void
   readonly ensureNow: () => void
   readonly deferRebuildNow: () => void
   readonly deferRunsNow: (runs: readonly DeferredInitialFormulaFamilyRun[]) => void
@@ -56,6 +60,29 @@ export function createFormulaBindingFamilyIndexController(args: {
       return
     }
     args.registerFormulaFamilyInStoreNow(cellIndex, formula, ownerPosition)
+  }
+
+  const invalidateDeferredRunsForExternalRegistration = (): void => {
+    args.formulaFamilyShapeKeyCache.clear()
+    deferredRuns = undefined
+    deferredStructuralSourceTransforms = undefined
+    needsRebuild = true
+  }
+
+  const registerFreshFormulaFamilyRunNow = (run: FormulaFamilyFreshUniformRunRegistrationArgs): boolean => {
+    if (needsRebuild) {
+      invalidateDeferredRunsForExternalRegistration()
+      return true
+    }
+    return args.formulaFamilies.registerFreshUniformRun(run)
+  }
+
+  const upsertFormulaFamilyRunNow = (run: FormulaFamilyRunUpsertArgs): void => {
+    if (needsRebuild) {
+      invalidateDeferredRunsForExternalRegistration()
+      return
+    }
+    args.formulaFamilies.registerFormulaRun(run)
   }
 
   const ensureNow = (): void => {
@@ -131,6 +158,8 @@ export function createFormulaBindingFamilyIndexController(args: {
   return {
     clearNow,
     registerFormulaFamilyNow,
+    registerFreshFormulaFamilyRunNow,
+    upsertFormulaFamilyRunNow,
     ensureNow,
     deferRebuildNow,
     deferRunsNow,

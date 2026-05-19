@@ -1,4 +1,5 @@
 export interface AxisResidentCellIdentity {
+  readonly sheetId?: number
   readonly rowId: string
   readonly colId: string
 }
@@ -6,7 +7,9 @@ export interface AxisResidentCellIdentity {
 export type AxisResidentCellIndexRebuildSource = (callback: (cellIndex: number, identity: AxisResidentCellIdentity) => void) => void
 
 export class AxisResidentCellIndex {
-  private readonly byCell = new Map<number, AxisResidentCellIdentity>()
+  private readonly sheetIds: Array<number | undefined> = []
+  private readonly rowIds: Array<string | undefined> = []
+  private readonly colIds: Array<string | undefined> = []
   private readonly byRow = new Map<string, Set<number>>()
   private readonly byColumn = new Map<string, Set<number>>()
   private primaryIndexDirty = false
@@ -16,12 +19,13 @@ export class AxisResidentCellIndex {
 
   set(cellIndex: number, identity: AxisResidentCellIdentity): void {
     this.ensurePrimaryIndex()
-    const existing = this.byCell.get(cellIndex)
-    if (existing && !this.secondaryIndexesDirty) {
-      deleteFromSetMap(this.byRow, existing.rowId, cellIndex)
-      deleteFromSetMap(this.byColumn, existing.colId, cellIndex)
+    const existingRowId = this.rowIds[cellIndex]
+    const existingColId = this.colIds[cellIndex]
+    if (existingRowId !== undefined && existingColId !== undefined && !this.secondaryIndexesDirty) {
+      deleteFromSetMap(this.byRow, existingRowId, cellIndex)
+      deleteFromSetMap(this.byColumn, existingColId, cellIndex)
     }
-    this.byCell.set(cellIndex, identity)
+    this.setPrimaryParts(cellIndex, identity.sheetId, identity.rowId, identity.colId)
     if (!this.secondaryIndexesDirty) {
       addToSetMap(this.byRow, identity.rowId, cellIndex)
       addToSetMap(this.byColumn, identity.colId, cellIndex)
@@ -30,12 +34,13 @@ export class AxisResidentCellIndex {
 
   add(cellIndex: number, identity: AxisResidentCellIdentity): void {
     this.ensurePrimaryIndex()
-    const existing = this.byCell.get(cellIndex)
-    if (existing && !this.secondaryIndexesDirty) {
-      deleteFromSetMap(this.byRow, existing.rowId, cellIndex)
-      deleteFromSetMap(this.byColumn, existing.colId, cellIndex)
+    const existingRowId = this.rowIds[cellIndex]
+    const existingColId = this.colIds[cellIndex]
+    if (existingRowId !== undefined && existingColId !== undefined && !this.secondaryIndexesDirty) {
+      deleteFromSetMap(this.byRow, existingRowId, cellIndex)
+      deleteFromSetMap(this.byColumn, existingColId, cellIndex)
     }
-    this.byCell.set(cellIndex, identity)
+    this.setPrimaryParts(cellIndex, identity.sheetId, identity.rowId, identity.colId)
     if (!this.secondaryIndexesDirty) {
       addToSetMap(this.byRow, identity.rowId, cellIndex)
       addToSetMap(this.byColumn, identity.colId, cellIndex)
@@ -44,18 +49,45 @@ export class AxisResidentCellIndex {
 
   addDeferred(cellIndex: number, identity: AxisResidentCellIdentity): void {
     this.ensurePrimaryIndex()
-    this.byCell.set(cellIndex, identity)
+    this.setPrimaryParts(cellIndex, identity.sheetId, identity.rowId, identity.colId)
     this.secondaryIndexesDirty = true
   }
 
   addDeferredParts(cellIndex: number, rowId: string, colId: string): void {
     this.ensurePrimaryIndex()
-    this.byCell.set(cellIndex, { rowId, colId })
+    this.setPrimaryParts(cellIndex, undefined, rowId, colId)
+    this.secondaryIndexesDirty = true
+  }
+
+  addDenseRowMajorDeferredParts(firstCellIndex: number, rowIds: readonly string[], colIds: readonly string[]): void {
+    this.ensurePrimaryIndex()
+    const colCount = colIds.length
+    const cellCount = rowIds.length * colCount
+    if (cellCount === 0) {
+      return
+    }
+    const endCellIndex = firstCellIndex + cellCount
+    this.sheetIds.length = Math.max(this.sheetIds.length, endCellIndex)
+    this.rowIds.length = Math.max(this.rowIds.length, endCellIndex)
+    this.colIds.length = Math.max(this.colIds.length, endCellIndex)
+
+    let cellIndex = firstCellIndex
+    for (let rowOffset = 0; rowOffset < rowIds.length; rowOffset += 1) {
+      const rowId = rowIds[rowOffset]!
+      for (let colOffset = 0; colOffset < colCount; colOffset += 1) {
+        this.sheetIds[cellIndex] = undefined
+        this.rowIds[cellIndex] = rowId
+        this.colIds[cellIndex] = colIds[colOffset]!
+        cellIndex += 1
+      }
+    }
     this.secondaryIndexesDirty = true
   }
 
   deferRebuild(): void {
-    this.byCell.clear()
+    this.sheetIds.length = 0
+    this.rowIds.length = 0
+    this.colIds.length = 0
     this.byRow.clear()
     this.byColumn.clear()
     this.primaryIndexDirty = true
@@ -64,26 +96,37 @@ export class AxisResidentCellIndex {
 
   get(cellIndex: number): AxisResidentCellIdentity | undefined {
     this.ensurePrimaryIndex()
-    return this.byCell.get(cellIndex)
+    const rowId = this.rowIds[cellIndex]
+    const colId = this.colIds[cellIndex]
+    if (rowId === undefined || colId === undefined) {
+      return undefined
+    }
+    const sheetId = this.sheetIds[cellIndex]
+    return sheetId === undefined ? { rowId, colId } : { sheetId, rowId, colId }
   }
 
   delete(cellIndex: number): boolean {
     this.ensurePrimaryIndex()
-    const existing = this.byCell.get(cellIndex)
-    if (!existing) {
+    const existingRowId = this.rowIds[cellIndex]
+    const existingColId = this.colIds[cellIndex]
+    if (existingRowId === undefined || existingColId === undefined) {
       return false
     }
-    this.byCell.delete(cellIndex)
+    this.sheetIds[cellIndex] = undefined
+    this.rowIds[cellIndex] = undefined
+    this.colIds[cellIndex] = undefined
     if (this.secondaryIndexesDirty) {
       return true
     }
-    deleteFromSetMap(this.byRow, existing.rowId, cellIndex)
-    deleteFromSetMap(this.byColumn, existing.colId, cellIndex)
+    deleteFromSetMap(this.byRow, existingRowId, cellIndex)
+    deleteFromSetMap(this.byColumn, existingColId, cellIndex)
     return true
   }
 
   clear(): void {
-    this.byCell.clear()
+    this.sheetIds.length = 0
+    this.rowIds.length = 0
+    this.colIds.length = 0
     this.byRow.clear()
     this.byColumn.clear()
     this.primaryIndexDirty = false
@@ -132,9 +175,11 @@ export class AxisResidentCellIndex {
     if (!this.primaryIndexDirty) {
       return
     }
-    this.byCell.clear()
+    this.sheetIds.length = 0
+    this.rowIds.length = 0
+    this.colIds.length = 0
     this.rebuildSource?.((cellIndex, identity) => {
-      this.byCell.set(cellIndex, identity)
+      this.setPrimaryParts(cellIndex, identity.sheetId, identity.rowId, identity.colId)
     })
     this.primaryIndexDirty = false
     this.secondaryIndexesDirty = true
@@ -147,11 +192,22 @@ export class AxisResidentCellIndex {
     }
     this.byRow.clear()
     this.byColumn.clear()
-    this.byCell.forEach((identity, cellIndex) => {
-      addToSetMap(this.byRow, identity.rowId, cellIndex)
-      addToSetMap(this.byColumn, identity.colId, cellIndex)
-    })
+    for (let cellIndex = 0; cellIndex < this.rowIds.length; cellIndex += 1) {
+      const rowId = this.rowIds[cellIndex]
+      const colId = this.colIds[cellIndex]
+      if (rowId === undefined || colId === undefined) {
+        continue
+      }
+      addToSetMap(this.byRow, rowId, cellIndex)
+      addToSetMap(this.byColumn, colId, cellIndex)
+    }
     this.secondaryIndexesDirty = false
+  }
+
+  private setPrimaryParts(cellIndex: number, sheetId: number | undefined, rowId: string, colId: string): void {
+    this.sheetIds[cellIndex] = sheetId
+    this.rowIds[cellIndex] = rowId
+    this.colIds[cellIndex] = colId
   }
 }
 

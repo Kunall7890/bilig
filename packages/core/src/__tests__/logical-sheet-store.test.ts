@@ -84,6 +84,41 @@ describe('LogicalSheetStore', () => {
     expect(logical.getVisibleCell(2, 3)).toBeUndefined()
   })
 
+  it('iterates visible row cells through the resident row index', () => {
+    const cellIdentities = new CellAxisIdentityStore()
+    const cellPages = new CellPageStore(
+      new Map<string, number>(),
+      (location) => makeLogicalCellKey(location.sheetId, location.rowId, location.colId),
+      (callback) => {
+        cellIdentities.forEach((identity, cellIndex) => {
+          callback(identity, cellIndex)
+        })
+      },
+    )
+    const axisMap = new SheetAxisMap()
+    const logical = new LogicalSheetStore(7, axisMap, cellPages, cellIdentities, new AxisResidentCellIndex())
+    let nextRowId = 0
+    let nextColumnId = 0
+    const factories = {
+      createRowId: () => `row-${nextRowId++}`,
+      createColumnId: () => `column-${nextColumnId++}`,
+    }
+
+    logical.setVisibleCell(4, 3, 43, factories)
+    logical.setVisibleCell(4, 1, 41, factories)
+    logical.setVisibleCell(5, 9, 59, factories)
+
+    const entries: Array<{ cellIndex: number; col: number }> = []
+    logical.forEachVisibleRowCellEntry(4, (cellIndex, col) => {
+      entries.push({ cellIndex, col })
+    })
+
+    expect(entries).toEqual([
+      { cellIndex: 41, col: 1 },
+      { cellIndex: 43, col: 3 },
+    ])
+  })
+
   it('attaches fresh visible cells through primitive deferred indexes for initial load', () => {
     const cellIdentities = new CellAxisIdentityStore()
     let objectLocationKeyCalls = 0
@@ -116,5 +151,38 @@ describe('LogicalSheetStore', () => {
     expect(logical.getCellIdentity(42)).toEqual({ sheetId: 7, rowId: 'row-c', colId: 'column-d' })
     expect(logical.listResidentCellIndices('column', ['column-d'])).toEqual([42])
     expect(logical.getVisibleCell(2, 3)).toBe(42)
+  })
+
+  it('resolves dense row-major logical cells after axis edits without rebuilding cell pages', () => {
+    const cellIdentities = new CellAxisIdentityStore()
+    let rebuildCount = 0
+    const cellPages = new CellPageStore(
+      new Map<string, number>(),
+      (location) => makeLogicalCellKey(location.sheetId, location.rowId, location.colId),
+      (callback) => {
+        rebuildCount += 1
+        cellIdentities.forEach((identity, cellIndex) => {
+          callback(identity, cellIndex)
+        })
+      },
+    )
+    const axisMap = new SheetAxisMap()
+    const rowIds = ['row-1', 'row-2', 'row-3']
+    const colIds = ['col-a', 'col-b', 'col-c']
+    rowIds.forEach((id, index) => {
+      axisMap.setId('row', index, id)
+    })
+    colIds.forEach((id, index) => {
+      axisMap.setId('column', index, id)
+    })
+    const logical = new LogicalSheetStore(7, axisMap, cellPages, cellIdentities, new AxisResidentCellIndex())
+
+    logical.deferVisibleCellPageRebuild()
+    logical.setFreshVisibleDenseRowMajorIdentitiesWithAxisIdsDeferred(100, rowIds, colIds)
+    axisMap.splice('column', 1, 0, 1, [])
+
+    expect(logical.getVisibleCell(2, 3)).toBe(108)
+    expect(rebuildCount).toBe(0)
+    expect(logical.getVisibleCell(2, 1)).toBeUndefined()
   })
 })

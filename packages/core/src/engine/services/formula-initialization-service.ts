@@ -1,4 +1,5 @@
 import { Effect } from 'effect'
+import { ValueTag } from '@bilig/protocol'
 import type { EngineCellMutationRef, EngineFormulaSourceRefs } from '../../cell-mutations-at.js'
 import { CellFlags } from '../../cell-store.js'
 import { addEngineCounter } from '../../perf/engine-counters.js'
@@ -9,6 +10,7 @@ import { materializeDeferredFormulaFamilyRunMembers, type DeferredInitialFormula
 import { initialFormulaFamilyShapeKey } from './formula-initialization-template-keys.js'
 import { createInitialTemplateFormulaResolver } from './formula-initialization-template-resolver.js'
 import { createInitialFormulaValueWriter, type InitialFormulaValueWriter } from './formula-initialization-value-writer.js'
+import { noteDeferredFormulaInstance, readAlignedFreshFormulaInstancesFromRefs } from './formula-initialization-fresh-instances.js'
 import {
   initialFormulaEntryRefAt,
   type InitialFormulaCellIndexList,
@@ -29,6 +31,7 @@ import type {
   HydratedPreparedFormulaInitializationRef,
   PreparedFormulaInitializationRef,
 } from './formula-initialization-service-types.js'
+import { tryEvaluateFormulaLeafInlineScalar } from './formula-leaf-inline-scalar-evaluator.js'
 
 export type {
   EngineFormulaInitializationService,
@@ -160,7 +163,12 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
 
   const evaluateInitialDirectFormulas = (
     orderedCellIndices: InitialFormulaCellIndexList,
-    options?: { readonly alreadyValidated?: boolean; readonly hasPrefixAggregateCandidates?: boolean },
+    options?: {
+      readonly alreadyValidated?: boolean
+      readonly hasPrefixAggregateCandidates?: boolean
+      readonly preEvaluatedCellIndices?: InitialFormulaCellIndexList
+      readonly preEvaluatedCellCount?: number
+    },
   ): U32 | undefined => {
     if (
       orderedCellIndices.length === 0 ||
@@ -171,6 +179,13 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
     }
     let changedCellBuffer = new Uint32Array(Math.max(orderedCellIndices.length, 1))
     let changedCellCount = 0
+    const preEvaluatedCellIndices = options?.preEvaluatedCellIndices
+    const preEvaluatedCellCount = Math.min(
+      options?.preEvaluatedCellCount ?? preEvaluatedCellIndices?.length ?? 0,
+      preEvaluatedCellIndices?.length ?? 0,
+    )
+    let preEvaluatedCellIndex = 0
+    let preEvaluatedCells: Uint8Array | undefined
     const pushChangedCellIndex = (cellIndex: number): void => {
       if (changedCellCount === changedCellBuffer.length) {
         const next = new Uint32Array(changedCellBuffer.length * 2)
@@ -179,6 +194,44 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
       }
       changedCellBuffer[changedCellCount] = cellIndex
       changedCellCount += 1
+    }
+    const isPreEvaluatedCell = (cellIndex: number): boolean => {
+      if (!preEvaluatedCellIndices || preEvaluatedCellCount === 0) {
+        return false
+      }
+      if (!preEvaluatedCells) {
+        preEvaluatedCells = new Uint8Array(args.state.workbook.cellStore.size + 1)
+        for (let index = 0; index < preEvaluatedCellCount; index += 1) {
+          preEvaluatedCells[preEvaluatedCellIndices[index]!] = 1
+        }
+      }
+      return preEvaluatedCells[cellIndex] === 1
+    }
+    const canReusePreEvaluatedFormula = (cellIndex: number): boolean => {
+      const formula = args.state.formulas.get(cellIndex)
+      if (!formula) {
+        return false
+      }
+      for (let index = 0; index < formula.dependencyIndices.length; index += 1) {
+        const dependencyCellIndex = formula.dependencyIndices[index]!
+        if (
+          ((args.state.workbook.cellStore.flags[dependencyCellIndex] ?? 0) & CellFlags.HasFormula) !== 0 &&
+          !isPreEvaluatedCell(dependencyCellIndex)
+        ) {
+          return false
+        }
+      }
+      return true
+    }
+    const shouldReusePreEvaluatedCell = (cellIndex: number): boolean => {
+      if (!preEvaluatedCellIndices || preEvaluatedCellIndex >= preEvaluatedCellCount) {
+        return false
+      }
+      if (preEvaluatedCellIndices[preEvaluatedCellIndex] !== cellIndex) {
+        return false
+      }
+      preEvaluatedCellIndex += 1
+      return canReusePreEvaluatedFormula(cellIndex)
     }
     const valueWriter = createInitialFormulaValueWriter(args)
     args.state.workbook.withBatchedColumnVersionUpdates(() => {
@@ -190,6 +243,10 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
         args.checkEvaluationBudget()
         const cellIndex = orderedCellIndices[index]!
         if (prefixAggregateHandled?.has(cellIndex)) {
+          continue
+        }
+        if (shouldReusePreEvaluatedCell(cellIndex)) {
+          pushChangedCellIndex(cellIndex)
           continue
         }
         const formula = args.state.formulas.get(cellIndex)
@@ -243,6 +300,9 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
       let formulaChangedCount = 0
       let topologyChanged = false
       let compileMs = 0
+      let workbookDateSystem: string | undefined
+      const resolveWorkbookDateSystem = (): string | undefined =>
+        (workbookDateSystem ??= args.state.workbook.getCalculationSettings().dateSystem)
       const reservedNewCells = potentialNewCells ?? refs.length
       const hadExistingFormulas = args.state.formulas.size > 0
       args.state.workbook.cellStore.ensureCapacity(args.state.workbook.cellStore.size + reservedNewCells)
@@ -283,7 +343,9 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
         : undefined
       let inlineInitialDirectScalarCellCount = 0
       const shouldDeferFormulaFamilyIndex = !hadExistingFormulas && args.deferFormulaFamilyIndexRebuild !== undefined
-      const shouldDeferFormulaInstanceTable = !hadExistingFormulas && args.deferFormulaInstanceTableRebuild !== undefined
+      const shouldDeferFormulaInstanceTable =
+        !hadExistingFormulas && (args.hydrateFreshFormulaInstances !== undefined || args.deferFormulaInstanceTableRebuild !== undefined)
+      const deferredFormulaInstances = !hadExistingFormulas && args.hydrateFreshFormulaInstances !== undefined ? [] : undefined
       const canCaptureDeferredFormulaFamilyRuns =
         !shouldDeferFormulaFamilyIndex ||
         (args.deferFormulaFamilyIndexRuns !== undefined && refs.length <= DEFERRED_FORMULA_FAMILY_RUN_CAPTURE_LIMIT)
@@ -367,22 +429,39 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
           !canAssignTopoInBatch ||
           !runtimeFormula ||
           runtimeFormula.compiled.volatile ||
-          runtimeFormula.compiled.producesSpill ||
-          runtimeFormula.directScalar === undefined
+          runtimeFormula.compiled.producesSpill
         ) {
           return
         }
-        const numericValue = evaluateInitialDirectScalarNumber(args.state, runtimeFormula.directScalar)
-        inlineInitialDirectScalarWriter ??= createInitialFormulaValueWriter(args)
-        if (numericValue !== undefined) {
-          inlineInitialDirectScalarWriter.writeNumberAt(prepared.cellIndex, prepared.sheetId, prepared.col, numericValue)
-          pushInlineInitialDirectScalarCell(prepared.cellIndex)
-          return
+        if (runtimeFormula.directScalar !== undefined) {
+          const numericValue = evaluateInitialDirectScalarNumber(args.state, runtimeFormula.directScalar)
+          inlineInitialDirectScalarWriter ??= createInitialFormulaValueWriter(args)
+          if (numericValue !== undefined) {
+            inlineInitialDirectScalarWriter.writeNumberAt(prepared.cellIndex, prepared.sheetId, prepared.col, numericValue)
+            pushInlineInitialDirectScalarCell(prepared.cellIndex)
+            return
+          }
+          const fallbackValue = evaluateInitialDirectScalar(args.state, runtimeFormula.directScalar)
+          if (fallbackValue !== undefined) {
+            inlineInitialDirectScalarWriter.writeValueAt(prepared.cellIndex, prepared.sheetId, prepared.col, fallbackValue)
+            pushInlineInitialDirectScalarCell(prepared.cellIndex)
+            return
+          }
         }
-        const fallbackValue = evaluateInitialDirectScalar(args.state, runtimeFormula.directScalar)
-        if (fallbackValue !== undefined) {
-          inlineInitialDirectScalarWriter.writeValueAt(prepared.cellIndex, prepared.sheetId, prepared.col, fallbackValue)
-          pushInlineInitialDirectScalarCell(prepared.cellIndex)
+        if (runtimeFormula.inlineScalarFastPlanKind !== undefined) {
+          const inlineValue = tryEvaluateFormulaLeafInlineScalar({
+            state: args.state,
+            formula: runtimeFormula,
+          })
+          if (inlineValue !== undefined) {
+            inlineInitialDirectScalarWriter ??= createInitialFormulaValueWriter(args)
+            if (inlineValue.tag === ValueTag.Number) {
+              inlineInitialDirectScalarWriter.writeNumberAt(prepared.cellIndex, prepared.sheetId, prepared.col, inlineValue.value)
+            } else {
+              inlineInitialDirectScalarWriter.writeValueAt(prepared.cellIndex, prepared.sheetId, prepared.col, inlineValue)
+            }
+            pushInlineInitialDirectScalarCell(prepared.cellIndex)
+          }
         }
       }
       const noteBoundFormula = (prepared: { cellIndex: number; sheetId: number; col: number }): void => {
@@ -438,10 +517,17 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
                       deferFamilyRegistration: shouldDeferFormulaFamilyIndex || deferredFormulaFamilyRuns !== undefined,
                       deferFormulaInstanceRegistration: shouldDeferFormulaInstanceTable,
                       assumeFreshFormula: !hadExistingFormulas,
+                      resolveWorkbookDateSystem,
+                      ownerPosition: {
+                        sheetName: prepared.ownerSheetName,
+                        row: prepared.row,
+                        col: prepared.col,
+                      },
                     },
                   )
                   noteDeferredFormulaFamilyRunMember(deferredFormulaFamilyRuns, prepared)
                 }
+                noteDeferredFormulaInstance(deferredFormulaInstances, prepared, args.state.formulas.get(prepared.cellIndex))
                 noteBoundFormula(prepared)
               } catch {
                 noteSkippedOrderedPreparedCellIndex()
@@ -468,7 +554,11 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
               deferredFormulaFamilyRuns?.forEach(registerDeferredFormulaFamilyRun)
             }
             if (shouldDeferFormulaInstanceTable) {
-              args.deferFormulaInstanceTableRebuild?.()
+              if (deferredFormulaInstances) {
+                args.hydrateFreshFormulaInstances?.(deferredFormulaInstances)
+              } else {
+                args.deferFormulaInstanceTableRebuild?.()
+              }
             }
             inlineInitialDirectScalarWriter?.flush()
           })
@@ -528,6 +618,12 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
         const direct = evaluateInitialDirectFormulas(orderedPreparedCellList(), {
           alreadyValidated: true,
           hasPrefixAggregateCandidates: hasInitialPrefixAggregateCandidates,
+          ...(inlineInitialDirectScalarCellCount > 0
+            ? {
+                preEvaluatedCellIndices: inlineInitialDirectScalarCellBuffer ?? targetCellIndices,
+                preEvaluatedCellCount: inlineInitialDirectScalarCellCount,
+              }
+            : {}),
         })
         if (direct) {
           recalculated = direct
@@ -634,7 +730,7 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
   }
 
   const initializeHydratedPreparedCellFormulasAtNowUnchecked = (
-    refs: readonly HydratedPreparedFormulaInitializationRef[],
+    refs: InitialFormulaEntryRefSource<HydratedPreparedFormulaInitializationRef>,
     potentialNewCells?: number,
   ): void => {
     if (refs.length === 0) {
@@ -647,26 +743,31 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
     const hadCycleMembersBeforeNow = (): boolean => (hadCycleMembersBefore ??= hasCycleMembersNow())
     let topologyChanged = false
     let compileMs = 0
+    let workbookDateSystem: string | undefined
+    const resolveWorkbookDateSystem = (): string | undefined =>
+      (workbookDateSystem ??= args.state.workbook.getCalculationSettings().dateSystem)
     const reservedNewCells = potentialNewCells ?? refs.length
     const hadExistingFormulas = args.state.formulas.size > 0
     args.state.workbook.cellStore.ensureCapacity(args.state.workbook.cellStore.size + reservedNewCells)
     args.ensureRecalcScratchCapacity(args.state.workbook.cellStore.size + reservedNewCells + 1)
     args.resetMaterializedCellScratch(reservedNewCells)
-    const targetCellIndices = hadExistingFormulas
-      ? []
-      : refs.map((ref) => {
-          args.checkEvaluationBudget()
-          return ref.cellIndex ?? args.ensureCellTrackedByCoords(ref.sheetId, ref.row, ref.col)
-        })
-    const pendingInitialFormulaCellIndices = hadExistingFormulas
-      ? refs.map((ref) => {
-          args.checkEvaluationBudget()
-          return ref.cellIndex ?? args.ensureCellTrackedByCoords(ref.sheetId, ref.row, ref.col)
-        })
-      : targetCellIndices
-    const pendingFormulaCells = hadExistingFormulas
-      ? undefined
-      : new Uint8Array(args.state.workbook.cellStore.capacity + reservedNewCells + 1)
+    const targetCellIndices = hadExistingFormulas ? EMPTY_U32 : new Uint32Array(refs.length)
+    const pendingInitialFormulaCellIndices = hadExistingFormulas ? new Uint32Array(refs.length) : targetCellIndices
+    let maxTargetCellIndex = 0
+    for (let index = 0; index < refs.length; index += 1) {
+      args.checkEvaluationBudget()
+      const ref = initialFormulaEntryRefAt(refs, index)
+      const cellIndex = ref.cellIndex ?? args.ensureCellTrackedByCoords(ref.sheetId, ref.row, ref.col)
+      if (hadExistingFormulas) {
+        pendingInitialFormulaCellIndices[index] = cellIndex
+      } else {
+        targetCellIndices[index] = cellIndex
+        if (cellIndex > maxTargetCellIndex) {
+          maxTargetCellIndex = cellIndex
+        }
+      }
+    }
+    const pendingFormulaCells = hadExistingFormulas ? undefined : new Uint8Array(maxTargetCellIndex + 1)
     if (pendingFormulaCells) {
       for (let index = 0; index < targetCellIndices.length; index += 1) {
         args.checkEvaluationBudget()
@@ -676,6 +777,12 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
     let canAssignTopoInBatch = !hadExistingFormulas
     let nextTopoRank = 0
     const shouldDeferFormulaFamilyIndex = !hadExistingFormulas && args.deferFormulaFamilyIndexRebuild !== undefined
+    const shouldDeferFormulaInstanceTable =
+      !hadExistingFormulas && (args.hydrateFreshFormulaInstances !== undefined || args.deferFormulaInstanceTableRebuild !== undefined)
+    const alignedFreshFormulaInstances =
+      !hadExistingFormulas && args.hydrateFreshFormulaInstances !== undefined ? readAlignedFreshFormulaInstancesFromRefs(refs) : undefined
+    const deferredFormulaInstances =
+      !hadExistingFormulas && args.hydrateFreshFormulaInstances !== undefined && alignedFreshFormulaInstances === undefined ? [] : undefined
     const canCaptureDeferredFormulaFamilyRuns =
       !shouldDeferFormulaFamilyIndex ||
       (args.deferFormulaFamilyIndexRuns !== undefined && refs.length <= DEFERRED_FORMULA_FAMILY_RUN_CAPTURE_LIMIT)
@@ -691,14 +798,27 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
         args.state.workbook.withBatchedColumnVersionUpdates(() => {
           for (let refIndex = 0; refIndex < refs.length; refIndex += 1) {
             args.checkEvaluationBudget()
-            const ref = refs[refIndex]!
+            const ref = initialFormulaEntryRefAt(refs, refIndex)
             const cellIndex = hadExistingFormulas ? pendingInitialFormulaCellIndices[refIndex]! : targetCellIndices[refIndex]!
             const ownerSheetName = resolveSheetName(ref.sheetId)
             topologyChanged =
               args.bindPreparedFormula(cellIndex, ownerSheetName, ref.source, ref.compiled, ref.templateId, {
                 deferFamilyRegistration: shouldDeferFormulaFamilyIndex || deferredFormulaFamilyRuns !== undefined,
                 preserveCachedValueOnFullRecalc: ref.preserveCachedValueOnFullRecalc === true,
+                deferFormulaInstanceRegistration: shouldDeferFormulaInstanceTable,
+                assumeFreshFormula: !hadExistingFormulas,
+                ownerPosition: {
+                  sheetName: ownerSheetName,
+                  row: ref.row,
+                  col: ref.col,
+                },
+                resolveWorkbookDateSystem,
               }) || topologyChanged
+            noteDeferredFormulaInstance(
+              deferredFormulaInstances,
+              { cellIndex, row: ref.row, col: ref.col, ownerSheetName },
+              args.state.formulas.get(cellIndex),
+            )
             noteDeferredFormulaFamilyRunMember(deferredFormulaFamilyRuns, {
               cellIndex,
               sheetId: ref.sheetId,
@@ -737,6 +857,15 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
               registerDeferredFormulaFamilyRun(run)
             })
           }
+          if (shouldDeferFormulaInstanceTable) {
+            if (alignedFreshFormulaInstances !== undefined) {
+              args.hydrateFreshFormulaInstances?.(alignedFreshFormulaInstances)
+            } else if (deferredFormulaInstances) {
+              args.hydrateFreshFormulaInstances?.(deferredFormulaInstances)
+            } else {
+              args.deferFormulaInstanceTableRebuild?.()
+            }
+          }
           args.checkEvaluationBudget()
           valueWriter.flush()
         })
@@ -753,13 +882,7 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
       const repaired =
         !hadCycleMembersBeforeNow() &&
         refs.length > 0 &&
-        args.repairTopoRanks(
-          Uint32Array.from(
-            targetCellIndices.length > 0
-              ? targetCellIndices
-              : refs.map((ref) => ref.cellIndex ?? args.ensureCellTrackedByCoords(ref.sheetId, ref.row, ref.col)),
-          ),
-        )
+        args.repairTopoRanks(targetCellIndices.length > 0 ? targetCellIndices : pendingInitialFormulaCellIndices)
       if (!repaired) {
         args.checkEvaluationBudget()
         args.rebuildTopoRanks()
@@ -779,7 +902,7 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
   }
 
   const initializeHydratedPreparedCellFormulasAtNow = (
-    refs: readonly HydratedPreparedFormulaInitializationRef[],
+    refs: InitialFormulaEntryRefSource<HydratedPreparedFormulaInitializationRef>,
     potentialNewCells?: number,
   ): void => {
     if (refs.length === 0) {

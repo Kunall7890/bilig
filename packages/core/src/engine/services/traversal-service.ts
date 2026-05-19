@@ -14,6 +14,8 @@ import { EngineTraversalError } from '../errors.js'
 import type { RegionGraph } from '../../deps/region-graph.js'
 import { CellFlags } from '../../cell-store.js'
 
+const INITIAL_TRAVERSAL_SCRATCH_CAPACITY = 16
+
 export interface EngineTraversalService {
   readonly getEntityDependents: (entityId: number) => Effect.Effect<Uint32Array, EngineTraversalError>
   readonly getSingleEntityDependent: (entityId: number) => Effect.Effect<number, EngineTraversalError>
@@ -52,14 +54,14 @@ export function createEngineTraversalService(args: {
 }): EngineTraversalService {
   const NO_ENTITY_DEPENDENT = -1
   const MULTIPLE_ENTITY_DEPENDENTS = -2
-  let topoFormulaBuffer: U32 = new Uint32Array(128)
-  let topoEntityQueue: U32 = new Uint32Array(128)
+  let topoFormulaBuffer: U32 = new Uint32Array(INITIAL_TRAVERSAL_SCRATCH_CAPACITY)
+  let topoEntityQueue: U32 = new Uint32Array(INITIAL_TRAVERSAL_SCRATCH_CAPACITY)
   let topoFormulaSeenEpoch = 1
   let topoRangeSeenEpoch = 1
   let topoExactLookupSeenEpoch = 1
   let topoSortedLookupSeenEpoch = 1
-  let topoFormulaSeen: U32 = new Uint32Array(128)
-  let topoRangeSeen: U32 = new Uint32Array(128)
+  let topoFormulaSeen: U32 = new Uint32Array(INITIAL_TRAVERSAL_SCRATCH_CAPACITY)
+  let topoRangeSeen: U32 = new Uint32Array(INITIAL_TRAVERSAL_SCRATCH_CAPACITY)
   const topoExactLookupSeen = new Map<number, number>()
   const topoSortedLookupSeen = new Map<number, number>()
   let directRegionFormulaCacheVersion = -1

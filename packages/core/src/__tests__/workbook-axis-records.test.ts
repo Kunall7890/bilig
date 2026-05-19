@@ -53,6 +53,55 @@ describe('workbook axis records', () => {
     expect(listAxisEntries(entries)).toEqual([{ id: 'column-existing', index: 0, size: 90, hidden: false }])
   })
 
+  it('keeps completely sparse default inserts sparse', () => {
+    const entries: Array<WorkbookAxisEntryRecord | undefined> = []
+    const createEntry = createEntryFactory('column')
+
+    expect(spliceAxisEntries(entries, 1, 0, 2, createEntry)).toEqual([])
+
+    expect(entries.length).toBe(0)
+    expect(listAxisEntries(entries)).toEqual([])
+  })
+
+  it('splices generated axis entries without requiring provided snapshots', () => {
+    const entries: Array<WorkbookAxisEntryRecord | undefined> = [{ id: 'column-existing', size: null, hidden: null }]
+    const createEntry = createEntryFactory('column')
+
+    expect(spliceAxisEntries(entries, 1, 0, 2, createEntry)).toEqual([])
+
+    expect(listAxisEntries(entries)).toEqual([
+      { id: 'column-existing', index: 0 },
+      { id: 'column-1', index: 1 },
+      { id: 'column-2', index: 2 },
+    ])
+  })
+
+  it('uses the single-entry splice path for generated and provided inserts', () => {
+    const generatedEntries: Array<WorkbookAxisEntryRecord | undefined> = [
+      { id: 'column-existing', size: null, hidden: null },
+      { id: 'column-tail', size: null, hidden: null },
+    ]
+    const providedEntries: Array<WorkbookAxisEntryRecord | undefined> = [
+      { id: 'column-existing', size: null, hidden: null },
+      { id: 'column-tail', size: null, hidden: null },
+    ]
+    const createEntry = createEntryFactory('column')
+
+    expect(spliceAxisEntries(generatedEntries, 1, 0, 1, createEntry)).toEqual([])
+    expect(spliceAxisEntries(providedEntries, 1, 0, 1, createEntry, [{ id: 'column-provided', index: 1 }])).toEqual([])
+
+    expect(listAxisEntries(generatedEntries)).toEqual([
+      { id: 'column-existing', index: 0 },
+      { id: 'column-1', index: 1 },
+      { id: 'column-tail', index: 2 },
+    ])
+    expect(listAxisEntries(providedEntries)).toEqual([
+      { id: 'column-existing', index: 0 },
+      { id: 'column-provided', index: 1 },
+      { id: 'column-tail', index: 2 },
+    ])
+  })
+
   it('coalesces contiguous metadata ranges and rejects mixed ranges', () => {
     const entries: Array<WorkbookAxisEntryRecord | undefined> = [
       { id: 'row-1', size: 30, hidden: false },

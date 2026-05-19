@@ -2,6 +2,8 @@ import { formulaContainsDateSystemSensitiveBuiltin, type CompiledFormula } from 
 import { FormulaMode, Opcode } from '@bilig/protocol'
 import { resolveRuntimeDirectLookupBinding } from '../direct-vector-lookup.js'
 import {
+  INLINE_SCALAR_FAST_PLAN_ARITHMETIC,
+  INLINE_SCALAR_FAST_PLAN_IF_STRING,
   type CompiledPlanRecord,
   type MaterializedDependencies,
   type RuntimeDirectAggregateDescriptor,
@@ -20,12 +22,14 @@ import {
   type ParsedCompiledFormula,
 } from './formula-binding-direct-descriptors.js'
 import type { FormulaBindingDependencyMaterializer } from './formula-binding-dependency-materializer.js'
-import type { CreateEngineFormulaBindingServiceArgs } from './formula-binding-service-types.js'
+import type { CreateEngineFormulaBindingServiceArgs, FormulaOwnerPosition } from './formula-binding-service-types.js'
+import { buildInlineScalarPlanCellIndices, classifyInlineScalarFastPlan } from './formula-leaf-inline-scalar-evaluator.js'
 
 const PUSH_CELL_OPCODE = Number(Opcode.PushCell)
 const PUSH_RANGE_OPCODE = Number(Opcode.PushRange)
 const PUSH_STRING_OPCODE = Number(Opcode.PushString)
 const EMPTY_RUNTIME_PROGRAM = new Uint32Array(0)
+const INVALID_INLINE_STRING_ID = 0xffffffff
 
 function shouldEvaluateMetadataCellAliasInJs(compiled: ParsedCompiledFormula): boolean {
   return compiled.symbolicNames.length > 0 && compiled.optimizedAst.kind === 'CellRef'
@@ -35,8 +39,59 @@ function normalizeMetadataCellAliasMode(compiled: ParsedCompiledFormula): Parsed
   return shouldEvaluateMetadataCellAliasInJs(compiled) ? { ...compiled, mode: FormulaMode.JsOnly } : compiled
 }
 
-function shouldEvaluateWorkbookDateSystemInJs(compiled: ParsedCompiledFormula, dateSystem: string | undefined): boolean {
-  return dateSystem === '1904' && formulaContainsDateSystemSensitiveBuiltin(compiled.ast)
+function buildInlineScalarFastPlanStringIds(args: {
+  readonly compiled: ParsedCompiledFormula
+  readonly fastPlanKind: ReturnType<typeof classifyInlineScalarFastPlan>
+  readonly internString: (value: string) => number
+}): Uint32Array | undefined {
+  if (args.fastPlanKind !== INLINE_SCALAR_FAST_PLAN_IF_STRING) {
+    return undefined
+  }
+  const plan = args.compiled.jsPlan
+  const trueValue = plan[4]?.opcode === 'push-string' ? plan[4].value : undefined
+  const falseValue = plan[6]?.opcode === 'push-string' ? plan[6].value : undefined
+  if (trueValue === undefined || falseValue === undefined) {
+    return undefined
+  }
+  const stringIds = new Uint32Array(plan.length)
+  stringIds.fill(INVALID_INLINE_STRING_ID)
+  stringIds[4] = args.internString(trueValue)
+  stringIds[6] = args.internString(falseValue)
+  return stringIds
+}
+
+function buildInlineScalarArithmeticDeltaCoefficients(args: {
+  readonly compiled: ParsedCompiledFormula
+  readonly fastPlanKind: ReturnType<typeof classifyInlineScalarFastPlan>
+}): Float64Array | undefined {
+  if (args.fastPlanKind !== INLINE_SCALAR_FAST_PLAN_ARITHMETIC) {
+    return undefined
+  }
+  const plan = args.compiled.jsPlan
+  const literal = plan[2]?.opcode === 'push-number' ? plan[2].value : undefined
+  const innerOperator = plan[3]?.opcode === 'binary' ? plan[3].operator : undefined
+  const outerOperator = plan[4]?.opcode === 'binary' ? plan[4].operator : undefined
+  if (literal === undefined || innerOperator === undefined || outerOperator === undefined) {
+    return undefined
+  }
+  if (outerOperator !== '+' && outerOperator !== '-') {
+    return undefined
+  }
+  const innerCoefficient =
+    innerOperator === '+' || innerOperator === '-'
+      ? 1
+      : innerOperator === '*'
+        ? literal
+        : innerOperator === '/' && literal !== 0
+          ? 1 / literal
+          : undefined
+  if (innerCoefficient === undefined || !Number.isFinite(innerCoefficient)) {
+    return undefined
+  }
+  const coefficients = new Float64Array(2)
+  coefficients[0] = 1
+  coefficients[1] = outerOperator === '-' ? -innerCoefficient : innerCoefficient
+  return coefficients
 }
 
 export interface PreparedFormulaBinding {
@@ -46,6 +101,10 @@ export interface PreparedFormulaBinding {
   readonly directAggregate: RuntimeDirectAggregateDescriptor | undefined
   readonly directScalar: RuntimeDirectScalarDescriptor | undefined
   readonly directCriteria: RuntimeDirectCriteriaDescriptor | undefined
+  readonly inlineScalarFastPlanKind: ReturnType<typeof classifyInlineScalarFastPlan>
+  readonly inlineScalarArithmeticDeltaCoefficients: Float64Array | undefined
+  readonly inlineScalarFastPlanStringIds: Uint32Array | undefined
+  readonly inlineScalarPlanCellIndices: Uint32Array | undefined
   readonly runtimeProgram: Uint32Array
   readonly plan: CompiledPlanRecord
   readonly templateId: number | undefined
@@ -60,6 +119,9 @@ export function prepareFormulaBindingFromCompiled(args: {
   readonly source: string
   readonly compiledInput: ParsedCompiledFormula
   readonly templateId: number | undefined
+  readonly ownerPosition?: FormulaOwnerPosition
+  readonly assumeFreshDirectAggregateLiteralInputs?: boolean
+  readonly resolveWorkbookDateSystem?: () => string | undefined
   readonly normalizeLookupCompileMode: (compiled: ParsedCompiledFormula) => ParsedCompiledFormula
   readonly dependencyMaterializer: FormulaBindingDependencyMaterializer
   readonly ensureDependencyBuildCapacity: (
@@ -68,18 +130,26 @@ export function prepareFormulaBindingFromCompiled(args: {
     symbolicRefCapacity?: number,
     symbolicRangeCapacity?: number,
   ) => void
-  readonly directAggregateContainsOwnerCell: (directAggregate: RuntimeDirectAggregateDescriptor | undefined, cellIndex: number) => boolean
+  readonly directAggregateContainsOwnerCell: (
+    directAggregate: RuntimeDirectAggregateDescriptor | undefined,
+    cellIndex: number,
+    ownerPosition?: FormulaOwnerPosition,
+  ) => boolean
   readonly makeUnmanagedCompiledPlan: (source: string, compiled: CompiledFormula, templateId: number | undefined) => CompiledPlanRecord
 }): PreparedFormulaBinding {
   const serviceArgs = args.serviceArgs
   const ownerSheetId = serviceArgs.state.workbook.getSheet(args.ownerSheetName)?.id
-  const workbookDateSystem = serviceArgs.state.workbook.getCalculationSettings().dateSystem
-  const requiresWorkbookDateSystemJs = shouldEvaluateWorkbookDateSystemInJs(args.compiledInput, workbookDateSystem)
+  const isDateSystemSensitive = formulaContainsDateSystemSensitiveBuiltin(args.compiledInput.ast)
+  const workbookDateSystem = isDateSystemSensitive
+    ? (args.resolveWorkbookDateSystem?.() ?? serviceArgs.state.workbook.getCalculationSettings().dateSystem)
+    : undefined
+  const requiresWorkbookDateSystemJs = isDateSystemSensitive && workbookDateSystem === '1904'
   const compiled = normalizeMetadataCellAliasMode(
     requiresWorkbookDateSystemJs
       ? { ...args.normalizeLookupCompileMode(args.compiledInput), mode: FormulaMode.JsOnly }
       : args.normalizeLookupCompileMode(args.compiledInput),
   )
+  const compiledInlineScalarFastPlanKind = classifyInlineScalarFastPlan(compiled)
   const hasLookupInstruction = hasLookupPlanInstruction(compiled.jsPlan)
   const directLookupBinding =
     !requiresWorkbookDateSystemJs && hasLookupInstruction
@@ -96,7 +166,7 @@ export function prepareFormulaBindingFromCompiled(args: {
         ensureCellTrackedByCoords: serviceArgs.ensureCellTrackedByCoords,
       })
   const directAggregateCandidate =
-    directScalar === undefined && !requiresWorkbookDateSystemJs
+    directScalar === undefined && !requiresWorkbookDateSystemJs && compiledInlineScalarFastPlanKind === undefined
       ? buildDirectAggregateDescriptor({
           compiled,
           ownerSheetName: args.ownerSheetName,
@@ -104,11 +174,14 @@ export function prepareFormulaBindingFromCompiled(args: {
           regionGraph: serviceArgs.regionGraph,
         })
       : undefined
-  const directAggregate = args.directAggregateContainsOwnerCell(directAggregateCandidate, args.cellIndex)
+  const directAggregate = args.directAggregateContainsOwnerCell(directAggregateCandidate, args.cellIndex, args.ownerPosition)
     ? undefined
     : directAggregateCandidate
   const directCriteria =
-    directScalar === undefined && directAggregate === undefined && !requiresWorkbookDateSystemJs
+    directScalar === undefined &&
+    directAggregate === undefined &&
+    !requiresWorkbookDateSystemJs &&
+    compiledInlineScalarFastPlanKind === undefined
       ? buildDirectCriteriaDescriptor({
           compiled,
           source: args.source,
@@ -124,7 +197,11 @@ export function prepareFormulaBindingFromCompiled(args: {
   const directScalarDependencies = args.dependencyMaterializer.materializeDirectScalarDependencies(compiled, directScalar)
   const directAggregateDependencies =
     directScalarDependencies === undefined
-      ? args.dependencyMaterializer.materializeDirectAggregateDependencies(compiled, directAggregate)
+      ? args.dependencyMaterializer.materializeDirectAggregateDependencies(
+          compiled,
+          directAggregate,
+          args.assumeFreshDirectAggregateLiteralInputs === true ? { assumeFreshLiteralInputs: true } : undefined,
+        )
       : undefined
   const directCriteriaDependencies =
     directScalarDependencies === undefined && directAggregateDependencies === undefined
@@ -135,6 +212,17 @@ export function prepareFormulaBindingFromCompiled(args: {
     directAggregateDependencies ??
     directCriteriaDependencies ??
     args.dependencyMaterializer.materializeDependencies(args.ownerSheetName, compiled, directAggregate, directLookupBinding)
+  const inlineScalarPlanCellIndices = buildInlineScalarPlanCellIndices(compiled, dependencies.dependencyIndices)
+  const inlineScalarFastPlanKind = inlineScalarPlanCellIndices === undefined ? undefined : compiledInlineScalarFastPlanKind
+  const inlineScalarArithmeticDeltaCoefficients = buildInlineScalarArithmeticDeltaCoefficients({
+    compiled,
+    fastPlanKind: inlineScalarFastPlanKind,
+  })
+  const inlineScalarFastPlanStringIds = buildInlineScalarFastPlanStringIds({
+    compiled,
+    fastPlanKind: inlineScalarFastPlanKind,
+    internString: (value) => serviceArgs.state.strings.intern(value),
+  })
   const directLookup = directLookupBinding
     ? buildDirectLookupDescriptor({
         compiled,
@@ -147,7 +235,7 @@ export function prepareFormulaBindingFromCompiled(args: {
       })
     : undefined
 
-  if (directScalarDependencies === undefined) {
+  if (directScalarDependencies === undefined && compiled.symbolicRefs.length > 0) {
     args.ensureDependencyBuildCapacity(
       serviceArgs.state.workbook.cellStore.size + 1,
       compiled.deps.length + 1,
@@ -219,6 +307,10 @@ export function prepareFormulaBindingFromCompiled(args: {
     directAggregate,
     directScalar,
     directCriteria,
+    inlineScalarFastPlanKind,
+    inlineScalarArithmeticDeltaCoefficients,
+    inlineScalarFastPlanStringIds,
+    inlineScalarPlanCellIndices,
     runtimeProgram,
     plan: directOnlyRuntimeProgram
       ? args.makeUnmanagedCompiledPlan(args.source, compiled, args.templateId)

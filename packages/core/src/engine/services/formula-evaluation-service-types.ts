@@ -7,6 +7,7 @@ export interface EngineFormulaEvaluationService {
   readonly evaluateDirectLookupFormula: (cellIndex: number) => Effect.Effect<number[] | undefined, EngineFormulaEvaluationError>
   readonly evaluateDirectLookupFormulaNow: (cellIndex: number) => number[] | undefined
   readonly evaluateUnsupportedFormula: (cellIndex: number) => Effect.Effect<number[], EngineFormulaEvaluationError>
+  readonly evaluateUnsupportedFormulaNow: (cellIndex: number) => number[]
   readonly resolveStructuredReference: (
     tableName: string,
     columnName: string,

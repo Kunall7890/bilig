@@ -64,6 +64,26 @@ describe('WorkPaperEmitter', () => {
     expect(emitter.hasListeners('valuesUpdated')).toBe(false)
   })
 
+  it('does not double count duplicate listener registrations', () => {
+    const emitter = new WorkPaperEmitter()
+    const legacy = vi.fn()
+    const detailed = vi.fn()
+
+    emitter.on('valuesUpdated', legacy)
+    emitter.on('valuesUpdated', legacy)
+    emitter.onDetailed('valuesUpdated', detailed)
+    emitter.onDetailed('valuesUpdated', detailed)
+
+    expect(emitter.hasAnyListeners()).toBe(true)
+    expect(emitter.hasListeners('valuesUpdated')).toBe(true)
+
+    emitter.off('valuesUpdated', legacy)
+    emitter.offDetailed('valuesUpdated', detailed)
+
+    expect(emitter.hasAnyListeners()).toBe(false)
+    expect(emitter.hasListeners('valuesUpdated')).toBe(false)
+  })
+
   it('does not dispatch listeners removed with offDetailed', () => {
     const emitter = new WorkPaperEmitter()
     const detailed = vi.fn()

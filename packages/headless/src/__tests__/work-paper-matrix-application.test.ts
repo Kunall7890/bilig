@@ -110,6 +110,26 @@ describe('work-paper matrix application', () => {
     ])
   })
 
+  it('keeps large fresh numeric plus formula-column matrices in one operation', () => {
+    const applied: Array<{ refs: readonly EngineCellMutationRef[]; options: WorkPaperCellMutationApplyOptions }> = []
+
+    applyWorkPaperMatrixContents({
+      address: { sheet: 1, row: 10, col: 0 },
+      content: Array.from({ length: 16 }, (_, row) => [row + 1, row + 2, `=A${row + 11}+B${row + 11}`]),
+      flushPendingBatchOps: () => {},
+      applyCellMutationRefs: (refs, options) => {
+        applied.push({ refs, options })
+      },
+      rewriteFormulaForStorage: (formula) => formula,
+    })
+
+    expect(applied).toHaveLength(1)
+    expect(applied[0]?.options.potentialNewCells).toBe(48)
+    expect(applied[0]?.refs).toHaveLength(48)
+    expect(applied[0]?.refs.slice(0, 32).every((ref) => ref.mutation.kind === 'setCellValue')).toBe(true)
+    expect(applied[0]?.refs.slice(32).every((ref) => ref.mutation.kind === 'setCellFormula')).toBe(true)
+  })
+
   it('updates dimensions once after phased formula matrix writes', () => {
     const applied: Array<{ refs: readonly EngineCellMutationRef[]; options: WorkPaperCellMutationApplyOptions }> = []
     const dimensionUpdates: Array<readonly EngineCellMutationRef[]> = []

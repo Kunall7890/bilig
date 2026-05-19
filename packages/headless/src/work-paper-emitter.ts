@@ -16,6 +16,9 @@ export type WorkPaperDetailedEvent = {
 }[WorkPaperEventName]
 
 export class WorkPaperEmitter {
+  private listenerCount = 0
+  private detailedListenerCount = 0
+
   private readonly listeners: ListenerMap = {
     sheetAdded: new Set(),
     sheetRemoved: new Set(),
@@ -39,11 +42,17 @@ export class WorkPaperEmitter {
   }
 
   on<EventName extends WorkPaperEventName>(eventName: EventName, listener: WorkPaperListener<EventName>): void {
-    this.listeners[eventName].add(listener)
+    const listeners = this.listeners[eventName]
+    if (!listeners.has(listener)) {
+      listeners.add(listener)
+      this.listenerCount += 1
+    }
   }
 
   off<EventName extends WorkPaperEventName>(eventName: EventName, listener: WorkPaperListener<EventName>): void {
-    this.listeners[eventName].delete(listener)
+    if (this.listeners[eventName].delete(listener)) {
+      this.listenerCount -= 1
+    }
   }
 
   once<EventName extends WorkPaperEventName>(eventName: EventName, listener: WorkPaperListener<EventName>): void {
@@ -55,11 +64,17 @@ export class WorkPaperEmitter {
   }
 
   onDetailed<EventName extends WorkPaperEventName>(eventName: EventName, listener: WorkPaperDetailedListener<EventName>): void {
-    this.detailedListeners[eventName].add(listener)
+    const listeners = this.detailedListeners[eventName]
+    if (!listeners.has(listener)) {
+      listeners.add(listener)
+      this.detailedListenerCount += 1
+    }
   }
 
   offDetailed<EventName extends WorkPaperEventName>(eventName: EventName, listener: WorkPaperDetailedListener<EventName>): void {
-    this.detailedListeners[eventName].delete(listener)
+    if (this.detailedListeners[eventName].delete(listener)) {
+      this.detailedListenerCount -= 1
+    }
   }
 
   onceDetailed<EventName extends WorkPaperEventName>(eventName: EventName, listener: WorkPaperDetailedListener<EventName>): void {
@@ -75,10 +90,7 @@ export class WorkPaperEmitter {
   }
 
   hasAnyListeners(): boolean {
-    return (
-      Object.values(this.listeners).some((listeners) => listeners.size > 0) ||
-      Object.values(this.detailedListeners).some((listeners) => listeners.size > 0)
-    )
+    return this.listenerCount > 0 || this.detailedListenerCount > 0
   }
 
   emitDetailed(event: WorkPaperDetailedEvent): void {
@@ -156,5 +168,7 @@ export class WorkPaperEmitter {
   clear(): void {
     Object.values(this.listeners).forEach((listeners) => listeners.clear())
     Object.values(this.detailedListeners).forEach((listeners) => listeners.clear())
+    this.listenerCount = 0
+    this.detailedListenerCount = 0
   }
 }

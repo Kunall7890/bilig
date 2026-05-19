@@ -169,9 +169,9 @@ persistence.
 ## Current evidence
 
 The benchmark claim is deliberately narrow. The checked artifact currently
-records `80/100` mean-latency wins against HyperFormula-style comparable
-workloads and `75/100` workloads winning both mean and p95. The p95 misses are
-called out instead of hidden.
+records `100/100` mean-latency wins against HyperFormula-style comparable
+workloads and `100/100` workloads winning both mean and p95. The narrowest p95
+row is called out instead of hidden.
 
 Benchmark note:
 <https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md>

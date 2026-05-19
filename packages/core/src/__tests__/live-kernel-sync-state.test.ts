@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { deferKernelSyncNow } from '../engine/services/live-kernel-sync-state.js'
-import { createEngineRuntimeScratchService } from '../engine/services/runtime-scratch-service.js'
+import { INITIAL_RUNTIME_SCRATCH_CAPACITY, createEngineRuntimeScratchService } from '../engine/services/runtime-scratch-service.js'
 
 describe('live kernel sync state', () => {
   it('defers unique kernel sync cells and preserves existing pending cells', () => {
@@ -12,6 +12,7 @@ describe('live kernel sync state', () => {
       scratch,
       cellStoreSize: 8,
       cellIndices: Uint32Array.of(2, 5, 5, 7),
+      wasmReady: true,
     })
 
     expect(scratch.getDeferredKernelSyncCountNow()).toBe(3)
@@ -26,6 +27,7 @@ describe('live kernel sync state', () => {
       scratch,
       cellStoreSize: 8,
       cellIndices: [],
+      wasmReady: true,
     })
 
     expect(scratch.getDeferredKernelSyncEpochNow()).toBe(beforeEpoch)
@@ -41,6 +43,7 @@ describe('live kernel sync state', () => {
       scratch,
       cellStoreSize: 8,
       cellIndices: [3],
+      wasmReady: true,
     })
 
     expect(scratch.getDeferredKernelSyncEpochNow()).toBe(1)
@@ -61,10 +64,11 @@ describe('live kernel sync state', () => {
       scratch,
       cellStoreSize: 5001,
       cellIndices: [5000],
+      wasmReady: true,
     })
 
     expect(scratch.getDeferredKernelSyncSeenNow()).toBe(deferredSeen)
-    expect(scratch.getPendingKernelSyncNow()).toHaveLength(128)
+    expect(scratch.getPendingKernelSyncNow()).toHaveLength(INITIAL_RUNTIME_SCRATCH_CAPACITY)
     expect(scratch.getDeferredKernelSyncCountNow()).toBe(1)
     expect(scratch.getPendingKernelSyncNow()[0]).toBe(5000)
     expect(scratch.getChangedInputSeenNow()).toBe(changedInputSeen)
@@ -82,11 +86,29 @@ describe('live kernel sync state', () => {
       scratch,
       cellStoreSize: 1200,
       cellIndices: deferredCells,
+      wasmReady: true,
     })
 
     expect(scratch.getPendingKernelSyncNow().length).toBeGreaterThanOrEqual(200)
     expect(scratch.getDeferredKernelSyncSeenNow().length).toBeGreaterThan(1200)
     expect(scratch.getChangedInputSeenNow()).toBe(changedInputSeen)
     expect(scratch.getDeferredKernelSyncCountNow()).toBe(200)
+  })
+
+  it('skips deferred kernel sync state entirely before the wasm kernel is ready', () => {
+    const scratch = createEngineRuntimeScratchService()
+    const pendingKernelSync = scratch.getPendingKernelSyncNow()
+    const deferredSeen = scratch.getDeferredKernelSyncSeenNow()
+
+    deferKernelSyncNow({
+      scratch,
+      cellStoreSize: 5001,
+      cellIndices: Array.from({ length: 200 }, (_, index) => index + 1000),
+      wasmReady: false,
+    })
+
+    expect(scratch.getPendingKernelSyncNow()).toBe(pendingKernelSync)
+    expect(scratch.getDeferredKernelSyncSeenNow()).toBe(deferredSeen)
+    expect(scratch.getDeferredKernelSyncCountNow()).toBe(0)
   })
 })

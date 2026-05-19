@@ -30,15 +30,15 @@ For the broader engine choice, start with the
 
 ## Comparison Surface
 
-| Question                     | HyperFormula                                                                         | `@bilig/headless`                                                                                                   |
-| ---------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
-| Primary shape                | Headless spreadsheet formula engine                                                  | Headless WorkPaper workbook facade                                                                                  |
-| Runtime target               | Browser or Node.js                                                                   | Node services, tests, agents, and local runtime automation                                                          |
-| License posture              | GPLv3 or commercial license                                                          | MIT                                                                                                                 |
-| API orientation              | Spreadsheet-engine instance with formula evaluation and workbook operations          | WorkPaper object with formula evaluation, structural edits, persistence helpers, history, and readback              |
-| Agent workflow fit           | Possible, but the project is not specifically packaged around agent writeback proofs | First-class evaluation path includes an agent writeback demo with persistence and restored readback                 |
-| Benchmark claim in this repo | External comparison target                                                           | Checked-in WorkPaper-vs-HyperFormula artifact records `80/100` mean wins on scorecard-eligible comparable workloads |
-| Caveat                       | Strong default engine, with its own licensing and integration model                  | Formula inventory is complete for the tracked Office surface, but arbitrary Excel edge cases remain evidence-scoped |
+| Question                     | HyperFormula                                                                         | `@bilig/headless`                                                                                                    |
+| ---------------------------- | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| Primary shape                | Headless spreadsheet formula engine                                                  | Headless WorkPaper workbook facade                                                                                   |
+| Runtime target               | Browser or Node.js                                                                   | Node services, tests, agents, and local runtime automation                                                           |
+| License posture              | GPLv3 or commercial license                                                          | MIT                                                                                                                  |
+| API orientation              | Spreadsheet-engine instance with formula evaluation and workbook operations          | WorkPaper object with formula evaluation, structural edits, persistence helpers, history, and readback               |
+| Agent workflow fit           | Possible, but the project is not specifically packaged around agent writeback proofs | First-class evaluation path includes an agent writeback demo with persistence and restored readback                  |
+| Benchmark claim in this repo | External comparison target                                                           | Checked-in WorkPaper-vs-HyperFormula artifact records `100/100` mean wins on scorecard-eligible comparable workloads |
+| Caveat                       | Strong default engine, with its own licensing and integration model                  | Formula inventory is complete for the tracked Office surface, but arbitrary Excel edge cases remain evidence-scoped  |
 
 ## What The Benchmark Says
 
@@ -52,11 +52,11 @@ The short benchmark explainer is:
 
 The current public claim is narrow:
 
-- `80/100` mean-latency wins on scorecard-eligible comparable workloads
-- `60/73` public-lane mean wins
-- `20/27` holdout-lane mean wins
-- an overall p95 geomean lead
-- one named p95 caveat that remains visible instead of hidden
+- `100/100` mean-latency wins on scorecard-eligible comparable workloads
+- `73/73` public-lane mean wins
+- `27/27` holdout-lane mean wins
+- an overall p95 geomean lead with no current comparable p95 holdouts
+- a named narrowest p95 row that remains visible instead of hidden
 
 The verification command is:
 

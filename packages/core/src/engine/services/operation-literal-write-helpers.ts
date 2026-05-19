@@ -101,6 +101,22 @@ export function writeOperationNumericLiteralToExistingCell(input: {
   }
 }
 
+export function writeOperationNumericLiteralToExistingCellWithoutColumnNotify(input: {
+  readonly cellStore: CellStore
+  readonly cellIndex: number
+  readonly value: number
+}): void {
+  const flags = input.cellStore.flags[input.cellIndex] ?? 0
+  input.cellStore.tags[input.cellIndex] = ValueTag.Number
+  input.cellStore.errors[input.cellIndex] = ErrorCode.None
+  input.cellStore.stringIds[input.cellIndex] = 0
+  input.cellStore.numbers[input.cellIndex] = input.value
+  if ((flags & CellFlags.AuthoredBlank) !== 0) {
+    input.cellStore.flags[input.cellIndex] = flags & ~CellFlags.AuthoredBlank
+  }
+  input.cellStore.versions[input.cellIndex] = (input.cellStore.versions[input.cellIndex] ?? 0) + 1
+}
+
 export function writeTrustedOperationExistingNumericLiteralToCell(input: {
   readonly cellStore: CellStore
   readonly cellIndex: number

@@ -129,6 +129,58 @@ describe('EngineFormulaEvaluationService', () => {
     expect(engine.getPerformanceCounters().columnOwnerBuilds).toBe(0)
   })
 
+  it('reuses cached direct criteria aggregates before materializing criteria rows', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'evaluation-direct-criteria-shared-cache' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 'Group')
+    engine.setCellValue('Sheet1', 'B1', 'Value')
+    engine.setCellValue('Sheet1', 'D1', 'A')
+    engine.setCellValue('Sheet1', 'E1', 'B')
+    for (let row = 2; row <= 9; row += 1) {
+      engine.setCellValue('Sheet1', `A${row}`, row % 2 === 0 ? 'A' : 'B')
+      engine.setCellValue('Sheet1', `B${row}`, row)
+    }
+    engine.setCellFormula('Sheet1', 'F1', 'SUMIF(A2:A9,E1,B2:B9)')
+    engine.setCellFormula('Sheet1', 'G1', 'SUMIF(A2:A9,D1,B2:B9)')
+
+    engine.resetPerformanceCounters()
+    engine.setCellValue('Sheet1', 'D1', 'B')
+
+    expect(engine.getCellValue('Sheet1', 'G1')).toEqual(engine.getCellValue('Sheet1', 'F1'))
+    expect(engine.getPerformanceCounters().columnOwnerBuilds).toBe(0)
+    expect(engine.getPerformanceCounters().directCriteriaAggregateCacheHits).toBeGreaterThanOrEqual(1)
+  })
+
+  it('shares direct criteria matches across mixed criteria count and sum formulas', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'evaluation-direct-criteria-repeated-count-cache' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 'Group')
+    engine.setCellValue('Sheet1', 'B1', 'Amount')
+    engine.setCellValue('Sheet1', 'C1', 'Flag')
+    engine.setCellValue('Sheet1', 'D1', 'A')
+    engine.setCellValue('Sheet1', 'E1', 10)
+    for (let row = 2; row <= 21; row += 1) {
+      engine.setCellValue('Sheet1', `A${row}`, row % 2 === 0 ? 'A' : 'B')
+      engine.setCellValue('Sheet1', `B${row}`, row)
+      engine.setCellValue('Sheet1', `C${row}`, row % 3 === 0 ? 'x' : 'y')
+    }
+    for (const address of ['F1', 'G1', 'H1', 'I1']) {
+      engine.setCellFormula('Sheet1', address, 'COUNTIFS(A2:A21,D1,B2:B21,">="&E1,C2:C21,"x")')
+    }
+    for (const address of ['J1', 'K1', 'L1', 'M1']) {
+      engine.setCellFormula('Sheet1', address, 'SUMIFS(B2:B21,A2:A21,D1,B2:B21,">="&E1,C2:C21,"x")')
+    }
+
+    engine.resetPerformanceCounters()
+    engine.setCellValue('Sheet1', 'E1', 6)
+
+    expect(engine.getCellValue('Sheet1', 'F1')).toEqual({ tag: ValueTag.Number, value: 3 })
+    expect(engine.getCellValue('Sheet1', 'J1')).toEqual({ tag: ValueTag.Number, value: 36 })
+    expect(engine.getPerformanceCounters().directCriteriaMatchCacheHits).toBeGreaterThanOrEqual(1)
+  })
+
   it('keeps direct scalar arithmetic aligned with text coercion errors', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'evaluation-direct-scalar-text-errors' })
     await engine.ready()

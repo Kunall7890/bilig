@@ -25,7 +25,9 @@ import {
   createLazyCellMutationTransactionRecord,
   createLazySingleOpTransactionRecord,
   createOpsTransactionRecord,
+  createSingleExistingLiteralCellMutationTransactionRecord,
   createSingleExistingNumericCellMutationTransactionRecord,
+  singleExistingLiteralCellMutationRecordToRef,
   singleExistingNumericCellMutationRecordToRef,
   transactionRecordOps,
 } from './mutation-transaction-records.js'
@@ -77,7 +79,12 @@ export function createEngineMutationService(args: {
     source: 'local' | 'restore' | 'undo' | 'redo',
     potentialNewCells?: number,
     preparedCellAddressesByOpIndex?: readonly (PreparedCellAddress | null)[],
+    options?: { readonly emitTracked?: boolean },
   ) => void
+  readonly applyLocalSingleStructuralAxisOpWithoutBatchNow?: (
+    op: Extract<EngineOp, { kind: 'insertRows' | 'insertColumns' }>,
+    options?: { readonly emitTracked?: boolean },
+  ) => boolean
   readonly applyCellMutationsAtBatchNow: (
     refs: readonly EngineCellMutationRef[],
     batch: EngineOpBatch | null,
@@ -106,6 +113,7 @@ export function createEngineMutationService(args: {
     tryRestoreSimpleCellOpFromStore,
     createLazyInverseCellMutationRecord,
     tryCreateSingleExistingNumericInverseCellMutationRecord,
+    tryCreateExistingNumericInverseCellMutationRecord,
     buildFastMutationHistoryFromRefs,
   } = createMutationCellRestoreHistoryHelpers({
     workbook: args.state.workbook,
@@ -124,6 +132,9 @@ export function createEngineMutationService(args: {
     toCellStateOps: (sheetName, address, snapshot) => args.toCellStateOps(sheetName, address, snapshot),
     ...(args.getFormulaFamilyStructuralSourceTransform
       ? { getFormulaFamilyStructuralSourceTransform: args.getFormulaFamilyStructuralSourceTransform }
+      : {}),
+    ...(args.hasFormulaFamilyStructuralSourceTransforms
+      ? { hasFormulaFamilyStructuralSourceTransforms: args.hasFormulaFamilyStructuralSourceTransforms }
       : {}),
   })
   const { buildInverseOps } = createMutationCoreInverseOps({
@@ -197,23 +208,40 @@ export function createEngineMutationService(args: {
     op: Extract<EngineOp, { kind: 'insertRows' | 'insertColumns' }>,
   ): Extract<EngineOp, { kind: 'insertRows' | 'insertColumns' }> => {
     if (op.kind === 'insertRows') {
+      const entries = args.state.workbook.snapshotRowAxisEntries(op.sheetName, op.start, op.count)
       return {
         ...op,
-        entries: args.state.workbook.snapshotRowAxisEntries(op.sheetName, op.start, op.count),
+        entries:
+          entries.length === 0 && op.count > 0 ? args.state.workbook.materializeRowAxisEntries(op.sheetName, op.start, op.count) : entries,
       }
     }
+    const entries = args.state.workbook.snapshotColumnAxisEntries(op.sheetName, op.start, op.count)
     return {
       ...op,
-      entries: args.state.workbook.snapshotColumnAxisEntries(op.sheetName, op.start, op.count),
+      entries:
+        entries.length === 0 && op.count > 0 ? args.state.workbook.materializeColumnAxisEntries(op.sheetName, op.start, op.count) : entries,
     }
   }
 
-  const executeTransactionNow = (record: TransactionRecord, source: 'local' | 'restore' | 'undo' | 'redo'): void => {
+  const executeTransactionNow = (
+    record: TransactionRecord,
+    source: 'local' | 'restore' | 'undo' | 'redo',
+    options: { readonly emitTracked?: boolean } = {},
+  ): void => {
     if ((record.kind === 'ops' && record.ops.length === 0) || (record.kind === 'cell-mutations' && record.refs.length === 0)) {
       return
     }
     if (record.kind === 'single-existing-numeric-cell-mutation') {
       const ref = singleExistingNumericCellMutationRecordToRef(record)
+      const refs = [ref]
+      const batch = shouldCreateLocalBatch()
+        ? createBatch(args.state.replicaState, [cellMutationRefToEngineOp(args.state.workbook, ref)])
+        : null
+      args.applyCellMutationsAtBatchNow(refs, batch, source, record.potentialNewCells)
+      return
+    }
+    if (record.kind === 'single-existing-literal-cell-mutation') {
+      const ref = singleExistingLiteralCellMutationRecordToRef(record)
       const refs = [ref]
       const batch = shouldCreateLocalBatch()
         ? createBatch(args.state.replicaState, [cellMutationRefToEngineOp(args.state.workbook, ref)])
@@ -231,8 +259,24 @@ export function createEngineMutationService(args: {
       args.applyCellMutationsAtBatchNow(record.refs, batch, source, record.potentialNewCells)
       return
     }
+    if (
+      record.kind === 'single-op' &&
+      source === 'local' &&
+      options.emitTracked === false &&
+      !shouldCreateLocalBatch() &&
+      isMutationStructuralInsertOp(record.op) &&
+      args.applyLocalSingleStructuralAxisOpWithoutBatchNow?.(record.op, options)
+    ) {
+      return
+    }
     const batch = createBatch(args.state.replicaState, record.kind === 'single-op' ? [record.op] : record.ops)
-    args.applyBatchNow(batch, source, record.potentialNewCells, record.kind === 'ops' ? record.preparedCellAddressesByOpIndex : undefined)
+    args.applyBatchNow(
+      batch,
+      source,
+      record.potentialNewCells,
+      record.kind === 'ops' ? record.preparedCellAddressesByOpIndex : undefined,
+      options,
+    )
   }
 
   const executeLocalNowWithCustomApply = (
@@ -243,6 +287,7 @@ export function createEngineMutationService(args: {
       returnUndoOps?: boolean
       reuseForwardOps?: boolean
       preparedCellAddressesByOpIndex?: readonly (PreparedCellAddress | null)[]
+      emitTracked?: boolean
     } = {},
   ): readonly EngineOp[] | null => {
     if (ops.length === 0) {
@@ -373,7 +418,10 @@ export function createEngineMutationService(args: {
     const nextPotentialNewCells = potentialNewCells ?? countPotentialNewCellsForMutationRefs(nextRefs)
     const shouldCreateBatch = shouldCreateLocalBatch()
     if (options.returnUndoOps === false) {
-      const inverse = tryCreateSingleExistingNumericInverseCellMutationRecord(nextRefs) ?? createLazyInverseCellMutationRecord(nextRefs)
+      const inverse =
+        tryCreateSingleExistingNumericInverseCellMutationRecord(nextRefs) ??
+        tryCreateExistingNumericInverseCellMutationRecord(nextRefs) ??
+        createLazyInverseCellMutationRecord(nextRefs)
       const batch = shouldCreateBatch
         ? createBatch(
             args.state.replicaState,
@@ -491,7 +539,7 @@ export function createEngineMutationService(args: {
     }
     if (args.state.getTransactionReplayDepth() === 0) {
       args.state.undoStack.push({
-        forward: createLazyCellMutationTransactionRecord([ref], 0),
+        forward: createSingleExistingLiteralCellMutationTransactionRecord(request, 0),
         inverse,
       })
       args.state.redoStack.length = 0
@@ -545,7 +593,7 @@ export function createEngineMutationService(args: {
   const executeLocalNowPublic = (
     ops: EngineOp[],
     potentialNewCells?: number,
-    options: { readonly returnUndoOps?: boolean } = {},
+    options: { readonly returnUndoOps?: boolean; readonly emitTracked?: boolean } = {},
   ): readonly EngineOp[] | null => {
     if (!shouldCreateLocalBatch()) {
       const refs = tryCellMutationRefsFromOps(ops)
@@ -560,7 +608,7 @@ export function createEngineMutationService(args: {
       ops,
       potentialNewCells,
       (forward) => {
-        executeTransactionNow(forward, 'local')
+        executeTransactionNow(forward, 'local', options.emitTracked === undefined ? {} : { emitTracked: options.emitTracked })
       },
       { returnUndoOps: options.returnUndoOps ?? true, reuseForwardOps: false },
     )

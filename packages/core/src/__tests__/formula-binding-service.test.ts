@@ -512,6 +512,58 @@ describe('EngineFormulaBindingService', () => {
     expect(engine.getCellValue('Summary', 'A1')).toEqual({ tag: ValueTag.Number, value: 14 })
   })
 
+  it('renames sheets by id while deferring formula source materialization', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'binding-rename-deferred-by-id' })
+    await engine.ready()
+    engine.createSheet('Data')
+    engine.createSheet('Summary')
+    engine.setCellValue('Data', 'A1', 7)
+    engine.setCellFormula('Summary', 'A1', 'Data!A1*2')
+    const dataSheetId = engine.workbook.getSheet('Data')!.id
+
+    expect(engine.renameSheetMetadataOnlyById(dataSheetId, 'Source')).toBe(true)
+
+    const formulaIndex = engine.workbook.getCellIndex('Summary', 'A1')!
+    const runtimeFormula = readRuntimeFormula(engine, formulaIndex)
+    expect(readRuntimeFormulaProperty(runtimeFormula, 'source')).toBe('Data!A1*2')
+    expect(readRuntimeFormulaProperty(runtimeFormula, 'sourceRenameTransforms')).toEqual([{ oldSheetName: 'Data', newSheetName: 'Source' }])
+    expect(engine.getCell('Summary', 'A1').formula).toBe('Source!A1*2')
+    expect(engine.getDependencies('Source', 'A1').directDependents).toContain('Summary!A1')
+    expect(engine.getCellValue('Summary', 'A1')).toEqual({ tag: ValueTag.Number, value: 14 })
+  })
+
+  it('retargets deferred sheet rename direct aggregate subscriptions without rebinding formulas', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'binding-rename-deferred-direct-aggregate' })
+    await engine.ready()
+    engine.createSheet('Data')
+    engine.createSheet('Summary')
+    engine.setCellValue('Data', 'A1', 1)
+    engine.setCellValue('Data', 'A2', 2)
+    engine.setCellValue('Data', 'A3', 3)
+    engine.setCellFormula('Summary', 'B1', 'SUM(Data!A1:A3)')
+
+    engine.resetPerformanceCounters()
+    expect(engine.renameSheetMetadataOnly('Data', 'Source')).toBe(true)
+
+    const formulaIndex = engine.workbook.getCellIndex('Summary', 'B1')!
+    const runtimeFormula = readRuntimeFormula(engine, formulaIndex)
+    expect(readRuntimeFormulaProperty(runtimeFormula, 'source')).toBe('SUM(Data!A1:A3)')
+    expect(readRuntimeFormulaProperty(runtimeFormula, 'directAggregate')).toMatchObject({
+      sheetName: 'Source',
+      rowStart: 0,
+      rowEnd: 2,
+      col: 0,
+    })
+    expect(engine.getPerformanceCounters()).toMatchObject({
+      formulasBound: 0,
+      formulasParsed: 0,
+    })
+
+    engine.setCellValue('Source', 'A2', 10)
+
+    expect(engine.getCellValue('Summary', 'B1')).toEqual({ tag: ValueTag.Number, value: 14 })
+  })
+
   it('binds repeated row-translated formulas through the service without changing results', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'binding-row-template' })
     await engine.ready()

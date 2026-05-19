@@ -110,6 +110,43 @@ export class WorkbookSheetRegistryStore {
     return sheet
   }
 
+  renameSheetById(sheetId: number, trimmedName: string): SheetRecord | undefined {
+    if (trimmedName.length === 0) {
+      throw new Error('Sheet name must be non-empty')
+    }
+    const sheet = this.options.sheetsById.get(sheetId)
+    if (!sheet) {
+      return undefined
+    }
+    const oldName = sheet.name
+    if (oldName === trimmedName) {
+      return sheet
+    }
+    if (this.options.sheetsByName.has(trimmedName)) {
+      return undefined
+    }
+
+    this.options.sheetsByName.delete(oldName)
+    sheet.name = trimmedName
+    this.options.sheetsByName.set(trimmedName, sheet)
+    if (this.hasSheetScopedMetadata()) {
+      this.options.renameSheetRecords(oldName, trimmedName)
+    }
+
+    if (sheet.styleRanges.length > 0) {
+      sheet.styleRanges = sheet.styleRanges.map((record) =>
+        record.range.sheetName === oldName ? { ...record, range: { ...record.range, sheetName: trimmedName } } : record,
+      )
+    }
+    if (sheet.formatRanges.length > 0) {
+      sheet.formatRanges = sheet.formatRanges.map((record) =>
+        record.range.sheetName === oldName ? { ...record, range: { ...record.range, sheetName: trimmedName } } : record,
+      )
+    }
+
+    return sheet
+  }
+
   getSheet(name: string): SheetRecord | undefined {
     return this.options.sheetsByName.get(name)
   }

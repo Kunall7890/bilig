@@ -11,6 +11,8 @@ import type {
   EngineExistingNumericCellMutationResult,
 } from '../../cell-mutations-at.js'
 import type { EnginePatch } from '../../patches/patch-types.js'
+import type { FormulaFamilyFreshUniformRunRegistrationArgs, FormulaFamilyRunUpsertArgs } from '../../formula/formula-family-store.js'
+import type { FormulaInstanceSnapshot } from '../../formula/formula-instance-table.js'
 import type { WorkbookPivotRecord } from '../../workbook-store.js'
 import type { EngineRuntimeState, PreparedCellAddress, U32 } from '../runtime-state.js'
 import type { StructuralTransaction } from '../structural-transaction.js'
@@ -18,7 +20,7 @@ import type { EngineMutationError } from '../errors.js'
 import type { ExactColumnIndexService } from './exact-column-index-service.js'
 import type { OperationDerivedOp } from './operation-derived-op-helpers.js'
 import type { SortedColumnSearchService } from './sorted-column-search-service.js'
-import type { BindPreparedFormulaOptions } from './formula-binding-service-types.js'
+import type { BindPreparedFormulaOptions, FreshDirectAggregateFormulaBindingRun } from './formula-binding-service-types.js'
 
 export const ENGINE_OPERATION_TEST_HOOKS_ENABLED = readNodeEnv() === 'test'
 
@@ -46,6 +48,14 @@ export type StructuralAxisOp = Extract<
 
 export interface EngineOperationService {
   readonly __testHooks: Record<string, unknown>
+  readonly applyBatchNow: (
+    batch: EngineOpBatch,
+    source: MutationSource,
+    potentialNewCells?: number,
+    preparedCellAddressesByOpIndex?: readonly (PreparedCellAddress | null)[],
+    options?: { readonly emitTracked?: boolean },
+  ) => void
+  readonly applyLocalSingleStructuralAxisOpWithoutBatchNow: (op: StructuralAxisOp, options?: { readonly emitTracked?: boolean }) => boolean
   readonly applyBatch: (
     batch: EngineOpBatch,
     source: MutationSource,
@@ -138,9 +148,13 @@ export interface CreateEngineOperationServiceArgs {
     templateId?: number,
     options?: BindPreparedFormulaOptions,
   ) => boolean
+  readonly bindFreshDirectAggregateFormulaRun?: (run: FreshDirectAggregateFormulaBindingRun) => void
+  readonly registerFreshFormulaFamilyRun?: (run: FormulaFamilyFreshUniformRunRegistrationArgs) => boolean
+  readonly upsertFormulaFamilyRun?: (run: FormulaFamilyRunUpsertArgs) => void
+  readonly upsertFreshFormulaInstances?: (records: readonly FormulaInstanceSnapshot[]) => void
   readonly compileTemplateFormula?: (source: string, row: number, col: number) => FormulaTemplateResolution
   readonly setInvalidFormulaValue: (cellIndex: number) => void
-  readonly beginMutationCollection: () => void
+  readonly beginMutationCollection: (options?: { readonly ensureScratch?: boolean }) => void
   readonly markInputChanged: (cellIndex: number, count: number) => number
   readonly markFormulaChanged: (cellIndex: number, count: number) => number
   readonly markVolatileFormulasChanged: (count: number) => number
@@ -188,6 +202,13 @@ export interface CreateEngineOperationServiceArgs {
   readonly collectFormulaDependents: (entityId: number) => Uint32Array
   readonly hasRegionFormulaSubscriptionsForColumn: (sheetName: string, col: number) => boolean
   readonly hasRegionFormulaSubscriptionsForColumnAt?: (sheetId: number, col: number) => boolean
+  readonly hasRegionFormulaSubscriptionsIntersectingRect?: (
+    sheetId: number,
+    rowStart: number,
+    rowEnd: number,
+    colStart: number,
+    colEnd: number,
+  ) => boolean
   readonly hasRegionFormulaSubscriptions?: () => boolean
   readonly hasRegionFormulaSubscriptionsOverlappingRange?: (
     sheetId: number,

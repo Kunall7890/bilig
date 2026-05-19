@@ -18,7 +18,7 @@ describe('translateCompiledFormulaWithoutAst', () => {
     expect(canTranslateCompiledFormulaWithoutAst(lookup)).toBe(false)
   })
 
-  it('translates parsed refs and deps while reusing the wasm js plan for cell-only formulas', () => {
+  it('translates parsed refs, deps, and JS fallback plans for cell-only formulas', () => {
     const compiled = compileFormula('A1+B1')
 
     const translated = translateCompiledFormulaWithoutAst(compiled, 2, 1, 'B3+C3')
@@ -63,7 +63,12 @@ describe('translateCompiledFormulaWithoutAst', () => {
         colAbsolute: false,
       },
     ])
-    expect(translated.compiled.jsPlan).toBe(compiled.jsPlan)
+    expect(translated.compiled.jsPlan).toEqual([
+      { opcode: 'push-cell', address: 'B3' },
+      { opcode: 'push-cell', address: 'C3' },
+      { opcode: 'binary', operator: '+' },
+      { opcode: 'return' },
+    ])
   })
 
   it('rewrites js plan operands for js-only formulas without relying on the AST', () => {

@@ -3,10 +3,13 @@ import type { CompiledFormula } from '@bilig/formula'
 import type { CellValue } from '@bilig/protocol'
 import type { EngineCellMutationRef, EngineFormulaSourceRefs } from '../../cell-mutations-at.js'
 import type { FormulaFamilyFreshUniformRunRegistrationArgs, FormulaFamilyRunUpsertArgs } from '../../formula/formula-family-store.js'
+import type { FormulaInstanceSnapshot } from '../../formula/formula-instance-table.js'
 import type { FormulaTemplateResolution } from '../../formula/template-bank.js'
 import type { EngineMutationError } from '../errors.js'
 import type { EngineRuntimeState, U32 } from '../runtime-state.js'
+import type { FormulaOwnerPosition } from './formula-binding-service-types.js'
 import type { DeferredInitialFormulaFamilyRun } from './formula-initialization-family-runs.js'
+import type { InitialFormulaEntryRefSource } from './formula-initialization-refs.js'
 
 export interface EngineFormulaInitializationService {
   readonly initializeCellFormulasAt: (
@@ -21,11 +24,11 @@ export interface EngineFormulaInitializationService {
   ) => Effect.Effect<void, EngineMutationError>
   readonly initializePreparedCellFormulasAtNow: (refs: readonly PreparedFormulaInitializationRef[], potentialNewCells?: number) => void
   readonly initializeHydratedPreparedCellFormulasAt: (
-    refs: readonly HydratedPreparedFormulaInitializationRef[],
+    refs: InitialFormulaEntryRefSource<HydratedPreparedFormulaInitializationRef>,
     potentialNewCells?: number,
   ) => Effect.Effect<void, EngineMutationError>
   readonly initializeHydratedPreparedCellFormulasAtNow: (
-    refs: readonly HydratedPreparedFormulaInitializationRef[],
+    refs: InitialFormulaEntryRefSource<HydratedPreparedFormulaInitializationRef>,
     potentialNewCells?: number,
   ) => void
 }
@@ -67,6 +70,8 @@ export interface EngineFormulaInitializationServiceArgs {
       readonly deferFormulaInstanceRegistration?: boolean
       readonly assumeFreshFormula?: boolean
       readonly preserveCachedValueOnFullRecalc?: boolean
+      readonly resolveWorkbookDateSystem?: () => string | undefined
+      readonly ownerPosition?: FormulaOwnerPosition
     },
   ) => boolean
   readonly upsertFormulaFamilyRun: (args: FormulaFamilyRunUpsertArgs) => void
@@ -74,6 +79,7 @@ export interface EngineFormulaInitializationServiceArgs {
   readonly deferFormulaFamilyIndexRebuild?: () => void
   readonly deferFormulaFamilyIndexRuns?: (runs: readonly DeferredInitialFormulaFamilyRun[]) => void
   readonly deferFormulaInstanceTableRebuild?: () => void
+  readonly hydrateFreshFormulaInstances?: (records: readonly FormulaInstanceSnapshot[]) => void
   readonly compileTemplateFormula: (source: string, row: number, col: number) => FormulaTemplateResolution
   readonly clearTemplateFormulaCache: () => void
   readonly removeFormula: (cellIndex: number) => boolean

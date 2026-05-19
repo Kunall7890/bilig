@@ -34,8 +34,14 @@ interface ColumnSubscriptionState {
   pointImpactDisabled: boolean
 }
 
-type FormulaRegionSubscription = RegionId | Set<RegionId>
+type FormulaRegionSubscription = RegionId | readonly RegionId[]
 type RegionSubscriberSubscription = number | Set<number>
+
+interface SingleFormulaRegionReplacement {
+  readonly formulaCellIndex: number
+  readonly previousRegionId: RegionId
+  readonly nextRegionId: RegionId
+}
 
 const DIRTY_LINEAR_POINT_QUERY_LIMIT = 2
 const DIRTY_LINEAR_REGION_LIMIT = 2_048
@@ -43,6 +49,7 @@ const MULTIPLE_POINT_DEPENDENTS = -2
 const POINT_IMPACT_MAX_REGION_LENGTH = 256
 const POINT_IMPACT_MAX_CELLS = 65_536
 const POINT_IMPACT_MAX_ROW_INDEX = 131_072
+const DEPENDENT_DEDUP_SET_THRESHOLD = 32
 
 export interface RegionGraph {
   readonly internSingleColumnRegion: (args: {
@@ -54,6 +61,7 @@ export interface RegionGraph {
   readonly getRegion: (regionId: RegionId) => SingleColumnRegionNode | undefined
   readonly replaceFormulaSubscriptions: (formulaCellIndex: number, regionIds: readonly RegionId[]) => void
   readonly replaceSingleFormulaSubscription: (formulaCellIndex: number, previousRegionId: RegionId, nextRegionId: RegionId) => void
+  readonly replaceSingleFormulaSubscriptions: (replacements: readonly SingleFormulaRegionReplacement[]) => void
   readonly clearFormulaSubscriptions: (formulaCellIndex: number) => void
   readonly getFormulaSubscriptions: (formulaCellIndex: number) => readonly RegionId[]
   readonly prepareQueryIndices: () => void
@@ -62,6 +70,13 @@ export interface RegionGraph {
   readonly hasFormulaSubscriptions: () => boolean
   readonly hasFormulaSubscriptionsForColumn: (sheetId: number, col: number) => boolean
   readonly hasFormulaSubscriptionsOverlappingRange: (
+    sheetId: number,
+    rowStart: number,
+    rowEnd: number,
+    colStart: number,
+    colEnd: number,
+  ) => boolean
+  readonly hasFormulaSubscriptionsIntersectingRect: (
     sheetId: number,
     rowStart: number,
     rowEnd: number,
@@ -174,6 +189,22 @@ function pushUniqueDependent(dependents: number[], formulaCellIndex: number): vo
   dependents.push(formulaCellIndex)
 }
 
+function pushAdaptiveUniqueDependent(
+  dependents: number[],
+  seenDependents: Set<number> | undefined,
+  formulaCellIndex: number,
+): Set<number> | undefined {
+  if (seenDependents) {
+    if (!seenDependents.has(formulaCellIndex)) {
+      seenDependents.add(formulaCellIndex)
+      dependents.push(formulaCellIndex)
+    }
+    return seenDependents
+  }
+  pushUniqueDependent(dependents, formulaCellIndex)
+  return dependents.length >= DEPENDENT_DEDUP_SET_THRESHOLD ? new Set(dependents) : undefined
+}
+
 function mergeSingleDependent(current: number, next: number): number {
   if (current === MULTIPLE_POINT_DEPENDENTS || next === MULTIPLE_POINT_DEPENDENTS) {
     return MULTIPLE_POINT_DEPENDENTS
@@ -196,7 +227,9 @@ function forEachFormulaRegionSubscription(subscription: FormulaRegionSubscriptio
     fn(subscription)
     return
   }
-  subscription.forEach(fn)
+  for (let index = 0; index < subscription.length; index += 1) {
+    fn(subscription[index]!)
+  }
 }
 
 function forEachRegionSubscriber(subscription: RegionSubscriberSubscription, fn: (formulaCellIndex: number) => void): void {
@@ -222,7 +255,17 @@ function formulaRegionSubscriptionToArray(subscription: FormulaRegionSubscriptio
   if (subscription === undefined) {
     return []
   }
-  return typeof subscription === 'number' ? [subscription] : [...subscription]
+  return typeof subscription === 'number' ? [subscription] : subscription
+}
+
+function pushUniqueRegionId(regionIds: RegionId[], regionId: RegionId): boolean {
+  for (let index = 0; index < regionIds.length; index += 1) {
+    if (regionIds[index] === regionId) {
+      return false
+    }
+  }
+  regionIds.push(regionId)
+  return true
 }
 
 function collectSingleDependentForRegionIds(
@@ -391,6 +434,15 @@ function addColumnRegionBounds(subscriptions: ColumnSubscriptionState, region: S
   }
 }
 
+function resetColumnSubscriptionSummary(subscriptions: ColumnSubscriptionState): void {
+  subscriptions.orderedByRowStart = true
+  subscriptions.lastRowStart = Number.NEGATIVE_INFINITY
+  subscriptions.minRowStart = Number.POSITIVE_INFINITY
+  subscriptions.minRowStartCount = 0
+  subscriptions.maxRowEnd = Number.NEGATIVE_INFINITY
+  subscriptions.maxRowEndCount = 0
+}
+
 export function createRegionGraph(args: {
   readonly workbook: Pick<WorkbookStore, 'getSheet'>
   readonly counters?: EngineCounters
@@ -438,6 +490,21 @@ export function createRegionGraph(args: {
       if (!region) {
         return
       }
+      addColumnRegionBounds(subscriptions, region)
+    })
+  }
+
+  const recomputeColumnSubscriptionSummary = (subscriptions: ColumnSubscriptionState): void => {
+    resetColumnSubscriptionSummary(subscriptions)
+    subscriptions.regionIds.forEach((regionId) => {
+      const region = nodeStore.get(regionId)
+      if (!region) {
+        return
+      }
+      if (region.rowStart < subscriptions.lastRowStart) {
+        subscriptions.orderedByRowStart = false
+      }
+      subscriptions.lastRowStart = Math.max(subscriptions.lastRowStart, region.rowStart)
       addColumnRegionBounds(subscriptions, region)
     })
   }
@@ -612,6 +679,119 @@ export function createRegionGraph(args: {
     markColumnDirty(regionId)
   }
 
+  const touchBatchedRegionColumn = (
+    touchedColumnKeys: Set<number>,
+    regionId: RegionId,
+  ): { readonly region: SingleColumnRegionNode; readonly subscriptions: ColumnSubscriptionState } | undefined => {
+    const region = nodeStore.get(regionId)
+    if (!region) {
+      return undefined
+    }
+    touchedColumnKeys.add(columnKey(region.sheetId, region.col))
+    return {
+      region,
+      subscriptions: getColumnSubscriptions(region.sheetId, region.col),
+    }
+  }
+
+  const removeRegionSubscriptionBatched = (touchedColumnKeys: Set<number>, formulaCellIndex: number, regionId: RegionId): void => {
+    const subscribers = regionSubscribers.get(regionId)
+    if (subscribers === undefined) {
+      return
+    }
+    let removedSubscriber = false
+    let shouldRemoveRegion = false
+    if (typeof subscribers === 'number') {
+      if (subscribers !== formulaCellIndex) {
+        return
+      }
+      removedSubscriber = true
+      shouldRemoveRegion = true
+      regionSubscribers.delete(regionId)
+    } else {
+      const previousSize = subscribers.size
+      subscribers.delete(formulaCellIndex)
+      if (subscribers.size === previousSize) {
+        return
+      }
+      removedSubscriber = true
+      if (subscribers.size > 1) {
+        shouldRemoveRegion = false
+      } else if (subscribers.size === 1) {
+        for (const remaining of subscribers) {
+          regionSubscribers.set(regionId, remaining)
+        }
+        shouldRemoveRegion = false
+      } else {
+        shouldRemoveRegion = true
+        regionSubscribers.delete(regionId)
+      }
+    }
+    const touched = touchBatchedRegionColumn(touchedColumnKeys, regionId)
+    if (!touched) {
+      return
+    }
+    if (removedSubscriber) {
+      markPointImpactIndexDirty(touched.subscriptions)
+    }
+    if (shouldRemoveRegion) {
+      touched.subscriptions.regionIds.delete(regionId)
+    }
+  }
+
+  const addRegionSubscriptionBatched = (touchedColumnKeys: Set<number>, formulaCellIndex: number, regionId: RegionId): void => {
+    const subscribers = regionSubscribers.get(regionId)
+    const wasEmpty = subscribers === undefined
+    if (subscribers === undefined) {
+      regionSubscribers.set(regionId, formulaCellIndex)
+    } else if (typeof subscribers === 'number') {
+      if (subscribers !== formulaCellIndex) {
+        regionSubscribers.set(regionId, new Set([subscribers, formulaCellIndex]))
+        const touched = touchBatchedRegionColumn(touchedColumnKeys, regionId)
+        if (touched) {
+          markPointImpactIndexDirty(touched.subscriptions)
+        }
+      }
+    } else {
+      const previousSize = subscribers.size
+      subscribers.add(formulaCellIndex)
+      if (subscribers.size !== previousSize) {
+        const touched = touchBatchedRegionColumn(touchedColumnKeys, regionId)
+        if (touched) {
+          markPointImpactIndexDirty(touched.subscriptions)
+        }
+      }
+    }
+    if (wasEmpty) {
+      const touched = touchBatchedRegionColumn(touchedColumnKeys, regionId)
+      if (touched) {
+        touched.subscriptions.regionIds.add(regionId)
+        markPointImpactIndexDirty(touched.subscriptions)
+      }
+    }
+  }
+
+  const finishBatchedRegionSubscriptionReplacements = (touchedColumnKeys: ReadonlySet<number>): void => {
+    touchedColumnKeys.forEach((key) => {
+      const subscriptions = columnSubscriptions.get(key)
+      if (!subscriptions) {
+        return
+      }
+      if (subscriptions.regionIds.size === 0) {
+        resetColumnSubscriptionSummary(subscriptions)
+        subscriptions.pointImpactIndex = undefined
+        subscriptions.pointImpactCellCount = 0
+        subscriptions.pointImpactDirty = false
+        subscriptions.pointImpactDisabled = false
+      } else {
+        recomputeColumnSubscriptionSummary(subscriptions)
+      }
+      subscriptions.dirty = true
+      subscriptions.dirtyPointQueries = 0
+      dirtyColumns.add(key)
+    })
+  }
+
   const ensureIntervalTree = (sheetId: number, col: number): IntervalTreeNode | undefined => {
     const key = columnKey(sheetId, col)
     const subscriptions = getColumnSubscriptions(sheetId, col)
@@ -673,14 +853,14 @@ export function createRegionGraph(args: {
         formulaRegions.set(formulaCellIndex, regionId)
         return
       }
-      const next = new Set<RegionId>()
-      regionIds.forEach((regionId) => {
-        if (next.has(regionId)) {
-          return
+      const next: RegionId[] = []
+      for (let index = 0; index < regionIds.length; index += 1) {
+        const regionId = regionIds[index]!
+        if (!pushUniqueRegionId(next, regionId)) {
+          continue
         }
-        next.add(regionId)
         addRegionSubscription(formulaCellIndex, regionId)
-      })
+      }
       formulaRegions.set(formulaCellIndex, next)
     },
     replaceSingleFormulaSubscription(formulaCellIndex, previousRegionId, nextRegionId) {
@@ -694,7 +874,7 @@ export function createRegionGraph(args: {
         formulaRegions.set(formulaCellIndex, nextRegionId)
         return
       }
-      if (previous === undefined || typeof previous === 'number' || previous.size !== 1 || !previous.has(previousRegionId)) {
+      if (previous === undefined || typeof previous === 'number' || previous.length !== 1 || previous[0] !== previousRegionId) {
         if (previous !== undefined) {
           forEachFormulaRegionSubscription(previous, (regionId) => {
             removeRegionSubscription(formulaCellIndex, regionId)
@@ -705,9 +885,39 @@ export function createRegionGraph(args: {
         return
       }
       removeRegionSubscription(formulaCellIndex, previousRegionId)
-      previous.clear()
-      previous.add(nextRegionId)
       addRegionSubscription(formulaCellIndex, nextRegionId)
+      formulaRegions.set(formulaCellIndex, [nextRegionId])
+    },
+    replaceSingleFormulaSubscriptions(replacements) {
+      if (replacements.length === 0) {
+        return
+      }
+      const touchedColumnKeys = new Set<number>()
+      for (let index = 0; index < replacements.length; index += 1) {
+        const { formulaCellIndex, previousRegionId, nextRegionId } = replacements[index]!
+        if (previousRegionId === nextRegionId) {
+          continue
+        }
+        const previous = formulaRegions.get(formulaCellIndex)
+        if (
+          previous === undefined ||
+          (typeof previous !== 'number' && (previous.length !== 1 || previous[0] !== previousRegionId)) ||
+          (typeof previous === 'number' && previous !== previousRegionId)
+        ) {
+          if (previous !== undefined) {
+            forEachFormulaRegionSubscription(previous, (regionId) => {
+              removeRegionSubscriptionBatched(touchedColumnKeys, formulaCellIndex, regionId)
+            })
+          }
+          addRegionSubscriptionBatched(touchedColumnKeys, formulaCellIndex, nextRegionId)
+          formulaRegions.set(formulaCellIndex, nextRegionId)
+          continue
+        }
+        removeRegionSubscriptionBatched(touchedColumnKeys, formulaCellIndex, previousRegionId)
+        addRegionSubscriptionBatched(touchedColumnKeys, formulaCellIndex, nextRegionId)
+        formulaRegions.set(formulaCellIndex, nextRegionId)
+      }
+      finishBatchedRegionSubscriptionReplacements(touchedColumnKeys)
     },
     clearFormulaSubscriptions(formulaCellIndex) {
       const previous = formulaRegions.get(formulaCellIndex)
@@ -751,13 +961,14 @@ export function createRegionGraph(args: {
         return regionSubscribersToUint32(subscribers)
       }
       const dependents: number[] = []
+      let seenDependents: Set<number> | undefined
       for (let regionIndex = 0; regionIndex < matchingRegions.length; regionIndex += 1) {
         const subscribers = regionSubscribers.get(matchingRegions[regionIndex]!)
         if (subscribers === undefined) {
           continue
         }
         forEachRegionSubscriber(subscribers, (formulaCellIndex) => {
-          pushUniqueDependent(dependents, formulaCellIndex)
+          seenDependents = pushAdaptiveUniqueDependent(dependents, seenDependents, formulaCellIndex)
         })
       }
       return Uint32Array.from(dependents)
@@ -791,6 +1002,9 @@ export function createRegionGraph(args: {
       return (columnSubscriptions.get(columnKey(sheetId, col))?.regionIds.size ?? 0) > 0
     },
     hasFormulaSubscriptionsOverlappingRange(sheetId, rowStart, rowEnd, colStart, colEnd) {
+      if (rowEnd < rowStart || colEnd < colStart) {
+        return false
+      }
       for (let col = colStart; col <= colEnd; col += 1) {
         const subscriptions = columnSubscriptions.get(columnKey(sheetId, col))
         if (
@@ -798,6 +1012,26 @@ export function createRegionGraph(args: {
           subscriptions.regionIds.size > 0 &&
           subscriptions.maxRowEnd >= rowStart &&
           subscriptions.minRowStart <= rowEnd
+        ) {
+          return true
+        }
+      }
+      return false
+    },
+    hasFormulaSubscriptionsIntersectingRect(sheetId, rowStart, rowEnd, colStart, colEnd) {
+      if (rowEnd < rowStart || colEnd < colStart) {
+        return false
+      }
+      for (let col = colStart; col <= colEnd; col += 1) {
+        const subscriptions = columnSubscriptions.get(columnKey(sheetId, col))
+        if (subscriptions !== undefined && rowCanIntersectSubscriptions(subscriptions, rowStart)) {
+          return true
+        }
+        if (
+          subscriptions !== undefined &&
+          rowEnd >= subscriptions.minRowStart &&
+          rowStart <= subscriptions.maxRowEnd &&
+          subscriptions.regionIds.size > 0
         ) {
           return true
         }

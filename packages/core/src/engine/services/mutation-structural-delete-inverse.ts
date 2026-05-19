@@ -29,6 +29,7 @@ interface MutationStructuralDeleteInverseRuntime {
   readonly getCellByIndex: (cellIndex: number) => CellSnapshot
   readonly toCellStateOps: (sheetName: string, address: string, snapshot: CellSnapshot) => EngineOp[]
   readonly getFormulaFamilyStructuralSourceTransform?: (cellIndex: number) => RuntimeStructuralFormulaSourceTransform | undefined
+  readonly hasFormulaFamilyStructuralSourceTransforms?: () => boolean
 }
 
 export interface MutationStructuralDeleteInverseHelpers {
@@ -39,8 +40,14 @@ export interface MutationStructuralDeleteInverseHelpers {
   ) => TransactionRecord
 }
 
-function captureRuntimeFormulaSource(args: MutationStructuralDeleteInverseRuntime, cellIndex: number, formula: RuntimeFormula): string {
-  return getRuntimeFormulaSource(formula, args.getFormulaFamilyStructuralSourceTransform?.(cellIndex))
+function captureRuntimeFormulaSource(
+  args: MutationStructuralDeleteInverseRuntime,
+  cellIndex: number,
+  formula: RuntimeFormula,
+  hasFamilyTransforms = args.hasFormulaFamilyStructuralSourceTransforms?.() === true,
+): string {
+  const familyTransform = hasFamilyTransforms ? args.getFormulaFamilyStructuralSourceTransform?.(cellIndex) : undefined
+  return getRuntimeFormulaSource(formula, familyTransform)
 }
 
 interface CapturedRuntimeFormulaSource {
@@ -75,6 +82,7 @@ function captureRuntimeFormulaSourceHandle(
   args: MutationStructuralDeleteInverseRuntime,
   cellIndex: number,
   formula: RuntimeFormula,
+  hasFamilyTransforms = args.hasFormulaFamilyStructuralSourceTransforms?.() === true,
 ): CapturedRuntimeFormulaSource {
   const ownStructuralSourceTransform = cloneStructuralSourceTransform(formula.structuralSourceTransform)
   const captured: CapturedRuntimeFormulaSource = {
@@ -89,7 +97,9 @@ function captureRuntimeFormulaSourceHandle(
   if (ownStructuralSourceTransform !== undefined) {
     return withRenameTransforms
   }
-  const inheritedStructuralSourceTransform = cloneStructuralSourceTransform(args.getFormulaFamilyStructuralSourceTransform?.(cellIndex))
+  const inheritedStructuralSourceTransform = hasFamilyTransforms
+    ? cloneStructuralSourceTransform(args.getFormulaFamilyStructuralSourceTransform?.(cellIndex))
+    : undefined
   return inheritedStructuralSourceTransform === undefined
     ? withRenameTransforms
     : { ...withRenameTransforms, inheritedStructuralSourceTransform }
@@ -185,6 +195,40 @@ function directFormulaRangeTouchesStructuralDeleteSpan(
 export function createMutationStructuralDeleteInverseHelpers(
   args: MutationStructuralDeleteInverseRuntime,
 ): MutationStructuralDeleteInverseHelpers {
+  const createSheetNameReader = (): ((sheetId: number) => string | undefined) => {
+    const sheetNameById = new Map<number, string | undefined>()
+    return (sheetId) => {
+      if (sheetNameById.has(sheetId)) {
+        return sheetNameById.get(sheetId)
+      }
+      const sheetName = args.state.workbook.getSheetNameById(sheetId)
+      sheetNameById.set(sheetId, sheetName)
+      return sheetName
+    }
+  }
+  const createCellPositionReader = (): ((cellIndex: number) => { sheetId: number; row: number; col: number } | undefined) => {
+    const sheetStructureVersionById = new Map<number, number | undefined>()
+    const getSheetStructureVersionById = (sheetId: number): number | undefined => {
+      if (sheetStructureVersionById.has(sheetId)) {
+        return sheetStructureVersionById.get(sheetId)
+      }
+      const structureVersion = args.state.workbook.getSheetById(sheetId)?.structureVersion
+      sheetStructureVersionById.set(sheetId, structureVersion)
+      return structureVersion
+    }
+    return (cellIndex) => {
+      const sheetId = args.state.workbook.cellStore.sheetIds[cellIndex]
+      if (sheetId === undefined || sheetId === 0) {
+        return undefined
+      }
+      if (getSheetStructureVersionById(sheetId) === 1) {
+        const row = args.state.workbook.cellStore.rows[cellIndex]
+        const col = args.state.workbook.cellStore.cols[cellIndex]
+        return row === undefined || col === undefined ? undefined : { sheetId, row, col }
+      }
+      return args.state.workbook.getCellPosition(cellIndex)
+    }
+  }
   const captureFormulaCellRecordsForStructuralUndo = (
     sheetName: string,
     axis: 'row' | 'column',
@@ -193,16 +237,19 @@ export function createMutationStructuralDeleteInverseHelpers(
     options: { readonly skipRedundantDirectAggregateCaptures?: boolean } = {},
   ): StructuralFormulaUndoCapture[] => {
     const captured: StructuralFormulaUndoCapture[] = []
+    const hasFamilyTransforms = args.hasFormulaFamilyStructuralSourceTransforms?.() === true
+    const getSheetNameById = createSheetNameReader()
+    const readCellPosition = createCellPositionReader()
     args.state.formulas.forEach((formula, cellIndex) => {
       const ownerSheetId = args.state.workbook.cellStore.sheetIds[cellIndex]
       if (ownerSheetId === undefined) {
         return
       }
-      const ownerSheetName = args.state.workbook.getSheetNameById(ownerSheetId)
+      const ownerSheetName = getSheetNameById(ownerSheetId)
       if (!ownerSheetName) {
         return
       }
-      const ownerPosition = args.state.workbook.getCellPosition(cellIndex)
+      const ownerPosition = readCellPosition(cellIndex)
       const axisIndex = axis === 'row' ? ownerPosition?.row : ownerPosition?.col
       if (ownerSheetName === sheetName && axisIndex !== undefined && axisIndex >= start && axisIndex < start + count) {
         return
@@ -243,7 +290,7 @@ export function createMutationStructuralDeleteInverseHelpers(
         sheetName: ownerSheetName,
         row: ownerPosition?.row ?? 0,
         col: ownerPosition?.col ?? 0,
-        source: captureRuntimeFormulaSourceHandle(args, cellIndex, formula),
+        source: captureRuntimeFormulaSourceHandle(args, cellIndex, formula, hasFamilyTransforms),
       })
     })
     return captured
@@ -265,12 +312,13 @@ export function createMutationStructuralDeleteInverseHelpers(
     const explicitFormat = args.state.workbook.getCellFormat(cellIndex)
     const formula = args.state.formulas.get(cellIndex)
     if (formula) {
+      const hasFamilyTransforms = args.hasFormulaFamilyStructuralSourceTransforms?.() === true
       return {
         kind: 'formula',
         sheetName,
         row,
         col,
-        formula: captureRuntimeFormulaSource(args, cellIndex, formula),
+        formula: captureRuntimeFormulaSource(args, cellIndex, formula, hasFamilyTransforms),
         ...(explicitFormat === undefined ? {} : { explicitFormat }),
       }
     }
@@ -331,11 +379,12 @@ export function createMutationStructuralDeleteInverseHelpers(
     if (!sheet) {
       return []
     }
+    const readCellPosition = createCellPositionReader()
     const axisIds = sheet.logicalAxisMap.snapshot(axis, start, count).map((entry) => entry.id)
     const records: StructuralDeletedCellUndoRecord[] = []
     sheet.logical.listResidentCellIndicesUnordered(axis, axisIds).forEach((cellIndex) => {
-      const position = args.state.workbook.getCellPosition(cellIndex)
-      if (!position) {
+      const position = readCellPosition(cellIndex)
+      if (!position || position.sheetId !== sheet.id) {
         return
       }
       const axisIndex = axis === 'row' ? position.row : position.col

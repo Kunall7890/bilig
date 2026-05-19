@@ -1,4 +1,4 @@
-export type HeadlessComparisonCoverageTier = 'workbook-wide' | 'scalar-formula'
+export type HeadlessComparisonCoverageTier = 'workbook-wide' | 'workbook-wide-limited' | 'scalar-formula'
 
 export interface ExtraHeadlessComparisonEngineSummary {
   readonly artifactPath: string

@@ -29,7 +29,7 @@ export class CellStore {
   topoRanks: Uint32Array
   cycleGroupIds: Int32Array
 
-  constructor(initialCapacity = 64) {
+  constructor(initialCapacity = 16) {
     this.capacity = initialCapacity
     this.tags = new Uint8Array(initialCapacity)
     this.numbers = new Float64Array(initialCapacity)

@@ -54,11 +54,15 @@ export class WorkPaperEngineEventTracker {
     })
   }
 
-  dispose(): void {
-    this.materializePendingLazyChanges()
+  detach(): void {
     this.unsubscribe?.()
     this.unsubscribe = null
     this.clearEvents()
+  }
+
+  dispose(): void {
+    this.materializePendingLazyChanges()
+    this.detach()
   }
 
   clearEvents(): void {

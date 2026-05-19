@@ -153,6 +153,36 @@ describe('RegionGraph', () => {
     expect(counters.regionQueryIndexBuilds).toBe(0)
   })
 
+  it('checks rectangular subscription overlap from maintained column row bounds', () => {
+    const workbook = new WorkbookStore('region-graph-rect-overlap')
+    const sheet = workbook.createSheet('Sheet1')
+    const regionGraph = createRegionGraph({ workbook })
+
+    const first = regionGraph.internSingleColumnRegion({
+      sheetName: 'Sheet1',
+      rowStart: 0,
+      rowEnd: 31,
+      col: 0,
+    })
+    const second = regionGraph.internSingleColumnRegion({
+      sheetName: 'Sheet1',
+      rowStart: 64,
+      rowEnd: 96,
+      col: 2,
+    })
+
+    regionGraph.replaceFormulaSubscriptions(10, [first])
+    regionGraph.replaceFormulaSubscriptions(20, [second])
+
+    expect(regionGraph.hasFormulaSubscriptionsIntersectingRect(sheet.id, 32, 63, 0, 2)).toBe(false)
+    expect(regionGraph.hasFormulaSubscriptionsIntersectingRect(sheet.id, 24, 40, 0, 1)).toBe(true)
+    expect(regionGraph.hasFormulaSubscriptionsIntersectingRect(sheet.id, 40, 80, 1, 2)).toBe(true)
+    expect(regionGraph.hasFormulaSubscriptionsIntersectingRect(sheet.id, 0, 100, 3, 4)).toBe(false)
+
+    regionGraph.clearFormulaSubscriptions(20)
+    expect(regionGraph.hasFormulaSubscriptionsIntersectingRect(sheet.id, 64, 96, 2, 2)).toBe(false)
+  })
+
   it('replaces a single formula region subscription without disturbing other subscribers', () => {
     const workbook = new WorkbookStore('region-graph-replace-single')
     const sheet = workbook.createSheet('Sheet1')
@@ -180,6 +210,46 @@ describe('RegionGraph', () => {
     expect([...regionGraph.collectFormulaDependentsForCell(sheet.id, 4, 0)]).toEqual([10])
   })
 
+  it('replaces many single formula region subscriptions in one column batch', () => {
+    const workbook = new WorkbookStore('region-graph-replace-single-batch')
+    const sheet = workbook.createSheet('Sheet1')
+    const regionGraph = createRegionGraph({ workbook })
+
+    const first = regionGraph.internSingleColumnRegion({
+      sheetName: 'Sheet1',
+      rowStart: 0,
+      rowEnd: 2,
+      col: 0,
+    })
+    const second = regionGraph.internSingleColumnRegion({
+      sheetName: 'Sheet1',
+      rowStart: 3,
+      rowEnd: 5,
+      col: 0,
+    })
+    const third = regionGraph.internSingleColumnRegion({
+      sheetName: 'Sheet1',
+      rowStart: 6,
+      rowEnd: 8,
+      col: 0,
+    })
+
+    regionGraph.replaceFormulaSubscriptions(10, [first])
+    regionGraph.replaceFormulaSubscriptions(20, [second])
+    regionGraph.replaceFormulaSubscriptions(30, [third])
+    regionGraph.replaceSingleFormulaSubscriptions([
+      { formulaCellIndex: 10, previousRegionId: first, nextRegionId: second },
+      { formulaCellIndex: 20, previousRegionId: second, nextRegionId: third },
+    ])
+
+    expect(regionGraph.getFormulaSubscriptions(10)).toEqual([second])
+    expect(regionGraph.getFormulaSubscriptions(20)).toEqual([third])
+    expect(regionGraph.getFormulaSubscriptions(30)).toEqual([third])
+    expect([...regionGraph.collectFormulaDependentsForCell(sheet.id, 1, 0)]).toEqual([])
+    expect([...regionGraph.collectFormulaDependentsForCell(sheet.id, 4, 0)]).toEqual([10])
+    expect(new Set(regionGraph.collectFormulaDependentsForCell(sheet.id, 7, 0))).toEqual(new Set([20, 30]))
+  })
+
   it('deduplicates dependents when one formula subscribes to multiple matching regions', () => {
     const workbook = new WorkbookStore('region-graph-dedupe')
     const sheet = workbook.createSheet('Sheet1')
@@ -202,6 +272,43 @@ describe('RegionGraph', () => {
 
     expect([...regionGraph.collectFormulaDependentsForCell(sheet.id, 3, 0)]).toEqual([10])
     expect(regionGraph.collectSingleFormulaDependentForCell(sheet.id, 3, 0)).toBe(10)
+  })
+
+  it('deduplicates large overlapping range fanouts without dropping dependents', () => {
+    const workbook = new WorkbookStore('region-graph-large-fanout-dedupe')
+    const sheet = workbook.createSheet('Sheet1')
+    const regionGraph = createRegionGraph({ workbook })
+
+    const expected = new Set<number>()
+    for (let index = 0; index < 96; index += 1) {
+      const region = regionGraph.internSingleColumnRegion({
+        sheetName: 'Sheet1',
+        rowStart: 0,
+        rowEnd: index + 1,
+        col: 0,
+      })
+      const formulaCellIndex = 1_000 + index
+      regionGraph.replaceFormulaSubscriptions(formulaCellIndex, [region])
+      expected.add(formulaCellIndex)
+    }
+    const duplicateFirst = regionGraph.internSingleColumnRegion({
+      sheetName: 'Sheet1',
+      rowStart: 0,
+      rowEnd: 12,
+      col: 0,
+    })
+    const duplicateSecond = regionGraph.internSingleColumnRegion({
+      sheetName: 'Sheet1',
+      rowStart: 0,
+      rowEnd: 24,
+      col: 0,
+    })
+    regionGraph.replaceFormulaSubscriptions(5_000, [duplicateFirst, duplicateSecond])
+    expected.add(5_000)
+
+    expect([...regionGraph.collectFormulaDependentsForCell(sheet.id, 0, 0)].toSorted((left, right) => left - right)).toEqual(
+      [...expected].toSorted((left, right) => left - right),
+    )
   })
 
   it('keeps large sliding-window first point lookups on the dirty ordered scan path', () => {

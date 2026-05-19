@@ -16,9 +16,10 @@ import {
 import { CellFlags } from '../../cell-store.js'
 import { definedNameValueToCellValue, definedNameValueToReferenceOperand } from '../../engine-metadata-utils.js'
 import { emptyValue, errorValue } from '../../engine-value-utils.js'
+import { addEngineCounter } from '../../perf/engine-counters.js'
 import type { EngineRuntimeState, RuntimeDirectCriteriaOperand, RuntimeFormula, SpillMaterialization } from '../runtime-state.js'
 import { EngineFormulaEvaluationError } from '../errors.js'
-import type { CriterionRangeCacheService } from './criterion-range-cache-service.js'
+import type { CriterionRangeCacheService, CriterionRangeMatch } from './criterion-range-cache-service.js'
 import type { ExactColumnIndexService } from './exact-column-index-service.js'
 import type { EngineRuntimeColumnStoreService } from './runtime-column-store-service.js'
 import type { RangeAggregateCacheService } from './range-aggregate-cache-service.js'
@@ -46,6 +47,10 @@ import { tryEvaluateDirectAggregate } from './formula-evaluation-direct-aggregat
 import { readRuntimeDirectCriteriaOperandValue } from './direct-criteria-operands.js'
 import type { EngineFormulaEvaluationService } from './formula-evaluation-service-types.js'
 export type { EngineFormulaEvaluationService } from './formula-evaluation-service-types.js'
+
+const DIRECT_CRITERIA_MATCH_CACHE_LIMIT = 16_384
+const INDEXED_WHOLE_AXIS_BOUND_LIMIT = 4096
+
 export function createEngineFormulaEvaluationService(args: {
   readonly state: Pick<EngineRuntimeState, 'workbook' | 'strings' | 'formulas' | 'counters' | 'getUseColumnIndex'>
   readonly runtimeColumnStore: EngineRuntimeColumnStoreService
@@ -65,6 +70,17 @@ export function createEngineFormulaEvaluationService(args: {
 }): EngineFormulaEvaluationService {
   const emptyChangedCellIndices: number[] = []
   const directCriteriaAggregateCache = new Map<string, CellValue>()
+  const directCriteriaMatchCache = new Map<string, CriterionRangeMatch>()
+  const rememberDirectCriteriaMatch = (key: string, value: CriterionRangeMatch): CriterionRangeMatch => {
+    if (directCriteriaMatchCache.size >= DIRECT_CRITERIA_MATCH_CACHE_LIMIT) {
+      const firstKey = directCriteriaMatchCache.keys().next().value
+      if (firstKey !== undefined) {
+        directCriteriaMatchCache.delete(firstKey)
+      }
+    }
+    directCriteriaMatchCache.set(key, value)
+    return value
+  }
   const readCellValue = (sheetName: string, address: string): CellValue => {
     if (!args.state.workbook.getSheet(sheetName)) {
       return errorValue(ErrorCode.Ref)
@@ -170,11 +186,21 @@ export function createEngineFormulaEvaluationService(args: {
         return []
       }
       let maxResidentCol = -1
-      sheet.grid.forEachCellEntry((_cellIndex, row, col) => {
-        if (row >= rowStart && row <= rowEnd && col >= 0 && col < MAX_COLS && col > maxResidentCol) {
-          maxResidentCol = col
+      if (rowEnd - rowStart + 1 <= INDEXED_WHOLE_AXIS_BOUND_LIMIT) {
+        for (let row = rowStart; row <= rowEnd; row += 1) {
+          sheet.logical.forEachVisibleRowCellEntry(row, (_cellIndex, col) => {
+            if (col >= 0 && col < MAX_COLS && col > maxResidentCol) {
+              maxResidentCol = col
+            }
+          })
         }
-      })
+      } else {
+        sheet.grid.forEachCellEntry((_cellIndex, row, col) => {
+          if (row >= rowStart && row <= rowEnd && col >= 0 && col < MAX_COLS && col > maxResidentCol) {
+            maxResidentCol = col
+          }
+        })
+      }
       return maxResidentCol < 0
         ? []
         : readRectangularRangeValues(
@@ -196,11 +222,21 @@ export function createEngineFormulaEvaluationService(args: {
         return []
       }
       let maxResidentRow = -1
-      sheet.grid.forEachCellEntry((_cellIndex, row, col) => {
-        if (col >= colStart && col <= colEnd && row >= 0 && row < MAX_ROWS && row > maxResidentRow) {
-          maxResidentRow = row
-        }
-      })
+      if (colEnd - colStart + 1 <= INDEXED_WHOLE_AXIS_BOUND_LIMIT) {
+        maxResidentRow = args.runtimeColumnStore.findMaxResidentRowInColumns({
+          sheetName,
+          rowStart: 0,
+          rowEnd: MAX_ROWS - 1,
+          colStart,
+          colEnd,
+        })
+      } else {
+        sheet.grid.forEachCellEntry((_cellIndex, row, col) => {
+          if (col >= colStart && col <= colEnd && row >= 0 && row < MAX_ROWS && row > maxResidentRow) {
+            maxResidentRow = row
+          }
+        })
+      }
       return maxResidentRow < 0
         ? []
         : readRectangularRangeValues(
@@ -325,6 +361,19 @@ export function createEngineFormulaEvaluationService(args: {
     if (criterionError) {
       return criterionError
     }
+    const aggregateRange = directCriteria.aggregateRange
+    const criteriaVersionKey = resolvedPairs
+      .map((pair) => `${directCriteriaRangeVersionKey(args.state, pair.range)}:${directCriteriaCacheValueKey(pair.criteria)}`)
+      .join('|')
+    const aggregateCacheKey =
+      aggregateRange === undefined
+        ? undefined
+        : [directCriteria.aggregateKind, directCriteriaRangeVersionKey(args.state, aggregateRange), criteriaVersionKey].join('\u0000')
+    const cachedAggregate = aggregateCacheKey === undefined ? undefined : directCriteriaAggregateCache.get(aggregateCacheKey)
+    if (cachedAggregate) {
+      addEngineCounter(args.state.counters, 'directCriteriaAggregateCacheHits')
+      return applyDirectCriteriaResultTransforms(readCellValueByIndex, formula, cachedAggregate)
+    }
     const directIndexExactMatchResult =
       resolvedPairs.length === 1
         ? tryEvaluateDirectIndexExactMatch({
@@ -338,31 +387,32 @@ export function createEngineFormulaEvaluationService(args: {
       return applyDirectCriteriaResultTransforms(readCellValueByIndex, formula, directIndexExactMatchResult)
     }
 
-    const matches = args.criterionCache.getOrBuildMatchingRows({
-      criteriaPairs: resolvedPairs,
-    })
+    const cachedMatches = directCriteriaMatchCache.get(criteriaVersionKey)
+    if (cachedMatches !== undefined) {
+      addEngineCounter(args.state.counters, 'directCriteriaMatchCacheHits')
+    }
+    const matches =
+      cachedMatches ??
+      args.criterionCache.getOrBuildMatchingRows({
+        criteriaPairs: resolvedPairs,
+      })
     if ('tag' in matches) {
       return matches
+    }
+    if (cachedMatches === undefined) {
+      rememberDirectCriteriaMatch(criteriaVersionKey, matches)
     }
 
     if (directCriteria.aggregateKind === 'count') {
       return applyDirectCriteriaResultTransforms(readCellValueByIndex, formula, directNumberResult(matches.length))
     }
 
-    const aggregateRange = directCriteria.aggregateRange
     if (!aggregateRange) {
       return undefined
     }
-    const aggregateCacheKey = [
-      directCriteria.aggregateKind,
-      directCriteriaRangeVersionKey(args.state, aggregateRange),
-      resolvedPairs
-        .map((pair) => `${directCriteriaRangeVersionKey(args.state, pair.range)}:${directCriteriaCacheValueKey(pair.criteria)}`)
-        .join('|'),
-    ].join('\u0000')
-    const cachedAggregate = directCriteriaAggregateCache.get(aggregateCacheKey)
-    if (cachedAggregate) {
-      return applyDirectCriteriaResultTransforms(readCellValueByIndex, formula, cachedAggregate)
+    const concreteAggregateCacheKey = aggregateCacheKey
+    if (concreteAggregateCacheKey === undefined) {
+      return undefined
     }
 
     if (directCriteria.aggregateKind === 'first') {
@@ -381,7 +431,7 @@ export function createEngineFormulaEvaluationService(args: {
       return applyDirectCriteriaResultTransforms(
         readCellValueByIndex,
         formula,
-        rememberDirectCriteriaResult(directCriteriaAggregateCache, aggregateCacheKey, result),
+        rememberDirectCriteriaResult(directCriteriaAggregateCache, concreteAggregateCacheKey, result),
       )
     }
 
@@ -408,7 +458,7 @@ export function createEngineFormulaEvaluationService(args: {
       return applyDirectCriteriaResultTransforms(
         readCellValueByIndex,
         formula,
-        rememberDirectCriteriaResult(directCriteriaAggregateCache, aggregateCacheKey, directNumberResult(sum)),
+        rememberDirectCriteriaResult(directCriteriaAggregateCache, concreteAggregateCacheKey, directNumberResult(sum)),
       )
     }
 
@@ -428,7 +478,7 @@ export function createEngineFormulaEvaluationService(args: {
         formula,
         rememberDirectCriteriaResult(
           directCriteriaAggregateCache,
-          aggregateCacheKey,
+          concreteAggregateCacheKey,
           count === 0 ? directErrorResult(ErrorCode.Div0) : directNumberResult(sum / count),
         ),
       )
@@ -448,7 +498,7 @@ export function createEngineFormulaEvaluationService(args: {
         formula,
         rememberDirectCriteriaResult(
           directCriteriaAggregateCache,
-          aggregateCacheKey,
+          concreteAggregateCacheKey,
           directNumberResult(minimum === Number.POSITIVE_INFINITY ? 0 : minimum),
         ),
       )
@@ -467,7 +517,7 @@ export function createEngineFormulaEvaluationService(args: {
       formula,
       rememberDirectCriteriaResult(
         directCriteriaAggregateCache,
-        aggregateCacheKey,
+        concreteAggregateCacheKey,
         directNumberResult(maximum === Number.NEGATIVE_INFINITY ? 0 : maximum),
       ),
     )
@@ -851,6 +901,7 @@ export function createEngineFormulaEvaluationService(args: {
           }),
       })
     },
+    evaluateUnsupportedFormulaNow,
     resolveStructuredReference(tableName, columnName) {
       return Effect.try({
         try: () => resolveStructuredReferenceNow(tableName, columnName),

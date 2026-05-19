@@ -1,5 +1,7 @@
 import type { EngineOpBatch } from '@bilig/workbook-domain'
+import { ErrorCode, ValueTag } from '@bilig/protocol'
 import type { EngineCellMutationRef } from '../../cell-mutations-at.js'
+import { CellFlags } from '../../cell-store.js'
 import { makeCellEntity } from '../../entity-ids.js'
 import { addEngineCounter } from '../../perf/engine-counters.js'
 import { markBatchApplied } from '../../replica-state.js'
@@ -35,7 +37,7 @@ export function createOperationDirectScalarSingleColumnBatchFastPaths(args: Oper
     canUseDirectFormulaPostRecalc,
     canSkipFormulaColumnVersion,
     writeNumericLiteralToCellStore,
-    applyTerminalDirectFormulaNumericResult,
+    applyTerminalDirectFormulaNumericResults,
   } = args
 
   const tryApplyDenseSingleColumnDirectScalarLiteralBatch = (
@@ -44,7 +46,7 @@ export function createOperationDirectScalarSingleColumnBatchFastPaths(args: Oper
     potentialNewCells?: number,
   ): boolean => {
     const firstRef = refs[0]
-    if (firstRef === undefined || refs.length < 32) {
+    if (firstRef === undefined || refs.length < 32 || (potentialNewCells ?? 0) !== 0) {
       return false
     }
     const firstMutation = firstRef.mutation
@@ -124,27 +126,18 @@ export function createOperationDirectScalarSingleColumnBatchFastPaths(args: Oper
     }
 
     args.materializeDeferredStructuralFormulaSources()
-    args.beginMutationCollection()
-    const reservedNewCells = potentialNewCells ?? 0
-    args.state.workbook.cellStore.ensureCapacity(args.state.workbook.cellStore.size + reservedNewCells)
-    args.ensureRecalcScratchCapacity(args.state.workbook.cellStore.size + refs.length * 2 + 1)
-    args.resetMaterializedCellScratch(reservedNewCells)
 
     const hasGeneralEventListeners = args.state.events.hasListeners()
     const hasTrackedEventListeners = args.state.events.hasTrackedListeners()
     const hasWatchedCellListeners = args.state.events.hasCellListeners()
     const requiresChangedSet = hasGeneralEventListeners || hasTrackedEventListeners || hasWatchedCellListeners
-    let changedInputCount = 0
-    let explicitChangedCount = 0
+    const changedInputCount = inputCellIndices.length
+    const explicitChangedCount = requiresChangedSet ? inputCellIndices.length : 0
     args.setBatchMutationDepth(args.getBatchMutationDepth() + 1)
     try {
       for (let index = 0; index < refs.length; index += 1) {
         const cellIndex = inputCellIndices[index]!
         writeNumericLiteralToCellStore(cellIndex, inputNumericValues[index]!)
-        changedInputCount = args.markInputChanged(cellIndex, changedInputCount)
-        if (requiresChangedSet) {
-          explicitChangedCount = args.markExplicitChanged(cellIndex, explicitChangedCount)
-        }
       }
       args.state.workbook.notifyColumnsWritten(firstRef.sheetId, Uint32Array.of(firstMutation.col))
     } finally {
@@ -153,19 +146,17 @@ export function createOperationDirectScalarSingleColumnBatchFastPaths(args: Oper
     if (batch) {
       markBatchApplied(args.state.replicaState, batch)
     }
-    const changedInputArray = args.getChangedInputBuffer().subarray(0, changedInputCount)
-    args.deferKernelSync(changedInputArray)
+    args.deferKernelSync(inputCellIndices)
     const formulaChanged = requiresChangedSet ? new Uint32Array(refs.length) : EMPTY_CHANGED_CELLS
-    for (let index = 0; index < refs.length; index += 1) {
-      const formulaCellIndex = formulaCellIndices[index]!
-      applyTerminalDirectFormulaNumericResult(formulaCellIndex, formulaNumericResults[index]!)
-      if (requiresChangedSet) {
-        formulaChanged[index] = formulaCellIndex
+    if (requiresChangedSet) {
+      for (let index = 0; index < refs.length; index += 1) {
+        formulaChanged[index] = formulaCellIndices[index]!
       }
     }
+    applyTerminalDirectFormulaNumericResults(formulaCellIndices, formulaNumericResults)
     addEngineCounter(args.state.counters, 'directScalarDeltaApplications', refs.length)
     addEngineCounter(args.state.counters, 'directScalarDeltaOnlyRecalcSkips')
-    const changed = requiresChangedSet ? args.composeDisjointEventChanges(formulaChanged, explicitChangedCount) : EMPTY_CHANGED_CELLS
+    const changed = requiresChangedSet ? composeDenseInputFormulaChanges(inputCellIndices, formulaChanged) : EMPTY_CHANGED_CELLS
     if (hasTrackedEventListeners && changed.length > 4 && explicitChangedCount > 0 && explicitChangedCount < changed.length) {
       tagTrustedPhysicalTrackedChanges(changed, firstRef.sheetId, explicitChangedCount)
     }
@@ -217,7 +208,7 @@ export function createOperationDirectScalarSingleColumnBatchFastPaths(args: Oper
     }
 
     const inputCellIndices = new Uint32Array(refs.length)
-    const inputNumericValues = new Float64Array(refs.length)
+    const inputNumericValues = rowOrder < 0 ? new Float64Array(refs.length) : undefined
     const formulaCellIndices = new Uint32Array(refs.length)
     const cellStore = args.state.workbook.cellStore
     let previousRow = firstMutation.row
@@ -285,7 +276,9 @@ export function createOperationDirectScalarSingleColumnBatchFastPaths(args: Oper
       }
       const outputIndex = rowOrder < 0 ? refs.length - 1 - refIndex : refIndex
       inputCellIndices[outputIndex] = existingIndex
-      inputNumericValues[outputIndex] = mutation.value
+      if (inputNumericValues !== undefined) {
+        inputNumericValues[outputIndex] = mutation.value
+      }
       formulaCellIndices[outputIndex] = singleDependent
       previousFormulaRow = formulaRow
       previousFormulaCol = formulaCol
@@ -295,25 +288,37 @@ export function createOperationDirectScalarSingleColumnBatchFastPaths(args: Oper
     }
 
     args.materializeDeferredStructuralFormulaSources()
-    args.beginMutationCollection()
-    args.ensureRecalcScratchCapacity(args.state.workbook.cellStore.size + refs.length * 2 + 1)
-    args.resetMaterializedCellScratch(0)
 
     const hasGeneralEventListeners = args.state.events.hasListeners()
     const hasTrackedEventListeners = args.state.events.hasTrackedListeners()
     const hasWatchedCellListeners = args.state.events.hasCellListeners()
     const requiresChangedSet = hasGeneralEventListeners || hasTrackedEventListeners || hasWatchedCellListeners
-    let changedInputCount = 0
-    let explicitChangedCount = 0
+    const changedInputCount = inputCellIndices.length
+    const explicitChangedCount = requiresChangedSet ? inputCellIndices.length : 0
+    const flags = cellStore.flags
+    const versions = cellStore.versions
+    const stringIds = cellStore.stringIds
+    const tags = cellStore.tags
+    const numbers = cellStore.numbers
+    const errors = cellStore.errors
+    const formulaOutputFlags = CellFlags.SpillChild | CellFlags.PivotOutput
+    const clearFormulaOutputFlags = ~formulaOutputFlags
     args.setBatchMutationDepth(args.getBatchMutationDepth() + 1)
     try {
       for (let index = 0; index < refs.length; index += 1) {
         const cellIndex = inputCellIndices[index]!
-        writeNumericLiteralToCellStore(cellIndex, inputNumericValues[index]!)
-        changedInputCount = args.markInputChanged(cellIndex, changedInputCount)
-        if (requiresChangedSet) {
-          explicitChangedCount = args.markExplicitChanged(cellIndex, explicitChangedCount)
+        const value = inputNumericValues === undefined ? readValidatedNumericMutationValue(refs[index]!) : inputNumericValues[index]!
+        writeNumericLiteralToCellStore(cellIndex, value)
+        const formulaCellIndex = formulaCellIndices[index]!
+        const currentFlags = flags[formulaCellIndex] ?? 0
+        if ((currentFlags & formulaOutputFlags) !== 0) {
+          flags[formulaCellIndex] = currentFlags & clearFormulaOutputFlags
         }
+        versions[formulaCellIndex] = (versions[formulaCellIndex] ?? 0) + 1
+        stringIds[formulaCellIndex] = 0
+        tags[formulaCellIndex] = ValueTag.Number
+        numbers[formulaCellIndex] = value * affineScale + affineOffset
+        errors[formulaCellIndex] = ErrorCode.None
       }
       args.state.workbook.notifyColumnsWritten(firstRef.sheetId, Uint32Array.of(firstMutation.col))
     } finally {
@@ -322,14 +327,10 @@ export function createOperationDirectScalarSingleColumnBatchFastPaths(args: Oper
     if (batch) {
       markBatchApplied(args.state.replicaState, batch)
     }
-    const changedInputArray = args.getChangedInputBuffer().subarray(0, changedInputCount)
-    args.deferKernelSync(changedInputArray)
-    for (let index = 0; index < refs.length; index += 1) {
-      applyTerminalDirectFormulaNumericResult(formulaCellIndices[index]!, inputNumericValues[index]! * affineScale + affineOffset)
-    }
+    args.deferKernelSync(inputCellIndices)
     addEngineCounter(args.state.counters, 'directScalarDeltaApplications', refs.length)
     addEngineCounter(args.state.counters, 'directScalarDeltaOnlyRecalcSkips')
-    const changed = requiresChangedSet ? args.composeDisjointEventChanges(formulaCellIndices, explicitChangedCount) : EMPTY_CHANGED_CELLS
+    const changed = requiresChangedSet ? composeDenseInputFormulaChanges(inputCellIndices, formulaCellIndices) : EMPTY_CHANGED_CELLS
     if (hasTrackedEventListeners && changed.length > 4 && explicitChangedCount > 0 && explicitChangedCount < changed.length) {
       tagTrustedPhysicalTrackedChanges(changed, firstRef.sheetId, explicitChangedCount)
     }
@@ -352,4 +353,19 @@ export function createOperationDirectScalarSingleColumnBatchFastPaths(args: Oper
     tryApplyDenseSingleColumnAffineDirectScalarLiteralBatch,
     tryApplyDenseSingleColumnDirectScalarLiteralBatch,
   }
+}
+
+function composeDenseInputFormulaChanges(inputCellIndices: Uint32Array, formulaCellIndices: Uint32Array): Uint32Array {
+  const changed = new Uint32Array(inputCellIndices.length + formulaCellIndices.length)
+  changed.set(inputCellIndices)
+  changed.set(formulaCellIndices, inputCellIndices.length)
+  return changed
+}
+
+function readValidatedNumericMutationValue(ref: EngineCellMutationRef): number {
+  const mutation = ref.mutation
+  if (mutation.kind !== 'setCellValue' || typeof mutation.value !== 'number') {
+    throw new Error('Expected affine direct scalar batch to contain numeric literal writes')
+  }
+  return mutation.value
 }

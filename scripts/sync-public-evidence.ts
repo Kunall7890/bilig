@@ -345,7 +345,11 @@ async function assertPublicSurfaces(evidence: PublicEvidence): Promise<void> {
     `${overall.workpaperWins.toString()} of ${overall.comparableCount.toString()} comparable mean-latency rows`,
     'docs/index.html',
   )
-  requireIncludesIgnoringWhitespace(index, `${overall.worstP95RatioWorkload} is slower at p95: <code>${p95Ratio}</code>`, 'docs/index.html')
+  requireIncludesIgnoringWhitespace(
+    index,
+    `${overall.worstP95RatioWorkload} is the narrowest p95 win: <code>${p95Ratio}</code>`,
+    'docs/index.html',
+  )
 
   for (const [path, content] of [
     ['docs/what-workpaper-benchmark-proves.md', benchmarkExplainer],

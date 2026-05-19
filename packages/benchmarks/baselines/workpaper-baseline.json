@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "suite": "workpaper",
-  "generatedAt": "2026-04-10T09:54:40.853Z",
+  "generatedAt": "2026-05-18T23:37:37.754Z",
   "host": {
     "arch": "arm64",
     "nodeVersion": "v24.3.0",
@@ -10,28 +10,28 @@
   "results": [
     {
       "scenario": "workpaper-build",
-      "elapsedMs": 156.13199999999998,
+      "elapsedMs": 10.806708000000015,
       "memory": {
         "before": {
-          "rssBytes": 156991488,
-          "heapUsedBytes": 2384588,
-          "heapTotalBytes": 11358208,
-          "externalBytes": 4592034,
+          "rssBytes": 131022848,
+          "heapUsedBytes": 3314470,
+          "heapTotalBytes": 12705792,
+          "externalBytes": 4417522,
           "arrayBuffersBytes": 236
         },
         "after": {
-          "rssBytes": 277250048,
-          "heapUsedBytes": 59236761,
-          "heapTotalBytes": 21492736,
-          "externalBytes": 7471215,
-          "arrayBuffersBytes": 90340
+          "rssBytes": 133365760,
+          "heapUsedBytes": 3314470,
+          "heapTotalBytes": 13400064,
+          "externalBytes": 5206377,
+          "arrayBuffersBytes": 236
         },
         "delta": {
-          "rssBytes": 120258560,
-          "heapUsedBytes": 56852173,
-          "heapTotalBytes": 10134528,
-          "externalBytes": 2879181,
-          "arrayBuffersBytes": 90104
+          "rssBytes": 2342912,
+          "heapUsedBytes": 0,
+          "heapTotalBytes": 694272,
+          "externalBytes": 788855,
+          "arrayBuffersBytes": 0
         }
       },
       "details": {
@@ -42,39 +42,39 @@
         "height": 160
       },
       "metrics": {
-        "batchId": 3841,
-        "changedInputCount": 1,
+        "batchId": 0,
+        "changedInputCount": 0,
         "dirtyFormulaCount": 0,
         "wasmFormulaCount": 0,
         "jsFormulaCount": 0,
         "rangeNodeVisits": 0,
-        "recalcMs": 0.0017090000000052896,
+        "recalcMs": 0,
         "compileMs": 0
       }
     },
     {
       "scenario": "workpaper-single-edit",
-      "elapsedMs": 12.555541000000062,
+      "elapsedMs": 2.862124999999992,
       "memory": {
         "before": {
-          "rssBytes": 292274176,
-          "heapUsedBytes": 66514194,
-          "heapTotalBytes": 47641600,
-          "externalBytes": 9974359,
-          "arrayBuffersBytes": 152660
+          "rssBytes": 165265408,
+          "heapUsedBytes": 3314470,
+          "heapTotalBytes": 23684096,
+          "externalBytes": 7677789,
+          "arrayBuffersBytes": 8540
         },
         "after": {
-          "rssBytes": 293208064,
-          "heapUsedBytes": 66514194,
-          "heapTotalBytes": 47511552,
-          "externalBytes": 10131945,
-          "arrayBuffersBytes": 152660
+          "rssBytes": 165511168,
+          "heapUsedBytes": 3314470,
+          "heapTotalBytes": 23733248,
+          "externalBytes": 7755637,
+          "arrayBuffersBytes": 8540
         },
         "delta": {
-          "rssBytes": 933888,
+          "rssBytes": 245760,
           "heapUsedBytes": 0,
-          "heapTotalBytes": -130048,
-          "externalBytes": 157586,
+          "heapTotalBytes": 49152,
+          "externalBytes": 77848,
           "arrayBuffersBytes": 0
         }
       },
@@ -84,40 +84,40 @@
         "terminalFormula": "=BXX1+1"
       },
       "metrics": {
-        "batchId": 2003,
+        "batchId": 2,
         "changedInputCount": 1,
-        "dirtyFormulaCount": 2000,
+        "dirtyFormulaCount": 0,
         "wasmFormulaCount": 0,
-        "jsFormulaCount": 2000,
+        "jsFormulaCount": 0,
         "rangeNodeVisits": 0,
-        "recalcMs": 5.311708999999951,
-        "compileMs": 0.007041999999955806
+        "recalcMs": 0,
+        "compileMs": 0
       }
     },
     {
       "scenario": "workpaper-batch-edit",
-      "elapsedMs": 832.208834,
+      "elapsedMs": 5.170917000000003,
       "memory": {
         "before": {
-          "rssBytes": 296452096,
-          "heapUsedBytes": 45655662,
-          "heapTotalBytes": 41702400,
-          "externalBytes": 8686635,
-          "arrayBuffersBytes": 48100
+          "rssBytes": 167002112,
+          "heapUsedBytes": 3314470,
+          "heapTotalBytes": 16538624,
+          "externalBytes": 6791299,
+          "arrayBuffersBytes": 4444
         },
         "after": {
-          "rssBytes": 327221248,
-          "heapUsedBytes": 61111311,
-          "heapTotalBytes": 42488832,
-          "externalBytes": 9015810,
-          "arrayBuffersBytes": 52308
+          "rssBytes": 168427520,
+          "heapUsedBytes": 3314470,
+          "heapTotalBytes": 16620544,
+          "externalBytes": 7337924,
+          "arrayBuffersBytes": 4444
         },
         "delta": {
-          "rssBytes": 30769152,
-          "heapUsedBytes": 15455649,
-          "heapTotalBytes": 786432,
-          "externalBytes": 329175,
-          "arrayBuffersBytes": 4208
+          "rssBytes": 1425408,
+          "heapUsedBytes": 0,
+          "heapTotalBytes": 81920,
+          "externalBytes": 546625,
+          "arrayBuffersBytes": 0
         }
       },
       "details": {
@@ -126,39 +126,131 @@
         "sampleFormulaValue": "{\"tag\":1,\"value\":2994}"
       },
       "metrics": {
-        "batchId": 1501,
-        "changedInputCount": 1,
-        "dirtyFormulaCount": 1,
+        "batchId": 2,
+        "changedInputCount": 500,
+        "dirtyFormulaCount": 0,
         "wasmFormulaCount": 0,
-        "jsFormulaCount": 1,
+        "jsFormulaCount": 0,
         "rangeNodeVisits": 0,
-        "recalcMs": 0.00787499999978536,
-        "compileMs": 0.008500000000026375
+        "recalcMs": 0,
+        "compileMs": 0
+      }
+    },
+    {
+      "scenario": "workpaper-fresh-range-value-write",
+      "elapsedMs": 8.282624999999996,
+      "memory": {
+        "before": {
+          "rssBytes": 168493056,
+          "heapUsedBytes": 3314470,
+          "heapTotalBytes": 14126080,
+          "externalBytes": 7140802,
+          "arrayBuffersBytes": 236
+        },
+        "after": {
+          "rssBytes": 170950656,
+          "heapUsedBytes": 3314470,
+          "heapTotalBytes": 15111168,
+          "externalBytes": 8544619,
+          "arrayBuffersBytes": 33116
+        },
+        "delta": {
+          "rssBytes": 2457600,
+          "heapUsedBytes": 0,
+          "heapTotalBytes": 985088,
+          "externalBytes": 1403817,
+          "arrayBuffersBytes": 32880
+        }
+      },
+      "details": {
+        "rows": 400,
+        "cols": 20,
+        "materializedCells": 8000,
+        "changeCount": 8000,
+        "width": 20,
+        "height": 400,
+        "terminalValue": "{\"tag\":1,\"value\":8000}"
+      },
+      "metrics": {
+        "batchId": 1,
+        "changedInputCount": 8000,
+        "dirtyFormulaCount": 0,
+        "wasmFormulaCount": 0,
+        "jsFormulaCount": 0,
+        "rangeNodeVisits": 0,
+        "recalcMs": 0,
+        "compileMs": 0
+      }
+    },
+    {
+      "scenario": "workpaper-existing-range-value-write",
+      "elapsedMs": 2.906000000000006,
+      "memory": {
+        "before": {
+          "rssBytes": 171720704,
+          "heapUsedBytes": 3314470,
+          "heapTotalBytes": 14356480,
+          "externalBytes": 7846139,
+          "arrayBuffersBytes": 236
+        },
+        "after": {
+          "rssBytes": 172326912,
+          "heapUsedBytes": 3314470,
+          "heapTotalBytes": 15636480,
+          "externalBytes": 8206251,
+          "arrayBuffersBytes": 236
+        },
+        "delta": {
+          "rssBytes": 606208,
+          "heapUsedBytes": 0,
+          "heapTotalBytes": 1280000,
+          "externalBytes": 360112,
+          "arrayBuffersBytes": 0
+        }
+      },
+      "details": {
+        "rows": 400,
+        "cols": 20,
+        "materializedCells": 8000,
+        "changeCount": 8000,
+        "width": 20,
+        "height": 400,
+        "terminalValue": "{\"tag\":1,\"value\":18000}"
+      },
+      "metrics": {
+        "batchId": 1,
+        "changedInputCount": 8000,
+        "dirtyFormulaCount": 0,
+        "wasmFormulaCount": 0,
+        "jsFormulaCount": 0,
+        "rangeNodeVisits": 0,
+        "recalcMs": 0,
+        "compileMs": 0
       }
     },
     {
       "scenario": "workpaper-range-read",
-      "elapsedMs": 1.1154169999999795,
+      "elapsedMs": 0.7560829999999896,
       "memory": {
         "before": {
-          "rssBytes": 353632256,
-          "heapUsedBytes": 82110049,
-          "heapTotalBytes": 25525248,
-          "externalBytes": 9876528,
-          "arrayBuffersBytes": 172260
+          "rssBytes": 172408832,
+          "heapUsedBytes": 3314470,
+          "heapTotalBytes": 14177280,
+          "externalBytes": 7873726,
+          "arrayBuffersBytes": 236
         },
         "after": {
-          "rssBytes": 354058240,
-          "heapUsedBytes": 82110049,
-          "heapTotalBytes": 25721856,
-          "externalBytes": 9900441,
-          "arrayBuffersBytes": 172260
+          "rssBytes": 172457984,
+          "heapUsedBytes": 3314470,
+          "heapTotalBytes": 14324736,
+          "externalBytes": 7928161,
+          "arrayBuffersBytes": 236
         },
         "delta": {
-          "rssBytes": 425984,
+          "rssBytes": 49152,
           "heapUsedBytes": 0,
-          "heapTotalBytes": 196608,
-          "externalBytes": 23913,
+          "heapTotalBytes": 147456,
+          "externalBytes": 54435,
           "arrayBuffersBytes": 0
         }
       },
@@ -171,28 +263,135 @@
       }
     },
     {
-      "scenario": "workpaper-lookup",
-      "elapsedMs": 15.975249999999505,
+      "scenario": "workpaper-range-value-block",
+      "elapsedMs": 0.7122499999999832,
       "memory": {
         "before": {
-          "rssBytes": 403292160,
-          "heapUsedBytes": 88165379,
-          "heapTotalBytes": 39472128,
-          "externalBytes": 9689621,
-          "arrayBuffersBytes": 401492
+          "rssBytes": 199458816,
+          "heapUsedBytes": 3314470,
+          "heapTotalBytes": 35531776,
+          "externalBytes": 9406548,
+          "arrayBuffersBytes": 98764
         },
         "after": {
-          "rssBytes": 405143552,
-          "heapUsedBytes": 26063022,
-          "heapTotalBytes": 38652928,
-          "externalBytes": 9697685,
-          "arrayBuffersBytes": 401492
+          "rssBytes": 199524352,
+          "heapUsedBytes": 3314470,
+          "heapTotalBytes": 35516416,
+          "externalBytes": 9526468,
+          "arrayBuffersBytes": 98764
         },
         "delta": {
-          "rssBytes": 1851392,
-          "heapUsedBytes": -62102357,
-          "heapTotalBytes": -819200,
-          "externalBytes": 8064,
+          "rssBytes": 65536,
+          "heapUsedBytes": 0,
+          "heapTotalBytes": -15360,
+          "externalBytes": 119920,
+          "arrayBuffersBytes": 0
+        }
+      },
+      "details": {
+        "rowCount": 240,
+        "inputCols": 8,
+        "formulaCols": 16,
+        "materializedCells": 3840,
+        "readRows": 240,
+        "readCols": 16,
+        "terminalTag": 1,
+        "terminalNumber": 735
+      }
+    },
+    {
+      "scenario": "workpaper-range-formula-read",
+      "elapsedMs": 1.709292000000005,
+      "memory": {
+        "before": {
+          "rssBytes": 200327168,
+          "heapUsedBytes": 3314470,
+          "heapTotalBytes": 15864832,
+          "externalBytes": 8416710,
+          "arrayBuffersBytes": 528
+        },
+        "after": {
+          "rssBytes": 200605696,
+          "heapUsedBytes": 3314470,
+          "heapTotalBytes": 15963136,
+          "externalBytes": 8465637,
+          "arrayBuffersBytes": 412
+        },
+        "delta": {
+          "rssBytes": 278528,
+          "heapUsedBytes": 0,
+          "heapTotalBytes": 98304,
+          "externalBytes": 48927,
+          "arrayBuffersBytes": -116
+        }
+      },
+      "details": {
+        "rowCount": 20001,
+        "cols": 2,
+        "materializedCells": 40002,
+        "readRows": 20001,
+        "readCols": 2,
+        "terminalFormula": "=SUM(A1:A20000)"
+      }
+    },
+    {
+      "scenario": "workpaper-range-serialized-read",
+      "elapsedMs": 1.295500000000004,
+      "memory": {
+        "before": {
+          "rssBytes": 200785920,
+          "heapUsedBytes": 3314470,
+          "heapTotalBytes": 14226432,
+          "externalBytes": 8477381,
+          "arrayBuffersBytes": 412
+        },
+        "after": {
+          "rssBytes": 201113600,
+          "heapUsedBytes": 3314470,
+          "heapTotalBytes": 15012864,
+          "externalBytes": 8497227,
+          "arrayBuffersBytes": 412
+        },
+        "delta": {
+          "rssBytes": 327680,
+          "heapUsedBytes": 0,
+          "heapTotalBytes": 786432,
+          "externalBytes": 19846,
+          "arrayBuffersBytes": 0
+        }
+      },
+      "details": {
+        "rowCount": 20001,
+        "cols": 2,
+        "materializedCells": 40002,
+        "readRows": 20001,
+        "readCols": 2,
+        "terminalFormula": "=SUM(A1:A20000)"
+      }
+    },
+    {
+      "scenario": "workpaper-lookup",
+      "elapsedMs": 0.7821250000000077,
+      "memory": {
+        "before": {
+          "rssBytes": 208601088,
+          "heapUsedBytes": 3314470,
+          "heapTotalBytes": 15527936,
+          "externalBytes": 12063561,
+          "arrayBuffersBytes": 111117
+        },
+        "after": {
+          "rssBytes": 208617472,
+          "heapUsedBytes": 3314470,
+          "heapTotalBytes": 15529984,
+          "externalBytes": 12130200,
+          "arrayBuffersBytes": 111117
+        },
+        "delta": {
+          "rssBytes": 16384,
+          "heapUsedBytes": 0,
+          "heapTotalBytes": 2048,
+          "externalBytes": 66639,
           "arrayBuffersBytes": 0
         }
       },
@@ -202,40 +401,40 @@
         "formulaValue": "{\"tag\":1,\"value\":5000}"
       },
       "metrics": {
-        "batchId": 10007,
+        "batchId": 2,
         "changedInputCount": 1,
-        "dirtyFormulaCount": 1,
+        "dirtyFormulaCount": 0,
         "wasmFormulaCount": 0,
-        "jsFormulaCount": 1,
+        "jsFormulaCount": 0,
         "rangeNodeVisits": 0,
-        "recalcMs": 0.8220830000000205,
-        "compileMs": 4.976749999999811
+        "recalcMs": 0,
+        "compileMs": 0
       }
     },
     {
       "scenario": "workpaper-dynamic-array",
-      "elapsedMs": 2.4091669999997976,
+      "elapsedMs": 5.609040999999991,
       "memory": {
         "before": {
-          "rssBytes": 410976256,
-          "heapUsedBytes": 49856307,
-          "heapTotalBytes": 25349120,
-          "externalBytes": 6844468,
-          "arrayBuffersBytes": 57428
+          "rssBytes": 209944576,
+          "heapUsedBytes": 3314470,
+          "heapTotalBytes": 15159296,
+          "externalBytes": 10690902,
+          "arrayBuffersBytes": 17068
         },
         "after": {
-          "rssBytes": 411435008,
-          "heapUsedBytes": 49856307,
-          "heapTotalBytes": 25922560,
-          "externalBytes": 6857831,
-          "arrayBuffersBytes": 57428
+          "rssBytes": 210534400,
+          "heapUsedBytes": 3314470,
+          "heapTotalBytes": 15290368,
+          "externalBytes": 11217435,
+          "arrayBuffersBytes": 41868
         },
         "delta": {
-          "rssBytes": 458752,
+          "rssBytes": 589824,
           "heapUsedBytes": 0,
-          "heapTotalBytes": 573440,
-          "externalBytes": 13363,
-          "arrayBuffersBytes": 0
+          "heapTotalBytes": 131072,
+          "externalBytes": 526533,
+          "arrayBuffersBytes": 24800
         }
       },
       "details": {
@@ -245,14 +444,46 @@
         "spillHeight": 751
       },
       "metrics": {
-        "batchId": 755,
+        "batchId": 2,
         "changedInputCount": 1,
         "dirtyFormulaCount": 1,
         "wasmFormulaCount": 0,
         "jsFormulaCount": 1,
         "rangeNodeVisits": 0,
-        "recalcMs": 0.3557920000002923,
-        "compileMs": 2.579458000000159
+        "recalcMs": 1.505916999999954,
+        "compileMs": 0
+      }
+    },
+    {
+      "scenario": "workpaper-calculate-formula",
+      "elapsedMs": 57.89283399999999,
+      "memory": {
+        "before": {
+          "rssBytes": 210649088,
+          "heapUsedBytes": 3314470,
+          "heapTotalBytes": 15292416,
+          "externalBytes": 11259671,
+          "arrayBuffersBytes": 41868
+        },
+        "after": {
+          "rssBytes": 259915776,
+          "heapUsedBytes": 33709516,
+          "heapTotalBytes": 15207424,
+          "externalBytes": 12356205,
+          "arrayBuffersBytes": 884
+        },
+        "delta": {
+          "rssBytes": 49266688,
+          "heapUsedBytes": 30395046,
+          "heapTotalBytes": -84992,
+          "externalBytes": 1096534,
+          "arrayBuffersBytes": -40984
+        }
+      },
+      "details": {
+        "formulaCount": 7,
+        "iterationCount": 2000,
+        "sampleValue": "{\"tag\":3,\"value\":\"baz-bar\",\"stringId\":0}"
       }
     }
   ]

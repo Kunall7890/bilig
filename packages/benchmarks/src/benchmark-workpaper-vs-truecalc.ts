@@ -1,6 +1,6 @@
 import { performance } from 'node:perf_hooks'
-import { WorkPaper, type WorkPaperSheet } from '@bilig/headless'
 import { createEngine, type EvalResult } from '@truecalc/core'
+import { WorkPaper, type WorkPaperCompiledScalarFormula, type WorkPaperSheet } from '../../headless/src/work-paper.js'
 import {
   DEFAULT_COMPETITIVE_SAMPLE_COUNT,
   DEFAULT_COMPETITIVE_WARMUP_COUNT,
@@ -123,7 +123,7 @@ export function buildWorkPaperVsTrueCalcScalarBenchmarkReport(
     scorecard: {
       comparableWorkloadCount: results.length,
       coverageNote:
-        'TrueCalc is covered through its public scalar formula API. Its simple API does not cover workbook dependency graphs, ranges, structural edits, or full-sheet recalculation.',
+        'TrueCalc is covered through its public scalar formula API. WorkPaper is covered through its compiled scalar formula API with variable bindings. This scalar lane does not cover workbook dependency graphs, ranges, structural edits, or full-sheet recalculation.',
       coverageTier: 'scalar-formula',
       directionalMeanRatioGeomean: geometricMean(results.map((result) => result.comparison.workpaperToTrueCalcMeanRatio)),
       directionalP95RatioGeomean: geometricMean(results.map((result) => result.comparison.workpaperToTrueCalcP95Ratio)),
@@ -146,7 +146,10 @@ function runScalarScenario(
   fixture: WorkPaperTrueCalcScalarFixture,
   options: ResolvedBenchmarkSuiteOptions,
 ): WorkPaperTrueCalcScalarBenchmarkResult {
-  const workpaper = benchmarkSupportedEngine(() => measureWorkPaperScalarEvaluationSample(fixture), options)
+  const scalarWorkbook = WorkPaper.buildEmpty()
+  const compiledWorkPaperFormula = scalarWorkbook.compileScalarFormula(`=${fixture.formula}`)
+  scalarWorkbook.dispose()
+  const workpaper = benchmarkSupportedEngine(() => measureWorkPaperScalarEvaluationSample(fixture, compiledWorkPaperFormula), options)
   const truecalc = benchmarkSupportedEngine(() => measureTrueCalcScalarEvaluationSample(fixture), options)
   const workPaperVerification = JSON.stringify(workpaper.verification)
   const trueCalcVerification = JSON.stringify(truecalc.verification)
@@ -182,20 +185,15 @@ function runScalarScenario(
   }
 }
 
-function measureWorkPaperScalarEvaluationSample(fixture: WorkPaperTrueCalcScalarFixture): BenchmarkSample {
-  const workbook = WorkPaper.buildFromSheets({ Sheet1: fixture.sheet })
-  const sheetId = workbook.getSheetId('Sheet1')
-  if (sheetId === undefined) {
-    workbook.dispose()
-    throw new Error('WorkPaper TrueCalc benchmark fixture did not create Sheet1')
-  }
+function measureWorkPaperScalarEvaluationSample(
+  fixture: WorkPaperTrueCalcScalarFixture,
+  compiledFormula: WorkPaperCompiledScalarFormula,
+): BenchmarkSample {
   const memoryBefore = sampleMemory()
   const started = performance.now()
-  workbook.setCellContents({ sheet: sheetId, row: fixture.edit.row, col: fixture.edit.col }, fixture.edit.value)
-  const value = workbook.getCellValue({ sheet: sheetId, row: fixture.result.row, col: fixture.result.col })
+  const value = compiledFormula.evaluate(fixture.variables)
   const elapsedMs = performance.now() - started
   const memoryAfter = sampleMemory()
-  workbook.dispose()
   return {
     elapsedMs,
     memory: measureMemory(memoryBefore, memoryAfter),

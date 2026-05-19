@@ -214,6 +214,9 @@ export interface ExpandedCompetitiveFamilySummary {
   leadershipCount: number
   workpaperWins: number
   hyperformulaWins: number
+  decisiveWorkpaperWins: number
+  decisiveHyperFormulaWins: number
+  inconclusiveCount: number
   meanSpeedupGeomean: number | null
   directionalMeanRatioGeomean: number | null
   directionalP95RatioGeomean: number | null
@@ -228,6 +231,9 @@ export interface ExpandedCompetitiveScorecardLaneSummary {
   comparableCount: number
   workpaperWins: number
   hyperformulaWins: number
+  decisiveWorkpaperWins: number
+  decisiveHyperFormulaWins: number
+  inconclusiveCount: number
   directionalMeanRatioGeomean: number | null
   directionalP95RatioGeomean: number | null
   worstWorkpaperToHyperFormulaMeanRatio: number | null
@@ -296,6 +302,8 @@ export function summarizeExpandedCompetitiveFamilies(
     const comparableResults = familyResults.filter((result) => result.comparable)
     const workpaperWins = comparableResults.filter((result) => result.comparison.fasterEngine === 'workpaper').length
     const hyperformulaWins = comparableResults.length - workpaperWins
+    const decisiveWorkpaperWins = comparableResults.filter((result) => decisiveFasterEngine(result) === 'workpaper').length
+    const decisiveHyperFormulaWins = comparableResults.filter((result) => decisiveFasterEngine(result) === 'hyperformula').length
     const metadata = EXPANDED_COMPARATIVE_FAMILY_METADATA[family]
     return {
       family,
@@ -307,6 +315,9 @@ export function summarizeExpandedCompetitiveFamilies(
       leadershipCount: familyResults.length - comparableResults.length,
       workpaperWins,
       hyperformulaWins,
+      decisiveWorkpaperWins,
+      decisiveHyperFormulaWins,
+      inconclusiveCount: comparableResults.length - decisiveWorkpaperWins - decisiveHyperFormulaWins,
       meanSpeedupGeomean:
         comparableResults.length === 0 ? null : geometricMean(comparableResults.map((result) => result.comparison.meanSpeedup)),
       directionalMeanRatioGeomean:
@@ -419,11 +430,16 @@ function buildScorecardLaneSummary(
 ): ExpandedCompetitiveScorecardLaneSummary {
   const workpaperWins = results.filter((result) => result.comparison.fasterEngine === 'workpaper').length
   const hyperformulaWins = results.length - workpaperWins
+  const decisiveWorkpaperWins = results.filter((result) => decisiveFasterEngine(result) === 'workpaper').length
+  const decisiveHyperFormulaWins = results.filter((result) => decisiveFasterEngine(result) === 'hyperformula').length
   return {
     lane,
     comparableCount: results.length,
     workpaperWins,
     hyperformulaWins,
+    decisiveWorkpaperWins,
+    decisiveHyperFormulaWins,
+    inconclusiveCount: results.length - decisiveWorkpaperWins - decisiveHyperFormulaWins,
     directionalMeanRatioGeomean:
       results.length === 0 ? null : geometricMean(results.map((result) => result.comparison.workpaperToHyperFormulaMeanRatio)),
     directionalP95RatioGeomean:
@@ -433,6 +449,12 @@ function buildScorecardLaneSummary(
     worstWorkpaperToHyperFormulaP95Ratio: results.length === 0 ? null : maxComparableRatio(results, 'workpaperToHyperFormulaP95Ratio'),
     worstP95RatioWorkload: results.length === 0 ? null : maxComparableRatioWorkload(results, 'workpaperToHyperFormulaP95Ratio'),
   }
+}
+
+function decisiveFasterEngine(
+  result: Extract<ExpandedComparativeBenchmarkResult, { comparable: true }>,
+): 'workpaper' | 'hyperformula' | 'inconclusive' {
+  return result.comparison.confidenceIntervalOverlaps ? 'inconclusive' : result.comparison.fasterEngine
 }
 
 function maxComparableRatio(

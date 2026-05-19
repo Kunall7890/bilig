@@ -291,6 +291,9 @@ export function createWorkPaperRuntimeAdapters(args: CreateWorkPaperRuntimeAdapt
     trackedA1: args.trackedA1,
     orderChanges: (changes, explicitChangedCount) => orderWorkPaperCellChanges(changes, args.listSheetRecords(), explicitChangedCount),
     computeTrackedChangesWithoutVisibilityCache: args.computeTrackedChangesWithoutVisibilityCache,
+    trackLazyChanges: (changes) => {
+      args.engineEvents.trackLazyChanges(changes)
+    },
     hasValuesUpdatedListeners: () => args.emitter.hasListeners('valuesUpdated'),
     emitValuesUpdated: (changes) => {
       args.emitter.emitDetailed({ eventName: 'valuesUpdated', payload: { changes } })

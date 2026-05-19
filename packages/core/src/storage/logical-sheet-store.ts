@@ -27,7 +27,24 @@ export interface LogicalAxisIdFactories {
   readonly createColumnId: () => string
 }
 
+interface DenseRowMajorVisibleCellBlock {
+  readonly firstCellIndex: number
+  readonly colCount: number
+  readonly rowOffsets: ReadonlyMap<string, number>
+  readonly colOffsets: ReadonlyMap<string, number>
+}
+
+function indexedAxisIds(axisIds: readonly string[]): ReadonlyMap<string, number> {
+  const offsets = new Map<string, number>()
+  for (let index = 0; index < axisIds.length; index += 1) {
+    offsets.set(axisIds[index]!, index)
+  }
+  return offsets
+}
+
 export class LogicalSheetStore {
+  private readonly denseRowMajorVisibleCellBlocks: DenseRowMajorVisibleCellBlock[] = []
+
   constructor(
     private sheetId: number,
     private readonly axisMap: SheetAxisMap,
@@ -85,7 +102,11 @@ export class LogicalSheetStore {
 
   getVisibleCell(row: number, col: number): number | undefined {
     const location = this.resolveVisibleLocation(row, col)
-    return location ? this.cellPages.get(location) : undefined
+    if (!location) {
+      return undefined
+    }
+    const denseCellIndex = this.getDenseRowMajorVisibleCell(location.rowId, location.colId)
+    return denseCellIndex ?? this.cellPages.get(location)
   }
 
   setVisibleCell(row: number, col: number, cellIndex: number, factories: LogicalAxisIdFactories): LogicalVisibleCellRef {
@@ -145,6 +166,23 @@ export class LogicalSheetStore {
     this.residentCells.addDeferredParts(cellIndex, rowId, colId)
   }
 
+  setFreshVisibleDenseRowMajorIdentitiesWithAxisIdsDeferred(
+    firstCellIndex: number,
+    rowIds: readonly string[],
+    colIds: readonly string[],
+  ): void {
+    this.cellIdentities.setDenseRowMajorParts(firstCellIndex, this.sheetId, rowIds, colIds)
+    this.residentCells.addDenseRowMajorDeferredParts(firstCellIndex, rowIds, colIds)
+    if (rowIds.length > 0 && colIds.length > 0) {
+      this.denseRowMajorVisibleCellBlocks.push({
+        firstCellIndex,
+        colCount: colIds.length,
+        rowOffsets: indexedAxisIds(rowIds),
+        colOffsets: indexedAxisIds(colIds),
+      })
+    }
+  }
+
   private setVisibleCellInternal(
     row: number,
     col: number,
@@ -176,6 +214,7 @@ export class LogicalSheetStore {
     if (knownNewCell) {
       this.residentCells.add(cellIndex, identity)
     } else {
+      this.clearDenseRowMajorVisibleCellBlocks()
       this.residentCells.set(cellIndex, identity)
     }
     return resolved
@@ -189,6 +228,7 @@ export class LogicalSheetStore {
     const cellIndex = this.cellPages.get(location)
     const deleted = this.cellPages.delete(location)
     if (deleted && cellIndex !== undefined) {
+      this.clearDenseRowMajorVisibleCellBlocks()
       this.cellIdentities.delete(cellIndex)
       this.residentCells.delete(cellIndex)
     }
@@ -204,6 +244,7 @@ export class LogicalSheetStore {
     const cellIndex = this.cellPages.get(location)
     const deleted = this.cellPages.delete(location)
     if (deleted && cellIndex !== undefined) {
+      this.clearDenseRowMajorVisibleCellBlocks()
       this.cellIdentities.delete(cellIndex)
       this.residentCells.delete(cellIndex)
     }
@@ -365,5 +406,42 @@ export class LogicalSheetStore {
     entries.forEach((entry) => {
       callback(entry.cellIndex, entry.row)
     })
+  }
+
+  forEachVisibleRowCellEntry(row: number, callback: (cellIndex: number, col: number) => void): void {
+    const rowId = this.axisMap.getId('row', row)
+    if (rowId === undefined) {
+      return
+    }
+    const entries = this.residentCells
+      .cellsInRow(rowId)
+      .flatMap((cellIndex): Array<{ cellIndex: number; col: number }> => {
+        const position = this.getCellVisiblePosition(cellIndex)
+        return position && position.row === row ? [{ cellIndex, col: position.col }] : []
+      })
+      .toSorted((left, right) => left.col - right.col || left.cellIndex - right.cellIndex)
+    entries.forEach((entry) => {
+      callback(entry.cellIndex, entry.col)
+    })
+  }
+
+  private getDenseRowMajorVisibleCell(rowId: string, colId: string): number | undefined {
+    for (let index = this.denseRowMajorVisibleCellBlocks.length - 1; index >= 0; index -= 1) {
+      const block = this.denseRowMajorVisibleCellBlocks[index]!
+      const rowOffset = block.rowOffsets.get(rowId)
+      if (rowOffset === undefined) {
+        continue
+      }
+      const colOffset = block.colOffsets.get(colId)
+      if (colOffset === undefined) {
+        continue
+      }
+      return block.firstCellIndex + rowOffset * block.colCount + colOffset
+    }
+    return undefined
+  }
+
+  private clearDenseRowMajorVisibleCellBlocks(): void {
+    this.denseRowMajorVisibleCellBlocks.length = 0
   }
 }

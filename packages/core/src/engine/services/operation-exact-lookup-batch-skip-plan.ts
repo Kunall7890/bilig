@@ -1,18 +1,26 @@
 import { makeExactLookupColumnEntity } from '../../entity-ids.js'
 import type { RuntimeDirectLookupDescriptor } from '../runtime-state.js'
-import { directLookupRowBounds, sameExactNumericValue } from './direct-lookup-helpers.js'
+import {
+  directLookupRowBounds,
+  exactUniformLookupNumericResult,
+  normalizeExactNumericNumber,
+  sameExactNumericValueAsNormalized,
+} from './direct-lookup-helpers.js'
 
 export type ExactLookupBatchSkipPlan =
   | { readonly kind: 'all' }
   | {
       readonly kind: 'single-numeric-dependent'
       readonly operandNumeric: number
+      readonly operandNormalized: number
       readonly rowEnd: number
       readonly rowStart: number
     }
   | {
       readonly kind: 'single-uniform-numeric-dependent'
+      readonly matchingOldRow: number | undefined
       readonly operandNumeric: number
+      readonly operandNormalized: number
       readonly rowEnd: number
       readonly rowStart: number
       readonly start: number
@@ -36,9 +44,19 @@ export interface ExactLookupBatchSkipPlanInput {
 }
 
 interface ExactLookupBatchNumericDependent {
+  readonly matchingOldRow?: number | undefined
   readonly operandNumeric: number
+  readonly operandNormalized: number
   readonly rowEnd: number
   readonly rowStart: number
+}
+
+function exactUniformMatchingRow(
+  directLookup: Extract<RuntimeDirectLookupDescriptor, { kind: 'exact-uniform-numeric' }>,
+  operandNumeric: number,
+): number | undefined {
+  const position = exactUniformLookupNumericResult(directLookup, operandNumeric)
+  return position === undefined ? undefined : directLookup.rowStart + position - 1
 }
 
 const prepareNumericDependent = (
@@ -58,7 +76,9 @@ const prepareNumericDependent = (
   }
   const { rowStart, rowEnd } = directLookupRowBounds(directLookup)
   return {
+    ...(directLookup.kind === 'exact-uniform-numeric' ? { matchingOldRow: exactUniformMatchingRow(directLookup, operandNumeric) } : {}),
     operandNumeric,
+    operandNormalized: normalizeExactNumericNumber(operandNumeric),
     rowEnd,
     rowStart,
   }
@@ -87,13 +107,16 @@ export const prepareExactLookupBatchSkipPlan = (input: ExactLookupBatchSkipPlanI
       return {
         kind: 'single-numeric-dependent',
         operandNumeric,
+        operandNormalized: normalizeExactNumericNumber(operandNumeric),
         rowEnd,
         rowStart,
       }
     }
     return {
       kind: 'single-uniform-numeric-dependent',
+      matchingOldRow: exactUniformMatchingRow(directLookup, operandNumeric),
       operandNumeric,
+      operandNormalized: normalizeExactNumericNumber(operandNumeric),
       rowEnd,
       rowStart,
       start: directLookup.start,
@@ -136,11 +159,17 @@ export const exactLookupBatchWriteHandled = (
     case 'all':
       return true
     case 'single-numeric-dependent':
+      return (
+        row < plan.rowStart ||
+        row > plan.rowEnd ||
+        (!sameExactNumericValueAsNormalized(oldNumeric, plan.operandNormalized) &&
+          !sameExactNumericValueAsNormalized(newNumeric, plan.operandNormalized))
+      )
     case 'single-uniform-numeric-dependent':
       return (
         row < plan.rowStart ||
         row > plan.rowEnd ||
-        (!sameExactNumericValue(oldNumeric, plan.operandNumeric) && !sameExactNumericValue(newNumeric, plan.operandNumeric))
+        (row !== plan.matchingOldRow && !sameExactNumericValueAsNormalized(newNumeric, plan.operandNormalized))
       )
     case 'multi-numeric-dependents':
       for (let index = 0; index < plan.dependents.length; index += 1) {
@@ -148,7 +177,10 @@ export const exactLookupBatchWriteHandled = (
         if (
           row >= dependent.rowStart &&
           row <= dependent.rowEnd &&
-          (sameExactNumericValue(oldNumeric, dependent.operandNumeric) || sameExactNumericValue(newNumeric, dependent.operandNumeric))
+          ((dependent.matchingOldRow === undefined
+            ? sameExactNumericValueAsNormalized(oldNumeric, dependent.operandNormalized)
+            : row === dependent.matchingOldRow) ||
+            sameExactNumericValueAsNormalized(newNumeric, dependent.operandNormalized))
         ) {
           return false
         }

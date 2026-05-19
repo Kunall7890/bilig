@@ -1,4 +1,4 @@
-import { WorkPaper } from '@bilig/headless'
+import { WorkPaper } from '../../headless/src/work-paper.js'
 import {
   address,
   buildCrossSheetAggregateSheets,
@@ -157,6 +157,23 @@ export function measureWorkPaperRectangularBatchEditSample(rowCount: number, inp
           }
         }
       }),
+    () => ({
+      leadingSum: normalizeWorkPaperValue(workbook.getCellValue(address(sheetId, 0, inputCols))),
+      terminalSum: normalizeWorkPaperValue(workbook.getCellValue(address(sheetId, rowCount - 1, inputCols))),
+      width: workbook.getSheetDimensions(sheetId).width,
+    }),
+  )
+}
+
+export function measureWorkPaperSheetRangeValuesRectangularEditSample(rowCount: number, inputCols: number): BenchmarkSample {
+  const workbook = WorkPaper.buildFromSheets({ Bench: buildRectangularBlockFormulaSheet(rowCount, inputCols) })
+  const sheetId = workbook.getSheetId('Bench')!
+  const values = Array.from({ length: rowCount }, (_rowValue, row) =>
+    Array.from({ length: inputCols }, (_colValue, col) => (row + 1) * (col + 2)),
+  )
+  return measureMutationSample(
+    workbook,
+    () => workbook.setSheetRangeValues(sheetId, 0, 0, values),
     () => ({
       leadingSum: normalizeWorkPaperValue(workbook.getCellValue(address(sheetId, 0, inputCols))),
       terminalSum: normalizeWorkPaperValue(workbook.getCellValue(address(sheetId, rowCount - 1, inputCols))),

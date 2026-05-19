@@ -17,8 +17,8 @@ export interface FormulaBindingSheetIndex {
     oldSheetName: string,
     newSheetName: string,
   ) => {
-    readonly owners: Set<number>
-    readonly references: Set<number>
+    readonly owners: ReadonlySet<number>
+    readonly references: ReadonlySet<number>
   }
   readonly getOwnedBySheetSet: (sheetName: string) => Set<number> | undefined
   readonly getReferencingSheetSet: (sheetName: string) => Set<number> | undefined
@@ -31,8 +31,22 @@ export interface FormulaBindingSheetIndex {
 }
 
 function referencedSheetsForCompiled(compiled: Pick<CompiledFormula, 'deps' | 'parsedDeps'>): string[] {
-  const sheets = new Set<string>()
-  compiled.parsedDeps?.forEach((dependency) => {
+  const parsedDeps = compiled.parsedDeps
+  let sheets: Set<string> | undefined
+  if (parsedDeps !== undefined && parsedDeps.length === compiled.deps.length) {
+    for (let index = 0; index < parsedDeps.length; index += 1) {
+      const dependency = parsedDeps[index]!
+      if (dependency.sheetName) {
+        ;(sheets ??= new Set()).add(dependency.sheetName)
+      }
+      if (dependency.kind === 'range' && dependency.sheetEndName) {
+        ;(sheets ??= new Set()).add(dependency.sheetEndName)
+      }
+    }
+    return sheets === undefined ? [] : [...sheets]
+  }
+  sheets = new Set<string>()
+  parsedDeps?.forEach((dependency) => {
     if (dependency.sheetName) {
       sheets.add(dependency.sheetName)
     }
@@ -53,12 +67,13 @@ function referencedSheetsForCompiled(compiled: Pick<CompiledFormula, 'deps' | 'p
   return [...sheets]
 }
 
-function moveSet<Key extends string>(registry: Map<Key, Set<number>>, oldKey: Key, newKey: Key): Set<number> {
+const EMPTY_MOVED_CELL_SET: ReadonlySet<number> = new Set()
+
+function moveSet<Key extends string>(registry: Map<Key, Set<number>>, oldKey: Key, newKey: Key): ReadonlySet<number> {
   const candidates = registry.get(oldKey)
   if (!candidates || candidates.size === 0) {
-    return new Set()
+    return EMPTY_MOVED_CELL_SET
   }
-  const moved = new Set(candidates)
   const existing = registry.get(newKey)
   if (existing) {
     candidates.forEach((cellIndex) => {
@@ -68,7 +83,7 @@ function moveSet<Key extends string>(registry: Map<Key, Set<number>>, oldKey: Ke
     registry.set(newKey, candidates)
   }
   registry.delete(oldKey)
-  return moved
+  return candidates
 }
 
 export function createFormulaBindingSheetIndex(): FormulaBindingSheetIndex {

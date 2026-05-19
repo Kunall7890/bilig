@@ -13,6 +13,7 @@ describe('buildMatrixMutationPlan', () => {
     })
 
     expect(plan.potentialNewCells).toBe(5)
+    expect(plan.canApplyFreshNumericAggregateMatrixInOnePass).toBe(false)
     expect(plan.leadingPotentialNewCells).toBe(2)
     expect(plan.formulaPotentialNewCells).toBe(2)
     expect(plan.trailingLiteralPotentialNewCells).toBe(1)
@@ -115,5 +116,33 @@ describe('buildMatrixMutationPlan', () => {
       maxSetRow: 11,
       sheetId: 7,
     })
+  })
+
+  it('detects dense fresh numeric plus formula-column matrices during planning', () => {
+    const plan = buildMatrixMutationPlan({
+      target: { sheet: 3, row: 20, col: 1 },
+      content: Array.from({ length: 16 }, (_, row) => [row + 1, row + 2, `=SUM(B${row + 21}:C${row + 21})`]),
+      includeCombinedRefs: false,
+      rewriteFormula: (formula) => formula.slice(1),
+    })
+
+    expect(plan.canApplyFreshNumericAggregateMatrixInOnePass).toBe(true)
+    expect(plan.leadingRefs).toHaveLength(32)
+    expect(plan.formulaRefs).toHaveLength(16)
+    expect(plan.trailingLiteralRefs).toHaveLength(0)
+    expect(plan.refs).toEqual([])
+  })
+
+  it('rejects ragged numeric plus formula matrices as fresh aggregate candidates', () => {
+    const plan = buildMatrixMutationPlan({
+      target: { sheet: 3, row: 20, col: 1 },
+      content: [
+        [1, 2, '=SUM(B21:C21)'],
+        [3, 4, 5, '=SUM(B22:D22)'],
+      ],
+      rewriteFormula: (formula) => formula.slice(1),
+    })
+
+    expect(plan.canApplyFreshNumericAggregateMatrixInOnePass).toBe(false)
   })
 })

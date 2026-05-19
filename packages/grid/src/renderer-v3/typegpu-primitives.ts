@@ -22,6 +22,7 @@ import type { GlyphAtlasDirtyPageUpload } from './typegpu-atlas-manager.js'
 const UNIT_QUAD = new Float32Array([0, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1, 1])
 const UNIT_QUAD_VERTEX_COUNT = 6
 const CANVAS_2D_READBACK_SETTINGS: CanvasRenderingContext2DSettings = { willReadFrequently: true }
+type Canvas2DReadbackContext = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
 const surfaceUniformSchema = d.struct({
   origin: d.vec2f,
   viewportSize: d.vec2f,
@@ -572,7 +573,7 @@ function writeAtlasCanvasRegionToTexture(input: {
   readonly width: number
   readonly height: number
 }): void {
-  const context = input.atlasCanvas.getContext('2d', CANVAS_2D_READBACK_SETTINGS)
+  const context = getAtlasCanvasReadbackContext(input.atlasCanvas)
   if (!context || !input.artifacts.atlasTexture || input.width <= 0 || input.height <= 0) {
     return
   }
@@ -592,4 +593,8 @@ function writeAtlasCanvasRegionToTexture(input: {
       width: input.width,
     },
   )
+}
+
+function getAtlasCanvasReadbackContext(atlasCanvas: HTMLCanvasElement | OffscreenCanvas): Canvas2DReadbackContext | null {
+  return atlasCanvas.getContext('2d', CANVAS_2D_READBACK_SETTINGS) as Canvas2DReadbackContext | null
 }

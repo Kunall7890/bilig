@@ -5,6 +5,7 @@ import type { EngineOp } from '@bilig/workbook-domain'
 import { CellFlags } from '../cell-store.js'
 import type { FormulaTable } from '../formula-table.js'
 import { cloneDefinedNameValue } from '../workbook-metadata-records.js'
+import { definedNameKey } from '../workbook-metadata-types.js'
 import { normalizeDefinedName, type WorkbookStore } from '../workbook-store.js'
 import { batchOpOrder, createBatch, type OpOrder, type ReplicaState } from '../replica-state.js'
 import type { RuntimeFormula, TransactionLogEntry } from './runtime-state.js'
@@ -82,11 +83,15 @@ export function upsertNumericDefinedNameFast(args: {
     evaluated.push({ cellIndex, value: nextValue })
   }
 
-  const existing = args.workbook.getDefinedName(trimmedName)
+  const metadataKey = definedNameKey(trimmedName)
+  const existing = args.workbook.metadata.definedNames.get(metadataKey)
   const op: EngineOp = { kind: 'upsertDefinedName', name: trimmedName, value: args.value }
   const batch = createBatch(args.replicaState, [op])
   const order = batchOpOrder(batch, 0)
-  args.workbook.setDefinedName(trimmedName, args.value)
+  args.workbook.metadata.definedNames.set(metadataKey, {
+    name: trimmedName,
+    value: cloneDefinedNameValue(args.value),
+  })
   args.entityVersions.set(`defined-name:${normalizedName}`, order)
 
   const changedCellIndices: number[] = []
@@ -103,7 +108,6 @@ export function upsertNumericDefinedNameFast(args: {
     cellStore.flags[cellIndex] = (cellStore.flags[cellIndex] ?? 0) & ~(CellFlags.SpillChild | CellFlags.PivotOutput)
     cellStore.setValue(cellIndex, nextValue, 0)
     if (changed) {
-      args.workbook.notifyCellValueWritten(cellIndex)
       changedCellIndices.push(cellIndex)
     }
   }

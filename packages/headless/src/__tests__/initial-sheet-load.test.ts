@@ -94,6 +94,59 @@ describe('initial mixed sheet load', () => {
     }
   })
 
+  it('reuses inline initial direct scalar values when prefix aggregates require fallback evaluation', () => {
+    const workbook = WorkPaper.buildFromSheets({
+      Bench: [
+        [1, '=A1+1', '=SUM(B1:B1)'],
+        [2, '=A2+1', '=SUM(B1:B2)'],
+        [3, '=A3+1', '=SUM(B1:B3)'],
+      ],
+    })
+    const sheetId = workbook.getSheetId('Bench')!
+
+    expect(workbook.getCellValue({ sheet: sheetId, row: 0, col: 1 })).toEqual({
+      tag: ValueTag.Number,
+      value: 2,
+    })
+    expect(workbook.getCellValue({ sheet: sheetId, row: 2, col: 1 })).toEqual({
+      tag: ValueTag.Number,
+      value: 4,
+    })
+    expect(workbook.getCellValue({ sheet: sheetId, row: 2, col: 2 })).toEqual({
+      tag: ValueTag.Number,
+      value: 9,
+    })
+    expect(workbook.getPerformanceCounters().directFormulaInitialEvaluations).toBe(6)
+  })
+
+  it('re-evaluates inline direct scalars that depend on prefix aggregate formulas', () => {
+    const workbook = WorkPaper.buildFromSheets({
+      Bench: [
+        [1, 2, '=A1+B1+1', '=C1*2+1', '=SUM(A1:A1)+1', '=D1+E1+1'],
+        [2, 4, '=A2+B2+2', '=C2*2+2', '=SUM(A1:A2)+2', '=D2+E2+2'],
+        [3, 6, '=A3+B3+3', '=C3*2+3', '=SUM(A1:A3)+3', '=D3+E3+3'],
+      ],
+    })
+    const sheetId = workbook.getSheetId('Bench')!
+
+    expect(workbook.getCellValue({ sheet: sheetId, row: 2, col: 2 })).toEqual({
+      tag: ValueTag.Number,
+      value: 12,
+    })
+    expect(workbook.getCellValue({ sheet: sheetId, row: 2, col: 3 })).toEqual({
+      tag: ValueTag.Number,
+      value: 27,
+    })
+    expect(workbook.getCellValue({ sheet: sheetId, row: 2, col: 4 })).toEqual({
+      tag: ValueTag.Number,
+      value: 9,
+    })
+    expect(workbook.getCellValue({ sheet: sheetId, row: 2, col: 5 })).toEqual({
+      tag: ValueTag.Number,
+      value: 39,
+    })
+  })
+
   it('preserves large hydrated formula families for structural column inserts', () => {
     const rowCount = 3_000
     const workbook = WorkPaper.buildFromSheets({
@@ -189,15 +242,22 @@ describe('initial mixed sheet load', () => {
       },
     })
 
+    const sheet = engine.workbook.getSheet('Bench')!
     const b2Index = engine.workbook.getCellIndex('Bench', 'B2')
+    const row2Id = sheet.logicalAxisMap.getId('row', 1)!
+    const colBId = sheet.logicalAxisMap.getId('column', 1)!
 
     expect(prepared.formulaRefs.length).toBe(1)
     expect(engine.workbook.cellStore.size).toBe(4)
     expect(engine.getCellValue('Bench', 'A2')).toEqual({ tag: ValueTag.Number, value: 3 })
     expect(engine.getCellValue('Bench', 'B2')).toEqual({ tag: ValueTag.Empty })
     expect(b2Index).toBe(3)
+    expect(sheet.grid.getPhysical(1, 1)).toBe(3)
+    expect(sheet.logical.getCellVisiblePosition(3)).toEqual({ row: 1, col: 1 })
+    expect(sheet.logical.listResidentCellIndices('row', [row2Id])).toEqual([2, 3])
+    expect(sheet.logical.listResidentCellIndices('column', [colBId])).toEqual([1, 3])
     expect(engine.workbook.cellStore.flags[b2Index!] & CellFlags.AuthoredBlank).toBe(CellFlags.AuthoredBlank)
-    expect(Array.from(engine.workbook.getSheet('Bench')!.columnVersions.slice(0, 2))).toEqual([1, 1])
+    expect(Array.from(sheet.columnVersions.slice(0, 2))).toEqual([1, 1])
   })
 
   it('bulk-clears dense mixed-sheet cell state before writing literals and formula refs', () => {
@@ -294,6 +354,44 @@ describe('initial mixed sheet load', () => {
       tag: ValueTag.String,
       value: ' label ',
     })
+  })
+
+  it('hydrates fresh formula instance metadata without rescanning cell positions', () => {
+    const positionSpy = vi.spyOn(WorkbookStore.prototype, 'getCellPosition')
+    let workbook: WorkPaper | undefined
+    try {
+      workbook = WorkPaper.buildFromSheets({
+        Bench: [
+          [1, 2, '=A1+B1', '=C1*2'],
+          [2, 4, '=A2+B2', '=C2*2'],
+        ],
+      })
+      const sheetId = workbook.getSheetId('Bench')!
+
+      expect(workbook.getCellValue({ sheet: sheetId, row: 1, col: 3 })).toEqual({
+        tag: ValueTag.Number,
+        value: 12,
+      })
+      expect(positionSpy).not.toHaveBeenCalled()
+
+      const runtimeImage = readRuntimeImage(readRuntimeSnapshot(workbook.getAllSheetsSerialized()))
+      expect(
+        runtimeImage?.formulaInstances.map(({ sheetName, row, col, source: formulaSource }) => ({
+          sheetName,
+          row,
+          col,
+          source: formulaSource,
+        })),
+      ).toEqual([
+        { sheetName: 'Bench', row: 0, col: 2, source: 'A1+B1' },
+        { sheetName: 'Bench', row: 0, col: 3, source: 'C1*2' },
+        { sheetName: 'Bench', row: 1, col: 2, source: 'A2+B2' },
+        { sheetName: 'Bench', row: 1, col: 3, source: 'C2*2' },
+      ])
+    } finally {
+      positionSpy.mockRestore()
+      workbook?.dispose()
+    }
   })
 
   it('rebuilds from serialized sheets through the runtime-image fast path when available', () => {

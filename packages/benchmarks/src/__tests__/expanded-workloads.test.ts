@@ -59,8 +59,14 @@ import {
   measureWorkPaperBatchClearRectangularBlockSample,
   measureWorkPaperFormulaGridRangeReadSample,
   measureWorkPaperRectangularBatchEditSample,
+  measureWorkPaperSheetRangeValuesRectangularEditSample,
   measureWorkPaperSparseWideRangeReadSample,
 } from '../benchmark-workpaper-vs-hyperformula-expanded-workbook-shape-workloads.js'
+import {
+  measureWorkPaperBatchMultiColumnEditSample,
+  measureWorkPaperBulkCellValuesMultiColumnEditSample,
+  measureWorkPaperBulkSheetCellValuesMultiColumnEditSample,
+} from '../benchmark-workpaper-vs-hyperformula-expanded-core-workloads.js'
 import {
   EXPANDED_COMPARATIVE_FAMILY_GROUPS,
   EXPANDED_COMPARATIVE_FAMILY_ORDER,
@@ -181,6 +187,11 @@ const expectedExpandedWorkloads: ExpandedComparativeBenchmarkWorkload[] = [
 
 const benchmarkDir = dirname(fileURLToPath(import.meta.url))
 const expandedBaselinePath = join(benchmarkDir, '..', '..', 'baselines', 'workpaper-vs-hyperformula.json')
+const emptyConfidenceCounts = {
+  decisiveWorkpaperWins: 0,
+  decisiveHyperFormulaWins: 0,
+  inconclusiveCount: 0,
+}
 const emptyFamilyMetrics = {
   meanSpeedupGeomean: null,
   directionalMeanRatioGeomean: null,
@@ -195,6 +206,7 @@ const emptyOverallScorecard = {
   comparableCount: 0,
   workpaperWins: 0,
   hyperformulaWins: 0,
+  ...emptyConfidenceCounts,
   directionalMeanRatioGeomean: null,
   directionalP95RatioGeomean: null,
   worstWorkpaperToHyperFormulaMeanRatio: null,
@@ -316,6 +328,56 @@ function normalizeCompetitiveReportValue(value: unknown): unknown {
   return value
 }
 
+function comparableBenchmarkResult(
+  workload: ExpandedComparativeBenchmarkWorkload,
+  fasterEngine: 'workpaper' | 'hyperformula',
+  confidenceIntervalOverlaps: boolean,
+): Extract<ExpandedComparativeBenchmarkResult, { comparable: true }> {
+  const elapsedMs = {
+    samples: [1],
+    min: 1,
+    median: 1,
+    p95: 1,
+    max: 1,
+    mean: 1,
+    standardDeviation: 0,
+    relativeStandardDeviation: 0,
+    standardError: 0,
+    confidence95: { low: 1, high: 1 },
+  }
+  const memoryDeltaBytes = {
+    rssBytes: elapsedMs,
+    heapUsedBytes: elapsedMs,
+    heapTotalBytes: elapsedMs,
+    externalBytes: elapsedMs,
+    arrayBuffersBytes: elapsedMs,
+  }
+  const workpaperToHyperFormulaMeanRatio = fasterEngine === 'workpaper' ? 0.5 : 2
+
+  return {
+    workload,
+    category: 'directly-comparable',
+    comparable: true,
+    fixture: {},
+    comparison: {
+      fasterEngine,
+      meanSpeedup: 2,
+      workpaperToHyperFormulaMeanRatio,
+      workpaperToHyperFormulaMedianRatio: workpaperToHyperFormulaMeanRatio,
+      workpaperToHyperFormulaP95Ratio: workpaperToHyperFormulaMeanRatio,
+      maxRelativeNoise: 0,
+      confidenceIntervalOverlaps,
+      resultConfidence: confidenceIntervalOverlaps ? 'inconclusive' : 'decisive',
+      decisiveFasterEngine: confidenceIntervalOverlaps ? 'inconclusive' : fasterEngine,
+      verificationEquivalent: true,
+    },
+    engines: {
+      workpaper: { status: 'supported', elapsedMs, memoryDeltaBytes, verification: {} },
+      hyperformula: { status: 'supported', elapsedMs, memoryDeltaBytes, verification: {} },
+    },
+  }
+}
+
 describe('expanded comparative benchmark workloads', () => {
   it('enumerates the full expanded workload inventory without duplicates', () => {
     expect(new Set(EXPANDED_COMPARATIVE_WORKLOADS).size).toBe(EXPANDED_COMPARATIVE_WORKLOADS.length)
@@ -382,6 +444,7 @@ describe('expanded comparative benchmark workloads', () => {
         leadershipCount: 0,
         workpaperWins: 0,
         hyperformulaWins: 0,
+        ...emptyConfidenceCounts,
         ...emptyFamilyMetrics,
       })),
       scorecard: {
@@ -410,6 +473,7 @@ describe('expanded comparative benchmark workloads', () => {
         leadershipCount: 0,
         workpaperWins: 0,
         hyperformulaWins: 0,
+        ...emptyConfidenceCounts,
         ...emptyFamilyMetrics,
       })),
       scorecard: {
@@ -422,6 +486,30 @@ describe('expanded comparative benchmark workloads', () => {
           holdout: emptyHoldoutScorecard,
         },
       },
+    })
+  })
+
+  it('separates decisive benchmark wins from confidence-overlap rows', () => {
+    const report = buildExpandedCompetitiveFamilyReport([
+      comparableBenchmarkResult('build-from-sheets', 'workpaper', false),
+      comparableBenchmarkResult('rebuild-and-recalculate', 'hyperformula', false),
+      comparableBenchmarkResult('single-edit-recalc', 'hyperformula', true),
+    ])
+
+    expect(report.scorecard).toMatchObject({
+      comparableCount: 3,
+      workpaperWins: 1,
+      hyperformulaWins: 2,
+      decisiveWorkpaperWins: 1,
+      decisiveHyperFormulaWins: 1,
+      inconclusiveCount: 1,
+    })
+    expect(report.families.find((family) => family.family === 'dirty-execution')).toMatchObject({
+      workpaperWins: 0,
+      hyperformulaWins: 1,
+      decisiveWorkpaperWins: 0,
+      decisiveHyperFormulaWins: 0,
+      inconclusiveCount: 1,
     })
   })
 
@@ -503,5 +591,27 @@ describe('expanded comparative benchmark workloads', () => {
       expect(sample.engineCounters).toBeDefined()
       expect(Object.keys(sample.engineCounters ?? {}).toSorted()).toEqual([...ENGINE_COUNTER_KEYS].toSorted())
     }
+  })
+
+  it('keeps WorkPaper bulk value workload helpers semantically equivalent to repeated edits', () => {
+    const repeated = measureWorkPaperBatchMultiColumnEditSample(32)
+    const addressedBulk = measureWorkPaperBulkCellValuesMultiColumnEditSample(32)
+    const sheetBulk = measureWorkPaperBulkSheetCellValuesMultiColumnEditSample(32)
+
+    expect(addressedBulk.verification).toEqual(repeated.verification)
+    expect(sheetBulk.verification).toEqual(repeated.verification)
+    for (const sample of [addressedBulk, sheetBulk]) {
+      expect(sample.engineCounters).toBeDefined()
+      expect(Object.keys(sample.engineCounters ?? {}).toSorted()).toEqual([...ENGINE_COUNTER_KEYS].toSorted())
+    }
+  })
+
+  it('keeps WorkPaper dense range value helper semantically equivalent to repeated rectangular edits', () => {
+    const repeated = measureWorkPaperRectangularBatchEditSample(16, 6)
+    const rangeValues = measureWorkPaperSheetRangeValuesRectangularEditSample(16, 6)
+
+    expect(rangeValues.verification).toEqual(repeated.verification)
+    expect(rangeValues.engineCounters).toBeDefined()
+    expect(Object.keys(rangeValues.engineCounters ?? {}).toSorted()).toEqual([...ENGINE_COUNTER_KEYS].toSorted())
   })
 })

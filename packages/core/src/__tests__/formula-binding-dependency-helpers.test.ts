@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { MAX_COLS } from '@bilig/protocol'
 import {
   aggregateColumnDependencyKey,
+  appendDirectAggregateColumnReverseEdges,
   appendSheetRenameSourceTransform,
   appendTrackedReverseEdge,
+  appendUnindexedAggregateColumnReverseEdge,
   collectTrackedDependents,
   directCriteriaAggregateColumn,
   directLookupColumnInfo,
@@ -11,7 +13,10 @@ import {
   formulaColumnCountKey,
   hasQualifiedDependencies,
   parseQualifiedDependencySheetName,
+  removeDirectAggregateColumnReverseEdges,
   removeTrackedReverseEdge,
+  removeUnindexedAggregateColumnReverseEdge,
+  visitIndexedDirectAggregateColumnDependentsForRow,
 } from '../engine/services/formula-binding-dependency-helpers.js'
 
 describe('formula binding dependency helpers', () => {
@@ -29,6 +34,127 @@ describe('formula binding dependency helpers', () => {
     expect(registry.has('Sheet1')).toBe(false)
   })
 
+  it('tracks direct aggregate dependencies by every touched sheet column', () => {
+    const registry = new Map<number, Set<number>>()
+    const workbook = {
+      getSheet: (sheetName: string) => (sheetName === 'Sheet1' ? { id: 4 } : undefined),
+    }
+    const descriptor = {
+      aggregateKind: 'sum' as const,
+      regionId: 1,
+      regionIds: [1, 2, 3],
+      sheetName: 'Sheet1',
+      rowStart: 0,
+      rowEnd: 9,
+      col: 2,
+      colEnd: 4,
+      length: 30,
+    }
+
+    appendDirectAggregateColumnReverseEdges(registry, workbook, descriptor, 20)
+    expect(registry.get(aggregateColumnDependencyKey(4, 2))).toEqual(new Set([20]))
+    expect(registry.get(aggregateColumnDependencyKey(4, 3))).toEqual(new Set([20]))
+    expect(registry.get(aggregateColumnDependencyKey(4, 4))).toEqual(new Set([20]))
+
+    removeDirectAggregateColumnReverseEdges(registry, workbook, descriptor, 20)
+    expect(registry.size).toBe(0)
+  })
+
+  it('visits indexed direct aggregate column owners by touched row', () => {
+    const registry = new Map<number, Set<number>>()
+    const workbook = {
+      getSheet: (sheetName: string) => (sheetName === 'Sheet1' ? { id: 4 } : undefined),
+    }
+    for (let index = 0; index < 8; index += 1) {
+      appendDirectAggregateColumnReverseEdges(
+        registry,
+        workbook,
+        {
+          aggregateKind: 'sum',
+          regionId: index + 1,
+          sheetName: 'Sheet1',
+          rowStart: index,
+          rowEnd: index + 2,
+          col: 0,
+          colEnd: 0,
+          length: 3,
+        },
+        100 + index,
+      )
+    }
+    const dependents = registry.get(aggregateColumnDependencyKey(4, 0))
+    expect(dependents).toBeDefined()
+    const visited: number[] = []
+    expect(
+      visitIndexedDirectAggregateColumnDependentsForRow(dependents!, 3, (formulaCellIndex) => {
+        visited.push(formulaCellIndex)
+        return true
+      }),
+    ).toBe(true)
+    expect(visited.toSorted((left, right) => left - right)).toEqual([101, 102, 103])
+
+    removeDirectAggregateColumnReverseEdges(
+      registry,
+      workbook,
+      {
+        aggregateKind: 'sum',
+        regionId: 3,
+        sheetName: 'Sheet1',
+        rowStart: 2,
+        rowEnd: 4,
+        col: 0,
+        colEnd: 0,
+        length: 3,
+      },
+      102,
+    )
+    const afterRemoval: number[] = []
+    expect(
+      visitIndexedDirectAggregateColumnDependentsForRow(dependents!, 3, (formulaCellIndex) => {
+        afterRemoval.push(formulaCellIndex)
+        return true
+      }),
+    ).toBe(true)
+    expect(afterRemoval.toSorted((left, right) => left - right)).toEqual([101, 103])
+  })
+
+  it('tracks unindexed aggregate column reverse edges alongside indexed direct aggregate owners', () => {
+    const registry = new Map<number, Set<number>>()
+    const workbook = {
+      getSheet: (sheetName: string) => (sheetName === 'Sheet1' ? { id: 4 } : undefined),
+    }
+    const key = aggregateColumnDependencyKey(4, 0)
+    appendDirectAggregateColumnReverseEdges(
+      registry,
+      workbook,
+      {
+        aggregateKind: 'sum',
+        regionId: 1,
+        sheetName: 'Sheet1',
+        rowStart: 0,
+        rowEnd: 10,
+        col: 0,
+        colEnd: 0,
+        length: 11,
+      },
+      10,
+    )
+    expect(
+      visitIndexedDirectAggregateColumnDependentsForRow(registry.get(key)!, 3, () => {
+        return true
+      }),
+    ).toBe(true)
+    appendUnindexedAggregateColumnReverseEdge(registry, key, 20)
+    expect(registry.get(key)).toEqual(new Set([10, 20]))
+    expect(
+      visitIndexedDirectAggregateColumnDependentsForRow(registry.get(key)!, 3, () => {
+        return true
+      }),
+    ).toBe(false)
+    removeUnindexedAggregateColumnReverseEdge(registry, key, 20)
+    expect(registry.get(key)).toEqual(new Set([10]))
+  })
+
   it('parses qualified dependency sheet names including escaped quoted names', () => {
     expect(parseQualifiedDependencySheetName('Sheet1!A1')).toBe('Sheet1')
     expect(parseQualifiedDependencySheetName("'Q1 Report'!A1")).toBe('Q1 Report')
@@ -41,13 +167,13 @@ describe('formula binding dependency helpers', () => {
     expect(hasQualifiedDependencies({ deps: ['Sheet2!A1'] })).toBe(true)
   })
 
-  it('collects direct aggregate and criteria region ids in stable insertion order', () => {
+  it('collects only criteria region ids because direct aggregates use column reverse edges', () => {
     expect(
       directRegionIdsForFormula({
         directAggregate: { regionId: 1, regionIds: [1, 2] },
         directCriteria: undefined,
       }),
-    ).toEqual([1, 2])
+    ).toEqual([])
 
     expect(
       directRegionIdsForFormula({
@@ -57,7 +183,7 @@ describe('formula binding dependency helpers', () => {
           criteriaPairs: [{ range: { regionId: 2 } }, { range: { regionId: 5 } }],
         },
       }),
-    ).toEqual([1, 2, 3, 5])
+    ).toEqual([3, 2, 5])
   })
 
   it('appends sheet-rename source transforms', () => {

@@ -38,6 +38,7 @@ export interface MutationCellRestoreHistoryHelpers {
   ) => Extract<EngineOp, { kind: 'setCellValue' | 'setCellFormula' | 'clearCell' }> | null
   readonly createLazyInverseCellMutationRecord: (refs: readonly EngineCellMutationRef[]) => TransactionRecord
   readonly tryCreateSingleExistingNumericInverseCellMutationRecord: (refs: readonly EngineCellMutationRef[]) => TransactionRecord | null
+  readonly tryCreateExistingNumericInverseCellMutationRecord: (refs: readonly EngineCellMutationRef[]) => TransactionRecord | null
   readonly buildFastMutationHistoryFromRefs: (
     refs: readonly EngineCellMutationRef[],
     potentialNewCells: number,
@@ -332,6 +333,73 @@ export function createMutationCellRestoreHistoryHelpers(args: MutationCellRestor
     )
   }
 
+  const tryCreateExistingNumericInverseCellMutationRecord = (refs: readonly EngineCellMutationRef[]): TransactionRecord | null => {
+    const count = refs.length
+    if (count === 0) {
+      return null
+    }
+    const sheetIds = new Uint32Array(count)
+    const cellIndexPlusOnes = new Uint32Array(count)
+    const rows = new Uint32Array(count)
+    const cols = new Uint32Array(count)
+    const kinds = new Uint8Array(count)
+    const numbers = new Float64Array(count)
+    const cellStore = args.workbook.cellStore
+    let cachedSheetId = -1
+    let cachedSheet: ReturnType<WorkbookStore['getSheetById']> | undefined
+
+    for (let index = 0; index < count; index += 1) {
+      const ref = refs[index]!
+      const { mutation, sheetId } = ref
+      if (mutation.kind !== 'setCellValue' || typeof mutation.value !== 'number') {
+        return null
+      }
+      if (sheetId !== cachedSheetId) {
+        cachedSheet = args.workbook.getSheetById(sheetId)
+        cachedSheetId = sheetId
+      }
+      if (!cachedSheet) {
+        return null
+      }
+      const candidate = ref.cellIndex
+      const existingCellIndex =
+        candidate !== undefined &&
+        cellStore.sheetIds[candidate] === sheetId &&
+        cellStore.rows[candidate] === mutation.row &&
+        cellStore.cols[candidate] === mutation.col
+          ? candidate
+          : cachedSheet.grid.get(mutation.row, mutation.col)
+      if (
+        existingCellIndex === -1 ||
+        (cellStore.formulaIds[existingCellIndex] ?? 0) !== 0 ||
+        cellStore.tags[existingCellIndex] !== ValueTag.Number
+      ) {
+        return null
+      }
+      const targetIndex = count - 1 - index
+      sheetIds[targetIndex] = sheetId
+      cellIndexPlusOnes[targetIndex] = existingCellIndex + 1
+      rows[targetIndex] = mutation.row
+      cols[targetIndex] = mutation.col
+      kinds[targetIndex] = CapturedCellMutationKind.NumberValue
+      numbers[targetIndex] = cellStore.numbers[existingCellIndex] ?? 0
+    }
+
+    return createLazyMaterializedCellMutationTransactionRecord(
+      () =>
+        materializeCapturedCellMutationRestores({
+          sheetIds,
+          cellIndexPlusOnes,
+          rows,
+          cols,
+          kinds,
+          numbers,
+          potentialNewCells: count,
+        }),
+      count,
+    )
+  }
+
   const buildFastMutationHistoryFromRefs = (
     refs: readonly EngineCellMutationRef[],
     potentialNewCells: number,
@@ -372,6 +440,7 @@ export function createMutationCellRestoreHistoryHelpers(args: MutationCellRestor
     tryRestoreSimpleCellOpFromStore,
     createLazyInverseCellMutationRecord,
     tryCreateSingleExistingNumericInverseCellMutationRecord,
+    tryCreateExistingNumericInverseCellMutationRecord,
     buildFastMutationHistoryFromRefs,
   }
 }

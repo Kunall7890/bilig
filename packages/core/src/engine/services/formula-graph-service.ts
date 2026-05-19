@@ -32,8 +32,6 @@ function graphErrorMessage(message: string, cause: unknown): string {
   return cause instanceof Error && cause.message.length > 0 ? cause.message : message
 }
 
-const SYNC_WASM_INIT_FORMULA_THRESHOLD = 64
-
 export function createEngineFormulaGraphService(args: {
   readonly state: Pick<EngineRuntimeState, 'workbook' | 'formulas' | 'ranges' | 'wasm'> & { counters?: EngineCounters }
   readonly cycleDetector: CycleDetector
@@ -207,7 +205,21 @@ export function createEngineFormulaGraphService(args: {
     }
   }
 
-  const syncWasmProgramsNow = (): void => {
+  const countWasmFastPathFormulas = (): number => {
+    let wasmFormulaCount = 0
+    args.state.formulas.forEach((formula) => {
+      if (formula.compiled.mode === FormulaMode.WasmFastPath) {
+        wasmFormulaCount += 1
+      }
+    })
+    return wasmFormulaCount
+  }
+
+  const syncWasmProgramsNow = (wasmFormulaCount = countWasmFastPathFormulas()): void => {
+    if (wasmFormulaCount === 0) {
+      args.setWasmProgramSyncPending(false)
+      return
+    }
     if (args.state.counters) {
       addEngineCounter(args.state.counters, 'wasmFullUploads')
     }
@@ -215,12 +227,6 @@ export function createEngineFormulaGraphService(args: {
     args.constantArena.reset()
     args.rangeListArena.reset()
 
-    let wasmFormulaCount = 0
-    args.state.formulas.forEach((formula) => {
-      if (formula.compiled.mode === FormulaMode.WasmFastPath) {
-        wasmFormulaCount += 1
-      }
-    })
     ensureWasmProgramScratchCapacity(Math.max(wasmFormulaCount, 1), Math.max(args.state.ranges.size, 1))
 
     let formulaIndex = 0
@@ -285,26 +291,36 @@ export function createEngineFormulaGraphService(args: {
     if (args.getWasmProgramSyncPending()) {
       return
     }
+    const wasmFormulaCount = countWasmFastPathFormulas()
+    if (wasmFormulaCount === 0) {
+      args.setWasmProgramSyncPending(false)
+      return
+    }
     if (args.getBatchMutationDepth() > 0) {
       args.setWasmProgramSyncPending(true)
       return
     }
-    if (!args.state.wasm.ready && (args.state.formulas.size < SYNC_WASM_INIT_FORMULA_THRESHOLD || !args.state.wasm.initSyncIfPossible())) {
+    if (!args.state.wasm.ready && !args.state.wasm.initSyncIfPossible()) {
       args.setWasmProgramSyncPending(true)
       return
     }
-    syncWasmProgramsNow()
+    syncWasmProgramsNow(wasmFormulaCount)
   }
 
   const flushWasmProgramSyncNow = (): void => {
     if (!args.getWasmProgramSyncPending()) {
       return
     }
-    if (!args.state.wasm.ready && (args.state.formulas.size < SYNC_WASM_INIT_FORMULA_THRESHOLD || !args.state.wasm.initSyncIfPossible())) {
+    const wasmFormulaCount = countWasmFastPathFormulas()
+    if (wasmFormulaCount === 0) {
+      args.setWasmProgramSyncPending(false)
+      return
+    }
+    if (!args.state.wasm.ready && !args.state.wasm.initSyncIfPossible()) {
       return
     }
     args.setWasmProgramSyncPending(false)
-    syncWasmProgramsNow()
+    syncWasmProgramsNow(wasmFormulaCount)
   }
 
   return {

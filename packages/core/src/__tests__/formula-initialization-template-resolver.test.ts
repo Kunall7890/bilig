@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { createTemplateBank } from '../formula/template-bank.js'
 import {
   tryBuildInitialPrefixSumTemplateKey,
+  tryBuildInitialSimpleRowRelativeBinaryTemplate,
   tryBuildInitialSimpleRowRelativeBinaryTemplateKey,
 } from '../engine/services/formula-initialization-template-keys.js'
 import { createInitialTemplateFormulaResolver } from '../engine/services/formula-initialization-template-resolver.js'
@@ -47,5 +48,49 @@ describe('initial template formula resolver', () => {
 
     expect(tryBuildInitialSimpleRowRelativeBinaryTemplateKey(`A${unsafeRow}+1`, Number.MAX_SAFE_INTEGER, 0)).toBeUndefined()
     expect(tryBuildInitialPrefixSumTemplateKey(`SUM(A1:A${unsafeRow})`, Number.MAX_SAFE_INTEGER, 0)).toBeUndefined()
+  })
+
+  it('builds parsed refs for simple row-relative binary formulas during initial template detection', () => {
+    expect(tryBuildInitialSimpleRowRelativeBinaryTemplate('A4+B4', 3, 4)).toEqual({
+      key: 'c-4+c-3',
+      parsedRefs: {
+        parsedDeps: [
+          {
+            address: 'A4',
+            col: 0,
+            colAbsolute: false,
+            kind: 'cell',
+            row: 3,
+            rowAbsolute: false,
+          },
+          {
+            address: 'B4',
+            col: 1,
+            colAbsolute: false,
+            kind: 'cell',
+            row: 3,
+            rowAbsolute: false,
+          },
+        ],
+        parsedSymbolicRefs: [
+          {
+            address: 'A4',
+            col: 0,
+            colAbsolute: false,
+            row: 3,
+            rowAbsolute: false,
+          },
+          {
+            address: 'B4',
+            col: 1,
+            colAbsolute: false,
+            row: 3,
+            rowAbsolute: false,
+          },
+        ],
+        symbolicRefs: ['A4', 'B4'],
+      },
+      usesRowLiteralSuffix: false,
+    })
   })
 })

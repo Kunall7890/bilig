@@ -2,7 +2,6 @@ import type { EngineOpBatch } from '@bilig/workbook-domain'
 import type { EngineEvent, LiteralInput } from '@bilig/protocol'
 import type { SheetRecord } from '../../workbook-store.js'
 import type { EngineRuntimeState, U32 } from '../runtime-state.js'
-import { createOperationBatchMetrics } from './operation-batch-metrics.js'
 import {
   canFastPathOperationLiteralOverwrite,
   cellsShareOperationVersionColumn,
@@ -41,14 +40,17 @@ export function createOperationServiceRuntimeHelpers(args: {
       args.deferKernelSync(singleCellKernelSync)
     },
     makeSingleLiteralSkipMetrics() {
-      return createOperationBatchMetrics({
-        previousMetrics: args.state.getLastMetrics(),
-        didRunRecalc: false,
-        directFormulaMetrics: { wasmFormulaCount: 0, jsFormulaCount: 0 },
+      const previousMetrics = args.state.getLastMetrics()
+      return {
+        batchId: previousMetrics.batchId + 1,
         changedInputCount: 1,
-        formulaChangedCount: 0,
+        dirtyFormulaCount: 0,
+        wasmFormulaCount: 0,
+        jsFormulaCount: 0,
+        rangeNodeVisits: 0,
+        recalcMs: 0,
         compileMs: 0,
-      })
+      }
     },
     writeNumericLiteralToExistingCell(cellIndex, value) {
       writeOperationNumericLiteralToExistingCell({ workbook: args.state.workbook, cellIndex, value })

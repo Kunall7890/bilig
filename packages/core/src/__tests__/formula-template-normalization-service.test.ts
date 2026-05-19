@@ -101,6 +101,21 @@ describe('EngineFormulaTemplateNormalizationService', () => {
     expect(second.compiled.source).toBe('1+2')
   })
 
+  it('reuses process-level compiled formulas without sharing mutable top-level records across engines', () => {
+    const firstService = createEngineFormulaTemplateNormalizationService()
+    const first = firstService.resolveForCell('LEN(Z99)', 0, 0)
+    const originalMode = first.compiled.mode
+
+    first.compiled.mode = originalMode === FormulaMode.JsOnly ? FormulaMode.WasmFastPath : FormulaMode.JsOnly
+
+    const secondService = createEngineFormulaTemplateNormalizationService()
+    const second = secondService.resolveForCell('LEN(Z99)', 0, 0)
+
+    expect(second.compiled).not.toBe(first.compiled)
+    expect(second.compiled.mode).toBe(originalMode)
+    expect(second.compiled.deps).toEqual(['Z99'])
+  })
+
   it('keeps template families as runtime owners across transient cache clears', () => {
     const service = createEngineFormulaTemplateNormalizationService()
 

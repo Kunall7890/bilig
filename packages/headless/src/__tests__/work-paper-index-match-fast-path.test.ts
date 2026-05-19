@@ -12,6 +12,73 @@ function cellChanges(changes: Array<{ kind: string; a1?: string }>): Set<string>
 }
 
 describe('WorkPaper INDEX/MATCH direct path', () => {
+  it('updates exact text MATCH operands through the existing-literal direct path', () => {
+    const rowCount = 128
+    const workbook = WorkPaper.buildFromSheets({
+      Bench: [
+        ['Key', 'Value', '', 'key-2', `=MATCH(D1,A2:A${rowCount + 1},0)`],
+        ...Array.from({ length: rowCount }, (_, index) => [`key-${index + 1}`, (index + 1) * 10]),
+      ],
+    })
+    const sheetId = workbook.getSheetId('Bench')!
+
+    expect(workbook.getCellValue(cell(sheetId, 0, 4))).toEqual({ tag: ValueTag.Number, value: 2 })
+
+    workbook.resetPerformanceCounters()
+    const changes = workbook.setCellContents(cell(sheetId, 0, 3), 'key-99')
+
+    expect(cellChanges(changes)).toEqual(new Set(['D1', 'E1']))
+    expect(workbook.getCellValue(cell(sheetId, 0, 4))).toEqual({ tag: ValueTag.Number, value: 99 })
+    expect(workbook.getStats().lastMetrics).toMatchObject({
+      dirtyFormulaCount: 0,
+      jsFormulaCount: 0,
+      wasmFormulaCount: 0,
+    })
+    expect(workbook.getPerformanceCounters()).toMatchObject({
+      changedCellPayloadsBuilt: 0,
+      directFormulaKernelSyncOnlyRecalcSkips: 1,
+      exactIndexBuilds: 0,
+      formulasBound: 0,
+      topoRepairs: 0,
+    })
+  })
+
+  it('updates approximate duplicate MATCH operands through the uniform direct path', () => {
+    const rowCount = 128
+    const lookupValue = Math.floor(rowCount / 5)
+    const workbook = WorkPaper.buildFromSheets({
+      Bench: [
+        ['Key', 'Value', '', Math.floor(rowCount / 4), `=MATCH(D1,A2:A${rowCount + 1},1)`],
+        ...Array.from({ length: rowCount }, (_, index) => {
+          const key = Math.ceil((index + 1) / 2)
+          return [key, key * 10]
+        }),
+      ],
+    })
+    const sheetId = workbook.getSheetId('Bench')!
+
+    expect(workbook.getCellValue(cell(sheetId, 0, 4))).toEqual({ tag: ValueTag.Number, value: Math.floor(rowCount / 4) * 2 })
+
+    workbook.resetPerformanceCounters()
+    const changes = workbook.setCellContents(cell(sheetId, 0, 3), lookupValue)
+
+    expect(cellChanges(changes)).toEqual(new Set(['D1', 'E1']))
+    expect(workbook.getCellValue(cell(sheetId, 0, 4))).toEqual({ tag: ValueTag.Number, value: lookupValue * 2 })
+    expect(workbook.getStats().lastMetrics).toMatchObject({
+      dirtyFormulaCount: 0,
+      jsFormulaCount: 0,
+      wasmFormulaCount: 0,
+    })
+    expect(workbook.getPerformanceCounters()).toMatchObject({
+      approxIndexBuilds: 0,
+      changedCellPayloadsBuilt: 0,
+      directFormulaKernelSyncOnlyRecalcSkips: 1,
+      formulasBound: 0,
+      lookupOwnerBuilds: 0,
+      topoRepairs: 0,
+    })
+  })
+
   it('updates exact INDEX/MATCH operands without rebinding dynamic range dependencies', () => {
     const rowCount = 128
     const workbook = WorkPaper.buildFromSheets(
@@ -34,7 +101,7 @@ describe('WorkPaper INDEX/MATCH direct path', () => {
     expect(workbook.getCellValue(cell(sheetId, 0, 4))).toEqual({ tag: ValueTag.Number, value: 990 })
     expect(workbook.getStats().lastMetrics).toMatchObject({
       dirtyFormulaCount: 0,
-      jsFormulaCount: 1,
+      jsFormulaCount: 0,
       wasmFormulaCount: 0,
     })
     expect(workbook.getPerformanceCounters()).toMatchObject({
@@ -51,6 +118,49 @@ describe('WorkPaper INDEX/MATCH direct path', () => {
     expect(workbook.getPerformanceCounters()).toMatchObject({
       formulasBound: 0,
       topoRepairs: 0,
+    })
+  })
+
+  it('undoes suspended exact lookup-column numeric batches from the compact numeric inverse path', () => {
+    const rowCount = 96
+    const workbook = WorkPaper.buildFromSheets(
+      {
+        Bench: [
+          ['Key', 'Value', '', Math.floor(rowCount / 2), `=MATCH(D1,A2:A${rowCount + 1},0)`],
+          ...Array.from({ length: rowCount }, (_, index) => [index + 1, (index + 1) * 10]),
+        ],
+      },
+      { useColumnIndex: true },
+    )
+    const sheetId = workbook.getSheetId('Bench')!
+
+    workbook.resetPerformanceCounters()
+    workbook.suspendEvaluation()
+    for (let index = 0; index < 40; index += 1) {
+      const row = rowCount - index
+      workbook.setCellContents(cell(sheetId, row, 0), row + 1_000)
+    }
+    const changes = workbook.resumeEvaluation()
+
+    expect(changes).toHaveLength(40)
+    expect(workbook.getPerformanceCounters()).toMatchObject({
+      kernelSyncOnlyRecalcSkips: 1,
+      formulasBound: 0,
+      lookupOwnerBuilds: 0,
+    })
+    expect(workbook.getCellValue(cell(sheetId, 0, 4))).toEqual({
+      tag: ValueTag.Number,
+      value: Math.floor(rowCount / 2),
+    })
+
+    const undoChanges = workbook.undo()
+
+    expect(undoChanges).toHaveLength(40)
+    expect(workbook.getCellValue(cell(sheetId, rowCount, 0))).toEqual({ tag: ValueTag.Number, value: rowCount })
+    expect(workbook.getCellValue(cell(sheetId, rowCount - 39, 0))).toEqual({ tag: ValueTag.Number, value: rowCount - 39 })
+    expect(workbook.getCellValue(cell(sheetId, 0, 4))).toEqual({
+      tag: ValueTag.Number,
+      value: Math.floor(rowCount / 2),
     })
   })
 
@@ -157,10 +267,12 @@ describe('WorkPaper INDEX reference direct path', () => {
     expect(workbook.getStats().lastMetrics).toMatchObject({
       dirtyFormulaCount: 0,
       jsFormulaCount: 0,
-      wasmFormulaCount: 1,
+      wasmFormulaCount: 0,
     })
     expect(workbook.getPerformanceCounters()).toMatchObject({
+      changedCellPayloadsBuilt: 0,
       cycleFormulaScans: 0,
+      directFormulaKernelSyncOnlyRecalcSkips: 1,
       formulasBound: 0,
       topoRepairs: 0,
     })
@@ -206,6 +318,8 @@ describe('WorkPaper INDEX reference direct path', () => {
     expect(cellChanges(outOfRangeChanges)).toEqual(new Set(['D1', 'E1']))
     expect(workbook.getCellValue(cell(sheetId, 0, 4))).toEqual({ tag: ValueTag.Error, code: ErrorCode.Ref })
     expect(workbook.getPerformanceCounters()).toMatchObject({
+      changedCellPayloadsBuilt: 0,
+      directFormulaKernelSyncOnlyRecalcSkips: 1,
       formulasBound: 0,
       topoRepairs: 0,
     })
@@ -216,6 +330,8 @@ describe('WorkPaper INDEX reference direct path', () => {
     expect(cellChanges(nonNumericChanges)).toEqual(new Set(['D1', 'E1']))
     expect(workbook.getCellValue(cell(sheetId, 0, 4))).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
     expect(workbook.getPerformanceCounters()).toMatchObject({
+      changedCellPayloadsBuilt: 0,
+      directFormulaKernelSyncOnlyRecalcSkips: 1,
       formulasBound: 0,
       topoRepairs: 0,
     })

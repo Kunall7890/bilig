@@ -20,6 +20,7 @@ export interface RuntimeColumnSlice {
 
 interface RuntimeColumnPage {
   readonly rowStart: number
+  nonEmptyCount: number
   readonly tags: Uint8Array
   readonly numbers: Float64Array
   readonly stringIds: Uint32Array
@@ -71,6 +72,13 @@ export interface EngineRuntimeColumnStoreService {
     colStart: number
     colEnd: number
   }) => CellValue[][]
+  readonly findMaxResidentRowInColumns: (request: {
+    sheetName: string
+    rowStart: number
+    rowEnd: number
+    colStart: number
+    colEnd: number
+  }) => number
   readonly normalizeStringId: (stringId: number) => string
   readonly normalizeLookupText: (value: Extract<CellValue, { tag: ValueTag.String }>) => string
 }
@@ -119,26 +127,23 @@ export function createEngineRuntimeColumnStoreService(args: {
     return normalized
   }
 
-  const materializeCellValueFromSlice = (slice: RuntimeColumnSlice, offset: number): CellValue => {
-    const tag = decodeValueTag(slice.tags[offset])
+  const materializeCellValueFromRaw = (rawTag: number | undefined, numeric: number, stringId: number, errorCode: number): CellValue => {
+    const tag = decodeValueTag(rawTag)
     switch (tag) {
       case ValueTag.Empty:
         return { tag: ValueTag.Empty }
       case ValueTag.Number:
-        return { tag: ValueTag.Number, value: slice.numbers[offset] ?? 0 }
+        return { tag: ValueTag.Number, value: numeric }
       case ValueTag.Boolean:
-        return { tag: ValueTag.Boolean, value: (slice.numbers[offset] ?? 0) !== 0 }
-      case ValueTag.String: {
-        const stringId = slice.stringIds[offset] ?? 0
+        return { tag: ValueTag.Boolean, value: numeric !== 0 }
+      case ValueTag.String:
         return {
           tag: ValueTag.String,
           value: stringId === 0 ? '' : args.state.strings.get(stringId),
           stringId,
         }
-      }
-      case ValueTag.Error: {
-        return { tag: ValueTag.Error, code: slice.errors[offset]! }
-      }
+      case ValueTag.Error:
+        return { tag: ValueTag.Error, code: errorCode }
       default:
         return { tag: ValueTag.Empty }
     }
@@ -174,25 +179,19 @@ export function createEngineRuntimeColumnStoreService(args: {
 
   const materializeCellValueFromOwner = (owner: RuntimeColumnOwner, absoluteRow: number): CellValue => {
     const entry = readOwnerPageEntry(owner, absoluteRow)
-    const tag = decodeValueTag(entry.rawTag)
-    switch (tag) {
-      case ValueTag.Empty:
-        return { tag: ValueTag.Empty }
-      case ValueTag.Number:
-        return { tag: ValueTag.Number, value: entry.number }
-      case ValueTag.Boolean:
-        return { tag: ValueTag.Boolean, value: entry.number !== 0 }
-      case ValueTag.String:
-        return {
-          tag: ValueTag.String,
-          value: entry.stringId === 0 ? '' : args.state.strings.get(entry.stringId),
-          stringId: entry.stringId,
-        }
-      case ValueTag.Error:
-        return { tag: ValueTag.Error, code: entry.error }
-      default:
-        return { tag: ValueTag.Empty }
+    return materializeCellValueFromRaw(entry.rawTag, entry.number, entry.stringId, entry.error)
+  }
+
+  const materializeCellValueFromPage = (page: RuntimeColumnPage | undefined, localRow: number): CellValue => {
+    if (!page) {
+      return { tag: ValueTag.Empty }
     }
+    return materializeCellValueFromRaw(
+      page.tags[localRow],
+      page.numbers[localRow] ?? 0,
+      page.stringIds[localRow] ?? 0,
+      page.errors[localRow] ?? 0,
+    )
   }
 
   const materializeCellValueFromCellIndex = (cellIndex: number): CellValue => {
@@ -233,6 +232,7 @@ export function createEngineRuntimeColumnStoreService(args: {
         if (!page) {
           page = {
             rowStart: pageRowStart,
+            nonEmptyCount: 0,
             tags: new Uint8Array(BLOCK_ROWS),
             numbers: new Float64Array(BLOCK_ROWS),
             stringIds: new Uint32Array(BLOCK_ROWS),
@@ -243,6 +243,9 @@ export function createEngineRuntimeColumnStoreService(args: {
         const localRow = row - pageRowStart
         const tag = decodeValueTag(args.state.workbook.cellStore.tags[cellIndex])
         page.tags[localRow] = tag
+        if (tag !== ValueTag.Empty) {
+          page.nonEmptyCount += 1
+        }
         if (tag === ValueTag.Number || tag === ValueTag.Boolean) {
           const numeric = args.state.workbook.cellStore.numbers[cellIndex] ?? 0
           page.numbers[localRow] = Object.is(numeric, -0) ? 0 : numeric
@@ -263,6 +266,7 @@ export function createEngineRuntimeColumnStoreService(args: {
         if (!page) {
           page = {
             rowStart: pageRowStart,
+            nonEmptyCount: 0,
             tags: new Uint8Array(BLOCK_ROWS),
             numbers: new Float64Array(BLOCK_ROWS),
             stringIds: new Uint32Array(BLOCK_ROWS),
@@ -273,6 +277,9 @@ export function createEngineRuntimeColumnStoreService(args: {
         const localRow = row - pageRowStart
         const tag = decodeValueTag(args.state.workbook.cellStore.tags[cellIndex])
         page.tags[localRow] = tag
+        if (tag !== ValueTag.Empty) {
+          page.nonEmptyCount += 1
+        }
         if (tag === ValueTag.Number || tag === ValueTag.Boolean) {
           const numeric = args.state.workbook.cellStore.numbers[cellIndex] ?? 0
           page.numbers[localRow] = Object.is(numeric, -0) ? 0 : numeric
@@ -397,6 +404,65 @@ export function createEngineRuntimeColumnStoreService(args: {
     return slice
   }
 
+  const fillRowMajorValuesFromColumnOwner = (
+    values: CellValue[],
+    owner: RuntimeColumnOwner,
+    rowStart: number,
+    rowEnd: number,
+    width: number,
+    colOffset: number,
+  ): void => {
+    let row = rowStart
+    while (row <= rowEnd) {
+      const pageRowStart = Math.floor(row / BLOCK_ROWS) * BLOCK_ROWS
+      const page = owner.pages.get(pageRowStart)
+      const pageRowEnd = Math.min(rowEnd, pageRowStart + BLOCK_ROWS - 1)
+      for (; row <= pageRowEnd; row += 1) {
+        values[(row - rowStart) * width + colOffset] = materializeCellValueFromPage(page, row - pageRowStart)
+      }
+    }
+  }
+
+  const fillRowMajorMatrixFromColumnOwner = (
+    rows: CellValue[][],
+    owner: RuntimeColumnOwner,
+    rowStart: number,
+    rowEnd: number,
+    colOffset: number,
+  ): void => {
+    let row = rowStart
+    while (row <= rowEnd) {
+      const pageRowStart = Math.floor(row / BLOCK_ROWS) * BLOCK_ROWS
+      const page = owner.pages.get(pageRowStart)
+      const pageRowEnd = Math.min(rowEnd, pageRowStart + BLOCK_ROWS - 1)
+      for (; row <= pageRowEnd; row += 1) {
+        rows[row - rowStart]![colOffset] = materializeCellValueFromPage(page, row - pageRowStart)
+      }
+    }
+  }
+
+  const findMaxResidentRowInOwner = (owner: RuntimeColumnOwner, rowStart: number, rowEnd: number): number => {
+    let maxResidentRow = -1
+    for (const page of owner.pages.values()) {
+      if (page.nonEmptyCount === 0) {
+        continue
+      }
+      const pageRowEnd = page.rowStart + BLOCK_ROWS - 1
+      if (pageRowEnd < rowStart || page.rowStart > rowEnd) {
+        continue
+      }
+      const localStart = Math.max(rowStart - page.rowStart, 0)
+      const localEnd = Math.min(rowEnd - page.rowStart, BLOCK_ROWS - 1)
+      for (let localRow = localEnd; localRow >= localStart; localRow -= 1) {
+        if ((page.tags[localRow] ?? 0) !== 0) {
+          maxResidentRow = Math.max(maxResidentRow, page.rowStart + localRow)
+          break
+        }
+      }
+    }
+    return maxResidentRow
+  }
+
   return {
     getColumnOwner,
     getColumnView,
@@ -406,16 +472,13 @@ export function createEngineRuntimeColumnStoreService(args: {
       return view.readCellValueAt(0)
     },
     readRangeValues({ sheetName, rowStart, rowEnd, colStart, colEnd }) {
+      const width = colEnd - colStart + 1
       const height = rowEnd - rowStart + 1
-      const columnSlices: RuntimeColumnSlice[] = []
-      for (let col = colStart; col <= colEnd; col += 1) {
-        columnSlices.push(getColumnSlice({ sheetName, rowStart, rowEnd, col }))
-      }
       const values: CellValue[] = []
-      for (let rowOffset = 0; rowOffset < height; rowOffset += 1) {
-        for (let colOffset = 0; colOffset < columnSlices.length; colOffset += 1) {
-          values.push(materializeCellValueFromSlice(columnSlices[colOffset]!, rowOffset))
-        }
+      values.length = width * height
+      for (let col = colStart; col <= colEnd; col += 1) {
+        const owner = getColumnOwner({ sheetName, col })
+        fillRowMajorValuesFromColumnOwner(values, owner, rowStart, rowEnd, width, col - colStart)
       }
       return values
     },
@@ -484,35 +547,24 @@ export function createEngineRuntimeColumnStoreService(args: {
       }
       const rows: CellValue[][] = Array.from({ length: height }, () => [])
       for (let colOffset = 0; colOffset < width; colOffset += 1) {
-        const slice = getColumnSlice({ sheetName, rowStart, rowEnd, col: colStart + colOffset })
-        for (let rowOffset = 0; rowOffset < height; rowOffset += 1) {
-          switch (slice.tags[rowOffset] ?? 0) {
-            case 1:
-              rows[rowOffset]![colOffset] = { tag: ValueTag.Number, value: slice.numbers[rowOffset] ?? 0 }
-              break
-            case 2:
-              rows[rowOffset]![colOffset] = { tag: ValueTag.Boolean, value: (slice.numbers[rowOffset] ?? 0) !== 0 }
-              break
-            case 3: {
-              const stringId = slice.stringIds[rowOffset] ?? 0
-              rows[rowOffset]![colOffset] = {
-                tag: ValueTag.String,
-                value: stringId === 0 ? '' : args.state.strings.get(stringId),
-                stringId,
-              }
-              break
-            }
-            case 4:
-              rows[rowOffset]![colOffset] = { tag: ValueTag.Error, code: slice.errors[rowOffset]! }
-              break
-            case 0:
-            default:
-              rows[rowOffset]![colOffset] = { tag: ValueTag.Empty }
-              break
-          }
-        }
+        const owner = getColumnOwner({ sheetName, col: colStart + colOffset })
+        fillRowMajorMatrixFromColumnOwner(rows, owner, rowStart, rowEnd, colOffset)
       }
       return rows
+    },
+    findMaxResidentRowInColumns({ sheetName, rowStart, rowEnd, colStart, colEnd }) {
+      if (rowEnd < rowStart || colEnd < colStart) {
+        return -1
+      }
+      let maxResidentRow = -1
+      for (let col = colStart; col <= colEnd; col += 1) {
+        const owner = getColumnOwner({ sheetName, col })
+        const ownerMaxResidentRow = findMaxResidentRowInOwner(owner, rowStart, rowEnd)
+        if (ownerMaxResidentRow > maxResidentRow) {
+          maxResidentRow = ownerMaxResidentRow
+        }
+      }
+      return maxResidentRow
     },
     normalizeStringId,
     normalizeLookupText(value) {

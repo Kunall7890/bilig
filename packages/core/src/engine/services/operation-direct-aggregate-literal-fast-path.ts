@@ -34,6 +34,19 @@ export interface OperationTrustedRangeDirectAggregateExistingNumericMutationRequ
   readonly hasSortedLookupDependents: boolean
 }
 
+export interface OperationTrustedColumnDirectAggregateExistingNumericMutationRequest {
+  readonly existingIndex: number
+  readonly sheet: SheetRecord
+  readonly sheetId: number
+  readonly sheetName: string
+  readonly row: number
+  readonly col: number
+  readonly value: number
+  readonly delta: number
+  readonly hasExactLookupDependents: boolean
+  readonly hasSortedLookupDependents: boolean
+}
+
 export interface OperationDirectAggregateLiteralFastPathArgs {
   readonly state: Pick<CreateEngineOperationServiceArgs['state'], 'workbook' | 'counters' | 'events' | 'setLastMetrics'>
   readonly directRangePostRecalcLimit: number
@@ -58,6 +71,7 @@ export interface OperationDirectAggregateLiteralFastPathArgs {
   readonly writeTrustedExistingNumericLiteralToCell: (existingIndex: number, sheet: SheetRecord, col: number, value: number) => void
   readonly applyTerminalDirectFormulaNumericDeltaAndReturn: (formulaCellIndex: number, delta: number) => number | undefined
   readonly applyDirectFormulaNumericDelta: (formulaCellIndex: number, delta: number) => boolean
+  readonly applyDirectFormulaNumericDeltaBatch: (formulaCellIndices: readonly number[] | Uint32Array, delta: number) => boolean
   readonly cellsShareVersionColumn: (leftCellIndex: number, rightCellIndex: number) => boolean
   readonly withOptionalColumnVersionBatch: (enabled: boolean, apply: () => void) => void
   readonly deferSingleCellKernelSync: (cellIndex: number) => void
@@ -154,10 +168,8 @@ export function tryApplySingleDirectAggregateLiteralMutationFastPath(
           throw new Error('Failed to apply direct aggregate delta')
         }
       } else {
-        for (let index = 0; index < affected!.length; index += 1) {
-          if (!args.applyDirectFormulaNumericDelta(affected![index]!, request.delta)) {
-            throw new Error('Failed to apply direct aggregate delta')
-          }
+        if (!args.applyDirectFormulaNumericDeltaBatch(affected!, request.delta)) {
+          throw new Error('Failed to apply direct aggregate delta')
         }
       }
     })
@@ -186,10 +198,14 @@ export function tryApplySingleDirectAggregateLiteralMutationFastPath(
   }
   if (singleAggregateCellIndex >= 0) {
     const cellStore = args.state.workbook.cellStore
-    return makeCompactExistingNumericMutationResult(request.existingIndex, singleAggregateCellIndex, 1, singleAggregateNumericValue, {
-      row: cellStore.rows[singleAggregateCellIndex] ?? 0,
-      col: cellStore.cols[singleAggregateCellIndex] ?? 0,
-    })
+    return makeCompactExistingNumericMutationResult(
+      request.existingIndex,
+      singleAggregateCellIndex,
+      1,
+      singleAggregateNumericValue,
+      cellStore.rows[singleAggregateCellIndex] ?? 0,
+      cellStore.cols[singleAggregateCellIndex] ?? 0,
+    )
   }
   if (affectedCount === 0) {
     return makeCompactExistingNumericMutationResult(request.existingIndex, undefined, 1)
@@ -222,8 +238,48 @@ export function tryApplyTrustedSingleRangeDirectAggregateExistingNumericMutation
   args.deferSingleCellKernelSync(request.existingIndex)
   args.state.setLastMetrics(args.makeSingleLiteralSkipMetrics())
   const cellStore = args.state.workbook.cellStore
-  return makeCompactExistingNumericMutationResult(request.existingIndex, formulaCellIndex, 1, aggregateNumericValue, {
-    row: cellStore.rows[formulaCellIndex] ?? 0,
-    col: cellStore.cols[formulaCellIndex] ?? 0,
+  return makeCompactExistingNumericMutationResult(
+    request.existingIndex,
+    formulaCellIndex,
+    1,
+    aggregateNumericValue,
+    cellStore.rows[formulaCellIndex] ?? 0,
+    cellStore.cols[formulaCellIndex] ?? 0,
+  )
+}
+
+export function tryApplyTrustedColumnDirectAggregateExistingNumericMutation(
+  args: OperationDirectAggregateLiteralFastPathArgs,
+  request: OperationTrustedColumnDirectAggregateExistingNumericMutationRequest,
+): EngineExistingNumericCellMutationResult | null {
+  if (request.hasExactLookupDependents || request.hasSortedLookupDependents) {
+    return null
+  }
+  const formulaCellIndex = args.collectSingleApplicableDirectAggregateDependent({
+    sheetName: request.sheetName,
+    sheetId: request.sheetId,
+    row: request.row,
+    col: request.col,
   })
+  if (formulaCellIndex < 0) {
+    return null
+  }
+  args.writeTrustedExistingNumericLiteralToCell(request.existingIndex, request.sheet, request.col, request.value)
+  const aggregateNumericValue = args.applyTerminalDirectFormulaNumericDeltaAndReturn(formulaCellIndex, request.delta)
+  if (aggregateNumericValue === undefined) {
+    throw new Error('Failed to apply direct aggregate delta')
+  }
+  args.state.counters.directAggregateDeltaApplications += 1
+  args.state.counters.directAggregateDeltaOnlyRecalcSkips += 1
+  args.deferSingleCellKernelSync(request.existingIndex)
+  args.state.setLastMetrics(args.makeSingleLiteralSkipMetrics())
+  const cellStore = args.state.workbook.cellStore
+  return makeCompactExistingNumericMutationResult(
+    request.existingIndex,
+    formulaCellIndex,
+    1,
+    aggregateNumericValue,
+    cellStore.rows[formulaCellIndex] ?? 0,
+    cellStore.cols[formulaCellIndex] ?? 0,
+  )
 }

@@ -9,6 +9,7 @@ import type {
 } from '../cell-mutations-at.js'
 import { CellFlags } from '../cell-store.js'
 import { literalToValue, writeLiteralToCellStore } from '../engine-value-utils.js'
+import type { InitialFormulaEntryRefSource } from '../engine/services/formula-initialization-refs.js'
 import type { FormulaInstanceSnapshot } from '../formula/formula-instance-table.js'
 import type { FormulaTemplateResolution, FormulaTemplateSnapshot } from '../formula/template-bank.js'
 import { collectDefinedFormulaNames, formulaShouldPreserveCachedUnsupportedFunctionValueOnFullRecalc } from './unsupported-formula-cache.js'
@@ -36,6 +37,7 @@ export interface RuntimeImageFormulaValueSnapshot {
 export interface RuntimeImageSheetCellsSnapshot {
   readonly sheetName: string
   readonly coords: readonly RuntimeImageCellCoordinateSnapshot[]
+  readonly coordinateOrder?: 'dense-row-major'
   readonly dimensions?: RuntimeImageSheetDimensionsSnapshot
   readonly cellCount?: number
 }
@@ -62,7 +64,7 @@ export interface RuntimeImageRestoreArgs {
   readonly initializeCellFormulasAt: (refs: readonly EngineCellMutationRef[], potentialNewCells?: number) => void
   readonly initializePreparedCellFormulasAt?: (refs: readonly PreparedRuntimeFormulaRef[], potentialNewCells?: number) => void
   readonly initializeHydratedPreparedCellFormulasAt?: (
-    refs: readonly HydratedPreparedRuntimeFormulaRef[],
+    refs: InitialFormulaEntryRefSource<HydratedPreparedRuntimeFormulaRef>,
     potentialNewCells?: number,
   ) => void
 }
@@ -81,7 +83,7 @@ export interface WorkbookSnapshotRestoreArgs {
   readonly initializeFormulaSourcesAt?: (refs: EngineFormulaSourceRefs, potentialNewCells?: number) => void
   readonly resolveTemplateForCell?: (source: string, row: number, col: number) => FormulaTemplateResolution
   readonly initializeHydratedPreparedCellFormulasAt?: (
-    refs: readonly HydratedPreparedRuntimeFormulaRef[],
+    refs: InitialFormulaEntryRefSource<HydratedPreparedRuntimeFormulaRef>,
     potentialNewCells?: number,
   ) => void
 }
@@ -102,6 +104,17 @@ export interface HydratedPreparedRuntimeFormulaRef extends PreparedRuntimeFormul
 }
 
 const RUNTIME_IMAGE_COORD_STRIDE = 1_048_576
+
+interface MutableHydratedPreparedRuntimeFormulaRef {
+  sheetId: number
+  row: number
+  col: number
+  source: string
+  compiled: CompiledFormula
+  templateId?: number
+  cellIndex?: number
+  value: CellValue
+}
 
 function toFormulaInstanceKey(row: number, col: number): number {
   return row * RUNTIME_IMAGE_COORD_STRIDE + col
@@ -190,6 +203,11 @@ interface WrittenColumnTracker {
 interface FreshRuntimeLogicalSheetInternals {
   readonly deferVisibleCellPageRebuild?: () => void
   readonly setFreshVisibleCellIdentityWithAxisIdsDeferred?: (cellIndex: number, rowId: string, colId: string) => void
+  readonly setFreshVisibleDenseRowMajorIdentitiesWithAxisIdsDeferred?: (
+    firstCellIndex: number,
+    rowIds: readonly string[],
+    colIds: readonly string[],
+  ) => void
   readonly setFreshVisibleCellWithAxisIdsDeferred?: (row: number, col: number, cellIndex: number, rowId: string, colId: string) => void
 }
 
@@ -240,6 +258,102 @@ class RestoredFormulaSourceRefTable implements EngineFormulaSourceRefTable {
     this.reusable.col = this.cols[index]!
     this.reusable.source = this.sources[index]!
     return this.reusable
+  }
+}
+
+class RestoredHydratedPreparedFormulaRefTable implements Iterable<HydratedPreparedRuntimeFormulaRef> {
+  readonly sheetIds: Uint32Array
+  readonly cellIndices: Uint32Array
+  readonly rows: Uint32Array
+  readonly cols: Uint32Array
+  readonly templateIds: Int32Array
+  readonly sources: string[]
+  readonly compiled: CompiledFormula[]
+  readonly values: CellValue[]
+  freshFormulaInstances: readonly FormulaInstanceSnapshot[] | undefined
+  private reusable: MutableHydratedPreparedRuntimeFormulaRef | undefined
+  length = 0
+
+  constructor(capacity: number, freshFormulaInstances?: readonly FormulaInstanceSnapshot[]) {
+    this.sheetIds = new Uint32Array(capacity)
+    this.cellIndices = new Uint32Array(capacity)
+    this.rows = new Uint32Array(capacity)
+    this.cols = new Uint32Array(capacity)
+    this.templateIds = new Int32Array(capacity)
+    this.templateIds.fill(-1)
+    this.sources = []
+    this.compiled = []
+    this.values = []
+    this.freshFormulaInstances = freshFormulaInstances
+  }
+
+  push(
+    sheetId: number,
+    cellIndex: number,
+    row: number,
+    col: number,
+    source: string,
+    compiled: CompiledFormula,
+    templateId: number | undefined,
+    value: CellValue,
+    runtimeImageCellIndex: number,
+  ): void {
+    const index = this.length
+    if (this.freshFormulaInstances !== undefined && runtimeImageCellIndex !== cellIndex) {
+      this.freshFormulaInstances = undefined
+    }
+    this.sheetIds[index] = sheetId
+    this.cellIndices[index] = cellIndex
+    this.rows[index] = row
+    this.cols[index] = col
+    this.templateIds[index] = templateId ?? -1
+    this.sources[index] = source
+    this.compiled[index] = compiled
+    this.values[index] = value
+    this.length = index + 1
+  }
+
+  at(index: number): HydratedPreparedRuntimeFormulaRef {
+    const reusable =
+      this.reusable ??
+      (this.reusable = {
+        sheetId: 0,
+        row: 0,
+        col: 0,
+        source: '',
+        compiled: this.compiled[index]!,
+        value: this.values[index]!,
+      })
+    reusable.sheetId = this.sheetIds[index]!
+    reusable.cellIndex = this.cellIndices[index]!
+    reusable.row = this.rows[index]!
+    reusable.col = this.cols[index]!
+    reusable.source = this.sources[index]!
+    reusable.compiled = this.compiled[index]!
+    const templateId = this.templateIds[index]!
+    if (templateId === -1) {
+      delete reusable.templateId
+    } else {
+      reusable.templateId = templateId
+    }
+    reusable.value = this.values[index]!
+    return reusable
+  }
+
+  *[Symbol.iterator](): IterableIterator<HydratedPreparedRuntimeFormulaRef> {
+    for (let index = 0; index < this.length; index += 1) {
+      const templateId = this.templateIds[index]!
+      yield {
+        sheetId: this.sheetIds[index]!,
+        cellIndex: this.cellIndices[index]!,
+        row: this.rows[index]!,
+        col: this.cols[index]!,
+        source: this.sources[index]!,
+        compiled: this.compiled[index]!,
+        ...(templateId === -1 ? {} : { templateId }),
+        value: this.values[index]!,
+      }
+    }
   }
 }
 
@@ -334,6 +448,26 @@ function createFreshRuntimeCellAttacher(workbook: WorkbookStore, sheet: SheetRec
   }
 }
 
+function attachDenseFreshRuntimeCells(
+  sheet: SheetRecord,
+  firstCellIndex: number,
+  rowStart: number,
+  colStart: number,
+  rowIds: readonly string[],
+  colIds: readonly string[],
+): boolean {
+  const logicalCandidate: unknown = sheet.logical
+  const logical = isFreshRuntimeLogicalSheetInternals(logicalCandidate) ? logicalCandidate : undefined
+  const attachDenseFreshVisibleCellIdentities = logical?.setFreshVisibleDenseRowMajorIdentitiesWithAxisIdsDeferred?.bind(logical)
+  if (!attachDenseFreshVisibleCellIdentities) {
+    return false
+  }
+  logical?.deferVisibleCellPageRebuild?.()
+  attachDenseFreshVisibleCellIdentities(firstCellIndex, rowIds, colIds)
+  sheet.grid.setDenseRowMajor(rowStart, colStart, rowIds.length, colIds.length, firstCellIndex)
+  return true
+}
+
 function getDenseRuntimeSheetRestorePlan(
   sheet: WorkbookSnapshot['sheets'][number],
   sheetCells: RuntimeImageSheetCellsSnapshot | undefined,
@@ -354,6 +488,9 @@ function getDenseRuntimeSheetRestorePlan(
     width * height !== sheet.cells.length
   ) {
     return undefined
+  }
+  if (sheetCells.coordinateOrder === 'dense-row-major') {
+    return { width, height }
   }
   for (let index = 0; index < sheetCells.coords.length; index += 1) {
     const coords = sheetCells.coords[index]!
@@ -568,7 +705,10 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
 
   const formulaRefs: EngineCellMutationRef[] = []
   const preparedFormulaRefs: PreparedRuntimeFormulaRef[] = []
-  const hydratedPreparedFormulaRefs: HydratedPreparedRuntimeFormulaRef[] = []
+  const hydratedPreparedFormulaRefs = new RestoredHydratedPreparedFormulaRefTable(
+    args.runtimeImage.formulaInstances.length,
+    args.runtimeImage.formulaInstances,
+  )
   const previousOnSetValue = args.workbook.cellStore.onSetValue
   args.workbook.cellStore.onSetValue = null
   args.workbook.withBatchedColumnVersionUpdates(() => {
@@ -586,7 +726,11 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
         const colIds: string[] = []
         const ensureRowId = args.workbook.createLogicalAxisIdEnsurer(sheetId, 'row')
         const ensureColId = args.workbook.createLogicalAxisIdEnsurer(sheetId, 'column')
-        const attachFreshCell = createFreshRuntimeCellAttacher(args.workbook, sheetRecord)
+        let attachFreshCell: FreshRuntimeCellAttacher | undefined
+        const getFreshCellAttacher = (): FreshRuntimeCellAttacher => {
+          attachFreshCell ??= createFreshRuntimeCellAttacher(args.workbook, sheetRecord)
+          return attachFreshCell
+        }
         const formulaSpan = formulaSpansBySheet.get(sheet.name)
         let formulaInstanceIndex = formulaSpan?.start ?? 0
         const formulaInstanceEnd = formulaSpan?.end ?? formulaInstanceIndex
@@ -625,16 +769,17 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
                 : undefined
             if (args.initializeHydratedPreparedCellFormulasAt && cachedValue !== undefined) {
               if (template && !template.compiled.volatile && !template.compiled.producesSpill) {
-                hydratedPreparedFormulaRefs.push({
+                hydratedPreparedFormulaRefs.push(
                   sheetId,
+                  cellIndex,
                   row,
                   col,
-                  cellIndex,
-                  source: restoredFormula.source,
-                  compiled: template.compiled,
-                  templateId: template.templateId,
-                  value: cachedValue,
-                })
+                  restoredFormula.source,
+                  template.compiled,
+                  template.templateId,
+                  cachedValue,
+                  restoredFormula.cellIndex,
+                )
                 return
               }
             }
@@ -686,18 +831,34 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
           for (let col = 0; col < denseRestorePlan.width; col += 1) {
             colIds[col] = ensureColId(col)
           }
-          let index = 0
           for (let row = 0; row < denseRestorePlan.height; row += 1) {
-            args.checkEvaluationBudget?.()
-            const rowId = (rowIds[row] ??= ensureRowId(row))
-            for (let col = 0; col < denseRestorePlan.width; col += 1) {
-              const cellIndex = firstCellIndex + index
-              attachFreshCell(row, col, cellIndex, rowId, colIds[col]!)
-              restoreRuntimeCell(sheet.cells[index]!, row, col, cellIndex)
-              index += 1
+            rowIds[row] = ensureRowId(row)
+          }
+          const attachedDenseCells = attachDenseFreshRuntimeCells(sheetRecord, firstCellIndex, 0, 0, rowIds, colIds)
+          let index = 0
+          if (attachedDenseCells) {
+            for (let row = 0; row < denseRestorePlan.height; row += 1) {
+              args.checkEvaluationBudget?.()
+              for (let col = 0; col < denseRestorePlan.width; col += 1) {
+                restoreRuntimeCell(sheet.cells[index]!, row, col, firstCellIndex + index)
+                index += 1
+              }
+            }
+          } else {
+            const attachCell = getFreshCellAttacher()
+            for (let row = 0; row < denseRestorePlan.height; row += 1) {
+              args.checkEvaluationBudget?.()
+              const rowId = rowIds[row]!
+              for (let col = 0; col < denseRestorePlan.width; col += 1) {
+                const cellIndex = firstCellIndex + index
+                attachCell(row, col, cellIndex, rowId, colIds[col]!)
+                restoreRuntimeCell(sheet.cells[index]!, row, col, cellIndex)
+                index += 1
+              }
             }
           }
         } else {
+          const attachCell = getFreshCellAttacher()
           for (let index = 0; index < sheet.cells.length; index += 1) {
             args.checkEvaluationBudget?.()
             const cell = sheet.cells[index]!
@@ -705,7 +866,7 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
             const cellIndex = args.workbook.cellStore.allocateReserved(sheetId, coords.row, coords.col)
             const rowId = (rowIds[coords.row] ??= ensureRowId(coords.row))
             const colId = (colIds[coords.col] ??= ensureColId(coords.col))
-            attachFreshCell(coords.row, coords.col, cellIndex, rowId, colId)
+            attachCell(coords.row, coords.col, cellIndex, rowId, colId)
             restoreRuntimeCell(cell, coords.row, coords.col, cellIndex)
           }
         }

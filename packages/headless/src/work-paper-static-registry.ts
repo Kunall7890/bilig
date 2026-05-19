@@ -47,6 +47,10 @@ export function ensureWorkPaperCustomAdapterInstalled(): void {
   customAdapterInstalled = true
 }
 
+export function hasRegisteredWorkPaperFunctionPlugins(): boolean {
+  return workPaperFunctionPluginRegistry.size > 0
+}
+
 export function getRegisteredWorkPaperLanguage(languageCode: string): WorkPaperLanguagePackage {
   const language = workPaperLanguageRegistry.get(languageCode)
   if (!language) {

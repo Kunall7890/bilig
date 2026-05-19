@@ -16,6 +16,7 @@ import type { DirectFormulaMetricCounts } from './operation-post-recalc-direct-f
 import { finalizeOperationRecalcAndEvents } from './operation-recalc-finalizer.js'
 import type { CreateEngineOperationServiceArgs, MutationSource } from './operation-service-types.js'
 import { createOperationFreshDirectAggregateFormulaBatchFastPath } from './operation-fresh-direct-aggregate-formula-batch-fast-path.js'
+import { createOperationExistingRectangularLiteralBatchFastPath } from './operation-existing-rectangular-literal-batch-fast-path.js'
 import { applyClearCellMutation } from './operation-clear-cell-mutation.js'
 import { applySetCellValueMutation } from './operation-set-cell-value-mutation.js'
 import { applySetCellFormulaMutation } from './operation-set-cell-formula-mutation.js'
@@ -43,6 +44,12 @@ interface CreateOperationCellMutationApplierArgs {
     source: OperationCellMutationSource,
     potentialNewCells?: number,
   ) => boolean
+  readonly tryApplyFreshDenseRectangularNumericLiteralBatch: (
+    refs: readonly EngineCellMutationRef[],
+    batch: EngineOpBatch | null,
+    potentialNewCells?: number,
+  ) => boolean
+  readonly writeNumericLiteralToCellStore: (cellIndex: number, value: number) => void
   readonly readCellValueForLookup: OperationLookupAccess['readCellValueForLookup']
   readonly readApproximateNumericValueForLookup: OperationLookupAccess['readApproximateNumericValueForLookup']
   readonly readExactNumericValueForLookup: OperationLookupAccess['readExactNumericValueForLookup']
@@ -107,6 +114,8 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
     canFastPathLiteralOverwrite,
     tryApplySingleExistingDirectLiteralMutation,
     tryApplyCoalescedDirectScalarLiteralBatch,
+    tryApplyFreshDenseRectangularNumericLiteralBatch,
+    writeNumericLiteralToCellStore,
     readCellValueForLookup,
     readApproximateNumericValueForLookup,
     readExactNumericValueForLookup,
@@ -157,7 +166,12 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
           ...(args.getRegionFormulaSubscriptionCount === undefined
             ? {}
             : { getRegionFormulaSubscriptionCount: args.getRegionFormulaSubscriptionCount }),
+          hasRegionFormulaSubscriptionsIntersectingRect: args.hasRegionFormulaSubscriptionsIntersectingRect,
           bindPreparedFormula: args.bindPreparedFormula,
+          bindFreshDirectAggregateFormulaRun: args.bindFreshDirectAggregateFormulaRun,
+          registerFreshFormulaFamilyRun: args.registerFreshFormulaFamilyRun,
+          upsertFormulaFamilyRun: args.upsertFormulaFamilyRun,
+          upsertFreshFormulaInstances: args.upsertFreshFormulaInstances,
           compileTemplateFormula: args.compileTemplateFormula,
           materializeDeferredStructuralFormulaSources: args.materializeDeferredStructuralFormulaSources,
           beginMutationCollection: args.beginMutationCollection,
@@ -172,6 +186,17 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
           captureChangedCells: args.captureChangedCells,
           applyDirectFormulaCurrentResult,
         })
+  const existingRectangularLiteralBatchFastPath = createOperationExistingRectangularLiteralBatchFastPath({
+    state: args.state,
+    emitBatch,
+    canFastPathLiteralOverwrite,
+    writeNumericLiteralToCellStore,
+    materializeDeferredStructuralFormulaSources: args.materializeDeferredStructuralFormulaSources,
+    getBatchMutationDepth: args.getBatchMutationDepth,
+    setBatchMutationDepth: args.setBatchMutationDepth,
+    deferKernelSync: args.deferKernelSync,
+    captureChangedCells: args.captureChangedCells,
+  })
 
   return function applyCellMutationsAtNow(
     refs: readonly EngineCellMutationRef[],
@@ -184,6 +209,15 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
       return
     }
     if (freshDirectAggregateFormulaBatchFastPath?.tryApplyFreshDirectAggregateFormulaMatrixBatch(refs, batch, source, potentialNewCells)) {
+      return
+    }
+    if (
+      source === 'local' &&
+      existingRectangularLiteralBatchFastPath.tryApplyExistingDenseRectangularNumericLiteralBatch(refs, batch, potentialNewCells)
+    ) {
+      return
+    }
+    if (source === 'local' && tryApplyFreshDenseRectangularNumericLiteralBatch(refs, batch, potentialNewCells)) {
       return
     }
     if (tryApplyCoalescedDirectScalarLiteralBatch(refs, batch, source, potentialNewCells)) {
@@ -428,6 +462,8 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
       invalidatedRanges: [],
       invalidatedRows: [],
       invalidatedColumns: [],
+      invalidatedRowCount: 0,
+      invalidatedColumnCount: 0,
       hadCycleMembersBeforeNow,
       markCycleMemberInputsChanged,
       canSkipDirtyTraversalForChangedInputs,

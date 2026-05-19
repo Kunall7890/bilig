@@ -8,8 +8,9 @@ export function deferKernelSyncNow(args: {
   readonly scratch: EngineRuntimeScratchService
   readonly cellStoreSize: number
   readonly cellIndices: readonly number[] | U32
+  readonly wasmReady: boolean
 }): void {
-  if (args.cellIndices.length === 0) {
+  if (!args.wasmReady || args.cellIndices.length === 0) {
     return
   }
   let pendingKernelSync = args.scratch.getPendingKernelSyncNow()

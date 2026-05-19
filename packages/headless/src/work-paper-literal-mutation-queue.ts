@@ -1,4 +1,5 @@
 import type { EngineCellMutationRef } from '@bilig/core'
+import type { LiteralInput } from '@bilig/protocol'
 import { isBlankRawCellContent, isDeferredBatchLiteralContent, isFormulaContent, stripLeadingEquals } from './work-paper-runtime-helpers.js'
 import type { RawCellContent } from './work-paper-types.js'
 
@@ -27,6 +28,22 @@ export function buildWorkPaperRawCellMutation(args: {
   }
 }
 
+export function buildWorkPaperLiteralCellValueMutation(args: {
+  readonly row: number
+  readonly col: number
+  readonly content: LiteralInput
+}): EngineCellMutationRef['mutation'] {
+  if (isBlankRawCellContent(args.content)) {
+    return { kind: 'clearCell', row: args.row, col: args.col }
+  }
+  return {
+    kind: 'setCellValue',
+    row: args.row,
+    col: args.col,
+    value: args.content,
+  }
+}
+
 export function tryEnqueueWorkPaperLiteralMutation(args: {
   readonly enabled: boolean
   readonly queue: EngineCellMutationRef[]
@@ -42,11 +59,10 @@ export function tryEnqueueWorkPaperLiteralMutation(args: {
   }
   args.queue.push({
     sheetId: args.sheetId,
-    mutation: buildWorkPaperRawCellMutation({
+    mutation: buildWorkPaperLiteralCellValueMutation({
       row: args.row,
       col: args.col,
       content: args.content,
-      rewriteFormulaForStorage: (formula) => formula,
     }),
     ...(args.cellIndex !== undefined ? { cellIndex: args.cellIndex } : {}),
   })

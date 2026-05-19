@@ -15,13 +15,14 @@ import {
   exactLookupBatchWriteHandled,
   prepareExactLookupBatchSkipPlan,
 } from './operation-exact-lookup-batch-skip-plan.js'
-import { reverseUint32Array, tagTrustedPhysicalTrackedChanges } from './operation-change-helpers.js'
+import { reverseUint32ArrayInPlace, tagTrustedPhysicalTrackedChanges } from './operation-change-helpers.js'
 import { emitCellMutationFastPathBatchResult } from './operation-fast-path-batch-result.js'
 import { createOperationDirectAggregateRectangularBatchFastPath } from './operation-direct-aggregate-rectangular-batch-fast-path.js'
 import { createOperationFreshRectangularLiteralBatchFastPath } from './operation-fresh-rectangular-literal-batch-fast-path.js'
 import { DirectScalarPhysicalSliceTracker } from './operation-direct-scalar-physical-slice-tracker.js'
 import { createOperationDirectScalarRowPairBatchFastPaths } from './operation-direct-scalar-row-pair-batch-fast-paths.js'
 import { createOperationDirectScalarSingleColumnBatchFastPaths } from './operation-direct-scalar-single-column-batch-fast-paths.js'
+import { writeOperationNumericLiteralToExistingCellWithoutColumnNotify } from './operation-literal-write-helpers.js'
 
 const EMPTY_CHANGED_CELLS = new Uint32Array(0)
 
@@ -54,6 +55,25 @@ export interface OperationDirectScalarBatchFastPathArgs {
   readonly directScalarCellNumericValue: (cellIndex: number) => number | undefined
   readonly writeNumericLiteralToCellStore: (cellIndex: number, value: number) => void
   readonly applyTerminalDirectFormulaNumericResult: (cellIndex: number, value: number) => void
+  readonly applyTerminalDirectFormulaNumericResults: (
+    cellIndices: readonly number[] | Uint32Array,
+    values: ArrayLike<number>,
+    count?: number,
+  ) => void
+  readonly applyTerminalDirectFormulaAffineNumericResults: (
+    cellIndices: readonly number[] | Uint32Array,
+    values: ArrayLike<number>,
+    scale: number,
+    offset: number,
+    count?: number,
+  ) => void
+  readonly applyTerminalDirectFormulaAffineNumericResultsFromRefs: (
+    cellIndices: readonly number[] | Uint32Array,
+    refs: readonly EngineCellMutationRef[],
+    scale: number,
+    offset: number,
+    count?: number,
+  ) => void
   readonly applyDirectFormulaNumericResult: (cellIndex: number, value: number) => void
   readonly applyDirectFormulaCurrentResult: (cellIndex: number, value: DirectScalarCurrentOperand) => boolean
   readonly tryEvaluateDirectScalarWithPendingNumbers: (
@@ -157,8 +177,7 @@ export function createOperationDirectScalarBatchFastPaths(args: OperationDirectS
       canFastPathLiteralOverwrite,
       canUseDirectFormulaPostRecalc,
       canSkipFormulaColumnVersion,
-      writeNumericLiteralToCellStore,
-      applyTerminalDirectFormulaNumericResult,
+      applyTerminalDirectFormulaNumericResults: args.applyTerminalDirectFormulaNumericResults,
       getEntityDependents: args.getEntityDependents,
       materializeDeferredStructuralFormulaSources: args.materializeDeferredStructuralFormulaSources,
       beginMutationCollection: args.beginMutationCollection,
@@ -252,7 +271,6 @@ export function createOperationDirectScalarBatchFastPaths(args: OperationDirectS
       : ({ kind: 'all' } satisfies ExactLookupBatchSkipPlan)
 
     const inputCellIndices = new Uint32Array(refs.length)
-    const inputNumericValues = new Float64Array(refs.length)
     const cellStore = args.state.workbook.cellStore
     let ascending = true
     let descending = true
@@ -307,10 +325,63 @@ export function createOperationDirectScalarBatchFastPaths(args: OperationDirectS
         return false
       }
       inputCellIndices[refIndex] = existingIndex
-      inputNumericValues[refIndex] = mutation.value
     }
     if (!ascending && !descending) {
       return false
+    }
+
+    const hasGeneralEventListeners = args.state.events.hasListeners()
+    const hasTrackedEventListeners = args.state.events.hasTrackedListeners()
+    const hasWatchedCellListeners = args.state.events.hasCellListeners()
+    const requiresChangedSet = hasGeneralEventListeners || hasTrackedEventListeners || hasWatchedCellListeners
+    if (!hasGeneralEventListeners && !hasWatchedCellListeners && (potentialNewCells ?? 0) === 0) {
+      args.materializeDeferredStructuralFormulaSources()
+      args.setBatchMutationDepth(args.getBatchMutationDepth() + 1)
+      try {
+        for (let index = 0; index < refs.length; index += 1) {
+          const mutation = refs[index]!.mutation
+          if (mutation.kind !== 'setCellValue' || typeof mutation.value !== 'number') {
+            throw new Error('Invalid numeric column batch mutation')
+          }
+          writeOperationNumericLiteralToExistingCellWithoutColumnNotify({
+            cellStore: args.state.workbook.cellStore,
+            cellIndex: inputCellIndices[index]!,
+            value: mutation.value,
+          })
+        }
+        args.state.workbook.notifyColumnsWritten(firstRef.sheetId, Uint32Array.of(firstMutation.col))
+      } finally {
+        args.setBatchMutationDepth(args.getBatchMutationDepth() - 1)
+      }
+      if (hasExactLookupDependents) {
+        args.invalidateExactLookupColumn({ sheetName: sheet.name, col: firstMutation.col })
+      }
+      if (hasSortedLookupDependents) {
+        args.invalidateSortedLookupColumn({ sheetName: sheet.name, col: firstMutation.col })
+      }
+      if (batch) {
+        markBatchApplied(args.state.replicaState, batch)
+      }
+      const changed = hasTrackedEventListeners
+        ? ascending
+          ? inputCellIndices
+          : reverseUint32ArrayInPlace(inputCellIndices)
+        : EMPTY_CHANGED_CELLS
+      args.deferKernelSync(hasTrackedEventListeners ? changed : inputCellIndices)
+      addEngineCounter(args.state.counters, 'kernelSyncOnlyRecalcSkips')
+      emitCellMutationFastPathBatchResult({
+        state: args.state,
+        changed,
+        changedInputCount: refs.length,
+        explicitChangedCount: hasTrackedEventListeners ? refs.length : 0,
+        hasGeneralEventListeners,
+        hasTrackedEventListeners,
+        hasWatchedCellListeners,
+        captureChangedCells: args.captureChangedCells,
+        batch,
+        emitBatch,
+      })
+      return true
     }
 
     args.materializeDeferredStructuralFormulaSources()
@@ -320,17 +391,21 @@ export function createOperationDirectScalarBatchFastPaths(args: OperationDirectS
     args.ensureRecalcScratchCapacity(args.state.workbook.cellStore.size + refs.length + 1)
     args.resetMaterializedCellScratch(reservedNewCells)
 
-    const hasGeneralEventListeners = args.state.events.hasListeners()
-    const hasTrackedEventListeners = args.state.events.hasTrackedListeners()
-    const hasWatchedCellListeners = args.state.events.hasCellListeners()
-    const requiresChangedSet = hasGeneralEventListeners || hasTrackedEventListeners || hasWatchedCellListeners
     let changedInputCount = 0
     let explicitChangedCount = 0
     args.setBatchMutationDepth(args.getBatchMutationDepth() + 1)
     try {
       for (let index = 0; index < refs.length; index += 1) {
         const cellIndex = inputCellIndices[index]!
-        writeNumericLiteralToCellStore(cellIndex, inputNumericValues[index]!)
+        const mutation = refs[index]!.mutation
+        if (mutation.kind !== 'setCellValue' || typeof mutation.value !== 'number') {
+          throw new Error('Invalid numeric column batch mutation')
+        }
+        writeOperationNumericLiteralToExistingCellWithoutColumnNotify({
+          cellStore: args.state.workbook.cellStore,
+          cellIndex,
+          value: mutation.value,
+        })
         changedInputCount = args.markInputChanged(cellIndex, changedInputCount)
         if (requiresChangedSet) {
           explicitChangedCount = args.markExplicitChanged(cellIndex, explicitChangedCount)
@@ -351,7 +426,7 @@ export function createOperationDirectScalarBatchFastPaths(args: OperationDirectS
     }
     const changedInputArray = args.getChangedInputBuffer().subarray(0, changedInputCount)
     args.deferKernelSync(changedInputArray)
-    const changed = requiresChangedSet ? (ascending ? inputCellIndices : reverseUint32Array(inputCellIndices)) : EMPTY_CHANGED_CELLS
+    const changed = requiresChangedSet ? (ascending ? inputCellIndices : reverseUint32ArrayInPlace(inputCellIndices)) : EMPTY_CHANGED_CELLS
     addEngineCounter(args.state.counters, 'kernelSyncOnlyRecalcSkips')
     emitCellMutationFastPathBatchResult({
       state: args.state,

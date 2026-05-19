@@ -1,5 +1,5 @@
 import { formatAddress } from '@bilig/formula'
-import type { LiteralInput } from '@bilig/protocol'
+import type { CellValue, LiteralInput } from '@bilig/protocol'
 import type { EngineOp } from '@bilig/workbook-domain'
 import type { WorkbookStore } from './workbook-store.js'
 
@@ -57,6 +57,7 @@ export interface EngineExistingNumericCellMutationResult {
   readonly secondChangedRow?: number
   readonly secondChangedCol?: number
   readonly secondChangedNumericValue?: number
+  readonly secondChangedValue?: CellValue
   readonly explicitChangedCount: number
 }
 

@@ -1,6 +1,6 @@
 import { performance } from 'node:perf_hooks'
-import { WorkPaper } from '@bilig/headless'
 import { ValueTag } from '@bilig/protocol'
+import { WorkPaper } from '../../headless/src/work-paper.js'
 import type { RawCellContent as HyperFormulaRawCellContent, Sheet as HyperFormulaSheet } from 'hyperformula'
 import { HYPERFORMULA_LICENSE_KEY } from './benchmark-workpaper-vs-hyperformula.js'
 import type { EngineCounters } from '../../core/src/perf/engine-counters.js'

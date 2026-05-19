@@ -5,7 +5,12 @@ import {
   setWorkPaperAxisOrder,
   swapWorkPaperAxisIndexes,
 } from './work-paper-axis-helpers.js'
-import { setWorkPaperCellContents } from './work-paper-cell-content-setter.js'
+import {
+  setWorkPaperCellContents,
+  setWorkPaperCellValues,
+  setWorkPaperSheetCellValues,
+  setWorkPaperSheetRangeValues,
+} from './work-paper-cell-content-setter.js'
 import type { WorkPaperSheetFormulas, WorkPaperSheetValues } from './work-paper-sheet-read.js'
 import type { WorkPaperRuntimeAdapters } from './work-paper-runtime-adapters.js'
 import type {
@@ -17,13 +22,17 @@ import type {
   WorkPaperAxisSwapMapping,
   WorkPaperCellAddress,
   WorkPaperCellRange,
+  WorkPaperCellValueUpdate,
   WorkPaperCellType,
   WorkPaperCellValueDetailedType,
   WorkPaperCellValueType,
   WorkPaperChange,
   WorkPaperNamedExpression,
+  WorkPaperRangeValueBlock,
   WorkPaperSheet,
+  WorkPaperSheetCellValueUpdate,
   WorkPaperSheetDimensions,
+  WorkPaperSheetRangeValues,
 } from './work-paper-types.js'
 
 export abstract class WorkPaperCapabilitySurface {
@@ -191,6 +200,10 @@ export abstract class WorkPaperCapabilitySurface {
     return this.runtimeAdapters.readOperations.getRangeValues(range)
   }
 
+  getRangeValueBlock(range: WorkPaperCellRange): WorkPaperRangeValueBlock {
+    return this.runtimeAdapters.readOperations.getRangeValueBlock(range)
+  }
+
   getRangeFormulas(range: WorkPaperCellRange): WorkPaperSheetFormulas {
     return this.runtimeAdapters.readOperations.getRangeFormulas(range)
   }
@@ -323,6 +336,18 @@ export abstract class WorkPaperCapabilitySurface {
 
   setCellContents(address: WorkPaperCellAddress, content: RawCellContent | WorkPaperSheet): WorkPaperChange[] {
     return setWorkPaperCellContents(this.runtimeAdapters.setCellContentsRuntime, address, content)
+  }
+
+  setCellValues(updates: readonly WorkPaperCellValueUpdate[]): WorkPaperChange[] {
+    return setWorkPaperCellValues(this.runtimeAdapters.setCellContentsRuntime, updates)
+  }
+
+  setSheetCellValues(sheetId: number, updates: readonly WorkPaperSheetCellValueUpdate[]): WorkPaperChange[] {
+    return setWorkPaperSheetCellValues(this.runtimeAdapters.setCellContentsRuntime, sheetId, updates)
+  }
+
+  setSheetRangeValues(sheetId: number, startRow: number, startCol: number, values: WorkPaperSheetRangeValues): WorkPaperChange[] {
+    return setWorkPaperSheetRangeValues(this.runtimeAdapters.setCellContentsRuntime, sheetId, startRow, startCol, values)
   }
 
   swapRowIndexes(sheetId: number, rowA: number, rowB: number): WorkPaperChange[]

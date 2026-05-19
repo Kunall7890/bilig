@@ -1,5 +1,5 @@
 import { formatAddress, parseCellAddress } from '@bilig/formula'
-import type { CellRangeRef } from '@bilig/protocol'
+import type { CellRangeRef, CellValue } from '@bilig/protocol'
 import type { EngineExistingNumericCellMutationResult } from '../../cell-mutations-at.js'
 import type { U32 } from '../runtime-state.js'
 
@@ -12,6 +12,19 @@ export function reverseUint32Array(values: Uint32Array): Uint32Array {
     reversed[index] = values[values.length - 1 - index]!
   }
   return reversed
+}
+
+export function reverseUint32ArrayInPlace(values: Uint32Array): Uint32Array {
+  let left = 0
+  let right = values.length - 1
+  while (left < right) {
+    const nextLeft = values[right]!
+    values[right] = values[left]!
+    values[left] = nextLeft
+    left += 1
+    right -= 1
+  }
+  return values
 }
 
 export function mutationErrorMessage(message: string, cause: unknown): string {
@@ -185,18 +198,37 @@ export function makeCompactExistingNumericMutationResult(
   secondChangedCellIndex: number | undefined,
   explicitChangedCount: number,
   secondChangedNumericValue?: number,
-  secondChangedPosition?: { readonly row: number; readonly col: number },
+  secondChangedRow?: number,
+  secondChangedCol?: number,
+  secondChangedValue?: CellValue,
 ): EngineExistingNumericCellMutationResult {
-  return secondChangedCellIndex === undefined
-    ? { firstChangedCellIndex, changedCellCount: 1, explicitChangedCount }
-    : {
-        firstChangedCellIndex,
-        secondChangedCellIndex,
-        changedCellCount: 2,
-        explicitChangedCount,
-        ...(secondChangedNumericValue === undefined ? {} : { secondChangedNumericValue }),
-        ...(secondChangedPosition === undefined
-          ? {}
-          : { secondChangedRow: secondChangedPosition.row, secondChangedCol: secondChangedPosition.col }),
-      }
+  if (secondChangedCellIndex === undefined) {
+    return { firstChangedCellIndex, changedCellCount: 1, explicitChangedCount }
+  }
+  const result: {
+    changedCellCount: number
+    explicitChangedCount: number
+    firstChangedCellIndex: number
+    secondChangedCellIndex: number
+    secondChangedCol?: number
+    secondChangedNumericValue?: number
+    secondChangedRow?: number
+    secondChangedValue?: CellValue
+  } = {
+    firstChangedCellIndex,
+    secondChangedCellIndex,
+    changedCellCount: 2,
+    explicitChangedCount,
+  }
+  if (secondChangedNumericValue !== undefined) {
+    result.secondChangedNumericValue = secondChangedNumericValue
+  }
+  if (secondChangedValue !== undefined) {
+    result.secondChangedValue = secondChangedValue
+  }
+  if (secondChangedRow !== undefined && secondChangedCol !== undefined) {
+    result.secondChangedRow = secondChangedRow
+    result.secondChangedCol = secondChangedCol
+  }
+  return result
 }

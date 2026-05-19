@@ -48,6 +48,7 @@ export interface FormulaBindingDependencyMaterializer {
   readonly materializeDirectAggregateDependencies: (
     compiled: ParsedCompiledFormula,
     directAggregate: RuntimeDirectAggregateDescriptor | undefined,
+    options?: { readonly assumeFreshLiteralInputs?: boolean },
   ) => MaterializedDependencies | undefined
   readonly materializeDirectCriteriaDependencies: (
     compiled: ParsedCompiledFormula,
@@ -503,6 +504,7 @@ export function createFormulaBindingDependencyMaterializer(
   const materializeDirectAggregateDependencies = (
     compiled: ParsedCompiledFormula,
     directAggregate: RuntimeDirectAggregateDescriptor | undefined,
+    options: { readonly assumeFreshLiteralInputs?: boolean } = {},
   ): MaterializedDependencies | undefined => {
     if (
       directAggregate === undefined ||
@@ -519,9 +521,11 @@ export function createFormulaBindingDependencyMaterializer(
     if (!sheet) {
       return undefined
     }
-    for (let col = directAggregate.col; col <= directAggregate.colEnd; col += 1) {
-      if (materializerArgs.hasFormulaColumnMembers(sheet.id, col)) {
-        return undefined
+    if (options.assumeFreshLiteralInputs !== true) {
+      for (let col = directAggregate.col; col <= directAggregate.colEnd; col += 1) {
+        if (materializerArgs.hasFormulaColumnMembers(sheet.id, col)) {
+          return undefined
+        }
       }
     }
     return {

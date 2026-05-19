@@ -23,6 +23,23 @@ import type { WasmKernelFacade } from '../wasm-facade.js'
 import type { WorkbookStore } from '../workbook-store.js'
 import type { EngineCounters } from '../perf/engine-counters.js'
 
+export const INLINE_SCALAR_FAST_PLAN_ARITHMETIC = 1
+export const INLINE_SCALAR_FAST_PLAN_LEN = 2
+export const INLINE_SCALAR_FAST_PLAN_CONCAT = 3
+export const INLINE_SCALAR_FAST_PLAN_MIN_MAX = 4
+export const INLINE_SCALAR_FAST_PLAN_ROUND_SQRT = 5
+export const INLINE_SCALAR_FAST_PLAN_PMT = 6
+export const INLINE_SCALAR_FAST_PLAN_IF_STRING = 7
+
+export type InlineScalarFastPlanKind =
+  | typeof INLINE_SCALAR_FAST_PLAN_ARITHMETIC
+  | typeof INLINE_SCALAR_FAST_PLAN_LEN
+  | typeof INLINE_SCALAR_FAST_PLAN_CONCAT
+  | typeof INLINE_SCALAR_FAST_PLAN_MIN_MAX
+  | typeof INLINE_SCALAR_FAST_PLAN_ROUND_SQRT
+  | typeof INLINE_SCALAR_FAST_PLAN_PMT
+  | typeof INLINE_SCALAR_FAST_PLAN_IF_STRING
+
 export interface CommitOp {
   kind: 'upsertWorkbook' | 'upsertSheet' | 'renameSheet' | 'deleteSheet' | 'upsertCell' | 'deleteCell'
   name?: string
@@ -84,6 +101,15 @@ export type TransactionRecord =
       col: number
       cellIndex: number
       value: number
+      potentialNewCells?: number
+    }
+  | {
+      kind: 'single-existing-literal-cell-mutation'
+      sheetId: number
+      row: number
+      col: number
+      cellIndex: number
+      value: LiteralInput
       potentialNewCells?: number
     }
   | CellMutationTransactionRecord
@@ -344,6 +370,10 @@ export interface RuntimeFormula {
   directScalar: RuntimeDirectScalarDescriptor | undefined
   directCriteria: RuntimeDirectCriteriaDescriptor | undefined
   preserveCachedValueOnFullRecalc?: boolean
+  inlineScalarFastPlanKind?: InlineScalarFastPlanKind | undefined
+  inlineScalarArithmeticDeltaCoefficients?: Float64Array | undefined
+  inlineScalarPlanCellIndices?: Uint32Array | undefined
+  inlineScalarFastPlanStringIds?: Uint32Array | undefined
 }
 
 export type U32 = Uint32Array

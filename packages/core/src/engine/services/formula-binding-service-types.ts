@@ -4,6 +4,8 @@ import type { EdgeArena } from '../../edge-arena.js'
 import type { RegionGraph } from '../../deps/region-graph.js'
 import type {
   FormulaFamily,
+  FormulaFamilyFreshUniformRunRegistrationArgs,
+  FormulaFamilyRunUpsertArgs,
   FormulaFamilyStats,
   FormulaFamilyStore,
   FormulaFamilyStructuralSourceTransform,
@@ -57,6 +59,7 @@ export interface EngineFormulaBindingService {
     templateId?: number,
     options?: BindPreparedFormulaOptions,
   ) => boolean
+  readonly bindFreshDirectAggregateFormulaRunNow: (run: FreshDirectAggregateFormulaBindingRun) => void
   readonly rewriteFormulaSourcePreservingBindingNow: (cellIndex: number, ownerSheetName: string, source: string) => boolean
   readonly rewriteFormulaCompiledPreservingBindingNow: (
     cellIndex: number,
@@ -81,6 +84,15 @@ export interface EngineFormulaBindingService {
     transform: StructuralAxisTransform,
     preservesValue: boolean,
   ) => boolean
+  readonly retargetDirectAggregateFormulasForStructuralTransformNow: (
+    inputs: readonly {
+      readonly cellIndex: number
+      readonly ownerSheetName: string
+      readonly preservesValue: boolean
+    }[],
+    targetSheetName: string,
+    transform: StructuralAxisTransform,
+  ) => readonly number[]
   readonly bindInitialFormulaNow: (cellIndex: number, ownerSheetName: string, source: string) => void
   readonly withInitialFormulaCellsNow: <T>(cellIndices: readonly number[] | U32, callback: () => T) => T
   readonly clearFormulaNow: (cellIndex: number) => boolean
@@ -88,7 +100,11 @@ export interface EngineFormulaBindingService {
   readonly clearFormulaBookkeepingNow: () => void
   readonly deferFormulaFamilyIndexRebuildNow: () => void
   readonly deferFormulaFamilyIndexRunsNow: (runs: readonly DeferredInitialFormulaFamilyRun[]) => void
+  readonly registerFreshFormulaFamilyRunNow: (run: FormulaFamilyFreshUniformRunRegistrationArgs) => boolean
+  readonly upsertFormulaFamilyRunNow: (run: FormulaFamilyRunUpsertArgs) => void
   readonly deferFormulaInstanceTableRebuildNow: () => void
+  readonly upsertFreshFormulaInstancesNow: (records: readonly FormulaInstanceSnapshot[]) => void
+  readonly hydrateFreshFormulaInstancesNow: (records: readonly FormulaInstanceSnapshot[]) => void
   readonly exportFormulaInstancesNow: () => FormulaInstanceSnapshot[]
   readonly refreshRangeDependenciesNow: (rangeIndices: readonly number[]) => void
   readonly retargetRangeDependenciesNow: (transaction: StructuralTransaction, rangeIndices: readonly number[]) => void
@@ -123,12 +139,36 @@ export interface BindPreparedFormulaOptions {
   readonly deferFormulaInstanceRegistration?: boolean
   readonly assumeFreshFormula?: boolean
   readonly preserveCachedValueOnFullRecalc?: boolean
+  readonly assumeFreshDirectAggregateLiteralInputs?: boolean
+  readonly resolveWorkbookDateSystem?: () => string | undefined
+  readonly ownerPosition?: FormulaOwnerPosition
 }
 
 export interface FormulaOwnerPosition {
   readonly sheetName: string
   readonly row: number
   readonly col: number
+}
+
+export interface FreshDirectAggregateFormulaBindingMember {
+  readonly row: number
+  readonly col: number
+  readonly source: string
+  readonly compiled: CompiledFormula
+  readonly templateId: number
+  readonly aggregateKind: 'sum' | 'average' | 'count' | 'min' | 'max'
+  readonly aggregateRowStart: number
+  readonly aggregateRowEnd: number
+  readonly aggregateColStart: number
+  readonly aggregateColEnd: number
+  readonly resultOffset: number | undefined
+}
+
+export interface FreshDirectAggregateFormulaBindingRun {
+  readonly sheetId: number
+  readonly ownerSheetName: string
+  readonly cellIndices: readonly number[] | Uint32Array
+  readonly members: readonly FreshDirectAggregateFormulaBindingMember[]
 }
 
 export interface CreateEngineFormulaBindingServiceArgs {

@@ -52,6 +52,36 @@ describe('TemplateBank', () => {
     ])
   })
 
+  it('translates trusted simple template ids without source-specific recompilation', () => {
+    const bank = createTemplateBank()
+
+    const scalar = bank.resolve('E2*2', 1, 5)
+    const trustedScalar = bank.resolveTrustedById(scalar.templateId, 'E3*2', 2, 5)
+    const aggregate = bank.resolve('SUM(A2:A4)', 5, 3)
+    const trustedAggregate = bank.resolveTrustedById(aggregate.templateId, 'SUM(A3:A5)', 6, 3)
+
+    expect(trustedScalar?.templateId).toBe(scalar.templateId)
+    expect(trustedScalar?.compiled.astMatchesSource).toBe(false)
+    expect(trustedScalar?.compiled.symbolicRefs).toEqual(['E3'])
+    expect(trustedScalar?.compiled.parsedSymbolicRefs).toEqual([{ address: 'E3', row: 2, col: 4, rowAbsolute: false, colAbsolute: false }])
+    expect(trustedAggregate?.templateId).toBe(aggregate.templateId)
+    expect(trustedAggregate?.compiled.astMatchesSource).toBe(false)
+    expect(trustedAggregate?.compiled.symbolicRanges).toEqual(['A3:A5'])
+    expect(trustedAggregate?.compiled.parsedSymbolicRanges).toEqual([
+      {
+        kind: 'range',
+        refKind: 'cells',
+        address: 'A3:A5',
+        startAddress: 'A3',
+        endAddress: 'A5',
+        startRow: 2,
+        endRow: 4,
+        startCol: 0,
+        endCol: 0,
+      },
+    ])
+  })
+
   it('reuses row-relative rectangular aggregate template families without reparsing every row', () => {
     const counters = createEngineCounters()
     const bank = createTemplateBank({ counters })

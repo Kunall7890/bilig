@@ -406,9 +406,9 @@ seven file-backed WorkPaper tools:
   It keeps the empty npm-project command, `verified: true` output, benchmark
   caveat, known limits, and feedback ask together.
 - Run `pnpm workpaper:bench:competitive:check`. The checked-in artifact shows
-  [`80/100` comparable WorkPaper mean wins](docs/what-workpaper-benchmark-proves.md)
-  and names the worst p95 holdout:
-  `structural-insert-columns-small` at `4.075x`.
+  [`100/100` comparable WorkPaper mean wins](docs/what-workpaper-benchmark-proves.md)
+  and no p95 holdouts; the narrowest p95 win is
+  `aggregate-overlapping-sliding-window-wide` at `0.946x`.
 - The benchmark card is generated from that artifact:
   [`docs/assets/workpaper-benchmark-card.png`](docs/assets/workpaper-benchmark-card.png).
 - Read the [compatibility limits](docs/where-bilig-is-not-excel-compatible-yet.md)

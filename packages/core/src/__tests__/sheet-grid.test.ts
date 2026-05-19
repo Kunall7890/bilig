@@ -62,6 +62,21 @@ describe('SheetGrid', () => {
     ])
   })
 
+  it('sets dense row-major rectangles across block boundaries', () => {
+    const grid = new SheetGrid()
+
+    grid.setDenseRowMajor(127, 31, 2, 3, 10)
+
+    expect(grid.getPhysical(127, 31)).toBe(10)
+    expect(grid.getPhysical(127, 32)).toBe(11)
+    expect(grid.getPhysical(127, 33)).toBe(12)
+    expect(grid.getPhysical(128, 31)).toBe(13)
+    expect(grid.getPhysical(128, 32)).toBe(14)
+    expect(grid.getPhysical(128, 33)).toBe(15)
+    expect(grid.getPhysical(126, 31)).toBe(-1)
+    expect(grid.getPhysical(129, 33)).toBe(-1)
+  })
+
   it('remaps only cells inside the requested axis scope', () => {
     const grid = new SheetGrid()
     grid.set(0, 0, 1)

@@ -8,6 +8,8 @@ interface OperationFormulaReplacementDirectScalarArgs {
   readonly state: Pick<EngineRuntimeState, 'formulas' | 'workbook'>
   readonly getSingleEntityDependent: (entityId: number) => number
   readonly evaluateDirectScalarCurrentValue: (directScalar: RuntimeDirectScalarDescriptor) => DirectScalarCurrentOperand | undefined
+  readonly canSkipFormulaColumnVersion: (cellIndex: number) => boolean
+  readonly applyTerminalDirectFormulaNumericResult: (cellIndex: number, value: number) => void
   readonly tryMarkDirectScalarLinearDeltaClosure: (
     cellIndex: number,
     oldValue: CellValue,
@@ -57,7 +59,9 @@ export function tryApplyOperationFormulaReplacementAsDirectScalarDeltaRoot(
   ) {
     return false
   }
-  if (!args.applyDirectFormulaCurrentResult(request.cellIndex, result)) {
+  if (args.canSkipFormulaColumnVersion(request.cellIndex)) {
+    args.applyTerminalDirectFormulaNumericResult(request.cellIndex, result.value)
+  } else if (!args.applyDirectFormulaCurrentResult(request.cellIndex, result)) {
     return false
   }
   return true

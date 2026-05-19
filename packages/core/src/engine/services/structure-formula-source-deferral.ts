@@ -51,6 +51,42 @@ export function canDeferSimpleDeleteStructuralFormulaSource(
   })
 }
 
+export function classifySimpleDeleteStructuralFormulaSource(
+  args: CreateEngineStructureServiceArgs,
+  formula: RuntimeFormula,
+  targetSheetId: number | undefined,
+  transform: StructuralAxisTransform,
+  targetSheetStructureVersion = targetSheetId === undefined ? undefined : args.state.workbook.getSheetById(targetSheetId)?.structureVersion,
+): 'preserves-binding' | 'ref-error' | undefined {
+  if (
+    transform.kind !== 'delete' ||
+    transform.axis !== 'column' ||
+    targetSheetId === undefined ||
+    !isSimpleStructuralFormulaSourceDeferrable(args, formula)
+  ) {
+    return undefined
+  }
+  const readDependencyColumn = (dependencyCellIndex: number): number | undefined =>
+    targetSheetStructureVersion === 1
+      ? args.state.workbook.cellStore.cols[dependencyCellIndex]
+      : args.state.workbook.getCellAxisIndex(dependencyCellIndex, 'column')
+  let sawDeletedDependency = false
+  for (let index = 0; index < formula.dependencyIndices.length; index += 1) {
+    const dependencyCellIndex = formula.dependencyIndices[index]!
+    if (args.state.workbook.cellStore.sheetIds[dependencyCellIndex] !== targetSheetId) {
+      continue
+    }
+    const dependencyColumn = readDependencyColumn(dependencyCellIndex)
+    if (dependencyColumn === undefined) {
+      return sawDeletedDependency ? 'ref-error' : undefined
+    }
+    if (mapStructuralAxisIndex(dependencyColumn, transform) === undefined) {
+      sawDeletedDependency = true
+    }
+  }
+  return sawDeletedDependency ? 'ref-error' : 'preserves-binding'
+}
+
 export function canDeferSimpleDeleteRefErrorFormulaSource(
   args: CreateEngineStructureServiceArgs,
   formula: RuntimeFormula,

@@ -38,50 +38,31 @@ export type ParsedCompiledFormula = CompiledFormula & {
   directAggregateCandidate?: DirectAggregateCandidate
 }
 
-function internDirectAggregateRegions(args: {
+function internPrimaryDirectAggregateRegion(args: {
   readonly regionGraph: RegionGraph
   readonly sheetName: string
   readonly rowStart: number
   readonly rowEnd: number
-  readonly colStart: number
-  readonly colEnd: number
-}): { readonly regionId: number; readonly regionIds?: readonly number[] } {
-  const regionIds: number[] = []
-  for (let col = args.colStart; col <= args.colEnd; col += 1) {
-    regionIds.push(
-      args.regionGraph.internSingleColumnRegion({
-        sheetName: args.sheetName,
-        rowStart: args.rowStart,
-        rowEnd: args.rowEnd,
-        col,
-      }),
-    )
-  }
-  return regionIds.length === 1 ? { regionId: regionIds[0]! } : { regionId: regionIds[0]!, regionIds }
+  readonly col: number
+}): number {
+  return args.regionGraph.internSingleColumnRegion({
+    sheetName: args.sheetName,
+    rowStart: args.rowStart,
+    rowEnd: args.rowEnd,
+    col: args.col,
+  })
 }
 
 export function renameDirectAggregateDescriptorSheet(args: {
   readonly descriptor: RuntimeDirectAggregateDescriptor
   readonly oldSheetName: string
   readonly newSheetName: string
-  readonly regionGraph: RegionGraph
 }): RuntimeDirectAggregateDescriptor {
   if (args.descriptor.sheetName !== args.oldSheetName) {
     return args.descriptor
   }
-  const descriptorColEnd = args.descriptor.colEnd ?? args.descriptor.col
-  const nextRegions = internDirectAggregateRegions({
-    regionGraph: args.regionGraph,
-    sheetName: args.newSheetName,
-    rowStart: args.descriptor.rowStart,
-    rowEnd: args.descriptor.rowEnd,
-    colStart: args.descriptor.col,
-    colEnd: descriptorColEnd,
-  })
   return {
     ...args.descriptor,
-    ...nextRegions,
-    colEnd: descriptorColEnd,
     sheetName: args.newSheetName,
   }
 }
@@ -107,22 +88,23 @@ export function rewriteDirectAggregateDescriptorForStructuralTransform(args: {
   if (!nextRows || !nextCols) {
     return undefined
   }
-  const regions = internDirectAggregateRegions({
+  const regionId = internPrimaryDirectAggregateRegion({
     regionGraph: args.regionGraph,
     sheetName: args.descriptor.sheetName,
     rowStart: nextRows.start,
     rowEnd: nextRows.end,
-    colStart: nextCols.start,
-    colEnd: nextCols.end,
+    col: nextCols.start,
   })
   return {
-    ...args.descriptor,
-    ...regions,
+    regionId,
+    aggregateKind: args.descriptor.aggregateKind,
+    sheetName: args.descriptor.sheetName,
     rowStart: nextRows.start,
     rowEnd: nextRows.end,
     col: nextCols.start,
     colEnd: nextCols.end,
     length: (nextRows.end - nextRows.start + 1) * (nextCols.end - nextCols.start + 1),
+    ...(args.descriptor.resultOffset !== undefined ? { resultOffset: args.descriptor.resultOffset } : {}),
   }
 }
 
@@ -645,16 +627,15 @@ export function buildDirectAggregateDescriptor(args: {
     readonly aggregateKind: RuntimeDirectAggregateDescriptor['aggregateKind']
     readonly resultOffset?: number
   }): RuntimeDirectAggregateDescriptor => {
-    const regions = internDirectAggregateRegions({
+    const regionId = internPrimaryDirectAggregateRegion({
       regionGraph: args.regionGraph,
       sheetName: descriptor.sheetName,
       rowStart: descriptor.rowStart,
       rowEnd: descriptor.rowEnd,
-      colStart: descriptor.colStart,
-      colEnd: descriptor.colEnd,
+      col: descriptor.colStart,
     })
     return {
-      ...regions,
+      regionId,
       aggregateKind: descriptor.aggregateKind,
       sheetName: descriptor.sheetName,
       rowStart: descriptor.rowStart,

@@ -1,10 +1,11 @@
 import type { RuntimeDirectAggregateDescriptor } from '../runtime-state.js'
-import type { CreateEngineFormulaBindingServiceArgs } from './formula-binding-service-types.js'
+import type { CreateEngineFormulaBindingServiceArgs, FormulaOwnerPosition } from './formula-binding-service-types.js'
 
 export function directAggregateContainsFormulaOwnerCell(
   serviceArgs: CreateEngineFormulaBindingServiceArgs,
   directAggregate: RuntimeDirectAggregateDescriptor | undefined,
   cellIndex: number,
+  ownerPosition?: FormulaOwnerPosition,
 ): boolean {
   if (!directAggregate) {
     return false
@@ -14,12 +15,12 @@ export function directAggregateContainsFormulaOwnerCell(
   if (ownerSheetId === undefined || !aggregateSheet || aggregateSheet.id !== ownerSheetId) {
     return false
   }
-  const ownerPosition = serviceArgs.state.workbook.getCellPosition(cellIndex)
+  const resolvedOwnerPosition = ownerPosition ?? serviceArgs.state.workbook.getCellPosition(cellIndex)
   return (
-    ownerPosition !== undefined &&
-    ownerPosition.row >= directAggregate.rowStart &&
-    ownerPosition.row <= directAggregate.rowEnd &&
-    ownerPosition.col >= directAggregate.col &&
-    ownerPosition.col <= directAggregate.colEnd
+    resolvedOwnerPosition !== undefined &&
+    resolvedOwnerPosition.row >= directAggregate.rowStart &&
+    resolvedOwnerPosition.row <= directAggregate.rowEnd &&
+    resolvedOwnerPosition.col >= directAggregate.col &&
+    resolvedOwnerPosition.col <= directAggregate.colEnd
   )
 }

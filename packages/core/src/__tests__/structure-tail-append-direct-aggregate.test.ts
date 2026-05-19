@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { ValueTag } from '@bilig/protocol'
 
 import { SpreadsheetEngine, type EngineCellMutationRef } from '../engine.js'
@@ -10,7 +10,7 @@ describe('structural tail append direct aggregates', () => {
     engine.createSheet('Sheet1')
 
     const existingRows = 12
-    const appendRows = 8
+    const appendRows = 40
     const inputCols = 4
     for (let row = 1; row <= existingRows; row += 1) {
       for (let col = 0; col < inputCols; col += 1) {
@@ -20,7 +20,13 @@ describe('structural tail append direct aggregates', () => {
     }
 
     engine.resetPerformanceCounters()
-    engine.insertRows('Sheet1', existingRows, appendRows)
+    const positionSpy = vi.spyOn(engine.workbook, 'getCellPosition')
+    try {
+      engine.insertRows('Sheet1', existingRows, appendRows)
+      expect(positionSpy).not.toHaveBeenCalled()
+    } finally {
+      positionSpy.mockRestore()
+    }
 
     expect([...engine.state.formulas.values()].filter((formula) => formula.structuralSourceTransform !== undefined)).toHaveLength(0)
     expect(engine.getPerformanceCounters()).toMatchObject({
@@ -59,5 +65,50 @@ describe('structural tail append direct aggregates', () => {
       formulasBound: 0,
       structuralFormulaRebindInputs: 0,
     })
+  })
+
+  it('uses known owner positions when binding appended direct aggregate formulas', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'tail-append-owner-position-fast-path' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+
+    const existingRows = 12
+    const appendRows = 40
+    const inputCols = 4
+    for (let row = 1; row <= existingRows; row += 1) {
+      for (let col = 0; col < inputCols; col += 1) {
+        engine.setCellValue('Sheet1', `${String.fromCharCode(65 + col)}${row}`, row * (col + 1))
+      }
+      engine.setCellFormula('Sheet1', `E${row}`, `SUM(A${row}:D${row})`)
+    }
+
+    engine.insertRows('Sheet1', existingRows, appendRows)
+
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+    const valueRefs: EngineCellMutationRef[] = []
+    const formulaRefs: EngineCellMutationRef[] = []
+    for (let row = 0; row < appendRows; row += 1) {
+      const rowIndex = existingRows + row
+      const rowNumber = rowIndex + 1
+      for (let col = 0; col < inputCols; col += 1) {
+        valueRefs.push({
+          sheetId,
+          mutation: { kind: 'setCellValue', row: rowIndex, col, value: rowNumber * (col + 1) },
+        })
+      }
+      formulaRefs.push({
+        sheetId,
+        mutation: { kind: 'setCellFormula', row: rowIndex, col: inputCols, formula: `SUM(A${rowNumber}:D${rowNumber})` },
+      })
+    }
+
+    engine.applyCellMutationsAt(valueRefs, valueRefs.length)
+
+    const positionSpy = vi.spyOn(engine.workbook, 'getCellPosition')
+    engine.applyCellMutationsAt(formulaRefs, formulaRefs.length)
+
+    expect(positionSpy).not.toHaveBeenCalled()
+    expect(engine.getCellValue('Sheet1', 'E13')).toEqual({ tag: ValueTag.Number, value: 130 })
+    expect(engine.getCellValue('Sheet1', 'E52')).toEqual({ tag: ValueTag.Number, value: 520 })
   })
 })

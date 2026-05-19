@@ -1,4 +1,10 @@
-import type { CompiledFormula, FormulaNode, ParsedDependencyReference, ParsedRangeReferenceInfo } from '@bilig/formula'
+import type {
+  CompiledFormula,
+  FormulaNode,
+  ParsedCellReferenceInfo,
+  ParsedDependencyReference,
+  ParsedRangeReferenceInfo,
+} from '@bilig/formula'
 import { parseA1RowNumber } from '../../formula/a1-row-number.js'
 import { buildFormulaFamilyShapeKey } from '../../formula/formula-family-deps.js'
 import type { FormulaTemplateResolution } from '../../formula/template-bank.js'
@@ -15,6 +21,16 @@ export interface InitialPrefixSumTemplateKey {
   readonly key: number
   readonly rangeCol: number
   readonly rangeColumn: string
+}
+
+export interface InitialSimpleRowRelativeBinaryTemplate {
+  readonly key: string
+  readonly parsedRefs: {
+    readonly symbolicRefs: string[]
+    readonly parsedDeps: ParsedDependencyReference[]
+    readonly parsedSymbolicRefs: ParsedCellReferenceInfo[]
+  }
+  readonly usesRowLiteralSuffix: boolean
 }
 
 const INITIAL_PREFIX_SUM_RE = /^SUM\(([A-Z]+)1:\1([1-9]\d*)\)$/
@@ -41,16 +57,27 @@ function initialReadColumn(source: string, start: number): { readonly column: st
 }
 
 function initialReadRowNumber(source: string, start: number): { readonly row: number; readonly next: number } | undefined {
-  let next = start
+  if (start >= source.length) {
+    return undefined
+  }
+  const firstCode = source.charCodeAt(start)
+  if (firstCode < 49 || firstCode > 57) {
+    return undefined
+  }
+  let row = firstCode - 48
+  let next = start + 1
   while (next < source.length) {
     const code = source.charCodeAt(next)
     if (code < 48 || code > 57) {
       break
     }
+    row = row * 10 + (code - 48)
+    if (!Number.isSafeInteger(row)) {
+      return undefined
+    }
     next += 1
   }
-  const row = parseA1RowNumber(source.slice(start, next))
-  return row === undefined ? undefined : { row, next }
+  return { row, next }
 }
 
 function initialReadNumberLiteral(source: string, start: number): { readonly text: string; readonly next: number } | undefined {
@@ -102,7 +129,13 @@ function initialReadRelativeCellToken(
   start: number,
   ownerRow: number,
   ownerCol: number,
-): { readonly token: string; readonly next: number } | undefined {
+):
+  | {
+      readonly token: string
+      readonly next: number
+      readonly ref: ParsedCellReferenceInfo
+    }
+  | undefined {
   const column = initialReadColumn(source, start)
   if (!column) {
     return undefined
@@ -112,10 +145,32 @@ function initialReadRelativeCellToken(
     return undefined
   }
   const col = initialColumnToIndex(column.column)
-  return col < 0 ? undefined : { token: `c${col - ownerCol}`, next: row.next }
+  if (col < 0) {
+    return undefined
+  }
+  const normalizedColumn = column.column.toUpperCase()
+  return {
+    token: `c${col - ownerCol}`,
+    next: row.next,
+    ref: {
+      address: `${normalizedColumn}${row.row}`,
+      row: row.row - 1,
+      col,
+      rowAbsolute: false,
+      colAbsolute: false,
+    },
+  }
 }
 
 export function tryBuildInitialSimpleRowRelativeBinaryTemplateKey(source: string, ownerRow: number, ownerCol: number): string | undefined {
+  return tryBuildInitialSimpleRowRelativeBinaryTemplate(source, ownerRow, ownerCol)?.key
+}
+
+export function tryBuildInitialSimpleRowRelativeBinaryTemplate(
+  source: string,
+  ownerRow: number,
+  ownerCol: number,
+): InitialSimpleRowRelativeBinaryTemplate | undefined {
   let index = source.charCodeAt(0) === 61 ? 1 : 0
   const left = initialReadRelativeCellToken(source, index, ownerRow, ownerCol)
   if (!left) {
@@ -130,20 +185,47 @@ export function tryBuildInitialSimpleRowRelativeBinaryTemplateKey(source: string
   const rightCell = initialReadRelativeCellToken(source, index, ownerRow, ownerCol)
   if (rightCell) {
     if (rightCell.next === source.length) {
-      return `${left.token}${operator}${rightCell.token}`
+      return createInitialSimpleBinaryTemplate(`${left.token}${operator}${rightCell.token}`, [left.ref, rightCell.ref], false)
     }
     const suffix = initialReadRowLiteralSuffix(source, rightCell.next, ownerRow)
-    return suffix && suffix.next === source.length ? `${left.token}${operator}${rightCell.token}${suffix.token}` : undefined
+    return suffix && suffix.next === source.length
+      ? createInitialSimpleBinaryTemplate(`${left.token}${operator}${rightCell.token}${suffix.token}`, [left.ref, rightCell.ref], true)
+      : undefined
   }
   const rightNumber = initialReadNumberLiteral(source, index)
   if (!rightNumber) {
     return undefined
   }
   if (rightNumber.next === source.length) {
-    return `${left.token}${operator}n${rightNumber.text}`
+    return createInitialSimpleBinaryTemplate(`${left.token}${operator}n${rightNumber.text}`, [left.ref], false)
   }
   const suffix = initialReadRowLiteralSuffix(source, rightNumber.next, ownerRow)
-  return suffix && suffix.next === source.length ? `${left.token}${operator}n${rightNumber.text}${suffix.token}` : undefined
+  return suffix && suffix.next === source.length
+    ? createInitialSimpleBinaryTemplate(`${left.token}${operator}n${rightNumber.text}${suffix.token}`, [left.ref], true)
+    : undefined
+}
+
+function createInitialSimpleBinaryTemplate(
+  key: string,
+  parsedSymbolicRefs: ParsedCellReferenceInfo[],
+  usesRowLiteralSuffix: boolean,
+): InitialSimpleRowRelativeBinaryTemplate {
+  const symbolicRefs: string[] = Array(parsedSymbolicRefs.length)
+  const parsedDeps: ParsedDependencyReference[] = Array(parsedSymbolicRefs.length)
+  for (let index = 0; index < parsedSymbolicRefs.length; index += 1) {
+    const ref = parsedSymbolicRefs[index]!
+    symbolicRefs[index] = ref.address
+    parsedDeps[index] = { kind: 'cell', ...ref }
+  }
+  return {
+    key,
+    parsedRefs: {
+      symbolicRefs,
+      parsedDeps,
+      parsedSymbolicRefs,
+    },
+    usesRowLiteralSuffix,
+  }
 }
 
 export function tryBuildInitialPrefixSumTemplateKey(

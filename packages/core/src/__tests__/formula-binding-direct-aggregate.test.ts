@@ -30,8 +30,9 @@ describe('direct aggregate formula binding', () => {
     const formulaCellIndex = engine.workbook.getCellIndex('Sheet1', 'C1')
     expect(formulaCellIndex).toBeDefined()
     const runtimeFormula = readRuntimeFormula(engine, formulaCellIndex!)
+    const directAggregate = readRuntimeFormulaProperty(runtimeFormula, 'directAggregate')
 
-    expect(readRuntimeFormulaProperty(runtimeFormula, 'directAggregate')).toMatchObject({
+    expect(directAggregate).toMatchObject({
       aggregateKind: 'sum',
       rowStart: 0,
       rowEnd: 0,
@@ -39,6 +40,7 @@ describe('direct aggregate formula binding', () => {
       colEnd: 1,
       length: 2,
     })
+    expect(directAggregate).not.toHaveProperty('regionIds')
     expect(readRuntimeFormulaProperty(runtimeFormula, 'directCriteria')).toBeUndefined()
     expect(readRuntimeFormulaProperty(runtimeFormula, 'runtimeProgram')).toHaveLength(0)
     expect(readRuntimeFormulaProperty(runtimeFormula, 'rangeDependencies')).toHaveLength(0)

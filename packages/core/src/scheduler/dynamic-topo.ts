@@ -4,6 +4,8 @@ import { growUint32 } from '../engine-buffer-utils.js'
 
 type U32 = Uint32Array
 
+const INITIAL_DYNAMIC_TOPO_BUFFER_CAPACITY = 16
+
 export interface DynamicTopoGraph {
   readonly forEachFormulaDependencyCell: (cellIndex: number, fn: (dependencyCellIndex: number) => void) => void
   readonly collectFormulaDependents: (entityId: number) => U32
@@ -17,12 +19,12 @@ export interface DynamicTopoRepairResult {
 
 export class DynamicTopo {
   private affectedEpoch = 1
-  private affectedSeen: U32 = new Uint32Array(128)
-  private affectedFormulaIds: U32 = new Uint32Array(128)
-  private topoQueue: U32 = new Uint32Array(128)
-  private topoIndegree: U32 = new Uint32Array(128)
-  private externalPredecessorRanks: U32 = new Uint32Array(128)
-  private orderedFormulaIds: U32 = new Uint32Array(128)
+  private affectedSeen: U32 = new Uint32Array(INITIAL_DYNAMIC_TOPO_BUFFER_CAPACITY)
+  private affectedFormulaIds: U32 = new Uint32Array(INITIAL_DYNAMIC_TOPO_BUFFER_CAPACITY)
+  private topoQueue: U32 = new Uint32Array(INITIAL_DYNAMIC_TOPO_BUFFER_CAPACITY)
+  private topoIndegree: U32 = new Uint32Array(INITIAL_DYNAMIC_TOPO_BUFFER_CAPACITY)
+  private externalPredecessorRanks: U32 = new Uint32Array(INITIAL_DYNAMIC_TOPO_BUFFER_CAPACITY)
+  private orderedFormulaIds: U32 = new Uint32Array(INITIAL_DYNAMIC_TOPO_BUFFER_CAPACITY)
 
   repair(
     changedFormulaCellIndices: readonly number[] | U32,

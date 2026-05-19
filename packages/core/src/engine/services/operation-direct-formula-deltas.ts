@@ -31,6 +31,77 @@ export function createOperationDirectFormulaDeltas(args: {
     return true
   }
 
+  const applyDirectFormulaNumericDeltaBatch = (cellIndices: readonly number[] | U32, delta: number): boolean => {
+    const cellStore = args.state.workbook.cellStore
+    const tags = cellStore.tags
+    for (let index = 0; index < cellIndices.length; index += 1) {
+      if (tags[cellIndices[index]!] !== ValueTag.Number) {
+        return false
+      }
+    }
+    if (cellIndices.length === 0) {
+      return true
+    }
+
+    const flags = cellStore.flags
+    const numbers = cellStore.numbers
+    const stringIds = cellStore.stringIds
+    const errors = cellStore.errors
+    const versions = cellStore.versions
+    const sheetIds = cellStore.sheetIds
+    const cols = cellStore.cols
+    const formulaOutputFlags = CellFlags.SpillChild | CellFlags.PivotOutput
+    const clearFormulaOutputFlags = ~formulaOutputFlags
+    let sharedPhysicalSheetId = -1
+    let sharedPhysicalCol = -1
+    let canNotifySharedPhysicalColumn = true
+
+    for (let index = 0; index < cellIndices.length; index += 1) {
+      const cellIndex = cellIndices[index]!
+      const sheetId = sheetIds[cellIndex] ?? -1
+      const col = cols[cellIndex] ?? -1
+      if (canNotifySharedPhysicalColumn) {
+        const sheet = args.state.workbook.getSheetById(sheetId)
+        if (
+          sheet === undefined ||
+          sheet.structureVersion !== 1 ||
+          (sharedPhysicalSheetId !== -1 && sharedPhysicalSheetId !== sheetId) ||
+          (sharedPhysicalCol !== -1 && sharedPhysicalCol !== col)
+        ) {
+          canNotifySharedPhysicalColumn = false
+        } else {
+          sharedPhysicalSheetId = sheetId
+          sharedPhysicalCol = col
+        }
+      }
+      const currentFlags = flags[cellIndex] ?? 0
+      if ((currentFlags & formulaOutputFlags) !== 0) {
+        flags[cellIndex] = currentFlags & clearFormulaOutputFlags
+      }
+      const beforeNumber = numbers[cellIndex] ?? 0
+      const nextNumber = beforeNumber + delta
+      numbers[cellIndex] = nextNumber
+      if ((stringIds[cellIndex] ?? 0) !== 0) {
+        stringIds[cellIndex] = 0
+      }
+      if ((errors[cellIndex] ?? 0) !== 0) {
+        errors[cellIndex] = 0
+      }
+      versions[cellIndex] = (versions[cellIndex] ?? 0) + 1
+      if (!canNotifySharedPhysicalColumn) {
+        if (cellStore.onSetValue) {
+          cellStore.onSetValue(cellIndex)
+        } else if (!Object.is(beforeNumber, nextNumber)) {
+          args.state.workbook.notifyCellValueWritten(cellIndex)
+        }
+      }
+    }
+    if (canNotifySharedPhysicalColumn) {
+      args.state.workbook.notifyColumnsWritten(sharedPhysicalSheetId, Uint32Array.of(sharedPhysicalCol))
+    }
+    return true
+  }
+
   const applyTerminalDirectFormulaNumericDelta = (cellIndex: number, delta: number): boolean => {
     return applyTerminalDirectFormulaNumericDeltaAndReturn(cellIndex, delta) !== undefined
   }
@@ -210,6 +281,7 @@ export function createOperationDirectFormulaDeltas(args: {
 
   return {
     applyDirectFormulaNumericDelta,
+    applyDirectFormulaNumericDeltaBatch,
     applyTerminalDirectFormulaNumericDelta,
     applyTerminalDirectFormulaNumericDeltaAndReturn,
     tryApplyDirectFormulaDeltas,

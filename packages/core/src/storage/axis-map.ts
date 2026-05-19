@@ -89,6 +89,19 @@ export class AxisMap {
   }
 
   replaceRange(start: number, entries: readonly AxisEntrySnapshot[]): void {
+    if (entries.length === 1) {
+      const entry = entries[0]!
+      if (entry.index < start) {
+        return
+      }
+      const previous = this.entries[entry.index]
+      if (previous !== undefined) {
+        this.idToIndex.delete(previous)
+      }
+      this.entries[entry.index] = entry.id
+      this.idToIndex.set(entry.id, entry.index)
+      return
+    }
     for (const entry of entries) {
       if (entry.index < start) {
         continue
@@ -117,6 +130,16 @@ export class AxisMap {
     }
     if (this.entries.length < start) {
       this.entries.length = start
+    }
+    if (deleteCount === 0 && explicitInsertCount === 1 && entries.length <= 1) {
+      const entry = entries[0]
+      const insertedId = entry?.index === start ? entry.id : undefined
+      this.entries.splice(start, 0, insertedId)
+      if (insertedId !== undefined) {
+        this.idToIndex.set(insertedId, start)
+      }
+      this.rebuildIndexFrom(start + 1)
+      return []
     }
     const insertLength = Math.max(
       explicitInsertCount,

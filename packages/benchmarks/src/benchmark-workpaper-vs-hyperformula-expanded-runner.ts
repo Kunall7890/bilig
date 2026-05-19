@@ -23,6 +23,8 @@ export interface ExpandedComparativeComparableResult {
     workpaperToHyperFormulaP95Ratio: number
     maxRelativeNoise: number
     confidenceIntervalOverlaps: boolean
+    resultConfidence: 'decisive' | 'inconclusive'
+    decisiveFasterEngine: 'workpaper' | 'hyperformula' | 'inconclusive'
     verificationEquivalent: true
   }
   engines: {
@@ -69,6 +71,10 @@ export function runComparableScenario(
   const fasterEngine = workpaper.elapsedMs.mean <= hyperformula.elapsedMs.mean ? 'workpaper' : 'hyperformula'
   const fasterMean = fasterEngine === 'workpaper' ? workpaper.elapsedMs.mean : hyperformula.elapsedMs.mean
   const slowerMean = fasterEngine === 'workpaper' ? hyperformula.elapsedMs.mean : workpaper.elapsedMs.mean
+  const confidenceIntervalOverlaps =
+    workpaper.elapsedMs.confidence95.low <= hyperformula.elapsedMs.confidence95.high &&
+    hyperformula.elapsedMs.confidence95.low <= workpaper.elapsedMs.confidence95.high
+  const resultConfidence = confidenceIntervalOverlaps ? 'inconclusive' : 'decisive'
 
   return {
     workload,
@@ -82,9 +88,9 @@ export function runComparableScenario(
       workpaperToHyperFormulaMedianRatio: workpaper.elapsedMs.median / hyperformula.elapsedMs.median,
       workpaperToHyperFormulaP95Ratio: workpaper.elapsedMs.p95 / hyperformula.elapsedMs.p95,
       maxRelativeNoise: Math.max(workpaper.elapsedMs.relativeStandardDeviation, hyperformula.elapsedMs.relativeStandardDeviation),
-      confidenceIntervalOverlaps:
-        workpaper.elapsedMs.confidence95.low <= hyperformula.elapsedMs.confidence95.high &&
-        hyperformula.elapsedMs.confidence95.low <= workpaper.elapsedMs.confidence95.high,
+      confidenceIntervalOverlaps,
+      resultConfidence,
+      decisiveFasterEngine: resultConfidence === 'decisive' ? fasterEngine : 'inconclusive',
       verificationEquivalent: true,
     },
     engines: {
@@ -183,6 +189,8 @@ function summarizeEngineCounters(samples: readonly BenchmarkSample[]): EngineCou
     kernelSyncOnlyRecalcSkips: zeroSummary,
     directFormulaKernelSyncOnlyRecalcSkips: zeroSummary,
     directFormulaInitialEvaluations: zeroSummary,
+    directCriteriaMatchCacheHits: zeroSummary,
+    directCriteriaAggregateCacheHits: zeroSummary,
     structuralTransactions: zeroSummary,
     structuralPlannedCells: zeroSummary,
     structuralSurvivorCellsRemapped: zeroSummary,

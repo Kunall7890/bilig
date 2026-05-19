@@ -29,6 +29,7 @@ import { canSkipOperationDirtyTraversalForChangedInputs } from './operation-dirt
 import { countOperationPostRecalcDirectFormulaMetric, type DirectFormulaMetricCounts } from './operation-post-recalc-direct-formulas.js'
 import {
   tryApplySingleDirectAggregateLiteralMutationFastPath as tryApplySingleDirectAggregateLiteralMutationFastPathWithArgs,
+  tryApplyTrustedColumnDirectAggregateExistingNumericMutation as tryApplyTrustedColumnDirectAggregateExistingNumericMutationWithArgs,
   tryApplyTrustedSingleRangeDirectAggregateExistingNumericMutation as tryApplyTrustedSingleRangeDirectAggregateExistingNumericMutationWithArgs,
 } from './operation-direct-aggregate-literal-fast-path.js'
 import { tryApplyTrustedDirectScalarClosureExistingNumericMutation as tryApplyTrustedDirectScalarClosureExistingNumericMutationWithArgs } from './operation-direct-scalar-closure-fast-path.js'
@@ -37,7 +38,10 @@ import {
   tryApplyTrustedFormulaLeafExistingNumericMutation as tryApplyTrustedFormulaLeafExistingNumericMutationWithArgs,
 } from './operation-formula-leaf-existing-numeric-fast-path.js'
 import { createOperationDirectScalarBatchFastPaths } from './operation-direct-scalar-batch-fast-paths.js'
-import { tryApplySingleDirectScalarLiteralMutationWithoutEvents as tryApplySingleDirectScalarLiteralMutationWithoutEventsWithArgs } from './operation-direct-scalar-literal-fast-path.js'
+import {
+  tryApplySingleDirectScalarLiteralMutationWithoutEvents as tryApplySingleDirectScalarLiteralMutationWithoutEventsWithArgs,
+  tryApplySingleDirectScalarLiteralMutationWithoutEventsAndReturnChanged as tryApplySingleDirectScalarLiteralMutationWithoutEventsAndReturnChangedWithArgs,
+} from './operation-direct-scalar-literal-fast-path.js'
 import { tryApplySingleDirectFormulaLiteralMutationWithoutEvents as tryApplySingleDirectFormulaLiteralMutationWithoutEventsWithArgs } from './operation-direct-formula-literal-fast-path.js'
 import { createOperationSingleExistingLiteralFastPath } from './operation-single-existing-literal-fast-path.js'
 import { createOperationLookupAccess } from './operation-lookup-access.js'
@@ -198,6 +202,9 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
     applyDirectFormulaCurrentResult,
     applyDirectFormulaNumericResult,
     applyTerminalDirectFormulaNumericResult,
+    applyTerminalDirectFormulaNumericResults,
+    applyTerminalDirectFormulaAffineNumericResults,
+    applyTerminalDirectFormulaAffineNumericResultsFromRefs,
     writeNumericLiteralToCellStore,
     evaluateDirectScalarCurrentValue,
     applyDirectScalarCurrentValue,
@@ -324,6 +331,7 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
 
   const {
     applyDirectFormulaNumericDelta,
+    applyDirectFormulaNumericDeltaBatch,
     applyTerminalDirectFormulaNumericDeltaAndReturn,
     tryApplyDirectFormulaDeltas,
     tryApplyDirectScalarDeltas,
@@ -357,6 +365,7 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
         writeTrustedExistingNumericLiteralToCell,
         applyTerminalDirectFormulaNumericDeltaAndReturn,
         applyDirectFormulaNumericDelta,
+        applyDirectFormulaNumericDeltaBatch,
         cellsShareVersionColumn,
         withOptionalColumnVersionBatch,
         deferSingleCellKernelSync,
@@ -389,6 +398,41 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
         writeTrustedExistingNumericLiteralToCell,
         applyTerminalDirectFormulaNumericDeltaAndReturn,
         applyDirectFormulaNumericDelta,
+        applyDirectFormulaNumericDeltaBatch,
+        cellsShareVersionColumn,
+        withOptionalColumnVersionBatch,
+        deferSingleCellKernelSync,
+        makeSingleLiteralSkipMetrics,
+      },
+      request,
+    )
+
+  const tryApplyTrustedColumnDirectAggregateExistingNumericMutation = (request: {
+    existingIndex: number
+    sheet: SheetRecord
+    sheetId: number
+    sheetName: string
+    row: number
+    col: number
+    value: number
+    delta: number
+    hasExactLookupDependents: boolean
+    hasSortedLookupDependents: boolean
+  }): EngineExistingNumericCellMutationResult | null =>
+    tryApplyTrustedColumnDirectAggregateExistingNumericMutationWithArgs(
+      {
+        state: args.state,
+        directRangePostRecalcLimit: DIRECT_RANGE_POST_RECALC_LIMIT,
+        getSingleEntityDependent: args.getSingleEntityDependent,
+        collectAffectedDirectRangeDependents,
+        collectSingleApplicableDirectAggregateDependent,
+        canApplyDirectAggregateLiteralDeltaForRequest,
+        canApplyDirectAggregateLiteralDelta,
+        writeFastPathLiteralToExistingCell,
+        writeTrustedExistingNumericLiteralToCell,
+        applyTerminalDirectFormulaNumericDeltaAndReturn,
+        applyDirectFormulaNumericDelta,
+        applyDirectFormulaNumericDeltaBatch,
         cellsShareVersionColumn,
         withOptionalColumnVersionBatch,
         deferSingleCellKernelSync,
@@ -424,6 +468,7 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
     sheet: SheetRecord
     col: number
     value: number
+    oldNumber: number
     hasTrackedEventListeners: boolean
   }): EngineExistingNumericCellMutationResult | null =>
     tryApplyTrustedFormulaLeafExistingNumericMutationWithArgs(
@@ -476,6 +521,26 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
       request,
     )
 
+  const tryApplySingleDirectScalarLiteralMutationWithoutEventsAndReturnChanged = (request: {
+    existingIndex: number
+    value: LiteralInput
+    oldNumber: number
+    newNumber: number
+  }): U32 | null =>
+    tryApplySingleDirectScalarLiteralMutationWithoutEventsAndReturnChangedWithArgs(
+      {
+        state: args.state,
+        getSingleEntityDependent: args.getSingleEntityDependent,
+        getEntityDependents: args.getEntityDependents,
+        canUseDirectFormulaPostRecalc,
+        tryDirectScalarNumericDeltaFromNumbers,
+        applyDirectFormulaNumericDelta,
+        deferSingleCellKernelSync,
+        makeSingleLiteralSkipMetrics,
+      },
+      request,
+    )
+
   const tryApplySingleDirectLookupOperandMutationFastPath = (request: {
     existingIndex: number
     formulaCellIndex: number
@@ -495,6 +560,7 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
         directScalarCurrentResultMatchesCell,
         tryDirectUniformLookupNumericResultFromDescriptor,
         tryDirectApproximateLookupCurrentResultFromNumeric,
+        tryDirectExactLookupCurrentResult,
         tryDirectUniformLookupCurrentResultFromNumeric,
         writeTrustedExistingNumericLiteralToCell,
         writeNumericLiteralToExistingCell,
@@ -568,6 +634,8 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
         state: args.state,
         getSingleEntityDependent: args.getSingleEntityDependent,
         evaluateDirectScalarCurrentValue,
+        canSkipFormulaColumnVersion,
+        applyTerminalDirectFormulaNumericResult,
         tryMarkDirectScalarLinearDeltaClosure,
         applyDirectFormulaCurrentResult,
       },
@@ -593,6 +661,9 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
     directScalarCellNumericValue,
     writeNumericLiteralToCellStore,
     applyTerminalDirectFormulaNumericResult,
+    applyTerminalDirectFormulaNumericResults,
+    applyTerminalDirectFormulaAffineNumericResults,
+    applyTerminalDirectFormulaAffineNumericResultsFromRefs,
     applyDirectFormulaNumericResult,
     applyDirectFormulaCurrentResult,
     tryEvaluateDirectScalarWithPendingNumbers,
@@ -629,6 +700,10 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
       hasTrackedExactLookupDependents,
       hasTrackedSortedLookupDependents,
       hasTrackedDirectRangeDependents,
+      hasTrackedColumnDependentsAnywhere,
+      collectRegionFormulaDependentsForCell: args.collectRegionFormulaDependentsForCell,
+      collectSingleRegionFormulaDependentForCell: args.collectSingleRegionFormulaDependentForCell,
+      collectSingleRegionFormulaDependentForCellAt: args.collectSingleRegionFormulaDependentForCellAt,
       canSkipApproximateLookupNewNumericColumnWrite,
       writeNumericLiteralToExistingCell,
       deferSingleCellKernelSync,
@@ -636,6 +711,7 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
       canFastPathLiteralOverwrite: (cellIndex) => canFastPathLiteralOverwrite(cellIndex),
       directScalarCellNumericValue,
       tryApplyTrustedSingleRangeDirectAggregateExistingNumericMutation,
+      tryApplyTrustedColumnDirectAggregateExistingNumericMutation,
       tryApplyTrustedDirectScalarClosureExistingNumericMutation,
       tryApplyTrustedFormulaLeafExistingNumericMutation,
       tryApplyFormulaLeafExistingLiteralMutation,
@@ -646,6 +722,7 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
       tryApplySingleKernelSyncOnlyLiteralMutationFastPath,
       tryApplySingleDirectFormulaLiteralMutationWithoutEvents,
       tryApplySingleDirectScalarLiteralMutationWithoutEvents,
+      tryApplySingleDirectScalarLiteralMutationWithoutEventsAndReturnChanged,
       tryApplySingleDirectLookupOperandMutationFastPath,
       markPostRecalcDirectScalarNumericDependents,
       tryMarkDirectScalarLinearDeltaClosure,
@@ -691,7 +768,7 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
     rebindFormulaCells: args.rebindFormulaCells,
   })
 
-  const applyBatchNow = createOperationBatchApplier({
+  const batchApplier = createOperationBatchApplier({
     serviceArgs: args,
     emitBatch,
     replicaVersionWriter,
@@ -730,6 +807,10 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
     applyPivotUpsertOp,
     applyPivotDeleteOp,
   })
+  const applyBatchNow = (...input: Parameters<typeof batchApplier.applyBatchNow>) => batchApplier.applyBatchNow(...input)
+  const applyLocalSingleStructuralAxisOpWithoutBatchNow = (
+    ...input: Parameters<typeof batchApplier.applyLocalSingleStructuralAxisOpWithoutBatchNow>
+  ) => batchApplier.applyLocalSingleStructuralAxisOpWithoutBatchNow(...input)
 
   const applyCellMutationsAtNow = createOperationCellMutationApplier({
     serviceArgs: args,
@@ -740,6 +821,8 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
     canFastPathLiteralOverwrite,
     tryApplySingleExistingDirectLiteralMutation,
     tryApplyCoalescedDirectScalarLiteralBatch,
+    tryApplyFreshDenseRectangularNumericLiteralBatch,
+    writeNumericLiteralToCellStore,
     readCellValueForLookup,
     readApproximateNumericValueForLookup,
     readExactNumericValueForLookup,
@@ -815,6 +898,8 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
 
   return {
     __testHooks,
+    applyBatchNow,
+    applyLocalSingleStructuralAxisOpWithoutBatchNow,
     applyBatch(batch, source, potentialNewCells, preparedCellAddressesByOpIndex) {
       return Effect.try({
         try: () => {

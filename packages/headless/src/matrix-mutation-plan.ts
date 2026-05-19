@@ -6,6 +6,7 @@ import type { WorkPaperCellAddress, WorkPaperSheet, RawCellContent } from './wor
 export type MatrixMutationRef = EngineCellMutationRef
 
 export interface MatrixMutationPlan {
+  canApplyFreshNumericAggregateMatrixInOnePass: boolean
   dimensionImpact: MatrixMutationDimensionImpact
   leadingRefs: MatrixMutationRef[]
   leadingFreshNumericRefCount: number
@@ -56,6 +57,9 @@ export function buildMatrixMutationPlan(args: BuildMatrixMutationPlanArgs): Matr
   let maxSetCol = -1
   let maxSetRow = -1
   const earliestFormulaRowByColumn: number[] = []
+  let freshNumericAggregateMatrixCandidate = true
+  let freshNumericAggregateInputColCount = -1
+  let freshNumericAggregateRowCount = 0
 
   const shouldDeferLiteral = (row: number, col: number): boolean => {
     const earliestFormulaRow = earliestFormulaRowByColumn[col]
@@ -70,11 +74,15 @@ export function buildMatrixMutationPlan(args: BuildMatrixMutationPlanArgs): Matr
   for (let rowOffset = 0; rowOffset < args.content.length; rowOffset += 1) {
     const row = args.content[rowOffset]!
     const destinationRow = args.target.row + rowOffset
+    let rowFreshNumericValueCount = 0
+    let rowHasFreshAggregateFormula = false
+    let rowHasFreshAggregateContent = false
     for (let columnOffset = 0; columnOffset < row.length; columnOffset += 1) {
       const raw = row[columnOffset]!
       const destinationCol = args.target.col + columnOffset
 
       if (isBlankRawCellContent(raw)) {
+        freshNumericAggregateMatrixCandidate = false
         if (!args.skipNulls) {
           maxClearRow = Math.max(maxClearRow, destinationRow)
           maxClearCol = Math.max(maxClearCol, destinationCol)
@@ -97,6 +105,19 @@ export function buildMatrixMutationPlan(args: BuildMatrixMutationPlanArgs): Matr
 
       if (isFormulaContent(raw)) {
         formulaPotentialNewCells += 1
+        if (freshNumericAggregateMatrixCandidate) {
+          if (rowHasFreshAggregateFormula || rowFreshNumericValueCount < 2 || columnOffset !== rowFreshNumericValueCount) {
+            freshNumericAggregateMatrixCandidate = false
+          } else {
+            if (freshNumericAggregateInputColCount === -1) {
+              freshNumericAggregateInputColCount = rowFreshNumericValueCount
+            } else if (freshNumericAggregateInputColCount !== rowFreshNumericValueCount) {
+              freshNumericAggregateMatrixCandidate = false
+            }
+            rowHasFreshAggregateFormula = true
+            rowHasFreshAggregateContent = true
+          }
+        }
         const destination: WorkPaperCellAddress = {
           sheet: args.target.sheet,
           row: destinationRow,
@@ -129,6 +150,14 @@ export function buildMatrixMutationPlan(args: BuildMatrixMutationPlanArgs): Matr
           value: raw,
         },
       } satisfies MatrixMutationRef
+      if (freshNumericAggregateMatrixCandidate) {
+        if (rowHasFreshAggregateFormula || typeof raw !== 'number' || Object.is(raw, -0) || columnOffset !== rowFreshNumericValueCount) {
+          freshNumericAggregateMatrixCandidate = false
+        } else {
+          rowFreshNumericValueCount += 1
+          rowHasFreshAggregateContent = true
+        }
+      }
       if (shouldDeferLiteral(destinationRow, destinationCol) || shouldDeferLiteralAddress(destinationRow, destinationCol)) {
         trailingLiteralPotentialNewCells += 1
         trailingLiteralRefs.push(ref)
@@ -140,9 +169,28 @@ export function buildMatrixMutationPlan(args: BuildMatrixMutationPlanArgs): Matr
         leadingRefs.push(ref)
       }
     }
+    if (freshNumericAggregateMatrixCandidate) {
+      if (!rowHasFreshAggregateFormula) {
+        freshNumericAggregateMatrixCandidate = false
+      } else if (freshNumericAggregateInputColCount !== rowFreshNumericValueCount || !rowHasFreshAggregateContent) {
+        freshNumericAggregateMatrixCandidate = false
+      } else {
+        freshNumericAggregateRowCount += 1
+      }
+    }
   }
 
+  const canApplyFreshNumericAggregateMatrixInOnePass =
+    freshNumericAggregateMatrixCandidate &&
+    freshNumericAggregateInputColCount >= 2 &&
+    freshNumericAggregateRowCount === formulaRefs.length &&
+    leadingRefs.length === freshNumericAggregateRowCount * freshNumericAggregateInputColCount &&
+    leadingPotentialNewCells === leadingRefs.length &&
+    leadingFreshNumericRefCount === leadingRefs.length &&
+    formulaPotentialNewCells === formulaRefs.length
+
   return {
+    canApplyFreshNumericAggregateMatrixInOnePass,
     dimensionImpact: {
       hasDynamicFormula,
       maxClearCol,

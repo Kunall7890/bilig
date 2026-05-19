@@ -93,6 +93,7 @@ describe('createEngineRuntimeColumnStoreService', () => {
     })
 
     expect(overlappingView.owner).toBe(firstView.owner)
+    expect(firstView.owner.pages.get(0)?.nonEmptyCount).toBe(3)
     expect(firstView.readCellValueAt(0)).toEqual({ tag: ValueTag.Number, value: 1 })
     expect(firstView.readCellValueAt(1)).toEqual({
       tag: ValueTag.String,
@@ -157,7 +158,7 @@ describe('createEngineRuntimeColumnStoreService', () => {
     ])
   })
 
-  it('uses column slices for large range matrices beyond the direct row-major threshold', () => {
+  it('uses page-backed column owners for large range reads beyond the direct row-major threshold', () => {
     const workbook = new WorkbookStore('runtime-column-store-large-read')
     const strings = new StringPool()
     const counters = createEngineCounters()
@@ -189,7 +190,75 @@ describe('createEngineRuntimeColumnStoreService', () => {
       { tag: ValueTag.Error, code: 42 },
     ])
     expect(values[128]?.[127]).toEqual({ tag: ValueTag.Empty })
-    expect(counters.columnSliceBuilds).toBeGreaterThan(0)
+    expect(counters.columnOwnerBuilds).toBe(128)
+    expect(counters.columnSliceBuilds).toBe(0)
+
+    const flattenedValues = runtimeColumnStore.readRangeValues({
+      sheetName: 'Sheet1',
+      rowStart: 0,
+      rowEnd: 128,
+      colStart: 0,
+      colEnd: 127,
+    })
+
+    expect(flattenedValues.slice(0, 4)).toEqual([
+      { tag: ValueTag.Number, value: 11 },
+      { tag: ValueTag.String, value: 'wide', stringId: expect.any(Number) },
+      { tag: ValueTag.Boolean, value: true },
+      { tag: ValueTag.Error, code: 42 },
+    ])
+    expect(flattenedValues.at(-1)).toEqual({ tag: ValueTag.Empty })
+    expect(counters.columnOwnerBuilds).toBe(128)
+    expect(counters.columnSliceBuilds).toBe(0)
+  })
+
+  it('finds the max resident row in requested column owners without scanning unrelated columns', () => {
+    const workbook = new WorkbookStore('runtime-column-store-column-bounds')
+    const strings = new StringPool()
+    const counters = createEngineCounters()
+    workbook.createSheet('Sheet1')
+
+    setStoredCellValue(workbook, strings, 'Sheet1', 'A2', { tag: ValueTag.Number, value: 1 })
+    setStoredCellValue(workbook, strings, 'Sheet1', 'A129', { tag: ValueTag.String, value: 'last-a' })
+    setStoredCellValue(workbook, strings, 'Sheet1', 'B3', { tag: ValueTag.Boolean, value: true })
+    setStoredCellValue(workbook, strings, 'Sheet1', 'C1000', { tag: ValueTag.Number, value: 999 })
+
+    const runtimeColumnStore = createEngineRuntimeColumnStoreService({
+      state: { workbook, strings, counters },
+    })
+
+    expect(
+      runtimeColumnStore.findMaxResidentRowInColumns({
+        sheetName: 'Sheet1',
+        rowStart: 0,
+        rowEnd: 999,
+        colStart: 0,
+        colEnd: 1,
+      }),
+    ).toBe(128)
+    expect(counters.columnOwnerBuilds).toBe(2)
+
+    expect(
+      runtimeColumnStore.findMaxResidentRowInColumns({
+        sheetName: 'Sheet1',
+        rowStart: 0,
+        rowEnd: 127,
+        colStart: 0,
+        colEnd: 1,
+      }),
+    ).toBe(2)
+    expect(counters.columnOwnerBuilds).toBe(2)
+
+    expect(
+      runtimeColumnStore.findMaxResidentRowInColumns({
+        sheetName: 'Sheet1',
+        rowStart: 0,
+        rowEnd: 999,
+        colStart: 3,
+        colEnd: 4,
+      }),
+    ).toBe(-1)
+    expect(counters.columnOwnerBuilds).toBe(4)
   })
 
   it('invalidates cached column slices after structural row remaps', () => {

@@ -246,6 +246,8 @@ The public surface is intentionally small:
 - Create workbooks with `WorkPaper.buildEmpty()`, `WorkPaper.buildFromArray()`,
   `WorkPaper.buildFromSheets()`, or `WorkPaper.buildFromSnapshot()`.
 - Edit values, formulas, and blanks with `workbook.setCellContents(address, value)`.
+- Apply large sparse literal patches with `workbook.setCellValues(updates)` or
+  `workbook.setSheetCellValues(sheetId, updates)`.
 - Read computed values with `workbook.getCellValue(address)`.
 - Read display text with `workbook.getCellDisplayValue(address)`.
 - Read formula text with `workbook.getCellFormula(address)`.
@@ -580,9 +582,9 @@ pnpm workpaper:xlsx-corpus:check -- /path/to/xlsx-corpus
   should be checked against a fresh Microsoft Excel recalculation.
 - Run `pnpm workpaper:bench:competitive:check` from the repository. The
   checked-in artifact shows
-  [`80/100` comparable WorkPaper mean wins](https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md)
-  and names the worst p95 holdout:
-  `structural-insert-columns-small` at `4.075x`.
+  [`100/100` comparable WorkPaper mean wins](https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md)
+  and no p95 holdouts; the narrowest p95 win is
+  `aggregate-overlapping-sliding-window-wide` at `0.946x`.
 - The shareable benchmark card is generated from the checked-in artifact:
   [`workpaper-benchmark-card.png`](https://github.com/proompteng/bilig/blob/main/docs/assets/workpaper-benchmark-card.png).
 - Read the

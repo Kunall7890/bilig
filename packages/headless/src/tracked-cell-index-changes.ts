@@ -4,6 +4,7 @@ import {
   compareTrackedPhysicalCellIndices,
   copyOrderedTrackedCellIndices,
   createLazyPhysicalTrackedIndexChanges,
+  createPrefixedLazyTrackedIndexChanges,
   detachTrackedIndexChanges,
   formatTrackedAddress,
   isTrackedIndexSliceSorted,
@@ -82,6 +83,10 @@ function withTrackedSourceOptions(
   }
 }
 
+function trackedSourceUsesTrustedPhysicalPositions(source: TrackedIndexChangeSource, sheetId: number): boolean {
+  return source.trustedPhysicalSheetId === sheetId
+}
+
 export function materializeTrackedIndexChangesWithMetadata(
   engine: SpreadsheetEngine,
   changedCellIndices: readonly number[] | Uint32Array,
@@ -102,29 +107,23 @@ export function materializeTrackedIndexChangesWithMetadata(
   }
   if (options.lazy && options.trustedPhysicalSheetId !== undefined) {
     const sheet = workbook.getSheetById(options.trustedPhysicalSheetId)
-    if (
-      !sheet ||
-      sheet.structureVersion === 1 ||
-      trackedIndicesUseVisiblePhysicalPositions(workbook, changedCellIndices, options.trustedPhysicalSheetId)
-    ) {
-      const split =
-        options.trustedSortedSliceSplit !== undefined &&
-        options.trustedSortedSliceSplit > 0 &&
-        options.trustedSortedSliceSplit < changedCellIndices.length
-          ? options.trustedSortedSliceSplit
-          : undefined
-      return {
-        changes: createLazyPhysicalTrackedIndexChanges(
-          options.trustedPhysicalSheetId,
-          sheet?.name ?? workbook.getSheetNameById(options.trustedPhysicalSheetId),
-          cellStore,
-          engine,
-          changedCellIndices,
-          formatAddressCached,
-          split,
-        ),
-        ordered: true,
-      }
+    const split =
+      options.trustedSortedSliceSplit !== undefined &&
+      options.trustedSortedSliceSplit > 0 &&
+      options.trustedSortedSliceSplit < changedCellIndices.length
+        ? options.trustedSortedSliceSplit
+        : undefined
+    return {
+      changes: createLazyPhysicalTrackedIndexChanges(
+        options.trustedPhysicalSheetId,
+        sheet?.name ?? workbook.getSheetNameById(options.trustedPhysicalSheetId),
+        cellStore,
+        engine,
+        changedCellIndices,
+        formatAddressCached,
+        split,
+      ),
+      ordered: true,
     }
   }
   let firstSheetId: number | undefined
@@ -276,6 +275,30 @@ export function materializeTrackedIndexChangesWithMetadata(
       previousCol = col
     }
     return { changes, ordered }
+  }
+  if (options.lazy && options.explicitChangedCount === 1 && changedCellIndices.length > LAZY_PUBLIC_CHANGE_SOURCE_THRESHOLD) {
+    const tailStart = 1
+    const tailFirstCellIndex = changedCellIndices[tailStart]
+    const tailSheetId = tailFirstCellIndex === undefined ? undefined : cellStore.sheetIds[tailFirstCellIndex]
+    const firstSheet = workbook.getSheetById(firstSheetId)
+    const tailSheet = tailSheetId === undefined ? undefined : workbook.getSheetById(tailSheetId)
+    if (tailSheetId !== undefined && tailSheetId !== firstSheetId && firstSheet && tailSheet && firstSheet.order <= tailSheet.order) {
+      const tailIndices =
+        changedCellIndices instanceof Uint32Array ? changedCellIndices.subarray(tailStart) : changedCellIndices.slice(tailStart)
+      const tailChanges = tryCreateLazyPhysicalTrackedIndexChanges(engine, tailIndices, tailSheetId, formatAddressCached)
+      if (tailChanges !== null) {
+        const prefix = materializeTrackedIndexChangesWithMetadata(
+          engine,
+          changedCellIndices instanceof Uint32Array ? changedCellIndices.subarray(0, tailStart) : changedCellIndices.slice(0, tailStart),
+        )
+        if (prefix.changes.length === tailStart) {
+          return {
+            changes: createPrefixedLazyTrackedIndexChanges(prefix.changes, tailChanges),
+            ordered: true,
+          }
+        }
+      }
+    }
   }
 
   const sheetNames = new Map<number, string>()
@@ -622,6 +645,7 @@ function tryCreateOrderedLazySameSheetTrackedSourceChanges(
         mustDetachBeforeReturn =
           sheet !== undefined &&
           sheet.structureVersion !== 1 &&
+          !trackedSourceUsesTrustedPhysicalPositions(source, sheetId) &&
           !trackedIndicesUseVisiblePhysicalPositions(workbook, source.changedCellIndices, sheetId)
       } else if (sourceSheetId !== sheetId) {
         return null
@@ -640,7 +664,11 @@ function tryCreateOrderedLazySameSheetTrackedSourceChanges(
   const sheet = workbook.getSheetById(sheetId)
   if (sheet && sheet.structureVersion !== 1 && !mustDetachBeforeReturn) {
     for (let sourceIndex = 0; sourceIndex < sources.length; sourceIndex += 1) {
-      if (!trackedIndicesUseVisiblePhysicalPositions(workbook, sources[sourceIndex]!.changedCellIndices, sheetId)) {
+      const source = sources[sourceIndex]!
+      if (
+        !trackedSourceUsesTrustedPhysicalPositions(source, sheetId) &&
+        !trackedIndicesUseVisiblePhysicalPositions(workbook, source.changedCellIndices, sheetId)
+      ) {
         mustDetachBeforeReturn = true
         break
       }

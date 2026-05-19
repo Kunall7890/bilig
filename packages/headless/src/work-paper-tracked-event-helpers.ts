@@ -122,6 +122,10 @@ export function readTrackedRuntimeCellValue(
   }
 }
 
+export function readCompactSecondChangedValue(result: EngineExistingNumericCellMutationResult): CellValue | undefined {
+  return (result as EngineExistingNumericCellMutationResult & { readonly secondChangedValue?: CellValue }).secondChangedValue
+}
+
 export function existingNumericMutationChangedCellCount(result: EngineExistingNumericCellMutationResult): number {
   return result.changedCellIndices?.length ?? result.changedCellCount ?? 0
 }
@@ -458,6 +462,7 @@ export function tryBuildDirectExistingNumericTrackedChanges(input: {
   ) {
     return null
   }
+  const secondChangedValue = readCompactSecondChangedValue(result)
   return [
     literalChange,
     {
@@ -466,9 +471,10 @@ export function tryBuildDirectExistingNumericTrackedChanges(input: {
       sheetName,
       a1: trackedA1(formulaRow, formulaCol),
       newValue:
-        result.secondChangedNumericValue === undefined
+        secondChangedValue ??
+        (result.secondChangedNumericValue === undefined
           ? readTrackedRuntimeCellValue(cellStore, formulaCellIndex, strings)
-          : { tag: ValueTag.Number, value: result.secondChangedNumericValue },
+          : { tag: ValueTag.Number, value: result.secondChangedNumericValue }),
     },
   ]
 }

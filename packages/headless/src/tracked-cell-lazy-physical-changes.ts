@@ -308,6 +308,80 @@ export function createLazyPhysicalTrackedIndexChanges(
   return proxy
 }
 
+export function createPrefixedLazyTrackedIndexChanges(
+  prefixChanges: readonly WorkPaperCellChange[],
+  lazyTailChanges: WorkPaperCellChange[],
+): WorkPaperCellChange[] {
+  const prefixLength = prefixChanges.length
+  const tailLength = lazyTailChanges.length
+  const length = prefixLength + tailLength
+  const cache: WorkPaperCellChange[] = []
+  cache.length = length
+  for (let index = 0; index < prefixLength; index += 1) {
+    cache[index] = prefixChanges[index]!
+  }
+  let fullyMaterialized = false
+  const hasMaterializedIndex = (index: number): boolean => Object.prototype.hasOwnProperty.call(cache, index)
+  const materialize = (index: number): WorkPaperCellChange => {
+    if (hasMaterializedIndex(index)) {
+      return cache[index]!
+    }
+    cache[index] = lazyTailChanges[index - prefixLength]!
+    return cache[index]
+  }
+  const forceMaterialize = (): void => {
+    if (fullyMaterialized) {
+      return
+    }
+    forceMaterializeTrackedIndexChanges(lazyTailChanges)
+    for (let index = prefixLength; index < length; index += 1) {
+      if (!hasMaterializedIndex(index)) {
+        cache[index] = lazyTailChanges[index - prefixLength]!
+      }
+    }
+    fullyMaterialized = true
+  }
+  const detach = (options: TrackedIndexDetachOptions = {}): void => {
+    detachTrackedIndexChanges(lazyTailChanges, options)
+  }
+  const numericIndexOf = (property: string | symbol): number | undefined => {
+    if (typeof property !== 'string' || property.length === 0) {
+      return undefined
+    }
+    const index = Number(property)
+    return Number.isInteger(index) && index >= 0 && index < length && String(index) === property ? index : undefined
+  }
+  const proxy = new Proxy(cache, {
+    get(target, property, receiver) {
+      const index = numericIndexOf(property)
+      return index === undefined ? Reflect.get(target, property, receiver) : materialize(index)
+    },
+    getOwnPropertyDescriptor(target, property) {
+      const index = numericIndexOf(property)
+      if (index === undefined) {
+        return Reflect.getOwnPropertyDescriptor(target, property)
+      }
+      return {
+        configurable: true,
+        enumerable: true,
+        value: materialize(index),
+        writable: true,
+      }
+    },
+    has(target, property) {
+      return numericIndexOf(property) !== undefined || Reflect.has(target, property)
+    },
+    ownKeys(target) {
+      return [
+        ...Array.from({ length }, (_value, index) => String(index)),
+        ...Reflect.ownKeys(target).filter((key) => typeof key !== 'string' || numericIndexOf(key) === undefined),
+      ]
+    },
+  })
+  DEFERRED_TRACKED_INDEX_CHANGES.set(proxy, { forceMaterialize, detach })
+  return proxy
+}
+
 export function tryCreateLazyPhysicalTrackedIndexChanges(
   engine: SpreadsheetEngine,
   changedCellIndices: readonly number[] | Uint32Array,
@@ -324,6 +398,7 @@ export function tryCreateLazyPhysicalTrackedIndexChanges(
   const length = changedCellIndices.length
   const split = options.sortedSliceSplit
   const sortedSliceSplit = split !== undefined && split > 0 && split < length ? split : undefined
+  let isSorted = true
   let isReverseSorted = sortedSliceSplit === undefined
   let previousRow = -1
   let previousCol = -1
@@ -355,6 +430,7 @@ export function tryCreateLazyPhysicalTrackedIndexChanges(
       if (sortedSliceSplit !== undefined) {
         return null
       }
+      isSorted = false
       previousRow = row
       previousCol = col
       continue
@@ -363,7 +439,18 @@ export function tryCreateLazyPhysicalTrackedIndexChanges(
     previousCol = col
   }
   const sheetName = sheet?.name ?? workbook.getSheetNameById(sheetId)
-  if (!isTrackedIndexSliceSorted(cellStore, changedCellIndices, 0, length)) {
+  if (sortedSliceSplit !== undefined) {
+    return createLazyPhysicalTrackedIndexChanges(
+      sheetId,
+      sheetName,
+      cellStore,
+      engine,
+      changedCellIndices,
+      formatAddressCached,
+      sortedSliceSplit,
+    )
+  }
+  if (!isSorted) {
     if (!isReverseSorted) {
       return null
     }

@@ -1,26 +1,33 @@
 import { ErrorCode, ValueTag, type EngineChangedCell } from '@bilig/protocol'
 import type { EngineOpBatch } from '@bilig/workbook-domain'
-import { formatAddress } from '@bilig/formula'
+import { formatAddress, type CompiledFormula } from '@bilig/formula'
 import { CellFlags } from '../../cell-store.js'
 import type { EngineCellMutationRef } from '../../cell-mutations-at.js'
 import { addEngineCounter } from '../../perf/engine-counters.js'
 import { batchOpOrder, markBatchApplied, type OpOrder } from '../../replica-state.js'
-import type { SheetRecord } from '../../workbook-store.js'
-import type {
-  EngineRuntimeState,
-  RuntimeDirectAggregateDescriptor,
-  RuntimeDirectCriteriaDescriptor,
-  RuntimeFormula,
-  U32,
-} from '../runtime-state.js'
+import { buildFormulaFamilyShapeKey } from '../../formula/formula-family-deps.js'
+import type { FormulaFamilyMember } from '../../formula/formula-family-store.js'
+import type { FormulaInstanceSnapshot } from '../../formula/formula-instance-table.js'
+import type { EngineRuntimeState, RuntimeDirectAggregateDescriptor, RuntimeFormula, U32 } from '../runtime-state.js'
 import type { DirectScalarCurrentOperand } from './direct-formula-index-collection.js'
 import { emitCellMutationFastPathBatchResult } from './operation-fast-path-batch-result.js'
+import { tagTrustedPhysicalTrackedChanges } from './operation-change-helpers.js'
 import type { CreateEngineOperationServiceArgs } from './operation-service-types.js'
+import { freshMatrixOverlapsFormulaDependencies } from './operation-fresh-matrix-dependency-overlap.js'
+import {
+  attachFreshDenseDirectAggregateMatrixCells,
+  createFreshFormulaCellAttacher,
+  createFreshMatrixDirectAggregateTemplate,
+  evaluateFreshDirectAggregateMatrixRow,
+  materializeFreshMatrixAxisIds,
+  normalizeFreshMatrixDirectAggregateOffset,
+  tryTranslateFreshMatrixDirectAggregateTemplate,
+  type FreshMatrixDirectAggregateTemplate,
+} from './operation-fresh-direct-aggregate-matrix-helpers.js'
 
 const EMPTY_CHANGED_CELLS = new Uint32Array(0)
 const FRESH_DIRECT_AGGREGATE_FORMULA_BATCH_MIN_SIZE = 32
 const FRESH_DIRECT_AGGREGATE_FORMULA_SCAN_LIMIT = 4096
-
 type FastPathState = Pick<
   EngineRuntimeState,
   | 'workbook'
@@ -46,6 +53,12 @@ interface FreshDirectAggregateFormulaEntry {
       : never
     : never
   readonly templateId: number
+  readonly aggregateKind: RuntimeDirectAggregateDescriptor['aggregateKind']
+  readonly aggregateRowStart: number
+  readonly aggregateRowEnd: number
+  readonly aggregateColStart: number
+  readonly aggregateColEnd: number
+  readonly resultOffset: number | undefined
   readonly result: DirectScalarCurrentOperand
 }
 
@@ -66,8 +79,6 @@ interface FreshDirectAggregateMatrixBatch {
   readonly formulaEntries: readonly FreshDirectAggregateFormulaEntry[]
 }
 
-type FreshFormulaCellAttacher = (row: number, col: number, cellIndex: number, rowId: string, colId: string) => void
-
 export interface OperationFreshDirectAggregateFormulaBatchFastPathArgs {
   readonly state: FastPathState
   readonly emitBatch: (batch: EngineOpBatch) => void
@@ -83,7 +94,14 @@ export interface OperationFreshDirectAggregateFormulaBatchFastPathArgs {
     colEnd: number,
   ) => boolean
   readonly getRegionFormulaSubscriptionCount?: () => number
+  readonly hasRegionFormulaSubscriptionsIntersectingRect:
+    | ((sheetId: number, rowStart: number, rowEnd: number, colStart: number, colEnd: number) => boolean)
+    | undefined
   readonly bindPreparedFormula: NonNullable<CreateEngineOperationServiceArgs['bindPreparedFormula']>
+  readonly bindFreshDirectAggregateFormulaRun: CreateEngineOperationServiceArgs['bindFreshDirectAggregateFormulaRun']
+  readonly registerFreshFormulaFamilyRun: CreateEngineOperationServiceArgs['registerFreshFormulaFamilyRun']
+  readonly upsertFormulaFamilyRun: CreateEngineOperationServiceArgs['upsertFormulaFamilyRun']
+  readonly upsertFreshFormulaInstances: CreateEngineOperationServiceArgs['upsertFreshFormulaInstances']
   readonly compileTemplateFormula: NonNullable<CreateEngineOperationServiceArgs['compileTemplateFormula']>
   readonly materializeDeferredStructuralFormulaSources: () => void
   readonly beginMutationCollection: () => void
@@ -149,8 +167,8 @@ export function createOperationFreshDirectAggregateFormulaBatchFastPath(args: Op
     const ensureRowId = args.state.workbook.createLogicalAxisIdEnsurer(matrix.sheetId, 'row')
     const ensureColId = args.state.workbook.createLogicalAxisIdEnsurer(matrix.sheetId, 'column')
     const totalColCount = matrix.inputColCount + 1
-    const columnIds = Array.from({ length: totalColCount }, (_, offset) => ensureColId(matrix.colStart + offset))
-    const attachFreshCell = createFreshFormulaCellAttacher(matrix.sheet)
+    const rowIds = materializeFreshMatrixAxisIds(matrix.rowCount, matrix.rowStart, ensureRowId)
+    const columnIds = materializeFreshMatrixAxisIds(totalColCount, matrix.colStart, ensureColId)
     const firstCellIndex = args.state.workbook.cellStore.allocateDenseRowMajorAtReserved(
       matrix.sheetId,
       matrix.rowStart,
@@ -158,6 +176,11 @@ export function createOperationFreshDirectAggregateFormulaBatchFastPath(args: Op
       matrix.colStart,
       totalColCount,
     )
+    attachFreshDenseDirectAggregateMatrixCells(matrix.sheet, firstCellIndex, matrix.rowStart, matrix.colStart, rowIds, columnIds)
+    const usesBulkFormulaBinding = args.bindFreshDirectAggregateFormulaRun !== undefined
+    const formulaCellIndices =
+      args.upsertFormulaFamilyRun === undefined && !usesBulkFormulaBinding ? undefined : new Uint32Array(matrix.rowCount)
+    const formulaInstances = args.upsertFreshFormulaInstances === undefined ? undefined : createFreshFormulaInstanceList(matrix.rowCount)
     let changedInputCount = 0
     let explicitChangedCount = 0
     args.setBatchMutationDepth(args.getBatchMutationDepth() + 1)
@@ -166,11 +189,9 @@ export function createOperationFreshDirectAggregateFormulaBatchFastPath(args: Op
         let valueIndex = 0
         for (let rowOffset = 0; rowOffset < matrix.rowCount; rowOffset += 1) {
           const row = matrix.rowStart + rowOffset
-          const rowId = ensureRowId(row)
           for (let colOffset = 0; colOffset < matrix.inputColCount; colOffset += 1) {
             const col = matrix.colStart + colOffset
             const cellIndex = firstCellIndex + rowOffset * totalColCount + colOffset
-            attachFreshCell(row, col, cellIndex, rowId, columnIds[colOffset]!)
             writeFreshNumericLiteralToCellStore(args, cellIndex, matrix.values[valueIndex]!)
             changedInputCount = args.markInputChanged(cellIndex, changedInputCount)
             if (requiresChangedSet) {
@@ -185,10 +206,28 @@ export function createOperationFreshDirectAggregateFormulaBatchFastPath(args: Op
         for (let rowOffset = 0; rowOffset < matrix.rowCount; rowOffset += 1) {
           const entry = matrix.formulaEntries[rowOffset]!
           const cellIndex = firstCellIndex + rowOffset * totalColCount + matrix.inputColCount
-          attachFreshCell(entry.row, entry.col, cellIndex, ensureRowId(entry.row), columnIds[matrix.inputColCount]!)
-          args.bindPreparedFormula(cellIndex, matrix.sheet.name, entry.source, entry.compiled, entry.templateId, {
-            assumeFreshFormula: true,
-          })
+          if (!usesBulkFormulaBinding) {
+            args.bindPreparedFormula(cellIndex, matrix.sheet.name, entry.source, entry.compiled, entry.templateId, {
+              assumeFreshFormula: true,
+              assumeFreshDirectAggregateLiteralInputs: true,
+              deferFamilyRegistration: formulaCellIndices !== undefined,
+              deferFormulaInstanceRegistration: formulaInstances !== undefined,
+              ownerPosition: { sheetName: matrix.sheet.name, row: entry.row, col: entry.col },
+            })
+          }
+          if (formulaCellIndices !== undefined) {
+            formulaCellIndices[rowOffset] = cellIndex
+          }
+          if (formulaInstances !== undefined) {
+            formulaInstances[rowOffset] = {
+              cellIndex,
+              sheetName: matrix.sheet.name,
+              row: entry.row,
+              col: entry.col,
+              source: entry.source,
+              templateId: entry.templateId,
+            }
+          }
           args.applyDirectFormulaCurrentResult(cellIndex, entry.result)
           changedInputCount = args.markInputChanged(cellIndex, changedInputCount)
           if (requiresChangedSet) {
@@ -201,6 +240,20 @@ export function createOperationFreshDirectAggregateFormulaBatchFastPath(args: Op
               batchOpOrder(batch, matrix.values.length + rowOffset),
             )
           }
+        }
+        if (usesBulkFormulaBinding && formulaCellIndices !== undefined) {
+          args.bindFreshDirectAggregateFormulaRun?.({
+            sheetId: matrix.sheetId,
+            ownerSheetName: matrix.sheet.name,
+            cellIndices: formulaCellIndices,
+            members: matrix.formulaEntries,
+          })
+        }
+        if (args.upsertFormulaFamilyRun !== undefined && formulaCellIndices !== undefined) {
+          registerFreshDirectAggregateFormulaFamilyRun(args, matrix.sheetId, matrix.formulaEntries, formulaCellIndices)
+        }
+        if (formulaInstances !== undefined) {
+          args.upsertFreshFormulaInstances?.(formulaInstances)
         }
         const writtenColumns = new Uint32Array(matrix.inputColCount)
         for (let index = 0; index < matrix.inputColCount; index += 1) {
@@ -216,6 +269,9 @@ export function createOperationFreshDirectAggregateFormulaBatchFastPath(args: Op
     }
     const changedInputArray = args.getChangedInputBuffer().subarray(0, changedInputCount)
     args.deferKernelSync(changedInputArray)
+    if (requiresChangedSet && hasTrackedEventListeners && matrix.values.length > 0 && matrix.values.length < changedInputArray.length) {
+      tagTrustedPhysicalTrackedChanges(changedInputArray, matrix.sheetId, matrix.values.length)
+    }
     addEngineCounter(args.state.counters, 'kernelSyncOnlyRecalcSkips')
     addEngineCounter(args.state.counters, 'directFormulaKernelSyncOnlyRecalcSkips')
     emitCellMutationFastPathBatchResult({
@@ -295,6 +351,8 @@ export function createOperationFreshDirectAggregateFormulaBatchFastPath(args: Op
       args.state.workbook.cellStore.ensureCapacity(args.state.workbook.cellStore.size + refs.length)
     }
     const attachFreshCell = createFreshFormulaCellAttacher(sheet)
+    const formulaCellIndices = args.upsertFormulaFamilyRun === undefined ? undefined : new Uint32Array(entries.length)
+    const formulaInstances = args.upsertFreshFormulaInstances === undefined ? undefined : createFreshFormulaInstanceList(entries.length)
     let changedInputCount = 0
     let explicitChangedCount = 0
     args.setBatchMutationDepth(args.getBatchMutationDepth() + 1)
@@ -309,7 +367,23 @@ export function createOperationFreshDirectAggregateFormulaBatchFastPath(args: Op
           attachFreshCell(entry.row, entry.col, cellIndex, ensureRowId(entry.row), colId(entry.col))
           args.bindPreparedFormula(cellIndex, sheet.name, entry.source, entry.compiled, entry.templateId, {
             assumeFreshFormula: true,
+            deferFamilyRegistration: formulaCellIndices !== undefined,
+            deferFormulaInstanceRegistration: formulaInstances !== undefined,
+            ownerPosition: { sheetName: sheet.name, row: entry.row, col: entry.col },
           })
+          if (formulaCellIndices !== undefined) {
+            formulaCellIndices[index] = cellIndex
+          }
+          if (formulaInstances !== undefined) {
+            formulaInstances[index] = {
+              cellIndex,
+              sheetName: sheet.name,
+              row: entry.row,
+              col: entry.col,
+              source: entry.source,
+              templateId: entry.templateId,
+            }
+          }
           args.applyDirectFormulaCurrentResult(cellIndex, entry.result)
           changedInputCount = args.markInputChanged(cellIndex, changedInputCount)
           if (requiresChangedSet) {
@@ -318,6 +392,12 @@ export function createOperationFreshDirectAggregateFormulaBatchFastPath(args: Op
           if (args.state.trackReplicaVersions && batch !== null) {
             args.setCellEntityVersion(sheet.name, formatAddress(entry.row, entry.col), batchOpOrder(batch, index))
           }
+        }
+        if (formulaCellIndices !== undefined) {
+          registerFreshDirectAggregateFormulaFamilyRun(args, firstRef.sheetId, entries, formulaCellIndices)
+        }
+        if (formulaInstances !== undefined) {
+          args.upsertFreshFormulaInstances?.(formulaInstances)
         }
       })
     } finally {
@@ -345,6 +425,144 @@ export function createOperationFreshDirectAggregateFormulaBatchFastPath(args: Op
   }
 
   return { tryApplyFreshDirectAggregateFormulaBatch, tryApplyFreshDirectAggregateFormulaMatrixBatch }
+}
+
+function createFreshFormulaInstanceList(count: number): FormulaInstanceSnapshot[] {
+  const records: FormulaInstanceSnapshot[] = []
+  records.length = count
+  return records
+}
+
+function registerFreshDirectAggregateFormulaFamilyRun(
+  args: OperationFreshDirectAggregateFormulaBatchFastPathArgs,
+  sheetId: number,
+  entries: readonly FreshDirectAggregateFormulaEntry[],
+  cellIndices: readonly number[] | Uint32Array,
+): void {
+  const upsertFormulaFamilyRun = args.upsertFormulaFamilyRun
+  if (upsertFormulaFamilyRun === undefined || entries.length === 0) {
+    return
+  }
+  const firstRegistration = readBoundFormulaFamilyRegistration(args, cellIndices[0])
+  if (firstRegistration === undefined) {
+    return
+  }
+
+  let uniformSingleColumnRun = true
+  let sameFamily = true
+  for (let index = 1; index < entries.length; index += 1) {
+    const entry = entries[index]!
+    const registration = readBoundFormulaFamilyRegistration(args, cellIndices[index])
+    if (
+      registration === undefined ||
+      registration.templateId !== firstRegistration.templateId ||
+      registration.shapeKey !== firstRegistration.shapeKey
+    ) {
+      sameFamily = false
+      uniformSingleColumnRun = false
+      break
+    }
+    const firstEntry = entries[0]!
+    if (entry.col !== firstEntry.col || entry.row !== firstEntry.row + index) {
+      uniformSingleColumnRun = false
+    }
+  }
+
+  const firstEntry = entries[0]!
+  if (
+    sameFamily &&
+    uniformSingleColumnRun &&
+    args.registerFreshFormulaFamilyRun?.({
+      sheetId,
+      templateId: firstRegistration.templateId,
+      shapeKey: firstRegistration.shapeKey,
+      axis: 'row',
+      fixedIndex: firstEntry.col,
+      start: firstEntry.row,
+      step: 1,
+      cellIndices,
+    })
+  ) {
+    return
+  }
+
+  if (sameFamily) {
+    upsertFormulaFamilyRun({
+      sheetId,
+      templateId: firstRegistration.templateId,
+      shapeKey: firstRegistration.shapeKey,
+      members: materializeFormulaFamilyMembers(entries, cellIndices, 0, entries.length),
+    })
+    return
+  }
+
+  const groups = new Map<string, { templateId: number; shapeKey: string; members: FormulaFamilyMember[] }>()
+  for (let index = 0; index < entries.length; index += 1) {
+    const registration = readBoundFormulaFamilyRegistration(args, cellIndices[index])
+    if (registration === undefined) {
+      continue
+    }
+    const key = `${registration.templateId}\t${registration.shapeKey}`
+    let group = groups.get(key)
+    if (group === undefined) {
+      group = { templateId: registration.templateId, shapeKey: registration.shapeKey, members: [] }
+      groups.set(key, group)
+    }
+    const entry = entries[index]!
+    group.members.push({ cellIndex: cellIndices[index]!, row: entry.row, col: entry.col })
+  }
+  groups.forEach((group) => {
+    upsertFormulaFamilyRun({
+      sheetId,
+      templateId: group.templateId,
+      shapeKey: group.shapeKey,
+      members: group.members,
+    })
+  })
+}
+
+function readBoundFormulaFamilyRegistration(
+  args: OperationFreshDirectAggregateFormulaBatchFastPathArgs,
+  cellIndex: number | undefined,
+): { readonly templateId: number; readonly shapeKey: string } | undefined {
+  if (cellIndex === undefined) {
+    return undefined
+  }
+  const formula = args.state.formulas.get(cellIndex)
+  if (formula === undefined || formula.templateId === undefined) {
+    return undefined
+  }
+  return {
+    templateId: formula.templateId,
+    shapeKey: directAggregateRuntimeFormulaFamilyShapeKey(formula),
+  }
+}
+
+function directAggregateRuntimeFormulaFamilyShapeKey(formula: RuntimeFormula): string {
+  return buildFormulaFamilyShapeKey({
+    compiled: formula.compiled,
+    dependencyCount: formula.dependencyIndices.length,
+    rangeDependencyCount: formula.rangeDependencies.length,
+    directAggregateKind: formula.directAggregate?.aggregateKind,
+    directLookupKind: formula.directLookup?.kind,
+    directScalarKind: formula.directScalar?.kind,
+    directCriteriaKind: formula.directCriteria?.aggregateKind,
+  })
+}
+
+function materializeFormulaFamilyMembers(
+  entries: readonly FreshDirectAggregateFormulaEntry[],
+  cellIndices: readonly number[] | Uint32Array,
+  start: number,
+  end: number,
+): FormulaFamilyMember[] {
+  const members: FormulaFamilyMember[] = []
+  members.length = end - start
+  for (let index = start; index < end; index += 1) {
+    const entry = entries[index]!
+    members[index - start] = { cellIndex: cellIndices[index]!, row: entry.row, col: entry.col }
+  }
+  return members
 }
 
 function getContiguousSingleColumnFormulaBatch(
@@ -450,6 +668,7 @@ function collectFreshDirectAggregateMatrixBatch(
 
   const formulaCol = firstMutation.col + inputColCount
   const formulaEntries: FreshDirectAggregateFormulaEntry[] = []
+  let directAggregateTemplate: FreshMatrixDirectAggregateTemplate | undefined
   for (let refIndex = firstFormulaRefIndex; refIndex < refs.length; refIndex += 1) {
     const ref = refs[refIndex]!
     const mutation = ref.mutation
@@ -472,13 +691,24 @@ function collectFreshDirectAggregateMatrixBatch(
     ) {
       return null
     }
-    let template: ReturnType<OperationFreshDirectAggregateFormulaBatchFastPathArgs['compileTemplateFormula']>
-    try {
-      template = args.compileTemplateFormula(mutation.formula, mutation.row, mutation.col)
-    } catch {
-      return null
+    let compiled: CompiledFormula
+    let templateId: number
+    const translated = directAggregateTemplate
+      ? tryTranslateFreshMatrixDirectAggregateTemplate(directAggregateTemplate, mutation.formula, mutation.row, mutation.col)
+      : undefined
+    if (translated) {
+      compiled = translated
+      templateId = directAggregateTemplate!.templateId
+    } else {
+      let template: ReturnType<OperationFreshDirectAggregateFormulaBatchFastPathArgs['compileTemplateFormula']>
+      try {
+        template = args.compileTemplateFormula(mutation.formula, mutation.row, mutation.col)
+      } catch {
+        return null
+      }
+      compiled = template.compiled
+      templateId = template.templateId
     }
-    const compiled = template.compiled
     if (
       compiled.volatile ||
       compiled.producesSpill ||
@@ -504,6 +734,16 @@ function collectFreshDirectAggregateMatrixBatch(
     ) {
       return null
     }
+    if (directAggregateTemplate === undefined) {
+      directAggregateTemplate = createFreshMatrixDirectAggregateTemplate({
+        aggregate,
+        compiled,
+        formulaCol,
+        range,
+        row: mutation.row,
+        templateId,
+      })
+    }
     const result = evaluateFreshDirectAggregateMatrixRow({
       aggregateKind: aggregate.aggregateKind,
       colEnd: range.endCol,
@@ -519,7 +759,13 @@ function collectFreshDirectAggregateMatrixBatch(
       col: mutation.col,
       source: mutation.formula,
       compiled,
-      templateId: template.templateId,
+      templateId,
+      aggregateKind: aggregate.aggregateKind,
+      aggregateRowStart: range.startRow,
+      aggregateRowEnd: range.endRow,
+      aggregateColStart: range.startCol,
+      aggregateColEnd: range.endCol,
+      resultOffset: normalizeFreshMatrixDirectAggregateOffset(aggregate.resultOffset),
       result,
     })
   }
@@ -537,16 +783,6 @@ function collectFreshDirectAggregateMatrixBatch(
   }
 }
 
-function createFreshFormulaCellAttacher(sheet: SheetRecord): FreshFormulaCellAttacher {
-  const attachFreshVisibleCellIdentity = sheet.logical.setFreshVisibleCellIdentityWithAxisIdsDeferred.bind(sheet.logical)
-  sheet.logical.deferVisibleCellPageRebuild()
-  const setGridCell = sheet.grid.createRowMajorSetter()
-  return (row, col, cellIndex, rowId, colId) => {
-    attachFreshVisibleCellIdentity(cellIndex, rowId, colId)
-    setGridCell(row, col, cellIndex)
-  }
-}
-
 function writeFreshNumericLiteralToCellStore(
   args: OperationFreshDirectAggregateFormulaBatchFastPathArgs,
   cellIndex: number,
@@ -559,158 +795,6 @@ function writeFreshNumericLiteralToCellStore(
   cellStore.tags[cellIndex] = ValueTag.Number
   cellStore.numbers[cellIndex] = value
   cellStore.errors[cellIndex] = ErrorCode.None
-}
-
-function evaluateFreshDirectAggregateMatrixRow(input: {
-  readonly aggregateKind: 'sum' | 'average' | 'count' | 'min' | 'max'
-  readonly colEnd: number
-  readonly colStart: number
-  readonly inputColCount: number
-  readonly matrixColStart: number
-  readonly resultOffset: number | undefined
-  readonly rowOffset: number
-  readonly values: Float64Array
-}): DirectScalarCurrentOperand {
-  let sum = 0
-  let count = 0
-  let minimum = Number.POSITIVE_INFINITY
-  let maximum = Number.NEGATIVE_INFINITY
-  const rowBase = input.rowOffset * input.inputColCount
-  for (let col = input.colStart; col <= input.colEnd; col += 1) {
-    const value = input.values[rowBase + col - input.matrixColStart]!
-    sum += value
-    count += 1
-    minimum = Math.min(minimum, value)
-    maximum = Math.max(maximum, value)
-  }
-  const result =
-    input.aggregateKind === 'sum'
-      ? sum
-      : input.aggregateKind === 'count'
-        ? count
-        : input.aggregateKind === 'average'
-          ? count === 0
-            ? undefined
-            : sum / count
-          : input.aggregateKind === 'min'
-            ? minimum === Number.POSITIVE_INFINITY
-              ? 0
-              : minimum
-            : maximum === Number.NEGATIVE_INFINITY
-              ? 0
-              : maximum
-  if (result === undefined) {
-    return { kind: 'error', code: ErrorCode.Div0 }
-  }
-  return { kind: 'number', value: result + (input.resultOffset ?? 0) }
-}
-
-function freshMatrixOverlapsFormulaDependencies(
-  args: OperationFreshDirectAggregateFormulaBatchFastPathArgs,
-  matrix: FreshDirectAggregateMatrixBatch,
-): boolean {
-  const rowEnd = matrix.rowStart + matrix.rowCount - 1
-  const colEnd = matrix.formulaCol
-  if (
-    args.getRegionFormulaSubscriptionCount?.() === args.state.formulas.size &&
-    args.hasRegionFormulaSubscriptionsOverlappingRange?.(matrix.sheetId, matrix.rowStart, rowEnd, matrix.colStart, colEnd) === false
-  ) {
-    return false
-  }
-  let overlaps = false
-  args.state.formulas.forEach((formula) => {
-    if (overlaps) {
-      return
-    }
-    overlaps =
-      directAggregateOverlapsFreshMatrix(formula.directAggregate, matrix.sheet.name, matrix.rowStart, rowEnd, matrix.colStart, colEnd) ||
-      directCriteriaOverlapsFreshMatrix(formula.directCriteria, matrix.sheet.name, matrix.rowStart, rowEnd, matrix.colStart, colEnd) ||
-      rangeDependenciesOverlapFreshMatrix(args, formula, matrix.sheetId, matrix.rowStart, rowEnd, matrix.colStart, colEnd)
-  })
-  return overlaps
-}
-
-function directAggregateOverlapsFreshMatrix(
-  aggregate: RuntimeDirectAggregateDescriptor | undefined,
-  sheetName: string,
-  rowStart: number,
-  rowEnd: number,
-  colStart: number,
-  colEnd: number,
-): boolean {
-  return (
-    aggregate !== undefined &&
-    aggregate.sheetName === sheetName &&
-    aggregate.rowEnd >= rowStart &&
-    aggregate.rowStart <= rowEnd &&
-    aggregate.colEnd >= colStart &&
-    aggregate.col <= colEnd
-  )
-}
-
-function directCriteriaOverlapsFreshMatrix(
-  criteria: RuntimeDirectCriteriaDescriptor | undefined,
-  sheetName: string,
-  rowStart: number,
-  rowEnd: number,
-  colStart: number,
-  colEnd: number,
-): boolean {
-  if (criteria === undefined) {
-    return false
-  }
-  const rangeOverlaps = (range: {
-    readonly sheetName: string
-    readonly rowStart: number
-    readonly rowEnd: number
-    readonly col: number
-  }): boolean =>
-    range.sheetName === sheetName && range.rowEnd >= rowStart && range.rowStart <= rowEnd && range.col >= colStart && range.col <= colEnd
-  return (
-    (criteria.aggregateRange !== undefined && rangeOverlaps(criteria.aggregateRange)) ||
-    criteria.criteriaPairs.some((pair) => rangeOverlaps(pair.range))
-  )
-}
-
-function rangeDependenciesOverlapFreshMatrix(
-  args: OperationFreshDirectAggregateFormulaBatchFastPathArgs,
-  formula: RuntimeFormula,
-  sheetId: number,
-  rowStart: number,
-  rowEnd: number,
-  colStart: number,
-  colEnd: number,
-): boolean {
-  for (let index = 0; index < formula.rangeDependencies.length; index += 1) {
-    if (rangeDescriptorOverlapsFreshMatrix(args, formula.rangeDependencies[index]!, sheetId, rowStart, rowEnd, colStart, colEnd)) {
-      return true
-    }
-  }
-  for (let index = 0; index < formula.graphRangeDependencies.length; index += 1) {
-    if (rangeDescriptorOverlapsFreshMatrix(args, formula.graphRangeDependencies[index]!, sheetId, rowStart, rowEnd, colStart, colEnd)) {
-      return true
-    }
-  }
-  return false
-}
-
-function rangeDescriptorOverlapsFreshMatrix(
-  args: OperationFreshDirectAggregateFormulaBatchFastPathArgs,
-  rangeIndex: number,
-  sheetId: number,
-  rowStart: number,
-  rowEnd: number,
-  colStart: number,
-  colEnd: number,
-): boolean {
-  const descriptor = args.state.ranges.getDescriptor(rangeIndex)
-  return (
-    descriptor.sheetId === sheetId &&
-    descriptor.row2 >= rowStart &&
-    descriptor.row1 <= rowEnd &&
-    descriptor.col2 >= colStart &&
-    descriptor.col1 <= colEnd
-  )
 }
 
 function collectFreshDirectAggregateFormulaEntries(
@@ -787,6 +871,12 @@ function collectFreshDirectAggregateFormulaEntries(
       source: mutation.formula,
       compiled,
       templateId: template.templateId,
+      aggregateKind: aggregate.aggregateKind,
+      aggregateRowStart: range.startRow,
+      aggregateRowEnd: range.endRow,
+      aggregateColStart: range.startCol,
+      aggregateColEnd: range.endCol,
+      resultOffset: normalizeFreshMatrixDirectAggregateOffset(aggregate.resultOffset),
       result,
     })
   }

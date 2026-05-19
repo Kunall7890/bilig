@@ -4,7 +4,9 @@ import { spillDependencyKeyFromRef, tableDependencyKey } from '../../engine-meta
 import type { RuntimeFormula } from '../runtime-state.js'
 import {
   aggregateColumnDependencyKey,
+  appendDirectAggregateColumnReverseEdges,
   appendTrackedReverseEdge,
+  appendUnindexedAggregateColumnReverseEdge,
   directCriteriaAggregateColumn,
   directLookupColumnInfo,
   directRegionIdsForFormula,
@@ -48,15 +50,17 @@ export function installFreshFormulaBindingNow(args: {
   const serviceArgs = args.serviceArgs
   const cellStore = serviceArgs.state.workbook.cellStore
   const sheetId = cellStore.sheetIds[args.cellIndex]
-  const sheet = sheetId === undefined ? undefined : serviceArgs.state.workbook.getSheetById(sheetId)
+  const sheet =
+    args.options?.ownerPosition === undefined && sheetId !== undefined ? serviceArgs.state.workbook.getSheetById(sheetId) : undefined
   const physicalOwnerPosition =
-    sheet && sheet.structureVersion === 1
+    args.options?.ownerPosition ??
+    (sheet && sheet.structureVersion === 1
       ? {
           sheetName: args.ownerSheetName,
           row: cellStore.rows[args.cellIndex] ?? 0,
           col: cellStore.cols[args.cellIndex] ?? 0,
         }
-      : undefined
+      : undefined)
   const dependencyEntities = serviceArgs.edgeArena.replace(serviceArgs.edgeArena.empty(), args.prepared.dependencies.dependencyEntities)
   const runtimeFormula: RuntimeFormula = {
     cellIndex: args.cellIndex,
@@ -84,6 +88,14 @@ export function installFreshFormulaBindingNow(args: {
     directScalar: args.prepared.directScalar,
     directCriteria: args.prepared.directCriteria,
     ...(args.options?.preserveCachedValueOnFullRecalc === true ? { preserveCachedValueOnFullRecalc: true } : {}),
+    inlineScalarFastPlanKind: args.prepared.inlineScalarFastPlanKind,
+    inlineScalarPlanCellIndices: args.prepared.inlineScalarPlanCellIndices,
+  }
+  if (args.prepared.inlineScalarArithmeticDeltaCoefficients !== undefined) {
+    runtimeFormula.inlineScalarArithmeticDeltaCoefficients = args.prepared.inlineScalarArithmeticDeltaCoefficients
+  }
+  if (args.prepared.inlineScalarFastPlanStringIds !== undefined) {
+    runtimeFormula.inlineScalarFastPlanStringIds = args.prepared.inlineScalarFastPlanStringIds
   }
   const formulaSlotId = serviceArgs.state.formulas.set(args.cellIndex, runtimeFormula)
   runtimeFormula.formulaSlotId = formulaSlotId
@@ -140,13 +152,19 @@ export function installFreshFormulaBindingNow(args: {
   if (directCriteriaAggregate) {
     const aggregateSheet = serviceArgs.state.workbook.getSheet(directCriteriaAggregate.sheetName)
     if (aggregateSheet) {
-      appendTrackedReverseEdge(
+      appendUnindexedAggregateColumnReverseEdge(
         serviceArgs.reverseState.reverseAggregateColumnEdges,
         aggregateColumnDependencyKey(aggregateSheet.id, directCriteriaAggregate.col),
         args.cellIndex,
       )
     }
   }
+  appendDirectAggregateColumnReverseEdges(
+    serviceArgs.reverseState.reverseAggregateColumnEdges,
+    serviceArgs.state.workbook,
+    runtimeFormula.directAggregate,
+    args.cellIndex,
+  )
   args.trackFormulaSheetIndexes(args.cellIndex, args.ownerSheetName, runtimeFormula.compiled)
   if (runtimeFormula.directAggregate !== undefined || runtimeFormula.directCriteria !== undefined) {
     serviceArgs.regionGraph.replaceFormulaSubscriptions(args.cellIndex, directRegionIdsForFormula(runtimeFormula))

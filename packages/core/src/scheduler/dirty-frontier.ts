@@ -3,6 +3,8 @@ import { growUint32 } from '../engine-buffer-utils.js'
 
 type U32 = Uint32Array
 
+const INITIAL_DIRTY_FRONTIER_BUFFER_CAPACITY = 16
+
 export interface DirtyFrontierReverseGraph {
   getDependents(entityId: number): U32
 }
@@ -18,12 +20,12 @@ export class DirtyFrontier {
   private rangeEpoch = 1
   private exactLookupEpoch = 1
   private sortedLookupEpoch = 1
-  private visitedCells: U32 = new Uint32Array(64)
-  private visitedRanges: U32 = new Uint32Array(64)
+  private visitedCells: U32 = new Uint32Array(INITIAL_DIRTY_FRONTIER_BUFFER_CAPACITY)
+  private visitedRanges: U32 = new Uint32Array(INITIAL_DIRTY_FRONTIER_BUFFER_CAPACITY)
   private visitedExactLookupColumns = new Map<number, number>()
   private visitedSortedLookupColumns = new Map<number, number>()
-  private entityQueue: U32 = new Uint32Array(128)
-  private dirtyFormulaIds: U32 = new Uint32Array(128)
+  private entityQueue: U32 = new Uint32Array(INITIAL_DIRTY_FRONTIER_BUFFER_CAPACITY)
+  private dirtyFormulaIds: U32 = new Uint32Array(INITIAL_DIRTY_FRONTIER_BUFFER_CAPACITY)
 
   collectDirty(
     changedRoots: readonly number[] | U32,

@@ -3,7 +3,11 @@ import { ValueTag, type WorkbookSnapshot } from '@bilig/protocol'
 import { describe, expect, it, vi } from 'vitest'
 import type { EngineFormulaSourceRefs } from '../cell-mutations-at.js'
 import { CellFlags } from '../cell-store.js'
-import { restoreWorkbookFromRuntimeImage, restoreWorkbookFromSnapshot } from '../snapshot/runtime-image.js'
+import {
+  restoreWorkbookFromRuntimeImage,
+  restoreWorkbookFromSnapshot,
+  type HydratedPreparedRuntimeFormulaRef,
+} from '../snapshot/runtime-image.js'
 import { StringPool } from '../string-pool.js'
 import { WorkbookStore } from '../workbook-store.js'
 
@@ -28,6 +32,19 @@ function collectFormulaSourceRefs(refs: EngineFormulaSourceRefs): Array<{
       col: ref.col,
       source: ref.source,
     })
+  }
+  return collected
+}
+
+function collectHydratedPreparedRefs(
+  refs:
+    | readonly HydratedPreparedRuntimeFormulaRef[]
+    | { readonly length: number; readonly at: (index: number) => HydratedPreparedRuntimeFormulaRef },
+): HydratedPreparedRuntimeFormulaRef[] {
+  const collected: HydratedPreparedRuntimeFormulaRef[] = []
+  for (let index = 0; index < refs.length; index += 1) {
+    const ref = Array.isArray(refs) ? refs[index]! : refs.at(index)
+    collected.push({ ...ref })
   }
   return collected
 }
@@ -254,10 +271,16 @@ describe('restoreWorkbookFromRuntimeImage', () => {
     const b2 = sheet!.grid.get(1, 1)
     const c1 = sheet!.grid.get(0, 2)
     const c2 = sheet!.grid.get(1, 2)
+    const row2Id = sheet!.logicalAxisMap.getId('row', 1)!
+    const colCId = sheet!.logicalAxisMap.getId('column', 2)!
     expect(workbook.cellStore.tags[a1]).toBe(ValueTag.Number)
     expect(workbook.cellStore.numbers[a1]).toBe(1)
     expect(workbook.cellStore.tags[b2]).toBe(ValueTag.Empty)
     expect(workbook.cellStore.flags[b2] & CellFlags.AuthoredBlank).not.toBe(0)
+    expect(sheet!.grid.getPhysical(1, 2)).toBe(c2)
+    expect(sheet!.logical.getCellVisiblePosition(c2)).toEqual({ row: 1, col: 2 })
+    expect(sheet!.logical.listResidentCellIndices('row', [row2Id])).toEqual([3, 4, 5])
+    expect(sheet!.logical.listResidentCellIndices('column', [colCId])).toEqual([2, 5])
     expect(plainCalls).toEqual([
       {
         sheetId: 1,
@@ -283,6 +306,67 @@ describe('restoreWorkbookFromRuntimeImage', () => {
 
     allocateDenseRowMajorAtReserved.mockRestore()
     allocateReserved.mockRestore()
+  })
+
+  it('trusts dense row-major runtime-image coordinate order without rescanning coordinates', () => {
+    const workbook = new WorkbookStore('runtime-image-dense-order')
+    const allocateDenseRowMajorAtReserved = vi.spyOn(workbook.cellStore, 'allocateDenseRowMajorAtReserved')
+    const snapshot: WorkbookSnapshot = {
+      version: 1,
+      workbook: { name: 'runtime-image-dense-order' },
+      sheets: [
+        {
+          id: 1,
+          name: 'Sheet1',
+          order: 0,
+          cells: [
+            { address: '__ignored_a__', value: 1 },
+            { address: '__ignored_b__', value: 2 },
+            { address: '__ignored_c__', value: 3 },
+            { address: '__ignored_d__', value: 4 },
+          ],
+        },
+      ],
+    }
+
+    restoreWorkbookFromRuntimeImage({
+      snapshot,
+      runtimeImage: {
+        version: 1,
+        templateBank: [],
+        formulaInstances: [],
+        formulaValues: [],
+        sheetCells: [
+          {
+            sheetName: 'Sheet1',
+            cellCount: 4,
+            coordinateOrder: 'dense-row-major',
+            dimensions: { width: 2, height: 2 },
+            coords: [
+              { row: 99, col: 99 },
+              { row: 99, col: 98 },
+              { row: 98, col: 99 },
+              { row: 98, col: 98 },
+            ],
+          },
+        ],
+      },
+      workbook,
+      strings: new StringPool(),
+      resetWorkbook: () => {},
+      hydrateTemplateBank: () => {},
+      initializeCellFormulasAt: () => {},
+    })
+
+    const sheet = workbook.getSheet('Sheet1')
+    expect(sheet).toBeDefined()
+    expect(allocateDenseRowMajorAtReserved).toHaveBeenCalledWith(1, 0, 2, 0, 2)
+    expect(workbook.cellStore.numbers[sheet!.grid.get(0, 0)]).toBe(1)
+    expect(workbook.cellStore.numbers[sheet!.grid.get(0, 1)]).toBe(2)
+    expect(workbook.cellStore.numbers[sheet!.grid.get(1, 0)]).toBe(3)
+    expect(workbook.cellStore.numbers[sheet!.grid.get(1, 1)]).toBe(4)
+
+    allocateDenseRowMajorAtReserved.mockRestore()
   })
 
   it('falls back to address-matched runtime formula values when value order is not aligned', () => {
@@ -358,7 +442,8 @@ describe('restoreWorkbookFromRuntimeImage', () => {
         colDelta: col,
       }),
       initializeHydratedPreparedCellFormulasAt: (refs) => {
-        hydratedCalls.push(...refs)
+        expect(Array.isArray(refs)).toBe(false)
+        hydratedCalls.push(...collectHydratedPreparedRefs(refs))
       },
       initializeCellFormulasAt: () => {},
     })

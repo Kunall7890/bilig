@@ -59,7 +59,7 @@ export interface EngineMutationSupportService {
   ) => Effect.Effect<{ changedInputCount: number; formulaChangedCount: number; explicitChangedCount: number }, EngineMutationError>
   readonly syncDynamicRanges: (formulaChangedCount: number) => Effect.Effect<number, EngineMutationError>
   readonly resetMaterializedCellScratch: (expectedSize: number) => Effect.Effect<void, EngineMutationError>
-  readonly beginMutationCollectionNow: () => void
+  readonly beginMutationCollectionNow: (options?: { readonly ensureScratch?: boolean }) => void
   readonly markInputChangedNow: (cellIndex: number, count: number) => number
   readonly markFormulaChangedNow: (cellIndex: number, count: number) => number
   readonly markVolatileFormulasChangedNow: (count: number) => number

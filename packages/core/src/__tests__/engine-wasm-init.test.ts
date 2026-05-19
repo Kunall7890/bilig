@@ -3,8 +3,12 @@ import { describe, expect, it } from 'vitest'
 import { SpreadsheetEngine } from '../index.js'
 
 describe('SpreadsheetEngine wasm initialization', () => {
-  it('initializes the wasm kernel synchronously for immediate mutations in Node runtimes', () => {
+  it('keeps the wasm kernel lazy until ready is requested', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'spec' })
+
+    expect(engine.wasm.ready).toBe(false)
+
+    await engine.ready()
 
     expect(engine.wasm.ready).toBe(true)
 
@@ -33,6 +37,23 @@ describe('SpreadsheetEngine wasm initialization', () => {
 
     expect(engine.explainCell('Sheet1', 'E1').mode).toBe(FormulaMode.JsOnly)
     expect(engine.getCellValue('Sheet1', 'E1')).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(engine.wasm.ready).toBe(false)
+  })
+
+  it('keeps direct-only wasm-mode formulas off the wasm startup path', () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'spec' })
+
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 2)
+    engine.setCellFormula('Sheet1', 'B1', 'A1+1')
+
+    expect(engine.explainCell('Sheet1', 'B1').mode).toBe(FormulaMode.WasmFastPath)
+    expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 3 })
+    expect(engine.wasm.ready).toBe(false)
+
+    engine.clearCell('Sheet1', 'B1')
+
+    expect(engine.wasm.ready).toBe(false)
   })
 
   it('flushes deferred JS-only edits before the first wasm formula evaluation', () => {
@@ -41,13 +62,13 @@ describe('SpreadsheetEngine wasm initialization', () => {
     engine.createSheet('Sheet1')
     engine.setCellValue('Sheet1', 'A1', 10)
     engine.setCellValue('Sheet1', 'A1', 12)
-    engine.setCellFormula('Sheet1', 'B1', 'A1+1')
+    engine.setCellFormula('Sheet1', 'B1', 'SIN(A1)+1')
 
     expect(engine.explainCell('Sheet1', 'B1').mode).toBe(FormulaMode.WasmFastPath)
-    expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 13 })
+    expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: Math.sin(12) + 1 })
 
     engine.setCellValue('Sheet1', 'A1', 20)
 
-    expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 21 })
+    expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: Math.sin(20) + 1 })
   })
 })

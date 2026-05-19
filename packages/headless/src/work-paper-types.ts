@@ -12,6 +12,15 @@ import type { EngineCounters } from '@bilig/core'
 
 export type RawCellContent = LiteralInput | string
 
+export type WorkPaperScalarFormulaVariableValue = LiteralInput | CellValue
+export type WorkPaperScalarFormulaEnvironment = Readonly<Record<string, WorkPaperScalarFormulaVariableValue>>
+
+export interface WorkPaperCompiledScalarFormula {
+  readonly formula: string
+  readonly variables: readonly string[]
+  evaluate(variables?: WorkPaperScalarFormulaEnvironment): CellValue | CellValue[][]
+}
+
 export type WorkPaperContextValue = string | number | boolean | null | WorkPaperContextObject | readonly WorkPaperContextValue[]
 
 export interface WorkPaperContextObject {
@@ -31,9 +40,32 @@ export interface WorkPaperCellAddress {
   row: number
 }
 
+export interface WorkPaperCellValueUpdate {
+  readonly address: WorkPaperCellAddress
+  readonly value: LiteralInput
+}
+
+export interface WorkPaperSheetCellValueUpdate {
+  readonly row: number
+  readonly col: number
+  readonly value: LiteralInput
+}
+
+export type WorkPaperSheetRangeValues = readonly (readonly LiteralInput[])[]
+
 export interface WorkPaperCellRange {
   start: WorkPaperCellAddress
   end: WorkPaperCellAddress
+}
+
+export interface WorkPaperRangeValueBlock {
+  readonly rowCount: number
+  readonly colCount: number
+  readonly tags: Uint8Array
+  readonly numbers: Float64Array
+  readonly stringIds: Uint32Array
+  readonly errors: Uint16Array
+  readonly strings?: ReadonlyMap<number, string>
 }
 
 export interface WorkPaperAddressFormatOptions {

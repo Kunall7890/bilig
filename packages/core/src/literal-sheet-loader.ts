@@ -6,6 +6,11 @@ import { CellFlags } from './cell-store.js'
 interface FreshLiteralLogicalSheetInternals {
   readonly deferVisibleCellPageRebuild?: () => void
   readonly setFreshVisibleCellIdentityWithAxisIdsDeferred?: (cellIndex: number, rowId: string, colId: string) => void
+  readonly setFreshVisibleDenseRowMajorIdentitiesWithAxisIdsDeferred?: (
+    firstCellIndex: number,
+    rowIds: readonly string[],
+    colIds: readonly string[],
+  ) => void
   readonly setFreshVisibleCellWithAxisIdsDeferred?: (row: number, col: number, cellIndex: number, rowId: string, colId: string) => void
 }
 
@@ -135,25 +140,36 @@ export function loadDenseLiteralSheetIntoEmptySheet(
   const cellStore = workbook.cellStore
   const firstCellIndex = cellStore.allocateDenseRowMajorReserved(sheetId, content.length, maxColumnCount)
   const writtenColumns = materializeDenseWrittenColumns(maxColumnCount)
-  const rowIds: string[] = []
-  const colIds: string[] = []
   const ensureRowId = workbook.createLogicalAxisIdEnsurer(sheetId, 'row')
   const ensureColumnId = workbook.createLogicalAxisIdEnsurer(sheetId, 'column')
-  const attachFreshCell = createFreshLiteralCellAttacher(workbook, sheet)
+  const rowIds = materializeAxisIds(content.length, ensureRowId)
+  const colIds = materializeAxisIds(maxColumnCount, ensureColumnId)
+  const attachedDenseCells = attachDenseFreshLiteralCells(sheet, firstCellIndex, 0, 0, rowIds, colIds)
   const previousOnSetValue = cellStore.onSetValue
   cellStore.onSetValue = null
   let literalCount = 0
   try {
-    for (let rowIndex = 0; rowIndex < content.length; rowIndex += 1) {
-      const row = content[rowIndex]!
-      const rowId = (rowIds[rowIndex] ??= ensureRowId(rowIndex))
-      for (let colIndex = 0; colIndex < maxColumnCount; colIndex += 1) {
-        const raw = row[colIndex]
-        const cellIndex = firstCellIndex + rowIndex * maxColumnCount + colIndex
-        literalCount += 1
-        const colId = (colIds[colIndex] ??= ensureColumnId(colIndex))
-        attachFreshCell(rowIndex, colIndex, cellIndex, rowId, colId)
-        writeLiteralCell(cellStore, strings, cellIndex, raw)
+    if (attachedDenseCells) {
+      for (let rowIndex = 0; rowIndex < content.length; rowIndex += 1) {
+        const row = content[rowIndex]!
+        const rowBase = firstCellIndex + rowIndex * maxColumnCount
+        for (let colIndex = 0; colIndex < maxColumnCount; colIndex += 1) {
+          writeLiteralCell(cellStore, strings, rowBase + colIndex, row[colIndex])
+          literalCount += 1
+        }
+      }
+    } else {
+      const attachFreshCell = createFreshLiteralCellAttacher(workbook, sheet)
+      for (let rowIndex = 0; rowIndex < content.length; rowIndex += 1) {
+        const row = content[rowIndex]!
+        const rowId = rowIds[rowIndex]!
+        const rowBase = firstCellIndex + rowIndex * maxColumnCount
+        for (let colIndex = 0; colIndex < maxColumnCount; colIndex += 1) {
+          const cellIndex = rowBase + colIndex
+          attachFreshCell(rowIndex, colIndex, cellIndex, rowId, colIds[colIndex]!)
+          writeLiteralCell(cellStore, strings, cellIndex, row[colIndex])
+          literalCount += 1
+        }
       }
     }
     if (writtenColumns.length > 0) {
@@ -180,8 +196,9 @@ function loadDenseNumericLiteralSheetIntoEmptySheet(
   const writtenColumns = materializeDenseWrittenColumns(colCount)
   const ensureRowId = workbook.createLogicalAxisIdEnsurer(sheetId, 'row')
   const ensureColumnId = workbook.createLogicalAxisIdEnsurer(sheetId, 'column')
-  const attachFreshCell = createFreshLiteralCellAttacher(workbook, sheet)
-  const colIds = Array.from({ length: colCount }, (_value, colIndex) => ensureColumnId(colIndex))
+  const rowIds = materializeAxisIds(rowCount, ensureRowId)
+  const colIds = materializeAxisIds(colCount, ensureColumnId)
+  const attachedDenseCells = attachDenseFreshLiteralCells(sheet, firstCellIndex, 0, 0, rowIds, colIds)
   const previousOnSetValue = cellStore.onSetValue
   cellStore.onSetValue = null
   try {
@@ -193,18 +210,33 @@ function loadDenseNumericLiteralSheetIntoEmptySheet(
     cellStore.flags.fill(CellFlags.Materialized, firstCellIndex, firstCellIndex + cellCount)
     cellStore.topoRanks.fill(0, firstCellIndex, firstCellIndex + cellCount)
     cellStore.cycleGroupIds.fill(-1, firstCellIndex, firstCellIndex + cellCount)
-    for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
-      const row = content[rowIndex]!
-      const rowId = ensureRowId(rowIndex)
-      const rowBase = firstCellIndex + rowIndex * colCount
-      for (let colIndex = 0; colIndex < colCount; colIndex += 1) {
-        const cellIndex = rowBase + colIndex
-        const raw = row[colIndex]
-        if (typeof raw !== 'number') {
-          throw new Error('Dense numeric literal sheet inspection does not match sheet content')
+    if (attachedDenseCells) {
+      for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
+        const row = content[rowIndex]!
+        const rowBase = firstCellIndex + rowIndex * colCount
+        for (let colIndex = 0; colIndex < colCount; colIndex += 1) {
+          const raw = row[colIndex]
+          if (typeof raw !== 'number') {
+            throw new Error('Dense numeric literal sheet inspection does not match sheet content')
+          }
+          cellStore.numbers[rowBase + colIndex] = raw
         }
-        attachFreshCell(rowIndex, colIndex, cellIndex, rowId, colIds[colIndex]!)
-        cellStore.numbers[cellIndex] = raw
+      }
+    } else {
+      const attachFreshCell = createFreshLiteralCellAttacher(workbook, sheet)
+      for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
+        const row = content[rowIndex]!
+        const rowId = rowIds[rowIndex]!
+        const rowBase = firstCellIndex + rowIndex * colCount
+        for (let colIndex = 0; colIndex < colCount; colIndex += 1) {
+          const cellIndex = rowBase + colIndex
+          const raw = row[colIndex]
+          if (typeof raw !== 'number') {
+            throw new Error('Dense numeric literal sheet inspection does not match sheet content')
+          }
+          attachFreshCell(rowIndex, colIndex, cellIndex, rowId, colIds[colIndex]!)
+          cellStore.numbers[cellIndex] = raw
+        }
       }
     }
     if (writtenColumns.length > 0) {
@@ -216,12 +248,41 @@ function loadDenseNumericLiteralSheetIntoEmptySheet(
   return cellCount
 }
 
+function materializeAxisIds(count: number, ensureAxisId: (index: number) => string): string[] {
+  const axisIds: string[] = []
+  axisIds.length = count
+  for (let index = 0; index < count; index += 1) {
+    axisIds[index] = ensureAxisId(index)
+  }
+  return axisIds
+}
+
 function materializeDenseWrittenColumns(count: number): Uint32Array {
   const columns = new Uint32Array(count)
   for (let col = 0; col < count; col += 1) {
     columns[col] = col
   }
   return columns
+}
+
+function attachDenseFreshLiteralCells(
+  sheet: SheetRecord,
+  firstCellIndex: number,
+  rowStart: number,
+  colStart: number,
+  rowIds: readonly string[],
+  colIds: readonly string[],
+): boolean {
+  const logicalCandidate: unknown = sheet.logical
+  const logical = isFreshLiteralLogicalSheetInternals(logicalCandidate) ? logicalCandidate : undefined
+  const attachDenseFreshVisibleCellIdentities = logical?.setFreshVisibleDenseRowMajorIdentitiesWithAxisIdsDeferred?.bind(logical)
+  if (!attachDenseFreshVisibleCellIdentities) {
+    return false
+  }
+  logical?.deferVisibleCellPageRebuild?.()
+  attachDenseFreshVisibleCellIdentities(firstCellIndex, rowIds, colIds)
+  sheet.grid.setDenseRowMajor(rowStart, colStart, rowIds.length, colIds.length, firstCellIndex)
+  return true
 }
 
 function createFreshLiteralCellAttacher(workbook: WorkbookStore, sheet: SheetRecord): FreshLiteralCellAttacher {

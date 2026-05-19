@@ -147,7 +147,7 @@ describe('headless performance leadership scorecard', () => {
     )
   })
 
-  it('tracks partial workbook-wide competitor evidence without completing the broad claim', () => {
+  it('tracks limited workbook-wide competitor evidence without completing the broad claim', () => {
     const scorecard = buildHeadlessPerformanceLeadershipScorecard({
       competitiveArtifact,
       competitiveArtifactPath: 'packages/benchmarks/baselines/workpaper-vs-hyperformula.json',
@@ -156,7 +156,7 @@ describe('headless performance leadership scorecard', () => {
           artifactPath: 'packages/benchmarks/baselines/workpaper-vs-xlsx-calc.json',
           comparableWorkloadCount: 2,
           coverageNote: 'xlsx-calc covers a workbook-wide subset of equivalent aggregate and lookup recalculation workloads.',
-          coverageTier: 'workbook-wide',
+          coverageTier: 'workbook-wide-limited',
           engineName: 'xlsx-calc',
           generatedAt: '2026-05-14T00:00:00.000Z',
           meanAndP95WinCount: 2,
@@ -170,10 +170,19 @@ describe('headless performance leadership scorecard', () => {
 
     expect(scorecard.goalStatus).toBe('active-not-achieved')
     expect(scorecard.summary.comparisonEngines).toEqual(['HyperFormula', 'xlsx-calc'])
-    expect(scorecard.summary.workbookWideComparisonEngines).toEqual(['HyperFormula', 'xlsx-calc'])
-    expect(scorecard.summary.limitedComparisonEngines).toEqual([])
+    expect(scorecard.summary.workbookWideComparisonEngines).toEqual(['HyperFormula'])
+    expect(scorecard.summary.limitedComparisonEngines).toEqual([
+      {
+        comparableWorkloadCount: 2,
+        coverageTier: 'workbook-wide-limited',
+        engineName: 'xlsx-calc',
+      },
+    ])
     expect(scorecard.completionAudit.unmetRequirements).toContain(
-      'per-workload-mean-and-p95-wins: 2/3 comparable workloads win both mean and p95; p95 holdouts: lookup-approximate-duplicates; xlsx-calc workbook-wide comparison is incomplete: covers 2/3 comparable workloads and has 2/2 mean+p95 wins',
+      'competitor-coverage: only HyperFormula is workbook-wide; add at least one more direct workbook-wide headless spreadsheet engine before broad headless leadership claims',
+    )
+    expect(scorecard.completionAudit.unmetRequirements).toContain(
+      'per-workload-mean-and-p95-wins: 2/3 comparable workloads win both mean and p95; p95 holdouts: lookup-approximate-duplicates',
     )
   })
 

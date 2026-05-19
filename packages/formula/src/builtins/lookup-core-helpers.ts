@@ -28,6 +28,9 @@ export function normalizeExactLookupNumber(value: number): number {
   if (!Number.isFinite(value)) {
     return value
   }
+  if (Number.isInteger(value) && Math.abs(value) < 1_000_000_000_000_000) {
+    return value
+  }
   const normalized = Number(value.toPrecision(exactLookupNumberSignificantDigits))
   return Object.is(normalized, -0) ? 0 : normalized
 }

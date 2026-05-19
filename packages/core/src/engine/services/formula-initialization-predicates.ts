@@ -13,7 +13,8 @@ export function canEvaluateInitialDirectRuntimeFormula(formula: RuntimeFormula |
     (formula.directAggregate !== undefined ||
       formula.directCriteria !== undefined ||
       formula.directLookup !== undefined ||
-      formula.directScalar !== undefined)
+      formula.directScalar !== undefined ||
+      formula.inlineScalarFastPlanKind !== undefined)
   )
 }
 

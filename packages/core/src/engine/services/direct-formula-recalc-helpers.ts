@@ -40,6 +40,10 @@ export function directCriteriaValueString(value: CellValue): string {
 }
 
 export function collectTrackedDependents<Key extends string | number>(registry: Map<Key, Set<number>>, keys: readonly Key[]): number[] {
+  if (keys.length === 1) {
+    const dependents = registry.get(keys[0]!)
+    return dependents === undefined || dependents.size === 0 ? [] : [...dependents]
+  }
   const candidates = new Set<number>()
   keys.forEach((key) => {
     registry.get(key)?.forEach((cellIndex) => {

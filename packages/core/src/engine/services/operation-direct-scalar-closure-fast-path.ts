@@ -10,6 +10,7 @@ import {
 } from './direct-formula-recalc-helpers.js'
 import {
   canTrustPhysicalTrackedChangeSplit,
+  makeCompactExistingNumericMutationResult,
   makeExistingNumericMutationResult,
   tagTrustedPhysicalTrackedChanges,
 } from './operation-change-helpers.js'
@@ -62,6 +63,18 @@ export function tryApplyTrustedDirectScalarClosureExistingNumericMutation(
   args.deferSingleCellKernelSync(request.existingIndex)
   const lastMetrics = args.makeSingleLiteralSkipMetrics()
   args.state.setLastMetrics(lastMetrics)
+  if (!request.hasTrackedEventListeners && directChanged.length === 1) {
+    const formulaCellIndex = directChanged[0]!
+    const cellStore = args.state.workbook.cellStore
+    return makeCompactExistingNumericMutationResult(
+      request.existingIndex,
+      formulaCellIndex,
+      1,
+      cellStore.tags[formulaCellIndex] === ValueTag.Number ? cellStore.numbers[formulaCellIndex] : undefined,
+      cellStore.rows[formulaCellIndex] ?? 0,
+      cellStore.cols[formulaCellIndex] ?? 0,
+    )
+  }
   const changed = composeSingleDisjointExplicitEventChanges(request.existingIndex, directChanged)
   if (changed.length > 4 && canTrustPhysicalTrackedChangeSplit(changed, request.sheetId, 1, args.state.workbook)) {
     tagTrustedPhysicalTrackedChanges(changed, request.sheetId, 1)

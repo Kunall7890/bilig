@@ -4,6 +4,8 @@ import type { RuntimeDirectScalarDescriptor, RuntimeDirectScalarOperand } from '
 
 export interface DirectScalarWorkbook {
   readonly getSheet: (sheetName: string) => { readonly id: number } | undefined
+  readonly getFreshCellIndexAt?: (sheetId: number, row: number, col: number) => number | undefined
+  readonly getCellIndexAt?: (sheetId: number, row: number, col: number) => number | undefined
 }
 
 export interface DirectScalarCompiledFormula {
@@ -46,9 +48,12 @@ export function buildDirectScalarOperand(args: {
       }
     }
     if (translated?.row !== undefined && translated.col !== undefined) {
+      const existingCellIndex =
+        args.workbook.getFreshCellIndexAt?.(sheetId, translated.row, translated.col) ??
+        args.workbook.getCellIndexAt?.(sheetId, translated.row, translated.col)
       return {
         kind: 'cell',
-        cellIndex: args.ensureCellTrackedByCoords(sheetId, translated.row, translated.col),
+        cellIndex: existingCellIndex ?? args.ensureCellTrackedByCoords(sheetId, translated.row, translated.col),
       }
     }
     let parsed: ReturnType<typeof parseCellAddress>

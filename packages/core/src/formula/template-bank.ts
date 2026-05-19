@@ -64,6 +64,8 @@ interface FormulaTemplateSourceKey {
 const SIMPLE_ROW_RELATIVE_BINARY_RE = /^=?([A-Z]+)([1-9]\d*)([+\-*/])(?:([A-Z]+)([1-9]\d*)|(\d+(?:\.\d+)?))(?:\+(\d+(?:\.\d+)?))?$/
 const SIMPLE_DIRECT_AGGREGATE_TEMPLATE_RE = /^=?(SUM|AVERAGE|AVG|COUNT|MIN|MAX)\s*\(\s*([A-Z]+)([1-9]\d*):([A-Z]+)([1-9]\d*)\s*\)$/i
 const SIMPLE_A1_ROW_TOKEN_RE = /(^|[^A-Z0-9_.$])\$?[A-Z]{1,3}\$?([1-9]\d*)(?=$|[^A-Z0-9_])/gi
+const GLOBAL_COMPILED_SOURCE_CACHE_LIMIT = 4096
+const globalCompiledSourceCache = new Map<string, CompiledFormula>()
 
 function relativeCellToken(columnText: string, rowText: string, ownerRow: number, ownerCol: number): string | undefined {
   const row = parseA1RowIndex(rowText)
@@ -187,12 +189,36 @@ function translateTemplate(compiled: CompiledFormula, rowDelta: number, colDelta
   ).compiled
 }
 
+function cloneCompiledFormula(compiled: CompiledFormula): CompiledFormula {
+  return { ...compiled }
+}
+
+function rememberGlobalCompiledSource(source: string, compiled: CompiledFormula): void {
+  if (globalCompiledSourceCache.has(source)) {
+    globalCompiledSourceCache.delete(source)
+  } else if (globalCompiledSourceCache.size >= GLOBAL_COMPILED_SOURCE_CACHE_LIMIT) {
+    const oldest = globalCompiledSourceCache.keys().next().value
+    if (oldest !== undefined) {
+      globalCompiledSourceCache.delete(oldest)
+    }
+  }
+  globalCompiledSourceCache.set(source, compiled)
+}
+
 function compileSourceFormula(source: string): CompiledFormula {
-  return (
-    tryCompileSimpleDirectScalarFormula(source) ??
-    tryCompileSimpleDirectAggregateFormula(source) ??
-    compileFormulaAst(source, parseFormula(source))
-  )
+  const simpleCompiled = tryCompileSimpleDirectScalarFormula(source) ?? tryCompileSimpleDirectAggregateFormula(source)
+  if (simpleCompiled !== undefined) {
+    return simpleCompiled
+  }
+  const cached = globalCompiledSourceCache.get(source)
+  if (cached !== undefined) {
+    globalCompiledSourceCache.delete(source)
+    globalCompiledSourceCache.set(source, cached)
+    return cloneCompiledFormula(cached)
+  }
+  const compiled = compileFormulaAst(source, parseFormula(source))
+  rememberGlobalCompiledSource(source, compiled)
+  return cloneCompiledFormula(compiled)
 }
 
 function resolveTemplateCompiled(
@@ -239,18 +265,35 @@ function resolveTrustedTemplateCompiled(
   if (source === template.baseSource) {
     return template.compiled
   }
-  const directScalar = tryCompileSimpleDirectScalarFormula(source)
-  if (directScalar && tryBuildSimpleRowRelativeBinaryTemplateKey(source, ownerRow, ownerCol) === template.templateKey) {
-    return directScalar
-  }
-  if (template.templateKey.startsWith('anchored-prefix-aggregate:')) {
-    const anchoredPrefixAggregate = tryMatchAnchoredPrefixAggregateTemplate(source, ownerRow, ownerCol)
-    if (anchoredPrefixAggregate && anchoredPrefixAggregate.templateKey === template.templateKey) {
-      return anchoredPrefixAggregate.compiled
-    }
-  }
   const rowDelta = ownerRow - template.baseRow
   const colDelta = ownerCol - template.baseCol
+  const directScalarTemplateKey = tryBuildSimpleRowRelativeBinaryTemplateKey(source, ownerRow, ownerCol)
+  if (directScalarTemplateKey !== undefined) {
+    if (directScalarTemplateKey === template.templateKey) {
+      const translated = translateSimpleDirectScalarFormula(template.compiled, rowDelta, colDelta, source)
+      if (translated) {
+        return translated
+      }
+    }
+    return compileSourceFormula(source)
+  }
+  const directAggregateTemplateKey = tryBuildSimpleDirectAggregateTemplateKey(source, ownerRow, ownerCol)
+  if (directAggregateTemplateKey !== undefined) {
+    if (directAggregateTemplateKey === template.templateKey) {
+      if (template.templateKey.startsWith('anchored-prefix-aggregate:')) {
+        const anchoredPrefixAggregate = tryMatchAnchoredPrefixAggregateTemplate(source, ownerRow, ownerCol)
+        if (anchoredPrefixAggregate && anchoredPrefixAggregate.templateKey === template.templateKey) {
+          return anchoredPrefixAggregate.compiled
+        }
+      } else {
+        const translated = translateSimpleDirectAggregateFormula(template.compiled, rowDelta, colDelta, source)
+        if (translated) {
+          return translated
+        }
+      }
+    }
+    return compileSourceFormula(source)
+  }
   if (rowDelta === 0 && colDelta === 0) {
     return compileSourceFormula(source)
   }

@@ -9,17 +9,42 @@ function cell(sheet: number, row: number, col: number): WorkPaperCellAddress {
 
 interface TestSheetDimensionCache {
   scan(...args: unknown[]): unknown
+  invalidate(sheetId: number): void
+}
+
+interface TestWorkPaperEngine {
+  getCell(...args: unknown[]): unknown
+  getCellByIndex(...args: unknown[]): unknown
+}
+
+function isTestWorkPaperEngine(value: unknown): value is TestWorkPaperEngine {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof Reflect.get(value, 'getCell') === 'function' &&
+    typeof Reflect.get(value, 'getCellByIndex') === 'function'
+  )
 }
 
 function hasDimensionScanner(value: unknown): value is TestSheetDimensionCache {
-  return typeof value === 'object' && value !== null && typeof Reflect.get(value, 'scan') === 'function'
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof Reflect.get(value, 'scan') === 'function' &&
+    typeof Reflect.get(value, 'invalidate') === 'function'
+  )
 }
 
-function trackDimensionScans(workbook: WorkPaper): { readonly count: number; restore: () => void } {
+function getDimensionCache(workbook: WorkPaper): TestSheetDimensionCache {
   const cache: unknown = Reflect.get(workbook, 'sheetDimensionCache')
   if (!hasDimensionScanner(cache)) {
     throw new Error('Expected WorkPaper to expose a sheet dimension cache in tests')
   }
+  return cache
+}
+
+function trackDimensionScans(workbook: WorkPaper): { readonly count: number; restore: () => void } {
+  const cache = getDimensionCache(workbook)
   const spy = vi.spyOn(cache, 'scan')
   return {
     get count() {
@@ -29,6 +54,14 @@ function trackDimensionScans(workbook: WorkPaper): { readonly count: number; res
       spy.mockRestore()
     },
   }
+}
+
+function getTestEngine(workbook: WorkPaper): TestWorkPaperEngine {
+  const engine: unknown = Reflect.get(workbook, 'engine')
+  if (!isTestWorkPaperEngine(engine)) {
+    throw new Error('Expected WorkPaper to expose an engine in tests')
+  }
+  return engine
 }
 
 describe('WorkPaper sheet dimensions', () => {
@@ -76,5 +109,25 @@ describe('WorkPaper sheet dimensions', () => {
       }),
     ).toEqual([[{ tag: ValueTag.Number, value: 2 }], [{ tag: ValueTag.Number, value: 3 }]])
     expect(workbook.getSheetDimensions(summarySheet)).toEqual({ width: 1, height: 2 })
+  })
+
+  it('checks only formula cells for dynamic-resize risk while scanning dimensions', () => {
+    const rows = Array.from({ length: 200 }, (_unused, row) => [row + 1, (row + 1) * 2])
+    rows.push([401, '=SUM(A1:A200)'])
+    const workbook = WorkPaper.buildFromArray(rows)
+    const sheetId = workbook.getSheetId('Sheet1')!
+    getDimensionCache(workbook).invalidate(sheetId)
+    const engine = getTestEngine(workbook)
+    const getCell = vi.spyOn(engine, 'getCell')
+    const getCellByIndex = vi.spyOn(engine, 'getCellByIndex')
+
+    try {
+      expect(workbook.getSheetDimensions(sheetId)).toEqual({ width: 2, height: 201 })
+      expect(getCell).not.toHaveBeenCalled()
+      expect(getCellByIndex).toHaveBeenCalledTimes(1)
+    } finally {
+      getCell.mockRestore()
+      getCellByIndex.mockRestore()
+    }
   })
 })

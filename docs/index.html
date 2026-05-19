@@ -459,7 +459,8 @@ $ curl https://bilig.proompteng.ai/mcp -H 'accept: application/json, text/event-
               <p class="kicker">Benchmark</p>
               <h2 id="proof-title">The benchmark is public. So is the caveat.</h2>
               <p>
-                The checked JSON has bilig ahead on most comparable mean-latency rows. The worst p95 holdout is named beside the number.
+                The checked JSON has bilig ahead on every comparable mean-latency and p95 row. The narrowest p95 win is named beside the
+                number.
               </p>
             </div>
 
@@ -472,11 +473,12 @@ $ curl https://bilig.proompteng.ai/mcp -H 'accept: application/json, text/event-
               <div class="proof-result">
                 <div class="proof-metric">
                   <span class="proof-label">comparable mean rows</span>
-                  <strong>80/100</strong>
+                  <strong>100/100</strong>
                 </div>
                 <p>
-                  80 of 100 comparable mean-latency rows are faster in the checked file. structural-insert-columns-small is slower at p95:
-                  <code>4.075x</code>. Browser UI rendering is not part of this benchmark.
+                  100 of 100 comparable mean-latency rows are faster in the checked file. aggregate-overlapping-sliding-window-wide is the
+                  narrowest p95 win:
+                  <code>0.946x</code>. Browser UI rendering is not part of this benchmark.
                 </p>
               </div>
 
@@ -492,8 +494,8 @@ $ curl https://bilig.proompteng.ai/mcp -H 'accept: application/json, text/event-
                   </dd>
                 </div>
                 <div class="proof-fact">
-                  <dt>Caveat</dt>
-                  <dd>aggregate-overlapping-sliding-window is slower at p95: <code>1.9x</code>.</dd>
+                  <dt>Narrowest p95</dt>
+                  <dd>aggregate-overlapping-sliding-window-wide is the narrowest p95 win: <code>0.946x</code>.</dd>
                 </div>
                 <div class="proof-fact">
                   <dt>Out of scope</dt>

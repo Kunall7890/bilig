@@ -201,11 +201,11 @@ export abstract class SpreadsheetEngineWorkbookFacadeBase extends SpreadsheetEng
     return this.workbook.listRowAxisEntries(sheetName)
   }
 
-  insertRows(sheetName: string, start: number, count: number): void {
-    if (count <= 0) {
+  insertRows(sheetName: string, start: number, count: number, options: { readonly emitTracked?: boolean } = {}): void {
+    if (count <= 0 || !this.workbook.getSheet(sheetName)) {
       return
     }
-    this.executeLocalTransaction([{ kind: 'insertRows', sheetName, start, count }])
+    this.executeLocalTransaction([{ kind: 'insertRows', sheetName, start, count }], undefined, options)
   }
 
   deleteRows(sheetName: string, start: number, count: number): void {
@@ -216,7 +216,7 @@ export abstract class SpreadsheetEngineWorkbookFacadeBase extends SpreadsheetEng
   }
 
   moveRows(sheetName: string, start: number, count: number, target: number): void {
-    if (count <= 0 || start === target) {
+    if (count <= 0 || start === target || !this.workbook.getSheet(sheetName)) {
       return
     }
     this.executeLocalTransaction([{ kind: 'moveRows', sheetName, start, count, target }])
@@ -241,11 +241,11 @@ export abstract class SpreadsheetEngineWorkbookFacadeBase extends SpreadsheetEng
     return this.workbook.listColumnAxisEntries(sheetName)
   }
 
-  insertColumns(sheetName: string, start: number, count: number): void {
-    if (count <= 0) {
+  insertColumns(sheetName: string, start: number, count: number, options: { readonly emitTracked?: boolean } = {}): void {
+    if (count <= 0 || !this.workbook.getSheet(sheetName)) {
       return
     }
-    this.executeLocalTransaction([{ kind: 'insertColumns', sheetName, start, count }])
+    this.executeLocalTransaction([{ kind: 'insertColumns', sheetName, start, count }], undefined, options)
   }
 
   deleteColumns(sheetName: string, start: number, count: number): void {
@@ -256,7 +256,7 @@ export abstract class SpreadsheetEngineWorkbookFacadeBase extends SpreadsheetEng
   }
 
   moveColumns(sheetName: string, start: number, count: number, target: number): void {
-    if (count <= 0 || start === target) {
+    if (count <= 0 || start === target || !this.workbook.getSheet(sheetName)) {
       return
     }
     this.executeLocalTransaction([{ kind: 'moveColumns', sheetName, start, count, target }])

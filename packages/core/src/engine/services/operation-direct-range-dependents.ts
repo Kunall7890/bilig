@@ -7,6 +7,7 @@ import {
   directAggregateNumericContribution,
   directCriteriaTouchesPoint,
 } from './direct-formula-recalc-helpers.js'
+import { visitIndexedDirectAggregateColumnDependentsForRow } from './formula-binding-dependency-helpers.js'
 
 export interface OperationDirectRangePoint {
   readonly sheetName: string
@@ -176,6 +177,20 @@ export function createOperationDirectRangeDependentService(args: {
       return -1
     }
     let singleAggregateDependent = -1
+    const usedIndexedDependents = visitIndexedDirectAggregateColumnDependentsForRow(aggregateDependents, request.row, (candidate) => {
+      if (!canApplyDirectAggregateLiteralDeltaForRequest(candidate, request)) {
+        return true
+      }
+      if (singleAggregateDependent !== -1 && singleAggregateDependent !== candidate) {
+        singleAggregateDependent = -2
+        return false
+      }
+      singleAggregateDependent = candidate
+      return true
+    })
+    if (usedIndexedDependents) {
+      return singleAggregateDependent
+    }
     for (const candidate of aggregateDependents) {
       if (!canApplyDirectAggregateLiteralDeltaForRequest(candidate, request)) {
         continue

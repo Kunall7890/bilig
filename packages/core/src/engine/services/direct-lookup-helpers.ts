@@ -74,8 +74,16 @@ export function normalizeExactNumericValue(value: CellValue): number | undefined
   return value.tag === ValueTag.Number ? normalizeExactLookupNumber(value.value) : undefined
 }
 
+export function normalizeExactNumericNumber(value: number): number {
+  return normalizeExactLookupNumber(value)
+}
+
 export function sameExactNumericValue(left: number, right: number): boolean {
   return formulaSameExactLookupNumber(left, right)
+}
+
+export function sameExactNumericValueAsNormalized(left: number, normalizedRight: number): boolean {
+  return normalizeExactLookupNumber(left) === normalizedRight
 }
 
 export function normalizeApproximateNumericValue(value: CellValue): number | undefined {
@@ -286,17 +294,14 @@ export function approximateUniformLookupNumericResult(
   lookupValue: number,
 ): number | undefined {
   if (directLookup.repeatedRunLength !== undefined) {
-    const repeatedUniformResult = approximateRepeatedUniformLookupCurrentResult(
-      {
-        length: directLookup.length,
-        repeatedUniformStart: directLookup.start,
-        repeatedUniformStep: directLookup.step,
-        repeatedUniformRunLength: directLookup.repeatedRunLength,
-      },
+    return approximateRepeatedUniformLookupNumericResult(
+      directLookup.length,
+      directLookup.start,
+      directLookup.step,
+      directLookup.repeatedRunLength,
       directLookup.matchMode,
       lookupValue,
     )
-    return repeatedUniformResult?.kind === 'number' ? repeatedUniformResult.value : undefined
   }
   const tailPatch = directLookup.tailPatch
   if (tailPatch === undefined && directLookup.matchMode === 1 && directLookup.step === 1) {
@@ -359,6 +364,44 @@ export function approximateUniformLookupNumericResult(
   return undefined
 }
 
+export function approximateRepeatedUniformLookupNumericResult(
+  length: number,
+  repeatedUniformStart: number | undefined,
+  repeatedUniformStep: number | undefined,
+  repeatedUniformRunLength: number | undefined,
+  matchMode: 1 | -1,
+  lookupValue: number,
+): number | undefined {
+  if (repeatedUniformStart === undefined || repeatedUniformStep === undefined || repeatedUniformRunLength === undefined || length <= 0) {
+    return undefined
+  }
+  const groupCount = Math.ceil(length / repeatedUniformRunLength)
+  const lastValue = repeatedUniformStart + repeatedUniformStep * (groupCount - 1)
+  if (matchMode === 1 && repeatedUniformStep > 0) {
+    if (lookupValue < repeatedUniformStart) {
+      return undefined
+    }
+    if (lookupValue >= lastValue) {
+      return length
+    }
+    const group = Math.floor((lookupValue - repeatedUniformStart) / repeatedUniformStep)
+    const position = (group + 1) * repeatedUniformRunLength
+    return position >= length ? length : position
+  }
+  if (matchMode === -1 && repeatedUniformStep < 0) {
+    if (lookupValue > repeatedUniformStart) {
+      return undefined
+    }
+    if (lookupValue <= lastValue) {
+      return length
+    }
+    const group = Math.floor((repeatedUniformStart - lookupValue) / -repeatedUniformStep)
+    const position = (group + 1) * repeatedUniformRunLength
+    return position >= length ? length : position
+  }
+  return undefined
+}
+
 export function approximateRepeatedUniformLookupCurrentResult(
   prepared: {
     readonly length: number
@@ -370,6 +413,17 @@ export function approximateRepeatedUniformLookupCurrentResult(
   lookupValue: number,
 ): DirectScalarCurrentOperand | undefined {
   const { repeatedUniformStart, repeatedUniformStep, repeatedUniformRunLength, length } = prepared
+  const numericResult = approximateRepeatedUniformLookupNumericResult(
+    length,
+    repeatedUniformStart,
+    repeatedUniformStep,
+    repeatedUniformRunLength,
+    matchMode,
+    lookupValue,
+  )
+  if (numericResult !== undefined) {
+    return { kind: 'number', value: numericResult }
+  }
   if (repeatedUniformStart === undefined || repeatedUniformStep === undefined || repeatedUniformRunLength === undefined || length <= 0) {
     return undefined
   }
@@ -379,21 +433,13 @@ export function approximateRepeatedUniformLookupCurrentResult(
     if (lookupValue < repeatedUniformStart) {
       return { kind: 'error', code: ErrorCode.NA }
     }
-    if (lookupValue >= lastValue) {
-      return { kind: 'number', value: length }
-    }
-    const group = Math.floor((lookupValue - repeatedUniformStart) / repeatedUniformStep)
-    return { kind: 'number', value: Math.min(length, (group + 1) * repeatedUniformRunLength) }
+    return lookupValue >= lastValue ? { kind: 'number', value: length } : undefined
   }
   if (matchMode === -1 && repeatedUniformStep < 0) {
     if (lookupValue > repeatedUniformStart) {
       return { kind: 'error', code: ErrorCode.NA }
     }
-    if (lookupValue <= lastValue) {
-      return { kind: 'number', value: length }
-    }
-    const group = Math.floor((repeatedUniformStart - lookupValue) / -repeatedUniformStep)
-    return { kind: 'number', value: Math.min(length, (group + 1) * repeatedUniformRunLength) }
+    return lookupValue <= lastValue ? { kind: 'number', value: length } : undefined
   }
   return undefined
 }

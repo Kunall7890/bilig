@@ -1,10 +1,19 @@
 import type { EngineCellMutationRef, EngineExistingNumericCellMutationResult, SheetRecord, SpreadsheetEngine } from '@bilig/core'
 import { MAX_COLS, MAX_ROWS } from '@bilig/protocol'
 import { WorkPaperOperationError } from './work-paper-errors.js'
-import { assertRowAndColumn, isFormulaContent, isWorkPaperSheetMatrix } from './work-paper-runtime-helpers.js'
-import { buildWorkPaperRawCellMutation } from './work-paper-literal-mutation-queue.js'
+import { assertRowAndColumn, isBlankRawCellContent, isFormulaContent, isWorkPaperSheetMatrix } from './work-paper-runtime-helpers.js'
+import { buildWorkPaperLiteralCellValueMutation, buildWorkPaperRawCellMutation } from './work-paper-literal-mutation-queue.js'
 import type { WorkPaperCellMutationApplyOptions } from './work-paper-cell-mutation-refs.js'
-import type { RawCellContent, WorkPaperCellAddress, WorkPaperChange, WorkPaperConfig, WorkPaperSheet } from './work-paper-types.js'
+import type {
+  RawCellContent,
+  WorkPaperCellAddress,
+  WorkPaperCellValueUpdate,
+  WorkPaperChange,
+  WorkPaperConfig,
+  WorkPaperSheet,
+  WorkPaperSheetCellValueUpdate,
+  WorkPaperSheetRangeValues,
+} from './work-paper-types.js'
 
 interface ExistingNumericMutationEngine {
   readonly tryApplyExistingNumericCellMutationAt?: (request: {
@@ -190,4 +199,184 @@ export function setWorkPaperCellContents(
     runtime.flushPendingBatchOps()
     runtime.applyMatrixContents(address, content)
   })
+}
+
+export function setWorkPaperCellValues(
+  runtime: WorkPaperSetCellContentsRuntime,
+  updates: readonly WorkPaperCellValueUpdate[],
+): WorkPaperChange[] {
+  runtime.assertNotDisposed()
+  if (updates.length === 0) {
+    return []
+  }
+  const refs: EngineCellMutationRef[] = []
+  refs.length = updates.length
+  let potentialNewCells = 0
+  const config = runtime.getConfig()
+  let currentSheetId: number | undefined
+  let currentSheet: SheetRecord | undefined
+  for (let index = 0; index < updates.length; index += 1) {
+    const { address, value } = updates[index]!
+    if (currentSheet === undefined || currentSheetId !== address.sheet) {
+      currentSheetId = address.sheet
+      currentSheet = runtime.sheetRecord(address.sheet)
+    }
+    assertRowAndColumn(address.row, 'address.row')
+    assertRowAndColumn(address.col, 'address.col')
+    if (address.row >= (config.maxRows ?? MAX_ROWS) || address.col >= (config.maxColumns ?? MAX_COLS)) {
+      throw new WorkPaperOperationError('Cell contents cannot be set')
+    }
+    if (isWorkPaperSheetMatrix(value) || isFormulaContent(value)) {
+      throw new WorkPaperOperationError('Bulk cell value updates require literal values')
+    }
+    const visibleCellIndex = runtime.getVisibleCellIndexInSheet(currentSheet, address.row, address.col)
+    refs[index] = {
+      sheetId: address.sheet,
+      mutation: buildWorkPaperLiteralCellValueMutation({
+        row: address.row,
+        col: address.col,
+        content: value,
+      }),
+      ...(visibleCellIndex !== undefined ? { cellIndex: visibleCellIndex } : {}),
+    }
+    if (!isBlankRawCellContent(value) && visibleCellIndex === undefined) {
+      potentialNewCells += 1
+    }
+  }
+  return applyBulkWorkPaperCellValueRefs(runtime, refs, potentialNewCells)
+}
+
+export function setWorkPaperSheetCellValues(
+  runtime: WorkPaperSetCellContentsRuntime,
+  sheetId: number,
+  updates: readonly WorkPaperSheetCellValueUpdate[],
+): WorkPaperChange[] {
+  runtime.assertNotDisposed()
+  if (updates.length === 0) {
+    return []
+  }
+  const sheet = runtime.sheetRecord(sheetId)
+  const refs: EngineCellMutationRef[] = []
+  refs.length = updates.length
+  let potentialNewCells = 0
+  const config = runtime.getConfig()
+  for (let index = 0; index < updates.length; index += 1) {
+    const { row, col, value } = updates[index]!
+    assertRowAndColumn(row, 'row')
+    assertRowAndColumn(col, 'col')
+    if (row >= (config.maxRows ?? MAX_ROWS) || col >= (config.maxColumns ?? MAX_COLS)) {
+      throw new WorkPaperOperationError('Cell contents cannot be set')
+    }
+    if (isWorkPaperSheetMatrix(value) || isFormulaContent(value)) {
+      throw new WorkPaperOperationError('Bulk cell value updates require literal values')
+    }
+    const visibleCellIndex = runtime.getVisibleCellIndexInSheet(sheet, row, col)
+    refs[index] = {
+      sheetId,
+      mutation: buildWorkPaperLiteralCellValueMutation({
+        row,
+        col,
+        content: value,
+      }),
+      ...(visibleCellIndex !== undefined ? { cellIndex: visibleCellIndex } : {}),
+    }
+    if (!isBlankRawCellContent(value) && visibleCellIndex === undefined) {
+      potentialNewCells += 1
+    }
+  }
+  return applyBulkWorkPaperCellValueRefs(runtime, refs, potentialNewCells)
+}
+
+export function setWorkPaperSheetRangeValues(
+  runtime: WorkPaperSetCellContentsRuntime,
+  sheetId: number,
+  startRow: number,
+  startCol: number,
+  values: WorkPaperSheetRangeValues,
+): WorkPaperChange[] {
+  runtime.assertNotDisposed()
+  if (values.length === 0) {
+    return []
+  }
+  assertRowAndColumn(startRow, 'startRow')
+  assertRowAndColumn(startCol, 'startCol')
+
+  const config = runtime.getConfig()
+  const maxRows = config.maxRows ?? MAX_ROWS
+  const maxColumns = config.maxColumns ?? MAX_COLS
+  let refCount = 0
+  for (let rowOffset = 0; rowOffset < values.length; rowOffset += 1) {
+    const row = values[rowOffset]
+    if (row === undefined || row.length === 0) {
+      continue
+    }
+    const destinationRow = startRow + rowOffset
+    if (destinationRow >= maxRows || startCol + row.length > maxColumns) {
+      throw new WorkPaperOperationError('Cell contents cannot be set')
+    }
+    refCount += row.length
+  }
+  if (refCount === 0) {
+    return []
+  }
+
+  const sheet = runtime.sheetRecord(sheetId)
+  const refs: EngineCellMutationRef[] = []
+  refs.length = refCount
+  let potentialNewCells = 0
+  let refIndex = 0
+  for (let rowOffset = 0; rowOffset < values.length; rowOffset += 1) {
+    const row = values[rowOffset]
+    if (row === undefined || row.length === 0) {
+      continue
+    }
+    const destinationRow = startRow + rowOffset
+    for (let colOffset = 0; colOffset < row.length; colOffset += 1) {
+      const destinationCol = startCol + colOffset
+      const value = row[colOffset] ?? null
+      if (Array.isArray(value) || isFormulaContent(value)) {
+        throw new WorkPaperOperationError('Bulk cell value updates require literal values')
+      }
+      const visibleCellIndex = runtime.getVisibleCellIndexInSheet(sheet, destinationRow, destinationCol)
+      refs[refIndex] = {
+        sheetId,
+        mutation: buildWorkPaperLiteralCellValueMutation({
+          row: destinationRow,
+          col: destinationCol,
+          content: value,
+        }),
+        ...(visibleCellIndex !== undefined ? { cellIndex: visibleCellIndex } : {}),
+      }
+      refIndex += 1
+      if (!isBlankRawCellContent(value) && visibleCellIndex === undefined) {
+        potentialNewCells += 1
+      }
+    }
+  }
+  return applyBulkWorkPaperCellValueRefs(runtime, refs, potentialNewCells)
+}
+
+function applyBulkWorkPaperCellValueRefs(
+  runtime: WorkPaperSetCellContentsRuntime,
+  refs: readonly EngineCellMutationRef[],
+  potentialNewCells: number,
+): WorkPaperChange[] {
+  const mutate = () => {
+    runtime.flushPendingBatchOps()
+    runtime.applyCellMutationRefs(refs, {
+      captureUndo: true,
+      potentialNewCells,
+      source: 'local',
+      returnUndoOps: false,
+      reuseRefs: true,
+    })
+  }
+  if (runtime.isEvaluationSuspended() || runtime.getBatchDepth() !== 0) {
+    mutate()
+    return []
+  }
+  if (runtime.canUseTrackedMutationFastPath()) {
+    return runtime.captureTrackedChangesWithoutVisibilityCache(mutate, {})
+  }
+  return runtime.captureChanges(mutate)
 }

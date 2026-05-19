@@ -31,15 +31,23 @@ import {
 import { canDeferSimpleStructuralFormulaSource } from './structure-formula-source-deferral.js'
 import { materializeDeferredStructuralFormulaSources as materializeDeferredStructuralFormulaSourcesNow } from './structure-deferred-formula-sources.js'
 import { collectStructuralFormulaImpacts } from './structure-formula-impacts.js'
-import type { CreateEngineStructureServiceArgs, EngineStructureService, StructuralFormulaRebindInput } from './structure-service-types.js'
+import type {
+  CreateEngineStructureServiceArgs,
+  EngineStructureService,
+  StructuralAxisOpResult,
+  StructuralFormulaRebindInput,
+} from './structure-service-types.js'
 
 export type {
   CreateEngineStructureServiceArgs,
   EngineStructureService,
   EngineStructureState,
   StructuralAxisOp,
+  StructuralAxisOpResult,
   StructuralFormulaRebindInput,
 } from './structure-service-types.js'
+
+const EMPTY_STRING_SET = new Set<string>()
 
 export function createEngineStructureService(args: CreateEngineStructureServiceArgs): EngineStructureService {
   let hasDeferredStructuralFormulaSources = false
@@ -209,7 +217,7 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
     hasDeferredStructuralFormulaSources = materializeDeferredStructuralFormulaSourcesNow(args, hasDeferredStructuralFormulaSources)
   }
 
-  return {
+  const service: EngineStructureService = {
     captureSheetCellState(sheetName) {
       return Effect.try({
         try: () => captureSheetCellState(args, sheetName),
@@ -240,9 +248,10 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
           }),
       })
     },
+    materializeDeferredStructuralFormulaSourcesNow: materializeDeferredStructuralFormulaSources,
     materializeDeferredStructuralFormulaSources() {
       return Effect.try({
-        try: () => materializeDeferredStructuralFormulaSources(),
+        try: () => service.materializeDeferredStructuralFormulaSourcesNow(),
         catch: (cause) =>
           new EngineStructureError({
             message: 'Failed to materialize deferred structural formula sources',
@@ -250,221 +259,219 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
           }),
       })
     },
+    applyStructuralAxisOpNow(op): StructuralAxisOpResult {
+      materializeDeferredStructuralFormulaSources()
+      const transform = structuralTransformForOp(op)
+      const sheetName = op.sheetName
+      const targetSheetId = args.state.workbook.getSheet(sheetName)?.id
+      const hasStructuralMetadata = args.state.workbook.hasStructuralMetadataForSheet(sheetName)
+
+      const hasPivots = hasStructuralMetadata && args.state.workbook.hasPivots()
+      if (hasPivots) {
+        clearPivotOutputsForSheet(args, sheetName)
+      }
+      const changedDefinedNames = hasStructuralMetadata
+        ? rewriteDefinedNamesForStructuralTransform(args, sheetName, transform)
+        : EMPTY_STRING_SET
+      const { changedTableNames } = hasStructuralMetadata
+        ? rewriteWorkbookMetadataForStructuralTransform(args, sheetName, transform)
+        : { changedTableNames: EMPTY_STRING_SET }
+      const impactedFormulas = collectStructuralFormulaImpacts(args, {
+        targetSheetId,
+        transform,
+        sheetName,
+        changedDefinedNames,
+        changedTableNames,
+        markDeferredStructuralFormulaSources: () => {
+          hasDeferredStructuralFormulaSources = true
+        },
+      })
+
+      const transaction =
+        args.state.workbook.planStructuralAxisTransform(sheetName, transform) ??
+        (() => {
+          throw new Error(`Missing sheet for structural op: ${sheetName}`)
+        })()
+
+      switch (op.kind) {
+        case 'insertRows':
+          args.state.workbook.insertRows(sheetName, op.start, op.count, op.entries)
+          break
+        case 'deleteRows':
+          args.state.workbook.deleteRows(sheetName, op.start, op.count)
+          break
+        case 'moveRows':
+          args.state.workbook.moveRows(sheetName, op.start, op.count, op.target)
+          break
+        case 'insertColumns':
+          args.state.workbook.insertColumns(sheetName, op.start, op.count, op.entries)
+          break
+        case 'deleteColumns':
+          args.state.workbook.deleteColumns(sheetName, op.start, op.count)
+          break
+        case 'moveColumns':
+          args.state.workbook.moveColumns(sheetName, op.start, op.count, op.target)
+          break
+      }
+
+      args.state.workbook.applyPlannedStructuralTransaction(transaction)
+
+      const hasNoFormulaStructuralWork =
+        impactedFormulas.formulaCellIndices.length === 0 &&
+        impactedFormulas.rebindCellIndices.length === 0 &&
+        impactedFormulas.precomputedChangedInputCellIndices.length === 0 &&
+        impactedFormulas.precomputedDirectAggregateValueCellIndices.length === 0 &&
+        impactedFormulas.directAggregateRetargetCellIndices.length === 0
+      const hasSheetSpillMetadata = hasStructuralMetadata && args.state.workbook.listSpills().some((spill) => spill.sheetName === sheetName)
+      if (
+        hasNoFormulaStructuralWork &&
+        transaction.removedCellIndices.length === 0 &&
+        changedDefinedNames.size === 0 &&
+        changedTableNames.size === 0 &&
+        !hasPivots &&
+        !hasSheetSpillMetadata
+      ) {
+        return {
+          transaction,
+          changedCellIndices: [],
+          precomputedChangedInputCellIndices: [],
+          formulaCellIndices: [],
+          topologyChanged: false,
+          graphRefreshRequired: false,
+        }
+      }
+
+      const structuralRangeDependencies = collectStructuralRangeDependencies(args, impactedFormulas.formulaCellIndices)
+
+      let hadCycleFormulas: boolean | undefined
+      const hasCycleFormulas = (): boolean => {
+        if (hadCycleFormulas !== undefined) {
+          return hadCycleFormulas
+        }
+        if (args.state.counters) {
+          addEngineCounter(args.state.counters, 'cycleFormulaScans')
+        }
+        let found = false
+        args.state.formulas.forEach((_formula, cellIndex) => {
+          if (((args.state.workbook.cellStore.flags[cellIndex] ?? 0) & CellFlags.InCycle) !== 0) {
+            found = true
+          }
+        })
+        hadCycleFormulas = found
+        return found
+      }
+      const removedFormulaCellIndices = transaction.removedCellIndices.filter((cellIndex) => args.state.formulas.has(cellIndex))
+      const removedFormulaCellIndexSet = new Set<number>(removedFormulaCellIndices)
+      const removedCycleFormulaCount = removedFormulaCellIndices.filter(
+        (cellIndex) => ((args.state.workbook.cellStore.flags[cellIndex] ?? 0) & CellFlags.InCycle) !== 0,
+      ).length
+      transaction.removedCellIndices.forEach((cellIndex) => {
+        clearRemovedCellRuntimeState(args, cellIndex)
+      })
+
+      clearSpillMetadataForSheet(args, sheetName)
+      args.retargetRangeDependencies(transaction, structuralRangeDependencies)
+      const directRetargetedFormulaCellIndices: number[] = []
+      const directRetargetedPreservedFormulaCellIndices: number[] = []
+      const precomputedDirectAggregateValueCellIndices = new Set(impactedFormulas.precomputedDirectAggregateValueCellIndices)
+      const directAggregateRetargetInputs = impactedFormulas.directAggregateRetargetCellIndices
+        .filter((cellIndex) => isCellIndexMapped(args, cellIndex))
+        .map((cellIndex) => ({
+          cellIndex,
+          ownerSheetName: sheetName,
+          preservesValue: true,
+        }))
+      const directAggregateRetargetedCellIndices = args.retargetDirectAggregateFormulasForStructuralTransform(
+        directAggregateRetargetInputs,
+        sheetName,
+        transform,
+      )
+      if (directAggregateRetargetedCellIndices.length > 0) {
+        directRetargetedFormulaCellIndices.push(...directAggregateRetargetedCellIndices)
+        directRetargetedPreservedFormulaCellIndices.push(...directAggregateRetargetedCellIndices)
+        hasDeferredStructuralFormulaSources = true
+      }
+      const rebindResolution = resolveStructuralFormulaRebindInputs({
+        formulaCellIndices: impactedFormulas.rebindCellIndices.filter((cellIndex) => isCellIndexMapped(args, cellIndex)),
+        sheetName,
+        transform,
+        transaction,
+        changedDefinedNames,
+        changedTableNames,
+        ownerPositions: impactedFormulas.ownerPositions,
+        precomputedDirectAggregateValueCellIndices: [...precomputedDirectAggregateValueCellIndices],
+      })
+      const rebindInputs = rebindResolution.inputs
+      const remainingRebindInputs: StructuralFormulaRebindInput[] = []
+      rebindInputs.forEach((input) => {
+        const formula = args.state.formulas.get(input.cellIndex)
+        const directAggregateRetargeted =
+          input.preservesBinding === true &&
+          formula?.directAggregate !== undefined &&
+          args.retargetDirectAggregateFormulaForStructuralTransform(input, sheetName, transform)
+        if (directAggregateRetargeted) {
+          hasDeferredStructuralFormulaSources = true
+        }
+        if (
+          directAggregateRetargeted ||
+          (input.preservesBinding === true &&
+            formula?.directAggregate !== undefined &&
+            input.compiled !== undefined &&
+            args.rewriteFormulaCompiledPreservingBinding(input))
+        ) {
+          directRetargetedFormulaCellIndices.push(input.cellIndex)
+          if (input.preservesValue) {
+            directRetargetedPreservedFormulaCellIndices.push(input.cellIndex)
+          }
+          return
+        }
+        remainingRebindInputs.push(input)
+      })
+      if (args.state.counters && remainingRebindInputs.length > 0) {
+        addEngineCounter(args.state.counters, 'structuralFormulaRebindInputs', remainingRebindInputs.length)
+      }
+      const formulaCellIndices = impactedFormulas.formulaCellIndices.filter((cellIndex) => isCellIndexMapped(args, cellIndex))
+      const onlyDirectAggregateFormulaCells =
+        formulaCellIndices.length > 0 &&
+        formulaCellIndices.every((cellIndex) => args.state.formulas.get(cellIndex)?.directAggregate !== undefined)
+      args.rebindFormulaCells(remainingRebindInputs)
+      const reboundFormulaCellIndices = new Set([
+        ...directRetargetedFormulaCellIndices,
+        ...remainingRebindInputs.map((input) => input.cellIndex),
+      ])
+      const preservedFormulaCellIndices = new Set([
+        ...impactedFormulas.preservedCellIndices,
+        ...rebindResolution.preservedCellIndices,
+        ...directRetargetedPreservedFormulaCellIndices,
+        ...remainingRebindInputs.filter((input) => input.preservesValue).map((input) => input.cellIndex),
+      ])
+      const lostSurvivingFormulaCells = impactedFormulas.formulaCellIndices.some(
+        (cellIndex) =>
+          !reboundFormulaCellIndices.has(cellIndex) && !isCellIndexMapped(args, cellIndex) && !removedFormulaCellIndexSet.has(cellIndex),
+      )
+      const hasNonPreservedRebind = remainingRebindInputs.some((input) => input.preservesBinding !== true)
+      const needsDeleteAcyclicRebindCheck =
+        transform.kind === 'delete' &&
+        changedDefinedNames.size === 0 &&
+        changedTableNames.size === 0 &&
+        (hasNonPreservedRebind || lostSurvivingFormulaCells)
+      const deleteOnlyAcyclicRebind = needsDeleteAcyclicRebindCheck && !hasCycleFormulas()
+      const topologyChanged = removedFormulaCellIndices.length > 0 || hasNonPreservedRebind || lostSurvivingFormulaCells
+      const graphRefreshRequired =
+        ((hasNonPreservedRebind || lostSurvivingFormulaCells) && !onlyDirectAggregateFormulaCells && !deleteOnlyAcyclicRebind) ||
+        removedCycleFormulaCount > 0
+      return {
+        transaction,
+        changedCellIndices: [...transaction.removedCellIndices],
+        precomputedChangedInputCellIndices: impactedFormulas.precomputedChangedInputCellIndices,
+        formulaCellIndices: formulaCellIndices.filter((cellIndex) => !preservedFormulaCellIndices.has(cellIndex)),
+        topologyChanged,
+        graphRefreshRequired,
+      }
+    },
     applyStructuralAxisOp(op) {
       return Effect.try({
-        try: () => {
-          materializeDeferredStructuralFormulaSources()
-          const transform = structuralTransformForOp(op)
-          const sheetName = op.sheetName
-          const targetSheetId = args.state.workbook.getSheet(sheetName)?.id
-
-          const hasPivots = args.state.workbook.hasPivots()
-          if (hasPivots) {
-            clearPivotOutputsForSheet(args, sheetName)
-          }
-          const changedDefinedNames = rewriteDefinedNamesForStructuralTransform(args, sheetName, transform)
-          const { changedTableNames } = rewriteWorkbookMetadataForStructuralTransform(args, sheetName, transform)
-          const impactedFormulas = collectStructuralFormulaImpacts(args, {
-            targetSheetId,
-            transform,
-            sheetName,
-            changedDefinedNames,
-            changedTableNames,
-            markDeferredStructuralFormulaSources: () => {
-              hasDeferredStructuralFormulaSources = true
-            },
-          })
-
-          const transaction =
-            args.state.workbook.planStructuralAxisTransform(sheetName, transform) ??
-            (() => {
-              throw new Error(`Missing sheet for structural op: ${sheetName}`)
-            })()
-
-          switch (op.kind) {
-            case 'insertRows':
-              args.state.workbook.insertRows(sheetName, op.start, op.count, op.entries)
-              break
-            case 'deleteRows':
-              args.state.workbook.deleteRows(sheetName, op.start, op.count)
-              break
-            case 'moveRows':
-              args.state.workbook.moveRows(sheetName, op.start, op.count, op.target)
-              break
-            case 'insertColumns':
-              args.state.workbook.insertColumns(sheetName, op.start, op.count, op.entries)
-              break
-            case 'deleteColumns':
-              args.state.workbook.deleteColumns(sheetName, op.start, op.count)
-              break
-            case 'moveColumns':
-              args.state.workbook.moveColumns(sheetName, op.start, op.count, op.target)
-              break
-          }
-
-          args.state.workbook.applyPlannedStructuralTransaction(transaction)
-
-          const hasNoFormulaStructuralWork =
-            impactedFormulas.formulaCellIndices.length === 0 &&
-            impactedFormulas.rebindCellIndices.length === 0 &&
-            impactedFormulas.precomputedChangedInputCellIndices.length === 0 &&
-            impactedFormulas.precomputedDirectAggregateValueCellIndices.length === 0 &&
-            impactedFormulas.directAggregateRetargetCellIndices.length === 0
-          const hasSheetSpillMetadata = args.state.workbook.listSpills().some((spill) => spill.sheetName === sheetName)
-          if (
-            hasNoFormulaStructuralWork &&
-            transaction.removedCellIndices.length === 0 &&
-            changedDefinedNames.size === 0 &&
-            changedTableNames.size === 0 &&
-            !hasPivots &&
-            !hasSheetSpillMetadata
-          ) {
-            return {
-              transaction,
-              changedCellIndices: [],
-              precomputedChangedInputCellIndices: [],
-              formulaCellIndices: [],
-              topologyChanged: false,
-              graphRefreshRequired: false,
-            }
-          }
-
-          const structuralRangeDependencies = collectStructuralRangeDependencies(args, impactedFormulas.formulaCellIndices)
-
-          let hadCycleFormulas: boolean | undefined
-          const hasCycleFormulas = (): boolean => {
-            if (hadCycleFormulas !== undefined) {
-              return hadCycleFormulas
-            }
-            if (args.state.counters) {
-              addEngineCounter(args.state.counters, 'cycleFormulaScans')
-            }
-            let found = false
-            args.state.formulas.forEach((_formula, cellIndex) => {
-              if (((args.state.workbook.cellStore.flags[cellIndex] ?? 0) & CellFlags.InCycle) !== 0) {
-                found = true
-              }
-            })
-            hadCycleFormulas = found
-            return found
-          }
-          const removedFormulaCellIndices = transaction.removedCellIndices.filter((cellIndex) => args.state.formulas.has(cellIndex))
-          const removedFormulaCellIndexSet = new Set<number>(removedFormulaCellIndices)
-          const removedCycleFormulaCount = removedFormulaCellIndices.filter(
-            (cellIndex) => ((args.state.workbook.cellStore.flags[cellIndex] ?? 0) & CellFlags.InCycle) !== 0,
-          ).length
-          transaction.removedCellIndices.forEach((cellIndex) => {
-            clearRemovedCellRuntimeState(args, cellIndex)
-          })
-
-          clearSpillMetadataForSheet(args, sheetName)
-          args.retargetRangeDependencies(transaction, structuralRangeDependencies)
-          const directRetargetedFormulaCellIndices: number[] = []
-          const directRetargetedPreservedFormulaCellIndices: number[] = []
-          const precomputedDirectAggregateValueCellIndices = new Set(impactedFormulas.precomputedDirectAggregateValueCellIndices)
-          impactedFormulas.directAggregateRetargetCellIndices.forEach((cellIndex) => {
-            if (!isCellIndexMapped(args, cellIndex)) {
-              return
-            }
-            const retargeted = args.retargetDirectAggregateFormulaForStructuralTransform(
-              {
-                cellIndex,
-                ownerSheetName: sheetName,
-                ownerRow: 0,
-                ownerCol: 0,
-                source: '',
-                preservesValue: true,
-              },
-              sheetName,
-              transform,
-            )
-            if (!retargeted) {
-              return
-            }
-            directRetargetedFormulaCellIndices.push(cellIndex)
-            directRetargetedPreservedFormulaCellIndices.push(cellIndex)
-            hasDeferredStructuralFormulaSources = true
-          })
-          const rebindResolution = resolveStructuralFormulaRebindInputs({
-            formulaCellIndices: impactedFormulas.rebindCellIndices.filter((cellIndex) => isCellIndexMapped(args, cellIndex)),
-            sheetName,
-            transform,
-            transaction,
-            changedDefinedNames,
-            changedTableNames,
-            ownerPositions: impactedFormulas.ownerPositions,
-            precomputedDirectAggregateValueCellIndices: [...precomputedDirectAggregateValueCellIndices],
-          })
-          const rebindInputs = rebindResolution.inputs
-          const remainingRebindInputs: StructuralFormulaRebindInput[] = []
-          rebindInputs.forEach((input) => {
-            const formula = args.state.formulas.get(input.cellIndex)
-            const directAggregateRetargeted =
-              input.preservesBinding === true &&
-              formula?.directAggregate !== undefined &&
-              args.retargetDirectAggregateFormulaForStructuralTransform(input, sheetName, transform)
-            if (directAggregateRetargeted) {
-              hasDeferredStructuralFormulaSources = true
-            }
-            if (
-              directAggregateRetargeted ||
-              (input.preservesBinding === true &&
-                formula?.directAggregate !== undefined &&
-                input.compiled !== undefined &&
-                args.rewriteFormulaCompiledPreservingBinding(input))
-            ) {
-              directRetargetedFormulaCellIndices.push(input.cellIndex)
-              if (input.preservesValue) {
-                directRetargetedPreservedFormulaCellIndices.push(input.cellIndex)
-              }
-              return
-            }
-            remainingRebindInputs.push(input)
-          })
-          if (args.state.counters && remainingRebindInputs.length > 0) {
-            addEngineCounter(args.state.counters, 'structuralFormulaRebindInputs', remainingRebindInputs.length)
-          }
-          const formulaCellIndices = impactedFormulas.formulaCellIndices.filter((cellIndex) => isCellIndexMapped(args, cellIndex))
-          const onlyDirectAggregateFormulaCells =
-            formulaCellIndices.length > 0 &&
-            formulaCellIndices.every((cellIndex) => args.state.formulas.get(cellIndex)?.directAggregate !== undefined)
-          args.rebindFormulaCells(remainingRebindInputs)
-          const reboundFormulaCellIndices = new Set([
-            ...directRetargetedFormulaCellIndices,
-            ...remainingRebindInputs.map((input) => input.cellIndex),
-          ])
-          const preservedFormulaCellIndices = new Set([
-            ...impactedFormulas.preservedCellIndices,
-            ...rebindResolution.preservedCellIndices,
-            ...directRetargetedPreservedFormulaCellIndices,
-            ...remainingRebindInputs.filter((input) => input.preservesValue).map((input) => input.cellIndex),
-          ])
-          const lostSurvivingFormulaCells = impactedFormulas.formulaCellIndices.some(
-            (cellIndex) =>
-              !reboundFormulaCellIndices.has(cellIndex) &&
-              !isCellIndexMapped(args, cellIndex) &&
-              !removedFormulaCellIndexSet.has(cellIndex),
-          )
-          const hasNonPreservedRebind = remainingRebindInputs.some((input) => input.preservesBinding !== true)
-          const needsDeleteAcyclicRebindCheck =
-            transform.kind === 'delete' &&
-            changedDefinedNames.size === 0 &&
-            changedTableNames.size === 0 &&
-            (hasNonPreservedRebind || lostSurvivingFormulaCells)
-          const deleteOnlyAcyclicRebind = needsDeleteAcyclicRebindCheck && !hasCycleFormulas()
-          const topologyChanged = removedFormulaCellIndices.length > 0 || hasNonPreservedRebind || lostSurvivingFormulaCells
-          const graphRefreshRequired =
-            ((hasNonPreservedRebind || lostSurvivingFormulaCells) && !onlyDirectAggregateFormulaCells && !deleteOnlyAcyclicRebind) ||
-            removedCycleFormulaCount > 0
-          return {
-            transaction,
-            changedCellIndices: [...transaction.removedCellIndices],
-            precomputedChangedInputCellIndices: impactedFormulas.precomputedChangedInputCellIndices,
-            formulaCellIndices: formulaCellIndices.filter((cellIndex) => !preservedFormulaCellIndices.has(cellIndex)),
-            topologyChanged,
-            graphRefreshRequired,
-          }
-        },
+        try: () => service.applyStructuralAxisOpNow(op),
         catch: (cause) =>
           new EngineStructureError({
             message: `Failed to apply structural operation ${op.kind}`,
@@ -473,4 +480,6 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
       })
     },
   }
+
+  return service
 }

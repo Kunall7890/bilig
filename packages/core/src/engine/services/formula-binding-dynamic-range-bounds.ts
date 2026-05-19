@@ -1,6 +1,9 @@
 import { formatRangeAddress, parseRangeAddress, type FormulaNode, type RangeRefNode } from '@bilig/formula'
 import { MAX_COLS, MAX_ROWS } from '@bilig/protocol'
+import type { SheetRecord } from '../../workbook-sheet-record.js'
 import type { WorkbookStore } from '../../workbook-store.js'
+
+const INDEXED_RESIDENT_AXIS_BOUND_LIMIT = 4096
 
 export interface DynamicRangeBounds {
   readonly sheetName: string
@@ -59,6 +62,46 @@ export function rangeBounds(node: FormulaNode | undefined, ownerSheetName: strin
   }
 }
 
+function findMaxResidentRowInColumns(sheet: SheetRecord, bounds: DynamicRangeBounds): number {
+  let maxResidentRow = -1
+  if (bounds.colEnd - bounds.colStart + 1 <= INDEXED_RESIDENT_AXIS_BOUND_LIMIT) {
+    for (let col = bounds.colStart; col <= bounds.colEnd; col += 1) {
+      sheet.logical.forEachVisibleColumnCellEntry(col, (_cellIndex, row) => {
+        if (row >= bounds.rowStart && row <= bounds.rowEnd && row > maxResidentRow) {
+          maxResidentRow = row
+        }
+      })
+    }
+    return maxResidentRow
+  }
+  sheet.grid.forEachCellEntry((_cellIndex, row, col) => {
+    if (col >= bounds.colStart && col <= bounds.colEnd && row >= bounds.rowStart && row <= bounds.rowEnd && row > maxResidentRow) {
+      maxResidentRow = row
+    }
+  })
+  return maxResidentRow
+}
+
+function findMaxResidentColInRows(sheet: SheetRecord, bounds: DynamicRangeBounds): number {
+  let maxResidentCol = -1
+  if (bounds.rowEnd - bounds.rowStart + 1 <= INDEXED_RESIDENT_AXIS_BOUND_LIMIT) {
+    for (let row = bounds.rowStart; row <= bounds.rowEnd; row += 1) {
+      sheet.logical.forEachVisibleRowCellEntry(row, (_cellIndex, col) => {
+        if (col >= bounds.colStart && col <= bounds.colEnd && col > maxResidentCol) {
+          maxResidentCol = col
+        }
+      })
+    }
+    return maxResidentCol
+  }
+  sheet.grid.forEachCellEntry((_cellIndex, row, col) => {
+    if (row >= bounds.rowStart && row <= bounds.rowEnd && col >= bounds.colStart && col <= bounds.colEnd && col > maxResidentCol) {
+      maxResidentCol = col
+    }
+  })
+  return maxResidentCol
+}
+
 export function residentRangeShape(args: {
   readonly workbook: WorkbookStore
   readonly ownerSheetName: string
@@ -82,24 +125,14 @@ export function residentRangeShape(args: {
     return undefined
   }
   if (args.range.refKind === 'cols') {
-    let maxResidentRow = -1
-    sheet.grid.forEachCellEntry((_cellIndex, row, col) => {
-      if (col >= bounds.colStart && col <= bounds.colEnd && row > maxResidentRow) {
-        maxResidentRow = row
-      }
-    })
+    const maxResidentRow = findMaxResidentRowInColumns(sheet, bounds)
     return {
       rows: maxResidentRow + 1,
       cols: bounds.colEnd - bounds.colStart + 1,
     }
   }
 
-  let maxResidentCol = -1
-  sheet.grid.forEachCellEntry((_cellIndex, row, col) => {
-    if (row >= bounds.rowStart && row <= bounds.rowEnd && col > maxResidentCol) {
-      maxResidentCol = col
-    }
-  })
+  const maxResidentCol = findMaxResidentColInRows(sheet, bounds)
   return {
     rows: bounds.rowEnd - bounds.rowStart + 1,
     cols: maxResidentCol + 1,

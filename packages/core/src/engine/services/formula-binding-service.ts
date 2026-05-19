@@ -24,12 +24,14 @@ import type { collectDirectApproximateLookupCandidates, collectIndexedExactLooku
 import { buildDirectScalarDescriptor } from './formula-binding-direct-scalar.js'
 import {
   aggregateColumnDependencyKey,
+  appendDirectAggregateColumnReverseEdges,
   appendTrackedReverseEdge,
   collectTrackedDependents,
   directCriteriaAggregateColumn,
   directRegionIdsForFormula,
   hasQualifiedDependencies,
-  removeTrackedReverseEdge,
+  removeDirectAggregateColumnReverseEdges,
+  removeUnindexedAggregateColumnReverseEdge,
 } from './formula-binding-dependency-helpers.js'
 import {
   buildDirectAggregateDescriptor,
@@ -67,6 +69,7 @@ import { rebuildAllFormulaBindingsNow } from './formula-binding-rebuild.js'
 import { createFormulaBindingFamilyIndexController } from './formula-binding-family-index-controller.js'
 import { applyFormulaRuntimePlanFields } from './formula-binding-runtime-update.js'
 import { rebuildDeferredFormulaFamilyIndex } from './formula-family-index-rebuild.js'
+import { bindFreshDirectAggregateFormulaRun } from './formula-binding-fresh-direct-aggregate-run.js'
 import type {
   BindPreparedFormulaOptions,
   CreateEngineFormulaBindingServiceArgs,
@@ -147,7 +150,13 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
   const pendingInitialFormulaCells = createPendingInitialFormulaCellTracker({
     getCellCapacity: () => args.state.workbook.cellStore.capacity,
     getSheetId: (cellIndex) => args.state.workbook.cellStore.sheetIds[cellIndex],
-    getCol: (cellIndex) => args.state.workbook.getCellPosition(cellIndex)?.col ?? args.state.workbook.cellStore.cols[cellIndex],
+    getCol: (cellIndex) => {
+      const sheetId = args.state.workbook.cellStore.sheetIds[cellIndex]
+      if (sheetId !== undefined && args.state.workbook.getSheetById(sheetId)?.structureVersion === 1) {
+        return args.state.workbook.cellStore.cols[cellIndex]
+      }
+      return args.state.workbook.getCellPosition(cellIndex)?.col ?? args.state.workbook.cellStore.cols[cellIndex]
+    },
     isBoundFormulaCell: (cellIndex) => (args.state.workbook.cellStore.formulaIds[cellIndex] ?? 0) !== 0,
     hasBoundColumnMembers: (sheetId, col) => formulaMemberCounts.hasColumnMembers(sheetId, col),
   })
@@ -255,6 +264,10 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
       templateId: prepared.templateId,
       runtimeProgram: prepared.runtimeProgram,
       programLength: prepared.runtimeProgram.length,
+      inlineScalarFastPlanKind: prepared.inlineScalarFastPlanKind,
+      inlineScalarArithmeticDeltaCoefficients: prepared.inlineScalarArithmeticDeltaCoefficients,
+      inlineScalarFastPlanStringIds: prepared.inlineScalarFastPlanStringIds,
+      inlineScalarPlanCellIndices: prepared.inlineScalarPlanCellIndices,
     })
     existing.dependencyIndices = prepared.dependencies.dependencyIndices
     if (dependencyEntitiesChanged) {
@@ -372,6 +385,7 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     const plan = canRetainUnmanagedCompiledPlan(existing.planId, compiled, nextDirectScalar)
       ? makeUnmanagedCompiledPlan(source, compiled, nextTemplateId)
       : args.compiledPlans.replace(existing.planId, source, compiled, nextTemplateId)
+    const previousDirectAggregate = existing.directAggregate
     const previousDirectCriteriaAggregate = directCriteriaAggregateColumn(existing.directCriteria)
     const shouldRefreshSheetIndexes = hasQualifiedDependencies(existing.compiled) || hasQualifiedDependencies(compiled)
     if (shouldRefreshSheetIndexes) {
@@ -388,10 +402,22 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     existing.directScalar = nextDirectScalar
     existing.directCriteria = undefined
     updateVolatileFormulaIndex(cellIndex, existing)
+    removeDirectAggregateColumnReverseEdges(
+      args.reverseState.reverseAggregateColumnEdges,
+      args.state.workbook,
+      previousDirectAggregate,
+      cellIndex,
+    )
+    appendDirectAggregateColumnReverseEdges(
+      args.reverseState.reverseAggregateColumnEdges,
+      args.state.workbook,
+      existing.directAggregate,
+      cellIndex,
+    )
     if (previousDirectCriteriaAggregate) {
       const previousCriteriaSheet = args.state.workbook.getSheet(previousDirectCriteriaAggregate.sheetName)
       if (previousCriteriaSheet) {
-        removeTrackedReverseEdge(
+        removeUnindexedAggregateColumnReverseEdge(
           args.reverseState.reverseAggregateColumnEdges,
           aggregateColumnDependencyKey(previousCriteriaSheet.id, previousDirectCriteriaAggregate.col),
           cellIndex,
@@ -487,6 +513,54 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     return true
   }
 
+  const retargetDirectAggregateFormulasForStructuralTransformNow = (
+    inputs: readonly {
+      readonly cellIndex: number
+      readonly ownerSheetName: string
+      readonly preservesValue: boolean
+    }[],
+    targetSheetName: string,
+    transform: StructuralAxisTransform,
+  ): readonly number[] => {
+    if (inputs.length === 0) {
+      return []
+    }
+    const retargetedCellIndices: number[] = []
+    const replacements: Array<{ formulaCellIndex: number; previousRegionId: number; nextRegionId: number }> = []
+    for (let index = 0; index < inputs.length; index += 1) {
+      const { cellIndex, ownerSheetName, preservesValue } = inputs[index]!
+      const existing = args.state.formulas.get(cellIndex)
+      if (!existing?.directAggregate) {
+        continue
+      }
+      const previousDirectAggregate = existing.directAggregate
+      const nextDirectAggregate = rewriteDirectAggregateDescriptorForStructuralTransform({
+        descriptor: previousDirectAggregate,
+        targetSheetName,
+        transform,
+        regionGraph: args.regionGraph,
+      })
+      if (!nextDirectAggregate) {
+        continue
+      }
+      existing.directAggregate = nextDirectAggregate
+      existing.structuralSourceTransform = {
+        ownerSheetName,
+        targetSheetName,
+        transform,
+        preservesValue,
+      }
+      retargetedCellIndices.push(cellIndex)
+      replacements.push({
+        formulaCellIndex: cellIndex,
+        previousRegionId: previousDirectAggregate.regionId,
+        nextRegionId: nextDirectAggregate.regionId,
+      })
+    }
+    args.regionGraph.replaceSingleFormulaSubscriptions(replacements)
+    return retargetedCellIndices
+  }
+
   const isCellIndexMappedNow = (cellIndex: number): boolean => {
     const sheetId = args.state.workbook.cellStore.sheetIds[cellIndex]
     const position = args.state.workbook.getCellPosition(cellIndex)
@@ -530,6 +604,10 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     prepared: ReturnType<typeof prepareFormulaBindingFromCompiledNow>,
     options: BindPreparedFormulaOptions = {},
   ): boolean => {
+    if (options.assumeFreshFormula === true && (args.state.workbook.cellStore.formulaIds[cellIndex] ?? 0) === 0) {
+      installFreshFormulaNow(cellIndex, ownerSheetName, source, prepared, options)
+      return true
+    }
     const existing = args.state.formulas.get(cellIndex)
     const topologyChanged =
       existing === undefined ||
@@ -550,6 +628,10 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
         templateId: prepared.templateId,
         runtimeProgram: prepared.runtimeProgram,
         programLength: prepared.runtimeProgram.length,
+        inlineScalarFastPlanKind: prepared.inlineScalarFastPlanKind,
+        inlineScalarArithmeticDeltaCoefficients: prepared.inlineScalarArithmeticDeltaCoefficients,
+        inlineScalarFastPlanStringIds: prepared.inlineScalarFastPlanStringIds,
+        inlineScalarPlanCellIndices: prepared.inlineScalarPlanCellIndices,
       })
       existing.dependencyIndices = prepared.dependencies.dependencyIndices
       existing.directLookup = prepared.directLookup
@@ -611,7 +693,16 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
       cellIndex,
       ownerSheetName,
       source,
-      prepareFormulaBindingFromCompiledNow(cellIndex, ownerSheetName, source, compiled as ParsedCompiledFormula, templateId),
+      prepareFormulaBindingFromCompiledNow(
+        cellIndex,
+        ownerSheetName,
+        source,
+        compiled as ParsedCompiledFormula,
+        templateId,
+        options.ownerPosition,
+        options.assumeFreshDirectAggregateLiteralInputs,
+        options.resolveWorkbookDateSystem,
+      ),
       options,
     )
 
@@ -674,6 +765,9 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     source: string,
     compiledInput: ParsedCompiledFormula,
     templateId?: number,
+    ownerPosition?: FormulaOwnerPosition,
+    assumeFreshDirectAggregateLiteralInputs?: boolean,
+    resolveWorkbookDateSystem?: () => string | undefined,
   ) => {
     return prepareFormulaBindingFromCompiled({
       serviceArgs: args,
@@ -682,11 +776,14 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
       source,
       compiledInput,
       templateId,
+      ...(ownerPosition !== undefined ? { ownerPosition } : {}),
+      ...(assumeFreshDirectAggregateLiteralInputs === true ? { assumeFreshDirectAggregateLiteralInputs } : {}),
+      ...(resolveWorkbookDateSystem !== undefined ? { resolveWorkbookDateSystem } : {}),
       normalizeLookupCompileMode: normalizeFormulaBindingLookupCompileMode,
       dependencyMaterializer,
       ensureDependencyBuildCapacity,
       directAggregateContainsOwnerCell: (directAggregate, ownerCellIndex) =>
-        directAggregateContainsFormulaOwnerCell(args, directAggregate, ownerCellIndex),
+        directAggregateContainsFormulaOwnerCell(args, directAggregate, ownerCellIndex, ownerPosition),
       makeUnmanagedCompiledPlan,
     })
   }
@@ -772,12 +869,22 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     },
     bindFormulaNow,
     bindPreparedFormulaNow,
+    bindFreshDirectAggregateFormulaRunNow(run) {
+      bindFreshDirectAggregateFormulaRun({
+        serviceArgs: args,
+        edgeArena: args.edgeArena,
+        formulaMemberCounts,
+        trackFormulaSheetIndexes,
+        run,
+      })
+    },
     rewriteFormulaSourcePreservingBindingNow,
     rewriteFormulaCompiledPreservingBindingNow,
     rewriteFormulaMetadataPreservingRuntimeNow,
     deferCellFormulasForSheetRenameNow,
     rewriteCellFormulasForSheetRenameNow,
     retargetDirectAggregateFormulaForStructuralTransformNow,
+    retargetDirectAggregateFormulasForStructuralTransformNow,
     bindInitialFormulaNow,
     withInitialFormulaCellsNow: (cellIndices, callback) => pendingInitialFormulaCells.withCells(cellIndices, callback),
     clearFormulaNow,
@@ -789,7 +896,19 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     deferFormulaFamilyIndexRunsNow(runs) {
       formulaFamilyIndex.deferRunsNow(runs)
     },
+    registerFreshFormulaFamilyRunNow(run) {
+      return formulaFamilyIndex.registerFreshFormulaFamilyRunNow(run)
+    },
+    upsertFormulaFamilyRunNow(run) {
+      formulaFamilyIndex.upsertFormulaFamilyRunNow(run)
+    },
     deferFormulaInstanceTableRebuildNow: rebuildFormulaInstancesNow,
+    upsertFreshFormulaInstancesNow(records) {
+      args.formulaInstances.upsertMany(records)
+    },
+    hydrateFreshFormulaInstancesNow(records) {
+      args.formulaInstances.hydrate(records)
+    },
     exportFormulaInstancesNow() {
       return args.formulaInstances.list()
     },

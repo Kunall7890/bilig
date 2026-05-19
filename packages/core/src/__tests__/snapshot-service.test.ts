@@ -324,6 +324,7 @@ describe('EngineSnapshotService', () => {
       {
         sheetName: 'Sheet1',
         cellCount: 4,
+        coordinateOrder: 'dense-row-major',
         coords: [
           { row: 0, col: 0 },
           { row: 0, col: 1 },

@@ -15,6 +15,8 @@ import type {
 const SCALAR_RANGE_FUNCTION_RE =
   /^(?:_XLFN\.)?(?:_XLWS\.)?(?:SUM|COUNT|COUNTA|COUNTBLANK|MIN|MAX|AVERAGE|AVG|SUMIF|COUNTIF|SUMIFS|COUNTIFS|ABS)\(.*\)(?:[+\-*/]\d+(?:\.\d+)?)?$/
 const SIMPLE_SCALAR_EXPRESSION_RE = /^\$?[A-Z]+\$?\d+(?:[+\-*/](?:\$?[A-Z]+\$?\d+|\d+(?:\.\d+)?))*$/
+const SCALAR_ONLY_FUNCTION_NAMES = ['CONCATENATE', 'IF', 'LEN', 'MAX', 'MIN', 'PMT', 'POWER', 'ROUND', 'SQRT'] as const
+const SCALAR_ONLY_FUNCTION_MARKERS = SCALAR_ONLY_FUNCTION_NAMES.map((name) => `${name}(`)
 const FORMULA_SPILL_PRODUCING_FUNCTION_MARKERS = FORMULA_SPILL_PRODUCING_FUNCTION_NAMES.map((name) => `${name}(`)
 
 export interface WorkPaperSheetInspection {
@@ -220,7 +222,10 @@ function isDefinitelyScalarFormulaShape(formula: string): boolean {
   if (normalized.includes('(') && FORMULA_SPILL_PRODUCING_FUNCTION_MARKERS.some((marker) => normalized.includes(marker))) {
     return false
   }
-  return SCALAR_RANGE_FUNCTION_RE.test(normalized)
+  if (SCALAR_RANGE_FUNCTION_RE.test(normalized)) {
+    return true
+  }
+  return !normalized.includes(':') && SCALAR_ONLY_FUNCTION_MARKERS.some((marker) => normalized.includes(marker))
 }
 
 function normalizeScalarFormulaShape(formula: string): string {

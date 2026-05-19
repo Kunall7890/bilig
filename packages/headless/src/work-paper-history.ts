@@ -201,23 +201,32 @@ function mergeWorkPaperOperationHistory(
   entries: readonly WorkPaperHistoryRecord[],
   resolveSheetName: WorkPaperSheetNameResolver,
 ): WorkPaperHistoryRecord {
-  const forward: WorkPaperHistoryTransactionRecord = {
-    kind: 'ops',
-    ops: entries.flatMap((entry) => workPaperHistoryTransactionOps(entry.forward, resolveSheetName)),
-  }
+  const forward = lazyMergedOperationRecord(entries, (entry) => entry.forward, resolveSheetName)
   const forwardPotentialNewCells = sumNumbers(entries.map((entry) => entry.forward.potentialNewCells))
   if (forwardPotentialNewCells !== undefined) {
     forward.potentialNewCells = forwardPotentialNewCells
   }
-  const inverse: WorkPaperHistoryTransactionRecord = {
-    kind: 'ops',
-    ops: entries.toReversed().flatMap((entry) => workPaperHistoryTransactionOps(entry.inverse, resolveSheetName)),
-  }
+  const inverse = lazyMergedOperationRecord(entries.toReversed(), (entry) => entry.inverse, resolveSheetName)
   const inversePotentialNewCells = sumNumbers(entries.map((entry) => entry.inverse.potentialNewCells))
   if (inversePotentialNewCells !== undefined) {
     inverse.potentialNewCells = inversePotentialNewCells
   }
   return { forward, inverse }
+}
+
+function lazyMergedOperationRecord(
+  entries: readonly WorkPaperHistoryRecord[],
+  selectRecord: (entry: WorkPaperHistoryRecord) => WorkPaperHistoryTransactionRecord,
+  resolveSheetName: WorkPaperSheetNameResolver,
+): Extract<WorkPaperHistoryTransactionRecord, { kind: 'ops' }> {
+  let cachedOps: unknown[] | undefined
+  return {
+    kind: 'ops',
+    get ops() {
+      cachedOps ??= entries.flatMap((entry) => workPaperHistoryTransactionOps(selectRecord(entry), resolveSheetName))
+      return cachedOps
+    },
+  }
 }
 
 function sumNumbers(values: Array<number | undefined>): number | undefined {

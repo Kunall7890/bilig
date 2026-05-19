@@ -37,22 +37,23 @@ export interface StructuralFormulaRebindInput {
   readonly preservesValue?: boolean
 }
 
+export interface StructuralAxisOpResult {
+  readonly transaction: StructuralTransaction
+  readonly changedCellIndices: number[]
+  readonly precomputedChangedInputCellIndices: number[]
+  readonly formulaCellIndices: number[]
+  readonly topologyChanged: boolean
+  readonly graphRefreshRequired: boolean
+}
+
 export interface EngineStructureService {
   readonly captureSheetCellState: (sheetName: string) => Effect.Effect<EngineOp[], EngineStructureError>
   readonly captureRowRangeCellState: (sheetName: string, start: number, count: number) => Effect.Effect<EngineOp[], EngineStructureError>
   readonly captureColumnRangeCellState: (sheetName: string, start: number, count: number) => Effect.Effect<EngineOp[], EngineStructureError>
+  readonly materializeDeferredStructuralFormulaSourcesNow: () => void
   readonly materializeDeferredStructuralFormulaSources: () => Effect.Effect<void, EngineStructureError>
-  readonly applyStructuralAxisOp: (op: StructuralAxisOp) => Effect.Effect<
-    {
-      transaction: StructuralTransaction
-      changedCellIndices: number[]
-      precomputedChangedInputCellIndices: number[]
-      formulaCellIndices: number[]
-      topologyChanged: boolean
-      graphRefreshRequired: boolean
-    },
-    EngineStructureError
-  >
+  readonly applyStructuralAxisOpNow: (op: StructuralAxisOp) => StructuralAxisOpResult
+  readonly applyStructuralAxisOp: (op: StructuralAxisOp) => Effect.Effect<StructuralAxisOpResult, EngineStructureError>
 }
 
 export interface CreateEngineStructureServiceArgs {
@@ -74,6 +75,15 @@ export interface CreateEngineStructureServiceArgs {
     targetSheetName: string,
     transform: StructuralAxisTransform,
   ) => boolean
+  readonly retargetDirectAggregateFormulasForStructuralTransform: (
+    inputs: readonly {
+      readonly cellIndex: number
+      readonly ownerSheetName: string
+      readonly preservesValue?: boolean
+    }[],
+    targetSheetName: string,
+    transform: StructuralAxisTransform,
+  ) => readonly number[]
   readonly rewriteFormulaCompiledPreservingBinding: (input: StructuralFormulaRebindInput) => boolean
   readonly collectFormulaCellsOwnedBySheet: (sheetName: string) => readonly number[]
   readonly forEachFormulaCellOwnedBySheet: (sheetName: string, fn: (cellIndex: number) => void) => void

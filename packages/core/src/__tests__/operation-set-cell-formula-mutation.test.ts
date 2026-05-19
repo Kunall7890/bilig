@@ -75,6 +75,7 @@ describe('operation set-cell-formula mutations', () => {
     }
 
     engine.resetPerformanceCounters()
+    const notifyCellValueWritten = vi.spyOn(engine.workbook, 'notifyCellValueWritten')
     engine.setCellFormula('Sheet1', 'C1', 'A1*B1')
 
     expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 2 })
@@ -90,6 +91,8 @@ describe('operation set-cell-formula mutations', () => {
       directScalarDeltaOnlyRecalcSkips: 1,
       changedCellPayloadsBuilt: 0,
     })
+    expect(notifyCellValueWritten).not.toHaveBeenCalled()
+    notifyCellValueWritten.mockRestore()
   })
 
   it('rebinds formulas over existing literal cells through mutation refs', async () => {

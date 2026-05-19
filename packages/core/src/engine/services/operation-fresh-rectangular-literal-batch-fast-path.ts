@@ -55,8 +55,6 @@ interface FreshNumericRectangle {
   readonly values: Float64Array
 }
 
-type FreshNumericCellAttacher = (row: number, col: number, cellIndex: number, rowId: string, colId: string) => void
-
 const EMPTY_CHANGED_CELLS = new Uint32Array(0)
 
 export function createOperationFreshRectangularLiteralBatchFastPath(args: OperationFreshRectangularLiteralBatchFastPathArgs): {
@@ -99,8 +97,8 @@ export function createOperationFreshRectangularLiteralBatchFastPath(args: Operat
     args.setBatchMutationDepth(args.getBatchMutationDepth() + 1)
     const ensureRowId = args.state.workbook.createLogicalAxisIdEnsurer(rectangle.sheetId, 'row')
     const ensureColId = args.state.workbook.createLogicalAxisIdEnsurer(rectangle.sheetId, 'column')
-    const columnIds = Array.from({ length: rectangle.colCount }, (_, colOffset) => ensureColId(rectangle.firstCol + colOffset))
-    const attachFreshCell = createFreshNumericCellAttacher(rectangle.sheet)
+    const rowIds = materializeAxisIds(rectangle.rowCount, rectangle.firstRow, ensureRowId)
+    const columnIds = materializeAxisIds(rectangle.colCount, rectangle.firstCol, ensureColId)
     const firstCellIndex = args.state.workbook.cellStore.allocateDenseRowMajorAtReserved(
       rectangle.sheetId,
       rectangle.firstRow,
@@ -108,15 +106,12 @@ export function createOperationFreshRectangularLiteralBatchFastPath(args: Operat
       rectangle.firstCol,
       rectangle.colCount,
     )
+    attachFreshDenseNumericCells(rectangle.sheet, firstCellIndex, rectangle.firstRow, rectangle.firstCol, rowIds, columnIds)
     try {
       let valueIndex = 0
       for (let rowOffset = 0; rowOffset < rectangle.rowCount; rowOffset += 1) {
-        const row = rectangle.firstRow + rowOffset
-        const rowId = ensureRowId(row)
         for (let colOffset = 0; colOffset < rectangle.colCount; colOffset += 1) {
-          const col = rectangle.firstCol + colOffset
           const cellIndex = firstCellIndex + rowOffset * rectangle.colCount + colOffset
-          attachFreshCell(row, col, cellIndex, rowId, columnIds[colOffset]!)
           args.writeNumericLiteralToCellStore(cellIndex, rectangle.values[valueIndex]!)
           changedInputCount = args.markInputChanged(cellIndex, changedInputCount)
           if (requiresChangedSet) {
@@ -228,14 +223,26 @@ function collectFreshDenseNumericRectangle(
   return { sheet, sheetId: firstRef.sheetId, firstRow, rowCount, firstCol, colCount, values }
 }
 
-function createFreshNumericCellAttacher(sheet: SheetRecord): FreshNumericCellAttacher {
-  const attachFreshVisibleCellIdentity = sheet.logical.setFreshVisibleCellIdentityWithAxisIdsDeferred.bind(sheet.logical)
-  sheet.logical.deferVisibleCellPageRebuild()
-  const setGridCell = sheet.grid.createRowMajorSetter()
-  return (row, col, cellIndex, rowId, colId) => {
-    attachFreshVisibleCellIdentity(cellIndex, rowId, colId)
-    setGridCell(row, col, cellIndex)
+function materializeAxisIds(count: number, start: number, ensureAxisId: (index: number) => string): string[] {
+  const axisIds: string[] = []
+  axisIds.length = count
+  for (let offset = 0; offset < count; offset += 1) {
+    axisIds[offset] = ensureAxisId(start + offset)
   }
+  return axisIds
+}
+
+function attachFreshDenseNumericCells(
+  sheet: SheetRecord,
+  firstCellIndex: number,
+  firstRow: number,
+  firstCol: number,
+  rowIds: readonly string[],
+  colIds: readonly string[],
+): void {
+  sheet.logical.deferVisibleCellPageRebuild()
+  sheet.logical.setFreshVisibleDenseRowMajorIdentitiesWithAxisIdsDeferred(firstCellIndex, rowIds, colIds)
+  sheet.grid.setDenseRowMajor(firstRow, firstCol, rowIds.length, colIds.length, firstCellIndex)
 }
 
 function rectangleOverlapsFormulaDependencies(

@@ -13,11 +13,19 @@ import {
   trackedEventFromExistingNumericMutationResult,
   tryBuildDirectExistingNumericTrackedChanges,
 } from './work-paper-tracked-event-helpers.js'
+import {
+  createLazyPhysicalTrackedIndexChanges,
+  createPrefixedLazyTrackedIndexChanges,
+  formatTrackedAddress,
+  tryCreateLazyPhysicalTrackedIndexChanges,
+} from './tracked-cell-lazy-physical-changes.js'
 import type { TrackedEngineEvent } from './tracked-engine-event-refs.js'
+import { scalarValueFromLiteral } from './work-paper-runtime-helpers.js'
 import type { WorkPaperCellAddress, WorkPaperCellChange, WorkPaperChange } from './work-paper-types.js'
 
 const FAST_EXISTING_NUMERIC_LITERAL_FLAGS =
   CellFlags.HasFormula | CellFlags.JsOnly | CellFlags.InCycle | CellFlags.SpillChild | CellFlags.PivotOutput
+const LAZY_DIRECT_EXISTING_NUMERIC_CHANGE_THRESHOLD = 32
 
 type ExistingNumericMutationEngine = SpreadsheetEngine & {
   readonly tryApplyExistingNumericCellMutationAt?: (
@@ -47,6 +55,7 @@ export interface WorkPaperExistingNumericFastPathRuntime {
     events: readonly TrackedEngineEvent[],
     options: { readonly preferLazyPublicChanges?: boolean },
   ) => WorkPaperChange[]
+  readonly trackLazyChanges: (changes: WorkPaperCellChange[]) => void
   readonly hasValuesUpdatedListeners: () => boolean
   readonly emitValuesUpdated: (changes: WorkPaperChange[]) => void
 }
@@ -128,6 +137,45 @@ export function trySetExistingNumericWorkPaperCellContentsWithTrackedFastPath(
   if (runtime.hasTrackedEngineEvents()) {
     runtime.clearTrackedEngineEvents()
   }
+  const compactLazyChanges = tryBuildCompactLazyDirectExistingNumericTrackedChanges(runtime, engine, request, result)
+  if (compactLazyChanges !== null) {
+    if (runtime.hasValuesUpdatedListeners()) {
+      runtime.emitValuesUpdated(compactLazyChanges)
+    }
+    return compactLazyChanges
+  }
+  if (result.changedCellIndices === undefined && result.changedCellCount === 1 && result.firstChangedCellIndex === request.cellIndex) {
+    const changes: WorkPaperCellChange[] = [
+      {
+        kind: 'cell',
+        address: { sheet: request.address.sheet, row: request.address.row, col: request.address.col },
+        sheetName: request.sheet.name,
+        a1: runtime.trackedA1(request.address.row, request.address.col),
+        newValue: { tag: ValueTag.Number, value: request.value },
+      },
+    ]
+    if (runtime.hasValuesUpdatedListeners()) {
+      runtime.emitValuesUpdated(changes)
+    }
+    return changes
+  }
+  const lazyChanges = tryBuildLazyDirectExistingNumericTrackedChanges(
+    runtime,
+    engine,
+    {
+      address: request.address,
+      cellIndex: request.cellIndex,
+      sheet: request.sheet,
+      value: request.value,
+    },
+    result,
+  )
+  if (lazyChanges !== null) {
+    if (runtime.hasValuesUpdatedListeners()) {
+      runtime.emitValuesUpdated(lazyChanges)
+    }
+    return lazyChanges
+  }
   if (
     result.changedCellIndices === undefined &&
     result.changedCellCount === 2 &&
@@ -175,7 +223,9 @@ export function trySetExistingNumericWorkPaperCellContentsWithTrackedFastPath(
     const shouldEmitValuesUpdated = runtime.hasValuesUpdatedListeners()
     const events = [trackedEventFromExistingNumericMutationResult(result)]
     changes = runtime.computeTrackedChangesWithoutVisibilityCache(events, {
-      preferLazyPublicChanges: !shouldEmitValuesUpdated,
+      preferLazyPublicChanges:
+        !shouldEmitValuesUpdated ||
+        events.some((event) => event.changedCellIndices.length >= LAZY_DIRECT_EXISTING_NUMERIC_CHANGE_THRESHOLD),
     })
     if (changes.length > 0 && shouldEmitValuesUpdated) {
       runtime.emitValuesUpdated(changes)
@@ -185,6 +235,52 @@ export function trySetExistingNumericWorkPaperCellContentsWithTrackedFastPath(
   if (changes.length > 0 && runtime.hasValuesUpdatedListeners()) {
     runtime.emitValuesUpdated(changes)
   }
+  return changes
+}
+
+function tryBuildCompactLazyDirectExistingNumericTrackedChanges(
+  runtime: WorkPaperExistingNumericFastPathRuntime,
+  engine: SpreadsheetEngine,
+  request: ExistingNumericWorkPaperCellContentsRequest,
+  result: EngineExistingNumericCellMutationResult,
+): WorkPaperCellChange[] | null {
+  if (runtime.hasValuesUpdatedListeners() || result.changedCellIndices !== undefined) {
+    return null
+  }
+  const changedCellCount = result.changedCellCount
+  if (changedCellCount === undefined || changedCellCount < LAZY_DIRECT_EXISTING_NUMERIC_CHANGE_THRESHOLD) {
+    return null
+  }
+  let changedCellIndices: Uint32Array | undefined
+  if (changedCellCount === 1 && result.firstChangedCellIndex === request.cellIndex) {
+    changedCellIndices = Uint32Array.of(request.cellIndex)
+  } else if (
+    changedCellCount === 2 &&
+    result.firstChangedCellIndex === request.cellIndex &&
+    result.secondChangedCellIndex !== undefined &&
+    result.secondChangedRow !== undefined &&
+    result.secondChangedCol !== undefined
+  ) {
+    changedCellIndices = Uint32Array.of(request.cellIndex, result.secondChangedCellIndex)
+  }
+  if (changedCellIndices === undefined) {
+    return null
+  }
+  const cellStore = engine.workbook.cellStore
+  for (let index = 0; index < changedCellIndices.length; index += 1) {
+    if (cellStore.sheetIds[changedCellIndices[index]!] !== request.sheet.id) {
+      return null
+    }
+  }
+  const changes = createLazyPhysicalTrackedIndexChanges(
+    request.sheet.id,
+    request.sheet.name,
+    cellStore,
+    engine,
+    changedCellIndices,
+    formatTrackedAddress,
+  )
+  runtime.trackLazyChanges(changes)
   return changes
 }
 
@@ -247,6 +343,23 @@ export function trySetExistingLiteralWorkPaperCellContentsWithTrackedFastPath(
   if (runtime.hasTrackedEngineEvents()) {
     runtime.clearTrackedEngineEvents()
   }
+  const lazyChanges = tryBuildLazyDirectExistingNumericTrackedChanges(
+    runtime,
+    engine,
+    {
+      address: request.address,
+      cellIndex: request.cellIndex,
+      sheet: request.sheet,
+      value: request.value,
+    },
+    result,
+  )
+  if (lazyChanges !== null) {
+    if (runtime.hasValuesUpdatedListeners()) {
+      runtime.emitValuesUpdated(lazyChanges)
+    }
+    return lazyChanges
+  }
   let changes: WorkPaperChange[] | null = tryBuildDirectExistingNumericTrackedChanges({
     result,
     address: request.address,
@@ -263,7 +376,9 @@ export function trySetExistingLiteralWorkPaperCellContentsWithTrackedFastPath(
     const shouldEmitValuesUpdated = runtime.hasValuesUpdatedListeners()
     const events = [trackedEventFromExistingNumericMutationResult(result)]
     changes = runtime.computeTrackedChangesWithoutVisibilityCache(events, {
-      preferLazyPublicChanges: !shouldEmitValuesUpdated,
+      preferLazyPublicChanges:
+        !shouldEmitValuesUpdated ||
+        events.some((event) => event.changedCellIndices.length >= LAZY_DIRECT_EXISTING_NUMERIC_CHANGE_THRESHOLD),
     })
     if (changes.length > 0 && shouldEmitValuesUpdated) {
       runtime.emitValuesUpdated(changes)
@@ -273,5 +388,98 @@ export function trySetExistingLiteralWorkPaperCellContentsWithTrackedFastPath(
   if (changes.length > 0 && runtime.hasValuesUpdatedListeners()) {
     runtime.emitValuesUpdated(changes)
   }
+  return changes
+}
+
+function tryBuildLazyDirectExistingNumericTrackedChanges(
+  runtime: WorkPaperExistingNumericFastPathRuntime,
+  engine: SpreadsheetEngine,
+  request: {
+    readonly address: WorkPaperCellAddress
+    readonly cellIndex: number
+    readonly sheet: SheetRecord
+    readonly value: LiteralInput
+  },
+  result: EngineExistingNumericCellMutationResult,
+): WorkPaperCellChange[] | null {
+  const changedCellIndices = result.changedCellIndices
+  if (
+    changedCellIndices === undefined ||
+    changedCellIndices.length < LAZY_DIRECT_EXISTING_NUMERIC_CHANGE_THRESHOLD ||
+    changedCellIndices[0] !== request.cellIndex
+  ) {
+    return null
+  }
+  const cellStore = engine.workbook.cellStore
+  let previousRow = -1
+  let previousCol = -1
+  for (let index = 0; index < changedCellIndices.length; index += 1) {
+    const cellIndex = changedCellIndices[index]!
+    if (cellStore.sheetIds[cellIndex] !== request.sheet.id) {
+      return tryBuildPrefixedCrossSheetLazyChanges(runtime, engine, request, changedCellIndices)
+    }
+    const row = cellStore.rows[cellIndex]
+    const col = cellStore.cols[cellIndex]
+    if (row === undefined || col === undefined || row < previousRow || (row === previousRow && col < previousCol)) {
+      return null
+    }
+    previousRow = row
+    previousCol = col
+  }
+  const changes = createLazyPhysicalTrackedIndexChanges(
+    request.sheet.id,
+    request.sheet.name,
+    cellStore,
+    engine,
+    changedCellIndices,
+    formatTrackedAddress,
+  )
+  runtime.trackLazyChanges(changes)
+  return changes
+}
+
+function tryBuildPrefixedCrossSheetLazyChanges(
+  runtime: WorkPaperExistingNumericFastPathRuntime,
+  engine: SpreadsheetEngine,
+  request: {
+    readonly address: WorkPaperCellAddress
+    readonly cellIndex: number
+    readonly sheet: SheetRecord
+    readonly value: LiteralInput
+  },
+  changedCellIndices: Uint32Array,
+): WorkPaperCellChange[] | null {
+  const tailStart = 1
+  const firstTailCellIndex = changedCellIndices[tailStart]
+  if (firstTailCellIndex === undefined) {
+    return null
+  }
+  const cellStore = engine.workbook.cellStore
+  const tailSheetId = cellStore.sheetIds[firstTailCellIndex]
+  if (tailSheetId === undefined || tailSheetId === request.sheet.id) {
+    return null
+  }
+  const tailSheet = engine.workbook.getSheetById(tailSheetId)
+  if (tailSheet === undefined || tailSheet.order < request.sheet.order) {
+    return null
+  }
+  const tailChanges = tryCreateLazyPhysicalTrackedIndexChanges(
+    engine,
+    changedCellIndices.subarray(tailStart),
+    tailSheetId,
+    formatTrackedAddress,
+  )
+  if (tailChanges === null) {
+    return null
+  }
+  const literalChange: WorkPaperCellChange = {
+    kind: 'cell',
+    address: { sheet: request.address.sheet, row: request.address.row, col: request.address.col },
+    sheetName: request.sheet.name,
+    a1: runtime.trackedA1(request.address.row, request.address.col),
+    newValue: scalarValueFromLiteral(request.value),
+  }
+  const changes = createPrefixedLazyTrackedIndexChanges([literalChange], tailChanges)
+  runtime.trackLazyChanges(changes)
   return changes
 }

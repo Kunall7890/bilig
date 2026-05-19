@@ -11,27 +11,31 @@ inflating what the benchmark can prove.
 ## The Claim
 
 The current checked-in WorkPaper-vs-HyperFormula artifact records WorkPaper
-`80/100` mean-latency wins on scorecard-eligible comparable workloads. This is a
-scoped lead with visible holdouts, not a blanket fastest-engine claim:
+`100/100` mean-latency wins on scorecard-eligible comparable workloads. This is
+a scoped headless-runtime lead with checked p95 evidence, not a blanket
+fastest-engine claim:
 
 | Lane    | Comparable Workloads | WorkPaper Mean Wins | HyperFormula Mean Wins |
 | ------- | -------------------: | ------------------: | ---------------------: |
-| Overall |                `100` |                `80` |                   `20` |
-| Public  |                 `73` |                `60` |                   `13` |
-| Holdout |                 `27` |                `20` |                    `7` |
+| Overall |                `100` |               `100` |                    `0` |
+| Public  |                 `73` |                `73` |                    `0` |
+| Holdout |                 `27` |                `27` |                    `0` |
 
 The artifact is
 [`packages/benchmarks/baselines/workpaper-vs-hyperformula.json`](../packages/benchmarks/baselines/workpaper-vs-hyperformula.json),
-generated at `2026-05-17T10:57:56.655Z`.
+generated at `2026-05-19T04:08:42.274Z`.
 
-The overall directional mean-ratio geomean is `0.5993777001881347`, and the
-overall directional p95-ratio geomean is `0.6300932419283433`. Ratios below
+The overall directional mean-ratio geomean is `0.3251117423911046`, and the
+overall directional p95-ratio geomean is `0.33186260703682735`. Ratios below
 `1.0` mean WorkPaper is faster on that metric.
+
+The headless leadership scorecard records `100/100` workloads winning both
+mean and p95 against HyperFormula.
 
 ## What It Proves
 
 It proves that the checked-in WorkPaper runtime is faster on mean latency for
-most rows in the current scorecard of directly comparable headless
+every row in the current scorecard of directly comparable headless
 spreadsheet-engine workloads, with an aggregate mean and p95 geomean lead.
 
 The covered families include workbook build and rebuild paths, runtime restore
@@ -53,12 +57,13 @@ It does not prove that bilig is a complete Excel clone.
 It does not prove full formula parity with Excel, Google Sheets, or
 HyperFormula.
 
-It does not prove that every p95 row is faster. The current headless leadership
-scorecard records `75/100` workloads winning both mean and p95. The worst p95
-holdout is `structural-insert-columns-small`, where the current
-WorkPaper-to-HyperFormula p95 ratio is `4.07505940446473`. The honest claim is
-`80/100` mean wins plus an
-overall p95 geomean lead, not "faster on every row."
+It does not prove future p95 rows will stay faster after new workloads are
+added. The current headless leadership scorecard records `100/100` workloads
+winning both mean and p95. The narrowest current p95 win is
+`aggregate-overlapping-sliding-window-wide`, where the current
+WorkPaper-to-HyperFormula p95 ratio is `0.945655463200891`. The honest claim is
+the checked headless runtime leads this comparable suite today, not that every
+future workbook shape is covered.
 
 It does not prove that browser-grid rendering, import/export, collaboration, or
 every user workload is faster. This benchmark is about the headless WorkPaper
@@ -74,9 +79,9 @@ Mean latency answers: "what is the normal cost of this workload?"
 p95 latency answers: "what happens near the slow end of this workload's sample
 set?"
 
-A workload can win on mean while losing one p95 row when a small number of
+A workload can win on mean while coming close on p95 when a small number of
 slower samples move the tail. That is why bilig keeps both the headline mean
-claim and the p95 caveat visible.
+claim and the narrowest p95 row visible.
 
 ## How To Evaluate It
 
@@ -102,13 +107,13 @@ pnpm --dir examples/headless-workpaper run start
 
 Short:
 
-> bilig's WorkPaper benchmark currently records `80/100` mean wins against
-> HyperFormula-style headless workloads, with the p95 caveat documented instead
-> of hidden.
+> bilig's WorkPaper benchmark currently records `100/100` mean and p95 wins
+> against comparable HyperFormula-style headless workloads, with the narrowest
+> p95 row documented instead of hidden.
 
 Reply-sized:
 
 > the useful part is the audit trail: a checked-in benchmark artifact, a verify
-> command, and an explicit p95 caveat. the claim is `80/100` mean wins for the
-> current comparable headless WorkPaper workloads, not "we are faster at
+> command, and explicit p95 evidence. the claim is `100/100` mean and p95 wins
+> for the current comparable headless WorkPaper workloads, not "we are faster at
 > everything."

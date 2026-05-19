@@ -20,7 +20,7 @@ export interface EngineMutationService {
   readonly executeLocalNow: (
     ops: EngineOp[],
     potentialNewCells?: number,
-    options?: { readonly returnUndoOps?: boolean },
+    options?: { readonly returnUndoOps?: boolean; readonly emitTracked?: boolean },
   ) => readonly EngineOp[] | null
   readonly executeLocalCellMutationsAtNow: (
     refs: readonly EngineCellMutationRef[],

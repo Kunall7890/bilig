@@ -136,6 +136,23 @@ export class WorkbookCellRecordStore {
     return sheet.logical.getVisibleCell(row, col)
   }
 
+  getFreshCellIndexAt(sheetId: number, row: number, col: number): number | undefined {
+    const sheet = this.options.getSheetById(sheetId)
+    if (!sheet || sheet.structureVersion !== 1) {
+      return undefined
+    }
+    const physicalCellIndex = sheet.grid.getPhysical(row, col)
+    if (
+      physicalCellIndex !== -1 &&
+      this.options.cellStore.sheetIds[physicalCellIndex] === sheetId &&
+      this.options.cellStore.rows[physicalCellIndex] === row &&
+      this.options.cellStore.cols[physicalCellIndex] === col
+    ) {
+      return physicalCellIndex
+    }
+    return undefined
+  }
+
   getAddress(index: number): string {
     const position = this.getCellPosition(index)
     return formatAddress(position?.row ?? this.options.cellStore.rows[index]!, position?.col ?? this.options.cellStore.cols[index]!)

@@ -53,6 +53,11 @@ export interface PreparedInitialMixedSheetLoad {
 interface FreshInitialLogicalSheetInternals {
   readonly deferVisibleCellPageRebuild?: () => void
   readonly setFreshVisibleCellIdentityWithAxisIdsDeferred?: (cellIndex: number, rowId: string, colId: string) => void
+  readonly setFreshVisibleDenseRowMajorIdentitiesWithAxisIdsDeferred?: (
+    firstCellIndex: number,
+    rowIds: readonly string[],
+    colIds: readonly string[],
+  ) => void
   readonly setFreshVisibleCellWithAxisIdsDeferred?: (row: number, col: number, cellIndex: number, rowId: string, colId: string) => void
 }
 
@@ -170,7 +175,11 @@ export function prepareInitialMixedSheetLoad(args: {
   const ensureColumnId = args.engine.workbook.createLogicalAxisIdEnsurer(args.sheetId, 'column')
   let writtenColumnCount = 0
   const formulaRefs = new InitialFormulaSourceRefTable(args.inspection?.formulaCellCount ?? Math.min(potentialCellCount, 1024))
-  const attachFreshCell = createFreshInitialCellAttacher(sheet)
+  let attachFreshCell: FreshInitialCellAttacher | undefined
+  const getFreshCellAttacher = (): FreshInitialCellAttacher => {
+    attachFreshCell ??= createFreshInitialCellAttacher(sheet)
+    return attachFreshCell
+  }
   const previousOnSetValue = cellStore.onSetValue
   cellStore.onSetValue = null
   try {
@@ -178,29 +187,59 @@ export function prepareInitialMixedSheetLoad(args: {
       if (isDenseInitialMixedSheet(args.content, potentialCellCount, maxColumnCount)) {
         const firstCellIndex = cellStore.allocateDenseRowMajorReserved(args.sheetId, args.content.length, maxColumnCount)
         initializeDenseInitialMixedCellFields(cellStore, firstCellIndex, potentialCellCount)
-        for (let rowIndex = 0; rowIndex < args.content.length; rowIndex += 1) {
-          const row = args.content[rowIndex]!
-          const rowId = ensureRowId(rowIndex)
-          for (let colIndex = 0; colIndex < maxColumnCount; colIndex += 1) {
-            const raw = row[colIndex]
-            const cellIndex = firstCellIndex + rowIndex * maxColumnCount + colIndex
-            const colId = (colIds[colIndex] ??= ensureColumnId(colIndex))
-            attachFreshCell(rowIndex, colIndex, cellIndex, rowId, colId)
-            if (typeof raw === 'string') {
-              const formula = readInitialFormulaSource(raw)
-              if (formula !== undefined) {
-                formulaRefs.push(args.sheetId, cellIndex, rowIndex, colIndex, args.rewriteFormula(formula, rowIndex, colIndex))
-                continue
+        const rowIds = materializeAxisIds(args.content.length, 0, ensureRowId)
+        for (let colIndex = 0; colIndex < maxColumnCount; colIndex += 1) {
+          colIds[colIndex] = ensureColumnId(colIndex)
+        }
+        const attachedDenseCells = attachDenseFreshInitialCells(sheet, firstCellIndex, 0, 0, rowIds, colIds)
+        if (attachedDenseCells) {
+          for (let rowIndex = 0; rowIndex < args.content.length; rowIndex += 1) {
+            const row = args.content[rowIndex]!
+            const rowBaseCellIndex = firstCellIndex + rowIndex * maxColumnCount
+            for (let colIndex = 0; colIndex < maxColumnCount; colIndex += 1) {
+              const raw = row[colIndex]
+              const cellIndex = rowBaseCellIndex + colIndex
+              if (typeof raw === 'string') {
+                const formula = readInitialFormulaSource(raw)
+                if (formula !== undefined) {
+                  formulaRefs.push(args.sheetId, cellIndex, rowIndex, colIndex, args.rewriteFormula(formula, rowIndex, colIndex))
+                  continue
+                }
               }
+              if (writtenColumns[colIndex] === 0) {
+                writtenColumns[colIndex] = 1
+                writtenColumnCount += 1
+              }
+              writeDenseInitialLiteralCell(cellStore, args.engine.strings, cellIndex, raw)
             }
-            if (writtenColumns[colIndex] === 0) {
-              writtenColumns[colIndex] = 1
-              writtenColumnCount += 1
+          }
+        } else {
+          const attachCell = getFreshCellAttacher()
+          for (let rowIndex = 0; rowIndex < args.content.length; rowIndex += 1) {
+            const row = args.content[rowIndex]!
+            const rowId = rowIds[rowIndex]!
+            const rowBaseCellIndex = firstCellIndex + rowIndex * maxColumnCount
+            for (let colIndex = 0; colIndex < maxColumnCount; colIndex += 1) {
+              const raw = row[colIndex]
+              const cellIndex = rowBaseCellIndex + colIndex
+              attachCell(rowIndex, colIndex, cellIndex, rowId, colIds[colIndex]!)
+              if (typeof raw === 'string') {
+                const formula = readInitialFormulaSource(raw)
+                if (formula !== undefined) {
+                  formulaRefs.push(args.sheetId, cellIndex, rowIndex, colIndex, args.rewriteFormula(formula, rowIndex, colIndex))
+                  continue
+                }
+              }
+              if (writtenColumns[colIndex] === 0) {
+                writtenColumns[colIndex] = 1
+                writtenColumnCount += 1
+              }
+              writeDenseInitialLiteralCell(cellStore, args.engine.strings, cellIndex, raw)
             }
-            writeDenseInitialLiteralCell(cellStore, args.engine.strings, cellIndex, raw)
           }
         }
       } else {
+        const attachCell = getFreshCellAttacher()
         for (let rowIndex = 0; rowIndex < args.content.length; rowIndex += 1) {
           const row = args.content[rowIndex]!
           let rowId: string | undefined
@@ -213,7 +252,7 @@ export function prepareInitialMixedSheetLoad(args: {
                 const materializedRowId = rowId ?? ensureRowId(rowIndex)
                 rowId = materializedRowId
                 const colId = (colIds[colIndex] ??= ensureColumnId(colIndex))
-                attachFreshCell(rowIndex, colIndex, cellIndex, materializedRowId, colId)
+                attachCell(rowIndex, colIndex, cellIndex, materializedRowId, colId)
                 formulaRefs.push(args.sheetId, cellIndex, rowIndex, colIndex, args.rewriteFormula(formula, rowIndex, colIndex))
                 continue
               }
@@ -229,7 +268,7 @@ export function prepareInitialMixedSheetLoad(args: {
             const materializedRowId = rowId ?? ensureRowId(rowIndex)
             rowId = materializedRowId
             const colId = (colIds[colIndex] ??= ensureColumnId(colIndex))
-            attachFreshCell(rowIndex, colIndex, cellIndex, materializedRowId, colId)
+            attachCell(rowIndex, colIndex, cellIndex, materializedRowId, colId)
             writeInitialLiteralCell(cellStore, args.engine.strings, cellIndex, raw)
           }
         }
@@ -258,6 +297,35 @@ function initializeDenseInitialMixedCellFields(
   cellStore.versions.fill(0, firstCellIndex, end)
   cellStore.topoRanks.fill(0, firstCellIndex, end)
   cellStore.cycleGroupIds.fill(-1, firstCellIndex, end)
+}
+
+function materializeAxisIds(count: number, start: number, ensureAxisId: (index: number) => string): string[] {
+  const axisIds: string[] = []
+  axisIds.length = count
+  for (let offset = 0; offset < count; offset += 1) {
+    axisIds[offset] = ensureAxisId(start + offset)
+  }
+  return axisIds
+}
+
+function attachDenseFreshInitialCells(
+  sheet: SheetRecord,
+  firstCellIndex: number,
+  rowStart: number,
+  colStart: number,
+  rowIds: readonly string[],
+  colIds: readonly string[],
+): boolean {
+  const logicalCandidate: unknown = sheet.logical
+  const logical = isFreshInitialLogicalSheetInternals(logicalCandidate) ? logicalCandidate : undefined
+  const attachDenseFreshVisibleCellIdentities = logical?.setFreshVisibleDenseRowMajorIdentitiesWithAxisIdsDeferred?.bind(logical)
+  if (!attachDenseFreshVisibleCellIdentities) {
+    return false
+  }
+  logical?.deferVisibleCellPageRebuild?.()
+  attachDenseFreshVisibleCellIdentities(firstCellIndex, rowIds, colIds)
+  sheet.grid.setDenseRowMajor(rowStart, colStart, rowIds.length, colIds.length, firstCellIndex)
+  return true
 }
 
 function createFreshInitialCellAttacher(sheet: SheetRecord): FreshInitialCellAttacher {

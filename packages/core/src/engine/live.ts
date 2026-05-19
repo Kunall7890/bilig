@@ -304,7 +304,7 @@ export function createEngineServiceRuntime(args: {
   const exactLookup = createExactColumnIndexService({ state: args.state, runtimeColumnStore, columnIndexStore })
   const sortedLookup = createSortedColumnSearchService({ state: args.state, runtimeColumnStore, columnIndexStore })
   const deferKernelSync = (cellIndices: readonly number[] | Uint32Array): void =>
-    deferKernelSyncNow({ scratch, cellStoreSize: args.state.workbook.cellStore.size, cellIndices })
+    deferKernelSyncNow({ scratch, cellStoreSize: args.state.workbook.cellStore.size, cellIndices, wasmReady: args.state.wasm.ready })
   const graph = createEngineFormulaGraphService({
     ...args.formulaGraph,
     rebuildCalcChain: () => args.state.scheduler.rebuildChain(args.state.formulas.keys(), args.state.workbook.cellStore),
@@ -318,7 +318,11 @@ export function createEngineServiceRuntime(args: {
   let recalc: EngineRecalcService | undefined
   let formulaInitialization: EngineFormulaInitializationService | undefined
   let dirtyScheduler: EngineDirtyFrontierSchedulerService | undefined
-  const selection = createEngineSelectionService(args.state)
+  let selection: EngineSelectionService | undefined
+  const getSelection = (): EngineSelectionService => {
+    selection ??= createEngineSelectionService(args.state)
+    return selection
+  }
   const support = createEngineMutationSupportService({
     ...args.mutationSupport,
     removeFormula: (cellIndex) => runEngineEffect(requireService(binding, 'binding').clearFormula(cellIndex)),
@@ -413,7 +417,7 @@ export function createEngineServiceRuntime(args: {
     clearOwnedSpill: (cellIndex) => support.clearOwnedSpillNow(cellIndex),
     checkEvaluationBudget: (stepCost) => args.state.checkEvaluationBudget(stepCost),
     resolvePivotData: (sheetName, address, dataField, filters) =>
-      runEngineEffect(requireService(pivot, 'pivot').resolvePivotData(sheetName, address, dataField, filters)),
+      runEngineEffect(getPivot().resolvePivotData(sheetName, address, dataField, filters)),
   })
   binding = createEngineFormulaBindingService({
     ...args.formulaBinding,
@@ -459,7 +463,7 @@ export function createEngineServiceRuntime(args: {
     captureStoredCellOps: (cellIndex, sheetName, address, sourceSheetName, sourceAddress) =>
       cellState.captureStoredCellOpsNow(cellIndex, sheetName, address, sourceSheetName, sourceAddress),
     removeFormula: (cellIndex) => binding.clearFormulaNow(cellIndex),
-    clearOwnedPivot: (pivotRecord) => requireService(pivot, 'pivot').clearOwnedPivotNow(pivotRecord),
+    clearOwnedPivot: (pivotRecord) => getPivot().clearOwnedPivotNow(pivotRecord),
     refreshRangeDependencies: (rangeIndices) => binding.refreshRangeDependenciesNow(rangeIndices),
     retargetRangeDependencies: (transaction, rangeIndices) => binding.retargetRangeDependenciesNow(transaction, rangeIndices),
     collectFormulaCellsOwnedBySheet: (sheetName) => binding.collectFormulaCellsOwnedBySheetNow(sheetName),
@@ -482,6 +486,16 @@ export function createEngineServiceRuntime(args: {
         targetSheetName,
         transform,
         preservesValue === true,
+      ),
+    retargetDirectAggregateFormulasForStructuralTransform: (inputs, targetSheetName, transform) =>
+      binding.retargetDirectAggregateFormulasForStructuralTransformNow(
+        inputs.map((input) => ({
+          cellIndex: input.cellIndex,
+          ownerSheetName: input.ownerSheetName,
+          preservesValue: input.preservesValue === true,
+        })),
+        targetSheetName,
+        transform,
       ),
     rewriteFormulaCompiledPreservingBinding: ({ cellIndex, ownerSheetName, ownerRow, ownerCol, source, compiled, templateId }) => {
       if (!compiled) {
@@ -583,7 +597,7 @@ export function createEngineServiceRuntime(args: {
     clearOwnedSpill: (cellIndex) => support.clearOwnedSpillNow(cellIndex),
     evaluateDirectLookupFormula: (cellIndex) => evaluation.evaluateDirectLookupFormulaNow(cellIndex),
     evaluateUnsupportedFormula: (cellIndex) => runEngineEffect(evaluation.evaluateUnsupportedFormula(cellIndex)),
-    materializePivot: (pivotRecord) => requireService(pivot, 'pivot').materializePivotNow(pivotRecord),
+    materializePivot: (pivotRecord) => getPivot().materializePivotNow(pivotRecord),
     forEachFormulaDependencyCell: (cellIndex, fn) => traversal.forEachFormulaDependencyCellNow(cellIndex, fn),
   })
   formulaInitialization = createEngineFormulaInitializationService({
@@ -603,6 +617,7 @@ export function createEngineServiceRuntime(args: {
     deferFormulaFamilyIndexRebuild: () => binding.deferFormulaFamilyIndexRebuildNow(),
     deferFormulaFamilyIndexRuns: (runs) => binding.deferFormulaFamilyIndexRunsNow(runs),
     deferFormulaInstanceTableRebuild: () => binding.deferFormulaInstanceTableRebuildNow(),
+    hydrateFreshFormulaInstances: (records) => binding.hydrateFreshFormulaInstancesNow(records),
     compileTemplateFormula: (source, row, col) => formulaTemplates.resolveForCell(source, row, col),
     clearTemplateFormulaCache: () => formulaTemplates.clear(),
     removeFormula: (cellIndex) => binding.clearFormulaNow(cellIndex),
@@ -648,8 +663,8 @@ export function createEngineServiceRuntime(args: {
   })
   operations = createEngineOperationService({
     ...args.operation,
-    getSelectionState: () => runEngineEffect(selection.getSelectionState()),
-    setSelection: (sheetName, address) => runEngineEffect(selection.setSelection(sheetName, address)),
+    getSelectionState: () => runEngineEffect(getSelection().getSelectionState()),
+    setSelection: (sheetName, address) => runEngineEffect(getSelection().setSelection(sheetName, address)),
     rewriteDefinedNamesForSheetRename: (oldSheetName, newSheetName) =>
       runEngineEffect(maintenance.rewriteDefinedNamesForSheetRename(oldSheetName, newSheetName)),
     rewriteCellFormulasForSheetRename: (oldSheetName, newSheetName, formulaChangedCount) =>
@@ -663,6 +678,8 @@ export function createEngineServiceRuntime(args: {
       return sheet ? regionGraph.hasFormulaSubscriptionsForColumn(sheet.id, col) : false
     },
     hasRegionFormulaSubscriptionsForColumnAt: (sheetId, col) => regionGraph.hasFormulaSubscriptionsForColumn(sheetId, col),
+    hasRegionFormulaSubscriptionsIntersectingRect: (sheetId, rowStart, rowEnd, colStart, colEnd) =>
+      regionGraph.hasFormulaSubscriptionsIntersectingRect(sheetId, rowStart, rowEnd, colStart, colEnd),
     hasRegionFormulaSubscriptions: () => regionGraph.hasFormulaSubscriptions(),
     hasRegionFormulaSubscriptionsOverlappingRange: (sheetId, rowStart, rowEnd, colStart, colEnd) =>
       regionGraph.hasFormulaSubscriptionsOverlappingRange(sheetId, rowStart, rowEnd, colStart, colEnd),
@@ -680,22 +697,26 @@ export function createEngineServiceRuntime(args: {
     refreshRangeDependencies: (rangeIndices) => binding.refreshRangeDependenciesNow(rangeIndices),
     rebindFormulasForSheet: (sheetName, formulaChangedCount, candidates) =>
       binding.rebindFormulasForSheetNow(sheetName, formulaChangedCount, candidates),
-    materializeDeferredStructuralFormulaSources: () => runEngineEffect(structure.materializeDeferredStructuralFormulaSources()),
+    materializeDeferredStructuralFormulaSources: () => structure.materializeDeferredStructuralFormulaSourcesNow(),
     removeSheetRuntime: (sheetName, explicitChangedCount) => support.removeSheetRuntimeNow(sheetName, explicitChangedCount),
-    applyStructuralAxisOp: (op) => runEngineEffect(structure.applyStructuralAxisOp(op)),
+    applyStructuralAxisOp: (op) => structure.applyStructuralAxisOpNow(op),
     clearOwnedSpill: (cellIndex) => support.clearOwnedSpillNow(cellIndex),
-    clearPivotForCell: (cellIndex) => requireService(pivot, 'pivot').clearPivotForCellNow(cellIndex),
-    clearOwnedPivot: (pivotRecord) => requireService(pivot, 'pivot').clearOwnedPivotNow(pivotRecord),
-    materializePivot: (pivotRecord) => requireService(pivot, 'pivot').materializePivotNow(pivotRecord),
+    clearPivotForCell: (cellIndex) => getPivot().clearPivotForCellNow(cellIndex),
+    clearOwnedPivot: (pivotRecord) => getPivot().clearOwnedPivotNow(pivotRecord),
+    materializePivot: (pivotRecord) => getPivot().materializePivotNow(pivotRecord),
     removeFormula: (cellIndex) => binding.clearFormulaNow(cellIndex),
     bindFormula: (cellIndex, ownerSheetName, source) => binding.bindFormulaNow(cellIndex, ownerSheetName, source),
     rewriteFormulaSourcePreservingBinding: (cellIndex, ownerSheetName, source) =>
       binding.rewriteFormulaSourcePreservingBindingNow(cellIndex, ownerSheetName, source),
     bindPreparedFormula: (cellIndex, ownerSheetName, source, compiled, templateId, options) =>
       binding.bindPreparedFormulaNow(cellIndex, ownerSheetName, source, compiled, templateId, options),
+    bindFreshDirectAggregateFormulaRun: (run) => binding.bindFreshDirectAggregateFormulaRunNow(run),
+    registerFreshFormulaFamilyRun: (run) => binding.registerFreshFormulaFamilyRunNow(run),
+    upsertFormulaFamilyRun: (run) => binding.upsertFormulaFamilyRunNow(run),
+    upsertFreshFormulaInstances: (records) => binding.upsertFreshFormulaInstancesNow(records),
     compileTemplateFormula: (source, row, col) => formulaTemplates.resolveForCell(source, row, col),
     setInvalidFormulaValue: (cellIndex) => binding.invalidateFormulaNow(cellIndex),
-    beginMutationCollection: () => support.beginMutationCollectionNow(),
+    beginMutationCollection: (options) => support.beginMutationCollectionNow(options),
     markInputChanged: (cellIndex, count) => support.markInputChangedNow(cellIndex, count),
     markFormulaChanged: (cellIndex, count) => support.markFormulaChangedNow(cellIndex, count),
     markVolatileFormulasChanged: (count) => support.markVolatileFormulasChangedNow(count),
@@ -723,7 +744,7 @@ export function createEngineServiceRuntime(args: {
     recalculate: (changedRoots, kernelSyncRoots) => requireService(recalc, 'recalc').recalculateNowSync(changedRoots, kernelSyncRoots),
     deferKernelSync,
     evaluateDirectFormula: (cellIndex: number) => evaluation.evaluateDirectLookupFormulaNow(cellIndex),
-    evaluateFormulaCell: (cellIndex: number) => runEngineEffect(evaluation.evaluateUnsupportedFormula(cellIndex)),
+    evaluateFormulaCell: (cellIndex: number) => evaluation.evaluateUnsupportedFormulaNow(cellIndex),
     exactLookup,
     sortedLookup,
     reconcilePivotOutputs: (baseChanged, forceAllPivots) =>
@@ -741,116 +762,137 @@ export function createEngineServiceRuntime(args: {
     invalidateAggregateColumn: (request) => aggregateStateStore.invalidateColumn(request.sheetName, request.col),
     invalidateSortedLookupColumn: (request) => sortedLookup.invalidateColumn(request),
   })
-  const mutation = createEngineMutationService({
-    state: args.state,
-    captureSheetCellState: (sheetName) => runEngineEffect(maintenance.captureSheetCellState(sheetName)),
-    captureRowRangeCellState: (sheetName, start, count) => runEngineEffect(maintenance.captureRowRangeCellState(sheetName, start, count)),
-    captureColumnRangeCellState: (sheetName, start, count) =>
-      runEngineEffect(maintenance.captureColumnRangeCellState(sheetName, start, count)),
-    captureStoredCellOps: (cellIndex, sheetName, address) => cellState.captureStoredCellOpsNow(cellIndex, sheetName, address),
-    restoreCellOps: (sheetName, address) => cellState.restoreCellOpsNow(sheetName, address),
-    getCellByIndex: args.getCellByIndex,
-    getFormulaFamilyStructuralSourceTransform: (cellIndex) => binding.getFormulaFamilyStructuralSourceTransformNow(cellIndex),
-    hasFormulaFamilyStructuralSourceTransforms: () => binding.hasFormulaFamilyStructuralSourceTransformsNow(),
-    readRangeCells: (range) => cellState.readRangeCellsNow(range),
-    toCellStateOps: (sheetName, address, snapshot, sourceSheetName, sourceAddress) =>
-      cellState.toCellStateOpsNow(sheetName, address, snapshot, sourceSheetName, sourceAddress),
-    applyBatchNow: (batch, source, potentialNewCells, preparedCellAddressesByOpIndex) =>
-      runEngineEffect(operations.applyBatch(batch, source, potentialNewCells, preparedCellAddressesByOpIndex)),
-    applyCellMutationsAtBatchNow: (refs, batch, source, potentialNewCells) =>
-      operations.applyCellMutationsAtNow(refs, batch, source, potentialNewCells),
-    applyExistingNumericCellMutationAtNow: (request) => operations.applyExistingNumericCellMutationAtNow(request),
-    applyExistingLiteralCellMutationAtNow: (request) => operations.applyExistingLiteralCellMutationAtNow(request),
-    hasExternallyVisibleLocalMutationObservers: () =>
-      args.state.events.hasListeners() ||
-      args.state.events.hasTrackedListeners() ||
-      args.state.events.hasCellListeners() ||
-      (args.state.batchListeners?.size ?? 0) > 0 ||
-      args.state.getSyncClientConnection() !== null,
-  })
-  const history = createEngineHistoryService({
-    state: args.state,
-    executeTransaction: (transaction, source) => runEngineEffect(mutation.executeTransaction(transaction, source)),
-  })
+  let mutation: EngineMutationService | undefined
+  const getMutation = (): EngineMutationService => {
+    mutation ??= createEngineMutationService({
+      state: args.state,
+      captureSheetCellState: (sheetName) => runEngineEffect(maintenance.captureSheetCellState(sheetName)),
+      captureRowRangeCellState: (sheetName, start, count) => runEngineEffect(maintenance.captureRowRangeCellState(sheetName, start, count)),
+      captureColumnRangeCellState: (sheetName, start, count) =>
+        runEngineEffect(maintenance.captureColumnRangeCellState(sheetName, start, count)),
+      captureStoredCellOps: (cellIndex, sheetName, address) => cellState.captureStoredCellOpsNow(cellIndex, sheetName, address),
+      restoreCellOps: (sheetName, address) => cellState.restoreCellOpsNow(sheetName, address),
+      getCellByIndex: args.getCellByIndex,
+      getFormulaFamilyStructuralSourceTransform: (cellIndex) => binding.getFormulaFamilyStructuralSourceTransformNow(cellIndex),
+      hasFormulaFamilyStructuralSourceTransforms: () => binding.hasFormulaFamilyStructuralSourceTransformsNow(),
+      readRangeCells: (range) => cellState.readRangeCellsNow(range),
+      toCellStateOps: (sheetName, address, snapshot, sourceSheetName, sourceAddress) =>
+        cellState.toCellStateOpsNow(sheetName, address, snapshot, sourceSheetName, sourceAddress),
+      applyBatchNow: (batch, source, potentialNewCells, preparedCellAddressesByOpIndex) =>
+        operations.applyBatchNow(batch, source, potentialNewCells, preparedCellAddressesByOpIndex),
+      applyLocalSingleStructuralAxisOpWithoutBatchNow: (op, options) =>
+        operations.applyLocalSingleStructuralAxisOpWithoutBatchNow(op, options),
+      applyCellMutationsAtBatchNow: (refs, batch, source, potentialNewCells) =>
+        operations.applyCellMutationsAtNow(refs, batch, source, potentialNewCells),
+      applyExistingNumericCellMutationAtNow: (request) => operations.applyExistingNumericCellMutationAtNow(request),
+      applyExistingLiteralCellMutationAtNow: (request) => operations.applyExistingLiteralCellMutationAtNow(request),
+      hasExternallyVisibleLocalMutationObservers: () =>
+        args.state.events.hasListeners() ||
+        args.state.events.hasTrackedListeners() ||
+        args.state.events.hasCellListeners() ||
+        (args.state.batchListeners?.size ?? 0) > 0 ||
+        args.state.getSyncClientConnection() !== null,
+    })
+    return mutation
+  }
+  let history: EngineHistoryService | undefined
+  const getHistory = (): EngineHistoryService => {
+    history ??= createEngineHistoryService({
+      state: args.state,
+      executeTransaction: (transaction, source) => runEngineEffect(getMutation().executeTransaction(transaction, source)),
+    })
+    return history
+  }
   const fullInvalidation = createEngineFullInvalidationService({ state: args.state, patchEmitter })
-  pivot = createEnginePivotService({
-    ...args.pivot,
-    ensureCellTrackedByCoords: (sheetId, row, col) => support.ensureCellTrackedByCoordsNow(sheetId, row, col),
-    forEachSheetCell: (sheetId, fn) => traversal.forEachSheetCellNow(sheetId, fn),
-    flushDeferredKernelSync: () => {
-      const deferredCount = scratch.getDeferredKernelSyncCountNow()
-      if (deferredCount === 0 || !args.state.wasm.ready) {
-        return
-      }
-      args.state.wasm.syncFromStore(args.state.workbook.cellStore, scratch.getPendingKernelSyncNow().subarray(0, deferredCount))
-      scratch.setDeferredKernelSyncCountNow(0)
-      let nextEpoch = scratch.getDeferredKernelSyncEpochNow() + 1
-      if (nextEpoch === 0xffff_ffff) {
-        nextEpoch = 1
-        scratch.getDeferredKernelSyncSeenNow().fill(0)
-      }
-      scratch.setDeferredKernelSyncEpochNow(nextEpoch)
-    },
-    scheduleWasmProgramSync: () => graph.scheduleWasmProgramSyncNow(),
-    flushWasmProgramSync: () => graph.flushWasmProgramSyncNow(),
-    applyDerivedOp: (op) => runEngineEffect(operations.applyDerivedOp(op)),
-  })
-  const snapshot = createEngineSnapshotService({
-    state: args.state,
-    getCellByIndex: args.getCellByIndex,
-    resetWorkbook: (workbookName) => runEngineEffect(maintenance.resetWorkbook(workbookName)),
-    exportTemplateBank: () => formulaTemplates.listTemplates(),
-    exportFormulaInstances: () =>
-      binding.exportFormulaInstancesNow().flatMap((record) => {
-        const sheetId = args.state.workbook.cellStore.sheetIds[record.cellIndex]
-        const position = args.state.workbook.getCellPosition(record.cellIndex)
-        const formula = args.state.formulas.get(record.cellIndex)
-        if (sheetId === undefined || !position) {
-          return []
+  const getPivot = (): EnginePivotService => {
+    pivot ??= createEnginePivotService({
+      ...args.pivot,
+      ensureCellTrackedByCoords: (sheetId, row, col) => support.ensureCellTrackedByCoordsNow(sheetId, row, col),
+      forEachSheetCell: (sheetId, fn) => traversal.forEachSheetCellNow(sheetId, fn),
+      flushDeferredKernelSync: () => {
+        const deferredCount = scratch.getDeferredKernelSyncCountNow()
+        if (deferredCount === 0 || !args.state.wasm.ready) {
+          return
         }
-        const sheetName = args.state.workbook.getSheetNameById(sheetId)
-        if (!sheetName) {
-          return []
+        args.state.wasm.syncFromStore(args.state.workbook.cellStore, scratch.getPendingKernelSyncNow().subarray(0, deferredCount))
+        scratch.setDeferredKernelSyncCountNow(0)
+        let nextEpoch = scratch.getDeferredKernelSyncEpochNow() + 1
+        if (nextEpoch === 0xffff_ffff) {
+          nextEpoch = 1
+          scratch.getDeferredKernelSyncSeenNow().fill(0)
         }
-        return [
-          {
-            ...record,
-            sheetName,
-            row: position.row,
-            col: position.col,
-            source: formula
-              ? getRuntimeFormulaSource(formula, formulaFamilies.getStructuralSourceTransform(record.cellIndex))
-              : record.source,
-            ...(formula?.templateId !== undefined
-              ? { templateId: formula.templateId }
-              : record.templateId !== undefined
-                ? { templateId: record.templateId }
-                : {}),
-          },
-        ]
-      }),
-    hydrateTemplateBank: (templates) => formulaTemplates.hydrateTemplates(templates),
-    resolveTemplateById: (templateId, source, row, col) => formulaTemplates.resolveTrustedByTemplateId(templateId, source, row, col),
-    resolveTemplateForCell: (source, row, col) => formulaTemplates.resolveForCell(source, row, col),
-    beginEvaluationBudget: (startedAtMs) => args.state.beginEvaluationBudget(startedAtMs),
-    endEvaluationBudget: () => args.state.endEvaluationBudget(),
-    checkEvaluationBudget: (stepCost) => args.state.checkEvaluationBudget(stepCost),
-    initializeCellFormulasAt: (refs, potentialNewCells) =>
-      requireService(formulaInitialization, 'formulaInitialization').initializeCellFormulasAtNow(refs, potentialNewCells),
-    initializeFormulaSourcesAt: (refs, potentialNewCells) =>
-      requireService(formulaInitialization, 'formulaInitialization').initializeFormulaSourcesAtNow(refs, potentialNewCells),
-    initializePreparedCellFormulasAt: (refs, potentialNewCells) =>
-      requireService(formulaInitialization, 'formulaInitialization').initializePreparedCellFormulasAtNow(refs, potentialNewCells),
-    initializeHydratedPreparedCellFormulasAt: (refs, potentialNewCells) =>
-      requireService(formulaInitialization, 'formulaInitialization').initializeHydratedPreparedCellFormulasAtNow(refs, potentialNewCells),
-    materializePivot: (pivotRecord) => requireService(pivot, 'pivot').materializePivotNow(pivotRecord),
-    emitFullInvalidation: fullInvalidation.emitFullSnapshotInvalidation,
-  })
-  const sync = createEngineReplicaSyncService({
-    state: args.state,
-    applyRemoteBatchNow: (batch) => runEngineEffect(operations.applyBatch(batch, 'remote')),
-    applyRemoteSnapshot: args.applyRemoteSnapshot,
-  })
+        scratch.setDeferredKernelSyncEpochNow(nextEpoch)
+      },
+      scheduleWasmProgramSync: () => graph.scheduleWasmProgramSyncNow(),
+      flushWasmProgramSync: () => graph.flushWasmProgramSyncNow(),
+      applyDerivedOp: (op) => runEngineEffect(operations.applyDerivedOp(op)),
+    })
+    return pivot
+  }
+  let snapshot: EngineSnapshotService | undefined
+  const getSnapshot = (): EngineSnapshotService => {
+    snapshot ??= createEngineSnapshotService({
+      state: args.state,
+      getCellByIndex: args.getCellByIndex,
+      resetWorkbook: (workbookName) => runEngineEffect(maintenance.resetWorkbook(workbookName)),
+      exportTemplateBank: () => formulaTemplates.listTemplates(),
+      exportFormulaInstances: () =>
+        binding.exportFormulaInstancesNow().flatMap((record) => {
+          const sheetId = args.state.workbook.cellStore.sheetIds[record.cellIndex]
+          const position = args.state.workbook.getCellPosition(record.cellIndex)
+          const formula = args.state.formulas.get(record.cellIndex)
+          if (sheetId === undefined || !position) {
+            return []
+          }
+          const sheetName = args.state.workbook.getSheetNameById(sheetId)
+          if (!sheetName) {
+            return []
+          }
+          return [
+            {
+              ...record,
+              sheetName,
+              row: position.row,
+              col: position.col,
+              source: formula
+                ? getRuntimeFormulaSource(formula, formulaFamilies.getStructuralSourceTransform(record.cellIndex))
+                : record.source,
+              ...(formula?.templateId !== undefined
+                ? { templateId: formula.templateId }
+                : record.templateId !== undefined
+                  ? { templateId: record.templateId }
+                  : {}),
+            },
+          ]
+        }),
+      hydrateTemplateBank: (templates) => formulaTemplates.hydrateTemplates(templates),
+      resolveTemplateById: (templateId, source, row, col) => formulaTemplates.resolveTrustedByTemplateId(templateId, source, row, col),
+      resolveTemplateForCell: (source, row, col) => formulaTemplates.resolveForCell(source, row, col),
+      beginEvaluationBudget: (startedAtMs) => args.state.beginEvaluationBudget(startedAtMs),
+      endEvaluationBudget: () => args.state.endEvaluationBudget(),
+      checkEvaluationBudget: (stepCost) => args.state.checkEvaluationBudget(stepCost),
+      initializeCellFormulasAt: (refs, potentialNewCells) =>
+        requireService(formulaInitialization, 'formulaInitialization').initializeCellFormulasAtNow(refs, potentialNewCells),
+      initializeFormulaSourcesAt: (refs, potentialNewCells) =>
+        requireService(formulaInitialization, 'formulaInitialization').initializeFormulaSourcesAtNow(refs, potentialNewCells),
+      initializePreparedCellFormulasAt: (refs, potentialNewCells) =>
+        requireService(formulaInitialization, 'formulaInitialization').initializePreparedCellFormulasAtNow(refs, potentialNewCells),
+      initializeHydratedPreparedCellFormulasAt: (refs, potentialNewCells) =>
+        requireService(formulaInitialization, 'formulaInitialization').initializeHydratedPreparedCellFormulasAtNow(refs, potentialNewCells),
+      materializePivot: (pivotRecord) => getPivot().materializePivotNow(pivotRecord),
+      emitFullInvalidation: fullInvalidation.emitFullSnapshotInvalidation,
+    })
+    return snapshot
+  }
+  let sync: EngineReplicaSyncService | undefined
+  const getSync = (): EngineReplicaSyncService => {
+    sync ??= createEngineReplicaSyncService({
+      state: args.state,
+      applyRemoteBatchNow: (batch) => runEngineEffect(operations.applyBatch(batch, 'remote')),
+      applyRemoteSnapshot: args.applyRemoteSnapshot,
+    })
+    return sync
+  }
 
   return {
     cellState,
@@ -858,21 +900,33 @@ export function createEngineServiceRuntime(args: {
     traversal,
     events: createEngineEventService(args.state),
     evaluation,
-    selection,
+    get selection() {
+      return getSelection()
+    },
     binding,
     formulaFamilies,
     formulaInitialization,
     graph,
-    history,
+    get history() {
+      return getHistory()
+    },
     support,
     read,
     recalc,
     structure,
-    mutation,
+    get mutation() {
+      return getMutation()
+    },
     operations,
-    pivot,
-    snapshot,
-    sync,
+    get pivot() {
+      return getPivot()
+    },
+    get snapshot() {
+      return getSnapshot()
+    },
+    get sync() {
+      return getSync()
+    },
   }
 }
 

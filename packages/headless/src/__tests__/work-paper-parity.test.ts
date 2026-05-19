@@ -427,6 +427,17 @@ describe('WorkPaper parity surface', () => {
       tag: ValueTag.Number,
       value: 6,
     })
+    const scalarFormula = workbook.compileScalarFormula('=A1+B1*2')
+    expect(scalarFormula.variables).toEqual(['A1', 'B1'])
+    expect(scalarFormula.evaluate({ A1: 101, B1: 20 })).toMatchObject({
+      tag: ValueTag.Number,
+      value: 141,
+    })
+    expect(workbook.calculateScalarFormula('=IF(A1>0,"yes","no")', { A1: -1 })).toEqual({
+      tag: ValueTag.String,
+      value: 'no',
+      stringId: 0,
+    })
     expect(workbook.getNamedExpressionsFromFormula('=Alpha+Beta')).toEqual(['Alpha', 'Beta'])
     expect(workbook.validateFormula('=SUM(1,2)')).toBe(true)
     expect(workbook.validateFormula('SUM(1,2)')).toBe(false)

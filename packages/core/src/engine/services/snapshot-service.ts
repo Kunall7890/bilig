@@ -13,6 +13,7 @@ import { restoreWorkbookFromRuntimeImage, restoreWorkbookFromSnapshot, type Runt
 import type { EngineRuntimeState, EngineReplicaSnapshot } from '../runtime-state.js'
 import { EngineSnapshotError } from '../errors.js'
 import type { WorkbookPivotRecord } from '../../workbook-store.js'
+import type { InitialFormulaEntryRefSource } from './formula-initialization-refs.js'
 
 export interface EngineSnapshotService {
   readonly exportWorkbook: () => Effect.Effect<WorkbookSnapshot, EngineSnapshotError>
@@ -37,6 +38,24 @@ function hasNonDefaultCalculationSettings(calculationSettings: WorkbookCalculati
   )
 }
 
+function runtimeImageSheetCellsAreDenseRowMajor(args: {
+  readonly coords: readonly { readonly row: number; readonly col: number }[]
+  readonly width: number
+  readonly height: number
+}): boolean {
+  const { coords, width, height } = args
+  if (!Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0 || coords.length !== width * height) {
+    return false
+  }
+  for (let index = 0; index < coords.length; index += 1) {
+    const coord = coords[index]!
+    if (coord.row !== Math.floor(index / width) || coord.col !== index % width) {
+      return false
+    }
+  }
+  return true
+}
+
 export function createEngineSnapshotService(args: {
   readonly state: Pick<EngineRuntimeState, 'workbook' | 'strings' | 'formulas' | 'replicaState' | 'entityVersions' | 'sheetDeleteVersions'>
   readonly getCellByIndex: (cellIndex: number) => CellSnapshot
@@ -53,7 +72,7 @@ export function createEngineSnapshotService(args: {
   readonly resolveTemplateForCell?: (source: string, row: number, col: number) => FormulaTemplateResolution
   readonly initializePreparedCellFormulasAt?: (refs: readonly PreparedFormulaInitializationRef[], potentialNewCells?: number) => void
   readonly initializeHydratedPreparedCellFormulasAt?: (
-    refs: readonly HydratedPreparedFormulaInitializationRef[],
+    refs: InitialFormulaEntryRefSource<HydratedPreparedFormulaInitializationRef>,
     potentialNewCells?: number,
   ) => void
   readonly materializePivot?: (pivot: WorkbookPivotRecord) => number[]
@@ -168,6 +187,7 @@ export function createEngineSnapshotService(args: {
           const runtimeImageSheetCells: Array<{
             sheetName: string
             coords: Array<{ row: number; col: number }>
+            coordinateOrder?: 'dense-row-major'
             dimensions: { width: number; height: number }
             cellCount: number
           }> = []
@@ -218,9 +238,17 @@ export function createEngineSnapshotService(args: {
                   materializedHeight = Math.max(materializedHeight, row + 1)
                   materializedWidth = Math.max(materializedWidth, col + 1)
                 })
+                const coordinateOrder = runtimeImageSheetCellsAreDenseRowMajor({
+                  coords: sheetCellCoords,
+                  width: materializedWidth,
+                  height: materializedHeight,
+                })
+                  ? 'dense-row-major'
+                  : undefined
                 runtimeImageSheetCells.push({
                   sheetName: sheet.name,
                   coords: sheetCellCoords,
+                  ...(coordinateOrder === undefined ? {} : { coordinateOrder }),
                   dimensions: { width: materializedWidth, height: materializedHeight },
                   cellCount: sheetCellCoords.length,
                 })
@@ -272,7 +300,6 @@ export function createEngineSnapshotService(args: {
                 args.state.workbook.setPivot(pivot)
               })
             }
-
             const runtimeImage = readRuntimeImage(snapshot)
             if (runtimeImage && args.hydrateTemplateBank) {
               const restoreResult = restoreWorkbookFromRuntimeImage({

@@ -1,4 +1,4 @@
-import { WorkPaper } from '@bilig/headless'
+import { WorkPaper } from '../../headless/src/work-paper.js'
 import {
   address,
   build2dAggregateSheet,

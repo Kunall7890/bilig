@@ -133,6 +133,14 @@ function evaluateSpecialCall(
   argRefs: readonly (ReferenceOperand | undefined)[] = [],
 ): StackValue | undefined {
   const normalizedCallee = normalizeBuiltinLookupName(callee)
+  if (
+    (normalizedCallee === 'IFERROR' || normalizedCallee === 'IFNA') &&
+    rawArgs[0]?.kind === 'scalar' &&
+    rawArgs[0].blankReference === true &&
+    rawArgs[0].value.tag === ValueTag.Empty
+  ) {
+    return cloneStackValue(rawArgs[0])
+  }
   switch (callee) {
     default:
       return (
@@ -201,6 +209,13 @@ function coerceDirectNumericTextAggregateArgument(callee: string, value: CellVal
   }
   const numeric = toArithmeticNumber(value)
   return numeric === undefined ? error(ErrorCode.Value) : numberValue(numeric)
+}
+
+function scalarBuiltinRangeValues(callee: string, values: readonly CellValue[]): readonly CellValue[] {
+  if (callee !== 'MIN' && callee !== 'MAX') {
+    return values
+  }
+  return values.filter((value) => value.tag !== ValueTag.Empty && value.tag !== ValueTag.String)
 }
 
 function toLookupBuiltinArgument(callee: string, rawArg: StackValue): CellValue | RangeBuiltinArgument | undefined {
@@ -579,7 +594,7 @@ function executePlan(
             args.push(error(ErrorCode.Value))
             continue
           }
-          args.push(...rawArg.values)
+          args.push(...scalarBuiltinRangeValues(instruction.callee, rawArg.values))
         }
         const result = builtin(...args)
         stack.push(isArrayValue(result) ? result : { kind: 'scalar', value: result })

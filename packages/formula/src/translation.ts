@@ -70,6 +70,44 @@ function hasDynamicAxisRangeDependency(compiled: CompiledFormula): boolean {
   })
 }
 
+function canReuseTranslatedJsPlan(compiled: CompiledFormula): boolean {
+  if (compiled.mode !== FormulaMode.WasmFastPath || compiled.symbolicRanges.length !== 0) {
+    return false
+  }
+  return !compiled.jsPlan.some(jsPlanInstructionReferencesTranslatedAddress)
+}
+
+function jsPlanInstructionReferencesTranslatedAddress(instruction: JsPlanInstruction): boolean {
+  switch (instruction.opcode) {
+    case 'push-cell':
+    case 'push-range':
+    case 'lookup-exact-match':
+    case 'lookup-approximate-match':
+      return true
+    case 'call':
+      return instruction.argRefs?.some((argRef) => argRef !== undefined) ?? false
+    case 'push-lambda':
+      return instruction.body.some(jsPlanInstructionReferencesTranslatedAddress)
+    case 'push-number':
+    case 'push-boolean':
+    case 'push-string':
+    case 'push-error':
+    case 'push-name':
+    case 'push-omitted':
+    case 'make-array':
+    case 'unary':
+    case 'binary':
+    case 'invoke':
+    case 'begin-scope':
+    case 'bind-name':
+    case 'end-scope':
+    case 'jump-if-false':
+    case 'jump':
+    case 'return':
+      return false
+  }
+}
+
 export function canTranslateCompiledFormulaWithoutAst(compiled: CompiledFormula): boolean {
   return (
     (compiled.symbolicRanges.length === 0 || compiled.directAggregateCandidate !== undefined) &&
@@ -95,7 +133,7 @@ export function translateCompiledFormulaWithoutAst(
     translateParsedRangeReference(range, rowDelta, colDelta),
   )
   const source = sourceOverride ?? compiled.source
-  const canReuseJsPlan = compiled.symbolicRanges.length === 0 && compiled.mode === FormulaMode.WasmFastPath
+  const canReuseJsPlan = canReuseTranslatedJsPlan(compiled)
   const translatedCellMap = canReuseJsPlan
     ? undefined
     : buildTranslatedCellReferenceMap(compiled.parsedSymbolicRefs, translatedParsedSymbolicRefs)

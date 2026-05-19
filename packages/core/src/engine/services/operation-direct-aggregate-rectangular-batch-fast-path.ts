@@ -82,16 +82,13 @@ export function createOperationDirectAggregateRectangularBatchFastPath(args: Ope
     }
 
     args.materializeDeferredStructuralFormulaSources()
-    args.beginMutationCollection()
-    args.ensureRecalcScratchCapacity(args.state.workbook.cellStore.size + refs.length + rowCount + 1)
-    args.resetMaterializedCellScratch(0)
 
     const hasGeneralEventListeners = args.state.events.hasListeners()
     const hasTrackedEventListeners = args.state.events.hasTrackedListeners()
     const hasWatchedCellListeners = args.state.events.hasCellListeners()
     const requiresChangedSet = hasGeneralEventListeners || hasTrackedEventListeners || hasWatchedCellListeners
-    let changedInputCount = 0
-    let explicitChangedCount = 0
+    const changedInputCount = inputCellIndices.length
+    const explicitChangedCount = requiresChangedSet ? inputCellIndices.length : 0
     args.setBatchMutationDepth(args.getBatchMutationDepth() + 1)
     try {
       for (let index = 0; index < inputCellIndices.length; index += 1) {
@@ -100,10 +97,6 @@ export function createOperationDirectAggregateRectangularBatchFastPath(args: Ope
           writeEmptyLiteralToCellStore(args.state.workbook.cellStore, cellIndex)
         } else {
           args.writeNumericLiteralToCellStore(cellIndex, inputNumericValues[index]!)
-        }
-        changedInputCount = args.markInputChanged(cellIndex, changedInputCount)
-        if (requiresChangedSet) {
-          explicitChangedCount = args.markExplicitChanged(cellIndex, explicitChangedCount)
         }
       }
       const writtenColumns = new Uint32Array(colCount)
@@ -117,8 +110,7 @@ export function createOperationDirectAggregateRectangularBatchFastPath(args: Ope
     if (batch) {
       markBatchApplied(args.state.replicaState, batch)
     }
-    const changedInputArray = args.getChangedInputBuffer().subarray(0, changedInputCount)
-    args.deferKernelSync(changedInputArray)
+    args.deferKernelSync(inputCellIndices)
 
     const formulaChanged = requiresChangedSet ? new Uint32Array(rowCount) : EMPTY_CHANGED_CELLS
     for (let rowOffset = 0; rowOffset < rowCount; rowOffset += 1) {
@@ -131,7 +123,7 @@ export function createOperationDirectAggregateRectangularBatchFastPath(args: Ope
     addEngineCounter(args.state.counters, 'directAggregateDeltaApplications', rowCount)
     addEngineCounter(args.state.counters, 'directAggregateDeltaOnlyRecalcSkips')
 
-    const changed = requiresChangedSet ? args.composeDisjointEventChanges(formulaChanged, explicitChangedCount) : EMPTY_CHANGED_CELLS
+    const changed = requiresChangedSet ? composeDenseRectangleAggregateChanges(inputCellIndices, formulaChanged) : EMPTY_CHANGED_CELLS
     if (hasTrackedEventListeners && changed.length > 4 && explicitChangedCount > 0 && explicitChangedCount < changed.length) {
       tagTrustedPhysicalTrackedChanges(changed, sheetId, explicitChangedCount)
     }
@@ -151,6 +143,13 @@ export function createOperationDirectAggregateRectangularBatchFastPath(args: Ope
   }
 
   return { tryApplyDenseRectangularDirectAggregateLiteralBatch }
+}
+
+function composeDenseRectangleAggregateChanges(inputCellIndices: Uint32Array, formulaCellIndices: Uint32Array): U32 {
+  const changed = new Uint32Array(inputCellIndices.length + formulaCellIndices.length)
+  changed.set(inputCellIndices)
+  changed.set(formulaCellIndices, inputCellIndices.length)
+  return changed
 }
 
 function collectDenseNumericRectangle(

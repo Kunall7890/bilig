@@ -6,11 +6,7 @@ import type { RuntimeFormula } from '../runtime-state.js'
 import { normalizeDefinedName } from '../../workbook-store.js'
 import { addEngineCounter } from '../../perf/engine-counters.js'
 import { dependencyTouchesSheet, rangeDependencyAxisAffected, runtimeDirectRangeAxisAffected } from './structure-formula-rewrite-guards.js'
-import {
-  canDeferSimpleDeleteRefErrorFormulaSource,
-  canDeferSimpleDeleteStructuralFormulaSource,
-  canDeferSimpleStructuralFormulaSource,
-} from './structure-formula-source-deferral.js'
+import { canDeferSimpleStructuralFormulaSource, classifySimpleDeleteStructuralFormulaSource } from './structure-formula-source-deferral.js'
 import { isCellIndexMapped, structuralAxisIndexAffected } from './structure-runtime-cleanup.js'
 import type { CreateEngineStructureServiceArgs } from './structure-service-types.js'
 
@@ -33,10 +29,64 @@ export interface StructuralFormulaImpacts {
   readonly directAggregateRetargetCellIndices: number[]
 }
 
+const EMPTY_OWNER_POSITIONS = new Map<number, { sheetName: string; row: number; col: number }>()
+const EMPTY_STRUCTURAL_FORMULA_IMPACTS: StructuralFormulaImpacts = {
+  formulaCellIndices: [],
+  rebindCellIndices: [],
+  preservedCellIndices: [],
+  precomputedChangedInputCellIndices: [],
+  ownerPositions: EMPTY_OWNER_POSITIONS,
+  precomputedDirectAggregateValueCellIndices: [],
+  directAggregateRetargetCellIndices: [],
+}
+
+function tryCollectOwnedFamilyOnlyStructuralImpacts(
+  args: CreateEngineStructureServiceArgs,
+  argsForImpact: CollectStructuralFormulaImpactsOptions,
+): StructuralFormulaImpacts | undefined {
+  if (
+    argsForImpact.targetSheetId === undefined ||
+    argsForImpact.changedDefinedNames.size > 0 ||
+    argsForImpact.changedTableNames.size > 0 ||
+    argsForImpact.transform.kind === 'delete' ||
+    argsForImpact.transform.axis !== 'column' ||
+    !args.canUseFormulaFamilyIndex()
+  ) {
+    return undefined
+  }
+  const ownedFormulaCount = args.countFormulaSheetMembers(argsForImpact.targetSheetId)
+  if (ownedFormulaCount === 0 || ownedFormulaCount !== args.state.formulas.size) {
+    return undefined
+  }
+  const deferredMemberCount = args.tryDeferFormulaFamilyStructuralSourceTransforms(
+    argsForImpact.targetSheetId,
+    {
+      ownerSheetName: argsForImpact.sheetName,
+      targetSheetName: argsForImpact.sheetName,
+      transform: argsForImpact.transform,
+      preservesValue: true,
+    },
+    (representativeCellIndex) => {
+      const representative = args.state.formulas.get(representativeCellIndex)
+      return representative !== undefined && canDeferSimpleStructuralFormulaSource(args, representative, argsForImpact.transform)
+    },
+  )
+  if (deferredMemberCount !== ownedFormulaCount) {
+    return undefined
+  }
+  argsForImpact.markDeferredStructuralFormulaSources()
+  return EMPTY_STRUCTURAL_FORMULA_IMPACTS
+}
+
 export function collectStructuralFormulaImpacts(
   args: CreateEngineStructureServiceArgs,
   argsForImpact: CollectStructuralFormulaImpactsOptions,
 ): StructuralFormulaImpacts {
+  const ownedFamilyOnlyImpacts = tryCollectOwnedFamilyOnlyStructuralImpacts(args, argsForImpact)
+  if (ownedFamilyOnlyImpacts) {
+    return ownedFamilyOnlyImpacts
+  }
+
   const formulaCellIndices = new Set<number>()
   const rebindCellIndices = new Set<number>()
   const preservedCellIndices = new Set<number>()
@@ -47,6 +97,32 @@ export function collectStructuralFormulaImpacts(
   const directAggregateRetargetCellIndices = new Set<number>()
   let sharedOwnedPreservingSourceTransform: RuntimeFormula['structuralSourceTransform']
   let deferredOwnedFormulaFamilyMemberCount = 0
+  const targetSheetStructureVersion =
+    argsForImpact.targetSheetId === undefined ? undefined : args.state.workbook.getSheetById(argsForImpact.targetSheetId)?.structureVersion
+  const sheetStructureVersionById = new Map<number, number | undefined>()
+  const getSheetStructureVersion = (sheetId: number): number | undefined => {
+    if (sheetId === argsForImpact.targetSheetId) {
+      return targetSheetStructureVersion
+    }
+    if (sheetStructureVersionById.has(sheetId)) {
+      return sheetStructureVersionById.get(sheetId)
+    }
+    const structureVersion = args.state.workbook.getSheetById(sheetId)?.structureVersion
+    sheetStructureVersionById.set(sheetId, structureVersion)
+    return structureVersion
+  }
+  const readCellPosition = (cellIndex: number): { sheetId: number; row: number; col: number } | undefined => {
+    const sheetId = args.state.workbook.cellStore.sheetIds[cellIndex]
+    if (sheetId === undefined || sheetId === 0) {
+      return undefined
+    }
+    if (getSheetStructureVersion(sheetId) === 1) {
+      const row = args.state.workbook.cellStore.rows[cellIndex]
+      const col = args.state.workbook.cellStore.cols[cellIndex]
+      return row === undefined || col === undefined ? undefined : { sheetId, row, col }
+    }
+    return args.state.workbook.getCellPosition(cellIndex)
+  }
   const ownedPreservingSourceTransform = (): NonNullable<RuntimeFormula['structuralSourceTransform']> =>
     (sharedOwnedPreservingSourceTransform ??= {
       ownerSheetName: argsForImpact.sheetName,
@@ -111,7 +187,10 @@ export function collectStructuralFormulaImpacts(
     deferredOwnedFormulaFamilyMemberCount = ownedFormulaCount
     return true
   }
-  const canSkipOwnedDirectAggregateCandidate = (cellIndex: number): boolean => {
+  const canSkipOwnedDirectAggregateCandidate = (
+    cellIndex: number,
+    ownerPosition: { readonly row: number; readonly col: number } | undefined,
+  ): boolean => {
     if (argsForImpact.changedDefinedNames.size > 0 || argsForImpact.changedTableNames.size > 0) {
       return false
     }
@@ -122,7 +201,6 @@ export function collectStructuralFormulaImpacts(
     if (!formula?.directAggregate) {
       return false
     }
-    const ownerPosition = args.state.workbook.getCellPosition(cellIndex)
     if (!ownerPosition) {
       return false
     }
@@ -252,15 +330,22 @@ export function collectStructuralFormulaImpacts(
       preservedCellIndices.add(cellIndex)
       return true
     }
-    const ownerAxisIndex = args.state.workbook.getCellAxisIndex(cellIndex, argsForImpact.transform.axis)
+    const ownerPosition = readCellPosition(cellIndex)
+    const ownerAxisIndex =
+      ownerPosition === undefined ? undefined : argsForImpact.transform.axis === 'row' ? ownerPosition.row : ownerPosition.col
     if (ownerAxisIndex === undefined || mapStructuralAxisIndex(ownerAxisIndex, argsForImpact.transform) === undefined) {
       return false
     }
-    const preservesValue = canDeferSimpleStructuralFormulaSource(args, formula, argsForImpact.transform)
-    const preservesBinding =
-      preservesValue || canDeferSimpleDeleteStructuralFormulaSource(args, formula, argsForImpact.targetSheetId, argsForImpact.transform)
-    const becomesRefError =
-      !preservesBinding && canDeferSimpleDeleteRefErrorFormulaSource(args, formula, argsForImpact.targetSheetId, argsForImpact.transform)
+    const deleteClassification = classifySimpleDeleteStructuralFormulaSource(
+      args,
+      formula,
+      argsForImpact.targetSheetId,
+      argsForImpact.transform,
+      targetSheetStructureVersion,
+    )
+    const preservesValue = false
+    const preservesBinding = deleteClassification === 'preserves-binding'
+    const becomesRefError = deleteClassification === 'ref-error'
     const dependsOnPrecomputedRefError = formula.dependencyIndices.some((dependencyCellIndex) =>
       precomputedChangedInputCellIndices.has(dependencyCellIndex),
     )
@@ -291,7 +376,7 @@ export function collectStructuralFormulaImpacts(
         return
       }
       const formula = args.state.formulas.get(cellIndex)
-      const ownerPosition = args.state.workbook.getCellPosition(cellIndex)
+      const ownerPosition = readCellPosition(cellIndex)
       if (
         ownerPosition &&
         mapStructuralAxisIndex(argsForImpact.transform.axis === 'row' ? ownerPosition.row : ownerPosition.col, argsForImpact.transform) ===
@@ -299,7 +384,7 @@ export function collectStructuralFormulaImpacts(
       ) {
         return
       }
-      if (canSkipOwnedDirectAggregateCandidate(cellIndex)) {
+      if (canSkipOwnedDirectAggregateCandidate(cellIndex, ownerPosition)) {
         return
       }
       if (formula && ownerPosition && tryQueueDirectAggregateStructuralRetarget(cellIndex, formula, ownerPosition)) {
@@ -346,12 +431,12 @@ export function collectStructuralFormulaImpacts(
     if (!isCellIndexMapped(args, cellIndex)) {
       return
     }
-    const ownerSheetName = args.state.workbook.getSheetNameById(args.state.workbook.cellStore.sheetIds[cellIndex]!)
-    if (!ownerSheetName) {
+    const ownerPosition = readCellPosition(cellIndex)
+    if (!ownerPosition) {
       return
     }
-    const ownerPosition = args.state.workbook.getCellPosition(cellIndex)
-    if (!ownerPosition) {
+    const ownerSheetName = args.state.workbook.getSheetNameById(ownerPosition.sheetId)
+    if (!ownerSheetName) {
       return
     }
     if (tryQueueDirectAggregateStructuralRetarget(cellIndex, formula, ownerPosition)) {
@@ -390,8 +475,7 @@ export function collectStructuralFormulaImpacts(
         if (args.state.workbook.cellStore.sheetIds[dependencyCellIndex] !== argsForImpact.targetSheetId) {
           return false
         }
-        const dependencyPosition = args.state.workbook.getCellPosition(dependencyCellIndex)
-        const dependencyAxisIndex = argsForImpact.transform.axis === 'row' ? dependencyPosition?.row : dependencyPosition?.col
+        const dependencyAxisIndex = args.state.workbook.getCellAxisIndex(dependencyCellIndex, argsForImpact.transform.axis)
         return dependencyAxisIndex !== undefined && structuralAxisIndexAffected(dependencyAxisIndex, argsForImpact.transform)
       }) ||
         formula.rangeDependencies.some((rangeIndex) =>

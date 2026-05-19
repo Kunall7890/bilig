@@ -55,6 +55,8 @@ export interface FinalizeOperationRecalcAndEventsArgs {
   readonly invalidatedRanges: CellRangeRef[]
   readonly invalidatedRows: EngineEvent['invalidatedRows']
   readonly invalidatedColumns: EngineEvent['invalidatedColumns']
+  readonly invalidatedRowCount: number
+  readonly invalidatedColumnCount: number
   readonly hadCycleMembersBeforeNow: () => boolean
   readonly markCycleMemberInputsChanged: (changedInputCount: number) => number
   readonly canSkipDirtyTraversalForChangedInputs: OperationDirtyTraversalSkip
@@ -111,11 +113,10 @@ export function finalizeOperationRecalcAndEvents(input: FinalizeOperationRecalcA
     input.precomputedKernelSyncCellIndices.length > 0 &&
     input.postRecalcDirectFormulaIndices.size === 0 &&
     input.invalidatedRanges.length === 0 &&
-    (input.invalidatedRows.length > 0 || input.invalidatedColumns.length > 0) &&
+    (input.invalidatedRowCount > 0 || input.invalidatedColumnCount > 0) &&
     !input.topologyChanged &&
     !input.structuralInvalidation &&
     !shouldRefreshPivots &&
-    !hasActivePivots &&
     !hasVolatileFormulaWork
 
   if (
@@ -124,8 +125,7 @@ export function finalizeOperationRecalcAndEvents(input: FinalizeOperationRecalcA
     formulaChangedCount === 0 &&
     input.precomputedKernelSyncCellIndices.length === 0 &&
     input.postRecalcDirectFormulaIndices.size === 0 &&
-    !input.refreshAllPivots &&
-    !hasActivePivots &&
+    !shouldRefreshPivots &&
     !hasVolatileFormulaWork
   ) {
     const changedInputArray = input.serviceArgs.getChangedInputBuffer().subarray(0, changedInputCount)
@@ -156,7 +156,7 @@ export function finalizeOperationRecalcAndEvents(input: FinalizeOperationRecalcA
       formulaChangedCount === 0 &&
       changedInputCount > 0 &&
       input.precomputedKernelSyncCellIndices.length === 0 &&
-      !input.refreshAllPivots &&
+      !shouldRefreshPivots &&
       input.canSkipDirtyTraversalForChangedInputs(changedInputArray, changedInputCount, input.postRecalcDirectFormulaIndices, {
         lookupHandledInputCellIndices: input.lookupHandledInputCellIndices,
       })

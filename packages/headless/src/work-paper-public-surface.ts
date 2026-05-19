@@ -6,6 +6,7 @@ import { numberToWorkPaperDate, numberToWorkPaperDateTime, numberToWorkPaperTime
 import type { WorkPaperEmitter } from './work-paper-emitter.js'
 import {
   calculateWorkPaperFormula,
+  compileWorkPaperScalarFormula,
   getWorkPaperNamedExpressionsFromFormula,
   normalizeWorkPaperFormula,
   validateWorkPaperFormula,
@@ -48,6 +49,7 @@ import type {
   WorkPaperArrayMappingAdapter,
   WorkPaperCellAddress,
   WorkPaperCellRange,
+  WorkPaperCompiledScalarFormula,
   WorkPaperFormulaDiagnostic,
   WorkPaperColumnSearchAdapter,
   WorkPaperConfig,
@@ -69,6 +71,7 @@ import type {
   WorkPaperEventName,
   WorkPaperInternals,
   WorkPaperListener,
+  WorkPaperScalarFormulaEnvironment,
 } from './work-paper-types.js'
 import { WorkPaperCapabilitySurface } from './work-paper-capability-surface.js'
 
@@ -276,6 +279,20 @@ export abstract class WorkPaperPublicSurface extends WorkPaperCapabilitySurface 
       ...(scope !== undefined ? { scope } : {}),
       messageOf: (error, fallback) => this.messageOf(error, fallback),
     })
+  }
+
+  compileScalarFormula(formula: string, scope?: number): WorkPaperCompiledScalarFormula {
+    return compileWorkPaperScalarFormula({
+      config: this.getConfig(),
+      namedExpressions: this.getAllNamedExpressionsSerialized(),
+      formula,
+      ...(scope !== undefined ? { scope } : {}),
+      messageOf: (error, fallback) => this.messageOf(error, fallback),
+    })
+  }
+
+  calculateScalarFormula(formula: string, variables: WorkPaperScalarFormulaEnvironment = {}, scope?: number): CellValue | CellValue[][] {
+    return this.compileScalarFormula(formula, scope).evaluate(variables)
   }
 
   getCellDisplayValue(address: WorkPaperCellAddress): string {

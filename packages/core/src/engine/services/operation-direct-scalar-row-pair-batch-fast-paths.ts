@@ -10,10 +10,10 @@ import {
   evaluateDirectScalarWithReplacementNumbers,
   evaluateRowPairDirectScalarCode,
   rowPairDirectScalarCode,
-  rowPairDirectScalarCodeNeedsZeroGuard,
 } from './direct-scalar-helpers.js'
 import { tagTrustedPhysicalTrackedChanges } from './operation-change-helpers.js'
 import { emitCellMutationFastPathBatchResult } from './operation-fast-path-batch-result.js'
+import { writeOperationNumericLiteralToExistingCellWithoutColumnNotify } from './operation-literal-write-helpers.js'
 
 const EMPTY_CHANGED_CELLS = new Uint32Array(0)
 
@@ -39,8 +39,11 @@ interface OperationDirectScalarRowPairBatchFastPathArgs {
   readonly canFastPathLiteralOverwrite: (cellIndex: number) => boolean
   readonly canUseDirectFormulaPostRecalc: (cellIndex: number) => boolean
   readonly canSkipFormulaColumnVersion: (cellIndex: number) => boolean
-  readonly writeNumericLiteralToCellStore: (cellIndex: number, value: number) => void
-  readonly applyTerminalDirectFormulaNumericResult: (cellIndex: number, value: number) => void
+  readonly applyTerminalDirectFormulaNumericResults: (
+    cellIndices: readonly number[] | Uint32Array,
+    values: ArrayLike<number>,
+    count?: number,
+  ) => void
   readonly getEntityDependents: (entityId: number) => Uint32Array
   readonly materializeDeferredStructuralFormulaSources: () => void
   readonly beginMutationCollection: () => void
@@ -76,8 +79,7 @@ export function createOperationDirectScalarRowPairBatchFastPaths(args: Operation
     canFastPathLiteralOverwrite,
     canUseDirectFormulaPostRecalc,
     canSkipFormulaColumnVersion,
-    writeNumericLiteralToCellStore,
-    applyTerminalDirectFormulaNumericResult,
+    applyTerminalDirectFormulaNumericResults,
   } = args
 
   const tryApplyDenseRowPairSimpleDirectScalarLiteralBatch = (
@@ -119,8 +121,9 @@ export function createOperationDirectScalarRowPairBatchFastPaths(args: Operation
       return false
     }
 
+    const inputCellIndices = new Uint32Array(refs.length)
     const formulaCellIndices = new Uint32Array(refs.length)
-    const formulaCodes = new Uint8Array(refs.length)
+    const formulaNumericResults = new Float64Array(refs.length)
     const cellStore = args.state.workbook.cellStore
     let formulaCount = 0
     let previousRow = firstMutation.row - 1
@@ -187,15 +190,12 @@ export function createOperationDirectScalarRowPairBatchFastPaths(args: Operation
           return false
         }
         const code = rowPairDirectScalarCode(formula.directScalar, leftIndex, rightIndex)
-        if (
-          code === 0 ||
-          (rowPairDirectScalarCodeNeedsZeroGuard(code) && evaluateRowPairDirectScalarCode(code, leftValue, rightValue) === undefined) ||
-          formulaCount >= formulaCellIndices.length
-        ) {
+        const result = code === 0 ? undefined : evaluateRowPairDirectScalarCode(code, leftValue, rightValue)
+        if (result === undefined || formulaCount >= formulaCellIndices.length) {
           return false
         }
         formulaCellIndices[formulaCount] = formulaCellIndex
-        formulaCodes[formulaCount] = code
+        formulaNumericResults[formulaCount] = result
         formulaCount += 1
         previousFormulaRow = formulaRow
         previousFormulaCol = formulaCol
@@ -211,30 +211,31 @@ export function createOperationDirectScalarRowPairBatchFastPaths(args: Operation
           return false
         }
       }
-      for (let index = 0; index < rightDependents.length; index += 1) {
-        if (!considerDependent(rightDependents[index]!)) {
-          return false
+      if (!sameDependentOrder(leftDependents, rightDependents)) {
+        for (let index = 0; index < rightDependents.length; index += 1) {
+          if (!considerDependent(rightDependents[index]!)) {
+            return false
+          }
         }
       }
       if (formulaCount !== rowFormulaStart + 2) {
         return false
       }
+      inputCellIndices[refIndex] = leftIndex
+      inputCellIndices[refIndex + 1] = rightIndex
     }
     if (formulaCount !== refs.length) {
       return false
     }
 
     args.materializeDeferredStructuralFormulaSources()
-    args.beginMutationCollection()
-    args.ensureRecalcScratchCapacity(args.state.workbook.cellStore.size + refs.length * 2 + 1)
-    args.resetMaterializedCellScratch(0)
 
     const hasGeneralEventListeners = args.state.events.hasListeners()
     const hasTrackedEventListeners = args.state.events.hasTrackedListeners()
     const hasWatchedCellListeners = args.state.events.hasCellListeners()
     const requiresChangedSet = hasGeneralEventListeners || hasTrackedEventListeners || hasWatchedCellListeners
-    let changedInputCount = 0
-    let explicitChangedCount = 0
+    const changedInputCount = inputCellIndices.length
+    const explicitChangedCount = requiresChangedSet ? inputCellIndices.length : 0
     args.setBatchMutationDepth(args.getBatchMutationDepth() + 1)
     try {
       for (let index = 0; index < refs.length; index += 1) {
@@ -244,11 +245,11 @@ export function createOperationDirectScalarRowPairBatchFastPaths(args: Operation
         if (mutation.kind !== 'setCellValue' || typeof mutation.value !== 'number') {
           throw new Error('Expected dense row-pair batch to contain only numeric literal writes')
         }
-        writeNumericLiteralToCellStore(cellIndex, mutation.value)
-        changedInputCount = args.markInputChanged(cellIndex, changedInputCount)
-        if (requiresChangedSet) {
-          explicitChangedCount = args.markExplicitChanged(cellIndex, explicitChangedCount)
-        }
+        writeOperationNumericLiteralToExistingCellWithoutColumnNotify({
+          cellStore: args.state.workbook.cellStore,
+          cellIndex,
+          value: mutation.value,
+        })
       }
       args.state.workbook.notifyColumnsWritten(firstRef.sheetId, Uint32Array.of(firstMutation.col, secondMutation.col))
     } finally {
@@ -257,32 +258,11 @@ export function createOperationDirectScalarRowPairBatchFastPaths(args: Operation
     if (batch) {
       markBatchApplied(args.state.replicaState, batch)
     }
-    const changedInputArray = args.getChangedInputBuffer().subarray(0, changedInputCount)
-    args.deferKernelSync(changedInputArray)
-    for (let refIndex = 0; refIndex < refs.length; refIndex += 2) {
-      const leftMutation = refs[refIndex]!.mutation
-      const rightMutation = refs[refIndex + 1]!.mutation
-      if (
-        leftMutation.kind !== 'setCellValue' ||
-        rightMutation.kind !== 'setCellValue' ||
-        typeof leftMutation.value !== 'number' ||
-        typeof rightMutation.value !== 'number'
-      ) {
-        throw new Error('Expected dense row-pair batch to contain only numeric literal writes')
-      }
-      const leftValue = leftMutation.value
-      const rightValue = rightMutation.value
-      for (let formulaIndex = refIndex; formulaIndex < refIndex + 2; formulaIndex += 1) {
-        const result = evaluateRowPairDirectScalarCode(formulaCodes[formulaIndex]!, leftValue, rightValue)
-        if (result === undefined) {
-          throw new Error('Failed to apply direct row-pair scalar result')
-        }
-        applyTerminalDirectFormulaNumericResult(formulaCellIndices[formulaIndex]!, result)
-      }
-    }
+    args.deferKernelSync(inputCellIndices)
+    applyTerminalDirectFormulaNumericResults(formulaCellIndices, formulaNumericResults, formulaCount)
     addEngineCounter(args.state.counters, 'directScalarDeltaApplications', formulaCount)
     addEngineCounter(args.state.counters, 'directScalarDeltaOnlyRecalcSkips')
-    const changed = requiresChangedSet ? args.composeDisjointEventChanges(formulaCellIndices, explicitChangedCount) : EMPTY_CHANGED_CELLS
+    const changed = requiresChangedSet ? composeDenseInputFormulaChanges(inputCellIndices, formulaCellIndices) : EMPTY_CHANGED_CELLS
     if (hasTrackedEventListeners && changed.length > 4 && explicitChangedCount > 0 && explicitChangedCount < changed.length) {
       tagTrustedPhysicalTrackedChanges(changed, firstRef.sheetId, explicitChangedCount)
     }
@@ -306,7 +286,7 @@ export function createOperationDirectScalarRowPairBatchFastPaths(args: Operation
     batch: EngineOpBatch | null,
     potentialNewCells?: number,
   ): boolean => {
-    if (refs.length < 32 || refs.length % 2 !== 0) {
+    if (refs.length < 32 || refs.length % 2 !== 0 || (potentialNewCells ?? 0) !== 0) {
       return false
     }
     const firstRef = refs[0]!
@@ -443,9 +423,11 @@ export function createOperationDirectScalarRowPairBatchFastPaths(args: Operation
           return false
         }
       }
-      for (let index = 0; index < rightDependents.length; index += 1) {
-        if (!considerDependent(rightDependents[index]!)) {
-          return false
+      if (!sameDependentOrder(leftDependents, rightDependents)) {
+        for (let index = 0; index < rightDependents.length; index += 1) {
+          if (!considerDependent(rightDependents[index]!)) {
+            return false
+          }
         }
       }
       inputCellIndices[refIndex] = leftIndex
@@ -458,27 +440,22 @@ export function createOperationDirectScalarRowPairBatchFastPaths(args: Operation
     }
 
     args.materializeDeferredStructuralFormulaSources()
-    args.beginMutationCollection()
-    const reservedNewCells = potentialNewCells ?? 0
-    args.state.workbook.cellStore.ensureCapacity(args.state.workbook.cellStore.size + reservedNewCells)
-    args.ensureRecalcScratchCapacity(args.state.workbook.cellStore.size + refs.length + formulaCount + 1)
-    args.resetMaterializedCellScratch(reservedNewCells)
 
     const hasGeneralEventListeners = args.state.events.hasListeners()
     const hasTrackedEventListeners = args.state.events.hasTrackedListeners()
     const hasWatchedCellListeners = args.state.events.hasCellListeners()
     const requiresChangedSet = hasGeneralEventListeners || hasTrackedEventListeners || hasWatchedCellListeners
-    let changedInputCount = 0
-    let explicitChangedCount = 0
+    const changedInputCount = inputCellIndices.length
+    const explicitChangedCount = requiresChangedSet ? inputCellIndices.length : 0
     args.setBatchMutationDepth(args.getBatchMutationDepth() + 1)
     try {
       for (let index = 0; index < refs.length; index += 1) {
         const cellIndex = inputCellIndices[index]!
-        writeNumericLiteralToCellStore(cellIndex, inputNumericValues[index]!)
-        changedInputCount = args.markInputChanged(cellIndex, changedInputCount)
-        if (requiresChangedSet) {
-          explicitChangedCount = args.markExplicitChanged(cellIndex, explicitChangedCount)
-        }
+        writeOperationNumericLiteralToExistingCellWithoutColumnNotify({
+          cellStore: args.state.workbook.cellStore,
+          cellIndex,
+          value: inputNumericValues[index]!,
+        })
       }
       args.state.workbook.notifyColumnsWritten(firstRef.sheetId, Uint32Array.of(firstMutation.col, secondMutation.col))
     } finally {
@@ -487,19 +464,17 @@ export function createOperationDirectScalarRowPairBatchFastPaths(args: Operation
     if (batch) {
       markBatchApplied(args.state.replicaState, batch)
     }
-    const changedInputArray = args.getChangedInputBuffer().subarray(0, changedInputCount)
-    args.deferKernelSync(changedInputArray)
+    args.deferKernelSync(inputCellIndices)
     const formulaChanged = requiresChangedSet ? new Uint32Array(formulaCount) : EMPTY_CHANGED_CELLS
     for (let index = 0; index < formulaCount; index += 1) {
-      const formulaCellIndex = formulaCellIndices[index]!
-      applyTerminalDirectFormulaNumericResult(formulaCellIndex, formulaNumericResults[index]!)
       if (requiresChangedSet) {
-        formulaChanged[index] = formulaCellIndex
+        formulaChanged[index] = formulaCellIndices[index]!
       }
     }
+    applyTerminalDirectFormulaNumericResults(formulaCellIndices, formulaNumericResults, formulaCount)
     addEngineCounter(args.state.counters, 'directScalarDeltaApplications', formulaCount)
     addEngineCounter(args.state.counters, 'directScalarDeltaOnlyRecalcSkips')
-    const changed = requiresChangedSet ? args.composeDisjointEventChanges(formulaChanged, explicitChangedCount) : EMPTY_CHANGED_CELLS
+    const changed = requiresChangedSet ? composeDenseInputFormulaChanges(inputCellIndices, formulaChanged) : EMPTY_CHANGED_CELLS
     if (hasTrackedEventListeners && changed.length > 4 && explicitChangedCount > 0 && explicitChangedCount < changed.length) {
       tagTrustedPhysicalTrackedChanges(changed, firstRef.sheetId, explicitChangedCount)
     }
@@ -519,4 +494,26 @@ export function createOperationDirectScalarRowPairBatchFastPaths(args: Operation
   }
 
   return { tryApplyDenseRowPairSimpleDirectScalarLiteralBatch, tryApplyDenseRowPairDirectScalarLiteralBatch }
+}
+
+function composeDenseInputFormulaChanges(inputCellIndices: Uint32Array, formulaCellIndices: Uint32Array): Uint32Array {
+  const changed = new Uint32Array(inputCellIndices.length + formulaCellIndices.length)
+  changed.set(inputCellIndices)
+  changed.set(formulaCellIndices, inputCellIndices.length)
+  return changed
+}
+
+function sameDependentOrder(left: Uint32Array, right: Uint32Array): boolean {
+  if (left === right) {
+    return true
+  }
+  if (left.length !== right.length) {
+    return false
+  }
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) {
+      return false
+    }
+  }
+  return true
 }

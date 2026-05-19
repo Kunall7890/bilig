@@ -32,6 +32,29 @@ export class CellAxisIdentityStore {
     this.colIds[cellIndex] = colId
   }
 
+  setDenseRowMajorParts(firstCellIndex: number, sheetId: number, rowIds: readonly string[], colIds: readonly string[]): void {
+    const colCount = colIds.length
+    const cellCount = rowIds.length * colCount
+    if (cellCount === 0) {
+      return
+    }
+    const endCellIndex = firstCellIndex + cellCount
+    this.sheetIds.length = Math.max(this.sheetIds.length, endCellIndex)
+    this.rowIds.length = Math.max(this.rowIds.length, endCellIndex)
+    this.colIds.length = Math.max(this.colIds.length, endCellIndex)
+
+    let cellIndex = firstCellIndex
+    for (let rowOffset = 0; rowOffset < rowIds.length; rowOffset += 1) {
+      const rowId = rowIds[rowOffset]!
+      for (let colOffset = 0; colOffset < colCount; colOffset += 1) {
+        this.sheetIds[cellIndex] = sheetId
+        this.rowIds[cellIndex] = rowId
+        this.colIds[cellIndex] = colIds[colOffset]!
+        cellIndex += 1
+      }
+    }
+  }
+
   delete(cellIndex: number): boolean {
     if (this.sheetIds[cellIndex] === undefined || this.rowIds[cellIndex] === undefined || this.colIds[cellIndex] === undefined) {
       return false

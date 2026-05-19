@@ -1,4 +1,4 @@
-import { WorkPaper } from '@bilig/headless'
+import { WorkPaper } from '../../headless/src/work-paper.js'
 import { HYPERFORMULA_LICENSE_KEY } from './benchmark-workpaper-vs-hyperformula.js'
 import {
   address,

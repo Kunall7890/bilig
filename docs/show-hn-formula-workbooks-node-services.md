@@ -72,12 +72,12 @@ values are a common footgun.
 
 ## Current numbers
 
-The checked benchmark artifact currently says Bilig wins `80/100` comparable
+The checked benchmark artifact currently says Bilig wins `100/100` comparable
 workloads on mean latency against the HyperFormula-style baseline. It wins
-`75/100` on both mean and p95.
+`100/100` on both mean and p95.
 
-The miss is not hidden: `structural-insert-columns-small` is slower at p95
-by `4.075x`. Browser grid rendering is not part of this benchmark.
+The narrowest p95 row is not hidden: `aggregate-overlapping-sliding-window-wide` is the narrowest p95 win at `0.946x`. Browser grid rendering is not part of this
+benchmark.
 
 Read the benchmark note:
 [what the WorkPaper benchmark proves](what-workpaper-benchmark-proves.md).
@@ -85,8 +85,8 @@ Read the benchmark note:
 ## What this is not
 
 Bilig is not Excel in Node. It does not run macros, preserve every workbook
-artifact, cover every Excel formula, do collaborative editing, or win every p95
-case.
+artifact, cover every Excel formula, do collaborative editing, or prove future
+p95 cases without adding them to the checked suite.
 
 If you mainly need a mature broad formula engine, start with HyperFormula. If
 the problem is XLSX reading, writing, or styling, start with SheetJS or ExcelJS.
@@ -137,8 +137,8 @@ Excel compatibility claim. If you need a mature broad formula engine,
 HyperFormula is probably the first thing to test. If you need file manipulation,
 start with SheetJS or ExcelJS.
 
-The current benchmark artifact says 80/100 mean-latency wins on comparable
-workloads, with the p95 miss called out on the page.
+The current benchmark artifact says 100/100 mean-latency wins on comparable
+workloads, with the narrowest p95 row called out on the page.
 
 I am looking for rejection reasons from people who have shipped this kind of
 thing: missing formulas, XLSX cases, bad API shape, runtime pain, or the

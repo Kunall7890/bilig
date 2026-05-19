@@ -134,6 +134,39 @@ describe('captureTrackedEngineEvent', () => {
     expect(tracked.trustedSortedSliceSplit).toBe(2)
   })
 
+  it('preserves trusted physical split metadata when cloning tracked events', () => {
+    const changedCellIndices = new Uint32Array([2, 4, 1, 3])
+    Reflect.set(changedCellIndices, '__biligTrackedPhysicalSheetId', 1)
+    Reflect.set(changedCellIndices, '__biligTrackedPhysicalSortedSliceSplit', 2)
+
+    const tracked = captureTrackedEngineEvent({
+      kind: 'batch',
+      invalidation: 'cells',
+      changedCellIndices,
+      invalidatedRanges: [],
+      invalidatedRows: [],
+      invalidatedColumns: [],
+      metrics: {
+        batchId: 1,
+        changedInputCount: 2,
+        dirtyFormulaCount: 0,
+        wasmFormulaCount: 0,
+        jsFormulaCount: 0,
+        rangeNodeVisits: 0,
+        recalcMs: 0,
+        compileMs: 0,
+      },
+      explicitChangedCount: 2,
+    })
+
+    expect(tracked.changedCellIndices).not.toBe(changedCellIndices)
+    expect(tracked.changedCellIndicesSortedDisjoint).toBe(true)
+    expect(tracked.trustedPhysicalSheetId).toBe(1)
+    expect(tracked.trustedSortedSliceSplit).toBe(2)
+    expect(Reflect.get(tracked.changedCellIndices, '__biligTrackedPhysicalSheetId')).toBe(1)
+    expect(Reflect.get(tracked.changedCellIndices, '__biligTrackedPhysicalSortedSliceSplit')).toBe(2)
+  })
+
   it('omits empty patch arrays from tracked events', () => {
     const tracked = captureTrackedEngineEvent({
       kind: 'batch',

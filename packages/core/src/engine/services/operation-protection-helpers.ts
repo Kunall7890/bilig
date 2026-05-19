@@ -30,6 +30,7 @@ interface AnchorProtectedRecord {
 }
 
 export interface OperationProtectionAccess {
+  readonly hasProtectionMetadataForSheet?: (sheetName: string) => boolean
   readonly getSheetProtection: (sheetName: string) => unknown
   readonly listRangeProtections: (sheetName: string) => readonly RangeProtectedRecord[]
   readonly getConditionalFormat: (id: string) => RangeProtectedRecord | undefined
@@ -41,10 +42,16 @@ export interface OperationProtectionAccess {
 }
 
 export function sheetHasProtection(access: OperationProtectionAccess, sheetName: string): boolean {
+  if (access.hasProtectionMetadataForSheet?.(sheetName) === false) {
+    return false
+  }
   return access.getSheetProtection(sheetName) !== undefined || access.listRangeProtections(sheetName).length > 0
 }
 
 export function rangeIsProtected(access: OperationProtectionAccess, range: CellRangeRef): boolean {
+  if (access.hasProtectionMetadataForSheet?.(range.sheetName) === false) {
+    return false
+  }
   if (access.getSheetProtection(range.sheetName)) {
     return true
   }

@@ -160,6 +160,36 @@ describe('loadLiteralSheetIntoEmptySheet', () => {
     expect(engine.workbook.getCellIndex('Sheet1', 'B2')).toBe(3)
   })
 
+  it('keeps dense numeric loads indexed for visible and resident lookups', () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'literal-dense-numeric-indexed-load' })
+    engine.workbook.createSheet('Sheet1')
+    const sheet = engine.workbook.getSheet('Sheet1')!
+
+    loadDenseLiteralSheetIntoEmptySheet(
+      engine.workbook,
+      engine.strings,
+      sheet.id,
+      [
+        [1, 2, 3],
+        [4, 5, 6],
+      ],
+      {
+        materializedCellCount: 6,
+        maxColumnCount: 3,
+        allMaterializedCellsAreNumbers: true,
+      },
+    )
+
+    const row2Id = sheet.logicalAxisMap.getId('row', 1)!
+    const colCId = sheet.logicalAxisMap.getId('column', 2)!
+
+    expect(engine.workbook.getCellIndex('Sheet1', 'C2')).toBe(5)
+    expect(sheet.grid.getPhysical(1, 2)).toBe(5)
+    expect(sheet.logical.getCellVisiblePosition(5)).toEqual({ row: 1, col: 2 })
+    expect(sheet.logical.listResidentCellIndices('row', [row2Id])).toEqual([3, 4, 5])
+    expect(sheet.logical.listResidentCellIndices('column', [colCId])).toEqual([2, 5])
+  })
+
   it('materializes ragged dense literal sheets as full rectangles without orphan cells', () => {
     const engine = new SpreadsheetEngine({ workbookName: 'literal-dense-ragged-load' })
     engine.workbook.createSheet('Sheet1')

@@ -115,4 +115,24 @@ describe('AxisMap', () => {
     expect(axisMap.list()).toEqual([{ id: 'row-c', index: 1 }])
     expect(axisMap.indexOf('row-c')).toBe(1)
   })
+
+  it('uses the single-entry insert path while shifting suffix ids', () => {
+    const axisMap = new AxisMap()
+    axisMap.replaceRange(0, [
+      { id: 'column-a', index: 0 },
+      { id: 'column-b', index: 1 },
+      { id: 'column-c', index: 2 },
+    ])
+
+    expect(axisMap.splice(1, 0, 1, [{ id: 'column-x', index: 1 }])).toEqual([])
+
+    expect(axisMap.list()).toEqual([
+      { id: 'column-a', index: 0 },
+      { id: 'column-x', index: 1 },
+      { id: 'column-b', index: 2 },
+      { id: 'column-c', index: 3 },
+    ])
+    expect(axisMap.indexOf('column-b')).toBe(2)
+    expect(axisMap.indexOf('column-c')).toBe(3)
+  })
 })

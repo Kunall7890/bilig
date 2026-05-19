@@ -96,7 +96,7 @@ export function deriveWorkPaperXlsxCalcScorecard(
   return {
     comparableWorkloadCount: results.length,
     coverageNote,
-    coverageTier: 'workbook-wide',
+    coverageTier: 'workbook-wide-limited',
     directionalMeanRatioGeomean: geometricMean(results.map((result) => result.comparison.workpaperToXlsxCalcMeanRatio)),
     directionalP95RatioGeomean: geometricMean(results.map((result) => result.comparison.workpaperToXlsxCalcP95Ratio)),
     meanAndP95WinCount,
@@ -116,7 +116,7 @@ function parseWorkPaperXlsxCalcScorecard(value: Record<string, unknown>): Parsed
   return {
     comparableWorkloadCount: numberField(value, 'comparableWorkloadCount'),
     coverageNote: stringField(value, 'coverageNote'),
-    coverageTier: literalField(value, 'coverageTier', 'workbook-wide'),
+    coverageTier: literalField(value, 'coverageTier', 'workbook-wide-limited'),
     directionalMeanRatioGeomean: numberField(value, 'directionalMeanRatioGeomean'),
     directionalP95RatioGeomean: numberField(value, 'directionalP95RatioGeomean'),
     meanAndP95WinCount: numberField(value, 'meanAndP95WinCount'),

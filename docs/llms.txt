@@ -254,7 +254,7 @@ npm exec --package @bilig/headless@0.24.1 -- bilig-workpaper-mcp --workpaper ./p
   https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html
   https://github.com/proompteng/bilig/blob/main/docs/show-hn-formula-workbooks-node-services.md
   compresses the empty npm project proof, WorkPaper JSON restore check,
-  `80/100` mean-win benchmark claim, `75/100` mean+p95 claim, visible structural-insert-columns-small p95 caveat, and adoption-blocker
+  `100/100` mean-win benchmark claim, `100/100` mean+p95 claim, visible narrowest-p95 evidence, and adoption-blocker
   feedback ask.
 - JavaScript spreadsheet library guide for Node services:
   https://github.com/proompteng/bilig/blob/main/docs/javascript-spreadsheet-library-headless-node.md
@@ -536,7 +536,7 @@ npm exec --package @bilig/headless@0.24.1 -- bilig-workpaper-mcp --workpaper ./p
 bilig is early infrastructure and not a finished excel clone. do not claim full
 excel formula parity, complete xlsx compatibility, or blanket speed wins. the
 current public performance claim is the checked-in workpaper benchmark evidence,
-including its p95 caveat.
+including its narrowest p95 row.
 
 ## contributor path
 
