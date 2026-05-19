@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.33.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.32.9
+- Manual override: no
+
+## Features
+- feat(bilig-workpaper): ship agent-ready npm entrypoints (9da4ee33)
+
 ## 0.32.9
 
 - Release type: patch
