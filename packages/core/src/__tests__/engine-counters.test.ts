@@ -46,6 +46,7 @@ const oracleAggregateCounterKeys = [
   'directFormulaKernelSyncOnlyRecalcSkips',
   'directFormulaInitialEvaluations',
   'nativeDirectScalarInitialEvaluations',
+  'nativeDirectLookupInitialEvaluations',
   'directCriteriaMatchCacheHits',
   'directCriteriaAggregateCacheHits',
 ] as const satisfies readonly EngineCounterKey[]

@@ -32,6 +32,11 @@ import {
   MAX_INITIAL_NATIVE_DIRECT_SCALAR_BATCH_SIZE,
   MIN_INITIAL_NATIVE_DIRECT_SCALAR_BATCH_SIZE,
 } from './formula-initialization-native-direct-scalar.js'
+import {
+  createInitialNativeDirectLookupBatch,
+  MAX_INITIAL_NATIVE_DIRECT_LOOKUP_BATCH_SIZE,
+  MIN_INITIAL_NATIVE_DIRECT_LOOKUP_BATCH_SIZE,
+} from './formula-initialization-native-direct-lookup.js'
 import { evaluateInitialPrefixAggregateGroups } from './formula-initialization-prefix-aggregates.js'
 import type {
   EngineFormulaInitializationService,
@@ -282,6 +287,13 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
           ? undefined
           : createInitialNativeDirectScalarBatch({ state: args.state, capacity: refs.length })
       let nativeInitialDirectScalarCellCount = 0
+      let nativeInitialDirectLookupBatch =
+        hadExistingFormulas ||
+        refs.length < MIN_INITIAL_NATIVE_DIRECT_LOOKUP_BATCH_SIZE ||
+        refs.length > MAX_INITIAL_NATIVE_DIRECT_LOOKUP_BATCH_SIZE
+          ? undefined
+          : createInitialNativeDirectLookupBatch({ state: args.state, capacity: refs.length })
+      let nativeInitialDirectLookupCellCount = 0
       const shouldDeferFormulaFamilyIndex = !hadExistingFormulas && args.deferFormulaFamilyIndexRebuild !== undefined
       const shouldDeferFormulaInstanceTable =
         !hadExistingFormulas && (args.hydrateFreshFormulaInstances !== undefined || args.deferFormulaInstanceTableRebuild !== undefined)
@@ -395,6 +407,14 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
             pushInlineInitialDirectScalarCell(prepared.cellIndex)
             return
           }
+        }
+        if (runtimeFormula.directLookup !== undefined && nativeInitialDirectLookupBatch) {
+          if (nativeInitialDirectLookupBatch.add(prepared, runtimeFormula.directLookup)) {
+            nativeInitialDirectLookupCellCount += 1
+            return
+          }
+          nativeInitialDirectLookupBatch = undefined
+          nativeInitialDirectLookupCellCount = 0
         }
         if (runtimeFormula.inlineScalarFastPlanKind !== undefined) {
           const inlineValue = tryEvaluateFormulaLeafInlineScalar({
@@ -572,6 +592,29 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
         !hasInitialPrefixAggregateCandidates
       ) {
         const native = nativeInitialDirectScalarBatch?.evaluate()
+        if (native) {
+          recalculated = native
+          args.deferKernelSync(recalculated)
+          addEngineCounter(args.state.counters, 'directFormulaInitialEvaluations', orderedPreparedCellCount)
+        } else {
+          const direct = evaluateInitialDirectFormulas(orderedPreparedCellList(), {
+            alreadyValidated: true,
+            hasPrefixAggregateCandidates: hasInitialPrefixAggregateCandidates,
+          })
+          if (direct) {
+            recalculated = direct
+          } else {
+            const changedInputArray = args.getChangedInputBuffer().subarray(0, changedInputCount)
+            const changedRoots = args.composeMutationRoots(changedInputCount, formulaChangedCount)
+            recalculated = args.recalculate(changedRoots, changedInputArray)
+          }
+        }
+      } else if (
+        useInitialDirectEvaluation &&
+        nativeInitialDirectLookupCellCount === orderedPreparedCellCount &&
+        !hasInitialPrefixAggregateCandidates
+      ) {
+        const native = nativeInitialDirectLookupBatch?.evaluate()
         if (native) {
           recalculated = native
           args.deferKernelSync(recalculated)

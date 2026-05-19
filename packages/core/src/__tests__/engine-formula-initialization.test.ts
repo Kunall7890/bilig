@@ -425,6 +425,47 @@ describe('SpreadsheetEngine formula initialization', () => {
     })
   })
 
+  it('uses native uniform lookup batches for large fresh formula initialization', async () => {
+    const lookupRows = 2000
+    const formulaRows = 150
+    const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-native-lookup-columns' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+    for (let row = 0; row < lookupRows; row += 1) {
+      engine.setCellValue('Sheet1', `A${row + 1}`, row + 1)
+    }
+    const refs: EngineCellMutationRef[] = []
+    for (let row = 0; row < formulaRows; row += 1) {
+      const rowNumber = row + 1
+      engine.setCellValue('Sheet1', `D${rowNumber}`, rowNumber + 100)
+      engine.setCellValue('Sheet1', `E${rowNumber}`, rowNumber + 0.5)
+      refs.push({
+        sheetId,
+        mutation: { kind: 'setCellFormula' as const, row, col: 5, formula: `MATCH(D${rowNumber},A1:A${lookupRows},0)` },
+      })
+      refs.push({
+        sheetId,
+        mutation: { kind: 'setCellFormula' as const, row, col: 6, formula: `MATCH(E${rowNumber},A1:A${lookupRows},1)` },
+      })
+    }
+
+    engine.initializeCellFormulasAt(refs, refs.length)
+
+    expect(engine.getCellValue('Sheet1', `F${formulaRows}`)).toEqual({
+      tag: ValueTag.Number,
+      value: formulaRows + 100,
+    })
+    expect(engine.getCellValue('Sheet1', `G${formulaRows}`)).toEqual({
+      tag: ValueTag.Number,
+      value: formulaRows,
+    })
+    expect(engine.getPerformanceCounters()).toMatchObject({
+      directFormulaInitialEvaluations: refs.length,
+      nativeDirectLookupInitialEvaluations: refs.length,
+    })
+  })
+
   it('keeps oversized direct scalar initialization on the JS path', async () => {
     const rowCount = 1300
     const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-oversized-value-columns' })

@@ -43,6 +43,19 @@ export interface RawKernelExports {
     resultOffset: number,
     outNumbers: number,
   ): void
+  evalUniformNumericLookupBatch(
+    kinds: number,
+    matchModes: number,
+    starts: number,
+    steps: number,
+    lengths: number,
+    repeatedRunLengths: number,
+    lookupTags: number,
+    lookupNumbers: number,
+    outTags: number,
+    outNumbers: number,
+    outErrors: number,
+  ): void
   evalBatch(cellIndices: number): void
   materializePivotTable(
     sourceRangeIndex: number,
@@ -116,6 +129,7 @@ export function isRawKernelExports(value: unknown): value is RawKernelExports {
     'writeCells',
     'evalDirectScalarValueBatch',
     'evalDenseNumericRowAggregateBatch',
+    'evalUniformNumericLookupBatch',
     'evalBatch',
     'materializePivotTable',
     'getPivotResultTagsPtr',

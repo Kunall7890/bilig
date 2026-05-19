@@ -74,6 +74,19 @@ export interface SpreadsheetKernel {
     resultOffset: number,
     outNumbers: Float64Array,
   ): void
+  evalUniformNumericLookupBatch(
+    kinds: Uint8Array,
+    matchModes: Uint8Array,
+    starts: Float64Array,
+    steps: Float64Array,
+    lengths: Uint32Array,
+    repeatedRunLengths: Uint32Array,
+    lookupTags: Uint8Array,
+    lookupNumbers: Float64Array,
+    outTags: Uint8Array,
+    outNumbers: Float64Array,
+    outErrors: Uint16Array,
+  ): void
   evalBatch(cellIndices: Uint32Array): void
   materializePivotTable(
     sourceRangeIndex: number,
@@ -367,6 +380,62 @@ class RawKernelBridge {
     }
   }
 
+  evalUniformNumericLookupBatch(
+    kinds: Uint8Array,
+    matchModes: Uint8Array,
+    starts: Float64Array,
+    steps: Float64Array,
+    lengths: Uint32Array,
+    repeatedRunLengths: Uint32Array,
+    lookupTags: Uint8Array,
+    lookupNumbers: Float64Array,
+    outTags: Uint8Array,
+    outNumbers: Float64Array,
+    outErrors: Uint16Array,
+  ): void {
+    const kindsPtr = this.lowerTypedArray(kinds, uint8Spec)
+    const matchModesPtr = this.lowerTypedArray(matchModes, uint8Spec)
+    const startsPtr = this.lowerTypedArray(starts, float64Spec)
+    const stepsPtr = this.lowerTypedArray(steps, float64Spec)
+    const lengthsPtr = this.lowerTypedArray(lengths, uint32Spec)
+    const repeatedRunLengthsPtr = this.lowerTypedArray(repeatedRunLengths, uint32Spec)
+    const lookupTagsPtr = this.lowerTypedArray(lookupTags, uint8Spec)
+    const lookupNumbersPtr = this.lowerTypedArray(lookupNumbers, float64Spec)
+    const outTagsPtr = this.lowerTypedArray(outTags, uint8Spec)
+    const outNumbersPtr = this.lowerTypedArray(outNumbers, float64Spec)
+    const outErrorsPtr = this.lowerTypedArray(outErrors, uint16Spec)
+    try {
+      this.raw.evalUniformNumericLookupBatch(
+        kindsPtr,
+        matchModesPtr,
+        startsPtr,
+        stepsPtr,
+        lengthsPtr,
+        repeatedRunLengthsPtr,
+        lookupTagsPtr,
+        lookupNumbersPtr,
+        outTagsPtr,
+        outNumbersPtr,
+        outErrorsPtr,
+      )
+      this.copyLoweredTypedArray(outTagsPtr, outTags, uint8Spec)
+      this.copyLoweredTypedArray(outNumbersPtr, outNumbers, float64Spec)
+      this.copyLoweredTypedArray(outErrorsPtr, outErrors, uint16Spec)
+    } finally {
+      this.raw.__unpin(kindsPtr)
+      this.raw.__unpin(matchModesPtr)
+      this.raw.__unpin(startsPtr)
+      this.raw.__unpin(stepsPtr)
+      this.raw.__unpin(lengthsPtr)
+      this.raw.__unpin(repeatedRunLengthsPtr)
+      this.raw.__unpin(lookupTagsPtr)
+      this.raw.__unpin(lookupNumbersPtr)
+      this.raw.__unpin(outTagsPtr)
+      this.raw.__unpin(outNumbersPtr)
+      this.raw.__unpin(outErrorsPtr)
+    }
+  }
+
   evalBatch(cellIndices: Uint32Array): void {
     const cellIndicesPtr = this.lowerTypedArray(cellIndices, uint32Spec)
     try {
@@ -591,6 +660,34 @@ class KernelHandle implements SpreadsheetKernel {
       aggregateColCount,
       resultOffset,
       outNumbers,
+    )
+  }
+
+  evalUniformNumericLookupBatch(
+    kinds: Uint8Array,
+    matchModes: Uint8Array,
+    starts: Float64Array,
+    steps: Float64Array,
+    lengths: Uint32Array,
+    repeatedRunLengths: Uint32Array,
+    lookupTags: Uint8Array,
+    lookupNumbers: Float64Array,
+    outTags: Uint8Array,
+    outNumbers: Float64Array,
+    outErrors: Uint16Array,
+  ): void {
+    this.bridge.evalUniformNumericLookupBatch(
+      kinds,
+      matchModes,
+      starts,
+      steps,
+      lengths,
+      repeatedRunLengths,
+      lookupTags,
+      lookupNumbers,
+      outTags,
+      outNumbers,
+      outErrors,
     )
   }
 

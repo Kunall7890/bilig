@@ -54,6 +54,20 @@ export interface WasmDenseNumericRowAggregateBatchLayout {
   outNumbers: Float64Array
 }
 
+export interface WasmUniformNumericLookupBatchLayout {
+  kinds: Uint8Array
+  matchModes: Uint8Array
+  starts: Float64Array
+  steps: Float64Array
+  lengths: Uint32Array
+  repeatedRunLengths: Uint32Array
+  lookupTags: Uint8Array
+  lookupNumbers: Float64Array
+  outTags: Uint8Array
+  outNumbers: Float64Array
+  outErrors: Uint16Array
+}
+
 const OUTPUT_STRING_BASE = 2147483648
 
 function decodeSpillValue(tag: number, rawValue: number, strings: StringPool, outputStrings: readonly string[]): CellValue {
@@ -280,6 +294,26 @@ export class WasmKernelFacade {
       layout.aggregateColCount,
       layout.resultOffset,
       layout.outNumbers,
+    )
+    return true
+  }
+
+  evalUniformNumericLookupBatch(layout: WasmUniformNumericLookupBatchLayout): boolean {
+    if (!this.kernel) {
+      return false
+    }
+    this.kernel.evalUniformNumericLookupBatch(
+      layout.kinds,
+      layout.matchModes,
+      layout.starts,
+      layout.steps,
+      layout.lengths,
+      layout.repeatedRunLengths,
+      layout.lookupTags,
+      layout.lookupNumbers,
+      layout.outTags,
+      layout.outNumbers,
+      layout.outErrors,
     )
     return true
   }
