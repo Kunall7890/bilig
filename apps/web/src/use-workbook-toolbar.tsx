@@ -26,6 +26,7 @@ import {
   queueWorkbookHistoryShortcut,
   selectedStyleMatchesPatch,
   shouldKeepWorkbookShortcutInsideTextEntry,
+  shouldRouteWorkbookShortcutToWorkbookScope,
 } from './workbook-toolbar-state.js'
 import { createRangeRef, getNormalizedRangeBounds, type ZeroConnectionState } from './worker-workbook-app-model.js'
 
@@ -438,6 +439,9 @@ export function useWorkbookToolbar(input: {
       if (shouldKeepWorkbookShortcutInsideTextEntry(event.target)) {
         return
       }
+      if (!shouldRouteWorkbookShortcutToWorkbookScope()) {
+        return
+      }
       if (event.inputType !== 'historyUndo' && event.inputType !== 'historyRedo') {
         return
       }
@@ -457,7 +461,12 @@ export function useWorkbookToolbar(input: {
     }
 
     const handleWindowShortcut = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || shouldKeepWorkbookShortcutInsideTextEntry(event.target) || event.altKey) {
+      if (
+        event.defaultPrevented ||
+        shouldKeepWorkbookShortcutInsideTextEntry(event.target) ||
+        !shouldRouteWorkbookShortcutToWorkbookScope() ||
+        event.altKey
+      ) {
         return
       }
 

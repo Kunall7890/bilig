@@ -1714,7 +1714,7 @@ test('web app applies advertised number and border formatting shortcuts from the
   await expect(borders).toHaveAttribute('aria-pressed', 'false')
 })
 
-test('web app keeps formatting shortcuts active after toolbar focus without letting delete keys clear cells', async ({ page }) => {
+test('web app returns grid focus after toolbar formatting commands and keeps shortcuts active', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-toolbar-focus-shortcut-scope')
   await page.goto(`/?document=${encodeURIComponent(documentId)}`)
   await waitForWorkbookReady(page)
@@ -1729,29 +1729,15 @@ test('web app keeps formatting shortcuts active after toolbar focus without lett
   await expect(formulaInput).toHaveValue('clear-after-toolbar-focus')
 
   await boldButton.click()
-  await expect(boldButton).toBeFocused()
+  await expect(boldButton).not.toBeFocused()
   await expect(page.getByLabel('Bold')).toHaveClass(/bg-\[var\(--wb-accent-soft\)\]/)
-  await page.keyboard.press('Delete')
-  await expect(formulaInput).toHaveValue('clear-after-toolbar-focus')
-  await expect(boldButton).toBeFocused()
-
-  await page.keyboard.press('Backspace')
-  await expect(formulaInput).toHaveValue('clear-after-toolbar-focus')
-  await expect(boldButton).toBeFocused()
 
   await page.keyboard.press(`${PRIMARY_MODIFIER}+B`)
   await expect(page.getByLabel('Bold')).not.toHaveClass(/bg-\[var\(--wb-accent-soft\)\]/)
 
-  await clickProductCell(page, 2, 2)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C3')
   await page.keyboard.press('Delete')
   await expect(formulaInput).toHaveValue('')
-
-  await boldButton.click()
-  await expect(boldButton).toBeFocused()
-  await page.keyboard.press('Enter')
-  await expect(formulaInput).toHaveValue('')
-  await expect(boldButton).toBeFocused()
 })
 
 test('web app routes row, column, and full-sheet selection shortcuts from toolbar focus', async ({ page }) => {
@@ -1763,9 +1749,8 @@ test('web app routes row, column, and full-sheet selection shortcuts from toolba
   await clickProductCell(page, 2, 2)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C3')
 
-  await boldButton.click()
+  await boldButton.focus()
   await expect(boldButton).toBeFocused()
-  await expect(boldButton).toHaveClass(/bg-\[var\(--wb-accent-soft\)\]/)
   await boldButton.evaluate((button) => {
     ;(window as Window & { __biligToolbarShortcutClickCount?: number }).__biligToolbarShortcutClickCount = 0
     button.addEventListener('click', () => {
